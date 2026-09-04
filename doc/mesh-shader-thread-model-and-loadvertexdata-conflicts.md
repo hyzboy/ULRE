@@ -3,7 +3,7 @@
 - 日期：2026-08-23
 - 分支：`to_mesh_shader`
 - 提交：`ad547e843`（Line 渲染迁移 mesh shader：删 4 slot/SetLineWidth，单 buffer + DrawMeshTasks + 屏幕空间线宽）
-- 关联代码：`src/ShaderGen/common/MeshShaderAssembler.h`（`GenerateMeshShader` 的 LineQuad 模式）、`src/ecs/support/line/LineRenderPipeline.cpp`
+- 关联代码：`src/ShaderGen/meshgen/MeshTemplateEmitter.h`（`EmitMeshTemplateDocument` 的 LineQuad 模式）、`src/ecs/support/line/LineRenderPipeline.cpp`
 
 本文档详细记录 P2（Line line-to-quad + Mesh Shader 化）迁移过程中遇到的两个最严重的问题——**Mesh Shader 线程模型误解（AMD 驱动崩溃）** 与 **LoadVertexData 体系冲突（全 NaN）**。两者都是"把 VS 时代的单顶点模型直觉套用到 mesh shader"导致的，对后续通用 mesh 化（VertexPassthrough 模式、Text、全材质 mesh 化）有直接指导意义。
 
@@ -256,7 +256,7 @@ const mat4 l2w_m = l2w.mats[transform_id];
 
 **（c）SSBO 声明来自 include 的 s1_* 模块**
 
-`sbo_vertex_position` / `sbo_vertex_color` / `sbo_vertex_transform_id` / `sbo_vertex_size` / `l2w` 的声明由材质 requirements 驱动的 `resolved_input_glsl` include（MaterialDefinitionRegistry）提供，mesh shader 直接引用即可（声明在前、main 在后）。`pc_vertex_index` push constant 声明在 mesh 模式下由 `MeshShaderAssembler` 补齐（s1_index 被跳过）。
+`sbo_vertex_position` / `sbo_vertex_color` / `sbo_vertex_transform_id` / `sbo_vertex_size` / `l2w` 的声明由材质 requirements 驱动的 `resolved_input_glsl` include（MaterialDefinitionRegistry）提供，mesh shader 直接引用即可（声明在前、main 在后）。`pc_vertex_index` push constant 声明在 mesh 模式下由 `MeshTemplateEmitter` 补齐（s1_index 被跳过）。
 
 ### 3.5 调试方法
 
@@ -276,6 +276,6 @@ const mat4 l2w_m = l2w.mats[transform_id];
 
 ## 5. 关联
 
-- `src/ShaderGen/common/MeshShaderAssembler.h`：LineQuad 模式（已修复的正确实现，作为模板）
+- `src/ShaderGen/meshgen/MeshTemplateEmitter.h`：LineQuad 模式（已修复的正确实现，作为模板）
 - `src/ecs/support/line/LineRenderPipeline.cpp`：`MESH_GROUP_SIZE = 64`、`LinePushConstant`（20B）、`groupCountX = ceil(line_count / 64)`
-- 后续工作：VertexPassthrough 通用模式（`GenerateMeshShader` 的另一分支）有**同样的线程模型隐患**（`vid = gl_LocalInvocationIndex` 缺 `gl_WorkGroupID`、`SetMeshOutputsEXT` 固定 max 无 per-group 裁剪）——通用 mesh 化时须按 §4 纪律重写。
+- 后续工作：VertexPassthrough 通用模式（`EmitMeshTemplateDocument` 的另一分支）有**同样的线程模型隐患**（`vid = gl_LocalInvocationIndex` 缺 `gl_WorkGroupID`、`SetMeshOutputsEXT` 固定 max 无 per-group 裁剪）——通用 mesh 化时须按 §4 纪律重写。

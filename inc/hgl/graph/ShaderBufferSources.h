@@ -49,7 +49,7 @@ namespace hgl::graph::mtl
         DescriptorSetType::PerObject, "mesh_draw_params", "MeshDrawParamsData"
     };
 
-    // mesh per-draw 参数行——与 MeshShaderAssembler 生成的 GLSL struct MeshDrawParams
+    // mesh per-draw 参数行——与 MeshTemplateEmitter 生成的 GLSL struct MeshDrawParams
     // 严格同构（std430 全 4 字节成员，24B 无 padding）。
     //
     // 单一真源（X 列表）：CPU struct 成员 / GLSL 字段名 / GLSL 字段类型 /

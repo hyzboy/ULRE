@@ -10,7 +10,7 @@ option(ULRE_ENABLE_RELEASE_SHELL
 #   material_definition/ 材质定义（TOML 加载 + 注册表）
 #   contract/            契约层（结构校验/哈希/绑定解析/输出/覆盖率/接口）
 #   meshgen/             mesh shader 生成（装配器 + 模式子模块 + 模板）
-#   compositor/          fragment 单趟发射器
+#   template/            fragment/mesh 模板发射器
 #   builder/             定义 → 构建计划编排（generic builder/顶点 ABI/描述符推导）
 # 公共头（inc/hgl/mtl 与 inc/hgl/graph）不参与物理搬移，路径保持稳定。
 
@@ -138,7 +138,7 @@ SOURCE_GROUP("Contract" FILES ${CONTRACT_FILES})
 set(MESHGEN_FILES
     ${SHADERGEN_INCLUDE_PATH}/MeshShaderMode.h
     ${SHADERGEN_INCLUDE_PATH}/MeshShaderLimits.h
-    meshgen/MeshShaderAssembler.h
+    meshgen/MeshTemplateEmitter.h
     meshgen/MeshShaderHeaderGen.h
     meshgen/MeshShaderVaryingGen.h
     meshgen/MeshShaderVertexAdapter.h
@@ -148,12 +148,6 @@ set(MESHGEN_FILES
     meshgen/MeshShaderTemplate.h
     meshgen/MeshShaderTemplate.cpp)
 SOURCE_GROUP("MeshGen" FILES ${MESHGEN_FILES})
-
-# ── compositor/ ──────────────────────────────────────────────────────────────
-set(COMPOSITOR_FILES
-    ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h
-    compositor/CompositorAssembler.cpp)
-SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_FILES})
 
 # ── builder/ ─────────────────────────────────────────────────────────────────
 set(BUILDER_FILES
@@ -168,7 +162,6 @@ SOURCE_GROUP("Builder" FILES ${BUILDER_FILES})
 
 # ── 公共类型（Surface/Blend/Pass/Pipeline 等，头-only）────────────────────────
 set(MATERIAL_TYPE_FILES
-    ${SHADERGEN_INCLUDE_PATH}/SurfaceType.h
     ${SHADERGEN_INCLUDE_PATH}/BlendMode.h
     ${SHADERGEN_INCLUDE_PATH}/PassType.h
     ${SHADERGEN_INCLUDE_PATH}/PipelineConfig.h
@@ -209,7 +202,6 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${MATERIAL_DEFINITION_FILES}
     ${CONTRACT_FILES}
     ${MESHGEN_FILES}
-    ${COMPOSITOR_FILES}
     ${BUILDER_FILES}
     ${MATERIAL_TYPE_FILES}
     ${PROFILE_FILES}

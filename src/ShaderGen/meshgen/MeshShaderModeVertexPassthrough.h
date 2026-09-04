@@ -47,7 +47,7 @@ namespace hgl::graph::mtl
         ms += std::to_string(ctx.max_invocations);
         ms += "u);\n";
         // 图元数 = 顶点数/3（triangle list；group size 必须是 3 的倍数——见
-        // MeshShaderAssembler 的 % 3 守卫，组内三角形永不跨组）
+        // MeshTemplateEmitter 的 % 3 守卫，组内三角形永不跨组）
         ms += "    SetMeshOutputsEXT(verts_this_group, verts_this_group / 3u);\n";
         ms += "    if (vid >= verts_this_group)\n";
         ms += "        return;\n";

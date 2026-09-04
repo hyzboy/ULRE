@@ -1,4 +1,4 @@
-﻿// MeshShaderAssembler.h — 通用 mesh shader 生成器（调度入口）
+﻿// MeshTemplateEmitter.h — 通用 mesh shader 生成器（调度入口）
 //
 // 生成 GLSL 骨架，顶点输出走 mesh 图元：
 //   - 通用模式（默认）：每线程 1 顶点，直通到 gl_MeshVerticesEXT（模拟 VS 行为）
@@ -32,7 +32,7 @@
 
 namespace hgl::graph::mtl
 {
-    // MeshShaderAssembler — 生成 mesh stage GLSL
+    // MeshTemplateEmitter — 生成 mesh stage GLSL
     //
     // 参数说明：
     //   max_invocations — threadgroup 大小（受设备 maxMeshWorkGroupSizeX 限制）
@@ -133,12 +133,12 @@ namespace hgl::graph::mtl
 
         EmitMeshShaderVersion(fragment);
         add_block(ShaderDocumentBlockKind::Version, fragment,
-                  "MeshShaderAssembler.Version", "MeshShaderHeaderGen");
+                  "MeshTemplateEmitter.Version", "MeshShaderHeaderGen");
 
         fragment.clear();
         EmitMeshShaderExtensions(fragment);
         add_block(ShaderDocumentBlockKind::Extension, fragment,
-                  "MeshShaderAssembler.Extensions", "MeshShaderHeaderGen");
+                  "MeshTemplateEmitter.Extensions", "MeshShaderHeaderGen");
 
         fragment.clear();
         // LineQuad projects segment endpoints with camera.vp even when its
@@ -151,13 +151,13 @@ namespace hgl::graph::mtl
             max_primitives,
             mode == MeshShaderMode::LineQuad);
         add_block(ShaderDocumentBlockKind::Resource, fragment,
-                  "MeshShaderAssembler.HeaderResources", "MeshShaderHeaderGen");
+                  "MeshTemplateEmitter.HeaderResources", "MeshShaderHeaderGen");
 
         // ── Stage 1: 顶点输入（SSBO）───────────────────────────────────────
         fragment.clear();
         EmitVertexAdapter(fragment);
         add_block(ShaderDocumentBlockKind::Resource, fragment,
-                  "MeshShaderAssembler.VertexAdapter", "MeshShaderVertexAdapter");
+                  "MeshTemplateEmitter.VertexAdapter", "MeshShaderVertexAdapter");
 
         if (mode != MeshShaderMode::CharQuad)
         {
@@ -168,7 +168,7 @@ namespace hgl::graph::mtl
                 if (resolved_input_glsl.back() != '\n')
                     fragment += "\n";
                 add_block(ShaderDocumentBlockKind::Module, fragment,
-                          "MeshShaderAssembler.ResolvedInput", "vertex-input");
+                          "MeshTemplateEmitter.ResolvedInput", "vertex-input");
             }
             else
             {
@@ -188,7 +188,7 @@ namespace hgl::graph::mtl
                 fragment += input_module;
                 fragment += "\"\n";
                 add_block(ShaderDocumentBlockKind::Module, fragment,
-                          "MeshShaderAssembler.DefaultInput", "vertex-input", input_module);
+                          "MeshTemplateEmitter.DefaultInput", "vertex-input", input_module);
             }
 
             fragment.clear();
@@ -198,32 +198,32 @@ namespace hgl::graph::mtl
                 if (provider_glsl.back() != '\n')
                     fragment += "\n";
                 add_block(ShaderDocumentBlockKind::Module, fragment,
-                          "MeshShaderAssembler.Provider", "vertex-provider");
+                          "MeshTemplateEmitter.Provider", "vertex-provider");
             }
 
             fragment.clear();
             EmitColorPaletteUBO(fragment, varying_cfg);
             add_block(ShaderDocumentBlockKind::Resource, fragment,
-                      "MeshShaderAssembler.ColorPalette", "MeshShaderHeaderGen");
+                      "MeshTemplateEmitter.ColorPalette", "MeshShaderHeaderGen");
 
             fragment.clear();
             EmitGlInstanceIndexMacro(fragment);
             add_block(ShaderDocumentBlockKind::Define, fragment,
-                      "MeshShaderAssembler.InstanceIndex", "MeshShaderHeaderGen");
+                      "MeshTemplateEmitter.InstanceIndex", "MeshShaderHeaderGen");
 
             fragment.clear();
             fragment += "#include \"";
             fragment += stage2_module;
             fragment += "\"\n\n";
             add_block(ShaderDocumentBlockKind::Module, fragment,
-                      "MeshShaderAssembler.Stage2", "stage2", stage2_module);
+                      "MeshTemplateEmitter.Stage2", "stage2", stage2_module);
 
             if (varying_cfg.use_transform_id_attr)
             {
                 fragment.clear();
                 fragment += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
                 add_block(ShaderDocumentBlockKind::Define, fragment,
-                          "MeshShaderAssembler.TransformID", "stage3");
+                          "MeshTemplateEmitter.TransformID", "stage3");
             }
 
             const char *stage3_module = VertexNodeConfigResolver::GetStage3ModulePath(node_cfg);
@@ -232,7 +232,7 @@ namespace hgl::graph::mtl
             fragment += stage3_module;
             fragment += "\"\n\n";
             add_block(ShaderDocumentBlockKind::Module, fragment,
-                      "MeshShaderAssembler.Stage3", "stage3", stage3_module);
+                      "MeshTemplateEmitter.Stage3", "stage3", stage3_module);
         }
 
         // ── Varying 输出（per-vertex 数组，mesh shader 要求）──────────────
@@ -240,7 +240,7 @@ namespace hgl::graph::mtl
         EmitVaryingDeclarations(
             fragment, *resolved_stage_interface, max_vertices, max_primitives);
         add_block(ShaderDocumentBlockKind::Interface, fragment,
-                  "MeshShaderAssembler.Varyings", "MeshShaderVaryingGen");
+                  "MeshTemplateEmitter.Varyings", "MeshShaderVaryingGen");
 
         // CharQuad SSBO 声明必须在全局作用域（void main 之前）
         if (mode == MeshShaderMode::CharQuad)
@@ -248,7 +248,7 @@ namespace hgl::graph::mtl
             fragment.clear();
             EmitCharQuadSSBODeclarations(fragment);
             add_block(ShaderDocumentBlockKind::Resource, fragment,
-                      "MeshShaderAssembler.CharQuadResources", "MeshShaderModeCharQuad");
+                      "MeshTemplateEmitter.CharQuadResources", "MeshShaderModeCharQuad");
         }
 
         fragment.clear();
@@ -284,7 +284,7 @@ namespace hgl::graph::mtl
 
         fragment += "}\n";
         add_block(ShaderDocumentBlockKind::MainBody, fragment,
-                  "MeshShaderAssembler.MainBody", "mesh-main");
+                  "MeshTemplateEmitter.MainBody", "mesh-main");
         return true;
     }
 

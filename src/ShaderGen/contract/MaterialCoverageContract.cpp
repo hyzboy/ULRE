@@ -11,6 +11,7 @@ namespace hgl::graph::mtl
     bool BuildMaterialCoverageContract(
         const MaterialDefinition &definition,
         const MaterialRecipe &recipe,
+        const RenderTemplateRequest &render_template_request,
         const ShaderProgramPurpose purpose,
         MaterialCoverageContract &out_contract) noexcept
     {
@@ -51,9 +52,12 @@ namespace hgl::graph::mtl
 
         if (out_contract.requires_alpha_evaluation)
         {
-            const char *source =
-                definition.fragment_material_source_module
-                    ? definition.fragment_material_source_module : "";
+            const RenderTemplateModuleRoot *material_source_root =
+                render_template_request.FindModuleRoot(
+                    ShaderModuleSlotRole::MaterialSourceProvider);
+            const char *source = material_source_root
+                && !material_source_root->include_path.IsEmpty()
+                    ? material_source_root->include_path.c_str() : "";
             const auto require_semantic =
                 [&out_contract](const InterStageSemantic semantic)
             {

@@ -20,11 +20,6 @@ projection = "WorldCameraVP"
 [fragment]
 material_source_module = "material/luminance_source.glsl"
 
-[compositor]
-surface = "Unlit"
-blend = "Opaque"
-pass = "ForwardOpaque"
-
 [vertex]
 requirements = ["Position", "Luminance"]
 varyings = ["emit_data_index_id", "emit_luminance"]

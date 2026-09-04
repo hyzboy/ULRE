@@ -37,7 +37,7 @@ namespace hgl::ecs
 {
     struct MaterialBatch;
 
-    // mesh shader 组数计算（与 MeshShaderAssembler 的 dispatch 约定一致）：
+    // mesh shader 组数计算（与 MeshTemplateEmitter 的 dispatch 约定一致）：
     // Lines（LineQuad）每线程 1 线段 = 2 顶点 → 线段数 = total/2，组大小 64；
     // 其它（VertexPassthrough）每线程 1 顶点，组大小 96（3 的倍数——组内
     // 三角形永不跨组，避免 64 边界丢三角形）

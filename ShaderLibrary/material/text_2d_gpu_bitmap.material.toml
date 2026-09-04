@@ -20,10 +20,8 @@ projection = "OrthoViewport"
 [fragment]
 material_source_module = "material/text_source_gpu.glsl"
 
-[compositor]
-surface = "Unlit"
-blend = "Transparent"
-pass = "ForwardTransparent"
+[render_state]
+pipeline = { alpha_blend = true }
 
 [vertex]
 requirements = ["Position", "UV0"]

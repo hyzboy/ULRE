@@ -20,11 +20,6 @@ projection = "WorldCameraVP"
 [fragment]
 material_source_module = "material/unlit_source.glsl"
 
-[compositor]
-surface = "Unlit"
-blend = "Opaque"
-pass = "ForwardOpaque"
-
 [vertex]
 requirements = ["Position"]
 varyings = ["emit_data_index_id"]

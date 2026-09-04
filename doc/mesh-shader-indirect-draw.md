@@ -15,7 +15,7 @@ mesh shader 迁移完成后，顶点数据统一走 SSBO（无 VBO 顶点输入�
 
 ### 2.1 mesh_draw_params 参数表（PerObject 集 binding 13）
 
-GLSL 声明由 `MeshShaderAssembler` 生成（`#version 460`——glslang 仅在 GLSL 4.60 起
+GLSL 声明由 `MeshTemplateEmitter` 生成（`#version 460`——glslang 仅在 GLSL 4.60 起
 在 mesh 阶段符号表声明 gl_DrawID，450 报 undeclared identifier）：
 
 ```glsl

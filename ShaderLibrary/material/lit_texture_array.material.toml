@@ -21,11 +21,6 @@ projection = "WorldCameraVP"
 material_source_module = "material/pbr_texturearray_source.glsl"
 ntb_module = "ntb/ntb_texturearray_normalmap.glsl"
 
-[compositor]
-surface = "Lit"
-blend = "Opaque"
-pass = "ForwardOpaque"
-
 [vertex]
 requirements = ["Position", "UV0", "Normal"]
 varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]

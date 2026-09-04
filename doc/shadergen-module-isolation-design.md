@@ -52,8 +52,8 @@ ShaderGen 是 ULRE 的材质 → Shader 全链生成与编译模块（mesh shade
 │ P2 ResolveVertexABI          → position_format + s1_* 顶点输入     │
 │                                 (BuildResolvedMaterialVertexABI)    │
 │ P3 BuildResourceContract     → manifest + descriptors + 描述符契约 │
-│ P4 GenerateStageSources      → ms（MeshShaderAssembler）            │
-│                                 + fs（CompositorAssembler）         │
+│ P4 GenerateStageSources      → ms（MeshTemplateEmitter）            │
+│                                 + fs（FragmentTemplateComposer）    │
 │ P5 FinalizeProgramLink       → stage key/哈希（含设备 profile）    │
 └───────────────────────────────────────────────────────────────────┘
         ▼
@@ -84,7 +84,7 @@ ShaderBuildContext（mesh + fragment SPV、描述符布局、schema）
 | **契约层**（描述符/输出/覆盖/阶段接口/语义/模块图） | `*Contract.h`、`ShaderSemanticRegistry.h` 等 | **散在根目录** | — |
 | **求解编排** | `MaterialShaderCompiler.h`、`GenericMaterialBuilder.h` | 根目录 + `common/` | 契约层、mesh、compositor |
 | **Mesh 生成器** | 内部头全在 `common/`（9 个） | `MeshShaderTemplate.cpp` | MaterialStageInterface、MeshShaderMode |
-| **FS 组装** | `CompositorAssembler.h` | 根目录 | ShaderLibrary 文件 |
+| **FS 组装** | `FragmentTemplateComposer.h` | `template/` | ShaderLibrary 文件 |
 | **编译/产物** | `ShaderBuildContext.h`、`ShaderCreateInfo.h`、`ShaderArtifactStore.h` 等 | 根目录 | GLSLCompiler 插件 |
 | **工具** | — | `src/Tools/ShaderGen/`（回归门 5,634 行） | 几乎全部内部头 |
 
@@ -108,7 +108,7 @@ MaterialDefinitionRegistry 及其全部依赖。这是「这一部分受其它�
 **问题 3：头文件全平铺在 `inc/hgl/mtl/`，无层次。**
 50 个公共头 + 4 个 contract/ 头全在一个目录，`#include <hgl/mtl/Xxx.h>` 无法表达
 "契约类型 / 编译入口 / 模块图"的层次。回归门（Tools/ShaderGen）用
-`#include "../../ShaderGen/common/MeshShaderAssembler.h"` 相对路径穿透——测试直接依赖实现文件的物理位置。
+`#include "../../ShaderGen/meshgen/MeshTemplateEmitter.h"` 相对路径穿透——测试直接依赖实现文件的物理位置。
 
 ---
 
@@ -132,12 +132,12 @@ src/ShaderGen/
 │   ├── ShaderCodeResourceManifest.h/.cpp   ResolvedModuleGraphBuilder.h/.cpp
 │   └── BindingTableBuilder.h/.cpp      MaterialBindingContract.h/.cpp
 ├── meshgen/              ← mesh shader 生成器
-│   ├── MeshShaderAssembler.h  MeshShaderHeaderGen.h
+│   ├── MeshTemplateEmitter.h  MeshShaderHeaderGen.h
 │   ├── MeshShaderMode*.h      MeshShaderTemplate.h/.cpp
 │   ├── MeshShaderVaryingGen.h MeshShaderVertexAdapter.h
 │   └── VertexVaryingConfig.h  VertexBuilderCommon.h
-├── compositor/           ← FS 组装
-│   └── CompositorAssembler.h/.cpp
+├── template/             ← FS 模板组装
+│   └── FragmentTemplateComposer.h/.cpp
 ├── builder/              ← 求解编排（依赖上面全部）
 │   ├── GenericMaterialBuilder.h/.cpp
 │   ├── MaterialShaderCompiler.h/.cpp
@@ -183,8 +183,8 @@ src/ShaderGen/
 - **行为不变纪律**：纯搬移必须逐字节等价——不改函数体、不改 hash 输入序列、GLSL 输出不变；
   验证 = 回归门全 PASS（39 用例，5,163 行——2026-08-31 B6 实测）+ 删缓存双跑 IDENTICAL。
 - 回归门（5,163 行）include 要跟着改（约 25 个 hgl/mtl 头 + 4 个相对路径头），是主要机械工作量。
-- `MeshShaderAssembler.h` 等 9 个 mesh 头建议保留 inline header 形态（纯文本发射器，无 .cpp 可搬，
-  且回归门直接调用 `GenerateMeshShader` 做文本断言）——目录归位即可，不强行拆 .cpp。
+- `MeshTemplateEmitter.h` 等 9 个 mesh 头建议保留 inline header 形态（纯文本发射器，无 .cpp 可搬，
+  且回归门直接调用 `EmitMeshTemplateDocument` 做文本断言）——目录归位即可，不强行拆 .cpp。
 
 ---
 
@@ -239,8 +239,8 @@ src/ShaderGen/
 
 ### 去硬编码（按优先级）
 
-1. **`GenerateMeshShader` 的 `shader_lib_path` 参数是死参数**——函数体全程未使用
-   （`MeshShaderAssembler.h:47` 声明，正文只做 include 拼接）。直接删。
+1. **`EmitMeshTemplateDocument` 的 `shader_lib_path` 参数是死参数**——函数体全程未使用
+   （`MeshTemplateEmitter.h:47` 声明，正文只做 include 拼接）。直接删。
    > ✅ **已删（afed984f7）**；顺带修复回归门 3 处历史参数错位（路径字符串曾被当 `resolved_input_glsl` 传入 GLSL）。
 2. **varying 语义 → 类型/名字映射双份维护**：`MeshShaderVaryingGen.h` 手写一份
    `semantic → "flat uint" / "fragDataIndexID"`，`ShaderSemanticRegistry.cpp:53` 又一份
@@ -263,7 +263,7 @@ src/ShaderGen/
 
 ### 去隐式协议
 
-1. **mesh 模式分派 3 处**（`MeshShaderAssembler.h` 容量 switch + `mode != CharQuad` 门控 +
+1. **mesh 模式分派 3 处**（`MeshTemplateEmitter.h` 容量 switch + `mode != CharQuad` 门控 +
    main 体 switch）——枚举与 `IsCharQuadMode` 已抽到 `MeshShaderMode.h`，但 Assembler 内 3 处判断还在。
    可做模式描述符表（每线程顶点数/图元数/是否走 vertex pipeline/发射函数指针），新加模式只加一行。
    > ⏸️ **裁剪（评估后不做）**：当前仅 3 个模式，表驱动收益小；未来加第 4 个模式时再做。
@@ -271,7 +271,7 @@ src/ShaderGen/
    成员指针表驱动（`{"field", &Struct::field}`），与 `ResolveMaterialVertexVaryingConfig` 已用手法一致，
    只是尚未推广到解析层。
    > ⏸️ **裁剪（评估后不做）**：实测形态与文档描述不符——18 个 Parse 函数是"每枚举一个紧凑的
-   > name→value 解析"（ParseSurface/ParseBlend…），非"每字段一个样板"；表驱动收益不成立。
+   > name→value 解析"，非"每字段一个样板"；表驱动收益不成立。
 3. "结构体 GLSL 真源在 .glsl、CPU 布局在 .h、两侧手改"（CharQuad 的 `TextCharSSBO`）——
    最危险的隐式协议，应在生成期加跨侧校验。
    > 🟡 **部分完成（afed984f7）**：CPU 侧字段级断言已补；GLSL 资产侧的文本解析校验未做（见 §十-6）。

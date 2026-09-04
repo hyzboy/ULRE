@@ -289,9 +289,9 @@ int main(const int argc, char **argv)
 
         for (const mtl::ShaderProgramPurpose purpose : purposes)
         {
-            // Sky 材质无深度/阴影 pass（引擎定义的不支持组合）
+            // Sky 管线族无深度/阴影 pass（引擎定义的不支持组合）
             if (purpose != mtl::ShaderProgramPurpose::ForwardColor
-             && definition.compositor_surface == SurfaceType::Sky)
+             && definition.pipeline_family == FixedPipelineFamily::Sky)
             {
                 ++skipped;
                 continue;
@@ -323,7 +323,6 @@ int main(const int argc, char **argv)
                 request.recipe = std::move(recipe);
                 request.primitive_type = primitive;
                 request.geometry_vertex_format = &geometry;
-                request.override_shader_program_purpose = true;
                 request.shader_program_purpose = purpose;
                 request.shader_artifact_store = &store;
                 request.defer_finalize = false;
@@ -334,8 +333,45 @@ int main(const int argc, char **argv)
                     if (purpose == ShaderProgramPurpose::DepthOnly
                      || purpose == ShaderProgramPurpose::ShadowDepth)
                     {
-                        const bool masked =
-                            definition.compositor_blend == BlendMode::Masked;
+                        const ResolvedMaterialRenderState render_state =
+                            ResolveMaterialRenderState(
+                                definition, request.recipe);
+                        RenderTemplateRequest coverage_request{};
+                        const bool coverage_request_masked =
+                            render_state.alpha_test;
+                        if (!ResolveShadowCasterRequest(
+                                coverage_request_masked,
+                                ShaderStage::Fragment,
+                                MakeShadowCasterProfile(
+                                    coverage_request_masked),
+                                coverage_request,
+                                template_diagnostic)
+                         || !AppendMaterialRenderTemplateRoots(
+                                definition, coverage_request))
+                        {
+                            ++failed;
+                            std::fprintf(stderr,
+                                "[ShaderCooker] FAIL %s [%s/%s] (coverage request)\n",
+                                definition.definition_id.c_str(),
+                                PurposeName(purpose).c_str(),
+                                PrimitiveName(primitive).c_str());
+                            continue;
+                        }
+                        MaterialCoverageContract coverage{};
+                        if (!BuildMaterialCoverageContract(
+                                definition, request.recipe, coverage_request,
+                                purpose, coverage))
+                        {
+                            ++failed;
+                            std::fprintf(stderr,
+                                "[ShaderCooker] FAIL %s [%s/%s] (coverage)\n",
+                                definition.definition_id.c_str(),
+                                PurposeName(purpose).c_str(),
+                                PrimitiveName(primitive).c_str());
+                            continue;
+                        }
+                        const bool masked = render_state.alpha_test
+                            && coverage.requires_alpha_evaluation;
                         scene_profile = MakeShadowCasterProfile(masked);
                         variant = ResolveFixedPipelineVariant(
                             { FixedPipelineFamily::ShadowCaster,

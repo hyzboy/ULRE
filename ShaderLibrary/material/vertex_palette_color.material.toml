@@ -20,11 +20,6 @@ projection = "WorldCameraVP"
 [fragment]
 material_source_module = "material/vertex_color_source.glsl"
 
-[compositor]
-surface = "Unlit"
-blend = "Opaque"
-pass = "ForwardOpaque"
-
 [vertex]
 requirements = ["Position", "Color", "TransformID", "Size"]
 varyings = ["use_transform_id_attr", "emit_vertex_color_from_palette"]

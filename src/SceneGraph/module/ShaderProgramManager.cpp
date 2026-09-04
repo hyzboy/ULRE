@@ -18,7 +18,6 @@
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
-#include<hgl/mtl/BlendMode.h>
 #include<hgl/mtl/MaterialOutputContract.h>
 #include<hgl/mtl/SceneRenderTemplateResolver.h>
 #include<hgl/mtl/ShaderCacheRoot.h>
@@ -59,14 +58,13 @@ namespace
             return true;
 
         const mtl::ShaderProgramPurpose purpose =
-            request.override_shader_program_purpose
-                ? request.shader_program_purpose
-                : mtl::GetShaderProgramPurpose(definition.compositor_pass);
+            request.shader_program_purpose;
         const bool depth_purpose =
             purpose == mtl::ShaderProgramPurpose::DepthOnly
          || purpose == mtl::ShaderProgramPurpose::ShadowDepth;
-        const bool masked =
-            definition.compositor_blend == BlendMode::Masked;
+        const mtl::ResolvedMaterialRenderState render_state =
+            mtl::ResolveMaterialRenderState(definition, request.recipe);
+        const bool masked = render_state.alpha_test;
         const mtl::FixedPipelineVariant *variant = nullptr;
         mtl::SceneRenderTemplateProfile scene_profile{};
 

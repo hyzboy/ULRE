@@ -2,7 +2,8 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/SamplerPreset.h>
-#include <hgl/mtl/CompositorAssembler.h>
+#include <hgl/mtl/FragmentTemplateComposer.h>
+#include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/DescriptorContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
@@ -35,7 +36,7 @@
 #include "VertexBuilderCommon.h"
 #include "StageBuildContextTest.h"
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
-#include "../../ShaderGen/meshgen/MeshShaderAssembler.h"   // GenerateMeshShader / MeshShaderMode
+#include "../../ShaderGen/meshgen/MeshTemplateEmitter.h"   // EmitMeshTemplateDocument / MeshShaderMode
 
 #include <algorithm>
 #include <cstdint>
@@ -55,40 +56,66 @@ using namespace hgl::graph::mtl;
 
 namespace
 {
-    static CompositorAssembler::AssembleResult AssembleCompositorText(
-        const CompositorAssembler &assembler,
-        SurfaceType surface,
-        PassType pass,
-        const char *fragment_source_override = nullptr,
-        const char *surface_function_override = nullptr,
-        const CompositorAssembler::CompositorModuleOptions &module_options = {},
-        const std::string &code_module_glsl = {})
+    static bool ComposeTemplateText(
+        const FixedPipelineVariant &variant,
+        const SceneRenderTemplateProfile &profile,
+        const MaterialDefinition *definition,
+        const bool alpha_test,
+        const float alpha_cutoff,
+        const bool dither,
+        const OutputContract *output_contract,
+        const MaterialCoverageContract *coverage_contract,
+        std::string &out_text,
+        std::string &out_error)
     {
-        CompositorAssembler::AssembleResult result{};
+        RenderTemplateRequest request{};
+        RenderTemplateValidationDiagnostic template_diagnostic{};
+        if (!ResolveSceneRenderTemplateRequest(
+                variant, ShaderStage::Fragment, profile, request,
+                template_diagnostic)
+         || (definition
+             && !AppendMaterialRenderTemplateRoots(*definition, request)))
+        {
+            out_error = "render template request resolution failed";
+            return false;
+        }
+
+        ResolvedRenderTemplate resolved_template{};
+        if (!ResolveRenderTemplate(
+                request, GetShaderCodeModuleRegistry(), resolved_template,
+                template_diagnostic))
+        {
+            out_error = "render template resolution failed";
+            return false;
+        }
+
+        FragmentTemplateComposer composer;
+        FragmentTemplateComposer::ComposeInput input{};
+        input.resolved_template = &resolved_template;
+        input.variant = &variant;
+        input.alpha_test = alpha_test;
+        input.alpha_cutoff = alpha_cutoff;
+        input.dither = dither;
+        input.output_contract = output_contract;
+        input.coverage_contract = coverage_contract;
+
         ShaderDocument document;
         ShaderDocumentDiagnostics diagnostics;
         hgl::AnsiString serialized;
-        if (!assembler.AssembleDocument(
-                surface,
-                pass,
-                fragment_source_override,
-                surface_function_override,
-                module_options,
-                code_module_glsl,
-                document,
-                diagnostics)
+        if (!composer.Compose(input, document, diagnostics)
          || !document.SerializeFragment(serialized, diagnostics))
         {
             if (diagnostics.GetCount() > 0)
-                result.error_message = diagnostics[0]->message.c_str();
-            return result;
+                out_error = diagnostics[0]->message.c_str();
+            else
+                out_error = "fragment template composition failed";
+            return false;
         }
 
-        result.fragment_glsl.assign(
+        out_text.assign(
             serialized.c_str(),
             static_cast<size_t>(serialized.Length()));
-        result.success = true;
-        return result;
+        return true;
     }
 
     static std::string GenerateMeshShaderDocumentText(
@@ -959,189 +986,144 @@ namespace
         return result;
     }
 
-    static GateResult RunCompositorVersionPlacementCase()
+    static GateResult RunNativeFragmentTemplateCompositionCase()
     {
         GateResult result;
-        result.name = "N.compositor-version-placement";
+        result.name = "N.native-fragment-template-composition";
 
-        CompositorAssembler assembler;
-        const auto assembled = AssembleCompositorText(assembler,
-            SurfaceType::Lit,
-            PassType::ForwardOpaque);
-        if (!assembled.success)
+        MaterialDefinition lit{};
+        MaterialDefinition unlit{};
+        if (!TryGetMaterialDefinitionByID("Lit", lit)
+         || !TryGetMaterialDefinitionByID("UnlitTexture", unlit))
         {
             result.diagnostics.emplace_back(
-                "Lit compositor assembly failed: " + assembled.error_message);
+               "native template material definitions are unavailable");
+            result.passed = false;
+            return result;
+        }
+
+        OutputContract color_output{};
+        OutputContract shadow_output{};
+        MaterialOutputContractDiagnostic output_diagnostic{};
+        if (!BuildMaterialOutputContract(
+               PassType::ForwardOpaque, color_output, output_diagnostic)
+         || !BuildMaterialOutputContract(
+               PassType::ShadowOpaque, shadow_output, output_diagnostic))
+        {
+            result.diagnostics.emplace_back(
+               "native template output contracts failed to resolve");
+            result.passed = false;
+            return result;
+        }
+
+        const FixedPipelineVariant *lit_variant =
+            ResolveFixedPipelineVariant(
+               { FixedPipelineFamily::ForwardLit,
+                 lit.default_shader_profile, FixedShaderQualityTier::High });
+        const FixedPipelineVariant *unlit_variant =
+            ResolveFixedPipelineVariant(
+               { FixedPipelineFamily::ForwardUnlit,
+                 unlit.default_shader_profile, FixedShaderQualityTier::Default });
+        const FixedPipelineVariant *sky_variant =
+            ResolveFixedPipelineVariant(
+               { FixedPipelineFamily::Sky, FixedShaderProfile::SkyConstant,
+                 FixedShaderQualityTier::Default });
+        const FixedPipelineVariant *shadow_opaque_variant =
+            ResolveFixedPipelineVariant(
+               { FixedPipelineFamily::ShadowCaster,
+                 FixedShaderProfile::ShadowCasterOpaque,
+                 FixedShaderQualityTier::Default });
+        const FixedPipelineVariant *shadow_masked_variant =
+            ResolveFixedPipelineVariant(
+               { FixedPipelineFamily::ShadowCaster,
+                 FixedShaderProfile::ShadowCasterMasked,
+                 FixedShaderQualityTier::Default });
+        if (!lit_variant || !unlit_variant || !sky_variant
+         || !shadow_opaque_variant || !shadow_masked_variant)
+        {
+            result.diagnostics.emplace_back(
+               "native fixed pipeline variants are unavailable");
+            result.passed = false;
+            return result;
+        }
+
+        MaterialCoverageContract masked_coverage{};
+        masked_coverage.mode = MaterialCoverageMode::AlphaTestDither;
+        masked_coverage.alpha_cutoff = 0.25f;
+        masked_coverage.requires_alpha_evaluation = true;
+
+        std::string lit_text;
+        std::string unlit_text;
+        std::string sky_text;
+        std::string shadow_opaque_text;
+        std::string shadow_masked_text;
+        std::string error;
+        if (!ComposeTemplateText(
+               *lit_variant, MakeIdentityForwardLitProfile(), &lit,
+               false, 0.5f, false, &color_output, nullptr, lit_text, error)
+         || !ComposeTemplateText(
+               *unlit_variant, MakeForwardUnlitProfile(), &unlit,
+               true, 0.25f, true, &color_output, &masked_coverage,
+               unlit_text, error)
+         || !ComposeTemplateText(
+               *sky_variant, MakeSkyProfile(), nullptr,
+               false, 0.5f, false, &color_output, nullptr, sky_text, error)
+         || !ComposeTemplateText(
+               *shadow_opaque_variant, MakeShadowCasterProfile(false), nullptr,
+               false, 0.5f, false, &shadow_output, nullptr,
+               shadow_opaque_text, error)
+         || !ComposeTemplateText(
+               *shadow_masked_variant, MakeShadowCasterProfile(true), &unlit,
+               true, 0.25f, true, &shadow_output, &masked_coverage,
+               shadow_masked_text, error))
+        {
+            result.diagnostics.emplace_back(
+               "native fragment template composition failed: " + error);
         }
         else
         {
-            if (assembled.fragment_glsl.compare(0, 8, "#version") != 0)
-                result.diagnostics.emplace_back(
-                    "Compositor GLSL must begin with #version");
-            // B7 后：SURFACE_TYPE/SHADOW_MODE define 输出已删
-            // （ShaderPermutationKey 删除——GLSL 模块 0 消费，无注入机制）
-            if (assembled.fragment_glsl.find("#version", 8) != std::string::npos)
-                result.diagnostics.emplace_back(
-                    "Compositor GLSL contains a second #version directive");
-            const size_t surface_call = assembled.fragment_glsl.find(
-                "EvalSurface(si, materialDataIndex);");
-            const size_t input_module_include = assembled.fragment_glsl.find(
-                "#include \"compositor/forward_lighting.glsl\"");
-            const size_t algorithm_module_include = assembled.fragment_glsl.find(
-                "#include \"lighting/forward_pbr.glsl\"");
-            const size_t input_builder_call = assembled.fragment_glsl.find(
-                "BuildForwardLightingInput(");
-            const size_t algorithm_call = assembled.fragment_glsl.find(
-                "EvalLighting(");
-            if (surface_call == std::string::npos
-             || input_module_include == std::string::npos
-             || algorithm_module_include == std::string::npos
-             || input_builder_call == std::string::npos
-             || algorithm_call == std::string::npos
-             || input_builder_call < surface_call
-             || algorithm_call < input_builder_call)
+            const auto has = [](const std::string &text, const char *needle)
+            {
+               return text.find(needle) != std::string::npos;
+            };
+            if (lit_text.compare(0, 8, "#version") != 0
+             || has(lit_text.substr(8), "#version")
+             || !has(lit_text, "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1")
+             || !has(lit_text, "#define HGL_USE_NTB_PROVIDER 1")
+             || !has(lit_text, "#include \"lighting/forward_pbr.glsl\"")
+             || !has(lit_text, "#include \"material/pbr_surface_source.glsl\"")
+             || !has(lit_text, "#include \"ntb/ntb_tangent_vbo_normalmap.glsl\"")
+             || !has(lit_text, "EvalLighting(lighting)"))
                result.diagnostics.emplace_back(
-                   "Lit compositor must fill LightingInput before invoking the replaceable lighting algorithm");
-            if (assembled.fragment_glsl.find(
-                   "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1")
-                   == std::string::npos
-             || assembled.fragment_glsl.find(
-                   "#define HGL_USE_NTB_PROVIDER 1")
-                   == std::string::npos
-             || assembled.fragment_glsl.find(
-                   "#include \"material/pbr_surface_source.glsl\"")
-                   == std::string::npos
-             || assembled.fragment_glsl.find(
-                   "#include \"ntb/ntb_tangent_vbo_normalmap.glsl\"")
-                   == std::string::npos)
+                   "native forward-lit template output is incomplete");
+
+            if (!has(unlit_text, "#define HGL_USE_SCENE_LIGHTING 0")
+             || !has(unlit_text, "#define HGL_ALPHA_TEST 1")
+             || !has(unlit_text, "#define HGL_ALPHA_CUTOFF 0.250000")
+             || !has(unlit_text, "#define HGL_ALPHA_DITHER 1")
+             || !has(unlit_text, "#include \"material/texture_source.glsl\"")
+             || !has(unlit_text, "layout(location=0) out vec4 outColor;")
+             || !has(unlit_text, "HGLComposeColor"))
                result.diagnostics.emplace_back(
-                   "Lit compositor must enable and include the default material/NTB providers");
+                   "native forward-unlit output or coverage defines are incomplete");
+
+            if (!has(sky_text, "#include \"sky/sky_atmosphere.glsl\"")
+             || !has(sky_text, "#include \"surface/sky_minimal_surface.glsl\"")
+             || !has(sky_text, "si.worldPos = fragDirection"))
+               result.diagnostics.emplace_back(
+                   "native sky template output is incomplete");
+
+            if (!has(shadow_opaque_text, "void main()")
+             || has(shadow_opaque_text, "layout(location=0) out")
+             || has(shadow_opaque_text, "EvalAlpha(")
+             || !has(shadow_masked_text, "#define HGL_COVERAGE_ONLY 1")
+             || !has(shadow_masked_text, "#define HGL_ALPHA_TEST 1")
+             || !has(shadow_masked_text, "#define HGL_ALPHA_DITHER 1")
+             || !has(shadow_masked_text, "EvalAlpha(")
+             || has(shadow_masked_text, "EvalLighting("))
+               result.diagnostics.emplace_back(
+                   "native shadow template coverage or output is incomplete");
         }
-
-        CompositorAssembler::CompositorModuleOptions lighting_options{};
-        lighting_options.direct_lighting_module =
-            "lighting/direct_cook_torrance_pbr.glsl";
-        lighting_options.indirect_lighting_module =
-            "lighting/indirect_sky_ambient.glsl";
-        lighting_options.lighting_algorithm_module = "lighting/forward_flat.glsl";
-        lighting_options.material_source_module = "material/pbr_texturearray_source.glsl";
-        lighting_options.ntb_module = "ntb/ntb_texturearray_normalmap.glsl";
-        lighting_options.forward_lighting_module = "compositor/forward_lighting.glsl";
-        const auto scheduled_lighting = AssembleCompositorText(assembler,
-            SurfaceType::Lit,
-            PassType::ForwardOpaque,
-            nullptr,
-            "surface/material_surface.glsl",
-            lighting_options);
-        if (!scheduled_lighting.success
-         || scheduled_lighting.fragment_glsl.find(
-                "#include \"lighting/direct_cook_torrance_pbr.glsl\"")
-                == std::string::npos
-         || scheduled_lighting.fragment_glsl.find(
-                "#include \"lighting/indirect_sky_ambient.glsl\"")
-                == std::string::npos
-         || scheduled_lighting.fragment_glsl.find(
-                "#include \"lighting/forward_flat.glsl\"")
-                == std::string::npos
-         || scheduled_lighting.fragment_glsl.find(
-                "#include \"material/pbr_texturearray_source.glsl\"")
-                == std::string::npos
-         || scheduled_lighting.fragment_glsl.find(
-                "#include \"ntb/ntb_texturearray_normalmap.glsl\"")
-                == std::string::npos
-         || scheduled_lighting.fragment_glsl.find(
-                "#include \"compositor/forward_lighting.glsl\"")
-                == std::string::npos
-         || scheduled_lighting.fragment_glsl.find(
-                "#include \"surface/material_surface.glsl\"")
-                == std::string::npos)
-            result.diagnostics.emplace_back(
-                "Lit compositor must route lighting and material surface modules through one scheduler");
-
-        CompositorAssembler::CompositorModuleOptions dither_options{};
-        dither_options.dither = true;
-        const auto dithered = AssembleCompositorText(assembler,
-            SurfaceType::Unlit,
-            PassType::ForwardDither,
-            nullptr,
-            nullptr,
-            dither_options);
-        if (!dithered.success
-         || dithered.fragment_glsl.find("#define HGL_ALPHA_DITHER 1") == std::string::npos
-         || dithered.fragment_glsl.find("HGLComposeColor") == std::string::npos)
-            result.diagnostics.emplace_back(
-                "Dither compositor must inject shared alpha handling");
-
-        CompositorAssembler::CompositorModuleOptions alpha_options{};
-        alpha_options.alpha_test = true;
-        alpha_options.alpha_cutoff = 0.25f;
-        alpha_options.material_source_module =
-            "material/texture_source.glsl";
-        const auto masked = AssembleCompositorText(assembler,
-            SurfaceType::Unlit,
-            PassType::ForwardMasked,
-            nullptr,
-            nullptr,
-            alpha_options);
-        if (!masked.success
-         || masked.fragment_glsl.find("#define HGL_ALPHA_TEST 1") == std::string::npos
-         || masked.fragment_glsl.find("#define HGL_ALPHA_CUTOFF 0.250000") == std::string::npos)
-            result.diagnostics.emplace_back(
-                "Masked compositor must inject alpha-test cutoff");
-
-        const auto texture_template = AssembleCompositorText(assembler,
-            SurfaceType::Unlit,
-            PassType::ForwardMasked,
-            "forward_surface",
-            "surface/material_surface.glsl",
-            alpha_options);
-        if (!texture_template.success
-         || texture_template.fragment_glsl.compare(0, 8, "#version") != 0
-         || texture_template.fragment_glsl.find("#define HGL_ALPHA_TEST 1")
-                == std::string::npos
-         || texture_template.fragment_glsl.find("HGLComposeColor")
-                == std::string::npos)
-        {
-            result.diagnostics.emplace_back(
-                "UnlitTexture Compositor must inject alpha into template + surface");
-        }
-
-        const auto alpha_to_coverage = AssembleCompositorText(assembler,
-            SurfaceType::Unlit,
-            PassType::ForwardA2C);
-        if (!alpha_to_coverage.success
-         || alpha_to_coverage.fragment_glsl.find("HGLComposeColor") == std::string::npos)
-            result.diagnostics.emplace_back(
-                "Alpha-to-coverage compositor must preserve alpha output");
-
-        const auto depth_only = AssembleCompositorText(assembler,
-            SurfaceType::Lit,
-            PassType::ShadowOpaque);
-        if (!depth_only.success
-         || depth_only.fragment_glsl.find("void main()")
-                == std::string::npos
-         || depth_only.fragment_glsl.find("outColor")
-                != std::string::npos
-         || depth_only.fragment_glsl.find("layout(location=0) out")
-                != std::string::npos)
-            result.diagnostics.emplace_back(
-                "Shadow depth compositor must emit no color attachment");
-
-        const auto custom_surface = AssembleCompositorText(assembler,
-            SurfaceType::Unlit,
-            PassType::ForwardOpaque);
-        if (!custom_surface.success
-         || custom_surface.fragment_glsl.find(
-                "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 0")
-                == std::string::npos
-         || custom_surface.fragment_glsl.find(
-                "#define HGL_USE_NTB_PROVIDER 0")
-                == std::string::npos)
-            result.diagnostics.emplace_back(
-                "Custom compositor surfaces must not implicitly enable Lit providers");
-
-        // All remaining SurfaceType values (Skin/Hair/Cloth/Eye/Foliage/ClearCoat/Water)
-        // resolve to lit_surface via CompositorAssembler fall-through — verified above.
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -2357,14 +2339,11 @@ namespace
                 };
                 const auto build = [&](
                     const ShaderProgramPurpose purpose,
-                    const bool override_purpose,
-                    const PassType pass,
                     const bool alpha_test,
                     const bool dither,
                     const bool alpha_to_coverage)
                 {
                     MaterialDefinition selected = lit;
-                    selected.compositor_pass = pass;
                     MaterialDefinitionBuildRequest request{};
                     request.recipe.mtl_def_id = selected.definition_id;
                     request.recipe.render_state_overrides.has_alpha_test = true;
@@ -2376,8 +2355,6 @@ namespace
                         alpha_to_coverage;
                     request.geometry_vertex_format = &geometry;
                     request.defer_finalize = true;
-                    request.override_shader_program_purpose =
-                        override_purpose;
                     request.shader_program_purpose = purpose;
                     const bool depth_purpose =
                         purpose == ShaderProgramPurpose::DepthOnly
@@ -2414,49 +2391,35 @@ namespace
                 const auto opaque = build(
                     ShaderProgramPurpose::ForwardColor,
                     false,
-                    PassType::ForwardOpaque,
-                    false,
                     false,
                     false);
                 const auto transparent = build(
                     ShaderProgramPurpose::ForwardColor,
                     false,
-                    PassType::ForwardTransparent,
-                    false,
                     false,
                     false);
                 const auto depth = build(
                     ShaderProgramPurpose::DepthOnly,
-                    true,
-                    PassType::ForwardOpaque,
                     false,
                     false,
                     false);
                 const auto shadow = build(
                     ShaderProgramPurpose::ShadowDepth,
-                    true,
-                    PassType::ForwardOpaque,
                     false,
                     false,
                     false);
                 const auto masked_depth = build(
                     ShaderProgramPurpose::DepthOnly,
                     true,
-                    PassType::ForwardOpaque,
-                    true,
                     false,
                     false);
                 const auto dither_shadow = build(
                     ShaderProgramPurpose::ShadowDepth,
-                    true,
-                    PassType::ForwardOpaque,
                     false,
                     true,
                     false);
                 const auto a2c_depth = build(
                     ShaderProgramPurpose::DepthOnly,
-                    true,
-                    PassType::ForwardOpaque,
                     false,
                     false,
                     true);
@@ -2702,9 +2665,9 @@ namespace
             MaterialDefinition definition{};
             if (!TryGetMaterialDefinitionByID(
                     expected.definition_id, definition)
-             || !definition.fragment_material_source_module
+             || !definition.material_source_module
              || std::strcmp(
-                    definition.fragment_material_source_module,
+                    definition.material_source_module,
                     expected.source_module) != 0)
             {
                 result.diagnostics.emplace_back(
@@ -2850,44 +2813,35 @@ namespace
             return result;
         }
 
-        if (!pure_color.fragment_material_source_module
+        if (!pure_color.material_source_module
          || std::strcmp(
-                pure_color.fragment_material_source_module,
+                pure_color.material_source_module,
                 "material/unlit_source.glsl") != 0)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
-        CompositorAssembler assembler;
-        hgl::ValueArray<InterStageSemanticContractEntry> stage_interface;
-        MaterialStageInterfaceDiagnostic interface_diagnostic{};
-        MaterialVertexVaryingConfig pure_color_varying{};
-        pure_color_varying.emit_data_index_id = true;
-        if (!BuildMaterialStageInterface(
-                pure_color_varying,
-                stage_interface,
-                interface_diagnostic))
-            result.diagnostics.emplace_back(
-                "PureColor stage interface build failed");
-        CompositorAssembler::CompositorModuleOptions options{};
-        options.material_source_module =
-            "material/unlit_source.glsl";
-        options.forward_lighting_module =
-            "compositor/flat_lighting.glsl";
-        options.lighting_algorithm_module =
-            "lighting/forward_flat.glsl";
-        options.fragment_inputs = &stage_interface;
-        const auto assembled = AssembleCompositorText(assembler,
-            SurfaceType::Unlit, PassType::ForwardOpaque,
-            "forward_surface",
-            "surface/material_surface.glsl",
-            options);
-        if (!assembled.success
-         || assembled.fragment_glsl.find(
-                "#include \"material/unlit_source.glsl\"")
+        const FixedPipelineVariant *variant =
+            ResolveFixedPipelineVariant(
+                { FixedPipelineFamily::ForwardUnlit,
+                  pure_color.default_shader_profile,
+                  FixedShaderQualityTier::Default });
+        OutputContract output{};
+        MaterialOutputContractDiagnostic output_diagnostic{};
+        std::string text;
+        std::string error;
+        if (!variant
+         || !BuildMaterialOutputContract(
+                PassType::ForwardOpaque, output, output_diagnostic)
+         || !ComposeTemplateText(
+                *variant, MakeForwardUnlitProfile(), &pure_color,
+                false, 0.5f, false, &output, nullptr, text, error)
+         || text.find("#include \"material/unlit_source.glsl\"")
                 == std::string::npos
-         || assembled.fragment_glsl.find(
-                "#include \"lighting/forward_flat.glsl\"")
+         || text.find("#include \"lighting/forward_flat.glsl\"")
                 == std::string::npos)
-            result.diagnostics.emplace_back("unified PureColor FS source is invalid");
+        {
+            result.diagnostics.emplace_back(
+                "native PureColor fragment template is invalid: " + error);
+        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -3066,8 +3020,8 @@ namespace
         result.name = "Y1.resolved-material-render-state";
 
         MaterialDefinition definition{};
-        definition.compositor_blend = BlendMode::Masked;
         definition.default_render_state.double_sided = true;
+        definition.default_render_state.alpha_test = true;
         definition.default_render_state.alpha_cutoff = 0.35f;
         definition.default_render_state.pipeline_config =
             MakeSolid3DConfig();
@@ -3145,10 +3099,9 @@ namespace
             "[fragment]\n"
             "material_source_module = \"material/pbr_surface_source.glsl\"\n"
             "ntb_module = \"ntb/ntb_tangent_vbo_normalmap.glsl\"\n"
-            "[compositor]\n"
-            "surface = \"Lit\"\n"
-            "blend = \"Opaque\"\n"
-            "pass = \"ForwardOpaque\"\n"
+            "[render_state]\n"
+            "alpha_test = true\n"
+            "alpha_cutoff = 0.25\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
             "varyings = [\"emit_world_pos\", \"emit_world_normal\", \"emit_uv0\"]\n"
@@ -3178,7 +3131,9 @@ namespace
                     definition.allowed_shader_profiles,
                     FixedShaderProfile::ForwardLitPBRIBLRGBA16F2)
              || definition.default_shader_profile
-                   != FixedShaderProfile::ForwardLitPBRIBLRGBA16F2)
+                   != FixedShaderProfile::ForwardLitPBRIBLRGBA16F2
+             || !ResolveMaterialRenderState(
+                    definition, MaterialRecipe{}).alpha_test)
             {
                 result.diagnostics.emplace_back("material schema fields mismatch");
             }
@@ -3201,24 +3156,32 @@ namespace
             }
         }
 
-        const char legacy_file[] =
-            "schema = 1\n"
-            "id = \"LegacyDirect\"\n"
-            "name = \"LegacyDirect\"\n"
+        const char unknown_table_file[] =
+            "schema = 2\n"
+            "id = \"UnknownTable\"\n"
+            "name = \"UnknownTable\"\n"
             "source = \"file\"\n"
             "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
-            "[compositor]\n"
-            "fragment = \"compositor/legacy_test_template.frag.glsl\"\n"
+            "[pipeline]\n"
+            "family = \"forward_unlit\"\n"
+            "profiles = [\"pure_color\"]\n"
+            "default_profile = \"pure_color\"\n"
+            "[fragment]\n"
+            "material_source_module = \"material/unlit_source.glsl\"\n"
+            "[unknown]\n"
+            "value = true\n"
             "[vertex]\n"
             "requirements = [\"Position\"]\n";
-        MaterialDefinitionFileData legacy_data;
+        MaterialDefinitionFileData unknown_table_data;
         if (ParseMaterialDefinitionFile(
-                legacy_file, static_cast<int>(std::strlen(legacy_file)), legacy_data)
-                != MaterialDefinitionFileParseResult::InvalidValue)
+                unknown_table_file,
+                static_cast<int>(std::strlen(unknown_table_file)),
+                unknown_table_data)
+                != MaterialDefinitionFileParseResult::UnknownKey)
         {
             result.diagnostics.emplace_back(
-                "legacy compositor fragment schema must be rejected");
+                "unknown material table must be rejected");
         }
 
         const char invalid_file[] =
@@ -3280,9 +3243,17 @@ namespace
                 continue;
             }
 
-            if (file_definition->compositor_surface != registry_definition.compositor_surface
-             || file_definition->compositor_blend != registry_definition.compositor_blend
-             || file_definition->compositor_pass != registry_definition.compositor_pass
+            if (file_definition->pipeline_family != registry_definition.pipeline_family
+             || file_definition->allowed_shader_profiles
+                    != registry_definition.allowed_shader_profiles
+             || file_definition->default_shader_profile
+                    != registry_definition.default_shader_profile
+             || HashResolvedMaterialRenderState(
+                    ResolveMaterialRenderState(
+                        *file_definition, MaterialRecipe{}))
+                    != HashResolvedMaterialRenderState(
+                        ResolveMaterialRenderState(
+                            registry_definition, MaterialRecipe{}))
              || file_definition->vertex_provider_policy != registry_definition.vertex_provider_policy
              || file_definition->vertex_semantic_requirements.GetCount()
                     != registry_definition.vertex_semantic_requirements.GetCount()
@@ -3316,6 +3287,53 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     std::string("2D file node config mismatch: ") + id);
+            }
+
+            const ResolvedMaterialRenderState render_state =
+                ResolveMaterialRenderState(
+                    *file_definition, MaterialRecipe{});
+            if (render_state.alpha_test || render_state.dither
+             || render_state.pipeline_config.alpha_to_coverage
+             || render_state.pipeline_config.alpha_blend)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("opaque material render state mismatch: ")
+                    + id);
+            }
+            MaterialCoverageContract coverage{};
+            RenderTemplateRequest coverage_request{};
+            RenderTemplateValidationDiagnostic coverage_diagnostic{};
+            if (!ResolveShadowCasterRequest(
+                    false,
+                    hgl::graph::ShaderStage::Fragment,
+                    MakeShadowCasterProfile(false),
+                    coverage_request,
+                    coverage_diagnostic)
+             || !AppendMaterialRenderTemplateRoots(
+                    *file_definition, coverage_request)
+             || !BuildMaterialCoverageContract(
+                    *file_definition, MaterialRecipe{}, coverage_request,
+                    ShaderProgramPurpose::ShadowDepth, coverage)
+             || coverage.requires_alpha_evaluation)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("opaque material shadow coverage mismatch: ")
+                    + id);
+            }
+        }
+
+        const char *text_ids[] = {
+            BUILTIN_MTL_DEF_TEXT, BUILTIN_MTL_DEF_TEXT_BITMAP
+        };
+        for (const char *id : text_ids)
+        {
+            const MaterialDefinition *definition = registry.FindByID(id);
+            if (!definition || !ResolveMaterialRenderState(
+                    *definition, MaterialRecipe{}).pipeline_config.alpha_blend)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("text material alpha blend state missing: ")
+                    + id);
             }
         }
 
@@ -4591,23 +4609,21 @@ namespace
             const char *definition_id;
             const char *golden_slug;
             ShaderProgramPurpose purpose;
-            bool override_purpose;
-            PassType pass;
             bool has_geometry;   // CharQuad 文本材质无需几何顶点格式（mesh 自声明 SSBO）
         };
 
         static const PilotVariant kVariants[] =
         {
             { "Lit", "lit-forward-opaque",
-              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque, true },
+              ShaderProgramPurpose::ForwardColor, true },
             { "Lit", "lit-depth-only",
-              ShaderProgramPurpose::DepthOnly, true, PassType::ForwardOpaque, true },
+              ShaderProgramPurpose::DepthOnly, true },
             { "Lit", "lit-shadow-depth",
-              ShaderProgramPurpose::ShadowDepth, true, PassType::ForwardOpaque, true },
+              ShaderProgramPurpose::ShadowDepth, true },
             { "VertexPaletteColor", "vertex-palette-color-forward",
-              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque, true },
+              ShaderProgramPurpose::ForwardColor, true },
             { "builtin/text_gpu", "text-gpu-charquad",
-              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardTransparent, false },
+              ShaderProgramPurpose::ForwardColor, false },
         };
 
         for (const PilotVariant &variant : kVariants)
@@ -4620,18 +4636,16 @@ namespace
                 continue;
             }
 
-            definition.compositor_pass = variant.pass;
-
             MaterialDefinitionBuildRequest request{};
             request.recipe.mtl_def_id = definition.definition_id;
             request.geometry_vertex_format = variant.has_geometry ? &geometry : nullptr;
             request.defer_finalize = true;
-            request.override_shader_program_purpose = variant.override_purpose;
             request.shader_program_purpose = variant.purpose;
             if (variant.purpose == ShaderProgramPurpose::DepthOnly
              || variant.purpose == ShaderProgramPurpose::ShadowDepth)
             {
-                const bool masked = definition.compositor_blend == BlendMode::Masked;
+                const bool masked = ResolveMaterialRenderState(
+                    definition, request.recipe).alpha_test;
                 const SceneRenderTemplateProfile profile =
                     MakeShadowCasterProfile(masked);
                 const FixedPipelineVariant shadow_variant{
@@ -4861,7 +4875,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunResolvedBindingTableCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
-    if (run_glsl) results.push_back(RunCompositorVersionPlacementCase());
+    if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());
     if (run_cache) results.push_back(RunProviderGraphIdentityCase());
     if (run_cache) results.push_back(RunProviderGraphCompositionCase());
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());

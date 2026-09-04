@@ -3,11 +3,12 @@
 ## 1. 目标
 
 将当前 ShaderDocument-first 的生成链，从“`MaterialDefinition` 指定模块路径，
-`GenericMaterialBuilder` 和 `CompositorAssembler` 以条件分支决定组合”迁移为：
+`GenericMaterialBuilder` 以条件分支决定组合”迁移为：
 
 ```text
-ECS/render preparation: 模板、全局/场景质量和光照 module roots
-MaterialDefinition:    材质能力、允许的管线 profile、资源包络
+ECS/render preparation: 选择场景模板、全局/场景质量和光照 module roots，
+                        再追加材质 provider roots
+MaterialDefinition:    材质 provider 能力、允许的管线 profile、资源包络
 MaterialRecipe:        某实例的资源绑定、LOD、允许的质量选择
 BuildRequest:          几何格式、设备 profile、实际 pass
         ->
@@ -42,8 +43,9 @@ module，资源缺失即为错误，不得用 no-op fallback 伪装为合法组�
 | `MaterialDefinition.definition_id/name` | `MaterialRecipe.h` | Definition identity | 保持不变 |
 | `ubo_requirements`、`texture_slot_decls`、`sampler_names`、私有 SSBO | `MaterialDefinition` | Definition resource envelope | 保持为资源能力上限 |
 | `code_module_requirements` | `MaterialDefinition` | 共享/必需 module roots | 保持，禁止承载 template slot 选择 |
-| fragment material/NTB module path | `MaterialDefinition` | 迁移兼容字段 | surface provider 已由 explicit template root 替代；material/NTB provider fields 按各自迁移计划保留 |
-| `compositor_surface/blend/pass` | `MaterialDefinition` | family/default policy | 迁移为默认 family/coverage policy |
+| `material_source_module`、`ntb_module` | `MaterialDefinition` | material provider capability | render preparation 先选择场景模板，再由 `AppendMaterialRenderTemplateRoots` 将 capability 追加为对应 template roots |
+| `pipeline_family`、shader profile | `MaterialDefinition` | fixed pipeline capability envelope | 保持为 template family/profile 的能力声明 |
+| `default_render_state` | `MaterialDefinition` | default coverage and pipeline state | `[render_state]` 显式声明；Recipe 可覆盖 |
 | `mesh_shader_mode`、`VertexShaderNodeConfig` | `MaterialDefinition`/`MaterialRecipe` | geometry profile + geometry strategy input | 保留现有实际生成器 |
 | `material_lod` | `MaterialRecipe` | quality/profile preference | 扩展为有限 quality tier，不存 GLSL path |
 | textures、SSBO asset binding | `MaterialRecipe` | instance binding | 完全保留，不参与模板控制流 |
@@ -79,8 +81,10 @@ FixedShaderProfileMask allowed_profiles
 FixedShaderProfile default_profile
 ```
 
-原 `fragment_*_module` 字段仅在迁移期作为 legacy override 读取。新 Definition 只选择
-profile，不保存 lighting、ambient、NTB 或 surface 的任意路径。
+`material_source_module` 和 `ntb_module` 是 MaterialDefinition 提供的材质 provider
+capability；render preparation 选择场景模板后，调用
+`AppendMaterialRenderTemplateRoots` 将它们追加到该模板的对应 roots。Definition 不选择
+lighting、ambient 或场景模板。
 
 ### 3.2 `MaterialRecipe`
 
@@ -201,15 +205,14 @@ file Definition。
 
 ### Phase 3：Fragment 模板组合
 
-**目标**：把 `CompositorAssembler` 的选择逻辑迁入 table，保留其可靠的 Document 发射代码。
+**完成**：选择逻辑已迁入 variant table，并由 `FragmentTemplateComposer` 发射 Document。
 
 1. 新增 `FragmentStageRecipe`：模板 ID、ordered slots、provider module ID、coverage/output
    policy。
 2. 将 `GetSurfaceLightingConfig`、`SurfaceType × PassType -> skeleton`、默认 PBR/flat/sky
    模块路径迁入 variant table。
-3. 将现有 `CompositorAssembler` 拆为：
-   - `FragmentStageRecipeResolver`：从 `ResolvedFixedShaderVariant` 返回 recipe；
-   - `FragmentStageComposer`：根据 recipe 将已解析 contract 写入 `ShaderDocument`。
+3. `SceneRenderTemplateResolver` 从固定 variant 返回 `RenderTemplateRequest`，
+   `FragmentTemplateComposer` 根据已解析 contract 写入 `ShaderDocument`。
 4. 先将现有 forward/depth/sky `main` 文本原样保留为 versioned template main。
 5. 对 Forward Lit 建立固定 slot：surface、direct、shadow、ambient、AO、lighting、output。
    每一个 slot 必须有实际实现；不使用 shadow/AO 的路径采用不同版本化模板。
@@ -240,7 +243,7 @@ fragment document 的 block source 能追溯到 template 和 slot module。
 
 1. 新增 `MeshStageRecipe`：`GeometryProfile -> MeshShaderMode`、input strategy、
    local-deform strategy、skinning strategy、local-to-world strategy、varying policy。
-2. 将现有 `MeshShaderAssembler` 中默认 input path 与 mode 选择移到 recipe。
+2. 将现有 `MeshTemplateEmitter` 中默认 input path 与 mode 选择移到 recipe。
 3. 保留以下 C++ 实现和验证：physical-device invocation clamp、VertexPassthrough 三角形
    整除、LineQuad/CharQuad main、CharQuad 专用资源。
 4. 从 fragment recipe 反推 required varyings，并以现有 `MaterialStageInterface` 生成
@@ -259,7 +262,7 @@ fragment document 的 block source 能追溯到 template 和 slot module。
    `MaterialDefinition`、`MaterialRecipe` 或 mesh contract。
 3. 全部 Definition file 完成 profile 化后，删除 obsolete direct fragment selector；
    provider module fields、loader 逻辑与 compatibility test 按各自迁移进度处理。
-4. 当 `CompositorAssembler` 只剩委托时删除 façade，保留 `FragmentStageComposer`。
+4. 已删除旧 façade；仅保留 `FragmentTemplateComposer` 的模板请求入口。
 
 **完成条件**：`GenericMaterialBuilder` 只编排 resolver、contract、stage composer；
 任何特殊流程均能定位到明确 template，而不是 builder/compositor 条件分支。

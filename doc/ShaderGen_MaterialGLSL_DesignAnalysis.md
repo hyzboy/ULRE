@@ -25,8 +25,8 @@
 │  MaterialDefinitionBuildRequest = Recipe + 几何格式 + purpose + 设备 │
 ├─ L3 生成层（src/ShaderGen）─────────────────────────────────────┤
 │  BuildGenericMaterial：契约推导 → MS 组装 → FS 组装 → 描述符分配  │
-│  （ResolvedModuleGraphBuilder / MeshShaderAssembler /              │
-│    CompositorAssembler / DescriptorContract / MaterialShaderCompiler）│
+│  （ResolvedModuleGraphBuilder / MeshTemplateEmitter /              │
+│    FragmentTemplateComposer / DescriptorContract / MaterialShaderCompiler）│
 ├─ L4 产物层 ─────────────────────────────────────────────────────┤
 │  ShaderBuildContext{ShaderCreateInfoMap, ShaderResourceSchema,  │
 │    DescriptorSetLayoutAllocator, ShaderLinkSpec} + SPV 字节      │
@@ -89,7 +89,7 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
 1. **解析 definition**：`mtl_def_id="Lit"` → `ShaderLibrary/material/lit.material.toml`
    （文件注册表懒加载整目录，MaterialDefinitionRegistry.cpp:921-945）→ 得到
    `MaterialDefinition`：`[transform]` 五元组（source/mapping/orientation/scale/projection）、
-   `[fragment]` 四个模块路径、`[compositor]` 表面/混合/pass、
+   `[fragment]` provider 模块路径、`[pipeline]` family/profile 与可选 `[render_state]`、
    `[vertex]` 语义需求 + varyings、`[resources]` UBO/采样器声明
    （MaterialDefinitionFile.cpp:429-600 逐字段解析）。
 2. **目的派发**：`pass → ShaderProgramPurpose`；DepthOnly 会**裁剪**——把 fragment
@@ -111,20 +111,13 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
    ——从 definition 的 ubo 需求 + provider 根（material_source/ntb 模块）的
    `@ulre` 资源声明聚合出 UBO/SSBO/纹理层需求，再 `Build3DDescriptorsFromDefinition`
    生成 `SerializedDescriptorEntry[]`。
-6. **网格着色器组装**：`GenerateMeshShader`（src/ShaderGen/common/MeshShaderAssembler.h）
+6. **网格着色器组装**：`EmitMeshTemplateDocument`（src/ShaderGen/meshgen/MeshTemplateEmitter.h）
    按 `vertex_node_config` 五元组把 vertex/ 下的 s1/s2/s3 模块拼成完整 mesh shader。
-7. **片段着色器组装**：`CompositorAssembler::Assemble`（CompositorAssembler.cpp:318）：
-   - 按 surface/pass 查模板路径（Lit→`compositor/main_forward_surface.frag.glsl`，
-     深度 pass→`main_depth_only.frag.glsl`，Sky→`main_forward_sky.frag.glsl`）；
-   - 在 `#version` 后注入 permutation 宏（`HGL_USE_SCENE_LIGHTING`/
-     `HGL_USE_NTB_PROVIDER`/`HGL_ALPHA_TEST`…，InjectDefines 会先找出 `#version`
-     行再插入，CompositorAssembler.cpp:105-155）；
-   - 把 7 个可配置 `#include "..."` 替换为 definition 指定的模块路径
-     （ReplaceLightingModuleIncludes）；
-   - `#include SURFACE_FUNCTION_FILE` → `#include "surface/material_surface.glsl"`；
-   - 在 `// ULRE_FRAGMENT_INPUT_CONTRACT`/`ULRE_OUTPUT_CONTRACT`/
-     `ULRE_SURFACE_INPUT_CONTRACT` 三处标记**注入由契约生成的声明**
-     （varying in / 输出 location / SurfaceInput 构造）。
+7. **片段着色器组装**：render preparation 先由
+   `SceneRenderTemplateResolver` 选择 scene `RenderTemplateRequest`，再调用
+   `AppendMaterialRenderTemplateRoots` 将 MaterialDefinition 的 material provider
+   capabilities 追加到该模板。`FragmentTemplateComposer::Compose` 按模板 slots、
+   coverage 和 output contract 直接写入 `ShaderDocument`，随后序列化 GLSL。
 8. **编译**：`CompileCompositorMaterial`（MaterialShaderCompiler.cpp:289）——
    把完整 MS/FS GLSL 交给 `ShaderBuildContext`（AddStruct/AddUBO/AddSSBO 填描述符
    分配器，data_slot 声明逐槽注入 SSBO 结构与 buffer 声明），
@@ -300,8 +293,8 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 | L3 | `src/ShaderGen/common/ShaderCodeModuleRegistry.cpp` | 模块注册表（内置+目录扫描） |
 | L3 | `src/ShaderGen/common/ShaderCodeModuleCapabilityResolver.cpp` | 语义需求 → provider 解析 |
 | L3 | `src/ShaderGen/ResolvedModuleGraphBuilder.cpp` | 模块依赖图（闭包/拓扑/聚合/哈希） |
-| L3 | `src/ShaderGen/CompositorAssembler.cpp` | FS 模板装配（宏注入/模块替换/契约标记） |
-| L3 | `src/ShaderGen/common/MeshShaderAssembler.h` | Mesh shader 三段式组装 |
+| L3 | `src/ShaderGen/template/FragmentTemplateComposer.cpp` | FS 模板装配（模板 slots/契约/main） |
+| L3 | `src/ShaderGen/meshgen/MeshTemplateEmitter.h` | Mesh shader 三段式组装 |
 | L3 | `src/ShaderGen/MaterialShaderCompiler.cpp` | 最终编译 + 描述符/SSBO 声明生成 |
 | L3 | `src/ShaderGen/GLSLCompiler.cpp` | GLSLCompiler 插件加载与 SPV 编译 |
 | L4 | `src/ShaderGen/ShaderArtifactStore.cpp` | SPV 磁盘缓存（stage/program 两级） |

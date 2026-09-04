@@ -37,7 +37,8 @@ namespace
         const bool depth_purpose =
             purpose == ShaderProgramPurpose::DepthOnly
          || purpose == ShaderProgramPurpose::ShadowDepth;
-        const bool masked = definition.compositor_blend == BlendMode::Masked;
+        const bool masked = ResolveMaterialRenderState(
+            definition, MaterialRecipe{}).alpha_test;
         const FixedPipelineVariant *variant = nullptr;
         SceneRenderTemplateProfile profile{};
 
@@ -384,8 +385,6 @@ namespace
         request.recipe.mtl_def_id = definition.definition_id;
         request.geometry_vertex_format = fixture.requires_geometry ? &geometry : nullptr;
         request.defer_finalize = true;
-        request.override_shader_program_purpose =
-            fixture.purpose != ShaderProgramPurpose::ForwardColor;
         request.shader_program_purpose = fixture.purpose;
         if (!ResolveFixtureTemplateRequest(
                 definition, fixture.purpose,

@@ -170,48 +170,6 @@ namespace hgl::graph::mtl
                 definition.default_shader_profile);
         }
 
-        bool ParseSurface(const std::string &name, SurfaceType &out)
-        {
-            static const char *const names[] = {
-                "Unlit", "Lit", "Sky"
-            };
-            for (uint32 i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
-            {
-                if (name == names[i])
-                {
-                    out = static_cast<SurfaceType>(i);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParseBlend(const std::string &name, BlendMode &out)
-        {
-            static const struct { const char *name; BlendMode value; } table[] = {
-                { "Opaque",        BlendMode::Opaque },
-                { "Masked",        BlendMode::Masked },
-                { "Transparent",   BlendMode::Transparent },
-                { "Dither",        BlendMode::Dither },
-                { "AlphaToCoverage", BlendMode::AlphaToCoverage },
-            };
-            for (const auto &entry : table)
-            {
-                if (name == entry.name)
-                {
-                    out = entry.value;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParsePass(const std::string &name, PassType &out)
-        {
-            // T1：PassType 名字单一真源 PassType.h（GetPassTypeName/ParsePassType）
-            return ParsePassType(name.c_str(), out);
-        }
-
         bool ParseCullMode(const std::string &name, VkCullModeFlags &out)
         {
             static const struct { const char *name; VkCullModeFlags value; } table[] = {
@@ -551,8 +509,6 @@ namespace hgl::graph::mtl
 
             const toml::value *fragment = root.contains("fragment")
                 ? &root.at("fragment") : nullptr;
-            const toml::value *compositor = root.contains("compositor")
-                ? &root.at("compositor") : nullptr;
             std::string value;
             if (fragment)
             {
@@ -561,7 +517,7 @@ namespace hgl::graph::mtl
                     if (!ReadRequiredString(*fragment, "material_source_module", value))
                         return false;
                     out.material_source_module_storage = value.c_str();
-                    out.definition.fragment_material_source_module =
+                    out.definition.material_source_module =
                         out.material_source_module_storage.c_str();
                 }
                 if (fragment->contains("ntb_module"))
@@ -569,20 +525,11 @@ namespace hgl::graph::mtl
                     if (!ReadRequiredString(*fragment, "ntb_module", value))
                         return false;
                     out.ntb_module_storage = value.c_str();
-                    out.definition.fragment_ntb_module =
+                    out.definition.ntb_module =
                         out.ntb_module_storage.c_str();
                 }
             }
             else
-               return false;
-
-            if (!compositor
-              || !ReadRequiredString(*compositor, "surface", value)
-              || !ParseSurface(value, out.definition.compositor_surface)
-              || !ReadRequiredString(*compositor, "blend", value)
-              || !ParseBlend(value, out.definition.compositor_blend)
-              || !ReadRequiredString(*compositor, "pass", value)
-              || !ParsePass(value, out.definition.compositor_pass))
                return false;
 
             if (!ParseRenderState(root, out.definition))
@@ -853,7 +800,7 @@ namespace hgl::graph::mtl
         if (!ValidateKnownKeys(root, {
                 "schema", "id", "name", "source", "bootstrap", "provider_policy",
                 "pipeline",
-                "transform", "fragment", "compositor", "vertex", "resources",
+                "transform", "fragment", "vertex", "resources",
                 "mesh_shader", "render_state"}))
             return false;
 
@@ -870,11 +817,6 @@ namespace hgl::graph::mtl
         if (root.contains("fragment")
          && !ValidateKnownKeys(root.at("fragment"), {
                 "material_source_module", "ntb_module"}))
-            return false;
-
-        if (root.contains("compositor")
-         && !ValidateKnownKeys(root.at("compositor"), {
-                "surface", "blend", "pass"}))
             return false;
 
         if (root.contains("vertex")

@@ -25,7 +25,7 @@
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include "compile/MaterialShaderEmitter.h"
 #include "builder/DefinitionDescriptorBuilder.h"
-#include "meshgen/MeshShaderAssembler.h"
+#include "meshgen/MeshTemplateEmitter.h"
 #include "builder/GenericMaterialBuilder.h"
 
 #include <cstring>
@@ -42,7 +42,7 @@ namespace hgl::graph::mtl
         //   floor(max_mesh_output_primitives / 每线程图元数))。
         // 拒绝生成侧硬编码——设备上限由主程序从物理设备实测后经 profile 传入；
         // profile 为 null 或 limits 未填（0）时退回理想值。
-        // VertexPassthrough 向下取整到 3 的倍数（组内三角形不跨组，MeshShaderAssembler % 3 守卫）。
+        // VertexPassthrough 向下取整到 3 的倍数（组内三角形不跨组，MeshTemplateEmitter % 3 守卫）。
         uint32_t ClampMeshInvocationsByDevice(
             const contract::PhysicalDeviceProfileLite *profile,
             const MeshShaderMode mode,
@@ -113,11 +113,7 @@ namespace hgl::graph::mtl
             const MaterialDefinitionBuildRequest &request,
             GenericMaterialBuildPlan &plan)
         {
-            plan.purpose =
-                request.override_shader_program_purpose
-                    ? request.shader_program_purpose
-                    : GetShaderProgramPurpose(
-                        definition.compositor_pass);
+            plan.purpose = request.shader_program_purpose;
             const FixedShaderProfile selected_profile =
                 request.recipe.resolved_shader_profile
                     != FixedShaderProfile::Unknown
@@ -135,9 +131,19 @@ namespace hgl::graph::mtl
                     definition.definition_name.c_str());
                 return false;
             }
+            const RenderTemplateRequest &resolved_request =
+                request.render_template_request;
+            if (resolved_request.template_id == RenderTemplateID::Unknown)
+            {
+                GLogError(
+                   "[ShaderGen] Material build requires a resolved render template request: name=%s",
+                   definition.definition_name.c_str());
+                return false;
+            }
             if (!BuildMaterialCoverageContract(
                     definition,
                     request.recipe,
+                    resolved_request,
                     plan.purpose,
                     plan.coverage))
                 return false;
@@ -149,15 +155,6 @@ namespace hgl::graph::mtl
                                << plan.pipeline_variant->key.profile
                                << plan.pipeline_variant->key.quality_tier;
                 plan.resolved_template_hash = template_hasher;
-            }
-            const RenderTemplateRequest &resolved_request =
-                request.render_template_request;
-            if (resolved_request.template_id == RenderTemplateID::Unknown)
-            {
-                GLogError(
-                   "[ShaderGen] Material build requires a resolved render template request: name=%s",
-                   definition.definition_name.c_str());
-                return false;
             }
             {
                 plan.render_template_request_storage = resolved_request;

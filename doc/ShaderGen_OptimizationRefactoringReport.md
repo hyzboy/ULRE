@@ -8,7 +8,7 @@ ShaderGen 的 ShaderDocument-first 迁移已完成：Material、Mesh、Fragment 
 当前主要问题不再是文本拼接或 Legacy 兼容，而是**生成决策分散在 C++ 条件分支中**：
 
 - `SurfaceType`、`PassType`、coverage、mesh mode 到 stage 骨架的映射不集中；
-- Compositor 的模板、默认模块和 main wiring 被 `CompositorAssembler` 持有；
+- Fragment 模板、默认模块和 main wiring 已收敛到 `FragmentTemplateComposer`；
 - Builder 仍包含 pass 重写、surface lighting 和 descriptor 裁剪策略；
 - `MaterialShaderEmitter` 同时有通用 Document fragment 和 Material ABI 文本规则；
 - ShaderCodeModule 已数据化模块能力，但尚未描述“某个 stage 的哪些角色应如何组合”。
@@ -40,8 +40,8 @@ MaterialDefinition + MaterialRecipe
 | `glsl_module` | registry、metadata、manifest、capability resolver | GLSL 代码模块与能力/依赖/资源图 |
 | `material_definition` | registry、TOML loader | 材质定义加载和注册 |
 | `contract` | descriptor、output、coverage、stage interface | ABI、资源、varying、输出与 hash 不变量 |
-| `meshgen` | MeshShaderAssembler、mode/template headers | Mesh stage 的模式化发射 |
-| `compositor` | `CompositorAssembler` | Fragment skeleton、模块角色、契约与 main 组装 |
+| `meshgen` | MeshTemplateEmitter、mode/template headers | Mesh stage 的模式化发射 |
+| `template` | `FragmentTemplateComposer` | Fragment skeleton、模块角色、契约与 main 组装 |
 | `builder` | `GenericMaterialBuilder`、Vertex ABI/descriptor builder | Definition 到编译计划的编排与求解 |
 | `release` | release/readonly/audit shell | 开发期发布预检，不参与当前生成主链 |
 
@@ -52,7 +52,7 @@ ShaderProgramManager
   -> GenericMaterialBuilder
       -> purpose / coverage / interface / vertex ABI / manifest / descriptors
       -> GenerateMeshShaderDocument
-      -> CompositorAssembler::AssembleDocument
+      -> FragmentTemplateComposer::Compose
       -> ShaderBuildContext + stage/program identity
   -> MaterialShaderCompiler
       -> MaterialShaderEmitter::BuildMaterialStageDocument
@@ -63,9 +63,9 @@ ShaderProgramManager
 运行时目前 SPV 优先读取 artifact；开发期未命中才允许 GLSL 编译 fallback。SPV-only
 发布开关不应成为本报告重构的前置条件。
 
-## 3. `MaterialShaderEmitter` 与 `CompositorAssembler`
+## 3. `MaterialShaderEmitter` 与 `FragmentTemplateComposer`
 
-二者职责不重叠，当前**不能删除** `CompositorAssembler`。
+二者职责不重叠，旧的通用组装入口已经删除。
 
 `MaterialShaderEmitter` 的正确边界是“已解出的 layout/contract/manifest 到 Document
 fragment 的无决策发射器”。它适合：
@@ -74,13 +74,13 @@ fragment 的无决策发射器”。它适合：
 - compile define、code module manifest 的稳定顺序写入；
 - 最终 stage Document 的资源叠加。
 
-`CompositorAssembler` 当前同时承担：
+`FragmentTemplateComposer` 现在承担：
 
 1. `surface + pass + coverage` 到 fragment skeleton 的选择；
 2. lighting、sky、NTB、material source、surface function 等模块角色选择；
 3. fragment input、output、coverage contract 和 main wiring 发射。
 
-应拆分其决策与发射，而不是把它复制进 `MaterialShaderEmitter`：
+决策由模板请求解析，发射不应复制进 `MaterialShaderEmitter`：
 
 ```text
 FragmentStageRecipeResolver      // 选择模板、角色和策略
@@ -89,8 +89,7 @@ MaterialShaderEmitter            // Material ABI fragments
 FragmentMainStrategy             // 少量 C++ main wiring 策略
 ```
 
-迁移完成后，`CompositorAssembler` 可以先变为仅委托这些组件的 façade，确认无调用方后
-再删除。
+模板请求已成为唯一入口，不再保留兼容 façade。
 
 ## 4. 硬编码热点
 
@@ -98,12 +97,12 @@ FragmentMainStrategy             // 少量 C++ main wiring 策略
 
 | 位置 | 当前硬编码 | 建议数据模型 |
 |---|---|---|
-| `CompositorAssembler.cpp` | `SurfaceType × PassType -> Forward/Depth/Sky skeleton` | `FragmentStageRecipe` |
-| `CompositorAssembler.cpp` | PBR、flat、sky、NTB 等默认 include 路径与 slot 顺序 | `ModuleRoleRegistry` + recipe ordered slots |
+| `FragmentTemplateComposer.cpp` | 已解析 template -> Forward/Depth/Sky skeleton | `RenderTemplateRequest` |
+| `SceneRenderTemplateResolver.cpp` | PBR、flat、sky、NTB 等默认 module roots 与 slot 顺序 | versioned template profile |
 | `GenericMaterialBuilder.cpp` | `SurfaceType -> SurfaceLightingConfig` switch | recipe resolver 的 surface policy 表 |
 | `GenericMaterialBuilder.cpp` | DepthOnly/ShadowDepth 到 effective pass 的重写 | `PurposeVariantPolicy` |
 | `GenericMaterialBuilder.cpp` | coverage 对资源、模块、pass 的影响 | policy predicates |
-| `MeshShaderAssembler.h` | mode 对默认模块、topology、layout 的选择 | `MeshStageRecipe` |
+| `MeshTemplateEmitter.h` | mode 对默认模块、topology、layout 的选择 | `MeshStageRecipe` |
 | `MaterialShaderEmitter.cpp` | 可复用资源声明片段的格式 | ABI resource fragment registry |
 
 ### 4.2 必须保留 C++ 的约束
@@ -179,8 +178,7 @@ role + surface/purpose/capability predicate
 
 ### Phase B：Fragment 决策与发射分离
 
-1. 把 `CompositorAssembler` 中 skeleton 选择、surface function switch、默认 include
-   迁至 `FragmentStageRecipeResolver`。
+1. 已将 skeleton 选择、默认 module roots 迁至 `SceneRenderTemplateResolver`。
 2. 提取 `StageDocumentComposer`，让其按 recipe slots 写入 Document。
 3. 保留现有 main/coverage 发射代码为 `FragmentMainStrategy`，先确保逐字节等价。
 4. 删除 GenericMaterialBuilder 中 `GetSurfaceLightingConfig`，由 resolver 提供结果。
@@ -204,8 +202,7 @@ role + surface/purpose/capability predicate
 1. 将稳定 recipe/template 转为版本化 TOML/GLSL metadata，C++ static registry 只作
    builtin fallback。
 2. loader 校验 schema、角色、capability、contract、循环依赖与确定性排序。
-3. 所有调用改为 `StageRecipeResolver + StageDocumentComposer` 后删除
-   `CompositorAssembler` façade。
+3. 所有调用均使用 `RenderTemplateRequest + FragmentTemplateComposer`，旧 façade 已删除。
 
 ## 7. 验证与安全门禁
 
@@ -229,7 +226,7 @@ role + surface/purpose/capability predicate
 | P1 | StageDocumentComposer | 统一 shader 组合结构，减少重复发射代码 | 中 |
 | P1 | Mesh recipe 化 | 降低 mode 扩展成本 | 中 |
 | P2 | TOML template/recipe 资产化 | 新增 shader 变体无需改 C++ | 中高 |
-| P2 | 删除 CompositorAssembler façade | 清晰命名和依赖方向 | 低 |
+| P2 | 删除旧 fragment façade | 清晰命名和依赖方向 | 已完成 |
 
 ## 9. 不建议做的事情
 
@@ -238,8 +235,8 @@ role + surface/purpose/capability predicate
 - 不将 shader 资源的选择留给模板隐式决定；资源必须先经 contract 求解。
 - 不在同一次改动中改变 recipe、GLSL 字节格式、hash 输入和 cache 格式。
 - 不因本次架构整理提前关闭离线 GLSL 编译或开发期 fallback。
-- 不将 `MaterialShaderEmitter` 与 `CompositorAssembler` 粗暴合并；先拆“决策”和“发射”，
-  再以调用收敛决定文件删除。
+- 不将 `MaterialShaderEmitter` 与 `FragmentTemplateComposer` 粗暴合并；保持“决策”和
+  “发射”的边界。
 
 ## 10. 固定前向渲染器的简化方案
 
@@ -283,8 +280,8 @@ ShaderDocument/GLSL 模板配合少量 quality define，最终单独 cooker 成 
 
 ### 10.3 用 profile 代替自由 module 选择
 
-建议将当前可自由填写的 `fragment_material_source_module`、
-`fragment_ntb_module`、lighting 和 sky module 路径，收敛为少量枚举：
+建议将当前可自由填写的 `material_source_module`、`ntb_module`、lighting 和 sky
+module 路径，收敛为少量枚举：
 
 ```text
 LightingModel: Unlit, BlinnPhong, FakePBR, PBR
@@ -346,10 +343,10 @@ family | pass | lighting | ibl | ntb | skinning | alpha | geometry | profile ver
 | 当前模块 | 固定管线后的职责 |
 |---|---|
 | `GenericMaterialBuilder` | 解析 definition/recipe，调用 variant resolver；不再自己做 surface/pass/lighting 路径决策 |
-| `CompositorAssembler` | 短期保留为 `FragmentStageComposer`；长期只根据已解析 recipe 填 Document |
+| `FragmentTemplateComposer` | 仅根据已解析模板请求填充 Document |
 | `MaterialShaderEmitter` | 继续负责 Material ABI、SSBO、binding/index table 等稳定 fragment |
 | `ShaderCodeModuleRegistry` | 保留 capability/依赖校验；module 选择改由 fixed recipe 表，而非任意 definition 路径 |
-| `MeshShaderAssembler` | 仅保留 Mesh/LineQuad/CharQuad 三种受控 strategy 和设备限制验证 |
+| `MeshTemplateEmitter` | 仅保留 Mesh/LineQuad/CharQuad 三种受控 strategy 和设备限制验证 |
 | `MaterialDefinition` | 收敛为 family、允许 profile、资源能力和 render-state envelope |
 | `ShaderCooker` | 遍历有限 variant manifest，离线编译所有批准组合并写 artifact manifest |
 

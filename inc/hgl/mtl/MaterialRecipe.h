@@ -11,10 +11,7 @@
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
-#include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
-#include <hgl/mtl/BlendMode.h>
-#include <hgl/mtl/PassType.h>
 #include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <hgl/type/String.h>
@@ -242,20 +239,17 @@ namespace hgl::graph::mtl
         ValueArray<ShaderCodeModuleSemanticRequirement> vertex_semantic_requirements;
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
         // Material-source provider capability. Render preparation maps it into
-        // the selected MaterialSourceProvider template root.
-        const char *fragment_material_source_module = nullptr;
+        // the caller-selected MaterialSourceProvider template root.
+        const char *material_source_module = nullptr;
         // NTB provider capability. Render preparation maps it into the
-        // selected NTBProvider template root.
-        const char *fragment_ntb_module = nullptr;
+        // caller-selected NTBProvider template root.
+        const char *ntb_module = nullptr;
         MaterialVertexVaryingConfig vertex_varying;
-        SurfaceType compositor_surface = SurfaceType::Unlit;
-        BlendMode compositor_blend = BlendMode::Opaque;
-        PassType compositor_pass = PassType::ForwardOpaque;
         ResolvedMaterialRenderState default_render_state;
 
         // Mesh shader 模式（来自 TOML [mesh_shader] 段；缺省 = VertexPassthrough）
         MeshShaderMode mesh_shader_mode = MeshShaderMode::VertexPassthrough;
-        uint32_t mesh_shader_max_invocations = 0;  // 0 = 使用 GenerateMeshShader 默认值
+        uint32_t mesh_shader_max_invocations = 0;  // 0 = 使用 EmitMeshTemplateDocument 默认值
 
         // Fixed template selection envelope. Root modules remain the
         // responsibility of ECS/render preparation, never this definition.
@@ -307,30 +301,6 @@ namespace hgl::graph::mtl
         const MaterialRecipe &recipe) noexcept
     {
         ResolvedMaterialRenderState state = definition.default_render_state;
-
-        const bool definition_masked =
-            definition.compositor_blend == BlendMode::Masked
-         || definition.compositor_pass == PassType::ForwardMasked;
-        const bool definition_dithered =
-            definition.compositor_blend == BlendMode::Dither
-         || definition.compositor_pass == PassType::ForwardDither;
-        const bool definition_transparent =
-            definition.compositor_blend == BlendMode::Transparent;
-        const bool definition_a2c =
-            definition.compositor_blend == BlendMode::AlphaToCoverage
-         || definition.compositor_pass == PassType::ForwardA2C;
-
-        if (definition_masked)
-            state.alpha_test = true;
-        if (definition_dithered)
-        {
-            state.alpha_test = true;
-            state.dither = true;
-        }
-        if (definition_transparent)
-            state.pipeline_config.alpha_blend = true;
-        if (definition_a2c)
-            state.pipeline_config.alpha_to_coverage = true;
 
         const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
         if (overrides.has_double_sided)

@@ -19,11 +19,6 @@ projection = "WorldCameraVP"
 
 [fragment]
 
-[compositor]
-surface = "Sky"
-blend = "Opaque"
-pass = "ForwardOpaque"
-
 [vertex]
 requirements = ["Position"]
 varyings = ["emit_frag_direction"]

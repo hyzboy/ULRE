@@ -114,7 +114,7 @@ SDF 编码约定：内部 = 高值（255），外部 = 低值（0）。Shader �
 
 `TextLayout::End()`（`src/SceneGraph/font/TextLayout.cpp`）调用 `sl_l2r()` 进行左到右排版。排版结果写入 `CharInstance` 数组（每字符 8B：pen_x/y, char_id, style_id）。
 
-实际的网格生成由 `MeshShaderAssembler`（`src/ShaderGen/common/MeshShaderAssembler.h`，统一调度入口，CharQuad 主体在子模块 `MeshShaderModeCharQuad.h`）的 **CharQuad 模式**在 GPU 端完成：
+实际的网格生成由 `MeshTemplateEmitter`（`src/ShaderGen/meshgen/MeshTemplateEmitter.h`，统一调度入口，CharQuad 主体在子模块 `MeshShaderModeCharQuad.h`）的 **CharQuad 模式**在 GPU 端完成：
 - 每个 threadgroup 42 个线程（`max_invocations = 42`）
 - 每线程处理 **1 个字符实例**，生成 **6 个顶点（2 个三角形 = 1 个 quad）**
 - 顶点从三层 SSBO 读取数据，在 Mesh Shader 内计算像素坐标并做 NDC 变换
@@ -218,7 +218,7 @@ cmd->DrawMeshTasks(group_count);
   └─ vkCmdDrawMeshTasksEXT(cmd_buf, group_count_x, 1, 1)
 ```
 
-Mesh Shader（由 `MeshShaderAssembler`（`src/ShaderGen/common/MeshShaderAssembler.h`，CharQuad 主体在 `MeshShaderModeCharQuad.h`）CharQuad 模式生成）工作方式：
+Mesh Shader（由 `MeshTemplateEmitter`（`src/ShaderGen/meshgen/MeshTemplateEmitter.h`，CharQuad 主体在 `MeshShaderModeCharQuad.h`）CharQuad 模式生成）工作方式：
 - 每个 threadgroup 42 线程，每线程处理 1 个字符实例
 - 从三层 SSBO 读取 CharInstance → TextCharInfo → CharStyle
 - 计算 quad 像素坐标：`metrics × scale` 缩放 + 斜体剪切 + rotation 绕中心旋转 → `viewport.ortho_matrix` 变换到 NDC
@@ -357,7 +357,7 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 | MirroredStructArray（SSBO 容器） | `inc/hgl/vk/MirroredStructArray.h` |
 | RenderCmdBuffer | `inc/hgl/vk/VKCommandBuffer.h` |
 | DrawMeshTasks 实现 | `src/Vulkan/VKCommandBufferRender.cpp` |
-| MeshShader 生成（CharQuad 模式） | `src/ShaderGen/common/MeshShaderAssembler.h`（调度）+ `MeshShaderModeCharQuad.h`（CharQuad 主体） |
+| MeshShader 生成（CharQuad 模式） | `src/ShaderGen/meshgen/MeshTemplateEmitter.h`（调度）+ `MeshShaderModeCharQuad.h`（CharQuad 主体） |
 | SDF 材质定义 | `ShaderLibrary/material/text_2d_gpu.material.toml` |
 | 位图材质定义 | `ShaderLibrary/material/text_2d_gpu_bitmap.material.toml` |
 | 文本 Fragment 着色器（SDF/Bitmap 双路径） | `ShaderLibrary/material/text_source_gpu.glsl` |

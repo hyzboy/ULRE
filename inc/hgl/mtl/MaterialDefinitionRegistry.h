@@ -47,7 +47,6 @@ struct MaterialDefinitionBuildRequest
     VertexShaderNodeConfig vertex_node_config_override;
     mtl::ShaderArtifactStore *shader_artifact_store = nullptr;
     bool defer_finalize = false;  // 生成 GLSL 与契约后延迟 SPV 编译（生产主路径：先查缓存）
-    bool override_shader_program_purpose = false;
     mtl::ShaderProgramPurpose shader_program_purpose =
         mtl::ShaderProgramPurpose::ForwardColor;
     // Render preparation supplies this resolved request. ShaderGen validates

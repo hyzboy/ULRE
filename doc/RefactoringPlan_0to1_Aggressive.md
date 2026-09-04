@@ -77,8 +77,8 @@
 **目标**：Shader 生成器变为“无脑执行器”，完全由 Spec 驱动。
 
 **执行清单**：
-- [ ] **改造 CompositorAssembler**：
-  - 废弃针对 MaterialPreset 的组装，改为输入 MaterialModel + MaterializationSpec。
+- [x] **完成 FragmentTemplateComposer 模板化组装**：
+  - 已废弃针对 MaterialPreset 的组装，改为解析 RenderTemplateRequest。
 - [ ] **动态生成 GetPBRInput()**：
   - 使用 Inja (或手写字符串拼接) 解析 Spec 中的 ResolvedResource。
   - 对 BakedResource 生成常数赋值 (如 m.normal = vec3(0,0,1);)。

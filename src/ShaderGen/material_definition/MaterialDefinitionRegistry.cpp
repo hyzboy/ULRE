@@ -86,17 +86,17 @@ bool AppendMaterialRenderTemplateRoots(
     case RenderTemplateID::ForwardLitUnshadowedAO:
         appended = AddMaterialProviderRoot(
                        request, ShaderModuleSlotRole::MaterialSourceProvider,
-                       definition.fragment_material_source_module)
+                      definition.material_source_module)
             && AddMaterialProviderRoot(
                    request, ShaderModuleSlotRole::NTBProvider,
-                   definition.fragment_ntb_module);
+                   definition.ntb_module);
         break;
     case RenderTemplateID::ForwardUnlit:
     case RenderTemplateID::ShadowCasterOpaque:
     case RenderTemplateID::ShadowCasterMasked:
         appended = AddMaterialProviderRoot(
             request, ShaderModuleSlotRole::MaterialSourceProvider,
-            definition.fragment_material_source_module);
+            definition.material_source_module);
         break;
     default:
         break;

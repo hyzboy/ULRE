@@ -1,6 +1,6 @@
 #include <hgl/mtl/MeshTemplateComposer.h>
 
-#include "meshgen/MeshShaderAssembler.h"
+#include "meshgen/MeshTemplateEmitter.h"
 
 namespace hgl::graph::mtl
 {

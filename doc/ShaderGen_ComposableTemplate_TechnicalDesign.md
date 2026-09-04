@@ -3,9 +3,10 @@
 ## 1. 目标与边界
 
 本方案面向固定 Vulkan 前向渲染器，不实现 Shader Graph，不支持任意材质代码改变 shader
-控制流。ECS 根据实际渲染状态、材质、场景和质量配置选择完整模板及其 module roots；
-ShaderGen 只递归展开依赖、汇总资源、验证并组合为可审计的 `ShaderDocument`，再离线
-编译为 SPV。
+控制流。ECS/render preparation 根据实际渲染状态、场景和质量配置选择完整场景模板及其
+scene module roots，再把 MaterialDefinition 提供的 material provider capability 通过
+`AppendMaterialRenderTemplateRoots` 追加到该模板；ShaderGen 只递归展开依赖、汇总资源、
+验证并组合为可审计的 `ShaderDocument`，再离线编译为 SPV。
 
 首批覆盖范围：
 
@@ -359,8 +360,8 @@ MainBody: template main
 | `FixedPipelineVariantTable` | 声明合法 key、模板、各 slot module ID、pipeline/contract policy |
 | `StageTemplateResolver` | 解析 key 并返回完整 recipe 或明确错误 |
 | `MaterialShaderEmitter` | 生成已解析的 Material ABI、SSBO、binding/index-table Document fragments |
-| `CompositorAssembler` | 过渡期 façade；长期替换为读取 recipe 的 `FragmentStageComposer` |
-| `MeshShaderAssembler` | 保留受控 geometry strategy、设备限制和 ABI 验证 |
+| `FragmentTemplateComposer` | 根据已解析的模板请求将 slots、contract 和 main 写入 Document |
+| `MeshTemplateEmitter` | 保留受控 geometry strategy、设备限制和 ABI 验证 |
 | `ShaderCodeModuleRegistry` | 校验 module capability、依赖、冲突与资源要求，不负责任意组合策略 |
 | ECS/render preparation | 选择完整 template ID 与 module roots；不解释 module 内容 |
 | `ShaderCooker` | 遍历 variant table，离线生成全部批准 SPV 和 artifact manifest |
@@ -371,8 +372,8 @@ MainBody: template main
    Unlit、Sky、Shadow builtin。
 2. 为模块 metadata 增加 slot role、输出 capability、输入 capability；复用现有 dependency、
    conflict、resource requirement 校验。
-3. 将 `CompositorAssembler` 中 skeleton/default module 选择迁到 variant table，但保持
-   现有 GLSL 文本和 Document block 顺序。
+3. 已将 skeleton/default module 选择迁到 variant table，保持 GLSL 文本和
+   Document block 顺序。
 4. 将 Forward Lit 的 main 固化为本方案的模板；以 byte/key/SPV regression 验证。
 5. 迁移 `GetSurfaceLightingConfig` 等 Builder 分支，删除重复模块路径真源。
 6. 将 Shadow、Sky、Decal 和独立 PostProcess family 逐一接入。

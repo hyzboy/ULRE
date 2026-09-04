@@ -14,8 +14,8 @@ namespace hgl::graph::mtl
 {
     // Template-first fragment emission entry point.
     // Normal callers must provide a validated RenderTemplateRequest or
-    // ResolvedRenderTemplate; the legacy CompositorAssembler fallback is
-    // intentionally disabled to prevent implicit auto-composition.
+    // ResolvedRenderTemplate; implicit auto-composition is intentionally
+    // disabled.
     class FragmentTemplateComposer
     {
     public:
