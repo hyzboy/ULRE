@@ -37,6 +37,9 @@ namespace hgl::graph
 
         struct GizmoResource
         {
+            // Arena 行缓冲访问器（OwnBuffer 持有 DeviceBuffer 生命周期，
+            // 行地址已进入地址行表——必须与 gizmo 资源同寿命）
+            SSBOArrayAccessor<ssbo::EmissiveSurfaceRow> *color_row_accessor = nullptr;
             DeviceBuffer *      color_ssbo;
             VertexDataManager * vdm;
             mtl::MaterialRecipe color_recipe[size_t(GizmoColor::RANGE_SIZE)]{};
@@ -108,9 +111,10 @@ namespace hgl::graph
 
                 const uint32_t gizmo_ssbo_id = acc->GetSSBOId();
 
-                // 行写入即生效(HOST_COHERENT 直写)，accessor 可立即释放；
-                // 行数据常驻 arena。每色一份 recipe，行号=色槽号。
-                delete acc;
+                // 行写入即生效(HOST_COHERENT 直写)。accessor OwnBuffer 持有
+                // 行缓冲——地址行表中的行地址指向该缓冲，必须与 gizmo 资源
+                // 同寿命；每色一份 recipe，行号=色槽号。
+                gr->color_row_accessor = acc;
 
                 for (uint32_t c = 0; c < color_count; ++c)
                 {
@@ -295,6 +299,9 @@ namespace hgl::graph
 
         SAFE_CLEAR(gizmo_triangle.prim_creater);
         SAFE_CLEAR(gizmo_triangle.vdm);
+        delete gizmo_triangle.color_row_accessor;
+        gizmo_triangle.color_row_accessor = nullptr;
+
         SAFE_CLEAR(gizmo_triangle.color_ssbo);
 
         graphics_context = nullptr;
