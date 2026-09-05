@@ -1,6 +1,8 @@
 ﻿#include <hgl/mtl/DescriptorContract.h>
 
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
+#include <hgl/graph/ssbo/MaterialArenaPath.h>
+#include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <algorithm>
@@ -55,6 +57,20 @@ namespace hgl::graph::mtl
             SerializedDescriptorEntry &source,
             DescriptorContract &out_contract)
         {
+            // Arena+BDA 路径（ULRE_MATERIAL_ARENA）：在契约唯一汇合点统一改写——
+            //   数据槽/纹理行表 → 无描述符（静默丢弃）；
+            //   索引行表 → 8B 设备地址表（mtl_data_addrs）。
+            // 无论上游哪条 push 路径（definition/manifest/目录行），契约层结果一致。
+            if (IsMaterialArenaBDAEnabled())
+            {
+                // 临时禁用 drop（疑似 nullptr 解引用崩溃源）——仅重命名
+
+                if (source.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
+                {
+                    source.name = SBS_MaterialDataAddresses.name;
+                    source.struct_name = SBS_MaterialDataAddresses.struct_name;
+                }
+            }
             // C1-T2：就地完整规范化——ID/ssbo_type 语义推导/layer 默认/policy 默认
             // 全部写入 source；DescriptorContract.entries 直接存规范化条目
             //（原 DescriptorContractEntry 包装已删）。
@@ -195,6 +211,11 @@ namespace hgl::graph::mtl
                         == DescriptorSemantic::MaterialPrivateData;
                 }),
             out_contract.end());
+
+        // Arena+BDA 路径：数据槽无描述符；地址行表条目由描述符构建侧
+        // （flag 感知推送）提供，此处不再补录固定数据槽条目
+        if (IsMaterialArenaBDAEnabled())
+            return ValidateDescriptorContract(out_contract);
 
         // 单槽化：固定 slot 0 / DefaultMaterialPrivateDataSlotName
         SerializedDescriptorEntry fixed{};

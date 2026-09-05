@@ -12,6 +12,7 @@
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/graph/ShaderBufferSources.h>
+#include <hgl/graph/ssbo/MaterialArenaPath.h>
 #include <cstdio>
 #include <cstring>
 
@@ -97,6 +98,79 @@ bool BuildMaterialSSBODeclarations(
 {
     if (material_private_data == SSBOType::UserDefined)
         return true;
+
+    // ── Arena+BDA 路径：材质数据无描述符，发射 buffer_reference 行声明 ──
+    // shader 侧 MTL_ROW(i) 以地址行表（mtl_data_addrs）取行指针后解引用。
+    if (IsMaterialArenaBDAEnabled())
+    {
+        const char *struct_name  = ssbo::GetMaterialSSBOStructName(material_private_data);
+        const char *row_struct = ssbo::GetMaterialSSBORowName(material_private_data);
+        const char *struct_codes = ssbo::GetMaterialSSBOStructGLSL(material_private_data);
+        if (!row_struct || !struct_codes || !struct_name)
+        {
+            out_error = "unsupported material row type for GLSL generation";
+            return false;
+        }
+
+        // 纯字段值结构（与旧路径 struct 同名）：供模块以值语义拷贝行内数据字段
+        out_decls += "struct ";
+        out_decls += struct_name;
+        out_decls += "\n{\n";
+
+        std::string line;
+        const char *p = struct_codes;
+        auto FlushFieldLine = [&]()
+        {
+            size_t start = 0;
+            while (start < line.size() && (line[start] == ' ' || line[start] == '\t'))
+                ++start;
+            if (start < line.size())
+            {
+                out_decls += "    ";
+                out_decls.append(line, start, line.size() - start);
+                out_decls += '\n';
+            }
+            line.clear();
+        };
+        for (; *p; ++p)
+        {
+            if (*p == '\n')
+                FlushFieldLine();
+            else
+                line += *p;
+        }
+        FlushFieldLine();
+
+        out_decls += "};\n";
+
+        // buffer_reference 行结构：材质数据字段 + 统一 bindless 纹理句柄尾
+        out_decls += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer ";
+        out_decls += row_struct;
+        out_decls += "\n{\n";
+
+        p = struct_codes;
+        for (; *p; ++p)
+        {
+            if (*p == '\n')
+                FlushFieldLine();
+            else
+                line += *p;
+        }
+        FlushFieldLine();
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(TextureSlot::RANGE_SIZE); ++i)
+        {
+            out_decls += "    uint tex_";
+            out_decls += GetTextureSlotName(static_cast<TextureSlot>(i));
+            out_decls += ";\n";
+        }
+
+        out_decls += "};\n";
+        out_macros += "#define MTL_ROW(i) ";
+        out_macros += row_struct;
+        out_macros += "(mtl_data_addrs.values[(i)])\n";
+        return true;
+    }
 
     const char *slot_name = DefaultMaterialPrivateDataSlotName;
     const ShaderDescriptor *sd = descriptor_info.GetSSBO(slot_name);
@@ -248,6 +322,11 @@ bool BuildCompileDefineDocument(
         macros += " 1\n";
     }
 
+    // Arena+BDA 路径：材质源模块以 #ifdef ULRE_MATERIAL_ARENA_BDA 切换
+    // MTL_DATA 数组访问 / MTL_ROW 指针访问两种取数写法
+    if (IsMaterialArenaBDAEnabled())
+        macros += "#define ULRE_MATERIAL_ARENA_BDA 1\n";
+
     if (macros.empty())
         return true;
 
@@ -276,11 +355,17 @@ namespace
         const char *buffer_name;
         const char *var_name;
         const char *resolve_func;    // 为空则仅生成 buffer 声明
+        const char *element_type;    // 行元素 GLSL 类型（默认 uint；Arena 地址表为 uint64_t）
     };
 
     const IndexTableSpec kMeshIndexTableSpecs[] = {
-        { SBS_LocalToWorldIndex.name, "LocalToWorldIndex", "l2w_index",     "ResolveTransformID" },
-        { SBS_MaterialPrivateDataIndexRows.name, "MaterialPrivateDataIndex", "mtl_private_data_index", "ResolveMaterialPrivateDataIndex" },
+        { SBS_LocalToWorldIndex.name, "LocalToWorldIndex", "l2w_index",     "ResolveTransformID", "uint" },
+        { SBS_MaterialPrivateDataIndexRows.name, "MaterialPrivateDataIndex", "mtl_private_data_index", "ResolveMaterialPrivateDataIndex", "uint" },
+    };
+
+    // Arena+BDA 路径：mesh 阶段只需 l2w_index；材质地址表在 FS 消费（见 BuildFSIndexTableDecls）
+    const IndexTableSpec kMeshIndexTableSpecsArena[] = {
+        { SBS_LocalToWorldIndex.name, "LocalToWorldIndex", "l2w_index",     "ResolveTransformID", "uint" },
     };
 
     void AppendIndexTableDecl(
@@ -293,7 +378,9 @@ namespace
 
         out += "layout(set=" + std::to_string(sd->set) + ", binding=" + std::to_string(sd->binding) + ") readonly buffer ";
         out += spec.buffer_name;
-        out += " { uint values[]; } ";
+        out += " { ";
+        out += spec.element_type;
+        out += " values[]; } ";
         out += spec.var_name;
         out += ";\n";
 
@@ -302,9 +389,9 @@ namespace
             // 单槽化：行表写单列（values[iid]），不再按 slot 索引。
             out += "uint ";
             out += spec.resolve_func;
-            out += "(uint iid) { return ";
+            out += "(uint iid) { return uint(";
             out += spec.var_name;
-            out += ".values[iid]; }\n";
+            out += ".values[iid]); }\n";
         }
     }
 }//namespace
@@ -313,6 +400,13 @@ std::string BuildMeshIndexTableDecls(
     const DescriptorSetLayoutAllocator &descriptor_info)
 {
     std::string out;
+
+    if (IsMaterialArenaBDAEnabled())
+    {
+        for (const IndexTableSpec &spec : kMeshIndexTableSpecsArena)
+            AppendIndexTableDecl(out, descriptor_info.GetSSBO(spec.sbs_name), spec);
+        return out;
+    }
 
     for (const IndexTableSpec &spec : kMeshIndexTableSpecs)
         AppendIndexTableDecl(out, descriptor_info.GetSSBO(spec.sbs_name), spec);
@@ -324,6 +418,24 @@ std::string BuildFSIndexTableDecls(
     const DescriptorSetLayoutAllocator &descriptor_info)
 {
     std::string out;
+
+    // ── Arena+BDA 路径：FS 消费设备地址行表（mtl_data_addrs）──────────────
+    // 行存 8B 设备地址；fragDataIndexID 即本批 draw item 序号（行表下标）。
+    // MTL_ROW(i) 宏（BuildMaterialSSBODeclarations 生成）以地址构造行指针。
+    if (IsMaterialArenaBDAEnabled())
+    {
+        const ShaderDescriptor *addr_sd =
+            descriptor_info.GetSSBO(SBS_MaterialDataAddresses.name);
+        if (addr_sd && addr_sd->set >= 0 && addr_sd->binding >= 0)
+        {
+            out += "layout(set=" + std::to_string(addr_sd->set)
+                 + ", binding=" + std::to_string(addr_sd->binding)
+                 + ") readonly buffer MaterialDataAddresses\n{\n"
+                   "    uint64_t values[];\n"
+                   "} mtl_data_addrs;\n";
+        }
+        return out;
+    }
 
     // FS 阶段注入 bindless 纹理行表：TextureLayerRowsData struct + buffer（named slot）。
     // 字段名 = TextureSlot 的 snake_case 名（GetTextureSlotName），顺序与枚举一致；

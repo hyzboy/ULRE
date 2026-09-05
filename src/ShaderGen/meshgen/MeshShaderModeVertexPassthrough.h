@@ -10,6 +10,7 @@
 #pragma once
 
 #include <hgl/mtl/MaterialStageInterface.h>
+#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include <string>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 
@@ -71,7 +72,15 @@ namespace hgl::graph::mtl
             // 与 VS 一致：实例 → MaterialPrivateDataIndexRows 查表（材质数据槽——FS 用它查 mtl.data[].color 等）。
             // gl_InstanceIndex 宏 = first_instance + gl_WorkGroupID.y（跨 draw_batch 正确）
             // perprimitiveEXT：图元号 = vid/3（triangle list，每 3 顶点 1 图元）
-            ms += "    fragDataIndexID[vid / 3u] = ResolveMaterialPrivateDataIndex(gl_InstanceIndex);\n";
+            // Arena+BDA：varying 直传 draw item 序号（FS 经 mtl_data_addrs 取地址）
+            if (IsMaterialArenaBDAEnabled())
+            {
+                ms += "    fragDataIndexID[vid / 3u] = gl_InstanceIndex;\n";
+            }
+            else
+            {
+                ms += "    fragDataIndexID[vid / 3u] = ResolveMaterialPrivateDataIndex(gl_InstanceIndex);\n";
+            }
         }
         if (varying_cfg.emit_vertex_color_from_palette)
             ms += "    fragVertexColor[vid] = unpackUnorm4x8(color_palette.color[ColorIndex]);\n";

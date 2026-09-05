@@ -31,6 +31,10 @@ namespace hgl::graph::mtl::contract
     constexpr uint32_t TARGET_VULKAN_VERSION = MakeVkVersion(1, 4);
     constexpr uint32_t TARGET_SPV_VERSION = SPV_VERSION_1_6;
 
+    // 代码生成代数：GLSL 发射逻辑语义变化（如材质数据 Arena+BDA 改造）时 +1，
+    // 一次性整体更换全部 SPV artifact 缓存键（防新旧生成器产物混用）
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 1;
+
     // 设备能力哈希（vendor/device/limits/features）——编译目标哈希的超集包含它；
     // 所有 key 维度统一用 GetShaderCompilerProfileHash（目标版本为常量，见上）
     inline uint64 GetPhysicalDeviceProfileHash(
@@ -71,7 +75,8 @@ namespace hgl::graph::mtl::contract
 
         h << GetPhysicalDeviceProfileHash(profile)
           << vulkan_version
-          << spv_version;
+          << spv_version
+          << SHADERGEN_CODEGEN_GENERATION;
 
         return h;
     }

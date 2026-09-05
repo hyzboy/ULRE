@@ -15,10 +15,20 @@
 
 #include "common/material_source_interface.glsl"
 
+#ifdef ULRE_MATERIAL_ARENA_BDA
+EmissiveSurfaceData EvalUnlitSource(uint dataIndex)
+{
+    const EmissiveSurfaceRow row = MTL_ROW(dataIndex);
+    EmissiveSurfaceData data;
+    data.color = row->color;
+    return data;
+}
+#else
 EmissiveSurfaceData EvalUnlitSource(uint dataIndex)
 {
     return MTL_DATA.data[dataIndex];
 }
+#endif
 
 MaterialSourceOutput EvalMaterialSource(
     MaterialSourceInput sourceInput)

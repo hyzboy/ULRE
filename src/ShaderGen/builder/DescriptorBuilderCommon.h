@@ -5,6 +5,7 @@
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
+#include <hgl/graph/ssbo/MaterialArenaPath.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
@@ -172,6 +173,8 @@ inline void PushVertexResource(std::vector<SerializedDescriptorEntry> &v, const 
                row->semantic, row->ssbo_type, stage_flags);
 }
 
+inline void PushMaterialPrivateDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags);
+
 inline void PushMaterialPrivateDataSlot(std::vector<SerializedDescriptorEntry> &v,
                                  const uint32_t stage_flags,
                                  const char *name,
@@ -179,6 +182,15 @@ inline void PushMaterialPrivateDataSlot(std::vector<SerializedDescriptorEntry> &
                                  const uint32_t material_private_data_slot,
                                  const SSBOType ssbo_type)
 {
+    // Arena+BDA 路径：材质数据经设备地址行表寻址，无描述符。
+    // 数据槽需求降级为地址行表需求（下游 EnsureMaterialPrivateDataIndexTable
+    // 依赖 MaterialPrivateData 条目判定是否需要行表）。
+    if(IsMaterialArenaBDAEnabled())
+    {
+        PushMaterialPrivateDataIndexRows(v, stage_flags);
+        return;
+    }
+
     v.push_back({
         DescriptorSetType::Material, stage_flags,
         name, struct_name, nullptr, DescriptorSemantic::MaterialPrivateData,
@@ -189,6 +201,15 @@ inline void PushMaterialPrivateDataSlot(std::vector<SerializedDescriptorEntry> &
 inline void PushMaterialPrivateDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     // P1-2c：MaterialPrivateDataIndexRows 迁至 PerObject 集（实例→材质行索引表）。
+    // Arena+BDA 路径：同一语义，行表改存 8B 设备地址（mtl_data_addrs）。
+    if(IsMaterialArenaBDAEnabled())
+    {
+        PushBySpec(v, DescriptorSetType::PerObject,
+                   "mtl_data_addrs", "MaterialDataAddresses", DescriptorSemantic::MaterialPrivateDataIndex,
+                   SSBOType::MaterialPrivateDataIndex, stage_flags);
+        return;
+    }
+
     PushBySpec(v, DescriptorSetType::PerObject,
                "mtl_private_data_index", "MaterialPrivateDataIndex", DescriptorSemantic::MaterialPrivateDataIndex,
                SSBOType::MaterialPrivateDataIndex, stage_flags);
@@ -201,6 +222,10 @@ inline void PushMaterialTextureLayerRows(
     const bool required = true,
     const bool allow_fallback = false)
 {
+    // Arena+BDA 路径：bindless 句柄存于材质数据行尾，无纹理行表描述符。
+    if(IsMaterialArenaBDAEnabled())
+        return;
+
     SerializedDescriptorEntry entry{
         DescriptorSetType::Material, stage_flags,
         "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable,
@@ -340,6 +365,14 @@ inline bool PushManifestSSBO(
         // 材质私有数据 SSBO：单槽方案下固定 material_private_data_slot == 0（MaterialPrivateData）。
         if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
             return false;
+
+        // Arena+BDA 路径：数据槽无描述符，降级为地址行表需求
+        if (IsMaterialArenaBDAEnabled())
+        {
+            PushMaterialPrivateDataIndexRows(v, entry.stage_flags);
+            return true;
+        }
+
         entry.set_type = DescriptorSetType::Material;
         entry.semantic = DescriptorSemantic::MaterialPrivateData;
         entry.semantic_layer = DescriptorSemanticLayer::SSBO;
@@ -369,6 +402,10 @@ inline bool AppendManifestTextureLayerDescriptors(
     std::vector<SerializedDescriptorEntry> &v,
     ShaderCodeResourceManifest &manifest)
 {
+    // Arena+BDA 路径：bindless 句柄存于材质数据行尾，无纹理行表描述符
+    if (IsMaterialArenaBDAEnabled())
+        return true;
+
     for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
     {
         const auto &layer = manifest.texture_layers[i];

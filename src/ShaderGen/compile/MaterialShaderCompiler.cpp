@@ -121,6 +121,11 @@ static bool AddMaterialPrivateDataSlotDescriptor(ShaderBuildContext &ctx,
                                           const uint32_t material_private_data_slot,
                                           const uint32_t stage_bits)
 {
+    // Arena+BDA 路径：材质数据经 buffer_reference 寻址（发射器注入行声明），
+    // 不进入描述符分配器
+    if (IsMaterialArenaBDAEnabled())
+        return true;
+
     const char *struct_name = nullptr;
     const char *glsl_codes = nullptr;
     uint32_t struct_bytes = 0;
@@ -489,7 +494,10 @@ static bool RegisterCanonicalDescriptors(
             }
             else if (cat->semantic == DescriptorSemantic::MaterialPrivateDataIndex)
             {
-                if (!ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, ""))
+                // Arena+BDA 路径：行表为 8B 设备地址表（MaterialDataAddresses）
+                const bool arena = IsMaterialArenaBDAEnabled();
+                if (!ctx->AddStruct(arena ? SBS_MaterialDataAddresses.struct_name
+                                          : SBS_MaterialPrivateDataIndexRows.struct_name, ""))
                     return c.Fail("failed to add MaterialPrivateDataIndex struct");
                 // P1-2c：行表迁至 PerObject 集，binding 由固定枚举确定（固定名路径）
                 if (!ctx->AddSSBOMaterialPrivateDataIndex(stage_bits))

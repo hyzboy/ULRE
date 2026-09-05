@@ -18,6 +18,11 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_MaterialPrivateDataIndexRows{
         DescriptorSetType::PerObject, "mtl_private_data_index", "MaterialPrivateDataIndex"
     };
+    // Arena+BDA 路径（ULRE_MATERIAL_ARENA）：每 draw 项 → 材质数据行设备地址表。
+    // 行宽 8B（uint64 设备地址），取代 mtl_private_data_index 的 4B 行号表。
+    constexpr const ShaderBufferSource SBS_MaterialDataAddresses{
+        DescriptorSetType::PerObject, "mtl_data_addrs", "MaterialDataAddresses"
+    };
     // 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）——每对象大 buffer
     constexpr const ShaderBufferSource SBS_VertexPosition{
         DescriptorSetType::Vertex, "VertexPosition", "VertexPositionData"

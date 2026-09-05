@@ -3,6 +3,7 @@
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<hgl/graph/ShaderBufferSources.h>
+#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include<string>
 using namespace hgl;
 using namespace hgl::graph;
@@ -182,7 +183,12 @@ bool ShaderBuildContext::AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bit
 {
     const DescriptorResourceCatalogEntry &row=CatalogFixedRow<DescriptorSemantic::MaterialPrivateDataIndex>();
 
-    return AddSSBO(flag_bits,row.set_type,row.sbs->struct_name,row.sbs->name,row.binding);
+    // Arena+BDA 路径：PerObject 行表为 8B 设备地址表（mtl_data_addrs）
+    const ShaderBufferSource &sbs=IsMaterialArenaBDAEnabled()
+        ? SBS_MaterialDataAddresses
+        : SBS_MaterialPrivateDataIndexRows;
+
+    return AddSSBO(flag_bits,row.set_type,sbs.struct_name,sbs.name,row.binding);
 }
 
 bool ShaderBuildContext::AddSSBOTextureLayer(const uint32_t flag_bits,const int binding)

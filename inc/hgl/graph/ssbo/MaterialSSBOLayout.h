@@ -28,6 +28,19 @@ namespace hgl::graph::ssbo
         }
     }
 
+    // Arena+BDA 路径的 buffer_reference 行结构名（与 MaterialDataRows.h 的 C++ 行结构同名）
+    inline const char *GetMaterialSSBORowName(const mtl::SSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case mtl::SSBOType::EmissiveSurface:         return "EmissiveSurfaceRow";
+        case mtl::SSBOType::TextureRectArraySurface: return "TextureRectArraySurfaceRow";
+        case mtl::SSBOType::PBRSurface:              return "PBRSurfaceRow";
+        case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceRow";
+        default:                                     return nullptr;
+        }
+    }
+
     // GLSL buffer 声明名（struct 名去 "Data" 后缀 + "Buffer"——显式表，
     // 不做字符串剥除：改 struct 名时 buffer 名独立可控）
     inline const char *GetMaterialSSBOBufferName(const mtl::SSBOType type) noexcept
