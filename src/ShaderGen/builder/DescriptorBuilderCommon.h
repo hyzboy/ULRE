@@ -434,23 +434,6 @@ inline bool AppendManifestTextureLayerDescriptors(
 // the vertex assembler. Scan the merged descriptor list for any
 // MaterialPrivateData entry (from either source) and make sure the matching
 // MaterialPrivateDataIndex entry exists.
-inline void EnsureMaterialPrivateDataIndexTable(
-    std::vector<SerializedDescriptorEntry> &v,
-    const uint32_t stage_flags)
-{
-    bool has_material_private_data_slot = false;
-    bool has_index_table = false;
-    for (const auto &entry : v)
-    {
-        if (entry.semantic == DescriptorSemantic::MaterialPrivateData)
-            has_material_private_data_slot = true;
-        else if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
-            has_index_table = true;
-    }
-
-    if (has_material_private_data_slot && !has_index_table)
-        PushMaterialPrivateDataIndexRows(v, stage_flags);
-}
 
 inline bool BuildDefinitionShaderCodeResourceManifest(
     const MaterialDefinition &definition,

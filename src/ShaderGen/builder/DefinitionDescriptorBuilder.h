@@ -118,8 +118,6 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
             manifest,
             definition.material_private_data != SSBOType::UserDefined))
         return {};
-    descriptor_builder_common::EnsureMaterialPrivateDataIndexTable(
-        descriptors, uint32_t(hgl::graph::kMeshFragment));
 
     return descriptors;
 }

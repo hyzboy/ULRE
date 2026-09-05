@@ -960,19 +960,6 @@ namespace hgl::ecs
                 continue;
             }
 
-            for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
-            {
-                if (req.semantic == graph::mtl::DescriptorSemantic::MaterialPrivateData
-                 && req.material_private_data_slot == graph::mtl::DefaultMaterialPrivateDataSlot
-                 && req.ssbo_type == asset_binding.ssbo_type
-                 && asset_binding.material_private_data_slot_name == req.name)
-                {
-                    material_comp->data_index_values[0] = asset_binding.data_index;
-                    break;
-                }
-            }
-
-
         }
 
         // The texture-layer row is keyed by the primitive's data_index VALUE.

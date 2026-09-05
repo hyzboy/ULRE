@@ -173,11 +173,6 @@ bool ShaderBuildContext::AddSSBOVertexIndex(const uint32_t flag_bits)
     return AddSSBOStruct(flag_bits,*row.sbs,row.binding);
 }
 
-bool ShaderBuildContext::AddSSBOMaterialPrivateData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int material_private_data_slot)
-{
-    return AddSSBO(flag_bits,DescriptorSetType::Material,struct_name,name,material_private_data_slot);
-}
-
 bool ShaderBuildContext::AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits)
 {
     const DescriptorResourceCatalogEntry &row=CatalogFixedRow<DescriptorSemantic::MaterialPrivateDataIndex>();

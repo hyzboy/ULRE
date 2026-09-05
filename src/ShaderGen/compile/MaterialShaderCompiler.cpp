@@ -141,28 +141,6 @@ static bool HasDescriptorSemantic(
     return false;
 }
 
-static bool AddMaterialPrivateDataSlotDescriptor(ShaderBuildContext &ctx,
-                                          const SSBOType material_private_data,
-                                          const uint32_t material_private_data_slot,
-                                          const uint32_t stage_bits)
-{
-    // 材质数据经 buffer_reference 寻址（发射器注入行声明），
-    // 不进入描述符分配器——恒通过。
-    return true;
-
-    const char *struct_name = nullptr;
-    const char *glsl_codes = nullptr;
-    uint32_t struct_bytes = 0;
-
-    if (!ssbo::TryGetMaterialSSBOLayout(material_private_data, struct_name, glsl_codes, struct_bytes))
-        return false;
-
-    if (!ctx.AddStruct(struct_name, glsl_codes))
-        return false;
-
-    return ctx.AddSSBOMaterialPrivateData(stage_bits, struct_name, DefaultMaterialPrivateDataSlotName, int(material_private_data_slot));
-}
-
 // ── 能力子集授权规则表（原 10 分支 switch 表驱动化）────────────────────────
 // 有条件内置资源的 definition 侧授权谓词，与资源目录（DescriptorResourceCatalog）
 // 平行：目录行 engine_builtin=false 且有 definition 侧规则的语义在此登记，
@@ -603,22 +581,6 @@ static bool RegisterCharQuadSSBOs(
     return true;
 }
 
-// ── Step 3d: 材质数据槽描述符（单槽：固定 slot 0 / DefaultMaterialPrivateDataSlotName）──
-static bool RegisterMaterialPrivateDataSlotDescriptors(
-    ShaderBuildContext *ctx,
-    const SSBOType material_private_data,
-    const uint32_t material_ssbo_stage_bits,
-    CompileContext &c)
-{
-    if (material_private_data == SSBOType::UserDefined)
-        return true;
-
-    if (!AddMaterialPrivateDataSlotDescriptor(*ctx, material_private_data, DefaultMaterialPrivateDataSlot, material_ssbo_stage_bits))
-        return c.Fail("failed to add declared material ssbo slot descriptor");
-
-    return true;
-}
-
 // ── Step 5a: set/binding 宏 ──────────────────────────────────────────────────
 // 固定 ABI 的 set/binding 宏（L2W/MESH_DRAW_PARAMS/VIEWPORT/CAMERA/SKY/COLOR_PALETTE
 // 及顶点系列）不再由编译器注入：descriptor_macros.glsl 为生成物
@@ -789,11 +751,6 @@ ShaderBuildContext *CompileMaterial(
         if (!RegisterCharQuadSSBOs(ctx, shader_stage_bits, c))
             return FailCompile(c);
     }
-
-    if (!RegisterMaterialPrivateDataSlotDescriptors(
-            ctx, effective_material_private_data, material_ssbo_stage_bits, c))
-        return FailCompile(c);
-
 
     // ── Step 5: Complete both stages through ShaderDocument ───────
     const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();

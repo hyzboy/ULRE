@@ -159,7 +159,6 @@ namespace hgl::graph::mtl
             // 运行时不再有名字表/动态分配兜底。
             bool AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding);      ///< 顶点数据（Position/UV/NTB）
             bool AddSSBOVertexIndex(const uint32_t flag_bits);                              ///< 顶点索引（binding=VertexBinding::Index）
-            bool AddSSBOMaterialPrivateData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int material_private_data_slot);   ///< 材质数据槽
             bool AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits);                                 ///< 材质数据行表（binding=PerObjectBinding::PrivateDataIndex）
             bool AddSSBOTextureLayer(const uint32_t flag_bits,const int binding);           ///< 纹理层表
 
