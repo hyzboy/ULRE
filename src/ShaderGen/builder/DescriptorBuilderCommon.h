@@ -5,7 +5,6 @@
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/graph/ssbo/MaterialArenaPath.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>

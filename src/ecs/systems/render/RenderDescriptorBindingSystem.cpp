@@ -1,6 +1,5 @@
 ﻿#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
-#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include<cstdlib>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>

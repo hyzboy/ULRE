@@ -1,7 +1,6 @@
 ﻿#include <hgl/mtl/DescriptorContract.h>
 
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/graph/ssbo/MaterialArenaPath.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/util/hash/FNV1a.h>

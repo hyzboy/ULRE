@@ -12,7 +12,6 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/module/MaterialDataArena.h>
-#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>

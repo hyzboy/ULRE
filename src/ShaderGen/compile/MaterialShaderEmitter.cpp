@@ -12,7 +12,6 @@
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/graph/ShaderBufferSources.h>
-#include <hgl/graph/ssbo/MaterialArenaPath.h>
 #include <cstdio>
 #include <cstring>
 

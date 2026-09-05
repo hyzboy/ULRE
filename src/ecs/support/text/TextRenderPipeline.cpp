@@ -1,5 +1,4 @@
 ﻿#include<hgl/ecs/support/TextRenderPipeline.h>
-#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include<hgl/graph/module/MaterialDataArena.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/ecs/core/Context.h>

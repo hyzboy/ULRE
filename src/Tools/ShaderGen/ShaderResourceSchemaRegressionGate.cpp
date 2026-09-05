@@ -865,12 +865,8 @@ namespace
         for (const auto &t : recipe.textures)
             if (!t.use_direct_value)
                 ++arena_asset_texture_count;
-        const uint32_t expected_free_textures = IsMaterialArenaBDAEnabled()
-            ? arena_asset_texture_count
-            : 0u;
-        const uint32_t expected_free_unused_textures = IsMaterialArenaBDAEnabled()
-            ? 0u
-            : uint32_t(recipe.textures.size());
+        const uint32_t expected_free_textures = arena_asset_texture_count;
+        const uint32_t expected_free_unused_textures = 0u;
         if (!BuildBindingTable(
                 recipe,
                 depth_layout,
@@ -4323,7 +4319,6 @@ namespace
 
             // Arena+BDA：有数据槽的材质句柄走行尾——期望一个地址行表条目
             //（mtl_data_addrs）承载数据槽身份；纹理行表仅无数据槽材质保留。
-            const bool arena_contract = IsMaterialArenaBDAEnabled();
             bool has_required_texture_layer = false;
             bool has_single_material_ssbo = false;
             for (const auto &req : schema.resources)
@@ -4338,8 +4333,7 @@ namespace
                  && req.name == SBS_MaterialDataAddresses.name)
                     has_single_material_ssbo = true;
             }
-            if (!has_single_material_ssbo
-             || (!arena_contract && !has_required_texture_layer))
+            if (!has_single_material_ssbo)
                 result.diagnostics.emplace_back(
                     "Merged resource policy or SSBO identity was not preserved.");
         }

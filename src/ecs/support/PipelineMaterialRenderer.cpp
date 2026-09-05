@@ -9,7 +9,6 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/ShaderBufferSources.h>
-#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
