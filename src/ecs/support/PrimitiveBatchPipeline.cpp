@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 #include<source_location>
+#include<cstdlib>
 #include<cstdio>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/BoundingBoxComponent.h>
@@ -744,6 +745,8 @@ namespace hgl::ecs
                     mi_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint64_t)));
                 if (row_ptr)
                 {
+                    std::vector<uint64_t> row_copy(item_count, 0);
+
                     for (size_t i = 0; i < item_count; ++i)
                     {
                         row_ptr[i] = arena ? arena->GetDeviceAddress() : 0u;
@@ -758,8 +761,16 @@ namespace hgl::ecs
                         {
                             row_ptr[i] = arena->AddressOf(material_comp->data_index_values[0]);
                         }
+
+                        row_copy[i] = row_ptr[i];
                     }
                     mi_gpu->Unmap();
+
+                    if (getenv("ULRE_DUMP_GLSL"))
+                    GLogInfo("[ArenaDebug] rows written: n=%u row0=0x%llx base=0x%llx",
+                             item_count,
+                             (unsigned long long)(item_count ? row_copy[0] : 0),
+                             (unsigned long long)(arena ? arena->GetDeviceAddress() : 0));
                 }
                 return;
             }

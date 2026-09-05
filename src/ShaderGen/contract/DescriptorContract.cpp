@@ -58,17 +58,39 @@ namespace hgl::graph::mtl
             DescriptorContract &out_contract)
         {
             // Arena+BDA 路径（ULRE_MATERIAL_ARENA）：在契约唯一汇合点统一改写——
-            //   数据槽/纹理行表 → 无描述符（静默丢弃）；
-            //   索引行表 → 8B 设备地址表（mtl_data_addrs）。
-            // 无论上游哪条 push 路径（definition/manifest/目录行），契约层结果一致。
+            //   数据槽/纹理行表/索引行表 → 全部归一为 8B 设备地址表
+            //   （mtl_data_addrs，PerObject 集，语义仍为 MaterialPrivateDataIndex）。
+            //   数据与纹理句柄经设备地址行表寻址，不再有 Material 集描述符。
+            //   同名条目去重：上游多条路径（definition/manifest/recipe）可能各推一条。
             if (IsMaterialArenaBDAEnabled())
             {
-                // 临时禁用 drop（疑似 nullptr 解引用崩溃源）——仅重命名
-
-                if (source.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
+                if (source.semantic == DescriptorSemantic::MaterialPrivateData
+                 || source.semantic == DescriptorSemantic::MaterialTextureLayerTable
+                 || source.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
                 {
-                    source.name = SBS_MaterialDataAddresses.name;
-                    source.struct_name = SBS_MaterialDataAddresses.struct_name;
+                    bool address_table_exists = false;
+                    for (const auto &existing : out_contract)
+                    {
+                        if (existing.semantic == DescriptorSemantic::MaterialPrivateDataIndex
+                         && existing.name == SBS_MaterialDataAddresses.name)
+                        {
+                            address_table_exists = true;
+                            break;
+                        }
+                    }
+
+                    if (!address_table_exists)
+                    {
+                        source.semantic            = DescriptorSemantic::MaterialPrivateDataIndex;
+                        source.name                = SBS_MaterialDataAddresses.name;
+                        source.struct_name         = SBS_MaterialDataAddresses.struct_name;
+                        source.set_type            = SBS_MaterialDataAddresses.set_type;
+                        source.ssbo_type           = SSBOType::MaterialPrivateDataIndex;
+                        source.ssbo_id             = 0;
+                        source.material_private_data_slot = DefaultMaterialPrivateDataSlot;
+                    }
+                    else
+                        return true;        // 地址表条目已在契约中，吸收本次需求
                 }
             }
             // C1-T2：就地完整规范化——ID/ssbo_type 语义推导/layer 默认/policy 默认

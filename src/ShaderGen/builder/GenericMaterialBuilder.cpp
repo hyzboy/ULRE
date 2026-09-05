@@ -7,6 +7,7 @@
 /// resource contracts depend on the exact hash input sequence.
 
 #include <hgl/mtl/contract/ShaderGenContract.h>
+#include<atomic>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
@@ -607,6 +608,25 @@ namespace hgl::graph::mtl
             mesh_interface_hasher << HashFinalShaderSource(
                 plan.ms.data(), plan.ms.size())
                                   << vertex_input_hash;
+#ifdef _DEBUG
+            if (getenv("ULRE_DUMP_GLSL"))
+            {
+                static std::atomic<uint32_t> dump_seq{0};
+                const uint32_t seq = dump_seq.fetch_add(1);
+                const std::string ms_name = "ulre_dump_" + std::to_string(seq) + "_mesh.glsl";
+                const std::string fs_name = "ulre_dump_" + std::to_string(seq) + "_fs.glsl";
+                if (FILE *fp = fopen(ms_name.c_str(), "wb"))
+                {
+                    fwrite(plan.ms.data(), 1, plan.ms.size(), fp);
+                    fclose(fp);
+                }
+                if (FILE *fp = fopen(fs_name.c_str(), "wb"))
+                {
+                    fwrite(plan.fs.data(), 1, plan.fs.size(), fp);
+                    fclose(fp);
+                }
+            }
+#endif
             const uint64 mesh_interface_hash = mesh_interface_hasher;
             const uint64 fragment_interface_hash =
                 HashFinalShaderSource(plan.fs.data(), plan.fs.size());

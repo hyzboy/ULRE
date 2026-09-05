@@ -17,6 +17,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
 {
 #ifdef ULRE_MATERIAL_ARENA_BDA
     const vec4 color = MTL_ROW(sourceInput.dataIndex)->color;
+    // const vec4 color = MTL_ROW(sourceInput.dataIndex)->color;
 #else
     const vec4 color = MTL_DATA.data[sourceInput.dataIndex].color;
 #endif
