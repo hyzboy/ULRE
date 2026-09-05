@@ -10,6 +10,7 @@
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/CameraInfo.h>
 
 #include<hgl/graph/render/RenderContext.h>
