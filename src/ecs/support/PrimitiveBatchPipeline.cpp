@@ -10,7 +10,7 @@
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/CameraInfo.h>
 
 #include<hgl/graph/render/RenderContext.h>
@@ -700,7 +700,7 @@ namespace hgl::ecs
                     {
                         uint64_t safe_addr = 0;
                         if (auto *fill_gc = world ? world->GetGraphicsContext() : nullptr)
-                            if (auto *fill_rdm = fill_gc->GetResourceDomainManager())
+                            if (auto *fill_rdm = fill_gc->GetSSBOBufferRegistry())
                                 safe_addr = fill_rdm->GetNullRowAddress();
 
                         if (safe_addr)
@@ -761,7 +761,7 @@ namespace hgl::ecs
             {
                 uint64_t null_row_address = 0;
                 if (auto *wr_gc = world ? world->GetGraphicsContext() : nullptr)
-                    if (auto *wr_rdm = wr_gc->GetResourceDomainManager())
+                    if (auto *wr_rdm = wr_gc->GetSSBOBufferRegistry())
                         null_row_address = wr_rdm->GetNullRowAddress();
 
                 uint64_t *row_ptr = static_cast<uint64_t *>(

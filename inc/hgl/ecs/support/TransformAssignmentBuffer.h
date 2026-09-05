@@ -18,7 +18,7 @@ namespace hgl::graph
 {
     class BufferManager;
     class DeviceBuffer;
-    class ResourceDomainManager;
+    class SSBOBufferRegistry;
 }
 
 namespace hgl::ecs
@@ -41,7 +41,7 @@ namespace hgl::ecs
     private:
         uint32_t MaxTransformCount;             ///<单个SSBO最大支持的变换数量
         graph::BufferManager* buffer_manager;   ///<BufferManager用于创建缓冲区
-        graph::ResourceDomainManager* resource_domain_manager; ///<全局SSBO域管理器（可空）
+        graph::SSBOBufferRegistry* resource_domain_manager; ///<全局SSBO域管理器（可空）
 
     private:    // LocalToWorld矩阵数据
         uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
@@ -64,7 +64,7 @@ namespace hgl::ecs
 
     public:
         TransformAssignmentBuffer(graph::BufferManager* bm,
-                                  graph::ResourceDomainManager* rdm = nullptr,
+                                  graph::SSBOBufferRegistry* rdm = nullptr,
                                   uint32_t ring_frames = HGL_L2W_RING_FRAMES);
         ~TransformAssignmentBuffer() { Clear(); }
 

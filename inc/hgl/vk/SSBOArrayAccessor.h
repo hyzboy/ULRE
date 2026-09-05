@@ -13,14 +13,14 @@ namespace hgl::graph{
  * 2. 自动 dirty 追踪
  * 3. 统一的 Commit 接口（兼容所有缓冲区类型）
  * 4. 自动 Map/Unmap 生命周期管理
- * 5. 内置 SSBO ID 存储（由 ResourceDomainManager 分配）
+ * 5. 内置 SSBO ID 存储（由 SSBOBufferRegistry 分配）
  *
  * EN: Maps any C++ struct array directly to a GPU SSBO buffer, providing:
  * 1. Type-safe operator[] element access (like a normal C++ array)
  * 2. Automatic dirty tracking
  * 3. Unified Commit interface (compatible with all buffer types)
  * 4. Automatic Map/Unmap lifecycle management
- * 5. Built-in SSBO ID storage (assigned by ResourceDomainManager)
+ * 5. Built-in SSBO ID storage (assigned by SSBOBufferRegistry)
  *
  * 典型用途 / Typical usage:
  *   材质实例颜色数组 SSBO、PBRSurface 实例数据 SSBO 等
@@ -48,15 +48,15 @@ class SSBOArrayAccessor : public BufferAccessBase
 private:
     T*            mapped_data   = nullptr;                     ///< 持久映射的数组基址 / Persistently mapped array base
     uint32_t      element_count = 0;                           ///< 数组元素数量 / Element count
-    uint32_t      ssbo_id       = 0;                           ///< 分配到的 SSBO ID（由 ResourceDomainManager 写入）
-    mtl::SSBOType ssbo_type     = mtl::SSBOType::UserDefined;  ///< SSBO 类型（由 ResourceDomainManager 写入）
+    uint32_t      ssbo_id       = 0;                           ///< 分配到的 SSBO ID（由 SSBOBufferRegistry 写入）
+    mtl::SSBOType ssbo_type     = mtl::SSBOType::UserDefined;  ///< SSBO 类型（由 SSBOBufferRegistry 写入）
     bool          dirty         = false;                       ///< CPU 侧是否有未提交的修改
     uint32_t      stride_bytes  = 0;                           ///< 行距字节数（0=sizeof(T) 紧密排布；Arena 路径=sizeof(T) 且 16B 对齐）
     bool          host_direct   = false;                       ///< true=HOST_COHERENT 直写（Commit 为 no-op）
     bool          owned_buffer  = false;                       ///< true=析构时释放 buffer（独立行缓冲持有）
 
     friend class VulkanDevice;
-    friend class ResourceDomainManager;
+    friend class SSBOBufferRegistry;
 
 private:
 
@@ -198,8 +198,8 @@ public:
     operator bool() const { return IsValid(); }
 
     /**
-     * CN: 返回此访问器对应的 SSBO ID（由 ResourceDomainManager 分配时写入）
-     * EN: Return the SSBO ID assigned by ResourceDomainManager.
+     * CN: 返回此访问器对应的 SSBO ID（由 SSBOBufferRegistry 分配时写入）
+     * EN: Return the SSBO ID assigned by SSBOBufferRegistry.
      */
     uint32_t GetSSBOId() const { return ssbo_id; }
 

@@ -386,7 +386,7 @@ namespace hgl::ecs
             ring_frames = render_target->GetFrameCount();
 
         transform_buffer = new TransformAssignmentBuffer(buffer_manager,
-                                                         graphics_context->GetResourceDomainManager(),
+                                                         graphics_context->GetSSBOBufferRegistry(),
                                                          ring_frames);
         static_dirty = true;
     }

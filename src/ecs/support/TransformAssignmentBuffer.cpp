@@ -10,7 +10,7 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
@@ -151,7 +151,7 @@ namespace hgl::ecs
     }
 
     TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm,
-                                                         graph::ResourceDomainManager* rdm,
+                                                         graph::SSBOBufferRegistry* rdm,
                                                          uint32_t ring_frames)
         : buffer_manager(bm)
         , resource_domain_manager(rdm)

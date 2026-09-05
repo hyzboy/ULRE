@@ -26,7 +26,7 @@
 #include<hgl/vk/VKGlobalSceneUBOSet.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
@@ -57,7 +57,7 @@ namespace hgl::ecs
             return nullptr;
         }
 
-        graph::ResourceDomainManager *GetResourceDomainManager(hgl::ecs::ECSContext *ctx)
+        graph::SSBOBufferRegistry *GetSSBOBufferRegistry(hgl::ecs::ECSContext *ctx)
         {
             if (!ctx)
                 return nullptr;
@@ -65,11 +65,11 @@ namespace hgl::ecs
             if (auto *rc = ctx->GetRenderContext())
             {
                 if (auto *gc = rc->GetGraphicsContext())
-                    return gc->GetResourceDomainManager();
+                    return gc->GetSSBOBufferRegistry();
             }
 
             if (auto *gc = ctx->GetGraphicsContext())
-                return gc->GetResourceDomainManager();
+                return gc->GetSSBOBufferRegistry();
 
             return nullptr;
         }
@@ -227,7 +227,7 @@ namespace hgl::ecs
             return false;
         }
 
-        if (auto *domain_manager = GetResourceDomainManager(context))
+        if (auto *domain_manager = GetSSBOBufferRegistry(context))
             domain_manager->Touch(graph::mtl::SSBOAddress{ssbo_type, ssbo_id, 0});
 
         return true;
@@ -343,7 +343,7 @@ namespace hgl::ecs
         const auto *viewport_ubo = ResolveViewportUBO();
         const auto *camera_ubo = ResolveCameraUBO();
         const auto *sky_ubo = ResolveSkyUBO();
-        auto *domain_manager = GetResourceDomainManager(context);
+        auto *domain_manager = GetSSBOBufferRegistry(context);
 
         // P1: 全局 Scene UBO 描述符集 —— 一帧写一次（camera=0/sky=1/viewport=2/palette=3）。
         // camera/viewport 为所有材质必需；sky 与 color_palette 为可选（布局已带
@@ -373,7 +373,7 @@ namespace hgl::ecs
             if (!domain_manager)
                 return nullptr;
 
-            graph::ResourceDomainBinding binding{};
+            graph::SSBOBufferBinding binding{};
             if (!domain_manager->TryGetBinding(address, binding) || !binding.buffer)
                 return nullptr;
 
@@ -487,7 +487,7 @@ namespace hgl::ecs
 
             if (req.required)
             {
-                GLogError("[DescriptorBinding] Missing SSBO binding: material=%s semantic=%s descriptor=%s type=%s ssbo_id=%u slot=%d reason=%s. Resource producer must register it via RegisterMaterialStructLayout(...) and ResourceDomainManager::RegisterBuffer(...).",
+                GLogError("[DescriptorBinding] Missing SSBO binding: material=%s semantic=%s descriptor=%s type=%s ssbo_id=%u slot=%d reason=%s. Resource producer must register it via RegisterMaterialStructLayout(...) and SSBOBufferRegistry::RegisterBuffer(...).",
                           material->GetName().c_str(),
                           graph::mtl::GetDescriptorSemanticName(req.semantic),
                           req.name.c_str(),
@@ -498,7 +498,7 @@ namespace hgl::ecs
             }
             else
             {
-                GLogWarning("[DescriptorBinding] Missing SSBO binding: material=%s semantic=%s descriptor=%s type=%s ssbo_id=%u slot=%d reason=%s. Resource producer must register it via RegisterMaterialStructLayout(...) and ResourceDomainManager::RegisterBuffer(...).",
+                GLogWarning("[DescriptorBinding] Missing SSBO binding: material=%s semantic=%s descriptor=%s type=%s ssbo_id=%u slot=%d reason=%s. Resource producer must register it via RegisterMaterialStructLayout(...) and SSBOBufferRegistry::RegisterBuffer(...).",
                             material->GetName().c_str(),
                             graph::mtl::GetDescriptorSemanticName(req.semantic),
                             req.name.c_str(),

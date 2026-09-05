@@ -22,7 +22,7 @@
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/graph/tile/TileData.h>
@@ -517,7 +517,7 @@ namespace hgl::ecs
         {
             // text 不使用材质数据行——填 Null 行地址（64B 零填充，安全缺省）
             uint64_t safe_addr = 0;
-            if (auto *rdm = graphics_context->GetResourceDomainManager())
+            if (auto *rdm = graphics_context->GetSSBOBufferRegistry())
                 safe_addr = rdm->GetNullRowAddress();
             guard.data_index_row_buffer->GetGPUBuffer()->Write(&safe_addr, 0, sizeof(safe_addr));
         }

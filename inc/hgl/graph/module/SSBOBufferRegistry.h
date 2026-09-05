@@ -13,7 +13,7 @@ namespace hgl::graph
 class DeviceBuffer;
 class IGPUBuffer;
 
-struct ResourceDomainBinding
+struct SSBOBufferBinding
 {
     mtl::SSBOType ssbo_type = mtl::SSBOType::UserDefined;
     uint32_t ssbo_id = 0;
@@ -22,11 +22,11 @@ struct ResourceDomainBinding
     uint32_t element_stride = 0;
 };
 
-GRAPH_MODULE_CLASS(ResourceDomainManager)
+GRAPH_MODULE_CLASS(SSBOBufferRegistry)
 {
 private:
 
-    std::unordered_map<uint64_t, ResourceDomainBinding> domain_map;
+    std::unordered_map<uint64_t, SSBOBufferBinding> domain_map;
 
     /**
      * Arena+BDA: session segment registry. ssbo_id -> {block base, slot blocks}.
@@ -53,16 +53,16 @@ private:
 
 private:
 
-    ResourceDomainManager(GraphicsContext *);
-    ~ResourceDomainManager() = default;
+    SSBOBufferRegistry(GraphicsContext *);
+    ~SSBOBufferRegistry() = default;
 
     friend class GraphModuleManager;
 
 private:
 
     static uint64_t MakeKey(const mtl::SSBOAddress &address) noexcept;
-    ResourceDomainBinding *FindMutable(const mtl::SSBOAddress &address);
-    const ResourceDomainBinding *Find(const mtl::SSBOAddress &address) const;
+    SSBOBufferBinding *FindMutable(const mtl::SSBOAddress &address);
+    const SSBOBufferBinding *Find(const mtl::SSBOAddress &address) const;
 
 public:
 
@@ -81,7 +81,7 @@ public:
     bool ClearDomain(const mtl::SSBOAddress &address);
 
     bool HasBinding(const mtl::SSBOAddress &address) const;
-    bool TryGetBinding(const mtl::SSBOAddress &address, ResourceDomainBinding &out_binding) const;
+    bool TryGetBinding(const mtl::SSBOAddress &address, SSBOBufferBinding &out_binding) const;
 
     DeviceBuffer *GetBuffer(const mtl::SSBOAddress &address) const;
 

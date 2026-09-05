@@ -11,7 +11,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
 #include"GizmoResource.h"
@@ -90,7 +90,7 @@ namespace hgl::graph
                 return false;
 
             auto *buffer_manager = graphics_context->GetBufferManager();
-            auto *domain_manager = graphics_context->GetResourceDomainManager();
+            auto *domain_manager = graphics_context->GetSSBOBufferRegistry();
             if (!buffer_manager || !domain_manager)
                 return false;
 

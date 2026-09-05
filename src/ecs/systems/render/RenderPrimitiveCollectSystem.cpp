@@ -14,7 +14,7 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 
 #include<hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include<hgl/graph/render/RenderContext.h>
@@ -256,7 +256,7 @@ namespace hgl::ecs
                 ? render_context->GetGraphicsContext()
                 : world->GetGraphicsContext();
             auto *domain_manager = graphics_context
-                ? graphics_context->GetResourceDomainManager() : nullptr;
+                ? graphics_context->GetSSBOBufferRegistry() : nullptr;
             auto *bindless_mgr = graphics_context
                 ? graphics_context->
                     GetManager<graph::BindlessTextureManager>()
@@ -401,7 +401,7 @@ namespace hgl::ecs
                     binding.ssbo_type,
                     recipe_binding->ssbo_id,
                     0};
-                graph::ResourceDomainBinding domain_binding{};
+                graph::SSBOBufferBinding domain_binding{};
                 if (!domain_manager->TryGetBinding(
                         address, domain_binding)
                  || !domain_binding.buffer
@@ -929,9 +929,9 @@ namespace hgl::ecs
                 {
                     auto *translate_gc = world->GetGraphicsContext();
                     auto *translate_domain = translate_gc
-                        ? translate_gc->GetResourceDomainManager() : nullptr;
+                        ? translate_gc->GetSSBOBufferRegistry() : nullptr;
 
-                    graph::ResourceDomainManager::RowSegmentInfo seg;
+                    graph::SSBOBufferRegistry::RowSegmentInfo seg;
                     if (translate_domain
                      && translate_domain->TryGetRowSegment(asset_binding.ssbo_id, seg))
                     {
@@ -1040,7 +1040,7 @@ namespace hgl::ecs
             ? render_context->GetGraphicsContext()
             : world->GetGraphicsContext();
         auto *domain_manager = graphics_context
-            ? graphics_context->GetResourceDomainManager() : nullptr;
+            ? graphics_context->GetSSBOBufferRegistry() : nullptr;
 
         if (getenv("ULRE_ARENA_DEBUG"))
             GLogInfo("[ArenaTrace] texture-row write: scope=0x%x row=%u handles[0..2]=%u,%u,%u",

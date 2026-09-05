@@ -9,7 +9,7 @@
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
-#include <hgl/graph/module/ResourceDomainManager.h>
+#include <hgl/graph/module/SSBOBufferRegistry.h>
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
@@ -64,7 +64,7 @@ namespace hgl::graph
         if (!buffer_manager)
             return false;
 
-        resource_domain_manager = module_manager->GetOrCreate<ResourceDomainManager>();
+        resource_domain_manager = module_manager->GetOrCreate<SSBOBufferRegistry>();
         if (!resource_domain_manager)
             return false;
 

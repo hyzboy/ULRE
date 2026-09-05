@@ -1,4 +1,4 @@
-﻿#include <hgl/graph/module/ResourceDomainManager.h>
+﻿#include <hgl/graph/module/SSBOBufferRegistry.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/vk/VKBuffer.h>
@@ -22,7 +22,7 @@ namespace
             return true;
 
         GLogError("[R11] %s rejected SSBO domain binding: type=%s ssbo_id=%u version=%u expected_stride=%u actual_stride=%u",
-                  source_tag ? source_tag : "ResourceDomainManager",
+                  source_tag ? source_tag : "SSBOBufferRegistry",
                   mtl::GetSSBOTypeName(address.ssbo_type),
                   address.ssbo_id,
                   expected_version,
@@ -32,33 +32,33 @@ namespace
     }
 }
 
-GRAPH_MODULE_CONSTRUCT(ResourceDomainManager)
+GRAPH_MODULE_CONSTRUCT(SSBOBufferRegistry)
 {
 }
 
-uint32_t ResourceDomainManager::AllocateSSBOId()
+uint32_t SSBOBufferRegistry::AllocateSSBOId()
 {
     return mtl::MakeRecipeSSBOId(next_ssbo_id++);
 }
 
-uint64_t ResourceDomainManager::MakeKey(const mtl::SSBOAddress &address) noexcept
+uint64_t SSBOBufferRegistry::MakeKey(const mtl::SSBOAddress &address) noexcept
 {
     return (static_cast<uint64_t>(address.ssbo_type) << 32) | static_cast<uint64_t>(address.ssbo_id);
 }
 
-ResourceDomainBinding *ResourceDomainManager::FindMutable(const mtl::SSBOAddress &address)
+SSBOBufferBinding *SSBOBufferRegistry::FindMutable(const mtl::SSBOAddress &address)
 {
     auto it = domain_map.find(MakeKey(address));
     return it == domain_map.end() ? nullptr : &it->second;
 }
 
-const ResourceDomainBinding *ResourceDomainManager::Find(const mtl::SSBOAddress &address) const
+const SSBOBufferBinding *SSBOBufferRegistry::Find(const mtl::SSBOAddress &address) const
 {
     auto it = domain_map.find(MakeKey(address));
     return it == domain_map.end() ? nullptr : &it->second;
 }
 
-uint64_t ResourceDomainManager::GetNullRowAddress()
+uint64_t SSBOBufferRegistry::GetNullRowAddress()
 {
     if (null_row_address)
         return null_row_address;
@@ -78,7 +78,7 @@ uint64_t ResourceDomainManager::GetNullRowAddress()
     return null_row_address;
 }
 
-void ResourceDomainManager::Release()
+void SSBOBufferRegistry::Release()
 {
     if (null_row_buffer)
     {
@@ -108,21 +108,21 @@ void ResourceDomainManager::Release()
     domain_map.clear();
 }
 
-bool ResourceDomainManager::Touch(const mtl::SSBOAddress &address)
+bool SSBOBufferRegistry::Touch(const mtl::SSBOAddress &address)
 {
     const uint64_t key = MakeKey(address);
     auto it = domain_map.find(key);
     if (it != domain_map.end())
         return true;
 
-    ResourceDomainBinding binding{};
+    SSBOBufferBinding binding{};
     binding.ssbo_type = address.ssbo_type;
     binding.ssbo_id = address.ssbo_id;
     domain_map.emplace(key, binding);
     return true;
 }
 
-bool ResourceDomainManager::RegisterBuffer(const mtl::SSBOAddress &address,
+bool SSBOBufferRegistry::RegisterBuffer(const mtl::SSBOAddress &address,
                                            DeviceBuffer *buffer,
                                            const uint32_t element_capacity)
 {
@@ -169,7 +169,7 @@ bool ResourceDomainManager::RegisterBuffer(const mtl::SSBOAddress &address,
     return true;
 }
 
-DeviceBuffer *ResourceDomainManager::EnsureBuffer(const mtl::SSBOAddress &address,
+DeviceBuffer *SSBOBufferRegistry::EnsureBuffer(const mtl::SSBOAddress &address,
                                                   const AnsiString &name,
                                                   const VkDeviceSize byte_size,
                                                   const uint32_t required_capacity,
@@ -250,7 +250,7 @@ DeviceBuffer *ResourceDomainManager::EnsureBuffer(const mtl::SSBOAddress &addres
     return binding.buffer;
 }
 
-bool ResourceDomainManager::ClearDomain(const mtl::SSBOAddress &address)
+bool SSBOBufferRegistry::ClearDomain(const mtl::SSBOAddress &address)
 {
     auto it = domain_map.find(MakeKey(address));
     if (it == domain_map.end())
@@ -273,12 +273,12 @@ bool ResourceDomainManager::ClearDomain(const mtl::SSBOAddress &address)
     return true;
 }
 
-bool ResourceDomainManager::HasBinding(const mtl::SSBOAddress &address) const
+bool SSBOBufferRegistry::HasBinding(const mtl::SSBOAddress &address) const
 {
     return Find(address) != nullptr;
 }
 
-bool ResourceDomainManager::TryGetBinding(const mtl::SSBOAddress &address, ResourceDomainBinding &out_binding) const
+bool SSBOBufferRegistry::TryGetBinding(const mtl::SSBOAddress &address, SSBOBufferBinding &out_binding) const
 {
     const auto *binding = Find(address);
     if (!binding)
@@ -288,19 +288,19 @@ bool ResourceDomainManager::TryGetBinding(const mtl::SSBOAddress &address, Resou
     return true;
 }
 
-DeviceBuffer *ResourceDomainManager::GetBuffer(const mtl::SSBOAddress &address) const
+DeviceBuffer *SSBOBufferRegistry::GetBuffer(const mtl::SSBOAddress &address) const
 {
     const auto *binding = Find(address);
     return binding ? binding->buffer : nullptr;
 }
 
-const IGPUBuffer *ResourceDomainManager::GetGPUBuffer(const mtl::SSBOAddress &address) const
+const IGPUBuffer *SSBOBufferRegistry::GetGPUBuffer(const mtl::SSBOAddress &address) const
 {
     const auto *buffer = GetBuffer(address);
     return buffer ? buffer->GetGPUBuffer() : nullptr;
 }
 
-uint32_t ResourceDomainManager::GetElementCapacity(const mtl::SSBOAddress &address) const
+uint32_t SSBOBufferRegistry::GetElementCapacity(const mtl::SSBOAddress &address) const
 {
     const auto *binding = Find(address);
     return binding ? binding->element_capacity : 0;

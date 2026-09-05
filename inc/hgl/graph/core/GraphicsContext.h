@@ -36,7 +36,7 @@ namespace hgl::graph
     class BufferManager;
     class SamplerManager;
     class GeometryManager;
-    class ResourceDomainManager;
+    class SSBOBufferRegistry;
     class EnvironmentManager;
     class BindlessTextureManager;
     class GlobalSceneUBOSet;
@@ -70,7 +70,7 @@ namespace hgl::graph
         BufferManager *buffer_manager = nullptr;
         SamplerManager *sampler_manager = nullptr;
         GeometryManager *geometry_manager = nullptr;
-        ResourceDomainManager *resource_domain_manager = nullptr;
+        SSBOBufferRegistry *resource_domain_manager = nullptr;
         EnvironmentManager *env_manager = nullptr;
         BindlessTextureManager *bindless_texture_manager_ = nullptr;
         GlobalSceneUBOSet *global_scene_ubo_set_ = nullptr;
@@ -121,7 +121,7 @@ namespace hgl::graph
         BufferManager *GetBufferManager() { return buffer_manager; }
         SamplerManager *GetSamplerManager() { return sampler_manager; }
         GeometryManager *GetGeometryManager() { return geometry_manager; }
-        ResourceDomainManager *GetResourceDomainManager() { return resource_domain_manager; }
+        SSBOBufferRegistry *GetSSBOBufferRegistry() { return resource_domain_manager; }
         EnvironmentManager *GetEnvironmentManager() { return env_manager; }
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
         const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }
@@ -187,9 +187,9 @@ namespace hgl::graph
     }
 
     template<>
-    inline ResourceDomainManager *GraphicsContext::GetManager<ResourceDomainManager>()
+    inline SSBOBufferRegistry *GraphicsContext::GetManager<SSBOBufferRegistry>()
     {
-        return GetResourceDomainManager();
+        return GetSSBOBufferRegistry();
     }
 
     template<>
