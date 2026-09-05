@@ -12,6 +12,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/Color.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -54,7 +55,7 @@ private:
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *geometry = nullptr;
     struct CubeNode
@@ -118,7 +119,7 @@ private:
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::EmissiveSurface, "RecursiveCube:MaterialData", 1);
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(graph::mtl::SSBOType::EmissiveSurface, "RecursiveCube:MaterialData", 1);
         if (!mtl_data_ssbo_accessor)
             return false;
 
@@ -130,7 +131,7 @@ private:
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
 
-        (*mtl_data_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        (*mtl_data_ssbo_accessor)[0].color =GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
         mtl_data_ssbo_accessor->Commit();
 
         return true;

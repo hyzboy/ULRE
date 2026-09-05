@@ -15,6 +15,7 @@
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 
@@ -59,7 +60,7 @@ private:
     Entity *      camera_entity  =nullptr;
 
     Geometry *          geometry        = nullptr;
-    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
 
@@ -111,11 +112,11 @@ private:
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::EmissiveSurface, "SimpleCube:EmissiveSurface:MaterialData", 1);
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(graph::mtl::SSBOType::EmissiveSurface, "SimpleCube:EmissiveSurface:MaterialData", 1);
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mtl_data_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        (*mtl_data_ssbo_accessor)[0].color =GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
         mtl_data_ssbo_accessor->Commit();
         return true;
     }

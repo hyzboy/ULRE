@@ -18,6 +18,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/log/Log.h>
 #include<ctime>
@@ -75,7 +76,7 @@ private:
     Geometry* geometry = nullptr;
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
-    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
     static constexpr uint32_t tick_slot   = 0;
     static constexpr uint32_t hand_slots[3] = {1, 2, 3};
 
@@ -156,14 +157,14 @@ private:
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
             graph::mtl::SSBOType::EmissiveSurface,
             "Clock:EmissiveSurface:MaterialData",
             4);
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mtl_data_ssbo_accessor)[tick_slot] = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
+        (*mtl_data_ssbo_accessor)[tick_slot].color =Color4f(1.0f, 1.0f, 1.0f, 1.0f);
 
         Color4f hand_colors[3] = {
             Color4f(1.0f, 0.0f, 0.0f, 1.0f),
@@ -172,7 +173,7 @@ private:
         };
         for (uint i = 0; i < 3; ++i)
         {
-            (*mtl_data_ssbo_accessor)[hand_slots[i]] = hand_colors[i];
+            (*mtl_data_ssbo_accessor)[hand_slots[i]].color = hand_colors[i];
         }
 
         mtl_data_ssbo_accessor->Commit();

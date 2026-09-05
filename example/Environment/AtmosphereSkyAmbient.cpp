@@ -11,6 +11,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 
@@ -71,7 +72,7 @@ private:
 
     graph::mtl::MaterialRecipe sky_recipe{};
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry* prim_sky_sphere = nullptr;
     PrimitiveAsset sky_asset{};
@@ -125,13 +126,13 @@ private:
         if (!domain_manager)
             return false;
 
-        ssbo::LitMaterialData material_data{};
+        graph::ssbo::PBRSurfaceRow material_data{};
         material_data.base_color   = Color4f(1.0f);
         material_data.metallic     = 0.08f;
         material_data.roughness    = 0.92f;
         material_data.normal_scale = 0.35f;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             graph::mtl::SSBOType::PBRSurface,
             "AtmosphereSkyAmbient:PBRSurface:MaterialData",
             1);

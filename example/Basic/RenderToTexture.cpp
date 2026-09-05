@@ -8,6 +8,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -92,8 +93,8 @@ private:
     Geometry *geometry = nullptr;
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
-    ssbo::LitMaterialData sphere_material_data{};
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::ssbo::PBRSurfaceRow sphere_material_data{};
     Sampler *sphere_sampler = nullptr;
     Texture2D *sphere_base_tex = nullptr;
     Texture2D *sphere_normal_tex = nullptr;
@@ -155,7 +156,7 @@ private:
         if (!domain_manager)
             return LogStageFail("OffscreenPass::InitMISSBO", "resource domain manager is null");
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             graph::mtl::SSBOType::PBRSurface,
             "RenderToTexture:OffscreenPass:MaterialData",
             1);
@@ -371,9 +372,9 @@ private:
 
     PrimitiveAsset cube_asset;
     graph::mtl::MaterialRecipe cube_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* cube_mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* cube_mtl_data_ssbo_accessor = nullptr;
     Sampler *cube_sampler = nullptr;
-    ssbo::LitMaterialData cube_material_data{};
+    graph::ssbo::PBRSurfaceRow cube_material_data{};
 
     Texture2D *base_tex = nullptr;
     Texture2D *fallback_albedo = nullptr;
@@ -533,7 +534,7 @@ private:
         if (!domain_manager)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "resource domain manager is null");
 
-        cube_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        cube_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             graph::mtl::SSBOType::PBRSurface,
             "RenderToTexture:MainScene:MaterialData",
             1);

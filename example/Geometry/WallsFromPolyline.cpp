@@ -10,6 +10,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 
@@ -49,9 +50,9 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    ssbo::LitMaterialData material_data;
+    graph::ssbo::PBRSurfaceRow material_data;
     graph::mtl::MaterialRecipe wall_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
 
@@ -146,7 +147,7 @@ public:
         if (!domain_manager || !buffer_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             graph::mtl::SSBOType::PBRSurface,
             "WallsFromPolyline:MaterialData",
             1);

@@ -24,6 +24,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/log/Log.h>
 #include<memory>
 #include<cstring>
@@ -86,7 +87,7 @@ private:
     Geometry *          geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_recipe{};
     PrimitiveAsset             plane_asset{};
-    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *          geom_line           =nullptr;
     graph::mtl::MaterialRecipe line_recipe{};
@@ -186,7 +187,7 @@ private:
         const uint32_t line_slot = 1;
         const uint32_t mi_count = (std::max)(plane_slot, line_slot) + 1;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
             graph::mtl::SSBOType::EmissiveSurface,
             "RayPicking:SharedMaterialData",
             mi_count);
@@ -200,8 +201,8 @@ private:
                                                  graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
 
-        (*mtl_data_ssbo_accessor)[plane_slot] = white_color;
-        (*mtl_data_ssbo_accessor)[line_slot]  = yellow_color;
+        (*mtl_data_ssbo_accessor)[plane_slot].color =white_color;
+        (*mtl_data_ssbo_accessor)[line_slot].color =yellow_color;
         mtl_data_ssbo_accessor->Commit();
 
         // === 步骤2: 创建平面网格实体 ===

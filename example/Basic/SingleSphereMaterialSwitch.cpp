@@ -22,6 +22,7 @@
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/ColorPacking.h>
 #include<hgl/log/Log.h>
 
@@ -73,7 +74,7 @@ private:
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
 
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -159,7 +160,7 @@ private:
         auto* domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             graph::mtl::SSBOType::PBRSurface, "SingleSphereSwitch:MaterialData", 1);
         if (!mtl_data_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
@@ -256,7 +257,7 @@ private:
         if (!mtl_data_ssbo_accessor)
             return LogFail("InitRenderResources", "SSBO not allocated");
 
-        ssbo::LitMaterialData material_data{};
+        graph::ssbo::PBRSurfaceRow material_data{};
         material_data.base_color = Color4f(0.72f, 0.72f, 0.72f, 1.0f);
         material_data.metallic = 0.15f;
         material_data.roughness = 0.25f;

@@ -8,6 +8,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
 
@@ -88,7 +89,7 @@ private:
 #endif//DRAW_GIZMO
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -200,7 +201,7 @@ private:
 
         // Bindless registration is deferred until ECS systems are ready.
 
-        ssbo::LitMaterialData material_data{};
+        graph::ssbo::PBRSurfaceRow material_data{};
         material_data.base_color = Color4f(1.0f);
         material_data.metallic = 0.08f;
         material_data.roughness = 0.92f;
@@ -214,7 +215,7 @@ private:
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             graph::mtl::SSBOType::PBRSurface,
             "BasicLitSunDir:Standard:MI",
             1);

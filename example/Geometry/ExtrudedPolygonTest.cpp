@@ -9,6 +9,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<cmath>
@@ -48,7 +49,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;
@@ -67,14 +68,14 @@ private:
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
             graph::mtl::SSBOType::EmissiveSurface,
             "ExtrudedPolygonTest:MaterialData",
             1);
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mtl_data_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
+        (*mtl_data_ssbo_accessor)[0].color =GetColor4f(COLOR::BlenderAxisRed, 1.0f);
         mtl_data_ssbo_accessor->Commit();
 
         mesh_recipe.recipe_name = "ExtrudedPolygonTest.DebugNormalColor";

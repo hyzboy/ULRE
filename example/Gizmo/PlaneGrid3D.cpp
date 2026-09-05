@@ -7,6 +7,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/ShaderBufferSources.h>
@@ -36,7 +37,7 @@ private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
-    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *         geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_grid_recipe{};
@@ -136,7 +137,7 @@ private:
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
             graph::mtl::SSBOType::EmissiveSurface,
             "PlaneGrid3D:MaterialData",
             3);
@@ -146,7 +147,7 @@ private:
         Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
         for (uint32_t i = 0; i < 3; ++i)
         {
-            (*mtl_data_ssbo_accessor)[i] = grid_color;
+            (*mtl_data_ssbo_accessor)[i].color =grid_color;
             grid_color = GetColor4f(COLOR(int(COLOR::BlenderAxisRed) + int(i) + 1), 1.0f);
         }
         mtl_data_ssbo_accessor->Commit();

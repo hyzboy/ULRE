@@ -16,7 +16,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
-
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/Color.h>
 
 // ECS headers
@@ -71,12 +71,12 @@ private:
 
     graph::mtl::MaterialRecipe grid_recipe{};
     PrimitiveAsset             grid_asset{};
-    graph::SSBOArrayAccessor<Color4f>* grid_mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* grid_mtl_data_ssbo_accessor = nullptr;
     Geometry *grid_geometry = nullptr;
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    graph::SSBOArrayAccessor<Color4f>* cube_mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* cube_mtl_data_ssbo_accessor = nullptr;
     Geometry *cube_geometry = nullptr;
 
     std::string debug_cache;
@@ -109,14 +109,14 @@ private:
             if (!domain_manager)
                 return false;
 
-            grid_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            grid_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
                 graph::mtl::SSBOType::EmissiveSurface,
                 "GizmoUsage:GridMaterialData",
                 1);
             if (!grid_mtl_data_ssbo_accessor)
                 return false;
 
-            (*grid_mtl_data_ssbo_accessor)[0] = GetColor4f(COLOR::White, 1.0f);
+            (*grid_mtl_data_ssbo_accessor)[0].color =GetColor4f(COLOR::White, 1.0f);
             grid_mtl_data_ssbo_accessor->Commit();
 
             grid_recipe.recipe_name = "GizmoUsageExample.VertexLuminance";
@@ -153,14 +153,14 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            cube_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            cube_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
                 graph::mtl::SSBOType::EmissiveSurface,
                 "GizmoUsage:CubeMaterialData",
                 1);
             if (!cube_mtl_data_ssbo_accessor)
                 return false;
 
-            (*cube_mtl_data_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+            (*cube_mtl_data_ssbo_accessor)[0].color =GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
             cube_mtl_data_ssbo_accessor->Commit();
 
             cube_recipe.recipe_name = "GizmoUsageExample.DebugNormalColor";

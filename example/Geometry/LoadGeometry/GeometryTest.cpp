@@ -6,6 +6,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
@@ -83,7 +84,7 @@ private:
     struct MaterialData
     {
         GeometryVertexFormat geometry_vertex_format;
-        graph::SSBOArrayAccessor<Color4f> * mtl_data_ssbo_accessor = nullptr;
+        graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow> * mtl_data_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
 
         ~MaterialData()
@@ -149,7 +150,7 @@ private:
 
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         md->ssbo_count = color_count;
-        md->mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        md->mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
             ssbo_type,
             tag,
             color_count);
@@ -157,7 +158,7 @@ private:
             return false;
 
         for (uint32_t i = 0; i < color_count; ++i)
-            (*md->mtl_data_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
+            (*md->mtl_data_ssbo_accessor)[i].color =GetColor4f(TestColor[i], 1.0f);
         md->mtl_data_ssbo_accessor->Commit();
 
         return true;

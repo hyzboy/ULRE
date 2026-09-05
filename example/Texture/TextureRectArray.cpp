@@ -9,6 +9,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/math/Vector.h>
 
@@ -80,7 +81,7 @@ private:
     Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
-    graph::SSBOArrayAccessor<hgl::math::Vector4u> * mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::TextureRectArraySurfaceRow> * mtl_data_ssbo_accessor = nullptr;
 
     struct
     {
@@ -128,7 +129,7 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<hgl::math::Vector4u>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::TextureRectArraySurfaceRow>(
             graph::mtl::SSBOType::TextureRectArraySurface,
             "TextureRectArray:MaterialData",
             TexCount);
@@ -136,7 +137,7 @@ private:
             return false;
 
         for (uint32_t i = 0; i < TexCount; ++i)
-            (*mtl_data_ssbo_accessor)[i] = hgl::math::Vector4u{i, 0u, 0u, 0u};
+            (*mtl_data_ssbo_accessor)[i].id[0] = i;
         mtl_data_ssbo_accessor->Commit();
 
         rect_recipe.recipe_name = "TextureRectArray.Texture2DArray";

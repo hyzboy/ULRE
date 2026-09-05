@@ -15,7 +15,8 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 
 // 引入几何创建器
@@ -69,7 +70,7 @@ private:
     PrimitiveAsset triangle_asset{};
 
     // MI 结构体 SSBO
-    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     // 每个三角形的数据
     struct TriangleData
@@ -207,7 +208,10 @@ private:
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        // Arena+BDA：T 必须是行结构（shader 读 EmissiveSurfaceRow，
+        // 行=数据+纹理句柄尾，64B=4 块），不可用裸 Color4f(16B)——
+        // 行距不匹配会使行尾镜像写踩塌相邻实例的数据字段
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::EmissiveSurfaceRow>(
             graph::mtl::SSBOType::EmissiveSurface,
             "Example:EmissiveSurface:MaterialData",
             DRAW_OBJECT_COUNT);
@@ -216,7 +220,7 @@ private:
 
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            (*mtl_data_ssbo_accessor)[i] = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
+            (*mtl_data_ssbo_accessor)[i].color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
             triangles[i].entity = nullptr;
         }
         mtl_data_ssbo_accessor->Commit();
