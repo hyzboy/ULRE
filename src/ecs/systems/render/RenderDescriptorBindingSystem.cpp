@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
+#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
@@ -830,6 +831,11 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialPrivateData:
             {
+                // Arena+BDA 路径：材质数据经设备地址行表寻址，无描述符可绑；
+                // 残留的 schema 需求条目直接跳过（不置 descriptor_bind_valid）
+                if (graph::IsMaterialArenaBDAEnabled())
+                    break;
+
                 uint32_t resolved_ssbo_id = req.ssbo_id;
                 if (batch)
                 {

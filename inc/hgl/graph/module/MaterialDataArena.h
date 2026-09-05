@@ -11,12 +11,20 @@
 namespace hgl::graph
 {
 class VulkanDevice;
+class MaterialDataArena;
 
 /**
  * 材质数据 Arena 容量（字节）：默认 64MB，环境变量 ULRE_MATERIAL_ARENA_MB
  * 可配置（16..512，越界值回退默认）。进程内只计算一次。
  */
 uint64 GetMaterialDataArenaCapacity();
+
+/**
+ * 进程级 arena 单例（惰性创建）。首调用以传入设备初始化（容量取
+ * GetMaterialDataArenaCapacity()）；后续调用忽略 device 返回同一实例。
+ * device 为 null 且尚未创建时返回 null。
+ */
+MaterialDataArena *AcquireMaterialDataArena(VulkanDevice *device);
 
 /**
  * 材质数据 Arena（全局唯一材质实例数据区）

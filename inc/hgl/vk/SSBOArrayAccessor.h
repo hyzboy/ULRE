@@ -51,6 +51,8 @@ private:
     uint32_t      ssbo_id       = 0;                           ///< 分配到的 SSBO ID（由 ResourceDomainManager 写入）
     mtl::SSBOType ssbo_type     = mtl::SSBOType::UserDefined;  ///< SSBO 类型（由 ResourceDomainManager 写入）
     bool          dirty         = false;                       ///< CPU 侧是否有未提交的修改
+    uint32_t      stride_bytes  = 0;                           ///< 行距字节数（0=sizeof(T) 紧密排布；Arena 路径=sizeof(T) 且 16B 对齐）
+    bool          host_direct   = false;                       ///< true=HOST_COHERENT 直写（Commit 为 no-op）
 
     friend class VulkanDevice;
     friend class ResourceDomainManager;
@@ -85,8 +87,25 @@ private:
             MapInternal();
     }
 
+    // Arena+BDA 路径：直写宿主窗口（无独立 buffer；mapped_data 即行段基址）
+    explicit SSBOArrayAccessor(void *host_base, uint32_t count, uint32_t in_stride)
+        : BufferAccessBase()
+        , element_count(count)
+        , stride_bytes(in_stride)
+        , host_direct(true)
+    {
+        mapped_data = static_cast<T *>(host_base);
+    }
+
     bool CommitInternal()
     {
+        if (host_direct)
+        {
+            // HOST_COHERENT 直写：operator[] 赋值即已生效
+            dirty = false;
+            return true;
+        }
+
         if (!dirty || !gpu_buf || !mapped_data)
             return false;
 
@@ -220,6 +239,9 @@ public:
         if (idx >= element_count)
             idx = element_count - 1; // 夹紧到末尾元素，避免越界崩溃
 
+        if (stride_bytes)
+            return *(T *)(reinterpret_cast<uint8_t *>(mapped_data) + size_t(idx) * stride_bytes);
+
         return mapped_data[idx];
     }
 
@@ -227,6 +249,9 @@ public:
     {
         if (idx >= element_count)
             idx = element_count - 1;
+
+        if (stride_bytes)
+            return *(const T *)(reinterpret_cast<const uint8_t *>(mapped_data) + size_t(idx) * stride_bytes);
 
         return mapped_data[idx];
     }
@@ -275,7 +300,8 @@ public:
      */
     VkDeviceSize GetTotalSize() const
     {
-        return static_cast<VkDeviceSize>(sizeof(T)) * element_count;
+        const VkDeviceSize stride = stride_bytes ? stride_bytes : sizeof(T);
+        return stride * element_count;
     }
 
 };//class SSBOArrayAccessor

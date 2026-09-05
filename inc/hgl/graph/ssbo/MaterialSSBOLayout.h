@@ -2,6 +2,8 @@
 
 #include <hgl/CoreType.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
+#include <cstddef>
+#include <hgl/graph/ssbo/MaterialDataRows.h>
 
 namespace hgl::graph::ssbo
 {
@@ -64,6 +66,20 @@ namespace hgl::graph::ssbo
         case mtl::SSBOType::PBRSurface:              return PBRSurfaceMaterialSSBOGLSL;
         case mtl::SSBOType::TransmissionSurface:     return TransmissionSurfaceMaterialSSBOGLSL;
         default:                                 return nullptr;
+        }
+    }
+
+    // Arena+BDA 路径：行结构内纹理句柄尾（tex_tail）的字节偏移。
+    // 以 C++ 行结构（MaterialDataRows.h）offsetof 为唯一真源。
+    inline uint32_t GetMaterialSSBORowTexTailOffset(const mtl::SSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case mtl::SSBOType::PBRSurface:              return uint32_t(offsetof(PBRSurfaceRow,              tex_tail));
+        case mtl::SSBOType::EmissiveSurface:         return uint32_t(offsetof(EmissiveSurfaceRow,         tex_tail));
+        case mtl::SSBOType::TextureRectArraySurface: return uint32_t(offsetof(TextureRectArraySurfaceRow, tex_tail));
+        case mtl::SSBOType::TransmissionSurface:     return uint32_t(offsetof(TransmissionSurfaceRow,     tex_tail));
+        default:                                     return 0;
         }
     }
 

@@ -1,4 +1,4 @@
-#include<hgl/graph/module/MaterialDataArena.h>
+﻿#include<hgl/graph/module/MaterialDataArena.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
 #include<cstdlib>
@@ -29,6 +29,27 @@ uint64 GetMaterialDataArenaCapacity()
     }();
 
     return capacity;
+}
+
+MaterialDataArena *AcquireMaterialDataArena(VulkanDevice *device)
+{
+    static MaterialDataArena *arena=nullptr;
+
+    if(!arena)
+    {
+        if(!device)
+            return nullptr;
+
+        arena=new MaterialDataArena;
+
+        if(!arena->Init(device,AnsiString("MaterialDataArena"),GetMaterialDataArenaCapacity()))
+        {
+            delete arena;
+            arena=nullptr;
+        }
+    }
+
+    return arena;
 }
 
 bool MaterialDataArena::Init(VulkanDevice *dev,const AnsiString &name,const uint64 arena_bytes,const uint32 in_block_size)

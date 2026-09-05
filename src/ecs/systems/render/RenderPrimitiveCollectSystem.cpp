@@ -15,6 +15,8 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/MaterialDataArena.h>
+#include<hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/BindingTableBuilder.h>
@@ -976,6 +978,31 @@ namespace hgl::ecs
 
             if (slot < static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE))
                 row_data[slot] = handle;
+        }
+
+        // Arena+BDA 路径：同一份句柄行镜像写入材质数据行的 tex_tail。
+        // 块号即 data_index（实例行）；共享行重复写入相同值，语义安全。
+        // 旧域表写入保留（描述符仍绑定，arena shader 不读，W3 删除）。
+        if (graph::IsMaterialArenaBDAEnabled())
+        {
+            auto *collect_gc = world->GetGraphicsContext();
+            auto *arena = collect_gc
+                ? graph::AcquireMaterialDataArena(collect_gc->GetDevice())
+                : nullptr;
+
+            if (arena
+             && !material_binding_recipe.ssbo_assets.empty()
+             && !material_comp->data_index_values.empty())
+            {
+                const graph::mtl::SSBOType row_type =
+                    material_binding_recipe.ssbo_assets.front().ssbo_type;
+                const uint32_t tail_offset =
+                    graph::ssbo::GetMaterialSSBORowTexTailOffset(row_type);
+                const uint32_t block = material_comp->data_index_values[0];
+
+                if (auto *row_bytes = static_cast<uint8_t *>(arena->GetBlockPtr(block)))
+                    memcpy(row_bytes + tail_offset, row_data, sizeof(row_data));
+            }
         }
 
         auto *render_context = world->GetRenderContext();

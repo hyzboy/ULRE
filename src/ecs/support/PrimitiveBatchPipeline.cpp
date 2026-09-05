@@ -10,6 +10,8 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/CameraInfo.h>
+#include<hgl/graph/module/MaterialDataArena.h>
+#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -71,6 +73,11 @@ namespace hgl::ecs
 
         uint64_t ResolveSSBOBindingSignature(RenderItem *item)
         {
+            // Arena+BDA 路径：材质数据无 per-material SSBO 绑定差异，
+            // 签名退化为常量（不同 ssbo_id 的实例可合入同一批）
+            if(graph::IsMaterialArenaBDAEnabled())
+                return 0;
+
             hgl::hash::FNV1aHasher64 h;
             const auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
             const auto material_comp = primitive_item ? primitive_item->GetMaterialComponent() : nullptr;
@@ -677,11 +684,16 @@ namespace hgl::ecs
 
                 if (batch.buffer_manager)
                 {
+                    // Arena+BDA 路径：行表存 8B 设备地址（mtl_data_addrs）
+                    const VkDeviceSize row_bytes = graph::IsMaterialArenaBDAEnabled()
+                        ? sizeof(uint64_t)
+                        : graph::mtl::MaterialPrivateDataIndexRowStride * sizeof(uint32_t);
+
                     const VkDeviceSize byte_size =
                         static_cast<VkDeviceSize>(batch.material_data_index_rows_capacity)
-                        * graph::mtl::MaterialPrivateDataIndexRowStride * sizeof(uint32_t);
+                        * row_bytes;
                     batch.material_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
-                        "ECS:Batch:MaterialPrivateDataIndex", byte_size, nullptr, graph::SharingMode::Exclusive);
+                        "ECS:Batch:MaterialDataAddresses", byte_size, nullptr, graph::SharingMode::Exclusive);
                 }
             }
         }
@@ -721,6 +733,37 @@ namespace hgl::ecs
         if (batch.material_data_index_rows_buffer)
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
+
+            // Arena+BDA 路径：行表写 8B 设备地址（块号经 arena AddressOf 换算；
+            // 0 号哨兵块映射为 base+0，即零填充默认行，地址恒合法）
+            if (mi_gpu && graph::IsMaterialArenaBDAEnabled())
+            {
+                auto *arena = graph::AcquireMaterialDataArena(batch.device);
+
+                uint64_t *row_ptr = static_cast<uint64_t *>(
+                    mi_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint64_t)));
+                if (row_ptr)
+                {
+                    for (size_t i = 0; i < item_count; ++i)
+                    {
+                        row_ptr[i] = arena ? arena->GetDeviceAddress() : 0u;
+
+                        auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
+                        auto material_comp = primitive_item
+                            ? primitive_item->GetMaterialComponent()
+                            : nullptr;
+                        if (arena
+                         && material_comp
+                         && !material_comp->data_index_values.empty())
+                        {
+                            row_ptr[i] = arena->AddressOf(material_comp->data_index_values[0]);
+                        }
+                    }
+                    mi_gpu->Unmap();
+                }
+                return;
+            }
+
             if (mi_gpu)
             {
                 uint32_t *row_ptr = static_cast<uint32_t *>(

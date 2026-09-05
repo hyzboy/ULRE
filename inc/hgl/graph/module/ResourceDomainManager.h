@@ -4,6 +4,7 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
 #include <hgl/graph/ssbo/MaterialArenaPath.h>
+#include <hgl/graph/module/MaterialDataArena.h>
 #include <hgl/vk/SSBOArrayAccessor.h>
 #include <unordered_map>
 
@@ -106,6 +107,28 @@ public:
             return nullptr;
 
         const uint32_t allocated_id = AllocateSSBOId();
+
+        // Arena+BDA path: segment allocation inside the global material data
+        // arena (contiguous semantics preserved); HOST_COHERENT direct write.
+        // T must be a row struct (MaterialDataRows.h), size % 16 == 0.
+        if (IsMaterialArenaBDAEnabled())
+        {
+            auto *arena = AcquireMaterialDataArena(GetDevice());
+            if (!arena)
+                return nullptr;
+
+            const uint32_t start_block = arena->AcquireRange<T>(element_count);
+            if (!start_block)
+                return nullptr;
+
+            auto *acc = new SSBOArrayAccessor<T>(
+                arena->GetBlockPtr(start_block), element_count, uint32(sizeof(T)));
+
+            acc->ssbo_id   = allocated_id;   // 会话内唯一标识（Arena 路径无独立 SSBO）
+            acc->ssbo_type = ssbo_type;
+            return acc;
+        }
+
 
         DeviceBuffer *buf = EnsureBuffer(
             mtl::SSBOAddress{ssbo_type, allocated_id, 0},
