@@ -2,7 +2,8 @@
 
 #include <hgl/graph/module/GraphModule.h>
 #include <hgl/mtl/MaterialRecipe.h>
-#include <hgl/graph/ssbo/MaterialDataRows.h>
+#include <hgl/graph/ssbo/MaterialDataRows.h>
+#include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/SSBOArrayAccessor.h>
 #include <unordered_map>
@@ -130,6 +131,9 @@ public:
      * EN: One-step "allocate SSBO ID + create buffer + wrap accessor".
      *     The allocated ID is stored inside the accessor; retrieve it via acc->GetSSBOId().
      *
+     *     简化形态（推荐）：SSBOType 由模板参数 T 经 MaterialRowTypeTraits 反查，
+     *     开发者只需 AllocateArrayAccessor<T>(name, count)。
+     *
      * @param ssbo_type     SSBO 类型
      * @param name          缓冲区调试名称
      * @param element_count 数组元素个数
@@ -181,6 +185,21 @@ public:
         row_segments.emplace(allocated_id, seg);
 
         return acc;
+    }
+
+    /**
+     * CN: 简化形态——SSBOType 由行结构 T 经 MaterialRowTypeTraits 反查。
+     *     开发者只需 AllocateArrayAccessor<T>(name, count)，不再重复传递类型。
+     * EN: Simplified form -- SSBOType is derived from the row struct T.
+     */
+    template<typename T>
+    SSBOArrayAccessor<T>* AllocateArrayAccessor(
+        const AnsiString&    name,
+        uint32_t             element_count,
+        SharingMode          sm = SharingMode::Exclusive)
+    {
+        return AllocateArrayAccessor<T>(ssbo::MaterialRowTypeTraits<T>::TYPE,
+                                        name, element_count, sm);
     }
 
     // 旧路径（EnsureBuffer 域缓冲 + MaterialPrivateData 描述符）已随 W3.3 删除。

@@ -7,7 +7,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
@@ -152,12 +152,11 @@ private:
         if (!gc)
             return LogStageFail("OffscreenPass::InitMISSBO", "graphics context is null");
 
-        auto *domain_manager = gc->GetResourceDomainManager();
+        auto *domain_manager = gc->GetSSBOBufferRegistry();
         if (!domain_manager)
             return LogStageFail("OffscreenPass::InitMISSBO", "resource domain manager is null");
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
-            graph::mtl::SSBOType::PBRSurface,
             "RenderToTexture:OffscreenPass:MaterialData",
             1);
         if (!mtl_data_ssbo_accessor)
@@ -530,12 +529,11 @@ private:
         if (!ecs_context)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "invalid input pointers");
 
-        auto *domain_manager = GetManager<ResourceDomainManager>();
+        auto *domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "resource domain manager is null");
 
         cube_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
-            graph::mtl::SSBOType::PBRSurface,
             "RenderToTexture:MainScene:MaterialData",
             1);
         if (!cube_mtl_data_ssbo_accessor)

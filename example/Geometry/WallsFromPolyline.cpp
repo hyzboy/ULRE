@@ -9,7 +9,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
@@ -142,13 +142,12 @@ public:
         wall_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
 
         // Allocate SSBO first so the ID is available before UpsertRecipe.
-        auto *domain_manager = GetManager<ResourceDomainManager>();
+        auto *domain_manager = GetManager<SSBOBufferRegistry>();
         auto *buffer_manager = GetManager<BufferManager>();
         if (!domain_manager || !buffer_manager)
             return false;
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
-            graph::mtl::SSBOType::PBRSurface,
             "WallsFromPolyline:MaterialData",
             1);
         if (!mtl_data_ssbo_accessor)

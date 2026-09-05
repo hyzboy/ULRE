@@ -3,7 +3,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
@@ -104,14 +104,13 @@ private:
         if (!md)
             return false;
 
-        auto *domain_manager = GetManager<ResourceDomainManager>();
+        auto *domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         md->ssbo_count = color_count;
         md->mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
-            graph::mtl::SSBOType::EmissiveSurface,
             tag,
             color_count);
         if (!md->mtl_data_ssbo_accessor)

@@ -9,7 +9,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -114,7 +114,7 @@ private:
 
     bool InitMISSBO()
     {
-        auto* domain_manager = GetManager<ResourceDomainManager>();
+        auto* domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
@@ -125,7 +125,6 @@ private:
         material_data.normal_scale = 0.35f;
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
-            graph::mtl::SSBOType::PBRSurface,
             "06c:PBRSurface:MaterialData",
             1);
         if (!mtl_data_ssbo_accessor)

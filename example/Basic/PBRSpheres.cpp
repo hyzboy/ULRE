@@ -21,7 +21,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/color/ColorPacking.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -274,14 +274,13 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<ResourceDomainManager>();
+        auto *domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::PBRSurfaceRow>(
-            graph::mtl::SSBOType::PBRSurface,
             "PBRSpheres:PBRSurface:MaterialData",
             mi_count);
         if (!mtl_data_ssbo_accessor)

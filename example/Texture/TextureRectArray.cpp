@@ -8,7 +8,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/math/Vector.h>
@@ -123,14 +123,13 @@ private:
         if (!sampler_manager)
             return false;
 
-        auto *domain_manager = GetManager<ResourceDomainManager>();
+        auto *domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         sampler=sampler_manager->CreateSampler();
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::TextureRectArraySurfaceRow>(
-            graph::mtl::SSBOType::TextureRectArraySurface,
             "TextureRectArray:MaterialData",
             TexCount);
         if (!mtl_data_ssbo_accessor)

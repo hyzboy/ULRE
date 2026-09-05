@@ -22,7 +22,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -113,12 +113,11 @@ private:
 
     bool InitMISSBO()
     {
-        auto* domain_manager = GetManager<ResourceDomainManager>();
+        auto* domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
-            graph::mtl::SSBOType::EmissiveSurface,
             "MaterialRecipeEntry:EmissiveSurface:MaterialData",
             1);
         if (!mtl_data_ssbo_accessor)

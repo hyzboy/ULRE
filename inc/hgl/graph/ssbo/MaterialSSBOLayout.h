@@ -31,6 +31,15 @@ namespace hgl::graph::ssbo
     }
 
     // Arena+BDA 路径的 buffer_reference 行结构名（与 MaterialDataRows.h 的 C++ 行结构同名）
+
+    // 行结构类型 → SSBOType 编译期映射（AllocateArrayAccessor<T> 由 T 反查类型，
+    // 开发者无需重复传递 SSBOType；新增行结构时在此登记一行）。
+    template<typename T> struct MaterialRowTypeTraits;
+    template<> struct MaterialRowTypeTraits<PBRSurfaceRow>              { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::PBRSurface; };
+    template<> struct MaterialRowTypeTraits<EmissiveSurfaceRow>         { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::EmissiveSurface; };
+    template<> struct MaterialRowTypeTraits<TextureRectArraySurfaceRow> { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::TextureRectArraySurface; };
+    template<> struct MaterialRowTypeTraits<TransmissionSurfaceRow>     { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::TransmissionSurface; };
+
     inline const char *GetMaterialSSBORowName(const mtl::SSBOType type) noexcept
     {
         switch (type)

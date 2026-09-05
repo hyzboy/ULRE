@@ -15,7 +15,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/Color.h>
 
@@ -105,12 +105,11 @@ private:
 
             geometry_manager->Add(grid_geometry);
 
-            auto *domain_manager = GetManager<ResourceDomainManager>();
+            auto *domain_manager = GetManager<SSBOBufferRegistry>();
             if (!domain_manager)
                 return false;
 
             grid_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
-                graph::mtl::SSBOType::EmissiveSurface,
                 "GizmoUsage:GridMaterialData",
                 1);
             if (!grid_mtl_data_ssbo_accessor)
@@ -134,7 +133,7 @@ private:
         }
 
         {
-            auto *domain_manager = GetManager<ResourceDomainManager>();
+            auto *domain_manager = GetManager<SSBOBufferRegistry>();
             if (!domain_manager)
                 return false;
 
@@ -154,7 +153,6 @@ private:
             geometry_manager->Add(cube_geometry);
 
             cube_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
-                graph::mtl::SSBOType::EmissiveSurface,
                 "GizmoUsage:CubeMaterialData",
                 1);
             if (!cube_mtl_data_ssbo_accessor)

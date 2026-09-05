@@ -21,7 +21,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/ColorPacking.h>
 #include<hgl/log/Log.h>
@@ -157,11 +157,10 @@ private:
         if (!sampler)
             return LogFail("InitMaterials", "failed to create sampler");
 
-        auto* domain_manager = GetManager<ResourceDomainManager>();
+        auto* domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
-            graph::mtl::SSBOType::PBRSurface, "SingleSphereSwitch:MaterialData", 1);
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>( "SingleSphereSwitch:MaterialData", 1);
         if (!mtl_data_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
 

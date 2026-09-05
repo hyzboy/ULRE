@@ -6,7 +6,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -133,12 +133,11 @@ private:
         if (!ecs_context)
             return false;
 
-        auto *domain_manager = GetManager<ResourceDomainManager>();
+        auto *domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
-            graph::mtl::SSBOType::EmissiveSurface,
             "PlaneGrid3D:MaterialData",
             3);
         if (!mtl_data_ssbo_accessor)

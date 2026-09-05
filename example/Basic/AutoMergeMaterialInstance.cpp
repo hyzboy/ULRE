@@ -15,7 +15,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 
@@ -204,7 +204,7 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<ResourceDomainManager>();
+        auto *domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
@@ -212,7 +212,6 @@ private:
         // 行=数据+纹理句柄尾，64B=4 块），不可用裸 Color4f(16B)——
         // 行距不匹配会使行尾镜像写踩塌相邻实例的数据字段
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::EmissiveSurfaceRow>(
-            graph::mtl::SSBOType::EmissiveSurface,
             "Example:EmissiveSurface:MaterialData",
             DRAW_OBJECT_COUNT);
         if (!mtl_data_ssbo_accessor)
