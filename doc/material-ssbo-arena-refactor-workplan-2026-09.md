@@ -2,8 +2,8 @@
 
 日期：2026-09
 配套技术方案：[material-ssbo-arena-bda-refactor-plan-2026-09.md](material-ssbo-arena-bda-refactor-plan-2026-09.md)（里程碑 M1-M4、决策 D1-D8、风险 R1-R8）
-状态：待执行
-基线分支：SharedOneSSBO → 工作分支 `material-arena-bda`
+状态：✅ 执行完成（2026-09-06，全部里程碑 W0-W4 验收通过）
+基线分支：SharedOneSSBO → 工作分支 `material-arena-bda`（已合入全部收尾提交）
 
 ---
 

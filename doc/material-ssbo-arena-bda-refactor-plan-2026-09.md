@@ -1,7 +1,8 @@
 # 材质实例数据 SSBO Arena + BDA 重构技术方案
 
 日期：2026-09
-状态：方案定稿（待实施）
+状态：✅ 已实施完成（2026-09-06，material-arena-bda 分支，
+实现记录见文末「实施结果」；配套工作计划同日归档）
 分支基线：SharedOneSSBO
 
 ---
@@ -481,3 +482,29 @@ M1/M2 期间任意时刻关 flag 即回旧路径；M3 删除前保持双路径�
 
 风险余量集中在 M2 的 ShaderGen 契约连锁（R1/R8）；分配器环节（此前最大不确定点）
 已由 CMCore 现有实现与测试消除。
+
+---
+
+## 实施结果（2026-09-06 归档）
+
+重构已按本方案完成并全部验证通过。与方案的偏差记录：
+
+1. **BDA 直上（D1）**：实际走了「先验证材质效果、后删旧路径」的两段落地，
+   未做无 BDA 中间态——与方案一致。
+2. **无数据槽纹理材质**（UnlitTexture/Text2D 等）：方案未覆盖的类——保留
+   全局纹理行表描述符（每帧一绑的全局集，非逐材质），行尾句柄机制仅适用于
+   有数据槽材质。已记入后续演进项。
+3. **地址表需求双来源去重**：定义 TOML 与模块 manifest 各推一条数据槽需求，
+   实施中以 PushMaterialPrivateDataIndexRows 经 MergeSSBODescriptor 在
+   push 层合并、契约汇合点兜底去重——比方案预设的「汇合点过滤」更靠前。
+4. **golden 与回归门**：SD 重生成 2 份 golden；Z/L2/AD 断言按 arena 语义更新
+   （详见工作计划 W3.1 记录）。flag-off 回归基线随 flag 删除自然终结。
+5. **迁移遗留**：~25 处 `IsMaterialArenaBDAEnabled` flag 分支已物理清理；
+   `MaterialArenaPath.h` 删除。`ULRE_ARENA_DEBUG` 诊断标记保留（env 门控）。
+
+最终验证：全解决方案零编译错误；gate 41/41；用户全示例走查通过
+（Basic/Environment/Geometry/Gizmo/Texture/GUI 六目录）。
+
+收益实测核对（对应 §7）：材质数据描述符 0；pipeline layout 4 集；
+RDBS 材质数据分支 ~250 行删除；批 key 去 SSBO 签名（合批率提升）；
+新类型接入成本降为单处行结构定义。
