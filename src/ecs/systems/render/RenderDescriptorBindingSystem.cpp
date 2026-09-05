@@ -830,40 +830,8 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::MaterialPrivateData:
-            {
-                // Arena+BDA 路径：材质数据经设备地址行表寻址，无描述符可绑；
-                // 残留的 schema 需求条目直接跳过（不置 descriptor_bind_valid）
-                if (graph::IsMaterialArenaBDAEnabled())
-                    break;
-
-                uint32_t resolved_ssbo_id = req.ssbo_id;
-                if (batch)
-                {
-                    if (!resolve_recipe_batch_struct_ssbo_id(material, batch, req, resolved_ssbo_id))
-                    {
-                        log_bind_failure(material, batch, req, "unresolved MaterialPrivateData binding");
-                        break;
-                    }
-                }
-
-                const graph::IGPUBuffer *material_data_ssbo = resolve_domain_ssbo(
-                    graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
-                    "MaterialPrivateDataSlot");
-
-                if (material_data_ssbo)
-                {
-                    if (!bind_ssbo(material, batch, req, material_data_ssbo))
-                        log_bind_failure(material, batch, req, "bind MaterialPrivateDataSlot failed");
-                }
-                else
-                {
-                    log_missing_ssbo_once(material, req, "domain binding not found", 0);
-                    if (batch && req.required)
-                        batch->descriptor_bind_valid = false;
-                }
-                break;
-            }
+            // MaterialPrivateData 语义已随旧路径删除（W3.3）：材质数据经
+            // 地址行表 mtl_data_addrs 寻址，schema 不再产生该需求。
             case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             {
                 // The texture-layer rows live in the engine-managed domain SSBO

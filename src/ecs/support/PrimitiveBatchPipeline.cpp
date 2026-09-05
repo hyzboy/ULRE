@@ -74,10 +74,9 @@ namespace hgl::ecs
 
         uint64_t ResolveSSBOBindingSignature(RenderItem *item)
         {
-            // Arena+BDA 路径：材质数据无 per-material SSBO 绑定差异，
-            // 签名退化为常量（不同 ssbo_id 的实例可合入同一批）
-            if(graph::IsMaterialArenaBDAEnabled())
-                return 0;
+            // 材质数据无 per-material SSBO 绑定差异（Arena 行表寻址），
+            // 签名恒为常量——不同实例可合入同一批。
+            return 0;
 
             hgl::hash::FNV1aHasher64 h;
             const auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
@@ -685,10 +684,8 @@ namespace hgl::ecs
 
                 if (batch.buffer_manager)
                 {
-                    // Arena+BDA 路径：行表存 8B 设备地址（mtl_data_addrs）
-                    const VkDeviceSize row_bytes = graph::IsMaterialArenaBDAEnabled()
-                        ? sizeof(uint64_t)
-                        : graph::mtl::MaterialPrivateDataIndexRowStride * sizeof(uint32_t);
+                    // 行表存 8B 设备地址（mtl_data_addrs）
+                    const VkDeviceSize row_bytes = sizeof(uint64_t);
 
                     const VkDeviceSize byte_size =
                         static_cast<VkDeviceSize>(batch.material_data_index_rows_capacity)
@@ -699,7 +696,7 @@ namespace hgl::ecs
                     // 关键安全垫：BDA 解引用未初始化显存 = GPU page fault(驱动 TDR)。
                     // 全表预填 arena 基址（0 号零填充默认行），保证任何时刻可安全解引用；
                     // 随后每帧 WriteBatchIndexRows 覆盖为真实行地址。
-                    if (batch.material_data_index_rows_buffer && graph::IsMaterialArenaBDAEnabled())
+                    if (batch.material_data_index_rows_buffer)
                     {
                         if (auto *arena_fill = graph::AcquireMaterialDataArena(batch.device))
                         {
@@ -759,7 +756,7 @@ namespace hgl::ecs
 
             // Arena+BDA 路径：行表写 8B 设备地址（块号经 arena AddressOf 换算；
             // 0 号哨兵块映射为 base+0，即零填充默认行，地址恒合法）
-            if (mi_gpu && graph::IsMaterialArenaBDAEnabled())
+            if (mi_gpu)
             {
                 auto *arena = graph::AcquireMaterialDataArena(batch.device);
 

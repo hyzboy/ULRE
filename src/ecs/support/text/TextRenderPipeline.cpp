@@ -505,33 +505,22 @@ namespace hgl::ecs
         resources.texture_layer_buffer = guard.texture_layer_buffer;
         guard.texture_layer_buffer = nullptr;
 
-        // material_private_data_index_rows / mtl_data_addrs：
-        //   旧路径 4B 行号表（行 0 = 0）；Arena+BDA 路径为 8B 设备地址表。
-        //   text 不使用材质数据行，但布局要求该槽位有绑定——arena 下填
-        //   arena 基址（0 号零填充默认行，安全可解引用）。
-        uint32_t data_index_row_bytes = graph::IsMaterialArenaBDAEnabled()
-            ? sizeof(uint64_t)
-            : sizeof(uint32_t) * graph::mtl::MaterialPrivateDataIndexRowStride;
+        // mtl_data_addrs：8B 设备地址行表。text 不使用材质数据行，
+        // 但布局要求该槽位有绑定——填 arena 基址（0 号零填充默认行，安全可解引用）。
+        constexpr uint32_t data_index_row_bytes = sizeof(uint64_t);
 
         guard.data_index_row_buffer = buffer_manager->CreateSSBO(
-            graph::IsMaterialArenaBDAEnabled() ? "Text2D_DataAddresses" : "Text2D_DataIndexRows",
-            data_index_row_bytes, graph::SharingMode::Exclusive);
+            "Text2D_DataAddresses", data_index_row_bytes, graph::SharingMode::Exclusive);
         if (!guard.data_index_row_buffer)
         {
             return nullptr;
         }
 
-        if (graph::IsMaterialArenaBDAEnabled())
         {
             uint64_t safe_addr = 0;
             if (auto *arena = graph::AcquireMaterialDataArena(graphics_context->GetDevice()))
                 safe_addr = arena->GetDeviceAddress();
             guard.data_index_row_buffer->GetGPUBuffer()->Write(&safe_addr, 0, sizeof(safe_addr));
-        }
-        else
-        {
-            uint32_t data_index_row[graph::mtl::MaterialPrivateDataIndexRowStride] = {};
-            guard.data_index_row_buffer->GetGPUBuffer()->Write(data_index_row, 0, sizeof(data_index_row));
         }
 
         // 注意：mtl_data_addrs（8B 设备地址表）声明在 PerObject set，

@@ -374,10 +374,9 @@ namespace hgl::ecs
                 if (!recipe_binding)
                     return false;
 
-                // Arena+BDA：数据资产无域缓冲（地址行表是批次级 SSBO，
+                // 数据资产无域缓冲（地址行表是批次级 SSBO，
                 // schema 中也无 MaterialPrivateData 需求）——直接通过
-                if (graph::IsMaterialArenaBDAEnabled())
-                    continue;
+                continue;
 
                 const graph::mtl::ShaderResourceSlot
                     *layout_requirement = nullptr;
@@ -914,9 +913,8 @@ namespace hgl::ecs
             if (material_comp->data_index_values.empty())
                 material_comp->data_index_values.resize(1, 0u);
 
-            // Arena+BDA：schema 中已无 MaterialPrivateData 条目（归一为地址行表），
+            // schema 中已无 MaterialPrivateData 条目（归一为地址行表），
             // data_index 直接取自 asset_binding，再经段注册表翻译为全局块号
-            if (graph::IsMaterialArenaBDAEnabled())
             {
                 static bool arena_trace_done = false;
                 if (getenv("ULRE_ARENA_DEBUG") && !arena_trace_done)
@@ -1035,10 +1033,9 @@ namespace hgl::ecs
                 row_data[slot] = handle;
         }
 
-        // Arena+BDA 路径：同一份句柄行镜像写入材质数据行的 tex_tail。
+        // 句柄行镜像写入材质数据行的 tex_tail。
         // 块号即 data_index（实例行）；共享行重复写入相同值，语义安全。
-        // 旧域表写入保留（描述符仍绑定，arena shader 不读，W3 删除）。
-        if (graph::IsMaterialArenaBDAEnabled())
+        // 旧域表写入保留（无数据槽材质的句柄通道，有数据槽材质不读）。
         {
             auto *collect_gc = world->GetGraphicsContext();
             auto *arena = collect_gc

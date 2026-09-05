@@ -146,10 +146,9 @@ static bool AddMaterialPrivateDataSlotDescriptor(ShaderBuildContext &ctx,
                                           const uint32_t material_private_data_slot,
                                           const uint32_t stage_bits)
 {
-    // Arena+BDA 路径：材质数据经 buffer_reference 寻址（发射器注入行声明），
-    // 不进入描述符分配器
-    if (IsMaterialArenaBDAEnabled())
-        return true;
+    // 材质数据经 buffer_reference 寻址（发射器注入行声明），
+    // 不进入描述符分配器——恒通过。
+    return true;
 
     const char *struct_name = nullptr;
     const char *glsl_codes = nullptr;

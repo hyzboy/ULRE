@@ -185,20 +185,10 @@ inline void PushMaterialPrivateDataSlot(std::vector<SerializedDescriptorEntry> &
                                  const uint32_t material_private_data_slot,
                                  const SSBOType ssbo_type)
 {
-    // Arena+BDA 路径：材质数据经设备地址行表寻址，无描述符。
-    // 数据槽需求降级为地址行表需求（下游 EnsureMaterialPrivateDataIndexTable
-    // 依赖 MaterialPrivateData 条目判定是否需要行表）。
-    if(IsMaterialArenaBDAEnabled())
-    {
-        PushMaterialPrivateDataIndexRows(v, stage_flags);
-        return;
-    }
-
-    v.push_back({
-        DescriptorSetType::Material, stage_flags,
-        name, struct_name, nullptr, DescriptorSemantic::MaterialPrivateData,
-        TextureSlot::BaseColor, material_private_data_slot, ssbo_type, DescriptorSemanticLayer::SSBO
-    });
+    // 数据槽无描述符：需求降级为地址行表条目
+    //（EnsureMaterialPrivateDataIndexTable 依赖 MaterialPrivateData 条目
+    // 判定是否需要行表；此处的 name/struct 参数已无消费方，保留签名兼容）。
+    PushMaterialPrivateDataIndexRows(v, stage_flags);
 }
 
 inline void PushMaterialPrivateDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
@@ -266,14 +256,10 @@ inline void AppendDefinitionMaterialDescriptors(
     // AppendManifestTextureLayerDescriptors（manifest 元数据）或此处
     // texture_slot_decls 声明提供。
     //
-    // Arena+BDA：有数据槽的材质句柄走行尾，不再需要纹理行表；
+    // 有数据槽的材质句柄走行尾，不再需要纹理行表；
     // 无数据槽材质（如 UnlitTexture）句柄无处安放——保留全局纹理行表。
-    const bool arena_keep_texture_table =
-        IsMaterialArenaBDAEnabled()
-        && definition.material_private_data == SSBOType::UserDefined;
-
     if (!definition.texture_slot_decls.empty()
-     && (!IsMaterialArenaBDAEnabled() || arena_keep_texture_table))
+     && definition.material_private_data == SSBOType::UserDefined)
         PushMaterialTextureLayerRows(v, texture_layer_table_stage_flags);
 }
 
@@ -377,15 +363,12 @@ inline bool PushManifestSSBO(
         if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
             return false;
 
-        // Arena+BDA：数据槽无描述符，需求桥接为地址行表条目。
-        // 非材质行类型（如 TextureLayer）在 arena 下无意义——显式冲突失败。
-        if (IsMaterialArenaBDAEnabled())
-        {
-            if (!IsMaterialSSBOType(ssbo.ssbo_type))
-                return false;   // 调用方置 ResourceConflict
-            PushMaterialPrivateDataIndexRows(v, entry.stage_flags);
-            return true;
-        }
+        // 数据槽无描述符，需求桥接为地址行表条目。
+        // 非材质行类型（如 TextureLayer）无意义——显式冲突失败。
+        if (!IsMaterialSSBOType(ssbo.ssbo_type))
+            return false;   // 调用方置 ResourceConflict
+        PushMaterialPrivateDataIndexRows(v, entry.stage_flags);
+        return true;
 
         entry.set_type = DescriptorSetType::Material;
         entry.semantic = DescriptorSemantic::MaterialPrivateData;
@@ -418,7 +401,7 @@ inline bool AppendManifestTextureLayerDescriptors(
     const bool definition_has_data_slot)
 {
     // Arena+BDA：有数据槽的材质句柄走行尾；无数据槽材质保留纹理行表
-    if (IsMaterialArenaBDAEnabled() && definition_has_data_slot)
+    if (definition_has_data_slot)
         return true;
 
     for (uint32 i = 0; i < manifest.texture_layer_count; ++i)

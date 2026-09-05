@@ -92,9 +92,8 @@ namespace hgl::graph
             if (!buffer_manager || !domain_manager)
                 return false;
 
-            // Arena+BDA：schema 中数据槽语义为 MaterialPrivateDataIndex
-            //（地址行表），旧 MaterialPrivateData 检查不成立——直接走 arena 行分配
-            if (graph::IsMaterialArenaBDAEnabled())
+            // schema 中数据槽语义为 MaterialPrivateDataIndex（地址行表），
+            // 颜色数据直接走 arena 行分配
             {
                 const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
 

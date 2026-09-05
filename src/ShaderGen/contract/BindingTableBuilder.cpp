@@ -289,7 +289,6 @@ namespace hgl::graph::mtl
                 // 把 recipe 的数据槽资产桥接进绑定表，材质视图才保有
                 // ssbo_id / data_index（行表写入与纹理句柄落行的依据）。
                 if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex
-                 && IsMaterialArenaBDAEnabled()
                  && !recipe.ssbo_assets.empty())
                 {
                     const RecipeSSBOAssetBinding &data_asset =
@@ -347,7 +346,7 @@ namespace hgl::graph::mtl
             // Arena+BDA：bindless 句柄随材质数据行尾下发，MaterialTextureLayerTable
             // 描述符需求已不存在——但 recipe 的纹理绑定必须保留在绑定视图里
             //（Collect 依它构建行尾句柄、并完成 bindless 注册）。
-            if (IsMaterialArenaBDAEnabled() && !recipe.textures.empty())
+            if (!recipe.textures.empty())
                 uses_texture_layer_table = true;
 
             if (uses_texture_layer_table)
@@ -374,8 +373,7 @@ namespace hgl::graph::mtl
                     binding.texture_slot = slot;
                     // Arena：行尾数据非管线需求，桥接条目不计入 runtime-ready
                     //（legacy 路径保持与需求一致，供 domain 解析判定）。
-                    binding.required = IsMaterialArenaBDAEnabled()
-                        ? false : recipe_binding.required;
+                    binding.required = false;
                     binding.allow_fallback = false;
                     out_table.textures.Add(binding);
                 }
