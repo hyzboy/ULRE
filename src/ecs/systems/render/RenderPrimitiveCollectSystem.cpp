@@ -914,6 +914,25 @@ namespace hgl::ecs
                     break;
                 }
             }
+
+            // Arena+BDA：authoring 的 data_index 是访问器内行号，
+            // 经段注册表换算为全局块号（block_base + idx*slot_blocks），
+            // 供地址行表与 tex_tail 镜像写入使用。
+            if (graph::IsMaterialArenaBDAEnabled()
+             && asset_binding.ssbo_id != 0)
+            {
+                auto *translate_gc = world->GetGraphicsContext();
+                auto *translate_domain = translate_gc
+                    ? translate_gc->GetResourceDomainManager() : nullptr;
+
+                graph::ResourceDomainManager::ArenaSegmentInfo seg;
+                if (translate_domain
+                 && translate_domain->TryGetArenaSegment(asset_binding.ssbo_id, seg))
+                {
+                    material_comp->data_index_values[0] =
+                        seg.block_base + asset_binding.data_index * seg.slot_blocks;
+                }
+            }
         }
 
         // The texture-layer row is keyed by the primitive's data_index VALUE.

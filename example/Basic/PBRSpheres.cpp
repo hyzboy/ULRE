@@ -13,6 +13,8 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
+
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -89,7 +91,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -99,7 +101,7 @@ private:
     PrimitiveAsset      base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
-    ssbo::LitMaterialData sphere_material_data[GRID_SIZE][GRID_SIZE]{};
+    ssbo::PBRSurfaceRow sphere_material_data[GRID_SIZE][GRID_SIZE]{};
     uint32_t                         sphere_slot_rows[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
@@ -248,7 +250,7 @@ private:
                 float metallic  = float(col) / float(GRID_SIZE - 1);
                 float roughness = 0.05f + float(row) / float(GRID_SIZE - 1) * 0.95f;
 
-                ssbo::LitMaterialData d{};
+                ssbo::PBRSurfaceRow d{};
                 d.base_color = Color4f(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
                 d.metallic   = metallic;
                 d.roughness  = roughness;
@@ -278,7 +280,7 @@ private:
 
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::PBRSurfaceRow>(
             graph::mtl::SSBOType::PBRSurface,
             "PBRSpheres:PBRSurface:MaterialData",
             mi_count);

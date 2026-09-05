@@ -28,6 +28,24 @@ private:
 
     std::unordered_map<uint64_t, ResourceDomainBinding> domain_map;
 
+    /**
+     * Arena+BDA: session segment registry. ssbo_id -> {block base, slot blocks}.
+     * Collect translates the authored data_index (accessor row number) into a
+     * global block number (block_base + idx*slot_blocks) via this table.
+     */
+public:
+
+    struct ArenaSegmentInfo
+    {
+        MaterialDataArena *arena      = nullptr;
+        uint32_t           block_base = 0;
+        uint32_t           slot_blocks= 1;
+    };
+
+private:
+
+    std::unordered_map<uint32_t, ArenaSegmentInfo> arena_segments;
+
     uint32_t next_ssbo_id = 1;  ///< 会话内 SSBO ID 自增计数器（MakeRecipeSSBOId 命名空间）
 
 private:
@@ -69,6 +87,19 @@ public:
     uint32_t GetElementCapacity(const mtl::SSBOAddress &address) const;
 
     uint32_t GetCount() const { return static_cast<uint32_t>(domain_map.size()); }
+
+    /**
+     * Arena+BDA: query the segment info registered for an accessor ssbo_id.
+     * Returns false when the id was not allocated through the arena backend.
+     */
+    bool TryGetArenaSegment(uint32_t ssbo_id, ArenaSegmentInfo &out_info) const
+    {
+        const auto it = arena_segments.find(ssbo_id);
+        if (it == arena_segments.end())
+            return false;
+        out_info = it->second;
+        return true;
+    }
 
     /**
      * CN: 分配一个新的、在本会话内唯一的 SSBO ID（MakeRecipeSSBOId 命名空间）
@@ -123,6 +154,12 @@ public:
 
             auto *acc = new SSBOArrayAccessor<T>(
                 arena->GetBlockPtr(start_block), element_count, uint32(sizeof(T)));
+
+            ArenaSegmentInfo seg;
+            seg.arena       = arena;
+            seg.block_base  = start_block;
+            seg.slot_blocks = arena->SlotBlocks<T>();
+            arena_segments.emplace(allocated_id, seg);
 
             acc->ssbo_id   = allocated_id;   // 会话内唯一标识（Arena 路径无独立 SSBO）
             acc->ssbo_type = ssbo_type;
