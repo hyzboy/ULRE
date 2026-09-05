@@ -1,4 +1,4 @@
-/// MaterialShaderEmitter.cpp — GLSL 发射层实现（自 MaterialShaderCompiler.cpp 分离）
+﻿/// MaterialShaderEmitter.cpp — GLSL 发射层实现（自 MaterialShaderCompiler.cpp 分离）
 ///
 /// S2-T2.1：纯函数，零决策——只把求解层已解出的状态（DescriptorSetLayoutAllocator /
 /// manifest / 槽位声明 / config）转成 GLSL 文本。本文件内容为整体搬移，行为逐字节不变。
@@ -111,6 +111,11 @@ bool BuildMaterialSSBODeclarations(
             out_error = "unsupported material row type for GLSL generation";
             return false;
         }
+
+        // buffer_reference 需要 GLSL 扩展指令（Vulkan core 特性、GLSL 扩展语义）
+        out_decls += "#extension GL_EXT_buffer_reference : require\n";
+        // 行表存 64 位设备地址，shader 侧需要 64 位整型
+        out_decls += "#extension GL_ARB_gpu_shader_int64 : require\n";
 
         // 纯字段值结构（与旧路径 struct 同名）：供模块以值语义拷贝行内数据字段
         out_decls += "struct ";

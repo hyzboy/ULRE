@@ -19,7 +19,7 @@
 vec4 SampleMaterialColor(MaterialSourceInput sourceInput)
 {
 #ifdef ULRE_MATERIAL_ARENA_BDA
-    const TextureRectArraySurfaceRow material_row = MTL_ROW(sourceInput.dataIndex);
+    TextureRectArraySurfaceRow material_row = MTL_ROW(sourceInput.dataIndex);
     const uint handle = material_row->tex_base_color;
     const uint layer = material_row->id.x;
 #else

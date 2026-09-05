@@ -22,7 +22,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 {
 #ifdef ULRE_MATERIAL_ARENA_BDA
     // Arena+BDA：数据行与句柄同在行结构内；CUSTOM0 存 2DArray layer 值
-    const PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
+    PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
     const float layer = float(material_data->tex_custom0);
     #define MTL_TEX_ROW_FIELD(slot) material_data->tex_##slot
 #else
@@ -77,7 +77,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 float EvalMaterialAlpha(MaterialSourceInput source_input)
 {
 #ifdef ULRE_MATERIAL_ARENA_BDA
-    const PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
+    PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
     const uint opacity_handle = material_data->tex_opacity_mask;
     const float layer = float(material_data->tex_custom0);
 #else

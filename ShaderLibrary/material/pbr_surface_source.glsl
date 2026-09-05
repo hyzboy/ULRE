@@ -22,7 +22,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 {
 #ifdef ULRE_MATERIAL_ARENA_BDA
     // Arena+BDA：数据行与纹理句柄同在行结构内（BDA 指针解引用）
-    const PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
+    PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
 
     MaterialSourceOutput material_output;
     material_output.baseColor = material_data->base_color.rgb;
@@ -111,7 +111,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 float EvalMaterialAlpha(MaterialSourceInput source_input)
 {
 #ifdef ULRE_MATERIAL_ARENA_BDA
-    const PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
+    PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
     const uint opacity_handle = material_data->tex_opacity_mask;
 #else
     const uint opacity_handle =

@@ -18,7 +18,7 @@
 #ifdef ULRE_MATERIAL_ARENA_BDA
 EmissiveSurfaceData EvalUnlitSource(uint dataIndex)
 {
-    const EmissiveSurfaceRow row = MTL_ROW(dataIndex);
+    EmissiveSurfaceRow row = MTL_ROW(dataIndex);
     EmissiveSurfaceData data;
     data.color = row->color;
     return data;
