@@ -8,6 +8,8 @@
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/ShaderBufferSources.h>
+#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
@@ -193,8 +195,15 @@ namespace hgl::ecs
                                          owner_batch->l2w_index_buffer->GetGPUBuffer());
 
                         if (owner_batch->material_data_index_rows_buffer)
-                            mp->BindSSBO("mtl_private_data_index",
+                        {
+                            // Arena+BDA：行表更名为 mtl_data_addrs（8B 设备地址）；
+                            // 按名查找必须与 schema/描述符布局一致，否则静默不绑
+                            const char *rows_name = graph::IsMaterialArenaBDAEnabled()
+                                ? graph::mtl::SBS_MaterialDataAddresses.name
+                                : graph::mtl::SBS_MaterialPrivateDataIndexRows.name;
+                            mp->BindSSBO(rows_name,
                                          owner_batch->material_data_index_rows_buffer->GetGPUBuffer());
+                        }
                     }
 
                     // IndirectMeshDraw：mesh per-draw 参数表——按 run 首行 offset 绑定
