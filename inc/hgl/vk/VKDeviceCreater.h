@@ -97,6 +97,12 @@ struct VulkanHardwareRequirement
     // 1.3 特性
     SupportLevel dynamicRendering;             ///<要求支持动态渲染
 
+    // 1.2 特性
+    SupportLevel bufferDeviceAddress;          ///<要求支持缓冲设备地址(BDA，材质数据 Arena 寻址依赖)
+
+    // 1.0 特性
+    SupportLevel shaderInt64;                  ///<要求支持着色器 64 位整数(BDA 指针运算依赖)
+
     uint32_t descriptor_pool;                  ///<描述符池大小(默认1024)
 
 public:
@@ -113,6 +119,10 @@ public:
         fullDrawIndexUint32=SupportLevel::Want;
 
         wideLines = SupportLevel::Want;
+
+        // 材质数据 Arena+BDA 路径为引擎基线能力(见 doc/material-ssbo-arena-bda-refactor-plan)
+        bufferDeviceAddress=SupportLevel::Must;
+        shaderInt64=SupportLevel::Must;
     }
 };
 

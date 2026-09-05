@@ -104,6 +104,8 @@ namespace
         REQURE_FEATURE_COPY(wideLines)
         REQURE_FEATURE_COPY(largePoints)
 
+        REQURE_FEATURE_COPY(shaderInt64)
+
         REQURE_TEXTURE_FEATURE_COPY(BC);
         REQURE_TEXTURE_FEATURE_COPY(ETC2);
         REQURE_TEXTURE_FEATURE_COPY(ASTC_LDR);
@@ -267,6 +269,10 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         // VK_KHR_8bit_storage：SSBO 顶点输入支持 uint8 数据（Vulkan12Features 字段）
         vk12_features.storageBuffer8BitAccess                 = dev12.storageBuffer8BitAccess;
         vk12_features.uniformAndStorageBuffer8BitAccess       = dev12.uniformAndStorageBuffer8BitAccess;
+
+        // buffer device address：材质数据 Arena 的 shader 侧寻址依赖
+        // （GL_EXT_buffer_reference 生成 PhysicalStorageBuffer 指针）
+        vk12_features.bufferDeviceAddress                     = dev12.bufferDeviceAddress;
 
         create_info.pNext = &vk12_features;
 
@@ -643,6 +649,19 @@ bool VulkanDeviceCreater::RequirementCheck()
                 features12.descriptorBindingPartiallyBound,
                 features12.descriptorBindingSampledImageUpdateAfterBind,
                 features12.runtimeDescriptorArray);
+            return(false);
+        }
+
+        // ── 材质数据 Arena+BDA 硬需求（buffer device address + shaderInt64）──
+        // GL_EXT_buffer_reference 生成的 PhysicalStorageBuffer 指针依赖两者；
+        // 与 descriptor indexing 同级：不支持即无法运行，直接报错退出。
+        if(!features12.bufferDeviceAddress
+        || !features10.shaderInt64)
+        {
+            GLogError(u8"[VulkanDeviceCreater] 物理设备不支持 bufferDeviceAddress/shaderInt64（材质数据 Arena 硬需求）: "
+                        u8"bufferDeviceAddress=%d shaderInt64=%d",
+                features12.bufferDeviceAddress,
+                features10.shaderInt64);
             return(false);
         }
 
