@@ -509,7 +509,7 @@ namespace hgl::ecs
         //   旧路径 4B 行号表（行 0 = 0）；Arena+BDA 路径为 8B 设备地址表。
         //   text 不使用材质数据行，但布局要求该槽位有绑定——arena 下填
         //   arena 基址（0 号零填充默认行，安全可解引用）。
-        constexpr uint32_t data_index_row_bytes = graph::IsMaterialArenaBDAEnabled()
+        uint32_t data_index_row_bytes = graph::IsMaterialArenaBDAEnabled()
             ? sizeof(uint64_t)
             : sizeof(uint32_t) * graph::mtl::MaterialPrivateDataIndexRowStride;
 

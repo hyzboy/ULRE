@@ -173,6 +173,9 @@ inline void PushVertexResource(std::vector<SerializedDescriptorEntry> &v, const 
                row->semantic, row->ssbo_type, stage_flags);
 }
 
+inline bool MergeSSBODescriptor(std::vector<SerializedDescriptorEntry> &v,
+                               const SerializedDescriptorEntry &incoming);
+
 inline void PushMaterialPrivateDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags);
 
 inline void PushMaterialPrivateDataSlot(std::vector<SerializedDescriptorEntry> &v,
@@ -200,19 +203,19 @@ inline void PushMaterialPrivateDataSlot(std::vector<SerializedDescriptorEntry> &
 
 inline void PushMaterialPrivateDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    // P1-2c：MaterialPrivateDataIndexRows 迁至 PerObject 集（实例→材质行索引表）。
-    // Arena+BDA 路径：同一语义，行表改存 8B 设备地址（mtl_data_addrs）。
-    if(IsMaterialArenaBDAEnabled())
-    {
-        PushBySpec(v, DescriptorSetType::PerObject,
-                   "mtl_data_addrs", "MaterialDataAddresses", DescriptorSemantic::MaterialPrivateDataIndex,
-                   SSBOType::MaterialPrivateDataIndex, stage_flags);
-        return;
-    }
-
-    PushBySpec(v, DescriptorSetType::PerObject,
-               "mtl_private_data_index", "MaterialPrivateDataIndex", DescriptorSemantic::MaterialPrivateDataIndex,
-               SSBOType::MaterialPrivateDataIndex, stage_flags);
+    // PerObject 行表：8B 设备地址表（mtl_data_addrs）。
+    // 经 MergeSSBODescriptor 合并同身份条目——数据槽需求可能同时来自
+    // 定义 TOML 与模块 manifest（双来源），重复条目会破坏契约校验。
+    SerializedDescriptorEntry entry{};
+    entry.set_type                = DescriptorSetType::PerObject;
+    entry.stage_flags             = stage_flags;
+    entry.name                    = SBS_MaterialDataAddresses.name;
+    entry.struct_name             = SBS_MaterialDataAddresses.struct_name;
+    entry.semantic                = DescriptorSemantic::MaterialPrivateDataIndex;
+    entry.semantic_layer          = DescriptorSemanticLayer::SSBO;
+    entry.ssbo_type               = SSBOType::MaterialPrivateDataIndex;
+    entry.material_private_data_slot = DefaultMaterialPrivateDataSlot;
+    MergeSSBODescriptor(v, entry);
 }
 
 inline void PushMaterialTextureLayerRows(
@@ -374,9 +377,12 @@ inline bool PushManifestSSBO(
         if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
             return false;
 
-        // Arena+BDA 路径：数据槽无描述符，降级为地址行表需求
+        // Arena+BDA：数据槽无描述符，需求桥接为地址行表条目。
+        // 非材质行类型（如 TextureLayer）在 arena 下无意义——显式冲突失败。
         if (IsMaterialArenaBDAEnabled())
         {
+            if (!IsMaterialSSBOType(ssbo.ssbo_type))
+                return false;   // 调用方置 ResourceConflict
             PushMaterialPrivateDataIndexRows(v, entry.stage_flags);
             return true;
         }

@@ -5,7 +5,6 @@
 #pragma once
 
 #include <hgl/mtl/MaterialStageInterface.h>
-#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include <vulkan/vulkan.h>
 #include <string>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
@@ -54,14 +53,7 @@ namespace hgl::graph::mtl
         {
             // 与 VS 一致：实例 → MaterialPrivateDataIndexRows 查表（材质数据槽）
             // Arena+BDA：varying 直传 draw item 序号
-            if (IsMaterialArenaBDAEnabled())
-            {
-                ms += "    const uint data_id = gl_InstanceIndex;\n";
-            }
-            else
-            {
-                ms += "    const uint data_id = ResolveMaterialPrivateDataIndex(gl_InstanceIndex);\n";
-            }
+                            ms += "    const uint data_id = gl_InstanceIndex;\n";
             ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 0u] = data_id;\n";
             ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 1u] = data_id;\n";
         }

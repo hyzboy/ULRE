@@ -858,6 +858,19 @@ namespace
 
         ResolvedBindingTable depth_table{};
         ShaderResourceSchema depth_layout{};
+        // Arena：recipe 纹理是行尾数据（视图必须保留），不再是描述符获取——
+        // 资源空布局下，资源型纹理（非 direct 值）以 Asset 身份保留；
+        // direct 值纹理保持视图条目身份。
+        uint32_t arena_asset_texture_count = 0;
+        for (const auto &t : recipe.textures)
+            if (!t.use_direct_value)
+                ++arena_asset_texture_count;
+        const uint32_t expected_free_textures = IsMaterialArenaBDAEnabled()
+            ? arena_asset_texture_count
+            : 0u;
+        const uint32_t expected_free_unused_textures = IsMaterialArenaBDAEnabled()
+            ? 0u
+            : uint32_t(recipe.textures.size());
         if (!BuildBindingTable(
                 recipe,
                 depth_layout,
@@ -866,12 +879,20 @@ namespace
                 diagnostic)
          || !depth_table.IsRuntimeReady()
          || depth_table.unused_recipe_texture_count
-                != recipe.textures.size()
+                != expected_free_unused_textures
          || depth_table.unused_recipe_data_count
                 != recipe.ssbo_assets.size()
-         || CountAssetTextures(depth_table) != 0
+         || CountAssetTextures(depth_table) != expected_free_textures
          || CountAssetData(depth_table) != 0)
         {
+            char dbg[256];
+            std::snprintf(dbg, sizeof(dbg),
+                "[DBG free] ready=%d unused_tex=%d(exp %u) unused_data=%d(exp %u) tex_assets=%u(exp %u) data_assets=%u",
+                depth_table.IsRuntimeReady()?1:0,
+                int(depth_table.unused_recipe_texture_count), expected_free_unused_textures,
+                int(depth_table.unused_recipe_data_count), uint32_t(recipe.ssbo_assets.size()),
+                CountAssetTextures(depth_table), expected_free_textures,
+                CountAssetData(depth_table));
             result.diagnostics.emplace_back(
                 "resource-free Program must submit no unrelated resource acquisition");
         }
@@ -3757,21 +3778,23 @@ namespace
                 return count;
             };
 
-            if (source.find("#define MTL_DATA mtl_private_data") == std::string::npos)
-                result.diagnostics.emplace_back("single-slot aliases were not injected");
+            // Arena+BDA：材质数据经设备地址行表寻址，断言行指针别名 /
+            // 行引用声明 / 值结构三要素齐全且顺序稳定。
+            if (source.find("#define MTL_ROW(i) EmissiveSurfaceRow(mtl_data_addrs.values[(i)])") == std::string::npos)
+                result.diagnostics.emplace_back("arena row alias was not injected");
 
             if (count_occurrences("struct EmissiveSurfaceData") != 1)
                 result.diagnostics.emplace_back("repeated SSBO type emitted duplicate GLSL struct");
 
-            if (source.find("} mtl_private_data;") == std::string::npos)
-                result.diagnostics.emplace_back("single-slot SSBO declaration is incomplete");
+            if (source.find("buffer EmissiveSurfaceRow") == std::string::npos)
+                result.diagnostics.emplace_back("arena row reference declaration is incomplete");
 
             const size_t extension = source.find(
                 "#extension GL_EXT_mesh_shader : require\n");
             const size_t declaration = source.find(
                 "struct EmissiveSurfaceData");
             const size_t alias = source.find(
-                "#define MTL_DATA mtl_private_data\n");
+                "#define MTL_ROW(i) EmissiveSurfaceRow(mtl_data_addrs.values[(i)])\n");
             if (extension == std::string::npos
              || declaration == std::string::npos
              || alias == std::string::npos
@@ -3791,9 +3814,11 @@ namespace
         else
         {
             const std::string &source = vertex->GetFinalGLSL();
-            if (source.find("ResolveMaterialPrivateDataIndex(uint iid)") == std::string::npos
-             || source.find("mtl_private_data_index.values[iid]") == std::string::npos)
-                result.diagnostics.emplace_back("data-index resolver is not single-slot");
+            // Arena+BDA：mesh 阶段不再声明/调用 4B 行号表 resolver；
+            // varying 直传与否取决于接口是否声明 DataIndexID（此处不强制）。
+            if (source.find("ResolveMaterialPrivateDataIndex") != std::string::npos
+             || source.find("mtl_private_data_index") != std::string::npos)
+                result.diagnostics.emplace_back("mesh stage still emits legacy data-index resolver");
         }
 
         delete build_spec;
@@ -4296,6 +4321,9 @@ namespace
                 result.diagnostics.emplace_back(
                     "Merged definition/module resource contract failed validation.");
 
+            // Arena+BDA：有数据槽的材质句柄走行尾——期望一个地址行表条目
+            //（mtl_data_addrs）承载数据槽身份；纹理行表仅无数据槽材质保留。
+            const bool arena_contract = IsMaterialArenaBDAEnabled();
             bool has_required_texture_layer = false;
             bool has_single_material_ssbo = false;
             for (const auto &req : schema.resources)
@@ -4306,8 +4334,12 @@ namespace
                 if (req.semantic == DescriptorSemantic::MaterialPrivateData
                  && req.material_private_data_slot == DefaultMaterialPrivateDataSlot)
                     has_single_material_ssbo = true;
+                if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
+                 && req.name == SBS_MaterialDataAddresses.name)
+                    has_single_material_ssbo = true;
             }
-            if (!has_required_texture_layer || !has_single_material_ssbo)
+            if (!has_single_material_ssbo
+             || (!arena_contract && !has_required_texture_layer))
                 result.diagnostics.emplace_back(
                     "Merged resource policy or SSBO identity was not preserved.");
         }

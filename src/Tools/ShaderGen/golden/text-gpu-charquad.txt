@@ -9,7 +9,7 @@ module name=bindless_textures
 module name=text_source_gpu
 varying data_index_id=1 vertex_color=1 uv0=1 world_pos=0 world_normal=0 luminance=0 frag_direction=0 transform_id_attr=0 palette_color=0 style_id=1
 resource_count=6
-resource semantic=MaterialPrivateDataIndex layer=SSBO declared_set=PerObject set=1 binding=3 stages=Mesh|Fragment ssbo_type=MaterialPrivateDataIndex name=mtl_private_data_index struct=MaterialPrivateDataIndex required=1 fallback=0
+resource semantic=MaterialPrivateDataIndex layer=SSBO declared_set=PerObject set=1 binding=3 stages=Mesh|Fragment ssbo_type=MaterialPrivateDataIndex name=mtl_data_addrs struct=MaterialDataAddresses required=1 fallback=0
 resource semantic=MeshDrawParams layer=SSBO declared_set=PerObject set=1 binding=13 stages=Mesh ssbo_type=UserDefined name=mesh_draw_params struct=MeshDrawParamsData required=1 fallback=0
 resource semantic=MaterialTextureLayerTable layer=SSBO declared_set=Material set=2 binding=0 stages=Fragment ssbo_type=TextureLayer name=mtl_texture_layer_rows struct=TextureLayerRows required=1 fallback=0
 resource semantic=VertexPosition layer=SSBO declared_set=Vertex set=4 binding=0 stages=Mesh ssbo_type=VertexPosition name=VertexPosition struct=VertexPositionData required=1 fallback=0

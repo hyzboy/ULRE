@@ -6,7 +6,6 @@
 #pragma once
 
 #include <hgl/mtl/MaterialStageInterface.h>
-#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include <string>
 #include "MeshShaderModeVertexPassthrough.h"   // MeshShaderModeContext
 #include "MeshShaderTemplate.h"
@@ -66,14 +65,7 @@ namespace hgl::graph::mtl
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
         {
             // Arena+BDA：varying 直传 draw item 序号
-            if (IsMaterialArenaBDAEnabled())
-            {
-                ms += "    const uint data_id = gl_DrawID;\n";
-            }
-            else
-            {
-                ms += "    const uint data_id = ResolveMaterialPrivateDataIndex(gl_DrawID);\n";
-            }
+                            ms += "    const uint data_id = gl_DrawID;\n";
             ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 0u] = data_id;\n";
             ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 1u] = data_id;\n";
         }

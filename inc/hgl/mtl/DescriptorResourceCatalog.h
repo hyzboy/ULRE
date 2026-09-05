@@ -55,7 +55,7 @@ namespace hgl::graph::mtl
         { DescriptorSemantic::LocalToWorld,         ResourceCatalogClass::PerDraw, &SBS_LocalToWorld,                   DescriptorSetType::PerObject, int(PerObjectBinding::L2W),              SSBOType::UserDefined,              VertexSemantic::Unknown, false },
         { DescriptorSemantic::LocalToWorldIndex,    ResourceCatalogClass::PerDraw, &SBS_LocalToWorldIndex,              DescriptorSetType::PerObject, int(PerObjectBinding::L2WIndex),         SSBOType::LocalToWorldIndex,        VertexSemantic::Unknown, false },
         { DescriptorSemantic::MeshDrawParams,       ResourceCatalogClass::PerDraw, &SBS_MeshDrawParams,                 DescriptorSetType::PerObject, int(PerObjectBinding::MeshDrawParams),   SSBOType::UserDefined,              VertexSemantic::Unknown, true  },
-        { DescriptorSemantic::MaterialPrivateDataIndex, ResourceCatalogClass::PerDraw, &SBS_MaterialPrivateDataIndexRows, DescriptorSetType::PerObject, int(PerObjectBinding::PrivateDataIndex), SSBOType::MaterialPrivateDataIndex, VertexSemantic::Unknown, false },
+        { DescriptorSemantic::MaterialPrivateDataIndex, ResourceCatalogClass::PerDraw, &SBS_MaterialDataAddresses,          DescriptorSetType::PerObject, int(PerObjectBinding::PrivateDataIndex), SSBOType::MaterialPrivateDataIndex, VertexSemantic::Unknown, false },
 
         // ── VertexGeometry：Vertex 集顶点数据（几何 ABI，长期冻结；vab_semantic 为互查键）──
         { DescriptorSemantic::VertexPosition,    ResourceCatalogClass::VertexGeometry, &SBS_VertexPosition,    DescriptorSetType::Vertex, int(VertexBinding::Position),    SSBOType::VertexPosition,    VertexSemantic::Position,    true },

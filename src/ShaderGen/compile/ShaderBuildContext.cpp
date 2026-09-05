@@ -183,12 +183,11 @@ bool ShaderBuildContext::AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bit
 {
     const DescriptorResourceCatalogEntry &row=CatalogFixedRow<DescriptorSemantic::MaterialPrivateDataIndex>();
 
-    // Arena+BDA 路径：PerObject 行表为 8B 设备地址表（mtl_data_addrs）
-    const ShaderBufferSource &sbs=IsMaterialArenaBDAEnabled()
-        ? SBS_MaterialDataAddresses
-        : SBS_MaterialPrivateDataIndexRows;
-
-    return AddSSBO(flag_bits,row.set_type,sbs.struct_name,sbs.name,row.binding);
+    return AddSSBO(flag_bits,
+                   row.set_type,
+                   SBS_MaterialDataAddresses.struct_name,
+                   SBS_MaterialDataAddresses.name,
+                   row.binding);
 }
 
 bool ShaderBuildContext::AddSSBOTextureLayer(const uint32_t flag_bits,const int binding)

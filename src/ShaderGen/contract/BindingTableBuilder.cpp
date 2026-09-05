@@ -372,7 +372,10 @@ namespace hgl::graph::mtl
                         program_key_digest, slot);
                     binding.semantic = DescriptorSemantic::MaterialTexture;
                     binding.texture_slot = slot;
-                    binding.required = recipe_binding.required;
+                    // Arena：行尾数据非管线需求，桥接条目不计入 runtime-ready
+                    //（legacy 路径保持与需求一致，供 domain 解析判定）。
+                    binding.required = IsMaterialArenaBDAEnabled()
+                        ? false : recipe_binding.required;
                     binding.allow_fallback = false;
                     out_table.textures.Add(binding);
                 }

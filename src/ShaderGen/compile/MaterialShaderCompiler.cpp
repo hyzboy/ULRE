@@ -519,10 +519,8 @@ static bool RegisterCanonicalDescriptors(
             }
             else if (cat->semantic == DescriptorSemantic::MaterialPrivateDataIndex)
             {
-                // Arena+BDA 路径：行表为 8B 设备地址表（MaterialDataAddresses）
-                const bool arena = IsMaterialArenaBDAEnabled();
-                if (!ctx->AddStruct(arena ? SBS_MaterialDataAddresses.struct_name
-                                          : SBS_MaterialPrivateDataIndexRows.struct_name, ""))
+                // 行表为 8B 设备地址表（MaterialDataAddresses）
+                if (!ctx->AddStruct(SBS_MaterialDataAddresses.struct_name, ""))
                     return c.Fail("failed to add MaterialPrivateDataIndex struct");
                 // P1-2c：行表迁至 PerObject 集，binding 由固定枚举确定（固定名路径）
                 if (!ctx->AddSSBOMaterialPrivateDataIndex(stage_bits))

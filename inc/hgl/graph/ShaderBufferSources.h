@@ -15,11 +15,8 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_MaterialTextureLayerRows{
         DescriptorSetType::Material,  "mtl_texture_layer_rows", "TextureLayerRows"
     };
-    constexpr const ShaderBufferSource SBS_MaterialPrivateDataIndexRows{
-        DescriptorSetType::PerObject, "mtl_private_data_index", "MaterialPrivateDataIndex"
-    };
-    // Arena+BDA 路径（ULRE_MATERIAL_ARENA）：每 draw 项 → 材质数据行设备地址表。
-    // 行宽 8B（uint64 设备地址），取代 mtl_private_data_index 的 4B 行号表。
+    // 每 draw 项 → 材质数据行设备地址表（8B 行，W3.3 起为唯一行表；
+    // 取代旧 mtl_private_data_index 4B 行号表）。
     constexpr const ShaderBufferSource SBS_MaterialDataAddresses{
         DescriptorSetType::PerObject, "mtl_data_addrs", "MaterialDataAddresses"
     };

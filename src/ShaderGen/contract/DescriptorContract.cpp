@@ -65,8 +65,7 @@ namespace hgl::graph::mtl
             //   同名去重必须保留：数据槽需求可能同时来自定义 TOML
             //  （[resources].material_data）与模块 manifest（@ulre ssbo），
             //   两条同身份地址表条目会触发契约重名校验失败。
-            if (IsMaterialArenaBDAEnabled()
-             && source.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
+            if (source.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
             {
                 for (const auto &existing : out_contract)
                 {
@@ -166,11 +165,11 @@ namespace hgl::graph::mtl
          && !has_semantic(DescriptorSemantic::MaterialPrivateDataIndex))
         {
             SerializedDescriptorEntry entry{};
-            entry.set_type = SBS_MaterialPrivateDataIndexRows.set_type;  // P1-2c：Transform 集
+            entry.set_type = SBS_MaterialDataAddresses.set_type;  // P1-2c：Transform 集
             entry.stage_flags =
                 uint32(hgl::graph::kMeshFragment);
-            entry.name = SBS_MaterialPrivateDataIndexRows.name;
-            entry.struct_name = SBS_MaterialPrivateDataIndexRows.struct_name;
+            entry.name = SBS_MaterialDataAddresses.name;
+            entry.struct_name = SBS_MaterialDataAddresses.struct_name;
             entry.semantic =
                 DescriptorSemantic::MaterialPrivateDataIndex;
             entry.semantic_layer = DescriptorSemanticLayer::SSBO;
@@ -208,42 +207,9 @@ namespace hgl::graph::mtl
         if (material_private_data == SSBOType::UserDefined)
             return ValidateDescriptorContract(out_contract);
 
-        out_contract.erase(
-            std::remove_if(
-                out_contract.begin(),
-                out_contract.end(),
-                [](const SerializedDescriptorEntry &entry)
-                {
-                    return entry.semantic
-                        == DescriptorSemantic::MaterialPrivateData;
-                }),
-            out_contract.end());
-
-        // Arena+BDA 路径：数据槽无描述符；地址行表条目由描述符构建侧
-        // （flag 感知推送）提供，此处不再补录固定数据槽条目
-        if (IsMaterialArenaBDAEnabled())
-            return ValidateDescriptorContract(out_contract);
-
-        // 单槽化：固定 slot 0 / DefaultMaterialPrivateDataSlotName
-        SerializedDescriptorEntry fixed{};
-        fixed.set_type = DescriptorSetType::Material;
-        fixed.stage_flags = material_ssbo_stage_bits;
-        fixed.name = DefaultMaterialPrivateDataSlotName;
-        fixed.struct_name =
-            ssbo::GetMaterialSSBOStructName(material_private_data);
-        fixed.semantic =
-            DescriptorSemantic::MaterialPrivateData;
-        fixed.texture_slot = TextureSlot::BaseColor;
-        fixed.material_private_data_slot = DefaultMaterialPrivateDataSlot;
-        fixed.ssbo_type = material_private_data;
-        fixed.semantic_layer = DescriptorSemanticLayer::SSBO;
-        fixed.ssbo_id = MakeRecipeSSBOId(DefaultMaterialPrivateDataSlot);
-        fixed.has_requirement_policy = true;
-        fixed.required = true;
-        fixed.allow_fallback = false;
-        if (!AppendEntry(fixed, out_contract))
-            return false;
-
+        // 数据槽无描述符（Arena 行结构经地址行表寻址）；
+        // 地址行表条目由描述符构建侧推送，此处不再补录固定数据槽条目。
+        // （旧路径的 MaterialPrivateData 擦除+固定条目补录已随 W3.3 删除。）
         return ValidateDescriptorContract(out_contract);
     }
 
