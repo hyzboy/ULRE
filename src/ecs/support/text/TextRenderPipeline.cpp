@@ -1,4 +1,6 @@
 ﻿#include<hgl/ecs/support/TextRenderPipeline.h>
+#include<hgl/graph/ssbo/MaterialArenaPath.h>
+#include<hgl/graph/module/MaterialDataArena.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
@@ -236,9 +238,16 @@ namespace hgl::ecs
         if (!cmd)
             return;
 
+        const bool arena_debug = getenv("ULRE_ARENA_DEBUG") != nullptr;
+
         for (auto &pair : resources_by_font)
         {
             auto &res = pair.second;
+
+            if (arena_debug)
+                GLogInfo("[TextTrace] font draw: chars=%u pipeline=%p material=%p per_object_mp=%p",
+                         res.last_draw_char_count,
+                         (void *)res.pipeline, (void *)res.material, (void *)res.per_object_mp);
 
             if (res.last_draw_char_count == 0)
                 continue;
@@ -496,26 +505,46 @@ namespace hgl::ecs
         resources.texture_layer_buffer = guard.texture_layer_buffer;
         guard.texture_layer_buffer = nullptr;
 
-        // material_private_data_index_rows：MaterialPrivateDataIndexRowStride 个 uint 一行；行 0 value = 0。
-        constexpr uint32_t data_index_row_bytes =
-            sizeof(uint32_t) * graph::mtl::MaterialPrivateDataIndexRowStride;
+        // material_private_data_index_rows / mtl_data_addrs：
+        //   旧路径 4B 行号表（行 0 = 0）；Arena+BDA 路径为 8B 设备地址表。
+        //   text 不使用材质数据行，但布局要求该槽位有绑定——arena 下填
+        //   arena 基址（0 号零填充默认行，安全可解引用）。
+        constexpr uint32_t data_index_row_bytes = graph::IsMaterialArenaBDAEnabled()
+            ? sizeof(uint64_t)
+            : sizeof(uint32_t) * graph::mtl::MaterialPrivateDataIndexRowStride;
 
         guard.data_index_row_buffer = buffer_manager->CreateSSBO(
-            "Text2D_DataIndexRows", data_index_row_bytes, graph::SharingMode::Exclusive);
+            graph::IsMaterialArenaBDAEnabled() ? "Text2D_DataAddresses" : "Text2D_DataIndexRows",
+            data_index_row_bytes, graph::SharingMode::Exclusive);
         if (!guard.data_index_row_buffer)
         {
             return nullptr;
         }
 
-        uint32_t data_index_row[graph::mtl::MaterialPrivateDataIndexRowStride] = {};
-        guard.data_index_row_buffer->GetGPUBuffer()->Write(data_index_row, 0, sizeof(data_index_row));
+        if (graph::IsMaterialArenaBDAEnabled())
+        {
+            uint64_t safe_addr = 0;
+            if (auto *arena = graph::AcquireMaterialDataArena(graphics_context->GetDevice()))
+                safe_addr = arena->GetDeviceAddress();
+            guard.data_index_row_buffer->GetGPUBuffer()->Write(&safe_addr, 0, sizeof(safe_addr));
+        }
+        else
+        {
+            uint32_t data_index_row[graph::mtl::MaterialPrivateDataIndexRowStride] = {};
+            guard.data_index_row_buffer->GetGPUBuffer()->Write(data_index_row, 0, sizeof(data_index_row));
+        }
 
         // 注意：material_private_data_index_rows 声明在 PerObject set（SBS_MaterialPrivateDataIndexRows.set_type），
         // 与 b14/15/16 + mesh_draw_params 同集——绑到 per_object_mp；mtl_texture_layer_rows 在 Material set。
         // 同样不注册 ResourceDomain（多字体同地址注册会互相释放 buffer，见上方注释）。
-        if (!guard.per_object_mp->BindSSBO(graph::mtl::SBS_MaterialPrivateDataIndexRows.name,
+        const char *data_rows_name = graph::IsMaterialArenaBDAEnabled()
+            ? graph::mtl::SBS_MaterialDataAddresses.name
+            : graph::mtl::SBS_MaterialPrivateDataIndexRows.name;
+
+        if (!guard.per_object_mp->BindSSBO(data_rows_name,
                                            guard.data_index_row_buffer->GetGPUBuffer()))
         {
+            GLogError("[TextPipeline] BindSSBO(%s) failed -- font resources aborted", data_rows_name);
             return nullptr;
         }
 
@@ -533,6 +562,9 @@ namespace hgl::ecs
         guard.committed = true;
 
         resources_by_font.Add(font_source, std::move(resources));
+
+        if (getenv("ULRE_ARENA_DEBUG"))
+            GLogInfo("[TextTrace] font resources created: atlas_handle=%u", resources.bindless_atlas_handle);
 
         return resources_by_font.GetValuePointer(font_source);
     }
