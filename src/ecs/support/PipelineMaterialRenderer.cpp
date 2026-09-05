@@ -196,12 +196,9 @@ namespace hgl::ecs
 
                         if (owner_batch->material_data_index_rows_buffer)
                         {
-                            // Arena+BDA：行表更名为 mtl_data_addrs（8B 设备地址）；
-                            // 按名查找必须与 schema/描述符布局一致，否则静默不绑
-                            const char *rows_name = graph::IsMaterialArenaBDAEnabled()
-                                ? graph::mtl::SBS_MaterialDataAddresses.name
-                                : graph::mtl::SBS_MaterialPrivateDataIndexRows.name;
-                            mp->BindSSBO(rows_name,
+                            // 行表 mtl_data_addrs（8B 设备地址）：按名查找必须与
+                            // schema/描述符布局一致，否则静默不绑
+                            mp->BindSSBO(graph::mtl::SBS_MaterialDataAddresses.name,
                                          owner_batch->material_data_index_rows_buffer->GetGPUBuffer());
                         }
                     }

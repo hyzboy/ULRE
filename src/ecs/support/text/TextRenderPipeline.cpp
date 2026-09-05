@@ -534,12 +534,10 @@ namespace hgl::ecs
             guard.data_index_row_buffer->GetGPUBuffer()->Write(data_index_row, 0, sizeof(data_index_row));
         }
 
-        // 注意：material_private_data_index_rows 声明在 PerObject set（SBS_MaterialPrivateDataIndexRows.set_type），
+        // 注意：mtl_data_addrs（8B 设备地址表）声明在 PerObject set，
         // 与 b14/15/16 + mesh_draw_params 同集——绑到 per_object_mp；mtl_texture_layer_rows 在 Material set。
         // 同样不注册 ResourceDomain（多字体同地址注册会互相释放 buffer，见上方注释）。
-        const char *data_rows_name = graph::IsMaterialArenaBDAEnabled()
-            ? graph::mtl::SBS_MaterialDataAddresses.name
-            : graph::mtl::SBS_MaterialPrivateDataIndexRows.name;
+        const char *data_rows_name = graph::mtl::SBS_MaterialDataAddresses.name;
 
         if (!guard.per_object_mp->BindSSBO(data_rows_name,
                                            guard.data_index_row_buffer->GetGPUBuffer()))
