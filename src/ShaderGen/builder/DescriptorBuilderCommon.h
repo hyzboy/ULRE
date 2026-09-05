@@ -222,9 +222,9 @@ inline void PushMaterialTextureLayerRows(
     const bool required = true,
     const bool allow_fallback = false)
 {
-    // Arena+BDA 路径：bindless 句柄存于材质数据行尾，无纹理行表描述符。
-    if(IsMaterialArenaBDAEnabled())
-        return;
+    // Arena+BDA 路径：句柄随数据行尾下发。由调用方把关——
+    // 仅"无数据槽"材质（句柄无处安放）保留本全局纹理行表描述符；
+    // 有数据槽的材质在 arena 下不再需要它。
 
     SerializedDescriptorEntry entry{
         DescriptorSetType::Material, stage_flags,
@@ -262,7 +262,15 @@ inline void AppendDefinitionMaterialDescriptors(
     // MaterialTextureLayerTable；纹理层行表改由
     // AppendManifestTextureLayerDescriptors（manifest 元数据）或此处
     // texture_slot_decls 声明提供。
-    if (!definition.texture_slot_decls.empty())
+    //
+    // Arena+BDA：有数据槽的材质句柄走行尾，不再需要纹理行表；
+    // 无数据槽材质（如 UnlitTexture）句柄无处安放——保留全局纹理行表。
+    const bool arena_keep_texture_table =
+        IsMaterialArenaBDAEnabled()
+        && definition.material_private_data == SSBOType::UserDefined;
+
+    if (!definition.texture_slot_decls.empty()
+     && (!IsMaterialArenaBDAEnabled() || arena_keep_texture_table))
         PushMaterialTextureLayerRows(v, texture_layer_table_stage_flags);
 }
 
@@ -400,10 +408,11 @@ inline bool AppendManifestSSBODescriptors(
 
 inline bool AppendManifestTextureLayerDescriptors(
     std::vector<SerializedDescriptorEntry> &v,
-    ShaderCodeResourceManifest &manifest)
+    ShaderCodeResourceManifest &manifest,
+    const bool definition_has_data_slot)
 {
-    // Arena+BDA 路径：bindless 句柄存于材质数据行尾，无纹理行表描述符
-    if (IsMaterialArenaBDAEnabled())
+    // Arena+BDA：有数据槽的材质句柄走行尾；无数据槽材质保留纹理行表
+    if (IsMaterialArenaBDAEnabled() && definition_has_data_slot)
         return true;
 
     for (uint32 i = 0; i < manifest.texture_layer_count; ++i)

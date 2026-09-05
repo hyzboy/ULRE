@@ -20,6 +20,19 @@ namespace hgl::graph
      */
     inline bool IsMaterialArenaBDAEnabled()
     {
+        //static const bool enabled=[]
+        //{
+        //    const wchar_t *env=_wgetenv(L"ULRE_MATERIAL_ARENA");
+
+        //    return env!=nullptr
+        //        && (wcscmp(env,L"1")==0
+        //         || wcscmp(env,L"on")==0);
+        //}();
+
+        //return enabled;
+
+        // 迁移期(W2-W3)双路径开关；W3.4 删 flag 时恢复此返回并内联删除。
+        // 请勿硬编码——回归基线(flag off)依赖双态可切。
         static const bool enabled=[]
         {
             const wchar_t *env=_wgetenv(L"ULRE_MATERIAL_ARENA");

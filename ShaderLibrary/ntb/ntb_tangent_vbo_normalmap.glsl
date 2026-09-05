@@ -19,8 +19,13 @@ NTBSpace GetNTB(NTBInput ntb_input)
 {
     const SurfaceInput si = ntb_input.surface;
     NTBSpace ntb = BuildOrthoNTB(si.worldNormal);
+#ifdef ULRE_MATERIAL_ARENA_BDA
+    // Arena+BDA：法线句柄在材质数据行尾（MTL_ROW 宏自带行类型）
+    const uint normalTexHandle = MTL_ROW(ntb_input.dataIndex).tex_normal;
+#else
     const uint normalTexHandle =
         mtl_texture_layer_rows.data[ntb_input.dataIndex].normal;
+#endif
 
     if (normalTexHandle != 0u)
     {

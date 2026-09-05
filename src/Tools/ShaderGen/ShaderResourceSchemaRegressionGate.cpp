@@ -4278,7 +4278,8 @@ namespace
         if (!descriptor_builder_common::AppendManifestSSBODescriptors(
                 descriptors, compatible_manifest)
          || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(
-                descriptors, compatible_manifest)
+                descriptors, compatible_manifest,
+                definition.material_private_data != SSBOType::UserDefined)
          || !compatible_manifest.IsValid())
         {
             result.diagnostics.emplace_back(

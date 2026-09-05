@@ -113,7 +113,10 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
         descriptor_builder_common::PushVertexResource<DescriptorSemantic::VertexIndex>(descriptors, vertex_stage);
     }
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
-     || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))
+     || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(
+            descriptors,
+            manifest,
+            definition.material_private_data != SSBOType::UserDefined))
         return {};
     descriptor_builder_common::EnsureMaterialPrivateDataIndexTable(
         descriptors, uint32_t(hgl::graph::kMeshFragment));

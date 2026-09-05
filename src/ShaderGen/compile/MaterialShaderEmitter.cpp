@@ -439,6 +439,28 @@ std::string BuildFSIndexTableDecls(
                    "    uint64_t values[];\n"
                    "} mtl_data_addrs;\n";
         }
+
+        // 无数据槽材质（如 UnlitTexture）：句柄仍走全局纹理行表，
+        // 该描述符存在时一并发射（有数据槽材质不会注册它）
+        const ShaderDescriptor *tex_rows_sd =
+            descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name);
+        if (tex_rows_sd && tex_rows_sd->set >= 0 && tex_rows_sd->binding >= 0)
+        {
+            out += "struct TextureLayerRowsData\n{\n";
+            for (uint32_t i = 0;
+                 i < static_cast<uint32_t>(TextureSlot::RANGE_SIZE); ++i)
+            {
+                out += "    uint ";
+                out += GetTextureSlotName(static_cast<TextureSlot>(i));
+                out += ";\n";
+            }
+            out += "};\n";
+            out += "layout(set=" + std::to_string(tex_rows_sd->set)
+                 + ", binding=" + std::to_string(tex_rows_sd->binding)
+                 + ") readonly buffer TextureLayerRowsBuffer\n{\n"
+                   "    TextureLayerRowsData data[];\n"
+                   "} mtl_texture_layer_rows;\n";
+        }
         return out;
     }
 
