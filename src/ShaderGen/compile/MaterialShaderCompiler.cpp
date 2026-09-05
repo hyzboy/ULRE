@@ -71,7 +71,7 @@ bool FinalizeShaderBuildContext(
 
 #ifdef _DEBUG
     // ULRE_DUMP_GLSL=1: dump final GLSL of every material build (mesh+fragment)
-    GLogInfo("[ULRE_DUMP] FinalizeShaderBuildContext reached, env=%d")
+    //#endif-trace removed
     if (getenv("ULRE_DUMP_GLSL"))
     {
         static std::atomic<uint32_t> dump_seq{0};
