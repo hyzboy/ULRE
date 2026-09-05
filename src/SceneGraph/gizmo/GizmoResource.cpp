@@ -3,6 +3,8 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
+#include<hgl/graph/ssbo/MaterialArenaPath.h>
 #include<hgl/mtl/SceneRenderTemplateResolver.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/color/Color.h>
@@ -89,6 +91,51 @@ namespace hgl::graph
             auto *domain_manager = graphics_context->GetResourceDomainManager();
             if (!buffer_manager || !domain_manager)
                 return false;
+
+            // Arena+BDA：schema 中数据槽语义为 MaterialPrivateDataIndex
+            //（地址行表），旧 MaterialPrivateData 检查不成立——直接走 arena 行分配
+            if (graph::IsMaterialArenaBDAEnabled())
+            {
+                const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
+
+                auto *acc = domain_manager->AllocateArrayAccessor<ssbo::EmissiveSurfaceRow>(
+                    mtl::SSBOType::EmissiveSurface,
+                    "GizmoResource:PureColor:MaterialData",
+                    color_count);
+                if (!acc)
+                    return false;
+
+                for (uint32_t i = 0; i < color_count; ++i)
+                    (*acc)[i].color = GetColor4f(gizmo_color[i], 1.0f);
+
+                const uint32_t gizmo_ssbo_id = acc->GetSSBOId();
+
+                // 行写入即生效(HOST_COHERENT 直写)，accessor 可立即释放；
+                // 行数据常驻 arena。每色一份 recipe，行号=色槽号。
+                delete acc;
+
+                for (uint32_t c = 0; c < color_count; ++c)
+                {
+                    auto &recipe = gr->color_recipe[c];
+                    recipe = mtl::MaterialRecipe{};
+                    recipe.recipe_name = "GizmoColor_" + std::to_string(c);
+                    recipe.mtl_def_id = mtl::BUILTIN_MTL_DEF_PURE_COLOR;
+                    recipe.textures.clear();
+                    recipe.ssbo_assets.clear();
+
+                    if (!mtl::UpsertRecipeSSBOAssetBinding(recipe,
+                                                          mtl::DefaultMaterialPrivateDataSlotName,
+                                                          mtl::SSBOType::EmissiveSurface,
+                                                          gizmo_ssbo_id,
+                                                          mtl::DefaultMaterialPrivateDataSlot,
+                                                          c,
+                                                          true,
+                                                          true))
+                        return false;
+                }
+
+                return true;
+            }
 
             bool has_struct_binding = false;
             for (const auto &req : material_layout.resources)
