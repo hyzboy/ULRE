@@ -42,6 +42,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/ShaderProgramCreatePrecheckAdapter.cpp
                         module/ShaderProgramFinalizeFlowAdapter.cpp
                         module/BufferManager.cpp
+                        module/MaterialDataArena.cpp
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp
                         module/ResourceDomainManager.cpp
