@@ -7,6 +7,7 @@
 #include <hgl/graph/module/MaterialDataArena.h>
 #include <hgl/vk/SSBOArrayAccessor.h>
 #include <unordered_map>
+#include <hgl/log/Log.h>
 
 namespace hgl::graph
 {
@@ -136,6 +137,27 @@ public:
     {
         if (element_count == 0)
             return nullptr;
+
+#ifndef ULRE_MATERIAL_ARENA_SILENT
+        // 行结构诊断：T 的尺寸与该类型的旧契约行距不一致，说明 T 是 Arena 行
+        // 结构（MaterialDataRows.h）——必须启用 ULRE_MATERIAL_ARENA 才能分配。
+        // 提前给出可操作的错误，而不是落到旧路径 EnsureBuffer 的 R11 行距拒绝。
+        if (!IsMaterialArenaBDAEnabled())
+        {
+            const uint32_t legacy_stride = mtl::GetSSBOTypeStructStride(ssbo_type);
+            if (legacy_stride != 0 && sizeof(T) != legacy_stride)
+            {
+                GLogError("[ArenaPath] AllocateArrayAccessor: SSBOType=%s sizeof(T)=%llu "
+                          "!= legacy stride %u, and ULRE_MATERIAL_ARENA is off. "
+                          "This T is an Arena row struct (MaterialDataRows.h) -- "
+                          "set ULRE_MATERIAL_ARENA=1 to allocate it.",
+                          mtl::GetSSBOTypeName(ssbo_type),
+                          static_cast<unsigned long long>(sizeof(T)),
+                          legacy_stride);
+                return nullptr;
+            }
+        }
+#endif
 
         const uint32_t allocated_id = AllocateSSBOId();
 
