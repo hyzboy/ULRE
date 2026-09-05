@@ -35,6 +35,11 @@ namespace hgl::ecs
         uint32_t data_index_row = uint32_t(-1);
         std::vector<uint32_t> data_index_values;
 
+        // Arena 行寻址（W3.3 后按 SSBOType 独立缓冲）：实例数据行的
+        // CPU 映射基址（行尾句柄直写）与 GPU 设备地址（地址行表引用）。
+        void    *material_row_cpu = nullptr;
+        uint64_t material_row_gpu = 0;
+
         // Dirty/lifecycle flags.
         // program_dirty — program (pipeline) must be re-resolved.
         // runtime_dirty  — bindings/resources must be re-prepared and

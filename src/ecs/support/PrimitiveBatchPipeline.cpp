@@ -11,7 +11,7 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/graph/module/MaterialDataArena.h>
+
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -693,23 +693,25 @@ namespace hgl::ecs
                         "ECS:Batch:MaterialDataAddresses", byte_size, nullptr, graph::SharingMode::Exclusive);
 
                     // 关键安全垫：BDA 解引用未初始化显存 = GPU page fault(驱动 TDR)。
-                    // 全表预填 arena 基址（0 号零填充默认行），保证任何时刻可安全解引用；
+                    // 全表预填 Null 行地址（零填充默认行），保证任何时刻可安全解引用；
                     // 随后每帧 WriteBatchIndexRows 覆盖为真实行地址。
                     if (batch.material_data_index_rows_buffer)
                     {
-                        if (auto *arena_fill = graph::AcquireMaterialDataArena(batch.device))
+                        uint64_t safe_addr = 0;
+                        if (auto *fill_gc = world ? world->GetGraphicsContext() : nullptr)
+                            if (auto *fill_rdm = fill_gc->GetResourceDomainManager())
+                                safe_addr = fill_rdm->GetNullRowAddress();
+
+                        if (safe_addr)
+                        if (auto *fill_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer())
                         {
-                            if (auto *fill_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer())
+                            if (auto *fill_ptr = static_cast<uint64_t *>(
+                                    fill_gpu->Map(0, byte_size)))
                             {
-                                if (auto *fill_ptr = static_cast<uint64_t *>(
-                                        fill_gpu->Map(0, byte_size)))
-                                {
-                                    const uint64_t safe_addr = arena_fill->GetDeviceAddress();
-                                    const size_t n = static_cast<size_t>(batch.material_data_index_rows_capacity);
-                                    for (size_t i = 0; i < n; ++i)
-                                        fill_ptr[i] = safe_addr;
-                                    fill_gpu->Unmap();
-                                }
+                                const size_t n = static_cast<size_t>(batch.material_data_index_rows_capacity);
+                                for (size_t i = 0; i < n; ++i)
+                                    fill_ptr[i] = safe_addr;
+                                fill_gpu->Unmap();
                             }
                         }
                     }
@@ -753,11 +755,14 @@ namespace hgl::ecs
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
 
-            // Arena+BDA 路径：行表写 8B 设备地址（块号经 arena AddressOf 换算；
-            // 0 号哨兵块映射为 base+0，即零填充默认行，地址恒合法）
+            // 行表写 8B 设备地址：每实例数据行的地址在 Collect 物化时
+            // 已解析到 MaterialComponent（按 SSBOType 独立缓冲内偏移）
             if (mi_gpu)
             {
-                auto *arena = graph::AcquireMaterialDataArena(batch.device);
+                uint64_t null_row_address = 0;
+                if (auto *wr_gc = world ? world->GetGraphicsContext() : nullptr)
+                    if (auto *wr_rdm = wr_gc->GetResourceDomainManager())
+                        null_row_address = wr_rdm->GetNullRowAddress();
 
                 uint64_t *row_ptr = static_cast<uint64_t *>(
                     mi_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint64_t)));
@@ -767,18 +772,14 @@ namespace hgl::ecs
 
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        row_ptr[i] = arena ? arena->GetDeviceAddress() : 0u;
+                        row_ptr[i] = null_row_address;
 
                         auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
                         auto material_comp = primitive_item
                             ? primitive_item->GetMaterialComponent()
                             : nullptr;
-                        if (arena
-                         && material_comp
-                         && !material_comp->data_index_values.empty())
-                        {
-                            row_ptr[i] = arena->AddressOf(material_comp->data_index_values[0]);
-                        }
+                        if (material_comp)
+                            row_ptr[i] = material_comp->material_row_gpu;
 
                         row_copy[i] = row_ptr[i];
                     }
@@ -788,22 +789,17 @@ namespace hgl::ecs
                         batch.debug_blocks_logged = true;
                         for (size_t i = 0; i < item_count && i < 4; ++i)
                         {
-                            auto *pi = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
-                            auto mc = pi ? pi->GetMaterialComponent() : nullptr;
-                            GLogInfo("[ArenaDebug] item[%u] addr=0x%llx block=%u",
+                            GLogInfo("[ArenaDebug] item[%u] addr=0x%llx",
                                      (uint32_t)i,
-                                     (unsigned long long)row_copy[i],
-                                     (mc && !mc->data_index_values.empty()) ? mc->data_index_values[0] : 0u);
+                                     (unsigned long long)row_copy[i]);
                         }
                     }
                     mi_gpu->Unmap();
 
-                    if (getenv("ULRE_DUMP_GLSL"))
                     if (getenv("ULRE_ARENA_DEBUG"))
-                    GLogInfo("[ArenaDebug] rows written: n=%u row0=0x%llx base=0x%llx",
+                    GLogInfo("[ArenaDebug] rows written: n=%u row0=0x%llx",
                              item_count,
-                             (unsigned long long)(item_count ? row_copy[0] : 0),
-                             (unsigned long long)(arena ? arena->GetDeviceAddress() : 0));
+                             (unsigned long long)(item_count ? row_copy[0] : 0));
                 }
                 return;
             }

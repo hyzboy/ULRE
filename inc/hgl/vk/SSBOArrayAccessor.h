@@ -53,6 +53,7 @@ private:
     bool          dirty         = false;                       ///< CPU 侧是否有未提交的修改
     uint32_t      stride_bytes  = 0;                           ///< 行距字节数（0=sizeof(T) 紧密排布；Arena 路径=sizeof(T) 且 16B 对齐）
     bool          host_direct   = false;                       ///< true=HOST_COHERENT 直写（Commit 为 no-op）
+    bool          owned_buffer  = false;                       ///< true=析构时释放 buffer（独立行缓冲持有）
 
     friend class VulkanDevice;
     friend class ResourceDomainManager;
@@ -87,7 +88,7 @@ private:
             MapInternal();
     }
 
-    // Arena+BDA 路径：直写宿主窗口（无独立 buffer；mapped_data 即行段基址）
+    // Arena+BDA 路径：直写宿主窗口（mapped_data 即行段基址）
     explicit SSBOArrayAccessor(void *host_base, uint32_t count, uint32_t in_stride)
         : BufferAccessBase()
         , element_count(count)
@@ -134,6 +135,13 @@ public:
     ~SSBOArrayAccessor()
     {
         UnmapInternal();
+
+        if (owned_buffer && buffer)
+            delete buffer;      // VkBufferOwner 析构链释放 IGPUBuffer/DeviceMemory/VkBuffer
+
+        buffer      = nullptr;
+        gpu_buf     = nullptr;
+        mapped_data = nullptr;
     }
 
     // 禁止拷贝 / Disable copy
@@ -194,6 +202,17 @@ public:
      * EN: Return the SSBO ID assigned by ResourceDomainManager.
      */
     uint32_t GetSSBOId() const { return ssbo_id; }
+
+    /**
+     * CN: 取得行缓冲所有权：析构时释放整个 DeviceBuffer。
+     *     用于独立行缓冲（每 SSBOType 一块 BDA 缓冲）的生命周期管理。
+     * EN: Take buffer ownership: the destructor releases the DeviceBuffer.
+     */
+    void OwnBuffer(VkBufferOwner *buf)
+    {
+        SetBuffer(buf);
+        owned_buffer = (buf != nullptr);
+    }
 
     /**
      * CN: 返回此访问器对应的 SSBO 类型

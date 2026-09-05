@@ -3,7 +3,7 @@
 #include <hgl/graph/module/GraphModule.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
-#include <hgl/graph/module/MaterialDataArena.h>
+#include <hgl/vk/VKDevice.h>
 #include <hgl/vk/SSBOArrayAccessor.h>
 #include <unordered_map>
 #include <hgl/log/Log.h>
@@ -35,16 +35,19 @@ private:
      */
 public:
 
-    struct ArenaSegmentInfo
+    struct RowSegmentInfo
     {
-        MaterialDataArena *arena      = nullptr;
-        uint32_t           block_base = 0;
-        uint32_t           slot_blocks= 1;
+        void    *cpu_base  = nullptr;   ///< 映射基址（CPU 行数据/行尾句柄直写）
+        uint64_t gpu_base  = 0;         ///< 设备地址基址（地址行表寻址）
+        uint32_t row_bytes = 0;         ///< 行距 = sizeof(行结构)
     };
 
 private:
 
-    std::unordered_map<uint32_t, ArenaSegmentInfo> arena_segments;
+    std::unordered_map<uint32_t, RowSegmentInfo> row_segments;
+
+    DeviceBuffer *null_row_buffer  = nullptr;   ///< 64B 零填充"空行"
+    uint64_t      null_row_address = 0;
 
     uint32_t next_ssbo_id = 1;  ///< 会话内 SSBO ID 自增计数器（MakeRecipeSSBOId 命名空间）
 
@@ -92,14 +95,20 @@ public:
      * Arena+BDA: query the segment info registered for an accessor ssbo_id.
      * Returns false when the id was not allocated through the arena backend.
      */
-    bool TryGetArenaSegment(uint32_t ssbo_id, ArenaSegmentInfo &out_info) const
+    bool TryGetRowSegment(uint32_t ssbo_id, RowSegmentInfo &out_info) const
     {
-        const auto it = arena_segments.find(ssbo_id);
-        if (it == arena_segments.end())
+        const auto it = row_segments.find(ssbo_id);
+        if (it == row_segments.end())
             return false;
         out_info = it->second;
         return true;
     }
+
+    /**
+     * Null 行地址：64B 零填充缓冲（惰性创建），地址行表中
+     * "无有效行"条目的安全缺省——任何 BDA 解引用都不会踩非法地址。
+     */
+    uint64_t GetNullRowAddress();
 
     /**
      * CN: 分配一个新的、在本会话内唯一的 SSBO ID（MakeRecipeSSBOId 命名空间）
@@ -139,52 +148,44 @@ public:
 
         const uint32_t allocated_id = AllocateSSBOId();
 
-        // Segment allocation inside the global material data arena
-        // (contiguous semantics preserved); HOST_COHERENT direct write.
-        // T must be a row struct (MaterialDataRows.h), size % 16 == 0.
-        {
-            auto *arena = AcquireMaterialDataArena(GetDevice());
-            if (!arena)
-                return nullptr;
-
-            const uint32_t start_block = arena->AcquireRange<T>(element_count);
-            if (!start_block)
-                return nullptr;
-
-            auto *acc = new SSBOArrayAccessor<T>(
-                arena->GetBlockPtr(start_block), element_count, uint32(sizeof(T)));
-
-            ArenaSegmentInfo seg;
-            seg.arena       = arena;
-            seg.block_base  = start_block;
-            seg.slot_blocks = arena->SlotBlocks<T>();
-            arena_segments.emplace(allocated_id, seg);
-
-            acc->ssbo_id   = allocated_id;   // 会话内唯一标识（Arena 路径无独立 SSBO）
-            acc->ssbo_type = ssbo_type;
-            return acc;
-        }
-
-
-        DeviceBuffer *buf = EnsureBuffer(
-            mtl::SSBOAddress{ssbo_type, allocated_id, 0},
-            name,
-            static_cast<VkDeviceSize>(sizeof(T)) * element_count,
-            element_count,
-            sm);
-
+        // 按 SSBOType 分配组一块独立 BDA 缓冲：HOST_COHERENT 直写 +
+        // 设备地址（地址行表按行寻址，行可位于任意缓冲）。
+        // T 必须为行结构（MaterialDataRows.h），size % 16 == 0。
+        VulkanDevice *device = GetDevice();
+        DeviceBuffer *buf = device
+            ? device->CreateArenaBuffer(name, VkDeviceSize(sizeof(T)) * element_count)
+            : nullptr;
         if (!buf)
             return nullptr;
 
-        auto *acc = SSBOArrayAccessor<T>::Create(buf, element_count);
-        if (acc)
+        void *cpu_base = buf->GetGPUBuffer()->Map(0, VkDeviceSize(sizeof(T)) * element_count);
+        const uint64_t gpu_base = device->GetBufferDeviceAddress(buf->GetBuffer());
+        if (!cpu_base || gpu_base == 0)
         {
-            acc->ssbo_id   = allocated_id;  // 写入内部存储的 ID
-            acc->ssbo_type = ssbo_type;     // 写入内部存储的类型
+            delete buf;
+            return nullptr;
         }
+
+        // 默认行保障：整缓冲清零（行数据与行尾句柄全零 = 安全缺省）
+        memset(cpu_base, 0, size_t(sizeof(T)) * element_count);
+
+        auto *acc = new SSBOArrayAccessor<T>(cpu_base, element_count, uint32(sizeof(T)));
+        acc->OwnBuffer(buf);                     // accessor 持有缓冲生命周期
+        acc->ssbo_id   = allocated_id;
+        acc->ssbo_type = ssbo_type;
+
+        RowSegmentInfo seg;
+        seg.cpu_base  = cpu_base;
+        seg.gpu_base  = gpu_base;
+        seg.row_bytes = uint32(sizeof(T));
+        row_segments.emplace(allocated_id, seg);
 
         return acc;
     }
+
+    // 旧路径（EnsureBuffer 域缓冲 + MaterialPrivateData 描述符）已随 W3.3 删除。
+
+protected:
 
 protected:
 

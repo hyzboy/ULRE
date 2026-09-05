@@ -1,5 +1,4 @@
 ﻿#include<hgl/ecs/support/TextRenderPipeline.h>
-#include<hgl/graph/module/MaterialDataArena.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
@@ -516,9 +515,10 @@ namespace hgl::ecs
         }
 
         {
+            // text 不使用材质数据行——填 Null 行地址（64B 零填充，安全缺省）
             uint64_t safe_addr = 0;
-            if (auto *arena = graph::AcquireMaterialDataArena(graphics_context->GetDevice()))
-                safe_addr = arena->GetDeviceAddress();
+            if (auto *rdm = graphics_context->GetResourceDomainManager())
+                safe_addr = rdm->GetNullRowAddress();
             guard.data_index_row_buffer->GetGPUBuffer()->Write(&safe_addr, 0, sizeof(safe_addr));
         }
 

@@ -15,7 +15,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/module/MaterialDataArena.h>
+
 #include<hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -913,21 +913,22 @@ namespace hgl::ecs
             if (material_comp->data_index_values.empty())
                 material_comp->data_index_values.resize(1, 0u);
 
-            // schema 中已无 MaterialPrivateData 条目（归一为地址行表），
-            // data_index 直接取自 asset_binding，再经段注册表翻译为全局块号
+            // data_index 直接取自 asset_binding，经段注册表翻译为该类型
+            // 缓冲内的行地址（CPU 映射基址供行尾句柄直写，GPU 基址供地址行表）
             {
                 static bool arena_trace_done = false;
                 if (getenv("ULRE_ARENA_DEBUG") && !arena_trace_done)
                 {
                     arena_trace_done = true;
-                    GLogInfo("[ArenaTrace] materialize: ssbo_id=%u data_index=%u use_data_index=%d assets=%u",
+                    GLogInfo("[ArenaTrace] materialize: ssbo_id=%u data_index=%u assets=%u",
                              asset_binding.ssbo_id,
                              asset_binding.data_index,
-                             asset_binding.use_data_index ? 1 : 0,
                              (uint32_t)material_binding_recipe.ssbo_assets.size());
                 }
 
                 material_comp->data_index_values[0] = asset_binding.data_index;
+                material_comp->material_row_cpu     = nullptr;
+                material_comp->material_row_gpu     = 0;
 
                 if (asset_binding.ssbo_id != 0)
                 {
@@ -935,19 +936,24 @@ namespace hgl::ecs
                     auto *translate_domain = translate_gc
                         ? translate_gc->GetResourceDomainManager() : nullptr;
 
-                    graph::ResourceDomainManager::ArenaSegmentInfo seg;
+                    graph::ResourceDomainManager::RowSegmentInfo seg;
                     if (translate_domain
-                     && translate_domain->TryGetArenaSegment(asset_binding.ssbo_id, seg))
+                     && translate_domain->TryGetRowSegment(asset_binding.ssbo_id, seg))
                     {
-                        material_comp->data_index_values[0] =
-                            seg.block_base + asset_binding.data_index * seg.slot_blocks;
+                        const uint64_t row_offset =
+                            uint64_t(asset_binding.data_index) * seg.row_bytes;
+
+                        material_comp->material_row_cpu =
+                            static_cast<uint8_t *>(seg.cpu_base) + row_offset;
+                        material_comp->material_row_gpu =
+                            seg.gpu_base + row_offset;
 
                         if (!arena_trace_done)
                         {
-                            GLogInfo("[ArenaTrace] translated: block=%u (base=%u slot_blocks=%u)",
-                                     material_comp->data_index_values[0],
-                                     seg.block_base,
-                                     seg.slot_blocks);
+                            GLogInfo("[ArenaTrace] translated: gpu=0x%llx (base=%llu row_bytes=%u)",
+                                     (unsigned long long)material_comp->material_row_gpu,
+                                     (unsigned long long)seg.gpu_base,
+                                     seg.row_bytes);
                         }
                     }
                 }
@@ -1033,28 +1039,18 @@ namespace hgl::ecs
                 row_data[slot] = handle;
         }
 
-        // 句柄行镜像写入材质数据行的 tex_tail。
-        // 块号即 data_index（实例行）；共享行重复写入相同值，语义安全。
-        // 旧域表写入保留（无数据槽材质的句柄通道，有数据槽材质不读）。
+        // 句柄行镜像写入实例数据行的 tex_tail（CPU 映射基址 + 行偏移）。
+        // 无数据槽材质的句柄通道仍走旧域表写入（下方保留）。
+        if (material_comp->material_row_cpu
+         && !material_binding_recipe.ssbo_assets.empty())
         {
-            auto *collect_gc = world->GetGraphicsContext();
-            auto *arena = collect_gc
-                ? graph::AcquireMaterialDataArena(collect_gc->GetDevice())
-                : nullptr;
+            const graph::mtl::SSBOType row_type =
+                material_binding_recipe.ssbo_assets.front().ssbo_type;
+            const uint32_t tail_offset =
+                graph::ssbo::GetMaterialSSBORowTexTailOffset(row_type);
 
-            if (arena
-             && !material_binding_recipe.ssbo_assets.empty()
-             && !material_comp->data_index_values.empty())
-            {
-                const graph::mtl::SSBOType row_type =
-                    material_binding_recipe.ssbo_assets.front().ssbo_type;
-                const uint32_t tail_offset =
-                    graph::ssbo::GetMaterialSSBORowTexTailOffset(row_type);
-                const uint32_t block = material_comp->data_index_values[0];
-
-                if (auto *row_bytes = static_cast<uint8_t *>(arena->GetBlockPtr(block)))
-                    memcpy(row_bytes + tail_offset, row_data, sizeof(row_data));
-            }
+            memcpy(static_cast<uint8_t *>(material_comp->material_row_cpu) + tail_offset,
+                   row_data, sizeof(row_data));
         }
 
         auto *render_context = world->GetRenderContext();

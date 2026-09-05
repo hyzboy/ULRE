@@ -58,8 +58,35 @@ const ResourceDomainBinding *ResourceDomainManager::Find(const mtl::SSBOAddress 
     return it == domain_map.end() ? nullptr : &it->second;
 }
 
+uint64_t ResourceDomainManager::GetNullRowAddress()
+{
+    if (null_row_address)
+        return null_row_address;
+
+    auto *device = GetDevice();
+    if (!device)
+        return 0;
+
+    null_row_buffer = device->CreateArenaBuffer("NullMaterialRow", 64);
+    if (!null_row_buffer)
+        return 0;
+
+    if (auto *m = null_row_buffer->GetGPUBuffer()->Map(0, 64))
+        memset(m, 0, 64);
+
+    null_row_address = device->GetBufferDeviceAddress(null_row_buffer->GetBuffer());
+    return null_row_address;
+}
+
 void ResourceDomainManager::Release()
 {
+    if (null_row_buffer)
+    {
+        delete null_row_buffer;
+        null_row_buffer = nullptr;
+    }
+    null_row_address = 0;
+
     auto *buffer_manager = GetGraphicsContext() ? GetGraphicsContext()->GetBufferManager() : nullptr;
 
     for (auto &kv : domain_map)
