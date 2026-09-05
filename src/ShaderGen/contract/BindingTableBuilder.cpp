@@ -344,6 +344,12 @@ namespace hgl::graph::mtl
                 }
             }
 
+            // Arena+BDA：bindless 句柄随材质数据行尾下发，MaterialTextureLayerTable
+            // 描述符需求已不存在——但 recipe 的纹理绑定必须保留在绑定视图里
+            //（Collect 依它构建行尾句柄、并完成 bindless 注册）。
+            if (IsMaterialArenaBDAEnabled() && !recipe.textures.empty())
+                uses_texture_layer_table = true;
+
             if (uses_texture_layer_table)
             {
                 for (const RecipeTextureBinding &recipe_binding : recipe.textures)
