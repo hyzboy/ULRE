@@ -368,6 +368,81 @@ DeviceBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
     return dev_buf;
 }
 
+DeviceBuffer *VulkanDevice::CreateArenaBuffer(const AnsiString &name,VkDeviceSize size,SharingMode sharing_mode, const std::source_location &loc)
+{
+    if(size<=0)return(nullptr);
+
+    // 材质数据 Arena：整块 HOST_VISIBLE 直写 + shader 侧设备地址寻址。
+    // 自包含实现而非复用 CreateBuffer(...policy...)——后者不携带
+    // VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT 分配 flag，且 Auto 策略在无
+    // ReBAR 设备会落到 StagedUpload（无整块可持久映射的 CPU 可见内存）。
+    const VkBufferUsageFlags buf_usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                                       | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
+    BufferCreateInfo buf_info;
+
+    buf_info.usage                  = buf_usage;
+    buf_info.size                   = size;
+    buf_info.queueFamilyIndexCount  = 0;
+    buf_info.pQueueFamilyIndices    = nullptr;
+    buf_info.sharingMode            = VkSharingMode(sharing_mode);
+
+    DeviceBufferData buf;
+    const ObjectNameBuilder obj_name(name.c_str());
+
+    if(vkCreateBuffer(attr->device,&buf_info,nullptr,&buf.buffer)!=VK_SUCCESS)
+        return(nullptr);
+
+    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf.buffer, obj_name, loc);
+
+    VkMemoryRequirements mem_reqs;
+
+    vkGetBufferMemoryRequirements(attr->device,buf.buffer,&mem_reqs);
+
+    // 内存类型：ReBAR 设备优先 DEVICE_LOCAL 的可映射显存；否则退纯 HOST_VISIBLE|HOST_COHERENT
+    uint32_t properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    if(attr->physical_device->GetMemoryType(mem_reqs.memoryTypeBits,properties)<0)
+        properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    ObjectNameBuilder memory_name(AnsiString(name) + ".Memory");
+
+    DeviceMemory *dm=CreateMemory(mem_reqs,properties,VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT,memory_name,loc);
+
+    if(dm&&dm->BindBuffer(buf.buffer))
+    {
+        buf.info.buffer =buf.buffer;
+        buf.info.offset =0;
+        buf.info.range  =size;
+
+        buf.memory      =dm;
+
+        ReBarBuffer *rebar = new ReBarBuffer(std::string(name.c_str()), attr->device, buf.buffer, dm, size);
+
+        DeviceBuffer *dev_buf = new DeviceBuffer(attr->device,buf);
+        dev_buf->SetStagedSource(rebar);
+        TrackBuffer(dev_buf, obj_name, loc);
+        return dev_buf;
+    }
+
+    delete dm;
+    vkDestroyBuffer(attr->device,buf.buffer,nullptr);
+    return(nullptr);
+}
+
+uint64_t VulkanDevice::GetBufferDeviceAddress(VkBuffer buf) const
+{
+    if(buf==VK_NULL_HANDLE)
+        return(0);
+
+    VkBufferDeviceAddressInfo addr_info{VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO};
+    addr_info.buffer    = buf;
+
+    return vkGetBufferDeviceAddress(attr->device,&addr_info);
+}
+
 VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
                              VkFormat format,
                              uint32_t count,

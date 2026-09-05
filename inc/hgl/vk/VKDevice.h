@@ -141,6 +141,7 @@ public:
 public: //内存相关
 
     DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+    DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties,VkMemoryAllocateFlags alloc_flags, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
     DeviceMemory *  CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, const ObjectNameBuilder &name = ObjectNameBuilder("ImageMemory"), const std::source_location &loc = std::source_location::current());
     DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
@@ -347,6 +348,15 @@ public: //Buffer相关
     {
         return CreateSSBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
+
+    // 材质数据 Arena 专用：STORAGE|SHADER_DEVICE_ADDRESS usage，
+    // 内存以 VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT 分配，强制 CPU 可见（HOST_VISIBLE|HOST_COHERENT，
+    // ReBAR 设备优先 DEVICE_LOCAL），可整块持久映射。不可 realloc（地址稳定性红线）。
+    DeviceBuffer *CreateArenaBuffer(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
+
+    // 查询 buffer 的设备地址（vkGetBufferDeviceAddress）。要求 buffer 以
+    // SHADER_DEVICE_ADDRESS usage 创建、其内存以 DEVICE_ADDRESS flag 分配。
+    uint64_t GetBufferDeviceAddress(VkBuffer buf) const;
 
     DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
     {

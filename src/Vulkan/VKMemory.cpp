@@ -7,6 +7,11 @@
 namespace hgl::graph{
 DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties, const ObjectNameBuilder &name, const std::source_location &loc)
 {
+    return CreateMemory(req,properties,0,name,loc);
+}
+
+DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties,VkMemoryAllocateFlags alloc_flags, const ObjectNameBuilder &name, const std::source_location &loc)
+{
     assert(name.base_name[0] != '\0' && "ERROR: CreateMemory called with empty name! Check the call stack to find where.");
     const int index=attr->physical_device->GetMemoryType(req.memoryTypeBits,properties);
 
@@ -14,6 +19,14 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_
         return(nullptr);
 
     MemoryAllocateInfo alloc_info(index,req.size);
+
+    VkMemoryAllocateFlagsInfo alloc_flags_info{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO};
+
+    if(alloc_flags)
+    {
+        alloc_flags_info.flags  = alloc_flags;
+        alloc_info.pNext        = &alloc_flags_info;
+    }
 
     VkDeviceMemory memory;
 
