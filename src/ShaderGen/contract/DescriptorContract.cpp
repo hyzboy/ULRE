@@ -61,9 +61,20 @@ namespace hgl::graph::mtl
             //   （mtl_data_addrs，8B 设备地址）。
             //   注意：数据槽/纹理行表条目不在此丢弃——各 push 路径已感知 arena
             //   （有数据槽的材质不再推这些条目）；无数据槽纹理材质仍需纹理行表。
+            //
+            //   同名去重必须保留：数据槽需求可能同时来自定义 TOML
+            //  （[resources].material_data）与模块 manifest（@ulre ssbo），
+            //   两条同身份地址表条目会触发契约重名校验失败。
             if (IsMaterialArenaBDAEnabled()
              && source.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
             {
+                for (const auto &existing : out_contract)
+                {
+                    if (existing.semantic == DescriptorSemantic::MaterialPrivateDataIndex
+                     && existing.name == SBS_MaterialDataAddresses.name)
+                        return true;    // 地址表条目已在契约中，吸收本次需求
+                }
+
                 source.name        = SBS_MaterialDataAddresses.name;
                 source.struct_name = SBS_MaterialDataAddresses.struct_name;
             }
