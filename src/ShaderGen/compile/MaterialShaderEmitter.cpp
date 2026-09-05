@@ -97,7 +97,16 @@ bool BuildMaterialSSBODeclarations(
     std::string &out_error)
 {
     if (material_private_data == SSBOType::UserDefined)
+    {
+        // Arena+BDA：无数据槽材质没有行结构，但地址行表(FS index tables)
+        // 同样使用 uint64_t/设备地址——扩展指令必须先于任何声明出现
+        if (IsMaterialArenaBDAEnabled())
+        {
+            out_decls += "#extension GL_EXT_buffer_reference : require\n";
+            out_decls += "#extension GL_ARB_gpu_shader_int64 : require\n";
+        }
         return true;
+    }
 
     // ── Arena+BDA 路径：材质数据无描述符，发射 buffer_reference 行声明 ──
     // shader 侧 MTL_ROW(i) 以地址行表（mtl_data_addrs）取行指针后解引用。

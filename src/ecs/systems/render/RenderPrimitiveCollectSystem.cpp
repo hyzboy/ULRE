@@ -1067,6 +1067,12 @@ namespace hgl::ecs
         auto *domain_manager = graphics_context
             ? graphics_context->GetResourceDomainManager() : nullptr;
 
+        if (getenv("ULRE_ARENA_DEBUG"))
+            GLogInfo("[ArenaTrace] texture-row write: scope=0x%x row=%u handles[0..2]=%u,%u,%u",
+                     scope_ssbo_id, texture_layer_row,
+                     row_data[0], row_data[1],
+                     static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE) > 2 ? row_data[2] : 0u);
+
         if (domain_manager)
         {
             const VkDeviceSize stride =

@@ -1,6 +1,7 @@
 ﻿#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<hgl/graph/ssbo/MaterialArenaPath.h>
+#include<cstdlib>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
@@ -887,6 +888,10 @@ namespace hgl::ecs
                         resolved_ssbo_id,
                         0},
                     "MaterialTextureLayerTable");
+
+                if (getenv("ULRE_ARENA_DEBUG"))
+                    GLogInfo("[ArenaTrace] bind TextureLayerTable: resolved_id=%u buffer=%p",
+                             resolved_ssbo_id, (void *)table_buffer);
 
                 if (table_buffer)
                 {
