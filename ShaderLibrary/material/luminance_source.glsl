@@ -16,7 +16,7 @@
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
 {
 #ifdef ULRE_MATERIAL_ARENA_BDA
-    const vec4 color = MTL_ROW(sourceInput.dataIndex)->color;
+    const vec4 color = MTL_ROW(sourceInput.dataIndex).color;
 #else
     const vec4 color = MTL_DATA.data[sourceInput.dataIndex].color;
 #endif
@@ -36,7 +36,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
 float EvalMaterialAlpha(MaterialSourceInput sourceInput)
 {
 #ifdef ULRE_MATERIAL_ARENA_BDA
-    return MTL_ROW(sourceInput.dataIndex)->color.a;
+    return MTL_ROW(sourceInput.dataIndex).color.a;
 #else
     return MTL_DATA.data[sourceInput.dataIndex].color.a;
 #endif

@@ -20,7 +20,7 @@ EmissiveSurfaceData EvalUnlitSource(uint dataIndex)
 {
     EmissiveSurfaceRow row = MTL_ROW(dataIndex);
     EmissiveSurfaceData data;
-    data.color = row->color;
+    data.color = row.color;
     return data;
 }
 #else
