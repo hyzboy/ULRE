@@ -1,4 +1,5 @@
 ﻿#include <hgl/mtl/BindingTableBuilder.h>
+#include<hgl/graph/ssbo/MaterialArenaPath.h>
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
@@ -279,6 +280,35 @@ namespace hgl::graph::mtl
                             binding->semantic = DescriptorSemantic::MaterialSampler;
                         binding->required = binding->required || entry.required;
                         binding->allow_fallback = binding->allow_fallback && entry.allow_fallback;
+                    }
+                    continue;
+                }
+
+                // Arena+BDA：地址行表取代了 per-material 数据槽描述符，
+                // schema 中数据槽需求语义为 MaterialPrivateDataIndex。
+                // 把 recipe 的数据槽资产桥接进绑定表，材质视图才保有
+                // ssbo_id / data_index（行表写入与纹理句柄落行的依据）。
+                if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex
+                 && IsMaterialArenaBDAEnabled()
+                 && !recipe.ssbo_assets.empty())
+                {
+                    const RecipeSSBOAssetBinding &data_asset =
+                        recipe.ssbo_assets.front();
+
+                    if (!FindDataBinding(out_table,
+                                         data_asset.material_private_data_slot,
+                                         data_asset.ssbo_type))
+                    {
+                        const int index = out_table.data.Add(ResolvedDataBinding{});
+                        ResolvedDataBinding *binding = &out_table.data[index];
+                        binding->logical_resource_id =
+                            ResolveDescriptorLogicalResourceID(entry, program_key_digest);
+                        binding->semantic = DescriptorSemantic::MaterialPrivateData;
+                        binding->material_private_data_slot =
+                            data_asset.material_private_data_slot;
+                        binding->ssbo_type = data_asset.ssbo_type;
+                        binding->required = entry.required;
+                        binding->allow_fallback = entry.allow_fallback;
                     }
                     continue;
                 }

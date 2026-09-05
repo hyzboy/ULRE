@@ -374,6 +374,11 @@ namespace hgl::ecs
                 if (!recipe_binding)
                     return false;
 
+                // Arena+BDA：数据资产无域缓冲（地址行表是批次级 SSBO，
+                // schema 中也无 MaterialPrivateData 需求）——直接通过
+                if (graph::IsMaterialArenaBDAEnabled())
+                    continue;
+
                 const graph::mtl::ShaderResourceSlot
                     *layout_requirement = nullptr;
                 for (const auto &requirement :
@@ -813,6 +818,12 @@ namespace hgl::ecs
             return false;
         }
 
+        if (getenv("ULRE_ARENA_DEBUG"))
+            GLogInfo("[ArenaTrace] materialize entry: ssbo_assets=%u binding_valid=%d schema_reqs=%u",
+                     (uint32_t)material_binding_recipe.ssbo_assets.size(),
+                     material_comp->cached_binding_recipe_valid ? 1 : 0,
+                     (uint32_t)material_comp->program->GetShaderResourceSchema().resources.size());
+
         material_comp->ClearResolvedSSBOBindings();
         material_comp->data_index_values.clear();
         for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
@@ -903,6 +914,48 @@ namespace hgl::ecs
             if (material_comp->data_index_values.empty())
                 material_comp->data_index_values.resize(1, 0u);
 
+            // Arena+BDA：schema 中已无 MaterialPrivateData 条目（归一为地址行表），
+            // data_index 直接取自 asset_binding，再经段注册表翻译为全局块号
+            if (graph::IsMaterialArenaBDAEnabled())
+            {
+                static bool arena_trace_done = false;
+                if (getenv("ULRE_ARENA_DEBUG") && !arena_trace_done)
+                {
+                    arena_trace_done = true;
+                    GLogInfo("[ArenaTrace] materialize: ssbo_id=%u data_index=%u use_data_index=%d assets=%u",
+                             asset_binding.ssbo_id,
+                             asset_binding.data_index,
+                             asset_binding.use_data_index ? 1 : 0,
+                             (uint32_t)material_binding_recipe.ssbo_assets.size());
+                }
+
+                material_comp->data_index_values[0] = asset_binding.data_index;
+
+                if (asset_binding.ssbo_id != 0)
+                {
+                    auto *translate_gc = world->GetGraphicsContext();
+                    auto *translate_domain = translate_gc
+                        ? translate_gc->GetResourceDomainManager() : nullptr;
+
+                    graph::ResourceDomainManager::ArenaSegmentInfo seg;
+                    if (translate_domain
+                     && translate_domain->TryGetArenaSegment(asset_binding.ssbo_id, seg))
+                    {
+                        material_comp->data_index_values[0] =
+                            seg.block_base + asset_binding.data_index * seg.slot_blocks;
+
+                        if (!arena_trace_done)
+                        {
+                            GLogInfo("[ArenaTrace] translated: block=%u (base=%u slot_blocks=%u)",
+                                     material_comp->data_index_values[0],
+                                     seg.block_base,
+                                     seg.slot_blocks);
+                        }
+                    }
+                }
+                continue;
+            }
+
             for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
             {
                 if (req.semantic == graph::mtl::DescriptorSemantic::MaterialPrivateData
@@ -915,24 +968,7 @@ namespace hgl::ecs
                 }
             }
 
-            // Arena+BDA：authoring 的 data_index 是访问器内行号，
-            // 经段注册表换算为全局块号（block_base + idx*slot_blocks），
-            // 供地址行表与 tex_tail 镜像写入使用。
-            if (graph::IsMaterialArenaBDAEnabled()
-             && asset_binding.ssbo_id != 0)
-            {
-                auto *translate_gc = world->GetGraphicsContext();
-                auto *translate_domain = translate_gc
-                    ? translate_gc->GetResourceDomainManager() : nullptr;
 
-                graph::ResourceDomainManager::ArenaSegmentInfo seg;
-                if (translate_domain
-                 && translate_domain->TryGetArenaSegment(asset_binding.ssbo_id, seg))
-                {
-                    material_comp->data_index_values[0] =
-                        seg.block_base + asset_binding.data_index * seg.slot_blocks;
-                }
-            }
         }
 
         // The texture-layer row is keyed by the primitive's data_index VALUE.

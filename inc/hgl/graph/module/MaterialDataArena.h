@@ -146,7 +146,15 @@ public:
     void Close();
 
     uint64 GetDeviceAddress()const{return device_address;}                          ///< arena 基址
-    uint64 AddressOf(const uint32 block)const{return device_address+(uint64)block*block_size;}  ///< 块号 → GPU 地址
+    /**
+     * 块号 → GPU 地址。越界块号钳到 0 号默认行（零填充）——
+     * 防 BDA 解引用非法地址导致 GPU page fault / 驱动 TDR。
+     */
+    uint64 AddressOf(const uint32 block)const
+    {
+        const uint32 safe_block=(block<block_count)?block:0u;
+        return device_address+(uint64)safe_block*block_size;
+    }
 
     void *GetBase(){return mapped;}                                                 ///< 映射基址
     void *GetBlockPtr(const uint32 block){return mapped+(size_t)block*block_size;}  ///< 块号 → CPU 指针

@@ -108,8 +108,10 @@ bool MaterialDataArena::Init(VulkanDevice *dev,const AnsiString &name,const uint
         return false;
     }
 
-    // I4：0 号块零填充——"默认行"，任何 block index 的地址都安全可解引用
-    memset(mapped,0,block_size);
+    // I4：整 arena 零填充——0 号块是"默认行"（任何地址都安全可解引用），
+    // 且行结构大于块粒度（如 PBRSurfaceRow=80B > 16B），部分清零会留未初始化
+    // 显存垃圾被 shader 读到（垃圾纹理句柄可致 bindless 采样越界/驱动故障）
+    memset(mapped,0,capacity);
 
     GLogInfo(u8"[MaterialDataArena] init ok: name=%s capacity=%lluMB blocks=%ux%uB base=0x%llx",
              name.c_str(),

@@ -31,6 +31,9 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 #endif
 
     MaterialSourceOutput material_output;
+#ifdef ULRE_MATERIAL_ARENA_BDA
+    // TEMP probe: encode dataIndex as hue-ish gradient
+
     material_output.baseColor = material_data.base_color.rgb;
     material_output.metallic = clamp(material_data.metallic, 0.0, 1.0);
     material_output.roughness = clamp(material_data.roughness, 0.04, 1.0);

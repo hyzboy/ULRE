@@ -695,6 +695,28 @@ namespace hgl::ecs
                         * row_bytes;
                     batch.material_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
                         "ECS:Batch:MaterialDataAddresses", byte_size, nullptr, graph::SharingMode::Exclusive);
+
+                    // 关键安全垫：BDA 解引用未初始化显存 = GPU page fault(驱动 TDR)。
+                    // 全表预填 arena 基址（0 号零填充默认行），保证任何时刻可安全解引用；
+                    // 随后每帧 WriteBatchIndexRows 覆盖为真实行地址。
+                    if (batch.material_data_index_rows_buffer && graph::IsMaterialArenaBDAEnabled())
+                    {
+                        if (auto *arena_fill = graph::AcquireMaterialDataArena(batch.device))
+                        {
+                            if (auto *fill_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer())
+                            {
+                                if (auto *fill_ptr = static_cast<uint64_t *>(
+                                        fill_gpu->Map(0, byte_size)))
+                                {
+                                    const uint64_t safe_addr = arena_fill->GetDeviceAddress();
+                                    const size_t n = static_cast<size_t>(batch.material_data_index_rows_capacity);
+                                    for (size_t i = 0; i < n; ++i)
+                                        fill_ptr[i] = safe_addr;
+                                    fill_gpu->Unmap();
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -764,9 +786,24 @@ namespace hgl::ecs
 
                         row_copy[i] = row_ptr[i];
                     }
+
+                    if (getenv("ULRE_ARENA_DEBUG") && !batch.debug_blocks_logged)
+                    {
+                        batch.debug_blocks_logged = true;
+                        for (size_t i = 0; i < item_count && i < 4; ++i)
+                        {
+                            auto *pi = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
+                            auto mc = pi ? pi->GetMaterialComponent() : nullptr;
+                            GLogInfo("[ArenaDebug] item[%u] addr=0x%llx block=%u",
+                                     (uint32_t)i,
+                                     (unsigned long long)row_copy[i],
+                                     (mc && !mc->data_index_values.empty()) ? mc->data_index_values[0] : 0u);
+                        }
+                    }
                     mi_gpu->Unmap();
 
                     if (getenv("ULRE_DUMP_GLSL"))
+                    if (getenv("ULRE_ARENA_DEBUG"))
                     GLogInfo("[ArenaDebug] rows written: n=%u row0=0x%llx base=0x%llx",
                              item_count,
                              (unsigned long long)(item_count ? row_copy[0] : 0),
