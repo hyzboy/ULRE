@@ -785,7 +785,6 @@ namespace hgl::ecs
                 material_comp->program->GetShaderResourceSchema()))
         {
             material_comp->data_index_row = 0;
-            material_comp->data_index_values.clear();
             material_comp->runtime_dirty = false;
             material_comp->valid = false;
             return true;
@@ -824,7 +823,6 @@ namespace hgl::ecs
                      (uint32_t)material_comp->program->GetShaderResourceSchema().resources.size());
 
         material_comp->ClearResolvedSSBOBindings();
-        material_comp->data_index_values.clear();
         for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
         {
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialPrivateData)
@@ -907,11 +905,9 @@ namespace hgl::ecs
         // Fill the per-batch material data index table for every SSBO asset,
         // including use_data_index == false ones (the shader still reads
         // data[data_index], so the authored index must be published in the table).
-        // 单槽化：材质唯一私有数据 SSBO 固定 slot 0，data_index_values 恒为单元素。
+        // 单槽化：材质唯一私有数据 SSBO 固定 slot 0。
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
-            if (material_comp->data_index_values.empty())
-                material_comp->data_index_values.resize(1, 0u);
 
             // data_index 直接取自 asset_binding，经段注册表翻译为该类型
             // 缓冲内的行地址（CPU 映射基址供行尾句柄直写，GPU 基址供地址行表）
@@ -926,8 +922,7 @@ namespace hgl::ecs
                              (uint32_t)material_binding_recipe.ssbo_assets.size());
                 }
 
-                material_comp->data_index_values[0] = asset_binding.data_index;
-                material_comp->material_row_cpu     = nullptr;
+                material_comp->material_row_cpu = nullptr;
                 material_comp->material_row_gpu     = 0;
 
                 if (asset_binding.ssbo_id != 0)

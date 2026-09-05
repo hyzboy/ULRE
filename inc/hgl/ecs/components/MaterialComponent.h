@@ -33,7 +33,6 @@ namespace hgl::ecs
         // Runtime row indices, materialized independently for this primitive.
         // They must not be sourced from a shared recipe/spec cache entry.
         uint32_t data_index_row = uint32_t(-1);
-        std::vector<uint32_t> data_index_values;
 
         // Arena 行寻址（W3.3 后按 SSBOType 独立缓冲）：实例数据行的
         // CPU 映射基址（行尾句柄直写）与 GPU 设备地址（地址行表引用）。

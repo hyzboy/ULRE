@@ -751,7 +751,6 @@ namespace hgl::ecs
         }
 
         // Write per-batch single-column DataIndex rows in draw order.
-        // 单槽化：行表收敛为单列（MaterialPrivateDataIndexRowStride == 1）。
         if (batch.material_data_index_rows_buffer)
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
@@ -803,31 +802,6 @@ namespace hgl::ecs
                              (unsigned long long)(item_count ? row_copy[0] : 0));
                 }
                 return;
-            }
-
-            if (mi_gpu)
-            {
-                uint32_t *row_ptr = static_cast<uint32_t *>(
-                    mi_gpu->Map(
-                        0,
-                        static_cast<VkDeviceSize>(item_count)
-                        * graph::mtl::MaterialPrivateDataIndexRowStride
-                        * sizeof(uint32_t)));
-                if (row_ptr)
-                {
-                    for (size_t i = 0; i < item_count; ++i)
-                    {
-                        row_ptr[i] = 0u;
-
-                        auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
-                        auto material_comp = primitive_item
-                            ? primitive_item->GetMaterialComponent()
-                            : nullptr;
-                        if (material_comp && !material_comp->data_index_values.empty())
-                            row_ptr[i] = material_comp->data_index_values[0];
-                    }
-                    mi_gpu->Unmap();
-                }
             }
         }
 

@@ -31,7 +31,6 @@ namespace hgl::ecs
     void MaterialComponent::ClearResolvedSSBOBindings()
     {
         resolved_ssbo_bindings.clear();
-        data_index_values.clear();
     }
 
     void MaterialComponent::ClearResolvedBindingTable()
@@ -44,7 +43,6 @@ namespace hgl::ecs
     void MaterialComponent::ClearMaterializationRows()
     {
         data_index_row = uint32_t(-1);
-        data_index_values.clear();
     }
 
     void MaterialComponent::SetResolvedSSBOBinding(const char *material_private_data_slot_name,
