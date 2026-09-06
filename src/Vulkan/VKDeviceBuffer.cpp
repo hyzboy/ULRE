@@ -76,7 +76,12 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
     }
 #endif//_DEBUG
 
-    DeviceMemory *dm=CreateMemory(mem_reqs,mem_usage,name,loc);
+    // BDA usage 的内存必须带 DEVICE_ADDRESS 分配 flag（vkGetBufferDeviceAddress 前置条件）
+    const VkMemoryAllocateFlags alloc_flags=
+        (buf_usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+            ?VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT:0;
+
+    DeviceMemory *dm=CreateMemory(mem_reqs,mem_usage,name,loc,alloc_flags);
 
     if(dm&&dm->BindBuffer(buf->buffer))
     {
@@ -117,7 +122,7 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
-        StagedBuffer *staged=CreateStagedBuffer(ObjectNameBuilder("VAB"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, size, data, sharing_mode, loc);
+        StagedBuffer *staged=CreateStagedBuffer(ObjectNameBuilder("VAB"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, size, data, sharing_mode, loc);
         if(!staged)
             return(nullptr);
 
@@ -142,7 +147,7 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
         mem_usage=MemoryUsage::GPUToCPU;
 
     DeviceBufferData buf;
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("VAB:Memory"),loc))
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("VAB:Memory"),loc))
         return(nullptr);
 
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
@@ -191,7 +196,7 @@ IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType in
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
-        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, size, data, sharing_mode, loc);
+        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, size, data, sharing_mode, loc);
         if(!staged)
             return(nullptr);
 
@@ -221,7 +226,7 @@ IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType in
 
     DeviceBufferData buf;
     // 索引 buffer 同时作顶点索引 SSBO（SSBO 顶点输入——非索引绘制查表）
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
 
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*

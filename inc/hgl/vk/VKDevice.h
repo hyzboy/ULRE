@@ -143,7 +143,7 @@ public: //内存相关
     DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
     DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties,VkMemoryAllocateFlags alloc_flags, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
     DeviceMemory *  CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, const ObjectNameBuilder &name = ObjectNameBuilder("ImageMemory"), const std::source_location &loc = std::source_location::current());
-    DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+    DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current(), const VkMemoryAllocateFlags alloc_flags = 0);
 
     void SetDrawPhaseActive(bool active) { draw_phase_active = active; }
     bool IsDrawPhaseActive() const { return draw_phase_active; }
