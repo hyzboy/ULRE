@@ -13,7 +13,12 @@
 #define S1_TRANSFORM_ID_GLSL
 
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
-#define sbo_vertex_transform_id (*VertexTransformIDDataRef(pc_vertex_index.addr_transform_id))
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexTransformIDDataRef
+{
+    uint data[];
+};
+
+#define sbo_vertex_transform_id VertexTransformIDDataRef(pc_vertex_index.addr_transform_id)
 uint TransformID;
 
 #define HGL_TRANSFORMID_LOADER { TransformID = sbo_vertex_transform_id.data[pc_vertex_index.vertex_base + VertexIndexID]; }

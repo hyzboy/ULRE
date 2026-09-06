@@ -11,7 +11,12 @@
 #define S1_UV_GLSL
 
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
-#define sbo_vertex_uv (*VertexUVDataRef(pc_vertex_index.addr_uv))
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexUVDataRef
+{
+    vec2 data[];
+};
+
+#define sbo_vertex_uv VertexUVDataRef(pc_vertex_index.addr_uv)
 vec2 TexCoord;
 
 #define HGL_UV_LOADER { TexCoord = sbo_vertex_uv.data[pc_vertex_index.vertex_base + VertexIndexID]; }

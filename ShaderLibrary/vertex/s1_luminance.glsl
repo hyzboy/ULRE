@@ -14,7 +14,12 @@
 
 #ifdef ULRE_MATERIAL_ARENA_BDA
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
-#define sbo_vertex_luminance (*VertexLuminanceDataRef(pc_vertex_index.addr_luminance))
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexLuminanceDataRef
+{
+    uint data[];
+};
+
+#define sbo_vertex_luminance VertexLuminanceDataRef(pc_vertex_index.addr_luminance)
 #else
 layout(set=VERTEX_SET, binding=VERTEX_LUMINANCE_BINDING, std430) readonly buffer VertexLuminanceData
 {
