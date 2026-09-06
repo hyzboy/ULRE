@@ -6,7 +6,7 @@
 
 namespace hgl::graph{
 
-DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc)
+DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc, const VkMemoryAllocateFlags alloc_flags)
 {
     assert(name.base_name[0] != '\0' && "ERROR: CreateMemory(MemoryUsage) called with empty name! Check the call stack to find where.");
     uint32_t properties = 0;
@@ -33,7 +33,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         if (index >= 0)
         {
             // Found ideal memory type, use existing CreateMemory
-            return CreateMemory(req, properties, name, loc);
+            return CreateMemory(req, properties, alloc_flags, name, loc);
         }
 
         // Fallback to just HOST_VISIBLE + HOST_COHERENT for discrete GPU
@@ -58,7 +58,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
             if (index >= 0)
             {
                 // ReBAR is available, use it
-                return CreateMemory(req, properties, name, loc);
+                return CreateMemory(req, properties, alloc_flags, name, loc);
             }
         }
 
@@ -72,7 +72,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         break;
     }
 
-    return CreateMemory(req, properties, name, loc);
+    return CreateMemory(req, properties, alloc_flags, name, loc);
 }
 
 StagedBuffer *VulkanDevice::CreateStagedBuffer(const ObjectNameBuilder &name, VkBufferUsageFlags usage, VkDeviceSize size, const void *data, SharingMode sharing_mode, const std::source_location &loc)
@@ -139,7 +139,11 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(const ObjectNameBuilder &name, Vk
     vkGetBufferMemoryRequirements(attr->device, device_buffer, &device_mem_reqs);
 
     ObjectNameBuilder device_memory_name = make_child_name(name, "DeviceMemory");
-    DeviceMemory *device_memory = CreateMemory(device_mem_reqs, MemoryUsage::GPUOnly, device_memory_name);
+    // BDA usage 的设备侧内存必须带 DEVICE_ADDRESS 分配 flag（vkGetBufferDeviceAddress 前置条件）
+    const VkMemoryAllocateFlags device_alloc_flags =
+        (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+            ? VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT : 0;
+    DeviceMemory *device_memory = CreateMemory(device_mem_reqs, MemoryUsage::GPUOnly, device_memory_name, loc, device_alloc_flags);
     if (!device_memory || !device_memory->BindBuffer(device_buffer))
     {
         delete device_memory;

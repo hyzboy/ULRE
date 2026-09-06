@@ -143,7 +143,7 @@ public: //内存相关
     DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
     DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties,VkMemoryAllocateFlags alloc_flags, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
     DeviceMemory *  CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, const ObjectNameBuilder &name = ObjectNameBuilder("ImageMemory"), const std::source_location &loc = std::source_location::current());
-    DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+    DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current(), const VkMemoryAllocateFlags alloc_flags = 0);
 
     void SetDrawPhaseActive(bool active) { draw_phase_active = active; }
     bool IsDrawPhaseActive() const { return draw_phase_active; }
@@ -357,6 +357,9 @@ public: //Buffer相关
     // 查询 buffer 的设备地址（vkGetBufferDeviceAddress）。要求 buffer 以
     // SHADER_DEVICE_ADDRESS usage 创建、其内存以 DEVICE_ADDRESS flag 分配。
     uint64_t GetBufferDeviceAddress(VkBuffer buf) const;
+
+    // 16B 对齐校验版：非对齐返回 0 并记错误日志（BDA 编码规范）
+    uint64_t GetBufferDeviceAddressAligned16(VkBuffer buf) const;
 
     DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
     {
