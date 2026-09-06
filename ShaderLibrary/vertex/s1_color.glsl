@@ -12,10 +12,10 @@
 
 #ifdef ULRE_MATERIAL_ARENA_BDA
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
+#ifndef S1_VertexColorDataREF_GUARD
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexColorDataRef
-{
-    vec4 data[];
-};
+#define S1_VertexColorDataREF_GUARD
+#endif
 
 #define sbo_vertex_color VertexColorDataRef(pc_vertex_index.addr_color)
 #else

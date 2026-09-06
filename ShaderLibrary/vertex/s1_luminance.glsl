@@ -14,10 +14,10 @@
 
 #ifdef ULRE_MATERIAL_ARENA_BDA
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
+#ifndef S1_VertexLuminanceDataREF_GUARD
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexLuminanceDataRef
-{
-    uint data[];
-};
+#define S1_VertexLuminanceDataREF_GUARD
+#endif
 
 #define sbo_vertex_luminance VertexLuminanceDataRef(pc_vertex_index.addr_luminance)
 #else

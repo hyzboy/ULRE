@@ -17,10 +17,10 @@
 
 #ifdef ULRE_MATERIAL_ARENA_BDA
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
+#ifndef S1_VertexNTBDataREF_GUARD
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBDataRef
-{
-    uvec4 data[];
-};
+#define S1_VertexNTBDataREF_GUARD
+#endif
 
 #define sbo_vertex_ntb VertexNTBDataRef(pc_vertex_index.addr_ntb)
 #else
