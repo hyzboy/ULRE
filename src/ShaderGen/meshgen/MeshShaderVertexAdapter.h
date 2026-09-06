@@ -25,6 +25,8 @@ namespace hgl::graph::mtl
         ms += "#define VertexIndexID (MeshVertexIndex)\n";
         ms += "#define HGL_INDEX_LOADER_DEFINED\n";
         ms += "\n";
+        // Arena+BDA：行表 uint64_t 基址字段需要 64 位整型扩展
+        ms += "#extension GL_ARB_gpu_shader_int64 : require\n";
         // 顶点索引 SSBO（is_indexed 查表用；非索引几何不写 descriptor——PARTIALLY_BOUND 安全，
         // 与 VS 的 s1_index 声明一致：layout 恒有 binding 8）
         ms += "layout(set=VERTEX_SET, binding=VERTEX_INDEX_BINDING, std430) readonly buffer VertexIndexData\n";
