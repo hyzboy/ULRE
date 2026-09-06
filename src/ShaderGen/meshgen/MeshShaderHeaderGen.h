@@ -23,6 +23,10 @@ namespace hgl::graph::mtl
     {
         ms += "#extension GL_EXT_mesh_shader : require\n";
         ms += "#extension GL_EXT_scalar_block_layout : require\n";
+        // Arena+BDA：MeshDrawParams 基址字段(uint64_t)与 s1 模块的
+        // buffer_reference 声明依赖以下扩展——所有 mesh shader 统一启用
+        ms += "#extension GL_EXT_buffer_reference : require\n";
+        ms += "#extension GL_ARB_gpu_shader_int64 : require\n";
         ms += "\n";
     }
 
