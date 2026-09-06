@@ -12,11 +12,10 @@
 
 #ifdef ULRE_MATERIAL_ARENA_BDA
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
-#ifndef S1_VertexPositionDataREF_GUARD
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionDataRef
-#define S1_VertexPositionDataREF_GUARD
-#endif
-
+{
+    vec2 data[];
+};
 #define sbo_vertex_position VertexPositionDataRef(pc_vertex_index.addr_position)
 #else
 layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING, std430, scalar) readonly buffer VertexPositionData

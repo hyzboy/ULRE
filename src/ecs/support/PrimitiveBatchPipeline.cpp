@@ -549,6 +549,9 @@ namespace hgl::ecs
                         if (vdm)
                         {
                             auto *dev = world ? world->GetGPUDevice() : nullptr;
+                            if (getenv("ULRE_ARENA_DEBUG"))
+                                GLogInfo("[VertexAddr] row[%u] streams=%u dev=%p",
+                                         i, vdm->GetVABStreamCount(), (void*)dev);
                             for (uint32 vi = 0; vi < vdm->GetVABStreamCount(); ++vi)
                             {
                                 auto *vab = vdm->GetVAB(int(vi));
@@ -556,6 +559,9 @@ namespace hgl::ecs
                                 const uint64_t addr = dev
                                     ? dev->GetBufferDeviceAddressAligned16(vab->GetVkBuffer())
                                     : 0;
+                                if (getenv("ULRE_ARENA_DEBUG") && i == 0)
+                                    GLogInfo("[VertexAddr]   stream[%u] addr=0x%llx vkbuf=%p",
+                                             vi, (unsigned long long)addr, (void*)vab->GetVkBuffer());
                                 switch (vi)
                                 {
                                 case 0: row[i].addr_position     = addr; break;
@@ -568,10 +574,23 @@ namespace hgl::ecs
                                 }
                             }
                             if (auto *ibo = vdm->GetIBO())
+                            {
                                 row[i].addr_index = dev
                                     ? dev->GetBufferDeviceAddressAligned16(ibo->GetVkBuffer())
                                     : 0;
+                                if (getenv("ULRE_ARENA_DEBUG") && i == 0)
+                                    GLogInfo("[VertexAddr]   index addr=0x%llx",
+                                             (unsigned long long)row[i].addr_index);
+                            }
                         }
+                        else if (getenv("ULRE_ARENA_DEBUG") && i == 0)
+                        {
+                            GLogInfo("[VertexAddr] row[%u] NO VDM — addresses remain 0!", i);
+                        }
+                    }
+                    else if (getenv("ULRE_ARENA_DEBUG") && i == 0)
+                    {
+                        GLogInfo("[VertexAddr] row[%u] NO GEOMETRY — addresses remain 0!", i);
                     }
                 }
 

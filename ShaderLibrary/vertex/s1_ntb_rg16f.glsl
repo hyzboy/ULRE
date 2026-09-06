@@ -16,11 +16,10 @@
 
 #ifdef ULRE_MATERIAL_ARENA_BDA
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
-#ifndef S1_VertexNTBDataREF_GUARD
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBDataRef
-#define S1_VertexNTBDataREF_GUARD
-#endif
-
+{
+    uint data[];
+};
 #define sbo_vertex_ntb VertexNTBDataRef(pc_vertex_index.addr_ntb)
 #else
 layout(set=VERTEX_SET, binding=VERTEX_NTB_BINDING, std430) readonly buffer VertexNTBData

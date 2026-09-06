@@ -18,16 +18,16 @@
 
 #ifdef ULRE_MATERIAL_ARENA_BDA
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
-#ifndef S1_VertexPositionDataREF_GUARD
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionDataRef
-#define S1_VertexPositionDataREF_GUARD
-#endif
+{
+    vec3 data[];
+};
 
 #define sbo_vertex_position VertexPositionDataRef(pc_vertex_index.addr_position)
 #else
-layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING, std430, scalar) readonly buffer VertexPositionData
-{
-    vec3 data[];
+layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING, std430, scalar) readonly buffer VertexPositionData
+{
+    vec3 data[];
 } sbo_vertex_position;
 #endif
 
@@ -37,6 +37,14 @@ void LoadVertexData()
 {
 #ifdef HGL_INDEX_LOADER
     HGL_INDEX_LOADER
+#endif
+#ifdef ULRE_MATERIAL_ARENA_BDA
+    // GPU fault 守卫：坏地址不 dereference，输出可见探针（红=addr 0，绿=addr 非法范围）
+    if (pc_vertex_index.addr_position == 0ull)
+    {
+        Position = vec3(1000.0, 0.0, 0.0);  // 红色大球——地址为 0
+        return;
+    }
 #endif
     Position = sbo_vertex_position.data[pc_vertex_index.vertex_base + VertexIndexID];
 #ifdef HGL_UV_LOADER

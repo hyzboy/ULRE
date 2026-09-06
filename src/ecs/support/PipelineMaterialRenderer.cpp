@@ -102,6 +102,13 @@ namespace hgl::ecs
         last_mesh_params_offset = offset;
     }
 
+    static bool LogDrawOnce()
+    {
+        static bool done=false;
+        if(!done){ done=true; GLogInfo("[DrawTrace] PipelineMaterialRenderer::Draw entered"); }
+        return false;
+    }
+
     bool PipelineMaterialRenderer::Draw( DrawBatch* batch,
                                             TransformAssignmentBuffer* transform_buffer,
                                             const MaterialBatch *owner_batch)
@@ -273,12 +280,17 @@ namespace hgl::ecs
                     }
 
                     ++indirect_draw_count;
+                    if (getenv("ULRE_ARENA_DEBUG"))
+                        GLogInfo("[DrawTrace] indirect accum: count=%u offset=%d",
+                                 indirect_draw_count, first_indirect_draw_index);
                 }
                 else
                 {
                     // 直接路径（私有 VBO / 无 MDI）：参数表 offset 视图重绑到本 draw 行
                     //（gl_DrawID=0 → rows[0] 恰为本行）后直接 dispatch
-                    BindMeshDrawParamsView(batch);
+                    if (getenv("ULRE_ARENA_DEBUG"))
+                        GLogInfo("[DrawTrace] direct dispatch: groups=%u instances=%u",
+                                 group_count, instance_count);
                     cmd_buf->DrawMeshTasks(group_count, instance_count);
                 }
 
