@@ -448,6 +448,23 @@ uint64_t VulkanDevice::GetBufferDeviceAddress(VkBuffer buf) const
     return vkGetBufferDeviceAddress(attr->device,&addr_info);
 }
 
+uint64_t VulkanDevice::GetBufferDeviceAddressAligned16(VkBuffer buf) const
+{
+    const uint64_t addr = GetBufferDeviceAddress(buf);
+
+    // BDA 编码规范：buffer_reference_align=16 的承诺必须由基址兑现。
+    // 承诺不成立 = 未定义行为（Validation Layer 不查——fail-fast 并记错误日志）
+    if(addr && (addr & 0xFull)!=0ull)
+    {
+        GLogError("[BDA] buffer device address 0x%llx not 16-byte aligned -- "
+                  "buffer_reference_align=16 promise broken",
+                  (unsigned long long)addr);
+        return 0;
+    }
+
+    return addr;
+}
+
 VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
                              VkFormat format,
                              uint32_t count,

@@ -358,6 +358,10 @@ public: //Buffer相关
     // SHADER_DEVICE_ADDRESS usage 创建、其内存以 DEVICE_ADDRESS flag 分配。
     uint64_t GetBufferDeviceAddress(VkBuffer buf) const;
 
+    // 16B 对齐校验版：地址非 16 对齐时记错误日志并返回 0。
+    // BDA 编码规范：buffer_reference_align=16 的承诺必须由基址兑现。
+    uint64_t GetBufferDeviceAddressAligned16(VkBuffer buf) const;
+
     DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
     {
         DeviceBuffer *buf = CreateINBO(size, data, policy, sm, update_class);
