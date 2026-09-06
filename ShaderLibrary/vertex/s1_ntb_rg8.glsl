@@ -10,10 +10,13 @@
 // 解码：uint 打包（低字节 p、高字节 q）→ /255 → octahedral 展开 → normalize
 // 精度：8bit/分量（法线角 ~0.5°）——带宽最优（2B/顶点——RG16F 的一半）
 // 布局注意：uint 4B 对齐（2 个顶点/uint——不越界——连续读取）
-layout(set=VERTEX_SET, binding=VERTEX_NTB_BINDING, std430) readonly buffer VertexNTBData
+// Arena+BDA：数据经地址行表基址直取（描述符退场）
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBDataRef
 {
     uint data[];
-} sbo_vertex_ntb;
+};
+
+#define sbo_vertex_ntb VertexNTBDataRef(pc_vertex_index.addr_ntb)
 
 vec3 Normal;
 

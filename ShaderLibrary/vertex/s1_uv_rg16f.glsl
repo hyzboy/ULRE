@@ -15,7 +15,7 @@
 // Arena+BDA：数据经地址行表基址直取（描述符退场）
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexUVDataRef
 {
-    vec2 data[];
+    uint data[];
 };
 
 #define sbo_vertex_uv VertexUVDataRef(pc_vertex_index.addr_uv)

@@ -63,23 +63,9 @@ namespace hgl::graph::mtl
         // 全局可变参数行：模块函数（orient_world 等经 gl_InstanceIndex 宏）引用
         // first_instance——必须在 main 开头按 gl_DrawID 加载后使用点才生效
         //（跨函数可见，与上方 MeshVertexIndex 同模式）
-        ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionDataRef { vec3 dummy_position[]; };\n";
-        ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexUVDataRef { vec2 dummy_uv[]; };\n";
-        ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBDataRef { uvec4 dummy_ntb[]; };\n";
-        ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexColorDataRef { vec4 dummy_color[]; };\n";
-        ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexLuminanceDataRef { uint dummy_luminance[]; };\n";
-        ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexTransformIDDataRef { uint dummy_transform_id[]; };\n";
-        ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexSizeDataRef { vec2 dummy_size[]; };\n";
-        ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexIndexDataRef { uint dummy_index[]; };\n";
+        // 注意：buffer_reference 的 XxxDataRef 类型声明由各 s1_* 模块自带
+        //（元素类型随格式变体不同——adapter 不做统一声明，避免同名块重定义）。
         ms += "MeshDrawParams pc_vertex_index;\n";
-        ms += "\n";
-
-        // ── Arena+BDA：顶点数据基址垫片 ─────────────────────────────────
-        // 各语义顶点数据的设备地址由 pc_vertex_index.addr_* 携带（每 DrawBatch 一行），
-        // s1 模块经 MTL_VAB 宏把"描述符声明+取数"收敛为 buffer_reference 数组引用：
-        //   MTL_VAB(type, name, addr_field) → name 数组的 buffer_reference 声明 + 取数表达式
-        // s1 模块声明行被 #ifdef 守卫替换为宏调用（见各 s1_*.glsl）。
-        ms += "// Arena+BDA vertex base shims (addresses from pc_vertex_index)\n";
         ms += "\n";
     }
 }
