@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
+#include<hgl/vk/VertexDataManager.h>
 #include<source_location>
 #include<cstdlib>
 #include<cstdio>
@@ -539,6 +540,39 @@ namespace hgl::ecs
                              : range->vertex_count)
                         : 0u;
                     row[i].first_instance = db.first_instance;
+
+                    // 顶点/索引数据基址（BDA 行内寻址）：直接从 VDM 各语义大 VAB 取
+                    //（数组引用模式：shader 内数组下标 = 绝对顶点号，区段偏移不成为指针）
+                    if (db.geometry)
+                    {
+                        auto *vdm = db.geometry->GetVDM();
+                        if (vdm)
+                        {
+                            auto *dev = world ? world->GetGPUDevice() : nullptr;
+                            for (uint32 vi = 0; vi < vdm->GetVABStreamCount(); ++vi)
+                            {
+                                auto *vab = vdm->GetVAB(int(vi));
+                                if (!vab) continue;
+                                const uint64_t addr = dev
+                                    ? dev->GetBufferDeviceAddressAligned16(vab->GetVkBuffer())
+                                    : 0;
+                                switch (vi)
+                                {
+                                case 0: row[i].addr_position     = addr; break;
+                                case 1: row[i].addr_uv           = addr; break;
+                                case 2: row[i].addr_ntb          = addr; break;
+                                case 3: row[i].addr_color        = addr; break;
+                                case 4: row[i].addr_luminance    = addr; break;
+                                case 5: row[i].addr_transform_id = addr; break;
+                                case 6: row[i].addr_size         = addr; break;
+                                }
+                            }
+                            if (auto *ibo = vdm->GetIBO())
+                                row[i].addr_index = dev
+                                    ? dev->GetBufferDeviceAddressAligned16(ibo->GetVkBuffer())
+                                    : 0;
+                        }
+                    }
                 }
 
                 params_gpu->Unmap();
