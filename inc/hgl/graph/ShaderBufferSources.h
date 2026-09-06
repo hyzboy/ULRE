@@ -64,7 +64,15 @@ namespace hgl::graph::mtl
         M(is_indexed,     "uint",  uint32_t)     \
         M(total_vertices, "uint",  uint32_t)     \
         M(char_height,    "float", float)        \
-        M(first_instance, "uint",  uint32_t)
+        M(first_instance, "uint",  uint32_t)     \
+        M(addr_position,      "uint64_t", uint64_t) \
+        M(addr_uv,            "uint64_t", uint64_t) \
+        M(addr_ntb,           "uint64_t", uint64_t) \
+        M(addr_color,         "uint64_t", uint64_t) \
+        M(addr_luminance,     "uint64_t", uint64_t) \
+        M(addr_transform_id,  "uint64_t", uint64_t) \
+        M(addr_size,          "uint64_t", uint64_t) \
+        M(addr_index,         "uint64_t", uint64_t)
 
     struct MeshDrawParams
     {
@@ -93,8 +101,9 @@ namespace hgl::graph::mtl
     constexpr uint32 kMeshDrawParamsFieldCount =
         static_cast<uint32>(sizeof(kMeshDrawParamsFieldNames) / sizeof(kMeshDrawParamsFieldNames[0]));
 
-    // std430 布局断言：字段连续 4 字节对齐（无 padding），顺序 = 表顺序。
-    constexpr bool MeshDrawParamsStd430Contiguous() noexcept
+    // 布局断言（std430，全标量成员无 padding）：
+    //   头部 6×4B（offset 0..20）+ 8×uint64 基址（offset 24 起，8B 步进）= 88B。
+    constexpr bool MeshDrawParamsLayoutValid() noexcept
     {
         const size_t offsets[] =
         {
@@ -102,14 +111,21 @@ namespace hgl::graph::mtl
             HGL_MESH_DRAW_PARAMS_FIELD_LIST(HGL_MDP_OFFSET_FIELD)
     #undef HGL_MDP_OFFSET_FIELD
         };
-        for (uint32 i = 0; i < kMeshDrawParamsFieldCount; ++i)
+        constexpr size_t kCount = sizeof(offsets)/sizeof(offsets[0]);
+        // 头部 6 字段必须严格 4B 连续
+        for (uint32 i = 0; i < 6; ++i)
         {
-            if (offsets[i] != static_cast<size_t>(i) * 4u)
+            if (offsets[i] != i * 4u)
                 return false;
         }
-        return true;
+        // 8 个基址字段必须 8B 连续（自 offset 24 起）
+        for (uint32 i = 6; i < kCount; ++i)
+        {
+            if (offsets[i] != 24u + (i - 6u) * 8u)
+                return false;
+        }
+        return sizeof(MeshDrawParams) == 88;
     }
-    static_assert(MeshDrawParamsStd430Contiguous(),
-        "MeshDrawParams 字段必须连续 4 字节对齐（std430），顺序必须与字段表一致");
-    static_assert(sizeof(MeshDrawParams) == 24, "MeshDrawParams must match GLSL std430 layout");
+    static_assert(MeshDrawParamsLayoutValid(),
+        "MeshDrawParams 布局必须与 GLSL std430 声明逐字段一致（24B 头部 + 8×uint64 基址 = 88B）");
 }

@@ -9,6 +9,7 @@
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include <hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
 #include <hgl/graph/module/BufferManager.h>
@@ -709,6 +710,22 @@ namespace hgl::ecs
                     row->is_indexed      = 0;
                     row->total_vertices  = total_line_count_ * 2u;
                     row->first_instance  = 0;
+
+                    // 顶点/索引基址：line 数据走 b14/15/16 类似通道或行表——
+                    // 先填 Null 行地址（安全缺省），line 材质若需顶点数据再补实际地址
+                    if (auto *gc_l = context_ ? context_->GetGraphicsContext() : nullptr)
+                    if (auto *rdm = gc_l->GetSSBOBufferRegistry())
+                    {
+                        const uint64_t null_addr = rdm->GetNullRowAddress();
+                        row->addr_position = null_addr;
+                        row->addr_uv = null_addr;
+                        row->addr_ntb = null_addr;
+                        row->addr_color = null_addr;
+                        row->addr_luminance = null_addr;
+                        row->addr_transform_id = null_addr;
+                        row->addr_size = null_addr;
+                        row->addr_index = null_addr;
+                    }
                     gpu->Unmap();
                 }
             }

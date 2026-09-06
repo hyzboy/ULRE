@@ -848,6 +848,21 @@ namespace hgl::ecs
                         row->is_indexed      = 0;
                         row->total_vertices  = resources->last_draw_char_count;
 
+                        // 顶点/索引基址：text 不消费 Vertex 集（字符数据走 b14/15/16），
+                        // 填 Null 行地址（64B 零填充，安全缺省）
+                        if (auto *rdm = render_context ? render_context->GetGraphicsContext()->GetSSBOBufferRegistry() : nullptr)
+                        {
+                            const uint64_t null_addr = rdm->GetNullRowAddress();
+                            row->addr_position = null_addr;
+                            row->addr_uv = null_addr;
+                            row->addr_ntb = null_addr;
+                            row->addr_color = null_addr;
+                            row->addr_luminance = null_addr;
+                            row->addr_transform_id = null_addr;
+                            row->addr_size = null_addr;
+                            row->addr_index = null_addr;
+                        }
+
                         // char_height = 字符高度（基础值，不乘 scale；CharQuad 基准线校正用）
                         // GPU 侧会按每个字符的 char_scale 单独缩放。
                         row->char_height = static_cast<float>(input.font_source->GetCharHeight());
