@@ -10,10 +10,15 @@
 #ifndef S1_POSITION_VEC2_GLSL
 #define S1_POSITION_VEC2_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING, std430, scalar) readonly buffer VertexPositionData
-{
-    vec2 data[];
+#ifdef ULRE_MATERIAL_ARENA_BDA
+// Arena+BDA：数据经地址行表基址直取（描述符退场）
+#define sbo_vertex_position (*VertexPositionDataRef(pc_vertex_index.addr_position))
+#else
+layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING, std430, scalar) readonly buffer VertexPositionData
+{
+    vec2 data[];
 } sbo_vertex_position;
+#endif
 
 vec2 Position;
 

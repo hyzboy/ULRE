@@ -12,11 +12,8 @@
 #ifndef S1_TRANSFORM_ID_GLSL
 #define S1_TRANSFORM_ID_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_TRANSFORMID_BINDING, std430) readonly buffer VertexTransformIDData
-{
-    uint data[];
-} sbo_vertex_transform_id;
-
+// Arena+BDA：数据经地址行表基址直取（描述符退场）
+#define sbo_vertex_transform_id (*VertexTransformIDDataRef(pc_vertex_index.addr_transform_id))
 uint TransformID;
 
 #define HGL_TRANSFORMID_LOADER { TransformID = sbo_vertex_transform_id.data[pc_vertex_index.vertex_base + VertexIndexID]; }

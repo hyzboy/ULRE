@@ -11,10 +11,15 @@
 #ifndef S1_PALETTE_INDEX_GLSL
 #define S1_PALETTE_INDEX_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_COLOR_BINDING, std430) readonly buffer VertexColorData
-{
-    uint data[];
+#ifdef ULRE_MATERIAL_ARENA_BDA
+// Arena+BDA：数据经地址行表基址直取（描述符退场）
+#define sbo_vertex_color (*VertexColorDataRef(pc_vertex_index.addr_color))
+#else
+layout(set=VERTEX_SET, binding=VERTEX_COLOR_BINDING, std430) readonly buffer VertexColorData
+{
+    uint data[];
 } sbo_vertex_color;
+#endif
 
 uint ColorIndex;
 

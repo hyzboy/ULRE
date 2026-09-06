@@ -63,5 +63,16 @@ namespace hgl::graph::mtl
         //（跨函数可见，与上方 MeshVertexIndex 同模式）
         ms += "MeshDrawParams pc_vertex_index;\n";
         ms += "\n";
+
+        // ── Arena+BDA：顶点数据基址垫片 ─────────────────────────────────
+        // 各语义顶点数据的设备地址由 pc_vertex_index.addr_* 携带（每 DrawBatch 一行），
+        // s1 模块经 MTL_VAB 宏把"描述符声明+取数"收敛为 buffer_reference 数组引用：
+        //   MTL_VAB(type, name, addr_field) → name 数组的 buffer_reference 声明 + 取数表达式
+        // s1 模块声明行被 #ifdef 守卫替换为宏调用（见各 s1_*.glsl）。
+        ms += "// Arena+BDA vertex base shims (addresses from pc_vertex_index)\n";
+        ms += "#define MTL_VAB_DECL(type, name, addr_field) \\\n";
+        ms += "    layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexRef_##name { type data[]; }; \\\n";
+        ms += "    VertexRef_##name name = VertexRef_##name(pc_vertex_index.addr_field)\n";
+        ms += "\n";
     }
 }

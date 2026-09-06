@@ -10,10 +10,15 @@
 #ifndef S1_COLOR_GLSL
 #define S1_COLOR_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_COLOR_BINDING, std430, scalar) readonly buffer VertexColorData
-{
-    vec4 data[];
+#ifdef ULRE_MATERIAL_ARENA_BDA
+// Arena+BDA：数据经地址行表基址直取（描述符退场）
+#define sbo_vertex_color (*VertexColorDataRef(pc_vertex_index.addr_color))
+#else
+layout(set=VERTEX_SET, binding=VERTEX_COLOR_BINDING, std430, scalar) readonly buffer VertexColorData
+{
+    vec4 data[];
 } sbo_vertex_color;
+#endif
 
 vec4 Color;
 

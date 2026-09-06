@@ -10,11 +10,8 @@
 #ifndef S1_UV_GLSL
 #define S1_UV_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_UV_BINDING) readonly buffer VertexUVData
-{
-    vec2 data[];
-} sbo_vertex_uv;
-
+// Arena+BDA：数据经地址行表基址直取（描述符退场）
+#define sbo_vertex_uv (*VertexUVDataRef(pc_vertex_index.addr_uv))
 vec2 TexCoord;
 
 #define HGL_UV_LOADER { TexCoord = sbo_vertex_uv.data[pc_vertex_index.vertex_base + VertexIndexID]; }

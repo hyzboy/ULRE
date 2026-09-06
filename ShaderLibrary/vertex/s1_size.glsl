@@ -10,11 +10,8 @@
 #ifndef S1_SIZE_GLSL
 #define S1_SIZE_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_SIZE_BINDING, std430, scalar) readonly buffer VertexSizeData
-{
-    vec2 data[];
-} sbo_vertex_size;
-
+// Arena+BDA：数据经地址行表基址直取（描述符退场）
+#define sbo_vertex_size (*VertexSizeDataRef(pc_vertex_index.addr_size))
 float Width;
 
 #define HGL_SIZE_LOADER { Width = sbo_vertex_size.data[pc_vertex_index.vertex_base + VertexIndexID].x; }

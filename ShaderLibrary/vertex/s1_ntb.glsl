@@ -15,10 +15,15 @@
 #ifndef S1_NTB_GLSL
 #define S1_NTB_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_NTB_BINDING, std430, scalar) readonly buffer VertexNTBData
-{
-    vec3 data[];
+#ifdef ULRE_MATERIAL_ARENA_BDA
+// Arena+BDA：数据经地址行表基址直取（描述符退场）
+#define sbo_vertex_ntb (*VertexNTBDataRef(pc_vertex_index.addr_ntb))
+#else
+layout(set=VERTEX_SET, binding=VERTEX_NTB_BINDING, std430, scalar) readonly buffer VertexNTBData
+{
+    vec3 data[];
 } sbo_vertex_ntb;
+#endif
 
 vec3 Normal;
 
