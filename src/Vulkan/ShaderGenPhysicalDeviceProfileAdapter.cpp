@@ -48,6 +48,8 @@ namespace hgl::graph::mtl::contract
         const auto &props = pd.GetProperties();
         const auto &limits = pd.GetLimits();
         const auto &f10 = pd.GetFeatures10();
+        const auto &f12 = pd.GetFeatures12();
+        const auto &mesh_features = pd.GetMeshShaderFeatures();
 
         profile.name = pd.GetDeviceName() ? pd.GetDeviceName() : "";
         profile.device_type = ResolveDeviceTypeName(pd.GetDeviceType());
@@ -78,6 +80,27 @@ namespace hgl::graph::mtl::contract
             profile.limits.max_task_work_group_size_x  = mesh_props.maxTaskWorkGroupSize[0];
             profile.limits.max_task_work_group_size_y  = mesh_props.maxTaskWorkGroupSize[1];
             profile.limits.max_task_work_group_size_z  = mesh_props.maxTaskWorkGroupSize[2];
+            profile.limits.max_task_work_group_total_count = mesh_props.maxTaskWorkGroupTotalCount;
+            profile.limits.max_task_work_group_count_x = mesh_props.maxTaskWorkGroupCount[0];
+            profile.limits.max_task_work_group_count_y = mesh_props.maxTaskWorkGroupCount[1];
+            profile.limits.max_task_work_group_count_z = mesh_props.maxTaskWorkGroupCount[2];
+            profile.limits.max_task_work_group_invocations = mesh_props.maxTaskWorkGroupInvocations;
+            profile.limits.max_task_payload_size = mesh_props.maxTaskPayloadSize;
+            profile.limits.max_task_shared_memory_size = mesh_props.maxTaskSharedMemorySize;
+            profile.limits.max_task_payload_and_shared_memory_size =
+                mesh_props.maxTaskPayloadAndSharedMemorySize;
+            profile.limits.max_mesh_work_group_total_count = mesh_props.maxMeshWorkGroupTotalCount;
+            profile.limits.max_mesh_work_group_count_x = mesh_props.maxMeshWorkGroupCount[0];
+            profile.limits.max_mesh_work_group_count_y = mesh_props.maxMeshWorkGroupCount[1];
+            profile.limits.max_mesh_work_group_count_z = mesh_props.maxMeshWorkGroupCount[2];
+            profile.limits.max_mesh_work_group_invocations = mesh_props.maxMeshWorkGroupInvocations;
+            profile.limits.max_mesh_shared_memory_size = mesh_props.maxMeshSharedMemorySize;
+            profile.limits.max_mesh_payload_and_shared_memory_size =
+                mesh_props.maxMeshPayloadAndSharedMemorySize;
+            profile.limits.max_mesh_output_memory_size = mesh_props.maxMeshOutputMemorySize;
+            profile.limits.max_mesh_payload_and_output_memory_size =
+                mesh_props.maxMeshPayloadAndOutputMemorySize;
+            profile.limits.max_mesh_output_components = mesh_props.maxMeshOutputComponents;
             profile.limits.max_mesh_view_count         = mesh_props.maxMeshMultiviewViewCount;
         }
 
@@ -85,6 +108,11 @@ namespace hgl::graph::mtl::contract
         profile.features.tessellation_shader = f10.tessellationShader;
         profile.features.wide_lines = f10.wideLines;
         profile.features.sampler_anisotropy = f10.samplerAnisotropy;
+        profile.features.task_shader = mesh_features.taskShader;
+        profile.features.mesh_shader = mesh_features.meshShader;
+        profile.features.buffer_device_address = f12.bufferDeviceAddress;
+        profile.features.scalar_block_layout = f12.scalarBlockLayout;
+        profile.features.shader_int64 = f10.shaderInt64;
 
         return profile;
     }

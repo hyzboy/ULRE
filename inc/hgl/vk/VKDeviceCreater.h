@@ -99,9 +99,14 @@ struct VulkanHardwareRequirement
 
     // 1.2 特性
     SupportLevel bufferDeviceAddress;          ///<要求支持缓冲设备地址(BDA，材质数据 Arena 寻址依赖)
+    SupportLevel scalarBlockLayout;             ///<要求支持 scalar block layout（BDA ABI 布局依赖）
 
     // 1.0 特性
     SupportLevel shaderInt64;                  ///<要求支持着色器 64 位整数(BDA 指针运算依赖)
+
+    // VK_EXT_mesh_shader 特性
+    SupportLevel taskShader;                   ///<要求支持 Task shader（Task 驱动 BDA 调度）
+    SupportLevel meshShader;                   ///<要求支持 Mesh shader（唯一几何路径）
 
     uint32_t descriptor_pool;                  ///<描述符池大小(默认1024)
 
@@ -122,7 +127,12 @@ public:
 
         // 材质数据 Arena+BDA 路径为引擎基线能力(见 doc/material-ssbo-arena-bda-refactor-plan)
         bufferDeviceAddress=SupportLevel::Must;
+        scalarBlockLayout=SupportLevel::Must;
         shaderInt64=SupportLevel::Must;
+
+        // Mesh/Task shader 是当前渲染器的固定几何调度能力。
+        taskShader=SupportLevel::Must;
+        meshShader=SupportLevel::Must;
     }
 };
 

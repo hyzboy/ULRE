@@ -68,6 +68,9 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
     const uint32_t version_major = VK_API_VERSION_MAJOR(api_version);
     const uint32_t version_minor = VK_API_VERSION_MINOR(api_version);
 
+    mem_zero(mesh_shader_features);
+    mem_zero(mesh_shader_properties);
+
     {
         mem_zero(features11);
         mem_zero(features12);
@@ -138,6 +141,17 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         {
             vkGetPhysicalDeviceFeatures(physical_device,&features);
         }
+    }
+
+    // Enumerate extensions before the properties chain so the mesh shader
+    // property node is attached only when the device advertises the extension.
+    {
+        uint32_t exten_count;
+
+        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,nullptr);
+
+        extension_properties.Resize(exten_count);
+        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
     }
 
     {
@@ -249,13 +263,6 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
     }
 
     {
-        uint32_t exten_count;
-
-        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,nullptr);
-
-        extension_properties.Resize(exten_count);
-        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
-
         debug_out(debug_front.c_str(),extension_properties);
     }
 
@@ -397,4 +404,3 @@ VkFormat VulkanPhyDevice::GetDepthStencilFormat(bool lower_to_high)const
     return result;
 }
 }//namespace hgl::graph
-

@@ -30,6 +30,23 @@ CreateProject(VulkanPhysicalDeviceProfileCollector)
 
 ####################################################################################################
 
+# Task/BDA root and physical-device profile ABI regression.
+add_executable(TaskShaderBDAABIRegression
+    TaskShaderBDAABIRegression.cpp)
+
+CreateProject(TaskShaderBDAABIRegression)
+
+if(BUILD_TESTING)
+    add_test(
+        NAME task_shader_bda_abi_regression
+        COMMAND TaskShaderBDAABIRegression)
+    set_tests_properties(
+        task_shader_bda_abi_regression
+        PROPERTIES LABELS "shadergen;baseline;task-bda")
+endif()
+
+####################################################################################################
+
 # descriptor_macros.glsl 生成器（真源：inc/hgl/common/DescriptorSetTypeDef.h）
 add_executable(DescriptorMacroGen
     DescriptorMacroGen.cpp)

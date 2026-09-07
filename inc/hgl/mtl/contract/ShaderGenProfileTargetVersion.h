@@ -57,10 +57,42 @@ namespace hgl::graph::mtl::contract
           << profile->limits.max_bound_descriptor_sets
           << profile->limits.max_uniform_buffer_range
           << profile->limits.max_storage_buffer_range
+          << profile->limits.max_mesh_output_vertices
+          << profile->limits.max_mesh_output_primitives
+          << profile->limits.max_mesh_work_group_size_x
+          << profile->limits.max_mesh_work_group_size_y
+          << profile->limits.max_mesh_work_group_size_z
+          << profile->limits.max_task_work_group_size_x
+          << profile->limits.max_task_work_group_size_y
+          << profile->limits.max_task_work_group_size_z
+          << profile->limits.max_task_work_group_total_count
+          << profile->limits.max_task_work_group_count_x
+          << profile->limits.max_task_work_group_count_y
+          << profile->limits.max_task_work_group_count_z
+          << profile->limits.max_task_work_group_invocations
+          << profile->limits.max_task_payload_size
+          << profile->limits.max_task_shared_memory_size
+          << profile->limits.max_task_payload_and_shared_memory_size
+          << profile->limits.max_mesh_work_group_total_count
+          << profile->limits.max_mesh_work_group_count_x
+          << profile->limits.max_mesh_work_group_count_y
+          << profile->limits.max_mesh_work_group_count_z
+          << profile->limits.max_mesh_work_group_invocations
+          << profile->limits.max_mesh_shared_memory_size
+          << profile->limits.max_mesh_payload_and_shared_memory_size
+          << profile->limits.max_mesh_output_memory_size
+          << profile->limits.max_mesh_payload_and_output_memory_size
+          << profile->limits.max_mesh_output_components
+          << profile->limits.max_mesh_view_count
           << profile->features.geometry_shader
           << profile->features.tessellation_shader
           << profile->features.wide_lines
-          << profile->features.sampler_anisotropy;
+          << profile->features.sampler_anisotropy
+          << profile->features.task_shader
+          << profile->features.mesh_shader
+          << profile->features.buffer_device_address
+          << profile->features.scalar_block_layout
+          << profile->features.shader_int64;
 
         return h;
     }

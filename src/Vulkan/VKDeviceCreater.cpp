@@ -582,7 +582,9 @@ bool VulkanDeviceCreater::RequirementCheck()
 #undef VHR_MINCHECK
 
     const VkPhysicalDeviceFeatures &features10=physical_device->GetFeatures10();
+    const VkPhysicalDeviceVulkan12Features &features12=physical_device->GetFeatures12();
     const VkPhysicalDeviceVulkan13Features &features13=physical_device->GetFeatures13();
+    const VkPhysicalDeviceMeshShaderFeaturesEXT &mesh_features=physical_device->GetMeshShaderFeatures();
 
 #define VHRC(name,check) if(require.name>=VulkanHardwareRequirement::SupportLevel::Must&&(!check))return(false);
 
@@ -601,6 +603,12 @@ bool VulkanDeviceCreater::RequirementCheck()
     VHRC_F10(fillModeNonSolid);
 
     VHRC_F10(wideLines);
+
+    VHRC(taskShader, mesh_features.taskShader);
+    VHRC(meshShader, mesh_features.meshShader);
+    VHRC(scalarBlockLayout, features12.scalarBlockLayout);
+    VHRC(bufferDeviceAddress, features12.bufferDeviceAddress);
+    VHRC(shaderInt64, features10.shaderInt64);
 
 #ifndef __APPLE__
     VHRC_PDE(lineRasterization,    EXT_LINE_RASTERIZATION);
@@ -630,8 +638,6 @@ bool VulkanDeviceCreater::RequirementCheck()
     // ── bindless 纹理架构硬需求（descriptor indexing）────────────────────
     // 现代 Vulkan 1.2+ 设备均支持；不支持即无法运行，直接报错退出。
     {
-        const VkPhysicalDeviceVulkan12Features &features12 = physical_device->GetFeatures12();
-
         // 注意：不存在 shaderSamplerArrayNonUniformIndexing 特性，
         // 采样器数组非均匀访问由 ShaderNonUniform capability 覆盖
         // （随 shaderSampledImageArrayNonUniformIndexing 一并启用）。
@@ -655,13 +661,13 @@ bool VulkanDeviceCreater::RequirementCheck()
         // ── 材质数据 Arena+BDA 硬需求（buffer device address + shaderInt64）──
         // GL_EXT_buffer_reference 生成的 PhysicalStorageBuffer 指针依赖两者；
         // 与 descriptor indexing 同级：不支持即无法运行，直接报错退出。
-        if(!features12.bufferDeviceAddress
-        || !features10.shaderInt64)
+        const auto &profile = physical_device->GetPhysicalDeviceProfile();
+        const char *task_bda_reason = nullptr;
+        if (!mtl::contract::ValidateTaskShaderBDAProfile(
+                profile, task_bda_reason))
         {
-            GLogError(u8"[VulkanDeviceCreater] 物理设备不支持 bufferDeviceAddress/shaderInt64（材质数据 Arena 硬需求）: "
-                        u8"bufferDeviceAddress=%d shaderInt64=%d",
-                features12.bufferDeviceAddress,
-                features10.shaderInt64);
+            GLogError(u8"[VulkanDeviceCreater] Task/BDA ABI capability gate failed: %s",
+                      task_bda_reason ? task_bda_reason : "unknown reason");
             return(false);
         }
 

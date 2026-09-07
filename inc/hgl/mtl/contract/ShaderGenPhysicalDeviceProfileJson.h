@@ -178,6 +178,24 @@ namespace hgl::graph::mtl::contract
             if (detail::ReadJsonUint64(json, "maxTaskWorkGroupSizeX", v)) out_profile.limits.max_task_work_group_size_x = static_cast<uint32_t>(v);
             if (detail::ReadJsonUint64(json, "maxTaskWorkGroupSizeY", v)) out_profile.limits.max_task_work_group_size_y = static_cast<uint32_t>(v);
             if (detail::ReadJsonUint64(json, "maxTaskWorkGroupSizeZ", v)) out_profile.limits.max_task_work_group_size_z = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskWorkGroupTotalCount", v)) out_profile.limits.max_task_work_group_total_count = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskWorkGroupCountX", v)) out_profile.limits.max_task_work_group_count_x = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskWorkGroupCountY", v)) out_profile.limits.max_task_work_group_count_y = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskWorkGroupCountZ", v)) out_profile.limits.max_task_work_group_count_z = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskWorkGroupInvocations", v)) out_profile.limits.max_task_work_group_invocations = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskPayloadSize", v)) out_profile.limits.max_task_payload_size = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskSharedMemorySize", v)) out_profile.limits.max_task_shared_memory_size = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskPayloadAndSharedMemorySize", v)) out_profile.limits.max_task_payload_and_shared_memory_size = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshWorkGroupTotalCount", v)) out_profile.limits.max_mesh_work_group_total_count = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshWorkGroupCountX", v)) out_profile.limits.max_mesh_work_group_count_x = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshWorkGroupCountY", v)) out_profile.limits.max_mesh_work_group_count_y = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshWorkGroupCountZ", v)) out_profile.limits.max_mesh_work_group_count_z = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshWorkGroupInvocations", v)) out_profile.limits.max_mesh_work_group_invocations = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshSharedMemorySize", v)) out_profile.limits.max_mesh_shared_memory_size = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshPayloadAndSharedMemorySize", v)) out_profile.limits.max_mesh_payload_and_shared_memory_size = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshOutputMemorySize", v)) out_profile.limits.max_mesh_output_memory_size = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshPayloadAndOutputMemorySize", v)) out_profile.limits.max_mesh_payload_and_output_memory_size = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshOutputComponents", v)) out_profile.limits.max_mesh_output_components = static_cast<uint32_t>(v);
             if (detail::ReadJsonUint64(json, "maxMeshViewCount", v)) out_profile.limits.max_mesh_view_count = static_cast<uint32_t>(v);
         }
 
@@ -185,6 +203,11 @@ namespace hgl::graph::mtl::contract
         detail::ReadJsonBool(json, "tessellationShader", out_profile.features.tessellation_shader);
         detail::ReadJsonBool(json, "wideLines", out_profile.features.wide_lines);
         detail::ReadJsonBool(json, "samplerAnisotropy", out_profile.features.sampler_anisotropy);
+        detail::ReadJsonBool(json, "taskShader", out_profile.features.task_shader);
+        detail::ReadJsonBool(json, "meshShader", out_profile.features.mesh_shader);
+        detail::ReadJsonBool(json, "bufferDeviceAddress", out_profile.features.buffer_device_address);
+        detail::ReadJsonBool(json, "scalarBlockLayout", out_profile.features.scalar_block_layout);
+        detail::ReadJsonBool(json, "shaderInt64", out_profile.features.shader_int64);
 
         out_profile.queue_family_count = detail::CountQueueFamilies(json);
         return true;

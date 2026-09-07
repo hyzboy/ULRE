@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     std::time_t now = std::time(nullptr);
 
     json_out << "{\n";
-    json_out << "  \"schema_version\": 1,\n";
+    json_out << "  \"schema_version\": 2,\n";
     json_out << "  \"status\": \"PASS\",\n";
     json_out << "  \"collected_at_epoch\": " << static_cast<long long>(now) << ",\n";
     json_out << "  \"device_count\": " << device_count << ",\n";
@@ -164,6 +164,8 @@ int main(int argc, char **argv)
         const auto &props = pd->GetProperties();
         const auto &limits = pd->GetLimits();
         const auto &f10 = pd->GetFeatures10();
+        const auto &f12 = pd->GetFeatures12();
+        const auto &mesh_features = pd->GetMeshShaderFeatures();
 
         json_out << "    {\n";
         json_out << "      \"index\": " << i << ",\n";
@@ -193,10 +195,33 @@ int main(int argc, char **argv)
             json_out << "        \"maxTaskWorkGroupSizeX\": " << mesh_props.maxTaskWorkGroupSize[0] << ",\n";
             json_out << "        \"maxTaskWorkGroupSizeY\": " << mesh_props.maxTaskWorkGroupSize[1] << ",\n";
             json_out << "        \"maxTaskWorkGroupSizeZ\": " << mesh_props.maxTaskWorkGroupSize[2] << ",\n";
+            json_out << "        \"maxTaskWorkGroupTotalCount\": " << mesh_props.maxTaskWorkGroupTotalCount << ",\n";
+            json_out << "        \"maxTaskWorkGroupCountX\": " << mesh_props.maxTaskWorkGroupCount[0] << ",\n";
+            json_out << "        \"maxTaskWorkGroupCountY\": " << mesh_props.maxTaskWorkGroupCount[1] << ",\n";
+            json_out << "        \"maxTaskWorkGroupCountZ\": " << mesh_props.maxTaskWorkGroupCount[2] << ",\n";
+            json_out << "        \"maxTaskWorkGroupInvocations\": " << mesh_props.maxTaskWorkGroupInvocations << ",\n";
+            json_out << "        \"maxTaskPayloadSize\": " << mesh_props.maxTaskPayloadSize << ",\n";
+            json_out << "        \"maxTaskSharedMemorySize\": " << mesh_props.maxTaskSharedMemorySize << ",\n";
+            json_out << "        \"maxTaskPayloadAndSharedMemorySize\": " << mesh_props.maxTaskPayloadAndSharedMemorySize << ",\n";
+            json_out << "        \"maxMeshWorkGroupTotalCount\": " << mesh_props.maxMeshWorkGroupTotalCount << ",\n";
+            json_out << "        \"maxMeshWorkGroupCountX\": " << mesh_props.maxMeshWorkGroupCount[0] << ",\n";
+            json_out << "        \"maxMeshWorkGroupCountY\": " << mesh_props.maxMeshWorkGroupCount[1] << ",\n";
+            json_out << "        \"maxMeshWorkGroupCountZ\": " << mesh_props.maxMeshWorkGroupCount[2] << ",\n";
+            json_out << "        \"maxMeshWorkGroupInvocations\": " << mesh_props.maxMeshWorkGroupInvocations << ",\n";
+            json_out << "        \"maxMeshSharedMemorySize\": " << mesh_props.maxMeshSharedMemorySize << ",\n";
+            json_out << "        \"maxMeshPayloadAndSharedMemorySize\": " << mesh_props.maxMeshPayloadAndSharedMemorySize << ",\n";
+            json_out << "        \"maxMeshOutputMemorySize\": " << mesh_props.maxMeshOutputMemorySize << ",\n";
+            json_out << "        \"maxMeshPayloadAndOutputMemorySize\": " << mesh_props.maxMeshPayloadAndOutputMemorySize << ",\n";
+            json_out << "        \"maxMeshOutputComponents\": " << mesh_props.maxMeshOutputComponents << ",\n";
             json_out << "        \"maxMeshViewCount\": " << mesh_props.maxMeshMultiviewViewCount << "\n";
         }
         json_out << "      },\n";
         json_out << "      \"features\": {\n";
+        json_out << "        \"taskShader\": " << (mesh_features.taskShader ? "true" : "false") << ",\n";
+        json_out << "        \"meshShader\": " << (mesh_features.meshShader ? "true" : "false") << ",\n";
+        json_out << "        \"bufferDeviceAddress\": " << (f12.bufferDeviceAddress ? "true" : "false") << ",\n";
+        json_out << "        \"scalarBlockLayout\": " << (f12.scalarBlockLayout ? "true" : "false") << ",\n";
+        json_out << "        \"shaderInt64\": " << (f10.shaderInt64 ? "true" : "false") << ",\n";
         json_out << "        \"geometryShader\": " << (f10.geometryShader ? "true" : "false") << ",\n";
         json_out << "        \"tessellationShader\": " << (f10.tessellationShader ? "true" : "false") << ",\n";
         json_out << "        \"wideLines\": " << (f10.wideLines ? "true" : "false") << ",\n";
