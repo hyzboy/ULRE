@@ -16,10 +16,10 @@
 #ifndef S1_POSITION_VEC3_GLSL
 #define S1_POSITION_VEC3_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING, std430, scalar) readonly buffer VertexPositionData
-{
-    vec3 data[];
-} sbo_vertex_position;
+// BDA：位置基址由 MeshDrawParams 行 addr_position 携带（VertexPositionRef
+// 由 MeshShaderVertexAdapter 集中声明）——vec3 data[] 12B 紧凑 stride 与
+// VAB 布局逐字节一致，读法不变
+#define sbo_vertex_position VertexPositionRef(pc_vertex_index.addr_position)
 
 vec3 Position;
 

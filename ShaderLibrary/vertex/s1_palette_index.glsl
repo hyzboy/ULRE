@@ -11,10 +11,9 @@
 #ifndef S1_PALETTE_INDEX_GLSL
 #define S1_PALETTE_INDEX_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_COLOR_BINDING, std430) readonly buffer VertexColorData
-{
-    uint data[];
-} sbo_vertex_color;
+// BDA：色号基址由 MeshDrawParams 行 addr_color 携带（VertexColorPackedRef 由
+// MeshShaderVertexAdapter 集中声明），读法不变
+#define sbo_vertex_color VertexColorPackedRef(pc_vertex_index.addr_color)
 
 uint ColorIndex;
 

@@ -10,10 +10,9 @@
 // 解码：uint 打包（低字节 p、高字节 q）→ /255 → octahedral 展开 → normalize
 // 精度：8bit/分量（法线角 ~0.5°）——带宽最优（2B/顶点——RG16F 的一半）
 // 布局注意：uint 4B 对齐（2 个顶点/uint——不越界——连续读取）
-layout(set=VERTEX_SET, binding=VERTEX_NTB_BINDING, std430) readonly buffer VertexNTBData
-{
-    uint data[];
-} sbo_vertex_ntb;
+// BDA：NTB 基址由 MeshDrawParams 行 addr_ntb 携带（VertexNTBPackedRef 由
+// MeshShaderVertexAdapter 集中声明）——packed uint 4B stride 读法不变
+#define sbo_vertex_ntb VertexNTBPackedRef(pc_vertex_index.addr_ntb)
 
 vec3 Normal;
 

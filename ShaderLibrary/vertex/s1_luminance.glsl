@@ -12,10 +12,9 @@
 #ifndef S1_LUMINANCE_GLSL
 #define S1_LUMINANCE_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_LUMINANCE_BINDING, std430) readonly buffer VertexLuminanceData
-{
-    uint data[];
-} sbo_vertex_luminance;
+// BDA：亮度基址由 MeshDrawParams 行 addr_luminance 携带（VertexLuminanceRef 由
+// MeshShaderVertexAdapter 集中声明），读法不变
+#define sbo_vertex_luminance VertexLuminanceRef(pc_vertex_index.addr_luminance)
 
 float Luminance;
 

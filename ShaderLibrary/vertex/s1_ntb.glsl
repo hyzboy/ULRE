@@ -15,10 +15,9 @@
 #ifndef S1_NTB_GLSL
 #define S1_NTB_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_NTB_BINDING, std430, scalar) readonly buffer VertexNTBData
-{
-    vec3 data[];
-} sbo_vertex_ntb;
+// BDA：NTB 基址由 MeshDrawParams 行 addr_ntb 携带（VertexNTBRef 由
+// MeshShaderVertexAdapter 集中声明），读法不变
+#define sbo_vertex_ntb VertexNTBRef(pc_vertex_index.addr_ntb)
 
 vec3 Normal;
 

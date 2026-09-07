@@ -12,10 +12,9 @@
 #ifndef S1_TRANSFORM_ID_GLSL
 #define S1_TRANSFORM_ID_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_TRANSFORMID_BINDING, std430) readonly buffer VertexTransformIDData
-{
-    uint data[];
-} sbo_vertex_transform_id;
+// BDA：变换序号基址由 MeshDrawParams 行 addr_transform_id 携带
+//（VertexTransformIDRef 由 MeshShaderVertexAdapter 集中声明），读法不变
+#define sbo_vertex_transform_id VertexTransformIDRef(pc_vertex_index.addr_transform_id)
 
 uint TransformID;
 

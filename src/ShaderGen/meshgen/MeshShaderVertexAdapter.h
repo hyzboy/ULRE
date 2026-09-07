@@ -1,7 +1,8 @@
 ﻿// MeshShaderVertexAdapter.h — 顶点索引适配层
 //
 // mesh shader 无 gl_VertexIndex，提供 MeshVertexIndex 变量 + 宏、
-// VertexIndex SSBO、MeshDrawParams struct + SSBO 声明。
+// 顶点流 BDA ref 类型声明 + sbo_vertex_index 垫片宏、
+// MeshDrawParams struct + SSBO 声明。
 
 #pragma once
 
@@ -25,11 +26,9 @@ namespace hgl::graph::mtl
         ms += "#define VertexIndexID (MeshVertexIndex)\n";
         ms += "#define HGL_INDEX_LOADER_DEFINED\n";
         ms += "\n";
-        // 顶点索引 SSBO（is_indexed 查表用；非索引几何不写 descriptor——PARTIALLY_BOUND 安全，
-        // 与 VS 的 s1_index 声明一致：layout 恒有 binding 8）
-        ms += "layout(set=VERTEX_SET, binding=VERTEX_INDEX_BINDING, std430) readonly buffer VertexIndexData\n";
-        ms += "{ uint data[]; } sbo_vertex_index;\n";
-        ms += "\n";
+        // 顶点索引查表改走 BDA：基址由 MeshDrawParams 行的 addr_index 携带，
+        // sbo_vertex_index 转垫片宏（非索引几何该分支不执行——与旧
+        // PARTIALLY_BOUND 语义一致）。
 
         // mesh per-draw 参数表（IndirectMeshDraw）：替代 push constant——per-draw 段偏移经
         // gl_DrawID 查表（间接合批的关键：多命令一次 vkCmdDrawMeshTasksIndirectEXT 提交时
@@ -60,6 +59,38 @@ namespace hgl::graph::mtl
         // first_instance——必须在 main 开头按 gl_DrawID 加载后使用点才生效
         //（跨函数可见，与上方 MeshVertexIndex 同模式）
         ms += "MeshDrawParams pc_vertex_index;\n";
+        ms += "\n";
+
+        // ── 顶点流 BDA 类型声明（buffer_reference，无描述符无绑定）────────────
+        // 每种"流×变体"一个类型名：变体互斥（同流只 include 一个模块），但全部
+        // 集中在此声明一次——类型声明不占绑定零开销，重复声明才是编译错误。
+        // scalar 布局 + align=16 与 CPU 侧 GetBufferDeviceAddressAligned16 的
+        // 基址承诺配对；元素类型/stride 与旧 std430 声明逐字节一致（vec3=12B
+        // 紧凑、packed=4B），函数体无需任何改动。
+        // 各 s1_* 模块以 #define sbo_vertex_xxx XxxRef(pc_vertex_index.addr_xxx) 接入。
+        static const char *const kVertexRefDecls[] =
+        {
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexIndexRef       { uint data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionRef    { vec3 data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionV2Ref  { vec2 data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionPackedRef { uint data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexUVRef          { vec2 data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexUVPackedRef    { uint data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBRef         { vec3 data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBPackedRef   { uint data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexColorRef       { vec4 data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexColorPackedRef { uint data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexLuminanceRef   { uint data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexTransformIDRef { uint data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexSizeRef        { vec2 data[]; };\n",
+        };
+        for (const char *decl : kVertexRefDecls)
+            ms += decl;
+        ms += "\n";
+
+        // 顶点索引垫片宏：is_indexed 分支查表（非索引几何 addr_index 为 0，
+        // 该分支不执行——与旧 PARTIALLY_BOUND 语义一致）
+        ms += "#define sbo_vertex_index VertexIndexRef(pc_vertex_index.addr_index)\n";
         ms += "\n";
     }
 }

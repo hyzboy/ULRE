@@ -711,20 +711,31 @@ namespace hgl::ecs
                     row->total_vertices  = total_line_count_ * 2u;
                     row->first_instance  = 0;
 
-                    // 顶点/索引基址：line 数据走 b14/15/16 类似通道或行表——
-                    // 先填 Null 行地址（安全缺省），line 材质若需顶点数据再补实际地址
+                    // 顶点/索引基址（BDA）：与 Draw 的描述符绑定同源——按语义从
+                    // line geometry 取流真址。材质未含的流保持 Null 行地址
+                    //（is_indexed=0 / 模块未 include 时不会被解引用）。
                     if (auto *gc_l = context_ ? context_->GetGraphicsContext() : nullptr)
                     if (auto *rdm = gc_l->GetSSBOBufferRegistry())
                     {
                         const uint64_t null_addr = rdm->GetNullRowAddress();
-                        row->addr_position = null_addr;
-                        row->addr_uv = null_addr;
-                        row->addr_ntb = null_addr;
-                        row->addr_color = null_addr;
+                        row->addr_uv        = null_addr;
+                        row->addr_ntb       = null_addr;
                         row->addr_luminance = null_addr;
-                        row->addr_transform_id = null_addr;
-                        row->addr_size = null_addr;
-                        row->addr_index = null_addr;
+                        row->addr_index     = null_addr;
+
+                        if (line_buffer_.geometry && device_)
+                        {
+                            auto fill_addr = [&](graph::VertexSemantic semantic, uint64_t &field)
+                            {
+                                if (auto *vab = line_buffer_.geometry->GetVAB(semantic))
+                                    field = device_->GetBufferDeviceAddressAligned16(vab->GetVkBuffer());
+                            };
+
+                            fill_addr(graph::VertexSemantic::Position,    row->addr_position);
+                            fill_addr(graph::VertexSemantic::Color,       row->addr_color);
+                            fill_addr(graph::Assign::TransformID::VIS_SEMANTIC, row->addr_transform_id);
+                            fill_addr(graph::VertexSemantic::Size,        row->addr_size);
+                        }
                     }
                     gpu->Unmap();
                 }

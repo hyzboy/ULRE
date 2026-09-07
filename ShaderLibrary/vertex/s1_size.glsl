@@ -10,10 +10,9 @@
 #ifndef S1_SIZE_GLSL
 #define S1_SIZE_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_SIZE_BINDING, std430, scalar) readonly buffer VertexSizeData
-{
-    vec2 data[];
-} sbo_vertex_size;
+// BDA：尺寸基址由 MeshDrawParams 行 addr_size 携带（VertexSizeRef 由
+// MeshShaderVertexAdapter 集中声明），读法不变
+#define sbo_vertex_size VertexSizeRef(pc_vertex_index.addr_size)
 
 float Width;
 

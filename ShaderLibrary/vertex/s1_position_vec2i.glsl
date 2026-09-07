@@ -14,10 +14,9 @@
 #ifndef S1_POSITION_VEC2I_GLSL
 #define S1_POSITION_VEC2I_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING, std430) readonly buffer VertexPositionData
-{
-    uint data[];
-} sbo_vertex_position;
+// BDA：位置基址由 MeshDrawParams 行 addr_position 携带（VertexPositionPackedRef
+// 由 MeshShaderVertexAdapter 集中声明）——packed uint 4B stride 读法不变
+#define sbo_vertex_position VertexPositionPackedRef(pc_vertex_index.addr_position)
 
 vec2 Position;
 

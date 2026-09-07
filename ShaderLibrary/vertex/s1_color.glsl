@@ -10,10 +10,9 @@
 #ifndef S1_COLOR_GLSL
 #define S1_COLOR_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_COLOR_BINDING, std430, scalar) readonly buffer VertexColorData
-{
-    vec4 data[];
-} sbo_vertex_color;
+// BDA：顶点色基址由 MeshDrawParams 行 addr_color 携带（VertexColorRef 由
+// MeshShaderVertexAdapter 集中声明），读法不变
+#define sbo_vertex_color VertexColorRef(pc_vertex_index.addr_color)
 
 vec4 Color;
 

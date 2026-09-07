@@ -12,10 +12,9 @@
 #ifndef S1_UV_RG16F_GLSL
 #define S1_UV_RG16F_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_UV_BINDING, std430) readonly buffer VertexUVData
-{
-    uint data[];
-} sbo_vertex_uv;
+// BDA：UV 基址由 MeshDrawParams 行 addr_uv 携带（VertexUVPackedRef 由
+// MeshShaderVertexAdapter 集中声明）——packed uint 4B stride 读法不变
+#define sbo_vertex_uv VertexUVPackedRef(pc_vertex_index.addr_uv)
 
 vec2 TexCoord;
 

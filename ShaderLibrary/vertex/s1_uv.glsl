@@ -10,10 +10,9 @@
 #ifndef S1_UV_GLSL
 #define S1_UV_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_UV_BINDING) readonly buffer VertexUVData
-{
-    vec2 data[];
-} sbo_vertex_uv;
+// BDA：UV 基址由 MeshDrawParams 行 addr_uv 携带（VertexUVRef 由
+// MeshShaderVertexAdapter 集中声明），读法不变
+#define sbo_vertex_uv VertexUVRef(pc_vertex_index.addr_uv)
 
 vec2 TexCoord;
 
