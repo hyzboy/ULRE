@@ -298,15 +298,18 @@ namespace
     struct IndexTableSpec
     {
         const char *sbs_name;        // descriptor_info 查询键（SBS_*.name）
-        const char *buffer_name;
-        const char *var_name;
+        const char *buffer_name;     // buffer_reference 类型名（加 Ref 后缀）
+        const char *var_name;        // （旧描述符对象名——BDA 化后无对象，仅保留作注释性记录）
         const char *resolve_func;    // 为空则仅生成 buffer 声明
         const char *element_type;    // 行元素 GLSL 类型（默认 uint；Arena 地址表为 uint64_t）
+        const char *root_addr_field; // pc_root 字段名（如 addr_l2w_index）
     };
 
     // mesh 阶段只需 l2w_index；材质地址表在 FS 消费（见 BuildFSIndexTableDecls）
+    // ⚠️ BDA：行表本体改 buffer_reference——地址经 pc_root.addr_l2w_index 下发
     const IndexTableSpec kMeshIndexTableSpecs[] = {
-        { SBS_LocalToWorldIndex.name, "LocalToWorldIndex", "l2w_index",     "ResolveTransformID", "uint" },
+        { SBS_LocalToWorldIndex.name, "LocalToWorldIndex", "l2w_index",
+          "ResolveTransformID", "uint", "addr_l2w_index" },
     };
 
     void AppendIndexTableDecl(
@@ -317,22 +320,26 @@ namespace
         if (!sd || sd->set < 0 || sd->binding < 0)
             return;
 
-        out += "layout(set=" + std::to_string(sd->set) + ", binding=" + std::to_string(sd->binding) + ") readonly buffer ";
+        // BDA：无 set 无 binding——类型声明 + resolve 函数经 pc_root 地址解引用
+        out += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer ";
         out += spec.buffer_name;
-        out += " { ";
+        out += "Ref { ";
         out += spec.element_type;
-        out += " values[]; } ";
-        out += spec.var_name;
-        out += ";\n";
+        out += " values[]; };\n";
 
         if (spec.resolve_func)
         {
             // 单槽化：行表写单列（values[iid]），不再按 slot 索引。
-            out += "uint ";
+            out += spec.element_type;
+            out += " ";
             out += spec.resolve_func;
-            out += "(uint iid) { return uint(";
-            out += spec.var_name;
-            out += ".values[iid]); }\n";
+            out += "(uint iid) { return ";
+            out += spec.element_type;
+            out += "(";
+            out += spec.buffer_name;
+            out += "Ref(pc_root.";
+            out += spec.root_addr_field;
+            out += ").values[iid]); }\n";
         }
     }
 }//namespace
@@ -497,8 +504,6 @@ bool BuildMaterialStageDocument(
             error.c_str());
         return false;
     }
-    AppendStageResourceBlocks(
-        injection, resources, stage, stage_name, material);
 
     if (source_document.GetBlockCount() == 0
      || source_document.GetBlock(0).kind != ShaderDocumentBlockKind::Version)
@@ -517,6 +522,14 @@ bool BuildMaterialStageDocument(
     out_document.Add(ShaderDocumentBlockKind::Version, version.text, source);
 
     AppendDocumentBlocks(out_document, injection, stage_name, material);
+    // Fragment：资源声明保持原位（Version/injection 之后）——FS 资源
+    // （MaterialSSBO/mtl_data_addrs）无 buffer_reference 依赖，无需等模板扩展；
+    // 且必须早于模板全部 Module/MainBody（MTL_ROW 宏在函数体内展开）。
+    if (stage == ShaderStage::Fragment)
+    {
+        AppendStageResourceBlocks(
+            out_document, resources, stage, stage_name, material);
+    }
     for (int index = 1; index < source_document.GetBlockCount(); ++index)
     {
         const ShaderDocumentBlock &block = source_document.GetBlock(index);
@@ -524,6 +537,17 @@ bool BuildMaterialStageDocument(
         block_source.stage = stage_name;
         block_source.material = material ? material : "";
         out_document.Add(block.kind, block.text, block_source);
+
+        // Mesh：资源声明块（MaterialMeshIndexTables/l2w_index 等）紧跟模板 Extension
+        // 块（index 1）之后追加——已 BDA 化的行表声明是 buffer_reference，必须先于
+        // 它启用 GL_EXT_buffer_reference（模板 Extension 块内）。历史 bug：资源块
+        // 曾前置注入（Version 后），l2w_index 的 buffer_reference 落在扩展声明之前
+        // → "required extension not requested"。mesh 模板 index 1 恒为 Extension 块。
+        if (index == 1 && stage == ShaderStage::Mesh)
+        {
+            AppendStageResourceBlocks(
+                out_document, resources, stage, stage_name, material);
+        }
     }
     return true;
 }

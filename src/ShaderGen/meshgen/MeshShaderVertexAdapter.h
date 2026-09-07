@@ -53,25 +53,9 @@ namespace hgl::graph::mtl
         ms += "};\n";
         // 行表本体走 BDA：地址由 push constant pc_root.addr_mesh_draw_params 携带，
         // shader 经 buffer_reference 解引用（行表 buffer 以 SHADER_DEVICE_ADDRESS usage 创建）。
+        // （pc_root block 由 MeshShaderHeaderGen::EmitRootAddressesPushConstant 提前发射——
+        //  l2w_ssbo 等模块 include 引用 pc_root，必须先于它们声明。）
         ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MeshDrawParamsRef { MeshDrawParams rows[]; };\n";
-        ms += "\n";
-        // RootAddresses push constant：7 张全局表设备地址——SSBO 全 BDA 化后的唯一
-        // 非 descriptor 根入口（无 set 无 binding；地址由 CPU 每 MaterialBatch push 一次）。
-        // 字段顺序与 CPU struct RootAddresses 严格一致（ShaderBufferSources.h
-        // HGL_ROOT_ADDRESSES_FIELD_LIST 遍历——与 MeshDrawParams 同源机制，改字段只改列表）。
-        ms += "layout(push_constant) uniform RootAddresses\n";
-        ms += "{\n";
-        for (uint32 field_index = 0;
-             field_index < kRootAddressesFieldCount;
-             ++field_index)
-        {
-            ms += "    ";
-            ms += kRootAddressesFieldGLSLTypes[field_index];
-            ms += " ";
-            ms += kRootAddressesFieldNames[field_index];
-            ms += ";\n";
-        }
-        ms += "} pc_root;\n";
         ms += "\n";
         // 全局可变参数行：模块函数（orient_world 等经 gl_InstanceIndex 宏）引用
         // first_instance——必须在 main 开头按 gl_DrawID 加载后使用点才生效

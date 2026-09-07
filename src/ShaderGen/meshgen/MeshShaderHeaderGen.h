@@ -7,6 +7,7 @@
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/MaterialStageInterface.h>
+#include <hgl/graph/ShaderBufferSources.h>
 #include <string>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 
@@ -19,6 +20,28 @@ namespace hgl::graph::mtl
         ms += "#version 460\n";
     }
 
+    // RootAddresses push constant block 发射（7 张全局表设备地址）。
+    // SSBO 全 BDA 化后的唯一非 descriptor 根入口（无 set 无 binding；CPU 每
+    // MaterialBatch push 一次）。字段顺序与 CPU struct RootAddresses 严格一致
+    // （ShaderBufferSources.h HGL_ROOT_ADDRESSES_FIELD_LIST 遍历）。
+    inline void EmitRootAddressesPushConstant(std::string &ms)
+    {
+        ms += "layout(push_constant) uniform RootAddresses\n";
+        ms += "{\n";
+        for (uint32 field_index = 0;
+             field_index < kRootAddressesFieldCount;
+             ++field_index)
+        {
+            ms += "    ";
+            ms += kRootAddressesFieldGLSLTypes[field_index];
+            ms += " ";
+            ms += kRootAddressesFieldNames[field_index];
+            ms += ";\n";
+        }
+        ms += "} pc_root;\n";
+        ms += "\n";
+    }
+
     inline void EmitMeshShaderExtensions(std::string &ms)
     {
         ms += "#extension GL_EXT_mesh_shader : require\n";
@@ -28,6 +51,11 @@ namespace hgl::graph::mtl
         ms += "#extension GL_EXT_buffer_reference : require\n";
         ms += "#extension GL_ARB_gpu_shader_int64 : require\n";
         ms += "\n";
+        // pc_root 紧跟扩展发出（uint64_t 字段依赖 int64 扩展）——行表资源块
+        // （MaterialMeshIndexTables，引用 pc_root.addr_l2w_index）由装配器紧随
+        // 本 Extension 块之后插入，必须先于它见到 pc_root；HeaderResources 的
+        // l2w_ssbo 等 include 同样引用 pc_root。GLSL 无前向引用。
+        EmitRootAddressesPushConstant(ms);
     }
 
     inline void EmitMeshShaderHeaderResources(
@@ -72,8 +100,9 @@ namespace hgl::graph::mtl
 
         if (needs_l2w)
         {
+            // l2w_ssbo.glsl：buffer_reference 类型声明 + l2w 垫片宏
+            // （地址经 pc_root.addr_l2w 下发——pc_root 已由 EmitRootAddressesPushConstant 先行发射）
             ms += "#include \"common/l2w_ssbo.glsl\"\n";
-            ms += "L2W_SSBO;\n";
         }
 
         ms += "\n";
