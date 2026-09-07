@@ -1,4 +1,4 @@
-﻿/// GenericMaterialBuilder.cpp — phase-split generic material compilation.
+/// GenericMaterialBuilder.cpp — phase-split generic material compilation.
 ///
 /// This file is the behavior-preserving decomposition of the former
 /// BuildGenericMaterial function in MaterialDefinitionRegistry.cpp. Every
@@ -8,6 +8,7 @@
 
 #include <hgl/mtl/contract/ShaderGenContract.h>
 #include<atomic>
+#include<cstdio>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
@@ -114,6 +115,7 @@ namespace hgl::graph::mtl
             const MaterialDefinitionBuildRequest &request,
             GenericMaterialBuildPlan &plan)
         {
+        std::fprintf(stderr, "[BUILD-PROBE] P1 enter\n");
             plan.purpose = request.shader_program_purpose;
             const RenderTemplateRequest &resolved_request =
                 request.render_template_request;
@@ -236,6 +238,7 @@ namespace hgl::graph::mtl
             const MaterialDefinitionBuildRequest &request,
             GenericMaterialBuildPlan &plan)
         {
+        std::fprintf(stderr, "[BUILD-PROBE] P2 enter\n");
             plan.vertex_node_config =
                 ResolveMaterialVertexNodeConfig(definition, request);
             plan.resolved_vertex_input_document.Clear();
@@ -297,6 +300,7 @@ namespace hgl::graph::mtl
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
         {
+        std::fprintf(stderr, "[BUILD-PROBE] P3 enter\n");
             plan.manifest = ShaderCodeResourceManifest{};
             plan.manifest_definition = definition;
             if (plan.depth_purpose)
@@ -435,6 +439,7 @@ namespace hgl::graph::mtl
             MaterialShaderDocumentCapture *document_capture,
             GenericMaterialBuildPlan &plan)
         {
+        std::fprintf(stderr, "[BUILD-PROBE] P4 enter\n");
             // Mesh shader 材质：生成 mesh stage。mesh 是唯一顶点路径。
             // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
             const bool is_char_quad = IsCharQuadMode(definition.mesh_shader_mode);
@@ -578,6 +583,7 @@ namespace hgl::graph::mtl
             MaterialShaderCompilerInput &out_compiler_input,
             MaterialCompileConfig &out_config)
         {
+        std::fprintf(stderr, "[BUILD-PROBE] P5 enter\n");
             out_compiler_input = MaterialShaderCompilerInput{
                 definition.definition_name.c_str(),
                 request.primitive_type,

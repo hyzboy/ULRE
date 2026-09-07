@@ -20,31 +20,6 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_MaterialDataAddresses{
         DescriptorSetType::PerObject, "mtl_data_addrs", "MaterialDataAddresses"
     };
-    // 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）——每对象大 buffer
-    constexpr const ShaderBufferSource SBS_VertexPosition{
-        DescriptorSetType::Vertex, "VertexPosition", "VertexPositionData"
-    };
-    constexpr const ShaderBufferSource SBS_VertexUV{
-        DescriptorSetType::Vertex, "VertexUV", "VertexUVData"
-    };
-    constexpr const ShaderBufferSource SBS_VertexNTB{
-        DescriptorSetType::Vertex, "VertexNTB", "VertexNTBData"
-    };
-    constexpr const ShaderBufferSource SBS_VertexColor{
-        DescriptorSetType::Vertex, "VertexColor", "VertexColorData"
-    };
-    constexpr const ShaderBufferSource SBS_VertexLuminance{
-        DescriptorSetType::Vertex, "VertexLuminance", "VertexLuminanceData"
-    };
-    constexpr const ShaderBufferSource SBS_VertexTransformID{
-        DescriptorSetType::Vertex, "VertexTransformID", "VertexTransformIDData"
-    };
-    constexpr const ShaderBufferSource SBS_VertexSize{
-        DescriptorSetType::Vertex, "VertexSize", "VertexSizeData"
-    };
-    constexpr const ShaderBufferSource SBS_VertexIndex{
-        DescriptorSetType::Vertex, "VertexIndex", "VertexIndexData"
-    };
     // mesh per-draw 参数表（IndirectMeshDraw：mesh shader 经 gl_DrawID 查表的
     // per-draw 段偏移——替代 per-draw push constant，多 draw 合批的关键）
     constexpr const ShaderBufferSource SBS_MeshDrawParams{

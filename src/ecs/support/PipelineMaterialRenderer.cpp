@@ -40,10 +40,6 @@ namespace hgl::ecs
         for (auto *mp : per_object_mp_pool)
             delete mp;
         per_object_mp_pool.clear();
-
-        for (auto *mp : vertex_mp_pool)
-            delete mp;
-        vertex_mp_pool.clear();
     }
 
     void PipelineMaterialRenderer::ProcIndirectRender()
@@ -123,65 +119,11 @@ namespace hgl::ecs
             // 更新缓冲状态
             last_data_buffer = batch->geom_data_buffer;
 
-            // SSBO 顶点输入：顶点/索引 buffer 绑 Vertex 集（Set 4，Phase 5 自 PerObject 迁出），
-            // l2w / 行表 / per-draw 参数表仍绑 PerObject 集（Set 1）。
-            // switch 触发即对目标 set 全量重绑（集是 per-DrawBatch 独立的，全量绑定开销可忽略）
+            // 顶点数据已 BDA 化（基址随 MeshDrawParams 行内寻址）——无 Vertex 集可绑。
+            // ── PerObject 集：l2w / 行表 / per-draw 参数表 ──
             if (ssbo_vertex_input)
+            if (auto *mp = batch->per_object_mp)
             {
-                const auto *geom_buffer = batch->geom_data_buffer;
-
-                // ── Vertex 集：顶点数据/索引 SSBO（per-DrawBatch 独立 Vertex MP，
-                //    克隆理由与 PerObject 相同——descriptor set 是状态非快照）──
-                if (auto *vmp = batch->vertex_mp
-                              ? batch->vertex_mp
-                              : material->GetMP(graph::DescriptorSetType::Vertex))
-                {
-                    // 按 VAB 自带语义遍历（GeometryDataBuffer::Update 按 VIF 填充——
-                    // 不依赖 material 的 VIL，独立 VAB/VDM 场景均正确）。
-                    // 语义→描述符名映射唯一真源：DescriptorResourceCatalog
-                    for (uint32_t vi = 0; vi < geom_buffer->vab_count; ++vi)
-                    {
-                        const VkBuffer buf = geom_buffer->vab_list[vi];
-                        if (!buf)
-                            continue;
-
-                        if (const auto *cat = graph::mtl::FindVertexCatalogEntryByVABSemantic(
-                                geom_buffer->vab_semantic[vi]))
-                            vmp->BindSSBO(cat->sbs->name, buf, 0, VK_WHOLE_SIZE);
-                    }
-
-                    // geometry 直取（渲染路径的 geom_data_buffer 无 VAB 数据
-                    // （vab_count=0——PrimitiveComponent runtime buffer）时的补绑）：
-                    // 遍历目录表全部 VertexGeometry 行（含 TransformID）
-                    if (batch->geometry && geom_buffer->vab_count == 0)
-                    {
-                        for (size_t ci = 0; ci < graph::mtl::DESCRIPTOR_RESOURCE_CATALOG_COUNT; ++ci)
-                        {
-                            const auto &cat = graph::mtl::kDescriptorResourceCatalog[ci];
-                            if (cat.cls != graph::mtl::ResourceCatalogClass::VertexGeometry
-                             || cat.vab_semantic == graph::VertexSemantic::Unknown)
-                                continue;
-
-                            if (auto *vab = batch->geometry->GetVAB(cat.vab_semantic))
-                                vmp->BindSSBO(cat.sbs->name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
-                        }
-                    }
-
-                    // 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）
-                    if (geom_buffer->ibo)
-                        vmp->BindSSBO("VertexIndex", geom_buffer->ibo->GetVkBuffer(), 0, VK_WHOLE_SIZE);
-
-                    // Update + 绑定 Vertex 集（几何切换粒度，与 PerObject 的 run 粒度解耦）
-                    vmp->Update();
-                    const VkDescriptorSet vds = vmp->GetVkDescriptorSet();
-                    cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
-                                                static_cast<uint32_t>(graph::DescriptorSetType::Vertex),
-                                                &vds, 1, nullptr, 0);
-                }
-
-                // ── PerObject 集：l2w / 行表 / per-draw 参数表 ──
-                if (auto *mp = batch->per_object_mp)
-                {
                     // l2w / index rows 补绑（独立 VAB 场景的 program 实例可能没有
                     // RDBS 预绑——Draw 侧统一补到本 draw 的 PerObject MP）
                     if (transform_buffer)
@@ -231,7 +173,6 @@ namespace hgl::ecs
                     // per-draw MP 创建失败兜底：l2w 绑材质默认 PerObject（与旧路径一致）
                     transform_buffer->BindTransform(material->GetMP(graph::DescriptorSetType::PerObject));
                 }
-            }
         }
 
         // IndirectMeshDraw：mesh 材质 per-draw 参数走 mesh_draw_params 参数表 SSBO
@@ -364,20 +305,10 @@ namespace hgl::ecs
             }
         }
 
-        // SSBO 顶点输入判定（schema 含顶点数据 SSBO 需求）——MeshShader 方向：
-        // 顶点 buffer 按对象绑定（VDM 共享 buffer 同值；独立 VAB 每对象正确）
-        ssbo_vertex_input = false;
-        {
-            const auto &schema = material->GetShaderResourceSchema();
-            for (const auto &res : schema.resources)
-            {
-                if (res.semantic == graph::mtl::DescriptorSemantic::VertexPosition)
-                {
-                    ssbo_vertex_input = true;
-                    break;
-                }
-            }
-        }
+        // SSBO 顶点输入判定：mesh 为唯一顶点路径——顶点数据已 BDA 化
+        //（基址随 MeshDrawParams 行内寻址，Vertex 集描述符已退场），
+        // 材质含 mesh 阶段即需要 per-draw 参数表/行表绑定。
+        ssbo_vertex_input = material_is_mesh;
 
         // L2W / MI descriptor binding is unified in RenderDescriptorBindingSystem.
         // PipelineMaterialRenderer only handles VAB/IBO and draw submission here.
@@ -443,8 +374,6 @@ namespace hgl::ecs
 
         if (per_object_mp_pool.size() < mp_count)
             per_object_mp_pool.resize(mp_count, nullptr);
-        if (vertex_mp_pool.size() < mp_count)
-            vertex_mp_pool.resize(mp_count, nullptr);
 
         for (uint32_t i = 0; i < batch_count; i++)
         {
@@ -463,20 +392,6 @@ namespace hgl::ecs
                 }
 
                 batch->per_object_mp = per_object_mp_pool[pool_index];
-
-                // Vertex 集（Set 4）克隆：材质不含顶点数据（GetMP(Vertex)==null）时留空，
-                // 顶点绑定路径随之跳过——与 PerObject 克隆同索引（几何身份一致）
-                if (!vertex_mp_pool[pool_index])
-                {
-                    auto *base_vertex_mp = material->GetMP(graph::DescriptorSetType::Vertex);
-
-                    if (base_vertex_mp && owner_batch && owner_batch->device)
-                        vertex_mp_pool[pool_index] = owner_batch->device->CreateMP(base_vertex_mp->GetDescManager(),
-                                                                              material->GetPipelineLayoutData(),
-                                                                              graph::DescriptorSetType::Vertex);
-                }
-
-                batch->vertex_mp = vertex_mp_pool[pool_index];
             }
 
             Draw(batch, transform_buffer, owner_batch);

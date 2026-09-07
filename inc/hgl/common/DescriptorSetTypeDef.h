@@ -37,23 +37,6 @@ namespace hgl::graph
         ENUM_CLASS_RANGE(L2W,TextCharInstance)  ///< RANGE_SIZE 供资源目录覆盖性断言
     };
 
-    /// Vertex 集（Set 4）绑定号——顶点数据 SSBO 专用集（Phase 5 自 PerObject 迁出）。
-    /// 几何 ABI，长期冻结；与每批更新的 PerObject 集（MeshDrawParams 等）演化解耦，
-    /// 为 meshlet/nanite 留出演化空间。binding 连号，新顶点流按序追加。
-    enum class VertexBinding : int
-    {
-        Position    = 0,    ///< 顶点位置 SSBO
-        UV          = 1,    ///< 顶点 UV SSBO
-        NTB         = 2,    ///< 顶点 NTB SSBO
-        Index       = 3,    ///< 顶点索引 SSBO
-        Color       = 4,    ///< 顶点颜色 SSBO
-        Luminance   = 5,    ///< 顶点亮度 SSBO
-        TransformID = 6,    ///< 顶点 TransformID SSBO（调色板变换索引）
-        Size        = 7,    ///< 顶点 Size/宽度 SSBO（Line width）
-
-        ENUM_CLASS_RANGE(Position,Size)  ///< RANGE_SIZE 供资源目录覆盖性断言使用（漏登记即编译失败）
-    };
-
     /// ABI 锚点：以下数值被 ShaderLibrary/common/descriptor_macros.glsl 与运行时绑定表依赖，
     /// 变更即破坏全部已编译着色器；static_assert 保证插入新条目引发的静默重编号在编译期暴露。
     static_assert(int(SceneBinding::Camera)==0
@@ -65,10 +48,6 @@ namespace hgl::graph
                && int(PerObjectBinding::MeshDrawParams)==13
                && int(PerObjectBinding::TextCharInstance)==16,
                   "PerObject binding ABI changed");
-
-    static_assert(int(VertexBinding::Position)==0
-               && int(VertexBinding::Size)==7,
-                  "Vertex binding ABI changed");
 
     /// ── 兼容别名：既有调用点继续使用 kXxx 常量名，数值真源已上收至上述枚举 ──
     constexpr const int kSceneBindingCamera       = int(SceneBinding::Camera);        ///< 相机 UBO
@@ -92,9 +71,9 @@ namespace hgl::graph
         PerObject,      ///< per-object/per-draw SSBO 集（l2w/l2w_index/material_private_data_index/mesh_draw_params）
         Material,       ///< per-material 描述符集（mtl 数据槽/索引表）
         Bindless,       ///< 全局 Bindless 纹理数组集合（Set 3），一帧绑一次
-        Vertex,         ///< 顶点数据 SSBO 集（Set 4，Phase 5 自 PerObject 迁出）——几何 ABI，长期冻结
+                        ///< （Vertex 集已随顶点流 BDA 化退场——顶点数据经 MeshDrawParams 行内基址寻址）
 
-        ENUM_CLASS_RANGE(Scene,Vertex)
+        ENUM_CLASS_RANGE(Scene,Bindless)
     };
 
     constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
@@ -104,8 +83,7 @@ namespace hgl::graph
         "Scene",
         "PerObject",
         "Material",
-        "Bindless",
-        "Vertex"
+        "Bindless"
     };
 
     inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)
@@ -155,19 +133,9 @@ namespace hgl::graph
 
         {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"L2W_SET",                   "PER_OBJECT_SET",                          -1,
             "// ── PerObject set ──",                                  true, true},
-        {DescriptorMacroKind::SetIndex,DescriptorSetType::Vertex,   "VERTEX_SET",                nullptr,                                   -1,
-            "// ── 顶点数据 SSBO（Vertex 集，Phase 5 自 PerObject 迁出）──\n// s1_position_vec3 / s1_uv / s1_ntb 模块使用"},
         {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"MESH_DRAW_PARAMS_SET",      "PER_OBJECT_SET",                          -1,
             "// mesh per-draw 参数表（IndirectMeshDraw）"},
 
-        {DescriptorMacroKind::Binding, DescriptorSetType::Vertex,   "VERTEX_POSITION_BINDING",   nullptr,   int(VertexBinding::Position),     nullptr, false},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Vertex,   "VERTEX_UV_BINDING",         nullptr,   int(VertexBinding::UV),           nullptr, false},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Vertex,   "VERTEX_NTB_BINDING",        nullptr,   int(VertexBinding::NTB),          nullptr, false},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Vertex,   "VERTEX_INDEX_BINDING",      nullptr,   int(VertexBinding::Index),        nullptr, false},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Vertex,   "VERTEX_COLOR_BINDING",      nullptr,   int(VertexBinding::Color),        nullptr},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Vertex,   "VERTEX_LUMINANCE_BINDING",  nullptr,   int(VertexBinding::Luminance),    nullptr},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Vertex,   "VERTEX_TRANSFORMID_BINDING",nullptr,   int(VertexBinding::TransformID),  nullptr},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Vertex,   "VERTEX_SIZE_BINDING",       nullptr,   int(VertexBinding::Size),         nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"MESH_DRAW_PARAMS_BINDING",  nullptr,   int(PerObjectBinding::MeshDrawParams),
             "// mesh per-draw 参数表（IndirectMeshDraw：mesh shader 经 gl_DrawID 查表）"},
 

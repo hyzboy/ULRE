@@ -153,25 +153,6 @@ inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v,
                row->semantic, row->ssbo_type, stage_flags);
 }
 
-// ── 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）──
-// S1-T1.3：原 8 个同形 PushVertexXxx 已收敛为表驱动模板——set/name/struct/ssbo_type
-// 全部取自 kDescriptorResourceCatalog（"语义 → 集合/绑定/SBS"唯一真源）。
-// 语义作模板参数：未登记 / 无固定 SBS 的语义 = **编译错误**，不是运行期静默无操作。
-// 新增顶点语义只需在资源目录登记一行（目录侧 static_assert 保证不漏登记）。
-template<DescriptorSemantic SEMANTIC>
-inline void PushVertexResource(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    static constexpr const DescriptorResourceCatalogEntry *row = FindResourceCatalogEntry(SEMANTIC);
-    static_assert(row != nullptr,
-                  "该语义未在 kDescriptorResourceCatalog 登记——先在资源目录加一行");
-    static_assert(row->sbs != nullptr,
-                  "顶点资源必须有固定 SBS 行（name/struct 取自 SBS，不接受动态命名）");
-
-    PushBySpec(v, row->set_type,
-               row->sbs->name, row->sbs->struct_name,
-               row->semantic, row->ssbo_type, stage_flags);
-}
-
 inline bool MergeSSBODescriptor(std::vector<SerializedDescriptorEntry> &v,
                                const SerializedDescriptorEntry &incoming);
 
@@ -347,32 +328,20 @@ inline bool PushManifestSSBO(
     entry.required = ssbo.required;
     entry.allow_fallback = ssbo.allow_fallback;
 
-    // 顶点数据 SSBO（Vertex 集）：set/semantic 由目录表按 ssbo_type 反查
-    if (const DescriptorResourceCatalogEntry *cat =
-            FindResourceCatalogEntryBySSBOType(ssbo.ssbo_type);
-        cat && cat->cls == ResourceCatalogClass::VertexGeometry)
-    {
-        entry.set_type = cat->set_type;
-        entry.semantic = cat->semantic;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-    }
-    else
-    {
-        // 材质私有数据 SSBO：单槽方案下固定 material_private_data_slot == 0（MaterialPrivateData）。
-        if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
-            return false;
+    // 材质私有数据 SSBO：单槽方案下固定 material_private_data_slot == 0（MaterialPrivateData）。
+    if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
+        return false;
 
-        // 数据槽无描述符，需求桥接为地址行表条目。
-        // 非材质行类型（如 TextureLayer）无意义——显式冲突失败。
-        if (!IsMaterialSSBOType(ssbo.ssbo_type))
-            return false;   // 调用方置 ResourceConflict
-        PushMaterialPrivateDataIndexRows(v, entry.stage_flags);
-        return true;
+    // 数据槽无描述符，需求桥接为地址行表条目。
+    // 非材质行类型（如 TextureLayer）无意义——显式冲突失败。
+    if (!IsMaterialSSBOType(ssbo.ssbo_type))
+        return false;   // 调用方置 ResourceConflict
 
-        entry.set_type = DescriptorSetType::Material;
-        entry.semantic = DescriptorSemantic::MaterialPrivateData;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-    }
+    entry.set_type = DescriptorSetType::Material;
+    entry.semantic = DescriptorSemantic::MaterialPrivateData;
+    entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+
+    PushMaterialPrivateDataIndexRows(v, entry.stage_flags);
     return MergeSSBODescriptor(v, entry);
 }
 

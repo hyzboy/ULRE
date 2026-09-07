@@ -1,4 +1,5 @@
-﻿#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKDevice.h>
+#include<cstdio>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKMaterialParameters.h>
@@ -38,6 +39,9 @@ MaterialParameters *VulkanDevice::CreateMP(const MaterialDescriptorManager *desc
     if(!desc_manager||!pld)return(nullptr);
     RANGE_CHECK_RETURN_NULLPTR(desc_set_type)
 
+    std::fprintf(stderr, "[MP-PROBE] CreateMP set=%d bindCount=%u\n",
+                      int(desc_set_type),
+                      (unsigned)desc_manager->GetBindCount(desc_set_type));
     DescriptorSet *ds=CreateDS(attr->device,attr->desc_pool,pld,desc_set_type);
 
     if(!ds)return(nullptr);

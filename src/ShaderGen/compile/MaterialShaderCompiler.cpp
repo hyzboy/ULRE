@@ -455,7 +455,7 @@ static bool BuildEffectiveDescriptorEntries(
 
 // ── Step 3c: canonical 描述符注册（目录表驱动）───────────────────────────────
 // 唯一真源：inc/hgl/mtl/DescriptorResourceCatalog.h（语义→类别/集合/绑定/SBS）。
-// 按类别三分支：SceneGlobal 全局化跳过；PerDraw/VertexGeometry 固定 ABI 注册；
+// 按类别分支：SceneGlobal 全局化跳过；PerDraw 固定 ABI 注册；
 // MaterialData per-material 动态（数据槽由 RegisterMaterialPrivateDataSlotDescriptors
 // 单独处理，此处仅纹理层表/行表）。
 static bool RegisterCanonicalDescriptors(
@@ -506,19 +506,6 @@ static bool RegisterCanonicalDescriptors(
             else
             {
                 // LocalToWorldIndex / MeshDrawParams：SBS + 固定 binding 目录行
-                if (!ctx->AddSSBOVertex(stage_bits, *cat->sbs, cat->binding))
-                    return c.Fail(std::string("failed to add ") + cat->sbs->name + " SSBO");
-            }
-            break;
-
-        case ResourceCatalogClass::VertexGeometry:
-            if (cat->semantic == DescriptorSemantic::VertexIndex)
-            {
-                if (!ctx->AddSSBOVertexIndex(stage_bits))
-                    return c.Fail("failed to add VertexIndex SSBO");
-            }
-            else
-            {
                 if (!ctx->AddSSBOVertex(stage_bits, *cat->sbs, cat->binding))
                     return c.Fail(std::string("failed to add ") + cat->sbs->name + " SSBO");
             }

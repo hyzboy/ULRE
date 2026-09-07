@@ -3,7 +3,6 @@
 // @ulre kind Position
 // @ulre priority 10
 // @ulre provide Position
-// @ulre ssbo VertexPosition VertexPosition 1 Mesh required
 // @ulre end
 // Stage 1: 顶点位置从 SSBO 读取（MeshShader 方向——顶点输入统一为 SSBO）
 // 需要 VERTEX_SET / VERTEX_POSITION_BINDING 宏（descriptor_macros.glsl 提供默认值）
@@ -25,9 +24,6 @@ vec3 Position;
 
 void LoadVertexData()
 {
-#ifdef HGL_INDEX_LOADER
-    HGL_INDEX_LOADER
-#endif
     Position = sbo_vertex_position.data[pc_vertex_index.vertex_base + VertexIndexID];
 #ifdef HGL_UV_LOADER
     HGL_UV_LOADER

@@ -62,7 +62,6 @@ namespace hgl::ecs
         const   graph::Geometry *              geometry = nullptr;           ///<几何体（per-DrawBatch 顶点 SSBO 绑定用——VAB 直取）
 
         graph::MaterialParameters *            per_object_mp = nullptr;      ///<per-DrawBatch 独立 PerObject set（descriptor set 是状态非快照——多对象独立 buffer 时共享单 set 提交时刻全用最后一次内容）
-        graph::MaterialParameters *            vertex_mp = nullptr;          ///<per-DrawBatch 独立 Vertex set（Set 4，顶点数据 SSBO；克隆理由同 per_object_mp）
 
         void Set(const graph::GeometryDataBuffer *data_buffer,
                  const graph::GeometryDrawRange *draw_range,
@@ -97,10 +96,9 @@ namespace hgl::ecs
         // 多对象独立 buffer 时，共享单 set 被 per-draw 顺序更新，提交时刻所有 draw
         // 读到最后一次更新的内容——每 draw 独立 set 解决） ===
         std::vector<graph::MaterialParameters*> per_object_mp_pool;   ///<per-draw PerObject MP 池（跨帧复用）
-        std::vector<graph::MaterialParameters*> vertex_mp_pool;       ///<per-draw Vertex MP 池（Set 4，与 PerObject 池同索引同生命周期）
 
         // === SSBO 顶点输入 ===
-        bool ssbo_vertex_input = false;                     ///<材质是否走 SSBO 顶点输入
+        bool ssbo_vertex_input = false;                     ///<材质是否走 mesh SSBO 顶点路径（顶点数据 BDA 化后=含 mesh 阶段）
         bool material_is_mesh = false;                      ///<材质是否含 mesh stage（间接 flush 分派）
         const MaterialBatch *cur_owner_batch = nullptr;     ///<当前材质批（间接 flush 取 icb_mesh_tasks）
         VkDeviceSize last_mesh_params_offset = UINT64_MAX;  ///<直接路径 mesh_draw_params offset 视图缓存

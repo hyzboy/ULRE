@@ -31,15 +31,6 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(MaterialTexture) \
     HGL_SEMANTIC(MaterialSampler) \
     HGL_SEMANTIC(MaterialTextureLayerTable) \
-    /* 顶点数据 SSBO（mesh 是唯一顶点路径，顶点输入统一为 SSBO）*/ \
-    HGL_SEMANTIC(VertexPosition) \
-    HGL_SEMANTIC(VertexUV) \
-    HGL_SEMANTIC(VertexNTB) \
-    HGL_SEMANTIC(VertexColor) \
-    HGL_SEMANTIC(VertexLuminance) \
-    HGL_SEMANTIC(VertexTransformID) \
-    HGL_SEMANTIC(VertexSize) \
-    HGL_SEMANTIC(VertexIndex) \
     HGL_SEMANTIC(MaterialColorPalette)
 
     enum class DescriptorSemantic : uint8
@@ -103,16 +94,6 @@ namespace hgl::graph::mtl
             case DescriptorSemantic::MaterialPrivateDataIndex:
 
             case DescriptorSemantic::MaterialTextureLayerTable:
-
-            // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
-            case DescriptorSemantic::VertexPosition:
-            case DescriptorSemantic::VertexUV:
-            case DescriptorSemantic::VertexNTB:
-            case DescriptorSemantic::VertexColor:
-            case DescriptorSemantic::VertexLuminance:
-            case DescriptorSemantic::VertexTransformID:
-            case DescriptorSemantic::VertexSize:
-            case DescriptorSemantic::VertexIndex:
 
                 return DescriptorSemanticLayer::SSBO;
 

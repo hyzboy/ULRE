@@ -3498,14 +3498,14 @@ namespace
         else
         {
             // Native template migration adds explicit identity shadow/AO providers.
-            if (file_count != 69)
-                result.diagnostics.emplace_back("LoadDirectory expected 69 file modules, got "
+            if (file_count != 68)
+                result.diagnostics.emplace_back("LoadDirectory expected 68 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 69;
+            const int expected_count = 68;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));

@@ -166,13 +166,6 @@ bool ShaderBuildContext::AddSSBOVertex(const uint32_t flag_bits,const ShaderBuff
     return AddSSBOStruct(flag_bits,ss,preferred_binding);
 }
 
-bool ShaderBuildContext::AddSSBOVertexIndex(const uint32_t flag_bits)
-{
-    const DescriptorResourceCatalogEntry &row=CatalogFixedRow<DescriptorSemantic::VertexIndex>();
-
-    return AddSSBOStruct(flag_bits,*row.sbs,row.binding);
-}
-
 bool ShaderBuildContext::AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits)
 {
     const DescriptorResourceCatalogEntry &row=CatalogFixedRow<DescriptorSemantic::MaterialPrivateDataIndex>();

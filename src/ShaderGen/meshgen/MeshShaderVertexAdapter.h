@@ -16,15 +16,13 @@ namespace hgl::graph::mtl
     {
         // mesh shader：无 gl_VertexIndex。VertexIndexID 映射到可变全局 MeshVertexIndex，
         // 由 main 开头解析：非索引直通（全局顶点序号 = gl_WorkGroupID.x*group+局部）
-        // 或索引查表（sbo_vertex_index[index_base + 全局序号]）——与 VS 的 s1_index
-        // is_indexed 分支语义一致。宏必须指向**可变**变量（LoadVertexData 是独立函数，
+        // 或索引查表（VertexIndexRef 大 buffer[index_base + 全局序号]）。
+        // 宏必须指向**可变**变量（LoadVertexData 是独立函数，
         // 函数体内不能引用 main 局部变量，且查表需要运行时赋值——不能用常量表达式宏）。
-        // 跳过 s1_index（其 VertexIndexID 变量声明与宏冲突、gl_VertexIndex 在 mesh 不存在）。
         // 两模式都需要 mesh_draw_params 参数表——由本生成器补声明（见下）。
         ms += "// mesh shader：无 gl_VertexIndex；VertexIndexID = MeshVertexIndex（main 解析）\n";
         ms += "uint MeshVertexIndex;\n";
         ms += "#define VertexIndexID (MeshVertexIndex)\n";
-        ms += "#define HGL_INDEX_LOADER_DEFINED\n";
         ms += "\n";
         // 顶点索引查表改走 BDA：基址由 MeshDrawParams 行的 addr_index 携带，
         // sbo_vertex_index 转垫片宏（非索引几何该分支不执行——与旧

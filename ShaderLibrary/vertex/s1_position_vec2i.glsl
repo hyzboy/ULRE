@@ -3,7 +3,6 @@
 // @ulre kind Position
 // @ulre priority 9
 // @ulre provide Position
-// @ulre ssbo VertexPosition VertexPosition 1 Mesh required
 // @ulre end
 // Stage 1: 2D 顶点位置从独立 SSBO 读取——RG16i 压缩格式（像素坐标 int16×2，4B/顶点）
 // 数据：int16 打包（每顶点 1 个 uint——低 16 位 x、高 16 位 y）
@@ -22,9 +21,6 @@ vec2 Position;
 
 void LoadVertexData()
 {
-#ifdef HGL_INDEX_LOADER
-    HGL_INDEX_LOADER
-#endif
     // 每顶点 1 uint：低 16 位 x、高 16 位 y（int16 符号扩展——算术右移）
     const uint d = sbo_vertex_position.data[pc_vertex_index.vertex_base + VertexIndexID];
     Position = vec2(float(int(d) << 16 >> 16),

@@ -275,23 +275,7 @@ namespace hgl::ecs
             return;
         }
 
-        // P2：mesh shader 单 buffer——顶点 SSBO 绑 Vertex 集（Set 4，Phase 5 自
-        // PerObject 迁出；单 buffer 无 slot 竞争，直接绑共享 set 即可）
-        auto bind_ssbo = [&](const graph::VertexSemantic semantic, const char *name)
-        {
-            auto *vab = geometry->GetVAB(semantic);
-            if (!vab)
-                return false;
-            material->BindSSBO(graph::DescriptorSetType::Vertex, name,
-                               vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
-            return true;
-        };
-
-        if (!bind_ssbo(graph::VertexSemantic::Position, "VertexPosition")
-         || !bind_ssbo(graph::VertexSemantic::Color, "VertexColor")
-         || !bind_ssbo(graph::Assign::TransformID::VIS_SEMANTIC, "VertexTransformID")
-         || !bind_ssbo(graph::VertexSemantic::Size, "VertexSize"))
-            return;
+        // 顶点数据已 BDA 化（基址随 MeshDrawParams 行内寻址）——无 Vertex 集可绑。
 
         // IndirectMeshDraw：mesh per-draw 参数表（row 0——Line 单 draw，gl_DrawID=0）
         if (mesh_draw_params)
@@ -308,17 +292,6 @@ namespace hgl::ecs
         cmd->BindDescriptorSets(material->GetPipelineLayout(),
                                 static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
                                 &ds, 1, nullptr, 0);
-
-        // Vertex 集（Set 4）：Update + 绑定（与 PerObject 同为程序级共享 MP，
-        // bind→draw 顺序录制，模式与上方 PerObject 一致）
-        if (auto *vmp = material->GetMP(graph::DescriptorSetType::Vertex))
-        {
-            vmp->Update();
-            const VkDescriptorSet vds = vmp->GetVkDescriptorSet();
-            cmd->BindDescriptorSets(material->GetPipelineLayout(),
-                                    static_cast<uint32_t>(graph::DescriptorSetType::Vertex),
-                                    &vds, 1, nullptr, 0);
-        }
 
         // Mesh shader 绘制：每线程 1 线段，threadgroup = MESH_GROUP_SIZE
         //（per-draw 段偏移/线宽参数经 mesh_draw_params 参数表传递——不再推 push constant）

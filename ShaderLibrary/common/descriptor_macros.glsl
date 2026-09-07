@@ -40,43 +40,9 @@
 #define L2W_SET PER_OBJECT_SET
 #endif
 
-// ── 顶点数据 SSBO（Vertex 集，Phase 5 自 PerObject 迁出）──
-// s1_position_vec3 / s1_uv / s1_ntb 模块使用
-#ifndef VERTEX_SET
-#define VERTEX_SET 4
-#endif
-
 // mesh per-draw 参数表（IndirectMeshDraw）
 #ifndef MESH_DRAW_PARAMS_SET
 #define MESH_DRAW_PARAMS_SET PER_OBJECT_SET
-#endif
-#ifndef VERTEX_POSITION_BINDING
-#define VERTEX_POSITION_BINDING 0
-#endif
-#ifndef VERTEX_UV_BINDING
-#define VERTEX_UV_BINDING 1
-#endif
-#ifndef VERTEX_NTB_BINDING
-#define VERTEX_NTB_BINDING 2
-#endif
-#ifndef VERTEX_INDEX_BINDING
-#define VERTEX_INDEX_BINDING 3
-#endif
-
-#ifndef VERTEX_COLOR_BINDING
-#define VERTEX_COLOR_BINDING 4
-#endif
-
-#ifndef VERTEX_LUMINANCE_BINDING
-#define VERTEX_LUMINANCE_BINDING 5
-#endif
-
-#ifndef VERTEX_TRANSFORMID_BINDING
-#define VERTEX_TRANSFORMID_BINDING 6
-#endif
-
-#ifndef VERTEX_SIZE_BINDING
-#define VERTEX_SIZE_BINDING 7
 #endif
 
 // mesh per-draw 参数表（IndirectMeshDraw：mesh shader 经 gl_DrawID 查表）

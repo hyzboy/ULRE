@@ -10,15 +10,6 @@ namespace hgl::graph::mtl
     enum class SSBOType : uint16_t
     {
         MeshDrawParams=0,
-        // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
-        VertexPosition,
-        VertexUV,
-        VertexNTB,
-        VertexColor,
-        VertexLuminance,
-        VertexTransformID,
-        VertexSize,
-        VertexIndex,
 
         LocalToWorld,
         LocalToWorldIndex,
@@ -72,14 +63,6 @@ namespace hgl::graph::mtl
         case SSBOType::LocalToWorldIndex: return "LocalToWorldIndex";
         case SSBOType::LocalToWorld: return "LocalToWorld";
         case SSBOType::UserDefined: return "UserDefined";
-        case SSBOType::VertexPosition: return "VertexPosition";
-        case SSBOType::VertexUV: return "VertexUV";
-        case SSBOType::VertexNTB: return "VertexNTB";
-        case SSBOType::VertexColor: return "VertexColor";
-        case SSBOType::VertexLuminance: return "VertexLuminance";
-        case SSBOType::VertexTransformID: return "VertexTransformID";
-        case SSBOType::VertexSize: return "VertexSize";
-        case SSBOType::VertexIndex: return "VertexIndex";
         default: return "Unknown";
         }
     }

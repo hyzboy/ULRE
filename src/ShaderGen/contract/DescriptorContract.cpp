@@ -235,7 +235,7 @@ namespace hgl::graph::mtl
              || entry.semantic_layer > DescriptorSemanticLayer::Sampler
              || entry.set_type == DescriptorSetType::Unknown
              || entry.set_type < DescriptorSetType::Scene
-             || entry.set_type > DescriptorSetType::Vertex   // Phase 5：Vertex 为最后一个集合类型
+             || entry.set_type > DescriptorSetType::Bindless // Bindless 为最后一个集合类型（Vertex 集已退场）
              || entry.texture_slot < TextureSlot::BEGIN_RANGE
              || entry.texture_slot > TextureSlot::END_RANGE
              || entry.ssbo_type < SSBOType::BEGIN_RANGE

@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<cstdlib>
 #include<hgl/ecs/core/Context.h>
@@ -561,6 +561,12 @@ namespace hgl::ecs
             if (!desc_manager || !pipeline_layout_data)
                 return nullptr;
 
+            // bindingCount=0 的集合（材质契约不含该集任何绑定）不创建 MP：
+            // 空 layout 分配出的 DS 无可写 binding，任何 Update 都是 spec 违规
+            //（VUID-10009）且会破坏堆。
+            if (desc_manager->GetBindCount(set_type) == 0)
+                return nullptr;
+
             auto *mp = batch->device->CreateMP(desc_manager, pipeline_layout_data, set_type);
             if (!mp)
                 return nullptr;
@@ -905,71 +911,6 @@ namespace hgl::ecs
                 }
                 break;
             }
-            // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
-            // 绑定 batch 首个 primitive 的几何 VAB（VDM 大 buffer——同批共享；
-            // 独立 VAB 场景按首对象绑定，试点范围）
-            case graph::mtl::DescriptorSemantic::VertexIndex:
-                // 顶点索引 SSBO：PipelineMaterialRenderer per-DrawBatch 自绑
-                //（IBO buffer 绑 VertexIndex 槽——索引非 VAB 语义，RDBS 不做）
-                break;
-            case graph::mtl::DescriptorSemantic::VertexPosition:
-            case graph::mtl::DescriptorSemantic::VertexUV:
-            case graph::mtl::DescriptorSemantic::VertexNTB:
-            case graph::mtl::DescriptorSemantic::VertexColor:
-            case graph::mtl::DescriptorSemantic::VertexLuminance:
-            case graph::mtl::DescriptorSemantic::VertexTransformID:
-            case graph::mtl::DescriptorSemantic::VertexSize:
-            {
-                // 语义→VAB 语义映射唯一真源：DescriptorResourceCatalog（VertexGeometry 行）
-                const graph::VertexSemantic vertex_semantic =
-                    [](const graph::mtl::DescriptorSemantic semantic)
-                {
-                    const auto *cat = graph::mtl::FindResourceCatalogEntry(semantic);
-                    if (cat && cat->cls == graph::mtl::ResourceCatalogClass::VertexGeometry)
-                        return cat->vab_semantic;
-                    return graph::VertexSemantic::Unknown;
-                }(req.semantic);
-                const graph::IGPUBuffer *gpu = nullptr;
-                if (batch)
-                {
-                    for (RenderItem *item : batch->items)
-                    {
-                        auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
-                        if (!primitive_item)
-                            continue;
-                        auto primitive_comp = primitive_item->GetPrimitiveComponent();
-                        if (!primitive_comp)
-                            continue;
-                        const auto *asset = primitive_comp->GetPrimitiveAsset();
-                        if (!asset)
-                            continue;
-                        graph::Geometry *geometry = asset->GetGeometry();
-                        if (!geometry)
-                            continue;
-                        graph::VAB *vab = geometry->GetVAB(vertex_semantic);
-                        if (vab)
-                        {
-                            gpu = vab->GetGPUBuffer();
-                            break;
-                        }
-                    }
-                }
-
-                if (gpu)
-                {
-                    if (!bind_ssbo(material, batch, req, gpu))
-                        log_bind_failure(material, batch, req, "bind vertex SSBO failed");
-                }
-                else if (batch)
-                {
-                    log_missing_ssbo_once(material, req, "geometry vertex buffer not found", 0);
-                    if (req.required)
-                        batch->descriptor_bind_valid = false;
-                }
-                // batch 空：该材质无 Primitive 渲染项——顶点 SSBO 由自绑管线
-                // 管理（如 TextRenderPipeline 自绑 CharQuad GPU SSBO）——静默跳过
-                break;
-            }
             case graph::mtl::DescriptorSemantic::MaterialTexture:
             case graph::mtl::DescriptorSemantic::MaterialSampler:
             {
@@ -1089,17 +1030,6 @@ namespace hgl::ecs
         // PipelineMaterialRenderer/TextRenderPipeline 绑定——有解析路径，非缺失
         //（缺此 case 会造成"unresolved required contract"误报）
         case graph::mtl::DescriptorSemantic::MeshDrawParams:
-            return true;
-        // 顶点数据 SSBO（MeshShader 方向）：由 RDBS（batch 首对象）或
-        // PipelineMaterialRenderer（per-DrawBatch）绑定——有解析路径，非缺失
-        case graph::mtl::DescriptorSemantic::VertexPosition:
-        case graph::mtl::DescriptorSemantic::VertexUV:
-        case graph::mtl::DescriptorSemantic::VertexNTB:
-        case graph::mtl::DescriptorSemantic::VertexColor:
-        case graph::mtl::DescriptorSemantic::VertexLuminance:
-        case graph::mtl::DescriptorSemantic::VertexTransformID:
-        case graph::mtl::DescriptorSemantic::VertexSize:
-        case graph::mtl::DescriptorSemantic::VertexIndex:
             return true;
         case graph::mtl::DescriptorSemantic::Unknown:
         default:

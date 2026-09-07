@@ -152,23 +152,14 @@ namespace
         return true;
     }
 
-    // ── 目录 ↔ 宏规范表 交叉覆盖校验（S1-T1.5）────────────────────────────────
-    //
-    // kDescriptorResourceCatalog（mtl 层）与 kDescriptorBindingMacros（common 层）
-    // 都从 SceneBinding/VertexBinding 等枚举取绑定号，故**数值**不会各自漂移；
-    // 真正的缺口是**覆盖**：新增一条顶点/全局资源却忘记加 GLSL 默认宏 → shader 侧
-    // 无法按宏引用该 binding。分层禁止 common 依赖 mtl，故该断言只能落在同时可见
-    // 两者的工具侧（本工具已链 ULRE.ShaderGen）。
-    //
-    // 参与检查的类别：VertexGeometry（几何 ABI，s1_* 模块按宏声明 binding）与
-    // SceneGlobal（全局 UBO）。不参与：PerDraw 行表类（l2w_index/private_data_index
-    // 的 buffer 声明由 CompileMaterial 生成注入，无默认宏）、MaterialData
-    // （binding=-1 per-material 动态）、以及 CharQuad 文本三 SSBO（宏侧有、目录未收录，
-    // 属 mesh 模式内部约定，非通用资源）。
+    // 参与检查的类别：SceneGlobal（全局 UBO）。不参与：PerDraw 行表类
+    // （l2w_index/private_data_index 的 buffer 声明由 CompileMaterial 生成注入，
+    // 无默认宏）、MaterialData（binding=-1 per-material 动态）、以及 CharQuad
+    // 文本三 SSBO（宏侧有、目录未收录，属 mesh 模式内部约定，非通用资源）。
+    // （VertexGeometry 类别已随 Vertex 集退场删除。）
     bool NeedsGLSLBindingMacro(const DescriptorResourceCatalogEntry &row)
     {
-        return (row.cls == ResourceCatalogClass::VertexGeometry
-             || row.cls == ResourceCatalogClass::SceneGlobal)
+        return row.cls == ResourceCatalogClass::SceneGlobal
             && row.binding >= 0;
     }
 
@@ -207,38 +198,6 @@ namespace
                 ++fail;
             }
         }
-
-        // ② 宏 → 目录（仅 Vertex 集：几何 ABI 要求宏与目录一一对应）
-        for (const auto &spec : kDescriptorBindingMacros)
-        {
-            if (spec.kind != DescriptorMacroKind::Binding
-             || spec.set_type != DescriptorSetType::Vertex)
-                continue;
-
-            bool found = false;
-
-            for (const DescriptorResourceCatalogEntry &row : kDescriptorResourceCatalog)
-                if (row.set_type == DescriptorSetType::Vertex
-                 && row.binding == spec.binding)
-                {
-                    found = true;
-                    break;
-                }
-
-            if (!found)
-            {
-                std::fprintf(stderr,
-                    "[DescriptorMacroGen] Vertex 宏 %s (binding=%d) 在资源目录无对应行\n"
-                    "  → 在 inc/hgl/mtl/DescriptorResourceCatalog.h 登记该顶点资源\n",
-                    spec.name, spec.binding);
-                ++fail;
-            }
-        }
-
-        if (fail > 0)
-            std::fprintf(stderr,
-                "[DescriptorMacroGen] 交叉校验失败 %d 项"
-                "（资源目录与 GLSL 宏规范表覆盖不一致）\n", fail);
 
         return fail;
     }

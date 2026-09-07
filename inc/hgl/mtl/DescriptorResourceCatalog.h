@@ -10,17 +10,18 @@
 namespace hgl::graph::mtl
 {
     /// 资源类别——与 DescriptorSetType 一一对应：
-    /// 全局集按帧绑定（per-material 侧跳过），顶点集冻结几何 ABI，
-    /// PerObject 集承载易变行表，Material 集为唯一 per-material 动态路径。
+    /// 全局集按帧绑定（per-material 侧跳过），PerObject 集承载易变行表，
+    /// Material 集为唯一 per-material 动态路径。
+    /// （Vertex 集已随顶点流 BDA 化整体退场——顶点数据经 MeshDrawParams 行内
+    /// 基址到达 shader，不再有描述符。）
     enum class ResourceCatalogClass : uint8
     {
         SceneGlobal,     ///< Scene 集全局 UBO（P1 已全局化——per-material 注册跳过）
-        VertexGeometry,  ///< Vertex 集顶点数据 SSBO（几何 ABI，含 VertexIndex）
         PerDraw,         ///< PerObject 集固定 ABI SSBO（l2w/实例行表/per-draw 参数表）
         MaterialData,    ///< Material 集数据资源（私有数据槽/纹理层表/纹理与采样器声明）
     };
 
-    /// 描述符资源目录——"语义 → 集合/绑定/SBS/VAB 语义"的唯一真源。
+    /// 描述符资源目录——"语义 → 集合/绑定/SBS"的唯一真源。
     ///
     /// 收敛此前散布的多份平行表：生成侧 kDescriptorRegisterTable、
     /// PushManifestSSBO 的 ssbo_type switch、能力子集校验的无条件允许清单、
@@ -38,7 +39,6 @@ namespace hgl::graph::mtl
         DescriptorSetType set_type;
         int binding;                     ///< 固定绑定号（取自绑定枚举）；-1=per-material 动态
         SSBOType ssbo_type;              ///< UserDefined=无专属类型
-        VertexSemantic vab_semantic;     ///< 仅 VertexGeometry 行有效（VAB 语义互查键）；其余 Unknown
         bool engine_builtin;             ///< 能力子集校验：无条件内置允许（false=有条件规则或需声明）
     };
 
@@ -46,32 +46,22 @@ namespace hgl::graph::mtl
     constexpr const DescriptorResourceCatalogEntry kDescriptorResourceCatalog[]=
     {
         // ── SceneGlobal：全局 UBO（一帧写/绑一次；binding=SceneBinding 枚举）──
-        { DescriptorSemantic::ViewportInfo,         ResourceCatalogClass::SceneGlobal, &SBS_ViewportInfo,  DescriptorSetType::Scene,    int(SceneBinding::Viewport),      SSBOType::UserDefined, VertexSemantic::Unknown, true  },
-        { DescriptorSemantic::CameraInfo,           ResourceCatalogClass::SceneGlobal, &SBS_CameraInfo,    DescriptorSetType::Scene,    int(SceneBinding::Camera),        SSBOType::UserDefined, VertexSemantic::Unknown, false },
-        { DescriptorSemantic::SkyInfo,              ResourceCatalogClass::SceneGlobal, &SBS_SkyInfo,       DescriptorSetType::Scene,    int(SceneBinding::Sky),           SSBOType::UserDefined, VertexSemantic::Unknown, false },
-        { DescriptorSemantic::MaterialColorPalette, ResourceCatalogClass::SceneGlobal, &SBS_ColorPalette,  DescriptorSetType::Scene,    int(SceneBinding::ColorPalette),  SSBOType::UserDefined, VertexSemantic::Unknown, false },
+        { DescriptorSemantic::ViewportInfo,         ResourceCatalogClass::SceneGlobal, &SBS_ViewportInfo,  DescriptorSetType::Scene,    int(SceneBinding::Viewport),      SSBOType::UserDefined, true  },
+        { DescriptorSemantic::CameraInfo,           ResourceCatalogClass::SceneGlobal, &SBS_CameraInfo,    DescriptorSetType::Scene,    int(SceneBinding::Camera),        SSBOType::UserDefined, false },
+        { DescriptorSemantic::SkyInfo,              ResourceCatalogClass::SceneGlobal, &SBS_SkyInfo,       DescriptorSetType::Scene,    int(SceneBinding::Sky),           SSBOType::UserDefined, false },
+        { DescriptorSemantic::MaterialColorPalette, ResourceCatalogClass::SceneGlobal, &SBS_ColorPalette,  DescriptorSetType::Scene,    int(SceneBinding::ColorPalette),  SSBOType::UserDefined, false },
 
         // ── PerDraw：PerObject 集固定 ABI（易变——行表按批/每 run 更新）──
-        { DescriptorSemantic::LocalToWorld,         ResourceCatalogClass::PerDraw, &SBS_LocalToWorld,                   DescriptorSetType::PerObject, int(PerObjectBinding::L2W),              SSBOType::UserDefined,              VertexSemantic::Unknown, false },
-        { DescriptorSemantic::LocalToWorldIndex,    ResourceCatalogClass::PerDraw, &SBS_LocalToWorldIndex,              DescriptorSetType::PerObject, int(PerObjectBinding::L2WIndex),         SSBOType::LocalToWorldIndex,        VertexSemantic::Unknown, false },
-        { DescriptorSemantic::MeshDrawParams,       ResourceCatalogClass::PerDraw, &SBS_MeshDrawParams,                 DescriptorSetType::PerObject, int(PerObjectBinding::MeshDrawParams),   SSBOType::UserDefined,              VertexSemantic::Unknown, true  },
-        { DescriptorSemantic::MaterialPrivateDataIndex, ResourceCatalogClass::PerDraw, &SBS_MaterialDataAddresses,          DescriptorSetType::PerObject, int(PerObjectBinding::PrivateDataIndex), SSBOType::MaterialPrivateDataIndex, VertexSemantic::Unknown, false },
-
-        // ── VertexGeometry：Vertex 集顶点数据（几何 ABI，长期冻结；vab_semantic 为互查键）──
-        { DescriptorSemantic::VertexPosition,    ResourceCatalogClass::VertexGeometry, &SBS_VertexPosition,    DescriptorSetType::Vertex, int(VertexBinding::Position),    SSBOType::VertexPosition,    VertexSemantic::Position,    true },
-        { DescriptorSemantic::VertexUV,          ResourceCatalogClass::VertexGeometry, &SBS_VertexUV,          DescriptorSetType::Vertex, int(VertexBinding::UV),          SSBOType::VertexUV,          VertexSemantic::TexCoord,    true },
-        { DescriptorSemantic::VertexNTB,         ResourceCatalogClass::VertexGeometry, &SBS_VertexNTB,         DescriptorSetType::Vertex, int(VertexBinding::NTB),         SSBOType::VertexNTB,         VertexSemantic::Normal,      true },
-        { DescriptorSemantic::VertexColor,       ResourceCatalogClass::VertexGeometry, &SBS_VertexColor,       DescriptorSetType::Vertex, int(VertexBinding::Color),       SSBOType::VertexColor,       VertexSemantic::Color,       true },
-        { DescriptorSemantic::VertexLuminance,   ResourceCatalogClass::VertexGeometry, &SBS_VertexLuminance,   DescriptorSetType::Vertex, int(VertexBinding::Luminance),   SSBOType::VertexLuminance,   VertexSemantic::Luminance,   true },
-        { DescriptorSemantic::VertexTransformID, ResourceCatalogClass::VertexGeometry, &SBS_VertexTransformID, DescriptorSetType::Vertex, int(VertexBinding::TransformID), SSBOType::VertexTransformID, VertexSemantic::TransformID, true },
-        { DescriptorSemantic::VertexSize,        ResourceCatalogClass::VertexGeometry, &SBS_VertexSize,        DescriptorSetType::Vertex, int(VertexBinding::Size),        SSBOType::VertexSize,        VertexSemantic::Size,        true },
-        { DescriptorSemantic::VertexIndex,       ResourceCatalogClass::VertexGeometry, &SBS_VertexIndex,       DescriptorSetType::Vertex, int(VertexBinding::Index),       SSBOType::VertexIndex,       VertexSemantic::Unknown,     true  },
+        { DescriptorSemantic::LocalToWorld,         ResourceCatalogClass::PerDraw, &SBS_LocalToWorld,                   DescriptorSetType::PerObject, int(PerObjectBinding::L2W),              SSBOType::UserDefined,              false },
+        { DescriptorSemantic::LocalToWorldIndex,    ResourceCatalogClass::PerDraw, &SBS_LocalToWorldIndex,              DescriptorSetType::PerObject, int(PerObjectBinding::L2WIndex),         SSBOType::LocalToWorldIndex,        false },
+        { DescriptorSemantic::MeshDrawParams,       ResourceCatalogClass::PerDraw, &SBS_MeshDrawParams,                 DescriptorSetType::PerObject, int(PerObjectBinding::MeshDrawParams),   SSBOType::UserDefined,              true  },
+        { DescriptorSemantic::MaterialPrivateDataIndex, ResourceCatalogClass::PerDraw, &SBS_MaterialDataAddresses,          DescriptorSetType::PerObject, int(PerObjectBinding::PrivateDataIndex), SSBOType::MaterialPrivateDataIndex, false },
 
         // ── MaterialData：Material 集（binding=slot/槽数，per-material 动态）──
-        { DescriptorSemantic::MaterialPrivateData,       ResourceCatalogClass::MaterialData, nullptr,                     DescriptorSetType::Material, -1, SSBOType::UserDefined,    VertexSemantic::Unknown, false },
-        { DescriptorSemantic::MaterialTextureLayerTable, ResourceCatalogClass::MaterialData, &SBS_MaterialTextureLayerRows, DescriptorSetType::Material, -1, SSBOType::TextureLayer, VertexSemantic::Unknown, false },
-        { DescriptorSemantic::MaterialTexture,           ResourceCatalogClass::MaterialData, nullptr,                     DescriptorSetType::Material, -1, SSBOType::UserDefined,    VertexSemantic::Unknown, false },
-        { DescriptorSemantic::MaterialSampler,           ResourceCatalogClass::MaterialData, nullptr,                     DescriptorSetType::Material, -1, SSBOType::UserDefined,    VertexSemantic::Unknown, false },
+        { DescriptorSemantic::MaterialPrivateData,       ResourceCatalogClass::MaterialData, nullptr,                     DescriptorSetType::Material, -1, SSBOType::UserDefined,    false },
+        { DescriptorSemantic::MaterialTextureLayerTable, ResourceCatalogClass::MaterialData, &SBS_MaterialTextureLayerRows, DescriptorSetType::Material, -1, SSBOType::TextureLayer, false },
+        { DescriptorSemantic::MaterialTexture,           ResourceCatalogClass::MaterialData, nullptr,                     DescriptorSetType::Material, -1, SSBOType::UserDefined,    false },
+        { DescriptorSemantic::MaterialSampler,           ResourceCatalogClass::MaterialData, nullptr,                     DescriptorSetType::Material, -1, SSBOType::UserDefined,    false },
     };
 
     constexpr const size_t DESCRIPTOR_RESOURCE_CATALOG_COUNT=
@@ -95,20 +85,6 @@ namespace hgl::graph::mtl
 
         for (const auto &row : kDescriptorResourceCatalog)
             if (row.ssbo_type == ssbo_type)
-                return &row;
-
-        return(nullptr);
-    }
-
-    /// 按 VAB 语义查找顶点数据行（VertexIndex 无 VAB 语义，不参与）
-    constexpr const DescriptorResourceCatalogEntry *FindVertexCatalogEntryByVABSemantic(const VertexSemantic vab_semantic)
-    {
-        if (vab_semantic == VertexSemantic::Unknown)
-            return(nullptr);
-
-        for (const auto &row : kDescriptorResourceCatalog)
-            if (row.cls == ResourceCatalogClass::VertexGeometry
-             && row.vab_semantic == vab_semantic)
                 return &row;
 
         return(nullptr);
@@ -148,37 +124,6 @@ namespace hgl::graph::mtl
                 }
 
             return true;
-        }
-
-        /// Vertex 集完整覆盖：每个 VertexBinding 枚举项恰有一行登记（顺序无关，位图判定）。
-        /// 新增 VertexBinding 项却忘记加目录行 → 计数/位图不满 → **编译失败**。
-        /// 顶点行同时强制：归 Vertex 集、有固定 SBS、有专属 SSBOType。
-        constexpr bool VertexBindingsFullyCovered() noexcept
-        {
-            constexpr int slot_count=int(VertexBinding::RANGE_SIZE);
-
-            uint32 seen=0;
-            int    count=0;
-
-            for(const DescriptorResourceCatalogEntry &row:kDescriptorResourceCatalog)
-            {
-                if(row.cls!=ResourceCatalogClass::VertexGeometry)continue;
-
-                if(row.set_type!=DescriptorSetType::Vertex)return false;
-                if(row.binding<0||row.binding>=slot_count)return false;
-                if(row.sbs==nullptr)return false;
-                if(row.ssbo_type==SSBOType::UserDefined)return false;
-
-                const uint32 bit=uint32(1)<<row.binding;
-
-                if(seen&bit)return false;
-
-                seen|=bit;
-                ++count;
-            }
-
-            return count==slot_count
-                && seen==((uint32(1)<<slot_count)-uint32(1));
         }
 
         /// Scene 全局行：必须有固定 SBS 与固定绑定号（全局集无 per-material 动态项）
@@ -256,10 +201,6 @@ namespace hgl::graph::mtl
 
     static_assert(catalog_check::RowsUnique(),
                   "资源目录存在重复语义 / 同集绑定号撞号 / 重复 buffer 名");
-
-    static_assert(catalog_check::VertexBindingsFullyCovered(),
-                  "VertexBinding 枚举项与目录 VertexGeometry 行未一一对应"
-                  "（新增顶点绑定后须在 kDescriptorResourceCatalog 登记一行）");
 
     static_assert(catalog_check::SceneRowsWellFormed(),
                   "Scene 全局行必须具备固定 SBS 与固定绑定号");
