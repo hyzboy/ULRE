@@ -770,19 +770,19 @@ namespace hgl::ecs
                             {
                                 resources->char_info_asb = std::make_unique<graph::MirroredStructArray<graph::layout::TextCharInfo>>(
                                     device, unique_chars.size(), ssbo_align,
-                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, graph::BufferAllocPolicy::Auto);
+                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, graph::BufferAllocPolicy::Auto);
                             }
                             if (need_rebuild_style)
                             {
                                 resources->char_style_asb = std::make_unique<graph::MirroredStructArray<graph::layout::CharStyle>>(
                                     device, upload_styles.size(), ssbo_align,
-                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, graph::BufferAllocPolicy::Auto);
+                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, graph::BufferAllocPolicy::Auto);
                             }
                             if (need_rebuild_instance)
                             {
                                 resources->char_instance_asb = std::make_unique<graph::MirroredStructArray<graph::layout::CharInstance>>(
                                     device, gpu_instances.size(), ssbo_align,
-                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, graph::BufferAllocPolicy::Auto);
+                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, graph::BufferAllocPolicy::Auto);
                             }
 
                             // 5. 写入 CPU 数据并同步到 GPU
