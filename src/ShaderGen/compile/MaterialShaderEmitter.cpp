@@ -188,7 +188,7 @@ bool BuildMaterialSSBODeclarations(
         out_decls += "};\n";
         out_macros += "#define MTL_ROW(i) ";
         out_macros += row_struct;
-        out_macros += "(mtl_data_addrs.values[(i)])\n";
+        out_macros += "(MaterialDataAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)])\n";
         return true;
     }
 }
@@ -355,6 +355,27 @@ std::string BuildMeshIndexTableDecls(
     return out;
 }
 
+    // FS 侧 RootAddresses push constant block 发射——与 mesh 侧（MeshShaderHeaderGen）
+    // 遍历同一 HGL_ROOT_ADDRESSES_FIELD_LIST，布局逐字段一致（不同 stage 访问同一
+    // push constant range 必须布局一致）。FS 消费 pc_root.addr_mtl_data_addrs。
+    void EmitFSRootAddressesPushConstant(std::string &out)
+    {
+        out += "layout(push_constant) uniform RootAddresses\n";
+        out += "{\n";
+        for (uint32 field_index = 0;
+             field_index < kRootAddressesFieldCount;
+             ++field_index)
+        {
+            out += "    ";
+            out += kRootAddressesFieldGLSLTypes[field_index];
+            out += " ";
+            out += kRootAddressesFieldNames[field_index];
+            out += ";\n";
+        }
+        out += "} pc_root;\n";
+        out += "\n";
+    }
+
 std::string BuildFSIndexTableDecls(
     const DescriptorSetLayoutAllocator &descriptor_info)
 {
@@ -362,16 +383,18 @@ std::string BuildFSIndexTableDecls(
 
     // ── FS 消费设备地址行表（mtl_data_addrs）──────────────
     // 行存 8B 设备地址；fragDataIndexID 即本批 draw item 序号（行表下标）。
-    // MTL_ROW(i) 宏（BuildMaterialSSBODeclarations 生成）以地址构造行指针。
+    // 行表本体走 BDA（buffer_reference，MaterialDataAddressesRef）——表地址经
+    // pc_root.addr_mtl_data_addrs 下发（FS 侧 pc_root 由 BuildMaterialStageDocument
+    // Fragment 分支注入，先于本块）。MTL_ROW(i) 宏（BuildMaterialSSBODeclarations
+    // 生成）以地址构造行指针。
     const ShaderDescriptor *addr_sd =
         descriptor_info.GetSSBO(SBS_MaterialDataAddresses.name);
     if (addr_sd && addr_sd->set >= 0 && addr_sd->binding >= 0)
     {
-        out += "layout(set=" + std::to_string(addr_sd->set)
-             + ", binding=" + std::to_string(addr_sd->binding)
-             + ") readonly buffer MaterialDataAddresses\n{\n"
-               "    uint64_t values[];\n"
-               "} mtl_data_addrs;\n";
+        out += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialDataAddressesRef\n";
+        out += "{\n";
+        out += "    uint64_t values[];\n";
+        out += "};\n";
     }
 
     return out;
@@ -469,6 +492,30 @@ bool BuildMaterialStageDocument(
             "#extension GL_EXT_mesh_shader : require\n",
             source);
 
+        // BDA：pc_root(uint64_t push constant)与 MaterialDataAddressesRef/材质行
+        //（buffer_reference）依赖以下扩展——Fragment 侧 pc_root 在 injection 最先
+        // 发出，扩展必须先于它（scalar_block_layout 由 GLSLCompiler 编译前全局注入）
+        source.logical_name = "MaterialBDAShaderExtension";
+        injection.Add(
+            ShaderDocumentBlockKind::Extension,
+            "#extension GL_EXT_buffer_reference : require\n",
+            source);
+        injection.Add(
+            ShaderDocumentBlockKind::Extension,
+            "#extension GL_ARB_gpu_shader_int64 : require\n",
+            source);
+
+        // pc_root push constant（Fragment 侧）——MTL_ROW 宏与
+        // MaterialDataAddressesRef(pc_root.addr_mtl_data_addrs) 引用；
+        // 与 mesh 侧声明同一 X 列表，布局逐字段一致
+        source.logical_name = "MaterialRootAddressesPC";
+        std::string fs_pc_root;
+        EmitFSRootAddressesPushConstant(fs_pc_root);
+        injection.Add(
+            ShaderDocumentBlockKind::Resource,
+            AnsiString(fs_pc_root.c_str()),
+            source);
+
         ShaderDocument compile_defines;
         if (!BuildCompileDefineDocument(config, compile_defines))
             return false;
@@ -522,9 +569,9 @@ bool BuildMaterialStageDocument(
     out_document.Add(ShaderDocumentBlockKind::Version, version.text, source);
 
     AppendDocumentBlocks(out_document, injection, stage_name, material);
-    // Fragment：资源声明保持原位（Version/injection 之后）——FS 资源
-    // （MaterialSSBO/mtl_data_addrs）无 buffer_reference 依赖，无需等模板扩展；
-    // 且必须早于模板全部 Module/MainBody（MTL_ROW 宏在函数体内展开）。
+    // Fragment：资源声明保持原位（Version/injection 之后）——FS 的 BDA 扩展
+    //（buffer_reference/int64）与 pc_root 已在 injection 先行注入，资源块无顺序
+    // 风险；且必须早于模板全部 Module/MainBody（MTL_ROW 宏在函数体内展开）。
     if (stage == ShaderStage::Fragment)
     {
         AppendStageResourceBlocks(
