@@ -3,6 +3,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/type/ValueArray.h>
 
 namespace hgl::graph{
@@ -149,10 +150,19 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     PipelineLayoutCreateInfo pPipelineLayoutCreateInfo;
     pPipelineLayoutCreateInfo.setLayoutCount            = pld->fin_dsl_count;
     pPipelineLayoutCreateInfo.pSetLayouts               = pld->fin_dsl;
-    // IndirectMeshDraw：per-draw 段偏移改经 mesh_draw_params 参数表 SSBO 传递
-    //（rows[gl_DrawID] 查表），mesh shader 不再使用 push constant——range 已删除
-    pPipelineLayoutCreateInfo.pushConstantRangeCount    = 0;
-    pPipelineLayoutCreateInfo.pPushConstantRanges       = nullptr;
+    // RootAddresses：push constant 承载 7 张全局表设备地址（56B，HGL_ROOT_ADDRESSES_FIELD_LIST）。
+    // stage=Mesh|Fragment（kMeshFragment）——mesh 读 MeshDrawParams/L2W/L2WIndex/文本表，
+    // FS 读 mtl_data_addrs。IndirectMeshDraw 的 per-draw 段偏移仍走参数表 rows[gl_DrawID]
+    // 查表（push constant 放的是表地址，不是 per-draw 数据——一次 vkCmdDrawMeshTasksIndirectEXT
+    // 内 N 命令共享同一份，合法）。
+    const VkPushConstantRange root_address_range =
+    {
+        VkShaderStageFlags(hgl::graph::kMeshFragment),
+        0,
+        uint32_t(sizeof(hgl::graph::mtl::RootAddresses))
+    };
+    pPipelineLayoutCreateInfo.pushConstantRangeCount    = 1;
+    pPipelineLayoutCreateInfo.pPushConstantRanges       = &root_address_range;
 
     if(vkCreatePipelineLayout(attr->device,&pPipelineLayoutCreateInfo,nullptr,&(pld->pipeline_layout))!=VK_SUCCESS)
     {
