@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/BindingTableBuilder.h>
+#include <hgl/mtl/BindingTableBuilder.h>
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
@@ -299,6 +299,9 @@ namespace hgl::graph::mtl
                     {
                         const int index = out_table.data.Add(ResolvedDataBinding{});
                         ResolvedDataBinding *binding = &out_table.data[index];
+                        // logical_resource_id 先取行表 entry 身份；随后到来的
+                        // MaterialPrivateData 数据槽 entry 是同一数据资产的另一视图，
+                        // 处理到它时会把身份覆盖为其 lrid（见下）。
                         binding->logical_resource_id =
                             ResolveDescriptorLogicalResourceID(entry, program_key_digest);
                         binding->semantic = DescriptorSemantic::MaterialPrivateData;
@@ -330,12 +333,10 @@ namespace hgl::graph::mtl
                     }
                     else
                     {
-                        if (binding->logical_resource_id != logical_resource_id
-                         && binding->logical_resource_id != 0
-                         && logical_resource_id != 0)
-                            return SetBuildFailure(
-                                out_diagnostic,
-                                BindingBuildError::InvalidBindingTable);
+                        // 桥接条目先行时其 lrid 取自行表 entry 身份；数据槽 entry
+                        // 是同一数据资产的权威视图——覆盖身份而非比对冲突
+                        //（两者哈希输入不同，比对恒假阳性）。
+                        binding->logical_resource_id = logical_resource_id;
                         binding->required = binding->required || entry.required;
                         binding->allow_fallback = binding->allow_fallback && entry.allow_fallback;
                     }
@@ -505,9 +506,11 @@ namespace hgl::graph::mtl
             SortBindings(out_table.data);
 
             if (!out_table.IsValid())
+            {
                 return SetBuildFailure(
                     out_diagnostic,
                     BindingBuildError::InvalidBindingTable);
+            }
             return true;
         }
 
