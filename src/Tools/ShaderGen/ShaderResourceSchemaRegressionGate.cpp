@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/ShaderResourceSchema.h>
+#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -531,26 +531,15 @@ namespace
         program_key.vertex_input_hash = 0x7104u;
 
         ShaderResourceSchema layout{};
-        ShaderResourceSlot texture_layer_resources{};
-        texture_layer_resources.logical_resource_id =
-            StableID("resource.texture_layers");
-        texture_layer_resources.resource_schema_id =
-            StableID("schema.TextureLayer");
-        texture_layer_resources.semantic =
-            DescriptorSemantic::MaterialTextureLayerTable;
-        texture_layer_resources.ssbo_type = SSBOType::TextureLayer;
-        texture_layer_resources.required = true;
-        layout.resources.push_back(texture_layer_resources);
-
         ShaderResourceSlot data_resources{};
         data_resources.logical_resource_id =
             StableID("resource.material_data");
         data_resources.resource_schema_id =
             StableID("schema.PBRSurface");
         data_resources.semantic =
-            DescriptorSemantic::MaterialPrivateData;
+            DescriptorSemantic::MaterialPrivateDataIndex;
         data_resources.material_private_data_slot = 0;
-        data_resources.ssbo_type = SSBOType::PBRSurface;
+        data_resources.ssbo_type = SSBOType::MaterialPrivateDataIndex;
         data_resources.required = true;
         data_resources.allow_fallback = false;
         layout.resources.push_back(data_resources);
@@ -637,7 +626,6 @@ namespace
         }
         // Asset projection: in bindless mode the recipe is the authoritative
         // texture-slot source (the schema merges all texture_layer declarations
-        // into one MaterialTextureLayerTable without per-slot info), so every
         // asset-source recipe texture is acquired. Custom0 is a direct-value
         // binding (not an asset), so it must be excluded from asset projection.
         if (CountAssetTextures(binding_table) != 2
@@ -732,21 +720,6 @@ namespace
                 "typed SSBO binding ID 0 must remain a valid active resource");
         }
 
-        MaterialRecipe pre_resolve_recipe = recipe;
-        pre_resolve_recipe.ssbo_assets[0].ssbo_type =
-            SSBOType::UserDefined;
-        ResolvedBindingTable pre_resolve_table{};
-        if (!BuildBindingTable(
-                pre_resolve_recipe,
-                layout,
-                program_key,
-                pre_resolve_table,
-                diagnostic)
-         || pre_resolve_table.IsRuntimeReady())
-        {
-            result.diagnostics.emplace_back(
-                "pre-resolve UserDefined SSBO must not masquerade as the required binding type");
-        }
         ResolvedBindingTable post_resolve_table{};
         if (!BuildBindingTable(
                 recipe,
@@ -1974,25 +1947,16 @@ namespace
         program_key.vertex_input_hash = 0x7204u;
 
         ShaderResourceSchema layout{};
-        ShaderResourceSlot texture_resources{};
-        texture_resources.logical_resource_id =
-            StableID("resource.texture_layers");
-        texture_resources.resource_schema_id =
-            StableID("schema.TextureLayer");
-        texture_resources.semantic =
-            DescriptorSemantic::MaterialTextureLayerTable;
-        texture_resources.ssbo_type = SSBOType::TextureLayer;
-        texture_resources.required = true;
-        layout.resources.push_back(texture_resources);
-
         ShaderResourceSlot data_resources{};
         data_resources.logical_resource_id =
             StableID("resource.material_data");
         data_resources.resource_schema_id =
             StableID("schema.PBRSurface");
         data_resources.semantic =
-            DescriptorSemantic::MaterialPrivateData;
+            DescriptorSemantic::MaterialPrivateDataIndex;
         data_resources.material_private_data_slot = 0;
+        data_resources.ssbo_type = SSBOType::MaterialPrivateDataIndex;
+        data_resources.required = true;
         data_resources.ssbo_type = SSBOType::PBRSurface;
         data_resources.required = true;
         data_resources.allow_fallback = false;
@@ -2485,11 +2449,12 @@ namespace
                     const auto has_material_resource =
                         [](const ShaderBuildContext &spec)
                     {
+                        // Material 集已退场：剪枝语义落到行表（data index）资源
                         for (const auto &requirement :
                              spec.GetShaderResourceSchema().resources)
                         {
-                            if (requirement.set_type
-                                == DescriptorSetType::Material)
+                            if (requirement.semantic
+                                == DescriptorSemantic::MaterialPrivateDataIndex)
                                 return true;
                         }
                         return false;
@@ -3325,26 +3290,22 @@ namespace
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare one PBRSurface material SSBO");
 
-                if (manifest_2d.texture_layer_count != 2)
-                    result.diagnostics.emplace_back(
-                        "Texture2D providers must declare bindless per-slot layer-table dependencies");
-
                 const std::vector<SerializedDescriptorEntry> descriptors =
                     BuildDescriptorsFromDefinition(MaterialDefinition{}, manifest_2d);
-                bool has_layer_table = false;
+                // Arena+BDA：数据槽 provider 必须产出地址行表条目（行尾句柄寻址）；
+                // 层表描述符（mtl_texture_layer_rows/Material 集）已随 Material 集退场
+                bool has_data_index_rows = false;
                 for (const auto &entry : descriptors)
                 {
-                    if (entry.semantic == DescriptorSemantic::MaterialTextureLayerTable
-                     && entry.name
-                     && std::strcmp(entry.name, "mtl_texture_layer_rows") == 0)
+                    if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
                     {
-                        has_layer_table = true;
+                        has_data_index_rows = true;
                         break;
                     }
                 }
-                if (!has_layer_table)
+                if (!has_data_index_rows)
                     result.diagnostics.emplace_back(
-                        "Texture2D bindless providers must emit the layer-table descriptor");
+                        "Texture2D providers must emit the material data index rows");
             }
 
             const char *roots_array[] = {pbr_array->name, ntb_array->name};
@@ -3366,20 +3327,18 @@ namespace
 
                 const std::vector<SerializedDescriptorEntry> descriptors =
                     BuildDescriptorsFromDefinition(MaterialDefinition{}, manifest_array);
-                bool has_layer_table = false;
+                bool has_data_index_rows = false;
                 for (const auto &entry : descriptors)
                 {
-                    if (entry.semantic == DescriptorSemantic::MaterialTextureLayerTable
-                     && entry.name
-                     && std::strcmp(entry.name, "mtl_texture_layer_rows") == 0)
+                    if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
                     {
-                        has_layer_table = true;
+                        has_data_index_rows = true;
                         break;
                     }
                 }
-                if (!has_layer_table)
+                if (!has_data_index_rows)
                     result.diagnostics.emplace_back(
-                        "Texture2DArray provider layer dependency must emit the layer-table descriptor");
+                        "Texture2DArray provider must emit the material data index rows");
             }
 
             const char *derivative_root = ntb_derivative->name;
@@ -3946,7 +3905,7 @@ namespace
                     DescriptorSemanticLayer::UBO
                 },
                 {
-                    DescriptorSetType::Material,
+                    DescriptorSetType::PerObject,
                     uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
                     material_name.c_str(),
                     material_struct.c_str(),
@@ -4037,7 +3996,6 @@ namespace
             else
             {
                 bool has_data_index = false;
-                bool has_texture_layer = false;
                 for (const auto &requirement :
                      varying_layout.resources)
                 {
@@ -4049,16 +4007,10 @@ namespace
                                 == uint32_t(
                                     hgl::graph::kMeshFragment);
                     }
-                    if (requirement.semantic
-                        == DescriptorSemantic::MaterialTextureLayerTable)
-                    {
-                        has_texture_layer = true;
-                    }
                 }
-                // P1-2e：varying 路径只负责 MaterialPrivateDataIndex；
-                // MaterialTextureLayerTable 由 manifest/纹理槽声明提供，
-                // 不再由 varying 契约生成。
-                if (!has_data_index || has_texture_layer)
+                // varying 路径只负责 MaterialPrivateDataIndex（材质行表）；
+                // 纹理层表描述符已随 Material 集退场。
+                if (!has_data_index)
                     result.diagnostics.emplace_back(
                         "varying tables missing from runtime layout");
             }
@@ -4277,8 +4229,7 @@ namespace
         descriptor_builder_common::AppendDefinitionMaterialDescriptors(
             descriptors,
             definition,
-            uint32_t(hgl::graph::kMeshFragment),
-            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
+            uint32_t(hgl::graph::kMeshFragment));
 
         ShaderCodeResourceManifest compatible_manifest{};
         compatible_manifest.texture_layer_count = 1;
@@ -4298,9 +4249,6 @@ namespace
 
         if (!descriptor_builder_common::AppendManifestSSBODescriptors(
                 descriptors, compatible_manifest)
-         || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(
-                descriptors, compatible_manifest,
-                definition.material_private_data != SSBOType::UserDefined)
          || !compatible_manifest.IsValid())
         {
             result.diagnostics.emplace_back(
@@ -4318,17 +4266,10 @@ namespace
                     "Merged definition/module resource contract failed validation.");
 
             // Arena+BDA：有数据槽的材质句柄走行尾——期望一个地址行表条目
-            //（mtl_data_addrs）承载数据槽身份；纹理行表仅无数据槽材质保留。
-            bool has_required_texture_layer = false;
+            //（mtl_data_addrs）承载数据槽身份（纹理层表描述符已退场）。
             bool has_single_material_ssbo = false;
             for (const auto &req : schema.resources)
             {
-                if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
-                 && req.texture_slot == TextureSlot::BaseColor)
-                    has_required_texture_layer = req.required && !req.allow_fallback;
-                if (req.semantic == DescriptorSemantic::MaterialPrivateData
-                 && req.material_private_data_slot == DefaultMaterialPrivateDataSlot)
-                    has_single_material_ssbo = true;
                 if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
                  && req.name == SBS_MaterialDataAddresses.name)
                     has_single_material_ssbo = true;
@@ -4338,24 +4279,39 @@ namespace
                     "Merged resource policy or SSBO identity was not preserved.");
         }
 
-        ShaderCodeResourceManifest ssbo_name_conflict{};
-        ssbo_name_conflict.ssbo_count = 1;
-        ssbo_name_conflict.ssbos[0] = {
+        // Arena+BDA：数据槽 provider 声明（mtl_private_data）经行表桥接成功——
+        // 描述符生成不再有 per-material SSBO（数据槽无描述符），故不再存在
+        // "同名 SSBO 冲突"路径；此处验证桥接产生行表条目。
+        ShaderCodeResourceManifest data_slot_manifest{};
+        data_slot_manifest.ssbo_count = 1;
+        data_slot_manifest.ssbos[0] = {
             "mtl_private_data",
-            SSBOType::TextureLayer,
+            SSBOType::PBRSurface,
             DefaultMaterialPrivateDataSlot,
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)
         };
-        if (descriptor_builder_common::AppendManifestSSBODescriptors(
-                descriptors, ssbo_name_conflict)
-         || ssbo_name_conflict.error != ShaderCodeResourceManifestError::ResourceConflict)
+        std::vector<SerializedDescriptorEntry> bridged_descriptors;
+        if (!descriptor_builder_common::AppendManifestSSBODescriptors(
+                bridged_descriptors, data_slot_manifest)
+         || data_slot_manifest.error
+                != ShaderCodeResourceManifestError::None)
         {
             result.diagnostics.emplace_back(
-                "Same-name SSBO type conflicts must fail explicitly.");
+                "Data-slot manifest must bridge to address index rows.");
+        }
+        else
+        {
+            bool has_rows = false;
+            for (const auto &entry : bridged_descriptors)
+                if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
+                    has_rows = true;
+            if (!has_rows)
+                result.diagnostics.emplace_back(
+                    "Data-slot manifest bridge must emit MaterialPrivateDataIndex rows");
         }
 
         SerializedDescriptorEntry hash_entry{};
-        hash_entry.set_type = DescriptorSetType::Material;
+        hash_entry.set_type = DescriptorSetType::PerObject;
         hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
         hash_entry.name = "mtl_private_data";
         hash_entry.struct_name = "PBRSurfaceData";
@@ -4400,7 +4356,7 @@ namespace
         }
 
         SerializedDescriptorEntry ssbo_hash_entry{};
-        ssbo_hash_entry.set_type = DescriptorSetType::Material;
+        ssbo_hash_entry.set_type = DescriptorSetType::PerObject;
         ssbo_hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
         ssbo_hash_entry.name = "mtl_private_data";
         ssbo_hash_entry.struct_name = "PBRSurfaceData";
@@ -4735,9 +4691,9 @@ int main(const int argc, char **argv)
         {
             { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
             { DescriptorSetType::PerObject, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data_index", "MaterialPrivateDataIndex", nullptr, DescriptorSemantic::MaterialPrivateDataIndex, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndex, DescriptorSemanticLayer::SSBO },
-            { DescriptorSetType::Material, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::TextureLayer, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::PerObject, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
-        results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
+        results.push_back(RunValidationCase("A.valid-contract-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
         constexpr SerializedDescriptorEntry unknown_semantic[] =
         {
@@ -4747,7 +4703,7 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry invalid_fixed_descriptor[] =
         {
-            { DescriptorSetType::Material, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::PerObject, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
 

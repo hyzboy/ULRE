@@ -239,14 +239,8 @@ namespace hgl::graph::mtl
             out_table.program_key_digest = program_key_digest;
             out_table.source_binding_hash = GetBindingSourceHash(recipe);
 
-            bool uses_texture_layer_table = false;
             for (const ShaderResourceSlot &entry : layout.resources)
             {
-                if (entry.semantic == DescriptorSemantic::MaterialTextureLayerTable)
-                {
-                    uses_texture_layer_table = true;
-                    continue;
-                }
 
                 if (entry.semantic == DescriptorSemantic::MaterialTexture
                  || entry.semantic == DescriptorSemantic::MaterialSampler)
@@ -292,6 +286,14 @@ namespace hgl::graph::mtl
                 {
                     const RecipeSSBOAssetBinding &data_asset =
                         recipe.ssbo_assets.front();
+
+                    // UserDefined = 未解析类型：无法路由到任何行结构，显式失败
+                    if (data_asset.ssbo_type == SSBOType::UserDefined)
+                    {
+                        return SetBuildFailure(
+                            out_diagnostic,
+                            BindingBuildError::InvalidBindingTable);
+                    }
 
                     if (!FindDataBinding(out_table,
                                          data_asset.material_private_data_slot,
@@ -347,9 +349,6 @@ namespace hgl::graph::mtl
             // 描述符需求已不存在——但 recipe 的纹理绑定必须保留在绑定视图里
             //（Collect 依它构建行尾句柄、并完成 bindless 注册）。
             if (!recipe.textures.empty())
-                uses_texture_layer_table = true;
-
-            if (uses_texture_layer_table)
             {
                 for (const RecipeTextureBinding &recipe_binding : recipe.textures)
                 {

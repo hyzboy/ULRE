@@ -1,4 +1,4 @@
-﻿/// MaterialShaderCompiler.cpp — canonical material input compiler
+/// MaterialShaderCompiler.cpp — canonical material input compiler
 ///
 /// 流程：
 ///   1. 从 SerializedDescriptorEntry[] 构建 DescriptorSetLayoutAllocator（描述符布局）
@@ -175,13 +175,6 @@ bool RulePrivateDataSlot(
         && definition.material_private_data == req.ssbo_type;
 }
 
-bool RuleTextureLayerTable(
-    const MaterialDefinition &definition,
-    const ShaderResourceSlot &) noexcept
-{
-    return !definition.texture_slot_decls.empty();
-}
-
 bool RulePrivateDataIndex(
     const MaterialDefinition &definition,
     const ShaderResourceSlot &) noexcept
@@ -203,8 +196,6 @@ constexpr DefinitionCapabilityRuleEntry kDefinitionCapabilityRules[] =
     { DescriptorSemantic::MaterialColorPalette,      &RuleUBORequirement },
     { DescriptorSemantic::LocalToWorld,              &RuleWorldTransform },
     { DescriptorSemantic::LocalToWorldIndex,         &RuleWorldTransform },
-    { DescriptorSemantic::MaterialPrivateData,       &RulePrivateDataSlot },
-    { DescriptorSemantic::MaterialTextureLayerTable, &RuleTextureLayerTable },
     { DescriptorSemantic::MaterialPrivateDataIndex,  &RulePrivateDataIndex },
 };
 
@@ -272,9 +263,6 @@ static bool ValidateDefinitionCapabilitySubset(
                  && descriptor_builder_common::CStrEqual(req.name.c_str(), ssbo.name))
                     allowed = true;
             }
-            if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
-             && manifest->texture_layer_count > 0)
-                allowed = true;
 
             // The MaterialPrivateDataIndexRows table only exists to route instance IDs
             // to material data-slot SSBOs. If any material data-slot SSBO was
@@ -512,14 +500,7 @@ static bool RegisterCanonicalDescriptors(
             break;
 
         case ResourceCatalogClass::MaterialData:
-            if (cat->semantic == DescriptorSemantic::MaterialTextureLayerTable)
-            {
-                if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
-                    return c.Fail("failed to add MaterialTextureLayerRows struct");
-                // 单槽化：材质至多一个数据槽，纹理层行表紧随其后（binding=槽数）
-                if (!ctx->AddSSBOTextureLayer(stage_bits, int(declared_material_private_data_slot_count)))
-                    return c.Fail("failed to add MaterialTextureLayerRows SSBO");
-            }
+            // MaterialTextureLayerTable 已随 Material 集退场（句柄走数据槽行尾）；
             // MaterialTexture/MaterialSampler：bindless 通道，无 per-material 描述符
             break;
         }

@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/DescriptorContract.h>
+#include <hgl/mtl/DescriptorContract.h>
 
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/graph/ShaderBufferSources.h>
@@ -95,9 +95,6 @@ namespace hgl::graph::mtl
                     == DescriptorSemantic::MaterialPrivateData
              && source.ssbo_type == SSBOType::UserDefined)
                 source.ssbo_type = SSBOType::PBRSurface;
-            else if (source.semantic
-                    == DescriptorSemantic::MaterialTextureLayerTable)
-                source.ssbo_type = SSBOType::TextureLayer;
             else if (source.semantic
                     == DescriptorSemantic::MaterialPrivateDataIndex)
                 source.ssbo_type =
@@ -309,13 +306,6 @@ namespace hgl::graph::mtl
              && req.ssbo_id == MakeRecipeSSBOId(0))
             {
                 req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
-            }
-            if (req.semantic
-                    == DescriptorSemantic::MaterialTextureLayerTable
-             && req.ssbo_id == MakeRecipeSSBOId(0))
-            {
-                req.ssbo_id = MakeRecipeSSBOId(
-                    static_cast<uint32>(req.texture_slot));
             }
             if (req.semantic
                     == DescriptorSemantic::MaterialPrivateDataIndex

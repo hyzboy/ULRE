@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
@@ -17,6 +17,7 @@ namespace hgl::graph::ssbo
         float fresnel;
     )";
     constexpr const char TransmissionSurfaceMaterialSSBOGLSL[] = "uint TextColor;";
+    // TextureLayerRow 无 payload 字段（GLSL 侧仅 tex_tail，由发射器统一展开）
 
     inline const char *GetMaterialSSBOStructName(const mtl::SSBOType type) noexcept
     {
@@ -26,6 +27,7 @@ namespace hgl::graph::ssbo
         case mtl::SSBOType::TextureRectArraySurface: return "TextureRectArraySurfaceData";
         case mtl::SSBOType::PBRSurface:              return "PBRSurfaceData";
         case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceData";
+        case mtl::SSBOType::TextureLayer:            return "TextureLayerData";
         default:                                     return nullptr;
         }
     }
@@ -39,6 +41,7 @@ namespace hgl::graph::ssbo
     template<> struct MaterialRowTypeTraits<EmissiveSurfaceRow>         { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::EmissiveSurface; };
     template<> struct MaterialRowTypeTraits<TextureRectArraySurfaceRow> { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::TextureRectArraySurface; };
     template<> struct MaterialRowTypeTraits<TransmissionSurfaceRow>     { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::TransmissionSurface; };
+    template<> struct MaterialRowTypeTraits<TextureLayerRow>            { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::TextureLayer; };
 
     inline const char *GetMaterialSSBORowName(const mtl::SSBOType type) noexcept
     {
@@ -48,6 +51,7 @@ namespace hgl::graph::ssbo
         case mtl::SSBOType::TextureRectArraySurface: return "TextureRectArraySurfaceRow";
         case mtl::SSBOType::PBRSurface:              return "PBRSurfaceRow";
         case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceRow";
+        case mtl::SSBOType::TextureLayer:            return "TextureLayerRow";
         default:                                     return nullptr;
         }
     }
@@ -62,6 +66,7 @@ namespace hgl::graph::ssbo
         case mtl::SSBOType::TextureRectArraySurface: return "TextureRectArraySurfaceBuffer";
         case mtl::SSBOType::PBRSurface:              return "PBRSurfaceBuffer";
         case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceBuffer";
+        case mtl::SSBOType::TextureLayer:            return "TextureLayerBuffer";
         default:                                     return nullptr;
         }
     }
@@ -74,6 +79,7 @@ namespace hgl::graph::ssbo
         case mtl::SSBOType::TextureRectArraySurface: return TextureRectArraySurfaceMaterialSSBOGLSL;
         case mtl::SSBOType::PBRSurface:              return PBRSurfaceMaterialSSBOGLSL;
         case mtl::SSBOType::TransmissionSurface:     return TransmissionSurfaceMaterialSSBOGLSL;
+        case mtl::SSBOType::TextureLayer:            return "";
         default:                                 return nullptr;
         }
     }
@@ -88,6 +94,7 @@ namespace hgl::graph::ssbo
         case mtl::SSBOType::EmissiveSurface:         return uint32_t(offsetof(EmissiveSurfaceRow,         tex_tail));
         case mtl::SSBOType::TextureRectArraySurface: return uint32_t(offsetof(TextureRectArraySurfaceRow, tex_tail));
         case mtl::SSBOType::TransmissionSurface:     return uint32_t(offsetof(TransmissionSurfaceRow,     tex_tail));
+        case mtl::SSBOType::TextureLayer:            return uint32_t(offsetof(TextureLayerRow,            tex_tail));
         default:                                     return 0;
         }
     }

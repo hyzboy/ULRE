@@ -20,5 +20,6 @@ requirements = ["Position", "UV0"]
 varyings = ["emit_data_index_id", "emit_uv0"]
 
 [resources]
+material_data = { type = "TextureLayer" }
 textures = [{ name = "base_color", sampler = "Sampler2D", required = true }]
 samplers = ["Trilinear"]

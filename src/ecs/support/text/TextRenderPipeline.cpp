@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/support/TextRenderPipeline.h>
+#include<hgl/ecs/support/TextRenderPipeline.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
@@ -133,7 +133,6 @@ namespace hgl::ecs
 
             // 每字体独立描述符集（多 FontSource 互不覆盖）
             SAFE_CLEAR(res.per_object_mp);
-            SAFE_CLEAR(res.material_mp);
 
             // char_info_asb / char_style_asb / char_instance_asb 由 unique_ptr 自动释放
 
@@ -277,7 +276,7 @@ namespace hgl::ecs
 
             // Scene(0)/Bindless(3) 为全局共享集；PerObject(1)/Material(2) 使用
             // 每字体独立集——多 FontSource 共享同一 ShaderProgram 时互不覆盖
-            cmd->BindDescriptorSets(res.material, res.per_object_mp, res.material_mp);
+            cmd->BindDescriptorSets(res.material, res.per_object_mp);
 
             // Scene / Bindless descriptor sets with material's pipeline layout
             if (auto* gc = render_context ? render_context->GetGraphicsContext() : nullptr)
@@ -334,7 +333,6 @@ namespace hgl::ecs
             graph::ShaderProgram* material = nullptr;
             graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
             graph::MaterialParameters* per_object_mp = nullptr;
-            graph::MaterialParameters* material_mp = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
             graph::DeviceBuffer* texture_layer_buffer = nullptr;
             graph::DeviceBuffer* data_index_row_buffer = nullptr;
@@ -358,8 +356,6 @@ namespace hgl::ecs
                 if (per_object_mp)
                     delete per_object_mp;
 
-                if (material_mp)
-                    delete material_mp;
 
                 if (material && material_manager)
                     material_manager->Release(material);
@@ -437,10 +433,8 @@ namespace hgl::ecs
 
             guard.per_object_mp = device->CreateMP(desc_manager, pipeline_layout_data,
                                                    graph::DescriptorSetType::PerObject);
-            guard.material_mp = device->CreateMP(desc_manager, pipeline_layout_data,
-                                                 graph::DescriptorSetType::Material);
 
-            if (!guard.per_object_mp || !guard.material_mp)
+            if (!guard.per_object_mp)
             {
                 return nullptr;
             }
@@ -476,12 +470,9 @@ namespace hgl::ecs
 
         resources.bindless_atlas_handle = atlas_handle;
 
-        // mtl_texture_layer_rows：TEXTURE_SLOT_RANGE_SIZE 个 uint 一行；行 0 槽 BaseColor = atlas handle。
-        // 注意：不再注册 ResourceDomain（每字体用 MakeRecipeSSBOId(0) 注册同一地址会让后注册的
-        // FontSource 释放先注册的 buffer，导致先注册字体的描述符集悬垂）。text 渲染走每字体独立
-        // MP（material_mp/per_object_mp 创建时直接绑定具体 buffer），不依赖 domain 解析。
-        constexpr uint32_t texture_layer_row_bytes =
-            sizeof(uint32_t) * static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+        // Arena+BDA：图集句柄写进 TextureLayerRow 行（tex_base_color 槽），shader 经
+        // mtl_data_addrs 行表取行指针解引用——不再有 Material 集 texture_layer_rows 描述符。
+        constexpr uint32_t texture_layer_row_bytes = sizeof(graph::ssbo::TextureLayerRow);
 
         guard.texture_layer_buffer = buffer_manager->CreateSSBO(
             "Text2D_TextureLayerRows", texture_layer_row_bytes, graph::SharingMode::Exclusive);
@@ -490,21 +481,16 @@ namespace hgl::ecs
             return nullptr;
         }
 
-        uint32_t texture_layer_row[static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE)] = {};
-        texture_layer_row[0] = atlas_handle;
-        guard.texture_layer_buffer->GetGPUBuffer()->Write(texture_layer_row, 0, sizeof(texture_layer_row));
-
-        if (!guard.material_mp->BindSSBO(graph::mtl::SBS_MaterialTextureLayerRows.name,
-                                         guard.texture_layer_buffer->GetGPUBuffer()))
         {
-            return nullptr;
+            graph::ssbo::TextureLayerRow row{};
+            row.tex_tail[graph::mtl::TextureSlot::BaseColor] = atlas_handle;
+            guard.texture_layer_buffer->GetGPUBuffer()->Write(&row, 0, sizeof(row));
         }
 
         resources.texture_layer_buffer = guard.texture_layer_buffer;
         guard.texture_layer_buffer = nullptr;
 
-        // mtl_data_addrs：8B 设备地址行表。text 不使用材质数据行，
-        // 但布局要求该槽位有绑定——填 arena 基址（0 号零填充默认行，安全可解引用）。
+        // mtl_data_addrs：8B 设备地址行表，行 0 = 句柄行地址（dataIndex=0）。
         constexpr uint32_t data_index_row_bytes = sizeof(uint64_t);
 
         guard.data_index_row_buffer = buffer_manager->CreateSSBO(
@@ -515,16 +501,21 @@ namespace hgl::ecs
         }
 
         {
-            // text 不使用材质数据行——填 Null 行地址（64B 零填充，安全缺省）
-            uint64_t safe_addr = 0;
-            if (auto *rdm = graphics_context->GetSSBOBufferRegistry())
-                safe_addr = rdm->GetNullRowAddress();
-            guard.data_index_row_buffer->GetGPUBuffer()->Write(&safe_addr, 0, sizeof(safe_addr));
+            uint64_t row_addr = 0;
+            if (auto *font_device = graphics_context ? graphics_context->GetDevice() : nullptr)
+                row_addr = font_device->GetBufferDeviceAddressAligned16(
+                    resources.texture_layer_buffer->GetGPUBuffer()->GetVkDeviceBuffer());
+            if (row_addr == 0)
+            {
+                GLogError("[TextPipeline] texture layer row address unavailable -- font resources aborted");
+                return nullptr;
+            }
+            guard.data_index_row_buffer->GetGPUBuffer()->Write(&row_addr, 0, sizeof(row_addr));
         }
 
-        // 注意：mtl_data_addrs（8B 设备地址表）声明在 PerObject set，
-        // 与 b14/15/16 + mesh_draw_params 同集——绑到 per_object_mp；mtl_texture_layer_rows 在 Material set。
-        // 同样不注册 ResourceDomain（多字体同地址注册会互相释放 buffer，见上方注释）。
+        // mtl_data_addrs（8B 设备地址表）声明在 PerObject set，
+        // 与 b14/15/16 + mesh_draw_params 同集——绑到 per_object_mp。
+        // 不注册 ResourceDomain（多字体同地址注册会互相释放 buffer，见上方注释）。
         const char *data_rows_name = graph::mtl::SBS_MaterialDataAddresses.name;
 
         if (!guard.per_object_mp->BindSSBO(data_rows_name,
@@ -540,10 +531,8 @@ namespace hgl::ecs
         resources.tile_font = guard.tile_font.release();
         resources.material = guard.material;
         resources.per_object_mp = guard.per_object_mp;
-        resources.material_mp = guard.material_mp;
         resources.descriptor_binding_set = guard.descriptor_binding_set;
         guard.per_object_mp = nullptr;
-        guard.material_mp = nullptr;
         guard.descriptor_binding_set = nullptr;
         guard.committed = true;
 

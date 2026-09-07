@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/type/UnorderedMap.h>
@@ -46,8 +46,7 @@ namespace hgl
                 graph::TileFont* tile_font = nullptr;
                 graph::ShaderProgram* material = nullptr;
                 graph::Pipeline* pipeline = nullptr;
-                graph::MaterialParameters* per_object_mp = nullptr;   ///<每字体独立 PerObject 描述符集（b14/15/16 + mesh_draw_params）
-                graph::MaterialParameters* material_mp = nullptr;     ///<每字体独立 Material 描述符集（texture_layer_rows + data_index_rows）
+                graph::MaterialParameters* per_object_mp = nullptr;   ///<每字体独立 PerObject 描述符集（b14/15/16 + mesh_draw_params + mtl_data_addrs）
                 graph::DeviceBuffer* texture_layer_buffer = nullptr;
                 graph::DeviceBuffer* data_index_row_buffer = nullptr;
                 graph::DeviceBuffer* mesh_draw_params = nullptr;    ///<mesh per-draw 参数表（row 0——每字体单 draw）

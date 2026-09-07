@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/mtl/DescriptorSetLayoutAllocator.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
@@ -159,7 +159,6 @@ namespace hgl::graph::mtl
             // 运行时不再有名字表/动态分配兜底。
             bool AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding);      ///< 顶点数据（Position/UV/NTB）
             bool AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits);                                 ///< 材质数据行表（binding=PerObjectBinding::PrivateDataIndex）
-            bool AddSSBOTextureLayer(const uint32_t flag_bits,const int binding);           ///< 纹理层表
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
 

@@ -1,4 +1,4 @@
-﻿#include<hgl/mtl/ShaderBuildContext.h>
+#include<hgl/mtl/ShaderBuildContext.h>
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
@@ -177,10 +177,6 @@ bool ShaderBuildContext::AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bit
                    row.binding);
 }
 
-bool ShaderBuildContext::AddSSBOTextureLayer(const uint32_t flag_bits,const int binding)
-{
-    return AddSSBO(flag_bits,DescriptorSetType::Material,SBS_MaterialTextureLayerRows.struct_name,SBS_MaterialTextureLayerRows.name,binding);
-}
 
 bool ShaderBuildContext::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {

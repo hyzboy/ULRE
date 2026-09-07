@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/MaterialRecipe.h>
@@ -43,8 +43,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     descriptor_builder_common::AppendDefinitionMaterialDescriptors(
         descriptors,
         definition,
-        uint32_t(hgl::graph::kMeshFragment),
-        opt.material_texture_layer_table_stage_flags);
+        uint32_t(hgl::graph::kMeshFragment));
 
     return descriptors;
 }
@@ -69,11 +68,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     // 顶点数据 SSBO（MeshShader 方向）：按需求语义注入顶点 SSBO 绑定
     // 顶点数据 SSBO 已随 Vertex 集退场（顶点流 BDA 化）——顶点数据经 MeshDrawParams
     // 行内基址到达 shader，描述符契约不再包含任何 Vertex 行。
-    if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
-     || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(
-            descriptors,
-            manifest,
-            definition.material_private_data != SSBOType::UserDefined))
+    if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest))
         return {};
 
     return descriptors;

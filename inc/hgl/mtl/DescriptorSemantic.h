@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/type/EnumUtil.h>
 #include <hgl/CoreType.h>
@@ -30,7 +30,6 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(MaterialPrivateDataIndex) \
     HGL_SEMANTIC(MaterialTexture) \
     HGL_SEMANTIC(MaterialSampler) \
-    HGL_SEMANTIC(MaterialTextureLayerTable) \
     HGL_SEMANTIC(MaterialColorPalette)
 
     enum class DescriptorSemantic : uint8
@@ -93,7 +92,6 @@ namespace hgl::graph::mtl
             case DescriptorSemantic::MaterialPrivateData:
             case DescriptorSemantic::MaterialPrivateDataIndex:
 
-            case DescriptorSemantic::MaterialTextureLayerTable:
 
                 return DescriptorSemanticLayer::SSBO;
 

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/DescriptorResourceCatalog.h>
@@ -188,33 +188,10 @@ inline void PushMaterialPrivateDataIndexRows(std::vector<SerializedDescriptorEnt
     MergeSSBODescriptor(v, entry);
 }
 
-inline void PushMaterialTextureLayerRows(
-    std::vector<SerializedDescriptorEntry> &v,
-    const uint32_t stage_flags,
-    const bool has_policy = false,
-    const bool required = true,
-    const bool allow_fallback = false)
-{
-    // Arena+BDA 路径：句柄随数据行尾下发。由调用方把关——
-    // 仅"无数据槽"材质（句柄无处安放）保留本全局纹理行表描述符；
-    // 有数据槽的材质在 arena 下不再需要它。
-
-    SerializedDescriptorEntry entry{
-        DescriptorSetType::Material, stage_flags,
-        "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable,
-        TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
-    };
-    entry.has_requirement_policy = has_policy;
-    entry.required = required;
-    entry.allow_fallback = allow_fallback;
-    v.push_back(entry);
-}
-
 inline void AppendDefinitionMaterialDescriptors(
     std::vector<SerializedDescriptorEntry> &v,
     const MaterialDefinition &definition,
-    const uint32_t stage_flags,
-    const uint32_t texture_layer_table_stage_flags)
+    const uint32_t stage_flags)
 {
     // 单槽化：固定 slot 0 / DefaultMaterialPrivateDataSlotName
     if (definition.material_private_data != SSBOType::UserDefined)
@@ -230,17 +207,8 @@ inline void AppendDefinitionMaterialDescriptors(
         PushMaterialPrivateDataIndexRows(v, stage_flags);
     }
 
-    // P1-2e：mtl_texture_layer_rows 仅当材质声明纹理槽时才要求。
-    // 有数据槽但无纹理槽的材质（PureColor 等）不再隐式要求
-    // MaterialTextureLayerTable；纹理层行表改由
-    // AppendManifestTextureLayerDescriptors（manifest 元数据）或此处
-    // texture_slot_decls 声明提供。
-    //
-    // 有数据槽的材质句柄走行尾，不再需要纹理行表；
-    // 无数据槽材质（如 UnlitTexture）句柄无处安放——保留全局纹理行表。
-    if (!definition.texture_slot_decls.empty()
-     && definition.material_private_data == SSBOType::UserDefined)
-        PushMaterialTextureLayerRows(v, texture_layer_table_stage_flags);
+    // 纹理句柄已全部随数据槽行尾（tex_tail）下发——mtl_texture_layer_rows
+    // 描述符与 Material 集行表已退场，不再注入任何纹理行表条目。
 }
 
     // strcmp 包装（唯一实现，原三处副本收敛于此）：
@@ -337,12 +305,9 @@ inline bool PushManifestSSBO(
     if (!IsMaterialSSBOType(ssbo.ssbo_type))
         return false;   // 调用方置 ResourceConflict
 
-    entry.set_type = DescriptorSetType::Material;
-    entry.semantic = DescriptorSemantic::MaterialPrivateData;
-    entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-
+    // 数据槽无描述符（BDA 行尾寻址）——仅需求行表条目，schema 不再含数据槽本身
     PushMaterialPrivateDataIndexRows(v, entry.stage_flags);
-    return MergeSSBODescriptor(v, entry);
+    return true;
 }
 
 
@@ -363,37 +328,6 @@ inline bool AppendManifestSSBODescriptors(
     return true;
 }
 
-inline bool AppendManifestTextureLayerDescriptors(
-    std::vector<SerializedDescriptorEntry> &v,
-    ShaderCodeResourceManifest &manifest,
-    const bool definition_has_data_slot)
-{
-    // Arena+BDA：有数据槽的材质句柄走行尾；无数据槽材质保留纹理行表
-    if (definition_has_data_slot)
-        return true;
-
-    for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
-    {
-        const auto &layer = manifest.texture_layers[i];
-        SerializedDescriptorEntry entry{};
-        entry.set_type = DescriptorSetType::Material;
-        entry.stage_flags = layer.stage_flags;
-        entry.name = "mtl_texture_layer_rows";
-        entry.struct_name = "TextureLayerRows";
-        entry.semantic = DescriptorSemantic::MaterialTextureLayerTable;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        entry.has_requirement_policy = true;
-        entry.required = layer.required;
-        entry.allow_fallback = layer.allow_fallback;
-        if (!MergeSSBODescriptor(v, entry))
-        {
-            manifest.error = ShaderCodeResourceManifestError::ResourceConflict;
-            return false;
-        }
-    }
-
-    return true;
-}
 
 // Provider modules may declare their own "mtl"-style data-slot SSBO purely via
 // manifest metadata (`@ulre ssbo ...`), without the material TOML also listing it

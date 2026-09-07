@@ -68,10 +68,10 @@ namespace hgl::graph
         Unknown=-1,        ///<Phase 7 拼写修正：Unknown（枚举值不变，序列化契约不受影响）
 
         Scene=0,        ///< 全局 UBO 集（camera/sky/viewport/color_palette），所有材质共用，一帧写/绑一次
-        PerObject,      ///< per-object/per-draw SSBO 集（l2w/l2w_index/material_private_data_index/mesh_draw_params）
-        Material,       ///< per-material 描述符集（mtl 数据槽/索引表）
-        Bindless,       ///< 全局 Bindless 纹理数组集合（Set 3），一帧绑一次
-                        ///< （Vertex 集已随顶点流 BDA 化退场——顶点数据经 MeshDrawParams 行内基址寻址）
+        PerObject,      ///< per-object/per-draw SSBO 集（l2w/l2w_index/mtl_data_addrs/mesh_draw_params）
+        Bindless,       ///< 全局 Bindless 纹理数组集合（Set 2），一帧绑一次
+                        ///< （Vertex/Material 集已随 BDA 化退场——顶点流与材质行均经
+                        ///<  MeshDrawParams 行内基址 / 地址行表寻址，无 per-material 描述符）
 
         ENUM_CLASS_RANGE(Scene,Bindless)
     };
@@ -82,7 +82,6 @@ namespace hgl::graph
     {
         "Scene",
         "PerObject",
-        "Material",
         "Bindless"
     };
 
@@ -129,7 +128,6 @@ namespace hgl::graph
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Scene,    "SCENE_SET",                 nullptr,                                   -1,
             "// ── Descriptor Set 索引 ──",                            true, true},
         {DescriptorMacroKind::SetIndex,DescriptorSetType::PerObject,"PER_OBJECT_SET",            nullptr,                                   -1, nullptr},
-        {DescriptorMacroKind::SetIndex,DescriptorSetType::Material, "MATERIAL_SET",              nullptr,                                   -1, nullptr},
 
         {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"L2W_SET",                   "PER_OBJECT_SET",                          -1,
             "// ── PerObject set ──",                                  true, true},

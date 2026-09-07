@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/graph/ShaderBufferSource.h>
 #include <hgl/graph/ubo/UBOShaderSources.h>
@@ -11,9 +11,6 @@ namespace hgl::graph::mtl
     };
     constexpr const ShaderBufferSource SBS_LocalToWorldIndex{
         DescriptorSetType::PerObject, "l2w_index", "LocalToWorldIndex"
-    };
-    constexpr const ShaderBufferSource SBS_MaterialTextureLayerRows{
-        DescriptorSetType::Material,  "mtl_texture_layer_rows", "TextureLayerRows"
     };
     // 每 draw 项 → 材质数据行设备地址表（8B 行，W3.3 起为唯一行表；
     // 取代旧 mtl_private_data_index 4B 行号表）。

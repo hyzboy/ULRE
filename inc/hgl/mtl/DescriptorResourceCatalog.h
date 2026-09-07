@@ -56,12 +56,6 @@ namespace hgl::graph::mtl
         { DescriptorSemantic::LocalToWorldIndex,    ResourceCatalogClass::PerDraw, &SBS_LocalToWorldIndex,              DescriptorSetType::PerObject, int(PerObjectBinding::L2WIndex),         SSBOType::LocalToWorldIndex,        false },
         { DescriptorSemantic::MeshDrawParams,       ResourceCatalogClass::PerDraw, &SBS_MeshDrawParams,                 DescriptorSetType::PerObject, int(PerObjectBinding::MeshDrawParams),   SSBOType::UserDefined,              true  },
         { DescriptorSemantic::MaterialPrivateDataIndex, ResourceCatalogClass::PerDraw, &SBS_MaterialDataAddresses,          DescriptorSetType::PerObject, int(PerObjectBinding::PrivateDataIndex), SSBOType::MaterialPrivateDataIndex, false },
-
-        // ── MaterialData：Material 集（binding=slot/槽数，per-material 动态）──
-        { DescriptorSemantic::MaterialPrivateData,       ResourceCatalogClass::MaterialData, nullptr,                     DescriptorSetType::Material, -1, SSBOType::UserDefined,    false },
-        { DescriptorSemantic::MaterialTextureLayerTable, ResourceCatalogClass::MaterialData, &SBS_MaterialTextureLayerRows, DescriptorSetType::Material, -1, SSBOType::TextureLayer, false },
-        { DescriptorSemantic::MaterialTexture,           ResourceCatalogClass::MaterialData, nullptr,                     DescriptorSetType::Material, -1, SSBOType::UserDefined,    false },
-        { DescriptorSemantic::MaterialSampler,           ResourceCatalogClass::MaterialData, nullptr,                     DescriptorSetType::Material, -1, SSBOType::UserDefined,    false },
     };
 
     constexpr const size_t DESCRIPTOR_RESOURCE_CATALOG_COUNT=

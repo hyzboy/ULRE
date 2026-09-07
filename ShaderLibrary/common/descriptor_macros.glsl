@@ -30,10 +30,6 @@
 #define PER_OBJECT_SET 1
 #endif
 
-#ifndef MATERIAL_SET
-#define MATERIAL_SET 2
-#endif
-
 // ── PerObject set ──
 
 #ifndef L2W_SET
@@ -86,7 +82,7 @@
 #endif
 
 #ifndef BINDLESS_SET
-#define BINDLESS_SET 3
+#define BINDLESS_SET 2
 #endif
 
 #endif // DESCRIPTOR_MACROS_GLSL

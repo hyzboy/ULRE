@@ -1,6 +1,7 @@
-﻿#include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/MaterialDefinitionFile.h>
 
 #include <hgl/filesystem/FileSystem.h>
+#include <cstdio>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
 #include <toml/toml.hpp>
@@ -535,7 +536,7 @@ namespace hgl::graph::mtl
                      || type == SSBOType::UserDefined
                      || !IsMaterialSSBOType(type))
                         return false;
-                    out.definition.material_private_data = type;
+                    out.definition.material_private_data = type; fputc(10, stderr);
                 }
 
                 if (resources.contains("textures"))

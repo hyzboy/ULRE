@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/CoreType.h>
 #include<hgl/color/Color4f.h>
@@ -74,10 +74,21 @@ namespace hgl::graph::ssbo
         uint32 reserved0[1];                    ///<补齐至 16B 整倍数
     };//struct TransmissionSurfaceRow: 48B = 3 blocks
 
+    /// 纯纹理材质行（无数据槽 payload，只有句柄尾）——取代旧 Material 集
+    /// mtl_texture_layer_rows 行表（句柄含义与旧 TextureLayerRowsData 逐槽一致）
+    struct TextureLayerRow
+    {
+        MaterialDataRowTexTail tex_tail;
+
+        uint32 reserved0[2];                    ///<补齐至 16B 整倍数
+    };//struct TextureLayerRow: 48B = 3 blocks
+
     static_assert(sizeof(PBRSurfaceRow)                %16==0);
     static_assert(sizeof(EmissiveSurfaceRow)           %16==0);
     static_assert(sizeof(TextureRectArraySurfaceRow)   %16==0);
     static_assert(sizeof(TransmissionSurfaceRow)       %16==0);
+    static_assert(sizeof(TextureLayerRow)              %16==0);
+    static_assert(sizeof(TextureLayerRow)==48);    //与 SSBOTypes.h GetSSBOTypeStructStride(TextureLayer) 配对
 
     static_assert(sizeof(PBRSurfaceRow)==80);
     static_assert(offsetof(PBRSurfaceRow,tex_tail)==32);

@@ -4,7 +4,7 @@
 // @ulre priority 0
 // @ulre slot material_source_provider
 // @ulre require ProducedSemantic UV0
-// @ulre texture_layer base_color Fragment optional fallback
+// @ulre ssbo mtl_private_data TextureLayer 0 Fragment optional fallback
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end
@@ -16,7 +16,8 @@
 
 vec4 SampleMaterialColor(MaterialSourceInput sourceInput)
 {
-    const uint handle = mtl_texture_layer_rows.data[sourceInput.dataIndex].base_color;
+    // Arena+BDA：句柄在 TextureLayerRow 行尾（地址行表取行指针）
+    const uint handle = MTL_ROW(sourceInput.dataIndex).tex_base_color;
     return Sample2D(handle, TrilinearSampler, sourceInput.surface.uv0);
 }
 

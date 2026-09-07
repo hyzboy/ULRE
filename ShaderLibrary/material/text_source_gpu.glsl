@@ -5,7 +5,7 @@
 // @ulre slot material_source_provider
 // @ulre require ProducedSemantic UV0
 // @ulre require ProducedSemantic Color
-// @ulre texture_layer base_color Fragment required
+// @ulre ssbo mtl_private_data TextureLayer 0 Fragment required
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end
@@ -80,7 +80,7 @@ void EvalTextStyleEffects(
         const vec2 off = unpackHalf2x16(st.shadow_uv_offset);
         const float shadow_sdf =
             Sample2D(
-                mtl_texture_layer_rows.data[sourceInput.dataIndex].base_color,
+                MTL_ROW(sourceInput.dataIndex).tex_base_color,
                 TEXT_SAMPLER,
                 sourceInput.surface.uv0 - off).r * 2.0 - 1.0;
         // 阴影跟随加粗（同为字身边界外扩）
@@ -111,7 +111,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
     const vec4 textColor = sourceInput.surface.vertexColor;
     const float rawSample =
         Sample2D(
-            mtl_texture_layer_rows.data[sourceInput.dataIndex].base_color,
+            MTL_ROW(sourceInput.dataIndex).tex_base_color,
             TEXT_SAMPLER,
             sourceInput.surface.uv0).r;
 
@@ -145,7 +145,7 @@ float EvalMaterialAlpha(MaterialSourceInput sourceInput)
 {
     const float rawSample =
         Sample2D(
-            mtl_texture_layer_rows.data[sourceInput.dataIndex].base_color,
+            MTL_ROW(sourceInput.dataIndex).tex_base_color,
             TEXT_SAMPLER,
             sourceInput.surface.uv0).r;
 

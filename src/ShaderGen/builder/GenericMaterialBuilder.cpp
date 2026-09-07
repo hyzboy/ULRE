@@ -360,35 +360,15 @@ namespace hgl::graph::mtl
                         {
                             if (entry.semantic == DescriptorSemantic::SkyInfo)
                                 return true;
-                            if (entry.set_type
-                                != DescriptorSetType::Material)
-                                return false;
-                            if (!plan.coverage.
-                                    requires_alpha_evaluation)
-                                return true;
-
-                            switch (entry.semantic)
-                            {
-                            case DescriptorSemantic::MaterialTexture:
-                            case DescriptorSemantic::MaterialSampler:
-                                return !plan.coverage.requires_texture
-                                    || entry.texture_slot
-                                        != plan.coverage.texture_slot;
-                            case DescriptorSemantic::MaterialPrivateData:
-                                return !plan.coverage.
-                                    requires_material_data;
-                            case DescriptorSemantic::MaterialPrivateDataIndex:
-                                return !plan.effective_vertex_varying.
-                                    emit_data_index_id;
-                            case DescriptorSemantic::
-                                MaterialTextureLayerTable:
-                                return !plan.coverage.requires_texture;
-                            case DescriptorSemantic::MaterialColorPalette:
+                            // Material 集已退场；仅按语义裁剪变体差异项
+                            if (entry.semantic == DescriptorSemantic::MaterialColorPalette)
                                 return !plan.effective_vertex_varying.
                                     emit_vertex_color_from_palette;
-                            default:
-                                return true;
-                            }
+                            if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
+                                return !plan.effective_vertex_varying.
+                                    emit_data_index_id;
+                            // 其余（L2W/MeshDrawParams/数据槽/UBO）深度变体恒保留
+                            return false;
                         }),
                     plan.descriptors.end());
             }

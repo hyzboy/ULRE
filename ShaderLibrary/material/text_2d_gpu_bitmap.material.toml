@@ -26,4 +26,5 @@ varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color"]
 mode = "CharQuad"
 
 [resources]
+material_data = { type = "TextureLayer" }
 samplers = ["Nearest"]

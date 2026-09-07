@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKVABList.h>
@@ -121,7 +121,7 @@ public:
 
     //以上设定在Begin开始后即不可改变
 
-    bool BindDescriptorSets(ShaderProgram *, MaterialParameters *override_per_object = nullptr, MaterialParameters *override_material = nullptr);
+    bool BindDescriptorSets(ShaderProgram *, MaterialParameters *override_per_object = nullptr);
 
     void BeginRendering(const VkRenderingInfo *ri)
     {

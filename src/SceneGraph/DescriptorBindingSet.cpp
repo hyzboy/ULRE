@@ -1,4 +1,4 @@
-﻿#include <hgl/graph/DescriptorBindingSet.h>
+#include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/vk/VKShaderProgram.h>
 #include <hgl/log/Log.h>
 
@@ -137,7 +137,6 @@ namespace hgl::graph
             switch (req.semantic)
             {
             case mtl::DescriptorSemantic::MaterialPrivateData:
-            case mtl::DescriptorSemantic::MaterialTextureLayerTable:
             case mtl::DescriptorSemantic::MaterialPrivateDataIndex:
             {
                 SSBOBinding binding;

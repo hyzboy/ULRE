@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/type/EnumUtil.h>
 #include <hgl/CoreType.h>
@@ -42,6 +42,7 @@ namespace hgl::graph::mtl
         case SSBOType::EmissiveSurface:
         case SSBOType::TextureRectArraySurface:
         case SSBOType::TransmissionSurface:
+        case SSBOType::TextureLayer:
         case SSBOType::UserDefined:
             return true;
         default:
@@ -92,7 +93,8 @@ namespace hgl::graph::mtl
         switch (type)
         {
         case SSBOType::TextureLayer:
-            return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
+            return 48;  // sizeof(TextureLayerRow)=tex_tail 40 + reserved 8
+                        //（与 MaterialDataRows.h 的 static_assert(sizeof(TextureLayerRow)==48) 配对）
         case SSBOType::MaterialPrivateDataIndex:
             return 0;  // dynamic: 单槽单列 uint32 per material
         case SSBOType::PBRSurface:

@@ -835,90 +835,6 @@ namespace hgl::ecs
                 }
                 break;
             }
-            // MaterialPrivateData 语义已随旧路径删除（W3.3）：材质数据经
-            // 地址行表 mtl_data_addrs 寻址，schema 不再产生该需求。
-            case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-            {
-                // The texture-layer rows live in the engine-managed domain SSBO
-                // keyed by the primitive's data-slot scope id (same scope as the
-                // per-batch data index rows). The collect side stores that scope
-                // in the resolved bindings; pipeline materials without an entity
-                // (Text2D) fall back to the normalized req.ssbo_id, which is
-                // exactly the domain address their own buffer was registered at.
-                uint32_t resolved_ssbo_id = req.ssbo_id;
-                if (batch)
-                {
-                    if (!resolve_recipe_batch_struct_ssbo_id(material, batch, req, resolved_ssbo_id))
-                    {
-                        log_bind_failure(material, batch, req, "unresolved MaterialTextureLayerTable binding");
-                        break;
-                    }
-                }
-
-                const graph::IGPUBuffer *table_buffer = resolve_domain_ssbo(
-                    graph::mtl::SSBOAddress{
-                        graph::mtl::SSBOType::TextureLayer,
-                        resolved_ssbo_id,
-                        0},
-                    "MaterialTextureLayerTable");
-
-                if (getenv("ULRE_ARENA_DEBUG"))
-                    GLogInfo("[ArenaTrace] bind TextureLayerTable: resolved_id=%u buffer=%p",
-                             resolved_ssbo_id, (void *)table_buffer);
-
-                if (table_buffer)
-                {
-                    if (!bind_ssbo(material, batch, req, table_buffer))
-                        log_bind_failure(material, batch, req, "bind MaterialTextureLayerTable failed");
-                }
-                else
-                {
-                    log_missing_ssbo_once(material, req, batch ? "unresolved scope binding and domain binding not found" : "domain binding not found", 0);
-                    if (batch && req.required)
-                        batch->descriptor_bind_valid = false;
-                }
-                break;
-            }
-            case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndex:
-            {
-                const graph::IGPUBuffer *table_buffer = nullptr;
-
-                // Prefer per-batch DataIndex rows SSBO (written in draw order by PrimitiveBatchPipeline).
-                if (batch && batch->material_data_index_rows_buffer)
-                    table_buffer = batch->material_data_index_rows_buffer->GetGPUBuffer();
-
-                // Fall back to domain SSBO.
-                if (!table_buffer)
-                {
-                    table_buffer = resolve_domain_ssbo(
-                        graph::mtl::SSBOAddress{
-                            req.ssbo_type,
-                            req.ssbo_id,
-                            req.material_private_data_slot},
-                        "MaterialPrivateDataIndex");
-                }
-
-                if (table_buffer)
-                {
-                    if (!bind_ssbo(material, batch, req, table_buffer))
-                        log_bind_failure(material, batch, req, "bind MaterialPrivateDataIndex failed");
-                }
-                else
-                {
-                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.material_private_data_slot));
-                    if (batch && req.required)
-                        batch->descriptor_bind_valid = false;
-                }
-                break;
-            }
-            case graph::mtl::DescriptorSemantic::MaterialTexture:
-            case graph::mtl::DescriptorSemantic::MaterialSampler:
-            {
-                // 纹理/采样器经 bindless RegisterTexture 回调通道注册，契约遍历
-                // 无 per-material 操作——显式 case 而非静默 default，与
-                // IsSemanticResolvable（bindless 通道可解析）语义对齐。
-                break;
-            }
             case graph::mtl::DescriptorSemantic::MaterialColorPalette:
             {
                 // P1-2a: color_palette 已迁至全局 Scene UBO 集（Set 0, binding=3），
@@ -1021,8 +937,6 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::MaterialPrivateData:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:
-            return true;
-        case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             return true;
         case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndex:
             return true;

@@ -26,5 +26,6 @@ varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color", "emit_style_i
 mode = "CharQuad"
 
 [resources]
+material_data = { type = "TextureLayer" }
 samplers = ["Linear"]
 defines = ["TEXT_SDF_ENABLED"]

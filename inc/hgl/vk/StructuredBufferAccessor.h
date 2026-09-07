@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VKBufferAccessBase.h>
 
@@ -142,7 +142,7 @@ private:
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
-        SetUBOMeta(desc ? desc->set_type : DescriptorSetType::Material, desc ? desc->name : "");
+        SetUBOMeta(desc ? desc->set_type : DescriptorSetType::PerObject, desc ? desc->name : "");
         if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();

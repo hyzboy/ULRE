@@ -47,7 +47,6 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::SkyInfo:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
-        case DescriptorSemantic::MaterialTextureLayerTable:
         case DescriptorSemantic::MaterialPrivateDataIndex:
             return true;
         default:
@@ -66,7 +65,6 @@ namespace hgl::graph::mtl
     }
 
     // Whether a program's resource schema requires per-instance runtime rows:
-    // a MaterialPrivateDataIndex / MaterialTextureLayerTable / MaterialPrivateData
     // descriptor must be fed from per-batch row buffers keyed by the entity's own
     // data_index, rather than a static binding. Shared by RenderPrimitiveCollectSystem
     // and PrimitiveBatchPipeline so both agree on the same contract.
@@ -78,8 +76,7 @@ namespace hgl::graph::mtl
             {
             case DescriptorSemantic::MaterialPrivateData:
             case DescriptorSemantic::MaterialPrivateDataIndex:
-            case DescriptorSemantic::MaterialTextureLayerTable:
-                return true;
+                    return true;
             default:
                 break;
             }
@@ -186,18 +183,6 @@ namespace hgl::graph::mtl
                 if (req.ssbo_id == MakeRecipeSSBOId(0))
                     req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
             }
-
-            if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
-             && req.ssbo_type == SSBOType::UserDefined)
-            {
-                req.ssbo_type = SSBOType::TextureLayer;
-            }
-            if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
-             && req.ssbo_id == MakeRecipeSSBOId(0))
-            {
-                req.ssbo_id = MakeRecipeSSBOId(static_cast<uint32_t>(req.texture_slot));
-            }
-
             if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
              && req.ssbo_type == SSBOType::UserDefined)
             {
@@ -360,7 +345,6 @@ namespace hgl::graph::mtl
 
             const bool requires_data_ssbo =
                 req.semantic == DescriptorSemantic::MaterialPrivateData
-             || req.semantic == DescriptorSemantic::MaterialTextureLayerTable
              || req.semantic == DescriptorSemantic::MaterialPrivateDataIndex;
             if (requires_data_ssbo)
             {

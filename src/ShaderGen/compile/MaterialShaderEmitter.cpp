@@ -1,4 +1,4 @@
-﻿/// MaterialShaderEmitter.cpp — GLSL 发射层实现（自 MaterialShaderCompiler.cpp 分离）
+/// MaterialShaderEmitter.cpp — GLSL 发射层实现（自 MaterialShaderCompiler.cpp 分离）
 ///
 /// S2-T2.1：纯函数，零决策——只把求解层已解出的状态（DescriptorSetLayoutAllocator /
 /// manifest / 槽位声明 / config）转成 GLSL 文本。本文件内容为整体搬移，行为逐字节不变。
@@ -121,10 +121,9 @@ bool BuildMaterialSSBODeclarations(
         // 行表存 64 位设备地址，shader 侧需要 64 位整型
         out_decls += "#extension GL_ARB_gpu_shader_int64 : require\n";
 
-        // 纯字段值结构（与旧路径 struct 同名）：供模块以值语义拷贝行内数据字段
-        out_decls += "struct ";
-        out_decls += struct_name;
-        out_decls += "\n{\n";
+        // GLSL struct 不允许空成员表——纯句柄行（TextureLayerRow）无 payload，
+        // 跳过纯字段值结构的发射
+        const bool has_payload = struct_codes && *struct_codes;
 
         std::string line;
         const char *p = struct_codes;
@@ -141,31 +140,43 @@ bool BuildMaterialSSBODeclarations(
             }
             line.clear();
         };
-        for (; *p; ++p)
-        {
-            if (*p == '\n')
-                FlushFieldLine();
-            else
-                line += *p;
-        }
-        FlushFieldLine();
 
-        out_decls += "};\n";
+        if (has_payload)
+        {
+            // 纯字段值结构（与旧路径 struct 同名）：供模块以值语义拷贝行内数据字段
+            out_decls += "struct ";
+            out_decls += struct_name;
+            out_decls += "\n{\n";
+
+            for (; *p; ++p)
+            {
+                if (*p == '\n')
+                    FlushFieldLine();
+                else
+                    line += *p;
+            }
+            FlushFieldLine();
+
+            out_decls += "};\n";
+        }
 
         // buffer_reference 行结构：材质数据字段 + 统一 bindless 纹理句柄尾
         out_decls += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer ";
         out_decls += row_struct;
         out_decls += "\n{\n";
 
-        p = struct_codes;
-        for (; *p; ++p)
+        if (has_payload)
         {
-            if (*p == '\n')
-                FlushFieldLine();
-            else
-                line += *p;
+            p = struct_codes;
+            for (; *p; ++p)
+            {
+                if (*p == '\n')
+                    FlushFieldLine();
+                else
+                    line += *p;
+            }
+            FlushFieldLine();
         }
-        FlushFieldLine();
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(TextureSlot::RANGE_SIZE); ++i)
         {
@@ -277,11 +288,11 @@ bool BuildCompileDefineDocument(
 }
 
 // ── Step 5d: Instance index table SSBO GLSL 声明 ─────────────────────────────
-// material_private_data_index_rows / mtl_texture_layer_rows / l2w_index 的 buffer
+// l2w_index 的 buffer
 // 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
 // descriptor_info 生成注入：mesh 阶段提供 l2w_index / material_private_data_index_rows
 //（含 ResolveTransformID / ResolveMaterialPrivateDataIndex），FS 阶段提供
-// mtl_texture_layer_rows（named-slot TextureLayerRowsData，见下方注入）。
+// （纹理句柄随数据槽行尾下发，行表描述符已退场）
 namespace
 {
     struct IndexTableSpec
@@ -354,28 +365,6 @@ std::string BuildFSIndexTableDecls(
              + ") readonly buffer MaterialDataAddresses\n{\n"
                "    uint64_t values[];\n"
                "} mtl_data_addrs;\n";
-    }
-
-    // 无数据槽材质（如 UnlitTexture/Text）：句柄走全局纹理行表，
-    // 该描述符存在时一并发射（有数据槽材质的句柄在行尾，不会注册它）
-    const ShaderDescriptor *tex_rows_sd =
-        descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name);
-    if (tex_rows_sd && tex_rows_sd->set >= 0 && tex_rows_sd->binding >= 0)
-    {
-        out += "struct TextureLayerRowsData\n{\n";
-        for (uint32_t i = 0;
-             i < static_cast<uint32_t>(TextureSlot::RANGE_SIZE); ++i)
-        {
-            out += "    uint ";
-            out += GetTextureSlotName(static_cast<TextureSlot>(i));
-            out += ";\n";
-        }
-        out += "};\n";
-        out += "layout(set=" + std::to_string(tex_rows_sd->set)
-              + ", binding=" + std::to_string(tex_rows_sd->binding)
-              + ") readonly buffer TextureLayerRowsBuffer\n{\n"
-                "    TextureLayerRowsData data[];\n"
-                "} mtl_texture_layer_rows;\n";
     }
 
     return out;
