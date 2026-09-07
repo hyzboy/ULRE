@@ -287,14 +287,10 @@ namespace hgl::graph::mtl
                     const RecipeSSBOAssetBinding &data_asset =
                         recipe.ssbo_assets.front();
 
-                    // UserDefined = 未解析类型：无法路由到任何行结构，显式失败
-                    if (data_asset.ssbo_type == SSBOType::UserDefined)
-                    {
-                        return SetBuildFailure(
-                            out_diagnostic,
-                            BindingBuildError::InvalidBindingTable);
-                    }
-
+                    // 注意：数据槽资产的 ssbo_type 在 BindingTable 阶段可能仍为
+                    // UserDefined（类型由后续 schema resolve 阶段补全——如
+                    // TextureQuad 的 TextureLayer 材质），此处只按 slot/id 路由，
+                    // 不再拒绝——拒绝会把真实材质整表判死。
                     if (!FindDataBinding(out_table,
                                          data_asset.material_private_data_slot,
                                          data_asset.ssbo_type))
