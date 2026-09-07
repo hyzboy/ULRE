@@ -23,6 +23,7 @@
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/RootAddressPush.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/graph/tile/TileData.h>
@@ -257,6 +258,19 @@ namespace hgl::ecs
 
             // EDS 1/2/3：pipeline 只保留 shader 部分——文字材质状态（alpha blend）渲染侧动态应用
             cmd->ApplyPipelineState(res.pipeline->GetConfig());
+
+            // RootAddresses push constant：每字体一次（draw 前）。A3-1：mesh shader 经
+            // pc_root.addr_mesh_draw_params 解引用参数表 row 0；文本三表地址一并下发
+            //（A3-4 shader 消费——asb 内部 buffer 已带 SHADER_DEVICE_ADDRESS usage，可取即填）。
+            graph::PushRootAddresses(
+                cmd,
+                frame_device,
+                res.material->GetPipelineLayout(),
+                res.mesh_draw_params ? res.mesh_draw_params->GetGPUBuffer() : nullptr,
+                nullptr, nullptr, nullptr,
+                res.char_info_asb     ? res.char_info_asb->GetGPUBuffer() : nullptr,
+                res.char_style_asb    ? res.char_style_asb->GetGPUBuffer() : nullptr,
+                res.char_instance_asb ? res.char_instance_asb->GetGPUBuffer() : nullptr);
 
             // Bind GPU text SSBOs (b14/b15/b16) + mesh_draw_params 到每字体独立 PerObject 集
             if (res.per_object_mp)

@@ -26,6 +26,7 @@
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/graph/ShaderBufferSources.h>
+#include <hgl/graph/RootAddressPush.h>
 #include <hgl/vk/VKRenderAssign.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
@@ -778,6 +779,16 @@ namespace hgl::ecs
 
         // P2：单 Line buffer（删 4 slot 分组 + SetLineWidth）——一次 DrawMeshTasks
         line_buffer_.material = material_;
+
+        // RootAddresses push constant：Line 单 draw（参数表 row 0，gl_DrawID=0）——
+        // mesh shader 经 pc_root.addr_mesh_draw_params 解引用参数表（A3-1）。
+        graph::PushRootAddresses(
+            cmd,
+            device_,
+            material_->GetPipelineLayout(),
+            line_buffer_.mesh_draw_params
+                ? line_buffer_.mesh_draw_params->GetGPUBuffer() : nullptr);
+
         line_buffer_.Draw(cmd);
 
         LinePeriodicLog(s_line_log_ticks[8], "[LineRenderPipeline] Render end: submitted_lines=%u expected_lines=%u",

@@ -28,12 +28,13 @@ namespace hgl::graph::mtl
         // sbo_vertex_index 转垫片宏（非索引几何该分支不执行——与旧
         // PARTIALLY_BOUND 语义一致）。
 
-        // mesh per-draw 参数表（IndirectMeshDraw）：替代 push constant——per-draw 段偏移经
+        // mesh per-draw 参数表（IndirectMeshDraw）：per-draw 段偏移经
         // gl_DrawID 查表（间接合批的关键：多命令一次 vkCmdDrawMeshTasksIndirectEXT 提交时
         // 每命令各自的参数只能靠 GPU 侧查表；直接绘制 gl_DrawID=0 → row 0）。
-        // 声明用 MESH_DRAW_PARAMS_SET/BINDING 宏（descriptor_macros.glsl 默认值）。
+        // 行表本体走 BDA（buffer_reference，MeshDrawParamsRef）——表地址由下方
+        // push constant pc_root.addr_mesh_draw_params 携带。
         // 字段顺序与 CPU 侧
-        // per-draw 参数行严格一致（std430 全 4 字节成员，24B 无 padding）——
+        // per-draw 参数行严格一致（24B 头部 + 8×uint64 基址 = 88B）——
         // 字段名/类型遍历 kMeshDrawParamsField*（ShaderBufferSources.h X 列表单一真源，
         // 与 CPU struct MeshDrawParams 同源，改字段只改那一处）。
         // gl_DrawID 在 mesh 阶段合法（GLSL_EXT_mesh_shader：vertex/task/mesh 输入）。
@@ -50,8 +51,27 @@ namespace hgl::graph::mtl
             ms += ";\n";
         }
         ms += "};\n";
-        ms += "layout(set=MESH_DRAW_PARAMS_SET, binding=MESH_DRAW_PARAMS_BINDING, std430) readonly buffer MeshDrawParamsData\n";
-        ms += "{ MeshDrawParams rows[]; } sbo_draw_params;\n";
+        // 行表本体走 BDA：地址由 push constant pc_root.addr_mesh_draw_params 携带，
+        // shader 经 buffer_reference 解引用（行表 buffer 以 SHADER_DEVICE_ADDRESS usage 创建）。
+        ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MeshDrawParamsRef { MeshDrawParams rows[]; };\n";
+        ms += "\n";
+        // RootAddresses push constant：7 张全局表设备地址——SSBO 全 BDA 化后的唯一
+        // 非 descriptor 根入口（无 set 无 binding；地址由 CPU 每 MaterialBatch push 一次）。
+        // 字段顺序与 CPU struct RootAddresses 严格一致（ShaderBufferSources.h
+        // HGL_ROOT_ADDRESSES_FIELD_LIST 遍历——与 MeshDrawParams 同源机制，改字段只改列表）。
+        ms += "layout(push_constant) uniform RootAddresses\n";
+        ms += "{\n";
+        for (uint32 field_index = 0;
+             field_index < kRootAddressesFieldCount;
+             ++field_index)
+        {
+            ms += "    ";
+            ms += kRootAddressesFieldGLSLTypes[field_index];
+            ms += " ";
+            ms += kRootAddressesFieldNames[field_index];
+            ms += ";\n";
+        }
+        ms += "} pc_root;\n";
         ms += "\n";
         // 全局可变参数行：模块函数（orient_world 等经 gl_InstanceIndex 宏）引用
         // first_instance——必须在 main 开头按 gl_DrawID 加载后使用点才生效

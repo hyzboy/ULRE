@@ -20,6 +20,7 @@
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/RootAddressPush.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 
@@ -315,6 +316,33 @@ namespace hgl::ecs
         if (!material->hasLocalToWorld())
         {
             transform_buffer=nullptr;
+        }
+
+        // RootAddresses push constant：每 MaterialBatch 渲染前一次（draw 之前）。A3-1：
+        // mesh shader 经 pc_root.addr_mesh_draw_params buffer_reference 解引用参数表行
+        //（rows[gl_DrawID]）；L2W/L2WIndex/mtl_data_addrs 地址一并下发（A3-2/3 起 shader
+        // 消费——行表 buffer 已带 SHADER_DEVICE_ADDRESS usage，地址可取即填）。
+        if (material_is_mesh && owner_batch && owner_batch->device)
+        {
+            graph::IGPUBuffer *l2w_gpu = nullptr;
+            if (transform_buffer)
+            {
+                auto *l2w_buf = transform_buffer->GetTransformDataBuffer();
+                if (l2w_buf)
+                    l2w_gpu = l2w_buf->GetGPUBuffer();
+            }
+
+            graph::PushRootAddresses(
+                cmd_buf,
+                owner_batch->device,
+                material->GetPipelineLayout(),
+                owner_batch->mesh_draw_params_buffer
+                    ? owner_batch->mesh_draw_params_buffer->GetGPUBuffer() : nullptr,
+                l2w_gpu,
+                owner_batch->l2w_index_buffer
+                    ? owner_batch->l2w_index_buffer->GetGPUBuffer() : nullptr,
+                owner_batch->material_data_index_rows_buffer
+                    ? owner_batch->material_data_index_rows_buffer->GetGPUBuffer() : nullptr);
         }
 
         if (owner_batch && owner_batch->has_batch_descriptor_overrides)
