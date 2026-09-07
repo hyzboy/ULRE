@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKBufferAccessBase.h>
@@ -490,7 +490,7 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
-        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, size, data, sharing_mode, loc);
+        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, size, data, sharing_mode, loc);
         if(!staged)
             return(nullptr);
 
@@ -519,7 +519,7 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
         ? ObjectNameBuilder("Memory")
         : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
 
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
 
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
