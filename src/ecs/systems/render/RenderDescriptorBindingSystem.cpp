@@ -7,7 +7,6 @@
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
@@ -343,7 +342,6 @@ namespace hgl::ecs
         const auto *viewport_ubo = ResolveViewportUBO();
         const auto *camera_ubo = ResolveCameraUBO();
         const auto *sky_ubo = ResolveSkyUBO();
-        auto *domain_manager = GetSSBOBufferRegistry(context);
 
         // P1: 全局 Scene UBO 描述符集 —— 一帧写一次（camera=0/sky=1/viewport=2/palette=3）。
         // camera/viewport 为所有材质必需；sky 与 color_palette 为可选（布局已带
@@ -368,146 +366,10 @@ namespace hgl::ecs
                         (const void *)sky_ubo);
         }
 
-        auto resolve_domain_ssbo = [&](const graph::mtl::SSBOAddress &address, const char *semantic_tag) -> const graph::IGPUBuffer *
-        {
-            if (!domain_manager)
-                return nullptr;
-
-            graph::SSBOBufferBinding binding{};
-            if (!domain_manager->TryGetBinding(address, binding) || !binding.buffer)
-                return nullptr;
-
-            const uint32_t expected_version = graph::mtl::GetSSBOTypeStructVersion(address.ssbo_type);
-            const uint32_t expected_stride = graph::mtl::GetSSBOTypeStructStride(address.ssbo_type);
-            if (expected_version > 0 && expected_stride > 0)
-            {
-                if (binding.element_stride != 0 && binding.element_stride != expected_stride)
-                {
-                    GLogError("[R11] Skip binding %s: type=%s ssbo_id=%u version=%u expected_stride=%u actual_stride=%u",
-                              semantic_tag ? semantic_tag : "UnknownSemantic",
-                              graph::mtl::GetSSBOTypeName(address.ssbo_type),
-                              address.ssbo_id,
-                              expected_version,
-                              expected_stride,
-                              binding.element_stride);
-                    return nullptr;
-                }
-            }
-
-            return binding.buffer->GetGPUBuffer();
-        };
-
-        auto validate_runtime_ssbo_stride = [&](const char *semantic_tag,
-                                                const graph::mtl::SSBOType ssbo_type,
-                                                const graph::IGPUBuffer *buffer,
-                                                const uint32_t element_count,
-                                                const uint32_t expected_stride_override = 0) -> bool
-        {
-            if (!buffer)
-                return false;
-
-            const uint32_t expected_version = graph::mtl::GetSSBOTypeStructVersion(ssbo_type);
-            const uint32_t expected_stride = expected_stride_override > 0
-                                           ? expected_stride_override
-                                           : graph::mtl::GetSSBOTypeStructStride(ssbo_type);
-            if (expected_version == 0 || expected_stride == 0)
-                return true;
-
-            if (element_count == 0)
-                return false;
-
-            const VkDeviceSize byte_size = buffer->GetSize();
-            if (byte_size == 0)
-            {
-                GLogError("[R11] Skip binding %s: type=%s version=%u invalid byte_size=0",
-                          semantic_tag ? semantic_tag : "UnknownSemantic",
-                          graph::mtl::GetSSBOTypeName(ssbo_type),
-                          expected_version);
-                return false;
-            }
-
-            const VkDeviceSize min_required = static_cast<VkDeviceSize>(expected_stride) * static_cast<VkDeviceSize>(element_count);
-            if (byte_size < min_required)
-            {
-                GLogError("[R11] Skip binding %s: type=%s version=%u expected_stride=%u element_count=%u min_required=%llu actual_size=%llu",
-                          semantic_tag ? semantic_tag : "UnknownSemantic",
-                          graph::mtl::GetSSBOTypeName(ssbo_type),
-                          expected_version,
-                          expected_stride,
-                          element_count,
-                          static_cast<unsigned long long>(min_required),
-                          static_cast<unsigned long long>(byte_size));
-                return false;
-            }
-
-            if ((byte_size % expected_stride) != 0)
-            {
-                GLogError("[R11] Skip binding %s: type=%s version=%u expected_stride=%u invalid_byte_size=%llu",
-                          semantic_tag ? semantic_tag : "UnknownSemantic",
-                          graph::mtl::GetSSBOTypeName(ssbo_type),
-                          expected_version,
-                          expected_stride,
-                          static_cast<unsigned long long>(byte_size));
-                return false;
-            }
-
-            return true;
-        };
-
         const auto &cache = context->GetRenderFrameCache();
 
         std::unordered_set<const graph::ShaderProgram *> active_materials;
 
-        std::unordered_set<std::string> missing_ssbo_warned_keys;
-
-        auto log_missing_ssbo_once = [&](graph::ShaderProgram *material,
-                                         const graph::mtl::ShaderResourceSlot &req,
-                                         const char *reason,
-                                         int32_t slot = -1)
-        {
-            if (!material || req.name.empty())
-                return;
-
-            std::string key = material->GetName().c_str();
-            key += '|';
-            key += req.name;
-            key += '|';
-            key += std::to_string(static_cast<uint32_t>(req.semantic));
-            key += '|';
-            key += std::to_string(static_cast<uint32_t>(req.ssbo_type));
-            key += '|';
-            key += std::to_string(req.ssbo_id);
-            key += '|';
-            key += std::to_string(slot);
-            key += '|';
-            key += reason ? reason : "unknown";
-
-            if (!missing_ssbo_warned_keys.insert(std::move(key)).second)
-                return;
-
-            if (req.required)
-            {
-                GLogError("[DescriptorBinding] Missing SSBO binding: material=%s semantic=%s descriptor=%s type=%s ssbo_id=%u slot=%d reason=%s. Resource producer must register it via RegisterMaterialStructLayout(...) and SSBOBufferRegistry::RegisterBuffer(...).",
-                          material->GetName().c_str(),
-                          graph::mtl::GetDescriptorSemanticName(req.semantic),
-                          req.name.c_str(),
-                          graph::mtl::GetSSBOTypeName(req.ssbo_type),
-                          req.ssbo_id,
-                          slot,
-                          reason ? reason : "unknown");
-            }
-            else
-            {
-                GLogWarning("[DescriptorBinding] Missing SSBO binding: material=%s semantic=%s descriptor=%s type=%s ssbo_id=%u slot=%d reason=%s. Resource producer must register it via RegisterMaterialStructLayout(...) and SSBOBufferRegistry::RegisterBuffer(...).",
-                            material->GetName().c_str(),
-                            graph::mtl::GetDescriptorSemanticName(req.semantic),
-                            req.name.c_str(),
-                            graph::mtl::GetSSBOTypeName(req.ssbo_type),
-                            req.ssbo_id,
-                            slot,
-                            reason ? reason : "unknown");
-            }
-        };
         auto log_bind_failure = [&](graph::ShaderProgram *material,
                                     MaterialBatch *batch,
                                     const graph::mtl::ShaderResourceSlot &req,
@@ -599,124 +461,6 @@ namespace hgl::ecs
             return ok;
         };
 
-        auto bind_ssbo = [&](graph::ShaderProgram *material,
-                             MaterialBatch *batch,
-                             const graph::mtl::ShaderResourceSlot &req,
-                             const graph::IGPUBuffer *gpu) -> bool
-        {
-            if (!material || !gpu)
-                return false;
-
-            bool ok = false;
-
-            if (batch)
-            {
-                if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    ok = mp->BindSSBO(req.name.c_str(), gpu, false);
-            }
-            else
-            {
-                ok = material->BindSSBO(req.set_type, req.name.c_str(), gpu, false);
-            }
-
-            return ok;
-        };
-
-        auto resolve_recipe_batch_struct_ssbo_id = [&](graph::ShaderProgram *material,
-                                                       MaterialBatch *batch,
-                                                       const graph::mtl::ShaderResourceSlot &req,
-                                                       uint32_t &out_ssbo_id) -> bool
-        {
-            if (!batch)
-                return false;
-
-            bool found = false;
-            uint32_t ssbo_id = 0;
-
-            for (RenderItem *item : batch->items)
-            {
-                auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
-                if (!primitive_item)
-                    continue;
-
-                auto primitive_comp = primitive_item->GetPrimitiveComponent();
-                if (!primitive_comp)
-                    continue;
-
-                uint32_t candidate_ssbo_id = 0;
-                bool has_candidate = false;
-
-                if (auto *entity = primitive_item->GetEntity())
-                {
-                    auto material_comp = entity->GetComponent<MaterialComponent>();
-                    if (const auto *resolved = material_comp
-                        ? material_comp->FindResolvedSSBOBinding(
-                            req.name.c_str(), req.material_private_data_slot, req.ssbo_type)
-                        : nullptr)
-                    {
-                        candidate_ssbo_id = resolved->ssbo_id;
-                        has_candidate = true;
-                    }
-                }
-
-                if (!has_candidate)
-                {
-                    graph::mtl::MaterialRecipe effective_recipe{};
-                    if (primitive_comp->BuildResolvedAuthoringMaterialRecipe(effective_recipe, material))
-                    {
-                        if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
-                                effective_recipe, req.name.c_str(), req.material_private_data_slot, req.ssbo_type))
-                        {
-                            candidate_ssbo_id = asset->ssbo_id;
-                            has_candidate = true;
-                        }
-
-                        if (has_candidate)
-                        {
-                            if (auto *entity = primitive_item->GetEntity())
-                            {
-                                if (auto material_comp = entity->GetComponent<MaterialComponent>())
-                                    material_comp->SetResolvedSSBOBinding(
-                                        req.name.c_str(),
-                                        req.material_private_data_slot,
-                                        req.ssbo_type,
-                                        candidate_ssbo_id);
-                            }
-                        }
-                    }
-                }
-
-                if (!has_candidate)
-                    return false;
-
-                if (!found)
-                {
-                    ssbo_id = candidate_ssbo_id;
-                    found = true;
-                    continue;
-                }
-
-                if (ssbo_id != candidate_ssbo_id)
-                {
-                    GLogError("[DescriptorBinding] Recipe batch struct mismatch: material=%s semantic=%s descriptor=%s slot=%u expected_ssbo_id=%u actual_ssbo_id=%u.",
-                              material->GetName().c_str(),
-                              graph::mtl::GetDescriptorSemanticName(req.semantic),
-                              req.name.c_str(),
-                              req.material_private_data_slot,
-                              ssbo_id,
-                              candidate_ssbo_id);
-                    batch->descriptor_bind_valid = false;
-                    return false;
-                }
-            }
-
-            if (!found)
-                return false;
-
-            out_ssbo_id = ssbo_id;
-            return true;
-        };
-
         auto apply_requirement = [&](graph::ShaderProgram *material,
                                      MaterialBatch *batch,
                                      const graph::mtl::ShaderResourceSlot &req)
@@ -760,88 +504,9 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::LocalToWorld:
-            {
-                if (batch
-                 && batch->transform_buffer
-                 && material->hasLocalToWorld())
-                {
-                    auto *transform_data_buffer = batch->transform_buffer->GetTransformDataBuffer();
-                    const auto *transform_gpu_buffer = transform_data_buffer ? transform_data_buffer->GetGPUBuffer() : nullptr;
-
-                    if (transform_gpu_buffer)
-                    {
-                        if (!bind_ssbo(material, batch, req, transform_gpu_buffer))
-                            log_bind_failure(material, batch, req, "bind LocalToWorld SSBO failed");
-                        break;
-                    }
-                }
-                break;
-            }
-            case graph::mtl::DescriptorSemantic::LocalToWorldIndex:
-            {
-                const graph::IGPUBuffer *table_buffer = nullptr;
-
-                // Prefer the per-batch buffer written in draw order by PrimitiveBatchPipeline.
-                if (batch && batch->l2w_index_buffer)
-                {
-                    const auto *candidate = batch->l2w_index_buffer->GetGPUBuffer();
-                    const uint32_t element_count = static_cast<uint32_t>(batch->items.size());
-                    if (validate_runtime_ssbo_stride("LocalToWorldIndex",
-                                                     graph::mtl::SSBOType::LocalToWorldIndex,
-                                                     candidate,
-                                                     element_count,
-                                                     sizeof(uint32_t)))
-                    {
-                        table_buffer = candidate;
-                    }
-                }
-
-                // W4 收敛：batch->transform_buffer 级与下方 TransformSystem 直接
-                // 解析同源（同一 TAB 实例）——删除，fallback 收敛为
-                // per-batch 行表 → TransformSystem 直接解析 → domain 缓存 3 级
-
-                // Pipeline-only materials (no MaterialBatch) still need l2w_index.
-                // Resolve from TransformSystem directly before falling back to domain cache.
-                if (!table_buffer && context)
-                {
-                    auto transform_system = context->GetSystem<TransformSystem>();
-                    if (transform_system)
-                    {
-                        transform_system->EnsureTransformBuffer();
-                        auto *transform_buffer = transform_system->GetTransformBuffer();
-                        if (transform_buffer)
-                        {
-                            auto *rows_buffer = transform_buffer->GetTransformIndexRowsBuffer();
-                            table_buffer = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
-                        }
-                    }
-                }
-
-                if (!table_buffer && domain_manager)
-                {
-                    table_buffer = resolve_domain_ssbo(
-                        graph::mtl::SSBOAddress{
-                            graph::mtl::SSBOType::LocalToWorldIndex,
-                            graph::mtl::ECSReservedSSBOId::LocalToWorldIndex,
-                            0},
-                        "LocalToWorldIndex");
-                }
-
-                if (table_buffer)
-                {
-                    if (!bind_ssbo(material, batch, req, table_buffer))
-                        log_bind_failure(material, batch, req, "bind LocalToWorldIndex failed");
-                }
-                break;
-            }
-            case graph::mtl::DescriptorSemantic::MaterialColorPalette:
-            {
-                // P1-2a: color_palette 已迁至全局 Scene UBO 集（Set 0, binding=3），
-                // 由拥有者（如 LineRenderPipeline）在初始化时写入全局集一次；RDBS 不再
-                // 按 per-material 注入。此处保留为 no-op 以维持契约遍历完整。
-                break;
-            }
+            // LocalToWorld/LocalToWorldIndex/MeshDrawParams/MaterialPrivateData* 等行表
+            // 语义已 BDA 化（A3-2/A5）：GLSL 无对应描述符声明 → 契约无相关 req ——
+            // 绑定解析 case 随 A5-3 删除（数据经 pc_root + buffer_reference 寻址）。
             default:
                 break;
             }
@@ -931,18 +596,16 @@ namespace hgl::ecs
             auto *env_manager = gc ? gc->GetEnvironmentManager() : nullptr;
             return env_manager && env_manager->GetSkyUBO(graph::kEnvProfileDefault);
         }
+        // 行表/材质数据/纹理语义已 BDA 化（A3/A5）：数据经 pc_root +
+        // buffer_reference 寻址，RDBS 不再绑任何 SSBO。此处保留恒 true 仅为
+        // 诊断静默——契约若含历史 req（A6 前过渡期），不误报 unresolved required。
         case graph::mtl::DescriptorSemantic::LocalToWorld:
         case graph::mtl::DescriptorSemantic::LocalToWorldIndex:
         case graph::mtl::DescriptorSemantic::MaterialColorPalette:
         case graph::mtl::DescriptorSemantic::MaterialPrivateData:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:
-            return true;
         case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndex:
-            return true;
-        // mesh per-draw 参数表：由 PrimitiveBatchPipeline 写行 +
-        // PipelineMaterialRenderer/TextRenderPipeline 绑定——有解析路径，非缺失
-        //（缺此 case 会造成"unresolved required contract"误报）
         case graph::mtl::DescriptorSemantic::MeshDrawParams:
             return true;
         case graph::mtl::DescriptorSemantic::Unknown:
