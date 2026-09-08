@@ -21,8 +21,9 @@
 #ifdef TEXT_SDF_ENABLED
 #define TEXT_SAMPLER LinearSampler
 
-// ── 字符样式表（与 mesh 阶段 MeshTemplateEmitter 生成的 CharStyleData 严格镜像，
-//    std430 40B；CPU/GPU 共用 CharStyle 定义，见 TextCharSSBO.h）──
+// ── 字符样式表（与 mesh 阶段 s1_text_char_quad 的 CharStyleData 严格镜像，
+//    buffer_reference 直读——基址经 pc_root.addr_text_char_style 下发；
+//    std430/scalar 均 40B，全 4B 标量成员无布局差；CPU/GPU 共用 CharStyle 定义，见 TextCharSSBO.h）──
 struct CharStyleData {
     uint  text_color;
     uint  outline_color;
@@ -35,9 +36,10 @@ struct CharStyleData {
     float scale;             // 缩放因子
     int   rotation;          // 旋转角度 (0/90/180/270)
 };
-layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buffer CharStyleDataBuf {
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer CharStyleDataRef {
     CharStyleData styles[];
-} sbo_char_style;
+};
+#define sbo_char_style CharStyleDataRef(pc_root.addr_text_char_style)
 
 // SDF 距离场编码跨度（±spread/2 → sdf 域 [-1,1]）：每像素 sdf 增量 = 2.0 / spread
 #define TEXT_SDF_SPREAD 8.0

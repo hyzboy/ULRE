@@ -259,15 +259,19 @@ namespace hgl::ecs
             // EDS 1/2/3：pipeline 只保留 shader 部分——文字材质状态（alpha blend）渲染侧动态应用
             cmd->ApplyPipelineState(res.pipeline->GetConfig());
 
-            // RootAddresses push constant：每字体一次（draw 前）。A3-1：mesh shader 经
-            // pc_root.addr_mesh_draw_params 解引用参数表 row 0；文本三表地址一并下发
-            //（A3-4 shader 消费——asb 内部 buffer 已带 SHADER_DEVICE_ADDRESS usage，可取即填）。
+            // RootAddresses push constant：每字体一次（draw 前）。mesh shader 经
+            // pc_root.addr_mesh_draw_params 解引用参数表 row 0；文本三表地址（A3-4
+            // 消费）+ mtl_data_addrs 行表（A3-3 起 FS 的 MTL_ROW 经 pc_root 取行——
+            // 文本材质行含 bindless 图集句柄，行 0 = data_index_row_buffer 的
+            // Text2D_DataAddresses；此前漏推 → 0 地址解引用 → 文本黑屏）。
             graph::PushRootAddresses(
                 cmd,
                 frame_device,
                 res.material->GetPipelineLayout(),
                 res.mesh_draw_params ? res.mesh_draw_params->GetGPUBuffer() : nullptr,
-                nullptr, nullptr, nullptr,
+                nullptr, nullptr,
+                res.data_index_row_buffer
+                    ? res.data_index_row_buffer->GetGPUBuffer() : nullptr,
                 res.char_info_asb     ? res.char_info_asb->GetGPUBuffer() : nullptr,
                 res.char_style_asb    ? res.char_style_asb->GetGPUBuffer() : nullptr,
                 res.char_instance_asb ? res.char_instance_asb->GetGPUBuffer() : nullptr);

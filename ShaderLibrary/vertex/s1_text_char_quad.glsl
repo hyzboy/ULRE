@@ -39,9 +39,10 @@ struct TextCharInfo {
     uint  uv_rb;        // half_right (low16) + half_bottom (high16) packed in uint32
 };
 
-layout(set=PER_OBJECT_SET, binding=TEXT_CHARINFO_BINDING, std430) readonly buffer TextCharInfoData {
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer TextCharInfoRef {
     TextCharInfo chars[];
-} sbo_char_info;
+};
+#define sbo_char_info TextCharInfoRef(pc_root.addr_text_char_info)
 
 // ── Per-style 数据（40 bytes per entry）──
 struct CharStyleData {
@@ -57,9 +58,10 @@ struct CharStyleData {
     int   rotation;         // rotation angle (0/90/180/270)
 };
 
-layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buffer CharStyleDataBuf {
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer CharStyleDataRef {
     CharStyleData styles[];
-} sbo_char_style;
+};
+#define sbo_char_style CharStyleDataRef(pc_root.addr_text_char_style)
 
 // ── Per-char-instance 数据（12 bytes per entry）──
 struct CharInstanceData {
@@ -68,8 +70,9 @@ struct CharInstanceData {
     int   rotation;     // 实例级旋转，与 CharStyleData.rotation 叠加
 };
 
-layout(set=PER_OBJECT_SET, binding=TEXT_CHARINSTANCE_BINDING, std430) readonly buffer CharInstanceDataBuf {
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer CharInstanceDataRef {
     CharInstanceData instances[];
-} sbo_char_instance;
+};
+#define sbo_char_instance CharInstanceDataRef(pc_root.addr_text_char_instance)
 
 #endif // S1_TEXT_CHAR_QUAD_GLSL
