@@ -531,18 +531,9 @@ namespace
         program_key.vertex_input_hash = 0x7104u;
 
         ShaderResourceSchema layout{};
-        ShaderResourceSlot data_resources{};
-        data_resources.logical_resource_id =
-            StableID("resource.material_data");
-        data_resources.resource_schema_id =
-            StableID("schema.PBRSurface");
-        data_resources.semantic =
-            DescriptorSemantic::MaterialPrivateDataIndex;
-        data_resources.material_private_data_slot = 0;
-        data_resources.ssbo_type = SSBOType::MaterialPrivateDataIndex;
-        data_resources.required = true;
-        data_resources.allow_fallback = false;
-        layout.resources.push_back(data_resources);
+        // A6-2b-b2：数据槽需求由编译期直判标志承载（原 Index req 桥接入口已删——
+        // 手工 schema 不再构造 MaterialPrivateDataIndex 条目，直接设标志）。
+        layout.requires_runtime_data_rows = true;
 
         MaterialRecipe recipe{};
         recipe.recipe_name = "BindingTableA";
@@ -789,8 +780,9 @@ namespace
                 "missing required material resource must remain explicit");
         }
 
-        ShaderResourceSchema fallback_layout = layout;
-        fallback_layout.resources[0].allow_fallback = true;
+        // A6-2b-b2：schema 不再承载 req 条目（allow_fallback 权限只来自 recipe——
+        // 原 resources[0] 的 allow_fallback 修改随 Index req 条目删除），直接复用 layout。
+        const ShaderResourceSchema &fallback_layout = layout;
         ResolvedBindingTable unresolved_fallback_table{};
         if (!BuildBindingTable(
                 missing_recipe,
@@ -1947,20 +1939,8 @@ namespace
         program_key.vertex_input_hash = 0x7204u;
 
         ShaderResourceSchema layout{};
-        ShaderResourceSlot data_resources{};
-        data_resources.logical_resource_id =
-            StableID("resource.material_data");
-        data_resources.resource_schema_id =
-            StableID("schema.PBRSurface");
-        data_resources.semantic =
-            DescriptorSemantic::MaterialPrivateDataIndex;
-        data_resources.material_private_data_slot = 0;
-        data_resources.ssbo_type = SSBOType::MaterialPrivateDataIndex;
-        data_resources.required = true;
-        data_resources.ssbo_type = SSBOType::PBRSurface;
-        data_resources.required = true;
-        data_resources.allow_fallback = false;
-        layout.resources.push_back(data_resources);
+        // A6-2b-b2：数据槽需求走编译期直判标志（Index req 桥接入口已删）。
+        layout.requires_runtime_data_rows = true;
 
         MaterialRecipe recipe;
         recipe.recipe_name = "shared-instance-regression";
@@ -2449,15 +2429,11 @@ namespace
                     const auto has_material_resource =
                         [](const ShaderBuildContext &spec)
                     {
-                        // Material 集已退场：剪枝语义落到行表（data index）资源
-                        for (const auto &requirement :
-                             spec.GetShaderResourceSchema().resources)
-                        {
-                            if (requirement.semantic
-                                == DescriptorSemantic::MaterialPrivateDataIndex)
-                                return true;
-                        }
-                        return false;
+                        // A6-2b-b2：数据槽需求不再以 MaterialPrivateDataIndex 契约条目
+                        // 表达——schema.requires_runtime_data_rows 直判承载（条件同
+                        // effective varying.emit_data_index_id，与原补录等价）。
+                        return spec.GetShaderResourceSchema()
+                            .requires_runtime_data_rows;
                     };
                     const auto has_sky_resource =
                         [](const ShaderBuildContext &spec)
@@ -3289,23 +3265,9 @@ namespace
                  || manifest_2d.ssbos[0].material_private_data_slot != 0)
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare one PBRSurface material SSBO");
-
-                const std::vector<SerializedDescriptorEntry> descriptors =
-                    BuildDescriptorsFromDefinition(MaterialDefinition{}, manifest_2d);
-                // Arena+BDA：数据槽 provider 必须产出地址行表条目（行尾句柄寻址）；
-                // 层表描述符（mtl_texture_layer_rows/Material 集）已随 Material 集退场
-                bool has_data_index_rows = false;
-                for (const auto &entry : descriptors)
-                {
-                    if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
-                    {
-                        has_data_index_rows = true;
-                        break;
-                    }
-                }
-                if (!has_data_index_rows)
-                    result.diagnostics.emplace_back(
-                        "Texture2D providers must emit the material data index rows");
+                // A6-2b-b2：行表需求不再经契约条目（BuildDescriptorsFromDefinition 只产
+                // UBO）——数据槽信号由编译配置 material_private_data 直判（manifest 槽位
+                // 已在上方断言），不再检查 descriptors 的 MaterialPrivateDataIndex 条目。
             }
 
             const char *roots_array[] = {pbr_array->name, ntb_array->name};
@@ -3324,21 +3286,7 @@ namespace
                  || manifest_array.texture_layers[0].slot != TextureSlot::Custom0)
                     result.diagnostics.emplace_back(
                         "Texture2DArray providers must declare bindless Custom0 layer resources");
-
-                const std::vector<SerializedDescriptorEntry> descriptors =
-                    BuildDescriptorsFromDefinition(MaterialDefinition{}, manifest_array);
-                bool has_data_index_rows = false;
-                for (const auto &entry : descriptors)
-                {
-                    if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
-                    {
-                        has_data_index_rows = true;
-                        break;
-                    }
-                }
-                if (!has_data_index_rows)
-                    result.diagnostics.emplace_back(
-                        "Texture2DArray provider must emit the material data index rows");
+                // A6-2b-b2：同上——数据槽信号直判化，契约条目检查删除。
             }
 
             const char *derivative_root = ntb_derivative->name;
@@ -3735,7 +3683,8 @@ namespace
 
             // Arena+BDA：材质数据经设备地址行表寻址，断言行指针别名 /
             // 行引用声明 / 值结构三要素齐全且顺序稳定。
-            if (source.find("#define MTL_ROW(i) EmissiveSurfaceRow(mtl_data_addrs.values[(i)])") == std::string::npos)
+            // （A6-2b 对齐 A3-3 后发射：MTL_ROW 经 MaterialDataAddressesRef(pc_root.…) 解引用）
+            if (source.find("#define MTL_ROW(i) EmissiveSurfaceRow(MaterialDataAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)])") == std::string::npos)
                 result.diagnostics.emplace_back("arena row alias was not injected");
 
             if (count_occurrences("struct EmissiveSurfaceData") != 1)
@@ -3749,7 +3698,7 @@ namespace
             const size_t declaration = source.find(
                 "struct EmissiveSurfaceData");
             const size_t alias = source.find(
-                "#define MTL_ROW(i) EmissiveSurfaceRow(mtl_data_addrs.values[(i)])\n");
+                "#define MTL_ROW(i) EmissiveSurfaceRow(MaterialDataAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)])\n");
             if (extension == std::string::npos
              || declaration == std::string::npos
              || alias == std::string::npos
