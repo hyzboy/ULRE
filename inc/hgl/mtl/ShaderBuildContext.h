@@ -1,6 +1,5 @@
 #pragma once
 
-#include<hgl/mtl/DescriptorSetLayoutAllocator.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
 #include<hgl/mtl/ShaderCreateInfoMap.h>
 #include<hgl/mtl/ShaderLinkSpec.h>
@@ -34,7 +33,6 @@ namespace hgl::graph::mtl
             PrimitiveType primitive_type = PrimitiveType::Triangles;
             uint32_t shader_stage_flag_bits = 0;
 
-            DescriptorSetLayoutAllocator descriptor_allocator;                  ///<材质描述符分配器
             mtl::ShaderResourceSchema shader_resource_schema;                       ///<descriptor semantic contract (phase 2)
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
@@ -72,7 +70,6 @@ namespace hgl::graph::mtl
 
         public:
 
-            const DescriptorSetLayoutAllocator &GetDescriptorAllocator()const{return descriptor_allocator;}
             const mtl::ShaderResourceSchema &GetShaderResourceSchema()const{return shader_resource_schema;}
 
             void SetShaderResourceSchema(const mtl::ShaderResourceSchema &contract){shader_resource_schema=contract;}

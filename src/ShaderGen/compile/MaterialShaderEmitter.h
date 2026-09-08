@@ -5,8 +5,8 @@
 /// S2-T2.1：把「文本发射」从 MaterialShaderCompiler.cpp 中分离。
 ///
 /// 分工约定（S2 的核心不变量）：
-///   - **求解层**（MaterialShaderCompiler.cpp）：做决策——契约、描述符注册、槽位合并，
-///     产生 ShaderBuildContext 与 DescriptorSetLayoutAllocator 状态。
+///   - **求解层**（MaterialShaderCompiler.cpp）：做决策——契约、schema 构建、槽位合并，
+///     产生 ShaderBuildContext 状态。
 ///   - **发射层**（本文件 + .cpp）：**纯函数，零决策**——只把已解出的状态转成
 ///     ShaderDocument 和离线 GLSL 文本。
 
@@ -36,7 +36,6 @@ namespace hgl::graph::mtl
         ShaderStage stage,
         const char *material,
         const MaterialCompileConfig &config,
-        const DescriptorSetLayoutAllocator &descriptor_info,
         SSBOType material_private_data,
         ShaderDocument &out_document,
         ShaderDocumentDiagnostics &out_diagnostics);

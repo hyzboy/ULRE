@@ -2,7 +2,6 @@
 
 #include <hgl/mtl/ShaderStructureDump.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/mtl/DescriptorSetLayoutAllocator.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/graph/ssbo/TextureSlot.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
@@ -131,9 +130,10 @@ std::string DumpShaderStructure(const ShaderBuildContext &ctx, const char *label
         out += '\n';
     }
 
-    // ── 资源（结构 + 解出的 set/binding）──────────────────────────────────────
+    // ── 资源（结构 + set/binding）──────────────────────────────────────
+    // A6-2b 后契约恒只含 Scene UBO（全局集按帧绑，不注册进任何 per-material 分配器）——
+    // set/binding 不再有分配器可查，统一记 -1，文本按 set_type 区分 global/unallocated。
     const ShaderResourceSchema &schema = ctx.GetShaderResourceSchema();
-    const DescriptorSetLayoutAllocator &alloc = ctx.GetDescriptorAllocator();
 
     struct Row
     {
@@ -147,34 +147,15 @@ std::string DumpShaderStructure(const ShaderBuildContext &ctx, const char *label
 
     for (const ShaderResourceSlot &res : schema.resources)
     {
-        // 解出的 set/binding 取自分配器（文本断言检查的正是这两个数）
         int set = -1;
         int binding = -1;
-
-        if (res.semantic_layer == DescriptorSemanticLayer::UBO)
-        {
-            if (const UBODescriptor *ubo = alloc.GetUBO(res.name))
-            {
-                set = ubo->set;
-                binding = ubo->binding;
-            }
-        }
-        else if (res.semantic_layer == DescriptorSemanticLayer::SSBO)
-        {
-            if (const SSBODescriptor *ssbo = alloc.GetSSBO(res.name))
-            {
-                set = ssbo->set;
-                binding = ssbo->binding;
-            }
-        }
 
         Row row;
         row.set = set;
         row.binding = binding;
 
-        // 未在材质分配器中命中的两种情形要区分开：
-        //   Scene 全局集——按帧绑定，per-material 不注册（正常，非缺失）
-        //   其余——确实未解出（异常，值得注意）
+        // Scene 全局集——按帧绑定，无 per-material 分配器（正常，非缺失）
+        // 其余——未解出（异常，值得注意）
         const std::string set_text = set >= 0
             ? std::to_string(set)
             : (res.set_type == DescriptorSetType::Scene ? "global" : "unallocated");

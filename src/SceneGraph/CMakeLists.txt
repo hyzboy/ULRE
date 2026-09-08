@@ -25,7 +25,6 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/ShaderProgramLinkCache.h
                         ${SG_INCLUDE_PATH}/module/ShaderStageModuleCache.h
                         ${SG_INCLUDE_PATH}/module/ShaderProgramCreatePrecheckAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderProgramFinalizeFlowAdapter.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
@@ -40,7 +39,6 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/SamplerManager.cpp
                         module/ShaderProgramManager.cpp
                         module/ShaderProgramCreatePrecheckAdapter.cpp
-                        module/ShaderProgramFinalizeFlowAdapter.cpp
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp

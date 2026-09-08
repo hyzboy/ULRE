@@ -1,7 +1,7 @@
 /// MaterialShaderEmitter.cpp — GLSL 发射层实现（自 MaterialShaderCompiler.cpp 分离）
 ///
-/// S2-T2.1：纯函数，零决策——只把求解层已解出的状态（DescriptorSetLayoutAllocator /
-/// manifest / 槽位声明 / config）转成 GLSL 文本。本文件内容为整体搬移，行为逐字节不变。
+/// S2-T2.1：纯函数，零决策——只把求解层已解出的状态（schema / manifest /
+/// 槽位声明 / config）转成 GLSL 文本。
 
 #include "compile/MaterialShaderEmitter.h"
 #include "../document/DocumentFragmentBuilder.h"
@@ -89,7 +89,6 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
 // 单槽化：一个材质固定生成一个 buffer（MaterialPrivateData，slot 0，
 // 变量名固定 DefaultMaterialPrivateDataSlotName）。
 bool BuildMaterialSSBODeclarations(
-    const DescriptorSetLayoutAllocator &descriptor_info,
     const SSBOType material_private_data,
     std::string &out_decls,
     std::string &out_macros,
@@ -194,7 +193,6 @@ bool BuildMaterialSSBODeclarations(
 }
 
 bool BuildMaterialResourceDocument(
-    const DescriptorSetLayoutAllocator &descriptor_info,
     const SSBOType material_private_data,
     ShaderDocument &out_document,
     std::string &out_error)
@@ -205,7 +203,6 @@ bool BuildMaterialResourceDocument(
     std::string declarations;
     std::string macros;
     if (!BuildMaterialSSBODeclarations(
-            descriptor_info,
             material_private_data,
             declarations,
             macros,
@@ -287,17 +284,15 @@ bool BuildCompileDefineDocument(
     return true;
 }
 
-// ── Step 5d: Instance index table SSBO GLSL 声明 ─────────────────────────────
-// l2w_index 的 buffer
-// 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
-// descriptor_info 生成注入：mesh 阶段提供 l2w_index / material_private_data_index_rows
-//（含 ResolveTransformID / ResolveMaterialPrivateDataIndex），FS 阶段提供
-// （纹理句柄随数据槽行尾下发，行表描述符已退场）
+// ── Step 5d: Instance index table 行表 GLSL 声明 ─────────────────────────────
+// l2w_index 行表声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，
+// 统一由本生成器注入（A6-2b 去契约门后恒发射）：mesh 阶段提供 l2w_index
+//（ResolveTransformID）；FS 行表描述符已随 BDA 化退场（纹理句柄随数据槽行尾下发）。
 namespace
 {
     struct IndexTableSpec
     {
-        const char *sbs_name;        // descriptor_info 查询键（SBS_*.name）
+        const char *sbs_name;        // 历史名称记录（描述符时代键名，仅注释性）
         const char *buffer_name;     // buffer_reference 类型名（加 Ref 后缀）
         const char *var_name;        // （旧描述符对象名——BDA 化后无对象，仅保留作注释性记录）
         const char *resolve_func;    // 为空则仅生成 buffer 声明
@@ -458,7 +453,6 @@ bool BuildMaterialStageDocument(
     const ShaderStage stage,
     const char *material,
     const MaterialCompileConfig &config,
-    const DescriptorSetLayoutAllocator &descriptor_info,
     const SSBOType material_private_data,
     ShaderDocument &out_document,
     ShaderDocumentDiagnostics &out_diagnostics)
@@ -540,7 +534,6 @@ bool BuildMaterialStageDocument(
     ShaderDocument resources;
     std::string error;
     if (!BuildMaterialResourceDocument(
-            descriptor_info,
             material_private_data,
             resources,
             error))

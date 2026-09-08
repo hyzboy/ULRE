@@ -1,7 +1,7 @@
 /// MaterialShaderCompiler.cpp — canonical material input compiler
 ///
-/// 流程：
-///   1. 从 SerializedDescriptorEntry[] 构建 DescriptorSetLayoutAllocator（描述符布局）
+/// 流程（BDA 终态，描述符分配器已退役）：
+///   1. 求解层构建契约/schema（数据槽信号经 requires_runtime_data_rows 直判）
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
@@ -446,9 +446,8 @@ static bool RegisterCanonicalDescriptors(
 //（DescriptorMacroGen，数值真源 DescriptorSetTypeDef.h 的绑定枚举），模板与模块
 // #include 后直接使用默认值，单一真源。
 //
-// 行表绑定（material_private_data_index_rows / mtl_texture_layer_rows / l2w_index）不在此
-// 注入 set/binding 宏：声明由 index table 生成逻辑依据 descriptor_info 直接以
-// layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
+// 行表（material_private_data_index_rows / l2w_index）无 set/binding 概念：
+// BDA 化后行表经 pc_root + buffer_reference 寻址，声明由 index table 生成器恒发射。
 
 // ── Step 6: ShaderResourceSchema 构建与校验 ──────────────────────────────────
 static bool BuildAndValidateResourceSchema(
@@ -602,8 +601,6 @@ ShaderBuildContext *CompileMaterial(
         return FailCompile(c);
 
     // ── Step 5: Complete both stages through ShaderDocument ───────
-    const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();
-
     ShaderDocument local_mesh_final_document;
     ShaderDocument local_fragment_final_document;
     ShaderDocument *mesh_final_document = &local_mesh_final_document;
@@ -619,7 +616,6 @@ ShaderBuildContext *CompileMaterial(
             ShaderStage::Mesh,
             input.debug_name,
             config,
-            descriptor_info,
             effective_material_private_data,
             *mesh_final_document,
             document_diagnostics)
@@ -628,7 +624,6 @@ ShaderBuildContext *CompileMaterial(
             ShaderStage::Fragment,
             input.debug_name,
             config,
-            descriptor_info,
             effective_material_private_data,
             *fragment_final_document,
             document_diagnostics))

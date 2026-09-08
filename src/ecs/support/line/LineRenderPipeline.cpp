@@ -364,9 +364,6 @@ namespace hgl::ecs
         if (!material_)
             return false;
 
-        if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
-            rdbs->RegisterPipelineMaterial(material_);
-
         // ------- Create descriptor binding set -------
         binding_set_storage_.SetMaterial(material_);
         binding_set_ = &binding_set_storage_;
@@ -802,8 +799,6 @@ namespace hgl::ecs
                 binding_set_ = nullptr;
                 if (material_)
                 {
-                    if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
-                        rdbs->UnregisterPipelineMaterial(material_);
                     mat_mgr->Destroy(material_); material_ = nullptr;
                 }
             }

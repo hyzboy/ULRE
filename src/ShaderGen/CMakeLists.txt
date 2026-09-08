@@ -73,8 +73,6 @@ set(COMPILE_FILES
     compile/ShaderProgramArtifactBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderStructureDump.h
     compile/ShaderStructureDump.cpp
-    ${SHADERGEN_INCLUDE_PATH}/DescriptorSetLayoutAllocator.h
-    compile/DescriptorSetLayoutAllocator.cpp
     ${SHADERGEN_INCLUDE_PATH}/MaterialShaderCompiler.h
     compile/MaterialShaderCompiler.cpp
     compile/MaterialShaderEmitter.h

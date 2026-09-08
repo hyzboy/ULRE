@@ -182,6 +182,7 @@ namespace hgl::ecs
     {
         if (!viewport_ubo)
             EnsureViewportUBO();
+
         return viewport_ubo ? viewport_ubo->Data() : nullptr;
     }
 
@@ -195,18 +196,6 @@ namespace hgl::ecs
             viewport_ubo->Data()->Set(w, h);
             viewport_ubo->MarkDirty();
         }
-    }
-
-    void RenderDescriptorBindingSystem::RegisterPipelineMaterial(graph::ShaderProgram *material)
-    {
-        if (material)
-            pipeline_materials.insert(material);
-    }
-
-    void RenderDescriptorBindingSystem::UnregisterPipelineMaterial(graph::ShaderProgram *material)
-    {
-        if (material)
-            pipeline_materials.erase(material);
     }
 
     bool RenderDescriptorBindingSystem::RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
@@ -283,8 +272,7 @@ namespace hgl::ecs
 
         EnsureViewportUBO();
 
-        ApplyResourceLayoutBindings(cmd);
-
+        ApplyResourceLayoutBindings();
     }
 
     const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO() const
@@ -334,7 +322,13 @@ namespace hgl::ecs
         return env_manager->GetSkyUBO(profile_id);
     }
 
-    void RenderDescriptorBindingSystem::ApplyResourceLayoutBindings(graph::RenderCmdBuffer *cmd)
+    // 全局 Scene UBO 描述符集更新：一帧写一次（camera=0/sky=1/viewport=2/palette=3）。
+    // camera/viewport 为所有材质必需；sky 与 color_palette 为可选（布局已带
+    // PARTIALLY_BOUND 位，未静态使用的 binding 允许为空）。palette 由
+    // LineRenderPipeline 等在初始化时写入 binding=3。
+    // （绑定时代死段——per-material apply_requirement/MP/批覆盖——已随
+    // desc_manager 机制退役整删，2026-09-08。）
+    void RenderDescriptorBindingSystem::ApplyResourceLayoutBindings()
     {
         if (!context)
             return;
@@ -343,12 +337,7 @@ namespace hgl::ecs
         const auto *camera_ubo = ResolveCameraUBO();
         const auto *sky_ubo = ResolveSkyUBO();
 
-        // P1: 全局 Scene UBO 描述符集 —— 一帧写一次（camera=0/sky=1/viewport=2/palette=3）。
-        // camera/viewport 为所有材质必需；sky 与 color_palette 为可选（布局已带
-        // PARTIALLY_BOUND 位，未静态使用的 binding 允许为空）。palette 由
-        // LineRenderPipeline 等在初始化时写入 binding=3。
         auto *global_scene_set = GetGlobalSceneUBOSet(context);
-        bool global_scene_valid = false;
         if (global_scene_set && global_scene_set->IsValid()
          && viewport_ubo && camera_ubo)
         {
@@ -356,216 +345,13 @@ namespace hgl::ecs
             global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingViewport), viewport_ubo);
             if (sky_ubo)
                 global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingSky), sky_ubo);
-            global_scene_valid = true;
         }
         else if (global_scene_set && global_scene_set->IsValid())
         {
             GLogWarning("[RDBinding] Scene UBO set not bound: camera=%p viewport=%p sky=%p",
-                        (const void *)camera_ubo,
                         (const void *)viewport_ubo,
+                        (const void *)camera_ubo,
                         (const void *)sky_ubo);
-        }
-
-        const auto &cache = context->GetRenderFrameCache();
-
-        std::unordered_set<const graph::ShaderProgram *> active_materials;
-
-        auto log_bind_failure = [&](graph::ShaderProgram *material,
-                                    MaterialBatch *batch,
-                                    const graph::mtl::ShaderResourceSlot &req,
-                                    const char *reason)
-        {
-            if (!material || req.name.empty())
-                return;
-
-            if (req.required)
-            {
-                if (batch)
-                    batch->descriptor_bind_valid = false;
-
-                GLogError("[DescriptorBinding] Bind failed: material=%s semantic=%s descriptor=%s reason=%s",
-                          material->GetName().c_str(),
-                          graph::mtl::GetDescriptorSemanticName(req.semantic),
-                          req.name.c_str(),
-                          reason ? reason : "unknown");
-            }
-            else
-            {
-                GLogWarning("[DescriptorBinding] Optional bind failed: material=%s semantic=%s descriptor=%s reason=%s",
-                            material->GetName().c_str(),
-                            graph::mtl::GetDescriptorSemanticName(req.semantic),
-                            req.name.c_str(),
-                            reason ? reason : "unknown");
-            }
-        };
-        auto ensure_batch_mp = [&](graph::ShaderProgram *material,
-                                   MaterialBatch *batch,
-                                   const graph::DescriptorSetType set_type) -> graph::MaterialParameters *
-        {
-            if (!material || !batch)
-                return nullptr;
-
-            const size_t set_index = size_t(set_type);
-            if (set_index >= graph::DESCRIPTOR_SET_TYPE_COUNT)
-                return nullptr;
-
-            if (batch->batch_descriptor_mp[set_index])
-            {
-                batch->has_batch_descriptor_overrides = true;
-                return batch->batch_descriptor_mp[set_index];
-            }
-
-            if (!batch->device)
-                return nullptr;
-
-            const auto *desc_manager = material->GetDescriptorManager();
-            const auto *pipeline_layout_data = material->GetPipelineLayoutData();
-            if (!desc_manager || !pipeline_layout_data)
-                return nullptr;
-
-            // bindingCount=0 的集合（材质契约不含该集任何绑定）不创建 MP：
-            // 空 layout 分配出的 DS 无可写 binding，任何 Update 都是 spec 违规
-            //（VUID-10009）且会破坏堆。
-            if (desc_manager->GetBindCount(set_type) == 0)
-                return nullptr;
-
-            auto *mp = batch->device->CreateMP(desc_manager, pipeline_layout_data, set_type);
-            if (!mp)
-                return nullptr;
-
-            batch->batch_descriptor_mp[set_index] = mp;
-            batch->has_batch_descriptor_overrides = true;
-            return mp;
-        };
-
-        auto bind_ubo = [&](graph::ShaderProgram *material,
-                            MaterialBatch *batch,
-                            const graph::mtl::ShaderResourceSlot &req,
-                            const graph::IGPUBuffer *gpu) -> bool
-        {
-            if (!material || !gpu)
-                return false;
-
-            bool ok = false;
-
-            if (batch)
-            {
-                if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    ok = mp->BindUBO(req.name.c_str(), gpu, false);
-            }
-            else
-            {
-                ok = material->BindUBO(req.set_type, req.name.c_str(), gpu, false);
-            }
-
-            return ok;
-        };
-
-        auto apply_requirement = [&](graph::ShaderProgram *material,
-                                     MaterialBatch *batch,
-                                     const graph::mtl::ShaderResourceSlot &req)
-        {
-            switch (req.semantic)
-            {
-            case graph::mtl::DescriptorSemantic::ViewportInfo:
-            {
-                // P1: Scene UBO 已全局化，写入全局集（一帧一次），不再走 per-material bind。
-                if (global_scene_valid)
-                    break;
-
-                if (viewport_ubo)
-                {
-                    if (!bind_ubo(material, batch, req, viewport_ubo))
-                        log_bind_failure(material, batch, req, "bind viewport UBO failed");
-                }
-                break;
-            }
-            case graph::mtl::DescriptorSemantic::CameraInfo:
-            {
-                if (global_scene_valid)
-                    break;
-
-                if (camera_ubo)
-                {
-                    if (!bind_ubo(material, batch, req, camera_ubo))
-                        log_bind_failure(material, batch, req, "bind camera UBO failed");
-                }
-                break;
-            }
-            case graph::mtl::DescriptorSemantic::SkyInfo:
-            {
-                if (global_scene_valid)
-                    break;
-
-                if (sky_ubo)
-                {
-                    if (!bind_ubo(material, batch, req, sky_ubo))
-                        log_bind_failure(material, batch, req, "bind sky UBO failed");
-                }
-                break;
-            }
-            // LocalToWorld/LocalToWorldIndex/MeshDrawParams/MaterialPrivateData* 等行表
-            // 语义已 BDA 化（A3-2/A5）：GLSL 无对应描述符声明 → 契约无相关 req ——
-            // 绑定解析 case 随 A5-3 删除（数据经 pc_root + buffer_reference 寻址）。
-            default:
-                break;
-            }
-        };
-
-        for (const auto &pair : cache.materialBatches)
-        {
-            graph::ShaderProgram *shader_program = pair.first.shader_program;
-            if (!shader_program)
-                continue;
-
-            MaterialBatch *batch = pair.second.get();
-            if (!batch || batch->items.empty())
-                continue;
-
-            active_materials.insert(shader_program);
-            batch->descriptor_bind_valid = true;
-
-            const auto &contract = shader_program->GetShaderResourceSchema();
-
-            for (const auto &req : contract.resources)
-            {
-                if (req.name.empty())
-                    continue;
-                apply_requirement(shader_program, batch, req);
-            }
-
-        }
-
-        // Bind scene-level UBOs to pipeline-registered materials (Line, Terrain, etc.)
-        // These materials bypass the normal materialBatches path.
-        for (graph::ShaderProgram *shader_program : pipeline_materials)
-        {
-            if (!shader_program)
-                continue;
-
-            active_materials.insert(shader_program);
-
-            const auto &contract = shader_program->GetShaderResourceSchema();
-
-            for (const auto &req : contract.resources)
-            {
-                if (req.name.empty())
-                    continue;
-                apply_requirement(shader_program, nullptr, req);
-            }
-        }
-
-        // Set 0（Scene UBO）/ Set 3（Bindless 纹理）的 cmd buffer 绑定已移入
-        // PipelineMaterialRenderer::Render（BindPipeline 之后按材质自身 layout 绑定）。
-        // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
-        // draw 时管线 layout 一致，不能在 RDBS 用任意材质的 layout 统一绑定（08600）。
-
-        for (auto it = resource_layout_last_ok.begin(); it != resource_layout_last_ok.end();)
-        {
-            if (active_materials.find(it->first) == active_materials.end())
-                it = resource_layout_last_ok.erase(it);
-            else
-                ++it;
         }
     }
 

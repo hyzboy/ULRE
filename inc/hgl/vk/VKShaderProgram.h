@@ -36,7 +36,6 @@ class ShaderProgram
 
     ShaderModuleMap *shader_maps;
 
-    MaterialDescriptorManager *desc_manager;
     mtl::ShaderResourceSchema shader_resource_schema;
     mtl::ShaderProgramKey program_key;
 
@@ -64,9 +63,7 @@ public:
 
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return shader_stage_list;}
 
-//    const   MaterialDescriptorManager *         GetDescriptorManager    ()const{return desc_manager;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
-    const   MaterialDescriptorManager *         GetDescriptorManager    ()const{return desc_manager;}
     const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return pipeline_layout_data;}
 
 public:

@@ -57,18 +57,12 @@ private:
 private: // Helper methods with integrated DebugUtils
 
     ShaderProgram *AcquireShaderProgram(const mtl::ShaderProgramKey &, const mtl::ShaderBuildContext *);
-    class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
-    class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
-    void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderBuildContext &ctx);
     ShaderProgram *TryGetCachedShaderProgram(
         const mtl::ShaderProgramKey &key);
     bool BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                         const AnsiString &mtl_name,
                                         const mtl::ShaderBuildContext *ctx,
                                                                         const mtl::ShaderCreateInfoMap &sci_map);
-    bool BuildRuntimeDescriptorState(ShaderProgram *mtl,
-                                     const AnsiString &mtl_name,
-                                     const mtl::ShaderBuildContext *ctx);
     bool ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
                                              const AnsiString &mtl_name,
                                              const mtl::ShaderBuildContext *ctx,

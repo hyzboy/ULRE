@@ -75,7 +75,6 @@ namespace hgl::ecs
         std::unordered_map<const graph::ShaderProgram *, bool> resource_layout_last_ok;
         bool resource_layout_diagnostics_enabled = true;
         ResourceLayoutDiagStats last_contract_stats{};
-        std::unordered_set<graph::ShaderProgram *> pipeline_materials;
         // resource_id → bindless descriptor index (1-based, 0 = not found).
         // Filled by RegisterTexture2D(Array)Resource; consumed by
         // RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive to
@@ -102,8 +101,6 @@ namespace hgl::ecs
                                         uint32_t &fallback_hits) const;
         bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
                              uint32_t &binding_entries) const;
-        void RegisterPipelineMaterial(graph::ShaderProgram *material);
-        void UnregisterPipelineMaterial(graph::ShaderProgram *material);
         bool RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
                                           uint32_t ssbo_id,
                                           uint32_t byte_stride);
@@ -131,7 +128,7 @@ namespace hgl::ecs
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
         void SyncBindingsForCurrentCommand(graph::RenderCmdBuffer *cmd, bool run_contract_diagnostics);
-        void ApplyResourceLayoutBindings(graph::RenderCmdBuffer *cmd);
+        void ApplyResourceLayoutBindings();
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();

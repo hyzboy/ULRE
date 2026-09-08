@@ -1,6 +1,5 @@
 ﻿#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
-#include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/mtl/ShaderBuildContext.h>
@@ -18,7 +17,6 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderBuildContext *
 
     // mesh 化后无 VBO 顶点输入布局（VS 遗留 vertex_input 已删）
     shader_maps=new ShaderModuleMap;
-    desc_manager=nullptr;
     pipeline_layout_data=nullptr;
 
     mem_zero(mp_array);
@@ -27,7 +25,6 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderBuildContext *
 ShaderProgram::~ShaderProgram()
 {
     delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
-    SAFE_CLEAR(desc_manager);
     SAFE_CLEAR(pipeline_layout_data);
 
     for(auto &mp:mp_array)

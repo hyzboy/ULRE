@@ -3,14 +3,11 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
-#include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
-#include<hgl/graph/module/ShaderProgramFinalizeFlowAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/ShaderBuildContext.h>
 #include<hgl/mtl/MaterialShaderCompiler.h>
@@ -165,34 +162,6 @@ namespace
         }
 
         return true;
-    }
-
-    std::vector<ShaderDescriptor> CollectDescriptorsFromBuildContext(const mtl::ShaderBuildContext *ctx)
-    {
-        std::vector<ShaderDescriptor> descriptors;
-        if (!ctx)
-            return descriptors;
-
-        const auto &allocator = ctx->GetDescriptorAllocator();
-        if (allocator.GetCount() == 0)
-            return descriptors;
-
-        const auto &sds_array = allocator.Get();
-        descriptors.reserve(allocator.GetCount());
-
-        for (size_t i = 0; i < DESCRIPTOR_SET_TYPE_COUNT; i++)
-        {
-            std::vector<ShaderDescriptor *> values;
-            sds_array[i].descriptor_map.GetValueArray(values);
-
-            for (auto *sd : values)
-            {
-                if (sd)
-                    descriptors.emplace_back(*sd);
-            }
-        }
-
-        return descriptors;
     }
 
     // 进程级单例（与 GetMaterialDefinitionFileRegistry 同一模式）。
@@ -372,70 +341,6 @@ const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const mtl::S
                                      spv_size);
 }
 
-PipelineLayoutData *ShaderProgramManager::CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
-{
-    VulkanDevice *device = GetDevice();
-    if(!device) return nullptr;
-
-    PipelineLayoutData *pld = device->CreatePipelineLayoutData(desc_manager, bindless_layout_, scene_layout_);
-
-    if(pld)
-    {
-        #ifdef _DEBUG
-            DebugUtils *du = device->GetDebugUtils();
-            if(du)
-                du->SetPipelineLayout(pld->pipeline_layout, "PipelineLayout:" + mtl_name);
-        #endif//_DEBUG
-    }
-
-    return pld;
-}
-
-MaterialParameters *ShaderProgramManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const PipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
-{
-    VulkanDevice *device = GetDevice();
-    if(!device) return nullptr;
-
-    MaterialParameters *mp = device->CreateMP(desc_manager, pld, desc_set_type);
-
-    if(mp)
-    {
-        #ifdef _DEBUG
-            DebugUtils *du = device->GetDebugUtils();
-            if(du)
-            {
-                AnsiString debug_name = mtl_name + AnsiString(":") + GetDescriptorSetTypeName(desc_set_type);
-                du->SetDescriptorSet(mp->GetVkDescriptorSet(), "DescSet:" + debug_name);
-                du->SetDescriptorSetLayout(pld->layouts[static_cast<int>(desc_set_type)], "DescSetLayout:" + debug_name);
-            }
-        #endif//_DEBUG
-    }
-
-    return mp;
-}
-
-void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderBuildContext &ctx)
-{
-    if(!mtl)
-        return;
-
-    ShaderProgramFinalizePlan finalize_plan;
-    BuildShaderProgramFinalizePlan(mtl->desc_manager, ctx, finalize_plan);
-
-    mtl->pipeline_layout_data = CreateMaterialPipelineLayoutData(mtl_name, mtl->desc_manager);
-
-    for(const auto set_type : finalize_plan.mp_set_types)
-    {
-        // Scene（Set 0）已全局化（P1）：不再生成 per-material MP，
-        // 由设备级 GlobalSceneUBOSet 一帧写/绑一次。
-        if(scene_layout_ != VK_NULL_HANDLE && set_type == DescriptorSetType::Scene)
-            continue;
-
-        mtl->mp_array[(int)set_type] = CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, set_type);
-    }
-
-}
-
 ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(
     const mtl::ShaderProgramKey &key)
 {
@@ -453,10 +358,21 @@ bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mt
     if(!BuildRuntimeShaderProgramState(mtl, mtl_name, ctx, sci_map))
         return false;
 
-    if(!BuildRuntimeDescriptorState(mtl, mtl_name, ctx))
-        return false;
+    // BDA 终态：唯一 pipeline layout = Scene(0)/Bindless(1) 全局集 + pc_root push constant。
+    // desc_manager/MP 机制已退役——per-material 描述符集与材质侧绑定路径全部归零。
+    VulkanDevice *device = GetDevice();
+    if(!device) return false;
 
-    ApplyMaterialFinalizePlan(mtl, mtl_name, *ctx);
+    mtl->pipeline_layout_data = device->CreatePipelineLayoutData(nullptr, bindless_layout_, scene_layout_);
+
+    #ifdef _DEBUG
+        if(mtl->pipeline_layout_data)
+        {
+            DebugUtils *du = device->GetDebugUtils();
+            if(du)
+                du->SetPipelineLayout(mtl->pipeline_layout_data->pipeline_layout, "PipelineLayout:" + mtl_name);
+        }
+    #endif//_DEBUG
 
     return true;
 }
@@ -481,22 +397,6 @@ bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
     CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
 
     // mesh 化后顶点输入统一走 SSBO，无 VBO 顶点输入布局（VS 遗留 vertex_input 已删）
-
-    return true;
-}
-
-bool ShaderProgramManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
-                                                  const AnsiString &mtl_name,
-                                                  const mtl::ShaderBuildContext *ctx)
-{
-    if(!mtl || !ctx)
-        return false;
-
-    std::vector<ShaderDescriptor> descriptors = CollectDescriptorsFromBuildContext(ctx);
-    if(!descriptors.empty())
-        mtl->desc_manager = new MaterialDescriptorManager(mtl_name, descriptors.data(), static_cast<uint>(descriptors.size()));
-    else
-        mtl->desc_manager = nullptr;
 
     return true;
 }
