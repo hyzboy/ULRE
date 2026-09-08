@@ -3981,39 +3981,9 @@ namespace
                     "duplicate descriptor identities must be rejected");
             }
 
-            DescriptorContract varying_contract = first_contract;
-            MaterialVertexVaryingConfig varying{};
-            varying.emit_data_index_id = true;
-            ShaderResourceSchema varying_layout;
-            if (!EnsureDescriptorContractVaryingResources(
-                    varying, varying_contract)
-             || !BuildResourceSchemaFromContract(
-                    varying_contract, varying_layout))
-            {
-                result.diagnostics.emplace_back(
-                    "varying descriptor resources were not added");
-            }
-            else
-            {
-                bool has_data_index = false;
-                for (const auto &requirement :
-                     varying_layout.resources)
-                {
-                    if (requirement.semantic
-                        == DescriptorSemantic::MaterialPrivateDataIndex)
-                    {
-                        has_data_index =
-                            requirement.stage_flags
-                                == uint32_t(
-                                    hgl::graph::kMeshFragment);
-                    }
-                }
-                // varying 路径只负责 MaterialPrivateDataIndex（材质行表）；
-                // 纹理层表描述符已随 Material 集退场。
-                if (!has_data_index)
-                    result.diagnostics.emplace_back(
-                        "varying tables missing from runtime layout");
-            }
+            // W1 原 varying 资源段已删（A6-2b-b2：EnsureDescriptorContractVaryingResources
+            // 改为 AppendMaterialPrivateDataIndexRequirement 直判生产者——补录门在编译配置，
+            // 不再由 varying 结构驱动；W1 的 varying 自动补录断言随之失效）。
         }
 
         if (persistent_layout.resources.size() != 2

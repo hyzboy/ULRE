@@ -141,8 +141,12 @@ namespace hgl::graph::mtl
         return ValidateDescriptorContract(out_contract);
     }
 
-    bool EnsureDescriptorContractVaryingResources(
-        const MaterialVertexVaryingConfig &varying,
+    // A6-2b-b2 直判化：数据槽行表需求（MaterialPrivateDataIndex 契约条目）的生产者。
+    // 门（是否补录）由调用方按编译配置 definition.vertex_varying.emit_data_index_id 直判，
+    // 不再由 varying 结构在此自动扫描（varying 不承载描述符需求语义）。
+    // 条目名字直接写死（与 ShaderBufferSources 的 SBS_MaterialDataAddresses 同值——
+    // 该常量已随 PerObject 集声明层退场计划删除）。
+    bool AppendMaterialPrivateDataIndexRequirement(
         DescriptorContract &in_out_contract)
     {
         const auto has_semantic =
@@ -156,30 +160,23 @@ namespace hgl::graph::mtl
             return false;
         };
 
-        std::vector<SerializedDescriptorEntry> generated;
-        if (varying.emit_data_index_id
-         && !has_semantic(DescriptorSemantic::MaterialPrivateDataIndex))
-        {
-            SerializedDescriptorEntry entry{};
-            entry.set_type = SBS_MaterialDataAddresses.set_type;  // P1-2c：Transform 集
-            entry.stage_flags =
-                uint32(hgl::graph::kMeshFragment);
-            entry.name = SBS_MaterialDataAddresses.name;
-            entry.struct_name = SBS_MaterialDataAddresses.struct_name;
-            entry.semantic =
-                DescriptorSemantic::MaterialPrivateDataIndex;
-            entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-            entry.ssbo_type = SSBOType::MaterialPrivateDataIndex;
-            entry.has_requirement_policy = true;
-            entry.required = true;
-            generated.push_back(entry);
-        }
+        if (has_semantic(DescriptorSemantic::MaterialPrivateDataIndex))
+            return true;
 
-        for (SerializedDescriptorEntry &entry : generated)
-        {
-            if (!AppendEntry(entry, in_out_contract))
-                return false;
-        }
+        SerializedDescriptorEntry entry{};
+        entry.set_type = DescriptorSetType::PerObject;  // 行表条目（BDA 后无描述符；set_type 仅占位）
+        entry.stage_flags =
+            uint32(hgl::graph::kMeshFragment);
+        entry.name = "mtl_data_addrs";
+        entry.struct_name = "MaterialDataAddresses";
+        entry.semantic =
+            DescriptorSemantic::MaterialPrivateDataIndex;
+        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        entry.ssbo_type = SSBOType::MaterialPrivateDataIndex;
+        entry.has_requirement_policy = true;
+        entry.required = true;
+        if (!AppendEntry(entry, in_out_contract))
+            return false;
         return ValidateDescriptorContract(in_out_contract);
     }
 

@@ -31,8 +31,7 @@ namespace hgl::graph::mtl
         uint32 material_ssbo_stage_bits,
         DescriptorContract &out_contract);
 
-    bool EnsureDescriptorContractVaryingResources(
-        const mtl::MaterialVertexVaryingConfig &varying,
+    bool AppendMaterialPrivateDataIndexRequirement(
         DescriptorContract &in_out_contract);
 
     bool BuildResourceSchemaFromContract(

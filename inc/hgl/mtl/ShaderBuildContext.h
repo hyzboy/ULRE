@@ -13,11 +13,6 @@
 #include<string>
 #include<vector>
 
-namespace hgl::graph
-{
-    struct ShaderBufferSource;
-}
-
 namespace hgl::graph::mtl
 {
         using namespace hgl::graph::mtl;
@@ -44,7 +39,6 @@ namespace hgl::graph::mtl
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
-            bool has_local_to_world;
             ShaderLinkSpec program_link;
             bool has_program_link = false;
             ShaderArtifactStore *artifact_store = nullptr;
@@ -131,40 +125,11 @@ namespace hgl::graph::mtl
             {
                 return program_metadata;
             }
-            const bool HasLocalToWorld                  ()const{return has_local_to_world;}
-
         public:
 
-            ShaderBuildContext(const PrimitiveType primitive_type, const uint32_t shader_stage_bits, const bool has_local_to_world);
+            ShaderBuildContext(const PrimitiveType primitive_type, const uint32_t shader_stage_bits);
             ~ShaderBuildContext();  // Need explicit destructor to properly clean up shader_map
 
-            bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
-
-            bool AddStruct(const std::string &ubo_typename,const std::string &codes);
-            bool AddStruct(const char *ubo_typename,const char *codes)
-            {
-                return AddStruct(std::string(ubo_typename?ubo_typename:""),std::string(codes?codes:""));
-            }
-
-            // ── 描述符注册（Phase 7 收敛后仅保留实际使用的形态）──
-            // flag_bits 为 ShaderStage 位组合；对位含的每个阶段分别注册一条。
-            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
-            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name,const int preferred_binding);
-
-            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding);
-
-            // —— 语义化 SSBO 注册（MeshShader 方向：按用途明确区分）——
-            // Phase 4：固定 ABI 资源的 binding 唯一来源是调用方显式传入的
-            // preferred_binding（数值真源 DescriptorSetTypeDef.h 绑定枚举），
-            // 运行时不再有名字表/动态分配兜底。
-            bool AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding);      ///< 顶点数据（Position/UV/NTB）
-            bool AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits);                                 ///< 材质数据行表（binding=PerObjectBinding::PrivateDataIndex）
-
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
-
-        private:
-
-            // 单阶段注册核心（public 的 uint32 位展开版本逐阶段调用）
-            bool AddSSBOCore(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name,const int preferred_binding);
         };//class ShaderBuildContext
 }//namespace hgl::graph::mtl

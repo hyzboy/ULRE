@@ -307,7 +307,6 @@ static bool PrepareBaseDescriptorContract(
     const MaterialCompileConfig &config,
     uint32_t &out_shader_stage_bits,
     DescriptorContract &out_base_contract,
-    bool &out_with_local_to_world,
     CompileContext &c)
 {
     out_shader_stage_bits = config.shader_stage_flag_bits != 0
@@ -326,12 +325,9 @@ static bool PrepareBaseDescriptorContract(
         return c.Fail("BuildDescriptorContract failed");
     }
 
-    // A6-2a：契约不再含 L2W 条目（Push 已删）——L2W 需求按模板类别静态判定。
-    // mesh 为唯一顶点路径且 l2w_ssbo 恒注入（HeaderGen needs_l2w 覆盖 OrientationMode
-    // 全部三值），此处恒 true；无 L2W 材质不消费地址，运行时 push nullptr 安全。
-    // （运行时消费方 hasLocalToWorld 已随 A6-2a 从 PipelineMaterialRenderer 删除，
-    //   has_l2w_matrix 字段/ctx 链退场随 A6-2b。）
-    out_with_local_to_world = true;
+    // A6-2a：契约不再含 L2W 条目（Push 已删）——L2W 需求按模板类别静态判定，
+    // mesh 为唯一顶点路径且 l2w_ssbo 恒注入；无 L2W 材质不消费地址，
+    // 运行时 push nullptr 安全（has_l2w_matrix ctx 链已随 A6-2b 删除）。
     return true;
 }
 
@@ -339,10 +335,9 @@ static bool PrepareBaseDescriptorContract(
 static bool CreateBuildContext(
     const MaterialCompileConfig &config,
     const uint32_t shader_stage_bits,
-    const bool with_local_to_world,
     CompileContext &c)
 {
-    c.ctx = new ShaderBuildContext(config.primitive_type, shader_stage_bits, with_local_to_world);
+    c.ctx = new ShaderBuildContext(config.primitive_type, shader_stage_bits);
     if (config.program_link)
         c.ctx->SetProgramLink(*config.program_link);
     c.ctx->SetArtifactStore(config.artifact_store);
@@ -403,11 +398,15 @@ static bool BuildEffectiveDescriptorEntries(
             out_effective_contract))
         return c.Fail("invalid effective material descriptor contract");
 
+    // A6-2b-b2：数据槽行表需求补录——门从 Ensure 的 varying 扫描改为编译配置直判
+    // （等价：Ensure 原条件就是 config.material_definition->vertex_varying.
+    // emit_data_index_id——材质 TOML [vertex] varyings 解析产物，数据槽材质恒列；
+    // varying 不再承载描述符需求语义，仅作编译配置信号）。
     if (config.material_definition
-     && !EnsureDescriptorContractVaryingResources(
-            config.material_definition->vertex_varying,
+     && config.material_definition->vertex_varying.emit_data_index_id
+     && !AppendMaterialPrivateDataIndexRequirement(
             out_effective_contract))
-        return c.Fail("failed to add varying descriptor contract resources");
+        return c.Fail("failed to add material private data index requirement");
 
     // C1-T2：entries 即规范化 SerializedDescriptorEntry[]（原
     // ConvertDescriptorContractToFixed 往返转换已删——直接取契约条目）
@@ -462,46 +461,6 @@ static bool RegisterCanonicalDescriptors(
             // MaterialTexture/MaterialSampler：bindless 通道，无 per-material 描述符
             break;
         }
-    }
-
-    return true;
-}
-
-// ── CharQuad text SSBOs: mesh shader declares these inline, register them into PerObject set layout ──
-// Register the three CharQuad SSBOs at fixed bindings 14/15/16
-// matching TEXT_CHARINFO_BINDING/TEXT_CHARSTYLE_BINDING/TEXT_CHARINSTANCE_BINDING
-// in descriptor_macros.glsl
-// 注意：结构体的 GLSL 声明真源是
-//   结构体 GLSL 真源 = ShaderLibrary/vertex/s1_text_char_quad.glsl（T2.1 已归一，
-//   由 MeshShaderModeCharQuad.h::EmitCharQuadSSBODeclarations include）；
-//   CPU 侧布局 = inc/hgl/graph/font/TextCharSSBO.h（static_assert 校验）。
-//   改结构布局必须改 .glsl + TextCharSSBO.h 两侧。
-// 此处只注册 set layout，结构体代码由 mesh shader 生成器提供（pass empty codes）。
-struct CharQuadSSBOReg
-{
-    const char *struct_name;
-    const char *sbo_name;
-    int binding;        // PerObjectBinding::TextChar* 枚举
-};
-
-static const CharQuadSSBOReg kCharQuadSSBOTable[] = {
-    { "TextCharInfo",     "sbo_char_info",     int(PerObjectBinding::TextCharInfo) },
-    { "CharStyleData",    "sbo_char_style",    int(PerObjectBinding::TextCharStyle) },
-    { "CharInstanceData", "sbo_char_instance", int(PerObjectBinding::TextCharInstance) },
-};
-
-static bool RegisterCharQuadSSBOs(
-    ShaderBuildContext *ctx,
-    const uint32_t stage_bits,
-    CompileContext &c)
-{
-    for (const CharQuadSSBOReg &reg : kCharQuadSSBOTable)
-    {
-        if (!ctx->AddStruct(reg.struct_name, ""))
-            return c.Fail(std::string("failed to add ") + reg.struct_name + " struct");
-        if (!ctx->AddSSBO(stage_bits, DescriptorSetType::PerObject,
-                          reg.struct_name, reg.sbo_name, reg.binding))
-            return c.Fail(std::string("failed to add ") + reg.sbo_name + " SSBO");
     }
 
     return true;
@@ -625,16 +584,14 @@ ShaderBuildContext *CompileMaterial(
 
     DescriptorContract base_descriptor_contract{};
     uint32_t shader_stage_bits = 0;
-    bool with_local_to_world = false;
     if (!PrepareBaseDescriptorContract(input, config,
                                        shader_stage_bits,
                                        base_descriptor_contract,
-                                       with_local_to_world,
                                        c))
         return FailCompile(c);
 
     // ── Step 2: Create ShaderBuildContext ─────────────────────────
-    if (!CreateBuildContext(config, shader_stage_bits, with_local_to_world, c))
+    if (!CreateBuildContext(config, shader_stage_bits, c))
         return FailCompile(c);
 
     ShaderBuildContext *ctx = c.ctx;
@@ -669,14 +626,6 @@ ShaderBuildContext *CompileMaterial(
                                       declared_material_private_data_slot_count,
                                       material_ssbo_stage_bits, c))
         return FailCompile(c);
-
-    // CharQuad text SSBOs: mesh shader declares these inline, register them into PerObject set layout
-    if (config.material_definition
-     && IsCharQuadMode(config.material_definition->mesh_shader_mode))
-    {
-        if (!RegisterCharQuadSSBOs(ctx, shader_stage_bits, c))
-            return FailCompile(c);
-    }
 
     // ── Step 5: Complete both stages through ShaderDocument ───────
     const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();

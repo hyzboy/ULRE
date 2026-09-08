@@ -22,8 +22,6 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderBuildContext *
     pipeline_layout_data=nullptr;
 
     mem_zero(mp_array);
-
-    has_l2w_matrix=ctx->HasLocalToWorld();
 }
 
 ShaderProgram::~ShaderProgram()
@@ -39,11 +37,6 @@ ShaderProgram::~ShaderProgram()
 const VkPipelineLayout ShaderProgram::GetPipelineLayout()const
 {
     return pipeline_layout_data->pipeline_layout;
-}
-
-const bool ShaderProgram::hasSet(const DescriptorSetType &dst)const
-{
-    return desc_manager->hasSet(dst);
 }
 
 bool ShaderProgram::BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)

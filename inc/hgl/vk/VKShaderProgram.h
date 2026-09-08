@@ -46,8 +46,6 @@ class ShaderProgram
 
     MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
-    bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
-
 private:
 
     friend class ShaderProgramManager;
@@ -80,8 +78,6 @@ public:
                 return mp_array[size_t(type)];
             }
 
-    const   bool                                hasSet                  (const DescriptorSetType &type)const;
-
 public:
 
     bool BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex);
@@ -102,10 +98,6 @@ public:
     }
 
     void Update();
-
-public:
-
-    const bool      hasLocalToWorld ()const{return has_l2w_matrix; }
 
 };//class ShaderProgram
 
