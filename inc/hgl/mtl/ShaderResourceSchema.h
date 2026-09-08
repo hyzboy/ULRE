@@ -35,6 +35,13 @@ namespace hgl::graph::mtl
     struct ShaderResourceSchema
     {
         std::vector<ShaderResourceSlot> resources;
+
+        // A6-2b-b2：材质是否需要 per-instance 运行时数据行（mtl_data_addrs 行表 +
+        // 材质数据行）的编译期直判信号——由编译配置 definition.vertex_varying.
+        // emit_data_index_id（材质 TOML [vertex] varyings）直接设置，不再经
+        // MaterialPrivateDataIndex 契约条目（b1 后 FS 门已直判化，此为建表/绑定表
+        // 判定同源信号；varying 不再承载描述符需求语义）。
+        bool requires_runtime_data_rows = false;
     };
 
     // 可选语义：不强制要求绑定，且允许 fallback —— required 与 allow_fallback
@@ -65,24 +72,15 @@ namespace hgl::graph::mtl
     }
 
     // Whether a program's resource schema requires per-instance runtime rows:
-    // descriptor must be fed from per-batch row buffers keyed by the entity's own
+    // material data must be fed from per-batch row buffers keyed by the entity's own
     // data_index, rather than a static binding. Shared by RenderPrimitiveCollectSystem
     // and PrimitiveBatchPipeline so both agree on the same contract.
+    // A6-2b-b2：数据槽需求不再以契约条目（MaterialPrivateData/Index req）表达——
+    // 由编译侧直判标志 requires_runtime_data_rows 承载（设置条件与原 Ensure
+    // 补录门一致：definition.vertex_varying.emit_data_index_id）。
     inline bool MaterialRequiresRecipeRuntimeRows(const ShaderResourceSchema &schema)
     {
-        for (const auto &req : schema.resources)
-        {
-            switch (req.semantic)
-            {
-            case DescriptorSemantic::MaterialPrivateData:
-            case DescriptorSemantic::MaterialPrivateDataIndex:
-                    return true;
-            default:
-                break;
-            }
-        }
-
-        return false;
+        return schema.requires_runtime_data_rows;
     }
 
     inline DescriptorSetType GetExpectedSetType(DescriptorSemantic semantic)
@@ -248,7 +246,8 @@ namespace hgl::graph::mtl
     {
         hgl::hash::FNV1aHasher64 h;
 
-        h << static_cast<uint32>(schema.resources.size());
+        h << static_cast<uint32>(schema.resources.size())
+          << schema.requires_runtime_data_rows;
 
         for (const auto &req : schema.resources)
         {

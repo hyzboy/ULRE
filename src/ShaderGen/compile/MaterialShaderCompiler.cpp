@@ -379,7 +379,6 @@ static bool ResolveEffectiveMaterialPrivateData(
 
 // ── Step 3b: 有效契约 → 固定序列化条目 ───────────────────────────────────────
 static bool BuildEffectiveDescriptorEntries(
-    const MaterialCompileConfig &config,
     const DescriptorContract &base_contract,
     const SSBOType material_private_data,
     const uint32_t material_ssbo_stage_bits,
@@ -398,15 +397,10 @@ static bool BuildEffectiveDescriptorEntries(
             out_effective_contract))
         return c.Fail("invalid effective material descriptor contract");
 
-    // A6-2b-b2：数据槽行表需求补录——门从 Ensure 的 varying 扫描改为编译配置直判
-    // （等价：Ensure 原条件就是 config.material_definition->vertex_varying.
-    // emit_data_index_id——材质 TOML [vertex] varyings 解析产物，数据槽材质恒列；
-    // varying 不再承载描述符需求语义，仅作编译配置信号）。
-    if (config.material_definition
-     && config.material_definition->vertex_varying.emit_data_index_id
-     && !AppendMaterialPrivateDataIndexRequirement(
-            out_effective_contract))
-        return c.Fail("failed to add material private data index requirement");
+    // A6-2b-b2：数据槽行表需求不再补录进契约（原 EnsureDescriptorContractVaryingResources
+    // 自动补录 MaterialPrivateDataIndex 条目）——改为编译期直判信号
+    // schema.requires_runtime_data_rows（Step 6 设置，条件同 emit_data_index_id），
+    // 渲染侧建表/绑定表判定统一读该标志。契约恒 Scene UBO 条目。
 
     // C1-T2：entries 即规范化 SerializedDescriptorEntry[]（原
     // ConvertDescriptorContractToFixed 往返转换已删——直接取契约条目）
@@ -616,7 +610,7 @@ ShaderBuildContext *CompileMaterial(
     std::vector<SerializedDescriptorEntry> descriptor_entries;
     uint32_t declared_material_private_data_slot_count = 0;
     if (!BuildEffectiveDescriptorEntries(
-            config, base_descriptor_contract, effective_material_private_data,
+            base_descriptor_contract, effective_material_private_data,
             material_ssbo_stage_bits, c,
             effective_descriptor_contract, descriptor_entries,
             declared_material_private_data_slot_count))
@@ -687,6 +681,14 @@ ShaderBuildContext *CompileMaterial(
     if (!BuildAndValidateResourceSchema(effective_descriptor_contract, config, c,
                                         shader_resource_schema))
         return FailCompile(c);
+
+    // A6-2b-b2：数据槽行表需求 = 编译期直判信号（条件与原 Ensure 补录门一致：
+    // definition.vertex_varying.emit_data_index_id——材质 TOML [vertex] varyings
+    // 解析产物，数据槽材质恒列）。渲染侧 MaterialRequiresRecipeRuntimeRows 与
+    // BindingTableBuilder 的 data 绑定判定统一读此标志，契约不再含数据槽条目。
+    shader_resource_schema.requires_runtime_data_rows =
+        config.material_definition
+        && config.material_definition->vertex_varying.emit_data_index_id;
 
     ctx->SetShaderResourceSchema(shader_resource_schema);
 

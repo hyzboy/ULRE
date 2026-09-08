@@ -31,9 +31,6 @@ namespace hgl::graph::mtl
         uint32 material_ssbo_stage_bits,
         DescriptorContract &out_contract);
 
-    bool AppendMaterialPrivateDataIndexRequirement(
-        DescriptorContract &in_out_contract);
-
     bool BuildResourceSchemaFromContract(
         const DescriptorContract &contract,
         ShaderResourceSchema &out_schema);

@@ -239,6 +239,43 @@ namespace hgl::graph::mtl
             out_table.program_key_digest = program_key_digest;
             out_table.source_binding_hash = GetBindingSourceHash(recipe);
 
+            // A6-2b-b2：数据槽需求不再以契约条目表达（MaterialPrivateDataIndex req
+            // 退场——schema.requires_runtime_data_rows 编译期直判承载）。data binding
+            // 由 recipe 数据槽资产直驱（原桥接入口 = schema Index req + ssbo_assets.front()
+            // 等价迁移为：直判标志 && asset 非空；单槽化下每材质一数据资产）。
+            if (layout.requires_runtime_data_rows
+             && !recipe.ssbo_assets.empty())
+            {
+                const RecipeSSBOAssetBinding &data_asset =
+                    recipe.ssbo_assets.front();
+
+                // 数据槽资产的 ssbo_type 在 BindingTable 阶段可能仍为 UserDefined
+                //（类型由后续 schema resolve 阶段补全——如 TextureQuad 的 TextureLayer
+                // 材质），此处只按 slot/id 路由，不再拒绝——拒绝会把真实材质整表判死。
+                if (!FindDataBinding(out_table,
+                                     data_asset.material_private_data_slot,
+                                     data_asset.ssbo_type))
+                {
+                    const int index = out_table.data.Add(ResolvedDataBinding{});
+                    ResolvedDataBinding *binding = &out_table.data[index];
+                    // 原桥接 lrid 取自契约 Index 条目身份（契约已退场）；此处用
+                    // fallback 身份合成（table hash 变化一次=材质行缓存自然失效）。
+                    binding->logical_resource_id = ResolveFallbackResourceID(
+                        program_key_digest,
+                        DescriptorSemantic::MaterialPrivateData,
+                        TextureSlot::BaseColor,
+                        data_asset.material_private_data_slot,
+                        data_asset.ssbo_type,
+                        0);
+                    binding->semantic = DescriptorSemantic::MaterialPrivateData;
+                    binding->material_private_data_slot =
+                        data_asset.material_private_data_slot;
+                    binding->ssbo_type = data_asset.ssbo_type;
+                    binding->required = true;
+                    binding->allow_fallback = false;
+                }
+            }
+
             for (const ShaderResourceSlot &entry : layout.resources)
             {
 
@@ -275,69 +312,6 @@ namespace hgl::graph::mtl
                         binding->allow_fallback = binding->allow_fallback && entry.allow_fallback;
                     }
                     continue;
-                }
-
-                // Arena+BDA：地址行表取代了 per-material 数据槽描述符，
-                // schema 中数据槽需求语义为 MaterialPrivateDataIndex。
-                // 把 recipe 的数据槽资产桥接进绑定表，材质视图才保有
-                // ssbo_id / data_index（行表写入与纹理句柄落行的依据）。
-                if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex
-                 && !recipe.ssbo_assets.empty())
-                {
-                    const RecipeSSBOAssetBinding &data_asset =
-                        recipe.ssbo_assets.front();
-
-                    // 注意：数据槽资产的 ssbo_type 在 BindingTable 阶段可能仍为
-                    // UserDefined（类型由后续 schema resolve 阶段补全——如
-                    // TextureQuad 的 TextureLayer 材质），此处只按 slot/id 路由，
-                    // 不再拒绝——拒绝会把真实材质整表判死。
-                    if (!FindDataBinding(out_table,
-                                         data_asset.material_private_data_slot,
-                                         data_asset.ssbo_type))
-                    {
-                        const int index = out_table.data.Add(ResolvedDataBinding{});
-                        ResolvedDataBinding *binding = &out_table.data[index];
-                        // logical_resource_id 先取行表 entry 身份；随后到来的
-                        // MaterialPrivateData 数据槽 entry 是同一数据资产的另一视图，
-                        // 处理到它时会把身份覆盖为其 lrid（见下）。
-                        binding->logical_resource_id =
-                            ResolveDescriptorLogicalResourceID(entry, program_key_digest);
-                        binding->semantic = DescriptorSemantic::MaterialPrivateData;
-                        binding->material_private_data_slot =
-                            data_asset.material_private_data_slot;
-                        binding->ssbo_type = data_asset.ssbo_type;
-                        binding->required = entry.required;
-                        binding->allow_fallback = entry.allow_fallback;
-                    }
-                    continue;
-                }
-
-                if (entry.semantic == DescriptorSemantic::MaterialPrivateData)
-                {
-                    const uint64 logical_resource_id =
-                        ResolveDescriptorLogicalResourceID(entry, program_key_digest);
-                    ResolvedDataBinding *binding =
-                        FindDataBinding(out_table, entry.material_private_data_slot, entry.ssbo_type);
-                    if (!binding)
-                    {
-                        const int index = out_table.data.Add(ResolvedDataBinding{});
-                        binding = &out_table.data[index];
-                        binding->logical_resource_id = logical_resource_id;
-                        binding->semantic = entry.semantic;
-                        binding->material_private_data_slot = entry.material_private_data_slot;
-                        binding->ssbo_type = entry.ssbo_type;
-                        binding->required = entry.required;
-                        binding->allow_fallback = entry.allow_fallback;
-                    }
-                    else
-                    {
-                        // 桥接条目先行时其 lrid 取自行表 entry 身份；数据槽 entry
-                        // 是同一数据资产的权威视图——覆盖身份而非比对冲突
-                        //（两者哈希输入不同，比对恒假阳性）。
-                        binding->logical_resource_id = logical_resource_id;
-                        binding->required = binding->required || entry.required;
-                        binding->allow_fallback = binding->allow_fallback && entry.allow_fallback;
-                    }
                 }
             }
 
