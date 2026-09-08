@@ -157,32 +157,6 @@ bool RuleUBORequirement(
     return HasUBORequirement(definition, req.semantic);
 }
 
-// L2W/L2WIndex：仅世界空间投影需要（OrthoViewport/ClipPassthrough 不经 L2W）
-bool RuleWorldTransform(
-    const MaterialDefinition &definition,
-    const ShaderResourceSlot &) noexcept
-{
-    return definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
-        && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
-}
-
-bool RulePrivateDataSlot(
-    const MaterialDefinition &definition,
-    const ShaderResourceSlot &req) noexcept
-{
-    // 单槽：req 指向的槽必须是 definition 声明的那个（slot 0），类型一致
-    return req.material_private_data_slot == DefaultMaterialPrivateDataSlot
-        && definition.material_private_data == req.ssbo_type;
-}
-
-bool RulePrivateDataIndex(
-    const MaterialDefinition &definition,
-    const ShaderResourceSlot &) noexcept
-{
-    return definition.material_private_data != SSBOType::UserDefined
-        || definition.vertex_varying.emit_data_index_id;
-}
-
 struct DefinitionCapabilityRuleEntry
 {
     DescriptorSemantic semantic;
@@ -194,9 +168,6 @@ constexpr DefinitionCapabilityRuleEntry kDefinitionCapabilityRules[] =
     { DescriptorSemantic::CameraInfo,                &RuleUBORequirement },
     { DescriptorSemantic::SkyInfo,                   &RuleUBORequirement },
     { DescriptorSemantic::MaterialColorPalette,      &RuleUBORequirement },
-    { DescriptorSemantic::LocalToWorld,              &RuleWorldTransform },
-    { DescriptorSemantic::LocalToWorldIndex,         &RuleWorldTransform },
-    { DescriptorSemantic::MaterialPrivateDataIndex,  &RulePrivateDataIndex },
 };
 
 constexpr DefinitionCapabilityRule FindDefinitionCapabilityRule(
@@ -481,26 +452,9 @@ static bool RegisterCanonicalDescriptors(
             break;
 
         case ResourceCatalogClass::PerDraw:
-            if (cat->semantic == DescriptorSemantic::LocalToWorld)
-            {
-                if (!ctx->SetLocalToWorld(stage_bits))
-                    return c.Fail("failed to set LocalToWorld SSBO");
-            }
-            else if (cat->semantic == DescriptorSemantic::MaterialPrivateDataIndex)
-            {
-                // 行表为 8B 设备地址表（MaterialDataAddresses）
-                if (!ctx->AddStruct(SBS_MaterialDataAddresses.struct_name, ""))
-                    return c.Fail("failed to add MaterialPrivateDataIndex struct");
-                // P1-2c：行表迁至 PerObject 集，binding 由固定枚举确定（固定名路径）
-                if (!ctx->AddSSBOMaterialPrivateDataIndex(stage_bits))
-                    return c.Fail("failed to add MaterialPrivateDataIndex SSBO");
-            }
-            else
-            {
-                // LocalToWorldIndex / MeshDrawParams：SBS + 固定 binding 目录行
-                if (!ctx->AddSSBOVertex(stage_bits, *cat->sbs, cat->binding))
-                    return c.Fail(std::string("failed to add ") + cat->sbs->name + " SSBO");
-            }
+            // A6-2b-b1：契约已无 PerObject 条目（L2W/L2WIndex/MeshDrawParams/
+            // MaterialPrivateDataIndex 行表全走 BDA——无描述符注册）；此分支不触发，
+            // 目录行随 A6-2b-b2 删除。
             break;
 
         case ResourceCatalogClass::MaterialData:

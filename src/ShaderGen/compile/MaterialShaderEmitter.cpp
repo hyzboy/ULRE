@@ -21,7 +21,7 @@ namespace hgl::graph::mtl
 
     // ── 内部前向声明（2026-09 de-export：仅本文件消费，不再导出）────────
     std::string BuildMeshIndexTableDecls();
-    std::string BuildFSIndexTableDecls(const DescriptorSetLayoutAllocator &descriptor_info);
+    std::string BuildFSIndexTableDecls(const bool fs_has_data_slots);
 
 bool BuildCodeModuleDocument(
     const ShaderCodeResourceManifest *manifest,
@@ -243,7 +243,7 @@ bool BuildMaterialResourceDocument(
     }
 
     const std::string fragment_index_tables =
-        BuildFSIndexTableDecls(descriptor_info);
+        BuildFSIndexTableDecls(material_private_data != SSBOType::UserDefined);
     if (!fragment_index_tables.empty())
     {
         source.logical_name = "MaterialFragmentIndexTables";
@@ -376,10 +376,12 @@ std::string BuildMeshIndexTableDecls()
         out += "\n";
     }
 
-std::string BuildFSIndexTableDecls(
-    const DescriptorSetLayoutAllocator &descriptor_info)
+std::string BuildFSIndexTableDecls(const bool fs_has_data_slots)
 {
     std::string out;
+
+    if (!fs_has_data_slots)
+        return out;
 
     // ── FS 消费设备地址行表（mtl_data_addrs）──────────────
     // 行存 8B 设备地址；fragDataIndexID 即本批 draw item 序号（行表下标）。
@@ -387,15 +389,12 @@ std::string BuildFSIndexTableDecls(
     // pc_root.addr_mtl_data_addrs 下发（FS 侧 pc_root 由 BuildMaterialStageDocument
     // Fragment 分支注入，先于本块）。MTL_ROW(i) 宏（BuildMaterialSSBODeclarations
     // 生成）以地址构造行指针。
-    const ShaderDescriptor *addr_sd =
-        descriptor_info.GetSSBO(SBS_MaterialDataAddresses.name);
-    if (addr_sd && addr_sd->set >= 0 && addr_sd->binding >= 0)
-    {
-        out += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialDataAddressesRef\n";
-        out += "{\n";
-        out += "    uint64_t values[];\n";
-        out += "};\n";
-    }
+    // A6-2b-b1：门从契约 GetSSBO 改直判——mtl_data_addrs 需求 = 材质有有效数据槽
+    //（material_private_data 非 UserDefined，编译配置直判；契约不再声明行表条目）。
+    out += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialDataAddressesRef\n";
+    out += "{\n";
+    out += "    uint64_t values[];\n";
+    out += "};\n";
 
     return out;
 }

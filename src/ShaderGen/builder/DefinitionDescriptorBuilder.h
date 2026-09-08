@@ -33,14 +33,9 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
         opt.sky_stage_flags,
         opt.color_palette_stage_flags);
 
-    // A6-2a：L2W/L2WIndex 不再经契约声明——l2w_ssbo 由模板侧无条件注入（HeaderGen
-    // needs_l2w=orientation 三值恒真），l2w_index/ResolveTransformID 由 MaterialShaderEmitter
-    // 无条件发射；运行时按材质类别静态处理（无 L2W 材质不消费地址，push nullptr 安全）。
-
-    descriptor_builder_common::AppendDefinitionMaterialDescriptors(
-        descriptors,
-        definition,
-        uint32_t(hgl::graph::kMeshFragment));
+    // A6-2a/b1：L2W/L2WIndex/mtl_data_addrs 行表不再经契约声明——l2w_ssbo 由模板侧
+    // 无条件注入，l2w_index/ResolveTransformID 无条件发射，FS mtl_data_addrs 门按编译配置
+    // material_private_data 直判；运行时按材质类别静态处理（无 L2W 材质 push nullptr 安全）。
 
     return descriptors;
 }
@@ -61,14 +56,10 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     ShaderCodeResourceManifest &manifest,
     const BuildDescriptorOptions &opt = {})
 {
-    std::vector<SerializedDescriptorEntry> descriptors = BuildDescriptorsFromDefinition(definition, opt);
-    // 顶点数据 SSBO（MeshShader 方向）：按需求语义注入顶点 SSBO 绑定
-    // 顶点数据 SSBO 已随 Vertex 集退场（顶点流 BDA 化）——顶点数据经 MeshDrawParams
-    // 行内基址到达 shader，描述符契约不再包含任何 Vertex 行。
-    if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest))
-        return {};
-
-    return descriptors;
+    // A6-2b-b1：manifest 数据槽不再桥接契约行表条目——数据槽信号由编译配置
+    // material_private_data 直判（ResolveEffectiveMaterialPrivateData 单槽合并），
+    // 行表存在性/FS 发射门不再经契约。
+    return BuildDescriptorsFromDefinition(definition, opt);
 }
 
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(

@@ -364,30 +364,14 @@ namespace hgl::graph::mtl
                             if (entry.semantic == DescriptorSemantic::MaterialColorPalette)
                                 return !plan.effective_vertex_varying.
                                     emit_vertex_color_from_palette;
-                            if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
-                                return !plan.effective_vertex_varying.
-                                    emit_data_index_id;
                             // 其余（L2W/MeshDrawParams/数据槽/UBO）深度变体恒保留
                             return false;
                         }),
                     plan.descriptors.end());
             }
-            // mesh_draw_params：mesh 阶段统一 per-draw 参数表（IndirectMeshDraw——
-            // mesh shader 经 gl_DrawID 查表的段偏移，替代 per-draw push constant）。
-            // mesh 为唯一顶点路径，所有材质必备，不依赖材质定义/剔除规则。
-            {
-                SerializedDescriptorEntry mesh_params{};
-                mesh_params.set_type = SBS_MeshDrawParams.set_type;
-                mesh_params.stage_flags = VK_SHADER_STAGE_MESH_BIT_EXT;
-                mesh_params.name = SBS_MeshDrawParams.name;
-                mesh_params.struct_name = SBS_MeshDrawParams.struct_name;
-                mesh_params.semantic = DescriptorSemantic::MeshDrawParams;
-                mesh_params.semantic_layer = DescriptorSemanticLayer::SSBO;
-                mesh_params.has_requirement_policy = true;
-                mesh_params.required = true;
-                mesh_params.allow_fallback = false;
-                plan.descriptors.push_back(mesh_params);
-            }
+            // A6-2b-b1：mesh_draw_params 不再经契约声明——参数行本体走 BDA
+            //（buffer_reference，模板恒发 rows[gl_DrawID] 加载点），无描述符无 set；
+            // 契约条目（原仅 schema 记录 + PerObject layout binding 空洞）删除。
             if (!plan.manifest.IsValid())
             {
                 GLogError("[ShaderGen] Generic material resource contract failed: name=%s error=%s",
