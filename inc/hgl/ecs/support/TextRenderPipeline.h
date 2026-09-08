@@ -22,7 +22,6 @@ namespace hgl
         class FontSource;
         class TileFont;
         class ShaderProgram;
-        class MaterialParameters;
         class DescriptorBindingSet;
         class Pipeline;
         class Sampler;

@@ -1,7 +1,5 @@
 ﻿#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
-#include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/type/ValueArray.h>
@@ -9,26 +7,6 @@
 namespace hgl::graph{
 namespace
 {
-    static VkDescriptorBindingFlags GetUpdateAfterBindFlags(const VkDescriptorType desc_type)
-    {
-        switch(desc_type)
-        {
-            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-            case VK_DESCRIPTOR_TYPE_SAMPLER:
-                return VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
-
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-                return VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
-
-            default:
-                return 0;
-        }
-    }
-
     static VkDescriptorSetLayout CreateEmptyDescriptorSetLayout(VkDevice device)
     {
         VkDescriptorSetLayoutCreateInfo empty_ci{};
@@ -43,94 +21,42 @@ namespace
     }
 }
 
-PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager,
-                                                           VkDescriptorSetLayout bindless_layout,
+PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(VkDescriptorSetLayout bindless_layout,
                                                            VkDescriptorSetLayout scene_layout)
 {
     PipelineLayoutData *pld = new PipelineLayoutData();
     memset(pld, 0, sizeof(PipelineLayoutData));
     pld->device = attr->device;
 
-    // 遍历全部集合类型：per-material 集在此构布局；全局集（Scene/Bindless）特判跳过。
-    // Phase 5 新增 Vertex（Set 4）也走 per-material 路径——新增集合类型自动纳入本循环。
+    // A6-2b/b3 终态：描述符集只剩 Scene(0)/Bindless(1) 两个设备级全局集——
+    // per-material 集与 desc_manager/MP 机制已整体退役，此处不再构建任何材质布局。
     for(int i = int(DescriptorSetType::Scene); i < int(DESCRIPTOR_SET_TYPE_COUNT); ++i)
     {
         VkDescriptorSetLayout layout = VK_NULL_HANDLE;
 
-        if(i == int(DescriptorSetType::Scene) && scene_layout != VK_NULL_HANDLE)
+        if(i == int(DescriptorSetType::Scene))
         {
-            // 全局 Scene UBO 集（P1）：layout 由设备级 GlobalSceneUBOSet 提供，
-            // 所有材质共用同一 layout；不构建 per-material 布局、不分配 per-material MP。
-            pld->fin_dsl[i] = scene_layout;
-            pld->layouts[i] = VK_NULL_HANDLE;
-            pld->vab_count[i] = 0;
-            continue;
-        }
-
-        if(i == int(DescriptorSetType::Bindless))
-        {
-            // 全局 Bindless 集：layout 循环外由 bindless_layout 提供（见下）。
-            pld->layouts[i] = VK_NULL_HANDLE;
-            pld->vab_count[i] = 0;
-            continue;
-        }
-
-        if(desc_manager)
-        {
-            const DescriptorSetLayoutCreateInfo *dslci = desc_manager->GetDSLCI((DescriptorSetType)i);
-            if(dslci && dslci->bindingCount > 0)
+            // 全局 Scene UBO 集：layout 由设备级 GlobalSceneUBOSet 提供，所有材质共用同一 layout。
+            if(scene_layout != VK_NULL_HANDLE)
             {
-                ValueArray<VkDescriptorBindingFlags> binding_flags;
-                binding_flags.Resize(dslci->bindingCount);
-
-                bool has_update_after_bind = false;
-                for(uint32_t binding_index = 0; binding_index < dslci->bindingCount; ++binding_index)
-                {
-                    const VkDescriptorBindingFlags flags = GetUpdateAfterBindFlags(dslci->pBindings[binding_index].descriptorType);
-                    binding_flags[binding_index] = flags;
-                    if(flags & VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
-                        has_update_after_bind = true;
-                }
-
-                VkDescriptorSetLayoutBindingFlagsCreateInfo flags_ci{};
-                flags_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-                flags_ci.bindingCount = dslci->bindingCount;
-                flags_ci.pBindingFlags = binding_flags.GetData();
-
-                VkDescriptorSetLayoutCreateInfo layout_ci = *dslci;
-                if(has_update_after_bind)
-                {
-                    layout_ci.pNext = &flags_ci;
-                    layout_ci.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-                }
-
-                if(vkCreateDescriptorSetLayout(attr->device, &layout_ci, nullptr, &layout) != VK_SUCCESS)
-                {
-                    delete pld;
-                    return nullptr;
-                }
-                pld->vab_count[i] = dslci->bindingCount;
+                pld->fin_dsl[i] = scene_layout;
+                pld->layouts[i] = VK_NULL_HANDLE;
+                continue;
             }
-            else
-            {
-                layout = CreateEmptyDescriptorSetLayout(attr->device);
-                if(layout == VK_NULL_HANDLE)
-                {
-                    delete pld;
-                    return nullptr;
-                }
-                pld->vab_count[i] = 0;
-            }
-        }
-        else
-        {
+
+            // 全局集未就绪时的占位空 layout 兜底（正常 Init 顺序下不出现）
             layout = CreateEmptyDescriptorSetLayout(attr->device);
             if(layout == VK_NULL_HANDLE)
             {
                 delete pld;
                 return nullptr;
             }
-            pld->vab_count[i] = 0;
+        }
+        else
+        {
+            // Bindless：layout 由 bindless_layout 提供（循环外统一设），此处仅置空
+            pld->layouts[i] = VK_NULL_HANDLE;
+            continue;
         }
 
         pld->layouts[i] = layout;
@@ -138,13 +64,12 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     }
 
     constexpr int kBindlessIdx = int(DescriptorSetType::Bindless);
-    // Bindless（Set 3）恒为设备级全局 layout（BindlessTextureManager 提供），
+    // Bindless（Set 1）恒为设备级全局 layout（BindlessTextureManager 提供），
     // 由 GraphicsContext::Init 保证非空；不存在回退布局路径。
     pld->fin_dsl[kBindlessIdx] = bindless_layout;
     pld->layouts[kBindlessIdx] = VK_NULL_HANDLE;
 
     pld->bindless_set_index = kBindlessIdx;
-    pld->vab_count[kBindlessIdx] = 0;
     pld->fin_dsl_count = uint32_t(DESCRIPTOR_SET_TYPE_COUNT);
 
     PipelineLayoutCreateInfo pPipelineLayoutCreateInfo;

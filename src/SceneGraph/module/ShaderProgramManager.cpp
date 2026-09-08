@@ -363,7 +363,7 @@ bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mt
     VulkanDevice *device = GetDevice();
     if(!device) return false;
 
-    mtl->pipeline_layout_data = device->CreatePipelineLayoutData(nullptr, bindless_layout_, scene_layout_);
+    mtl->pipeline_layout_data = device->CreatePipelineLayoutData(bindless_layout_, scene_layout_);
 
     #ifdef _DEBUG
         if(mtl->pipeline_layout_data)

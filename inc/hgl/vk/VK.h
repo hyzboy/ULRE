@@ -143,7 +143,6 @@ class Fence;
 class Semaphore;
 
 struct PipelineLayoutData;
-class DescriptorSet;
 enum class DescriptorSetType;
 
 enum class DescriptorType:uint32
@@ -238,10 +237,8 @@ enum class DynamicState:uint32_t
 class ShaderResource;
 class ShaderModule;
 class ShaderModuleMap;
-class MaterialDescriptorManager;
 
 class ShaderProgram;
-class MaterialParameters;
 class Pipeline;
 
 struct VAConfig;

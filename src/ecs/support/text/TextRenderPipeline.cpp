@@ -18,7 +18,6 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/SceneRenderTemplateResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>

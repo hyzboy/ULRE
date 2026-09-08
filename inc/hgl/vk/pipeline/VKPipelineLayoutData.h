@@ -10,7 +10,6 @@ struct PipelineLayoutData
 {
     VkDevice device;
 
-    int vab_count[DESCRIPTOR_SET_TYPE_COUNT];
     VkDescriptorSetLayout layouts[DESCRIPTOR_SET_TYPE_COUNT];
 
     VkDescriptorSetLayout fin_dsl[DESCRIPTOR_SET_TYPE_COUNT];

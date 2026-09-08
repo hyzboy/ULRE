@@ -17,7 +17,6 @@ class GeometryVertexFormat;
 namespace mtl {}
 namespace mtl { class ShaderBuildContext; }
 
-class MaterialParameters;
 
 using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
 
@@ -43,7 +42,6 @@ class ShaderProgram
 
     PipelineLayoutData *pipeline_layout_data;
 
-    MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
 private:
 
@@ -64,37 +62,9 @@ public:
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return shader_stage_list;}
 
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
-    const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return pipeline_layout_data;}
 
 public:
 
-            MaterialParameters *                GetMP                   (const DescriptorSetType &type)
-            {
-                RANGE_CHECK_RETURN_NULLPTR(type)
-
-                return mp_array[size_t(type)];
-            }
-
-public:
-
-    bool BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex);
-    bool BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
-
-    bool BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
-    bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
-    bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,const VkBuffer buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
-
-    bool BindUBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
-    {
-        return BindUBO(sbd->set_type,sbd->name,gpu,dynamic);
-    }
-
-    bool BindSSBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
-    {
-        return BindSSBO(sbd->set_type,sbd->name,gpu,dynamic);
-    }
-
-    void Update();
 
 };//class ShaderProgram
 

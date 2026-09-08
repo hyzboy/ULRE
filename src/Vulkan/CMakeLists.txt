@@ -1,4 +1,4 @@
-set(VK_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/vk)
+﻿set(VK_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/vk)
 
 # ============================================================================
 # Vulkan Backend - 纯 Vulkan API 层实现
@@ -145,20 +145,15 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
 SOURCE_GROUP("Pipeline" FILES ${VK_PIPELINE_FILES})
 
 # --- 5. Descriptor Sets ---
-SET(VK_DESCRIPTOR_SETS_FILES    ${VK_INCLUDE_PATH}/VKDescriptorSet.h
-                                ${VK_INCLUDE_PATH}/VKDynamicBufferAccess.h
-                                VKDescriptorSet.cpp)
+SET(VK_DESCRIPTOR_SETS_FILES    ${VK_INCLUDE_PATH}/VKDynamicBufferAccess.h)
 
 SOURCE_GROUP("DescriptorSets" FILES ${VK_DESCRIPTOR_SETS_FILES})
 
 # --- 6. Shader ---
 SET(VK_SHADER_FILES             ${VK_INCLUDE_PATH}/VKShaderModule.h
                                 ${VK_INCLUDE_PATH}/VKShaderModuleMap.h
-                                ${VK_INCLUDE_PATH}/VKShaderDescriptor.h
-                                ${VK_INCLUDE_PATH}/VKShaderDescriptorSet.h
                                 VKShaderModuleMap.cpp
                                 VKShaderModule.cpp
-                                VKShaderDescriptorSet.cpp
                                 VKShaderStage.cpp)
 
 SOURCE_GROUP("Shader" FILES ${VK_SHADER_FILES})
@@ -246,7 +241,6 @@ SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
                                 VKDeviceImage.cpp
                                 VKDeviceSampler.cpp
                                 VKDeviceFramebuffer.cpp
-                                VKDeviceMaterial.cpp
                                 VKBindlessTextureManager.cpp
                                 VKGlobalSceneUBOSet.cpp)
 
@@ -262,8 +256,6 @@ SOURCE_GROUP("VertexData" FILES ${GEOMETRY_VERTEX_DATA_FILES})
 
 # --- 14. High-level Headers (SceneGraph/ECS 仍使用，但头文件在 vk 目录) ---
 SET(VK_HIGH_LEVEL_HEADERS       ${VK_INCLUDE_PATH}/VKShaderProgram.h
-                                ${VK_INCLUDE_PATH}/VKMaterialParameters.h
-                                ${VK_INCLUDE_PATH}/VKMaterialDescriptorManager.h
                                 ${VK_INCLUDE_PATH}/VKTextureLoader.h)
 
 SOURCE_GROUP("HighLevelHeaders" FILES ${VK_HIGH_LEVEL_HEADERS})

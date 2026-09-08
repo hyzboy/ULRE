@@ -8,7 +8,6 @@
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/ecs/components/TransformComponent.h>

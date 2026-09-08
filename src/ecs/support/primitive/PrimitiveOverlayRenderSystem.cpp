@@ -61,9 +61,6 @@ namespace hgl::ecs
 
         for (MaterialBatch *batch : ordered_batches)
         {
-            if (!batch->descriptor_bind_valid)
-                continue;
-
             if (!IsOverlayLikeBatch(batch))
                 continue;
 

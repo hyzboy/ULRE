@@ -15,7 +15,6 @@ namespace hgl
         class BufferManager;
         class VulkanDevice;
         class IndirectMeshTaskBuffer;
-        class MaterialParameters;
     }
 
     namespace ecs
@@ -65,9 +64,7 @@ namespace hgl::ecs
         uint32_t                                material_data_index_rows_capacity = 0;        ///<DataIndex 行表容量（元素数）
 
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有；由 TransformSystem 持有——系统销毁后此指针失效，勿跨帧缓存系统指针，A6)
-        graph::MaterialParameters *           batch_descriptor_mp[graph::DESCRIPTOR_SET_TYPE_COUNT]{}; ///<批次级描述符参数（按 set type）
-        bool                                  has_batch_descriptor_overrides = false;            ///<是否启用批次级描述符覆盖
-        bool                                  descriptor_bind_valid = true;
+
         bool                                  debug_blocks_logged = false;                       ///<[ArenaDebug] 首次行表诊断日志已输出                      ///<批次级descriptor绑定是否有效
 
         DrawBatchArray                          draw_batches;                               ///<绘制批次数组

@@ -18,7 +18,6 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKBindlessTextureManager.h>

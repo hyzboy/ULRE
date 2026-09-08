@@ -3,9 +3,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
-#include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>

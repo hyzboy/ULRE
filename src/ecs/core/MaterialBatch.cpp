@@ -3,7 +3,6 @@
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
-#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 
@@ -27,13 +26,6 @@ namespace hgl::ecs
 
     MaterialBatch::~MaterialBatch()
     {
-        for (size_t i = 0; i < graph::DESCRIPTOR_SET_TYPE_COUNT; ++i)
-        {
-            delete batch_descriptor_mp[i];
-            batch_descriptor_mp[i] = nullptr;
-        }
-        has_batch_descriptor_overrides = false;
-
         if (icb_mesh_tasks)
             delete icb_mesh_tasks;
         if (mesh_draw_params_buffer)
@@ -67,14 +59,6 @@ namespace hgl::ecs
         static_count = 0;
         draw_batches.clear();
         draw_batches_count = 0;
-        descriptor_bind_valid = true;
-
-        has_batch_descriptor_overrides = false;
-        for (size_t i = 0; i < graph::DESCRIPTOR_SET_TYPE_COUNT; ++i)
-        {
-            if (batch_descriptor_mp[i] && batch_descriptor_mp[i]->GetDescriptorSet())
-                batch_descriptor_mp[i]->GetDescriptorSet()->Clear();
-        }
     }
 
     void MaterialBatch::AddItem(RenderItem* item)

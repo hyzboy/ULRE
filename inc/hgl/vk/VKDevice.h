@@ -40,7 +40,6 @@ class Texture;
 class Fence;
 class DeviceQueue;
 class Semaphore;
-class MaterialParameters;
 
 struct CopyBufferToImageInfo;
 
@@ -398,11 +397,8 @@ public: //shader & material
 
     ShaderModule *CreateShaderModule(VkShaderStageFlagBits,const uint32_t *,const size_t);
 
-    PipelineLayoutData *CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager,
-                                                  VkDescriptorSetLayout bindless_layout = VK_NULL_HANDLE,
+    PipelineLayoutData *CreatePipelineLayoutData(VkDescriptorSetLayout bindless_layout = VK_NULL_HANDLE,
                                                   VkDescriptorSetLayout scene_layout    = VK_NULL_HANDLE);
-
-    MaterialParameters *CreateMP(const MaterialDescriptorManager *desc_manager,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type);
 
 public: //Command Buffer 相关
 

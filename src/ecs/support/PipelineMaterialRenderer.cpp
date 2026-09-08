@@ -17,7 +17,6 @@
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/RootAddressPush.h>
@@ -186,24 +185,8 @@ namespace hgl::ecs
                     ? owner_batch->material_data_index_rows_buffer->GetGPUBuffer() : nullptr);
         }
 
-        if (owner_batch && owner_batch->has_batch_descriptor_overrides)
-        {
-            const VkPipelineLayout layout = material->GetPipelineLayout();
-            for (uint32_t set_index = 0; set_index < graph::DESCRIPTOR_SET_TYPE_COUNT; ++set_index)
-            {
-                auto *mp = owner_batch->batch_descriptor_mp[set_index];
-                if (!mp)
-                    mp = material->GetMP(static_cast<graph::DescriptorSetType>(set_index));
-                if (!mp)
-                    continue;
-
-                mp->Update();
-                const VkDescriptorSet ds = mp->GetVkDescriptorSet();
-                cmd_buf->BindDescriptorSets(layout, set_index, &ds, 1, nullptr, 0);
-            }
-        }
-        // A6-2b-b2：原 else 分支（BindDescriptorSets(material)——材质级全集绑定）已删——
-        // desc_manager 恒 null 后 mp_array 全空、该函数空转；Scene/Bindless 由设备级
+        // 批次级描述符覆盖（batch_descriptor_mp）与材质级绑定（BindDescriptorSets(material)）
+        // 已随 desc_manager/MP 机制整体退役删除（2026-09-08）：Scene/Bindless 由设备级
         // 全局绑定（VKGlobalSceneUBOSet / VKBindlessTextureManager），材质侧不再绑任何集。
 
         // 遍历绘制批次：全部累积命令（BDA 后无 per-draw descriptor/set——BDA 化前

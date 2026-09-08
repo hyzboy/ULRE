@@ -3,14 +3,12 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKVABList.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
-#include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/mtl/PipelineConfig.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
-class MaterialParameters;
 class VulkanCmdBuffer
 {
 public:

@@ -24,7 +24,6 @@ namespace hgl
         class VABList;
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
-        class MaterialParameters;
     }
 
     namespace ecs
