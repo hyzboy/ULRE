@@ -40,10 +40,13 @@ namespace hgl::ecs
     {
         bool BatchRequiresIndirectCommands(const MaterialBatch &batch)
         {
+            // BDA 后顶点数据经行内地址寻址——所有 DrawBatch（含私有 VBO）都进
+            // 同一次 vkCmdDrawMeshTasksIndirectEXT multi-draw，命令序 = 行序 1:1。
+            // 凡含几何项的 batch 都需要 ICB（mesh 为唯一顶点路径，恒走间接）。
             for (auto *item : batch.items)
             {
                 const auto *data_buffer = item ? item->GetGeometryDataBuffer() : nullptr;
-                if (data_buffer && data_buffer->vdm)
+                if (data_buffer)
                     return true;
             }
 
@@ -545,7 +548,6 @@ namespace hgl::ecs
                     DrawBatch &db = batch.draw_batches[i];
                     const auto *range = db.geom_draw_range;
 
-                    db.params_row = i;
                     row[i].index_base = static_cast<uint32_t>(range ? range->first_index : 0);
                     row[i].vertex_base = static_cast<uint32_t>(range ? range->vertex_offset : 0);
                     row[i].is_indexed = (range && range->index_count > 0) ? 1u : 0u;
@@ -633,8 +635,9 @@ namespace hgl::ecs
                 for (uint32_t i = 0; i < count; ++i)
                 {
                     const DrawBatch &db = batch.draw_batches[i];
-                    if (!db.geom_data_buffer || !db.geom_data_buffer->vdm
-                     || !db.geom_draw_range)
+                    // BDA：全部 DrawBatch（含私有 VBO，地址经 db.geometry 直取填行）都写
+                    // mesh 间接命令——命令序 = DrawBatch 序 = 参数行序 1:1
+                    if (!db.geom_data_buffer || !db.geom_draw_range)
                         continue;
 
                     const auto *range = db.geom_draw_range;

@@ -30,17 +30,9 @@ namespace hgl::ecs
         : material(m)
         , pipeline(p)
         , cmd_buf(nullptr)
-        , last_data_buffer(nullptr)
         , first_indirect_draw_index(-1)
         , indirect_draw_count(0)
     {
-    }
-
-    PipelineMaterialRenderer::~PipelineMaterialRenderer()
-    {
-        for (auto *mp : per_object_mp_pool)
-            delete mp;
-        per_object_mp_pool.clear();
     }
 
     void PipelineMaterialRenderer::ProcIndirectRender()
@@ -69,167 +61,30 @@ namespace hgl::ecs
         indirect_draw_count = 0;
     }
 
-    void PipelineMaterialRenderer::BindMeshDrawParamsView(const DrawBatch* batch)
-    {
-        // 直接绘制路径：参数表按本 draw 行 offset 视图重绑（gl_DrawID=0 → rows[0]
-        // 恰为本行）。run 起点的 switch 绑定已覆盖单 draw run——offset 缓存跳过。
-        if (!cur_owner_batch || !cur_owner_batch->mesh_draw_params_buffer || !batch)
-            return;
-
-        auto *mp = batch->per_object_mp;
-        if (!mp)
-            return;
-
-        const VkDeviceSize offset =
-            static_cast<VkDeviceSize>(batch->params_row)
-            * sizeof(graph::mtl::MeshDrawParams);
-
-        if (offset == last_mesh_params_offset)
-            return;
-
-        mp->BindSSBO("mesh_draw_params",
-                     cur_owner_batch->mesh_draw_params_buffer->GetGPUBuffer()->GetVkDeviceBuffer(),
-                     offset,
-                     VK_WHOLE_SIZE);
-        mp->Update();
-        const VkDescriptorSet ds = mp->GetVkDescriptorSet();
-        cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
-                                    static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
-                                    &ds, 1, nullptr, 0);
-        last_mesh_params_offset = offset;
-    }
-
     bool PipelineMaterialRenderer::Draw( DrawBatch* batch,
                                             TransformAssignmentBuffer* transform_buffer,
                                             const MaterialBatch *owner_batch)
     {
         (void)transform_buffer;
+        (void)owner_batch;
 
-        // 检查是否需要切换几何数据缓冲
-        const bool need_buffer_switch = !last_data_buffer ||
-                                       *(batch->geom_data_buffer) != *last_data_buffer;
-
-        if (need_buffer_switch)
+        // mesh 为唯一顶点路径（VS 已彻底删除）：顶点数据与 per-draw 参数全部经
+        // MeshDrawParams 行内 BDA 寻址——无 buffer 切换、无 per-draw descriptor
+        //（BDA 使能前 need_buffer_switch 会在 buffer 变化时 flush + 重绑 PerObject set，
+        //  该机制已随 7 表全 BDA 化退场）。所有 DrawBatch（含私有 VBO）累积为同一条
+        //  vkCmdDrawMeshTasksIndirectEXT multi-draw：命令序 = DrawBatch 序 = 参数行序
+        // （gl_DrawID 1:1），批末由 Render 统一 flush。
+        if (material_is_mesh)
         {
-            // 先提交之前累积的间接绘制
-            if (indirect_draw_count)
+            if (indirect_draw_count == 0)
             {
-                ProcIndirectRender();
+                first_indirect_draw_index =
+                    static_cast<int32_t>(indirect_draw_command_offset);
             }
 
-            // 更新缓冲状态
-            last_data_buffer = batch->geom_data_buffer;
-
-            // 顶点数据已 BDA 化（基址随 MeshDrawParams 行内寻址）——无 Vertex 集可绑。
-            // ── PerObject 集：l2w / 行表 / per-draw 参数表 ──
-            if (ssbo_vertex_input)
-            if (auto *mp = batch->per_object_mp)
-            {
-                    // l2w / index rows 补绑（独立 VAB 场景的 program 实例可能没有
-                    // RDBS 预绑——Draw 侧统一补到本 draw 的 PerObject MP）
-                    if (transform_buffer)
-                        transform_buffer->BindTransform(mp);
-
-                    if (owner_batch)
-                    {
-                        if (owner_batch->l2w_index_buffer)
-                            mp->BindSSBO("l2w_index",
-                                         owner_batch->l2w_index_buffer->GetGPUBuffer());
-
-                        if (owner_batch->material_data_index_rows_buffer)
-                        {
-                            // 行表 mtl_data_addrs（8B 设备地址）：按名查找必须与
-                            // schema/描述符布局一致，否则静默不绑
-                            mp->BindSSBO(graph::mtl::SBS_MaterialDataAddresses.name,
-                                         owner_batch->material_data_index_rows_buffer->GetGPUBuffer());
-                        }
-                    }
-
-                    // IndirectMeshDraw：mesh per-draw 参数表——按 run 首行 offset 绑定
-                    //（switch 触发即 run 起点；rows[gl_DrawID] 在 run 内与命令序 1:1 对齐）
-                    if (material_is_mesh
-                     && owner_batch
-                     && owner_batch->mesh_draw_params_buffer)
-                    {
-                        const VkDeviceSize params_offset =
-                            static_cast<VkDeviceSize>(batch->params_row)
-                            * sizeof(graph::mtl::MeshDrawParams);
-                        mp->BindSSBO(
-                            "mesh_draw_params",
-                            owner_batch->mesh_draw_params_buffer->GetGPUBuffer()->GetVkDeviceBuffer(),
-                            params_offset,
-                            VK_WHOLE_SIZE);
-                        last_mesh_params_offset = params_offset;
-                    }
-
-                    // 一次 Update + 绑定（此前分三段各自 Update/绑定一次）
-                    mp->Update();
-                    const VkDescriptorSet ds = mp->GetVkDescriptorSet();
-                    cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
-                                                static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
-                                                &ds, 1, nullptr, 0);
-                }
-                else if (transform_buffer)
-                {
-                    // per-draw MP 创建失败兜底：l2w 绑材质默认 PerObject（与旧路径一致）
-                    transform_buffer->BindTransform(material->GetMP(graph::DescriptorSetType::PerObject));
-                }
+            ++indirect_draw_count;
         }
 
-        // IndirectMeshDraw：mesh 材质 per-draw 参数走 mesh_draw_params 参数表 SSBO
-        //（BuildBatches 与命令同序写行），不再推 push constant。
-        // 非 mesh（手写管线遗留）：12B push + Draw 原路径。
-        if (ssbo_vertex_input)
-        {
-            if (material_is_mesh)
-            {
-                // 实例化：Y 轴 = 实例轴（gl_WorkGroupID.y = 实例内序号，
-                // + first_instance 后与 l2w_index 索引号对齐）
-                // total_vertices：索引几何 = index_count（每索引 1 顶点查表），非索引 = vertex_count
-                const bool is_lines = material->GetPrimitiveType() == hgl::graph::PrimitiveType::Lines;
-                const uint32_t total_vertices = batch->geom_draw_range->index_count > 0
-                    ? static_cast<uint32_t>(batch->geom_draw_range->index_count)
-                    : static_cast<uint32_t>(batch->geom_draw_range->vertex_count);
-                const uint32_t group_count = CalcMeshGroupCount(is_lines, total_vertices);
-                const uint32_t instance_count = batch->instance_count > 1
-                    ? static_cast<uint32_t>(batch->instance_count)
-                    : 1u;
-
-                // 间接合批：VDM 共享 buffer + MDI 支持 → 累积命令（buffer 切换/批末
-                // flush 一条 vkCmdDrawMeshTasksIndirectEXT）。
-                // 不支持 MDI 时走直接路径——逐条 fallback 的 DrawID 恒 0，无法区分命令
-                const bool use_indirect = batch->geom_data_buffer->vdm
-                                       && owner_batch
-                                       && owner_batch->icb_mesh_tasks
-                                       && owner_batch->device
-                                       && owner_batch->device->GetPhyDevice()->SupportMDI();
-
-                if (use_indirect)
-                {
-                    // 命令偏移取本批 ICB 命令序号累计（与 BuildBatches 写入序一致；
-                    // 不能用 first_instance——vdm/非 vdm 混排时二者脱节）
-                    if (indirect_draw_count == 0)
-                    {
-                        first_indirect_draw_index =
-                            static_cast<int32_t>(indirect_draw_command_offset);
-                    }
-
-                    ++indirect_draw_count;
-                }
-                else
-                {
-                    // 直接路径（私有 VBO / 无 MDI）：参数表 offset 视图重绑到本 draw 行
-                    //（gl_DrawID=0 → rows[0] 恰为本行）后直接 dispatch
-                    BindMeshDrawParamsView(batch);
-                    cmd_buf->DrawMeshTasks(group_count, instance_count);
-                }
-
-                return true;
-            }
-        }
-
-        // mesh 为唯一顶点路径（VS 已彻底删除）——SSBO 顶点输入材质必走上方 mesh
-        // 分支；执行到此说明材质 schema 异常（无顶点 SSBO 且非 mesh），无绘制路径
         return true;
     }
 
@@ -287,15 +142,13 @@ namespace hgl::ecs
             }
         }
 
-        // 重置渲染状态缓存（每批次 ICB 命令从 0 开始）
-        last_data_buffer = nullptr;
+        // 重置间接命令状态（每批次从 0 开始；本批所有 DrawBatch 累积后一次 flush）
         indirect_draw_count = 0;
         indirect_draw_command_offset = 0;
         first_indirect_draw_index = -1;
-        last_mesh_params_offset = UINT64_MAX;
         cur_owner_batch = owner_batch;
 
-        // mesh stage 判定（批级一次——switch 块参数表绑定与间接 flush 分派共用）
+        // mesh stage 判定（批级一次——push constant 与间接 flush 分派共用）
         material_is_mesh = false;
         for (const auto &stage : material->GetStageList())
         {
@@ -306,13 +159,7 @@ namespace hgl::ecs
             }
         }
 
-        // SSBO 顶点输入判定：mesh 为唯一顶点路径——顶点数据已 BDA 化
-        //（基址随 MeshDrawParams 行内寻址，Vertex 集描述符已退场），
-        // 材质含 mesh 阶段即需要 per-draw 参数表/行表绑定。
-        ssbo_vertex_input = material_is_mesh;
-
-        // L2W / MI descriptor binding is unified in RenderDescriptorBindingSystem.
-        // PipelineMaterialRenderer only handles VAB/IBO and draw submission here.
+        // l2w 仅 push 地址用：材质无 LocalToWorld 则无需提供（shader 不消费）
         if (!material->hasLocalToWorld())
         {
             transform_buffer=nullptr;
@@ -367,66 +214,17 @@ namespace hgl::ecs
             cmd_buf->BindDescriptorSets(material);
         }
 
-        // 遍历绘制批次
+        // 遍历绘制批次：全部累积命令（BDA 后无 per-draw descriptor/set——BDA 化前
+        // 的 per-draw 独立 PerObject MP 池机制已随 7 表全 BDA 退场）
         DrawBatch* batch = const_cast<DrawBatch*>(batches.data());
-
-        // per-draw 独立 PerObject MP 池（descriptor set 是状态非快照——多对象独立
-        // buffer 时共享单 set 被 per-draw 顺序更新，提交时刻所有 draw 读最后一次
-        // 更新的内容；每 draw 独立 set 各自更新+绑定）
-        // VDM 共享 buffer：整批 GeometryDataBuffer 内容相同——单 set 即可（仅首
-        // draw 触发绑定，后续 draw 无切换直接沿用；避免按绘制数分配空置 set）
-        const bool need_per_draw_mp = ssbo_vertex_input;
-        bool single_per_object_set = true;
-
-        if (need_per_draw_mp && batch_count > 1)
-        {
-            const auto *first_db = batch[0].geom_data_buffer;
-
-            if (!first_db)
-                single_per_object_set = false;
-
-            for (uint32_t i = 1; i < batch_count; i++)
-            {
-                const auto *db = batch[i].geom_data_buffer;
-                if (!db || *db != *first_db)
-                {
-                    single_per_object_set = false;
-                    break;
-                }
-            }
-        }
-
-        const uint32_t mp_count = !need_per_draw_mp ? 0u
-                              : single_per_object_set ? 1u
-                              : batch_count;
-
-        if (per_object_mp_pool.size() < mp_count)
-            per_object_mp_pool.resize(mp_count, nullptr);
 
         for (uint32_t i = 0; i < batch_count; i++)
         {
-            if (need_per_draw_mp)
-            {
-                const uint32_t pool_index = single_per_object_set ? 0u : i;
-
-                if (!per_object_mp_pool[pool_index])
-                {
-                    auto *base_mp = material->GetMP(graph::DescriptorSetType::PerObject);
-
-                    if (base_mp && owner_batch && owner_batch->device)
-                        per_object_mp_pool[pool_index] = owner_batch->device->CreateMP(base_mp->GetDescManager(),
-                                                                              material->GetPipelineLayoutData(),
-                                                                              graph::DescriptorSetType::PerObject);
-                }
-
-                batch->per_object_mp = per_object_mp_pool[pool_index];
-            }
-
             Draw(batch, transform_buffer, owner_batch);
             ++batch;
         }
 
-        // 提交剩余的间接绘制命令
+        // 批末统一 flush 一条 vkCmdDrawMeshTasksIndirectEXT（multi-draw）
         if (indirect_draw_count)
         {
             ProcIndirectRender();

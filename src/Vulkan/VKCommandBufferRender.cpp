@@ -271,11 +271,9 @@ void RenderCmdBuffer::DrawMeshTasksIndirect(VkBuffer buffer,VkDeviceSize offset,
     if(!dev_attr||!dev_attr->cmd_draw_mesh_tasks_indirect)
         return;
 
-    if(this->dev_attr->physical_device->SupportMDI())
-        dev_attr->cmd_draw_mesh_tasks_indirect(cmd_buf,buffer,offset,drawCount,stride);
-    else
-    for(uint32_t i=0;i<drawCount;i++)
-        dev_attr->cmd_draw_mesh_tasks_indirect(cmd_buf,buffer,offset+i*stride,1,stride);
+    // 多命令直发——引擎设备创建强制 multiDrawIndirect（VKDeviceCreater VHRC_F10），
+    // 无逐条退化路径（零兼容：必用不留分支）
+    dev_attr->cmd_draw_mesh_tasks_indirect(cmd_buf,buffer,offset,drawCount,stride);
 }
 
 bool RenderCmdBuffer::BindDescriptorSets(ShaderProgram *mtl, MaterialParameters *override_per_object)

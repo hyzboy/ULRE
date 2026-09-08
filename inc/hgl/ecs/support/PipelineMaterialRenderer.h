@@ -55,13 +55,10 @@ namespace hgl::ecs
     {
                 uint32_t                first_instance = 0;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
                 uint32_t                instance_count = 0;     ///<此批次包含的实例数量
-                uint32_t                params_row = 0;         ///<本批参数行号（mesh_draw_params 表内——间接 flush 按 run 基址偏移绑定，直接绘制绑定本行 offset 视图）
 
         const   graph::GeometryDataBuffer *    geom_data_buffer = nullptr;   ///<几何数据缓冲
         const   graph::GeometryDrawRange *     geom_draw_range = nullptr;    ///<绘制范围（顶点/索引偏移和数量）
-        const   graph::Geometry *              geometry = nullptr;           ///<几何体（per-DrawBatch 顶点 SSBO 绑定用——VAB 直取）
-
-        graph::MaterialParameters *            per_object_mp = nullptr;      ///<per-DrawBatch 独立 PerObject set（descriptor set 是状态非快照——多对象独立 buffer 时共享单 set 提交时刻全用最后一次内容）
+        const   graph::Geometry *              geometry = nullptr;           ///<几何体（BDA 地址直取——行内填 addr_*）
 
         void Set(const graph::GeometryDataBuffer *data_buffer,
                  const graph::GeometryDrawRange *draw_range,
@@ -90,38 +87,12 @@ namespace hgl::ecs
         // === 渲染状态缓存 ===
         graph::RenderCmdBuffer* cmd_buf;                    ///<当前渲染命令缓冲
 
-        const graph::GeometryDataBuffer* last_data_buffer;  ///<上次绑定的几何数据缓冲
-
-        // === per-DrawBatch 独立 PerObject MP 池（descriptor set 是状态非快照：
-        // 多对象独立 buffer 时，共享单 set 被 per-draw 顺序更新，提交时刻所有 draw
-        // 读到最后一次更新的内容——每 draw 独立 set 解决） ===
-        std::vector<graph::MaterialParameters*> per_object_mp_pool;   ///<per-draw PerObject MP 池（跨帧复用）
-
-        // === SSBO 顶点输入 ===
-        bool ssbo_vertex_input = false;                     ///<材质是否走 mesh SSBO 顶点路径（顶点数据 BDA 化后=含 mesh 阶段）
         bool material_is_mesh = false;                      ///<材质是否含 mesh stage（间接 flush 分派）
         const MaterialBatch *cur_owner_batch = nullptr;     ///<当前材质批（间接 flush 取 icb_mesh_tasks）
-        VkDeviceSize last_mesh_params_offset = UINT64_MAX;  ///<直接路径 mesh_draw_params offset 视图缓存
 
         int first_indirect_draw_index;                      ///<首个间接绘制索引
         uint32_t indirect_draw_count;                       ///<累积的间接绘制数量
         uint32_t indirect_draw_command_offset = 0;          ///<本批次已提交的间接命令数（ICB 命令序号累计）
-
-        // === 渲染辅助方法 ===
-
-        /**
-         * 绑定顶点属性缓冲
-         * @param batch 绘制批次
-         * @return 绑定是否成功
-         */
-        bool BindVAB(const DrawBatch* batch);   // VBO 时代残留——已随阶段 4 删除实现
-
-        /**
-         * 绑定 mesh per-draw 参数表 offset 视图（直接绘制路径——gl_DrawID=0 → rows[0]）
-         * @param batch 绘制批次
-         */
-        void BindMeshDrawParamsView(const DrawBatch* batch);
-
         /**
          * 处理间接渲染（mesh：一条 vkCmdDrawMeshTasksIndirectEXT multi-draw）
          */
@@ -140,7 +111,6 @@ namespace hgl::ecs
 
     public:
         PipelineMaterialRenderer(graph::ShaderProgram* m, graph::Pipeline* p);
-        ~PipelineMaterialRenderer();
 
         /**
          * 执行渲染
