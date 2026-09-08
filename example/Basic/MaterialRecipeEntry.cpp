@@ -58,7 +58,7 @@ namespace
     }
 }
 
-class TestApp:public WorkObject
+class MaterialRecipeEntryApp:public WorkObject
 {
 private:
 
@@ -67,7 +67,7 @@ private:
     Entity *      camera_entity  =nullptr;
 
     Geometry *          geometry        = nullptr;
-    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* material_data_ssbo_accessor = nullptr;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
 
@@ -111,20 +111,20 @@ private:
         return true;
     }
 
-    bool InitMISSBO()
+    bool InitMaterialDataSSBO()
     {
         auto* domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
+        material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
             "MaterialRecipeEntry:EmissiveSurface:MaterialData",
             1);
-        if (!mtl_data_ssbo_accessor)
+        if (!material_data_ssbo_accessor)
             return false;
 
-        (*mtl_data_ssbo_accessor)[0].color =GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        mtl_data_ssbo_accessor->Commit();
+        (*material_data_ssbo_accessor)[0].color =GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        material_data_ssbo_accessor->Commit();
         return true;
     }
     bool InitECS()
@@ -147,12 +147,12 @@ private:
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                  graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+                                                 material_data_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource named_struct{};
         named_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
+        named_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
         named_struct.data_index = 0;
         named_struct.use_data_index = false;
         named_struct.shared_across_instances = true;
@@ -186,9 +186,9 @@ private:
     }
 
 public:
-    ~TestApp()
+    ~MaterialRecipeEntryApp()
     {
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
+        SAFE_CLEAR(material_data_ssbo_accessor)
         SAFE_CLEAR(geometry)
     }
 
@@ -202,7 +202,7 @@ public:
         if(!InitMaterial())
             return false;
 
-        if(!InitMISSBO())
+        if(!InitMaterialDataSSBO())
             return false;
 
         if(!InitECS())
@@ -217,5 +217,5 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("MaterialRecipe Entry Cube (Test)"), argc, argv, 1280, 720);
+    return RunFramework<MaterialRecipeEntryApp>(OS_TEXT("MaterialRecipe Entry Cube (Test)"), argc, argv, 1280, 720);
 }

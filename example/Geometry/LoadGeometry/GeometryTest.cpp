@@ -74,7 +74,7 @@ constexpr const COLOR TestColor[] =
 
 constexpr const size_t COLOR_COUNT = sizeof(TestColor) / sizeof(COLOR);
 
-class TestApp:public WorkObject
+class LoadGeometryApp:public WorkObject
 {
 private:
 
@@ -84,13 +84,13 @@ private:
     struct MaterialData
     {
         GeometryVertexFormat geometry_vertex_format;
-        graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow> * mtl_data_ssbo_accessor = nullptr;
+        graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow> * material_data_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
 
         ~MaterialData()
         {
-            delete mtl_data_ssbo_accessor;
-            mtl_data_ssbo_accessor = nullptr;
+            delete material_data_ssbo_accessor;
+            material_data_ssbo_accessor = nullptr;
         }
     };
 
@@ -99,7 +99,7 @@ private:
     graph::mtl::MaterialRecipe solid_recipe{};
     graph::mtl::MaterialRecipe wire_recipe{};
 
-    struct RenderMesh
+    struct MeshEntry
     {
         Geometry *geometry;
         PrimitiveAsset asset;
@@ -111,7 +111,7 @@ private:
 
     public:
 
-        ~RenderMesh()
+        ~MeshEntry()
         {
             delete geometry;
         }
@@ -124,7 +124,7 @@ private:
         std::shared_ptr<hgl::ecs::PrimitiveComponent> primitive_comp;
     };
 
-    std::vector<std::unique_ptr<RenderMesh>> render_mesh;
+    std::vector<std::unique_ptr<MeshEntry>> render_mesh;
     std::vector<std::unique_ptr<BoundingBoxMesh>> bounding_boxes;
 
     Geometry *bbox_geometry = nullptr;
@@ -150,16 +150,16 @@ private:
 
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         md->ssbo_count = color_count;
-        md->mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
+        md->material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
             ssbo_type,
             tag,
             color_count);
-        if (!md->mtl_data_ssbo_accessor)
+        if (!md->material_data_ssbo_accessor)
             return false;
 
         for (uint32_t i = 0; i < color_count; ++i)
-            (*md->mtl_data_ssbo_accessor)[i].color =GetColor4f(TestColor[i], 1.0f);
-        md->mtl_data_ssbo_accessor->Commit();
+            (*md->material_data_ssbo_accessor)[i].color =GetColor4f(TestColor[i], 1.0f);
+        md->material_data_ssbo_accessor->Commit();
 
         return true;
     }
@@ -187,7 +187,7 @@ private:
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             solid_recipe,
             graph::mtl::DefaultMaterialPrivateDataSlotName,
-            solid.mtl_data_ssbo_accessor->GetSSBOBinding());
+            solid.material_data_ssbo_accessor->GetSSBOBinding());
     }
 
     bool InitWireMDP()
@@ -202,7 +202,7 @@ private:
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             wire_recipe,
             graph::mtl::DefaultMaterialPrivateDataSlotName,
-            wire.mtl_data_ssbo_accessor->GetSSBOBinding());
+            wire.material_data_ssbo_accessor->GetSSBOBinding());
     }
 
     bool CreateBoundingBoxMesh()
@@ -227,19 +227,19 @@ private:
         return bbox_asset.IsValid();
     }
 
-    RenderMesh *CreateRenderMesh(Geometry *geometry,const int color)
+    MeshEntry *CreateMeshEntry(Geometry *geometry,const int color)
     {
         if(!geometry)
             return(nullptr);
 
-        auto rm = std::make_unique<RenderMesh>();
+        auto rm = std::make_unique<MeshEntry>();
         rm->geometry = geometry;
         rm->asset = PrimitiveAsset(geometry, &solid_recipe, PrimitiveType::Triangles);
         if (!rm->asset.IsValid())
             return nullptr;
         rm->color_index = static_cast<uint32_t>(color);
 
-        RenderMesh *result = rm.get();
+        MeshEntry *result = rm.get();
         render_mesh.push_back(std::move(rm));
         return result;
     }
@@ -258,7 +258,7 @@ private:
             if(!geo)
                 continue;
 
-            RenderMesh *rm=CreateRenderMesh(geo,i);
+            MeshEntry *rm=CreateMeshEntry(geo,i);
 
             if(!rm)
             {
@@ -305,7 +305,7 @@ private:
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource bbox_struct{};
             bbox_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            bbox_struct.ssbo_id = wire.mtl_data_ssbo_accessor->GetSSBOId();
+            bbox_struct.ssbo_id = wire.material_data_ssbo_accessor->GetSSBOId();
             bbox_struct.data_index = static_cast<uint32_t>(i % COLOR_COUNT);
             bbox_struct.use_data_index = true;
             bbox_struct.shared_across_instances = true;
@@ -347,7 +347,7 @@ private:
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
             mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            mesh_struct.ssbo_id = solid.mtl_data_ssbo_accessor->GetSSBOId();
+            mesh_struct.ssbo_id = solid.material_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = rm->color_index;
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
@@ -401,7 +401,7 @@ private:
     }
 
 public:
-    ~TestApp()
+    ~LoadGeometryApp()
     {
         delete bbox_geometry;
     }
@@ -427,9 +427,9 @@ public:
 
         return(true);
     }
-};//class TestApp
+};//class LoadGeometryApp
 
 int os_main(int argc,os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Load Geometry"),argc,argv,1280,720);
+    return RunFramework<LoadGeometryApp>(OS_TEXT("Load Geometry"),argc,argv,1280,720);
 }

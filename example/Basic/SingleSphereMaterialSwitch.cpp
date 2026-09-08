@@ -59,7 +59,7 @@ constexpr const os_char PBR_FOLDER[] = OS_TEXT("Concrete_Plain");
 static constexpr float SWITCH_NEAR_ENTER_DISTANCE = 7.0f;   // far->near
 static constexpr float SWITCH_FAR_ENTER_DISTANCE = 9.0f;    // near->far
 
-class TestApp : public WorkObject
+class SingleSphereMaterialSwitchApp : public WorkObject
 {
 private:
 
@@ -74,7 +74,7 @@ private:
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
 
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -160,8 +160,8 @@ private:
         auto* domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>( "SingleSphereSwitch:MaterialData", 1);
-        if (!mtl_data_ssbo_accessor)
+        material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>( "SingleSphereSwitch:MaterialData", 1);
+        if (!material_data_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
 
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
@@ -169,7 +169,7 @@ private:
         near_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
                                                  graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+                                                 material_data_ssbo_accessor->GetSSBOBinding());
 
         far_recipe = near_recipe;
         far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
@@ -240,7 +240,7 @@ private:
 
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
         sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
+        sphere_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
         sphere_struct.data_index = 0;
         sphere_struct.use_data_index = false;
         sphere_struct.shared_across_instances = false;
@@ -253,7 +253,7 @@ private:
         if (!near_base_color_array || !near_normal_array || !far_base_color_texture || !far_normal_texture)
             return LogFail("InitRenderResources", "required material/texture is null");
 
-        if (!mtl_data_ssbo_accessor)
+        if (!material_data_ssbo_accessor)
             return LogFail("InitRenderResources", "SSBO not allocated");
 
         graph::ssbo::PBRSurfaceRow material_data{};
@@ -262,8 +262,8 @@ private:
         material_data.roughness = 0.25f;
         material_data.normal_scale = 0.35f;
 
-        (*mtl_data_ssbo_accessor)[0] = material_data;
-        mtl_data_ssbo_accessor->Commit();
+        (*material_data_ssbo_accessor)[0] = material_data;
+        material_data_ssbo_accessor->Commit();
         sphere_asset = PrimitiveAsset(sphere_geometry, &near_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -356,12 +356,12 @@ private:
 
 public:
 
-    ~TestApp()
+    ~SingleSphereMaterialSwitchApp()
     {
         SAFE_CLEAR(sphere_geometry)
         SAFE_CLEAR(mesh_vdm)
 
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
+        SAFE_CLEAR(material_data_ssbo_accessor)
 
         SAFE_CLEAR(near_base_color_array)
         SAFE_CLEAR(near_normal_array)
@@ -418,5 +418,5 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Single Sphere ShaderProgram Switch (ECS)"), argc, argv, 1280, 720);
+    return RunFramework<SingleSphereMaterialSwitchApp>(OS_TEXT("Single Sphere ShaderProgram Switch (ECS)"), argc, argv, 1280, 720);
 }

@@ -55,24 +55,24 @@ namespace
     }
 }
 
-class TestApp : public WorkObject
+class AtmosphereSkyAmbientApp : public WorkObject
 {
 private:
 
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
-    struct RenderMesh
+    struct MeshEntry
     {
         Geometry* geometry = nullptr;
         PrimitiveAsset asset{};
 
-        ~RenderMesh() { delete geometry; }
+        ~MeshEntry() { delete geometry; }
     };
 
     graph::mtl::MaterialRecipe sky_recipe{};
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
 
     Geometry* prim_sky_sphere = nullptr;
     PrimitiveAsset sky_asset{};
@@ -82,7 +82,7 @@ private:
     Texture2D* roughness_texture = nullptr;
     Sampler* sampler = nullptr;
 
-    std::vector<std::unique_ptr<RenderMesh>> meshes;
+    std::vector<std::unique_ptr<MeshEntry>> meshes;
 
 private:
 
@@ -99,7 +99,7 @@ private:
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+                                                 material_data_ssbo_accessor->GetSSBOBinding());
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
@@ -120,7 +120,7 @@ private:
         return true;
     }
 
-    bool InitMISSBO()
+    bool InitMaterialDataSSBO()
     {
         auto* domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
@@ -132,14 +132,14 @@ private:
         material_data.roughness    = 0.92f;
         material_data.normal_scale = 0.35f;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
+        material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             "AtmosphereSkyAmbient:PBRSurface:MaterialData",
             1);
-        if (!mtl_data_ssbo_accessor)
+        if (!material_data_ssbo_accessor)
             return false;
 
-        (*mtl_data_ssbo_accessor)[0] = material_data;
-        mtl_data_ssbo_accessor->Commit();
+        (*material_data_ssbo_accessor)[0] = material_data;
+        material_data_ssbo_accessor->Commit();
         return true;
     }
 
@@ -183,7 +183,7 @@ private:
 
             geometry_manager->Add(geom);
 
-            auto mesh = std::make_unique<RenderMesh>();
+            auto mesh = std::make_unique<MeshEntry>();
             mesh->geometry = geom;
             mesh->asset = PrimitiveAsset(geom, &mesh_recipe, PrimitiveType::Triangles);
             meshes.push_back(std::move(mesh));
@@ -288,7 +288,7 @@ private:
 
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
             mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
+            mesh_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = 0;
             mesh_struct.use_data_index = false;
             mesh_struct.shared_across_instances = false;
@@ -354,7 +354,7 @@ public:
 
     bool Init() override
     {
-        if (!InitMISSBO())
+        if (!InitMaterialDataSSBO())
             return false;
 
         if (!InitMaterial())
@@ -382,5 +382,5 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("AtmosphereSkyAmbient"), argc, argv, 1280, 720);
+    return RunFramework<AtmosphereSkyAmbientApp>(OS_TEXT("AtmosphereSkyAmbient"), argc, argv, 1280, 720);
 }

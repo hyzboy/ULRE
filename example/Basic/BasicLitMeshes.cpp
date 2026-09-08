@@ -47,16 +47,16 @@ namespace
     }
 }
 
-class BasicLitMeshesECSApp : public WorkObject
+class BasicLitMeshesApp : public WorkObject
 {
 private:
 
-    struct RenderMesh
+    struct MeshEntry
     {
         Geometry* geometry = nullptr;
         PrimitiveAsset asset{};
 
-        ~RenderMesh()
+        ~MeshEntry()
         {
             delete geometry;
         }
@@ -66,17 +66,17 @@ private:
     Entity* camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
-    RenderMesh* rm_floor = nullptr;
+    MeshEntry* floor_mesh = nullptr;
 
     Texture2D* base_texture = nullptr;
     Texture2D* normal_texture = nullptr;
     Texture2D* roughness_texture = nullptr;
     Sampler* sampler = nullptr;
 
-    std::vector<std::unique_ptr<RenderMesh>> meshes;
+    std::vector<std::unique_ptr<MeshEntry>> meshes;
 
 private:
 
@@ -92,7 +92,7 @@ private:
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+                                                 material_data_ssbo_accessor->GetSSBOBinding());
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
@@ -115,7 +115,7 @@ private:
         return true;
     }
 
-    bool InitMISSBO()
+    bool InitMaterialDataSSBO()
     {
         auto* domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
@@ -127,14 +127,14 @@ private:
         material_data.roughness   = 0.92f;
         material_data.normal_scale = 0.35f;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
+        material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             "06b:PBRSurface:MaterialData",
             1);
-        if (!mtl_data_ssbo_accessor)
+        if (!material_data_ssbo_accessor)
             return false;
 
-        (*mtl_data_ssbo_accessor)[0] = material_data;
-        mtl_data_ssbo_accessor->Commit();
+        (*material_data_ssbo_accessor)[0] = material_data;
+        material_data_ssbo_accessor->Commit();
         return true;
     }
 
@@ -156,7 +156,7 @@ private:
         return true;
     }
 
-    RenderMesh* CreateRenderMesh(Geometry* geometry)
+    MeshEntry* CreateMeshEntry(Geometry* geometry)
     {
         if (!geometry)
             return nullptr;
@@ -167,11 +167,11 @@ private:
 
         geometry_manager->Add(geometry);
 
-        auto mesh = std::make_unique<RenderMesh>();
+        auto mesh = std::make_unique<MeshEntry>();
         mesh->geometry = geometry;
         mesh->asset = PrimitiveAsset(geometry, &mesh_recipe, PrimitiveType::Triangles);
 
-        RenderMesh* result = mesh.get();
+        MeshEntry* result = mesh.get();
         meshes.push_back(std::move(mesh));
 
         return result;
@@ -198,8 +198,8 @@ private:
             if (!geom)
                 return false;
 
-            rm_floor = CreateRenderMesh(geom);
-            if (!rm_floor)
+            floor_mesh = CreateMeshEntry(geom);
+            if (!floor_mesh)
                 return false;
         }
 
@@ -208,7 +208,7 @@ private:
             {
                 return CreateSphere(pc, 64);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -217,7 +217,7 @@ private:
             {
                 return CreateDome(pc, 64);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -232,7 +232,7 @@ private:
             {
                 return CreateCone(pc, &cci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -246,7 +246,7 @@ private:
             {
                 return CreateCylinder(pc, &cci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -261,7 +261,7 @@ private:
             {
                 return CreateTorus(pc, &tci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -276,7 +276,7 @@ private:
             {
                 return CreateHollowCylinder(pc, &hcci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -288,7 +288,7 @@ private:
             {
                 return CreateHexSphere(pc, &hsci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -299,7 +299,7 @@ private:
             {
                 return CreateCapsule(pc, &cci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -311,7 +311,7 @@ private:
             {
                 return CreateTaperedCapsule(pc, &tcci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -326,7 +326,7 @@ private:
             {
                 return CreateCube(pc, &cci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -341,7 +341,7 @@ private:
             {
                 return CreateFrustum(pc, &fci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -358,7 +358,7 @@ private:
             {
                 return CreateArrow(pc, &aci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -375,7 +375,7 @@ private:
             {
                 return CreatePipeElbow(pc, &peci);
             });
-            if (!geom || !CreateRenderMesh(geom))
+            if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
@@ -387,7 +387,7 @@ private:
         if (!ecs_context)
             return false;
 
-        if(rm_floor)
+        if(floor_mesh)
         {
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
             auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
@@ -398,13 +398,13 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            primitive_comp->SetPrimitiveAsset(&rm_floor->asset);
+            primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource floor_struct{};
             floor_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            floor_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
+            floor_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
             floor_struct.data_index = 0;
             floor_struct.use_data_index = false;
             floor_struct.shared_across_instances = false;
@@ -419,7 +419,7 @@ private:
         for (auto& mesh_ptr : meshes)
         {
             auto* rm = mesh_ptr.get();
-            if (!rm || rm == rm_floor)
+            if (!rm || rm == floor_mesh)
                 continue;
 
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
@@ -441,7 +441,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
             mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
+            mesh_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = 0;
             mesh_struct.use_data_index = false;
             mesh_struct.shared_across_instances = false;
@@ -493,9 +493,9 @@ private:
     }
 
 public:
-    ~BasicLitMeshesECSApp()
+    ~BasicLitMeshesApp()
     {
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
+        SAFE_CLEAR(material_data_ssbo_accessor)
         SAFE_CLEAR(mesh_vdm)
     }
 
@@ -503,7 +503,7 @@ public:
     {
         SetClearColor(Color4f(0.18f, 0.18f, 0.20f, 1.0f));
 
-        if (!InitMISSBO())
+        if (!InitMaterialDataSSBO())
             return false;
 
         if (!InitMaterial())
@@ -521,5 +521,5 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<BasicLitMeshesECSApp>(OS_TEXT("Standard Meshes ECS"), argc, argv, 1280, 720);
+    return RunFramework<BasicLitMeshesApp>(OS_TEXT("Standard Meshes ECS"), argc, argv, 1280, 720);
 }

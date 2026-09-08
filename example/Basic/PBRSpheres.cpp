@@ -83,7 +83,7 @@ static constexpr float BASE_COLOR_R = 0.72f;
 static constexpr float BASE_COLOR_G = 0.72f;
 static constexpr float BASE_COLOR_B = 0.72f;
 
-class TestApp : public WorkObject
+class PBRSpheresApp : public WorkObject
 {
 private:
 
@@ -91,7 +91,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -269,7 +269,7 @@ private:
         return true;
     }
 
-    bool InitMISSBO()
+    bool InitMaterialDataSSBO()
     {
         if (!ecs_world)
             return false;
@@ -280,10 +280,10 @@ private:
 
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::PBRSurfaceRow>(
+        material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::PBRSurfaceRow>(
             "PBRSpheres:PBRSurface:MaterialData",
             mi_count);
-        if (!mtl_data_ssbo_accessor)
+        if (!material_data_ssbo_accessor)
             return false;
 
         for (uint row = 0; row < GRID_SIZE; ++row)
@@ -292,10 +292,10 @@ private:
             {
                 const uint32_t slot_index = row * GRID_SIZE + col;
                 sphere_slot_rows[row][col] = slot_index;
-                (*mtl_data_ssbo_accessor)[slot_index] = sphere_material_data[row][col];
+                (*material_data_ssbo_accessor)[slot_index] = sphere_material_data[row][col];
             }
         }
-        mtl_data_ssbo_accessor->Commit();
+        material_data_ssbo_accessor->Commit();
         return true;
     }
 
@@ -446,12 +446,12 @@ private:
             return false;
         }
 
-        if (!InitMISSBO())
+        if (!InitMaterialDataSSBO())
             return false;
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(sphere_recipe,
                                                  graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+                                                 material_data_ssbo_accessor->GetSSBOBinding());
 
         if (!CreateBasePrimitives())
             return false;
@@ -494,7 +494,7 @@ private:
                 prim_comp->SetMaterialTextureValue(graph::mtl::TextureSlot::Custom0, row);
                 hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
                 sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-                sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
+                sphere_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
                 sphere_struct.data_index = sphere_slot_rows[row][col];
                 sphere_struct.use_data_index = true;
                 sphere_struct.shared_across_instances = false;
@@ -559,7 +559,7 @@ private:
 
 public:
 
-    ~TestApp()
+    ~PBRSpheresApp()
     {
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
@@ -567,7 +567,7 @@ public:
         }
 
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
+        SAFE_CLEAR(material_data_ssbo_accessor)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
     }
@@ -630,5 +630,5 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Standard BuiltinGeometry x Albedo+Normal 10x10 (ECS)"), argc, argv, 1280, 720);
+    return RunFramework<PBRSpheresApp>(OS_TEXT("Standard BuiltinGeometry x Albedo+Normal 10x10 (ECS)"), argc, argv, 1280, 720);
 }

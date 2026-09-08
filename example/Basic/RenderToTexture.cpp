@@ -93,7 +93,7 @@ private:
     Geometry *geometry = nullptr;
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
     graph::ssbo::PBRSurfaceRow sphere_material_data{};
     Sampler *sphere_sampler = nullptr;
     Texture2D *sphere_base_tex = nullptr;
@@ -131,12 +131,12 @@ private:
     }
 
 
-    bool InitMISSBO(ECSContext *world)
+    bool InitMaterialDataSSBO(ECSContext *world)
     {
-        GLogInfo("[RenderToTexture][OffscreenPass::InitMISSBO] begin world=%p",
+        GLogInfo("[RenderToTexture][OffscreenPass::InitMaterialDataSSBO] begin world=%p",
                  (void *)world);
         if (!world)
-            return LogStageFail("OffscreenPass::InitMISSBO", "invalid input pointers");
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "invalid input pointers");
 
         auto *gc = world->GetGraphicsContext();
         if (!gc && render_context)
@@ -144,28 +144,28 @@ private:
 
         if (!gc)
         {
-            GLogError("[RenderToTexture][OffscreenPass::InitMISSBO] world_gc=%p render_context=%p rc_gc=%p",
+            GLogError("[RenderToTexture][OffscreenPass::InitMaterialDataSSBO] world_gc=%p render_context=%p rc_gc=%p",
                       (void *)(world ? world->GetGraphicsContext() : nullptr),
                       (void *)render_context,
                       (void *)(render_context ? render_context->GetGraphicsContext() : nullptr));
         }
         if (!gc)
-            return LogStageFail("OffscreenPass::InitMISSBO", "graphics context is null");
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "graphics context is null");
 
         auto *domain_manager = gc->GetSSBOBufferRegistry();
         if (!domain_manager)
-            return LogStageFail("OffscreenPass::InitMISSBO", "resource domain manager is null");
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "resource domain manager is null");
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
+        material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             "RenderToTexture:OffscreenPass:MaterialData",
             1);
-        if (!mtl_data_ssbo_accessor)
-            return LogStageFail("OffscreenPass::InitMISSBO", "CreateSSBO failed");
+        if (!material_data_ssbo_accessor)
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "CreateSSBO failed");
 
-        (*mtl_data_ssbo_accessor)[0] = sphere_material_data;
-        mtl_data_ssbo_accessor->Commit();
+        (*material_data_ssbo_accessor)[0] = sphere_material_data;
+        material_data_ssbo_accessor->Commit();
 
-        LogStage("OffscreenPass::InitMISSBO", "success");
+        LogStage("OffscreenPass::InitMaterialDataSSBO", "success");
         return true;
     }
 public:
@@ -194,8 +194,8 @@ public:
             }
         }
 
-        delete mtl_data_ssbo_accessor;
-        mtl_data_ssbo_accessor = nullptr;
+        delete material_data_ssbo_accessor;
+        material_data_ssbo_accessor = nullptr;
         geometry = nullptr;
     }
 
@@ -275,8 +275,8 @@ public:
         if (!sphere_base_tex || !sphere_normal_tex || !sphere_roughness_tex)
             return LogStageFail("OffscreenPass::BuildSphere", "load brickwall textures failed");
 
-        if (!InitMISSBO(runtime.GetWorld()))
-            return LogStageFail("OffscreenPass::BuildSphere", "InitMISSBO failed");
+        if (!InitMaterialDataSSBO(runtime.GetWorld()))
+            return LogStageFail("OffscreenPass::BuildSphere", "InitMaterialDataSSBO failed");
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
@@ -293,7 +293,7 @@ public:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                mtl_data_ssbo_accessor->GetSSBOBinding()))
+                material_data_ssbo_accessor->GetSSBOBinding()))
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
@@ -316,7 +316,7 @@ public:
         prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, sphere_roughness_tex, sphere_sampler);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
         sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
+        sphere_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
         sphere_struct.data_index = 0;
         sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = true;
@@ -371,7 +371,7 @@ private:
 
     PrimitiveAsset cube_asset;
     graph::mtl::MaterialRecipe cube_recipe{};
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* cube_mtl_data_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* cube_material_data_ssbo_accessor = nullptr;
     Sampler *cube_sampler = nullptr;
     graph::ssbo::PBRSurfaceRow cube_material_data{};
 
@@ -469,8 +469,8 @@ private:
         cube_material_data.roughness = 0.92f;
         cube_material_data.normal_scale = 0.35f;
 
-        if (!InitCubeMISSBO())
-            return LogStageFail("RenderToTextureApp::CreateCube", "InitCubeMISSBO failed");
+        if (!InitMaterialDataSSBO())
+            return LogStageFail("RenderToTextureApp::CreateCube", "InitMaterialDataSSBO failed");
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
@@ -491,7 +491,7 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                cube_mtl_data_ssbo_accessor->GetSSBOBinding()))
+                cube_material_data_ssbo_accessor->GetSSBOBinding()))
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
 
         cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
@@ -513,7 +513,7 @@ private:
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_tex, cube_sampler);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
         cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        cube_struct.ssbo_id = cube_mtl_data_ssbo_accessor->GetSSBOId();
+        cube_struct.ssbo_id = cube_material_data_ssbo_accessor->GetSSBOId();
         cube_struct.data_index = 0;
         cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
@@ -522,27 +522,27 @@ private:
         LogStage("RenderToTextureApp::CreateCube", "success");
         return true;
     }
-    bool InitCubeMISSBO()
+    bool InitMaterialDataSSBO()
     {
-        GLogInfo("[RenderToTexture][RenderToTextureApp::InitCubeMISSBO] begin ecs=%p",
+        GLogInfo("[RenderToTexture][RenderToTextureApp::InitMaterialDataSSBO] begin ecs=%p",
                  (void *)ecs_context);
         if (!ecs_context)
-            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "invalid input pointers");
+            return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "invalid input pointers");
 
         auto *domain_manager = GetManager<SSBOBufferRegistry>();
         if (!domain_manager)
-            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "resource domain manager is null");
+            return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "resource domain manager is null");
 
-        cube_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
+        cube_material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
             "RenderToTexture:MainScene:MaterialData",
             1);
-        if (!cube_mtl_data_ssbo_accessor)
-            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "CreateSSBO failed");
+        if (!cube_material_data_ssbo_accessor)
+            return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "CreateSSBO failed");
 
-        (*cube_mtl_data_ssbo_accessor)[0] = cube_material_data;
-        cube_mtl_data_ssbo_accessor->Commit();
+        (*cube_material_data_ssbo_accessor)[0] = cube_material_data;
+        cube_material_data_ssbo_accessor->Commit();
 
-        LogStage("RenderToTextureApp::InitCubeMISSBO", "success");
+        LogStage("RenderToTextureApp::InitMaterialDataSSBO", "success");
         return true;
     }
 public:
@@ -559,7 +559,7 @@ public:
             }
         }
 
-        SAFE_CLEAR(cube_mtl_data_ssbo_accessor)
+        SAFE_CLEAR(cube_material_data_ssbo_accessor)
         cube_sampler = nullptr;
         base_tex = nullptr;
         fallback_albedo = nullptr;

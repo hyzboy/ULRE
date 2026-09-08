@@ -90,23 +90,23 @@ constexpr const COLOR TestColor[]=
 
 constexpr const size_t COLOR_COUNT=sizeof(TestColor)/sizeof(COLOR);
 
-class TestApp:public WorkObject
+class RenderBoundBoxApp:public WorkObject
 {
 private:
 
     struct MaterialData
     {
-        graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+        graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* material_data_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
 
         ~MaterialData()
         {
-            delete mtl_data_ssbo_accessor;
-            mtl_data_ssbo_accessor = nullptr;
+            delete material_data_ssbo_accessor;
+            material_data_ssbo_accessor = nullptr;
         }
     };
 
-    struct RenderMesh
+    struct MeshEntry
     {
         Geometry *geometry = nullptr;
         PrimitiveAsset asset;
@@ -116,7 +116,7 @@ private:
         std::shared_ptr<PrimitiveComponent> primitive_comp;
         int color_index = 0;
 
-        ~RenderMesh()
+        ~MeshEntry()
         {
             delete geometry;
         }
@@ -138,8 +138,8 @@ private:
 
     VertexDataManager *mesh_vdm = nullptr;
 
-    RenderMesh *rm_floor = nullptr;           // floor
-    std::vector<std::unique_ptr<RenderMesh>> render_mesh;
+    MeshEntry *floor_mesh = nullptr;           // floor
+    std::vector<std::unique_ptr<MeshEntry>> render_mesh;
     std::vector<std::unique_ptr<BoundingBoxMesh>> bounding_boxes;
 
     Geometry *bbox_geometry = nullptr;
@@ -160,16 +160,16 @@ private:
 
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         md->ssbo_count = color_count;
-        md->mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
+        md->material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
             ssbo_type,
             tag,
             color_count);
-        if (!md->mtl_data_ssbo_accessor)
+        if (!md->material_data_ssbo_accessor)
             return false;
 
         for (uint32_t i = 0; i < color_count; ++i)
-            (*md->mtl_data_ssbo_accessor)[i].color =GetColor4f(TestColor[i], 1.0f);
-        md->mtl_data_ssbo_accessor->Commit();
+            (*md->material_data_ssbo_accessor)[i].color =GetColor4f(TestColor[i], 1.0f);
+        md->material_data_ssbo_accessor->Commit();
 
         return true;
     }
@@ -196,7 +196,7 @@ private:
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             solid_recipe,
             graph::mtl::DefaultMaterialPrivateDataSlotName,
-            solid.mtl_data_ssbo_accessor->GetSSBOBinding());
+            solid.material_data_ssbo_accessor->GetSSBOBinding());
     }
 
     bool InitWireMDP()
@@ -210,7 +210,7 @@ private:
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             wire_recipe,
             graph::mtl::DefaultMaterialPrivateDataSlotName,
-            wire.mtl_data_ssbo_accessor->GetSSBOBinding());
+            wire.material_data_ssbo_accessor->GetSSBOBinding());
     }
 
     bool InitVDM()
@@ -229,19 +229,19 @@ private:
         return mesh_vdm != nullptr;
     }
 
-    RenderMesh *CreateRenderMesh(Geometry *geometry,const int color)
+    MeshEntry *CreateMeshEntry(Geometry *geometry,const int color)
     {
         if(!geometry)
             return nullptr;
 
-        auto rm = std::make_unique<RenderMesh>();
+        auto rm = std::make_unique<MeshEntry>();
         rm->geometry = geometry;
         rm->asset = PrimitiveAsset(geometry, &solid_recipe, PrimitiveType::Triangles);
         if (!rm->asset.IsValid())
             return nullptr;
         rm->color_index = color;
 
-        RenderMesh *result = rm.get();
+        MeshEntry *result = rm.get();
         render_mesh.push_back(std::move(rm));
         return result;
     }
@@ -280,8 +280,8 @@ private:
             if (!geom)
                 return false;
 
-            rm_floor = CreateRenderMesh(geom, 0);
-            if (!rm_floor)
+            floor_mesh = CreateMeshEntry(geom, 0);
+            if (!floor_mesh)
                 return false;
         }
 
@@ -293,7 +293,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 1))
+            if (!CreateMeshEntry(geom, 1))
                 return false;
         }
 
@@ -305,7 +305,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 2))
+            if (!CreateMeshEntry(geom, 2))
                 return false;
         }
 
@@ -322,7 +322,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 3))
+            if (!CreateMeshEntry(geom, 3))
                 return false;
         }
 
@@ -338,7 +338,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 4))
+            if (!CreateMeshEntry(geom, 4))
                 return false;
         }
 
@@ -355,7 +355,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 5))
+            if (!CreateMeshEntry(geom, 5))
                 return false;
         }
 
@@ -372,7 +372,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 6))
+            if (!CreateMeshEntry(geom, 6))
                 return false;
         }
 
@@ -386,7 +386,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 7))
+            if (!CreateMeshEntry(geom, 7))
                 return false;
         }
 
@@ -399,7 +399,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 8))
+            if (!CreateMeshEntry(geom, 8))
                 return false;
         }
 
@@ -413,7 +413,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 9))
+            if (!CreateMeshEntry(geom, 9))
                 return false;
         }
 
@@ -429,7 +429,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 10))
+            if (!CreateMeshEntry(geom, 10))
                 return false;
         }
 
@@ -446,7 +446,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 11))
+            if (!CreateMeshEntry(geom, 11))
                 return false;
         }
 
@@ -465,7 +465,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 12))
+            if (!CreateMeshEntry(geom, 12))
                 return false;
         }
 
@@ -475,7 +475,7 @@ private:
         //     rbci.size = Vector3f(1.0f, 1.0f, 1.0f);
         //     rbci.edge_radius = 0.2f;
         //     rbci.edge_segments = 4;
-        //     CreateRenderMesh(CreateRoundedBox(prim_creater,&rbci),&solid,13);
+        //     CreateMeshEntry(CreateRoundedBox(prim_creater,&rbci),&solid,13);
         // }
 
         {
@@ -493,7 +493,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, 14))
+            if (!CreateMeshEntry(geom, 14))
                 return false;
         }
         return true;
@@ -549,28 +549,28 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!rm_floor)
+        if(!floor_mesh)
             return false;
 
         {
-            rm_floor->entity = ecs_context->CreateEntity<Entity>("Floor");
-            rm_floor->transform = rm_floor->entity->AddComponent<TransformComponent>(Mobility::Static);
-            rm_floor->primitive_comp = rm_floor->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            floor_mesh->entity = ecs_context->CreateEntity<Entity>("Floor");
+            floor_mesh->transform = floor_mesh->entity->AddComponent<TransformComponent>(Mobility::Static);
+            floor_mesh->primitive_comp = floor_mesh->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-            rm_floor->transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            rm_floor->transform->SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-            rm_floor->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            rm_floor->transform->SetMovable(false);
+            floor_mesh->transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            floor_mesh->transform->SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+            floor_mesh->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            floor_mesh->transform->SetMovable(false);
 
-            rm_floor->primitive_comp->SetPrimitiveAsset(&rm_floor->asset);
+            floor_mesh->primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource floor_struct{};
             floor_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            floor_struct.ssbo_id = solid.mtl_data_ssbo_accessor->GetSSBOId();
-            floor_struct.data_index = rm_floor->color_index;
+            floor_struct.ssbo_id = solid.material_data_ssbo_accessor->GetSSBOId();
+            floor_struct.data_index = floor_mesh->color_index;
             floor_struct.use_data_index = true;
             floor_struct.shared_across_instances = true;
-            rm_floor->primitive_comp->SetMaterialPrivateDataSlotResource(floor_struct);
-            rm_floor->primitive_comp->SetVisible(true);
+            floor_mesh->primitive_comp->SetMaterialPrivateDataSlotResource(floor_struct);
+            floor_mesh->primitive_comp->SetVisible(true);
         }
 
         const size_t total = render_mesh.size();
@@ -580,7 +580,7 @@ private:
         for (auto &rm_ptr : render_mesh)
         {
             auto *rm = rm_ptr.get();
-            if(!rm || rm == rm_floor)
+            if(!rm || rm == floor_mesh)
                 continue;
 
             rm->entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
@@ -599,7 +599,7 @@ private:
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
             mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            mesh_struct.ssbo_id = solid.mtl_data_ssbo_accessor->GetSSBOId();
+            mesh_struct.ssbo_id = solid.material_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = rm->color_index;
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
@@ -645,7 +645,7 @@ private:
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource bbox_struct{};
             bbox_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            bbox_struct.ssbo_id = wire.mtl_data_ssbo_accessor->GetSSBOId();
+            bbox_struct.ssbo_id = wire.material_data_ssbo_accessor->GetSSBOId();
             bbox_struct.data_index = 5;
             bbox_struct.use_data_index = true;
             bbox_struct.shared_across_instances = true;
@@ -682,10 +682,10 @@ private:
     }
 
 public:
-    ~TestApp()
+    ~RenderBoundBoxApp()
     {
         render_mesh.clear();
-        rm_floor = nullptr;
+        floor_mesh = nullptr;
 
         SAFE_CLEAR(mesh_vdm)
     }
@@ -716,5 +716,5 @@ public:
 
 int os_main(int argc,os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Render Bounding Box (ECS)"),argc,argv,1280,720);
+    return RunFramework<RenderBoundBoxApp>(OS_TEXT("Render Bounding Box (ECS)"),argc,argv,1280,720);
 }
