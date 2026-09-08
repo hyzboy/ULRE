@@ -23,7 +23,7 @@ namespace hgl::graph
      * - 数据层：EnvironmentInfo（纯数据，CPU 侧唯一权威在 Profile::cpu）
      * - 管理层：本类（Profile 注册 / GPU UBO 物化 / 脏标记）
      * - 选择层：IRenderTarget::GetEnvironmentProfile()（未设置 = kEnvProfileDefault）
-     * - 绑定层：RenderDescriptorBindingSystem 按 RT 选择解析 GetSkyUBO() 写入 Scene Set
+     * - 绑定层：RenderSceneUBOSystem 按 RT 选择解析 GetSkyUBO() 写入 Scene Set
      *
      * GPU 上传统一走设备级 dirty 扫描（RenderBufferUploadSystem），
      * default Profile 在 GraphicsContext 初始化阶段即物化并标脏，

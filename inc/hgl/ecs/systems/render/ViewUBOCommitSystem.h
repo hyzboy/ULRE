@@ -12,7 +12,7 @@ namespace hgl
     namespace ecs
     {
         class CameraSystem;
-        class RenderDescriptorBindingSystem;
+        class RenderSceneUBOSystem;
 
         /**
          * ViewUBOCommitSystem - 视图三件套（camera/viewport/sky）固定写入点

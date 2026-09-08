@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+﻿#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<cstdlib>
 #include<hgl/ecs/core/Context.h>
@@ -90,7 +90,7 @@ namespace hgl::ecs
         }
     }
 
-    RenderDescriptorBindingSystem::RenderDescriptorBindingSystem(const std::string& name)
+    RenderSceneUBOSystem::RenderSceneUBOSystem(const std::string& name)
         : System(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderFrameSync);
@@ -100,12 +100,12 @@ namespace hgl::ecs
         AddDependency<CameraSystem>();
     }
 
-    RenderDescriptorBindingSystem::~RenderDescriptorBindingSystem()
+    RenderSceneUBOSystem::~RenderSceneUBOSystem()
     {
         ReleaseViewportUBO();
     }
 
-    void RenderDescriptorBindingSystem::EnsureViewportUBO()
+    void RenderSceneUBOSystem::EnsureViewportUBO()
     {
         if (viewport_ubo || !context)
             return;
@@ -134,7 +134,7 @@ namespace hgl::ecs
         viewport_ubo->MarkDirty();
     }
 
-    void RenderDescriptorBindingSystem::ReleaseViewportUBO()
+    void RenderSceneUBOSystem::ReleaseViewportUBO()
     {
         if (!viewport_ubo)
             return;
@@ -150,7 +150,7 @@ namespace hgl::ecs
         }
     }
 
-    void RenderDescriptorBindingSystem::CommitViewportUBO()
+    void RenderSceneUBOSystem::CommitViewportUBO()
     {
         EnsureViewportUBO();
         if (!viewport_ubo)
@@ -177,7 +177,7 @@ namespace hgl::ecs
         viewport_ubo->Update();      // 写入 GPU
     }
 
-    graph::ViewportInfo *RenderDescriptorBindingSystem::GetViewportInfo()
+    graph::ViewportInfo *RenderSceneUBOSystem::GetViewportInfo()
     {
         if (!viewport_ubo)
             EnsureViewportUBO();
@@ -185,7 +185,7 @@ namespace hgl::ecs
         return viewport_ubo ? viewport_ubo->Data() : nullptr;
     }
 
-    void RenderDescriptorBindingSystem::SetViewportExtent(uint32_t w, uint32_t h)
+    void RenderSceneUBOSystem::SetViewportExtent(uint32_t w, uint32_t h)
     {
         pending_viewport_width  = w;
         pending_viewport_height = h;
@@ -197,7 +197,7 @@ namespace hgl::ecs
         }
     }
 
-    bool RenderDescriptorBindingSystem::RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
+    bool RenderSceneUBOSystem::RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
                                                                      uint32_t ssbo_id,
                                                                      uint32_t byte_stride)
     {
@@ -220,7 +220,7 @@ namespace hgl::ecs
         return true;
     }
 
-    uint32_t RenderDescriptorBindingSystem::RegisterTextureResource(const std::string &resource_id,
+    uint32_t RenderSceneUBOSystem::RegisterTextureResource(const std::string &resource_id,
                                                                     graph::Texture *tex,
                                                                     graph::BindlessTextureManager *bindless_mgr)
     {
@@ -241,7 +241,7 @@ namespace hgl::ecs
         return handle;
     }
 
-    uint32_t RenderDescriptorBindingSystem::GetBindlessHandle(const AnsiString &resource_id) const
+    uint32_t RenderSceneUBOSystem::GetBindlessHandle(const AnsiString &resource_id) const
     {
         if (resource_id.IsEmpty())
             return 0;
@@ -250,36 +250,33 @@ namespace hgl::ecs
         return handle ? *handle : 0;
     }
 
-    void RenderDescriptorBindingSystem::Update(float /*deltaTime*/)
+    void RenderSceneUBOSystem::Update(float /*deltaTime*/)
     {
-        SyncBindingsForCurrentCommand(nullptr, true);
+        SyncBindingsForCurrentCommand();
     }
 
-    void RenderDescriptorBindingSystem::Render(graph::RenderCmdBuffer *cmd, float /*deltaTime*/)
+    void RenderSceneUBOSystem::Render(graph::RenderCmdBuffer *cmd, float /*deltaTime*/)
     {
         // Critical for RenderDrawOnly path: Update() is not called there.
-        SyncBindingsForCurrentCommand(cmd, false);
+        SyncBindingsForCurrentCommand();
     }
 
-    void RenderDescriptorBindingSystem::SyncBindingsForCurrentCommand(graph::RenderCmdBuffer *cmd, bool run_contract_diagnostics)
+    void RenderSceneUBOSystem::SyncBindingsForCurrentCommand()
     {
         if (!context)
             return;
-
-        if (run_contract_diagnostics)
-            ValidateResourceLayoutsSideChannel();
 
         EnsureViewportUBO();
 
         ApplyResourceLayoutBindings();
     }
 
-    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO() const
+    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveViewportUBO() const
     {
         return viewport_ubo ? viewport_ubo->GetGPUBuffer() : nullptr;
     }
 
-    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveCameraUBO() const
+    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveCameraUBO() const
     {
         if (!context)
             return nullptr;
@@ -295,7 +292,7 @@ namespace hgl::ecs
         return camera_ubo->GetGPUBuffer();
     }
 
-    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveSkyUBO()
+    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveSkyUBO()
     {
         if (!context)
             return nullptr;
@@ -327,7 +324,7 @@ namespace hgl::ecs
     // LineRenderPipeline 等在初始化时写入 binding=3。
     // （绑定时代死段——per-material apply_requirement/MP/批覆盖——已随
     // desc_manager 机制退役整删，2026-09-08。）
-    void RenderDescriptorBindingSystem::ApplyResourceLayoutBindings()
+    void RenderSceneUBOSystem::ApplyResourceLayoutBindings()
     {
         if (!context)
             return;
@@ -354,148 +351,4 @@ namespace hgl::ecs
         }
     }
 
-    bool RenderDescriptorBindingSystem::IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const
-    {
-        if (!context)
-            return false;
-
-        switch (semantic)
-        {
-        case graph::mtl::DescriptorSemantic::ViewportInfo:
-            return viewport_ubo != nullptr;
-
-        case graph::mtl::DescriptorSemantic::CameraInfo:
-        {
-            auto camera_system = context->GetSystem<CameraSystem>();
-            return camera_system && camera_system->GetCameraUBO();
-        }
-
-        case graph::mtl::DescriptorSemantic::SkyInfo:
-        {
-            // sky 数据由 EnvironmentManager 统一提供（default 保证存在）
-            graph::GraphicsContext *gc = nullptr;
-            if (auto *rc = context->GetRenderContext())
-                gc = rc->GetGraphicsContext();
-            if (!gc)
-                gc = context->GetGraphicsContext();
-            auto *env_manager = gc ? gc->GetEnvironmentManager() : nullptr;
-            return env_manager && env_manager->GetSkyUBO(graph::kEnvProfileDefault);
-        }
-        // 行表/材质数据/纹理语义已 BDA 化（A3/A5）：数据经 pc_root +
-        // buffer_reference 寻址，RDBS 不再绑任何 SSBO。此处保留恒 true 仅为
-        // 诊断静默——契约若含历史 req（A6 前过渡期），不误报 unresolved required。
-        case graph::mtl::DescriptorSemantic::LocalToWorld:
-        case graph::mtl::DescriptorSemantic::LocalToWorldIndex:
-        case graph::mtl::DescriptorSemantic::MaterialColorPalette:
-        case graph::mtl::DescriptorSemantic::MaterialPrivateData:
-        case graph::mtl::DescriptorSemantic::MaterialTexture:
-        case graph::mtl::DescriptorSemantic::MaterialSampler:
-        case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndex:
-        case graph::mtl::DescriptorSemantic::MeshDrawParams:
-            return true;
-        case graph::mtl::DescriptorSemantic::Unknown:
-        default:
-            return false;
-        }
-    }
-
-    void RenderDescriptorBindingSystem::ValidateResourceLayoutsSideChannel()
-    {
-        if (!resource_layout_diagnostics_enabled || !context)
-            return;
-
-        const auto &cache = context->GetRenderFrameCache();
-        ResourceLayoutDiagStats frame_stats;
-
-        for (const auto &pair : cache.materialBatches)
-        {
-            const auto &key = pair.first;
-            const graph::ShaderProgram *shader_program = key.shader_program;
-            if (!shader_program)
-                continue;
-
-            ++frame_stats.materials_checked;
-
-            const auto &contract = shader_program->GetShaderResourceSchema();
-
-            bool all_required_ok = true;
-            std::string first_error;
-
-            for (const auto &req : contract.resources)
-            {
-                const bool resolvable = IsSemanticResolvable(req.semantic);
-                if (resolvable)
-                    continue;
-
-                if (req.required && !req.allow_fallback)
-                {
-                    ++frame_stats.required_missing;
-                    all_required_ok = false;
-
-                    if (first_error.empty())
-                    {
-                        first_error = "missing semantic=";
-                        first_error += graph::mtl::GetDescriptorSemanticName(req.semantic);
-                        first_error += " name=";
-                        first_error += req.name.empty() ? "<empty>" : req.name;
-                    }
-                }
-                else
-                {
-                    ++frame_stats.optional_missing;
-
-                    if (req.allow_fallback)
-                        ++frame_stats.fallback_hits;
-                }
-            }
-
-            auto it = resource_layout_last_ok.find(shader_program);
-            if (it == resource_layout_last_ok.end())
-            {
-                resource_layout_last_ok.emplace(shader_program, all_required_ok);
-
-                if (!all_required_ok)
-                    ++frame_stats.materials_unresolved;
-
-                if (!all_required_ok)
-                {
-                    LogWarning("[DescriptorContract] material=%s unresolved required contract: %s",
-                               shader_program->GetName().c_str(),
-                               first_error.c_str());
-                }
-                continue;
-            }
-
-            if (it->second != all_required_ok)
-            {
-                if (!all_required_ok)
-                {
-                    LogWarning("[DescriptorContract] material=%s contract changed to unresolved: %s",
-                               shader_program->GetName().c_str(),
-                               first_error.c_str());
-                }
-                else
-                {
-                    LogInfo("[DescriptorContract] material=%s contract resolved", shader_program->GetName().c_str());
-                }
-
-                it->second = all_required_ok;
-            }
-
-            if (!all_required_ok)
-                ++frame_stats.materials_unresolved;
-        }
-
-        if (frame_stats != last_contract_stats)
-        {
-            LogInfo("[DescriptorContract] frame stats: checked=%u unresolved=%u required_missing=%u optional_missing=%u fallback_hits=%u",
-                    frame_stats.materials_checked,
-                    frame_stats.materials_unresolved,
-                    frame_stats.required_missing,
-                    frame_stats.optional_missing,
-                    frame_stats.fallback_hits);
-
-            last_contract_stats = frame_stats;
-        }
-    }
 }

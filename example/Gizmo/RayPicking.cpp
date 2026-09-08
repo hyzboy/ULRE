@@ -36,7 +36,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;

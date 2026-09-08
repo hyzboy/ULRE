@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 
 namespace hgl::graph{
 
@@ -24,7 +24,7 @@ ViewportInfo *IRenderTarget::GetViewportInfo()
     if (!ecs_context)
         return nullptr;
 
-    auto sys = ecs_context->GetSystem<hgl::ecs::RenderDescriptorBindingSystem>();
+    auto sys = ecs_context->GetSystem<hgl::ecs::RenderSceneUBOSystem>();
     return sys ? sys->GetViewportInfo() : nullptr;
 }
 
@@ -42,7 +42,7 @@ void IRenderTarget::OnResize(const VkExtent2D &ext)
 
     if (ecs_context)
     {
-        auto sys = ecs_context->GetSystem<hgl::ecs::RenderDescriptorBindingSystem>();
+        auto sys = ecs_context->GetSystem<hgl::ecs::RenderSceneUBOSystem>();
         if (sys)
             sys->SetViewportExtent(ext.width, ext.height);
     }

@@ -149,7 +149,7 @@ inline const char *GetFallbackMaterialDefinitionID()
  *   2. Applies definition defaults and resolved render state to the recipe.
  *
  * This is the canonical pre-processing step that must be called before the recipe is stored
- * in a PrimitiveComponent or passed to RenderDescriptorBindingSystem.  It is idempotent.
+ * in a PrimitiveComponent or passed to RenderSceneUBOSystem.  It is idempotent.
  */
 void NormalizeRecipe(MaterialRecipe &recipe);
 

@@ -1,4 +1,4 @@
-SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
+﻿SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
 
 option(ULRE_ECS_DEBUG_API "Enable ECS debug API surface" ON)
 
@@ -116,20 +116,11 @@ set(ECS_SYS_15_RenderFrameSync_RenderFrameUBOSyncSystem_FILES
     systems/render/RenderFrameUBOSyncSystem.cpp
 )
 
-set(ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderDescriptorBindingSystem.h
-    systems/render/RenderDescriptorBindingSystem.cpp
+set(ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/RenderSceneUBOSystem.h
+    systems/render/RenderSceneUBOSystem.cpp
 )
 
-if(ULRE_ECS_DEBUG_API)
-    list(APPEND ECS_CORE_FILES
-        core/ContextDebug.cpp
-    )
-
-    list(APPEND ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES
-        systems/render/RenderDescriptorBindingSystemDebugAPI.cpp
-    )
-endif()
 
 set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
@@ -267,7 +258,7 @@ set(ECS_SOURCE
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES}
     ${ECS_SYS_15_RenderFrameSync_RenderFrameUBOSyncSystem_FILES}
-    ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES}
+    ${ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
     ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
     ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES}
@@ -302,7 +293,7 @@ source_group("ECS\\Systems\\09B RenderPreBeginFrame_ColorPaletteSystem" FILES ${
 source_group("ECS\\Systems\\13B RenderBufferCommit_ViewUBOCommitSystem" FILES ${ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameUBOSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameUBOSyncSystem_FILES})
-source_group("ECS\\Systems\\15B RenderFrameSync_RenderDescriptorBindingSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES})
+source_group("ECS\\Systems\\15B RenderFrameSync_RenderSceneUBOSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
 source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})
 source_group("ECS\\Systems\\18 RenderCollect_TextCollectSystem" FILES ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES})

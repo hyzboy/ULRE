@@ -25,7 +25,7 @@ namespace hgl::graph::mtl
     /// PushManifestSSBO 的 ssbo_type switch、能力子集校验的无条件允许清单、
     /// ShaderResourceSchema 的 GetExpectedSetType/GetDefaultDescriptorNameBySemantic，
     /// 以及运行时 PipelineMaterialRenderer 的 vab switch/静态表与
-    /// RenderDescriptorBindingSystem 的 semantic→VertexSemantic lambda。
+    /// RenderSceneUBOSystem 的 semantic→VertexSemantic lambda。
     ///
     /// 绑定号一律取自 DescriptorSetTypeDef.h 的绑定枚举（ABI 真源）；
     /// 与 kDescriptorBindingMacros 分工：后者只管 GLSL 宏文本（common 层）。

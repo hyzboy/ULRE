@@ -8,7 +8,7 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -250,7 +250,7 @@ namespace hgl::ecs
                     primitive_comp, material_program, active_recipe))
                 return false;
 
-            auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
+            auto rdbs = world->GetSystem<RenderSceneUBOSystem>();
             auto *render_context = world->GetRenderContext();
             auto *graphics_context = render_context
                 ? render_context->GetGraphicsContext()
@@ -650,7 +650,7 @@ namespace hgl::ecs
         if (program_changed)
             InvalidateRecipeRuntime(material_comp, false);
 
-        if (auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>())
+        if (auto rdbs = world->GetSystem<RenderSceneUBOSystem>())
         {
             for (const auto &req : resolved_program->GetShaderResourceSchema().resources)
             {
@@ -844,10 +844,10 @@ namespace hgl::ecs
                 req.name.c_str(), req.material_private_data_slot, req.ssbo_type, resolved_ssbo_id);
         }
 
-        auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
+        auto rdbs = world->GetSystem<RenderSceneUBOSystem>();
         if (!rdbs)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: RenderDescriptorBindingSystem missing for %s",
+            GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: RenderSceneUBOSystem missing for %s",
                         GetPrimitiveOwnerName(primitive_comp));
             return false;
         }

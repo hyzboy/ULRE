@@ -18,7 +18,7 @@
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 // old systems/render/LineRenderSystem.h removed — replaced by support/line/LineRenderSystem
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include<hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include<hgl/vk/VKShaderProgram.h>
@@ -681,44 +681,6 @@ namespace hgl
                 return;
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderFrameSync, deltaTime);
-
-        #if ULRE_ECS_DEBUG_API
-            if (descriptor_contract_diag_log_enabled)
-            {
-                using namespace std::chrono;
-                const uint64_t now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-
-                if (descriptor_contract_diag_last_log_ms == 0 || now_ms - descriptor_contract_diag_last_log_ms >= 1000)
-                {
-                    uint32_t materials_checked = 0;
-                    uint32_t materials_unresolved = 0;
-                    uint32_t required_missing = 0;
-                    uint32_t optional_missing = 0;
-                    uint32_t fallback_hits = 0;
-                    uint32_t materials_registered = 0;
-                    uint32_t binding_entries = 0;
-                    if (GetDescriptorContractDiagnosticsExtended(materials_checked,
-                                                                 materials_unresolved,
-                                                                 required_missing,
-                                                                 optional_missing,
-                                                                 fallback_hits,
-                                                                 materials_registered,
-                                                                 binding_entries))
-                    {
-                        LogInfo("[DescriptorContract][ECSContext] checked=%u unresolved=%u required_missing=%u optional_missing=%u fallback_hits=%u registered_materials=%u registered_bindings=%u",
-                                materials_checked,
-                                materials_unresolved,
-                                required_missing,
-                                optional_missing,
-                                fallback_hits,
-                                materials_registered,
-                                binding_entries);
-                    }
-
-                    descriptor_contract_diag_last_log_ms = now_ms;
-                }
-            }
-        #endif
         }
 
         void ECSContext::PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime)

@@ -7,7 +7,7 @@
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
-#include <hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include <hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include <hgl/graph/render/RenderContext.h>

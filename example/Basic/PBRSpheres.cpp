@@ -30,7 +30,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include<glm/glm.hpp>

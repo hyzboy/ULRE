@@ -35,46 +35,23 @@ namespace hgl::ecs
     class RenderItem;
 
     /**
-     * RenderDescriptorBindingSystem
+     * RenderSceneUBOSystem（原 RenderDescriptorBindingSystem，2026-09-08 改名）
      *
-     * Centralized descriptor-binding submission point in ECS render pipeline.
-     * It gathers descriptor bindings from render target and camera-related systems
-     * and pushes them into current RenderCmdBuffer at RenderFrameSync phase.
+     * BDA 终态后描述符绑定已全部退场，本系统只剩场景 UBO 数据流与资源注册职责：
+     *   1. 持有 viewport UBO（跨 swapchain resize 稳定），RenderFrameSync 阶段把
+     *      camera/sky/viewport buffer 挂进设备级 GlobalSceneUBOSet（一帧一次）；
+     *   2. 材质化注册：纹理 bindless handle / 材质行结构 layout 登记
+     *      （RegisterTextureResource / RegisterMaterialStructLayout，被
+     *      RenderPrimitiveCollectSystem 消费）。
      */
-    class RenderDescriptorBindingSystem : public System
+    class RenderSceneUBOSystem : public System
     {
     private:
-
-        struct ResourceLayoutDiagStats
-        {
-            uint32_t materials_checked = 0;
-            uint32_t materials_unresolved = 0;
-            uint32_t required_missing = 0;
-            uint32_t optional_missing = 0;
-            uint32_t fallback_hits = 0;
-
-            bool operator==(const ResourceLayoutDiagStats &rhs) const
-            {
-                return materials_checked == rhs.materials_checked
-                    && materials_unresolved == rhs.materials_unresolved
-                    && required_missing == rhs.required_missing
-                    && optional_missing == rhs.optional_missing
-                    && fallback_hits == rhs.fallback_hits;
-            }
-
-            bool operator!=(const ResourceLayoutDiagStats &rhs) const
-            {
-                return !(*this == rhs);
-            }
-        };
 
         // Viewport UBO — owned here, stable across swapchain resize.
         graph::StructuredBufferAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
         uint32_t pending_viewport_height = 0;
-        std::unordered_map<const graph::ShaderProgram *, bool> resource_layout_last_ok;
-        bool resource_layout_diagnostics_enabled = true;
-        ResourceLayoutDiagStats last_contract_stats{};
         // resource_id → bindless descriptor index (1-based, 0 = not found).
         // Filled by RegisterTexture2D(Array)Resource; consumed by
         // RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive to
@@ -82,8 +59,8 @@ namespace hgl::ecs
         hgl::UnorderedMap<AnsiString, uint32_t> materialization_resource_handles;
 
     public:
-        RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
-        ~RenderDescriptorBindingSystem() override;
+        RenderSceneUBOSystem(const std::string& name = "RenderSceneUBOSystem");
+        ~RenderSceneUBOSystem() override;
 
     graph::ViewportInfo *GetViewportInfo();
     void SetViewportExtent(uint32_t w, uint32_t h);
@@ -94,13 +71,6 @@ namespace hgl::ecs
         void Update(float deltaTime) override;
         void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
 
-        bool GetContractDiagnosticsStats(uint32_t &materials_checked,
-                                        uint32_t &materials_unresolved,
-                                        uint32_t &required_missing,
-                                        uint32_t &optional_missing,
-                                        uint32_t &fallback_hits) const;
-        bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
-                             uint32_t &binding_entries) const;
         bool RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
                                           uint32_t ssbo_id,
                                           uint32_t byte_stride);
@@ -127,12 +97,10 @@ namespace hgl::ecs
 
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
-        void SyncBindingsForCurrentCommand(graph::RenderCmdBuffer *cmd, bool run_contract_diagnostics);
+        void SyncBindingsForCurrentCommand();
         void ApplyResourceLayoutBindings();
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
-        void ValidateResourceLayoutsSideChannel();
-        bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
     };
 }
