@@ -36,23 +36,20 @@ namespace hgl::graph
         Unknown=-1,        ///<Phase 7 拼写修正：Unknown（枚举值不变，序列化契约不受影响）
 
         Scene=0,        ///< 全局 UBO 集（camera/sky/viewport/color_palette），所有材质共用，一帧写/绑一次
-                        ///< （PerObject 集已随 A6-2b-b2 退场——行表全 BDA，无 per-material 描述符；
-                        ///<  枚举值 1 留空，Bindless 仍为 2，集号收敛随 b3 一并处理）
-        Bindless=2,     ///< 全局 Bindless 纹理数组集合（Set 2），一帧绑一次
-                        ///< （Vertex/Material 集已随 BDA 化退场——顶点流与材质行均经
-                        ///<  MeshDrawParams 行内基址 / 地址行表寻址，无 per-material 描述符）
+        Bindless=1,     ///< 全局 Bindless 纹理数组集合（Set 1），一帧绑一次
+                        ///< （PerObject/Vertex/Material 集已随 BDA 化退场——行表/顶点流/材质行
+                        ///<  均经 pc_root 地址 + buffer_reference 寻址，无 per-material 描述符；
+                        ///<  b3 集号收敛：Bindless 2→1，终态两集 Scene(0)/Bindless(1)）
 
         ENUM_CLASS_RANGE(Scene,Bindless)
     };
 
     constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
 
-    /// 按索引调试名（数组长度 = RANGE_SIZE 数值槽数；槽 1 = PerObject 退场留空，
-    /// 字符串保留防索引错位——b3 集号收敛后连同 Bindless 名收为 2 项）。
+    /// 按索引调试名（b3 集号收敛后两集：Scene=0/Bindless=1）
     constexpr const char *DescriptSetTypeName[]=
     {
         "Scene",
-        "PerObject(retired)",
         "Bindless"
     };
 
