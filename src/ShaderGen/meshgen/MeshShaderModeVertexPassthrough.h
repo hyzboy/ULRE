@@ -38,7 +38,7 @@ namespace hgl::graph::mtl
         ms += "    const uint vid = gl_LocalInvocationIndex;\n";
         ms += "\n";
 
-        ms += "    const uint total_vertices = pc_vertex_index.total_vertices;\n";
+        ms += "    const uint total_vertices = draw_params.total_vertices;\n";
         // 本组有效顶点数（所有 invocation 相同值 → SetMeshOutputsEXT 一致；
         // groupCountX = ceil(total/group_size)，末组起始 <= total，不会 uint 下溢）
         ms += "    const uint verts_this_group = min(";
@@ -58,8 +58,8 @@ namespace hgl::graph::mtl
         ms += "    MeshVertexIndex = gl_WorkGroupID.x * ";
         ms += std::to_string(ctx.max_invocations);
         ms += "u + gl_LocalInvocationIndex;\n";
-        ms += "    if (pc_vertex_index.is_indexed != 0u)\n";
-        ms += "        MeshVertexIndex = sbo_vertex_index.data[pc_vertex_index.index_base + MeshVertexIndex];\n";
+        ms += "    if (draw_params.is_indexed != 0u)\n";
+        ms += "        MeshVertexIndex = sbo_vertex_index.data[draw_params.index_base + MeshVertexIndex];\n";
         ms += "\n";
 
         // LoadVertexData（读 SSBO 单顶点；VertexIndexID 宏 = MeshVertexIndex）

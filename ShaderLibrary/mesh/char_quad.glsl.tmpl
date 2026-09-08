@@ -1,7 +1,7 @@
     const uint char_idx = gl_WorkGroupID.x * {{group_size}}u + gl_LocalInvocationIndex;
     const uint base_vid = gl_LocalInvocationIndex * 4u;
 
-    const uint total_chars = pc_vertex_index.total_vertices;
+    const uint total_chars = draw_params.total_vertices;
     const uint chars_this_group = min({{group_size}}u, total_chars - gl_WorkGroupID.x * {{group_size}}u);
     SetMeshOutputsEXT(chars_this_group * 4u, chars_this_group * 2u);
 
@@ -23,7 +23,7 @@
     const CharStyleData cs = sbo_char_style.styles[style_id];
 
     const float char_scale = cs.scale;
-    const int char_height = int(pc_vertex_index.char_height);
+    const int char_height = int(draw_params.char_height);
     const int mx_s = int(float(mx) * char_scale);
     const int my_s = int(float(my) * char_scale);
     const uint mw_s = uint(float(mw) * char_scale);

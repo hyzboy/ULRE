@@ -60,7 +60,7 @@ namespace hgl::graph::mtl
         // 全局可变参数行：模块函数（orient_world 等经 gl_InstanceIndex 宏）引用
         // first_instance——必须在 main 开头按 gl_DrawID 加载后使用点才生效
         //（跨函数可见，与上方 MeshVertexIndex 同模式）
-        ms += "MeshDrawParams pc_vertex_index;\n";
+        ms += "MeshDrawParams draw_params;\n";
         ms += "\n";
 
         // ── 顶点流 BDA 类型声明（buffer_reference，无描述符无绑定）────────────
@@ -69,7 +69,7 @@ namespace hgl::graph::mtl
         // scalar 布局 + align=16 与 CPU 侧 GetBufferDeviceAddressAligned16 的
         // 基址承诺配对；元素类型/stride 与旧 std430 声明逐字节一致（vec3=12B
         // 紧凑、packed=4B），函数体无需任何改动。
-        // 各 s1_* 模块以 #define sbo_vertex_xxx XxxRef(pc_vertex_index.addr_xxx) 接入。
+        // 各 s1_* 模块以 #define sbo_vertex_xxx XxxRef(draw_params.addr_xxx) 接入。
         static const char *const kVertexRefDecls[] =
         {
             "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexIndexRef       { uint data[]; };\n",
@@ -92,7 +92,7 @@ namespace hgl::graph::mtl
 
         // 顶点索引垫片宏：is_indexed 分支查表（非索引几何 addr_index 为 0，
         // 该分支不执行——与旧 PARTIALLY_BOUND 语义一致）
-        ms += "#define sbo_vertex_index VertexIndexRef(pc_vertex_index.addr_index)\n";
+        ms += "#define sbo_vertex_index VertexIndexRef(draw_params.addr_index)\n";
         ms += "\n";
     }
 }

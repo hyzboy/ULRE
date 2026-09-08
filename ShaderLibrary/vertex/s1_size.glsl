@@ -11,10 +11,10 @@
 
 // BDA：尺寸基址由 MeshDrawParams 行 addr_size 携带（VertexSizeRef 由
 // MeshShaderVertexAdapter 集中声明），读法不变
-#define sbo_vertex_size VertexSizeRef(pc_vertex_index.addr_size)
+#define sbo_vertex_size VertexSizeRef(draw_params.addr_size)
 
 float Width;
 
-#define HGL_SIZE_LOADER { Width = sbo_vertex_size.data[pc_vertex_index.vertex_base + VertexIndexID].x; }
+#define HGL_SIZE_LOADER { Width = sbo_vertex_size.data[draw_params.vertex_base + VertexIndexID].x; }
 
 #endif // S1_SIZE_GLSL

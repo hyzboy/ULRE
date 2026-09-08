@@ -1,20 +1,20 @@
     const uint line_id = gl_WorkGroupID.x * {{group_size}}u + gl_LocalInvocationIndex;
     const uint vid = gl_LocalInvocationIndex * 4u;
 
-    const uint total_lines = pc_vertex_index.total_vertices >> 1u;
+    const uint total_lines = draw_params.total_vertices >> 1u;
     const uint lines_this_group = min({{group_size}}u, total_lines - gl_WorkGroupID.x * {{group_size}}u);
     SetMeshOutputsEXT(lines_this_group * 4u, lines_this_group * 2u);
 
     if (line_id >= total_lines)
         return;
 
-    uint v0 = pc_vertex_index.vertex_base + line_id * 2u;
+    uint v0 = draw_params.vertex_base + line_id * 2u;
     uint v1 = v0 + 1u;
-    if (pc_vertex_index.is_indexed != 0u)
+    if (draw_params.is_indexed != 0u)
     {
-        const uint i0 = pc_vertex_index.index_base + line_id * 2u;
-        v0 = pc_vertex_index.vertex_base + sbo_vertex_index.data[i0];
-        v1 = pc_vertex_index.vertex_base + sbo_vertex_index.data[i0 + 1u];
+        const uint i0 = draw_params.index_base + line_id * 2u;
+        v0 = draw_params.vertex_base + sbo_vertex_index.data[i0];
+        v1 = draw_params.vertex_base + sbo_vertex_index.data[i0 + 1u];
     }
 {{endpoint_read}}#ifdef S1_PALETTE_INDEX_GLSL
     const uint color_index = (sbo_vertex_color.data[v0 >> 2u] >> ((v0 & 3u) * 8u)) & 0xFFu;

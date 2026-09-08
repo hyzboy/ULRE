@@ -11,13 +11,13 @@
 
 // BDA：位置基址由 MeshDrawParams 行 addr_position 携带（VertexPositionV2Ref 由
 // MeshShaderVertexAdapter 集中声明）——vec2 8B stride 与 VAB 布局一致，读法不变
-#define sbo_vertex_position VertexPositionV2Ref(pc_vertex_index.addr_position)
+#define sbo_vertex_position VertexPositionV2Ref(draw_params.addr_position)
 
 vec2 Position;
 
 void LoadVertexData()
 {
-    Position = sbo_vertex_position.data[pc_vertex_index.vertex_base + VertexIndexID];
+    Position = sbo_vertex_position.data[draw_params.vertex_base + VertexIndexID];
 #ifdef HGL_UV_LOADER
     HGL_UV_LOADER
 #endif

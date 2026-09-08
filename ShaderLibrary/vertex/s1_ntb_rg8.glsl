@@ -11,7 +11,7 @@
 // 布局注意：uint 4B 对齐（2 个顶点/uint——不越界——连续读取）
 // BDA：NTB 基址由 MeshDrawParams 行 addr_ntb 携带（VertexNTBPackedRef 由
 // MeshShaderVertexAdapter 集中声明）——packed uint 4B stride 读法不变
-#define sbo_vertex_ntb VertexNTBPackedRef(pc_vertex_index.addr_ntb)
+#define sbo_vertex_ntb VertexNTBPackedRef(draw_params.addr_ntb)
 
 vec3 Normal;
 
@@ -20,8 +20,8 @@ vec3 Normal;
 #define HGL_NTB_LOADER \
     do \
     { \
-        const uint d = sbo_vertex_ntb.data[(pc_vertex_index.vertex_base + VertexIndexID) >> 1u]; \
-        const uint sh = ((pc_vertex_index.vertex_base + VertexIndexID) & 1u) * 16u; \
+        const uint d = sbo_vertex_ntb.data[(draw_params.vertex_base + VertexIndexID) >> 1u]; \
+        const uint sh = ((draw_params.vertex_base + VertexIndexID) & 1u) * 16u; \
         const vec2 p = vec2(float((d >> sh) & 0xFFu), float((d >> (sh + 8u)) & 0xFFu)) * (2.0 / 255.0) - 1.0; \
         vec3 n = vec3(p.x, p.y, 1.0 - abs(p.x) - abs(p.y)); \
         if (n.z < -0.02) \

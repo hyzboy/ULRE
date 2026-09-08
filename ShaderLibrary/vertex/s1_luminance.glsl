@@ -13,13 +13,13 @@
 
 // BDA：亮度基址由 MeshDrawParams 行 addr_luminance 携带（VertexLuminanceRef 由
 // MeshShaderVertexAdapter 集中声明），读法不变
-#define sbo_vertex_luminance VertexLuminanceRef(pc_vertex_index.addr_luminance)
+#define sbo_vertex_luminance VertexLuminanceRef(draw_params.addr_luminance)
 
 float Luminance;
 
 #define HGL_LUMINANCE_LOADER \
     { \
-        const uint vidx = pc_vertex_index.vertex_base + VertexIndexID; \
+        const uint vidx = draw_params.vertex_base + VertexIndexID; \
         const uint packed = sbo_vertex_luminance.data[vidx >> 2]; \
         Luminance = float((packed >> ((vidx & 3u) * 8u)) & 0xFFu) / 255.0; \
     }

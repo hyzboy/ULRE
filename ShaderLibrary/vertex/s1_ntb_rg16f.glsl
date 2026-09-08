@@ -15,14 +15,14 @@
 
 // BDA：NTB 基址由 MeshDrawParams 行 addr_ntb 携带（VertexNTBPackedRef 由
 // MeshShaderVertexAdapter 集中声明）——packed uint 4B stride 读法不变
-#define sbo_vertex_ntb VertexNTBPackedRef(pc_vertex_index.addr_ntb)
+#define sbo_vertex_ntb VertexNTBPackedRef(draw_params.addr_ntb)
 
 vec3 Normal;
 
 #define HGL_NTB_LOADER \
     do \
     { \
-        const vec2 p = unpackHalf2x16(sbo_vertex_ntb.data[pc_vertex_index.vertex_base + VertexIndexID]); \
+        const vec2 p = unpackHalf2x16(sbo_vertex_ntb.data[draw_params.vertex_base + VertexIndexID]); \
         vec3 n = vec3(p.x, p.y, 1.0 - abs(p.x) - abs(p.y)); \
         /* 展开阈值：half 舍入使 z≈0 抖动（±0.005）——误展开会 ±90° 翻转成黑斑 */ \
         if (n.z < -0.005) \

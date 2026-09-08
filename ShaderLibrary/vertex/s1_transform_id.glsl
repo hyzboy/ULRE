@@ -13,10 +13,10 @@
 
 // BDA：变换序号基址由 MeshDrawParams 行 addr_transform_id 携带
 //（VertexTransformIDRef 由 MeshShaderVertexAdapter 集中声明），读法不变
-#define sbo_vertex_transform_id VertexTransformIDRef(pc_vertex_index.addr_transform_id)
+#define sbo_vertex_transform_id VertexTransformIDRef(draw_params.addr_transform_id)
 
 uint TransformID;
 
-#define HGL_TRANSFORMID_LOADER { TransformID = sbo_vertex_transform_id.data[pc_vertex_index.vertex_base + VertexIndexID]; }
+#define HGL_TRANSFORMID_LOADER { TransformID = sbo_vertex_transform_id.data[draw_params.vertex_base + VertexIndexID]; }
 
 #endif // S1_TRANSFORMID_GLSL

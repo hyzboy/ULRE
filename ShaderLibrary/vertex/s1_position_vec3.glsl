@@ -18,13 +18,13 @@
 // BDA：位置基址由 MeshDrawParams 行 addr_position 携带（VertexPositionRef
 // 由 MeshShaderVertexAdapter 集中声明）——vec3 data[] 12B 紧凑 stride 与
 // VAB 布局逐字节一致，读法不变
-#define sbo_vertex_position VertexPositionRef(pc_vertex_index.addr_position)
+#define sbo_vertex_position VertexPositionRef(draw_params.addr_position)
 
 vec3 Position;
 
 void LoadVertexData()
 {
-    Position = sbo_vertex_position.data[pc_vertex_index.vertex_base + VertexIndexID];
+    Position = sbo_vertex_position.data[draw_params.vertex_base + VertexIndexID];
 #ifdef HGL_UV_LOADER
     HGL_UV_LOADER
 #endif

@@ -77,30 +77,9 @@ namespace hgl::ecs
             return false;
         }
 
-        uint64_t ResolveSSBOBindingSignature(RenderItem *item)
-        {
-            // 材质数据无 per-material SSBO 绑定差异（Arena 行表寻址），
-            // 签名恒为常量——不同实例可合入同一批。
-            return 0;
-
-            hgl::hash::FNV1aHasher64 h;
-            const auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
-            const auto material_comp = primitive_item ? primitive_item->GetMaterialComponent() : nullptr;
-            if (!material_comp)
-                return static_cast<uint64_t>(h);
-
-            const uint32_t binding_count =
-                static_cast<uint32_t>(material_comp->resolved_ssbo_bindings.size());
-            h << binding_count;
-            for (const auto &binding : material_comp->resolved_ssbo_bindings)
-            {
-                h << binding.ssbo_type
-                  << binding.ssbo_id
-                  << binding.valid;
-            }
-
-            return static_cast<uint64_t>(h);
-        }
+        // A6-2b/b3：BDA 后无 per-material SSBO 绑定差异（材质数据/顶点流全走行内
+        // 地址与 pc_root），合批 key 只按 shader+pipeline 区分——同 shader 即同批。
+        //（原 ResolveSSBOBindingSignature 恒 0 + resolved_ssbo_bindings 死体已删。）
     }
 
     bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)
@@ -941,8 +920,7 @@ namespace hgl::ecs
             }
 
             ShaderProgramPipelineKey key(shader_prog,
-                                         pipeline,
-                                         ResolveSSBOBindingSignature(item));
+                                         pipeline);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)

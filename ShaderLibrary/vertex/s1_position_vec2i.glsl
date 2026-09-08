@@ -15,14 +15,14 @@
 
 // BDA：位置基址由 MeshDrawParams 行 addr_position 携带（VertexPositionPackedRef
 // 由 MeshShaderVertexAdapter 集中声明）——packed uint 4B stride 读法不变
-#define sbo_vertex_position VertexPositionPackedRef(pc_vertex_index.addr_position)
+#define sbo_vertex_position VertexPositionPackedRef(draw_params.addr_position)
 
 vec2 Position;
 
 void LoadVertexData()
 {
     // 每顶点 1 uint：低 16 位 x、高 16 位 y（int16 符号扩展——算术右移）
-    const uint d = sbo_vertex_position.data[pc_vertex_index.vertex_base + VertexIndexID];
+    const uint d = sbo_vertex_position.data[draw_params.vertex_base + VertexIndexID];
     Position = vec2(float(int(d) << 16 >> 16),
                     float(int(d) >> 16));
 #ifdef HGL_UV_LOADER

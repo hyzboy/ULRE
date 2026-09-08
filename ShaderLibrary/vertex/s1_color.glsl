@@ -11,10 +11,10 @@
 
 // BDA：顶点色基址由 MeshDrawParams 行 addr_color 携带（VertexColorRef 由
 // MeshShaderVertexAdapter 集中声明），读法不变
-#define sbo_vertex_color VertexColorRef(pc_vertex_index.addr_color)
+#define sbo_vertex_color VertexColorRef(draw_params.addr_color)
 
 vec4 Color;
 
-#define HGL_COLOR_LOADER { Color = sbo_vertex_color.data[pc_vertex_index.vertex_base + VertexIndexID]; }
+#define HGL_COLOR_LOADER { Color = sbo_vertex_color.data[draw_params.vertex_base + VertexIndexID]; }
 
 #endif // S1_COLOR_GLSL

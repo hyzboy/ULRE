@@ -7,7 +7,8 @@
 // 2. 每个实体使用不同的结构体行（不同颜色）
 // 3. 所有实体共享同一个Geometry（顶点数据）
 // 4. RenderCollector自动合并相同Material的不同结构体行进行批量渲染
-// 5. 示例自建 EmissiveSurface 结构体 SSBO 并注册进 ResourceDomainManager，RDBS 按 SSBOType+ID 严格绑定
+// 5. 示例自建 EmissiveSurface 结构体行并写入材质数据行表（SSBOBufferRegistry 注册，
+//    行地址经 mtl_data_addrs 行表下发——BDA 后无描述符无 RDBS 绑定）
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -15,7 +16,8 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
+
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 
@@ -192,10 +194,10 @@ private:
     }
 
     /**
-     * 创建 EmissiveSurface 结构体 SSBO 并注册进 ResourceDomainManager。
-     * 这是"新终极形态"示范：资源生产方自建 SSBO，向 RDBS 登记 layout，
-     * 由 RenderDescriptorBindingSystem 按 SSBOType+ssbo_id 严格绑定，
-     * PrimitiveBatchPipeline 负责按 draw order 写 DataIndex 行表。
+     * 创建 EmissiveSurface 结构体行并写入材质数据行（经 SSBOBufferRegistry 行表注册）。
+     * BDA 终态示范：资源生产方自建行 buffer，行地址写入材质数据行表
+     *（mtl_data_addrs），PrimitiveBatchPipeline 按 draw order 填行地址——
+     * 无描述符无 RDBS 绑定（材质数据经 buffer_reference 直达）。
      */
     bool InitMISSBO()
     {

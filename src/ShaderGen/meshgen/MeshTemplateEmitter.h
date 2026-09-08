@@ -255,7 +255,7 @@ namespace hgl::graph::mtl
         // 直接绘制 gl_DrawID=0 → row 0（CPU 侧保证 row 0 = 本 draw 参数）。
         // 行表走 BDA：MeshDrawParamsRef(pc_root.addr_mesh_draw_params) 经 push constant
         // 地址解引用（表 buffer SHADER_DEVICE_ADDRESS usage + 16B 对齐——CPU 保证）。
-        fragment += "    pc_vertex_index = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[gl_DrawID];\n";
+        fragment += "    draw_params = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[gl_DrawID];\n";
         fragment += "\n";
 
         // ── 每线程处理 ─────────────────────────────────────────────────────

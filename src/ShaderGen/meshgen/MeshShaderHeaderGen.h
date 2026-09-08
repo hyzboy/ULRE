@@ -144,7 +144,7 @@ namespace hgl::graph::mtl
     // mesh shader 无 gl_InstanceIndex（VS 专属内置）——实例索引 = first_instance + gl_WorkGroupID.y
     inline void EmitGlInstanceIndexMacro(std::string &ms)
     {
-        ms += "#define gl_InstanceIndex (pc_vertex_index.first_instance + gl_WorkGroupID.y)\n";
+        ms += "#define gl_InstanceIndex (draw_params.first_instance + gl_WorkGroupID.y)\n";
         ms += "\n";
     }
 }

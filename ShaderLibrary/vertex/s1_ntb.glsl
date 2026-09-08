@@ -16,10 +16,10 @@
 
 // BDA：NTB 基址由 MeshDrawParams 行 addr_ntb 携带（VertexNTBRef 由
 // MeshShaderVertexAdapter 集中声明），读法不变
-#define sbo_vertex_ntb VertexNTBRef(pc_vertex_index.addr_ntb)
+#define sbo_vertex_ntb VertexNTBRef(draw_params.addr_ntb)
 
 vec3 Normal;
 
-#define HGL_NTB_LOADER { Normal = sbo_vertex_ntb.data[pc_vertex_index.vertex_base + VertexIndexID]; }
+#define HGL_NTB_LOADER { Normal = sbo_vertex_ntb.data[draw_params.vertex_base + VertexIndexID]; }
 
 #endif // S1_NTB_GLSL

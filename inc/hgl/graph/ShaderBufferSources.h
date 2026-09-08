@@ -7,7 +7,7 @@
 namespace hgl::graph::mtl
 {
     // mesh per-draw 参数行——与 MeshTemplateEmitter 生成的 GLSL struct MeshDrawParams
-    // 严格同构（std430 全 4 字节成员，24B 无 padding）。
+    // 严格同构（std430 头部 6×4B 成员 + 8×uint64 设备地址尾，共 88B；offsetof 连续断言）。
     //
     // 单一真源（X 列表）：CPU struct 成员 / GLSL 字段名 / GLSL 字段类型 /
     // std430 布局断言全部从这一份生成——改字段只改这里，GLSL 发射侧

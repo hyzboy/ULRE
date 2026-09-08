@@ -12,13 +12,13 @@
 
 // BDA：色号基址由 MeshDrawParams 行 addr_color 携带（VertexColorPackedRef 由
 // MeshShaderVertexAdapter 集中声明），读法不变
-#define sbo_vertex_color VertexColorPackedRef(pc_vertex_index.addr_color)
+#define sbo_vertex_color VertexColorPackedRef(draw_params.addr_color)
 
 uint ColorIndex;
 
 #define HGL_COLORINDEX_LOADER \
     { \
-        const uint vidx = pc_vertex_index.vertex_base + VertexIndexID; \
+        const uint vidx = draw_params.vertex_base + VertexIndexID; \
         const uint packed = sbo_vertex_color.data[vidx >> 2]; \
         ColorIndex = (packed >> ((vidx & 3u) * 8u)) & 0xFFu; \
     }

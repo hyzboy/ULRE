@@ -11,10 +11,10 @@
 
 // BDA：UV 基址由 MeshDrawParams 行 addr_uv 携带（VertexUVRef 由
 // MeshShaderVertexAdapter 集中声明），读法不变
-#define sbo_vertex_uv VertexUVRef(pc_vertex_index.addr_uv)
+#define sbo_vertex_uv VertexUVRef(draw_params.addr_uv)
 
 vec2 TexCoord;
 
-#define HGL_UV_LOADER { TexCoord = sbo_vertex_uv.data[pc_vertex_index.vertex_base + VertexIndexID]; }
+#define HGL_UV_LOADER { TexCoord = sbo_vertex_uv.data[draw_params.vertex_base + VertexIndexID]; }
 
 #endif // S1_UV_GLSL
