@@ -202,11 +202,9 @@ namespace hgl::ecs
                 cmd_buf->BindDescriptorSets(layout, set_index, &ds, 1, nullptr, 0);
             }
         }
-        else
-        {
-            // 绑定材质描述符集
-            cmd_buf->BindDescriptorSets(material);
-        }
+        // A6-2b-b2：原 else 分支（BindDescriptorSets(material)——材质级全集绑定）已删——
+        // desc_manager 恒 null 后 mp_array 全空、该函数空转；Scene/Bindless 由设备级
+        // 全局绑定（VKGlobalSceneUBOSet / VKBindlessTextureManager），材质侧不再绑任何集。
 
         // 遍历绘制批次：全部累积命令（BDA 后无 per-draw descriptor/set——BDA 化前
         // 的 per-draw 独立 PerObject MP 池机制已随 7 表全 BDA 退场）

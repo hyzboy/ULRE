@@ -22,7 +22,9 @@ protected:
     VkBufferOwner *buffer  = nullptr;  // descriptor / GetBuffer() / static_cast — 保留不变
     IGPUBuffer   *gpu_buf = nullptr;  // 写路径专用，SetBuffer() 时同步赋值，直接持有，无需跨层查找
 
-    DescriptorSetType desc_set_type = DescriptorSetType::PerObject;
+    // A6-2b-b2：PerObject 集已退场——默认归属改为 Scene（UBO 唯一现存集；
+    // 该字段为历史描述符归属记录，BDA 后行表/UBO 均无绑定语义）。
+    DescriptorSetType desc_set_type = DescriptorSetType::Scene;
     AnsiString ubo_name;
 
 protected:

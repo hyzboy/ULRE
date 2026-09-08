@@ -307,9 +307,10 @@ namespace
 
     // mesh 阶段只需 l2w_index；材质地址表在 FS 消费（见 BuildFSIndexTableDecls）。
     // A6-2a：行表本体 buffer_reference——地址经 pc_root.addr_l2w_index 下发；
-    // 恒发射（去契约门）。sbs_name 字段保留作名称真源（SBS_LocalToWorldIndex 常量）。
+    // 恒发射（去契约门）。sbs_name 字段为历史名称记录（SBS_LocalToWorldIndex
+    // 常量已随 A6-2b-b2 删除——行表不再有描述符名，仅 buffer_reference 类型名）。
     const IndexTableSpec kMeshIndexTableSpecs[] = {
-        { SBS_LocalToWorldIndex.name, "LocalToWorldIndex", "l2w_index",
+        { "l2w_index", "LocalToWorldIndex", "l2w_index",
           "ResolveTransformID", "uint", "addr_l2w_index" },
     };
 

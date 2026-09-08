@@ -411,9 +411,9 @@ static bool BuildEffectiveDescriptorEntries(
 
 // ── Step 3c: canonical 描述符注册（目录表驱动）───────────────────────────────
 // 唯一真源：inc/hgl/mtl/DescriptorResourceCatalog.h（语义→类别/集合/绑定/SBS）。
-// 按类别分支：SceneGlobal 全局化跳过；PerDraw 固定 ABI 注册；
-// MaterialData per-material 动态（数据槽由 RegisterMaterialPrivateDataSlotDescriptors
-// 单独处理，此处仅纹理层表/行表）。
+// A6-2b-b2：目录只余 SceneGlobal 行（PerDraw/MaterialData 类已随 BDA 化退场），
+// Scene UBO 全局化后 per-material 注册全跳过——本函数为无操作保留（历史骨架，
+// 契约条目均不触发注册；io_material_ssbo_stage_bits 无实际写入者）。
 static bool RegisterCanonicalDescriptors(
     ShaderBuildContext *ctx,
     const std::vector<SerializedDescriptorEntry> &descriptor_entries,
@@ -425,36 +425,16 @@ static bool RegisterCanonicalDescriptors(
     {
         const uint32_t stage_bits = entry.stage_flags;
 
-        // MaterialPrivateData：由单槽 effective material_private_data 注册，
-        // 此处只累加其 stage bits（渲染侧固定为 SSBO 语义）。
-        if (entry.semantic == DescriptorSemantic::MaterialPrivateData)
-        {
-            io_material_ssbo_stage_bits = stage_bits;
-            continue;
-        }
-
         const DescriptorResourceCatalogEntry *cat =
             FindResourceCatalogEntry(entry.semantic);
         if (!cat)
             continue;
 
-        switch (cat->cls)
-        {
-        case ResourceCatalogClass::SceneGlobal:
-            // Scene UBO 已全局化（P1/P1-2a），不再进入 per-material 分配器
-            break;
-
-        case ResourceCatalogClass::PerDraw:
-            // A6-2b-b1：契约已无 PerObject 条目（L2W/L2WIndex/MeshDrawParams/
-            // MaterialPrivateDataIndex 行表全走 BDA——无描述符注册）；此分支不触发，
-            // 目录行随 A6-2b-b2 删除。
-            break;
-
-        case ResourceCatalogClass::MaterialData:
-            // MaterialTextureLayerTable 已随 Material 集退场（句柄走数据槽行尾）；
-            // MaterialTexture/MaterialSampler：bindless 通道，无 per-material 描述符
-            break;
-        }
+        // SceneGlobal：Scene UBO 已全局化（P1），不再进入 per-material 分配器。
+        // （PerDraw/MaterialData 类枚举与分支已删——L2W/L2WIndex/MeshDrawParams/
+        //  MaterialPrivateDataIndex 行表全走 BDA，Material 集已退场。）
+        (void)cat;
+        (void)stage_bits;
     }
 
     return true;

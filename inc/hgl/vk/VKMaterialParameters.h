@@ -36,13 +36,6 @@ public:
 
 public:
 
-    #define MP_TYPE_IS(name)    const   bool is##name()const{return set_type==DescriptorSetType::name;}
-        MP_TYPE_IS(Scene)
-        MP_TYPE_IS(PerObject)
-    #undef MP_TYPE_IS
-
-public:
-
     MaterialParameters(const MaterialDescriptorManager *,const DescriptorSetType &type,DescriptorSet *);
     virtual ~MaterialParameters();
 

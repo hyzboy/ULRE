@@ -19,35 +19,11 @@ namespace hgl::graph
         ENUM_CLASS_RANGE(Camera,ColorPalette)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
     };
 
-    /// PerObject 集（Set 1）编译期固定 SSBO 绑定号。
-    /// 成员为引擎内部 per-object 结构，非 TOML 动态列表；历史跳号（2、7）保持不变。
-    enum class PerObjectBinding : int
-    {
-        L2W              = 0,   ///< per-draw 变换数据
-        L2WIndex         = 1,   ///< 实例 → l2w 行索引表
-        PrivateDataIndex = 3,   ///< 实例 → 材质私有数据行索引表（MaterialPrivateDataIndex）
-
-        MeshDrawParams   = 13,  ///< mesh per-draw 参数表 SSBO（indirect 合批查表）
-
-        // CharQuad 文本字符 SSBO（TextCharQuad mesh shader 模式）
-        TextCharInfo     = 14,  ///< 字符信息 SSBO
-        TextCharStyle    = 15,  ///< 字符样式 SSBO
-        TextCharInstance = 16,  ///< 字符实例 SSBO
-
-        ENUM_CLASS_RANGE(L2W,TextCharInstance)  ///< RANGE_SIZE 供资源目录覆盖性断言
-    };
-
     /// ABI 锚点：以下数值被 ShaderLibrary/common/descriptor_macros.glsl 与运行时绑定表依赖，
     /// 变更即破坏全部已编译着色器；static_assert 保证插入新条目引发的静默重编号在编译期暴露。
     static_assert(int(SceneBinding::Camera)==0
                && int(SceneBinding::Viewport)==2,
                   "Scene UBO binding ABI changed");
-
-    static_assert(int(PerObjectBinding::L2W)==0
-               && int(PerObjectBinding::PrivateDataIndex)==3
-               && int(PerObjectBinding::MeshDrawParams)==13
-               && int(PerObjectBinding::TextCharInstance)==16,
-                  "PerObject binding ABI changed");
 
     /// ── 兼容别名：既有调用点继续使用 kXxx 常量名，数值真源已上收至上述枚举 ──
     constexpr const int kSceneBindingCamera       = int(SceneBinding::Camera);        ///< 相机 UBO
@@ -55,21 +31,14 @@ namespace hgl::graph
     constexpr const int kSceneBindingViewport     = int(SceneBinding::Viewport);      ///< 视口 UBO
     constexpr const int kSceneBindingColorPalette = int(SceneBinding::ColorPalette);  ///< 顶点调色板 UBO
 
-    constexpr const int kPerObjectBindingL2W               = int(PerObjectBinding::L2W);              ///< per-draw 变换数据
-    constexpr const int kPerObjectBindingL2WIndex          = int(PerObjectBinding::L2WIndex);         ///< 实例 → l2w 行索引表
-    constexpr const int kPerObjectBindingPrivateDataIndex  = int(PerObjectBinding::PrivateDataIndex); ///< 实例 → 材质私有数据行索引表
-    constexpr const int kPerObjectBindingMeshDrawParams    = int(PerObjectBinding::MeshDrawParams);   ///< mesh per-draw 参数表 SSBO
-    constexpr const int kPerObjectBindingTextCharInfo      = int(PerObjectBinding::TextCharInfo);     ///< 字符信息 SSBO
-    constexpr const int kPerObjectBindingTextCharStyle     = int(PerObjectBinding::TextCharStyle);    ///< 字符样式 SSBO
-    constexpr const int kPerObjectBindingTextCharInstance  = int(PerObjectBinding::TextCharInstance); ///< 字符实例 SSBO
-
     enum class DescriptorSetType:int
     {
         Unknown=-1,        ///<Phase 7 拼写修正：Unknown（枚举值不变，序列化契约不受影响）
 
         Scene=0,        ///< 全局 UBO 集（camera/sky/viewport/color_palette），所有材质共用，一帧写/绑一次
-        PerObject,      ///< per-object/per-draw SSBO 集（l2w/l2w_index/mtl_data_addrs/mesh_draw_params）
-        Bindless,       ///< 全局 Bindless 纹理数组集合（Set 2），一帧绑一次
+                        ///< （PerObject 集已随 A6-2b-b2 退场——行表全 BDA，无 per-material 描述符；
+                        ///<  枚举值 1 留空，Bindless 仍为 2，集号收敛随 b3 一并处理）
+        Bindless=2,     ///< 全局 Bindless 纹理数组集合（Set 2），一帧绑一次
                         ///< （Vertex/Material 集已随 BDA 化退场——顶点流与材质行均经
                         ///<  MeshDrawParams 行内基址 / 地址行表寻址，无 per-material 描述符）
 
@@ -78,10 +47,12 @@ namespace hgl::graph
 
     constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
 
+    /// 按索引调试名（数组长度 = RANGE_SIZE 数值槽数；槽 1 = PerObject 退场留空，
+    /// 字符串保留防索引错位——b3 集号收敛后连同 Bindless 名收为 2 项）。
     constexpr const char *DescriptSetTypeName[]=
     {
         "Scene",
-        "PerObject",
+        "PerObject(retired)",
         "Bindless"
     };
 

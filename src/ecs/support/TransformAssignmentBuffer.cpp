@@ -171,55 +171,6 @@ namespace hgl::ecs
         all_instances.push_back(this);
     }
 
-    void TransformAssignmentBuffer::BindTransform(graph::ShaderProgram* mtl) const
-    {
-        // 委托到 MaterialParameters 版（l2w 绑定到指定 PerObject MP——per-draw 独立 set）
-        if (!mtl)
-        {
-            GLogWarning("[TransformAssignmentBuffer::BindTransform] ShaderProgram is null");
-            return;
-        }
-        BindTransform(mtl->GetMP(hgl::graph::mtl::SBS_LocalToWorld.set_type));
-    }
-
-    void TransformAssignmentBuffer::BindTransform(graph::MaterialParameters* mp) const
-    {
-        if (!mp)
-        {
-            GLogWarning("[TransformAssignmentBuffer::BindTransform] MaterialParameters is null");
-            return;
-        }
-
-        if (!transform_buffer)
-        {
-            GLogWarning("[TransformAssignmentBuffer::BindTransform] Transform buffer not created");
-            return;
-        }
-
-        const uint32_t expected_version = graph::mtl::GetSSBOTypeStructVersion(graph::mtl::SSBOType::LocalToWorld);
-        const uint32_t expected_stride = graph::mtl::GetSSBOTypeStructStride(graph::mtl::SSBOType::LocalToWorld);
-        if (expected_version > 0 && expected_stride > 0)
-        {
-            const VkDeviceSize buffer_size = transform_buffer->GetSize();
-            if (buffer_size == 0 || (buffer_size % expected_stride) != 0)
-            {
-                GLogError("[R11] Skip LocalToWorld bind: version=%u expected_stride=%u buffer_size=%llu",
-                          expected_version,
-                          expected_stride,
-                          static_cast<unsigned long long>(buffer_size));
-                return;
-            }
-        }
-
-        LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
-
-        mp->BindSSBO(hgl::graph::mtl::SBS_LocalToWorld.name,
-                  transform_buffer->GetGPUBuffer());
-        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO set_type=%d name=%s",
-                 static_cast<int>(hgl::graph::mtl::SBS_LocalToWorld.set_type),
-                 hgl::graph::mtl::SBS_LocalToWorld.name);
-    }
-
     void TransformAssignmentBuffer::EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy)
     {
         const uint32_t total_count = ring_writer.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);

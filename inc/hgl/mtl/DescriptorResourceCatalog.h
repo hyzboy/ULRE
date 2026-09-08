@@ -10,15 +10,13 @@
 namespace hgl::graph::mtl
 {
     /// 资源类别——与 DescriptorSetType 一一对应：
-    /// 全局集按帧绑定（per-material 侧跳过），PerObject 集承载易变行表，
-    /// Material 集为唯一 per-material 动态路径。
-    /// （Vertex 集已随顶点流 BDA 化整体退场——顶点数据经 MeshDrawParams 行内
-    /// 基址到达 shader，不再有描述符。）
+    /// 全局集按帧绑定（per-material 侧跳过）。
+    /// （Vertex/PerObject/Material 集已随 BDA 化整体退场——顶点流经 MeshDrawParams
+    /// 行内基址、行表经 pc_root 地址、材质行经地址行表到达 shader，均无描述符。
+    /// 契约恒 Scene UBO 条目，目录只余 SceneGlobal 行。）
     enum class ResourceCatalogClass : uint8
     {
         SceneGlobal,     ///< Scene 集全局 UBO（P1 已全局化——per-material 注册跳过）
-        PerDraw,         ///< PerObject 集固定 ABI SSBO（l2w/实例行表/per-draw 参数表）
-        MaterialData,    ///< Material 集数据资源（私有数据槽/纹理层表/纹理与采样器声明）
     };
 
     /// 描述符资源目录——"语义 → 集合/绑定/SBS"的唯一真源。
@@ -51,11 +49,9 @@ namespace hgl::graph::mtl
         { DescriptorSemantic::SkyInfo,              ResourceCatalogClass::SceneGlobal, &SBS_SkyInfo,       DescriptorSetType::Scene,    int(SceneBinding::Sky),           SSBOType::UserDefined, false },
         { DescriptorSemantic::MaterialColorPalette, ResourceCatalogClass::SceneGlobal, &SBS_ColorPalette,  DescriptorSetType::Scene,    int(SceneBinding::ColorPalette),  SSBOType::UserDefined, false },
 
-        // ── PerDraw：PerObject 集固定 ABI（易变——行表按批/每 run 更新）──
-        { DescriptorSemantic::LocalToWorld,         ResourceCatalogClass::PerDraw, &SBS_LocalToWorld,                   DescriptorSetType::PerObject, int(PerObjectBinding::L2W),              SSBOType::UserDefined,              false },
-        { DescriptorSemantic::LocalToWorldIndex,    ResourceCatalogClass::PerDraw, &SBS_LocalToWorldIndex,              DescriptorSetType::PerObject, int(PerObjectBinding::L2WIndex),         SSBOType::LocalToWorldIndex,        false },
-        { DescriptorSemantic::MeshDrawParams,       ResourceCatalogClass::PerDraw, &SBS_MeshDrawParams,                 DescriptorSetType::PerObject, int(PerObjectBinding::MeshDrawParams),   SSBOType::UserDefined,              true  },
-        { DescriptorSemantic::MaterialPrivateDataIndex, ResourceCatalogClass::PerDraw, &SBS_MaterialDataAddresses,          DescriptorSetType::PerObject, int(PerObjectBinding::PrivateDataIndex), SSBOType::MaterialPrivateDataIndex, false },
+        // ── PerDraw/PerObject 行已删（A6-2b-b2：L2W/L2WIndex/MeshDrawParams/
+        // MaterialPrivateDataIndex 全 BDA——无描述符无目录行；数据槽行表需求由
+        // schema.requires_runtime_data_rows 编译期直判承载，不经目录）。
     };
 
     constexpr const size_t DESCRIPTOR_RESOURCE_CATALOG_COUNT=
@@ -161,36 +157,6 @@ namespace hgl::graph::mtl
             return count==slot_count
                 && seen==((uint32(1)<<slot_count)-uint32(1));
         }
-
-        /// PerObject 集覆盖：固定 ABI 的枚举项（L2W/L2WIndex/PrivateDataIndex/MeshDrawParams）
-        /// 必须各有一目录行。TextChar* 三项**刻意排除**——它们是 CharQuad mesh 模式内部
-        /// 约定（宏侧有、目录未收录），非通用 per-object 资源，故不参与覆盖断言。
-        constexpr bool PerObjectFixedBindingsCovered() noexcept
-        {
-            uint32 seen=0;
-
-            for(const DescriptorResourceCatalogEntry &row:kDescriptorResourceCatalog)
-            {
-                if(row.cls!=ResourceCatalogClass::PerDraw)continue;
-
-                if(row.set_type!=DescriptorSetType::PerObject)return false;
-                if(row.binding<0)return false;
-
-                const uint32 bit=uint32(1)<<row.binding;
-
-                if(seen&bit)return false;
-
-                seen|=bit;
-            }
-
-            const uint32 required_bits =
-                  (uint32(1)<<int(PerObjectBinding::L2W))
-                | (uint32(1)<<int(PerObjectBinding::L2WIndex))
-                | (uint32(1)<<int(PerObjectBinding::PrivateDataIndex))
-                | (uint32(1)<<int(PerObjectBinding::MeshDrawParams));
-
-            return (seen&required_bits)==required_bits;
-        }
     }//namespace catalog_check
 
     static_assert(catalog_check::RowsUnique(),
@@ -202,8 +168,4 @@ namespace hgl::graph::mtl
     static_assert(catalog_check::SceneBindingsFullyCovered(),
                   "SceneBinding 枚举项与目录 SceneGlobal 行未一一对应"
                   "（新增 Scene 绑定后须在 kDescriptorResourceCatalog 登记一行）");
-
-    static_assert(catalog_check::PerObjectFixedBindingsCovered(),
-                  "PerObject 固定 ABI 枚举项（L2W/L2WIndex/PrivateDataIndex/MeshDrawParams）"
-                  "在资源目录缺行——新增固定 per-object 绑定后须登记目录行");
 }//namespace hgl::graph::mtl

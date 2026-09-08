@@ -3657,7 +3657,7 @@ namespace
 
         const SerializedDescriptorEntry descriptors[] = {
             {
-                DescriptorSetType::PerObject,
+                DescriptorSetType::Scene,
                 uint32_t(hgl::graph::kMeshFragment),
                 "mtl_private_data_index",
                 "MaterialPrivateDataIndex",
@@ -3792,7 +3792,7 @@ namespace
         // 描述符——旧注入路径会因此向 mesh 阶段注入 L2W_SET/L2W_BINDING。
         const SerializedDescriptorEntry descriptors[] = {
             {
-                DescriptorSetType::PerObject,
+                DescriptorSetType::Scene,
                 uint32_t(hgl::graph::kMeshFragment),
                 "l2w",
                 "LocalToWorldData",
@@ -3905,7 +3905,7 @@ namespace
                     DescriptorSemanticLayer::UBO
                 },
                 {
-                    DescriptorSetType::PerObject,
+                    DescriptorSetType::Scene,
                     uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
                     material_name.c_str(),
                     material_struct.c_str(),
@@ -4486,8 +4486,8 @@ int main(const int argc, char **argv)
         constexpr SerializedDescriptorEntry valid_entries[] =
         {
             { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-            { DescriptorSetType::PerObject, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data_index", "MaterialPrivateDataIndex", nullptr, DescriptorSemantic::MaterialPrivateDataIndex, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndex, DescriptorSemanticLayer::SSBO },
-            { DescriptorSetType::PerObject, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data_index", "MaterialPrivateDataIndex", nullptr, DescriptorSemantic::MaterialPrivateDataIndex, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndex, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-contract-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
@@ -4499,7 +4499,7 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry invalid_fixed_descriptor[] =
         {
-            { DescriptorSetType::PerObject, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
 

@@ -121,8 +121,6 @@ public:
 
     //以上设定在Begin开始后即不可改变
 
-    bool BindDescriptorSets(ShaderProgram *, MaterialParameters *override_per_object = nullptr);
-
     void BeginRendering(const VkRenderingInfo *ri)
     {
         if(!ri)return;

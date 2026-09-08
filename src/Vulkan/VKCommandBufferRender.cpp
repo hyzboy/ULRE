@@ -276,37 +276,6 @@ void RenderCmdBuffer::DrawMeshTasksIndirect(VkBuffer buffer,VkDeviceSize offset,
     dev_attr->cmd_draw_mesh_tasks_indirect(cmd_buf,buffer,offset,drawCount,stride);
 }
 
-bool RenderCmdBuffer::BindDescriptorSets(ShaderProgram *mtl, MaterialParameters *override_per_object)
-{
-    if(!mtl)return(false);
-
-    pipeline_layout=mtl->GetPipelineLayout();
-
-    ENUM_CLASS_FOR(DescriptorSetType,int,i)
-    {
-        MaterialParameters *mp=nullptr;
-
-        // per-object / material 集支持调用方传入独立 MP（多实例共享同一 ShaderProgram
-        // 时，各实例必须使用自己的描述符集，避免录制期间互相覆盖）
-        // Scene/Bindless 为全局集；仅 PerObject 支持调用方独立 MP（多实例共享
-        // ShaderProgram 时各实例必须用自己的描述符集，避免录制期间互相覆盖）。
-        // （Material/Vertex 集已随 BDA 化退场）
-        if(i==static_cast<int>(DescriptorSetType::PerObject))
-            mp=override_per_object?override_per_object:mtl->GetMP((DescriptorSetType)i);
-        else
-            mp=mtl->GetMP((DescriptorSetType)i);
-
-        if(!mp)
-            continue;
-
-        mp->Update();
-
-        const VkDescriptorSet ds=mp->GetVkDescriptorSet();
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,uint32_t(i),1,&ds,0,nullptr);
-    }
-
-    return(true);
-}
 }//namespace hgl::graph
 
 

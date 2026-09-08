@@ -6,23 +6,6 @@
 
 namespace hgl::graph::mtl
 {
-    constexpr const ShaderBufferSource SBS_LocalToWorld{
-        DescriptorSetType::PerObject, "l2w", "LocalToWorldData"
-    };
-    constexpr const ShaderBufferSource SBS_LocalToWorldIndex{
-        DescriptorSetType::PerObject, "l2w_index", "LocalToWorldIndex"
-    };
-    // 每 draw 项 → 材质数据行设备地址表（8B 行，W3.3 起为唯一行表；
-    // 取代旧 mtl_private_data_index 4B 行号表）。
-    constexpr const ShaderBufferSource SBS_MaterialDataAddresses{
-        DescriptorSetType::PerObject, "mtl_data_addrs", "MaterialDataAddresses"
-    };
-    // mesh per-draw 参数表（IndirectMeshDraw：mesh shader 经 gl_DrawID 查表的
-    // per-draw 段偏移——替代 per-draw push constant，多 draw 合批的关键）
-    constexpr const ShaderBufferSource SBS_MeshDrawParams{
-        DescriptorSetType::PerObject, "mesh_draw_params", "MeshDrawParamsData"
-    };
-
     // mesh per-draw 参数行——与 MeshTemplateEmitter 生成的 GLSL struct MeshDrawParams
     // 严格同构（std430 全 4 字节成员，24B 无 padding）。
     //
