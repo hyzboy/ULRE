@@ -113,32 +113,12 @@ namespace hgl::ecs
         if (pipeline)
             cmd_buf->ApplyPipelineState(pipeline->GetConfig());
 
-        // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。
-        // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
-        // draw 时管线 layout（= 材质 pipeline layout）一致。旧方案由
-        // RenderSceneUBOSystem 用"第一个活跃材质"的 layout 统一绑定，
-        // 会导致使用 bindless 纹理的材质触发 set 兼容性 VUID
-        //（其 set 0..3 前缀 DSL 与绑定 layout 不同，set 3 被判为不兼容）。
+        // 全局集（Scene/Bindless）绑定：共享 pipeline layout 下每 cmd 首绑一次
+        //（GraphicsContext::BindGlobalDescriptorSets 守卫），本批重复调用自动跳过。
         if (render_context)
         {
             if (auto *gc = render_context->GetGraphicsContext())
-            {
-                const VkPipelineLayout layout = material->GetPipelineLayout();
-
-                if (auto *scene_set = gc->GetGlobalSceneUBOSet();
-                    scene_set && scene_set->IsValid())
-                {
-                    scene_set->BindToCmd(*cmd_buf, layout);
-                }
-
-                if (auto *bindless_mgr = gc->GetBindlessTextureManager();
-                    bindless_mgr && bindless_mgr->IsValid())
-                {
-                    bindless_mgr->BindToCmd(*cmd_buf,
-                                            layout,
-                                            static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
-                }
-            }
+                gc->BindGlobalDescriptorSets(cmd_buf, material->GetPipelineLayout());
         }
 
         // 重置间接命令状态（每批次从 0 开始；本批所有 DrawBatch 累积后一次 flush）

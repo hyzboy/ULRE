@@ -129,6 +129,13 @@ namespace hgl::graph
         GlobalSceneUBOSet *GetGlobalSceneUBOSet() { return global_scene_ubo_set_; }
         const GlobalSceneUBOSet *GetGlobalSceneUBOSet() const { return global_scene_ubo_set_; }
 
+        /**
+         * 全局集绑定（每 cmd 一次）：Scene(0) + Bindless(1) 按共享 pipeline layout 绑定。
+         * BDA 终态后全材质共享同一 pipeline layout——同 cmd 内各渲染路径/批次重复调用
+         * 只首绑一次（cmd->scene_sets_bound 守卫，VulkanCmdBuffer::Begin 复位）。
+         */
+        void BindGlobalDescriptorSets(class RenderCmdBuffer *cmd, VkPipelineLayout layout);
+
         // 扩展访问（不常用）
         GraphModuleManager *GetModuleManager() { return module_manager; }
         RenderTargetManager *GetRenderTargetManager() { return rt_manager; }

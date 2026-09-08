@@ -30,6 +30,7 @@ bool VulkanCmdBuffer::Begin()
         return(false);
 
     cmd_begin=true;
+    scene_sets_bound=false;
     return(true);
 }
 

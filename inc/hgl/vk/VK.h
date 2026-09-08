@@ -142,7 +142,6 @@ class DeviceRenderPassManage;
 class Fence;
 class Semaphore;
 
-struct PipelineLayoutData;
 enum class DescriptorSetType;
 
 enum class DescriptorType:uint32

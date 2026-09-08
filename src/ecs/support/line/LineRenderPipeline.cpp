@@ -733,29 +733,11 @@ namespace hgl::ecs
         // EDS 1/2/3：pipeline 只保留 shader 部分——Line 材质状态（cull off）渲染侧动态应用
         cmd->ApplyPipelineState(pipeline_->GetConfig());
 
-        // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。
-        // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
-        // draw 时管线 layout（= 材质 pipeline layout）一致。见 PipelineMaterialRenderer::Render。
+        // 全局集（Scene/Bindless）绑定：每 cmd 首绑一次（守卫），重复调用跳过。
         if (auto* rc = context_ ? context_->GetRenderContext() : nullptr)
         {
             if (auto* gc = rc->GetGraphicsContext())
-            {
-                const VkPipelineLayout layout = material_->GetPipelineLayout();
-
-                if (auto *scene_set = gc->GetGlobalSceneUBOSet();
-                    scene_set && scene_set->IsValid())
-                {
-                    scene_set->BindToCmd(*cmd, layout);
-                }
-
-                if (auto *bindless_mgr = gc->GetBindlessTextureManager();
-                    bindless_mgr && bindless_mgr->IsValid())
-                {
-                    bindless_mgr->BindToCmd(*cmd,
-                                            layout,
-                                            static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
-                }
-            }
+                gc->BindGlobalDescriptorSets(cmd, material_->GetPipelineLayout());
         }
 
         // P2：单 Line buffer（删 4 slot 分组 + SetLineWidth）——一次 DrawMeshTasks

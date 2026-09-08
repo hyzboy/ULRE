@@ -397,8 +397,8 @@ public: //shader & material
 
     ShaderModule *CreateShaderModule(VkShaderStageFlagBits,const uint32_t *,const size_t);
 
-    PipelineLayoutData *CreatePipelineLayoutData(VkDescriptorSetLayout bindless_layout = VK_NULL_HANDLE,
-                                                  VkDescriptorSetLayout scene_layout    = VK_NULL_HANDLE);
+    VkPipelineLayout CreateGlobalPipelineLayout(VkDescriptorSetLayout bindless_layout = VK_NULL_HANDLE,
+                                                VkDescriptorSetLayout scene_layout    = VK_NULL_HANDLE);
 
 public: //Command Buffer 相关
 

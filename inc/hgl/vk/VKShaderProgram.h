@@ -40,7 +40,7 @@ class ShaderProgram
 
     ShaderStageCreateInfoList shader_stage_list;
 
-    PipelineLayoutData *pipeline_layout_data;
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;   ///<共享全局 pipeline layout(设备级单例,不拥有)
 
 
 private:

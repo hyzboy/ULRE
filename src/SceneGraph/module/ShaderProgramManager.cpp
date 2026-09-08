@@ -1,5 +1,4 @@
 #include<hgl/graph/module/ShaderProgramManager.h>
-#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKShaderProgram.h>
@@ -358,23 +357,36 @@ bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mt
     if(!BuildRuntimeShaderProgramState(mtl, mtl_name, ctx, sci_map))
         return false;
 
-    // BDA 终态：唯一 pipeline layout = Scene(0)/Bindless(1) 全局集 + pc_root push constant。
-    // desc_manager/MP 机制已退役——per-material 描述符集与材质侧绑定路径全部归零。
-    VulkanDevice *device = GetDevice();
-    if(!device) return false;
+    // BDA 终态：全材质共享同一 pipeline layout（Scene(0)/Bindless(1) 全局集 + pc_root）——
+    // 单例惰建缓存（GetOrCreateGlobalPipelineLayout），材质只持裸句柄、不拥有。
+    mtl->pipeline_layout = GetOrCreateGlobalPipelineLayout();
+    if(mtl->pipeline_layout == VK_NULL_HANDLE)
+        return false;
 
-    mtl->pipeline_layout_data = device->CreatePipelineLayoutData(bindless_layout_, scene_layout_);
+    return true;
+}
+
+VkPipelineLayout ShaderProgramManager::GetOrCreateGlobalPipelineLayout()
+{
+    if(shared_pipeline_layout_ != VK_NULL_HANDLE)
+        return shared_pipeline_layout_;
+
+    VulkanDevice *device = GetDevice();
+    if(!device)
+        return VK_NULL_HANDLE;
+
+    shared_pipeline_layout_ = device->CreateGlobalPipelineLayout(bindless_layout_, scene_layout_);
 
     #ifdef _DEBUG
-        if(mtl->pipeline_layout_data)
+        if(shared_pipeline_layout_)
         {
             DebugUtils *du = device->GetDebugUtils();
             if(du)
-                du->SetPipelineLayout(mtl->pipeline_layout_data->pipeline_layout, "PipelineLayout:" + mtl_name);
+                du->SetPipelineLayout(shared_pipeline_layout_, "PipelineLayout:Global");
         }
     #endif//_DEBUG
 
-    return true;
+    return shared_pipeline_layout_;
 }
 
 bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,

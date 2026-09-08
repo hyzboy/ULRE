@@ -34,6 +34,8 @@ public:
 
     const bool IsBegin()const{return cmd_begin;}
 
+    bool scene_sets_bound=false; ///< 本 cmd 已绑全局 Scene/Bindless 集（GraphicsContext::BindGlobalDescriptorSets 守卫，每次 Begin 复位）
+
     virtual bool Begin();
     virtual bool End()
     {

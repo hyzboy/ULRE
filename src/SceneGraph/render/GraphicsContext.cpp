@@ -13,6 +13,7 @@
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
+#include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/type/StdString.h>
@@ -185,6 +186,28 @@ namespace hgl::graph
     VkDevice GraphicsContext::GetVkDevice() const
     {
         return device ? device->GetDevice() : VK_NULL_HANDLE;
+    }
+
+    void GraphicsContext::BindGlobalDescriptorSets(RenderCmdBuffer *cmd, VkPipelineLayout layout)
+    {
+        if (!cmd || cmd->scene_sets_bound)
+            return;
+
+        if (auto *scene_set = GetGlobalSceneUBOSet();
+            scene_set && scene_set->IsValid())
+        {
+            scene_set->BindToCmd(*cmd, layout);
+        }
+
+        if (auto *bindless_mgr = GetBindlessTextureManager();
+            bindless_mgr && bindless_mgr->IsValid())
+        {
+            bindless_mgr->BindToCmd(*cmd,
+                                    layout,
+                                    static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
+        }
+
+        cmd->scene_sets_bound = true;
     }
 
 } // namespace hgl::graph

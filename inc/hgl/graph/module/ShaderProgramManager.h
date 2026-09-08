@@ -46,8 +46,9 @@ private:
 
 private:
 
-    VkDescriptorSetLayout bindless_layout_ = VK_NULL_HANDLE;   ///< 全局 Bindless Texture Set 布局（Set 3）
-    VkDescriptorSetLayout scene_layout_    = VK_NULL_HANDLE;   ///< 全局 Scene UBO Set 布局（Set 0，P1 设备级）
+    VkDescriptorSetLayout bindless_layout_ = VK_NULL_HANDLE;   ///< 全局 Bindless Texture Set 布局（Set 1）
+    VkDescriptorSetLayout scene_layout_    = VK_NULL_HANDLE;   ///< 全局 Scene UBO Set 布局（Set 0，设备级）
+    VkPipelineLayout shared_pipeline_layout_ = VK_NULL_HANDLE;  ///<全材质共享 pipeline layout 单例（惰建，不拥有）
 
     ShaderProgramManager(GraphicsContext *);
     ~ShaderProgramManager()=default;
@@ -59,10 +60,11 @@ private: // Helper methods with integrated DebugUtils
     ShaderProgram *AcquireShaderProgram(const mtl::ShaderProgramKey &, const mtl::ShaderBuildContext *);
     ShaderProgram *TryGetCachedShaderProgram(
         const mtl::ShaderProgramKey &key);
+    VkPipelineLayout GetOrCreateGlobalPipelineLayout();
     bool BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                         const AnsiString &mtl_name,
                                         const mtl::ShaderBuildContext *ctx,
-                                                                        const mtl::ShaderCreateInfoMap &sci_map);
+                                        const mtl::ShaderCreateInfoMap &sci_map);
     bool ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
                                              const AnsiString &mtl_name,
                                              const mtl::ShaderBuildContext *ctx,

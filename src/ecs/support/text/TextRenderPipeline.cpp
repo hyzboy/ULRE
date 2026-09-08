@@ -272,20 +272,9 @@ namespace hgl::ecs
             // 文本三表/mesh_draw_params/mtl_data_addrs 已全走 pc_root（BDA）——
             // 无 PerObject descriptor 可绑（A5-2）；Scene/Bindless 全局集下方绑定
 
-            // Scene / Bindless descriptor sets with material's pipeline layout
+            // 全局集（Scene/Bindless）绑定：每 cmd 首绑一次（守卫），重复调用跳过。
             if (auto* gc = render_context ? render_context->GetGraphicsContext() : nullptr)
-            {
-                const VkPipelineLayout layout = res.material->GetPipelineLayout();
-
-                if (auto *scene_set = gc->GetGlobalSceneUBOSet();
-                    scene_set && scene_set->IsValid())
-                    scene_set->BindToCmd(*cmd, layout);
-
-                if (auto *bindless_mgr = gc->GetBindlessTextureManager();
-                    bindless_mgr && bindless_mgr->IsValid())
-                    bindless_mgr->BindToCmd(*cmd, layout,
-                                            static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
-            }
+                gc->BindGlobalDescriptorSets(cmd, res.material->GetPipelineLayout());
 
             // CharQuad dispatch：每工作组 TEXT_CHARQUAD_MAX_INVOCATIONS 字符
             //（与 ShaderGen 的 group_size 共享同一常量，见 CharQuadConfig.h）

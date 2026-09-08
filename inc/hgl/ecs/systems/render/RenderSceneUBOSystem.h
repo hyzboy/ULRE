@@ -59,14 +59,15 @@ namespace hgl::ecs
         hgl::UnorderedMap<AnsiString, uint32_t> materialization_resource_handles;
 
     public:
+
         RenderSceneUBOSystem(const std::string& name = "RenderSceneUBOSystem");
         ~RenderSceneUBOSystem() override;
 
-    graph::ViewportInfo *GetViewportInfo();
-    void SetViewportExtent(uint32_t w, uint32_t h);
+        graph::ViewportInfo *GetViewportInfo();
+        void SetViewportExtent(uint32_t w, uint32_t h);
 
-    // ViewUBOCommitSystem 专用：pass 开始时无条件全量写入 viewport UBO
-    void CommitViewportUBO();
+        // ViewUBOCommitSystem 专用：pass 开始时无条件全量写入 viewport UBO
+        void CommitViewportUBO();
 
         void Update(float deltaTime) override;
         void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
