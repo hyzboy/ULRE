@@ -276,26 +276,10 @@ namespace hgl::ecs
             return;
         }
 
-        // 顶点数据已 BDA 化（基址随 MeshDrawParams 行内寻址）——无 Vertex 集可绑。
-
-        // IndirectMeshDraw：mesh per-draw 参数表（row 0——Line 单 draw，gl_DrawID=0）
-        if (mesh_draw_params)
-            material->BindSSBO(graph::DescriptorSetType::PerObject,
-                               "mesh_draw_params",
-                               mesh_draw_params->GetGPUBuffer()->GetVkDeviceBuffer(),
-                               0, VK_WHOLE_SIZE);
-
-        auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
-        if (!mp)
-            return;
-        mp->Update();
-        const VkDescriptorSet ds = mp->GetVkDescriptorSet();
-        cmd->BindDescriptorSets(material->GetPipelineLayout(),
-                                static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
-                                &ds, 1, nullptr, 0);
-
+        // 顶点数据已 BDA 化：per-draw 参数经 pc_root（push constant）下发——
+        // mesh_draw_params 行 0 地址与 l2w 表地址由 LineRenderPipeline::Render
+        // 在 draw 前 PushRootAddresses；无 PerObject descriptor 可绑（A5-2）。
         // Mesh shader 绘制：每线程 1 线段，threadgroup = MESH_GROUP_SIZE
-        //（per-draw 段偏移/线宽参数经 mesh_draw_params 参数表传递——不再推 push constant）
         const uint32_t group_count = (line_count + LineRenderPipeline::MESH_GROUP_SIZE - 1)
                                     / LineRenderPipeline::MESH_GROUP_SIZE;
         cmd->DrawMeshTasks(group_count);
@@ -869,20 +853,17 @@ namespace hgl::ecs
                  static_count,
                  dynamic_count);
 
+        // BDA（A5-2）：l2w 表地址经 pc_root.addr_l2w 由 Render 在 draw 前 push——
+        // 不再 BindTransform 到描述符 set（material 共享 PerObject set 已无消费者）。
+        // 仍缓存 buffer 供 Render 取地址（重建变化时 push 新地址，见 Render 段）。
         if (transform_buffer != bound_transform_buffer_
          || transform_data_buffer != bound_transform_data_buffer_)
         {
-            transform_buffer->BindTransform(material_);
-            material_->Update();
             bound_transform_buffer_ = transform_buffer;
             bound_transform_data_buffer_ = transform_data_buffer;
 
-            GLogInfo("[LineRenderPipeline] SyncTransformBinding: bound transform buffer for Line material");
+            GLogInfo("[LineRenderPipeline] SyncTransformBinding: transform buffer changed (l2w addr pushed via pc_root)");
         }
-
-        // P2：单 material 共享 PerObject set——BindTransform(material_) 已绑 L2W 到共享 set，
-        // 无需再补每 slot 独立 set（slot_mp 机制已随 4 slot 分组整体删除）。
-        // mesh shader 的 GetL2W() 读 l2w.mats[TransformID]，即此绑定。
     }
 
 }  // namespace hgl::ecs

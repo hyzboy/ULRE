@@ -46,7 +46,6 @@ namespace hgl
                 graph::TileFont* tile_font = nullptr;
                 graph::ShaderProgram* material = nullptr;
                 graph::Pipeline* pipeline = nullptr;
-                graph::MaterialParameters* per_object_mp = nullptr;   ///<每字体独立 PerObject 描述符集（b14/15/16 + mesh_draw_params + mtl_data_addrs）
                 graph::DeviceBuffer* texture_layer_buffer = nullptr;
                 graph::DeviceBuffer* data_index_row_buffer = nullptr;
                 graph::DeviceBuffer* mesh_draw_params = nullptr;    ///<mesh per-draw 参数表（row 0——每字体单 draw）
@@ -57,7 +56,6 @@ namespace hgl
                 std::unique_ptr<graph::MirroredStructArray<graph::layout::CharStyle>>    char_style_asb;   // b15
                 std::unique_ptr<graph::MirroredStructArray<graph::layout::CharInstance>> char_instance_asb; // b16
 
-                graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
 
                 std::vector<graph::layout::CharStyle> styles;   ///<收集的所有组件样式（GPU路径用）
                 graph::U32CharSet chars_sets;                   ///<当前字体图集中已注册字符合集（供字库图集逐帧淘汰）

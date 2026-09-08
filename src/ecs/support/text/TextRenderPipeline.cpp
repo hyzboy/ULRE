@@ -133,7 +133,6 @@ namespace hgl::ecs
             SAFE_CLEAR(res.mesh_draw_params);
 
             // 每字体独立描述符集（多 FontSource 互不覆盖）
-            SAFE_CLEAR(res.per_object_mp);
 
             // char_info_asb / char_style_asb / char_instance_asb 由 unique_ptr 自动释放
 
@@ -143,11 +142,6 @@ namespace hgl::ecs
                 res.material = nullptr;
             }
 
-            if (res.descriptor_binding_set)
-            {
-                delete res.descriptor_binding_set;
-                res.descriptor_binding_set = nullptr;
-            }
 
             if (res.texture_layer_buffer && buffer_manager)
             {
@@ -243,9 +237,9 @@ namespace hgl::ecs
             auto &res = pair.second;
 
             if (arena_debug)
-                GLogInfo("[TextTrace] font draw: chars=%u pipeline=%p material=%p per_object_mp=%p",
+                GLogInfo("[TextTrace] font draw: chars=%u pipeline=%p material=%p",
                          res.last_draw_char_count,
-                         (void *)res.pipeline, (void *)res.material, (void *)res.per_object_mp);
+                         (void *)res.pipeline, (void *)res.material);
 
             if (res.last_draw_char_count == 0)
                 continue;
@@ -276,25 +270,8 @@ namespace hgl::ecs
                 res.char_style_asb    ? res.char_style_asb->GetGPUBuffer() : nullptr,
                 res.char_instance_asb ? res.char_instance_asb->GetGPUBuffer() : nullptr);
 
-            // Bind GPU text SSBOs (b14/b15/b16) + mesh_draw_params 到每字体独立 PerObject 集
-            if (res.per_object_mp)
-            {
-                if (res.char_info_asb && res.char_info_asb->IsValid())
-                    res.per_object_mp->BindSSBO(hgl::graph::kPerObjectBindingTextCharInfo, res.char_info_asb->GetGPUBuffer());
-                if (res.char_style_asb && res.char_style_asb->IsValid())
-                    res.per_object_mp->BindSSBO(hgl::graph::kPerObjectBindingTextCharStyle, res.char_style_asb->GetGPUBuffer());
-                if (res.char_instance_asb && res.char_instance_asb->IsValid())
-                    res.per_object_mp->BindSSBO(hgl::graph::kPerObjectBindingTextCharInstance, res.char_instance_asb->GetGPUBuffer());
-
-                if (res.mesh_draw_params)
-                    res.per_object_mp->BindSSBO("mesh_draw_params",
-                                                res.mesh_draw_params->GetGPUBuffer()->GetVkDeviceBuffer(),
-                                                0, VK_WHOLE_SIZE);
-            }
-
-            // Scene(0)/Bindless(3) 为全局共享集；PerObject(1)/Material(2) 使用
-            // 每字体独立集——多 FontSource 共享同一 ShaderProgram 时互不覆盖
-            cmd->BindDescriptorSets(res.material, res.per_object_mp);
+            // 文本三表/mesh_draw_params/mtl_data_addrs 已全走 pc_root（BDA）——
+            // 无 PerObject descriptor 可绑（A5-2）；Scene/Bindless 全局集下方绑定
 
             // Scene / Bindless descriptor sets with material's pipeline layout
             if (auto* gc = render_context ? render_context->GetGraphicsContext() : nullptr)
@@ -349,8 +326,6 @@ namespace hgl::ecs
         {
             graph::ShaderProgramManager* material_manager = nullptr;
             graph::ShaderProgram* material = nullptr;
-            graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
-            graph::MaterialParameters* per_object_mp = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
             graph::DeviceBuffer* texture_layer_buffer = nullptr;
             graph::DeviceBuffer* data_index_row_buffer = nullptr;
@@ -367,12 +342,6 @@ namespace hgl::ecs
 
                 if (data_index_row_buffer && buffer_manager)
                     buffer_manager->Release(data_index_row_buffer);
-
-                if (descriptor_binding_set)
-                    delete descriptor_binding_set;
-
-                if (per_object_mp)
-                    delete per_object_mp;
 
 
                 if (material && material_manager)
@@ -426,36 +395,6 @@ namespace hgl::ecs
         if (!guard.material)
         {
             return nullptr;
-        }
-
-        guard.descriptor_binding_set = new graph::DescriptorBindingSet(guard.material);
-        if (!guard.descriptor_binding_set)
-        {
-            return nullptr;
-        }
-
-        // 每字体独立 PerObject/Material 描述符集：多个 FontSource 共享同一
-        // ShaderProgram（AcquireShaderProgram 缓存命中），若共用 material 内建的
-        // MP，录制期间后一个 draw 的 BindSSBO 会覆盖前一个已录制 draw 的绑定
-        // （Vulkan 在命令缓冲录制期间修改同一 descriptor set 会影响前面已录制的
-        // draw）→ 所有 draw 都读到最后一个 FontSource 的数据。独立 MP 保证互不影响。
-        {
-            auto* device = graphics_context ? graphics_context->GetDevice() : nullptr;
-            const auto* desc_manager = guard.material->GetDescriptorManager();
-            const auto* pipeline_layout_data = guard.material->GetPipelineLayoutData();
-
-            if (!device || !desc_manager || !pipeline_layout_data)
-            {
-                return nullptr;
-            }
-
-            guard.per_object_mp = device->CreateMP(desc_manager, pipeline_layout_data,
-                                                   graph::DescriptorSetType::PerObject);
-
-            if (!guard.per_object_mp)
-            {
-                return nullptr;
-            }
         }
 
         buffer_manager = graphics_context->GetBufferManager();
@@ -531,27 +470,11 @@ namespace hgl::ecs
             guard.data_index_row_buffer->GetGPUBuffer()->Write(&row_addr, 0, sizeof(row_addr));
         }
 
-        // mtl_data_addrs（8B 设备地址表）声明在 PerObject set，
-        // 与 b14/15/16 + mesh_draw_params 同集——绑到 per_object_mp。
-        // 不注册 ResourceDomain（多字体同地址注册会互相释放 buffer，见上方注释）。
-        const char *data_rows_name = graph::mtl::SBS_MaterialDataAddresses.name;
-
-        if (!guard.per_object_mp->BindSSBO(data_rows_name,
-                                           guard.data_index_row_buffer->GetGPUBuffer()))
-        {
-            GLogError("[TextPipeline] BindSSBO(%s) failed -- font resources aborted", data_rows_name);
-            return nullptr;
-        }
-
         resources.data_index_row_buffer = guard.data_index_row_buffer;
         guard.data_index_row_buffer = nullptr;
 
         resources.tile_font = guard.tile_font.release();
         resources.material = guard.material;
-        resources.per_object_mp = guard.per_object_mp;
-        resources.descriptor_binding_set = guard.descriptor_binding_set;
-        guard.per_object_mp = nullptr;
-        guard.descriptor_binding_set = nullptr;
         guard.committed = true;
 
         resources_by_font.Add(font_source, std::move(resources));
@@ -665,10 +588,6 @@ namespace hgl::ecs
                 resources->styles = input.styles;
                 input.dirty = true;
             }
-
-            auto *binding_set = resources->descriptor_binding_set;
-            if (!binding_set)
-                continue;
 
             if (!resources->pipeline && resources->material)
             {
