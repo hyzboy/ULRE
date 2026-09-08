@@ -33,12 +33,9 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
         opt.sky_stage_flags,
         opt.color_palette_stage_flags);
 
-    if (definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
-     && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough)
-    {
-        descriptor_builder_common::PushLocalToWorld(descriptors, hgl::graph::kMeshFragment);
-        descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, hgl::graph::kMeshFragment);
-    }
+    // A6-2a：L2W/L2WIndex 不再经契约声明——l2w_ssbo 由模板侧无条件注入（HeaderGen
+    // needs_l2w=orientation 三值恒真），l2w_index/ResolveTransformID 由 MaterialShaderEmitter
+    // 无条件发射；运行时按材质类别静态处理（无 L2W 材质不消费地址，push nullptr 安全）。
 
     descriptor_builder_common::AppendDefinitionMaterialDescriptors(
         descriptors,

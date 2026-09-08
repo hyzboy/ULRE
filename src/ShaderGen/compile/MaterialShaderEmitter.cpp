@@ -20,7 +20,7 @@ namespace hgl::graph::mtl
     using namespace hgl::graph::mtl;
 
     // ── 内部前向声明（2026-09 de-export：仅本文件消费，不再导出）────────
-    std::string BuildMeshIndexTableDecls(const DescriptorSetLayoutAllocator &descriptor_info);
+    std::string BuildMeshIndexTableDecls();
     std::string BuildFSIndexTableDecls(const DescriptorSetLayoutAllocator &descriptor_info);
 
 bool BuildCodeModuleDocument(
@@ -232,7 +232,7 @@ bool BuildMaterialResourceDocument(
     }
 
     const std::string mesh_index_tables =
-        BuildMeshIndexTableDecls(descriptor_info);
+        BuildMeshIndexTableDecls();
     if (!mesh_index_tables.empty())
     {
         source.logical_name = "MaterialMeshIndexTables";
@@ -305,8 +305,9 @@ namespace
         const char *root_addr_field; // pc_root 字段名（如 addr_l2w_index）
     };
 
-    // mesh 阶段只需 l2w_index；材质地址表在 FS 消费（见 BuildFSIndexTableDecls）
-    // ⚠️ BDA：行表本体改 buffer_reference——地址经 pc_root.addr_l2w_index 下发
+    // mesh 阶段只需 l2w_index；材质地址表在 FS 消费（见 BuildFSIndexTableDecls）。
+    // A6-2a：行表本体 buffer_reference——地址经 pc_root.addr_l2w_index 下发；
+    // 恒发射（去契约门）。sbs_name 字段保留作名称真源（SBS_LocalToWorldIndex 常量）。
     const IndexTableSpec kMeshIndexTableSpecs[] = {
         { SBS_LocalToWorldIndex.name, "LocalToWorldIndex", "l2w_index",
           "ResolveTransformID", "uint", "addr_l2w_index" },
@@ -314,13 +315,11 @@ namespace
 
     void AppendIndexTableDecl(
         std::string &out,
-        const ShaderDescriptor *sd,
         const IndexTableSpec &spec)
     {
-        if (!sd || sd->set < 0 || sd->binding < 0)
-            return;
-
-        // BDA：无 set 无 binding——类型声明 + resolve 函数经 pc_root 地址解引用
+        // A6-2a：无 set 无 binding——类型声明 + resolve 函数经 pc_root 地址解引用。
+        // l2w_index 恒发射（与 l2w_ssbo 恒注入一致；无 L2W 材质不消费 ResolveTransformID，
+        // 多余 unused 声明无害）。不再经契约 GetSSBO 门（契约 L2W/L2WIndex 条目已删）。
         out += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer ";
         out += spec.buffer_name;
         out += "Ref { ";
@@ -344,13 +343,14 @@ namespace
     }
 }//namespace
 
-std::string BuildMeshIndexTableDecls(
-    const DescriptorSetLayoutAllocator &descriptor_info)
+std::string BuildMeshIndexTableDecls()
 {
     std::string out;
 
+    // A6-2a：恒发射——不再查契约（GetSSBO）。与 l2w_ssbo 的无条件注入对应：
+    // mesh 侧需要 ResolveTransformID/l2w_index 的材质恒可得，无需契约中间层。
     for (const IndexTableSpec &spec : kMeshIndexTableSpecs)
-        AppendIndexTableDecl(out, descriptor_info.GetSSBO(spec.sbs_name), spec);
+        AppendIndexTableDecl(out, spec);
 
     return out;
 }

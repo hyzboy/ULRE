@@ -355,8 +355,12 @@ static bool PrepareBaseDescriptorContract(
         return c.Fail("BuildDescriptorContract failed");
     }
 
-    out_with_local_to_world = HasDescriptorSemantic(
-        out_base_contract, DescriptorSemantic::LocalToWorld);
+    // A6-2a：契约不再含 L2W 条目（Push 已删）——L2W 需求按模板类别静态判定。
+    // mesh 为唯一顶点路径且 l2w_ssbo 恒注入（HeaderGen needs_l2w 覆盖 OrientationMode
+    // 全部三值），此处恒 true；无 L2W 材质不消费地址，运行时 push nullptr 安全。
+    // （运行时消费方 hasLocalToWorld 已随 A6-2a 从 PipelineMaterialRenderer 删除，
+    //   has_l2w_matrix 字段/ctx 链退场随 A6-2b。）
+    out_with_local_to_world = true;
     return true;
 }
 

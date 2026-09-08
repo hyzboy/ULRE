@@ -159,12 +159,6 @@ namespace hgl::ecs
             }
         }
 
-        // l2w 仅 push 地址用：材质无 LocalToWorld 则无需提供（shader 不消费）
-        if (!material->hasLocalToWorld())
-        {
-            transform_buffer=nullptr;
-        }
-
         // RootAddresses push constant：每 MaterialBatch 渲染前一次（draw 之前）。A3-1：
         // mesh shader 经 pc_root.addr_mesh_draw_params buffer_reference 解引用参数表行
         //（rows[gl_DrawID]）；L2W/L2WIndex/mtl_data_addrs 地址一并下发（A3-2/3 起 shader
