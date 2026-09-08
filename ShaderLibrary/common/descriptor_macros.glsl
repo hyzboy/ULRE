@@ -8,13 +8,13 @@
 // @ulre end
 // descriptor_macros.glsl — 标准描述符集/绑定宏定义
 //
-// 默认值对应 3D 标准布局（Scene=0, PerObject=1, Material=2, Bindless=3）。
+// 默认值对应标准布局（Scene=0, Bindless=2；PerObject=1 为 BDA 过渡期空集）。
 // 2D 生成器或自定义材质可在 #include 之前 #define 覆盖默认值。
 //
-// 固定布局：set 间按 Scene(0) < PerObject(1) < Material(2) < Bindless(3)。
-// 行表 SSBO 声明（mtl_private_data_index / mtl_texture_layer_rows / l2w_index_rows）
-// 不在此定义默认值：由 CompileMaterial 依据 descriptor_info 统一生成并
-// 注入（buffer 声明 + Resolve 函数，不再写死在 .glsl）。
+// 固定布局：set 间按 Scene(0) < PerObject(1) < Bindless(2)。
+// 行表（mtl_data_addrs / l2w / mesh_draw_params / 文本三表）已 BDA 化：
+// 地址经 pc_root push constant + buffer_reference 寻址，无描述符声明
+//（不在此定义任何默认绑定值）。
 // 材质实例 mtl SSBO 的 struct/buffer 声明同样由 CompileMaterial 统一生成并注入。
 
 #ifndef DESCRIPTOR_MACROS_GLSL
@@ -24,43 +24,6 @@
 
 #ifndef SCENE_SET
 #define SCENE_SET 0
-#endif
-
-#ifndef PER_OBJECT_SET
-#define PER_OBJECT_SET 1
-#endif
-
-// ── PerObject set ──
-
-#ifndef L2W_SET
-#define L2W_SET PER_OBJECT_SET
-#endif
-
-// mesh per-draw 参数表（IndirectMeshDraw）
-#ifndef MESH_DRAW_PARAMS_SET
-#define MESH_DRAW_PARAMS_SET PER_OBJECT_SET
-#endif
-
-// mesh per-draw 参数表（IndirectMeshDraw：mesh shader 经 gl_DrawID 查表）
-#ifndef MESH_DRAW_PARAMS_BINDING
-#define MESH_DRAW_PARAMS_BINDING 13
-#endif
-
-// ── 文本字符 Quad SSBO（TextCharQuad mesh shader 模式）──
-#ifndef TEXT_CHARINFO_BINDING
-#define TEXT_CHARINFO_BINDING 14
-#endif
-
-#ifndef TEXT_CHARSTYLE_BINDING
-#define TEXT_CHARSTYLE_BINDING 15
-#endif
-
-#ifndef TEXT_CHARINSTANCE_BINDING
-#define TEXT_CHARINSTANCE_BINDING 16
-#endif
-
-#ifndef L2W_BINDING
-#define L2W_BINDING 0
 #endif
 
 // ── Scene set ──

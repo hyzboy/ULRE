@@ -98,7 +98,7 @@ namespace hgl::graph
     enum class DescriptorMacroKind
     {
         SetIndex,   ///< #define <name> <集合序号>        如 SCENE_SET 0
-        SetAlias,   ///< #define <name> <alias_target>    如 L2W_SET PER_OBJECT_SET
+        SetAlias,   ///< #define <name> <alias_target>    （PerObject 别名宏已随集退场，暂无可选项）
         Binding     ///< #define <name> <绑定号>          如 VERTEX_POSITION_BINDING 4
     };
 
@@ -115,7 +115,7 @@ namespace hgl::graph
         DescriptorMacroKind kind;
         DescriptorSetType set_type;    ///< 宏归属集合（SetIndex 行其值即宏值；Binding 行为绑定所在集合）
         const char *name;              ///< SetIndex/SetAlias：集合宏名；Binding：绑定宏名
-        const char *alias_target;      ///< 仅 SetAlias：目标集合宏名（如 "PER_OBJECT_SET"）；其余 nullptr
+        const char *alias_target;      ///< 仅 SetAlias：目标集合宏名；其余 nullptr
         int binding;                   ///< 仅 Binding：绑定号（取自 Binding 枚举）；其余 -1
         const char *comment;           ///< 输出在该宏之前的注释（可含 '\n' 表多行，行内自带 "//"；nullptr 表示无）
         bool blank_before        = true;  ///< 本条目之前输出一个空行（连续绑定宏块为 false）
@@ -127,22 +127,6 @@ namespace hgl::graph
     {
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Scene,    "SCENE_SET",                 nullptr,                                   -1,
             "// ── Descriptor Set 索引 ──",                            true, true},
-        {DescriptorMacroKind::SetIndex,DescriptorSetType::PerObject,"PER_OBJECT_SET",            nullptr,                                   -1, nullptr},
-
-        {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"L2W_SET",                   "PER_OBJECT_SET",                          -1,
-            "// ── PerObject set ──",                                  true, true},
-        {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"MESH_DRAW_PARAMS_SET",      "PER_OBJECT_SET",                          -1,
-            "// mesh per-draw 参数表（IndirectMeshDraw）"},
-
-        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"MESH_DRAW_PARAMS_BINDING",  nullptr,   int(PerObjectBinding::MeshDrawParams),
-            "// mesh per-draw 参数表（IndirectMeshDraw：mesh shader 经 gl_DrawID 查表）"},
-
-        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"TEXT_CHARINFO_BINDING",     nullptr,   int(PerObjectBinding::TextCharInfo),
-            "// ── 文本字符 Quad SSBO（TextCharQuad mesh shader 模式）──"},
-        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"TEXT_CHARSTYLE_BINDING",    nullptr,   int(PerObjectBinding::TextCharStyle),      nullptr},
-        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"TEXT_CHARINSTANCE_BINDING", nullptr,   int(PerObjectBinding::TextCharInstance),   nullptr},
-
-        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"L2W_BINDING",               nullptr,   int(PerObjectBinding::L2W),                nullptr},
 
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "CAMERA_BINDING",            nullptr,   int(SceneBinding::Camera),
             "// ── Scene set ──",                                      true, true},
