@@ -120,18 +120,8 @@ namespace hgl
                 bir.maxCombinedImageUnitsAndFragmentOutputs=sets*4;
                 bir.maxCombinedShaderOutputResources=sets*4;
 
-                // Phase 5：描述符集布局为 5 个（Scene/PerObject/Material/Bindless/Vertex）。
-                // Vulkan 规范 maxPerStageDescriptorSets 下限是 4，Vertex 集要求设备支持 >=5；
-                // 引擎已硬性要求 mesh shader 扩展（实际设备均支持），此处显式声明门槛。
-                static bool s_descriptor_set_limit_warned = false;
-                if(!s_descriptor_set_limit_warned
-                 && sets < int(DESCRIPTOR_SET_TYPE_COUNT))
-                {
-                    s_descriptor_set_limit_warned = true;
-                    GLogError(u8"[GLSLCompiler] device maxBoundDescriptorSets=%d < required %d — "
-                              u8"Vertex descriptor set (Set 4) is not supported on this device",
-                              sets, int(DESCRIPTOR_SET_TYPE_COUNT));
-                }
+                // 描述符集终态 2 集（Scene/Bindless 全局）——Vulkan 规范
+                // maxBoundDescriptorSets 下限 4 恒满足，无需门槛检查（DESCRIPTOR_SET_TYPE_COUNT=2）。
             }
 
             bir.maxGeometryOutputVertices = profile.features.geometry_shader ? bir.maxGeometryOutputVertices : 0;

@@ -23,7 +23,6 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/RootAddressPush.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
@@ -393,11 +392,9 @@ namespace hgl::ecs
 
         guard.buffer_manager = buffer_manager;
 
-        // 注意：不向 RDBS 注册 pipeline material——text 渲染完全自足：
-        // Scene(0)/Bindless(3) 由 Render 自绑全局集，PerObject(1)/Material(2)
-        // 用每字体独立集并直接绑定 SSBO（不经 domain 解析）。注册反而会让
-        // RDBS 每帧尝试解析 mtl_texture_layer_rows/material_private_data_index_rows 的
-        // domain 绑定（text 不注册 domain）而刷 Missing SSBO 警告。
+        // 注意：不向 RenderSceneUBOSystem 注册——text 渲染完全自足：
+        // Scene(0)/Bindless(1) 全局集由 Render 每帧自绑；行表/材质数据全走 pc_root
+        //（BDA）——无 per-material 描述符、无 domain 解析（A6 终态两集）。
 
         // 将字库图集注册进全局 bindless 纹理池，并写入 texture-layer / data-index
         // 行表第 0 行（dataIndex=0，BaseColor 槽 = 图集句柄），供 Text shader 解析。

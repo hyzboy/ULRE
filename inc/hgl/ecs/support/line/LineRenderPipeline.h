@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
-#include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/vk/VKBufferAccessor.h>
 #include <hgl/vk/VKRenderAssign.h>
 #include <memory>
@@ -72,8 +71,6 @@ namespace hgl::ecs
         // ------- GPU resources (created in Initialize()) -------
         graph::VulkanDevice*    device_         = nullptr;
         graph::ShaderProgram*        material_       = nullptr;
-        graph::DescriptorBindingSet binding_set_storage_{};
-        graph::DescriptorBindingSet* binding_set_ = nullptr;
         graph::Pipeline*        pipeline_       = nullptr;
 
         // ------- 单 Line buffer（P2：删 4 slot 分组——mesh shader 展开 quad，宽度入 SSBO）-------
@@ -99,8 +96,7 @@ namespace hgl::ecs
             void Reset();
             void Clear();
             bool EnsureCapacity(uint32_t needed,
-                                graph::VulkanDevice*     dev,
-                                graph::DescriptorBindingSet* binding_set);
+                                graph::VulkanDevice*     dev);
             bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,
                             uint8_t                     color_index,

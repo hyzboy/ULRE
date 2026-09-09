@@ -13,7 +13,6 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
@@ -344,7 +343,7 @@ namespace hgl::ecs
         }
         else if (global_scene_set && global_scene_set->IsValid())
         {
-            GLogWarning("[RDBinding] Scene UBO set not bound: camera=%p viewport=%p sky=%p",
+            GLogWarning("[SceneUBO] Scene UBO set not bound: camera=%p viewport=%p sky=%p",
                         (const void *)viewport_ubo,
                         (const void *)camera_ubo,
                         (const void *)sky_ubo);

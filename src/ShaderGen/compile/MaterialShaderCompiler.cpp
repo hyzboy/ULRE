@@ -348,7 +348,6 @@ static bool CreateBuildContext(
 // 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData，slot 0，
 // 名字固定 DefaultMaterialPrivateDataSlotName）。definition 侧与 manifest 侧
 // 均可选；双源并存时必须类型一致，否则冲突硬失败。
-// 顶点数据 SSBO（Vertex*）走固定名路径（PerObject 集），不进入材质数据槽。
 static bool ResolveEffectiveMaterialPrivateData(
     const MaterialCompileConfig &config,
     CompileContext &c,

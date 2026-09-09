@@ -13,7 +13,6 @@
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
 #include <hgl/graph/module/BufferManager.h>
-#include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/mesh/GeometryDataBuffer.h>
 #include <hgl/graph/mesh/GeometryDrawRange.h>
@@ -110,8 +109,7 @@ namespace hgl::ecs
 
     bool LineRenderPipeline::LineBuffer::EnsureCapacity(
         uint32_t needed,
-        graph::VulkanDevice*     dev,
-        graph::DescriptorBindingSet* binding_set)
+        graph::VulkanDevice*     dev)
     {
         if (needed <= gpu_capacity)
             return true;
@@ -364,10 +362,6 @@ namespace hgl::ecs
         if (!material_)
             return false;
 
-        // ------- Create descriptor binding set -------
-        binding_set_storage_.SetMaterial(material_);
-        binding_set_ = &binding_set_storage_;
-
         // ------- Create pipeline -------
         // P2：mesh 管线（宽度入 SSBO，cull off——quad 绕序不定，双面绘制）
         pipeline_ = rp->CreatePipeline(material_, graph::mtl::MakeLineMeshConfig());
@@ -533,7 +527,7 @@ namespace hgl::ecs
         }
 
         // Ensure GPU capacity（单 buffer，按总数）
-        if (!line_buffer_.EnsureCapacity(expected_total, device_, binding_set_))
+        if (!line_buffer_.EnsureCapacity(expected_total, device_))
         {
             GLogWarning("[LineRenderPipeline] EnsureCapacity failed: need=%u cap=%u",
                         expected_total,
@@ -777,8 +771,6 @@ namespace hgl::ecs
             auto* mat_mgr = gc->GetMaterialManager();
             if (mat_mgr)
             {
-                binding_set_storage_.SetMaterial(nullptr);
-                binding_set_ = nullptr;
                 if (material_)
                 {
                     mat_mgr->Destroy(material_); material_ = nullptr;
