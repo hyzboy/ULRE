@@ -17,6 +17,30 @@ namespace hgl::graph::mtl
     constexpr const char ShaderArtifactProgramDirectory[] = "program";
     constexpr const char ShaderArtifactSPVExtension[] = ".spv";
     constexpr const char ShaderArtifactMetadataExtension[] = ".meta";
+
+    // ── 生成源（最终 GLSL）落盘扩展名按 shader stage 定（GLSL 命名惯例）──
+    // mesh shader → .mesh；fragment shader → .frag；未来的 compute shader → .comp。
+    // 源文件与对应 stage SPV 缓存文件共用同一主文件名（同目录，仅扩展名不同）。
+    struct ShaderArtifactStageSourceExtensionEntry
+    {
+        ShaderStage stage;
+        const char *extension;
+    };
+
+    constexpr ShaderArtifactStageSourceExtensionEntry kShaderArtifactStageSourceExtensionTable[] =
+    {
+        { ShaderStage::Mesh,     ".mesh" },
+        { ShaderStage::Fragment, ".frag" },
+        { ShaderStage::Compute,  ".comp" },    ///< 引擎暂无 compute shader；行先备好，加入即生效
+    };
+
+    inline const char *GetShaderArtifactStageSourceExtension(const ShaderStage stage) noexcept
+    {
+        for (const auto &row : kShaderArtifactStageSourceExtensionTable)
+            if (row.stage == stage)
+                return row.extension;
+        return "";
+    }
     constexpr uint32 ShaderArtifactFileHeaderSize = 40;
     constexpr uint32 ShaderProgramMetadataPayloadSize =
         sizeof(uint64) * 9;

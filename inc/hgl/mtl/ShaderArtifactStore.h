@@ -36,6 +36,12 @@ namespace hgl::graph::mtl
         bool LoadStageSPV(const ShaderStageKey &key, ValueArray<uint8> &out_spv) const;
         bool SaveStageSPV(const ShaderStageKey &key, const void *spv_data, const uint64 spv_size);
 
+        /// 把生成该 stage SPV 的最终 GLSL 源以纯文本落盘：
+        /// 与 stage SPV 缓存文件同样的主文件名（同目录，扩展名按 stage 定
+        /// ——.mesh/.frag，见 ShaderArtifactContract.h），便于日后对照分析。
+        /// Best-effort，失败只记日志不阻断 shader 缓存。
+        bool SaveStageGLSL(const ShaderStageKey &key, const void *glsl_text, const uint64 byte_size);
+
         bool HasProgramMetadata(
             const ShaderLinkSpec &link) const;
         bool LoadProgramMetadata(

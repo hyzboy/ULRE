@@ -1,6 +1,7 @@
 #include <hgl/mtl/ShaderArtifactStore.h>
 
 #include <hgl/filesystem/FileSystem.h>
+#include <hgl/log/Log.h>
 #include <hgl/type/StrChar.h>
 #include <hgl/utf.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -21,6 +22,16 @@ namespace hgl::graph::mtl
         {
             const AnsiString key_name = key.ToString();
             return ToOSString(key_name.c_str()) + OS_TEXT(".spv");
+        }
+
+        OSString MakeStageSourceFilename(const ShaderStageKey &key)
+        {
+            const char *extension = GetShaderArtifactStageSourceExtension(key.stage);
+            if (!extension || !extension[0])
+                return {};
+
+            const AnsiString key_name = key.ToString();
+            return ToOSString(key_name.c_str()) + ToOSString(extension);
         }
 
         OSString MakeStageDirectory(
@@ -253,6 +264,45 @@ namespace hgl::graph::mtl
         const int64 written = filesystem::SaveMemoryToFile(
             GetStagePath(key), file_data.GetData(), static_cast<int64>(file_data.GetCount()));
         return written == static_cast<int64>(file_data.GetCount());
+    }
+
+    bool ShaderArtifactStore::SaveStageGLSL(const ShaderStageKey &key,
+                                            const void *glsl_text,
+                                            const uint64 byte_size)
+    {
+        if (cache_mode == ShaderCacheMode::ReadOnly
+         || !glsl_text
+         || byte_size == 0)
+            return false;
+
+        const OSString directory = MakeStageDirectory(root_path);
+        if (directory.IsEmpty())
+            return false;
+
+        if (!filesystem::IsDirectory(directory)
+         && !filesystem::MakePath(directory))
+            return false;
+
+        const OSString file_name = MakeStageSourceFilename(key);
+        if (file_name.IsEmpty())
+            return false;
+
+        filesystem::Path path(directory);
+        path /= file_name;
+        const OSString file_path = path.ToOSString();
+
+        const int64 written = filesystem::SaveMemoryToFile(
+            file_path, glsl_text, static_cast<int64>(byte_size));
+        if (written != static_cast<int64>(byte_size))
+        {
+            GLogWarning(u8"[ShaderArtifactStore] failed to cache stage GLSL source: %s",
+                        ToU8String(file_path).c_str());
+            return false;
+        }
+
+        GLogInfo(u8"[ShaderArtifactStore] stage GLSL source cached: %s",
+                 ToU8String(file_path).c_str());
+        return true;
     }
 
     bool ShaderArtifactStore::HasProgramMetadata(

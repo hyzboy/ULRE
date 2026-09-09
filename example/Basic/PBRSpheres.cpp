@@ -102,7 +102,7 @@ private:
 
     // One MI per cell: col controls metallic, row controls roughness
     ssbo::PBRSurfaceRow sphere_material_data[GRID_SIZE][GRID_SIZE]{};
-    uint32_t                         sphere_slot_rows[GRID_SIZE][GRID_SIZE]{};
+    uint32_t            sphere_slot_rows[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};

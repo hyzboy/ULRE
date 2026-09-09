@@ -118,11 +118,27 @@ bool FinalizeShaderBuildContext(
          || !artifact_store->SaveStageSPV(
                 link.fragment_stage,
                 fragment->GetSPVData(),
-                fragment->GetSPVSize())
-         || !artifact_store->SaveProgramMetadata(
+                fragment->GetSPVSize()))
+            return false;
+
+        if (!artifact_store->SaveProgramMetadata(
                 link,
                 build_spec->GetProgramArtifactMetadata()))
             return false;
+
+        // 生成的最终 GLSL 源随 SPV 一起落盘：与 stage SPV 缓存文件
+        // 同样的主文件名（同目录，扩展名按 stage 定——.mesh/.frag），
+        // 便于日后对照分析。Best-effort：失败只记日志，不阻断 shader 缓存。
+        const std::string &mesh_glsl = vertex->GetFinalGLSL();
+        if (!mesh_glsl.empty())
+            artifact_store->SaveStageGLSL(link.mesh_stage,
+                                          mesh_glsl.data(),
+                                          mesh_glsl.size());
+        const std::string &fragment_glsl = fragment->GetFinalGLSL();
+        if (!fragment_glsl.empty())
+            artifact_store->SaveStageGLSL(link.fragment_stage,
+                                          fragment_glsl.data(),
+                                          fragment_glsl.size());
     }
 
     return true;
