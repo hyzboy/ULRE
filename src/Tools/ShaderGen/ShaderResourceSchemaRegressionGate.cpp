@@ -2994,6 +2994,8 @@ namespace
              || definition.vertex_node_config.position_mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
              || definition.ubo_requirements.size() != 2
+             || definition.texture_configuration_max_count
+                    != DefaultMaterialTextureConfigurationCapacity
              || !ResolveMaterialRenderState(
                     definition, MaterialRecipe{}).alpha_test)
             {
@@ -3016,6 +3018,221 @@ namespace
                 result.diagnostics.emplace_back(
                     "AllowDerived material definition must build a SSBO vertex ABI");
             }
+        }
+
+        const char texture_layout_file[] =
+            "schema = 3\n"
+            "id = \"TextureLayoutFile\"\n"
+            "name = \"TextureLayoutFile\"\n"
+            "source = \"file\"\n"
+            "bootstrap = \"None\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "[fragment]\n"
+            "material_source_module = \"material/texture_source.glsl\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\", \"UV0\"]\n"
+            "[resources]\n"
+            "textures = [\n"
+            "    { name = \"base_color\", sampler = \"Sampler2DArray\", required = true, filter = { mag_filter = \"Nearest\", min_filter = \"Linear\", mipmap_mode = \"Nearest\" }, wrap = { u = \"ClampToEdge\", v = \"MirroredRepeat\", w = \"Repeat\" }, swizzle = \"BGR1\", anisotropy = true, max_anisotropy = 8.0, mip_lod_bias = 0.25, min_lod = 1.0, max_lod = 7.0, compare_op = \"LessOrEqual\" },\n"
+            "    { name = \"detail_mask\", sampler = \"Sampler2D\", required = false }\n"
+            "]\n"
+            "[resources.texture_configurations]\n"
+            "max_count = 37\n";
+        MaterialDefinitionFileData texture_layout_data;
+        if (ParseMaterialDefinitionFile(
+                texture_layout_file,
+                static_cast<int>(std::strlen(texture_layout_file)),
+                texture_layout_data)
+                != MaterialDefinitionFileParseResult::OK)
+        {
+            result.diagnostics.emplace_back(
+                "schema 3 texture-reference layout file must parse");
+        }
+        else
+        {
+            const MaterialDefinition &definition =
+                texture_layout_data.definition;
+            MaterialTextureReferenceLayout layout{};
+            if (!BuildMaterialTextureReferenceLayout(definition, layout)
+             || definition.texture_declarations.size() != 2
+             || definition.texture_configuration_max_count != 37
+             || layout.reference_count != 2
+             || layout.row_stride != 16
+             || layout.max_configuration_count != 37
+             || layout.layout_hash == 0
+             || FindMaterialTextureDeclaration(
+                    definition, "base_color") != 0
+             || FindMaterialTextureDeclaration(
+                    definition, "detail_mask") != 1
+             || FindMaterialTextureDeclaration(
+                    definition, "missing_texture") != -1
+             || !IsMaterialTextureArraySampler(
+                    definition.texture_declarations[0].sampler_type)
+             || IsMaterialTextureArraySampler(
+                    definition.texture_declarations[1].sampler_type)
+             || !definition.texture_declarations[0].
+                    sampling.has_sampler_override
+             || !definition.texture_declarations[0].
+                    sampling.has_swizzle_override
+             || definition.texture_declarations[0].
+                    sampling.mag_filter
+                    != MaterialTextureFilterMode::Nearest
+             || definition.texture_declarations[0].
+                    sampling.min_filter
+                    != MaterialTextureFilterMode::Linear
+             || definition.texture_declarations[0].
+                    sampling.mipmap_mode
+                    != MaterialTextureFilterMode::Nearest
+             || definition.texture_declarations[0].
+                    sampling.wrap_u
+                    != MaterialTextureWrapMode::ClampToEdge
+             || definition.texture_declarations[0].
+                    sampling.wrap_v
+                    != MaterialTextureWrapMode::MirroredRepeat
+             || definition.texture_declarations[0].
+                    sampling.wrap_w
+                    != MaterialTextureWrapMode::Repeat
+             || definition.texture_declarations[0].
+                    sampling.swizzle_r
+                    != MaterialTextureSwizzle::B
+             || definition.texture_declarations[0].
+                    sampling.swizzle_g
+                    != MaterialTextureSwizzle::G
+             || definition.texture_declarations[0].
+                    sampling.swizzle_b
+                    != MaterialTextureSwizzle::R
+             || definition.texture_declarations[0].
+                    sampling.swizzle_a
+                    != MaterialTextureSwizzle::One
+             || !definition.texture_declarations[0].
+                    sampling.anisotropy
+             || definition.texture_declarations[0].
+                    sampling.max_anisotropy != 8.0f
+             || definition.texture_declarations[0].
+                    sampling.mip_lod_bias != 0.25f
+             || definition.texture_declarations[0].
+                    sampling.min_lod != 1.0f
+             || definition.texture_declarations[0].
+                    sampling.max_lod != 7.0f
+             || definition.texture_declarations[0].
+                    sampling.compare_op
+                    != MaterialTextureCompareOp::LessOrEqual
+             || !(definition.texture_declarations[1].sampling
+                    == MaterialTextureSamplingOptions{}))
+            {
+                result.diagnostics.emplace_back(
+                    "texture-reference layout fields mismatch");
+            }
+
+            MaterialDefinition changed_capacity = definition;
+            changed_capacity.texture_configuration_max_count = 91;
+            MaterialTextureReferenceLayout changed_layout{};
+            if (!BuildMaterialTextureReferenceLayout(
+                    changed_capacity, changed_layout)
+             || changed_layout.layout_hash != layout.layout_hash
+             || changed_layout.row_stride != layout.row_stride
+             || changed_layout.max_configuration_count != 91)
+            {
+                result.diagnostics.emplace_back(
+                    "texture configuration capacity must not alter shader ABI");
+            }
+
+            MaterialTextureSamplingOptions changed_sampling =
+                definition.texture_declarations[0].sampling;
+            changed_sampling.wrap_v = MaterialTextureWrapMode::ClampToBorder;
+            MaterialDefinition changed_sampling_definition = definition;
+            changed_sampling_definition.texture_declarations[0].sampling =
+                changed_sampling;
+            MaterialTextureReferenceLayout changed_sampling_layout{};
+            if (HashMaterialTextureSamplingOptions(changed_sampling)
+                    == HashMaterialTextureSamplingOptions(
+                        definition.texture_declarations[0].sampling)
+             || !BuildMaterialTextureReferenceLayout(
+                    changed_sampling_definition, changed_sampling_layout)
+             || changed_sampling_layout.layout_hash != layout.layout_hash
+             || changed_sampling_layout.row_stride != layout.row_stride)
+            {
+                result.diagnostics.emplace_back(
+                    "sampling overrides must not alter texture-reference ABI");
+            }
+        }
+
+        const char invalid_texture_configuration_file[] =
+            "schema = 3\n"
+            "id = \"InvalidTextureConfiguration\"\n"
+            "name = \"InvalidTextureConfiguration\"\n"
+            "source = \"file\"\n"
+            "bootstrap = \"None\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "[fragment]\n"
+            "material_source_module = \"material/texture_source.glsl\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\", \"UV0\"]\n"
+            "[resources]\n"
+            "textures = [{ name = \"base_color\", sampler = \"Sampler2D\", required = true }]\n"
+            "[resources.texture_configurations]\n"
+            "max_count = 0\n";
+        MaterialDefinitionFileData invalid_texture_configuration_data;
+        if (ParseMaterialDefinitionFile(
+                invalid_texture_configuration_file,
+                static_cast<int>(std::strlen(
+                    invalid_texture_configuration_file)),
+                invalid_texture_configuration_data)
+                != MaterialDefinitionFileParseResult::InvalidValue)
+        {
+            result.diagnostics.emplace_back(
+                "zero texture configuration capacity must be rejected");
+        }
+
+        const char duplicate_texture_name_file[] =
+            "schema = 3\n"
+            "id = \"DuplicateTextureName\"\n"
+            "name = \"DuplicateTextureName\"\n"
+            "source = \"file\"\n"
+            "bootstrap = \"None\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "[fragment]\n"
+            "material_source_module = \"material/texture_source.glsl\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\", \"UV0\"]\n"
+            "[resources]\n"
+            "textures = [\n"
+            "    { name = \"base_color\", sampler = \"Sampler2D\", required = true },\n"
+            "    { name = \"base_color\", sampler = \"Sampler2D\", required = false }\n"
+            "]\n";
+        MaterialDefinitionFileData duplicate_texture_name_data;
+        if (ParseMaterialDefinitionFile(
+                duplicate_texture_name_file,
+                static_cast<int>(std::strlen(duplicate_texture_name_file)),
+                duplicate_texture_name_data)
+                != MaterialDefinitionFileParseResult::InvalidValue)
+        {
+            result.diagnostics.emplace_back(
+                "duplicate material texture names must be rejected");
+        }
+
+        const char invalid_texture_swizzle_file[] =
+            "schema = 3\n"
+            "id = \"InvalidTextureSwizzle\"\n"
+            "name = \"InvalidTextureSwizzle\"\n"
+            "source = \"file\"\n"
+            "bootstrap = \"None\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "[fragment]\n"
+            "material_source_module = \"material/texture_source.glsl\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\", \"UV0\"]\n"
+            "[resources]\n"
+            "textures = [{ name = \"base_color\", sampler = \"Sampler2D\", required = true, swizzle = \"RGB\" }]\n";
+        MaterialDefinitionFileData invalid_texture_swizzle_data;
+        if (ParseMaterialDefinitionFile(
+                invalid_texture_swizzle_file,
+                static_cast<int>(std::strlen(invalid_texture_swizzle_file)),
+                invalid_texture_swizzle_data)
+                != MaterialDefinitionFileParseResult::InvalidValue)
+        {
+            result.diagnostics.emplace_back(
+                "invalid texture swizzle must be rejected");
         }
 
         const char unknown_table_file[] =
@@ -3114,8 +3331,10 @@ namespace
                     != registry_definition.ubo_requirements.size()
              || file_definition->material_private_data
                     != registry_definition.material_private_data
-             || file_definition->texture_slot_decls.size()
-                    != registry_definition.texture_slot_decls.size())
+             || file_definition->texture_declarations.size()
+                    != registry_definition.texture_declarations.size()
+             || file_definition->texture_configuration_max_count
+                    != registry_definition.texture_configuration_max_count)
             {
                 result.diagnostics.emplace_back(
                     std::string("bulk file definition contract mismatch: ") + id);

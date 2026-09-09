@@ -1,7 +1,6 @@
 #include <hgl/mtl/MaterialDefinitionFile.h>
 
 #include <hgl/filesystem/FileSystem.h>
-#include <cstdio>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
 #include <toml/toml.hpp>
@@ -398,6 +397,349 @@ namespace hgl::graph::mtl
             return false;
         }
 
+        bool ParseTextureFilterMode(
+            const std::string &name,
+            MaterialTextureFilterMode &out)
+        {
+            if (name == "Nearest")
+            {
+                out = MaterialTextureFilterMode::Nearest;
+                return true;
+            }
+            if (name == "Linear")
+            {
+                out = MaterialTextureFilterMode::Linear;
+                return true;
+            }
+            return false;
+        }
+
+        bool ParseTextureWrapMode(
+            const std::string &name,
+            MaterialTextureWrapMode &out)
+        {
+            static const struct
+            {
+                const char *name;
+                MaterialTextureWrapMode value;
+            } table[] = {
+                {"Repeat", MaterialTextureWrapMode::Repeat},
+                {"MirroredRepeat", MaterialTextureWrapMode::MirroredRepeat},
+                {"ClampToEdge", MaterialTextureWrapMode::ClampToEdge},
+                {"ClampToBorder", MaterialTextureWrapMode::ClampToBorder},
+                {"MirrorClampToEdge", MaterialTextureWrapMode::MirrorClampToEdge},
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseTextureSwizzle(
+            const std::string &name,
+            MaterialTextureSwizzle &out)
+        {
+            static const struct
+            {
+                const char *name;
+                MaterialTextureSwizzle value;
+            } table[] = {
+                {"Zero", MaterialTextureSwizzle::Zero},
+                {"One", MaterialTextureSwizzle::One},
+                {"R", MaterialTextureSwizzle::R},
+                {"G", MaterialTextureSwizzle::G},
+                {"B", MaterialTextureSwizzle::B},
+                {"A", MaterialTextureSwizzle::A},
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseTextureCompareOp(
+            const std::string &name,
+            MaterialTextureCompareOp &out)
+        {
+            static const struct
+            {
+                const char *name;
+                MaterialTextureCompareOp value;
+            } table[] = {
+                {"Never", MaterialTextureCompareOp::Never},
+                {"Less", MaterialTextureCompareOp::Less},
+                {"Equal", MaterialTextureCompareOp::Equal},
+                {"LessOrEqual", MaterialTextureCompareOp::LessOrEqual},
+                {"Greater", MaterialTextureCompareOp::Greater},
+                {"NotEqual", MaterialTextureCompareOp::NotEqual},
+                {"GreaterOrEqual", MaterialTextureCompareOp::GreaterOrEqual},
+                {"Always", MaterialTextureCompareOp::Always},
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseTextureFilterOptions(
+            const toml::value &value,
+            MaterialTextureSamplingOptions &out)
+        {
+            if (value.is_string())
+            {
+                MaterialTextureFilterMode filter;
+                if (!ParseTextureFilterMode(value.as_string(), filter))
+                    return false;
+                out.mag_filter = filter;
+                out.min_filter = filter;
+                out.mipmap_mode = filter;
+                out.has_sampler_override = true;
+                return true;
+            }
+
+            if (!value.is_table())
+                return false;
+
+            for (const auto &pair : value.as_table())
+            {
+                const std::string &key = pair.first;
+                if (!pair.second.is_string())
+                    return false;
+
+                MaterialTextureFilterMode filter;
+                if (!ParseTextureFilterMode(pair.second.as_string(), filter))
+                    return false;
+
+                if (key == "mag_filter")
+                    out.mag_filter = filter;
+                else if (key == "min_filter")
+                    out.min_filter = filter;
+                else if (key == "mipmap_mode")
+                    out.mipmap_mode = filter;
+                else
+                    return false;
+            }
+
+            out.has_sampler_override = true;
+            return true;
+        }
+
+        bool ParseTextureWrapOptions(
+            const toml::value &value,
+            MaterialTextureSamplingOptions &out)
+        {
+            if (value.is_string())
+            {
+                MaterialTextureWrapMode wrap;
+                if (!ParseTextureWrapMode(value.as_string(), wrap))
+                    return false;
+                out.wrap_u = wrap;
+                out.wrap_v = wrap;
+                out.wrap_w = wrap;
+                out.has_sampler_override = true;
+                return true;
+            }
+
+            if (!value.is_table())
+                return false;
+
+            for (const auto &pair : value.as_table())
+            {
+                const std::string &key = pair.first;
+                if (!pair.second.is_string())
+                    return false;
+
+                MaterialTextureWrapMode wrap;
+                if (!ParseTextureWrapMode(pair.second.as_string(), wrap))
+                    return false;
+
+                if (key == "u")
+                    out.wrap_u = wrap;
+                else if (key == "v")
+                    out.wrap_v = wrap;
+                else if (key == "w")
+                    out.wrap_w = wrap;
+                else
+                    return false;
+            }
+
+            out.has_sampler_override = true;
+            return true;
+        }
+
+        bool ParseTextureSwizzleText(
+            const std::string &value,
+            MaterialTextureSamplingOptions &out)
+        {
+            if (value.size() != 4)
+                return false;
+
+            const char component_names[4][2] = {
+                {value[0], 0},
+                {value[1], 0},
+                {value[2], 0},
+                {value[3], 0},
+            };
+            MaterialTextureSwizzle components[4];
+            for (uint32 i = 0; i < 4; ++i)
+            {
+                if (value[i] == '0')
+                {
+                    components[i] = MaterialTextureSwizzle::Zero;
+                    continue;
+                }
+                if (value[i] == '1')
+                {
+                    components[i] = MaterialTextureSwizzle::One;
+                    continue;
+                }
+
+                const std::string component(component_names[i]);
+                if (!ParseTextureSwizzle(component, components[i]))
+                    return false;
+            }
+
+            out.swizzle_r = components[0];
+            out.swizzle_g = components[1];
+            out.swizzle_b = components[2];
+            out.swizzle_a = components[3];
+            out.has_swizzle_override = true;
+            return true;
+        }
+
+        bool ParseTextureSwizzleOptions(
+            const toml::value &value,
+            MaterialTextureSamplingOptions &out)
+        {
+            if (value.is_string())
+                return ParseTextureSwizzleText(value.as_string(), out);
+
+            if (!value.is_table())
+                return false;
+
+            for (const auto &pair : value.as_table())
+            {
+                const std::string &key = pair.first;
+                if (!pair.second.is_string())
+                    return false;
+
+                MaterialTextureSwizzle swizzle;
+                if (!ParseTextureSwizzle(pair.second.as_string(), swizzle))
+                    return false;
+
+                if (key == "r")
+                    out.swizzle_r = swizzle;
+                else if (key == "g")
+                    out.swizzle_g = swizzle;
+                else if (key == "b")
+                    out.swizzle_b = swizzle;
+                else if (key == "a")
+                    out.swizzle_a = swizzle;
+                else
+                    return false;
+            }
+
+            out.has_swizzle_override = true;
+            return true;
+        }
+
+        bool ParseTextureSamplingOptions(
+            const toml::value &item,
+            MaterialTextureSamplingOptions &out)
+        {
+            if (item.contains("filter")
+             && !ParseTextureFilterOptions(item.at("filter"), out))
+                return false;
+            if (item.contains("wrap")
+             && !ParseTextureWrapOptions(item.at("wrap"), out))
+                return false;
+            if (item.contains("swizzle")
+             && !ParseTextureSwizzleOptions(item.at("swizzle"), out))
+                return false;
+
+            if (item.contains("anisotropy"))
+            {
+                if (!ReadBool(item, "anisotropy", out.anisotropy))
+                    return false;
+                out.has_sampler_override = true;
+            }
+            if (item.contains("max_anisotropy"))
+            {
+                if (!ReadFloat(item, "max_anisotropy", out.max_anisotropy)
+                 || out.max_anisotropy < 1.0f)
+                    return false;
+                out.has_sampler_override = true;
+            }
+            if (item.contains("mip_lod_bias"))
+            {
+                if (!ReadFloat(item, "mip_lod_bias", out.mip_lod_bias))
+                    return false;
+                out.has_sampler_override = true;
+            }
+            if (item.contains("min_lod"))
+            {
+                if (!ReadFloat(item, "min_lod", out.min_lod))
+                    return false;
+                out.has_sampler_override = true;
+            }
+            if (item.contains("max_lod"))
+            {
+                if (!ReadFloat(item, "max_lod", out.max_lod))
+                    return false;
+                out.has_sampler_override = true;
+            }
+            if (item.contains("compare_op"))
+            {
+                if (!item.at("compare_op").is_string()
+                 || !ParseTextureCompareOp(
+                        item.at("compare_op").as_string(), out.compare_op))
+                    return false;
+                out.has_sampler_override = true;
+            }
+
+            return out.min_lod <= out.max_lod;
+        }
+
+        bool ValidateTextureDeclarationKeys(const toml::value &item)
+        {
+            if (!item.is_table())
+                return false;
+
+            for (const auto &pair : item.as_table())
+            {
+                const std::string &key = pair.first;
+                if (key != "name"
+                 && key != "sampler"
+                 && key != "required"
+                 && key != "filter"
+                 && key != "wrap"
+                 && key != "swizzle"
+                 && key != "anisotropy"
+                 && key != "max_anisotropy"
+                 && key != "mip_lod_bias"
+                 && key != "min_lod"
+                 && key != "max_lod"
+                 && key != "compare_op")
+                    return false;
+            }
+            return true;
+        }
+
         bool ParseDefinition(const toml::value &root, MaterialDefinitionFileData &out)
         {
             std::string id;
@@ -471,9 +813,13 @@ namespace hgl::graph::mtl
                 out.definition.vertex_semantic_requirements.Add(requirement);
             }
 
+            bool has_texture_configuration_settings = false;
             if (root.contains("resources"))
             {
                 const toml::value &resources = root.at("resources");
+                if (!resources.is_table())
+                    return false;
+
                 if (resources.contains("ubos"))
                 {
                     if (!resources.at("ubos").is_array())
@@ -536,7 +882,7 @@ namespace hgl::graph::mtl
                      || type == SSBOType::UserDefined
                      || !IsMaterialSSBOType(type))
                         return false;
-                    out.definition.material_private_data = type; fputc(10, stderr);
+                    out.definition.material_private_data = type;
                 }
 
                 if (resources.contains("textures"))
@@ -545,20 +891,53 @@ namespace hgl::graph::mtl
                         return false;
                     for (const auto &item : resources.at("textures").as_array())
                     {
-                        if (!item.is_table()
+                        if (!ValidateTextureDeclarationKeys(item)
                          || !item.contains("name") || !item.at("name").is_string()
                          || !item.contains("sampler") || !item.at("sampler").is_string()
                          || !item.contains("required") || !item.at("required").is_boolean())
                             return false;
-                        const std::string slot_name = item.at("name").as_string();
-                        TextureSlot slot;
+                        const std::string texture_name = item.at("name").as_string();
                         GLSLSamplerType sampler;
-                        if (!ParseTextureSlotName(slot_name, slot)
+                        if (!IsValidMaterialTextureName(texture_name)
                          || !ParseSampler(item.at("sampler").as_string(), sampler))
                             return false;
-                        out.definition.texture_slot_decls.push_back(
-                            {slot_name, slot, sampler, item.at("required").as_boolean()});
+
+                        for (const auto &existing :
+                             out.definition.texture_declarations)
+                        {
+                            if (existing.name == texture_name)
+                                return false;
+                        }
+
+                        MaterialTextureSamplingOptions sampling{};
+                        if (!ParseTextureSamplingOptions(item, sampling))
+                            return false;
+
+                        out.definition.texture_declarations.push_back(
+                            {texture_name, sampler,
+                             item.at("required").as_boolean(), sampling});
                     }
+                }
+
+                if (resources.contains("texture_configurations"))
+                {
+                    const toml::value &configurations =
+                        resources.at("texture_configurations");
+                    if (!configurations.is_table()
+                     || !configurations.contains("max_count")
+                     || !configurations.at("max_count").is_integer())
+                        return false;
+
+                    const int64 max_count =
+                        configurations.at("max_count").as_integer();
+                    if (max_count <= 0
+                     || static_cast<uint64>(max_count)
+                        > static_cast<uint64>(hgl::HGL_U32_MAX))
+                        return false;
+
+                    out.definition.texture_configuration_max_count =
+                        static_cast<uint32>(max_count);
+                    has_texture_configuration_settings = true;
                 }
 
                 if (resources.contains("samplers"))
@@ -601,6 +980,10 @@ namespace hgl::graph::mtl
                     }
                 }
             }
+
+            if (has_texture_configuration_settings
+             && out.definition.texture_declarations.empty())
+                return false;
 
             if (root.contains("vertex") && root.at("vertex").contains("varyings"))
             {
@@ -737,10 +1120,21 @@ namespace hgl::graph::mtl
                 "requirements", "varyings"}))
             return false;
 
-        if (root.contains("resources")
-         && !ValidateKnownKeys(root.at("resources"), {
-                "ubos", "material_data", "samplers", "textures", "defines"}))
-            return false;
+        if (root.contains("resources"))
+        {
+            const toml::value &resources = root.at("resources");
+            if (!resources.is_table()
+             || !ValidateKnownKeys(resources, {
+                    "ubos", "material_data", "samplers", "textures",
+                    "texture_configurations", "defines"}))
+                return false;
+
+            if (resources.contains("texture_configurations")
+             && (!resources.at("texture_configurations").is_table()
+              || !ValidateKnownKeys(
+                    resources.at("texture_configurations"), {"max_count"})))
+                return false;
+        }
 
         if (root.contains("mesh_shader")
          && !ValidateKnownKeys(root.at("mesh_shader"), {
@@ -779,7 +1173,8 @@ namespace hgl::graph::mtl
                 std::string(content, static_cast<size_t>(content_size)));
             if (!root.is_table() || !root.contains("schema")
              || !root.at("schema").is_integer()
-             || root.at("schema").as_integer() != 2)
+             || (root.at("schema").as_integer() != 2
+              && root.at("schema").as_integer() != 3))
                 return MaterialDefinitionFileParseResult::InvalidValue;
             if (!ParseDefinition(root, out_data))
                 return MaterialDefinitionFileParseResult::InvalidValue;
