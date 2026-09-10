@@ -6,6 +6,8 @@
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/SSBOArrayAccessor.h>
+#include <hgl/type/ManagedArray.h>
+#include <hgl/type/ValueArray.h>
 #include <unordered_map>
 #include <hgl/log/Log.h>
 
@@ -13,6 +15,106 @@ namespace hgl::graph
 {
 class DeviceBuffer;
 class IGPUBuffer;
+
+struct MaterialTextureConfigurationAllocation
+{
+    uint64_t pool_key = 0;
+    uint32_t row_index = 0;
+    uint32_t reference_count = 0;
+    uint32_t row_stride = 0;
+    uint64_t allocation_generation = 0;
+    void *cpu_row = nullptr;
+    uint64_t gpu_row = 0;
+
+    bool IsValid() const noexcept
+    {
+        return pool_key != 0
+            && row_index != 0
+            && reference_count != 0
+            && row_stride != 0
+            && allocation_generation != 0
+            && cpu_row != nullptr
+            && gpu_row != 0;
+    }
+};
+
+struct MaterialTextureConfigurationRetirement
+{
+    uint32_t row_index = 0;
+    uint64_t allocation_generation = 0;
+    uint64_t retire_epoch = 0;
+};
+
+class MaterialTextureReferencePool
+{
+    AnsiString definition_id;
+    uint64_t pool_key = 0;
+    uint64_t layout_hash = 0;
+    uint32_t reference_count = 0;
+    uint32_t row_stride = 0;
+    uint32_t max_configuration_count = 0;
+    uint32_t live_configuration_count = 0;
+    DeviceBuffer *buffer = nullptr;
+    void *cpu_base = nullptr;
+    uint64_t gpu_base = 0;
+    uint64_t next_allocation_generation = 1;
+    ValueArray<uint32_t> free_rows;
+    ValueArray<uint64_t> row_generations;
+    ValueArray<MaterialTextureConfigurationRetirement> retirements;
+
+    bool IsOwnedAllocation(
+        const MaterialTextureConfigurationAllocation &allocation) const noexcept;
+    bool IsRetired(const uint32_t row_index) const noexcept;
+    bool ReleaseRow(
+        const uint32_t row_index,
+        uint64_t allocation_generation);
+
+public:
+
+    MaterialTextureReferencePool() = default;
+    ~MaterialTextureReferencePool();
+
+    MaterialTextureReferencePool(const MaterialTextureReferencePool &) = delete;
+    MaterialTextureReferencePool &operator=(
+        const MaterialTextureReferencePool &) = delete;
+
+    static uint64_t MakePoolKey(
+        const mtl::MaterialDefinition &definition,
+        const mtl::MaterialTextureReferenceLayout &layout) noexcept;
+
+    bool Matches(
+        const mtl::MaterialDefinition &definition,
+        const mtl::MaterialTextureReferenceLayout &layout) const noexcept;
+    bool Initialize(
+        VulkanDevice *device,
+        const mtl::MaterialDefinition &definition,
+        const mtl::MaterialTextureReferenceLayout &layout);
+    void Release();
+
+    bool Acquire(MaterialTextureConfigurationAllocation &out_allocation);
+    bool Write(
+        const MaterialTextureConfigurationAllocation &allocation,
+        const mtl::MaterialTextureReference *references,
+        uint32_t reference_count);
+    bool Retire(
+        const MaterialTextureConfigurationAllocation &allocation,
+        uint64_t retire_epoch);
+    void CollectRetired(uint64_t completed_epoch);
+
+    uint64_t GetPoolKey() const noexcept { return pool_key; }
+    uint64_t GetLayoutHash() const noexcept { return layout_hash; }
+    uint32_t GetReferenceCount() const noexcept { return reference_count; }
+    uint32_t GetRowStride() const noexcept { return row_stride; }
+    uint32_t GetConfigurationCapacity() const noexcept
+    {
+        return max_configuration_count;
+    }
+    uint32_t GetLiveConfigurationCount() const noexcept
+    {
+        return live_configuration_count;
+    }
+    uint64_t GetZeroRowAddress() const noexcept { return gpu_base; }
+};
 
 struct SSBOBufferBinding
 {
@@ -46,6 +148,7 @@ public:
 private:
 
     std::unordered_map<uint32_t, RowSegmentInfo> row_segments;
+    ManagedArray<MaterialTextureReferencePool> material_texture_reference_pools;
 
     DeviceBuffer *null_row_buffer  = nullptr;   ///< 64B 零填充"空行"
     uint64_t      null_row_address = 0;
@@ -64,6 +167,11 @@ private:
     static uint64_t MakeKey(const mtl::SSBOAddress &address) noexcept;
     SSBOBufferBinding *FindMutable(const mtl::SSBOAddress &address);
     const SSBOBufferBinding *Find(const mtl::SSBOAddress &address) const;
+    MaterialTextureReferencePool *FindMaterialTextureReferencePool(
+        const mtl::MaterialDefinition &definition,
+        const mtl::MaterialTextureReferenceLayout &layout);
+    MaterialTextureReferencePool *FindMaterialTextureReferencePool(
+        const MaterialTextureConfigurationAllocation &allocation);
 
 public:
 
@@ -91,6 +199,39 @@ public:
     uint32_t GetElementCapacity(const mtl::SSBOAddress &address) const;
 
     uint32_t GetCount() const { return static_cast<uint32_t>(domain_map.size()); }
+
+    /**
+     * Returns one dynamically-sized texture-reference configuration row from
+     * the pool owned by this MaterialDefinition/layout pair. Row zero remains
+     * permanently reserved as a safe all-zero fallback.
+     */
+    bool AcquireMaterialTextureConfiguration(
+        const mtl::MaterialDefinition &definition,
+        const mtl::MaterialTextureReferenceLayout &layout,
+        MaterialTextureConfigurationAllocation &out_allocation);
+
+    /**
+     * Writes one complete descriptor-index/array-layer configuration. The
+     * reference count must exactly match the definition layout.
+     */
+    bool WriteMaterialTextureConfiguration(
+        const MaterialTextureConfigurationAllocation &allocation,
+        const mtl::MaterialTextureReference *references,
+        uint32_t reference_count);
+
+    /**
+     * Defers row reuse until the caller's completed GPU epoch reaches
+     * retire_epoch. Phase 4 wires this to MaterialComponent lifecycle.
+     */
+    bool RetireMaterialTextureConfiguration(
+        const MaterialTextureConfigurationAllocation &allocation,
+        uint64_t retire_epoch);
+    void CollectRetiredMaterialTextureConfigurations(uint64_t completed_epoch);
+    uint32_t GetMaterialTextureReferencePoolCount() const
+    {
+        return static_cast<uint32_t>(
+            material_texture_reference_pools.GetCount());
+    }
 
     /**
      * Arena+BDA: query the segment info registered for an accessor ssbo_id.

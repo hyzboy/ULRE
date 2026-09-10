@@ -25,6 +25,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
+#include <hgl/graph/module/SSBOBufferRegistry.h>
 #include <hgl/log/Log.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
@@ -3135,6 +3136,29 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     "texture configuration capacity must not alter shader ABI");
+            }
+
+            const uint64_t pool_key =
+                MaterialTextureReferencePool::MakePoolKey(
+                    definition, layout);
+            const uint64_t changed_capacity_pool_key =
+                MaterialTextureReferencePool::MakePoolKey(
+                    changed_capacity, changed_layout);
+            MaterialDefinition different_definition = definition;
+            different_definition.definition_id = "OtherTextureLayoutFile";
+            const uint64_t different_definition_pool_key =
+                MaterialTextureReferencePool::MakePoolKey(
+                    different_definition, layout);
+            MaterialTextureConfigurationAllocation empty_allocation{};
+            if (pool_key == 0
+             || changed_capacity_pool_key == 0
+             || different_definition_pool_key == 0
+             || pool_key == changed_capacity_pool_key
+             || pool_key == different_definition_pool_key
+             || empty_allocation.IsValid())
+            {
+                result.diagnostics.emplace_back(
+                    "texture-reference pool identity or empty allocation is invalid");
             }
 
             MaterialTextureSamplingOptions changed_sampling =
