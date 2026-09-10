@@ -35,10 +35,6 @@ namespace hgl::graph::mtl
               << requirement.allow_fallback;
         }
 
-        h << definition.texture_layer_requirement_count;
-        for (uint32 i = 0; i < definition.texture_layer_requirement_count; ++i)
-            h << definition.texture_layer_requirements[i];
-
         h << definition.texture_reference_requirement_count;
         for (uint32 i = 0;
              i < definition.texture_reference_requirement_count;

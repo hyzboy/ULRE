@@ -213,11 +213,14 @@ namespace
     }
 
     static const ResolvedTextureBinding *FindTextureBinding(
-        const ResolvedBindingTable &table, TextureSlot slot)
+        const ResolvedBindingTable &table, const char *texture_name)
     {
+        if (!texture_name)
+            return nullptr;
+
         for (int i = 0; i < table.textures.GetCount(); ++i)
         {
-            if (table.textures[i].texture_slot == slot)
+            if (std::strcmp(table.textures[i].texture_name, texture_name) == 0)
                 return &table.textures[i];
         }
         return nullptr;
@@ -540,11 +543,11 @@ namespace
         recipe.recipe_name = "BindingTableA";
         recipe.mtl_def_id = "DefinitionA";
         recipe.textures.push_back(
-            {GetTextureSlotName(TextureSlot::BaseColor), "asset/albedo-a", 0, false, true});
+            {"base_color", "asset/albedo-a", true, 0});
         recipe.textures.push_back(
-            {GetTextureSlotName(TextureSlot::Normal), "asset/unused-normal", 0, false, false});
+            {"normal", "asset/unused-normal", false, 0});
         recipe.textures.push_back(
-            {GetTextureSlotName(TextureSlot::Custom0), std::string(), 7, true, false});
+            {"optional_detail", std::string(), false, 0});
         RecipeSSBOAssetBinding data_binding{};
         data_binding.material_private_data_slot_name = "mtl_private_data";
         data_binding.material_private_data_slot = 0;
@@ -591,7 +594,7 @@ namespace
         MaterialRecipe projected_recipe{};
         if (!BuildBindingTableRecipe(
                 recipe, binding_table, projected_recipe)
-         || projected_recipe.textures.size() != 3
+         || projected_recipe.textures.size() != 2
          || projected_recipe.ssbo_assets.size() != 1
          || projected_recipe.ssbo_assets[0].ssbo_id != 17)
         {
@@ -599,27 +602,20 @@ namespace
                 "Binding Table Recipe projection mismatch");
         }
         bool found_base_color = false;
-        bool found_layer_value = false;
         for (const RecipeTextureBinding &binding :
              projected_recipe.textures)
         {
-            if (binding.slot_name == GetTextureSlotName(TextureSlot::BaseColor)
+            if (binding.texture_name == "base_color"
              && binding.resource_id == "asset/albedo-a")
                 found_base_color = true;
-            if (binding.slot_name == GetTextureSlotName(TextureSlot::Custom0)
-             && binding.use_direct_value
-             && binding.direct_value == 7)
-                found_layer_value = true;
         }
-        if (!found_base_color || !found_layer_value)
+        if (!found_base_color)
         {
             result.diagnostics.emplace_back(
-                "Binding Table Recipe must preserve TextureLayer direct values");
+                "Binding Table Recipe must preserve named texture bindings");
         }
-        // Asset projection: in bindless mode the recipe is the authoritative
-        // texture-slot source (the schema merges all texture_layer declarations
-        // asset-source recipe texture is acquired. Custom0 is a direct-value
-        // binding (not an asset), so it must be excluded from asset projection.
+        // Asset projection: the recipe is the authoritative named texture
+        // source. Optional declarations without an asset remain omitted.
         if (CountAssetTextures(binding_table) != 2
          || CountAssetData(binding_table) != 1
          || binding_table.GetStableHash() == 0)
@@ -631,7 +627,6 @@ namespace
         {
             bool planned_base_color = false;
             bool planned_data = false;
-            bool planned_direct_value = false;
             for (int i = 0;
                  i < binding_table.textures.GetCount();
                  ++i)
@@ -640,10 +635,8 @@ namespace
                     binding_table.textures[i];
                 if (binding.source != BindingSource::Asset)
                     continue;
-                if (binding.texture_slot == TextureSlot::BaseColor)
+                if (std::strcmp(binding.texture_name, "base_color") == 0)
                     planned_base_color = true;
-                if (binding.texture_slot == TextureSlot::Custom0)
-                    planned_direct_value = true;
             }
             for (int i = 0; i < binding_table.data.GetCount(); ++i)
             {
@@ -654,39 +647,12 @@ namespace
                  && binding.ssbo_type == SSBOType::PBRSurface)
                     planned_data = true;
             }
-            if (!planned_base_color
-             || !planned_data
-             || planned_direct_value)
+            if (!planned_base_color || !planned_data)
             {
                 result.diagnostics.emplace_back(
                     "Binding Table Asset projection must include only active loadable resources");
             }
         }
-        // Single-IR projection: the Custom0 direct value must survive the
-        // recipe -> binding table -> projected recipe round trip.
-        // ResolvedBindingTable is the sole output channel, so the projected
-        // spec / TextureLayerRow legacy path is gone.
-        bool projected_layer_retained = false;
-        for (int i = 0;
-             i < binding_table.textures.GetCount();
-             ++i)
-        {
-            const ResolvedTextureBinding &binding =
-                binding_table.textures[i];
-            if (binding.texture_slot == TextureSlot::Custom0
-             && binding.source == BindingSource::DirectValue
-             && binding.direct_value == 7)
-            {
-                projected_layer_retained = true;
-                break;
-            }
-        }
-        if (!projected_layer_retained)
-        {
-            result.diagnostics.emplace_back(
-                "Binding Table must retain the active direct layer value");
-        }
-
         MaterialRecipe zero_id_recipe = recipe;
         zero_id_recipe.ssbo_assets[0].ssbo_id = 0;
         ResolvedBindingTable zero_id_table{};
@@ -772,9 +738,9 @@ namespace
          || missing_table.missing_required_count != 1
          || BuildBindingTableRecipe(
                 missing_recipe, missing_table, projected_recipe)
-         || FindTextureBinding(missing_table, TextureSlot::BaseColor)
+         || FindTextureBinding(missing_table, "base_color")
                 == nullptr
-         || FindTextureBinding(missing_table, TextureSlot::BaseColor)
+         || FindTextureBinding(missing_table, "base_color")
                 ->source != BindingSource::Missing)
         {
             result.diagnostics.emplace_back(
@@ -794,10 +760,10 @@ namespace
          || !unresolved_fallback_table.IsValid()
          || unresolved_fallback_table.IsRuntimeReady()
          || FindTextureBinding(
-                unresolved_fallback_table, TextureSlot::BaseColor)
+                unresolved_fallback_table, "base_color")
                 == nullptr
          || FindTextureBinding(
-                unresolved_fallback_table, TextureSlot::BaseColor)
+                unresolved_fallback_table, "base_color")
                 ->source != BindingSource::Missing)
         {
             result.diagnostics.emplace_back(
@@ -806,7 +772,7 @@ namespace
 
         MaterialRecipe duplicate_recipe = recipe;
         duplicate_recipe.textures.push_back(
-            {GetTextureSlotName(TextureSlot::BaseColor), "asset/duplicate", 0, false, true});
+            {"base_color", "asset/duplicate", true, 0});
         ResolvedBindingTable duplicate_table{};
         if (BuildBindingTable(
                 duplicate_recipe,
@@ -824,12 +790,12 @@ namespace
 
         ResolvedBindingTable depth_table{};
         ShaderResourceSchema depth_layout{};
-        // Arena：recipe 纹理是行尾数据（视图必须保留），不再是描述符获取——
-        // 资源空布局下，资源型纹理（非 direct 值）以 Asset 身份保留；
-        // direct 值纹理保持视图条目身份。
+        // With an empty descriptor layout, every named recipe texture remains
+        // visible in the resolved table; only entries with an asset are
+        // acquired.
         uint32_t arena_asset_texture_count = 0;
         for (const auto &t : recipe.textures)
-            if (!t.use_direct_value)
+            if (!t.resource_id.empty())
                 ++arena_asset_texture_count;
         const uint32_t expected_free_textures = arena_asset_texture_count;
         const uint32_t expected_free_unused_textures = 0u;
@@ -878,9 +844,9 @@ namespace
 
         MaterialRecipe named_texture_recipe{};
         named_texture_recipe.textures.push_back(
-            {"base_color", "asset/named-base", 0, false, true, 0});
+            {"base_color", "asset/named-base", true, 0});
         named_texture_recipe.textures.push_back(
-            {"normal", "asset/named-normal", 0, false, false, 6});
+            {"normal", "asset/named-normal", false, 6});
 
         ResolvedBindingTable named_texture_table{};
         if (!BuildBindingTable(
@@ -929,7 +895,7 @@ namespace
         MaterialRecipe undeclared_named_texture_recipe =
             named_texture_recipe;
         undeclared_named_texture_recipe.textures.push_back(
-            {"unexpected", "asset/unexpected", 0, false, false, 0});
+            {"unexpected", "asset/unexpected", false, 0});
         ResolvedBindingTable undeclared_named_texture_table{};
         if (BuildBindingTable(
                 undeclared_named_texture_recipe,
@@ -1044,10 +1010,7 @@ namespace
                 == std::string::npos
          || lit_vs.find(
                 "layout(location=3) out vec2 fragUV0[")
-                == std::string::npos
-         || lit_vs.find(
-                "layout(location=1) flat out uint fragTextureLayerID;")
-                != std::string::npos)
+                == std::string::npos)
         {
             result.diagnostics.emplace_back(
                 "legacy generated lit varying ABI changed");
@@ -2059,9 +2022,9 @@ namespace
         recipe.recipe_name = "shared-instance-regression";
 
         RecipeTextureBinding texture{};
-        texture.slot_name = GetTextureSlotName(TextureSlot::BaseColor);
-        texture.use_direct_value = true;
-        texture.direct_value = 7;
+        texture.texture_name = "base_color";
+        texture.resource_id = "asset/base-color";
+        texture.required = true;
         recipe.textures.emplace_back(texture);
 
         RecipeSSBOAssetBinding asset{};
@@ -2203,10 +2166,8 @@ namespace
         }
 
         const char *non_bootstrap_ids[] = {
-            "VertexColor", "UnlitTexture", "UnlitTextureArray",
-            "Texture2DArray",
+            "VertexColor", "UnlitTexture",
             "VertexLuminance", "VertexPaletteColor", "DebugNormalColor", "SkyMinimal", "Lit",
-            "LitTextureArray"
         };
         for (const char *id : non_bootstrap_ids)
         {
@@ -2668,11 +2629,8 @@ namespace
             {"VertexColor", "material/vertex_color_source.glsl"},
             {"VertexLuminance", "material/luminance_source.glsl"},
             {"UnlitTexture", "material/texture_source.glsl"},
-            {"UnlitTextureArray", "material/unlit_texture_array_source.glsl"},
-            {"Texture2DArray", "material/texture_array_source.glsl"},
             {"DebugNormalColor", "material/debug_normal_source.glsl"},
             {"Lit", "material/pbr_surface_source.glsl"},
-            {"LitTextureArray", "material/pbr_texturearray_source.glsl"},
             {BUILTIN_MTL_DEF_PURE_COLOR, "material/unlit_source.glsl"},
             {BUILTIN_MTL_DEF_TEXT, "material/text_source_gpu.glsl"}
         };
@@ -3418,7 +3376,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 13
+         || file_count != 10
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -3426,9 +3384,8 @@ namespace
         else
         {
             const char *expected_file_ids[] = {
-                "Lit", "LitTextureArray", "SkyMinimal", "DebugNormalColor",
-                "VertexColor", "UnlitTexture", "UnlitTextureArray",
-                "Texture2DArray",
+                "Lit", "SkyMinimal", "DebugNormalColor",
+                "VertexColor", "UnlitTexture",
                 "VertexLuminance", "VertexPaletteColor",
                 "builtin/pure_color", "builtin/text_gpu",
                 "builtin/text_gpu_bitmap"
@@ -3441,8 +3398,8 @@ namespace
             }
 
         const char *bulk_ids[] = {
-            "LitTextureArray", "SkyMinimal", "DebugNormalColor", "VertexColor",
-            "UnlitTexture", "UnlitTextureArray", "Texture2DArray",
+            "Lit", "SkyMinimal", "DebugNormalColor", "VertexColor",
+            "UnlitTexture",
             "VertexLuminance",
             "VertexPaletteColor"
         };
@@ -3597,14 +3554,10 @@ namespace
         }
 
         const auto *pbr_2d = registry.FindByName("pbr_surface_source");
-        const auto *pbr_array = registry.FindByName("pbr_texturearray_source");
         const auto *ntb_2d = registry.FindByName("ntb_tangent_vbo_normalmap");
-        const auto *ntb_array = registry.FindByName("ntb_texturearray_normalmap");
         const auto *ntb_derivative = registry.FindByName("ntb_derivative_normalmap");
-        const auto *unlit_array =
-            registry.FindByName("unlit_texture_array_source");
-        if (!pbr_2d || !pbr_array || !ntb_2d || !ntb_array
-         || !ntb_derivative || !unlit_array)
+        const auto *unlit = registry.FindByName("texture_source");
+        if (!pbr_2d || !ntb_2d || !ntb_derivative || !unlit)
         {
             result.diagnostics.emplace_back("provider metadata modules are missing");
         }
@@ -3626,15 +3579,11 @@ namespace
                     return false;
                 };
             MaterialDefinition lit_definition{};
-            MaterialDefinition lit_array_definition{};
-            MaterialDefinition unlit_array_definition{};
+            MaterialDefinition unlit_definition{};
             if (!TryGetMaterialDefinitionByID("Lit", lit_definition)
              || !TryGetMaterialDefinitionByID(
-                    "LitTextureArray",
-                    lit_array_definition)
-             || !TryGetMaterialDefinitionByID(
-                    "UnlitTextureArray",
-                    unlit_array_definition))
+                    "UnlitTexture",
+                    unlit_definition))
             {
                 result.diagnostics.emplace_back(
                     "provider texture-reference material definitions are missing");
@@ -3655,7 +3604,6 @@ namespace
                  || std::strcmp(manifest_2d.ssbos[0].name, "mtl_private_data") != 0
                  || manifest_2d.ssbos[0].ssbo_type != SSBOType::PBRSurface
                  || manifest_2d.ssbos[0].material_private_data_slot != 0
-                 || manifest_2d.texture_layer_count != 0
                  || manifest_2d.texture_reference_count != 6
                  || !has_texture_reference(manifest_2d, "base_color")
                  || !has_texture_reference(manifest_2d, "roughness")
@@ -3673,61 +3621,31 @@ namespace
                 // 已在上方断言），不再检查 descriptors 的 MaterialPrivateDataIndex 条目。
             }
 
-            const char *roots_array[] = {pbr_array->name, ntb_array->name};
-            ShaderCodeResourceManifest manifest_array{};
-            if (!BuildShaderCodeResourceManifest(
-                    roots_array, uint32_t(std::size(roots_array)), manifest_array, &registry))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("Texture2DArray provider manifest failed: ")
-                    + GetShaderCodeResourceManifestErrorName(manifest_array.error));
-            }
-            else
-            {
-                if (manifest_array.ssbo_count != 1
-                 || manifest_array.texture_layer_count != 0
-                 || manifest_array.texture_reference_count != 6
-                 || !has_texture_reference(manifest_array, "base_color")
-                 || !has_texture_reference(manifest_array, "roughness")
-                 || !has_texture_reference(manifest_array, "metallic")
-                 || !has_texture_reference(manifest_array, "occlusion")
-                 || !has_texture_reference(manifest_array, "opacity_mask")
-                 || !has_texture_reference(manifest_array, "normal")
-                 || !ValidateShaderCodeResourceManifestTextureReferences(
-                        manifest_array,
-                        lit_array_definition))
-                    result.diagnostics.emplace_back(
-                        "Texture2DArray providers must declare TOML-aligned texture references");
-                // A6-2b-b2：同上——数据槽信号直判化，契约条目检查删除。
-            }
-
             const char *derivative_root = ntb_derivative->name;
             ShaderCodeResourceManifest derivative_manifest{};
             if (!BuildShaderCodeResourceManifest(
                     &derivative_root, 1, derivative_manifest, &registry)
-             || derivative_manifest.texture_layer_count != 0
              || derivative_manifest.texture_reference_count != 1
              || !has_texture_reference(derivative_manifest, "normal"))
                result.diagnostics.emplace_back(
                    "Derivative normal-map provider must declare its named texture reference");
 
-            const char *unlit_array_root = unlit_array->name;
-            ShaderCodeResourceManifest unlit_array_manifest{};
+            const char *unlit_root = unlit->name;
+            ShaderCodeResourceManifest unlit_manifest{};
             if (!BuildShaderCodeResourceManifest(
-                    &unlit_array_root,
+                    &unlit_root,
                     1,
-                    unlit_array_manifest,
+                    unlit_manifest,
                     &registry)
-             || unlit_array_manifest.ssbo_count != 0
-             || unlit_array_manifest.texture_layer_count != 0
-             || unlit_array_manifest.texture_reference_count != 1
-             || !has_texture_reference(unlit_array_manifest, "base_color")
+             || unlit_manifest.ssbo_count != 0
+             || unlit_manifest.texture_reference_count != 1
+             || !has_texture_reference(unlit_manifest, "base_color")
              || !ValidateShaderCodeResourceManifestTextureReferences(
-                    unlit_array_manifest,
-                    unlit_array_definition))
+                    unlit_manifest,
+                    unlit_definition))
             {
                 result.diagnostics.emplace_back(
-                    "generic Texture2DArray material must use one TOML texture reference");
+                    "generic texture material must use one TOML texture reference");
             }
 
             ShaderCodeResourceManifest invalid_reference_manifest{};
@@ -3745,7 +3663,7 @@ namespace
             const char *invalid_texture_name = nullptr;
             if (ValidateShaderCodeResourceManifestTextureReferences(
                     invalid_reference_manifest,
-                    unlit_array_definition,
+                    unlit_definition,
                     &invalid_texture_name)
              || !invalid_texture_name
              || std::strcmp(invalid_texture_name, "missing_texture") != 0)
@@ -3877,14 +3795,14 @@ namespace
         else
         {
             // Native template migration adds explicit identity shadow/AO providers.
-            if (file_count != 69)
-                result.diagnostics.emplace_back("LoadDirectory expected 69 file modules, got "
+            if (file_count != 65)
+                result.diagnostics.emplace_back("LoadDirectory expected 65 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 69;
+            const int expected_count = 65;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -4083,7 +4001,6 @@ namespace
                 "MaterialPrivateDataIndex",
                 nullptr,
                 DescriptorSemantic::MaterialPrivateDataIndex,
-                TextureSlot::BaseColor,
                 DefaultMaterialPrivateDataSlot,
                 SSBOType::MaterialPrivateDataIndex,
                 DescriptorSemanticLayer::SSBO
@@ -4301,7 +4218,6 @@ namespace
                 "LocalToWorldData",
                 nullptr,
                 DescriptorSemantic::LocalToWorld,
-                TextureSlot::BaseColor,
                 DefaultMaterialPrivateDataSlot,
                 SSBOType::UserDefined,
                 DescriptorSemanticLayer::SSBO
@@ -4402,7 +4318,6 @@ namespace
                     viewport_struct.c_str(),
                     nullptr,
                     DescriptorSemantic::ViewportInfo,
-                    TextureSlot::BaseColor,
                     DefaultMaterialPrivateDataSlot,
                     SSBOType::UserDefined,
                     DescriptorSemanticLayer::UBO
@@ -4414,7 +4329,6 @@ namespace
                     material_struct.c_str(),
                     nullptr,
                     DescriptorSemantic::MaterialPrivateData,
-                    TextureSlot::BaseColor,
                     DefaultMaterialPrivateDataSlot,
                     SSBOType::PBRSurface,
                     DescriptorSemanticLayer::SSBO,
@@ -4988,27 +4902,27 @@ int main(const int argc, char **argv)
     {
         constexpr SerializedDescriptorEntry valid_entries[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data_index", "MaterialPrivateDataIndex", nullptr, DescriptorSemantic::MaterialPrivateDataIndex, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndex, DescriptorSemanticLayer::SSBO },
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data_index", "MaterialPrivateDataIndex", nullptr, DescriptorSemantic::MaterialPrivateDataIndex, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndex, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-contract-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
         constexpr SerializedDescriptorEntry unknown_semantic[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
 
         constexpr SerializedDescriptorEntry invalid_fixed_descriptor[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
 
         constexpr SerializedDescriptorEntry palette_explicit[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("C.scene-color-palette-explicit", palette_explicit, 1, true));
     }

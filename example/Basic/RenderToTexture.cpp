@@ -311,9 +311,9 @@ public:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&sphere_asset);
-        prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, sphere_base_tex, sphere_sampler);
-        prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, sphere_normal_tex, sphere_sampler);
-        prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, sphere_roughness_tex, sphere_sampler);
+        prim_comp->SetMaterialTextureResource("base_color", sphere_base_tex, sphere_sampler);
+        prim_comp->SetMaterialTextureResource("normal", sphere_normal_tex, sphere_sampler);
+        prim_comp->SetMaterialTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
         sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         sphere_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
@@ -508,9 +508,9 @@ private:
         cube_transform->SetMovable(true);
 
         cube_prim_comp->SetPrimitiveAsset(&cube_asset);
-        cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_tex, cube_sampler);
-        cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_tex, cube_sampler);
-        cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_tex, cube_sampler);
+        cube_prim_comp->SetMaterialTextureResource("base_color", base_tex, cube_sampler);
+        cube_prim_comp->SetMaterialTextureResource("normal", normal_tex, cube_sampler);
+        cube_prim_comp->SetMaterialTextureResource("roughness", roughness_tex, cube_sampler);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
         cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         cube_struct.ssbo_id = cube_material_data_ssbo_accessor->GetSSBOId();

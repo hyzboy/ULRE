@@ -3,7 +3,6 @@
 #include <hgl/CoreType.h>
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
-#include <hgl/graph/ssbo/TextureSlot.h>
 #include <hgl/mtl/RenderTemplate.h>
 #include <hgl/type/StrChar.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -223,34 +222,6 @@ namespace hgl::graph::mtl
             && lhs.allow_fallback == rhs.allow_fallback;
     }
 
-    struct ShaderCodeModuleTextureLayerRequirement
-    {
-        TextureSlot slot = TextureSlot::Custom0;
-        uint32 stage_flags = 0;
-        bool required = true;
-        bool allow_fallback = false;
-    };
-
-    inline bool operator==(const ShaderCodeModuleTextureLayerRequirement &lhs,
-                           const ShaderCodeModuleTextureLayerRequirement &rhs) noexcept
-    {
-        return lhs.slot == rhs.slot
-            && lhs.stage_flags == rhs.stage_flags
-            && lhs.required == rhs.required
-            && lhs.allow_fallback == rhs.allow_fallback;
-    }
-
-    inline hgl::hash::FNV1aHasher64 &operator<<(
-        hgl::hash::FNV1aHasher64 &h,
-        const ShaderCodeModuleTextureLayerRequirement &v) noexcept
-    {
-        h << v.slot
-          << v.stage_flags
-          << v.required
-          << v.allow_fallback;
-        return h;
-    }
-
     // Name-keyed texture dependency consumed through MTL_TEX(). The name must
     // resolve to a MaterialDefinition texture declaration before compilation.
     struct ShaderCodeModuleTextureReferenceRequirement
@@ -303,9 +274,6 @@ namespace hgl::graph::mtl
         int32 priority = 0;
         uint32 flags = 0;
 
-        const ShaderCodeModuleTextureLayerRequirement *texture_layer_requirements = nullptr;
-        uint32 texture_layer_requirement_count = 0;
-
         const ShaderCodeModuleDependency *dependencies = nullptr;
         uint32 dependency_count = 0;
 
@@ -320,8 +288,6 @@ namespace hgl::graph::mtl
         uint32 provided_capabilities = 0;
         uint32 required_capabilities = 0;
 
-        // Appended to preserve positional initialization compatibility for
-        // existing static module definitions during the transition.
         const ShaderCodeModuleTextureReferenceRequirement
             *texture_reference_requirements = nullptr;
         uint32 texture_reference_requirement_count = 0;
@@ -343,8 +309,6 @@ namespace hgl::graph::mtl
           && !definition.dependencies)
          || (definition.ssbo_requirement_count > 0
           && !definition.ssbo_requirements)
-         || (definition.texture_layer_requirement_count > 0
-          && !definition.texture_layer_requirements)
          || (definition.texture_reference_requirement_count > 0
           && !definition.texture_reference_requirements))
             return false;

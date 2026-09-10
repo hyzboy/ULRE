@@ -118,10 +118,6 @@ bool BuildMaterialSSBODeclarations(
             return false;
         }
 
-        // GLSL struct 不允许空成员表——纯句柄行（TextureLayerRow）无 payload，
-        // 跳过纯字段值结构的发射
-        const bool has_payload_fields = struct_codes && *struct_codes;
-
         std::string line;
         const char *p = struct_codes;
         auto FlushFieldLine = [&]()
@@ -138,49 +134,34 @@ bool BuildMaterialSSBODeclarations(
             line.clear();
         };
 
-        if (has_payload_fields)
+        out_decls += "struct ";
+        out_decls += struct_name;
+        out_decls += "\n{\n";
+
+        for (; *p; ++p)
         {
-            // 纯字段值结构（与旧路径 struct 同名）：供模块以值语义拷贝行内数据字段
-            out_decls += "struct ";
-            out_decls += struct_name;
-            out_decls += "\n{\n";
-
-            for (; *p; ++p)
-            {
-                if (*p == '\n')
-                    FlushFieldLine();
-                else
-                    line += *p;
-            }
-            FlushFieldLine();
-
-            out_decls += "};\n";
+            if (*p == '\n')
+                FlushFieldLine();
+            else
+                line += *p;
         }
+        FlushFieldLine();
 
-        // 兼容阶段：旧 shader 仍可从 payload 行的 tex_* 字段读取句柄。
+        out_decls += "};\n";
+
         out_decls += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer ";
         out_decls += row_struct;
         out_decls += "\n{\n";
 
-        if (has_payload_fields)
+        p = struct_codes;
+        for (; *p; ++p)
         {
-            p = struct_codes;
-            for (; *p; ++p)
-            {
-                if (*p == '\n')
-                    FlushFieldLine();
-                else
-                    line += *p;
-            }
-            FlushFieldLine();
+            if (*p == '\n')
+                FlushFieldLine();
+            else
+                line += *p;
         }
-
-        for (uint32_t i = 0; i < static_cast<uint32_t>(TextureSlot::RANGE_SIZE); ++i)
-        {
-            out_decls += "    uint tex_";
-            out_decls += GetTextureSlotName(static_cast<TextureSlot>(i));
-            out_decls += ";\n";
-        }
+        FlushFieldLine();
 
         out_decls += "};\n";
         out_macros += "#define MTL_ROW(i) ";

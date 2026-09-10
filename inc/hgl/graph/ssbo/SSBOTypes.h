@@ -2,7 +2,6 @@
 
 #include <hgl/type/EnumUtil.h>
 #include <hgl/CoreType.h>
-#include <hgl/graph/ssbo/TextureSlot.h>
 
 namespace hgl::graph::mtl
 {
@@ -17,11 +16,8 @@ namespace hgl::graph::mtl
         UserDefined,
         MaterialPrivateDataIndex,
 
-        TextureLayer,
-
         PBRSurface,
         EmissiveSurface,
-        TextureRectArraySurface,
         TransmissionSurface,
 
         ENUM_CLASS_RANGE(MeshDrawParams,TransmissionSurface)
@@ -40,9 +36,7 @@ namespace hgl::graph::mtl
         {
         case SSBOType::PBRSurface:
         case SSBOType::EmissiveSurface:
-        case SSBOType::TextureRectArraySurface:
         case SSBOType::TransmissionSurface:
-        case SSBOType::TextureLayer:
         case SSBOType::UserDefined:
             return true;
         default:
@@ -55,11 +49,9 @@ namespace hgl::graph::mtl
         switch (type)
         {
         case SSBOType::MeshDrawParams: return "MeshDrawParams";
-        case SSBOType::TextureLayer: return "TextureLayer";
         case SSBOType::MaterialPrivateDataIndex: return "MaterialPrivateDataIndex";
         case SSBOType::PBRSurface: return "PBRSurface";
         case SSBOType::EmissiveSurface: return "EmissiveSurface";
-        case SSBOType::TextureRectArraySurface: return "TextureRectArraySurface";
         case SSBOType::TransmissionSurface: return "TransmissionSurface";
         case SSBOType::LocalToWorldIndex: return "LocalToWorldIndex";
         case SSBOType::LocalToWorld: return "LocalToWorld";
@@ -72,13 +64,11 @@ namespace hgl::graph::mtl
     {
         switch (type)
         {
-        case SSBOType::TextureLayer:
         case SSBOType::MaterialPrivateDataIndex:
         case SSBOType::LocalToWorldIndex:
         case SSBOType::LocalToWorld:
         case SSBOType::PBRSurface:
         case SSBOType::EmissiveSurface:
-        case SSBOType::TextureRectArraySurface:
         case SSBOType::TransmissionSurface:
             return 1;
         default:
@@ -92,19 +82,14 @@ namespace hgl::graph::mtl
     {
         switch (type)
         {
-        case SSBOType::TextureLayer:
-            return 48;  // sizeof(TextureLayerRow)=tex_tail 40 + reserved 8
-                        //（与 MaterialDataRows.h 的 static_assert(sizeof(TextureLayerRow)==48) 配对）
         case SSBOType::MaterialPrivateDataIndex:
             return 0;  // dynamic: 单槽单列 uint32 per material
         case SSBOType::PBRSurface:
             return sizeof(float) * 8; // vec4 base_color + metallic + roughness + normal_scale + fresnel
         case SSBOType::EmissiveSurface:
             return sizeof(float) * 4;                    // vec4/uvec4 style payload
-        case SSBOType::TextureRectArraySurface:
-            return sizeof(uint32_t) * 4;                // uvec4 id
         case SSBOType::TransmissionSurface:
-            return sizeof(uint32_t);                     // packed uint payload
+            return sizeof(uint32_t) * 4;                // packed uint payload + alignment
         case SSBOType::LocalToWorldIndex:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:
@@ -168,8 +153,4 @@ namespace hgl::graph::mtl
         return SSBOAddress{ssbo_type, ssbo_id, material_private_data_slot};
     }
 
-    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const TextureSlot slot) noexcept
-    {
-        return SSBOAddress{ssbo_type, ssbo_id, static_cast<uint32_t>(slot)};
-    }
 }

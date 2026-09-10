@@ -8,7 +8,6 @@
 namespace hgl::graph::ssbo
 {
     constexpr const char EmissiveSurfaceMaterialSSBOGLSL[] = "vec4 color;";
-    constexpr const char TextureRectArraySurfaceMaterialSSBOGLSL[] = "uvec4 id;";
     constexpr const char PBRSurfaceMaterialSSBOGLSL[] = R"(
         vec4  base_color;
         float metallic;
@@ -16,18 +15,15 @@ namespace hgl::graph::ssbo
         float normal_scale;
         float fresnel;
     )";
-    constexpr const char TransmissionSurfaceMaterialSSBOGLSL[] = "uint TextColor;";
-    // TextureLayerRow 无 payload 字段（GLSL 侧仅 tex_tail，由发射器统一展开）
+    constexpr const char TransmissionSurfaceMaterialSSBOGLSL[] = "uint trans_color; uint reserved0[3];";
 
     inline const char *GetMaterialSSBOStructName(const mtl::SSBOType type) noexcept
     {
         switch (type)
         {
         case mtl::SSBOType::EmissiveSurface:         return "EmissiveSurfaceData";
-        case mtl::SSBOType::TextureRectArraySurface: return "TextureRectArraySurfaceData";
         case mtl::SSBOType::PBRSurface:              return "PBRSurfaceData";
         case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceData";
-        case mtl::SSBOType::TextureLayer:            return "TextureLayerData";
         default:                                     return nullptr;
         }
     }
@@ -39,19 +35,15 @@ namespace hgl::graph::ssbo
     template<typename T> struct MaterialRowTypeTraits;
     template<> struct MaterialRowTypeTraits<PBRSurfaceRow>              { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::PBRSurface; };
     template<> struct MaterialRowTypeTraits<EmissiveSurfaceRow>         { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::EmissiveSurface; };
-    template<> struct MaterialRowTypeTraits<TextureRectArraySurfaceRow> { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::TextureRectArraySurface; };
     template<> struct MaterialRowTypeTraits<TransmissionSurfaceRow>     { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::TransmissionSurface; };
-    template<> struct MaterialRowTypeTraits<TextureLayerRow>            { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::TextureLayer; };
 
     inline const char *GetMaterialSSBORowName(const mtl::SSBOType type) noexcept
     {
         switch (type)
         {
         case mtl::SSBOType::EmissiveSurface:         return "EmissiveSurfaceRow";
-        case mtl::SSBOType::TextureRectArraySurface: return "TextureRectArraySurfaceRow";
         case mtl::SSBOType::PBRSurface:              return "PBRSurfaceRow";
         case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceRow";
-        case mtl::SSBOType::TextureLayer:            return "TextureLayerRow";
         default:                                     return nullptr;
         }
     }
@@ -63,10 +55,8 @@ namespace hgl::graph::ssbo
         switch (type)
         {
         case mtl::SSBOType::EmissiveSurface:         return "EmissiveSurfaceBuffer";
-        case mtl::SSBOType::TextureRectArraySurface: return "TextureRectArraySurfaceBuffer";
         case mtl::SSBOType::PBRSurface:              return "PBRSurfaceBuffer";
         case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceBuffer";
-        case mtl::SSBOType::TextureLayer:            return "TextureLayerBuffer";
         default:                                     return nullptr;
         }
     }
@@ -76,26 +66,9 @@ namespace hgl::graph::ssbo
         switch (type)
         {
         case mtl::SSBOType::EmissiveSurface:     return EmissiveSurfaceMaterialSSBOGLSL;
-        case mtl::SSBOType::TextureRectArraySurface: return TextureRectArraySurfaceMaterialSSBOGLSL;
         case mtl::SSBOType::PBRSurface:              return PBRSurfaceMaterialSSBOGLSL;
         case mtl::SSBOType::TransmissionSurface:     return TransmissionSurfaceMaterialSSBOGLSL;
-        case mtl::SSBOType::TextureLayer:            return "";
         default:                                 return nullptr;
-        }
-    }
-
-    // Arena+BDA 路径：行结构内纹理句柄尾（tex_tail）的字节偏移。
-    // 以 C++ 行结构（MaterialDataRows.h）offsetof 为唯一真源。
-    inline uint32_t GetMaterialSSBORowTexTailOffset(const mtl::SSBOType type) noexcept
-    {
-        switch (type)
-        {
-        case mtl::SSBOType::PBRSurface:              return uint32_t(offsetof(PBRSurfaceRow,              tex_tail));
-        case mtl::SSBOType::EmissiveSurface:         return uint32_t(offsetof(EmissiveSurfaceRow,         tex_tail));
-        case mtl::SSBOType::TextureRectArraySurface: return uint32_t(offsetof(TextureRectArraySurfaceRow, tex_tail));
-        case mtl::SSBOType::TransmissionSurface:     return uint32_t(offsetof(TransmissionSurfaceRow,     tex_tail));
-        case mtl::SSBOType::TextureLayer:            return uint32_t(offsetof(TextureLayerRow,            tex_tail));
-        default:                                     return 0;
         }
     }
 

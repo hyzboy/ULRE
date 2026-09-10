@@ -424,9 +424,9 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
-            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
-            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
-            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
+            primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);
+            primitive_comp->SetMaterialTextureResource("normal", normal_texture, sampler);
+            primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource floor_authoring{};
             floor_authoring.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             floor_authoring.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
@@ -470,9 +470,9 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitiveAsset(&rm->asset);
-            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
-            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
-            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
+            primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);
+            primitive_comp->SetMaterialTextureResource("normal", normal_texture, sampler);
+            primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_authoring{};
             mesh_authoring.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             mesh_authoring.ssbo_id = material_data_ssbo_accessor->GetSSBOId();

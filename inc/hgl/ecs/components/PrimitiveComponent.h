@@ -60,10 +60,7 @@ namespace hgl::ecs
             hgl::graph::Sampler *sampler = nullptr;
             MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D;
             uint32_t array_layer = 0;
-            uint32_t direct_value = 0;
-            bool use_direct_value = false;
             bool required = false;
-            bool legacy_slot_authoring = false;
         };
 
         struct MaterialPrivateDataSlotAuthoringResource
@@ -180,12 +177,6 @@ namespace hgl::ecs
                                                   const hgl::graph::ShaderProgram *material_program = nullptr) const;
         bool HasMaterialRecipeOverride() const { return GetMaterialRecipeOverride() != nullptr; }
         bool HasAnyMaterialRecipeSource() const { return GetMaterialRecipeOverride() != nullptr || GetAssetMaterialRecipe() != nullptr; }
-        void SetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot,
-                                        hgl::graph::Texture *texture,
-                                        hgl::graph::Sampler *sampler,
-                                        MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
-                                        const std::string &resource_id = std::string(),
-                                        bool required = false);
         bool SetMaterialTextureResource(const std::string &name,
                                         hgl::graph::Texture *texture,
                                         hgl::graph::Sampler *sampler,
@@ -194,12 +185,6 @@ namespace hgl::ecs
                                         uint32_t array_layer = 0,
                                         bool required = false);
         bool SetMaterialTextureArrayLayer(const std::string &name, uint32_t array_layer);
-        bool SetMaterialTextureLayer(const std::string &name, uint32_t layer)
-        {
-            return SetMaterialTextureArrayLayer(name, layer);
-        }
-        void SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value);
-        const MaterialTextureAuthoringResource *GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const;
         const MaterialTextureAuthoringResource *GetMaterialTextureResource(const std::string &name) const;
         void SetMaterialPrivateDataSlotResource(const MaterialPrivateDataSlotAuthoringResource &resource);
         const MaterialPrivateDataSlotAuthoringResource *GetMaterialPrivateDataSlotResource(

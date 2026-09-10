@@ -148,8 +148,8 @@ private:
                    nullptr, sampler_manager, base_color_texture, normal_texture);
             return false;
         }
-        sphere_recipe.recipe_name = "PBRSpheres.LitTextureArray";
-        sphere_recipe.mtl_def_id = "LitTextureArray";
+        sphere_recipe.recipe_name = "PBRSpheres.Lit";
+        sphere_recipe.mtl_def_id = "Lit";
         sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
 
         sampler = sampler_manager->CreateSampler();

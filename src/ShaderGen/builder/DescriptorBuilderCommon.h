@@ -30,7 +30,7 @@ namespace hgl::graph::mtl::descriptor_builder_common
         v.push_back({
             set_type, stage_flags,
             name, struct_name, nullptr, semantic,
-            TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, ssbo_type,
+            DefaultMaterialPrivateDataSlot, ssbo_type,
             GetDescriptorSemanticLayer(semantic)
         });
     }

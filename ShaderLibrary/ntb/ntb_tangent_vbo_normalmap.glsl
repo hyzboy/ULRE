@@ -19,12 +19,19 @@ NTBSpace GetNTB(NTBInput ntb_input)
 {
     const SurfaceInput si = ntb_input.surface;
     NTBSpace ntb = BuildOrthoNTB(si.worldNormal);
-    const uint normalTexHandle =
-        MTL_TEX(ntb_input.dataIndex).tex_normal.x;
+    const uvec2 normalTexture =
+        MTL_TEX(ntb_input.dataIndex).tex_normal;
+    const uint normalTexHandle = normalTexture.x;
 
     if (normalTexHandle != 0u)
     {
-        vec3 nm = Sample2D(normalTexHandle, TrilinearSampler, si.uv0).xyz * 2.0 - 1.0;
+        vec3 nm =
+            Sample2DArray(
+                normalTexHandle,
+                TrilinearSampler,
+                si.uv0,
+                float(normalTexture.y)).xyz
+            * 2.0 - 1.0;
         nm.y = -nm.y; // GLSL/Vulkan Green Channel 翻转
         vec3 tangentNormal =
             normalize(vec3(nm.xy * ntb_input.normalScale, nm.z));

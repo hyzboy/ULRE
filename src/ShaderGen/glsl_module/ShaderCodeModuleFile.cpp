@@ -513,24 +513,6 @@ namespace hgl::graph::mtl
                     }
                     out_data.ssbo_requirements.Add(requirement);
                 }
-                else if (std::strcmp(token, "texture_layer") == 0)
-                {
-                    ShaderCodeModuleTextureLayerRequirement requirement;
-                    const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
-                    if (!next || !ParseTextureSlotName(token, requirement.slot))
-                        return ShaderCodeModuleParseResult::InvalidResource;
-                    next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseStageFlags(token, requirement.stage_flags))
-                        return ShaderCodeModuleParseResult::InvalidStage;
-
-                    while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
-                    {
-                        if (!ParseResourcePolicy(token, requirement.required,
-                                                  requirement.allow_fallback))
-                            return ShaderCodeModuleParseResult::InvalidResource;
-                    }
-                    out_data.texture_layer_requirements.Add(requirement);
-                }
                 else if (std::strcmp(token, "texture_reference") == 0)
                 {
                     ShaderCodeModuleTextureReferenceRequirement

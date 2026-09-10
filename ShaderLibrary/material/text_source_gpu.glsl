@@ -18,9 +18,9 @@
 #include "common/material_source_interface.glsl"
 #include "common/bindless_textures.glsl"
 
-uint GetTextAtlasHandle(const uint data_index)
+uvec2 GetTextAtlasReference(const uint data_index)
 {
-    return MTL_TEX(data_index).tex_base_color.x;
+    return MTL_TEX(data_index).tex_base_color;
 }
 
 #ifdef TEXT_SDF_ENABLED
@@ -85,11 +85,14 @@ void EvalTextStyleEffects(
     if ((st.flags & 1u) != 0u)
     {
         const vec2 off = unpackHalf2x16(st.shadow_uv_offset);
+        const uvec2 texture_reference =
+            GetTextAtlasReference(sourceInput.dataIndex);
         const float shadow_sdf =
-            Sample2D(
-                GetTextAtlasHandle(sourceInput.dataIndex),
+            Sample2DArray(
+                texture_reference.x,
                 TEXT_SAMPLER,
-                sourceInput.surface.uv0 - off).r * 2.0 - 1.0;
+                sourceInput.surface.uv0 - off,
+                float(texture_reference.y)).r * 2.0 - 1.0;
         // 阴影跟随加粗（同为字身边界外扩）
         // 扩大 smoothstep 范围（-2px 到 +2px）产生更宽的半透明过渡带
         const float shadow_sm = 2.0 * du;  // 2 像素过渡带宽
@@ -116,11 +119,14 @@ void EvalTextStyleEffects(
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
 {
     const vec4 textColor = sourceInput.surface.vertexColor;
+    const uvec2 texture_reference =
+        GetTextAtlasReference(sourceInput.dataIndex);
     const float rawSample =
-        Sample2D(
-            GetTextAtlasHandle(sourceInput.dataIndex),
+        Sample2DArray(
+            texture_reference.x,
             TEXT_SAMPLER,
-            sourceInput.surface.uv0).r;
+            sourceInput.surface.uv0,
+            float(texture_reference.y)).r;
 
     MaterialSourceOutput materialResult;
 
@@ -150,11 +156,14 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
 
 float EvalMaterialAlpha(MaterialSourceInput sourceInput)
 {
+    const uvec2 texture_reference =
+        GetTextAtlasReference(sourceInput.dataIndex);
     const float rawSample =
-        Sample2D(
-            GetTextAtlasHandle(sourceInput.dataIndex),
+        Sample2DArray(
+            texture_reference.x,
             TEXT_SAMPLER,
-            sourceInput.surface.uv0).r;
+            sourceInput.surface.uv0,
+            float(texture_reference.y)).r;
 
 #ifdef TEXT_SDF_ENABLED
     const float sdf = rawSample * 2.0 - 1.0;

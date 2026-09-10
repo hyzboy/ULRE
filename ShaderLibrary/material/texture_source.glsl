@@ -16,9 +16,13 @@
 
 vec4 SampleMaterialColor(MaterialSourceInput sourceInput)
 {
-    const uint handle =
-        MTL_TEX(sourceInput.dataIndex).tex_base_color.x;
-    return Sample2D(handle, TrilinearSampler, sourceInput.surface.uv0);
+    const uvec2 texture_reference =
+        MTL_TEX(sourceInput.dataIndex).tex_base_color;
+    return Sample2DArray(
+        texture_reference.x,
+        TrilinearSampler,
+        sourceInput.surface.uv0,
+        float(texture_reference.y));
 }
 
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)

@@ -35,11 +35,8 @@ namespace hgl::graph::mtl
                 && IsValidMaterialTextureName(binding.texture_name)
                 && binding.texture_layout_index
                     != InvalidMaterialRecipeBindingIndex
-                && binding.texture_slot >= TextureSlot::BEGIN_RANGE
-                && binding.texture_slot <= TextureSlot::END_RANGE
                 && IsValidTextureSource(binding.source)
-                && ((binding.source == BindingSource::Asset
-                  || binding.source == BindingSource::DirectValue)
+                && ((binding.source == BindingSource::Asset)
                     ? binding.recipe_binding_index
                         != InvalidMaterialRecipeBindingIndex
                     : binding.recipe_binding_index
@@ -78,10 +75,8 @@ namespace hgl::graph::mtl
               << binding.semantic
               << static_cast<const char *>(binding.texture_name)
               << binding.texture_layout_index
-              << binding.texture_slot
               << binding.recipe_binding_index
               << binding.array_layer
-              << binding.direct_value
               << binding.source
               << binding.required
               << binding.allow_fallback;
@@ -116,8 +111,6 @@ namespace hgl::graph::mtl
                 std::strcmp(lhs.texture_name, rhs.texture_name);
             if (name_compare != 0)
                 return name_compare < 0;
-            if (lhs.texture_slot != rhs.texture_slot)
-                return lhs.texture_slot < rhs.texture_slot;
             return lhs.recipe_binding_index < rhs.recipe_binding_index;
         }
 
@@ -144,10 +137,8 @@ namespace hgl::graph::mtl
             writer.WriteU16(static_cast<uint16>(binding.semantic));
             writer.WriteCString(binding.texture_name);
             writer.WriteU32(binding.texture_layout_index);
-            writer.WriteU16(static_cast<uint16>(binding.texture_slot));
             writer.WriteU32(binding.recipe_binding_index);
             writer.WriteU32(binding.array_layer);
-            writer.WriteU32(binding.direct_value);
             writer.WriteU8(static_cast<uint8>(binding.source));
             writer.WriteBool(binding.required);
             writer.WriteBool(binding.allow_fallback);
@@ -192,7 +183,6 @@ namespace hgl::graph::mtl
         switch (source)
         {
         case BindingSource::Asset: return "Asset";
-        case BindingSource::DirectValue: return "DirectValue";
         case BindingSource::Missing: return "Missing";
         case BindingSource::Omitted: return "Omitted";
         }
@@ -295,11 +285,9 @@ namespace hgl::graph::mtl
         h << static_cast<uint32>(recipe.textures.size());
         for (const auto &texture : recipe.textures)
         {
-            h << texture.slot_name
+            h << texture.texture_name
               << texture.resource_id;
             h << texture.array_layer
-              << texture.direct_value
-              << texture.use_direct_value
               << texture.required;
         }
 

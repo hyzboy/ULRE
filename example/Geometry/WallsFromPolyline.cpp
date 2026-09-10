@@ -108,7 +108,7 @@ public:
             transform->SetMovable(false);
 
             prim_comp->SetPrimitiveAsset(&wall_meshes[i]);
-            prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_color_texture, sampler);
+            prim_comp->SetMaterialTextureResource("base_color", base_color_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource wall_struct{};
             wall_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             wall_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();

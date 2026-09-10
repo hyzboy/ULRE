@@ -47,7 +47,6 @@ SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
 
 set(SSBO_STRUCT_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo/LitMaterialData.h
-    ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo/TextureSlot.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo/SSBOTypes.h)
 SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 

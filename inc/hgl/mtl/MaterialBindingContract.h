@@ -1,8 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
-#include <hgl/graph/ssbo/TextureSlot.h>
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/type/ValueArray.h>
 #include <cstring>
@@ -25,7 +24,6 @@ namespace hgl::graph::mtl
     enum class BindingSource : uint8
     {
         Asset = 0,
-        DirectValue,
         Missing,
         Omitted
     };
@@ -38,10 +36,8 @@ namespace hgl::graph::mtl
         DescriptorSemantic semantic = DescriptorSemantic::MaterialTexture;
         char texture_name[64] = {};
         uint32 texture_layout_index = InvalidMaterialRecipeBindingIndex;
-        TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32 recipe_binding_index = InvalidMaterialRecipeBindingIndex;
         uint32 array_layer = 0;
-        uint32 direct_value = 0;
         BindingSource source = BindingSource::Missing;
         bool required = false;
         bool allow_fallback = false;
@@ -57,10 +53,8 @@ namespace hgl::graph::mtl
             && lhs.semantic == rhs.semantic
             && std::strcmp(lhs.texture_name, rhs.texture_name) == 0
             && lhs.texture_layout_index == rhs.texture_layout_index
-            && lhs.texture_slot == rhs.texture_slot
             && lhs.recipe_binding_index == rhs.recipe_binding_index
             && lhs.array_layer == rhs.array_layer
-            && lhs.direct_value == rhs.direct_value
             && lhs.source == rhs.source
             && lhs.required == rhs.required
             && lhs.allow_fallback == rhs.allow_fallback;
@@ -137,7 +131,6 @@ namespace hgl::graph::mtl
     struct BindingBuildDiagnostic
     {
         BindingBuildError error = BindingBuildError::None;
-        TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32 material_private_data_slot = 0;
         SSBOType ssbo_type = SSBOType::UserDefined;
     };

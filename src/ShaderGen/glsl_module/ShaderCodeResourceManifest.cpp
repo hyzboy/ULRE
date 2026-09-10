@@ -65,32 +65,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool AddTextureLayer(
-            ShaderCodeResourceManifest &manifest,
-            const ShaderCodeModuleTextureLayerRequirement &incoming)
-        {
-            for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
-            {
-                auto &existing = manifest.texture_layers[i];
-                if (existing.slot != incoming.slot)
-                    continue;
-
-                existing.stage_flags |= incoming.stage_flags;
-                existing.required = existing.required || incoming.required;
-                existing.allow_fallback = existing.allow_fallback && incoming.allow_fallback;
-                return true;
-            }
-
-            if (manifest.texture_layer_count >= MaxShaderCodeResourceManifestTextureLayers)
-            {
-                manifest.error = ShaderCodeResourceManifestError::TextureLayerCapacityExceeded;
-                return false;
-            }
-
-            manifest.texture_layers[manifest.texture_layer_count++] = incoming;
-            return true;
-        }
-
         bool AddTextureReference(
             ShaderCodeResourceManifest &manifest,
             const ShaderCodeModuleTextureReferenceRequirement &incoming)
@@ -210,12 +184,6 @@ namespace hgl::graph::mtl
                     return false;
             }
 
-            for (uint32 i = 0; i < definition->texture_layer_requirement_count; ++i)
-            {
-                if (!AddTextureLayer(manifest, definition->texture_layer_requirements[i]))
-                    return false;
-            }
-
             for (uint32 i = 0;
                  i < definition->texture_reference_requirement_count;
                  ++i)
@@ -278,10 +246,6 @@ namespace hgl::graph::mtl
                   << ssbo.required
                   << ssbo.allow_fallback;
             }
-
-            h << manifest.texture_layer_count;
-            for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
-                h << manifest.texture_layers[i];
 
             h << manifest.texture_reference_count;
             for (uint32 i = 0; i < manifest.texture_reference_count; ++i)

@@ -3,7 +3,6 @@
 #include <hgl/mtl/ShaderStructureDump.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
-#include <hgl/graph/ssbo/TextureSlot.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <algorithm>
 #include <vector>

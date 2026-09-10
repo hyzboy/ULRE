@@ -26,5 +26,5 @@ varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color"]
 mode = "CharQuad"
 
 [resources]
-textures = [{ name = "base_color", sampler = "Sampler2D", required = true }]
+textures = [{ name = "base_color", sampler = "Sampler2DArray", required = true }]
 samplers = ["Nearest"]

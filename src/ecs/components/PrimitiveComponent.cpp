@@ -83,17 +83,6 @@ namespace hgl::ecs
             const std::string &name,
             const PrimitiveComponent::MaterialTextureAuthoringResource &resource)
         {
-            if (resource.use_direct_value)
-            {
-                return hgl::graph::mtl::UpsertRecipeTextureBinding(
-                    recipe,
-                    name,
-                    std::string(),
-                    resource.required,
-                    resource.direct_value,
-                    true);
-            }
-
             if (!resource.texture || !resource.sampler)
                 return true;
 
@@ -108,8 +97,6 @@ namespace hgl::ecs
                 name,
                 resource_id,
                 resource.required,
-                0,
-                false,
                 resource.array_layer);
         }
     }
@@ -299,8 +286,7 @@ namespace hgl::ecs
                     definition,
                     name)
                 : -1;
-            if (!resource.legacy_slot_authoring
-             && (!has_definition || declaration_index < 0))
+            if (!has_definition || declaration_index < 0)
                 return false;
 
             if (declaration_index >= 0)
@@ -314,10 +300,8 @@ namespace hgl::ecs
                 const bool authoring_uses_array =
                     resource.kind
                     == MaterialTextureResourceKind::Texture2DArray;
-                if (!resource.use_direct_value
-                 && declaration_uses_array != authoring_uses_array)
-                    return false;
-                if (!declaration_uses_array && resource.array_layer != 0)
+                if ((!declaration_uses_array && authoring_uses_array)
+                 || (!authoring_uses_array && resource.array_layer != 0))
                     return false;
             }
         }
@@ -339,7 +323,7 @@ namespace hgl::ecs
                 bool has_recipe_binding = false;
                 for (const auto &binding : out_recipe.textures)
                 {
-                    if (binding.slot_name == declaration.name)
+                    if (binding.texture_name == declaration.name)
                     {
                         has_recipe_binding = true;
                         if (!hgl::graph::mtl::IsMaterialTextureArraySampler(
@@ -357,40 +341,6 @@ namespace hgl::ecs
                         declaration.required))
                     return false;
             }
-        }
-
-        // Compatibility bridge: legacy slot callers remain ordered by
-        // TextureSlot while all authoring storage is name-keyed.
-        for (size_t i = 0;
-             i < static_cast<size_t>(
-                    hgl::graph::mtl::TextureSlot::RANGE_SIZE);
-             ++i)
-        {
-            const auto slot =
-                static_cast<hgl::graph::mtl::TextureSlot>(i);
-            const std::string name =
-                hgl::graph::mtl::GetTextureSlotName(slot);
-            const hgl::AnsiString key(name.c_str());
-            const auto *resource =
-                namedMaterialTextureResources.GetValuePointer(key);
-            if (!resource || !resource->legacy_slot_authoring)
-                continue;
-
-            const bool belongs_to_definition =
-                has_definition
-             && hgl::graph::mtl::FindMaterialTextureDeclaration(
-                    definition,
-                    name) >= 0;
-            if (!belongs_to_definition
-             && has_definition
-             && !definition.texture_declarations.empty())
-                continue;
-
-            if (!AppendTextureBinding(
-                    out_recipe,
-                    name,
-                    *resource))
-                return false;
         }
 
         for (const auto &resource : materialPrivateDataSlotResources)
@@ -440,39 +390,6 @@ namespace hgl::ecs
         // 下游（acquire / 管线创建）不再重复。
         hgl::graph::mtl::NormalizeRecipe(out_recipe);
         return true;
-    }
-
-    void PrimitiveComponent::SetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot,
-                                                        hgl::graph::Texture *texture,
-                                                        hgl::graph::Sampler *sampler,
-                                                        MaterialTextureResourceKind kind,
-                                                        const std::string &resource_id,
-                                                        bool required)
-    {
-        if (!texture || !sampler)
-        {
-            namedMaterialTextureResources.DeleteByKey(
-                hgl::AnsiString(
-                    hgl::graph::mtl::GetTextureSlotName(slot)));
-            ++material_authored_generation;
-            return;
-        }
-
-        MaterialTextureAuthoringResource resource{};
-        resource.texture = texture;
-        resource.sampler = sampler;
-        resource.kind = kind;
-        resource.array_layer = 0;
-        resource.direct_value = 0;
-        resource.use_direct_value = false;
-        resource.required = required;
-        resource.legacy_slot_authoring = true;
-        resource.resource_id = resource_id.empty() ? BuildTextureResourceId(texture) : resource_id;
-        if (UpsertMaterialTextureAuthoringResource(
-                namedMaterialTextureResources,
-                hgl::graph::mtl::GetTextureSlotName(slot),
-                resource))
-            ++material_authored_generation;
     }
 
     bool PrimitiveComponent::SetMaterialTextureResource(
@@ -528,8 +445,8 @@ namespace hgl::ecs
                 declaration.sampler_type);
         const bool authoring_uses_array =
             kind == MaterialTextureResourceKind::Texture2DArray;
-        if (declaration_uses_array != authoring_uses_array
-         || (!declaration_uses_array && array_layer != 0))
+        if ((!declaration_uses_array && authoring_uses_array)
+         || (!authoring_uses_array && array_layer != 0))
         {
             GLogError(
                 "[PrimitiveComponent] Texture authoring rejected incompatible texture type/layer texture=%s layer=%u",
@@ -545,10 +462,7 @@ namespace hgl::ecs
         resource.sampler = sampler;
         resource.kind = kind;
         resource.array_layer = array_layer;
-        resource.direct_value = 0;
-        resource.use_direct_value = false;
         resource.required = required;
-        resource.legacy_slot_authoring = false;
         if (!UpsertMaterialTextureAuthoringResource(
                 namedMaterialTextureResources,
                 name,
@@ -607,25 +521,6 @@ namespace hgl::ecs
         return false;
     }
 
-    void PrimitiveComponent::SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value)
-    {
-        MaterialTextureAuthoringResource resource{};
-        resource.direct_value = value;
-        resource.use_direct_value = true;
-        resource.legacy_slot_authoring = true;
-        if (UpsertMaterialTextureAuthoringResource(
-                namedMaterialTextureResources,
-                hgl::graph::mtl::GetTextureSlotName(slot),
-                resource))
-            ++material_authored_generation;
-    }
-
-    const PrimitiveComponent::MaterialTextureAuthoringResource *PrimitiveComponent::GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const
-    {
-        return GetMaterialTextureResource(
-            hgl::graph::mtl::GetTextureSlotName(slot));
-    }
-
     const PrimitiveComponent::MaterialTextureAuthoringResource *
         PrimitiveComponent::GetMaterialTextureResource(
             const std::string &name) const
@@ -636,8 +531,7 @@ namespace hgl::ecs
         const hgl::AnsiString key(name.c_str());
         if (const auto *entry = namedMaterialTextureResources.GetValuePointer(key))
         {
-            if (entry->use_direct_value
-             || (entry->texture && entry->sampler))
+            if (entry->texture && entry->sampler)
                 return entry;
         }
         return nullptr;

@@ -8,7 +8,6 @@ namespace hgl::graph::mtl
     class ShaderCodeModuleRegistry;
     constexpr uint32 MaxShaderCodeResourceManifestCodeModules = 64u;
     constexpr uint32 MaxShaderCodeResourceManifestSSBOs = 64u;
-    constexpr uint32 MaxShaderCodeResourceManifestTextureLayers = 16u;
 
     // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
 #define HGL_MODULE_RESOURCE_MANIFEST_ERROR_LIST \
@@ -18,7 +17,6 @@ namespace hgl::graph::mtl
     HGL_ERROR(CodeModuleCycle) \
     HGL_ERROR(CodeModuleCapacityExceeded) \
     HGL_ERROR(SSBOCapacityExceeded) \
-    HGL_ERROR(TextureLayerCapacityExceeded) \
     HGL_ERROR(ResourceConflict)
 
     enum class ShaderCodeResourceManifestError : uint8
@@ -37,9 +35,6 @@ namespace hgl::graph::mtl
 
         ShaderCodeModuleSSBORequirement ssbos[MaxShaderCodeResourceManifestSSBOs]{};
         uint32 ssbo_count = 0;
-
-        ShaderCodeModuleTextureLayerRequirement texture_layers[MaxShaderCodeResourceManifestTextureLayers]{};
-        uint32 texture_layer_count = 0;
 
         ValueArray<ShaderCodeModuleTextureReferenceRequirement>
             texture_references;

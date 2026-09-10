@@ -18,7 +18,6 @@ namespace hgl::graph::mtl
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         DescriptorSetType set_type = DescriptorSetType::Unknown;
-        TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
@@ -140,7 +139,6 @@ namespace hgl::graph::mtl
             req.semantic = entry.semantic;
             req.semantic_layer = NormalizeSemanticLayer(entry);
             req.set_type = entry.set_type;
-            req.texture_slot = entry.texture_slot;
             req.material_private_data_slot = entry.material_private_data_slot;
             req.ssbo_type = entry.ssbo_type;
             req.ssbo_id = entry.ssbo_id;
@@ -165,12 +163,6 @@ namespace hgl::graph::mtl
                 const char *default_struct = GetDefaultStructNameBySemantic(req.semantic);
                 if (default_struct)
                     req.struct_name = default_struct;
-            }
-
-            if (req.semantic == DescriptorSemantic::MaterialTexture
-             || req.semantic == DescriptorSemantic::MaterialSampler)
-            {
-                req.texture_slot = entry.texture_slot;
             }
 
             if (req.semantic == DescriptorSemantic::MaterialPrivateData)
@@ -212,7 +204,6 @@ namespace hgl::graph::mtl
                 h << req.semantic
                   << req.semantic_layer
                   << req.set_type
-                  << req.texture_slot
                   << req.material_private_data_slot
                   << req.ssbo_type;
 
@@ -257,7 +248,6 @@ namespace hgl::graph::mtl
               << req.semantic
               << req.semantic_layer
               << req.set_type
-              << req.texture_slot
               << req.material_private_data_slot
               << req.ssbo_type
               << req.ssbo_id
@@ -378,7 +368,6 @@ namespace hgl::graph::mtl
                     lhs.logical_resource_id == rhs.logical_resource_id;
                 const bool same_semantic_key =
                     lhs.semantic == rhs.semantic
-                 && lhs.texture_slot == rhs.texture_slot
                  && lhs.material_private_data_slot == rhs.material_private_data_slot;
 
                 if (!same_name
@@ -393,7 +382,6 @@ namespace hgl::graph::mtl
                  && lhs.semantic == rhs.semantic
                  && lhs.semantic_layer == rhs.semantic_layer
                  && lhs.set_type == rhs.set_type
-                 && lhs.texture_slot == rhs.texture_slot
                  && lhs.material_private_data_slot == rhs.material_private_data_slot
                  && lhs.ssbo_type == rhs.ssbo_type
                  && lhs.ssbo_id == rhs.ssbo_id

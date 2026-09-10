@@ -27,7 +27,6 @@ namespace hgl::graph::mtl
         InterStageSemanticMask required_semantics = 0;
         bool requires_material_data = false;
         bool requires_texture = false;
-        TextureSlot texture_slot = TextureSlot::OpacityMask;
     };
 
     bool BuildMaterialCoverageContract(

@@ -33,7 +33,6 @@ namespace hgl::graph::mtl
             h << entry.semantic
               << entry.semantic_layer
               << entry.set_type
-              << entry.texture_slot
               << entry.material_private_data_slot
               << entry.ssbo_type;
             return h;
@@ -174,8 +173,6 @@ namespace hgl::graph::mtl
              || entry.set_type == DescriptorSetType::Unknown
              || entry.set_type < DescriptorSetType::Scene
              || entry.set_type > DescriptorSetType::Bindless // Bindless 为最后一个集合类型（Vertex 集已退场）
-             || entry.texture_slot < TextureSlot::BEGIN_RANGE
-             || entry.texture_slot > TextureSlot::END_RANGE
              || entry.ssbo_type < SSBOType::BEGIN_RANGE
              || entry.ssbo_type > SSBOType::END_RANGE
              || entry.array_count == 0
@@ -213,7 +210,6 @@ namespace hgl::graph::mtl
             req.semantic = entry.semantic;
             req.semantic_layer = entry.semantic_layer;
             req.set_type = entry.set_type;
-            req.texture_slot = entry.texture_slot;
             req.material_private_data_slot = entry.material_private_data_slot;
             req.ssbo_type = entry.ssbo_type;
             req.ssbo_id = entry.ssbo_id;
@@ -293,7 +289,6 @@ namespace hgl::graph::mtl
                            << entry->semantic
                            << entry->semantic_layer
                            << entry->set_type
-                           << entry->texture_slot
                            << entry->ssbo_type
                            << entry->material_private_data_slot
                            << entry->stage_flags

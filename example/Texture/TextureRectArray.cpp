@@ -122,8 +122,8 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        rect_recipe.recipe_name = "TextureRectArray.UnlitTextureArray";
-        rect_recipe.mtl_def_id = "UnlitTextureArray";
+        rect_recipe.recipe_name = "TextureRectArray.UnlitTexture";
+        rect_recipe.mtl_def_id = "UnlitTexture";
         rect_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
 

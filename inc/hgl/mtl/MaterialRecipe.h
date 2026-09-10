@@ -22,16 +22,11 @@ namespace hgl::graph::mtl
 {
     constexpr const char DefaultMaterialPrivateDataSlotName[] = "mtl_private_data";
 
-    // 逻辑纹理槽位（与具体 descriptor set/binding 解耦）。
-    // Resolve 阶段会把这些语义槽映射到 bindless handle + 运行时索引。
-    // SSBO/slot/binding 基础类型已迁移到 <hgl/graph/ssbo/SSBOTypes.h>
-    // Recipe 中的纹理绑定声明（纯输入，不包含任何运行时句柄）。
+    // Recipe 中按 material.toml 名称声明的纹理绑定（纯输入，不包含任何运行时句柄）。
     struct RecipeTextureBinding
     {
-        std::string slot_name;                    // 目标语义槽名（snake_case，如 "base_color"）
+        std::string texture_name;                 // TOML/GLSL 纹理名（snake_case，如 "base_color"）
         std::string resource_id;                   // 资源标识（路径/资产ID/逻辑名）
-        uint32_t direct_value = 0;                // 直接写入 TextureLayerRow 的原始值（例如 array layer）
-        bool use_direct_value = false;            // true 时忽略 resource_id，直接使用 direct_value
         bool required = false;                     // true 时缺失应触发显式错误
         uint32_t array_layer = 0;                 // Texture2DArray layer; non-array must be zero.
     };
@@ -693,37 +688,31 @@ namespace hgl::graph::mtl
     }
 
     // 纹理绑定 upsert（与 UpsertRecipeSSBOAssetBinding 对称）：
-    // slot_name 已存在则原位更新，否则追加。
+    // texture_name 已存在则原位更新，否则追加。
     inline bool UpsertRecipeTextureBinding(MaterialRecipe &recipe,
-                                           const std::string &slot_name,
+                                           const std::string &texture_name,
                                            const std::string &resource_id,
                                            const bool required,
-                                           const uint32_t direct_value = 0,
-                                           const bool use_direct_value = false,
                                            const uint32_t array_layer = 0)
     {
-        if (slot_name.empty())
+        if (texture_name.empty())
             return false;
 
         for (auto &binding : recipe.textures)
         {
-            if (binding.slot_name != slot_name)
+            if (binding.texture_name != texture_name)
                 continue;
 
             binding.resource_id = resource_id;
             binding.array_layer = array_layer;
-            binding.direct_value = direct_value;
-            binding.use_direct_value = use_direct_value;
             binding.required = required;
             return true;
         }
 
         RecipeTextureBinding binding{};
-        binding.slot_name = slot_name;
+        binding.texture_name = texture_name;
         binding.resource_id = resource_id;
         binding.array_layer = array_layer;
-        binding.direct_value = direct_value;
-        binding.use_direct_value = use_direct_value;
         binding.required = required;
         recipe.textures.emplace_back(std::move(binding));
         return true;
@@ -760,11 +749,9 @@ namespace hgl::graph::mtl
         h << texture_count;
         for (const auto &texture : recipe.textures)
         {
-            h << texture.slot_name
+            h << texture.texture_name
               << texture.resource_id;
             h << texture.array_layer
-              << texture.direct_value
-              << texture.use_direct_value
               << texture.required;
         }
 

@@ -15,7 +15,6 @@ namespace hgl::graph::mtl
         const char *        struct_name;
         const char *        glsl_type;
         DescriptorSemantic  semantic = DescriptorSemantic::Unknown;
-        TextureSlot         texture_slot = TextureSlot::BaseColor;
         uint32_t            material_private_data_slot = DefaultMaterialPrivateDataSlot;
         SSBOType            ssbo_type = SSBOType::UserDefined;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;

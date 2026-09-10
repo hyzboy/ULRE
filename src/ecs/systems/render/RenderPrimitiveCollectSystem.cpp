@@ -130,11 +130,11 @@ namespace hgl::ecs
                         != graph::mtl::BindingSource::Missing)
                     continue;
                 GLogWarning(
-                    "[MaterialBinding][MissingTexture] view_index=%d logical=%llu slot=%u source=%s required=%d allow_fallback=%d recipe_index=%u asset_hash=%llu metadata_hash=%llu direct=%u",
+                    "[MaterialBinding][MissingTexture] view_index=%d logical=%llu name=%s source=%s required=%d allow_fallback=%d recipe_index=%u asset_hash=%llu metadata_hash=%llu",
                     i,
                     static_cast<unsigned long long>(
                         binding.logical_resource_id),
-                    static_cast<uint32_t>(binding.texture_slot),
+                    binding.texture_name,
                     graph::mtl::GetBindingSourceName(
                         binding.source),
                     binding.required ? 1 : 0,
@@ -143,8 +143,7 @@ namespace hgl::ecs
                     static_cast<unsigned long long>(
                         binding.asset_identity_hash),
                     static_cast<unsigned long long>(
-                        binding.asset_metadata_hash),
-                    binding.direct_value);
+                        binding.asset_metadata_hash));
             }
             for (int i = 0; i < view.data.GetCount(); ++i)
             {
@@ -178,12 +177,11 @@ namespace hgl::ecs
             {
                 const auto &binding = recipe.textures[i];
                 GLogWarning(
-                    "[MaterialBinding][RecipeTexture] index=%zu slot=%s resource=%s direct=%d direct_value=%u required=%d",
+                    "[MaterialBinding][RecipeTexture] index=%zu name=%s resource=%s layer=%u required=%d",
                     i,
-                    binding.slot_name.c_str(),
+                    binding.texture_name.c_str(),
                     binding.resource_id.c_str(),
-                    binding.use_direct_value ? 1 : 0,
-                    binding.direct_value,
+                    binding.array_layer,
                     binding.required ? 1 : 0);
             }
             for (size_t i = 0; i < recipe.ssbo_assets.size(); ++i)
@@ -217,7 +215,7 @@ namespace hgl::ecs
                             MaterialPrivateData)
                     continue;
                 GLogWarning(
-                    "[MaterialBinding][Layout] index=%zu name=%s semantic=%s layer=%s required=%d allow_fallback=%d texture_slot=%u material_private_data_slot=%u type=%s(%u) ssbo_id=%u",
+                    "[MaterialBinding][Layout] index=%zu name=%s semantic=%s layer=%s required=%d allow_fallback=%d material_private_data_slot=%u type=%s(%u) ssbo_id=%u",
                     i,
                     requirement.name.empty() ? "<unnamed>" : requirement.name.c_str(),
                     graph::mtl::GetDescriptorSemanticName(
@@ -226,7 +224,6 @@ namespace hgl::ecs
                         requirement.semantic_layer),
                     requirement.required ? 1 : 0,
                     requirement.allow_fallback ? 1 : 0,
-                    static_cast<uint32_t>(requirement.texture_slot),
                     requirement.material_private_data_slot,
                     graph::mtl::GetSSBOTypeName(requirement.ssbo_type),
                     static_cast<uint32_t>(requirement.ssbo_type),
@@ -284,8 +281,7 @@ namespace hgl::ecs
                     const graph::mtl::RecipeTextureBinding
                         &candidate = active_recipe.textures[
                             binding.recipe_binding_index];
-                    if (candidate.slot_name == binding.texture_name
-                     && !candidate.use_direct_value
+                    if (candidate.texture_name == binding.texture_name
                      && graph::mtl::
                             GetResolvedTextureAssetIdentityHash(
                                 candidate.resource_id.data(),
@@ -299,12 +295,8 @@ namespace hgl::ecs
                 const auto *resource =
                     primitive_comp->GetMaterialTextureResource(
                         binding.texture_name);
-                if (!resource)
-                    resource = primitive_comp->GetMaterialTextureResource(
-                        binding.texture_slot);
                 if (!recipe_binding
                  || !resource
-                 || resource->use_direct_value
                  || !bindless_mgr)
                 {
                     GLogError(
@@ -1041,7 +1033,7 @@ namespace hgl::ecs
                 const graph::mtl::RecipeTextureBinding *recipe_binding = nullptr;
                 for (const auto &candidate : material_binding_recipe.textures)
                 {
-                    if (candidate.slot_name == declaration.name)
+                    if (candidate.texture_name == declaration.name)
                     {
                         recipe_binding = &candidate;
                         break;
@@ -1074,13 +1066,7 @@ namespace hgl::ecs
                 }
 
                 uint32_t handle = 0;
-                if (recipe_binding->use_direct_value)
-                {
-                    // Legacy bridge only. New named authoring always uses a
-                    // resource and the independent reference row.
-                    handle = recipe_binding->direct_value;
-                }
-                else if (!recipe_binding->resource_id.empty())
+                if (!recipe_binding->resource_id.empty())
                 {
                     handle = rdbs->GetBindlessHandle(
                         AnsiString(recipe_binding->resource_id.c_str()));
@@ -1091,7 +1077,6 @@ namespace hgl::ecs
                             primitive_comp->GetMaterialTextureResource(
                                 declaration.name);
                         if (authoring
-                         && !authoring->use_direct_value
                          && authoring->texture)
                         {
                             const std::string fallback_id =
@@ -1256,95 +1241,6 @@ namespace hgl::ecs
             material_comp->material_texture_row_gpu = 0;
             material_comp->material_texture_zero_row_gpu = 0;
         }
-
-        // 纹理句柄行（tex_tail 镜像源）：从绑定 IR 收集本图元的全部 bindless 句柄。
-        uint32_t row_data[static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE)] = {};
-
-        for (const auto &texture_binding : material_binding_recipe.textures)
-        {
-            graph::mtl::TextureSlot slot_enum;
-            if (!graph::mtl::ParseTextureSlotName(texture_binding.slot_name, slot_enum))
-                continue;
-            const uint32_t slot = static_cast<uint32_t>(slot_enum);
-
-            uint32_t handle = 0;
-            if (texture_binding.use_direct_value)
-            {
-                handle = texture_binding.direct_value;
-            }
-            else
-            {
-                handle = rdbs->GetBindlessHandle(
-                    AnsiString(texture_binding.resource_id.c_str()));
-
-                if (handle == 0)
-                {
-                    // The recipe's resource id may be empty; fall back to the
-                    // authored resource id, or the texture-derived id used at
-                    // RegisterTexture2D(Array)Resource time.
-                    if (const auto *authoring =
-                            primitive_comp->GetMaterialTextureResource(
-                                texture_binding.slot_name))
-                    {
-                        if (!authoring->use_direct_value && authoring->texture)
-                        {
-                            const std::string fallback_id =
-                                authoring->resource_id.empty()
-                                    ? BuildTextureResourceId(authoring->texture)
-                                    : authoring->resource_id;
-                            handle = rdbs->GetBindlessHandle(AnsiString(fallback_id.c_str()));
-                        }
-                    }
-                    if (handle == 0)
-                    {
-                        if (const auto *authoring =
-                                primitive_comp->GetMaterialTextureResource(
-                                    slot_enum))
-                        {
-                            if (!authoring->use_direct_value
-                             && authoring->texture)
-                            {
-                                const std::string fallback_id =
-                                    authoring->resource_id.empty()
-                                        ? BuildTextureResourceId(
-                                            authoring->texture)
-                                        : authoring->resource_id;
-                                handle = rdbs->GetBindlessHandle(
-                                    AnsiString(fallback_id.c_str()));
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (handle == 0 && !texture_binding.use_direct_value)
-            {
-                GLogWarning("[RenderPrimitiveCollectSystem] materialize: bindless handle missing for %s slot=%u resource=%s",
-                            GetPrimitiveOwnerName(primitive_comp),
-                            slot,
-                            texture_binding.resource_id.empty() ? "<unnamed>" : texture_binding.resource_id.c_str());
-            }
-
-            if (slot < static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE))
-                row_data[slot] = handle;
-        }
-
-        // 句柄行镜像写入实例数据行的 tex_tail（CPU 映射基址 + 行偏移）。
-        // 无数据槽材质的句柄通道仍走旧域表写入（下方保留）。
-        if (material_comp->material_row_cpu
-         && !material_binding_recipe.ssbo_assets.empty())
-        {
-            const graph::mtl::SSBOType row_type =
-                material_binding_recipe.ssbo_assets.front().ssbo_type;
-            const uint32_t tail_offset =
-                graph::ssbo::GetMaterialSSBORowTexTailOffset(row_type);
-
-            memcpy(static_cast<uint8_t *>(material_comp->material_row_cpu) + tail_offset,
-                   row_data, sizeof(row_data));
-        }
-
-        // Arena+BDA：句柄行写入实例数据行的 tex_tail（上方镜像写）。
-        // 旧 TextureLayer 域表写入已随 Material 集退场删除。
 
         material_comp->runtime_dirty = false;
         material_comp->valid = false;

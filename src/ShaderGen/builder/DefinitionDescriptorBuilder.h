@@ -16,7 +16,6 @@ struct BuildDescriptorOptions
 {
     uint32_t sky_stage_flags = uint32_t(hgl::graph::kMeshFragment);
     uint32_t color_palette_stage_flags = uint32_t(hgl::graph::kMeshFragment);
-    uint32_t material_texture_layer_table_stage_flags = uint32_t(hgl::graph::kMeshFragment);
 };
 
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
