@@ -342,6 +342,20 @@ namespace hgl::graph::mtl
                           definition.definition_name.c_str());
                 return false;
             }
+            const char *invalid_texture_reference = nullptr;
+            if (!ValidateShaderCodeResourceManifestTextureReferences(
+                    plan.manifest,
+                    plan.manifest_definition,
+                    &invalid_texture_reference))
+            {
+                GLogError(
+                    "[ShaderGen] Provider texture reference is not declared by material: material=%s texture=%s",
+                    definition.definition_name.c_str(),
+                    invalid_texture_reference
+                        ? invalid_texture_reference
+                        : "<invalid>");
+                return false;
+            }
             // 顶点需求真源统一：描述符与模块 include 必须来自同一份「变体有效 definition」。
             // plan.vertex_definition 已在 Phase 2 按 effective_vertex_varying 裁剪过
             // vertex_semantic_requirements（depth 变体去掉 UV/NTB 等）——原先此处用原始

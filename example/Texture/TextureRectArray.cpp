@@ -8,8 +8,6 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
-#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/math/Vector.h>
 
@@ -81,7 +79,6 @@ private:
     Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
-    graph::SSBOArrayAccessor<graph::ssbo::TextureRectArraySurfaceRow> * mtl_data_ssbo_accessor = nullptr;
 
     struct
     {
@@ -123,29 +120,12 @@ private:
         if (!sampler_manager)
             return false;
 
-        auto *domain_manager = GetManager<SSBOBufferRegistry>();
-        if (!domain_manager)
-            return false;
-
         sampler=sampler_manager->CreateSampler();
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::TextureRectArraySurfaceRow>(
-            "TextureRectArray:MaterialData",
-            TexCount);
-        if (!mtl_data_ssbo_accessor)
-            return false;
-
-        for (uint32_t i = 0; i < TexCount; ++i)
-            (*mtl_data_ssbo_accessor)[i].id[0] = i;
-        mtl_data_ssbo_accessor->Commit();
-
-        rect_recipe.recipe_name = "TextureRectArray.Texture2DArray";
-        rect_recipe.mtl_def_id = "Texture2DArray";
+        rect_recipe.recipe_name = "TextureRectArray.UnlitTextureArray";
+        rect_recipe.mtl_def_id = "UnlitTextureArray";
         rect_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
-        graph::mtl::UpsertRecipeSSBOAssetBinding(rect_recipe,
-                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
 
         return(true);
     }
@@ -195,17 +175,15 @@ private:
             transform->SetMovable(false);
 
             primitive->SetPrimitiveAsset(&rect_asset);
-            primitive->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
-                                                  texture,
-                                                  sampler,
-                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource rect_struct{};
-            rect_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            rect_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            rect_struct.data_index = i;
-            rect_struct.use_data_index = true;
-            rect_struct.shared_across_instances = false;
-            primitive->SetMaterialPrivateDataSlotResource(rect_struct);
+            if (!primitive->SetMaterialTextureResource(
+                    "base_color",
+                    texture,
+                    sampler,
+                    PrimitiveComponent::MaterialTextureResourceKind::
+                        Texture2DArray,
+                    "",
+                    i))
+                return false;
             primitive->SetVisible(true);
         }
 
@@ -215,10 +193,6 @@ private:
 public:
     TestApp() = default;
     explicit TestApp(std::shared_ptr<ecs::ECSContext> ctx) : WorkObject(std::move(ctx)) {}
-    ~TestApp()
-    {
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
-    }
     bool Init() override
     {
         if(!InitTexture())

@@ -5,7 +5,7 @@
 // @ulre slot ntb_provider
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
-// @ulre texture_layer normal Fragment optional fallback
+// @ulre texture_reference normal Fragment optional fallback
 // @ulre end
 // NTB Derivative Normal Map — 基于 dFdx / dFdy 屏幕空间偏导推导切线空间并解算法线贴图
 #ifndef NTB_DERIVATIVE_NORMALMAP_GLSL
@@ -20,7 +20,8 @@ NTBSpace GetNTB(NTBInput ntb_input)
     const SurfaceInput si = ntb_input.surface;
     NTBSpace ntb;
     ntb.N = normalize(si.worldNormal);
-    const uint normalTexHandle = MTL_ROW(ntb_input.dataIndex).tex_normal;
+    const uint normalTexHandle =
+        MTL_TEX(ntb_input.dataIndex).tex_normal.x;
 
     if (normalTexHandle != 0u)
     {

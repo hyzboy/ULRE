@@ -1,6 +1,6 @@
 schema = 3
-id = "UnlitTexture"
-name = "UnlitTexture"
+id = "UnlitTextureArray"
+name = "UnlitTextureArray"
 source = "file"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
@@ -13,12 +13,12 @@ scale = "World"
 projection = "LocalToWorldOnly"
 
 [fragment]
-material_source_module = "material/texture_source.glsl"
+material_source_module = "material/unlit_texture_array_source.glsl"
 
 [vertex]
 requirements = ["Position", "UV0"]
 varyings = ["emit_data_index_id", "emit_uv0"]
 
 [resources]
-textures = [{ name = "base_color", sampler = "Sampler2D", required = true }]
+textures = [{ name = "base_color", sampler = "Sampler2DArray", required = true }]
 samplers = ["Trilinear"]

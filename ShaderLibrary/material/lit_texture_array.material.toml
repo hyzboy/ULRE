@@ -1,4 +1,4 @@
-schema = 2
+schema = 3
 id = "LitTextureArray"
 name = "LitTextureArray"
 source = "file"
@@ -22,4 +22,12 @@ varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_u
 
 [resources]
 ubos = ["CameraInfo", "SkyInfo"]
+textures = [
+    { name = "base_color", sampler = "Sampler2DArray", required = false },
+    { name = "roughness", sampler = "Sampler2DArray", required = false },
+    { name = "metallic", sampler = "Sampler2DArray", required = false },
+    { name = "occlusion", sampler = "Sampler2DArray", required = false },
+    { name = "opacity_mask", sampler = "Sampler2DArray", required = false },
+    { name = "normal", sampler = "Sampler2DArray", required = false }
+]
 samplers = ["Trilinear", "Linear"]

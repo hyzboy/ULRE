@@ -62,7 +62,10 @@ namespace hgl::graph::mtl
         ValueArray<ShaderCodeModuleSemantic> semantic_provides;
         ValueArray<ShaderCodeModuleSSBORequirement> ssbo_requirements;
         ValueArray<ShaderCodeModuleTextureLayerRequirement> texture_layer_requirements;
+        ValueArray<ShaderCodeModuleTextureReferenceRequirement>
+            texture_reference_requirements;
         ManagedArray<AnsiString> ssbo_name_storage;
+        ManagedArray<AnsiString> texture_reference_name_storage;
 
         ShaderCodeModuleKind kind = ShaderCodeModuleKind::Shared;
         int32 priority = 0;
@@ -85,7 +88,9 @@ namespace hgl::graph::mtl
      * @param content_size Byte count of content (excluding trailing NUL).
      * @param out_data     Receives parsed name/kind/priority/flags,
      *                     semantic/resource requirements, including
-     *                     `texture_layer <slot> <stage> [policy]`, and `uses` list.
+     *                     `texture_layer <slot> <stage> [policy]`,
+     *                     `texture_reference <name> <stage> [policy]`, and
+     *                     `uses` list.
      *                     glsl_code is NOT assigned here; the caller owns the
      *                     content and should copy it into out_data.glsl_code.
      */

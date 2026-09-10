@@ -3,6 +3,7 @@
 #include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/vk/MirroredStructArray.h>
 #include<cstdint>
 #include<unordered_map>
@@ -45,8 +46,10 @@ namespace hgl
                 graph::TileFont* tile_font = nullptr;
                 graph::ShaderProgram* material = nullptr;
                 graph::Pipeline* pipeline = nullptr;
-                graph::DeviceBuffer* texture_layer_buffer = nullptr;
-                graph::DeviceBuffer* data_index_row_buffer = nullptr;
+                graph::MaterialTextureConfigurationAllocation
+                    texture_configuration;
+                graph::DeviceBuffer* material_instance_addresses_buffer =
+                    nullptr;
                 graph::DeviceBuffer* mesh_draw_params = nullptr;    ///<mesh per-draw 参数表（row 0——每字体单 draw）
                 uint32_t bindless_atlas_handle = 0;
 

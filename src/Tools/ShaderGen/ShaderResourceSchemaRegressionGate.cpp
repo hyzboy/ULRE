@@ -2203,7 +2203,8 @@ namespace
         }
 
         const char *non_bootstrap_ids[] = {
-            "VertexColor", "UnlitTexture", "Texture2DArray",
+            "VertexColor", "UnlitTexture", "UnlitTextureArray",
+            "Texture2DArray",
             "VertexLuminance", "VertexPaletteColor", "DebugNormalColor", "SkyMinimal", "Lit",
             "LitTextureArray"
         };
@@ -2667,6 +2668,7 @@ namespace
             {"VertexColor", "material/vertex_color_source.glsl"},
             {"VertexLuminance", "material/luminance_source.glsl"},
             {"UnlitTexture", "material/texture_source.glsl"},
+            {"UnlitTextureArray", "material/unlit_texture_array_source.glsl"},
             {"Texture2DArray", "material/texture_array_source.glsl"},
             {"DebugNormalColor", "material/debug_normal_source.glsl"},
             {"Lit", "material/pbr_surface_source.glsl"},
@@ -3416,7 +3418,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 12
+         || file_count != 13
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -3425,7 +3427,8 @@ namespace
         {
             const char *expected_file_ids[] = {
                 "Lit", "LitTextureArray", "SkyMinimal", "DebugNormalColor",
-                "VertexColor", "UnlitTexture", "Texture2DArray",
+                "VertexColor", "UnlitTexture", "UnlitTextureArray",
+                "Texture2DArray",
                 "VertexLuminance", "VertexPaletteColor",
                 "builtin/pure_color", "builtin/text_gpu",
                 "builtin/text_gpu_bitmap"
@@ -3439,7 +3442,8 @@ namespace
 
         const char *bulk_ids[] = {
             "LitTextureArray", "SkyMinimal", "DebugNormalColor", "VertexColor",
-            "UnlitTexture", "Texture2DArray", "VertexLuminance",
+            "UnlitTexture", "UnlitTextureArray", "Texture2DArray",
+            "VertexLuminance",
             "VertexPaletteColor"
         };
         for (const char *id : bulk_ids)
@@ -3597,12 +3601,45 @@ namespace
         const auto *ntb_2d = registry.FindByName("ntb_tangent_vbo_normalmap");
         const auto *ntb_array = registry.FindByName("ntb_texturearray_normalmap");
         const auto *ntb_derivative = registry.FindByName("ntb_derivative_normalmap");
-        if (!pbr_2d || !pbr_array || !ntb_2d || !ntb_array || !ntb_derivative)
+        const auto *unlit_array =
+            registry.FindByName("unlit_texture_array_source");
+        if (!pbr_2d || !pbr_array || !ntb_2d || !ntb_array
+         || !ntb_derivative || !unlit_array)
         {
             result.diagnostics.emplace_back("provider metadata modules are missing");
         }
         else
         {
+            const auto has_texture_reference =
+                [](const ShaderCodeResourceManifest &manifest,
+                   const char *name)
+                {
+                    for (uint32_t i = 0;
+                         i < manifest.texture_reference_count;
+                         ++i)
+                    {
+                        if (std::strcmp(
+                                manifest.texture_references[i].texture_name,
+                                name) == 0)
+                            return true;
+                    }
+                    return false;
+                };
+            MaterialDefinition lit_definition{};
+            MaterialDefinition lit_array_definition{};
+            MaterialDefinition unlit_array_definition{};
+            if (!TryGetMaterialDefinitionByID("Lit", lit_definition)
+             || !TryGetMaterialDefinitionByID(
+                    "LitTextureArray",
+                    lit_array_definition)
+             || !TryGetMaterialDefinitionByID(
+                    "UnlitTextureArray",
+                    unlit_array_definition))
+            {
+                result.diagnostics.emplace_back(
+                    "provider texture-reference material definitions are missing");
+            }
+
             const char *roots_2d[] = {pbr_2d->name, ntb_2d->name};
             ShaderCodeResourceManifest manifest_2d{};
             if (!BuildShaderCodeResourceManifest(
@@ -3617,9 +3654,20 @@ namespace
                 if (manifest_2d.ssbo_count != 1
                  || std::strcmp(manifest_2d.ssbos[0].name, "mtl_private_data") != 0
                  || manifest_2d.ssbos[0].ssbo_type != SSBOType::PBRSurface
-                 || manifest_2d.ssbos[0].material_private_data_slot != 0)
+                 || manifest_2d.ssbos[0].material_private_data_slot != 0
+                 || manifest_2d.texture_layer_count != 0
+                 || manifest_2d.texture_reference_count != 6
+                 || !has_texture_reference(manifest_2d, "base_color")
+                 || !has_texture_reference(manifest_2d, "roughness")
+                 || !has_texture_reference(manifest_2d, "metallic")
+                 || !has_texture_reference(manifest_2d, "occlusion")
+                 || !has_texture_reference(manifest_2d, "opacity_mask")
+                 || !has_texture_reference(manifest_2d, "normal")
+                 || !ValidateShaderCodeResourceManifestTextureReferences(
+                        manifest_2d,
+                        lit_definition))
                     result.diagnostics.emplace_back(
-                        "Texture2D providers must declare one PBRSurface material SSBO");
+                        "Texture2D providers must declare TOML-aligned texture references");
                 // A6-2b-b2：行表需求不再经契约条目（BuildDescriptorsFromDefinition 只产
                 // UBO）——数据槽信号由编译配置 material_private_data 直判（manifest 槽位
                 // 已在上方断言），不再检查 descriptors 的 MaterialPrivateDataIndex 条目。
@@ -3637,10 +3685,19 @@ namespace
             else
             {
                 if (manifest_array.ssbo_count != 1
-                 || manifest_array.texture_layer_count != 1
-                 || manifest_array.texture_layers[0].slot != TextureSlot::Custom0)
+                 || manifest_array.texture_layer_count != 0
+                 || manifest_array.texture_reference_count != 6
+                 || !has_texture_reference(manifest_array, "base_color")
+                 || !has_texture_reference(manifest_array, "roughness")
+                 || !has_texture_reference(manifest_array, "metallic")
+                 || !has_texture_reference(manifest_array, "occlusion")
+                 || !has_texture_reference(manifest_array, "opacity_mask")
+                 || !has_texture_reference(manifest_array, "normal")
+                 || !ValidateShaderCodeResourceManifestTextureReferences(
+                        manifest_array,
+                        lit_array_definition))
                     result.diagnostics.emplace_back(
-                        "Texture2DArray providers must declare bindless Custom0 layer resources");
+                        "Texture2DArray providers must declare TOML-aligned texture references");
                 // A6-2b-b2：同上——数据槽信号直判化，契约条目检查删除。
             }
 
@@ -3648,9 +3705,54 @@ namespace
             ShaderCodeResourceManifest derivative_manifest{};
             if (!BuildShaderCodeResourceManifest(
                     &derivative_root, 1, derivative_manifest, &registry)
-             || derivative_manifest.texture_layer_count != 1)
+             || derivative_manifest.texture_layer_count != 0
+             || derivative_manifest.texture_reference_count != 1
+             || !has_texture_reference(derivative_manifest, "normal"))
                result.diagnostics.emplace_back(
-                   "Derivative normal-map provider must declare its bindless layer-table dependency");
+                   "Derivative normal-map provider must declare its named texture reference");
+
+            const char *unlit_array_root = unlit_array->name;
+            ShaderCodeResourceManifest unlit_array_manifest{};
+            if (!BuildShaderCodeResourceManifest(
+                    &unlit_array_root,
+                    1,
+                    unlit_array_manifest,
+                    &registry)
+             || unlit_array_manifest.ssbo_count != 0
+             || unlit_array_manifest.texture_layer_count != 0
+             || unlit_array_manifest.texture_reference_count != 1
+             || !has_texture_reference(unlit_array_manifest, "base_color")
+             || !ValidateShaderCodeResourceManifestTextureReferences(
+                    unlit_array_manifest,
+                    unlit_array_definition))
+            {
+                result.diagnostics.emplace_back(
+                    "generic Texture2DArray material must use one TOML texture reference");
+            }
+
+            ShaderCodeResourceManifest invalid_reference_manifest{};
+            if (invalid_reference_manifest.texture_references.Add(
+                    {"missing_texture",
+                     uint32_t(hgl::graph::ShaderStage::Fragment),
+                     false,
+                     false}) < 0)
+            {
+                result.diagnostics.emplace_back(
+                    "invalid texture-reference manifest setup failed");
+            }
+            else
+                invalid_reference_manifest.texture_reference_count = 1;
+            const char *invalid_texture_name = nullptr;
+            if (ValidateShaderCodeResourceManifestTextureReferences(
+                    invalid_reference_manifest,
+                    unlit_array_definition,
+                    &invalid_texture_name)
+             || !invalid_texture_name
+             || std::strcmp(invalid_texture_name, "missing_texture") != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "TOML-external provider texture reference must be rejected");
+            }
         }
 
         result.passed = result.diagnostics.empty();
@@ -3689,6 +3791,7 @@ namespace
             "// @ulre require GeometryAttribute Tangent Any\n"
             "// @ulre provide Normal\n"
             "// @ulre provide Tangent\n"
+            "// @ulre texture_reference normal Fragment optional fallback\n"
             "// @ulre uses s2_lift_xy0\n"
             "// @ulre end\n";
         {
@@ -3729,6 +3832,19 @@ namespace
                  || data.semantic_provides[0] != ShaderCodeModuleSemantic::Normal
                  || data.semantic_provides[1] != ShaderCodeModuleSemantic::Tangent)
                     result.diagnostics.emplace_back("full-metadata provide mismatch");
+                if (data.texture_reference_requirements.GetCount() != 1
+                 || !data.texture_reference_requirements[0].texture_name
+                 || std::strcmp(
+                        data.texture_reference_requirements[0].texture_name,
+                        "normal") != 0
+                 || data.texture_reference_requirements[0].stage_flags
+                    != uint32_t(hgl::graph::ShaderStage::Fragment)
+                 || data.texture_reference_requirements[0].required
+                 || !data.texture_reference_requirements[0].allow_fallback)
+                {
+                    result.diagnostics.emplace_back(
+                        "full-metadata texture-reference mismatch");
+                }
                 if (data.pending_module_requirements.GetCount() != 1
                  || std::strcmp(data.pending_module_requirements[0].c_str(), "s2_lift_xy0") != 0)
                     result.diagnostics.emplace_back("full-metadata uses mismatch");
@@ -3748,6 +3864,7 @@ namespace
         expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidSource, "invalid-source");
         expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
         expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumber, "invalid-number");
+        expect_parse("// @ulre begin\n// @ulre texture_reference invalid-name Fragment\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidResource, "invalid-texture-reference");
         expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidConflict, "invalid-conflict");
 
         // Registry scan of the real ShaderLibrary directory.
@@ -3760,14 +3877,14 @@ namespace
         else
         {
             // Native template migration adds explicit identity shadow/AO providers.
-            if (file_count != 68)
-                result.diagnostics.emplace_back("LoadDirectory expected 68 file modules, got "
+            if (file_count != 69)
+                result.diagnostics.emplace_back("LoadDirectory expected 69 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 68;
+            const int expected_count = 69;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));

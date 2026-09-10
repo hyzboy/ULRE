@@ -1,4 +1,5 @@
 ﻿#include <hgl/mtl/ShaderCodeModuleFile.h>
+#include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/vk/VK.h>
 
 #include <cstring>
@@ -529,6 +530,38 @@ namespace hgl::graph::mtl
                             return ShaderCodeModuleParseResult::InvalidResource;
                     }
                     out_data.texture_layer_requirements.Add(requirement);
+                }
+                else if (std::strcmp(token, "texture_reference") == 0)
+                {
+                    ShaderCodeModuleTextureReferenceRequirement
+                        requirement;
+                    const char *next =
+                        ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !IsValidMaterialTextureName(token))
+                        return ShaderCodeModuleParseResult::InvalidResource;
+
+                    AnsiString *texture_name =
+                        out_data.texture_reference_name_storage.Create();
+                    if (!texture_name)
+                        return ShaderCodeModuleParseResult::InvalidResource;
+                    *texture_name = token;
+                    requirement.texture_name = texture_name->c_str();
+
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseStageFlags(token, requirement.stage_flags))
+                        return ShaderCodeModuleParseResult::InvalidStage;
+
+                    while ((next =
+                                ReadToken(next, line_end, token, sizeof(token)))
+                           != nullptr)
+                    {
+                        if (!ParseResourcePolicy(
+                                token,
+                                requirement.required,
+                                requirement.allow_fallback))
+                            return ShaderCodeModuleParseResult::InvalidResource;
+                    }
+                    out_data.texture_reference_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "require") == 0)
                 {

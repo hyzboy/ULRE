@@ -217,25 +217,31 @@ private:
 
         if (use_far_material)
         {
-            sphere_primitive_component->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
-                                                                  far_base_color_texture,
-                                                                  sampler,
-                                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2D);
-            sphere_primitive_component->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal,
-                                                                  far_normal_texture,
-                                                                  sampler,
-                                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2D);
+            if (!sphere_primitive_component->SetMaterialTextureResource(
+                    "base_color",
+                    far_base_color_texture,
+                    sampler)
+             || !sphere_primitive_component->SetMaterialTextureResource(
+                    "normal",
+                    far_normal_texture,
+                    sampler))
+                return false;
         }
         else
         {
-            sphere_primitive_component->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
-                                                                  near_base_color_array,
-                                                                  sampler,
-                                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
-            sphere_primitive_component->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal,
-                                                                  near_normal_array,
-                                                                  sampler,
-                                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
+            if (!sphere_primitive_component->SetMaterialTextureResource(
+                    "base_color",
+                    near_base_color_array,
+                    sampler,
+                    PrimitiveComponent::MaterialTextureResourceKind::
+                        Texture2DArray)
+             || !sphere_primitive_component->SetMaterialTextureResource(
+                    "normal",
+                    near_normal_array,
+                    sampler,
+                    PrimitiveComponent::MaterialTextureResourceKind::
+                        Texture2DArray))
+                return false;
         }
 
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};

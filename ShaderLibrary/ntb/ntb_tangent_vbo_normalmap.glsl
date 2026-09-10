@@ -5,7 +5,7 @@
 // @ulre slot ntb_provider
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
-// @ulre texture_layer normal Fragment optional fallback
+// @ulre texture_reference normal Fragment optional fallback
 // @ulre end
 // NTB Tangent / Normal Map — 结合法线贴图与 TBN 空间转换
 #ifndef NTB_TANGENT_VBO_NORMALMAP_GLSL
@@ -19,8 +19,8 @@ NTBSpace GetNTB(NTBInput ntb_input)
 {
     const SurfaceInput si = ntb_input.surface;
     NTBSpace ntb = BuildOrthoNTB(si.worldNormal);
-    // Arena+BDA：法线句柄在材质数据行尾（MTL_ROW 宏自带行类型）
-    const uint normalTexHandle = MTL_ROW(ntb_input.dataIndex).tex_normal;
+    const uint normalTexHandle =
+        MTL_TEX(ntb_input.dataIndex).tex_normal.x;
 
     if (normalTexHandle != 0u)
     {

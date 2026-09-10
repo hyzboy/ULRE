@@ -1,4 +1,4 @@
-schema = 2
+schema = 3
 id = "builtin/text_gpu"
 name = "Text2D_GPU"
 source = "file"
@@ -26,6 +26,6 @@ varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color", "emit_style_i
 mode = "CharQuad"
 
 [resources]
-material_data = { type = "TextureLayer" }
+textures = [{ name = "base_color", sampler = "Sampler2D", required = true }]
 samplers = ["Linear"]
 defines = ["TEXT_SDF_ENABLED"]

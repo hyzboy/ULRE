@@ -123,6 +123,13 @@ namespace hgl::ecs
         auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
         auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
         auto* buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
+        auto* texture_registry =
+            graphics_context
+                ? graphics_context->GetSSBOBufferRegistry()
+                : nullptr;
+        const uint64_t texture_retire_epoch =
+            (world ? world->GetRenderSubmissionSerial() : 0u)
+            + graph::MaterialTextureConfigurationRetireEpochDelay;
 
         for (auto& pair : resources_by_font)
         {
@@ -141,16 +148,34 @@ namespace hgl::ecs
             }
 
 
-            if (res.texture_layer_buffer && buffer_manager)
+            if (res.texture_configuration.IsValid())
             {
-                buffer_manager->Release(res.texture_layer_buffer);
-                res.texture_layer_buffer = nullptr;
+                if (texture_registry
+                 && texture_registry->IsMaterialTextureConfigurationValid(
+                        res.texture_configuration))
+                {
+                    texture_registry->RetireMaterialTextureConfiguration(
+                        res.texture_configuration,
+                        texture_retire_epoch);
+                }
+                else if (texture_registry)
+                {
+                    GLogWarning(
+                        "[TextRenderPipeline] Texture configuration was already invalid during font teardown");
+                }
+                else
+                {
+                    GLogWarning(
+                        "[TextRenderPipeline] Texture configuration registry unavailable during font teardown");
+                }
+                res.texture_configuration = {};
             }
 
-            if (res.data_index_row_buffer && buffer_manager)
+            if (res.material_instance_addresses_buffer && buffer_manager)
             {
-                buffer_manager->Release(res.data_index_row_buffer);
-                res.data_index_row_buffer = nullptr;
+                buffer_manager->Release(
+                    res.material_instance_addresses_buffer);
+                res.material_instance_addresses_buffer = nullptr;
             }
 
             if (res.tile_font)
@@ -252,18 +277,18 @@ namespace hgl::ecs
             cmd->ApplyPipelineState(res.pipeline->GetConfig());
 
             // RootAddresses push constant：每字体一次（draw 前）。mesh shader 经
-            // pc_root.addr_mesh_draw_params 解引用参数表 row 0；文本三表地址（A3-4
-            // 消费）+ mtl_data_addrs 行表（A3-3 起 FS 的 MTL_ROW 经 pc_root 取行——
-            // 文本材质行含 bindless 图集句柄，行 0 = data_index_row_buffer 的
-            // Text2D_DataAddresses；此前漏推 → 0 地址解引用 → 文本黑屏）。
+            // pc_root.addr_mesh_draw_params 解引用参数表 row 0；文本三表地址和
+            // mtl_data_addrs 行表均经 pc_root 传入。文本 shader 的 MTL_TEX(0)
+            // 从该地址表取得当前字体图集的独立引用行。
             graph::PushRootAddresses(
                 cmd,
                 frame_device,
                 res.material->GetPipelineLayout(),
                 res.mesh_draw_params ? res.mesh_draw_params->GetGPUBuffer() : nullptr,
                 nullptr, nullptr,
-                res.data_index_row_buffer
-                    ? res.data_index_row_buffer->GetGPUBuffer() : nullptr,
+                res.material_instance_addresses_buffer
+                    ? res.material_instance_addresses_buffer->GetGPUBuffer()
+                    : nullptr,
                 res.char_info_asb     ? res.char_info_asb->GetGPUBuffer() : nullptr,
                 res.char_style_asb    ? res.char_style_asb->GetGPUBuffer() : nullptr,
                 res.char_instance_asb ? res.char_instance_asb->GetGPUBuffer() : nullptr);
@@ -314,8 +339,12 @@ namespace hgl::ecs
             graph::ShaderProgramManager* material_manager = nullptr;
             graph::ShaderProgram* material = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
-            graph::DeviceBuffer* texture_layer_buffer = nullptr;
-            graph::DeviceBuffer* data_index_row_buffer = nullptr;
+            graph::SSBOBufferRegistry* texture_registry = nullptr;
+            graph::MaterialTextureConfigurationAllocation
+                texture_configuration;
+            uint64_t texture_retire_epoch = 0;
+            graph::DeviceBuffer* material_instance_addresses_buffer =
+                nullptr;
             std::unique_ptr<graph::TileFont> tile_font;
             bool committed = false;
 
@@ -324,11 +353,21 @@ namespace hgl::ecs
                 if (committed)
                     return;
 
-                if (texture_layer_buffer && buffer_manager)
-                    buffer_manager->Release(texture_layer_buffer);
+                if (texture_configuration.IsValid()
+                 && texture_registry
+                 && texture_registry->IsMaterialTextureConfigurationValid(
+                        texture_configuration))
+                {
+                    texture_registry->RetireMaterialTextureConfiguration(
+                        texture_configuration,
+                        texture_retire_epoch);
+                }
 
-                if (data_index_row_buffer && buffer_manager)
-                    buffer_manager->Release(data_index_row_buffer);
+                if (material_instance_addresses_buffer && buffer_manager)
+                {
+                    buffer_manager->Release(
+                        material_instance_addresses_buffer);
+                }
 
 
                 if (material && material_manager)
@@ -396,8 +435,8 @@ namespace hgl::ecs
         // Scene(0)/Bindless(1) 全局集由 Render 每帧自绑；行表/材质数据全走 pc_root
         //（BDA）——无 per-material 描述符、无 domain 解析（A6 终态两集）。
 
-        // 将字库图集注册进全局 bindless 纹理池，并写入 texture-layer / data-index
-        // 行表第 0 行（dataIndex=0，BaseColor 槽 = 图集句柄），供 Text shader 解析。
+        // 将字库图集注册进全局 bindless 纹理池，并写入文本材质自己的
+        // MaterialTextureReferencePool 行。CharQuad 固定使用 dataIndex 0。
         auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
         if (!bindless_mgr || !bindless_mgr->IsValid())
         {
@@ -412,59 +451,101 @@ namespace hgl::ecs
 
         resources.bindless_atlas_handle = atlas_handle;
 
-        // Arena+BDA：图集句柄写进 TextureLayerRow 行（tex_base_color 槽），shader 经
-        // mtl_data_addrs 行表取行指针解引用——不再有 Material 集 texture_layer_rows 描述符。
-        constexpr uint32_t texture_layer_row_bytes = sizeof(graph::ssbo::TextureLayerRow);
-
-        guard.texture_layer_buffer = buffer_manager->CreateSSBO(
-            "Text2D_TextureLayerRows", texture_layer_row_bytes, graph::SharingMode::Exclusive);
-        if (!guard.texture_layer_buffer)
+        graph::mtl::MaterialDefinition text_definition{};
+        if (!graph::mtl::TryGetMaterialDefinitionByID(
+                recipe.mtl_def_id,
+                text_definition))
         {
+            GLogError(
+                "[TextRenderPipeline] Text material definition lookup failed: %s",
+                recipe.mtl_def_id.c_str());
             return nullptr;
         }
 
+        graph::mtl::MaterialTextureReferenceLayout texture_layout{};
+        const int atlas_texture_index =
+            graph::mtl::FindMaterialTextureDeclaration(
+                text_definition,
+                "base_color");
+        if (!graph::mtl::BuildMaterialTextureReferenceLayout(
+                text_definition,
+                texture_layout)
+         || texture_layout.reference_count != 1
+         || atlas_texture_index != 0)
         {
-            graph::ssbo::TextureLayerRow row{};
-            row.tex_tail[graph::mtl::TextureSlot::BaseColor] = atlas_handle;
-            guard.texture_layer_buffer->GetGPUBuffer()->Write(&row, 0, sizeof(row));
+            GLogError(
+                "[TextRenderPipeline] Text material must declare base_color as its only texture reference");
+            return nullptr;
         }
 
-        resources.texture_layer_buffer = guard.texture_layer_buffer;
-        guard.texture_layer_buffer = nullptr;
+        auto *texture_registry =
+            graphics_context->GetSSBOBufferRegistry();
+        if (!texture_registry)
+        {
+            GLogError(
+                "[TextRenderPipeline] Texture configuration registry unavailable");
+            return nullptr;
+        }
+        texture_registry->CollectRetiredMaterialTextureConfigurations(
+            world ? world->GetRenderSubmissionSerial() : 0u);
 
-        // mtl_data_addrs：16B MaterialInstanceAddresses 行表，文本阶段仍
-        // 将旧 TextureLayerRow 地址作为 payload；纹理引用地址由后续阶段接入。
+        guard.texture_registry = texture_registry;
+        guard.texture_retire_epoch =
+            (world ? world->GetRenderSubmissionSerial() : 0u)
+            + graph::MaterialTextureConfigurationRetireEpochDelay;
+        if (!texture_registry->AcquireMaterialTextureConfiguration(
+                text_definition,
+                texture_layout,
+                guard.texture_configuration))
+        {
+            GLogError(
+                "[TextRenderPipeline] Text texture configuration capacity exhausted");
+            return nullptr;
+        }
+
+        const graph::mtl::MaterialTextureReference atlas_reference{
+            atlas_handle,
+            0u};
+        if (!texture_registry->WriteMaterialTextureConfiguration(
+                guard.texture_configuration,
+                &atlas_reference,
+                1))
+        {
+            GLogError(
+                "[TextRenderPipeline] Failed to write text texture configuration");
+            return nullptr;
+        }
+
+        // CharQuad still consumes a one-row MaterialInstanceAddresses table,
+        // but it now addresses only the independent texture-reference row.
         constexpr uint32_t data_index_row_bytes =
             sizeof(graph::mtl::MaterialInstanceAddresses);
 
-        guard.data_index_row_buffer = buffer_manager->CreateSSBO(
-            "Text2D_DataAddresses", data_index_row_bytes, graph::SharingMode::Exclusive);
-        if (!guard.data_index_row_buffer)
+        guard.material_instance_addresses_buffer =
+            buffer_manager->CreateSSBO(
+                "Text2D_MaterialInstanceAddresses",
+                data_index_row_bytes,
+                graph::SharingMode::Exclusive);
+        if (!guard.material_instance_addresses_buffer)
         {
             return nullptr;
         }
 
         {
-            uint64_t row_addr = 0;
-            if (auto *font_device = graphics_context ? graphics_context->GetDevice() : nullptr)
-                row_addr = font_device->GetBufferDeviceAddressAligned16(
-                    resources.texture_layer_buffer->GetGPUBuffer()->GetVkDeviceBuffer());
-            if (row_addr == 0)
-            {
-                GLogError("[TextPipeline] texture layer row address unavailable -- font resources aborted");
-                return nullptr;
-            }
             const graph::mtl::MaterialInstanceAddresses address_row{
-                row_addr,
-                0};
-            guard.data_index_row_buffer->GetGPUBuffer()->Write(
+                0u,
+                guard.texture_configuration.gpu_row};
+            guard.material_instance_addresses_buffer->GetGPUBuffer()->Write(
                 &address_row,
                 0,
                 sizeof(address_row));
         }
 
-        resources.data_index_row_buffer = guard.data_index_row_buffer;
-        guard.data_index_row_buffer = nullptr;
+        resources.texture_configuration = guard.texture_configuration;
+        guard.texture_configuration = {};
+        resources.material_instance_addresses_buffer =
+            guard.material_instance_addresses_buffer;
+        guard.material_instance_addresses_buffer = nullptr;
 
         resources.tile_font = guard.tile_font.release();
         resources.material = guard.material;

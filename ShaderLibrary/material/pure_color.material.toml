@@ -1,4 +1,4 @@
-schema = 2
+schema = 3
 id = "builtin/pure_color"
 name = "builtin/pure_color"
 source = "file"

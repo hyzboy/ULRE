@@ -6,8 +6,6 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/SamplerManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
-#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 
 // ECS headers
@@ -71,7 +69,6 @@ private:
 
     Texture2D *         texture             = nullptr;
     Sampler *           sampler             = nullptr;
-    graph::SSBOArrayAccessor<ssbo::TextureLayerRow>* tex_row_accessor = nullptr;
     graph::mtl::MaterialRecipe quad_recipe{};
     PrimitiveAsset      quad_asset{};
 
@@ -87,17 +84,6 @@ private:
         texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
-
-        // Arena+BDA：句柄行（TextureLayerRow）——基址由 Collect 镜像写 tex_tail
-        if (auto *domain_manager = GetManager<SSBOBufferRegistry>())
-        {
-            tex_row_accessor = domain_manager->AllocateArrayAccessor<ssbo::TextureLayerRow>(
-                "Example:TextureQuad:MaterialData", 1);
-            if (!tex_row_accessor)
-                return(false);
-            (*tex_row_accessor)[0].tex_tail[graph::mtl::TextureSlot::BaseColor] = 0; //句柄由 Collect 镜像写入
-            tex_row_accessor->Commit();
-        }
 
         sampler=sampler_manager->CreateSampler();
 
@@ -147,16 +133,11 @@ private:
         quad_transform->SetMovable(false);
 
         quad_primitive->SetPrimitiveAsset(&quad_asset);
-        quad_primitive->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, texture, sampler);
-
-        // Arena+BDA：纹理句柄经 TextureLayerRow 行尾下发（每材质实例一行）
-        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource tex_struct{};
-        tex_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        tex_struct.ssbo_id = tex_row_accessor->GetSSBOId();
-        tex_struct.data_index = 0;
-        tex_struct.use_data_index = true;
-        tex_struct.shared_across_instances = false;
-        quad_primitive->SetMaterialPrivateDataSlotResource(tex_struct);
+        if (!quad_primitive->SetMaterialTextureResource(
+                "base_color",
+                texture,
+                sampler))
+            return false;
         quad_primitive->SetVisible(true);
 
         return true;

@@ -1,6 +1,7 @@
 ﻿#include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeModuleMetadata.h>
+#include <hgl/mtl/MaterialRecipe.h>
 #include "builder/DescriptorBuilderCommon.h"
 #include <hgl/util/hash/FNV1a.h>
 
@@ -87,6 +88,42 @@ namespace hgl::graph::mtl
             }
 
             manifest.texture_layers[manifest.texture_layer_count++] = incoming;
+            return true;
+        }
+
+        bool AddTextureReference(
+            ShaderCodeResourceManifest &manifest,
+            const ShaderCodeModuleTextureReferenceRequirement &incoming)
+        {
+            if (!incoming.texture_name || !incoming.texture_name[0])
+            {
+                manifest.error =
+                    ShaderCodeResourceManifestError::ResourceConflict;
+                return false;
+            }
+
+            for (uint32 i = 0; i < manifest.texture_reference_count; ++i)
+            {
+                auto &existing = manifest.texture_references[i];
+                if (!descriptor_builder_common::CStrEqual(
+                        existing.texture_name,
+                        incoming.texture_name))
+                    continue;
+
+                existing.stage_flags |= incoming.stage_flags;
+                existing.required = existing.required || incoming.required;
+                existing.allow_fallback =
+                    existing.allow_fallback && incoming.allow_fallback;
+                return true;
+            }
+
+            if (manifest.texture_references.Add(incoming) < 0)
+            {
+                manifest.error =
+                    ShaderCodeResourceManifestError::ResourceConflict;
+                return false;
+            }
+            ++manifest.texture_reference_count;
             return true;
         }
 
@@ -179,6 +216,16 @@ namespace hgl::graph::mtl
                     return false;
             }
 
+            for (uint32 i = 0;
+                 i < definition->texture_reference_requirement_count;
+                 ++i)
+            {
+                if (!AddTextureReference(
+                        manifest,
+                        definition->texture_reference_requirements[i]))
+                    return false;
+            }
+
             for (uint32 i = 0; i < manifest.code_module_count; ++i)
             {
                 const ShaderCodeModuleDefinition *existing =
@@ -236,6 +283,10 @@ namespace hgl::graph::mtl
             for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
                 h << manifest.texture_layers[i];
 
+            h << manifest.texture_reference_count;
+            for (uint32 i = 0; i < manifest.texture_reference_count; ++i)
+                h << manifest.texture_references[i];
+
             manifest.stable_hash = h;
         }
     }
@@ -265,6 +316,44 @@ namespace hgl::graph::mtl
         }
 
         BuildStableHash(manifest, registry);
+        return true;
+    }
+
+    bool ValidateShaderCodeResourceManifestTextureReferences(
+        const ShaderCodeResourceManifest &manifest,
+        const MaterialDefinition &definition,
+        const char **out_invalid_texture_name) noexcept
+    {
+        if (out_invalid_texture_name)
+            *out_invalid_texture_name = nullptr;
+        if (!manifest.IsValid())
+            return false;
+
+        for (uint32 i = 0; i < manifest.texture_reference_count; ++i)
+        {
+            const char *texture_name =
+                manifest.texture_references[i].texture_name;
+            bool found = false;
+            if (texture_name && texture_name[0])
+            {
+                for (const auto &declaration :
+                     definition.texture_declarations)
+                {
+                    if (declaration.name == texture_name)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                if (out_invalid_texture_name)
+                    *out_invalid_texture_name = texture_name;
+                return false;
+            }
+        }
         return true;
     }
 

@@ -251,6 +251,40 @@ namespace hgl::graph::mtl
         return h;
     }
 
+    // Name-keyed texture dependency consumed through MTL_TEX(). The name must
+    // resolve to a MaterialDefinition texture declaration before compilation.
+    struct ShaderCodeModuleTextureReferenceRequirement
+    {
+        const char *texture_name = nullptr;
+        uint32 stage_flags = 0;
+        bool required = true;
+        bool allow_fallback = false;
+    };
+
+    inline bool operator==(
+        const ShaderCodeModuleTextureReferenceRequirement &lhs,
+        const ShaderCodeModuleTextureReferenceRequirement &rhs) noexcept
+    {
+        const bool same_name = lhs.texture_name == rhs.texture_name
+            || (lhs.texture_name && rhs.texture_name
+                && hgl::strcmp(lhs.texture_name, rhs.texture_name) == 0);
+        return same_name
+            && lhs.stage_flags == rhs.stage_flags
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
+
+    inline hgl::hash::FNV1aHasher64 &operator<<(
+        hgl::hash::FNV1aHasher64 &h,
+        const ShaderCodeModuleTextureReferenceRequirement &v) noexcept
+    {
+        h << v.texture_name
+          << v.stage_flags
+          << v.required
+          << v.allow_fallback;
+        return h;
+    }
+
     struct ShaderCodeModuleDefinition
     {
         const char *name = nullptr;
@@ -285,6 +319,12 @@ namespace hgl::graph::mtl
         ShaderModuleSlotRole slot_role = ShaderModuleSlotRole::Unknown;
         uint32 provided_capabilities = 0;
         uint32 required_capabilities = 0;
+
+        // Appended to preserve positional initialization compatibility for
+        // existing static module definitions during the transition.
+        const ShaderCodeModuleTextureReferenceRequirement
+            *texture_reference_requirements = nullptr;
+        uint32 texture_reference_requirement_count = 0;
     };
 
     uint64 GetShaderCodeModuleDefinitionHash(
@@ -304,7 +344,9 @@ namespace hgl::graph::mtl
          || (definition.ssbo_requirement_count > 0
           && !definition.ssbo_requirements)
          || (definition.texture_layer_requirement_count > 0
-          && !definition.texture_layer_requirements))
+          && !definition.texture_layer_requirements)
+         || (definition.texture_reference_requirement_count > 0
+          && !definition.texture_reference_requirements))
             return false;
 
         for (uint32 i = 0; i < definition.semantic_requirement_count; ++i)
@@ -314,6 +356,16 @@ namespace hgl::graph::mtl
              || requirement.numeric_class_mask == 0
              || (requirement.max_component_count != 0
               && requirement.min_component_count > requirement.max_component_count))
+                return false;
+        }
+
+        for (uint32 i = 0;
+             i < definition.texture_reference_requirement_count;
+             ++i)
+        {
+            const auto &requirement =
+                definition.texture_reference_requirements[i];
+            if (!requirement.texture_name || !requirement.texture_name[0])
                 return false;
         }
 

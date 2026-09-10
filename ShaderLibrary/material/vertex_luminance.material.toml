@@ -1,4 +1,4 @@
-schema = 2
+schema = 3
 id = "VertexLuminance"
 name = "VertexLuminance"
 source = "file"

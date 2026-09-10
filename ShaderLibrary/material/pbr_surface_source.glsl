@@ -6,7 +6,11 @@
 // @ulre require Resource MaterialData
 // @ulre require ProducedSemantic UV0
 // @ulre ssbo mtl_private_data PBRSurface 0 Fragment optional fallback
-// @ulre texture_layer base_color Fragment optional fallback
+// @ulre texture_reference base_color Fragment optional fallback
+// @ulre texture_reference roughness Fragment optional fallback
+// @ulre texture_reference metallic Fragment optional fallback
+// @ulre texture_reference occlusion Fragment optional fallback
+// @ulre texture_reference opacity_mask Fragment optional fallback
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end
@@ -20,7 +24,6 @@
 
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 {
-    // Arena+BDA：数据行与纹理句柄同在行结构内（BDA 指针解引用）
     PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
 
     MaterialSourceOutput material_output;
@@ -33,12 +36,14 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     material_output.emissive = vec3(0.0);
     material_output.alpha = 1.0;
 
-    const uint base_color_handle = material_data.tex_base_color;
+    const uint base_color_handle =
+        MTL_TEX(source_input.dataIndex).tex_base_color.x;
     if (base_color_handle != 0u)
         material_output.baseColor *=
             Sample2D(base_color_handle, TrilinearSampler, source_input.surface.uv0).rgb;
 
-    const uint roughness_handle = material_data.tex_roughness;
+    const uint roughness_handle =
+        MTL_TEX(source_input.dataIndex).tex_roughness.x;
     if (roughness_handle != 0u)
     {
         const float roughness_tex =
@@ -47,7 +52,8 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
             clamp(material_output.roughness * roughness_tex, 0.04, 1.0);
     }
 
-    const uint metallic_handle = material_data.tex_metallic;
+    const uint metallic_handle =
+        MTL_TEX(source_input.dataIndex).tex_metallic.x;
     if (metallic_handle != 0u)
     {
         const float metallic_tex =
@@ -56,7 +62,8 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
             clamp(material_output.metallic * metallic_tex, 0.0, 1.0);
     }
 
-    const uint occlusion_handle = material_data.tex_occlusion;
+    const uint occlusion_handle =
+        MTL_TEX(source_input.dataIndex).tex_occlusion.x;
     if (occlusion_handle != 0u)
         material_output.ao =
             Sample2D(occlusion_handle, LinearSampler, source_input.surface.uv0).r;
@@ -67,7 +74,8 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 float EvalMaterialAlpha(MaterialSourceInput source_input)
 {
     PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
-    const uint opacity_handle = material_data.tex_opacity_mask;
+    const uint opacity_handle =
+        MTL_TEX(source_input.dataIndex).tex_opacity_mask.x;
     return opacity_handle == 0u
         ? 1.0
         : Sample2D(

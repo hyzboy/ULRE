@@ -5,7 +5,7 @@
 // @ulre slot material_source_provider
 // @ulre require ProducedSemantic UV0
 // @ulre require ProducedSemantic Color
-// @ulre ssbo mtl_private_data TextureLayer 0 Fragment required
+// @ulre texture_reference base_color Fragment required
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end
@@ -17,6 +17,11 @@
 #define TEXT_SOURCE_GPU_GLSL
 #include "common/material_source_interface.glsl"
 #include "common/bindless_textures.glsl"
+
+uint GetTextAtlasHandle(const uint data_index)
+{
+    return MTL_TEX(data_index).tex_base_color.x;
+}
 
 #ifdef TEXT_SDF_ENABLED
 #define TEXT_SAMPLER LinearSampler
@@ -82,7 +87,7 @@ void EvalTextStyleEffects(
         const vec2 off = unpackHalf2x16(st.shadow_uv_offset);
         const float shadow_sdf =
             Sample2D(
-                MTL_ROW(sourceInput.dataIndex).tex_base_color,
+                GetTextAtlasHandle(sourceInput.dataIndex),
                 TEXT_SAMPLER,
                 sourceInput.surface.uv0 - off).r * 2.0 - 1.0;
         // 阴影跟随加粗（同为字身边界外扩）
@@ -113,7 +118,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
     const vec4 textColor = sourceInput.surface.vertexColor;
     const float rawSample =
         Sample2D(
-            MTL_ROW(sourceInput.dataIndex).tex_base_color,
+            GetTextAtlasHandle(sourceInput.dataIndex),
             TEXT_SAMPLER,
             sourceInput.surface.uv0).r;
 
@@ -147,7 +152,7 @@ float EvalMaterialAlpha(MaterialSourceInput sourceInput)
 {
     const float rawSample =
         Sample2D(
-            MTL_ROW(sourceInput.dataIndex).tex_base_color,
+            GetTextAtlasHandle(sourceInput.dataIndex),
             TEXT_SAMPLER,
             sourceInput.surface.uv0).r;
 

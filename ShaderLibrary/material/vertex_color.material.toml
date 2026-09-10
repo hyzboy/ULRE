@@ -1,4 +1,4 @@
-schema = 2
+schema = 3
 id = "VertexColor"
 name = "VertexColor"
 source = "file"

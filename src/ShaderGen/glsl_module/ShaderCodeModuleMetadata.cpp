@@ -214,7 +214,10 @@ namespace hgl::graph::mtl
                 definition.ssbo_requirement_count)
          || !HasValidArray(
                 definition.texture_layer_requirements,
-                definition.texture_layer_requirement_count))
+                definition.texture_layer_requirement_count)
+         || !HasValidArray(
+                definition.texture_reference_requirements,
+                definition.texture_reference_requirement_count))
         {
             return SetMetadataFailure(
                 out_diagnostic,

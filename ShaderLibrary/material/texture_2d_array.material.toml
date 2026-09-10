@@ -1,4 +1,4 @@
-schema = 2
+schema = 3
 id = "Texture2DArray"
 name = "Texture2DArray"
 source = "file"
@@ -20,6 +20,5 @@ requirements = ["Position", "UV0"]
 varyings = ["emit_data_index_id", "emit_uv0"]
 
 [resources]
-material_data = { type = "TextureRectArraySurface" }
 textures = [{ name = "base_color", sampler = "Sampler2DArray", required = true }]
 samplers = ["Trilinear"]

@@ -483,15 +483,23 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitiveAsset(&base_primitives[col]);
-                prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
-                                                      base_color_texture,
-                                                      sampler,
-                                                      PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
-                prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal,
-                                                      normal_texture,
-                                                      sampler,
-                                                      PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
-                prim_comp->SetMaterialTextureValue(graph::mtl::TextureSlot::Custom0, row);
+                if (!prim_comp->SetMaterialTextureResource(
+                        "base_color",
+                        base_color_texture,
+                        sampler,
+                        PrimitiveComponent::MaterialTextureResourceKind::
+                            Texture2DArray,
+                        "",
+                        row)
+                 || !prim_comp->SetMaterialTextureResource(
+                        "normal",
+                        normal_texture,
+                        sampler,
+                        PrimitiveComponent::MaterialTextureResourceKind::
+                            Texture2DArray,
+                        "",
+                        row))
+                    return false;
                 hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
                 sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
                 sphere_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();

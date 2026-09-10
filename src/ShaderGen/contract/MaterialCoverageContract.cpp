@@ -78,20 +78,16 @@ namespace hgl::graph::mtl
             }
             else if (std::strcmp(
                         source,
-                        "material/texture_source.glsl") == 0)
-            {
-                require_semantic(InterStageSemantic::DataIndexID);
-                require_semantic(InterStageSemantic::UV0);
-                out_contract.requires_texture = true;
-                out_contract.texture_slot = TextureSlot::BaseColor;
-            }
-            else if (std::strcmp(
+                        "material/texture_source.glsl") == 0
+                  || std::strcmp(
                         source,
-                        "material/texture_array_source.glsl") == 0)
+                        "material/texture_array_source.glsl") == 0
+                  || std::strcmp(
+                        source,
+                        "material/unlit_texture_array_source.glsl") == 0)
             {
                 require_semantic(InterStageSemantic::DataIndexID);
                 require_semantic(InterStageSemantic::UV0);
-                out_contract.requires_material_data = true;
                 out_contract.requires_texture = true;
                 out_contract.texture_slot = TextureSlot::BaseColor;
             }

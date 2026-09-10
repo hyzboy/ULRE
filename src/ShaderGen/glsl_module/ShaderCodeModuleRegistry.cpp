@@ -164,6 +164,18 @@ namespace hgl::graph::mtl
             data->definition.texture_layer_requirements = data->texture_layer_requirements.GetData();
             data->definition.texture_layer_requirement_count =
                 static_cast<uint32>(data->texture_layer_requirements.GetCount());
+            for (int k = 0;
+                 k < data->texture_reference_requirements.GetCount();
+                 ++k)
+            {
+                data->texture_reference_requirements[k].texture_name =
+                    data->texture_reference_name_storage[k]->c_str();
+            }
+            data->definition.texture_reference_requirements =
+                data->texture_reference_requirements.GetData();
+            data->definition.texture_reference_requirement_count =
+                static_cast<uint32>(
+                    data->texture_reference_requirements.GetCount());
             data->metadata_resolution_valid = false;
 
             if (!Register(data->definition))

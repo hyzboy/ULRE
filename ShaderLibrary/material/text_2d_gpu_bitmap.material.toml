@@ -1,4 +1,4 @@
-schema = 2
+schema = 3
 id = "builtin/text_gpu_bitmap"
 name = "Text2D_GPU_Bitmap"
 source = "file"
@@ -26,5 +26,5 @@ varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color"]
 mode = "CharQuad"
 
 [resources]
-material_data = { type = "TextureLayer" }
+textures = [{ name = "base_color", sampler = "Sampler2D", required = true }]
 samplers = ["Nearest"]

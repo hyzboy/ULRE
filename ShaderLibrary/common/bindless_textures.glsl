@@ -9,7 +9,7 @@
 // 使用前须确保 descriptor_macros.glsl 已被 #include（提供 BINDLESS_SET）。
 //
 // 用法：
-//   uint tex_handle = mtl_texture_layer_rows.data[dataIndex].base_color;
+//   uint tex_handle = MTL_TEX(dataIndex).tex_base_color.x;
 //   vec4 color      = Sample2D(tex_handle, TrilinearSampler, uv);
 //
 // tex_handle 为纯纹理句柄（1-based，0 = 无效），不再打包 sampler 下标。
@@ -19,7 +19,8 @@
 //
 // 所有纹理（2D / 2DArray）统一注册为 texture2DArray[]（2D 为单层）；
 // sampler 进独立 sampler[] 池（binding=1，由 SamplerPresetLibrary 按序注册）。
-// TextureLayerRowsData 结构（含各 slot 字段）由 MaterialShaderCompiler 动态生成注入。
+// MTL_TEX() returns the MaterialDefinition-specific uvec2 reference row:
+// .x is the bindless descriptor index and .y is the Texture2DArray layer.
 
 #ifndef BINDLESS_TEXTURES_GLSL
 #define BINDLESS_TEXTURES_GLSL

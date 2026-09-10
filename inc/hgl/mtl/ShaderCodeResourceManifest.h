@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/type/ValueArray.h>
 
 namespace hgl::graph::mtl
 {
@@ -40,13 +41,19 @@ namespace hgl::graph::mtl
         ShaderCodeModuleTextureLayerRequirement texture_layers[MaxShaderCodeResourceManifestTextureLayers]{};
         uint32 texture_layer_count = 0;
 
+        ValueArray<ShaderCodeModuleTextureReferenceRequirement>
+            texture_references;
+        uint32 texture_reference_count = 0;
+
         uint64 stable_hash = 0;
         ShaderCodeResourceManifestError error = ShaderCodeResourceManifestError::None;
         const char *error_module_name = nullptr;
 
         bool IsValid() const noexcept
         {
-            return error == ShaderCodeResourceManifestError::None;
+            return error == ShaderCodeResourceManifestError::None
+                && texture_reference_count
+                    == static_cast<uint32>(texture_references.GetCount());
         }
     };
 
@@ -55,6 +62,12 @@ namespace hgl::graph::mtl
         uint32 root_module_count,
         ShaderCodeResourceManifest &manifest,
         const ShaderCodeModuleRegistry *registry = nullptr) noexcept;
+
+    struct MaterialDefinition;
+    bool ValidateShaderCodeResourceManifestTextureReferences(
+        const ShaderCodeResourceManifest &manifest,
+        const MaterialDefinition &definition,
+        const char **out_invalid_texture_name = nullptr) noexcept;
 
     const char *GetShaderCodeResourceManifestErrorName(ShaderCodeResourceManifestError error) noexcept;
 }

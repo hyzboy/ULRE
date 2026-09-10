@@ -4,9 +4,7 @@
 // @ulre priority 0
 // @ulre slot material_source_provider
 // @ulre require ProducedSemantic UV0
-// @ulre require Resource MaterialData
-// @ulre ssbo mtl_private_data TextureRectArraySurface 0 Fragment optional fallback
-// @ulre texture_layer base_color Fragment optional fallback
+// @ulre texture_reference base_color Fragment required
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end
@@ -18,10 +16,13 @@
 
 vec4 SampleMaterialColor(MaterialSourceInput sourceInput)
 {
-    TextureRectArraySurfaceRow material_row = MTL_ROW(sourceInput.dataIndex);
-    const uint handle = material_row.tex_base_color;
-    const uint layer = material_row.id.x;
-    return Sample2DArray(handle, TrilinearSampler, sourceInput.surface.uv0, float(layer));
+    const uvec2 texture_reference =
+        MTL_TEX(sourceInput.dataIndex).tex_base_color;
+    return Sample2DArray(
+        texture_reference.x,
+        TrilinearSampler,
+        sourceInput.surface.uv0,
+        float(texture_reference.y));
 }
 
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)

@@ -569,6 +569,19 @@ ShaderBuildContext *CompileMaterial(
     }
 
     CompileContext c{&input};
+    if (config.resource_manifest
+     && config.resource_manifest->IsValid()
+     && config.material_definition)
+    {
+        if (!ValidateShaderCodeResourceManifestTextureReferences(
+                *config.resource_manifest,
+                *config.material_definition))
+        {
+            c.Fail(
+                "Resource manifest references a texture absent from its material definition");
+            return FailCompile(c);
+        }
+    }
 
     DescriptorContract base_descriptor_contract{};
     uint32_t shader_stage_bits = 0;
@@ -672,14 +685,18 @@ ShaderBuildContext *CompileMaterial(
                                         shader_resource_schema))
         return FailCompile(c);
 
-    // A6-2b-b2：数据槽行表需求 = 编译期直判信号（条件与原 Ensure 补录门一致：
-    // definition.vertex_varying.emit_data_index_id——材质 TOML [vertex] varyings
-    // 解析产物，数据槽材质恒列）。渲染侧 MaterialRequiresRecipeRuntimeRows 与
-    // BindingTableBuilder 的 data 绑定判定统一读此标志，契约不再含数据槽条目。
+    // Runtime address rows are required by payload data or an active
+    // texture-reference consumer. Depth variants may retain the definition's
+    // declarations while omitting every provider that samples them.
+    const bool has_active_texture_reference_consumer =
+        config.material_definition
+        && !config.material_definition->texture_declarations.empty()
+        && (!config.resource_manifest
+         || config.resource_manifest->texture_reference_count != 0);
     shader_resource_schema.requires_runtime_data_rows =
         config.material_definition
         && (config.material_definition->vertex_varying.emit_data_index_id
-         || !config.material_definition->texture_declarations.empty());
+         || has_active_texture_reference_consumer);
 
     ctx->SetShaderResourceSchema(shader_resource_schema);
 

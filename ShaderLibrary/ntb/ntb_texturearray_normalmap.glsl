@@ -5,7 +5,7 @@
 // @ulre slot ntb_provider
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
-// @ulre texture_layer custom0 Fragment required fallback
+// @ulre texture_reference normal Fragment optional fallback
 // @ulre end
 // NTB provider for Texture2DArray normal maps.
 
@@ -19,16 +19,19 @@
 NTBSpace GetNTB(NTBInput ntb_input)
 {
     const SurfaceInput si = ntb_input.surface;
-    // Arena+BDA：layer/句柄在材质数据行尾（MTL_ROW 宏自带行类型）
-    PBRSurfaceRow material_row = MTL_ROW(ntb_input.dataIndex);
-    const float layer = float(material_row.tex_custom0);
-    const uint normalTexHandle = material_row.tex_normal;
+    const uvec2 normalTexture =
+        MTL_TEX(ntb_input.dataIndex).tex_normal;
+    const uint normalTexHandle = normalTexture.x;
     NTBSpace ntb = BuildOrthoNTB(si.worldNormal);
 
     if (normalTexHandle != 0u)
     {
         vec3 nm =
-            Sample2DArray(normalTexHandle, TrilinearSampler, si.uv0, layer).xyz
+            Sample2DArray(
+                normalTexHandle,
+                TrilinearSampler,
+                si.uv0,
+                float(normalTexture.y)).xyz
             * 2.0 - 1.0;
         nm.y = -nm.y;
         const vec3 tangentNormal =
