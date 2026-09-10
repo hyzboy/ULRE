@@ -38,24 +38,6 @@ MaterialTextureReferencePool::~MaterialTextureReferencePool()
     Release();
 }
 
-uint64_t MaterialTextureReferencePool::MakePoolKey(
-    const mtl::MaterialDefinition &definition,
-    const mtl::MaterialTextureReferenceLayout &layout) noexcept
-{
-    if (definition.definition_id.empty()
-     || layout.layout_hash == 0
-     || !layout.HasReferences()
-     || layout.row_stride == 0
-     || layout.max_configuration_count == 0)
-        return 0;
-
-    hgl::hash::FNV1aHasher64 hasher;
-    hasher << definition.definition_id
-           << layout.layout_hash
-           << layout.max_configuration_count;
-    return hasher;
-}
-
 bool MaterialTextureReferencePool::Matches(
     const mtl::MaterialDefinition &definition,
     const mtl::MaterialTextureReferenceLayout &layout) const noexcept

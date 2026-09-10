@@ -45,6 +45,15 @@ struct MaterialTextureConfigurationRetirement
     uint64_t retire_epoch = 0;
 };
 
+inline bool operator==(
+    const MaterialTextureConfigurationRetirement &lhs,
+    const MaterialTextureConfigurationRetirement &rhs) noexcept
+{
+    return lhs.row_index == rhs.row_index
+        && lhs.allocation_generation == rhs.allocation_generation
+        && lhs.retire_epoch == rhs.retire_epoch;
+}
+
 class MaterialTextureReferencePool
 {
     AnsiString definition_id;
@@ -80,7 +89,21 @@ public:
 
     static uint64_t MakePoolKey(
         const mtl::MaterialDefinition &definition,
-        const mtl::MaterialTextureReferenceLayout &layout) noexcept;
+        const mtl::MaterialTextureReferenceLayout &layout) noexcept
+    {
+        if (definition.definition_id.empty()
+         || layout.layout_hash == 0
+         || !layout.HasReferences()
+         || layout.row_stride == 0
+         || layout.max_configuration_count == 0)
+            return 0;
+
+        hgl::hash::FNV1aHasher64 hasher;
+        hasher << definition.definition_id
+               << layout.layout_hash
+               << layout.max_configuration_count;
+        return hasher;
+    }
 
     bool Matches(
         const mtl::MaterialDefinition &definition,
