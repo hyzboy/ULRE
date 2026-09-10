@@ -1,8 +1,41 @@
 ﻿#include<hgl/ecs/components/MaterialComponent.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<cstring>
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        void RetireTextureConfiguration(MaterialComponent &component)
+        {
+            if (!component.material_texture_configuration.IsValid())
+                return;
+
+            Entity *owner = component.GetOwner();
+            ECSContext *context = owner ? owner->GetContext() : nullptr;
+            auto *graphics_context = context
+                ? context->GetGraphicsContext()
+                : nullptr;
+            auto *registry = graphics_context
+                ? graphics_context->GetSSBOBufferRegistry()
+                : nullptr;
+            if (registry)
+            {
+                if (registry->IsMaterialTextureConfigurationValid(
+                        component.material_texture_configuration))
+                {
+                    registry->RetireMaterialTextureConfiguration(
+                        component.material_texture_configuration,
+                        static_cast<uint64_t>(
+                            context->GetRenderSubmissionSerial())
+                            + graph::MaterialTextureConfigurationRetireEpochDelay);
+                }
+            }
+        }
+    }
+
     MaterialComponent::MaterialComponent(const std::string &name)
         : Component(name)
     {
@@ -48,6 +81,8 @@ namespace hgl::ecs
         material_texture_configuration = {};
         material_texture_row_cpu = nullptr;
         material_texture_row_gpu = 0;
+        material_texture_zero_row_gpu = 0;
+        material_texture_configuration_hash = 0;
     }
 
     void MaterialComponent::SetResolvedSSBOBinding(const char *material_private_data_slot_name,
@@ -118,6 +153,7 @@ namespace hgl::ecs
 
     void MaterialComponent::OnDetach()
     {
+        RetireTextureConfiguration(*this);
         program = nullptr;
         program_dirty = true;
         runtime_dirty = true;

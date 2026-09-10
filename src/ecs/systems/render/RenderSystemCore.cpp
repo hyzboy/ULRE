@@ -68,6 +68,7 @@ bool RenderSystemCore::BeginFrame() {
     {
         if (auto *rc = world->GetRenderContext())
             rc->SetCurrentRenderCmdBuffer(render_cmd);
+        world->SetRenderSubmissionSerial(render_submission_serial);
     }
 
     swapchain_image_index = render_target->GetCurrentFrameIndex();
@@ -118,6 +119,7 @@ void RenderSystemCore::EndFrame() {
     render_target->EndRender();
 
     current_frame++;
+    ++render_submission_serial;
     render_cmd = nullptr;
     frame_begun = false;
     render_pass_begun = false;

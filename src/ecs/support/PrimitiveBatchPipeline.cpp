@@ -852,6 +852,13 @@ namespace hgl::ecs
                             if (material_comp->material_texture_row_gpu)
                                 row_ptr[i].texture_reference_address =
                                     material_comp->material_texture_row_gpu;
+                            else if (
+                                material_comp->material_texture_zero_row_gpu)
+                            {
+                                row_ptr[i].texture_reference_address =
+                                    material_comp->
+                                        material_texture_zero_row_gpu;
+                            }
                         }
 
                         if (i < 4)

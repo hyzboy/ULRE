@@ -5,6 +5,7 @@
 #include <hgl/graph/ssbo/TextureSlot.h>
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/type/ValueArray.h>
+#include <cstring>
 
 namespace hgl::graph::mtl
 {
@@ -35,8 +36,11 @@ namespace hgl::graph::mtl
         uint64 asset_identity_hash = 0;
         uint64 asset_metadata_hash = 0;
         DescriptorSemantic semantic = DescriptorSemantic::MaterialTexture;
+        char texture_name[64] = {};
+        uint32 texture_layout_index = InvalidMaterialRecipeBindingIndex;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32 recipe_binding_index = InvalidMaterialRecipeBindingIndex;
+        uint32 array_layer = 0;
         uint32 direct_value = 0;
         BindingSource source = BindingSource::Missing;
         bool required = false;
@@ -51,8 +55,11 @@ namespace hgl::graph::mtl
             && lhs.asset_identity_hash == rhs.asset_identity_hash
             && lhs.asset_metadata_hash == rhs.asset_metadata_hash
             && lhs.semantic == rhs.semantic
+            && std::strcmp(lhs.texture_name, rhs.texture_name) == 0
+            && lhs.texture_layout_index == rhs.texture_layout_index
             && lhs.texture_slot == rhs.texture_slot
             && lhs.recipe_binding_index == rhs.recipe_binding_index
+            && lhs.array_layer == rhs.array_layer
             && lhs.direct_value == rhs.direct_value
             && lhs.source == rhs.source
             && lhs.required == rhs.required

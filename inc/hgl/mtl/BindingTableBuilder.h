@@ -6,10 +6,19 @@
 namespace hgl::graph::mtl
 {
     struct MaterialRecipe;
+    struct MaterialDefinition;
     struct ShaderResourceSchema;
 }
 namespace hgl::graph::mtl
 {
+
+    bool BuildBindingTable(
+        const MaterialRecipe &recipe,
+        const ShaderResourceSchema &layout,
+        const mtl::ShaderProgramKey &program_key,
+        const MaterialDefinition *material_definition,
+        ResolvedBindingTable &out_table,
+        BindingBuildDiagnostic &out_diagnostic) noexcept;
 
     bool BuildBindingTable(
         const MaterialRecipe &recipe,

@@ -16,6 +16,8 @@ namespace hgl::graph
 class DeviceBuffer;
 class IGPUBuffer;
 
+constexpr uint64_t MaterialTextureConfigurationRetireEpochDelay = 3u;
+
 struct MaterialTextureConfigurationAllocation
 {
     uint64_t pool_key = 0;
@@ -123,6 +125,9 @@ public:
         const MaterialTextureConfigurationAllocation &allocation,
         uint64_t retire_epoch);
     void CollectRetired(uint64_t completed_epoch);
+    bool IsValidAllocation(
+        const MaterialTextureConfigurationAllocation &allocation)
+        const noexcept;
 
     uint64_t GetPoolKey() const noexcept { return pool_key; }
     uint64_t GetLayoutHash() const noexcept { return layout_hash; }
@@ -241,6 +246,11 @@ public:
         const MaterialTextureConfigurationAllocation &allocation,
         const mtl::MaterialTextureReference *references,
         uint32_t reference_count);
+    bool IsMaterialTextureConfigurationValid(
+        const MaterialTextureConfigurationAllocation &allocation);
+    uint64_t GetMaterialTextureConfigurationZeroRowAddress(
+        const mtl::MaterialDefinition &definition,
+        const mtl::MaterialTextureReferenceLayout &layout);
 
     /**
      * Defers row reuse until the caller's completed GPU epoch reaches

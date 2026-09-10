@@ -20,6 +20,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/BindingTableBuilder.h>
+#include<hgl/util/hash/FNV1a.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<glm/glm.hpp>
@@ -283,7 +284,7 @@ namespace hgl::ecs
                     const graph::mtl::RecipeTextureBinding
                         &candidate = active_recipe.textures[
                             binding.recipe_binding_index];
-                    if (candidate.slot_name == graph::mtl::GetTextureSlotName(binding.texture_slot)
+                    if (candidate.slot_name == binding.texture_name
                      && !candidate.use_direct_value
                      && graph::mtl::
                             GetResolvedTextureAssetIdentityHash(
@@ -297,6 +298,9 @@ namespace hgl::ecs
                 }
                 const auto *resource =
                     primitive_comp->GetMaterialTextureResource(
+                        binding.texture_name);
+                if (!resource)
+                    resource = primitive_comp->GetMaterialTextureResource(
                         binding.texture_slot);
                 if (!recipe_binding
                  || !resource
@@ -304,10 +308,10 @@ namespace hgl::ecs
                  || !bindless_mgr)
                 {
                     GLogError(
-                        "[DeferredResource] Texture acquisition failed: owner=%s slot=%u recipe=%d resource=%d bindless=%d",
+                        "[DeferredResource] Texture acquisition failed: owner=%s texture=%s recipe=%d resource=%d bindless=%d",
                         owner_name,
-                        static_cast<uint32_t>(
-                            binding.texture_slot),
+                        binding.texture_name[0] == '\0'
+                            ? "<unnamed>" : binding.texture_name,
                         recipe_binding ? 1 : 0,
                         resource ? 1 : 0,
                         bindless_mgr ? 1 : 0);
@@ -326,10 +330,10 @@ namespace hgl::ecs
                         != binding.asset_identity_hash)
                 {
                     GLogError(
-                        "[DeferredResource] Texture identity mismatch: owner=%s slot=%u",
+                        "[DeferredResource] Texture identity mismatch: owner=%s texture=%s",
                         owner_name,
-                        static_cast<uint32_t>(
-                            binding.texture_slot));
+                        binding.texture_name[0] == '\0'
+                            ? "<unnamed>" : binding.texture_name);
                     return false;
                 }
 
@@ -447,6 +451,33 @@ namespace hgl::ecs
         {
             if (!material_comp)
                 return;
+
+            if (material_comp->material_texture_configuration.IsValid())
+            {
+                auto *graphics_context = material_comp->GetOwner()
+                    && material_comp->GetOwner()->GetContext()
+                    ? material_comp->GetOwner()->GetContext()
+                        ->GetGraphicsContext()
+                    : nullptr;
+                auto *registry = graphics_context
+                    ? graphics_context->GetSSBOBufferRegistry()
+                    : nullptr;
+                if (registry)
+                {
+                    const uint64_t retire_epoch =
+                        static_cast<uint64_t>(
+                            material_comp->GetOwner()->GetContext()
+                                ->GetRenderSubmissionSerial())
+                        + graph::MaterialTextureConfigurationRetireEpochDelay;
+                    if (registry->IsMaterialTextureConfigurationValid(
+                            material_comp->material_texture_configuration))
+                    {
+                        registry->RetireMaterialTextureConfiguration(
+                            material_comp->material_texture_configuration,
+                            retire_epoch);
+                    }
+                }
+            }
 
             material_comp->ClearMaterializationRows();
             material_comp->runtime_dirty = true;
@@ -627,6 +658,7 @@ namespace hgl::ecs
                 material_binding_recipe,
                 resolved_program->GetShaderResourceSchema(),
                 resolved_program->GetProgramKey(),
+                &template_definition,
                 binding_table,
                 binding_diagnostic))
         {
@@ -952,6 +984,279 @@ namespace hgl::ecs
         material_comp->data_index_row =
             entity_data_index != uint32_t(-1) ? entity_data_index : 0u;
 
+        auto *texture_graphics_context = world->GetGraphicsContext();
+        auto *texture_registry = texture_graphics_context
+            ? texture_graphics_context->GetSSBOBufferRegistry()
+            : nullptr;
+
+        graph::mtl::MaterialDefinition texture_definition{};
+        graph::mtl::MaterialTextureReferenceLayout texture_layout{};
+        bool has_texture_definition =
+            !effective_recipe.mtl_def_id.empty()
+         && graph::mtl::TryGetMaterialDefinitionByID(
+                effective_recipe.mtl_def_id,
+                texture_definition);
+        if (!has_texture_definition)
+        {
+            has_texture_definition =
+                graph::mtl::TryGetMaterialDefinitionByID(
+                    graph::mtl::GetFallbackMaterialDefinitionID(),
+                    texture_definition);
+        }
+
+        if (!has_texture_definition
+         || !graph::mtl::BuildMaterialTextureReferenceLayout(
+                texture_definition,
+                texture_layout))
+        {
+            GLogWarning(
+                "[RenderPrimitiveCollectSystem] Materialize failed: texture definition lookup/layout failed for %s definition=%s",
+                GetPrimitiveOwnerName(primitive_comp),
+                effective_recipe.mtl_def_id.empty()
+                    ? "<empty>" : effective_recipe.mtl_def_id.c_str());
+            return false;
+        }
+
+        if (texture_registry)
+            texture_registry->CollectRetiredMaterialTextureConfigurations(
+                world->GetRenderSubmissionSerial());
+
+        const uint64_t retire_epoch =
+            static_cast<uint64_t>(world->GetRenderSubmissionSerial())
+            + graph::MaterialTextureConfigurationRetireEpochDelay;
+
+        if (texture_layout.HasReferences())
+        {
+            ValueArray<graph::mtl::MaterialTextureReference> references;
+            references.Resize(static_cast<int>(texture_layout.reference_count));
+            for (int i = 0; i < references.GetCount(); ++i)
+                references[i] = {};
+
+            for (size_t declaration_index = 0;
+                 declaration_index < texture_definition.texture_declarations.size();
+                 ++declaration_index)
+            {
+                const auto &declaration =
+                    texture_definition.texture_declarations[declaration_index];
+                const graph::mtl::RecipeTextureBinding *recipe_binding = nullptr;
+                for (const auto &candidate : material_binding_recipe.textures)
+                {
+                    if (candidate.slot_name == declaration.name)
+                    {
+                        recipe_binding = &candidate;
+                        break;
+                    }
+                }
+
+                if (!recipe_binding)
+                {
+                    if (declaration.required)
+                    {
+                        GLogError(
+                            "[RenderPrimitiveCollectSystem] Required texture binding missing: owner=%s texture=%s",
+                            GetPrimitiveOwnerName(primitive_comp),
+                            declaration.name.c_str());
+                        return false;
+                    }
+                    continue;
+                }
+
+                if (recipe_binding->array_layer != 0
+                 && !graph::mtl::IsMaterialTextureArraySampler(
+                        declaration.sampler_type))
+                {
+                    GLogError(
+                        "[RenderPrimitiveCollectSystem] Non-array texture received array layer: owner=%s texture=%s layer=%u",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        declaration.name.c_str(),
+                        recipe_binding->array_layer);
+                    return false;
+                }
+
+                uint32_t handle = 0;
+                if (recipe_binding->use_direct_value)
+                {
+                    // Legacy bridge only. New named authoring always uses a
+                    // resource and the independent reference row.
+                    handle = recipe_binding->direct_value;
+                }
+                else if (!recipe_binding->resource_id.empty())
+                {
+                    handle = rdbs->GetBindlessHandle(
+                        AnsiString(recipe_binding->resource_id.c_str()));
+
+                    if (handle == 0)
+                    {
+                        const auto *authoring =
+                            primitive_comp->GetMaterialTextureResource(
+                                declaration.name);
+                        if (authoring
+                         && !authoring->use_direct_value
+                         && authoring->texture)
+                        {
+                            const std::string fallback_id =
+                                authoring->resource_id.empty()
+                                    ? BuildTextureResourceId(authoring->texture)
+                                    : authoring->resource_id;
+                            handle = rdbs->GetBindlessHandle(
+                                AnsiString(fallback_id.c_str()));
+                        }
+                    }
+                }
+
+                if (handle == 0 && declaration.required)
+                {
+                    GLogError(
+                        "[RenderPrimitiveCollectSystem] Required texture handle missing: owner=%s texture=%s resource=%s",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        declaration.name.c_str(),
+                        recipe_binding->resource_id.empty()
+                            ? "<direct/empty>"
+                            : recipe_binding->resource_id.c_str());
+                    return false;
+                }
+
+                references[static_cast<int>(declaration_index)] = {
+                    handle,
+                    handle == 0 ? 0u : recipe_binding->array_layer};
+            }
+
+            hgl::hash::FNV1aHasher64 reference_hasher;
+            reference_hasher << texture_layout.layout_hash
+                             << texture_layout.reference_count;
+            for (int i = 0; i < references.GetCount(); ++i)
+            {
+                reference_hasher << references[i].descriptor_index
+                                 << references[i].array_layer;
+            }
+            const uint64_t reference_configuration_hash =
+                reference_hasher;
+
+            if (!texture_registry)
+            {
+                GLogError(
+                    "[RenderPrimitiveCollectSystem] Materialize failed: SSBO registry missing for texture references owner=%s",
+                    GetPrimitiveOwnerName(primitive_comp));
+                return false;
+            }
+
+            const uint64_t pool_key =
+                graph::MaterialTextureReferencePool::MakePoolKey(
+                    texture_definition,
+                    texture_layout);
+            const auto old_allocation =
+                material_comp->material_texture_configuration;
+            const bool old_allocation_live =
+                old_allocation.IsValid()
+             && texture_registry->IsMaterialTextureConfigurationValid(
+                    old_allocation);
+            const bool can_reuse =
+                old_allocation_live
+             && old_allocation.pool_key == pool_key
+             && old_allocation.reference_count
+                    == texture_layout.reference_count
+             && old_allocation.row_stride == texture_layout.row_stride
+             && material_comp->material_texture_configuration_hash
+                    == reference_configuration_hash;
+
+            graph::MaterialTextureConfigurationAllocation new_allocation =
+                old_allocation;
+            if (!can_reuse)
+            {
+                if (!texture_registry->AcquireMaterialTextureConfiguration(
+                        texture_definition,
+                        texture_layout,
+                        new_allocation))
+                {
+                    GLogError(
+                        "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration capacity exhausted owner=%s definition=%s",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        effective_recipe.mtl_def_id.c_str());
+                    return false;
+                }
+            }
+
+            if (!can_reuse
+             && !texture_registry->WriteMaterialTextureConfiguration(
+                    new_allocation,
+                    references.GetData(),
+                    texture_layout.reference_count))
+            {
+                if (!can_reuse)
+                    texture_registry->RetireMaterialTextureConfiguration(
+                        new_allocation,
+                        retire_epoch);
+                GLogError(
+                    "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration write failed owner=%s",
+                    GetPrimitiveOwnerName(primitive_comp));
+                return false;
+            }
+
+            if (!can_reuse && old_allocation_live)
+                texture_registry->RetireMaterialTextureConfiguration(
+                    old_allocation,
+                    retire_epoch);
+
+            material_comp->material_texture_configuration = new_allocation;
+            material_comp->material_texture_row_cpu =
+                new_allocation.cpu_row;
+            material_comp->material_texture_row_gpu =
+                new_allocation.gpu_row;
+            material_comp->material_texture_zero_row_gpu =
+                texture_registry->
+                    GetMaterialTextureConfigurationZeroRowAddress(
+                        texture_definition,
+                        texture_layout);
+            if (material_comp->material_texture_zero_row_gpu == 0)
+            {
+                GLogError(
+                    "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration zero row unavailable owner=%s",
+                    GetPrimitiveOwnerName(primitive_comp));
+                return false;
+            }
+            material_comp->material_texture_configuration_hash =
+                reference_configuration_hash;
+
+            if (getenv("ULRE_ARENA_DEBUG"))
+            {
+                GLogInfo(
+                    "[MaterialTextureReferences] owner=%s definition=%s row=%u references=%u gpu=0x%llx",
+                    GetPrimitiveOwnerName(primitive_comp),
+                    texture_definition.definition_id.c_str(),
+                    new_allocation.row_index,
+                    texture_layout.reference_count,
+                    static_cast<unsigned long long>(
+                        new_allocation.gpu_row));
+                for (size_t i = 0;
+                     i < texture_definition.texture_declarations.size();
+                     ++i)
+                {
+                    const auto &declaration =
+                        texture_definition.texture_declarations[i];
+                    const auto &reference =
+                        references[static_cast<int>(i)];
+                    GLogInfo(
+                        "[MaterialTextureReferences] texture=%s descriptor=%u layer=%u",
+                        declaration.name.c_str(),
+                        reference.descriptor_index,
+                        reference.array_layer);
+                }
+            }
+        }
+        else
+        {
+            if (texture_registry
+             && texture_registry->IsMaterialTextureConfigurationValid(
+                    material_comp->material_texture_configuration))
+                texture_registry->RetireMaterialTextureConfiguration(
+                    material_comp->material_texture_configuration,
+                    retire_epoch);
+            material_comp->material_texture_configuration = {};
+            material_comp->material_texture_row_cpu = nullptr;
+            material_comp->material_texture_row_gpu = 0;
+            material_comp->material_texture_zero_row_gpu = 0;
+        }
+
         // 纹理句柄行（tex_tail 镜像源）：从绑定 IR 收集本图元的全部 bindless 句柄。
         uint32_t row_data[static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE)] = {};
 
@@ -978,7 +1283,8 @@ namespace hgl::ecs
                     // authored resource id, or the texture-derived id used at
                     // RegisterTexture2D(Array)Resource time.
                     if (const auto *authoring =
-                            primitive_comp->GetMaterialTextureResource(slot_enum))
+                            primitive_comp->GetMaterialTextureResource(
+                                texture_binding.slot_name))
                     {
                         if (!authoring->use_direct_value && authoring->texture)
                         {
@@ -987,6 +1293,25 @@ namespace hgl::ecs
                                     ? BuildTextureResourceId(authoring->texture)
                                     : authoring->resource_id;
                             handle = rdbs->GetBindlessHandle(AnsiString(fallback_id.c_str()));
+                        }
+                    }
+                    if (handle == 0)
+                    {
+                        if (const auto *authoring =
+                                primitive_comp->GetMaterialTextureResource(
+                                    slot_enum))
+                        {
+                            if (!authoring->use_direct_value
+                             && authoring->texture)
+                            {
+                                const std::string fallback_id =
+                                    authoring->resource_id.empty()
+                                        ? BuildTextureResourceId(
+                                            authoring->texture)
+                                        : authoring->resource_id;
+                                handle = rdbs->GetBindlessHandle(
+                                    AnsiString(fallback_id.c_str()));
+                            }
                         }
                     }
                 }

@@ -33,6 +33,7 @@ namespace hgl::graph::mtl
         uint32_t direct_value = 0;                // 直接写入 TextureLayerRow 的原始值（例如 array layer）
         bool use_direct_value = false;            // true 时忽略 resource_id，直接使用 direct_value
         bool required = false;                     // true 时缺失应触发显式错误
+        uint32_t array_layer = 0;                 // Texture2DArray layer; non-array must be zero.
     };
 
     struct RecipeSSBOAssetBinding
@@ -202,6 +203,14 @@ namespace hgl::graph::mtl
     };
 
     static_assert(sizeof(MaterialTextureReference) == 8);
+
+    inline bool operator==(
+        const MaterialTextureReference &lhs,
+        const MaterialTextureReference &rhs) noexcept
+    {
+        return lhs.descriptor_index == rhs.descriptor_index
+            && lhs.array_layer == rhs.array_layer;
+    }
 
     struct MaterialTextureDeclaration
     {
@@ -396,7 +405,7 @@ namespace hgl::graph::mtl
     inline bool IsValidMaterialTextureName(
         const std::string &name) noexcept
     {
-        if (name.empty())
+        if (name.empty() || name.size() >= 64)
             return false;
 
         const auto is_first = [](const char c)
@@ -420,6 +429,12 @@ namespace hgl::graph::mtl
         }
 
         return true;
+    }
+
+    inline bool IsValidMaterialTextureName(
+        const char *name) noexcept
+    {
+        return name && IsValidMaterialTextureName(std::string(name));
     }
 
     inline int FindMaterialTextureDeclaration(
@@ -684,7 +699,8 @@ namespace hgl::graph::mtl
                                            const std::string &resource_id,
                                            const bool required,
                                            const uint32_t direct_value = 0,
-                                           const bool use_direct_value = false)
+                                           const bool use_direct_value = false,
+                                           const uint32_t array_layer = 0)
     {
         if (slot_name.empty())
             return false;
@@ -695,6 +711,7 @@ namespace hgl::graph::mtl
                 continue;
 
             binding.resource_id = resource_id;
+            binding.array_layer = array_layer;
             binding.direct_value = direct_value;
             binding.use_direct_value = use_direct_value;
             binding.required = required;
@@ -704,6 +721,7 @@ namespace hgl::graph::mtl
         RecipeTextureBinding binding{};
         binding.slot_name = slot_name;
         binding.resource_id = resource_id;
+        binding.array_layer = array_layer;
         binding.direct_value = direct_value;
         binding.use_direct_value = use_direct_value;
         binding.required = required;
@@ -744,7 +762,8 @@ namespace hgl::graph::mtl
         {
             h << texture.slot_name
               << texture.resource_id;
-            h << texture.direct_value
+            h << texture.array_layer
+              << texture.direct_value
               << texture.use_direct_value
               << texture.required;
         }

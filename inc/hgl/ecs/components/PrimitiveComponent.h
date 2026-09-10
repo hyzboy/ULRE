@@ -5,7 +5,8 @@
 #include<hgl/ecs/support/TransformPolicySpec.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<array>
+#include<hgl/type/String.h>
+#include<hgl/type/UnorderedMap.h>
 #include<glm/glm.hpp>
 
 // Forward declarations to avoid heavy includes
@@ -58,9 +59,11 @@ namespace hgl::ecs
             hgl::graph::Texture *texture = nullptr;
             hgl::graph::Sampler *sampler = nullptr;
             MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D;
+            uint32_t array_layer = 0;
             uint32_t direct_value = 0;
             bool use_direct_value = false;
             bool required = false;
+            bool legacy_slot_authoring = false;
         };
 
         struct MaterialPrivateDataSlotAuthoringResource
@@ -91,7 +94,8 @@ namespace hgl::ecs
         hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
         bool hasMaterialRecipeOverride = false;
         hgl::graph::mtl::MaterialRecipe materialRecipeOverride;
-        std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
+        hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>
+            namedMaterialTextureResources;
         std::vector<MaterialPrivateDataSlotAuthoringResource> materialPrivateDataSlotResources{};
 
         // Monotonic counter incremented every time authored material resources change
@@ -182,8 +186,21 @@ namespace hgl::ecs
                                         MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
                                         const std::string &resource_id = std::string(),
                                         bool required = false);
+        bool SetMaterialTextureResource(const std::string &name,
+                                        hgl::graph::Texture *texture,
+                                        hgl::graph::Sampler *sampler,
+                                        MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
+                                        const std::string &resource_id = std::string(),
+                                        uint32_t array_layer = 0,
+                                        bool required = false);
+        bool SetMaterialTextureArrayLayer(const std::string &name, uint32_t array_layer);
+        bool SetMaterialTextureLayer(const std::string &name, uint32_t layer)
+        {
+            return SetMaterialTextureArrayLayer(name, layer);
+        }
         void SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value);
         const MaterialTextureAuthoringResource *GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const;
+        const MaterialTextureAuthoringResource *GetMaterialTextureResource(const std::string &name) const;
         void SetMaterialPrivateDataSlotResource(const MaterialPrivateDataSlotAuthoringResource &resource);
         const MaterialPrivateDataSlotAuthoringResource *GetMaterialPrivateDataSlotResource(
             const std::string &material_private_data_slot_name,

@@ -35,17 +35,6 @@ namespace hgl::ecs
             recipe.ssbo_assets.clear();
         }
 
-        void ResetMaterialTextureAuthoringResource(PrimitiveComponent::MaterialTextureAuthoringResource &resource)
-        {
-            resource.resource_id.clear();
-            resource.texture = nullptr;
-            resource.sampler = nullptr;
-            resource.kind = PrimitiveComponent::MaterialTextureResourceKind::Texture2D;
-            resource.direct_value = 0;
-            resource.use_direct_value = false;
-            resource.required = false;
-        }
-
         void ResetMaterialPrivateDataSlotAuthoringResource(PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource &resource)
         {
             resource.material_private_data_slot_name.clear();
@@ -59,6 +48,69 @@ namespace hgl::ecs
             resource.use_data_index = false;
             resource.shared_across_instances = false;
             resource.authored = false;
+        }
+
+        bool ResolveTextureAuthoringDefinition(
+            const PrimitiveComponent &component,
+            hgl::graph::mtl::MaterialDefinition &out_definition)
+        {
+            const hgl::graph::mtl::MaterialRecipe *recipe =
+                component.GetMaterialRecipeOverride();
+            if (!recipe)
+                recipe = component.GetAssetMaterialRecipe();
+
+            return recipe
+                && !recipe->mtl_def_id.empty()
+                && hgl::graph::mtl::TryGetMaterialDefinitionByID(
+                    recipe->mtl_def_id,
+                    out_definition);
+        }
+
+        bool UpsertMaterialTextureAuthoringResource(
+            hgl::UnorderedMap<hgl::AnsiString,
+                PrimitiveComponent::MaterialTextureAuthoringResource> &resources,
+            const std::string &name,
+            const PrimitiveComponent::MaterialTextureAuthoringResource &resource)
+        {
+            const hgl::AnsiString key(name.c_str());
+            if (resources.GetValuePointer(key))
+                return resources.Change(key, resource);
+            return resources.Add(key, resource);
+        }
+
+        bool AppendTextureBinding(
+            hgl::graph::mtl::MaterialRecipe &recipe,
+            const std::string &name,
+            const PrimitiveComponent::MaterialTextureAuthoringResource &resource)
+        {
+            if (resource.use_direct_value)
+            {
+                return hgl::graph::mtl::UpsertRecipeTextureBinding(
+                    recipe,
+                    name,
+                    std::string(),
+                    resource.required,
+                    resource.direct_value,
+                    true);
+            }
+
+            if (!resource.texture || !resource.sampler)
+                return true;
+
+            const std::string resource_id = resource.resource_id.empty()
+                ? BuildTextureResourceId(resource.texture)
+                : resource.resource_id;
+            if (resource_id.empty())
+                return false;
+
+            return hgl::graph::mtl::UpsertRecipeTextureBinding(
+                recipe,
+                name,
+                resource_id,
+                resource.required,
+                0,
+                false,
+                resource.array_layer);
         }
     }
 
@@ -229,31 +281,116 @@ namespace hgl::ecs
         if (asset_recipe && override_recipe)
             out_recipe = *override_recipe;
 
-        for (size_t i = 0; i < static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE); ++i)
+        hgl::graph::mtl::MaterialDefinition definition{};
+        const bool has_definition =
+            !out_recipe.mtl_def_id.empty()
+         && hgl::graph::mtl::TryGetMaterialDefinitionByID(
+                out_recipe.mtl_def_id,
+                definition);
+
+        for (const auto &[named_key, resource] : namedMaterialTextureResources)
         {
-            const auto slot = static_cast<hgl::graph::mtl::TextureSlot>(i);
-            const auto *resource = GetMaterialTextureResource(slot);
-            if (!resource)
-                continue;
+            const std::string name = named_key.c_str();
+            if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
+                return false;
 
-            if (resource->use_direct_value)
+            const int declaration_index = has_definition
+                ? hgl::graph::mtl::FindMaterialTextureDeclaration(
+                    definition,
+                    name)
+                : -1;
+            if (!resource.legacy_slot_authoring
+             && (!has_definition || declaration_index < 0))
+                return false;
+
+            if (declaration_index >= 0)
             {
-                hgl::graph::mtl::UpsertRecipeTextureBinding(out_recipe,
-                                                            hgl::graph::mtl::GetTextureSlotName(slot),
-                                                            std::string(),
-                                                            resource->required,
-                                                            resource->direct_value,
-                                                            true);
-                continue;
+                const auto &declaration =
+                    definition.texture_declarations[
+                        static_cast<size_t>(declaration_index)];
+                const bool declaration_uses_array =
+                    hgl::graph::mtl::IsMaterialTextureArraySampler(
+                        declaration.sampler_type);
+                const bool authoring_uses_array =
+                    resource.kind
+                    == MaterialTextureResourceKind::Texture2DArray;
+                if (!resource.use_direct_value
+                 && declaration_uses_array != authoring_uses_array)
+                    return false;
+                if (!declaration_uses_array && resource.array_layer != 0)
+                    return false;
             }
+        }
 
-            const std::string resource_id = resource->resource_id.empty()
-                                          ? BuildTextureResourceId(resource->texture)
-                                          : resource->resource_id;
-            if (resource_id.empty())
+        if (has_definition)
+        {
+            for (const auto &declaration : definition.texture_declarations)
+            {
+                const hgl::AnsiString key(declaration.name.c_str());
+                const auto *resource =
+                    namedMaterialTextureResources.GetValuePointer(key);
+                if (resource
+                 && !AppendTextureBinding(
+                        out_recipe,
+                        declaration.name,
+                        *resource))
+                    return false;
+
+                bool has_recipe_binding = false;
+                for (const auto &binding : out_recipe.textures)
+                {
+                    if (binding.slot_name == declaration.name)
+                    {
+                        has_recipe_binding = true;
+                        if (!hgl::graph::mtl::IsMaterialTextureArraySampler(
+                                declaration.sampler_type)
+                         && binding.array_layer != 0)
+                            return false;
+                        break;
+                    }
+                }
+                if (!has_recipe_binding
+                 && !hgl::graph::mtl::UpsertRecipeTextureBinding(
+                        out_recipe,
+                        declaration.name,
+                        std::string(),
+                        declaration.required))
+                    return false;
+            }
+        }
+
+        // Compatibility bridge: legacy slot callers remain ordered by
+        // TextureSlot while all authoring storage is name-keyed.
+        for (size_t i = 0;
+             i < static_cast<size_t>(
+                    hgl::graph::mtl::TextureSlot::RANGE_SIZE);
+             ++i)
+        {
+            const auto slot =
+                static_cast<hgl::graph::mtl::TextureSlot>(i);
+            const std::string name =
+                hgl::graph::mtl::GetTextureSlotName(slot);
+            const hgl::AnsiString key(name.c_str());
+            const auto *resource =
+                namedMaterialTextureResources.GetValuePointer(key);
+            if (!resource || !resource->legacy_slot_authoring)
                 continue;
 
-            hgl::graph::mtl::UpsertRecipeTextureBinding(out_recipe, hgl::graph::mtl::GetTextureSlotName(slot), resource_id, resource->required);
+            const bool belongs_to_definition =
+                has_definition
+             && hgl::graph::mtl::FindMaterialTextureDeclaration(
+                    definition,
+                    name) >= 0;
+            if (!belongs_to_definition
+             && has_definition
+             && !definition.texture_declarations.empty())
+                continue;
+
+            if (!AppendTextureBinding(
+                    out_recipe,
+                    name,
+                    *resource))
+                return false;
         }
 
         for (const auto &resource : materialPrivateDataSlotResources)
@@ -312,48 +449,198 @@ namespace hgl::ecs
                                                         const std::string &resource_id,
                                                         bool required)
     {
-        const size_t index = static_cast<size_t>(slot);
-        if (index >= materialTextureResources.size())
-            return;
-
-        auto &resource = materialTextureResources[index];
         if (!texture || !sampler)
         {
-            ResetMaterialTextureAuthoringResource(resource);
+            namedMaterialTextureResources.DeleteByKey(
+                hgl::AnsiString(
+                    hgl::graph::mtl::GetTextureSlotName(slot)));
+            ++material_authored_generation;
             return;
         }
 
+        MaterialTextureAuthoringResource resource{};
         resource.texture = texture;
         resource.sampler = sampler;
         resource.kind = kind;
+        resource.array_layer = 0;
         resource.direct_value = 0;
         resource.use_direct_value = false;
         resource.required = required;
+        resource.legacy_slot_authoring = true;
         resource.resource_id = resource_id.empty() ? BuildTextureResourceId(texture) : resource_id;
+        if (UpsertMaterialTextureAuthoringResource(
+                namedMaterialTextureResources,
+                hgl::graph::mtl::GetTextureSlotName(slot),
+                resource))
+            ++material_authored_generation;
+    }
+
+    bool PrimitiveComponent::SetMaterialTextureResource(
+        const std::string &name,
+        hgl::graph::Texture *texture,
+        hgl::graph::Sampler *sampler,
+        MaterialTextureResourceKind kind,
+        const std::string &resource_id,
+        const uint32_t array_layer,
+        const bool required)
+    {
+        if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
+        {
+            GLogError(
+                "[PrimitiveComponent] Texture authoring rejected invalid name=%s",
+                name.c_str());
+            return false;
+        }
+        if (!texture || !sampler)
+        {
+            GLogError(
+                "[PrimitiveComponent] Texture authoring rejected null resource name=%s",
+                name.c_str());
+            return false;
+        }
+
+        hgl::graph::mtl::MaterialDefinition definition{};
+        if (!ResolveTextureAuthoringDefinition(*this, definition))
+        {
+            GLogError(
+                "[PrimitiveComponent] Texture authoring rejected unresolved material definition texture=%s",
+                name.c_str());
+            return false;
+        }
+
+        const int declaration_index =
+            hgl::graph::mtl::FindMaterialTextureDeclaration(
+                definition,
+                name);
+        if (declaration_index < 0)
+        {
+            GLogError(
+                "[PrimitiveComponent] Texture authoring rejected undeclared texture=%s definition=%s",
+                name.c_str(),
+                definition.definition_id.c_str());
+            return false;
+        }
+        const auto &declaration =
+            definition.texture_declarations[
+                static_cast<size_t>(declaration_index)];
+        const bool declaration_uses_array =
+            hgl::graph::mtl::IsMaterialTextureArraySampler(
+                declaration.sampler_type);
+        const bool authoring_uses_array =
+            kind == MaterialTextureResourceKind::Texture2DArray;
+        if (declaration_uses_array != authoring_uses_array
+         || (!declaration_uses_array && array_layer != 0))
+        {
+            GLogError(
+                "[PrimitiveComponent] Texture authoring rejected incompatible texture type/layer texture=%s layer=%u",
+                name.c_str(),
+                array_layer);
+            return false;
+        }
+
+        MaterialTextureAuthoringResource resource{};
+        resource.resource_id =
+            resource_id.empty() ? BuildTextureResourceId(texture) : resource_id;
+        resource.texture = texture;
+        resource.sampler = sampler;
+        resource.kind = kind;
+        resource.array_layer = array_layer;
+        resource.direct_value = 0;
+        resource.use_direct_value = false;
+        resource.required = required;
+        resource.legacy_slot_authoring = false;
+        if (!UpsertMaterialTextureAuthoringResource(
+                namedMaterialTextureResources,
+                name,
+                resource))
+            return false;
         ++material_authored_generation;
+        return true;
+    }
+
+    bool PrimitiveComponent::SetMaterialTextureArrayLayer(
+        const std::string &name,
+        const uint32_t array_layer)
+    {
+        if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
+        {
+            GLogError(
+                "[PrimitiveComponent] Texture layer rejected invalid name=%s",
+                name.c_str());
+            return false;
+        }
+
+        hgl::graph::mtl::MaterialDefinition definition{};
+        if (!ResolveTextureAuthoringDefinition(*this, definition))
+        {
+            GLogError(
+                "[PrimitiveComponent] Texture layer rejected unresolved material definition texture=%s",
+                name.c_str());
+            return false;
+        }
+        const int declaration_index =
+            hgl::graph::mtl::FindMaterialTextureDeclaration(
+                definition,
+                name);
+        if (declaration_index < 0
+         || !hgl::graph::mtl::IsMaterialTextureArraySampler(
+                definition.texture_declarations[
+                    static_cast<size_t>(declaration_index)].sampler_type))
+        {
+            GLogError(
+                "[PrimitiveComponent] Texture layer rejected non-array or undeclared texture=%s definition=%s",
+                name.c_str(),
+                definition.definition_id.c_str());
+            return false;
+        }
+
+        const hgl::AnsiString key(name.c_str());
+        if (auto *entry = namedMaterialTextureResources.GetValuePointer(key))
+        {
+            entry->array_layer = array_layer;
+            ++material_authored_generation;
+            return true;
+        }
+        GLogError(
+            "[PrimitiveComponent] Texture layer rejected missing resource texture=%s",
+            name.c_str());
+        return false;
     }
 
     void PrimitiveComponent::SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value)
     {
-        const size_t index = static_cast<size_t>(slot);
-        if (index >= materialTextureResources.size())
-            return;
-
-        auto &resource = materialTextureResources[index];
-        ResetMaterialTextureAuthoringResource(resource);
+        MaterialTextureAuthoringResource resource{};
         resource.direct_value = value;
         resource.use_direct_value = true;
-        ++material_authored_generation;
+        resource.legacy_slot_authoring = true;
+        if (UpsertMaterialTextureAuthoringResource(
+                namedMaterialTextureResources,
+                hgl::graph::mtl::GetTextureSlotName(slot),
+                resource))
+            ++material_authored_generation;
     }
 
     const PrimitiveComponent::MaterialTextureAuthoringResource *PrimitiveComponent::GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const
     {
-        const size_t index = static_cast<size_t>(slot);
-        if (index >= materialTextureResources.size())
+        return GetMaterialTextureResource(
+            hgl::graph::mtl::GetTextureSlotName(slot));
+    }
+
+    const PrimitiveComponent::MaterialTextureAuthoringResource *
+        PrimitiveComponent::GetMaterialTextureResource(
+            const std::string &name) const
+    {
+        if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
             return nullptr;
 
-        const auto &resource = materialTextureResources[index];
-        return (resource.use_direct_value || (resource.texture && resource.sampler)) ? &resource : nullptr;
+        const hgl::AnsiString key(name.c_str());
+        if (const auto *entry = namedMaterialTextureResources.GetValuePointer(key))
+        {
+            if (entry->use_direct_value
+             || (entry->texture && entry->sampler))
+                return entry;
+        }
+        return nullptr;
     }
 
     void PrimitiveComponent::SetMaterialPrivateDataSlotResource(const MaterialPrivateDataSlotAuthoringResource &resource)
@@ -425,12 +712,12 @@ namespace hgl::ecs
 
     void PrimitiveComponent::ClearMaterialAuthoringResources()
     {
-        for (auto &resource : materialTextureResources)
-            ResetMaterialTextureAuthoringResource(resource);
+        namedMaterialTextureResources.Clear();
 
         for (auto &resource : materialPrivateDataSlotResources)
             ResetMaterialPrivateDataSlotAuthoringResource(resource);
         materialPrivateDataSlotResources.clear();
+        ++material_authored_generation;
     }
 
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()

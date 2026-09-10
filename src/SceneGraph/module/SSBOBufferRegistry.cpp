@@ -291,6 +291,14 @@ bool MaterialTextureReferencePool::Write(
     return true;
 }
 
+bool MaterialTextureReferencePool::IsValidAllocation(
+    const MaterialTextureConfigurationAllocation &allocation)
+    const noexcept
+{
+    return IsOwnedAllocation(allocation)
+        && !IsRetired(allocation.row_index);
+}
+
 bool MaterialTextureReferencePool::Retire(
     const MaterialTextureConfigurationAllocation &allocation,
     const uint64_t retire_epoch)
@@ -513,6 +521,23 @@ bool SSBOBufferRegistry::WriteMaterialTextureConfiguration(
         return false;
     }
     return true;
+}
+
+bool SSBOBufferRegistry::IsMaterialTextureConfigurationValid(
+    const MaterialTextureConfigurationAllocation &allocation)
+{
+    MaterialTextureReferencePool *pool =
+        FindMaterialTextureReferencePool(allocation);
+    return pool && pool->IsValidAllocation(allocation);
+}
+
+uint64_t SSBOBufferRegistry::GetMaterialTextureConfigurationZeroRowAddress(
+    const mtl::MaterialDefinition &definition,
+    const mtl::MaterialTextureReferenceLayout &layout)
+{
+    MaterialTextureReferencePool *pool =
+        FindMaterialTextureReferencePool(definition, layout);
+    return pool ? pool->GetZeroRowAddress() : 0;
 }
 
 bool SSBOBufferRegistry::RetireMaterialTextureConfiguration(

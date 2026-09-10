@@ -3,7 +3,6 @@
 
 #include "contract/CanonicalContractWriter.h"
 #include <cstring>
-#include <string_view>
 
 namespace hgl::graph::mtl
 {
@@ -11,7 +10,7 @@ namespace hgl::graph::mtl
     {
         using contract_detail::CanonicalContractWriter;
 
-        constexpr uint32 ResolvedBindingTableTag = 0x3156424Du;   // MBV1
+        constexpr uint32 ResolvedBindingTableTag = 0x3256424Du;   // MBV2
 
         bool IsValidTextureSource(const BindingSource source) noexcept
         {
@@ -33,6 +32,9 @@ namespace hgl::graph::mtl
                 && binding.asset_metadata_hash != 0
                 && (binding.semantic == DescriptorSemantic::MaterialTexture
                  || binding.semantic == DescriptorSemantic::MaterialSampler)
+                && IsValidMaterialTextureName(binding.texture_name)
+                && binding.texture_layout_index
+                    != InvalidMaterialRecipeBindingIndex
                 && binding.texture_slot >= TextureSlot::BEGIN_RANGE
                 && binding.texture_slot <= TextureSlot::END_RANGE
                 && IsValidTextureSource(binding.source)
@@ -74,8 +76,11 @@ namespace hgl::graph::mtl
             hgl::hash::FNV1aHasher64 h;
             h << binding.logical_resource_id
               << binding.semantic
+              << static_cast<const char *>(binding.texture_name)
+              << binding.texture_layout_index
               << binding.texture_slot
               << binding.recipe_binding_index
+              << binding.array_layer
               << binding.direct_value
               << binding.source
               << binding.required
@@ -107,6 +112,10 @@ namespace hgl::graph::mtl
         {
             if (lhs.logical_resource_id != rhs.logical_resource_id)
                 return lhs.logical_resource_id < rhs.logical_resource_id;
+            const int name_compare =
+                std::strcmp(lhs.texture_name, rhs.texture_name);
+            if (name_compare != 0)
+                return name_compare < 0;
             if (lhs.texture_slot != rhs.texture_slot)
                 return lhs.texture_slot < rhs.texture_slot;
             return lhs.recipe_binding_index < rhs.recipe_binding_index;
@@ -133,8 +142,11 @@ namespace hgl::graph::mtl
             writer.WriteU64(binding.asset_identity_hash);
             writer.WriteU64(binding.asset_metadata_hash);
             writer.WriteU16(static_cast<uint16>(binding.semantic));
+            writer.WriteCString(binding.texture_name);
+            writer.WriteU32(binding.texture_layout_index);
             writer.WriteU16(static_cast<uint16>(binding.texture_slot));
             writer.WriteU32(binding.recipe_binding_index);
+            writer.WriteU32(binding.array_layer);
             writer.WriteU32(binding.direct_value);
             writer.WriteU8(static_cast<uint8>(binding.source));
             writer.WriteBool(binding.required);
@@ -207,7 +219,9 @@ namespace hgl::graph::mtl
             for (int j = 0; j < i; ++j)
             {
                 if (table.textures[j].logical_resource_id == binding.logical_resource_id
-                 || table.textures[j].texture_slot == binding.texture_slot)
+                 || std::strcmp(
+                        table.textures[j].texture_name,
+                        binding.texture_name) == 0)
                     return false;
             }
         }
@@ -283,7 +297,8 @@ namespace hgl::graph::mtl
         {
             h << texture.slot_name
               << texture.resource_id;
-            h << texture.direct_value
+            h << texture.array_layer
+              << texture.direct_value
               << texture.use_direct_value
               << texture.required;
         }
@@ -310,7 +325,8 @@ namespace hgl::graph::mtl
             return 0;
 
         hgl::hash::FNV1aHasher64 h;
-        h << std::string_view(resource_id, resource_id_length);
+        h << resource_id_length;
+        h.AppendBytes(resource_id, resource_id_length);
         return h;
     }
 

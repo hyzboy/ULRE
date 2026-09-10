@@ -46,6 +46,8 @@ namespace hgl::ecs
                 material_texture_configuration;
         void    *material_texture_row_cpu = nullptr;
         uint64_t material_texture_row_gpu = 0;
+        uint64_t material_texture_zero_row_gpu = 0;
+        uint64_t material_texture_configuration_hash = 0;
 
         // Dirty/lifecycle flags.
         // program_dirty — program (pipeline) must be re-resolved.

@@ -64,6 +64,7 @@ private:
 
     // 当前帧状态
     uint32_t current_frame = 0;
+    uint64_t render_submission_serial = 0;
     uint32_t swapchain_image_index = 0;
     bool frame_begun = false;
     bool render_pass_begun = false;
@@ -177,6 +178,15 @@ public:
      * 每次 EndFrame() 后递增
      */
     uint32_t GetCurrentFrameIndex() const { return current_frame; }
+
+    /**
+     * Monotonic serial of the frame currently being prepared. Unlike the
+     * swapchain image index, this value never cycles during a device session.
+     */
+    uint64_t GetRenderSubmissionSerial() const
+    {
+        return render_submission_serial;
+    }
 
     /**
      * 获取 Frames In Flight 数量（通常为 3）

@@ -678,7 +678,8 @@ ShaderBuildContext *CompileMaterial(
     // BindingTableBuilder 的 data 绑定判定统一读此标志，契约不再含数据槽条目。
     shader_resource_schema.requires_runtime_data_rows =
         config.material_definition
-        && config.material_definition->vertex_varying.emit_data_index_id;
+        && (config.material_definition->vertex_varying.emit_data_index_id
+         || !config.material_definition->texture_declarations.empty());
 
     ctx->SetShaderResourceSchema(shader_resource_schema);
 

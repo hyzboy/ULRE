@@ -40,7 +40,8 @@ namespace hgl::graph::mtl
         // 材质数据行）的编译期直判信号——由编译配置 definition.vertex_varying.
         // emit_data_index_id（材质 TOML [vertex] varyings）直接设置，不再经
         // MaterialPrivateDataIndex 契约条目（b1 后 FS 门已直判化，此为建表/绑定表
-        // 判定同源信号；varying 不再承载描述符需求语义）。
+        // 判定同源信号）。拥有 TOML 纹理声明的材质同样需要 per-instance
+        // 地址行表，即使它没有 payload 数据行。
         bool requires_runtime_data_rows = false;
     };
 
@@ -76,8 +77,8 @@ namespace hgl::graph::mtl
     // data_index, rather than a static binding. Shared by RenderPrimitiveCollectSystem
     // and PrimitiveBatchPipeline so both agree on the same contract.
     // A6-2b-b2：数据槽需求不再以契约条目（MaterialPrivateData/Index req）表达——
-    // 由编译侧直判标志 requires_runtime_data_rows 承载（设置条件与原 Ensure
-    // 补录门一致：definition.vertex_varying.emit_data_index_id）。
+    // 由编译侧直判标志 requires_runtime_data_rows 承载（payload varying 或
+    // TOML texture declaration）。
     inline bool MaterialRequiresRecipeRuntimeRows(const ShaderResourceSchema &schema)
     {
         return schema.requires_runtime_data_rows;

@@ -868,6 +868,118 @@ namespace
                 "unresolved Program must not submit resource acquisition");
         }
 
+        MaterialDefinition named_texture_definition{};
+        named_texture_definition.definition_id =
+            "NamedTextureBindingDefinition";
+        named_texture_definition.texture_declarations.push_back(
+            {"base_color", GLSLSamplerType::Sampler2D, true, {}});
+        named_texture_definition.texture_declarations.push_back(
+            {"normal", GLSLSamplerType::Sampler2DArray, false, {}});
+
+        MaterialRecipe named_texture_recipe{};
+        named_texture_recipe.textures.push_back(
+            {"base_color", "asset/named-base", 0, false, true, 0});
+        named_texture_recipe.textures.push_back(
+            {"normal", "asset/named-normal", 0, false, false, 6});
+
+        ResolvedBindingTable named_texture_table{};
+        if (!BuildBindingTable(
+                named_texture_recipe,
+                layout,
+                program_key,
+                &named_texture_definition,
+                named_texture_table,
+                diagnostic)
+         || !named_texture_table.IsRuntimeReady()
+         || named_texture_table.textures.GetCount() != 2)
+        {
+            result.diagnostics.emplace_back(
+                "named texture declaration binding build failed");
+        }
+        else
+        {
+            const ResolvedTextureBinding *base_color = nullptr;
+            const ResolvedTextureBinding *normal = nullptr;
+            for (int i = 0;
+                 i < named_texture_table.textures.GetCount();
+                 ++i)
+            {
+                const auto &binding =
+                    named_texture_table.textures[i];
+                if (std::strcmp(binding.texture_name, "base_color") == 0)
+                    base_color = &binding;
+                else if (std::strcmp(binding.texture_name, "normal") == 0)
+                    normal = &binding;
+            }
+
+            if (!base_color
+             || !normal
+             || base_color->texture_layout_index != 0
+             || normal->texture_layout_index != 1
+             || base_color->array_layer != 0
+             || normal->array_layer != 6
+             || base_color->source != BindingSource::Asset
+             || normal->source != BindingSource::Asset)
+            {
+                result.diagnostics.emplace_back(
+                    "named texture binding must preserve TOML order and array layer");
+            }
+        }
+
+        MaterialRecipe undeclared_named_texture_recipe =
+            named_texture_recipe;
+        undeclared_named_texture_recipe.textures.push_back(
+            {"unexpected", "asset/unexpected", 0, false, false, 0});
+        ResolvedBindingTable undeclared_named_texture_table{};
+        if (BuildBindingTable(
+                undeclared_named_texture_recipe,
+                layout,
+                program_key,
+                &named_texture_definition,
+                undeclared_named_texture_table,
+                diagnostic)
+         || diagnostic.error != BindingBuildError::InvalidBindingTable)
+        {
+            result.diagnostics.emplace_back(
+                "TOML-external texture names must fail binding validation");
+        }
+
+        MaterialRecipe invalid_named_layer_recipe =
+            named_texture_recipe;
+        invalid_named_layer_recipe.textures[0].array_layer = 1;
+        ResolvedBindingTable invalid_named_layer_table{};
+        if (BuildBindingTable(
+                invalid_named_layer_recipe,
+                layout,
+                program_key,
+                &named_texture_definition,
+                invalid_named_layer_table,
+                diagnostic)
+         || diagnostic.error != BindingBuildError::InvalidBindingTable)
+        {
+            result.diagnostics.emplace_back(
+                "non-array TOML texture must reject an array layer");
+        }
+
+        MaterialRecipe missing_named_required_recipe =
+            named_texture_recipe;
+        missing_named_required_recipe.textures[0].resource_id.clear();
+        ResolvedBindingTable missing_named_required_table{};
+        if (!BuildBindingTable(
+                missing_named_required_recipe,
+                layout,
+                program_key,
+                &named_texture_definition,
+                missing_named_required_table,
+                diagnostic)
+         || !missing_named_required_table.IsValid()
+         || missing_named_required_table.IsRuntimeReady()
+         || missing_named_required_table.missing_required_count != 1)
+        {
+            result.diagnostics.emplace_back(
+                "missing required TOML texture must remain explicit");
+        }
+
         result.passed = result.diagnostics.empty();
         return result;
     }
@@ -3982,7 +4094,7 @@ namespace
             {"base_color", GLSLSamplerType::Sampler2D, true, {}});
         texture_definition.texture_declarations.push_back(
             {"normal", GLSLSamplerType::Sampler2DArray, false, {}});
-        texture_definition.vertex_varying.emit_data_index_id = true;
+        texture_definition.vertex_varying.emit_data_index_id = false;
 
         MaterialShaderCompilerInput texture_compiler_input{
             "MaterialTextureReferenceOnly",
@@ -4009,6 +4121,13 @@ namespace
         }
         else
         {
+            if (!texture_build_spec->GetShaderResourceSchema()
+                    .requires_runtime_data_rows)
+            {
+                result.diagnostics.emplace_back(
+                    "pure texture material did not require runtime address rows");
+            }
+
             const ShaderCreateInfo *texture_fragment =
                 texture_build_spec->GetStageShader(ShaderStage::Fragment);
             if (!texture_fragment)

@@ -147,6 +147,7 @@ namespace hgl
             SystemProfiler profiler;
             bool system_profiling_enabled = true;
             uint32_t frame_index = 0;
+            uint64_t render_submission_serial = 0;
             /// Unified render pipeline registry: name → RenderPipelineBase
             /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
             /// Supports dynamic enable/disable per SystemGroup
@@ -319,6 +320,14 @@ namespace hgl
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
+            void SetRenderSubmissionSerial(const uint64_t serial)
+            {
+                render_submission_serial = serial;
+            }
+            uint64_t GetRenderSubmissionSerial() const
+            {
+                return render_submission_serial;
+            }
 
             void SetClearColor(const hgl::Color4f &color) { clear_color = color; }
             const hgl::Color4f &GetClearColor() const { return clear_color; }
