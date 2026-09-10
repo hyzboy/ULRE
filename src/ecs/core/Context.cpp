@@ -11,12 +11,10 @@
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
-// LineRenderSystem.h removed — LineRenderSystem is now in support/line/
 #include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
-// old systems/render/LineRenderSystem.h removed — replaced by support/line/LineRenderSystem
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/render/SwapchainNextImageSystem.h>
