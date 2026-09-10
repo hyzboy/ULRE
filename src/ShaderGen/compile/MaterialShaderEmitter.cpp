@@ -90,21 +90,24 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
 // 变量名固定 DefaultMaterialPrivateDataSlotName）。
 bool BuildMaterialSSBODeclarations(
     const SSBOType material_private_data,
+    const MaterialDefinition *material_definition,
+    const MaterialTextureReferenceLayout *texture_layout,
     std::string &out_decls,
     std::string &out_macros,
     std::string &out_error)
 {
-    if (material_private_data == SSBOType::UserDefined)
-    {
-        // 无数据槽材质没有行结构，但地址行表(FS index tables)
-        // 同样使用 uint64_t/设备地址——扩展指令必须先于任何声明出现
-        out_decls += "#extension GL_EXT_buffer_reference : require\n";
-        out_decls += "#extension GL_ARB_gpu_shader_int64 : require\n";
+    const bool has_payload =
+        material_private_data != SSBOType::UserDefined;
+    const bool has_texture_references =
+        texture_layout && texture_layout->HasReferences();
+    if (!has_payload && !has_texture_references)
         return true;
-    }
 
-    // ── 材质数据无描述符，发射 buffer_reference 行声明 ──
-    // shader 侧 MTL_ROW(i) 以地址行表（mtl_data_addrs）取行指针后解引用。
+    // payload 行和纹理引用行都通过 BDA 地址解引用。
+    out_decls += "#extension GL_EXT_buffer_reference : require\n";
+    out_decls += "#extension GL_ARB_gpu_shader_int64 : require\n";
+
+    if (has_payload)
     {
         const char *struct_name  = ssbo::GetMaterialSSBOStructName(material_private_data);
         const char *row_struct = ssbo::GetMaterialSSBORowName(material_private_data);
@@ -115,14 +118,9 @@ bool BuildMaterialSSBODeclarations(
             return false;
         }
 
-        // buffer_reference 需要 GLSL 扩展指令（Vulkan core 特性、GLSL 扩展语义）
-        out_decls += "#extension GL_EXT_buffer_reference : require\n";
-        // 行表存 64 位设备地址，shader 侧需要 64 位整型
-        out_decls += "#extension GL_ARB_gpu_shader_int64 : require\n";
-
         // GLSL struct 不允许空成员表——纯句柄行（TextureLayerRow）无 payload，
         // 跳过纯字段值结构的发射
-        const bool has_payload = struct_codes && *struct_codes;
+        const bool has_payload_fields = struct_codes && *struct_codes;
 
         std::string line;
         const char *p = struct_codes;
@@ -140,7 +138,7 @@ bool BuildMaterialSSBODeclarations(
             line.clear();
         };
 
-        if (has_payload)
+        if (has_payload_fields)
         {
             // 纯字段值结构（与旧路径 struct 同名）：供模块以值语义拷贝行内数据字段
             out_decls += "struct ";
@@ -159,12 +157,12 @@ bool BuildMaterialSSBODeclarations(
             out_decls += "};\n";
         }
 
-        // buffer_reference 行结构：材质数据字段 + 统一 bindless 纹理句柄尾
+        // 兼容阶段：旧 shader 仍可从 payload 行的 tex_* 字段读取句柄。
         out_decls += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer ";
         out_decls += row_struct;
         out_decls += "\n{\n";
 
-        if (has_payload)
+        if (has_payload_fields)
         {
             p = struct_codes;
             for (; *p; ++p)
@@ -187,23 +185,68 @@ bool BuildMaterialSSBODeclarations(
         out_decls += "};\n";
         out_macros += "#define MTL_ROW(i) ";
         out_macros += row_struct;
-        out_macros += "(MaterialDataAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)])\n";
-        return true;
+        out_macros += "(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_address)\n";
     }
+
+    if (has_texture_references)
+    {
+        if (!material_definition
+         || material_definition->texture_declarations.size()
+               != texture_layout->reference_count)
+        {
+            out_error = "texture reference layout declarations are incomplete";
+            return false;
+        }
+
+        out_decls +=
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef\n";
+        out_decls += "{\n";
+        for (const auto &declaration :
+            material_definition->texture_declarations)
+        {
+            out_decls += "    uvec2 tex_";
+            out_decls += declaration.name;
+            out_decls += ";\n";
+        }
+        out_decls += "};\n";
+
+        out_macros += "#define MTL_TEX(i) ";
+        out_macros +=
+            "MaterialTextureReferencesRef(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_address)\n";
+    }
+
+    return true;
 }
 
 bool BuildMaterialResourceDocument(
     const SSBOType material_private_data,
+    const MaterialDefinition *material_definition,
     ShaderDocument &out_document,
     std::string &out_error)
 {
     out_document.Clear();
     out_error.clear();
 
+    MaterialTextureReferenceLayout texture_layout{};
+    const MaterialTextureReferenceLayout *texture_layout_ptr = nullptr;
+    if (material_definition)
+    {
+        if (!BuildMaterialTextureReferenceLayout(
+               *material_definition,
+               texture_layout))
+        {
+            out_error = "invalid material texture reference layout";
+            return false;
+        }
+        texture_layout_ptr = &texture_layout;
+    }
+
     std::string declarations;
     std::string macros;
     if (!BuildMaterialSSBODeclarations(
             material_private_data,
+            material_definition,
+            texture_layout_ptr,
             declarations,
             macros,
             out_error))
@@ -240,7 +283,9 @@ bool BuildMaterialResourceDocument(
     }
 
     const std::string fragment_index_tables =
-        BuildFSIndexTableDecls(material_private_data != SSBOType::UserDefined);
+        BuildFSIndexTableDecls(
+            material_private_data != SSBOType::UserDefined
+         || (texture_layout_ptr && texture_layout_ptr->HasReferences()));
     if (!fragment_index_tables.empty())
     {
         source.logical_name = "MaterialFragmentIndexTables";
@@ -372,24 +417,23 @@ std::string BuildMeshIndexTableDecls()
         out += "\n";
     }
 
-std::string BuildFSIndexTableDecls(const bool fs_has_data_slots)
+std::string BuildFSIndexTableDecls(const bool fs_has_runtime_rows)
 {
     std::string out;
 
-    if (!fs_has_data_slots)
+    if (!fs_has_runtime_rows)
         return out;
 
-    // ── FS 消费设备地址行表（mtl_data_addrs）──────────────
-    // 行存 8B 设备地址；fragDataIndexID 即本批 draw item 序号（行表下标）。
-    // 行表本体走 BDA（buffer_reference，MaterialDataAddressesRef）——表地址经
-    // pc_root.addr_mtl_data_addrs 下发（FS 侧 pc_root 由 BuildMaterialStageDocument
-    // Fragment 分支注入，先于本块）。MTL_ROW(i) 宏（BuildMaterialSSBODeclarations
-    // 生成）以地址构造行指针。
-    // A6-2b-b1：门从契约 GetSSBO 改直判——mtl_data_addrs 需求 = 材质有有效数据槽
-    //（material_private_data 非 UserDefined，编译配置直判；契约不再声明行表条目）。
-    out += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialDataAddressesRef\n";
+    // 每个 draw item 同时携带 payload 与纹理引用配置两个设备地址。
+    out += "struct MaterialInstanceAddresses\n";
     out += "{\n";
-    out += "    uint64_t values[];\n";
+    out += "    uint64_t payload_address;\n";
+    out += "    uint64_t texture_reference_address;\n";
+    out += "};\n";
+    out +=
+        "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialInstanceAddressesRef\n";
+    out += "{\n";
+    out += "    MaterialInstanceAddresses values[];\n";
     out += "};\n";
 
     return out;
@@ -535,6 +579,7 @@ bool BuildMaterialStageDocument(
     std::string error;
     if (!BuildMaterialResourceDocument(
             material_private_data,
+            config.material_definition,
             resources,
             error))
     {

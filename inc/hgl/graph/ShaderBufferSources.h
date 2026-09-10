@@ -84,6 +84,18 @@ namespace hgl::graph::mtl
     static_assert(MeshDrawParamsLayoutValid(),
         "MeshDrawParams 布局必须与 GLSL std430 声明逐字段一致（24B 头部 + 8×uint64 基址 = 88B）");
 
+    // 每个 draw item 的材质实例地址行。payload 与纹理引用配置分别由
+    // MaterialDefinition/MaterialTextureReferencePool 提供，保持 16B scalar ABI。
+    struct MaterialInstanceAddresses
+    {
+        uint64_t payload_address = 0;
+        uint64_t texture_reference_address = 0;
+    };
+
+    static_assert(sizeof(MaterialInstanceAddresses) == 16);
+    static_assert(offsetof(MaterialInstanceAddresses, payload_address) == 0);
+    static_assert(offsetof(MaterialInstanceAddresses, texture_reference_address) == 8);
+
     // ── 根地址表（RootAddresses）——push constant 承载的全局表设备地址 ──────────
     // 全部 SSBO 走 BDA 后，shader 每个 buffer_reference 起点都需要一个地址来源；
     // 7 张全局表（MeshDrawParams/L2W/L2WIndex/mtl_data_addrs/文本三表）的地址

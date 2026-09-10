@@ -43,6 +43,11 @@ namespace hgl::ecs
     void MaterialComponent::ClearMaterializationRows()
     {
         data_index_row = uint32_t(-1);
+        material_row_cpu = nullptr;
+        material_row_gpu = 0;
+        material_texture_configuration = {};
+        material_texture_row_cpu = nullptr;
+        material_texture_row_gpu = 0;
     }
 
     void MaterialComponent::SetResolvedSSBOBinding(const char *material_private_data_slot_name,

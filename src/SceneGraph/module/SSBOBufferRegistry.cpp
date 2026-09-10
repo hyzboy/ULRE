@@ -103,7 +103,7 @@ bool MaterialTextureReferencePool::Initialize(
     ValueArray<uint32_t> new_free_rows;
     ValueArray<uint64_t> new_row_generations;
     if (!new_free_rows.Resize(
-            static_cast<int>(layout.max_configuration_count))
+            static_cast<int>(layout.max_configuration_count)))
     {
         gpu_buffer->Unmap();
         return false;

@@ -3927,8 +3927,13 @@ namespace
             // Arena+BDA：材质数据经设备地址行表寻址，断言行指针别名 /
             // 行引用声明 / 值结构三要素齐全且顺序稳定。
             // （A6-2b 对齐 A3-3 后发射：MTL_ROW 经 MaterialDataAddressesRef(pc_root.…) 解引用）
-            if (source.find("#define MTL_ROW(i) EmissiveSurfaceRow(MaterialDataAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)])") == std::string::npos)
+            if (source.find("#define MTL_ROW(i) EmissiveSurfaceRow(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_address)") == std::string::npos)
                 result.diagnostics.emplace_back("arena row alias was not injected");
+
+            if (source.find("struct MaterialInstanceAddresses") == std::string::npos
+             || source.find("MaterialInstanceAddresses values[]") == std::string::npos)
+                result.diagnostics.emplace_back(
+                    "dual-address material instance table was not emitted");
 
             if (count_occurrences("struct EmissiveSurfaceData") != 1)
                 result.diagnostics.emplace_back("repeated SSBO type emitted duplicate GLSL struct");
@@ -3941,7 +3946,7 @@ namespace
             const size_t declaration = source.find(
                 "struct EmissiveSurfaceData");
             const size_t alias = source.find(
-                "#define MTL_ROW(i) EmissiveSurfaceRow(MaterialDataAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)])\n");
+                "#define MTL_ROW(i) EmissiveSurfaceRow(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_address)\n");
             if (extension == std::string::npos
              || declaration == std::string::npos
              || alias == std::string::npos
@@ -3969,6 +3974,76 @@ namespace
         }
 
         delete build_spec;
+
+        // 独立纯纹理材质：没有 payload 时仍必须发射双地址行表和 MTL_TEX。
+        MaterialDefinition texture_definition{};
+        texture_definition.definition_id = "MaterialTextureReferenceOnly";
+        texture_definition.texture_declarations.push_back(
+            {"base_color", GLSLSamplerType::Sampler2D, true, {}});
+        texture_definition.texture_declarations.push_back(
+            {"normal", GLSLSamplerType::Sampler2DArray, false, {}});
+        texture_definition.vertex_varying.emit_data_index_id = true;
+
+        MaterialShaderCompilerInput texture_compiler_input{
+            "MaterialTextureReferenceOnly",
+            PrimitiveType::Triangles,
+            nullptr,
+            0};
+        MaterialCompileConfig texture_config{};
+        texture_config.material_private_data = SSBOType::UserDefined;
+        texture_config.material_definition = &texture_definition;
+        texture_config.defer_finalize = true;
+        texture_config.shader_stage_flag_bits =
+            uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
+
+        ShaderBuildContext *texture_build_spec = CompileMaterial(
+            nullptr,
+            texture_compiler_input,
+            mesh_document,
+            fragment_document,
+            texture_config);
+        if (!texture_build_spec)
+        {
+            result.diagnostics.emplace_back(
+                "texture-reference-only compiler did not produce a build spec");
+        }
+        else
+        {
+            const ShaderCreateInfo *texture_fragment =
+                texture_build_spec->GetStageShader(ShaderStage::Fragment);
+            if (!texture_fragment)
+            {
+                result.diagnostics.emplace_back(
+                    "texture-reference-only compiler did not produce a fragment stage");
+            }
+            else
+            {
+                const std::string &source =
+                    texture_fragment->GetFinalGLSL();
+                if (source.find("struct MaterialInstanceAddresses")
+                        == std::string::npos
+                 || source.find("MaterialInstanceAddresses values[]")
+                        == std::string::npos
+                 || source.find("buffer MaterialTextureReferencesRef")
+                        == std::string::npos
+                 || source.find("uvec2 tex_base_color;")
+                        == std::string::npos
+                 || source.find("uvec2 tex_normal;")
+                        == std::string::npos
+                 || source.find(
+                        "#define MTL_TEX(i) MaterialTextureReferencesRef(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_address)")
+                        == std::string::npos)
+                    result.diagnostics.emplace_back(
+                        "named material texture reference row was not emitted");
+
+                if (source.find("#define MTL_ROW(i)") != std::string::npos)
+                    result.diagnostics.emplace_back(
+                        "payload row alias emitted for a pure texture material");
+            }
+
+            delete texture_build_spec;
+        }
+
         result.passed = result.diagnostics.empty();
         return result;
     }

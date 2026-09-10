@@ -432,8 +432,10 @@ namespace hgl::ecs
         resources.texture_layer_buffer = guard.texture_layer_buffer;
         guard.texture_layer_buffer = nullptr;
 
-        // mtl_data_addrs：8B 设备地址行表，行 0 = 句柄行地址（dataIndex=0）。
-        constexpr uint32_t data_index_row_bytes = sizeof(uint64_t);
+        // mtl_data_addrs：16B MaterialInstanceAddresses 行表，文本阶段仍
+        // 将旧 TextureLayerRow 地址作为 payload；纹理引用地址由后续阶段接入。
+        constexpr uint32_t data_index_row_bytes =
+            sizeof(graph::mtl::MaterialInstanceAddresses);
 
         guard.data_index_row_buffer = buffer_manager->CreateSSBO(
             "Text2D_DataAddresses", data_index_row_bytes, graph::SharingMode::Exclusive);
@@ -452,7 +454,13 @@ namespace hgl::ecs
                 GLogError("[TextPipeline] texture layer row address unavailable -- font resources aborted");
                 return nullptr;
             }
-            guard.data_index_row_buffer->GetGPUBuffer()->Write(&row_addr, 0, sizeof(row_addr));
+            const graph::mtl::MaterialInstanceAddresses address_row{
+                row_addr,
+                0};
+            guard.data_index_row_buffer->GetGPUBuffer()->Write(
+                &address_row,
+                0,
+                sizeof(address_row));
         }
 
         resources.data_index_row_buffer = guard.data_index_row_buffer;

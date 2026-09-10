@@ -741,8 +741,9 @@ namespace hgl::ecs
 
                 if (batch.buffer_manager)
                 {
-                    // 行表存 8B 设备地址（mtl_data_addrs）
-                    const VkDeviceSize row_bytes = sizeof(uint64_t);
+                    // 每行存 payload + texture-reference 两个 BDA（16B）。
+                    const VkDeviceSize row_bytes =
+                        sizeof(graph::mtl::MaterialInstanceAddresses);
 
                     const VkDeviceSize byte_size =
                         static_cast<VkDeviceSize>(batch.material_data_index_rows_capacity)
@@ -751,7 +752,7 @@ namespace hgl::ecs
                         "ECS:Batch:MaterialDataAddresses", byte_size, nullptr, graph::SharingMode::Exclusive);
 
                     // 关键安全垫：BDA 解引用未初始化显存 = GPU page fault(驱动 TDR)。
-                    // 全表预填 Null 行地址（零填充默认行），保证任何时刻可安全解引用；
+                    // 全表预填两个 Null 行地址，保证任何时刻可安全解引用；
                     // 随后每帧 WriteBatchIndexRows 覆盖为真实行地址。
                     if (batch.material_data_index_rows_buffer)
                     {
@@ -763,12 +764,16 @@ namespace hgl::ecs
                         if (safe_addr)
                         if (auto *fill_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer())
                         {
-                            if (auto *fill_ptr = static_cast<uint64_t *>(
+                            if (auto *fill_ptr = static_cast<
+                                    graph::mtl::MaterialInstanceAddresses *>(
                                     fill_gpu->Map(0, byte_size)))
                             {
                                 const size_t n = static_cast<size_t>(batch.material_data_index_rows_capacity);
+                                const graph::mtl::MaterialInstanceAddresses safe_row{
+                                    safe_addr,
+                                    safe_addr};
                                 for (size_t i = 0; i < n; ++i)
-                                    fill_ptr[i] = safe_addr;
+                                    fill_ptr[i] = safe_row;
                                 fill_gpu->Unmap();
                             }
                         }
@@ -812,8 +817,8 @@ namespace hgl::ecs
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
 
-            // 行表写 8B 设备地址：每实例数据行的地址在 Collect 物化时
-            // 已解析到 MaterialComponent（按 SSBOType 独立缓冲内偏移）
+            // 行表写入 payload/texture-reference 两个设备地址。payload 地址在
+            // Collect 物化时解析；纹理配置地址由阶段 4 的独立 pool 提供。
             if (mi_gpu)
             {
                 uint64_t null_row_address = 0;
@@ -821,24 +826,36 @@ namespace hgl::ecs
                     if (auto *wr_rdm = wr_gc->GetSSBOBufferRegistry())
                         null_row_address = wr_rdm->GetNullRowAddress();
 
-                uint64_t *row_ptr = static_cast<uint64_t *>(
-                    mi_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint64_t)));
+                auto *row_ptr = static_cast<graph::mtl::MaterialInstanceAddresses *>(
+                    mi_gpu->Map(
+                        0,
+                        static_cast<VkDeviceSize>(item_count)
+                            * sizeof(graph::mtl::MaterialInstanceAddresses)));
                 if (row_ptr)
                 {
-                    std::vector<uint64_t> row_copy(item_count, 0);
-
+                    graph::mtl::MaterialInstanceAddresses debug_rows[4]{};
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        row_ptr[i] = null_row_address;
+                        row_ptr[i] = {
+                            null_row_address,
+                            null_row_address};
 
                         auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
                         auto material_comp = primitive_item
                             ? primitive_item->GetMaterialComponent()
                             : nullptr;
                         if (material_comp)
-                            row_ptr[i] = material_comp->material_row_gpu;
+                        {
+                            if (material_comp->material_row_gpu)
+                                row_ptr[i].payload_address =
+                                    material_comp->material_row_gpu;
+                            if (material_comp->material_texture_row_gpu)
+                                row_ptr[i].texture_reference_address =
+                                    material_comp->material_texture_row_gpu;
+                        }
 
-                        row_copy[i] = row_ptr[i];
+                        if (i < 4)
+                            debug_rows[i] = row_ptr[i];
                     }
 
                     if (getenv("ULRE_ARENA_DEBUG") && !batch.debug_blocks_logged)
@@ -846,17 +863,22 @@ namespace hgl::ecs
                         batch.debug_blocks_logged = true;
                         for (size_t i = 0; i < item_count && i < 4; ++i)
                         {
-                            GLogInfo("[ArenaDebug] item[%u] addr=0x%llx",
+                            GLogInfo(
+                                     "[ArenaDebug] item[%u] payload=0x%llx texture=0x%llx",
                                      (uint32_t)i,
-                                     (unsigned long long)row_copy[i]);
+                                     (unsigned long long)debug_rows[i].payload_address,
+                                     (unsigned long long)debug_rows[i].texture_reference_address);
                         }
                     }
                     mi_gpu->Unmap();
 
                     if (getenv("ULRE_ARENA_DEBUG"))
-                    GLogInfo("[ArenaDebug] rows written: n=%u row0=0x%llx",
+                    GLogInfo("[ArenaDebug] rows written: n=%u payload0=0x%llx texture0=0x%llx",
                              item_count,
-                             (unsigned long long)(item_count ? row_copy[0] : 0));
+                             (unsigned long long)(
+                                 item_count ? debug_rows[0].payload_address : 0),
+                             (unsigned long long)(
+                                 item_count ? debug_rows[0].texture_reference_address : 0));
                 }
                 return;
             }

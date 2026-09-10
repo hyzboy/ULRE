@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/Component.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialBindingContract.h>
@@ -38,6 +39,13 @@ namespace hgl::ecs
         // CPU 映射基址（行尾句柄直写）与 GPU 设备地址（地址行表引用）。
         void    *material_row_cpu = nullptr;
         uint64_t material_row_gpu = 0;
+
+        // 独立 MaterialTextureReferencePool 配置行。阶段 3 只保存句柄；
+        // 阶段 4 负责按 MaterialDefinition layout 申请、写入和退休。
+        graph::MaterialTextureConfigurationAllocation
+                material_texture_configuration;
+        void    *material_texture_row_cpu = nullptr;
+        uint64_t material_texture_row_gpu = 0;
 
         // Dirty/lifecycle flags.
         // program_dirty — program (pipeline) must be re-resolved.
