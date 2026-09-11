@@ -315,32 +315,6 @@ public:
      */
     bool IsDirty() const { return gpu_buf ? gpu_buf->IsDirty() : false; }
 
-private:
-
-     /**
-      * Internal commit path used by BufferCommitQueue-driven Update only.
-      */
-    bool CommitInternal()
-    {
-        if(!gpu_buf)
-            return false;
-
-        // 数据已在映射窗口里：只把窗口范围标脏交 L2。
-        // 原先的 Unmap + Remap 同样只是让 StagedBuffer::Unmap 标出
-        // MarkDirty(mapped_offset, mapped_size) —— 这里直接标同一范围，
-        // 且不必反复 Map/Unmap（data_access 保持有效）。
-        MarkWindowDirty();
-
-        return true;
-    }
-
-public:
-
-    void Update() const override
-    {
-        const_cast<BufferAccessor*>(this)->CommitInternal();
-    }
-
     /**
      * CN: 包装 Write 方法，自动标记 dirty
      * EN: Wrapped Write method, auto-mark dirty

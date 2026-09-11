@@ -240,7 +240,7 @@ namespace hgl::ecs
     {
         if (camera_ubo)
         {
-            graph::VkBufferOwner *buf = camera_ubo->ubo();
+            graph::VkBufferOwner *buf = camera_ubo->GetBuffer();
             delete camera_ubo;
             camera_ubo = nullptr;
             camera_info = nullptr;
@@ -336,7 +336,7 @@ namespace hgl::ecs
         // 视图三件套（camera/viewport/sky）契约：每个 RT/RenderPass 开始时
         // 固定全量写入，不依赖脏标记（host-visible 映射直写，代价可忽略）
         camera_ubo->Update(*camera_info);    // 拷贝数据 + 置脏
-        camera_ubo->Update();                // 写入 GPU
+        camera_ubo->Commit();                // 标脏交 L2
         camera_ubo_dirty = false;
     }
 
@@ -593,7 +593,6 @@ namespace hgl::ecs
         camera->camera_info = camera_info;
         if (viewport_info)
             camera->viewport_info = viewport_info;
-        camera->camera_ubo = camera_ubo;
     }
 
     void CameraSystem::EnsureCameraResources()
@@ -619,7 +618,7 @@ namespace hgl::ecs
                     if (buf)
                     {
                         buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
-                        camera_ubo = graph::StructuredBufferAccessor<graph::CameraInfo>::Create(buf, &graph::mtl::SBS_CameraInfo, false);
+                        camera_ubo = graph::StructuredBufferAccessor<graph::CameraInfo>::Create(buf, false);
                     }
                 }
             }

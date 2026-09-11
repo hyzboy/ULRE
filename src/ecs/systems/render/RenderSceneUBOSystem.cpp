@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
+#include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<cstdlib>
 #include<hgl/ecs/core/Context.h>
@@ -118,7 +119,7 @@ namespace hgl::ecs
             return;
 
         buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
-        viewport_ubo = graph::StructuredBufferAccessor<graph::ViewportInfo>::Create(buf, &graph::mtl::SBS_ViewportInfo, false);
+        viewport_ubo = graph::StructuredBufferAccessor<graph::ViewportInfo>::Create(buf, false);
         if (!viewport_ubo)
             return;
 
@@ -138,7 +139,7 @@ namespace hgl::ecs
         if (!viewport_ubo)
             return;
 
-        auto *buf = viewport_ubo->ubo();
+        auto *buf = viewport_ubo->GetBuffer();
         delete viewport_ubo;
         viewport_ubo = nullptr;
 
@@ -173,7 +174,7 @@ namespace hgl::ecs
         graph::ViewportInfo vi{};
         vi.Set(w, h);
         viewport_ubo->Update(vi);    // 拷贝数据 + 置脏
-        viewport_ubo->Update();      // 写入 GPU
+        viewport_ubo->Commit();      // 标脏交 L2（上传/直写由 RenderBufferUploadSystem 统一处理）
     }
 
     graph::ViewportInfo *RenderSceneUBOSystem::GetViewportInfo()

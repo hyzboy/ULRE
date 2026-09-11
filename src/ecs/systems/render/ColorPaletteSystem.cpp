@@ -29,7 +29,7 @@ namespace hgl::ecs
     {
         if (palette_ubo)
         {
-            graph::VkBufferOwner *buf = palette_ubo->ubo();
+            graph::VkBufferOwner *buf = palette_ubo->GetBuffer();
             delete palette_ubo;
             palette_ubo = nullptr;
 
@@ -129,7 +129,7 @@ namespace hgl::ecs
 
         buf->SetUpdateClass(graph::BufferUpdateClass::Default);
 
-        palette_ubo = UBOColorPalette::Create(buf, &graph::mtl::SBS_ColorPalette, false);
+        palette_ubo = UBOColorPalette::Create(buf, false);
         if (!palette_ubo)
             return;
 

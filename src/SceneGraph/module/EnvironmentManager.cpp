@@ -51,7 +51,7 @@ namespace hgl::graph
         }
 
         buf->SetUpdateClass(BufferUpdateClass::Deferred);
-        profile->sky_ubo = StructuredBufferAccessor<SkyInfo>::Create(buf, &mtl::SBS_SkyInfo, false);
+        profile->sky_ubo = StructuredBufferAccessor<SkyInfo>::Create(buf, false);
         if (!profile->sky_ubo)
         {
             buffer_manager->Release(buf);
@@ -60,10 +60,10 @@ namespace hgl::graph
         }
 
         // 注意：此 UBO 不在设备级 dirty 扫描 registry 内（仅 StagedBuffer 注册），
-        // MarkDirty 只打标记不写数据；实际落盘必须走 Update()（内部 DeviceBuffer::Write，
-        // 自动路由 staged/直写，参考 CameraSystem 的 camera_ubo 路径）。
+        // 数据写进映射窗口即可；Commit() 只把窗口范围标脏交 L2
+        // （staged 由 RenderBufferUploadSystem 上传，直写缓冲立刻可见）。
         profile->sky_ubo->Update(profile->cpu.sky);    // 拷贝数据 + 置脏
-        profile->sky_ubo->Update();                    // CommitInternal → gpu Write
+        profile->sky_ubo->Commit();                    // 标脏交 L2
         return true;
     }
 
@@ -121,7 +121,7 @@ namespace hgl::graph
 
             if (p->sky_ubo)
             {
-                auto *buf = p->sky_ubo->ubo();
+                auto *buf = p->sky_ubo->GetBuffer();
                 delete p->sky_ubo;
                 p->sky_ubo = nullptr;
 
@@ -171,7 +171,7 @@ namespace hgl::graph
         if (p->sky_ubo)
         {
             p->sky_ubo->Update(p->cpu.sky);    // 拷贝数据 + 置脏
-            p->sky_ubo->Update();              // 立即写入 GPU（该 UBO 不走设备级扫描上传）
+            p->sky_ubo->Commit();              // 标脏交 L2
         }
         // 未物化时无需标记：MaterializeSkyUBO 会用当前 cpu 数据初始化
     }
@@ -186,7 +186,7 @@ namespace hgl::graph
                 continue;
 
             p->sky_ubo->Update(p->cpu.sky);    // 拷贝数据 + 置脏
-            p->sky_ubo->Update();              // 写入 GPU
+            p->sky_ubo->Commit();              // 标脏交 L2
         }
     }
 

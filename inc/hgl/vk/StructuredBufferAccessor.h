@@ -99,40 +99,10 @@ public:
         InitDefaultsIfNeeded();
     }
 
-    StructuredBufferAccessor(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
-        : BufferAccessBase()
-        , aligned_size(buf ? buf->GetSize() : 0)
-    {
-        SetBuffer(buf);
-        SetUBOMeta(dst, name);
-        MapInternal();
-        InitDefaultsIfNeeded();
-    }
-
-    StructuredBufferAccessor(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
-        : BufferAccessBase()
-        , aligned_size(buf ? buf->GetSize() : 0)
-    {
-        SetBuffer(buf);
-        SetUBOMeta(desc ? desc->set_type : DescriptorSetType::Scene, desc ? desc->name : "");
-        MapInternal();
-        InitDefaultsIfNeeded();
-    }
-
 public:
     static StructuredBufferAccessor *Create(VkBufferOwner *buf, bool take_ownership = false)
     {
         return buf ? new StructuredBufferAccessor(buf, take_ownership) : nullptr;
-    }
-
-    static StructuredBufferAccessor *Create(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
-    {
-        return buf ? new StructuredBufferAccessor(buf, dst, name, take_ownership) : nullptr;
-    }
-
-    static StructuredBufferAccessor *Create(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
-    {
-        return buf ? new StructuredBufferAccessor(buf, desc, take_ownership) : nullptr;
     }
 
     /**
@@ -173,19 +143,6 @@ public:
 
 public:
 
-    /**
-     * CN: 绑定到新的缓冲区
-     * EN: Bind to new buffer
-     */
-    void Bind(VkBufferOwner *buf, bool take_ownership = false)
-    {
-        UnmapWindow();
-        aligned_size = buf ? buf->GetSize() : 0;
-        SetBuffer(buf);
-
-        MapInternal();
-    }
-
 public:
 
     /**
@@ -194,13 +151,6 @@ public:
      */
     bool IsValid() const { return gpu_buf && HasWindow(); }
     operator bool() const { return IsValid(); }
-
-    /**
-     * CN: 获取底层缓冲区
-     * EN: Get underlying buffer
-     */
-    VkBufferOwner* GetBuffer() { return buffer; }
-    const VkBufferOwner* GetBuffer() const { return buffer; }
 
     /**
      * CN: 获取结构体数据指针
@@ -256,25 +206,21 @@ public:
         MarkWindowDirty();      // 拷贝数据 + 置脏
     }
 
-private:
+public:
 
     /**
-     * Internal commit path used by BufferCommitQueue-driven Update only.
-     *
-     * \return whether committed
+     * CN: 提交：把窗口范围标脏交 L2（数据本就在映射窗口里，无自我拷贝）
+     * EN: Commit: mark the window range dirty on L2
      */
-    bool CommitInternal()
+    void Commit()
     {
         if(!gpu_buf || !HasWindow())
-            return false;
+            return;
 
-        // 数据已在映射窗口里：只把窗口范围标脏交 L2。
-        // 原先的 gpu_buf->Write(mapped→mapped) 是自我 memcpy，去掉后语义不变。
         MarkWindowDirty();
-        return true;
     }
 
-public:
+private:
 
     /**
      * CN: 立即 Update 的便利方法（和旧 UBOInstance::Update() 兼容）
@@ -303,35 +249,6 @@ public:
     {
         // BufferAccessBase::Write guards on gpu_buf internally.
         return BufferAccessBase::Write(ptr, offset, size);
-    }
-
-    // ===== UBOInstance 兼容接口 / UBOInstance Compatible Interface =====
-
-    /**
-     * CN: 获取描述符集类型（UBOInstance 兼容）
-     * EN: Get descriptor set type (UBOInstance compatible)
-     */
-    const DescriptorSetType& set_type() const { return desc_set_type; }
-
-    /**
-     * CN: 获取 UBO 名称（UBOInstance 兼容）
-     * EN: Get UBO name (UBOInstance compatible)
-     */
-    const AnsiString& name() const { return ubo_name; }
-
-    /**
-     * CN: 获取底层 VkBufferOwner（UBOInstance 兼容）
-     * EN: Get underlying VkBufferOwner (UBOInstance compatible)
-     */
-    VkBufferOwner* ubo() const { return buffer; }
-
-    /**
-     * CN: Update() 方法（UBOInstance 兼容） 尝试自动 Flush（如果是 StagedBuffer）
-     * EN: Update() method (UBOInstance compatible) - auto-flush if needed
-     */
-    void Update() const override
-    {
-        const_cast<StructuredBufferAccessor<T>*>(this)->CommitInternal();
     }
 
     /**

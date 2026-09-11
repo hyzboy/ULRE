@@ -288,15 +288,6 @@ public:
     void Commit() { CommitInternal(); }
 
     /**
-     * CN: Update 接口（供 ECS BufferCommitQueue 驱动调用）
-     * EN: Update hook for ECS BufferCommitQueue
-     */
-    void Update() const override
-    {
-        const_cast<SSBOArrayAccessor<T>*>(this)->CommitInternal();
-    }
-
-    /**
      * CN: 获取单个元素字节大小（编译期常量）
      * EN: Get single element byte size (compile-time constant)
      */

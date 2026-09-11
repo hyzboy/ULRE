@@ -29,7 +29,6 @@ namespace hgl::ecs
         , camera_data(nullptr)
         , camera_info(nullptr)
         , viewport_info(nullptr)
-        , camera_ubo(nullptr)
         , is_main_camera(false)
         , matrix_dirty(true)
     {

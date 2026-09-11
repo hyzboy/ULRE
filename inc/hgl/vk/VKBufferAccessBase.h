@@ -28,11 +28,6 @@ protected:
     VkBufferOwner *buffer  = nullptr;  // descriptor / GetBuffer() / static_cast — 非拥有
     IGPUBuffer   *gpu_buf = nullptr;   // 写路径专用，SetBuffer() 时同步赋值
 
-    // A6-2b-b2：PerObject 集已退场——默认归属改为 Scene（UBO 唯一现存集；
-    // 该字段为历史描述符归属记录，BDA 后行表/UBO 均无绑定语义）。
-    DescriptorSetType desc_set_type = DescriptorSetType::Scene;
-    AnsiString ubo_name;
-
     // ---- 窗口：唯一记录的 CPU 可写区域 ----
     void *        window_ptr      = nullptr;    ///< 窗口基址（buffer 映射 或 外部内存）
     VkDeviceSize  window_offset   = 0;          ///< 窗口在 buffer 内的字节偏移
@@ -55,18 +50,10 @@ protected:
     /** 把窗口范围标脏交 L2；无 gpu_buf 或外部窗口时 no-op。 */
     void MarkWindowDirty();
 
-    void SetUBOMeta(const DescriptorSetType &dst, const AnsiString &name)
-    {
-        desc_set_type = dst;
-        ubo_name = name;
-    }
-
     void MoveFrom(BufferAccessBase &&other)
     {
         buffer        = other.buffer;
         gpu_buf       = other.gpu_buf;
-        desc_set_type = other.desc_set_type;
-        ubo_name      = other.ubo_name;
 
         window_ptr      = other.window_ptr;
         window_offset   = other.window_offset;
@@ -116,13 +103,6 @@ public:
             gpu_buf->MarkDirty(0, static_cast<VkDeviceSize>(size));
     }
 
-    // Optional update hook for structured accessors.
-    virtual void Update() const {}
-
-    // ===== UBO metadata access =====
-    const DescriptorSetType &set_type() const { return desc_set_type; }
-    const AnsiString &name()            const { return ubo_name; }
-    IGPUBuffer *ubo()                   const { return gpu_buf; }
 };//class BufferAccessBase
 
 }//namespace hgl::graph

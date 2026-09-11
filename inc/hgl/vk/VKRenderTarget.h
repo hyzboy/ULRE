@@ -9,7 +9,6 @@
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/vk/VKTexture.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKCommandBuffer.h>
 //#include<iostream>
@@ -22,8 +21,6 @@ namespace hgl::ecs
 namespace hgl::graph{
 
 class VulkanDevice; // Forward declaration
-
-using UBOViewportInfo=StructuredBufferAccessor<ViewportInfo>;  ///< 统一使用 StructuredBufferAccessor
 
 // Dynamic Rendering 附件描述：image view + format + 布局
 // （替代传统 render pass 的 attachment 声明——渲染循环直接据此构造 VkRenderingInfoKHR）
