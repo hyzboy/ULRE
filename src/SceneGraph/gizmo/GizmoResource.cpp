@@ -37,8 +37,8 @@ namespace hgl::graph
 
         struct GizmoResource
         {
-            // Arena 行缓冲访问器（OwnBuffer 持有 DeviceBuffer 生命周期，
-            // 行地址已进入地址行表——必须与 gizmo 资源同寿命）
+            // Arena 行缓冲访问器（视图不自持缓冲；行缓冲生命周期归 SSBOBufferRegistry::Release()）
+            // 行地址已进入地址行表——资源本身必须与 gizmo 同寿命
             ArrayView<ssbo::EmissiveSurfaceRow> *color_row_accessor = nullptr;
             DeviceBuffer *      color_ssbo;
             VertexDataManager * vdm;

@@ -12,7 +12,7 @@ void BufferView::SetBuffer(BufferOwner *buf)
     // 只有"窗口来自旧 buffer 的 Map"时才需要随换源解除（Unmap 会把已写范围标脏）。
     // 外部窗口（Arena/池行段）与 buffer 没有绑定关系——例如
     // SSBOBufferRegistry::AllocateArrayAccessor 的顺序就是
-    // 先 new ArrayView(cpu_base,...)（挂外部窗口）再 OwnBuffer(buf)，
+    // 先 new ArrayView(cpu_base,…)（挂外部窗口）再 SetBuffer(buf)（登记行缓冲），
     // 此时绝不能因为 SetBuffer 把窗口清掉。
     if(buffer != buf && !window_external)
         UnmapWindow();
