@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKBufferOwner.h>          // defines VkBufferOwner + DeviceBufferData
+#include<hgl/vk/buffer/BufferOwner.h>          // defines BufferOwner + DeviceBufferData
 #include<hgl/graph/ShaderBufferSource.h>
 
 #include<string>
@@ -10,23 +10,23 @@ namespace hgl::graph{
 /**
  * Layer1: Pure GPU buffer container for UBO / SSBO / plain device buffers.
  *
- * Inherits VkBufferOwner which holds: VkDevice, DeviceBufferData (VkBuffer+DeviceMemory),
+ * Inherits BufferOwner which holds: VkDevice, DeviceBufferData (VkBuffer+DeviceMemory),
  * IGPUBuffer* staged_source (write routing), and BufferUpdateClass.
  *
- * VertexAttribBuffer, IndexBuffer, IndirectCommandBuffer now inherit VkBufferOwner
+ * VertexAttribBuffer, IndexBuffer, IndirectCommandBuffer now inherit BufferOwner
  * directly — they are no longer subclasses of DeviceBuffer.
  *
  * Migration path (Phase 3):
  *   - Prefer GetGPUBuffer()->Write/Map/Unmap over DeviceBuffer::Write/Map/Flush.
  *   - DeviceBuffer::Write/Map/Flush are transitional forwarders; will be removed.
  */
-class DeviceBuffer : public VkBufferOwner
+class DeviceBuffer : public BufferOwner
 {
 private:
 
     friend class VulkanDevice;
 
-    DeviceBuffer(VkDevice d, const DeviceBufferData &b) : VkBufferOwner(d, b) {}
+    DeviceBuffer(VkDevice d, const DeviceBufferData &b) : BufferOwner(d, b) {}
 
 public:
 

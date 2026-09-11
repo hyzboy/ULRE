@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/vk/IGPUBuffer.h>
-#include<hgl/vk/VKMemory.h>
+#include<hgl/vk/buffer/IGPUBuffer.h>
+#include<hgl/vk/buffer/BufferMemory.h>
 
 namespace hgl::graph{
 

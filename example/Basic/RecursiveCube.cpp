@@ -55,7 +55,7 @@ private:
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *geometry = nullptr;
     struct CubeNode

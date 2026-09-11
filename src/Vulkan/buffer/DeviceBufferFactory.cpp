@@ -1,9 +1,9 @@
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKIndexBuffer.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/vk/VKBufferAccessBase.h>
-#include<hgl/vk/VKStagedBuffer.h>
-#include<hgl/vk/VKReBarBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
+#include<hgl/vk/buffer/BufferView.h>
+#include<hgl/vk/buffer/StagedBuffer.h>
+#include<hgl/vk/buffer/ReBarBuffer.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/log/Log.h>
 #include<iostream>

@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_TEXTURE_INCLUDE
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/VKMemory.h>
+#include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/vk/VKImageView.h>
 #include<hgl/graph/data/BitmapData.h>
 #include<hgl/type/String.h>

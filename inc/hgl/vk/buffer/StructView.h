@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/vk/VKBufferAccessBase.h>
+#include<hgl/vk/buffer/BufferView.h>
 
 #include<type_traits>
 
@@ -26,7 +26,7 @@ namespace hgl::graph{
  * struct CameraData { glm::mat4 vp; glm::vec3 pos; };
  * auto camera_buf = device->CreateUBO(sizeof(CameraData));
  *
- * StructuredBufferAccessor<CameraData> cam_accessor(camera_buf);
+ * StructView<CameraData> cam_accessor(camera_buf);
  *
  * // 直接修改 CPU 端数据 / Modify CPU-side data directly
  * cam_accessor.Data()->vp = glm::mat4(1.0f);
@@ -37,7 +37,7 @@ namespace hgl::graph{
  * ```
  */
 template<typename T>
-class StructuredBufferAccessor:public BufferAccessBase
+class StructView:public BufferView
 {
 private:
     friend class VulkanDevice;
@@ -45,7 +45,7 @@ private:
 public:
     VkDeviceSize aligned_size = 0;      ///< 映射窗口字节数（= buffer 大小）
     bool initialized = false;
-    // 映射基址与脏标记统一由 BufferAccessBase 的窗口机制持有：
+    // 映射基址与脏标记统一由 BufferView 的窗口机制持有：
     // 不再自持 mapped_data / dirty（消除与 L2 的双记账）
 
     /**
@@ -81,8 +81,8 @@ public:
         initialized = true;
     }
 
-    StructuredBufferAccessor(VkBufferOwner *buf, VkDeviceSize aligned_size_param, bool take_ownership)
-        : BufferAccessBase()
+    StructView(BufferOwner *buf, VkDeviceSize aligned_size_param, bool take_ownership)
+        : BufferView()
         , aligned_size(aligned_size_param)
     {
         SetBuffer(buf);
@@ -90,8 +90,8 @@ public:
         InitDefaultsIfNeeded();
     }
 
-    StructuredBufferAccessor(VkBufferOwner *buf, bool take_ownership = false)
-        : BufferAccessBase()
+    StructView(BufferOwner *buf, bool take_ownership = false)
+        : BufferView()
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
@@ -100,34 +100,34 @@ public:
     }
 
 public:
-    static StructuredBufferAccessor *Create(VkBufferOwner *buf, bool take_ownership = false)
+    static StructView *Create(BufferOwner *buf, bool take_ownership = false)
     {
-        return buf ? new StructuredBufferAccessor(buf, take_ownership) : nullptr;
+        return buf ? new StructView(buf, take_ownership) : nullptr;
     }
 
     /**
      * CN: 析构函数 - 自动 Unmap 和可选的 buffer 删除
      * EN: Destructor - auto unmap and optional buffer cleanup
      */
-    ~StructuredBufferAccessor()
+    ~StructView()
     {
-        // 窗口由 BufferAccessBase 析构时统一解锁（UnmapInternal 已删除）
+        // 窗口由 BufferView 析构时统一解锁（UnmapInternal 已删除）
     }
 
     // 禁止拷贝 / Disable copy
-    StructuredBufferAccessor(const StructuredBufferAccessor&) = delete;
-    StructuredBufferAccessor& operator=(const StructuredBufferAccessor&) = delete;
+    StructView(const StructView&) = delete;
+    StructView& operator=(const StructView&) = delete;
 
     // 允许移动 / Allow move
-    StructuredBufferAccessor(StructuredBufferAccessor&& other) noexcept
-        : BufferAccessBase()
+    StructView(StructView&& other) noexcept
+        : BufferView()
         , aligned_size(other.aligned_size)
     {
         MoveFrom(std::move(other));     // 窗口状态随 MoveFrom 一起搬
         other.aligned_size = 0;
     }
 
-    StructuredBufferAccessor& operator=(StructuredBufferAccessor&& other) noexcept
+    StructView& operator=(StructView&& other) noexcept
     {
         if(this != &other)
         {
@@ -247,8 +247,8 @@ public:
 
     bool Write(const void *ptr, uint32_t offset, uint32_t size)
     {
-        // BufferAccessBase::Write guards on gpu_buf internally.
-        return BufferAccessBase::Write(ptr, offset, size);
+        // BufferView::Write guards on gpu_buf internally.
+        return BufferView::Write(ptr, offset, size);
     }
 
     /**

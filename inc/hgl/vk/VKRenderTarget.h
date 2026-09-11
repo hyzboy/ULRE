@@ -5,7 +5,7 @@
 #include<hgl/vk/VKFramebuffer.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKQueue.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/vk/VKTexture.h>

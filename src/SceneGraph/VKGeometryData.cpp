@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/geo/VKGeometryData.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -162,7 +162,7 @@ IndexBuffer *GeometryData::InitIBO(const int ic,IndexType it,const AnsiString &n
 
 void GeometryData::UnmapAll()
 {
-    // VAB/IBO 访问已由 BufferAccessor 自动管理
+    // VAB/IBO 访问已由 TypedArrayView 自动管理
 }
 
 namespace

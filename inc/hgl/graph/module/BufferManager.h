@@ -2,10 +2,10 @@
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKBufferOwner.h>
-#include<hgl/vk/VKBuffer.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/vk/buffer/BufferOwner.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/log/Log.h>
 #include<source_location>
@@ -18,11 +18,11 @@ GRAPH_MODULE_CLASS(BufferManager)
 {
 private:
 
-    AutoIdObjectManager<BufferID, VkBufferOwner> rm_buffers;                 ///<缓冲区合集
+    AutoIdObjectManager<BufferID, BufferOwner> rm_buffers;                 ///<缓冲区合集
 
     // TODO: Split into specialized sub-managers (UBO/SSBO/VBO/IBO) while keeping BufferManager as the single entry point.
 
-    void AddBuffer(const AnsiString &buf_name, VkBufferOwner *buf, const std::source_location &loc);
+    void AddBuffer(const AnsiString &buf_name, BufferOwner *buf, const std::source_location &loc);
 
 private:
 
@@ -33,9 +33,9 @@ private:
 
 public: //Add/Get/Release
 
-    BufferID        Add(VkBufferOwner *buf) { return rm_buffers.Add(buf); }
-    VkBufferOwner * Get(const BufferID &id) { return rm_buffers.Get(id); }
-    void            Release(VkBufferOwner *buf) { rm_buffers.Release(buf, true); }
+    BufferID        Add(BufferOwner *buf) { return rm_buffers.Add(buf); }
+    BufferOwner * Get(const BufferID &id) { return rm_buffers.Get(id); }
+    void            Release(BufferOwner *buf) { rm_buffers.Release(buf, true); }
 
     /**
      * @brief 清理所有残留的缓冲区，防止销毁设备时出现资源泄漏

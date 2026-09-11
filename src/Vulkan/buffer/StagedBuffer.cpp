@@ -1,6 +1,6 @@
-﻿#include<hgl/vk/VKStagedBuffer.h>
+﻿#include<hgl/vk/buffer/StagedBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMemory.h>
+#include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/log/Log.h>
 #include<string.h>
 

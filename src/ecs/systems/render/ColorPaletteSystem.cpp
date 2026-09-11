@@ -5,7 +5,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKGlobalSceneUBOSet.h>
 #include<hgl/log/Log.h>
 
@@ -29,7 +29,7 @@ namespace hgl::ecs
     {
         if (palette_ubo)
         {
-            graph::VkBufferOwner *buf = palette_ubo->GetBuffer();
+            graph::BufferOwner *buf = palette_ubo->GetBuffer();
             delete palette_ubo;
             palette_ubo = nullptr;
 

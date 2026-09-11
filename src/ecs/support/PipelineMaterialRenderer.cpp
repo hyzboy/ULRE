@@ -14,10 +14,10 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKGlobalSceneUBOSet.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKIndexBuffer.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKIndirectCommandBuffer.h>
+#include<hgl/vk/buffer/IndirectCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/RootAddressPush.h>
 #include<hgl/graph/ShaderBufferSources.h>

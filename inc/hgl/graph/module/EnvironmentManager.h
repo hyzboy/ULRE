@@ -11,7 +11,7 @@ namespace hgl::graph
     class BufferManager;
     class IGPUBuffer;
 
-    template<typename T> class StructuredBufferAccessor;
+    template<typename T> class StructView;
 
     /**
      * EnvironmentManager - 环境综合信息统一管理器
@@ -38,7 +38,7 @@ namespace hgl::graph
             EnvProfileID    id = kEnvProfileInvalid;
             AnsiString      name;
             EnvironmentInfo cpu;                                               ///< CPU 侧唯一权威数据
-            StructuredBufferAccessor<SkyInfo> *sky_ubo = nullptr;              ///< sky 段 GPU 物化（懒创建，default 例外）
+            StructView<SkyInfo> *sky_ubo = nullptr;              ///< sky 段 GPU 物化（懒创建，default 例外）
         };
 
     private:

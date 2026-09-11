@@ -2,7 +2,7 @@
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKIndirectCommandBuffer.h>
+#include<hgl/vk/buffer/IndirectCommandBuffer.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 

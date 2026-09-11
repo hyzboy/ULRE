@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/vk/VKBufferOwner.h>
+#include<hgl/vk/buffer/BufferOwner.h>
 #include<hgl/graph/ShaderBufferSource.h>
 
 namespace hgl::graph{
@@ -8,7 +8,7 @@ namespace hgl::graph{
 class VulkanDevice;
 
 /**
- * BufferAccessBase (Layer 3) —— 视图基类：算地址 / 定范围 / 给类型化读写语法
+ * BufferView (Layer 3) —— 视图基类：算地址 / 定范围 / 给类型化读写语法
  *
  * 视图【不拥有】数据源：buffer / gpu_buf 都是引用，生命周期归调用方、registry 或数据池。
  *
@@ -22,10 +22,10 @@ class VulkanDevice;
  * 视图【不再自持 dirty】（消除与 L2 的双记账）；提交/上传由
  * ECS RenderBufferUploadSystem 按 L2 的脏范围统一执行。
  */
-class BufferAccessBase
+class BufferView
 {
 protected:
-    VkBufferOwner *buffer  = nullptr;  // descriptor / GetBuffer() / static_cast — 非拥有
+    BufferOwner *buffer  = nullptr;  // descriptor / GetBuffer() / static_cast — 非拥有
     IGPUBuffer   *gpu_buf = nullptr;   // 写路径专用，SetBuffer() 时同步赋值
 
     // ---- 窗口：唯一记录的 CPU 可写区域 ----
@@ -36,7 +36,7 @@ protected:
 
 protected:
 
-    void SetBuffer(VkBufferOwner *buf);
+    void SetBuffer(BufferOwner *buf);
 
     /** 映射窗口（幂等：同一窗口已映射则直接成功）。offset/size 单位：字节。 */
     bool MapWindow(VkDeviceSize offset_bytes, VkDeviceSize size_bytes);
@@ -50,7 +50,7 @@ protected:
     /** 把窗口范围标脏交 L2；无 gpu_buf 或外部窗口时 no-op。 */
     void MarkWindowDirty();
 
-    void MoveFrom(BufferAccessBase &&other)
+    void MoveFrom(BufferView &&other)
     {
         buffer        = other.buffer;
         gpu_buf       = other.gpu_buf;
@@ -69,14 +69,14 @@ protected:
     }
 
 public:
-    BufferAccessBase() = default;
-    virtual ~BufferAccessBase();
+    BufferView() = default;
+    virtual ~BufferView();
 
-    BufferAccessBase(const BufferAccessBase &) = delete;
-    BufferAccessBase &operator=(const BufferAccessBase &) = delete;
+    BufferView(const BufferView &) = delete;
+    BufferView &operator=(const BufferView &) = delete;
 
-    VkBufferOwner *GetBuffer()             { return buffer; }
-    const VkBufferOwner *GetBuffer() const { return buffer; }
+    BufferOwner *GetBuffer()             { return buffer; }
+    const BufferOwner *GetBuffer() const { return buffer; }
 
     /**
      * Returns the cached IGPUBuffer* for CPU writes.
@@ -103,6 +103,6 @@ public:
             gpu_buf->MarkDirty(0, static_cast<VkDeviceSize>(size));
     }
 
-};//class BufferAccessBase
+};//class BufferView
 
 }//namespace hgl::graph

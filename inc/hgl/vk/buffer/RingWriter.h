@@ -1,11 +1,11 @@
 ﻿#pragma once
 
 #include<hgl/common/RenderOptions.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 
 namespace hgl::graph
 {
-    class DeviceBufferRingWriter
+    class RingWriter
     {
         DeviceBuffer *buffer;
         uint32_t ring_frames;
@@ -13,7 +13,7 @@ namespace hgl::graph
         VkDeviceSize element_size;
 
     public:
-        DeviceBufferRingWriter(DeviceBuffer *buf = nullptr,
+        RingWriter(DeviceBuffer *buf = nullptr,
                                const VkDeviceSize elem_size = 0,
                                const uint32_t frames = HGL_L2W_RING_FRAMES)
             : buffer(buf)

@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/graph/texture/TextureLoader.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKTextureCreateInfo.h>

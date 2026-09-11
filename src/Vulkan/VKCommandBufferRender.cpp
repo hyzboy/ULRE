@@ -4,7 +4,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKPhysicalDevice.h>
-#include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 
 namespace hgl::graph{

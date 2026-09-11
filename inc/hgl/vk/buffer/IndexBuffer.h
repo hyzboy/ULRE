@@ -1,9 +1,9 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKBufferOwner.h>
+#include<hgl/vk/buffer/BufferOwner.h>
 
 namespace hgl::graph{
-class IndexBuffer:public VkBufferOwner
+class IndexBuffer:public BufferOwner
 {
     IndexType   index_type;
     uint        stride;
@@ -13,7 +13,7 @@ private:
 
     friend class VulkanDevice;
 
-    IndexBuffer(VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count):VkBufferOwner(d,vb)
+    IndexBuffer(VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count):BufferOwner(d,vb)
     {
         index_type=it;
         count=_count;
@@ -47,6 +47,6 @@ public:
      * Prefer this over GetBuffer() — does not require DeviceBuffer inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
-};//class IndexBuffer:public VkBufferOwner
+};//class IndexBuffer:public BufferOwner
 
 }//namespace hgl::graph

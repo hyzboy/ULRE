@@ -1,9 +1,9 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKBufferOwner.h>
+#include<hgl/vk/buffer/BufferOwner.h>
 
 namespace hgl::graph{
-class VertexAttribBuffer:public VkBufferOwner
+class VertexAttribBuffer:public BufferOwner
 {
     VkFormat format;                    ///<数据格式
     uint32_t stride;                    ///<单个数据字节数
@@ -13,7 +13,7 @@ private:
 
     friend class VulkanDevice;
 
-    VertexAttribBuffer(VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):VkBufferOwner(d,vb)
+    VertexAttribBuffer(VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):BufferOwner(d,vb)
     {
         format=fmt;
         stride=_stride;
@@ -45,7 +45,7 @@ public:
      * Prefer this over GetBuffer() for VkCmdBindVertexBuffers — does not require DeviceBuffer inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
-};//class VertexAttribBuffer:public VkBufferOwner
+};//class VertexAttribBuffer:public BufferOwner
 
 using VAB=VertexAttribBuffer;
 

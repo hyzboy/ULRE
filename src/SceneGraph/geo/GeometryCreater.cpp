@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKIndexBuffer.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/math/geometry/BoundingVolumes.h>

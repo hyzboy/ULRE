@@ -52,7 +52,7 @@ private:
 
     graph::ssbo::PBRSurfaceRow material_data;
     graph::mtl::MaterialRecipe wall_recipe{};
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
 

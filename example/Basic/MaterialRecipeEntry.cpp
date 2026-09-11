@@ -67,7 +67,7 @@ private:
     Entity *      camera_entity  =nullptr;
 
     Geometry *          geometry        = nullptr;
-    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* material_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* material_data_ssbo_accessor = nullptr;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
 

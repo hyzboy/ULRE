@@ -674,7 +674,7 @@ namespace hgl::graph::mtl
 
     /**
      * CN: UpsertRecipeSSBOAssetBinding 的统一重载 —— 接受 SSBOBinding，
-     *     无需将 type/id 分开传。配合 SSBOArrayAccessor::GetSSBOBinding() 使用：
+     *     无需将 type/id 分开传。配合 ArrayView::GetSSBOBinding() 使用：
      *       UpsertRecipeSSBOAssetBinding(recipe, name, accessor->GetSSBOBinding());
      * EN: Unified overload accepting SSBOBinding so type/id need not be passed separately.
      */

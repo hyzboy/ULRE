@@ -72,7 +72,7 @@ private:
     PrimitiveAsset triangle_asset{};
 
     // MI 结构体 SSBO
-    graph::SSBOArrayAccessor<ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::ArrayView<ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     // 每个三角形的数据
     struct TriangleData

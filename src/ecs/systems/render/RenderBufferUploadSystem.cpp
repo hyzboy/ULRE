@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/IGPUBuffer.h>
+#include<hgl/vk/buffer/IGPUBuffer.h>
 #include<string>
 #include<cstdio>
 

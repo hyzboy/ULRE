@@ -74,7 +74,7 @@ private:
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
 
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;

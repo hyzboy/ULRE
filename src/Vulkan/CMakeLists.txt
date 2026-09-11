@@ -94,29 +94,41 @@ ENDIF(UNIX)
 
 SOURCE_GROUP("Device\\Platform" FILES ${VK_DEVICE_PLATFORM_FILES})
 
-# --- 2. Memory Management ---
-SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
-                                ${VK_INCLUDE_PATH}/VKBuffer.h
-                                ${VK_INCLUDE_PATH}/VKBufferAccessBase.h
-                                ${VK_INCLUDE_PATH}/VKBufferAccessor.h
-                                ${VK_INCLUDE_PATH}/VKIndexBuffer.h
-                                ${VK_INCLUDE_PATH}/VKStagedBuffer.h
-                                ${VK_INCLUDE_PATH}/VKReBarBuffer.h
-                                ${VK_INCLUDE_PATH}/BufferPolicy.h
-                                ${VK_INCLUDE_PATH}/DeviceBufferRingWriter.h
-                                ${VK_INCLUDE_PATH}/StructuredBufferAccessor.h
-                                VKMemory.cpp
-                                VKBufferOwner.cpp
-                                VKBuffer.cpp
-                                VKStagedBuffer.cpp
-                                VKReBarBuffer.cpp)
+# --- 2. Buffer（L1 数据源 / L2 能力 / L3 视图；见 doc/vk-buffer-three-layer-plan-2026-09.md）---
+# 全部缓冲相关文件集中到 inc/hgl/vk/buffer/ 与 src/Vulkan/buffer/
+SET(BUFFER_HEADER_PATH  ${VK_INCLUDE_PATH}/buffer)
+SET(BUFFER_SOURCE_PATH  buffer)
 
-SOURCE_GROUP("Memory" FILES ${VK_MEMORY_FILES})
+SET(VK_BUFFER_FILES     ${BUFFER_HEADER_PATH}/BufferOwner.h
+                        ${BUFFER_HEADER_PATH}/BufferMemory.h
+                        ${BUFFER_HEADER_PATH}/BufferPolicy.h
+                        ${BUFFER_HEADER_PATH}/DeviceBuffer.h
+                        ${BUFFER_HEADER_PATH}/VertexAttribBuffer.h
+                        ${BUFFER_HEADER_PATH}/IndexBuffer.h
+                        ${BUFFER_HEADER_PATH}/IndirectCommandBuffer.h
+                        ${BUFFER_HEADER_PATH}/IGPUBuffer.h
+                        ${BUFFER_HEADER_PATH}/StagedBuffer.h
+                        ${BUFFER_HEADER_PATH}/ReBarBuffer.h
+                        ${BUFFER_HEADER_PATH}/RingWriter.h
+                        ${BUFFER_HEADER_PATH}/BufferView.h
+                        ${BUFFER_HEADER_PATH}/StructView.h
+                        ${BUFFER_HEADER_PATH}/ArrayView.h
+                        ${BUFFER_HEADER_PATH}/TypedArrayView.h
+                        ${BUFFER_SOURCE_PATH}/BufferOwner.cpp
+                        ${BUFFER_SOURCE_PATH}/BufferMemory.cpp
+                        ${BUFFER_SOURCE_PATH}/DeviceBuffer.cpp
+                        ${BUFFER_SOURCE_PATH}/DeviceBufferFactory.cpp
+                        ${BUFFER_SOURCE_PATH}/IndirectCommandBuffer.cpp
+                        ${BUFFER_SOURCE_PATH}/StagedBuffer.cpp
+                        ${BUFFER_SOURCE_PATH}/StagedBufferFactory.cpp
+                        ${BUFFER_SOURCE_PATH}/ReBarBuffer.cpp
+                        ${BUFFER_SOURCE_PATH}/BufferView.cpp)
+
+SOURCE_GROUP("Buffer" FILES ${VK_BUFFER_FILES})
 
 # --- 3. Vertex Input (与 Vulkan 底层密切) ---
 # VBO 输入类已删（mesh 化后顶点输入统一走 SSBO）；保留 VIF(VertexInputFormat)/VAB/VABList
 SET(VK_VERTEX_INPUT_FILES       ${VK_INCLUDE_PATH}/VKVertexInputFormat.h
-                                ${VK_INCLUDE_PATH}/VKVertexAttribBuffer.h
                                 ${VK_INCLUDE_PATH}/VKVABList.h
                                 ${VK_INCLUDE_PATH}/VKPrimitiveType.h)
 
@@ -209,10 +221,8 @@ SOURCE_GROUP("Swapchain" FILES ${VK_SWAPCHAIN_FILES})
 
 # --- 11. Command Buffer ---
 SET(VK_COMMAND_BUFFER_FILES     ${VK_INCLUDE_PATH}/VKCommandBuffer.h
-                                ${VK_INCLUDE_PATH}/VKIndirectCommandBuffer.h
                                 VKCommandBuffer.cpp
-                                VKCommandBufferRender.cpp
-                                VKIndirectCommandBuffer.cpp)
+                                VKCommandBufferRender.cpp)
 
 SOURCE_GROUP("CommandBuffer" FILES ${VK_COMMAND_BUFFER_FILES})
 
@@ -228,9 +238,6 @@ SOURCE_GROUP("Synchronization" FILES ${VK_SYNC_FILES})
 
 # --- 13. Buffer Operations (Device Level) ---
 SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
-                                VKDeviceBuffer.cpp
-                                VKBufferAccessBase.cpp
-                                VKDeviceStagedBuffer.cpp
                                 VKDeviceImage.cpp
                                 VKDeviceSampler.cpp
                                 VKDeviceFramebuffer.cpp
@@ -262,7 +269,7 @@ SET(VULKAN_ALL_FILES    ${VK_DEVICE_INSTANCE_FILES}
                         ${VK_DEVICE_PHYSICAL_FILES}
                         ${VK_DEVICE_LOGICAL_FILES}
                         ${VK_DEVICE_DEBUG_FILES}
-                        ${VK_MEMORY_FILES}
+                        ${VK_BUFFER_FILES}
                         ${VK_VERTEX_INPUT_FILES}
                         ${VK_PIPELINE_FILES}
                         ${VK_DESCRIPTOR_SETS_FILES}

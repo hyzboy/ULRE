@@ -72,7 +72,7 @@ private:
 
     graph::mtl::MaterialRecipe sky_recipe{};
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
 
     Geometry* prim_sky_sphere = nullptr;
     PrimitiveAsset sky_asset{};

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
-#include <hgl/vk/VKBufferAccessor.h>
+#include <hgl/vk/buffer/TypedArrayView.h>
 #include <hgl/vk/VKRenderAssign.h>
 #include <memory>
 #include <vector>
@@ -76,8 +76,8 @@ namespace hgl::ecs
         // ------- 单 Line buffer（P2：删 4 slot 分组——mesh shader 展开 quad，宽度入 SSBO）-------
         struct LineBuffer
         {
-            using TransformIDAccessor = hgl::graph::BufferAccessor<hgl::graph::RawDataAccess<hgl::graph::Assign::TransformID::ValueType>>;
-            using SizeAccessor        = hgl::graph::BufferAccessor<hgl::graph::RawDataAccess<hgl::math::Vector2f>>;
+            using TransformIDAccessor = hgl::graph::TypedArrayView<hgl::graph::RawDataAccess<hgl::graph::Assign::TransformID::ValueType>>;
+            using SizeAccessor        = hgl::graph::TypedArrayView<hgl::graph::RawDataAccess<hgl::math::Vector2f>>;
 
             uint32_t line_count   = 0;
             uint32_t gpu_capacity = 0;   ///< current VAB capacity in line-count
@@ -88,8 +88,8 @@ namespace hgl::ecs
             graph::ShaderProgram* material  = nullptr;   ///<SSBO 绑定用材质（LineRenderPipeline 设置）
             graph::DeviceBuffer* mesh_draw_params = nullptr;  ///<mesh per-draw 参数表（row 0——单 draw 非实例化）
 
-            graph::BufferAccessor3f  va_pos;       ///< maps to StagedBuffer for positions
-            graph::BufferAccessor1u8 va_color;     ///< maps to StagedBuffer for color indices
+            graph::TypedArrayView3f  va_pos;       ///< maps to StagedBuffer for positions
+            graph::TypedArrayView1u8 va_color;     ///< maps to StagedBuffer for color indices
             TransformIDAccessor      va_transform; ///< per-vertex TransformID stream
             SizeAccessor             va_width;     ///< per-vertex width stream（Size 语义 R32_FLOAT）
 

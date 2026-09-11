@@ -1,15 +1,15 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKMemory.h>
-#include<hgl/vk/BufferPolicy.h>
-#include<hgl/vk/IGPUBuffer.h>
+#include<hgl/vk/buffer/BufferMemory.h>
+#include<hgl/vk/buffer/BufferPolicy.h>
+#include<hgl/vk/buffer/IGPUBuffer.h>
 #include<hgl/vk/VK.h>
 
 namespace hgl::graph{
 
 /**
  * Aggregate holding the three Vulkan handles owned by any GPU buffer.
- * Formerly defined inside VKBuffer.h; moved here so VkBufferOwner can use it
+ * Formerly defined inside VKBuffer.h; moved here so BufferOwner can use it
  * without creating a circular dependency.
  */
 struct DeviceBufferData
@@ -20,7 +20,7 @@ struct DeviceBufferData
 };//struct DeviceBufferData
 
 /**
- * VkBufferOwner — thin base class for all GPU buffer types.
+ * BufferOwner — thin base class for all GPU buffer types.
  *
  * Owns: VkBuffer + DeviceMemory + IGPUBuffer (upload path).
  * Shared by DeviceBuffer (UBO/SSBO), VertexAttribBuffer, IndexBuffer, IndirectCommandBuffer<T>.
@@ -28,7 +28,7 @@ struct DeviceBufferData
  * Destructor: if staged_source is set, delegates cleanup to it (it owns the allocations).
  *             Otherwise destroys buf.buffer via vkDestroyBuffer and deletes buf.memory.
  */
-class VkBufferOwner
+class BufferOwner
 {
 protected:
 
@@ -42,13 +42,13 @@ protected:
     // ECS routing hint — set by factory via SetUpdateClass.
     BufferUpdateClass update_class = BufferUpdateClass::Default;
 
-    VkBufferOwner() = default;
+    BufferOwner() = default;
 
-    VkBufferOwner(VkDevice d, const DeviceBufferData &b) : device(d), buf(b) {}
+    BufferOwner(VkDevice d, const DeviceBufferData &b) : device(d), buf(b) {}
 
 public:
 
-    virtual ~VkBufferOwner();
+    virtual ~BufferOwner();
 
             VkBuffer                    GetBuffer    () const { return buf.buffer; }
             DeviceMemory               *GetMemory    () const { return buf.memory; }
@@ -65,6 +65,6 @@ public:
     void              SetUpdateClass(BufferUpdateClass c) { update_class = c; }
     BufferUpdateClass GetUpdateClass()               const { return update_class; }
 
-};//class VkBufferOwner
+};//class BufferOwner
 
 }//namespace hgl::graph

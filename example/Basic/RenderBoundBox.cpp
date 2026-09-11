@@ -96,7 +96,7 @@ private:
 
     struct MaterialData
     {
-        graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* material_data_ssbo_accessor = nullptr;
+        graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* material_data_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
 
         ~MaterialData()

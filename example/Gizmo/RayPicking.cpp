@@ -16,7 +16,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/vk/VertexDataManager.h>
@@ -87,7 +87,7 @@ private:
     Geometry *          geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_recipe{};
     PrimitiveAsset             plane_asset{};
-    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *          geom_line           =nullptr;
     graph::mtl::MaterialRecipe line_recipe{};

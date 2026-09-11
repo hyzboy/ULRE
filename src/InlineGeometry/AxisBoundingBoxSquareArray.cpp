@@ -13,8 +13,8 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Axis",6,0))   // 非索引几何：无 IBO（gl_VertexIndex 直通）
             return(nullptr);
 
-        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
-        auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
+        auto vertex = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Position);
+        auto color  = pc->GetTypedArrayView<TypedArrayView4f>(VAN::Color);
 
         if(!vertex.IsValid()||!color.IsValid())
             return(nullptr);
@@ -56,7 +56,7 @@ namespace hgl::graph::inline_geometry
         {
             RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-            auto color = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
+            auto color = pc->GetTypedArrayView<TypedArrayView4f>(VAN::Color);
 
             if(color.IsValid())
             {
@@ -89,7 +89,7 @@ namespace hgl::graph::inline_geometry
             return(nullptr);
 
         {
-            auto vertex = pc->GetBufferAccessor<BufferAccessor2u8>(VAN::Position);  //顶点坐标使用 uint8
+            auto vertex = pc->GetTypedArrayView<TypedArrayView2u8>(VAN::Position);  //顶点坐标使用 uint8
 
             if(!vertex.IsValid())
                 return(nullptr);

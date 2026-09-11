@@ -2,8 +2,8 @@
 #define HGL_GRAPH_VULKAN_STAGED_BUFFER_INCLUDE
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/VKMemory.h>
-#include<hgl/vk/IGPUBuffer.h>
+#include<hgl/vk/buffer/BufferMemory.h>
+#include<hgl/vk/buffer/IGPUBuffer.h>
 #include<vector>
 
 namespace hgl::graph{

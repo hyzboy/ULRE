@@ -666,17 +666,17 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("WallsFromLines", (uint)finalVerts.size(), (uint)finalIndices.size()))
             return nullptr;
 
-        auto pos = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
-        auto nrm = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
-        auto tan = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
-        auto uv  = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
+        auto pos = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Position);
+        auto nrm = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Normal);
+        auto tan = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Tangent);
+        auto uv  = pc->GetTypedArrayView<TypedArrayView2f>(VAN::TexCoord);
 
         // RG16F/RG8 压缩法线（octahedral 编码）
         VAB *nrm_vab = pc->GetVAB(VAN::Normal);
         const bool nrm_rg8   = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R8G8_UNORM);
         const bool nrm_rg16f = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT);
-        BufferAccessor2u8 nrm2u8 = nrm_rg8   ? pc->GetBufferAccessor<BufferAccessor2u8>(VAN::Normal) : BufferAccessor2u8();
-        BufferAccessor2hf nrm2   = nrm_rg16f ? pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal) : BufferAccessor2hf();
+        TypedArrayView2u8 nrm2u8 = nrm_rg8   ? pc->GetTypedArrayView<TypedArrayView2u8>(VAN::Normal) : TypedArrayView2u8();
+        TypedArrayView2hf nrm2   = nrm_rg16f ? pc->GetTypedArrayView<TypedArrayView2hf>(VAN::Normal) : TypedArrayView2hf();
 
         for(size_t i = 0; i < finalVerts.size(); ++i)
         {

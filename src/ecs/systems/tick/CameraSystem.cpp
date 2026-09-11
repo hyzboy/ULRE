@@ -5,9 +5,9 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
-#include<hgl/vk/VKBuffer.h>
-#include<hgl/vk/VKMemory.h>
+#include<hgl/vk/buffer/StructView.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<glm/gtc/quaternion.hpp>
@@ -240,7 +240,7 @@ namespace hgl::ecs
     {
         if (camera_ubo)
         {
-            graph::VkBufferOwner *buf = camera_ubo->GetBuffer();
+            graph::BufferOwner *buf = camera_ubo->GetBuffer();
             delete camera_ubo;
             camera_ubo = nullptr;
             camera_info = nullptr;
@@ -614,11 +614,11 @@ namespace hgl::ecs
                 auto *buffer_manager = graphics_context->GetBufferManager();
                 if (buffer_manager)
                 {
-                    auto *buf = buffer_manager->CreateUBO("CameraUBO", graph::StructuredBufferAccessor<graph::CameraInfo>::GetSize());
+                    auto *buf = buffer_manager->CreateUBO("CameraUBO", graph::StructView<graph::CameraInfo>::GetSize());
                     if (buf)
                     {
                         buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
-                        camera_ubo = graph::StructuredBufferAccessor<graph::CameraInfo>::Create(buf, false);
+                        camera_ubo = graph::StructView<graph::CameraInfo>::Create(buf, false);
                     }
                 }
             }

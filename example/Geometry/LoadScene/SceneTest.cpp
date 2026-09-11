@@ -72,7 +72,7 @@ private:
     struct MaterialData
     {
         GeometryVertexFormat geometry_vertex_format;
-        graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+        graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
 
         ~MaterialData()

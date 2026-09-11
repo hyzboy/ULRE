@@ -1,12 +1,12 @@
 ﻿#pragma once
 
 // VKBufferMap.h is transitively included via VKVertexAttribBuffer.h below.
-// Direct include removed — new code should use VKBufferAccessor.h directly.
-#include<hgl/vk/VKBufferAccessor.h>
+// Direct include removed — new code should use VKTypedArrayView.h directly.
+#include<hgl/vk/buffer/TypedArrayView.h>
 #include<hgl/vk/VKShaderModule.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/vk/VKIndexBuffer.h>
-#include<hgl/vk/VKMemory.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
+#include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
@@ -201,21 +201,21 @@ public: //顶点缓冲区
     const   uint32_t        GetVertexCount()const{ return vertices_number; }                                                ///<取得顶点数量
         int32_t         GetVertexOffset()const;                                                                         ///<取得顶点偏移(单位:元素)
 
-        VertexAttribBuffer * GetVAB (const VertexSemantic semantic,const VkFormat format=VK_FORMAT_UNDEFINED);       ///<获取VAB用于BufferAccessor
+        VertexAttribBuffer * GetVAB (const VertexSemantic semantic,const VkFormat format=VK_FORMAT_UNDEFINED);       ///<获取VAB用于TypedArrayView
 
         bool            WriteVAB    (const VertexSemantic semantic,const VkFormat format,const void *data);           ///<直接写入顶点属性数据
 
         /**
-         * 创建带偏移的 BufferAccessor（自动使用VDM子分配的正确范围）
-             * @tparam BufferAccessorType BufferAccessor类型（如 BufferAccessor3f）
+         * 创建带偏移的 TypedArrayView（自动使用VDM子分配的正确范围）
+             * @tparam TypedArrayViewType TypedArrayView类型（如 TypedArrayView3f）
              * @param name 顶点属性名称
-             * @return 已绑定到正确偏移/数量的 BufferAccessor
+             * @return 已绑定到正确偏移/数量的 TypedArrayView
              */
-            template<typename BufferAccessorType>
-            BufferAccessorType GetBufferAccessor(const VertexSemantic semantic)
+            template<typename TypedArrayViewType>
+            TypedArrayViewType GetTypedArrayView(const VertexSemantic semantic)
             {
                 VAB *vab = GetVAB(semantic);
-                return BufferAccessorType(vab, GetVertexOffset(), GetVertexCount());
+                return TypedArrayViewType(vab, GetVertexOffset(), GetVertexCount());
             }
 
 public: //索引缓冲区
@@ -227,16 +227,16 @@ public: //索引缓冲区
             /**
              * 创建 IndexAccessor（自动使用正确的索引类型）
              * @tparam T 索引类型（uint8, uint16, uint32）
-             * @return 已绑定的 BufferAccessor
+             * @return 已绑定的 TypedArrayView
              */
             template<typename T>
-            BufferAccessor<RawDataAccess<T>> GetIndexAccessor()
+            TypedArrayView<RawDataAccess<T>> GetIndexAccessor()
             {
                 IndexBuffer *ibo = GetIBO();
                 if(!ibo)
-                    return BufferAccessor<RawDataAccess<T>>();
+                    return TypedArrayView<RawDataAccess<T>>();
 
-                return BufferAccessor<RawDataAccess<T>>(ibo, GetFirstIndex(), index_number);
+                return TypedArrayView<RawDataAccess<T>>(ibo, GetFirstIndex(), index_number);
             }
 
             bool            WriteIBO(const void *data,const uint32_t count);

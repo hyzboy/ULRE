@@ -2,8 +2,8 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/ShaderBufferSources.h>
-#include<hgl/vk/VKBuffer.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/vk/buffer/StructView.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph
@@ -43,7 +43,7 @@ namespace hgl::graph
         buf_name += profile->name;
 
         auto *buf = buffer_manager->CreateUBO(buf_name,
-                                              StructuredBufferAccessor<SkyInfo>::GetSize());
+                                              StructView<SkyInfo>::GetSize());
         if (!buf)
         {
             GLogError("[EnvironmentManager] create sky UBO failed: %s", profile->name.c_str());
@@ -51,7 +51,7 @@ namespace hgl::graph
         }
 
         buf->SetUpdateClass(BufferUpdateClass::Deferred);
-        profile->sky_ubo = StructuredBufferAccessor<SkyInfo>::Create(buf, false);
+        profile->sky_ubo = StructView<SkyInfo>::Create(buf, false);
         if (!profile->sky_ubo)
         {
             buffer_manager->Release(buf);

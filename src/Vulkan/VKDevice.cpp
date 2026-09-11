@@ -6,7 +6,7 @@
 #include<hgl/vk/pipeline/VKComputePipeline.h>
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKObjectName.h>
-#include<hgl/vk/IGPUBuffer.h>
+#include<hgl/vk/buffer/IGPUBuffer.h>
 #include<hgl/log/Log.h>
 #include <algorithm>
 #include <functional>
@@ -237,7 +237,7 @@ void VulkanDevice::DumpTrackedObjects() const
 
 }
 
-void VulkanDevice::TrackBuffer(VkBufferOwner *buf, const ObjectNameBuilder &name, const std::source_location &loc)
+void VulkanDevice::TrackBuffer(BufferOwner *buf, const ObjectNameBuilder &name, const std::source_location &loc)
 {
     if (!buf)
         return;

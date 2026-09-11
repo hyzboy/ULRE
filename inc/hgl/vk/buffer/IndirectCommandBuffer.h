@@ -1,11 +1,11 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKBufferOwner.h>
+#include<hgl/vk/buffer/BufferOwner.h>
 
 namespace hgl::graph{
 
 template<typename T>
-class IndirectCommandBuffer:public VkBufferOwner
+class IndirectCommandBuffer:public BufferOwner
 {
 protected:
 
@@ -21,7 +21,7 @@ private:
 
     friend class VulkanDevice;
 
-    IndirectCommandBuffer(VkDevice d,const DeviceBufferData &vb,const uint32_t mc):VkBufferOwner(d,vb)
+    IndirectCommandBuffer(VkDevice d,const DeviceBufferData &vb,const uint32_t mc):BufferOwner(d,vb)
     {
         max_count=mc;
     }
@@ -49,7 +49,7 @@ public:
      * Prefer this over GetBuffer() — does not require DeviceBuffer inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
-};//class IndirectCommandBuffer:public VkBufferOwner
+};//class IndirectCommandBuffer:public BufferOwner
 
 /**
  * mesh shader 间接绘制命令缓冲（VK_EXT_mesh_shader）

@@ -1,9 +1,9 @@
-﻿#include<hgl/vk/VKBuffer.h>
+﻿#include<hgl/vk/buffer/DeviceBuffer.h>
 
 namespace hgl::graph{
 
 // Out-of-line destructor: provides the symbol expected by stale OBJ files compiled
-// before VKBuffer.h switched to ~DeviceBuffer() = default.  Cleanup is in VkBufferOwner.
+// before VKBuffer.h switched to ~DeviceBuffer() = default.  Cleanup is in BufferOwner.
 DeviceBuffer::~DeviceBuffer() {}
 
 void *DeviceBuffer::Map()

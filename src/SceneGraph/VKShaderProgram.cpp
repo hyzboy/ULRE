@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/mtl/ShaderBuildContext.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{

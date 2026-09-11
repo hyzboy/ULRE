@@ -1,5 +1,5 @@
 #include <hgl/graph/module/MaterialTextureReferencePool.h>
-#include <hgl/vk/VKBuffer.h>
+#include <hgl/vk/buffer/DeviceBuffer.h>
 #include <hgl/log/Log.h>
 #include <hgl/type/Smart.h>
 #include <cstring>

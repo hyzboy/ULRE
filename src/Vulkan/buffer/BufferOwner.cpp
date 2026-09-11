@@ -1,10 +1,10 @@
-﻿#include<hgl/vk/VKBufferOwner.h>
-#include<hgl/vk/VKStagedBuffer.h>   // complete type for ~StagedBuffer via IGPUBuffer*
-#include<hgl/vk/VKReBarBuffer.h>    // complete type for ~ReBarBuffer via IGPUBuffer*
+﻿#include<hgl/vk/buffer/BufferOwner.h>
+#include<hgl/vk/buffer/StagedBuffer.h>   // complete type for ~StagedBuffer via IGPUBuffer*
+#include<hgl/vk/buffer/ReBarBuffer.h>    // complete type for ~ReBarBuffer via IGPUBuffer*
 
 namespace hgl::graph{
 
-VkBufferOwner::~VkBufferOwner()
+BufferOwner::~BufferOwner()
 {
     if(staged_source)
     {

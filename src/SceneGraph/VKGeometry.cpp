@@ -1,9 +1,9 @@
 ﻿#include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/geo/VKGeometry.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKShaderModule.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
 
 #ifdef _DEBUG
 #include<hgl/vk/VKDevice.h>

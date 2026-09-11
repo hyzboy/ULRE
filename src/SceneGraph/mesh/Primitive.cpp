@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/vk/VKFormat.h>
 

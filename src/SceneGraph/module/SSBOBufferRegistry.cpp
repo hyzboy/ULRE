@@ -1,7 +1,7 @@
 ﻿#include <hgl/graph/module/SSBOBufferRegistry.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/BufferManager.h>
-#include <hgl/vk/VKBuffer.h>
+#include <hgl/vk/buffer/DeviceBuffer.h>
 #include <hgl/log/Log.h>
 #include <hgl/type/Smart.h>
 

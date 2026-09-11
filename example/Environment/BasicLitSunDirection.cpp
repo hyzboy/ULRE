@@ -89,7 +89,7 @@ private:
 #endif//DRAW_GIZMO
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     MeshEntry* floor_mesh = nullptr;

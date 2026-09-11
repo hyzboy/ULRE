@@ -9,7 +9,7 @@ namespace hgl::graph::inline_geometry
         if(!pc)
             return;
 
-        // 绑定 BufferAccessor 到 VAB
+        // 绑定 TypedArrayView 到 VAB
         VertexAttribBuffer *vab;
         const int32_t vertex_offset = pc->GetVertexOffset();
         const uint32_t vertex_count = pc->GetVertexCount();
@@ -53,6 +53,6 @@ namespace hgl::graph::inline_geometry
 
     GeometryBuilder::~GeometryBuilder()
     {
-        // BufferAccessor 自动管理生命周期，无需手动清理
+        // TypedArrayView 自动管理生命周期，无需手动清理
     }
 }

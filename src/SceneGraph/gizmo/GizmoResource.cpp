@@ -39,7 +39,7 @@ namespace hgl::graph
         {
             // Arena 行缓冲访问器（OwnBuffer 持有 DeviceBuffer 生命周期，
             // 行地址已进入地址行表——必须与 gizmo 资源同寿命）
-            SSBOArrayAccessor<ssbo::EmissiveSurfaceRow> *color_row_accessor = nullptr;
+            ArrayView<ssbo::EmissiveSurfaceRow> *color_row_accessor = nullptr;
             DeviceBuffer *      color_ssbo;
             VertexDataManager * vdm;
             mtl::MaterialRecipe color_recipe[size_t(GizmoColor::RANGE_SIZE)]{};

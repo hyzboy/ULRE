@@ -76,7 +76,7 @@ private:
     Geometry* geometry = nullptr;
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
-    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
     static constexpr uint32_t tick_slot   = 0;
     static constexpr uint32_t hand_slots[3] = {1, 2, 3};
 

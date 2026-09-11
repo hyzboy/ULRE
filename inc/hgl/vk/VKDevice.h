@@ -8,8 +8,8 @@
 #include<hgl/graph/data/BitmapData.h>
 #include<hgl/graph/font/Font.h>
 #include<hgl/vk/VK.h>
-#include<hgl/vk/VKMemory.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/BufferMemory.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKShaderModuleMap.h>
@@ -124,7 +124,7 @@ public:
                 size_t              GetTrackedObjectCount()const{return tracked_objects.size();}
                 void                DumpTrackedObjects  ()const;
 
-                void                TrackBuffer         (VkBufferOwner *buf, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+                void                TrackBuffer         (BufferOwner *buf, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
                 void                TrackTexture        (Texture *tex, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
 public:

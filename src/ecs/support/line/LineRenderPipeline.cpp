@@ -21,7 +21,7 @@
 #include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKShaderProgram.h>
-#include <hgl/vk/VKBuffer.h>
+#include <hgl/vk/buffer/DeviceBuffer.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/graph/ShaderBufferSources.h>

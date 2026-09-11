@@ -1,7 +1,7 @@
-﻿#include<hgl/vk/VKIndirectCommandBuffer.h>
+﻿#include<hgl/vk/buffer/IndirectCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKStagedBuffer.h>
-#include<hgl/vk/VKReBarBuffer.h>
+#include<hgl/vk/buffer/StagedBuffer.h>
+#include<hgl/vk/buffer/ReBarBuffer.h>
 #include<hgl/object/ObjectTracker.h>
 
 namespace hgl::graph{

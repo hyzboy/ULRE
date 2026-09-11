@@ -10,7 +10,7 @@
 #include<unordered_set>
 
 namespace hgl::graph {
-    template<typename> class StructuredBufferAccessor;
+    template<typename> class StructView;
     struct ViewportInfo;
     class DeviceBuffer;
 }
@@ -49,7 +49,7 @@ namespace hgl::ecs
     private:
 
         // Viewport UBO — owned here, stable across swapchain resize.
-        graph::StructuredBufferAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
+        graph::StructView<graph::ViewportInfo> *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
         uint32_t pending_viewport_height = 0;
         // resource_id → bindless descriptor index (1-based, 0 = not found).

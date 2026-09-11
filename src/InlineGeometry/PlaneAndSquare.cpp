@@ -9,7 +9,7 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
 
-        auto vertex = pc->GetBufferAccessor<BufferAccessor2f>(VAN::Position);
+        auto vertex = pc->GetTypedArrayView<TypedArrayView2f>(VAN::Position);
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -32,7 +32,7 @@ namespace hgl::graph::inline_geometry
                                 Vector2f(left+col,bottom));
         }
 
-        auto lum = pc->GetBufferAccessor<BufferAccessor1u8>(VAN::Luminance);
+        auto lum = pc->GetTypedArrayView<TypedArrayView1u8>(VAN::Luminance);
 
         if(lum.IsValid())
         {
@@ -67,7 +67,7 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
 
-        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
+        auto vertex = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Position);
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -90,7 +90,7 @@ namespace hgl::graph::inline_geometry
                                 Vector3f(left+col,bottom,0));
         }
 
-        auto lum = pc->GetBufferAccessor<BufferAccessor1u8>(VAN::Luminance);
+        auto lum = pc->GetTypedArrayView<TypedArrayView1u8>(VAN::Luminance);
 
         if(lum.IsValid())
         {
@@ -139,7 +139,7 @@ namespace hgl::graph::inline_geometry
             if(nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R8G8_UNORM)
             {
                 // RG8 压缩法线（octahedral → uint8 量化）
-                auto normal2u8 = pc->GetBufferAccessor<BufferAccessor2u8>(VAN::Normal);
+                auto normal2u8 = pc->GetTypedArrayView<TypedArrayView2u8>(VAN::Normal);
                 if(normal2u8.IsValid())
                 {
                     float p, q;
@@ -151,7 +151,7 @@ namespace hgl::graph::inline_geometry
             else if(nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT)
             {
                 // RG16F 压缩法线（octahedral 编码）
-                auto normal2 = pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal);
+                auto normal2 = pc->GetTypedArrayView<TypedArrayView2hf>(VAN::Normal);
                 if(normal2.IsValid())
                 {
                     float p, q;
@@ -163,14 +163,14 @@ namespace hgl::graph::inline_geometry
         }
 
         {
-            auto tangent = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
+            auto tangent = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Tangent);
 
             if(tangent.IsValid())
                 tangent->RepeatWrite(xy_tangent,4);
         }
 
         {
-            auto tex_coord = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
+            auto tex_coord = pc->GetTypedArrayView<TypedArrayView2f>(VAN::TexCoord);
 
             if(tex_coord.IsValid())
                 tex_coord->Write(xy_tex_coord,4);

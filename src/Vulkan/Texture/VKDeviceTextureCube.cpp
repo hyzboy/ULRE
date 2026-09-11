@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKImageCreateInfo.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include"BufferImageCopy2D.h"
 namespace hgl::graph{

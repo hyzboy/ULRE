@@ -1,18 +1,18 @@
-﻿#include<hgl/vk/VKBufferAccessBase.h>
+﻿#include<hgl/vk/buffer/BufferView.h>
 
 namespace hgl::graph{
 
-BufferAccessBase::~BufferAccessBase()
+BufferView::~BufferView()
 {
     UnmapWindow();
 }
 
-void BufferAccessBase::SetBuffer(VkBufferOwner *buf)
+void BufferView::SetBuffer(BufferOwner *buf)
 {
     // 只有"窗口来自旧 buffer 的 Map"时才需要随换源解除（Unmap 会把已写范围标脏）。
     // 外部窗口（Arena/池行段）与 buffer 没有绑定关系——例如
     // SSBOBufferRegistry::AllocateArrayAccessor 的顺序就是
-    // 先 new SSBOArrayAccessor(cpu_base,...)（挂外部窗口）再 OwnBuffer(buf)，
+    // 先 new ArrayView(cpu_base,...)（挂外部窗口）再 OwnBuffer(buf)，
     // 此时绝不能因为 SetBuffer 把窗口清掉。
     if(buffer != buf && !window_external)
         UnmapWindow();
@@ -21,7 +21,7 @@ void BufferAccessBase::SetBuffer(VkBufferOwner *buf)
     gpu_buf = buf ? buf->GetGPUBuffer() : nullptr;
 }
 
-bool BufferAccessBase::MapWindow(VkDeviceSize offset_bytes, VkDeviceSize size_bytes)
+bool BufferView::MapWindow(VkDeviceSize offset_bytes, VkDeviceSize size_bytes)
 {
     if(window_ptr && !window_external
        && window_offset == offset_bytes && window_size == size_bytes)
@@ -44,7 +44,7 @@ bool BufferAccessBase::MapWindow(VkDeviceSize offset_bytes, VkDeviceSize size_by
     return true;
 }
 
-void BufferAccessBase::AttachWindow(void *ptr, VkDeviceSize size_bytes)
+void BufferView::AttachWindow(void *ptr, VkDeviceSize size_bytes)
 {
     UnmapWindow();
 
@@ -54,7 +54,7 @@ void BufferAccessBase::AttachWindow(void *ptr, VkDeviceSize size_bytes)
     window_external = true;
 }
 
-void BufferAccessBase::UnmapWindow()
+void BufferView::UnmapWindow()
 {
     if(!window_ptr)
         return;
@@ -68,7 +68,7 @@ void BufferAccessBase::UnmapWindow()
     window_external = false;
 }
 
-void BufferAccessBase::MarkWindowDirty()
+void BufferView::MarkWindowDirty()
 {
     if(!gpu_buf || !window_ptr || window_external || window_size == 0)
         return;

@@ -23,7 +23,7 @@
 #include<hgl/util/hash/FNV1a.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
-#include<hgl/vk/VKIndirectCommandBuffer.h>
+#include<hgl/vk/buffer/IndirectCommandBuffer.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderPass.h>

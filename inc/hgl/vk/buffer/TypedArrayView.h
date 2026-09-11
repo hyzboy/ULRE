@@ -1,9 +1,9 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
+#include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VertexAttribDataAccess.h>
-#include<hgl/vk/VKBufferAccessBase.h>
+#include<hgl/vk/buffer/BufferView.h>
 #include<hgl/vk/VKDevice.h>
 
 namespace hgl::graph{
@@ -119,13 +119,13 @@ public:
  *
  * 使用示例 / Usage:
  * ```cpp
- * BufferAccessor<VB3f> positions(vab);
+ * TypedArrayView<VB3f> positions(vab);
  * positions->Write(vec);      // 自动标记 dirty
  * positions.Commit();         // 按需 flush 到 GPU
  * ```
  */
 template<typename DataAccessType>
-class BufferAccessor:public BufferAccessBase
+class TypedArrayView:public BufferView
 {
 private:
      uint32_t buffer_total_count;        ///< 总元素数量 / Total element count
@@ -133,7 +133,7 @@ private:
      DataAccessType *data_access;        ///< 数据访问器 / Data accessor
      int32_t element_offset;             ///< 元素偏移(单位:元素) / Element offset
      uint32_t element_count;             ///< 访问元素数量 / Element count
-     // 映射基址与脏标记统一由 BufferAccessBase 的窗口机制持有：
+     // 映射基址与脏标记统一由 BufferView 的窗口机制持有：
      // 窗口 = (element_offset*stride, count*stride)，不再自持 mapped_pointer / dirty
 
 
@@ -159,7 +159,7 @@ private:
             return;
 
         // Byte-offset Map: buffer_stride is element size, multiply to get byte offsets.
-        // 窗口状态由 BufferAccessBase 保存（同一窗口幂等）。
+        // 窗口状态由 BufferView 保存（同一窗口幂等）。
         if(!MapWindow(static_cast<VkDeviceSize>(element_offset) * buffer_stride,
                       static_cast<VkDeviceSize>(count) * buffer_stride))
             return;
@@ -191,8 +191,8 @@ public:
       * EN: Constructor
       * \param vab Buffer 指针 / Buffer pointer
       */
-    BufferAccessor(VAB *vab = nullptr)
-        : BufferAccessBase()
+    TypedArrayView(VAB *vab = nullptr)
+        : BufferView()
         , buffer_total_count(vab ? vab->GetCount() : 0)
         , buffer_stride(vab ? vab->GetStride() : 0)
         , data_access(nullptr)
@@ -204,8 +204,8 @@ public:
             MapInternal();
     }
 
-    BufferAccessor(VAB *vab, int32_t offset, uint32_t count)
-        : BufferAccessBase()
+    TypedArrayView(VAB *vab, int32_t offset, uint32_t count)
+        : BufferView()
         , buffer_total_count(vab ? vab->GetCount() : 0)
         , buffer_stride(vab ? vab->GetStride() : 0)
         , data_access(nullptr)
@@ -217,8 +217,8 @@ public:
             MapInternal();
     }
 
-    BufferAccessor(IndexBuffer *ibo, int32_t offset, uint32_t count)
-        : BufferAccessBase()
+    TypedArrayView(IndexBuffer *ibo, int32_t offset, uint32_t count)
+        : BufferView()
         , buffer_total_count(ibo ? ibo->GetCount() : 0)
         , buffer_stride(ibo ? ibo->GetStride() : 0)
         , data_access(nullptr)
@@ -234,14 +234,14 @@ public:
      * CN: 析构函数 - 自动 Unmap
      * EN: Destructor - Auto unmap
      */
-    ~BufferAccessor()
+    ~TypedArrayView()
     {
         UnmapInternal();
     }
 
     // 禁止拷贝 / Disable copy
-    BufferAccessor(const BufferAccessor&) = delete;
-    BufferAccessor& operator=(const BufferAccessor&) = delete;
+    TypedArrayView(const TypedArrayView&) = delete;
+    TypedArrayView& operator=(const TypedArrayView&) = delete;
 
      /**
       * CN: 绑定到新的 buffer
@@ -354,31 +354,31 @@ public:
 };
 
 // 常用类型定义 / Common type definitions
-using BufferAccessor1u8  = BufferAccessor<VB1u8>;
-using BufferAccessor1i8  = BufferAccessor<VB1i8>;
-using BufferAccessor2u8  = BufferAccessor<VB2u8>;
-using BufferAccessor2f   = BufferAccessor<VB2f>;
-using BufferAccessor2hf  = BufferAccessor<VB2hf>;
-using BufferAccessor3f   = BufferAccessor<VB3f>;
-using BufferAccessor4f   = BufferAccessor<VB4f>;
-using BufferAccessor2i   = BufferAccessor<VB2i>;
-using BufferAccessor3i   = BufferAccessor<VB3i>;
-using BufferAccessor4i   = BufferAccessor<VB4i>;
-using BufferAccessor2i16 = BufferAccessor<VB2i16>;   // RG16i 位置（int16 raw——2D 压缩）
-using BufferAccessor2u16 = BufferAccessor<VB2u16>;   // RG16UI 位置（uint16 raw——2D 压缩）
+using TypedArrayView1u8  = TypedArrayView<VB1u8>;
+using TypedArrayView1i8  = TypedArrayView<VB1i8>;
+using TypedArrayView2u8  = TypedArrayView<VB2u8>;
+using TypedArrayView2f   = TypedArrayView<VB2f>;
+using TypedArrayView2hf  = TypedArrayView<VB2hf>;
+using TypedArrayView3f   = TypedArrayView<VB3f>;
+using TypedArrayView4f   = TypedArrayView<VB4f>;
+using TypedArrayView2i   = TypedArrayView<VB2i>;
+using TypedArrayView3i   = TypedArrayView<VB3i>;
+using TypedArrayView4i   = TypedArrayView<VB4i>;
+using TypedArrayView2i16 = TypedArrayView<VB2i16>;   // RG16i 位置（int16 raw——2D 压缩）
+using TypedArrayView2u16 = TypedArrayView<VB2u16>;   // RG16UI 位置（uint16 raw——2D 压缩）
 
-// IndexBuffer 访问器（使用 BufferAccessor + RawDataAccess）
-using IndexAccessorU8  = BufferAccessor<RawDataAccess<uint8>>;
-using IndexAccessorU16 = BufferAccessor<RawDataAccess<uint16>>;
-using IndexAccessorU32 = BufferAccessor<RawDataAccess<uint32>>;
+// IndexBuffer 访问器（使用 TypedArrayView + RawDataAccess）
+using IndexAccessorU8  = TypedArrayView<RawDataAccess<uint8>>;
+using IndexAccessorU16 = TypedArrayView<RawDataAccess<uint16>>;
+using IndexAccessorU32 = TypedArrayView<RawDataAccess<uint32>>;
 
 // 单通道原始类型访问器（用于单通道 VBO）
-using RawAccessorU8    = BufferAccessor<RawDataAccess<uint8>>;
-using RawAccessorI8    = BufferAccessor<RawDataAccess<int8>>;
-using RawAccessorU16   = BufferAccessor<RawDataAccess<uint16>>;
-using RawAccessorI16   = BufferAccessor<RawDataAccess<int16>>;
-using RawAccessorU32   = BufferAccessor<RawDataAccess<uint32>>;
-using RawAccessorI32   = BufferAccessor<RawDataAccess<int32>>;
-using RawAccessorFloat = BufferAccessor<RawDataAccess<float>>;
+using RawAccessorU8    = TypedArrayView<RawDataAccess<uint8>>;
+using RawAccessorI8    = TypedArrayView<RawDataAccess<int8>>;
+using RawAccessorU16   = TypedArrayView<RawDataAccess<uint16>>;
+using RawAccessorI16   = TypedArrayView<RawDataAccess<int16>>;
+using RawAccessorU32   = TypedArrayView<RawDataAccess<uint32>>;
+using RawAccessorI32   = TypedArrayView<RawDataAccess<int32>>;
+using RawAccessorFloat = TypedArrayView<RawDataAccess<float>>;
 
 }//namespace hgl::graph

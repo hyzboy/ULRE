@@ -1,5 +1,5 @@
 ﻿#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/vk/buffer/StructView.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<cstdlib>
 #include<hgl/ecs/core/Context.h>
@@ -18,7 +18,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKGlobalSceneUBOSet.h>
@@ -114,12 +114,12 @@ namespace hgl::ecs
         if (!bm)
             return;
 
-        auto *buf = bm->CreateUBO("ViewportInfoUBO", graph::StructuredBufferAccessor<graph::ViewportInfo>::GetSize());
+        auto *buf = bm->CreateUBO("ViewportInfoUBO", graph::StructView<graph::ViewportInfo>::GetSize());
         if (!buf)
             return;
 
         buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
-        viewport_ubo = graph::StructuredBufferAccessor<graph::ViewportInfo>::Create(buf, false);
+        viewport_ubo = graph::StructView<graph::ViewportInfo>::Create(buf, false);
         if (!viewport_ubo)
             return;
 

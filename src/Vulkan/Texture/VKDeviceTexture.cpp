@@ -2,7 +2,7 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include"CopyBufferToImage.h"
 
 namespace hgl::graph{

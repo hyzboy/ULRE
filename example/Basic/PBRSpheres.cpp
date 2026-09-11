@@ -91,7 +91,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
+    graph::ArrayView<ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;

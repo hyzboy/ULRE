@@ -7,7 +7,7 @@
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/graph/module/MaterialTextureReferencePool.h>
 #include <hgl/vk/VKDevice.h>
-#include <hgl/vk/SSBOArrayAccessor.h>
+#include <hgl/vk/buffer/ArrayView.h>
 #include <hgl/type/ManagedArray.h>
 #include <unordered_map>
 #include <hgl/log/Log.h>
@@ -189,7 +189,7 @@ public:
      * @return 成功返回已 Map 的访问器指针（调用方负责 delete），失败返回 nullptr
      */
     template<typename T>
-    SSBOArrayAccessor<T>* AllocateArrayAccessor(
+    ArrayView<T>* AllocateArrayAccessor(
         const mtl::SSBOType  ssbo_type,
         const AnsiString&    name,
         uint32_t             element_count,
@@ -223,7 +223,7 @@ public:
 
         // 视图不拥有数据源（B-2）：行缓冲归注册表，accessor 只在宿主窗口上写。
         // 地址行表里的行地址指向这块缓冲，因此它的寿命 = 注册表寿命。
-        auto *acc = new SSBOArrayAccessor<T>(cpu_base, element_count, uint32(sizeof(T)));
+        auto *acc = new ArrayView<T>(cpu_base, element_count, uint32(sizeof(T)));
         acc->ssbo_id   = allocated_id;
         acc->ssbo_type = ssbo_type;
 
@@ -243,7 +243,7 @@ public:
      * EN: Simplified form -- SSBOType is derived from the row struct T.
      */
     template<typename T>
-    SSBOArrayAccessor<T>* AllocateArrayAccessor(
+    ArrayView<T>* AllocateArrayAccessor(
         const AnsiString&    name,
         uint32_t             element_count,
         SharingMode          sm = SharingMode::Exclusive)
@@ -265,7 +265,7 @@ protected:
      *     External application code MUST use AllocateArrayAccessor; do NOT bypass ID allocation.
      */
     template<typename T>
-    SSBOArrayAccessor<T>* EnsureArrayAccessor(
+    ArrayView<T>* EnsureArrayAccessor(
         const mtl::SSBOAddress &address,
         const AnsiString       &name,
         uint32_t                element_count,
@@ -281,7 +281,7 @@ protected:
         if (!buf)
             return nullptr;
 
-        auto *acc = SSBOArrayAccessor<T>::Create(buf, element_count);
+        auto *acc = ArrayView<T>::Create(buf, element_count);
         if (acc)
         {
             acc->ssbo_id   = address.ssbo_id;

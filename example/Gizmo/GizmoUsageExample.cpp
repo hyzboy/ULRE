@@ -71,12 +71,12 @@ private:
 
     graph::mtl::MaterialRecipe grid_recipe{};
     PrimitiveAsset             grid_asset{};
-    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* grid_mtl_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* grid_mtl_data_ssbo_accessor = nullptr;
     Geometry *grid_geometry = nullptr;
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    graph::SSBOArrayAccessor<graph::ssbo::EmissiveSurfaceRow>* cube_mtl_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* cube_mtl_data_ssbo_accessor = nullptr;
     Geometry *cube_geometry = nullptr;
 
     std::string debug_cache;

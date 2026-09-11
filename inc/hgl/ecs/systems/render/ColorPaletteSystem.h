@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/vk/buffer/StructView.h>
 #include<hgl/graph/ubo/ColorPalette.h>
 #include<hgl/color/Color4f.h>
 
@@ -14,7 +14,7 @@ namespace hgl
 
     namespace ecs
     {
-        using UBOColorPalette = graph::StructuredBufferAccessor<graph::ColorPalette>;
+        using UBOColorPalette = graph::StructView<graph::ColorPalette>;
 
         /**
          * ColorPaletteSystem

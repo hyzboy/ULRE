@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMemory.h>
+#include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/log/Log.h>
 #include<cstdint>

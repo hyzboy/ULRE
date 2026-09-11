@@ -93,7 +93,7 @@ private:
     Geometry *geometry = nullptr;
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
     graph::ssbo::PBRSurfaceRow sphere_material_data{};
     Sampler *sphere_sampler = nullptr;
     Texture2D *sphere_base_tex = nullptr;
@@ -371,7 +371,7 @@ private:
 
     PrimitiveAsset cube_asset;
     graph::mtl::MaterialRecipe cube_recipe{};
-    graph::SSBOArrayAccessor<graph::ssbo::PBRSurfaceRow>* cube_material_data_ssbo_accessor = nullptr;
+    graph::ArrayView<graph::ssbo::PBRSurfaceRow>* cube_material_data_ssbo_accessor = nullptr;
     Sampler *cube_sampler = nullptr;
     graph::ssbo::PBRSurfaceRow cube_material_data{};
 

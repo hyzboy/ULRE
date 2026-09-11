@@ -26,7 +26,7 @@
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKGlobalSceneUBOSet.h>
@@ -790,7 +790,7 @@ namespace hgl::ecs
                                     "ECS:Text:CharInfo",
                                     static_cast<VkDeviceSize>(unique_chars.size()) * sizeof(graph::layout::TextCharInfo));
                                 resources->char_info_view.reset(
-                                    graph::SSBOArrayAccessor<graph::layout::TextCharInfo>::Create(
+                                    graph::ArrayView<graph::layout::TextCharInfo>::Create(
                                         resources->char_info_buffer, static_cast<uint32_t>(unique_chars.size())));
 
                                 if (resources->char_info_view && resources->char_info_view->IsValid())
@@ -806,7 +806,7 @@ namespace hgl::ecs
                                     "ECS:Text:CharStyle",
                                     static_cast<VkDeviceSize>(upload_styles.size()) * sizeof(graph::layout::CharStyle));
                                 resources->char_style_view.reset(
-                                    graph::SSBOArrayAccessor<graph::layout::CharStyle>::Create(
+                                    graph::ArrayView<graph::layout::CharStyle>::Create(
                                         resources->char_style_buffer, static_cast<uint32_t>(upload_styles.size())));
 
                                 if (resources->char_style_view && resources->char_style_view->IsValid())
@@ -822,7 +822,7 @@ namespace hgl::ecs
                                     "ECS:Text:CharInstance",
                                     static_cast<VkDeviceSize>(gpu_instances.size()) * sizeof(graph::layout::CharInstance));
                                 resources->char_instance_view.reset(
-                                    graph::SSBOArrayAccessor<graph::layout::CharInstance>::Create(
+                                    graph::ArrayView<graph::layout::CharInstance>::Create(
                                         resources->char_instance_buffer, static_cast<uint32_t>(gpu_instances.size())));
 
                                 if (resources->char_instance_view && resources->char_instance_view->IsValid())

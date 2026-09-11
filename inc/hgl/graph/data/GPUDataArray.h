@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_GPU_DATA_ARRAY_INCLUDE
 #define HGL_GRAPH_GPU_DATA_ARRAY_INCLUDE
 
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 namespace hgl
 {
     namespace graph

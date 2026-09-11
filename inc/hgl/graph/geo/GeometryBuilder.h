@@ -1,33 +1,33 @@
 ﻿#pragma once
 
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/vk/VKBufferAccessor.h>
+#include<hgl/vk/buffer/TypedArrayView.h>
 
 namespace hgl::graph::inline_geometry
 {
     /**
      * 几何体构建器基类
-     * 使用 BufferAccessor 封装顶点属性访问，提供统一的顶点写入接口
+     * 使用 TypedArrayView 封装顶点属性访问，提供统一的顶点写入接口
      */
     class GeometryBuilder
     {
     protected:
         GeometryCreater *creater;
 
-        BufferAccessor3f accessor_position;
-        BufferAccessor2i16 accessor_position_2i16;  // RG16i 2D 位置（int16 raw——像素坐标压缩）
-        BufferAccessor3f accessor_normal;
-        BufferAccessor2u8 accessor_normal_2u8;  // RG8 压缩（octahedral → uint8 量化）
-        BufferAccessor4f accessor_tangent_4f;   // 切线 V4F（含 w 分量——唯一切线访问器）
-        BufferAccessor2f accessor_texcoord;
+        TypedArrayView3f accessor_position;
+        TypedArrayView2i16 accessor_position_2i16;  // RG16i 2D 位置（int16 raw——像素坐标压缩）
+        TypedArrayView3f accessor_normal;
+        TypedArrayView2u8 accessor_normal_2u8;  // RG8 压缩（octahedral → uint8 量化）
+        TypedArrayView4f accessor_tangent_4f;   // 切线 V4F（含 w 分量——唯一切线访问器）
+        TypedArrayView2f accessor_texcoord;
 
         // 压缩格式法线访问器（发行版：Normal 存 RG16F——xy 半浮点，z 由 shader 重建）
         // 由构造函数按 VAB format 分派（VK_FORMAT_R16G16_SFLOAT 时使用）
-        BufferAccessor2hf accessor_normal_2hf;
+        TypedArrayView2hf accessor_normal_2hf;
 
         // 压缩格式 UV 访问器（发行版：UV 存 RG16F——half×2，4B/顶点）
         // 由构造函数按 VAB format 分派（VK_FORMAT_R16G16_SFLOAT 时使用）
-        BufferAccessor2hf accessor_texcoord_2hf;
+        TypedArrayView2hf accessor_texcoord_2hf;
 
     public:
         GeometryBuilder(GeometryCreater *pc);

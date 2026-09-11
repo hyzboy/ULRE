@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKImageView.h>
-#include<hgl/vk/VKMemory.h>
+#include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<cstdint>
