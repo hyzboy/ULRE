@@ -15,6 +15,7 @@ namespace hgl::graph{
  * 3. 统一的 Commit 接口 = 把窗口范围标脏（兼容所有缓冲实现）
  * 4. 窗口（Map/Unmap 或外部内存）由 BufferAccessBase 统一管理
  * 5. 内置 SSBO ID 存储（由 SSBOBufferRegistry 分配）
+ * 6. 元素窗口 (element_offset, element_count) + Bind 重绑：视图可指向 buffer 的任意段
  * 6. 不拥有数据源：buffer/gpu_buf 只是引用（行缓冲归 SSBOBufferRegistry；池窗口无 buffer）
  *
  * EN: Maps any C++ struct array directly to a GPU SSBO buffer, providing:
@@ -62,12 +63,22 @@ private:
 
 private:
 
-    explicit SSBOArrayAccessor(VkBufferOwner *buf, uint32_t count)
+    // 元素窗口 = (element_offset, element_count)：窗口可以只是 buffer 的一段
+    // （VAB/IBO 子分配、池行段窗口都靠它），窗口偏移记在基类 window_offset 里。
+    explicit SSBOArrayAccessor(VkBufferOwner *buf, uint32_t element_offset, uint32_t count)
         : BufferAccessBase()
         , element_count(count)
     {
         SetBuffer(buf);
-        MapWindow(0, static_cast<VkDeviceSize>(sizeof(T)) * element_count);
+
+        if (element_count > 0)
+            MapWindow(static_cast<VkDeviceSize>(element_offset) * sizeof(T),
+                      static_cast<VkDeviceSize>(element_count) * sizeof(T));
+    }
+
+    explicit SSBOArrayAccessor(VkBufferOwner *buf, uint32_t count)
+        : SSBOArrayAccessor(buf, 0, count)
+    {
     }
 
     // Arena+BDA 路径：直写宿主窗口（外部窗口 = 行段基址，不经 Map/Unmap）
@@ -114,6 +125,20 @@ public:
 
         buffer  = nullptr;
         gpu_buf = nullptr;
+    }
+
+    /**
+     * CN: 重绑数据源与元素窗口（视图可反复指向不同 buffer/段，不拥有数据源）
+     * EN: Rebind source and element window (the view owns nothing).
+     */
+    void Bind(VkBufferOwner *buf, uint32_t element_offset = 0, uint32_t count = 0)
+    {
+        element_count = count;
+        SetBuffer(buf);         // 换源会解除旧窗口（外部窗口除外）
+
+        if (element_count > 0)
+            MapWindow(static_cast<VkDeviceSize>(element_offset) * sizeof(T),
+                      static_cast<VkDeviceSize>(element_count) * sizeof(T));
     }
 
     // 禁止拷贝 / Disable copy
@@ -185,6 +210,16 @@ public:
      * EN: Return element count
      */
     uint32_t GetCount() const { return element_count; }
+
+    /**
+     * CN: 元素窗口在 buffer 内的起始元素号（窗口偏移 / sizeof(T)；
+     *     外部窗口（Arena/池行段）恒为 0）
+     * EN: First element index of the window inside the buffer.
+     */
+    uint32_t GetElementOffset() const
+    {
+        return sizeof(T) ? uint32_t(GetWindowOffset() / sizeof(T)) : 0;
+    }
 
     /**
      * CN: 获取底层缓冲区

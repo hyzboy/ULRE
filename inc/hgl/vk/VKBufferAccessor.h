@@ -136,11 +136,6 @@ private:
      // 映射基址与脏标记统一由 BufferAccessBase 的窗口机制持有：
      // 窗口 = (element_offset*stride, count*stride)，不再自持 mapped_pointer / dirty
 
-     /**
-      * Typed VAB pointer: stored by VAB constructors/Bind to avoid static_cast<VAB*> UB.
-      * Remains nullptr when accessor is backed by IndexBuffer or not yet Bound.
-      */
-     VAB* typed_vab = nullptr;
 
     /**
      * CN: 内部 Map 操作
@@ -204,7 +199,6 @@ public:
         , element_offset(0)
         , element_count(0)
     {
-        typed_vab = vab;
         SetBuffer(vab);
         if(gpu_buf)
             MapInternal();
@@ -218,7 +212,6 @@ public:
         , element_offset(offset)
         , element_count(count)
     {
-        typed_vab = vab;
         SetBuffer(vab);
         if(gpu_buf)
             MapInternal();
@@ -258,7 +251,6 @@ public:
     void Bind(VAB *vab, int32_t offset = 0, uint32_t count = 0)
     {
         UnmapInternal();
-        typed_vab = vab;
         SetBuffer(vab);
         buffer_total_count = vab ? vab->GetCount() : 0;
         buffer_stride = vab ? vab->GetStride() : 0;
@@ -273,15 +265,8 @@ public:
      * CN: 检查是否有效
      * EN: Check if valid
      */
-    bool IsValid() const { return gpu_buf && data_access; }
+    bool IsValid() const { return HasWindow() && data_access; }
     operator bool() const { return IsValid(); }
-
-    /**
-     * CN: 获取底层 buffer
-     * EN: Get underlying VAB buffer (nullptr if backed by IndexBuffer)
-     */
-    VAB* GetBuffer() { return typed_vab; }
-    const VAB* GetBuffer() const { return typed_vab; }
 
     /**
      * CN: 获取数据访问器
