@@ -15,8 +15,8 @@
 //   - 未拥有的表传 nullptr → 地址 0：shader 只在被本材质消费的地址上解引用，
 //     0 地址不触达即安全（与 MeshDrawParams 行整表清零同语义）。
 //
-// 参数统一取 IGPUBuffer*：DeviceBuffer 经 GetGPUBuffer()、MirroredStructArray
-// （文本三表）经 GetGPUBuffer() 都得到该接口，调用方 null 检查后传入即可。
+// 参数统一取 IGPUBuffer*：调用方持有 DeviceBuffer*，经 GetGPUBuffer() 得到该接口，
+// null 检查后传入即可（文本三表同样是 DeviceBuffer + 数组视图，不再有镜像容器）。
 
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/vk/VKCommandBuffer.h>

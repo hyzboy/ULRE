@@ -4,7 +4,7 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
-#include<hgl/vk/MirroredStructArray.h>
+#include<hgl/vk/SSBOArrayAccessor.h>
 #include<cstdint>
 #include<unordered_map>
 #include<vector>
@@ -53,10 +53,13 @@ namespace hgl
                 graph::DeviceBuffer* mesh_draw_params = nullptr;    ///<mesh per-draw 参数表（row 0——每字体单 draw）
                 uint32_t bindless_atlas_handle = 0;
 
-                // GPU path SSBOs (MirroredStructArray 自动管理生命周期)
-                std::unique_ptr<graph::MirroredStructArray<graph::layout::TextCharInfo>> char_info_asb;    // b14
-                std::unique_ptr<graph::MirroredStructArray<graph::layout::CharStyle>>    char_style_asb;   // b15
-                std::unique_ptr<graph::MirroredStructArray<graph::layout::CharInstance>> char_instance_asb; // b16
+                // GPU path SSBOs：L1 DeviceBuffer（本管线拥有）+ L3 数组视图（写/dirty）
+                graph::DeviceBuffer* char_info_buffer = nullptr;      // b14
+                graph::DeviceBuffer* char_style_buffer = nullptr;     // b15
+                graph::DeviceBuffer* char_instance_buffer = nullptr;  // b16
+                std::unique_ptr<graph::SSBOArrayAccessor<graph::layout::TextCharInfo>> char_info_view;
+                std::unique_ptr<graph::SSBOArrayAccessor<graph::layout::CharStyle>>    char_style_view;
+                std::unique_ptr<graph::SSBOArrayAccessor<graph::layout::CharInstance>> char_instance_view;
 
 
                 std::vector<graph::layout::CharStyle> styles;   ///<收集的所有组件样式（GPU路径用）

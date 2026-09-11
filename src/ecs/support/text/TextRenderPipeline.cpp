@@ -139,7 +139,13 @@ namespace hgl::ecs
 
             // 每字体独立描述符集（多 FontSource 互不覆盖）
 
-            // char_info_asb / char_style_asb / char_instance_asb 由 unique_ptr 自动释放
+            // 三表：先释放视图（其 Unmap 需要 buffer 存活），再释放 L1 DeviceBuffer
+            res.char_info_view.reset();
+            res.char_style_view.reset();
+            res.char_instance_view.reset();
+            SAFE_CLEAR(res.char_info_buffer);
+            SAFE_CLEAR(res.char_style_buffer);
+            SAFE_CLEAR(res.char_instance_buffer);
 
             if (res.material && material_manager)
             {
@@ -289,9 +295,9 @@ namespace hgl::ecs
                 res.material_instance_addresses_buffer
                     ? res.material_instance_addresses_buffer->GetGPUBuffer()
                     : nullptr,
-                res.char_info_asb     ? res.char_info_asb->GetGPUBuffer() : nullptr,
-                res.char_style_asb    ? res.char_style_asb->GetGPUBuffer() : nullptr,
-                res.char_instance_asb ? res.char_instance_asb->GetGPUBuffer() : nullptr);
+                res.char_info_buffer     ? res.char_info_buffer->GetGPUBuffer() : nullptr,
+                res.char_style_buffer    ? res.char_style_buffer->GetGPUBuffer() : nullptr,
+                res.char_instance_buffer ? res.char_instance_buffer->GetGPUBuffer() : nullptr);
 
             // 文本三表/mesh_draw_params/mtl_data_addrs 已全走 pc_root（BDA）——
             // 无 PerObject descriptor 可绑（A5-2）；Scene/Bindless 全局集下方绑定
@@ -736,7 +742,7 @@ namespace hgl::ecs
                             //    补丁 shadow_uv_offset（依赖图集尺寸）与钳制 outline_px
                             //    只作用于"上传副本"——绝不写 resources->styles，否则下一帧
                             //    resources->styles != input.styles 恒成立（注入值 vs 原始值），
-                            //    style_changed/dirty 每帧为 true，触发每帧重建 + 全量 SyncToGPU。
+                            //    style_changed/dirty 每帧为 true，触发每帧重建 + 三表全量重写上传。
                             std::vector<graph::layout::CharStyle> upload_styles;
                             if (resources->styles.empty())
                             {
@@ -765,54 +771,87 @@ namespace hgl::ecs
                                 s.outline_px = std::min(s.outline_px, static_cast<float>(graph::TEXT_SDF_SPREAD));
                             }
 
-                            // 3. 获取 SSBO 对齐要求
-                            // 注：minStorageBufferOffsetAlignment 仅约束 SSBO 绑定的起始偏移，
-                            // 不影响 buffer 内部数组元素 stride。
-                            // std430 下 shader 期望 stride = sizeof(struct)，
-                            // 因此传 0（不做额外填充），让 gpu_stride = sizeof(T)。
-                            constexpr VkDeviceSize ssbo_align = 0;
-
-                            // 4. 创建/重建 MirroredStructArray（大小变化时重建）
-                            const bool need_rebuild_char_info = !resources->char_info_asb || resources->char_info_asb->GetCount() < unique_chars.size();
-                            const bool need_rebuild_style     = !resources->char_style_asb || resources->char_style_asb->GetCount() < upload_styles.size();
-                            const bool need_rebuild_instance  = !resources->char_instance_asb || resources->char_instance_asb->GetCount() < gpu_instances.size();
+                            // 3. SSBO 元素 stride = sizeof(T)：std430 期望 stride = sizeof(struct)，
+                            //    不做额外填充（minStorageBufferOffsetAlignment 只约束绑定起始偏移，
+                            //    不影响 buffer 内部元素 stride）。
+                            //
+                            // 4. 创建/重建三表：L1 DeviceBuffer（本管线拥有）+ L3 数组视图（写/dirty）。
+                            //    容量不足才重建；新表映射区先清零，尾部未被本帧写入的槽位不留垃圾。
+                            const bool need_rebuild_char_info = !resources->char_info_view || resources->char_info_view->GetCount() < unique_chars.size();
+                            const bool need_rebuild_style     = !resources->char_style_view || resources->char_style_view->GetCount() < upload_styles.size();
+                            const bool need_rebuild_instance  = !resources->char_instance_view || resources->char_instance_view->GetCount() < gpu_instances.size();
 
                             if (need_rebuild_char_info)
                             {
-                                resources->char_info_asb = std::make_unique<graph::MirroredStructArray<graph::layout::TextCharInfo>>(
-                                    device, unique_chars.size(), ssbo_align,
-                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, graph::BufferAllocPolicy::Auto);
+                                resources->char_info_view.reset();      // 视图先死（其 Unmap 需要 buffer 存活）
+                                SAFE_CLEAR(resources->char_info_buffer);
+
+                                resources->char_info_buffer = device->CreateSSBO(
+                                    "ECS:Text:CharInfo",
+                                    static_cast<VkDeviceSize>(unique_chars.size()) * sizeof(graph::layout::TextCharInfo));
+                                resources->char_info_view.reset(
+                                    graph::SSBOArrayAccessor<graph::layout::TextCharInfo>::Create(
+                                        resources->char_info_buffer, static_cast<uint32_t>(unique_chars.size())));
+
+                                if (resources->char_info_view && resources->char_info_view->IsValid())
+                                    memset(resources->char_info_view->GetData(), 0,
+                                           unique_chars.size() * sizeof(graph::layout::TextCharInfo));
                             }
                             if (need_rebuild_style)
                             {
-                                resources->char_style_asb = std::make_unique<graph::MirroredStructArray<graph::layout::CharStyle>>(
-                                    device, upload_styles.size(), ssbo_align,
-                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, graph::BufferAllocPolicy::Auto);
+                                resources->char_style_view.reset();
+                                SAFE_CLEAR(resources->char_style_buffer);
+
+                                resources->char_style_buffer = device->CreateSSBO(
+                                    "ECS:Text:CharStyle",
+                                    static_cast<VkDeviceSize>(upload_styles.size()) * sizeof(graph::layout::CharStyle));
+                                resources->char_style_view.reset(
+                                    graph::SSBOArrayAccessor<graph::layout::CharStyle>::Create(
+                                        resources->char_style_buffer, static_cast<uint32_t>(upload_styles.size())));
+
+                                if (resources->char_style_view && resources->char_style_view->IsValid())
+                                    memset(resources->char_style_view->GetData(), 0,
+                                           upload_styles.size() * sizeof(graph::layout::CharStyle));
                             }
                             if (need_rebuild_instance)
                             {
-                                resources->char_instance_asb = std::make_unique<graph::MirroredStructArray<graph::layout::CharInstance>>(
-                                    device, gpu_instances.size(), ssbo_align,
-                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, graph::BufferAllocPolicy::Auto);
+                                resources->char_instance_view.reset();
+                                SAFE_CLEAR(resources->char_instance_buffer);
+
+                                resources->char_instance_buffer = device->CreateSSBO(
+                                    "ECS:Text:CharInstance",
+                                    static_cast<VkDeviceSize>(gpu_instances.size()) * sizeof(graph::layout::CharInstance));
+                                resources->char_instance_view.reset(
+                                    graph::SSBOArrayAccessor<graph::layout::CharInstance>::Create(
+                                        resources->char_instance_buffer, static_cast<uint32_t>(gpu_instances.size())));
+
+                                if (resources->char_instance_view && resources->char_instance_view->IsValid())
+                                    memset(resources->char_instance_view->GetData(), 0,
+                                           gpu_instances.size() * sizeof(graph::layout::CharInstance));
                             }
 
-                            // 5. 写入 CPU 数据并同步到 GPU
-                            if (resources->char_info_asb && resources->char_info_asb->IsValid())
+                            // 5. 写入视图映射区（StagedBuffer=staging / ReBarBuffer=设备内存直写），
+                            //    只标记脏范围；上传由 RenderBufferUploadSystem 本帧统一执行
+                            //    （StagedBuffer::Unmap 原本也是标记脏范围，时序等价）
+                            if (resources->char_info_view && resources->char_info_view->IsValid())
                             {
-                                memcpy(resources->char_info_asb->GetData(), unique_chars.data(), unique_chars.size() * sizeof(graph::layout::TextCharInfo));
-                                resources->char_info_asb->SyncToGPU();
+                                memcpy(resources->char_info_view->GetData(), unique_chars.data(),
+                                       unique_chars.size() * sizeof(graph::layout::TextCharInfo));
+                                resources->char_info_view->MarkDirty();
                             }
-                            if (resources->char_style_asb && resources->char_style_asb->IsValid())
+                            if (resources->char_style_view && resources->char_style_view->IsValid())
                             {
-                                memcpy(resources->char_style_asb->GetData(), upload_styles.data(), upload_styles.size() * sizeof(graph::layout::CharStyle));
                                 // 颜色字段已是 packUnorm4x8 序（见 TextCharSSBO.h 约定），
                                 // GPU 端直接用标准 unpackUnorm4x8 解包。
-                                resources->char_style_asb->SyncToGPU();
+                                memcpy(resources->char_style_view->GetData(), upload_styles.data(),
+                                       upload_styles.size() * sizeof(graph::layout::CharStyle));
+                                resources->char_style_view->MarkDirty();
                             }
-                            if (resources->char_instance_asb && resources->char_instance_asb->IsValid())
+                            if (resources->char_instance_view && resources->char_instance_view->IsValid())
                             {
-                                memcpy(resources->char_instance_asb->GetData(), gpu_instances.data(), gpu_instances.size() * sizeof(graph::layout::CharInstance));
-                                resources->char_instance_asb->SyncToGPU();
+                                memcpy(resources->char_instance_view->GetData(), gpu_instances.data(),
+                                       gpu_instances.size() * sizeof(graph::layout::CharInstance));
+                                resources->char_instance_view->MarkDirty();
                             }
                         }
                     }

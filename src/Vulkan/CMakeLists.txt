@@ -108,7 +108,6 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 ${VK_INCLUDE_PATH}/DeviceBufferRingWriter.h
                                 ${VK_INCLUDE_PATH}/VKRingBufferWrapper.h
                                 ${VK_INCLUDE_PATH}/StructuredBufferAccessor.h
-                                ${VK_INCLUDE_PATH}/MirroredStructArray.h
                                 VKMemory.cpp
                                 VKBufferOwner.cpp
                                 VKBuffer.cpp
