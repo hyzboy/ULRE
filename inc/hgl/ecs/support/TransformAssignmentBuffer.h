@@ -8,7 +8,7 @@
 #pragma once
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKMemory.h>
-#include<hgl/vk/VKRingBufferWrapper.h>
+#include<hgl/vk/DeviceBufferRingWriter.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/support/TransformDataStorage.h>
 #include<hgl/math/Vector.h>
@@ -49,7 +49,7 @@ namespace hgl::ecs
         graph::BufferAllocPolicy transform_policy;     ///<Transform buffer allocation policy
 
         static std::vector<TransformAssignmentBuffer*> all_instances;
-        graph::RingBufferWrapper ring_writer;
+        graph::DeviceBufferRingWriter ring_writer;   ///<静态段 + 动态段×帧数 的环形地址算术（不实现 IGPUBuffer）
 
         void StatTransform(const size_t required_count,graph::BufferAllocPolicy policy);
         bool EnsureTransformIndexRowsCapacity(const uint32_t required_count);

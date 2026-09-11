@@ -206,9 +206,8 @@ public:
       * CN: 构造函数
       * EN: Constructor
       * \param vab Buffer 指针 / Buffer pointer
-      * \param take_ownership 是否获取所有权 / Take ownership
       */
-    BufferAccessor(VAB *vab = nullptr, bool take_ownership = false)
+    BufferAccessor(VAB *vab = nullptr)
         : BufferAccessBase()
         , buffer_total_count(vab ? vab->GetCount() : 0)
         , buffer_stride(vab ? vab->GetStride() : 0)
@@ -223,7 +222,7 @@ public:
             MapInternal();
     }
 
-    BufferAccessor(VAB *vab, int32_t offset, uint32_t count, bool take_ownership = false)
+    BufferAccessor(VAB *vab, int32_t offset, uint32_t count)
         : BufferAccessBase()
         , buffer_total_count(vab ? vab->GetCount() : 0)
         , buffer_stride(vab ? vab->GetStride() : 0)
@@ -238,7 +237,7 @@ public:
             MapInternal();
     }
 
-    BufferAccessor(IndexBuffer *ibo, int32_t offset, uint32_t count, bool take_ownership = false)
+    BufferAccessor(IndexBuffer *ibo, int32_t offset, uint32_t count)
         : BufferAccessBase()
         , buffer_total_count(ibo ? ibo->GetCount() : 0)
         , buffer_stride(ibo ? ibo->GetStride() : 0)
@@ -269,9 +268,8 @@ public:
       * CN: 绑定到新的 buffer
       * EN: Bind to new buffer
       * \param vab Buffer 指针 / Buffer pointer
-      * \param take_ownership 是否获取所有权 / Take ownership
       */
-    void Bind(VAB *vab, int32_t offset = 0, uint32_t count = 0, bool take_ownership = false)
+    void Bind(VAB *vab, int32_t offset = 0, uint32_t count = 0)
     {
         UnmapInternal();
         typed_vab = vab;
@@ -405,53 +403,6 @@ public:
     }
 
     /**
-     * CN: 批量写入（使用底层 buffer 的 Write）
-     * EN: Bulk write (using underlying buffer Write)
-     */
-    bool WriteBulk(const void *data, uint32_t element_count)
-    {
-        if(!gpu_buf || !data || element_count == 0)
-            return false;
-
-        if(element_offset < 0)
-            element_offset = 0;
-
-        const uint32_t total = buffer_total_count;
-        if(static_cast<uint32_t>(element_offset) >= total)
-            return false;
-
-        const uint32_t max_count = (this->element_count == 0)
-            ? (total - static_cast<uint32_t>(element_offset))
-            : this->element_count;
-
-        if(element_count > max_count)
-            return false;
-
-        bool result = gpu_buf->Write(data,
-            static_cast<VkDeviceSize>(element_offset) * buffer_stride,
-            static_cast<VkDeviceSize>(element_count) * buffer_stride);
-        if(result)
-            dirty = true;
-        return result;
-    }
-
-    /**
-     * CN: 批量读取
-     * EN: Bulk read
-     */
-    bool ReadBulk(void *dst, uint32_t element_count)
-    {
-        if(!gpu_buf || !dst || element_count == 0 || !mapped_pointer)
-            return false;
-
-        if(buffer_stride == 0)
-            return false;
-
-        memcpy(dst, mapped_pointer, static_cast<size_t>(buffer_stride) * element_count);
-        return true;
-    }
-
-    /**
      * CN: Seek 到指定位置
      * EN: Seek to position
      */
@@ -486,18 +437,6 @@ using BufferAccessor3i   = BufferAccessor<VB3i>;
 using BufferAccessor4i   = BufferAccessor<VB4i>;
 using BufferAccessor2i16 = BufferAccessor<VB2i16>;   // RG16i 位置（int16 raw——2D 压缩）
 using BufferAccessor2u16 = BufferAccessor<VB2u16>;   // RG16UI 位置（uint16 raw——2D 压缩）
-
-// 向后兼容别名 / Backward compatibility aliases
-// 推荐逐步迁移到 BufferAccessor，但旧代码可以继续使用这些别名
-using StagedVB1u8  = BufferAccessor1u8;
-using StagedVB1i8  = BufferAccessor1i8;
-using StagedVB2u8  = BufferAccessor2u8;
-using StagedVB2f   = BufferAccessor2f;
-using StagedVB3f   = BufferAccessor3f;
-using StagedVB4f   = BufferAccessor4f;
-using StagedVB2i   = BufferAccessor2i;
-using StagedVB3i   = BufferAccessor3i;
-using StagedVB4i   = BufferAccessor4i;
 
 // IndexBuffer 访问器（使用 BufferAccessor + RawDataAccess）
 using IndexAccessorU8  = BufferAccessor<RawDataAccess<uint8>>;

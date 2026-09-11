@@ -99,19 +99,15 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 ${VK_INCLUDE_PATH}/VKBuffer.h
                                 ${VK_INCLUDE_PATH}/VKBufferAccessBase.h
                                 ${VK_INCLUDE_PATH}/VKBufferAccessor.h
-                                ${VK_INCLUDE_PATH}/VKBufferData.h
                                 ${VK_INCLUDE_PATH}/VKIndexBuffer.h
                                 ${VK_INCLUDE_PATH}/VKStagedBuffer.h
-                                ${VK_INCLUDE_PATH}/VKStagedBufferAccessor.h
                                 ${VK_INCLUDE_PATH}/VKReBarBuffer.h
                                 ${VK_INCLUDE_PATH}/BufferPolicy.h
                                 ${VK_INCLUDE_PATH}/DeviceBufferRingWriter.h
-                                ${VK_INCLUDE_PATH}/VKRingBufferWrapper.h
                                 ${VK_INCLUDE_PATH}/StructuredBufferAccessor.h
                                 VKMemory.cpp
                                 VKBufferOwner.cpp
                                 VKBuffer.cpp
-                                VKRingBufferWrapper.cpp
                                 VKStagedBuffer.cpp
                                 VKReBarBuffer.cpp)
 
@@ -143,7 +139,6 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
 SOURCE_GROUP("Pipeline" FILES ${VK_PIPELINE_FILES})
 
 # --- 5. Descriptor Sets ---
-SET(VK_DESCRIPTOR_SETS_FILES    ${VK_INCLUDE_PATH}/VKDynamicBufferAccess.h)
 
 SOURCE_GROUP("DescriptorSets" FILES ${VK_DESCRIPTOR_SETS_FILES})
 
