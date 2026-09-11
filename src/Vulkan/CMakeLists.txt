@@ -109,7 +109,7 @@ SET(VK_BUFFER_FILES     ${BUFFER_HEADER_PATH}/BufferOwner.h
                         ${BUFFER_HEADER_PATH}/IGPUBuffer.h
                         ${BUFFER_HEADER_PATH}/StagedBuffer.h
                         ${BUFFER_HEADER_PATH}/ReBarBuffer.h
-                        ${BUFFER_HEADER_PATH}/RingWriter.h
+                        ${BUFFER_HEADER_PATH}/RingLayout.h
                         ${BUFFER_HEADER_PATH}/BufferView.h
                         ${BUFFER_HEADER_PATH}/StructView.h
                         ${BUFFER_HEADER_PATH}/ArrayView.h
@@ -122,6 +122,9 @@ SET(VK_BUFFER_FILES     ${BUFFER_HEADER_PATH}/BufferOwner.h
                         ${BUFFER_SOURCE_PATH}/StagedBuffer.cpp
                         ${BUFFER_SOURCE_PATH}/StagedBufferFactory.cpp
                         ${BUFFER_SOURCE_PATH}/ReBarBuffer.cpp
+                        ${BUFFER_SOURCE_PATH}/VertexAttribBuffer.cpp
+                        ${BUFFER_SOURCE_PATH}/IndexBuffer.cpp
+                        ${BUFFER_SOURCE_PATH}/BufferPolicyResolve.h
                         ${BUFFER_SOURCE_PATH}/BufferView.cpp)
 
 SOURCE_GROUP("Buffer" FILES ${VK_BUFFER_FILES})

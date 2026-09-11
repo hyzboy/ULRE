@@ -1,30 +1,12 @@
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/buffer/IndexBuffer.h>
-#include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/vk/buffer/BufferView.h>
 #include<hgl/vk/buffer/StagedBuffer.h>
 #include<hgl/vk/buffer/ReBarBuffer.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/log/Log.h>
-#include<iostream>
+#include"BufferPolicyResolve.h"
 
 namespace hgl::graph{
-
-static BufferAllocPolicy ResolvePolicy(VulkanDevice *device, BufferAllocPolicy policy)
-{
-    if(policy!=BufferAllocPolicy::Auto)
-        return policy;
-
-    if(device->GetPhyDevice()->HasReBAR())
-        return BufferAllocPolicy::CPUVisible;
-
-    return BufferAllocPolicy::StagedUpload;
-}
-
-const VkDeviceSize VulkanDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}
-const VkDeviceSize VulkanDevice::GetSSBOAlign  (){return attr->physical_device->GetSSBOAlign();}
-const VkDeviceSize VulkanDevice::GetUBORange   (){return attr->physical_device->GetUBORange();}
-const VkDeviceSize VulkanDevice::GetSSBORange  (){return attr->physical_device->GetSSBORange();}
 
 bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,const ObjectNameBuilder &name, const std::source_location &loc)
 {
@@ -103,148 +85,6 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
     vkDestroyBuffer(attr->device,buf->buffer,nullptr);
     return(false);
 }
-
-VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
-{
-    if(count==0)return(nullptr);
-
-    const uint32_t stride=GetStrideByFormat(format);
-
-    if(stride==0)
-    {
-        LogError("format[",format,u"] stride length is 0, please use CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode) function");
-        return(nullptr);
-    }
-
-    const VkDeviceSize size=stride*count;
-
-    policy = ResolvePolicy(this, policy);
-
-    if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
-    {
-        StagedBuffer *staged=CreateStagedBuffer(ObjectNameBuilder("VAB"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, size, data, sharing_mode, loc);
-        if(!staged)
-            return(nullptr);
-
-        DeviceBufferData buf;
-        buf.buffer=staged->GetVkDeviceBuffer();
-        buf.memory=staged->GetDeviceMemory();
-        buf.info.buffer=buf.buffer;
-        buf.info.offset=0;
-        buf.info.range=size;
-
-        VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
-        vab->SetStagedSource(staged);
-        vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
-        TrackBuffer(vab, ObjectNameBuilder("VAB"), loc);
-        return vab;
-    }
-
-    MemoryUsage mem_usage=MemoryUsage::CPUOnly;
-    if(policy==BufferAllocPolicy::CPUVisible)
-        mem_usage=MemoryUsage::ReBAR;
-    else if(policy==BufferAllocPolicy::Readback)
-        mem_usage=MemoryUsage::GPUToCPU;
-
-    DeviceBufferData buf;
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("VAB:Memory"),loc))
-        return(nullptr);
-
-    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
-    ReBarBuffer *rebar = new ReBarBuffer("VAB", attr->device, buf.buffer, buf.memory, size);
-    VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
-    vab->SetStagedSource(rebar);
-    vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
-    TrackBuffer(vab, ObjectNameBuilder("VAB"), loc);
-    return vab;
-}
-
-const bool VulkanDevice::IsSupport(const IndexType &type)const
-{
-    // 引擎统一 uint32 索引（废弃 U8/U16）
-    return(type==IndexType::U32);
-}
-
-const IndexType VulkanDevice::ChooseIndexType(const VkDeviceSize &vertex_count)const
-{
-    // 引擎统一 uint32 索引——恒 U32（废弃 U8/U16 自动选型）
-    if(vertex_count<=0)return(IndexType::ERR);
-
-    return IndexType::U32;
-}
-
-const bool VulkanDevice::CheckIndexType(const IndexType it,const VkDeviceSize &vertex_count)const
-{
-    if(vertex_count<=0)return(false);
-
-    // U8/U16 已废弃——引擎统一 uint32 索引
-    if(it==IndexType::U32&&                     attr->uint32_index_type)return(true);
-
-    return(false);
-}
-
-IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sharing_mode, BufferUpdateClass update_class, const std::source_location &loc)
-{
-    if(count==0)return(nullptr);
-
-    // 引擎统一 uint32 索引（U8/U16 已废弃）
-    const uint32_t stride=4;
-
-    const VkDeviceSize size=stride*count;
-
-    policy = ResolvePolicy(this, policy);
-
-    if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
-    {
-        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, size, data, sharing_mode, loc);
-        if(!staged)
-            return(nullptr);
-
-        DeviceBufferData buf;
-        buf.buffer=staged->GetVkDeviceBuffer();
-        buf.memory=staged->GetDeviceMemory();
-        buf.info.buffer=buf.buffer;
-        buf.info.offset=0;
-        buf.info.range=size;
-
-        IndexBuffer *ibo = new IndexBuffer(attr->device,buf,index_type,count);
-        ibo->SetStagedSource(staged);
-        ibo->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
-        TrackBuffer(ibo, name, loc);
-        return ibo;
-    }
-
-    MemoryUsage mem_usage=MemoryUsage::CPUOnly;
-    if(policy==BufferAllocPolicy::CPUVisible)
-        mem_usage=MemoryUsage::ReBAR;
-    else if(policy==BufferAllocPolicy::Readback)
-        mem_usage=MemoryUsage::GPUToCPU;
-
-    ObjectNameBuilder memory_name = name.base_name[0] == '\0'
-        ? ObjectNameBuilder("Memory")
-        : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
-
-    DeviceBufferData buf;
-    // 索引 buffer 同时作顶点索引 SSBO（SSBO 顶点输入——非索引绘制查表）
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
-        return(nullptr);
-
-    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
-    ReBarBuffer *rebar = new ReBarBuffer(
-        name.base_name[0] ? std::string(name.base_name) : std::string("IBO"),
-        attr->device, buf.buffer, buf.memory, size);
-    IndexBuffer *ibo = new IndexBuffer(attr->device,buf,index_type,count);
-    ibo->SetStagedSource(rebar);
-    ibo->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
-    TrackBuffer(ibo, name, loc);
-    return ibo;
-}
-
-IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
-{
-    return CreateIBO(ObjectNameBuilder("IBO"), index_type, count, data, policy, sharing_mode, update_class, loc);
-}
-
 DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode, const std::source_location &loc)
 {
     return CreateBuffer(buf_usage,range,size,data,BufferAllocPolicy::Auto,sharing_mode,loc);
@@ -254,7 +94,7 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
 {
     if(size<=0)return(nullptr);
 
-    policy = ResolvePolicy(this, policy);
+    policy = ResolveBufferPolicy(this, policy);
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
@@ -326,7 +166,7 @@ DeviceBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
 {
     if(size<=0)return(nullptr);
 
-    policy = ResolvePolicy(this, policy);
+    policy = ResolveBufferPolicy(this, policy);
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
@@ -464,75 +304,6 @@ uint64_t VulkanDevice::GetBufferDeviceAddressAligned16(VkBuffer buf) const
 
     return addr;
 }
-
-VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
-                             VkFormat format,
-                             uint32_t count,
-                             const void *data,
-                             BufferAllocPolicy policy,
-                             SharingMode sharing_mode,
-                             BufferUpdateClass update_class,
-                             const std::source_location &loc)
-{
-    if(count==0)return(nullptr);
-
-    const uint32_t stride=GetStrideByFormat(format);
-
-    if(stride==0)
-    {
-        LogError("format[",format,u"] stride length is 0, please use CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode) function");
-        return(nullptr);
-    }
-
-    const VkDeviceSize size=stride*count;
-
-    policy = ResolvePolicy(this, policy);
-
-    if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
-    {
-        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, size, data, sharing_mode, loc);
-        if(!staged)
-            return(nullptr);
-
-        DeviceBufferData buf;
-        buf.buffer=staged->GetVkDeviceBuffer();
-        buf.memory=staged->GetDeviceMemory();
-        buf.info.buffer=buf.buffer;
-        buf.info.offset=0;
-        buf.info.range=size;
-
-        VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
-        vab->SetStagedSource(staged);
-        vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
-        TrackBuffer(vab, name, loc);
-        return vab;
-    }
-
-    MemoryUsage mem_usage=MemoryUsage::CPUOnly;
-    if(policy==BufferAllocPolicy::CPUVisible)
-        mem_usage=MemoryUsage::ReBAR;
-    else if(policy==BufferAllocPolicy::Readback)
-        mem_usage=MemoryUsage::GPUToCPU;
-
-    DeviceBufferData buf;
-    ObjectNameBuilder memory_name = name.base_name[0] == '\0'
-        ? ObjectNameBuilder("Memory")
-        : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
-
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
-        return(nullptr);
-
-    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
-    ReBarBuffer *rebar = new ReBarBuffer(
-        name.base_name[0] ? std::string(name.base_name) : std::string("VAB"),
-        attr->device, buf.buffer, buf.memory, size);
-    VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
-    vab->SetStagedSource(rebar);
-    vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
-    TrackBuffer(vab, name, loc);
-    return vab;
-}
-
 DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
 {
     DeviceBuffer *buf = CreateBuffer(buf_usage,range,size,data,policy,sharing_mode,loc);
@@ -544,4 +315,5 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
 {
     return CreateBuffer(buf_usage,range,size,data,BufferAllocPolicy::Auto,sharing_mode,update_class,loc);
 }
+
 }//namespace hgl::graph

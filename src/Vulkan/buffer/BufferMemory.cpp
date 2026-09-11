@@ -5,6 +5,11 @@
 #include<cstdint>
 #include<cassert>
 namespace hgl::graph{
+
+const VkDeviceSize VulkanDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}
+const VkDeviceSize VulkanDevice::GetSSBOAlign  (){return attr->physical_device->GetSSBOAlign();}
+const VkDeviceSize VulkanDevice::GetUBORange   (){return attr->physical_device->GetUBORange();}
+const VkDeviceSize VulkanDevice::GetSSBORange  (){return attr->physical_device->GetSSBORange();}
 DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties, const ObjectNameBuilder &name, const std::source_location &loc)
 {
     return CreateMemory(req,properties,0,name,loc);

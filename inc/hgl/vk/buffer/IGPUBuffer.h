@@ -20,7 +20,7 @@ namespace hgl::graph{
  *                   ——不需要上传，Registry 里只有 StagedBuffer。
  *
  * 环形轮转不是本接口的实现：静态段 + 动态段×帧数的地址算术由
- * graph::RingWriter 提供（不实现 IGPUBuffer，调用方每帧直接驱动；
+ * graph::RingLayout 提供（不实现 IGPUBuffer，调用方每帧直接驱动；
  * 写入仍经 DeviceBuffer::GetGPUBuffer() 的 Map/Write 落到本接口）。
  *
  * 规则：

@@ -159,7 +159,7 @@ namespace hgl::ecs
         , transform_policy(graph::BufferAllocPolicy::Auto)
         , transform_index_rows_max_count(0)
         , transform_index_rows_buffer(nullptr)
-        , ring_writer(nullptr, sizeof(math::Matrix4f), ring_frames ? ring_frames : HGL_L2W_RING_FRAMES)
+        , ring_layout(ring_frames ? ring_frames : HGL_L2W_RING_FRAMES)
     {
         if (buffer_manager)
         {
@@ -172,19 +172,19 @@ namespace hgl::ecs
 
     void TransformAssignmentBuffer::EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy)
     {
-        const uint32_t total_count = ring_writer.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
+        const uint32_t total_count = ring_layout.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
         StatTransform(total_count, policy);
         WriteTransformIndexRows(static_count, dynamic_count);
 
         if (ShouldEmitPeriodicLog())
         {
-            const uint32_t ring_base = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
+            const uint32_t ring_base = ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
             GLogInfo("[TransformAssignmentBuffer] EnsureCapacity: static=%u dynamic=%u total=%u ring_base=%u frame=%u policy=%d",
                      static_count,
                      dynamic_count,
                      total_count,
                      ring_base,
-                     ring_writer.GetFrameIndex(),
+                     ring_layout.GetFrameIndex(),
                      static_cast<int>(policy));
             LogDeviceBufferSnapshot("[TransformAssignmentBuffer] EnsureCapacity snapshot", transform_buffer);
         }
@@ -192,7 +192,7 @@ namespace hgl::ecs
 
     uint32_t TransformAssignmentBuffer::GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const
     {
-        return ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
+        return ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
     }
 
 
@@ -305,7 +305,7 @@ namespace hgl::ecs
             return;
 
         const uint32_t dynamic_count = static_cast<uint32_t>(handles.size());
-        const uint32_t base_index = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
+        const uint32_t base_index = ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
 
         const auto merged_ranges = BuildMergedRangesFromIndices(dirty_indices, dynamic_count);
         if (merged_ranges.empty())
@@ -338,7 +338,7 @@ namespace hgl::ecs
                         static_count,
                         dynamic_count,
                         static_cast<uint32_t>(dirty_indices.size()),
-                        ring_writer.GetFrameIndex());
+                        ring_layout.GetFrameIndex());
             return;
         }
 
@@ -409,7 +409,7 @@ namespace hgl::ecs
                          max_last,
                          static_cast<unsigned long long>(span_offset_bytes),
                          static_cast<unsigned long long>(span_size_bytes),
-                         ring_writer.GetFrameIndex());
+                         ring_layout.GetFrameIndex());
             }
         }
     }
@@ -527,8 +527,6 @@ namespace hgl::ecs
             }
         }
 
-        ring_writer.SetBuffer(transform_buffer);
-
         if (recreated)
         {
             if (!WriteIdentityToL2WSlot0(transform_buffer))
@@ -562,7 +560,7 @@ namespace hgl::ecs
                      static_cast<uint32_t>(required_count),
                      transform_buffer_max_count,
                      static_cast<int>(policy),
-                     ring_writer.GetFrameIndex());
+                     ring_layout.GetFrameIndex());
         }
     }
 
@@ -660,7 +658,7 @@ namespace hgl::ecs
         for (uint32_t i = 0; i < static_count; ++i)
             rows[1 + i] = 1 + i;
 
-        const uint32_t dynamic_base = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
+        const uint32_t dynamic_base = ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
         for (uint32_t i = 0; i < dynamic_count; ++i)
             rows[1 + static_count + i] = dynamic_base + i;
 
@@ -680,7 +678,7 @@ namespace hgl::ecs
         for (auto *inst : all_instances)
         {
             if (inst)
-                inst->ring_writer.SetFrameIndex(index);
+                inst->ring_layout.SetFrameIndex(index);
         }
     }
 }//namespace hgl::ecs

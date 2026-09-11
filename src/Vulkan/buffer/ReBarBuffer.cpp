@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/buffer/ReBarBuffer.h>
 
-// ReBarBuffer is a header-only-style class; all methods are defined in VKReBarBuffer.h.
+// ReBarBuffer is a header-only-style class; all methods are defined in buffer/ReBarBuffer.h.
 // This translation unit exists so the vtable and type_info are emitted in a single .obj.
 
 namespace hgl::graph{
