@@ -10,9 +10,9 @@ namespace hgl::graph{
  *
  * CN: 将任意 C++ 结构体数组直接映射到 GPU SSBO 缓冲区，提供：
  * 1. 类型安全的 operator[] 元素访问（像访问普通 C++ 数组一样）
- * 2. 自动 dirty 追踪
- * 3. 统一的 Commit 接口（兼容所有缓冲区类型）
- * 4. 自动 Map/Unmap 生命周期管理
+ * 2. 脏范围只交 L2（IGPUBuffer::MarkDirty），视图不自持 dirty
+ * 3. 统一的 Commit 接口 = 把窗口范围标脏（兼容所有缓冲实现）
+ * 4. 窗口（Map/Unmap 或外部内存）由 BufferAccessBase 统一管理
  * 5. 内置 SSBO ID 存储（由 SSBOBufferRegistry 分配）
  *
  * EN: Maps any C++ struct array directly to a GPU SSBO buffer, providing:
@@ -46,72 +46,45 @@ template<typename T>
 class SSBOArrayAccessor : public BufferAccessBase
 {
 private:
-    T*            mapped_data   = nullptr;                     ///< 持久映射的数组基址 / Persistently mapped array base
     uint32_t      element_count = 0;                           ///< 数组元素数量 / Element count
     uint32_t      ssbo_id       = 0;                           ///< 分配到的 SSBO ID（由 SSBOBufferRegistry 写入）
     mtl::SSBOType ssbo_type     = mtl::SSBOType::UserDefined;  ///< SSBO 类型（由 SSBOBufferRegistry 写入）
-    bool          dirty         = false;                       ///< CPU 侧是否有未提交的修改
     uint32_t      stride_bytes  = 0;                           ///< 行距字节数（0=sizeof(T) 紧密排布；Arena 路径=sizeof(T) 且 16B 对齐）
-    bool          host_direct   = false;                       ///< true=HOST_COHERENT 直写（Commit 为 no-op）
     bool          owned_buffer  = false;                       ///< true=析构时释放 buffer（独立行缓冲持有）
+    // 映射基址/范围/脏标记统一由 BufferAccessBase 的窗口机制持有：
+    // 不再自持 mapped_data / dirty / host_direct（原先的 host_direct 即"外部窗口"）
 
     friend class VulkanDevice;
     friend class SSBOBufferRegistry;
 
 private:
 
-    void MapInternal()
-    {
-        if (!gpu_buf || mapped_data)
-            return;
-
-        void *ptr = gpu_buf->Map(0, static_cast<VkDeviceSize>(sizeof(T)) * element_count);
-        if (ptr)
-            mapped_data = static_cast<T*>(ptr);
-    }
-
-    void UnmapInternal()
-    {
-        if (!gpu_buf || !mapped_data)
-            return;
-
-        gpu_buf->Unmap();
-        mapped_data = nullptr;
-    }
-
     explicit SSBOArrayAccessor(VkBufferOwner *buf, uint32_t count)
         : BufferAccessBase()
         , element_count(count)
     {
         SetBuffer(buf);
-        if (gpu_buf)
-            MapInternal();
+        MapWindow(0, static_cast<VkDeviceSize>(sizeof(T)) * element_count);
     }
 
-    // Arena+BDA 路径：直写宿主窗口（mapped_data 即行段基址）
+    // Arena+BDA 路径：直写宿主窗口（外部窗口 = 行段基址，不经 Map/Unmap）
     explicit SSBOArrayAccessor(void *host_base, uint32_t count, uint32_t in_stride)
         : BufferAccessBase()
         , element_count(count)
         , stride_bytes(in_stride)
-        , host_direct(true)
     {
-        mapped_data = static_cast<T *>(host_base);
+        AttachWindow(host_base, static_cast<VkDeviceSize>(sizeof(T)) * element_count);
     }
 
     bool CommitInternal()
     {
-        if (host_direct)
-        {
-            // HOST_COHERENT 直写：operator[] 赋值即已生效
-            dirty = false;
-            return true;
-        }
+        if (!gpu_buf)
+            return false;       // 外部窗口（Arena 直写）：宿主内存即 GPU 可见，无需提交
 
-        if (!dirty || !gpu_buf || !mapped_data)
-            return false;
-
-        gpu_buf->Write(mapped_data, 0, static_cast<uint32_t>(sizeof(T)) * element_count);
-        dirty = false;
+        // 数据本就在映射窗口里，只需把脏范围交给 L2。
+        // 原先那句 gpu_buf->Write(mapped_data, 0, size) 是"映射区拷回映射区"的自我 memcpy
+        // （StagedBuffer::Write = memcpy 到 staging + MarkDirty），去掉后语义不变。
+        MarkWindowDirty();
         return true;
     }
 
@@ -134,14 +107,13 @@ public:
 
     ~SSBOArrayAccessor()
     {
-        UnmapInternal();
+        UnmapWindow();          // 先解窗口（Unmap 会把已写范围标脏），再释放 buffer
 
         if (owned_buffer && buffer)
             delete buffer;      // VkBufferOwner 析构链释放 IGPUBuffer/DeviceMemory/VkBuffer
 
-        buffer      = nullptr;
-        gpu_buf     = nullptr;
-        mapped_data = nullptr;
+        buffer  = nullptr;
+        gpu_buf = nullptr;
     }
 
     // 禁止拷贝 / Disable copy
@@ -151,39 +123,31 @@ public:
     // 允许移动 / Allow move
     SSBOArrayAccessor(SSBOArrayAccessor&& other) noexcept
         : BufferAccessBase()
-        , mapped_data(other.mapped_data)
         , element_count(other.element_count)
         , ssbo_id(other.ssbo_id)
         , ssbo_type(other.ssbo_type)
-        , dirty(other.dirty)
     {
-        MoveFrom(std::move(other));
-        other.mapped_data   = nullptr;
+        MoveFrom(std::move(other));     // 窗口（基址/范围/外部标志）随 MoveFrom 一起搬
         other.element_count = 0;
         other.ssbo_id       = 0;
         other.ssbo_type     = mtl::SSBOType::UserDefined;
-        other.dirty         = false;
     }
 
     SSBOArrayAccessor& operator=(SSBOArrayAccessor&& other) noexcept
     {
         if (this != &other)
         {
-            UnmapInternal();
-            SetBuffer(nullptr, false);
+            UnmapWindow();
+            SetBuffer(nullptr);
 
             MoveFrom(std::move(other));
-            mapped_data   = other.mapped_data;
             element_count = other.element_count;
             ssbo_id       = other.ssbo_id;
             ssbo_type     = other.ssbo_type;
-            dirty         = other.dirty;
 
-            other.mapped_data   = nullptr;
             other.element_count = 0;
             other.ssbo_id       = 0;
             other.ssbo_type     = mtl::SSBOType::UserDefined;
-            other.dirty         = false;
         }
         return *this;
     }
@@ -194,7 +158,7 @@ public:
      * CN: 检查是否有效（已映射且元素数 > 0）
      * EN: Check if valid (mapped and non-empty)
      */
-    bool IsValid() const { return gpu_buf && mapped_data && element_count > 0; }
+    bool IsValid() const { return gpu_buf && HasWindow() && element_count > 0; }
     operator bool() const { return IsValid(); }
 
     /**
@@ -244,8 +208,8 @@ public:
      * CN: 获取数组基址指针（用于批量操作）
      * EN: Get array base pointer (for bulk operations)
      */
-    T* GetData() { return mapped_data; }
-    const T* GetData() const { return mapped_data; }
+    T* GetData() { return static_cast<T*>(GetWindowData()); }
+    const T* GetData() const { return static_cast<const T*>(GetWindowData()); }
 
     /**
      * CN: 下标访问 —— 返回对第 idx 个元素的引用
@@ -259,9 +223,9 @@ public:
             idx = element_count - 1; // 夹紧到末尾元素，避免越界崩溃
 
         if (stride_bytes)
-            return *(T *)(reinterpret_cast<uint8_t *>(mapped_data) + size_t(idx) * stride_bytes);
+            return *(T *)(reinterpret_cast<uint8_t *>(GetWindowData()) + size_t(idx) * stride_bytes);
 
-        return mapped_data[idx];
+        return static_cast<T *>(GetWindowData())[idx];
     }
 
     const T& operator[](uint32_t idx) const
@@ -270,9 +234,9 @@ public:
             idx = element_count - 1;
 
         if (stride_bytes)
-            return *(const T *)(reinterpret_cast<const uint8_t *>(mapped_data) + size_t(idx) * stride_bytes);
+            return *(const T *)(reinterpret_cast<const uint8_t *>(GetWindowData()) + size_t(idx) * stride_bytes);
 
-        return mapped_data[idx];
+        return static_cast<const T *>(GetWindowData())[idx];
     }
 
     /**
@@ -281,20 +245,19 @@ public:
      */
     void MarkDirty()
     {
-        dirty = true;
-        if (gpu_buf)
-            gpu_buf->MarkDirty(0, static_cast<VkDeviceSize>(sizeof(T)) * element_count);
+        // 脏范围交 L2（窗口 = 整个数组；staging/显存由 L2 决定），视图不自持 dirty
+        MarkWindowDirty();
     }
 
     /**
      * CN: 检查是否有未提交的修改
      * EN: Check if there are uncommitted modifications
      */
-    bool IsDirty() const { return dirty; }
+    bool IsDirty() const { return gpu_buf ? gpu_buf->IsDirty() : false; }
 
     /**
      * CN: 提交修改到 GPU（仅当 dirty 时）
-     * EN: Commit modifications to GPU (only when dirty)
+     * EN: Commit modifications to GPU (marks the window range dirty on L2)
      */
     void Commit() { CommitInternal(); }
 

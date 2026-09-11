@@ -131,13 +131,10 @@ private:
      uint32_t buffer_total_count;        ///< 总元素数量 / Total element count
      uint32_t buffer_stride;             ///< 单元素字节数 / Stride in bytes
      DataAccessType *data_access;        ///< 数据访问器 / Data accessor
-     void *mapped_pointer;               ///< 映射指针 / Mapped pointer
      int32_t element_offset;             ///< 元素偏移(单位:元素) / Element offset
      uint32_t element_count;             ///< 访问元素数量 / Element count
-
-     // 跟踪是否通过此 accessor 写过数据，用于 CommitInternal() 决策
-     // 与 GPU 上传无关，GPU dirty 由底层 Write()/Unmap() 路径自动维护
-     bool dirty = false;
+     // 映射基址与脏标记统一由 BufferAccessBase 的窗口机制持有：
+     // 窗口 = (element_offset*stride, count*stride)，不再自持 mapped_pointer / dirty
 
      /**
       * Typed VAB pointer: stored by VAB constructors/Bind to avoid static_cast<VAB*> UB.
@@ -151,10 +148,6 @@ private:
      */
     void MapInternal()
     {
-        // gpu_buf is cached in BufferAccessBase::SetBuffer(); no DeviceBuffer chain needed.
-        if(!gpu_buf || mapped_pointer)
-            return;
-
         if(element_offset < 0)
             element_offset = 0;
 
@@ -171,14 +164,14 @@ private:
             return;
 
         // Byte-offset Map: buffer_stride is element size, multiply to get byte offsets.
-        mapped_pointer = gpu_buf->Map(static_cast<VkDeviceSize>(element_offset) * buffer_stride,
-                                      static_cast<VkDeviceSize>(count) * buffer_stride);
-        if(mapped_pointer)
-        {
-            data_access = DataAccessType::Create(count, mapped_pointer);
-            if(data_access)
-                data_access->Begin();
-        }
+        // 窗口状态由 BufferAccessBase 保存（同一窗口幂等）。
+        if(!MapWindow(static_cast<VkDeviceSize>(element_offset) * buffer_stride,
+                      static_cast<VkDeviceSize>(count) * buffer_stride))
+            return;
+
+        data_access = DataAccessType::Create(count, GetWindowData());
+        if(data_access)
+            data_access->Begin();
     }
 
     /**
@@ -193,11 +186,7 @@ private:
             data_access = nullptr;
         }
 
-        if(gpu_buf && mapped_pointer)
-        {
-            gpu_buf->Unmap();
-            mapped_pointer = nullptr;
-        }
+        UnmapWindow();
     }
 
 public:
@@ -212,7 +201,6 @@ public:
         , buffer_total_count(vab ? vab->GetCount() : 0)
         , buffer_stride(vab ? vab->GetStride() : 0)
         , data_access(nullptr)
-        , mapped_pointer(nullptr)
         , element_offset(0)
         , element_count(0)
     {
@@ -227,7 +215,6 @@ public:
         , buffer_total_count(vab ? vab->GetCount() : 0)
         , buffer_stride(vab ? vab->GetStride() : 0)
         , data_access(nullptr)
-        , mapped_pointer(nullptr)
         , element_offset(offset)
         , element_count(count)
     {
@@ -242,7 +229,6 @@ public:
         , buffer_total_count(ibo ? ibo->GetCount() : 0)
         , buffer_stride(ibo ? ibo->GetStride() : 0)
         , data_access(nullptr)
-        , mapped_pointer(nullptr)
         , element_offset(offset)
         , element_count(count)
     {
@@ -333,32 +319,16 @@ public:
      */
     void MarkDirty()
     {
-        dirty = true;
-
-        if(!gpu_buf || buffer_stride == 0)
-            return;
-
-        uint32_t offset = (element_offset < 0) ? 0u : static_cast<uint32_t>(element_offset);
-        if(offset >= buffer_total_count)
-            return;
-
-        uint32_t count = (element_count == 0)
-            ? (buffer_total_count - offset)
-            : element_count;
-
-        if(count == 0)
-            return;
-
-        // Mark the mapped range dirty so StagedBuffer will copy on the next upload pass.
-        gpu_buf->MarkDirty(static_cast<VkDeviceSize>(offset) * buffer_stride,
-                           static_cast<VkDeviceSize>(count) * buffer_stride);
+        // MapInternal 时窗口就是本视图的元素范围，直接把窗口标脏交 L2
+        // （视图不自持 dirty，消除与 L2 的双记账）
+        MarkWindowDirty();
     }
 
     /**
      * CN: 检查是否 dirty
      * EN: Check if dirty
      */
-    bool IsDirty() const { return dirty; }
+    bool IsDirty() const { return gpu_buf ? gpu_buf->IsDirty() : false; }
 
 private:
 
@@ -367,14 +337,14 @@ private:
       */
     bool CommitInternal()
     {
-        if(!dirty || !gpu_buf)
+        if(!gpu_buf)
             return false;
 
-        // Unmap + Remap 触发 flush（对于 StagedBuffer）
-        UnmapInternal();
-        MapInternal();
-
-        dirty = false;
+        // 数据已在映射窗口里：只把窗口范围标脏交 L2。
+        // 原先的 Unmap + Remap 同样只是让 StagedBuffer::Unmap 标出
+        // MarkDirty(mapped_offset, mapped_size) —— 这里直接标同一范围，
+        // 且不必反复 Map/Unmap（data_access 保持有效）。
+        MarkWindowDirty();
 
         return true;
     }

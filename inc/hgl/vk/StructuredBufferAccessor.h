@@ -39,35 +39,27 @@ namespace hgl::graph{
 template<typename T>
 class StructuredBufferAccessor:public BufferAccessBase
 {
-public:
-    T *mapped_data;                 ///< 映射后的数据指针 / Mapped data pointer
-    VkDeviceSize aligned_size = 0;
-    bool initialized = false;
+private:
     friend class VulkanDevice;
 
-private:
-    // 跟踪结构体数据是否被 Update() 修改过，用于 CommitInternal() 决策
-    // 与 GPU 上传无关，GPU dirty 由底层 Write()/Unmap() 路径自动维护
-    bool dirty = false;
+public:
+    VkDeviceSize aligned_size = 0;      ///< 映射窗口字节数（= buffer 大小）
+    bool initialized = false;
+    // 映射基址与脏标记统一由 BufferAccessBase 的窗口机制持有：
+    // 不再自持 mapped_data / dirty（消除与 L2 的双记账）
 
     /**
-     * CN: 内部 Map 操作
+     * CN: 内部 Map 操作（窗口 = 整块 buffer）
      * EN: Internal map operation
      */
     void MapInternal()
     {
-        // gpu_buf cached in BufferAccessBase::SetBuffer(); no DeviceBuffer chain.
-        if(!gpu_buf || mapped_data)
-            return;
-
-        void *ptr = gpu_buf->Map(0, aligned_size);
-        if(ptr)
-            mapped_data = static_cast<T*>(ptr);
+        MapWindow(0, aligned_size);
     }
 
     void InitDefaultsIfNeeded()
     {
-        if(initialized || !mapped_data)
+        if(initialized || !HasWindow())
             return;
 
         if constexpr (std::is_array_v<T>)
@@ -76,13 +68,13 @@ private:
             constexpr size_t kCount = std::extent_v<T>;
 
             for(size_t i = 0; i < kCount; ++i)
-                (*mapped_data)[i] = Element();
+                (*Data())[i] = Element();
 
             ImmediateUpdate();
         }
         else if constexpr (std::is_default_constructible_v<T>)
         {
-            *mapped_data = T();
+            *Data() = T();
             ImmediateUpdate();
         }
 
@@ -91,60 +83,39 @@ private:
 
     StructuredBufferAccessor(VkBufferOwner *buf, VkDeviceSize aligned_size_param, bool take_ownership)
         : BufferAccessBase()
-        , mapped_data(nullptr)
         , aligned_size(aligned_size_param)
     {
         SetBuffer(buf);
-        if(gpu_buf)
-            MapInternal();
+        MapInternal();
         InitDefaultsIfNeeded();
-    }
-
-    /**
-     * CN: 内部 Unmap 操作
-     * EN: Internal unmap operation
-     */
-    void UnmapInternal()
-    {
-        if(!gpu_buf || !mapped_data)
-            return;
-
-        gpu_buf->Unmap();
-        mapped_data = nullptr;
     }
 
     StructuredBufferAccessor(VkBufferOwner *buf, bool take_ownership = false)
         : BufferAccessBase()
-        , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
-        if(gpu_buf)
-            MapInternal();
+        MapInternal();
         InitDefaultsIfNeeded();
     }
 
     StructuredBufferAccessor(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
         : BufferAccessBase()
-        , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
         SetUBOMeta(dst, name);
-        if(gpu_buf)
-            MapInternal();
+        MapInternal();
         InitDefaultsIfNeeded();
     }
 
     StructuredBufferAccessor(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
         : BufferAccessBase()
-        , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
         SetUBOMeta(desc ? desc->set_type : DescriptorSetType::Scene, desc ? desc->name : "");
-        if(gpu_buf)
-            MapInternal();
+        MapInternal();
         InitDefaultsIfNeeded();
     }
 
@@ -170,7 +141,7 @@ public:
      */
     ~StructuredBufferAccessor()
     {
-        UnmapInternal();
+        // 窗口由 BufferAccessBase 析构时统一解锁（UnmapInternal 已删除）
     }
 
     // 禁止拷贝 / Disable copy
@@ -180,11 +151,9 @@ public:
     // 允许移动 / Allow move
     StructuredBufferAccessor(StructuredBufferAccessor&& other) noexcept
         : BufferAccessBase()
-        , mapped_data(other.mapped_data)
         , aligned_size(other.aligned_size)
     {
-        MoveFrom(std::move(other));
-        other.mapped_data = nullptr;
+        MoveFrom(std::move(other));     // 窗口状态随 MoveFrom 一起搬
         other.aligned_size = 0;
     }
 
@@ -192,13 +161,11 @@ public:
     {
         if(this != &other)
         {
-            UnmapInternal();
-            SetBuffer(nullptr, false);
+            UnmapWindow();
+            SetBuffer(nullptr);
 
             MoveFrom(std::move(other));
-            mapped_data = other.mapped_data;
             aligned_size = other.aligned_size;
-            other.mapped_data = nullptr;
             other.aligned_size = 0;
         }
         return *this;
@@ -212,12 +179,11 @@ public:
      */
     void Bind(VkBufferOwner *buf, bool take_ownership = false)
     {
-        UnmapInternal();
+        UnmapWindow();
         aligned_size = buf ? buf->GetSize() : 0;
         SetBuffer(buf);
 
-        if(gpu_buf)
-            MapInternal();
+        MapInternal();
     }
 
 public:
@@ -226,7 +192,7 @@ public:
      * CN: 检查是否有效
      * EN: Check if valid
      */
-    bool IsValid() const { return gpu_buf && mapped_data; }
+    bool IsValid() const { return gpu_buf && HasWindow(); }
     operator bool() const { return IsValid(); }
 
     /**
@@ -242,22 +208,22 @@ public:
      * EN: Get struct data pointer
      * After modifying data through this pointer, call MarkDirty() or Commit()
      */
-    T* Data() { return mapped_data; }
-    const T* Data() const { return mapped_data; }
+    T* Data() { return static_cast<T*>(GetWindowData()); }
+    const T* Data() const { return static_cast<const T*>(GetWindowData()); }
 
     /**
      * CN: 箭头操作符 - 直接访问结构体成员
      * EN: Arrow operator - direct struct member access
      */
-    T* operator->() { return mapped_data; }
-    const T* operator->() const { return mapped_data; }
+    T* operator->() { return Data(); }
+    const T* operator->() const { return static_cast<const T*>(GetWindowData()); }
 
     /**
      * CN: 解引用操作符
      * EN: Dereference operator
      */
-    T& operator*() { return *mapped_data; }
-    const T& operator*() const { return *mapped_data; }
+    T& operator*() { return *Data(); }
+    const T& operator*() const { return *static_cast<const T*>(GetWindowData()); }
 
     /**
      * CN: 标记为 dirty
@@ -265,16 +231,15 @@ public:
      */
     void MarkDirty()
     {
-        dirty = true;
-        if (gpu_buf)
-            gpu_buf->MarkDirty(0, sizeof(T));
+        // 脏范围 = 本视图窗口（整块 buffer）交 L2；视图不自持 dirty
+        MarkWindowDirty();
     }
 
     /**
      * CN: 检查是否 dirty
      * EN: Check if dirty
      */
-    bool IsDirty() const { return dirty; }
+    bool IsDirty() const { return gpu_buf ? gpu_buf->IsDirty() : false; }
 
 public:
 
@@ -284,10 +249,11 @@ public:
      */
     void Update(const T& data)
     {
-        if(!mapped_data)
+        if(!HasWindow())
             return;
-        *mapped_data = data;
-        dirty = true;
+
+        *Data() = data;
+        MarkWindowDirty();      // 拷贝数据 + 置脏
     }
 
 private:
@@ -299,11 +265,12 @@ private:
      */
     bool CommitInternal()
     {
-        if(!dirty || !gpu_buf || !mapped_data)
+        if(!gpu_buf || !HasWindow())
             return false;
 
-        gpu_buf->Write(mapped_data, 0, sizeof(T));
-        dirty = false;
+        // 数据已在映射窗口里：只把窗口范围标脏交 L2。
+        // 原先的 gpu_buf->Write(mapped→mapped) 是自我 memcpy，去掉后语义不变。
+        MarkWindowDirty();
         return true;
     }
 
@@ -319,10 +286,10 @@ private:
 
     void ImmediateUpdate() const
     {
-        if(!mapped_data || !gpu_buf)
+        if(!HasWindow() || !gpu_buf)
             return;
 
-        gpu_buf->Write(mapped_data, 0, sizeof(T));
+        gpu_buf->MarkDirty(0, static_cast<VkDeviceSize>(sizeof(T)));
     }
 
     /**
