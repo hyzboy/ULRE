@@ -168,7 +168,7 @@ namespace hgl::graph
     {
         if(!obj)return(false);
 
-        return to_pool.Release(&(obj->id))>=0;
+        return to_pool.Release(&(obj->id))>0;
     }
 
     /**

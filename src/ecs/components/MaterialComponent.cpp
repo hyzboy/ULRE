@@ -2,6 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<cstring>
 
 namespace hgl::ecs
