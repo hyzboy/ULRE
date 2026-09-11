@@ -2,6 +2,7 @@
 
 #include<hgl/vk/VKBufferAccessBase.h>
 #include<hgl/mtl/MaterialRecipe.h>     ///< for mtl::SSBOType / mtl::SSBOBinding
+#include<cassert>
 
 namespace hgl::graph{
 
@@ -14,6 +15,7 @@ namespace hgl::graph{
  * 3. 统一的 Commit 接口 = 把窗口范围标脏（兼容所有缓冲实现）
  * 4. 窗口（Map/Unmap 或外部内存）由 BufferAccessBase 统一管理
  * 5. 内置 SSBO ID 存储（由 SSBOBufferRegistry 分配）
+ * 6. 不拥有数据源：buffer/gpu_buf 只是引用（行缓冲归 SSBOBufferRegistry；池窗口无 buffer）
  *
  * EN: Maps any C++ struct array directly to a GPU SSBO buffer, providing:
  * 1. Type-safe operator[] element access (like a normal C++ array)
@@ -50,9 +52,10 @@ private:
     uint32_t      ssbo_id       = 0;                           ///< 分配到的 SSBO ID（由 SSBOBufferRegistry 写入）
     mtl::SSBOType ssbo_type     = mtl::SSBOType::UserDefined;  ///< SSBO 类型（由 SSBOBufferRegistry 写入）
     uint32_t      stride_bytes  = 0;                           ///< 行距字节数（0=sizeof(T) 紧密排布；Arena 路径=sizeof(T) 且 16B 对齐）
-    bool          owned_buffer  = false;                       ///< true=析构时释放 buffer（独立行缓冲持有）
     // 映射基址/范围/脏标记统一由 BufferAccessBase 的窗口机制持有：
     // 不再自持 mapped_data / dirty / host_direct（原先的 host_direct 即"外部窗口"）
+    // 数据源的生命周期也不在本类：buffer/gpu_buf 只是引用（行缓冲归 SSBOBufferRegistry，
+    // 池窗口连 buffer 都没有）——views never own their source。
 
     friend class VulkanDevice;
     friend class SSBOBufferRegistry;
@@ -107,10 +110,7 @@ public:
 
     ~SSBOArrayAccessor()
     {
-        UnmapWindow();          // 先解窗口（Unmap 会把已写范围标脏），再释放 buffer
-
-        if (owned_buffer && buffer)
-            delete buffer;      // VkBufferOwner 析构链释放 IGPUBuffer/DeviceMemory/VkBuffer
+        UnmapWindow();          // 只解自己的窗口：数据源不归视图，不在此释放
 
         buffer  = nullptr;
         gpu_buf = nullptr;
@@ -158,7 +158,7 @@ public:
      * CN: 检查是否有效（已映射且元素数 > 0）
      * EN: Check if valid (mapped and non-empty)
      */
-    bool IsValid() const { return gpu_buf && HasWindow() && element_count > 0; }
+    bool IsValid() const { return HasWindow() && element_count > 0; }
     operator bool() const { return IsValid(); }
 
     /**
@@ -166,17 +166,6 @@ public:
      * EN: Return the SSBO ID assigned by SSBOBufferRegistry.
      */
     uint32_t GetSSBOId() const { return ssbo_id; }
-
-    /**
-     * CN: 取得行缓冲所有权：析构时释放整个 DeviceBuffer。
-     *     用于独立行缓冲（每 SSBOType 一块 BDA 缓冲）的生命周期管理。
-     * EN: Take buffer ownership: the destructor releases the DeviceBuffer.
-     */
-    void OwnBuffer(VkBufferOwner *buf)
-    {
-        SetBuffer(buf);
-        owned_buffer = (buf != nullptr);
-    }
 
     /**
      * CN: 返回此访问器对应的 SSBO 类型
@@ -219,8 +208,9 @@ public:
      */
     T& operator[](uint32_t idx)
     {
+        assert(idx < element_count && "SSBOArrayAccessor: index out of range (project bug)");
         if (idx >= element_count)
-            idx = element_count - 1; // 夹紧到末尾元素，避免越界崩溃
+            idx = element_count - 1;    // Release 兜底：宁读末行也不越界写
 
         if (stride_bytes)
             return *(T *)(reinterpret_cast<uint8_t *>(GetWindowData()) + size_t(idx) * stride_bytes);
@@ -230,6 +220,7 @@ public:
 
     const T& operator[](uint32_t idx) const
     {
+        assert(idx < element_count && "SSBOArrayAccessor: index out of range (project bug)");
         if (idx >= element_count)
             idx = element_count - 1;
 

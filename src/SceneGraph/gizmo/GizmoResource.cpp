@@ -111,9 +111,9 @@ namespace hgl::graph
 
                 const uint32_t gizmo_ssbo_id = acc->GetSSBOId();
 
-                // 行写入即生效(HOST_COHERENT 直写)。accessor OwnBuffer 持有
-                // 行缓冲——地址行表中的行地址指向该缓冲，必须与 gizmo 资源
-                // 同寿命；每色一份 recipe，行号=色槽号。
+                // 行写入即生效(HOST_COHERENT 直写)。行缓冲归 SSBOBufferRegistry
+                // 所有（视图不持有数据源）——地址行表中的行地址指向该缓冲，
+                // 其寿命 = 注册表寿命（长于 gizmo 资源）；每色一份 recipe，行号=色槽号。
                 gr->color_row_accessor = acc;
 
                 for (uint32_t c = 0; c < color_count; ++c)

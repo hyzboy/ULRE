@@ -153,6 +153,13 @@ void SSBOBufferRegistry::Release()
     }
 
     domain_map.clear();
+
+    // 行缓冲（AllocateArrayAccessor 建的 arena 缓冲）归注册表所有：
+    // 视图只管在窗口上写，不负责释放（B-2：视图不拥有数据源）
+    for (auto &kv : row_segments)
+        delete kv.second.buffer;
+
+    row_segments.clear();
 }
 
 bool SSBOBufferRegistry::AcquireMaterialTextureConfiguration(

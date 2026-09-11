@@ -44,6 +44,7 @@ public:
         void    *cpu_base  = nullptr;   ///< 映射基址（CPU 行数据/行尾句柄直写）
         uint64_t gpu_base  = 0;         ///< 设备地址基址（地址行表寻址）
         uint32_t row_bytes = 0;         ///< 行距 = sizeof(行结构)
+        DeviceBuffer *buffer = nullptr; ///< 行缓冲本体（注册表拥有，Release() 释放）
     };
 
 private:
@@ -220,8 +221,9 @@ public:
         // 默认行保障：整缓冲清零（行数据与行尾句柄全零 = 安全缺省）
         memset(cpu_base, 0, size_t(sizeof(T)) * element_count);
 
+        // 视图不拥有数据源（B-2）：行缓冲归注册表，accessor 只在宿主窗口上写。
+        // 地址行表里的行地址指向这块缓冲，因此它的寿命 = 注册表寿命。
         auto *acc = new SSBOArrayAccessor<T>(cpu_base, element_count, uint32(sizeof(T)));
-        acc->OwnBuffer(buf);                     // accessor 持有缓冲生命周期
         acc->ssbo_id   = allocated_id;
         acc->ssbo_type = ssbo_type;
 
@@ -229,6 +231,7 @@ public:
         seg.cpu_base  = cpu_base;
         seg.gpu_base  = gpu_base;
         seg.row_bytes = uint32(sizeof(T));
+        seg.buffer    = buf;
         row_segments.emplace(allocated_id, seg);
 
         return acc;
