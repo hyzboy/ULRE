@@ -72,17 +72,14 @@ private:
 
     graph::mtl::MaterialRecipe grid_recipe{};
     PrimitiveAsset             grid_asset{};
-    using MaterialDataID = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>::InvalidDataID;
-    graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow> *grid_mtl_data_ssbo_accessor = nullptr;
-    MaterialDataID grid_material_data_id = InvalidMaterialDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+    MaterialDataAccessor grid_mtl_data_ssbo_accessor{};
     Geometry *grid_geometry = nullptr;
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow> *cube_mtl_data_ssbo_accessor = nullptr;
-    MaterialDataID cube_material_data_id = InvalidMaterialDataID;
+    MaterialDataAccessor cube_mtl_data_ssbo_accessor{};
     Geometry *cube_geometry = nullptr;
 
     std::string debug_cache;
@@ -115,21 +112,15 @@ private:
             if (!domain_manager)
                 return false;
 
-            grid_mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
-                "GizmoUsage:GridMaterialData",
-                1);
+            grid_mtl_data_ssbo_accessor =
+                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
             if (!grid_mtl_data_ssbo_accessor)
-                return false;
-
-            if (!grid_mtl_data_ssbo_accessor->AcquireID(grid_material_data_id))
                 return false;
 
             graph::ssbo::EmissiveSurfaceRow grid_row{};
             grid_row.color = GetColor4f(COLOR::White, 1.0f);
-            if (!grid_mtl_data_ssbo_accessor->WriteByID(grid_material_data_id, grid_row))
+            if (!grid_mtl_data_ssbo_accessor.Write(grid_row))
                 return false;
-
-            grid_mtl_data_ssbo_accessor->Commit();
 
             grid_recipe.recipe_name = "GizmoUsageExample.VertexLuminance";
             grid_recipe.mtl_def_id = "VertexLuminance";
@@ -143,9 +134,9 @@ private:
                     grid_recipe,
                     graph::mtl::DefaultMaterialPrivateDataSlotName,
                     graph::mtl::MaterialSSBOType::EmissiveSurface,
-                    grid_mtl_data_ssbo_accessor->GetSSBOId(),
+                    grid_mtl_data_ssbo_accessor.GetSSBOId(),
                     graph::mtl::DefaultMaterialPrivateDataSlot,
-                    grid_material_data_id,
+                    grid_mtl_data_ssbo_accessor.GetDataID(),
                     true,
                     true))
                 return false;
@@ -172,21 +163,15 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            cube_mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
-                "GizmoUsage:CubeMaterialData",
-                1);
+            cube_mtl_data_ssbo_accessor =
+                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
             if (!cube_mtl_data_ssbo_accessor)
-                return false;
-
-            if (!cube_mtl_data_ssbo_accessor->AcquireID(cube_material_data_id))
                 return false;
 
             graph::ssbo::EmissiveSurfaceRow cube_row{};
             cube_row.color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            if (!cube_mtl_data_ssbo_accessor->WriteByID(cube_material_data_id, cube_row))
+            if (!cube_mtl_data_ssbo_accessor.Write(cube_row))
                 return false;
-
-            cube_mtl_data_ssbo_accessor->Commit();
 
             cube_recipe.recipe_name = "GizmoUsageExample.DebugNormalColor";
             cube_recipe.mtl_def_id = "DebugNormalColor";
@@ -195,9 +180,9 @@ private:
                     cube_recipe,
                     graph::mtl::DefaultMaterialPrivateDataSlotName,
                     graph::mtl::MaterialSSBOType::EmissiveSurface,
-                    cube_mtl_data_ssbo_accessor->GetSSBOId(),
+                    cube_mtl_data_ssbo_accessor.GetSSBOId(),
                     graph::mtl::DefaultMaterialPrivateDataSlot,
-                    cube_material_data_id,
+                    cube_mtl_data_ssbo_accessor.GetDataID(),
                     true,
                     true))
                 return false;
@@ -224,8 +209,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource plane_struct{};
         plane_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         plane_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-        plane_struct.ssbo_id = grid_mtl_data_ssbo_accessor->GetSSBOId();
-        plane_struct.data_index = grid_material_data_id;
+        plane_struct.ssbo_id = grid_mtl_data_ssbo_accessor.GetSSBOId();
+        plane_struct.data_index = grid_mtl_data_ssbo_accessor.GetDataID();
         plane_struct.use_data_index = true;
         plane_struct.shared_across_instances = true;
         plane_primitive_comp->SetMaterialPrivateDataSlotResource(plane_struct);
@@ -243,8 +228,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
         cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         cube_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-        cube_struct.ssbo_id = cube_mtl_data_ssbo_accessor->GetSSBOId();
-        cube_struct.data_index = cube_material_data_id;
+        cube_struct.ssbo_id = cube_mtl_data_ssbo_accessor.GetSSBOId();
+        cube_struct.data_index = cube_mtl_data_ssbo_accessor.GetDataID();
         cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
         cube_primitive_comp->SetMaterialPrivateDataSlotResource(cube_struct);
@@ -382,21 +367,6 @@ public:
     ~GizmoExampleApp()
     {
         gizmo_system.reset();
-        // graph modules own GPU resources and release them during graphics shutdown.
-        // Accessors are registry-owned; only the IDs allocated by this example
-        // belong to the application.
-        if (grid_mtl_data_ssbo_accessor
-         && grid_material_data_id != InvalidMaterialDataID
-         && grid_mtl_data_ssbo_accessor->IsActiveID(grid_material_data_id))
-            grid_mtl_data_ssbo_accessor->ReleaseID(grid_material_data_id);
-
-        if (cube_mtl_data_ssbo_accessor
-         && cube_material_data_id != InvalidMaterialDataID
-         && cube_mtl_data_ssbo_accessor->IsActiveID(cube_material_data_id))
-            cube_mtl_data_ssbo_accessor->ReleaseID(cube_material_data_id);
-
-        grid_mtl_data_ssbo_accessor = nullptr;
-        cube_mtl_data_ssbo_accessor = nullptr;
     }
 
     void Tick(double delta) override

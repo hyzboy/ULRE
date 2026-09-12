@@ -59,29 +59,15 @@ private:
     Entity *      cube_entity    =nullptr;
     Entity *      camera_entity  =nullptr;
 
-    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>;
-    using MaterialDataID = MaterialDataAccessor::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        MaterialDataAccessor::InvalidDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
 
-    Geometry *          geometry        = nullptr;
-    MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
-    MaterialDataID material_data_id = InvalidMaterialDataID;
+    Geometry *            geometry = nullptr;
+    MaterialDataAccessor mtl_data_ssbo_accessor{};
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
 
 private:
-
-    void ReleaseMaterialData()
-    {
-        if (mtl_data_ssbo_accessor
-         && material_data_id != InvalidMaterialDataID
-         && mtl_data_ssbo_accessor->IsActiveID(material_data_id))
-            mtl_data_ssbo_accessor->ReleaseID(material_data_id);
-
-        material_data_id = InvalidMaterialDataID;
-        mtl_data_ssbo_accessor = nullptr;
-    }
 
     bool InitMaterial()
     {
@@ -125,31 +111,19 @@ private:
         if (!ecs_context)
             return false;
 
-        ReleaseMaterialData();
-
         auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>( "SimpleCube:EmissiveSurface:MaterialData", 1);
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        if (!mtl_data_ssbo_accessor->AcquireID(material_data_id))
-        {
-            ReleaseMaterialData();
-            return false;
-        }
-
         graph::ssbo::EmissiveSurfaceRow material_data{};
         material_data.color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        if (!mtl_data_ssbo_accessor->WriteByID(material_data_id, material_data))
-        {
-            ReleaseMaterialData();
+        if (!mtl_data_ssbo_accessor.Write(material_data))
             return false;
-        }
 
-        mtl_data_ssbo_accessor->Commit();
         return true;
     }
     bool InitECS()
@@ -174,9 +148,9 @@ private:
                 cube_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                 graph::mtl::MaterialSSBOType::EmissiveSurface,
-                mtl_data_ssbo_accessor->GetSSBOId(),
+                mtl_data_ssbo_accessor.GetSSBOId(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                material_data_id,
+                mtl_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -186,8 +160,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource named_struct{};
         named_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         named_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-        named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-        named_struct.data_index = material_data_id;
+        named_struct.ssbo_id = mtl_data_ssbo_accessor.GetSSBOId();
+        named_struct.data_index = mtl_data_ssbo_accessor.GetDataID();
         named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
         primitive_comp->SetMaterialPrivateDataSlotResource(named_struct);
@@ -222,7 +196,6 @@ private:
 public:
     ~TestApp()
     {
-        ReleaseMaterialData();
         SAFE_CLEAR(geometry)
     }
 

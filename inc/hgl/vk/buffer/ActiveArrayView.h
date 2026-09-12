@@ -8,8 +8,6 @@
 
 namespace hgl::graph
 {
-class MaterialSSBOBufferRegistry;
-
 /**
  * A fixed-capacity ArrayView whose element indices are allocated and recycled
  * through ActiveIDManager. A live DataID is always a valid ArrayView index.
@@ -24,8 +22,6 @@ public:
 private:
     ArrayView<T> array_view;
     ActiveIDManager active_ids;
-
-    friend class MaterialSSBOBufferRegistry;
 
 public:
     ActiveArrayView() = default;

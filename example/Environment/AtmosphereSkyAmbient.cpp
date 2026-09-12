@@ -72,13 +72,10 @@ private:
 
     graph::mtl::MaterialRecipe sky_recipe{};
     graph::mtl::MaterialRecipe mesh_recipe{};
-    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::PBRSurfaceRow>;
-    using MaterialDataID = MaterialDataAccessor::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        MaterialDataAccessor::InvalidDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
 
-    MaterialDataAccessor *material_data_ssbo_accessor = nullptr;
-    MaterialDataID material_data_id = InvalidMaterialDataID;
+    MaterialDataAccessor material_data_ssbo_accessor{};
 
     Geometry* prim_sky_sphere = nullptr;
     PrimitiveAsset sky_asset{};
@@ -92,25 +89,13 @@ private:
 
 private:
 
-    void ReleaseMaterialData()
-    {
-        if (material_data_ssbo_accessor
-         && material_data_id != InvalidMaterialDataID
-         && material_data_ssbo_accessor->IsActiveID(material_data_id))
-            material_data_ssbo_accessor->ReleaseID(material_data_id);
-
-        material_data_id = InvalidMaterialDataID;
-        material_data_ssbo_accessor = nullptr;
-    }
-
     bool InitMaterial()
     {
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
 
         if (!texture_manager || !sampler_manager
-         || !material_data_ssbo_accessor
-         || material_data_id == InvalidMaterialDataID)
+         || !material_data_ssbo_accessor)
             return false;
 
         mesh_recipe.recipe_name = "AtmosphereSkyAmbient.Lit";
@@ -120,9 +105,9 @@ private:
                 mesh_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                 graph::mtl::MaterialSSBOType::PBRSurface,
-                material_data_ssbo_accessor->GetSSBOId(),
+                material_data_ssbo_accessor.GetSSBOId(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                material_data_id,
+                material_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -148,8 +133,6 @@ private:
 
     bool InitMaterialDataSSBO()
     {
-        ReleaseMaterialData();
-
         auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
@@ -160,25 +143,13 @@ private:
         material_data.roughness    = 0.92f;
         material_data.normal_scale = 0.35f;
 
-        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>(
-            "AtmosphereSkyAmbient:PBRSurface:MaterialData",
-            1);
+        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!material_data_ssbo_accessor)
             return false;
 
-        if (!material_data_ssbo_accessor->AcquireID(material_data_id))
-        {
-            ReleaseMaterialData();
+        if (!material_data_ssbo_accessor.Write(material_data))
             return false;
-        }
 
-        if (!material_data_ssbo_accessor->WriteByID(material_data_id, material_data))
-        {
-            ReleaseMaterialData();
-            return false;
-        }
-
-        material_data_ssbo_accessor->Commit();
         return true;
     }
 
@@ -328,8 +299,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
             mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             mesh_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-            mesh_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
-            mesh_struct.data_index = material_data_id;
+            mesh_struct.ssbo_id = material_data_ssbo_accessor.GetSSBOId();
+            mesh_struct.data_index = material_data_ssbo_accessor.GetDataID();
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(mesh_struct);
@@ -394,7 +365,6 @@ public:
 
     ~AtmosphereSkyAmbientApp()
     {
-        ReleaseMaterialData();
     }
 
     bool Init() override

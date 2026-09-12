@@ -38,22 +38,14 @@ namespace hgl::graph
 
         struct GizmoResource
         {
-            using ColorDataID = ActiveArrayView<ssbo::EmissiveSurfaceRow>::DataID;
-            static constexpr ColorDataID InvalidColorDataID =
-                ActiveArrayView<ssbo::EmissiveSurfaceRow>::InvalidDataID;
+            using ColorDataAccessor =
+                MaterialSSBODataAccessor<ssbo::EmissiveSurfaceRow>;
 
-            ActiveArrayView<ssbo::EmissiveSurfaceRow> *color_row_accessor = nullptr;
-            ColorDataID color_row_ids[size_t(GizmoColor::RANGE_SIZE)]{};
+            ColorDataAccessor color_row_accessors[size_t(GizmoColor::RANGE_SIZE)]{};
             VertexDataManager * vdm;
             mtl::MaterialRecipe color_recipe[size_t(GizmoColor::RANGE_SIZE)]{};
 
             GeometryCreater *  prim_creater;
-
-            GizmoResource()
-            {
-                for (ColorDataID &data_id : color_row_ids)
-                    data_id = InvalidColorDataID;
-            }
         };
 
         static GizmoResource    gizmo_triangle{};
@@ -108,51 +100,24 @@ namespace hgl::graph
             {
                 const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
 
-                auto *acc = domain_manager->GetMaterialDataAccessor<ssbo::EmissiveSurfaceRow>(
-                    "GizmoResource:PureColor:MaterialData",
-                    color_count);
-                if (!acc)
-                    return false;
-
                 for (uint32_t i = 0; i < color_count; ++i)
                 {
-                    if (!acc->AcquireID(gr->color_row_ids[i]))
-                    {
-                        while (i > 0)
-                        {
-                            --i;
-                            acc->ReleaseID(gr->color_row_ids[i]);
-                            gr->color_row_ids[i] = GizmoResource::InvalidColorDataID;
-                        }
+                    auto &accessor = gr->color_row_accessors[i];
+                    accessor =
+                        domain_manager->GetMaterialDataAccessor<ssbo::EmissiveSurfaceRow>();
+                    if (!accessor)
                         return false;
-                    }
 
                     ssbo::EmissiveSurfaceRow row{};
                     row.color = GetColor4f(gizmo_color[i], 1.0f);
-                    if (!acc->WriteByID(gr->color_row_ids[i], row))
-                    {
-                        acc->ReleaseID(gr->color_row_ids[i]);
-                        gr->color_row_ids[i] = GizmoResource::InvalidColorDataID;
-                        while (i > 0)
-                        {
-                            --i;
-                            acc->ReleaseID(gr->color_row_ids[i]);
-                            gr->color_row_ids[i] = GizmoResource::InvalidColorDataID;
-                        }
+                    if (!accessor.Write(row))
                         return false;
-                    }
                 }
-
-                acc->Commit();
-
-                const uint32_t gizmo_ssbo_id = acc->GetSSBOId();
-
-                // 行缓冲与 accessor 均归材质注册表所有；Gizmo 仅拥有各颜色行的 DataID。
-                gr->color_row_accessor = acc;
 
                 for (uint32_t c = 0; c < color_count; ++c)
                 {
                     auto &recipe = gr->color_recipe[c];
+                    const auto &accessor = gr->color_row_accessors[c];
                     recipe = mtl::MaterialRecipe{};
                     recipe.recipe_name = "GizmoColor_" + std::to_string(c);
                     recipe.mtl_def_id = mtl::BUILTIN_MTL_DEF_PURE_COLOR;
@@ -162,9 +127,9 @@ namespace hgl::graph
                     if (!mtl::UpsertRecipeSSBOAssetBinding(recipe,
                                                           mtl::DefaultMaterialPrivateDataSlotName,
                                                           mtl::MaterialSSBOType::EmissiveSurface,
-                                                          gizmo_ssbo_id,
+                                                          accessor.GetSSBOId(),
                                                           mtl::DefaultMaterialPrivateDataSlot,
-                                                          gr->color_row_ids[c],
+                                                          accessor.GetDataID(),
                                                           true,
                                                           true))
                         return false;
@@ -333,18 +298,8 @@ namespace hgl::graph
 
         SAFE_CLEAR(gizmo_triangle.prim_creater);
         SAFE_CLEAR(gizmo_triangle.vdm);
-        if (gizmo_triangle.color_row_accessor)
-        {
-            for (GizmoResource::ColorDataID &data_id : gizmo_triangle.color_row_ids)
-            {
-                if (data_id != GizmoResource::InvalidColorDataID
-                 && gizmo_triangle.color_row_accessor->IsActiveID(data_id))
-                    gizmo_triangle.color_row_accessor->ReleaseID(data_id);
-
-                data_id = GizmoResource::InvalidColorDataID;
-            }
-        }
-        gizmo_triangle.color_row_accessor = nullptr;
+        for (auto &accessor : gizmo_triangle.color_row_accessors)
+            accessor.Release();
 
         graphics_context = nullptr;
     }

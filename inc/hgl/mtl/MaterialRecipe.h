@@ -37,7 +37,7 @@ namespace hgl::graph::mtl
         uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot;
         MaterialSSBOType ssbo_type = MaterialSSBOType::PBRSurface;
         uint32_t ssbo_id = 0;                 // Shared physical material SSBO.
-        uint32_t data_index = uint32_t(-1);   // ActiveArrayView row DataID in that SSBO.
+        uint32_t data_index = uint32_t(-1);   // Material data row ID in that shared SSBO.
         bool use_data_index = false;          // Must be true for a material data binding.
         bool shared_across_instances = false;
     };

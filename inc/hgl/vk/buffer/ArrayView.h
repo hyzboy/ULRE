@@ -60,7 +60,6 @@ private:
 
     friend class VulkanDevice;
     friend class SSBOBufferRegistry;
-    friend class MaterialSSBOBufferRegistry;
 
 private:
 

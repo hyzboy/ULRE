@@ -50,15 +50,12 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::PBRSurfaceRow>;
-    using MaterialDataID = MaterialDataAccessor::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        MaterialDataAccessor::InvalidDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
 
     graph::ssbo::PBRSurfaceRow material_data;
     graph::mtl::MaterialRecipe wall_recipe{};
-    MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
-    MaterialDataID material_data_id = InvalidMaterialDataID;
+    MaterialDataAccessor mtl_data_ssbo_accessor{};
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
 
@@ -71,18 +68,6 @@ public:
     {
         SAFE_CLEAR(sampler)
         SAFE_CLEAR(mesh_vdm)
-        ReleaseMaterialData();
-    }
-
-    void ReleaseMaterialData()
-    {
-        if (mtl_data_ssbo_accessor
-         && material_data_id != InvalidMaterialDataID
-         && mtl_data_ssbo_accessor->IsActiveID(material_data_id))
-            mtl_data_ssbo_accessor->ReleaseID(material_data_id);
-
-        material_data_id = InvalidMaterialDataID;
-        mtl_data_ssbo_accessor = nullptr;
     }
 
 public:
@@ -131,8 +116,8 @@ public:
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource wall_struct{};
             wall_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             wall_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-            wall_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            wall_struct.data_index = material_data_id;
+            wall_struct.ssbo_id = mtl_data_ssbo_accessor.GetSSBOId();
+            wall_struct.data_index = mtl_data_ssbo_accessor.GetDataID();
             wall_struct.use_data_index = true;
             wall_struct.shared_across_instances = true;
             prim_comp->SetMaterialPrivateDataSlotResource(wall_struct);
@@ -161,41 +146,26 @@ public:
         wall_recipe.mtl_def_id = "Lit";
         wall_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
 
-        ReleaseMaterialData();
-
         auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         auto *buffer_manager = GetManager<BufferManager>();
         if (!domain_manager || !buffer_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>(
-            "WallsFromPolyline:MaterialData",
-            1);
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        if (!mtl_data_ssbo_accessor->AcquireID(material_data_id))
-        {
-            ReleaseMaterialData();
-            return false;
-        }
-
         const graph::ssbo::PBRSurfaceRow material_row = material_data;
-        if (!mtl_data_ssbo_accessor->WriteByID(material_data_id, material_row))
-        {
-            ReleaseMaterialData();
+        if (!mtl_data_ssbo_accessor.Write(material_row))
             return false;
-        }
-
-        mtl_data_ssbo_accessor->Commit();
 
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 wall_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                 graph::mtl::MaterialSSBOType::PBRSurface,
-                mtl_data_ssbo_accessor->GetSSBOId(),
+                mtl_data_ssbo_accessor.GetSSBOId(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                material_data_id,
+                mtl_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;

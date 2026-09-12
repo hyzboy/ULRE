@@ -76,17 +76,11 @@ private:
     Geometry* geometry = nullptr;
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
-    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>;
-    using MaterialDataID = MaterialDataAccessor::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        MaterialDataAccessor::InvalidDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
 
-    MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
-    MaterialDataID tick_data_id = InvalidMaterialDataID;
-    MaterialDataID hand_data_ids[3] = {
-        InvalidMaterialDataID,
-        InvalidMaterialDataID,
-        InvalidMaterialDataID};
+    MaterialDataAccessor tick_data_ssbo_accessor{};
+    MaterialDataAccessor hand_data_ssbo_accessors[3]{};
 
     // 刻度数据
     struct TickData
@@ -108,39 +102,10 @@ private:
     HandData hands[3];  // 0=hour, 1=minute, 2=second
 
 private:
-
-    void ReleaseMaterialData()
-    {
-        if (mtl_data_ssbo_accessor)
-        {
-            if (tick_data_id != InvalidMaterialDataID
-             && mtl_data_ssbo_accessor->IsActiveID(tick_data_id))
-                mtl_data_ssbo_accessor->ReleaseID(tick_data_id);
-
-            for (MaterialDataID &data_id : hand_data_ids)
-            {
-                if (data_id != InvalidMaterialDataID
-                 && mtl_data_ssbo_accessor->IsActiveID(data_id))
-                    mtl_data_ssbo_accessor->ReleaseID(data_id);
-
-                data_id = InvalidMaterialDataID;
-            }
-        }
-        else
-        {
-            for (MaterialDataID &data_id : hand_data_ids)
-                data_id = InvalidMaterialDataID;
-        }
-
-        tick_data_id = InvalidMaterialDataID;
-        mtl_data_ssbo_accessor = nullptr;
-    }
-
     bool InitMaterial()
     {
         if (!geometry
-         || !mtl_data_ssbo_accessor
-         || tick_data_id == InvalidMaterialDataID)
+         || !tick_data_ssbo_accessor)
             return false;
 
         clock_recipe.recipe_name = "Clock.PureColor";
@@ -151,9 +116,9 @@ private:
                 clock_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                 graph::mtl::MaterialSSBOType::EmissiveSurface,
-                mtl_data_ssbo_accessor->GetSSBOId(),
+                tick_data_ssbo_accessor.GetSSBOId(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                tick_data_id,
+                tick_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -201,25 +166,15 @@ private:
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
-            "Clock:EmissiveSurface:MaterialData",
-            4);
-        if (!mtl_data_ssbo_accessor)
+        tick_data_ssbo_accessor =
+            domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+        if (!tick_data_ssbo_accessor)
             return false;
-
-        if (!mtl_data_ssbo_accessor->AcquireID(tick_data_id))
-        {
-            ReleaseMaterialData();
-            return false;
-        }
 
         graph::ssbo::EmissiveSurfaceRow tick_material_data{};
         tick_material_data.color = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-        if (!mtl_data_ssbo_accessor->WriteByID(tick_data_id, tick_material_data))
-        {
-            ReleaseMaterialData();
+        if (!tick_data_ssbo_accessor.Write(tick_material_data))
             return false;
-        }
 
         Color4f hand_colors[3] = {
             Color4f(1.0f, 0.0f, 0.0f, 1.0f),
@@ -228,24 +183,17 @@ private:
         };
         for (uint i = 0; i < 3; ++i)
         {
-            if (!mtl_data_ssbo_accessor->AcquireID(hand_data_ids[i]))
-            {
-                ReleaseMaterialData();
+            hand_data_ssbo_accessors[i] =
+                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+            if (!hand_data_ssbo_accessors[i])
                 return false;
-            }
 
             graph::ssbo::EmissiveSurfaceRow hand_material_data{};
             hand_material_data.color = hand_colors[i];
-            if (!mtl_data_ssbo_accessor->WriteByID(
-                    hand_data_ids[i],
-                    hand_material_data))
-            {
-                ReleaseMaterialData();
+            if (!hand_data_ssbo_accessors[i].Write(hand_material_data))
                 return false;
-            }
         }
 
-        mtl_data_ssbo_accessor->Commit();
         return true;
     }
 
@@ -294,8 +242,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource tick_struct{};
             tick_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             tick_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            tick_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            tick_struct.data_index = tick_data_id;
+            tick_struct.ssbo_id = tick_data_ssbo_accessor.GetSSBOId();
+            tick_struct.data_index = tick_data_ssbo_accessor.GetDataID();
             tick_struct.use_data_index = true;
             tick_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(tick_struct);
@@ -332,8 +280,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource hand_struct{};
             hand_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             hand_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            hand_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            hand_struct.data_index = hand_data_ids[i];
+            hand_struct.ssbo_id = hand_data_ssbo_accessors[i].GetSSBOId();
+            hand_struct.data_index = hand_data_ssbo_accessors[i].GetDataID();
             hand_struct.use_data_index = true;
             hand_struct.shared_across_instances = false;
             primitive_comp->SetMaterialPrivateDataSlotResource(hand_struct);
@@ -429,7 +377,6 @@ public:
 
     ~ClockApp()
     {
-        ReleaseMaterialData();
     }
 };//class ClockApp:public WorkObject
 

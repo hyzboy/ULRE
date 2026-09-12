@@ -128,10 +128,12 @@ namespace hgl::graph
         // Set graphics context for module manager
         module_manager->SetGraphicsContext(this);
 
-        // Each material payload type owns one shared backing SSBO. Consumers
-        // acquire distinct active row IDs from its registry-owned accessor.
-        if (!material_ssbo_registry->EnsureMaterialDataSSBOs())
+        if (!material_ssbo_registry->IsInitialized())
+        {
+            GLogError(
+                "[GraphicsContext] MaterialSSBOBufferRegistry initialization failed");
             return false;
+        }
 
         return true;
     }

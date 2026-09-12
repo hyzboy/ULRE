@@ -94,13 +94,10 @@ private:
     Geometry *geometry = nullptr;
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
-    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::PBRSurfaceRow>;
-    using MaterialDataID = MaterialDataAccessor::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        MaterialDataAccessor::InvalidDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
 
-    MaterialDataAccessor *material_data_ssbo_accessor = nullptr;
-    MaterialDataID material_data_id = InvalidMaterialDataID;
+    MaterialDataAccessor material_data_ssbo_accessor{};
     graph::ssbo::PBRSurfaceRow sphere_material_data{};
     Sampler *sphere_sampler = nullptr;
     Texture2D *sphere_base_tex = nullptr;
@@ -108,17 +105,6 @@ private:
     Texture2D *sphere_roughness_tex = nullptr;
     Entity *sphere_entity = nullptr;
     std::shared_ptr<PrimitiveComponent> sphere_primitive_comp;
-
-    void ReleaseMaterialData()
-    {
-        if (material_data_ssbo_accessor
-         && material_data_id != InvalidMaterialDataID
-         && material_data_ssbo_accessor->IsActiveID(material_data_id))
-            material_data_ssbo_accessor->ReleaseID(material_data_id);
-
-        material_data_id = InvalidMaterialDataID;
-        material_data_ssbo_accessor = nullptr;
-    }
 
     void DumpOffscreenState(const char *stage)
     {
@@ -170,32 +156,17 @@ private:
         if (!gc)
             return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "graphics context is null");
 
-        ReleaseMaterialData();
-
         auto *domain_manager = gc->GetMaterialSSBOBufferRegistry();
         if (!domain_manager)
             return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "resource domain manager is null");
 
-        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>(
-            "RenderToTexture:OffscreenPass:MaterialData",
-            1);
+        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!material_data_ssbo_accessor)
             return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "CreateSSBO failed");
 
-        if (!material_data_ssbo_accessor->AcquireID(material_data_id))
-        {
-            ReleaseMaterialData();
-            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "material data ID acquisition failed");
-        }
-
         const graph::ssbo::PBRSurfaceRow material_data = sphere_material_data;
-        if (!material_data_ssbo_accessor->WriteByID(material_data_id, material_data))
-        {
-            ReleaseMaterialData();
+        if (!material_data_ssbo_accessor.Write(material_data))
             return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "write material data failed");
-        }
-
-        material_data_ssbo_accessor->Commit();
 
         LogStage("OffscreenPass::InitMaterialDataSSBO", "success");
         return true;
@@ -203,8 +174,6 @@ private:
 public:
     ~OffscreenPass()
     {
-        ReleaseMaterialData();
-
         GraphicsContext *gc = render_context ? render_context->GetGraphicsContext() : nullptr;
         if (!gc)
         {
@@ -326,9 +295,9 @@ public:
                 sphere_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                 graph::mtl::MaterialSSBOType::PBRSurface,
-                material_data_ssbo_accessor->GetSSBOId(),
+                material_data_ssbo_accessor.GetSSBOId(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                material_data_id,
+                material_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
@@ -354,8 +323,8 @@ public:
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
         sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         sphere_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-        sphere_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
-        sphere_struct.data_index = material_data_id;
+        sphere_struct.ssbo_id = material_data_ssbo_accessor.GetSSBOId();
+        sphere_struct.data_index = material_data_ssbo_accessor.GetDataID();
         sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = true;
         prim_comp->SetMaterialPrivateDataSlotResource(sphere_struct);
@@ -409,13 +378,10 @@ private:
 
     PrimitiveAsset cube_asset;
     graph::mtl::MaterialRecipe cube_recipe{};
-    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::PBRSurfaceRow>;
-    using MaterialDataID = MaterialDataAccessor::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        MaterialDataAccessor::InvalidDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
 
-    MaterialDataAccessor *cube_material_data_ssbo_accessor = nullptr;
-    MaterialDataID cube_material_data_id = InvalidMaterialDataID;
+    MaterialDataAccessor cube_material_data_ssbo_accessor{};
     Sampler *cube_sampler = nullptr;
     graph::ssbo::PBRSurfaceRow cube_material_data{};
 
@@ -428,17 +394,6 @@ private:
     float cube_theta = 0.0f;
 
 private:
-    void ReleaseCubeMaterialData()
-    {
-        if (cube_material_data_ssbo_accessor
-         && cube_material_data_id != InvalidMaterialDataID
-         && cube_material_data_ssbo_accessor->IsActiveID(cube_material_data_id))
-            cube_material_data_ssbo_accessor->ReleaseID(cube_material_data_id);
-
-        cube_material_data_id = InvalidMaterialDataID;
-        cube_material_data_ssbo_accessor = nullptr;
-    }
-
     bool SetupMainCamera()
     {
         LogStage("RenderToTextureApp::SetupMainCamera", "begin");
@@ -547,9 +502,9 @@ private:
                 cube_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                 graph::mtl::MaterialSSBOType::PBRSurface,
-                cube_material_data_ssbo_accessor->GetSSBOId(),
+                cube_material_data_ssbo_accessor.GetSSBOId(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                cube_material_data_id,
+                cube_material_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
@@ -574,8 +529,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
         cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         cube_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-        cube_struct.ssbo_id = cube_material_data_ssbo_accessor->GetSSBOId();
-        cube_struct.data_index = cube_material_data_id;
+        cube_struct.ssbo_id = cube_material_data_ssbo_accessor.GetSSBOId();
+        cube_struct.data_index = cube_material_data_ssbo_accessor.GetDataID();
         cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
         cube_prim_comp->SetMaterialPrivateDataSlotResource(cube_struct);
@@ -590,34 +545,17 @@ private:
         if (!ecs_context)
             return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "invalid input pointers");
 
-        ReleaseCubeMaterialData();
-
         auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "resource domain manager is null");
 
-        cube_material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>(
-            "RenderToTexture:MainScene:MaterialData",
-            1);
+        cube_material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!cube_material_data_ssbo_accessor)
             return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "CreateSSBO failed");
 
-        if (!cube_material_data_ssbo_accessor->AcquireID(cube_material_data_id))
-        {
-            ReleaseCubeMaterialData();
-            return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "material data ID acquisition failed");
-        }
-
         const graph::ssbo::PBRSurfaceRow material_data = cube_material_data;
-        if (!cube_material_data_ssbo_accessor->WriteByID(
-                cube_material_data_id,
-                material_data))
-        {
-            ReleaseCubeMaterialData();
+        if (!cube_material_data_ssbo_accessor.Write(material_data))
             return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "write material data failed");
-        }
-
-        cube_material_data_ssbo_accessor->Commit();
 
         LogStage("RenderToTextureApp::InitMaterialDataSSBO", "success");
         return true;
@@ -636,7 +574,6 @@ public:
             }
         }
 
-        ReleaseCubeMaterialData();
         cube_sampler = nullptr;
         base_tex = nullptr;
         fallback_albedo = nullptr;

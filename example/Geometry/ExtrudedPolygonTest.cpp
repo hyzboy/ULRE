@@ -48,14 +48,11 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>;
-    using MaterialDataID = MaterialDataAccessor::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        MaterialDataAccessor::InvalidDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
-    MaterialDataID material_data_id = InvalidMaterialDataID;
+    MaterialDataAccessor mtl_data_ssbo_accessor{};
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;
@@ -68,46 +65,20 @@ private:
 
 private:
 
-    void ReleaseMaterialData()
-    {
-        if (mtl_data_ssbo_accessor
-         && material_data_id != InvalidMaterialDataID
-         && mtl_data_ssbo_accessor->IsActiveID(material_data_id))
-            mtl_data_ssbo_accessor->ReleaseID(material_data_id);
-
-        material_data_id = InvalidMaterialDataID;
-        mtl_data_ssbo_accessor = nullptr;
-    }
-
     bool InitMDP()
     {
-        ReleaseMaterialData();
-
         auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
-            "ExtrudedPolygonTest:MaterialData",
-            1);
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        if (!mtl_data_ssbo_accessor->AcquireID(material_data_id))
-        {
-            ReleaseMaterialData();
-            return false;
-        }
-
         graph::ssbo::EmissiveSurfaceRow material_data{};
         material_data.color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
-        if (!mtl_data_ssbo_accessor->WriteByID(material_data_id, material_data))
-        {
-            ReleaseMaterialData();
+        if (!mtl_data_ssbo_accessor.Write(material_data))
             return false;
-        }
-
-        mtl_data_ssbo_accessor->Commit();
 
         mesh_recipe.recipe_name = "ExtrudedPolygonTest.DebugNormalColor";
         mesh_recipe.mtl_def_id = "DebugNormalColor";
@@ -116,9 +87,9 @@ private:
                 mesh_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                 graph::mtl::MaterialSSBOType::EmissiveSurface,
-                mtl_data_ssbo_accessor->GetSSBOId(),
+                mtl_data_ssbo_accessor.GetSSBOId(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                material_data_id,
+                mtl_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -227,8 +198,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
         mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         mesh_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-        mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-        mesh_struct.data_index = material_data_id;
+        mesh_struct.ssbo_id = mtl_data_ssbo_accessor.GetSSBOId();
+        mesh_struct.data_index = mtl_data_ssbo_accessor.GetDataID();
         mesh_struct.use_data_index = true;
         mesh_struct.shared_across_instances = true;
         prim_comp->SetMaterialPrivateDataSlotResource(mesh_struct);
@@ -303,7 +274,6 @@ public:
         SAFE_CLEAR(prim_circle_cylinder);
         SAFE_CLEAR(prim_triangle);
         SAFE_CLEAR(prim_pentagon);
-        ReleaseMaterialData();
     }
 
     bool Init() override

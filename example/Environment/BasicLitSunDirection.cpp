@@ -88,14 +88,11 @@ private:
     std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
 #endif//DRAW_GIZMO
 
-    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::PBRSurfaceRow>;
-    using MaterialDataID = MaterialDataAccessor::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        MaterialDataAccessor::InvalidDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    MaterialDataAccessor *material_data_ssbo_accessor = nullptr;
-    MaterialDataID material_data_id = InvalidMaterialDataID;
+    MaterialDataAccessor material_data_ssbo_accessor{};
     VertexDataManager* mesh_vdm = nullptr;
 
     MeshEntry* floor_mesh = nullptr;
@@ -108,17 +105,6 @@ private:
     std::vector<std::unique_ptr<MeshEntry>> meshes;
 
 private:
-
-    void ReleaseMaterialData()
-    {
-        if (material_data_ssbo_accessor
-         && material_data_id != InvalidMaterialDataID
-         && material_data_ssbo_accessor->IsActiveID(material_data_id))
-            material_data_ssbo_accessor->ReleaseID(material_data_id);
-
-        material_data_id = InvalidMaterialDataID;
-        material_data_ssbo_accessor = nullptr;
-    }
 
     bool InitEnvironmentControl()
     {
@@ -227,38 +213,24 @@ private:
         mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
 
-        ReleaseMaterialData();
-
         auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>(
-            "BasicLitSunDir:Standard:MI",
-            1);
+        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!material_data_ssbo_accessor)
             return false;
 
-        if (!material_data_ssbo_accessor->AcquireID(material_data_id))
-        {
-            ReleaseMaterialData();
+        if (!material_data_ssbo_accessor.Write(material_data))
             return false;
-        }
-
-        if (!material_data_ssbo_accessor->WriteByID(material_data_id, material_data))
-        {
-            ReleaseMaterialData();
-            return false;
-        }
-        material_data_ssbo_accessor->Commit();
 
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             mesh_recipe,
             graph::mtl::DefaultMaterialPrivateDataSlotName,
             graph::mtl::MaterialSSBOType::PBRSurface,
-            material_data_ssbo_accessor->GetSSBOId(),
+            material_data_ssbo_accessor.GetSSBOId(),
             graph::mtl::DefaultMaterialPrivateDataSlot,
-            material_data_id,
+            material_data_ssbo_accessor.GetDataID(),
             true,
             true);
     }
@@ -428,8 +400,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource floor_struct{};
             floor_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             floor_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-            floor_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
-            floor_struct.data_index = material_data_id;
+            floor_struct.ssbo_id = material_data_ssbo_accessor.GetSSBOId();
+            floor_struct.data_index = material_data_ssbo_accessor.GetDataID();
             floor_struct.use_data_index = true;
             floor_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(floor_struct);
@@ -466,8 +438,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
             mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             mesh_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-            mesh_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
-            mesh_struct.data_index = material_data_id;
+            mesh_struct.ssbo_id = material_data_ssbo_accessor.GetSSBOId();
+            mesh_struct.data_index = material_data_ssbo_accessor.GetDataID();
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(mesh_struct);
@@ -528,7 +500,6 @@ private:
 public:
     ~BasicLitSunDirectionApp()
     {
-        ReleaseMaterialData();
         SAFE_CLEAR(mesh_vdm)
     }
 

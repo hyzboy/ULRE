@@ -72,7 +72,7 @@ namespace hgl::ecs
             hgl::graph::DeviceBuffer *buffer = nullptr;
             uint32_t element_capacity = 0;
             uint32_t byte_stride = 0;
-            uint32_t data_index = uint32_t(-1);  // ActiveArrayView row DataID in the shared SSBO.
+            uint32_t data_index = uint32_t(-1);  // Material data row ID in the shared SSBO.
             bool use_data_index = false;         // Must be true for a material data resource.
             bool shared_across_instances = false;
             bool authored = false;

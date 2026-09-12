@@ -53,15 +53,12 @@ private:
     ECSContext *ecs_context = nullptr;
     Entity *camera_entity = nullptr;
 
-    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>;
-    using MaterialDataID = MaterialDataAccessor::DataID;
-    static constexpr MaterialDataID InvalidMaterialDataID =
-        MaterialDataAccessor::InvalidDataID;
+    using MaterialDataAccessor =
+        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
-    MaterialDataID material_data_id = InvalidMaterialDataID;
+    MaterialDataAccessor mtl_data_ssbo_accessor{};
 
     Geometry *geometry = nullptr;
     struct CubeNode
@@ -116,48 +113,23 @@ private:
     }
 
 private:
-    void ReleaseMaterialData()
-    {
-        if (mtl_data_ssbo_accessor
-         && material_data_id != InvalidMaterialDataID
-         && mtl_data_ssbo_accessor->IsActiveID(material_data_id))
-            mtl_data_ssbo_accessor->ReleaseID(material_data_id);
-
-        material_data_id = InvalidMaterialDataID;
-        mtl_data_ssbo_accessor = nullptr;
-    }
-
     bool InitMaterial()
     {
         if (!geometry)
             return false;
 
-        ReleaseMaterialData();
-
         auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
-            "RecursiveCube:MaterialData",
-            1);
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        if (!mtl_data_ssbo_accessor->AcquireID(material_data_id))
-        {
-            ReleaseMaterialData();
-            return false;
-        }
-
         graph::ssbo::EmissiveSurfaceRow material_data{};
         material_data.color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        if (!mtl_data_ssbo_accessor->WriteByID(material_data_id, material_data))
-        {
-            ReleaseMaterialData();
+        if (!mtl_data_ssbo_accessor.Write(material_data))
             return false;
-        }
-        mtl_data_ssbo_accessor->Commit();
 
         cube_recipe.recipe_name = "RecursiveCube.DebugNormalColor";
         cube_recipe.mtl_def_id = "DebugNormalColor";
@@ -166,9 +138,9 @@ private:
                 cube_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                 graph::mtl::MaterialSSBOType::EmissiveSurface,
-                mtl_data_ssbo_accessor->GetSSBOId(),
+                mtl_data_ssbo_accessor.GetSSBOId(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                material_data_id,
+                mtl_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -226,13 +198,13 @@ private:
 
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetPrimitiveAsset(&cube_asset);
-        if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor->GetSSBOId() != 0)
+        if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor.GetSSBOId() != 0)
         {
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
             cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             cube_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            cube_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            cube_struct.data_index = material_data_id;
+            cube_struct.ssbo_id = mtl_data_ssbo_accessor.GetSSBOId();
+            cube_struct.data_index = mtl_data_ssbo_accessor.GetDataID();
             cube_struct.use_data_index = true;
             cube_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(cube_struct);
@@ -330,7 +302,6 @@ public:
     ~RecursiveCubeApp()
     {
         SAFE_CLEAR(geometry)
-        ReleaseMaterialData();
     }
 
     bool Init() override

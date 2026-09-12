@@ -71,55 +71,11 @@ private:
 
     struct MaterialData
     {
-        using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>;
-        using DataID = MaterialDataAccessor::DataID;
-        static constexpr DataID InvalidDataID = MaterialDataAccessor::InvalidDataID;
+        using MaterialDataAccessor =
+            graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
 
         GeometryVertexFormat geometry_vertex_format;
-        MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
-        DataID color_data_ids[COLOR_COUNT] = {
-            InvalidDataID,
-            InvalidDataID,
-            InvalidDataID,
-            InvalidDataID,
-            InvalidDataID,
-            InvalidDataID,
-            InvalidDataID,
-            InvalidDataID};
-        uint32_t ssbo_count = 0;
-
-        MaterialData()
-        {
-            for (DataID &data_id : color_data_ids)
-                data_id = InvalidDataID;
-        }
-
-        void ReleaseMaterialData()
-        {
-            if (mtl_data_ssbo_accessor)
-            {
-                for (DataID &data_id : color_data_ids)
-                {
-                    if (data_id != InvalidDataID
-                     && mtl_data_ssbo_accessor->IsActiveID(data_id))
-                        mtl_data_ssbo_accessor->ReleaseID(data_id);
-
-                    data_id = InvalidDataID;
-                }
-            }
-            else
-            {
-                for (DataID &data_id : color_data_ids)
-                    data_id = InvalidDataID;
-            }
-
-            mtl_data_ssbo_accessor = nullptr;
-        }
-
-        ~MaterialData()
-        {
-            ReleaseMaterialData();
-        }
+        MaterialDataAccessor mtl_data_ssbo_accessors[COLOR_COUNT]{};
     };
 
     MaterialData solid;
@@ -139,44 +95,28 @@ private:
 
 private:
 
-    bool InitMaterialForDBS(MaterialData *md, const char *tag)
+    bool InitMaterialForDBS(MaterialData *md)
     {
         if (!md)
             return false;
-
-        md->ReleaseMaterialData();
 
         auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
-        md->ssbo_count = color_count;
-        md->mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
-            tag,
-            color_count);
-        if (!md->mtl_data_ssbo_accessor)
-            return false;
-
         for (uint32_t i = 0; i < color_count; ++i)
         {
-            if (!md->mtl_data_ssbo_accessor->AcquireID(md->color_data_ids[i]))
-            {
-                md->ReleaseMaterialData();
+            md->mtl_data_ssbo_accessors[i] =
+                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+            if (!md->mtl_data_ssbo_accessors[i])
                 return false;
-            }
 
             graph::ssbo::EmissiveSurfaceRow material_data{};
             material_data.color = GetColor4f(TestColor[i], 1.0f);
-            if (!md->mtl_data_ssbo_accessor->WriteByID(
-                    md->color_data_ids[i],
-                    material_data))
-            {
-                md->ReleaseMaterialData();
+            if (!md->mtl_data_ssbo_accessors[i].Write(material_data))
                 return false;
-            }
         }
-        md->mtl_data_ssbo_accessor->Commit();
 
         return true;
     }
@@ -187,7 +127,7 @@ private:
         if (solid.geometry_vertex_format.GetCount() == 0)
             return false;
 
-        return InitMaterialForDBS(&solid, "LoadScene:SolidMaterialData");
+        return InitMaterialForDBS(&solid);
     }
 
     bool TryLoadStaticMeshScene()
@@ -215,9 +155,9 @@ private:
                 scene_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                 graph::mtl::MaterialSSBOType::EmissiveSurface,
-                solid.mtl_data_ssbo_accessor->GetSSBOId(),
+                solid.mtl_data_ssbo_accessors[0].GetSSBOId(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                solid.color_data_ids[0],
+                solid.mtl_data_ssbo_accessors[0].GetDataID(),
                 true,
                 true))
             return false;
@@ -273,8 +213,10 @@ private:
                 hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource scene_struct{};
                 scene_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
                 scene_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-                scene_struct.ssbo_id = solid.mtl_data_ssbo_accessor->GetSSBOId();
-                scene_struct.data_index = solid.color_data_ids[(entity_idx - 1) % COLOR_COUNT];
+                scene_struct.ssbo_id =
+                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetSSBOId();
+                scene_struct.data_index =
+                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetDataID();
                 scene_struct.use_data_index = true;
                 scene_struct.shared_across_instances = true;
                 se.primitive_comp->SetMaterialPrivateDataSlotResource(scene_struct);

@@ -1,8 +1,11 @@
 #include <hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include <hgl/graph/module/BufferManager.h>
-#include <hgl/vk/buffer/DeviceBuffer.h>
 #include <hgl/log/Log.h>
+#include <hgl/type/Smart.h>
+#include <hgl/vk/buffer/DeviceBuffer.h>
+
+#include <climits>
+#include <cstring>
 
 namespace hgl::graph
 {
@@ -10,298 +13,360 @@ GRAPH_MODULE_CONSTRUCT(MaterialSSBOBufferRegistry)
 {
 }
 
+void MaterialSSBOBufferRegistry::OnGraphicsContextChanged(
+    GraphicsContext *graphics_context)
+{
+    if (!graphics_context || material_data_buffers_initialized)
+        return;
+
+    if (!InitializeMaterialDataBuffers())
+    {
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Failed to create default material data buffers");
+    }
+}
+
 void MaterialSSBOBufferRegistry::Release()
 {
-    auto *buffer_manager = GetGraphicsContext() ? GetGraphicsContext()->GetBufferManager() : nullptr;
-
-    ResetMaterialDataAccessors();
-
-    for (auto &kv : material_domain_map)
+    for (uint32_t index = 0; index < MaterialSSBOTypeCount; ++index)
     {
-        auto &binding = kv.second;
-        if (!binding.buffer)
-            continue;
+        auto &storage = material_buffers[index];
+        active_id_managers[index].Clear(true);
 
-        if (buffer_manager)
-            buffer_manager->Release(binding.buffer);
-        else
-            delete binding.buffer;
+        if (storage.buffer)
+        {
+            auto *gpu_buffer = storage.buffer->GetGPUBuffer();
+            if (storage.cpu_base && gpu_buffer)
+                gpu_buffer->Unmap();
 
-        binding.buffer = nullptr;
-        binding.element_capacity = 0;
-        binding.element_stride = 0;
+            SAFE_CLEAR(storage.buffer);
+        }
+
+        storage = {};
     }
 
-    row_buffers.Clear();
-    material_domain_map.Clear();
-    next_ssbo_id = 1;
+    material_data_buffers_initialized = false;
 }
 
-bool MaterialSSBOBufferRegistry::RegisterMaterialBuffer(const mtl::MaterialSSBOType material_type,
-                                                       DeviceBuffer *buffer,
-                                                       const uint32_t element_capacity)
+bool MaterialSSBOBufferRegistry::TryGetMaterialBinding(
+    const mtl::MaterialSSBOType material_type,
+    MaterialSSBOBufferBinding &out_binding) const
 {
-    if (!mtl::IsMaterialSSBOType(material_type)
-     || !buffer
-     || element_capacity == 0)
-    {
-        GLogError(
-            "[MaterialSSBOBufferRegistry] Register material buffer rejected: type=%s buffer=%p capacity=%u",
-            mtl::GetMaterialSSBOTypeName(material_type),
-            buffer,
-            element_capacity);
-        return false;
-    }
-
-    const uint32_t key = static_cast<uint32_t>(material_type);
-    if (material_domain_map.GetValuePointer(key))
-    {
-        GLogError(
-            "[MaterialSSBOBufferRegistry] Material buffer already registered: type=%s",
-            mtl::GetMaterialSSBOTypeName(material_type));
-        return false;
-    }
-
-    MaterialSSBOBufferBinding binding{};
-    binding.material_ssbo_type = material_type;
-    binding.ssbo_id = AllocateMaterialSSBOId();
-    binding.buffer = buffer;
-    binding.element_capacity = element_capacity;
-    binding.element_stride = mtl::GetMaterialSSBOTypeStructStride(material_type);
-
-    if (binding.element_stride == 0)
+    const auto *storage = GetMaterialBufferStorage(material_type);
+    if (!storage || !storage->buffer || storage->ssbo_id == 0)
         return false;
 
-    const uint64_t gpu_base = GetDevice() ? GetDevice()->GetBufferDeviceAddress(buffer->GetBuffer()) : 0;
-    if (gpu_base == 0)
-        return false;
-
-    void *cpu_base = nullptr;
-    if (!BindMaterialDataAccessor(
-            material_type,
-            binding.ssbo_id,
-            buffer,
-            element_capacity,
-            cpu_base))
-        return false;
-
-    material_domain_map[key] = binding;
-    row_buffers[binding.ssbo_id] = MaterialRowBufferInfo{
-        material_type,
-        cpu_base,
-        gpu_base,
-        binding.element_stride,
-        binding.element_capacity,
-        buffer};
+    out_binding.material_ssbo_type = material_type;
+    out_binding.ssbo_id = storage->ssbo_id;
+    out_binding.buffer = storage->buffer;
+    out_binding.element_capacity = storage->row_capacity;
+    out_binding.element_stride = storage->row_bytes;
     return true;
 }
 
-bool MaterialSSBOBufferRegistry::TryGetMaterialBinding(const mtl::MaterialSSBOType material_type,
-                                                      MaterialSSBOBufferBinding &out_binding) const
+DeviceBuffer *MaterialSSBOBufferRegistry::GetMaterialBuffer(
+    const mtl::MaterialSSBOType material_type) const
 {
-    const auto *binding =
-        material_domain_map.GetValuePointer(static_cast<uint32_t>(material_type));
-    if (!binding)
-        return false;
-
-    out_binding = *binding;
-    return true;
+    const auto *storage = GetMaterialBufferStorage(material_type);
+    return storage ? storage->buffer : nullptr;
 }
 
-DeviceBuffer *MaterialSSBOBufferRegistry::GetMaterialBuffer(const mtl::MaterialSSBOType material_type) const
-{
-    MaterialSSBOBufferBinding binding{};
-    return TryGetMaterialBinding(material_type, binding) ? binding.buffer : nullptr;
-}
-
-const IGPUBuffer *MaterialSSBOBufferRegistry::GetMaterialGPUBuffer(const mtl::MaterialSSBOType material_type) const
+const IGPUBuffer *MaterialSSBOBufferRegistry::GetMaterialGPUBuffer(
+    const mtl::MaterialSSBOType material_type) const
 {
     const auto *buffer = GetMaterialBuffer(material_type);
     return buffer ? buffer->GetGPUBuffer() : nullptr;
 }
 
-uint32_t MaterialSSBOBufferRegistry::GetMaterialElementCapacity(const mtl::MaterialSSBOType material_type) const
+uint32_t MaterialSSBOBufferRegistry::GetMaterialElementCapacity(
+    const mtl::MaterialSSBOType material_type) const
 {
-    MaterialSSBOBufferBinding binding{};
-    return TryGetMaterialBinding(material_type, binding) ? binding.element_capacity : 0;
+    const auto *storage = GetMaterialBufferStorage(material_type);
+    return storage ? storage->row_capacity : 0;
 }
 
-uint32_t MaterialSSBOBufferRegistry::GetMaterialSSBOId(const mtl::MaterialSSBOType material_type) const
+uint32_t MaterialSSBOBufferRegistry::GetMaterialSSBOId(
+    const mtl::MaterialSSBOType material_type) const
 {
-    MaterialSSBOBufferBinding binding{};
-    return TryGetMaterialBinding(material_type, binding) ? binding.ssbo_id : 0;
+    const auto *storage = GetMaterialBufferStorage(material_type);
+    return storage ? storage->ssbo_id : 0;
 }
 
 bool MaterialSSBOBufferRegistry::IsMaterialDataIDActive(
     const mtl::MaterialSSBOType material_type,
     const uint32_t data_id) const
 {
-    switch (material_type)
-    {
-    case mtl::MaterialSSBOType::PBRSurface:
-        return pbr_surface_rows.IsActiveID(data_id);
-    case mtl::MaterialSSBOType::EmissiveSurface:
-        return emissive_surface_rows.IsActiveID(data_id);
-    case mtl::MaterialSSBOType::TransmissionSurface:
-        return transmission_surface_rows.IsActiveID(data_id);
-    default:
+    const auto *id_manager = GetMaterialDataIDManager(material_type);
+    if (!id_manager || data_id > static_cast<uint32_t>(INT_MAX))
         return false;
-    }
+
+    return id_manager->IsActive(static_cast<int>(data_id));
 }
 
-bool MaterialSSBOBufferRegistry::EnsureMaterialDataSSBO(const mtl::MaterialSSBOType material_type,
-                                                       const AnsiString &name,
-                                                       const uint32_t element_count,
-                                                       const SharingMode sm)
+bool MaterialSSBOBufferRegistry::CreateMaterialDataBuffer(
+    const mtl::MaterialSSBOType material_type,
+    const AnsiString &name)
 {
-    if (!mtl::IsMaterialSSBOType(material_type) || element_count == 0)
+    if (!mtl::IsMaterialSSBOType(material_type))
     {
         GLogError(
-            "[MaterialSSBOBufferRegistry] Ensure material buffer rejected: type=%s minimum_capacity=%u",
-            mtl::GetMaterialSSBOTypeName(material_type),
-            element_count);
+            "[MaterialSSBOBufferRegistry] Default material buffer rejected invalid type=%s",
+            mtl::GetMaterialSSBOTypeName(material_type));
         return false;
     }
 
-    const uint32_t key = static_cast<uint32_t>(material_type);
-    if (const auto *existing =
-            material_domain_map.GetValuePointer(key);
-        existing && existing->buffer)
+    auto *storage = GetMaterialBufferStorage(material_type);
+    if (!storage || storage->buffer)
     {
-        if (existing->element_capacity >= element_count)
-            return true;
-
         GLogError(
-            "[MaterialSSBOBufferRegistry] Material data buffer cannot grow: type=%s capacity=%u requested=%u",
-            mtl::GetMaterialSSBOTypeName(material_type),
-            existing->element_capacity,
-            element_count);
+            "[MaterialSSBOBufferRegistry] Duplicate default material buffer: type=%s",
+            mtl::GetMaterialSSBOTypeName(material_type));
         return false;
     }
 
     VulkanDevice *device = GetDevice();
     if (!device)
+    {
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Default material buffer creation failed without device: type=%s",
+            mtl::GetMaterialSSBOTypeName(material_type));
         return false;
+    }
 
-    const uint32_t row_stride = mtl::GetMaterialSSBOTypeStructStride(material_type);
+    const uint32_t row_stride =
+        mtl::GetMaterialSSBOTypeStructStride(material_type);
     if (row_stride == 0)
+    {
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Default material buffer rejected zero row stride: type=%s",
+            mtl::GetMaterialSSBOTypeName(material_type));
         return false;
+    }
 
-    const uint32_t element_capacity =
-        element_count > DefaultMaterialDataElementCapacity
-            ? element_count
-            : DefaultMaterialDataElementCapacity;
-    DeviceBuffer *buf = device->CreateArenaBuffer(
+    AutoDelete<DeviceBuffer> buffer(device->CreateArenaBuffer(
         name,
-        VkDeviceSize(row_stride) * element_capacity);
-    if (!buf)
+        VkDeviceSize(row_stride) * DefaultMaterialDataElementCapacity));
+    if (!buffer)
+    {
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Default material buffer allocation failed: type=%s",
+            mtl::GetMaterialSSBOTypeName(material_type));
         return false;
+    }
 
-    const uint64_t gpu_base = device->GetBufferDeviceAddress(buf->GetBuffer());
+    auto *gpu_buffer = buffer->GetGPUBuffer();
+    if (!gpu_buffer)
+    {
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Default material buffer has no GPU buffer: type=%s",
+            mtl::GetMaterialSSBOTypeName(material_type));
+        return false;
+    }
+
+    const uint64_t gpu_base = device->GetBufferDeviceAddress(buffer->GetBuffer());
     if (gpu_base == 0)
     {
-        delete buf;
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Default material buffer has no device address: type=%s",
+            mtl::GetMaterialSSBOTypeName(material_type));
         return false;
     }
 
-    MaterialSSBOBufferBinding binding{};
-    binding.material_ssbo_type = material_type;
-    binding.ssbo_id = AllocateMaterialSSBOId();
-    binding.buffer = buf;
-    binding.element_capacity = element_capacity;
-    binding.element_stride = row_stride;
-
-    void *active_cpu_base = nullptr;
-    if (!BindMaterialDataAccessor(
-            material_type,
-            binding.ssbo_id,
-            buf,
-            element_capacity,
-            active_cpu_base))
+    const VkDeviceSize buffer_bytes =
+        VkDeviceSize(row_stride) * DefaultMaterialDataElementCapacity;
+    void *cpu_base = gpu_buffer->Map(0, buffer_bytes);
+    if (!cpu_base)
     {
-        delete buf;
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Default material buffer mapping failed: type=%s",
+            mtl::GetMaterialSSBOTypeName(material_type));
         return false;
     }
 
-    memset(active_cpu_base, 0, static_cast<size_t>(row_stride) * element_capacity);
+    memset(cpu_base, 0, static_cast<size_t>(buffer_bytes));
+    gpu_buffer->MarkDirty(0, buffer_bytes);
 
-    material_domain_map[key] = binding;
-    row_buffers[binding.ssbo_id] = MaterialRowBufferInfo{
-        material_type,
-        active_cpu_base,
-        gpu_base,
-        row_stride,
-        element_capacity,
-        buf};
+    storage->buffer = buffer.Finish();
+    storage->cpu_base = cpu_base;
+    storage->gpu_base = gpu_base;
+    storage->ssbo_id = mtl::MakeRecipeSSBOId(
+        GetMaterialSSBOTypeIndex(material_type) + 1u);
+    storage->row_bytes = row_stride;
+    storage->row_capacity = DefaultMaterialDataElementCapacity;
     return true;
 }
 
-bool MaterialSSBOBufferRegistry::BindMaterialDataAccessor(
+bool MaterialSSBOBufferRegistry::AcquireMaterialDataID(
     const mtl::MaterialSSBOType material_type,
-    const uint32_t ssbo_id,
-    DeviceBuffer *buffer,
-    const uint32_t element_count,
-    void *&out_cpu_base)
+    uint32_t &out_data_id)
 {
-    out_cpu_base = nullptr;
-    if (!mtl::IsMaterialSSBOType(material_type)
-     || !buffer
-     || element_count == 0
-     || ssbo_id == 0)
-        return false;
+    out_data_id = MaterialSSBODataAccessor<ssbo::PBRSurfaceRow>::InvalidDataID;
 
-    switch (material_type)
+    const auto *storage = GetMaterialBufferStorage(material_type);
+    auto *id_manager = GetMaterialDataIDManager(material_type);
+    if (!storage || !storage->buffer || !storage->cpu_base || !id_manager)
     {
-    case mtl::MaterialSSBOType::PBRSurface:
-        if (!pbr_surface_rows.Bind(buffer, element_count))
-            return false;
-        pbr_surface_rows.GetArrayView().ssbo_id = ssbo_id;
-        pbr_surface_rows.GetArrayView().ssbo_type =
-            mtl::SSBOType::UserDefined;
-        out_cpu_base = pbr_surface_rows.GetArrayView().GetData();
-        return out_cpu_base != nullptr;
-    case mtl::MaterialSSBOType::EmissiveSurface:
-        if (!emissive_surface_rows.Bind(buffer, element_count))
-            return false;
-        emissive_surface_rows.GetArrayView().ssbo_id = ssbo_id;
-        emissive_surface_rows.GetArrayView().ssbo_type =
-            mtl::SSBOType::UserDefined;
-        out_cpu_base = emissive_surface_rows.GetArrayView().GetData();
-        return out_cpu_base != nullptr;
-    case mtl::MaterialSSBOType::TransmissionSurface:
-        if (!transmission_surface_rows.Bind(buffer, element_count))
-            return false;
-        transmission_surface_rows.GetArrayView().ssbo_id = ssbo_id;
-        transmission_surface_rows.GetArrayView().ssbo_type =
-            mtl::SSBOType::UserDefined;
-        out_cpu_base = transmission_surface_rows.GetArrayView().GetData();
-        return out_cpu_base != nullptr;
-    default:
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Material data ID allocation failed without an initialized buffer: type=%s",
+            mtl::GetMaterialSSBOTypeName(material_type));
         return false;
     }
+
+    if (storage->row_capacity == 0
+     || storage->row_capacity > static_cast<uint32_t>(INT_MAX))
+    {
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Material data ID allocation rejected invalid capacity: type=%s capacity=%u",
+            mtl::GetMaterialSSBOTypeName(material_type),
+            storage->row_capacity);
+        return false;
+    }
+
+    int data_id = -1;
+    if (id_manager->HasIdleID())
+    {
+        data_id = id_manager->GetIdle();
+    }
+    else
+    {
+        if (id_manager->GetHistoryMaxId() >=
+            static_cast<int>(storage->row_capacity))
+        {
+            GLogError(
+                "[MaterialSSBOBufferRegistry] Material data ID allocation exceeded capacity: type=%s capacity=%u",
+                mtl::GetMaterialSSBOTypeName(material_type),
+                storage->row_capacity);
+            return false;
+        }
+
+        if (id_manager->CreateActive(&data_id) != 1)
+        {
+            GLogError(
+                "[MaterialSSBOBufferRegistry] Material data ID allocation failed: type=%s",
+                mtl::GetMaterialSSBOTypeName(material_type));
+            return false;
+        }
+    }
+
+    if (data_id < 0 || static_cast<uint32_t>(data_id) >= storage->row_capacity)
+    {
+        if (data_id >= 0 && id_manager->IsActive(data_id))
+            id_manager->Release(&data_id);
+
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Material data ID allocation produced an invalid ID: type=%s id=%d capacity=%u",
+            mtl::GetMaterialSSBOTypeName(material_type),
+            data_id,
+            storage->row_capacity);
+        return false;
+    }
+
+    out_data_id = static_cast<uint32_t>(data_id);
+    return true;
 }
 
-void MaterialSSBOBufferRegistry::ResetMaterialDataAccessors()
+bool MaterialSSBOBufferRegistry::ReleaseMaterialDataID(
+    const mtl::MaterialSSBOType material_type,
+    const uint32_t data_id)
 {
-    pbr_surface_rows.Reset();
-    pbr_surface_rows.GetArrayView().ssbo_id = 0;
-    emissive_surface_rows.Reset();
-    emissive_surface_rows.GetArrayView().ssbo_id = 0;
-    transmission_surface_rows.Reset();
-    transmission_surface_rows.GetArrayView().ssbo_id = 0;
+    auto *id_manager = GetMaterialDataIDManager(material_type);
+    if (!id_manager
+     || data_id == MaterialSSBODataAccessor<ssbo::PBRSurfaceRow>::InvalidDataID
+     || data_id > static_cast<uint32_t>(INT_MAX)
+     || !id_manager->IsActive(static_cast<int>(data_id)))
+    {
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Material data ID release rejected inactive ID: type=%s id=%u",
+            mtl::GetMaterialSSBOTypeName(material_type),
+            data_id);
+        return false;
+    }
+
+    const int raw_data_id = static_cast<int>(data_id);
+    return id_manager->Release(&raw_data_id) == 1;
 }
 
-bool MaterialSSBOBufferRegistry::EnsureMaterialDataSSBOs()
+bool MaterialSSBOBufferRegistry::CommitMaterialData(
+    const mtl::MaterialSSBOType material_type,
+    const uint32_t data_id)
 {
-    return EnsureMaterialDataSSBO(mtl::MaterialSSBOType::PBRSurface,
-                                  AnsiString("Default:PBRSurfaceMaterialData"),
-                                  DefaultMaterialDataElementCapacity)
-        && EnsureMaterialDataSSBO(mtl::MaterialSSBOType::EmissiveSurface,
-                                  AnsiString("Default:EmissiveSurfaceMaterialData"),
-                                  DefaultMaterialDataElementCapacity)
-        && EnsureMaterialDataSSBO(mtl::MaterialSSBOType::TransmissionSurface,
-                                  AnsiString("Default:TransmissionSurfaceMaterialData"),
-                                  DefaultMaterialDataElementCapacity);
+    auto *storage = GetMaterialBufferStorage(material_type);
+    if (!storage
+     || !storage->buffer
+     || !storage->cpu_base
+     || data_id >= storage->row_capacity
+     || !IsMaterialDataIDActive(material_type, data_id))
+    {
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Material data commit rejected invalid row: type=%s id=%u",
+            mtl::GetMaterialSSBOTypeName(material_type),
+            data_id);
+        return false;
+    }
+
+    auto *gpu_buffer = storage->buffer->GetGPUBuffer();
+    if (!gpu_buffer)
+    {
+        GLogError(
+            "[MaterialSSBOBufferRegistry] Material data commit failed without GPU buffer: type=%s id=%u",
+            mtl::GetMaterialSSBOTypeName(material_type),
+            data_id);
+        return false;
+    }
+
+    const VkDeviceSize offset = VkDeviceSize(data_id) * storage->row_bytes;
+    gpu_buffer->MarkDirty(offset, storage->row_bytes);
+    return true;
 }
 
+bool MaterialSSBOBufferRegistry::TryGetRowBuffer(
+    const uint32_t ssbo_id,
+    MaterialRowBufferInfo &out_info) const
+{
+    if (ssbo_id == 0)
+        return false;
+
+    for (uint32_t index = 0; index < MaterialSSBOTypeCount; ++index)
+    {
+        const auto &storage = material_buffers[index];
+        if (storage.ssbo_id != ssbo_id || !storage.buffer)
+            continue;
+
+        out_info.material_ssbo_type = static_cast<mtl::MaterialSSBOType>(
+            index + static_cast<uint32_t>(mtl::MaterialSSBOType::BEGIN_RANGE));
+        out_info.cpu_base = storage.cpu_base;
+        out_info.gpu_base = storage.gpu_base;
+        out_info.row_bytes = storage.row_bytes;
+        out_info.row_capacity = storage.row_capacity;
+        out_info.buffer = storage.buffer;
+        return true;
+    }
+
+    return false;
+}
+
+bool MaterialSSBOBufferRegistry::InitializeMaterialDataBuffers()
+{
+    if (material_data_buffers_initialized)
+        return true;
+
+    ENUM_CLASS_FOR(mtl::MaterialSSBOType, uint32_t, type_index)
+    {
+        const auto material_type =
+            static_cast<mtl::MaterialSSBOType>(type_index);
+        const AnsiString buffer_name =
+            AnsiString("Default:")
+            + AnsiString(mtl::GetMaterialSSBOTypeName(material_type))
+            + AnsiString("MaterialData");
+
+        if (!CreateMaterialDataBuffer(material_type, buffer_name))
+        {
+            Release();
+            return false;
+        }
+    }
+
+    material_data_buffers_initialized = true;
+    return true;
+}
 } // namespace hgl::graph
