@@ -1,5 +1,6 @@
 #include <hgl/mtl/DescriptorContract.h>
 
+#include <hgl/common/ShaderStageDef.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
@@ -132,7 +133,6 @@ namespace hgl::graph::mtl
     bool BuildEffectiveDescriptorContract(
         const DescriptorContract &base_contract,
         const MaterialSSBOType material_private_data,
-        const uint32 material_ssbo_stage_bits,
         DescriptorContract &out_contract)
     {
         out_contract = base_contract;
@@ -149,7 +149,7 @@ namespace hgl::graph::mtl
             entry.ssbo_type = SSBOType::UserDefined;
 
             if (entry.stage_flags == 0)
-                entry.stage_flags = material_ssbo_stage_bits;
+                entry.stage_flags = uint32(ShaderStage::Fragment);
         }
 
         // 数据槽无描述符（Arena 行结构经地址行表寻址）；

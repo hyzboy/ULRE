@@ -7,7 +7,6 @@ namespace hgl::graph::mtl
 {
     class ShaderCodeModuleRegistry;
     constexpr uint32 MaxShaderCodeResourceManifestCodeModules = 64u;
-    constexpr uint32 MaxShaderCodeResourceManifestSSBOs = 64u;
 
     // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
 #define HGL_MODULE_RESOURCE_MANIFEST_ERROR_LIST \
@@ -16,7 +15,6 @@ namespace hgl::graph::mtl
     HGL_ERROR(UnknownCodeModule) \
     HGL_ERROR(CodeModuleCycle) \
     HGL_ERROR(CodeModuleCapacityExceeded) \
-    HGL_ERROR(SSBOCapacityExceeded) \
     HGL_ERROR(ResourceConflict)
 
     enum class ShaderCodeResourceManifestError : uint8
@@ -32,9 +30,6 @@ namespace hgl::graph::mtl
         // dependency order. Pointers reference registry-owned module names.
         const char *code_module_names[MaxShaderCodeResourceManifestCodeModules]{};
         uint32 code_module_count = 0;
-
-        ShaderCodeModuleSSBORequirement ssbos[MaxShaderCodeResourceManifestSSBOs]{};
-        uint32 ssbo_count = 0;
 
         ValueArray<ShaderCodeModuleTextureReferenceRequirement>
             texture_references;

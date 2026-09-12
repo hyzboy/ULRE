@@ -85,19 +85,10 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
 
 static bool MaterialDefinitionRequiresPayloadRow(
     const MaterialSSBOType material_private_data,
-    const MaterialDefinition *material_definition,
-    const ShaderCodeResourceManifest *resource_manifest) noexcept
+    const MaterialDefinition *material_definition) noexcept
 {
     if (!IsMaterialSSBOType(material_private_data))
         return false;
-
-    if (resource_manifest && resource_manifest->IsValid())
-    {
-        if (resource_manifest->ssbo_count > 0)
-            return true;
-        if (resource_manifest->texture_reference_count > 0)
-            return false;
-    }
 
     if (!material_definition)
         return true;
@@ -129,8 +120,7 @@ bool BuildMaterialSSBODeclarations(
 {
     const bool has_payload = MaterialDefinitionRequiresPayloadRow(
         material_private_data,
-        material_definition,
-        nullptr);
+        material_definition);
     const bool has_texture_references =
         texture_layout && texture_layout->HasReferences();
     if (!has_payload && !has_texture_references)

@@ -1,8 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/mtl/DescriptorSemantic.h>
-#include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/mtl/RenderTemplate.h>
 #include <hgl/type/StrChar.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -199,29 +198,6 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    struct ShaderCodeModuleSSBORequirement
-    {
-        const char *name = nullptr;
-        SSBOType ssbo_type = SSBOType::UserDefined;
-        MaterialSSBOType material_ssbo_type = MaterialSSBOType::PBRSurface;
-        uint32 stage_flags = 0;
-        bool required = true;
-        bool allow_fallback = false;
-    };
-
-    inline bool operator==(const ShaderCodeModuleSSBORequirement &lhs,
-                           const ShaderCodeModuleSSBORequirement &rhs) noexcept
-    {
-        const bool same_name = lhs.name == rhs.name
-            || (lhs.name && rhs.name && hgl::strcmp(lhs.name, rhs.name) == 0);
-        return same_name
-            && lhs.ssbo_type == rhs.ssbo_type
-            && lhs.material_ssbo_type == rhs.material_ssbo_type
-            && lhs.stage_flags == rhs.stage_flags
-            && lhs.required == rhs.required
-            && lhs.allow_fallback == rhs.allow_fallback;
-    }
-
     // Name-keyed texture dependency consumed through MTL_TEX(). The name must
     // resolve to a MaterialDefinition texture declaration before compilation.
     struct ShaderCodeModuleTextureReferenceRequirement
@@ -260,9 +236,6 @@ namespace hgl::graph::mtl
     {
         const char *name = nullptr;
         const char *glsl_code = nullptr;
-
-        const ShaderCodeModuleSSBORequirement *ssbo_requirements = nullptr;
-        uint32 ssbo_requirement_count = 0;
 
         // Capability metadata for file-backed/provider modules. Existing
         // all real modules carry kind/semantic fields.
@@ -307,8 +280,6 @@ namespace hgl::graph::mtl
           && !definition.semantic_provides)
          || (definition.dependency_count > 0
           && !definition.dependencies)
-         || (definition.ssbo_requirement_count > 0
-          && !definition.ssbo_requirements)
          || (definition.texture_reference_requirement_count > 0
           && !definition.texture_reference_requirements))
             return false;

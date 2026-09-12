@@ -16,7 +16,6 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ShaderCodeModule.h>
-#include "builder/DescriptorBuilderCommon.h"
 #include "compile/MaterialShaderEmitter.h"
 #include <cstring>
 #include <cstdio>
@@ -160,8 +159,7 @@ static bool HasDescriptorSemantic(
 // ── 能力子集授权规则表（原 10 分支 switch 表驱动化）────────────────────────
 // 有条件内置资源的 definition 侧授权谓词，与资源目录（DescriptorResourceCatalog）
 // 平行：目录行 engine_builtin=false 且有 definition 侧规则的语义在此登记，
-// 交叉覆盖由下方 static_assert 保证。manifest 侧回退（provider 元数据授权）
-// 不在此表——它是独立的第二授权源，见 ValidateDefinitionCapabilitySubset。
+// 交叉覆盖由下方 static_assert 保证。provider manifest 不再授权材质 payload。
 using DefinitionCapabilityRule =
     bool (*)(const MaterialDefinition &definition,
              const ShaderResourceSlot &req) noexcept;
@@ -215,8 +213,7 @@ static_assert(CapabilityRulesMatchCatalog(),
 static bool ValidateDefinitionCapabilitySubset(
     const MaterialDefinition &definition,
     const ShaderResourceSchema &layout,
-    std::vector<std::string> &diagnostics,
-    const ShaderCodeResourceManifest *manifest)
+    std::vector<std::string> &diagnostics)
 {
     diagnostics.clear();
 
@@ -225,8 +222,8 @@ static bool ValidateDefinitionCapabilitySubset(
         const DescriptorResourceCatalogEntry *cat =
             FindResourceCatalogEntry(req.semantic);
 
-        // 授权三层：① 无条件内置（目录 engine_builtin）→
-        // ② definition 侧规则（能力规则表）→ ③ manifest 侧回退（provider 元数据）。
+        // 授权两层：① 无条件内置（目录 engine_builtin）→
+        // ② definition 侧规则（能力规则表）。
         bool allowed = cat && cat->engine_builtin;
 
         if (!allowed && cat)
@@ -236,20 +233,7 @@ static bool ValidateDefinitionCapabilitySubset(
             if (rule)
                 allowed = rule(definition, req);
             // 未登记规则 = 无 definition 侧授权（Unknown、MaterialTexture/Sampler
-            // 等 bindless 通道）——保持 false 走 manifest 回退
-        }
-
-        if (!allowed && manifest && manifest->IsValid())
-        {
-            for (uint32 i = 0; i < manifest->ssbo_count && !allowed; ++i)
-            {
-                const auto &ssbo = manifest->ssbos[i];
-                if (req.semantic == DescriptorSemantic::MaterialPrivateData
-                 && req.material_ssbo_type == ssbo.material_ssbo_type
-                 && descriptor_builder_common::CStrEqual(req.name.c_str(), ssbo.name))
-                    allowed = true;
-            }
-
+            // 等 bindless 通道）——保持 false
         }
 
         if (allowed)
@@ -351,10 +335,10 @@ static bool CreateBuildContext(
     return true;
 }
 
-// ── Step 3a: 解析有效材质私有数据 SSBO 类型（definition 单一声明 ⊕ provider manifest）────
+// ── Step 3a: 解析有效材质私有数据 SSBO 类型（编译配置单一声明）──────────────
 // 一个材质只有一个私有数据 SSBO（MaterialPrivateData，名字固定
-// DefaultMaterialPrivateDataName）。definition 侧与 manifest 侧
-// 均可选；双源并存时必须类型一致，否则冲突硬失败。
+// DefaultMaterialPrivateDataName），类型由 MaterialDefinition/CompileConfig
+// 传入，不再从 provider manifest 推导。
 static bool ResolveEffectiveMaterialPrivateData(
     const MaterialCompileConfig &config,
     CompileContext &c,
@@ -372,7 +356,6 @@ static bool ResolveEffectiveMaterialPrivateData(
 static bool BuildEffectiveDescriptorEntries(
     const DescriptorContract &base_contract,
     const MaterialSSBOType material_private_data,
-    const uint32_t material_ssbo_stage_bits,
     CompileContext &c,
     DescriptorContract &out_effective_contract,
     std::vector<SerializedDescriptorEntry> &out_entries)
@@ -382,7 +365,6 @@ static bool BuildEffectiveDescriptorEntries(
     if (!BuildEffectiveDescriptorContract(
             base_contract,
             material_private_data,
-            material_ssbo_stage_bits,
             out_effective_contract))
         return c.Fail("invalid effective material descriptor contract");
 
@@ -401,17 +383,14 @@ static bool BuildEffectiveDescriptorEntries(
 // 唯一真源：inc/hgl/mtl/DescriptorResourceCatalog.h（语义→类别/集合/绑定/SBS）。
 // A6-2b-b2：目录只余 SceneGlobal 行（PerDraw/MaterialData 类已随 BDA 化退场），
 // Scene UBO 全局化后 per-material 注册全跳过——本函数为无操作保留（历史骨架，
-// 契约条目均不触发注册；io_material_ssbo_stage_bits 无实际写入者）。
+// 契约条目均不触发注册）。
 static bool RegisterCanonicalDescriptors(
     ShaderBuildContext *ctx,
     const std::vector<SerializedDescriptorEntry> &descriptor_entries,
-    uint32_t &io_material_ssbo_stage_bits,
     CompileContext &c)
 {
     for (const SerializedDescriptorEntry &entry : descriptor_entries)
     {
-        const uint32_t stage_bits = entry.stage_flags;
-
         const DescriptorResourceCatalogEntry *cat =
             FindResourceCatalogEntry(entry.semantic);
         if (!cat)
@@ -421,7 +400,6 @@ static bool RegisterCanonicalDescriptors(
         // （PerDraw/MaterialData 类枚举与分支已删；L2W/L2WIndex/MeshDrawParams
         // 及材质行表全走 BDA，Material 集已退场。）
         (void)cat;
-        (void)stage_bits;
     }
 
     return true;
@@ -467,8 +445,7 @@ static bool BuildAndValidateResourceSchema(
         if (!ValidateDefinitionCapabilitySubset(
                 *config.material_definition,
                 out_schema,
-                capability_diagnostics,
-                config.resource_manifest))
+                capability_diagnostics))
         {
             for (const auto &diag : capability_diagnostics)
             {
@@ -569,18 +546,9 @@ ShaderBuildContext *CompileMaterial(
 
     ShaderBuildContext *ctx = c.ctx;
 
-    uint32_t material_ssbo_stage_bits = uint32_t(ShaderStage::Fragment);
-    if (config.merge_resource_manifest_material_ssbo_stages
-     && config.resource_manifest
-     && config.resource_manifest->IsValid())
-    {
-        for (uint32_t i = 0; i < config.resource_manifest->ssbo_count; ++i)
-            material_ssbo_stage_bits |= config.resource_manifest->ssbos[i].stage_flags;
-    }
-
     // ── Step 3: Add Descriptors from SerializedDescriptorEntry[] ──
-    // Provider metadata contributes the material SSBO to the same canonical
-    // declaration as the material definition (单一声明 ⊕ 单源冲突检测).
+    // MaterialDefinition/CompileConfig supplies the material payload type;
+    // provider metadata no longer contributes descriptor declarations.
     MaterialSSBOType effective_material_private_data = MaterialSSBOType::PBRSurface;
     if (!ResolveEffectiveMaterialPrivateData(config, c, effective_material_private_data))
         return FailCompile(c);
@@ -589,12 +557,11 @@ ShaderBuildContext *CompileMaterial(
     std::vector<SerializedDescriptorEntry> descriptor_entries;
     if (!BuildEffectiveDescriptorEntries(
             base_descriptor_contract, effective_material_private_data,
-            material_ssbo_stage_bits, c,
+            c,
             effective_descriptor_contract, descriptor_entries))
         return FailCompile(c);
 
-    if (!RegisterCanonicalDescriptors(ctx, descriptor_entries,
-                                      material_ssbo_stage_bits, c))
+    if (!RegisterCanonicalDescriptors(ctx, descriptor_entries, c))
         return FailCompile(c);
 
     // ── Step 5: Complete both stages through ShaderDocument ───────
@@ -647,8 +614,8 @@ ShaderBuildContext *CompileMaterial(
 
 
     // ── Step 6: Build ShaderResourceSchema from descriptor entries. ──
-    // When material_private_data is declared (definition or provider manifest), the
-    // material SSBO entry is generated from it and merged with the canonical entries.
+    // Material payload declarations are generated from the effective material type;
+    // they are not read from provider resource metadata.
     ShaderResourceSchema shader_resource_schema;
     if (!BuildAndValidateResourceSchema(effective_descriptor_contract, config, c,
                                         shader_resource_schema))
@@ -663,8 +630,7 @@ ShaderBuildContext *CompileMaterial(
         && (!config.resource_manifest
          || config.resource_manifest->texture_reference_count != 0);
     const bool has_material_ssbo_payload =
-        IsMaterialSSBOType(config.material_private_data)
-        || (config.resource_manifest && config.resource_manifest->ssbo_count > 0);
+        IsMaterialSSBOType(effective_material_private_data);
     shader_resource_schema.requires_runtime_data_rows =
         has_material_ssbo_payload
         || (config.material_definition

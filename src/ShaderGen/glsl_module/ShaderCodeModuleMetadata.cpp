@@ -210,9 +210,6 @@ namespace hgl::graph::mtl
                 definition.module_conflict_names,
                 definition.module_conflict_count)
          || !HasValidArray(
-                definition.ssbo_requirements,
-                definition.ssbo_requirement_count)
-         || !HasValidArray(
                 definition.texture_reference_requirements,
                 definition.texture_reference_requirement_count))
         {

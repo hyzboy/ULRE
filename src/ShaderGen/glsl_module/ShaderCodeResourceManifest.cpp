@@ -1,7 +1,6 @@
-﻿#include <hgl/mtl/ShaderCodeResourceManifest.h>
+#include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeModuleMetadata.h>
-#include <hgl/mtl/MaterialRecipe.h>
 #include "builder/DescriptorBuilderCommon.h"
 #include <hgl/util/hash/FNV1a.h>
 
@@ -26,45 +25,6 @@ namespace hgl::graph::mtl
             hgl::hash::FNV1aHasher64 h;
             h << name;
             return h;
-        }
-
-        bool AddSSBO(ShaderCodeResourceManifest &manifest, const ShaderCodeModuleSSBORequirement &incoming)
-        {
-            if (!incoming.name || !incoming.name[0])
-            {
-                manifest.error = ShaderCodeResourceManifestError::ResourceConflict;
-                return false;
-            }
-
-            for (uint32 i = 0; i < manifest.ssbo_count; ++i)
-            {
-                auto &existing = manifest.ssbos[i];
-                if (!descriptor_builder_common::CStrEqual(
-                        existing.name,
-                        incoming.name))
-                    continue;
-
-                if (existing.ssbo_type != incoming.ssbo_type
-                 || existing.material_ssbo_type != incoming.material_ssbo_type)
-                {
-                    manifest.error = ShaderCodeResourceManifestError::ResourceConflict;
-                    return false;
-                }
-
-                existing.stage_flags |= incoming.stage_flags;
-                existing.required = existing.required || incoming.required;
-                existing.allow_fallback = existing.allow_fallback && incoming.allow_fallback;
-                return true;
-            }
-
-            if (manifest.ssbo_count >= MaxShaderCodeResourceManifestSSBOs)
-            {
-                manifest.error = ShaderCodeResourceManifestError::SSBOCapacityExceeded;
-                return false;
-            }
-
-            manifest.ssbos[manifest.ssbo_count++] = incoming;
-            return true;
         }
 
         bool AddTextureReference(
@@ -180,12 +140,6 @@ namespace hgl::graph::mtl
                     return false;
             }
 
-            for (uint32 i = 0; i < definition->ssbo_requirement_count; ++i)
-            {
-                if (!AddSSBO(manifest, definition->ssbo_requirements[i]))
-                    return false;
-            }
-
             for (uint32 i = 0;
                  i < definition->texture_reference_requirement_count;
                  ++i)
@@ -235,17 +189,6 @@ namespace hgl::graph::mtl
                 const auto *definition = FindModuleByName(name, registry);
                 h << name
                   << (definition ? GetShaderCodeModuleDefinitionHash(*definition) : 0);
-            }
-
-            h << manifest.ssbo_count;
-            for (uint32 i = 0; i < manifest.ssbo_count; ++i)
-            {
-                const auto &ssbo = manifest.ssbos[i];
-                h << ssbo.name;
-                h << ssbo.ssbo_type
-                  << ssbo.stage_flags
-                  << ssbo.required
-                  << ssbo.allow_fallback;
             }
 
             h << manifest.texture_reference_count;

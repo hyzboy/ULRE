@@ -63,7 +63,6 @@ struct MaterialCompileConfig
     // validates the declared VS/FS interface before compiling the local SPV.
     const ShaderLinkSpec *program_link = nullptr;
     const ShaderCodeResourceManifest *resource_manifest = nullptr;
-    bool merge_resource_manifest_material_ssbo_stages = true;
     ShaderArtifactStore *artifact_store = nullptr;
     const DescriptorContract *descriptor_contract = nullptr;
     bool defer_finalize = false; // 生成 GLSL/契约后返回，SPV 编译推迟（生产主路径先查 program 缓存）

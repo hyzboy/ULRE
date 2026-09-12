@@ -316,44 +316,6 @@ namespace hgl::graph::mtl
                 return false;
             return true;
         }
-        bool ParseSSBOType(const char *token,
-                           SSBOType &out_ssbo_type,
-                           MaterialSSBOType &out_material_ssbo_type) noexcept
-        {
-            if (!token || !token[0])
-                return false;
-
-            for (uint32 i = 0; i < static_cast<uint32>(SSBOType::RANGE_SIZE); ++i)
-            {
-                const SSBOType type = static_cast<SSBOType>(i);
-                if (std::strcmp(token, GetSSBOTypeName(type)) == 0)
-                {
-                    out_ssbo_type = type;
-                    out_material_ssbo_type = MaterialSSBOType::PBRSurface;
-                    return true;
-                }
-            }
-
-            for (uint32 i = 0; i < static_cast<uint32>(MaterialSSBOType::RANGE_SIZE); ++i)
-            {
-                const MaterialSSBOType type = static_cast<MaterialSSBOType>(i);
-                if (std::strcmp(token, GetMaterialSSBOTypeName(type)) == 0)
-                {
-                    out_ssbo_type = SSBOType::UserDefined;
-                    out_material_ssbo_type = type;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        bool ParseSSBOType(const char *token, SSBOType &out) noexcept
-        {
-            MaterialSSBOType material_type = MaterialSSBOType::PBRSurface;
-            return ParseSSBOType(token, out, material_type);
-        }
-
     }
 
     const char *GetShaderCodeModuleParseResultName(const ShaderCodeModuleParseResult result) noexcept
@@ -508,33 +470,6 @@ namespace hgl::graph::mtl
                     if (target != 0)
                         return ShaderCodeModuleParseResult::DuplicateDirective;
                     target = capabilities;
-                }
-                else if (std::strcmp(token, "ssbo") == 0)
-                {
-                    ShaderCodeModuleSSBORequirement requirement;
-                    const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
-                    if (!next || !token[0])
-                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
-                    AnsiString *ssbo_name = out_data.ssbo_name_storage.Create();
-                    if (!ssbo_name)
-                        return ShaderCodeModuleParseResult::InvalidResource;
-                    *ssbo_name = token;
-                    MaterialSSBOType material_ssbo_type = MaterialSSBOType::PBRSurface;
-                    next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseSSBOType(token, requirement.ssbo_type, material_ssbo_type))
-                        return ShaderCodeModuleParseResult::InvalidResource;
-                    requirement.material_ssbo_type = material_ssbo_type;
-                    next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseStageFlags(token, requirement.stage_flags))
-                        return ShaderCodeModuleParseResult::InvalidStage;
-
-                    while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
-                    {
-                        if (!ParseResourcePolicy(token, requirement.required,
-                                                  requirement.allow_fallback))
-                            return ShaderCodeModuleParseResult::InvalidResource;
-                    }
-                    out_data.ssbo_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "texture_reference") == 0)
                 {

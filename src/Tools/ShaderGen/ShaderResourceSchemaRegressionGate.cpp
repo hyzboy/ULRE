@@ -710,7 +710,6 @@ namespace
         const ShaderCodeModuleDefinition normal_provider{
             "identity_normal",
             "// identity",
-            nullptr, 0,
             ShaderCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
@@ -729,7 +728,6 @@ namespace
         const ShaderCodeModuleDefinition uv_provider{
             "identity_uv",
             "// identity",
-            nullptr, 0,
             ShaderCodeModuleKind::Utility,
             &uv_requirement, 1,
             uv_provides, 1,
@@ -755,7 +753,6 @@ namespace
         const ShaderCodeModuleDefinition packed_normal_provider{
             "identity_normal_packed",
             "// identity",
-            nullptr, 0,
             ShaderCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
@@ -787,14 +784,12 @@ namespace
         const ShaderCodeModuleDefinition position_provider{
             "compose_position",
             "vec4 GetLocalPos() { return vec4(Position, 1.0); }",
-            nullptr, 0,
             ShaderCodeModuleKind::Position,
             nullptr, 0, nullptr, 0, 0, 0
         };
         const ShaderCodeModuleDefinition normal_provider{
             "compose_normal",
             "vec3 GetNormal() { return Normal; }",
-            nullptr, 0,
             ShaderCodeModuleKind::Utility,
             nullptr, 0, nullptr, 0, 0, 0
         };
@@ -3137,12 +3132,7 @@ namespace
             }
             else
             {
-                if (manifest_2d.ssbo_count != 1
-                 || std::strcmp(manifest_2d.ssbos[0].name, "mtl_private_data") != 0
-                 || manifest_2d.ssbos[0].ssbo_type != SSBOType::UserDefined
-                 || manifest_2d.ssbos[0].material_ssbo_type
-                        != MaterialSSBOType::PBRSurface
-                 || manifest_2d.texture_reference_count != 6
+                if (manifest_2d.texture_reference_count != 6
                  || !has_texture_reference(manifest_2d, "base_color")
                  || !has_texture_reference(manifest_2d, "roughness")
                  || !has_texture_reference(manifest_2d, "metallic")
@@ -3174,7 +3164,6 @@ namespace
                     1,
                     unlit_manifest,
                     &registry)
-             || unlit_manifest.ssbo_count != 0
              || unlit_manifest.texture_reference_count != 1
              || !has_texture_reference(unlit_manifest, "base_color")
              || !ValidateShaderCodeResourceManifestTextureReferences(

@@ -4,7 +4,7 @@
 // @ulre priority 0
 // @ulre end
 // 注：三个文本数据 SSBO（TextCharInfo b14 / CharStyleData b15 / CharInstanceData b16）
-//     为 CharQuad 专用，绑定由 MaterialShaderCompiler 硬编码注册，不走 @ulre ssbo 元数据。
+//     为 CharQuad 专用，绑定由 MaterialShaderCompiler 硬编码注册，不依赖 provider SSBO 元数据。
 // Stage 1: 文本字符 Quad SSBO 声明——三层数据模型（Mesh Shader TextCharQuad 模式）
 //
 // 三层结构：

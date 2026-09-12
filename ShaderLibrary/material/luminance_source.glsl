@@ -5,7 +5,6 @@
 // @ulre slot material_source_provider
 // @ulre require ProducedSemantic Luminance
 // @ulre require Resource MaterialData
-// @ulre ssbo mtl_private_data EmissiveSurface Fragment required
 // @ulre uses material_source_interface
 // @ulre end
 

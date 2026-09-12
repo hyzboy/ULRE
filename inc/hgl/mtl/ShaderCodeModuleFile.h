@@ -60,10 +60,8 @@ namespace hgl::graph::mtl
 
         ValueArray<ShaderCodeModuleSemanticRequirement> semantic_requirements;
         ValueArray<ShaderCodeModuleSemantic> semantic_provides;
-        ValueArray<ShaderCodeModuleSSBORequirement> ssbo_requirements;
         ValueArray<ShaderCodeModuleTextureReferenceRequirement>
             texture_reference_requirements;
-        ManagedArray<AnsiString> ssbo_name_storage;
         ManagedArray<AnsiString> texture_reference_name_storage;
 
         ShaderCodeModuleKind kind = ShaderCodeModuleKind::Shared;

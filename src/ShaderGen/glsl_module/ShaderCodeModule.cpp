@@ -23,18 +23,6 @@ namespace hgl::graph::mtl
               << definition.required_capabilities;
         }
 
-        h << definition.ssbo_requirement_count;
-        for (uint32 i = 0; i < definition.ssbo_requirement_count; ++i)
-        {
-            const auto &requirement = definition.ssbo_requirements[i];
-            h << requirement.name;
-            h << requirement.ssbo_type
-              << requirement.material_ssbo_type
-              << requirement.stage_flags
-              << requirement.required
-              << requirement.allow_fallback;
-        }
-
         h << definition.texture_reference_requirement_count;
         for (uint32 i = 0;
              i < definition.texture_reference_requirement_count;

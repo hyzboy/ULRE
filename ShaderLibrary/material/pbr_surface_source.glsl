@@ -5,7 +5,6 @@
 // @ulre slot material_source_provider
 // @ulre require Resource MaterialData
 // @ulre require ProducedSemantic UV0
-// @ulre ssbo mtl_private_data PBRSurface Fragment optional fallback
 // @ulre texture_reference base_color Fragment optional fallback
 // @ulre texture_reference roughness Fragment optional fallback
 // @ulre texture_reference metallic Fragment optional fallback
