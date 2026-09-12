@@ -1553,8 +1553,7 @@ namespace
         texture.required = true;
         recipe.textures.emplace_back(texture);
 
-        RecipeSSBOAssetBinding asset{};
-        asset = MaterialSSBOBinding{
+        MaterialSSBOBinding asset{
             MaterialSSBOType::PBRSurface,
             41,
             3};
@@ -1566,7 +1565,7 @@ namespace
                 MaterialSSBOType::PBRSurface);
         if (!initial_binding
          || initial_binding->data_index != 3
-         || !initial_binding->GetMaterialSSBOBinding().IsValid())
+         || !initial_binding->IsValid())
         {
             result.diagnostics.emplace_back("shared recipe binding resolve failed");
             result.passed = false;

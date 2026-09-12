@@ -137,7 +137,7 @@ namespace hgl::ecs
             if (!recipe.ssbo_assets.empty())
             {
                 const auto &binding = recipe.ssbo_assets.front();
-                if (!binding.GetMaterialSSBOBinding().IsValid())
+                if (!binding.IsValid())
                 {
                     GLogError(
                         "[MaterialBinding] Invalid material data binding owner=%s type=%s ssbo_id=%u data_index=%u",
@@ -257,7 +257,7 @@ namespace hgl::ecs
                         recipe,
                         ResolveMaterialSSBORequirementType(req));
                 if (!binding
-                 || !binding->GetMaterialSSBOBinding().IsValid())
+                 || !binding->IsValid())
                 {
                     GLogError(
                         "[MaterialBinding] Material data binding missing or invalid owner=%s descriptor=%s type=%s",

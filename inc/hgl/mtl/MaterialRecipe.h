@@ -31,24 +31,6 @@ namespace hgl::graph::mtl
         uint32_t array_layer = 0;                 // Texture2DArray layer; non-array must be zero.
     };
 
-    struct RecipeSSBOAssetBinding : MaterialSSBOBinding
-    {
-        RecipeSSBOAssetBinding &operator=(
-            const RecipeSSBOAssetBinding &) = default;
-
-        RecipeSSBOAssetBinding &operator=(
-            const MaterialSSBOBinding &binding) noexcept
-        {
-            MaterialSSBOBinding::operator=(binding);
-            return *this;
-        }
-
-        MaterialSSBOBinding GetMaterialSSBOBinding() const noexcept
-        {
-            return {ssbo_type, ssbo_id, data_index};
-        }
-    };
-
     // 一个 recipe 至多包含一个材质数据绑定。材质数据通过
     // MaterialSSBOBinding 的类型、物理 SSBO 和行 ID 定位。
 
@@ -502,7 +484,7 @@ namespace hgl::graph::mtl
         MaterialRenderStateOverrides render_state_overrides;
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
-        std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 唯一材质数据运行时绑定（type/id/row）
+        std::vector<MaterialSSBOBinding> ssbo_assets; // 唯一材质数据运行时绑定（type/id/row）
     };
 
     inline ResolvedMaterialRenderState ResolveMaterialRenderState(
@@ -567,7 +549,7 @@ namespace hgl::graph::mtl
             && overrides.has_pipeline_config;
     }
 
-    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(
+    inline const MaterialSSBOBinding *FindRecipeSSBOAssetBinding(
         const MaterialRecipe &recipe) noexcept
     {
         if (recipe.ssbo_assets.size() != 1)
@@ -576,7 +558,7 @@ namespace hgl::graph::mtl
         return &recipe.ssbo_assets.front();
     }
 
-    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(
+    inline const MaterialSSBOBinding *FindRecipeSSBOAssetBinding(
         const MaterialRecipe &recipe,
         const MaterialSSBOType ssbo_type) noexcept
     {
@@ -606,16 +588,14 @@ namespace hgl::graph::mtl
 
         if (recipe.ssbo_assets.empty())
         {
-            RecipeSSBOAssetBinding asset{};
-            asset = material_ssbo_binding;
-            recipe.ssbo_assets.emplace_back(std::move(asset));
+            recipe.ssbo_assets.emplace_back(material_ssbo_binding);
             return true;
         }
 
         if (recipe.ssbo_assets.size() != 1)
             return false;
 
-        RecipeSSBOAssetBinding &asset = recipe.ssbo_assets.front();
+        MaterialSSBOBinding &asset = recipe.ssbo_assets.front();
         asset = material_ssbo_binding;
         return true;
     }
