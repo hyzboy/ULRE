@@ -14,7 +14,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -59,12 +59,29 @@ private:
     Entity *      cube_entity    =nullptr;
     Entity *      camera_entity  =nullptr;
 
+    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>;
+    using MaterialDataID = MaterialDataAccessor::DataID;
+    static constexpr MaterialDataID InvalidMaterialDataID =
+        MaterialDataAccessor::InvalidDataID;
+
     Geometry *          geometry        = nullptr;
-    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
+    MaterialDataID material_data_id = InvalidMaterialDataID;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
 
 private:
+
+    void ReleaseMaterialData()
+    {
+        if (mtl_data_ssbo_accessor
+         && material_data_id != InvalidMaterialDataID
+         && mtl_data_ssbo_accessor->IsActiveID(material_data_id))
+            mtl_data_ssbo_accessor->ReleaseID(material_data_id);
+
+        material_data_id = InvalidMaterialDataID;
+        mtl_data_ssbo_accessor = nullptr;
+    }
 
     bool InitMaterial()
     {
@@ -108,15 +125,30 @@ private:
         if (!ecs_context)
             return false;
 
-        auto* domain_manager = GetManager<SSBOBufferRegistry>();
+        ReleaseMaterialData();
+
+        auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>( "SimpleCube:EmissiveSurface:MaterialData", 1);
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>( "SimpleCube:EmissiveSurface:MaterialData", 1);
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mtl_data_ssbo_accessor)[0].color =GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        if (!mtl_data_ssbo_accessor->AcquireID(material_data_id))
+        {
+            ReleaseMaterialData();
+            return false;
+        }
+
+        graph::ssbo::EmissiveSurfaceRow material_data{};
+        material_data.color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        if (!mtl_data_ssbo_accessor->WriteByID(material_data_id, material_data))
+        {
+            ReleaseMaterialData();
+            return false;
+        }
+
         mtl_data_ssbo_accessor->Commit();
         return true;
     }
@@ -141,15 +173,21 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                mtl_data_ssbo_accessor->GetSSBOBinding()))
+                graph::mtl::MaterialSSBOType::EmissiveSurface,
+                mtl_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                material_data_id,
+                true,
+                true))
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource named_struct{};
         named_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+        named_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
         named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-        named_struct.data_index = 0;
+        named_struct.data_index = material_data_id;
         named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
         primitive_comp->SetMaterialPrivateDataSlotResource(named_struct);
@@ -184,7 +222,7 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
+        ReleaseMaterialData();
         SAFE_CLEAR(geometry)
     }
 

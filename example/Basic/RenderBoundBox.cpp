@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构绘制多个几何体，并渲染对应的包围盒
+// 该范例主要演示使用ECS架构绘制多个几何体，并渲染对应的包围盒
 // This example demonstrates rendering multiple geometries with ECS and drawing their bounding boxes
 //
 // 本范例展示了：
@@ -17,7 +17,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
@@ -96,13 +96,61 @@ private:
 
     struct MaterialData
     {
-        graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* material_data_ssbo_accessor = nullptr;
+        using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>;
+        using DataID = MaterialDataAccessor::DataID;
+        static constexpr DataID InvalidDataID = MaterialDataAccessor::InvalidDataID;
+
+        MaterialDataAccessor *material_data_ssbo_accessor = nullptr;
+        DataID color_data_ids[COLOR_COUNT] = {
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID,
+            InvalidDataID};
         uint32_t ssbo_count = 0;
+
+        MaterialData()
+        {
+            for (DataID &data_id : color_data_ids)
+                data_id = InvalidDataID;
+        }
+
+        void ReleaseMaterialData()
+        {
+            if (material_data_ssbo_accessor)
+            {
+                for (DataID &data_id : color_data_ids)
+                {
+                    if (data_id != InvalidDataID
+                     && material_data_ssbo_accessor->IsActiveID(data_id))
+                        material_data_ssbo_accessor->ReleaseID(data_id);
+
+                    data_id = InvalidDataID;
+                }
+            }
+            else
+            {
+                for (DataID &data_id : color_data_ids)
+                    data_id = InvalidDataID;
+            }
+
+            material_data_ssbo_accessor = nullptr;
+        }
 
         ~MaterialData()
         {
-            delete material_data_ssbo_accessor;
-            material_data_ssbo_accessor = nullptr;
+            ReleaseMaterialData();
         }
     };
 
@@ -149,26 +197,43 @@ private:
 
 private:
 
-    bool InitMaterialForDBS(MaterialData *md, const char *tag, const graph::mtl::SSBOType ssbo_type)
+    bool InitMaterialForDBS(MaterialData *md, const char *tag)
     {
         if (!md)
             return false;
 
-        auto *domain_manager = GetManager<SSBOBufferRegistry>();
+        md->ReleaseMaterialData();
+
+        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         md->ssbo_count = color_count;
-        md->material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
-            ssbo_type,
+        md->material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
             tag,
             color_count);
         if (!md->material_data_ssbo_accessor)
             return false;
 
         for (uint32_t i = 0; i < color_count; ++i)
-            (*md->material_data_ssbo_accessor)[i].color =GetColor4f(TestColor[i], 1.0f);
+        {
+            if (!md->material_data_ssbo_accessor->AcquireID(md->color_data_ids[i]))
+            {
+                md->ReleaseMaterialData();
+                return false;
+            }
+
+            graph::ssbo::EmissiveSurfaceRow material_data{};
+            material_data.color = GetColor4f(TestColor[i], 1.0f);
+            if (!md->material_data_ssbo_accessor->WriteByID(
+                    md->color_data_ids[i],
+                    material_data))
+            {
+                md->ReleaseMaterialData();
+                return false;
+            }
+        }
         md->material_data_ssbo_accessor->Commit();
 
         return true;
@@ -189,28 +254,36 @@ private:
     {
         if (!InitMaterialForDBS(
                 &solid,
-                "RenderBoundBox:SolidMaterialData",
-                graph::mtl::SSBOType::EmissiveSurface))
+                "RenderBoundBox:SolidMaterialData"))
             return false;
 
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             solid_recipe,
             graph::mtl::DefaultMaterialPrivateDataSlotName,
-            solid.material_data_ssbo_accessor->GetSSBOBinding());
+            graph::mtl::MaterialSSBOType::EmissiveSurface,
+            solid.material_data_ssbo_accessor->GetSSBOId(),
+            graph::mtl::DefaultMaterialPrivateDataSlot,
+            solid.color_data_ids[0],
+            true,
+            true);
     }
 
     bool InitWireMDP()
     {
         if (!InitMaterialForDBS(
                 &wire,
-                "RenderBoundBox:WireMaterialData",
-                graph::mtl::SSBOType::EmissiveSurface))
+                "RenderBoundBox:WireMaterialData"))
             return false;
 
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             wire_recipe,
             graph::mtl::DefaultMaterialPrivateDataSlotName,
-            wire.material_data_ssbo_accessor->GetSSBOBinding());
+            graph::mtl::MaterialSSBOType::EmissiveSurface,
+            wire.material_data_ssbo_accessor->GetSSBOId(),
+            graph::mtl::DefaultMaterialPrivateDataSlot,
+            wire.color_data_ids[0],
+            true,
+            true);
     }
 
     bool InitVDM()
@@ -565,8 +638,9 @@ private:
             floor_mesh->primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource floor_struct{};
             floor_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            floor_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
             floor_struct.ssbo_id = solid.material_data_ssbo_accessor->GetSSBOId();
-            floor_struct.data_index = floor_mesh->color_index;
+            floor_struct.data_index = solid.color_data_ids[floor_mesh->color_index];
             floor_struct.use_data_index = true;
             floor_struct.shared_across_instances = true;
             floor_mesh->primitive_comp->SetMaterialPrivateDataSlotResource(floor_struct);
@@ -599,8 +673,9 @@ private:
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
             mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            mesh_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
             mesh_struct.ssbo_id = solid.material_data_ssbo_accessor->GetSSBOId();
-            mesh_struct.data_index = rm->color_index;
+            mesh_struct.data_index = solid.color_data_ids[rm->color_index];
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
             rm->primitive_comp->SetMaterialPrivateDataSlotResource(mesh_struct);
@@ -645,8 +720,9 @@ private:
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource bbox_struct{};
             bbox_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            bbox_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
             bbox_struct.ssbo_id = wire.material_data_ssbo_accessor->GetSSBOId();
-            bbox_struct.data_index = 5;
+            bbox_struct.data_index = wire.color_data_ids[5];
             bbox_struct.use_data_index = true;
             bbox_struct.shared_across_instances = true;
             bbox->primitive_comp->SetMaterialPrivateDataSlotResource(bbox_struct);

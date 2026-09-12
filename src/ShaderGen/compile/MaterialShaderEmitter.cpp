@@ -83,21 +83,55 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
     return macros;
 }
 
+static bool MaterialDefinitionRequiresPayloadRow(
+    const MaterialSSBOType material_private_data,
+    const MaterialDefinition *material_definition,
+    const ShaderCodeResourceManifest *resource_manifest) noexcept
+{
+    if (!IsMaterialSSBOType(material_private_data))
+        return false;
+
+    if (resource_manifest && resource_manifest->IsValid())
+    {
+        if (resource_manifest->ssbo_count > 0)
+            return true;
+        if (resource_manifest->texture_reference_count > 0)
+            return false;
+    }
+
+    if (!material_definition)
+        return true;
+
+    const bool has_texture_refs =
+        material_definition->texture_declarations.size() > 0;
+    if (!has_texture_refs)
+        return true;
+
+    const char *source_module = material_definition->material_source_module;
+    if (!source_module || !source_module[0])
+        return false;
+
+    const char *texture_marker = std::strstr(source_module, "texture_source");
+    return texture_marker == nullptr;
+}
+
 // ── Step 5b: Material SSBO GLSL 声明 ─────────────────────────────────────────
 // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
 // 统一依据单槽 material_private_data 生成并注入 Fragment 阶段。
 // 单槽化：一个材质固定生成一个 buffer（MaterialPrivateData，slot 0，
 // 变量名固定 DefaultMaterialPrivateDataSlotName）。
 bool BuildMaterialSSBODeclarations(
-    const SSBOType material_private_data,
+    const MaterialSSBOType material_private_data,
     const MaterialDefinition *material_definition,
     const MaterialTextureReferenceLayout *texture_layout,
     std::string &out_decls,
     std::string &out_macros,
     std::string &out_error)
 {
-    const bool has_payload =
-        material_private_data != SSBOType::UserDefined;
+    const bool has_payload = MaterialDefinitionRequiresPayloadRow(
+        material_private_data,
+        material_definition,
+        nullptr);
     const bool has_texture_references =
         texture_layout && texture_layout->HasReferences();
     if (!has_payload && !has_texture_references)
@@ -200,7 +234,7 @@ bool BuildMaterialSSBODeclarations(
 }
 
 bool BuildMaterialResourceDocument(
-    const SSBOType material_private_data,
+    const MaterialSSBOType material_private_data,
     const MaterialDefinition *material_definition,
     ShaderDocument &out_document,
     std::string &out_error)
@@ -265,7 +299,7 @@ bool BuildMaterialResourceDocument(
 
     const std::string fragment_index_tables =
         BuildFSIndexTableDecls(
-            material_private_data != SSBOType::UserDefined
+            IsMaterialSSBOType(material_private_data)
          || (texture_layout_ptr && texture_layout_ptr->HasReferences()));
     if (!fragment_index_tables.empty())
     {
@@ -478,7 +512,7 @@ bool BuildMaterialStageDocument(
     const ShaderStage stage,
     const char *material,
     const MaterialCompileConfig &config,
-    const SSBOType material_private_data,
+    const MaterialSSBOType material_private_data,
     ShaderDocument &out_document,
     ShaderDocumentDiagnostics &out_diagnostics)
 {

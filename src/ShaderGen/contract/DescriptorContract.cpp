@@ -34,7 +34,8 @@ namespace hgl::graph::mtl
               << entry.semantic_layer
               << entry.set_type
               << entry.material_private_data_slot
-              << entry.ssbo_type;
+              << entry.ssbo_type
+              << entry.material_ssbo_type;
             return h;
         }
 
@@ -47,7 +48,8 @@ namespace hgl::graph::mtl
                 return HashText(entry.glsl_type);
 
             hgl::hash::FNV1aHasher64 h;
-            h << entry.ssbo_type;
+            h << entry.ssbo_type
+              << entry.material_ssbo_type;
             return h;
         }
 
@@ -74,16 +76,16 @@ namespace hgl::graph::mtl
             }
 
             if (source.semantic
-                    == DescriptorSemantic::MaterialPrivateData
-             && source.ssbo_type == SSBOType::UserDefined)
-                source.ssbo_type = SSBOType::PBRSurface;
-            else if (source.semantic
-                    == DescriptorSemantic::MaterialPrivateDataIndex)
-                source.ssbo_type =
-                    SSBOType::MaterialPrivateDataIndex;
-            else if (source.semantic
-                    == DescriptorSemantic::LocalToWorldIndex)
-                source.ssbo_type = SSBOType::LocalToWorldIndex;
+                        == DescriptorSemantic::MaterialPrivateDataIndex)
+                    source.ssbo_type =
+                        SSBOType::MaterialPrivateDataIndex;
+                else if (source.semantic
+                        == DescriptorSemantic::LocalToWorldIndex)
+                    source.ssbo_type = SSBOType::LocalToWorldIndex;
+
+            if (source.semantic == DescriptorSemantic::MaterialPrivateData
+             && !IsMaterialSSBOType(source.material_ssbo_type))
+                return false;
 
             if (!source.has_requirement_policy)
             {
@@ -135,17 +137,29 @@ namespace hgl::graph::mtl
 
     bool BuildEffectiveDescriptorContract(
         const DescriptorContract &base_contract,
-        const SSBOType material_private_data,
+        const MaterialSSBOType material_private_data,
         const uint32 material_ssbo_stage_bits,
         DescriptorContract &out_contract)
     {
         out_contract = base_contract;
-        if (material_private_data == SSBOType::UserDefined)
-            return ValidateDescriptorContract(out_contract);
+
+        for (SerializedDescriptorEntry &entry : out_contract)
+        {
+            if (entry.semantic != DescriptorSemantic::MaterialPrivateData)
+                continue;
+
+            if (!IsMaterialSSBOType(material_private_data))
+                return false;
+
+            entry.material_ssbo_type = material_private_data;
+            entry.ssbo_type = SSBOType::UserDefined;
+
+            if (entry.stage_flags == 0)
+                entry.stage_flags = material_ssbo_stage_bits;
+        }
 
         // 数据槽无描述符（Arena 行结构经地址行表寻址）；
         // 地址行表条目由描述符构建侧推送，此处不再补录固定数据槽条目。
-        // （旧路径的 MaterialPrivateData 擦除+固定条目补录已随 W3.3 删除。）
         return ValidateDescriptorContract(out_contract);
     }
 
@@ -177,6 +191,15 @@ namespace hgl::graph::mtl
              || entry.ssbo_type > SSBOType::END_RANGE
              || entry.array_count == 0
              || entry.stage_flags == 0)
+                return false;
+
+            if (entry.semantic == DescriptorSemantic::MaterialPrivateData
+             && (!IsMaterialSSBOType(entry.material_ssbo_type)
+              || entry.ssbo_type != SSBOType::UserDefined))
+                return false;
+
+            if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex
+             && entry.ssbo_type != SSBOType::MaterialPrivateDataIndex)
                 return false;
 
             for (size_t j = 0; j < i; ++j)
@@ -212,6 +235,7 @@ namespace hgl::graph::mtl
             req.set_type = entry.set_type;
             req.material_private_data_slot = entry.material_private_data_slot;
             req.ssbo_type = entry.ssbo_type;
+            req.material_ssbo_type = entry.material_ssbo_type;
             req.ssbo_id = entry.ssbo_id;
             req.stage_flags = entry.stage_flags;
             req.required = entry.required;
@@ -290,6 +314,7 @@ namespace hgl::graph::mtl
                            << entry->semantic_layer
                            << entry->set_type
                            << entry->ssbo_type
+                           << entry->material_ssbo_type
                            << entry->material_private_data_slot
                            << entry->stage_flags
                            << entry->array_count

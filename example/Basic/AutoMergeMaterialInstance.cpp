@@ -7,8 +7,7 @@
 // 2. 每个实体使用不同的结构体行（不同颜色）
 // 3. 所有实体共享同一个Geometry（顶点数据）
 // 4. RenderCollector自动合并相同Material的不同结构体行进行批量渲染
-// 5. 示例自建 EmissiveSurface 结构体行并写入材质数据行表（SSBOBufferRegistry 注册，
-//    行地址经 mtl_data_addrs 行表下发——BDA 后无描述符无 RDBS 绑定）
+// 5. 示例通过共享材质数据 SSBO 的 DataID 分配不同 EmissiveSurface 行
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -16,7 +15,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -72,7 +71,25 @@ private:
     PrimitiveAsset triangle_asset{};
 
     // MI 结构体 SSBO
-    graph::ArrayView<ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    using MaterialDataAccessor = graph::ActiveArrayView<ssbo::EmissiveSurfaceRow>;
+    using MaterialDataID = MaterialDataAccessor::DataID;
+    static constexpr MaterialDataID InvalidMaterialDataID =
+        MaterialDataAccessor::InvalidDataID;
+
+    MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
+    MaterialDataID triangle_data_ids[DRAW_OBJECT_COUNT] = {
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID};
 
     // 每个三角形的数据
     struct TriangleData
@@ -84,18 +101,49 @@ private:
 
 private:
 
+    void ReleaseMaterialData()
+    {
+        if (mtl_data_ssbo_accessor)
+        {
+            for (MaterialDataID &data_id : triangle_data_ids)
+            {
+                if (data_id != InvalidMaterialDataID
+                 && mtl_data_ssbo_accessor->IsActiveID(data_id))
+                    mtl_data_ssbo_accessor->ReleaseID(data_id);
+
+                data_id = InvalidMaterialDataID;
+            }
+        }
+        else
+        {
+            for (MaterialDataID &data_id : triangle_data_ids)
+                data_id = InvalidMaterialDataID;
+        }
+
+        mtl_data_ssbo_accessor = nullptr;
+    }
+
     bool InitRecipe()
     {
-        if (!geometry)
+        if (!geometry
+         || !mtl_data_ssbo_accessor
+         || triangle_data_ids[0] == InvalidMaterialDataID)
             return false;
 
         triangle_recipe.recipe_name = "AutoMergeMaterialData.PureColor";
         triangle_recipe.mtl_def_id = "builtin/pure_color";
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
-        graph::mtl::UpsertRecipeSSBOAssetBinding(triangle_recipe,
-                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                triangle_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::EmissiveSurface,
+                mtl_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                triangle_data_ids[0],
+                true,
+                false))
+            return false;
 
         triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);
 
@@ -174,8 +222,9 @@ private:
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource tri_struct{};
             tri_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            tri_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
             tri_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            tri_struct.data_index = i;
+            tri_struct.data_index = triangle_data_ids[i];
             tri_struct.use_data_index = true;
             tri_struct.shared_across_instances = false;
             primitive_comp->SetMaterialPrivateDataSlotResource(tri_struct);
@@ -194,10 +243,7 @@ private:
     }
 
     /**
-     * 创建 EmissiveSurface 结构体行并写入材质数据行（经 SSBOBufferRegistry 行表注册）。
-     * BDA 终态示范：资源生产方自建行 buffer，行地址写入材质数据行表
-     *（mtl_data_addrs），PrimitiveBatchPipeline 按 draw order 填行地址——
-     * 无描述符无 RDBS 绑定（材质数据经 buffer_reference 直达）。
+     * 创建 EmissiveSurface 结构体行并写入共享材质数据 SSBO。
      */
     bool InitMISSBO()
     {
@@ -206,14 +252,13 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<SSBOBufferRegistry>();
+        ReleaseMaterialData();
+
+        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        // Arena+BDA：T 必须是行结构（shader 读 EmissiveSurfaceRow，
-        // 行=数据+纹理句柄尾，64B=4 块），不可用裸 Color4f(16B)——
-        // 行距不匹配会使行尾镜像写踩塌相邻实例的数据字段
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::EmissiveSurfaceRow>(
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<ssbo::EmissiveSurfaceRow>(
             "Example:EmissiveSurface:MaterialData",
             DRAW_OBJECT_COUNT);
         if (!mtl_data_ssbo_accessor)
@@ -221,7 +266,22 @@ private:
 
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            (*mtl_data_ssbo_accessor)[i].color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
+            if (!mtl_data_ssbo_accessor->AcquireID(triangle_data_ids[i]))
+            {
+                ReleaseMaterialData();
+                return false;
+            }
+
+            ssbo::EmissiveSurfaceRow material_data{};
+            material_data.color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
+            if (!mtl_data_ssbo_accessor->WriteByID(
+                    triangle_data_ids[i],
+                    material_data))
+            {
+                ReleaseMaterialData();
+                return false;
+            }
+
             triangles[i].entity = nullptr;
         }
         mtl_data_ssbo_accessor->Commit();
@@ -267,7 +327,7 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
+        ReleaseMaterialData();
     }
 };//class TestApp:public WorkObject
 

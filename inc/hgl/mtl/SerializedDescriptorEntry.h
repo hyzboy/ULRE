@@ -17,6 +17,7 @@ namespace hgl::graph::mtl
         DescriptorSemantic  semantic = DescriptorSemantic::Unknown;
         uint32_t            material_private_data_slot = DefaultMaterialPrivateDataSlot;
         SSBOType            ssbo_type = SSBOType::UserDefined;
+        MaterialSSBOType    material_ssbo_type = MaterialSSBOType::PBRSurface;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         uint32_t            ssbo_id = MakeRecipeSSBOId(0);
 

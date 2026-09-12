@@ -9,7 +9,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
@@ -50,9 +50,15 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
+    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::PBRSurfaceRow>;
+    using MaterialDataID = MaterialDataAccessor::DataID;
+    static constexpr MaterialDataID InvalidMaterialDataID =
+        MaterialDataAccessor::InvalidDataID;
+
     graph::ssbo::PBRSurfaceRow material_data;
     graph::mtl::MaterialRecipe wall_recipe{};
-    graph::ArrayView<graph::ssbo::PBRSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
+    MaterialDataID material_data_id = InvalidMaterialDataID;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
 
@@ -65,8 +71,21 @@ public:
     {
         SAFE_CLEAR(sampler)
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
+        ReleaseMaterialData();
     }
+
+    void ReleaseMaterialData()
+    {
+        if (mtl_data_ssbo_accessor
+         && material_data_id != InvalidMaterialDataID
+         && mtl_data_ssbo_accessor->IsActiveID(material_data_id))
+            mtl_data_ssbo_accessor->ReleaseID(material_data_id);
+
+        material_data_id = InvalidMaterialDataID;
+        mtl_data_ssbo_accessor = nullptr;
+    }
+
+public:
 
     bool InitCamera()
     {
@@ -111,8 +130,9 @@ public:
             prim_comp->SetMaterialTextureResource("base_color", base_color_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource wall_struct{};
             wall_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            wall_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
             wall_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            wall_struct.data_index = 0;
+            wall_struct.data_index = material_data_id;
             wall_struct.use_data_index = true;
             wall_struct.shared_across_instances = true;
             prim_comp->SetMaterialPrivateDataSlotResource(wall_struct);
@@ -141,24 +161,44 @@ public:
         wall_recipe.mtl_def_id = "Lit";
         wall_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
 
-        // Allocate SSBO first so the ID is available before UpsertRecipe.
-        auto *domain_manager = GetManager<SSBOBufferRegistry>();
+        ReleaseMaterialData();
+
+        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         auto *buffer_manager = GetManager<BufferManager>();
         if (!domain_manager || !buffer_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>(
             "WallsFromPolyline:MaterialData",
             1);
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mtl_data_ssbo_accessor)[0] = material_data;
+        if (!mtl_data_ssbo_accessor->AcquireID(material_data_id))
+        {
+            ReleaseMaterialData();
+            return false;
+        }
+
+        const graph::ssbo::PBRSurfaceRow material_row = material_data;
+        if (!mtl_data_ssbo_accessor->WriteByID(material_data_id, material_row))
+        {
+            ReleaseMaterialData();
+            return false;
+        }
+
         mtl_data_ssbo_accessor->Commit();
 
-        graph::mtl::UpsertRecipeSSBOAssetBinding(wall_recipe,
-                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                wall_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::PBRSurface,
+                mtl_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                material_data_id,
+                true,
+                true))
+            return false;
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.
         base_color_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);

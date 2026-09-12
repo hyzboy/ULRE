@@ -20,6 +20,7 @@ namespace hgl::graph::mtl
         DescriptorSetType set_type = DescriptorSetType::Unknown;
         uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
+        MaterialSSBOType material_ssbo_type = MaterialSSBOType::PBRSurface;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
         uint32_t stage_flags = 0;
 
@@ -141,6 +142,7 @@ namespace hgl::graph::mtl
             req.set_type = entry.set_type;
             req.material_private_data_slot = entry.material_private_data_slot;
             req.ssbo_type = entry.ssbo_type;
+            req.material_ssbo_type = entry.material_ssbo_type;
             req.ssbo_id = entry.ssbo_id;
             req.stage_flags = entry.stage_flags;
             req.name = entry.name ? entry.name : "";
@@ -169,8 +171,9 @@ namespace hgl::graph::mtl
             {
                 req.material_private_data_slot = entry.material_private_data_slot;
                 req.ssbo_type = entry.ssbo_type;
-                if (req.ssbo_type == SSBOType::UserDefined)
-                    req.ssbo_type = SSBOType::PBRSurface;
+                // Material payloads are tracked by MaterialSSBOType, not the
+                // generic SSBOType namespace. Keep the generic runtime field as
+                // UserDefined unless a non-material runtime binding is authored.
                 if (req.ssbo_id == MakeRecipeSSBOId(0))
                     req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
             }
@@ -205,7 +208,8 @@ namespace hgl::graph::mtl
                   << req.semantic_layer
                   << req.set_type
                   << req.material_private_data_slot
-                  << req.ssbo_type;
+                  << req.ssbo_type
+                  << req.material_ssbo_type;
 
                 req.logical_resource_id = h;
             }
@@ -222,7 +226,8 @@ namespace hgl::graph::mtl
             {
                 hgl::hash::FNV1aHasher64 h;
 
-                h << req.ssbo_type;
+                h << req.ssbo_type
+                  << req.material_ssbo_type;
 
                 req.resource_schema_id = h;
             }
@@ -250,6 +255,7 @@ namespace hgl::graph::mtl
               << req.set_type
               << req.material_private_data_slot
               << req.ssbo_type
+              << req.material_ssbo_type
               << req.ssbo_id
               << req.stage_flags
               << req.required
@@ -333,10 +339,7 @@ namespace hgl::graph::mtl
                 diagnostics.push_back(std::move(message));
             }
 
-            const bool requires_data_ssbo =
-                req.semantic == DescriptorSemantic::MaterialPrivateData
-             || req.semantic == DescriptorSemantic::MaterialPrivateDataIndex;
-            if (requires_data_ssbo)
+            if (req.semantic == DescriptorSemantic::MaterialPrivateData)
             {
                 if (req.material_private_data_slot >= MaxMaterialPrivateDataSlotsPerMaterial)
                 {
@@ -346,9 +349,36 @@ namespace hgl::graph::mtl
                     continue;
                 }
 
-                if (req.ssbo_type == SSBOType::UserDefined)
+                if (!IsMaterialSSBOType(req.material_ssbo_type))
                 {
-                    std::string message = "Descriptor ssbo_type is UserDefined for material SSBO semantic; explicit/default-resolved SSBO type is required: ";
+                    std::string message = "Descriptor material_ssbo_type is invalid for material payload semantic; an explicit material type is required: ";
+                    message += context;
+                    diagnostics.push_back(std::move(message));
+                    continue;
+                }
+
+                if (req.ssbo_type != SSBOType::UserDefined)
+                {
+                    std::string message = "Descriptor ssbo_type must remain UserDefined for material payload semantic; material payloads use MaterialSSBOType: ";
+                    message += context;
+                    diagnostics.push_back(std::move(message));
+                    continue;
+                }
+            }
+
+            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
+            {
+                if (req.material_private_data_slot >= MaxMaterialPrivateDataSlotsPerMaterial)
+                {
+                    std::string message = "Descriptor material_private_data_slot is invalid for material index semantic: ";
+                    message += context;
+                    diagnostics.push_back(std::move(message));
+                    continue;
+                }
+
+                if (req.ssbo_type != SSBOType::MaterialPrivateDataIndex)
+                {
+                    std::string message = "Descriptor ssbo_type must be MaterialPrivateDataIndex for material index semantic: ";
                     message += context;
                     diagnostics.push_back(std::move(message));
                     continue;
@@ -384,6 +414,7 @@ namespace hgl::graph::mtl
                  && lhs.set_type == rhs.set_type
                  && lhs.material_private_data_slot == rhs.material_private_data_slot
                  && lhs.ssbo_type == rhs.ssbo_type
+                 && lhs.material_ssbo_type == rhs.material_ssbo_type
                  && lhs.ssbo_id == rhs.ssbo_id
                  && lhs.stage_flags == rhs.stage_flags
                  && lhs.glsl_type == rhs.glsl_type;

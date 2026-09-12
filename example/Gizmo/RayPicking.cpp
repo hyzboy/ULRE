@@ -23,7 +23,7 @@
 
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/log/Log.h>
 #include<memory>
@@ -87,7 +87,12 @@ private:
     Geometry *          geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_recipe{};
     PrimitiveAsset             plane_asset{};
-    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    using MaterialDataID = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>::DataID;
+    static constexpr MaterialDataID InvalidMaterialDataID =
+        graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>::InvalidDataID;
+    graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow> *mtl_data_ssbo_accessor = nullptr;
+    MaterialDataID plane_material_data_id = InvalidMaterialDataID;
+    MaterialDataID line_material_data_id = InvalidMaterialDataID;
 
     Geometry *          geom_line           =nullptr;
     graph::mtl::MaterialRecipe line_recipe{};
@@ -179,29 +184,54 @@ private:
         if(!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<SSBOBufferRegistry>();
+        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        const uint32_t plane_slot = 0;
-        const uint32_t line_slot = 1;
-        const uint32_t mi_count = (std::max)(plane_slot, line_slot) + 1;
-
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
             "RayPicking:SharedMaterialData",
-            mi_count);
+            2);
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_recipe,
-                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
-        graph::mtl::UpsertRecipeSSBOAssetBinding(line_recipe,
-                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+        if (!mtl_data_ssbo_accessor->AcquireID(plane_material_data_id))
+            return false;
 
-        (*mtl_data_ssbo_accessor)[plane_slot].color =white_color;
-        (*mtl_data_ssbo_accessor)[line_slot].color =yellow_color;
+        if (!mtl_data_ssbo_accessor->AcquireID(line_material_data_id))
+        {
+            mtl_data_ssbo_accessor->ReleaseID(plane_material_data_id);
+            plane_material_data_id = InvalidMaterialDataID;
+            return false;
+        }
+
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                plane_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::EmissiveSurface,
+                mtl_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                plane_material_data_id,
+                true,
+                true)
+         || !graph::mtl::UpsertRecipeSSBOAssetBinding(
+                line_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::EmissiveSurface,
+                mtl_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                line_material_data_id,
+                true,
+                true))
+            return false;
+
+        graph::ssbo::EmissiveSurfaceRow plane_row{};
+        plane_row.color = white_color;
+        graph::ssbo::EmissiveSurfaceRow line_row{};
+        line_row.color = yellow_color;
+        if (!mtl_data_ssbo_accessor->WriteByID(plane_material_data_id, plane_row)
+         || !mtl_data_ssbo_accessor->WriteByID(line_material_data_id, line_row))
+            return false;
+
         mtl_data_ssbo_accessor->Commit();
 
         // === 步骤2: 创建平面网格实体 ===
@@ -219,8 +249,9 @@ private:
             primitive_comp->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource plane_struct{};
             plane_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            plane_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
             plane_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            plane_struct.data_index = plane_slot;
+            plane_struct.data_index = plane_material_data_id;
             plane_struct.use_data_index = true;
             plane_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(plane_struct);
@@ -243,8 +274,9 @@ private:
             primitive_comp->SetPrimitiveAsset(&line_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource line_struct{};
             line_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            line_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
             line_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            line_struct.data_index = line_slot;
+            line_struct.data_index = line_material_data_id;
             line_struct.use_data_index = true;
             line_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(line_struct);
@@ -290,9 +322,21 @@ private:
 public:
     ~TestApp()
     {
+        if (mtl_data_ssbo_accessor)
+        {
+            if (plane_material_data_id != InvalidMaterialDataID
+             && mtl_data_ssbo_accessor->IsActiveID(plane_material_data_id))
+                mtl_data_ssbo_accessor->ReleaseID(plane_material_data_id);
+
+            if (line_material_data_id != InvalidMaterialDataID
+             && mtl_data_ssbo_accessor->IsActiveID(line_material_data_id))
+                mtl_data_ssbo_accessor->ReleaseID(line_material_data_id);
+
+            mtl_data_ssbo_accessor = nullptr;
+        }
+
         SAFE_CLEAR(geom_plane_grid);
         SAFE_CLEAR(geom_line);
-        SAFE_CLEAR(mtl_data_ssbo_accessor);
     }
 
     bool Init() override

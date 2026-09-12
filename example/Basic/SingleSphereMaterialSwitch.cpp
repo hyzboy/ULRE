@@ -21,7 +21,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/ColorPacking.h>
 #include<hgl/log/Log.h>
@@ -71,10 +71,17 @@ private:
     TransformComponent *sphere_transform = nullptr;
     PrimitiveComponent *sphere_primitive_component = nullptr;
 
+    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::PBRSurfaceRow>;
+    using MaterialDataID = MaterialDataAccessor::DataID;
+    static constexpr MaterialDataID InvalidMaterialDataID =
+        MaterialDataAccessor::InvalidDataID;
+
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
 
-    graph::ArrayView<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
+    MaterialDataAccessor *material_data_ssbo_accessor = nullptr;
+    MaterialDataID near_material_data_id = InvalidMaterialDataID;
+    MaterialDataID far_material_data_id = InvalidMaterialDataID;
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -90,6 +97,24 @@ private:
     double elapsed_time = 0.0;
 
 private:
+
+    void ReleaseMaterialData()
+    {
+        if (material_data_ssbo_accessor)
+        {
+            if (near_material_data_id != InvalidMaterialDataID
+             && material_data_ssbo_accessor->IsActiveID(near_material_data_id))
+                material_data_ssbo_accessor->ReleaseID(near_material_data_id);
+
+            if (far_material_data_id != InvalidMaterialDataID
+             && material_data_ssbo_accessor->IsActiveID(far_material_data_id))
+                material_data_ssbo_accessor->ReleaseID(far_material_data_id);
+        }
+
+        near_material_data_id = InvalidMaterialDataID;
+        far_material_data_id = InvalidMaterialDataID;
+        material_data_ssbo_accessor = nullptr;
+    }
 
     bool LogFail(const char *stage, const char *reason)
     {
@@ -157,23 +182,51 @@ private:
         if (!sampler)
             return LogFail("InitMaterials", "failed to create sampler");
 
-        auto* domain_manager = GetManager<SSBOBufferRegistry>();
+        ReleaseMaterialData();
+
+        auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
-        material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>( "SingleSphereSwitch:MaterialData", 1);
+        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>(
+            "SingleSphereSwitch:MaterialData",
+            2);
         if (!material_data_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
+
+        if (!material_data_ssbo_accessor->AcquireID(near_material_data_id)
+         || !material_data_ssbo_accessor->AcquireID(far_material_data_id))
+        {
+            ReleaseMaterialData();
+            return LogFail("InitMaterials", "material data ID acquisition failed");
+        }
 
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
         near_recipe.mtl_def_id = "Lit";
         near_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
-                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 material_data_ssbo_accessor->GetSSBOBinding());
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                near_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::PBRSurface,
+                material_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                near_material_data_id,
+                true,
+                false))
+            return LogFail("InitMaterials", "near material SSBO binding failed");
 
         far_recipe = near_recipe;
         far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
         far_recipe.mtl_def_id = "Lit";
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                far_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::PBRSurface,
+                material_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                far_material_data_id,
+                true,
+                false))
+            return LogFail("InitMaterials", "far material SSBO binding failed");
 
         return true;
     }
@@ -213,6 +266,11 @@ private:
         if (!sphere_primitive_component)
             return true;
 
+        const MaterialDataID material_data_id =
+            use_far_material ? far_material_data_id : near_material_data_id;
+        if (material_data_id == InvalidMaterialDataID)
+            return false;
+
         sphere_primitive_component->SetMaterialRecipe(use_far_material ? far_recipe : near_recipe);
 
         if (use_far_material)
@@ -246,9 +304,10 @@ private:
 
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
         sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+        sphere_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
         sphere_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
-        sphere_struct.data_index = 0;
-        sphere_struct.use_data_index = false;
+        sphere_struct.data_index = material_data_id;
+        sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = false;
         sphere_primitive_component->SetMaterialPrivateDataSlotResource(sphere_struct);
         return true;
@@ -268,7 +327,14 @@ private:
         material_data.roughness = 0.25f;
         material_data.normal_scale = 0.35f;
 
-        (*material_data_ssbo_accessor)[0] = material_data;
+        if (!material_data_ssbo_accessor->WriteByID(
+                near_material_data_id,
+                material_data)
+         || !material_data_ssbo_accessor->WriteByID(
+                far_material_data_id,
+                material_data))
+            return LogFail("InitRenderResources", "write material data failed");
+
         material_data_ssbo_accessor->Commit();
         sphere_asset = PrimitiveAsset(sphere_geometry, &near_recipe, PrimitiveType::Triangles);
 
@@ -367,7 +433,7 @@ public:
         SAFE_CLEAR(sphere_geometry)
         SAFE_CLEAR(mesh_vdm)
 
-        SAFE_CLEAR(material_data_ssbo_accessor)
+        ReleaseMaterialData();
 
         SAFE_CLEAR(near_base_color_array)
         SAFE_CLEAR(near_normal_array)

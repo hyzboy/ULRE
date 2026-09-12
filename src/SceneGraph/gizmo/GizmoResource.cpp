@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/geo/VKGeometry.h>
+#include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -12,6 +12,7 @@
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
 #include"GizmoResource.h"
@@ -37,14 +38,22 @@ namespace hgl::graph
 
         struct GizmoResource
         {
-            // Arena 行缓冲访问器（视图不自持缓冲；行缓冲生命周期归 SSBOBufferRegistry::Release()）
-            // 行地址已进入地址行表——资源本身必须与 gizmo 同寿命
-            ArrayView<ssbo::EmissiveSurfaceRow> *color_row_accessor = nullptr;
-            DeviceBuffer *      color_ssbo;
+            using ColorDataID = ActiveArrayView<ssbo::EmissiveSurfaceRow>::DataID;
+            static constexpr ColorDataID InvalidColorDataID =
+                ActiveArrayView<ssbo::EmissiveSurfaceRow>::InvalidDataID;
+
+            ActiveArrayView<ssbo::EmissiveSurfaceRow> *color_row_accessor = nullptr;
+            ColorDataID color_row_ids[size_t(GizmoColor::RANGE_SIZE)]{};
             VertexDataManager * vdm;
             mtl::MaterialRecipe color_recipe[size_t(GizmoColor::RANGE_SIZE)]{};
 
             GeometryCreater *  prim_creater;
+
+            GizmoResource()
+            {
+                for (ColorDataID &data_id : color_row_ids)
+                    data_id = InvalidColorDataID;
+            }
         };
 
         static GizmoResource    gizmo_triangle{};
@@ -90,30 +99,55 @@ namespace hgl::graph
                 return false;
 
             auto *buffer_manager = graphics_context->GetBufferManager();
-            auto *domain_manager = graphics_context->GetSSBOBufferRegistry();
+            auto *domain_manager = graphics_context->GetMaterialSSBOBufferRegistry();
             if (!buffer_manager || !domain_manager)
                 return false;
 
             // schema 中数据槽语义为 MaterialPrivateDataIndex（地址行表），
-            // 颜色数据直接走 arena 行分配
+            // 颜色数据直接走 material 专用 registry
             {
                 const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
 
-                auto *acc = domain_manager->AllocateArrayAccessor<ssbo::EmissiveSurfaceRow>(
-                    mtl::SSBOType::EmissiveSurface,
+                auto *acc = domain_manager->GetMaterialDataAccessor<ssbo::EmissiveSurfaceRow>(
                     "GizmoResource:PureColor:MaterialData",
                     color_count);
                 if (!acc)
                     return false;
 
                 for (uint32_t i = 0; i < color_count; ++i)
-                    (*acc)[i].color = GetColor4f(gizmo_color[i], 1.0f);
+                {
+                    if (!acc->AcquireID(gr->color_row_ids[i]))
+                    {
+                        while (i > 0)
+                        {
+                            --i;
+                            acc->ReleaseID(gr->color_row_ids[i]);
+                            gr->color_row_ids[i] = GizmoResource::InvalidColorDataID;
+                        }
+                        return false;
+                    }
+
+                    ssbo::EmissiveSurfaceRow row{};
+                    row.color = GetColor4f(gizmo_color[i], 1.0f);
+                    if (!acc->WriteByID(gr->color_row_ids[i], row))
+                    {
+                        acc->ReleaseID(gr->color_row_ids[i]);
+                        gr->color_row_ids[i] = GizmoResource::InvalidColorDataID;
+                        while (i > 0)
+                        {
+                            --i;
+                            acc->ReleaseID(gr->color_row_ids[i]);
+                            gr->color_row_ids[i] = GizmoResource::InvalidColorDataID;
+                        }
+                        return false;
+                    }
+                }
+
+                acc->Commit();
 
                 const uint32_t gizmo_ssbo_id = acc->GetSSBOId();
 
-                // 行写入即生效(HOST_COHERENT 直写)。行缓冲归 SSBOBufferRegistry
-                // 所有（视图不持有数据源）——地址行表中的行地址指向该缓冲，
-                // 其寿命 = 注册表寿命（长于 gizmo 资源）；每色一份 recipe，行号=色槽号。
+                // 行缓冲与 accessor 均归材质注册表所有；Gizmo 仅拥有各颜色行的 DataID。
                 gr->color_row_accessor = acc;
 
                 for (uint32_t c = 0; c < color_count; ++c)
@@ -127,10 +161,10 @@ namespace hgl::graph
 
                     if (!mtl::UpsertRecipeSSBOAssetBinding(recipe,
                                                           mtl::DefaultMaterialPrivateDataSlotName,
-                                                          mtl::SSBOType::EmissiveSurface,
+                                                          mtl::MaterialSSBOType::EmissiveSurface,
                                                           gizmo_ssbo_id,
                                                           mtl::DefaultMaterialPrivateDataSlot,
-                                                          c,
+                                                          gr->color_row_ids[c],
                                                           true,
                                                           true))
                         return false;
@@ -299,10 +333,18 @@ namespace hgl::graph
 
         SAFE_CLEAR(gizmo_triangle.prim_creater);
         SAFE_CLEAR(gizmo_triangle.vdm);
-        delete gizmo_triangle.color_row_accessor;
-        gizmo_triangle.color_row_accessor = nullptr;
+        if (gizmo_triangle.color_row_accessor)
+        {
+            for (GizmoResource::ColorDataID &data_id : gizmo_triangle.color_row_ids)
+            {
+                if (data_id != GizmoResource::InvalidColorDataID
+                 && gizmo_triangle.color_row_accessor->IsActiveID(data_id))
+                    gizmo_triangle.color_row_accessor->ReleaseID(data_id);
 
-        SAFE_CLEAR(gizmo_triangle.color_ssbo);
+                data_id = GizmoResource::InvalidColorDataID;
+            }
+        }
+        gizmo_triangle.color_row_accessor = nullptr;
 
         graphics_context = nullptr;
     }

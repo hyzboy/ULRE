@@ -17,7 +17,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/log/Log.h>
@@ -76,9 +76,17 @@ private:
     Geometry* geometry = nullptr;
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
-    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
-    static constexpr uint32_t tick_slot   = 0;
-    static constexpr uint32_t hand_slots[3] = {1, 2, 3};
+    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>;
+    using MaterialDataID = MaterialDataAccessor::DataID;
+    static constexpr MaterialDataID InvalidMaterialDataID =
+        MaterialDataAccessor::InvalidDataID;
+
+    MaterialDataAccessor *mtl_data_ssbo_accessor = nullptr;
+    MaterialDataID tick_data_id = InvalidMaterialDataID;
+    MaterialDataID hand_data_ids[3] = {
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID};
 
     // 刻度数据
     struct TickData
@@ -101,18 +109,54 @@ private:
 
 private:
 
+    void ReleaseMaterialData()
+    {
+        if (mtl_data_ssbo_accessor)
+        {
+            if (tick_data_id != InvalidMaterialDataID
+             && mtl_data_ssbo_accessor->IsActiveID(tick_data_id))
+                mtl_data_ssbo_accessor->ReleaseID(tick_data_id);
+
+            for (MaterialDataID &data_id : hand_data_ids)
+            {
+                if (data_id != InvalidMaterialDataID
+                 && mtl_data_ssbo_accessor->IsActiveID(data_id))
+                    mtl_data_ssbo_accessor->ReleaseID(data_id);
+
+                data_id = InvalidMaterialDataID;
+            }
+        }
+        else
+        {
+            for (MaterialDataID &data_id : hand_data_ids)
+                data_id = InvalidMaterialDataID;
+        }
+
+        tick_data_id = InvalidMaterialDataID;
+        mtl_data_ssbo_accessor = nullptr;
+    }
+
     bool InitMaterial()
     {
-        if (!geometry)
+        if (!geometry
+         || !mtl_data_ssbo_accessor
+         || tick_data_id == InvalidMaterialDataID)
             return false;
 
         clock_recipe.recipe_name = "Clock.PureColor";
         clock_recipe.mtl_def_id = "builtin/pure_color";
         clock_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
-        graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
-                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                clock_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::EmissiveSurface,
+                mtl_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                tick_data_id,
+                true,
+                true))
+            return false;
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -153,17 +197,29 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<SSBOBufferRegistry>();
+        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
             "Clock:EmissiveSurface:MaterialData",
             4);
         if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mtl_data_ssbo_accessor)[tick_slot].color =Color4f(1.0f, 1.0f, 1.0f, 1.0f);
+        if (!mtl_data_ssbo_accessor->AcquireID(tick_data_id))
+        {
+            ReleaseMaterialData();
+            return false;
+        }
+
+        graph::ssbo::EmissiveSurfaceRow tick_material_data{};
+        tick_material_data.color = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
+        if (!mtl_data_ssbo_accessor->WriteByID(tick_data_id, tick_material_data))
+        {
+            ReleaseMaterialData();
+            return false;
+        }
 
         Color4f hand_colors[3] = {
             Color4f(1.0f, 0.0f, 0.0f, 1.0f),
@@ -172,7 +228,21 @@ private:
         };
         for (uint i = 0; i < 3; ++i)
         {
-            (*mtl_data_ssbo_accessor)[hand_slots[i]].color = hand_colors[i];
+            if (!mtl_data_ssbo_accessor->AcquireID(hand_data_ids[i]))
+            {
+                ReleaseMaterialData();
+                return false;
+            }
+
+            graph::ssbo::EmissiveSurfaceRow hand_material_data{};
+            hand_material_data.color = hand_colors[i];
+            if (!mtl_data_ssbo_accessor->WriteByID(
+                    hand_data_ids[i],
+                    hand_material_data))
+            {
+                ReleaseMaterialData();
+                return false;
+            }
         }
 
         mtl_data_ssbo_accessor->Commit();
@@ -223,10 +293,11 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource tick_struct{};
             tick_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            tick_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
             tick_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            tick_struct.data_index = tick_slot;
+            tick_struct.data_index = tick_data_id;
             tick_struct.use_data_index = true;
-            tick_struct.shared_across_instances = false;
+            tick_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(tick_struct);
             primitive_comp->SetVisible(true);
 
@@ -260,8 +331,9 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource hand_struct{};
             hand_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hand_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
             hand_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-            hand_struct.data_index = hand_slots[i];
+            hand_struct.data_index = hand_data_ids[i];
             hand_struct.use_data_index = true;
             hand_struct.shared_across_instances = false;
             primitive_comp->SetMaterialPrivateDataSlotResource(hand_struct);
@@ -357,7 +429,7 @@ public:
 
     ~ClockApp()
     {
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
+        ReleaseMaterialData();
     }
 };//class ClockApp:public WorkObject
 

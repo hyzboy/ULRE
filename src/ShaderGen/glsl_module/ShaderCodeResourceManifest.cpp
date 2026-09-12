@@ -43,7 +43,8 @@ namespace hgl::graph::mtl
                  || existing.material_private_data_slot != incoming.material_private_data_slot)
                     continue;
 
-                if (existing.ssbo_type != incoming.ssbo_type)
+                if (existing.ssbo_type != incoming.ssbo_type
+                 || existing.material_ssbo_type != incoming.material_ssbo_type)
                 {
                     manifest.error = ShaderCodeResourceManifestError::ResourceConflict;
                     return false;

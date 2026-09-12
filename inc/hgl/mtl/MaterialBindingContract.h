@@ -70,7 +70,7 @@ namespace hgl::graph::mtl
         uint32 ssbo_id = 0;
         uint32 data_index = 0;
         uint32 recipe_binding_index = InvalidMaterialRecipeBindingIndex;
-        SSBOType ssbo_type = SSBOType::UserDefined;
+        MaterialSSBOType ssbo_type = MaterialSSBOType::PBRSurface;
         BindingSource source = BindingSource::Missing;
         bool use_data_index = false;
         bool shared_across_instances = false;
@@ -132,7 +132,7 @@ namespace hgl::graph::mtl
     {
         BindingBuildError error = BindingBuildError::None;
         uint32 material_private_data_slot = 0;
-        SSBOType ssbo_type = SSBOType::UserDefined;
+        MaterialSSBOType ssbo_type = MaterialSSBOType::PBRSurface;
     };
 
     const char *GetBindingBuildErrorName(
@@ -146,7 +146,7 @@ namespace hgl::graph::mtl
         const char *resource_id,
         uint32 resource_id_length) noexcept;
     uint64 GetResolvedDataAssetIdentityHash(
-        SSBOType ssbo_type,
+        MaterialSSBOType ssbo_type,
         uint32 ssbo_id,
         uint32 material_private_data_slot) noexcept;
 

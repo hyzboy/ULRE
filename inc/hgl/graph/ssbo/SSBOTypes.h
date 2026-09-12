@@ -5,6 +5,15 @@
 
 namespace hgl::graph::mtl
 {
+    enum class MaterialSSBOType : uint16_t
+    {
+        PBRSurface = 0,
+        EmissiveSurface,
+        TransmissionSurface,
+
+        ENUM_CLASS_RANGE(PBRSurface, TransmissionSurface)
+    };
+
     // SSBO 类型枚举：用于在 Recipe/Spec 中以稳定整数传递“结构体数据落在哪类缓冲”。
     enum class SSBOType : uint16_t
     {
@@ -16,11 +25,7 @@ namespace hgl::graph::mtl
         UserDefined,
         MaterialPrivateDataIndex,
 
-        PBRSurface,
-        EmissiveSurface,
-        TransmissionSurface,
-
-        ENUM_CLASS_RANGE(MeshDrawParams,TransmissionSurface)
+        ENUM_CLASS_RANGE(MeshDrawParams,MaterialPrivateDataIndex)
     };
 
     using SSBOCategory = SSBOType;
@@ -30,17 +35,48 @@ namespace hgl::graph::mtl
     constexpr uint32_t MaxMaterialPrivateDataSlotsPerMaterial = 1u;
     constexpr uint32_t MaterialPrivateDataIndexRowStride = MaxMaterialPrivateDataSlotsPerMaterial;
 
-    constexpr bool IsMaterialSSBOType(const SSBOType type) noexcept
+    constexpr bool IsMaterialSSBOType(const MaterialSSBOType type) noexcept
     {
         switch (type)
         {
-        case SSBOType::PBRSurface:
-        case SSBOType::EmissiveSurface:
-        case SSBOType::TransmissionSurface:
-        case SSBOType::UserDefined:
+        case MaterialSSBOType::PBRSurface:
+        case MaterialSSBOType::EmissiveSurface:
+        case MaterialSSBOType::TransmissionSurface:
             return true;
         default:
             return false;
+        }
+    }
+
+    // Material payloads are intentionally not part of the generic SSBOType enum.
+    // The legacy overload is kept only for ABI compatibility and always resolves
+    // to the non-material fallback path.
+    [[deprecated("Material payloads now use MaterialSSBOType; generic SSBOType is non-material-only.")]]
+    constexpr bool IsMaterialSSBOType(const SSBOType) noexcept
+    {
+        return false;
+    }
+
+    [[deprecated("Generic SSBOType cannot identify material payloads; carry MaterialSSBOType explicitly.")]]
+    constexpr MaterialSSBOType ToMaterialSSBOType(const SSBOType) noexcept
+    {
+        return MaterialSSBOType::PBRSurface;
+    }
+
+    [[deprecated("Material payloads do not have a generic SSBOType representation.")]]
+    constexpr SSBOType ToLegacySSBOType(const MaterialSSBOType) noexcept
+    {
+        return SSBOType::UserDefined;
+    }
+
+    inline const char *GetMaterialSSBOTypeName(const MaterialSSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case MaterialSSBOType::PBRSurface: return "PBRSurface";
+        case MaterialSSBOType::EmissiveSurface: return "EmissiveSurface";
+        case MaterialSSBOType::TransmissionSurface: return "TransmissionSurface";
+        default: return "UnknownMaterialSSBO";
         }
     }
 
@@ -50,14 +86,26 @@ namespace hgl::graph::mtl
         {
         case SSBOType::MeshDrawParams: return "MeshDrawParams";
         case SSBOType::MaterialPrivateDataIndex: return "MaterialPrivateDataIndex";
-        case SSBOType::PBRSurface: return "PBRSurface";
-        case SSBOType::EmissiveSurface: return "EmissiveSurface";
-        case SSBOType::TransmissionSurface: return "TransmissionSurface";
         case SSBOType::LocalToWorldIndex: return "LocalToWorldIndex";
         case SSBOType::LocalToWorld: return "LocalToWorld";
         case SSBOType::UserDefined: return "UserDefined";
         default: return "Unknown";
         }
+    }
+
+    inline uint32_t GetMaterialSSBOTypeStructVersion(const MaterialSSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case MaterialSSBOType::PBRSurface:
+        case MaterialSSBOType::EmissiveSurface:
+        case MaterialSSBOType::TransmissionSurface:
+            return 1;
+        default:
+            break;
+        }
+
+        return 0;
     }
 
     inline uint32_t GetSSBOTypeStructVersion(const SSBOType type) noexcept
@@ -67,10 +115,24 @@ namespace hgl::graph::mtl
         case SSBOType::MaterialPrivateDataIndex:
         case SSBOType::LocalToWorldIndex:
         case SSBOType::LocalToWorld:
-        case SSBOType::PBRSurface:
-        case SSBOType::EmissiveSurface:
-        case SSBOType::TransmissionSurface:
             return 1;
+        default:
+            break;
+        }
+
+        return 0;
+    }
+
+    inline uint32_t GetMaterialSSBOTypeStructStride(const MaterialSSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case MaterialSSBOType::PBRSurface:
+            return sizeof(float) * 8;
+        case MaterialSSBOType::EmissiveSurface:
+            return sizeof(float) * 4;
+        case MaterialSSBOType::TransmissionSurface:
+            return sizeof(uint32_t) * 4;
         default:
             break;
         }
@@ -84,12 +146,6 @@ namespace hgl::graph::mtl
         {
         case SSBOType::MaterialPrivateDataIndex:
             return 0;  // dynamic: 单槽单列 uint32 per material
-        case SSBOType::PBRSurface:
-            return sizeof(float) * 8; // vec4 base_color + metallic + roughness + normal_scale + fresnel
-        case SSBOType::EmissiveSurface:
-            return sizeof(float) * 4;                    // vec4/uvec4 style payload
-        case SSBOType::TransmissionSurface:
-            return sizeof(uint32_t) * 4;                // packed uint payload + alignment
         case SSBOType::LocalToWorldIndex:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:

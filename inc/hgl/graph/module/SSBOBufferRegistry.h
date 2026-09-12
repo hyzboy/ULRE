@@ -1,10 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/graph/module/GraphModule.h>
 #include <hgl/mtl/MaterialRecipe.h>
-#include <hgl/graph/ssbo/MaterialDataRows.h>
-
-#include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/graph/module/MaterialTextureReferencePool.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/buffer/ArrayView.h>
@@ -44,6 +41,7 @@ public:
         void    *cpu_base  = nullptr;   ///< 映射基址（CPU 行数据/行尾句柄直写）
         uint64_t gpu_base  = 0;         ///< 设备地址基址（地址行表寻址）
         uint32_t row_bytes = 0;         ///< 行距 = sizeof(行结构)
+        uint32_t row_capacity = 0;      ///< 此逻辑段可用的行数
         DeviceBuffer *buffer = nullptr; ///< 行缓冲本体（注册表拥有，Release() 释放）
     };
 
@@ -172,15 +170,15 @@ public:
      *
      *     正确的使用流程：
      *       auto* acc = domain_manager->AllocateArrayAccessor<Color4f>(
-     *                       SSBOType::PBRSurface, "MySSBO", count);
+     *                       SSBOType::UserDefined, "MySSBO", count);
      *       // 直接用 accessor 的 type+id 注册 recipe 绑定
-     *       UpsertRecipeSSBOAssetBinding(recipe, name, acc->GetSSBOBinding());
      *
      * EN: One-step "allocate SSBO ID + create buffer + wrap accessor".
      *     The allocated ID is stored inside the accessor; retrieve it via acc->GetSSBOId().
      *
-     *     简化形态（推荐）：SSBOType 由模板参数 T 经 MaterialRowTypeTraits 反查，
-     *     开发者只需 AllocateArrayAccessor<T>(name, count)。
+     *     此接口仅用于通用运行时 SSBO。材质 payload 行必须由
+     *     MaterialSSBOBufferRegistry::GetMaterialDataAccessor<T>() 申请，
+     *     并用显式 MaterialSSBOType 建立 recipe 绑定。
      *
      * @param ssbo_type     SSBO 类型
      * @param name          缓冲区调试名称
@@ -200,9 +198,7 @@ public:
 
         const uint32_t allocated_id = AllocateSSBOId();
 
-        // 按 SSBOType 分配组一块独立 BDA 缓冲：HOST_COHERENT 直写 +
-        // 设备地址（地址行表按行寻址，行可位于任意缓冲）。
-        // T 必须为行结构（MaterialDataRows.h），size % 16 == 0。
+        // Allocate one independent BDA-capable runtime buffer.
         VulkanDevice *device = GetDevice();
         DeviceBuffer *buf = device
             ? device->CreateArenaBuffer(name, VkDeviceSize(sizeof(T)) * element_count)
@@ -231,28 +227,12 @@ public:
         seg.cpu_base  = cpu_base;
         seg.gpu_base  = gpu_base;
         seg.row_bytes = uint32(sizeof(T));
+        seg.row_capacity = element_count;
         seg.buffer    = buf;
         row_segments.emplace(allocated_id, seg);
 
         return acc;
     }
-
-    /**
-     * CN: 简化形态——SSBOType 由行结构 T 经 MaterialRowTypeTraits 反查。
-     *     开发者只需 AllocateArrayAccessor<T>(name, count)，不再重复传递类型。
-     * EN: Simplified form -- SSBOType is derived from the row struct T.
-     */
-    template<typename T>
-    ArrayView<T>* AllocateArrayAccessor(
-        const AnsiString&    name,
-        uint32_t             element_count,
-        SharingMode          sm = SharingMode::Exclusive)
-    {
-        return AllocateArrayAccessor<T>(ssbo::MaterialRowTypeTraits<T>::TYPE,
-                                        name, element_count, sm);
-    }
-
-    // 旧路径（EnsureBuffer 域缓冲 + MaterialPrivateData 描述符）已随 W3.3 删除。
 
 protected:
 

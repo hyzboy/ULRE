@@ -29,6 +29,7 @@ namespace hgl::graph::mtl
             const auto &requirement = definition.ssbo_requirements[i];
             h << requirement.name;
             h << requirement.ssbo_type
+              << requirement.material_ssbo_type
               << requirement.material_private_data_slot
               << requirement.stage_flags
               << requirement.required

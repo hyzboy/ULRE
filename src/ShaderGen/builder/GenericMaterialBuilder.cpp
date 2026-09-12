@@ -639,11 +639,7 @@ namespace hgl::graph::mtl
                 GetOutputContractHash(plan.output_contract);
             plan.program_link.compiler_hash = compiler_hash;
             config.program_link = &plan.program_link;
-            config.material_private_data =
-                plan.depth_purpose
-             && !plan.coverage.requires_material_data
-                    ? SSBOType::UserDefined
-                    : definition.material_private_data;
+            config.material_private_data = definition.material_private_data;
             config.defer_finalize = request.defer_finalize;
             return true;
         }

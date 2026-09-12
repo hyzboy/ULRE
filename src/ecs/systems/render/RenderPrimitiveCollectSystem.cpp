@@ -15,7 +15,8 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
-
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+
 #include<hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -73,12 +74,23 @@ namespace hgl::ecs
             return primitive_comp->EnsureRuntimeGeometryBinding(material);
         }
 
+        inline graph::mtl::MaterialSSBOType ResolveMaterialSSBORequirementType(
+            const graph::mtl::ShaderResourceSlot &req) noexcept
+        {
+            return req.material_ssbo_type;
+        }
+
         bool ResolveRecipeSSBOBindingId(const graph::mtl::MaterialRecipe &recipe,
                                         const graph::mtl::ShaderResourceSlot &req,
                                         uint32_t &out_ssbo_id)
         {
+            const auto material_ssbo_type = ResolveMaterialSSBORequirementType(req);
+
             if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
-                    recipe, req.name.c_str(), req.material_private_data_slot, req.ssbo_type))
+                    recipe,
+                    req.name.c_str(),
+                    req.material_private_data_slot,
+                    material_ssbo_type))
             {
                 out_ssbo_id = asset->ssbo_id;
                 return true;
@@ -157,7 +169,7 @@ namespace hgl::ecs
                     static_cast<unsigned long long>(
                         binding.logical_resource_id),
                     binding.material_private_data_slot,
-                    graph::mtl::GetSSBOTypeName(binding.ssbo_type),
+                    graph::mtl::GetMaterialSSBOTypeName(binding.ssbo_type),
                     static_cast<uint32_t>(binding.ssbo_type),
                     graph::mtl::GetBindingSourceName(
                         binding.source),
@@ -192,7 +204,7 @@ namespace hgl::ecs
                     i,
                     binding.material_private_data_slot_name.c_str(),
                     binding.material_private_data_slot,
-                    graph::mtl::GetSSBOTypeName(binding.ssbo_type),
+                    graph::mtl::GetMaterialSSBOTypeName(binding.ssbo_type),
                     static_cast<uint32_t>(binding.ssbo_type),
                     binding.ssbo_id,
                     binding.data_index,
@@ -253,13 +265,11 @@ namespace hgl::ecs
             auto *graphics_context = render_context
                 ? render_context->GetGraphicsContext()
                 : world->GetGraphicsContext();
-            auto *domain_manager = graphics_context
-                ? graphics_context->GetSSBOBufferRegistry() : nullptr;
             auto *bindless_mgr = graphics_context
                 ? graphics_context->
                     GetManager<graph::BindlessTextureManager>()
                 : nullptr;
-            if (!rdbs || !domain_manager)
+            if (!rdbs)
                 return false;
 
             const char *owner_name =
@@ -368,71 +378,6 @@ namespace hgl::ecs
                     }
                 }
                 if (!recipe_binding)
-                    return false;
-
-                // 数据资产无域缓冲（地址行表是批次级 SSBO，
-                // schema 中也无 MaterialPrivateData 需求）——直接通过
-                continue;
-
-                const graph::mtl::ShaderResourceSlot
-                    *layout_requirement = nullptr;
-                for (const auto &requirement :
-                     material_program->
-                        GetShaderResourceSchema().resources)
-                {
-                    if (requirement.semantic
-                            == graph::mtl::DescriptorSemantic::
-                                MaterialPrivateData
-                     && requirement.material_private_data_slot == binding.material_private_data_slot
-                     && requirement.ssbo_type == binding.ssbo_type)
-                    {
-                        layout_requirement = &requirement;
-                        break;
-                    }
-                }
-                if (!layout_requirement || layout_requirement->name.empty())
-                    return false;
-
-                const graph::mtl::SSBOAddress address{
-                    binding.ssbo_type,
-                    recipe_binding->ssbo_id,
-                    0};
-                graph::SSBOBufferBinding domain_binding{};
-                if (!domain_manager->TryGetBinding(
-                        address, domain_binding)
-                 || !domain_binding.buffer
-                 || domain_binding.element_stride == 0)
-                {
-                    const auto *resource =
-                        primitive_comp->GetMaterialPrivateDataSlotResource(
-                            layout_requirement->name,
-                            binding.material_private_data_slot);
-                    if (!resource
-                     || !resource->buffer
-                     || resource->ssbo_id != recipe_binding->ssbo_id)
-                        return false;
-
-                    if (!rdbs->RegisterMaterialStructLayout(
-                            binding.ssbo_type,
-                            recipe_binding->ssbo_id,
-                            resource->byte_stride)
-                     || !domain_manager->RegisterBuffer(
-                            address,
-                            resource->buffer,
-                            resource->element_capacity))
-                        return false;
-
-                    if (!domain_manager->TryGetBinding(
-                            address, domain_binding)
-                     || !domain_binding.buffer
-                     || domain_binding.element_stride == 0)
-                        return false;
-                }
-
-                if (!rdbs->RegisterMaterialStructLayout(
-                        binding.ssbo_type,
-                        recipe_binding->ssbo_id,
-                        domain_binding.element_stride))
                     return false;
             }
             return true;
@@ -681,11 +626,13 @@ namespace hgl::ecs
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialPrivateData)
                     continue;
 
-                const uint32_t stride = graph::mtl::GetSSBOTypeStructStride(req.ssbo_type);
+                const graph::mtl::MaterialSSBOType material_ssbo_type =
+                    ResolveMaterialSSBORequirementType(req);
+                const uint32_t stride = graph::mtl::GetMaterialSSBOTypeStructStride(material_ssbo_type);
                 if (stride == 0)
                     continue;
 
-                rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, stride);
+                rdbs->RegisterMaterialStructLayout(material_ssbo_type, req.ssbo_id, stride);
             }
         }
 
@@ -860,12 +807,16 @@ namespace hgl::ecs
                             GetPrimitiveOwnerName(primitive_comp),
                             req.name.empty() ? "<unnamed>" : req.name.c_str(),
                             req.material_private_data_slot,
-                            graph::mtl::GetSSBOTypeName(req.ssbo_type));
+                            graph::mtl::GetMaterialSSBOTypeName(
+                                ResolveMaterialSSBORequirementType(req)));
                 return false;
             }
 
             material_comp->SetResolvedSSBOBinding(
-                req.name.c_str(), req.material_private_data_slot, req.ssbo_type, resolved_ssbo_id);
+                req.name.c_str(),
+                req.material_private_data_slot,
+                ResolveMaterialSSBORequirementType(req),
+                resolved_ssbo_id);
         }
 
         auto rdbs = world->GetSystem<RenderSceneUBOSystem>();
@@ -876,16 +827,9 @@ namespace hgl::ecs
             return false;
         }
 
-        // Determine the entity's own data_index from the cached binding recipe.
-        // The old shared MaterializationSpec cache is gone: this value is always
-        // this primitive's own row, never inherited from another primitive.
-        //
-        // A use_data_index == false asset (e.g. every mesh in BasicLitMeshes /
-        // TextureBlinnPhongMeshes) still owns a concrete row: the shader indexes
-        // material_private_data_index_rows by the data_index VALUE
-        // read back from those tables, so a non-data-index asset publishes its
-        // authored data_index (0) there. Prefer an explicit use_data_index asset
-        // when present, otherwise fall back to the first authored data_index.
+        // Determine the entity's own active material row ID from the cached
+        // binding recipe. The old shared MaterializationSpec cache is gone:
+        // this value is always the primitive's explicitly authored DataID.
         //
         // scope_ssbo_id is the data-slot asset's SSBO id — the same scope the
         // per-batch data rows and the engine-managed texture-layer rows domain
@@ -924,8 +868,8 @@ namespace hgl::ecs
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
 
-            // data_index 直接取自 asset_binding，经段注册表翻译为该类型
-            // 缓冲内的行地址（CPU 映射基址供行尾句柄直写，GPU 基址供地址行表）
+            // data_index is the active row ID in this type's shared material
+            // buffer; translate it to the CPU/GPU address used by the current ABI.
             {
                 static bool arena_trace_done = false;
                 if (getenv("ULRE_ARENA_DEBUG") && !arena_trace_done)
@@ -940,32 +884,89 @@ namespace hgl::ecs
                 material_comp->material_row_cpu = nullptr;
                 material_comp->material_row_gpu     = 0;
 
-                if (asset_binding.ssbo_id != 0)
+                if (!graph::mtl::IsMaterialSSBOType(
+                        asset_binding.ssbo_type)
+                 || asset_binding.ssbo_id == 0
+                 || !asset_binding.use_data_index
+                 || asset_binding.data_index == uint32_t(-1))
                 {
-                    auto *translate_gc = world->GetGraphicsContext();
-                    auto *translate_domain = translate_gc
-                        ? translate_gc->GetSSBOBufferRegistry() : nullptr;
+                    GLogError(
+                        "[RenderPrimitiveCollectSystem] Materialize failed: invalid material row binding for %s type=%s ssbo_id=%u data_index=%u use_data_index=%d",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        graph::mtl::GetMaterialSSBOTypeName(
+                            asset_binding.ssbo_type),
+                        asset_binding.ssbo_id,
+                        asset_binding.data_index,
+                        asset_binding.use_data_index ? 1 : 0);
+                    return false;
+                }
 
-                    graph::SSBOBufferRegistry::RowSegmentInfo seg;
-                    if (translate_domain
-                     && translate_domain->TryGetRowSegment(asset_binding.ssbo_id, seg))
-                    {
-                        const uint64_t row_offset =
-                            uint64_t(asset_binding.data_index) * seg.row_bytes;
+                auto *graphics_context = world->GetGraphicsContext();
+                auto *material_domain = graphics_context
+                    ? graphics_context->GetMaterialSSBOBufferRegistry()
+                    : nullptr;
+                graph::MaterialRowBufferInfo material_buffer{};
+                if (!material_domain
+                 || !material_domain->TryGetRowBuffer(
+                        asset_binding.ssbo_id,
+                        material_buffer))
+                {
+                    GLogError(
+                        "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer missing for %s type=%s ssbo_id=%u",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        graph::mtl::GetMaterialSSBOTypeName(
+                            asset_binding.ssbo_type),
+                        asset_binding.ssbo_id);
+                    return false;
+                }
+                if (!material_domain->IsMaterialDataIDActive(
+                        asset_binding.ssbo_type,
+                        asset_binding.data_index))
+                {
+                    GLogError(
+                        "[RenderPrimitiveCollectSystem] Materialize failed: inactive material row ID for %s type=%s ssbo_id=%u data_index=%u",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        graph::mtl::GetMaterialSSBOTypeName(
+                            asset_binding.ssbo_type),
+                        asset_binding.ssbo_id,
+                        asset_binding.data_index);
+                    return false;
+                }
+                if (material_buffer.material_ssbo_type
+                        != asset_binding.ssbo_type
+                 || material_buffer.gpu_base == 0
+                 || material_buffer.row_bytes == 0
+                 || material_buffer.row_capacity == 0
+                 || asset_binding.data_index >= material_buffer.row_capacity)
+                {
+                    GLogError(
+                        "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer invalid for %s type=%s buffer_type=%s ssbo_id=%u data_index=%u capacity=%u row_bytes=%u",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        graph::mtl::GetMaterialSSBOTypeName(
+                            asset_binding.ssbo_type),
+                        graph::mtl::GetMaterialSSBOTypeName(
+                            material_buffer.material_ssbo_type),
+                        asset_binding.ssbo_id,
+                        asset_binding.data_index,
+                        material_buffer.row_capacity,
+                        material_buffer.row_bytes);
+                    return false;
+                }
 
-                        material_comp->material_row_cpu =
-                            static_cast<uint8_t *>(seg.cpu_base) + row_offset;
-                        material_comp->material_row_gpu =
-                            seg.gpu_base + row_offset;
+                const uint64_t row_offset =
+                    uint64_t(asset_binding.data_index) * material_buffer.row_bytes;
+                material_comp->material_row_cpu = material_buffer.cpu_base
+                    ? static_cast<uint8_t *>(material_buffer.cpu_base) + row_offset
+                    : nullptr;
+                material_comp->material_row_gpu = material_buffer.gpu_base + row_offset;
 
-                        if (!arena_trace_done)
-                        {
-                            GLogInfo("[ArenaTrace] translated: gpu=0x%llx (base=%llu row_bytes=%u)",
-                                     (unsigned long long)material_comp->material_row_gpu,
-                                     (unsigned long long)seg.gpu_base,
-                                     seg.row_bytes);
-                        }
-                    }
+                if (!arena_trace_done)
+                {
+                    GLogInfo(
+                        "[ArenaTrace] translated: gpu=0x%llx (base=%llu row_bytes=%u domain=material)",
+                        (unsigned long long)material_comp->material_row_gpu,
+                        (unsigned long long)material_buffer.gpu_base,
+                        material_buffer.row_bytes);
                 }
                 continue;
             }

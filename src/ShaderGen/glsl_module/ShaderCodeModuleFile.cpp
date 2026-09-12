@@ -316,18 +316,42 @@ namespace hgl::graph::mtl
                 return false;
             return true;
         }
-        bool ParseSSBOType(const char *token, SSBOType &out) noexcept
+        bool ParseSSBOType(const char *token,
+                           SSBOType &out_ssbo_type,
+                           MaterialSSBOType &out_material_ssbo_type) noexcept
         {
+            if (!token || !token[0])
+                return false;
+
             for (uint32 i = 0; i < static_cast<uint32>(SSBOType::RANGE_SIZE); ++i)
             {
                 const SSBOType type = static_cast<SSBOType>(i);
                 if (std::strcmp(token, GetSSBOTypeName(type)) == 0)
                 {
-                    out = type;
+                    out_ssbo_type = type;
+                    out_material_ssbo_type = MaterialSSBOType::PBRSurface;
                     return true;
                 }
             }
+
+            for (uint32 i = 0; i < static_cast<uint32>(MaterialSSBOType::RANGE_SIZE); ++i)
+            {
+                const MaterialSSBOType type = static_cast<MaterialSSBOType>(i);
+                if (std::strcmp(token, GetMaterialSSBOTypeName(type)) == 0)
+                {
+                    out_ssbo_type = SSBOType::MaterialPrivateDataIndex;
+                    out_material_ssbo_type = type;
+                    return true;
+                }
+            }
+
             return false;
+        }
+
+        bool ParseSSBOType(const char *token, SSBOType &out) noexcept
+        {
+            MaterialSSBOType material_type = MaterialSSBOType::PBRSurface;
+            return ParseSSBOType(token, out, material_type);
         }
 
     }
@@ -495,9 +519,11 @@ namespace hgl::graph::mtl
                     if (!ssbo_name)
                         return ShaderCodeModuleParseResult::InvalidResource;
                     *ssbo_name = token;
+                    MaterialSSBOType material_ssbo_type = MaterialSSBOType::PBRSurface;
                     next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseSSBOType(token, requirement.ssbo_type))
+                    if (!next || !ParseSSBOType(token, requirement.ssbo_type, material_ssbo_type))
                         return ShaderCodeModuleParseResult::InvalidResource;
+                    requirement.material_ssbo_type = material_ssbo_type;
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !ParseUnsignedInt(token, requirement.material_private_data_slot))
                         return ShaderCodeModuleParseResult::InvalidNumber;

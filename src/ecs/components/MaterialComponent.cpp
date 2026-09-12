@@ -88,7 +88,7 @@ namespace hgl::ecs
 
     void MaterialComponent::SetResolvedSSBOBinding(const char *material_private_data_slot_name,
                                                    const uint32_t material_private_data_slot,
-                                                   graph::mtl::SSBOType ssbo_type,
+                                                   graph::mtl::MaterialSSBOType ssbo_type,
                                                    const uint32_t ssbo_id)
     {
         if (!material_private_data_slot_name || !*material_private_data_slot_name)
@@ -120,7 +120,7 @@ namespace hgl::ecs
         MaterialComponent::FindResolvedSSBOBinding(
             const char *material_private_data_slot_name,
             const uint32_t material_private_data_slot,
-            graph::mtl::SSBOType ssbo_type) const
+            graph::mtl::MaterialSSBOType ssbo_type) const
     {
         if (!material_private_data_slot_name || !*material_private_data_slot_name)
             return nullptr;

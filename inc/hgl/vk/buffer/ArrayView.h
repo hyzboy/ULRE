@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/buffer/BufferView.h>
 #include<hgl/mtl/MaterialRecipe.h>     ///< for mtl::SSBOType / mtl::SSBOBinding
@@ -26,16 +26,16 @@ namespace hgl::graph{
  * 5. Built-in SSBO ID storage (assigned by SSBOBufferRegistry)
  *
  * 典型用途 / Typical usage:
- *   材质实例颜色数组 SSBO、PBRSurface 实例数据 SSBO 等
+ *   通用运行时结构化 SSBO 数组。
  *
  * 使用示例 / Usage Example:
  * ```cpp
- * // 一步式创建，ID 自动分配并存储在 accessor 内
+ * // 通用运行时 SSBO：一步式创建，ID 自动分配并存储在 accessor 内
  * auto* acc = domain_manager->AllocateArrayAccessor<Color4f>(
- *     SSBOType::PBRSurface, "MySSBO", DRAW_COUNT);
+ *     SSBOType::UserDefined, "MySSBO", DRAW_COUNT);
  *
- * // 直接用 accessor 里的 type+id 注册 recipe 绑定
- * UpsertRecipeSSBOAssetBinding(recipe, name, acc->GetSSBOBinding());
+ * // 材质 payload 行必须从 MaterialSSBOBufferRegistry 获取，并用
+ * // accessor 的 ID 与显式 MaterialSSBOType 建立 recipe binding。
  *
  * // 写入元素
  * for (uint32_t i = 0; i < acc->GetCount(); i++)
@@ -60,6 +60,7 @@ private:
 
     friend class VulkanDevice;
     friend class SSBOBufferRegistry;
+    friend class MaterialSSBOBufferRegistry;
 
 private:
 
@@ -103,6 +104,8 @@ private:
     }
 
 public:
+
+    ArrayView() = default;
 
     /**
      * CN: 工厂方法 —— 从已有 BufferOwner 创建数组访问器
@@ -199,9 +202,9 @@ public:
     mtl::SSBOType GetSSBOType() const { return ssbo_type; }
 
     /**
-     * CN: 返回最小 SSBO 身份（type + id），可直接传给 UpsertRecipeSSBOAssetBinding：
-     *       UpsertRecipeSSBOAssetBinding(recipe, name, accessor->GetSSBOBinding());
-     * EN: Return minimal SSBO identity (type + id) for use with UpsertRecipeSSBOAssetBinding.
+     * CN: 返回通用运行时 SSBO 身份（type + id）。材质 payload recipe 绑定必须
+     *     单独提供显式 MaterialSSBOType，不能使用该返回值推导类型。
+     * EN: Return the generic runtime SSBO identity (type + id).
      */
     mtl::SSBOBinding GetSSBOBinding() const { return {ssbo_type, ssbo_id}; }
 

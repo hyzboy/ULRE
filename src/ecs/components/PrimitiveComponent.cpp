@@ -39,7 +39,7 @@ namespace hgl::ecs
         {
             resource.material_private_data_slot_name.clear();
             resource.material_private_data_slot = hgl::graph::mtl::DefaultMaterialPrivateDataSlot;
-            resource.ssbo_type = hgl::graph::mtl::SSBOType::UserDefined;
+            resource.ssbo_type = hgl::graph::mtl::MaterialSSBOType::PBRSurface;
             resource.ssbo_id = 0;
             resource.buffer = nullptr;
             resource.element_capacity = 0;
@@ -348,7 +348,7 @@ namespace hgl::ecs
             if (!resource.authored)
                 continue;
 
-            hgl::graph::mtl::SSBOType ssbo_type =
+            const hgl::graph::mtl::MaterialSSBOType ssbo_type =
                 hgl::graph::mtl::ResolveRecipeSSBOType(
                     out_recipe,
                     resource.material_private_data_slot_name.c_str(),
@@ -363,12 +363,6 @@ namespace hgl::ecs
                      || req.material_private_data_slot != resource.material_private_data_slot
                      || resource.material_private_data_slot_name != req.name)
                         continue;
-
-                    if (ssbo_type != hgl::graph::mtl::SSBOType::UserDefined
-                     && ssbo_type != req.ssbo_type)
-                        return false;
-
-                    ssbo_type = req.ssbo_type;
                     break;
                 }
             }
@@ -539,12 +533,32 @@ namespace hgl::ecs
 
     void PrimitiveComponent::SetMaterialPrivateDataSlotResource(const MaterialPrivateDataSlotAuthoringResource &resource)
     {
-        if (!hgl::graph::mtl::IsValidMaterialPrivateDataSlotName(resource.material_private_data_slot_name))
+        if (!hgl::graph::mtl::IsValidMaterialPrivateDataSlotName(
+                resource.material_private_data_slot_name)
+         || resource.material_private_data_slot_name
+                != hgl::graph::mtl::DefaultMaterialPrivateDataSlotName
+         || resource.material_private_data_slot
+                != hgl::graph::mtl::DefaultMaterialPrivateDataSlot)
+        {
+            GLogError(
+                "[PrimitiveComponent] Material private-data resource rejected non-canonical slot name=%s slot=%u",
+                resource.material_private_data_slot_name.c_str(),
+                resource.material_private_data_slot);
             return;
+        }
 
         if (resource.ssbo_id == 0)
         {
             ClearMaterialPrivateDataSlotResource(resource.material_private_data_slot_name, resource.material_private_data_slot);
+            return;
+        }
+
+        if (!resource.use_data_index || resource.data_index == uint32_t(-1))
+        {
+            GLogError(
+                "[PrimitiveComponent] Material private-data resource rejected missing active row ID name=%s slot=%u",
+                resource.material_private_data_slot_name.c_str(),
+                resource.material_private_data_slot);
             return;
         }
 

@@ -366,12 +366,12 @@ namespace hgl::graph::mtl
             return ParseShaderCodeModuleSemantic(name.c_str(), out);
         }
 
-        bool ParseSSBOType(const std::string &name, SSBOType &out)
+        bool ParseMaterialSSBOType(const std::string &name, MaterialSSBOType &out)
         {
-            for (uint32 i = 0; i < static_cast<uint32>(SSBOType::RANGE_SIZE); ++i)
+            for (uint32 i = 0; i < static_cast<uint32>(MaterialSSBOType::RANGE_SIZE); ++i)
             {
-                const SSBOType type = static_cast<SSBOType>(i);
-                if (name == GetSSBOTypeName(type))
+                const MaterialSSBOType type = static_cast<MaterialSSBOType>(i);
+                if (name == GetMaterialSSBOTypeName(type))
                 {
                     out = type;
                     return true;
@@ -877,9 +877,8 @@ namespace hgl::graph::mtl
                     if (!item.is_table()
                      || !item.contains("type") || !item.at("type").is_string())
                         return false;
-                    SSBOType type;
-                    if (!ParseSSBOType(item.at("type").as_string(), type)
-                     || type == SSBOType::UserDefined
+                    MaterialSSBOType type;
+                    if (!ParseMaterialSSBOType(item.at("type").as_string(), type)
                      || !IsMaterialSSBOType(type))
                         return false;
                     out.definition.material_private_data = type;

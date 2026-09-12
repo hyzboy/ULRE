@@ -36,7 +36,7 @@ namespace hgl::graph::mtl
         ShaderStage stage,
         const char *material,
         const MaterialCompileConfig &config,
-        SSBOType material_private_data,
+        MaterialSSBOType material_private_data,
         ShaderDocument &out_document,
         ShaderDocumentDiagnostics &out_diagnostics);
 

@@ -246,7 +246,7 @@ static bool ValidateDefinitionCapabilitySubset(
                 const auto &ssbo = manifest->ssbos[i];
                 if (req.semantic == DescriptorSemantic::MaterialPrivateData
                  && req.material_private_data_slot == ssbo.material_private_data_slot
-                 && req.ssbo_type == ssbo.ssbo_type
+                 && req.material_ssbo_type == ssbo.material_ssbo_type
                  && descriptor_builder_common::CStrEqual(req.name.c_str(), ssbo.name))
                     allowed = true;
             }
@@ -367,43 +367,28 @@ static bool CreateBuildContext(
 static bool ResolveEffectiveMaterialPrivateData(
     const MaterialCompileConfig &config,
     CompileContext &c,
-    SSBOType &out_material_private_data)
+    MaterialSSBOType &out_material_private_data)
 {
+    (void)c;
     out_material_private_data = config.material_private_data;
 
-    if (config.merge_resource_manifest_material_slots
-     && config.resource_manifest
-     && config.resource_manifest->IsValid())
-    {
-        for (uint32_t i = 0; i < config.resource_manifest->ssbo_count; ++i)
-        {
-            const auto &ssbo = config.resource_manifest->ssbos[i];
-
-            if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
-                continue;
-
-            if (out_material_private_data == SSBOType::UserDefined)
-                out_material_private_data = ssbo.ssbo_type;
-            else if (out_material_private_data != ssbo.ssbo_type)
-                return c.Fail("provider material data slot conflicts with definition");
-        }
-    }
-
-    return true;
+    // Material payloads are tracked by the material-specific enum; the generic
+    // SSBOType namespace is reserved for non-material resources only.
+    return IsMaterialSSBOType(out_material_private_data);
 }
 
 // ── Step 3b: 有效契约 → 固定序列化条目 ───────────────────────────────────────
 static bool BuildEffectiveDescriptorEntries(
     const DescriptorContract &base_contract,
-    const SSBOType material_private_data,
+    const MaterialSSBOType material_private_data,
     const uint32_t material_ssbo_stage_bits,
     CompileContext &c,
     DescriptorContract &out_effective_contract,
     std::vector<SerializedDescriptorEntry> &out_entries,
     uint32_t &out_declared_slot_count)
 {
-    out_declared_slot_count =
-        material_private_data != SSBOType::UserDefined ? 1u : 0u;
+    (void)material_private_data;
+    out_declared_slot_count = 1u;
 
     if (!BuildEffectiveDescriptorContract(
             base_contract,
@@ -609,7 +594,7 @@ ShaderBuildContext *CompileMaterial(
     // ── Step 3: Add Descriptors from SerializedDescriptorEntry[] ──
     // Provider metadata contributes the material SSBO to the same canonical
     // declaration as the material definition (单槽 ⊕ 单源冲突检测).
-    SSBOType effective_material_private_data = SSBOType::UserDefined;
+    MaterialSSBOType effective_material_private_data = MaterialSSBOType::PBRSurface;
     if (!ResolveEffectiveMaterialPrivateData(config, c, effective_material_private_data))
         return FailCompile(c);
 
@@ -693,10 +678,14 @@ ShaderBuildContext *CompileMaterial(
         && !config.material_definition->texture_declarations.empty()
         && (!config.resource_manifest
          || config.resource_manifest->texture_reference_count != 0);
+    const bool has_material_ssbo_payload =
+        IsMaterialSSBOType(config.material_private_data)
+        || (config.resource_manifest && config.resource_manifest->ssbo_count > 0);
     shader_resource_schema.requires_runtime_data_rows =
-        config.material_definition
-        && (config.material_definition->vertex_varying.emit_data_index_id
-         || has_active_texture_reference_consumer);
+        has_material_ssbo_payload
+        || (config.material_definition
+         && (config.material_definition->vertex_varying.emit_data_index_id
+          || has_active_texture_reference_consumer));
 
     ctx->SetShaderResourceSchema(shader_resource_schema);
 

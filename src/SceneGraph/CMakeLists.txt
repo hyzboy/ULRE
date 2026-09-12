@@ -29,6 +29,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
                         ${SG_INCLUDE_PATH}/module/SSBOBufferRegistry.h
+                        ${SG_INCLUDE_PATH}/module/MaterialSSBOBufferRegistry.h
                         ${SG_INCLUDE_PATH}/module/MaterialTextureReferencePool.h
                         ${SG_INCLUDE_PATH}/module/EnvironmentManager.h
                         ${SG_INCLUDE_PATH}/module/RenderModule.h
@@ -44,6 +45,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp
                         module/SSBOBufferRegistry.cpp
+                        module/MaterialSSBOBufferRegistry.cpp
                         module/MaterialTextureReferencePool.cpp
                         module/EnvironmentManager.cpp
                         module/SwapChainModule.cpp)

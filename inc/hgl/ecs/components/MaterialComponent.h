@@ -23,7 +23,7 @@ namespace hgl::ecs
         {
             const char *material_private_data_slot_name = nullptr;
             uint32_t material_private_data_slot = graph::mtl::DefaultMaterialPrivateDataSlot;
-            graph::mtl::SSBOType ssbo_type = graph::mtl::SSBOType::UserDefined;
+            graph::mtl::MaterialSSBOType ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
             uint32_t ssbo_id = 0;
             bool valid = false;
         };
@@ -33,7 +33,7 @@ namespace hgl::ecs
 
         // Runtime row indices, materialized independently for this primitive.
         // They must not be sourced from a shared recipe/spec cache entry.
-        uint32_t data_index_row = uint32_t(-1);
+        uint32_t data_index_row = uint32_t(-1);  // ActiveArrayView material row DataID.
 
         // Arena 行寻址（W3.3 后按 SSBOType 独立缓冲）：实例数据行的
         // CPU 映射基址（行尾句柄直写）与 GPU 设备地址（地址行表引用）。
@@ -106,11 +106,11 @@ namespace hgl::ecs
         void ClearResolvedBindingTable();
         void SetResolvedSSBOBinding(const char *material_private_data_slot_name,
                                     uint32_t material_private_data_slot,
-                                    graph::mtl::SSBOType ssbo_type,
+                                    graph::mtl::MaterialSSBOType ssbo_type,
                                     uint32_t ssbo_id);
         const ResolvedSSBOBinding *FindResolvedSSBOBinding(const char *material_private_data_slot_name,
                                                            uint32_t material_private_data_slot,
-                                                           graph::mtl::SSBOType ssbo_type) const;
+                                                           graph::mtl::MaterialSSBOType ssbo_type) const;
 
         void OnAttach() override;
         void OnDetach() override;

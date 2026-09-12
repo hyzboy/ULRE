@@ -21,7 +21,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/color/ColorPacking.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -90,8 +90,13 @@ private:
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
 
+    using MaterialDataAccessor = graph::ActiveArrayView<ssbo::PBRSurfaceRow>;
+    using MaterialDataID = MaterialDataAccessor::DataID;
+    static constexpr MaterialDataID InvalidMaterialDataID =
+        MaterialDataAccessor::InvalidDataID;
+
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::ArrayView<ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
+    MaterialDataAccessor *material_data_ssbo_accessor = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -102,7 +107,17 @@ private:
 
     // One MI per cell: col controls metallic, row controls roughness
     ssbo::PBRSurfaceRow sphere_material_data[GRID_SIZE][GRID_SIZE]{};
-    uint32_t            sphere_slot_rows[GRID_SIZE][GRID_SIZE]{};
+    MaterialDataID      sphere_slot_rows[GRID_SIZE][GRID_SIZE] = {
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID},
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID},
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID},
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID},
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID},
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID},
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID},
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID},
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID},
+        {InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID, InvalidMaterialDataID}};
 
     // 100 entities, one per sphere
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};
@@ -111,6 +126,33 @@ private:
     double elapsed_time = 0.0;
 
 private:
+
+    void ReleaseMaterialData()
+    {
+        if (material_data_ssbo_accessor)
+        {
+            for (uint row = 0; row < GRID_SIZE; ++row)
+            {
+                for (uint col = 0; col < GRID_SIZE; ++col)
+                {
+                    MaterialDataID &data_id = sphere_slot_rows[row][col];
+                    if (data_id != InvalidMaterialDataID
+                     && material_data_ssbo_accessor->IsActiveID(data_id))
+                        material_data_ssbo_accessor->ReleaseID(data_id);
+
+                    data_id = InvalidMaterialDataID;
+                }
+            }
+        }
+        else
+        {
+            for (uint row = 0; row < GRID_SIZE; ++row)
+                for (uint col = 0; col < GRID_SIZE; ++col)
+                    sphere_slot_rows[row][col] = InvalidMaterialDataID;
+        }
+
+        material_data_ssbo_accessor = nullptr;
+    }
 
     static uint HashU32(uint row, uint col, uint salt)
     {
@@ -262,7 +304,7 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
-                sphere_slot_rows[row][col] = uint32_t(-1);
+                sphere_slot_rows[row][col] = InvalidMaterialDataID;
             }
         }
 
@@ -274,13 +316,15 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<SSBOBufferRegistry>();
+        ReleaseMaterialData();
+
+        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
 
-        material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::PBRSurfaceRow>(
+        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<ssbo::PBRSurfaceRow>(
             "PBRSpheres:PBRSurface:MaterialData",
             mi_count);
         if (!material_data_ssbo_accessor)
@@ -290,9 +334,22 @@ private:
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
             {
-                const uint32_t slot_index = row * GRID_SIZE + col;
-                sphere_slot_rows[row][col] = slot_index;
-                (*material_data_ssbo_accessor)[slot_index] = sphere_material_data[row][col];
+                MaterialDataID &data_id = sphere_slot_rows[row][col];
+                if (!material_data_ssbo_accessor->AcquireID(data_id))
+                {
+                    ReleaseMaterialData();
+                    return false;
+                }
+
+                const ssbo::PBRSurfaceRow material_data =
+                    sphere_material_data[row][col];
+                if (!material_data_ssbo_accessor->WriteByID(
+                        data_id,
+                        material_data))
+                {
+                    ReleaseMaterialData();
+                    return false;
+                }
             }
         }
         material_data_ssbo_accessor->Commit();
@@ -449,9 +506,16 @@ private:
         if (!InitMaterialDataSSBO())
             return false;
 
-        graph::mtl::UpsertRecipeSSBOAssetBinding(sphere_recipe,
-                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 material_data_ssbo_accessor->GetSSBOBinding());
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                sphere_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::PBRSurface,
+                material_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                sphere_slot_rows[0][0],
+                true,
+                false))
+            return false;
 
         if (!CreateBasePrimitives())
             return false;
@@ -502,6 +566,7 @@ private:
                     return false;
                 hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
                 sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+                sphere_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
                 sphere_struct.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
                 sphere_struct.data_index = sphere_slot_rows[row][col];
                 sphere_struct.use_data_index = true;
@@ -575,7 +640,7 @@ public:
         }
 
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(material_data_ssbo_accessor)
+        ReleaseMaterialData();
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
     }

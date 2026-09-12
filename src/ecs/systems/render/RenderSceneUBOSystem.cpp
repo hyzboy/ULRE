@@ -197,25 +197,22 @@ namespace hgl::ecs
         }
     }
 
-    bool RenderSceneUBOSystem::RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
+    bool RenderSceneUBOSystem::RegisterMaterialStructLayout(graph::mtl::MaterialSSBOType ssbo_type,
                                                                      uint32_t ssbo_id,
                                                                      uint32_t byte_stride)
     {
-        const uint32_t expected_version = graph::mtl::GetSSBOTypeStructVersion(ssbo_type);
-        const uint32_t expected_stride = graph::mtl::GetSSBOTypeStructStride(ssbo_type);
+        const uint32_t expected_version = graph::mtl::GetMaterialSSBOTypeStructVersion(ssbo_type);
+        const uint32_t expected_stride = graph::mtl::GetMaterialSSBOTypeStructStride(ssbo_type);
         if (expected_version > 0 && expected_stride > 0 && byte_stride != expected_stride)
         {
             GLogError("[R11] SSBO struct layout rejected: type=%s version=%u expected_stride=%u actual_stride=%u ssbo_id=%u",
-                      graph::mtl::GetSSBOTypeName(ssbo_type),
+                      graph::mtl::GetMaterialSSBOTypeName(ssbo_type),
                       expected_version,
                       expected_stride,
                       byte_stride,
                       ssbo_id);
             return false;
         }
-
-        if (auto *domain_manager = GetSSBOBufferRegistry(context))
-            domain_manager->Touch(graph::mtl::SSBOAddress{ssbo_type, ssbo_id, 0});
 
         return true;
     }

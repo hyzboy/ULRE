@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 namespace hgl::graph::mtl {}
 
@@ -53,9 +53,9 @@ struct MaterialCompileConfig
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::MeshFragment);
     // Per-material SSBO 单槽声明（固定 slot 0 / DefaultMaterialPrivateDataSlotName）。
-    // UserDefined = 无私有数据 SSBO。原 vector<MaterialPrivateDataSlotDeclaration>*
-    // 已随单槽类型收敛删除。
-    SSBOType material_private_data = SSBOType::UserDefined;
+    // Material payloads are tracked with the material-specific enum, not the generic
+    // runtime SSBO enum.
+    MaterialSSBOType material_private_data = MaterialSSBOType::PBRSurface;
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileMaterial checks Layout requirements ⊆ Definition capabilities.
     const mtl::MaterialDefinition *material_definition = nullptr;

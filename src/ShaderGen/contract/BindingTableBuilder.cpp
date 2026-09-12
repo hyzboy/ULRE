@@ -34,7 +34,7 @@ namespace hgl::graph::mtl
             BindingBuildDiagnostic &diagnostic,
             const BindingBuildError error,
             const uint32 material_private_data_slot = 0,
-            const SSBOType ssbo_type = SSBOType::UserDefined) noexcept
+                const MaterialSSBOType ssbo_type = MaterialSSBOType::PBRSurface) noexcept
         {
             diagnostic.error = error;
             diagnostic.material_private_data_slot = material_private_data_slot;
@@ -56,7 +56,7 @@ namespace hgl::graph::mtl
             const uint64 program_key_digest,
             const DescriptorSemantic semantic,
             const uint32 material_private_data_slot,
-            const SSBOType ssbo_type,
+            const MaterialSSBOType ssbo_type,
             const uint64 resource_schema_id) noexcept
         {
             hgl::hash::FNV1aHasher64 h;
@@ -115,7 +115,8 @@ namespace hgl::graph::mtl
               << entry.semantic
               << entry.name
               << entry.material_private_data_slot
-              << entry.ssbo_type;
+              << entry.ssbo_type
+              << entry.material_ssbo_type;
             return h != 0 ? h.Result() : 1;
         }
 
@@ -164,7 +165,7 @@ namespace hgl::graph::mtl
         ResolvedDataBinding *FindDataBinding(
             ResolvedBindingTable &table,
             const uint32 material_private_data_slot,
-            const SSBOType ssbo_type) noexcept
+            const MaterialSSBOType ssbo_type) noexcept
         {
             for (int i = 0; i < table.data.GetCount(); ++i)
             {
@@ -204,7 +205,7 @@ namespace hgl::graph::mtl
         int FindRecipeData(
             const MaterialRecipe &recipe,
             const uint32 material_private_data_slot,
-            const SSBOType ssbo_type,
+            const MaterialSSBOType ssbo_type,
             BindingBuildDiagnostic &diagnostic) noexcept
         {
             int found = -1;
@@ -328,8 +329,6 @@ namespace hgl::graph::mtl
                 const RecipeSSBOAssetBinding &data_asset =
                     recipe.ssbo_assets.front();
 
-                // 数据槽资产的 ssbo_type 在 BindingTable 阶段可能仍为 UserDefined；
-                // 类型由后续 schema resolve 阶段补全，此处只按 slot/id 路由。
                 if (!FindDataBinding(out_table,
                                      data_asset.material_private_data_slot,
                                      data_asset.ssbo_type))

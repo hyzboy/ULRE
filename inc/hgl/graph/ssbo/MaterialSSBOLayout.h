@@ -17,69 +17,70 @@ namespace hgl::graph::ssbo
     )";
     constexpr const char TransmissionSurfaceMaterialSSBOGLSL[] = "uint trans_color; uint reserved0[3];";
 
-    inline const char *GetMaterialSSBOStructName(const mtl::SSBOType type) noexcept
+    inline const char *GetMaterialSSBOStructName(const mtl::MaterialSSBOType type) noexcept
     {
         switch (type)
         {
-        case mtl::SSBOType::EmissiveSurface:         return "EmissiveSurfaceData";
-        case mtl::SSBOType::PBRSurface:              return "PBRSurfaceData";
-        case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceData";
+        case mtl::MaterialSSBOType::EmissiveSurface:         return "EmissiveSurfaceData";
+        case mtl::MaterialSSBOType::PBRSurface:              return "PBRSurfaceData";
+        case mtl::MaterialSSBOType::TransmissionSurface:     return "TransmissionSurfaceData";
         default:                                     return nullptr;
         }
     }
 
     // Arena+BDA 路径的 buffer_reference 行结构名（与 MaterialDataRows.h 的 C++ 行结构同名）
 
-    // 行结构类型 → SSBOType 编译期映射（AllocateArrayAccessor<T> 由 T 反查类型，
-    // 开发者无需重复传递 SSBOType；新增行结构时在此登记一行）。
+    // 行结构类型 → MaterialSSBOType 编译期映射（MaterialSSBOBufferRegistry
+    // 由 T 反查类型；新增行结构时在此登记一行）。
     template<typename T> struct MaterialRowTypeTraits;
-    template<> struct MaterialRowTypeTraits<PBRSurfaceRow>              { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::PBRSurface; };
-    template<> struct MaterialRowTypeTraits<EmissiveSurfaceRow>         { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::EmissiveSurface; };
-    template<> struct MaterialRowTypeTraits<TransmissionSurfaceRow>     { static constexpr mtl::SSBOType TYPE = mtl::SSBOType::TransmissionSurface; };
+    template<> struct MaterialRowTypeTraits<PBRSurfaceRow>              { static constexpr mtl::MaterialSSBOType TYPE = mtl::MaterialSSBOType::PBRSurface; };
+    template<> struct MaterialRowTypeTraits<EmissiveSurfaceRow>         { static constexpr mtl::MaterialSSBOType TYPE = mtl::MaterialSSBOType::EmissiveSurface; };
+    template<> struct MaterialRowTypeTraits<TransmissionSurfaceRow>     { static constexpr mtl::MaterialSSBOType TYPE = mtl::MaterialSSBOType::TransmissionSurface; };
 
-    inline const char *GetMaterialSSBORowName(const mtl::SSBOType type) noexcept
+    inline const char *GetMaterialSSBORowName(const mtl::MaterialSSBOType type) noexcept
     {
         switch (type)
         {
-        case mtl::SSBOType::EmissiveSurface:         return "EmissiveSurfaceRow";
-        case mtl::SSBOType::PBRSurface:              return "PBRSurfaceRow";
-        case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceRow";
+        case mtl::MaterialSSBOType::EmissiveSurface:         return "EmissiveSurfaceRow";
+        case mtl::MaterialSSBOType::PBRSurface:              return "PBRSurfaceRow";
+        case mtl::MaterialSSBOType::TransmissionSurface:     return "TransmissionSurfaceRow";
         default:                                     return nullptr;
         }
     }
 
     // GLSL buffer 声明名（struct 名去 "Data" 后缀 + "Buffer"——显式表，
     // 不做字符串剥除：改 struct 名时 buffer 名独立可控）
-    inline const char *GetMaterialSSBOBufferName(const mtl::SSBOType type) noexcept
+    inline const char *GetMaterialSSBOBufferName(const mtl::MaterialSSBOType type) noexcept
     {
         switch (type)
         {
-        case mtl::SSBOType::EmissiveSurface:         return "EmissiveSurfaceBuffer";
-        case mtl::SSBOType::PBRSurface:              return "PBRSurfaceBuffer";
-        case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceBuffer";
+        case mtl::MaterialSSBOType::EmissiveSurface:         return "EmissiveSurfaceBuffer";
+        case mtl::MaterialSSBOType::PBRSurface:              return "PBRSurfaceBuffer";
+        case mtl::MaterialSSBOType::TransmissionSurface:     return "TransmissionSurfaceBuffer";
         default:                                     return nullptr;
         }
     }
 
-    inline const char *GetMaterialSSBOStructGLSL(const mtl::SSBOType type) noexcept
+    inline const char *GetMaterialSSBOStructGLSL(const mtl::MaterialSSBOType type) noexcept
     {
         switch (type)
         {
-        case mtl::SSBOType::EmissiveSurface:     return EmissiveSurfaceMaterialSSBOGLSL;
-        case mtl::SSBOType::PBRSurface:              return PBRSurfaceMaterialSSBOGLSL;
-        case mtl::SSBOType::TransmissionSurface:     return TransmissionSurfaceMaterialSSBOGLSL;
+        case mtl::MaterialSSBOType::EmissiveSurface:     return EmissiveSurfaceMaterialSSBOGLSL;
+        case mtl::MaterialSSBOType::PBRSurface:              return PBRSurfaceMaterialSSBOGLSL;
+        case mtl::MaterialSSBOType::TransmissionSurface:     return TransmissionSurfaceMaterialSSBOGLSL;
         default:                                 return nullptr;
         }
     }
 
-    inline bool TryGetMaterialSSBOLayout(const mtl::SSBOType type,
+    inline bool TryGetMaterialSSBOLayout(const mtl::MaterialSSBOType type,
                                          const char *&struct_name,
                                          const char *&glsl_codes,
                                          uint32_t &struct_bytes) noexcept
     {
         struct_name = GetMaterialSSBOStructName(type);
         glsl_codes = GetMaterialSSBOStructGLSL(type);
-        struct_bytes = mtl::GetSSBOTypeStructStride(type);
+        struct_bytes = mtl::GetMaterialSSBOTypeStructStride(type);
         return struct_name != nullptr && glsl_codes != nullptr && struct_bytes > 0;
     }
+
 }

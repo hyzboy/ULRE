@@ -53,8 +53,8 @@ namespace hgl::graph::mtl
                 && binding.asset_identity_hash != 0
                 && binding.asset_metadata_hash != 0
                 && binding.semantic == DescriptorSemantic::MaterialPrivateData
-                && binding.ssbo_type >= SSBOType::BEGIN_RANGE
-                && binding.ssbo_type <= SSBOType::END_RANGE
+                && binding.ssbo_type >= MaterialSSBOType::BEGIN_RANGE
+                && binding.ssbo_type <= MaterialSSBOType::END_RANGE
                 && IsValidDataSource(binding.source)
                 && ((binding.source == BindingSource::Asset)
                     ? binding.recipe_binding_index
@@ -319,7 +319,7 @@ namespace hgl::graph::mtl
     }
 
     uint64 GetResolvedDataAssetIdentityHash(
-        const SSBOType ssbo_type,
+        const MaterialSSBOType ssbo_type,
         const uint32 ssbo_id,
         const uint32 material_private_data_slot) noexcept
     {

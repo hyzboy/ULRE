@@ -6,7 +6,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -37,7 +37,14 @@ private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
-    graph::ArrayView<graph::ssbo::EmissiveSurfaceRow>* mtl_data_ssbo_accessor = nullptr;
+    using MaterialDataID = graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>::DataID;
+    static constexpr MaterialDataID InvalidMaterialDataID =
+        graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow>::InvalidDataID;
+    graph::ActiveArrayView<graph::ssbo::EmissiveSurfaceRow> *mtl_data_ssbo_accessor = nullptr;
+    MaterialDataID material_data_ids[3] = {
+        InvalidMaterialDataID,
+        InvalidMaterialDataID,
+        InvalidMaterialDataID};
 
     Geometry *         geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_grid_recipe{};
@@ -76,7 +83,7 @@ private:
         return geom_plane_grid;
     }
 
-    bool Add(const char *name,const uint32_t data_index,const glm::quat &rotation)
+    bool Add(const char *name,const MaterialDataID data_id,const glm::quat &rotation)
     {
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
@@ -90,8 +97,9 @@ private:
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource named_struct{};
         named_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+        named_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
         named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
-        named_struct.data_index = data_index;
+        named_struct.data_index = data_id;
         named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
         prim_comp->SetMaterialPrivateDataSlotResource(named_struct);
@@ -113,16 +121,25 @@ private:
         plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
         plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
         plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialPrivateDataSlotName, mtl_data_ssbo_accessor->GetSSBOBinding());
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                plane_grid_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::EmissiveSurface,
+                mtl_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                material_data_ids[0],
+                true,
+                true))
+            return false;
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 
-        if(!Add("PlaneXY", 0, glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
+        if(!Add("PlaneXY", material_data_ids[0], glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
             return false;
 
         const float rot90 = glm::radians(90.0f);
-        if(!Add("PlaneYZ", 1, glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
+        if(!Add("PlaneYZ", material_data_ids[1], glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
             return false;
-        if(!Add("PlaneXZ", 2, glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
+        if(!Add("PlaneXZ", material_data_ids[2], glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
             return false;
 
         return true;
@@ -133,11 +150,11 @@ private:
         if (!ecs_context)
             return false;
 
-        auto *domain_manager = GetManager<SSBOBufferRegistry>();
+        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::EmissiveSurfaceRow>(
+        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>(
             "PlaneGrid3D:MaterialData",
             3);
         if (!mtl_data_ssbo_accessor)
@@ -146,7 +163,32 @@ private:
         Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
         for (uint32_t i = 0; i < 3; ++i)
         {
-            (*mtl_data_ssbo_accessor)[i].color =grid_color;
+            if (!mtl_data_ssbo_accessor->AcquireID(material_data_ids[i]))
+            {
+                while (i > 0)
+                {
+                    --i;
+                    mtl_data_ssbo_accessor->ReleaseID(material_data_ids[i]);
+                    material_data_ids[i] = InvalidMaterialDataID;
+                }
+                return false;
+            }
+
+            graph::ssbo::EmissiveSurfaceRow row{};
+            row.color = grid_color;
+            if (!mtl_data_ssbo_accessor->WriteByID(material_data_ids[i], row))
+            {
+                mtl_data_ssbo_accessor->ReleaseID(material_data_ids[i]);
+                material_data_ids[i] = InvalidMaterialDataID;
+                while (i > 0)
+                {
+                    --i;
+                    mtl_data_ssbo_accessor->ReleaseID(material_data_ids[i]);
+                    material_data_ids[i] = InvalidMaterialDataID;
+                }
+                return false;
+            }
+
             grid_color = GetColor4f(COLOR(int(COLOR::BlenderAxisRed) + int(i) + 1), 1.0f);
         }
         mtl_data_ssbo_accessor->Commit();
@@ -199,7 +241,17 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(mtl_data_ssbo_accessor)
+        if (mtl_data_ssbo_accessor)
+        {
+            for (const MaterialDataID data_id : material_data_ids)
+            {
+                if (data_id != InvalidMaterialDataID
+                 && mtl_data_ssbo_accessor->IsActiveID(data_id))
+                    mtl_data_ssbo_accessor->ReleaseID(data_id);
+            }
+            mtl_data_ssbo_accessor = nullptr;
+        }
+
         SAFE_CLEAR(geom_plane_grid);
     }
 

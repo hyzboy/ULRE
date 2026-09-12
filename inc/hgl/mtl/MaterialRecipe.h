@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/PipelineConfig.h>
@@ -35,10 +35,10 @@ namespace hgl::graph::mtl
     {
         std::string material_private_data_slot_name;
         uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot;
-        SSBOType ssbo_type = SSBOType::UserDefined;
-        uint32_t ssbo_id = 0;
-        uint32_t data_index = 0;
-        bool use_data_index = false;
+        MaterialSSBOType ssbo_type = MaterialSSBOType::PBRSurface;
+        uint32_t ssbo_id = 0;                 // Shared physical material SSBO.
+        uint32_t data_index = uint32_t(-1);   // ActiveArrayView row DataID in that SSBO.
+        bool use_data_index = false;          // Must be true for a material data binding.
         bool shared_across_instances = false;
     };
 
@@ -338,8 +338,8 @@ namespace hgl::graph::mtl
         MaterialDefinitionBootstrapKind bootstrap_kind = MaterialDefinitionBootstrapKind::None;
 
         // Part-B: 材质私有数据 SSBO（单槽，固定 slot 0 / 名字 DefaultMaterialPrivateDataSlotName）。
-        // UserDefined = 无私有数据 SSBO。
-        SSBOType material_private_data = SSBOType::UserDefined;
+        // MaterialSSBOType 是材质域专用枚举；不再混入通用 SSBOType。
+        MaterialSSBOType material_private_data = MaterialSSBOType::PBRSurface;
 
         // Part-B3: UBO 资源能力声明。
         // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
@@ -605,13 +605,13 @@ namespace hgl::graph::mtl
         return nullptr;
     }
 
-    inline SSBOType ResolveRecipeSSBOType(
+    inline MaterialSSBOType ResolveRecipeSSBOType(
         const MaterialRecipe &recipe,
         const char *material_private_data_slot_name,
         const uint32_t material_private_data_slot,
-        const SSBOType authored_type) noexcept
+        const MaterialSSBOType authored_type) noexcept
     {
-        if (authored_type != SSBOType::UserDefined)
+        if (authored_type != MaterialSSBOType::PBRSurface)
             return authored_type;
 
         if (const auto *asset = FindRecipeSSBOAssetBindingByKey(
@@ -625,23 +625,42 @@ namespace hgl::graph::mtl
         const MaterialRecipe &recipe,
         const char *material_private_data_slot_name,
         const uint32_t material_private_data_slot,
-        const SSBOType ssbo_type) noexcept
+        const MaterialSSBOType ssbo_type) noexcept
     {
         const auto *asset = FindRecipeSSBOAssetBindingByKey(
             recipe, material_private_data_slot_name, material_private_data_slot);
         return asset && asset->ssbo_type == ssbo_type ? asset : nullptr;
     }
 
+    inline bool UpsertRecipeSSBOAssetBinding(
+        MaterialRecipe &recipe,
+        const std::string &material_private_data_slot_name,
+        const MaterialSSBOType ssbo_type,
+        const uint32_t ssbo_id,
+        const uint32_t material_private_data_slot,
+        const uint32_t data_index,
+        const bool use_data_index,
+        const bool shared_across_instances);
+
+    // A material payload binding is valid only with an acquired active row ID.
     inline bool UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
                                              const std::string &material_private_data_slot_name,
-                                             const SSBOType ssbo_type,
+                                             const MaterialSSBOType ssbo_type,
                                              const uint32_t ssbo_id,
-                                             const uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot,
-                                             const uint32_t data_index = 0,
-                                             const bool use_data_index = false,
-                                             const bool shared_across_instances = false)
+                                             const uint32_t material_private_data_slot,
+                                             const uint32_t data_index,
+                                             const bool use_data_index,
+                                             const bool shared_across_instances)
     {
-        if (!IsValidMaterialPrivateDataSlotName(material_private_data_slot_name))
+        if (!IsValidMaterialPrivateDataSlotName(material_private_data_slot_name)
+         || material_private_data_slot_name
+                != DefaultMaterialPrivateDataSlotName
+         || !IsMaterialSSBOType(ssbo_type)
+         || ssbo_id == 0
+         || data_index == uint32_t(-1)
+         || !use_data_index
+         || material_private_data_slot
+                >= MaxMaterialPrivateDataSlotsPerMaterial)
             return false;
 
         for (auto &asset : recipe.ssbo_assets)
@@ -670,21 +689,6 @@ namespace hgl::graph::mtl
         asset.shared_across_instances = shared_across_instances;
         recipe.ssbo_assets.emplace_back(std::move(asset));
         return true;
-    }
-
-    /**
-     * CN: UpsertRecipeSSBOAssetBinding 的统一重载 —— 接受 SSBOBinding，
-     *     无需将 type/id 分开传。配合 ArrayView::GetSSBOBinding() 使用：
-     *       UpsertRecipeSSBOAssetBinding(recipe, name, accessor->GetSSBOBinding());
-     * EN: Unified overload accepting SSBOBinding so type/id need not be passed separately.
-     */
-    inline bool UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
-                                             const std::string &material_private_data_slot_name,
-                                             const SSBOBinding &binding,
-                                             const uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot)
-    {
-        return UpsertRecipeSSBOAssetBinding(
-            recipe, material_private_data_slot_name, binding.ssbo_type, binding.ssbo_id, material_private_data_slot);
     }
 
     // 纹理绑定 upsert（与 UpsertRecipeSSBOAssetBinding 对称）：

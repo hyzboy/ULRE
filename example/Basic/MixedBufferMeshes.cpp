@@ -17,7 +17,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -81,8 +81,14 @@ private:
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
+    using MaterialDataAccessor = graph::ActiveArrayView<graph::ssbo::PBRSurfaceRow>;
+    using MaterialDataID = MaterialDataAccessor::DataID;
+    static constexpr MaterialDataID InvalidMaterialDataID =
+        MaterialDataAccessor::InvalidDataID;
+
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::ArrayView<graph::ssbo::PBRSurfaceRow>* material_data_ssbo_accessor = nullptr;
+    MaterialDataAccessor *material_data_ssbo_accessor = nullptr;
+    MaterialDataID material_data_id = InvalidMaterialDataID;
     VertexDataManager* mesh_vdm = nullptr;
 
     MeshEntry* floor_mesh = nullptr;
@@ -96,19 +102,39 @@ private:
 
 private:
 
+    void ReleaseMaterialData()
+    {
+        if (material_data_ssbo_accessor
+         && material_data_id != InvalidMaterialDataID
+         && material_data_ssbo_accessor->IsActiveID(material_data_id))
+            material_data_ssbo_accessor->ReleaseID(material_data_id);
+
+        material_data_id = InvalidMaterialDataID;
+        material_data_ssbo_accessor = nullptr;
+    }
+
     bool InitMaterial()
     {
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
 
-        if (!texture_manager || !sampler_manager )
+        if (!texture_manager || !sampler_manager
+         || !material_data_ssbo_accessor
+         || material_data_id == InvalidMaterialDataID)
             return false;
         mesh_recipe.recipe_name = "06b.BasicLit.Lit";
         mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
-                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                                                 material_data_ssbo_accessor->GetSSBOBinding());
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                mesh_recipe,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
+                graph::mtl::MaterialSSBOType::PBRSurface,
+                material_data_ssbo_accessor->GetSSBOId(),
+                graph::mtl::DefaultMaterialPrivateDataSlot,
+                material_data_id,
+                true,
+                true))
+            return false;
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
@@ -133,7 +159,9 @@ private:
 
     bool InitMaterialDataSSBO()
     {
-        auto* domain_manager = GetManager<SSBOBufferRegistry>();
+        ReleaseMaterialData();
+
+        auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
@@ -143,13 +171,24 @@ private:
         material_row.roughness   = 0.92f;
         material_row.normal_scale = 0.35f;
 
-        material_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<graph::ssbo::PBRSurfaceRow>(
+        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>(
             "06b:PBRSurface:MaterialData",
             1);
         if (!material_data_ssbo_accessor)
             return false;
 
-        (*material_data_ssbo_accessor)[0] = material_row;
+        if (!material_data_ssbo_accessor->AcquireID(material_data_id))
+        {
+            ReleaseMaterialData();
+            return false;
+        }
+
+        if (!material_data_ssbo_accessor->WriteByID(material_data_id, material_row))
+        {
+            ReleaseMaterialData();
+            return false;
+        }
+
         material_data_ssbo_accessor->Commit();
         return true;
     }
@@ -429,10 +468,11 @@ private:
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource floor_authoring{};
             floor_authoring.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            floor_authoring.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
             floor_authoring.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
-            floor_authoring.data_index = 0;
-            floor_authoring.use_data_index = false;
-            floor_authoring.shared_across_instances = false;
+            floor_authoring.data_index = material_data_id;
+            floor_authoring.use_data_index = true;
+            floor_authoring.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(floor_authoring);
             primitive_comp->SetVisible(true);
         }
@@ -475,10 +515,11 @@ private:
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_authoring{};
             mesh_authoring.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            mesh_authoring.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
             mesh_authoring.ssbo_id = material_data_ssbo_accessor->GetSSBOId();
-            mesh_authoring.data_index = 0;
-            mesh_authoring.use_data_index = false;
-            mesh_authoring.shared_across_instances = false;
+            mesh_authoring.data_index = material_data_id;
+            mesh_authoring.use_data_index = true;
+            mesh_authoring.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(mesh_authoring);
             primitive_comp->SetVisible(true);
 
@@ -529,7 +570,7 @@ private:
 public:
     ~MixedBufferMeshesApp()
     {
-        SAFE_CLEAR(material_data_ssbo_accessor)
+        ReleaseMaterialData();
         SAFE_CLEAR(mesh_vdm)
     }
 

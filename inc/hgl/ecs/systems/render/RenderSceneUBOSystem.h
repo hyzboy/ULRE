@@ -72,7 +72,7 @@ namespace hgl::ecs
         void Update(float deltaTime) override;
         void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
 
-        bool RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
+        bool RegisterMaterialStructLayout(graph::mtl::MaterialSSBOType ssbo_type,
                                           uint32_t ssbo_id,
                                           uint32_t byte_stride);
 
