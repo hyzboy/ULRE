@@ -731,10 +731,9 @@ namespace hgl::ecs
                     ResolveMaterialSSBORequirementType(req));
             if (!recipe_binding)
             {
-                GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s slot=%u type=%s",
+                GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s type=%s",
                             GetPrimitiveOwnerName(primitive_comp),
                             req.name.empty() ? "<unnamed>" : req.name.c_str(),
-                            req.material_private_data_slot,
                             graph::mtl::GetMaterialSSBOTypeName(
                                 ResolveMaterialSSBORequirementType(req)));
                 return false;
@@ -786,7 +785,7 @@ namespace hgl::ecs
         // Fill the per-batch material data index table for every SSBO asset,
         // including use_data_index == false ones (the shader still reads
         // data[data_index], so the authored index must be published in the table).
-        // 单槽化：材质唯一私有数据 SSBO 固定 slot 0。
+        // 每个材质 recipe 只声明一个共享材质数据 SSBO。
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
 

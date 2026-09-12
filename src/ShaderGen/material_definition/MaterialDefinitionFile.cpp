@@ -869,9 +869,9 @@ namespace hgl::graph::mtl
 
                 if (resources.contains("material_data"))
                 {
-                    // 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
+                    // 单一声明：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
                     // TOML 形态：material_data = { type = "EmissiveSurface" }
-                    // 名字/槽号固定（DefaultMaterialPrivateDataSlotName / slot 0）；
+                    // 名字固定为 DefaultMaterialPrivateDataSlotName；
                     // type 必须是材质 SSBO 类型。
                     const auto &item = resources.at("material_data");
                     if (!item.is_table()

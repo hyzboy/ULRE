@@ -18,7 +18,6 @@ namespace hgl::graph::mtl
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         DescriptorSetType set_type = DescriptorSetType::Unknown;
-        uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
         MaterialSSBOType material_ssbo_type = MaterialSSBOType::PBRSurface;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
@@ -140,7 +139,6 @@ namespace hgl::graph::mtl
             req.semantic = entry.semantic;
             req.semantic_layer = NormalizeSemanticLayer(entry);
             req.set_type = entry.set_type;
-            req.material_private_data_slot = entry.material_private_data_slot;
             req.ssbo_type = entry.ssbo_type;
             req.material_ssbo_type = entry.material_ssbo_type;
             req.ssbo_id = entry.ssbo_id;
@@ -169,25 +167,16 @@ namespace hgl::graph::mtl
 
             if (req.semantic == DescriptorSemantic::MaterialPrivateData)
             {
-                req.material_private_data_slot = entry.material_private_data_slot;
                 req.ssbo_type = entry.ssbo_type;
                 // Material payloads are tracked by MaterialSSBOType, not the
                 // generic SSBOType namespace. Keep the generic runtime field as
                 // UserDefined unless a non-material runtime binding is authored.
-                if (req.ssbo_id == MakeRecipeSSBOId(0))
-                    req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
             }
             if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
              && req.ssbo_type == SSBOType::UserDefined)
             {
                 req.ssbo_type = SSBOType::MaterialPrivateDataIndex;
             }
-            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
-             && req.ssbo_id == MakeRecipeSSBOId(0))
-            {
-                req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
-            }
-
             if (req.semantic == DescriptorSemantic::LocalToWorldIndex
              && req.ssbo_type == SSBOType::UserDefined)
             {
@@ -207,7 +196,6 @@ namespace hgl::graph::mtl
                 h << req.semantic
                   << req.semantic_layer
                   << req.set_type
-                  << req.material_private_data_slot
                   << req.ssbo_type
                   << req.material_ssbo_type;
 
@@ -253,7 +241,6 @@ namespace hgl::graph::mtl
               << req.semantic
               << req.semantic_layer
               << req.set_type
-              << req.material_private_data_slot
               << req.ssbo_type
               << req.material_ssbo_type
               << req.ssbo_id
@@ -270,7 +257,7 @@ namespace hgl::graph::mtl
     }
 
     // 结构校验权威（schema 级）：逐条不变量 + 目录 set 交叉校验 + 材质 SSBO
-    // 规则 + 两两重复/冲突诊断（三键判定，O(n²)）。entry 级的
+    // 规则 + 两两重复/冲突诊断（名称/逻辑 ID/语义判定，O(n²)）。entry 级的
     // ValidateDescriptorContract 是边界守卫（构建步早期短路 + 身份碰撞快速失败）。
     inline bool ValidateShaderResourceSchema(const ShaderResourceSchema &schema, std::vector<std::string> &diagnostics)
     {
@@ -341,14 +328,6 @@ namespace hgl::graph::mtl
 
             if (req.semantic == DescriptorSemantic::MaterialPrivateData)
             {
-                if (req.material_private_data_slot >= MaxMaterialPrivateDataSlotsPerMaterial)
-                {
-                    std::string message = "Descriptor material_private_data_slot is invalid for material SSBO semantic: ";
-                    message += context;
-                    diagnostics.push_back(std::move(message));
-                    continue;
-                }
-
                 if (!IsMaterialSSBOType(req.material_ssbo_type))
                 {
                     std::string message = "Descriptor material_ssbo_type is invalid for material payload semantic; an explicit material type is required: ";
@@ -368,14 +347,6 @@ namespace hgl::graph::mtl
 
             if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
             {
-                if (req.material_private_data_slot >= MaxMaterialPrivateDataSlotsPerMaterial)
-                {
-                    std::string message = "Descriptor material_private_data_slot is invalid for material index semantic: ";
-                    message += context;
-                    diagnostics.push_back(std::move(message));
-                    continue;
-                }
-
                 if (req.ssbo_type != SSBOType::MaterialPrivateDataIndex)
                 {
                     std::string message = "Descriptor ssbo_type must be MaterialPrivateDataIndex for material index semantic: ";
@@ -397,8 +368,7 @@ namespace hgl::graph::mtl
                 const bool same_logical_resource =
                     lhs.logical_resource_id == rhs.logical_resource_id;
                 const bool same_semantic_key =
-                    lhs.semantic == rhs.semantic
-                 && lhs.material_private_data_slot == rhs.material_private_data_slot;
+                    lhs.semantic == rhs.semantic;
 
                 if (!same_name
                  && !same_logical_resource
@@ -412,7 +382,6 @@ namespace hgl::graph::mtl
                  && lhs.semantic == rhs.semantic
                  && lhs.semantic_layer == rhs.semantic_layer
                  && lhs.set_type == rhs.set_type
-                 && lhs.material_private_data_slot == rhs.material_private_data_slot
                  && lhs.ssbo_type == rhs.ssbo_type
                  && lhs.material_ssbo_type == rhs.material_ssbo_type
                  && lhs.ssbo_id == rhs.ssbo_id

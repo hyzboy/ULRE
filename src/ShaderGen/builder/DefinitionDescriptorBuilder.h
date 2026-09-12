@@ -56,7 +56,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const BuildDescriptorOptions &opt = {})
 {
     // A6-2b-b1：manifest 数据槽不再桥接契约行表条目——数据槽信号由编译配置
-    // material_private_data 直判（ResolveEffectiveMaterialPrivateData 单槽合并），
+    // material_private_data 直判（ResolveEffectiveMaterialPrivateData 单一声明合并），
     // 行表存在性/FS 发射门不再经契约。
     return BuildDescriptorsFromDefinition(definition, opt);
 }

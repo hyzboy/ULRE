@@ -5,7 +5,7 @@
 // @ulre slot material_source_provider
 // @ulre require ProducedSemantic WorldNormal
 // @ulre require Resource MaterialData
-// @ulre ssbo mtl_private_data EmissiveSurface 0 Fragment required
+// @ulre ssbo mtl_private_data EmissiveSurface Fragment required
 // @ulre uses material_source_interface
 // @ulre end
 

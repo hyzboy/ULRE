@@ -33,7 +33,6 @@ namespace hgl::graph::mtl
             h << entry.semantic
               << entry.semantic_layer
               << entry.set_type
-              << entry.material_private_data_slot
               << entry.ssbo_type
               << entry.material_ssbo_type;
             return h;
@@ -173,7 +172,7 @@ namespace hgl::graph::mtl
         // 校验分层：本函数 = entry 级结构守卫 + 身份碰撞快速失败（构建步
         // 早期短路，bool 无诊断；W1 用例锚定重复身份必须在此拒绝）。
         // ValidateShaderResourceSchema = 结构权威——两两对比在 schema 层
-        // 以三键（name/logical_id/semantic）判定 duplicate vs conflict，
+        // 以名称/逻辑 ID/语义判定 duplicate vs conflict，
         // 输出可操作的诊断信息。
         const size_t count = contract.size();
         for (size_t i = 0; i < count; ++i)
@@ -233,7 +232,6 @@ namespace hgl::graph::mtl
             req.semantic = entry.semantic;
             req.semantic_layer = entry.semantic_layer;
             req.set_type = entry.set_type;
-            req.material_private_data_slot = entry.material_private_data_slot;
             req.ssbo_type = entry.ssbo_type;
             req.material_ssbo_type = entry.material_ssbo_type;
             req.ssbo_id = entry.ssbo_id;
@@ -260,19 +258,6 @@ namespace hgl::graph::mtl
                     req.semantic);
                 if (default_struct)
                     req.struct_name = default_struct;
-            }
-
-            // ── SSBO id corrections (matching BuildShaderResourceSchema) ──
-            if (req.semantic == DescriptorSemantic::MaterialPrivateData
-             && req.ssbo_id == MakeRecipeSSBOId(0))
-            {
-                req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
-            }
-            if (req.semantic
-                    == DescriptorSemantic::MaterialPrivateDataIndex
-             && req.ssbo_id == MakeRecipeSSBOId(0))
-            {
-                req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
             }
 
             out_schema.resources.push_back(std::move(req));
@@ -315,7 +300,6 @@ namespace hgl::graph::mtl
                            << entry->set_type
                            << entry->ssbo_type
                            << entry->material_ssbo_type
-                           << entry->material_private_data_slot
                            << entry->stage_flags
                            << entry->array_count
                            << entry->required

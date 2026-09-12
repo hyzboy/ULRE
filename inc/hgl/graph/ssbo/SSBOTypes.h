@@ -29,12 +29,6 @@ namespace hgl::graph::mtl
     };
 
     using SSBOCategory = SSBOType;
-    constexpr uint32_t DefaultMaterialPrivateDataSlot = 0;
-    // 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
-    // 槽位数恒为 1，行表写单列。
-    constexpr uint32_t MaxMaterialPrivateDataSlotsPerMaterial = 1u;
-    constexpr uint32_t MaterialPrivateDataIndexRowStride = MaxMaterialPrivateDataSlotsPerMaterial;
-
     constexpr bool IsMaterialSSBOType(const MaterialSSBOType type) noexcept
     {
         switch (type)
@@ -222,9 +216,9 @@ namespace hgl::graph::mtl
         }
     };
 
-    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t material_private_data_slot) noexcept
+    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t slot) noexcept
     {
-        return SSBOAddress{ssbo_type, ssbo_id, material_private_data_slot};
+        return SSBOAddress{ssbo_type, ssbo_id, slot};
     }
 
 }

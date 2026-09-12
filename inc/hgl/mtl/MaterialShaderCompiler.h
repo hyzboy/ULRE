@@ -52,7 +52,7 @@ struct MaterialCompileConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::MeshFragment);
-    // Per-material SSBO 单槽声明（固定 slot 0 / DefaultMaterialPrivateDataSlotName）。
+    // Per-material SSBO 单一声明（名称为 DefaultMaterialPrivateDataSlotName）。
     // Material payloads are tracked with the material-specific enum, not the generic
     // runtime SSBO enum.
     MaterialSSBOType material_private_data = MaterialSSBOType::PBRSurface;

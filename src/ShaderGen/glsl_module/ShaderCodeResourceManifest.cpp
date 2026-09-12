@@ -39,8 +39,9 @@ namespace hgl::graph::mtl
             for (uint32 i = 0; i < manifest.ssbo_count; ++i)
             {
                 auto &existing = manifest.ssbos[i];
-                if (!descriptor_builder_common::CStrEqual(existing.name, incoming.name)
-                 || existing.material_private_data_slot != incoming.material_private_data_slot)
+                if (!descriptor_builder_common::CStrEqual(
+                        existing.name,
+                        incoming.name))
                     continue;
 
                 if (existing.ssbo_type != incoming.ssbo_type
@@ -242,7 +243,6 @@ namespace hgl::graph::mtl
                 const auto &ssbo = manifest.ssbos[i];
                 h << ssbo.name;
                 h << ssbo.ssbo_type
-                  << ssbo.material_private_data_slot
                   << ssbo.stage_flags
                   << ssbo.required
                   << ssbo.allow_fallback;

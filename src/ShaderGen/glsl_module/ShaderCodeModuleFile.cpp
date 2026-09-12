@@ -525,9 +525,6 @@ namespace hgl::graph::mtl
                         return ShaderCodeModuleParseResult::InvalidResource;
                     requirement.material_ssbo_type = material_ssbo_type;
                     next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseUnsignedInt(token, requirement.material_private_data_slot))
-                        return ShaderCodeModuleParseResult::InvalidNumber;
-                    next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !ParseStageFlags(token, requirement.stage_flags))
                         return ShaderCodeModuleParseResult::InvalidStage;
 

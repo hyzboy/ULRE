@@ -204,7 +204,6 @@ namespace hgl::graph::mtl
         const char *name = nullptr;
         SSBOType ssbo_type = SSBOType::UserDefined;
         MaterialSSBOType material_ssbo_type = MaterialSSBOType::PBRSurface;
-        uint32 material_private_data_slot = 0;
         uint32 stage_flags = 0;
         bool required = true;
         bool allow_fallback = false;
@@ -218,7 +217,6 @@ namespace hgl::graph::mtl
         return same_name
             && lhs.ssbo_type == rhs.ssbo_type
             && lhs.material_ssbo_type == rhs.material_ssbo_type
-            && lhs.material_private_data_slot == rhs.material_private_data_slot
             && lhs.stage_flags == rhs.stage_flags
             && lhs.required == rhs.required
             && lhs.allow_fallback == rhs.allow_fallback;

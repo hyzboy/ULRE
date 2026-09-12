@@ -245,7 +245,6 @@ static bool ValidateDefinitionCapabilitySubset(
             {
                 const auto &ssbo = manifest->ssbos[i];
                 if (req.semantic == DescriptorSemantic::MaterialPrivateData
-                 && req.material_private_data_slot == ssbo.material_private_data_slot
                  && req.material_ssbo_type == ssbo.material_ssbo_type
                  && descriptor_builder_common::CStrEqual(req.name.c_str(), ssbo.name))
                     allowed = true;
@@ -360,9 +359,9 @@ static bool CreateBuildContext(
     return true;
 }
 
-// ── Step 3a: 解析有效材质私有数据 SSBO 类型（definition 单槽 ⊕ provider manifest）────
-// 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData，slot 0，
-// 名字固定 DefaultMaterialPrivateDataSlotName）。definition 侧与 manifest 侧
+// ── Step 3a: 解析有效材质私有数据 SSBO 类型（definition 单一声明 ⊕ provider manifest）────
+// 一个材质只有一个私有数据 SSBO（MaterialPrivateData，名字固定
+// DefaultMaterialPrivateDataSlotName）。definition 侧与 manifest 侧
 // 均可选；双源并存时必须类型一致，否则冲突硬失败。
 static bool ResolveEffectiveMaterialPrivateData(
     const MaterialCompileConfig &config,
@@ -384,11 +383,9 @@ static bool BuildEffectiveDescriptorEntries(
     const uint32_t material_ssbo_stage_bits,
     CompileContext &c,
     DescriptorContract &out_effective_contract,
-    std::vector<SerializedDescriptorEntry> &out_entries,
-    uint32_t &out_declared_slot_count)
+    std::vector<SerializedDescriptorEntry> &out_entries)
 {
     (void)material_private_data;
-    out_declared_slot_count = 1u;
 
     if (!BuildEffectiveDescriptorContract(
             base_contract,
@@ -417,7 +414,6 @@ static bool BuildEffectiveDescriptorEntries(
 static bool RegisterCanonicalDescriptors(
     ShaderBuildContext *ctx,
     const std::vector<SerializedDescriptorEntry> &descriptor_entries,
-    const uint32_t declared_material_private_data_slot_count,
     uint32_t &io_material_ssbo_stage_bits,
     CompileContext &c)
 {
@@ -593,23 +589,20 @@ ShaderBuildContext *CompileMaterial(
 
     // ── Step 3: Add Descriptors from SerializedDescriptorEntry[] ──
     // Provider metadata contributes the material SSBO to the same canonical
-    // declaration as the material definition (单槽 ⊕ 单源冲突检测).
+    // declaration as the material definition (单一声明 ⊕ 单源冲突检测).
     MaterialSSBOType effective_material_private_data = MaterialSSBOType::PBRSurface;
     if (!ResolveEffectiveMaterialPrivateData(config, c, effective_material_private_data))
         return FailCompile(c);
 
     DescriptorContract effective_descriptor_contract{};
     std::vector<SerializedDescriptorEntry> descriptor_entries;
-    uint32_t declared_material_private_data_slot_count = 0;
     if (!BuildEffectiveDescriptorEntries(
             base_descriptor_contract, effective_material_private_data,
             material_ssbo_stage_bits, c,
-            effective_descriptor_contract, descriptor_entries,
-            declared_material_private_data_slot_count))
+            effective_descriptor_contract, descriptor_entries))
         return FailCompile(c);
 
     if (!RegisterCanonicalDescriptors(ctx, descriptor_entries,
-                                      declared_material_private_data_slot_count,
                                       material_ssbo_stage_bits, c))
         return FailCompile(c);
 

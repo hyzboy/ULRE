@@ -346,7 +346,7 @@ namespace hgl::graph::mtl
         MaterialDefinitionSourceKind source_kind = MaterialDefinitionSourceKind::BuiltIn;         // 来源类型
         MaterialDefinitionBootstrapKind bootstrap_kind = MaterialDefinitionBootstrapKind::None;
 
-        // Part-B: 材质私有数据 SSBO（单槽，固定 slot 0 / 名字 DefaultMaterialPrivateDataSlotName）。
+        // Part-B: 材质私有数据 SSBO（单一声明，名字为 DefaultMaterialPrivateDataSlotName）。
         // MaterialSSBOType 是材质域专用枚举；不再混入通用 SSBOType。
         MaterialSSBOType material_private_data = MaterialSSBOType::PBRSurface;
 
