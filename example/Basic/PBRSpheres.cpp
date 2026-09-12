@@ -91,7 +91,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<ssbo::PBRSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
     MaterialDataAccessor sphere_slot_accessors[GRID_SIZE][GRID_SIZE]{};

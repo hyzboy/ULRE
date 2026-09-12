@@ -114,6 +114,9 @@ SET(VK_BUFFER_FILES     ${BUFFER_HEADER_PATH}/BufferOwner.h
                         ${BUFFER_HEADER_PATH}/StructView.h
                         ${BUFFER_HEADER_PATH}/ArrayView.h
                         ${BUFFER_HEADER_PATH}/TypedArrayView.h
+                        ${BUFFER_HEADER_PATH}/ActiveRowPool.h
+                        ${BUFFER_HEADER_PATH}/ActiveRowView.h
+                        ${BUFFER_HEADER_PATH}/ActiveRowLease.h
                         ${BUFFER_SOURCE_PATH}/BufferOwner.cpp
                         ${BUFFER_SOURCE_PATH}/BufferMemory.cpp
                         ${BUFFER_SOURCE_PATH}/DeviceBuffer.cpp
@@ -125,7 +128,8 @@ SET(VK_BUFFER_FILES     ${BUFFER_HEADER_PATH}/BufferOwner.h
                         ${BUFFER_SOURCE_PATH}/VertexAttribBuffer.cpp
                         ${BUFFER_SOURCE_PATH}/IndexBuffer.cpp
                         ${BUFFER_SOURCE_PATH}/BufferPolicyResolve.h
-                        ${BUFFER_SOURCE_PATH}/BufferView.cpp)
+                        ${BUFFER_SOURCE_PATH}/BufferView.cpp
+                        ${BUFFER_SOURCE_PATH}/ActiveRowPool.cpp)
 
 SOURCE_GROUP("Buffer" FILES ${VK_BUFFER_FILES})
 

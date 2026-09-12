@@ -51,7 +51,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     graph::ssbo::PBRSurfaceRow material_data;
     graph::mtl::MaterialRecipe wall_recipe{};

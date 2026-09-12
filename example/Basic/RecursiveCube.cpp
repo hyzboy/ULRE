@@ -54,7 +54,7 @@ private:
     Entity *camera_entity = nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};

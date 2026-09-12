@@ -72,7 +72,7 @@ private:
     PrimitiveComponent *sphere_primitive_component = nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};

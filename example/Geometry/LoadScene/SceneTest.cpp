@@ -72,7 +72,7 @@ private:
     struct MaterialData
     {
         using MaterialDataAccessor =
-            graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+            graph::MaterialSSBODataAccessor;
 
         GeometryVertexFormat geometry_vertex_format;
         MaterialDataAccessor mtl_data_ssbo_accessors[COLOR_COUNT]{};

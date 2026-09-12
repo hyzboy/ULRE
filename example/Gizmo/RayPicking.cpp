@@ -88,7 +88,7 @@ private:
     graph::mtl::MaterialRecipe plane_recipe{};
     PrimitiveAsset             plane_asset{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
     MaterialDataAccessor plane_material_data_accessor{};
     MaterialDataAccessor line_material_data_accessor{};
 

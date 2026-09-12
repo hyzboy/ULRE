@@ -95,7 +95,7 @@ private:
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     MaterialDataAccessor material_data_ssbo_accessor{};
     graph::ssbo::PBRSurfaceRow sphere_material_data{};
@@ -366,7 +366,7 @@ private:
     PrimitiveAsset cube_asset;
     graph::mtl::MaterialRecipe cube_recipe{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     MaterialDataAccessor cube_material_data_ssbo_accessor{};
     Sampler *cube_sampler = nullptr;

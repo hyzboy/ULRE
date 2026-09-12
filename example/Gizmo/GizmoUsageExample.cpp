@@ -73,7 +73,7 @@ private:
     graph::mtl::MaterialRecipe grid_recipe{};
     PrimitiveAsset             grid_asset{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
     MaterialDataAccessor grid_mtl_data_ssbo_accessor{};
     Geometry *grid_geometry = nullptr;
 

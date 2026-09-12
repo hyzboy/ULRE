@@ -73,7 +73,7 @@ private:
     graph::mtl::MaterialRecipe sky_recipe{};
     graph::mtl::MaterialRecipe mesh_recipe{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::PBRSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     MaterialDataAccessor material_data_ssbo_accessor{};
 

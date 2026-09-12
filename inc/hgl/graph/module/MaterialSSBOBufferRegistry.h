@@ -3,79 +3,52 @@
 #include <hgl/graph/module/GraphModule.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/log/Log.h>
-#include <hgl/type/ActiveIDManager.h>
-#include <hgl/vk/VKDevice.h>
+#include <hgl/vk/buffer/ActiveRowPool.h>
+#include <hgl/vk/buffer/ActiveRowLease.h>
 
 namespace hgl::graph
 {
+
 class DeviceBuffer;
 class IGPUBuffer;
 class MaterialSSBOBufferRegistry;
 
-template<typename T>
-class MaterialSSBODataAccessor
+/**
+ * MaterialSSBODataAccessor —— 材质字段行的 RAII 访问器（**非模板：统一按字节**）。
+ *
+ * = 通用行租约 ActiveRowLease（关联池 + 申请行号 + 析构归还）
+ *   + 材质身份（MaterialSSBOType / ssbo_id，供 recipe binding 使用）。
+ *
+ * 行内容按字节访问，**需要结构体时在使用点指定类型**：
+ *   acc.Write(row);                      // 类型由实参推导（写 sizeof(T) 字节 + 按行提交）
+ *   auto *row = acc.GetAs<PBRSurfaceRow>();   // 需要指针时显式指定
+ * 不再绑定 registry：任何持有对应 ActiveRowPool 的地方都能造。
+ */
+class MaterialSSBODataAccessor : public ActiveRowLease
 {
-public:
-    using DataID = uint32_t;
-    static constexpr DataID InvalidDataID = ~DataID(0);
-
-private:
-    MaterialSSBOBufferRegistry *registry = nullptr;
     mtl::MaterialSSBOType material_ssbo_type =
         mtl::MaterialSSBOType::PBRSurface;
-    DataID data_id = InvalidDataID;
     uint32_t ssbo_id = 0;
-    T *data = nullptr;
 
     MaterialSSBODataAccessor(
-        MaterialSSBOBufferRegistry *in_registry,
+        ActiveRowPool *pool,
         const mtl::MaterialSSBOType in_material_ssbo_type,
-        const DataID in_data_id,
-        const uint32_t in_ssbo_id,
-        T *in_data)
-        : registry(in_registry)
+        const uint32_t in_ssbo_id)
+        : ActiveRowLease(pool)
         , material_ssbo_type(in_material_ssbo_type)
-        , data_id(in_data_id)
         , ssbo_id(in_ssbo_id)
-        , data(in_data)
     {
-    }
-
-    void Invalidate()
-    {
-        registry = nullptr;
-        data_id = InvalidDataID;
-        ssbo_id = 0;
-        data = nullptr;
     }
 
     friend class MaterialSSBOBufferRegistry;
 
 public:
     MaterialSSBODataAccessor() = default;
-    ~MaterialSSBODataAccessor()
-    {
-        Release();
-    }
-
-    MaterialSSBODataAccessor(const MaterialSSBODataAccessor &) = delete;
+    MaterialSSBODataAccessor(MaterialSSBODataAccessor &&) noexcept = default;
     MaterialSSBODataAccessor &operator=(
-        const MaterialSSBODataAccessor &) = delete;
+        MaterialSSBODataAccessor &&) noexcept = default;
 
-    MaterialSSBODataAccessor(MaterialSSBODataAccessor &&other) noexcept;
-    MaterialSSBODataAccessor &operator=(
-        MaterialSSBODataAccessor &&other) noexcept;
-
-    bool IsValid() const
-    {
-        return registry != nullptr
-            && data != nullptr
-            && data_id != InvalidDataID
-            && ssbo_id != 0;
-    }
-    operator bool() const { return IsValid(); }
-
-    DataID GetDataID() const { return data_id; }
+    uint32_t GetDataID() const { return GetRowID(); }
     uint32_t GetSSBOId() const { return ssbo_id; }
     mtl::MaterialSSBOType GetMaterialSSBOType() const
     {
@@ -83,30 +56,8 @@ public:
     }
     mtl::MaterialSSBOBinding GetMaterialSSBOBinding() const
     {
-        return {material_ssbo_type, ssbo_id, data_id};
+        return {material_ssbo_type, ssbo_id, GetRowID()};
     }
-
-    T *Get() { return data; }
-    const T *Get() const { return data; }
-    T *operator->() { return data; }
-    const T *operator->() const { return data; }
-    T &operator*() { return *data; }
-    const T &operator*() const { return *data; }
-
-    bool Write(const T &value);
-    bool Read(T &out_value) const;
-    bool Commit();
-    void Release();
-};
-
-struct MaterialSSBOBufferBinding
-{
-    mtl::MaterialSSBOType material_ssbo_type =
-        mtl::MaterialSSBOType::PBRSurface;
-    uint32_t ssbo_id = 0;
-    DeviceBuffer *buffer = nullptr;
-    uint32_t element_capacity = 0;
-    uint32_t element_stride = 0;
 };
 
 struct MaterialRowBufferInfo
@@ -120,6 +71,12 @@ struct MaterialRowBufferInfo
     DeviceBuffer *buffer = nullptr;
 };
 
+/**
+ * MaterialSSBOBufferRegistry —— 每个材质字段类型一个行池（ActiveRowPool）。
+ *
+ * 创建期：ENUM_CLASS_FOR 按类型遍历，只按 (行距, 1024) 建 Buffer；
+ * 使用期：GetMaterialDataAccessor(type) 借池视图 + 造租约（见 ActiveRowLease）。
+ */
 GRAPH_MODULE_CLASS(MaterialSSBOBufferRegistry)
 {
 private:
@@ -127,24 +84,7 @@ private:
         static_cast<uint32_t>(mtl::MaterialSSBOType::RANGE_SIZE);
     static constexpr uint32_t DefaultMaterialDataElementCapacity = 1024u;
 
-    /**
-     * 单个材质数据类型的完整池化单元：缓冲 + 元数据 + 行号空间。
-     * 一种数据类型 = 一个该结构——Buffer 创建与行号分配不再分家，
-     * 未来可整体抽离为通用「按类型/按 key 的行池」。
-     */
-    struct MaterialSSBOBufferStorage
-    {
-        DeviceBuffer *buffer = nullptr;
-        void *cpu_base = nullptr;
-        uint64_t gpu_base = 0;
-        uint32_t ssbo_id = 0;
-        uint32_t row_bytes = 0;
-        uint32_t row_capacity = 0;
-
-        ActiveIDManager ids;    ///< 行号空间（FIFO 复用；上限 = row_capacity）
-    };
-
-    MaterialSSBOBufferStorage material_buffers[MaterialSSBOTypeCount] = {};
+    ActiveRowPool material_row_pools[MaterialSSBOTypeCount];
     bool material_data_buffers_initialized = false;
 
 private:
@@ -155,72 +95,59 @@ private:
             - static_cast<uint32_t>(mtl::MaterialSSBOType::BEGIN_RANGE);
     }
 
-    MaterialSSBOBufferStorage *GetMaterialBufferStorage(
+    ActiveRowPool *GetMaterialRowPool(
         mtl::MaterialSSBOType material_type)
     {
         if (!mtl::IsMaterialSSBOType(material_type))
             return nullptr;
 
-        return material_buffers + GetMaterialSSBOTypeIndex(material_type);
+        return material_row_pools + GetMaterialSSBOTypeIndex(material_type);
     }
 
-    const MaterialSSBOBufferStorage *GetMaterialBufferStorage(
+    const ActiveRowPool *GetMaterialRowPool(
         mtl::MaterialSSBOType material_type) const
     {
         if (!mtl::IsMaterialSSBOType(material_type))
             return nullptr;
 
-        return material_buffers + GetMaterialSSBOTypeIndex(material_type);
+        return material_row_pools + GetMaterialSSBOTypeIndex(material_type);
     }
 
     MaterialSSBOBufferRegistry(GraphicsContext *);
     ~MaterialSSBOBufferRegistry() = default;
 
     friend class GraphModuleManager;
-    template<typename T> friend class MaterialSSBODataAccessor;
 
     void OnGraphicsContextChanged(GraphicsContext *) override;
     bool InitializeMaterialDataBuffers();
     bool CreateMaterialDataBuffer(mtl::MaterialSSBOType material_type,
                                   const AnsiString &name);
-    bool AcquireMaterialDataID(mtl::MaterialSSBOType material_type,
-                               uint32_t &out_data_id);
-    bool ReleaseMaterialDataID(mtl::MaterialSSBOType material_type,
-                               uint32_t data_id);
-    bool CommitMaterialData(mtl::MaterialSSBOType material_type,
-                            uint32_t data_id);
 
 public:
     bool TryGetRowBuffer(uint32_t ssbo_id, MaterialRowBufferInfo &out_info) const;
 
     void Release() override;
 
-    bool TryGetMaterialBinding(const mtl::MaterialSSBOType material_type,
-                               MaterialSSBOBufferBinding &out_binding) const;
-    DeviceBuffer *GetMaterialBuffer(const mtl::MaterialSSBOType material_type) const;
-    const IGPUBuffer *GetMaterialGPUBuffer(const mtl::MaterialSSBOType material_type) const;
-    uint32_t GetMaterialElementCapacity(const mtl::MaterialSSBOType material_type) const;
-    uint32_t GetMaterialSSBOId(const mtl::MaterialSSBOType material_type) const;
     bool IsMaterialDataIDActive(const mtl::MaterialSSBOType material_type,
                                 uint32_t data_id) const;
     bool IsInitialized() const { return material_data_buffers_initialized; }
 
     /**
-     * Acquires one row in T's pre-created shared material SSBO. The returned
-     * accessor owns that row ID and automatically returns it on destruction.
+     * Acquires one row in the given material field SSBO. The returned accessor
+     * owns that row ID and automatically returns it on destruction.
      * Keep it alive while a recipe or component references GetDataID().
+     *
+     * 行内容按字节访问：需要结构体时在使用点指定类型（acc.Write(row) / acc.GetAs<Row>()）。
      */
-    template<typename T>
-    MaterialSSBODataAccessor<T> GetMaterialDataAccessor()
+    MaterialSSBODataAccessor GetMaterialDataAccessor(
+        const mtl::MaterialSSBOType material_type)
     {
-        constexpr auto material_type = ssbo::MaterialRowTypeTraits<T>::TYPE;
-        const MaterialSSBOBufferStorage *storage =
-            GetMaterialBufferStorage(material_type);
+        ActiveRowPool *pool = GetMaterialRowPool(material_type);
+
         if (!material_data_buffers_initialized
-         || !storage
-         || !storage->buffer
-         || !storage->cpu_base
-         || storage->ssbo_id == 0)
+         || !pool
+         || !pool->IsReady()
+         || pool->GetSSBOId() == 0)
         {
             GLogError(
                 "[MaterialSSBOBufferRegistry] Material data accessor requested before initialization: type=%s",
@@ -228,103 +155,31 @@ public:
             return {};
         }
 
-        if (storage->row_bytes != sizeof(T))
+        return MaterialSSBODataAccessor(
+            pool,
+            material_type,
+            pool->GetSSBOId());
+    }
+
+    /** 便捷：由行类型反查池类型（T → MaterialRowTypeTraits<T>::TYPE）。 */
+    template<typename T>
+    MaterialSSBODataAccessor GetMaterialDataAccessor()
+    {
+        MaterialSSBODataAccessor accessor =
+            GetMaterialDataAccessor(ssbo::MaterialRowTypeTraits<T>::TYPE);
+
+        if (accessor && accessor.GetRowBytes() != sizeof(T))
         {
             GLogError(
                 "[MaterialSSBOBufferRegistry] Material data accessor row-size mismatch: type=%s expected=%u actual=%zu",
-                mtl::GetMaterialSSBOTypeName(material_type),
-                storage->row_bytes,
+                mtl::GetMaterialSSBOTypeName(
+                    ssbo::MaterialRowTypeTraits<T>::TYPE),
+                accessor.GetRowBytes(),
                 static_cast<size_t>(sizeof(T)));
             return {};
         }
 
-        uint32_t data_id = MaterialSSBODataAccessor<T>::InvalidDataID;
-        if (!AcquireMaterialDataID(material_type, data_id))
-            return {};
-
-        T *data = static_cast<T *>(storage->cpu_base) + data_id;
-        return MaterialSSBODataAccessor<T>(
-            this,
-            material_type,
-            data_id,
-            storage->ssbo_id,
-            data);
+        return accessor;
     }
 };
-
-template<typename T>
-MaterialSSBODataAccessor<T>::MaterialSSBODataAccessor(
-    MaterialSSBODataAccessor &&other) noexcept
-    : registry(other.registry)
-    , material_ssbo_type(other.material_ssbo_type)
-    , data_id(other.data_id)
-    , ssbo_id(other.ssbo_id)
-    , data(other.data)
-{
-    other.Invalidate();
-}
-
-template<typename T>
-MaterialSSBODataAccessor<T> &MaterialSSBODataAccessor<T>::operator=(
-    MaterialSSBODataAccessor &&other) noexcept
-{
-    if (this != &other)
-    {
-        Release();
-        registry = other.registry;
-        material_ssbo_type = other.material_ssbo_type;
-        data_id = other.data_id;
-        ssbo_id = other.ssbo_id;
-        data = other.data;
-        other.Invalidate();
-    }
-    return *this;
-}
-
-template<typename T>
-bool MaterialSSBODataAccessor<T>::Write(const T &value)
-{
-    if (!IsValid())
-    {
-        GLogError("[MaterialSSBODataAccessor] Write failed: invalid accessor");
-        return false;
-    }
-
-    *data = value;
-    return Commit();
-}
-
-template<typename T>
-bool MaterialSSBODataAccessor<T>::Read(T &out_value) const
-{
-    if (!IsValid())
-    {
-        GLogError("[MaterialSSBODataAccessor] Read failed: invalid accessor");
-        return false;
-    }
-
-    out_value = *data;
-    return true;
-}
-
-template<typename T>
-bool MaterialSSBODataAccessor<T>::Commit()
-{
-    if (!IsValid())
-    {
-        GLogError("[MaterialSSBODataAccessor] Commit failed: invalid accessor");
-        return false;
-    }
-
-    return registry->CommitMaterialData(material_ssbo_type, data_id);
-}
-
-template<typename T>
-void MaterialSSBODataAccessor<T>::Release()
-{
-    if (registry && data_id != InvalidDataID)
-        registry->ReleaseMaterialDataID(material_ssbo_type, data_id);
-
-    Invalidate();
-}
 } // namespace hgl::graph

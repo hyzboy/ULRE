@@ -97,7 +97,7 @@ private:
     struct MaterialData
     {
         using MaterialDataAccessor =
-            graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+            graph::MaterialSSBODataAccessor;
 
         MaterialDataAccessor material_data_ssbo_accessors[COLOR_COUNT]{};
     };

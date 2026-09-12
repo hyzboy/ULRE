@@ -77,7 +77,7 @@ private:
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     MaterialDataAccessor tick_data_ssbo_accessor{};
     MaterialDataAccessor hand_data_ssbo_accessors[3]{};

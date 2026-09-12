@@ -38,7 +38,7 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
     MaterialDataAccessor material_data_accessors[3]{};
 
     Geometry *         geom_plane_grid     =nullptr;

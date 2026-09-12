@@ -67,7 +67,7 @@ private:
     Entity *      camera_entity  =nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     Geometry *            geometry = nullptr;
     MaterialDataAccessor material_data_ssbo_accessor{};

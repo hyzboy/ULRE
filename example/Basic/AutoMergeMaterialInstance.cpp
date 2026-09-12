@@ -72,7 +72,7 @@ private:
 
     // MI 结构体 SSBO
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<ssbo::EmissiveSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     MaterialDataAccessor triangle_data_accessors[DRAW_OBJECT_COUNT]{};
 

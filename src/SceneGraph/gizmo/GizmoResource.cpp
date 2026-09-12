@@ -39,7 +39,7 @@ namespace hgl::graph
         struct GizmoResource
         {
             using ColorDataAccessor =
-                MaterialSSBODataAccessor<ssbo::EmissiveSurfaceRow>;
+                MaterialSSBODataAccessor;
 
             ColorDataAccessor color_row_accessors[size_t(GizmoColor::RANGE_SIZE)]{};
             VertexDataManager * vdm;

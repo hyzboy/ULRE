@@ -49,7 +49,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor<graph::ssbo::EmissiveSurfaceRow>;
+        graph::MaterialSSBODataAccessor;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
     MaterialDataAccessor mtl_data_ssbo_accessor{};
