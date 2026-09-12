@@ -579,7 +579,6 @@ namespace
                 binding_table,
                 diagnostic)
          || !binding_table.IsRuntimeReady()
-         || binding_table.GetStableHash() == 0
          || binding_table.program_key_digest != program_key.GetDigest()
          || binding_table.textures.GetCount() != 3
          || binding_table.data.GetCount() != 1
@@ -618,8 +617,7 @@ namespace
         // Asset projection: the recipe is the authoritative named texture
         // source. Optional declarations without an asset remain omitted.
         if (CountAssetTextures(binding_table) != 2
-         || CountAssetData(binding_table) != 1
-         || binding_table.GetStableHash() == 0)
+         || CountAssetData(binding_table) != 1)
         {
             result.diagnostics.emplace_back(
                 "Binding Table Asset projection build failed");
@@ -706,19 +704,28 @@ namespace
                 "Binding Table source hash must include binding identity");
         }
         ResolvedBindingTable second_table{};
+        const ResolvedTextureBinding *const first_base_color =
+            FindTextureBinding(binding_table, "base_color");
         if (!BuildBindingTable(
                 second_recipe,
                 layout,
                 program_key,
                 second_table,
                 diagnostic)
-         || second_table.GetStableHash() == binding_table.GetStableHash()
          || second_table.program_key_digest
                 != binding_table.program_key_digest
          || CountAssetTextures(second_table)
                 != CountAssetTextures(binding_table)
          || CountAssetData(second_table)
-                != CountAssetData(binding_table))
+                != CountAssetData(binding_table)
+         || !first_base_color
+         || !FindTextureBinding(second_table, "base_color")
+         || FindTextureBinding(second_table, "base_color")->asset_identity_hash
+                == first_base_color->asset_identity_hash
+         || second_table.data.GetCount() != 1
+         || binding_table.data.GetCount() != 1
+         || second_table.data[0].asset_identity_hash
+                == binding_table.data[0].asset_identity_hash)
         {
             result.diagnostics.emplace_back(
                 "asset identity must affect Binding Table, not ProgramKey");

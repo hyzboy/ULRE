@@ -1,17 +1,12 @@
 ﻿#include <hgl/mtl/MaterialBindingContract.h>
 #include <hgl/mtl/MaterialRecipe.h>
 
-#include "contract/CanonicalContractWriter.h"
 #include <cstring>
 
 namespace hgl::graph::mtl
 {
     namespace
     {
-        using contract_detail::CanonicalContractWriter;
-
-        constexpr uint32 ResolvedBindingTableTag = 0x3256424Du;   // MBV2
-
         bool IsValidTextureSource(const BindingSource source) noexcept
         {
             return source >= BindingSource::Asset
@@ -67,102 +62,6 @@ namespace hgl::graph::mtl
                  && binding.required);
         }
 
-        uint64 HashTextureMetadata(
-            const ResolvedTextureBinding &binding) noexcept
-        {
-            hgl::hash::FNV1aHasher64 h;
-            h << binding.logical_resource_id
-              << binding.semantic
-              << static_cast<const char *>(binding.texture_name)
-              << binding.texture_layout_index
-              << binding.recipe_binding_index
-              << binding.array_layer
-              << binding.source
-              << binding.required
-              << binding.allow_fallback;
-            return h;
-        }
-
-        uint64 HashDataMetadata(
-            const ResolvedDataBinding &binding) noexcept
-        {
-            hgl::hash::FNV1aHasher64 h;
-            h << binding.logical_resource_id
-              << binding.semantic
-              << binding.material_private_data_slot
-              << binding.ssbo_id
-              << binding.data_index
-              << binding.ssbo_type
-              << binding.source
-              << binding.use_data_index
-              << binding.shared_across_instances
-              << binding.required
-              << binding.allow_fallback;
-            return h;
-        }
-
-        bool IsLess(
-            const ResolvedTextureBinding &lhs,
-            const ResolvedTextureBinding &rhs) noexcept
-        {
-            if (lhs.logical_resource_id != rhs.logical_resource_id)
-                return lhs.logical_resource_id < rhs.logical_resource_id;
-            const int name_compare =
-                std::strcmp(lhs.texture_name, rhs.texture_name);
-            if (name_compare != 0)
-                return name_compare < 0;
-            return lhs.recipe_binding_index < rhs.recipe_binding_index;
-        }
-
-        bool IsLess(
-            const ResolvedDataBinding &lhs,
-            const ResolvedDataBinding &rhs) noexcept
-        {
-            if (lhs.logical_resource_id != rhs.logical_resource_id)
-                return lhs.logical_resource_id < rhs.logical_resource_id;
-            if (lhs.material_private_data_slot != rhs.material_private_data_slot)
-                return lhs.material_private_data_slot < rhs.material_private_data_slot;
-            if (lhs.ssbo_type != rhs.ssbo_type)
-                return lhs.ssbo_type < rhs.ssbo_type;
-            return lhs.recipe_binding_index < rhs.recipe_binding_index;
-        }
-
-        void WriteResolvedTextureBinding(
-            CanonicalContractWriter &writer,
-            const ResolvedTextureBinding &binding)
-        {
-            writer.WriteU64(binding.logical_resource_id);
-            writer.WriteU64(binding.asset_identity_hash);
-            writer.WriteU64(binding.asset_metadata_hash);
-            writer.WriteU16(static_cast<uint16>(binding.semantic));
-            writer.WriteCString(binding.texture_name);
-            writer.WriteU32(binding.texture_layout_index);
-            writer.WriteU32(binding.recipe_binding_index);
-            writer.WriteU32(binding.array_layer);
-            writer.WriteU8(static_cast<uint8>(binding.source));
-            writer.WriteBool(binding.required);
-            writer.WriteBool(binding.allow_fallback);
-        }
-
-        void WriteResolvedDataBinding(
-            CanonicalContractWriter &writer,
-            const ResolvedDataBinding &binding)
-        {
-            writer.WriteU64(binding.logical_resource_id);
-            writer.WriteU64(binding.asset_identity_hash);
-            writer.WriteU64(binding.asset_metadata_hash);
-            writer.WriteU16(static_cast<uint16>(binding.semantic));
-            writer.WriteU32(binding.material_private_data_slot);
-            writer.WriteU32(binding.ssbo_id);
-            writer.WriteU32(binding.data_index);
-            writer.WriteU32(binding.recipe_binding_index);
-            writer.WriteU16(static_cast<uint16>(binding.ssbo_type));
-            writer.WriteU8(static_cast<uint8>(binding.source));
-            writer.WriteBool(binding.use_data_index);
-            writer.WriteBool(binding.shared_across_instances);
-            writer.WriteBool(binding.required);
-            writer.WriteBool(binding.allow_fallback);
-        }
     }
 
     const char *GetBindingBuildErrorName(
@@ -237,47 +136,6 @@ namespace hgl::graph::mtl
         return observed_missing_required == table.missing_required_count;
     }
 
-    bool SerializeResolvedBindingTable(
-        const ResolvedBindingTable &table,
-        ValueArray<uint8> &out_bytes)
-    {
-        out_bytes.Clear();
-        if (!ValidateResolvedBindingTable(table))
-            return false;
-
-        ValueArray<ResolvedTextureBinding> textures = table.textures;
-        contract_detail::CanonicalSort(
-            textures,
-            [](const ResolvedTextureBinding &lhs,
-               const ResolvedTextureBinding &rhs) noexcept
-            {
-                return IsLess(lhs, rhs);
-            });
-        ValueArray<ResolvedDataBinding> data = table.data;
-        contract_detail::CanonicalSort(
-            data,
-            [](const ResolvedDataBinding &lhs,
-               const ResolvedDataBinding &rhs) noexcept
-            {
-                return IsLess(lhs, rhs);
-            });
-
-        CanonicalContractWriter writer(out_bytes);
-        writer.WriteU32(ResolvedBindingTableTag);
-                writer.WriteU64(table.program_key_digest);
-        writer.WriteU64(table.source_binding_hash);
-        writer.WriteU32(table.missing_required_count);
-        writer.WriteU32(table.unused_recipe_texture_count);
-        writer.WriteU32(table.unused_recipe_data_count);
-        writer.WriteU32(static_cast<uint32>(textures.GetCount()));
-        for (int i = 0; i < textures.GetCount(); ++i)
-            WriteResolvedTextureBinding(writer, textures[i]);
-        writer.WriteU32(static_cast<uint32>(data.GetCount()));
-        for (int i = 0; i < data.GetCount(); ++i)
-            WriteResolvedDataBinding(writer, data[i]);
-        return true;
-    }
-
     uint64 GetBindingSourceHash(
         const MaterialRecipe &recipe) noexcept
     {
@@ -330,11 +188,6 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    uint64 ResolvedBindingTable::GetStableHash() const noexcept
-    {
-        return GetResolvedBindingTableHash(*this);
-    }
-
     bool ResolvedBindingTable::IsValid() const noexcept
     {
         return ValidateResolvedBindingTable(*this);
@@ -345,11 +198,4 @@ namespace hgl::graph::mtl
         return IsValid() && missing_required_count == 0;
     }
 
-    uint64 GetResolvedBindingTableHash(
-        const ResolvedBindingTable &table) noexcept
-    {
-        ValueArray<uint8> bytes;
-        return SerializeResolvedBindingTable(table, bytes)
-            ? contract_detail::HashCanonicalBytes(bytes) : 0;
-    }
 }

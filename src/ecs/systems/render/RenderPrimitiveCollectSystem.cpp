@@ -116,7 +116,7 @@ namespace hgl::ecs
             const graph::mtl::ResolvedBindingTable &view)
         {
             GLogWarning(
-                "[MaterialBinding] owner=%s program=%s ready=%d valid=%d missing=%u program_key=%llu view_hash=%llu expected_binding_hash=%llu actual_binding_hash=%llu recipe=%s definition=%s textures=%zu data=%zu",
+                "[MaterialBinding] owner=%s program=%s ready=%d valid=%d missing=%u program_key=%llu expected_binding_hash=%llu actual_binding_hash=%llu recipe=%s definition=%s textures=%zu data=%zu",
                 owner_name ? owner_name : "<null>",
                 program ? program->GetName().c_str() : "<null>",
                 view.IsRuntimeReady() ? 1 : 0,
@@ -124,7 +124,6 @@ namespace hgl::ecs
                 view.missing_required_count,
                 static_cast<unsigned long long>(
                     view.program_key_digest),
-                static_cast<unsigned long long>(view.GetStableHash()),
                 static_cast<unsigned long long>(
                     view.source_binding_hash),
                 static_cast<unsigned long long>(
@@ -655,11 +654,9 @@ namespace hgl::ecs
                     ++planned_data;
             }
             GLogVerbose(
-                "[DeferredResource] owner=%s program=%s table_hash=%llu planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu unused_texture=%u unused_data=%u",
+                "[DeferredResource] owner=%s program=%s planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu unused_texture=%u unused_data=%u",
                 GetPrimitiveOwnerName(primitive_comp),
                 resolved_program->GetName().c_str(),
-                static_cast<unsigned long long>(
-                    binding_table.GetStableHash()),
                 planned_textures,
                 planned_data,
                 material_binding_recipe.textures.size(),
@@ -1505,12 +1502,9 @@ namespace hgl::ecs
                     {
                         material_comp->MarkValid();
                         GLogVerbose(
-                            "[DeferredResource] owner=%s valid=%d table=%llu",
+                            "[DeferredResource] owner=%s valid=%d",
                             GetPrimitiveOwnerName(primitiveComp),
-                            material_comp->valid ? 1 : 0,
-                            static_cast<unsigned long long>(
-                                material_comp->resolved_binding_table.
-                                    GetStableHash()));
+                            material_comp->valid ? 1 : 0);
                     }
                 }
             }
