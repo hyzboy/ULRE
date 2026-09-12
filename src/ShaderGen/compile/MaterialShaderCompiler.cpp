@@ -250,14 +250,6 @@ static bool ValidateDefinitionCapabilitySubset(
                     allowed = true;
             }
 
-            // The MaterialPrivateDataIndexRows table only exists to route instance IDs
-            // to material payload SSBOs. If any material payload SSBO was
-            // declared purely via provider manifest metadata (no matching
-            // TOML [resources].ssbos entry), the index table requirement is
-            // implied and must be accepted the same way.
-            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
-             && manifest->ssbo_count > 0)
-                allowed = true;
         }
 
         if (allowed)
@@ -394,8 +386,7 @@ static bool BuildEffectiveDescriptorEntries(
             out_effective_contract))
         return c.Fail("invalid effective material descriptor contract");
 
-    // A6-2b-b2：数据槽行表需求不再补录进契约（原 EnsureDescriptorContractVaryingResources
-    // 自动补录 MaterialPrivateDataIndex 条目）——改为编译期直判信号
+    // A6-2b-b2：数据槽行表不再补录进契约——改为编译期直判信号
     // schema.requires_runtime_data_rows（Step 6 设置，条件同 emit_data_index_id），
     // 渲染侧建表/绑定表判定统一读该标志。契约恒 Scene UBO 条目。
 
@@ -427,8 +418,8 @@ static bool RegisterCanonicalDescriptors(
             continue;
 
         // SceneGlobal：Scene UBO 已全局化（P1），不再进入 per-material 分配器。
-        // （PerDraw/MaterialData 类枚举与分支已删——L2W/L2WIndex/MeshDrawParams/
-        //  MaterialPrivateDataIndex 行表全走 BDA，Material 集已退场。）
+        // （PerDraw/MaterialData 类枚举与分支已删；L2W/L2WIndex/MeshDrawParams
+        // 及材质行表全走 BDA，Material 集已退场。）
         (void)cat;
         (void)stage_bits;
     }
@@ -442,7 +433,7 @@ static bool RegisterCanonicalDescriptors(
 //（DescriptorMacroGen，数值真源 DescriptorSetTypeDef.h 的绑定枚举），模板与模块
 // #include 后直接使用默认值，单一真源。
 //
-// 行表（material_private_data_index_rows / l2w_index）无 set/binding 概念：
+// 行表（material_data_addresses / l2w_index）无 set/binding 概念：
 // BDA 化后行表经 pc_root + buffer_reference 寻址，声明由 index table 生成器恒发射。
 
 // ── Step 6: ShaderResourceSchema 构建与校验 ──────────────────────────────────

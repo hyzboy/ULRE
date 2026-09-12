@@ -68,7 +68,7 @@ namespace hgl::graph::mtl
         // 变换（对齐 VS：world pos/normal 一次 GetL2W + camera.vp 投影）
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
         {
-            // 与 VS 一致：实例 → MaterialPrivateDataIndexRows 查表（材质数据槽——FS 用它查 mtl.data[].color 等）。
+            // 实例索引直接作为批次地址行表下标（FS 再通过 BDA 访问材质行）。
             // gl_InstanceIndex 宏 = first_instance + gl_WorkGroupID.y（跨 draw_batch 正确）
             // perprimitiveEXT：图元号 = vid/3（triangle list，每 3 顶点 1 图元）
             // Arena+BDA：varying 直传 draw item 序号（FS 经 mtl_data_addrs 取地址）

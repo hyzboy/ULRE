@@ -339,7 +339,7 @@ namespace hgl::graph::mtl
                 const MaterialSSBOType type = static_cast<MaterialSSBOType>(i);
                 if (std::strcmp(token, GetMaterialSSBOTypeName(type)) == 0)
                 {
-                    out_ssbo_type = SSBOType::MaterialPrivateDataIndex;
+                    out_ssbo_type = SSBOType::UserDefined;
                     out_material_ssbo_type = type;
                     return true;
                 }

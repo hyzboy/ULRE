@@ -153,7 +153,7 @@ namespace
     }
 
     // 参与检查的类别：SceneGlobal（全局 UBO）。不参与：PerDraw 行表类
-    // （l2w_index/private_data_index 的 buffer 声明由 CompileMaterial 生成注入，
+    // （l2w_index/material_data_addresses 的 buffer 声明由 CompileMaterial 生成注入，
     // 无默认宏）、MaterialData（binding=-1 per-material 动态）、以及 CharQuad
     // 文本三 SSBO（宏侧有、目录未收录，属 mesh 模式内部约定，非通用资源）。
     // （VertexGeometry 类别已随 Vertex 集退场删除。）

@@ -95,8 +95,8 @@ namespace hgl::graph
             if (!buffer_manager || !domain_manager)
                 return false;
 
-            // schema 中数据槽语义为 MaterialPrivateDataIndex（地址行表），
-            // 颜色数据直接走 material 专用 registry
+            // 颜色数据直接走 material 专用 registry；地址行表由 BDA
+            // 运行时标志统一驱动，不属于 descriptor schema。
             {
                 const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
 

@@ -27,7 +27,6 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(LocalToWorldIndex) \
     /* per-instance SSBO 材质私有数据（单一声明）*/ \
     HGL_SEMANTIC(MaterialPrivateData) \
-    HGL_SEMANTIC(MaterialPrivateDataIndex) \
     HGL_SEMANTIC(MaterialTexture) \
     HGL_SEMANTIC(MaterialSampler) \
     HGL_SEMANTIC(MaterialColorPalette)
@@ -90,8 +89,6 @@ namespace hgl::graph::mtl
             case DescriptorSemantic::LocalToWorldIndex:
 
             case DescriptorSemantic::MaterialPrivateData:
-            case DescriptorSemantic::MaterialPrivateDataIndex:
-
 
                 return DescriptorSemanticLayer::SSBO;
 

@@ -23,9 +23,8 @@ namespace hgl::graph::mtl
         LocalToWorldIndex,
 
         UserDefined,
-        MaterialPrivateDataIndex,
 
-        ENUM_CLASS_RANGE(MeshDrawParams,MaterialPrivateDataIndex)
+        ENUM_CLASS_RANGE(MeshDrawParams,UserDefined)
     };
 
     using SSBOCategory = SSBOType;
@@ -60,27 +59,6 @@ namespace hgl::graph::mtl
         }
     };
 
-    // Material payloads are intentionally not part of the generic SSBOType enum.
-    // The legacy overload is kept only for ABI compatibility and always resolves
-    // to the non-material fallback path.
-    [[deprecated("Material payloads now use MaterialSSBOType; generic SSBOType is non-material-only.")]]
-    constexpr bool IsMaterialSSBOType(const SSBOType) noexcept
-    {
-        return false;
-    }
-
-    [[deprecated("Generic SSBOType cannot identify material payloads; carry MaterialSSBOType explicitly.")]]
-    constexpr MaterialSSBOType ToMaterialSSBOType(const SSBOType) noexcept
-    {
-        return MaterialSSBOType::PBRSurface;
-    }
-
-    [[deprecated("Material payloads do not have a generic SSBOType representation.")]]
-    constexpr SSBOType ToLegacySSBOType(const MaterialSSBOType) noexcept
-    {
-        return SSBOType::UserDefined;
-    }
-
     inline const char *GetMaterialSSBOTypeName(const MaterialSSBOType type) noexcept
     {
         switch (type)
@@ -97,7 +75,6 @@ namespace hgl::graph::mtl
         switch (type)
         {
         case SSBOType::MeshDrawParams: return "MeshDrawParams";
-        case SSBOType::MaterialPrivateDataIndex: return "MaterialPrivateDataIndex";
         case SSBOType::LocalToWorldIndex: return "LocalToWorldIndex";
         case SSBOType::LocalToWorld: return "LocalToWorld";
         case SSBOType::UserDefined: return "UserDefined";
@@ -124,7 +101,6 @@ namespace hgl::graph::mtl
     {
         switch (type)
         {
-        case SSBOType::MaterialPrivateDataIndex:
         case SSBOType::LocalToWorldIndex:
         case SSBOType::LocalToWorld:
             return 1;
@@ -156,8 +132,6 @@ namespace hgl::graph::mtl
     {
         switch (type)
         {
-        case SSBOType::MaterialPrivateDataIndex:
-            return 0;  // dynamic: one uint32 material data index per row
         case SSBOType::LocalToWorldIndex:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:

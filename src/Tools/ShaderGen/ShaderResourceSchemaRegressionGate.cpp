@@ -2016,9 +2016,8 @@ namespace
                     const auto has_material_resource =
                         [](const ShaderBuildContext &spec)
                     {
-                        // A6-2b-b2：数据槽需求不再以 MaterialPrivateDataIndex 契约条目
-                        // 表达——schema.requires_runtime_data_rows 直判承载（条件同
-                        // effective varying.emit_data_index_id，与原补录等价）。
+                        // A6-2b-b2：数据槽需求不再以 descriptor 契约条目表达，
+                        // schema.requires_runtime_data_rows 直判承载。
                         return spec.GetShaderResourceSchema()
                             .requires_runtime_data_rows;
                     };
@@ -3155,9 +3154,8 @@ namespace
                         lit_definition))
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare TOML-aligned texture references");
-                // A6-2b-b2：行表需求不再经契约条目（BuildDescriptorsFromDefinition 只产
-                // UBO）——数据槽信号由编译配置 material_private_data 直判（manifest 槽位
-                // 已在上方断言），不再检查 descriptors 的 MaterialPrivateDataIndex 条目。
+                // A6-2b-b2：行表需求不再经 descriptor 契约条目（BuildDescriptorsFromDefinition
+                // 只产 UBO），由编译配置 material_private_data 直判。
             }
 
             const char *derivative_root = ntb_derivative->name;
@@ -3527,29 +3525,15 @@ namespace
         return result;
     }
 
-    static GateResult RunMaterialMultiSlotSourceCase()
+    static GateResult RunMaterialBDAEmitterCase()
     {
         GateResult result;
-        result.name = "Z.material-private-data-source";
-
-        const SerializedDescriptorEntry descriptors[] = {
-            {
-                DescriptorSetType::Scene,
-                uint32_t(hgl::graph::kMeshFragment),
-                "mtl_private_data_index",
-                "MaterialPrivateDataIndex",
-                nullptr,
-                DescriptorSemantic::MaterialPrivateDataIndex,
-                SSBOType::MaterialPrivateDataIndex,
-                MaterialSSBOType::PBRSurface,
-                DescriptorSemanticLayer::SSBO
-            }
-        };
+        result.name = "Z.material-bda-emitter";
         const MaterialShaderCompilerInput compiler_input{
             "MaterialPrivateDataMaterial",
             PrimitiveType::Triangles,
-            descriptors,
-            1
+            nullptr,
+            0
         };
 
         MaterialCompileConfig config{};
@@ -3580,7 +3564,7 @@ namespace
             config);
         if (!build_spec)
         {
-            result.diagnostics.emplace_back("single-slot compiler did not produce a build spec");
+            result.diagnostics.emplace_back("material compiler did not produce a build spec");
             result.passed = false;
             return result;
         }
@@ -3589,7 +3573,7 @@ namespace
             build_spec->GetStageShader(ShaderStage::Fragment);
         if (!fragment)
         {
-            result.diagnostics.emplace_back("single-slot compiler did not produce a fragment stage");
+            result.diagnostics.emplace_back("material compiler did not produce a fragment stage");
         }
         else
         {
@@ -3611,7 +3595,7 @@ namespace
 
             // Arena+BDA：材质数据经设备地址行表寻址，断言行指针别名 /
             // 行引用声明 / 值结构三要素齐全且顺序稳定。
-            // （A6-2b 对齐 A3-3 后发射：MTL_ROW 经 MaterialDataAddressesRef(pc_root.…) 解引用）
+            // （A6-2b 对齐 A3-3 后发射：MTL_ROW 经 MaterialInstanceAddressesRef 解引用）
             if (source.find("#define MTL_ROW(i) EmissiveSurfaceRow(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_address)") == std::string::npos)
                 result.diagnostics.emplace_back("arena row alias was not injected");
 
@@ -3640,22 +3624,6 @@ namespace
                 result.diagnostics.emplace_back(
                     "material stage document injection order changed");
             }
-        }
-
-        const ShaderCreateInfo *vertex =
-            build_spec->GetStageShader(ShaderStage::Mesh);
-        if (!vertex)
-        {
-            result.diagnostics.emplace_back("single-slot compiler did not produce a mesh stage");
-        }
-        else
-        {
-            const std::string &source = vertex->GetFinalGLSL();
-            // Arena+BDA：mesh 阶段不再声明/调用 4B 行号表 resolver；
-            // varying 直传与否取决于接口是否声明 DataIndexID（此处不强制）。
-            if (source.find("ResolveMaterialPrivateDataIndex") != std::string::npos
-             || source.find("mtl_private_data_index") != std::string::npos)
-                result.diagnostics.emplace_back("mesh stage still emits legacy data-index resolver");
         }
 
         delete build_spec;
@@ -3937,9 +3905,6 @@ namespace
                     "duplicate descriptor identities must be rejected");
             }
 
-            // W1 原 varying 资源段已删（A6-2b-b2：EnsureDescriptorContractVaryingResources
-            // 改为 AppendMaterialPrivateDataIndexRequirement 直判生产者——补录门在编译配置，
-            // 不再由 varying 结构驱动；W1 的 varying 自动补录断言随之失效）。
         }
 
         if (persistent_layout.resources.size() != 2
@@ -4442,7 +4407,6 @@ int main(const int argc, char **argv)
         constexpr SerializedDescriptorEntry valid_entries[] =
         {
             { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, SSBOType::UserDefined, MaterialSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data_index", "MaterialPrivateDataIndex", nullptr, DescriptorSemantic::MaterialPrivateDataIndex, SSBOType::MaterialPrivateDataIndex, MaterialSSBOType::PBRSurface, DescriptorSemanticLayer::SSBO },
             { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, SSBOType::UserDefined, MaterialSSBOType::PBRSurface, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-contract-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
@@ -4494,7 +4458,7 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunProviderGraphCompositionCase());
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
-    if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
+    if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_descriptor) results.push_back(RunDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());

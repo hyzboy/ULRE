@@ -38,8 +38,7 @@ namespace hgl::graph::mtl
         // A6-2b-b2：材质是否需要 per-instance 运行时数据行（mtl_data_addrs 行表 +
         // 材质数据行）的编译期直判信号——由编译配置 definition.vertex_varying.
         // emit_data_index_id（材质 TOML [vertex] varyings）直接设置，不再经
-        // MaterialPrivateDataIndex 契约条目（b1 后 FS 门已直判化，此为建表/绑定表
-        // 判定同源信号）。拥有 TOML 纹理声明的材质同样需要 per-instance
+        // descriptor 契约条目。拥有 TOML 纹理声明的材质同样需要 per-instance
         // 地址行表，即使它没有 payload 数据行。
         bool requires_runtime_data_rows = false;
     };
@@ -54,7 +53,6 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::SkyInfo:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
-        case DescriptorSemantic::MaterialPrivateDataIndex:
             return true;
         default:
             return false;
@@ -75,7 +73,7 @@ namespace hgl::graph::mtl
     // material data must be fed from per-batch row buffers keyed by the entity's own
     // data_index, rather than a static binding. Shared by RenderPrimitiveCollectSystem
     // and PrimitiveBatchPipeline so both agree on the same contract.
-    // A6-2b-b2：数据槽需求不再以契约条目（MaterialPrivateData/Index req）表达——
+    // A6-2b-b2：数据槽需求不再以材质 descriptor 契约条目表达——
     // 由编译侧直判标志 requires_runtime_data_rows 承载（payload varying 或
     // TOML texture declaration）。
     inline bool MaterialRequiresRecipeRuntimeRows(const ShaderResourceSchema &schema)
@@ -171,11 +169,6 @@ namespace hgl::graph::mtl
                 // Material payloads are tracked by MaterialSSBOType, not the
                 // generic SSBOType namespace. Keep the generic runtime field as
                 // UserDefined unless a non-material runtime binding is authored.
-            }
-            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
-             && req.ssbo_type == SSBOType::UserDefined)
-            {
-                req.ssbo_type = SSBOType::MaterialPrivateDataIndex;
             }
             if (req.semantic == DescriptorSemantic::LocalToWorldIndex
              && req.ssbo_type == SSBOType::UserDefined)
@@ -345,16 +338,6 @@ namespace hgl::graph::mtl
                 }
             }
 
-            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
-            {
-                if (req.ssbo_type != SSBOType::MaterialPrivateDataIndex)
-                {
-                    std::string message = "Descriptor ssbo_type must be MaterialPrivateDataIndex for material index semantic: ";
-                    message += context;
-                    diagnostics.push_back(std::move(message));
-                    continue;
-                }
-            }
         }
 
         for (size_t i = 0; i < schema.resources.size(); ++i)

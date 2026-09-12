@@ -51,9 +51,9 @@ namespace hgl::graph::mtl
         // varying（per-vertex；per-primitive 语义按图元号——每线段 2 图元共享）
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
         {
-            // 与 VS 一致：实例 → MaterialPrivateDataIndexRows 查表（材质数据槽）
+            // 实例索引直接作为批次地址行表下标。
             // Arena+BDA：varying 直传 draw item 序号
-                            ms += "    const uint data_id = gl_InstanceIndex;\n";
+            ms += "    const uint data_id = gl_InstanceIndex;\n";
             ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 0u] = data_id;\n";
             ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 1u] = data_id;\n";
         }

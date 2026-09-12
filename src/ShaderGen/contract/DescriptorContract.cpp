@@ -56,9 +56,8 @@ namespace hgl::graph::mtl
             SerializedDescriptorEntry &source,
             DescriptorContract &out_contract)
         {
-            // A6-2b-b2：MaterialPrivateDataIndex 契约条目已整体退场（数据槽行表需求
-            // 由编译期直判信号 schema.requires_runtime_data_rows 承载——原同名校验/
-            // 统一命名分支随条目生产者删除）。
+            // A6-2b-b2：材质数据行表不属于 descriptor contract；需求由编译期
+            // 直判信号 schema.requires_runtime_data_rows 承载。
             // C1-T2：就地完整规范化——ID/ssbo_type 语义推导/layer 默认/policy 默认
             // 全部写入 source；DescriptorContract.entries 直接存规范化条目
             //（原 DescriptorContractEntry 包装已删）。
@@ -75,10 +74,6 @@ namespace hgl::graph::mtl
             }
 
             if (source.semantic
-                        == DescriptorSemantic::MaterialPrivateDataIndex)
-                    source.ssbo_type =
-                        SSBOType::MaterialPrivateDataIndex;
-                else if (source.semantic
                         == DescriptorSemantic::LocalToWorldIndex)
                     source.ssbo_type = SSBOType::LocalToWorldIndex;
 
@@ -195,10 +190,6 @@ namespace hgl::graph::mtl
             if (entry.semantic == DescriptorSemantic::MaterialPrivateData
              && (!IsMaterialSSBOType(entry.material_ssbo_type)
               || entry.ssbo_type != SSBOType::UserDefined))
-                return false;
-
-            if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex
-             && entry.ssbo_type != SSBOType::MaterialPrivateDataIndex)
                 return false;
 
             for (size_t j = 0; j < i; ++j)
