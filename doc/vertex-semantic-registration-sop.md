@@ -25,7 +25,7 @@
 | 8 | `inc/hgl/mtl/MaterialRecipe.h:170` | `ShaderCodeModuleSemantic → VertexSemantic` 映射 | need_ 判定恒 false | — |
 | 9 | `src/ShaderGen/3d/DefinitionDescriptorBuilder.h` | `need_X` 标志 + case + `PushVertexResource<DescriptorSemantic::X>` | 描述符不注册 | 部分（模板保证语义已登记） |
 | 10 | `src/ShaderGen/MaterialDefinitionRegistry.cpp` | `need_X` + `VertexSemantic::X` case + 模块 include | shader 缺模块 | — |
-| 11 | `ShaderLibrary/vertex/s1_x.glsl` | 新模块：`@ulre provide/ssbo` + buffer 声明 + `HGL_X_LOADER` 宏 | — | @ulre 元数据校验 |
+| 11 | `ShaderLibrary/vertex/s1_x.glsl` | 新模块：`@ulre provide <semantic>` + buffer 声明 + `HGL_X_LOADER` 宏 | — | @ulre 元数据校验 |
 | 12 | `ShaderLibrary/vertex/s1_position_{vec2,vec2i,vec3}.glsl` | **各加 `#ifdef HGL_X_LOADER` 展开块（3 处）** | **属性静默为 0**（几何正常、属性全黑/为零——最难查） | ❌ **无保障** |
 | 13 | `src/ecs/systems/render/RenderDescriptorBindingSystem.cpp` | 运行期 VAB → SSBO 绑定 | no resource 报错 | 运行期报错 |
 | 14 | 数据源写入（如 `src/ecs/support/line/LineRenderPipeline.cpp` 写 Size VAB） | 写 VAB 数据 | 数据全零 | — |

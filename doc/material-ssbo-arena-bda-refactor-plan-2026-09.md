@@ -5,6 +5,15 @@
 实现记录见文末「实施结果」；配套工作计划同日归档）
 分支基线：SharedOneSSBO
 
+> **最终实现说明：** 本文保留的是早期「单一大 Arena + TypedBlockAllocator」
+> 方案的决策和迁移记录，不能作为当前代码结构的接口说明。后续实现收敛为
+> `MaterialSSBOBufferRegistry`：按 `MaterialSSBOType` 预创建一个共享
+> `DeviceBuffer`（默认 1024 行），每类配一个 `ActiveIDManager`，由
+> `MaterialSSBODataAccessor<T>` 以 RAII 方式持有行 ID。运行时通过
+> `MaterialSSBOBinding{ssbo_type, ssbo_id, data_index}` 直接从 effective recipe
+> 物化 BDA 行地址；本文中的 `MaterialDataArena`、`TypedBlockAllocator`、
+> `resolved_ssbo_bindings` 和旧材质 descriptor/set 2 路径均为历史方案。
+
 ---
 
 ## 1. 背景与目标
@@ -243,7 +252,7 @@ Draw:     set0 全局 / set1 行表 / set3 bindless；set2 不存在
 ```
 
 材质数据更新（动画材质）：CPU 直写 arena 行（coherent），**必须在 vkQueueSubmit 之前**
-完成——与今天 `SSBOArrayAccessor::Commit` 的时序约束一致，无新增风险。
+完成——与今天 `ArrayView::Commit` 的时序约束一致，无新增风险。
 
 ---
 
@@ -268,10 +277,10 @@ Draw:     set0 全局 / set1 行表 / set3 bindless；set2 不存在
 | 文件 | 改动 |
 |---|---|
 | `ResourceDomainManager.h:96-126` `AllocateArrayAccessor` | 后端切换：`EnsureBuffer` 段 → `arena->AcquireRange<T>(count)`（底层 `BlockPool::Acquire(count*slot_blocks)`，连续语义保持）；不再创建独立 DeviceBuffer |
-| `SSBOArrayAccessor.h` | 行距与 `sizeof(T)` 解耦：`element_stride = slot_blocks*16`，`operator[] = mapped + idx*stride`；`Commit()` 保留为 no-op（coherent 直写，API 兼容/未来 device-local 复用）；`GetSSBOId/GetSSBOBinding` 标记 deprecated（返回 arena 常量），新增 `GetBlockBase()` |
+| `ArrayView.h` | 行距与 `sizeof(T)` 解耦：`element_stride = slot_blocks*16`，`operator[] = mapped + idx*stride`；`Commit()` 保留为 no-op（coherent 直写，API 兼容/未来 device-local 复用）；`GetSSBOId/GetSSBOBinding` 标记 deprecated（返回 arena 常量），新增 `GetBlockBase()` |
 | `ResourceDomainManager.cpp:145-224` | 材质类 domain（`IsMaterialSSBOType` 为真者）不再走 domain_map；`ValidateStructStrideForDomain` 对材质类型改为行结构注册断言 |
 | `SSBOTypes.h:134-161` | `MakeRecipeSSBOId/MakeECSSSBOId/IsECSSSBOId` 的**材质数据用途**作废（LocalToWorld 保留段仍用）；注释标注 |
-| `MaterialRecipe.h:38-47,391-444` | `RecipeSSBOAssetBinding`/`UpsertRecipeSSBOAssetBinding` deprecated：材质数据不再需要 recipe 级 SSBO 身份（struct 类型由 MaterialDefinition 决定，行位置由组件携带）。迁移期保留为 no-op，M3 后删除 |
+| `MaterialRecipe.h` | recipe 材质绑定包装层、单元素容器和迁移 helper 已删除；recipe 直接使用 `material_ssbo_binding` |
 | `PrimitiveComponent.cpp:359-386` | `MaterialPrivateDataSlotAuthoringResource.data_index` 语义 = block index（字段名不变，注释更新） |
 
 ### 4.4 ShaderGen
@@ -301,7 +310,8 @@ Draw:     set0 全局 / set1 行表 / set3 bindless；set2 不存在
 
 每个模块：数据行取用 1 行（`MTL_DATA.data[i]` → `MTL_ROW(i)` 指针）+ 纹理句柄行
 （`mtl_texture_layer_rows.data[i].<slot>` → `m->tex_<slot>`）若干行；
-`@ulre ssbo mtl_private_data …` 注解头更新为 `@ulre row_ref <Type>` 之类（manifest 解析同步）。
+材质 provider 不再声明 payload 元数据；`MaterialDefinition.material_private_data`
+作为唯一材质行类型来源，ShaderGen 直接发射 BDA row 声明。
 `common/material_source_interface.glsl` 的 `MaterialSourceInput.dataIndex` 字段名不变（语义=item 序号）。
 
 ### 4.6 ECS
@@ -343,18 +353,18 @@ ShaderGen buffer_reference 发射（flag 后）、地址行表、ECS 并行路�
 
 ### M3 迁移与删除
 
-21 个示例切换 flag 并验证（`UpsertRecipeSSBOAssetBinding` 调用点删除，
-authoring 的 `data_index` 数值来源不变）；回归门 golden 全面更新；
+21 个示例切换 flag 并验证（authoring 的 `data_index` 数值来源不变）；
+回归门 golden 全面更新；
 确认后删除旧路径：`ResolveMaterialPrivateDataIndex`、`mtl_private_data`/
 `mtl_texture_layer_rows` 发射与绑定分支、`resolved_ssbo_bindings`、
 `ensure_batch_mp` set2、材质域的 `EnsureBuffer` copy-on-grow 路径、
-`UpsertRecipeSSBOAssetBinding`（deprecated no-op 一并删）。
+旧的单元素材质绑定容器与迁移 helper 已删除，recipe 直接使用单一 `material_ssbo_binding`。
 验收：全示例可视验证 + 回归门全绿 + RDBS/批处理代码净删量达到预期（§7）。
 
 ### M4 清理与文档
 
 `DescriptorSetType::Material` 枚举标 deprecated 注释、`SSBOTypes.h` ID 命名空间注释、
-`SSBOArrayAccessor` deprecated 接口移除、本方案文档归档更新。
+`ArrayView` deprecated 接口移除、本方案文档归档更新。
 
 ### 回滚
 
@@ -459,8 +469,8 @@ M1/M2 期间任意时刻关 flag 即回旧路径；M3 删除前保持双路径�
 
 | 概念 | 现位置 | 重构后 |
 |---|---|---|
-| `SSBOArrayAccessor::GetSSBOId/GetSSBOBinding` | SSBOArrayAccessor.h:177-190 | deprecated，返回 arena 常量，M4 删 |
-| `UpsertRecipeSSBOAssetBinding` / `RecipeSSBOAssetBinding` | MaterialRecipe.h:38-47,391-444 | no-op deprecated，M3 删（示例调用点同步删） |
+| `ArrayView::GetSSBOId/GetSSBOBinding` | ArrayView.h:177-190 | deprecated，返回 arena 常量，M4 删 |
+| `MaterialRecipe::material_ssbo_binding` | MaterialRecipe.h | 单一可选材质绑定；无效 binding 表示 recipe 不声明材质数据 |
 | `MakeRecipeSSBOId` / `MakeECSSSBOId`（材质数据用途） | SSBOTypes.h:134-161 | 作废；ECS 保留段（LocalToWorld）仍用 |
 | `ResourceDomainManager` 材质域 / copy-on-grow | ResourceDomainManager.cpp:145-224 | 材质类型不再入域；机制保留给非材质域 |
 | `ResolveMaterialPrivateDataIndex` | MaterialShaderEmitter.cpp:281-309 | 删除（mesh 模板直传 item 序号） |
@@ -485,9 +495,10 @@ M1/M2 期间任意时刻关 flag 即回旧路径；M3 删除前保持双路径�
 
 ---
 
-## 实施结果（2026-09-06 归档）
+## 早期方案实施结果（2026-09-06 归档）
 
-重构已按本方案完成并全部验证通过。与方案的偏差记录：
+早期 Arena+BDA 原型按本方案完成并验证通过；随后材质数据分配模型继续收敛为
+按 `MaterialSSBOType` 共享 buffer 的 registry。与本早期方案的偏差记录：
 
 1. **BDA 直上（D1）**：实际走了「先验证材质效果、后删旧路径」的两段落地，
    未做无 BDA 中间态——与方案一致。
@@ -502,7 +513,7 @@ M1/M2 期间任意时刻关 flag 即回旧路径；M3 删除前保持双路径�
 5. **迁移遗留**：~25 处 `IsMaterialArenaBDAEnabled` flag 分支已物理清理；
    `MaterialArenaPath.h` 删除。`ULRE_ARENA_DEBUG` 诊断标记保留（env 门控）。
 
-最终验证：全解决方案零编译错误；gate 41/41；用户全示例走查通过
+原型阶段验证：全解决方案零编译错误；gate 41/41；用户全示例走查通过
 （Basic/Environment/Geometry/Gizmo/Texture/GUI 六目录）。
 
 收益实测核对（对应 §7）：材质数据描述符 0；pipeline layout 4 集；

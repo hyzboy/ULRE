@@ -58,12 +58,12 @@ struct Profile
     EnvProfileID    id;
     AnsiString      name;
     EnvironmentInfo cpu;                              // CPU 权威数据
-    StructuredBufferAccessor<SkyInfo> *sky_ubo;       // sky 段 GPU 物化(懒创建)
+    StructView<SkyInfo> *sky_ubo;       // sky 段 GPU 物化(懒创建)
 };
 ```
 
 - 每个 profile 的每类信息物化为**一份自己的 UBO**;多个 RT 选同一 profile 时**共享同一块 buffer**(只读,数据不变零上传),不按 RT 复制。
-- UBO 命名 `"SkyUBO:<profile名>"`,走 `BufferManager::CreateUBO` + `StructuredBufferAccessor`(shader source 用 `mtl::SBS_SkyInfo`,对应 Scene Set binding 1)。
+- UBO 命名 `"SkyUBO:<profile名>"`,走 `BufferManager::CreateUBO` + `StructView`(shader source 用 `mtl::SBS_SkyInfo`,对应 Scene Set binding 1)。
 
 ### 关键 API
 
@@ -196,7 +196,7 @@ RenderBeginFrame → Collect → Batch → [RenderBufferCommit ← 本系统] �
    - `kSceneBindingFog` 新常量;`GlobalSceneUBOSet` 当前 `bound_buffers_[4]` 是硬编码 4 槽(camera/sky/viewport/palette),**扩槽需要同步改布局数组、Init 的 pool/layout 创建、UpdateUBO 的边界**;DSL 对未使用 binding 已带 PARTIALLY_BOUND 位,布局变更会使管线 shader 缓存失效,需要重编验证;
    - 若更适合做材质级数据(每材质不同),则不走 Scene Set,改走材质 SSBO/纹理槽(`TextureSlot`/`SSBOType`)路线,不经过本管理器。
 
-4. **manager 物化**:`Profile` 加 `StructuredBufferAccessor<FogInfo> *fog_ubo`;仿照 `MaterializeSkyUBO` 写 `MaterializeFogUBO`;`MarkDirty`/`CommitMaterialized` 把 fog 段一并写入(依旧 `Update(data)+Update()` 两连)。
+4. **manager 物化**:`Profile` 加 `StructView<FogInfo> *fog_ubo`;仿照 `MaterializeSkyUBO` 写 `MaterializeFogUBO`;`MarkDirty`/`CommitMaterialized` 把 fog 段一并写入(依旧 `Update(data)+Update()` 两连)。
 
 5. **绑定**:`EnvironmentManager::GetFogUBO(id)`;RDBS `ApplyResourceLayoutBindings` 里 `global_scene_set->UpdateUBO(kSceneBindingFog, ...)`;`ResolveSkyUBO` 同款 RT→句柄解析,建议抽成通用 `ResolveEnvUBO` 帮手。
 

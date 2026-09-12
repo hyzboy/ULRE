@@ -1,20 +1,22 @@
 # ShaderGen 材质 GLSL 生成器设计分析
 
 > 本文分析 ULRE 引擎的材质 GLSL 生成器（`src/ShaderGen` 为主），从示例程序
-> `example/Basic/BasicLitMeshes.cpp` 入口出发，沿调用链覆盖
+> `example/Basic/PBRSpheres.cpp` 入口出发，沿调用链覆盖
 > `inc/hgl/mtl`、`inc/hgl/shadergen`、`src/ShaderGen`、`ShaderLibrary` 四个目录，
 > 说明其分层架构、完整工作链与核心设计原理。
 >
-> 状态：**分析文档（只读调研，未修改任何代码）**
-> 日期：2026-08-16
-> 相关文档：`doc/material-recipe-and-materialization-spec.md`（材质契约宪法，
-> 本文聚焦生成器实现原理，二者互补）
+> 状态：**当前实现说明**
+> 更新：2026-09-12
+>
+> 材质数据已收敛为 `MaterialSSBOBinding` + `MaterialSSBOBufferRegistry` 的
+> 共享行与 BDA 地址表；旧的 Materialization、recipe 多 slot、provider
+> `@ulre ssbo` 和材质 set 2 路径不再属于当前架构。
 
 ---
 
 ## 一、总体架构：五层职责分离
 
-从 `BasicLitMeshes.cpp` 入口到最终 SPV，整条链可以切成五个清晰的分层，
+从 `PBRSpheres.cpp` 入口到最终 SPV，整条链可以切成五个清晰的分层，
 每层只对相邻层暴露"契约"（struct 或可哈希的 Contract），不共享运行时句柄：
 
 ```
@@ -24,46 +26,36 @@
 ├─ L2 构建请求层 ─────────────────────────────────────────────────┤
 │  MaterialDefinitionBuildRequest = Recipe + 几何格式 + purpose + 设备 │
 ├─ L3 生成层（src/ShaderGen）─────────────────────────────────────┤
-│  BuildGenericMaterial：契约推导 → MS 组装 → FS 组装 → 描述符分配  │
+│  BuildGenericMaterial：契约推导 → MS 组装 → FS 组装 → BDA 行声明 │
 │  （ResolvedModuleGraphBuilder / MeshTemplateEmitter /              │
 │    FragmentTemplateComposer / DescriptorContract / MaterialShaderCompiler）│
 ├─ L4 产物层 ─────────────────────────────────────────────────────┤
 │  ShaderBuildContext{ShaderCreateInfoMap, ShaderResourceSchema,  │
 │    DescriptorSetLayoutAllocator, ShaderLinkSpec} + SPV 字节      │
 ├─ L5 运行时层 ───────────────────────────────────────────────────┤
-│  ShaderProgramManager（程序缓存）/ RenderDescriptorBindingSystem │
-│  （描述符绑定）/ VKBindlessTextureManager（bindless 句柄池）      │
+│  ShaderProgramManager（程序缓存）/ RenderPrimitiveCollectSystem  │
+│  （recipe 物化）/ VKBindlessTextureManager（bindless 句柄池）    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 关键设计点：**L1 不含任何 Vulkan 句柄**（`MaterialRecipe.h` 注释明确
-"纯声明式材质输入"），句柄在 L5 通过 `ResolvedBindingTable`
-（`inc/hgl/mtl/MaterialBindingContract.h`）把 recipe 资产映射到 GPU 资源——
-生成器与运行时通过"语义"（`DescriptorSemantic`/`TextureSlot`/`SSBOType`）
-而非指针解耦。
+"纯声明式材质输入"）。L5 由收集系统直接校验 effective recipe：材质数据通过
+`MaterialSSBOBinding`（`MaterialSSBOType`、共享 `ssbo_id`、实例 `data_index`）
+映射到 `MaterialSSBOBufferRegistry` 的共享行，再写入 BDA 地址表；纹理则继续
+通过 bindless 注册。运行时不再存在材质 binding table 中间层。
 
 ---
 
 ## 二、完整工作链（从示例入口逐步追踪）
 
-### 第 1 步：示例作者装配材质（example/Basic/BasicLitMeshes.cpp）
+### 第 1 步：示例作者装配材质（example/Basic/PBRSpheres.cpp）
 
-`InitMISSBO()`（BasicLitMeshes.cpp:118-140）先向 `ResourceDomainManager`
-申请一块 PBR 材质 SSBO 数组，拿到运行时身份 `SSBOBinding{ssbo_type=PBRSurface,
-ssbo_id}`；`InitMaterial()`（:82-116）再构造 recipe 并把 SSBO 绑定挂进去：
-
-```cpp
-mesh_recipe.recipe_name = "06b.BasicLit.Lit";
-mesh_recipe.mtl_def_id  = "Lit";                       // ← 唯一对接材质定义的键
-mesh_recipe.domain      = "06b.BasicLit";              // 缓存域
-mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
-                             mtl_data_ssbo_accessor->GetSSBOBinding());
-```
-
-纹理/Sampler 走 `SetMaterialTextureResource(TextureSlot::BaseColor/Normal/Roughness,
-...)`（bindless 注册），最终 `PrimitiveAsset(geometry, &mesh_recipe, Triangles)`
-把 recipe 挂到网格资产上，交给 ECS 的 `PrimitiveComponent`。
+`InitMaterialDataSSBO()` 为每个 PBR 材质实例从
+`MaterialSSBOBufferRegistry` 获取 `MaterialSSBODataAccessor<PBRSurfaceRow>`，
+写入材质字段并取得 `MaterialSSBOBinding{ssbo_type, ssbo_id, data_index}`。
+创建实体时，示例把该 binding 写入 `MaterialDataAuthoringResource`，再通过
+名称化的 `SetMaterialTextureResource()` 绑定 `base_color` 和 `normal`，
+最后交给 `PrimitiveComponent` 的 recipe 合并与运行时收集流程。
 
 ### 第 2 步：ECS 收集系统触发编译（src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:520-590）
 
@@ -108,9 +100,10 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
    `SerializedVertexEntry[]`（VkFormat 列表），同时 CapabilityResolver 算出
    **provider 图哈希**（顶点语义提供模块的选择快照，参与缓存 key）。
 5. **资源清单**：`Build3DShaderResourceManifest`（src/ShaderGen/3d/DefinitionDescriptorBuilder3D.h）
-   ——从 definition 的 ubo 需求 + provider 根（material_source/ntb 模块）的
-   `@ulre` 资源声明聚合出 UBO/SSBO/纹理层需求，再 `Build3DDescriptorsFromDefinition`
-   生成 `SerializedDescriptorEntry[]`。
+   ——从 definition 的 UBO 需求 + provider 根（material_source/ntb 模块）的
+   `@ulre` 纹理引用声明聚合资源元数据，再 `Build3DDescriptorsFromDefinition`
+   生成 `SerializedDescriptorEntry[]`。材质 payload 类型只来自
+   `MaterialDefinition.material_private_data`，通过 BDA 行访问，不由 provider 元数据声明。
 6. **网格着色器组装**：`EmitMeshTemplateDocument`（src/ShaderGen/meshgen/MeshTemplateEmitter.h）
    按 `vertex_node_config` 五元组把 vertex/ 下的 s1/s2/s3 模块拼成完整 mesh shader。
 7. **片段着色器组装**：render preparation 先由
@@ -119,8 +112,8 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
    capabilities 追加到该模板。`FragmentTemplateComposer::Compose` 按模板 slots、
    coverage 和 output contract 直接写入 `ShaderDocument`，随后序列化 GLSL。
 8. **编译**：`CompileCompositorMaterial`（MaterialShaderCompiler.cpp:289）——
-   把完整 MS/FS GLSL 交给 `ShaderBuildContext`（AddStruct/AddUBO/AddSSBO 填描述符
-   分配器，data_slot 声明逐槽注入 SSBO 结构与 buffer 声明），
+   把完整 MS/FS GLSL 交给 `ShaderBuildContext`（AddStruct/AddUBO 维护全局资源契约，
+   材质 payload 生成 buffer_reference 行声明），
    `FinalizeShaderBuildContext` 先查 `ShaderArtifactStore` 磁盘 SPV 缓存，
    未命中才 `CreateShaderDirect()` → GLSLCompiler 插件（动态库 `GLSLCompiler.dll`，
    C 函数指针接口，GLSLCompiler.cpp:46-62）编译 SPV，并回写缓存。
@@ -129,16 +122,16 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
 
 - `ExecuteRuntimeMaterialBuildPipeline`（ShaderProgramManager.cpp:307）：
   `ShaderCreateInfoMap` → 各 stage SPV → `ShaderProgram`；
-  `ShaderResourceSchema` → `MaterialDescriptorManager`（描述符池）；
-- 收集系统再调 `BuildBindingTable`（src/ShaderGen/BindingTableBuilder.cpp /
-  MaterialBindingContract.cpp）：把 recipe 的纹理/SSBO 绑定与 schema 逐条对照，
-  产出 `ResolvedBindingTable`（每项带 `BindingSource::Asset/DirectValue/Missing`），
-  `IsRuntimeReady()` 全绿才允许渲染；
-- `RenderDescriptorBindingSystem` 按 `DescriptorSemantic` 把域 SSBO（材质数据、
-  纹理层表）绑到描述符；bindless 侧 `VKBindlessTextureManager` 把
-  `SetMaterialTextureResource` 注册的纹理灌进 `texture2DArray bindless_tex[]`，
-  句柄写回 `mtl_texture_layer_rows` SSBO——GLSL 侧
-  `Sample2D(handle, TrilinearSampler, uv)` 直接按句柄采样。
+  `ShaderResourceSchema` 继续描述全局 Scene/Bindless 资源；材质 payload 不进入
+  per-material descriptor set；
+- 收集系统直接校验 `MaterialRecipe` 的唯一 `MaterialSSBOBinding` 和材质定义，
+  从 `MaterialSSBOBufferRegistry` 验证 active `data_index` 并物化材质行的 BDA
+  地址；不再构建或缓存材质 binding table；
+- bindless 侧 `VKBindlessTextureManager` 把
+  `SetMaterialTextureResource` 注册的纹理写入全局 descriptor 池；
+  `MaterialTextureReferencePool` 为每个 material definition 保存
+  `uvec2(descriptor_index, array_layer)` 引用行，`MTL_TEX(i)` 通过
+  `MaterialInstanceAddresses.texture_reference_address` 取得该行。
 
 ---
 
@@ -160,21 +153,23 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
 ### 原理 2：GLSL 代码模块自描述（@ulre 元数据）
 
 ShaderLibrary 的每个 `.glsl` 头部有一段 `// @ulre begin/end` 注释块，把模块的
-能力声明为结构化数据（ShaderCodeModuleFile.cpp:436-728）：
+能力、依赖和纹理引用声明为结构化数据（ShaderCodeModuleFile.cpp）：
 
 ```glsl
 // @ulre name pbr_surface_source
 // @ulre kind Utility
 // @ulre require Resource MaterialData
 // @ulre require ProducedSemantic UV0
-// @ulre ssbo mtl PBRSurface 0 Fragment optional fallback
-// @ulre texture_layer base_color Fragment optional fallback
+// @ulre texture_reference base_color Fragment optional fallback
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 ```
 
-解析器产出 `ShaderCodeModuleDefinition`（名字、GLSL 源码指针、需求数组、依赖、
-条件、冲突）。注册表三来源：显式注册 + 内置表（`ShaderCodeModuleID` 枚举）+
+解析器产出 `ShaderCodeModuleDefinition`（名字、GLSL 源码指针、能力需求数组、
+纹理引用、依赖和冲突）。provider 不再声明材质 payload SSBO；
+材质 payload 类型只来自 `MaterialDefinition.material_private_data`，
+BDA 行声明由编译器统一发射。`@ulre ssbo` 已删除并会被解析器拒绝为未知 directive。
+注册表三来源：显式注册 + 内置表（`ShaderCodeModuleID` 枚举）+
 **目录递归扫描**（ShaderCodeModuleRegistry.cpp:68-374，`uses/conflicts` 两阶段
 名字→ID 解析，收敛循环剔除悬空依赖）。这是整个系统的"编译器前端"：
 **GLSL 文件本身同时是源码与清单**，改一行 shader 代码 = 改缓存 key，
@@ -232,15 +227,18 @@ C++ 侧以字符串完成——生成器不生成算法，只做**选择与装�
 
 - 纹理走 `set=3 binding=0 texture2DArray bindless_tex[]`
   （**2D/2DArray 统一为数组**，最近提交的合并），sampler 独立池 `binding=1`；
-  `Sample2D(handle, idx, uv)` 用 `nonuniformEXT` 索引，handle=0 返回 vec4(0)
-  表示无纹理（material/pbr_surface_source.glsl:34-46 因此可以"可选纹理"）。
+  `Sample2DArray(handle, idx, uv, layer)` 用 `nonuniformEXT` 索引，
+  handle=0 返回 vec4(0) 表示无纹理。
 - sampler 以 `ShaderLibrary/sampler.toml` 为**单一数据源**（出现顺序即索引）：
   ShaderGen 生成 `#define TrilinearSampler 2u` 宏（MaterialShaderCompiler.cpp:134-149
   BuildSamplerMacros），运行时按序 `vkCreateSampler`——GLSL 侧索引与运行时池
   天然对齐。
-- `mtl_texture_layer_rows` 这个"每材质一行、每槽一列"的 SSBO 由 C++ **动态生成**
-  （MaterialShaderCompiler.cpp 按 `TextureSlot::RANGE_SIZE` 展开 struct），
-  行索引 = `fragDataIndexID`，渲染侧按行写入 bindless 句柄。
+- `MaterialTextureReferencePool` 按 material definition 分配纹理引用行；
+  ShaderGen 依据 `.material.toml` 的 `resources.textures` 声明顺序发射
+  `uvec2 tex_<texture_name>` 字段，运行时只写 descriptor index 和 array layer。
+- provider GLSL 只通过 `MTL_TEX(i).tex_<texture_name>` 取得引用，再调用
+  `Sample2DArray(handle, sampler, uv, array_layer)`；不再依赖固定 `TextureSlot`、独立 texture-layer SSBO
+  或 provider SSBO 元数据。
 
 ### 原理 7：顶点三段式管线（s1/s2/s3）+ 配置五元组
 
@@ -288,19 +286,19 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 | L1 | `inc/hgl/mtl/MaterialRecipe.h` | Definition/Recipe 数据结构、渲染状态解析 |
 | L1 | `inc/hgl/mtl/MaterialDefinitionFile.h` + `src/ShaderGen/common/MaterialDefinitionFile.cpp` | .material.toml 解析 |
 | L1 | `inc/hgl/mtl/MaterialDefinitionRegistry.h` + `src/ShaderGen/MaterialDefinitionRegistry.cpp` | 定义注册表 + BuildGenericMaterial 主流程 |
-| L2 | `inc/hgl/shadergen/ShaderBuildContext.h` | 编译产物容器（描述符分配器/Stage Map/链接规格） |
+| L2 | `inc/hgl/mtl/ShaderBuildContext.h` | 编译产物容器（全局资源契约/Stage Map/链接规格） |
 | L3 | `src/ShaderGen/common/ShaderCodeModuleFile.cpp` | @ulre 元数据解析 |
 | L3 | `src/ShaderGen/common/ShaderCodeModuleRegistry.cpp` | 模块注册表（内置+目录扫描） |
 | L3 | `src/ShaderGen/common/ShaderCodeModuleCapabilityResolver.cpp` | 语义需求 → provider 解析 |
 | L3 | `src/ShaderGen/ResolvedModuleGraphBuilder.cpp` | 模块依赖图（闭包/拓扑/聚合/哈希） |
 | L3 | `src/ShaderGen/template/FragmentTemplateComposer.cpp` | FS 模板装配（模板 slots/契约/main） |
 | L3 | `src/ShaderGen/meshgen/MeshTemplateEmitter.h` | Mesh shader 三段式组装 |
-| L3 | `src/ShaderGen/MaterialShaderCompiler.cpp` | 最终编译 + 描述符/SSBO 声明生成 |
+| L3 | `src/ShaderGen/compile/MaterialShaderCompiler.cpp` | 最终编译 + 全局资源契约/BDA 行声明生成 |
+| L3 | `inc/hgl/graph/module/MaterialTextureReferencePool.h` + `.cpp` | 按 material definition 管理纹理引用行 |
 | L3 | `src/ShaderGen/GLSLCompiler.cpp` | GLSLCompiler 插件加载与 SPV 编译 |
 | L4 | `src/ShaderGen/ShaderArtifactStore.cpp` | SPV 磁盘缓存（stage/program 两级） |
 | L4 | `inc/hgl/shadergen/ShaderProgramKey.h` | 程序级缓存 key（八维哈希） |
-| L5 | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` | 收集/脏检查/触发编译 |
+| L5 | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` | 收集/脏检查/触发编译；recipe 校验、共享材质行物化和 BDA 地址表写入 |
 | L5 | `src/SceneGraph/module/ShaderProgramManager.cpp` | 程序缓存 + 运行时落地 |
-| L5 | `src/ecs/systems/render/RenderDescriptorBindingSystem.cpp` | 描述符绑定（SSBO/纹理层表） |
 | 库 | `ShaderLibrary/`（common/compositor/lighting/material/ntb/sky/surface/ubo/vertex） | GLSL 代码模块库 |
 | 库 | `ShaderLibrary/sampler.toml` | Sampler 预设注册表（单一数据源） |

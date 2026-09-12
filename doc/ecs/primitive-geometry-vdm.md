@@ -258,9 +258,9 @@ bool Init(name, vertex_count, index_count, IndexType);   // 分配 GeometryData 
 // 写顶点属性数据
 bool WriteVAB(const AnsiString &name, VkFormat format, const void *data);
 
-// 获取 BufferAccessor 用于结构化写入
+// 获取 TypedArrayView 用于结构化写入
 VertexAttribBuffer *GetVAB(const AnsiString &name, VkFormat format);
-template<typename T> T GetBufferAccessor(const AnsiString &name, VkFormat format);
+template<typename T> T GetTypedArrayView(const AnsiString &name, VkFormat format);
 ```
 
 ---
