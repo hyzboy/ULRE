@@ -871,7 +871,7 @@ namespace hgl::graph::mtl
                 {
                     // 单一声明：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
                     // TOML 形态：material_data = { type = "EmissiveSurface" }
-                    // 名字固定为 DefaultMaterialPrivateDataSlotName；
+                    // 名字固定为 DefaultMaterialPrivateDataName；
                     // type 必须是材质 SSBO 类型。
                     const auto &item = resources.at("material_data");
                     if (!item.is_table()

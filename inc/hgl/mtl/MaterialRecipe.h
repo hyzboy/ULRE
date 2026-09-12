@@ -20,7 +20,7 @@
 
 namespace hgl::graph::mtl
 {
-    constexpr const char DefaultMaterialPrivateDataSlotName[] = "mtl_private_data";
+    constexpr const char DefaultMaterialPrivateDataName[] = "mtl_private_data";
 
     // Recipe 中按 material.toml 名称声明的纹理绑定（纯输入，不包含任何运行时句柄）。
     struct RecipeTextureBinding
@@ -53,8 +53,7 @@ namespace hgl::graph::mtl
     };
 
     // 一个 recipe 至多包含一个材质数据绑定。材质数据通过
-    // MaterialSSBOBinding 的类型、物理 SSBO 和行 ID 定位；descriptor slot
-    // 不是 recipe 运行时身份的一部分。
+    // MaterialSSBOBinding 的类型、物理 SSBO 和行 ID 定位。
 
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
     // 供 Step C 的 Definition→SerializedDescriptorEntry 推导使用。
@@ -238,30 +237,6 @@ namespace hgl::graph::mtl
         }
     };
 
-    // 材质数据槽 / recipe SSBO 绑定名的 GLSL 合法性校验
-    inline bool IsValidMaterialPrivateDataSlotName(const std::string &name) noexcept
-    {
-        if (name.empty())
-            return false;
-
-        const auto is_letter = [](const char c)
-        {
-            return (c >= 'a' && c <= 'z')
-                || (c >= 'A' && c <= 'Z')
-                || c == '_';
-        };
-        if (!is_letter(name[0]))
-            return false;
-
-        for (size_t i = 1; i < name.size(); ++i)
-        {
-            const char c = name[i];
-            if (!is_letter(c) && !(c >= '0' && c <= '9'))
-                return false;
-        }
-        return true;
-    }
-
     // Policy for resolving a material vertex semantic. GeometryOnly and
     // AllowDerived share the same ABI builder; the resolver is activated when
     // a vertex code-module registry is supplied.
@@ -346,7 +321,7 @@ namespace hgl::graph::mtl
         MaterialDefinitionSourceKind source_kind = MaterialDefinitionSourceKind::BuiltIn;         // 来源类型
         MaterialDefinitionBootstrapKind bootstrap_kind = MaterialDefinitionBootstrapKind::None;
 
-        // Part-B: 材质私有数据 SSBO（单一声明，名字为 DefaultMaterialPrivateDataSlotName）。
+        // Part-B: 材质私有数据 SSBO（单一声明，名字为 DefaultMaterialPrivateDataName）。
         // MaterialSSBOType 是材质域专用枚举；不再混入通用 SSBOType。
         MaterialSSBOType material_private_data = MaterialSSBOType::PBRSurface;
 

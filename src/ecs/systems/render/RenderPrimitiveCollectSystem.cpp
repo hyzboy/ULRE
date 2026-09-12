@@ -717,8 +717,7 @@ namespace hgl::ecs
                      material_comp->cached_effective_recipe_hash != 0 ? 1 : 0,
                      (uint32_t)material_comp->program->GetShaderResourceSchema().resources.size());
 
-        // Keep the schema-to-recipe readiness check, but do not materialize
-        // another slot-keyed runtime state table. The recipe binding below is
+        // Keep the schema-to-recipe readiness check. The recipe binding below is
         // the single source for the BDA row address and active data ID.
         for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
         {
@@ -748,43 +747,15 @@ namespace hgl::ecs
             return false;
         }
 
-        // Determine the entity's own active material row ID from the cached
-        // binding recipe. The old shared MaterializationSpec cache is gone:
-        // this value is always the primitive's explicitly authored DataID.
-        //
-        // scope_ssbo_id is the data-slot asset's SSBO id — the same scope the
-        // per-batch data rows and the engine-managed texture-layer rows domain
-        // SSBO are keyed by. Materials without any data slot (TextureQuad /
-        // TextDrawTest) fall back to a program-derived scope id and own row 0.
+        // The binding recipe carries the primitive's active material row ID.
         uint32_t entity_data_index = uint32_t(-1);
-        uint32_t fallback_data_index = uint32_t(-1);
-        uint32_t scope_ssbo_id = 0;
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
             if (asset_binding.use_data_index)
-            {
                 entity_data_index = asset_binding.data_index;
-                scope_ssbo_id = asset_binding.ssbo_id;
-            }
-            else if (fallback_data_index == uint32_t(-1))
-            {
-                fallback_data_index = asset_binding.data_index;
-                scope_ssbo_id = asset_binding.ssbo_id;
-            }
-        }
-        if (entity_data_index == uint32_t(-1))
-            entity_data_index = fallback_data_index;
-
-        if (scope_ssbo_id == 0)
-        {
-            scope_ssbo_id = graph::mtl::MakeECSSSBOId(
-                static_cast<uint32_t>(material_comp->program->GetProgramKey().GetDigest())
-                & graph::mtl::SSBOIdLocalMask);
         }
 
-        // Fill the per-batch material data index table for every SSBO asset,
-        // including use_data_index == false ones (the shader still reads
-        // data[data_index], so the authored index must be published in the table).
+        // Fill the per-batch material address row for the shared material SSBO.
         // 每个材质 recipe 只声明一个共享材质数据 SSBO。
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {

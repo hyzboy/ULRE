@@ -157,7 +157,7 @@ namespace hgl::graph::mtl
         switch (type)
         {
         case SSBOType::MaterialPrivateDataIndex:
-            return 0;  // dynamic: 单槽单列 uint32 per material
+            return 0;  // dynamic: one uint32 material data index per row
         case SSBOType::LocalToWorldIndex:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:

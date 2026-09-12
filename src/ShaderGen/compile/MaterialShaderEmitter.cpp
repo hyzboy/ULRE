@@ -118,7 +118,7 @@ static bool MaterialDefinitionRequiresPayloadRow(
 // ── Step 5b: Material SSBO GLSL 声明 ─────────────────────────────────────────
 // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
 // 统一依据单一 material_private_data 声明生成并注入 Fragment 阶段。
-// 变量名固定为 DefaultMaterialPrivateDataSlotName。
+// 变量名固定为 DefaultMaterialPrivateDataName。
 bool BuildMaterialSSBODeclarations(
     const MaterialSSBOType material_private_data,
     const MaterialDefinition *material_definition,
@@ -383,7 +383,7 @@ namespace
 
         if (spec.resolve_func)
         {
-            // 单列化：行表写单列（values[iid]），不再按材质 slot 索引。
+            // 行表写单列（values[iid]），每个值直接对应一个材质数据行。
             out += spec.element_type;
             out += " ";
             out += spec.resolve_func;

@@ -107,7 +107,7 @@ namespace hgl::graph::mtl
     {
         // 唯一真源：DescriptorResourceCatalog 的 SBS 行
         if (semantic == DescriptorSemantic::MaterialPrivateData)
-            return DefaultMaterialPrivateDataSlotName;
+            return DefaultMaterialPrivateDataName;
 
         const DescriptorResourceCatalogEntry *cat =
             FindResourceCatalogEntry(semantic);

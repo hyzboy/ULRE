@@ -3564,7 +3564,7 @@ namespace
     static GateResult RunMaterialMultiSlotSourceCase()
     {
         GateResult result;
-        result.name = "Z.material-privatedata-slot-source";
+        result.name = "Z.material-private-data-source";
 
         const SerializedDescriptorEntry descriptors[] = {
             {
@@ -3580,7 +3580,7 @@ namespace
             }
         };
         const MaterialShaderCompilerInput compiler_input{
-            "MaterialPrivateDataSlotMaterial",
+            "MaterialPrivateDataMaterial",
             PrimitiveType::Triangles,
             descriptors,
             1

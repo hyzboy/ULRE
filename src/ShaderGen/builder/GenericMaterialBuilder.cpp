@@ -571,7 +571,7 @@ namespace hgl::graph::mtl
                 plan.effective_vertex_varying;
             config.material_definition = &plan.contract_definition;
             config.resource_manifest = plan.manifest.IsValid() ? &plan.manifest : nullptr;
-            config.merge_resource_manifest_material_slots =
+            config.merge_resource_manifest_material_ssbo_stages =
                 !plan.depth_purpose;
             config.artifact_store = request.shader_artifact_store;
             config.descriptor_contract = &plan.descriptor_contract;

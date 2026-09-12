@@ -251,7 +251,7 @@ static bool ValidateDefinitionCapabilitySubset(
             }
 
             // The MaterialPrivateDataIndexRows table only exists to route instance IDs
-            // to material data-slot SSBOs. If any material data-slot SSBO was
+            // to material payload SSBOs. If any material payload SSBO was
             // declared purely via provider manifest metadata (no matching
             // TOML [resources].ssbos entry), the index table requirement is
             // implied and must be accepted the same way.
@@ -361,7 +361,7 @@ static bool CreateBuildContext(
 
 // ── Step 3a: 解析有效材质私有数据 SSBO 类型（definition 单一声明 ⊕ provider manifest）────
 // 一个材质只有一个私有数据 SSBO（MaterialPrivateData，名字固定
-// DefaultMaterialPrivateDataSlotName）。definition 侧与 manifest 侧
+// DefaultMaterialPrivateDataName）。definition 侧与 manifest 侧
 // 均可选；双源并存时必须类型一致，否则冲突硬失败。
 static bool ResolveEffectiveMaterialPrivateData(
     const MaterialCompileConfig &config,
@@ -579,7 +579,7 @@ ShaderBuildContext *CompileMaterial(
     ShaderBuildContext *ctx = c.ctx;
 
     uint32_t material_ssbo_stage_bits = uint32_t(ShaderStage::Fragment);
-    if (config.merge_resource_manifest_material_slots
+    if (config.merge_resource_manifest_material_ssbo_stages
      && config.resource_manifest
      && config.resource_manifest->IsValid())
     {

@@ -22,13 +22,11 @@ namespace hgl::ecs
         // They must not be sourced from a shared recipe/spec cache entry.
         uint32_t data_index_row = uint32_t(-1);  // Shared material SSBO row ID.
 
-        // Arena 行寻址（W3.3 后按 SSBOType 独立缓冲）：实例数据行的
-        // CPU 映射基址（行尾句柄直写）与 GPU 设备地址（地址行表引用）。
+        // MaterialSSBOType 独立共享缓冲中的实例数据行 CPU/GPU 地址。
         void    *material_row_cpu = nullptr;
         uint64_t material_row_gpu = 0;
 
-        // 独立 MaterialTextureReferencePool 配置行。阶段 3 只保存句柄；
-        // 阶段 4 负责按 MaterialDefinition layout 申请、写入和退休。
+        // MaterialTextureReferencePool 的按 definition 配置行。
         graph::MaterialTextureConfigurationAllocation
                 material_texture_configuration;
         void    *material_texture_row_cpu = nullptr;
