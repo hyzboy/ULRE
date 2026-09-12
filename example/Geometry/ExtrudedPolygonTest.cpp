@@ -191,12 +191,11 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(mesh_asset);
-        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
-        mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
         mesh_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
         mesh_struct.use_data_index = true;
         mesh_struct.shared_across_instances = true;
-        prim_comp->SetMaterialPrivateDataSlotResource(mesh_struct);
+        prim_comp->SetMaterialDataResource(mesh_struct);
         prim_comp->SetVisible(true);
 
         return true;

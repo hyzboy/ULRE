@@ -113,12 +113,11 @@ public:
 
             prim_comp->SetPrimitiveAsset(&wall_meshes[i]);
             prim_comp->SetMaterialTextureResource("base_color", base_color_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource wall_struct{};
-            wall_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource wall_struct{};
             wall_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
             wall_struct.use_data_index = true;
             wall_struct.shared_across_instances = true;
-            prim_comp->SetMaterialPrivateDataSlotResource(wall_struct);
+            prim_comp->SetMaterialDataResource(wall_struct);
             prim_comp->SetVisible(true);
         }
 

@@ -235,12 +235,11 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource tick_struct{};
-            tick_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource tick_struct{};
             tick_struct = tick_data_ssbo_accessor.GetMaterialSSBOBinding();
             tick_struct.use_data_index = true;
             tick_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialPrivateDataSlotResource(tick_struct);
+            primitive_comp->SetMaterialDataResource(tick_struct);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created static tick at angle %f degrees", 30.0f * i);
@@ -271,12 +270,11 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource hand_struct{};
-            hand_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource hand_struct{};
             hand_struct = hand_data_ssbo_accessors[i].GetMaterialSSBOBinding();
             hand_struct.use_data_index = true;
             hand_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialPrivateDataSlotResource(hand_struct);
+            primitive_comp->SetMaterialDataResource(hand_struct);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created movable hand [%u] (%s)", i, hand_names[i]);

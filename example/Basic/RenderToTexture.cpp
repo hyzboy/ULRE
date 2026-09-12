@@ -316,12 +316,11 @@ public:
         prim_comp->SetMaterialTextureResource("base_color", sphere_base_tex, sphere_sampler);
         prim_comp->SetMaterialTextureResource("normal", sphere_normal_tex, sphere_sampler);
         prim_comp->SetMaterialTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
-        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
-        sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
         sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = true;
-        prim_comp->SetMaterialPrivateDataSlotResource(sphere_struct);
+        prim_comp->SetMaterialDataResource(sphere_struct);
         prim_comp->SetVisible(true);
 
         sphere_primitive_comp = prim_comp;
@@ -516,12 +515,11 @@ private:
         cube_prim_comp->SetMaterialTextureResource("base_color", base_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource("normal", normal_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource("roughness", roughness_tex, cube_sampler);
-        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
-        cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_material_data_ssbo_accessor.GetMaterialSSBOBinding();
         cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
-        cube_prim_comp->SetMaterialPrivateDataSlotResource(cube_struct);
+        cube_prim_comp->SetMaterialDataResource(cube_struct);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");
         return true;

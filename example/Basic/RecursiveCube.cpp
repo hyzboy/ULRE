@@ -196,12 +196,11 @@ private:
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor.GetSSBOId() != 0)
         {
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
-            cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
             cube_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
             cube_struct.use_data_index = true;
             cube_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialPrivateDataSlotResource(cube_struct);
+            primitive_comp->SetMaterialDataResource(cube_struct);
         }
         primitive_comp->SetVisible(true);
 

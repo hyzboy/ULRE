@@ -229,12 +229,11 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&plane_asset);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource plane_struct{};
-            plane_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource plane_struct{};
             plane_struct = plane_material_data_accessor.GetMaterialSSBOBinding();
             plane_struct.use_data_index = true;
             plane_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialPrivateDataSlotResource(plane_struct);
+            primitive_comp->SetMaterialDataResource(plane_struct);
             primitive_comp->SetVisible(true);
         }
 
@@ -252,12 +251,11 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&line_asset);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource line_struct{};
-            line_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource line_struct{};
             line_struct = line_material_data_accessor.GetMaterialSSBOBinding();
             line_struct.use_data_index = true;
             line_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialPrivateDataSlotResource(line_struct);
+            primitive_comp->SetMaterialDataResource(line_struct);
             primitive_comp->SetVisible(true);
         }
 

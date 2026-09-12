@@ -63,11 +63,9 @@ namespace hgl::ecs
             bool required = false;
         };
 
-        struct MaterialPrivateDataSlotAuthoringResource
+        struct MaterialDataAuthoringResource
             : hgl::graph::mtl::MaterialSSBOBinding
         {
-            std::string material_private_data_slot_name;
-            uint32_t material_private_data_slot = hgl::graph::mtl::DefaultMaterialPrivateDataSlot;
             hgl::graph::DeviceBuffer *buffer = nullptr;
             uint32_t element_capacity = 0;
             uint32_t byte_stride = 0;
@@ -75,10 +73,10 @@ namespace hgl::ecs
             bool shared_across_instances = false;
             bool authored = false;
 
-            MaterialPrivateDataSlotAuthoringResource &operator=(
-                const MaterialPrivateDataSlotAuthoringResource &) = default;
+            MaterialDataAuthoringResource &operator=(
+                const MaterialDataAuthoringResource &) = default;
 
-            MaterialPrivateDataSlotAuthoringResource &operator=(
+            MaterialDataAuthoringResource &operator=(
                 const hgl::graph::mtl::MaterialSSBOBinding &binding) noexcept
             {
                 hgl::graph::mtl::MaterialSSBOBinding::operator=(binding);
@@ -107,7 +105,7 @@ namespace hgl::ecs
         hgl::graph::mtl::MaterialRecipe materialRecipeOverride;
         hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>
             namedMaterialTextureResources;
-        std::vector<MaterialPrivateDataSlotAuthoringResource> materialPrivateDataSlotResources{};
+        MaterialDataAuthoringResource materialDataResource{};
 
         // Monotonic counter incremented every time authored material resources change
         // (textures, SSBOs, recipe). Compared against MaterialComponent to skip
@@ -200,11 +198,10 @@ namespace hgl::ecs
                                         bool required = false);
         bool SetMaterialTextureArrayLayer(const std::string &name, uint32_t array_layer);
         const MaterialTextureAuthoringResource *GetMaterialTextureResource(const std::string &name) const;
-        void SetMaterialPrivateDataSlotResource(const MaterialPrivateDataSlotAuthoringResource &resource);
-        const MaterialPrivateDataSlotAuthoringResource *GetMaterialPrivateDataSlotResource(
-            const std::string &material_private_data_slot_name,
-            uint32_t material_private_data_slot) const;
-        void ClearMaterialPrivateDataSlotResource(const std::string &material_private_data_slot_name, uint32_t material_private_data_slot);
+        void SetMaterialDataResource(
+            const MaterialDataAuthoringResource &resource);
+        const MaterialDataAuthoringResource *GetMaterialDataResource() const;
+        void ClearMaterialDataResource();
         void ClearMaterialAuthoringResources();
 
         // Generation counter for authored material resources.

@@ -96,12 +96,11 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
-        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource named_struct{};
-        named_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
         named_struct = material_ssbo_binding;
         named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
-        prim_comp->SetMaterialPrivateDataSlotResource(named_struct);
+        prim_comp->SetMaterialDataResource(named_struct);
         prim_comp->SetVisible(true);
 
         return true;

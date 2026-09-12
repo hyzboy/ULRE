@@ -500,12 +500,11 @@ private:
                         "",
                         row))
                     return false;
-                hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
-                sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+                hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
                 sphere_struct = sphere_slot_accessors[row][col].GetMaterialSSBOBinding();
                 sphere_struct.use_data_index = true;
                 sphere_struct.shared_across_instances = false;
-                prim_comp->SetMaterialPrivateDataSlotResource(sphere_struct);
+                prim_comp->SetMaterialDataResource(sphere_struct);
                 prim_comp->SetVisible(true);
             }
         }

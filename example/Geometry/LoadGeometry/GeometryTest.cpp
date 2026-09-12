@@ -296,13 +296,12 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource bbox_struct{};
-            bbox_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct =
                 wire.material_data_ssbo_accessors[i % COLOR_COUNT].GetMaterialSSBOBinding();
             bbox_struct.use_data_index = true;
             bbox_struct.shared_across_instances = true;
-            bbox->primitive_comp->SetMaterialPrivateDataSlotResource(bbox_struct);
+            bbox->primitive_comp->SetMaterialDataResource(bbox_struct);
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));
@@ -338,13 +337,12 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
-            mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
                 solid.material_data_ssbo_accessors[rm->color_index].GetMaterialSSBOBinding();
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
-            rm->primitive_comp->SetMaterialPrivateDataSlotResource(mesh_struct);
+            rm->primitive_comp->SetMaterialDataResource(mesh_struct);
             rm->primitive_comp->SetVisible(true);
         }
 

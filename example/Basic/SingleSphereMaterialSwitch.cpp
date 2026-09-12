@@ -270,12 +270,11 @@ private:
                 return false;
         }
 
-        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
-        sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
         sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = false;
-        sphere_primitive_component->SetMaterialPrivateDataSlotResource(sphere_struct);
+        sphere_primitive_component->SetMaterialDataResource(sphere_struct);
         return true;
     }
 

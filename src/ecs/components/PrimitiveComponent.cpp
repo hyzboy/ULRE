@@ -35,10 +35,9 @@ namespace hgl::ecs
             recipe.ssbo_assets.clear();
         }
 
-        void ResetMaterialPrivateDataSlotAuthoringResource(PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource &resource)
+        void ResetMaterialDataAuthoringResource(
+            PrimitiveComponent::MaterialDataAuthoringResource &resource)
         {
-            resource.material_private_data_slot_name.clear();
-            resource.material_private_data_slot = hgl::graph::mtl::DefaultMaterialPrivateDataSlot;
             resource.ssbo_type = hgl::graph::mtl::MaterialSSBOType::PBRSurface;
             resource.ssbo_id = 0;
             resource.buffer = nullptr;
@@ -254,6 +253,8 @@ namespace hgl::ecs
     bool PrimitiveComponent::BuildResolvedAuthoringMaterialRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,
                                                                   const hgl::graph::ShaderProgram *material_program) const
     {
+        (void)material_program;
+
         const auto *asset_recipe = GetAssetMaterialRecipe();
         const auto *override_recipe = GetMaterialRecipeOverride();
 
@@ -343,29 +344,16 @@ namespace hgl::ecs
             }
         }
 
-        for (const auto &resource : materialPrivateDataSlotResources)
+        const MaterialDataAuthoringResource &resource =
+            materialDataResource;
+        if (resource.authored)
         {
-            if (!resource.authored)
-                continue;
-
             hgl::graph::mtl::MaterialSSBOBinding material_ssbo_binding =
                 resource.GetMaterialSSBOBinding();
             material_ssbo_binding.ssbo_type =
                 hgl::graph::mtl::ResolveRecipeSSBOType(
                     out_recipe,
                     material_ssbo_binding.ssbo_type);
-
-            if (material_program)
-            {
-                for (const auto &req : material_program->GetShaderResourceSchema().resources)
-                {
-                    if (req.semantic != hgl::graph::mtl::DescriptorSemantic::MaterialPrivateData
-                     || req.material_private_data_slot != resource.material_private_data_slot
-                     || resource.material_private_data_slot_name != req.name)
-                        continue;
-                    break;
-                }
-            }
 
             if (!material_ssbo_binding.IsValid()
              || !hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(
@@ -527,25 +515,12 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    void PrimitiveComponent::SetMaterialPrivateDataSlotResource(const MaterialPrivateDataSlotAuthoringResource &resource)
+    void PrimitiveComponent::SetMaterialDataResource(
+        const MaterialDataAuthoringResource &resource)
     {
-        if (!hgl::graph::mtl::IsValidMaterialPrivateDataSlotName(
-                resource.material_private_data_slot_name)
-         || resource.material_private_data_slot_name
-                != hgl::graph::mtl::DefaultMaterialPrivateDataSlotName
-         || resource.material_private_data_slot
-                != hgl::graph::mtl::DefaultMaterialPrivateDataSlot)
-        {
-            GLogError(
-                "[PrimitiveComponent] Material private-data resource rejected non-canonical slot name=%s slot=%u",
-                resource.material_private_data_slot_name.c_str(),
-                resource.material_private_data_slot);
-            return;
-        }
-
         if (resource.ssbo_id == 0)
         {
-            ClearMaterialPrivateDataSlotResource(resource.material_private_data_slot_name, resource.material_private_data_slot);
+            ClearMaterialDataResource();
             return;
         }
 
@@ -553,75 +528,39 @@ namespace hgl::ecs
          || !resource.use_data_index)
         {
             GLogError(
-                "[PrimitiveComponent] Material private-data resource rejected missing active row ID name=%s slot=%u",
-                resource.material_private_data_slot_name.c_str(),
-                resource.material_private_data_slot);
+                "[PrimitiveComponent] Material data resource rejected missing active row ID type=%s ssbo_id=%u data_index=%u",
+                hgl::graph::mtl::GetMaterialSSBOTypeName(
+                    resource.ssbo_type),
+                resource.ssbo_id,
+                resource.data_index);
             return;
         }
 
-        for (auto &existing : materialPrivateDataSlotResources)
-        {
-            if (existing.material_private_data_slot_name != resource.material_private_data_slot_name
-             || existing.material_private_data_slot != resource.material_private_data_slot)
-                continue;
-
-            existing = resource;
-            existing.authored = true;
-            ++material_authored_generation;
-            return;
-        }
-
-        MaterialPrivateDataSlotAuthoringResource authored_resource = resource;
-        authored_resource.authored = true;
-        materialPrivateDataSlotResources.emplace_back(std::move(authored_resource));
+        materialDataResource = resource;
+        materialDataResource.authored = true;
         ++material_authored_generation;
     }
 
-    const PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource *
-        PrimitiveComponent::GetMaterialPrivateDataSlotResource(
-            const std::string &material_private_data_slot_name,
-            const uint32_t material_private_data_slot) const
+    const PrimitiveComponent::MaterialDataAuthoringResource *
+        PrimitiveComponent::GetMaterialDataResource() const
     {
-        if (!hgl::graph::mtl::IsValidMaterialPrivateDataSlotName(material_private_data_slot_name))
-            return nullptr;
-
-        for (const auto &resource : materialPrivateDataSlotResources)
-        {
-            if (resource.authored
-             && resource.material_private_data_slot_name == material_private_data_slot_name
-             && resource.material_private_data_slot == material_private_data_slot)
-                return &resource;
-        }
-
-        return nullptr;
+        return materialDataResource.authored
+            ? &materialDataResource : nullptr;
     }
 
-    void PrimitiveComponent::ClearMaterialPrivateDataSlotResource(
-        const std::string &material_private_data_slot_name,
-        const uint32_t material_private_data_slot)
+    void PrimitiveComponent::ClearMaterialDataResource()
     {
-        if (!hgl::graph::mtl::IsValidMaterialPrivateDataSlotName(material_private_data_slot_name))
+        if (!materialDataResource.authored)
             return;
 
-        for (auto &resource : materialPrivateDataSlotResources)
-        {
-            if (resource.material_private_data_slot_name != material_private_data_slot_name
-             || resource.material_private_data_slot != material_private_data_slot)
-                continue;
-
-            ResetMaterialPrivateDataSlotAuthoringResource(resource);
-            ++material_authored_generation;
-            return;
-        }
+        ResetMaterialDataAuthoringResource(materialDataResource);
+        ++material_authored_generation;
     }
 
     void PrimitiveComponent::ClearMaterialAuthoringResources()
     {
         namedMaterialTextureResources.Clear();
-
-        for (auto &resource : materialPrivateDataSlotResources)
-            ResetMaterialPrivateDataSlotAuthoringResource(resource);
-        materialPrivateDataSlotResources.clear();
+        ResetMaterialDataAuthoringResource(materialDataResource);
         ++material_authored_generation;
     }
 

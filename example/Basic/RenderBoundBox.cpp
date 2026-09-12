@@ -556,13 +556,12 @@ private:
             floor_mesh->transform->SetMovable(false);
 
             floor_mesh->primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource floor_struct{};
-            floor_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_struct{};
             floor_struct =
                 solid.material_data_ssbo_accessors[floor_mesh->color_index].GetMaterialSSBOBinding();
             floor_struct.use_data_index = true;
             floor_struct.shared_across_instances = true;
-            floor_mesh->primitive_comp->SetMaterialPrivateDataSlotResource(floor_struct);
+            floor_mesh->primitive_comp->SetMaterialDataResource(floor_struct);
             floor_mesh->primitive_comp->SetVisible(true);
         }
 
@@ -590,13 +589,12 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
-            mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
                 solid.material_data_ssbo_accessors[rm->color_index].GetMaterialSSBOBinding();
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
-            rm->primitive_comp->SetMaterialPrivateDataSlotResource(mesh_struct);
+            rm->primitive_comp->SetMaterialDataResource(mesh_struct);
             rm->primitive_comp->SetVisible(true);
 
             ++index;
@@ -636,12 +634,11 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
-            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource bbox_struct{};
-            bbox_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct = wire.material_data_ssbo_accessors[5].GetMaterialSSBOBinding();
             bbox_struct.use_data_index = true;
             bbox_struct.shared_across_instances = true;
-            bbox->primitive_comp->SetMaterialPrivateDataSlotResource(bbox_struct);
+            bbox->primitive_comp->SetMaterialDataResource(bbox_struct);
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));
