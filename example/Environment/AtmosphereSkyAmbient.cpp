@@ -104,7 +104,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 mesh_recipe,
                 material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true,
                 true))
             return false;
 
@@ -294,7 +293,6 @@ private:
 
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-            mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
             primitive_comp->SetMaterialDataResource(mesh_struct);
             primitive_comp->SetVisible(true);

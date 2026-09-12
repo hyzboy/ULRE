@@ -137,17 +137,15 @@ namespace hgl::ecs
             if (!recipe.ssbo_assets.empty())
             {
                 const auto &binding = recipe.ssbo_assets.front();
-                if (!binding.use_data_index
-                 || !binding.GetMaterialSSBOBinding().IsValid())
+                if (!binding.GetMaterialSSBOBinding().IsValid())
                 {
                     GLogError(
-                        "[MaterialBinding] Invalid material data binding owner=%s type=%s ssbo_id=%u data_index=%u use_data_index=%d",
+                        "[MaterialBinding] Invalid material data binding owner=%s type=%s ssbo_id=%u data_index=%u",
                         owner_name ? owner_name : "<null>",
                         graph::mtl::GetMaterialSSBOTypeName(
                             binding.ssbo_type),
                         binding.ssbo_id,
-                        binding.data_index,
-                        binding.use_data_index ? 1 : 0);
+                        binding.data_index);
                     return false;
                 }
             }
@@ -259,7 +257,6 @@ namespace hgl::ecs
                         recipe,
                         ResolveMaterialSSBORequirementType(req));
                 if (!binding
-                 || !binding->use_data_index
                  || !binding->GetMaterialSSBOBinding().IsValid())
                 {
                     GLogError(
@@ -750,10 +747,7 @@ namespace hgl::ecs
         // The binding recipe carries the primitive's active material row ID.
         uint32_t entity_data_index = uint32_t(-1);
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
-        {
-            if (asset_binding.use_data_index)
-                entity_data_index = asset_binding.data_index;
-        }
+            entity_data_index = asset_binding.data_index;
 
         // Fill the per-batch material address row for the shared material SSBO.
         // 每个材质 recipe 只声明一个共享材质数据 SSBO。
@@ -779,17 +773,15 @@ namespace hgl::ecs
                 if (!graph::mtl::IsMaterialSSBOType(
                         asset_binding.ssbo_type)
                  || asset_binding.ssbo_id == 0
-                 || !asset_binding.use_data_index
                  || asset_binding.data_index == uint32_t(-1))
                 {
                     GLogError(
-                        "[RenderPrimitiveCollectSystem] Materialize failed: invalid material row binding for %s type=%s ssbo_id=%u data_index=%u use_data_index=%d",
+                        "[RenderPrimitiveCollectSystem] Materialize failed: invalid material row binding for %s type=%s ssbo_id=%u data_index=%u",
                         GetPrimitiveOwnerName(primitive_comp),
                         graph::mtl::GetMaterialSSBOTypeName(
                             asset_binding.ssbo_type),
                         asset_binding.ssbo_id,
-                        asset_binding.data_index,
-                        asset_binding.use_data_index ? 1 : 0);
+                        asset_binding.data_index);
                     return false;
                 }
 

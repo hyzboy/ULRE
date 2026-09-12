@@ -44,7 +44,6 @@ namespace hgl::ecs
             resource.element_capacity = 0;
             resource.byte_stride = 0;
             resource.data_index = uint32_t(-1);
-            resource.use_data_index = false;
             resource.shared_across_instances = false;
             resource.authored = false;
         }
@@ -359,7 +358,6 @@ namespace hgl::ecs
              || !hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(
                     out_recipe,
                     material_ssbo_binding,
-                    resource.use_data_index,
                     resource.shared_across_instances))
                 return false;
         }
@@ -524,8 +522,7 @@ namespace hgl::ecs
             return;
         }
 
-        if (!resource.GetMaterialSSBOBinding().IsValid()
-         || !resource.use_data_index)
+        if (!resource.GetMaterialSSBOBinding().IsValid())
         {
             GLogError(
                 "[PrimitiveComponent] Material data resource rejected missing active row ID type=%s ssbo_id=%u data_index=%u",

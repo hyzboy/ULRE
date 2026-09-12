@@ -137,7 +137,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
                 mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true,
                 true))
             return false;
 
@@ -198,7 +197,6 @@ private:
         {
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
             cube_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
-            cube_struct.use_data_index = true;
             cube_struct.shared_across_instances = true;
             primitive_comp->SetMaterialDataResource(cube_struct);
         }

@@ -449,7 +449,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
                 sphere_slot_accessors[0][0].GetMaterialSSBOBinding(),
-                true,
                 false))
             return false;
 
@@ -502,7 +501,6 @@ private:
                     return false;
                 hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
                 sphere_struct = sphere_slot_accessors[row][col].GetMaterialSSBOBinding();
-                sphere_struct.use_data_index = true;
                 sphere_struct.shared_across_instances = false;
                 prim_comp->SetMaterialDataResource(sphere_struct);
                 prim_comp->SetVisible(true);

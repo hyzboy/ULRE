@@ -98,7 +98,6 @@ private:
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
         named_struct = material_ssbo_binding;
-        named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
         prim_comp->SetMaterialDataResource(named_struct);
         prim_comp->SetVisible(true);
@@ -122,7 +121,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 plane_grid_recipe,
                 material_data_accessors[0].GetMaterialSSBOBinding(),
-                true,
                 true))
             return false;
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);

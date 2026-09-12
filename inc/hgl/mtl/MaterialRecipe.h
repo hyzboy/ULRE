@@ -33,7 +33,6 @@ namespace hgl::graph::mtl
 
     struct RecipeSSBOAssetBinding : MaterialSSBOBinding
     {
-        bool use_data_index = false;  // Must be true for a material data binding.
         bool shared_across_instances = false;
 
         RecipeSSBOAssetBinding &operator=(
@@ -603,17 +602,15 @@ namespace hgl::graph::mtl
     inline bool UpsertRecipeSSBOAssetBinding(
         MaterialRecipe &recipe,
         const MaterialSSBOBinding &material_ssbo_binding,
-        const bool use_data_index,
         const bool shared_across_instances)
     {
-        if (!material_ssbo_binding.IsValid() || !use_data_index)
+        if (!material_ssbo_binding.IsValid())
             return false;
 
         if (recipe.ssbo_assets.empty())
         {
             RecipeSSBOAssetBinding asset{};
             asset = material_ssbo_binding;
-            asset.use_data_index = use_data_index;
             asset.shared_across_instances = shared_across_instances;
             recipe.ssbo_assets.emplace_back(std::move(asset));
             return true;
@@ -624,7 +621,6 @@ namespace hgl::graph::mtl
 
         RecipeSSBOAssetBinding &asset = recipe.ssbo_assets.front();
         asset = material_ssbo_binding;
-        asset.use_data_index = use_data_index;
         asset.shared_across_instances = shared_across_instances;
         return true;
     }
@@ -703,7 +699,6 @@ namespace hgl::graph::mtl
         {
             h << asset.ssbo_type
               << asset.ssbo_id
-              << asset.use_data_index
               << asset.shared_across_instances;
         }
 

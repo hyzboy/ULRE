@@ -199,12 +199,10 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 plane_recipe,
                 plane_material_data_accessor.GetMaterialSSBOBinding(),
-                true,
                 true)
          || !graph::mtl::UpsertRecipeSSBOAssetBinding(
                 line_recipe,
                 line_material_data_accessor.GetMaterialSSBOBinding(),
-                true,
                 true))
             return false;
 
@@ -231,7 +229,6 @@ private:
             primitive_comp->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource plane_struct{};
             plane_struct = plane_material_data_accessor.GetMaterialSSBOBinding();
-            plane_struct.use_data_index = true;
             plane_struct.shared_across_instances = true;
             primitive_comp->SetMaterialDataResource(plane_struct);
             primitive_comp->SetVisible(true);
@@ -253,7 +250,6 @@ private:
             primitive_comp->SetPrimitiveAsset(&line_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource line_struct{};
             line_struct = line_material_data_accessor.GetMaterialSSBOBinding();
-            line_struct.use_data_index = true;
             line_struct.shared_across_instances = true;
             primitive_comp->SetMaterialDataResource(line_struct);
             primitive_comp->SetVisible(true);

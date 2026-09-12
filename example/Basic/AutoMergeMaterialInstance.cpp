@@ -98,7 +98,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 triangle_recipe,
                 triangle_data_accessors[0].GetMaterialSSBOBinding(),
-                true,
                 false))
             return false;
 
@@ -179,7 +178,6 @@ private:
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource tri_struct{};
             tri_struct = triangle_data_accessors[i].GetMaterialSSBOBinding();
-            tri_struct.use_data_index = true;
             tri_struct.shared_across_instances = false;
             primitive_comp->SetMaterialDataResource(tri_struct);
             primitive_comp->SetVisible(true);

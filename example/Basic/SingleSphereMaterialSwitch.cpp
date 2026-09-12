@@ -180,7 +180,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 near_recipe,
                 near_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true,
                 false))
             return LogFail("InitMaterials", "near material SSBO binding failed");
 
@@ -190,7 +189,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 far_recipe,
                 far_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true,
                 false))
             return LogFail("InitMaterials", "far material SSBO binding failed");
 
@@ -272,7 +270,6 @@ private:
 
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-        sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = false;
         sphere_primitive_component->SetMaterialDataResource(sphere_struct);
         return true;

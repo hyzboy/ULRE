@@ -113,7 +113,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 mesh_recipe,
                 material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true,
                 true))
             return false;
 
@@ -435,7 +434,6 @@ private:
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_authoring{};
             floor_authoring = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-            floor_authoring.use_data_index = true;
             floor_authoring.shared_across_instances = true;
             primitive_comp->SetMaterialDataResource(floor_authoring);
             primitive_comp->SetVisible(true);
@@ -479,7 +477,6 @@ private:
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_authoring{};
             mesh_authoring = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-            mesh_authoring.use_data_index = true;
             mesh_authoring.shared_across_instances = true;
             primitive_comp->SetMaterialDataResource(mesh_authoring);
             primitive_comp->SetVisible(true);

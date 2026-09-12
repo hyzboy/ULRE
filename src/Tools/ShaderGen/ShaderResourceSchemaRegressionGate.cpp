@@ -1558,7 +1558,6 @@ namespace
             MaterialSSBOType::PBRSurface,
             41,
             3};
-        asset.use_data_index = true;
         recipe.ssbo_assets.emplace_back(asset);
 
         const auto *initial_binding =
@@ -1567,7 +1566,6 @@ namespace
                 MaterialSSBOType::PBRSurface);
         if (!initial_binding
          || initial_binding->data_index != 3
-         || !initial_binding->use_data_index
          || !initial_binding->GetMaterialSSBOBinding().IsValid())
         {
             result.diagnostics.emplace_back("shared recipe binding resolve failed");
@@ -1584,8 +1582,7 @@ namespace
                 recipe,
                 MaterialSSBOType::PBRSurface);
         if (!changed_binding
-         || changed_binding->data_index != 9
-         || !changed_binding->use_data_index)
+         || changed_binding->data_index != 9)
         {
             result.diagnostics.emplace_back(
                 "instance data_index was not preserved in the direct recipe binding");
@@ -2432,7 +2429,6 @@ namespace
                     MaterialSSBOType::EmissiveSurface,
                     11,
                     7},
-                true,
                 true)
          || !UpsertRecipeSSBOAssetBinding(
                 recipe,
@@ -2440,7 +2436,6 @@ namespace
                     MaterialSSBOType::EmissiveSurface,
                     44,
                     9},
-                true,
                 true))
         {
             result.diagnostics.emplace_back(
@@ -2454,15 +2449,6 @@ namespace
                     MaterialSSBOType::EmissiveSurface,
                     55,
                     uint32_t(-1)},
-                true,
-                true)
-         || UpsertRecipeSSBOAssetBinding(
-                missing_row_id_recipe,
-                MaterialSSBOBinding{
-                    MaterialSSBOType::EmissiveSurface,
-                    55,
-                    0},
-                false,
                 true))
         {
             result.diagnostics.emplace_back(
@@ -2472,7 +2458,6 @@ namespace
         const auto *material_data = FindRecipeSSBOAssetBinding(recipe);
         if (!material_data || material_data->ssbo_id != 44
          || material_data->data_index != 9
-         || !material_data->use_data_index
          || !material_data->shared_across_instances
          || recipe.ssbo_assets.size() != 1)
         {
@@ -2519,7 +2504,6 @@ namespace
                         MaterialSSBOType::EmissiveSurface,
                         66,
                         10},
-                    true,
                     true))
             {
                 result.diagnostics.emplace_back(

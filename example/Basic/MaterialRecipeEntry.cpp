@@ -152,7 +152,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
                 material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true,
                 true))
             return false;
 
@@ -160,7 +159,6 @@ private:
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
         named_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-        named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
         primitive_comp->SetMaterialDataResource(named_struct);
         primitive_comp->SetVisible(true);

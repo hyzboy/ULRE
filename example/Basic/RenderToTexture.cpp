@@ -294,7 +294,6 @@ public:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
                 material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true,
                 true))
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
@@ -318,7 +317,6 @@ public:
         prim_comp->SetMaterialTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-        sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = true;
         prim_comp->SetMaterialDataResource(sphere_struct);
         prim_comp->SetVisible(true);
@@ -494,7 +492,6 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
                 cube_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true,
                 true))
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
 
@@ -517,7 +514,6 @@ private:
         cube_prim_comp->SetMaterialTextureResource("roughness", roughness_tex, cube_sampler);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_material_data_ssbo_accessor.GetMaterialSSBOBinding();
-        cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
         cube_prim_comp->SetMaterialDataResource(cube_struct);
         cube_prim_comp->SetVisible(true);

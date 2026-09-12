@@ -126,7 +126,6 @@ namespace hgl::graph
 
                     if (!mtl::UpsertRecipeSSBOAssetBinding(recipe,
                                                           accessor.GetMaterialSSBOBinding(),
-                                                          true,
                                                           true))
                         return false;
                 }
