@@ -79,7 +79,6 @@ namespace hgl::ecs
 
         // A6-2b/b3：BDA 后无 per-material SSBO 绑定差异（材质数据/顶点流全走行内
         // 地址与 pc_root），合批 key 只按 shader+pipeline 区分——同 shader 即同批。
-        //（原 ResolveSSBOBindingSignature 恒 0 + resolved_ssbo_bindings 死体已删。）
     }
 
     bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)

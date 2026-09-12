@@ -80,23 +80,6 @@ namespace hgl::ecs
             return req.material_ssbo_type;
         }
 
-        bool ResolveRecipeSSBOBindingId(const graph::mtl::MaterialRecipe &recipe,
-                                        const graph::mtl::ShaderResourceSlot &req,
-                                        uint32_t &out_ssbo_id)
-        {
-            const auto material_ssbo_type = ResolveMaterialSSBORequirementType(req);
-
-            if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
-                    recipe,
-                    material_ssbo_type))
-            {
-                out_ssbo_id = asset->ssbo_id;
-                return true;
-            }
-
-            return false;
-        }
-
         bool BuildResolvedRecipe(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                           const graph::ShaderProgram *material_program,
                                           graph::mtl::MaterialRecipe &out_recipe)
@@ -785,15 +768,19 @@ namespace hgl::ecs
                      material_comp->cached_binding_recipe_valid ? 1 : 0,
                      (uint32_t)material_comp->program->GetShaderResourceSchema().resources.size());
 
-        material_comp->ClearResolvedSSBOBindings();
+        // Keep the schema-to-recipe readiness check, but do not materialize
+        // another slot-keyed runtime state table. The recipe binding below is
+        // the single source for the BDA row address and active data ID.
         for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
         {
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialPrivateData)
                 continue;
 
-            uint32_t resolved_ssbo_id = 0;
-            if (!ResolveRecipeSSBOBindingId(
-                    material_binding_recipe, req, resolved_ssbo_id))
+            const auto *recipe_binding =
+                graph::mtl::FindRecipeSSBOAssetBinding(
+                    material_binding_recipe,
+                    ResolveMaterialSSBORequirementType(req));
+            if (!recipe_binding)
             {
                 GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s slot=%u type=%s",
                             GetPrimitiveOwnerName(primitive_comp),
@@ -803,12 +790,6 @@ namespace hgl::ecs
                                 ResolveMaterialSSBORequirementType(req)));
                 return false;
             }
-
-            material_comp->SetResolvedSSBOBinding(
-                req.name.c_str(),
-                req.material_private_data_slot,
-                ResolveMaterialSSBORequirementType(req),
-                resolved_ssbo_id);
         }
 
         auto rdbs = world->GetSystem<RenderSceneUBOSystem>();
@@ -1284,8 +1265,8 @@ namespace hgl::ecs
         // results and skips those two calls entirely.
         //
         // Epoch semantics: a materialize pass wipes per-primitive runtime rows
-        // (rows are rebuilt from the resolved_ssbo_bindings / texture layer
-        // values each time a primitive is materialized). A primitive skipped
+        // (rows are rebuilt from the recipe bindings / texture layer values
+        // each time a primitive is materialized). A primitive skipped
         // this frame (e.g. invisible) therefore holds stale rows the moment any
         // other primitive materializes. The epoch is bumped in exactly those
         // frames so skipped primitives are re-flagged (epoch mismatch) when they
