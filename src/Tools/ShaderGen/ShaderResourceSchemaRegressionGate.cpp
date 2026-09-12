@@ -7,7 +7,6 @@
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/DescriptorContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
-#include <hgl/mtl/BindingTableBuilder.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
@@ -188,42 +187,6 @@ namespace
         }
 
         return true;
-    }
-
-    static uint32_t CountAssetTextures(const ResolvedBindingTable &table)
-    {
-        uint32_t count = 0;
-        for (int i = 0; i < table.textures.GetCount(); ++i)
-        {
-            if (table.textures[i].source == BindingSource::Asset)
-                ++count;
-        }
-        return count;
-    }
-
-    static uint32_t CountAssetData(const ResolvedBindingTable &table)
-    {
-        uint32_t count = 0;
-        for (int i = 0; i < table.data.GetCount(); ++i)
-        {
-            if (table.data[i].source == BindingSource::Asset)
-                ++count;
-        }
-        return count;
-    }
-
-    static const ResolvedTextureBinding *FindTextureBinding(
-        const ResolvedBindingTable &table, const char *texture_name)
-    {
-        if (!texture_name)
-            return nullptr;
-
-        for (int i = 0; i < table.textures.GetCount(); ++i)
-        {
-            if (std::strcmp(table.textures[i].texture_name, texture_name) == 0)
-                return &table.textures[i];
-        }
-        return nullptr;
     }
 
     static bool IsKnownRegressionGroup(const char *group)
@@ -517,439 +480,6 @@ namespace
             if (definition.vertex_semantic_requirements.IsEmpty())
                 result.diagnostics.emplace_back(
                     std::string("empty semantic-only ABI: ") + id);
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunResolvedBindingTableCase()
-    {
-        GateResult result;
-        result.name = "L2.resolved-binding-table";
-
-        ShaderProgramKey program_key{};
-        program_key.mesh_stage_digest = 0x7101u;
-        program_key.fragment_stage_digest = 0x7102u;
-        program_key.resource_layout_hash = 0x7103u;
-        program_key.vertex_input_hash = 0x7104u;
-
-        ShaderResourceSchema layout{};
-        // A6-2b-b2：数据槽需求由编译期直判标志承载（原 Index req 桥接入口已删——
-        // 手工 schema 不再构造 MaterialPrivateDataIndex 条目，直接设标志）。
-        layout.requires_runtime_data_rows = true;
-
-        MaterialRecipe recipe{};
-        recipe.recipe_name = "BindingTableA";
-        recipe.mtl_def_id = "DefinitionA";
-        recipe.textures.push_back(
-            {"base_color", "asset/albedo-a", true, 0});
-        recipe.textures.push_back(
-            {"normal", "asset/unused-normal", false, 0});
-        recipe.textures.push_back(
-            {"optional_detail", std::string(), false, 0});
-        RecipeSSBOAssetBinding data_binding{};
-        data_binding = MaterialSSBOBinding{
-            MaterialSSBOType::PBRSurface,
-            17,
-            9};
-        data_binding.use_data_index = true;
-        recipe.ssbo_assets.push_back(data_binding);
-
-        ResolvedBindingTable binding_table{};
-        BindingBuildDiagnostic diagnostic{};
-        MaterialRecipe equivalent_binding_recipe = recipe;
-        equivalent_binding_recipe.recipe_name = "DifferentName";
-        equivalent_binding_recipe.mtl_def_id = "DifferentDefinition";
-        equivalent_binding_recipe.render_state_overrides.has_alpha_cutoff = true;
-        equivalent_binding_recipe.render_state_overrides.alpha_cutoff = 0.25f;
-        if (GetBindingSourceHash(recipe)
-                != GetBindingSourceHash(
-                    equivalent_binding_recipe))
-        {
-            result.diagnostics.emplace_back(
-                "Binding Table source hash must ignore unrelated Recipe state");
-        }
-        if (!BuildBindingTable(
-                recipe,
-                layout,
-                program_key,
-                binding_table,
-                diagnostic)
-         || !binding_table.IsRuntimeReady()
-         || binding_table.program_key_digest != program_key.GetDigest()
-         || binding_table.textures.GetCount() != 3
-         || binding_table.data.GetCount() != 1
-         || binding_table.unused_recipe_texture_count != 0
-         || binding_table.unused_recipe_data_count != 0)
-        {
-            result.diagnostics.emplace_back(
-                std::string("Binding Table build failed: ")
-                + GetBindingBuildErrorName(
-                    diagnostic.error));
-        }
-
-        MaterialRecipe projected_recipe{};
-        if (!BuildBindingTableRecipe(
-                recipe, binding_table, projected_recipe)
-         || projected_recipe.textures.size() != 2
-         || projected_recipe.ssbo_assets.size() != 1
-         || projected_recipe.ssbo_assets[0].ssbo_id != 17)
-        {
-            result.diagnostics.emplace_back(
-                "Binding Table Recipe projection mismatch");
-        }
-        bool found_base_color = false;
-        for (const RecipeTextureBinding &binding :
-             projected_recipe.textures)
-        {
-            if (binding.texture_name == "base_color"
-             && binding.resource_id == "asset/albedo-a")
-                found_base_color = true;
-        }
-        if (!found_base_color)
-        {
-            result.diagnostics.emplace_back(
-                "Binding Table Recipe must preserve named texture bindings");
-        }
-        // Asset projection: the recipe is the authoritative named texture
-        // source. Optional declarations without an asset remain omitted.
-        if (CountAssetTextures(binding_table) != 2
-         || CountAssetData(binding_table) != 1)
-        {
-            result.diagnostics.emplace_back(
-                "Binding Table Asset projection build failed");
-        }
-        else
-        {
-            bool planned_base_color = false;
-            bool planned_data = false;
-            for (int i = 0;
-                 i < binding_table.textures.GetCount();
-                 ++i)
-            {
-                const ResolvedTextureBinding &binding =
-                    binding_table.textures[i];
-                if (binding.source != BindingSource::Asset)
-                    continue;
-                if (std::strcmp(binding.texture_name, "base_color") == 0)
-                    planned_base_color = true;
-            }
-            for (int i = 0; i < binding_table.data.GetCount(); ++i)
-            {
-                const ResolvedDataBinding &binding =
-                    binding_table.data[i];
-                if (binding.source == BindingSource::Asset
-                 && binding.material_private_data_slot == 0
-                 && binding.ssbo_type == MaterialSSBOType::PBRSurface)
-                    planned_data = true;
-            }
-            if (!planned_base_color || !planned_data)
-            {
-                result.diagnostics.emplace_back(
-                    "Binding Table Asset projection must include only active loadable resources");
-            }
-        }
-        MaterialRecipe zero_id_recipe = recipe;
-        zero_id_recipe.ssbo_assets[0].ssbo_id = 0;
-        ResolvedBindingTable zero_id_table{};
-        if (!BuildBindingTable(
-                zero_id_recipe,
-                layout,
-                program_key,
-                zero_id_table,
-                diagnostic)
-         || !zero_id_table.IsRuntimeReady()
-         || zero_id_table.data.GetCount() != 1
-         || zero_id_table.data[0].source
-                != BindingSource::Asset
-         || zero_id_table.data[0].ssbo_id != 0
-         || !BuildBindingTableRecipe(
-                zero_id_recipe,
-                zero_id_table,
-                projected_recipe)
-         || projected_recipe.ssbo_assets.size() != 1
-         || projected_recipe.ssbo_assets[0].ssbo_id != 0)
-        {
-            result.diagnostics.emplace_back(
-                "typed SSBO binding ID 0 must remain a valid active resource");
-        }
-
-        ResolvedBindingTable post_resolve_table{};
-        if (!BuildBindingTable(
-                recipe,
-                layout,
-                program_key,
-                post_resolve_table,
-                diagnostic)
-         || !post_resolve_table.IsRuntimeReady()
-         || !BuildBindingTableRecipe(
-                recipe, post_resolve_table, projected_recipe))
-        {
-            result.diagnostics.emplace_back(
-                "post-resolve Recipe must rebuild a runtime-ready Binding Table");
-        }
-
-        MaterialRecipe second_recipe = recipe;
-        second_recipe.recipe_name = "BindingTableB";
-        second_recipe.mtl_def_id = "DefinitionB";
-        second_recipe.textures[0].resource_id = "asset/albedo-b";
-        second_recipe.ssbo_assets[0].ssbo_id = 23;
-        if (GetBindingSourceHash(second_recipe)
-                == GetBindingSourceHash(recipe))
-        {
-            result.diagnostics.emplace_back(
-                "Binding Table source hash must include binding identity");
-        }
-        ResolvedBindingTable second_table{};
-        const ResolvedTextureBinding *const first_base_color =
-            FindTextureBinding(binding_table, "base_color");
-        if (!BuildBindingTable(
-                second_recipe,
-                layout,
-                program_key,
-                second_table,
-                diagnostic)
-         || second_table.program_key_digest
-                != binding_table.program_key_digest
-         || CountAssetTextures(second_table)
-                != CountAssetTextures(binding_table)
-         || CountAssetData(second_table)
-                != CountAssetData(binding_table)
-         || !first_base_color
-         || !FindTextureBinding(second_table, "base_color")
-         || FindTextureBinding(second_table, "base_color")->asset_identity_hash
-                == first_base_color->asset_identity_hash
-         || second_table.data.GetCount() != 1
-         || binding_table.data.GetCount() != 1
-         || second_table.data[0].asset_identity_hash
-                == binding_table.data[0].asset_identity_hash)
-        {
-            result.diagnostics.emplace_back(
-                "asset identity must affect Binding Table, not ProgramKey");
-        }
-
-        MaterialRecipe missing_recipe = recipe;
-        missing_recipe.textures[0].resource_id.clear();
-        missing_recipe.textures[0].required = true;
-        ResolvedBindingTable missing_table{};
-        if (!BuildBindingTable(
-                missing_recipe,
-                layout,
-                program_key,
-                missing_table,
-                diagnostic)
-         || !missing_table.IsValid()
-         || missing_table.IsRuntimeReady()
-         || missing_table.missing_required_count != 1
-         || BuildBindingTableRecipe(
-                missing_recipe, missing_table, projected_recipe)
-         || FindTextureBinding(missing_table, "base_color")
-                == nullptr
-         || FindTextureBinding(missing_table, "base_color")
-                ->source != BindingSource::Missing)
-        {
-            result.diagnostics.emplace_back(
-                "missing required material resource must remain explicit");
-        }
-
-        // A6-2b-b2：schema 不再承载 req 条目（allow_fallback 权限只来自 recipe——
-        // 原 resources[0] 的 allow_fallback 修改随 Index req 条目删除），直接复用 layout。
-        const ShaderResourceSchema &fallback_layout = layout;
-        ResolvedBindingTable unresolved_fallback_table{};
-        if (!BuildBindingTable(
-                missing_recipe,
-                fallback_layout,
-                program_key,
-                unresolved_fallback_table,
-                diagnostic)
-         || !unresolved_fallback_table.IsValid()
-         || unresolved_fallback_table.IsRuntimeReady()
-         || FindTextureBinding(
-                unresolved_fallback_table, "base_color")
-                == nullptr
-         || FindTextureBinding(
-                unresolved_fallback_table, "base_color")
-                ->source != BindingSource::Missing)
-        {
-            result.diagnostics.emplace_back(
-                "fallback permission without a concrete fallback must remain pending");
-        }
-
-        MaterialRecipe duplicate_recipe = recipe;
-        duplicate_recipe.textures.push_back(
-            {"base_color", "asset/duplicate", true, 0});
-        ResolvedBindingTable duplicate_table{};
-        if (BuildBindingTable(
-                duplicate_recipe,
-                layout,
-                program_key,
-                duplicate_table,
-                diagnostic)
-         || diagnostic.error
-                != BindingBuildError::
-                    DuplicateRecipeTexture)
-        {
-            result.diagnostics.emplace_back(
-                "duplicate material texture binding must fail");
-        }
-
-        ResolvedBindingTable depth_table{};
-        ShaderResourceSchema depth_layout{};
-        // With an empty descriptor layout, every named recipe texture remains
-        // visible in the resolved table; only entries with an asset are
-        // acquired.
-        uint32_t arena_asset_texture_count = 0;
-        for (const auto &t : recipe.textures)
-            if (!t.resource_id.empty())
-                ++arena_asset_texture_count;
-        const uint32_t expected_free_textures = arena_asset_texture_count;
-        const uint32_t expected_free_unused_textures = 0u;
-        if (!BuildBindingTable(
-                recipe,
-                depth_layout,
-                program_key,
-                depth_table,
-                diagnostic)
-         || !depth_table.IsRuntimeReady()
-         || depth_table.unused_recipe_texture_count
-                != expected_free_unused_textures
-         || depth_table.unused_recipe_data_count
-                != recipe.ssbo_assets.size()
-         || CountAssetTextures(depth_table) != expected_free_textures
-         || CountAssetData(depth_table) != 0)
-        {
-            char dbg[256];
-            std::snprintf(dbg, sizeof(dbg),
-                "[DBG free] ready=%d unused_tex=%d(exp %u) unused_data=%d(exp %u) tex_assets=%u(exp %u) data_assets=%u",
-                depth_table.IsRuntimeReady()?1:0,
-                int(depth_table.unused_recipe_texture_count), expected_free_unused_textures,
-                int(depth_table.unused_recipe_data_count), uint32_t(recipe.ssbo_assets.size()),
-                CountAssetTextures(depth_table), expected_free_textures,
-                CountAssetData(depth_table));
-            result.diagnostics.emplace_back(
-                "resource-free Program must submit no unrelated resource acquisition");
-        }
-
-        ResolvedBindingTable unresolved_table{};
-        if (unresolved_table.IsRuntimeReady()
-         || CountAssetTextures(unresolved_table) != 0
-         || CountAssetData(unresolved_table) != 0)
-        {
-            result.diagnostics.emplace_back(
-                "unresolved Program must not submit resource acquisition");
-        }
-
-        MaterialDefinition named_texture_definition{};
-        named_texture_definition.definition_id =
-            "NamedTextureBindingDefinition";
-        named_texture_definition.texture_declarations.push_back(
-            {"base_color", GLSLSamplerType::Sampler2D, true, {}});
-        named_texture_definition.texture_declarations.push_back(
-            {"normal", GLSLSamplerType::Sampler2DArray, false, {}});
-
-        MaterialRecipe named_texture_recipe{};
-        named_texture_recipe.textures.push_back(
-            {"base_color", "asset/named-base", true, 0});
-        named_texture_recipe.textures.push_back(
-            {"normal", "asset/named-normal", false, 6});
-
-        ResolvedBindingTable named_texture_table{};
-        if (!BuildBindingTable(
-                named_texture_recipe,
-                layout,
-                program_key,
-                &named_texture_definition,
-                named_texture_table,
-                diagnostic)
-         || !named_texture_table.IsRuntimeReady()
-         || named_texture_table.textures.GetCount() != 2)
-        {
-            result.diagnostics.emplace_back(
-                "named texture declaration binding build failed");
-        }
-        else
-        {
-            const ResolvedTextureBinding *base_color = nullptr;
-            const ResolvedTextureBinding *normal = nullptr;
-            for (int i = 0;
-                 i < named_texture_table.textures.GetCount();
-                 ++i)
-            {
-                const auto &binding =
-                    named_texture_table.textures[i];
-                if (std::strcmp(binding.texture_name, "base_color") == 0)
-                    base_color = &binding;
-                else if (std::strcmp(binding.texture_name, "normal") == 0)
-                    normal = &binding;
-            }
-
-            if (!base_color
-             || !normal
-             || base_color->texture_layout_index != 0
-             || normal->texture_layout_index != 1
-             || base_color->array_layer != 0
-             || normal->array_layer != 6
-             || base_color->source != BindingSource::Asset
-             || normal->source != BindingSource::Asset)
-            {
-                result.diagnostics.emplace_back(
-                    "named texture binding must preserve TOML order and array layer");
-            }
-        }
-
-        MaterialRecipe undeclared_named_texture_recipe =
-            named_texture_recipe;
-        undeclared_named_texture_recipe.textures.push_back(
-            {"unexpected", "asset/unexpected", false, 0});
-        ResolvedBindingTable undeclared_named_texture_table{};
-        if (BuildBindingTable(
-                undeclared_named_texture_recipe,
-                layout,
-                program_key,
-                &named_texture_definition,
-                undeclared_named_texture_table,
-                diagnostic)
-         || diagnostic.error != BindingBuildError::InvalidBindingTable)
-        {
-            result.diagnostics.emplace_back(
-                "TOML-external texture names must fail binding validation");
-        }
-
-        MaterialRecipe invalid_named_layer_recipe =
-            named_texture_recipe;
-        invalid_named_layer_recipe.textures[0].array_layer = 1;
-        ResolvedBindingTable invalid_named_layer_table{};
-        if (BuildBindingTable(
-                invalid_named_layer_recipe,
-                layout,
-                program_key,
-                &named_texture_definition,
-                invalid_named_layer_table,
-                diagnostic)
-         || diagnostic.error != BindingBuildError::InvalidBindingTable)
-        {
-            result.diagnostics.emplace_back(
-                "non-array TOML texture must reject an array layer");
-        }
-
-        MaterialRecipe missing_named_required_recipe =
-            named_texture_recipe;
-        missing_named_required_recipe.textures[0].resource_id.clear();
-        ResolvedBindingTable missing_named_required_table{};
-        if (!BuildBindingTable(
-                missing_named_required_recipe,
-                layout,
-                program_key,
-                &named_texture_definition,
-                missing_named_required_table,
-                diagnostic)
-         || !missing_named_required_table.IsValid()
-         || missing_named_required_table.IsRuntimeReady()
-         || missing_named_required_table.missing_required_count != 1)
-        {
-            result.diagnostics.emplace_back(
-                "missing required TOML texture must remain explicit");
         }
 
         result.passed = result.diagnostics.empty();
@@ -2014,16 +1544,6 @@ namespace
         GateResult result;
         result.name = "D1.materialization-shared-instance-separation";
 
-        ShaderProgramKey program_key{};
-        program_key.mesh_stage_digest = 0x7201u;
-        program_key.fragment_stage_digest = 0x7202u;
-        program_key.resource_layout_hash = 0x7203u;
-        program_key.vertex_input_hash = 0x7204u;
-
-        ShaderResourceSchema layout{};
-        // A6-2b-b2：数据槽需求走编译期直判标志（Index req 桥接入口已删）。
-        layout.requires_runtime_data_rows = true;
-
         MaterialRecipe recipe;
         recipe.recipe_name = "shared-instance-regression";
 
@@ -2041,42 +1561,34 @@ namespace
         asset.use_data_index = true;
         recipe.ssbo_assets.emplace_back(asset);
 
-        ResolvedBindingTable binding_table{};
-        BindingBuildDiagnostic diagnostic{};
-        if (!BuildBindingTable(
+        const auto *initial_binding =
+            FindRecipeSSBOAssetBinding(
                 recipe,
-                layout,
-                program_key,
-                binding_table,
-                diagnostic)
-         || binding_table.data.GetCount() != 1
-         || binding_table.data[0].data_index != 3
-         || !binding_table.data[0].use_data_index)
+                MaterialSSBOType::PBRSurface);
+        if (!initial_binding
+         || initial_binding->data_index != 3
+         || !initial_binding->use_data_index
+         || !initial_binding->GetMaterialSSBOBinding().IsValid())
         {
-            result.diagnostics.emplace_back(
-                std::string("shared resolve failed: ")
-                + GetBindingBuildErrorName(
-                    diagnostic.error));
+            result.diagnostics.emplace_back("shared recipe binding resolve failed");
             result.passed = false;
             return result;
         }
 
         // Instance separation: changing the per-instance data_index must not
         // leak into the shared recipe identity (HashMaterialRecipe), while
-        // the resolved binding table must still carry the new data_index.
+        // the direct recipe binding must still carry the new data_index.
         recipe.ssbo_assets[0].data_index = 9;
-        ResolvedBindingTable changed_table{};
-        if (!BuildBindingTable(
+        const auto *changed_binding =
+            FindRecipeSSBOAssetBinding(
                 recipe,
-                layout,
-                program_key,
-                changed_table,
-                diagnostic)
-         || changed_table.data.GetCount() != 1
-         || changed_table.data[0].data_index != 9)
+                MaterialSSBOType::PBRSurface);
+        if (!changed_binding
+         || changed_binding->data_index != 9
+         || !changed_binding->use_data_index)
         {
             result.diagnostics.emplace_back(
-                "instance data_index was not projected into the binding table");
+                "instance data_index was not preserved in the direct recipe binding");
             result.passed = false;
             return result;
         }
@@ -5020,7 +4532,6 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunShaderCodeModuleFileCase());
     if (run_glsl) results.push_back(RunShaderCodeModuleMetadataValidationCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
-    if (run_materialization) results.push_back(RunResolvedBindingTableCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());

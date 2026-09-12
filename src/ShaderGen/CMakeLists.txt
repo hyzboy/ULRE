@@ -113,10 +113,6 @@ set(CONTRACT_FILES
     contract/MaterialOutputContract.cpp
     ${SHADERGEN_INCLUDE_PATH}/MaterialCoverageContract.h
     contract/MaterialCoverageContract.cpp
-    ${SHADERGEN_INCLUDE_PATH}/MaterialBindingContract.h
-    ${SHADERGEN_INCLUDE_PATH}/BindingTableBuilder.h
-    contract/MaterialBindingContract.cpp
-    contract/BindingTableBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/MaterialStageInterface.h
     contract/MaterialStageInterface.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderSemanticRegistry.h

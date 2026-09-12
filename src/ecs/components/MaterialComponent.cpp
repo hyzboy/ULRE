@@ -61,13 +61,6 @@ namespace hgl::ecs
         valid = false;
     }
 
-    void MaterialComponent::ClearResolvedBindingTable()
-    {
-        resolved_binding_table = {};
-        cached_binding_recipe = {};
-        cached_binding_recipe_valid = false;
-    }
-
     void MaterialComponent::ClearMaterializationRows()
     {
         data_index_row = uint32_t(-1);
@@ -90,7 +83,6 @@ namespace hgl::ecs
         cached_effective_recipe_hash = 0;
         tracked_material_authored_generation = 0;
         ClearMaterializationRows();
-        ClearResolvedBindingTable();
     }
 
     void MaterialComponent::OnDetach()
@@ -106,6 +98,5 @@ namespace hgl::ecs
         cached_effective_recipe_hash = 0;
         tracked_material_authored_generation = 0;
         ClearMaterializationRows();
-        ClearResolvedBindingTable();
     }
 }//namespace hgl::ecs
