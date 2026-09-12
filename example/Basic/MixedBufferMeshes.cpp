@@ -112,8 +112,7 @@ private:
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 mesh_recipe,
-                material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true))
+                material_data_ssbo_accessor.GetMaterialSSBOBinding()))
             return false;
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -434,7 +433,6 @@ private:
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_authoring{};
             floor_authoring = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-            floor_authoring.shared_across_instances = true;
             primitive_comp->SetMaterialDataResource(floor_authoring);
             primitive_comp->SetVisible(true);
         }
@@ -477,7 +475,6 @@ private:
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_authoring{};
             mesh_authoring = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-            mesh_authoring.shared_across_instances = true;
             primitive_comp->SetMaterialDataResource(mesh_authoring);
             primitive_comp->SetVisible(true);
 

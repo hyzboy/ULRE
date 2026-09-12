@@ -179,8 +179,7 @@ private:
         near_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 near_recipe,
-                near_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                false))
+                near_material_data_ssbo_accessor.GetMaterialSSBOBinding()))
             return LogFail("InitMaterials", "near material SSBO binding failed");
 
         far_recipe = near_recipe;
@@ -188,8 +187,7 @@ private:
         far_recipe.mtl_def_id = "Lit";
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 far_recipe,
-                far_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                false))
+                far_material_data_ssbo_accessor.GetMaterialSSBOBinding()))
             return LogFail("InitMaterials", "far material SSBO binding failed");
 
         return true;
@@ -270,7 +268,6 @@ private:
 
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-        sphere_struct.shared_across_instances = false;
         sphere_primitive_component->SetMaterialDataResource(sphere_struct);
         return true;
     }

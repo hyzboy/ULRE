@@ -125,8 +125,7 @@ namespace hgl::graph
                     recipe.ssbo_assets.clear();
 
                     if (!mtl::UpsertRecipeSSBOAssetBinding(recipe,
-                                                          accessor.GetMaterialSSBOBinding(),
-                                                          true))
+                                                          accessor.GetMaterialSSBOBinding()))
                         return false;
                 }
 

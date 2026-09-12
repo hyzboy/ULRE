@@ -115,7 +115,6 @@ public:
             prim_comp->SetMaterialTextureResource("base_color", base_color_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource wall_struct{};
             wall_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
-            wall_struct.shared_across_instances = true;
             prim_comp->SetMaterialDataResource(wall_struct);
             prim_comp->SetVisible(true);
         }
@@ -157,8 +156,7 @@ public:
 
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 wall_recipe,
-                mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true))
+                mtl_data_ssbo_accessor.GetMaterialSSBOBinding()))
             return false;
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.

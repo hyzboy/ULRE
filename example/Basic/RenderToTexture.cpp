@@ -293,8 +293,7 @@ public:
         sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
-                material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true))
+                material_data_ssbo_accessor.GetMaterialSSBOBinding()))
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
@@ -317,7 +316,6 @@ public:
         prim_comp->SetMaterialTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-        sphere_struct.shared_across_instances = true;
         prim_comp->SetMaterialDataResource(sphere_struct);
         prim_comp->SetVisible(true);
 
@@ -491,8 +489,7 @@ private:
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
-                cube_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true))
+                cube_material_data_ssbo_accessor.GetMaterialSSBOBinding()))
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
 
         cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
@@ -514,7 +511,6 @@ private:
         cube_prim_comp->SetMaterialTextureResource("roughness", roughness_tex, cube_sampler);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_material_data_ssbo_accessor.GetMaterialSSBOBinding();
-        cube_struct.shared_across_instances = true;
         cube_prim_comp->SetMaterialDataResource(cube_struct);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");

@@ -2428,15 +2428,13 @@ namespace
                 MaterialSSBOBinding{
                     MaterialSSBOType::EmissiveSurface,
                     11,
-                    7},
-                true)
+                    7})
          || !UpsertRecipeSSBOAssetBinding(
                 recipe,
                 MaterialSSBOBinding{
                     MaterialSSBOType::EmissiveSurface,
                     44,
-                    9},
-                true))
+                    9}))
         {
             result.diagnostics.emplace_back(
                 "single material SSBO binding upsert rejected a valid binding");
@@ -2448,8 +2446,7 @@ namespace
                 MaterialSSBOBinding{
                     MaterialSSBOType::EmissiveSurface,
                     55,
-                    uint32_t(-1)},
-                true))
+                    uint32_t(-1)}))
         {
             result.diagnostics.emplace_back(
                 "material SSBO binding accepted a missing active row ID");
@@ -2458,7 +2455,6 @@ namespace
         const auto *material_data = FindRecipeSSBOAssetBinding(recipe);
         if (!material_data || material_data->ssbo_id != 44
          || material_data->data_index != 9
-         || !material_data->shared_across_instances
          || recipe.ssbo_assets.size() != 1)
         {
             result.diagnostics.emplace_back(
@@ -2503,8 +2499,7 @@ namespace
                     MaterialSSBOBinding{
                         MaterialSSBOType::EmissiveSurface,
                         66,
-                        10},
-                    true))
+                        10}))
             {
                 result.diagnostics.emplace_back(
                     "single material SSBO binding accepted an ambiguous recipe");

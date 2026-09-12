@@ -85,8 +85,7 @@ private:
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 mesh_recipe,
-                mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true))
+                mtl_data_ssbo_accessor.GetMaterialSSBOBinding()))
             return false;
 
         return true;
@@ -192,7 +191,6 @@ private:
         prim_comp->SetPrimitiveAsset(mesh_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
         mesh_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
-        mesh_struct.shared_across_instances = true;
         prim_comp->SetMaterialDataResource(mesh_struct);
         prim_comp->SetVisible(true);
 

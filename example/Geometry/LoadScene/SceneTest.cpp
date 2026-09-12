@@ -153,8 +153,7 @@ private:
         scene_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 scene_recipe,
-                solid.mtl_data_ssbo_accessors[0].GetMaterialSSBOBinding(),
-                true))
+                solid.mtl_data_ssbo_accessors[0].GetMaterialSSBOBinding()))
             return false;
 
         return LoadStaticMeshSceneAsPrimitiveAssets(
@@ -208,7 +207,6 @@ private:
                 hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource scene_struct{};
                 scene_struct =
                     solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetMaterialSSBOBinding();
-                scene_struct.shared_across_instances = true;
                 se.primitive_comp->SetMaterialDataResource(scene_struct);
                 se.primitive_comp->SetVisible(true);
 

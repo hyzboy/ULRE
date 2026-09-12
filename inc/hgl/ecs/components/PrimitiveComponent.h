@@ -69,7 +69,6 @@ namespace hgl::ecs
             hgl::graph::DeviceBuffer *buffer = nullptr;
             uint32_t element_capacity = 0;
             uint32_t byte_stride = 0;
-            bool shared_across_instances = false;
             bool authored = false;
 
             MaterialDataAuthoringResource &operator=(

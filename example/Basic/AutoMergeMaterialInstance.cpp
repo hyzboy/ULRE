@@ -97,8 +97,7 @@ private:
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 triangle_recipe,
-                triangle_data_accessors[0].GetMaterialSSBOBinding(),
-                false))
+                triangle_data_accessors[0].GetMaterialSSBOBinding()))
             return false;
 
         triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);
@@ -178,7 +177,6 @@ private:
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource tri_struct{};
             tri_struct = triangle_data_accessors[i].GetMaterialSSBOBinding();
-            tri_struct.shared_across_instances = false;
             primitive_comp->SetMaterialDataResource(tri_struct);
             primitive_comp->SetVisible(true);
 

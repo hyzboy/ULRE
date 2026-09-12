@@ -98,7 +98,6 @@ private:
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
         named_struct = material_ssbo_binding;
-        named_struct.shared_across_instances = true;
         prim_comp->SetMaterialDataResource(named_struct);
         prim_comp->SetVisible(true);
 
@@ -120,8 +119,7 @@ private:
         plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 plane_grid_recipe,
-                material_data_accessors[0].GetMaterialSSBOBinding(),
-                true))
+                material_data_accessors[0].GetMaterialSSBOBinding()))
             return false;
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 

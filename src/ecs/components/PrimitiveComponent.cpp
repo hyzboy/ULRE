@@ -44,7 +44,6 @@ namespace hgl::ecs
             resource.element_capacity = 0;
             resource.byte_stride = 0;
             resource.data_index = uint32_t(-1);
-            resource.shared_across_instances = false;
             resource.authored = false;
         }
 
@@ -357,8 +356,7 @@ namespace hgl::ecs
             if (!material_ssbo_binding.IsValid()
              || !hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(
                     out_recipe,
-                    material_ssbo_binding,
-                    resource.shared_across_instances))
+                    material_ssbo_binding))
                 return false;
         }
 

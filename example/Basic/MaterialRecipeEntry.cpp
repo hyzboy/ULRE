@@ -151,15 +151,13 @@ private:
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
-                material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true))
+                material_data_ssbo_accessor.GetMaterialSSBOBinding()))
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
         named_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
-        named_struct.shared_across_instances = true;
         primitive_comp->SetMaterialDataResource(named_struct);
         primitive_comp->SetVisible(true);
 

@@ -189,8 +189,7 @@ private:
 
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             solid_recipe,
-            solid.material_data_ssbo_accessors[0].GetMaterialSSBOBinding(),
-            true);
+            solid.material_data_ssbo_accessors[0].GetMaterialSSBOBinding());
     }
 
     bool InitWireMDP()
@@ -200,8 +199,7 @@ private:
 
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             wire_recipe,
-            wire.material_data_ssbo_accessors[0].GetMaterialSSBOBinding(),
-            true);
+            wire.material_data_ssbo_accessors[0].GetMaterialSSBOBinding());
     }
 
     bool InitVDM()
@@ -557,7 +555,6 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_struct{};
             floor_struct =
                 solid.material_data_ssbo_accessors[floor_mesh->color_index].GetMaterialSSBOBinding();
-            floor_struct.shared_across_instances = true;
             floor_mesh->primitive_comp->SetMaterialDataResource(floor_struct);
             floor_mesh->primitive_comp->SetVisible(true);
         }
@@ -589,7 +586,6 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
                 solid.material_data_ssbo_accessors[rm->color_index].GetMaterialSSBOBinding();
-            mesh_struct.shared_across_instances = true;
             rm->primitive_comp->SetMaterialDataResource(mesh_struct);
             rm->primitive_comp->SetVisible(true);
 
@@ -632,7 +628,6 @@ private:
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct = wire.material_data_ssbo_accessors[5].GetMaterialSSBOBinding();
-            bbox_struct.shared_across_instances = true;
             bbox->primitive_comp->SetMaterialDataResource(bbox_struct);
             bbox->primitive_comp->SetVisible(true);
 

@@ -132,8 +132,7 @@ private:
             grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
             if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                     grid_recipe,
-                    grid_mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                    true))
+                    grid_mtl_data_ssbo_accessor.GetMaterialSSBOBinding()))
                 return false;
             grid_asset = PrimitiveAsset(grid_geometry, &grid_recipe, PrimitiveType::Lines);
         }
@@ -173,8 +172,7 @@ private:
             cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
             if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                     cube_recipe,
-                    cube_mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                    true))
+                    cube_mtl_data_ssbo_accessor.GetMaterialSSBOBinding()))
                 return false;
             cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         }
@@ -198,7 +196,6 @@ private:
         plane_primitive_comp->SetPrimitiveAsset(&grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource plane_struct{};
         plane_struct = grid_mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
-        plane_struct.shared_across_instances = true;
         plane_primitive_comp->SetMaterialDataResource(plane_struct);
         plane_primitive_comp->SetVisible(true);
 
@@ -213,7 +210,6 @@ private:
         cube_primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
-        cube_struct.shared_across_instances = true;
         cube_primitive_comp->SetMaterialDataResource(cube_struct);
         cube_primitive_comp->SetVisible(true);
 

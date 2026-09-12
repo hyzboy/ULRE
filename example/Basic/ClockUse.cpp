@@ -114,8 +114,7 @@ private:
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 clock_recipe,
-                tick_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                true))
+                tick_data_ssbo_accessor.GetMaterialSSBOBinding()))
             return false;
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 
@@ -236,7 +235,6 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource tick_struct{};
             tick_struct = tick_data_ssbo_accessor.GetMaterialSSBOBinding();
-            tick_struct.shared_across_instances = true;
             primitive_comp->SetMaterialDataResource(tick_struct);
             primitive_comp->SetVisible(true);
 
@@ -270,7 +268,6 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource hand_struct{};
             hand_struct = hand_data_ssbo_accessors[i].GetMaterialSSBOBinding();
-            hand_struct.shared_across_instances = false;
             primitive_comp->SetMaterialDataResource(hand_struct);
             primitive_comp->SetVisible(true);
 
