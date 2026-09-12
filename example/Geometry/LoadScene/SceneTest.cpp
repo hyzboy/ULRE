@@ -151,9 +151,7 @@ private:
         scene_recipe.recipe_name = "LoadScene.DebugNormalColor";
         scene_recipe.mtl_def_id = "DebugNormalColor";
         scene_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                scene_recipe,
-                solid.mtl_data_ssbo_accessors[0].GetMaterialSSBOBinding()))
+        if (!(scene_recipe.material_ssbo_binding = solid.mtl_data_ssbo_accessors[0].GetMaterialSSBOBinding()).IsValid())
             return false;
 
         return LoadStaticMeshSceneAsPrimitiveAssets(

@@ -125,31 +125,6 @@ namespace hgl::ecs
             if (!material_program)
                 return false;
 
-            if (recipe.ssbo_assets.size() > 1)
-            {
-                GLogError(
-                    "[MaterialBinding] Multiple material data bindings are not supported owner=%s count=%zu",
-                    owner_name ? owner_name : "<null>",
-                    recipe.ssbo_assets.size());
-                return false;
-            }
-
-            if (!recipe.ssbo_assets.empty())
-            {
-                const auto &binding = recipe.ssbo_assets.front();
-                if (!binding.IsValid())
-                {
-                    GLogError(
-                        "[MaterialBinding] Invalid material data binding owner=%s type=%s ssbo_id=%u data_index=%u",
-                        owner_name ? owner_name : "<null>",
-                        graph::mtl::GetMaterialSSBOTypeName(
-                            binding.ssbo_type),
-                        binding.ssbo_id,
-                        binding.data_index);
-                    return false;
-                }
-            }
-
             for (size_t i = 0; i < recipe.textures.size(); ++i)
             {
                 const auto &binding = recipe.textures[i];
@@ -252,12 +227,10 @@ namespace hgl::ecs
                         != graph::mtl::DescriptorSemantic::MaterialPrivateData)
                     continue;
 
-                const auto *binding =
-                    graph::mtl::FindRecipeSSBOAssetBinding(
-                        recipe,
-                        ResolveMaterialSSBORequirementType(req));
-                if (!binding
-                 || !binding->IsValid())
+                const auto &binding = recipe.material_ssbo_binding;
+                if (!binding.IsValid()
+                 || binding.ssbo_type
+                        != ResolveMaterialSSBORequirementType(req))
                 {
                     GLogError(
                         "[MaterialBinding] Material data binding missing or invalid owner=%s descriptor=%s type=%s",
@@ -600,8 +573,8 @@ namespace hgl::ecs
                 if (!binding.resource_id.empty())
                     ++planned_textures;
             const uint32_t planned_data =
-                static_cast<uint32_t>(
-                    material_binding_recipe.ssbo_assets.size());
+                material_binding_recipe.material_ssbo_binding.IsValid()
+                    ? 1u : 0u;
             GLogVerbose(
                 "[DeferredResource] owner=%s program=%s planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu",
                 GetPrimitiveOwnerName(primitive_comp),
@@ -609,7 +582,7 @@ namespace hgl::ecs
                 planned_textures,
                 planned_data,
                 material_binding_recipe.textures.size(),
-                material_binding_recipe.ssbo_assets.size());
+                planned_data);
         }
         material_comp->program_dirty = false;
         material_comp->MarkProgramResolved();
@@ -709,9 +682,8 @@ namespace hgl::ecs
         }
 
         if (getenv("ULRE_ARENA_DEBUG"))
-            GLogInfo("[ArenaTrace] materialize entry: ssbo_assets=%u binding_valid=%d schema_reqs=%u",
-                     (uint32_t)material_binding_recipe.ssbo_assets.size(),
-                     material_comp->cached_effective_recipe_hash != 0 ? 1 : 0,
+            GLogInfo("[ArenaTrace] materialize entry: material_binding_valid=%d schema_reqs=%u",
+                     material_binding_recipe.material_ssbo_binding.IsValid() ? 1 : 0,
                      (uint32_t)material_comp->program->GetShaderResourceSchema().resources.size());
 
         // Keep the schema-to-recipe readiness check. The recipe binding below is
@@ -721,11 +693,11 @@ namespace hgl::ecs
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialPrivateData)
                 continue;
 
-            const auto *recipe_binding =
-                graph::mtl::FindRecipeSSBOAssetBinding(
-                    material_binding_recipe,
-                    ResolveMaterialSSBORequirementType(req));
-            if (!recipe_binding)
+            const auto &recipe_binding =
+                material_binding_recipe.material_ssbo_binding;
+            if (!recipe_binding.IsValid()
+             || recipe_binding.ssbo_type
+                    != ResolveMaterialSSBORequirementType(req))
             {
                 GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s type=%s",
                             GetPrimitiveOwnerName(primitive_comp),
@@ -745,15 +717,15 @@ namespace hgl::ecs
         }
 
         // The binding recipe carries the primitive's active material row ID.
-        uint32_t entity_data_index = uint32_t(-1);
-        for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
-            entity_data_index = asset_binding.data_index;
+        const auto &asset_binding =
+            material_binding_recipe.material_ssbo_binding;
+        const uint32_t entity_data_index =
+            asset_binding.IsValid() ? asset_binding.data_index : uint32_t(-1);
 
         // Fill the per-batch material address row for the shared material SSBO.
         // 每个材质 recipe 只声明一个共享材质数据 SSBO。
-        for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
+        if (asset_binding.IsValid())
         {
-
             // data_index is the active row ID in this type's shared material
             // buffer; translate it to the CPU/GPU address used by the current ABI.
             {
@@ -764,26 +736,11 @@ namespace hgl::ecs
                     GLogInfo("[ArenaTrace] materialize: ssbo_id=%u data_index=%u assets=%u",
                              asset_binding.ssbo_id,
                              asset_binding.data_index,
-                             (uint32_t)material_binding_recipe.ssbo_assets.size());
+                             1u);
                 }
 
                 material_comp->material_row_cpu = nullptr;
                 material_comp->material_row_gpu     = 0;
-
-                if (!graph::mtl::IsMaterialSSBOType(
-                        asset_binding.ssbo_type)
-                 || asset_binding.ssbo_id == 0
-                 || asset_binding.data_index == uint32_t(-1))
-                {
-                    GLogError(
-                        "[RenderPrimitiveCollectSystem] Materialize failed: invalid material row binding for %s type=%s ssbo_id=%u data_index=%u",
-                        GetPrimitiveOwnerName(primitive_comp),
-                        graph::mtl::GetMaterialSSBOTypeName(
-                            asset_binding.ssbo_type),
-                        asset_binding.ssbo_id,
-                        asset_binding.data_index);
-                    return false;
-                }
 
                 auto *graphics_context = world->GetGraphicsContext();
                 auto *material_domain = graphics_context
@@ -852,9 +809,7 @@ namespace hgl::ecs
                         (unsigned long long)material_buffer.gpu_base,
                         material_buffer.row_bytes);
                 }
-                continue;
             }
-
         }
 
         // data_index（行号）仍按 data_index VALUE 发布——行表/行尾镜像共用。

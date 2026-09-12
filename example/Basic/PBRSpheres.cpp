@@ -446,9 +446,7 @@ private:
         if (!InitMaterialDataSSBO())
             return false;
 
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                sphere_recipe,
-                sphere_slot_accessors[0][0].GetMaterialSSBOBinding()))
+        if (!(sphere_recipe.material_ssbo_binding = sphere_slot_accessors[0][0].GetMaterialSSBOBinding()).IsValid())
             return false;
 
         if (!CreateBasePrimitives())

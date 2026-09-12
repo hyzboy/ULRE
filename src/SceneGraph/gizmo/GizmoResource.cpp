@@ -122,10 +122,9 @@ namespace hgl::graph
                     recipe.recipe_name = "GizmoColor_" + std::to_string(c);
                     recipe.mtl_def_id = mtl::BUILTIN_MTL_DEF_PURE_COLOR;
                     recipe.textures.clear();
-                    recipe.ssbo_assets.clear();
-
-                    if (!mtl::UpsertRecipeSSBOAssetBinding(recipe,
-                                                          accessor.GetMaterialSSBOBinding()))
+                    recipe.material_ssbo_binding =
+                        accessor.GetMaterialSSBOBinding();
+                    if (!recipe.material_ssbo_binding.IsValid())
                         return false;
                 }
 

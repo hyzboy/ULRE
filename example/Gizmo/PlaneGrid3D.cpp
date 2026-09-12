@@ -117,9 +117,7 @@ private:
         plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
         plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
         plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                plane_grid_recipe,
-                material_data_accessors[0].GetMaterialSSBOBinding()))
+        if (!(plane_grid_recipe.material_ssbo_binding = material_data_accessors[0].GetMaterialSSBOBinding()).IsValid())
             return false;
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 

@@ -130,9 +130,7 @@ private:
             grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
             grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
             grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-            if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                    grid_recipe,
-                    grid_mtl_data_ssbo_accessor.GetMaterialSSBOBinding()))
+            if (!(grid_recipe.material_ssbo_binding = grid_mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
                 return false;
             grid_asset = PrimitiveAsset(grid_geometry, &grid_recipe, PrimitiveType::Lines);
         }
@@ -170,9 +168,7 @@ private:
             cube_recipe.recipe_name = "GizmoUsageExample.DebugNormalColor";
             cube_recipe.mtl_def_id = "DebugNormalColor";
             cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-            if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                    cube_recipe,
-                    cube_mtl_data_ssbo_accessor.GetMaterialSSBOBinding()))
+            if (!(cube_recipe.material_ssbo_binding = cube_mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
                 return false;
             cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         }

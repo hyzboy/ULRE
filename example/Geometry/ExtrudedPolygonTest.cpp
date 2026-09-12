@@ -83,9 +83,7 @@ private:
         mesh_recipe.recipe_name = "ExtrudedPolygonTest.DebugNormalColor";
         mesh_recipe.mtl_def_id = "DebugNormalColor";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                mesh_recipe,
-                mtl_data_ssbo_accessor.GetMaterialSSBOBinding()))
+        if (!(mesh_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
             return false;
 
         return true;

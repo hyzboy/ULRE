@@ -484,7 +484,7 @@ namespace hgl::graph::mtl
         MaterialRenderStateOverrides render_state_overrides;
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
-        std::vector<MaterialSSBOBinding> ssbo_assets; // 唯一材质数据运行时绑定（type/id/row）
+        MaterialSSBOBinding material_ssbo_binding; // 可选的唯一材质数据运行时绑定
     };
 
     inline ResolvedMaterialRenderState ResolveMaterialRenderState(
@@ -549,23 +549,6 @@ namespace hgl::graph::mtl
             && overrides.has_pipeline_config;
     }
 
-    inline const MaterialSSBOBinding *FindRecipeSSBOAssetBinding(
-        const MaterialRecipe &recipe) noexcept
-    {
-        if (recipe.ssbo_assets.size() != 1)
-            return nullptr;
-
-        return &recipe.ssbo_assets.front();
-    }
-
-    inline const MaterialSSBOBinding *FindRecipeSSBOAssetBinding(
-        const MaterialRecipe &recipe,
-        const MaterialSSBOType ssbo_type) noexcept
-    {
-        const auto *asset = FindRecipeSSBOAssetBinding(recipe);
-        return asset && asset->ssbo_type == ssbo_type ? asset : nullptr;
-    }
-
     inline MaterialSSBOType ResolveRecipeSSBOType(
         const MaterialRecipe &recipe,
         const MaterialSSBOType authored_type) noexcept
@@ -573,35 +556,13 @@ namespace hgl::graph::mtl
         if (authored_type != MaterialSSBOType::PBRSurface)
             return authored_type;
 
-        if (const auto *asset = FindRecipeSSBOAssetBinding(recipe))
-            return asset->ssbo_type;
+        if (recipe.material_ssbo_binding.IsValid())
+            return recipe.material_ssbo_binding.ssbo_type;
 
         return authored_type;
     }
 
-    inline bool UpsertRecipeSSBOAssetBinding(
-        MaterialRecipe &recipe,
-        const MaterialSSBOBinding &material_ssbo_binding)
-    {
-        if (!material_ssbo_binding.IsValid())
-            return false;
-
-        if (recipe.ssbo_assets.empty())
-        {
-            recipe.ssbo_assets.emplace_back(material_ssbo_binding);
-            return true;
-        }
-
-        if (recipe.ssbo_assets.size() != 1)
-            return false;
-
-        MaterialSSBOBinding &asset = recipe.ssbo_assets.front();
-        asset = material_ssbo_binding;
-        return true;
-    }
-
-    // 纹理绑定 upsert（与 UpsertRecipeSSBOAssetBinding 对称）：
-    // texture_name 已存在则原位更新，否则追加。
+    // 纹理绑定 upsert：texture_name 已存在则原位更新，否则追加。
     inline bool UpsertRecipeTextureBinding(MaterialRecipe &recipe,
                                            const std::string &texture_name,
                                            const std::string &resource_id,
@@ -668,12 +629,13 @@ namespace hgl::graph::mtl
               << texture.required;
         }
 
-        const uint32_t ssbo_asset_count = static_cast<uint32_t>(recipe.ssbo_assets.size());
+        const uint32_t ssbo_asset_count =
+            recipe.material_ssbo_binding.IsValid() ? 1u : 0u;
         h << ssbo_asset_count;
-        for (const auto &asset : recipe.ssbo_assets)
+        if (ssbo_asset_count != 0)
         {
-            h << asset.ssbo_type
-              << asset.ssbo_id;
+            h << recipe.material_ssbo_binding.ssbo_type
+              << recipe.material_ssbo_binding.ssbo_id;
         }
 
         return h;

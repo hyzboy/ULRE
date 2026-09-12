@@ -112,9 +112,7 @@ private:
         clock_recipe.mtl_def_id = "builtin/pure_color";
         clock_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                clock_recipe,
-                tick_data_ssbo_accessor.GetMaterialSSBOBinding()))
+        if (!(clock_recipe.material_ssbo_binding = tick_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
             return false;
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 

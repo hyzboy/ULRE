@@ -91,9 +91,7 @@ private:
         mesh_recipe.recipe_name = "06c.TextureBlinnPhong.Lit";
         mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                mesh_recipe,
-                material_data_ssbo_accessor.GetMaterialSSBOBinding()))
+        if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
             return false;
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);

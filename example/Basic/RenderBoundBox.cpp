@@ -187,9 +187,7 @@ private:
         if (!InitMaterialForDBS(&solid))
             return false;
 
-        return graph::mtl::UpsertRecipeSSBOAssetBinding(
-            solid_recipe,
-            solid.material_data_ssbo_accessors[0].GetMaterialSSBOBinding());
+        return (solid_recipe.material_ssbo_binding = solid.material_data_ssbo_accessors[0].GetMaterialSSBOBinding()).IsValid();
     }
 
     bool InitWireMDP()
@@ -197,9 +195,7 @@ private:
         if (!InitMaterialForDBS(&wire))
             return false;
 
-        return graph::mtl::UpsertRecipeSSBOAssetBinding(
-            wire_recipe,
-            wire.material_data_ssbo_accessors[0].GetMaterialSSBOBinding());
+        return (wire_recipe.material_ssbo_binding = wire.material_data_ssbo_accessors[0].GetMaterialSSBOBinding()).IsValid();
     }
 
     bool InitVDM()

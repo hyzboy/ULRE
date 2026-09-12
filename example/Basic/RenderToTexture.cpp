@@ -291,9 +291,7 @@ public:
         sphere_recipe.recipe_name = "RenderToTexture.OffscreenSphere";
         sphere_recipe.mtl_def_id = "Lit";
         sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                sphere_recipe,
-                material_data_ssbo_accessor.GetMaterialSSBOBinding()))
+        if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
@@ -487,9 +485,7 @@ private:
         cube_recipe.recipe_name = "RenderToTexture.Cube";
         cube_recipe.mtl_def_id = "Lit";
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                cube_recipe,
-                cube_material_data_ssbo_accessor.GetMaterialSSBOBinding()))
+        if (!(cube_recipe.material_ssbo_binding = cube_material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
 
         cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);

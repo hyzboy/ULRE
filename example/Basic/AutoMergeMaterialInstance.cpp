@@ -95,9 +95,7 @@ private:
         triangle_recipe.mtl_def_id = "builtin/pure_color";
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                triangle_recipe,
-                triangle_data_accessors[0].GetMaterialSSBOBinding()))
+        if (!(triangle_recipe.material_ssbo_binding = triangle_data_accessors[0].GetMaterialSSBOBinding()).IsValid())
             return false;
 
         triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);

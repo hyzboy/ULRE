@@ -177,17 +177,13 @@ private:
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
         near_recipe.mtl_def_id = "Lit";
         near_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                near_recipe,
-                near_material_data_ssbo_accessor.GetMaterialSSBOBinding()))
+        if (!(near_recipe.material_ssbo_binding = near_material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
             return LogFail("InitMaterials", "near material SSBO binding failed");
 
         far_recipe = near_recipe;
         far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
         far_recipe.mtl_def_id = "Lit";
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                far_recipe,
-                far_material_data_ssbo_accessor.GetMaterialSSBOBinding()))
+        if (!(far_recipe.material_ssbo_binding = far_material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
             return LogFail("InitMaterials", "far material SSBO binding failed");
 
         return true;

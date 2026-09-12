@@ -196,12 +196,8 @@ private:
         if (!line_material_data_accessor)
             return false;
 
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                plane_recipe,
-                plane_material_data_accessor.GetMaterialSSBOBinding())
-         || !graph::mtl::UpsertRecipeSSBOAssetBinding(
-                line_recipe,
-                line_material_data_accessor.GetMaterialSSBOBinding()))
+        if (!(plane_recipe.material_ssbo_binding = plane_material_data_accessor.GetMaterialSSBOBinding()).IsValid()
+         || !(line_recipe.material_ssbo_binding = line_material_data_accessor.GetMaterialSSBOBinding()).IsValid())
             return false;
 
         graph::ssbo::EmissiveSurfaceRow plane_row{};

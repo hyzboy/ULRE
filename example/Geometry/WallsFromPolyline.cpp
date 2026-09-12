@@ -154,9 +154,7 @@ public:
         if (!mtl_data_ssbo_accessor.Write(material_row))
             return false;
 
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                wall_recipe,
-                mtl_data_ssbo_accessor.GetMaterialSSBOBinding()))
+        if (!(wall_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
             return false;
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.

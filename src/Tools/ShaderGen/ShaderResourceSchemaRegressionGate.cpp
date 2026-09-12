@@ -1557,12 +1557,11 @@ namespace
             MaterialSSBOType::PBRSurface,
             41,
             3};
-        recipe.ssbo_assets.emplace_back(asset);
+        recipe.material_ssbo_binding = asset;
 
         const auto *initial_binding =
-            FindRecipeSSBOAssetBinding(
-                recipe,
-                MaterialSSBOType::PBRSurface);
+            recipe.material_ssbo_binding.IsValid()
+                ? &recipe.material_ssbo_binding : nullptr;
         if (!initial_binding
          || initial_binding->data_index != 3
          || !initial_binding->IsValid())
@@ -1575,11 +1574,10 @@ namespace
         // Instance separation: changing the per-instance data_index must not
         // leak into the shared recipe identity (HashMaterialRecipe), while
         // the direct recipe binding must still carry the new data_index.
-        recipe.ssbo_assets[0].data_index = 9;
+        recipe.material_ssbo_binding.data_index = 9;
         const auto *changed_binding =
-            FindRecipeSSBOAssetBinding(
-                recipe,
-                MaterialSSBOType::PBRSurface);
+            recipe.material_ssbo_binding.IsValid()
+                ? &recipe.material_ssbo_binding : nullptr;
         if (!changed_binding
          || changed_binding->data_index != 9)
         {
@@ -1589,15 +1587,15 @@ namespace
             return result;
         }
 
-        recipe.ssbo_assets[0].data_index = 3;
+        recipe.material_ssbo_binding.data_index = 3;
         const uint64_t first_recipe_hash = HashMaterialRecipe(recipe);
-        recipe.ssbo_assets[0].data_index = 9;
+        recipe.material_ssbo_binding.data_index = 9;
         const uint64_t second_recipe_hash = HashMaterialRecipe(recipe);
         if (first_recipe_hash != second_recipe_hash)
             result.diagnostics.emplace_back(
             "instance data_index must not change shared recipe identity");
 
-        recipe.ssbo_assets[0].ssbo_id = 42;
+        recipe.material_ssbo_binding.ssbo_id = 42;
         const uint64_t changed_buffer_hash = HashMaterialRecipe(recipe);
         if (second_recipe_hash == changed_buffer_hash)
             result.diagnostics.emplace_back(
@@ -2422,53 +2420,53 @@ namespace
         result.name = "Y1a.material-ssbo-binding-key";
 
         MaterialRecipe recipe{};
-        if (!UpsertRecipeSSBOAssetBinding(
-                recipe,
-                MaterialSSBOBinding{
-                    MaterialSSBOType::EmissiveSurface,
-                    11,
-                    7})
-         || !UpsertRecipeSSBOAssetBinding(
-                recipe,
-                MaterialSSBOBinding{
-                    MaterialSSBOType::EmissiveSurface,
-                    44,
-                    9}))
+        recipe.material_ssbo_binding = {
+            MaterialSSBOType::EmissiveSurface,
+            11,
+            7};
+        if (!recipe.material_ssbo_binding.IsValid())
         {
             result.diagnostics.emplace_back(
-                "single material SSBO binding upsert rejected a valid binding");
+                "material SSBO binding rejected a valid binding");
+        }
+
+        recipe.material_ssbo_binding = {
+            MaterialSSBOType::EmissiveSurface,
+            44,
+            9};
+        if (!recipe.material_ssbo_binding.IsValid())
+        {
+            result.diagnostics.emplace_back(
+                "material SSBO binding replacement is invalid");
         }
 
         MaterialRecipe missing_row_id_recipe{};
-        if (UpsertRecipeSSBOAssetBinding(
-                missing_row_id_recipe,
-                MaterialSSBOBinding{
-                    MaterialSSBOType::EmissiveSurface,
-                    55,
-                    uint32_t(-1)}))
+        missing_row_id_recipe.material_ssbo_binding = {
+            MaterialSSBOType::EmissiveSurface,
+            55,
+            uint32_t(-1)};
+        if (missing_row_id_recipe.material_ssbo_binding.IsValid())
         {
             result.diagnostics.emplace_back(
                 "material SSBO binding accepted a missing active row ID");
         }
 
-        const auto *material_data = FindRecipeSSBOAssetBinding(recipe);
+        const auto *material_data =
+            recipe.material_ssbo_binding.IsValid()
+                ? &recipe.material_ssbo_binding : nullptr;
         if (!material_data || material_data->ssbo_id != 44
          || material_data->data_index != 9
-         || recipe.ssbo_assets.size() != 1)
+         || material_data->ssbo_type != MaterialSSBOType::EmissiveSurface)
         {
             result.diagnostics.emplace_back(
-                "single material SSBO binding did not replace its unique binding");
+                "material SSBO binding replacement did not preserve its identity");
         }
 
-        if (!FindRecipeSSBOAssetBinding(
-                recipe,
-                MaterialSSBOType::EmissiveSurface)
-         || FindRecipeSSBOAssetBinding(
-                recipe,
-                MaterialSSBOType::PBRSurface))
+        if (!material_data
+         || material_data->ssbo_type != MaterialSSBOType::EmissiveSurface)
         {
             result.diagnostics.emplace_back(
-                "typed material SSBO lookup did not enforce the unique binding type");
+                "material SSBO binding type did not remain explicit");
         }
 
         MaterialRecipe no_binding_recipe{};
@@ -2489,20 +2487,10 @@ namespace
                 "material authoring must inherit recipe SSBO type unless an explicit material override is supplied");
         }
 
-        if (material_data)
+        if (recipe.material_ssbo_binding.data_index == uint32_t(-1))
         {
-            MaterialRecipe ambiguous_recipe = recipe;
-            ambiguous_recipe.ssbo_assets.push_back(*material_data);
-            if (UpsertRecipeSSBOAssetBinding(
-                    ambiguous_recipe,
-                    MaterialSSBOBinding{
-                        MaterialSSBOType::EmissiveSurface,
-                        66,
-                        10}))
-            {
-                result.diagnostics.emplace_back(
-                    "single material SSBO binding accepted an ambiguous recipe");
-            }
+            result.diagnostics.emplace_back(
+                "valid material SSBO binding lost its active row ID");
         }
 
         result.passed = result.diagnostics.empty();

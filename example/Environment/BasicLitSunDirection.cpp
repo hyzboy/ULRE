@@ -224,9 +224,7 @@ private:
         if (!material_data_ssbo_accessor.Write(material_data))
             return false;
 
-        return graph::mtl::UpsertRecipeSSBOAssetBinding(
-            mesh_recipe,
-            material_data_ssbo_accessor.GetMaterialSSBOBinding());
+        return (mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid();
     }
 
     bool InitVDM()

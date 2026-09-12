@@ -32,7 +32,7 @@ namespace hgl::ecs
             recipe.render_state_overrides.has_pipeline_config = true;
             recipe.render_state_overrides.pipeline_config = hgl::graph::mtl::MaterialPipelineConfig{};
             recipe.textures.clear();
-            recipe.ssbo_assets.clear();
+            recipe.material_ssbo_binding = {};
         }
 
         void ResetMaterialDataAuthoringResource(
@@ -353,11 +353,10 @@ namespace hgl::ecs
                     out_recipe,
                     material_ssbo_binding.ssbo_type);
 
-            if (!material_ssbo_binding.IsValid()
-             || !hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(
-                    out_recipe,
-                    material_ssbo_binding))
+            if (!material_ssbo_binding.IsValid())
                 return false;
+
+            out_recipe.material_ssbo_binding = material_ssbo_binding;
         }
 
         // 组件边界规范化：写回 mtl_def_id 权威值与解析后的渲染状态，

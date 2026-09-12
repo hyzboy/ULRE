@@ -144,9 +144,7 @@ private:
         cube_recipe.recipe_name = "SimpleCube.DebugNormalColor";
         cube_recipe.mtl_def_id = "DebugNormalColor";
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
-                cube_recipe,
-                mtl_data_ssbo_accessor.GetMaterialSSBOBinding()))
+        if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
