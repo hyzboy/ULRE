@@ -179,17 +179,6 @@ namespace hgl::graph::mtl
         uint32_t slot = 0;
     };
 
-    struct SSBOBinding
-    {
-        SSBOType ssbo_type = SSBOType::UserDefined;
-        uint32_t ssbo_id   = 0;
-
-        bool IsValid() const
-        {
-            return ssbo_id != 0 || ssbo_type != SSBOType::UserDefined;
-        }
-    };
-
     inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t slot) noexcept
     {
         return SSBOAddress{ssbo_type, ssbo_id, slot};

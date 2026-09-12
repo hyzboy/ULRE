@@ -127,6 +127,11 @@ private:
         static_cast<uint32_t>(mtl::MaterialSSBOType::RANGE_SIZE);
     static constexpr uint32_t DefaultMaterialDataElementCapacity = 1024u;
 
+    /**
+     * 单个材质数据类型的完整池化单元：缓冲 + 元数据 + 行号空间。
+     * 一种数据类型 = 一个该结构——Buffer 创建与行号分配不再分家，
+     * 未来可整体抽离为通用「按类型/按 key 的行池」。
+     */
     struct MaterialSSBOBufferStorage
     {
         DeviceBuffer *buffer = nullptr;
@@ -135,10 +140,11 @@ private:
         uint32_t ssbo_id = 0;
         uint32_t row_bytes = 0;
         uint32_t row_capacity = 0;
+
+        ActiveIDManager ids;    ///< 行号空间（FIFO 复用；上限 = row_capacity）
     };
 
     MaterialSSBOBufferStorage material_buffers[MaterialSSBOTypeCount] = {};
-    ActiveIDManager active_id_managers[MaterialSSBOTypeCount];
     bool material_data_buffers_initialized = false;
 
 private:
@@ -165,24 +171,6 @@ private:
             return nullptr;
 
         return material_buffers + GetMaterialSSBOTypeIndex(material_type);
-    }
-
-    ActiveIDManager *GetMaterialDataIDManager(
-        mtl::MaterialSSBOType material_type)
-    {
-        if (!mtl::IsMaterialSSBOType(material_type))
-            return nullptr;
-
-        return active_id_managers + GetMaterialSSBOTypeIndex(material_type);
-    }
-
-    const ActiveIDManager *GetMaterialDataIDManager(
-        mtl::MaterialSSBOType material_type) const
-    {
-        if (!mtl::IsMaterialSSBOType(material_type))
-            return nullptr;
-
-        return active_id_managers + GetMaterialSSBOTypeIndex(material_type);
     }
 
     MaterialSSBOBufferRegistry(GraphicsContext *);

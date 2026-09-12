@@ -31,7 +31,7 @@ void MaterialSSBOBufferRegistry::Release()
     for (uint32_t index = 0; index < MaterialSSBOTypeCount; ++index)
     {
         auto &storage = material_buffers[index];
-        active_id_managers[index].Clear(true);
+        storage.ids.Clear(true);
 
         if (storage.buffer)
         {
@@ -42,7 +42,12 @@ void MaterialSSBOBufferRegistry::Release()
             SAFE_CLEAR(storage.buffer);
         }
 
-        storage = {};
+        storage.buffer = nullptr;
+        storage.cpu_base = nullptr;
+        storage.gpu_base = 0;
+        storage.ssbo_id = 0;
+        storage.row_bytes = 0;
+        storage.row_capacity = 0;
     }
 
     material_data_buffers_initialized = false;
@@ -96,11 +101,11 @@ bool MaterialSSBOBufferRegistry::IsMaterialDataIDActive(
     const mtl::MaterialSSBOType material_type,
     const uint32_t data_id) const
 {
-    const auto *id_manager = GetMaterialDataIDManager(material_type);
-    if (!id_manager || data_id > static_cast<uint32_t>(INT_MAX))
+    const auto *storage = GetMaterialBufferStorage(material_type);
+    if (!storage || data_id > static_cast<uint32_t>(INT_MAX))
         return false;
 
-    return id_manager->IsActive(static_cast<int>(data_id));
+    return storage->ids.IsActive(static_cast<int>(data_id));
 }
 
 bool MaterialSSBOBufferRegistry::CreateMaterialDataBuffer(
@@ -202,9 +207,8 @@ bool MaterialSSBOBufferRegistry::AcquireMaterialDataID(
 {
     out_data_id = MaterialSSBODataAccessor<ssbo::PBRSurfaceRow>::InvalidDataID;
 
-    const auto *storage = GetMaterialBufferStorage(material_type);
-    auto *id_manager = GetMaterialDataIDManager(material_type);
-    if (!storage || !storage->buffer || !storage->cpu_base || !id_manager)
+    auto *storage = GetMaterialBufferStorage(material_type);
+    if (!storage || !storage->buffer || !storage->cpu_base)
     {
         GLogError(
             "[MaterialSSBOBufferRegistry] Material data ID allocation failed without an initialized buffer: type=%s",
@@ -223,13 +227,13 @@ bool MaterialSSBOBufferRegistry::AcquireMaterialDataID(
     }
 
     int data_id = -1;
-    if (id_manager->HasIdleID())
+    if (storage->ids.HasIdleID())
     {
-        data_id = id_manager->GetIdle();
+        data_id = storage->ids.GetIdle();
     }
     else
     {
-        if (id_manager->GetHistoryMaxId() >=
+        if (storage->ids.GetHistoryMaxId() >=
             static_cast<int>(storage->row_capacity))
         {
             GLogError(
@@ -239,7 +243,7 @@ bool MaterialSSBOBufferRegistry::AcquireMaterialDataID(
             return false;
         }
 
-        if (id_manager->CreateActive(&data_id) != 1)
+        if (storage->ids.CreateActive(&data_id) != 1)
         {
             GLogError(
                 "[MaterialSSBOBufferRegistry] Material data ID allocation failed: type=%s",
@@ -250,8 +254,8 @@ bool MaterialSSBOBufferRegistry::AcquireMaterialDataID(
 
     if (data_id < 0 || static_cast<uint32_t>(data_id) >= storage->row_capacity)
     {
-        if (data_id >= 0 && id_manager->IsActive(data_id))
-            id_manager->Release(&data_id);
+        if (data_id >= 0 && storage->ids.IsActive(data_id))
+            storage->ids.Release(&data_id);
 
         GLogError(
             "[MaterialSSBOBufferRegistry] Material data ID allocation produced an invalid ID: type=%s id=%d capacity=%u",
@@ -269,11 +273,11 @@ bool MaterialSSBOBufferRegistry::ReleaseMaterialDataID(
     const mtl::MaterialSSBOType material_type,
     const uint32_t data_id)
 {
-    auto *id_manager = GetMaterialDataIDManager(material_type);
-    if (!id_manager
+    auto *storage = GetMaterialBufferStorage(material_type);
+    if (!storage
      || data_id == MaterialSSBODataAccessor<ssbo::PBRSurfaceRow>::InvalidDataID
      || data_id > static_cast<uint32_t>(INT_MAX)
-     || !id_manager->IsActive(static_cast<int>(data_id)))
+     || !storage->ids.IsActive(static_cast<int>(data_id)))
     {
         GLogError(
             "[MaterialSSBOBufferRegistry] Material data ID release rejected inactive ID: type=%s id=%u",
@@ -283,7 +287,7 @@ bool MaterialSSBOBufferRegistry::ReleaseMaterialDataID(
     }
 
     const int raw_data_id = static_cast<int>(data_id);
-    return id_manager->Release(&raw_data_id) == 1;
+    return storage->ids.Release(&raw_data_id) == 1;
 }
 
 bool MaterialSSBOBufferRegistry::CommitMaterialData(

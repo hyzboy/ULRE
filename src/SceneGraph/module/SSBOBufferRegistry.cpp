@@ -37,11 +37,6 @@ GRAPH_MODULE_CONSTRUCT(SSBOBufferRegistry)
 {
 }
 
-uint32_t SSBOBufferRegistry::AllocateSSBOId()
-{
-    return mtl::MakeRecipeSSBOId(next_ssbo_id++);
-}
-
 uint64_t SSBOBufferRegistry::MakeKey(const mtl::SSBOAddress &address) noexcept
 {
     return (static_cast<uint64_t>(address.ssbo_type) << 32) | static_cast<uint64_t>(address.ssbo_id);
@@ -153,13 +148,6 @@ void SSBOBufferRegistry::Release()
     }
 
     domain_map.clear();
-
-    // 行缓冲（AllocateArrayAccessor 建的 arena 缓冲）归注册表所有：
-    // 视图只管在窗口上写，不负责释放（B-2：视图不拥有数据源）
-    for (auto &kv : row_segments)
-        delete kv.second.buffer;
-
-    row_segments.clear();
 }
 
 bool SSBOBufferRegistry::AcquireMaterialTextureConfiguration(
@@ -334,87 +322,6 @@ bool SSBOBufferRegistry::RegisterBuffer(const mtl::SSBOAddress &address,
     return true;
 }
 
-DeviceBuffer *SSBOBufferRegistry::EnsureBuffer(const mtl::SSBOAddress &address,
-                                                  const AnsiString &name,
-                                                  const VkDeviceSize byte_size,
-                                                  const uint32_t required_capacity,
-                                                  const SharingMode sm)
-{
-    if (byte_size == 0 || required_capacity == 0)
-        return GetBuffer(address);
-
-    auto *gc = GetGraphicsContext();
-    auto *buffer_manager = gc ? gc->GetBufferManager() : nullptr;
-    if (!buffer_manager)
-        return nullptr;
-
-    const uint64_t key = MakeKey(address);
-    auto &binding = domain_map[key];
-    binding.ssbo_type = address.ssbo_type;
-    binding.ssbo_id = address.ssbo_id;
-
-    if ((byte_size % required_capacity) != 0)
-    {
-        GLogError("[R11] EnsureBuffer rejected SSBO domain request: type=%s ssbo_id=%u byte_size=%llu required_capacity=%u",
-                  mtl::GetSSBOTypeName(address.ssbo_type),
-                  address.ssbo_id,
-                  static_cast<unsigned long long>(byte_size),
-                  required_capacity);
-        return nullptr;
-    }
-
-    const uint32_t requested_stride = static_cast<uint32_t>(byte_size / required_capacity);
-    if (!ValidateStructStrideForDomain(address, requested_stride, "EnsureBuffer"))
-        return nullptr;
-
-    if (binding.buffer
-     && binding.element_capacity >= required_capacity
-     && (binding.element_stride == 0 || binding.element_stride == requested_stride))
-        return binding.buffer;
-
-    DeviceBuffer *old_buffer = binding.buffer;
-    DeviceBuffer *new_buffer = buffer_manager->CreateSSBO(name, byte_size, sm);
-
-    if (!new_buffer)
-    {
-        binding.buffer = nullptr;
-        binding.element_capacity = 0;
-        binding.element_stride = 0;
-    }
-    else
-    {
-        // Copy-on-grow: preserve previously written rows when a domain buffer
-        // must be resized. Releasing the old buffer without copying would wipe
-        // rows written earlier in the same pass (EnsureBuffer growth used to
-        // zero previously-uploaded data for every domain user).
-        if (old_buffer)
-        {
-            IGPUBuffer *old_gpu = old_buffer->GetGPUBuffer();
-            IGPUBuffer *new_gpu = new_buffer->GetGPUBuffer();
-
-            if (old_gpu && new_gpu)
-            {
-                const VkDeviceSize old_bytes = old_buffer->GetSize();
-                void *old_ptr = old_gpu->Map(0, old_bytes);
-                if (old_ptr)
-                {
-                    new_gpu->Write(old_ptr, 0, old_bytes);
-                    old_gpu->Unmap();
-                }
-            }
-        }
-
-        binding.buffer = new_buffer;
-        binding.element_capacity = required_capacity;
-        binding.element_stride = requested_stride;
-    }
-
-    if (old_buffer)
-        buffer_manager->Release(old_buffer);
-
-    return binding.buffer;
-}
-
 bool SSBOBufferRegistry::ClearDomain(const mtl::SSBOAddress &address)
 {
     auto it = domain_map.find(MakeKey(address));
@@ -451,18 +358,6 @@ bool SSBOBufferRegistry::TryGetBinding(const mtl::SSBOAddress &address, SSBOBuff
 
     out_binding = *binding;
     return true;
-}
-
-DeviceBuffer *SSBOBufferRegistry::GetBuffer(const mtl::SSBOAddress &address) const
-{
-    const auto *binding = Find(address);
-    return binding ? binding->buffer : nullptr;
-}
-
-const IGPUBuffer *SSBOBufferRegistry::GetGPUBuffer(const mtl::SSBOAddress &address) const
-{
-    const auto *buffer = GetBuffer(address);
-    return buffer ? buffer->GetGPUBuffer() : nullptr;
 }
 
 uint32_t SSBOBufferRegistry::GetElementCapacity(const mtl::SSBOAddress &address) const

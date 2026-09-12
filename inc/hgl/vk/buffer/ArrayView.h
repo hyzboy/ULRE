@@ -1,7 +1,6 @@
 #pragma once
 
 #include<hgl/vk/buffer/BufferView.h>
-#include<hgl/mtl/MaterialRecipe.h>     ///< for mtl::SSBOType / mtl::SSBOBinding
 #include<cassert>
 
 namespace hgl::graph{
@@ -14,35 +13,23 @@ namespace hgl::graph{
  * 2. 脏范围只交 L2（IGPUBuffer::MarkDirty），视图不自持 dirty
  * 3. 统一的 Commit 接口 = 把窗口范围标脏（兼容所有缓冲实现）
  * 4. 窗口（Map/Unmap 或外部内存）由 BufferView 统一管理
- * 5. 内置 SSBO ID 存储（由 SSBOBufferRegistry 分配）
- * 6. 元素窗口 (element_offset, element_count) + Bind 重绑：视图可指向 buffer 的任意段
- * 6. 不拥有数据源：buffer/gpu_buf 只是引用（行缓冲归 SSBOBufferRegistry；池窗口无 buffer）
+ * 5. 元素窗口 (element_offset, element_count) + Bind 重绑：视图可指向 buffer 的任意段
+ * 6. 不拥有数据源：buffer/gpu_buf 只是引用（views never own their source）
  *
  * EN: Maps any C++ struct array directly to a GPU SSBO buffer, providing:
  * 1. Type-safe operator[] element access (like a normal C++ array)
  * 2. Automatic dirty tracking
  * 3. Unified Commit interface (compatible with all buffer types)
  * 4. Automatic Map/Unmap lifecycle management
- * 5. Built-in SSBO ID storage (assigned by SSBOBufferRegistry)
- *
- * 典型用途 / Typical usage:
- *   通用运行时结构化 SSBO 数组。
  *
  * 使用示例 / Usage Example:
  * ```cpp
- * // 通用运行时 SSBO：一步式创建，ID 自动分配并存储在 accessor 内
- * auto* acc = domain_manager->AllocateArrayAccessor<Color4f>(
- *     SSBOType::UserDefined, "MySSBO", DRAW_COUNT);
+ * auto* view = ArrayView<Color4f>::Create(buffer, count);
  *
- * // 材质 payload 行必须从 MaterialSSBOBufferRegistry 获取，并用
- * // accessor 的 ID 与显式 MaterialSSBOType 建立 recipe binding。
+ * for (uint32_t i = 0; i < view->GetCount(); i++)
+ *     (*view)[i] = GetColor4f(colors[i], 1.0f);
  *
- * // 写入元素
- * for (uint32_t i = 0; i < acc->GetCount(); i++)
- *     (*acc)[i] = GetColor4f(colors[i], 1.0f);
- *
- * // 提交到 GPU
- * acc->Commit();
+ * view->Commit();     // 提交到 GPU
  * ```
  */
 template<typename T>
@@ -50,16 +37,13 @@ class ArrayView : public BufferView
 {
 private:
     uint32_t      element_count = 0;                           ///< 数组元素数量 / Element count
-    uint32_t      ssbo_id       = 0;                           ///< 分配到的 SSBO ID（由 SSBOBufferRegistry 写入）
-    mtl::SSBOType ssbo_type     = mtl::SSBOType::UserDefined;  ///< SSBO 类型（由 SSBOBufferRegistry 写入）
     uint32_t      stride_bytes  = 0;                           ///< 行距字节数（0=sizeof(T) 紧密排布；Arena 路径=sizeof(T) 且 16B 对齐）
     // 映射基址/范围/脏标记统一由 BufferView 的窗口机制持有：
     // 不再自持 mapped_data / dirty / host_direct（原先的 host_direct 即"外部窗口"）
-    // 数据源的生命周期也不在本类：buffer/gpu_buf 只是引用（行缓冲归 SSBOBufferRegistry，
-    // 池窗口连 buffer 都没有）——views never own their source。
+    // 数据源的生命周期也不在本类：buffer/gpu_buf 只是引用
+    // （外部窗口模式连 buffer 都没有）——views never own their source.
 
     friend class VulkanDevice;
-    friend class SSBOBufferRegistry;
 
 private:
 
@@ -151,13 +135,11 @@ public:
     ArrayView(ArrayView&& other) noexcept
         : BufferView()
         , element_count(other.element_count)
-        , ssbo_id(other.ssbo_id)
-        , ssbo_type(other.ssbo_type)
+        , stride_bytes(other.stride_bytes)
     {
         MoveFrom(std::move(other));     // 窗口（基址/范围/外部标志）随 MoveFrom 一起搬
         other.element_count = 0;
-        other.ssbo_id       = 0;
-        other.ssbo_type     = mtl::SSBOType::UserDefined;
+        other.stride_bytes  = 0;
     }
 
     ArrayView& operator=(ArrayView&& other) noexcept
@@ -169,12 +151,10 @@ public:
 
             MoveFrom(std::move(other));
             element_count = other.element_count;
-            ssbo_id       = other.ssbo_id;
-            ssbo_type     = other.ssbo_type;
+            stride_bytes  = other.stride_bytes;
 
             other.element_count = 0;
-            other.ssbo_id       = 0;
-            other.ssbo_type     = mtl::SSBOType::UserDefined;
+            other.stride_bytes  = 0;
         }
         return *this;
     }
@@ -187,25 +167,6 @@ public:
      */
     bool IsValid() const { return HasWindow() && element_count > 0; }
     operator bool() const { return IsValid(); }
-
-    /**
-     * CN: 返回此访问器对应的 SSBO ID（由 SSBOBufferRegistry 分配时写入）
-     * EN: Return the SSBO ID assigned by SSBOBufferRegistry.
-     */
-    uint32_t GetSSBOId() const { return ssbo_id; }
-
-    /**
-     * CN: 返回此访问器对应的 SSBO 类型
-     * EN: Return the SSBO type.
-     */
-    mtl::SSBOType GetSSBOType() const { return ssbo_type; }
-
-    /**
-     * CN: 返回通用运行时 SSBO 身份（type + id）。材质 payload recipe 绑定必须
-     *     单独提供显式 MaterialSSBOType，不能使用该返回值推导类型。
-     * EN: Return the generic runtime SSBO identity (type + id).
-     */
-    mtl::SSBOBinding GetSSBOBinding() const { return {ssbo_type, ssbo_id}; }
 
     /**
      * CN: 返回元素数量
