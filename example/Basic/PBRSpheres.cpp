@@ -448,9 +448,7 @@ private:
 
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 sphere_slot_accessors[0][0].GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 false))
             return false;

@@ -33,9 +33,7 @@ namespace hgl::graph::mtl
 
     struct RecipeSSBOAssetBinding : MaterialSSBOBinding
     {
-        std::string material_private_data_slot_name;
-        uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot;
-        bool use_data_index = false;          // Must be true for a material data binding.
+        bool use_data_index = false;  // Must be true for a material data binding.
         bool shared_across_instances = false;
 
         RecipeSSBOAssetBinding &operator=(
@@ -54,10 +52,9 @@ namespace hgl::graph::mtl
         }
     };
 
-    // 单槽化：一个材质至多一个私有数据 SSBO，GLSL 变量名 / C++ 绑定 key 固定为
-    // DefaultMaterialPrivateDataSlotName（"mtl_private_data"），槽号固定为
-    // DefaultMaterialPrivateDataSlot（0）。原 vector<MaterialPrivateDataSlotDeclaration>
-    // 的容量/名字/槽号校验随类型收敛删除（2026-09 单槽类型收敛）。
+    // 一个 recipe 至多包含一个材质数据绑定。材质数据通过
+    // MaterialSSBOBinding 的类型、物理 SSBO 和行 ID 定位；descriptor slot
+    // 不是 recipe 运行时身份的一部分。
 
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
     // 供 Step C 的 Definition→SerializedDescriptorEntry 推导使用。
@@ -533,7 +530,7 @@ namespace hgl::graph::mtl
         MaterialRenderStateOverrides render_state_overrides;
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
-        std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 所有 SSBO 运行时绑定（name/slot/type/id/row）
+        std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 唯一材质数据运行时绑定（type/id/row）
     };
 
     inline ResolvedMaterialRenderState ResolveMaterialRenderState(
@@ -598,118 +595,63 @@ namespace hgl::graph::mtl
             && overrides.has_pipeline_config;
     }
 
-    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBindingByKey(
-        const MaterialRecipe &recipe,
-        const char *material_private_data_slot_name,
-        const uint32_t material_private_data_slot) noexcept
+    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(
+        const MaterialRecipe &recipe) noexcept
     {
-        if (!material_private_data_slot_name || !*material_private_data_slot_name)
+        if (recipe.ssbo_assets.size() != 1)
             return nullptr;
 
-        for (const auto &asset : recipe.ssbo_assets)
-        {
-            if (asset.material_private_data_slot_name != material_private_data_slot_name || asset.material_private_data_slot != material_private_data_slot)
-                continue;
+        return &recipe.ssbo_assets.front();
+    }
 
-            return &asset;
-        }
-
-        return nullptr;
+    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(
+        const MaterialRecipe &recipe,
+        const MaterialSSBOType ssbo_type) noexcept
+    {
+        const auto *asset = FindRecipeSSBOAssetBinding(recipe);
+        return asset && asset->ssbo_type == ssbo_type ? asset : nullptr;
     }
 
     inline MaterialSSBOType ResolveRecipeSSBOType(
         const MaterialRecipe &recipe,
-        const char *material_private_data_slot_name,
-        const uint32_t material_private_data_slot,
         const MaterialSSBOType authored_type) noexcept
     {
         if (authored_type != MaterialSSBOType::PBRSurface)
             return authored_type;
 
-        if (const auto *asset = FindRecipeSSBOAssetBindingByKey(
-                recipe, material_private_data_slot_name, material_private_data_slot))
+        if (const auto *asset = FindRecipeSSBOAssetBinding(recipe))
             return asset->ssbo_type;
 
         return authored_type;
     }
 
-    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(
-        const MaterialRecipe &recipe,
-        const char *material_private_data_slot_name,
-        const uint32_t material_private_data_slot,
-        const MaterialSSBOType ssbo_type) noexcept
-    {
-        const auto *asset = FindRecipeSSBOAssetBindingByKey(
-            recipe, material_private_data_slot_name, material_private_data_slot);
-        return asset && asset->ssbo_type == ssbo_type ? asset : nullptr;
-    }
-
     inline bool UpsertRecipeSSBOAssetBinding(
         MaterialRecipe &recipe,
-        const std::string &material_private_data_slot_name,
         const MaterialSSBOBinding &material_ssbo_binding,
-        const uint32_t material_private_data_slot,
-        const bool use_data_index,
-        const bool shared_across_instances);
-
-    // A material payload binding is valid only with an acquired active row ID.
-    inline bool UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
-                                             const std::string &material_private_data_slot_name,
-                                             const MaterialSSBOBinding &material_ssbo_binding,
-                                             const uint32_t material_private_data_slot,
-                                             const bool use_data_index,
-                                             const bool shared_across_instances)
-    {
-        if (!IsValidMaterialPrivateDataSlotName(material_private_data_slot_name)
-         || material_private_data_slot_name
-                != DefaultMaterialPrivateDataSlotName
-         || !material_ssbo_binding.IsValid()
-         || !use_data_index
-         || material_private_data_slot
-                >= MaxMaterialPrivateDataSlotsPerMaterial)
-            return false;
-
-        for (auto &asset : recipe.ssbo_assets)
-        {
-            if (asset.material_private_data_slot_name == material_private_data_slot_name
-             && asset.material_private_data_slot == material_private_data_slot)
-            {
-                asset.material_private_data_slot_name = material_private_data_slot_name;
-                asset = material_ssbo_binding;
-                asset.material_private_data_slot = material_private_data_slot;
-                asset.use_data_index = use_data_index;
-                asset.shared_across_instances = shared_across_instances;
-                return true;
-            }
-        }
-
-        RecipeSSBOAssetBinding asset{};
-        asset.material_private_data_slot_name = material_private_data_slot_name;
-        asset.material_private_data_slot = material_private_data_slot;
-        asset = material_ssbo_binding;
-        asset.use_data_index = use_data_index;
-        asset.shared_across_instances = shared_across_instances;
-        recipe.ssbo_assets.emplace_back(std::move(asset));
-        return true;
-    }
-
-    inline bool UpsertRecipeSSBOAssetBinding(
-        MaterialRecipe &recipe,
-        const std::string &material_private_data_slot_name,
-        const MaterialSSBOType ssbo_type,
-        const uint32_t ssbo_id,
-        const uint32_t material_private_data_slot,
-        const uint32_t data_index,
         const bool use_data_index,
         const bool shared_across_instances)
     {
-        return UpsertRecipeSSBOAssetBinding(
-            recipe,
-            material_private_data_slot_name,
-            MaterialSSBOBinding{ssbo_type, ssbo_id, data_index},
-            material_private_data_slot,
-            use_data_index,
-            shared_across_instances);
+        if (!material_ssbo_binding.IsValid() || !use_data_index)
+            return false;
+
+        if (recipe.ssbo_assets.empty())
+        {
+            RecipeSSBOAssetBinding asset{};
+            asset = material_ssbo_binding;
+            asset.use_data_index = use_data_index;
+            asset.shared_across_instances = shared_across_instances;
+            recipe.ssbo_assets.emplace_back(std::move(asset));
+            return true;
+        }
+
+        if (recipe.ssbo_assets.size() != 1)
+            return false;
+
+        RecipeSSBOAssetBinding &asset = recipe.ssbo_assets.front();
+        asset = material_ssbo_binding;
+        asset.use_data_index = use_data_index;
+        asset.shared_across_instances = shared_across_instances;
+        return true;
     }
 
     // 纹理绑定 upsert（与 UpsertRecipeSSBOAssetBinding 对称）：
@@ -784,9 +726,7 @@ namespace hgl::graph::mtl
         h << ssbo_asset_count;
         for (const auto &asset : recipe.ssbo_assets)
         {
-            h << asset.material_private_data_slot_name
-              << asset.material_private_data_slot
-              << asset.ssbo_type
+            h << asset.ssbo_type
               << asset.ssbo_id
               << asset.use_data_index
               << asset.shared_across_instances;

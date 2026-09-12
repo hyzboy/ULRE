@@ -88,8 +88,6 @@ namespace hgl::ecs
 
             if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
                     recipe,
-                    req.name.c_str(),
-                    req.material_private_data_slot,
                     material_ssbo_type))
             {
                 out_ssbo_id = asset->ssbo_id;
@@ -199,10 +197,8 @@ namespace hgl::ecs
             {
                 const auto &binding = recipe.ssbo_assets[i];
                 GLogWarning(
-                    "[MaterialBinding][RecipeData] index=%zu name=%s slot=%u type=%s(%u) ssbo_id=%u data_index=%u use_data_index=%d shared=%d",
+                    "[MaterialBinding][RecipeData] index=%zu type=%s(%u) ssbo_id=%u data_index=%u use_data_index=%d shared=%d",
                     i,
-                    binding.material_private_data_slot_name.c_str(),
-                    binding.material_private_data_slot,
                     graph::mtl::GetMaterialSSBOTypeName(binding.ssbo_type),
                     static_cast<uint32_t>(binding.ssbo_type),
                     binding.ssbo_id,
@@ -365,12 +361,11 @@ namespace hgl::ecs
                     const graph::mtl::RecipeSSBOAssetBinding
                         &candidate = active_recipe.ssbo_assets[
                             binding.recipe_binding_index];
-                    if (candidate.material_private_data_slot == binding.material_private_data_slot
-                     && candidate.ssbo_type == binding.ssbo_type
+                    if (candidate.ssbo_type == binding.ssbo_type
                      && graph::mtl::GetResolvedDataAssetIdentityHash(
                             candidate.ssbo_type,
                             candidate.ssbo_id,
-                            candidate.material_private_data_slot)
+                            graph::mtl::DefaultMaterialPrivateDataSlot)
                             == binding.asset_identity_hash)
                     {
                         recipe_binding = &candidate;

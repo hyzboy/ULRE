@@ -97,9 +97,7 @@ private:
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 triangle_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 triangle_data_accessors[0].GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 false))
             return false;

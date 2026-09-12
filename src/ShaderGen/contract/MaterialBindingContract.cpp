@@ -152,9 +152,7 @@ namespace hgl::graph::mtl
         h << static_cast<uint32>(recipe.ssbo_assets.size());
         for (const auto &binding : recipe.ssbo_assets)
         {
-            h << binding.material_private_data_slot_name;
-            h << binding.material_private_data_slot
-              << binding.ssbo_type
+            h << binding.ssbo_type
               << binding.ssbo_id
               << binding.data_index
               << binding.use_data_index

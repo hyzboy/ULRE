@@ -132,9 +132,7 @@ private:
             grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
             if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                     grid_recipe,
-                    graph::mtl::DefaultMaterialPrivateDataSlotName,
                     grid_mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                    graph::mtl::DefaultMaterialPrivateDataSlot,
                     true,
                     true))
                 return false;
@@ -176,9 +174,7 @@ private:
             cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
             if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                     cube_recipe,
-                    graph::mtl::DefaultMaterialPrivateDataSlotName,
                     cube_mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                    graph::mtl::DefaultMaterialPrivateDataSlot,
                     true,
                     true))
                 return false;

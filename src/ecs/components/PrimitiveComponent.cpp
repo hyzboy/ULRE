@@ -353,8 +353,6 @@ namespace hgl::ecs
             material_ssbo_binding.ssbo_type =
                 hgl::graph::mtl::ResolveRecipeSSBOType(
                     out_recipe,
-                    resource.material_private_data_slot_name.c_str(),
-                    resource.material_private_data_slot,
                     material_ssbo_binding.ssbo_type);
 
             if (material_program)
@@ -372,9 +370,7 @@ namespace hgl::ecs
             if (!material_ssbo_binding.IsValid()
              || !hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(
                     out_recipe,
-                    resource.material_private_data_slot_name,
                     material_ssbo_binding,
-                    resource.material_private_data_slot,
                     resource.use_data_index,
                     resource.shared_across_instances))
                 return false;

@@ -153,9 +153,7 @@ private:
         scene_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 scene_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 solid.mtl_data_ssbo_accessors[0].GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 true))
             return false;

@@ -122,9 +122,7 @@ private:
         plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 plane_grid_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 material_data_accessors[0].GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 true))
             return false;

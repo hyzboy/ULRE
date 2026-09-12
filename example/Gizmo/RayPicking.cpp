@@ -198,16 +198,12 @@ private:
 
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 plane_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 plane_material_data_accessor.GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 true)
          || !graph::mtl::UpsertRecipeSSBOAssetBinding(
                 line_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 line_material_data_accessor.GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 true))
             return false;

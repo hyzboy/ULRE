@@ -179,9 +179,7 @@ private:
         near_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 near_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 near_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 false))
             return LogFail("InitMaterials", "near material SSBO binding failed");
@@ -191,9 +189,7 @@ private:
         far_recipe.mtl_def_id = "Lit";
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 far_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 far_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 false))
             return LogFail("InitMaterials", "far material SSBO binding failed");

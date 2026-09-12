@@ -293,9 +293,7 @@ public:
         sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 true))
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
@@ -496,9 +494,7 @@ private:
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 cube_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 true))
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");

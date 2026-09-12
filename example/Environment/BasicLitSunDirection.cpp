@@ -226,9 +226,7 @@ private:
 
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             mesh_recipe,
-            graph::mtl::DefaultMaterialPrivateDataSlotName,
             material_data_ssbo_accessor.GetMaterialSSBOBinding(),
-            graph::mtl::DefaultMaterialPrivateDataSlot,
             true,
             true);
     }

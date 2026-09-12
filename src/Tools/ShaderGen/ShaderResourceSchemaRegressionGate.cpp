@@ -549,8 +549,6 @@ namespace
         recipe.textures.push_back(
             {"optional_detail", std::string(), false, 0});
         RecipeSSBOAssetBinding data_binding{};
-        data_binding.material_private_data_slot_name = "mtl_private_data";
-        data_binding.material_private_data_slot = 0;
         data_binding = MaterialSSBOBinding{
             MaterialSSBOType::PBRSurface,
             17,
@@ -2036,7 +2034,6 @@ namespace
         recipe.textures.emplace_back(texture);
 
         RecipeSSBOAssetBinding asset{};
-        asset.material_private_data_slot = DefaultMaterialPrivateDataSlot;
         asset = MaterialSSBOBinding{
             MaterialSSBOType::PBRSurface,
             41,
@@ -2919,73 +2916,40 @@ namespace
         MaterialRecipe recipe{};
         if (!UpsertRecipeSSBOAssetBinding(
                 recipe,
-                DefaultMaterialPrivateDataSlotName,
                 MaterialSSBOBinding{
                     MaterialSSBOType::EmissiveSurface,
                     11,
                     7},
-                DefaultMaterialPrivateDataSlot,
                 true,
                 true)
          || !UpsertRecipeSSBOAssetBinding(
                 recipe,
-                DefaultMaterialPrivateDataSlotName,
                 MaterialSSBOBinding{
                     MaterialSSBOType::EmissiveSurface,
                     44,
                     9},
-                DefaultMaterialPrivateDataSlot,
                 true,
                 true))
         {
             result.diagnostics.emplace_back(
-                "single material SSBO binding upsert rejected the default key");
-        }
-
-        if (UpsertRecipeSSBOAssetBinding(
-                recipe,
-                "surface_a",
-                MaterialSSBOBinding{
-                    MaterialSSBOType::EmissiveSurface,
-                    22,
-                    0},
-                0,
-                true,
-                true)
-         || UpsertRecipeSSBOAssetBinding(
-                recipe,
-                DefaultMaterialPrivateDataSlotName,
-                MaterialSSBOBinding{
-                    MaterialSSBOType::EmissiveSurface,
-                    33,
-                    0},
-                1,
-                true,
-                true))
-        {
-            result.diagnostics.emplace_back(
-                "single material SSBO binding accepted a non-canonical key");
+                "single material SSBO binding upsert rejected a valid binding");
         }
 
         MaterialRecipe missing_row_id_recipe{};
         if (UpsertRecipeSSBOAssetBinding(
                 missing_row_id_recipe,
-                DefaultMaterialPrivateDataSlotName,
                 MaterialSSBOBinding{
                     MaterialSSBOType::EmissiveSurface,
                     55,
                     uint32_t(-1)},
-                DefaultMaterialPrivateDataSlot,
                 true,
                 true)
          || UpsertRecipeSSBOAssetBinding(
                 missing_row_id_recipe,
-                DefaultMaterialPrivateDataSlotName,
                 MaterialSSBOBinding{
                     MaterialSSBOType::EmissiveSurface,
                     55,
                     0},
-                DefaultMaterialPrivateDataSlot,
                 false,
                 true))
         {
@@ -2993,10 +2957,7 @@ namespace
                 "material SSBO binding accepted a missing active row ID");
         }
 
-        const auto *material_data = FindRecipeSSBOAssetBindingByKey(
-            recipe,
-            DefaultMaterialPrivateDataSlotName,
-            DefaultMaterialPrivateDataSlot);
+        const auto *material_data = FindRecipeSSBOAssetBinding(recipe);
         if (!material_data || material_data->ssbo_id != 44
          || material_data->data_index != 9
          || !material_data->use_data_index
@@ -3004,45 +2965,54 @@ namespace
          || recipe.ssbo_assets.size() != 1)
         {
             result.diagnostics.emplace_back(
-                "single material SSBO binding did not replace its default slot");
+                "single material SSBO binding did not replace its unique binding");
         }
 
         if (!FindRecipeSSBOAssetBinding(
                 recipe,
-                DefaultMaterialPrivateDataSlotName,
-                DefaultMaterialPrivateDataSlot,
                 MaterialSSBOType::EmissiveSurface)
          || FindRecipeSSBOAssetBinding(
                 recipe,
-                DefaultMaterialPrivateDataSlotName,
-                DefaultMaterialPrivateDataSlot,
                 MaterialSSBOType::PBRSurface))
         {
             result.diagnostics.emplace_back(
-                "typed material SSBO lookup did not enforce the default binding key");
+                "typed material SSBO lookup did not enforce the unique binding type");
         }
 
+        MaterialRecipe no_binding_recipe{};
         if (ResolveRecipeSSBOType(
                 recipe,
-                DefaultMaterialPrivateDataSlotName,
-                DefaultMaterialPrivateDataSlot,
                 MaterialSSBOType::PBRSurface)
                 != MaterialSSBOType::EmissiveSurface
          || ResolveRecipeSSBOType(
-                recipe,
-                "missing",
-                DefaultMaterialPrivateDataSlot,
+                no_binding_recipe,
                 MaterialSSBOType::PBRSurface)
                 != MaterialSSBOType::PBRSurface
          || ResolveRecipeSSBOType(
                 recipe,
-                DefaultMaterialPrivateDataSlotName,
-                DefaultMaterialPrivateDataSlot,
                 MaterialSSBOType::EmissiveSurface)
                 != MaterialSSBOType::EmissiveSurface)
         {
             result.diagnostics.emplace_back(
                 "material authoring must inherit recipe SSBO type unless an explicit material override is supplied");
+        }
+
+        if (material_data)
+        {
+            MaterialRecipe ambiguous_recipe = recipe;
+            ambiguous_recipe.ssbo_assets.push_back(*material_data);
+            if (UpsertRecipeSSBOAssetBinding(
+                    ambiguous_recipe,
+                    MaterialSSBOBinding{
+                        MaterialSSBOType::EmissiveSurface,
+                        66,
+                        10},
+                    true,
+                    true))
+            {
+                result.diagnostics.emplace_back(
+                    "single material SSBO binding accepted an ambiguous recipe");
+            }
         }
 
         result.passed = result.diagnostics.empty();

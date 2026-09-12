@@ -159,9 +159,7 @@ public:
 
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 wall_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 true))
             return false;

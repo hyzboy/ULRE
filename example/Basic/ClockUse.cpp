@@ -114,9 +114,7 @@ private:
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 clock_recipe,
-                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 tick_data_ssbo_accessor.GetMaterialSSBOBinding(),
-                graph::mtl::DefaultMaterialPrivateDataSlot,
                 true,
                 true))
             return false;

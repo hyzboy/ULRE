@@ -110,7 +110,6 @@ namespace hgl::graph::mtl
 
         bool IsValid() const noexcept;
         bool IsRuntimeReady() const noexcept;
-        uint64 GetStableHash() const noexcept;
     };
 
     // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
@@ -151,12 +150,5 @@ namespace hgl::graph::mtl
         uint32 material_private_data_slot) noexcept;
 
     bool ValidateResolvedBindingTable(
-        const ResolvedBindingTable &table) noexcept;
-
-    bool SerializeResolvedBindingTable(
-        const ResolvedBindingTable &table,
-        ValueArray<uint8> &out_bytes);
-
-    uint64 GetResolvedBindingTableHash(
         const ResolvedBindingTable &table) noexcept;
 }

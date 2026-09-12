@@ -179,9 +179,7 @@ private:
 
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             solid_recipe,
-            graph::mtl::DefaultMaterialPrivateDataSlotName,
             solid.material_data_ssbo_accessors[0].GetMaterialSSBOBinding(),
-            graph::mtl::DefaultMaterialPrivateDataSlot,
             true,
             true);
     }
@@ -195,9 +193,7 @@ private:
 
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             wire_recipe,
-            graph::mtl::DefaultMaterialPrivateDataSlotName,
             wire.material_data_ssbo_accessors[0].GetMaterialSSBOBinding(),
-            graph::mtl::DefaultMaterialPrivateDataSlot,
             true,
             true);
     }

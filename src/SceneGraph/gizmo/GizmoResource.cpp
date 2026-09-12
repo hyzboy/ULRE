@@ -125,9 +125,7 @@ namespace hgl::graph
                     recipe.ssbo_assets.clear();
 
                     if (!mtl::UpsertRecipeSSBOAssetBinding(recipe,
-                                                          mtl::DefaultMaterialPrivateDataSlotName,
                                                           accessor.GetMaterialSSBOBinding(),
-                                                          mtl::DefaultMaterialPrivateDataSlot,
                                                           true,
                                                           true))
                         return false;

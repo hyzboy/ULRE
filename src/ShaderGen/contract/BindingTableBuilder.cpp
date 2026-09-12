@@ -204,7 +204,6 @@ namespace hgl::graph::mtl
 
         int FindRecipeData(
             const MaterialRecipe &recipe,
-            const uint32 material_private_data_slot,
             const MaterialSSBOType ssbo_type,
             BindingBuildDiagnostic &diagnostic) noexcept
         {
@@ -215,15 +214,14 @@ namespace hgl::graph::mtl
             {
                 const RecipeSSBOAssetBinding &binding =
                     recipe.ssbo_assets[static_cast<size_t>(i)];
-                if (binding.material_private_data_slot != material_private_data_slot
-                 || binding.ssbo_type != ssbo_type)
+                if (binding.ssbo_type != ssbo_type)
                     continue;
                 if (found >= 0)
                 {
                     SetBuildFailure(
                         diagnostic,
                         BindingBuildError::DuplicateRecipeData,
-                        material_private_data_slot,
+                        DefaultMaterialPrivateDataSlot,
                         ssbo_type);
                     return -2;
                 }
@@ -330,7 +328,7 @@ namespace hgl::graph::mtl
                     recipe.ssbo_assets.front();
 
                 if (!FindDataBinding(out_table,
-                                     data_asset.material_private_data_slot,
+                                     DefaultMaterialPrivateDataSlot,
                                      data_asset.ssbo_type))
                 {
                     const int index = out_table.data.Add(ResolvedDataBinding{});
@@ -340,12 +338,12 @@ namespace hgl::graph::mtl
                     binding->logical_resource_id = ResolveFallbackResourceID(
                         program_key_digest,
                         DescriptorSemantic::MaterialPrivateData,
-                        data_asset.material_private_data_slot,
+                        DefaultMaterialPrivateDataSlot,
                         data_asset.ssbo_type,
                         0);
                     binding->semantic = DescriptorSemantic::MaterialPrivateData;
                     binding->material_private_data_slot =
-                        data_asset.material_private_data_slot;
+                        DefaultMaterialPrivateDataSlot;
                     binding->ssbo_type = data_asset.ssbo_type;
                     binding->required = true;
                     binding->allow_fallback = false;
@@ -564,7 +562,6 @@ namespace hgl::graph::mtl
                 ResolvedDataBinding &binding = out_table.data[i];
                 const int binding_index = FindRecipeData(
                     recipe,
-                    binding.material_private_data_slot,
                     binding.ssbo_type,
                     out_diagnostic);
                 if (binding_index == -2)
@@ -586,7 +583,7 @@ namespace hgl::graph::mtl
                     binding.asset_identity_hash = GetResolvedDataAssetIdentityHash(
                         recipe_binding.ssbo_type,
                         recipe_binding.ssbo_id,
-                        recipe_binding.material_private_data_slot);
+                        DefaultMaterialPrivateDataSlot);
                 }
 
                 if (binding.recipe_binding_index
@@ -679,8 +676,7 @@ namespace hgl::graph::mtl
 
                 const RecipeSSBOAssetBinding &recipe_binding =
                     source_recipe.ssbo_assets[binding.recipe_binding_index];
-                if (recipe_binding.material_private_data_slot != binding.material_private_data_slot
-                 || recipe_binding.ssbo_type != binding.ssbo_type
+                if (recipe_binding.ssbo_type != binding.ssbo_type
                  || recipe_binding.ssbo_id != binding.ssbo_id)
                     return false;
                 out_recipe.ssbo_assets.push_back(recipe_binding);
