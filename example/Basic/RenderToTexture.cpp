@@ -294,10 +294,8 @@ public:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::PBRSurface,
-                material_data_ssbo_accessor.GetSSBOId(),
+                material_data_ssbo_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                material_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
@@ -322,9 +320,7 @@ public:
         prim_comp->SetMaterialTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
         sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        sphere_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-        sphere_struct.ssbo_id = material_data_ssbo_accessor.GetSSBOId();
-        sphere_struct.data_index = material_data_ssbo_accessor.GetDataID();
+        sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
         sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = true;
         prim_comp->SetMaterialPrivateDataSlotResource(sphere_struct);
@@ -501,10 +497,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::PBRSurface,
-                cube_material_data_ssbo_accessor.GetSSBOId(),
+                cube_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                cube_material_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
@@ -528,9 +522,7 @@ private:
         cube_prim_comp->SetMaterialTextureResource("roughness", roughness_tex, cube_sampler);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
         cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        cube_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-        cube_struct.ssbo_id = cube_material_data_ssbo_accessor.GetSSBOId();
-        cube_struct.data_index = cube_material_data_ssbo_accessor.GetDataID();
+        cube_struct = cube_material_data_ssbo_accessor.GetMaterialSSBOBinding();
         cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
         cube_prim_comp->SetMaterialPrivateDataSlotResource(cube_struct);

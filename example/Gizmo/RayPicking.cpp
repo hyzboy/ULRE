@@ -199,19 +199,15 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 plane_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::EmissiveSurface,
-                plane_material_data_accessor.GetSSBOId(),
+                plane_material_data_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                plane_material_data_accessor.GetDataID(),
                 true,
                 true)
          || !graph::mtl::UpsertRecipeSSBOAssetBinding(
                 line_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::EmissiveSurface,
-                line_material_data_accessor.GetSSBOId(),
+                line_material_data_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                line_material_data_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -239,9 +235,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource plane_struct{};
             plane_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            plane_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            plane_struct.ssbo_id = plane_material_data_accessor.GetSSBOId();
-            plane_struct.data_index = plane_material_data_accessor.GetDataID();
+            plane_struct = plane_material_data_accessor.GetMaterialSSBOBinding();
             plane_struct.use_data_index = true;
             plane_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(plane_struct);
@@ -264,9 +258,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&line_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource line_struct{};
             line_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            line_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            line_struct.ssbo_id = line_material_data_accessor.GetSSBOId();
-            line_struct.data_index = line_material_data_accessor.GetDataID();
+            line_struct = line_material_data_accessor.GetMaterialSSBOBinding();
             line_struct.use_data_index = true;
             line_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(line_struct);

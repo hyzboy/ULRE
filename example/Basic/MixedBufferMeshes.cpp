@@ -113,10 +113,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 mesh_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::PBRSurface,
-                material_data_ssbo_accessor.GetSSBOId(),
+                material_data_ssbo_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                material_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -439,9 +437,7 @@ private:
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource floor_authoring{};
             floor_authoring.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            floor_authoring.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-            floor_authoring.ssbo_id = material_data_ssbo_accessor.GetSSBOId();
-            floor_authoring.data_index = material_data_ssbo_accessor.GetDataID();
+            floor_authoring = material_data_ssbo_accessor.GetMaterialSSBOBinding();
             floor_authoring.use_data_index = true;
             floor_authoring.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(floor_authoring);
@@ -486,9 +482,7 @@ private:
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_authoring{};
             mesh_authoring.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            mesh_authoring.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-            mesh_authoring.ssbo_id = material_data_ssbo_accessor.GetSSBOId();
-            mesh_authoring.data_index = material_data_ssbo_accessor.GetDataID();
+            mesh_authoring = material_data_ssbo_accessor.GetMaterialSSBOBinding();
             mesh_authoring.use_data_index = true;
             mesh_authoring.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(mesh_authoring);

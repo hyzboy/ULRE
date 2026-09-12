@@ -64,18 +64,32 @@ namespace hgl::ecs
         };
 
         struct MaterialPrivateDataSlotAuthoringResource
+            : hgl::graph::mtl::MaterialSSBOBinding
         {
             std::string material_private_data_slot_name;
             uint32_t material_private_data_slot = hgl::graph::mtl::DefaultMaterialPrivateDataSlot;
-            hgl::graph::mtl::MaterialSSBOType ssbo_type = hgl::graph::mtl::MaterialSSBOType::PBRSurface;
-            uint32_t ssbo_id = 0;
             hgl::graph::DeviceBuffer *buffer = nullptr;
             uint32_t element_capacity = 0;
             uint32_t byte_stride = 0;
-            uint32_t data_index = uint32_t(-1);  // Material data row ID in the shared SSBO.
             bool use_data_index = false;         // Must be true for a material data resource.
             bool shared_across_instances = false;
             bool authored = false;
+
+            MaterialPrivateDataSlotAuthoringResource &operator=(
+                const MaterialPrivateDataSlotAuthoringResource &) = default;
+
+            MaterialPrivateDataSlotAuthoringResource &operator=(
+                const hgl::graph::mtl::MaterialSSBOBinding &binding) noexcept
+            {
+                hgl::graph::mtl::MaterialSSBOBinding::operator=(binding);
+                return *this;
+            }
+
+            hgl::graph::mtl::MaterialSSBOBinding
+                GetMaterialSSBOBinding() const noexcept
+            {
+                return {ssbo_type, ssbo_id, data_index};
+            }
         };
 
     private:

@@ -98,10 +98,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 triangle_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::EmissiveSurface,
-                triangle_data_accessors[0].GetSSBOId(),
+                triangle_data_accessors[0].GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                triangle_data_accessors[0].GetDataID(),
                 true,
                 false))
             return false;
@@ -183,9 +181,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource tri_struct{};
             tri_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            tri_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            tri_struct.ssbo_id = triangle_data_accessors[i].GetSSBOId();
-            tri_struct.data_index = triangle_data_accessors[i].GetDataID();
+            tri_struct = triangle_data_accessors[i].GetMaterialSSBOBinding();
             tri_struct.use_data_index = true;
             tri_struct.shared_across_instances = false;
             primitive_comp->SetMaterialPrivateDataSlotResource(tri_struct);

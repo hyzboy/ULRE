@@ -126,10 +126,8 @@ namespace hgl::graph
 
                     if (!mtl::UpsertRecipeSSBOAssetBinding(recipe,
                                                           mtl::DefaultMaterialPrivateDataSlotName,
-                                                          mtl::MaterialSSBOType::EmissiveSurface,
-                                                          accessor.GetSSBOId(),
+                                                          accessor.GetMaterialSSBOBinding(),
                                                           mtl::DefaultMaterialPrivateDataSlot,
-                                                          accessor.GetDataID(),
                                                           true,
                                                           true))
                         return false;

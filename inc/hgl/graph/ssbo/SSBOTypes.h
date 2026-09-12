@@ -48,6 +48,24 @@ namespace hgl::graph::mtl
         }
     }
 
+    /**
+     * Identifies one live material-data row in a shared material SSBO.
+     * The type selects the physical backing buffer; data_index selects its row.
+     */
+    struct MaterialSSBOBinding
+    {
+        MaterialSSBOType ssbo_type = MaterialSSBOType::PBRSurface;
+        uint32_t ssbo_id = 0;
+        uint32_t data_index = uint32_t(-1);
+
+        constexpr bool IsValid() const noexcept
+        {
+            return IsMaterialSSBOType(ssbo_type)
+                && ssbo_id != 0
+                && data_index != uint32_t(-1);
+        }
+    };
+
     // Material payloads are intentionally not part of the generic SSBOType enum.
     // The legacy overload is kept only for ABI compatibility and always resolves
     // to the non-material fallback path.

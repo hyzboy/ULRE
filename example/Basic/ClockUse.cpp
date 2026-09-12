@@ -115,10 +115,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 clock_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::EmissiveSurface,
-                tick_data_ssbo_accessor.GetSSBOId(),
+                tick_data_ssbo_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                tick_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -241,9 +239,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource tick_struct{};
             tick_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            tick_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            tick_struct.ssbo_id = tick_data_ssbo_accessor.GetSSBOId();
-            tick_struct.data_index = tick_data_ssbo_accessor.GetDataID();
+            tick_struct = tick_data_ssbo_accessor.GetMaterialSSBOBinding();
             tick_struct.use_data_index = true;
             tick_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(tick_struct);
@@ -279,9 +275,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource hand_struct{};
             hand_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            hand_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            hand_struct.ssbo_id = hand_data_ssbo_accessors[i].GetSSBOId();
-            hand_struct.data_index = hand_data_ssbo_accessors[i].GetDataID();
+            hand_struct = hand_data_ssbo_accessors[i].GetMaterialSSBOBinding();
             hand_struct.use_data_index = true;
             hand_struct.shared_across_instances = false;
             primitive_comp->SetMaterialPrivateDataSlotResource(hand_struct);

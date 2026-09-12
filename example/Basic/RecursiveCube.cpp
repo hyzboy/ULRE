@@ -137,10 +137,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::EmissiveSurface,
-                mtl_data_ssbo_accessor.GetSSBOId(),
+                mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                mtl_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -202,9 +200,7 @@ private:
         {
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
             cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            cube_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            cube_struct.ssbo_id = mtl_data_ssbo_accessor.GetSSBOId();
-            cube_struct.data_index = mtl_data_ssbo_accessor.GetDataID();
+            cube_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
             cube_struct.use_data_index = true;
             cube_struct.shared_across_instances = true;
             primitive_comp->SetMaterialPrivateDataSlotResource(cube_struct);

@@ -81,6 +81,10 @@ public:
     {
         return material_ssbo_type;
     }
+    mtl::MaterialSSBOBinding GetMaterialSSBOBinding() const
+    {
+        return {material_ssbo_type, ssbo_id, data_id};
+    }
 
     T *Get() { return data; }
     const T *Get() const { return data; }

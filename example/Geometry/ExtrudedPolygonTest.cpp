@@ -86,10 +86,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 mesh_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::EmissiveSurface,
-                mtl_data_ssbo_accessor.GetSSBOId(),
+                mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                mtl_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;
@@ -197,9 +195,7 @@ private:
         prim_comp->SetPrimitiveAsset(mesh_asset);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
         mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        mesh_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-        mesh_struct.ssbo_id = mtl_data_ssbo_accessor.GetSSBOId();
-        mesh_struct.data_index = mtl_data_ssbo_accessor.GetDataID();
+        mesh_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
         mesh_struct.use_data_index = true;
         mesh_struct.shared_across_instances = true;
         prim_comp->SetMaterialPrivateDataSlotResource(mesh_struct);

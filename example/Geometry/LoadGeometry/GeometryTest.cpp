@@ -180,10 +180,8 @@ private:
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             solid_recipe,
             graph::mtl::DefaultMaterialPrivateDataSlotName,
-            graph::mtl::MaterialSSBOType::EmissiveSurface,
-            solid.material_data_ssbo_accessors[0].GetSSBOId(),
+            solid.material_data_ssbo_accessors[0].GetMaterialSSBOBinding(),
             graph::mtl::DefaultMaterialPrivateDataSlot,
-            solid.material_data_ssbo_accessors[0].GetDataID(),
             true,
             true);
     }
@@ -198,10 +196,8 @@ private:
         return graph::mtl::UpsertRecipeSSBOAssetBinding(
             wire_recipe,
             graph::mtl::DefaultMaterialPrivateDataSlotName,
-            graph::mtl::MaterialSSBOType::EmissiveSurface,
-            wire.material_data_ssbo_accessors[0].GetSSBOId(),
+            wire.material_data_ssbo_accessors[0].GetMaterialSSBOBinding(),
             graph::mtl::DefaultMaterialPrivateDataSlot,
-            wire.material_data_ssbo_accessors[0].GetDataID(),
             true,
             true);
     }
@@ -306,11 +302,8 @@ private:
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource bbox_struct{};
             bbox_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            bbox_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            bbox_struct.ssbo_id =
-                wire.material_data_ssbo_accessors[i % COLOR_COUNT].GetSSBOId();
-            bbox_struct.data_index =
-                wire.material_data_ssbo_accessors[i % COLOR_COUNT].GetDataID();
+            bbox_struct =
+                wire.material_data_ssbo_accessors[i % COLOR_COUNT].GetMaterialSSBOBinding();
             bbox_struct.use_data_index = true;
             bbox_struct.shared_across_instances = true;
             bbox->primitive_comp->SetMaterialPrivateDataSlotResource(bbox_struct);
@@ -351,11 +344,8 @@ private:
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
             mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            mesh_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-            mesh_struct.ssbo_id =
-                solid.material_data_ssbo_accessors[rm->color_index].GetSSBOId();
-            mesh_struct.data_index =
-                solid.material_data_ssbo_accessors[rm->color_index].GetDataID();
+            mesh_struct =
+                solid.material_data_ssbo_accessors[rm->color_index].GetMaterialSSBOBinding();
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
             rm->primitive_comp->SetMaterialPrivateDataSlotResource(mesh_struct);

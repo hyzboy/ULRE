@@ -449,10 +449,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::PBRSurface,
-                sphere_slot_accessors[0][0].GetSSBOId(),
+                sphere_slot_accessors[0][0].GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                sphere_slot_accessors[0][0].GetDataID(),
                 true,
                 false))
             return false;
@@ -506,9 +504,7 @@ private:
                     return false;
                 hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
                 sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-                sphere_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-                sphere_struct.ssbo_id = sphere_slot_accessors[row][col].GetSSBOId();
-                sphere_struct.data_index = sphere_slot_accessors[row][col].GetDataID();
+                sphere_struct = sphere_slot_accessors[row][col].GetMaterialSSBOBinding();
                 sphere_struct.use_data_index = true;
                 sphere_struct.shared_across_instances = false;
                 prim_comp->SetMaterialPrivateDataSlotResource(sphere_struct);

@@ -180,10 +180,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 near_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::PBRSurface,
-                near_material_data_ssbo_accessor.GetSSBOId(),
+                near_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                near_material_data_ssbo_accessor.GetDataID(),
                 true,
                 false))
             return LogFail("InitMaterials", "near material SSBO binding failed");
@@ -194,10 +192,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 far_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::PBRSurface,
-                far_material_data_ssbo_accessor.GetSSBOId(),
+                far_material_data_ssbo_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                far_material_data_ssbo_accessor.GetDataID(),
                 true,
                 false))
             return LogFail("InitMaterials", "far material SSBO binding failed");
@@ -280,9 +276,7 @@ private:
 
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
         sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        sphere_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-        sphere_struct.ssbo_id = material_data_ssbo_accessor.GetSSBOId();
-        sphere_struct.data_index = material_data_ssbo_accessor.GetDataID();
+        sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
         sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = false;
         sphere_primitive_component->SetMaterialPrivateDataSlotResource(sphere_struct);

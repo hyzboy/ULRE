@@ -115,9 +115,7 @@ public:
             prim_comp->SetMaterialTextureResource("base_color", base_color_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource wall_struct{};
             wall_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-            wall_struct.ssbo_type = graph::mtl::MaterialSSBOType::PBRSurface;
-            wall_struct.ssbo_id = mtl_data_ssbo_accessor.GetSSBOId();
-            wall_struct.data_index = mtl_data_ssbo_accessor.GetDataID();
+            wall_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
             wall_struct.use_data_index = true;
             wall_struct.shared_across_instances = true;
             prim_comp->SetMaterialPrivateDataSlotResource(wall_struct);
@@ -162,10 +160,8 @@ public:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 wall_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::PBRSurface,
-                mtl_data_ssbo_accessor.GetSSBOId(),
+                mtl_data_ssbo_accessor.GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                mtl_data_ssbo_accessor.GetDataID(),
                 true,
                 true))
             return false;

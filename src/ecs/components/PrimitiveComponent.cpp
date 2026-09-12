@@ -44,7 +44,7 @@ namespace hgl::ecs
             resource.buffer = nullptr;
             resource.element_capacity = 0;
             resource.byte_stride = 0;
-            resource.data_index = 0;
+            resource.data_index = uint32_t(-1);
             resource.use_data_index = false;
             resource.shared_across_instances = false;
             resource.authored = false;
@@ -348,12 +348,14 @@ namespace hgl::ecs
             if (!resource.authored)
                 continue;
 
-            const hgl::graph::mtl::MaterialSSBOType ssbo_type =
+            hgl::graph::mtl::MaterialSSBOBinding material_ssbo_binding =
+                resource.GetMaterialSSBOBinding();
+            material_ssbo_binding.ssbo_type =
                 hgl::graph::mtl::ResolveRecipeSSBOType(
                     out_recipe,
                     resource.material_private_data_slot_name.c_str(),
                     resource.material_private_data_slot,
-                    resource.ssbo_type);
+                    material_ssbo_binding.ssbo_type);
 
             if (material_program)
             {
@@ -367,14 +369,12 @@ namespace hgl::ecs
                 }
             }
 
-            if (!hgl::graph::mtl::IsMaterialSSBOType(ssbo_type)
+            if (!material_ssbo_binding.IsValid()
              || !hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(
                     out_recipe,
                     resource.material_private_data_slot_name,
-                    ssbo_type,
-                    resource.ssbo_id,
+                    material_ssbo_binding,
                     resource.material_private_data_slot,
-                    resource.data_index,
                     resource.use_data_index,
                     resource.shared_across_instances))
                 return false;
@@ -553,7 +553,8 @@ namespace hgl::ecs
             return;
         }
 
-        if (!resource.use_data_index || resource.data_index == uint32_t(-1))
+        if (!resource.GetMaterialSSBOBinding().IsValid()
+         || !resource.use_data_index)
         {
             GLogError(
                 "[PrimitiveComponent] Material private-data resource rejected missing active row ID name=%s slot=%u",

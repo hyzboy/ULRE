@@ -80,10 +80,10 @@ private:
 
     bool Add(
         const char *name,
-        const MaterialDataAccessor &material_data_accessor,
+        const graph::mtl::MaterialSSBOBinding &material_ssbo_binding,
         const glm::quat &rotation)
     {
-        if (!material_data_accessor)
+        if (!material_ssbo_binding.IsValid())
             return false;
 
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
@@ -98,9 +98,7 @@ private:
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource named_struct{};
         named_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-        named_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-        named_struct.ssbo_id = material_data_accessor.GetSSBOId();
-        named_struct.data_index = material_data_accessor.GetDataID();
+        named_struct = material_ssbo_binding;
         named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
         prim_comp->SetMaterialPrivateDataSlotResource(named_struct);
@@ -125,10 +123,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 plane_grid_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::EmissiveSurface,
-                material_data_accessors[0].GetSSBOId(),
+                material_data_accessors[0].GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                material_data_accessors[0].GetDataID(),
                 true,
                 true))
             return false;
@@ -136,19 +132,19 @@ private:
 
         if(!Add(
                 "PlaneXY",
-                material_data_accessors[0],
+                material_data_accessors[0].GetMaterialSSBOBinding(),
                 glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
             return false;
 
         const float rot90 = glm::radians(90.0f);
         if(!Add(
                 "PlaneYZ",
-                material_data_accessors[1],
+                material_data_accessors[1].GetMaterialSSBOBinding(),
                 glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
             return false;
         if(!Add(
                 "PlaneXZ",
-                material_data_accessors[2],
+                material_data_accessors[2].GetMaterialSSBOBinding(),
                 glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
             return false;
 

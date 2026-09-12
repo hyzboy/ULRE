@@ -154,10 +154,8 @@ private:
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 scene_recipe,
                 graph::mtl::DefaultMaterialPrivateDataSlotName,
-                graph::mtl::MaterialSSBOType::EmissiveSurface,
-                solid.mtl_data_ssbo_accessors[0].GetSSBOId(),
+                solid.mtl_data_ssbo_accessors[0].GetMaterialSSBOBinding(),
                 graph::mtl::DefaultMaterialPrivateDataSlot,
-                solid.mtl_data_ssbo_accessors[0].GetDataID(),
                 true,
                 true))
             return false;
@@ -212,11 +210,8 @@ private:
                 se.primitive_comp->SetPrimitiveAsset(&asset);
                 hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource scene_struct{};
                 scene_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
-                scene_struct.ssbo_type = graph::mtl::MaterialSSBOType::EmissiveSurface;
-                scene_struct.ssbo_id =
-                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetSSBOId();
-                scene_struct.data_index =
-                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetDataID();
+                scene_struct =
+                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetMaterialSSBOBinding();
                 scene_struct.use_data_index = true;
                 scene_struct.shared_across_instances = true;
                 se.primitive_comp->SetMaterialPrivateDataSlotResource(scene_struct);

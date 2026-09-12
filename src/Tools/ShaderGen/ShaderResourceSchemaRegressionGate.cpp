@@ -551,9 +551,10 @@ namespace
         RecipeSSBOAssetBinding data_binding{};
         data_binding.material_private_data_slot_name = "mtl_private_data";
         data_binding.material_private_data_slot = 0;
-        data_binding.ssbo_type = MaterialSSBOType::PBRSurface;
-        data_binding.ssbo_id = 17;
-        data_binding.data_index = 9;
+        data_binding = MaterialSSBOBinding{
+            MaterialSSBOType::PBRSurface,
+            17,
+            9};
         data_binding.use_data_index = true;
         recipe.ssbo_assets.push_back(data_binding);
 
@@ -2029,9 +2030,10 @@ namespace
 
         RecipeSSBOAssetBinding asset{};
         asset.material_private_data_slot = DefaultMaterialPrivateDataSlot;
-        asset.ssbo_type = MaterialSSBOType::PBRSurface;
-        asset.ssbo_id = 41;
-        asset.data_index = 3;
+        asset = MaterialSSBOBinding{
+            MaterialSSBOType::PBRSurface,
+            41,
+            3};
         asset.use_data_index = true;
         recipe.ssbo_assets.emplace_back(asset);
 
@@ -2911,19 +2913,21 @@ namespace
         if (!UpsertRecipeSSBOAssetBinding(
                 recipe,
                 DefaultMaterialPrivateDataSlotName,
-                MaterialSSBOType::EmissiveSurface,
-                11,
+                MaterialSSBOBinding{
+                    MaterialSSBOType::EmissiveSurface,
+                    11,
+                    7},
                 DefaultMaterialPrivateDataSlot,
-                7,
                 true,
                 true)
          || !UpsertRecipeSSBOAssetBinding(
                 recipe,
                 DefaultMaterialPrivateDataSlotName,
-                MaterialSSBOType::EmissiveSurface,
-                44,
+                MaterialSSBOBinding{
+                    MaterialSSBOType::EmissiveSurface,
+                    44,
+                    9},
                 DefaultMaterialPrivateDataSlot,
-                9,
                 true,
                 true))
         {
@@ -2934,19 +2938,21 @@ namespace
         if (UpsertRecipeSSBOAssetBinding(
                 recipe,
                 "surface_a",
-                MaterialSSBOType::EmissiveSurface,
-                22,
-                0,
+                MaterialSSBOBinding{
+                    MaterialSSBOType::EmissiveSurface,
+                    22,
+                    0},
                 0,
                 true,
                 true)
          || UpsertRecipeSSBOAssetBinding(
                 recipe,
                 DefaultMaterialPrivateDataSlotName,
-                MaterialSSBOType::EmissiveSurface,
-                33,
+                MaterialSSBOBinding{
+                    MaterialSSBOType::EmissiveSurface,
+                    33,
+                    0},
                 1,
-                0,
                 true,
                 true))
         {
@@ -2958,19 +2964,21 @@ namespace
         if (UpsertRecipeSSBOAssetBinding(
                 missing_row_id_recipe,
                 DefaultMaterialPrivateDataSlotName,
-                MaterialSSBOType::EmissiveSurface,
-                55,
+                MaterialSSBOBinding{
+                    MaterialSSBOType::EmissiveSurface,
+                    55,
+                    uint32_t(-1)},
                 DefaultMaterialPrivateDataSlot,
-                uint32_t(-1),
                 true,
                 true)
          || UpsertRecipeSSBOAssetBinding(
                 missing_row_id_recipe,
                 DefaultMaterialPrivateDataSlotName,
-                MaterialSSBOType::EmissiveSurface,
-                55,
+                MaterialSSBOBinding{
+                    MaterialSSBOType::EmissiveSurface,
+                    55,
+                    0},
                 DefaultMaterialPrivateDataSlot,
-                0,
                 false,
                 true))
         {
