@@ -9,8 +9,10 @@
 // 使用前须确保 descriptor_macros.glsl 已被 #include（提供 BINDLESS_SET）。
 //
 // 用法：
-//   uint tex_handle = MTL_TEX(dataIndex).tex_base_color.x;
-//   vec4 color      = Sample2D(tex_handle, TrilinearSampler, uv);
+//   可选槽（句柄 0 = 未绑定，fallback 保底，乘性槽用 vec4(1.0)）：
+//     vec4 color = SampleOptional(MTL_TEX(dataIndex).tex_base_color, TrilinearSampler, uv, vec4(1.0));
+//   已由 required 保证绑定、或需要显式层号的槽：
+//     vec4 color = Sample2DArray(tex_handle, TrilinearSampler, uv, layer);
 //
 // tex_handle 为纯纹理句柄（1-based，0 = 无效），不再打包 sampler 下标。
 // sampler 下标由 ShaderGen 以编译期宏字面量注入（如 "#define TrilinearSampler 2u"），
@@ -50,6 +52,17 @@ vec4 Sample2DArray(uint tex_handle, uint samp_idx, vec2 uv, float layer)
     return texture(sampler2DArray(bindless_tex[nonuniformEXT(tex_handle - 1u)],
                                   bindless_samp[nonuniformEXT(samp_idx)]),
                    vec3(uv, layer));
+}
+
+// 可选纹理槽统一取样：引用行句柄为 0（未绑定）时返回 fallback，
+// 否则按 (handle, sampler, uv, layer) 取样。
+// 与手写的 "if (ref.x != 0u) { ... Sample2DArray(ref.x, ...) }" 语义等价，
+// 但把守卫与取样收口到一处，材质源模块里每个槽只剩一行。
+vec4 SampleOptional(uvec2 tex_ref, uint samp_idx, vec2 uv, vec4 fallback)
+{
+    return tex_ref.x == 0u
+        ? fallback
+        : Sample2DArray(tex_ref.x, samp_idx, uv, float(tex_ref.y));
 }
 
 #endif // BINDLESS_TEXTURES_GLSL
