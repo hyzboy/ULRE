@@ -25,16 +25,26 @@ NTBSpace GetNTB(NTBInput ntb_input)
 
     if (normalTexHandle != 0u)
     {
-        vec3 nm =
+        const vec4 normal_sample =
             Sample2DArray(
                 normalTexHandle,
                 TrilinearSampler,
                 si.uv0,
-                float(normalTexture.y)).xyz
-            * 2.0 - 1.0;
+                float(normalTexture.y));
+
+        vec3 nm = normal_sample.xyz * 2.0 - 1.0;
         nm.y = -nm.y; // GLSL/Vulkan Green Channel 翻转
-        vec3 tangentNormal =
+
+#if defined(MTL_TEX_NORMAL_CHANNELS) && (MTL_TEX_NORMAL_CHANNELS == 2)
+        // 双通道法线(BC5)：只存 XY，Z 用球面公式还原（与 UE/Unity 的 BC5 法线一致）。
+        // 宏由材质声明 channels = 2 时由 ShaderGen 注入，见 FragmentTemplateComposer。
+        const vec3 tangentNormal =
+            normalize(vec3(nm.xy * ntb_input.normalScale,
+                           sqrt(max(0.0, 1.0 - dot(nm.xy, nm.xy)))));
+#else
+        const vec3 tangentNormal =
             normalize(vec3(nm.xy * ntb_input.normalScale, nm.z));
+#endif
 
         mat3 TBN = mat3(ntb.T, ntb.B, ntb.N);
         ntb.N = normalize(TBN * tangentNormal);

@@ -58,6 +58,36 @@ namespace
             ? root->include_path.c_str() : nullptr;
     }
 
+    // 纹理声明里的 channels → GLSL 宏 MTL_TEX_<NAME>_CHANNELS=<n>。
+    // 用途：法线贴图声明 channels = 2 时，ntb 模块据此只读 XY 并用球面公式还原 Z
+    // （BC5 法线；宏名"存在即非零"也让 #if defined() 判断可用）。
+    void AppendTextureChannelDefines(
+        std::string &defines,
+        const FragmentTemplateComposer::ComposeInput &input)
+    {
+        if (!input.texture_declarations)
+            return;
+
+        for (const MaterialTextureDeclaration &declaration :
+            *input.texture_declarations)
+        {
+            if (declaration.channels == 0)
+                continue;
+
+            std::string macro = "MTL_TEX_";
+            for (const char ch : declaration.name)
+                macro += (ch >= 'a' && ch <= 'z')
+                    ? static_cast<char>(ch - 'a' + 'A') : ch;
+            macro += "_CHANNELS";
+
+            defines += "#define ";
+            defines += macro;
+            defines += " ";
+            defines += std::to_string(declaration.channels);
+            defines += "\n";
+        }
+    }
+
     bool ComposeForwardUnlit(
         const FragmentTemplateComposer::ComposeInput &input,
         ShaderDocument &document)
@@ -85,6 +115,7 @@ namespace
         defines += "#define HGL_USE_NTB_PROVIDER ";
         defines += ntb_module ? "1\n" : "0\n";
         defines += "#define HGL_USE_SCENE_LIGHTING 0\n";
+        AppendTextureChannelDefines(defines, input);
         AddTemplateBlock(
             document, ShaderDocumentBlockKind::Define,
             AnsiString(defines.c_str()), "ForwardUnlit.Defines");
@@ -466,6 +497,7 @@ namespace
             "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n"
             "#define HGL_USE_NTB_PROVIDER 1\n"
             "#define HGL_USE_SCENE_LIGHTING 1\n";
+        AppendTextureChannelDefines(defines, input);
         if (input.alpha_test)
         {
             defines += "#define HGL_ALPHA_TEST 1\n#define HGL_ALPHA_CUTOFF ";

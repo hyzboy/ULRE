@@ -2,6 +2,7 @@
 
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialOutputContract.h>
+#include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/RenderTemplate.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
@@ -28,6 +29,11 @@ namespace hgl::graph::mtl
             const OutputContract *output_contract = nullptr;
             const MaterialCoverageContract *coverage_contract = nullptr;
             const ShaderDocument *code_module_document = nullptr;
+
+            // 纹理声明（含 channels）：法线贴图声明 channels = 2 时，
+            // 注入 MTL_TEX_<NAME>_CHANNELS=2，ntb 模块据此走 XY + 还原 Z 分支。
+            const std::vector<MaterialTextureDeclaration>
+                *texture_declarations = nullptr;
         };
 
         bool Compose(

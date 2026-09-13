@@ -726,6 +726,7 @@ namespace hgl::graph::mtl
                 if (key != "name"
                  && key != "sampler"
                  && key != "required"
+                 && key != "channels"
                  && key != "filter"
                  && key != "wrap"
                  && key != "swizzle"
@@ -908,13 +909,28 @@ namespace hgl::graph::mtl
                                 return false;
                         }
 
+                        uint32_t declared_channels = 0;
+                        if (item.contains("channels"))
+                        {
+                            // 可选：纹理通道数。0/缺省 = 由纹素格式决定；
+                            // 2 = 双通道法线(BC5)：只存 XY，Z 由 shader 还原
+                            // （ShaderGen 据此注入 MTL_TEX_<NAME>_CHANNELS）。
+                            if (!item.at("channels").is_integer())
+                                return false;
+                            const int64 declared = item.at("channels").as_integer();
+                            if (declared < 1 || declared > 4)
+                                return false;
+                            declared_channels = static_cast<uint32_t>(declared);
+                        }
+
                         MaterialTextureSamplingOptions sampling{};
                         if (!ParseTextureSamplingOptions(item, sampling))
                             return false;
 
                         out.definition.texture_declarations.push_back(
                             {texture_name, sampler,
-                             item.at("required").as_boolean(), sampling});
+                             item.at("required").as_boolean(), sampling,
+                             declared_channels});
                     }
                 }
 

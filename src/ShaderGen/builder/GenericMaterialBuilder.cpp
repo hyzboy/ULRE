@@ -525,6 +525,7 @@ namespace hgl::graph::mtl
             compose_input.output_contract = &plan.output_contract;
             compose_input.coverage_contract = &plan.coverage;
             compose_input.code_module_document = &code_module_document;
+            compose_input.texture_declarations = &definition.texture_declarations;
             if (!composer.Compose(
                     compose_input, fragment_document, fragment_diagnostics))
             {

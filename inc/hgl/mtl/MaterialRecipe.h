@@ -200,6 +200,7 @@ namespace hgl::graph::mtl
         GLSLSamplerType  sampler_type = GLSLSamplerType::Sampler2D;   // GLSL sampler kind.
         bool             required     = false;                         // Missing binding is an explicit error.
         MaterialTextureSamplingOptions sampling;                       // Sampler/view overrides; not connected at stage 1.
+        uint32_t         channels     = 0;                             // 0 = 由纹素格式决定；2 = 双通道法线(XY)，Z 由 shader 还原
     };
 
     struct MaterialTextureReferenceLayout
@@ -443,7 +444,8 @@ namespace hgl::graph::mtl
 
             hasher << declaration.name
                    << declaration.sampler_type
-                   << declaration.required;
+                   << declaration.required
+                   << declaration.channels;
         }
 
         out_layout.layout_hash = hasher;
