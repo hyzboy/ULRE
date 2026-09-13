@@ -40,13 +40,13 @@ bool BindlessTextureManager::Init(VkDevice device)
         bindings[0].binding         = 0;
         bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         bindings[0].descriptorCount = kMax;
-        bindings[0].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
+        bindings[0].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
         // binding=1 : sampler[]（SAMPLER，非均匀索引，惰性小池）
         bindings[1].binding         = 1;
         bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
         bindings[1].descriptorCount = kMaxSampler;
-        bindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
+        bindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
         VkDescriptorBindingFlags flags[2] = {
             // binding=0：纹理支持帧内 update-after-bind
@@ -247,13 +247,14 @@ bool BindlessTextureManager::RebuildSampler(uint32_t index, const VkSamplerCreat
 
 void BindlessTextureManager::BindToCmd(VkCommandBuffer cmd,
                                         VkPipelineLayout pipeline_layout,
-                                        uint32_t set_index) const
+                                        uint32_t set_index,
+                                        VkPipelineBindPoint bind_point) const
 {
     if (set_ == VK_NULL_HANDLE)
         return;
 
     vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            bind_point,
                             pipeline_layout,
                             set_index,
                             1, &set_,

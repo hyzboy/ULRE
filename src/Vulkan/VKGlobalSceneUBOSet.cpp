@@ -30,6 +30,8 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
     }
 
     // ── 描述符集布局（camera=0 / sky=1 / viewport=2 / color_palette=3）────────────────
+    // stageFlags 加 COMPUTE：compute 管线复用全局 layout 时可按需读这些 UBO
+    //（如按 viewport 尺寸定 dispatch 维度）；graphics 侧不受影响（stage 声明超集合法）。
     {
         VkDescriptorSetLayoutBinding bindings[4]{};
 
@@ -37,25 +39,25 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
         bindings[0].binding         = uint32_t(kSceneBindingCamera);
         bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags      = hgl::graph::kMeshFragment;
+        bindings[0].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
         // binding=1 : sky
         bindings[1].binding         = uint32_t(kSceneBindingSky);
         bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[1].descriptorCount = 1;
-        bindings[1].stageFlags      = hgl::graph::kMeshFragment;
+        bindings[1].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
         // binding=2 : viewport
         bindings[2].binding         = uint32_t(kSceneBindingViewport);
         bindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[2].descriptorCount = 1;
-        bindings[2].stageFlags      = hgl::graph::kMeshFragment;
+        bindings[2].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
         // binding=3 : color_palette
         bindings[3].binding         = uint32_t(kSceneBindingColorPalette);
         bindings[3].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[3].descriptorCount = 1;
-        bindings[3].stageFlags      = hgl::graph::kMeshFragment;
+        bindings[3].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
         // PARTIALLY_BOUND：允许未写入的 binding（如 palette/sky）保持为空而不触发校验错误。
         VkDescriptorBindingFlags binding_flags[4] = {
@@ -157,13 +159,14 @@ bool GlobalSceneUBOSet::UpdateUBO(uint32_t binding, const IGPUBuffer *gpu)
     return true;
 }
 
-void GlobalSceneUBOSet::BindToCmd(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout) const
+void GlobalSceneUBOSet::BindToCmd(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout,
+                                  VkPipelineBindPoint bind_point) const
 {
     if (set_ == VK_NULL_HANDLE)
         return;
 
     vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            bind_point,
                             pipeline_layout,
                             uint32_t(DescriptorSetType::Scene),
                             1, &set_,

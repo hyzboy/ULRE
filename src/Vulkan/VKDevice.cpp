@@ -327,6 +327,18 @@ TextureCmdBuffer *VulkanDevice::CreateTextureCommandBuffer(const ObjectNameBuild
     return result;
 }
 
+ComputeCmdBuffer *VulkanDevice::CreateComputeCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc)
+{
+    VkCommandBuffer cb=CreateCommandBuffer(name.ToString());
+
+    if(cb==VK_NULL_HANDLE)return(nullptr);
+
+    ComputeCmdBuffer *result = new ComputeCmdBuffer(attr,cb);
+    if (result)
+        TrackObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)(uintptr_t)cb, name.Append(ObjectTypeTag::VKComputeCommandBuffer), loc);
+    return result;
+}
+
 /**
  * 创建栅栏
  * @param create_signaled 是否创建初始信号
@@ -390,7 +402,7 @@ DeviceQueue *VulkanDevice::CreateQueue(const ObjectNameBuilder &name, const uint
     return result;
 }
 
-ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout)
+ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout, const bool owns_pipeline_layout)
 {
     VkComputePipelineCreateInfo compute_pipeline_info = {};
     compute_pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -412,7 +424,7 @@ ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkS
         attr->debug_utils->SetPipeline(pipeline, name);
 #endif//_DEBUG
 
-    return new ComputePipeline(name, attr->device, pipeline, pipeline_layout);
+    return new ComputePipeline(name, attr->device, pipeline, pipeline_layout, owns_pipeline_layout);
 }
 
 }//namespace hgl::graph

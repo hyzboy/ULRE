@@ -35,6 +35,7 @@ class IndirectMeshTaskBuffer;
 class StagedBuffer;
 class IGPUBuffer;
 class ComputePipeline;
+class ComputeCmdBuffer;
 class ShaderProgram;
 class Texture;
 class Fence;
@@ -404,6 +405,7 @@ public: //Command Buffer 相关
 
     RenderCmdBuffer * CreateRenderCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
     TextureCmdBuffer *CreateTextureCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+    ComputeCmdBuffer *CreateComputeCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
 public:
 
@@ -420,9 +422,11 @@ public: // Compute Pipeline相关
      * @param name 管线名称
      * @param shader_module 计算着色器模块
      * @param pipeline_layout 管线布局
+     * @param owns_pipeline_layout true 时 ComputePipeline 析构时一并销毁 layout
+     *                             （专用 layout）；false 时不拥有（共享全局 layout）
      * @return 计算管线指针，失败返回nullptr
      */
-    ComputePipeline *CreateComputePipeline(const AnsiString &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout);
+    ComputePipeline *CreateComputePipeline(const AnsiString &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout, const bool owns_pipeline_layout=false);
 
 public:
 

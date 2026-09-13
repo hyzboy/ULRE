@@ -66,8 +66,10 @@ namespace hgl::graph
          * 绑定到命令缓冲区（Set 0）。
          * @param cmd             目标命令缓冲
          * @param pipeline_layout 当前管线布局（其 set 0 必须与本集 layout 一致）
+         * @param bind_point      绑定点：图形管线用 GRAPHICS（默认），ComputeCmdBuffer 用 COMPUTE
          */
-        void BindToCmd(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout) const;
+        void BindToCmd(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout,
+                       VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS) const;
     };
 
 }//namespace hgl::graph

@@ -135,6 +135,7 @@ class IndexBuffer;
 class VulkanCmdBuffer;
 class RenderCmdBuffer;
 class TextureCmdBuffer;
+class ComputeCmdBuffer;
 
 class RenderPass;
 class DeviceRenderPassManage;

@@ -223,4 +223,27 @@ namespace hgl::graph
         cmd->scene_sets_bound = true;
     }
 
+    void GraphicsContext::BindGlobalDescriptorSets(ComputeCmdBuffer *cmd, VkPipelineLayout layout)
+    {
+        if (!cmd || cmd->scene_sets_bound)
+            return;
+
+        if (auto *scene_set = GetGlobalSceneUBOSet();
+            scene_set && scene_set->IsValid())
+        {
+            scene_set->BindToCmd(*cmd, layout, VK_PIPELINE_BIND_POINT_COMPUTE);
+        }
+
+        if (auto *bindless_mgr = GetBindlessTextureManager();
+            bindless_mgr && bindless_mgr->IsValid())
+        {
+            bindless_mgr->BindToCmd(*cmd,
+                                    layout,
+                                    static_cast<uint32_t>(graph::DescriptorSetType::Bindless),
+                                    VK_PIPELINE_BIND_POINT_COMPUTE);
+        }
+
+        cmd->scene_sets_bound = true;
+    }
+
 } // namespace hgl::graph

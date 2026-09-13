@@ -340,6 +340,94 @@ const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const mtl::S
                                      spv_size);
 }
 
+// ── compute：直接源码路径（不走 ShaderGen 生成器）──────────────────────────────
+
+const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiString &shader_module_name,
+                                                                    const AnsiString &glsl_source)
+{
+    if(shader_module_name.IsEmpty()||glsl_source.IsEmpty())
+        return(nullptr);
+
+    if(ShaderModule *cached=shader_module_cache.FindName(ShaderStage::Compute,shader_module_name))
+        return(cached);
+
+    mtl::ShaderCreateInfo sci(ShaderStage::Compute);
+
+    sci.SetFinalGLSL(glsl_source.c_str());
+
+    if(!sci.CompileFinalGLSLToSPV())
+        return(nullptr);
+
+    return(CreateShaderModule(shader_module_name,&sci));
+}
+
+ComputePipeline *ShaderProgramManager::CreateComputePipeline(const AnsiString &name,
+                                                             const AnsiString &glsl_source,
+                                                             VkDescriptorSetLayout user_layout,
+                                                             const uint32_t push_constant_size)
+{
+    VulkanDevice *device=GetDevice();
+    if(!device)return(nullptr);
+
+    // 专用 layout 挂在全局 Scene/Bindless 集之后——两者必须已由 GraphicsContext::Init 就绪
+    if(bindless_layout_==VK_NULL_HANDLE||scene_layout_==VK_NULL_HANDLE)
+    {
+        GLogError(u8"[ShaderProgramManager] global sets not ready, cannot create compute pipeline (init GraphicsContext first?)");
+        return(nullptr);
+    }
+
+    // 128B 是 Vulkan spec 保证的 maxPushConstantsSize 下限；超限时不同设备行为不一，直接拒绝
+    if(push_constant_size>128)
+    {
+        GLogError(u8"[ShaderProgramManager] push_constant_size %u exceeds 128B spec guarantee: %s",
+                  push_constant_size,name.c_str());
+        return(nullptr);
+    }
+
+    const ShaderModule *sm=CreateComputeShaderModule(name,glsl_source);
+    if(!sm)return(nullptr);
+
+    VkDescriptorSetLayout dsl[3]={scene_layout_,bindless_layout_,user_layout};
+
+    VkPipelineLayoutCreateInfo layout_ci{};
+    layout_ci.sType        =VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layout_ci.setLayoutCount=(user_layout!=VK_NULL_HANDLE)?3:2;
+    layout_ci.pSetLayouts  =dsl;
+
+    VkPushConstantRange pc_range{};
+
+    if(push_constant_size>0)
+    {
+        pc_range.stageFlags =VK_SHADER_STAGE_COMPUTE_BIT;
+        pc_range.offset     =0;
+        pc_range.size       =push_constant_size;
+
+        layout_ci.pushConstantRangeCount=1;
+        layout_ci.pPushConstantRanges   =&pc_range;
+    }
+
+    VkPipelineLayout layout=VK_NULL_HANDLE;
+
+    if(vkCreatePipelineLayout(device->GetDevice(),&layout_ci,nullptr,&layout)!=VK_SUCCESS)
+    {
+        GLogError(u8"[ShaderProgramManager] create compute pipeline layout failed: %s",name.c_str());
+        return(nullptr);
+    }
+
+    #ifdef _DEBUG
+        if(DebugUtils *du=device->GetDebugUtils())
+            du->SetPipelineLayout(layout,AnsiString("PipelineLayout:Compute:")+name);
+    #endif//_DEBUG
+
+    // owns_pipeline_layout=true：专用 layout 随 ComputePipeline 析构销毁
+    ComputePipeline *cp=device->CreateComputePipeline(name,*sm,layout,true);
+
+    if(!cp)
+        vkDestroyPipelineLayout(device->GetDevice(),layout,nullptr);
+
+    return(cp);
+}
+
 ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(
     const mtl::ShaderProgramKey &key)
 {

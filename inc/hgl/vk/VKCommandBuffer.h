@@ -3,6 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKVABList.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKComputePipeline.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/type/MemoryUtil.h>
@@ -204,6 +205,127 @@ public: //dynamic state
 public:
 
 };//class RenderCmdBuffer:public VulkanCmdBuffer
+
+/**
+ * Compute 命令缓冲：vkCmdDispatch / vkCmdDispatchIndirect 及 COMPUTE bind point
+ * 的管线/描述符/push constant 绑定。提交走通用 DeviceQueue::Submit(VulkanCmdBuffer*)。
+ * 由 VulkanDevice::CreateComputeCommandBuffer 创建，复用 graphics family cmd_pool
+ * （Vulkan 保证 graphics queue 支持 compute）。
+ */
+class ComputeCmdBuffer:public VulkanCmdBuffer
+{
+    VkBufferMemoryBarrier bufferMemoryBarrier;
+    VkImageMemoryBarrier imageMemoryBarrier;
+
+public:
+
+    ComputeCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
+    {
+        bufferMemoryBarrier.sType=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        bufferMemoryBarrier.pNext=nullptr;
+        bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+        imageMemoryBarrier.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        imageMemoryBarrier.pNext=nullptr;
+        imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    }
+
+    bool BindPipeline(ComputePipeline *p)
+    {
+        if(!p)return(false);
+
+        vkCmdBindPipeline(cmd_buf,VK_PIPELINE_BIND_POINT_COMPUTE,*p);
+        return(true);
+    }
+
+    bool BindDescriptorSets(VkPipelineLayout pipeline_layout,const uint32_t first_set,const VkDescriptorSet *ds_list,const uint32_t ds_count,const uint32_t *offset=nullptr,const uint32_t offset_count=0)
+    {
+        if(!ds_list||ds_count<=0)return(false);
+
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_COMPUTE,pipeline_layout,first_set,ds_count,ds_list,offset_count,offset);
+
+        return(true);
+    }
+
+    void PushConstants(VkPipelineLayout pipeline_layout,const void *data,const uint32_t size)
+    {
+        vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_COMPUTE_BIT,0,size,data);
+    }
+
+    void PushConstants(VkPipelineLayout pipeline_layout,const void *data,const uint32_t offset,const uint32_t size)
+    {
+        vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_COMPUTE_BIT,offset,size,data);
+    }
+
+public: //dispatch
+
+    void Dispatch(const uint32_t group_count_x,const uint32_t group_count_y=1,const uint32_t group_count_z=1)
+    {
+        vkCmdDispatch(cmd_buf,group_count_x,group_count_y,group_count_z);
+    }
+
+    // buffer 须带 VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT（IndirectDispatchBuffer::GetVkBuffer 可取）
+    void DispatchIndirect(VkBuffer buf,VkDeviceSize offset=0)
+    {
+        vkCmdDispatchIndirect(cmd_buf,buf,offset);
+    }
+
+public: //barrier
+
+    template<typename ...ARGS> void PipelineBarrier       (ARGS...args){vkCmdPipelineBarrier  (cmd_buf,args...);}
+
+    // compute 写 storage buffer 后、后续 stage 读之前的内存同步
+    void BufferMemoryBarrier(VkBuffer buffer,
+                             VkPipelineStageFlags srcStageMask,
+                             VkPipelineStageFlags dstStageMask,
+                             VkAccessFlags srcAccessMask,
+                             VkAccessFlags dstAccessMask,
+                             VkDeviceSize offset=0,
+                             VkDeviceSize size=VK_WHOLE_SIZE)
+    {
+        bufferMemoryBarrier.srcAccessMask = srcAccessMask;
+        bufferMemoryBarrier.dstAccessMask = dstAccessMask;
+        bufferMemoryBarrier.buffer        = buffer;
+        bufferMemoryBarrier.offset        = offset;
+        bufferMemoryBarrier.size          = size;
+
+        vkCmdPipelineBarrier(   cmd_buf,
+                                srcStageMask,
+                                dstStageMask,
+                                0,
+                                0, nullptr,
+                                1, &bufferMemoryBarrier,
+                                0, nullptr);
+    }
+
+    // compute 写 storage image / 读 image 的布局与内存同步
+    void ImageMemoryBarrier(VkImage image,
+                            VkPipelineStageFlags srcStageMask,
+                            VkPipelineStageFlags dstStageMask,
+                            VkAccessFlags srcAccessMask,
+                            VkAccessFlags dstAccessMask,
+                            VkImageLayout oldImageLayout,
+                            VkImageLayout newImageLayout,
+                            VkImageSubresourceRange subresourceRange)
+    {
+        imageMemoryBarrier.srcAccessMask = srcAccessMask;
+        imageMemoryBarrier.dstAccessMask = dstAccessMask;
+        imageMemoryBarrier.oldLayout = oldImageLayout;
+        imageMemoryBarrier.newLayout = newImageLayout;
+        imageMemoryBarrier.image = image;
+        imageMemoryBarrier.subresourceRange = subresourceRange;
+
+        vkCmdPipelineBarrier(   cmd_buf,
+                                srcStageMask,
+                                dstStageMask,
+                                0,
+                                0, nullptr,
+                                0, nullptr,
+                                1, &imageMemoryBarrier);
+    }
+};//class ComputeCmdBuffer:public VulkanCmdBuffer
 
 class TextureCmdBuffer:public VulkanCmdBuffer
 {

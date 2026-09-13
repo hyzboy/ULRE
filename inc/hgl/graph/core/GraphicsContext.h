@@ -139,6 +139,9 @@ namespace hgl::graph
          */
         void BindGlobalDescriptorSets(class RenderCmdBuffer *cmd, VkPipelineLayout layout);
 
+        /** 同上，COMPUTE bind point（ComputeCmdBuffer 专用；compute 管线须复用共享 layout） */
+        void BindGlobalDescriptorSets(class ComputeCmdBuffer *cmd, VkPipelineLayout layout);
+
         // 扩展访问（不常用）
         GraphModuleManager *GetModuleManager() { return module_manager; }
         RenderTargetManager *GetRenderTargetManager() { return rt_manager; }
