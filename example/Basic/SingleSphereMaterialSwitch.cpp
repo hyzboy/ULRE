@@ -132,13 +132,13 @@ private:
                                                                        far_base_color_texture->GetHeight(),
                                                                        1,
                                                                        far_base_color_texture->GetFormat(),
-                                                                       true);
+                                                                       far_base_color_texture->GetMipLevel());
         near_normal_array = texture_manager->CreateTexture2DArray("single_sphere_normal_array",
                                                                    far_normal_texture->GetWidth(),
                                                                    far_normal_texture->GetHeight(),
                                                                    1,
                                                                    far_normal_texture->GetFormat(),
-                                                                   true);
+                                                                   far_normal_texture->GetMipLevel());
         if (!near_base_color_array || !near_normal_array)
             return LogFail("InitTextures", "failed to create 2DArray textures");
 

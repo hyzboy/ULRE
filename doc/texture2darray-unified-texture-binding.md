@@ -139,7 +139,7 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 
 ## 6. 保留决策带来的后续项（修订原"消灭 Texture2DArray"计划）
 
-### 6.1 必修：数组纹理的 mipmap 死链
+### 6.1 数组纹理的 mipmap 死链（**2026-09-13 已修复**）
 
 | 事实 | 位置 |
 |---|---|
@@ -150,7 +150,44 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 | `GenerateTexture2DArrayMipmaps` 首行 `GetMipLevel() <= 1 → return true`（恒早退） | `VKDeviceTexture2DArray.cpp:261-264` |
 | `LoadTexture2DArray` 内部把 `auto_mipmaps` 硬编码为 `false` | `src/SceneGraph/module/TextureManager.cpp:195` |
 
-后果：PBRSpheres 传 `true`（`PBRSpheres.cpp:204/210`）与 TextureRectArray 传 `false`（`TextureRectArray.cpp:100`）**效果相同**——数组纹理恒只有 level 0，`Trilinear`/`Linear` 采样宏在远处必然闪烁。修法二选一：① 让 `CreateTexture2DArray` 真正走 `target_mipmaps`（含逐层 `GenerateMipmaps`，`GenerateMipmaps(..., base_array_layer, layer_count)` 已支持）；② 若有意不做 mip，则删掉 `auto_mipmaps` 形参（零兼容偏好：不留无效参数）。
+上表为**修前**状态（存档用）。成因不止"形参没接线"：源资产的 mip 链本来就在文件里（实测
+`res/image/pbr/*/baseColor.Tex2D` = BC7/1024²/**9 级**、`res/image/icon/freepik/*.Tex2D` = BC7/512²/**8 级**），
+是逐层装载只拷了 0 级把链丢掉了。
+
+**采用的方案（A：按源资产整链逐层拷入，不做压缩格式的自动生成）**
+
+| 改动 | 位置 | 要点 |
+|---|---|---|
+| 共享块压缩 helper | `inc/hgl/vk/VKFormat.h`（`IsBlockCompressedFormat` / `GetBlockCompressedLevelBytes`） | 原实现是 `VKDeviceTexture2D.cpp` 里的匿名 namespace 副本，现上收为唯一真源 |
+| API 语义修正 | `inc/hgl/graph/module/TextureManager.h:97,132` | `bool auto_mipmaps` → **`uint32 mip_levels = 1`**（零兼容：不保留无效 bool 形参）；级数真源 = 源资产（示例用探针的 `GetMipLevel()`） |
+| 级数真正落进 tci + 多级图像可 blit | `src/Vulkan/Texture/VKDeviceTexture2DArray.cpp` | `origin_mipmaps = target_mipmaps = mipi_levels`；`mips > 1` 时补 `VK_IMAGE_USAGE_TRANSFER_SRC_BIT` |
+| **整链逐层拷入**（新函数） | `TextureManager::ChangeTexture2DArrayMipmaps` 同上文件 | 按级构建 `VkBufferImageCopy`：`mipLevel=i`、`baseArrayLayer=layer`、`layerCount=1`、偏移按 BC 级别字节/非 BC `rolling_level_bytes` 推进 —— 与 2D 路径 `CommitTexture2DMipmaps` 同构 |
+| 逐层装载分派 + 校验 | `src/SceneGraph/texture/VKTexture2DArrayLoader.cpp` | 尺寸/格式必须与数组一致（否则**静默错位**）→ fail-fast；级数策略见下 |
+| 压缩格式拒绝生成 | 同上 + `GenerateTexture2DArrayMipmaps` | 块压缩格式无链 → **显式报错**，不静默降级；顺带修掉该函数入口屏障的 `oldLayout`（原写 `SHADER_READ_ONLY`，与本路径实际的 `TRANSFER_DST` 不符） |
+| 删无效形参链 | `src/SceneGraph/module/TextureManager.cpp:196-202` | `LoadTexture2DLayerFromFile(..., false)` 的硬编码 `false` 一并删除 |
+
+级数策略（数组创建时给定，逐层装载时校验）：
+
+| 数组级数 | 源链 | 行为 |
+|---|---|---|
+| 1 | 任意 | 只拷 0 级（源链被截断，与旧版一致） |
+| > 1 | ≥ 数组级数 | 整链拷入（块压缩格式的唯一合法路径） |
+| > 1 | = 1（无链）且**非**块压缩 | 单级拷入 + 逐级 blit 生成 |
+| > 1 | = 1（无链）且**块压缩** | **显式失败**：不支持自动生成，须由资产提供链 |
+| > 1 | 1 < 源链 < 数组级数 | **显式失败**（不混合"拷贝 + 生成"两种来源） |
+
+**实测验证（2026-09-13）**
+
+| 项 | 结果 |
+|---|---|
+| 构建 | 0 个 C++ 错误（`error C*/LNK` = 0；仅 CMCore 示例的 vcpkg 后置步骤 MSB3075，既有） |
+| PBRSpheres | `[Texture2DArray] create name=pbr_baseColor_array 1024x1024 layers=10 fmt=BC7UN **mip_levels=9**`（normal 同）；`[ERROR]`=0、`VUID`=0、675 帧 |
+| SingleSphereMaterialSwitch | 两张 1 层数组 `mip_levels=9`；0 ERROR / 0 VUID / 697 帧 |
+| TextureRectArray | `mip_levels=1`（行为与修前一致，改动不外溢）；0 ERROR / 0 VUID / 704 帧 |
+| 字节布局自证 | 源文件 payload == 引擎逐级公式之和（`baseColor.Tex2D`：`1398096 == 1398096` MATCH；各级偏移 `0, 1048576, 1310720, …, 1398080`）；`001-online resume.Tex2D`：`349520 == 349520` MATCH |
+| 门禁 | `ShaderResourceSchemaRegressionGate` = **38 PASS / 1 FAIL**（`V1.material-output-contract` 为既有基线，与本改动无关） |
+| 视觉 | 前排贴图细节清晰、远排表面平滑无高频闪烁（截图存 `computer_use_5160b4017aeb4072930a7e1c6fb3c312.png`） |
+| 内存代价 | PBRSpheres 两套数组 20 MB → ≈26.7 MB（BC7 1024² 整链 = 1.333 倍） |
 
 ### 6.2 修订：行数组化保留 `uvec2`，取消 ABI 塌缩
 

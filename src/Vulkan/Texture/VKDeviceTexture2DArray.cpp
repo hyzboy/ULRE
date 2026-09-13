@@ -4,9 +4,10 @@
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKFormat.h>
+#include<hgl/log/Log.h>
 #include"CopyBufferToImage.h"
 namespace hgl::graph{
-void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,
                      VkImage image,
                      VkImageAspectFlags aspect_mask,
@@ -40,6 +41,9 @@ Texture2DArray *TextureManager::CreateTexture2DArray(TextureCreateInfo *tci)
     if(tci->target_mipmaps==0)
         tci->target_mipmaps=(tci->origin_mipmaps>1?tci->origin_mipmaps:1);
 
+    if(tci->target_mipmaps>1)           //多级数组：非压缩格式的逐级 blit 生成需要 TRANSFER_SRC
+        tci->usage|=VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
     if(!tci->image)
     {
         Image2DArrayCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent,tci->target_mipmaps);
@@ -67,43 +71,13 @@ Texture2DArray *TextureManager::CreateTexture2DArray(TextureCreateInfo *tci)
         return(nullptr);
     }
 
-    //我们暂不，也不准备支持从文件加载整个texture 2d array，所以这里的代码暂时注释掉。仅支持创建空的Texture2d array后，一张张2D纹理单独提交
-//
-    //if((!tci->buffer)&&tci->pixels&&tci->total_bytes>0)
-    //    tci->buffer=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tci->total_bytes,tci->pixels);
-
-    //if(tci->buffer)
-    //{
-    //    texture_cmd_buf->Begin();
-    //    if(tci->target_mipmaps==tci->origin_mipmaps)
-    //    {
-    //        if(tci->target_mipmaps<=1)      //本身不含mipmaps，但也不要mipmaps
-    //        {
-    //            CommitTexture2DArray(tex,tci->buffer,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    //        }
-    //        else //本身有mipmaps数据
-    //        {
-    //            CommitTexture2DMipmapsArray(tex,tci->buffer,tci->extent,tci->mipmap_zero_total_bytes);
-    //        }
-    //    }
-    //    else
-    //        if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
-    //        {
-    //            CommitTexture2DArray(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
-    //            GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,1);
-    //        }
-    //    texture_cmd_buf->End();
-
-    //    SubmitTexture(*texture_cmd_buf);
-
-    //    delete tci->buffer;
-    //}
-
+    //不支持从文件加载整个 texture 2d array：只支持创建空数组后，逐层从单张 2D 文件提交。
+    //每一层拷入的是该文件自带的**完整 mip 链**（见 ChangeTexture2DArrayMipmaps）。
     delete tci;     //"delete tci" is correct,please don't use "Clear(tci)"
     return tex;
 }
 
-Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint32_t h,const uint32 l,const VkFormat fmt,const bool mipmaps)
+Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint32_t h,const uint32 l,const VkFormat fmt,const uint32_t mip_levels)
 {
     if(w*h*l<=0)
         return(nullptr);
@@ -117,109 +91,19 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint
     tci->extent.height  =h;
     tci->extent.depth   =l;
 
+    //mip 级数真源 = 源资产（.Tex2D 文件头里的列数）。块压缩格式禁止自动生成，
+    //因此这里给出多少级就必须有多少级，级数不符会在逐层装载时被显式拒绝。
+    const uint32_t mips=(mip_levels>0?mip_levels:1);
+
+    tci->origin_mipmaps=mips;
+    tci->target_mipmaps=mips;
+
     return CreateTexture2DArray(tci);
 }
-
-//
-//bool VulkanDevice::CommitTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,VkPipelineStageFlags destinationStage)
-//{
-//    if(!tex||!buf)return(false);
-//
-//    BufferImageCopy buffer_image_copy(tex);
-//
-//    return CopyBufferToImageArray(tex,buf,&buffer_image_copy,destinationStage);
-//}
-//
-//bool VulkanDevice::CommitTexture2DArrayMipmaps(Texture2DArray *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
-//{
-//    if(!tex||!buf
-//      ||extent.width*extent.height<=0)
-//        return(false);
-//
-//    const uint32_t miplevel=tex->GetMipLevel();
-//
-//    AutoDeleteArray<VkBufferImageCopy> buffer_image_copy(miplevel);
-//
-//    VkDeviceSize offset=0;
-//    uint32_t level=0;
-//
-//    uint32_t width=extent.width;
-//    uint32_t height=extent.height;
-//
-//    buffer_image_copy.zero();
-//
-//    for(VkBufferImageCopy &bic:buffer_image_copy)
-//    {
-//        bic.bufferOffset      = offset;
-//        bic.bufferRowLength   = 0;
-//        bic.bufferImageHeight = 0;
-//        bic.imageSubresource.aspectMask       = tex->GetAspect();
-//        bic.imageSubresource.mipLevel         = level++;
-//        bic.imageSubresource.baseArrayLayer   = 0;
-//        bic.imageSubresource.layerCount       = 1;
-//        bic.imageOffset.x     = 0;
-//        bic.imageOffset.y     = 0;
-//        bic.imageOffset.z     = 0;
-//        bic.imageExtent.width = width;
-//        bic.imageExtent.height= height;
-//        bic.imageExtent.depth = 1;
-//
-//        if(total_bytes<8)
-//            offset+=8;
-//        else
-//            offset+=total_bytes;
-//
-//        if(width>1){width>>=1;total_bytes>>=1;}
-//        if(height>1){height>>=1;total_bytes>>=1;}
-//    }
-//
-//    return CopyBufferToImageArray(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-//}
-//
-//bool VulkanDevice::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const ValueArray<Image2DRegion> &ir_list,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
-//{
-//    if(!tex||!buf||ir_list.GetCount()<=0)
-//        return(false);
-//
-//    const int ir_count=ir_list.GetCount();
-//    int count=0;
-//
-//    AutoDeleteArray<VkBufferImageCopy> buffer_image_copy(ir_count);
-//    VkBufferImageCopy *tp=buffer_image_copy;
-//
-//    VkDeviceSize offset=0;
-//
-//    for(const Image2DRegion &sp:ir_list)
-//    {
-//        tp->bufferOffset      = offset;
-//        tp->bufferRowLength   = 0;
-//        tp->bufferImageHeight = 0;
-//        tp->imageSubresource.aspectMask       = tex->GetAspect();
-//        tp->imageSubresource.mipLevel         = 0;
-//        tp->imageSubresource.baseArrayLayer   = base_layer;
-//        tp->imageSubresource.layerCount       = layer_count;
-//        tp->imageOffset.x     = sp.left;
-//        tp->imageOffset.y     = sp.top;
-//        tp->imageOffset.z     = 0;
-//        tp->imageExtent.width = sp.width;
-//        tp->imageExtent.height= sp.height;
-//        tp->imageExtent.depth = 1;
-//
-//        offset+=sp.bytes;
-//        ++tp;
-//    }
-//
-//    texture_cmd_buf->Begin();
-//    bool result=CopyBufferToImageArray(tex,buf,buffer_image_copy,ir_count,1,destinationStage);
-//    texture_cmd_buf->End();
-//    SubmitTexture(*texture_cmd_buf);
-//    return result;
-//}
 
 bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf_dev,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf_dev
-        ||base_layer<0
         ||layer_count<=0
         ||scope.GetWidth()<=0
         ||scope.GetHeight()<=0
@@ -238,41 +122,112 @@ bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf_
     return result;
 }
 
-bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,const void *data,const VkDeviceSize size,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2DArrayMipmaps(Texture2DArray *tex,DeviceBuffer *buf_dev,const VkExtent3D &extent,const uint32_t top_mipmap_bytes,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
-    if(!tex||!data
-        ||size<=0
-        ||base_layer<0
+    if(!tex||!buf_dev
         ||layer_count<=0
-        ||scope.GetWidth()<=0
-        ||scope.GetHeight()<=0
-        ||scope.GetRight()>tex->GetWidth()
-        ||scope.GetBottom()>tex->GetHeight())
+        ||extent.width*extent.height<=0)
         return(false);
 
-    DeviceBuffer *buf=CreateTransferSourceBuffer(size,data);
+    const uint32_t mip_levels=tex->GetMipLevel();
 
-    bool result=ChangeTexture2DArray(tex,buf,scope,base_layer,layer_count,destinationStage);
+    if(mip_levels<=1)                   //单级数组走 ChangeTexture2DArray
+        return(false);
 
-    delete buf;
-    return(result);
+    //源 buffer 布局 = .Tex2D 文件内的 level0..level(n-1) 连续排列（与加载侧
+    //ComputeTexture2DMipmapChainBytes 的算法一致），因此逐级推进偏移即可整链拷入。
+    AutoDeleteArray<VkBufferImageCopy> bic_list(mip_levels);
+
+    VkDeviceSize offset=0;
+    uint32_t level=0;
+    uint32_t width=extent.width;
+    uint32_t height=extent.height;
+    uint32_t rolling_level_bytes=top_mipmap_bytes;
+
+    bic_list.zero();
+
+    for(VkBufferImageCopy &bic:bic_list)
+    {
+        bic.bufferOffset      =offset;
+        bic.bufferRowLength   =0;
+        bic.bufferImageHeight =0;
+        bic.imageSubresource.aspectMask       =tex->GetAspect();
+        bic.imageSubresource.mipLevel         =level++;
+        bic.imageSubresource.baseArrayLayer   =base_layer;
+        bic.imageSubresource.layerCount       =layer_count;
+        bic.imageOffset.x     =0;
+        bic.imageOffset.y     =0;
+        bic.imageOffset.z     =0;
+        bic.imageExtent.width =width;
+        bic.imageExtent.height=height;
+        bic.imageExtent.depth =1;
+
+        const bool can_half_width  =(width >1);
+        const bool can_half_height =(height>1);
+
+        uint32_t level_bytes=0;
+        if(IsBlockCompressedFormat(tex->GetFormat()))
+        {
+            if(!GetBlockCompressedLevelBytes(tex->GetFormat(),width,height,level_bytes))
+                return(false);      //块压缩但字节布局未支持：明确失败，勿按非压缩规则静默推进
+
+            offset+=level_bytes;
+        }
+        else
+        {
+            if(rolling_level_bytes<8)
+                offset+=8;
+            else
+                offset+=rolling_level_bytes;
+
+            if(can_half_width)  rolling_level_bytes>>=1;
+            if(can_half_height) rolling_level_bytes>>=1;
+        }
+
+        if(can_half_width)  width >>=1;
+        if(can_half_height) height>>=1;
+    }
+
+    const VkBuffer buf=buf_dev->GetBuffer();
+
+    texture_cmd_buf->Begin();
+    bool result=CopyBufferToImage(tex,buf,bic_list,mip_levels,base_layer,layer_count,destinationStage);
+    texture_cmd_buf->End();
+    SubmitTexture(*texture_cmd_buf);
+    return result;
 }
 
 bool TextureManager::GenerateTexture2DArrayMipmaps(Texture2DArray *tex, const uint32_t layer)
 {
-    if (!tex || tex->GetMipLevel() <= 1 || layer >= tex->GetLayer() || !texture_cmd_buf || !texture_queue)
-        return true;
+    if(!tex||!texture_cmd_buf||!texture_queue)
+        return(false);
+
+    if(layer>=tex->GetLayer())
+        return(false);
+
+    if(IsBlockCompressedFormat(tex->GetFormat()))       //块压缩格式不允许自动生成 mipmap
+    {
+        GLogError("[Texture2DArray] compressed format %s does not support mipmap auto-generation (layer=%u)",
+                  GetVulkanFormatName(tex->GetFormat())?GetVulkanFormatName(tex->GetFormat()):"unknown",
+                  layer);
+        return(false);
+    }
+
+    if(tex->GetMipLevel()<=1)                           //单级数组无需生成
+        return(true);
 
     ImageSubresourceRange range(tex->GetAspect(), tex->GetMipLevel(), 1);
     range.baseArrayLayer = layer;
 
     texture_cmd_buf->Begin();
+    //入口屏障：源 buffer 的写入（拷贝以 TRANSFER_BIT 结束，图像停在 TRANSFER_DST 布局）
+    //必须对 blit 读可见——原实现按 SHADER_READ_ONLY 作为 oldLayout，与本路径实际状态不符。
     texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-                                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                        VK_ACCESS_SHADER_READ_BIT,
+                                        VK_PIPELINE_STAGE_TRANSFER_BIT,
                                         VK_ACCESS_TRANSFER_WRITE_BIT,
-                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        VK_ACCESS_TRANSFER_READ_BIT,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                         range);
     GenerateMipmaps(texture_cmd_buf,

@@ -94,7 +94,7 @@ public: //Create/Chagne
 
     Texture2DArray *CreateTexture2DArray(TextureData *);
     Texture2DArray *CreateTexture2DArray(TextureCreateInfo *ci);
-    Texture2DArray *CreateTexture2DArray(const uint32_t w,const uint32_t h,const uint32 l,const VkFormat fmt,const bool mipmaps);
+    Texture2DArray *CreateTexture2DArray(const uint32_t w,const uint32_t h,const uint32 l,const VkFormat fmt,const uint32_t mip_levels=1);
 
     TextureCube *CreateTextureCube(TextureData *);
     TextureCube *CreateTextureCube(TextureCreateInfo *ci);
@@ -105,8 +105,10 @@ public: //Create/Chagne
     bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,                         const RectScope2ui &,               VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2D(Texture2D *,const void *data,const VkDeviceSize size,  const RectScope2ui &,               VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
-//    bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,             const ValueArray<Image2DRegion> &,  const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,                       const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+    /// 整条 mip 链逐层拷入（源 buffer 布局 = .Tex2D 文件内的 level0..level(n-1) 连续排列）
+    bool ChangeTexture2DArrayMipmaps(Texture2DArray *,DeviceBuffer *buf,const VkExtent3D &extent,const uint32_t top_mipmap_bytes,const uint32_t base_layer,const uint32_t layer_count=1,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2DArray(Texture2DArray *,const void *data,const VkDeviceSize size,const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
 public:
@@ -127,7 +129,7 @@ public: // Load
     Texture2D *         LoadTexture2D(const OSString &,bool auto_mipmaps=false);
     TextureCube *       LoadTextureCube(const OSString &,bool auto_mipmaps=false);
 
-    Texture2DArray *    CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
+    Texture2DArray *    CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,const uint32_t mip_levels=1);
     bool                LoadTexture2DArray(Texture2DArray *,const uint32_t layer,const OSString &);
     bool                GenerateTexture2DArrayMipmaps(Texture2DArray *,const uint32_t layer);
 

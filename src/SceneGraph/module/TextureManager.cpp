@@ -4,6 +4,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/object/ObjectTracker.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat format) const
@@ -163,14 +164,20 @@ Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipm
     return tex;
 }
 
-Texture2DArray *TextureManager::CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps)
+Texture2DArray *TextureManager::CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,const uint32_t mip_levels)
 {
-    Texture2DArray *ta=CreateTexture2DArray(width,height,layer,fmt,auto_mipmaps);
+    Texture2DArray *ta=CreateTexture2DArray(width,height,layer,fmt,mip_levels);
 
     if(ta)
         Add(ta);
     else
         return nullptr;
+
+    GLogInfo("[Texture2DArray] create name=%s %ux%u layers=%u fmt=%s mip_levels=%u",
+             name.c_str(),
+             width,height,layer,
+             GetVulkanFormatName(fmt)?GetVulkanFormatName(fmt):"unknown",
+             ta->GetMipLevel());
 
     //#ifdef _DEBUG
     //    DebugUtils *du=device->GetDebugUtils();
@@ -186,13 +193,13 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const AnsiString &name,cons
     return ta;
 }
 
-bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *t2d,const uint32_t layer,const OSString &filename,bool auto_mipmaps);
+bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *t2d,const uint32_t layer,const OSString &filename);
 
 bool TextureManager::LoadTexture2DArray(Texture2DArray *ta,const uint32_t layer,const OSString &filename)
 {
     if(!ta)return(false);
 
-    if(!LoadTexture2DLayerFromFile(this,ta,layer,filename,false))
+    if(!LoadTexture2DLayerFromFile(this,ta,layer,filename))
         return(false);
 
     return(true);

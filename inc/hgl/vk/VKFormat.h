@@ -363,6 +363,64 @@ inline const bool CheckVulkanFormat(const VkFormat format)
     return(false);
 }
 
+/**
+ * 块压缩格式判定（BC / ETC2·EAC / ASTC / PVRTC）。
+ *
+ * 块压缩格式的最小数据单位是块（BC 为 4x4 像素），不能按普通图像逐像素折半；
+ * 且逐级 blit 生成 mipmap 在本引擎中不受支持——因此规则是：
+ *   * 块压缩格式的 mipmap 必须由资产自带（.Tex2D 文件内的完整链）；
+ *   * 本函数为真的格式，不允许走「自动生成 mipmap」路径。
+ */
+constexpr bool IsBlockCompressedFormat(const VkFormat format)
+{
+    return (format>=PF_BC1_RGBUN  &&format<=PF_BC7s)              // BC1~BC7（含 SRGB/SNORM/FLOAT 变体，数值连续）
+        || (format>=PF_ETC2_RGB8UN&&format<=PF_EAC_RG11SN)        // ETC2 / EAC（数值连续）
+        || (format>=PF_ASTC_4x4UN &&format<=PF_ASTC_12x12s)       // ASTC LDR
+        || (format>=PF_ASTC_SFLOAT_BEGIN_RANGE&&format<=PF_ASTC_SFLOAT_END_RANGE)   // ASTC SFLOAT
+        || (format>=PF_PVRTC_BEGIN_RANGE      &&format<=PF_PVRTC_END_RANGE);        // PVRTC
+}
+
+/**
+ * 块压缩格式单个 mip 级别的字节数（块字节数 x 块数）。
+ * 返回 false = 该格式不是（或暂未支持字节计算的）块压缩格式。
+ */
+inline bool GetBlockCompressedLevelBytes(const VkFormat format,
+                                         const uint32_t width,
+                                         const uint32_t height,
+                                         uint32_t &out_level_bytes)
+{
+    uint32_t block_bytes=0;
+
+    switch(format)
+    {
+        case PF_BC1_RGBUN:
+        case PF_BC1_RGBs:
+        case PF_BC1_RGBAUN:
+        case PF_BC1_RGBAs:
+        case PF_BC4UN:
+        case PF_BC4SN:                          block_bytes=8;  break;
+
+        case PF_BC2UN:
+        case PF_BC2s:
+        case PF_BC3UN:
+        case PF_BC3s:
+        case PF_BC5UN:
+        case PF_BC5SN:
+        case PF_BC6UF:
+        case PF_BC6SF:
+        case PF_BC7UN:
+        case PF_BC7s:                           block_bytes=16; break;
+
+        default:                                return(false);
+    }
+
+    const uint32_t blocks_x=(width +3u)/4u;
+    const uint32_t blocks_y=(height+3u)/4u;
+
+    out_level_bytes=blocks_x*blocks_y*block_bytes;
+    return(true);
+}
+
 //以下为AMD/NVIDIA/INTEL/QUALCOMM/ARM/POWERVR全部可用Optimal模式的格式
 #define UPF_RGB565     PF_RGB565
 #define UPF_A1RGB5     PF_A1RGB5

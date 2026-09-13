@@ -97,7 +97,7 @@ private:
                                 512,512,            ///<纹理尺寸
                                 TexCount,           ///<纹理层数
                                 PF_BC7UN,           ///<纹理格式
-                                false);             ///<是否自动产生mipmaps
+                                1);             ///<mip级别数：1 = 只用 0 级（资产自带完整链）
 
         if(!texture)return(false);
 
