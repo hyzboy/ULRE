@@ -13,16 +13,17 @@ bool BindlessTextureManager::Init(VkDevice device)
 
     // ── 描述符池（UPDATE_AFTER_BIND） ──────────────────────────────────
     {
-        VkDescriptorPoolSize pool_sizes[2] = {
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, kMax },
-            { VK_DESCRIPTOR_TYPE_SAMPLER,       kMaxSampler }
+        VkDescriptorPoolSize pool_sizes[3] = {
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, kMax },        // binding=0 texture2DArray
+            { VK_DESCRIPTOR_TYPE_SAMPLER,       kMaxSampler }, // binding=1 sampler
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, kMax },        // binding=2 textureCube
         };
 
         VkDescriptorPoolCreateInfo pool_ci{};
         pool_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pool_ci.flags         = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
         pool_ci.maxSets       = 1;
-        pool_ci.poolSizeCount = 2;
+        pool_ci.poolSizeCount = 3;
         pool_ci.pPoolSizes    = pool_sizes;
 
         if (vkCreateDescriptorPool(device_, &pool_ci, nullptr, &pool_) != VK_SUCCESS)
@@ -34,7 +35,7 @@ bool BindlessTextureManager::Init(VkDevice device)
 
     // ── 描述符集布局 ──────────────────────────────────────────────────
     {
-        VkDescriptorSetLayoutBinding bindings[2]{};
+        VkDescriptorSetLayoutBinding bindings[3]{};
 
         // binding=0 : texture2DArray[]（SAMPLED_IMAGE，非均匀索引）
         bindings[0].binding         = 0;
@@ -48,23 +49,31 @@ bool BindlessTextureManager::Init(VkDevice device)
         bindings[1].descriptorCount = kMaxSampler;
         bindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        VkDescriptorBindingFlags flags[2] = {
+        // binding=2 : textureCube[]（SAMPLED_IMAGE，Cubemap，非均匀索引）
+        bindings[2].binding         = 2;
+        bindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        bindings[2].descriptorCount = kMax;
+        bindings[2].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+
+        VkDescriptorBindingFlags flags[3] = {
             // binding=0：纹理支持帧内 update-after-bind
             VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
             // binding=1：采样器池仅 PARTIALLY_BOUND（注册须在集合绑定前）
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
+            // binding=2：cubemap 纹理同 binding=0
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
         };
 
         VkDescriptorSetLayoutBindingFlagsCreateInfo flags_ci{};
         flags_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-        flags_ci.bindingCount  = 2;
+        flags_ci.bindingCount  = 3;
         flags_ci.pBindingFlags = flags;
 
         VkDescriptorSetLayoutCreateInfo layout_ci{};
         layout_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layout_ci.pNext        = &flags_ci;
         layout_ci.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-        layout_ci.bindingCount = 2;
+        layout_ci.bindingCount = 3;
         layout_ci.pBindings    = bindings;
 
         if (vkCreateDescriptorSetLayout(device_, &layout_ci, nullptr, &layout_) != VK_SUCCESS)
@@ -142,14 +151,18 @@ uint32_t BindlessTextureManager::RegisterTexture(Texture *tex)
     const uint32_t tex_handle = next_handle_++;
     tex_cache_.Add(tex, tex_handle);
 
+    // Cubemap 纹理写 binding=2(textureCube[])，其余写 binding=0(texture2DArray[])
+    const VkImageView cube_view = tex->GetBindlessCubeView();
+
     VkDescriptorImageInfo img_info{};
     img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    img_info.imageView   = tex->GetBindlessArrayView();
+    img_info.imageView   = cube_view ? cube_view
+                                     : tex->GetBindlessArrayView();
 
     VkWriteDescriptorSet write{};
     write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.dstSet          = set_;
-    write.dstBinding      = 0;
+    write.dstBinding      = cube_view ? 2 : 0;
     write.dstArrayElement = tex_handle - 1;   // 0-based array index
     write.descriptorCount = 1;
     write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
@@ -157,7 +170,9 @@ uint32_t BindlessTextureManager::RegisterTexture(Texture *tex)
 
     vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
 
-    GLogInfo("[BindlessTextureManager] Register texture handle=%u", tex_handle);
+    GLogInfo("[BindlessTextureManager] Register texture handle=%u (%s)",
+             tex_handle,
+             cube_view ? "cube" : "2darray");
     return tex_handle;
 }
 

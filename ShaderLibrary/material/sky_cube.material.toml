@@ -1,0 +1,23 @@
+schema = 3
+id = "SkyCube"
+name = "SkyCube"
+provider_policy = "GeometryOnly"
+
+[transform]
+source = "Vec3Position"
+mapping = "Passthrough3D"
+orientation = "World"
+scale = "World"
+projection = "WorldCameraVP"
+
+[fragment]
+material_source_module = "material/sky_cube_source.glsl"
+
+[vertex]
+requirements = ["Position"]
+varyings = ["emit_frag_direction", "emit_data_index_id"]
+
+[resources]
+ubos = ["CameraInfo"]
+textures = [{ name = "sky_cube", sampler = "SamplerCube", required = true }]
+samplers = ["Trilinear"]

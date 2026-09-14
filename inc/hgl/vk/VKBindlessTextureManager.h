@@ -16,6 +16,8 @@ namespace hgl::graph
      * 纹理与 sampler 彻底分离：
      *   binding=0 : texture2DArray[]（SAMPLED_IMAGE，非均匀索引）
      *   binding=1 : sampler[]        （SAMPLER，统一预设，按索引引用）
+     *   binding=2 : textureCube[]    （SAMPLED_IMAGE，Cubemap 纹理；与
+     *              binding=0 共享 1-based handle 空间，按纹理类型分流）
      *
      * RegisterTexture 返回纯 tex_handle（1-based，0=无效）；
      * RegisterSamplers 按 ShaderLibrary/sampler.toml 的顺序一次性创建全部 sampler，

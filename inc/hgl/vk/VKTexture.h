@@ -52,6 +52,13 @@ public:
      */
     virtual VkImageView         GetBindlessArrayView ()       {return GetVulkanImageView();}
 
+    /**
+     * 返回 bindless Cubemap 采样用 image view（textureCube[]）。
+     * 仅 TextureCube 覆写返回主 view；其余纹理返回空句柄，
+     * BindlessTextureManager 据此分流到不同 binding。
+     */
+    virtual VkImageView         GetBindlessCubeView  ()       {return VK_NULL_HANDLE;}
+
 public:
 
     Texture(TextureManager *tm,const TextureID &id,TextureData *td)
@@ -123,6 +130,9 @@ public:
 
     const uint32_t GetWidth ()const{return data?data->image_view->GetExtent().width:0;}
     const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
+
+    /// Cubemap 主 view 即 CUBE 类型，直接供 bindless textureCube[] 采样
+    VkImageView GetBindlessCubeView() override {return GetVulkanImageView();}
 };//class TextureCube:public Texture
 
 //class TextureCubeArray:public Texture

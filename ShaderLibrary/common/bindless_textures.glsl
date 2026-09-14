@@ -33,6 +33,8 @@
 
 layout(set=BINDLESS_SET, binding=0) uniform texture2DArray bindless_tex[];
 layout(set=BINDLESS_SET, binding=1) uniform sampler bindless_samp[];
+// Cubemap 纹理数组（与 binding=0 共享 1-based handle 空间，按材质槽类型分流）
+layout(set=BINDLESS_SET, binding=2) uniform textureCube bindless_cube[];
 
 // ── 采样辅助函数 ─────────────────────────────────────────────────────
 
@@ -52,6 +54,16 @@ vec4 Sample2DArray(uint tex_handle, uint samp_idx, vec2 uv, float layer)
     return texture(sampler2DArray(bindless_tex[nonuniformEXT(tex_handle - 1u)],
                                   bindless_samp[nonuniformEXT(samp_idx)]),
                    vec3(uv, layer));
+}
+
+// Cubemap 方向采样（handle 与 2D 纹理共享编号空间）
+vec4 SampleCube(uint tex_handle, uint samp_idx, vec3 dir)
+{
+    if (tex_handle == 0u)
+        return vec4(0.0);
+    return texture(samplerCube(bindless_cube[nonuniformEXT(tex_handle - 1u)],
+                               bindless_samp[nonuniformEXT(samp_idx)]),
+                   dir);
 }
 
 // 可选纹理槽统一取样：引用行句柄为 0（未绑定）时返回 fallback，
