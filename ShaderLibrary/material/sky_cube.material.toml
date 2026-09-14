@@ -1,4 +1,4 @@
-schema = 3
+﻿schema = 3
 id = "SkyCube"
 name = "SkyCube"
 provider_policy = "GeometryOnly"
@@ -9,9 +9,6 @@ mapping = "Passthrough3D"
 orientation = "World"
 scale = "World"
 projection = "WorldCameraVP"
-
-[fragment]
-material_source_module = "material/sky_cube_source.glsl"
 
 [vertex]
 requirements = ["Position"]
