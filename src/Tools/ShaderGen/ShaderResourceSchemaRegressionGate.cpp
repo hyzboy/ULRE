@@ -426,25 +426,26 @@ namespace
             }
         }
 
-        // Every built-in definition must still expose the legacy position-first
-        // contract while Phase 4 is introduced incrementally.
-        static const char *builtin_ids[] = {
-            BUILTIN_MTL_DEF_PURE_COLOR,
-            BUILTIN_MTL_DEF_MISSING_MATERIAL,
-            BUILTIN_MTL_DEF_TEXT
+        // Every special-purpose file definition must expose the legacy
+        // position-first contract while Phase 4 is introduced incrementally.
+        static const char *material_ids[] = {
+            "builtin/pure_color",
+            "builtin/checkerboard_2d",
+            "builtin/checkerboard_3d",
+            "builtin/text_gpu",
+            "builtin/text_gpu_bitmap"
         };
-        for (const char *id : builtin_ids)
+        for (const char *id : material_ids)
         {
             MaterialDefinition definition{};
             if (!TryGetMaterialDefinitionByID(id, definition))
             {
-                result.diagnostics.emplace_back(std::string("missing built-in definition: ") + id);
+                result.diagnostics.emplace_back(std::string("missing file definition: ") + id);
                 continue;
             }
-            if (!IsBootstrapMaterialDefinition(definition)
-             || definition.vertex_semantic_requirements.IsEmpty())
+            if (definition.vertex_semantic_requirements.IsEmpty())
             {
-                result.diagnostics.emplace_back(std::string("invalid legacy vertex ABI: ") + id);
+                result.diagnostics.emplace_back(std::string("invalid file vertex ABI: ") + id);
             }
         }
 
@@ -458,8 +459,11 @@ namespace
         result.name = "L.material-semantic-abi-parity";
 
         static const char *definition_ids[] = {
-            BUILTIN_MTL_DEF_PURE_COLOR,
-            BUILTIN_MTL_DEF_TEXT
+            "builtin/pure_color",
+            "builtin/text_gpu",
+            "builtin/text_gpu_bitmap",
+            "builtin/checkerboard_2d",
+            "builtin/checkerboard_3d"
         };
 
         for (const char *id : definition_ids)
@@ -1600,10 +1604,10 @@ namespace
         return result;
     }
 
-    static GateResult RunBuiltinRegistryCoverageCase()
+    static GateResult RunMaterialRegistryCoverageCase()
     {
         GateResult result;
-        result.name = "E.builtin-registry-coverage";
+        result.name = "E.material-registry-coverage";
 
         struct ExpectedEntry
         {
@@ -1612,9 +1616,11 @@ namespace
 
         static const ExpectedEntry expected[] =
         {
-            { BUILTIN_MTL_DEF_PURE_COLOR },
-            { BUILTIN_MTL_DEF_MISSING_MATERIAL },
-            { BUILTIN_MTL_DEF_TEXT }
+            { "builtin/pure_color" },
+            { "builtin/text_gpu" },
+            { "builtin/text_gpu_bitmap" },
+            { "builtin/checkerboard_2d" },
+            { "builtin/checkerboard_3d" }
         };
 
         for (const auto &entry : expected)
@@ -1626,72 +1632,8 @@ namespace
                 continue;
             }
 
-            if (definition.definition_name.empty()
-             || !IsBootstrapMaterialDefinition(definition)
-             || definition.source_kind != MaterialDefinitionSourceKind::File)
+            if (definition.definition_name.empty())
                 result.diagnostics.emplace_back(std::string("Empty material definition name: ") + entry.definition_id);
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunBootstrapMaterialBoundaryCase()
-    {
-        GateResult result;
-        result.name = "R.bootstrap-material-boundary";
-
-        struct ExpectedBootstrap
-        {
-            const char *definition_id;
-            MaterialDefinitionBootstrapKind kind;
-        };
-
-        static const ExpectedBootstrap expected[] = {
-            {BUILTIN_MTL_DEF_PURE_COLOR, MaterialDefinitionBootstrapKind::PureColor},
-            {BUILTIN_MTL_DEF_MISSING_MATERIAL, MaterialDefinitionBootstrapKind::PureColor},
-            {BUILTIN_MTL_DEF_TEXT, MaterialDefinitionBootstrapKind::TextAlphaBlend}
-        };
-
-        for (const auto &entry : expected)
-        {
-            MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(entry.definition_id, definition))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("missing bootstrap definition: ") + entry.definition_id);
-                continue;
-            }
-
-            if (!IsBootstrapMaterialDefinition(definition)
-             || definition.bootstrap_kind != entry.kind
-             || definition.source_kind != MaterialDefinitionSourceKind::File)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("invalid bootstrap metadata: ") + entry.definition_id);
-            }
-        }
-
-        const char *non_bootstrap_ids[] = {
-            "VertexColor", "UnlitTexture",
-            "VertexLuminance", "VertexPaletteColor", "DebugNormalColor", "SkyMinimal", "Lit",
-        };
-        for (const char *id : non_bootstrap_ids)
-        {
-            MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(id, definition))
-            {
-                result.diagnostics.emplace_back(std::string("missing non-bootstrap definition: ") + id);
-                continue;
-            }
-            if (IsBootstrapMaterialDefinition(definition))
-                result.diagnostics.emplace_back(std::string("non-bootstrap material marked bootstrap: ") + id);
-        }
-
-        if (BUILTIN_MTL_DEF_TEXT[0] == 0
-         || BUILTIN_MTL_DEF_PURE_COLOR[0] == 0)
-        {
-            result.diagnostics.emplace_back("bootstrap canonical IDs must not be empty");
         }
 
         result.passed = result.diagnostics.empty();
@@ -1704,49 +1646,38 @@ namespace
         result.name = "R1.material-definition-identity";
 
         MaterialDefinition pure_color{};
-        MaterialDefinition missing_alias{};
-        if (!TryGetMaterialDefinitionByID(
-                BUILTIN_MTL_DEF_PURE_COLOR, pure_color)
-         || !TryGetMaterialDefinitionByID(
-                BUILTIN_MTL_DEF_MISSING_MATERIAL, missing_alias))
+        if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
         {
             result.diagnostics.emplace_back(
-                "PureColor canonical definition or compatibility alias is missing");
+                "PureColor canonical definition is missing");
         }
         else
         {
-            if (pure_color.definition_id != BUILTIN_MTL_DEF_PURE_COLOR
-             || missing_alias.definition_id != pure_color.definition_id
-             || missing_alias.definition_name != pure_color.definition_name)
+            if (pure_color.definition_id != "builtin/pure_color")
             {
                 result.diagnostics.emplace_back(
-                    "PureColor alias must resolve to the canonical definition identity");
+                    "PureColor canonical definition identity changed");
             }
         }
 
         MaterialDefinition text{};
-        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_TEXT, text))
+        if (!TryGetMaterialDefinitionByID("builtin/text_gpu", text))
         {
             result.diagnostics.emplace_back("Text canonical definition is missing");
         }
-        else if (text.definition_id != BUILTIN_MTL_DEF_TEXT
-              || text.source_kind != MaterialDefinitionSourceKind::File
-              || !IsBootstrapMaterialDefinition(text)
-              || text.bootstrap_kind != MaterialDefinitionBootstrapKind::TextAlphaBlend)
+        else if (text.definition_id != "builtin/text_gpu")
         {
             result.diagnostics.emplace_back(
-                "Text canonical definition must be a file-backed TextAlphaBlend bootstrap");
+                "Text canonical definition identity changed");
         }
 
         MaterialRecipe canonical_recipe{};
-        canonical_recipe.mtl_def_id = BUILTIN_MTL_DEF_TEXT;
+        canonical_recipe.mtl_def_id = "builtin/text_gpu";
         NormalizeRecipe(canonical_recipe);
 
         MaterialDefinition ordinary{};
         if (!TryGetMaterialDefinitionByID("Lit", ordinary)
-         || ordinary.definition_id != "Lit"
-         || ordinary.source_kind != MaterialDefinitionSourceKind::File
-         || IsBootstrapMaterialDefinition(ordinary))
+         || ordinary.definition_id != "Lit")
         {
             result.diagnostics.emplace_back(
                 "ordinary material lookup must resolve the TOML definition");
@@ -1762,12 +1693,11 @@ namespace
         result.name = "T.unified-material-baseline";
 
         MaterialDefinition pure_color{};
-        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_PURE_COLOR, pure_color))
+        if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
         {
             result.diagnostics.emplace_back("canonical PureColor must exist");
         }
-        else if (!IsPureColorMaterialDefinition(pure_color)
-               || pure_color.material_private_data != MaterialSSBOType::EmissiveSurface
+        else if (pure_color.material_private_data != MaterialSSBOType::EmissiveSurface
                || pure_color.vertex_semantic_requirements.GetCount() != 1)
             result.diagnostics.emplace_back("canonical PureColor contract is not semantic-only");
 
@@ -1814,9 +1744,8 @@ namespace
                     "output purpose contract mapping mismatch");
             }
 
-            // 单趟发射改造（2026-09）：FS 由发射器组装，输出附件声明不再经
-            // marker 替换注入——原 ApplyMaterialOutputContract/MissingContractMarker
-            // 机制随 marker 体系删除。
+            // Fragment output attachments are emitted directly by the native
+            // document emitter and remain part of the output contract.
 
             MaterialDefinition lit{};
             if (!TryGetMaterialDefinitionByID("Lit", lit))
@@ -2137,8 +2066,8 @@ namespace
             {"UnlitTexture", "material/texture_source.glsl"},
             {"DebugNormalColor", "material/debug_normal_source.glsl"},
             {"Lit", "material/pbr_surface_source.glsl"},
-            {BUILTIN_MTL_DEF_PURE_COLOR, "material/unlit_source.glsl"},
-            {BUILTIN_MTL_DEF_TEXT, "material/text_source_gpu.glsl"}
+            {"builtin/pure_color", "material/unlit_source.glsl"},
+            {"builtin/text_gpu", "material/text_source_gpu.glsl"}
         };
 
         for (const ExpectedSource &expected : expected_sources)
@@ -2262,7 +2191,7 @@ namespace
         result.name = "V.unified-purecolor-fragment";
 
         MaterialDefinition pure_color{};
-        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_PURE_COLOR, pure_color))
+        if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
         {
             result.diagnostics.emplace_back("unified PureColor definition is unavailable");
             result.passed = false;
@@ -2303,18 +2232,17 @@ namespace
         GateResult result;
         result.name = "U.unified-material-contract";
 
-        if (std::strcmp(BUILTIN_MTL_DEF_PURE_COLOR, "builtin/pure_color") != 0)
+        if (std::strcmp("builtin/pure_color", "builtin/pure_color") != 0)
             result.diagnostics.emplace_back("canonical PureColor ID changed unexpectedly");
 
         MaterialDefinition pure_color{};
-        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_PURE_COLOR, pure_color))
+        if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
         {
             result.diagnostics.emplace_back("canonical PureColor definition missing during contract phase");
         }
         else
         {
-            if (!IsPureColorMaterialDefinition(pure_color)
-             || pure_color.material_private_data != MaterialSSBOType::EmissiveSurface
+            if (pure_color.material_private_data != MaterialSSBOType::EmissiveSurface
              || pure_color.vertex_semantic_requirements.GetCount() != 1)
                 result.diagnostics.emplace_back("PureColor contract is not canonical");
         }
@@ -2557,11 +2485,9 @@ namespace
         result.name = "S.material-definition-file-schema";
 
         const char material_file[] =
-            "schema = 2\n"
+            "schema = 3\n"
             "id = \"LitFile\"\n"
             "name = \"LitFile\"\n"
-            "source = \"file\"\n"
-            "bootstrap = \"None\"\n"
             "provider_policy = \"AllowDerived\"\n"
             "[transform]\n"
             "source = \"Vec3Position\"\n"
@@ -2593,8 +2519,7 @@ namespace
         else
         {
             const auto &definition = data.definition;
-            if (definition.source_kind != MaterialDefinitionSourceKind::File
-             || definition.definition_id != "LitFile"
+            if (definition.definition_id != "LitFile"
              || definition.vertex_provider_policy != MaterialVertexProviderPolicy::AllowDerived
              || definition.vertex_node_config.position_mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
@@ -2629,8 +2554,6 @@ namespace
             "schema = 3\n"
             "id = \"TextureLayoutFile\"\n"
             "name = \"TextureLayoutFile\"\n"
-            "source = \"file\"\n"
-            "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
             "material_source_module = \"material/texture_source.glsl\"\n"
@@ -2789,8 +2712,6 @@ namespace
             "schema = 3\n"
             "id = \"InvalidTextureConfiguration\"\n"
             "name = \"InvalidTextureConfiguration\"\n"
-            "source = \"file\"\n"
-            "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
             "material_source_module = \"material/texture_source.glsl\"\n"
@@ -2816,8 +2737,6 @@ namespace
             "schema = 3\n"
             "id = \"DuplicateTextureName\"\n"
             "name = \"DuplicateTextureName\"\n"
-            "source = \"file\"\n"
-            "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
             "material_source_module = \"material/texture_source.glsl\"\n"
@@ -2843,8 +2762,6 @@ namespace
             "schema = 3\n"
             "id = \"InvalidTextureSwizzle\"\n"
             "name = \"InvalidTextureSwizzle\"\n"
-            "source = \"file\"\n"
-            "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
             "material_source_module = \"material/texture_source.glsl\"\n"
@@ -2864,11 +2781,9 @@ namespace
         }
 
         const char unknown_table_file[] =
-            "schema = 2\n"
+            "schema = 3\n"
             "id = \"UnknownTable\"\n"
             "name = \"UnknownTable\"\n"
-            "source = \"file\"\n"
-            "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
             "material_source_module = \"material/unlit_source.glsl\"\n"
@@ -2888,19 +2803,23 @@ namespace
         }
 
         const char invalid_file[] =
-            "schema = 1\n"
+            "schema = 3\n"
             "id = \"Broken\"\n"
             "name = \"Broken\"\n"
-            "source = \"builtin\"\n"
+            "source = \"file\"\n"
             "bootstrap = \"None\"\n"
-            "provider_policy = \"GeometryOnly\"\n";
+            "provider_policy = \"GeometryOnly\"\n"
+            "[fragment]\n"
+            "material_source_module = \"material/unlit_source.glsl\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\"]\n";
         MaterialDefinitionFileData invalid_data;
         if (ParseMaterialDefinitionFile(
                 invalid_file, static_cast<int>(std::strlen(invalid_file)), invalid_data)
-                != MaterialDefinitionFileParseResult::InvalidValue)
+                != MaterialDefinitionFileParseResult::UnknownKey)
         {
             result.diagnostics.emplace_back(
-                "material schema must reject non-File source");
+                "removed source/bootstrap metadata must be rejected");
         }
 
         MaterialDefinitionFileRegistry registry;
@@ -2908,7 +2827,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 10
+         || file_count != 12
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -2919,8 +2838,10 @@ namespace
                 "Lit", "SkyMinimal", "DebugNormalColor",
                 "VertexColor", "UnlitTexture",
                 "VertexLuminance", "VertexPaletteColor",
-                "builtin/pure_color", "builtin/text_gpu",
-                "builtin/text_gpu_bitmap"
+                "builtin/pure_color",
+                "builtin/checkerboard_2d",
+                "builtin/checkerboard_3d",
+                "builtin/text_gpu", "builtin/text_gpu_bitmap"
             };
             for (const char *id : expected_file_ids)
             {
@@ -2933,7 +2854,11 @@ namespace
             "Lit", "SkyMinimal", "DebugNormalColor", "VertexColor",
             "UnlitTexture",
             "VertexLuminance",
-            "VertexPaletteColor"
+            "VertexPaletteColor",
+            "builtin/pure_color",
+            "builtin/checkerboard_2d",
+            "builtin/checkerboard_3d",
+            "builtin/text_gpu", "builtin/text_gpu_bitmap"
         };
         for (const char *id : bulk_ids)
         {
@@ -2943,7 +2868,7 @@ namespace
              || !TryGetMaterialDefinitionByID(id, registry_definition))
             {
                 result.diagnostics.emplace_back(
-                    std::string("bulk file/legacy lookup failed: ") + id);
+                    std::string("bulk file lookup failed: ") + id);
                 continue;
             }
 
@@ -2993,6 +2918,17 @@ namespace
             const ResolvedMaterialRenderState render_state =
                 ResolveMaterialRenderState(
                     *file_definition, MaterialRecipe{});
+            const bool is_text_material =
+                std::strcmp(id, "builtin/text_gpu") == 0
+             || std::strcmp(id, "builtin/text_gpu_bitmap") == 0;
+            if (is_text_material)
+            {
+                if (!render_state.pipeline_config.alpha_blend)
+                    result.diagnostics.emplace_back(
+                        std::string("text material alpha blend mismatch: ")
+                        + id);
+                continue;
+            }
             if (render_state.alpha_test || render_state.dither
              || render_state.pipeline_config.alpha_to_coverage
              || render_state.pipeline_config.alpha_blend)
@@ -3024,13 +2960,14 @@ namespace
         }
 
         const char *text_ids[] = {
-            BUILTIN_MTL_DEF_TEXT, BUILTIN_MTL_DEF_TEXT_BITMAP
+            "builtin/text_gpu", "builtin/text_gpu_bitmap"
         };
         for (const char *id : text_ids)
         {
-            const MaterialDefinition *definition = registry.FindByID(id);
-            if (!definition || !ResolveMaterialRenderState(
-                    *definition, MaterialRecipe{}).pipeline_config.alpha_blend)
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(id, definition)
+             || !ResolveMaterialRenderState(
+                    definition, MaterialRecipe{}).pipeline_config.alpha_blend)
             {
                 result.diagnostics.emplace_back(
                     std::string("text material alpha blend state missing: ")
@@ -3058,7 +2995,7 @@ namespace
         if (gvf_2d.GetVertexInputHash() == gvf_3d.GetVertexInputHash())
             result.diagnostics.emplace_back(
                 "Geometry formats with different dimensions must remain distinct");
-        if (std::strcmp(GetFallbackMaterialDefinitionID(), BUILTIN_MTL_DEF_PURE_COLOR) != 0)
+        if (std::strcmp(GetFallbackMaterialDefinitionID(), "builtin/pure_color") != 0)
             result.diagnostics.emplace_back("all Geometry dimensions must use unified PureColor fallback");
 
         result.passed = result.diagnostics.empty();
@@ -3321,14 +3258,14 @@ namespace
         else
         {
             // Native template migration adds explicit identity shadow/AO providers.
-            if (file_count != 65)
-                result.diagnostics.emplace_back("LoadDirectory expected 65 file modules, got "
+            if (file_count != 67)
+                result.diagnostics.emplace_back("LoadDirectory expected 67 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 65;
+            const int expected_count = 67;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -4420,8 +4357,7 @@ int main(const int argc, char **argv)
     }
 
     if (run_materialization) results.push_back(RunMaterializationSharedInstanceCase());
-    if (run_materialization) results.push_back(RunBuiltinRegistryCoverageCase());
-    if (run_materialization) results.push_back(RunBootstrapMaterialBoundaryCase());
+    if (run_materialization) results.push_back(RunMaterialRegistryCoverageCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionIdentityCase());
     if (run_pipeline) results.push_back(RunUnifiedMaterialBaselineCase());
     if (run_pipeline) results.push_back(RunMaterialOutputContractCase());

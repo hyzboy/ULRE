@@ -58,8 +58,6 @@ namespace
         if (!mtl_def_id || !mtl_def_id[0])
             return false;
 
-        // 全部材质定义（含内置 bootstrap：pure_color/text_2d）均为 TOML
-        // 文件承载，统一走文件注册表查询。
         const MaterialDefinitionFileRegistry &file_registry =
             GetMaterialDefinitionFileRegistry();
         const MaterialDefinition *file_definition =
@@ -211,7 +209,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         if (!registry.LoadDirectory(
                 material_path.ToOSString(), &file_count, &error_count))
         {
-            GLogWarning("[ShaderGen] Material TOML directory unavailable; using built-in definitions");
+            GLogError("[ShaderGen] Material TOML directory unavailable; no material definitions are available");
         }
         else
         {

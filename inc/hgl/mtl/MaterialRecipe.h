@@ -227,6 +227,14 @@ namespace hgl::graph::mtl
         AllowDerived
     };
 
+    enum class MaterialVertexNormalMode : uint8
+    {
+        None = 0,
+        // Emit a vertex normal only when geometry supplies one; providers
+        // must implement their own face-normal fallback otherwise.
+        OptionalFaceFallback
+    };
+
     inline ShaderCodeModuleSemantic GetShaderCodeModuleSemanticFromVertexSemantic(
         const VertexSemantic semantic) noexcept
     {
@@ -273,24 +281,10 @@ namespace hgl::graph::mtl
 
     // MaterialVertexVaryingConfig — see <hgl/mtl/MaterialVertexVaryingConfig.h>
 
-    // MaterialDefinition 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
-    enum class MaterialDefinitionSourceKind : uint8_t
-    {
-        BuiltIn = 0,  // M_* 硬编码 creator（用于 fallback 与少量保底材质）
-        File,         // 外部 MaterialDefinition 文件（未来主路径）
-    };
-
-    enum class MaterialDefinitionBootstrapKind : uint8_t
-    {
-        None = 0,
-        PureColor,
-        TextAlphaBlend
-    };
-
     struct MaterialDefinition
     {
         // ── Layer 1: MaterialDefinition = Capability Superset ─────────────────────────
-        // 描述一个材质"能做什么"，由材质文件（未来）或 M_* 内置工厂注册。
+        // 描述一个材质"能做什么"，由 schema-3 MaterialDefinition 文件提供。
         // 包含静态资源能力声明和渲染选项包络。
         // 不含任何运行时句柄或 Vulkan 对象。
         // ─────────────────────────────────────────────────────────────────────────────
@@ -298,8 +292,6 @@ namespace hgl::graph::mtl
         // Part-A: 基础语义/元信息
         std::string definition_id;                                   // 正式主键（字符串 ID / 未来文件名）
         std::string definition_name;                                 // 人类可读名称
-        MaterialDefinitionSourceKind source_kind = MaterialDefinitionSourceKind::BuiltIn;         // 来源类型
-        MaterialDefinitionBootstrapKind bootstrap_kind = MaterialDefinitionBootstrapKind::None;
 
         // Part-B: 材质私有数据 SSBO（单一声明，名字为 DefaultMaterialPrivateDataName）。
         // MaterialSSBOType 是材质域专用枚举；不再混入通用 SSBOType。
@@ -333,12 +325,13 @@ namespace hgl::graph::mtl
         // PCG 顶点节点配置（单一真源）
         VertexShaderNodeConfig vertex_node_config;
 
-        // Unified shader ABI/program contract shared by built-in and
-        // file-backed definitions. The generator must not infer this from
-        // the material name.
+        // Unified shader ABI/program contract shared by all file-backed
+        // definitions. The generator must not infer this from the material
+        // name.
         //
         ValueArray<ShaderCodeModuleSemanticRequirement> vertex_semantic_requirements;
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
+        MaterialVertexNormalMode vertex_normal_mode = MaterialVertexNormalMode::None;
         // Material-source provider capability. Render preparation maps it into
         // the caller-selected MaterialSourceProvider template root.
         const char *material_source_module = nullptr;

@@ -1,0 +1,17 @@
+schema = 3
+id = "builtin/checkerboard_2d"
+name = "builtin/checkerboard_2d"
+provider_policy = "GeometryOnly"
+
+[transform]
+source = "Vec2Position"
+mapping = "NDCLift"
+orientation = "World"
+scale = "World"
+projection = "LocalToWorldOnly"
+
+[fragment]
+material_source_module = "material/checkerboard_2d_source.glsl"
+
+[vertex]
+requirements = ["Position"]

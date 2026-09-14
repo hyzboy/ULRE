@@ -1,8 +1,6 @@
 schema = 3
 id = "VertexLuminance"
 name = "VertexLuminance"
-source = "file"
-bootstrap = "None"
 provider_policy = "GeometryOnly"
 
 [transform]

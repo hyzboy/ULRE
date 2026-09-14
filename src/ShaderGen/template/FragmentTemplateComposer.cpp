@@ -705,7 +705,7 @@ namespace hgl::graph::mtl
         ShaderDocumentDiagnostic *diagnostic = out_diagnostics.Create();
         diagnostic->code = "template-unregistered";
         diagnostic->message =
-           "No registered native fragment template matches the requested render template; legacy assembler fallback is intentionally disabled.";
+           "No registered native fragment template matches the requested render template.";
         diagnostic->block_index = -1;
         diagnostic->source.stage = "fragment";
         diagnostic->source.logical_name = "FragmentTemplateComposer";

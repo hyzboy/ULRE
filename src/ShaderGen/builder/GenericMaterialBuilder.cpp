@@ -107,6 +107,22 @@ namespace hgl::graph::mtl
             }
         }
 
+        bool HasVertexSemanticRequirement(
+            const MaterialDefinition &definition,
+            const VertexSemantic semantic) noexcept
+        {
+            for (int i = 0;
+                 i < definition.vertex_semantic_requirements.GetCount();
+                 ++i)
+            {
+                if (GetVertexSemanticFromShaderCodeModuleSemantic(
+                        definition.vertex_semantic_requirements[i].semantic)
+                    == semantic)
+                    return true;
+            }
+            return false;
+        }
+
         // Phase 1 — purpose / coverage / varying / stage interface
         // (originally MaterialDefinitionRegistry.cpp:235-305)
         // ═══════════════════════════════════════════════════════════════════
@@ -654,13 +670,31 @@ namespace hgl::graph::mtl
         const MaterialDefinition &definition,
         MaterialShaderDocumentCapture *document_capture)
     {
+        MaterialDefinition resolved_definition = definition;
+        if (definition.vertex_normal_mode
+                == MaterialVertexNormalMode::OptionalFaceFallback
+         && request.geometry_vertex_format
+         && request.geometry_vertex_format->Find(VertexSemantic::Normal))
+        {
+            resolved_definition.vertex_varying.emit_world_normal = true;
+            if (!HasVertexSemanticRequirement(
+                    resolved_definition, VertexSemantic::Normal))
+            {
+                resolved_definition.vertex_semantic_requirements.Add(
+                    MakeMaterialVertexSemanticRequirement(
+                        VertexSemantic::Normal));
+            }
+            resolved_definition.compile_defines.push_back(
+                "HGL_MATERIAL_HAS_VERTEX_NORMAL");
+        }
+
         const bool semantic_contract =
-            !definition.vertex_semantic_requirements.IsEmpty();
+            !resolved_definition.vertex_semantic_requirements.IsEmpty();
         if (!semantic_contract)
         {
             GLogError("[ShaderGen] Generic material contract invalid: name=%s semantic_requirements=%d",
                       definition.definition_name.c_str(),
-                      definition.vertex_semantic_requirements.GetCount());
+                      resolved_definition.vertex_semantic_requirements.GetCount());
             return nullptr;
         }
 
@@ -670,21 +704,23 @@ namespace hgl::graph::mtl
         // Lines 走 LineQuad，其余走 VertexPassthrough）
         plan.primitive_type = request.primitive_type;
 
-        if (!ResolvePurposeAndCoverage(definition, request, plan))
+        if (!ResolvePurposeAndCoverage(resolved_definition, request, plan))
             return nullptr;
 
-        if (!ResolveVertexABI(definition, request, plan))
+        if (!ResolveVertexABI(resolved_definition, request, plan))
             return nullptr;
 
-        if (!BuildResourceContract(definition, plan))
+        if (!BuildResourceContract(resolved_definition, plan))
             return nullptr;
 
-        if (!GenerateStageSources(profile, definition, document_capture, plan))
+        if (!GenerateStageSources(
+                profile, resolved_definition, document_capture, plan))
             return nullptr;
 
         MaterialShaderCompilerInput compiler_input{};
         MaterialCompileConfig config{};
-        if (!FinalizeProgramLink(profile, definition, request, plan,
+        if (!FinalizeProgramLink(
+                profile, resolved_definition, request, plan,
                                  compiler_input, config))
             return nullptr;
 

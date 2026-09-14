@@ -239,7 +239,7 @@ int main(const int argc, char **argv)
         has_profile = true;
     }
 
-    // ── 材质定义（TOML 目录随 ShaderLibrary 定位自动加载）──────────────
+    // ── 材质定义（schema-3 TOML only）─────────────────────────────────
     const mtl::MaterialDefinitionFileRegistry &registry =
         mtl::GetMaterialDefinitionFileRegistry();
     const int definition_count = registry.GetCount();
@@ -276,16 +276,11 @@ int main(const int argc, char **argv)
     int skipped = 0;
     int listed = 0;
 
-    for (int def_index = 0; def_index < definition_count; ++def_index)
+    auto cook_definition = [&](const mtl::MaterialDefinition &definition)
     {
-        const mtl::MaterialDefinitionFileData *file_data = registry.GetAt(def_index);
-        if (!file_data)
-            continue;
-        const mtl::MaterialDefinition &definition = file_data->definition;
-
         if (!options.material_filter.empty()
          && definition.definition_id != options.material_filter)
-            continue;
+            return;
 
         // 该材质的规范几何：Position（按节点配置的输入模式选格式）+ 语义需求全集。
         // 2D 材质（Vec2Position/Vec2IntPosition）的 s2/s3 模块按 vec2/int 构造，
@@ -300,7 +295,8 @@ int main(const int argc, char **argv)
             case mtl::VertexInputMode::Vec2IntPosition: position_format = VF_V2I; break;
             case mtl::VertexInputMode::None:            break;
             default:                               position_format = VF_V3F; break;
-            }
+            };
+
             if (position_format != VK_FORMAT_UNDEFINED
              && !geometry.Add(VertexSemantic::Position, position_format, 0, 0))
                 ++skipped;
@@ -452,6 +448,13 @@ int main(const int argc, char **argv)
                             PrimitiveName(primitive).c_str());
             }
         }
+    };
+
+    for (int def_index = 0; def_index < definition_count; ++def_index)
+    {
+        const mtl::MaterialDefinitionFileData *file_data = registry.GetAt(def_index);
+        if (file_data)
+            cook_definition(file_data->definition);
     }
 
     if (options.list_only)

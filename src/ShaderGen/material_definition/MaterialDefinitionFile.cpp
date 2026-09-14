@@ -55,24 +55,6 @@ namespace hgl::graph::mtl
             return ReadString(table, key, out) && !out.empty();
         }
 
-        bool ParseBootstrap(const std::string &name, MaterialDefinitionBootstrapKind &out)
-        {
-            static const struct { const char *name; MaterialDefinitionBootstrapKind value; } table[] = {
-                { "None",          MaterialDefinitionBootstrapKind::None },
-                { "PureColor",     MaterialDefinitionBootstrapKind::PureColor },
-                { "TextAlphaBlend", MaterialDefinitionBootstrapKind::TextAlphaBlend },
-            };
-            for (const auto &entry : table)
-            {
-                if (name == entry.name)
-                {
-                    out = entry.value;
-                    return true;
-                }
-            }
-            return false;
-        }
-
         bool ParsePolicy(const std::string &name, MaterialVertexProviderPolicy &out)
         {
             static const struct { const char *name; MaterialVertexProviderPolicy value; } table[] = {
@@ -87,6 +69,23 @@ namespace hgl::graph::mtl
                     out = entry.value;
                     return true;
                 }
+            }
+            return false;
+        }
+
+        bool ParseVertexNormalMode(
+            const std::string &name,
+            MaterialVertexNormalMode &out)
+        {
+            if (name == "None")
+            {
+                out = MaterialVertexNormalMode::None;
+                return true;
+            }
+            if (name == "OptionalFaceFallback")
+            {
+                out = MaterialVertexNormalMode::OptionalFaceFallback;
+                return true;
             }
             return false;
         }
@@ -745,23 +744,16 @@ namespace hgl::graph::mtl
         {
             std::string id;
             std::string name;
-            std::string source;
-            std::string bootstrap;
             std::string policy;
 
             if (!ReadRequiredString(root, "id", id)
              || !ReadRequiredString(root, "name", name)
-             || !ReadRequiredString(root, "source", source)
-             || !ReadRequiredString(root, "bootstrap", bootstrap)
              || !ReadRequiredString(root, "provider_policy", policy)
-             || source != "file"
-             || !ParseBootstrap(bootstrap, out.definition.bootstrap_kind)
              || !ParsePolicy(policy, out.definition.vertex_provider_policy))
                 return false;
 
             out.definition.definition_id = id;
             out.definition.definition_name = name;
-            out.definition.source_kind = MaterialDefinitionSourceKind::File;
             if (root.contains("transform"))
             {
                 if (!ParseTransformGraph(
@@ -801,6 +793,14 @@ namespace hgl::graph::mtl
             if (!vertex || !vertex->contains("requirements")
              || !vertex->at("requirements").is_array())
                 return false;
+            if (vertex->contains("normal_mode"))
+            {
+                std::string normal_mode;
+                if (!ReadRequiredString(*vertex, "normal_mode", normal_mode)
+                 || !ParseVertexNormalMode(
+                        normal_mode, out.definition.vertex_normal_mode))
+                    return false;
+            }
             for (const auto &item : vertex->at("requirements").as_array())
             {
                 if (!item.is_string())
@@ -1115,7 +1115,7 @@ namespace hgl::graph::mtl
     static bool ValidateMaterialDefinitionKeys(const toml::value &root) noexcept
     {
         if (!ValidateKnownKeys(root, {
-                "schema", "id", "name", "source", "bootstrap", "provider_policy",
+                "schema", "id", "name", "provider_policy",
                 "transform", "fragment", "vertex", "resources",
                 "mesh_shader", "render_state"}))
             return false;
@@ -1132,7 +1132,7 @@ namespace hgl::graph::mtl
 
         if (root.contains("vertex")
          && !ValidateKnownKeys(root.at("vertex"), {
-                "requirements", "varyings"}))
+                "requirements", "normal_mode", "varyings"}))
             return false;
 
         if (root.contains("resources"))
@@ -1188,8 +1188,7 @@ namespace hgl::graph::mtl
                 std::string(content, static_cast<size_t>(content_size)));
             if (!root.is_table() || !root.contains("schema")
              || !root.at("schema").is_integer()
-             || (root.at("schema").as_integer() != 2
-              && root.at("schema").as_integer() != 3))
+             || root.at("schema").as_integer() != 3)
                 return MaterialDefinitionFileParseResult::InvalidValue;
             if (!ParseDefinition(root, out_data))
                 return MaterialDefinitionFileParseResult::InvalidValue;
@@ -1209,7 +1208,6 @@ namespace hgl::graph::mtl
         const MaterialDefinition &definition = data.definition;
         return !definition.definition_id.empty()
             && !definition.definition_name.empty()
-            && definition.source_kind == MaterialDefinitionSourceKind::File
             && !definition.vertex_semantic_requirements.IsEmpty();
     }
 

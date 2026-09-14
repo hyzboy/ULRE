@@ -1,8 +1,6 @@
 schema = 3
 id = "VertexPaletteColor"
 name = "VertexPaletteColor"
-source = "file"
-bootstrap = "None"
 provider_policy = "GeometryOnly"
 
 [transform]

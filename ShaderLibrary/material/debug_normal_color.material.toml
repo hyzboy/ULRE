@@ -1,8 +1,6 @@
 schema = 3
 id = "DebugNormalColor"
 name = "DebugNormalColor"
-source = "file"
-bootstrap = "None"
 provider_policy = "GeometryOnly"
 
 [transform]

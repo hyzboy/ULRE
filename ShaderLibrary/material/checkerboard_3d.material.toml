@@ -1,6 +1,6 @@
 schema = 3
-id = "SkyMinimal"
-name = "SkyMinimal"
+id = "builtin/checkerboard_3d"
+name = "builtin/checkerboard_3d"
 provider_policy = "GeometryOnly"
 
 [transform]
@@ -11,10 +11,12 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
+material_source_module = "material/checkerboard_3d_source.glsl"
 
 [vertex]
 requirements = ["Position"]
-varyings = ["emit_frag_direction"]
+normal_mode = "OptionalFaceFallback"
+varyings = ["emit_world_pos"]
 
 [resources]
-ubos = ["CameraInfo", "SkyInfo"]
+ubos = ["CameraInfo"]

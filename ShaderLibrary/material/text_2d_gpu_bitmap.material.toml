@@ -1,8 +1,6 @@
 schema = 3
 id = "builtin/text_gpu_bitmap"
 name = "Text2D_GPU_Bitmap"
-source = "file"
-bootstrap = "TextAlphaBlend"
 provider_policy = "GeometryOnly"
 
 [transform]

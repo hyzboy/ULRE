@@ -293,8 +293,8 @@ GeometryProfile: Mesh, LineQuad, CharQuad
 ```
 
 `MaterialDefinition` 只声明其允许的 profile 集合；`MaterialRecipe` 只选择一个经验证
-的 quality/profile，而非携带 GLSL 模块路径。仅内置 bootstrap 或开发实验性 definition
-可保留显式模块 override，并必须以 feature flag 隔离。
+的 quality/profile，而非携带 GLSL 模块路径。仅开发实验性 definition 可保留显式模块
+override，并必须以 feature flag 隔离。
 
 这会显著缩小无效组合空间。例如：
 

@@ -27,6 +27,8 @@ namespace
         const char *material_id;
         ShaderProgramPurpose purpose;
         bool requires_geometry;
+        bool vec2_position;
+        bool include_normal;
     };
 
     bool ResolveFixtureTemplateRequest(
@@ -361,11 +363,18 @@ namespace
         GeometryVertexFormat geometry;
         if (fixture.requires_geometry)
         {
-            if (!geometry.Add(VertexSemantic::Position, VF_V3F, 0, 0))
+            if (!geometry.Add(
+                    VertexSemantic::Position,
+                    fixture.vec2_position ? VF_V2F : VF_V3F,
+                    0, 0))
                 return false;
             if (std::strcmp(fixture.material_id, "Lit") == 0
              && (!geometry.Add(VertexSemantic::TexCoord, VF_V2F, 0, 0)
               || !geometry.Add(VertexSemantic::Normal, VF_V3F, 0, 0)))
+                return false;
+            if (fixture.include_normal
+             && std::strcmp(fixture.material_id, "Lit") != 0
+             && !geometry.Add(VertexSemantic::Normal, VF_V3F, 0, 0))
                 return false;
         }
 
@@ -485,20 +494,27 @@ int main(const int argc, char **argv)
 
     static const Fixture smoke_fixtures[] =
     {
-        { "pure-color-forward", BUILTIN_MTL_DEF_PURE_COLOR,
-          ShaderProgramPurpose::ForwardColor, true }
+        { "pure-color-forward", "builtin/pure_color",
+          ShaderProgramPurpose::ForwardColor, true, false, false }
     };
     static const Fixture full_fixtures[] =
     {
-        { "pure-color-forward", BUILTIN_MTL_DEF_PURE_COLOR,
-          ShaderProgramPurpose::ForwardColor, true },
-        { "pure-color-depth", BUILTIN_MTL_DEF_PURE_COLOR,
-          ShaderProgramPurpose::DepthOnly, true },
-        { "pure-color-shadow", BUILTIN_MTL_DEF_PURE_COLOR,
-          ShaderProgramPurpose::ShadowDepth, true },
-        { "lit-forward", "Lit", ShaderProgramPurpose::ForwardColor, true },
-        { "text-gpu-charquad", BUILTIN_MTL_DEF_TEXT,
-          ShaderProgramPurpose::ForwardColor, false }
+        { "pure-color-forward", "builtin/pure_color",
+          ShaderProgramPurpose::ForwardColor, true, false, false },
+        { "pure-color-depth", "builtin/pure_color",
+          ShaderProgramPurpose::DepthOnly, true, false, false },
+        { "pure-color-shadow", "builtin/pure_color",
+          ShaderProgramPurpose::ShadowDepth, true, false, false },
+        { "checkerboard-2d", "builtin/checkerboard_2d",
+          ShaderProgramPurpose::ForwardColor, true, true, false },
+        { "checkerboard-3d-face", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ForwardColor, true, false, false },
+        { "checkerboard-3d-normal", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ForwardColor, true, false, true },
+        { "lit-forward", "Lit", ShaderProgramPurpose::ForwardColor,
+          true, false, false },
+        { "text-gpu-charquad", "builtin/text_gpu",
+          ShaderProgramPurpose::ForwardColor, false, false, false }
     };
 
     const Fixture *fixtures = full ? full_fixtures : smoke_fixtures;

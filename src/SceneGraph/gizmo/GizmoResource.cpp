@@ -120,7 +120,7 @@ namespace hgl::graph
                     const auto &accessor = gr->color_row_accessors[c];
                     recipe = mtl::MaterialRecipe{};
                     recipe.recipe_name = "GizmoColor_" + std::to_string(c);
-                    recipe.mtl_def_id = mtl::BUILTIN_MTL_DEF_PURE_COLOR;
+                    recipe.mtl_def_id = "builtin/pure_color";
                     recipe.textures.clear();
                     recipe.material_ssbo_binding =
                         accessor.GetMaterialSSBOBinding();
@@ -152,7 +152,7 @@ namespace hgl::graph
 
             {
                 mtl::MaterialRecipe recipe{};
-                recipe.mtl_def_id = mtl::BUILTIN_MTL_DEF_PURE_COLOR;
+                recipe.mtl_def_id = "builtin/pure_color";
                 mtl::MaterialDefinitionBuildRequest request{};
                 request.recipe = recipe;
                 request.primitive_type = PrimitiveType::Triangles;

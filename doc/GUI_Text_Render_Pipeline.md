@@ -33,8 +33,8 @@ Vulkan 层
 
 | 路径 | 材质 | 采样器 | 着色器宏 | 说明 |
 |------|------|--------|----------|------|
-| SDF 距离场 | `text_2d_gpu.material.toml` | Linear | `TEXT_SDF_ENABLED` | 支持加粗/勾边/阴影特效，smoothstep 抗锯齿 |
-| 原始位图 | `text_2d_gpu_bitmap.material.toml` | Nearest | — | 灰度蒙版直接调制，无特效 |
+| SDF 距离场 | 文件材质 `builtin/text_gpu` | Linear | `TEXT_SDF_ENABLED` | 支持加粗/勾边/阴影特效，smoothstep 抗锯齿 |
+| 原始位图 | 文件材质 `builtin/text_gpu_bitmap` | Nearest | — | 灰度蒙版直接调制，无特效 |
 
 两条路径共用同一个 Fragment Shader 源 `text_source_gpu.glsl`，通过 `TEXT_SDF_ENABLED` 编译宏分流。
 
@@ -200,8 +200,8 @@ struct CharInstance {
 - Mesh Shader + Fragment Shader
 - Dynamic Rendering（无 VkRenderPass/VkFramebuffer）
 - 材质定义：
-  - SDF 路径：`ShaderLibrary/material/text_2d_gpu.material.toml`（`blend = "Transparent"`，`defines = ["TEXT_SDF_ENABLED"]`）
-  - 位图路径：`ShaderLibrary/material/text_2d_gpu_bitmap.material.toml`（`blend = "Transparent"`，无 SDF 宏）
+  - SDF 路径：文件材质 `builtin/text_gpu`（alpha blend，`TEXT_SDF_ENABLED`）
+  - 位图路径：文件材质 `builtin/text_gpu_bitmap`（alpha blend，无 SDF 宏）
 - Mesh Shader 模式：`CharQuad`，`max_invocations = 42`
 - `blend = "Transparent"` 启用 alpha 混合（`VK_BLEND_FACTOR_SRC_ALPHA` / `ONE_MINUS_SRC_ALPHA`），使 SDF smoothstep 抗锯齿边缘和阴影/勾边效果正确与背景混合
 
@@ -365,6 +365,6 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 | RenderCmdBuffer | `inc/hgl/vk/VKCommandBuffer.h` |
 | DrawMeshTasks 实现 | `src/Vulkan/VKCommandBufferRender.cpp` |
 | MeshShader 生成（CharQuad 模式） | `src/ShaderGen/meshgen/MeshTemplateEmitter.h`（调度）+ `MeshShaderModeCharQuad.h`（CharQuad 主体） |
-| SDF 材质定义 | `ShaderLibrary/material/text_2d_gpu.material.toml` |
-| 位图材质定义 | `ShaderLibrary/material/text_2d_gpu_bitmap.material.toml` |
+| SDF 材质定义 | `ShaderLibrary/material/text_2d_gpu.material.toml` (`builtin/text_gpu`) |
+| 位图材质定义 | `ShaderLibrary/material/text_2d_gpu_bitmap.material.toml` (`builtin/text_gpu_bitmap`) |
 | 文本 Fragment 着色器（SDF/Bitmap 双路径） | `ShaderLibrary/material/text_source_gpu.glsl` |

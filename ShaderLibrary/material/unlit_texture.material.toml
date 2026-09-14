@@ -1,8 +1,6 @@
 schema = 3
 id = "UnlitTexture"
 name = "UnlitTexture"
-source = "file"
-bootstrap = "None"
 provider_policy = "GeometryOnly"
 
 [transform]

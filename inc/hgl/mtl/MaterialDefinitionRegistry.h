@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
@@ -114,33 +114,14 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
     return ResolveMaterialVertexSemanticFormat(gvf, VertexSemantic::Position, fallback_format);
 }
 
-// Material definition registry
-// 所有材质定义（含内置 bootstrap）均为 TOML 文件承载。
+// Material definition registry. Every definition is loaded from a schema-3
+// TOML file; there is no native material-definition fallback.
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 
-// ── built-in fallback definition ID 常量 ──────────────────────────────────────
-// 缺材质安全网 = 纯色
-constexpr const char *BUILTIN_MTL_DEF_MISSING_MATERIAL  = "builtin/pure_color";
-constexpr const char *BUILTIN_MTL_DEF_TEXT              = "builtin/text_gpu";
-constexpr const char *BUILTIN_MTL_DEF_TEXT_BITMAP       = "builtin/text_gpu_bitmap";
-constexpr const char *BUILTIN_MTL_DEF_PURE_COLOR        = "builtin/pure_color";
-
-inline bool IsPureColorMaterialDefinition(
-    const MaterialDefinition &definition) noexcept
-{
-    return definition.bootstrap_kind == MaterialDefinitionBootstrapKind::PureColor;
-}
-
-inline bool IsBootstrapMaterialDefinition(
-    const MaterialDefinition &definition) noexcept
-{
-    return definition.bootstrap_kind != MaterialDefinitionBootstrapKind::None;
-}
-
 inline const char *GetFallbackMaterialDefinitionID()
 {
-    return BUILTIN_MTL_DEF_PURE_COLOR;
+    return "builtin/pure_color";
 }
 
 /**

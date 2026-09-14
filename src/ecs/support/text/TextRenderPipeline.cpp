@@ -400,8 +400,8 @@ namespace hgl::ecs
         // SDF 与原始位图走不同解码路径，按字体源开关选择对应材质定义，
         // 修正原"原始位图也走 SDF 解码路径"的错配。
         recipe.mtl_def_id = font_source->IsSDFEnabled()
-            ? hgl::graph::mtl::BUILTIN_MTL_DEF_TEXT           //"builtin/text_gpu" SDF 距离场解码路径
-            : hgl::graph::mtl::BUILTIN_MTL_DEF_TEXT_BITMAP;   //"builtin/text_gpu_bitmap" 原始位图采样路径
+            ? "builtin/text_gpu"           // schema-3 file: SDF distance-field decode
+            : "builtin/text_gpu_bitmap";   // schema-3 file: raw bitmap sampling
         recipe.render_state_overrides.pipeline_config = graph::mtl::MakeSolid2DConfig();
 
         material_manager = graphics_context->GetMaterialManager();
