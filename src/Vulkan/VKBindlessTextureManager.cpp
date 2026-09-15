@@ -171,7 +171,8 @@ uint32_t BindlessTextureManager::RegisterTexture(Texture *tex)
 
     vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
 
-    GLogInfo("[BindlessTextureManager] Register device=%p handle=%u (%s) view=%p",
+    GLogInfo("[BindlessTextureManager] Register tex=%p device=%p handle=%u (%s) view=%p",
+             (const void *)tex,
              device_,
              tex_handle,
              cube_view ? "cubearray" : "2darray",

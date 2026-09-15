@@ -110,7 +110,6 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,VkBuffer buf,cons
 
     VkDeviceSize offset=0;
 
-    uint32_t face=0;
     uint32_t level=0;
 
     uint32_t width=extent.width;
@@ -134,10 +133,11 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,VkBuffer buf,cons
         bic.imageExtent.height= height;
         bic.imageExtent.depth = 1;
 
-        if(total_bytes<8)
-            offset+=8;
-        else
-            offset+=total_bytes;
+        // 该级在缓冲中占 6 个面的连续空间(每面不足 8 字节补齐到 8),
+        // 与 .TexCube 文件的 mip-major 布局(每级 6 面连续)一致
+        const VkDeviceSize level_stride=(total_bytes<8)?8:total_bytes;
+
+        offset+=level_stride*6;
 
         ++level;
 
