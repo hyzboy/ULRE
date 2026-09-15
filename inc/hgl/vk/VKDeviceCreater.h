@@ -120,6 +120,9 @@ public:
 
         wideLines = SupportLevel::Want;
 
+        // bindless Cubemap 统一按 CUBE_ARRAY view 注册(单张=6层,Vulkan 1.1 核心特性)
+        imageCubeArray=SupportLevel::Want;
+
         // 材质数据 Arena+BDA 路径为引擎基线能力(见 doc/material-ssbo-arena-bda-refactor-plan)
         bufferDeviceAddress=SupportLevel::Must;
         shaderInt64=SupportLevel::Must;

@@ -137,6 +137,9 @@ public:
      * 与 Texture2D 的 2D_ARRAY companion view 模式完全一致。
      */
     VkImageView GetBindlessArrayView() override;
+
+    /// Cube 纹理：bindless 写入走 binding=2(textureCubeArray)
+    VkImageView GetBindlessCubeView() override {return GetBindlessArrayView();}
 };//class TextureCube:public Texture
 
 //class TextureCubeArray:public Texture

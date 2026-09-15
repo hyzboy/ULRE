@@ -52,6 +52,12 @@ VkImageView TextureCube::GetBindlessArrayView()
                                                 data->image_view->GetAspectFlags(),
                                                 data->image);
 
+    GLogInfo("[CubeView] device=%p view=%p image=%p mips=%u",
+             manager->GetVkDevice(),
+             data->array_view?data->array_view->GetImageView():VK_NULL_HANDLE,
+             data->image,
+             data->miplevel);
+
     return data->array_view ? data->array_view->GetImageView() : VK_NULL_HANDLE;
 }
 
