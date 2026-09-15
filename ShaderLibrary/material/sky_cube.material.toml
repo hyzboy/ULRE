@@ -10,6 +10,8 @@ orientation = "World"
 scale = "World"
 projection = "WorldCameraVP"
 
+[fragment]
+
 [vertex]
 requirements = ["Position"]
 varyings = ["emit_frag_direction", "emit_data_index_id"]
