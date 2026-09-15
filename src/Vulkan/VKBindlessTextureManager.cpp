@@ -49,7 +49,8 @@ bool BindlessTextureManager::Init(VkDevice device)
         bindings[1].descriptorCount = kMaxSampler;
         bindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=2 : textureCube[]（SAMPLED_IMAGE，Cubemap，非均匀索引）
+        // binding=2 : textureCubeArray[]（SAMPLED_IMAGE，Cubemap 统一按 6 层
+        //             CUBE_ARRAY view 注册，非均匀索引）
         bindings[2].binding         = 2;
         bindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         bindings[2].descriptorCount = kMax;
@@ -172,7 +173,7 @@ uint32_t BindlessTextureManager::RegisterTexture(Texture *tex)
 
     GLogInfo("[BindlessTextureManager] Register texture handle=%u (%s)",
              tex_handle,
-             cube_view ? "cube" : "2darray");
+             cube_view ? "cubearray" : "2darray");
     return tex_handle;
 }
 

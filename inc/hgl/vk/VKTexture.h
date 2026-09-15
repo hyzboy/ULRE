@@ -53,8 +53,8 @@ public:
     virtual VkImageView         GetBindlessArrayView ()       {return GetVulkanImageView();}
 
     /**
-     * 返回 bindless Cubemap 采样用 image view（textureCube[]）。
-     * 仅 TextureCube 覆写返回主 view；其余纹理返回空句柄，
+     * 返回 bindless Cubemap 采样用 image view（textureCubeArray[]）。
+     * 仅 TextureCube 覆写返回 CUBE_ARRAY companion view；其余纹理返回空句柄，
      * BindlessTextureManager 据此分流到不同 binding。
      */
     virtual VkImageView         GetBindlessCubeView  ()       {return VK_NULL_HANDLE;}
@@ -131,8 +131,12 @@ public:
     const uint32_t GetWidth ()const{return data?data->image_view->GetExtent().width:0;}
     const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
 
-    /// Cubemap 主 view 即 CUBE 类型，直接供 bindless textureCube[] 采样
-    VkImageView GetBindlessCubeView() override {return GetVulkanImageView();}
+    /**
+     * 惰性创建 6 层 CUBE_ARRAY companion view（单张 Cubemap = DEPTH 1 的
+     * CubeArray），供 bindless textureCubeArray[] 采样——
+     * 与 Texture2D 的 2D_ARRAY companion view 模式完全一致。
+     */
+    VkImageView GetBindlessArrayView() override;
 };//class TextureCube:public Texture
 
 //class TextureCubeArray:public Texture

@@ -1,4 +1,4 @@
-// @ulre begin
+﻿// @ulre begin
 // @ulre name sky_cube_surface
 // @ulre kind Surface
 // @ulre priority 0
@@ -18,7 +18,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     const uvec2 tex_ref  = MTL_TEX(dataIndex).tex_sky_cube;
     const vec3  view_dir = normalize(si.worldPos);
 
-    const vec4 color = SampleCube(tex_ref.x, TrilinearSampler, view_dir);
+    const vec4 color = SampleCubeArray(tex_ref.x, TrilinearSampler, vec4(view_dir, 0.0));
 
     SurfaceOutput so;
     so.baseColor = color.rgb;

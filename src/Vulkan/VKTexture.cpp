@@ -34,6 +34,27 @@ Texture::~Texture()
     }
 }
 
+VkImageView TextureCube::GetBindlessArrayView()
+{
+    if(!data||!data->image_view)
+        return VK_NULL_HANDLE;
+
+    if(data->array_view)
+        return data->array_view->GetImageView();
+
+    VkExtent3D ext = data->image_view->GetExtent();
+    ext.depth      = 1;      // 单张 Cubemap：6 层 CUBE_ARRAY view（6*depth）
+
+    data->array_view = CreateImageViewCubeArray(manager->GetVkDevice(),
+                                                data->image_view->GetFormat(),
+                                                ext,
+                                                data->miplevel,
+                                                data->image_view->GetAspectFlags(),
+                                                data->image);
+
+    return data->array_view ? data->array_view->GetImageView() : VK_NULL_HANDLE;
+}
+
 VkImageView Texture2D::GetBindlessArrayView()
 {
     if(!data||!data->image_view)
