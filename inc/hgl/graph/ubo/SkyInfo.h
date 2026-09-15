@@ -21,6 +21,16 @@ namespace hgl::graph
         float       moon_intensity = 0.0f;
         float       halo_intensity = 0.1f;
 
+        /**
+         * IBL 环境贴图 bindless 句柄(1-based,0=未绑定):
+         *   x = Diffuse Irradiance Cubemap
+         *   y = Specular Prefiltered Cubemap
+         *   z = BRDF LUT(2D,(NdotV,roughness) → (scale,bias))
+         *   w = 预留
+         * 由 IBL ambient 光照模块(light/indirect_ibl.glsl)经 sky.env_tex 采样。
+         */
+        Vector4u    env_tex        = Vector4u(0);
+
         void SetTime(float hour, float minute, float second);
     };
 }

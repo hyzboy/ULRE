@@ -19,6 +19,7 @@
         float sun_intensity; \
         float moon_intensity; \
         float halo_intensity; \
+        uvec4 env_tex; \
     } sky
 
 #endif

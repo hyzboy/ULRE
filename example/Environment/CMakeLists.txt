@@ -19,4 +19,6 @@ CreateProject(AtmosphereSkyAmbient              AtmosphereSkyAmbient.cpp)
 
 CreateProject(BasicLitSunDirection              BasicLitSunDirection.cpp)
 
+CreateProject(IBLEnvironment                    IBLEnvironment.cpp)
+
 CreateProject(SkyCubeSphere                     SkyCubeSphere.cpp)

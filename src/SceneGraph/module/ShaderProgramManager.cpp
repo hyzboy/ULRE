@@ -256,6 +256,25 @@ bool SelectCurrentSceneRenderTemplateRequest(
         }
     }
 
+    // 材质声明了 ambient module 时,覆盖 Lit profile 默认的
+    // indirect_sky_ambient(程序化天空环境光)——如 IBL 环境光照
+    if (!depth_purpose
+     && definition.ambient_module_name
+     && definition.ambient_module_name[0]
+     && definition.ambient_module_include
+     && definition.ambient_module_include[0])
+    {
+        for (uint32 i = 0; i < scene_profile.module_count; ++i)
+        {
+            if (scene_profile.roles[i] == mtl::ShaderModuleSlotRole::AmbientLightProvider)
+            {
+                scene_profile.module_names[i]   = definition.ambient_module_name;
+                scene_profile.include_paths[i] = definition.ambient_module_include;
+                break;
+            }
+        }
+    }
+
     // [SkyRoute 诊断] 材质 → 渲染模板路由决策
     {
         AnsiString slots;

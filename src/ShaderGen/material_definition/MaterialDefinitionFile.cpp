@@ -798,6 +798,22 @@ namespace hgl::graph::mtl
                     out.definition.ntb_module =
                         out.ntb_module_storage.c_str();
                 }
+                if (fragment->contains("ambient_module_name"))
+                {
+                    if (!ReadRequiredString(*fragment, "ambient_module_name", value))
+                        return false;
+                    out.ambient_module_name_storage = value.c_str();
+                    out.definition.ambient_module_name =
+                        out.ambient_module_name_storage.c_str();
+                }
+                if (fragment->contains("ambient_module_include"))
+                {
+                    if (!ReadRequiredString(*fragment, "ambient_module_include", value))
+                        return false;
+                    out.ambient_module_include_storage = value.c_str();
+                    out.definition.ambient_module_include =
+                        out.ambient_module_include_storage.c_str();
+                }
             }
             else
                return false;
@@ -1144,7 +1160,8 @@ namespace hgl::graph::mtl
         if (root.contains("fragment")
          && !ValidateKnownKeys(root.at("fragment"), {
                 "material_source_module", "ntb_module",
-                "surface_module_name", "surface_module_include"}))
+                "surface_module_name", "surface_module_include",
+                "ambient_module_name", "ambient_module_include"}))
             return false;
 
         if (root.contains("vertex")

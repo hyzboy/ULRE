@@ -1,0 +1,34 @@
+schema = 3
+id = "LitIBL"
+name = "LitIBL"
+provider_policy = "GeometryOnly"
+
+[transform]
+source = "Vec3Position"
+mapping = "Passthrough3D"
+orientation = "World"
+scale = "World"
+projection = "WorldCameraVP"
+
+[fragment]
+material_source_module = "material/pbr_surface_source.glsl"
+ntb_module = "ntb/ntb_tangent_vbo_normalmap.glsl"
+# IBL 环境光照:覆盖 Lit 默认的 indirect_sky_ambient
+ambient_module_name = "indirect_ibl"
+ambient_module_include = "lighting/indirect_ibl.glsl"
+
+[vertex]
+requirements = ["Position", "UV0", "Normal"]
+varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]
+
+[resources]
+ubos = ["CameraInfo", "SkyInfo"]
+textures = [
+    { name = "base_color", sampler = "Sampler2DArray", required = false },
+    { name = "roughness", sampler = "Sampler2DArray", required = false },
+    { name = "metallic", sampler = "Sampler2DArray", required = false },
+    { name = "occlusion", sampler = "Sampler2DArray", required = false },
+    { name = "opacity_mask", sampler = "Sampler2DArray", required = false },
+    { name = "normal", sampler = "Sampler2DArray", required = false, channels = 2 }
+]
+samplers = ["Trilinear", "Linear"]

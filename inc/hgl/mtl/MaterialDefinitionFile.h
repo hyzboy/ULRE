@@ -27,6 +27,8 @@ namespace hgl::graph::mtl
         AnsiString ntb_module_storage;
         AnsiString surface_module_name_storage;
         AnsiString surface_module_include_storage;
+        AnsiString ambient_module_name_storage;
+        AnsiString ambient_module_include_storage;
     };
 
     MaterialDefinitionFileParseResult ParseMaterialDefinitionFile(
