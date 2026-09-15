@@ -1,4 +1,4 @@
-﻿// @ulre begin
+// @ulre begin
 // @ulre name sky_cube_surface
 // @ulre kind Surface
 // @ulre priority 0

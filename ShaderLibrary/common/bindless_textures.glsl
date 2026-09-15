@@ -1,4 +1,4 @@
-﻿// @ulre begin
+// @ulre begin
 // @ulre name bindless_textures
 // @ulre kind Utility
 // @ulre priority 0
