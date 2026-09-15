@@ -1,4 +1,4 @@
-#include <hgl/mtl/MaterialDefinitionFile.h>
+﻿#include <hgl/mtl/MaterialDefinitionFile.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileInputStream.h>
@@ -774,6 +774,22 @@ namespace hgl::graph::mtl
                     out.definition.material_source_module =
                         out.material_source_module_storage.c_str();
                 }
+                if (fragment->contains("surface_module_name"))
+                {
+                    if (!ReadRequiredString(*fragment, "surface_module_name", value))
+                        return false;
+                    out.surface_module_name_storage = value.c_str();
+                    out.definition.surface_module_name =
+                        out.surface_module_name_storage.c_str();
+                }
+                if (fragment->contains("surface_module_include"))
+                {
+                    if (!ReadRequiredString(*fragment, "surface_module_include", value))
+                        return false;
+                    out.surface_module_include_storage = value.c_str();
+                    out.definition.surface_module_include =
+                        out.surface_module_include_storage.c_str();
+                }
                 if (fragment->contains("ntb_module"))
                 {
                     if (!ReadRequiredString(*fragment, "ntb_module", value))
@@ -1127,7 +1143,8 @@ namespace hgl::graph::mtl
 
         if (root.contains("fragment")
          && !ValidateKnownKeys(root.at("fragment"), {
-                "material_source_module", "ntb_module"}))
+                "material_source_module", "ntb_module",
+                "surface_module_name", "surface_module_include"}))
             return false;
 
         if (root.contains("vertex")

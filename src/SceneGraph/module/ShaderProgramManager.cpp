@@ -1,4 +1,4 @@
-#include<hgl/graph/module/ShaderProgramManager.h>
+﻿#include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKShaderProgram.h>
@@ -229,11 +229,50 @@ bool SelectCurrentSceneRenderTemplateRequest(
         : (has_ntb_provider ? mtl::RenderTemplateID::ForwardLitShadowedAO
            : (has_material_source ? mtl::RenderTemplateID::ForwardUnlit
                                   : mtl::RenderTemplateID::Sky));
-    const mtl::SceneRenderTemplateProfile scene_profile =
+    mtl::SceneRenderTemplateProfile scene_profile =
         depth_purpose ? mtl::MakeShadowCasterProfile()
         : (has_ntb_provider ? mtl::MakeIdentityForwardLitProfile()
            : (has_material_source ? mtl::MakeForwardUnlitProfile()
                                   : mtl::MakeSkyProfile()));
+
+    // 材质声明了 surface module 时,覆盖 Sky profile 默认的
+    // sky_minimal_surface(程序化大气)——如 SkyCube 的 Cubemap 采样
+    if (!depth_purpose
+     && !has_ntb_provider
+     && !has_material_source
+     && definition.surface_module_name
+     && definition.surface_module_name[0]
+     && definition.surface_module_include
+     && definition.surface_module_include[0])
+    {
+        for (uint32 i = 0; i < scene_profile.module_count; ++i)
+        {
+            if (scene_profile.roles[i] == mtl::ShaderModuleSlotRole::SurfaceProvider)
+            {
+                scene_profile.module_names[i]   = definition.surface_module_name;
+                scene_profile.include_paths[i] = definition.surface_module_include;
+                break;
+            }
+        }
+    }
+
+    // [SkyRoute 诊断] 材质 → 渲染模板路由决策
+    {
+        AnsiString slots;
+        for (uint32 i = 0; i < scene_profile.module_count; ++i)
+        {
+            if (i) slots += ",";
+            slots += AnsiString(mtl::GetShaderModuleSlotRoleName(
+                          scene_profile.roles[i]))
+                   + "=" + scene_profile.module_names[i];
+        }
+        GLogInfo("[SkyRoute] id=%s depth=%d masked=%d has_mtl_src=%d has_ntb=%d -> template=%s slots(%s)",
+                 definition.definition_id.c_str(),
+                 int(depth_purpose), int(masked),
+                 int(has_material_source), int(has_ntb_provider),
+                 mtl::GetRenderTemplateName(template_id),
+                 slots.c_str());
+    }
     mtl::RenderTemplateValidationDiagnostic diagnostic{};
     if (scene_profile.module_count > 0
      && mtl::ResolveSceneRenderTemplateRequest(

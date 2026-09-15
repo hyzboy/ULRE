@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/PipelineConfig.h>
@@ -335,6 +335,11 @@ namespace hgl::graph::mtl
         // Material-source provider capability. Render preparation maps it into
         // the caller-selected MaterialSourceProvider template root.
         const char *material_source_module = nullptr;
+        // Surface provider capability(Sky 渲染模板专用):声明后覆盖 Sky profile
+        // 默认的 sky_minimal_surface,让纯 Surface 材质提供自己的天空采样。
+        // name 须匹配 ShaderCodeModuleRegistry 注册名;include 为库内路径。
+        const char *surface_module_name = nullptr;
+        const char *surface_module_include = nullptr;
         // NTB provider capability. Render preparation maps it into the
         // caller-selected NTBProvider template root.
         const char *ntb_module = nullptr;

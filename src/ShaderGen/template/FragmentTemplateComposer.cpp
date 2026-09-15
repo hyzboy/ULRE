@@ -1,5 +1,5 @@
-#include <hgl/mtl/FragmentTemplateComposer.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+﻿#include <hgl/mtl/FragmentTemplateComposer.h>
+#include<hgl/log/Log.h>#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 
@@ -269,6 +269,10 @@ namespace
             input, ShaderModuleSlotRole::SurfaceProvider);
         if (!surface_module)
             return false;
+
+        // [SkyRoute 诊断] Sky 模板实际注入的 surface 模块
+        GLogInfo("[SkyRoute] ComposeSky surface_module=%s", surface_module);
+
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
             IncludeTemplate(surface_module), "Sky.Surface", surface_module);
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
