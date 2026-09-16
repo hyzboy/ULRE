@@ -3,8 +3,6 @@
 #include<hgl/mtl/ShaderArtifactContract.h>
 #include<cstring>
 namespace hgl{namespace graph::mtl{
-    using namespace hgl::graph::mtl;
-
 ShaderCreateInfo::ShaderCreateInfo(const ShaderStage stage)
 {
     shader_stage=stage;

@@ -9,7 +9,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     struct ShaderProgramKey
     {
         uint64 mesh_stage_digest = 0;   // mesh shader 顶点处理 stage（VS 已彻底废弃）

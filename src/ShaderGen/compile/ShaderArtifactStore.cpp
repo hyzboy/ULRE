@@ -9,7 +9,6 @@
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     namespace
     {
         // mesh shader 材质：顶点处理 stage 是 Mesh

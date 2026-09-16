@@ -2,8 +2,6 @@
 #include<hgl/mtl/ShaderCreateInfo.h>
 
 namespace hgl{namespace graph::mtl{
-    using namespace hgl::graph::mtl;
-
 bool ShaderCreateInfoMap::Add(ShaderCreateInfo *sc)
 {
     if(!sc)

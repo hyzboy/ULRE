@@ -9,7 +9,6 @@
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     bool BuildShaderProgramArtifactMetadata(
         const contract::PhysicalDeviceProfileLite *profile,
         const ShaderBuildContext &build_spec,

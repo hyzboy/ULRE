@@ -12,7 +12,6 @@ namespace hgl::graph { struct SPVData; }
 
 namespace hgl{namespace graph::mtl
 {
-    using namespace hgl::graph::mtl;
     using hgl::graph::SPVData;
 
 class ShaderCreateInfo

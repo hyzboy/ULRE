@@ -8,7 +8,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     constexpr uint32 ShaderArtifactFileMagic = 0x554C5350u; // "ULSP"
     constexpr uint32 ShaderArtifactSPVMagic = 0x07230203u;
 

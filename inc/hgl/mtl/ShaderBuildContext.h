@@ -14,7 +14,6 @@
 
 namespace hgl::graph::mtl
 {
-        using namespace hgl::graph::mtl;
         using hgl::graph::ShaderStage;
         using hgl::graph::DescriptorSetType;
 

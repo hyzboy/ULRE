@@ -9,7 +9,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     inline uint64 HashFinalShaderSource(
         const char *source,
         const size_t length) noexcept

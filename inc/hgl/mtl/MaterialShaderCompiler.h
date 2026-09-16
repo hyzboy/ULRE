@@ -28,8 +28,6 @@ namespace hgl::graph
 }
 
 namespace hgl::graph::mtl{
-    using namespace hgl::graph::mtl;
-
 struct MaterialShaderDocumentCapture
 {
     // Optional production-pipeline observability for regression gates. The

@@ -92,4 +92,24 @@ namespace hgl::graph::mtl
     ShaderCodeModuleParseResult ParseShaderCodeModuleFile(const char *content,
                                                       int content_size,
                                                       ShaderCodeModuleFileData &out_data) noexcept;
+
+    /**
+     * 从库内 include 路径推导模块注册名（@ulre name）。
+     *
+     *   "material/pbr_surface_source.glsl" → "pbr_surface_source"
+     *
+     * 规则：取最后一个目录分隔符后的文件名主干（去掉最后一个 '.' 及其后内容）。
+     * 这是材质 TOML 里写 include 路径、注册表按注册名查找之间的唯一桥梁——
+     * 任何需要「由路径定位模块」的地方都应复用本函数，不要各自手写子串匹配
+     * （此前 MaterialShaderEmitter 用 strstr(path,"texture_source") 反推，
+     * 既依赖命名又会误命中名字里含该串的模块）。
+     *
+     * 注意：结果未必等于注册名（如 ao/identity.glsl 注册为 identity_ao），
+     * 调用方应以 FindByName 是否命中为准。
+     *
+     * @return false 表示输入为空或提取不出主干。
+     */
+    bool ExtractShaderCodeModuleNameFromIncludePath(
+        const char *include_path,
+        AnsiString &out_name) noexcept;
 }

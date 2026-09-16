@@ -9,8 +9,6 @@
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
-
 namespace
 {
     void AppendKV(std::string &out, const char *key, const char *value)

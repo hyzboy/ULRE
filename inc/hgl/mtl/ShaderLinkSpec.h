@@ -9,7 +9,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     struct ShaderLinkSpec
     {
         ShaderStageKey mesh_stage;    // mesh shader 顶点处理 stage（VS 已彻底废弃）

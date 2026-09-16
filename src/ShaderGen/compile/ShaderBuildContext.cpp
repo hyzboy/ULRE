@@ -6,8 +6,6 @@ using namespace hgl;
 using namespace hgl::graph;
 
 namespace hgl::graph::mtl{
-    using namespace hgl::graph::mtl;
-
 ShaderBuildContext::ShaderBuildContext(const PrimitiveType primitive_type_value,const uint32_t shader_stage_bits)
     : primitive_type(primitive_type_value), shader_stage_flag_bits(shader_stage_bits)
 {

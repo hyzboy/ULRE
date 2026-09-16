@@ -10,7 +10,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     struct ShaderStageKey
     {
         ShaderStage stage = ShaderStage::Mesh;

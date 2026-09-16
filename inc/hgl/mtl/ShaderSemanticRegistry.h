@@ -12,7 +12,6 @@ namespace hgl::graph
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     constexpr uint32 InvalidShaderSemanticLocation = uint32(-1);
 
     enum class ShaderSemanticScalarType : uint8

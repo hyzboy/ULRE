@@ -9,7 +9,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     enum class MaterialCoverageMode : uint8
     {
         None = 0,

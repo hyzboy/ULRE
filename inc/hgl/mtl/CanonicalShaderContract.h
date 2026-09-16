@@ -10,7 +10,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     using ShaderContractStableID = uint64;
 
     enum class ShaderProgramPurpose : uint8

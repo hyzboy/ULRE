@@ -24,8 +24,6 @@
 #include <vector>
 
 namespace hgl::graph::mtl {
-    using namespace hgl::graph::mtl;
-
 bool FinalizeShaderBuildContext(
     ShaderBuildContext *build_spec)
 {

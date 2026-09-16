@@ -7,8 +7,6 @@ namespace hgl::graph::mtl {}
 #include<ankerl/unordered_dense.h>
 
 namespace hgl{namespace graph{namespace mtl{
-    using namespace hgl::graph::mtl;
-
 class ShaderCreateInfo;
 
 class ShaderCreateInfoMap

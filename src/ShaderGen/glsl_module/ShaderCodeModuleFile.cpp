@@ -6,7 +6,39 @@
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
+    bool ExtractShaderCodeModuleNameFromIncludePath(
+        const char *include_path,
+        AnsiString &out_name) noexcept
+    {
+        out_name = AnsiString();
+
+        if (!include_path || !include_path[0])
+            return false;
+
+        const char *name_begin = include_path;
+        const char *path_end = include_path;
+        const char *extension = nullptr;
+
+        for (const char *cursor = include_path; *cursor; ++cursor)
+        {
+            path_end = cursor + 1;
+            if (*cursor == '/' || *cursor == '\\')
+            {
+                name_begin = cursor + 1;
+                extension = nullptr;
+            }
+            else if (*cursor == '.')
+                extension = cursor;
+        }
+
+        const char *name_end = extension ? extension : path_end;
+        if (name_begin >= name_end)
+            return false;
+
+        out_name = AnsiString(name_begin, int(name_end - name_begin));
+        return !out_name.IsEmpty();
+    }
+
     namespace
     {
         constexpr char ULRE_PREFIX[] = "// @ulre ";
