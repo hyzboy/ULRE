@@ -1,0 +1,20 @@
+{{defines}}
+#include "common/descriptor_macros.glsl"
+#include "common/surface_interface.glsl"
+#include "lighting/forward_flat.glsl"
+{{output_policy_include}}
+{{code_modules}}
+{{material_source_include}}
+{{surface_include}}
+#include "common/alpha_compositor.glsl"
+{{fragment_inputs}}
+{{output_declarations}}
+
+void main()
+{
+{{surface_input_wiring}}
+    const SurfaceOutput surface = EvalSurface(si, materialDataIndex);
+    const LightingInput lighting = BuildForwardLightingInput(surface, si);
+    const vec4 finalColor = EvalLighting(lighting);
+    WriteMaterialOutput(HGLComposeColor(finalColor));
+}

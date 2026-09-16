@@ -1,0 +1,24 @@
+#include "common/descriptor_macros.glsl"
+#include "ubo/sky_info.glsl"
+SCENE_SKY_UBO;
+{{sky_provider_include}}
+#include "common/surface_interface.glsl"
+{{surface_include}}
+#include "common/alpha_compositor.glsl"
+{{fragment_inputs}}
+{{output_declarations}}
+
+void main()
+{
+    SurfaceInput si;
+    si.worldPos = fragDirection;
+    si.worldNormal = normalize(fragDirection);
+    si.uv0 = vec2(0.0);
+    si.uv1 = vec2(0.0);
+    si.vertexColor = vec4(1.0);
+    si.viewDir = fragDirection;
+    si.screenPos = vec2(0.0);
+    si.luminance = 0.0;
+    SurfaceOutput so = EvalSurface(si, 0u);
+    WriteMaterialOutput(HGLComposeColor(vec4(so.baseColor, so.alpha)));
+}

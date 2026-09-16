@@ -1,0 +1,21 @@
+{{defines}}
+#include "common/descriptor_macros.glsl"
+#include "common/surface_interface.glsl"
+#include "ubo/camera_info.glsl"
+#include "ubo/sky_info.glsl"
+SCENE_CAMERA_UBO;
+SCENE_SKY_UBO;
+{{module_includes}}
+#include "common/alpha_compositor.glsl"
+{{fragment_inputs}}
+{{output_declarations}}
+{{code_modules}}
+
+void main()
+{
+{{surface_input_wiring}}
+    const SurfaceOutput surface = EvalSurface(si, materialDataIndex);
+    const LightingInput lighting = BuildForwardLightingInput(surface, si);
+    const vec4 finalColor = EvalLighting(lighting);
+    WriteMaterialOutput(HGLComposeColor(finalColor));
+}
