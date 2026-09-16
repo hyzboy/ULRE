@@ -453,28 +453,27 @@ ShaderBuildContext *CompileMaterial(
     const MaterialCompileConfig &config,
     MaterialShaderDocumentCapture *document_capture)
 {
+    // ctx 尚未创建，此处 FailCompile 只负责统一报告（delete nullptr 安全）
+    CompileContext c{&input};
+
     if (mesh_source_document.GetBlockCount() == 0
      || fragment_source_document.GetBlockCount() == 0)
     {
-        std::fprintf(stderr,
-            "[CompileMaterial] material=%s: source document is empty\n",
-            input.debug_name ? input.debug_name : "<unnamed>");
-        return nullptr;
+        c.Fail("source document is empty");
+        return FailCompile(c);
     }
 
     // ── Step 1: Config ────────────────────────────────────────────
     const PrimitiveType primitive_type = config.primitive_type;
     if (input.primitive_type != primitive_type)
     {
-        std::fprintf(stderr,
-            "[CompileMaterial] material=%s: primitive_type mismatch "
-            "(input=%d, config=%d)\n",
-            input.debug_name ? input.debug_name : "<unnamed>",
-            int(input.primitive_type), int(primitive_type));
-        return nullptr;
+        c.Fail("primitive_type mismatch (input="
+               + std::to_string(int(input.primitive_type))
+               + ", config="
+               + std::to_string(int(primitive_type)) + ")");
+        return FailCompile(c);
     }
 
-    CompileContext c{&input};
     if (config.resource_manifest
      && config.resource_manifest->IsValid()
      && config.material_definition)

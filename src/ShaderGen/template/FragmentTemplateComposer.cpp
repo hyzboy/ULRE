@@ -47,6 +47,95 @@ namespace
         return AnsiString("#include \"") + AnsiString(path) + AnsiString("\"\n");
     }
 
+    // 输出附件类型 → GLSL 类型名。整数/布尔仅深度-only 模板（ShadowCaster）
+    // 会用到，其余模板传 allow_integer_types=false 保持原有拒绝行为。
+    const char *GetGLSLOutputTypeName(
+        const ShaderStageValueType value_type,
+        const bool allow_integer_types) noexcept
+    {
+        switch (value_type)
+        {
+        case ShaderStageValueType::Float: return "float";
+        case ShaderStageValueType::Vec2:  return "vec2";
+        case ShaderStageValueType::Vec3:  return "vec3";
+        case ShaderStageValueType::Vec4:  return "vec4";
+        case ShaderStageValueType::Int:   return allow_integer_types ? "int"  : nullptr;
+        case ShaderStageValueType::UInt:  return allow_integer_types ? "uint" : nullptr;
+        case ShaderStageValueType::Bool:  return allow_integer_types ? "bool" : nullptr;
+        default:                          return nullptr;
+        }
+    }
+
+    // 各模板共用的 fragment 输入（inter-stage varying）声明块。
+    bool AppendFragmentInputDeclarations(
+        const hgl::ValueArray<InterStageSemanticContractEntry> *fragment_inputs,
+        const char *logical_name,
+        ShaderDocument &document)
+    {
+        if (!fragment_inputs)
+            return true;
+
+        std::string declarations;
+        for (int index = 0; index < fragment_inputs->GetCount(); ++index)
+        {
+            AnsiString declaration;
+            if (!BuildGLSLInterStageDeclaration(
+                    (*fragment_inputs)[index], "in", declaration))
+                return false;
+
+            declarations += declaration.c_str();
+            declarations += "\n";
+        }
+
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
+                         AnsiString(declarations.c_str()), logical_name);
+        return true;
+    }
+
+    // 各模板共用的输出附件声明块（layout(location=n) out ... + WriteMaterialOutput）。
+    bool AppendOutputDeclarations(
+        const OutputContract *output_contract,
+        const char *logical_name,
+        const bool allow_integer_types,
+        ShaderDocument &document)
+    {
+        if (!output_contract)
+            return true;
+
+        for (int index = 0;
+             index < output_contract->attachments.GetCount();
+             ++index)
+        {
+            const ShaderOutputAttachmentContract &attachment =
+                output_contract->attachments[index];
+
+            const char *type_name =
+                GetGLSLOutputTypeName(attachment.value_type,
+                                      allow_integer_types);
+            const char *output_name =
+                GetMaterialOutputName(attachment.write_semantic_id);
+            if (!type_name || !output_name)
+                return false;
+
+            std::string declaration = "layout(location=";
+            declaration += std::to_string(attachment.location);
+            declaration += ") out ";
+            declaration += type_name;
+            declaration += " ";
+            declaration += output_name;
+            declaration += ";\nvoid WriteMaterialOutput(";
+            declaration += type_name;
+            declaration += " value) { ";
+            declaration += output_name;
+            declaration += " = value; }\n";
+
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
+                             AnsiString(declaration.c_str()), logical_name);
+        }
+
+        return true;
+    }
+
     const char *ResolvedInclude(
         const FragmentTemplateComposer::ComposeInput &input,
         const ShaderModuleSlotRole role)
@@ -162,62 +251,13 @@ namespace
             "ForwardUnlit.Alpha",
             "common/alpha_compositor.glsl");
 
-        if (input.fragment_inputs)
-        {
-            std::string declarations;
-            for (int index = 0;
-                 index < input.fragment_inputs->GetCount();
-                 ++index)
-            {
-                AnsiString declaration;
-                if (!BuildGLSLInterStageDeclaration(
-                        (*input.fragment_inputs)[index],
-                        "in", declaration))
-                    return false;
-                declarations += declaration.c_str();
-                declarations += "\n";
-            }
-            AddTemplateBlock(
-                document, ShaderDocumentBlockKind::Interface,
-                AnsiString(declarations.c_str()), "ForwardUnlit.FragmentInputs");
-        }
+        if (!AppendFragmentInputDeclarations(
+                input.fragment_inputs, "ForwardUnlit.FragmentInputs", document))
+            return false;
 
-        if (input.output_contract)
-        {
-            const OutputContract &output = *input.output_contract;
-            for (int index = 0; index < output.attachments.GetCount(); ++index)
-            {
-                const ShaderOutputAttachmentContract &attachment =
-                    output.attachments[index];
-                const char *type_name = nullptr;
-                switch (attachment.value_type)
-                {
-                case ShaderStageValueType::Float: type_name = "float"; break;
-                case ShaderStageValueType::Vec2: type_name = "vec2"; break;
-                case ShaderStageValueType::Vec3: type_name = "vec3"; break;
-                case ShaderStageValueType::Vec4: type_name = "vec4"; break;
-                default: return false;
-                }
-                const char *output_name =
-                    GetMaterialOutputName(attachment.write_semantic_id);
-                if (!output_name)
-                    return false;
-                std::string declaration = "layout(location=";
-                declaration += std::to_string(attachment.location);
-                declaration += ") out ";
-                declaration += type_name;
-                declaration += " ";
-                declaration += output_name;
-                declaration += ";\nvoid WriteMaterialOutput(";
-                declaration += type_name;
-                declaration += " value) { ";
-                declaration += output_name;
-                declaration += " = value; }\n";
-                AddTemplateBlock(
-                    document, ShaderDocumentBlockKind::Interface,
-                    AnsiString(declaration.c_str()), "ForwardUnlit.Output");
-            }
-        }
+        if (!AppendOutputDeclarations(
+                input.output_contract, "ForwardUnlit.Output", false, document))
+            return false;
 
         std::string main_body = "\nvoid main()\n{\n";
         if (input.fragment_inputs)
@@ -279,60 +319,13 @@ namespace
             IncludeTemplate("common/alpha_compositor.glsl"),
             "Sky.Alpha", "common/alpha_compositor.glsl");
 
-        if (input.fragment_inputs)
-        {
-            std::string declarations;
-            for (int index = 0;
-                 index < input.fragment_inputs->GetCount();
-                 ++index)
-            {
-                AnsiString declaration;
-                if (!BuildGLSLInterStageDeclaration(
-                        (*input.fragment_inputs)[index],
-                        "in", declaration))
-                    return false;
-                declarations += declaration.c_str();
-                declarations += "\n";
-            }
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
-                AnsiString(declarations.c_str()), "Sky.FragmentInputs");
-        }
+        if (!AppendFragmentInputDeclarations(
+                input.fragment_inputs, "Sky.FragmentInputs", document))
+            return false;
 
-        if (input.output_contract)
-        {
-            const OutputContract &output = *input.output_contract;
-            for (int index = 0; index < output.attachments.GetCount(); ++index)
-            {
-                const ShaderOutputAttachmentContract &attachment =
-                    output.attachments[index];
-                const char *type_name = nullptr;
-                switch (attachment.value_type)
-                {
-                case ShaderStageValueType::Float: type_name = "float"; break;
-                case ShaderStageValueType::Vec2: type_name = "vec2"; break;
-                case ShaderStageValueType::Vec3: type_name = "vec3"; break;
-                case ShaderStageValueType::Vec4: type_name = "vec4"; break;
-                default: return false;
-                }
-                const char *output_name =
-                    GetMaterialOutputName(attachment.write_semantic_id);
-                if (!type_name || !output_name)
-                    return false;
-                std::string declaration = "layout(location=";
-                declaration += std::to_string(attachment.location);
-                declaration += ") out ";
-                declaration += type_name;
-                declaration += " ";
-                declaration += output_name;
-                declaration += ";\nvoid WriteMaterialOutput(";
-                declaration += type_name;
-                declaration += " value) { ";
-                declaration += output_name;
-                declaration += " = value; }\n";
-                AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
-                    AnsiString(declaration.c_str()), "Sky.Output");
-            }
-        }
+        if (!AppendOutputDeclarations(
+                input.output_contract, "Sky.Output", false, document))
+            return false;
 
         std::string main_body =
             "\nvoid main()\n{\n"
@@ -373,44 +366,10 @@ namespace
             AnsiString(defines.c_str()), "ShadowCaster.Defines");
         AppendDocumentBlocks(document, input.code_module_document);
 
-        if (input.output_contract)
-        {
-            const OutputContract &output = *input.output_contract;
-            for (int index = 0; index < output.attachments.GetCount(); ++index)
-            {
-                const ShaderOutputAttachmentContract &attachment =
-                    output.attachments[index];
-                const char *type_name = nullptr;
-                switch (attachment.value_type)
-                {
-                case ShaderStageValueType::Float: type_name = "float"; break;
-                case ShaderStageValueType::Vec2: type_name = "vec2"; break;
-                case ShaderStageValueType::Vec3: type_name = "vec3"; break;
-                case ShaderStageValueType::Vec4: type_name = "vec4"; break;
-                case ShaderStageValueType::Int: type_name = "int"; break;
-                case ShaderStageValueType::UInt: type_name = "uint"; break;
-                case ShaderStageValueType::Bool: type_name = "bool"; break;
-                default: return false;
-                }
-                const char *output_name =
-                    GetMaterialOutputName(attachment.write_semantic_id);
-                if (!type_name || !output_name)
-                    return false;
-                std::string declaration = "layout(location=";
-                declaration += std::to_string(attachment.location);
-                declaration += ") out ";
-                declaration += type_name;
-                declaration += " ";
-                declaration += output_name;
-                declaration += ";\nvoid WriteMaterialOutput(";
-                declaration += type_name;
-                declaration += " value) { ";
-                declaration += output_name;
-                declaration += " = value; }\n";
-                AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
-                    AnsiString(declaration.c_str()), "ShadowCaster.Output");
-            }
-        }
+        // ShadowCaster 允许整数/布尔输出附件（depth-only 变体）
+        if (!AppendOutputDeclarations(
+                input.output_contract, "ShadowCaster.Output", true, document))
+            return false;
 
         if (!input.coverage_contract
             || !input.coverage_contract->requires_alpha_evaluation)
@@ -441,24 +400,9 @@ namespace
             IncludeTemplate(surface_module), "ShadowCaster.Surface",
             surface_module);
 
-        std::string declarations;
-        if (input.fragment_inputs)
-        {
-            for (int index = 0;
-                 index < input.fragment_inputs->GetCount();
-                 ++index)
-            {
-                AnsiString declaration;
-                if (!BuildGLSLInterStageDeclaration(
-                        (*input.fragment_inputs)[index],
-                        "in", declaration))
-                    return false;
-                declarations += declaration.c_str();
-                declarations += "\n";
-            }
-        }
-        AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
-            AnsiString(declarations.c_str()), "ShadowCaster.FragmentInputs");
+        if (!AppendFragmentInputDeclarations(
+                input.fragment_inputs, "ShadowCaster.FragmentInputs", document))
+            return false;
 
         std::string main_body =
             "\nvoid main()\n{\n"
@@ -584,59 +528,14 @@ namespace
             IncludeTemplate("common/alpha_compositor.glsl"),
             "ForwardLit.Alpha", "common/alpha_compositor.glsl");
 
-        if (input.fragment_inputs)
-        {
-            std::string declarations;
-            for (int index = 0;
-                 index < input.fragment_inputs->GetCount();
-                 ++index)
-            {
-                AnsiString declaration;
-                if (!BuildGLSLInterStageDeclaration(
-                        (*input.fragment_inputs)[index],
-                        "in", declaration))
-                    return false;
-                declarations += declaration.c_str();
-                declarations += "\n";
-            }
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
-                AnsiString(declarations.c_str()), "ForwardLit.FragmentInputs");
-        }
-        if (input.output_contract)
-        {
-            const OutputContract &output = *input.output_contract;
-            for (int index = 0; index < output.attachments.GetCount(); ++index)
-            {
-                const ShaderOutputAttachmentContract &attachment =
-                    output.attachments[index];
-                const char *type_name = nullptr;
-                switch (attachment.value_type)
-                {
-                case ShaderStageValueType::Float: type_name = "float"; break;
-                case ShaderStageValueType::Vec2: type_name = "vec2"; break;
-                case ShaderStageValueType::Vec3: type_name = "vec3"; break;
-                case ShaderStageValueType::Vec4: type_name = "vec4"; break;
-                default: return false;
-                }
-                const char *output_name =
-                    GetMaterialOutputName(attachment.write_semantic_id);
-                if (!type_name || !output_name)
-                    return false;
-                std::string declaration = "layout(location=";
-                declaration += std::to_string(attachment.location);
-                declaration += ") out ";
-                declaration += type_name;
-                declaration += " ";
-                declaration += output_name;
-                declaration += ";\nvoid WriteMaterialOutput(";
-                declaration += type_name;
-                declaration += " value) { ";
-                declaration += output_name;
-                declaration += " = value; }\n";
-                AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
-                    AnsiString(declaration.c_str()), "ForwardLit.Output");
-            }
-        }
+        if (!AppendFragmentInputDeclarations(
+                input.fragment_inputs, "ForwardLit.FragmentInputs", document))
+            return false;
+
+        if (!AppendOutputDeclarations(
+                input.output_contract, "ForwardLit.Output", false, document))
+            return false;
+
         AppendDocumentBlocks(document, input.code_module_document);
 
         std::string main_body = "\nvoid main()\n{\n";
