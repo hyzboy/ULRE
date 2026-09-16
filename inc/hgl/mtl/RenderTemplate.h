@@ -7,6 +7,10 @@
 namespace hgl::graph::mtl
 {
     class ShaderCodeModuleRegistry;
+    // 仅作指针参数使用；完整定义见 ShaderCodeResourceManifest.h。
+    // 不可在此 include——该头经 ShaderCodeModule.h 反向依赖本文件，会形成环。
+    struct ShaderCodeResourceManifest;
+
     enum class RenderTemplateID : uint8
     {
         Unknown = 0,
@@ -116,9 +120,14 @@ namespace hgl::graph::mtl
         const RenderTemplateRequest &request,
         RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
 
+    /// 校验渲染模板请求（含模块图与能力闭合）。
+    ///
+    /// out_manifest 可选：校验过程必须构建整张模块依赖图，调用方（如
+    /// ResolveRenderTemplate）若同样需要该 manifest，可传入以避免重复构建。
     bool ValidateRenderTemplateRequest(
         const RenderTemplateRequest &request,
         const ShaderCodeModuleRegistry &module_registry,
-        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
+        RenderTemplateValidationDiagnostic &out_diagnostic,
+        ShaderCodeResourceManifest *out_manifest = nullptr) noexcept;
 
 }

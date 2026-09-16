@@ -69,29 +69,15 @@ bool FinalizeShaderBuildContext(
     }
 
 #ifdef _DEBUG
-    // ULRE_DUMP_GLSL=1: dump final GLSL of every material build (mesh+fragment)
-    //#endif-trace removed
-    if (getenv("ULRE_DUMP_GLSL"))
-    {
-        static std::atomic<uint32_t> dump_seq{0};
-        const uint32_t seq = dump_seq.fetch_add(1);
-        const ShaderCreateInfo *mesh_si = build_spec->GetStageShader(ShaderStage::Mesh);
-        const ShaderCreateInfo *frag_si = build_spec->GetStageShader(ShaderStage::Fragment);
-        if (mesh_si)
-        {
-            const std::string text = mesh_si->GetFinalGLSL();
-            const std::string ms_path = std::string("E:/ULRE/build/glsldump/ulre_dump_") + std::to_string(seq) + "_mesh.glsl";
-            FILE *fp = fopen(ms_path.c_str(), "wb");
-            if (fp) { fwrite(text.data(), 1, text.size(), fp); fclose(fp); }
-        }
-        if (frag_si)
-        {
-            const std::string text = frag_si->GetFinalGLSL();
-            const std::string fs_path = std::string("E:/ULRE/build/glsldump/ulre_dump_") + std::to_string(seq) + "_fs.glsl";
-            FILE *fp = fopen(fs_path.c_str(), "wb");
-            if (fp) { fwrite(text.data(), 1, text.size(), fp); fclose(fp); }
-        }
-    }
+    // ULRE_DUMP_GLSL=1: dump final GLSL of every material build (mesh+fragment).
+    // 输出目录由 DumpShaderGenGLSL 解析（<ShaderCacheRoot>/glsldump，不绑定机器路径）。
+    if (const ShaderCreateInfo *mesh_si =
+            build_spec->GetStageShader(ShaderStage::Mesh))
+        DumpShaderGenGLSL("mesh", mesh_si->GetFinalGLSL());
+
+    if (const ShaderCreateInfo *frag_si =
+            build_spec->GetStageShader(ShaderStage::Fragment))
+        DumpShaderGenGLSL("fs", frag_si->GetFinalGLSL());
 #endif
     if (!cache_hit
      && artifact_store

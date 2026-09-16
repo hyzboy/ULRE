@@ -50,24 +50,9 @@ inline bool BuildShaderCodeResourceManifest(
         definition, manifest, provider_roots, provider_root_count, registry);
 }
 
-inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
-    const MaterialDefinition &definition,
-    ShaderCodeResourceManifest &manifest,
-    const BuildDescriptorOptions &opt = {})
-{
-    // A6-2b-b1：manifest 数据槽不再桥接契约行表条目——数据槽信号由编译配置
-    // material_private_data 直判（ResolveEffectiveMaterialPrivateData 单一声明合并），
-    // 行表存在性/FS 发射门不再经契约。
-    return BuildDescriptorsFromDefinition(definition, opt);
-}
-
-inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
-    const MaterialDefinition &definition,
-    const ShaderCodeResourceManifest &manifest,
-    const BuildDescriptorOptions &opt = {})
-{
-    ShaderCodeResourceManifest mutable_manifest = manifest;
-    return BuildDescriptorsFromDefinition(definition, mutable_manifest, opt);
-}
+// 注（A6-2b-b1）：曾存在接收 ShaderCodeResourceManifest 的重载，但 manifest
+// 数据槽已不再桥接契约行表条目——数据槽信号由编译配置 material_private_data
+// 直判（ResolveEffectiveMaterialPrivateData 单一声明合并），行表存在性/FS 发射门
+// 不再经契约。被忽略的入参重载已删除，调用方直接传 definition。
 
 } // namespace hgl::graph::mtl

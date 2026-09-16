@@ -266,7 +266,7 @@ namespace hgl::graph::mtl
                 bool complete =
                     data->metadata_resolution_valid
                  && data->dependencies.GetCount()
-                        == data->pending_dependency_versions.GetCount()
+                        == data->pending_module_requirements.GetCount()
                  && data->module_conflict_names.GetCount()
                         == data->pending_module_conflicts.GetCount();
                 for (int k = 0;

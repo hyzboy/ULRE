@@ -29,6 +29,17 @@ namespace hgl::graph::mtl
     //    BuildCompileDefineDocument / BuildMeshIndexTableDecls /
     //    BuildFSIndexTableDecls —— 仅被 BuildMaterialStageDocument 消费。──
 
+    /// 诊断用：把最终 GLSL 文本落盘，供人工比对（原本散落在两处且路径硬编码）。
+    ///
+    /// 仅在 _DEBUG 构建且环境变量 ULRE_DUMP_GLSL 非空时生效，其余情况为空操作。
+    /// 输出目录 = <ShaderCacheRoot>/glsldump；ShaderCacheRoot 由
+    /// ULRE_SHADER_CACHE_PATH > exe 目录 > cwd 解析（见 ShaderCacheRoot.h），
+    /// 因此不绑定任何机器绝对路径。文件名带自增序号，避免不同材质互相覆盖。
+    ///
+    /// 生产路径的 GLSL 归档由 ShaderArtifactStore::SaveStageGLSL 负责，
+    /// 与本函数无关（本函数只是调试便利）。
+    void DumpShaderGenGLSL(const char *stage, const std::string &text);
+
     /// 将模板 source document 与已解出的材质片段合并为最终 stage document。
     /// source document 必须以 Version block 开始。
     bool BuildMaterialStageDocument(

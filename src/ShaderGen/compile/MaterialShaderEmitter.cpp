@@ -9,10 +9,15 @@
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
+#include <hgl/mtl/ShaderCacheRoot.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/filesystem/FileSystem.h>
+#include <hgl/type/StdString.h>
 #include <hgl/graph/ShaderBufferSources.h>
+#include <atomic>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 namespace hgl::graph::mtl
@@ -55,6 +60,51 @@ bool BuildCodeModuleDocument(
         out_document.Add(ShaderDocumentBlockKind::Module, code, source);
     }
     return true;
+}
+
+// ── 诊断用 GLSL 落盘（声明见 MaterialShaderEmitter.h）─────────────────────────
+void DumpShaderGenGLSL(const char *stage, const std::string &text)
+{
+#ifndef _DEBUG
+    (void)stage;
+    (void)text;
+#else
+    if (!stage || text.empty())
+        return;
+
+    const char *enabled = std::getenv("ULRE_DUMP_GLSL");
+    if (!enabled || !enabled[0])
+        return;
+
+    const OSString root = GetShaderCacheRootPath();
+    if (root.IsEmpty())
+        return;
+
+    filesystem::Path directory(root);
+    directory /= ToOSString("glsldump");
+    const OSString directory_path = directory.ToOSString();
+
+    if (!filesystem::IsDirectory(directory_path)
+     && !filesystem::MakePath(directory_path))
+        return;
+
+    static std::atomic<uint32_t> dump_seq{0};
+    const uint32_t seq = dump_seq.fetch_add(1);
+
+    std::string file_name = "ulre_dump_";
+    file_name += std::to_string(seq);
+    file_name += "_";
+    file_name += stage;
+    file_name += ".glsl";
+
+    filesystem::Path file_path(directory_path);
+    file_path /= ToOSString(file_name);
+
+    filesystem::SaveMemoryToFile(
+        file_path.ToOSString(),
+        text.data(),
+        static_cast<int64>(text.size()));
+#endif
 }
 
 std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)

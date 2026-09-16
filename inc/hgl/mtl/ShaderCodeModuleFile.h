@@ -55,7 +55,6 @@ namespace hgl::graph::mtl
         // `uses <module-name>` references; validated against the registry
         // by pass 2 after all files are registered. Names are the identity.
         AnsiStringList pending_module_requirements;
-        ValueArray<ShaderCodeModuleDependency> pending_dependency_versions;
         AnsiStringList pending_module_conflicts;
 
         ValueArray<ShaderCodeModuleSemanticRequirement> semantic_requirements;

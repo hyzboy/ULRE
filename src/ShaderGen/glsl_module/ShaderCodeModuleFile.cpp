@@ -567,12 +567,7 @@ namespace hgl::graph::mtl
                     if (!next || !token[0])
                         return ShaderCodeModuleParseResult::MissingDirectiveArgument;
 
-                    const AnsiString dependency_name(token);
-                    ShaderCodeModuleDependency dependency{};
-                    dependency.module_name = dependency_name.c_str();
-
-                    out_data.pending_module_requirements.Add(dependency_name);
-                    out_data.pending_dependency_versions.Add(dependency);
+                    out_data.pending_module_requirements.Add(AnsiString(token));
                 }
                 else if (std::strcmp(token, "conflicts") == 0)
                 {
