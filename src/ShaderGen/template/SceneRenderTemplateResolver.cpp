@@ -6,6 +6,9 @@ namespace hgl::graph::mtl
     {
         SceneRenderTemplateProfile profile;
         profile.AddModule(
+            ShaderModuleSlotRole::SkyProvider,
+            "sky_atmosphere", "sky/sky_atmosphere.glsl");
+        profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
             "material_surface", "surface/material_surface.glsl");
         profile.AddModule(
@@ -47,7 +50,7 @@ namespace hgl::graph::mtl
     {
         SceneRenderTemplateProfile profile;
         profile.AddModule(
-            ShaderModuleSlotRole::AmbientLightProvider,
+            ShaderModuleSlotRole::SkyProvider,
             "sky_atmosphere", "sky/sky_atmosphere.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,

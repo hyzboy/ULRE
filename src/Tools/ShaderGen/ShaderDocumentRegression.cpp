@@ -110,7 +110,9 @@ int main()
      || !template_request.AddModuleRoot(
             ShaderModuleSlotRole::MaterialSourceProvider, "material/source")
      || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::NTBProvider, "ntb/provider"))
+            ShaderModuleSlotRole::NTBProvider, "ntb/provider")
+     || !template_request.AddModuleRoot(
+            ShaderModuleSlotRole::SkyProvider, "sky/atmosphere"))
         return 14;
     const char *template_paths[] =
     {
@@ -118,7 +120,7 @@ int main()
         "shadow/pcf.glsl", "ambient/ibl.glsl",
         "ao/identity.glsl", "lighting/pbr.glsl",
         "output/forward_hdr.glsl", "material/source.glsl",
-        "ntb/provider.glsl"
+        "ntb/provider.glsl", "sky/atmosphere.glsl"
     };
     for (hgl::uint32 index = 0;
          index < template_request.module_root_count; ++index)
@@ -221,17 +223,18 @@ int main()
         ShaderModuleSlotRole::LightingModel,
         ShaderModuleSlotRole::OutputPolicy,
         ShaderModuleSlotRole::MaterialSourceProvider,
-        ShaderModuleSlotRole::NTBProvider
+        ShaderModuleSlotRole::NTBProvider,
+        ShaderModuleSlotRole::SkyProvider
     };
     const char *const root_names[] =
     {
         "surface/pbr_texture", "direct/sun", "shadow/pcf", "ambient/ibl",
         "ao/identity", "lighting/pbr", "output/forward_hdr",
-        "material/source", "ntb/provider"
+        "material/source", "ntb/provider", "sky/atmosphere"
     };
-    ShaderCodeModuleDefinition root_modules[9]{};
+    ShaderCodeModuleDefinition root_modules[10]{};
     ShaderCodeModuleRegistry root_registry;
-    for (int index = 0; index < 9; ++index)
+    for (int index = 0; index < 10; ++index)
     {
         root_modules[index].name = root_names[index];
         root_modules[index].glsl_code = "";
@@ -253,7 +256,7 @@ int main()
      || !resolved_template.IsValid()
      || resolved_template.definition->id != template_request.template_id
      || resolved_template.module_root_count != template_request.module_root_count
-     || resolved_template.manifest.code_module_count != 9
+     || resolved_template.manifest.code_module_count != 10
      || resolved_template.stable_hash == 0)
         return 29;
     root_modules[1].provided_capabilities = 0;

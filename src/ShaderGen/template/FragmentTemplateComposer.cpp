@@ -164,6 +164,7 @@ namespace
         case ShaderModuleSlotRole::OutputPolicy:             return "ForwardLighting";
         case ShaderModuleSlotRole::MaterialSourceProvider:   return "MaterialSource";
         case ShaderModuleSlotRole::NTBProvider:              return "NTB";
+        case ShaderModuleSlotRole::SkyProvider:              return "Sky";
         default:                                             return nullptr;
         }
     }
@@ -355,7 +356,7 @@ namespace
             AnsiString("SCENE_SKY_UBO;\n"), "Sky.SkyUBO");
 
         const char *sky_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::AmbientLightProvider);
+            input, ShaderModuleSlotRole::SkyProvider);
         if (!sky_module)
             return false;
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
@@ -537,14 +538,7 @@ namespace
             AnsiString("SCENE_CAMERA_UBO;\nSCENE_SKY_UBO;\n"),
             "ForwardLit.SceneUBO");
 
-        // 天光模块尚未纳入 template slot：ForwardLit 的 AmbientLightProvider
-        // 承担的是间接光（indirect_sky_ambient），天光是另一条独立数据源。
-        // 待引入 SkyProvider slot 后一并纳入（届时本段删除）。
-        AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
-            IncludeTemplate("sky/sky_atmosphere.glsl"), "ForwardLit.Sky",
-            "sky/sky_atmosphere.glsl");
-
-        // 其余模块（含 Surface）一律按 template.slots 顺序发射——
+        // 全部模块（含天光与 Surface）一律按 template.slots 顺序发射——
         // Surface 排在 MaterialSource / NTB 之后，否则
         // material_surface.glsl 里的 EvalMaterialSource / GetNTB 未声明。
         if (!AppendSlotIncludes(input, "ForwardLit", document))

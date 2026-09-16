@@ -165,8 +165,9 @@ namespace hgl::graph::mtl
         bool ParseSlotRole(
             const char *token, ShaderModuleSlotRole &out_role) noexcept
         {
+            // 上界用 SlotRoleCount 哨兵：新增 role 时无需改动此处。
             for (uint32 value = uint32(ShaderModuleSlotRole::Unknown) + 1;
-                 value <= uint32(ShaderModuleSlotRole::NTBProvider);
+                 value < uint32(ShaderModuleSlotRole::SlotRoleCount);
                  ++value)
             {
                 const ShaderModuleSlotRole role = ShaderModuleSlotRole(value);

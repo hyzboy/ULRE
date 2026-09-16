@@ -34,10 +34,22 @@ namespace hgl::graph::mtl
         LightingModel,
         OutputPolicy,
         MaterialSourceProvider,
-        NTBProvider
+        NTBProvider,
+        /// 天光数据源（如 sky/sky_atmosphere.glsl）。
+        /// 与 AmbientLightProvider 是两条独立数据链：Ambient 承担间接光
+        /// （indirect_sky_ambient），天光提供太阳方向与大气参数，被
+        /// ambient 模块与 sky surface 共同消费，故不能复用同一 slot。
+        SkyProvider,
+
+        /// 哨兵：合法 role 个数。ParseSlotRole() 等遍历以它为上界——
+        /// 新增 role 时插在本项之前即可，不必再改遍历代码。
+        SlotRoleCount
     };
 
-    constexpr uint32 MaxRenderTemplateModuleRoots = 10;
+    // ForwardLit profile（8 个 scene 模块）+ MaterialSource + NTB = 10，
+    // 留 2 个余量，避免 AddModuleRoot() 静默失败（其返回值在 profile
+    // 构造处未被检查）。
+    constexpr uint32 MaxRenderTemplateModuleRoots = 12;
 
     struct RenderTemplateModuleRoot
     {

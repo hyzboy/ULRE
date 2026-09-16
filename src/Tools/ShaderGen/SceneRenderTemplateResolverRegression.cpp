@@ -59,7 +59,7 @@ int main()
         return 7;
     const SceneRenderTemplateProfile sky_profile = MakeSkyProfile();
     if (sky_profile.module_count != 3
-     || sky_profile.roles[0] != ShaderModuleSlotRole::AmbientLightProvider)
+     || sky_profile.roles[0] != ShaderModuleSlotRole::SkyProvider)
         return 9;
     const SceneRenderTemplateProfile shadow_profile =
         MakeShadowCasterProfile();

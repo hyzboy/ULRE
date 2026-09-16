@@ -14,6 +14,7 @@ namespace hgl::graph::mtl
 
         constexpr RenderTemplateSlot ForwardLitSlots[] =
         {
+            { ShaderModuleSlotRole::SkyProvider },
             { ShaderModuleSlotRole::DirectLightProvider },
             { ShaderModuleSlotRole::AmbientLightProvider },
             { ShaderModuleSlotRole::ShadowProvider },
@@ -29,6 +30,7 @@ namespace hgl::graph::mtl
         // 因此这两个 slot 必须存在——此前缺失会让该模板永远校验失败。
         constexpr RenderTemplateSlot ForwardLitUnshadowedSlots[] =
         {
+            { ShaderModuleSlotRole::SkyProvider },
             { ShaderModuleSlotRole::DirectLightProvider },
             { ShaderModuleSlotRole::AmbientLightProvider },
             { ShaderModuleSlotRole::LightingModel },
@@ -63,7 +65,7 @@ namespace hgl::graph::mtl
 
         constexpr RenderTemplateSlot SkySlots[] =
         {
-            { ShaderModuleSlotRole::AmbientLightProvider },
+            { ShaderModuleSlotRole::SkyProvider },
             { ShaderModuleSlotRole::SurfaceProvider },
             // 同 ShadowCaster：只校验、不发射。
             { ShaderModuleSlotRole::OutputPolicy }
@@ -185,6 +187,7 @@ namespace hgl::graph::mtl
         case ShaderModuleSlotRole::OutputPolicy: return "output_policy";
         case ShaderModuleSlotRole::MaterialSourceProvider: return "material_source_provider";
         case ShaderModuleSlotRole::NTBProvider: return "ntb_provider";
+        case ShaderModuleSlotRole::SkyProvider: return "sky_provider";
         default: return "unknown";
         }
     }
