@@ -1,5 +1,6 @@
 ﻿#include <hgl/mtl/FragmentTemplateComposer.h>
-#include<hgl/log/Log.h>#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/log/Log.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 
@@ -145,6 +146,63 @@ namespace
             : nullptr;
         return root && !root->include_path.IsEmpty()
             ? root->include_path.c_str() : nullptr;
+    }
+
+    // slot role → 逻辑名后缀。顺序完全由 RenderTemplateDefinition::slots
+    // 决定，这里只提供显示标签，不参与排序。
+    const char *GetSlotLogicalNameSuffix(
+        const ShaderModuleSlotRole role) noexcept
+    {
+        switch (role)
+        {
+        case ShaderModuleSlotRole::SurfaceProvider:          return "Surface";
+        case ShaderModuleSlotRole::DirectLightProvider:      return "Direct";
+        case ShaderModuleSlotRole::ShadowProvider:           return "Shadow";
+        case ShaderModuleSlotRole::AmbientLightProvider:     return "Indirect";
+        case ShaderModuleSlotRole::AmbientOcclusionProvider: return "AO";
+        case ShaderModuleSlotRole::LightingModel:            return "LightingModel";
+        case ShaderModuleSlotRole::OutputPolicy:             return "ForwardLighting";
+        case ShaderModuleSlotRole::MaterialSourceProvider:   return "MaterialSource";
+        case ShaderModuleSlotRole::NTBProvider:              return "NTB";
+        default:                                             return nullptr;
+        }
+    }
+
+    // 按 RenderTemplateDefinition::slots 定义的顺序发射模块 #include。
+    // include 顺序的唯一来源就是 slots——Composer 不得再另立一套顺序。
+    // 可选 slot（required=false）未提供时跳过；必需 slot 缺失则返回失败。
+    bool AppendSlotIncludes(
+        const FragmentTemplateComposer::ComposeInput &input,
+        const char *prefix,
+        ShaderDocument &document)
+    {
+        const ResolvedRenderTemplate *resolved = input.resolved_template;
+        if (!resolved || !resolved->definition)
+            return false;
+
+        const RenderTemplateDefinition &definition = *resolved->definition;
+        for (hgl::uint32 index = 0; index < definition.slot_count; ++index)
+        {
+            const RenderTemplateSlot &slot = definition.slots[index];
+
+            const char *path = ResolvedInclude(input, slot.role);
+            if (!path)
+            {
+                if (slot.required)
+                    return false;
+                continue;
+            }
+
+            const char *suffix = GetSlotLogicalNameSuffix(slot.role);
+            if (!suffix)
+                return false;
+
+            const AnsiString logical_name =
+                AnsiString(prefix) + AnsiString(".") + AnsiString(suffix);
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+                             IncludeTemplate(path), logical_name.c_str(), path);
+        }
+        return true;
     }
 
     // 纹理声明里的 channels → GLSL 宏 MTL_TEX_<NAME>_CHANNELS=<n>。
@@ -479,51 +537,19 @@ namespace
             AnsiString("SCENE_CAMERA_UBO;\nSCENE_SKY_UBO;\n"),
             "ForwardLit.SceneUBO");
 
-        const char *sky_module = "sky/sky_atmosphere.glsl";
-        const char *direct_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::DirectLightProvider);
-        const char *indirect_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::AmbientLightProvider);
-        const char *shadow_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::ShadowProvider);
-        const char *ao_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::AmbientOcclusionProvider);
-        const char *algorithm_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::LightingModel);
-        const char *material_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::MaterialSourceProvider);
-        const char *ntb_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::NTBProvider);
-        const char *forward_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::OutputPolicy);
-        if (!direct_module || !indirect_module || !shadow_module || !ao_module
-         || !algorithm_module || !material_module || !ntb_module
-         || !forward_module)
-            return false;
-        const char *paths[] =
-        {
-            sky_module, direct_module, indirect_module, shadow_module,
-            ao_module, algorithm_module,
-            material_module, ntb_module, forward_module
-        };
-        const char *names[] =
-        {
-            "ForwardLit.Sky", "ForwardLit.Direct", "ForwardLit.Indirect",
-            "ForwardLit.Shadow", "ForwardLit.AO",
-            "ForwardLit.LightingModel", "ForwardLit.MaterialSource",
-            "ForwardLit.NTB", "ForwardLit.ForwardLighting"
-        };
-        for (int index = 0; index < 9; ++index)
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
-                IncludeTemplate(paths[index]), names[index], paths[index]);
-
-        const char *surface_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::SurfaceProvider);
-        if (!surface_module)
-            return false;
+        // 天光模块尚未纳入 template slot：ForwardLit 的 AmbientLightProvider
+        // 承担的是间接光（indirect_sky_ambient），天光是另一条独立数据源。
+        // 待引入 SkyProvider slot 后一并纳入（届时本段删除）。
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
-            IncludeTemplate(surface_module), "ForwardLit.Surface",
-            surface_module);
+            IncludeTemplate("sky/sky_atmosphere.glsl"), "ForwardLit.Sky",
+            "sky/sky_atmosphere.glsl");
+
+        // 其余模块（含 Surface）一律按 template.slots 顺序发射——
+        // Surface 排在 MaterialSource / NTB 之后，否则
+        // material_surface.glsl 里的 EvalMaterialSource / GetNTB 未声明。
+        if (!AppendSlotIncludes(input, "ForwardLit", document))
+            return false;
+
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
             IncludeTemplate("common/alpha_compositor.glsl"),
             "ForwardLit.Alpha", "common/alpha_compositor.glsl");

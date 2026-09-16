@@ -60,7 +60,7 @@ use_cm_module(Core)
 use_cm_module(Util)
 use_cm_module(Audio)
 use_cm_module(2D)
-use_cm_module(GUI)
+#use_cm_module(GUI)
 use_cm_module(AssetsManage)
 
 # CMQT 依赖 CMCore 的头（hgl/platform/Window.h 等），须在其他 CM 模块之后引入

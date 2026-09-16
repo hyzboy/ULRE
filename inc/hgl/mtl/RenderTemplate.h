@@ -77,6 +77,19 @@ namespace hgl::graph::mtl
         const char *name = nullptr;
         ShaderStage stage = ShaderStage::Fragment;
         uint32 version = 0;
+
+        /// slots 的数组顺序即 fragment 模块的 #include 发射顺序，
+        /// FragmentTemplateComposer 按此顺序遍历（见 AppendSlotIncludes）。
+        /// 重排会改变生成的 GLSL 文本 → program hash 变化 → SPV 缓存失效。
+        ///
+        /// 硬约束：SurfaceProvider 必须排在 MaterialSourceProvider 与
+        /// NTBProvider 之后——surface/material_surface.glsl 直接调用
+        /// EvalMaterialSource / EvalMaterialAlpha / GetNTB，GLSL 要求被调函数
+        /// 先于调用点声明。
+        ///
+        /// 若某模板声明了但并不 include 某个 slot（当前仅 Sky / ShadowCaster
+        /// 的 OutputPolicy：WriteMaterialOutput 由模板内联生成），该 slot 排在
+        /// 数组末尾并在定义处注明。
         const RenderTemplateSlot *slots = nullptr;
         uint32 slot_count = 0;
     };

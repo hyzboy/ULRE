@@ -7,54 +7,65 @@ namespace hgl::graph::mtl
 {
     namespace
     {
+        // 数组顺序 = fragment #include 发射顺序（契约见 RenderTemplate.h）。
+        // SurfaceProvider 恒排末位：material_surface.glsl 调用
+        // EvalMaterialSource / EvalMaterialAlpha / GetNTB，必须后于
+        // MaterialSourceProvider 与 NTBProvider 声明。
+
         constexpr RenderTemplateSlot ForwardLitSlots[] =
         {
-            { ShaderModuleSlotRole::SurfaceProvider },
             { ShaderModuleSlotRole::DirectLightProvider },
-            { ShaderModuleSlotRole::ShadowProvider },
             { ShaderModuleSlotRole::AmbientLightProvider },
+            { ShaderModuleSlotRole::ShadowProvider },
             { ShaderModuleSlotRole::AmbientOcclusionProvider },
             { ShaderModuleSlotRole::LightingModel },
-            { ShaderModuleSlotRole::OutputPolicy },
             { ShaderModuleSlotRole::MaterialSourceProvider },
-            { ShaderModuleSlotRole::NTBProvider }
+            { ShaderModuleSlotRole::NTBProvider },
+            { ShaderModuleSlotRole::OutputPolicy },
+            { ShaderModuleSlotRole::SurfaceProvider }
         };
 
+        // Composer 对 ForwardLit 系列一律要求 MaterialSource 与 NTB 非空，
+        // 因此这两个 slot 必须存在——此前缺失会让该模板永远校验失败。
         constexpr RenderTemplateSlot ForwardLitUnshadowedSlots[] =
         {
-            { ShaderModuleSlotRole::SurfaceProvider },
             { ShaderModuleSlotRole::DirectLightProvider },
             { ShaderModuleSlotRole::AmbientLightProvider },
-            { ShaderModuleSlotRole::AmbientOcclusionProvider },
             { ShaderModuleSlotRole::LightingModel },
-            { ShaderModuleSlotRole::OutputPolicy }
+            { ShaderModuleSlotRole::MaterialSourceProvider },
+            { ShaderModuleSlotRole::NTBProvider },
+            { ShaderModuleSlotRole::OutputPolicy },
+            { ShaderModuleSlotRole::SurfaceProvider }
         };
 
         constexpr RenderTemplateSlot ForwardUnlitSlots[] =
         {
-            { ShaderModuleSlotRole::SurfaceProvider },
             { ShaderModuleSlotRole::OutputPolicy },
-            { ShaderModuleSlotRole::MaterialSourceProvider }
+            { ShaderModuleSlotRole::MaterialSourceProvider },
+            { ShaderModuleSlotRole::SurfaceProvider }
         };
 
+        // OutputPolicy 仅参与校验、不发射：WriteMaterialOutput 由
+        // FragmentTemplateComposer::AppendOutputDeclarations 内联生成。
         constexpr RenderTemplateSlot ShadowCasterOpaqueSlots[] =
         {
+            { ShaderModuleSlotRole::MaterialSourceProvider, false },
             { ShaderModuleSlotRole::SurfaceProvider },
-            { ShaderModuleSlotRole::OutputPolicy },
-            { ShaderModuleSlotRole::MaterialSourceProvider, false }
+            { ShaderModuleSlotRole::OutputPolicy }
         };
 
         constexpr RenderTemplateSlot ShadowCasterMaskedSlots[] =
         {
+            { ShaderModuleSlotRole::MaterialSourceProvider },
             { ShaderModuleSlotRole::SurfaceProvider },
-            { ShaderModuleSlotRole::OutputPolicy },
-            { ShaderModuleSlotRole::MaterialSourceProvider }
+            { ShaderModuleSlotRole::OutputPolicy }
         };
 
         constexpr RenderTemplateSlot SkySlots[] =
         {
             { ShaderModuleSlotRole::AmbientLightProvider },
             { ShaderModuleSlotRole::SurfaceProvider },
+            // 同 ShadowCaster：只校验、不发射。
             { ShaderModuleSlotRole::OutputPolicy }
         };
 
