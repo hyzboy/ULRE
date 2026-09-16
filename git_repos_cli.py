@@ -58,15 +58,21 @@ def _print_git_invocation(cmd: List[str], cwd: Optional[str]) -> None:
 # Git utilities
 # -----------------------------
 
-def run_git(args: List[str], cwd: Optional[str] = None) -> Tuple[int, str, str]:
+def run_git(args: List[str], cwd: Optional[str] = None, timeout: Optional[int] = None) -> Tuple[int, str, str]:
     cmd = ["git"] + args
     _print_git_invocation(cmd, cwd)
     try:
         proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        out, err = proc.communicate()
+        out, err = proc.communicate(timeout=timeout)
         return proc.returncode, (out or "").strip(), (err or "").strip()
     except FileNotFoundError:
         return 1, "", "Git not found. Install Git and ensure it's on PATH."
+    except subprocess.TimeoutExpired:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+        return 124, "", f"Timeout after {timeout}s"
 
 
 def is_git_repo(path: str) -> bool:
@@ -358,6 +364,129 @@ def op_fix_remote(root_path: str):
         print("No changes; all repositories already match INI remotes.")
 
 
+def op_fix_cm_remotes(root_path: str, do_fetch: bool = True):
+    """对于名为 CM 开头的子仓库：
+    - 若已存在 hyzgame / github 双远端，则跳过（已处理过）
+    - 若只有一个 URL 以 github.com/hyzboy/CM 开头的远端，将其改名为 github
+    - 添加 hyzgame 远端（hyzboy 之后的部分与 github 远端保持一致）
+    - 尽可能将 hyzgame 设为默认（remote.pushdefault + 当前分支上游）
+    """
+    ini_remotes = load_remotes_ini(root_path)
+    github_base = ini_remotes.get("github", "https://github.com/hyzboy/")
+    hyzgame_base = ini_remotes.get("hyzgame", "http://git.hyzgame.com:3000/hyzboy/")
+    if not github_base.endswith("/"):
+        github_base += "/"
+    if not hyzgame_base.endswith("/"):
+        hyzgame_base += "/"
+
+    repos = [(n, p) for n, p in discover_subrepos(root_path) if n.startswith("CM")]
+    if not repos:
+        print("No CM* sub repositories found.")
+        return
+
+    for repo_name, repo_path in repos:
+        print(f"=== {repo_name} ===")
+        remotes = list_remotes(repo_path)
+        if not remotes:
+            print("  Skip: not a git repository / no remotes")
+            continue
+
+        if "hyzgame" in remotes:
+            print("  Skip: already has 'hyzgame' remote")
+            continue
+
+        gh_names = [n for n, kinds in remotes.items()
+                    if (kinds.get("fetch") or "").startswith(github_base + "CM")]
+        if len(gh_names) != 1:
+            print(f"  Skip: expects exactly one github.com/hyzboy/CM* remote, found {len(gh_names)}")
+            continue
+
+        old_name = gh_names[0]
+        old_url = remotes[old_name].get("fetch") or ""
+        suffix = old_url[len(github_base):]
+
+        if old_name != "github":
+            if "github" in remotes:
+                print(f"  Skip: remote 'github' already exists besides '{old_name}'")
+                continue
+            code, _, err = run_git(["remote", "rename", old_name, "github"], cwd=repo_path)
+            print(f"  rename {old_name} -> github: {'OK' if code == 0 else 'FAIL ' + err}")
+            if code != 0:
+                continue
+        else:
+            print("  remote 'github' already named correctly")
+
+        hyzgame_url = hyzgame_base + suffix
+        changed, msg = ensure_remote(repo_path, "hyzgame", hyzgame_url)
+        print(f"  {msg}")
+
+        # 设为默认 push 远端
+        code, _, err = run_git(["config", "remote.pushdefault", "hyzgame"], cwd=repo_path)
+        print(f"  set remote.pushdefault=hyzgame: {'OK' if code == 0 else 'FAIL ' + err}")
+
+        # 尽可能把当前分支的上游切到 hyzgame
+        branch = get_current_branch(repo_path)
+        if not branch:
+            print("  Skip upstream: detached HEAD or unknown branch")
+            continue
+        fetched = False
+        if do_fetch:
+            code, _, err = run_git(["fetch", "hyzgame", "--prune", "--tags"],
+                                   cwd=repo_path, timeout=90)
+            fetched = (code == 0)
+            print(f"  fetch hyzgame: {'OK' if fetched else 'FAIL ' + err}")
+        if fetched:
+            code, out, _ = run_git(["rev-parse", "--verify", f"refs/remotes/hyzgame/{branch}"],
+                                   cwd=repo_path)
+            if code == 0:
+                c2, _, e2 = run_git(["branch", f"--set-upstream-to=hyzgame/{branch}", branch],
+                                    cwd=repo_path)
+                print(f"  branch '{branch}' upstream -> hyzgame/{branch}: {'OK' if c2 == 0 else 'FAIL ' + e2}")
+            else:
+                print(f"  Skip upstream: hyzgame has no branch '{branch}'")
+        else:
+            print(f"  Skip upstream: keep branch '{branch}' on github (hyzgame not reachable)")
+        print()
+
+
+def op_replace_remote_prefix(root_path: str, old_prefix: str, new_prefix: str):
+    """把所有仓库（含主仓库与子仓库）中 URL 以 old_prefix 开头的远端改成 new_prefix，
+    并同步更新 remotes.ini 里匹配的 base。"""
+    old_prefix = old_prefix.strip()
+    new_prefix = new_prefix.rstrip("/") + "/"
+    if not old_prefix:
+        print("old_prefix is required")
+        return
+
+    # remotes.ini
+    ini_path = os.path.join(root_path, "remotes.ini")
+    ini_remotes = load_remotes_ini(root_path)
+    for alias, base in ini_remotes.items():
+        if base.startswith(old_prefix):
+            new_base = new_prefix + base[len(old_prefix):].lstrip("/")
+            print(f"[remotes.ini] {alias}: {base} -> {new_base}")
+            set_ini_remote(root_path, alias, new_base.rstrip("/"))
+
+    repos = [("Main Repo", root_path)] + discover_subrepos(root_path)
+    changed = 0
+    for repo_name, repo_path in repos:
+        remotes = list_remotes(repo_path)
+        for rname, kinds in remotes.items():
+            for kind in ("fetch", "push"):
+                url = kinds.get(kind)
+                if not url or not url.startswith(old_prefix):
+                    continue
+                new_url = new_prefix + url[len(old_prefix):].lstrip("/")
+                args = ["remote", "set-url"] + (["--push"] if kind == "push" else []) + [rname, new_url]
+                code, _, err = run_git(args, cwd=repo_path)
+                if code == 0:
+                    changed += 1
+                    print(f"[{repo_name}] {rname} ({kind}) -> {new_url}")
+                else:
+                    print(f"[{repo_name}] FAILED {rname} ({kind}): {err}")
+    print(f"\nDone. {changed} remote url(s) updated.")
+
+
 def _resolve_remote_name(repo_path: str, alias: str, base: str, ini_remotes: Dict[str, str]) -> Optional[str]:
     remotes = list_remotes(repo_path)
     if alias in remotes:
@@ -444,6 +573,13 @@ def main():
     cmd = args[0].lower()
     if cmd in ("fix", "fix_remote"):
         op_fix_remote(root)
+    elif cmd in ("setbase", "seturl"):
+        if len(args) < 3:
+            print("Usage: python git_repos_cli.py setbase <old_url_prefix> <new_url_prefix>")
+            return
+        op_replace_remote_prefix(root, args[1], args[2])
+    elif cmd in ("fixcm", "fix_cm"):
+        op_fix_cm_remotes(root, do_fetch="--no-fetch" not in args)
     elif cmd in ("fetch", "pull", "push"):
         alias = args[1] if len(args) > 1 else None
         op_fetch_pull_push(root, cmd, alias)
@@ -466,6 +602,8 @@ def main():
         print("Usage:")
         print("  python git_repos_cli.py                  # list INI remotes, all repo remotes + branches")
         print("  python git_repos_cli.py fix              # fix remote names per INI, add missing remotes")
+        print("  python git_repos_cli.py fixcm [--no-fetch]  # CM* subrepos: rename github remote, add hyzgame, set default")
+        print("  python git_repos_cli.py setbase <old_prefix> <new_prefix>  # replace remote URL prefix in all repos + remotes.ini")
         print("  python git_repos_cli.py fetch [alias]    # git fetch for alias (or all INI remotes)")
         print("  python git_repos_cli.py pull [alias]     # git pull for alias (or all INI remotes)")
         print("  python git_repos_cli.py push [alias]     # git push --all --tags for alias (or all INI remotes)")
