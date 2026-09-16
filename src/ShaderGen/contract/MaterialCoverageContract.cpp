@@ -8,6 +8,79 @@ namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
 
+    namespace
+    {
+        // 材质源 → 评估 coverage(alpha) 所需的 interstage 语义。
+        //
+        // key 是**模块注册名**（@ulre name；AddMaterialProviderRoot 从 TOML 的
+        // include 路径提取文件名主干），不是库内路径——移动或重命名 shader
+        // 文件不应牵动 C++。
+        //
+        // 注意：这组需求与模块自身的 `require` 注解是两回事。后者是模块运行
+        // 所需，这里是「求 alpha 需要什么」。例如 debug_normal_source 运行需要
+        // WorldNormal/MaterialData，但它的 alpha 是常量，一条都不需要——所以它
+        // 必须显式登记，以区别于「未登记」时的兜底推导。
+        struct MaterialSourceCoverageRule
+        {
+            const char *module_name;
+            bool data_index_id;         // 需要材质实例索引（取 payload/纹理引用行）
+            bool uv0;                   // 需要采样 UV
+            bool color;                 // 需要顶点色
+            bool requires_material_data;
+            bool requires_texture;
+        };
+
+        const MaterialSourceCoverageRule kMaterialSourceCoverageRules[] =
+        {
+            // 模块注册名              DataIndexID  UV0    Color  材质数据行  纹理
+            { "pbr_surface_source",     true,       true,  false, false,      true  },
+            { "texture_source",         true,       true,  false, false,      true  },
+            { "vertex_color_source",    false,      false, true,  false,      false },
+            { "unlit_source",           true,       false, false, true,       false },
+            { "luminance_source",       true,       false, false, true,       false },
+            // alpha 为常量，不需要任何 interstage 语义
+            { "debug_normal_source",    false,      false, false, false,      false },
+        };
+
+        /// 命中已登记规则则填充 out_contract 并返回 true；
+        /// 返回 false 表示未登记，交由调用方走 varying 兜底推导。
+        bool ApplyMaterialSourceCoverageRule(
+            const RenderTemplateModuleRoot *material_source_root,
+            MaterialCoverageContract &out_contract) noexcept
+        {
+            if (!material_source_root
+             || material_source_root->module_name.IsEmpty())
+                return false;
+
+            const char *source = material_source_root->module_name.c_str();
+
+            for (const MaterialSourceCoverageRule &rule :
+                    kMaterialSourceCoverageRules)
+            {
+                if (std::strcmp(source, rule.module_name) != 0)
+                    continue;
+
+                if (rule.data_index_id)
+                    out_contract.required_semantics |=
+                        GetInterStageSemanticMask(
+                            InterStageSemantic::DataIndexID);
+                if (rule.uv0)
+                    out_contract.required_semantics |=
+                        GetInterStageSemanticMask(InterStageSemantic::UV0);
+                if (rule.color)
+                    out_contract.required_semantics |=
+                        GetInterStageSemanticMask(InterStageSemantic::Color);
+
+                out_contract.requires_material_data =
+                    rule.requires_material_data;
+                out_contract.requires_texture = rule.requires_texture;
+                return true;
+            }
+
+            return false;
+        }
+    }
+
     bool BuildMaterialCoverageContract(
         const MaterialDefinition &definition,
         const MaterialRecipe &recipe,
@@ -55,55 +128,11 @@ namespace hgl::graph::mtl
             const RenderTemplateModuleRoot *material_source_root =
                 render_template_request.FindModuleRoot(
                     ShaderModuleSlotRole::MaterialSourceProvider);
-            const char *source = material_source_root
-                && !material_source_root->include_path.IsEmpty()
-                    ? material_source_root->include_path.c_str() : "";
-            const auto require_semantic =
-                [&out_contract](const InterStageSemantic semantic)
-            {
-                out_contract.required_semantics |=
-                    GetInterStageSemanticMask(semantic);
-            };
 
-            if (std::strcmp(
-                    source, "material/pbr_surface_source.glsl") == 0)
+            if (!ApplyMaterialSourceCoverageRule(
+                    material_source_root, out_contract))
             {
-                require_semantic(InterStageSemantic::DataIndexID);
-                require_semantic(InterStageSemantic::UV0);
-                out_contract.requires_texture = true;
-            }
-            else if (std::strcmp(
-                        source,
-                        "material/texture_source.glsl") == 0)
-            {
-                require_semantic(InterStageSemantic::DataIndexID);
-                require_semantic(InterStageSemantic::UV0);
-                out_contract.requires_texture = true;
-            }
-            else if (std::strcmp(
-                        source,
-                        "material/vertex_color_source.glsl") == 0)
-            {
-                require_semantic(InterStageSemantic::Color);
-            }
-            else if (std::strcmp(
-                        source,
-                        "material/unlit_source.glsl") == 0
-                  || std::strcmp(
-                        source,
-                        "material/luminance_source.glsl") == 0)
-            {
-                require_semantic(InterStageSemantic::DataIndexID);
-                out_contract.requires_material_data = true;
-            }
-            else if (std::strcmp(
-                        source,
-                        "material/debug_normal_source.glsl") == 0)
-            {
-                // Debug source alpha is a constant.
-            }
-            else
-            {
+                // 未登记的材质源：退回按材质自身 varying 声明推导。
                 out_contract.required_semantics =
                     GetMaterialInterStageSemanticMask(
                         definition.vertex_varying);

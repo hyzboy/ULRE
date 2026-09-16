@@ -84,6 +84,12 @@ namespace hgl::graph::mtl
             max_vertices   = max_invocations * 4u;   // 4 顶点/字符（顶点复用）
             max_primitives = max_invocations * 2u;
             break;
+        default:
+            // 新增 MeshShaderMode 必须在此登记拓扑容量——否则会静默产出
+            // max_vertices/max_primitives = 0（编译通过但渲染全空）。
+            GLogError("[ShaderGen] Unhandled MeshShaderMode(%u)",
+                      static_cast<uint32>(mode));
+            return false;
         }
 
         ValueArray<InterStageSemanticContractEntry> adapted_stage_interface;

@@ -338,13 +338,15 @@ static bool ResolveEffectiveMaterialPrivateData(
     return IsMaterialSSBOType(out_material_private_data);
 }
 
-// ── Step 3b: 有效契约 → 固定序列化条目 ───────────────────────────────────────
+// ── Step 3b: 有效契约 ────────────────────────────────────────────────────────
+// A6-2b-b2：数据槽行表不再补录进契约——改为编译期直判信号
+// schema.requires_runtime_data_rows（Step 6 设置，条件同 emit_data_index_id），
+// 渲染侧建表/绑定表判定统一读该标志。契约恒 Scene UBO 条目。
 static bool BuildEffectiveDescriptorEntries(
     const DescriptorContract &base_contract,
     const MaterialSSBOType material_private_data,
     CompileContext &c,
-    DescriptorContract &out_effective_contract,
-    std::vector<SerializedDescriptorEntry> &out_entries)
+    DescriptorContract &out_effective_contract)
 {
     (void)material_private_data;
 
@@ -354,42 +356,13 @@ static bool BuildEffectiveDescriptorEntries(
             out_effective_contract))
         return c.Fail("invalid effective material descriptor contract");
 
-    // A6-2b-b2：数据槽行表不再补录进契约——改为编译期直判信号
-    // schema.requires_runtime_data_rows（Step 6 设置，条件同 emit_data_index_id），
-    // 渲染侧建表/绑定表判定统一读该标志。契约恒 Scene UBO 条目。
-
-    // C1-T2：entries 即规范化 SerializedDescriptorEntry[]（原
-    // ConvertDescriptorContractToFixed 往返转换已删——直接取契约条目）
-    out_entries = out_effective_contract;
-
     return true;
 }
 
-// ── Step 3c: canonical 描述符注册（目录表驱动）───────────────────────────────
-// 唯一真源：inc/hgl/mtl/DescriptorResourceCatalog.h（语义→类别/集合/绑定/SBS）。
-// A6-2b-b2：目录只余 SceneGlobal 行（PerDraw/MaterialData 类已随 BDA 化退场），
-// Scene UBO 全局化后 per-material 注册全跳过——本函数为无操作保留（历史骨架，
-// 契约条目均不触发注册）。
-static bool RegisterCanonicalDescriptors(
-    ShaderBuildContext *ctx,
-    const std::vector<SerializedDescriptorEntry> &descriptor_entries,
-    CompileContext &c)
-{
-    for (const SerializedDescriptorEntry &entry : descriptor_entries)
-    {
-        const DescriptorResourceCatalogEntry *cat =
-            FindResourceCatalogEntry(entry.semantic);
-        if (!cat)
-            continue;
-
-        // SceneGlobal：Scene UBO 已全局化（P1），不再进入 per-material 分配器。
-        // （PerDraw/MaterialData 类枚举与分支已删；L2W/L2WIndex/MeshDrawParams
-        // 及材质行表全走 BDA，Material 集已退场。）
-        (void)cat;
-    }
-
-    return true;
-}
+// ── 已删除：Step 3c canonical 描述符注册 ─────────────────────────────────────
+// 原 RegisterCanonicalDescriptors() 遍历契约条目查资源目录后什么都不做——
+// Scene UBO 已全局化（P1），per-material 分配器随 BDA 化退场，无条目触发注册。
+// 该函数与其唯一消费的 SerializedDescriptorEntry[] 副本一并移除。
 
 // ── Step 5a: set/binding 宏 ──────────────────────────────────────────────────
 // 固定 ABI 的 set/binding 宏（L2W/MESH_DRAW_PARAMS/VIEWPORT/CAMERA/SKY/COLOR_PALETTE
@@ -540,14 +513,10 @@ ShaderBuildContext *CompileMaterial(
         return FailCompile(c);
 
     DescriptorContract effective_descriptor_contract{};
-    std::vector<SerializedDescriptorEntry> descriptor_entries;
     if (!BuildEffectiveDescriptorEntries(
             base_descriptor_contract, effective_material_private_data,
             c,
-            effective_descriptor_contract, descriptor_entries))
-        return FailCompile(c);
-
-    if (!RegisterCanonicalDescriptors(ctx, descriptor_entries, c))
+            effective_descriptor_contract))
         return FailCompile(c);
 
     // ── Step 5: Complete both stages through ShaderDocument ───────
