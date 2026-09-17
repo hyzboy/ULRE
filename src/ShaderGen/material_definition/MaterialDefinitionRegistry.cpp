@@ -227,35 +227,38 @@ mtl::ShaderBuildContext *CreateMaterialFromDefinition(
 
 void NormalizeRecipe(MaterialRecipe &recipe)
 {
+    // Canonicalization is intentionally strict: empty or unknown material IDs are
+    // not tolerated as a legacy compatibility branch. They resolve to the single
+    // file-backed fallback material so every runtime program key remains stable and
+    // traceable to a concrete material definition.
     if (recipe.mtl_def_id.empty())
-        return;
+        recipe.mtl_def_id = GetFallbackMaterialDefinitionID();
 
     MaterialDefinition definition{};
-    bool has_definition = TryGetMaterialDefinitionByID(recipe.mtl_def_id, definition);
-    if (has_definition)
+    if (!TryGetMaterialDefinitionByID(recipe.mtl_def_id, definition))
     {
-        // Aliases are accepted only at the compatibility boundary. Once a
-        // recipe is normalized, the canonical definition ID is the sole
-        // runtime identity used by hashing and caches.
-        recipe.mtl_def_id = definition.definition_id;
-        ApplyBaseMaterialInfoDefaults(recipe, definition, false);
-
-        const ResolvedMaterialRenderState resolved =
-            ResolveMaterialRenderState(definition, recipe);
-
-        // Write resolved values back to render_state_overrides as authoritative.
-        recipe.render_state_overrides.has_double_sided = true;
-        recipe.render_state_overrides.double_sided = resolved.double_sided;
-        recipe.render_state_overrides.has_alpha_test = true;
-        recipe.render_state_overrides.alpha_test = resolved.alpha_test;
-        recipe.render_state_overrides.has_alpha_cutoff = true;
-        recipe.render_state_overrides.alpha_cutoff = resolved.alpha_cutoff;
-        recipe.render_state_overrides.has_dither = true;
-        recipe.render_state_overrides.dither = resolved.dither;
-        recipe.render_state_overrides.has_pipeline_config = true;
-        recipe.render_state_overrides.pipeline_config = resolved.pipeline_config;
+        recipe.mtl_def_id = GetFallbackMaterialDefinitionID();
+        if (!TryGetMaterialDefinitionByID(recipe.mtl_def_id, definition))
+            return;
     }
 
+    recipe.mtl_def_id = definition.definition_id;
+    ApplyBaseMaterialInfoDefaults(recipe, definition, false);
+
+    const ResolvedMaterialRenderState resolved =
+        ResolveMaterialRenderState(definition, recipe);
+
+    // Write resolved values back to render_state_overrides as authoritative.
+    recipe.render_state_overrides.has_double_sided = true;
+    recipe.render_state_overrides.double_sided = resolved.double_sided;
+    recipe.render_state_overrides.has_alpha_test = true;
+    recipe.render_state_overrides.alpha_test = resolved.alpha_test;
+    recipe.render_state_overrides.has_alpha_cutoff = true;
+    recipe.render_state_overrides.alpha_cutoff = resolved.alpha_cutoff;
+    recipe.render_state_overrides.has_dither = true;
+    recipe.render_state_overrides.dither = resolved.dither;
+    recipe.render_state_overrides.has_pipeline_config = true;
+    recipe.render_state_overrides.pipeline_config = resolved.pipeline_config;
 }
 
 }//namespace hgl::graph::mtl
