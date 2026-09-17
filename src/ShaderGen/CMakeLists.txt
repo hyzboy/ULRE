@@ -130,6 +130,7 @@ set(MESHGEN_FILES
     ${SHADERGEN_INCLUDE_PATH}/MeshShaderMode.h
     ${SHADERGEN_INCLUDE_PATH}/MeshShaderLimits.h
     meshgen/MeshTemplateEmitter.h
+    meshgen/MeshModeDescriptor.h
     meshgen/MeshShaderHeaderGen.h
     meshgen/MeshShaderVaryingGen.h
     meshgen/MeshShaderVertexAdapter.h

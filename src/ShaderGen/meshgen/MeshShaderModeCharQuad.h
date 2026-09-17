@@ -45,36 +45,11 @@ namespace hgl::graph::mtl
             ms += body;
         }
 
-        // ── UV varying ───────────────────────────────────────────
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::UV0))
-        {
-            ms += "    fragUV0[base_vid + 0u] = vec2(rot_tl_u, rot_tl_v);  // TL\n";
-            ms += "    fragUV0[base_vid + 1u] = vec2(rot_bl_u, rot_bl_v);  // BL\n";
-            ms += "    fragUV0[base_vid + 2u] = vec2(rot_tr_u, rot_tr_v);  // TR\n";
-            ms += "    fragUV0[base_vid + 3u] = vec2(rot_br_u, rot_br_v);  // BR\n";
-        }
-
-        // ── 颜色 varying ─────────────────────────────────────────
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::Color))
-        {
-            ms += "    for (int i = 0; i < 4; i++)\n";
-            ms += "        fragVertexColor[base_vid + uint(i)] = char_color;\n";
-        }
-
-        // ── DataIndexID varying（perprimitiveEXT——每字符 2 图元各写 1 份）──
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
-        {
-            // Arena+BDA：varying 直传 draw item 序号
-            ms += "    const uint data_id = gl_DrawID;\n";
-            ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 0u] = data_id;\n";
-            ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 1u] = data_id;\n";
-        }
-
-        // StyleID varying（perprimitiveEXT——flat 每图元样式索引 → FS 查 sbo_char_style）
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::StyleID))
-        {
-            ms += "    fragStyleID[gl_LocalInvocationIndex * 2u + 0u] = style_id;\n";
-            ms += "    fragStyleID[gl_LocalInvocationIndex * 2u + 1u] = style_id;\n";
-        }
+        MaterialVertexVaryingConfig dummy_varying_cfg{};
+        EmitVaryingWrites(
+            ms,
+            resolved_stage_interface,
+            dummy_varying_cfg,
+            MeshVaryingIndexModel::CharQuad);
     }
 }

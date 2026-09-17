@@ -14,7 +14,6 @@
 
 #include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
-#include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderDocument.h>
 #include <hgl/log/Log.h>
@@ -24,13 +23,14 @@
 #include <vector>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 
-// 子模块
+// 子模块与模式描述符
 #include "MeshShaderHeaderGen.h"
 #include "MeshShaderVertexAdapter.h"
 #include "MeshShaderVaryingGen.h"
 #include "MeshShaderModeVertexPassthrough.h"
 #include "MeshShaderModeLineQuad.h"
 #include "MeshShaderModeCharQuad.h"
+#include "MeshModeDescriptor.h"
 
 namespace hgl::graph::mtl
 {
@@ -59,41 +59,24 @@ namespace hgl::graph::mtl
         const ValueArray<InterStageSemanticContractEntry>
             *resolved_stage_interface = nullptr)
     {
-        // ── Explicit mesh template strategy: topology and capacity ────────
-        uint32_t max_vertices   = 0;
-        uint32_t max_primitives = 0;
-
-        switch (mode)
+        // ── 获取模式描述符 ───────────────────────────────────────────────
+        const MeshModeDescriptor *desc = GetMeshModeDescriptor(mode);
+        if (!desc)
         {
-        case MeshShaderMode::VertexPassthrough:
-            // 三角形按「组内每 3 连续槽位」装配（vid%3==0 线程写索引），
-            // group size 必须是 3 的倍数——否则每组尾部 1-2 顶点无法成三角形，
-            // 且跨组三角形永久丢失（静默几何撕裂，编译通过渲染缺面）。
-            if ((max_invocations % 3u) != 0u)
-            {
-                GLogError("[ShaderGen] VertexPassthrough 的 max_invocations(%u) 必须是 3 的倍数",
-                          max_invocations);
-                return false;
-            }
-            max_vertices   = max_invocations;
-            max_primitives = max_invocations / 3u;   // 每 3 顶点 1 三角形（恒 triangle list）
-            break;
-        case MeshShaderMode::LineQuad:
-            max_vertices   = max_invocations * 4u;
-            max_primitives = max_invocations * 2u;
-            break;
-        case MeshShaderMode::CharQuad:
-            max_vertices   = max_invocations * 4u;   // 4 顶点/字符（顶点复用）
-            max_primitives = max_invocations * 2u;
-            break;
-        default:
-            // 新增 MeshShaderMode 必须在此登记拓扑容量——否则会静默产出
-            // max_vertices/max_primitives = 0（编译通过但渲染全空）。
             GLogError("[ShaderGen] Unhandled MeshShaderMode(%u)",
                       static_cast<uint32>(mode));
             return false;
         }
 
+        // ── 拓扑与容量解析 ───────────────────────────────────────────────
+        MeshModeCapacity capacity{};
+        if (!desc->resolve_topology || !desc->resolve_topology(max_invocations, capacity))
+            return false;
+
+        const uint32_t max_vertices   = capacity.max_vertices;
+        const uint32_t max_primitives = capacity.max_primitives;
+
+        // ── Stage Interface ───────────────────────────────────────────────
         ValueArray<InterStageSemanticContractEntry> adapted_stage_interface;
         MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
         if (!resolved_stage_interface)
@@ -105,13 +88,22 @@ namespace hgl::graph::mtl
             resolved_stage_interface = &adapted_stage_interface;
         }
 
+        // ── Stage 2 (Mapping) 模块解析（独立于 Stage 3）────────────────────
         const char *stage2_module = nullptr;
-        if (mode != MeshShaderMode::CharQuad)
+        if (desc->resolve_stage2_mapping)
         {
-            // CharQuad 在 main() 中直接用 viewport.ortho_matrix 做坐标变换，不需要 Stage2/3 模块
-            stage2_module = VertexNodeConfigResolver::GetMappingModulePath(node_cfg);
+            stage2_module = desc->resolve_stage2_mapping(node_cfg);
             if (!stage2_module)
                 return false;   // 未映射的 position_mapping = 映射缺失，硬失败（编译失败）而非静默错渲
+        }
+
+        // ── Stage 3 (Projection) 模块解析（独立于 Stage 2）──────────────────
+        const char *stage3_module = nullptr;
+        if (desc->resolve_stage3_projection)
+        {
+            stage3_module = desc->resolve_stage3_projection(node_cfg);
+            if (!stage3_module)
+                return false;
         }
 
         out_document.Clear();
@@ -168,111 +160,108 @@ namespace hgl::graph::mtl
         std::string fragment;
         fragment.reserve(kMeshShaderInitialReserve);
 
+        // 1. Version
         EmitMeshShaderVersion(fragment);
         add_block(ShaderDocumentBlockKind::Version, fragment,
                   "MeshTemplateEmitter.Version", "MeshShaderHeaderGen");
 
+        // 2. Extensions & RootAddresses push constant
         fragment.clear();
         EmitMeshShaderExtensions(fragment);
         add_block(ShaderDocumentBlockKind::Extension, fragment,
                   "MeshTemplateEmitter.Extensions", "MeshShaderHeaderGen");
 
-        if (mode != MeshShaderMode::CharQuad)
+        // 3. Defines (由模式正向声明)
+        if (desc->emit_defines)
         {
             fragment.clear();
-            EmitGlInstanceIndexMacro(fragment);
+            desc->emit_defines(fragment, varying_cfg);
             add_block(ShaderDocumentBlockKind::Define, fragment,
-                      "MeshTemplateEmitter.InstanceIndex", "MeshShaderHeaderGen");
-
-            if (varying_cfg.use_transform_id_attr)
-            {
-                fragment.clear();
-                fragment += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
-                add_block(ShaderDocumentBlockKind::Define, fragment,
-                          "MeshTemplateEmitter.TransformID", "stage3");
-            }
+                      "MeshTemplateEmitter.Defines", desc->name);
         }
 
+        // 4. Header Resources (UBOs 正向声明集合驱动)
         fragment.clear();
-        // LineQuad projects segment endpoints with camera.vp even when its
-        // configured vertex mapping is otherwise screen/NDC based.
+        hgl::OrderedSet<DescriptorSemantic> ubos;
+        if (desc->resolve_ubos)
+            desc->resolve_ubos(node_cfg, varying_cfg, ubos);
+
         EmitMeshShaderHeaderResources(
             fragment,
             node_cfg,
             max_invocations,
             max_vertices,
             max_primitives,
-            mode == MeshShaderMode::LineQuad);
+            ubos);
         add_block(ShaderDocumentBlockKind::Resource, fragment,
                   "MeshTemplateEmitter.HeaderResources", "MeshShaderHeaderGen");
 
-        // ── Stage 1: 顶点输入（SSBO）───────────────────────────────────────
+        // 5. Stage 1: 顶点输入适配 (SSBO)
         fragment.clear();
         EmitVertexAdapter(fragment);
         add_block(ShaderDocumentBlockKind::Resource, fragment,
                   "MeshTemplateEmitter.VertexAdapter", "MeshShaderVertexAdapter");
 
-        if (mode != MeshShaderMode::CharQuad)
+        // 6. ColorPalette UBO (由 UBO 声明集判定)
+        if (ubos.Contains(DescriptorSemantic::MaterialColorPalette))
         {
             fragment.clear();
-            EmitColorPaletteUBO(fragment, varying_cfg);
+            EmitColorPaletteUBO(fragment, ubos);
             add_block(ShaderDocumentBlockKind::Resource, fragment,
                       "MeshTemplateEmitter.ColorPalette", "MeshShaderHeaderGen");
         }
 
-        // CharQuad SSBO 声明必须在全局作用域（void main 之前），同时需要保持
-        // canonical block order：Define → Resource → Interface → Module → MainBody。
-        if (mode == MeshShaderMode::CharQuad)
+        // 7. 模式专属自定义资源 (例如 CharQuad SSBO 声明)
+        if (desc->emit_custom_resources)
         {
             fragment.clear();
-            EmitCharQuadSSBODeclarations(fragment);
+            desc->emit_custom_resources(fragment, node_cfg, varying_cfg);
             add_block(ShaderDocumentBlockKind::Resource, fragment,
-                      "MeshTemplateEmitter.CharQuadResources", "MeshShaderModeCharQuad");
+                      "MeshTemplateEmitter.CustomResources", desc->name);
         }
 
-        // ── Varying 输出（per-vertex 数组，mesh shader 要求）──────────────
+        // 8. Varying 输出 (per-vertex 数组，mesh shader 语义契约)
         fragment.clear();
         EmitVaryingDeclarations(
             fragment, *resolved_stage_interface, max_vertices, max_primitives);
         add_block(ShaderDocumentBlockKind::Interface, fragment,
                   "MeshTemplateEmitter.Varyings", "MeshShaderVaryingGen");
 
-        if (mode != MeshShaderMode::CharQuad)
+        // 9. Stage 1 模块 (顶点数据读取)
+        if (resolved_input_document && resolved_input_document->GetBlockCount() > 0)
         {
-            if (resolved_input_document
-             && resolved_input_document->GetBlockCount() > 0)
-                append_document(resolved_input_document);
-            else
+            append_document(resolved_input_document);
+        }
+        else if (desc->resolve_stage1_input)
+        {
+            const char *input_module = desc->resolve_stage1_input(node_cfg, position_format);
+            if (input_module)
             {
-                // 非索引直通：Position 从 SSBO 读（s1_position_* 模块）
-                // Vec2Position → s1_position_vec2；Vec3Position → s1_position_vec3
-                VertexInputMode effective_input = node_cfg.input;
-                if (position_format == VK_FORMAT_R32G32_SFLOAT)
-                    effective_input = VertexInputMode::Vec2Position;
-                else if (position_format == VK_FORMAT_R32G32B32_SFLOAT ||
-                         position_format == VK_FORMAT_R32G32B32A32_SFLOAT)
-                    effective_input = VertexInputMode::Vec3Position;
-
-                const char *input_module = "vertex/s1_position_vec3.glsl";
-                if (effective_input == VertexInputMode::Vec2Position)
-                    input_module = "vertex/s1_position_vec2.glsl";
+                fragment.clear();
                 fragment += "#include \"";
                 fragment += input_module;
                 fragment += "\"\n";
                 add_block(ShaderDocumentBlockKind::Module, fragment,
                           "MeshTemplateEmitter.DefaultInput", "vertex-input", input_module);
             }
+        }
 
-            append_document(provider_document);
+        append_document(provider_document);
 
+        // 10. Stage 2 模块 (Mapping)
+        if (stage2_module)
+        {
             fragment.clear();
             fragment += "#include \"";
             fragment += stage2_module;
             fragment += "\"\n\n";
             add_block(ShaderDocumentBlockKind::Module, fragment,
                       "MeshTemplateEmitter.Stage2", "stage2", stage2_module);
+        }
 
-            const char *stage3_module = VertexNodeConfigResolver::GetStage3ModulePath(node_cfg);
+        // 11. Stage 3 模块 (Projection)
+        if (stage3_module)
+        {
             fragment.clear();
             fragment += "#include \"";
             fragment += stage3_module;
@@ -281,18 +270,12 @@ namespace hgl::graph::mtl
                       "MeshTemplateEmitter.Stage3", "stage3", stage3_module);
         }
 
+        // 12. MainBody
         fragment.clear();
         fragment += "\nvoid main()\n{\n";
-
-        // per-draw 参数行加载（两模式统一）：间接合批经 gl_DrawID 定位本命令行，
-        // 直接绘制 gl_DrawID=0 → row 0（CPU 侧保证 row 0 = 本 draw 参数）。
-        // 行表走 BDA：MeshDrawParamsRef(pc_root.addr_mesh_draw_params) 经 push constant
-        // 地址解引用（表 buffer SHADER_DEVICE_ADDRESS usage + 16B 对齐——CPU 保证）。
         fragment += "    draw_params = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[gl_DrawID];\n";
         fragment += "\n";
 
-        // ── 每线程处理 ─────────────────────────────────────────────────────
-        // 构建模式函数共享上下文
         MeshShaderModeContext mode_ctx{};
         mode_ctx.stage_interface  = resolved_stage_interface;
         mode_ctx.max_invocations  = max_invocations;
@@ -301,17 +284,9 @@ namespace hgl::graph::mtl
         mode_ctx.emit_world_pos   = FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::WorldPosition) != nullptr;
         mode_ctx.emit_world_normal = FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::WorldNormal) != nullptr;
 
-        switch (mode)
+        if (desc->emit_body)
         {
-        case MeshShaderMode::VertexPassthrough:
-            EmitVertexPassthroughBody(fragment, mode_ctx);
-            break;
-        case MeshShaderMode::LineQuad:
-            EmitLineQuadBody(fragment, mode_ctx, position_format);
-            break;
-        case MeshShaderMode::CharQuad:
-            EmitCharQuadBody(fragment, mode_ctx);
-            break;
+            desc->emit_body(fragment, mode_ctx, position_format);
         }
 
         fragment += "}\n";

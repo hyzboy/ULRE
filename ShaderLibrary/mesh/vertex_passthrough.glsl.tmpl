@@ -1,0 +1,15 @@
+    const uint vid = gl_LocalInvocationIndex;
+
+    const uint total_vertices = draw_params.total_vertices;
+    const uint verts_this_group = min({{group_size}}u, total_vertices - gl_WorkGroupID.x * {{group_size}}u);
+    SetMeshOutputsEXT(verts_this_group, verts_this_group / 3u);
+    if (vid >= verts_this_group)
+        return;
+
+    MeshVertexIndex = gl_WorkGroupID.x * {{group_size}}u + gl_LocalInvocationIndex;
+    if (draw_params.is_indexed != 0u)
+        MeshVertexIndex = sbo_vertex_index.data[draw_params.index_base + MeshVertexIndex];
+
+    LoadVertexData();
+{{varying_outputs}}    if ((vid % 3u) == 0u && (vid + 2u) < verts_this_group)
+        gl_PrimitiveTriangleIndicesEXT[vid / 3u] = uvec3(vid, vid + 1u, vid + 2u);

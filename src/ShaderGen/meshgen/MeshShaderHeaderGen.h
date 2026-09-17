@@ -8,6 +8,8 @@
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/graph/ShaderBufferSources.h>
+#include <hgl/mtl/DescriptorSemantic.h>
+#include <hgl/type/OrderedSet.h>
 #include <string>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 
@@ -64,7 +66,7 @@ namespace hgl::graph::mtl
         uint32_t max_invocations,
         uint32_t max_vertices,
         uint32_t max_primitives,
-        const bool force_camera_ubo = false)
+        const hgl::OrderedSet<DescriptorSemantic> &ubos)
     {
         ms += "layout(local_size_x = ";
         ms += std::to_string(max_invocations);
@@ -79,25 +81,20 @@ namespace hgl::graph::mtl
         // ── Descriptor macros ──────────────────────────────────────────────
         ms += "#include \"common/descriptor_macros.glsl\"\n";
 
-        const bool needs_camera = force_camera_ubo
-                               || node_cfg.projection == ProjectionMode::WorldCameraVP
-                               || node_cfg.orientation == OrientationMode::CameraFacingFree
-                               || node_cfg.orientation == OrientationMode::CameraFacingAxisY;
-        // Viewport UBO 无条件 include：它是场景级 UBO（Scene set binding=2），
-        // 切换 FBO 必绑、所有材质可用——不再按投影条件裁剪（Line 的 3D 线宽
-        // 计算也读 viewport.viewport_resolution，取代 MeshDrawParams.viewport_height）。
-        const bool needs_l2w = (node_cfg.orientation == OrientationMode::World ||
-                                node_cfg.orientation == OrientationMode::CameraFacingFree ||
-                                node_cfg.orientation == OrientationMode::CameraFacingAxisY);
-
-        if (needs_camera)
+        if (ubos.Contains(DescriptorSemantic::CameraInfo))
         {
             ms += "#include \"ubo/camera_info.glsl\"\n";
             ms += "SCENE_CAMERA_UBO;\n";
         }
-        ms += "#include \"ubo/viewport_info.glsl\"\n";
-        ms += "SCENE_VIEWPORT_UBO;\n";
+        if (ubos.Contains(DescriptorSemantic::ViewportInfo))
+        {
+            ms += "#include \"ubo/viewport_info.glsl\"\n";
+            ms += "SCENE_VIEWPORT_UBO;\n";
+        }
 
+        const bool needs_l2w = (node_cfg.orientation == OrientationMode::World ||
+                                node_cfg.orientation == OrientationMode::CameraFacingFree ||
+                                node_cfg.orientation == OrientationMode::CameraFacingAxisY);
         if (needs_l2w)
         {
             // l2w_ssbo.glsl：buffer_reference 类型声明 + l2w 垫片宏
@@ -106,6 +103,32 @@ namespace hgl::graph::mtl
         }
 
         ms += "\n";
+    }
+
+    inline void EmitMeshShaderHeaderResources(
+        std::string &ms,
+        const VertexShaderNodeConfig &node_cfg,
+        uint32_t max_invocations,
+        uint32_t max_vertices,
+        uint32_t max_primitives,
+        const bool force_camera_ubo = false)
+    {
+        hgl::OrderedSet<DescriptorSemantic> ubos;
+        ubos.Add(DescriptorSemantic::ViewportInfo);
+        const bool needs_camera = force_camera_ubo
+                               || node_cfg.projection == ProjectionMode::WorldCameraVP
+                               || node_cfg.orientation == OrientationMode::CameraFacingFree
+                               || node_cfg.orientation == OrientationMode::CameraFacingAxisY;
+        if (needs_camera)
+            ubos.Add(DescriptorSemantic::CameraInfo);
+
+        EmitMeshShaderHeaderResources(
+            ms,
+            node_cfg,
+            max_invocations,
+            max_vertices,
+            max_primitives,
+            ubos);
     }
 
     // 生成 mesh shader 头部：版本声明、extension、layout、UBO/SSBO 条件包含。
@@ -129,6 +152,18 @@ namespace hgl::graph::mtl
     }
 
     // MaterialColorPalette UBO（palette 材质）
+    inline void EmitColorPaletteUBO(
+        std::string &ms,
+        const hgl::OrderedSet<DescriptorSemantic> &ubos)
+    {
+        if (ubos.Contains(DescriptorSemantic::MaterialColorPalette))
+        {
+            ms += "#include \"ubo/color_palette.glsl\"\n";
+            ms += "SCENE_COLOR_PALETTE_UBO;\n";
+        }
+        ms += "\n";
+    }
+
     inline void EmitColorPaletteUBO(
         std::string &ms,
         const MaterialVertexVaryingConfig &varying_cfg)

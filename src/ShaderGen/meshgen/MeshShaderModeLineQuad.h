@@ -49,45 +49,10 @@ namespace hgl::graph::mtl
         }
 
         // varying（per-vertex；per-primitive 语义按图元号——每线段 2 图元共享）
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
-        {
-            // 实例索引直接作为批次地址行表下标。
-            // Arena+BDA：varying 直传 draw item 序号
-            ms += "    const uint data_id = gl_InstanceIndex;\n";
-            ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 0u] = data_id;\n";
-            ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 1u] = data_id;\n";
-        }
-        if (varying_cfg.emit_vertex_color_from_palette)
-        {
-            ms += "    const vec4 lcolor = unpackUnorm4x8(color_palette.color[color_index]);\n";
-            ms += "    fragVertexColor[vid + 0u] = lcolor;\n";
-            ms += "    fragVertexColor[vid + 1u] = lcolor;\n";
-            ms += "    fragVertexColor[vid + 2u] = lcolor;\n";
-            ms += "    fragVertexColor[vid + 3u] = lcolor;\n";
-        }
-        else if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::Color))
-        {
-            // 非 palette 顶点色（VertexColor 材质）：s1_color vec4 直读（LineQuad 不调
-            // LoadVertexData——Color 全局变量未赋值，必须直读 SSBO）
-            ms += "#ifdef S1_COLOR_GLSL\n";
-            ms += "    const vec4 vcolor = sbo_vertex_color.data[v0];\n";
-            ms += "    fragVertexColor[vid + 0u] = vcolor;\n";
-            ms += "    fragVertexColor[vid + 1u] = vcolor;\n";
-            ms += "    fragVertexColor[vid + 2u] = vcolor;\n";
-            ms += "    fragVertexColor[vid + 3u] = vcolor;\n";
-            ms += "#endif\n";
-        }
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::Luminance))
-        {
-            // Luminance（VertexLuminance 材质）：R8 打包直读（与 s1_luminance 同解码公式）
-            ms += "#ifdef S1_LUMINANCE_GLSL\n";
-            ms += "    const uint lpacked = sbo_vertex_luminance.data[v0 >> 2u];\n";
-            ms += "    const float lum = float((lpacked >> ((v0 & 3u) * 8u)) & 0xFFu) / 255.0;\n";
-            ms += "    fragLuminance[vid + 0u] = lum;\n";
-            ms += "    fragLuminance[vid + 1u] = lum;\n";
-            ms += "    fragLuminance[vid + 2u] = lum;\n";
-            ms += "    fragLuminance[vid + 3u] = lum;\n";
-            ms += "#endif\n";
-        }
+        EmitVaryingWrites(
+            ms,
+            resolved_stage_interface,
+            varying_cfg,
+            MeshVaryingIndexModel::LineQuad);
     }
 }

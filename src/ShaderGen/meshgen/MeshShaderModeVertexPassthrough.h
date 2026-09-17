@@ -12,6 +12,8 @@
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <string>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
+#include "MeshShaderTemplate.h"
+#include "MeshShaderVaryingGen.h"
 
 namespace hgl::graph::mtl
 {
@@ -32,79 +34,26 @@ namespace hgl::graph::mtl
     {
         const auto &resolved_stage_interface = *ctx.stage_interface;
         const auto &varying_cfg = *ctx.varying_cfg;
+        const std::string group_size = std::to_string(ctx.max_invocations);
 
-        // 每线程 1 顶点：位置变换 + varying 赋值，直通到 mesh 顶点槽
-        // 组内顶点槽位（0 .. max_vertices-1；全局顶点号由 VertexIndexID 宏处理）
-        ms += "    const uint vid = gl_LocalInvocationIndex;\n";
-        ms += "\n";
+        std::string varying_outputs;
+        EmitVaryingWrites(
+            varying_outputs,
+            resolved_stage_interface,
+            varying_cfg,
+            MeshVaryingIndexModel::PerVertex,
+            ctx.emit_world_pos,
+            ctx.emit_world_normal);
 
-        ms += "    const uint total_vertices = draw_params.total_vertices;\n";
-        // 本组有效顶点数（所有 invocation 相同值 → SetMeshOutputsEXT 一致；
-        // groupCountX = ceil(total/group_size)，末组起始 <= total，不会 uint 下溢）
-        ms += "    const uint verts_this_group = min(";
-        ms += std::to_string(ctx.max_invocations);
-        ms += "u, total_vertices - gl_WorkGroupID.x * ";
-        ms += std::to_string(ctx.max_invocations);
-        ms += "u);\n";
-        // 图元数 = 顶点数/3（triangle list；group size 必须是 3 的倍数——见
-        // MeshTemplateEmitter 的 % 3 守卫，组内三角形永不跨组）
-        ms += "    SetMeshOutputsEXT(verts_this_group, verts_this_group / 3u);\n";
-        ms += "    if (vid >= verts_this_group)\n";
-        ms += "        return;\n";
-        ms += "\n";
-
-        // 全局顶点号解析：非索引直通（绘制顺序 = 顶点号）或索引查表（is_indexed）。
-        // 与 VS 的 s1_index 分支语义一致（mesh 无 gl_VertexIndex，用跨组全局序号）
-        ms += "    MeshVertexIndex = gl_WorkGroupID.x * ";
-        ms += std::to_string(ctx.max_invocations);
-        ms += "u + gl_LocalInvocationIndex;\n";
-        ms += "    if (draw_params.is_indexed != 0u)\n";
-        ms += "        MeshVertexIndex = sbo_vertex_index.data[draw_params.index_base + MeshVertexIndex];\n";
-        ms += "\n";
-
-        // LoadVertexData（读 SSBO 单顶点；VertexIndexID 宏 = MeshVertexIndex）
-        ms += "    LoadVertexData();\n";
-
-        // 变换（对齐 VS：world pos/normal 一次 GetL2W + camera.vp 投影）
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
-        {
-            // 实例索引直接作为批次地址行表下标（FS 再通过 BDA 访问材质行）。
-            // gl_InstanceIndex 宏 = first_instance + gl_WorkGroupID.y（跨 draw_batch 正确）
-            // perprimitiveEXT：图元号 = vid/3（triangle list，每 3 顶点 1 图元）
-            // Arena+BDA：varying 直传 draw item 序号（FS 经 mtl_data_addrs 取地址）
-            ms += "    fragDataIndexID[vid / 3u] = gl_InstanceIndex;\n";
-        }
-        if (varying_cfg.emit_vertex_color_from_palette)
-            ms += "    fragVertexColor[vid] = unpackUnorm4x8(color_palette.color[ColorIndex]);\n";
-        else if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::Color))
-            ms += "    fragVertexColor[vid] = Color;\n";
-
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::UV0))
-            ms += "    fragUV0[vid] = TexCoord;\n";
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::Luminance))
-            ms += "    fragLuminance[vid] = Luminance;\n";
-        if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::FragDirection))
-            ms += "    fragDirection[vid] = normalize(Position);\n";
-
-        if (ctx.emit_world_pos || ctx.emit_world_normal)
-        {
-            ms += "    mat4 _l2w = GetL2W();\n";
-            ms += "    vec4 _world_pos = _l2w * GetLocalPos();\n";
-            if (ctx.emit_world_pos)
-                ms += "    fragWorldPos[vid] = _world_pos.xyz;\n";
-            if (ctx.emit_world_normal)
-                ms += "    fragWorldNormal[vid] = normalize(mat3(_l2w) * Normal);\n";
-            // world-normal 路径投影恒为 WorldCameraVP（与 VS 一致）
-            ms += "    gl_MeshVerticesEXT[vid].gl_Position = camera.vp * _world_pos;\n";
-        }
+        std::string body = GetMeshShaderTemplate("vertex_passthrough.glsl.tmpl");
+        if (body.empty())
+            ms += "#error mesh shader template missing: vertex_passthrough.glsl.tmpl\n";
         else
         {
-            ms += "    gl_MeshVerticesEXT[vid].gl_Position = GetClipPos(GetLocalPos());\n";
+            ApplyMeshTemplateSlot(body, "group_size", group_size);
+            ApplyMeshTemplateSlot(body, "varying_outputs", varying_outputs);
+            ms += body;
         }
-
-        // 三角形索引（mesh 输出恒 triangle list——每 3 连续顶点 1 三角形，
-        // vid%3==0 的线程写 (vid,vid+1,vid+2)；非 3 倍数顶点余数不构成三角形）
-        ms += "    if ((vid % 3u) == 0u && (vid + 2u) < verts_this_group)\n";
-        ms += "        gl_PrimitiveTriangleIndicesEXT[vid / 3u] = uvec3(vid, vid + 1u, vid + 2u);\n";
     }
 }
+
