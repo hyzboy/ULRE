@@ -29,18 +29,22 @@ namespace
         bool requires_geometry;
         bool vec2_position;
         bool include_normal;
+        bool alpha_test = false;
     };
 
     bool ResolveFixtureTemplateRequest(
         const MaterialDefinition &definition,
         const ShaderProgramPurpose purpose,
+        const MaterialRecipe *recipe,
         RenderTemplateRequest &out_request)
     {
+        const MaterialRecipe effective_recipe =
+            recipe ? *recipe : MaterialRecipe{};
         const bool depth_purpose =
             purpose == ShaderProgramPurpose::DepthOnly
          || purpose == ShaderProgramPurpose::ShadowDepth;
         const bool masked = ResolveMaterialRenderState(
-            definition, MaterialRecipe{}).alpha_test;
+            definition, effective_recipe).alpha_test;
         const bool has_material_source =
             definition.material_source_module
          && definition.material_source_module[0];
@@ -381,11 +385,15 @@ namespace
         MaterialShaderDocumentCapture capture{};
         MaterialDefinitionBuildRequest request{};
         request.recipe.mtl_def_id = definition.definition_id;
+        request.recipe.render_state_overrides.has_alpha_test = fixture.alpha_test;
+        request.recipe.render_state_overrides.alpha_test = fixture.alpha_test;
+        request.recipe.render_state_overrides.has_alpha_cutoff = fixture.alpha_test;
+        request.recipe.render_state_overrides.alpha_cutoff = 0.5f;
         request.geometry_vertex_format = fixture.requires_geometry ? &geometry : nullptr;
         request.defer_finalize = true;
         request.shader_program_purpose = fixture.purpose;
         if (!ResolveFixtureTemplateRequest(
-                definition, fixture.purpose,
+                definition, fixture.purpose, &request.recipe,
                 request.render_template_request))
         {
             GLogError(
@@ -495,28 +503,54 @@ int main(const int argc, char **argv)
     static const Fixture smoke_fixtures[] =
     {
         { "pure-color-forward", "builtin/pure_color",
-          ShaderProgramPurpose::ForwardColor, true, false, false }
+          ShaderProgramPurpose::ForwardColor, true, false, false, false },
+        { "checkerboard-2d-forward", "builtin/checkerboard_2d",
+          ShaderProgramPurpose::ForwardColor, true, true, false, false },
+        { "checkerboard-2d-alpha", "builtin/checkerboard_2d",
+          ShaderProgramPurpose::ForwardColor, true, true, false, true },
+        { "checkerboard-3d-face-forward", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ForwardColor, true, false, false, false },
+        { "checkerboard-3d-normal-forward", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ForwardColor, true, false, true, false },
+        { "checkerboard-3d-normal-depth", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::DepthOnly, true, false, true, false }
     };
     static const Fixture full_fixtures[] =
     {
         { "pure-color-forward", "builtin/pure_color",
-          ShaderProgramPurpose::ForwardColor, true, false, false },
+          ShaderProgramPurpose::ForwardColor, true, false, false, false },
         { "pure-color-depth", "builtin/pure_color",
-          ShaderProgramPurpose::DepthOnly, true, false, false },
+          ShaderProgramPurpose::DepthOnly, true, false, false, false },
         { "pure-color-shadow", "builtin/pure_color",
-          ShaderProgramPurpose::ShadowDepth, true, false, false },
-        { "checkerboard-2d", "builtin/checkerboard_2d",
-          ShaderProgramPurpose::ForwardColor, true, true, false },
-        { "checkerboard-3d-face", "builtin/checkerboard_3d",
-          ShaderProgramPurpose::ForwardColor, true, false, false },
-        { "checkerboard-3d-normal", "builtin/checkerboard_3d",
-          ShaderProgramPurpose::ForwardColor, true, false, true },
+          ShaderProgramPurpose::ShadowDepth, true, false, false, false },
+        { "checkerboard-2d-forward", "builtin/checkerboard_2d",
+          ShaderProgramPurpose::ForwardColor, true, true, false, false },
+        { "checkerboard-2d-depth", "builtin/checkerboard_2d",
+          ShaderProgramPurpose::DepthOnly, true, true, false, false },
+        { "checkerboard-2d-alpha", "builtin/checkerboard_2d",
+          ShaderProgramPurpose::ForwardColor, true, true, false, true },
+        { "checkerboard-3d-face-forward", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ForwardColor, true, false, false, false },
+        { "checkerboard-3d-face-depth", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::DepthOnly, true, false, false, false },
+        { "checkerboard-3d-face-shadow", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ShadowDepth, true, false, false, false },
+        { "checkerboard-3d-face-alpha", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ForwardColor, true, false, false, true },
+        { "checkerboard-3d-normal-forward", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ForwardColor, true, false, true, false },
+        { "checkerboard-3d-normal-depth", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::DepthOnly, true, false, true, false },
+        { "checkerboard-3d-normal-shadow", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ShadowDepth, true, false, true, false },
+        { "checkerboard-3d-normal-alpha", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ForwardColor, true, false, true, true },
         { "lit-forward", "Lit", ShaderProgramPurpose::ForwardColor,
-          true, false, false },
+          true, false, false, false },
         { "text-gpu-charquad", "builtin/text_gpu",
-          ShaderProgramPurpose::ForwardColor, false, false, false },
+          ShaderProgramPurpose::ForwardColor, false, false, false, false },
         { "sky-minimal", "SkyMinimal", ShaderProgramPurpose::ForwardColor,
-          true, false, false }
+          true, false, false, false }
     };
 
     const Fixture *fixtures = full ? full_fixtures : smoke_fixtures;
