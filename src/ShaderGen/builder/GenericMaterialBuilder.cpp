@@ -34,6 +34,7 @@
 
 namespace hgl::graph::mtl
 {
+    thread_local std::string g_last_build_generic_material_error;
 
     namespace
     {
@@ -480,6 +481,7 @@ namespace hgl::graph::mtl
             mesh_compose_input.stage_interface = &plan.stage_interface;
             if (!mesh_composer.Compose(mesh_compose_input, mesh_document))
             {
+                g_last_build_generic_material_error = "mesh_composer.Compose failed";
                 GLogError("[ShaderGen] Generic material mesh document build failed: name=%s",
                           definition.definition_name.c_str());
                 return false;
@@ -489,6 +491,7 @@ namespace hgl::graph::mtl
                 AnsiString serialized;
                 if (!mesh_document.Serialize(serialized, diagnostics))
                 {
+                    g_last_build_generic_material_error = "mesh_document.Serialize failed";
                     GLogError("[ShaderGen] Generic material mesh document serialization failed: name=%s",
                               definition.definition_name.c_str());
                     for (int i = 0; i < diagnostics.GetCount(); ++i)
@@ -516,6 +519,7 @@ namespace hgl::graph::mtl
                     plan.output_contract,
                     output_diagnostic))
             {
+                g_last_build_generic_material_error = "BuildMaterialOutputContract failed";
                 GLogError(
                     "[ShaderGen] Material output contract build failed: name=%s error=%s",
                     definition.definition_name.c_str(),
@@ -534,6 +538,7 @@ namespace hgl::graph::mtl
                     definition.definition_name.c_str(),
                     code_module_document))
             {
+                g_last_build_generic_material_error = "BuildCodeModuleDocument failed";
                 GLogError("[ShaderGen] Generic material code module document build failed: name=%s",
                           definition.definition_name.c_str());
                 return false;
@@ -559,6 +564,11 @@ namespace hgl::graph::mtl
             if (!composer.Compose(
                     compose_input, fragment_document, fragment_diagnostics))
             {
+                g_last_build_generic_material_error = "composer.Compose failed: ";
+                for (int i = 0; i < fragment_diagnostics.GetCount(); ++i)
+                {
+                    g_last_build_generic_material_error += fragment_diagnostics[i]->message.c_str();
+                }
                 GLogError("[ShaderGen] Generic material fragment document build failed: name=%s",
                           definition.definition_name.c_str());
                 return false;
@@ -567,6 +577,16 @@ namespace hgl::graph::mtl
                 AnsiString serialized;
                 if (!fragment_document.Serialize(serialized, fragment_diagnostics))
                 {
+                    g_last_build_generic_material_error = "fragment_document.Serialize failed: ";
+                    for (int i = 0; i < fragment_diagnostics.GetCount(); ++i)
+                    {
+                        const ShaderDocumentDiagnostic &d = *fragment_diagnostics[i];
+                        g_last_build_generic_material_error += "[";
+                        g_last_build_generic_material_error += d.code.c_str();
+                        g_last_build_generic_material_error += "] ";
+                        g_last_build_generic_material_error += d.message.c_str();
+                        g_last_build_generic_material_error += "; ";
+                    }
                     GLogError("[ShaderGen] Generic material fragment document serialization failed: name=%s",
                               definition.definition_name.c_str());
                     for (int i = 0; i < fragment_diagnostics.GetCount(); ++i)
@@ -678,6 +698,11 @@ namespace hgl::graph::mtl
         }
     }
 
+    const std::string &GetLastBuildGenericMaterialError()
+    {
+        return g_last_build_generic_material_error;
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // BuildGenericMaterial — orchestration
     // (originally MaterialDefinitionRegistry.cpp:218-603)
@@ -688,6 +713,7 @@ namespace hgl::graph::mtl
         const MaterialDefinition &definition,
         MaterialShaderDocumentCapture *document_capture)
     {
+        g_last_build_generic_material_error.clear();
         MaterialDefinition resolved_definition = definition;
         if (definition.vertex_normal_mode
                 == MaterialVertexNormalMode::OptionalFaceFallback
@@ -710,6 +736,7 @@ namespace hgl::graph::mtl
             !resolved_definition.vertex_semantic_requirements.IsEmpty();
         if (!semantic_contract)
         {
+            g_last_build_generic_material_error = "semantic_contract invalid";
             GLogError("[ShaderGen] Generic material contract invalid: name=%s semantic_requirements=%d",
                       definition.definition_name.c_str(),
                       resolved_definition.vertex_semantic_requirements.GetCount());
@@ -723,24 +750,49 @@ namespace hgl::graph::mtl
         plan.primitive_type = request.primitive_type;
 
         if (!ResolvePurposeAndCoverage(resolved_definition, request, plan))
+        {
+            if (g_last_build_generic_material_error.empty())
+                g_last_build_generic_material_error = "ResolvePurposeAndCoverage failed";
+            GLogError("[BuildGenericMaterial] ResolvePurposeAndCoverage failed");
             return nullptr;
+        }
 
         if (!ResolveVertexABI(resolved_definition, request, plan))
+        {
+            if (g_last_build_generic_material_error.empty())
+                g_last_build_generic_material_error = "ResolveVertexABI failed";
+            GLogError("[BuildGenericMaterial] ResolveVertexABI failed");
             return nullptr;
+        }
 
         if (!BuildResourceContract(resolved_definition, plan))
+        {
+            if (g_last_build_generic_material_error.empty())
+                g_last_build_generic_material_error = "BuildResourceContract failed";
+            GLogError("[BuildGenericMaterial] BuildResourceContract failed");
             return nullptr;
+        }
 
         if (!GenerateStageSources(
                 profile, resolved_definition, document_capture, plan))
+        {
+            if (g_last_build_generic_material_error.empty())
+                g_last_build_generic_material_error = "GenerateStageSources failed";
+            GLogError("[BuildGenericMaterial] GenerateStageSources failed");
             return nullptr;
+        }
 
         MaterialShaderCompilerInput compiler_input{};
         MaterialCompileConfig config{};
         if (!FinalizeProgramLink(
                 profile, resolved_definition, request, plan,
                                  compiler_input, config))
+        {
+            if (g_last_build_generic_material_error.empty())
+                g_last_build_generic_material_error = "FinalizeProgramLink failed";
+            GLogError("[BuildGenericMaterial] FinalizeProgramLink failed");
             return nullptr;
+        }
 
         ShaderBuildContext *result = CompileMaterial(
             profile, compiler_input,
@@ -752,8 +804,11 @@ namespace hgl::graph::mtl
                 : plan.fragment_source_document,
             config, document_capture);
         if (!result)
+        {
+            g_last_build_generic_material_error = "CompileMaterial failed";
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
                       definition.definition_name.c_str());
+        }
         return result;
     }
 }

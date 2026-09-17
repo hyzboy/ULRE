@@ -104,4 +104,39 @@ namespace hgl::graph
 
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Bindless, "BINDLESS_SET",              nullptr,                                   -1, nullptr},
     };
+
+    /// 统一发射所有描述符集/绑定宏（由 C++ 单源表 kDescriptorBindingMacros 驱动）
+    template <typename StringType>
+    inline void EmitDescriptorBindingDefines(StringType &out)
+    {
+        for (const auto &spec : kDescriptorBindingMacros)
+        {
+            out += "#ifndef ";
+            out += spec.name;
+            out += "\n#define ";
+            out += spec.name;
+            out += " ";
+
+            char num_buf[32];
+            switch (spec.kind)
+            {
+            case DescriptorMacroKind::SetIndex:
+                snprintf(num_buf, sizeof(num_buf), "%d", int(spec.set_type));
+                out += num_buf;
+                break;
+
+            case DescriptorMacroKind::SetAlias:
+                if (spec.alias_target)
+                    out += spec.alias_target;
+                break;
+
+            case DescriptorMacroKind::Binding:
+                snprintf(num_buf, sizeof(num_buf), "%d", spec.binding);
+                out += num_buf;
+                break;
+            }
+
+            out += "\n#endif\n";
+        }
+    }
 }//namespace hgl::graph

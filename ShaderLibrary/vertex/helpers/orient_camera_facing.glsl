@@ -13,6 +13,7 @@
 #define HELPER_ORIENT_CAMERA_FACING_GLSL
 
 #include "helpers/orient_world.glsl"
+#include "ubo/scene_ubo.glsl"
 
 // Returns the world-space center of the object (translation column of L2W).
 vec3 GetWorldCenter()

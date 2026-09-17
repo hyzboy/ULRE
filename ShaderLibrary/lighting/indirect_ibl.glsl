@@ -5,7 +5,7 @@
 // @ulre slot ambient_light_provider
 // @ulre provides_capability ambient_diffuse|ambient_specular
 // @ulre uses lighting_interface
-// @ulre uses sky_info
+// @ulre uses scene_ubo
 // @ulre uses bindless_textures
 // @ulre end
 // Indirect Lighting — IBL(Image Based Lighting)split-sum 近似。
@@ -20,7 +20,7 @@
 #define INDIRECT_IBL_GLSL
 
 #include "common/lighting_interface.glsl"
-#include "ubo/sky_info.glsl"
+#include "ubo/scene_ubo.glsl"
 #include "common/bindless_textures.glsl"
 
 vec3 EvalIndirectLighting(

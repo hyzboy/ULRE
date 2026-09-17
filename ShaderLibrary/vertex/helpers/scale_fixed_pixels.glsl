@@ -10,6 +10,8 @@
 #ifndef HELPER_SCALE_FIXED_PIXELS_GLSL
 #define HELPER_SCALE_FIXED_PIXELS_GLSL
 
+#include "ubo/scene_ubo.glsl"
+
 // Given a clip-space center and a local_xy offset (in pixels), compute the
 // final clip position of the billboard vertex at a fixed pixel size.
 //

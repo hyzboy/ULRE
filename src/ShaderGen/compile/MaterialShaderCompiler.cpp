@@ -628,7 +628,9 @@ ShaderBuildContext *CompileMaterial(
         && (!config.resource_manifest
          || config.resource_manifest->texture_reference_count != 0);
     const bool has_material_ssbo_payload =
-        IsMaterialSSBOType(effective_material_private_data);
+        IsMaterialSSBOType(effective_material_private_data)
+        && (!config.material_definition
+         || config.material_definition->vertex_varying.emit_data_index_id);
     shader_resource_schema.requires_runtime_data_rows =
         has_material_ssbo_payload
         || (config.material_definition

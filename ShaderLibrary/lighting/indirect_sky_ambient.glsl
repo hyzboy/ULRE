@@ -5,7 +5,7 @@
 // @ulre slot ambient_light_provider
 // @ulre provides_capability ambient_diffuse|ambient_specular
 // @ulre uses lighting_interface
-// @ulre uses sky_info
+// @ulre uses scene_ubo
 // @ulre uses sky_atmosphere
 // @ulre end
 // Indirect Lighting — Sky Light Ambient（低画质间接光）
@@ -16,7 +16,7 @@
 #define INDIRECT_SKY_AMBIENT_GLSL
 
 #include "common/lighting_interface.glsl"
-#include "ubo/sky_info.glsl"
+#include "ubo/scene_ubo.glsl"
 #include "sky/sky_atmosphere.glsl"
 
 vec3 EvalIndirectLighting(

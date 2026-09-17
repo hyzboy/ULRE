@@ -4,14 +4,14 @@
 // @ulre priority 0
 // @ulre slot sky_provider
 // @ulre provides_capability ambient_diffuse
-// @ulre uses sky_info
+// @ulre uses scene_ubo
 // @ulre end
 // Sky Atmosphere — 大气天光与太阳光数据源
 #ifndef SKY_ATMOSPHERE_GLSL
 #define SKY_ATMOSPHERE_GLSL
 
 #include "common/descriptor_macros.glsl"
-#include "ubo/sky_info.glsl"
+#include "ubo/scene_ubo.glsl"
 
 vec3 GetSkyMainLightDir()
 {

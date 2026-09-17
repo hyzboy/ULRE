@@ -32,6 +32,7 @@
 #include <fstream>
 #include <filesystem>
 #include "../../ShaderGen/builder/DefinitionDescriptorBuilder.h"
+#include "../../ShaderGen/builder/GenericMaterialBuilder.h"
 #include <hgl/mtl/MeshShaderLimits.h>
 #include "VertexBuilderCommon.h"
 #include "StageBuildContextTest.h"
@@ -1795,13 +1796,29 @@ namespace
                     if (!ResolveSceneRenderTemplateRequest(
                             template_id, hgl::graph::ShaderStage::Fragment,
                             profile, request.render_template_request,
-                            template_diagnostic)
-                     || !AppendMaterialRenderTemplateRoots(
-                            selected, request.render_template_request))
+                            template_diagnostic))
+                    {
+                        result.diagnostics.emplace_back(std::string("ResolveSceneRenderTemplateRequest failed for ") + GetRenderTemplateName(template_id) + " err=" + std::to_string(int(template_diagnostic.error)));
                         return std::unique_ptr<ShaderBuildContext>();
-                    return std::unique_ptr<ShaderBuildContext>(
+                    }
+                    if (!AppendMaterialRenderTemplateRoots(
+                            selected, request.render_template_request))
+                    {
+                        result.diagnostics.emplace_back("AppendMaterialRenderTemplateRoots failed");
+                        return std::unique_ptr<ShaderBuildContext>();
+                    }
+                    auto ctx = std::unique_ptr<ShaderBuildContext>(
                         CreateMaterialFromDefinition(
                             nullptr, selected, request));
+                    if (!ctx)
+                    {
+                        result.diagnostics.emplace_back(std::string("CreateMaterialFromDefinition returned null: ") + GetLastBuildGenericMaterialError());
+                    }
+                    else if (!ctx->HasProgramLink())
+                    {
+                        result.diagnostics.emplace_back(std::string("HasProgramLink false for ") + GetRenderTemplateName(template_id));
+                    }
+                    return ctx;
                 };
 
                 const auto opaque = build(
@@ -1839,6 +1856,14 @@ namespace
                     false,
                     false,
                     true);
+
+                if (!opaque || !opaque->HasProgramLink()) result.diagnostics.emplace_back("opaque failed");
+                if (!transparent || !transparent->HasProgramLink()) result.diagnostics.emplace_back("transparent failed");
+                if (!depth || !depth->HasProgramLink()) result.diagnostics.emplace_back("depth failed");
+                if (!shadow || !shadow->HasProgramLink()) result.diagnostics.emplace_back("shadow failed");
+                if (!masked_depth || !masked_depth->HasProgramLink()) result.diagnostics.emplace_back("masked_depth failed");
+                if (!dither_shadow || !dither_shadow->HasProgramLink()) result.diagnostics.emplace_back("dither_shadow failed");
+                if (!a2c_depth || !a2c_depth->HasProgramLink()) result.diagnostics.emplace_back("a2c_depth failed");
 
                 if (!opaque || !transparent || !depth || !shadow
                  || !masked_depth || !dither_shadow || !a2c_depth
@@ -3431,15 +3456,15 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            // Native template migration adds explicit identity shadow/AO providers.
-            if (file_count != 67)
-                result.diagnostics.emplace_back("LoadDirectory expected 67 file modules, got "
+            // Consolidated scene Set 0 UBOs into single scene_ubo.glsl.
+            if (file_count != 66)
+                result.diagnostics.emplace_back("LoadDirectory expected 66 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 67;
+            const int expected_count = 66;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -3716,13 +3741,19 @@ namespace
                 "struct EmissiveSurfaceData");
             const size_t alias = source.find(
                 "#define MTL_ROW(i) EmissiveSurfaceRow(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_address)\n");
+            if (extension == std::string::npos)
+                result.diagnostics.emplace_back("extension missing");
+            if (declaration == std::string::npos)
+                result.diagnostics.emplace_back("declaration missing");
+            if (alias == std::string::npos)
+                result.diagnostics.emplace_back("alias missing");
             if (extension == std::string::npos
              || declaration == std::string::npos
              || alias == std::string::npos
-             || !(extension < declaration && declaration < alias))
+             || !(extension < alias && alias < declaration))
             {
                 result.diagnostics.emplace_back(
-                    "material stage document injection order changed");
+                    "material stage document injection order changed: ext=" + std::to_string(extension) + " decl=" + std::to_string(declaration) + " alias=" + std::to_string(alias));
             }
         }
 

@@ -81,15 +81,11 @@ namespace hgl::graph::mtl
         // ── Descriptor macros ──────────────────────────────────────────────
         ms += "#include \"common/descriptor_macros.glsl\"\n";
 
-        if (ubos.Contains(DescriptorSemantic::CameraInfo))
+        if (ubos.Contains(DescriptorSemantic::CameraInfo)
+         || ubos.Contains(DescriptorSemantic::ViewportInfo)
+         || ubos.Contains(DescriptorSemantic::SkyInfo))
         {
-            ms += "#include \"ubo/camera_info.glsl\"\n";
-            ms += "SCENE_CAMERA_UBO;\n";
-        }
-        if (ubos.Contains(DescriptorSemantic::ViewportInfo))
-        {
-            ms += "#include \"ubo/viewport_info.glsl\"\n";
-            ms += "SCENE_VIEWPORT_UBO;\n";
+            ms += "#include \"ubo/scene_ubo.glsl\"\n";
         }
 
         const bool needs_l2w = (node_cfg.orientation == OrientationMode::World ||
@@ -158,8 +154,7 @@ namespace hgl::graph::mtl
     {
         if (ubos.Contains(DescriptorSemantic::MaterialColorPalette))
         {
-            ms += "#include \"ubo/color_palette.glsl\"\n";
-            ms += "SCENE_COLOR_PALETTE_UBO;\n";
+            ms += "#include \"ubo/scene_ubo.glsl\"\n";
         }
         ms += "\n";
     }
@@ -170,8 +165,7 @@ namespace hgl::graph::mtl
     {
         if (varying_cfg.emit_vertex_color_from_palette)
         {
-            ms += "#include \"ubo/color_palette.glsl\"\n";
-            ms += "SCENE_COLOR_PALETTE_UBO;\n";
+            ms += "#include \"ubo/scene_ubo.glsl\"\n";
         }
         ms += "\n";
     }

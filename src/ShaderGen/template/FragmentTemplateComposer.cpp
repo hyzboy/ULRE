@@ -534,24 +534,35 @@ namespace hgl::graph::mtl
                 defines += "#define HGL_ALPHA_DITHER 1\n";
             AddTemplateBlock(document, ShaderDocumentBlockKind::Define,
                 AnsiString(defines.c_str()), "ShadowCaster.Defines");
-            AppendDocumentBlocks(document, input.code_module_document);
+
+            const bool requires_alpha = input.coverage_contract
+                && input.coverage_contract->requires_alpha_evaluation;
+
+            if (requires_alpha)
+            {
+                AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
+                    IncludeTemplate("common/surface_interface.glsl"),
+                    "ShadowCaster.SurfaceInterface", "common/surface_interface.glsl");
+
+                if (!AppendFragmentInputDeclarations(
+                        input.fragment_inputs, "ShadowCaster.FragmentInputs", document))
+                    return false;
+            }
 
             // ShadowCaster 允许整数/布尔输出附件（depth-only 变体）
             if (!AppendOutputDeclarations(
                     input.output_contract, "ShadowCaster.Output", true, document))
                 return false;
 
-            if (!input.coverage_contract
-                || !input.coverage_contract->requires_alpha_evaluation)
+            AppendDocumentBlocks(document, input.code_module_document);
+
+            if (!requires_alpha)
             {
                 AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
                     AnsiString("void main()\n{\n}\n"), "ShadowCaster.Main");
                 return true;
             }
 
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
-                IncludeTemplate("common/surface_interface.glsl"),
-                "ShadowCaster.SurfaceInterface", "common/surface_interface.glsl");
             AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
                 IncludeTemplate("common/alpha_compositor.glsl"),
                 "ShadowCaster.Alpha", "common/alpha_compositor.glsl");
@@ -569,10 +580,6 @@ namespace hgl::graph::mtl
             AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
                 IncludeTemplate(surface_module), "ShadowCaster.Surface",
                 surface_module);
-
-            if (!AppendFragmentInputDeclarations(
-                    input.fragment_inputs, "ShadowCaster.FragmentInputs", document))
-                return false;
 
             std::string main_body =
                 "\nvoid main()\n{\n"

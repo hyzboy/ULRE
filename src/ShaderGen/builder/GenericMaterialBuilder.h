@@ -88,4 +88,6 @@ namespace hgl::graph::mtl
         const MaterialDefinitionBuildRequest &request,
         const MaterialDefinition &definition,
         MaterialShaderDocumentCapture *document_capture);
+
+    const std::string &GetLastBuildGenericMaterialError();
 }
