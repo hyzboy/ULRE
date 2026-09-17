@@ -416,13 +416,28 @@ namespace hgl::graph::mtl
         MaterialTextureReferenceLayout &out_layout) noexcept
     {
         out_layout = {};
+
+        const size_t declaration_count =
+            definition.texture_declarations.size();
+
+        // Textures are optional by definition: many built-in materials (e.g.
+        // pure-color or debug-color surfaces) have no material texture refs at all.
+        // In that case there is no reference row to allocate, and the layout must be
+        // treated as a valid empty layout rather than a hard failure.
+        if (declaration_count == 0)
+        {
+            out_layout.max_configuration_count =
+                definition.texture_configuration_max_count > 0
+                    ? definition.texture_configuration_max_count
+                    : DefaultMaterialTextureConfigurationCapacity;
+            return true;
+        }
+
         out_layout.max_configuration_count =
             definition.texture_configuration_max_count;
         if (out_layout.max_configuration_count == 0)
             return false;
 
-        const size_t declaration_count =
-            definition.texture_declarations.size();
         const uint64_t raw_row_bytes =
             static_cast<uint64_t>(declaration_count)
             * sizeof(MaterialTextureReference);

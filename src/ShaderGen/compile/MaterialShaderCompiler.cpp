@@ -276,6 +276,28 @@ static ShaderBuildContext *FailCompile(CompileContext &c)
     return nullptr;
 }
 
+static void CaptureProductionSnapshot(
+    MaterialShaderDocumentCapture *document_capture,
+    const ShaderDocument &mesh_source_document,
+    const ShaderDocument &fragment_source_document,
+    const ShaderDocument &mesh_final_document,
+    const ShaderDocument &fragment_final_document)
+{
+    if (!document_capture)
+        return;
+
+    const ShaderDocument mesh_source_snapshot = mesh_source_document;
+    const ShaderDocument fragment_source_snapshot = fragment_source_document;
+    const ShaderDocument mesh_final_snapshot = mesh_final_document;
+    const ShaderDocument fragment_final_snapshot = fragment_final_document;
+
+    document_capture->Clear();
+    document_capture->mesh_source_document = mesh_source_snapshot;
+    document_capture->fragment_document = fragment_source_snapshot;
+    document_capture->mesh_final_document = mesh_final_snapshot;
+    document_capture->fragment_final_document = fragment_final_snapshot;
+}
+
 // ── Step 1: Config（primitive 校验留在主函数）────────────────────────────────
 static bool PrepareBaseDescriptorContract(
     const MaterialShaderCompilerInput &input,
@@ -534,8 +556,12 @@ ShaderBuildContext *CompileMaterial(
             config,
             effective_material_private_data,
             *mesh_final_document,
-            document_diagnostics)
-     || !BuildMaterialStageDocument(
+            document_diagnostics))
+    {
+        c.Fail("Material stage document build failed");
+        return FailCompile(c);
+    }
+    if (!BuildMaterialStageDocument(
             fragment_source_document,
             ShaderStage::Fragment,
             input.debug_name,
@@ -548,6 +574,16 @@ ShaderBuildContext *CompileMaterial(
         return FailCompile(c);
     }
 
+    if (document_capture)
+    {
+        CaptureProductionSnapshot(
+            document_capture,
+            mesh_source_document,
+            fragment_source_document,
+            *mesh_final_document,
+            *fragment_final_document);
+    }
+
     AnsiString mesh_final_glsl;
     AnsiString fragment_final_glsl;
     if (!mesh_final_document->Serialize(mesh_final_glsl, document_diagnostics)
@@ -555,6 +591,16 @@ ShaderBuildContext *CompileMaterial(
     {
         c.Fail("Material stage document serialization failed");
         return FailCompile(c);
+    }
+
+    if (document_capture)
+    {
+        CaptureProductionSnapshot(
+            document_capture,
+            mesh_source_document,
+            fragment_source_document,
+            *mesh_final_document,
+            *fragment_final_document);
     }
 
     ShaderCreateInfo *mesh = ctx->GetStageShader(ShaderStage::Mesh);

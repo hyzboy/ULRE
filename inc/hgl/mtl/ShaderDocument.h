@@ -50,6 +50,43 @@ namespace hgl::graph::mtl
         hgl::ManagedArray<ShaderDocumentBlock> blocks;
 
     public:
+        ShaderDocument() = default;
+
+        ShaderDocument(const ShaderDocument &other)
+        {
+            *this = other;
+        }
+
+        ShaderDocument &operator=(const ShaderDocument &other)
+        {
+            if (this == &other)
+                return *this;
+
+            Clear();
+            for (int i = 0; i < other.GetBlockCount(); ++i)
+            {
+                const ShaderDocumentBlock &src = other.GetBlock(i);
+                ShaderDocumentBlock *copy = blocks.Create();
+                *copy = src;
+            }
+            return *this;
+        }
+
+        ShaderDocument(ShaderDocument &&other) noexcept
+        {
+            blocks.GetArray().swap(other.blocks.GetArray());
+        }
+
+        ShaderDocument &operator=(ShaderDocument &&other) noexcept
+        {
+            if (this != &other)
+            {
+                Clear();
+                blocks.GetArray().swap(other.blocks.GetArray());
+            }
+            return *this;
+        }
+
         static int GetBlockOrder(ShaderDocumentBlockKind kind) noexcept;
 
         void Clear();

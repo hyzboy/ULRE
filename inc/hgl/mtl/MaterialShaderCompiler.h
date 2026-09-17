@@ -32,10 +32,43 @@ struct MaterialShaderDocumentCapture
 {
     // Optional production-pipeline observability for regression gates. The
     // compiler serializes final documents from these exact instances.
+    //
+    // The capture object is intentionally a snapshot-only observer: it is reset
+    // before production generation and populated only after a stage document has
+    // been fully authored/validated. This keeps the diagnostic flow out of the
+    // real generation path and avoids hidden state drift on the cache key path.
     ShaderDocument mesh_source_document;
     ShaderDocument fragment_document;
     ShaderDocument mesh_final_document;
     ShaderDocument fragment_final_document;
+
+    void Clear() noexcept
+    {
+        mesh_source_document.Clear();
+        fragment_document.Clear();
+        mesh_final_document.Clear();
+        fragment_final_document.Clear();
+    }
+
+    void CaptureSourceDocuments(
+        const ShaderDocument &mesh_source,
+        const ShaderDocument &fragment_source) noexcept
+    {
+        const ShaderDocument mesh_source_snapshot = mesh_source;
+        const ShaderDocument fragment_source_snapshot = fragment_source;
+        mesh_source_document = mesh_source_snapshot;
+        fragment_document = fragment_source_snapshot;
+    }
+
+    void CaptureFinalDocuments(
+        const ShaderDocument &mesh_final,
+        const ShaderDocument &fragment_final) noexcept
+    {
+        const ShaderDocument mesh_final_snapshot = mesh_final;
+        const ShaderDocument fragment_final_snapshot = fragment_final;
+        mesh_final_document = mesh_final_snapshot;
+        fragment_final_document = fragment_final_snapshot;
+    }
 };
 
 struct MaterialShaderCompilerInput

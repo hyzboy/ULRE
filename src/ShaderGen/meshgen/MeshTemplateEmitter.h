@@ -19,7 +19,9 @@
 #include <hgl/mtl/ShaderDocument.h>
 #include <hgl/log/Log.h>
 #include <vulkan/vulkan.h>
+#include <algorithm>
 #include <string>
+#include <vector>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 
 // 子模块
@@ -113,8 +115,17 @@ namespace hgl::graph::mtl
         }
 
         out_document.Clear();
+        struct PendingBlock
+        {
+            ShaderDocumentBlock block{};
+            int order = 0;
+            size_t sequence = 0;
+        };
+        std::vector<PendingBlock> pending_blocks;
+        pending_blocks.reserve(16);
+
         const auto add_block =
-            [&out_document](
+            [&pending_blocks](
                 const ShaderDocumentBlockKind kind,
                 const std::string &text,
                 const char *logical_name,
@@ -124,24 +135,33 @@ namespace hgl::graph::mtl
                 if (text.empty())
                     return;
 
-                ShaderDocumentSource source;
-                source.stage = "mesh";
-                source.logical_name = logical_name;
+                PendingBlock entry{};
+                entry.block.kind = kind;
+                entry.block.text = AnsiString(text.c_str());
+                entry.block.source.stage = "mesh";
+                entry.block.source.logical_name = logical_name;
                 if (module)
-                    source.module = module;
+                    entry.block.source.module = module;
                 if (path)
-                    source.path = path;
-                out_document.Add(kind, AnsiString(text.c_str()), source);
+                    entry.block.source.path = path;
+                entry.order = ShaderDocument::GetBlockOrder(kind);
+                entry.sequence = pending_blocks.size();
+                pending_blocks.push_back(entry);
             };
         const auto append_document =
-            [&out_document](const ShaderDocument *document)
+            [&pending_blocks](const ShaderDocument *document)
             {
                 if (!document)
                     return;
                 for (int index = 0; index < document->GetBlockCount(); ++index)
                 {
                     const ShaderDocumentBlock &block = document->GetBlock(index);
-                    out_document.Add(block.kind, block.text, block.source);
+                    PendingBlock entry{};
+                    entry.block = block;
+                    entry.block.source.stage = "mesh";
+                    entry.order = ShaderDocument::GetBlockOrder(block.kind);
+                    entry.sequence = pending_blocks.size();
+                    pending_blocks.push_back(entry);
                 }
             };
 
@@ -297,6 +317,20 @@ namespace hgl::graph::mtl
         fragment += "}\n";
         add_block(ShaderDocumentBlockKind::MainBody, fragment,
                   "MeshTemplateEmitter.MainBody", "mesh-main");
+
+        std::sort(
+            pending_blocks.begin(),
+            pending_blocks.end(),
+            [](const PendingBlock &lhs, const PendingBlock &rhs)
+            {
+                if (lhs.order != rhs.order)
+                    return lhs.order < rhs.order;
+                return lhs.sequence < rhs.sequence;
+            });
+
+        for (const PendingBlock &entry : pending_blocks)
+            out_document.Add(entry.block.kind, entry.block.text, entry.block.source);
+
         return true;
     }
 

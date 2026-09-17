@@ -428,6 +428,9 @@ namespace hgl::graph::mtl
             MaterialShaderDocumentCapture *document_capture,
             GenericMaterialBuildPlan &plan)
         {
+            if (document_capture)
+                document_capture->Clear();
+
             // Mesh shader 材质：生成 mesh stage。mesh 是唯一顶点路径。
             // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
             const bool is_char_quad = IsCharQuadMode(definition.mesh_shader_mode);
@@ -582,6 +585,12 @@ namespace hgl::graph::mtl
                     return false;
                 }
                 plan.fs.assign(serialized.c_str(), serialized.Length());
+            }
+
+            if (document_capture)
+            {
+                document_capture->CaptureSourceDocuments(
+                    mesh_document, fragment_document);
             }
             return true;
         }
