@@ -1,1 +1,1 @@
-@python git_repos_cli.py pull github
+@python git_repos_cli.py push github

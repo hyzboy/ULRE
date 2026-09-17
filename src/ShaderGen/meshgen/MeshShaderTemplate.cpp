@@ -83,20 +83,4 @@ void ApplyMeshTemplateSlot(std::string &text, const char *slot, const std::strin
     }
 }
 
-void AppendMeshShaderTemplate(std::string &out, const char *filename)
-{
-    const std::string &text = GetMeshShaderTemplate(filename);
-
-    if (text.empty())
-    {
-        // 显式失败：宁可让 glslang 报 #error，也不静默产出缺代码的 shader
-        out += "#error mesh shader template missing: ";
-        out += filename ? filename : "<null>";
-        out += "\n";
-        return;
-    }
-
-    out += text;
-}
-
 }//namespace hgl::graph::mtl

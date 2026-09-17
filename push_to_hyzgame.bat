@@ -1,1 +1,1 @@
-@python git_repos_cli.py pull hyzgame
+@python git_repos_cli.py push hyzgame

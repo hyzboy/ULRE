@@ -27,7 +27,4 @@ namespace hgl::graph::mtl
 
     /// 把 text 中所有 {{slot}} 替换为 value（字面替换，不解析嵌套）
     void ApplyMeshTemplateSlot(std::string &text, const char *slot, const std::string &value);
-
-    /// 加载并追加模板到 out；缺文件时追加 `#error` 行（显式失败，不静默产出半个 shader）
-    void AppendMeshShaderTemplate(std::string &out, const char *filename);
 }//namespace hgl::graph::mtl

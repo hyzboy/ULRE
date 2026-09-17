@@ -1,6 +1,5 @@
 ﻿#include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/log/Log.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
