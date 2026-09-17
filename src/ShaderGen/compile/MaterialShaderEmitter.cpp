@@ -17,10 +17,12 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/type/StdString.h>
 #include <hgl/graph/ShaderBufferSources.h>
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 namespace hgl::graph::mtl
 {
@@ -686,40 +688,84 @@ bool BuildMaterialStageDocument(
         return false;
     }
 
+    struct StageBlockEntry
+    {
+        ShaderDocumentBlock block{};
+        int order = 0;
+        size_t sequence = 0;
+    };
+
+    std::vector<StageBlockEntry> merged_blocks;
+    merged_blocks.reserve(
+        static_cast<size_t>(source_document.GetBlockCount())
+        + static_cast<size_t>(injection.GetBlockCount())
+        + static_cast<size_t>(resources.GetBlockCount()));
+
+    const auto add_block = [&merged_blocks, stage_name, material](
+        const ShaderDocumentBlock &block)
+    {
+        StageBlockEntry entry{};
+        entry.block = block;
+        entry.block.source.stage = stage_name;
+        entry.block.source.material = material ? material : "";
+        entry.order = ShaderDocument::GetBlockOrder(entry.block.kind);
+        entry.sequence = merged_blocks.size();
+        merged_blocks.push_back(entry);
+    };
+
     const ShaderDocumentBlock &version = source_document.GetBlock(0);
     ShaderDocumentSource source = version.source;
     source.stage = stage_name;
     source.material = material ? material : "";
-    out_document.Add(ShaderDocumentBlockKind::Version, version.text, source);
+    ShaderDocumentBlock version_block = version;
+    version_block.source = source;
+    add_block(version_block);
 
-    AppendDocumentBlocks(out_document, injection, stage_name, material);
-    // Fragment：资源声明保持原位（Version/injection 之后）——FS 的 BDA 扩展
-    //（buffer_reference/int64）与 pc_root 已在 injection 先行注入，资源块无顺序
-    // 风险；且必须早于模板全部 Module/MainBody（MTL_ROW 宏在函数体内展开）。
+    for (int i = 0; i < injection.GetBlockCount(); ++i)
+        add_block(injection.GetBlock(i));
+
     if (stage == ShaderStage::Fragment)
     {
-        AppendStageResourceBlocks(
-            out_document, resources, stage, stage_name, material);
-    }
-    for (int index = 1; index < source_document.GetBlockCount(); ++index)
-    {
-        const ShaderDocumentBlock &block = source_document.GetBlock(index);
-        ShaderDocumentSource block_source = block.source;
-        block_source.stage = stage_name;
-        block_source.material = material ? material : "";
-        out_document.Add(block.kind, block.text, block_source);
-
-        // Mesh：资源声明块（MaterialMeshIndexTables/l2w_index 等）紧跟模板 Extension
-        // 块（index 1）之后追加——已 BDA 化的行表声明是 buffer_reference，必须先于
-        // 它启用 GL_EXT_buffer_reference（模板 Extension 块内）。历史 bug：资源块
-        // 曾前置注入（Version 后），l2w_index 的 buffer_reference 落在扩展声明之前
-        // → "required extension not requested"。mesh 模板 index 1 恒为 Extension 块。
-        if (index == 1 && stage == ShaderStage::Mesh)
+        for (int i = 0; i < resources.GetBlockCount(); ++i)
         {
-            AppendStageResourceBlocks(
-                out_document, resources, stage, stage_name, material);
+            const ShaderDocumentBlock &block = resources.GetBlock(i);
+            if (std::strcmp(
+                    block.source.logical_name.c_str(),
+                    "MaterialMeshIndexTables") == 0)
+                continue;
+            add_block(block);
         }
     }
+    else if (stage == ShaderStage::Mesh)
+    {
+        for (int i = 0; i < resources.GetBlockCount(); ++i)
+        {
+            const ShaderDocumentBlock &block = resources.GetBlock(i);
+            if (std::strcmp(
+                    block.source.logical_name.c_str(),
+                    "MaterialMeshIndexTables") != 0)
+                continue;
+            add_block(block);
+        }
+    }
+
+    for (int index = 1; index < source_document.GetBlockCount(); ++index)
+    {
+        add_block(source_document.GetBlock(index));
+    }
+
+    std::sort(
+        merged_blocks.begin(),
+        merged_blocks.end(),
+        [](const StageBlockEntry &lhs, const StageBlockEntry &rhs)
+        {
+            if (lhs.order != rhs.order)
+                return lhs.order < rhs.order;
+            return lhs.sequence < rhs.sequence;
+        });
+
+    for (const StageBlockEntry &entry : merged_blocks)
+        out_document.Add(entry.block.kind, entry.block.text, entry.block.source);
     return true;
 }
 

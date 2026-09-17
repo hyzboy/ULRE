@@ -488,6 +488,19 @@ namespace hgl::graph::mtl
                 {
                     GLogError("[ShaderGen] Generic material mesh document serialization failed: name=%s",
                               definition.definition_name.c_str());
+                    for (int i = 0; i < diagnostics.GetCount(); ++i)
+                    {
+                        const ShaderDocumentDiagnostic &d = *diagnostics[i];
+                        GLogError("[ShaderGen] mesh-doc-diagnostic[%d] code=%s message=%s block_index=%d stage=%s logic=%s module=%s path=%s",
+                                  i,
+                                  d.code.c_str(),
+                                  d.message.c_str(),
+                                  d.block_index,
+                                  d.source.stage.c_str(),
+                                  d.source.logical_name.c_str(),
+                                  d.source.module.c_str(),
+                                  d.source.path.c_str());
+                    }
                     return false;
                 }
                 plan.ms.assign(serialized.c_str(), serialized.Length());
@@ -553,6 +566,19 @@ namespace hgl::graph::mtl
                 {
                     GLogError("[ShaderGen] Generic material fragment document serialization failed: name=%s",
                               definition.definition_name.c_str());
+                    for (int i = 0; i < fragment_diagnostics.GetCount(); ++i)
+                    {
+                        const ShaderDocumentDiagnostic &d = *fragment_diagnostics[i];
+                        GLogError("[ShaderGen] fragment-doc-diagnostic[%d] code=%s message=%s block_index=%d stage=%s logic=%s module=%s path=%s",
+                                  i,
+                                  d.code.c_str(),
+                                  d.message.c_str(),
+                                  d.block_index,
+                                  d.source.stage.c_str(),
+                                  d.source.logical_name.c_str(),
+                                  d.source.module.c_str(),
+                                  d.source.path.c_str());
+                    }
                     return false;
                 }
                 plan.fs.assign(serialized.c_str(), serialized.Length());

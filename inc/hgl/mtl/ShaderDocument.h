@@ -50,6 +50,8 @@ namespace hgl::graph::mtl
         hgl::ManagedArray<ShaderDocumentBlock> blocks;
 
     public:
+        static int GetBlockOrder(ShaderDocumentBlockKind kind) noexcept;
+
         void Clear();
         int GetBlockCount() const;
         const ShaderDocumentBlock &GetBlock(int index) const;

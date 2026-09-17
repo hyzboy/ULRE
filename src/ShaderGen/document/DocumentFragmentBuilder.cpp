@@ -2,26 +2,6 @@
 
 namespace hgl::graph::mtl
 {
-    namespace
-    {
-        int GetBlockOrder(const ShaderDocumentBlockKind kind)
-        {
-            switch (kind)
-            {
-            case ShaderDocumentBlockKind::Version:  return 0;
-            case ShaderDocumentBlockKind::Extension:return 1;
-            case ShaderDocumentBlockKind::Define:   return 2;
-            case ShaderDocumentBlockKind::Resource: return 3;
-            case ShaderDocumentBlockKind::Interface:return 4;
-            case ShaderDocumentBlockKind::Module:   return 5;
-            case ShaderDocumentBlockKind::Function: return 6;
-            case ShaderDocumentBlockKind::MainBody: return 7;
-            case ShaderDocumentBlockKind::Raw:      return 8;
-            }
-            return -1;
-        }
-    }
-
     DocumentFragmentBuilder::DocumentFragmentBuilder(
         ShaderDocument &target,
         ShaderDocumentDiagnostics &target_diagnostics,
@@ -74,7 +54,7 @@ namespace hgl::graph::mtl
                 "DocumentFragmentBuilder refuses empty blocks",
                 block_source);
 
-        const int block_order = GetBlockOrder(kind);
+        const int block_order = ShaderDocument::GetBlockOrder(kind);
         if (block_order < last_block_order)
             return AddDiagnostic(
                 "block-order",

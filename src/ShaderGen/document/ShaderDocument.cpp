@@ -39,6 +39,23 @@ namespace hgl::graph::mtl
 
     }
 
+    int ShaderDocument::GetBlockOrder(const ShaderDocumentBlockKind kind) noexcept
+    {
+        switch (kind)
+        {
+        case ShaderDocumentBlockKind::Version:  return 0;
+        case ShaderDocumentBlockKind::Extension:return 1;
+        case ShaderDocumentBlockKind::Define:   return 2;
+        case ShaderDocumentBlockKind::Resource: return 3;
+        case ShaderDocumentBlockKind::Interface:return 4;
+        case ShaderDocumentBlockKind::Module:   return 5;
+        case ShaderDocumentBlockKind::Function: return 6;
+        case ShaderDocumentBlockKind::MainBody: return 7;
+        case ShaderDocumentBlockKind::Raw:      return 8;
+        }
+        return -1;
+    }
+
     void ShaderDocument::Clear()
     {
         blocks.Clear();
@@ -72,6 +89,8 @@ namespace hgl::graph::mtl
 
         int version_count = 0;
         int first_non_version = -1;
+        int previous_order = -1;
+        int main_body_count = 0;
 
         for (int i = 0; i < blocks.GetCount(); ++i)
         {
@@ -92,6 +111,33 @@ namespace hgl::graph::mtl
             if (block.text.IsEmpty())
                 AddDiagnostic(out_diagnostics, "empty-block",
                               BlockKindName(block.kind), i, &block.source);
+
+            const int block_order = GetBlockOrder(block.kind);
+            if (block_order < 0)
+            {
+                AddDiagnostic(out_diagnostics, "unknown-block-kind",
+                              "ShaderDocument contains an unknown block kind",
+                              i, &block.source);
+            }
+            else if (previous_order >= 0 && block_order < previous_order)
+            {
+                AddDiagnostic(out_diagnostics, "block-order",
+                              "ShaderDocument block order is invalid",
+                              i, &block.source);
+            }
+            else
+            {
+                previous_order = block_order;
+            }
+
+            if (block.kind == ShaderDocumentBlockKind::MainBody)
+            {
+                ++main_body_count;
+                if (main_body_count > 1)
+                    AddDiagnostic(out_diagnostics, "duplicate-main",
+                                  "ShaderDocument contains more than one MainBody block",
+                                  i, &block.source);
+            }
         }
 
         if (version_count > 1)

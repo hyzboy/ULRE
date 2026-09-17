@@ -43,6 +43,15 @@ int main()
     if (diagnostics[0]->source.stage.IsEmpty())
         return 10;
 
+    ShaderDocument invalid_order;
+    invalid_order.Add(ShaderDocumentBlockKind::Version, "#version 460\n");
+    invalid_order.Add(ShaderDocumentBlockKind::MainBody, "void main() {}\n");
+    invalid_order.Add(ShaderDocumentBlockKind::Define, "#define TEST 1\n");
+    if (invalid_order.Serialize(serialized, diagnostics)
+     || diagnostics.GetCount() != 1
+     || diagnostics[0]->code != "block-order")
+        return 24;
+
     const AnsiString version = "#version 460\n";
     ShaderDocument version_document;
     ShaderDocumentSource raw_source;

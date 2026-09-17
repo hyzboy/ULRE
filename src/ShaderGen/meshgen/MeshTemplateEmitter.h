@@ -157,6 +157,22 @@ namespace hgl::graph::mtl
         add_block(ShaderDocumentBlockKind::Extension, fragment,
                   "MeshTemplateEmitter.Extensions", "MeshShaderHeaderGen");
 
+        if (mode != MeshShaderMode::CharQuad)
+        {
+            fragment.clear();
+            EmitGlInstanceIndexMacro(fragment);
+            add_block(ShaderDocumentBlockKind::Define, fragment,
+                      "MeshTemplateEmitter.InstanceIndex", "MeshShaderHeaderGen");
+
+            if (varying_cfg.use_transform_id_attr)
+            {
+                fragment.clear();
+                fragment += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
+                add_block(ShaderDocumentBlockKind::Define, fragment,
+                          "MeshTemplateEmitter.TransformID", "stage3");
+            }
+        }
+
         fragment.clear();
         // LineQuad projects segment endpoints with camera.vp even when its
         // configured vertex mapping is otherwise screen/NDC based.
@@ -175,6 +191,31 @@ namespace hgl::graph::mtl
         EmitVertexAdapter(fragment);
         add_block(ShaderDocumentBlockKind::Resource, fragment,
                   "MeshTemplateEmitter.VertexAdapter", "MeshShaderVertexAdapter");
+
+        if (mode != MeshShaderMode::CharQuad)
+        {
+            fragment.clear();
+            EmitColorPaletteUBO(fragment, varying_cfg);
+            add_block(ShaderDocumentBlockKind::Resource, fragment,
+                      "MeshTemplateEmitter.ColorPalette", "MeshShaderHeaderGen");
+        }
+
+        // CharQuad SSBO 声明必须在全局作用域（void main 之前），同时需要保持
+        // canonical block order：Define → Resource → Interface → Module → MainBody。
+        if (mode == MeshShaderMode::CharQuad)
+        {
+            fragment.clear();
+            EmitCharQuadSSBODeclarations(fragment);
+            add_block(ShaderDocumentBlockKind::Resource, fragment,
+                      "MeshTemplateEmitter.CharQuadResources", "MeshShaderModeCharQuad");
+        }
+
+        // ── Varying 输出（per-vertex 数组，mesh shader 要求）──────────────
+        fragment.clear();
+        EmitVaryingDeclarations(
+            fragment, *resolved_stage_interface, max_vertices, max_primitives);
+        add_block(ShaderDocumentBlockKind::Interface, fragment,
+                  "MeshTemplateEmitter.Varyings", "MeshShaderVaryingGen");
 
         if (mode != MeshShaderMode::CharQuad)
         {
@@ -205,29 +246,11 @@ namespace hgl::graph::mtl
             append_document(provider_document);
 
             fragment.clear();
-            EmitColorPaletteUBO(fragment, varying_cfg);
-            add_block(ShaderDocumentBlockKind::Resource, fragment,
-                      "MeshTemplateEmitter.ColorPalette", "MeshShaderHeaderGen");
-
-            fragment.clear();
-            EmitGlInstanceIndexMacro(fragment);
-            add_block(ShaderDocumentBlockKind::Define, fragment,
-                      "MeshTemplateEmitter.InstanceIndex", "MeshShaderHeaderGen");
-
-            fragment.clear();
             fragment += "#include \"";
             fragment += stage2_module;
             fragment += "\"\n\n";
             add_block(ShaderDocumentBlockKind::Module, fragment,
                       "MeshTemplateEmitter.Stage2", "stage2", stage2_module);
-
-            if (varying_cfg.use_transform_id_attr)
-            {
-                fragment.clear();
-                fragment += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
-                add_block(ShaderDocumentBlockKind::Define, fragment,
-                          "MeshTemplateEmitter.TransformID", "stage3");
-            }
 
             const char *stage3_module = VertexNodeConfigResolver::GetStage3ModulePath(node_cfg);
             fragment.clear();
@@ -236,22 +259,6 @@ namespace hgl::graph::mtl
             fragment += "\"\n\n";
             add_block(ShaderDocumentBlockKind::Module, fragment,
                       "MeshTemplateEmitter.Stage3", "stage3", stage3_module);
-        }
-
-        // ── Varying 输出（per-vertex 数组，mesh shader 要求）──────────────
-        fragment.clear();
-        EmitVaryingDeclarations(
-            fragment, *resolved_stage_interface, max_vertices, max_primitives);
-        add_block(ShaderDocumentBlockKind::Interface, fragment,
-                  "MeshTemplateEmitter.Varyings", "MeshShaderVaryingGen");
-
-        // CharQuad SSBO 声明必须在全局作用域（void main 之前）
-        if (mode == MeshShaderMode::CharQuad)
-        {
-            fragment.clear();
-            EmitCharQuadSSBODeclarations(fragment);
-            add_block(ShaderDocumentBlockKind::Resource, fragment,
-                      "MeshTemplateEmitter.CharQuadResources", "MeshShaderModeCharQuad");
         }
 
         fragment.clear();
