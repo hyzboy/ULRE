@@ -2479,6 +2479,178 @@ namespace
         return result;
     }
 
+    static std::string ReadFileText(const std::string &path)
+    {
+        std::ifstream in(path, std::ios::binary);
+        if (!in)
+            return {};
+        return std::string(
+            std::istreambuf_iterator<char>(in),
+            std::istreambuf_iterator<char>());
+    }
+
+    static bool ContainsAnyToken(
+        const std::string &text,
+        std::initializer_list<const char *> tokens) noexcept
+    {
+        for (const char *token : tokens)
+        {
+            if (!token || !token[0])
+                continue;
+            if (text.find(token) != std::string::npos)
+                return true;
+        }
+        return false;
+    }
+
+    static bool HasLegacySchemaToken(const std::string &text) noexcept
+    {
+        static const char *tokens[] = {
+            "schema = 0", "schema=0",
+            "schema = 1", "schema=1",
+            "schema = 2", "schema=2",
+            "schema \t=\t 2", "schema \t=\t 1"
+        };
+        for (const char *token : tokens)
+        {
+            if (text.find(token) != std::string::npos)
+                return true;
+        }
+        return false;
+    }
+
+    static GateResult RunMaterialLibraryContractCase()
+    {
+        GateResult result;
+        result.name = "M.material-library-contract";
+
+        const std::string root = GetShaderLibraryPath("ShaderLibrary");
+        const std::filesystem::path material_dir =
+            std::filesystem::path(root) / "material";
+
+        if (!std::filesystem::exists(material_dir)
+         || !std::filesystem::is_directory(material_dir))
+        {
+            result.diagnostics.emplace_back(
+                "missing required ShaderLibrary/material directory: "
+                + material_dir.string());
+            result.passed = false;
+            return result;
+        }
+
+        std::vector<std::string> material_files;
+        try
+        {
+            for (const auto &entry : std::filesystem::recursive_directory_iterator(material_dir))
+            {
+                if (!entry.is_regular_file())
+                    continue;
+                if (entry.path().extension() == ".toml")
+                    material_files.push_back(entry.path().string());
+            }
+        }
+        catch (const std::filesystem::filesystem_error &)
+        {
+            result.diagnostics.emplace_back(
+                "failed to inspect ShaderLibrary/material tree");
+            result.passed = false;
+            return result;
+        }
+
+        if (material_files.empty())
+        {
+            result.diagnostics.emplace_back(
+                "ShaderLibrary/material contains no .material.toml files");
+            result.passed = false;
+            return result;
+        }
+
+        for (const std::string &path : material_files)
+        {
+            const std::string text = ReadFileText(path);
+            if (text.empty())
+            {
+                result.diagnostics.emplace_back(
+                    "empty material file: " + path);
+                continue;
+            }
+
+            if (path.find(".material.toml") == std::string::npos)
+                continue;
+
+            if (HasLegacySchemaToken(text))
+            {
+                result.diagnostics.emplace_back(
+                    "legacy schema is forbidden in material file: " + path);
+            }
+
+            if (text.find("schema = 3") == std::string::npos
+             && text.find("schema=3") == std::string::npos)
+            {
+                result.diagnostics.emplace_back(
+                    "material file must use schema 3 only: " + path);
+            }
+
+            if (ContainsAnyToken(text, {
+                    "MTL_DEF_",
+                    "MaterialDefinitionSourceKind",
+                    "MaterialDefinitionBootstrapKind",
+                    "embedded material",
+                    "EmbeddedMaterial" }))
+            {
+                result.diagnostics.emplace_back(
+                    "embedded material or legacy definition IDs are forbidden in: "
+                    + path);
+            }
+        }
+
+        for (const auto &root_dir : { std::filesystem::path("src"), std::filesystem::path("inc") })
+        {
+            if (!std::filesystem::exists(root_dir) || !std::filesystem::is_directory(root_dir))
+                continue;
+
+            try
+            {
+                for (const auto &entry : std::filesystem::recursive_directory_iterator(root_dir))
+                {
+                    if (!entry.is_regular_file())
+                        continue;
+
+                    const std::string extension = entry.path().extension().string();
+                    if (extension != ".cpp" && extension != ".h" && extension != ".hpp"
+                     && extension != ".inl" && extension != ".inc")
+                        continue;
+
+                    const std::string path = entry.path().string();
+                    if (path.find("ShaderResourceSchemaRegressionGate.cpp") != std::string::npos)
+                        continue;
+
+                    const std::string text = ReadFileText(path);
+                    if (text.empty())
+                        continue;
+
+                    if (ContainsAnyToken(text, {
+                            "MTL_DEF_",
+                            "MaterialDefinitionSourceKind",
+                            "MaterialDefinitionBootstrapKind" }))
+                    {
+                        result.diagnostics.emplace_back(
+                            "legacy embedded material bootstrapping markers are forbidden in: "
+                            + path);
+                    }
+                }
+            }
+            catch (const std::filesystem::filesystem_error &)
+            {
+                result.diagnostics.emplace_back(
+                    "failed to scan source tree for legacy material bootstrap markers");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunMaterialDefinitionFileSchemaCase()
     {
         GateResult result;
@@ -2827,7 +2999,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 12
+         || file_count != 14
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -2835,7 +3007,8 @@ namespace
         else
         {
             const char *expected_file_ids[] = {
-                "Lit", "SkyMinimal", "DebugNormalColor",
+                "Lit", "LitIBL", "SkyMinimal", "SkyCube",
+                "DebugNormalColor",
                 "VertexColor", "UnlitTexture",
                 "VertexLuminance", "VertexPaletteColor",
                 "builtin/pure_color",
@@ -2851,7 +3024,8 @@ namespace
             }
 
         const char *bulk_ids[] = {
-            "Lit", "SkyMinimal", "DebugNormalColor", "VertexColor",
+            "Lit", "LitIBL", "SkyMinimal", "SkyCube",
+            "DebugNormalColor", "VertexColor",
             "UnlitTexture",
             "VertexLuminance",
             "VertexPaletteColor",
@@ -4371,6 +4545,7 @@ int main(const int argc, char **argv)
     if (run_descriptor) results.push_back(RunMaterialSSBOBindingKeyCase());
     if (run_materialization) results.push_back(RunResolvedMaterialRenderStateCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
+    if (run_materialization) results.push_back(RunMaterialLibraryContractCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());
     if (run_glsl) results.push_back(RunShaderCodeModuleFileCase());

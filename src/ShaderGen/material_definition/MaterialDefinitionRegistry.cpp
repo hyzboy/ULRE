@@ -9,6 +9,7 @@
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/log/Log.h>
+#include <cstdlib>
 #include <cstring>
 #include <algorithm>
 #include <vector>
@@ -191,16 +192,31 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         const hgl::filesystem::Path material_path =
             hgl::filesystem::Path(ToOSString(mtl::GetShaderLibraryPath()))
             / OSString(OS_TEXT("material"));
+
+        if (!material_path.IsDirectory())
+        {
+            GLogFatal("[ShaderGen] Missing required ShaderLibrary/material directory: %s. File-backed schema-3 material definitions are mandatory.",
+                      material_path.ToOSString().c_str());
+            std::abort();
+        }
+
         if (!registry.LoadDirectory(
                 material_path.ToOSString(), &file_count, &error_count))
         {
-            GLogError("[ShaderGen] Material TOML directory unavailable; no material definitions are available");
+            GLogFatal("[ShaderGen] Material TOML directory unavailable; no material definitions are available from %s. This is a hard failure.",
+                      material_path.ToOSString().c_str());
+            std::abort();
         }
-        else
+
+        if (file_count == 0 || error_count > 0 || registry.GetCount() == 0)
         {
-            GLogInfo("[ShaderGen] Loaded %d material TOML definitions (%d errors)",
-                     file_count, error_count);
+            GLogFatal("[ShaderGen] ShaderLibrary/material is empty or invalid (%d files, %d errors, %d parsed definitions). File-backed schema-3 materials are required.",
+                      file_count, error_count, registry.GetCount());
+            std::abort();
         }
+
+        GLogInfo("[ShaderGen] Loaded %d material TOML definitions (%d errors)",
+                 file_count, error_count);
         loaded = true;
     }
     return registry;
