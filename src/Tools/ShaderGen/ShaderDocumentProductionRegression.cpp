@@ -514,7 +514,9 @@ int main(const int argc, char **argv)
         { "lit-forward", "Lit", ShaderProgramPurpose::ForwardColor,
           true, false, false },
         { "text-gpu-charquad", "builtin/text_gpu",
-          ShaderProgramPurpose::ForwardColor, false, false, false }
+          ShaderProgramPurpose::ForwardColor, false, false, false },
+        { "sky-minimal", "SkyMinimal", ShaderProgramPurpose::ForwardColor,
+          true, false, false }
     };
 
     const Fixture *fixtures = full ? full_fixtures : smoke_fixtures;
