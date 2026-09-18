@@ -235,21 +235,21 @@ private:
         int count=0;
         const GeometryVertexFormat &geometry_vertex_format = solid.geometry_vertex_format;
 
-        for(int i=0;i< COLOR_COUNT;i++)
+//        for(int i=0;i< COLOR_COUNT;i++)
         {
-            OSString fn = OSString(OS_TEXT("res/model/Chess/ABeautifulGame.")) + OSString::numberOf(i) + OS_TEXT(".geometry");
+            OSString fn = OSString(OS_TEXT("res/model/vulkan_logo/scene.StaticMesh/scene.geometry"));
 
             Geometry *geo = LoadGeometry(GetDevice(),geometry_vertex_format,fn);
 
             if(!geo)
-                continue;
+                return(false);
 
-            MeshEntry *rm=CreateMeshEntry(geo,i);
+            MeshEntry *rm=CreateMeshEntry(geo,0);
 
             if(!rm)
             {
                 delete geo;
-                continue;
+                return(false);
             }
 
             ++count;
