@@ -12,6 +12,7 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
+#include<hgl/mtl/MeshShaderLimits.h>
 
 namespace hgl
 {
@@ -37,13 +38,14 @@ namespace hgl::ecs
     struct MaterialBatch;
 
     // mesh shader 组数计算（与 MeshTemplateEmitter 的 dispatch 约定一致）：
-    // Lines（LineQuad）每线程 1 线段 = 2 顶点 → 线段数 = total/2，组大小 64；
-    // 其它（VertexPassthrough）每线程 1 顶点，组大小 96（3 的倍数——组内
-    // 三角形永不跨组，避免 64 边界丢三角形）
+    // Lines（LineQuad）每线程 1 线段 = 2 顶点 → 线段数 = total/2，每组处理 64 线段；
+    // 其它（VertexPassthrough）跨步协作：64 线程处理 192 顶点（64 三角形）
     inline uint32_t CalcMeshGroupCount(const bool is_lines, const uint32_t total_vertices)
     {
         const uint32_t process_count = is_lines ? (total_vertices >> 1u) : total_vertices;
-        const uint32_t group_size = is_lines ? 64u : 96u;
+        const uint32_t group_size = is_lines
+            ? graph::mtl::kMeshLineQuadMaxInvocations
+            : graph::mtl::kMeshVertexPassthroughMaxVertices;
         return (process_count + group_size - 1u) / group_size;
     }
 

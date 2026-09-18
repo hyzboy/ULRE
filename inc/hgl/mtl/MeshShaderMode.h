@@ -35,15 +35,18 @@ namespace hgl::graph::mtl
     }
 
     // 每线程输出量（mesh 生成器约定）：
-    // VertexPassthrough：1 顶点（3 线程 = 1 三角形）；LineQuad/CharQuad：4 顶点 2 图元（quad）
-    // 注意：VertexPassthrough 的图元数为 1/3，调用方需按顶点约束计算容量。
+    // VertexPassthrough：3 顶点 1 图元（跨步协作模型）；LineQuad/CharQuad：4 顶点 2 图元（quad）
     inline uint8_t GetMeshModeVerticesPerInvocation(const MeshShaderMode mode) noexcept
     {
+        if (mode == MeshShaderMode::VertexPassthrough)
+            return 3u;
         return (mode == MeshShaderMode::LineQuad || mode == MeshShaderMode::CharQuad) ? 4u : 1u;
     }
 
     inline uint8_t GetMeshModePrimitivesPerInvocation(const MeshShaderMode mode) noexcept
     {
+        if (mode == MeshShaderMode::VertexPassthrough)
+            return 1u;
         return (mode == MeshShaderMode::LineQuad || mode == MeshShaderMode::CharQuad) ? 2u : 1u;
     }
 }

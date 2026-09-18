@@ -83,14 +83,8 @@ namespace hgl::graph::mtl
         uint32_t max_invocations,
         MeshModeCapacity &out_capacity)
     {
-        if ((max_invocations % 3u) != 0u)
-        {
-            GLogError("[ShaderGen] VertexPassthrough 的 max_invocations(%u) 必须是 3 的倍数",
-                      max_invocations);
-            return false;
-        }
-        out_capacity.max_vertices   = max_invocations;
-        out_capacity.max_primitives = max_invocations / 3u;
+        out_capacity.max_vertices   = max_invocations * 3u;
+        out_capacity.max_primitives = max_invocations;
         return true;
     }
 

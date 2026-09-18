@@ -43,7 +43,7 @@ namespace hgl::graph::mtl
         //   floor(max_mesh_output_primitives / 每线程图元数))。
         // 拒绝生成侧硬编码——设备上限由主程序从物理设备实测后经 profile 传入；
         // profile 为 null 或 limits 未填（0）时退回理想值。
-        // VertexPassthrough 向下取整到 3 的倍数（组内三角形不跨组，MeshTemplateEmitter % 3 守卫）。
+        // VertexPassthrough 采用跨步协作模型（64 线程处理 192 顶点 64 三角形）。
         uint32_t ClampMeshInvocationsByDevice(
             const contract::PhysicalDeviceProfileLite *profile,
             const MeshShaderMode mode,
@@ -61,21 +61,13 @@ namespace hgl::graph::mtl
             uint32_t cap = l.max_mesh_work_group_size_x;
             if (l.max_mesh_output_vertices > 0)
                 cap = std::min(cap, l.max_mesh_output_vertices / verts_per_inv);
-            // VertexPassthrough: 1 vertex/invocation, but 3 invocations per
-            // triangle — GetMeshModePrimitivesPerInvocation returns 1 which
-            // would over-state the primitive cap 3x. The vertex constraint
-            // already covers this mode correctly, so skip primitives here.
-            if (mode != MeshShaderMode::VertexPassthrough
-             && l.max_mesh_output_primitives > 0)
+            if (l.max_mesh_output_primitives > 0)
                 cap = std::min(cap, l.max_mesh_output_primitives / prims_per_inv);
 
             if (cap == 0)
                 return ideal;   // limits 未填（0）= 无约束，用理想值
 
             uint32_t result = std::min(ideal, cap);
-            if (mode == MeshShaderMode::VertexPassthrough && result > 0)
-                result -= result % 3u;   // 3 的倍数（T2.4 守卫要求）
-
             return result > 0 ? result : ideal;
         }
 
