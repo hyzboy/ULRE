@@ -35,11 +35,12 @@ using namespace hgl::graph;
 
 namespace
 {
-    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
+    GeometryVertexFormat CreateStandardGeometryVertexFormat(VkFormat normal_format = VF_V2UN8)
     {
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::Normal,   VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2HF},   // UV RG16F（half×2——4B/顶点）
+            {VertexSemantic::Normal,   normal_format}, // 默认 VF_V2UN8，支持 VF_V2HF
         };
         return gvf;
     }
@@ -174,7 +175,7 @@ private:
     {
         if (!InitMaterialRuntimeData(
                 &solid,
-                CreateGizmo3DGeometryVertexFormat()))
+                CreateStandardGeometryVertexFormat(VF_V2UN8)))
             return false;
 
         return (solid_recipe.material_ssbo_binding = solid.material_data_ssbo_accessors[0].GetMaterialSSBOBinding()).IsValid();

@@ -35,11 +35,12 @@ using namespace hgl::graph;
 
 namespace
 {
-    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
+    GeometryVertexFormat CreateStandardGeometryVertexFormat(VkFormat normal_format = VF_V2UN8)
     {
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::Normal,   VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2HF},   // UV RG16F（half×2——4B/顶点）
+            {VertexSemantic::Normal,   normal_format}, // 默认 VF_V2UN8，支持 VF_V2HF
         };
         return gvf;
     }
@@ -123,7 +124,7 @@ private:
 
     bool InitSolidMDP()
     {
-        solid.geometry_vertex_format = CreateGizmo3DGeometryVertexFormat();
+        solid.geometry_vertex_format = CreateStandardGeometryVertexFormat(VF_V2UN8);
         if (solid.geometry_vertex_format.GetCount() == 0)
             return false;
 

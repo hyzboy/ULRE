@@ -1,5 +1,7 @@
 ﻿#include<hgl/io/FileInputStream.h>
 #include<hgl/type/String.h>
+#include<hgl/type/Smart.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/log/Log.h>
 #include<hgl/math/Sum.h>
 #include<hgl/graph/geo/VKGeometry.h>
@@ -7,6 +9,7 @@
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/io/MiniPack.h>
 #include<hgl/io/MemoryInputStream.h>
 
@@ -27,6 +30,41 @@ namespace
         uint8_t  texCoordCount;  // Number of TEXCOORD sets (attributes with names starting with "TEXCOORD")
     };
 #pragma pack(pop)
+
+    struct FileAttribute
+    {
+        char name[VERTEX_ATTRIB_NAME_MAX_LENGTH];
+        VkFormat format;
+        int32 entry_index;
+        uint32 entry_size;
+        VertexSemantic semantic;
+
+        bool operator==(const FileAttribute &rhs) const
+        {
+            return entry_index == rhs.entry_index && format == rhs.format && semantic == rhs.semantic;
+        }
+    };
+
+    static VertexSemantic ParseSemanticFromName(const char *name)
+    {
+        if(!name || !*name)
+            return VertexSemantic::Unknown;
+
+        if(hgl::stricmp(name, "POSITION") == 0)
+            return VertexSemantic::Position;
+        if(hgl::stricmp(name, "NORMAL") == 0)
+            return VertexSemantic::Normal;
+        if(hgl::stricmp(name, "TANGENT") == 0)
+            return VertexSemantic::Tangent;
+        if(hgl::stricmp(name, "BITANGENT") == 0)
+            return VertexSemantic::Bitangent;
+        if(hgl::stricmp(name, "COLOR", 5) == 0)
+            return VertexSemantic::Color;
+        if(hgl::stricmp(name, "TEXCOORD", 8) == 0)
+            return VertexSemantic::TexCoord;
+
+        return VertexSemantic::Unknown;
+    }
 
     // Read and validate GeometryHeader from MiniPack
     bool ReadGeometryHeader(hgl::io::minipack::MiniPackReader *mpr, GeometryHeader &header, const OSString &filename)
@@ -92,15 +130,16 @@ namespace
         return true;
     }
 
-    // Read AttributeMeta block and expose parsed views
-    bool ReadAttributeMeta(hgl::io::minipack::MiniPackReader *mpr,
-                           const GeometryHeader &header,
-                           const OSString &filename,
-                           std::vector<uint8_t> &attrmeta,
-                           const uint8_t *&attribute_format,
-                           const uint8_t *&attribute_name_length,
-                           const char *&names_ptr)
+    // Parse AttributeMeta block and extract attribute metadata
+    bool ParseAttributeMeta(hgl::io::minipack::MiniPackReader *mpr,
+                            const GeometryHeader &header,
+                            const OSString &filename,
+                            ValueArray<FileAttribute> &file_attributes)
     {
+        file_attributes.Resize(0);
+        if(header.attributeCount == 0)
+            return true;
+
         const int32 attrmeta_index = mpr->FindFile(AnsiStringView("AttributeMeta"));
         if(attrmeta_index < 0)
         {
@@ -115,7 +154,7 @@ namespace
             return false;
         }
 
-        attrmeta.resize(attrmeta_size);
+        AutoDeleteArray<uint8_t> attrmeta(attrmeta_size);
         if(mpr->ReadFile(attrmeta_index, attrmeta.data(), 0, attrmeta_size) != attrmeta_size)
         {
             MLogError(LoadGeometry,OS_TEXT("Cannot read AttributeMeta from file ") + filename);
@@ -123,7 +162,7 @@ namespace
         }
 
         const uint8_t *meta = attrmeta.data();
-        const uint8_t *meta_end = meta + attrmeta.size();
+        const uint8_t *meta_end = meta + attrmeta_size;
 
         // formats
         if(static_cast<size_t>(meta_end - meta) < header.attributeCount)
@@ -131,7 +170,7 @@ namespace
             MLogError(LoadGeometry,OS_TEXT("AttributeMeta missing formats in file ") + filename);
             return false;
         }
-        attribute_format = meta;
+        const uint8_t *attribute_format = meta;
         meta += header.attributeCount;
 
         // name lengths
@@ -140,7 +179,7 @@ namespace
             MLogError(LoadGeometry,OS_TEXT("AttributeMeta missing name lengths in file ") + filename);
             return false;
         }
-        attribute_name_length = meta;
+        const uint8_t *attribute_name_length = meta;
         meta += header.attributeCount;
 
         // names block
@@ -153,18 +192,36 @@ namespace
             MLogError(LoadGeometry,OS_TEXT("AttributeMeta names section too small in file ") + filename);
             return false;
         }
-        names_ptr = reinterpret_cast<const char *>(meta);
+        const char *name_ptr = reinterpret_cast<const char *>(meta);
+
+        for(uint8_t i = 0; i < header.attributeCount; ++i)
+        {
+            FileAttribute attr{};
+            attr.format = static_cast<VkFormat>(attribute_format[i]);
+
+            const uint8_t name_len = attribute_name_length[i];
+            const uint8_t copy_len = name_len < (VERTEX_ATTRIB_NAME_MAX_LENGTH - 1) ? name_len : (VERTEX_ATTRIB_NAME_MAX_LENGTH - 1);
+            memcpy(attr.name, name_ptr, copy_len);
+            attr.name[copy_len] = '\0';
+
+            attr.semantic = ParseSemanticFromName(attr.name);
+            attr.entry_index = mpr->FindFile(AnsiStringView(attr.name, name_len));
+            if(attr.entry_index >= 0)
+                attr.entry_size = mpr->GetFileLength(attr.entry_index);
+
+            file_attributes.Add(attr);
+            name_ptr += name_len + 1;
+        }
+
         return true;
     }
 
-    // Read attributes/VBOs using AttributeMeta views
+    // Read attributes/VBOs by semantic mapping, with automatic format fallback conversion
     bool ReadAttributesVBO(hgl::io::minipack::MiniPackReader *mpr,
                            GeometryData *geo_data,
                            const GeometryVertexFormat &geometry_vertex_format,
                            const GeometryHeader &header,
-                           const uint8_t *attribute_format,
-                           const uint8_t *attribute_name_length,
-                           const char *names_ptr,
+                           const ValueArray<FileAttribute> &file_attributes,
                            const OSString &filename)
     {
         const uint32_t gvf_attr_count = geometry_vertex_format.GetCount();
@@ -174,20 +231,6 @@ namespace
             return false;
         }
 
-        if(header.attributeCount < gvf_attr_count)
-        {
-            MLogError(LoadGeometry,OS_TEXT("File has fewer attributes(") + OSString::numberOf(header.attributeCount)
-                + OS_TEXT(") and GeometryVertexFormat(") + OSString::numberOf(gvf_attr_count) + OS_TEXT(") in ") + filename);
-            return false;
-        }
-
-        if(header.attributeCount > gvf_attr_count)
-        {
-            MLogNotice(LoadGeometry,OS_TEXT("File has extra attributes(") + OSString::numberOf(header.attributeCount)
-                + OS_TEXT(") than GeometryVertexFormat(") + OSString::numberOf(gvf_attr_count) + OS_TEXT(") in ") + filename);
-        }
-
-        const char *name_ptr = names_ptr;
         for(uint32_t vab_index = 0; vab_index < gvf_attr_count; ++vab_index)
         {
             const GeometryVertexAttributeFormat *geometry_attribute = geometry_vertex_format.Get(vab_index);
@@ -197,17 +240,22 @@ namespace
                 return false;
             }
 
-            if(geometry_attribute->format != static_cast<VkFormat>(attribute_format[vab_index]))
+            // Find matching file attribute by semantic
+            const FileAttribute *src_attr = nullptr;
+            for(int i = 0; i < file_attributes.GetCount(); ++i)
             {
-                MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
-                return false;
+                if(file_attributes[i].semantic == geometry_attribute->semantic)
+                {
+                    src_attr = &file_attributes[i];
+                    break;
+                }
             }
 
-            const uint8_t attr_name_length = attribute_name_length[vab_index];
-            const int32 attr_entry_index = mpr->FindFile(AnsiStringView(name_ptr, attr_name_length));
-            if(attr_entry_index < 0)
+            if(!src_attr || src_attr->entry_index < 0)
             {
-                MLogError(LoadGeometry,OS_TEXT("Attribute entry not found at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
+                MLogError(LoadGeometry,OS_TEXT("Required vertex semantic ")
+                    + ToOSString(GetVertexSemanticName(geometry_attribute->semantic))
+                    + OS_TEXT(" not found in file ") + filename);
                 return false;
             }
 
@@ -225,47 +273,122 @@ namespace
                 return false;
             }
 
-            const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(geometry_attribute->format);
-            if(mpr->ReadFile(attr_entry_index, vab_ptr, 0, static_cast<uint32>(attribute_size)) != attribute_size)
+            const size_t target_stride = GetStrideByFormat(geometry_attribute->format);
+            const size_t target_size = size_t(header.vertexCount) * target_stride;
+
+            if(geometry_attribute->format == src_attr->format)
             {
-                MLogError(LoadGeometry,OS_TEXT("Cannot read attribute data for attribute index ") + OSString::numberOf(vab_index) + OS_TEXT(" from file ") + filename);
+                // Exact format match: read directly into VAB
+                if(mpr->ReadFile(src_attr->entry_index, vab_ptr, 0, static_cast<uint32>(target_size)) != target_size)
+                {
+                    MLogError(LoadGeometry,OS_TEXT("Cannot read attribute data for ") + ToOSString(src_attr->name) + OS_TEXT(" from file ") + filename);
+                    vab->Unmap();
+                    return false;
+                }
+            }
+            else if(geometry_attribute->semantic == VertexSemantic::Normal)
+            {
+                // Normal conversion: float3 (VK_FORMAT_R32G32B32_SFLOAT) -> V2UN8 (VK_FORMAT_R8G8_UNORM) or V2HF (VK_FORMAT_R16G16_SFLOAT)
+                if(src_attr->format == VK_FORMAT_R32G32B32_SFLOAT)
+                {
+                    const size_t src_size = size_t(header.vertexCount) * sizeof(float) * 3;
+                    AutoDeleteArray<float> src_normals(header.vertexCount * 3);
+                    if(mpr->ReadFile(src_attr->entry_index, src_normals.data(), 0, static_cast<uint32>(src_size)) != src_size)
+                    {
+                        MLogError(LoadGeometry,OS_TEXT("Cannot read source float3 normals from file ") + filename);
+                        vab->Unmap();
+                        return false;
+                    }
+
+                    if(geometry_attribute->format == VK_FORMAT_R8G8_UNORM)
+                    {
+                        // Octahedral encoding + uint8 quantization (2B/vert)
+                        EncodeNormalsToRG8(src_normals.data(), header.vertexCount, reinterpret_cast<uint8_t*>(vab_ptr));
+                    }
+                    else if(geometry_attribute->format == VK_FORMAT_R16G16_SFLOAT)
+                    {
+                        // Octahedral encoding + half2 conversion (4B/vert)
+                        uint16_t *dst = reinterpret_cast<uint16_t*>(vab_ptr);
+                        for(uint32_t vi = 0; vi < header.vertexCount; ++vi)
+                        {
+                            const float *n = src_normals.data() + vi * 3;
+                            float p, q;
+                            EncodeOctahedralNormal(n[0], n[1], n[2], p, q);
+                            dst[vi * 2 + 0] = FloatToHalf(p);
+                            dst[vi * 2 + 1] = FloatToHalf(q);
+                        }
+                    }
+                    else
+                    {
+                        MLogError(LoadGeometry,OS_TEXT("Unsupported normal target format mismatch at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
+                        vab->Unmap();
+                        return false;
+                    }
+                }
+                else
+                {
+                    MLogError(LoadGeometry,OS_TEXT("Incompatible normal source format at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
+                    vab->Unmap();
+                    return false;
+                }
+            }
+            else if(geometry_attribute->semantic == VertexSemantic::TexCoord)
+            {
+                // UV conversion: float2 (VK_FORMAT_R32G32_SFLOAT) -> V2HF (VK_FORMAT_R16G16_SFLOAT)
+                if(src_attr->format == VK_FORMAT_R32G32_SFLOAT && geometry_attribute->format == VK_FORMAT_R16G16_SFLOAT)
+                {
+                    const size_t src_size = size_t(header.vertexCount) * sizeof(float) * 2;
+                    AutoDeleteArray<float> src_uvs(header.vertexCount * 2);
+                    if(mpr->ReadFile(src_attr->entry_index, src_uvs.data(), 0, static_cast<uint32>(src_size)) != src_size)
+                    {
+                        MLogError(LoadGeometry,OS_TEXT("Cannot read source float2 UVs from file ") + filename);
+                        vab->Unmap();
+                        return false;
+                    }
+
+                    uint16_t *dst = reinterpret_cast<uint16_t*>(vab_ptr);
+                    for(uint32_t vi = 0; vi < header.vertexCount; ++vi)
+                    {
+                        dst[vi * 2 + 0] = FloatToHalf(src_uvs[vi * 2 + 0]);
+                        dst[vi * 2 + 1] = FloatToHalf(src_uvs[vi * 2 + 1]);
+                    }
+                }
+                else
+                {
+                    MLogError(LoadGeometry,OS_TEXT("Incompatible UV source/target format at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
+                    vab->Unmap();
+                    return false;
+                }
+            }
+            else
+            {
+                MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
                 vab->Unmap();
                 return false;
             }
 
             vab->Unmap();
-            name_ptr += attr_name_length + 1;
         }
 
         return true;
     }
 
-    // Read indices into IBO
+    // Read indices into IBO (uniform uint32 indices)
     bool ReadIndicesData(hgl::io::minipack::MiniPackReader *mpr,
                          GeometryData *geo_data,
                          const GeometryHeader &header,
                          const OSString &filename)
     {
-        IndexType index_type;
-        if(header.indexStride==1)index_type=IndexType::U8;else
-        if(header.indexStride==2)index_type=IndexType::U16;else
-        if(header.indexStride==4)index_type=IndexType::U32;else
+        if(header.indexStride!=1 && header.indexStride!=2 && header.indexStride!=4)
         {
             MLogError(LoadGeometry,OS_TEXT("Unsupported index stride ")+OSString::numberOf(header.indexStride)+OS_TEXT(" in file ") + filename);
             return false;
         }
 
-        IndexBuffer *ibo=geo_data->InitIBO(header.indexCount,index_type,"LoadGeometry:IBO");    //这里未来改成文件名
+        IndexBuffer *ibo=geo_data->InitIBO(header.indexCount,IndexType::U32,"LoadGeometry:IBO");
         if(!ibo)
         {
             MLogError(LoadGeometry,OS_TEXT("Cannot create IBO for file ") + filename);
-            return false;
-        }
-
-        void *ibo_ptr=ibo->Map(0,header.indexCount);
-        if(!ibo_ptr)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot map IBO for file ") + filename);
             return false;
         }
 
@@ -284,13 +407,37 @@ namespace
             return false;
         }
 
-        if(mpr->ReadFile(indices_index, ibo_ptr, 0, static_cast<uint32>(index_size)) != index_size)
+        AutoDeleteArray<uint8_t> raw(index_size);
+        if(mpr->ReadFile(indices_index, raw.data(), 0, static_cast<uint32>(index_size)) != index_size)
         {
             MLogError(LoadGeometry,OS_TEXT("Cannot read index data from file ") + filename);
             return false;
         }
 
-        ibo->Unmap();
+        // stride 1/2/4 -> uint32 统一展开（引擎废弃 U8/U16 索引）
+        AutoDeleteArray<uint32_t> idx(header.indexCount);
+        if(header.indexStride==4)
+        {
+            memcpy(idx.data(), raw.data(), index_size);
+        }
+        else if(header.indexStride==2)
+        {
+            const uint16_t *src16 = reinterpret_cast<const uint16_t*>(raw.data());
+            for(uint32_t i=0;i<header.indexCount;++i)
+                idx[i] = static_cast<uint32_t>(src16[i]);
+        }
+        else
+        {
+            for(uint32_t i=0;i<header.indexCount;++i)
+                idx[i] = static_cast<uint32_t>(raw[i]);
+        }
+
+        if(!ibo->Write(idx.data(), header.indexCount))
+        {
+            MLogError(LoadGeometry,OS_TEXT("Cannot write index data for file ") + filename);
+            return false;
+        }
+
         return true;
     }
 
@@ -309,15 +456,11 @@ namespace
 
         if(header.attributeCount>0)
         {
-            std::vector<uint8_t> attrmeta;
-            const uint8_t *attribute_format = nullptr;
-            const uint8_t *attribute_name_length = nullptr;
-            const char *names_ptr = nullptr;
-
-            if(!ReadAttributeMeta(mpr, header, filename, attrmeta, attribute_format, attribute_name_length, names_ptr))
+            ValueArray<FileAttribute> file_attributes;
+            if(!ParseAttributeMeta(mpr, header, filename, file_attributes))
                 return false;
 
-            if(!ReadAttributesVBO(mpr, geo_data, geometry_vertex_format, header, attribute_format, attribute_name_length, names_ptr, filename))
+            if(!ReadAttributesVBO(mpr, geo_data, geometry_vertex_format, header, file_attributes, filename))
                 return false;
         }
 
