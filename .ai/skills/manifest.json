@@ -56,13 +56,31 @@
       "tags": ["navigation", "index", "guide"],
       "difficulty": "beginner",
       "estimated_time_minutes": 3
+    },
+    {
+      "id": "hgl-types-reference",
+      "name": "HGL Types Reference",
+      "path": "SKILL_HGL_TYPES_REFERENCE.md",
+      "description": "Complete reference for HGL's own string, collection, hash, IO and utility types. Use instead of STL. Covers AnsiString/UTF8String/OSString, ArrayList, UnorderedMap, FNV1a hash, FileInputStream/OutputStream and more.",
+      "tags": ["string", "collection", "hash", "io", "types", "no-stl", "fnv1a", "reference"],
+      "difficulty": "beginner",
+      "estimated_time_minutes": 5
+    },
+    {
+      "id": "cmmath-reference",
+      "name": "CMMath Math Library Reference",
+      "path": "SKILL_CMMATH_REFERENCE.md",
+      "description": "Complete reference for CMMath: vectors, matrices, projection/view matrices (Vulkan RH Z-up), quaternions, Transform class, AABB/OBB/Frustum geometry. Includes known bugs (PerspectiveMatrix X-flip, GetRotateMatrix signature mismatch).",
+      "tags": ["math", "matrix", "vector", "projection", "camera", "vulkan", "z-up", "right-hand", "quaternion", "aabb", "frustum", "transform", "reference"],
+      "difficulty": "intermediate",
+      "estimated_time_minutes": 10
     }
   ],
   "learning_paths": [
     {
       "name": "Beginner Path",
       "description": "First time adding a component? Start here",
-      "skills": ["quick-reference", "add-render-component", "system-grouping"],
+      "skills": ["hgl-types-reference", "quick-reference", "add-render-component", "system-grouping"],
       "estimated_time_hours": 2
     },
     {
@@ -79,6 +97,12 @@
     }
   ],
   "ai_commands": {
+    "use_hgl_types": {
+      "description": "Look up the correct HGL type or API to use instead of STL (string, vector, map, hash, IO, etc.)",
+      "skill": "hgl-types-reference",
+      "requires": [],
+      "outputs": ["Correct HGL type", "Header to include", "Usage example"]
+    },
     "add_new_component": {
       "description": "Add a new rendering component to the ECS system",
       "skill": "add-render-component",
