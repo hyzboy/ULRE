@@ -52,6 +52,8 @@ namespace hgl::graph::mtl
         // buffer_reference 声明依赖以下扩展——所有 mesh shader 统一启用
         ms += "#extension GL_EXT_buffer_reference : require\n";
         ms += "#extension GL_ARB_gpu_shader_int64 : require\n";
+        ms += "#extension GL_EXT_shader_8bit_storage : require\n";
+        ms += "#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require\n";
         ms += "\n";
         // pc_root 紧跟扩展发出（uint64_t 字段依赖 int64 扩展）——行表资源块
         // （MaterialMeshIndexTables，引用 pc_root.addr_l2w_index）由装配器紧随

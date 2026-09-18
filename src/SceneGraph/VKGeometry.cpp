@@ -25,6 +25,10 @@ Geometry::~Geometry()
     LogVerbose("~Geometry: "+geometry_name);
 
     SAFE_CLEAR(geometry_data);
+    SAFE_CLEAR(meshlets_buffer);
+    SAFE_CLEAR(meshlet_vertices_buffer);
+    SAFE_CLEAR(meshlet_triangles_buffer);
+    SAFE_CLEAR(meshlet_bounds_buffer);
 }
 
 const VkDeviceSize Geometry::GetVertexCount()const

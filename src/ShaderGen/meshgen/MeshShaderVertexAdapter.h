@@ -85,6 +85,10 @@ namespace hgl::graph::mtl
             "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexLuminanceRef   { uint data[]; };\n",
             "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexTransformIDRef { uint data[]; };\n",
             "layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexSizeRef        { vec2 data[]; };\n",
+            "struct MeshletDescriptor { uint vertex_offset; uint triangle_offset; uint counts; uint reserved; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MeshletDescriptorRef { MeshletDescriptor data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MeshletVertexRef     { uint data[]; };\n",
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MeshletTriangleRef   { u8vec3 data[]; };\n",
         };
         for (const char *decl : kVertexRefDecls)
             ms += decl;
@@ -93,6 +97,9 @@ namespace hgl::graph::mtl
         // 顶点索引垫片宏：is_indexed 分支查表（非索引几何 addr_index 为 0，
         // 该分支不执行——与旧 PARTIALLY_BOUND 语义一致）
         ms += "#define sbo_vertex_index VertexIndexRef(draw_params.addr_index)\n";
+        ms += "#define sbo_meshlets MeshletDescriptorRef(draw_params.addr_meshlets)\n";
+        ms += "#define sbo_meshlet_vertices MeshletVertexRef(draw_params.addr_meshlet_vertices)\n";
+        ms += "#define sbo_meshlet_triangles MeshletTriangleRef(draw_params.addr_meshlet_triangles)\n";
         ms += "\n";
     }
 }

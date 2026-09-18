@@ -14,20 +14,23 @@ namespace hgl::graph::mtl
     // （MeshShaderVertexAdapter 的 EmitVertexAdapter）遍历名字+类型表发射，
     // 漂移（改名/调序/漏字段）由下方 static_assert 编译期抓死。
     #define HGL_MESH_DRAW_PARAMS_FIELD_LIST(M)   \
-        M(index_base,     "uint",  uint32_t)     \
-        M(vertex_base,    "uint",  uint32_t)     \
-        M(is_indexed,     "uint",  uint32_t)     \
-        M(total_vertices, "uint",  uint32_t)     \
-        M(char_height,    "float", float)        \
-        M(first_instance, "uint",  uint32_t)     \
-        M(addr_position,      "uint64_t", uint64_t) \
-        M(addr_uv,            "uint64_t", uint64_t) \
-        M(addr_ntb,           "uint64_t", uint64_t) \
-        M(addr_color,         "uint64_t", uint64_t) \
-        M(addr_luminance,     "uint64_t", uint64_t) \
-        M(addr_transform_id,  "uint64_t", uint64_t) \
-        M(addr_size,          "uint64_t", uint64_t) \
-        M(addr_index,         "uint64_t", uint64_t)
+        M(index_base,             "uint",     uint32_t) \
+        M(vertex_base,            "uint",     uint32_t) \
+        M(is_indexed,             "uint",     uint32_t) \
+        M(total_vertices,         "uint",     uint32_t) \
+        M(char_height,            "float",    float)    \
+        M(first_instance,         "uint",     uint32_t) \
+        M(addr_position,          "uint64_t", uint64_t) \
+        M(addr_uv,                "uint64_t", uint64_t) \
+        M(addr_ntb,               "uint64_t", uint64_t) \
+        M(addr_color,             "uint64_t", uint64_t) \
+        M(addr_luminance,         "uint64_t", uint64_t) \
+        M(addr_transform_id,      "uint64_t", uint64_t) \
+        M(addr_size,              "uint64_t", uint64_t) \
+        M(addr_index,             "uint64_t", uint64_t) \
+        M(addr_meshlets,          "uint64_t", uint64_t) \
+        M(addr_meshlet_vertices,  "uint64_t", uint64_t) \
+        M(addr_meshlet_triangles, "uint64_t", uint64_t)
 
     struct MeshDrawParams
     {
@@ -79,10 +82,10 @@ namespace hgl::graph::mtl
             if (offsets[i] != 24u + (i - 6u) * 8u)
                 return false;
         }
-        return sizeof(MeshDrawParams) == 88;
+        return sizeof(MeshDrawParams) == 112;
     }
     static_assert(MeshDrawParamsLayoutValid(),
-        "MeshDrawParams 布局必须与 GLSL std430 声明逐字段一致（24B 头部 + 8×uint64 基址 = 88B）");
+        "MeshDrawParams 布局必须与 GLSL std430 声明逐字段一致（24B 头部 + 11×uint64 基址 = 112B）");
 
     // 每个 draw item 的材质实例地址行。payload 与纹理引用配置分别由
     // MaterialDefinition/MaterialTextureReferencePool 提供，保持 16B scalar ABI。

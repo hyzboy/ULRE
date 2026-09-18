@@ -592,6 +592,16 @@ namespace hgl::ecs
                             if (auto *ibo = geom->GetIBO())
                                 row[i].addr_index =
                                     dev->GetBufferDeviceAddressAligned16(ibo->GetVkBuffer());
+
+                            if (geom->HasMeshlets())
+                            {
+                                if (auto *mb = geom->GetMeshletsBuffer())
+                                    row[i].addr_meshlets = dev->GetBufferDeviceAddressAligned16(mb->GetBuffer());
+                                if (auto *mvb = geom->GetMeshletVerticesBuffer())
+                                    row[i].addr_meshlet_vertices = dev->GetBufferDeviceAddressAligned16(mvb->GetBuffer());
+                                if (auto *mtb = geom->GetMeshletTrianglesBuffer())
+                                    row[i].addr_meshlet_triangles = dev->GetBufferDeviceAddressAligned16(mtb->GetBuffer());
+                            }
                         }
                     }
                 }
@@ -623,7 +633,14 @@ namespace hgl::ecs
                         range->index_count > 0 ? range->index_count
                                                : range->vertex_count);
 
-                    mesh_cmd->groupCountX = CalcMeshGroupCount(is_lines, total_vertices);
+                    if (db.geometry && db.geometry->HasMeshlets())
+                    {
+                        mesh_cmd->groupCountX = db.geometry->GetMeshletCount();
+                    }
+                    else
+                    {
+                        mesh_cmd->groupCountX = CalcMeshGroupCount(is_lines, total_vertices);
+                    }
                     mesh_cmd->groupCountY = db.instance_count > 1
                         ? db.instance_count
                         : 1u;
