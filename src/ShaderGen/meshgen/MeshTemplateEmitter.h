@@ -202,16 +202,7 @@ namespace hgl::graph::mtl
         add_block(ShaderDocumentBlockKind::Resource, fragment,
                   "MeshTemplateEmitter.VertexAdapter", "MeshShaderVertexAdapter");
 
-        // 6. ColorPalette UBO (由 UBO 声明集判定)
-        if (ubos.Contains(DescriptorSemantic::MaterialColorPalette))
-        {
-            fragment.clear();
-            EmitColorPaletteUBO(fragment, ubos);
-            add_block(ShaderDocumentBlockKind::Resource, fragment,
-                      "MeshTemplateEmitter.ColorPalette", "MeshShaderHeaderGen");
-        }
-
-        // 7. 模式专属自定义资源 (例如 CharQuad SSBO 声明)
+        // 6. 模式专属自定义资源 (例如 CharQuad SSBO 声明)
         if (desc->emit_custom_resources)
         {
             fragment.clear();
@@ -220,14 +211,14 @@ namespace hgl::graph::mtl
                       "MeshTemplateEmitter.CustomResources", desc->name);
         }
 
-        // 8. Varying 输出 (per-vertex 数组，mesh shader 语义契约)
+        // 7. Varying 输出 (per-vertex 数组，mesh shader 语义契约)
         fragment.clear();
         EmitVaryingDeclarations(
             fragment, *resolved_stage_interface, max_vertices, max_primitives);
         add_block(ShaderDocumentBlockKind::Interface, fragment,
                   "MeshTemplateEmitter.Varyings", "MeshShaderVaryingGen");
 
-        // 9. Stage 1 模块 (顶点数据读取)
+        // 8. Stage 1 模块 (顶点数据读取)
         if (resolved_input_document && resolved_input_document->GetBlockCount() > 0)
         {
             append_document(resolved_input_document);
@@ -248,7 +239,7 @@ namespace hgl::graph::mtl
 
         append_document(provider_document);
 
-        // 10. Stage 2 模块 (Mapping)
+        // 9. Stage 2 模块 (Mapping)
         if (stage2_module)
         {
             fragment.clear();
@@ -259,7 +250,7 @@ namespace hgl::graph::mtl
                       "MeshTemplateEmitter.Stage2", "stage2", stage2_module);
         }
 
-        // 11. Stage 3 模块 (Projection)
+        // 10. Stage 3 模块 (Projection)
         if (stage3_module)
         {
             fragment.clear();
@@ -270,7 +261,7 @@ namespace hgl::graph::mtl
                       "MeshTemplateEmitter.Stage3", "stage3", stage3_module);
         }
 
-        // 12. MainBody
+        // 11. MainBody
         fragment.clear();
         fragment += "\nvoid main()\n{\n";
         fragment += "    draw_params = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[gl_DrawID];\n";

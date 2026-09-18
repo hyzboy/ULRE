@@ -81,9 +81,7 @@ namespace hgl::graph::mtl
         // ── Descriptor macros ──────────────────────────────────────────────
         ms += "#include \"common/descriptor_macros.glsl\"\n";
 
-        if (ubos.Contains(DescriptorSemantic::CameraInfo)
-         || ubos.Contains(DescriptorSemantic::ViewportInfo)
-         || ubos.Contains(DescriptorSemantic::SkyInfo))
+        if (!ubos.IsEmpty())
         {
             ms += "#include \"ubo/scene_ubo.glsl\"\n";
         }
@@ -145,29 +143,6 @@ namespace hgl::graph::mtl
             max_vertices,
             max_primitives,
             force_camera_ubo);
-    }
-
-    // MaterialColorPalette UBO（palette 材质）
-    inline void EmitColorPaletteUBO(
-        std::string &ms,
-        const hgl::OrderedSet<DescriptorSemantic> &ubos)
-    {
-        if (ubos.Contains(DescriptorSemantic::MaterialColorPalette))
-        {
-            ms += "#include \"ubo/scene_ubo.glsl\"\n";
-        }
-        ms += "\n";
-    }
-
-    inline void EmitColorPaletteUBO(
-        std::string &ms,
-        const MaterialVertexVaryingConfig &varying_cfg)
-    {
-        if (varying_cfg.emit_vertex_color_from_palette)
-        {
-            ms += "#include \"ubo/scene_ubo.glsl\"\n";
-        }
-        ms += "\n";
     }
 
     // mesh shader 无 gl_InstanceIndex（VS 专属内置）——实例索引 = first_instance + gl_WorkGroupID.y
