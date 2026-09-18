@@ -10,6 +10,8 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMCMakeModule)
 
 set(ULRE_3RDPTY_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdpty)
+set(ULRE_GLTF_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/GLTFConvert.ini" CACHE FILEPATH
+    "GLTFConvert runtime configuration file")
 
 include_directories(${ULRE_3RDPTY_ROOT_PATH}/NvTriStrip)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
