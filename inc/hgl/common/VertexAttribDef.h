@@ -20,11 +20,9 @@ namespace hgl::graph
         AO,
         Size,
         Rotation,
-        Assign,
         TransformID,
-        DataIndexID,
 
-        ENUM_CLASS_RANGE(Unknown,DataIndexID)
+        ENUM_CLASS_RANGE(Unknown,TransformID)
     };
 
     enum class VertexAttribBaseType:uint8
@@ -102,9 +100,7 @@ namespace hgl::graph
             case VertexSemantic::AO:               return "AO";
             case VertexSemantic::Size:             return "Size";
             case VertexSemantic::Rotation:         return "Rotation";
-            case VertexSemantic::Assign:           return "Assign";
             case VertexSemantic::TransformID:      return "TransformID";
-            case VertexSemantic::DataIndexID:      return "DataIndexID";
             default:                               return "Unknown";
         }
     }
@@ -153,8 +149,6 @@ namespace hgl::graph
         constexpr VertexSemantic AO             = VertexSemantic::AO;
         constexpr VertexSemantic Size           = VertexSemantic::Size;
         constexpr VertexSemantic Rotation       = VertexSemantic::Rotation;
-        constexpr VertexSemantic Assign         = VertexSemantic::Assign;
         constexpr VertexSemantic TransformID    = VertexSemantic::TransformID;
-        constexpr VertexSemantic DataIndexID    = VertexSemantic::DataIndexID;
     }
 }
