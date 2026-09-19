@@ -87,6 +87,45 @@ namespace hgl::graph::mtl
     static_assert(MeshDrawParamsLayoutValid(),
         "MeshDrawParams 布局必须与 GLSL std430 声明逐字段一致（24B 头部 + 11×uint64 基址 = 112B）");
 
+    // mesh per-draw 命令参数行（IndirectMeshDraw）：
+    // 几何体的 112B 顶点流参数与 BDA 已池化在全局 MeshDrawParamsPool 中，
+    // 每个 draw batch 仅需下发 GeometryID 与 first_instance（8B）。
+    #define HGL_MESH_DRAW_COMMAND_FIELD_LIST(M) \
+        M(geometry_id,    "uint", uint32_t)     \
+        M(first_instance, "uint", uint32_t)
+
+    struct MeshDrawCommand
+    {
+    #define HGL_MDC_CPU_FIELD(name, glsl_type, cpu_type) cpu_type name;
+        HGL_MESH_DRAW_COMMAND_FIELD_LIST(HGL_MDC_CPU_FIELD)
+    #undef HGL_MDC_CPU_FIELD
+    };
+
+    constexpr const char *const kMeshDrawCommandFieldNames[] =
+    {
+    #define HGL_MDC_NAME_FIELD(name, glsl_type, cpu_type) #name,
+        HGL_MESH_DRAW_COMMAND_FIELD_LIST(HGL_MDC_NAME_FIELD)
+    #undef HGL_MDC_NAME_FIELD
+    };
+
+    constexpr const char *const kMeshDrawCommandFieldGLSLTypes[] =
+    {
+    #define HGL_MDC_GLSL_FIELD(name, glsl_type, cpu_type) glsl_type,
+        HGL_MESH_DRAW_COMMAND_FIELD_LIST(HGL_MDC_GLSL_FIELD)
+    #undef HGL_MDC_GLSL_FIELD
+    };
+
+    constexpr uint32 kMeshDrawCommandFieldCount =
+        static_cast<uint32>(sizeof(kMeshDrawCommandFieldNames) / sizeof(kMeshDrawCommandFieldNames[0]));
+
+    constexpr bool MeshDrawCommandLayoutValid() noexcept
+    {
+        return sizeof(MeshDrawCommand) == 8
+            && offsetof(MeshDrawCommand, geometry_id) == 0
+            && offsetof(MeshDrawCommand, first_instance) == 4;
+    }
+    static_assert(MeshDrawCommandLayoutValid(), "MeshDrawCommand 布局必须为 2×uint32 (8B)");
+
     // 每个 draw item 的材质实例地址行。payload 与纹理引用配置分别由
     // MaterialDefinition/MaterialTextureReferencePool 提供，保持 16B scalar ABI。
     struct MaterialInstanceAddresses

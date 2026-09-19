@@ -25,10 +25,13 @@
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/MeshDrawParamsPool.h>
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/ShaderBufferSources.h>
+#include<hgl/graph/ubo/GlobalAddresses.h>
 #include<cstdint>
 #include<cstring>
 #include<unordered_set>
@@ -103,6 +106,7 @@ namespace hgl::ecs
     RenderSceneUBOSystem::~RenderSceneUBOSystem()
     {
         ReleaseViewportUBO();
+        ReleaseGlobalAddressesUBO();
     }
 
     void RenderSceneUBOSystem::EnsureViewportUBO()
@@ -148,6 +152,95 @@ namespace hgl::ecs
             if (auto *bm = GetBufferManager(context))
                 bm->Release(buf);
         }
+    }
+
+    void RenderSceneUBOSystem::EnsureGlobalAddressesUBO()
+    {
+        if (global_addresses_ubo || !context)
+            return;
+
+        auto *bm = GetBufferManager(context);
+        if (!bm)
+            return;
+
+        auto *buf = bm->CreateUBO("GlobalAddressesUBO", graph::StructView<graph::GlobalAddresses>::GetSize());
+        if (!buf)
+            return;
+
+        buf->SetUpdateClass(graph::BufferUpdateClass::Default);
+        global_addresses_ubo = graph::StructView<graph::GlobalAddresses>::Create(buf, false);
+        if (!global_addresses_ubo)
+            return;
+
+        graph::GraphicsContext *gc = nullptr;
+        if (auto *rc = context->GetRenderContext())
+            gc = rc->GetGraphicsContext();
+        if (!gc)
+            gc = context->GetGraphicsContext();
+
+        if (gc)
+        {
+            graph::GlobalAddresses ga{};
+            if (auto *mdp_pool = gc->GetMeshDrawParamsPool())
+                ga.addr_mesh_draw_params = mdp_pool->GetGPUBase();
+            if (auto *mat_reg = gc->GetMaterialSSBOBufferRegistry())
+            {
+                ga.addr_pbr_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::PBRSurface);
+                ga.addr_emissive_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::EmissiveSurface);
+                ga.addr_transmission_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::TransmissionSurface);
+            }
+            global_addresses_ubo->Update(ga);
+            global_addresses_ubo->Commit();
+        }
+    }
+
+    void RenderSceneUBOSystem::ReleaseGlobalAddressesUBO()
+    {
+        if (!global_addresses_ubo)
+            return;
+
+        auto *buf = global_addresses_ubo->GetBuffer();
+        delete global_addresses_ubo;
+        global_addresses_ubo = nullptr;
+
+        if (buf)
+        {
+            if (auto *bm = GetBufferManager(context))
+                bm->Release(buf);
+        }
+    }
+
+    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveGlobalAddressesUBO()
+    {
+        EnsureGlobalAddressesUBO();
+        if (global_addresses_ubo && global_addresses_ubo->Data()->addr_mesh_draw_params == 0)
+        {
+            graph::GraphicsContext *gc = nullptr;
+            if (auto *rc = context->GetRenderContext())
+                gc = rc->GetGraphicsContext();
+            if (!gc)
+                gc = context->GetGraphicsContext();
+
+            if (gc)
+            {
+                auto *mdp_pool = gc->GetMeshDrawParamsPool();
+                auto *mat_reg = gc->GetMaterialSSBOBufferRegistry();
+                if (mdp_pool && mdp_pool->GetGPUBase() != 0)
+                {
+                    graph::GlobalAddresses ga{};
+                    ga.addr_mesh_draw_params = mdp_pool->GetGPUBase();
+                    if (mat_reg)
+                    {
+                        ga.addr_pbr_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::PBRSurface);
+                        ga.addr_emissive_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::EmissiveSurface);
+                        ga.addr_transmission_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::TransmissionSurface);
+                    }
+                    global_addresses_ubo->Update(ga);
+                    global_addresses_ubo->Commit();
+                }
+            }
+        }
+        return global_addresses_ubo ? global_addresses_ubo->GetGPUBuffer() : nullptr;
     }
 
     void RenderSceneUBOSystem::CommitViewportUBO()
@@ -329,6 +422,7 @@ namespace hgl::ecs
         const auto *viewport_ubo = ResolveViewportUBO();
         const auto *camera_ubo = ResolveCameraUBO();
         const auto *sky_ubo = ResolveSkyUBO();
+        const auto *global_addresses_ubo = ResolveGlobalAddressesUBO();
 
         auto *global_scene_set = GetGlobalSceneUBOSet(context);
         if (global_scene_set && global_scene_set->IsValid()
@@ -338,6 +432,8 @@ namespace hgl::ecs
             global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingViewport), viewport_ubo);
             if (sky_ubo)
                 global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingSky), sky_ubo);
+            if (global_addresses_ubo)
+                global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingGlobalAddresses), global_addresses_ubo);
         }
         else if (global_scene_set && global_scene_set->IsValid())
         {

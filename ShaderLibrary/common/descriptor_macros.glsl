@@ -44,6 +44,10 @@
 #define COLOR_PALETTE_BINDING 3
 #endif
 
+#ifndef GLOBAL_ADDRESSES_BINDING
+#define GLOBAL_ADDRESSES_BINDING 4
+#endif
+
 #ifndef BINDLESS_SET
 #define BINDLESS_SET 1
 #endif

@@ -18,6 +18,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/MeshDrawParamsPool.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/util/hash/FNV1a.h>
@@ -424,6 +425,14 @@ namespace hgl::ecs
             if (!data_buffer || !draw_range)
                 continue;
 
+            geometry = nullptr;
+            if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(item))
+            {
+                auto prim_comp = prim_item->GetPrimitiveComponent();
+                if (prim_comp && prim_comp->GetPrimitiveAsset())
+                    geometry = prim_comp->GetPrimitiveAsset()->GetGeometry();
+            }
+
             const graph::GeometryDataBuffer* item_data_buf = data_buffer;
             const graph::GeometryDrawRange* item_draw_range = draw_range;
 
@@ -439,7 +448,7 @@ namespace hgl::ecs
 
             draw_batch->first_instance = base_instance + static_cast<uint32_t>(i);
             draw_batch->instance_count = 1;
-            draw_batch->Set(data_buffer, draw_range);
+            draw_batch->Set(data_buffer, draw_range, geometry);
 
             current_data_buffer = draw_batch->geom_data_buffer;
             current_draw_range = draw_batch->geom_draw_range;
@@ -481,13 +490,11 @@ namespace hgl::ecs
 
         const VkDeviceSize byte_size =
             static_cast<VkDeviceSize>(batch.mesh_draw_params_capacity)
-            * sizeof(graph::mtl::MeshDrawParams);
+            * sizeof(graph::mtl::MeshDrawCommand);
         batch.mesh_draw_params_buffer = batch.buffer_manager->CreateSSBO(
-            "ECS:Batch:MeshDrawParams", byte_size, nullptr, graph::SharingMode::Exclusive);
+            "ECS:Batch:MeshDrawCommands", byte_size, nullptr, graph::SharingMode::Exclusive);
 
-        // 新建 SSBO 内容未定义——整表清零。未写行/未写字段的 addr_* = 0
-        //（null 设备地址）：shader 侧仅在被 min/max 钳制或 is_indexed 守卫的
-        // 分支解引用，0 地址永不触达——垃圾地址则会直接 GPU hang。
+        // 新建 SSBO 内容未定义——整表清零。
         if (batch.mesh_draw_params_buffer)
         {
             if (auto *gpu_zero = batch.mesh_draw_params_buffer->GetGPUBuffer())
@@ -510,100 +517,36 @@ namespace hgl::ecs
         const bool is_lines =
             batch.key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines;
 
-        // 参数行：每个 DrawBatch 一行（含私有 VBO 直接绘制——渲染器按行 offset 视图绑定）
+        // 命令参数行：每个 DrawBatch 一行（MeshDrawCommand: geometry_id + first_instance）
         if (batch.mesh_draw_params_buffer)
         {
             auto *params_gpu = batch.mesh_draw_params_buffer->GetGPUBuffer();
-            auto *row = params_gpu
-                ? static_cast<graph::mtl::MeshDrawParams *>(params_gpu->Map(
-                      0, static_cast<VkDeviceSize>(count) * sizeof(graph::mtl::MeshDrawParams)))
+            auto *cmds = params_gpu
+                ? static_cast<graph::mtl::MeshDrawCommand *>(params_gpu->Map(
+                      0, static_cast<VkDeviceSize>(count) * sizeof(graph::mtl::MeshDrawCommand)))
                 : nullptr;
 
-            if (row)
+            if (cmds)
             {
+                auto *gc = world ? world->GetGraphicsContext() : nullptr;
+                auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
+                auto *dev = world ? world->GetGPUDevice() : nullptr;
+
                 for (uint32_t i = 0; i < count; ++i)
                 {
                     DrawBatch &db = batch.draw_batches[i];
-                    const auto *range = db.geom_draw_range;
-
-                    row[i].index_base = static_cast<uint32_t>(range ? range->first_index : 0);
-                    row[i].vertex_base = static_cast<uint32_t>(range ? range->vertex_offset : 0);
-                    row[i].is_indexed = (range && range->index_count > 0) ? 1u : 0u;
-                    // total_vertices：索引几何 = index_count（每索引 1 顶点查表），非索引 = vertex_count
-                    row[i].total_vertices = range
-                        ? static_cast<uint32_t>(range->index_count > 0
-                             ? range->index_count
-                             : range->vertex_count)
-                        : 0u;
-                    row[i].first_instance = db.first_instance;
-
-                    // 顶点/索引数据基址（BDA 行内寻址）。绑定源选择镜像描述符路径
-                    // （PipelineMaterialRenderer 的 Vertex 集绑定）：
-                    // 1) geom_data_buffer 主路径——VDM 段几何，vab_list/vab_semantic
-                    //    平行数组按语义归位（流序=声明序，与几何相关）；
-                    // 2) geometry 直取——私有 VBO 直接绘制（vab_count==0 的补绑路径），
-                    //    走 GeometryData 级访问器（PrivateBuffer 变体 GetVDM()==nullptr）。
-                    // 两者皆无（空行）时保持 0：null 地址不被解引用即安全（参数表
-                    // 创建时整块清零兜底）——漏填才会 GPU hang。
-                    if (auto *dev = world ? world->GetGPUDevice() : nullptr; dev)
+                    uint32_t geom_id = db.geometry_id;
+                    if (geom_id == 0 && db.geom_data_buffer)
+                        geom_id = db.geom_data_buffer->geometry_id;
+                    if (geom_id == 0 && db.geometry)
                     {
-                        const auto write_stream =
-                            [&](const VkBuffer buf, const graph::VertexSemantic semantic)
-                        {
-                            if (!buf) return;
-                            const uint64_t addr =
-                                dev->GetBufferDeviceAddressAligned16(buf);
-                            switch (semantic)
-                            {
-                            case graph::VertexSemantic::Position:    row[i].addr_position = addr; break;
-                            case graph::VertexSemantic::TexCoord:    row[i].addr_uv = addr; break;
-                            case graph::VertexSemantic::Normal:      row[i].addr_ntb = addr; break;
-                            case graph::VertexSemantic::Color:       row[i].addr_color = addr; break;
-                            case graph::VertexSemantic::Luminance:   row[i].addr_luminance = addr; break;
-                            case graph::VertexSemantic::TransformID: row[i].addr_transform_id = addr; break;
-                            case graph::VertexSemantic::Size:        row[i].addr_size = addr; break;
-                            default: break;
-                            }
-                        };
-
-                        if (db.geom_data_buffer && db.geom_data_buffer->vab_count > 0)
-                        {
-                            for (uint32 vi = 0; vi < db.geom_data_buffer->vab_count; ++vi)
-                                write_stream(db.geom_data_buffer->vab_list[vi],
-                                             db.geom_data_buffer->vab_semantic[vi]);
-
-                            if (db.geom_data_buffer->ibo)
-                                row[i].addr_index = dev->GetBufferDeviceAddressAligned16(
-                                    db.geom_data_buffer->ibo->GetVkBuffer());
-                        }
-                        else if (db.geometry)
-                        {
-                            auto *geom = db.geometry;
-                            const auto &gvf = geom->GetGeometryVertexFormat();
-
-                            for (uint32 vi = 0; vi < gvf.GetCount(); ++vi)
-                            {
-                                const auto *attr = gvf.Get(vi);
-                                if (!attr) continue;
-
-                                if (auto *vab = geom->GetVAB(int(vi)))
-                                    write_stream(vab->GetVkBuffer(), attr->semantic);
-                            }
-                            if (auto *ibo = geom->GetIBO())
-                                row[i].addr_index =
-                                    dev->GetBufferDeviceAddressAligned16(ibo->GetVkBuffer());
-
-                            if (geom->HasMeshlets())
-                            {
-                                if (auto *mb = geom->GetMeshletsBuffer())
-                                    row[i].addr_meshlets = dev->GetBufferDeviceAddressAligned16(mb->GetBuffer());
-                                if (auto *mvb = geom->GetMeshletVerticesBuffer())
-                                    row[i].addr_meshlet_vertices = dev->GetBufferDeviceAddressAligned16(mvb->GetBuffer());
-                                if (auto *mtb = geom->GetMeshletTrianglesBuffer())
-                                    row[i].addr_meshlet_triangles = dev->GetBufferDeviceAddressAligned16(mtb->GetBuffer());
-                            }
-                        }
+                        if (pool && dev)
+                            const_cast<graph::Geometry *>(db.geometry)->EnsureMeshDrawParams(pool, dev);
+                        geom_id = db.geometry->GetGeometryID();
                     }
+
+                    cmds[i].geometry_id = geom_id;
+                    cmds[i].first_instance = db.first_instance;
                 }
 
                 params_gpu->Unmap();

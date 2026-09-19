@@ -12,6 +12,7 @@ namespace hgl::graph{
 */
 struct GeometryDataBuffer
 {
+    uint32_t            geometry_id = 0;
     uint32_t            vab_count;
     VkBuffer *          vab_list;
     VertexSemantic *    vab_semantic;       //每个 binding 的顶点语义（Update 按 VIF 填充——SSBO 顶点绑定用）
@@ -33,6 +34,9 @@ public:
 
     std::strong_ordering operator<=>(const GeometryDataBuffer &geom_data_buffer)const
     {
+        if(auto cmp = geometry_id <=> geom_data_buffer.geometry_id; cmp != 0)
+            return cmp;
+
         ptrdiff_t off;
 
         // Compare vdm pointers
@@ -69,6 +73,9 @@ public:
      */
     bool operator==(const GeometryDataBuffer &other) const
     {
+        if(geometry_id != other.geometry_id)
+            return false;
+
         // 比较 vdm 指针
         if(vdm != other.vdm)
             return false;

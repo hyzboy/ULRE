@@ -29,7 +29,8 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(MaterialPrivateData) \
     HGL_SEMANTIC(MaterialTexture) \
     HGL_SEMANTIC(MaterialSampler) \
-    HGL_SEMANTIC(MaterialColorPalette)
+    HGL_SEMANTIC(MaterialColorPalette) \
+    HGL_SEMANTIC(GlobalAddresses)
 
     enum class DescriptorSemantic : uint8
     {
@@ -37,7 +38,7 @@ namespace hgl::graph::mtl
         HGL_DESCRIPTOR_SEMANTIC_LIST
 #undef HGL_SEMANTIC
 
-        ENUM_CLASS_RANGE(Unknown,MaterialColorPalette)
+        ENUM_CLASS_RANGE(Unknown,GlobalAddresses)
     };
 
     /// 语义名（诊断/校验消息用）。与枚举同源：新增语义无需改本函数。

@@ -84,6 +84,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,ShaderProgram *material,Pipeline
     const uint32_t attr_count=gvf.GetCount();
 
     GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(attr_count,geom->GetIBO(),geom->GetVDM());
+    geom_data_buffer->geometry_id = geom->GetGeometryID();
 
     for(uint32_t i=0;i<attr_count;i++)
     {
@@ -116,6 +117,7 @@ bool GeometryDataBuffer::Update(const Geometry *geom)
     if(!geom)
         return(false);
 
+    geometry_id = geom->GetGeometryID();
     ibo=geom->GetIBO();
     vdm=geom->GetVDM();
 

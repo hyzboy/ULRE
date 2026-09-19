@@ -11,6 +11,7 @@ namespace hgl::graph{
 // forward declare GeometryData to avoid including heavy headers
 class GeometryData;
 class DeviceBuffer;
+class MeshDrawParamsPool;
 
 #pragma pack(push, 1)
 struct MeshletDescriptor
@@ -113,6 +114,24 @@ public:
         meshlet_vertices_buffer = mvb;
         meshlet_triangles_buffer = mtb;
         meshlet_bounds_buffer = mbb;
+    }
+
+protected:
+
+    uint32_t            geometry_id = 0;
+    MeshDrawParamsPool *mesh_draw_params_pool = nullptr;
+
+public:
+
+    uint32_t            GetGeometryID() const { return geometry_id; }
+    void                SetGeometryID(uint32_t id) { geometry_id = id; }
+
+    bool                RegisterMeshDrawParams(MeshDrawParamsPool *pool, VulkanDevice *dev);
+    bool                EnsureMeshDrawParams(MeshDrawParamsPool *pool, VulkanDevice *dev)
+    {
+        if (geometry_id != 0)
+            return true;
+        return RegisterMeshDrawParams(pool, dev);
     }
 
 };//class Geometry

@@ -12,6 +12,7 @@
 namespace hgl::graph {
     template<typename> class StructView;
     struct ViewportInfo;
+    struct GlobalAddresses;
     class DeviceBuffer;
 }
 
@@ -50,6 +51,7 @@ namespace hgl::ecs
 
         // Viewport UBO — owned here, stable across swapchain resize.
         graph::StructView<graph::ViewportInfo> *viewport_ubo = nullptr;
+        graph::StructView<graph::GlobalAddresses> *global_addresses_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
         uint32_t pending_viewport_height = 0;
         // resource_id → bindless descriptor index (1-based, 0 = not found).
@@ -98,10 +100,13 @@ namespace hgl::ecs
 
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
+        void EnsureGlobalAddressesUBO();
+        void ReleaseGlobalAddressesUBO();
         void SyncBindingsForCurrentCommand();
         void ApplyResourceLayoutBindings();
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
+        const graph::IGPUBuffer *ResolveGlobalAddressesUBO();
     };
 }

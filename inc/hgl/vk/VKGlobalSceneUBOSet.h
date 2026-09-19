@@ -16,10 +16,11 @@ namespace hgl::graph
      * 一帧写一次、绑一次，不再走 per-material 描述符分配。
      *
      * 硬编码 binding（见 kSceneBinding* 常量）：
-     *   binding=0 : camera        (kSceneBindingCamera)
-     *   binding=1 : sky           (kSceneBindingSky)
-     *   binding=2 : viewport      (kSceneBindingViewport)
-     *   binding=3 : color_palette (kSceneBindingColorPalette)
+     *   binding=0 : camera           (kSceneBindingCamera)
+     *   binding=1 : sky              (kSceneBindingSky)
+     *   binding=2 : viewport         (kSceneBindingViewport)
+     *   binding=3 : color_palette    (kSceneBindingColorPalette)
+     *   binding=4 : global_addresses (kSceneBindingGlobalAddresses)
      *
      * 注：与 BindlessTextureManager 一样属于设备级全局资源，
      *     由 GraphicsContext 持有并管理生命周期。
@@ -34,7 +35,7 @@ namespace hgl::graph
         VkDescriptorSet  set_         = VK_NULL_HANDLE;
 
         // 已绑定的 buffer（避免每帧重复 vkUpdateDescriptorSets）
-        VkBuffer bound_buffers_[4]{};
+        VkBuffer bound_buffers_[size_t(SceneBinding::RANGE_SIZE)]{};
 
     public:
         GlobalSceneUBOSet() = default;

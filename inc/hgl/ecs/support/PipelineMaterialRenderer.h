@@ -13,6 +13,8 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/mtl/MeshShaderLimits.h>
+#include<hgl/graph/mesh/GeometryDataBuffer.h>
+#include<hgl/graph/geo/VKGeometry.h>
 
 namespace hgl
 {
@@ -23,7 +25,6 @@ namespace hgl
         class Pipeline;
         class RenderCmdBuffer;
         class VABList;
-        struct GeometryDataBuffer;
         struct GeometryDrawRange;
     }
 
@@ -56,6 +57,7 @@ namespace hgl::ecs
     {
                 uint32_t                first_instance = 0;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
                 uint32_t                instance_count = 0;     ///<此批次包含的实例数量
+                uint32_t                geometry_id = 0;
 
         const   graph::GeometryDataBuffer *    geom_data_buffer = nullptr;   ///<几何数据缓冲
         const   graph::GeometryDrawRange *     geom_draw_range = nullptr;    ///<绘制范围（顶点/索引偏移和数量）
@@ -68,6 +70,7 @@ namespace hgl::ecs
             geom_data_buffer = data_buffer;
             geom_draw_range = draw_range;
             geometry = geom;
+            geometry_id = data_buffer ? data_buffer->geometry_id : (geom ? geom->GetGeometryID() : 0);
         }
     };//struct DrawBatch
 

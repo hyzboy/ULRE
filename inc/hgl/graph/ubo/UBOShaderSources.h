@@ -31,4 +31,11 @@ namespace hgl::graph::mtl
         "sky",
         "SkyInfo"
     };
+
+    constexpr const ShaderBufferSource SBS_GlobalAddresses =
+    {
+        DescriptorSetType::Scene,
+        "global_addresses",
+        "GlobalAddressesInfo"
+    };
 }

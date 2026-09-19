@@ -69,4 +69,15 @@ layout(scalar, set=SCENE_SET, binding=COLOR_PALETTE_BINDING) uniform ColorPalett
     uint color[256];
 } color_palette;
 
+#extension GL_ARB_gpu_shader_int64 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+
+layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
+{
+    uint64_t addr_mesh_draw_params;
+    uint64_t addr_pbr_surface;
+    uint64_t addr_emissive_surface;
+    uint64_t addr_transmission_surface;
+} global_addresses;
+
 #endif // HGL_SCENE_UBO_GLSL

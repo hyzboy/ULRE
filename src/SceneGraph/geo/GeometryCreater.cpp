@@ -7,6 +7,8 @@
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/MeshDrawParamsPool.h>
 
 namespace hgl::graph{
 GeometryCreater::GeometryCreater(VulkanDevice *dev,const GeometryVertexFormat &gvf,BufferManager *bm)
@@ -201,6 +203,18 @@ Geometry *GeometryCreater::Create()
     if(!geometry)
         return(nullptr);
 
+    auto *bm = buffer_manager ? buffer_manager : (vdm ? vdm->GetBufferManager() : nullptr);
+    if (bm && bm->GetGraphicsContext())
+    {
+        auto *gc = bm->GetGraphicsContext();
+        auto *dev = device ? device : (vdm ? vdm->GetDevice() : nullptr);
+        if (gc && dev)
+        {
+            if (auto *pool = gc->GetMeshDrawParamsPool())
+                geometry->RegisterMeshDrawParams(pool, dev);
+        }
+    }
+
     geometry_data=nullptr;      //带入Geometry后，不在这里删除
 
     Clear();
@@ -269,6 +283,16 @@ Geometry *CreateGeometry(VulkanDevice *device, const GeometryVertexFormat &geome
     {
         delete pd;
         return nullptr;
+    }
+
+    if (bm && bm->GetGraphicsContext())
+    {
+        auto *gc = bm->GetGraphicsContext();
+        if (gc && device)
+        {
+            if (auto *pool = gc->GetMeshDrawParamsPool())
+                geometry->RegisterMeshDrawParams(pool, device);
+        }
     }
 
     return geometry;

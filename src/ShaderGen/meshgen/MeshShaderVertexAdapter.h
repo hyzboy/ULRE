@@ -57,6 +57,22 @@ namespace hgl::graph::mtl
         //  l2w_ssbo 等模块 include 引用 pc_root，必须先于它们声明。）
         ms += "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MeshDrawParamsRef { MeshDrawParams rows[]; };\n";
         ms += "\n";
+        // per-draw 命令参数表（8B 行：geometry_id + first_instance）
+        ms += "struct MeshDrawCommand\n";
+        ms += "{\n";
+        for (uint32 field_index = 0;
+             field_index < kMeshDrawCommandFieldCount;
+             ++field_index)
+        {
+            ms += "    ";
+            ms += kMeshDrawCommandFieldGLSLTypes[field_index];
+            ms += " ";
+            ms += kMeshDrawCommandFieldNames[field_index];
+            ms += ";\n";
+        }
+        ms += "};\n";
+        ms += "layout(buffer_reference, scalar, buffer_reference_align=8) buffer MeshDrawCommandsRef { MeshDrawCommand cmds[]; };\n";
+        ms += "\n";
         // 全局可变参数行：模块函数（orient_world 等经 gl_InstanceIndex 宏）引用
         // first_instance——必须在 main 开头按 gl_DrawID 加载后使用点才生效
         //（跨函数可见，与上方 MeshVertexIndex 同模式）

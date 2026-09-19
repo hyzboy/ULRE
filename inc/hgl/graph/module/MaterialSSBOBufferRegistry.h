@@ -132,6 +132,12 @@ public:
                                 uint32_t data_id) const;
     bool IsInitialized() const { return material_data_buffers_initialized; }
 
+    uint64 GetGPUBase(const mtl::MaterialSSBOType material_type) const
+    {
+        const ActiveRowPool *pool = GetMaterialRowPool(material_type);
+        return pool ? pool->GetGPUBase() : 0;
+    }
+
     /**
      * Acquires one row in the given material field SSBO. The returned accessor
      * owns that row ID and automatically returns it on destruction.

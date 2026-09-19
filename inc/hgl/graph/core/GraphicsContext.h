@@ -38,6 +38,7 @@ namespace hgl::graph
     class GeometryManager;
     class SSBOBufferRegistry;
     class MaterialSSBOBufferRegistry;
+    class MeshDrawParamsPool;
     class EnvironmentManager;
     class BindlessTextureManager;
     class GlobalSceneUBOSet;
@@ -73,6 +74,7 @@ namespace hgl::graph
         GeometryManager *geometry_manager = nullptr;
         SSBOBufferRegistry *resource_domain_manager = nullptr;
         MaterialSSBOBufferRegistry *material_ssbo_registry = nullptr;
+        MeshDrawParamsPool *mesh_draw_params_pool = nullptr;
         EnvironmentManager *env_manager = nullptr;
         BindlessTextureManager *bindless_texture_manager_ = nullptr;
         GlobalSceneUBOSet *global_scene_ubo_set_ = nullptr;
@@ -125,6 +127,7 @@ namespace hgl::graph
         GeometryManager *GetGeometryManager() { return geometry_manager; }
         SSBOBufferRegistry *GetSSBOBufferRegistry() { return resource_domain_manager; }
         MaterialSSBOBufferRegistry *GetMaterialSSBOBufferRegistry() { return material_ssbo_registry; }
+        MeshDrawParamsPool *GetMeshDrawParamsPool() { return mesh_draw_params_pool; }
         EnvironmentManager *GetEnvironmentManager() { return env_manager; }
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
         const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }

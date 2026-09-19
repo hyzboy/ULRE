@@ -264,7 +264,16 @@ namespace hgl::graph::mtl
         // 11. MainBody
         fragment.clear();
         fragment += "\nvoid main()\n{\n";
-        fragment += "    draw_params = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[gl_DrawID];\n";
+        if (mode == MeshShaderMode::VertexPassthrough)
+        {
+            fragment += "    uint geometry_id = MeshDrawCommandsRef(pc_root.addr_mesh_draw_params).cmds[gl_DrawID].geometry_id;\n";
+            fragment += "    draw_params = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params).rows[geometry_id];\n";
+            fragment += "    draw_params.first_instance = MeshDrawCommandsRef(pc_root.addr_mesh_draw_params).cmds[gl_DrawID].first_instance;\n";
+        }
+        else
+        {
+            fragment += "    draw_params = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[gl_DrawID];\n";
+        }
         fragment += "\n";
 
         MeshShaderModeContext mode_ctx{};
