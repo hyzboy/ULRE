@@ -47,11 +47,24 @@ namespace hgl::ecs
                 GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u",
                          first_indirect_draw_index, indirect_draw_count);
             }
-            cmd_buf->DrawMeshTasksIndirect(
-                cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
-                static_cast<VkDeviceSize>(first_indirect_draw_index)
-                    * sizeof(VkDrawMeshTasksIndirectCommandEXT),
-                indirect_draw_count);
+            if (cur_owner_batch->icb_count_buffer)
+            {
+                cmd_buf->DrawMeshTasksIndirectCount(
+                    cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
+                    static_cast<VkDeviceSize>(first_indirect_draw_index)
+                        * sizeof(VkDrawMeshTasksIndirectCommandEXT),
+                    cur_owner_batch->icb_count_buffer->GetBuffer(),
+                    cur_owner_batch->icb_count_buffer_offset,
+                    indirect_draw_count);
+            }
+            else
+            {
+                cmd_buf->DrawMeshTasksIndirect(
+                    cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
+                    static_cast<VkDeviceSize>(first_indirect_draw_index)
+                        * sizeof(VkDrawMeshTasksIndirectCommandEXT),
+                    indirect_draw_count);
+            }
         }
 
         // 重置间接绘制状态（命令序号累计到本批次已提交段）

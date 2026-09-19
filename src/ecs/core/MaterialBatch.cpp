@@ -60,6 +60,8 @@ namespace hgl::ecs
         draw_batches.clear();
         draw_batches_count = 0;
         texture_reference_base_addr = 0;
+        icb_count_buffer = nullptr;
+        icb_count_buffer_offset = 0;
     }
 
     void MaterialBatch::AddItem(RenderItem* item)

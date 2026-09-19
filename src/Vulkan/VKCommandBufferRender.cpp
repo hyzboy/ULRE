@@ -276,6 +276,16 @@ void RenderCmdBuffer::DrawMeshTasksIndirect(VkBuffer buffer,VkDeviceSize offset,
     dev_attr->cmd_draw_mesh_tasks_indirect(cmd_buf,buffer,offset,drawCount,stride);
 }
 
+void RenderCmdBuffer::DrawMeshTasksIndirectCount(VkBuffer buffer,VkDeviceSize offset,
+                                                 VkBuffer countBuffer,VkDeviceSize countBufferOffset,
+                                                 uint32_t maxDrawCount,uint32_t stride)
+{
+    if(!dev_attr||!dev_attr->cmd_draw_mesh_tasks_indirect_count)
+        return;
+
+    dev_attr->cmd_draw_mesh_tasks_indirect_count(cmd_buf,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
+}
+
 }//namespace hgl::graph
 
 

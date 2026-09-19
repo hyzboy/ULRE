@@ -51,6 +51,8 @@ namespace hgl::ecs
         // IndirectMeshDraw：mesh shader 间接命令（{X=组数, Y=实例数, Z=1}）+ per-draw 参数表
         //（BuildBatches 与命令同序写行；直接绘制/私有 VBO 走参数表 offset 视图）
         graph::IndirectMeshTaskBuffer *          icb_mesh_tasks          = nullptr;          ///<mesh 间接命令缓冲
+        graph::DeviceBuffer *                    icb_count_buffer        = nullptr;          ///<mesh 间接绘制计数缓冲（可选，GPU-Driven 动态计数）
+        VkDeviceSize                             icb_count_buffer_offset = 0;                ///<计数缓冲偏移
         graph::DeviceBuffer *                    mesh_draw_params_buffer = nullptr;          ///<mesh per-draw 参数表 SSBO（每 DrawBatch 一行）
         uint32_t                                 mesh_draw_params_capacity = 0;              ///<参数表容量（行数）
 

@@ -274,6 +274,9 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         // （GL_EXT_buffer_reference 生成 PhysicalStorageBuffer 指针）
         vk12_features.bufferDeviceAddress                     = dev12.bufferDeviceAddress;
 
+        // drawIndirectCount：支持根据 GPU 计数缓冲发起间接绘制（vkCmdDrawMeshTasksIndirectCountEXT）
+        vk12_features.drawIndirectCount                       = dev12.drawIndirectCount;
+
         create_info.pNext = &vk12_features;
 
         // VK_KHR_16bit_storage（独立结构——Vulkan12Features 不含 16bit storage 字段）
@@ -457,6 +460,11 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         auto func_ptr_indirect=device_attr->GetDeviceProc<PFN_vkCmdDrawMeshTasksIndirectEXT>("vkCmdDrawMeshTasksIndirectEXT");
         if(func_ptr_indirect)
             device_attr->cmd_draw_mesh_tasks_indirect=*func_ptr_indirect;
+
+        // indirect count 变体（GPU-driven 动态计数绘制，vkCmdDrawMeshTasksIndirectCountEXT）
+        auto func_ptr_indirect_count=device_attr->GetDeviceProc<PFN_vkCmdDrawMeshTasksIndirectCountEXT>("vkCmdDrawMeshTasksIndirectCountEXT");
+        if(func_ptr_indirect_count)
+            device_attr->cmd_draw_mesh_tasks_indirect_count=*func_ptr_indirect_count;
     }
 
     // EDS 1/2/3 动态状态函数指针（pipeline 只保留 shader 部分——渲染状态全部 vkCmdSet* 应用）

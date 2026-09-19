@@ -48,6 +48,14 @@ public:
         return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);
     }
 
+    void BufferMemoryBarrier(VkBuffer buffer,
+                             VkPipelineStageFlags srcStageMask,
+                             VkPipelineStageFlags dstStageMask,
+                             VkAccessFlags srcAccessMask,
+                             VkAccessFlags dstAccessMask,
+                             VkDeviceSize offset=0,
+                             VkDeviceSize size=VK_WHOLE_SIZE);
+
 #ifdef _DEBUG
     void SetDebugName(const AnsiString &);
     void BeginRegion(const AnsiString &,const Color4f &);
@@ -195,6 +203,10 @@ public: //draw
     // Mesh Shader 间接绘制（multi-draw 合批）：不支持 multiDrawIndirect 时逐条退化
     void DrawMeshTasksIndirect(VkBuffer,VkDeviceSize offset,uint32_t drawCount,uint32_t stride=sizeof(VkDrawMeshTasksIndirectCommandEXT));
     void DrawMeshTasksIndirect(VkBuffer buf,uint32_t drawCount,uint32_t stride=sizeof(VkDrawMeshTasksIndirectCommandEXT)){return DrawMeshTasksIndirect(buf,0,drawCount,stride);}
+
+    // Mesh Shader 间接计数绘制（VK_EXT_mesh_shader + drawIndirectCount）：GPU 写入 count 驱动动态绘制数
+    void DrawMeshTasksIndirectCount(VkBuffer buffer,VkDeviceSize offset,VkBuffer countBuffer,VkDeviceSize countBufferOffset,uint32_t maxDrawCount,uint32_t stride=sizeof(VkDrawMeshTasksIndirectCommandEXT));
+    void DrawMeshTasksIndirectCount(VkBuffer buffer,VkBuffer countBuffer,uint32_t maxDrawCount,uint32_t stride=sizeof(VkDrawMeshTasksIndirectCommandEXT)){return DrawMeshTasksIndirectCount(buffer,0,countBuffer,0,maxDrawCount,stride);}
 
 public: //dynamic state
 

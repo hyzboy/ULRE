@@ -34,6 +34,34 @@ bool VulkanCmdBuffer::Begin()
     return(true);
 }
 
+void VulkanCmdBuffer::BufferMemoryBarrier(VkBuffer buffer,
+                                         VkPipelineStageFlags srcStageMask,
+                                         VkPipelineStageFlags dstStageMask,
+                                         VkAccessFlags srcAccessMask,
+                                         VkAccessFlags dstAccessMask,
+                                         VkDeviceSize offset,
+                                         VkDeviceSize size)
+{
+    VkBufferMemoryBarrier barrier{};
+    barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.pNext               = nullptr;
+    barrier.srcAccessMask       = srcAccessMask;
+    barrier.dstAccessMask       = dstAccessMask;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer              = buffer;
+    barrier.offset              = offset;
+    barrier.size                = size;
+
+    vkCmdPipelineBarrier(cmd_buf,
+                         srcStageMask,
+                         dstStageMask,
+                         0,
+                         0, nullptr,
+                         1, &barrier,
+                         0, nullptr);
+}
+
 #ifdef _DEBUG
 void VulkanCmdBuffer::SetDebugName(const AnsiString &object_name)
 {

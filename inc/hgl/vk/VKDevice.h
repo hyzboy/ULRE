@@ -111,6 +111,8 @@ public:
     const       VkColorSpaceKHR     GetColorSpace       ()const {return attr->surface_format.colorSpace;}
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
 
+                bool                SupportDrawIndirectCount()const {return attr && attr->cmd_draw_mesh_tasks_indirect_count != nullptr;}
+
                 void                WaitIdle            ()const;
 
 #ifdef _DEBUG
@@ -377,6 +379,16 @@ public: //Buffer相关
     DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateINBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
+    }
+
+    // 间接绘制计数缓冲（INDIRECT|STORAGE|TRANSFER_DST，支持 Compute Shader 写入与 DrawMeshTasksIndirectCount 读取）
+    DeviceBuffer *CreateDrawCountBuffer(const AnsiString &name, uint32_t count = 1, BufferAllocPolicy policy = BufferAllocPolicy::Auto, const std::source_location &loc = std::source_location::current())
+    {
+        const VkDeviceSize bytes = sizeof(uint32_t) * (count > 0 ? count : 1);
+        DeviceBuffer *buf = CreateBuffer(name,
+                                         VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                         bytes, bytes, nullptr, policy, SharingMode::Exclusive, BufferUpdateClass::Default, loc);
+        return buf;
     }
 
 public: //间接绘制

@@ -36,6 +36,7 @@ struct VulkanDevAttr
     // 扩展函数指针（设备创建后经 vkGetDeviceProcAddr 加载一次，避免每次调用查询）
     PFN_vkCmdDrawMeshTasksEXT           cmd_draw_mesh_tasks =nullptr;
     PFN_vkCmdDrawMeshTasksIndirectEXT   cmd_draw_mesh_tasks_indirect =nullptr;
+    PFN_vkCmdDrawMeshTasksIndirectCountEXT cmd_draw_mesh_tasks_indirect_count =nullptr;
 
     // EDS 1/2/3 动态状态（Vulkan 1.3/1.4 核心，但 EXT 函数符号非 loader 静态导出——
     // 统一 vkGetDeviceProcAddr 加载一次，与 mesh shader 函数同模式）
