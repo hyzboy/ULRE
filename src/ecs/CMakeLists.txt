@@ -320,3 +320,18 @@ if(ULRE_ECS_DEBUG_API)
 else()
     target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=0)
 endif()
+
+add_executable(TestTransformFlatStorage support/TestTransformFlatStorage.cpp)
+target_link_libraries(TestTransformFlatStorage PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestTransformFlatStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
+if(BUILD_TESTING)
+    add_test(
+        NAME TestTransformFlatStorage
+        COMMAND TestTransformFlatStorage)
+    set_tests_properties(
+        TestTransformFlatStorage
+        PROPERTIES LABELS "ecs;transform")
+endif()

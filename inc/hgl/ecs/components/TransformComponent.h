@@ -39,8 +39,13 @@ namespace hgl
         {
         private:
 
-            // SOA storage handle
+            // SOA storage handle and bound storage
             TransformDataStorage::HandleID storageHandle = TransformDataStorage::INVALID_HANDLE;
+            TransformDataStorage* bound_storage = nullptr;
+
+            glm::vec3 local_pos{0.0f};
+            glm::quat local_rot{1.0f, 0.0f, 0.0f, 0.0f};
+            glm::vec3 local_scale{1.0f};
 
             // Hierarchy (using EntityID instead of shared_ptr)
             EntityID parent_id;
@@ -173,9 +178,9 @@ namespace hgl
         public:
 
             // Get the SOA storage handle for batch operations
-            TransformDataStorage::HandleID GetStorageHandle() const { return storageHandle; }
+            TransformDataStorage::HandleID GetStorageHandle() const;
 
-            // Shared storage for all transforms
+            // Shared storage for all transforms (fallback)
             static std::shared_ptr<TransformDataStorage>& GetSharedStorage()
             {
                 static auto storage = std::make_shared<TransformDataStorage>();
@@ -184,9 +189,10 @@ namespace hgl
 
         private:
 
+            void EnsureStorageAllocated();
             void UpdateWorldMatrix();
             void MigrateStorage(Mobility target_mobility);
-            std::shared_ptr<TransformDataStorage> GetStorage() const;
+            TransformDataStorage* GetStorage() const;
         };
     }//namespace ecs
 }//namespace hgl

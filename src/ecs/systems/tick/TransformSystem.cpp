@@ -33,6 +33,12 @@ namespace hgl::ecs
         if (!world || !updateMovable)
             return;
 
+        auto* storage = world->GetTransformStorage();
+        if (storage)
+        {
+            storage->UpdateDirtyWorldMatricesFlat();
+        }
+
         const auto& movable_transforms = world->GetMovableTransforms();
         uint32_t total_movable = 0;
         uint32_t dirty_movable = 0;
@@ -98,37 +104,13 @@ namespace hgl::ecs
         if (!world)
             return;
 
+        auto* storage = world->GetTransformStorage();
+        if (storage)
+        {
+            storage->UpdateDirtyWorldMatricesFlat();
+        }
+
         const auto& static_transforms = world->GetStaticTransforms();
-
-        for (const auto& weak_comp : static_transforms)
-        {
-            if (auto comp = weak_comp.lock())
-            {
-                UpdateStaticTransformRecursive(comp);
-            }
-        }
-
-        static_dirty = true;
-    }
-
-    void TransformSystem::UpdateStaticTransformRecursive(const std::shared_ptr<TransformComponent>& comp)
-    {
-        if (!comp)
-            return;
-
-        Entity* owner = comp->GetOwner();
-        (void)owner;
-
-        auto parent = comp->GetParent();
-        if (parent)
-        {
-            auto parentTransform = parent->GetComponent<TransformComponent>();
-            if (parentTransform && parentTransform->IsDirty())
-            {
-                UpdateStaticTransformRecursive(parentTransform);
-            }
-        }
-
         const uint32_t update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::Position) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::Rotation) |
@@ -137,15 +119,19 @@ namespace hgl::ecs
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
 
-        if (ShouldUpdateTransform(comp, update_mask))
+        for (const auto& weak_comp : static_transforms)
         {
-            comp->UpdateIfDirty();
-            MarkTransformSeen(comp);
+            if (auto comp = weak_comp.lock())
+            {
+                if (ShouldUpdateTransform(comp, update_mask))
+                {
+                    comp->UpdateIfDirty();
+                }
+                MarkTransformSeen(comp);
+            }
         }
-        else
-        {
-            MarkTransformSeen(comp);
-        }
+
+        static_dirty = true;
     }
 
     void TransformSystem::SubmitTransformUpdates()
@@ -193,7 +179,13 @@ namespace hgl::ecs
 
         RefreshHandleOrder();
 
-        auto storage = TransformComponent::GetSharedStorage();
+        auto* storage = world ? world->GetTransformStorage() : nullptr;
+        if (!storage)
+            return;
+
+        // 确保拓扑排序与世界矩阵在平铺模式下全量计算完毕
+        storage->UpdateDirtyWorldMatricesFlat();
+
         const uint32_t static_count = GetStaticCount();
         const uint32_t dynamic_count = GetDynamicCount();
         const bool static_layout_changed = prev_static_handles != static_handles;

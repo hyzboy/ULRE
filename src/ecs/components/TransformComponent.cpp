@@ -45,6 +45,11 @@ namespace hgl
 
         TransformComponent::TransformComponent(Mobility initial_mobility, const std::string& name)
             : Component(name)
+            , storageHandle(TransformDataStorage::INVALID_HANDLE)
+            , bound_storage(nullptr)
+            , local_pos(0.0f)
+            , local_rot(1.0f, 0.0f, 0.0f, 0.0f)
+            , local_scale(1.0f)
             , cachedWorldMatrix(1.0f)
             , matrixDirty(true)
             , mobility(initial_mobility)
@@ -55,28 +60,55 @@ namespace hgl
             , fixed_pixel_camera_info(nullptr)
             , fixed_pixel_viewport_info(nullptr)
         {
-            // Allocate storage in the shared SOA storage with target mobility.
-            storageHandle = GetSharedStorage()->Allocate();
-            GetSharedStorage()->SetMobility(storageHandle, IsMovable() ? 1 : 0);
         }
 
         TransformComponent::~TransformComponent()
         {
             // Free storage in the corresponding SOA storage
-            if (storageHandle != TransformDataStorage::INVALID_HANDLE)
+            if (storageHandle != TransformDataStorage::INVALID_HANDLE && bound_storage)
             {
-                GetStorage()->Deallocate(storageHandle);
+                bound_storage->Deallocate(storageHandle);
+            }
+        }
+
+        TransformDataStorage::HandleID TransformComponent::GetStorageHandle() const
+        {
+            if (storageHandle == TransformDataStorage::INVALID_HANDLE)
+            {
+                const_cast<TransformComponent*>(this)->EnsureStorageAllocated();
+            }
+            return storageHandle;
+        }
+
+        void TransformComponent::EnsureStorageAllocated()
+        {
+            if (storageHandle != TransformDataStorage::INVALID_HANDLE)
+                return;
+
+            auto* storage = GetStorage();
+            if (storage)
+            {
+                bound_storage = storage;
+                storageHandle = storage->Allocate();
+                storage->SetLocalTRS(storageHandle, local_pos, local_rot, local_scale);
+                storage->SetMobility(storageHandle, IsMovable() ? 1 : 0);
             }
         }
 
         glm::vec3 TransformComponent::GetLocalPosition() const
         {
-            return GetStorage()->GetPosition(storageHandle);
+            if (storageHandle != TransformDataStorage::INVALID_HANDLE && bound_storage)
+                return bound_storage->GetPosition(storageHandle);
+            return local_pos;
         }
 
         void TransformComponent::SetLocalPosition(const glm::vec3& pos)
         {
-            GetStorage()->SetPosition(storageHandle, pos);
+            local_pos = pos;
+            if (storageHandle != TransformDataStorage::INVALID_HANDLE || owner_context)
+            {
+                GetStorage()->SetPosition(GetStorageHandle(), pos);
+            }
             MarkDirty(ToChangeMask(TransformChange::Position));
 
             static uint32_t s_pos_log_tick = 0;
@@ -96,12 +128,18 @@ namespace hgl
 
         glm::quat TransformComponent::GetLocalRotation() const
         {
-            return GetStorage()->GetRotation(storageHandle);
+            if (storageHandle != TransformDataStorage::INVALID_HANDLE && bound_storage)
+                return bound_storage->GetRotation(storageHandle);
+            return local_rot;
         }
 
         void TransformComponent::SetLocalRotation(const glm::quat& rot)
         {
-            GetStorage()->SetRotation(storageHandle, rot);
+            local_rot = rot;
+            if (storageHandle != TransformDataStorage::INVALID_HANDLE || owner_context)
+            {
+                GetStorage()->SetRotation(GetStorageHandle(), rot);
+            }
             MarkDirty(ToChangeMask(TransformChange::Rotation));
 
             static uint32_t s_rot_log_tick = 0;
@@ -122,12 +160,18 @@ namespace hgl
 
         glm::vec3 TransformComponent::GetLocalScale() const
         {
-            return GetStorage()->GetScale(storageHandle);
+            if (storageHandle != TransformDataStorage::INVALID_HANDLE && bound_storage)
+                return bound_storage->GetScale(storageHandle);
+            return local_scale;
         }
 
         void TransformComponent::SetLocalScale(const glm::vec3& scale)
         {
-            GetStorage()->SetScale(storageHandle, scale);
+            local_scale = scale;
+            if (storageHandle != TransformDataStorage::INVALID_HANDLE || owner_context)
+            {
+                GetStorage()->SetScale(GetStorageHandle(), scale);
+            }
             MarkDirty(ToChangeMask(TransformChange::Scale));
 
             static uint32_t s_scale_log_tick = 0;
@@ -147,28 +191,47 @@ namespace hgl
 
         void TransformComponent::SetLocalTRS(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
         {
-            auto storage = GetStorage();
-            storage->SetPosition(storageHandle, pos);
-            storage->SetRotation(storageHandle, rot);
-            storage->SetScale(storageHandle, scale);
+            local_pos = pos;
+            local_rot = rot;
+            local_scale = scale;
+            auto* storage = GetStorage();
+            if (storage)
+            {
+                storage->SetLocalTRS(GetStorageHandle(), pos, rot, scale);
+            }
             MarkDirty(ToChangeMask(TransformChange::LocalTRS));
         }
 
         glm::mat4 TransformComponent::GetLocalMatrix() const
         {
-            auto storage = GetStorage();
+            auto* storage = GetStorage();
+            if (storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
+            {
+                return storage->GetLocalMatrix(storageHandle);
+            }
 
-            // 正确的TRS顺序：先构建各个矩阵，然后以正确的顺序相乘
-            // T * R * S（向量应用顺序：先缩放，再旋转，最后平移）
-            glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), storage->GetScale(storageHandle));
-            glm::mat4 rotMatrix = glm::mat4_cast(storage->GetRotation(storageHandle));
-            glm::mat4 transMatrix = glm::translate(glm::mat4(1.0f), storage->GetPosition(storageHandle));
-
+            glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), local_scale);
+            glm::mat4 rotMatrix = glm::mat4_cast(local_rot);
+            glm::mat4 transMatrix = glm::translate(glm::mat4(1.0f), local_pos);
             return transMatrix * rotMatrix * scaleMatrix;
         }
 
         glm::mat4 TransformComponent::GetWorldMatrix()
         {
+            auto* storage = GetStorage();
+            if (storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
+            {
+                if (matrixDirty || storage->IsDirty(storageHandle) || storage->IsTopologyDirty())
+                {
+                    storage->UpdateDirtyWorldMatricesFlat();
+                    matrixDirty = false;
+                }
+                cachedWorldMatrix = storage->GetWorldMatrix(storageHandle);
+                return cachedWorldMatrix;
+            }
+
+            if (matrixDirty)
+                UpdateIfDirty();
             return cachedWorldMatrix;
         }
 
@@ -411,6 +474,7 @@ namespace hgl
 
             // Set new parent
             parent_id = parent;
+            TransformDataStorage::HandleID parent_storage_handle = TransformDataStorage::INVALID_HANDLE;
             if (parent.IsValid() && owner_context)
             {
                 Entity* parentEntity = owner_context->GetEntity(parent);
@@ -420,8 +484,14 @@ namespace hgl
                     if (parentTransform)
                     {
                         parentTransform->AddChild(owner_id);
+                        parent_storage_handle = parentTransform->GetStorageHandle();
                     }
                 }
+            }
+
+            if (auto* storage = GetStorage())
+            {
+                storage->SetParent(GetStorageHandle(), parent_storage_handle);
             }
 
             MarkDirty(ToChangeMask(TransformChange::Parent) | ToChangeMask(TransformChange::WorldMatrix));
@@ -499,6 +569,36 @@ namespace hgl
 
         void TransformComponent::OnAttach()
         {
+            if (owner_context)
+            {
+                auto* target_storage = owner_context->GetTransformStorage();
+                if (target_storage)
+                {
+                    if (bound_storage != target_storage)
+                    {
+                        if (bound_storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
+                        {
+                            bound_storage->Deallocate(storageHandle);
+                        }
+                        bound_storage = target_storage;
+                        storageHandle = target_storage->Allocate();
+                    }
+                    target_storage->SetLocalTRS(storageHandle, local_pos, local_rot, local_scale);
+                    target_storage->SetMobility(storageHandle, IsMovable() ? 1 : 0);
+
+                    if (parent_id.IsValid())
+                    {
+                        if (Entity* parent_entity = owner_context->GetEntity(parent_id))
+                        {
+                            if (auto parent_tc = parent_entity->GetComponent<TransformComponent>())
+                            {
+                                target_storage->SetParent(storageHandle, parent_tc->GetStorageHandle());
+                            }
+                        }
+                    }
+                }
+            }
+
             MarkDirty(ToChangeMask(TransformChange::LocalTRS));
 
             // Register with context
@@ -522,6 +622,13 @@ namespace hgl
                 }
             }
 
+            if (bound_storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
+            {
+                bound_storage->Deallocate(storageHandle);
+                storageHandle = TransformDataStorage::INVALID_HANDLE;
+                bound_storage = nullptr;
+            }
+
             // Remove from parent
             Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
@@ -543,6 +650,19 @@ namespace hgl
 
         void TransformComponent::UpdateWorldMatrix()
         {
+            auto* storage = GetStorage();
+            if (storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
+            {
+                if (matrixDirty || storage->IsDirty(storageHandle) || storage->IsTopologyDirty())
+                {
+                    storage->UpdateDirtyWorldMatricesFlat();
+                }
+                cachedWorldMatrix = storage->GetWorldMatrix(storageHandle);
+                matrixDirty = false;
+                AddChangeMask(ToChangeMask(TransformChange::WorldMatrix));
+                return;
+            }
+
             glm::mat4 localMatrix = GetLocalMatrix();
 
             Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
@@ -567,12 +687,6 @@ namespace hgl
 
             AddChangeMask(ToChangeMask(TransformChange::WorldMatrix));
 
-            auto storage = GetStorage();
-            if (storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
-            {
-                storage->SetWorldMatrix(storageHandle, cachedWorldMatrix);
-            }
-
             // Mark children as dirty
             if (owner_context)
             {
@@ -595,6 +709,13 @@ namespace hgl
         {
             if (!matrixDirty)
                 return;
+
+            auto* storage = GetStorage();
+            if (storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
+            {
+                UpdateWorldMatrix();
+                return;
+            }
 
             Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
@@ -619,6 +740,12 @@ namespace hgl
             TouchChange(change_mask);
             matrixDirty = true;
 
+            auto* storage = GetStorage();
+            if (storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
+            {
+                storage->SetDirty(storageHandle, true);
+            }
+
             // Mark children as dirty
             if (owner_context)
             {
@@ -637,9 +764,16 @@ namespace hgl
             }
         }
 
-        std::shared_ptr<TransformDataStorage> TransformComponent::GetStorage() const
+        TransformDataStorage* TransformComponent::GetStorage() const
         {
-            return GetSharedStorage();
+            if (bound_storage)
+                return bound_storage;
+            if (owner_context)
+            {
+                if (auto* s = owner_context->GetTransformStorage())
+                    return s;
+            }
+            return GetSharedStorage().get();
         }
 
         void TransformComponent::MigrateStorage(Mobility target_mobility)

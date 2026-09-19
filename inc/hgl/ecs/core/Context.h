@@ -130,9 +130,10 @@ namespace hgl
 
             std::vector<ComponentQueryBase> component_query_bases;
 
-            // TransformComponent 分离列表
+            // TransformComponent 分离列表与 World 变换存储
             std::vector<std::weak_ptr<TransformComponent>> static_transforms;
             std::vector<std::weak_ptr<TransformComponent>> movable_transforms;
+            std::unique_ptr<TransformDataStorage> transform_storage;
 
             bool active = false;
             bool shutdown_in_progress = false;
@@ -406,6 +407,10 @@ namespace hgl
 
             /// Get movable transforms for runtime updates
             const std::vector<std::weak_ptr<TransformComponent>>& GetMovableTransforms() const { return movable_transforms; }
+
+            /// Get world-level TransformDataStorage
+            TransformDataStorage* GetTransformStorage() { return transform_storage.get(); }
+            const TransformDataStorage* GetTransformStorage() const { return transform_storage.get(); }
 
         public:
 

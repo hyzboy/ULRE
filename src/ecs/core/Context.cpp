@@ -53,6 +53,7 @@ namespace hgl
         ECSContext::ECSContext(const std::string& name)
             : Object(name)
             , entity_manager(std::make_unique<EntityManager>(1000))
+            , transform_storage(std::make_unique<TransformDataStorage>())
             , active(false)
         {
         }
