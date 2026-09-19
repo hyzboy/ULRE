@@ -836,25 +836,21 @@ namespace hgl::ecs
                             debug_rows[i] = row_ptr[i];
                     }
 
-                    if (getenv("ULRE_ARENA_DEBUG") && !batch.debug_blocks_logged)
-                    {
-                        batch.debug_blocks_logged = true;
-                        for (size_t i = 0; i < item_count && i < 4; ++i)
-                        {
-                            GLogInfo(
-                                     "[ArenaDebug] item[%u] payload_index=%u texture_index=%u",
-                                     (uint32_t)i,
-                                     debug_rows[i].payload_index,
-                                     debug_rows[i].texture_reference_index);
-                        }
-                    }
+                    //if (getenv("ULRE_ARENA_DEBUG") && !batch.debug_blocks_logged)
+                    //{
+                    //    batch.debug_blocks_logged = true;
+                    //    for (size_t i = 0; i < item_count && i < 4; ++i)
+                    //    {
+                    //        GLogInfo("[ArenaDebug] item[%u] payload_index=%u texture_index=%u",(uint32_t)i,debug_rows[i].payload_index,debug_rows[i].texture_reference_index);
+                    //    }
+                    //}
                     mi_gpu->Unmap();
 
-                    if (getenv("ULRE_ARENA_DEBUG"))
-                    GLogInfo("[ArenaDebug] rows written: n=%u payload0_idx=%u texture0_idx=%u",
-                             item_count,
-                             item_count ? debug_rows[0].payload_index : 0,
-                             item_count ? debug_rows[0].texture_reference_index : 0);
+                    //if (getenv("ULRE_ARENA_DEBUG"))
+                    //GLogInfo("[ArenaDebug] rows written: n=%u payload0_idx=%u texture0_idx=%u",
+                    //         item_count,
+                    //         item_count ? debug_rows[0].payload_index : 0,
+                    //         item_count ? debug_rows[0].texture_reference_index : 0);
                 }
                 return;
             }

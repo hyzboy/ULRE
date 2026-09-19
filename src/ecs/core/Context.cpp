@@ -211,7 +211,7 @@ namespace hgl
             if (!pipeline)
                 return;
 
-            LogDebug("[ECS] Registering render pipeline: %s", name.c_str());
+//            LogDebug("[ECS] Registering render pipeline: %s", name.c_str());
             render_pipelines[name] = std::move(pipeline);
         }
 
@@ -391,7 +391,7 @@ namespace hgl
 
             if (GetRenderTarget())
             {
-                LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
+//                LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
                 if (!AcquireSwapchainImage(deltaTime))
                 {
                     LogWarning("[ECS RENDER] AcquireSwapchainImage FAILED");
@@ -399,13 +399,13 @@ namespace hgl
                 }
             }
 
-            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
+//            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
             RenderPreBeginFrame(deltaTime);
             SyncRenderTargetViewport();
 
             render_core->SetClearColor(clear_color);
 
-            LogInfo("[ECS RENDER] Calling BeginFrame");
+//            LogInfo("[ECS RENDER] Calling BeginFrame");
             if (!render_core->BeginFrame())
             {
                 LogWarning("[ECS RENDER] BeginFrame FAILED");
@@ -415,7 +415,7 @@ namespace hgl
             SetCurrentRenderCmd(render_core->GetRenderCmd());
             PrepareRenderPassSetup(render_core->GetSwapchainImageIndex(), deltaTime);
 
-            LogInfo("[ECS RENDER] Calling BeginRenderPass");
+//            LogInfo("[ECS RENDER] Calling BeginRenderPass");
             if (!render_core->BeginRenderPass())
             {
                 LogWarning("[ECS RENDER] BeginRenderPass FAILED");
@@ -432,18 +432,20 @@ namespace hgl
             if (!render_core)
                 return;
 
-            LogInfo("[ECS RENDER] Calling EndFrame");
+//            LogInfo("[ECS RENDER] Calling EndFrame");
             render_core->EndFrame();
 
             SetCurrentRenderCmd(nullptr);
 
-            LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
+//            LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
             if (!SubmitFrameToRenderTarget(deltaTime))
+            {
                 LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
+            }
 
             if (wait_idle_enabled)
             {
-                LogInfo("[ECS RENDER] Calling WaitIdle");
+//                LogInfo("[ECS RENDER] Calling WaitIdle");
                 if (auto *device = GetGPUDevice())
                     device->WaitIdle();
             }
@@ -461,13 +463,13 @@ namespace hgl
                     transform_system->SubmitTransformUpdates();
             }
 
-            if (log_prefix)
-            {
-                LogDebug("%s phase range %d to %d",
-                         log_prefix,
-                         static_cast<int>(minPhase),
-                         static_cast<int>(maxPhase));
-            }
+            //if (log_prefix)
+            //{
+            //    LogDebug("%s phase range %d to %d",
+            //             log_prefix,
+            //             static_cast<int>(minPhase),
+            //             static_cast<int>(maxPhase));
+            //}
 
             RunRenderSystemsInRange(minPhase, maxPhase, deltaTime);
         }
@@ -502,8 +504,7 @@ namespace hgl
                 return;
 
             // Log resize event
-                LogInfo("[ECSContext] OnResize: %s %ux%u",
-                    GetName().c_str(), extent.width, extent.height);
+//            LogInfo("[ECSContext] OnResize: %s %ux%u",GetName().c_str(), extent.width, extent.height);
 
             // Ensure render target viewport/UBO are updated immediately for this extent.
             if (render_target)
@@ -547,8 +548,7 @@ namespace hgl
 
                     if (current_hash != cached_adaptive_scene_hash)
                     {
-                        LogDebug("[ECS] Adaptive RenderGraph scene hash changed: %llu -> %llu, regenerating",
-                                 cached_adaptive_scene_hash, current_hash);
+//                        LogDebug("[ECS] Adaptive RenderGraph scene hash changed: %llu -> %llu, regenerating",cached_adaptive_scene_hash, current_hash);
                         cached_adaptive_render_graph = CreateAdaptiveRenderGraph(this, stats);
                         cached_adaptive_scene_hash = current_hash;
                     }
@@ -772,8 +772,8 @@ namespace hgl
             if (!system->IsEnabled())
                 return;
 
-            HGL_CAPTURE_SCOPE();
-            LogDebug("[ECS] Update Begin: %s", system->GetName().c_str());
+//            HGL_CAPTURE_SCOPE();
+//            LogDebug("[ECS] Update Begin: %s", system->GetName().c_str());
 
             if (system_profiling_enabled)
                 profiler.Begin(system);
@@ -781,7 +781,7 @@ namespace hgl
             if (system_profiling_enabled)
                 profiler.End(system);
 
-            LogDebug("[ECS] Update End: %s", system->GetName().c_str());
+//            LogDebug("[ECS] Update End: %s", system->GetName().c_str());
         }
 
         void ECSContext::RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
@@ -802,8 +802,8 @@ namespace hgl
                 if (entry.phase < min_phase || entry.phase > max_phase)
                     continue;
 
-                HGL_CAPTURE_SCOPE();
-                LogDebug("[ECS] Render Begin: %s (phase %d)", entry.system->GetName().c_str(), entry.phase);
+//                HGL_CAPTURE_SCOPE();
+//                LogDebug("[ECS] Render Begin: %s (phase %d)", entry.system->GetName().c_str(), entry.phase);
 
                 if (system_profiling_enabled)
                     profiler.Begin(entry.system.get());
@@ -811,7 +811,7 @@ namespace hgl
                 if (system_profiling_enabled)
                     profiler.End(entry.system.get());
 
-                LogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
+//                LogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
             }
 
             if (gpu_device)
@@ -937,8 +937,7 @@ namespace hgl
                         return a.insertion_order < b.insertion_order;
                     });
 
-                LogWarning("[ECSContext::SortSystemList] %s system dependencies contain a cycle. Falling back to phase/insertion order.",
-                           label);
+                LogWarning("[ECSContext::SortSystemList] %s system dependencies contain a cycle. Falling back to phase/insertion order.",label);
             }
             else
             {

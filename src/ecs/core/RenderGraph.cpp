@@ -117,17 +117,15 @@ namespace hgl
 
                 if (!pass.enabled)
                 {
-                    LogDebug("[ECS RENDER] Skipping disabled pass %zu (phases %d-%d)",
-                             pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
+//                    LogDebug("[ECS RENDER] Skipping disabled pass %zu (phases %d-%d)",pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
                     continue;
                 }
 
-                LogInfo("[ECS RENDER] Executing pass %zu (phases %d-%d)",
-                        pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
+//                LogInfo("[ECS RENDER] Executing pass %zu (phases %d-%d)",pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
 
                 if (pass.onBeforePass)
                 {
-                    LogDebug("[ECS RENDER] Invoking onBeforePass for pass %zu", pass_idx);
+//                    LogDebug("[ECS RENDER] Invoking onBeforePass for pass %zu", pass_idx);
                     pass.onBeforePass(*this, pass);
                 }
 
@@ -137,10 +135,10 @@ namespace hgl
                         std::max(pass.startPhase, ExecutionPhase::RenderDrawSubmit);
                     if (update_min <= pass.endPhase)
                     {
-                        HGL_CAPTURE_SCOPE();
-                        LogDebug("[ECS RENDER] Update phase range %d to %d (clamped from %d)",
-                                static_cast<int>(update_min), static_cast<int>(pass.endPhase),
-                                static_cast<int>(pass.startPhase));
+                        //HGL_CAPTURE_SCOPE();
+                        //LogDebug("[ECS RENDER] Update phase range %d to %d (clamped from %d)",
+                        //        static_cast<int>(update_min), static_cast<int>(pass.endPhase),
+                        //        static_cast<int>(pass.startPhase));
                         RunRenderPhaseUpdates(update_min, pass.endPhase, deltaTime);
                     }
                 }
@@ -148,11 +146,7 @@ namespace hgl
                 if (pass.runRender)
                 {
                     HGL_CAPTURE_SCOPE();
-                    RecordPreparedRenderPhaseRange(pass.startPhase,
-                                                   pass.endPhase,
-                                                   deltaTime,
-                                                   pass.submitTransforms,
-                                                   "[ECS RENDER] Render");
+                    RecordPreparedRenderPhaseRange(pass.startPhase,pass.endPhase,deltaTime,pass.submitTransforms,"[ECS RENDER] Render");
                 }
                 else
                 if (pass.submitTransforms)
@@ -163,11 +157,11 @@ namespace hgl
 
                 if (pass.onAfterPass)
                 {
-                    LogDebug("[ECS RENDER] Invoking onAfterPass for pass %zu", pass_idx);
+//                    LogDebug("[ECS RENDER] Invoking onAfterPass for pass %zu", pass_idx);
                     pass.onAfterPass(*this, pass);
                 }
 
-                LogDebug("[ECS RENDER] Completed pass %zu", pass_idx);
+//                LogDebug("[ECS RENDER] Completed pass %zu", pass_idx);
             }
         }
 
@@ -177,7 +171,7 @@ namespace hgl
                 return;
 
             // Canonical frame entry with RenderGraph
-            LogInfo("[ECS RENDER] ===== Frame Start (RenderGraph with %zu passes) =====", graph.GetEnabledPassCount());
+//            LogInfo("[ECS RENDER] ===== Frame Start (RenderGraph with %zu passes) =====", graph.GetEnabledPassCount());
 
             if (!BeginManagedRenderFrame(0.0f))
                 return;
@@ -185,7 +179,7 @@ namespace hgl
             ExecuteRenderGraphPasses(graph, deltaTime, pre_render);
             EndManagedRenderFrame(0.0f);
 
-            LogInfo("[ECS RENDER] ===== Frame End (RenderGraph) =====");
+//            LogInfo("[ECS RENDER] ===== Frame End (RenderGraph) =====");
         }
 
         SceneStats GatherSceneStats(ECSContext* context)
@@ -217,8 +211,7 @@ namespace hgl
                 }
             }
 
-            MLogDebug(RenderGraph,"[RenderGraph] Scene stats: detected %zu active render groups",
-                     stats.active_render_groups.size());
+//            MLogDebug(RenderGraph,"[RenderGraph] Scene stats: detected %zu active render groups",stats.active_render_groups.size());
             for (const auto& group_name : stats.active_render_groups)
             {
                 MLogDebug(RenderGraph,"[RenderGraph]   active group: %s", group_name.c_str());
@@ -236,8 +229,7 @@ namespace hgl
         {
             RenderGraph graph;
 
-            MLogDebug(RenderGraph,"[RenderGraph] Adaptive: detected %zu active groups",
-                     stats.active_render_groups.size());
+//            MLogDebug(RenderGraph,"[RenderGraph] Adaptive: detected %zu active groups",stats.active_render_groups.size());
 
             auto& registry = SystemGroupRegistry::Get();
             EnsureSystemGroupsRegistered(context);
@@ -254,21 +246,17 @@ namespace hgl
                     context->SetElementTypeSystemsEnabled(group.name, enabled);
                 }
 
-                MLogDebug(RenderGraph,"[RenderGraph] Group '%s': %s",
-                         group.name.c_str(), enabled ? "ENABLED" : "DISABLED");
+//                MLogDebug(RenderGraph,"[RenderGraph] Group '%s': %s",group.name.c_str(), enabled ? "ENABLED" : "DISABLED");
             }
 
             // === Build passes from enabled groups ===
             // Each enabled group becomes a pass in the graph
             auto enabled_groups = registry.GetEnabledGroups();
-            MLogDebug(RenderGraph,"[RenderGraph] Adding %zu enabled system groups as passes", enabled_groups.size());
+//            MLogDebug(RenderGraph,"[RenderGraph] Adding %zu enabled system groups as passes", enabled_groups.size());
 
             for (const auto& group : enabled_groups)
             {
-                MLogDebug(RenderGraph,"[RenderGraph] Adding pass for group '%s' (phases %d-%d)",
-                         group.name.c_str(),
-                         static_cast<int>(group.startPhase),
-                         static_cast<int>(group.endPhase));
+//                MLogDebug(RenderGraph,"[RenderGraph] Adding pass for group '%s' (phases %d-%d)",group.name.c_str(),static_cast<int>(group.startPhase),static_cast<int>(group.endPhase));
 
                 graph.Add(RenderGraph::Pass(
                     group.startPhase,
@@ -307,16 +295,13 @@ namespace hgl
                 }
             }
 
-            MLogDebug(RenderGraph,"[RenderGraph] CreateDefaultLinearGraph: All groups ENABLED");
+//            MLogDebug(RenderGraph,"[RenderGraph] CreateDefaultLinearGraph: All groups ENABLED");
 
             // Build passes from all enabled groups
             auto enabled_groups = registry.GetEnabledGroups();
             for (const auto& group : enabled_groups)
             {
-                MLogDebug(RenderGraph,"[RenderGraph] Adding pass for group '%s' (phases %d-%d)",
-                         group.name.c_str(),
-                         static_cast<int>(group.startPhase),
-                         static_cast<int>(group.endPhase));
+//                MLogDebug(RenderGraph,"[RenderGraph] Adding pass for group '%s' (phases %d-%d)",group.name.c_str(),static_cast<int>(group.startPhase),static_cast<int>(group.endPhase));
 
                 graph.Add(RenderGraph::Pass(
                     group.startPhase,

@@ -79,30 +79,30 @@ namespace hgl::ecs
                 if (is_transform_related)
                     ++transform_tagged_dirty_count;
 
-                GLogInfo("[RenderBufferUpload] CopyToDevice: %s (size=%llu)",
-                          buf->GetBufferName().empty() ? "(unnamed)" : buf->GetBufferName().c_str(),
-                          static_cast<unsigned long long>(buf->GetSize()));
-                std::fprintf(stderr,
-                             "[RenderBufferUpload] CopyToDevice: %s (size=%llu)\n",
-                             buf->GetBufferName().empty() ? "(unnamed)" : buf->GetBufferName().c_str(),
-                             static_cast<unsigned long long>(buf->GetSize()));
+                //GLogInfo("[RenderBufferUpload] CopyToDevice: %s (size=%llu)",
+                //          buf->GetBufferName().empty() ? "(unnamed)" : buf->GetBufferName().c_str(),
+                //          static_cast<unsigned long long>(buf->GetSize()));
+                //std::fprintf(stderr,
+                //             "[RenderBufferUpload] CopyToDevice: %s (size=%llu)\n",
+                //             buf->GetBufferName().empty() ? "(unnamed)" : buf->GetBufferName().c_str(),
+                //             static_cast<unsigned long long>(buf->GetSize()));
                 buf->CopyToDevice(vk_cmd);
                 // CopyToDevice calls ClearDirty internally for StagedBuffer
                 any_uploads = true;
             }
         }
 
-        GLogInfo("[RenderBufferUpload] scan summary: scanned=%u dirty=%u transform_tagged=%u transform_tagged_dirty=%u",
-                  scanned_count,
-                  dirty_count,
-                  transform_tagged_count,
-                  transform_tagged_dirty_count);
-        std::fprintf(stderr,
-                 "[RenderBufferUpload] scan summary: scanned=%u dirty=%u transform_tagged=%u transform_tagged_dirty=%u\n",
-                 scanned_count,
-                 dirty_count,
-                 transform_tagged_count,
-                 transform_tagged_dirty_count);
+        //GLogInfo("[RenderBufferUpload] scan summary: scanned=%u dirty=%u transform_tagged=%u transform_tagged_dirty=%u",
+        //          scanned_count,
+        //          dirty_count,
+        //          transform_tagged_count,
+        //          transform_tagged_dirty_count);
+        //std::fprintf(stderr,
+        //         "[RenderBufferUpload] scan summary: scanned=%u dirty=%u transform_tagged=%u transform_tagged_dirty=%u\n",
+        //         scanned_count,
+        //         dirty_count,
+        //         transform_tagged_count,
+        //         transform_tagged_dirty_count);
 
         // Only emit the transfer→vertex barrier when transfers actually happened.
         // Skipping when any_uploads==false prevents an invalid
@@ -110,8 +110,8 @@ namespace hgl::ecs
         // on the second call (RenderGraph re-runs Update inside BeginRenderPass).
         if (!any_uploads)
         {
-            GLogInfo("[RenderBufferUpload] no dirty buffers; skip transfer barrier");
-            std::fprintf(stderr, "[RenderBufferUpload] no dirty buffers; skip transfer barrier\n");
+            //GLogInfo("[RenderBufferUpload] no dirty buffers; skip transfer barrier");
+            //std::fprintf(stderr, "[RenderBufferUpload] no dirty buffers; skip transfer barrier\n");
             return;
         }
 
