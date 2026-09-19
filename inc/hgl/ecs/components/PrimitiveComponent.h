@@ -5,6 +5,7 @@
 #include<hgl/ecs/support/TransformPolicySpec.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/render/RenderItemDescriptor.h>
 #include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
 #include<glm/glm.hpp>
@@ -33,6 +34,8 @@ namespace hgl
 
 namespace hgl::ecs
 {
+    class RenderItemDataStorage;
+
     /**
      * PrimitiveComponent - Renderable component for static mesh rendering
      *
@@ -118,6 +121,13 @@ namespace hgl::ecs
 
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
         TransformPolicySpec transformPolicySpec;           // Unified transform policy ingress
+
+        // RenderItem 4-ID descriptor handle and storage binding
+        graph::RenderItemHandle render_item_handle = graph::INVALID_RENDER_ITEM_HANDLE;
+        RenderItemDataStorage *bound_render_item_storage = nullptr;
+        graph::RenderItemDescriptor render_item_descriptor{};
+
+        void EnsureRenderItemStorageAllocated();
 
     public:
 
@@ -217,6 +227,21 @@ namespace hgl::ecs
 
         // Rendering capability check
         bool CanRender() const;
+
+        // RenderItem 4-ID Descriptor & Handle
+        graph::RenderItemHandle GetRenderItemHandle() const;
+        const graph::RenderItemDescriptor &GetRenderItemDescriptor() const;
+
+        void SetTransformID(uint32_t transform_id);
+        void SetGeometryID(uint32_t geometry_id);
+        void SetMaterialID(uint32_t material_id);
+        void SetTextureID(uint32_t texture_id);
+        void Set4ID(uint32_t transform_id, uint32_t geometry_id, uint32_t material_id, uint32_t texture_id);
+
+        uint32_t GetTransformID() const { return render_item_descriptor.transform_id; }
+        uint32_t GetGeometryID() const { return render_item_descriptor.geometry_id; }
+        uint32_t GetMaterialID() const { return render_item_descriptor.material_id; }
+        uint32_t GetTextureID() const { return render_item_descriptor.texture_id; }
 
     public:
 

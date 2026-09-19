@@ -45,6 +45,7 @@ namespace hgl
         class RenderPipelineBase;
         class MaterialBatch;
         class RenderItem;
+        class RenderItemDataStorage;
 
         struct RenderFrameCache
         {
@@ -134,6 +135,7 @@ namespace hgl
             std::vector<std::weak_ptr<TransformComponent>> static_transforms;
             std::vector<std::weak_ptr<TransformComponent>> movable_transforms;
             std::unique_ptr<TransformDataStorage> transform_storage;
+            std::unique_ptr<RenderItemDataStorage> render_item_storage;
 
             bool active = false;
             bool shutdown_in_progress = false;
@@ -411,6 +413,10 @@ namespace hgl
             /// Get world-level TransformDataStorage
             TransformDataStorage* GetTransformStorage() { return transform_storage.get(); }
             const TransformDataStorage* GetTransformStorage() const { return transform_storage.get(); }
+
+            /// Get world-level RenderItemDataStorage
+            RenderItemDataStorage* GetRenderItemStorage() { return render_item_storage.get(); }
+            const RenderItemDataStorage* GetRenderItemStorage() const { return render_item_storage.get(); }
 
         public:
 

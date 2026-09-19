@@ -74,6 +74,11 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetPositionSourceSpec() : PositionSourceSpec::MeshVertex;
     }
 
+    graph::RenderItemHandle PrimitiveRenderItem::GetRenderItemHandle() const
+    {
+        return primitiveComp ? primitiveComp->GetRenderItemHandle() : graph::INVALID_RENDER_ITEM_HANDLE;
+    }
+
     void PrimitiveRenderItem::UpdateWorldMatrix()
     {
         if (transform)

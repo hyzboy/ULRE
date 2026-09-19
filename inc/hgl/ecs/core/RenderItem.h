@@ -4,6 +4,7 @@
 #include<hgl/ecs/support/PositionSourceSpec.h>
 #include<hgl/ecs/support/TransformPolicySpec.h>
 #include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/graph/render/RenderItemDescriptor.h>
 #include<memory>
 
 namespace hgl
@@ -62,6 +63,9 @@ namespace hgl::ecs
         // Unified transform ingress for R08 (behavior stays unchanged until strategy rollout)
         virtual TransformPolicySpec GetTransformPolicySpec() const { return TransformPolicySpec{}; }
         virtual PositionSourceSpec GetPositionSourceSpec() const { return PositionSourceSpec::MeshVertex; }
+
+        // RenderItem 4-ID handle
+        virtual graph::RenderItemHandle GetRenderItemHandle() const { return graph::INVALID_RENDER_ITEM_HANDLE; }
 
         // Comparison for sorting
         virtual int Compare(const RenderItem& other) const;

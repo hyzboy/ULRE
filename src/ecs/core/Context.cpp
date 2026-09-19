@@ -13,6 +13,7 @@
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
+#include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -54,6 +55,7 @@ namespace hgl
             : Object(name)
             , entity_manager(std::make_unique<EntityManager>(1000))
             , transform_storage(std::make_unique<TransformDataStorage>())
+            , render_item_storage(std::make_unique<RenderItemDataStorage>())
             , active(false)
         {
         }

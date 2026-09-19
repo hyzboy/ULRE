@@ -1,4 +1,7 @@
 #include <hgl/ecs/support/RenderItemDataStorage.h>
+#include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/Entity.h>
+#include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/log/Log.h>
 
 using namespace hgl;
@@ -125,6 +128,69 @@ int main(int argc, char **argv)
         return 13;
     }
 
-    GLogInfo(u8"=== All RenderItemDataStorage Stage 1 Tests Passed Successfully! ===");
+    // Test 7: Stage 2 Integration - PrimitiveComponent & ECSContext
+    GLogInfo(u8"--- Testing Stage 2: PrimitiveComponent & ECSContext 4-ID Integration ---");
+    {
+        ECSContext context("TestContext");
+        auto *world_storage = context.GetRenderItemStorage();
+        if (!world_storage)
+        {
+            GLogError(u8"Test 7 Failed: Context RenderItemStorage is null");
+            return 14;
+        }
+
+        auto entity = context.CreateEntity("TestRenderableEntity");
+        auto prim_comp = entity->AddComponent<PrimitiveComponent>();
+
+        auto handle = prim_comp->GetRenderItemHandle();
+        if (handle == INVALID_RENDER_ITEM_HANDLE)
+        {
+            GLogError(u8"Test 7 Failed: Expected valid RenderItemHandle after AddComponent");
+            return 15;
+        }
+
+        prim_comp->Set4ID(111, 222, 333, 444);
+
+        if (prim_comp->GetTransformID() != 111 ||
+            prim_comp->GetGeometryID()  != 222 ||
+            prim_comp->GetMaterialID()  != 333 ||
+            prim_comp->GetTextureID()   != 444)
+        {
+            GLogError(u8"Test 7 Failed: Component 4-ID getters mismatch");
+            return 16;
+        }
+
+        const auto *storage_desc = world_storage->Get(handle);
+        if (!storage_desc ||
+            storage_desc->transform_id != 111 ||
+            storage_desc->geometry_id  != 222 ||
+            storage_desc->material_id  != 333 ||
+            storage_desc->texture_id   != 444)
+        {
+            GLogError(u8"Test 7 Failed: Storage 4-ID mismatch from component update");
+            return 17;
+        }
+
+        // Test component detachment releases the slot
+        const uint32_t active_before = world_storage->GetActiveCount();
+        entity->RemoveComponent<PrimitiveComponent>();
+
+        if (world_storage->GetActiveCount() != active_before - 1)
+        {
+            GLogError(u8"Test 7 Failed: Active count did not decrement on RemoveComponent");
+            return 18;
+        }
+
+        // Verify slot reuse by adding another primitive component
+        auto prim_comp2 = entity->AddComponent<PrimitiveComponent>();
+        auto handle2 = prim_comp2->GetRenderItemHandle();
+        if (handle2 != handle)
+        {
+            GLogError(u8"Test 7 Failed: Expected reused handle %u, got %u", handle, handle2);
+            return 19;
+        }
+    }
+
+    GLogInfo(u8"=== All RenderItemDataStorage Stage 1 & Stage 2 Tests Passed Successfully! ===");
     return 0;
 }

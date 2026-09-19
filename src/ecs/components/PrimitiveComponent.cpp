@@ -1,5 +1,7 @@
 ﻿#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
@@ -594,6 +596,90 @@ namespace hgl::ecs
         return primitiveAsset != nullptr && IsVisible();
     }
 
+    void PrimitiveComponent::EnsureRenderItemStorageAllocated()
+    {
+        if (!bound_render_item_storage && owner_context)
+        {
+            bound_render_item_storage = owner_context->GetRenderItemStorage();
+        }
+        if (bound_render_item_storage && render_item_handle == graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            render_item_handle = bound_render_item_storage->Allocate(render_item_descriptor);
+        }
+    }
+
+    graph::RenderItemHandle PrimitiveComponent::GetRenderItemHandle() const
+    {
+        if (render_item_handle == graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            const_cast<PrimitiveComponent*>(this)->EnsureRenderItemStorageAllocated();
+        }
+        return render_item_handle;
+    }
+
+    const graph::RenderItemDescriptor &PrimitiveComponent::GetRenderItemDescriptor() const
+    {
+        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            if (const auto *desc = bound_render_item_storage->Get(render_item_handle))
+                return *desc;
+        }
+        return render_item_descriptor;
+    }
+
+    void PrimitiveComponent::SetTransformID(uint32_t transform_id)
+    {
+        render_item_descriptor.transform_id = transform_id;
+        EnsureRenderItemStorageAllocated();
+        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            bound_render_item_storage->SetTransformID(render_item_handle, transform_id);
+        }
+    }
+
+    void PrimitiveComponent::SetGeometryID(uint32_t geometry_id)
+    {
+        render_item_descriptor.geometry_id = geometry_id;
+        EnsureRenderItemStorageAllocated();
+        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            bound_render_item_storage->SetGeometryID(render_item_handle, geometry_id);
+        }
+    }
+
+    void PrimitiveComponent::SetMaterialID(uint32_t material_id)
+    {
+        render_item_descriptor.material_id = material_id;
+        EnsureRenderItemStorageAllocated();
+        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            bound_render_item_storage->SetMaterialID(render_item_handle, material_id);
+        }
+    }
+
+    void PrimitiveComponent::SetTextureID(uint32_t texture_id)
+    {
+        render_item_descriptor.texture_id = texture_id;
+        EnsureRenderItemStorageAllocated();
+        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            bound_render_item_storage->SetTextureID(render_item_handle, texture_id);
+        }
+    }
+
+    void PrimitiveComponent::Set4ID(uint32_t transform_id, uint32_t geometry_id, uint32_t material_id, uint32_t texture_id)
+    {
+        render_item_descriptor.transform_id = transform_id;
+        render_item_descriptor.geometry_id = geometry_id;
+        render_item_descriptor.material_id = material_id;
+        render_item_descriptor.texture_id = texture_id;
+        EnsureRenderItemStorageAllocated();
+        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            bound_render_item_storage->Set4ID(render_item_handle, transform_id, geometry_id, material_id, texture_id);
+        }
+    }
+
     void PrimitiveComponent::Render(const glm::mat4& worldMatrix)
     {
         (void)worldMatrix;
@@ -602,7 +688,7 @@ namespace hgl::ecs
     void PrimitiveComponent::OnAttach()
     {
         RenderableComponent::OnAttach();
-        // Additional attachment logic if needed
+        EnsureRenderItemStorageAllocated();
     }
 
     void PrimitiveComponent::OnUpdate(float deltaTime)
@@ -615,6 +701,13 @@ namespace hgl::ecs
     {
         RenderableComponent::OnDetach();
 
+        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            bound_render_item_storage->Release(render_item_handle);
+            render_item_handle = graph::INVALID_RENDER_ITEM_HANDLE;
+            bound_render_item_storage = nullptr;
+        }
+
         // Don't delete resources here; they are managed externally.
         primitiveAsset = nullptr;
         primitiveVariantIndex = 0;
@@ -625,6 +718,7 @@ namespace hgl::ecs
         ClearMaterialAuthoringResources();
         resolvedRuntimePipeline = nullptr;
         resolvedRuntimeRenderPass = nullptr;
+        render_item_descriptor = {};
         ++material_authored_generation;
     }
 }//namespace hgl::ecs

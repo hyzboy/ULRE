@@ -14,6 +14,8 @@
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/geo/VKGeometry.h>
+#include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
@@ -1370,6 +1372,40 @@ namespace hgl::ecs
             }
 
             auto material_for_item = entity->GetComponent<MaterialComponent>();
+
+            // ── 同步 4-ID 描述符至 PrimitiveComponent 与 RenderItemDataStorage ──
+            const uint32_t transform_id = transform->GetStorageHandle();
+            uint32_t geometry_id = 0;
+            const auto *geom_buf = primitiveComp->GetRuntimeGeometryDataBuffer();
+            if (geom_buf)
+            {
+                geometry_id = geom_buf->geometry_id;
+            }
+            if (geometry_id == 0 && primitiveComp->GetPrimitiveAsset())
+            {
+                if (auto *geom = primitiveComp->GetPrimitiveAsset()->GetGeometry())
+                {
+                    auto *gc = world ? world->GetGraphicsContext() : nullptr;
+                    auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
+                    auto *dev = world ? world->GetGPUDevice() : nullptr;
+                    if (pool && dev)
+                    {
+                        const_cast<graph::Geometry *>(geom)->EnsureMeshDrawParams(pool, dev);
+                    }
+                    geometry_id = geom->GetGeometryID();
+                    if (geom_buf)
+                    {
+                        const_cast<graph::GeometryDataBuffer *>(geom_buf)->geometry_id = geometry_id;
+                    }
+                }
+            }
+            const uint32_t material_id = (material_for_item && material_for_item->data_index_row != uint32_t(-1))
+                ? material_for_item->data_index_row : 0;
+            const uint32_t texture_id = (material_for_item && material_for_item->material_texture_configuration.IsValid())
+                ? material_for_item->material_texture_configuration.row_index : 0;
+
+            primitiveComp->Set4ID(transform_id, geometry_id, material_id, texture_id);
+
             std::unique_ptr<PrimitiveRenderItem> item;
 
             if (auto instancedComp = std::dynamic_pointer_cast<InstancedPrimitiveComponent>(primitiveComp))

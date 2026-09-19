@@ -64,6 +64,9 @@ namespace hgl::ecs
         TransformPolicySpec GetTransformPolicySpec() const override;
         PositionSourceSpec GetPositionSourceSpec() const override;
 
+        // RenderItem 4-ID handle
+        graph::RenderItemHandle GetRenderItemHandle() const override;
+
         // Update world matrix from transform
         void UpdateWorldMatrix();
     };

@@ -177,40 +177,40 @@ uint texture_index       = texture_ref_buffer.refs[desc.w].descriptor_index;
 
 ---
 
-### 阶段一：基础设施构建——描述符池与显存同步器 (`RenderItemDataStorage`)
+### 阶段一：基础设施构建——描述符池与显存同步器 (`RenderItemDataStorage`) 【✅ 已完成】
 > **核心目标**：建立纯粹的底层数据结构与显存同步通路，不触动任何上层 ECS 与管线逻辑。
 
-- **1.1 定义标准描述符结构 (`RenderItemDescriptor`)**
+- **1.1 定义标准描述符结构 (`RenderItemDescriptor`)** 【✅ 已完成】
   - 在 `inc/hgl/graph/render/RenderItemDescriptor.h` 中定义 16 字节对齐 POD 结构：
     `struct RenderItemDescriptor { uint32_t transform_id, geometry_id, material_id, texture_id; };`
   - 静态断言 `sizeof == 16` 与标准内存对齐，配套提供与 GLSL `uvec4` 的 1:1 结构映射。
-- **1.2 实现槽位分配器与空闲链表 (`RenderItemDataStorage::Allocator`)**
+- **1.2 实现槽位分配器与空闲链表 (`RenderItemDataStorage::Allocator`)** 【✅ 已完成】
   - 采用无 STL 的 HGL 数组（`hgl::ValueArray` / `hgl::ArrayList`）。
   - 支持单槽分配与回收（基于 `FreeList` O(1) 槽位重用）。
   - **连续块分配 (`AllocateContiguous(count)`)**：为静态网格簇或实例化群体预留连续物理槽位区间，为后续连号直通奠定基础。
-- **1.3 实现增量脏标记与 GPU 镜像同步机制**
+- **1.3 实现增量脏标记与 GPU 镜像同步机制** 【✅ 已完成】
   - 维护 `dirty_range` 或脏页位图（BitMap），记录自上一帧以来被修改的描述符槽位。
   - 支持增量更新模式：仅将发生变动的槽位段通过 Staging Buffer 或环形动态缓冲刷入显存中的 `GlobalRenderItemBuffer` SSBO。
-- **1.4 单元测试与独立验证**
+- **1.4 单元测试与独立验证** 【✅ 已完成】
   - 编写独立的存储器验证逻辑：模拟单槽申请/释放、连续块分配、局部属性修改以及环形同步，验证无内存泄漏、无越界、句柄稳定可复用。
 
 ---
 
-### 阶段二：ECS 组件接入——`PrimitiveComponent` 槽位化与 4-ID 自动化登记
+### 阶段二：ECS 组件接入——`PrimitiveComponent` 槽位化与 4-ID 自动化登记 【✅ 已完成】
 > **核心目标**：将 `PrimitiveComponent` 改造为持有全局 Handle，上层接口保持 100% 兼容。
 
-- **2.1 引入 `RenderItemHandle` 成员与生命周期管理**
+- **2.1 引入 `RenderItemHandle` 成员与生命周期管理** 【✅ 已完成】
   - 在 `PrimitiveComponent` 中添加 `RenderItemHandle render_item_handle = INVALID_HANDLE;`。
   - 在 `OnAttach()` 时向关联 Context 的 `RenderItemDataStorage` 申请槽位；在 `OnDetach()` 或析构时释放槽位。
-- **2.2 4-ID 自动化分发与状态同步**
+- **2.2 4-ID 自动化分发与状态同步** 【✅ 已完成】
   - **ID 1 (Transform)**：关联实体的 `TransformComponent` 获取其 `transform_id`，写入槽位第一分量。
   - **ID 2 (Geometry)**：当调用 `SetPrimitiveAsset()` 时，在 `Geometry` 注册后获取 `geometry_id`（即 `MeshDrawParamsID`），写入槽位第二分量。
   - **ID 3 & 4 (Material & Texture)**：当材质配方物化（`MaterializeRecipeRows`）完成后，获取 `material_data_index` 与 `texture_config_index`，写入第三、四分量。
-- **2.3 动态局部修改 API 封装（零重新分配）**
+- **2.3 动态局部修改 API 封装（零重新分配）** 【✅ 已完成】
   - 封装轻量原地修改接口：如 `SetTransformID(id)`、`SetMaterialID(id)`、`SetTextureID(id)`。
   - 换材质时只需原地覆写描述符槽位中的 `material_id/texture_id`，无需重新构建组件。
-- **2.4 兼容性验证**
-  - 编译并运行全量现有测试与示例（如 `PBRSpheres.cpp`）：此时旧渲染流程正常运转，同时底层已在后台静默完成 4-ID 槽位注册与更新。
+- **2.4 兼容性验证** 【✅ 已完成】
+  - 编译并运行全量现有测试与示例（如 `PBRSpheres.cpp`、`ComputeAsteroidBelt.cpp`）：旧渲染流程正常运转，同时底层已在后台静默完成 4-ID 槽位注册与更新。通过 `TestRenderItemDataStorage` 自动化验证集成完整性。
 
 ---
 
