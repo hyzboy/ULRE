@@ -31,6 +31,7 @@ namespace hgl::ecs
         graph::DeviceBuffer *device_buffer = nullptr; ///< GPU 设备端 SSBO
         uint32_t gpu_capacity = 0;                    ///< 当前 GPU 缓冲容量（元素个数）
         uint64_t gpu_address = 0;                     ///< GPU 物理设备地址 (BDA)
+        uint64_t external_gpu_address = 0;            ///< 外部 GPU 设备地址覆盖 (用于 100% GPU-Driven 模式)
         bool is_dirty = false;                        ///< 当前帧是否有新数据需要同步
 
         uint32_t last_frame_uploaded_bytes = 0;       ///< 上一帧上传的字节数
@@ -42,6 +43,18 @@ namespace hgl::ecs
 
         /// 帧重置：重置写入计数，保留已分配的 GPU 缓冲容量
         void Reset();
+
+        /// 设置外部 GPU 设备地址覆盖（用于 100% GPU-Driven 模式）
+        void SetExternalGPUAddress(const uint64_t addr) { external_gpu_address = addr; }
+
+        /// 设置外部 GPU 缓冲覆盖
+        void SetExternalGPUBuffer(graph::DeviceBuffer *buf, graph::VulkanDevice *dev = nullptr);
+
+        /// 清除外部 GPU 地址覆盖
+        void ClearExternalGPUAddress() { external_gpu_address = 0; }
+
+        /// 是否存在外部 GPU 设备地址覆盖
+        bool HasExternalGPUAddress() const { return external_gpu_address != 0; }
 
         /// 批量追加离散 Handle，返回在二级缓冲中的起始偏移量 (offset)
         uint32_t Append(const uint32_t *handles, const uint32_t count);
@@ -56,7 +69,7 @@ namespace hgl::ecs
         const uint32_t *GetData() const { return ids.GetData(); }
 
         /// 获取 GPU 显存物理地址 (BDA, 16 字节对齐)
-        uint64_t GetGPUAddress() const { return gpu_address; }
+        uint64_t GetGPUAddress() const { return external_gpu_address != 0 ? external_gpu_address : gpu_address; }
 
         /// 获取 GPU 设备缓冲区指针
         graph::DeviceBuffer *GetDeviceBuffer() const { return device_buffer; }

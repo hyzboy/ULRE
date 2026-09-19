@@ -122,12 +122,13 @@ namespace hgl::ecs
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
         TransformPolicySpec transformPolicySpec;           // Unified transform policy ingress
 
+    protected:
         // RenderItem 4-ID descriptor handle and storage binding
         graph::RenderItemHandle render_item_handle = graph::INVALID_RENDER_ITEM_HANDLE;
         RenderItemDataStorage *bound_render_item_storage = nullptr;
         graph::RenderItemDescriptor render_item_descriptor{};
 
-        void EnsureRenderItemStorageAllocated();
+        virtual void EnsureRenderItemStorageAllocated();
 
     public:
 

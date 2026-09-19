@@ -1046,31 +1046,31 @@ namespace hgl::ecs
             material_comp->material_texture_configuration_hash =
                 reference_configuration_hash;
 
-            if (getenv("ULRE_ARENA_DEBUG"))
-            {
-                GLogInfo(
-                    "[MaterialTextureReferences] owner=%s definition=%s row=%u references=%u gpu=0x%llx",
-                    GetPrimitiveOwnerName(primitive_comp),
-                    texture_definition.definition_id.c_str(),
-                    new_allocation.row_index,
-                    texture_layout.reference_count,
-                    static_cast<unsigned long long>(
-                        new_allocation.gpu_row));
-                for (size_t i = 0;
-                     i < texture_definition.texture_declarations.size();
-                     ++i)
-                {
-                    const auto &declaration =
-                        texture_definition.texture_declarations[i];
-                    const auto &reference =
-                        references[static_cast<int>(i)];
-                    GLogInfo(
-                        "[MaterialTextureReferences] texture=%s descriptor=%u layer=%u",
-                        declaration.name.c_str(),
-                        reference.descriptor_index,
-                        reference.array_layer);
-                }
-            }
+            //if (getenv("ULRE_ARENA_DEBUG"))
+            //{
+            //    GLogInfo(
+            //        "[MaterialTextureReferences] owner=%s definition=%s row=%u references=%u gpu=0x%llx",
+            //        GetPrimitiveOwnerName(primitive_comp),
+            //        texture_definition.definition_id.c_str(),
+            //        new_allocation.row_index,
+            //        texture_layout.reference_count,
+            //        static_cast<unsigned long long>(
+            //            new_allocation.gpu_row));
+            //    for (size_t i = 0;
+            //         i < texture_definition.texture_declarations.size();
+            //         ++i)
+            //    {
+            //        const auto &declaration =
+            //            texture_definition.texture_declarations[i];
+            //        const auto &reference =
+            //            references[static_cast<int>(i)];
+            //        GLogInfo(
+            //            "[MaterialTextureReferences] texture=%s descriptor=%u layer=%u",
+            //            declaration.name.c_str(),
+            //            reference.descriptor_index,
+            //            reference.array_layer);
+            //    }
+            //}
         }
         else
         {
@@ -1404,17 +1404,25 @@ namespace hgl::ecs
             const uint32_t texture_id = (material_for_item && material_for_item->material_texture_configuration.IsValid())
                 ? material_for_item->material_texture_configuration.row_index : 0;
 
-            primitiveComp->Set4ID(transform_id, geometry_id, material_id, texture_id);
-
             std::unique_ptr<PrimitiveRenderItem> item;
 
             if (auto instancedComp = std::dynamic_pointer_cast<InstancedPrimitiveComponent>(primitiveComp))
             {
+                if (instancedComp->GetAllocatedInstanceCapacity() > 1)
+                {
+                    instancedComp->SetAllInstances4ID(transform_id, geometry_id, material_id, texture_id, false);
+                }
+                else
+                {
+                    primitiveComp->Set4ID(transform_id, geometry_id, material_id, texture_id);
+                }
+
                 item = std::make_unique<InstancedPrimitiveRenderItem>(
                     entity_id, transform, instancedComp, material_for_item, world);
             }
             else
             {
+                primitiveComp->Set4ID(transform_id, geometry_id, material_id, texture_id);
                 item = std::make_unique<PrimitiveRenderItem>(
                     entity_id, transform, primitiveComp, material_for_item, world);
             }

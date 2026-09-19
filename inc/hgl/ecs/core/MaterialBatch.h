@@ -69,6 +69,7 @@ namespace hgl::ecs
 
         // GPU-Driven 渲染管线覆盖支持
         bool                                     gpu_driven_override               = false;    ///<该批次是否为 GPU-Driven 托管（跳过 CPU 侧 ICB 和行表生成）
+        bool                                     uses_render_item_resolve          = false;    ///<是否在 Shader 中通过 GlobalAddresses::addr_global_render_items 进行 4-ID 运行时解析
         bool                                     own_icb_mesh_tasks                = true;     ///<是否拥有 icb_mesh_tasks
         bool                                     own_mesh_draw_params              = true;     ///<是否拥有 mesh_draw_params_buffer
         bool                                     own_l2w_index                     = true;     ///<是否拥有 l2w_index_buffer

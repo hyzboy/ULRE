@@ -30,6 +30,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -116,6 +117,10 @@ layout(std430, set = 2, binding = 5) writeonly buffer IndirectCmdsBuffer {
     DrawMeshTasksIndirectCommand indirect_commands[];
 };
 
+layout(std430, set = 2, binding = 6) writeonly buffer VisibleL2WIndicesBuffer {
+    uint visible_l2w_indices[];
+};
+
 void main() {
     uint g_idx = gl_GlobalInvocationID.x;
     if (g_idx >= pc.candidate_count)
@@ -148,6 +153,7 @@ void main() {
         uint slot = atomicAdd(draw_count, 1);
         visible_items[slot] = item;
         indirect_commands[slot] = DrawMeshTasksIndirectCommand(pc.mesh_group_count_x, 1, 1);
+        visible_l2w_indices[slot] = item.transform_id;
     }
 }
 )";
@@ -204,12 +210,15 @@ class ComputeFrustumCullApp : public WorkObject
     Entity     *camera_entity = nullptr;
 
     // GPU Compute 资源
-    DeviceBuffer           *candidate_buffer      = nullptr; // Set 2, Binding 0
-    DeviceBuffer           *world_matrices_buffer = nullptr; // Set 2, Binding 1
-    DeviceBuffer           *geometry_aabbs_buffer = nullptr; // Set 2, Binding 2
-    DeviceBuffer           *visible_buffer        = nullptr; // Set 2, Binding 3
-    DeviceBuffer           *count_buffer          = nullptr; // Set 2, Binding 4
-    IndirectMeshTaskBuffer *indirect_cmds_buffer  = nullptr; // Set 2, Binding 5
+    DeviceBuffer           *candidate_buffer          = nullptr; // Set 2, Binding 0
+    DeviceBuffer           *world_matrices_buffer     = nullptr; // Set 2, Binding 1 (Storage | BDA)
+    DeviceBuffer           *geometry_aabbs_buffer     = nullptr; // Set 2, Binding 2
+    DeviceBuffer           *visible_buffer            = nullptr; // Set 2, Binding 3
+    DeviceBuffer           *count_buffer              = nullptr; // Set 2, Binding 4
+    IndirectMeshTaskBuffer *indirect_cmds_buffer      = nullptr; // Set 2, Binding 5 (Storage | Indirect)
+    DeviceBuffer           *visible_l2w_indices_buffer= nullptr; // Set 2, Binding 6 (Storage | BDA)
+    DeviceBuffer           *mesh_draw_params_buffer   = nullptr; // MeshDrawCommand SSBO (BDA)
+    DeviceBuffer           *material_data_rows_buffer = nullptr; // MaterialInstanceAddresses SSBO (BDA)
 
     VkDescriptorSetLayout   user_layout      = VK_NULL_HANDLE;
     VkDescriptorPool        desc_pool        = VK_NULL_HANDLE;
@@ -249,6 +258,11 @@ private:
         if (!geometry)
             return false;
 
+        auto *gc = GetGraphicsContext();
+        auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
+        if (pool && device)
+            geometry->EnsureMeshDrawParams(pool, device);
+
         geometry_manager->Add(geometry);
         return true;
     }
@@ -268,21 +282,8 @@ private:
         return mtl_data_ssbo_accessor.Write(material_data);
     }
 
-    bool InitECSScene()
+    void InitCPUSceneData()
     {
-        ecs_context = GetECSContext();
-        if (!ecs_context)
-            return false;
-
-        cube_recipe.recipe_name = "ComputeFrustumCull.CubeMaterial";
-        cube_recipe.mtl_def_id  = "DebugNormalColor";
-        cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
-            return false;
-
-        cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
-
-        // 创建 8x8 共 64 个立方体分布在 XY 平面
         for (uint32_t i = 0; i < TOTAL_CUBES; ++i)
         {
             const float col = static_cast<float>(i % GRID_DIM);
@@ -291,24 +292,9 @@ private:
             const float y = (row - static_cast<float>(GRID_DIM - 1) * 0.5f) * SPACING;
             const float z = 0.0f;
 
-            auto *e = ecs_context->CreateEntity<Entity>(("Cube_" + AnsiString::numberOf(i)).c_str());
-
-            auto transform = e->AddComponent<TransformComponent>(Mobility::Static);
-            transform->SetLocalPosition(glm::vec3(x, y, z));
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(CUBE_SCALE));
-            transform->SetMovable(false);
-
-            auto prim = e->AddComponent<PrimitiveComponent>();
-            prim->SetPrimitiveAsset(&cube_asset);
-            PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
-            named_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
-            prim->SetMaterialDataResource(named_struct);
-            prim->SetVisible(true);
-
             // CPU 侧镜像初始化
             cpu_candidates[i].transform_id = i;
-            cpu_candidates[i].geometry_id  = i;
+            cpu_candidates[i].geometry_id  = 0;
             cpu_candidates[i].material_id  = 0;
             cpu_candidates[i].texture_id   = 0;
 
@@ -326,6 +312,56 @@ private:
             cpu_geometry_aabbs[i].extents[1] = 0.5f;
             cpu_geometry_aabbs[i].extents[2] = 0.5f;
             cpu_geometry_aabbs[i].extents[3] = 0.0f;
+        }
+    }
+
+    bool InitECSScene()
+    {
+        ecs_context = GetECSContext();
+        if (!ecs_context)
+            return false;
+
+        cube_recipe.recipe_name = "ComputeFrustumCull.CubeMaterial";
+        cube_recipe.mtl_def_id  = "DebugNormalColor";
+        cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+            return false;
+
+        cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
+
+        for (uint32_t i = 0; i < TOTAL_CUBES; ++i)
+        {
+            const float col = static_cast<float>(i % GRID_DIM);
+            const float row = static_cast<float>(i / GRID_DIM);
+            const float x = (col - static_cast<float>(GRID_DIM - 1) * 0.5f) * SPACING;
+            const float y = (row - static_cast<float>(GRID_DIM - 1) * 0.5f) * SPACING;
+            const float z = 0.0f;
+
+            auto *e = ecs_context->CreateEntity<Entity>(("Cube_" + AnsiString::numberOf(i)).c_str());
+
+            auto transform = e->AddComponent<TransformComponent>(Mobility::Static);
+            transform->SetLocalPosition(glm::vec3(x, y, z));
+            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform->SetLocalScale(glm::vec3(CUBE_SCALE));
+            transform->SetMovable(false);
+
+            auto prim = e->AddComponent<InstancedPrimitiveComponent>();
+            prim->SetPrimitiveAsset(&cube_asset);
+            PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
+            named_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
+            prim->SetMaterialDataResource(named_struct);
+            prim->SetInstanceCount(1);
+            prim->SetMaxInstances(1);
+            prim->AllocateContiguousInstances(1);
+            prim->SetInstance4ID(0, i, geometry->GetGeometryID(), mtl_data_ssbo_accessor.GetRowID(), 0);
+            prim->SetL2WBuffer(world_matrices_buffer);
+            prim->SetL2WIndexBuffer(visible_l2w_indices_buffer);
+            prim->SetMeshDrawParamsBuffer(mesh_draw_params_buffer);
+            prim->SetMaterialDataRowsBuffer(material_data_rows_buffer);
+            prim->SetIndirectMeshTaskBuffer(indirect_cmds_buffer);
+            prim->SetIndirectCountBuffer(count_buffer, 0);
+            prim->SetGPUDriven(true);
+            prim->SetVisible(true);
         }
 
         return true;
@@ -368,7 +404,7 @@ private:
 
         world_matrices_buffer = dev->CreateBuffer(
             "ComputeFrustumCull.WorldMatsBuf",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             sizeof(glm::mat4) * TOTAL_CUBES,
             sizeof(glm::mat4) * TOTAL_CUBES,
             cpu_world_matrices,
@@ -405,16 +441,61 @@ private:
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         );
 
+        // 5. 创建 VisibleL2WIndicesBuffer (Set 2, Binding 6，由 Compute Shader 紧凑写入，Mesh Shader 通过 BDA 寻址)
+        visible_l2w_indices_buffer = dev->CreateBuffer(
+            "ComputeFrustumCull.VisibleL2WIndices",
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            sizeof(uint32_t) * TOTAL_CUBES,
+            sizeof(uint32_t) * TOTAL_CUBES,
+            nullptr,
+            BufferAllocPolicy::CPUVisible
+        );
+
+        // 6. 创建 MeshDrawCommand 表 (存 64 行 {geometry_id, first_instance = i})
+        MeshDrawCommand initial_mesh_cmds[TOTAL_CUBES]{};
+        for (uint32_t i = 0; i < TOTAL_CUBES; ++i)
+        {
+            initial_mesh_cmds[i].geometry_id    = geometry->GetGeometryID();
+            initial_mesh_cmds[i].first_instance = i;
+        }
+
+        mesh_draw_params_buffer = dev->CreateBuffer(
+            "ComputeFrustumCull.MeshDrawParams",
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            sizeof(MeshDrawCommand) * TOTAL_CUBES,
+            sizeof(MeshDrawCommand) * TOTAL_CUBES,
+            initial_mesh_cmds,
+            BufferAllocPolicy::CPUVisible
+        );
+
+        // 7. 创建 MaterialDataRows 表 (存 64 行材质实例数据行地址映射)
+        mtl::MaterialInstanceAddresses initial_mat_rows[TOTAL_CUBES]{};
+        for (uint32_t i = 0; i < TOTAL_CUBES; ++i)
+        {
+            initial_mat_rows[i].payload_index           = mtl_data_ssbo_accessor.GetRowID();
+            initial_mat_rows[i].texture_reference_index = 0;
+        }
+
+        material_data_rows_buffer = dev->CreateBuffer(
+            "ComputeFrustumCull.MaterialDataRows",
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            sizeof(mtl::MaterialInstanceAddresses) * TOTAL_CUBES,
+            sizeof(mtl::MaterialInstanceAddresses) * TOTAL_CUBES,
+            initial_mat_rows,
+            BufferAllocPolicy::CPUVisible
+        );
+
         if (!candidate_buffer || !world_matrices_buffer || !geometry_aabbs_buffer ||
-            !visible_buffer || !count_buffer || !indirect_cmds_buffer)
+            !visible_buffer || !count_buffer || !indirect_cmds_buffer ||
+            !visible_l2w_indices_buffer || !mesh_draw_params_buffer || !material_data_rows_buffer)
         {
             GLogError(u8"[ComputeFrustumCull] Failed to create compute buffers");
             return false;
         }
 
-        // 5. 用户描述符集（Set 2, Bindings 0..5）
-        VkDescriptorSetLayoutBinding bindings[6]{};
-        for (uint32_t b = 0; b < 6; ++b)
+        // 8. 用户描述符集（Set 2, Bindings 0..6）
+        VkDescriptorSetLayoutBinding bindings[7]{};
+        for (uint32_t b = 0; b < 7; ++b)
         {
             bindings[b].binding         = b;
             bindings[b].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -424,13 +505,13 @@ private:
 
         VkDescriptorSetLayoutCreateInfo dsl_ci{};
         dsl_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        dsl_ci.bindingCount = 6;
+        dsl_ci.bindingCount = 7;
         dsl_ci.pBindings    = bindings;
 
         if (vkCreateDescriptorSetLayout(dev->GetDevice(), &dsl_ci, nullptr, &user_layout) != VK_SUCCESS)
             return false;
 
-        VkDescriptorPoolSize pool_size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 6};
+        VkDescriptorPoolSize pool_size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 7};
         VkDescriptorPoolCreateInfo pool_ci{};
         pool_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pool_ci.maxSets       = 1;
@@ -449,18 +530,19 @@ private:
         if (vkAllocateDescriptorSets(dev->GetDevice(), &alloc_ci, &user_set) != VK_SUCCESS)
             return false;
 
-        // 绑定 6 个描述符
-        VkDescriptorBufferInfo buf_infos[6]{
+        // 绑定 7 个描述符
+        VkDescriptorBufferInfo buf_infos[7]{
             *candidate_buffer->GetBufferInfo(),
             *world_matrices_buffer->GetBufferInfo(),
             *geometry_aabbs_buffer->GetBufferInfo(),
             *visible_buffer->GetBufferInfo(),
             *count_buffer->GetBufferInfo(),
-            *indirect_cmds_buffer->GetBufferInfo()
+            *indirect_cmds_buffer->GetBufferInfo(),
+            *visible_l2w_indices_buffer->GetBufferInfo()
         };
 
-        VkWriteDescriptorSet writes[6]{};
-        for (uint32_t b = 0; b < 6; ++b)
+        VkWriteDescriptorSet writes[7]{};
+        for (uint32_t b = 0; b < 7; ++b)
         {
             writes[b].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             writes[b].dstSet          = user_set;
@@ -470,7 +552,7 @@ private:
             writes[b].pBufferInfo     = &buf_infos[b];
         }
 
-        vkUpdateDescriptorSets(dev->GetDevice(), 6, writes, 0, nullptr);
+        vkUpdateDescriptorSets(dev->GetDevice(), 7, writes, 0, nullptr);
 
         // 6. 创建 Compute Pipeline
         GraphicsContext *gc = GetGraphicsContext();
@@ -504,15 +586,18 @@ public:
         auto *dev = GetDevice();
         if (dev)
         {
-            if (user_layout)          vkDestroyDescriptorSetLayout(dev->GetDevice(), user_layout, nullptr);
-            if (desc_pool)            vkDestroyDescriptorPool(dev->GetDevice(), desc_pool, nullptr);
-            if (compute_cmd)          delete compute_cmd;
-            if (candidate_buffer)     delete candidate_buffer;
-            if (world_matrices_buffer)delete world_matrices_buffer;
-            if (geometry_aabbs_buffer)delete geometry_aabbs_buffer;
-            if (visible_buffer)       delete visible_buffer;
-            if (count_buffer)         delete count_buffer;
-            if (indirect_cmds_buffer) delete indirect_cmds_buffer;
+            if (user_layout)                vkDestroyDescriptorSetLayout(dev->GetDevice(), user_layout, nullptr);
+            if (desc_pool)                  vkDestroyDescriptorPool(dev->GetDevice(), desc_pool, nullptr);
+            if (compute_cmd)                delete compute_cmd;
+            if (candidate_buffer)           delete candidate_buffer;
+            if (world_matrices_buffer)      delete world_matrices_buffer;
+            if (geometry_aabbs_buffer)      delete geometry_aabbs_buffer;
+            if (visible_buffer)             delete visible_buffer;
+            if (count_buffer)               delete count_buffer;
+            if (indirect_cmds_buffer)       delete indirect_cmds_buffer;
+            if (visible_l2w_indices_buffer) delete visible_l2w_indices_buffer;
+            if (mesh_draw_params_buffer)    delete mesh_draw_params_buffer;
+            if (material_data_rows_buffer)  delete material_data_rows_buffer;
         }
     }
 
@@ -532,9 +617,10 @@ public:
 
         if (!CreateCubeGeometry()) return false;
         if (!InitMISSBO())         return false;
+        InitCPUSceneData();
+        if (!CreateComputeResources(dev)) return false;
         if (!InitECSScene())       return false;
         if (!InitCamera())         return false;
-        if (!CreateComputeResources(dev)) return false;
 
         // 注册 ECS 挂载系统
         ecs_context->RegisterRenderSystem<GPUIndirectCountHookSystem>(count_buffer);
@@ -607,6 +693,22 @@ public:
             VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
             VK_ACCESS_SHADER_WRITE_BIT,
             VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+        );
+
+        compute_cmd->BufferMemoryBarrier(
+            visible_l2w_indices_buffer->GetBuffer(),
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT,
+            VK_ACCESS_SHADER_WRITE_BIT,
+            VK_ACCESS_SHADER_READ_BIT
+        );
+
+        compute_cmd->BufferMemoryBarrier(
+            world_matrices_buffer->GetBuffer(),
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT,
+            VK_ACCESS_SHADER_WRITE_BIT,
+            VK_ACCESS_SHADER_READ_BIT
         );
 
         compute_cmd->BufferMemoryBarrier(

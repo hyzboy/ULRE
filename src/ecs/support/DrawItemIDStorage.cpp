@@ -19,6 +19,19 @@ namespace hgl::ecs
     {
         ids.Clear();
         is_dirty = false;
+        external_gpu_address = 0;
+    }
+
+    void DrawItemIDStorage::SetExternalGPUBuffer(graph::DeviceBuffer *buf, graph::VulkanDevice *dev)
+    {
+        if (buf && buf->GetBuffer() && dev)
+        {
+            external_gpu_address = dev->GetBufferDeviceAddressAligned16(buf->GetBuffer());
+        }
+        else
+        {
+            external_gpu_address = 0;
+        }
     }
 
     uint32_t DrawItemIDStorage::Append(const uint32_t *handles, const uint32_t count)
@@ -92,6 +105,12 @@ namespace hgl::ecs
 
     bool DrawItemIDStorage::SyncToGPU(graph::VulkanDevice *dev)
     {
+        if (external_gpu_address != 0)
+        {
+            last_frame_uploaded_bytes = 0;
+            return true;
+        }
+
         if (!dev)
             return false;
 

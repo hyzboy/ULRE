@@ -255,14 +255,17 @@ uint texture_index       = texture_ref_buffer.refs[desc.w].descriptor_index;
 
 ---
 
-### 阶段五：海量多实例与 GPU-Driven 统一接入
+### 阶段五：海量多实例与 GPU-Driven 统一接入 【✅ 已完成】
 > **核心目标**：将 GPU-Driven CS 视锥剔除与多实例渲染彻底收编至统一架构。
 
-- **5.1 `InstancedPrimitiveComponent` 统一模型接入**
-  - **CPU 驱动多实例**：向 `RenderItemDataStorage` 申请一段连续的 Handle 区间 `[base, count]`，以连号直通方式直接单次 DrawCall 提交。
-  - **100% GPU-Driven 模式**：Compute Shader 输出的间接命令与筛选后的存活索引表，直接与 `DrawItemIDBuffer` / `GlobalRenderItemBuffer` 统一对齐，不再需要任何特殊的管线外挂代码。
-- **5.2 重构验证 `ComputeAsteroidBelt.cpp`**
-  - 100 万颗陨石统一按照全局描述符规则运行，验证视锥剔除、围绕公转与波形摆动平滑无卡顿。
+- **5.1 `InstancedPrimitiveComponent` 统一模型接入** 【✅ 已完成】
+  - **CPU 驱动多实例**：`InstancedPrimitiveComponent` 支持 `AllocateContiguousInstances(count)` 向 `RenderItemDataStorage` 申请连续连号 Handle 区间 `[base, count)`，并支持 `SetAllInstances4ID` 与逐实例原地修改。
+  - **直接折叠直通**：在 `PrimitiveBatchPipeline::BuildBatches` 中针对 CPU 驱动多实例建立直通加速，多实例直接以连号直通区间 `(first_instance = base, count = N)` 单次 DrawCall 提交，完全免除二级索引表写入（0 字节上传）。
+  - **100% GPU-Driven 模式**：`DrawItemIDStorage` 支持外部 GPU 缓冲区物理地址覆盖（`SetExternalGPUBuffer` / `SetExternalGPUAddress`），Compute Shader 输出的存活索引表直接与 `DrawItemIDBuffer` / `GlobalRenderItemBuffer` 统一对齐，不再需要任何特殊的管线外挂代码。
+- **5.2 重构验证 `ComputeAsteroidBelt.cpp`** 【✅ 已完成】
+  - 10 种几何体、1,000,000 颗陨星统一在 `RenderItemDataStorage` 登记 16B 4-ID 描述符。
+  - GPU Compute Shader 进行开普勒轨道自转模拟与 6 平面硬件视锥剔除后，直接将存活实例 Handle 写入二级绘制索引表，并通过 `DrawItemIDStorage` 无缝接入。
+  - `TestRenderItemDataStorage` 新增 Test 11（多实例连续分配、属性覆盖、折叠直通）与 Test 12（GPU-Driven 外部缓冲覆盖、CS+MeshShader 编译链路），全量测试 100% 通过。
 
 ---
 

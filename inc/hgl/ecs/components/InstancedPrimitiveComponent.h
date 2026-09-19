@@ -25,6 +25,7 @@ namespace hgl::ecs
     private:
         uint32_t instance_count = 0;              ///< Active instance count to render
         uint32_t max_instances = 0;               ///< Allocated instance capacity
+        uint32_t allocated_instance_capacity = 0; ///< Allocated slot count in RenderItemDataStorage
 
         // 4-ID BDA GPU Buffer bindings
         hgl::graph::DeviceBuffer *l2w_buffer = nullptr;                     ///< L2W matrices SSBO (BDA: l2w.mats[])
@@ -40,15 +41,35 @@ namespace hgl::ecs
         bool is_gpu_driven = false;                                         ///< If true, bypass CPU ICB / index table regeneration
         bool is_indirect = false;                                           ///< If true, use indirect commands
 
+    protected:
+        void EnsureRenderItemStorageAllocated() override;
+
     public:
         explicit InstancedPrimitiveComponent(const std::string &name = "InstancedPrimitive");
-        ~InstancedPrimitiveComponent() override = default;
+        ~InstancedPrimitiveComponent() override;
+
+        void OnDetach() override;
+
+        // ── 连续连号槽位分配 (CPU 驱动多实例与 GPU-Driven 全局对齐) ──
+        bool AllocateContiguousInstances(uint32_t count);
+        void ReleaseInstances();
+
+        uint32_t GetAllocatedInstanceCapacity() const { return allocated_instance_capacity; }
+        graph::RenderItemHandle GetInstanceHandle(uint32_t instance_idx) const;
+
+        // ── 多实例 4-ID 属性设置 ──
+        bool SetInstanceTransformID(uint32_t instance_idx, uint32_t transform_id);
+        bool SetInstanceGeometryID(uint32_t instance_idx, uint32_t geometry_id);
+        bool SetInstanceMaterialID(uint32_t instance_idx, uint32_t material_id);
+        bool SetInstanceTextureID(uint32_t instance_idx, uint32_t texture_id);
+        bool SetInstance4ID(uint32_t instance_idx, uint32_t transform_id, uint32_t geometry_id, uint32_t material_id, uint32_t texture_id);
+        bool SetAllInstances4ID(uint32_t base_transform_id, uint32_t geometry_id, uint32_t material_id, uint32_t texture_id, bool sequential_transforms = true);
 
         // Instance counts
-        void SetInstanceCount(uint32_t count) { instance_count = count; }
+        void SetInstanceCount(uint32_t count);
         uint32_t GetInstanceCount() const { return instance_count; }
 
-        void SetMaxInstances(uint32_t max_count) { max_instances = max_count; }
+        void SetMaxInstances(uint32_t max_count);
         uint32_t GetMaxInstances() const { return max_instances; }
 
         // L2W Transform Buffer

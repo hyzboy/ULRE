@@ -4,10 +4,12 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
+#include <hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include <hgl/graph/ubo/GlobalAddresses.h>
 #include <hgl/ShaderCompilerAPI.h>
 #include <vulkan/vulkan.h>
 #include <hgl/log/Log.h>
+#include <hgl/log/Logger.h>
 
 using namespace hgl;
 using namespace hgl::ecs;
@@ -16,6 +18,8 @@ int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
+
+    hgl::logger::InitLogger(OS_TEXT("TestRenderItemDataStorage"));
 
     GLogInfo(u8"=== Testing RenderItemDataStorage (Stage 1 Infrastructure) ===");
 
@@ -561,6 +565,234 @@ int main(int argc, char **argv)
         }
     }
 
-    GLogInfo(u8"=== All RenderItemDataStorage Stage 1, 2, 3 & 4 Tests Passed Successfully! ===");
+    // Test 11: Stage 5 Verification - InstancedPrimitiveComponent CPU-driven Instancing & Contiguous 4-ID
+    GLogInfo(u8"--- Testing Stage 5: InstancedPrimitiveComponent Contiguous Allocation ---");
+    {
+        ECSContext ctx("TestContextStage5");
+        auto *entity = ctx.CreateEntity<Entity>("TestInstancedEntity");
+        auto inst_comp = entity->AddComponent<InstancedPrimitiveComponent>();
+
+        constexpr uint32_t kInstanceCount = 100;
+        inst_comp->SetInstanceCount(kInstanceCount);
+        inst_comp->SetMaxInstances(kInstanceCount);
+
+        if (!inst_comp->AllocateContiguousInstances(kInstanceCount))
+        {
+            GLogError(u8"Test 11 Failed: AllocateContiguousInstances returned false");
+            return 45;
+        }
+
+        if (inst_comp->GetAllocatedInstanceCapacity() != kInstanceCount)
+        {
+            GLogError(u8"Test 11 Failed: Expected capacity %u, got %u",
+                      kInstanceCount, inst_comp->GetAllocatedInstanceCapacity());
+            return 46;
+        }
+
+        const auto base_handle = inst_comp->GetRenderItemHandle();
+        if (base_handle == graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            GLogError(u8"Test 11 Failed: Base render item handle is invalid");
+            return 47;
+        }
+
+        // Set 4-ID for all 100 instances with sequential transform IDs
+        constexpr uint32_t kBaseTransformID = 1000;
+        constexpr uint32_t kGeometryID      = 25;
+        constexpr uint32_t kMaterialID      = 7;
+        constexpr uint32_t kTextureID       = 3;
+
+        if (!inst_comp->SetAllInstances4ID(kBaseTransformID, kGeometryID, kMaterialID, kTextureID, true))
+        {
+            GLogError(u8"Test 11 Failed: SetAllInstances4ID returned false");
+            return 48;
+        }
+
+        auto *world_storage = ctx.GetRenderItemStorage();
+        for (uint32_t i = 0; i < kInstanceCount; ++i)
+        {
+            const auto handle = inst_comp->GetInstanceHandle(i);
+            if (handle != base_handle + i)
+            {
+                GLogError(u8"Test 11 Failed: Instance handle non-contiguous at %u", i);
+                return 49;
+            }
+
+            const auto *desc = world_storage->Get(handle);
+            if (!desc || desc->transform_id != kBaseTransformID + i ||
+                desc->geometry_id != kGeometryID ||
+                desc->material_id != kMaterialID ||
+                desc->texture_id  != kTextureID)
+            {
+                GLogError(u8"Test 11 Failed: Descriptor content mismatch at index %u", i);
+                return 50;
+            }
+        }
+
+        // Test custom instance override
+        inst_comp->SetInstance4ID(42, 9999, 30, 8, 4);
+        const auto *desc42 = world_storage->Get(base_handle + 42);
+        if (!desc42 || desc42->transform_id != 9999 || desc42->geometry_id != 30 ||
+            desc42->material_id != 8 || desc42->texture_id != 4)
+        {
+            GLogError(u8"Test 11 Failed: Per-instance override failed at index 42");
+            return 51;
+        }
+
+        // Verify Run-Length Compaction: 100 contiguous instances must fold into 1 Direct range!
+        hgl::ValueArray<RenderItemHandle> handles;
+        handles.Reserve(kInstanceCount);
+        for (uint32_t i = 0; i < kInstanceCount; ++i)
+            handles.Add(inst_comp->GetInstanceHandle(i));
+
+        DrawItemIDStorage test_id_storage;
+        hgl::ValueArray<CompactedDrawRange> ranges;
+        CompactionStats stats{};
+
+        CompactRenderItemHandles(handles.GetData(), kInstanceCount, &test_id_storage, ranges, &stats);
+
+        if (ranges.GetCount() != 1)
+        {
+            GLogError(u8"Test 11 Failed: Expected 1 folded direct range for 100 instances, got %d", ranges.GetCount());
+            return 52;
+        }
+        if (!ranges[0].is_direct || ranges[0].first_instance != base_handle || ranges[0].instance_count != kInstanceCount)
+        {
+            GLogError(u8"Test 11 Failed: Folded range contents mismatch");
+            return 53;
+        }
+        if (test_id_storage.GetCount() != 0 || stats.indexed_items != 0 || stats.direct_items != kInstanceCount)
+        {
+            GLogError(u8"Test 11 Failed: Secondary table must have 0 items for contiguous instances");
+            return 54;
+        }
+        if (stats.bytes_saved_over_full != kInstanceCount * 12)
+        {
+            GLogError(u8"Test 11 Failed: Bytes saved mismatch, expected %u got %u",
+                      kInstanceCount * 12, stats.bytes_saved_over_full);
+            return 55;
+        }
+
+        // Releasing instances
+        inst_comp->ReleaseInstances();
+        if (inst_comp->GetAllocatedInstanceCapacity() != 0)
+        {
+            GLogError(u8"Test 11 Failed: Allocated capacity must be 0 after ReleaseInstances");
+            return 56;
+        }
+    }
+
+    // Test 12: Stage 5 Verification - 100% GPU-Driven Alignment & DrawItemIDStorage External Buffer Override
+    GLogInfo(u8"--- Testing Stage 5: 100% GPU-Driven Alignment & External Buffer Override ---");
+    {
+        DrawItemIDStorage id_storage;
+        constexpr uint64_t kExternalGPUAddr = 0xFEDCBA9876540000ULL;
+
+        if (id_storage.HasExternalGPUAddress())
+        {
+            GLogError(u8"Test 12 Failed: HasExternalGPUAddress should be false initially");
+            return 57;
+        }
+
+        id_storage.SetExternalGPUAddress(kExternalGPUAddr);
+        if (!id_storage.HasExternalGPUAddress() || id_storage.GetGPUAddress() != kExternalGPUAddr)
+        {
+            GLogError(u8"Test 12 Failed: External GPU address override failed");
+            return 58;
+        }
+
+        // In external buffer mode, SyncToGPU must succeed without copying CPU data
+        if (!id_storage.SyncToGPU(nullptr))
+        {
+            GLogError(u8"Test 12 Failed: SyncToGPU must return true with external buffer");
+            return 59;
+        }
+
+        id_storage.ClearExternalGPUAddress();
+        if (id_storage.HasExternalGPUAddress() || id_storage.GetGPUAddress() != 0)
+        {
+            GLogError(u8"Test 12 Failed: ClearExternalGPUAddress failed");
+            return 60;
+        }
+
+        // Verify SPIR-V shader compilation for 100% GPU-Driven indirect culling & auto-resolution
+        if (graph::InitShaderCompiler())
+        {
+            const char *test_gpu_driven_comp_glsl = R"(
+                #version 460
+                #extension GL_EXT_buffer_reference : require
+                #extension GL_EXT_scalar_block_layout : require
+                #extension GL_ARB_gpu_shader_int64 : require
+                #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+                #define SCENE_SET 0
+                #define GLOBAL_ADDRESSES_BINDING 4
+
+                layout(set = SCENE_SET, binding = GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
+                {
+                    uint64_t addr_mesh_draw_params;
+                    uint64_t addr_pbr_surface;
+                    uint64_t addr_emissive_surface;
+                    uint64_t addr_transmission_surface;
+                    uint64_t addr_global_render_items;
+                    uint64_t addr_draw_item_ids;
+                } global_addresses;
+
+                struct RenderItemDescriptor
+                {
+                    uint transform_id;
+                    uint geometry_id;
+                    uint material_id;
+                    uint texture_id;
+                };
+
+                layout(buffer_reference, scalar, buffer_reference_align = 16) buffer RenderItemBufferRef
+                {
+                    RenderItemDescriptor items[];
+                };
+
+                layout(buffer_reference, scalar, buffer_reference_align = 4) buffer DrawItemIDBufferRef
+                {
+                    uint ids[];
+                };
+
+                layout(buffer_reference, scalar, buffer_reference_align = 4) buffer VisibleCountBufferRef
+                {
+                    uint count;
+                };
+
+                layout(local_size_x = 64) in;
+
+                void main()
+                {
+                    uint idx = gl_GlobalInvocationID.x;
+                    // Simulate GPU-Driven frustum culling: write surviving handles to DrawItemIDBuffer
+                    bool visible = (idx % 2 == 0);
+                    if (visible)
+                    {
+                        uint slot = atomicAdd(VisibleCountBufferRef(global_addresses.addr_mesh_draw_params).count, 1);
+                        DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[slot] = idx;
+                    }
+                }
+            )";
+
+            auto *spv = graph::CompileShader(VK_SHADER_STAGE_COMPUTE_BIT, test_gpu_driven_comp_glsl);
+            if (!spv || !spv->result)
+            {
+                GLogError(u8"Test 12 Failed: GPU-Driven Compute Shader compilation failed: %s",
+                          spv && spv->log ? spv->log : "unknown error");
+                if (spv) graph::FreeSPVData(spv);
+                graph::CloseShaderCompiler();
+                return 61;
+            }
+
+            GLogInfo(u8"Test 12: GPU-Driven CS Shader successfully compiled to SPIR-V (size: %u words)",
+                     spv->spv_length);
+            graph::FreeSPVData(spv);
+            graph::CloseShaderCompiler();
+        }
+    }
+
+    GLogInfo(u8"=== All RenderItemDataStorage Stage 1, 2, 3, 4 & 5 Tests Passed Successfully! ===");
     return 0;
 }

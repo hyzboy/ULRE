@@ -74,6 +74,7 @@ namespace hgl::ecs
 
         l2w_buffer = nullptr;
         gpu_driven_override = false;
+        uses_render_item_resolve = false;
         own_icb_mesh_tasks = true;
         own_mesh_draw_params = true;
         own_l2w_index = true;

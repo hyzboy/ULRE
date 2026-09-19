@@ -37,6 +37,7 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
+#include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -591,6 +592,8 @@ private:
             prim->SetMaterialDataResource(a_res);
             prim->SetInstanceCount(INSTANCES_PER_GEOM);
             prim->SetMaxInstances(INSTANCES_PER_GEOM);
+            prim->AllocateContiguousInstances(INSTANCES_PER_GEOM);
+            prim->SetAllInstances4ID(i * INSTANCES_PER_GEOM, geometry_ids[i], mineral_payload_indices[i], 0, true);
             prim->SetL2WBuffer(world_matrices_buffer);
             prim->SetL2WIndexBuffer(l2w_index_buffer);
             prim->SetMeshDrawParamsBuffer(mesh_draw_params_buffer);
@@ -1163,6 +1166,14 @@ public:
                          counts->geom_visible[8], counts->geom_visible[9]);
 
                 readback_count_buffer->Unmap();
+            }
+        }
+
+        if (ecs_context)
+        {
+            if (auto *id_storage = ecs_context->GetDrawItemIDStorage())
+            {
+                id_storage->SetExternalGPUBuffer(l2w_index_buffer, GetDevice());
             }
         }
 
