@@ -331,7 +331,7 @@ namespace hgl::ecs
     void PrimitiveBatchPipeline::ReallocICB(MaterialBatch& batch)
     {
         HGL_CAPTURE_SCOPE();
-        if (!device || batch.items.empty())
+        if (!device || batch.items.empty() || batch.gpu_driven_override)
             return;
 
         uint32_t icb_new_count = 1;
@@ -474,6 +474,9 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::EnsureMeshDrawParams(MaterialBatch& batch)
     {
+        if (batch.gpu_driven_override)
+            return;
+
         if (!batch.key.shader_program
          || !ProgramHasMeshStage(batch.key.shader_program))
             return;
@@ -524,6 +527,9 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::WriteMeshDrawCommands(MaterialBatch& batch)
     {
+        if (batch.gpu_driven_override)
+            return;
+
         const uint32_t count = batch.draw_batches_count;
         if (count == 0 || !batch.key.shader_program)
             return;
@@ -624,6 +630,9 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::SortBatchItems(MaterialBatch& batch)
     {
+        if (batch.gpu_driven_override)
+            return;
+
         std::vector<RenderItem*> static_items;
         std::vector<RenderItem*> movable_items;
         static_items.reserve(batch.items.size());
@@ -668,6 +677,9 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::EnsureBatchIndexRows(MaterialBatch& batch)
     {
+        if (batch.gpu_driven_override)
+            return;
+
         if (!batch.buffer_manager || batch.items.empty())
             return;
 
@@ -750,7 +762,7 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::WriteBatchIndexRows(MaterialBatch& batch)
     {
-        if (batch.items.empty())
+        if (batch.items.empty() || batch.gpu_driven_override)
             return;
 
         const uint32_t item_count = static_cast<uint32_t>(batch.items.size());

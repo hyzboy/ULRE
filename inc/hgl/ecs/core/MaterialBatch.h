@@ -67,6 +67,14 @@ namespace hgl::ecs
         uint32_t                                material_data_index_rows_capacity = 0;        ///<DataIndex 行表容量（元素数）
         uint64_t                                texture_reference_base_addr       = 0;        ///<当前材质对应的 MaterialTextureReferencePool GPU 基址
 
+        // GPU-Driven 渲染管线覆盖支持
+        bool                                     gpu_driven_override               = false;    ///<该批次是否为 GPU-Driven 托管（跳过 CPU 侧 ICB 和行表生成）
+        bool                                     own_icb_mesh_tasks                = true;     ///<是否拥有 icb_mesh_tasks
+        bool                                     own_mesh_draw_params              = true;     ///<是否拥有 mesh_draw_params_buffer
+        bool                                     own_l2w_index                     = true;     ///<是否拥有 l2w_index_buffer
+        bool                                     own_material_data_rows            = true;     ///<是否拥有 material_data_index_rows_buffer
+        graph::DeviceBuffer *                    l2w_buffer                        = nullptr;  ///<显式指定的 L2W 矩阵缓冲（用于 GPU-Driven 大规模渲染）
+
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有；由 TransformSystem 持有——系统销毁后此指针失效，勿跨帧缓存系统指针，A6)
 
         bool                                  debug_blocks_logged = false;                       ///<[ArenaDebug] 首次行表诊断日志已输出                      ///<批次级descriptor绑定是否有效

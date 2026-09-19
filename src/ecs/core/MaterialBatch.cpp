@@ -26,23 +26,23 @@ namespace hgl::ecs
 
     MaterialBatch::~MaterialBatch()
     {
-        if (icb_mesh_tasks)
+        if (own_icb_mesh_tasks && icb_mesh_tasks)
             delete icb_mesh_tasks;
-        if (mesh_draw_params_buffer)
+        if (own_mesh_draw_params && mesh_draw_params_buffer)
         {
             if (buffer_manager)
                 buffer_manager->Release(mesh_draw_params_buffer);
             else
                 delete mesh_draw_params_buffer;
         }
-        if (l2w_index_buffer)
+        if (own_l2w_index && l2w_index_buffer)
         {
             if (buffer_manager)
                 buffer_manager->Release(l2w_index_buffer);
             else
                 delete l2w_index_buffer;
         }
-        if (material_data_index_rows_buffer)
+        if (own_material_data_rows && material_data_index_rows_buffer)
         {
             if (buffer_manager)
                 buffer_manager->Release(material_data_index_rows_buffer);

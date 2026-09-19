@@ -158,7 +158,11 @@ namespace hgl::ecs
         if (material_is_mesh && owner_batch && owner_batch->device)
         {
             graph::IGPUBuffer *l2w_gpu = nullptr;
-            if (transform_buffer)
+            if (owner_batch->l2w_buffer)
+            {
+                l2w_gpu = owner_batch->l2w_buffer->GetGPUBuffer();
+            }
+            else if (transform_buffer)
             {
                 auto *l2w_buf = transform_buffer->GetTransformDataBuffer();
                 if (l2w_buf)
