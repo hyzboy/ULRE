@@ -190,6 +190,101 @@ namespace
 
         return desc_pool;
     }
+
+    void LogDeviceCreateInfo(const VkDeviceCreateInfo *create_info, const VkResult result)
+    {
+        GLogError(u8"vkCreateDevice 失败，VkResult = %d", int(result));
+        GLogError(u8"  queueCreateInfoCount = %u", create_info->queueCreateInfoCount);
+        for(uint32_t i = 0; i < create_info->queueCreateInfoCount; ++i)
+        {
+            const auto &q = create_info->pQueueCreateInfos[i];
+            GLogError(u8"    Queue[%u]: family = %u, count = %u", i, q.queueFamilyIndex, q.queueCount);
+        }
+        GLogError(u8"  enabledExtensionCount = %u", create_info->enabledExtensionCount);
+        for(uint32_t i = 0; i < create_info->enabledExtensionCount; ++i)
+        {
+            GLogError(u8"    Extension[%u]: %s", i, create_info->ppEnabledExtensionNames[i]);
+        }
+
+        struct GenericVkHeader
+        {
+            VkStructureType sType;
+            const void *pNext;
+        };
+
+        GLogError(u8"  pNext 链节点:");
+        const void *curr = create_info->pNext;
+        uint32_t node_index = 0;
+        while(curr)
+        {
+            const auto *hdr = static_cast<const GenericVkHeader *>(curr);
+            switch(hdr->sType)
+            {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES:
+            {
+                const auto *f = static_cast<const VkPhysicalDeviceShaderDrawParametersFeatures *>(curr);
+                GLogError(u8"    [%u] ShaderDrawParametersFeatures (sType=%d): shaderDrawParameters=%d",
+                          node_index, int(hdr->sType), int(f->shaderDrawParameters));
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
+            {
+                const auto *f = static_cast<const VkPhysicalDeviceVulkan12Features *>(curr);
+                GLogError(u8"    [%u] Vulkan12Features (sType=%d): scalarBlockLayout=%d, 8BitAccess=%d, bufferDeviceAddress=%d, drawIndirectCount=%d",
+                          node_index, int(hdr->sType), int(f->scalarBlockLayout), int(f->storageBuffer8BitAccess), int(f->bufferDeviceAddress), int(f->drawIndirectCount));
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES:
+            {
+                const auto *f = static_cast<const VkPhysicalDevice16BitStorageFeatures *>(curr);
+                GLogError(u8"    [%u] 16BitStorageFeatures (sType=%d): storageBuffer16BitAccess=%d, uniformAndStorageBuffer16BitAccess=%d",
+                          node_index, int(hdr->sType), int(f->storageBuffer16BitAccess), int(f->uniformAndStorageBuffer16BitAccess));
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES:
+            {
+                const auto *f = static_cast<const VkPhysicalDeviceVulkan13Features *>(curr);
+                GLogError(u8"    [%u] Vulkan13Features (sType=%d): dynamicRendering=%d, maintenance4=%d",
+                          node_index, int(hdr->sType), int(f->dynamicRendering), int(f->maintenance4));
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES:
+            {
+                const auto *f = static_cast<const VkPhysicalDeviceVulkan14Features *>(curr);
+                GLogError(u8"    [%u] Vulkan14Features (sType=%d): indexTypeUint8=%d",
+                          node_index, int(hdr->sType), int(f->indexTypeUint8));
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT:
+            {
+                const auto *f = static_cast<const VkPhysicalDeviceMeshShaderFeaturesEXT *>(curr);
+                GLogError(u8"    [%u] MeshShaderFeaturesEXT (sType=%d): taskShader=%d, meshShader=%d, queries=%d",
+                          node_index, int(hdr->sType), int(f->taskShader), int(f->meshShader), int(f->meshShaderQueries));
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT:
+            {
+                const auto *f = static_cast<const VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *>(curr);
+                GLogError(u8"    [%u] ExtendedDynamicStateFeaturesEXT (sType=%d): extendedDynamicState=%d",
+                          node_index, int(hdr->sType), int(f->extendedDynamicState));
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+            {
+                const auto *f = static_cast<const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *>(curr);
+                GLogError(u8"    [%u] ExtendedDynamicState3FeaturesEXT (sType=%d): colorBlend=%d, equation=%d, writeMask=%d, polygonMode=%d, a2c=%d",
+                          node_index, int(hdr->sType), int(f->extendedDynamicState3ColorBlendEnable), int(f->extendedDynamicState3ColorBlendEquation),
+                          int(f->extendedDynamicState3ColorWriteMask), int(f->extendedDynamicState3PolygonMode), int(f->extendedDynamicState3AlphaToCoverageEnable));
+                break;
+            }
+            default:
+                GLogError(u8"    [%u] 未知 sType = %d, ptr = %p", node_index, int(hdr->sType), curr);
+                break;
+            }
+            curr = hdr->pNext;
+            ++node_index;
+        }
+    }
 }//namespace
 
 #ifndef VK_DRIVER_ID_BEGIN_RANGE
@@ -233,9 +328,19 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     create_info.ppEnabledLayerNames     =nullptr;
     create_info.pEnabledFeatures        =&features;
 
+    // 所有 pNext 特性结构体必须在函数作用域声明，确保调用 CreateDevice 时生命周期依然有效，
+    // 避免局部代码块退出后因 Release 栈槽复用优化导致链表节点悬垂破坏
+    VkPhysicalDeviceShaderDrawParametersFeatures        shader_draw_params_features{};
+    VkPhysicalDeviceVulkan12Features                    vk12_features{};
+    VkPhysicalDevice16BitStorageFeatures                storage16_features{};
+    VkPhysicalDeviceVulkan13Features                    vulkan13_features{};
+    VkPhysicalDeviceVulkan14Features                    vulkan14_features{};
+    VkPhysicalDeviceMeshShaderFeaturesEXT               mesh_features{};
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT     eds1{};
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT    eds3{};
+
     // Vulkan 1.1: shaderDrawParameters —— SSBO 顶点输入 gl_BaseVertexARB 读取必需
     // （ShaderDrawParameters capability 由该特性启用；设备 v1.4 必支持）
-    VkPhysicalDeviceShaderDrawParametersFeatures shader_draw_params_features{};
     shader_draw_params_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
     shader_draw_params_features.shaderDrawParameters = VK_TRUE;
     create_info.pNext = &shader_draw_params_features;
@@ -246,7 +351,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     // （否则违反 VUID-VkDeviceCreateInfo-pNext-02830）。
     // 该结构始终入链，确保即使设备不支持 scalarBlockLayout，
     // 描述符索引特性依然生效。
-    VkPhysicalDeviceVulkan12Features vk12_features{};
     {
         const VkPhysicalDeviceVulkan12Features &dev12 = physical_device->GetFeatures12();
 
@@ -280,7 +384,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         create_info.pNext = &vk12_features;
 
         // VK_KHR_16bit_storage（独立结构——Vulkan12Features 不含 16bit storage 字段）
-        VkPhysicalDevice16BitStorageFeatures storage16_features{};
         storage16_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
         storage16_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
         storage16_features.storageBuffer16BitAccess           = physical_device->GetFeatures16().storageBuffer16BitAccess;
@@ -295,7 +398,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     {
         const VkPhysicalDeviceVulkan13Features &dev13 = physical_device->GetFeatures13();
 
-        VkPhysicalDeviceVulkan13Features vulkan13_features{};
         vulkan13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
         vulkan13_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
         vulkan13_features.dynamicRendering = dev13.dynamicRendering;
@@ -310,7 +412,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     {
         // Vulkan 1.4 核心：indexTypeUint8 经 VkPhysicalDeviceVulkan14Features 启用
         //（原 VkPhysicalDeviceIndexTypeUint8FeaturesEXT 扩展结构在 1.4 下冗余）
-        VkPhysicalDeviceVulkan14Features vulkan14_features{};
         vulkan14_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
         vulkan14_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
         vulkan14_features.indexTypeUint8 = physical_device->GetFeatures14().indexTypeUint8;
@@ -322,7 +423,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     {
         const VkPhysicalDeviceMeshShaderFeaturesEXT &dev_mesh = physical_device->GetMeshShaderFeatures();
 
-        VkPhysicalDeviceMeshShaderFeaturesEXT mesh_features{};
         mesh_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
         mesh_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
         mesh_features.taskShader    = dev_mesh.taskShader;
@@ -337,13 +437,11 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     // COLOR_BLEND_*/POLYGON_MODE/ALPHA_TO_COVERAGE 均属 EDS3
     //（VkPhysicalDeviceExtendedDynamicState3FeaturesEXT——SDK 1.4 头里 EDS2 结构无这些成员）
     {
-        VkPhysicalDeviceExtendedDynamicStateFeaturesEXT eds1{};
         eds1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
         eds1.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
         eds1.extendedDynamicState = VK_TRUE;   // CULL_MODE / DEPTH_TEST / DEPTH_WRITE / DEPTH_COMPARE_OP
         create_info.pNext = &eds1;
 
-        VkPhysicalDeviceExtendedDynamicState3FeaturesEXT eds3{};
         eds3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
         eds3.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
         eds3.extendedDynamicState3ColorBlendEnable    = VK_TRUE;   // COLOR_BLEND_ENABLE
@@ -354,10 +452,13 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         create_info.pNext = &eds3;
     }
 
-    VkDevice device;
+    VkDevice device = VK_NULL_HANDLE;
+    const VkResult result = physical_device->CreateDevice(&create_info,&device);
 
-    if(physical_device->CreateDevice(&create_info,&device)==VK_SUCCESS)
+    if(result == VK_SUCCESS)
         return device;
+
+    LogDeviceCreateInfo(&create_info, result);
 
     return nullptr;
 }
