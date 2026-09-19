@@ -62,6 +62,22 @@ namespace hgl::ecs
         texture_reference_base_addr = 0;
         icb_count_buffer = nullptr;
         icb_count_buffer_offset = 0;
+
+        if (!own_icb_mesh_tasks)
+            icb_mesh_tasks = nullptr;
+        if (!own_mesh_draw_params)
+            mesh_draw_params_buffer = nullptr;
+        if (!own_l2w_index)
+            l2w_index_buffer = nullptr;
+        if (!own_material_data_rows)
+            material_data_index_rows_buffer = nullptr;
+
+        l2w_buffer = nullptr;
+        gpu_driven_override = false;
+        own_icb_mesh_tasks = true;
+        own_mesh_draw_params = true;
+        own_l2w_index = true;
+        own_material_data_rows = true;
     }
 
     void MaterialBatch::AddItem(RenderItem* item)

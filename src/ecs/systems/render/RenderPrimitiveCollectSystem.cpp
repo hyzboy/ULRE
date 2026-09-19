@@ -2,8 +2,10 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
+#include<hgl/ecs/core/InstancedPrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -1119,6 +1121,14 @@ namespace hgl::ecs
         std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
         world->GetComponents<PrimitiveComponent>(primitives);
 
+        std::vector<std::shared_ptr<InstancedPrimitiveComponent>> instanced_primitives;
+        world->GetComponents<InstancedPrimitiveComponent>(instanced_primitives);
+        for (const auto &ip : instanced_primitives)
+        {
+            if (ip)
+                primitives.push_back(ip);
+        }
+
         // P1-1: Global frame-level materialize gating.
         //
         // PrepareActivePlanResources and MaterializeRecipeRowsForPrimitive are
@@ -1360,7 +1370,18 @@ namespace hgl::ecs
             }
 
             auto material_for_item = entity->GetComponent<MaterialComponent>();
-            auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, material_for_item, world);
+            std::unique_ptr<PrimitiveRenderItem> item;
+
+            if (auto instancedComp = std::dynamic_pointer_cast<InstancedPrimitiveComponent>(primitiveComp))
+            {
+                item = std::make_unique<InstancedPrimitiveRenderItem>(
+                    entity_id, transform, instancedComp, material_for_item, world);
+            }
+            else
+            {
+                item = std::make_unique<PrimitiveRenderItem>(
+                    entity_id, transform, primitiveComp, material_for_item, world);
+            }
 
             glm::vec3 worldPos = transform->GetWorldPosition();
             item->worldPosition = worldPos;
@@ -1369,7 +1390,7 @@ namespace hgl::ecs
 
             item->UpdateWorldMatrix();
 
-            cache.renderItems.push_back(std::unique_ptr<RenderItem>(std::move(item)));
+            cache.renderItems.push_back(std::move(item));
             cache.renderableCount++;
             ++added;
         }

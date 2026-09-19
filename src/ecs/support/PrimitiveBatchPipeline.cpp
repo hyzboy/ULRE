@@ -7,8 +7,10 @@
 #include<hgl/ecs/components/BoundingBoxComponent.h>
 #include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
+#include<hgl/ecs/core/InstancedPrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
@@ -56,7 +58,7 @@ namespace hgl::ecs
 
         void ReleaseICB(MaterialBatch &batch)
         {
-            if (batch.icb_mesh_tasks)
+            if (batch.icb_mesh_tasks && batch.own_icb_mesh_tasks)
             {
                 delete batch.icb_mesh_tasks;
                 batch.icb_mesh_tasks = nullptr;
@@ -419,7 +421,10 @@ namespace hgl::ecs
 
         batch.draw_batches_count = 1;
         draw_batch->first_instance = base_instance;
-        draw_batch->instance_count = 1;
+        if (auto *inst_item = dynamic_cast<InstancedPrimitiveRenderItem *>(item))
+            draw_batch->instance_count = inst_item->GetInstanceCount() > 0 ? inst_item->GetInstanceCount() : 1;
+        else
+            draw_batch->instance_count = 1;
         draw_batch->Set(data_buffer, draw_range, geometry);
 
         const graph::GeometryDataBuffer* current_data_buffer = draw_batch->geom_data_buffer;
@@ -450,10 +455,14 @@ namespace hgl::ecs
             const graph::GeometryDataBuffer* item_data_buf = data_buffer;
             const graph::GeometryDrawRange* item_draw_range = draw_range;
 
-            if (*current_data_buffer == *item_data_buf &&
+            if (!batch.gpu_driven_override &&
+                *current_data_buffer == *item_data_buf &&
                 *current_draw_range == *item_draw_range)
             {
-                ++draw_batch->instance_count;
+                if (auto *inst = dynamic_cast<InstancedPrimitiveRenderItem *>(item))
+                    draw_batch->instance_count += inst->GetInstanceCount();
+                else
+                    ++draw_batch->instance_count;
                 continue;
             }
 
@@ -461,7 +470,10 @@ namespace hgl::ecs
             ++draw_batch;
 
             draw_batch->first_instance = base_instance + static_cast<uint32_t>(i);
-            draw_batch->instance_count = 1;
+            if (auto *inst = dynamic_cast<InstancedPrimitiveRenderItem *>(item))
+                draw_batch->instance_count = inst->GetInstanceCount() > 0 ? inst->GetInstanceCount() : 1;
+            else
+                draw_batch->instance_count = 1;
             draw_batch->Set(data_buffer, draw_range, geometry);
 
             current_data_buffer = draw_batch->geom_data_buffer;
@@ -621,6 +633,51 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::FinalizeBatch(MaterialBatch& batch)
     {
+        for (auto *item : batch.items)
+        {
+            if (auto *inst_item = dynamic_cast<InstancedPrimitiveRenderItem *>(item))
+            {
+                if (inst_item->IsGPUDriven())
+                {
+                    batch.gpu_driven_override = true;
+                    batch.own_icb_mesh_tasks = false;
+                    batch.own_mesh_draw_params = false;
+                    batch.own_l2w_index = false;
+                    batch.own_material_data_rows = false;
+
+                    if (inst_item->GetL2WBuffer())
+                        batch.l2w_buffer = inst_item->GetL2WBuffer();
+                    if (inst_item->GetL2WIndexBuffer())
+                        batch.l2w_index_buffer = inst_item->GetL2WIndexBuffer();
+                    if (inst_item->GetMeshDrawParamsBuffer())
+                        batch.mesh_draw_params_buffer = inst_item->GetMeshDrawParamsBuffer();
+                    if (inst_item->GetMaterialDataRowsBuffer())
+                        batch.material_data_index_rows_buffer = inst_item->GetMaterialDataRowsBuffer();
+                    if (inst_item->GetIndirectMeshTaskBuffer())
+                        batch.icb_mesh_tasks = inst_item->GetIndirectMeshTaskBuffer();
+                    if (inst_item->GetIndirectCountBuffer())
+                    {
+                        batch.icb_count_buffer = inst_item->GetIndirectCountBuffer();
+                        batch.icb_count_buffer_offset = inst_item->GetIndirectCountOffset();
+                    }
+                }
+            }
+
+            if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(item))
+            {
+                if (auto mat_comp = prim_item->GetMaterialComponent())
+                {
+                    if (mat_comp->material_texture_zero_row_gpu)
+                        batch.texture_reference_base_addr = mat_comp->material_texture_zero_row_gpu;
+                    else if (mat_comp->material_texture_row_gpu)
+                        batch.texture_reference_base_addr =
+                            mat_comp->material_texture_row_gpu -
+                            uint64_t(mat_comp->material_texture_configuration.row_index) *
+                            uint64_t(mat_comp->material_texture_configuration.row_stride);
+                }
+            }
+        }
+
         SortBatchItems(batch);
         EnsureBatchIndexRows(batch);
         EnsureMeshDrawParams(batch);

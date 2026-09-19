@@ -36,6 +36,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -266,105 +267,6 @@ void main() {
         };
         return gvf;
     }
-
-    // ECS 渲染阶段系统：将 GPU 计算完毕的 100% GPU-Driven 缓冲挂载到 Asteroid MaterialBatch
-    class GPUIndirectAsteroidHookSystem : public System
-    {
-        DeviceBuffer           *world_matrices_buf    = nullptr;
-        DeviceBuffer           *l2w_index_buf         = nullptr;
-        DeviceBuffer           *mesh_draw_params_buf  = nullptr;
-        DeviceBuffer           *material_data_rows_buf= nullptr;
-        IndirectMeshTaskBuffer *icb_mesh_tasks_buf    = nullptr;
-
-    public:
-        GPUIndirectAsteroidHookSystem(
-            DeviceBuffer *wm,
-            DeviceBuffer *l2wi,
-            DeviceBuffer *mdp,
-            DeviceBuffer *mdr,
-            IndirectMeshTaskBuffer *icb)
-            : System("GPUIndirectAsteroidHookSystem")
-            , world_matrices_buf(wm)
-            , l2w_index_buf(l2wi)
-            , mesh_draw_params_buf(mdp)
-            , material_data_rows_buf(mdr)
-            , icb_mesh_tasks_buf(icb)
-        {
-            SetExecutionPhase(ExecutionPhase::RenderFrameSync);
-        }
-
-        void Update(float /*deltaTime*/) override
-        {
-            if (!context)
-                return;
-
-            auto &cache = context->GetRenderFrameCache();
-            for (auto &pair : cache.materialBatches)
-            {
-                MaterialBatch *batch = pair.second.get();
-                if (!batch)
-                    continue;
-
-                // 检查是否为 Asteroid 批次
-                bool is_asteroid_batch = false;
-                for (auto *item : batch->items)
-                {
-                    if (item && item->GetEntity() && strncmp(item->GetEntity()->GetName().c_str(), "AsteroidGroup", 13) == 0)
-                    {
-                        is_asteroid_batch = true;
-                        break;
-                    }
-                }
-
-                if (is_asteroid_batch)
-                {
-                    // 若此前分配过 CPU 默认临时缓冲，先安全释放避免泄露
-                    if (batch->own_icb_mesh_tasks && batch->icb_mesh_tasks)
-                    {
-                        delete batch->icb_mesh_tasks;
-                        batch->icb_mesh_tasks = nullptr;
-                    }
-                    if (batch->own_mesh_draw_params && batch->mesh_draw_params_buffer)
-                    {
-                        if (batch->buffer_manager)
-                            batch->buffer_manager->Release(batch->mesh_draw_params_buffer);
-                        else
-                            delete batch->mesh_draw_params_buffer;
-                        batch->mesh_draw_params_buffer = nullptr;
-                    }
-                    if (batch->own_l2w_index && batch->l2w_index_buffer)
-                    {
-                        if (batch->buffer_manager)
-                            batch->buffer_manager->Release(batch->l2w_index_buffer);
-                        else
-                            delete batch->l2w_index_buffer;
-                        batch->l2w_index_buffer = nullptr;
-                    }
-                    if (batch->own_material_data_rows && batch->material_data_index_rows_buffer)
-                    {
-                        if (batch->buffer_manager)
-                            batch->buffer_manager->Release(batch->material_data_index_rows_buffer);
-                        else
-                            delete batch->material_data_index_rows_buffer;
-                        batch->material_data_index_rows_buffer = nullptr;
-                    }
-
-                    // 标记该批次为 100% GPU-Driven，避免 CPU 侧重复写 ICB 与行表
-                    batch->gpu_driven_override             = true;
-                    batch->own_icb_mesh_tasks              = false;
-                    batch->own_mesh_draw_params            = false;
-                    batch->own_l2w_index                   = false;
-                    batch->own_material_data_rows          = false;
-
-                    batch->l2w_buffer                      = world_matrices_buf;
-                    batch->l2w_index_buffer                = l2w_index_buf;
-                    batch->mesh_draw_params_buffer         = mesh_draw_params_buf;
-                    batch->material_data_index_rows_buffer = material_data_rows_buf;
-                    batch->icb_mesh_tasks                  = icb_mesh_tasks_buf;
-                }
-            }
-        }
-    };
 } // namespace
 
 class ComputeAsteroidBeltApp : public WorkObject
@@ -682,11 +584,19 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f));
             transform->SetMovable(false);
 
-            auto prim = e->AddComponent<PrimitiveComponent>();
+            auto prim = e->AddComponent<InstancedPrimitiveComponent>();
             prim->SetPrimitiveAsset(&asteroid_assets[i]);
             PrimitiveComponent::MaterialDataAuthoringResource a_res{};
             a_res = asteroid_mtl_accessors[i].GetMaterialSSBOBinding();
             prim->SetMaterialDataResource(a_res);
+            prim->SetInstanceCount(INSTANCES_PER_GEOM);
+            prim->SetMaxInstances(INSTANCES_PER_GEOM);
+            prim->SetL2WBuffer(world_matrices_buffer);
+            prim->SetL2WIndexBuffer(l2w_index_buffer);
+            prim->SetMeshDrawParamsBuffer(mesh_draw_params_buffer);
+            prim->SetMaterialDataRowsBuffer(material_data_rows_buffer);
+            prim->SetIndirectMeshTaskBuffer(indirect_cmds_buffer);
+            prim->SetGPUDriven(true);
             prim->SetVisible(true);
         }
 
@@ -702,13 +612,18 @@ private:
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         // 广角鸟瞰宏伟土星环系统
-        camera->control_mode   = CameraComponent::ControlMode::ViewModel;
-        camera->target         = math::Vector3f(0.0f, 0.0f, 0.0f);
-        camera->distance       = 340.0f;
-        camera->yaw            = 0.0f;
-        camera->pitch          = -22.0f;
-        camera->is_main_camera = true;
-        camera->matrix_dirty   = true;
+        camera->control_mode     = CameraComponent::ControlMode::ViewModel;
+        camera->target           = math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance         = 340.0f;
+        camera->min_distance     = 45.0f;    // 刚好在行星表面(半径35)之外
+        camera->max_distance     = 2000.0f;  // 允许拉远到全景宏观宇宙鸟瞰
+        camera->near_plane       = 1.0f;
+        camera->far_plane        = 10000.0f;
+        camera->zoom_sensitivity = 0.12f;
+        camera->yaw              = 0.0f;
+        camera->pitch            = -22.0f;
+        camera->is_main_camera   = true;
+        camera->matrix_dirty     = true;
 
         camera->camera_data   = GetCamera();
         camera->camera_info   = const_cast<graph::CameraInfo *>(GetCameraInfo());
@@ -1072,21 +987,12 @@ public:
         GLogInfo(u8"[ComputeAsteroidBelt] 10 Builtin Geometries x 100,000 Instances each = 1,000,000 Total");
         GLogInfo(u8"[ComputeAsteroidBelt] ================================================================");
 
-        if (!InitVDM())               return false;
-        if (!CreateGeometries())      return false;
-        if (!InitMaterials())         return false;
-        if (!InitECSScene())          return false;
-        if (!InitCamera())            return false;
+        if (!InitVDM())                   return false;
+        if (!CreateGeometries())          return false;
+        if (!InitMaterials())             return false;
         if (!CreateComputeResources(dev)) return false;
-
-        // 注册 ECS 挂载系统：把 100% GPU-Driven 缓冲挂到 Asteroid 批次
-        ecs_context->RegisterRenderSystem<GPUIndirectAsteroidHookSystem>(
-            world_matrices_buffer,
-            l2w_index_buffer,
-            mesh_draw_params_buffer,
-            material_data_rows_buffer,
-            indirect_cmds_buffer
-        );
+        if (!InitECSScene())              return false;
+        if (!InitCamera())                return false;
 
         GLogInfo(u8"[ComputeAsteroidBelt] Initialization completed successfully! 1,000,000 asteroids ready.");
         return true;
@@ -1097,14 +1003,13 @@ public:
         elapsed_time += static_cast<float>(delta_time);
         tick_frame_count++;
 
-        // 动态摄像机环绕旋转
-        camera_angle += static_cast<float>(delta_time) * 6.0f;
+        // 动态摄像机缓慢环绕漫游（与鼠标交互增量融合）
         if (camera_entity)
         {
             auto camera = camera_entity->GetComponent<CameraComponent>();
             if (camera)
             {
-                camera->yaw = camera_angle;
+                camera->yaw += static_cast<float>(delta_time) * 3.0f;
                 camera->matrix_dirty = true;
             }
         }
