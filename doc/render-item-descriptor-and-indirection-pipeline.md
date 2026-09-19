@@ -233,21 +233,25 @@ uint texture_index       = texture_ref_buffer.refs[desc.w].descriptor_index;
 
 ---
 
-### 阶段四：CPU 合批管线精简化——二级索引与连号直通折叠
+### 阶段四：CPU 合批管线精简化——二级索引与连号直通折叠 【✅ 已完成】
 > **核心目标**：CPU 绘制提交全面切换为整数 Handle 模式，终结每帧组织重型数据。
 
-- **4.1 `PrimitiveBatchPipeline` 收集项轻量化**
-  - 废弃原 `PrimitiveRenderItem` 中对庞大对象指针的多重引用，每项仅提取其 `RenderItemHandle` 与排序键（`pipeline_id << 32 | material_id`）。
-- **4.2 实现连号区间折叠算法 (Run-Length Compaction)**
-  - 排序后遍历批次内的 Handle 列表，自动归并连续的单调递增区间：
-    - 例如 `[100, 101, 102, 103, 104]` 自动合并为 `(start=100, count=5)`。
-  - 对连号区间直接配置 DrawCommand：
-    `vkCmdDrawIndexed(..., count, firstIndex, vertexOffset, /*firstInstance=*/start);`
-    **完全跳过二级索引缓冲的分配与写入！**
-- **4.3 离散 Handle 写入二级绘制索引表 (`DrawItemIDBuffer`)**
-  - 对于无法折叠的散乱图元，将其 `RenderItemHandle` 紧凑写入每帧暂态动态环形 SSBO。
-- **4.4 数据吞吐量与性能对比实测**
-  - 统计单帧 CPU 向 GPU 提交的每帧缓冲字节数，验证连续场景与静态大世界中 CPU 上传量直降趋近为 0。
+- **4.1 `PrimitiveBatchPipeline` 收集项轻量化与几何聚类排序** 【✅ 已完成】
+  - 增强 `RenderItem::Compare`，相同材质与几何数据时按 `render_item_handle` 升序排列，最大化形成连号区间的概率。
+  - 在 `PrimitiveBatchPipeline::BuildBatches` 中针对 4-ID 几何项提取 `RenderItemHandle` 序列。
+- **4.2 实现连号区间折叠算法 (Run-Length Compaction)** 【✅ 已完成】
+  - 在 `DrawItemCompaction.h/.cpp` 中实现无 STL 的高效折叠算法 `CompactRenderItemHandles`：
+    - 识别单调递增连续段 `[h, h+1, h+2, ...]`（如 `[100, 101, 102, 103, 104]`）自动折叠为单个直通绘制区间 `(first_instance = 100, count = 5)`。
+    - **完全跳过二级索引缓冲的分配与写入（0 字节上传）！**
+- **4.3 离散 Handle 写入二级绘制索引表 (`DrawItemIDStorage`)** 【✅ 已完成】
+  - 实现 `DrawItemIDStorage` 暂态索引存储器，集成至 `ECSContext`，并在 `RenderBufferUploadSystem` 与 `RenderSceneUBOSystem` 中自动同步显存与填入 `GlobalAddresses::addr_draw_item_ids`。
+  - 离散散乱 Handle 紧凑写入 `DrawItemIDStorage`，在 `first_instance` 标记最高位掩码 `kRenderItemIndexedFlag = 0x80000000u`。
+  - 着色器层在 `RenderItemResolve.glsl` 中提供自动识别并解码两套模式的 `ResolveRenderItemAuto` / `ResolveRenderItemAutoUvec4`。
+- **4.4 数据吞吐量与单元验证实测** 【✅ 已完成】
+  - 在 `TestRenderItemDataStorage.cpp` 中新增 Test 9 与 Test 10：
+    - 针对纯连续、纯离散、混合连续/离散三种测试用例进行详尽验证，精确断言吞吐量节省（如连续段 100% 节省二级表写入）。
+    - 编译并执行完整 SPIR-V 着色器验证 `ResolveRenderItemAuto` 双模自动解析。
+    - 全量回归测试与 `PBRSpheres`、`ComputeAsteroidBelt` 编译无任何问题，100% 通过。
 
 ---
 

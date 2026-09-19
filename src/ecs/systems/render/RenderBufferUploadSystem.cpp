@@ -1,6 +1,7 @@
 ﻿#include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderItemDataStorage.h>
+#include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKCommandBuffer.h>
@@ -46,6 +47,12 @@ namespace hgl::ecs
         if (auto *render_item_storage = ctx->GetRenderItemStorage())
         {
             render_item_storage->SyncToGPU(active_device);
+        }
+
+        // Sync Level-2 DrawItemIDBuffer (secondary index SSBO)
+        if (auto *draw_item_id_storage = ctx->GetDrawItemIDStorage())
+        {
+            draw_item_id_storage->SyncToGPU(active_device);
         }
 
         const auto &registry = active_device->GetGPUBufferRegistry();

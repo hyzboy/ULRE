@@ -32,6 +32,17 @@ namespace hgl::ecs
             if (auto cmp = *range_1 <=> *range_2; cmp > 0) return 1;
         }
 
+        // For identical geometry, sort by render_item_handle ascending to maximize
+        // contiguous run-length compaction opportunities.
+        const auto h1 = GetRenderItemHandle();
+        const auto h2 = other.GetRenderItemHandle();
+        if (h1 != graph::INVALID_RENDER_ITEM_HANDLE &&
+            h2 != graph::INVALID_RENDER_ITEM_HANDLE)
+        {
+            if (h1 < h2) return -1;
+            if (h1 > h2) return 1;
+        }
+
         // Then compare by distance to camera
         float diff = other.distanceToCamera - distanceToCamera;
         if (diff > 0.0f) return 1;

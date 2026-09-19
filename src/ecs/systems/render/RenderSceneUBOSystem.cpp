@@ -4,6 +4,7 @@
 #include<cstdlib>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderItemDataStorage.h>
+#include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -171,10 +172,15 @@ namespace hgl::ecs
         if (!registry)
             return nullptr;
 
+        uint64_t render_item_addr = 0;
         if (auto *storage = context->GetRenderItemStorage())
-        {
-            registry->UpdateRenderItemAddresses(storage->GetGPUAddress(), 0);
-        }
+            render_item_addr = storage->GetGPUAddress();
+
+        uint64_t draw_item_ids_addr = 0;
+        if (auto *id_storage = context->GetDrawItemIDStorage())
+            draw_item_ids_addr = id_storage->GetGPUAddress();
+
+        registry->UpdateRenderItemAddresses(render_item_addr, draw_item_ids_addr);
 
         return registry->GetGlobalAddressesUBO();
     }

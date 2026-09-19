@@ -6,6 +6,7 @@
 
 #include<hgl/math/geometry/Frustum.h>
 #include<hgl/ecs/core/MaterialBatch.h>
+#include<hgl/ecs/support/DrawItemCompaction.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 
@@ -37,6 +38,7 @@ namespace hgl::ecs
         graph::VulkanDevice* device = nullptr;
         math::Frustum frustum;
         uint32_t prepared_frame_index = std::numeric_limits<uint32_t>::max();
+        CompactionStats last_compaction_stats{};
 
     public:
         bool PrepareFrame(ECSContext* ctx);
@@ -45,6 +47,8 @@ namespace hgl::ecs
         void RunSorting();
         void RunTransformIndexing();
         void RunBatching();
+
+        const CompactionStats &GetLastCompactionStats() const { return last_compaction_stats; }
 
     private:
         void PerformFrustumCulling();

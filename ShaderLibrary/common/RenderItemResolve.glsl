@@ -94,4 +94,49 @@ uvec4 ResolveRenderItemIndexedUvec4(uint draw_id)
     return RenderItemUvec4BufferRef(global_addresses.addr_global_render_items).items[item_id];
 }
 
+// ── 自动区分直通与二级索引模式 ──
+
+#define RENDER_ITEM_INDEXED_FLAG 0x80000000u
+
+bool IsRenderItemIndexed(uint first_instance)
+{
+    return (first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u;
+}
+
+uint GetDrawItemIDOffset(uint first_instance)
+{
+    return first_instance & ~RENDER_ITEM_INDEXED_FLAG;
+}
+
+// 统一自动解析：根据 first_instance 是否带有 RENDER_ITEM_INDEXED_FLAG，自动选择直通或二级索引
+RenderItemDescriptor ResolveRenderItemAuto(uint first_instance, uint instance_offset)
+{
+    if ((first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u)
+    {
+        uint draw_id = (first_instance & ~RENDER_ITEM_INDEXED_FLAG) + instance_offset;
+        uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
+        return RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+    }
+    else
+    {
+        uint item_id = first_instance + instance_offset;
+        return RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+    }
+}
+
+uvec4 ResolveRenderItemAutoUvec4(uint first_instance, uint instance_offset)
+{
+    if ((first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u)
+    {
+        uint draw_id = (first_instance & ~RENDER_ITEM_INDEXED_FLAG) + instance_offset;
+        uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
+        return RenderItemUvec4BufferRef(global_addresses.addr_global_render_items).items[item_id];
+    }
+    else
+    {
+        uint item_id = first_instance + instance_offset;
+        return RenderItemUvec4BufferRef(global_addresses.addr_global_render_items).items[item_id];
+    }
+}
+
 #endif // RENDER_ITEM_RESOLVE_GLSL

@@ -1,4 +1,6 @@
 ﻿#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
+#include<hgl/ecs/support/DrawItemIDStorage.h>
+#include<hgl/ecs/support/DrawItemCompaction.h>
 #include<source_location>
 #include<cstdlib>
 #include<cstdio>
@@ -104,6 +106,13 @@ namespace hgl::ecs
         const uint32_t frame_index = world->GetFrameIndex();
         if (prepared_frame_index != frame_index)
             prepared_frame_index = frame_index;
+
+        last_compaction_stats = CompactionStats{};
+        if (world)
+        {
+            if (auto *id_storage = world->GetDrawItemIDStorage())
+                id_storage->Reset();
+        }
 
         return true;
     }
@@ -389,58 +398,28 @@ namespace hgl::ecs
         }
 
         batch.draw_batches.clear();
-        batch.draw_batches.resize(count);
-
-        DrawBatch* draw_batch = batch.draw_batches.data();
-        RenderItem* item = batch.items[0];
-        const graph::GeometryDataBuffer *data_buffer = item ? item->GetGeometryDataBuffer() : nullptr;
-        const graph::GeometryDrawRange *draw_range = item ? item->GetGeometryDrawRange() : nullptr;
-        const graph::Geometry *geometry = nullptr;
-        if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(item))
-        {
-            auto prim_comp = prim_item->GetPrimitiveComponent();
-            if (prim_comp && prim_comp->GetPrimitiveAsset())
-                geometry = prim_comp->GetPrimitiveAsset()->GetGeometry();
-        }
-
-        if (!data_buffer || !draw_range)
-        {
-            batch.draw_batches_count = 0;
-            batch.draw_batches.clear();
-            return;
-        }
+        batch.draw_batches.reserve(count);
 
         auto *gc = world ? world->GetGraphicsContext() : nullptr;
         auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
         auto *dev = world ? world->GetGPUDevice() : nullptr;
+        auto *id_storage = world ? world->GetDrawItemIDStorage() : nullptr;
 
-        if (geometry && pool && dev)
-            const_cast<graph::Geometry *>(geometry)->EnsureMeshDrawParams(pool, dev);
-        if (data_buffer && geometry && data_buffer->geometry_id == 0)
-            const_cast<graph::GeometryDataBuffer *>(data_buffer)->geometry_id = geometry->GetGeometryID();
-
-        batch.draw_batches_count = 1;
-        draw_batch->first_instance = base_instance;
-        if (auto *inst_item = dynamic_cast<InstancedPrimitiveRenderItem *>(item))
-            draw_batch->instance_count = inst_item->GetInstanceCount() > 0 ? inst_item->GetInstanceCount() : 1;
-        else
-            draw_batch->instance_count = 1;
-        draw_batch->Set(data_buffer, draw_range, geometry);
-
-        const graph::GeometryDataBuffer* current_data_buffer = draw_batch->geom_data_buffer;
-        const graph::GeometryDrawRange* current_draw_range = draw_batch->geom_draw_range;
-
-        for (size_t i = 1; i < count; i++)
+        size_t i = 0;
+        while (i < count)
         {
-            item = batch.items[i];
-            data_buffer = item ? item->GetGeometryDataBuffer() : nullptr;
-            draw_range = item ? item->GetGeometryDrawRange() : nullptr;
+            RenderItem *first_item = batch.items[i];
+            const graph::GeometryDataBuffer *data_buffer = first_item ? first_item->GetGeometryDataBuffer() : nullptr;
+            const graph::GeometryDrawRange *draw_range = first_item ? first_item->GetGeometryDrawRange() : nullptr;
 
             if (!data_buffer || !draw_range)
+            {
+                ++i;
                 continue;
+            }
 
-            geometry = nullptr;
-            if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(item))
+            const graph::Geometry *geometry = nullptr;
+            if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(first_item))
             {
                 auto prim_comp = prim_item->GetPrimitiveComponent();
                 if (prim_comp && prim_comp->GetPrimitiveAsset())
@@ -452,33 +431,95 @@ namespace hgl::ecs
             if (data_buffer && geometry && data_buffer->geometry_id == 0)
                 const_cast<graph::GeometryDataBuffer *>(data_buffer)->geometry_id = geometry->GetGeometryID();
 
-            const graph::GeometryDataBuffer* item_data_buf = data_buffer;
-            const graph::GeometryDrawRange* item_draw_range = draw_range;
-
-            if (!batch.gpu_driven_override &&
-                *current_data_buffer == *item_data_buf &&
-                *current_draw_range == *item_draw_range)
+            size_t cluster_end = i;
+            while (cluster_end + 1 < count)
             {
-                if (auto *inst = dynamic_cast<InstancedPrimitiveRenderItem *>(item))
-                    draw_batch->instance_count += inst->GetInstanceCount();
-                else
-                    ++draw_batch->instance_count;
-                continue;
+                RenderItem *next_item = batch.items[cluster_end + 1];
+                const graph::GeometryDataBuffer *next_data_buf = next_item ? next_item->GetGeometryDataBuffer() : nullptr;
+                const graph::GeometryDrawRange *next_draw_range = next_item ? next_item->GetGeometryDrawRange() : nullptr;
+
+                if (!next_data_buf || !next_draw_range)
+                    break;
+
+                if (batch.gpu_driven_override ||
+                    *data_buffer != *next_data_buf ||
+                    *draw_range != *next_draw_range)
+                {
+                    break;
+                }
+                ++cluster_end;
             }
 
-            ++batch.draw_batches_count;
-            ++draw_batch;
+            const size_t cluster_size = cluster_end - i + 1;
 
-            draw_batch->first_instance = base_instance + static_cast<uint32_t>(i);
-            if (auto *inst = dynamic_cast<InstancedPrimitiveRenderItem *>(item))
-                draw_batch->instance_count = inst->GetInstanceCount() > 0 ? inst->GetInstanceCount() : 1;
+            bool has_valid_4id = true;
+            for (size_t k = i; k <= cluster_end; ++k)
+            {
+                RenderItem *item_k = batch.items[k];
+                if (!item_k || item_k->GetRenderItemHandle() == INVALID_RENDER_ITEM_HANDLE)
+                {
+                    has_valid_4id = false;
+                    break;
+                }
+            }
+
+            if (has_valid_4id && !batch.gpu_driven_override)
+            {
+                hgl::ValueArray<RenderItemHandle> cluster_handles;
+                cluster_handles.Reserve(static_cast<int>(cluster_size));
+                for (size_t k = i; k <= cluster_end; ++k)
+                {
+                    cluster_handles.Add(batch.items[k]->GetRenderItemHandle());
+                }
+
+                CompactionStats stats{};
+                hgl::ValueArray<CompactedDrawRange> compacted_ranges;
+                CompactRenderItemHandles(
+                    cluster_handles.GetData(),
+                    static_cast<uint32_t>(cluster_handles.GetCount()),
+                    id_storage,
+                    compacted_ranges,
+                    &stats);
+
+                last_compaction_stats.total_input_items     += stats.total_input_items;
+                last_compaction_stats.direct_ranges         += stats.direct_ranges;
+                last_compaction_stats.direct_items          += stats.direct_items;
+                last_compaction_stats.indexed_ranges        += stats.indexed_ranges;
+                last_compaction_stats.indexed_items         += stats.indexed_items;
+                last_compaction_stats.bytes_saved_over_full += stats.bytes_saved_over_full;
+
+                for (int r = 0; r < compacted_ranges.GetCount(); ++r)
+                {
+                    const auto &range = compacted_ranges[r];
+                    DrawBatch db{};
+                    db.first_instance = range.first_instance;
+                    db.instance_count = range.instance_count;
+                    db.Set(data_buffer, draw_range, geometry);
+                    batch.draw_batches.push_back(db);
+                }
+            }
             else
-                draw_batch->instance_count = 1;
-            draw_batch->Set(data_buffer, draw_range, geometry);
+            {
+                DrawBatch db{};
+                db.first_instance = base_instance + static_cast<uint32_t>(i);
+                db.instance_count = 0;
+                for (size_t k = i; k <= cluster_end; ++k)
+                {
+                    if (auto *inst = dynamic_cast<InstancedPrimitiveRenderItem *>(batch.items[k]))
+                        db.instance_count += inst->GetInstanceCount();
+                    else
+                        ++db.instance_count;
+                }
+                if (db.instance_count == 0)
+                    db.instance_count = 1;
+                db.Set(data_buffer, draw_range, geometry);
+                batch.draw_batches.push_back(db);
+            }
 
-            current_data_buffer = draw_batch->geom_data_buffer;
-            current_draw_range = draw_batch->geom_draw_range;
+            i = cluster_end + 1;
         }
+
+        batch.draw_batches_count = static_cast<uint32_t>(batch.draw_batches.size());
 
         // ── IndirectMeshDraw：mesh 命令 + per-draw 参数行（后置统一写）──
         WriteMeshDrawCommands(batch);

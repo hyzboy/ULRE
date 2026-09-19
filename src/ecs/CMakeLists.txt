@@ -193,6 +193,8 @@ set(ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES
 set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/TransformDataStorage.h
     ${ECS_INCLUDE_PATH}/support/RenderItemDataStorage.h
+    ${ECS_INCLUDE_PATH}/support/DrawItemIDStorage.h
+    ${ECS_INCLUDE_PATH}/support/DrawItemCompaction.h
     ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
     ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
     ${ECS_INCLUDE_PATH}/support/PipelineMaterialRenderer.h
@@ -203,6 +205,8 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/TextRenderPipeline.h
     support/RenderPipelineSystem.cpp
     support/RenderItemDataStorage.cpp
+    support/DrawItemIDStorage.cpp
+    support/DrawItemCompaction.cpp
     support/VisibilityDataStorage.cpp
     support/TransformAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp

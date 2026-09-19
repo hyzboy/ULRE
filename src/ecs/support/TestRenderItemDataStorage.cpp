@@ -1,4 +1,6 @@
 #include <hgl/ecs/support/RenderItemDataStorage.h>
+#include <hgl/ecs/support/DrawItemIDStorage.h>
+#include <hgl/ecs/support/DrawItemCompaction.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
@@ -297,6 +299,268 @@ int main(int argc, char **argv)
         }
     }
 
-    GLogInfo(u8"=== All RenderItemDataStorage Stage 1, 2 & 3 Tests Passed Successfully! ===");
+    // Test 9: Stage 4 Verification - DrawItemIDStorage Lifecycle & ECSContext Integration
+    GLogInfo(u8"--- Testing Stage 4: DrawItemIDStorage Secondary Index Table ---");
+    {
+        DrawItemIDStorage id_storage;
+        if (id_storage.GetCount() != 0)
+        {
+            GLogError(u8"Test 9 Failed: Initial count must be 0");
+            return 23;
+        }
+
+        uint32_t off0 = id_storage.Append(101);
+        uint32_t off1 = id_storage.Append(202);
+        if (off0 != 0 || off1 != 1 || id_storage.GetCount() != 2)
+        {
+            GLogError(u8"Test 9 Failed: Append single handle mismatch");
+            return 24;
+        }
+
+        uint32_t batch_handles[] = { 303, 404, 505 };
+        uint32_t off_batch = id_storage.Append(batch_handles, 3);
+        if (off_batch != 2 || id_storage.GetCount() != 5)
+        {
+            GLogError(u8"Test 9 Failed: Append batch handles mismatch");
+            return 25;
+        }
+
+        const uint32_t *data = id_storage.GetData();
+        if (data[0] != 101 || data[1] != 202 || data[2] != 303 || data[3] != 404 || data[4] != 505)
+        {
+            GLogError(u8"Test 9 Failed: Data content mismatch");
+            return 26;
+        }
+
+        id_storage.Reset();
+        if (id_storage.GetCount() != 0)
+        {
+            GLogError(u8"Test 9 Failed: Count must be 0 after Reset()");
+            return 27;
+        }
+
+        // Test Context ownership
+        ECSContext ctx("TestContextStage4");
+        auto *world_id_storage = ctx.GetDrawItemIDStorage();
+        if (!world_id_storage)
+        {
+            GLogError(u8"Test 9 Failed: ECSContext must own DrawItemIDStorage");
+            return 28;
+        }
+    }
+
+    // Test 10: Stage 4 Verification - Run-Length Compaction & Throughput Savings
+    GLogInfo(u8"--- Testing Stage 4: Run-Length Compaction & Secondary Index Reduction ---");
+    {
+        DrawItemIDStorage id_storage;
+
+        // Case 1: Purely contiguous handles: [100, 101, 102, 103, 104]
+        {
+            uint32_t handles[] = { 100, 101, 102, 103, 104 };
+            hgl::ValueArray<CompactedDrawRange> ranges;
+            CompactionStats stats{};
+
+            CompactRenderItemHandles(handles, 5, &id_storage, ranges, &stats);
+
+            if (ranges.GetCount() != 1)
+            {
+                GLogError(u8"Test 10 Case 1 Failed: Expected 1 range, got %d", ranges.GetCount());
+                return 29;
+            }
+            if (ranges[0].first_instance != 100 || ranges[0].instance_count != 5 || !ranges[0].is_direct)
+            {
+                GLogError(u8"Test 10 Case 1 Failed: Range content mismatch");
+                return 30;
+            }
+            if (stats.direct_items != 5 || stats.indexed_items != 0 || id_storage.GetCount() != 0)
+            {
+                GLogError(u8"Test 10 Case 1 Failed: Secondary table must not receive any writes for contiguous runs!");
+                return 31;
+            }
+            if (stats.bytes_saved_over_full != 60) // 5 * 12 bytes = 60 bytes saved
+            {
+                GLogError(u8"Test 10 Case 1 Failed: Bytes saved mismatch, got %u expected 60", stats.bytes_saved_over_full);
+                return 32;
+            }
+        }
+
+        // Case 2: Purely scattered handles: [10, 25, 40, 75, 90]
+        id_storage.Reset();
+        {
+            uint32_t handles[] = { 10, 25, 40, 75, 90 };
+            hgl::ValueArray<CompactedDrawRange> ranges;
+            CompactionStats stats{};
+
+            CompactRenderItemHandles(handles, 5, &id_storage, ranges, &stats);
+
+            if (ranges.GetCount() != 1)
+            {
+                GLogError(u8"Test 10 Case 2 Failed: Expected 1 batched range, got %d", ranges.GetCount());
+                return 33;
+            }
+            if (!IsIndexedDraw(ranges[0].first_instance) || ranges[0].is_direct)
+            {
+                GLogError(u8"Test 10 Case 2 Failed: Must be indexed draw range");
+                return 34;
+            }
+            if (GetDrawIndexOffset(ranges[0].first_instance) != 0 || ranges[0].instance_count != 5)
+            {
+                GLogError(u8"Test 10 Case 2 Failed: Offset or instance count mismatch");
+                return 35;
+            }
+            if (id_storage.GetCount() != 5)
+            {
+                GLogError(u8"Test 10 Case 2 Failed: DrawItemIDStorage count must be 5");
+                return 36;
+            }
+            if (stats.bytes_saved_over_full != 40) // 5 * 12 - 5 * 4 = 40 bytes saved
+            {
+                GLogError(u8"Test 10 Case 2 Failed: Bytes saved mismatch, got %u expected 40", stats.bytes_saved_over_full);
+                return 37;
+            }
+        }
+
+        // Case 3: Mixed handles: [10, 11, 12, 50, 70, 100, 101, 102, 103, 120]
+        id_storage.Reset();
+        {
+            uint32_t handles[] = { 10, 11, 12, 50, 70, 100, 101, 102, 103, 120 };
+            hgl::ValueArray<CompactedDrawRange> ranges;
+            CompactionStats stats{};
+
+            CompactRenderItemHandles(handles, 10, &id_storage, ranges, &stats);
+
+            if (ranges.GetCount() != 4)
+            {
+                GLogError(u8"Test 10 Case 3 Failed: Expected 4 ranges, got %d", ranges.GetCount());
+                return 38;
+            }
+            // Range 0: [10, 11, 12] -> Direct (start=10, count=3)
+            if (!ranges[0].is_direct || ranges[0].first_instance != 10 || ranges[0].instance_count != 3)
+            {
+                GLogError(u8"Test 10 Case 3 Failed: Range 0 mismatch");
+                return 39;
+            }
+            // Range 1: [50, 70] -> Indexed (offset=0, count=2)
+            if (ranges[1].is_direct || !IsIndexedDraw(ranges[1].first_instance) ||
+                GetDrawIndexOffset(ranges[1].first_instance) != 0 || ranges[1].instance_count != 2)
+            {
+                GLogError(u8"Test 10 Case 3 Failed: Range 1 mismatch");
+                return 40;
+            }
+            // Range 2: [100, 101, 102, 103] -> Direct (start=100, count=4)
+            if (!ranges[2].is_direct || ranges[2].first_instance != 100 || ranges[2].instance_count != 4)
+            {
+                GLogError(u8"Test 10 Case 3 Failed: Range 2 mismatch");
+                return 41;
+            }
+            // Range 3: [120] -> Direct isolated (start=120, count=1)
+            if (!ranges[3].is_direct || ranges[3].first_instance != 120 || ranges[3].instance_count != 1)
+            {
+                GLogError(u8"Test 10 Case 3 Failed: Range 3 mismatch");
+                return 42;
+            }
+            if (stats.direct_items != 8 || stats.indexed_items != 2 || id_storage.GetCount() != 2)
+            {
+                GLogError(u8"Test 10 Case 3 Failed: Statistics or storage count mismatch");
+                return 43;
+            }
+        }
+
+        // Case 4: Test Auto-Resolving BDA Shader with RENDER_ITEM_INDEXED_FLAG in SPIR-V
+        if (graph::InitShaderCompiler())
+        {
+            const char *test_auto_resolve_glsl = R"(
+                #version 460
+                #extension GL_EXT_buffer_reference : require
+                #extension GL_EXT_scalar_block_layout : require
+                #extension GL_ARB_gpu_shader_int64 : require
+                #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+                #define SCENE_SET 0
+                #define GLOBAL_ADDRESSES_BINDING 4
+
+                layout(set = SCENE_SET, binding = GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
+                {
+                    uint64_t addr_mesh_draw_params;
+                    uint64_t addr_pbr_surface;
+                    uint64_t addr_emissive_surface;
+                    uint64_t addr_transmission_surface;
+                    uint64_t addr_global_render_items;
+                    uint64_t addr_draw_item_ids;
+                } global_addresses;
+
+                struct RenderItemDescriptor
+                {
+                    uint transform_id;
+                    uint geometry_id;
+                    uint material_id;
+                    uint texture_id;
+                };
+
+                layout(buffer_reference, scalar, buffer_reference_align = 16) buffer RenderItemBufferRef
+                {
+                    RenderItemDescriptor items[];
+                };
+
+                layout(buffer_reference, scalar, buffer_reference_align = 4) buffer DrawItemIDBufferRef
+                {
+                    uint ids[];
+                };
+
+                #define RENDER_ITEM_INDEXED_FLAG 0x80000000u
+
+                RenderItemDescriptor ResolveRenderItemAuto(uint first_instance, uint instance_offset)
+                {
+                    if ((first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u)
+                    {
+                        uint draw_id = (first_instance & ~RENDER_ITEM_INDEXED_FLAG) + instance_offset;
+                        uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
+                        return RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+                    }
+                    else
+                    {
+                        uint item_id = first_instance + instance_offset;
+                        return RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+                    }
+                }
+
+                layout(local_size_x = 64) in;
+
+                layout(binding = 0) buffer OutputBuffer
+                {
+                    uvec4 results[];
+                };
+
+                void main()
+                {
+                    uint idx = gl_GlobalInvocationID.x;
+                    // Test both Direct and Indexed auto resolution in shader
+                    RenderItemDescriptor d_dir = ResolveRenderItemAuto(100u, idx);
+                    RenderItemDescriptor d_idx = ResolveRenderItemAuto(0x80000000u | 50u, idx);
+                    results[idx] = uvec4(d_dir.transform_id + d_idx.transform_id,
+                                         d_dir.geometry_id  + d_idx.geometry_id,
+                                         d_dir.material_id  + d_idx.material_id,
+                                         d_dir.texture_id   + d_idx.texture_id);
+                }
+            )";
+
+            auto *spv = graph::CompileShader(VK_SHADER_STAGE_COMPUTE_BIT, test_auto_resolve_glsl);
+            if (!spv || !spv->result)
+            {
+                GLogError(u8"Test 10 Failed: Auto-Resolving BDA shader compilation failed: %s",
+                          spv && spv->log ? spv->log : "unknown error");
+                if (spv) graph::FreeSPVData(spv);
+                graph::CloseShaderCompiler();
+                return 44;
+            }
+
+            GLogInfo(u8"Test 10: Auto-Resolving BDA Shader successfully compiled to SPIR-V (size: %u words)",
+                     spv->spv_length);
+            graph::FreeSPVData(spv);
+            graph::CloseShaderCompiler();
+        }
+    }
+
+    GLogInfo(u8"=== All RenderItemDataStorage Stage 1, 2, 3 & 4 Tests Passed Successfully! ===");
     return 0;
 }
