@@ -192,6 +192,7 @@ set(ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES
 
 set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/TransformDataStorage.h
+    ${ECS_INCLUDE_PATH}/support/RenderItemDataStorage.h
     ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
     ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
     ${ECS_INCLUDE_PATH}/support/PipelineMaterialRenderer.h
@@ -201,6 +202,7 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h
     ${ECS_INCLUDE_PATH}/support/TextRenderPipeline.h
     support/RenderPipelineSystem.cpp
+    support/RenderItemDataStorage.cpp
     support/VisibilityDataStorage.cpp
     support/TransformAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
@@ -331,6 +333,12 @@ if(MSVC)
     set_target_properties(TestTransformFlatStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+add_executable(TestRenderItemDataStorage support/TestRenderItemDataStorage.cpp)
+target_link_libraries(TestRenderItemDataStorage PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestRenderItemDataStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -338,4 +346,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestTransformFlatStorage
         PROPERTIES LABELS "ecs;transform")
+
+    add_test(
+        NAME TestRenderItemDataStorage
+        COMMAND TestRenderItemDataStorage)
+    set_tests_properties(
+        TestRenderItemDataStorage
+        PROPERTIES LABELS "ecs;render_item")
 endif()
