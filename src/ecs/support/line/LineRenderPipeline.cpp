@@ -26,7 +26,6 @@
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/graph/RootAddressPush.h>
-#include <hgl/vk/VKRenderAssign.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
 #include <hgl/vk/VKVABList.h>
@@ -55,10 +54,10 @@ namespace hgl::ecs
 
             gvf.Add(graph::VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT, 3, sizeof(float) * 3);
             gvf.Add(graph::VertexSemantic::Color, VK_FORMAT_R8_UINT, 1, sizeof(uint8_t));
-            gvf.Add(graph::Assign::TransformID::VIS_SEMANTIC,
-                    graph::Assign::TransformID::VAB_FMT,
+            gvf.Add(graph::VertexSemantic::TransformID,
+                    VK_FORMAT_R32_UINT,
                     1,
-                    graph::Assign::TransformID::STRIDE_BYTES);
+                    sizeof(uint32_t));
             gvf.Add(graph::VertexSemantic::Size, VK_FORMAT_R32G32_SFLOAT, 2, sizeof(float) * 2);
 
             return gvf;
@@ -165,7 +164,7 @@ namespace hgl::ecs
 
         const int pos_idx   = geometry->GetVABIndex(graph::VertexSemantic::Position);
         const int color_idx = geometry->GetVABIndex(graph::VertexSemantic::Color);
-        const int transform_idx = geometry->GetVABIndex(graph::Assign::TransformID::VIS_SEMANTIC);
+        const int transform_idx = geometry->GetVABIndex(graph::VertexSemantic::TransformID);
         const int size_idx   = geometry->GetVABIndex(graph::VertexSemantic::Size);
 
         if (pos_idx < 0 || color_idx < 0 || transform_idx < 0 || size_idx < 0)
@@ -215,7 +214,7 @@ namespace hgl::ecs
         uint8_t                     color_index,
         float                       width,
         float                       min_width,
-        graph::Assign::TransformID::ValueType transform_index)
+        uint32_t                    transform_index)
     {
         bool pos_valid = va_pos.IsValid();
         bool color_valid = va_color.IsValid();
@@ -552,7 +551,7 @@ namespace hgl::ecs
         {
             bool comp_write_ok = true;
 
-            graph::Assign::TransformID::ValueType transform_id = 0;
+            uint32_t transform_id = 0;
             if (transform_system)
             {
                 Entity* owner = comp ? comp->GetOwner() : nullptr;
@@ -569,10 +568,10 @@ namespace hgl::ecs
                         const uint32_t resolved = transform->IsMovable() ? (dynamic_base + group_index)
                                                                           : (group_index + 1u);
 
-                        constexpr uint32_t kMaxTransformID = std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
+                        constexpr uint32_t kMaxTransformID = std::numeric_limits<uint32_t>::max();
                         transform_id = resolved > kMaxTransformID
                                      ? 0
-                                     : static_cast<graph::Assign::TransformID::ValueType>(resolved);
+                                     : static_cast<uint32_t>(resolved);
 
                         if (transform_id != 0)
                             ++resolved_transform_components;
@@ -682,7 +681,7 @@ namespace hgl::ecs
 
                             fill_addr(graph::VertexSemantic::Position,    row->addr_position);
                             fill_addr(graph::VertexSemantic::Color,       row->addr_color);
-                            fill_addr(graph::Assign::TransformID::VIS_SEMANTIC, row->addr_transform_id);
+                            fill_addr(graph::VertexSemantic::TransformID, row->addr_transform_id);
                             fill_addr(graph::VertexSemantic::Size,        row->addr_size);
                         }
                     }

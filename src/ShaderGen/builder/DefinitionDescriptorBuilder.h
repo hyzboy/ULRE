@@ -3,7 +3,6 @@
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
-#include <hgl/common/RenderAssignDef.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>

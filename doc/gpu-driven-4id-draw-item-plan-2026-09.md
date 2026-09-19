@@ -1,6 +1,6 @@
 # 材质数据全局池化 + 4-ID Draw Item 大计划（技术文档）
 
-> 基线：**2026-09-11 纹理引用重构后现状**（tex_tail 拆除、`MaterialTextureReferencePool` 落地、`MaterialInstanceAddresses` 16B 双地址）。
+> 基线：**2026-09-18**（2026-09-11 纹理引用重构 + 2026-09-18 Meshlet 双轨调度；`MeshDrawParams` **112B**、`MaterialInstanceAddresses` 16B 双地址）。
 > 状态：总纲（不直接执行）。每个阶段由后续会话据此拆小计划、逐任务 build+run 验证。
 > 目的：子会话拿到本文即可拆任务，无需重新 grep——结构、数据流、改动点、行号均以本基线核实。
 
@@ -16,15 +16,19 @@
 
 ## 2. 现状（唯一基线，2026-09-11 后）
 
-### 2.1 MeshDrawParams 行（88B）— `ShaderBufferSources.h:16-85`
+### 2.1 MeshDrawParams 行（112B）— `ShaderBufferSources.h:16-88`
 X-macro 单源 `HGL_MESH_DRAW_PARAMS_FIELD_LIST`：
 ```
 头部 6×4B（offset 0..20）：index_base, vertex_base, is_indexed,
                           total_vertices, char_height, first_instance
-地址尾 8×uint64（offset 24 起 8B 步进）：addr_position, addr_uv, addr_ntb,
+地址尾 11×uint64（offset 24 起 8B 步进）：addr_position, addr_uv, addr_ntb,
                           addr_color, addr_luminance, addr_transform_id,
-                          addr_size, addr_index
+                          addr_size, addr_index,
+                          addr_meshlets, addr_meshlet_vertices, addr_meshlet_triangles
 ```
+- 行距 **112B**（`sizeof(MeshDrawParams) == 112` 断言，`:85/:88`）。末尾 3 个 meshlet 地址来自
+  2026-09-18 Meshlet 提交（`102a931d3`，见 §2.9）。
+- ⚠️ 代码内注释 `:10`/`:63` 仍写「共 88B」，与 `sizeof == 112` 断言不一致（注释残留，建议随下次改动修）。
 - `addr_transform_id` 是「per-vertex transform id 流」地址（顶点级），与 4-ID 的实例级 `TransformID` **不同**（§4）。
 
 ### 2.2 材质字段行（纯业务 payload，无纹理句柄）— `MaterialDataRows.h`
@@ -40,14 +44,14 @@ X-macro 单源 `HGL_MESH_DRAW_PARAMS_FIELD_LIST`：
   PBR=32 / Emissive=16 / Transmission=16。
 
 ### 2.3 材质数据寻址 — `MaterialInstanceAddresses`（16B 双地址）
-- `mtl_data_addrs` 每实例一行 = `MaterialInstanceAddresses`（`ShaderBufferSources.h:89-97`）：
+- `mtl_data_addrs` 每实例一行 = `MaterialInstanceAddresses`（`ShaderBufferSources.h:92-99`）：
   - `payload_address` → 材质**字段行**（PBR/Emissive/Transmission 行）；FS `MTL_ROW(i)` 解引用。
   - `texture_reference_address` → 该实例的**纹理引用行**；FS `MTL_TEX(i)` 解引用。
 - FS 宏（`MaterialShaderEmitter.cpp`）：
   - `MTL_ROW(i)`（:167-169）= `行结构(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[i].payload_address)`。
   - `MTL_TEX(i)`（:194-196）= `MaterialTextureReferencesRef(...values[i].texture_reference_address)`。
   - `fragDataIndexID` = draw item 序号（表下标）。
-- 表写入：`PrimitiveBatchPipeline.cpp:746/768/829`（每批）；文本路径单行表 `TextRenderPipeline.cpp:519-535`。
+- 表写入：`PrimitiveBatchPipeline.cpp`（`MaterialInstanceAddresses` 行，`:762`/`:784`/`:845`；以符号定位为准，行号会漂移）；文本路径单行表 `TextRenderPipeline.cpp:519-535`。
 - 字段行地址 = `gpu_base + data_index × row_bytes`（`RenderPrimitiveCollectSystem.cpp`
   物化，`MaterialSSBOBufferRegistry::TryGetRowBuffer(ssbo_id)` 提供共享材质行段）。
 
@@ -98,6 +102,13 @@ addr_text_char_info, addr_text_char_style, addr_text_char_instance
   `SetMaterialTextureResource("base_color"/"normal", …, Texture2DArray, "", row)`。
 - 同型：`AutoMergeMaterialInstance.cpp`、`BasicLitMeshes.cpp`。
 
+### 2.9 几何双轨调度（2026-09-18 Meshlet 落地后现状）
+- `MeshDrawParams` 追加 3 个 meshlet BDA（§2.1，88B→**112B**）——meshlet 网格与常规网格**共用同一行结构与池**。
+- `Geometry`/`GeometryData` 支持持有 Meshlet GPU Storage Buffer（`VKGeometry.h`；`LoadGeometry` 自适应探测并加载 Meshlet 块）。
+- `PrimitiveBatchPipeline` 自动双轨分流：含 Meshlet 的网格按 `meshlet_count` 发射；常规网格维持 `VertexPassthrough` 调度。
+- 发射侧：`MeshShaderHeaderGen`/`MeshShaderVertexAdapter` 声明 Meshlet BDA `buffer_reference` + 8-bit storage 扩展。
+- **对阶段 2/4 的约束**：`GeometryID` 与命令面须同时覆盖双轨；4-ID 的 `GeometryID` 指向的行自带 meshlet 三地址，无需额外 ID 通道。
+
 ---
 
 ## 3. 终态数据模型
@@ -129,7 +140,7 @@ addr_text_char_info, addr_text_char_style, addr_text_char_instance
 | ID | 含义（终态） | 现状对应 | 备注 |
 |---|---|---|---|
 | `TransformID` | L2W 池行号（实例变换） | `l2w_index[gl_InstanceIndex]` 查行 | 与 `addr_transform_id`（顶点级）**不同** |
-| `GeometryID` | MeshDrawParams 池行号（几何+绘制参数） | ICB 命令序 = 行序，`gl_DrawID` 查行 | 阶段 2 池化后变持久 ID |
+| `GeometryID` | MeshDrawParams 池行号（几何+绘制参数，**行距 112B**） | ICB 命令序 = 行序，`gl_DrawID` 查行 | 阶段 2 池化后变持久 ID；Meshlet 网格走双轨独立发射（§2.9） |
 | `MaterialID` | 材质参数寻址中间层（终态 index） | `fragDataIndexID` 查 `MaterialInstanceAddresses` 行 | 该行现 16B 双地址，阶段 3 改双 index |
 | `TextureID` | 纹理引用行号 | `MaterialTextureReferencePool` 行（per-definition） | **已落地**（§2.4） |
 
@@ -181,7 +192,7 @@ RPC 物化 → TryGetRowBuffer(ssbo_id) → row_gpu = gpu_base + data_index×row
 
 **目标**：所有 primitive 几何绘制参数创建期一次写入全局池，`GeometryID` 引用；池永久固定（预分配上限、只增不减、基址不变）。
 
-**现状**：`PrimitiveBatchPipeline::WriteMeshDrawCommands` 每帧按 draw 序写 88B 行 + ICB 命令（命令序=行序）。
+**现状**：`PrimitiveBatchPipeline::WriteMeshDrawCommands` 每帧按 draw 序写 **112B** 行 + ICB 命令（命令序=行序）；Meshlet 网格经双轨分流单独发射（§2.9），行结构共用同一池。
 
 **终态**：primitive 创建期 `EnsureMeshDrawParams` 写一次池行 → `GeometryID`；渲染期命令面只引用 `GeometryID`。
 
@@ -194,7 +205,7 @@ RPC 物化 → TryGetRowBuffer(ssbo_id) → row_gpu = gpu_base + data_index×row
 
 **验收**：编译 + 全部示例；MeshDrawParams 行只在创建期写一次；几何不变池零重写。
 
-**待澄清**：`GeometryID` 粒度（per asset vs per 运行时实例）；池容量（同 1024？）；`addr_transform_id`（顶点级 id 流）是否本阶段一并池化。
+**待澄清**：`GeometryID` 粒度（per asset vs per 运行时实例）；池容量（同 1024？）；`addr_transform_id`（顶点级 id 流）是否本阶段一并池化；Meshlet 三地址（`addr_meshlets`/`addr_meshlet_vertices`/`addr_meshlet_triangles`）与顶点流地址是否同池同规则。
 
 ---
 
@@ -231,9 +242,9 @@ FS → UBO[type].base + index×row_bytes → 行（payload）；纹理 index 直
 
 ### 6.4 阶段 4 — 4-ID draw item SSBO
 
-**目标**：每 primitive 一个 `{TransformID, GeometryID, MaterialID, TextureID}`（16B）紧凑结构，替代 88B 内嵌地址行。SSBO 形态，ReBAR CPU 直写（预留 CS 写）。
+**目标**：每 primitive 一个 `{TransformID, GeometryID, MaterialID, TextureID}`（16B）紧凑结构，替代 **112B** 内嵌地址行。SSBO 形态，ReBAR CPU 直写（预留 CS 写）。
 
-**现状**：`MeshDrawParams` 行（88B）内嵌 8 地址 + 段偏移，per-batch 每帧写；材质侧 16B 双地址。
+**现状**：`MeshDrawParams` 行（112B）内嵌 11 地址 + 段偏移，per-batch 每帧写；材质侧 16B 双地址。
 
 **终态**：
 ```
@@ -312,7 +323,16 @@ authoring API 均无残留。
 
 ### 7.2 开放待办（独立，不阻塞阶段 1-6）
 1. **sampler 运行时创建未接入**——filter/wrap/swizzle/compare 的 TOML 配置只到「解析 + 布局 hash + 契约传递」。
-2. **屏蔽示例恢复**——`Geometry/LoadGeometry/LoadScene`（+`Context.cpp`）纹理重构后未适配，暂屏蔽，需恢复。
+2. ~~**屏蔽示例恢复**~~——**已完成**（2026-09-18）：`LoadGeometry`/`LoadScene` 已在 `example/Geometry/CMakeLists.txt:23-24` 恢复，并加入 Meshlet 加载代码。
+
+### 7.3 基线后的新进展（2026-09-18，已并入上文各节）
+| 提交 | 内容 | 对本文的影响 |
+|---|---|---|
+| `102a931d3` | Meshlet 渲染数据流与自适应双轨调度 | `MeshDrawParams` 88B→**112B**（+3 meshlet BDA）；`Geometry`/`GeometryData` 持有 meshlet storage buffer；`PrimitiveBatchPipeline` 双轨分流；发射侧 meshlet BDA + 8-bit storage → 已并入 §2.1/§2.9/§6.2/§6.4 |
+| `7fabf8c10` | VertexPassthrough 64 线程跨步协作重构 | 触及 `MeshShaderModeVertexPassthrough`/`MeshModeDescriptor`/`MeshShaderLimits`/`PipelineMaterialRenderer.h`；不改本文数据面 |
+| `d12095b88` | Scene UBO 收敛与冗余宏清理 | `DescriptorSetTypeDef.h`(+35)/`MeshShaderHeaderGen.h`/`GenericMaterialBuilder`/`FragmentTemplateComposer`/gate；阶段 5（UBO 分层）须与 Scene UBO 现状对齐 |
+| `355c7643b` | 基于 `VertexSemantic` 的属性语义映射 | 解除流顺序耦合；不改本文数据面 |
+| `324508578` | Meshlet 几何数据管道与压缩顶点格式规范文档 | 规范文档，非代码 |
 
 ---
 
@@ -354,13 +374,13 @@ authoring API 均无残留。
 | 纹理引用池 | `inc/hgl/graph/module/MaterialTextureReferencePool.h` + `.cpp` | `Acquire/Write/Retire/CollectRetired`、`MakePoolKey`(:86) |
 | 纹理引用结构 | `inc/hgl/mtl/MaterialRecipe.h` | `MaterialTextureReference`(:194)、`MaterialTextureReferenceLayout`(:218)、`BuildMaterialTextureReferenceLayout`(:447)、`DefaultMaterialTextureConfigurationCapacity`(:80) |
 | 访问器 | `inc/hgl/graph/module/MaterialSSBOBufferRegistry.h` | `MaterialSSBODataAccessor<T>`（RAII 行 ID/提交/释放） |
-| MeshDrawParams | `inc/hgl/graph/ShaderBufferSources.h` | `HGL_MESH_DRAW_PARAMS_FIELD_LIST`(:16-30)、88B 断言(:84)、`MaterialInstanceAddresses`(:89-97) |
+| MeshDrawParams | `inc/hgl/graph/ShaderBufferSources.h` | `HGL_MESH_DRAW_PARAMS_FIELD_LIST`(:16-33)、**112B** 断言(:85/:88)、`MaterialInstanceAddresses`(:92-99) |
 | RootAddresses | 同上 | `HGL_ROOT_ADDRESSES_FIELD_LIST`(:105-112)、56B 断言 |
 | auth | `inc/hgl/ecs/components/PrimitiveComponent.h/.cpp` | 单一 `MaterialDataAuthoringResource`、`SetMaterialDataResource`、`SetMaterialTextureResource`、`SetMaterialTextureArrayLayer` |
 | recipe | `inc/hgl/mtl/MaterialRecipe.h` | 唯一 `MaterialSSBOBinding`（`ssbo_id` + `data_index`） |
 | 解析缓存 | `inc/hgl/ecs/components/MaterialComponent.h` | `cached_effective_recipe`；不再缓存 resolved binding/table |
 | 收集/物化 | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` | `MaterializeRecipeRowsForPrimitive`、`TryGetRowBuffer`、纹理引用物化 |
-| 批/命令 | `src/ecs/support/PrimitiveBatchPipeline.cpp` | `WriteMeshDrawCommands`、`MaterialInstanceAddresses` 行(:746/768/829) |
+| 批/命令 | `src/ecs/support/PrimitiveBatchPipeline.cpp` | `WriteMeshDrawCommands`、`MaterialInstanceAddresses` 行(:762/:784/:845)、Meshlet 双轨分流 |
 | 渲染器 | `src/ecs/support/PipelineMaterialRenderer.cpp` | push 表、indirect flush |
 | 发射 | `src/ShaderGen/compile/MaterialShaderEmitter.cpp` | `BuildMaterialSSBODeclarations`(:91)、`MTL_ROW`(:167-169)、`MTL_TEX`(:194-196)、`MaterialInstanceAddressesRef`(:415) |
 | 变换 | `inc/hgl/ecs/support/TransformAssignmentBuffer.h` | static/dynamic 段、`EnsureCapacity`、`WriteStatic/DynamicDirtyIndices` |

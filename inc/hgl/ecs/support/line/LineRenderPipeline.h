@@ -2,7 +2,6 @@
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
 #include <hgl/vk/buffer/TypedArrayView.h>
-#include <hgl/vk/VKRenderAssign.h>
 #include <memory>
 #include <vector>
 #include <string>
@@ -76,7 +75,7 @@ namespace hgl::ecs
         // ------- 单 Line buffer（P2：删 4 slot 分组——mesh shader 展开 quad，宽度入 SSBO）-------
         struct LineBuffer
         {
-            using TransformIDAccessor = hgl::graph::TypedArrayView<hgl::graph::RawDataAccess<hgl::graph::Assign::TransformID::ValueType>>;
+            using TransformIDAccessor = hgl::graph::TypedArrayView<hgl::graph::RawDataAccess<uint32_t>>;
             using SizeAccessor        = hgl::graph::TypedArrayView<hgl::graph::RawDataAccess<hgl::math::Vector2f>>;
 
             uint32_t line_count   = 0;
@@ -102,7 +101,7 @@ namespace hgl::ecs
                             uint8_t                     color_index,
                             float                       width,
                             float                       min_width,
-                            hgl::graph::Assign::TransformID::ValueType transform_index);
+                            uint32_t                    transform_index);
             void Draw(graph::RenderCmdBuffer* cmd);
         };
 

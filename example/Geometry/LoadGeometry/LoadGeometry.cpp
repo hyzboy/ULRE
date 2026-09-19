@@ -6,7 +6,6 @@
 #include<hgl/math/Sum.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VKPrimitiveType.h>
-#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/geo/GeometryCreater.h>

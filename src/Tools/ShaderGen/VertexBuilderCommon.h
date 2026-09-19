@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <hgl/mtl/SerializedVertexEntry.h>
-#include <hgl/common/RenderAssignDef.h>
 #include <vector>
 
 namespace hgl::graph::mtl::vertex_builder_common
@@ -68,7 +67,7 @@ inline std::vector<SerializedVertexEntry> BuildVertexEntries(const VertexBuildIn
 
 inline void AppendTransformIDVertexEntry(std::vector<SerializedVertexEntry> &out)
 {
-    out.push_back({ Assign::TransformID::VAB_FMT, Assign::TransformID::VIS_SEMANTIC });
+    out.push_back({ VK_FORMAT_R32_UINT, VertexSemantic::TransformID });
 }
 
 inline LuminanceVertexBuildResult BuildLuminanceVertexEntries(
