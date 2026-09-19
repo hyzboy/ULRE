@@ -10,8 +10,7 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/SSBOBufferRegistry.h>
-#include <hgl/graph/module/MaterialSSBOBufferRegistry.h>
-#include <hgl/graph/module/MeshDrawParamsPool.h>
+#include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
@@ -73,12 +72,8 @@ namespace hgl::graph
         if (!resource_domain_manager)
             return false;
 
-        material_ssbo_registry = module_manager->GetOrCreate<MaterialSSBOBufferRegistry>();
-        if (!material_ssbo_registry)
-            return false;
-
-        mesh_draw_params_pool = module_manager->GetOrCreate<MeshDrawParamsPool>();
-        if (!mesh_draw_params_pool)
+        global_ssbo_registry = module_manager->GetOrCreate<GlobalSSBOBufferRegistry>();
+        if (!global_ssbo_registry)
             return false;
 
         // 环境综合信息统一管理（sky 等）。必须在 BufferManager 之后创建：
@@ -135,16 +130,10 @@ namespace hgl::graph
         // Set graphics context for module manager
         module_manager->SetGraphicsContext(this);
 
-        if (!material_ssbo_registry->IsInitialized())
+        if (!global_ssbo_registry->IsInitialized())
         {
             GLogError(
-                "[GraphicsContext] MaterialSSBOBufferRegistry initialization failed");
-            return false;
-        }
-
-        if (!mesh_draw_params_pool->IsInitialized())
-        {
-            GLogError("[GraphicsContext] MeshDrawParamsPool initialization failed");
+                "[GraphicsContext] GlobalSSBOBufferRegistry initialization failed");
             return false;
         }
 
@@ -176,8 +165,7 @@ namespace hgl::graph
         sampler_manager = nullptr;
         geometry_manager = nullptr;
         resource_domain_manager = nullptr;
-        material_ssbo_registry = nullptr;
-        mesh_draw_params_pool = nullptr;
+        global_ssbo_registry = nullptr;
         env_manager = nullptr;
 
         SAFE_CLEAR(bindless_texture_manager_)

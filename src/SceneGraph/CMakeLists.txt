@@ -30,6 +30,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
                         ${SG_INCLUDE_PATH}/module/SSBOBufferRegistry.h
                         ${SG_INCLUDE_PATH}/module/MaterialSSBOBufferRegistry.h
+                        ${SG_INCLUDE_PATH}/module/GlobalSSBOBufferRegistry.h
                         ${SG_INCLUDE_PATH}/module/MaterialTextureReferencePool.h
                         ${SG_INCLUDE_PATH}/module/MeshDrawParamsPool.h
                         ${SG_INCLUDE_PATH}/module/EnvironmentManager.h
@@ -46,9 +47,8 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp
                         module/SSBOBufferRegistry.cpp
-                        module/MaterialSSBOBufferRegistry.cpp
+                        module/GlobalSSBOBufferRegistry.cpp
                         module/MaterialTextureReferencePool.cpp
-                        module/MeshDrawParamsPool.cpp
                         module/EnvironmentManager.cpp
                         module/SwapChainModule.cpp)
 

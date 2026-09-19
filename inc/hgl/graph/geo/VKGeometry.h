@@ -11,7 +11,8 @@ namespace hgl::graph{
 // forward declare GeometryData to avoid including heavy headers
 class GeometryData;
 class DeviceBuffer;
-class MeshDrawParamsPool;
+class GlobalSSBOBufferRegistry;
+using MeshDrawParamsPool = GlobalSSBOBufferRegistry;
 
 #pragma pack(push, 1)
 struct MeshletDescriptor

@@ -264,7 +264,7 @@ namespace hgl::graph::mtl
         // 11. MainBody
         fragment.clear();
         fragment += "\nvoid main()\n{\n";
-        if (mode == MeshShaderMode::VertexPassthrough)
+        if (mode == MeshShaderMode::VertexPassthrough || mode == MeshShaderMode::LineQuad)
         {
             fragment += "    uint geometry_id = MeshDrawCommandsRef(pc_root.addr_mesh_draw_params).cmds[gl_DrawID].geometry_id;\n";
             fragment += "    draw_params = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params).rows[geometry_id];\n";

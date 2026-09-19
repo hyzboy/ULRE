@@ -5,7 +5,7 @@
 #include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/graph/module/MeshDrawParamsPool.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 
 #ifdef _DEBUG
 #include<hgl/vk/VKDeviceAttribute.h>

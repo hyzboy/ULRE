@@ -18,7 +18,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MeshDrawParamsPool.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/util/hash/FNV1a.h>
@@ -408,6 +408,15 @@ namespace hgl::ecs
             return;
         }
 
+        auto *gc = world ? world->GetGraphicsContext() : nullptr;
+        auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
+        auto *dev = world ? world->GetGPUDevice() : nullptr;
+
+        if (geometry && pool && dev)
+            const_cast<graph::Geometry *>(geometry)->EnsureMeshDrawParams(pool, dev);
+        if (data_buffer && geometry && data_buffer->geometry_id == 0)
+            const_cast<graph::GeometryDataBuffer *>(data_buffer)->geometry_id = geometry->GetGeometryID();
+
         batch.draw_batches_count = 1;
         draw_batch->first_instance = base_instance;
         draw_batch->instance_count = 1;
@@ -432,6 +441,11 @@ namespace hgl::ecs
                 if (prim_comp && prim_comp->GetPrimitiveAsset())
                     geometry = prim_comp->GetPrimitiveAsset()->GetGeometry();
             }
+
+            if (geometry && pool && dev)
+                const_cast<graph::Geometry *>(geometry)->EnsureMeshDrawParams(pool, dev);
+            if (data_buffer && geometry && data_buffer->geometry_id == 0)
+                const_cast<graph::GeometryDataBuffer *>(data_buffer)->geometry_id = geometry->GetGeometryID();
 
             const graph::GeometryDataBuffer* item_data_buf = data_buffer;
             const graph::GeometryDrawRange* item_draw_range = draw_range;
@@ -543,6 +557,9 @@ namespace hgl::ecs
                         if (pool && dev)
                             const_cast<graph::Geometry *>(db.geometry)->EnsureMeshDrawParams(pool, dev);
                         geom_id = db.geometry->GetGeometryID();
+                        db.geometry_id = geom_id;
+                        if (db.geom_data_buffer)
+                            const_cast<graph::GeometryDataBuffer *>(db.geom_data_buffer)->geometry_id = geom_id;
                     }
 
                     cmds[i].geometry_id = geom_id;

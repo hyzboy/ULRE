@@ -25,8 +25,7 @@
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
-#include<hgl/graph/module/MeshDrawParamsPool.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
@@ -106,7 +105,6 @@ namespace hgl::ecs
     RenderSceneUBOSystem::~RenderSceneUBOSystem()
     {
         ReleaseViewportUBO();
-        ReleaseGlobalAddressesUBO();
     }
 
     void RenderSceneUBOSystem::EnsureViewportUBO()
@@ -154,23 +152,10 @@ namespace hgl::ecs
         }
     }
 
-    void RenderSceneUBOSystem::EnsureGlobalAddressesUBO()
+    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveGlobalAddressesUBO()
     {
-        if (global_addresses_ubo || !context)
-            return;
-
-        auto *bm = GetBufferManager(context);
-        if (!bm)
-            return;
-
-        auto *buf = bm->CreateUBO("GlobalAddressesUBO", graph::StructView<graph::GlobalAddresses>::GetSize());
-        if (!buf)
-            return;
-
-        buf->SetUpdateClass(graph::BufferUpdateClass::Default);
-        global_addresses_ubo = graph::StructView<graph::GlobalAddresses>::Create(buf, false);
-        if (!global_addresses_ubo)
-            return;
+        if (!context)
+            return nullptr;
 
         graph::GraphicsContext *gc = nullptr;
         if (auto *rc = context->GetRenderContext())
@@ -178,69 +163,11 @@ namespace hgl::ecs
         if (!gc)
             gc = context->GetGraphicsContext();
 
-        if (gc)
-        {
-            graph::GlobalAddresses ga{};
-            if (auto *mdp_pool = gc->GetMeshDrawParamsPool())
-                ga.addr_mesh_draw_params = mdp_pool->GetGPUBase();
-            if (auto *mat_reg = gc->GetMaterialSSBOBufferRegistry())
-            {
-                ga.addr_pbr_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::PBRSurface);
-                ga.addr_emissive_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::EmissiveSurface);
-                ga.addr_transmission_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::TransmissionSurface);
-            }
-            global_addresses_ubo->Update(ga);
-            global_addresses_ubo->Commit();
-        }
-    }
+        if (!gc)
+            return nullptr;
 
-    void RenderSceneUBOSystem::ReleaseGlobalAddressesUBO()
-    {
-        if (!global_addresses_ubo)
-            return;
-
-        auto *buf = global_addresses_ubo->GetBuffer();
-        delete global_addresses_ubo;
-        global_addresses_ubo = nullptr;
-
-        if (buf)
-        {
-            if (auto *bm = GetBufferManager(context))
-                bm->Release(buf);
-        }
-    }
-
-    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveGlobalAddressesUBO()
-    {
-        EnsureGlobalAddressesUBO();
-        if (global_addresses_ubo && global_addresses_ubo->Data()->addr_mesh_draw_params == 0)
-        {
-            graph::GraphicsContext *gc = nullptr;
-            if (auto *rc = context->GetRenderContext())
-                gc = rc->GetGraphicsContext();
-            if (!gc)
-                gc = context->GetGraphicsContext();
-
-            if (gc)
-            {
-                auto *mdp_pool = gc->GetMeshDrawParamsPool();
-                auto *mat_reg = gc->GetMaterialSSBOBufferRegistry();
-                if (mdp_pool && mdp_pool->GetGPUBase() != 0)
-                {
-                    graph::GlobalAddresses ga{};
-                    ga.addr_mesh_draw_params = mdp_pool->GetGPUBase();
-                    if (mat_reg)
-                    {
-                        ga.addr_pbr_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::PBRSurface);
-                        ga.addr_emissive_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::EmissiveSurface);
-                        ga.addr_transmission_surface = mat_reg->GetGPUBase(graph::mtl::MaterialSSBOType::TransmissionSurface);
-                    }
-                    global_addresses_ubo->Update(ga);
-                    global_addresses_ubo->Commit();
-                }
-            }
-        }
-        return global_addresses_ubo ? global_addresses_ubo->GetGPUBuffer() : nullptr;
+        auto *registry = gc->GetGlobalSSBOBufferRegistry();
+        return registry ? registry->GetGlobalAddressesUBO() : nullptr;
     }
 
     void RenderSceneUBOSystem::CommitViewportUBO()

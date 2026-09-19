@@ -60,6 +60,7 @@ Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &geometry
 
 constexpr const COLOR TestColor[] =
 {
+    COLOR::Red,
     COLOR::MozillaCharcoal,
     COLOR::MozillaSand,
 

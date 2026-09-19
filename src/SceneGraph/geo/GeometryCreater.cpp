@@ -8,7 +8,7 @@
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MeshDrawParamsPool.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 
 namespace hgl::graph{
 GeometryCreater::GeometryCreater(VulkanDevice *dev,const GeometryVertexFormat &gvf,BufferManager *bm)

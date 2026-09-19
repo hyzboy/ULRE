@@ -70,7 +70,12 @@ namespace hgl::ecs
             geom_data_buffer = data_buffer;
             geom_draw_range = draw_range;
             geometry = geom;
-            geometry_id = data_buffer ? data_buffer->geometry_id : (geom ? geom->GetGeometryID() : 0);
+            if (data_buffer && data_buffer->geometry_id != 0)
+                geometry_id = data_buffer->geometry_id;
+            else if (geom)
+                geometry_id = geom->GetGeometryID();
+            else
+                geometry_id = 0;
         }
     };//struct DrawBatch
 

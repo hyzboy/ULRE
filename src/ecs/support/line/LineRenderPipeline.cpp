@@ -25,6 +25,7 @@
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/graph/ShaderBufferSources.h>
+#include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/RootAddressPush.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
@@ -636,55 +637,67 @@ namespace hgl::ecs
                  total_line_count_,
                  write_fail_count);
 
-        // IndirectMeshDraw：写 mesh per-draw 参数行 row 0（Line 单 draw 非实例化——
-        // 绘制时 gl_DrawID=0；shader 不再读 push constant。build 阶段写入，
-        // RenderBufferUploadSystem 上传后再进录制）
+        // IndirectMeshDraw：写 mesh per-draw 参数（Line 单 draw 非实例化——
+        // 绘制时 gl_DrawID=0；shader 经 MeshDrawCommand -> geometry_id 查全局池）
         if (device_ && total_line_count_ > 0)
         {
             if (!line_buffer_.mesh_draw_params)
                 line_buffer_.mesh_draw_params = device_->CreateSSBO(
-                    "ECS:Line:MeshDrawParams", sizeof(graph::mtl::MeshDrawParams));
+                    "ECS:Line:MeshDrawCommands", sizeof(graph::mtl::MeshDrawCommand));
+
+            auto *gc_l = context_ ? context_->GetGraphicsContext() : nullptr;
+            auto *pool = gc_l ? gc_l->GetMeshDrawParamsPool() : nullptr;
+
+            if (line_buffer_.geometry && pool && device_)
+                line_buffer_.geometry->EnsureMeshDrawParams(pool, device_);
+
+            const uint32_t geometry_id = line_buffer_.geometry ? line_buffer_.geometry->GetGeometryID() : 0;
+
+            if (pool && geometry_id != 0)
+            {
+                graph::mtl::MeshDrawParams row{};
+                row.index_base      = 0;
+                row.vertex_base     = 0;
+                row.is_indexed      = 0;
+                row.total_vertices  = total_line_count_ * 2u;
+                row.first_instance  = 0;
+
+                if (auto *rdm = gc_l->GetSSBOBufferRegistry())
+                {
+                    const uint64_t null_addr = rdm->GetNullRowAddress();
+                    row.addr_uv        = null_addr;
+                    row.addr_ntb       = null_addr;
+                    row.addr_luminance = null_addr;
+                    row.addr_index     = null_addr;
+
+                    if (line_buffer_.geometry && device_)
+                    {
+                        auto fill_addr = [&](graph::VertexSemantic semantic, uint64_t &field)
+                        {
+                            if (auto *vab = line_buffer_.geometry->GetVAB(semantic))
+                                field = device_->GetBufferDeviceAddressAligned16(vab->GetVkBuffer());
+                        };
+
+                        fill_addr(graph::VertexSemantic::Position,    row.addr_position);
+                        fill_addr(graph::VertexSemantic::Color,       row.addr_color);
+                        fill_addr(graph::VertexSemantic::TransformID, row.addr_transform_id);
+                        fill_addr(graph::VertexSemantic::Size,        row.addr_size);
+                    }
+                }
+
+                pool->Write(geometry_id, row);
+            }
 
             if (line_buffer_.mesh_draw_params)
             {
                 auto *gpu = line_buffer_.mesh_draw_params->GetGPUBuffer();
-                auto *row = gpu ? static_cast<graph::mtl::MeshDrawParams *>(
-                    gpu->Map(0, sizeof(graph::mtl::MeshDrawParams))) : nullptr;
+                auto *cmd = gpu ? static_cast<graph::mtl::MeshDrawCommand *>(
+                    gpu->Map(0, sizeof(graph::mtl::MeshDrawCommand))) : nullptr;
 
-                if (row)
+                if (cmd)
                 {
-                    row->index_base      = 0;
-                    row->vertex_base     = 0;
-                    row->is_indexed      = 0;
-                    row->total_vertices  = total_line_count_ * 2u;
-                    row->first_instance  = 0;
-
-                    // 顶点/索引基址（BDA）：与 Draw 的描述符绑定同源——按语义从
-                    // line geometry 取流真址。材质未含的流保持 Null 行地址
-                    //（is_indexed=0 / 模块未 include 时不会被解引用）。
-                    if (auto *gc_l = context_ ? context_->GetGraphicsContext() : nullptr)
-                    if (auto *rdm = gc_l->GetSSBOBufferRegistry())
-                    {
-                        const uint64_t null_addr = rdm->GetNullRowAddress();
-                        row->addr_uv        = null_addr;
-                        row->addr_ntb       = null_addr;
-                        row->addr_luminance = null_addr;
-                        row->addr_index     = null_addr;
-
-                        if (line_buffer_.geometry && device_)
-                        {
-                            auto fill_addr = [&](graph::VertexSemantic semantic, uint64_t &field)
-                            {
-                                if (auto *vab = line_buffer_.geometry->GetVAB(semantic))
-                                    field = device_->GetBufferDeviceAddressAligned16(vab->GetVkBuffer());
-                            };
-
-                            fill_addr(graph::VertexSemantic::Position,    row->addr_position);
-                            fill_addr(graph::VertexSemantic::Color,       row->addr_color);
-                            fill_addr(graph::VertexSemantic::TransformID, row->addr_transform_id);
-                            fill_addr(graph::VertexSemantic::Size,        row->addr_size);
-                        }
-                    }
+                    cmd->geometry_id = geometry_id;
+                    cmd->first_instance = 0;
                     gpu->Unmap();
                 }
             }
