@@ -229,6 +229,27 @@ namespace hgl
                 mobility[id] = mobilityValue;
             }
 
+        public: // Flat arrays accessors (for GPU uploads / ComputeShader dispatch)
+
+            const glm::mat4* GetLocalMatricesData() const { return local_matrices.GetData(); }
+            const HandleID* GetParentIndicesData() const { return parent_indices.GetData(); }
+            const glm::mat4* GetWorldMatricesData() const { return world_matrices.GetData(); }
+            glm::mat4* GetWorldMatricesData() { return world_matrices.GetData(); }
+
+            const HandleID* GetEvalOrderData() const { return eval_order.GetData(); }
+            const uint32_t* GetLevelOffsetsData() const { return level_offsets.GetData(); }
+            int GetEvalOrderCount() const { return eval_order.GetCount(); }
+
+            void UpdateAllLocalMatrices()
+            {
+                const int count = local_dirty.GetCount();
+                for (int i = 0; i < count; ++i)
+                {
+                    if (local_dirty[i])
+                        UpdateLocalMatrix(i);
+                }
+            }
+
         public: // Level-by-level topological sort and flat evaluation
 
             void MarkTopologyDirty() { topology_dirty = true; }
