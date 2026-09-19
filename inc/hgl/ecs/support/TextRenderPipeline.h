@@ -50,6 +50,7 @@ namespace hgl
                     texture_configuration;
                 graph::DeviceBuffer* material_instance_addresses_buffer =
                     nullptr;
+                uint64_t texture_pool_base = 0;
                 graph::DeviceBuffer* mesh_draw_params = nullptr;    ///<mesh per-draw 参数表（row 0——每字体单 draw）
                 uint32_t bindless_atlas_handle = 0;
 

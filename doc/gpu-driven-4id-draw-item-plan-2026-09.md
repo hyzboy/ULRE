@@ -209,34 +209,18 @@ RPC 物化 → TryGetRowBuffer(ssbo_id) → row_gpu = gpu_base + data_index×row
 
 ---
 
-### 6.3 阶段 3 — `mtl_data_addrs` 双地址 → 双 index
+### 6.3 阶段 3 — `mtl_data_addrs` 双地址 → 双 index（已完成）
 
 **目标**：`MaterialInstanceAddresses` 的两个 `uint64_t` 地址 → 两个 `uint32_t` index；核心「地址 → 类型池基址 + index」两级寻址。
 
-**现状（16B 双地址）**：
-```
-RPC 物化 → mtl_data_addrs[实例] = { payload_address, texture_reference_address }
-FS → MTL_ROW(i)= 行结构(values[i].payload_address)；MTL_TEX(i)= 引用行(values[i].texture_reference_address)
-```
-
-**终态（双 index）**：
-```
-mtl_data_addrs[实例] = { payload_index, texture_reference_index }（4B×2）
-FS → UBO[type].base + index×row_bytes → 行（payload）；纹理 index 直查 MaterialTextureReferencePool
-```
-
-**改动点**：
-1. `MaterialInstanceAddresses` 两字段 `uint64_t` → `uint32_t`；`MaterialInstanceAddressesRef`/`MaterialTextureReferencesRef` 元素类型随之改。
-2. `MTL_ROW(i)`/`MTL_TEX(i)`（`MaterialShaderEmitter.cpp:167-169`/`:194-196`）改两级解引用：类型池基址（UBO）+ index×row_bytes；纹理 index 直查纹理池（池基址 push/UBO，阶段 5 定）。
-3. 物化（`RenderPrimitiveCollectSystem.cpp:951/:958` + 纹理段）由「算地址」改「填 index」；`TryGetRowSegment` → `row_pool[type]`（阶段 1 产物）。
-4. FS 发射新增「类型→UBO 字段名」固定配表（`PBRSurface → addr_pbr_surface` 等）。
-5. 纹理侧：`MaterialTextureReferencePool` 行号即 `TextureID`（已完成），`texture_reference_index` 直接填该行号。
-
-**涉及文件**：`ShaderBufferSources.h`（`MaterialInstanceAddresses` 字段类型）、`MaterialShaderEmitter.cpp`、`RenderPrimitiveCollectSystem.cpp`、`PrimitiveBatchPipeline.cpp`、`TextRenderPipeline.cpp`（单行表）、`MaterialShaderCompiler.cpp`（发射配表）。
-
-**验收**：编译 + 数据槽示例（SimpleCube/BasicLitMeshes/PBRSpheres）+ 文本 + Texture2DArray layer；grow 场景 index 稳定；`MTL_ROW`/`MTL_TEX` 两步解引用视觉正确。
-
-**待澄清**：`payload_index` 与 `texture_reference_index` 是否统一 index 空间（同 `MaterialID`？）；纹理池基址（per-definition）进 UBO 还是随材质 push（阶段 5 一并定）。
+**落地成果（2026-09）**：
+1. `MaterialInstanceAddresses` 字段收缩为 `{ uint32_t payload_index; uint32_t texture_reference_index; }`（8B，带 offset/sizeof 断言）。
+2. `RootAddresses` push constants 增加 `addr_texture_references` 字段（56B→64B），由 `MaterialBatch` 携带 per-definition 纹理引用池基址并推入 push constants。
+3. FS 宏 `MTL_ROW(i)` 改造为通过 `global_addresses` UBO 的各类型基址做两级寻址：`global_addresses.<addr_*_surface> + uint64_t(payload_index) * uint64_t(stride)`。
+4. FS 宏 `MTL_TEX(i)` 改造为通过 push constant 纹理池基址做两级寻址：`pc_root.addr_texture_references + uint64_t(texture_reference_index) * uint64_t(row_stride)`。
+5. `PrimitiveBatchPipeline` 和 `TextRenderPipeline` 统一分配并写入 8 字节 index row，并维护/推入 `texture_reference_base_addr`。
+6. `forward_unlit.glsl.tmpl` 补全 `#include "ubo/scene_ubo.glsl"`，确保 unlit 材质在片元着色器中可正确访问 `global_addresses`。
+7. `ShaderResourceSchemaRegressionGate` 及所有 ShaderGen 回归测试均已更新并全绿通过。
 
 ---
 

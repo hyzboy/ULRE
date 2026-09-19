@@ -162,7 +162,8 @@ namespace hgl::ecs
                 owner_batch->l2w_index_buffer
                     ? owner_batch->l2w_index_buffer->GetGPUBuffer() : nullptr,
                 owner_batch->material_data_index_rows_buffer
-                    ? owner_batch->material_data_index_rows_buffer->GetGPUBuffer() : nullptr);
+                    ? owner_batch->material_data_index_rows_buffer->GetGPUBuffer() : nullptr,
+                owner_batch->texture_reference_base_addr);
         }
 
         // 批次级描述符覆盖（batch_descriptor_mp）与材质级绑定（BindDescriptorSets(material)）

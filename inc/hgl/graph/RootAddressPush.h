@@ -29,12 +29,13 @@ namespace hgl::graph
                                   VulkanDevice *dev,
                                   const VkPipelineLayout layout,
                                   IGPUBuffer *mesh_draw_params,
-                                  IGPUBuffer *l2w             = nullptr,
-                                  IGPUBuffer *l2w_index       = nullptr,
-                                  IGPUBuffer *mtl_data_addrs  = nullptr,
-                                  IGPUBuffer *text_char_info  = nullptr,
-                                  IGPUBuffer *text_char_style = nullptr,
-                                  IGPUBuffer *text_char_inst  = nullptr)
+                                  IGPUBuffer *l2w                     = nullptr,
+                                  IGPUBuffer *l2w_index               = nullptr,
+                                  IGPUBuffer *mtl_data_addrs          = nullptr,
+                                  uint64_t    addr_texture_references = 0,
+                                  IGPUBuffer *text_char_info          = nullptr,
+                                  IGPUBuffer *text_char_style         = nullptr,
+                                  IGPUBuffer *text_char_inst          = nullptr)
     {
         if (!cmd || !dev || !layout)
             return;
@@ -51,6 +52,7 @@ namespace hgl::graph
         fill(ra.addr_l2w,                 l2w);
         fill(ra.addr_l2w_index,           l2w_index);
         fill(ra.addr_mtl_data_addrs,      mtl_data_addrs);
+        ra.addr_texture_references = addr_texture_references;
         fill(ra.addr_text_char_info,      text_char_info);
         fill(ra.addr_text_char_style,     text_char_style);
         fill(ra.addr_text_char_instance,  text_char_inst);

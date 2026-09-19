@@ -295,6 +295,7 @@ namespace hgl::ecs
                 res.material_instance_addresses_buffer
                     ? res.material_instance_addresses_buffer->GetGPUBuffer()
                     : nullptr,
+                res.texture_pool_base,
                 res.char_info_buffer     ? res.char_info_buffer->GetGPUBuffer() : nullptr,
                 res.char_style_buffer    ? res.char_style_buffer->GetGPUBuffer() : nullptr,
                 res.char_instance_buffer ? res.char_instance_buffer->GetGPUBuffer() : nullptr);
@@ -537,10 +538,13 @@ namespace hgl::ecs
             return nullptr;
         }
 
+        const uint64_t texture_pool_base = guard.texture_configuration.gpu_row
+            - uint64_t(guard.texture_configuration.row_index) * uint64_t(guard.texture_configuration.row_stride);
+
         {
             const graph::mtl::MaterialInstanceAddresses address_row{
                 0u,
-                guard.texture_configuration.gpu_row};
+                guard.texture_configuration.row_index};
             guard.material_instance_addresses_buffer->GetGPUBuffer()->Write(
                 &address_row,
                 0,
@@ -552,6 +556,7 @@ namespace hgl::ecs
         resources.material_instance_addresses_buffer =
             guard.material_instance_addresses_buffer;
         guard.material_instance_addresses_buffer = nullptr;
+        resources.texture_pool_base = texture_pool_base;
 
         resources.tile_font = guard.tile_font.release();
         resources.material = guard.material;

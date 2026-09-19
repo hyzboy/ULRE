@@ -271,9 +271,30 @@ bool BuildMaterialSSBODeclarations(
         FlushFieldLine();
 
         out_decls += "};\n";
+
+        const char *ubo_field = nullptr;
+        switch (material_private_data)
+        {
+        case MaterialSSBOType::PBRSurface:          ubo_field = "addr_pbr_surface"; break;
+        case MaterialSSBOType::EmissiveSurface:     ubo_field = "addr_emissive_surface"; break;
+        case MaterialSSBOType::TransmissionSurface: ubo_field = "addr_transmission_surface"; break;
+        default:                                    ubo_field = nullptr; break;
+        }
+        if (!ubo_field)
+        {
+            out_error = "unsupported material private data for UBO mapping";
+            return false;
+        }
+
+        const uint32_t stride = mtl::GetMaterialSSBOTypeStructStride(material_private_data);
+
         out_macros += "#define MTL_ROW(i) ";
         out_macros += row_struct;
-        out_macros += "(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_address)\n";
+        out_macros += "(global_addresses.";
+        out_macros += ubo_field;
+        out_macros += " + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(";
+        out_macros += std::to_string(stride);
+        out_macros += "))\n";
     }
 
     if (has_texture_references)
@@ -299,8 +320,9 @@ bool BuildMaterialSSBODeclarations(
         out_decls += "};\n";
 
         out_macros += "#define MTL_TEX(i) ";
-        out_macros +=
-            "MaterialTextureReferencesRef(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_address)\n";
+        out_macros += "MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(";
+        out_macros += std::to_string(texture_layout->row_stride);
+        out_macros += "))\n";
     }
 
     return true;
@@ -512,14 +534,14 @@ std::string BuildFSIndexTableDecls(const bool fs_has_runtime_rows)
     if (!fs_has_runtime_rows)
         return out;
 
-    // 每个 draw item 同时携带 payload 与纹理引用配置两个设备地址。
+    // 每个 draw item 同时携带 payload 与纹理引用配置两个索引（8B）。
     out += "struct MaterialInstanceAddresses\n";
     out += "{\n";
-    out += "    uint64_t payload_address;\n";
-    out += "    uint64_t texture_reference_address;\n";
+    out += "    uint payload_index;\n";
+    out += "    uint texture_reference_index;\n";
     out += "};\n";
     out +=
-        "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialInstanceAddressesRef\n";
+        "layout(buffer_reference, scalar, buffer_reference_align=8) buffer MaterialInstanceAddressesRef\n";
     out += "{\n";
     out += "    MaterialInstanceAddresses values[];\n";
     out += "};\n";
@@ -629,6 +651,10 @@ bool BuildMaterialStageDocument(
         injection.Add(
             ShaderDocumentBlockKind::Extension,
             "#extension GL_ARB_gpu_shader_int64 : require\n",
+            source);
+        injection.Add(
+            ShaderDocumentBlockKind::Extension,
+            "#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable\n",
             source);
 
         // pc_root push constant（Fragment 侧）——MTL_ROW 宏与

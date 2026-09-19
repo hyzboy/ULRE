@@ -3720,8 +3720,10 @@ namespace
 
             // Arena+BDA：材质数据经设备地址行表寻址，断言行指针别名 /
             // 行引用声明 / 值结构三要素齐全且顺序稳定。
-            // （A6-2b 对齐 A3-3 后发射：MTL_ROW 经 MaterialInstanceAddressesRef 解引用）
-            if (source.find("#define MTL_ROW(i) EmissiveSurfaceRow(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_address)") == std::string::npos)
+            // （阶段 3 双 index 两级寻址：MTL_ROW 经 global_addresses + payload_index 解引用）
+            const std::string expected_alias =
+                "#define MTL_ROW(i) EmissiveSurfaceRow(global_addresses.addr_emissive_surface + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(16))";
+            if (source.find(expected_alias) == std::string::npos)
                 result.diagnostics.emplace_back("arena row alias was not injected");
 
             if (source.find("struct MaterialInstanceAddresses") == std::string::npos
@@ -3739,8 +3741,7 @@ namespace
                 "#extension GL_EXT_mesh_shader : require\n");
             const size_t declaration = source.find(
                 "struct EmissiveSurfaceData");
-            const size_t alias = source.find(
-                "#define MTL_ROW(i) EmissiveSurfaceRow(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_address)\n");
+            const size_t alias = source.find(expected_alias);
             if (extension == std::string::npos)
                 result.diagnostics.emplace_back("extension missing");
             if (declaration == std::string::npos)
@@ -3822,7 +3823,7 @@ namespace
                  || source.find("uvec2 tex_normal;")
                         == std::string::npos
                  || source.find(
-                        "#define MTL_TEX(i) MaterialTextureReferencesRef(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_address)")
+                        "#define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(16))")
                         == std::string::npos)
                     result.diagnostics.emplace_back(
                         "named material texture reference row was not emitted");

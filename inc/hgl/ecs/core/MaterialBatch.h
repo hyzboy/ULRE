@@ -60,9 +60,10 @@ namespace hgl::ecs
         uint32_t                                l2w_index_capacity      = 0;            ///<L2W 索引表容量（元素数）
 
         // Per-batch material instance address rows SSBO — each row carries the
-        // payload and texture-reference BDA for one draw item.
+        // payload and texture-reference index for one draw item.
         graph::DeviceBuffer *                   material_data_index_rows_buffer   = nullptr;  ///<每批 DataIndex 行表 SSBO（draw order）
         uint32_t                                material_data_index_rows_capacity = 0;        ///<DataIndex 行表容量（元素数）
+        uint64_t                                texture_reference_base_addr       = 0;        ///<当前材质对应的 MaterialTextureReferencePool GPU 基址
 
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有；由 TransformSystem 持有——系统销毁后此指针失效，勿跨帧缓存系统指针，A6)
 

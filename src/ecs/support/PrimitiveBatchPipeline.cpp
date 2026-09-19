@@ -717,7 +717,7 @@ namespace hgl::ecs
 
                 if (batch.buffer_manager)
                 {
-                    // 每行存 payload + texture-reference 两个 BDA（16B）。
+                    // 每行存 payload + texture-reference 两个索引（8B）。
                     const VkDeviceSize row_bytes =
                         sizeof(graph::mtl::MaterialInstanceAddresses);
 
@@ -727,29 +727,17 @@ namespace hgl::ecs
                     batch.material_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
                         "ECS:Batch:MaterialDataAddresses", byte_size, nullptr, graph::SharingMode::Exclusive);
 
-                    // 关键安全垫：BDA 解引用未初始化显存 = GPU page fault(驱动 TDR)。
-                    // 全表预填两个 Null 行地址，保证任何时刻可安全解引用；
-                    // 随后每帧 WriteBatchIndexRows 覆盖为真实行地址。
+                    // 关键安全垫：全表预填零，保证任何时刻索引 0 可安全解引用；
+                    // 随后每帧 WriteBatchIndexRows 覆盖为真实索引。
                     if (batch.material_data_index_rows_buffer)
                     {
-                        uint64_t safe_addr = 0;
-                        if (auto *fill_gc = world ? world->GetGraphicsContext() : nullptr)
-                            if (auto *fill_rdm = fill_gc->GetSSBOBufferRegistry())
-                                safe_addr = fill_rdm->GetNullRowAddress();
-
-                        if (safe_addr)
                         if (auto *fill_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer())
                         {
                             if (auto *fill_ptr = static_cast<
                                     graph::mtl::MaterialInstanceAddresses *>(
                                     fill_gpu->Map(0, byte_size)))
                             {
-                                const size_t n = static_cast<size_t>(batch.material_data_index_rows_capacity);
-                                const graph::mtl::MaterialInstanceAddresses safe_row{
-                                    safe_addr,
-                                    safe_addr};
-                                for (size_t i = 0; i < n; ++i)
-                                    fill_ptr[i] = safe_row;
+                                memset(fill_ptr, 0, static_cast<size_t>(byte_size));
                                 fill_gpu->Unmap();
                             }
                         }
@@ -793,15 +781,10 @@ namespace hgl::ecs
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
 
-            // 行表写入 payload/texture-reference 两个设备地址。payload 地址在
-            // Collect 物化时解析；纹理配置地址由阶段 4 的独立 pool 提供。
+            // 行表写入 payload/texture-reference 两个索引。payload 索引由
+            // Collect 物化时发布的 data_index_row 提供；纹理配置索引由独立 pool 提供。
             if (mi_gpu)
             {
-                uint64_t null_row_address = 0;
-                if (auto *wr_gc = world ? world->GetGraphicsContext() : nullptr)
-                    if (auto *wr_rdm = wr_gc->GetSSBOBufferRegistry())
-                        null_row_address = wr_rdm->GetNullRowAddress();
-
                 auto *row_ptr = static_cast<graph::mtl::MaterialInstanceAddresses *>(
                     mi_gpu->Map(
                         0,
@@ -812,9 +795,7 @@ namespace hgl::ecs
                     graph::mtl::MaterialInstanceAddresses debug_rows[4]{};
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        row_ptr[i] = {
-                            null_row_address,
-                            null_row_address};
+                        row_ptr[i] = { 0, 0 };
 
                         auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
                         auto material_comp = primitive_item
@@ -822,19 +803,21 @@ namespace hgl::ecs
                             : nullptr;
                         if (material_comp)
                         {
-                            if (material_comp->material_row_gpu)
-                                row_ptr[i].payload_address =
-                                    material_comp->material_row_gpu;
-                            if (material_comp->material_texture_row_gpu)
-                                row_ptr[i].texture_reference_address =
-                                    material_comp->material_texture_row_gpu;
-                            else if (
-                                material_comp->material_texture_zero_row_gpu)
-                            {
-                                row_ptr[i].texture_reference_address =
-                                    material_comp->
-                                        material_texture_zero_row_gpu;
-                            }
+                            row_ptr[i].payload_index =
+                                material_comp->data_index_row != uint32_t(-1)
+                                    ? material_comp->data_index_row : 0u;
+
+                            row_ptr[i].texture_reference_index =
+                                material_comp->material_texture_configuration.row_index;
+
+                            if (material_comp->material_texture_zero_row_gpu)
+                                batch.texture_reference_base_addr =
+                                    material_comp->material_texture_zero_row_gpu;
+                            else if (material_comp->material_texture_row_gpu)
+                                batch.texture_reference_base_addr =
+                                    material_comp->material_texture_row_gpu -
+                                    uint64_t(material_comp->material_texture_configuration.row_index) *
+                                    uint64_t(material_comp->material_texture_configuration.row_stride);
                         }
 
                         if (i < 4)
@@ -847,21 +830,19 @@ namespace hgl::ecs
                         for (size_t i = 0; i < item_count && i < 4; ++i)
                         {
                             GLogInfo(
-                                     "[ArenaDebug] item[%u] payload=0x%llx texture=0x%llx",
+                                     "[ArenaDebug] item[%u] payload_index=%u texture_index=%u",
                                      (uint32_t)i,
-                                     (unsigned long long)debug_rows[i].payload_address,
-                                     (unsigned long long)debug_rows[i].texture_reference_address);
+                                     debug_rows[i].payload_index,
+                                     debug_rows[i].texture_reference_index);
                         }
                     }
                     mi_gpu->Unmap();
 
                     if (getenv("ULRE_ARENA_DEBUG"))
-                    GLogInfo("[ArenaDebug] rows written: n=%u payload0=0x%llx texture0=0x%llx",
+                    GLogInfo("[ArenaDebug] rows written: n=%u payload0_idx=%u texture0_idx=%u",
                              item_count,
-                             (unsigned long long)(
-                                 item_count ? debug_rows[0].payload_address : 0),
-                             (unsigned long long)(
-                                 item_count ? debug_rows[0].texture_reference_address : 0));
+                             item_count ? debug_rows[0].payload_index : 0,
+                             item_count ? debug_rows[0].texture_reference_index : 0);
                 }
                 return;
             }

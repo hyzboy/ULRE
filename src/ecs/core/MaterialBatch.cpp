@@ -59,6 +59,7 @@ namespace hgl::ecs
         static_count = 0;
         draw_batches.clear();
         draw_batches_count = 0;
+        texture_reference_base_addr = 0;
     }
 
     void MaterialBatch::AddItem(RenderItem* item)

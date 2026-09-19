@@ -126,32 +126,34 @@ namespace hgl::graph::mtl
     }
     static_assert(MeshDrawCommandLayoutValid(), "MeshDrawCommand 布局必须为 2×uint32 (8B)");
 
-    // 每个 draw item 的材质实例地址行。payload 与纹理引用配置分别由
-    // MaterialDefinition/MaterialTextureReferencePool 提供，保持 16B scalar ABI。
+    // 每个 draw item 的材质实例索引行（8B）。
+    // payload_index 指向全局池（PBRSurface / EmissiveSurface / TransmissionSurface）的行号；
+    // texture_reference_index 指向每材质 MaterialTextureReferencePool 的行号。
     struct MaterialInstanceAddresses
     {
-        uint64_t payload_address = 0;
-        uint64_t texture_reference_address = 0;
+        uint32_t payload_index = 0;
+        uint32_t texture_reference_index = 0;
     };
 
-    static_assert(sizeof(MaterialInstanceAddresses) == 16);
-    static_assert(offsetof(MaterialInstanceAddresses, payload_address) == 0);
-    static_assert(offsetof(MaterialInstanceAddresses, texture_reference_address) == 8);
+    static_assert(sizeof(MaterialInstanceAddresses) == 8);
+    static_assert(offsetof(MaterialInstanceAddresses, payload_index) == 0);
+    static_assert(offsetof(MaterialInstanceAddresses, texture_reference_index) == 4);
 
     // ── 根地址表（RootAddresses）——push constant 承载的全局表设备地址 ──────────
     // 全部 SSBO 走 BDA 后，shader 每个 buffer_reference 起点都需要一个地址来源；
-    // 7 张全局表（MeshDrawParams/L2W/L2WIndex/mtl_data_addrs/文本三表）的地址
-    // 集中在此，渲染路径每 MaterialBatch 渲染前一次 PushConstants 下发（56B）。
+    // 8 张表（MeshDrawParams/L2W/L2WIndex/mtl_data_addrs/texture_references/文本三表）的地址
+    // 集中在此，渲染路径每 MaterialBatch 渲染前一次 PushConstants 下发（64B）。
     // 单一真源（X 列表）：CPU struct / GLSL 字段名 / GLSL 字段类型从这一份生成，
     // A3 发射 push_constant block 时遍历名字+类型表——改字段只改这里。
     #define HGL_ROOT_ADDRESSES_FIELD_LIST(M)  \
-        M(addr_mesh_draw_params,  uint64_t)   \
-        M(addr_l2w,               uint64_t)   \
-        M(addr_l2w_index,         uint64_t)   \
-        M(addr_mtl_data_addrs,    uint64_t)   \
-        M(addr_text_char_info,    uint64_t)   \
-        M(addr_text_char_style,   uint64_t)   \
-        M(addr_text_char_instance,uint64_t)
+        M(addr_mesh_draw_params,   uint64_t)  \
+        M(addr_l2w,                uint64_t)  \
+        M(addr_l2w_index,          uint64_t)  \
+        M(addr_mtl_data_addrs,     uint64_t)  \
+        M(addr_texture_references, uint64_t)  \
+        M(addr_text_char_info,     uint64_t)  \
+        M(addr_text_char_style,    uint64_t)  \
+        M(addr_text_char_instance, uint64_t)
 
     struct RootAddresses
     {
@@ -180,7 +182,7 @@ namespace hgl::graph::mtl
     constexpr uint32 kRootAddressesFieldCount =
         static_cast<uint32>(sizeof(kRootAddressesFieldNames) / sizeof(kRootAddressesFieldNames[0]));
 
-    // 布局断言：全 uint64 标量，无 padding——offset 0..48 按 8B 步进，sizeof == 56
+    // 布局断言：全 uint64 标量，无 padding——offset 0..56 按 8B 步进，sizeof == 64
     constexpr bool RootAddressesLayoutValid() noexcept
     {
         const size_t offsets[] =
@@ -194,8 +196,8 @@ namespace hgl::graph::mtl
             if (offsets[i] != i * 8u)
                 return false;
         }
-        return sizeof(RootAddresses) == 56;
+        return sizeof(RootAddresses) == 64;
     }
     static_assert(RootAddressesLayoutValid(),
-        "RootAddresses 布局必须 7×uint64 连续（offset 0..48，sizeof=56）——与 GLSL push_constant block 逐字段一致");
+        "RootAddresses 布局必须 8×uint64 连续（offset 0..56，sizeof=64）——与 GLSL push_constant block 逐字段一致");
 }
