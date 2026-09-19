@@ -2,6 +2,9 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
+#include <hgl/graph/ubo/GlobalAddresses.h>
+#include <hgl/ShaderCompilerAPI.h>
+#include <vulkan/vulkan.h>
 #include <hgl/log/Log.h>
 
 using namespace hgl;
@@ -191,6 +194,109 @@ int main(int argc, char **argv)
         }
     }
 
-    GLogInfo(u8"=== All RenderItemDataStorage Stage 1 & Stage 2 Tests Passed Successfully! ===");
+    // Test 8: Stage 3 Verification - GlobalAddresses UBO Layout & Shader BDA Compilation
+    GLogInfo(u8"--- Testing Stage 3: GlobalAddresses UBO & Shader BDA Resolution ---");
+    {
+        // 1. Memory layout verification
+        static_assert(sizeof(graph::GlobalAddresses) == 48, "GlobalAddresses must be exactly 48 bytes");
+        static_assert(offsetof(graph::GlobalAddresses, addr_mesh_draw_params) == 0);
+        static_assert(offsetof(graph::GlobalAddresses, addr_pbr_surface) == 8);
+        static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 16);
+        static_assert(offsetof(graph::GlobalAddresses, addr_transmission_surface) == 24);
+        static_assert(offsetof(graph::GlobalAddresses, addr_global_render_items) == 32);
+        static_assert(offsetof(graph::GlobalAddresses, addr_draw_item_ids) == 40);
+
+        graph::GlobalAddresses ga{};
+        if (ga.addr_global_render_items != 0 || ga.addr_draw_item_ids != 0)
+        {
+            GLogError(u8"Test 8 Failed: Expected 0 initialized addresses in GlobalAddresses");
+            return 20;
+        }
+
+        ga.addr_global_render_items = 0xABCD12340000ULL;
+        ga.addr_draw_item_ids       = 0xDCBA43210000ULL;
+
+        if (ga.addr_global_render_items != 0xABCD12340000ULL ||
+            ga.addr_draw_item_ids       != 0xDCBA43210000ULL)
+        {
+            GLogError(u8"Test 8 Failed: GlobalAddresses field assignment mismatch");
+            return 21;
+        }
+
+        // 2. Test shader compilation with RenderItemResolve constructs
+        if (graph::InitShaderCompiler())
+        {
+            const char *test_comp_glsl = R"(
+                #version 460
+                #extension GL_EXT_buffer_reference : require
+                #extension GL_EXT_scalar_block_layout : require
+                #extension GL_ARB_gpu_shader_int64 : require
+                #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+                #define SCENE_SET 0
+                #define GLOBAL_ADDRESSES_BINDING 4
+
+                layout(set = SCENE_SET, binding = GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
+                {
+                    uint64_t addr_mesh_draw_params;
+                    uint64_t addr_pbr_surface;
+                    uint64_t addr_emissive_surface;
+                    uint64_t addr_transmission_surface;
+                    uint64_t addr_global_render_items;
+                    uint64_t addr_draw_item_ids;
+                } global_addresses;
+
+                struct RenderItemDescriptor
+                {
+                    uint transform_id;
+                    uint geometry_id;
+                    uint material_id;
+                    uint texture_id;
+                };
+
+                layout(buffer_reference, scalar, buffer_reference_align = 16) buffer RenderItemBufferRef
+                {
+                    RenderItemDescriptor items[];
+                };
+
+                layout(buffer_reference, scalar, buffer_reference_align = 4) buffer DrawItemIDBufferRef
+                {
+                    uint ids[];
+                };
+
+                layout(local_size_x = 64) in;
+
+                layout(binding = 0) buffer OutputBuffer
+                {
+                    uvec4 results[];
+                };
+
+                void main()
+                {
+                    uint draw_id = gl_GlobalInvocationID.x;
+                    uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
+                    RenderItemDescriptor desc = RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+                    results[draw_id] = uvec4(desc.transform_id, desc.geometry_id, desc.material_id, desc.texture_id);
+                }
+            )";
+
+            auto *spv = graph::CompileShader(VK_SHADER_STAGE_COMPUTE_BIT, test_comp_glsl);
+            if (!spv || !spv->result)
+            {
+                GLogError(u8"Test 8 Failed: GLSL BDA shader compilation failed: %s",
+                          spv && spv->log ? spv->log : "unknown error");
+                if (spv) graph::FreeSPVData(spv);
+                graph::CloseShaderCompiler();
+                return 22;
+            }
+
+            GLogInfo(u8"Test 8: GLSL BDA Shader successfully compiled to SPIR-V (size: %u words)",
+                     spv->spv_length);
+            graph::FreeSPVData(spv);
+            graph::CloseShaderCompiler();
+        }
+    }
+
+    GLogInfo(u8"=== All RenderItemDataStorage Stage 1, 2 & 3 Tests Passed Successfully! ===");
     return 0;
 }

@@ -78,6 +78,8 @@ layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesI
     uint64_t addr_pbr_surface;
     uint64_t addr_emissive_surface;
     uint64_t addr_transmission_surface;
+    uint64_t addr_global_render_items;
+    uint64_t addr_draw_item_ids;
 } global_addresses;
 
 #endif // HGL_SCENE_UBO_GLSL

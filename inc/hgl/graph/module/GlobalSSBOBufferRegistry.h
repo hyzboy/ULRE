@@ -143,6 +143,8 @@ public:
         return global_addresses_ubo ? global_addresses_ubo->GetGPUBuffer() : nullptr;
     }
 
+    void UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids);
+
     uint32_t Acquire(GlobalSSBOType type)
     {
         auto *pool = GetPool(type);

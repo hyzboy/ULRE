@@ -3,6 +3,7 @@
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<cstdlib>
 #include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -167,7 +168,15 @@ namespace hgl::ecs
             return nullptr;
 
         auto *registry = gc->GetGlobalSSBOBufferRegistry();
-        return registry ? registry->GetGlobalAddressesUBO() : nullptr;
+        if (!registry)
+            return nullptr;
+
+        if (auto *storage = context->GetRenderItemStorage())
+        {
+            registry->UpdateRenderItemAddresses(storage->GetGPUAddress(), 0);
+        }
+
+        return registry->GetGlobalAddressesUBO();
     }
 
     void RenderSceneUBOSystem::CommitViewportUBO()

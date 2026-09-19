@@ -113,11 +113,30 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO()
     ga.addr_pbr_surface          = GetGPUBase(GlobalSSBOType::PBRSurface);
     ga.addr_emissive_surface     = GetGPUBase(GlobalSSBOType::EmissiveSurface);
     ga.addr_transmission_surface = GetGPUBase(GlobalSSBOType::TransmissionSurface);
+    ga.addr_global_render_items  = 0;
+    ga.addr_draw_item_ids        = 0;
 
     global_addresses_ubo->Update(ga);
     global_addresses_ubo->Commit();
 
     return true;
+}
+
+void GlobalSSBOBufferRegistry::UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids)
+{
+    if (!global_addresses_ubo)
+        return;
+
+    GlobalAddresses *ga = global_addresses_ubo->Data();
+    if (!ga)
+        return;
+
+    if (ga->addr_global_render_items != addr_render_items || ga->addr_draw_item_ids != addr_draw_item_ids)
+    {
+        ga->addr_global_render_items = addr_render_items;
+        ga->addr_draw_item_ids = addr_draw_item_ids;
+        global_addresses_ubo->Commit();
+    }
 }
 
 bool GlobalSSBOBufferRegistry::InitializePools()

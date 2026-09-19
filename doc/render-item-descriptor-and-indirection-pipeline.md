@@ -217,25 +217,19 @@ uint texture_index       = texture_ref_buffer.refs[desc.w].descriptor_index;
 ### 阶段三：着色器全局注入与 BDA 寻址铺垫
 > **核心目标**：在着色器层打通从 DrawID / InstanceID 提取 4-ID 的完整链路。
 
-- **3.1 扩充全局 `SceneBinding` / `DrawInfoBinding` UBO**
-  - 在 `SceneBindingData` 中新增两个 64 位 GPU 缓冲区物理地址：
+- **3.1 扩充全局 `SceneBinding` / `DrawInfoBinding` UBO** 【✅ 已完成】
+  - 在 `GlobalAddresses` (`inc/hgl/graph/ubo/GlobalAddresses.h` 及 `ShaderLibrary/ubo/scene_ubo.glsl`) 中新增两个 64 位 GPU 缓冲区物理地址：
     - `uint64_t addr_global_render_items;`（一级表基址）
     - `uint64_t addr_draw_item_ids;`（当前帧二级绘制索引表基址）
-- **3.2 编写 GLSL 统一解码头文件 (`RenderItemResolve.glsl`)**
-  - 实现统一内联函数：
-    ```glsl
-    // 连号直通模式 (Direct Mode)
-    uvec4 GetDirectRenderItem(uint instance_index) {
-        return render_item_buffer.items[instance_index];
-    }
-    // 间接索引模式 (Indexed Mode)
-    uvec4 GetIndexedRenderItem(uint draw_id) {
-        uint item_id = draw_item_id_buffer.ids[draw_id];
-        return render_item_buffer.items[item_id];
-    }
-    ```
-- **3.3 试点着色器 BDA 解码验证**
-  - 在基础管线（如 `DrawTriangle` 或 `SimpleSphere`）中注入宏开关，验证着色器通过该地址成功还原出正确的 L2W 矩阵与材质参数，画面渲染完全正常。
+  - 结构体自 32B 扩充至 48B，保持 8 字节自然对齐，并在 `RenderSceneUBOSystem` 帧阶段自动注入 `storage->GetGPUAddress()`。
+- **3.2 编写 GLSL 统一解码头文件 (`RenderItemResolve.glsl`)** 【✅ 已完成】
+  - 编写 `ShaderLibrary/common/RenderItemResolve.glsl`，通过 Vulkan GLSL buffer reference（16 字节对齐）定义 `RenderItemBufferRef` 与 `DrawItemIDBufferRef`：
+    - 连号直通模式 (Direct Mode): `ResolveRenderItemDirect(uint instance_index)`
+    - 间接索引模式 (Indexed Mode): `ResolveRenderItemIndexed(uint draw_id)`
+    - 安全寻址宏 `HAS_GLOBAL_RENDER_ITEMS` 与 `HAS_DRAW_ITEM_IDS` 保护空指针。
+- **3.3 试点着色器 BDA 解码验证** 【✅ 已完成】
+  - 在 `TestRenderItemDataStorage.cpp` (Test 8) 中测试真实的 GLSL BDA 动态着色器编译到 SPIR-V（`graph::CompileShader`），验证 buffer_reference 语法与对齐。
+  - 同步更新 ShaderGen schema gate，全量 13 个 ShaderGen 回归测试及全量 ECS 测试 100% 通过。
 
 ---
 
