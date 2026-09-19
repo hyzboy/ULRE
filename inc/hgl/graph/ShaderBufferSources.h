@@ -139,6 +139,64 @@ namespace hgl::graph::mtl
     static_assert(offsetof(MaterialInstanceAddresses, payload_index) == 0);
     static_assert(offsetof(MaterialInstanceAddresses, texture_reference_index) == 4);
 
+    // 4-ID 渲染项（DrawItem4ID，16B）：
+    // 终态下每个可渲染图元只传递 4 个 32 位 ID，由 GPU Compute Culling 消费并紧凑化输出：
+    // - transform_id: L2W 变换矩阵索引
+    // - geometry_id:  MeshDrawParams 全局几何池索引
+    // - material_id:  材质参数池行索引
+    // - texture_id:   材质纹理引用池行索引
+    #define HGL_DRAW_ITEM_4ID_FIELD_LIST(M) \
+        M(transform_id, "uint", uint32_t)   \
+        M(geometry_id,  "uint", uint32_t)   \
+        M(material_id,  "uint", uint32_t)   \
+        M(texture_id,   "uint", uint32_t)
+
+    struct DrawItem4ID
+    {
+    #define HGL_DI4_CPU_FIELD(name, glsl_type, cpu_type) cpu_type name = 0;
+        HGL_DRAW_ITEM_4ID_FIELD_LIST(HGL_DI4_CPU_FIELD)
+    #undef HGL_DI4_CPU_FIELD
+    };
+
+    constexpr const char *const kDrawItem4IDFieldNames[] =
+    {
+    #define HGL_DI4_NAME_FIELD(name, glsl_type, cpu_type) #name,
+        HGL_DRAW_ITEM_4ID_FIELD_LIST(HGL_DI4_NAME_FIELD)
+    #undef HGL_DI4_NAME_FIELD
+    };
+
+    constexpr const char *const kDrawItem4IDFieldGLSLTypes[] =
+    {
+    #define HGL_DI4_GLSL_FIELD(name, glsl_type, cpu_type) glsl_type,
+        HGL_DRAW_ITEM_4ID_FIELD_LIST(HGL_DI4_GLSL_FIELD)
+    #undef HGL_DI4_GLSL_FIELD
+    };
+
+    constexpr uint32 kDrawItem4IDFieldCount =
+        static_cast<uint32>(sizeof(kDrawItem4IDFieldNames) / sizeof(kDrawItem4IDFieldNames[0]));
+
+    constexpr bool DrawItem4IDLayoutValid() noexcept
+    {
+        return sizeof(DrawItem4ID) == 16
+            && offsetof(DrawItem4ID, transform_id) == 0
+            && offsetof(DrawItem4ID, geometry_id)  == 4
+            && offsetof(DrawItem4ID, material_id)  == 8
+            && offsetof(DrawItem4ID, texture_id)   == 12;
+    }
+    static_assert(DrawItem4IDLayoutValid(), "DrawItem4ID 布局必须为 4×uint32 (16B)");
+
+    // 几何体包围盒数据（std430 布局，32B）：
+    // 供 Compute Shader 进行视锥剔除（Frustum Culling）读取
+    struct GeometryAABB
+    {
+        float center[4]  = {0.0f, 0.0f, 0.0f, 0.0f}; // xyz: 中心点, w: 外接球半径
+        float extents[4] = {0.0f, 0.0f, 0.0f, 0.0f}; // xyz: 半长宽高 (half-extents), w: 保留
+    };
+
+    static_assert(sizeof(GeometryAABB) == 32);
+    static_assert(offsetof(GeometryAABB, center) == 0);
+    static_assert(offsetof(GeometryAABB, extents) == 16);
+
     // ── 根地址表（RootAddresses）——push constant 承载的全局表设备地址 ──────────
     // 全部 SSBO 走 BDA 后，shader 每个 buffer_reference 起点都需要一个地址来源；
     // 8 张表（MeshDrawParams/L2W/L2WIndex/mtl_data_addrs/texture_references/文本三表）的地址

@@ -394,13 +394,13 @@ public: //Buffer相关
 public: //间接绘制
 
     bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
-    bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,IGPUBuffer **staged_out,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,IGPUBuffer **staged_out,const ObjectNameBuilder &name,VkBufferUsageFlags extra_usage=0,SharingMode sm=SharingMode::Exclusive);
 
     // 间接绘制缓冲创建（必须传入名字用于追踪）
     IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
     IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
     IndirectMeshTaskBuffer *    CreateIndirectMeshTaskBuffer(   const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
-    IndirectMeshTaskBuffer *    CreateIndirectMeshTaskBuffer(   const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    IndirectMeshTaskBuffer *    CreateIndirectMeshTaskBuffer(   const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,VkBufferUsageFlags extra_usage=0,SharingMode sm=SharingMode::Exclusive);
 
 public: //
 

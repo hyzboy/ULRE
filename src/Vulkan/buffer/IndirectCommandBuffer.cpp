@@ -17,7 +17,7 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
     return CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,name);
 }
 
-bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,IGPUBuffer **staged_out,const ObjectNameBuilder &name,SharingMode sharing_mode)
+bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,IGPUBuffer **staged_out,const ObjectNameBuilder &name,VkBufferUsageFlags extra_usage,SharingMode sharing_mode)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -26,6 +26,8 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
 
     const uint32_t size=cmd_count*cmd_size;
     if(size<=0)return(false);
+
+    const VkBufferUsageFlags usage = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | extra_usage;
 
     if(policy==BufferAllocPolicy::Auto)
     {
@@ -37,7 +39,7 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
-        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, size, nullptr, sharing_mode);
+        StagedBuffer *staged=CreateStagedBuffer(name, usage, size, nullptr, sharing_mode);
         if(!staged)
             return(false);
 
@@ -59,7 +61,7 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
     else if(policy==BufferAllocPolicy::Readback)
         mem_usage=MemoryUsage::GPUToCPU;
 
-    if(!CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,mem_usage,name))
+    if(!CreateBuffer(buf,usage,size,size,nullptr,sharing_mode,mem_usage,name))
         return(false);
 
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
@@ -74,16 +76,16 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
 
 IndirectMeshTaskBuffer *VulkanDevice::CreateIndirectMeshTaskBuffer(const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm)
 {
-    return CreateIndirectMeshTaskBuffer(cmd_count,BufferAllocPolicy::Auto,name,sm);
+    return CreateIndirectMeshTaskBuffer(cmd_count,BufferAllocPolicy::Auto,name,0,sm);
 }
 
-IndirectMeshTaskBuffer *VulkanDevice::CreateIndirectMeshTaskBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm)
+IndirectMeshTaskBuffer *VulkanDevice::CreateIndirectMeshTaskBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,VkBufferUsageFlags extra_usage,SharingMode sm)
 {
     HGL_CAPTURE_SCOPE();
     DeviceBufferData buf;
     IGPUBuffer *staged=nullptr;
 
-    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawMeshTasksIndirectCommandEXT),policy,&staged,name,sm))
+    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawMeshTasksIndirectCommandEXT),policy,&staged,name,extra_usage,sm))
         return(nullptr);
 
     if(staged)
@@ -107,7 +109,7 @@ IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_
     DeviceBufferData buf;
     IGPUBuffer *staged=nullptr;
 
-    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDispatchIndirectCommand),policy,&staged,name,sm))
+    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDispatchIndirectCommand),policy,&staged,name,0,sm))
         return(nullptr);
 
     if(staged)
