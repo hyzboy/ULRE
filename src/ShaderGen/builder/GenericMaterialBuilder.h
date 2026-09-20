@@ -15,6 +15,7 @@
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
+#include <hgl/type/String.h>
 
 #include <string>
 #include <vector>
@@ -89,5 +90,5 @@ namespace hgl::graph::mtl
         const MaterialDefinition &definition,
         MaterialShaderDocumentCapture *document_capture);
 
-    const std::string &GetLastBuildGenericMaterialError();
+    const AnsiString &GetLastBuildGenericMaterialError();
 }

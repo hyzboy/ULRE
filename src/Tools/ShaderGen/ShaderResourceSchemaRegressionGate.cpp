@@ -1812,7 +1812,8 @@ namespace
                             nullptr, selected, request));
                     if (!ctx)
                     {
-                        result.diagnostics.emplace_back(std::string("CreateMaterialFromDefinition returned null: ") + GetLastBuildGenericMaterialError());
+                        const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
+                        result.diagnostics.emplace_back(std::string("CreateMaterialFromDefinition returned null: ") + (err.IsEmpty() ? "unknown error" : err.c_str()));
                     }
                     else if (!ctx->HasProgramLink())
                     {
