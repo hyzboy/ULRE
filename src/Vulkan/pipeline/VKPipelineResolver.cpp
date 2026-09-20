@@ -105,7 +105,15 @@ namespace hgl::graph
             if(request.pipeline_layout == VK_NULL_HANDLE)
                 return ResolveError::MissingPipelineLayout;
 
-            if(request.frame_output.color_attachment_count == 0 || !request.frame_output.color_formats)
+            // depth-only 目标（如 shadow map）没有颜色附件，此时深度附件是唯一可写目标；
+            // 两类附件都为空才是真正的配置缺失。
+            if(request.frame_output.color_attachment_count == 0)
+            {
+                if(request.frame_output.depth_stencil_format == VK_FORMAT_UNDEFINED)
+                    return ResolveError::MissingColorAttachmentConfig;
+            }
+            else
+            if(!request.frame_output.color_formats)
                 return ResolveError::MissingColorAttachmentConfig;
 
             return ResolveError::None;
@@ -201,7 +209,8 @@ namespace hgl::graph
         if(key.shader_stages_hash == 0)
             return false;
 
-        if(key.color_attachment_count == 0)
+        // 零颜色附件合法，但仅限 depth-only——帧输出至少要有一个可写目标
+        if(key.color_attachment_count == 0 && key.depth_stencil_format == VK_FORMAT_UNDEFINED)
             return false;
 
         return true;
@@ -311,7 +320,12 @@ namespace hgl::graph
         rendering_ci.colorAttachmentCount = request.frame_output.color_attachment_count;
         rendering_ci.pColorAttachmentFormats = request.frame_output.color_formats;
         rendering_ci.depthAttachmentFormat = request.frame_output.depth_stencil_format;
-        rendering_ci.stencilAttachmentFormat = request.frame_output.depth_stencil_format;
+        // 只有深度格式确实带模板位时才声明模板附件。对 D16_UNORM / D32_SFLOAT 这类
+        // 纯深度格式（shadow map 常用），stencilAttachmentFormat 必须为 UNDEFINED，
+        // 否则与动态渲染时实际附件格式不符。
+        rendering_ci.stencilAttachmentFormat = IsStencilFormat(request.frame_output.depth_stencil_format)
+                                                   ? request.frame_output.depth_stencil_format
+                                                   : VK_FORMAT_UNDEFINED;
 
         VkGraphicsPipelineCreateInfo ci{};
         ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

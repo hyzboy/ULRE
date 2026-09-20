@@ -7,8 +7,10 @@
  * 单独设清屏色 + 单独设环境"收敛为一份可复用的描述。
  *
  * 设计约定：
- * - color_formats 为空  → 使用设备默认 surface format 单颜色附件
+ * - has_color 为真且 color_formats 为空 → 使用设备默认 surface format 单颜色附件
+ * - has_color 为假 → 零颜色附件（depth-only，如 shadow map），此时 color_formats 必须为空
  * - depth_format 为 PF_UNDEFINED 且 has_depth 为真 → 使用设备默认深度格式
+ * - 至少要有一种附件（has_color 与 has_depth 不能同时为假）
  * - 设备相关字段（默认格式）在 RenderTargetManager::Create 内解析，desc 只表达意图
  */
 
@@ -39,8 +41,12 @@ struct RenderTargetDesc
 
     // ---- 附件 ----
 
-    /// 颜色附件格式列表；为空表示使用设备默认 surface format 的单附件
+    /// 颜色附件格式列表；has_color 为真且此处为空时，使用设备默认 surface format 的单附件
     std::vector<VkFormat> color_formats;
+
+    /// 是否有颜色附件。false 表示零颜色附件（depth-only，如 shadow map），
+    /// 此时 color_formats 必须为空——Create 不会补设备默认格式。
+    bool has_color = true;
 
     /// 深度格式；PF_UNDEFINED 且 has_depth 为真时使用设备默认深度格式
     VkFormat depth_format = PF_UNDEFINED;
@@ -70,14 +76,16 @@ struct RenderTargetDesc
 public:
 
     /// 离屏 + 单颜色 + 深度（最常见的 RTT 场景）
-    static RenderTargetDesc OffscreenColorDepth(uint32_t w, uint32_t h, const AnsiString &name = {})
+    static RenderTargetDesc OffscreenColorDepth(uint32_t w, uint32_t h, const AnsiString &name = {}, VkFormat depth_fmt = PF_UNDEFINED)
     {
         RenderTargetDesc d;
         d.kind   = RenderTargetKind::Offscreen;
         d.name   = name;
         d.width  = w;
         d.height = h;
-        d.has_depth = true;
+        d.has_color    = true;
+        d.has_depth    = true;
+        d.depth_format = depth_fmt;
         return d;
     }
 
@@ -89,7 +97,23 @@ public:
         d.name   = name;
         d.width  = w;
         d.height = h;
+        d.has_color = true;
         d.has_depth = false;
+        return d;
+    }
+
+    /// 离屏 + 仅深度（shadow map 等）：零颜色附件。
+    /// 渲染后深度会被转到可采样布局（DEPTH_STENCIL_READ_ONLY_OPTIMAL），可直接绑定采样。
+    static RenderTargetDesc OffscreenDepthOnly(uint32_t w, uint32_t h, const AnsiString &name = {}, VkFormat depth_fmt = PF_UNDEFINED)
+    {
+        RenderTargetDesc d;
+        d.kind   = RenderTargetKind::Offscreen;
+        d.name   = name;
+        d.width  = w;
+        d.height = h;
+        d.has_color    = false;
+        d.has_depth    = true;
+        d.depth_format = depth_fmt;
         return d;
     }
 
@@ -102,6 +126,12 @@ public:
 
         if(samples != 1)
             return(false);          // MSAA 尚未实现（阶段 D）
+
+        if(!has_color && !has_depth)
+            return(false);          // 既无颜色也无深度——空附件没有意义
+
+        if(!has_color && !color_formats.empty())
+            return(false);          // 声明无颜色却给了颜色格式
 
         if(!has_depth && depth_format != PF_UNDEFINED)
             return(false);          // 无深度却指定了深度格式

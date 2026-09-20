@@ -74,9 +74,13 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
             db.srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
             db.dstQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
             db.image               =depth_tex->GetImage();
-            // D32_SFLOAT_S8_UINT 混合格式：aspectMask 必须同时含 DEPTH+STENCIL
-            //（VUID-VkImageMemoryBarrier-image-03320，未启用 separateDepthStencilLayouts）
-            db.subresourceRange    ={VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,0,1,0,1};
+            // aspectMask 必须与格式匹配：D32_SFLOAT_S8_UINT 这类混合格式要 DEPTH+STENCIL
+            //（VUID-VkImageMemoryBarrier-image-03320，未启用 separateDepthStencilLayouts），
+            // 而 D16_UNORM / D32_SFLOAT 这类纯深度格式不能带 STENCIL 位。
+            db.subresourceRange    ={IsStencilFormat(depth_tex->GetFormat())
+                                         ?static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT)
+                                         :static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT),
+                                    0,1,0,1};
         }
     }
 
@@ -112,6 +116,14 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
         cv_count=clear_count;
         // 不调 SetClear()——其"最后一个是 depth"的语义是老 render pass 布局，
         // dynamic rendering 下 color/depth 的 clear 值分别从 clear_values[0..color_count) 与 [color_count] 取
+    }
+
+    // 深度槽必须显式给 1.0f：VkClearValue 零初始化时 depthStencil.depth 为 0.0f，
+    // 在默认的 LESS 深度测试下会拒绝所有物体——depth-only 目标（shadow map）会全空。
+    if(has_depth)
+    {
+        clear_values[color_count].depthStencil.depth   = 1.0f;
+        clear_values[color_count].depthStencil.stencil = 0;
     }
 
     VkRenderingAttachmentInfo color_atts[8]{};
@@ -170,34 +182,100 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
 
     if(!rt)return;
 
-    const uint32_t color_count=rt->GetColorCount();
+    const uint32_t color_count = rt->GetColorCount();
+    Texture2D *depth_tex = rt->hasDepth() ? rt->GetDepthTexture() : nullptr;
 
+    // ---- 窗口交换链：颜色附件转 PRESENT_SRC 交呈现引擎（维持原有语义）----
+    if(rt->IsSwapchain())
+    {
+        VkImageMemoryBarrier barriers[8]{};
+
+        for(uint32_t i=0;i<color_count;i++)
+        {
+            Texture2D *tex=rt->GetColorTexture(i);
+            if(!tex)continue;
+
+            barriers[i].sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barriers[i].srcAccessMask       =VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            barriers[i].dstAccessMask       =0;
+            barriers[i].oldLayout           =VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            barriers[i].newLayout           =VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            barriers[i].srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
+            barriers[i].dstQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
+            barriers[i].image               =tex->GetImage();
+            barriers[i].subresourceRange    ={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+        }
+
+        if(color_count>0)
+            vkCmdPipelineBarrier(cmd_buf,
+                                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                 0,
+                                 0,nullptr,
+                                 0,nullptr,
+                                 color_count,barriers);
+
+        return;
+    }
+
+    // ---- 离屏：转可采样布局，供后续 pass 绑定采样 ----
+    // 颜色与深度都转 SHADER_READ_ONLY_OPTIMAL——采样侧（BindlessTextureManager）
+    // 的 descriptor imageLayout 固定为 SHADER_READ_ONLY_OPTIMAL，两者必须一致。
+    // depth-only RT（shadow map）没有任何颜色附件，深度是唯一需要转换的附件——
+    // 原实现只在 color_count>0 时才发 barrier，导致纯深度目标的深度停留在
+    // attachment 布局，采样即为非法。
     VkImageMemoryBarrier barriers[8]{};
+    uint32_t barrier_count=0;
 
-    for(uint32_t i=0;i<color_count;i++)
+    for(uint32_t i=0;i<color_count&&barrier_count<8;i++)
     {
         Texture2D *tex=rt->GetColorTexture(i);
         if(!tex)continue;
 
-        barriers[i].sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barriers[i].srcAccessMask       =VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        barriers[i].dstAccessMask       =0;
-        barriers[i].oldLayout           =VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        barriers[i].newLayout           =VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        barriers[i].srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
-        barriers[i].dstQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
-        barriers[i].image               =tex->GetImage();
-        barriers[i].subresourceRange    ={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+        VkImageMemoryBarrier &b=barriers[barrier_count];
+
+        b.sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        b.srcAccessMask       =VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        b.dstAccessMask       =VK_ACCESS_SHADER_READ_BIT;
+        b.oldLayout           =VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        b.newLayout           =VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        b.srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
+        b.dstQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
+        b.image               =tex->GetImage();
+        b.subresourceRange    ={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+
+        ++barrier_count;
     }
 
-    if(color_count>0)
+    if(depth_tex&&barrier_count<8)
+    {
+        VkImageMemoryBarrier &b=barriers[barrier_count];
+
+        b.sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        b.srcAccessMask       =VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        b.dstAccessMask       =VK_ACCESS_SHADER_READ_BIT;
+        b.oldLayout           =VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        b.newLayout           =VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        b.srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
+        b.dstQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
+        b.image               =depth_tex->GetImage();
+        // aspectMask 必须与格式匹配：纯深度格式（D16/D32）不能声明 STENCIL 位
+        b.subresourceRange    ={IsStencilFormat(depth_tex->GetFormat())
+                                     ?static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT)
+                                     :static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT),
+                                0,1,0,1};
+
+        ++barrier_count;
+    }
+
+    if(barrier_count>0)
         vkCmdPipelineBarrier(cmd_buf,
-                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT|VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                              0,
                              0,nullptr,
                              0,nullptr,
-                             color_count,barriers);
+                             barrier_count,barriers);
 }
 
 void RenderCmdBuffer::ApplyPipelineState(const mtl::MaterialPipelineConfig &config)

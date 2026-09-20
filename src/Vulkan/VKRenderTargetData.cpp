@@ -55,6 +55,16 @@ void RenderTargetData::EndRender()
         }
     }
 
+    // 深度同理：EndRenderingPresent 已把深度转到 SHADER_READ_ONLY_OPTIMAL
+    //（与采样侧 descriptor 的 imageLayout 一致）。
+    // depth-only 目标（shadow map）没有颜色附件，这一步是它唯一需要同步的布局标记。
+    if (depth_texture)
+    {
+        TextureData *td = depth_texture->GetData();
+        if (td)
+            td->image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+
     cmd_buf->End();
 }
 

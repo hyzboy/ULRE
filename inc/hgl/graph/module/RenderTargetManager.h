@@ -66,6 +66,13 @@ private:
 
     std::vector<RenderTargetEntry> registry;
 
+    /// 把 desc 解析为 FramebufferInfo：补齐设备默认格式。
+    /// - has_color 为假 → 零颜色附件（depth-only），不补默认颜色格式
+    /// - has_color 为真且 color_formats 为空 → 补一个设备默认 surface format
+    /// - depth_format 未指定且 has_depth 为真 → 补设备默认深度格式
+    /// Create() 与 RebuildOffscreenRT() 共用，避免解析规则在两处各写一份。
+    bool ResolveFramebufferInfo(const RenderTargetDesc &desc,FramebufferInfo &fbi);
+
     /// 创建/重建纹理与 FBO 并写入 data。
     /// data 的 queue / cmd_buf / render_complete_semaphore 由调用方负责（重建时复用，
     /// 不重复创建，避免设备侧对象累积泄漏）。
@@ -128,7 +135,7 @@ public: // 生命周期
     /// 统一回收所有仍登记的 RT（由 GraphModuleManager 在销毁前调用）
     void Release() override;
 
-    /// 窗口尺寸改变：阶段 D 起按 desc 重建 resizable 的 RT，当前为 no-op 占位
+    /// 窗口尺寸改变：重建所有声明了 follow_window 的 RT（见 OnResize 实现）
     void OnResize(const VkExtent2D &extent) override;
 };//class RenderTargetManager
 

@@ -56,10 +56,15 @@ namespace hgl::graph
         }
 
         // 声明式创建离屏 RT：颜色/深度格式的默认值由 Create() 按设备解析
-        RenderTargetDesc rt_desc = RenderTargetDesc::OffscreenColorDepth(
-                                        desc.width,
-                                        desc.height,
-                                        desc.resource_prefix.c_str());
+        RenderTargetDesc rt_desc = desc.depth_only
+                                       ? RenderTargetDesc::OffscreenDepthOnly(desc.width,
+                                                                             desc.height,
+                                                                             desc.resource_prefix.c_str(),
+                                                                             desc.depth_format)
+                                       : RenderTargetDesc::OffscreenColorDepth(desc.width,
+                                                                              desc.height,
+                                                                              desc.resource_prefix.c_str(),
+                                                                              desc.depth_format);
 
         rt_desc.clear_color = desc.clear_color;
         rt_desc.env_profile = desc.env_profile;

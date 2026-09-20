@@ -51,10 +51,18 @@ namespace hgl::graph
         std::string resource_prefix = "OffscreenRT";
 
         /// 清屏色：写入 RenderTargetDesc，成为 RT 上的权威值
+        /// @note depth_only 为真时本值无意义（没有颜色附件）
         Color4f clear_color{0,0,0,1};
 
         /// 环境 Profile：写入 RenderTargetDesc
         EnvProfileID env_profile = kEnvProfileDefault;
+
+        /// 仅深度附件（shadow map 等）：零颜色附件，深度渲染后处于可采样布局，
+        /// 可直接 GetDepthTexture() 绑定采样
+        bool depth_only = false;
+
+        /// 深度格式；PF_UNDEFINED 表示由设备默认深度格式决定
+        VkFormat depth_format = PF_UNDEFINED;
 
         bool register_input_system  = false;
         bool register_camera_system = true;

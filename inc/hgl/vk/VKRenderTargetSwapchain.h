@@ -61,6 +61,7 @@ public:
     RenderPass*         GetRenderPass()                     override;
     uint32_t            GetColorCount()                     override;
     bool                hasDepth()                          override;
+    bool                IsSwapchain()                 const  override { return true; }
     Texture2D*          GetColorTexture(int index = 0)      override;
     Texture2D*          GetDepthTexture()                   override;
 

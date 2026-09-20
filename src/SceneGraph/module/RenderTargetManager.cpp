@@ -80,6 +80,42 @@ void RenderTargetDeleter::operator()(IRenderTarget *rt)const
         delete rt;      // Manager 不可达时的兜底
 }
 
+bool RenderTargetManager::ResolveFramebufferInfo(const RenderTargetDesc &desc,FramebufferInfo &fbi)
+{
+    auto *dev_attr = GetDevAttr();
+    if(!dev_attr || !dev_attr->physical_device)
+        return(false);
+
+    // 颜色格式：desc 显式给出的优先；has_color 为真且未给出时补设备默认 surface format。
+    // has_color 为假时保持零颜色附件——depth-only（如 shadow map）不能有颜色附件，
+    // 若在此无条件补默认格式，"仅深度"将无法表达。
+    std::vector<VkFormat> color_formats = desc.color_formats;
+
+    if(desc.has_color && color_formats.empty())
+        color_formats.push_back(dev_attr->surface_format.format);
+
+    for(const VkFormat fmt : color_formats)
+    {
+        if(!fbi.AddColor(fmt))
+            return(false);
+    }
+
+    if(desc.has_depth)
+    {
+        // 深度格式：desc 未指定时取设备默认深度格式
+        VkFormat depth_format = desc.depth_format;
+
+        if(depth_format == PF_UNDEFINED)
+            depth_format = dev_attr->physical_device->GetDepthFormat();
+
+        if(!fbi.SetDepth(depth_format))
+            return(false);
+    }
+
+    fbi.SetExtent(desc.width, desc.height);
+    return(true);
+}
+
 RenderTargetHandle RenderTargetManager::Create(const RenderTargetDesc &desc)
 {
     RenderTargetHandle empty_handle;
@@ -94,37 +130,10 @@ RenderTargetHandle RenderTargetManager::Create(const RenderTargetDesc &desc)
     if(!ecs_context)
         return(empty_handle);
 
-    auto *dev_attr = GetDevAttr();
-    if(!dev_attr || !dev_attr->physical_device)
-        return(empty_handle);
-
-    // 解析颜色格式：desc 未指定时用设备默认 surface format 的单附件
-    std::vector<VkFormat> color_formats = desc.color_formats;
-
-    if(color_formats.empty())
-        color_formats.push_back(dev_attr->surface_format.format);
-
-    // 解析深度格式：desc 未指定时取设备默认深度格式
-    VkFormat depth_format = desc.depth_format;
-
-    if(desc.has_depth && depth_format == PF_UNDEFINED)
-        depth_format = dev_attr->physical_device->GetDepthFormat();
-
     FramebufferInfo fbi;
 
-    for(const VkFormat fmt : color_formats)
-    {
-        if(!fbi.AddColor(fmt))
-            return(empty_handle);
-    }
-
-    if(desc.has_depth)
-    {
-        if(!fbi.SetDepth(depth_format))
-            return(empty_handle);
-    }
-
-    fbi.SetExtent(desc.width, desc.height);
+    if(!ResolveFramebufferInfo(desc, fbi))
+        return(empty_handle);
 
     AnsiString name = desc.name;
 
@@ -213,54 +222,88 @@ bool RenderTargetManager::CreateAttachments(RenderTargetData *data,const AnsiStr
     if(!tex_manager || !rp_manager)
         return(false);
 
-    RenderPass *rp = rp_manager->AcquireRenderPass(fbi);
-    if(!rp)
-        return(false);
-
     const uint32_t   color_count  = fbi->GetColorCount();
     const VkExtent2D extent       = fbi->GetExtent();
     const VkFormat   depth_format = fbi->GetDepthFormat();
 
-    AutoDeleteObjectArray<Texture2D> color_texture_list(color_count);
-    AutoDeleteArray<ImageView *>     color_iv_list(color_count);
+    // depth-only RT 的 color_count 为 0，此时深度是唯一附件。
+    // 两者都为空意味着空附件，desc 校验已挡；此处再挡一次，
+    // 避免落到 CreateFBO 中"无 depth 时读 color_list[0]"的解引用路径。
+    if(color_count == 0 && depth_format == PF_UNDEFINED)
+        return(false);
+
+    RenderPass *rp = rp_manager->AcquireRenderPass(fbi);
+    if(!rp)
+        return(false);
+
+    // 只存指针、不持所有权：纹理归 TextureManager，失败路径必须走 Release() 而不是
+    // delete（原实现用 AutoDeleteObjectArray 会在失败路径 delete 纹理，
+    // 在 TextureManager 侧留下悬挂指针）。
+    // 长度至少 1：color_count 为 0 时循环不写这些数组，但要保证传给 CreateFBO
+    // 的附件数组参数不是空指针。
+    const uint32_t slot_count = (color_count > 0) ? color_count : 1;
+
+    AutoDeleteArray<Texture2D *> color_texture_list(slot_count);
+    AutoDeleteArray<ImageView *> color_iv_list(slot_count);
 
     Texture2D **tp = color_texture_list;
     ImageView **iv = color_iv_list;
 
-    uint32_t color_index = 0;
+    uint32_t created_color_count = 0;
+
     for(const VkFormat &fmt : fbi->GetColorFormatList())
     {
-        U8String tex_name = ToU8String(name + ":Color[" + AnsiString::numberOf(color_index) + "]");
+        U8String tex_name = ToU8String(name + ":Color[" + AnsiString::numberOf(created_color_count) + "]");
         Texture2D *color_texture = tex_manager->CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt, extent, tex_name));
+
         if(!color_texture)
+        {
+            for(uint32_t i = 0; i < created_color_count; ++i)
+                tex_manager->Release(color_texture_list[i]);
+
             return(false);
+        }
 
         *tp++ = color_texture;
         *iv++ = color_texture->GetImageView();
-        color_index++;
+        created_color_count++;
     }
 
-    U8String depth_name = ToU8String(name + ":Depth");
-    Texture2D *depth_texture = (depth_format != PF_UNDEFINED)
-                                    ? tex_manager->CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format, extent, depth_name))
-                                    : nullptr;
+    Texture2D *depth_texture = nullptr;
+
+    if(depth_format != PF_UNDEFINED)
+    {
+        U8String depth_name = ToU8String(name + ":Depth");
+        depth_texture = tex_manager->CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format, extent, depth_name));
+
+        if(!depth_texture)
+        {
+            for(uint32_t i = 0; i < created_color_count; ++i)
+                tex_manager->Release(color_texture_list[i]);
+
+            return(false);
+        }
+    }
 
     // 复用成员 CreateFBO（原先此处内联了一份逐行重复的 lambda 实现）
     Framebuffer *fb = CreateFBO(rp, color_iv_list, color_count, depth_texture ? depth_texture->GetImageView() : nullptr);
 
     if(!fb)
     {
+        for(uint32_t i = 0; i < created_color_count; ++i)
+            tex_manager->Release(color_texture_list[i]);
+
         if(depth_texture)
             tex_manager->Release(depth_texture);
+
         return(false);
     }
 
     data->fbo            = fb;
     data->color_count    = color_count;
-    data->color_textures = new_copy<Texture2D *>(color_texture_list, color_count);
+    data->color_textures = new_copy<Texture2D *>(color_texture_list.data(), color_count);
     data->depth_texture  = depth_texture;
 
-    color_texture_list.Discard();
     return(true);
 }
 
@@ -273,7 +316,15 @@ bool RenderTargetManager::RebuildOffscreenRT(OffscreenRenderTarget *rt,const Ren
     if(!data)
         return(false);
 
-    // ---- 1. 释放旧纹理（纹理由 TextureManager 创建，需显式 Release）----
+    // ---- 1. 先解析出新配置 ----
+    // 必须在释放旧资源之前完成：解析失败（如设备不可用）时旧纹理与 FBO 保持完好，
+    // 否则 RT 会停在"资源已释放但没重建"的残废状态。
+    FramebufferInfo fbi;
+
+    if(!ResolveFramebufferInfo(desc, fbi))
+        return(false);
+
+    // ---- 2. 释放旧纹理（纹理由 TextureManager 创建，需显式 Release）----
     for(uint32_t i = 0; i < data->color_count; ++i)
     {
         if(data->color_textures[i])
@@ -283,7 +334,7 @@ bool RenderTargetManager::RebuildOffscreenRT(OffscreenRenderTarget *rt,const Ren
     if(data->depth_texture)
         tex_manager->Release(data->depth_texture);
 
-    // ---- 2. 销毁旧 FBO ----
+    // ---- 3. 销毁旧 FBO ----
     // 注意：queue / cmd_buf / render_complete_semaphore 由设备侧持有，
     // RenderTargetData::Clear() 只清指针不释放；此处若重新创建会造成设备对象累积，
     // 因此保留复用，仅重建纹理与 FBO。
@@ -294,34 +345,7 @@ bool RenderTargetManager::RebuildOffscreenRT(OffscreenRenderTarget *rt,const Ren
     data->color_count    = 0;
     data->depth_texture  = nullptr;
 
-    // ---- 3. 按新尺寸重建 ----
-    auto *dev_attr = GetDevAttr();
-    if(!dev_attr || !dev_attr->physical_device)
-        return(false);
-
-    std::vector<VkFormat> color_formats = desc.color_formats;
-    if(color_formats.empty())
-        color_formats.push_back(dev_attr->surface_format.format);
-
-    VkFormat depth_format = desc.depth_format;
-    if(desc.has_depth && depth_format == PF_UNDEFINED)
-        depth_format = dev_attr->physical_device->GetDepthFormat();
-
-    FramebufferInfo fbi;
-    for(const VkFormat fmt : color_formats)
-    {
-        if(!fbi.AddColor(fmt))
-            return(false);
-    }
-
-    if(desc.has_depth)
-    {
-        if(!fbi.SetDepth(depth_format))
-            return(false);
-    }
-
-    fbi.SetExtent(desc.width, desc.height);
-
+    // ---- 4. 按新尺寸与附件配置重建 ----
     AnsiString name = desc.name;
     if(name.IsEmpty())
         name = "RT_" + AnsiString::numberOf(desc.width) + "x" + AnsiString::numberOf(desc.height);

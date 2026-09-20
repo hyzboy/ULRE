@@ -123,6 +123,17 @@ public: // Command Buffer
     virtual uint32_t            GetCurrentFrameIndex()const{return 0;}
     virtual uint32_t            GetFrameCount       ()const{return 1;}
 
+    /// 是否为窗口交换链目标。
+    ///
+    /// 决定渲染结束时的附件最终布局：交换链颜色附件转 PRESENT_SRC_KHR 交呈现引擎，
+    /// 离屏附件转可采样布局。
+    ///
+    /// @note 与 `RenderbufferInfo::IsSwapchain()` 命名一致。
+    /// @note 本函数刻意声明在接口最末：新增虚函数若插在中间，会整体平移后续槽位，
+    ///       任何未随头文件重编译的旧目标文件都会因 vtable 错位而调用到错误的函数
+    ///       （表现为随机段错误）。放在末尾可让既有槽位偏移保持不变。
+    virtual bool                IsSwapchain        ()const{return false;}
+
 public:
     virtual ViewportInfo *      GetViewportInfo     ();
 };//class IRenderTarget

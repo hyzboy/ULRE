@@ -421,7 +421,124 @@ offscreen->Resize(1024, 1024);                  // 阶段 D 后可用
 
 ---
 
-## 五、验收标准
+## 五、阶段 E — depth-only 目标（shadow map）
+
+阶段 B 的描述子只能表达"有颜色"，`Create()` 在 `color_formats.empty()` 时无条件补一个
+设备默认颜色格式，因此**零颜色附件无法表达**。而 shadow map 正是典型形态。
+
+底层其实早就支持，缺的是上层描述能力——确认过这几处都能正确吃 0 颜色附件：
+
+- `CreateFBO()` 的 `att_count = color_count + (depth?1:0)`
+- `BeginRendering()` 的深度 barrier 放在 `barriers[color_count]`
+- `FramebufferInfo::GetAttachmentCount()`、`CreateAttachmentDescription()` 的附件数计算
+- `SubpassDescription(color_refs, 0, &depth_ref)`
+
+### 改动清单
+
+**1. 描述子（`RenderTargetDesc.h`）**
+
+- 新增 `has_color`（与 `has_depth` 对称），`OffscreenDepthOnly()` 工厂，
+  以及可选的 `depth_format` 参数（三个工厂都支持）
+- `IsValid()` 新增两条校验：不能既无颜色也无深度；声明无颜色时不得给颜色格式
+
+**2. 创建路径（`RenderTargetManager`）**
+
+- 抽出 `ResolveFramebufferInfo()`，`Create()` 与 `RebuildOffscreenRT()` 共用——
+  原先两处各写一份解析逻辑，改一处必须记得改另一处
+- `has_color` 为假时保持零颜色附件，不补默认格式
+- `RebuildOffscreenRT()` 调整为**先解析后释放**：原顺序是先释放旧纹理再取设备属性，
+  设备不可用时会留下"资源已释放但没重建"的残废 RT
+- `CreateAttachments()` 顺手修掉一个隐患：原先用 `AutoDeleteObjectArray<Texture2D>`
+  兜底，失败路径会 `delete` 纹理，而纹理归 `TextureManager`——改为
+  `AutoDeleteArray`（只释放数组）+ 失败路径显式 `Release()`
+
+**3. 管线解析（`VKPipelineResolver.cpp`，三处）**
+
+| 位置 | 原行为 | 现行为 |
+|---|---|---|
+| `ValidateResolveRequest` | `color_attachment_count == 0` 直接拒绝 | 零颜色时要求必须有深度 |
+| `HasCompleteFinalKey` | 同上，key 视为不完整 | 同上判据 |
+| `MaterializePipeline` | `stencilAttachmentFormat = depth_format` | 仅当格式确实带模板位时才声明 |
+
+第三处是隐藏的 validation 错误：对 `D16_UNORM` / `D32_SFLOAT` 这类纯深度格式
+（shadow map 常用），`stencilAttachmentFormat` 必须为 `VK_FORMAT_UNDEFINED`。
+
+**4. 布局转换（`VKCommandBufferRender.cpp`）**
+
+`EndRenderingPresent()` 原先只在 `color_count > 0` 时发 barrier，depth-only 目标的深度
+会停在 `DEPTH_STENCIL_ATTACHMENT_OPTIMAL`——**采样即为非法**。现在：
+
+- 按 `IRenderTarget::IsSwapchain()`（新增虚函数）分流
+- 交换链：颜色 → `PRESENT_SRC_KHR`（维持原语义）
+- 离屏：颜色与深度都 → `SHADER_READ_ONLY_OPTIMAL`。
+  深度也走 SRO 而非 `DEPTH_STENCIL_READ_ONLY_OPTIMAL`，因为采样侧
+  `BindlessTextureManager` 的 descriptor `imageLayout` 固定为 SRO，两者必须一致
+- `BeginRendering()` / `EndRenderingPresent()` 的深度 `aspectMask` 改为按格式判断：
+  纯深度格式不能带 `STENCIL` 位
+
+**5. 深度清屏值（`RenderSystemCore.cpp` + `VKCommandBufferRender.cpp`）**
+
+两处相关：
+
+- `BeginRendering()` 显式把深度槽置为 `1.0f`。`VkClearValue` 零初始化的 `depth` 是
+  `0.0f`，而 `hgl_align_realloc` 用的是 `_aligned_realloc`（**不初始化新空间**），
+  原值实际是未初始化内存；在默认 LESS 深度测试下清成 0 会让 depth-only 目标全空
+- `RenderSystemCore::BeginRenderPass()` 在 `GetColorCount() > 0` 时才写颜色 clear 值。
+  `VkClearValue` 的 `color` 与 `depthStencil` 是同一 union，depth-only 时
+  `clear_values[0]` 就是深度槽，写颜色会覆盖深度清屏值
+
+**6. `OffscreenWorld`**
+
+`OffscreenWorldDesc` 新增 `depth_only` 与 `depth_format`，按标志选择
+`OffscreenDepthOnly()` 或 `OffscreenColorDepth()`。
+
+### 验证用例
+
+新增 `example/Basic/ShadowMap.cpp`：离屏世界 `depth_only = true` + `PF_D32F`，
+以光源视角渲染球体到 depth-only RT，主世界的立方体直接以该深度纹理作 albedo 采样显示。
+日志逐项打印 `color_count` / `has_depth` / 深度纹理指针 / 格式 / 布局 / 尺寸，
+并显式判定布局是否为 `SHADER_READ_ONLY_OPTIMAL`（可采样）。
+
+实跑结果（Debug + Khronos validation layer）：
+
+| 检查项 | 实测 |
+|---|---|
+| 零颜色附件目标 | `color_count=0`、`has_depth=1` |
+| 深度格式 | `126`（`VK_FORMAT_D32_SFLOAT`，纯深度） |
+| 深度布局（渲染前） | `3` = `DEPTH_STENCIL_ATTACHMENT_OPTIMAL` |
+| 深度布局（渲染后） | `5` = `SHADER_READ_ONLY_OPTIMAL`（可采样） |
+| 采样注册 | `BindlessTextureManager` 以 `handle=1` 注册该深度纹理 |
+| validation | 无 ERROR |
+
+唯一一条 validation 提示是 `MsgCode:0`（非错误）：片段着色器写出的 `outColor`
+因目标没有颜色附件而被丢弃。这是 depth-only 渲染的**预期行为**——当前材质管线
+是共享的；若后续要消除该提示，需要引入不写颜色的深度专用管线。
+
+### 构建注意（踩过的坑）
+
+`IRenderTarget` 是全渲染链的公共基类。给这类接口新增虚函数后，
+MSBuild 的增量构建**可能漏编部分源文件**（实测漏编 `VKSwapchainRenderTarget.cpp`），
+造成 vtable 与新接口错位，表现为**框架初始化早期段错误**（`exit=139`、
+日志停在主窗口 `RenderPass` 创建之后、无任何业务日志）。
+
+两条约束：
+
+1. 新增虚函数一律声明在接口**末尾**——插在中间会整体平移后续槽位，
+   任何未重编的旧目标文件都会错位。
+2. 改这类头文件后，`grep -rl` 找出所有直接包含它的源文件（当前 25 个）并
+   `touch` 强制重编，不能只依赖增量依赖检查。
+
+### 未做（后续）
+
+- **多层 / cubemap**：点光源阴影（cubemap 6 面）与 CSM（array）需要
+  `layers` 字段，且 `CreateFBO` 的 `fb_info.layers = 1`、`BeginRendering` 的
+  `ri.layerCount = 1` 都是硬编码，需一并改为变量。本次按单层 2D 实现。
+- **深度比较采样**：shadow map 的 `sampler2DShadow` 需要比较采样器与
+  `DEPTH_STENCIL_READ_ONLY_OPTIMAL` 路径，本次只保证普通采样可用。
+
+---
+
+## 六、验收标准
 
 - 新建一个离屏 RT 并渲染一帧，应用侧代码 ≤ 5 行（当前约 270 行含 `OffscreenPass`）。
 - 全仓只有 1 个 RT 创建入口、1 个权威 getter。
@@ -431,7 +548,7 @@ offscreen->Resize(1024, 1024);                  // 阶段 D 后可用
 
 ---
 
-## 六、风险与注意
+## 七、风险与注意
 
 - **改动面**：`IRenderTarget` 是全渲染链的公共基类，改名需保留 typedef 过渡，避免一次改动过大。
 - **离屏与主路径共用同一 RenderCore**：`RenderSystemCore` 目前在 `:31/:45/:106` 三处重新取
