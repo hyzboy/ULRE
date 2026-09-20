@@ -385,7 +385,7 @@ namespace hgl
             return true;
         }
 
-        bool ECSContext::BeginManagedRenderFrame(float deltaTime)
+        bool ECSContext::BeginManagedRenderFrame(float deltaTime, const bool need_swapchain_acquire)
         {
             if (!active)
                 return false;
@@ -393,7 +393,7 @@ namespace hgl
             if (!EnsureRenderCoreInitialized())
                 return false;
 
-            if (GetRenderTarget())
+            if (GetRenderTarget() && need_swapchain_acquire)
             {
 //                LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
                 if (!AcquireSwapchainImage(deltaTime))
@@ -498,6 +498,51 @@ namespace hgl
 
             if (current_render_cmd == cmd)
                 current_render_cmd = nullptr;
+        }
+
+        bool ECSContext::RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime)
+        {
+            if (!active)
+                return false;
+
+            if (!rt)
+            {
+                LogError("[ECSContext::RenderTo] render target is null");
+                return false;
+            }
+
+            // 调用期间把本世界的渲染目标切到目标 RT；结束后恢复。
+            // RenderSystemCore::BeginFrame() 每次重取 world->GetRenderTarget()，
+            // 因此能正确拿到临时切换后的 RT。
+            graph::IRenderTarget *saved_target = render_target;
+            hgl::Color4f          saved_clear  = clear_color;
+
+            render_target = rt;
+            clear_color   = clear;
+
+            bool ok = false;
+
+            // 离屏 RT 无 swapchain 图像可获取，跳过 AcquireSwapchainImage
+            if (BeginManagedRenderFrame(deltaTime, false))
+            {
+                RenderDrawOnly(render_core->GetRenderCmd(), deltaTime);
+                EndManagedRenderFrame(deltaTime);
+                ok = true;
+            }
+
+            render_target = saved_target;
+            clear_color   = saved_clear;
+
+            return ok;
+        }
+
+        bool ECSContext::RenderTo(graph::IRenderTarget *rt, float deltaTime)
+        {
+            if (!rt)
+                return false;
+
+            // 清屏色以 RT 上声明的值为准（RenderTargetDesc::clear_color）
+            return RenderTo(rt, rt->GetClearColor(), deltaTime);
         }
 
         void ECSContext::OnResize(const VkExtent2D &extent)

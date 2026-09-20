@@ -150,6 +150,12 @@ namespace hgl::graph
         GraphModuleManager *GetModuleManager() { return module_manager; }
         RenderTargetManager *GetRenderTargetManager() { return rt_manager; }
 
+        /// 回设 RenderTargetManager。
+        /// GraphicsContext::Initialize() 无法用 module_manager->GetOrCreate 创建它
+        /// （其构造需要 ECSContext），故由 RenderTargetManager 构造时自行回设；
+        /// 不回设则 GetRenderTargetManager() 恒为 nullptr。
+        void SetRenderTargetManager(RenderTargetManager *m) { rt_manager = m; }
+
     };
 
     // 向后兼容别名

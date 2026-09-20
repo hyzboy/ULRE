@@ -2,7 +2,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -19,8 +19,6 @@
 #include<hgl/mtl/MaterialRecipe.h>
 
 #include<hgl/graph/ssbo/LitMaterialData.h>
-
-#include "../common/OffscreenWorldRuntime.h"
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -86,7 +84,7 @@ namespace
 class OffscreenPass
 {
 private:
-    hgl::example::OffscreenWorldRuntime runtime;
+    std::unique_ptr<graph::OffscreenWorld> offscreen;
 
     RenderContext *render_context = nullptr;
     graph::EnvProfileID offscreen_env_profile = graph::kEnvProfileDefault;
@@ -108,7 +106,7 @@ private:
 
     void DumpOffscreenState(const char *stage)
     {
-        auto *world = runtime.GetWorld();
+        auto *world = offscreen ? offscreen->GetWorld() : nullptr;
         if (!world)
         {
             std::printf("[RenderToTextureDiag][%s] world=null\n", stage ? stage : "<null>");
@@ -177,7 +175,7 @@ public:
         GraphicsContext *gc = render_context ? render_context->GetGraphicsContext() : nullptr;
         if (!gc)
         {
-            if (auto *w = runtime.GetWorld())
+            if (auto *w = offscreen ? offscreen->GetWorld() : nullptr)
                 gc = w->GetGraphicsContext();
         }
 
@@ -202,22 +200,31 @@ public:
 
     Texture2D *GetColorTexture() const
     {
-        return runtime.GetColorTexture(0);
+        return offscreen ? offscreen->GetColorTexture(0) : nullptr;
     }
 
     bool Init(WorkObject *owner, const uint32_t width, const uint32_t height)
     {
         GLogInfo("[RenderToTexture][OffscreenPass::Init] begin owner=%p size=%ux%u",
                  (void *)owner, width, height);
-        hgl::example::OffscreenWorldConfig cfg;
-        cfg.width = width;
-        cfg.height = height;
-        cfg.world_name = "RenderToTexture_Offscreen";
-        cfg.resource_prefix = "RenderToTexture:OffscreenRT";
-        cfg.register_input_system = false;
 
-        if (!runtime.Init(owner, cfg))
-            return LogStageFail("OffscreenPass::Init", "runtime.Init failed");
+        // 离屏世界：一行描述 + 一次 Create，RT / ECSContext / 渲染系统全部就位
+        graph::OffscreenWorldDesc desc;
+        desc.width  = width;
+        desc.height = height;
+        desc.name   = "RenderToTexture_Offscreen";
+        desc.resource_prefix = "RenderToTexture:OffscreenRT";
+
+        // 清屏色声明在 desc 里，成为 RT 上的权威值。
+        // RTT 内容会被主场景 Lit 材质再乘一次光照（kd*NdotL/π ≈ 0.16），
+        // 离屏用亮天蓝补偿，避免贴到立方体上整体发黑。
+        desc.clear_color = GetColor4f(COLOR::LightSkyBlue, 1.0f);
+
+        offscreen = graph::OffscreenWorld::Create(owner->GetGraphicsContext(),
+                                                  owner->GetECSContext(),
+                                                  desc);
+        if (!offscreen)
+            return LogStageFail("OffscreenPass::Init", "OffscreenWorld::Create failed");
 
         // RTT 内容会被主场景 Lit 材质再乘一次光照（kd*NdotL/π ≈ 0.16），
         // 离屏用高太阳强度 profile 补偿，避免贴到立方体上整体发黑。
@@ -230,24 +237,26 @@ public:
                 info.sky.sun_intensity = 4.0f;
 
                 offscreen_env_profile = env_manager->Create("RenderToTexture.OffscreenBright", info);
-                if (runtime.GetRenderTarget())
-                    runtime.GetRenderTarget()->SetEnvironmentProfile(offscreen_env_profile);
+                if (offscreen->GetRenderTarget())
+                    offscreen->GetRenderTarget()->SetEnvironmentProfile(offscreen_env_profile);
             }
         }
 
-        LogTextureInfo("offscreen_rt_color0_init", runtime.GetColorTexture(0));
+        LogTextureInfo("offscreen_rt_color0_init", offscreen->GetColorTexture(0));
         render_context = owner->GetRenderContext();
         GLogInfo("[RenderToTexture][OffscreenPass::Init] success world=%p rt=%p",
-                 (void *)runtime.GetWorld(), (void *)runtime.GetRenderTarget());
+                 (void *)offscreen->GetWorld(), (void *)offscreen->GetRenderTarget());
         return true;
     }
 
     bool BuildSphere(WorkObject *owner)
     {
         GLogInfo("[RenderToTexture][OffscreenPass::BuildSphere] begin owner=%p world=%p rt=%p",
-                 (void *)owner, (void *)runtime.GetWorld(), (void *)runtime.GetRenderTarget());
-        if (!owner || !runtime.GetWorld() || !runtime.GetRenderTarget())
-            return LogStageFail("OffscreenPass::BuildSphere", "owner/world/render target missing");
+                 (void *)owner,
+                 (void *)(offscreen ? offscreen->GetWorld() : nullptr),
+                 (void *)(offscreen ? offscreen->GetRenderTarget() : nullptr));
+        if (!owner || !offscreen || !offscreen->IsValid())
+            return LogStageFail("OffscreenPass::BuildSphere", "owner/offscreen world missing");
 
         GraphicsContext *gc = owner->GetGraphicsContext();
         if (!gc)
@@ -276,7 +285,7 @@ public:
         if (!sphere_base_tex || !sphere_normal_tex || !sphere_roughness_tex)
             return LogStageFail("OffscreenPass::BuildSphere", "load brickwall textures failed");
 
-        if (!InitMaterialDataSSBO(runtime.GetWorld()))
+        if (!InitMaterialDataSSBO(offscreen->GetWorld()))
             return LogStageFail("OffscreenPass::BuildSphere", "InitMaterialDataSSBO failed");
 
         auto pc = std::make_unique<GeometryCreater>(
@@ -298,7 +307,7 @@ public:
         if (!sphere_asset.IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "create offscreen primitive asset failed");
 
-        auto *world = runtime.GetWorld();
+        auto *world = offscreen->GetWorld();
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
         auto transform = sphere_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto prim_comp = sphere_entity->AddComponent<PrimitiveComponent>();
@@ -329,7 +338,7 @@ public:
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
-        auto camera_system = runtime.GetCameraSystem();
+        auto camera_system = offscreen->GetCameraSystem();
         camera->camera_data = camera_system ? camera_system->GetCamera() : nullptr;
         camera->camera_info = const_cast<CameraInfo *>(camera_system ? camera_system->GetCameraInfo() : nullptr);
         camera->viewport_info = camera_system ? camera_system->GetViewportInfo() : nullptr;
@@ -342,11 +351,13 @@ public:
     {
         LogStage("OffscreenPass::RenderOnce", "begin");
         DumpOffscreenState("pre-renderonce");
-        // 清屏色会被主场景 Lit 再乘一次光照（受光面系数约 0.2~0.6），
-        // 深色（如 DarkSlateBlue）清出来贴到立方体上就是一片黑背景。
-        // 用亮天蓝，保证纹理背景过完立方体光照后仍可辨。
-        if (!runtime.RenderOnce(GetColor4f(COLOR::LightSkyBlue, 1.0f)))
-            return LogStageFail("OffscreenPass::RenderOnce", "runtime.RenderOnce failed");
+
+        // 清屏色已声明在 OffscreenWorldDesc::clear_color（见 Init），此处无需再传。
+        // 内部走 ECSContext::RenderTo()，与主窗口路径共用同一套帧驱动。
+        if (!offscreen)
+            return LogStageFail("OffscreenPass::RenderOnce", "offscreen world is null");
+
+        offscreen->Render();
 
         DumpOffscreenState("post-renderonce");
         LogStage("OffscreenPass::RenderOnce", "success");

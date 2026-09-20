@@ -104,8 +104,12 @@ class ImageView;
 class Framebuffer;
 struct Swapchain;
 class IRenderTarget;
-class RenderTarget;
+class OffscreenRenderTarget;   ///< 离屏渲染目标（实现类，见 VKOffscreenRenderTarget.h）
 class SwapchainRenderTarget;
+
+/// [兼容别名] RenderTarget 已改名为 OffscreenRenderTarget，与 SwapchainRenderTarget 对称。
+/// 新代码请用 OffscreenRenderTarget；此别名保留一个版本周期后移除。
+using RenderTarget = OffscreenRenderTarget;
 
 struct CopyBufferToImageInfo;
 

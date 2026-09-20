@@ -17,7 +17,7 @@
 #include <hgl/vk/VKRenderbufferInfo.h>
 #include <hgl/vk/VKRenderPass.h>
 #include <hgl/vk/VKRenderTargetData.h>
-#include<hgl/vk/VKRenderTargetSingle.h>
+#include<hgl/vk/VKOffscreenRenderTarget.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VKTextureCreateInfo.h>
 #include <vulkan/vulkan_core.h>
@@ -30,6 +30,12 @@ RenderTargetManager::RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContex
     tex_manager=tm;
     rp_manager=rpm;
     ecs_context=ecs_ctx;
+
+    // 回设到 GraphicsContext：其余 manager 由 module_manager->GetOrCreate 创建并
+    // 赋给 GraphicsContext 成员，而 RTM 构造需要 ECSContext，只能外部创建。
+    // 若此处不回设，gc->GetRenderTargetManager() 恒为 nullptr。
+    if(gc)
+        gc->SetRenderTargetManager(this);
 }
 
 RenderTargetManager::~RenderTargetManager()
@@ -37,8 +43,8 @@ RenderTargetManager::~RenderTargetManager()
     Release();
 }
 
-RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
-                                                               const FramebufferInfo *fbi, const uint32_t fence_count)
+OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+                                                                        const FramebufferInfo *fbi, const uint32_t fence_count)
 {
     // Generate a default name from the extent
     if(!fbi)
@@ -50,8 +56,8 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
     return CreateRTFromGraphicsContext(gc, ecs_ctx, auto_name, fbi, fence_count);
 }
 
-RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
-                                                               const AnsiString &name, const FramebufferInfo *fbi, const uint32_t fence_count)
+OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+                                                                        const AnsiString &name, const FramebufferInfo *fbi, const uint32_t fence_count)
 {
     if(!gc || !ecs_ctx || !fbi)
         return(nullptr);
@@ -63,10 +69,87 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
     return rtm->CreateOffscreenRT(ecs_ctx, name, fbi, fence_count);
 }
 
-RenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSContext *ecs_ctx,
-                                                     const AnsiString &name,
-                                                     const FramebufferInfo *fbi,
-                                                     const uint32_t fence_count)
+void RenderTargetDeleter::operator()(IRenderTarget *rt)const
+{
+    if(!rt)
+        return;
+
+    if(manager)
+        manager->Destroy(rt);
+    else
+        delete rt;      // Manager 不可达时的兜底
+}
+
+RenderTargetHandle RenderTargetManager::Create(const RenderTargetDesc &desc)
+{
+    RenderTargetHandle empty_handle;
+
+    if(!desc.IsValid())
+        return(empty_handle);
+
+    // Swapchain RT 由 SwapchainModule 负责，Manager 只创建离屏 RT
+    if(desc.kind != RenderTargetKind::Offscreen)
+        return(empty_handle);
+
+    if(!ecs_context)
+        return(empty_handle);
+
+    auto *dev_attr = GetDevAttr();
+    if(!dev_attr || !dev_attr->physical_device)
+        return(empty_handle);
+
+    // 解析颜色格式：desc 未指定时用设备默认 surface format 的单附件
+    std::vector<VkFormat> color_formats = desc.color_formats;
+
+    if(color_formats.empty())
+        color_formats.push_back(dev_attr->surface_format.format);
+
+    // 解析深度格式：desc 未指定时取设备默认深度格式
+    VkFormat depth_format = desc.depth_format;
+
+    if(desc.has_depth && depth_format == PF_UNDEFINED)
+        depth_format = dev_attr->physical_device->GetDepthFormat();
+
+    FramebufferInfo fbi;
+
+    for(const VkFormat fmt : color_formats)
+    {
+        if(!fbi.AddColor(fmt))
+            return(empty_handle);
+    }
+
+    if(desc.has_depth)
+    {
+        if(!fbi.SetDepth(depth_format))
+            return(empty_handle);
+    }
+
+    fbi.SetExtent(desc.width, desc.height);
+
+    AnsiString name = desc.name;
+
+    if(name.IsEmpty())
+        name = "RT_" + AnsiString::numberOf(desc.width) + "x" + AnsiString::numberOf(desc.height);
+
+    OffscreenRenderTarget *rt = CreateOffscreenRT(ecs_context, name, &fbi, desc.fence_count);
+
+    if(!rt)
+        return(empty_handle);
+
+    // 渲染参数收归 RT（阶段 C 起由 ECSContext::RenderTo 统一从 RT 读取）
+    rt->SetClearColor(desc.clear_color);
+    rt->SetEnvironmentProfile(desc.env_profile);
+
+    RenderTargetDeleter deleter;
+    deleter.manager = this;
+
+    return RenderTargetHandle(rt, deleter);
+}
+
+OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSContext *ecs_ctx,
+                                                              const AnsiString &name,
+                                                              const FramebufferInfo *fbi,
+                                                              const uint32_t fence_count)
 {
     if(!fbi || !ecs_ctx)
         return(nullptr);
@@ -133,9 +216,10 @@ RenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSContext *ecs_c
 
         color_texture_list.Discard();
 
-        RenderTarget *rt = new RenderTarget(ecs_ctx, rtd);
+        OffscreenRenderTarget *rt = new OffscreenRenderTarget(ecs_ctx, rtd);
 
-        // 登记入注册表：所有权归本 Manager，调用方用 Destroy() 而非 delete
+        // 登记入注册表：所有权归本 Manager，推荐用 RenderTargetHandle（RAII），
+        // 裸指针场景用 Destroy()，不得手动 delete
         RenderTargetEntry entry;
         entry.name = name;
         entry.rt   = rt;
@@ -148,7 +232,7 @@ RenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSContext *ecs_c
     return nullptr;
 }
 
-bool RenderTargetManager::Destroy(RenderTarget *rt)
+bool RenderTargetManager::Destroy(IRenderTarget *rt)
 {
     if(!rt)
         return(false);
@@ -166,7 +250,7 @@ bool RenderTargetManager::Destroy(RenderTarget *rt)
     return(false);
 }
 
-RenderTarget *RenderTargetManager::Find(const AnsiString &name)const
+IRenderTarget *RenderTargetManager::Find(const AnsiString &name)const
 {
     for(const RenderTargetEntry &entry : registry)
     {

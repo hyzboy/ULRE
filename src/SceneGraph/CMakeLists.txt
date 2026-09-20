@@ -27,6 +27,8 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/ShaderProgramCreatePrecheckAdapter.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
+                        ${SG_INCLUDE_PATH}/module/OffscreenWorld.h
+                        ${SG_INCLUDE_PATH}/render/RenderTargetDesc.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
                         ${SG_INCLUDE_PATH}/module/SSBOBufferRegistry.h
                         ${SG_INCLUDE_PATH}/module/MaterialSSBOBufferRegistry.h
@@ -45,6 +47,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/ShaderProgramCreatePrecheckAdapter.cpp
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp
+                        module/OffscreenWorld.cpp
                         module/GeometryManager.cpp
                         module/SSBOBufferRegistry.cpp
                         module/GlobalSSBOBufferRegistry.cpp

@@ -8,6 +8,7 @@
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
+#include<hgl/color/Color4f.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKCommandBuffer.h>
@@ -44,10 +45,17 @@ class IRenderTarget
     // RT 只持引用；未设置即 default）。绑定由 RDBS 每帧按此解析。
     EnvProfileID env_profile = kEnvProfileDefault;
 
+    // 清屏色：标准化后以 RT 上这份为权威（原散落在 WorkObject / ECSContext /
+    // RenderSystemCore 三处；阶段 C 收敛为统一从 RT 读取）
+    Color4f clear_color{0,0,0,1};
+
 public:
 
     void SetEnvironmentProfile(EnvProfileID id) { env_profile = id; }
     EnvProfileID GetEnvironmentProfile() const { return env_profile; }
+
+    void SetClearColor(const Color4f &color) { clear_color = color; }
+    const Color4f &GetClearColor() const { return clear_color; }
 
     VulkanDevice *      GetDevice           ()const;
     VkDevice            GetVkDevice         ()const;

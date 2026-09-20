@@ -210,7 +210,7 @@ namespace hgl
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
             bool EnsureRenderCoreInitialized();
-            bool BeginManagedRenderFrame(float deltaTime);
+            bool BeginManagedRenderFrame(float deltaTime, bool need_swapchain_acquire = true);
             void EndManagedRenderFrame(float deltaTime);
             void RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
                                                ExecutionPhase maxPhase,
@@ -237,8 +237,22 @@ namespace hgl
 
             /// Compatibility entry for recording into an existing command buffer.
             /// 离屏/手动命令缓冲流程：Update 相位已由 PrepareRenderPassSetup
-            /// 执行，仅录制绘制命令（OffscreenWorldRuntime 依赖——真用例）
+            /// 执行，仅录制绘制命令（由 RenderTo / OffscreenWorld 使用）
             void RenderDrawOnly(graph::RenderCmdBuffer *cmd, float deltaTime);
+
+            /// 把本世界的一帧渲染到指定 RenderTarget（离屏/子世界的标准入口）
+            ///
+            /// 内部复用 BeginManagedRenderFrame + RenderDrawOnly + EndManagedRenderFrame，
+            /// 与主窗口路径**共用同一套帧驱动**，不新增平行实现。
+            ///
+            /// @param rt    目标 RT；调用期间临时作为本世界的 render_target
+            /// @param clear 清屏色
+            /// @return 成功返回 true
+            /// @note 会跳过 swapchain 图像获取（离屏 RT 无 swapchain 图像）
+            bool RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime = 0.0f);
+
+            /// 使用 RT 上声明的清屏色（RenderTargetDesc::clear_color）渲染一帧
+            bool RenderTo(graph::IRenderTarget *rt, float deltaTime = 0.0f);
 
             /// Preferred public frame driver is Render(float).
 
