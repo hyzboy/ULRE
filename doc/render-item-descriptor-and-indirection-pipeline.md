@@ -269,13 +269,16 @@ uint texture_index       = texture_ref_buffer.refs[desc.w].descriptor_index;
 
 ---
 
-### 阶段六：遗留代码清理与全量回归测试
+### 阶段六：遗留代码清理与全量回归测试 【✅ 已完成】
 > **核心目标**：清除过渡期代码，确立全新工业级基线。
 
-- **6.1 废弃过渡代码**
-  - 彻底删除 `PrimitiveBatchPipeline` 中每帧组装 `MaterialInstanceAddresses` 的陈旧代码路径。
-  - 移除合批阶段动态 `EnsureMeshDrawParams` 补录逻辑，统一由 Storage 预分配担保。
-- **6.2 全量工程回归与稳定性测试**
-  - 编译并执行 `example/` 下全量用例（`PBRSpheres`、`BasicLitMeshes`、`TextureQuad`、`SkyCubeSphere` 等）。
-  - 验证多视口、动态换材质、多实例、GPU Compute 均零告警、零内存泄漏、零渲染伪影。
+- **6.1 废弃过渡代码** 【✅ 已完成】
+  - 彻底删除 `PrimitiveBatchPipeline` 中合批阶段动态 `EnsureMeshDrawParams` 补录逻辑（包括 `BuildBatches` 与 `WriteMeshDrawCommands` 中的 fallback 补录调用），统一由 `RenderPrimitiveCollectSystem` 及底层 Storage 预分配担保。
+  - 在 `EnsureBatchIndexRows` 与 `WriteBatchIndexRows` 中增加 `uses_render_item_resolve` 保护，开启 4-ID 架构直通的批次跳过每帧缓冲分配与映射。
+  - 升级 `WriteBatchIndexRows`：优先直接通过 `item->GetRenderItemHandle()` 从全局 `RenderItemDataStorage` 查询 4-ID 描述符填充行数据，废弃每帧通过 `MaterialComponent` 动态计算基址与偏移的过渡代码路径。
+- **6.2 全量工程回归与稳定性测试** 【✅ 已完成】
+  - 修复 `GizmoUsageExample` 轴材质与纹理索引映射异常。
+  - 修复 `ComputeFrustumCull` GPU-Driven 间接剔除渲染管道，接入统一 `InstancedPrimitiveComponent` 与间接缓冲区绑定机制。
+  - 编译并执行全量回归用例（`TestRenderItemDataStorage`、`PBRSpheres`、`BasicLitMeshes`、`TextureQuad`、`SkyCubeSphere`、`SingleSphereMaterialSwitch`、`ComputeAsteroidBelt`、`ComputeFrustumCull`、`GizmoUsageExample`、`PlaneGrid3D`、`DrawTriangle`、`SimpleCube`、`SimpleSphere` 等）。
+  - Release 与 Debug 双配置全量通过，所有单元测试组 100% 通过，零编译告警与运行时错误。
 

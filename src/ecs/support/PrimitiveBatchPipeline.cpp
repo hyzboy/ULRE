@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
+#include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/DrawItemCompaction.h>
 #include<source_location>
@@ -426,8 +427,6 @@ namespace hgl::ecs
                     geometry = prim_comp->GetPrimitiveAsset()->GetGeometry();
             }
 
-            if (geometry && pool && dev)
-                const_cast<graph::Geometry *>(geometry)->EnsureMeshDrawParams(pool, dev);
             if (data_buffer && geometry && data_buffer->geometry_id == 0)
                 const_cast<graph::GeometryDataBuffer *>(data_buffer)->geometry_id = geometry->GetGeometryID();
 
@@ -666,10 +665,6 @@ namespace hgl::ecs
 
             if (cmds)
             {
-                auto *gc = world ? world->GetGraphicsContext() : nullptr;
-                auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
-                auto *dev = world ? world->GetGPUDevice() : nullptr;
-
                 for (uint32_t i = 0; i < count; ++i)
                 {
                     DrawBatch &db = batch.draw_batches[i];
@@ -678,8 +673,6 @@ namespace hgl::ecs
                         geom_id = db.geom_data_buffer->geometry_id;
                     if (geom_id == 0 && db.geometry)
                     {
-                        if (pool && dev)
-                            const_cast<graph::Geometry *>(db.geometry)->EnsureMeshDrawParams(pool, dev);
                         geom_id = db.geometry->GetGeometryID();
                         db.geometry_id = geom_id;
                         if (db.geom_data_buffer)
@@ -840,7 +833,7 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::EnsureBatchIndexRows(MaterialBatch& batch)
     {
-        if (batch.gpu_driven_override)
+        if (batch.gpu_driven_override || batch.uses_render_item_resolve)
             return;
 
         if (!batch.buffer_manager || batch.items.empty())
@@ -925,7 +918,7 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::WriteBatchIndexRows(MaterialBatch& batch)
     {
-        if (batch.items.empty() || batch.gpu_driven_override)
+        if (batch.items.empty() || batch.gpu_driven_override || batch.uses_render_item_resolve)
             return;
 
         const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
@@ -956,8 +949,8 @@ namespace hgl::ecs
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
 
-            // 行表写入 payload/texture-reference 两个索引。payload 索引由
-            // Collect 物化时发布的 data_index_row 提供；纹理配置索引由独立 pool 提供。
+            // 行表写入 payload/texture-reference 两个索引。
+            // 优先从 RenderItemDataStorage 依据 4-ID 架构获取；若未注册则从 MaterialComponent 回退。
             if (mi_gpu)
             {
                 auto *row_ptr = static_cast<graph::mtl::MaterialInstanceAddresses *>(
@@ -967,58 +960,57 @@ namespace hgl::ecs
                             * sizeof(graph::mtl::MaterialInstanceAddresses)));
                 if (row_ptr)
                 {
-                    graph::mtl::MaterialInstanceAddresses debug_rows[4]{};
+                    auto *storage = world ? world->GetRenderItemStorage() : nullptr;
                     for (size_t i = 0; i < item_count; ++i)
                     {
                         row_ptr[i] = { 0, 0 };
+                        RenderItem *item = batch.items[i];
+                        bool resolved = false;
 
-                        auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
-                        auto material_comp = primitive_item
-                            ? primitive_item->GetMaterialComponent()
-                            : nullptr;
-                        if (material_comp)
+                        const auto handle = item ? item->GetRenderItemHandle() : graph::INVALID_RENDER_ITEM_HANDLE;
+                        if (storage && handle != graph::INVALID_RENDER_ITEM_HANDLE)
                         {
-                            row_ptr[i].payload_index =
-                                material_comp->data_index_row != uint32_t(-1)
-                                    ? material_comp->data_index_row : 0u;
-
-                            row_ptr[i].texture_reference_index =
-                                material_comp->material_texture_configuration.row_index;
-
-                            if (material_comp->material_texture_zero_row_gpu)
-                                batch.texture_reference_base_addr =
-                                    material_comp->material_texture_zero_row_gpu;
-                            else if (material_comp->material_texture_row_gpu)
-                                batch.texture_reference_base_addr =
-                                    material_comp->material_texture_row_gpu -
-                                    uint64_t(material_comp->material_texture_configuration.row_index) *
-                                    uint64_t(material_comp->material_texture_configuration.row_stride);
+                            const auto *desc = storage->Get(handle);
+                            if (desc)
+                            {
+                                row_ptr[i].payload_index = desc->material_id;
+                                row_ptr[i].texture_reference_index = desc->texture_id;
+                                resolved = true;
+                            }
                         }
 
-                        if (i < 4)
-                            debug_rows[i] = row_ptr[i];
+                        if (!resolved)
+                        {
+                            auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
+                            auto material_comp = primitive_item
+                                ? primitive_item->GetMaterialComponent()
+                                : nullptr;
+                            if (material_comp)
+                            {
+                                row_ptr[i].payload_index =
+                                    material_comp->data_index_row != uint32_t(-1)
+                                        ? material_comp->data_index_row : 0u;
+
+                                row_ptr[i].texture_reference_index =
+                                    material_comp->material_texture_configuration.row_index;
+
+                                if (material_comp->material_texture_zero_row_gpu)
+                                    batch.texture_reference_base_addr =
+                                        material_comp->material_texture_zero_row_gpu;
+                                else if (material_comp->material_texture_row_gpu)
+                                    batch.texture_reference_base_addr =
+                                        material_comp->material_texture_row_gpu -
+                                        uint64_t(material_comp->material_texture_configuration.row_index) *
+                                        uint64_t(material_comp->material_texture_configuration.row_stride);
+                            }
+                        }
                     }
 
-                    //if (getenv("ULRE_ARENA_DEBUG") && !batch.debug_blocks_logged)
-                    //{
-                    //    batch.debug_blocks_logged = true;
-                    //    for (size_t i = 0; i < item_count && i < 4; ++i)
-                    //    {
-                    //        GLogInfo("[ArenaDebug] item[%u] payload_index=%u texture_index=%u",(uint32_t)i,debug_rows[i].payload_index,debug_rows[i].texture_reference_index);
-                    //    }
-                    //}
                     mi_gpu->Unmap();
-
-                    //if (getenv("ULRE_ARENA_DEBUG"))
-                    //GLogInfo("[ArenaDebug] rows written: n=%u payload0_idx=%u texture0_idx=%u",
-                    //         item_count,
-                    //         item_count ? debug_rows[0].payload_index : 0,
-                    //         item_count ? debug_rows[0].texture_reference_index : 0);
                 }
                 return;
             }
         }
-
     }
     void PrimitiveBatchPipeline::BuildMaterialBatches()
     {

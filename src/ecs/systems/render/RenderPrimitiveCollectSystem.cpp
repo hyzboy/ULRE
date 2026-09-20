@@ -1123,14 +1123,6 @@ namespace hgl::ecs
         std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
         world->GetComponents<PrimitiveComponent>(primitives);
 
-        std::vector<std::shared_ptr<InstancedPrimitiveComponent>> instanced_primitives;
-        world->GetComponents<InstancedPrimitiveComponent>(instanced_primitives);
-        for (const auto &ip : instanced_primitives)
-        {
-            if (ip)
-                primitives.push_back(ip);
-        }
-
         // P1-1: Global frame-level materialize gating.
         //
         // PrepareActivePlanResources and MaterializeRecipeRowsForPrimitive are
