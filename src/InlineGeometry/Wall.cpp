@@ -669,7 +669,6 @@ namespace hgl::graph::inline_geometry
         auto pos = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Position);
         auto nrm = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Normal);
         auto tan = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Tangent);
-        auto uv  = pc->GetTypedArrayView<TypedArrayView2f>(VAN::TexCoord);
 
         // RG16F/RG8 压缩法线（octahedral 编码）
         VAB *nrm_vab = pc->GetVAB(VAN::Normal);
@@ -677,6 +676,16 @@ namespace hgl::graph::inline_geometry
         const bool nrm_rg16f = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT);
         TypedArrayView2u8 nrm2u8 = nrm_rg8   ? pc->GetTypedArrayView<TypedArrayView2u8>(VAN::Normal) : TypedArrayView2u8();
         TypedArrayView2hf nrm2   = nrm_rg16f ? pc->GetTypedArrayView<TypedArrayView2hf>(VAN::Normal) : TypedArrayView2hf();
+
+        // UV 压缩格式分派（与 GeometryBuilder 的写法一致）：
+        // TexCoord 槽位的实际格式由外部传入的 GeometryVertexFormat 决定，可能是
+        // RG16F(VF_V2HF) 也可能是 RG32F(VF_V2F)。GetTypedArrayView **不做格式校验**，
+        // 用 TypedArrayView2f 往 RG16F 槽位写 float2 会按 4B/顶点的 stride 写入
+        // 8B/顶点 —— 既越界覆盖后续属性，又把 half 数据按 float 解释，uv 全成乱值。
+        VAB *uv_vab = pc->GetVAB(VAN::TexCoord);
+        const bool uv_rg16f = (uv_vab && uv_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT);
+        TypedArrayView2hf uv2 = uv_rg16f         ? pc->GetTypedArrayView<TypedArrayView2hf>(VAN::TexCoord) : TypedArrayView2hf();
+        TypedArrayView2f  uv1 = (uv_vab && !uv_rg16f) ? pc->GetTypedArrayView<TypedArrayView2f>(VAN::TexCoord) : TypedArrayView2f();
 
         for(size_t i = 0; i < finalVerts.size(); ++i)
         {
@@ -702,8 +711,10 @@ namespace hgl::graph::inline_geometry
             if(tan.IsValid())
                 tan->Write(Vector3f(1.0f, 0.0f, 0.0f));
 
-            if(uv.IsValid())
-                uv->Write(finalUV[i]);
+            if(uv2.IsValid())
+                uv2->Write(FloatToHalf(finalUV[i].x), FloatToHalf(finalUV[i].y));
+            else if(uv1.IsValid())
+                uv1->Write(finalUV[i]);
         }
 
         const IndexType itype = pc->GetIndexType();
