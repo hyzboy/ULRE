@@ -70,3 +70,22 @@ mag_filter = "Linear"
 min_filter = "Linear"
 mipmap_mode = "Linear"
 address_mode = "ClampToEdge"
+
+# 深度/阴影贴图专用。
+#
+# 必须是 Nearest：VK_FORMAT_D32_SFLOAT 这类纯深度格式**不支持**
+# VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT，用 Linear 采样是
+# 未定义行为（AMD 上稳定返回 0），会让"基准值 == 采样值"恒成立、阴影永不出现。
+# 滤波/PCF 由 shader 自己做多次 Nearest 取样实现（见 material/shadow_receiver_source.glsl）。
+#
+# ClampToEdge 而非 Repeat：阴影贴图的 uv 恰好铺满 [0,1]，但 PCF 的 ±1 邻域
+# 会越界，Repeat 会把对侧边缘的几何卷回来。
+#
+# 注意：本项**追加在末尾**（索引 7）。sampler 索引 = 出现顺序，
+# 插在中间会让所有已编译 shader 里的 #define <name>Sampler <idx>u 错位。
+[[samplers]]
+name = "ShadowMap"
+mag_filter = "Nearest"
+min_filter = "Nearest"
+mipmap_mode = "Nearest"
+address_mode = "ClampToEdge"

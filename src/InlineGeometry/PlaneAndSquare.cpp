@@ -170,10 +170,31 @@ namespace hgl::graph::inline_geometry
         }
 
         {
-            auto tex_coord = pc->GetTypedArrayView<TypedArrayView2f>(VAN::TexCoord);
+            // UV 压缩格式分派（与 GeometryBuilder 的写法一致）：
+            // TexCoord 槽位的实际格式由外部传入的 GeometryVertexFormat 决定，
+            // 可能是 RG32F(VF_V2F) 也可能是 RG16F(VF_V2HF)。
+            // 必须按格式选对应的 TypedArrayView：GetTypedArrayView 不做格式校验，
+            // 用 TypedArrayView2f 往 RG16F 槽位写 float2 会按 4B/顶点的 stride
+            // 写入 8B/顶点 —— 既越界覆盖后续属性，又把 half 数据按 float 解释，
+            // 顶点 uv 退化成 (0,0)(0,0)(0,1.875)(0,0)：uv0.x 恒为 0、uv0.y 乱值。
+            VAB *uv_vab = pc->GetVAB(VAN::TexCoord);
 
-            if(tex_coord.IsValid())
-                tex_coord->Write(xy_tex_coord,4);
+            if(uv_vab && uv_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT)
+            {
+                auto tex_coord = pc->GetTypedArrayView<TypedArrayView2hf>(VAN::TexCoord);
+
+                if(tex_coord.IsValid())
+                    for(int i = 0; i < 4; ++i)
+                        tex_coord->Write(FloatToHalf(xy_tex_coord[i * 2 + 0]),
+                                         FloatToHalf(xy_tex_coord[i * 2 + 1]));
+            }
+            else
+            {
+                auto tex_coord = pc->GetTypedArrayView<TypedArrayView2f>(VAN::TexCoord);
+
+                if(tex_coord.IsValid())
+                    tex_coord->Write(xy_tex_coord,4);
+            }
         }
 
         pc->WriteIBO(indices);

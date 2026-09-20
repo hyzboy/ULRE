@@ -1,0 +1,50 @@
+schema = 3
+id = "ShadowReceiver"
+name = "ShadowReceiver"
+provider_policy = "GeometryOnly"
+
+# 阴影接收面材质 —— 与 Lit 同构（同一 Vertex 需求 / 同一 varyings / 同一 PBR
+# 数据行），只把 material_source_module 换成会采样 shadow map 的实现，
+# 并额外声明一个 shadow_map 纹理槽。
+#
+# 用法（example/Basic/ShadowMap.cpp）：
+#   recipe.mtl_def_id = "ShadowReceiver"
+#   SetMaterialTextureResource("base_color", brickwall_albedo, sampler)
+#   SetMaterialTextureResource("shadow_map", depth_pass->GetDepthTexture(), sampler)
+
+[transform]
+source = "Vec3Position"
+mapping = "Passthrough3D"
+orientation = "World"
+scale = "World"
+projection = "WorldCameraVP"
+
+[fragment]
+material_source_module = "material/shadow_receiver_source.glsl"
+# ntb_module 必须挂：ShaderProgramManager::SelectCurrentSceneRenderTemplateRequest
+# 用"有没有 ntb_module"当作 ForwardLit / ForwardUnlit 的分水岭
+# （has_ntb_provider ? ForwardLitShadowedAO : ForwardUnlit），
+# 不挂就会退化成 flat_lighting —— 地面变成不受光的一片平色。
+# 接收面是平面、不绑法线贴图时，GetNTB 里 normalTexHandle==0 走
+# BuildOrthoNTB 直接返回几何法线，光照正确。
+ntb_module = "ntb/ntb_tangent_vbo_normalmap.glsl"
+
+[vertex]
+requirements = ["Position", "UV0", "Normal"]
+varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]
+
+[resources]
+ubos = ["CameraInfo", "SkyInfo"]
+textures = [
+    { name = "base_color", sampler = "Sampler2DArray", required = false },
+    { name = "shadow_map", sampler = "Sampler2DArray", required = false },
+    # ntb_module 声明的槽，必须在此登记（否则报
+    # "Provider texture reference is not declared by material: texture=normal"）。
+    # 接收面不绑它 → 走几何法线，channels = 2 与 Lit 保持一致。
+    { name = "normal", sampler = "Sampler2DArray", required = false, channels = 2 }
+]
+# ShadowMap = Nearest + ClampToEdge —— 采样该阴影贴图**必须**用它。
+# D32F 不支持线性过滤，用 Trilinear/UI 等 Linear 采样器读深度图是未定义行为
+# （AMD 上稳定返回 0，导致"基准值 == 采样值"、阴影永不出现）。
+# 详见 ShaderLibrary/sampler.toml 里 ShadowMap 项。Trilinear 仍供 base_color 用。
+samplers = ["Trilinear", "ShadowMap"]
