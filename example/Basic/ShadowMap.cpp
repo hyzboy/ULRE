@@ -3,7 +3,8 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/module/OffscreenWorld.h>
+#include<hgl/graph/render/RenderTargetDesc.h>
+#include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -12,6 +13,7 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 
 #include<hgl/graph/module/EnvironmentManager.h>
+#include<hgl/graph/ubo/SkyInfo.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -64,6 +66,12 @@
  *   4. **地面改用 ShadowReceiver 材质**（ShaderLibrary/material/shadow_receiver.material.toml）：
  *      它把 shadow map 采样成遮挡遮罩去乘 albedo，于是环上所有网格的影子
  *      都投在这块地面上。
+ *   5. **光源是倾斜的、并且绕场景环绕**（每帧重拍 shadow map）：
+ *      仰角 28° → 影子拉长到约 1.88 倍物体高度；方位角 15°/s → 24 秒一圈，
+ *      影子跟着在地面上扫过去。
+ *   6. **环上网格各自随机自转**（轴/速度/转向都随机，固定种子）。
+ *      自转会让几何体最低点下沉，所以每帧按**真实顶点**重算最低点、
+ *      同步抬高，形状贴地不穿模。
  *
  * ## 阴影接收是怎么做的（以及为什么能这么做）
  *
@@ -74,31 +82,48 @@
  *          └────────────► Texture2D*（SHADER_READ_ONLY_OPTIMAL）
  *                              │
  *   [主世界] 地面实体 ── SetMaterialTextureResource("shadow_map", ...) ──┘
- *            ShadowReceiver 材质源： uv0 → 光源空间 uv → 采样 → 遮挡遮罩 → 乘 albedo
+ *            ShadowReceiver 材质源： uv0 → 世界XY → 投影到光源空间 → 深度比较 → 乘 albedo
  *
- * 为了只动"ShaderLibrary + 示例"两层（不改引擎 ABI），这里做了一个关键约束：
+ * 为了只动"ShaderLibrary + 示例"两层（不改引擎 ABI），光源方向是这样传进 shader 的：
  *
- *   **光源相机摆成正俯视，且 fov 取 2*atan(地面半宽 / 相机高度)。**
+ *   **复用 SkyInfo UBO 里本就存在的 sun_direction，在 shader 中把光源相机整个重建出来。**
  *
- * 于是光锥在地面处的截面恰好等于地面，地面在 shadow map 里铺满 [0,1]²；
- * 又因为地面垂直于光轴、到光源的视线方向距离处处相等，"世界 XY → 光源空间 uv"
- * 退化成纯线性映射，而 PlaneSquare 的 uv0 本身就是 0.5 + 世界XY/20。
- * 两者只差一个 Y 镜像（引擎投影矩阵 m[1][1] = -f，见 ReversedZProj.cpp），
- * 所以在 shader 里把 v 翻回来即可。
+ * 具体地：
+ *   a. 光源相机是 ViewModel 摆法 —— 位置 = target − forward × distance、target 恒为原点，
+ *      所以"相机位置 = +sun_direction × distance、forward = −sun_direction"是它的定义，
+ *      不需要额外的光照 VP 矩阵；
+ *   b. 右/上向量用与 C++ CameraSystem::ComputeRightUp 完全相同的叉积式子算出
+ *      （world_up 固定 (0,0,1)，两侧一致）；
+ *   c. 投影用与 MakeInfiniteReversedZProj 同构的式子（fov/近平面是已知常量）；
+ *   d. 地面点由 PlaneSquare 的 uv0 反推世界 XY（uv0 = 0.5 + 世界XY / 20）。
+ *
+ * sun_direction 在 C++ 侧**直接取自光源相机解算出的 forward 取反**，不重复算一套
+ * 三角函数 —— 两侧因此不可能对不上。它也同时是主世界方向光的来源
+ * （forward_lighting.glsl 的 mainLightDir = GetSkyMainLightDir()），
+ * 于是"物体受光方向"与"影子方向"天然一致。
+ *
+ * 深度比较是 reversed-Z 的标准形式：投影给出 depth = near / lin，
+ * 地面**不写进** shadow map，所以未被遮挡的纹素恒为清屏值 0.0f，
+ * 判据就是 `采样深度 > 地面自身深度 + bias`。
  *
  * 代价（也就是"只在示例层做"的边界）：
- *   地面必须是平的、光源必须接近正上方。通用做法需要引擎侧补齐下面四项。
+ *   地面必须是平的（uv0 ↔ 世界 XY 是线性关系）。
+ *   但光源**不再**需要接近正上方 —— 倾斜、环绕都可以，这正是本次改动拿到的能力。
  *
  * ## TODO：引擎侧要补齐什么（截至本次改动均未实现）
  *
- *   a. **光照空间矩阵**：Scene UBO 只有 Camera/Sky/Viewport/ColorPalette/
- *      GlobalAddresses 五个 binding，没有 light VP。需新增 Shadow UBO
- *      （SceneBinding 枚举 + C++ 绑定 + ShaderLibrary/ubo/*.glsl）；
+ *   a. **光照空间矩阵**：本用例靠"相机看向原点 + 常量 fov/near"把矩阵解析重建出来，
+ *      换成任意光源（点光/聚光/自由朝向的方向光）就必须有真正的 light VP。
+ *      Scene UBO 只有 Camera/Sky/Viewport/ColorPalette/GlobalAddresses 五个 binding，
+ *      需新增 Shadow UBO（SceneBinding 枚举 + C++ 绑定 + ShaderLibrary/ubo/*.glsl）；
  *   b. **shadow provider**：ShaderLibrary/shadow/ 下只有 identity.glsl，
  *      GetShadowFactor() 恒返回 1.0。需实现按光照空间投影采样 + 深度比较（PCF）；
  *   c. **模板接线**：fragment/forward_lit.glsl.tmpl 的主流程当前**根本不调用**
  *      GetShadowFactor，LightingInput 里也没有 shadow 字段；
- *   d. **材质**：lit.material.toml 需增加 shadow_map 纹理槽。
+ *   d. **材质**：lit.material.toml 需增加 shadow_map 纹理槽；
+ *      （现在只有地面用的 ShadowReceiver 材质会采样 shadow map，
+ *        所以环上网格**不会**互相投影、也收不到别的网格的影子。
+ *        这是本用例最明显的"看起来对、其实不全对"的地方。）
  *
  * ## 验证目标
  *
@@ -107,7 +132,8 @@
  *   2. depth-only 目标的材质管线能通过 PipelineResolver 的校验并成功创建
  *   3. 渲染结束后深度纹理处于可采样布局（SHADER_READ_ONLY_OPTIMAL）
  *   4. 该深度纹理可以绑定到主世界材质并采样（ShadowReceiver 材质槽 shadow_map）
- *   5. 地面上能看到环上网格投下的影子
+ *   5. 地面上能看到环上网格投下的、被拉长的影子，且随光源环绕而扫动
+ *   6. 每帧重拍 shadow map 之后，地面上的影子与网格当下姿态一致（没有滞后）
  */
 
 using namespace hgl;
@@ -127,35 +153,65 @@ namespace
     /// 地面半宽（= 放大后 PlaneSquare 的半径，uv0 的 0.5 → 10 个世界单位）
     static constexpr float  kReceiverHalfExtent  = kReceiverPlaneScale * 0.5f;
 
-    // ── 光源视角相机（shadow map 拍摄） ────────────────────────────
+    // ── 光源视角相机（shadow map 拍摄）：倾斜 + 绕中心环绕 ─────────────
 
-    /// 光源相机到原点的距离（= 光源高度）
+    /// 光源相机到原点的距离。
     static constexpr float  kLightDistance = 36.0f;
 
-    /// 正俯视的朝向。
+    /// 光源仰角（自水平面量起）。
     ///
-    /// pitch **不能取 -90**：CameraSystem::ComputeRightUp 用
-    /// normalize(cross(forward, world_up))，而 forward 与 world_up 平行时叉积为 0，
-    /// 一拍即 NaN（该帧相机矩阵全废）。取 -89.9（偏 0.1°）既能保证
-    /// cross 的方向稳定（right = +X），投影误差也只有 0.05%，远小于 PCF 半径。
-    /// yaw=90 是刻意选的：此时的 right/up 恰好是 +X/+Y，屏幕轴与世界轴对齐。
-    static constexpr float  kLightYaw   = 90.0f;
-    static constexpr float  kLightPitch = -89.9f;
+    /// **倾斜就是为了把影子拉长**：影子长度 ≈ 物体高度 / tan(仰角)。
+    ///   仰角 90°（正上方）→ 影子缩在物体正下方（本用例以前的样子）；
+    ///   仰角 28°         → 拉长到约 1.88 倍物体高度。
+    ///
+    /// 不能取 0 或 90：这两种极限下 forward 与 world_up 平行，
+    /// cross(forward, world_up) 退化成 0 → right/up 全 NaN。
+    /// C++ 的 CameraSystem::ComputeRightUp 与 shader 里重建光源相机的写法
+    /// 都有这个奇点，所以仰角固定在中间地带。
+    static constexpr float  kLightElevationDeg = 28.0f;
 
-    /// 光源相机 fov：让光锥在地面处的截面**恰好等于地面本身**
-    ///     tan(fov/2) = 地面半宽 / 相机高度 = 10 / 36
-    ///     fov        = 2 * atan(10/36) = 31.0482°
-    /// 于是地面在 shadow map 里正好铺满 [0,1]²，uv0 可直接当光源空间 uv 用。
-    static constexpr float  kLightFov = 31.0482f;
+    /// 光源绕世界 Z 轴环绕的角速度（度/秒）。15°/s → 24 秒转一圈。
+    static constexpr float  kLightOrbitDegPerSec = 15.0f;
+
+    /// 光源的初始方位角（度）。40° 是刻意选的：既不是正对相机、也不与环上
+    /// 任一网格的方位重合，开场第一帧就能看清"影子是斜的"。
+    static constexpr float  kLightStartAzimuthDeg = 40.0f;
+
+    /// 光源相机 fov。
+    ///
+    /// 倾斜之后光锥在地面处的截面**不再等于地面**，所以这里取一个足够宽的值，
+    /// 保证无论方位角转到哪里，整块 20×20 地面都落在 [0,1]² 之内。
+    ///
+    /// 定量依据（地面四角在光源空间的最坏情况）：
+    ///   水平方向 |ndc.x| = tan(fov/2)⁻¹ · max|x_v| / lin
+    ///                     = (1/0.4663) · 14.14 / 36 = 0.843 < 1
+    ///   竖直方向 |ndc.y| ≤ tan(fov/2)⁻¹ · 14.14·sin28° / 23.5 = 0.60 < 1
+    /// 50° 对这两项都有约 20% 的余量。
+    static constexpr float  kLightFov = 50.0f;
 
     /// 近平面。reverse-Z + 无限远投影下深度 = near / lin（lin 为沿光轴的视线距离），
-    /// near 必须小于场景里离光源最近的几何体：最高的是 Torus（抬升后顶点 z≈4.2），
-    /// 即 lin_min ≈ 31.8，取 28 留足余量（否则会把网格裁掉一块）。
-    static constexpr float  kLightNear = 28.0f;
+    /// near 必须小于场景里离光源最近的几何体。光源倾斜 28° 后，离光源最近的是
+    /// 环上朝光源那一侧的网格：
+    ///     lin_min ≈ 36 − (8.6·cos28° + 4.2·sin28°) ≈ 26.4
+    /// 取 18 留足余量（否则会把网格裁掉一块）。
+    static constexpr float  kLightNear = 18.0f;
 
     /// 远平面。reversed-Z 走 MakeInfiniteReversedZProj，far 不参与运算，
     /// 只写在相机上作为语义说明。
     static constexpr float  kLightFar = 64.0f;
+
+    // ── 环上网格的自转（让场景"活"起来，影子也跟着转） ────────────────
+
+    /// 自转角速度范围（弧度/秒）。每个网格在区间内随机取一个值（含符号）。
+    static constexpr float  kMeshSpinSpeedMin = 0.35f;
+    static constexpr float  kMeshSpinSpeedMax = 0.95f;
+
+    /// 自转轴 z 分量的取值范围。整个区间为正 → 轴偏"竖立"，
+    /// 物体像陀螺一样转，既能明显看出在动，又不会躺倒在地上打滚。
+    /// 取 1 附近就是纯绕 Z 转 —— 那对球/半球/圆柱这类轴对称形状是**看不见**的，
+    /// 所以下界给到 0.35，让它带一点倾斜。
+    static constexpr float  kMeshSpinAxisZMin = 0.35f;
+    static constexpr float  kMeshSpinAxisZMax = 1.30f;
 
     // ── 主相机 ─────────────────────────────────────────────────────
 
@@ -259,6 +315,75 @@ namespace
         return glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
     }
 
+    /// 方位角 + 固定仰角 → **指向太阳**的单位方向（w 分量为 0 的 Vector4f）。
+    ///
+    /// 这个向量同时喂给两个地方，且必须完全一致：
+    ///   1. SkyInfo::sun_direction —— 主世界方向光的来源（forward_lighting.glsl
+    ///      的 mainLightDir = GetSkyMainLightDir()），决定物体的受光方向；
+    ///   2. shader 里重建光源相机（shadow_receiver_source.glsl::BuildShadowReceiverLight）。
+    ///
+    /// 实际上示例并不直接把它写进 sun_direction —— 见 UpdateAnimation：
+    /// 那里是先把 yaw/pitch 交给光源相机，再取相机解算出的 forward 取反，
+    /// 于是"shader 用的方向"与"相机真实朝向"在浮点层面也完全同源。
+    /// 这里保留这个函数是为了在 Init 里给出**初始**方向（那时相机还没 tick 过）。
+    ///
+    /// 与 CameraSystem::ComputeForward 的关系：
+    ///   ComputeForward(yaw, pitch) 给出相机 forward；
+    ///   取 yaw = azimuth + 180°、pitch = -elevation，则
+    ///     forward = (cosθ·cos(yaw), cosθ·sin(yaw), -sinθ) = -to_sun
+    /// 两边互为反向量，正是"相机看向原点、太阳在反方向"的几何关系。
+    glm::vec3 LightDirectionFromAzimuth(const float azimuth_deg)
+    {
+        const float e = glm::radians(kLightElevationDeg);
+        const float a = glm::radians(azimuth_deg);
+
+        return glm::vec3(cosf(e) * cosf(a), cosf(e) * sinf(a), sinf(e));
+    }
+
+    /// 取出几何体**本地空间**的 Position 顶点（顶点格式固定为 VF_V3F）。
+    ///
+    /// 用途：环上网格要自转，而自转会让"最低点"下降。要在每一帧把最低点重新
+    /// 抬回 z=0，就必须知道**真实顶点**，而不是 AABB 的 8 个角点 ——
+    /// 对球、圆环这类内切于 AABB 的形状，角点估计会保守得离谱
+    /// （球会浮起来 ≈0.73，圆环会浮起来 ≈2.0，一眼就看出不对）。
+    ///
+    /// 注意必须在**几何体**上取 VAB 并直接 Map 原始字节：
+    ///   * GeometryCreater 在 Create() 返回后已经被 Clear()，拿不到 VAB；
+    ///   * VAB::Map(0, count) 给的是**整块缓冲**的首地址，要自己加上
+    ///     Geometry::GetVertexOffset() 才是本几何体的第一个顶点。
+    std::vector<glm::vec3> ExtractLocalPositions(Geometry *geom)
+    {
+        std::vector<glm::vec3> out;
+        if (!geom)
+            return out;
+
+        VAB *vab = geom->GetVAB(VAN::Position);
+        if (!vab)
+            return out;
+
+        const uint32_t stride = vab->GetStride();
+        const uint32_t count  = static_cast<uint32_t>(geom->GetVertexCount());
+        const uint32_t offset = static_cast<uint32_t>(geom->GetVertexOffset());
+
+        if (stride < sizeof(float) * 3 || count == 0)
+            return out;
+
+        const uint8_t *base = static_cast<const uint8_t *>(vab->Map(0, vab->GetCount()));
+        if (!base)
+            return out;
+
+        out.reserve(count);
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const float *p = reinterpret_cast<const float *>(base + static_cast<size_t>(offset + i) * stride);
+            out.emplace_back(p[0], p[1], p[2]);
+        }
+
+        vab->Unmap();
+
+        return out;
+    }
+
     /// 求"把几何体落到 z=0 地面上"所需的抬升量。
     ///
     /// inline_geometry 的各创建函数都会用 CreateWithAABB() 写入各自的包围盒，
@@ -307,91 +432,80 @@ public:
     }
 };
 
-/// 光源视角的 depth-only Pass：把整块场景（只有网格，没有地面）渲染进 shadow map
+/// 光源视角的 shadow map：**只持有 depth-only RT**，不建 ECS 子世界。
+///
+/// ## 为什么不用 graph::OffscreenWorld 的 ECS 子世界
+///
+/// L2W 变换 SSBO 是**全局唯一域**（kLocalToWorldAddress，ssbo_id 固定），
+/// 而每个 ECSContext 各持一个 TransformAssignmentBuffer。问题出在
+/// SSBOBufferRegistry::RegisterBuffer：当同一个域已被别的实例注册时，它会把
+/// **那个实例的缓冲 Release 掉**，可那个实例仍然握着该指针 —— 于是
+///     [R11] Failed to register LocalToWorld domain buffer: ... buffer_bytes=0xDDDD…
+/// 两个世界互相踩、每帧重建一次，L2W 注册失败 → 整个画面只剩清屏色。
+///
+/// 一次性的离屏渲染（RenderToTexture 示例的 RenderOnce）不会暴露它：子世界只
+/// 渲染一次，那根悬空指针之后再没被用过。但本用例要**逐帧**重拍 shadow map
+/// （光源在环绕、网格在自转），第二次渲染就踩上；紧接着还会因为离屏 RT 只有
+/// 一个命令缓冲而撞上未完成的命令缓冲，最终 VK_ERROR_DEVICE_LOST。
+///
+/// 所以这里只向 RenderTargetManager 要一个 depth-only RT，画面由**主世界自己**
+/// 用光源相机渲染进去（见 ShadowMapApp::RenderShadowMap）—— 全程只有一个
+/// ECSContext，L2W 域不存在第二个竞争者。
 class ShadowDepthPass
 {
 private:
 
-    std::unique_ptr<graph::OffscreenWorld> offscreen;
+    graph::RenderTargetHandle rt{};
 
 public:
 
     ~ShadowDepthPass() = default;
 
-    Texture2D *GetDepthTexture() const
-    {
-        return offscreen ? offscreen->GetDepthTexture() : nullptr;
-    }
-
     IRenderTarget *GetRenderTarget() const
     {
-        return offscreen ? offscreen->GetRenderTarget() : nullptr;
+        return rt.get();
     }
 
-    ECSContext *GetWorld() const
+    Texture2D *GetDepthTexture() const
     {
-        return offscreen ? offscreen->GetWorld() : nullptr;
+        IRenderTarget *target = rt.get();
+        return target ? target->GetDepthTexture() : nullptr;
     }
 
-    std::shared_ptr<ecs::CameraSystem> GetCameraSystem() const
-    {
-        return offscreen ? offscreen->GetCameraSystem() : nullptr;
-    }
-
-    bool Init(WorkObject *owner, const uint32_t size)
+    bool Init(GraphicsContext *gc, const uint32_t size)
     {
         LogStage("ShadowDepthPass::Init", "begin");
 
-        if (!owner)
-            return LogStageFail("ShadowDepthPass::Init", "owner is null");
+        if (!gc)
+            return LogStageFail("ShadowDepthPass::Init", "graphics context is null");
 
-        // depth-only 离屏世界：零颜色附件，深度渲染后可采样
-        graph::OffscreenWorldDesc desc;
-        desc.width           = size;
-        desc.height          = size;
-        desc.name            = "ShadowMap_DepthWorld";
-        desc.resource_prefix = "ShadowMap:ShadowMap";
-        desc.depth_only      = true;
-        desc.depth_format    = PF_D32F;     // 纯深度格式：顺带验证 stencil 附件声明的处理
+        auto *rtm = gc->GetRenderTargetManager();
+        if (!rtm)
+            return LogStageFail("ShadowDepthPass::Init", "render target manager is null");
 
-        offscreen = graph::OffscreenWorld::Create(owner->GetGraphicsContext(),
-                                                  owner->GetECSContext(),
-                                                  desc);
-        if (!offscreen || !offscreen->IsValid())
-            return LogStageFail("ShadowDepthPass::Init", "OffscreenWorld::Create failed");
+        // depth-only：零颜色附件，深度渲染后处于可采样布局，可直接绑定采样
+        RenderTargetDesc desc = RenderTargetDesc::OffscreenDepthOnly(size,
+                                                                     size,
+                                                                     "ShadowMap:ShadowMap",
+                                                                     PF_D32F);
 
-        if (auto *rt = GetRenderTarget())
+        rt = rtm->Create(desc);
+        if (!rt)
+            return LogStageFail("ShadowDepthPass::Init", "RenderTargetManager::Create failed");
+
+        if (rt->GetColorCount() != 0)
         {
-            if (rt->GetColorCount() != 0)
-            {
-                GLogError("[ShadowMap][ShadowDepthPass::Init] expected depth-only target but color_count=%u",
-                          rt->GetColorCount());
-                return false;
-            }
-
-            if (!rt->hasDepth())
-                return LogStageFail("ShadowDepthPass::Init", "depth-only target has no depth attachment");
+            GLogError("[ShadowMap][ShadowDepthPass::Init] expected depth-only target but color_count=%u",
+                      rt->GetColorCount());
+            return false;
         }
 
-        ReportDepthTarget("ShadowDepthPass::Init", GetRenderTarget(), GetDepthTexture(), false);
+        if (!rt->hasDepth())
+            return LogStageFail("ShadowDepthPass::Init", "depth-only target has no depth attachment");
+
+        ReportDepthTarget("ShadowDepthPass::Init", rt.get(), GetDepthTexture(), false);
 
         LogStage("ShadowDepthPass::Init", "success");
-        return true;
-    }
-
-    /// 以光源视角渲染一帧，把场景写进 shadow map
-    bool Render()
-    {
-        LogStage("ShadowDepthPass::Render", "begin");
-
-        if (!offscreen)
-            return LogStageFail("ShadowDepthPass::Render", "offscreen world is null");
-
-        offscreen->Render();
-
-        ReportDepthTarget("ShadowDepthPass::Render", GetRenderTarget(), GetDepthTexture(), true);
-
-        LogStage("ShadowDepthPass::Render", "success");
         return true;
     }
 };
@@ -430,6 +544,57 @@ private:
     Sampler   *shadow_sampler = nullptr;
 
     ShadowDepthPass *depth_pass = nullptr;
+
+    // ── 逐帧动画状态 ──────────────────────────────────────────────────
+
+    /// 环上网格的逐帧动画状态（自转 + 落地位移补偿）。
+    struct MeshAnim
+    {
+        /// 自转轴（本地空间单位向量，整体偏竖立）
+        glm::vec3            spin_axis{0.0f, 0.0f, 1.0f};
+
+        /// 自转角速度（弧度/秒，带符号 → 转向有正有反）
+        float                spin_speed = 0.0f;
+
+        /// 网格在环上的静态朝向（均布角）
+        glm::quat            base_rotation{1.0f, 0.0f, 0.0f, 0.0f};
+
+        /// 静止时的落地位移（把 AABB 最低点抬到 z=0）
+        float                rest_lift = 0.0f;
+
+        /// 环上的 XY 位置（z 由落地位移决定）
+        glm::vec3            ring_pos{0.0f};
+
+        /// 本地空间顶点（相对网格原点）。逐帧用它算旋转后的真实最低点。
+        std::vector<glm::vec3> verts;
+
+        /// 主世界里的 TransformComponent（由 ECSContext 持有，裸指针即可）。
+        /// 注意 shadow map 由**主世界自己**渲染（见 RenderShadowMap），
+        /// 所以只需要这一份 —— 不再有"离屏世界那份也要同步"的问题。
+        TransformComponent * tf = nullptr;
+    };
+
+    std::vector<MeshAnim> mesh_anim;
+
+    /// 主世界的相机系统
+    std::shared_ptr<CameraSystem> camera_system;
+
+    /// 两台相机都在主世界里：
+    ///   - main_camera：可见画面用，由 SetupMainCamera 创建；
+    ///   - light_camera：拍 shadow map 用，由 CreateLightCamera 创建。
+    /// 相机 UBO 的契约是"每个 RT/RenderPass 开始时全量写入"
+    /// （见 CameraSystem::CommitCameraUBO 的注释），所以 shadow pass 只要在
+    /// RenderTo 之前手动把光源相机的矩阵写进 camera_info 即可，
+    /// 不需要 toggling is_main_camera。
+    std::shared_ptr<CameraComponent> main_camera;
+    std::shared_ptr<CameraComponent> light_camera;
+
+    /// 主世界的环境系统与它的 SkyInfo 数据。sun_direction 从这里写进去。
+    std::shared_ptr<EnvironmentSystem> environment_system;
+    graph::SkyInfo *                   sky_info = nullptr;
+
+    /// 动画累计时间（秒）。用它算方位角与自转角，而不是依赖固定帧率。
+    double anim_time = 0.0;
 
 private:
 
@@ -768,12 +933,11 @@ private:
         prim->SetVisible(true);
     }
 
-    /// 把场景铺进指定世界。
-    /// 离屏世界与主世界用的是同一批 Geometry / 同一份材质数据，只是各自建实体。
+    /// 把场景铺进主世界（接收面 + 环上网格）。
     ///
     /// @param include_receiver 是否放进接收面。
-    ///        阴影 Pass **不放**：地面是接收者不是投射者，不写进深度图既能
-    ///        彻底避免自遮挡（acne），也让"裸地 = 清屏值"成为干净的基准。
+    ///        本用例现在**总是放**（shadow pass 也渲染地面，见 RenderShadowMap）；
+    ///        这个开关保留下来是为了方便单独验证"只有网格"的画面。
     bool PopulateScene(ECSContext *world, const char *stage, const bool include_receiver, Texture2D *shadow_map)
     {
         if (!world)
@@ -799,11 +963,18 @@ private:
         }
 
         // ── 环上网格：与蓝本相同的排布，额外按 AABB 抬到地面之上 ──
+        // Mobility 用 Movable：这些网格每帧都要自转。L2W 只有在出现动态 transform
+        // 时才会走"每帧环形段"那条路径，静态槽则只做脏数据重传。
+        //
+        // 注意**不要**为了图省事把场景再复制一份到一个 OffscreenWorld 子世界里去
+        // （那是"影子单独一个世界"的直觉做法）—— L2W 是全局唯一域，两个
+        // ECSContext 会互相 Release 对方的缓冲并留下悬空指针，详见 ShadowDepthPass
+        // 顶部的说明。本用例从 2026-09-21 起改成"主世界自己渲染 shadow map"。
         const size_t count = scene.meshes.size();
         for (size_t i = 0; i < count; ++i)
         {
             auto *entity = world->CreateEntity<Entity>("Mesh_" + std::to_string(i));
-            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = entity->AddComponent<TransformComponent>(Mobility::Movable);
             auto prim_comp = entity->AddComponent<PrimitiveComponent>();
 
             glm::vec3 pos = RingPosition(i, count);
@@ -812,68 +983,349 @@ private:
             transform->SetLocalPosition(pos);
             transform->SetLocalRotation(RingRotation(i, count));
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
+
+            // 记下 Transform，供逐帧自转写入
+            if (i < mesh_anim.size())
+                mesh_anim[i].tf = transform.get();
 
             prim_comp->SetPrimitiveAsset(&scene.mesh_assets[i]);
             ApplyMeshMaterial(prim_comp.get());
         }
 
-        GLogInfo("[ShadowMap][%s] populated %zu meshes + receiver(%d)", stage, count, include_receiver ? 1 : 0);
+        GLogInfo("[ShadowMap][%s] populated %zu meshes + receiver(%d)",
+                 stage, count, include_receiver ? 1 : 0);
         return true;
     }
 
-    /// 光源视角相机：**正俯视**整块地面。
+    /// 定量校验：把地面四角按 **shader 里同一套公式** 投影一遍，打印 uv 范围。
+    ///
+    /// 为什么值得打印：倾斜光源后光锥截面不再等于地面，如果某个方位角下地面
+    /// 有角点跑到 [0,1]² 之外，shader 会把它按"不受遮挡"处理 —— 表现就是
+    /// 贴图边界上出现一条**没有影子的接缝**。这个日志能直接判定 fov 够不够。
+    ///
+    /// 环上网格都在半径 8.6 之内、且比地面更靠近光源，所以"地面四角"就是
+    /// 最坏情况，不需要再单独检查网格。
+    void LogLightCoverage(const float azimuth_deg) const
+    {
+        const float e = glm::radians(kLightElevationDeg);
+        const float a = glm::radians(azimuth_deg);
+
+        const glm::vec3 to_sun(cosf(e) * cosf(a), cosf(e) * sinf(a), sinf(e));
+        const glm::vec3 fwd   = -to_sun;
+        const glm::vec3 pos   = to_sun * kLightDistance;
+        const glm::vec3 right = glm::normalize(glm::cross(fwd, glm::vec3(0.0f, 0.0f, 1.0f)));
+        const glm::vec3 up    = glm::normalize(glm::cross(right, fwd));
+
+        const float f = 1.0f / tanf(glm::radians(kLightFov) * 0.5f);
+
+        glm::vec2 uv_min(1.0e9f);
+        glm::vec2 uv_max(-1.0e9f);
+        float     lin_min = 1.0e9f;
+        float     lin_max = -1.0e9f;
+
+        for (int sy = -1; sy <= 1; sy += 2)
+        {
+            for (int sx = -1; sx <= 1; sx += 2)
+            {
+                const glm::vec3 ground(sx * kReceiverHalfExtent, sy * kReceiverHalfExtent, 0.0f);
+                const glm::vec3 rel = ground - pos;
+                const float     lin = glm::dot(rel, fwd);
+
+                if (lin < lin_min) lin_min = lin;
+                if (lin > lin_max) lin_max = lin;
+
+                const glm::vec2 uv = glm::vec2(0.5f) + 0.5f * glm::vec2(f * glm::dot(rel, right) / lin,
+                                                                        -f * glm::dot(rel, up) / lin);
+
+                uv_min.x = (uv.x < uv_min.x) ? uv.x : uv_min.x;
+                uv_min.y = (uv.y < uv_min.y) ? uv.y : uv_min.y;
+                uv_max.x = (uv.x > uv_max.x) ? uv.x : uv_max.x;
+                uv_max.y = (uv.y > uv_max.y) ? uv.y : uv_max.y;
+            }
+        }
+
+        const bool inside = (uv_min.x >= 0.0f) && (uv_min.y >= 0.0f)
+                         && (uv_max.x <= 1.0f) && (uv_max.y <= 1.0f);
+
+        GLogInfo("[ShadowMap][LightCoverage] azimuth=%.1f 地面四角 uv=[%.3f,%.3f]..[%.3f,%.3f] lin=[%.2f,%.2f] inside=%d",
+                 azimuth_deg, uv_min.x, uv_min.y, uv_max.x, uv_max.y, lin_min, lin_max, inside ? 1 : 0);
+
+        if (!inside)
+            GLogError("[ShadowMap][LightCoverage] 地面超出光源视锥：请调大 kLightFov 或 kLightDistance");
+    }
+
+    /// 按方位角摆放光源相机。初始与逐帧都走这里，保证两条路径不会走偏。
+    ///
+    /// 关键关系（与 shader 的 BuildShadowReceiverLight 必须一致）：
+    ///   相机看向 -to_sun ⇒ forward 的欧拉角就是 pitch = -elevation、yaw = azimuth + 180°
+    /// 推导：ComputeForward(yaw,pitch) = (cosθ·cos(yaw), cosθ·sin(yaw), sinθ)，其中 θ = -pitch。
+    /// 代入 yaw = azimuth + 180° 得 forward = (-cosθ·cos(az), -cosθ·sin(az), -sinθ) = -to_sun ✓
+    void PlaceLightCamera(const float azimuth_deg)
+    {
+        if (!light_camera)
+            return;
+
+        light_camera->target = math::Vector3f(0, 0, 0);
+        light_camera->distance = kLightDistance;
+        light_camera->yaw = azimuth_deg + 180.0f;
+        light_camera->pitch = -kLightElevationDeg;
+        light_camera->fov = kLightFov;
+        light_camera->near_plane = kLightNear;
+        light_camera->far_plane = kLightFar;
+        light_camera->matrix_dirty = true;
+    }
+
+    /// 光源视角相机：由方位角决定朝向，**倾斜**看向原点（target 恒为原点）。
+    ///
+    /// 它和主相机一样住在**主世界**里，但 is_main_camera = false ——
+    /// CameraSystem::SelectMainCamera 只认主相机，所以它不会被误用；
+    /// shadow pass 由 RenderShadowMap 把它手动推成"当帧生效的相机"。
     ///
     /// 摆法由"阴影接收方案"决定（详见文件头）：
-    ///   - yaw=90 / pitch≈-90：正上方垂直向下，且 right/up 恰好是 +X/+Y，
-    ///     屏幕轴与世界轴对齐；
-    ///   - fov = 2*atan(地面半宽/高度)：光锥在地面处的截面恰好等于地面，
-    ///     地面在 shadow map 里铺满 [0,1]²；
-    ///   - near 收紧到 28（见 kLightNear 注释）。
+    ///   - 仰角固定 kLightElevationDeg（倾斜 → 影子拉长）；
+    ///   - 方位角逐帧环绕 → 影子绕场景扫动；
+    ///   - fov 取足够宽，保证任意方位角下整块地面都在 [0,1]² 内；
+    ///   - near 收紧到 18（见 kLightNear 注释）。
     bool CreateLightCamera(ECSContext *world)
     {
         if (!world)
             return LogStageFail("ShadowMapApp::CreateLightCamera", "world is null");
 
-        auto *camera_system = depth_pass ? depth_pass->GetCameraSystem().get() : nullptr;
         if (!camera_system)
             return LogStageFail("ShadowMapApp::CreateLightCamera", "camera system unavailable");
 
         auto *entity = world->CreateEntity<Entity>("LightCamera");
         auto camera = entity->AddComponent<CameraComponent>();
 
-        camera->control_mode = CameraComponent::ControlMode::ViewModel;
-        camera->target = math::Vector3f(0, 0, 0);
-        camera->distance = kLightDistance;
-        camera->yaw = kLightYaw;
-        camera->pitch = kLightPitch;
-        camera->fov = kLightFov;
-        camera->near_plane = kLightNear;
-        camera->far_plane = kLightFar;
-        camera->is_main_camera = true;
-        camera->matrix_dirty = true;
+        camera->control_mode   = CameraComponent::ControlMode::ViewModel;
+        camera->is_main_camera = false;
 
-        camera->camera_data   = camera_system->GetCamera();
-        camera->camera_info   = const_cast<CameraInfo *>(camera_system->GetCameraInfo());
-        camera->viewport_info = camera_system->GetViewportInfo();
+        light_camera = camera;
 
-        GLogInfo("[ShadowMap][ShadowMapApp::CreateLightCamera] distance=%.2f yaw=%.1f pitch=%.1f fov=%.4f near=%.2f far=%.2f",
-                 kLightDistance, kLightYaw, kLightPitch, kLightFov, camera->near_plane, camera->far_plane);
+        PlaceLightCamera(kLightStartAzimuthDeg);
 
-        // 这些常量必须与 ShaderLibrary/material/shadow_receiver_source.glsl 里
-        // 的假设一致：地面铺满 shadow map、uv0 == 光源空间 uv（差一个 Y 镜像）。
-        GLogInfo("[ShadowMap][ShadowMapApp::CreateLightCamera] 地面半宽=%.1f 期望 fov=%.4f 实际 fov=%.4f (tan(half)=%.6f 应为 %.6f)",
-                 kReceiverHalfExtent, kLightFov, camera->fov,
-                 tanf(camera->fov * 0.5f * 3.14159265358979f / 180.0f),
-                 kReceiverHalfExtent / kLightDistance);
+        GLogInfo("[ShadowMap][ShadowMapApp::CreateLightCamera] distance=%.2f elevation=%.1f azimuth=%.1f fov=%.4f near=%.2f far=%.2f",
+                 kLightDistance, kLightElevationDeg, kLightStartAzimuthDeg, kLightFov,
+                 kLightNear, kLightFar);
+
+        LogLightCoverage(kLightStartAzimuthDeg);
 
         return true;
+    }
+
+    /// 把某台相机的矩阵写成"当帧生效"的相机数据。
+    ///
+    /// 相机 UBO 的契约是"每个 RT/RenderPass 开始时全量写入"
+    /// （见 CameraSystem::CommitCameraUBO 的注释），而 CameraSystem 只有**一份**
+    /// camera_info / camera_data（单写点）。关键在于 UpdateMatrices 的开头是
+    ///     if (!camera->matrix_dirty) return;
+    /// 于是"给谁置脏，Update 跑完共享数据就是谁的"。
+    ///
+    /// CameraSystem::Update 是公开的（UpdateBasis/UpdateTransform/UpdateMatrices
+    /// 都是 private），所以示例层就用这个"脏标记选相机"的路子切换，不必去改引擎头。
+    ///
+    /// @param viewport 该 Pass 的视口。**必须给对**：投影的宽高比由它算 ——
+    ///                 shadow map 是 1024×1024（aspect = 1），主画面是交换链尺寸。
+    void ActivateCamera(CameraComponent *camera, const graph::ViewportInfo *viewport)
+    {
+        if (!camera || !camera_system || !viewport)
+            return;
+
+        // 两台相机共用同一份共享数据，但只有目标相机是"脏"的
+        auto bind = [this, camera, viewport](CameraComponent *c)
+        {
+            if (!c)
+                return;
+
+            c->camera_data   = camera_system->GetCamera();
+            c->camera_info   = const_cast<CameraInfo *>(camera_system->GetCameraInfo());
+            c->viewport_info = viewport;
+            c->matrix_dirty  = (c == camera);
+        };
+
+        bind(main_camera.get());
+        bind(light_camera.get());
+
+        camera_system->Update(0.0f);
+    }
+
+    /// 用光源相机把**主世界**渲染进 shadow map。
+    ///
+    /// 全程只有一个 ECSContext（原因见 ShadowDepthPass 顶部）：
+    ///   1. 把光源相机切成当帧生效的相机，并给它 shadow RT 的正方形视口；
+    ///   2. `ECSContext::RenderTo` 临时把本世界的 render_target 切到 depth-only RT，
+    ///      于是 RenderPreBeginFrame / ViewUBOCommitSystem 都按该 RT 的视口工作，
+    ///      渲染结束后 render_target 自动还原；
+    ///   3. 再把主相机切回来，供随后的正常一帧使用。
+    ///
+    /// 地面**不排除**：遮挡判据是"采样深度 > 地面自身深度"，地面被写进深度图
+    /// 恰好让裸地满足 d == ground_depth（不算遮挡）；好处是完全不依赖深度清屏值，
+    /// 也不必每帧去 toggle 可见性。
+    bool RenderShadowMap()
+    {
+        auto *rt = depth_pass ? depth_pass->GetRenderTarget() : nullptr;
+
+        if (!rt || !ecs_context)
+            return LogStageFail("ShadowMapApp::RenderShadowMap", "depth target / ecs context missing");
+
+        ActivateCamera(light_camera.get(), rt->GetViewportInfo());
+
+        const bool ok = ecs_context->RenderTo(rt, rt->GetClearColor(), 0.0f);
+
+        // 还原：下一次（真正的）Render 要用主相机
+        auto *main_rt = ecs_context->GetRenderTarget();
+        ActivateCamera(main_camera.get(), main_rt ? main_rt->GetViewportInfo() : nullptr);
+
+        if (!ok)
+            return LogStageFail("ShadowMapApp::RenderShadowMap", "ECSContext::RenderTo failed");
+
+        return true;
+    }
+
+    /// 初始化环上网格的逐帧动画参数（自转轴 / 角速度 / 本地顶点 / 静止落地位移）。
+    ///
+    /// **必须在 PopulateScene 之前调用**：PopulateScene 会把两个世界的
+    /// TransformComponent* 回填进 mesh_anim。
+    bool InitMeshAnimation()
+    {
+        const size_t count = scene.meshes.size();
+        if (count == 0 || scene.mesh_lift.size() != count)
+            return LogStageFail("ShadowMapApp::InitMeshAnimation", "scene meshes are not ready");
+
+        mesh_anim.assign(count, MeshAnim{});
+
+        // 固定种子的 LCG。**刻意不用 std::random**：结果每次运行完全一致，
+        // 截图才能和上一版做像素级比对。
+        uint32_t seed = 0x9E3779B9u;
+        auto rnd01 = [&seed]() -> float
+        {
+            seed = seed * 1664525u + 1013904223u;
+            return static_cast<float>(seed >> 8) / static_cast<float>(1u << 24);
+        };
+
+        for (size_t i = 0; i < count; ++i)
+        {
+            MeshAnim &anim = mesh_anim[i];
+
+            // 自转轴：xy 随机方向、z 取正区间 → 整体竖立但明显倾斜。
+            // 倾斜是必需的：纯绕 Z 转对球/圆柱/圆环这类轴对称形状**看不见**。
+            const float ax = rnd01() * 2.0f - 1.0f;
+            const float ay = rnd01() * 2.0f - 1.0f;
+            const float az = kMeshSpinAxisZMin + rnd01() * (kMeshSpinAxisZMax - kMeshSpinAxisZMin);
+
+            glm::vec3 axis(ax, ay, az);
+            if (glm::length(axis) < 1.0e-4f)
+                axis = glm::vec3(0.0f, 0.0f, 1.0f);
+
+            anim.spin_axis = glm::normalize(axis);
+
+            // 角速度：区间内随机，且正负各半 —— 有正转有反转才不会像队列操练
+            anim.spin_speed = kMeshSpinSpeedMin + rnd01() * (kMeshSpinSpeedMax - kMeshSpinSpeedMin);
+            if (rnd01() < 0.5f)
+                anim.spin_speed = -anim.spin_speed;
+
+            anim.base_rotation = RingRotation(i, count);
+            anim.rest_lift     = scene.mesh_lift[i];
+            anim.ring_pos      = RingPosition(i, count);
+            anim.verts         = ExtractLocalPositions(scene.meshes[i]);
+
+            GLogInfo("[ShadowMap][ShadowMapApp::InitMeshAnimation] mesh[%zu] axis=(%.3f,%.3f,%.3f) speed=%.3f rad/s verts=%zu rest_lift=%.3f",
+                     i, anim.spin_axis.x, anim.spin_axis.y, anim.spin_axis.z,
+                     anim.spin_speed, anim.verts.size(), anim.rest_lift);
+        }
+
+        return true;
+    }
+
+    /// 把光源相机解算出的朝向写进 SkyInfo::sun_direction（取反 = 指向太阳）。
+    ///
+    /// 为什么绕这一圈而不是直接写三角函数算出来的方向：这样"shader 重建的
+    /// 光源相机"与"C++ 里真正的相机"在浮点层面完全同源，不可能出现
+    /// "两个方向差了 1e-6、只在贴图边缘露出来"的怪问题。
+    ///
+    /// 必须在 RenderShadowMap() **之后**调用 —— 光源相机的矩阵与 forward
+    /// 是 ActivateCamera 在里面手动解算的。
+    void SyncSunDirectionFromLightCamera()
+    {
+        if (!light_camera || !environment_system || !sky_info)
+            return;
+
+        const glm::vec3 to_sun = -light_camera->forward;
+
+        sky_info->sun_direction = math::Vector4f(to_sun.x, to_sun.y, to_sun.z, 0.0f);
+        environment_system->MarkSkyDirty();
+    }
+
+    /// 逐帧推进：光源环绕 → 重拍 shadow map → 网格自转（两个世界同步写入）。
+    ///
+    /// 为什么放在这里而不是 wo->Render()：ECS 帧里给 wo->Render 的 pre_render
+    /// 回调是在 **BeginManagedRenderFrame 之后**才调的（此时命令缓冲已开），
+    /// 只适合往里录 draw；而重跑 shadow map 要另起一帧（begin/end/submit），
+    /// 只能在帧外做。Tick 相位正好在 Render 之前、且没有开帧。
+    void UpdateAnimation(const double delta)
+    {
+        anim_time += delta;
+
+        const float azimuth = kLightStartAzimuthDeg
+                            + kLightOrbitDegPerSec * static_cast<float>(anim_time);
+        const float t = static_cast<float>(anim_time);
+
+        // ── 1) 网格自转 + 落地位移补偿 ──
+        // 必须**先**更新姿态再重拍 shadow map，否则影子会比网格慢一帧。
+        for (MeshAnim &anim : mesh_anim)
+        {
+            const glm::quat spin = glm::angleAxis(anim.spin_speed * t, anim.spin_axis);
+            const glm::quat rot  = anim.base_rotation * spin;
+
+            // 旋转后几何体在本地空间的最低点 z。
+            // 顶点取不到（VAB 异常）时退回"按静止姿态"处理，不影响其它网格。
+            float min_z = 0.0f;
+            if (!anim.verts.empty())
+            {
+                const glm::mat3 m = glm::mat3_cast(rot);
+
+                min_z = 1.0e9f;
+                for (const glm::vec3 &v : anim.verts)
+                {
+                    const float z = (m * v).z;
+                    if (z < min_z)
+                        min_z = z;
+                }
+            }
+
+            // 静止时 rest_lift 恰好把最低点放到 z=0；自转后（最低点会下沉）按需再抬。
+            // 用真实顶点而不是 AABB 角点，轴对称形状因此**完全不会**上下浮动。
+            const float lift = (anim.rest_lift > -min_z) ? anim.rest_lift : -min_z;
+
+            glm::vec3 pos = anim.ring_pos;
+            pos.z += lift;
+
+            if (anim.tf)
+            {
+                anim.tf->SetLocalPosition(pos);
+                anim.tf->SetLocalRotation(rot);
+            }
+        }
+
+        // ── 2) 光源环绕：摆好相机 → 重拍 shadow map ──
+        PlaceLightCamera(azimuth);
+
+        if (!RenderShadowMap())
+            GLogError("[ShadowMap][ShadowMapApp::UpdateAnimation] RenderShadowMap failed");
+
+        // ── 3) 把相机真实的 forward 同步给 SkyInfo（主世界的方向光也随之转） ──
+        SyncSunDirectionFromLightCamera();
     }
 
     bool SetupMainCamera()
     {
         if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return LogStageFail("ShadowMapApp::SetupMainCamera", "camera system unavailable");
+
+        // 主世界只有这一个 CameraSystem，两台相机（主 + 光源）都由它驱动
+        camera_system = ecs_context->GetSystem<CameraSystem>();
+        if (!camera_system)
+            return LogStageFail("ShadowMapApp::SetupMainCamera", "camera system is null");
 
         main_camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = main_camera_entity->AddComponent<CameraComponent>();
@@ -889,6 +1341,8 @@ private:
         camera->camera_data   = GetCamera();
         camera->camera_info   = const_cast<CameraInfo *>(GetCameraInfo());
         camera->viewport_info = GetViewportInfo();
+
+        main_camera = camera;
 
         return true;
     }
@@ -911,6 +1365,20 @@ public:
 
         scene_sampler  = nullptr;
         shadow_sampler = nullptr;
+    }
+
+    /// 逐帧推进：光源环绕 + 重拍 shadow map + 网格自转。
+    ///
+    /// 位置很关键 —— 必须在 **Tick**（帧之前、无命令缓冲）而不是 wo->Render()
+    /// （ECS 的 pre_render 回调，已经 BeginManagedRenderFrame，只能录 draw）。
+    /// 详见 UpdateAnimation 的注释。
+    void Tick(double delta) override
+    {
+        // 基类实现把 delta 转给 ECSContext，主世界的 Tick 相位（主相机、环境、
+        // Transform…）都在那里跑。**必须调**，否则主相机矩阵不再更新。
+        WorkObject::Tick(delta);
+
+        UpdateAnimation(delta);
     }
 
     bool Init() override
@@ -938,51 +1406,92 @@ public:
         if (!CreateSceneGeometry())
             return LogStageFail("ShadowMapApp::Init", "CreateSceneGeometry failed");
 
-        auto environment_system = ecs_context->GetSystem<EnvironmentSystem>();
+        // 网格动画参数要在 PopulateScene 之前备好（后者会回填 Transform 指针）
+        if (!InitMeshAnimation())
+            return LogStageFail("ShadowMapApp::Init", "InitMeshAnimation failed");
+
+        // 相机系统要在建光源相机之前就绪（光源相机也是它的相机之一）
+        if (!ecs_context->EnsureCameraSystem())
+            return LogStageFail("ShadowMapApp::Init", "camera system unavailable");
+
+        camera_system = ecs_context->GetSystem<CameraSystem>();
+        if (!camera_system)
+            return LogStageFail("ShadowMapApp::Init", "camera system is null");
+
+        // 先跑一次，让 CameraSystem 物化它的 camera_ubo / camera_info ——
+        // 否则 ActivateCamera 里读到的 GetCameraInfo() 还是 nullptr，
+        // 光源相机的矩阵根本写不进去（UpdateMatrices 会因为 camera_info 为空而跳过）。
+        camera_system->Update(0.0f);
+
+        // 把系统级 viewport 固定成主画面尺寸：它只在为 null 时才会去 latch
+        // （见 CameraSystem::Update 里的 `if (!viewport_info)`），
+        // 而 shadow pass 期间世界的 render_target 是**离屏 RT** ——
+        // 一旦让它在那里 latch，主画面的宽高比就变成 1 了。
+        if (auto *main_rt = ecs_context->GetRenderTarget())
+            camera_system->SetViewportInfo(main_rt->GetViewportInfo());
+
+        environment_system = ecs_context->GetSystem<EnvironmentSystem>();
         if (!environment_system)
             environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
 
-        if (environment_system)
-        {
-            if (auto *sky = environment_system->EditSkyInfo())
-            {
-                // 太阳接近正上方（俯仰角 89.5°），与"正俯视的光源相机"保持一致：
-                // 影子才会落在物体正下方。见文件头的接收方案说明。
-                sky->SetTime(11, 58, 0);
-                environment_system->MarkSkyDirty();
-            }
-        }
+        if (!environment_system)
+            return LogStageFail("ShadowMapApp::Init", "environment system unavailable");
 
-        // ── 光源 Pass：把环上网格渲染进 shadow map（不含地面） ──
+        sky_info = environment_system->EditSkyInfo();
+        if (!sky_info)
+            return LogStageFail("ShadowMapApp::Init", "edit sky info failed");
+
+        // 时间刻意配到与光源仰角一致的那一档：SetTime 的模型里
+        //   仰角 = (小时 − 6) × 15°
+        // 取 7:52 → 仰角恰好 28°，与 kLightElevationDeg 对齐。
+        // 这样太阳颜色/强度也是"这个仰角该有的样子"，而不是正午的白光。
+        // （SetTime 写进去的 sun_direction 随后会被真实的光源相机朝向覆盖。）
+        sky_info->SetTime(7, 52, 0);
+        environment_system->MarkSkyDirty();
+
+        // ── shadow map：只建一个 depth-only RT，**不建第二个 ECS 世界** ──
         depth_pass = new ShadowDepthPass();
-        if (!depth_pass->Init(this, kShadowMapSize))
+        if (!depth_pass->Init(GetGraphicsContext(), kShadowMapSize))
             return LogStageFail("ShadowMapApp::Init", "ShadowDepthPass::Init failed");
 
-        if (!PopulateScene(depth_pass->GetWorld(), "ShadowMapApp::Init:DepthWorld", false, nullptr))
-            return LogStageFail("ShadowMapApp::Init", "populate depth world failed");
-
-        if (!CreateLightCamera(depth_pass->GetWorld()))
-            return LogStageFail("ShadowMapApp::Init", "CreateLightCamera failed");
-
-        if (!depth_pass->Render())
-            return LogStageFail("ShadowMapApp::Init", "ShadowDepthPass::Render failed");
+        // 逐帧重拍 shadow map 必须打开 wait-idle。
+        // 离屏 RT（RenderTargetData）只持有**一个**命令缓冲，而 EndManagedRenderFrame
+        // 默认并不等 GPU（wait_idle_enabled 默认 false）。一次性渲染不会暴露这一点；
+        // 本用例每帧都要往它里面录一次，不等就会撞上上一帧还没执行完的同一个命令缓冲：
+        //     vkBeginCommandBuffer(): on active VkCommandBuffer ... before it has completed
+        //     vkQueueSubmit(): ... is already in use and is not marked for simultaneous use
+        // 紧随其后就是 VK_ERROR_DEVICE_LOST。对 1024×1024 depth-only 来说，
+        // 每帧同步一次的代价可以忽略。
+        ecs_context->SetWaitIdleEnabled(true);
 
         Texture2D *shadow_map_tex = depth_pass->GetDepthTexture();
         if (!shadow_map_tex)
             return LogStageFail("ShadowMapApp::Init", "shadow map depth texture unavailable");
 
-        // ── 主世界：同一套场景 + 会采样 shadow map 的接收面 ──
+        // ── 主世界：接收面（会采样 shadow map）+ 环上网格 + 两台相机 ──
         if (!PopulateScene(ecs_context, "ShadowMapApp::Init:MainWorld", true, shadow_map_tex))
             return LogStageFail("ShadowMapApp::Init", "populate main world failed");
 
         if (!SetupMainCamera())
             return LogStageFail("ShadowMapApp::Init", "SetupMainCamera failed");
 
-        GLogInfo("[ShadowMap][ShadowMapApp::Init] success shadow_map=%p layout=%u size=%ux%u",
+        if (!CreateLightCamera(ecs_context))
+            return LogStageFail("ShadowMapApp::Init", "CreateLightCamera failed");
+
+        // 第一帧之前就要有正确的 shadow map 与 sun_direction：
+        // 主循环里 Tick 在 Render 之前，而 WorkManager 的**第一次** Tick 会因为
+        // delta < frame_time 被跳过，所以不能指望 UpdateAnimation 来补这一发。
+        if (!RenderShadowMap())
+            return LogStageFail("ShadowMapApp::Init", "RenderShadowMap failed");
+
+        SyncSunDirectionFromLightCamera();
+
+        GLogInfo("[ShadowMap][ShadowMapApp::Init] success shadow_map=%p layout=%u size=%ux%u sun=(%.3f,%.3f,%.3f)",
                  (void *)shadow_map_tex,
                  (uint32_t)shadow_map_tex->GetImageLayout(),
                  shadow_map_tex->GetWidth(),
-                 shadow_map_tex->GetHeight());
+                 shadow_map_tex->GetHeight(),
+                 sky_info->sun_direction.x, sky_info->sun_direction.y, sky_info->sun_direction.z);
 
         LogStage("ShadowMapApp::Init", "success");
         return true;
