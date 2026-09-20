@@ -40,6 +40,9 @@
 [submodule "src/Tools/MiniPack"]
 	path = src/Tools/MiniPack
 	url = https://github.com/hyzboy/MiniPack.git
+[submodule "src/Tools/TexConv"]
+	path = src/Tools/TexConv
+	url = https://github.com/hyzboy/TexConv.git
 [submodule "3rdpty/inja"]
 	path = 3rdpty/inja
 	url = https://github.com/pantor/inja.git
