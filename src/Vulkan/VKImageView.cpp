@@ -13,8 +13,15 @@ ImageView::~ImageView()
     vkDestroyImageView(device,image_view,nullptr);
 }
 
-ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,const uint32_t &miplevel,VkImageAspectFlags aspectMask,VkImage img)
+ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,const uint32_t &miplevel,VkImageAspectFlags aspectMask,VkImage img,bool sampled_usage)
 {
+    // 采样用途（SAMPLED_IMAGE 描述符）下，depth/stencil 视图只能含其中一个 aspect
+    //（VUID-VkDescriptorImageInfo-imageView-01976）。两者同时存在时采样行为未定义，
+    // 表现为采样结果全 0 或全 1——"深度贴图什么都看不到"就是这个原因。
+    // 附件用途无此限制，且部分驱动要求 depth-stencil 格式的附件视图同时含两个 aspect。
+    if(sampled_usage && (aspectMask&VK_IMAGE_ASPECT_DEPTH_BIT))
+        aspectMask&=~VK_IMAGE_ASPECT_STENCIL_BIT;
+
     ImageViewCreateInfo *iv_createinfo=new ImageViewCreateInfo;
 
     iv_createinfo->image     =img;
@@ -35,7 +42,8 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
 
     if(aspectMask&VK_IMAGE_ASPECT_DEPTH_BIT)
     {
-        if(format>=VK_FORMAT_D16_UNORM_S8_UINT)
+        // 仅附件用途才补 STENCIL（见函数入口处说明）
+        if(!sampled_usage && format>=VK_FORMAT_D16_UNORM_S8_UINT)
             iv_createinfo->subresourceRange.aspectMask|=VK_IMAGE_ASPECT_STENCIL_BIT;
 
         iv_createinfo->components.r=VK_COMPONENT_SWIZZLE_IDENTITY;

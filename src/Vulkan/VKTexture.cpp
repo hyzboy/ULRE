@@ -73,12 +73,16 @@ VkImageView Texture2D::GetBindlessArrayView()
     VkExtent3D ext = data->image_view->GetExtent();
     ext.depth      = 1;      // 单层 2D_ARRAY view（layerCount = ext.depth）
 
+    // sampled_usage=true：本视图专供 bindless 采样，深度模板格式必须只保留 DEPTH
+    // aspect（VUID-VkDescriptorImageInfo-imageView-01976），否则采样行为未定义。
+    // 附件视图（data->image_view）仍保持 DEPTH|STENCIL，两者互不影响。
     data->array_view = CreateImageView2DArray(manager->GetVkDevice(),
                                               data->image_view->GetFormat(),
                                               ext,
                                               data->miplevel,
                                               data->image_view->GetAspectFlags(),
-                                              data->image);
+                                              data->image,
+                                              true);
 
     return data->array_view ? data->array_view->GetImageView() : VK_NULL_HANDLE;
 }

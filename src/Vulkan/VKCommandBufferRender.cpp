@@ -118,13 +118,14 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
         // dynamic rendering 下 color/depth 的 clear 值分别从 clear_values[0..color_count) 与 [color_count] 取
     }
 
-    // 深度槽必须显式给 1.0f：VkClearValue 零初始化时 depthStencil.depth 为 0.0f，
-    // 在默认的 LESS 深度测试下会拒绝所有物体——depth-only 目标（shadow map）会全空。
+    // 深度清屏值：本引擎为 **Reversed-Z**——`mtl::PipelineConfig::depth_compare_op`
+    // 默认 VK_COMPARE_OP_GREATER_OR_EQUAL，`Camera::use_reversed_z` 默认 true，
+    // 投影走 MakeInfiniteReversedZProj（近平面 1.0 / 远平面 0.0）。
+    // 因此深度附件必须清 **0.0f**（远平面）。清 1.0f 会让 GREATER_OR_EQUAL 拒绝
+    // 所有片元——整个场景只剩清屏色，表现为「示例什么都看不到」。
+    // 也与 SetClearDepthStencil() 的既有默认值一致。
     if(has_depth)
-    {
-        clear_values[color_count].depthStencil.depth   = 1.0f;
-        clear_values[color_count].depthStencil.stencil = 0;
-    }
+        SetClearDepthStencil(color_count,0.0f,0.0f);
 
     VkRenderingAttachmentInfo color_atts[8]{};
 
