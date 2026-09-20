@@ -37,3 +37,4 @@ CMakeCache.txt
 shader-cache/
 /build-shellcheck
 /_build
+/.workbuddy
