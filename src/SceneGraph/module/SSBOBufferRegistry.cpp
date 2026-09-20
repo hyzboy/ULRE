@@ -305,13 +305,19 @@ bool SSBOBufferRegistry::RegisterBuffer(const mtl::SSBOAddress &address,
     const uint64_t key = MakeKey(address);
     auto &binding = domain_map[key];
 
+    // 同域已有不同 buffer 时拒绝注册（fail-fast），要求调用方先 ClearDomain。
+    // 历史上这里是"静默 Release 旧 buffer 并接管"——旧实例仍持有该指针，
+    // 会造成悬空/二次释放（多 ECSContext 世界互踩即源于此，见 ShadowMap 用例记录）。
     if (binding.buffer && binding.buffer != buffer)
     {
-        auto *buffer_manager = GetGraphicsContext() ? GetGraphicsContext()->GetBufferManager() : nullptr;
-        if (buffer_manager)
-            buffer_manager->Release(binding.buffer);
-        else
-            delete binding.buffer;
+        GLogError("[R11] RegisterBuffer rejected: SSBO domain already bound to another buffer "
+                  "(type=%s ssbo_id=%u old_buffer=%p new_buffer=%p)。"
+                  "如确需替换，请先调用 ClearDomain，并确保旧 buffer 的持有者已不再引用它。",
+                  mtl::GetSSBOTypeName(address.ssbo_type),
+                  address.ssbo_id,
+                  static_cast<void *>(binding.buffer),
+                  static_cast<void *>(buffer));
+        return false;
     }
 
     binding.ssbo_type = address.ssbo_type;

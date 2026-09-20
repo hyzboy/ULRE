@@ -18,7 +18,6 @@ namespace hgl::graph
 {
     class BufferManager;
     class DeviceBuffer;
-    class SSBOBufferRegistry;
 }
 
 namespace hgl::ecs
@@ -33,6 +32,12 @@ namespace hgl::ecs
      * 注意：类名中的 "Assignment" 为历史名（曾做变换分配）——现职责为
      * L2W 域 SSBO 写者（static/dynamic 段 + ring + 行表），改名评估过
      * 因引用面大而保留（W7 记录）
+     *
+     * 所有权：本类是世界（ECSContext）私有设施，L2W/L2WIndex 缓冲由
+     * BufferManager 创建、由本类独占——不注册进 SSBOBufferRegistry。
+     * shader 侧地址经 RootAddresses push constants（每 MaterialBatch 一次，
+     * PipelineMaterialRenderer 从 GetTransformDataBuffer() 取）下发，
+     * 全局域注册自 BDA 化后已无消费者（曾因同域互踩导致多世界悬空）。
      */
     class TransformAssignmentBuffer
     {
@@ -41,7 +46,6 @@ namespace hgl::ecs
     private:
         uint32_t MaxTransformCount;             ///<单个SSBO最大支持的变换数量
         graph::BufferManager* buffer_manager;   ///<BufferManager用于创建缓冲区
-        graph::SSBOBufferRegistry* resource_domain_manager; ///<全局SSBO域管理器（可空）
 
     private:    // LocalToWorld矩阵数据
         uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
@@ -64,7 +68,6 @@ namespace hgl::ecs
 
     public:
         TransformAssignmentBuffer(graph::BufferManager* bm,
-                                  graph::SSBOBufferRegistry* rdm = nullptr,
                                   uint32_t ring_frames = HGL_L2W_RING_FRAMES);
         ~TransformAssignmentBuffer() { Clear(); }
 

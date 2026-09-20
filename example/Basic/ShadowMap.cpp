@@ -434,23 +434,25 @@ public:
 
 /// 光源视角的 shadow map：**只持有 depth-only RT**，不建 ECS 子世界。
 ///
-/// ## 为什么不用 graph::OffscreenWorld 的 ECS 子世界
+/// ## 为什么不用 graph::OffscreenWorld 的 ECS 子世界（历史 + 现状）
 ///
-/// L2W 变换 SSBO 是**全局唯一域**（kLocalToWorldAddress，ssbo_id 固定），
-/// 而每个 ECSContext 各持一个 TransformAssignmentBuffer。问题出在
-/// SSBOBufferRegistry::RegisterBuffer：当同一个域已被别的实例注册时，它会把
-/// **那个实例的缓冲 Release 掉**，可那个实例仍然握着该指针 —— 于是
-///     [R11] Failed to register LocalToWorld domain buffer: ... buffer_bytes=0xDDDD…
-/// 两个世界互相踩、每帧重建一次，L2W 注册失败 → 整个画面只剩清屏色。
+/// 早期版本这里撞过两个坑，当时选择了"主世界自己渲"的路线：
 ///
-/// 一次性的离屏渲染（RenderToTexture 示例的 RenderOnce）不会暴露它：子世界只
-/// 渲染一次，那根悬空指针之后再没被用过。但本用例要**逐帧**重拍 shadow map
-/// （光源在环绕、网格在自转），第二次渲染就踩上；紧接着还会因为离屏 RT 只有
-/// 一个命令缓冲而撞上未完成的命令缓冲，最终 VK_ERROR_DEVICE_LOST。
+/// 1. **L2W 域互踩（已于引擎层修复）**：TransformAssignmentBuffer 曾把每世界的
+///    L2W 缓冲注册进设备级 SSBOBufferRegistry 的全局唯一域（kLocalToWorldAddress），
+///    第二个世界注册时 RegisterBuffer 会静默 Release 第一个世界的缓冲——而那个
+///    实例仍握着该指针，于是
+///        [R11] Failed to register LocalToWorld domain buffer: ... buffer_bytes=0xDDDD…
+///    两个世界互相踩、逐帧渲染即崩。该注册自 BDA 化（L2W 地址经 RootAddresses
+///    push constants 下发）后已无任何消费者，现已整体摘除；RegisterBuffer 的
+///    同域冲突也已改为 fail-fast 拒绝。**子世界方案因此重新可行。**
+/// 2. **离屏 RT 命令缓冲同步（仍在）**：离屏 RT 只有一个命令缓冲且默认不等
+///    fence，逐帧重拍会撞上上一帧未完成的录制/执行（vkBeginCommandBuffer on
+///    active command buffer / VK_ERROR_DEVICE_LOST）。走子世界前需先给离屏 RT
+///    补 in-flight 或显式等待（RenderTargetDesc::fence_count 对离屏路径尚未真正生效）。
 ///
-/// 所以这里只向 RenderTargetManager 要一个 depth-only RT，画面由**主世界自己**
-/// 用光源相机渲染进去（见 ShadowMapApp::RenderShadowMap）—— 全程只有一个
-/// ECSContext，L2W 域不存在第二个竞争者。
+/// 本用例维持"主世界 + RenderTo 切 RT"：两台相机同住一个 CameraSystem，切换
+/// 就是置脏 + Update（见 ActivateCamera），且全程只有一份 L2W，不必等第 2 项。
 class ShadowDepthPass
 {
 private:
@@ -966,10 +968,9 @@ private:
         // Mobility 用 Movable：这些网格每帧都要自转。L2W 只有在出现动态 transform
         // 时才会走"每帧环形段"那条路径，静态槽则只做脏数据重传。
         //
-        // 注意**不要**为了图省事把场景再复制一份到一个 OffscreenWorld 子世界里去
-        // （那是"影子单独一个世界"的直觉做法）—— L2W 是全局唯一域，两个
-        // ECSContext 会互相 Release 对方的缓冲并留下悬空指针，详见 ShadowDepthPass
-        // 顶部的说明。本用例从 2026-09-21 起改成"主世界自己渲染 shadow map"。
+        // 注：把场景复制进 OffscreenWorld 子世界过去因 L2W 全局域互踩而不可行，
+        // 该根源已在引擎层修复（见 ShadowDepthPass 顶部说明）。本用例仍维持
+        // "主世界自己渲染 shadow map"：相机切换与同步语义更直接。
         const size_t count = scene.meshes.size();
         for (size_t i = 0; i < count; ++i)
         {

@@ -9,7 +9,6 @@
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
@@ -22,14 +21,6 @@ namespace hgl::ecs
     {
         constexpr uint32_t kIdentityL2WSlot = 0;
         constexpr uint32_t kFirstObjectL2WSlot = 1;
-        constexpr graph::mtl::SSBOAddress kTransformIndexRowsAddress{
-            graph::mtl::SSBOType::LocalToWorldIndex,
-            graph::mtl::ECSReservedSSBOId::LocalToWorldIndex,
-            0};
-        constexpr graph::mtl::SSBOAddress kLocalToWorldAddress{
-            graph::mtl::SSBOType::LocalToWorld,
-            graph::mtl::ECSReservedSSBOId::LocalToWorldData,
-            0};
 
         static bool ShouldEmitPeriodicLog(const uint32_t period = 120)
         {
@@ -150,10 +141,8 @@ namespace hgl::ecs
     }
 
     TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm,
-                                                         graph::SSBOBufferRegistry* rdm,
                                                          uint32_t ring_frames)
         : buffer_manager(bm)
-        , resource_domain_manager(rdm)
         , transform_buffer_max_count(0)
         , transform_buffer(nullptr)
         , transform_policy(graph::BufferAllocPolicy::Auto)
@@ -416,27 +405,21 @@ namespace hgl::ecs
 
     void TransformAssignmentBuffer::Clear()
     {
-        if (resource_domain_manager)
-        {
-            resource_domain_manager->ClearDomain(kLocalToWorldAddress);
-            resource_domain_manager->ClearDomain(kTransformIndexRowsAddress);
-            transform_buffer = nullptr;
-            transform_index_rows_buffer = nullptr;
-        }
-        else if (buffer_manager)
+        if (buffer_manager)
         {
             if (transform_buffer)
                 buffer_manager->Release(transform_buffer);
             if (transform_index_rows_buffer)
                 buffer_manager->Release(transform_index_rows_buffer);
-            transform_buffer = nullptr;
-            transform_index_rows_buffer = nullptr;
         }
         else
         {
             SAFE_CLEAR(transform_buffer);
             SAFE_CLEAR(transform_index_rows_buffer);
         }
+
+        transform_buffer = nullptr;
+        transform_index_rows_buffer = nullptr;
 
         transform_buffer_max_count = 0;
         transform_index_rows_max_count = 0;
@@ -455,12 +438,7 @@ namespace hgl::ecs
         else if (required_count > transform_buffer_max_count)
         {
             transform_buffer_max_count = hgl::power_to_2(required_count);
-            if (resource_domain_manager)
-            {
-                resource_domain_manager->ClearDomain(kLocalToWorldAddress);
-                transform_buffer = nullptr;
-            }
-            else if (buffer_manager)
+            if (buffer_manager)
             {
                 buffer_manager->Release(transform_buffer);
                 transform_buffer = nullptr;
@@ -476,12 +454,7 @@ namespace hgl::ecs
         // Recreate if policy changed
         if (transform_buffer && transform_policy != policy)
         {
-            if (resource_domain_manager)
-            {
-                resource_domain_manager->ClearDomain(kLocalToWorldAddress);
-                transform_buffer = nullptr;
-            }
-            else if (buffer_manager)
+            if (buffer_manager)
             {
                 buffer_manager->Release(transform_buffer);
                 transform_buffer = nullptr;
@@ -505,26 +478,6 @@ namespace hgl::ecs
                                                           graph::SharingMode::Exclusive);
 
             recreated = true;
-        }
-
-        if (resource_domain_manager && transform_buffer)
-        {
-            if (!resource_domain_manager->RegisterBuffer(kLocalToWorldAddress,
-                                                         transform_buffer,
-                                                         transform_buffer_max_count))
-            {
-                GLogError("[R11] Failed to register LocalToWorld domain buffer: capacity=%u bytes=%llu",
-                          transform_buffer_max_count,
-                          static_cast<unsigned long long>(transform_buffer->GetSize()));
-
-                if (buffer_manager)
-                    buffer_manager->Release(transform_buffer);
-                else
-                    SAFE_CLEAR(transform_buffer);
-
-                transform_buffer = nullptr;
-                return;
-            }
         }
 
         if (recreated)
@@ -582,12 +535,7 @@ namespace hgl::ecs
         else if (transform_index_rows_max_count < required_count)
         {
             transform_index_rows_max_count = hgl::power_to_2(required_count);
-            if (resource_domain_manager)
-            {
-                resource_domain_manager->ClearDomain(kTransformIndexRowsAddress);
-                transform_index_rows_buffer = nullptr;
-            }
-            else if (buffer_manager)
+            if (buffer_manager)
             {
                 buffer_manager->Release(transform_index_rows_buffer);
                 transform_index_rows_buffer = nullptr;
@@ -606,27 +554,6 @@ namespace hgl::ecs
                                                                      nullptr,
                                                                      graph::SharingMode::Exclusive);
             recreated = true;
-        }
-
-        if (resource_domain_manager && transform_index_rows_buffer)
-        {
-            if (!resource_domain_manager->RegisterBuffer(kTransformIndexRowsAddress,
-                                                         transform_index_rows_buffer,
-                                                         transform_index_rows_max_count))
-            {
-                GLogError("[R11] Failed to register LocalToWorldIndex domain buffer: capacity=%u bytes=%llu",
-                          transform_index_rows_max_count,
-                          static_cast<unsigned long long>(transform_index_rows_buffer->GetSize()));
-
-                if (buffer_manager)
-                    buffer_manager->Release(transform_index_rows_buffer);
-                else
-                    SAFE_CLEAR(transform_index_rows_buffer);
-
-                transform_index_rows_buffer = nullptr;
-                transform_index_rows_max_count = 0;
-                return false;
-            }
         }
 
         if (recreated && transform_index_rows_buffer)
