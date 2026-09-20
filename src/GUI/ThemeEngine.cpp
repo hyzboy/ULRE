@@ -1,4 +1,26 @@
-﻿#include<hgl/gui/ThemeEngine.h>
+﻿// ============================================================================
+// [已停用 / 待重写] 请勿直接启用本文件
+//
+// src/GUI 已在 src/CMakeLists.txt 中被注释掉（#add_subdirectory(GUI)），
+// 本文件长期未参与构建，已与当前引擎 API 脱节。已知问题（不止一处）：
+//
+//   1. CreateRT() 调用 device->CreateRT()，该方法在 VulkanDevice 上并不存在。
+//      离屏 RT 现在的标准入口是 RenderTargetManager::Create(desc)，但
+//      ThemeEngine 只持有 VulkanDevice，拿不到 GraphicsContext，
+//      启用 GUI 前必须先给 ThemeEngine 注入 GraphicsContext。
+//   2. Resize() 中 `if(!old_rt)` 后却解引用 old_rt —— 条件写反（应为 if(old_rt)），
+//      是空指针解引用。
+//   3. Resize() 用新 RT 覆盖 old_rt 前未释放旧 RT —— 内存泄漏。
+//   4. Render(ThemeForm*) 缺少 return 语句 —— 未定义行为。
+//   5. CreateThemeEngine() 调 GetDefaultThemeEngine() 少传 dev 参数。
+//   6. CreateForm(f, rt) 少传 RenderCmdBuffer 参数（声明为三参数）。
+//
+// 结论：重新启用 GUI 前，本文件需连同 inc/hgl/gui/* 一并重写，
+// 并以 RenderTargetDesc + OffscreenWorld 为新基线。参见
+// doc/render-target-standardization-design.md 阶段 D。
+// ============================================================================
+
+#include<hgl/gui/ThemeEngine.h>
 #include<hgl/gui/ThemeForm.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
@@ -86,7 +108,7 @@ namespace hgl
 
             RenderTarget *old_rt=tf->GetRenderTarget();
 
-            if(!old_rt)
+            if(old_rt)      // 原为 if(!old_rt)，条件写反会导致空指针解引用
             {
                 const VkExtent2D old_size=old_rt->GetExtent();
 

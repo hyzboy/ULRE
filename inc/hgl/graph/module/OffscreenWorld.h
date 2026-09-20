@@ -94,6 +94,14 @@ namespace hgl::graph
         /// Tick + 渲染一帧，指定清屏色（覆盖 desc 中的声明）
         void Render(const Color4f &clear_color, float delta_time = 0.0f);
 
+        /// 调整离屏 RT 尺寸（按 desc 重建纹理与 FBO）
+        ///
+        /// @warning 重建后 Texture2D 指针会变化：持有旧指针者必须重新
+        ///          GetColorTexture() / GetDepthTexture() 并重新绑定材质，
+        ///          然后重新 Render() 才有内容。
+        /// @return 成功返回 true
+        bool Resize(const uint32_t width, const uint32_t height);
+
     public: // 访问
 
         IRenderTarget * GetRenderTarget ()const{return rt_.get();}

@@ -35,7 +35,16 @@ namespace hgl
                 /// Ending ExecutionPhase for this pass (inclusive)
                 ExecutionPhase endPhase = static_cast<ExecutionPhase>(0);
 
-                /// Target render target (nullptr = current/swapchain)
+                /// 期望的渲染目标（nullptr = 沿用世界当前的 RT）
+                ///
+                /// @warning 尚未生效。ExecuteRenderGraphPasses() 目前不读取此字段：
+                ///          命令缓冲由 RenderSystemCore::BeginFrame() 从帧初始 RT 获取，
+                ///          每个 RT 持有自己的 cmd_buf。要让本字段真正生效，需要
+                ///          RenderSystemCore 支持"多段渲染"——每个 target 切换处做一次
+                ///          EndRendering/EndRender → BeginRender/BeginRendering，
+                ///          并处理跨 RT 的提交与信号量同步。
+                ///          在此之前若设置了非当前 RT，执行器会输出警告而非静默忽略。
+                ///          详见 doc/render-target-standardization-design.md 阶段 D。
                 hgl::graph::IRenderTarget* renderTarget = nullptr;
 
                 /// Whether this pass should execute

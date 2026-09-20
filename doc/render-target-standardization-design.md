@@ -13,7 +13,7 @@
 | A 收敛 | **已完成** | 见下方"阶段 A"各项，均带 [x] |
 | B 描述子与工厂 | **已完成** | 见下方"阶段 B"各项，均带 [x] |
 | C OffscreenWorld 入引擎 | **已完成** | 见下方"阶段 C"各项，均带 [x] |
-| D resize 与 RenderGraph 集成 | 未开始 | |
+| D resize 与 RenderGraph 集成 | **部分完成** | resize 与 GUI 清理已完成；RenderGraph 跨 RT pass 链拆分见下方说明 |
 
 子世界/离屏 RT 的专门约定见 `doc/ecs/ecs_sub_world.md`。
 
@@ -373,9 +373,51 @@ offscreen->Resize(1024, 1024);                  // 阶段 D 后可用
 
 ### 阶段 D — resize 与 RenderGraph 集成
 
-12. `IRenderTarget::OnResize` 真正按 desc 重建 texture + FBO；Swapchain 仍由 `SwapchainModule` 负责。
-13. `RenderPassRequest` / RenderGraph 节点 target 化，支持 MRT、后处理链、阴影图。
-14. 清理 `src/GUI/ThemeEngine.cpp:37` 调用不存在的 `device->CreateRT` 的死路径。
+- [x] 12. `RenderTargetManager` 按 desc 真正重建 texture + FBO（Swapchain 仍由 `SwapchainModule` 负责）。
+- [x] 14. 清理 `src/GUI/ThemeEngine.cpp` 的死路径（并修掉其中一处空指针解引用）。
+- [ ] 13. RenderGraph 跨 RT pass 链 —— **拆分为独立后续任务**，原因见下。
+
+#### 12 已完成：真 resize
+
+- `registry` 条目改为持有 `RenderTargetDesc`，`Resize()` 按 desc 重建。
+- 抽出了 `CreateAttachments()`，创建与重建共用同一段逻辑。
+- **重建只换纹理与 FBO**，`queue` / `cmd_buf` / `render_complete_semaphore` **复用**。
+  原因：`RenderTargetData::Clear()` 明确不释放这三者（由设备侧持有），
+  若每次重建都重新 `CreateQueue` / `CreateRenderCommandBuffer`，设备对象会累积泄漏。
+- `desc.follow_window`（默认 false）：只有显式声明的 RT 才在 `GraphicsContext::OnResize`
+  时跟随窗口重建。离屏 RT 尺寸通常与窗口无关（如固定 512x512 的 RTT），不该被连带改变。
+- `OffscreenWorld::Resize(w, h)` 重建后重新接线 `RenderTargetSystem` / `CameraSystem` /
+  `ECSContext` 的 RT 引用。
+- **约束（必须遵守）**：重建后 `Texture2D` 指针会变化，持有旧指针者必须重新
+  `GetColorTexture()` 并重新绑定材质，再重新 `Render()` 才有内容。
+
+#### 13 未实现：跨 RT pass 链需要先行改造
+
+`RenderGraph::Pass::renderTarget` 字段一直存在，但 `ExecuteRenderGraphPasses()`
+**从未读取它** —— 是个死字段。真正生效需要：
+
+- 命令缓冲由 `RenderSystemCore::BeginFrame()` 从**帧初始 RT** 获取，每个 RT 持有自己的
+  `cmd_buf`；跨 RT 切换时必须在切换点做一次
+  `EndRendering/EndRender → BeginRender/BeginRendering`，并处理跨 RT 的提交与信号量同步。
+- 这属于"多段渲染"架构改动，且**当前没有多 RT 用例可供验证**（RenderToTexture 是单 RT），
+  草率实现会留下"看似能用实则画错目标"的隐患。
+
+因此本阶段只做了**消除静默失败**这一步：字段加了明确文档说明，
+执行器在检测到"pass 请求了非当前 RT"时输出 `LogWarning` 而不是静默忽略。
+真正的多 RT pass 链（MRT / 后处理链 / 阴影图）留作独立任务，需：
+1. `RenderSystemCore` 支持多段 `Begin/End` 与跨 RT 提交同步；
+2. 引入 `RenderPassRequest` 明确描述 `world / target / clear / camera_override`；
+3. 补一个多 RT 用例（如后处理链）作为验证基线。
+
+#### 14 已完成：GUI 死路径
+
+`src/GUI/ThemeEngine.cpp` 不止 `device->CreateRT` 一处问题，实际有 7 处以上编译错误
+（`!old_rt` 后解引用 `old_rt`、新 RT 覆盖旧 RT 未释放、`Render()` 缺 return、
+`CreateForm` 少传参数、`GetDefaultThemeEngine()` 少传 dev 等），整体已腐朽且
+`ThemeEngine` 只持有 `VulkanDevice`、拿不到 `GraphicsContext`，无法改用新 API。
+
+处理：未删除（不可逆，GUI 可能后续重启），而是在文件头加了完整问题清单与重写指引，
+并修掉那处空指针解引用。启用 GUI 前须以 `RenderTargetDesc` + `OffscreenWorld` 为基线重写。
 
 ---
 

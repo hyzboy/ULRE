@@ -146,6 +146,33 @@ namespace hgl::graph
         RestoreMainRenderContext();
     }
 
+    bool OffscreenWorld::Resize(const uint32_t width, const uint32_t height)
+    {
+        if(!gc_ || !rt_)
+            return false;
+
+        auto *rtm = gc_->GetRenderTargetManager();
+        if(!rtm)
+            return false;
+
+        if(!rtm->Resize(rt_.get(), width, height))
+            return false;
+
+        // RT 重建后视口信息随之变化，需重新接线相机与收集系统
+        IRenderTarget *rt = rt_.get();
+
+        if(rt_system_)
+            rt_system_->SetRenderTarget(rt);
+
+        if(camera_system_)
+            camera_system_->SetViewportInfo(rt->GetViewportInfo());
+
+        if(world_)
+            world_->SetRenderTarget(rt);
+
+        return true;
+    }
+
     void OffscreenWorld::RestoreMainRenderContext()
     {
         if(!render_context_ || !main_world_)

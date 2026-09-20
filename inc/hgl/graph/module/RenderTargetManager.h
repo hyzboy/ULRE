@@ -16,6 +16,7 @@ class TextureManager;
 class RenderPassManager;
 class GraphicsContext;
 class OffscreenRenderTarget;
+struct RenderTargetData;
 
 class RenderTargetManager;
 
@@ -53,16 +54,25 @@ GRAPH_MODULE_CLASS(RenderTargetManager)
 
 public:
 
-    /// RT 注册表条目。阶段 D 起改为持有 RenderTargetDesc，以支持按 desc 重建（resize）。
+    /// RT 注册表条目。持有 RenderTargetDesc，以支持按 desc 重建（resize）
     struct RenderTargetEntry
     {
-        AnsiString    name;
-        IRenderTarget *rt=nullptr;
+        AnsiString       name;
+        IRenderTarget    *rt=nullptr;
+        RenderTargetDesc desc;
     };
 
 private:
 
     std::vector<RenderTargetEntry> registry;
+
+    /// 创建/重建纹理与 FBO 并写入 data。
+    /// data 的 queue / cmd_buf / render_complete_semaphore 由调用方负责（重建时复用，
+    /// 不重复创建，避免设备侧对象累积泄漏）。
+    bool CreateAttachments(RenderTargetData *data,const AnsiString &name,const FramebufferInfo *fbi);
+
+    /// 按新尺寸重建指定 RT 的纹理与 FBO
+    bool RebuildOffscreenRT(OffscreenRenderTarget *rt,const RenderTargetDesc &desc);
 
 public:
 
@@ -98,6 +108,13 @@ public: // 创建
                                                               const AnsiString &name, const FramebufferInfo *fbi, const uint32_t fence_count=1);
 
 public: // 生命周期
+
+    /// 按新尺寸重建指定 RT（纹理与 FBO 重建；queue/cmd_buf/semaphore 复用）
+    ///
+    /// @warning 重建后 Texture2D 指针会变化，持有旧指针者必须重新
+    ///          GetColorTexture() / GetDepthTexture() 并重新绑定材质
+    /// @return 成功返回 true；RT 未登记 / desc.resizable 为假 / 重建失败返回 false
+    bool Resize(IRenderTarget *rt,const uint32_t width,const uint32_t height);
 
     /// 销毁并注销指定的 RenderTarget（幂等；未登记者返回 false）
     bool Destroy(IRenderTarget *rt);

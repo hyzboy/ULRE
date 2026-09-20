@@ -123,6 +123,16 @@ namespace hgl
 
 //                LogInfo("[ECS RENDER] Executing pass %zu (phases %d-%d)",pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
 
+                // pass.renderTarget 尚未生效（命令缓冲与提交同步未支持跨 RT 切换）。
+                // 此处显式告警，避免"设置了却被静默忽略"导致的难查问题。
+                if (pass.renderTarget && pass.renderTarget != GetRenderTarget())
+                {
+                    LogWarning("[ECS RENDER] Pass %zu requests a different render target, "
+                               "but per-pass RT switching is not supported yet; "
+                               "pass will render to the frame's current target.",
+                               pass_idx);
+                }
+
                 if (pass.onBeforePass)
                 {
 //                    LogDebug("[ECS RENDER] Invoking onBeforePass for pass %zu", pass_idx);

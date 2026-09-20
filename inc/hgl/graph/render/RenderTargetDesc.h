@@ -52,8 +52,13 @@ struct RenderTargetDesc
 
     // ---- 行为 ----
 
-    /// 是否允许 OnResize 时按本 desc 重建（阶段 D 生效）
+    /// 是否允许 Resize() 按本 desc 重建
     bool resizable = true;
+
+    /// 是否在窗口尺寸变化时跟随重建（GraphicsContext::OnResize 会遍历这类 RT）。
+    /// 默认 false —— 离屏 RT 尺寸通常与窗口无关（如固定 512x512 的 RTT），
+    /// 不应因窗口缩放被连带改变。
+    bool follow_window = false;
 
     uint32_t fence_count = 1;
 

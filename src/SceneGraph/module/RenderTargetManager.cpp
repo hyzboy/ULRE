@@ -140,6 +140,16 @@ RenderTargetHandle RenderTargetManager::Create(const RenderTargetDesc &desc)
     rt->SetClearColor(desc.clear_color);
     rt->SetEnvironmentProfile(desc.env_profile);
 
+    // 登记 desc，供 Resize() 按 desc 重建
+    for(RenderTargetEntry &entry : registry)
+    {
+        if(entry.rt == rt)
+        {
+            entry.desc = desc;
+            break;
+        }
+    }
+
     RenderTargetDeleter deleter;
     deleter.manager = this;
 
@@ -167,54 +177,20 @@ OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSConte
     if(!tex_manager || !rp_manager)
         return(nullptr);
 
-    RenderPass *rp = rp_manager->AcquireRenderPass(fbi);
-    if(!rp)
-        return(nullptr);
+    RenderTargetData *rtd = new RenderTargetData{};
 
-    const uint32_t color_count = fbi->GetColorCount();
-    const VkExtent2D extent = fbi->GetExtent();
-    const VkFormat depth_format = fbi->GetDepthFormat();
-
-    AutoDeleteObjectArray<Texture2D> color_texture_list(color_count);
-    AutoDeleteArray<ImageView *> color_iv_list(color_count);
-
-    Texture2D **tp = color_texture_list;
-    ImageView **iv = color_iv_list;
-
-    uint32_t color_index = 0;
-    for(const VkFormat &fmt : fbi->GetColorFormatList())
+    if(!CreateAttachments(rtd, name, fbi))
     {
-        U8String tex_name = ToU8String(name + ":Color[" + AnsiString::numberOf(color_index) + "]");
-        Texture2D *color_texture = tex_manager->CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt, extent, tex_name));
-        if(!color_texture)
-            return(nullptr);
-
-        *tp++ = color_texture;
-        *iv++ = color_texture->GetImageView();
-        color_index++;
+        delete rtd;
+        return(nullptr);
     }
 
-    U8String depth_name = ToU8String(name + ":Depth");
-    Texture2D *depth_texture = (depth_format != PF_UNDEFINED) ? tex_manager->CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format, extent, depth_name)) : nullptr;
-
-    // 复用成员 CreateFBO（原先此处内联了一份逐行重复的 lambda 实现）
-    Framebuffer *fb = CreateFBO(rp, color_iv_list, color_count, depth_texture ? depth_texture->GetImageView() : nullptr);
-
-    if(fb)
     {
-        RenderTargetData *rtd = new RenderTargetData{};
-
         const AnsiString rt_name = name + ":RT";
-        rtd->fbo = fb;
-        rtd->queue = device->CreateQueue(rt_name, fence_count, false);
+
+        rtd->queue                     = device->CreateQueue(rt_name, fence_count, false);
         rtd->render_complete_semaphore = device->CreateGPUSemaphore(rt_name);
-        rtd->cmd_buf = device->CreateRenderCommandBuffer(rt_name);
-
-        rtd->color_count = color_count;
-        rtd->color_textures = new_copy<Texture2D *>(color_texture_list, color_count);
-        rtd->depth_texture = depth_texture;
-
-        color_texture_list.Discard();
+        rtd->cmd_buf                   = device->CreateRenderCommandBuffer(rt_name);
 
         OffscreenRenderTarget *rt = new OffscreenRenderTarget(ecs_ctx, rtd);
 
@@ -227,9 +203,164 @@ OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSConte
 
         return rt;
     }
+}
 
-    SAFE_CLEAR(depth_texture);
-    return nullptr;
+bool RenderTargetManager::CreateAttachments(RenderTargetData *data,const AnsiString &name,const FramebufferInfo *fbi)
+{
+    if(!data || !fbi)
+        return(false);
+
+    if(!tex_manager || !rp_manager)
+        return(false);
+
+    RenderPass *rp = rp_manager->AcquireRenderPass(fbi);
+    if(!rp)
+        return(false);
+
+    const uint32_t   color_count  = fbi->GetColorCount();
+    const VkExtent2D extent       = fbi->GetExtent();
+    const VkFormat   depth_format = fbi->GetDepthFormat();
+
+    AutoDeleteObjectArray<Texture2D> color_texture_list(color_count);
+    AutoDeleteArray<ImageView *>     color_iv_list(color_count);
+
+    Texture2D **tp = color_texture_list;
+    ImageView **iv = color_iv_list;
+
+    uint32_t color_index = 0;
+    for(const VkFormat &fmt : fbi->GetColorFormatList())
+    {
+        U8String tex_name = ToU8String(name + ":Color[" + AnsiString::numberOf(color_index) + "]");
+        Texture2D *color_texture = tex_manager->CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt, extent, tex_name));
+        if(!color_texture)
+            return(false);
+
+        *tp++ = color_texture;
+        *iv++ = color_texture->GetImageView();
+        color_index++;
+    }
+
+    U8String depth_name = ToU8String(name + ":Depth");
+    Texture2D *depth_texture = (depth_format != PF_UNDEFINED)
+                                    ? tex_manager->CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format, extent, depth_name))
+                                    : nullptr;
+
+    // 复用成员 CreateFBO（原先此处内联了一份逐行重复的 lambda 实现）
+    Framebuffer *fb = CreateFBO(rp, color_iv_list, color_count, depth_texture ? depth_texture->GetImageView() : nullptr);
+
+    if(!fb)
+    {
+        if(depth_texture)
+            tex_manager->Release(depth_texture);
+        return(false);
+    }
+
+    data->fbo            = fb;
+    data->color_count    = color_count;
+    data->color_textures = new_copy<Texture2D *>(color_texture_list, color_count);
+    data->depth_texture  = depth_texture;
+
+    color_texture_list.Discard();
+    return(true);
+}
+
+bool RenderTargetManager::RebuildOffscreenRT(OffscreenRenderTarget *rt,const RenderTargetDesc &desc)
+{
+    if(!rt)
+        return(false);
+
+    RenderTargetData *data = rt->data;      // friend class RenderTargetManager
+    if(!data)
+        return(false);
+
+    // ---- 1. 释放旧纹理（纹理由 TextureManager 创建，需显式 Release）----
+    for(uint32_t i = 0; i < data->color_count; ++i)
+    {
+        if(data->color_textures[i])
+            tex_manager->Release(data->color_textures[i]);
+    }
+
+    if(data->depth_texture)
+        tex_manager->Release(data->depth_texture);
+
+    // ---- 2. 销毁旧 FBO ----
+    // 注意：queue / cmd_buf / render_complete_semaphore 由设备侧持有，
+    // RenderTargetData::Clear() 只清指针不释放；此处若重新创建会造成设备对象累积，
+    // 因此保留复用，仅重建纹理与 FBO。
+    SAFE_CLEAR(data->fbo);
+
+    delete[] data->color_textures;
+    data->color_textures = nullptr;
+    data->color_count    = 0;
+    data->depth_texture  = nullptr;
+
+    // ---- 3. 按新尺寸重建 ----
+    auto *dev_attr = GetDevAttr();
+    if(!dev_attr || !dev_attr->physical_device)
+        return(false);
+
+    std::vector<VkFormat> color_formats = desc.color_formats;
+    if(color_formats.empty())
+        color_formats.push_back(dev_attr->surface_format.format);
+
+    VkFormat depth_format = desc.depth_format;
+    if(desc.has_depth && depth_format == PF_UNDEFINED)
+        depth_format = dev_attr->physical_device->GetDepthFormat();
+
+    FramebufferInfo fbi;
+    for(const VkFormat fmt : color_formats)
+    {
+        if(!fbi.AddColor(fmt))
+            return(false);
+    }
+
+    if(desc.has_depth)
+    {
+        if(!fbi.SetDepth(depth_format))
+            return(false);
+    }
+
+    fbi.SetExtent(desc.width, desc.height);
+
+    AnsiString name = desc.name;
+    if(name.IsEmpty())
+        name = "RT_" + AnsiString::numberOf(desc.width) + "x" + AnsiString::numberOf(desc.height);
+
+    return CreateAttachments(data, name, &fbi);
+}
+
+bool RenderTargetManager::Resize(IRenderTarget *rt,const uint32_t width,const uint32_t height)
+{
+    if(!rt || width == 0 || height == 0)
+        return(false);
+
+    for(RenderTargetEntry &entry : registry)
+    {
+        if(entry.rt != rt)
+            continue;
+
+        if(!entry.desc.resizable)
+            return(false);
+
+        RenderTargetDesc desc = entry.desc;
+        desc.width  = width;
+        desc.height = height;
+
+        if(!RebuildOffscreenRT(static_cast<OffscreenRenderTarget *>(rt), desc))
+            return(false);
+
+        entry.desc = desc;
+
+        // 同步 RT 自身 extent 与视口 UBO
+        VkExtent2D ext;
+        ext.width  = width;
+        ext.height = height;
+        rt->OnResize(ext);
+
+        return(true);
+    }
+
+    return(false);
 }
 
 bool RenderTargetManager::Destroy(IRenderTarget *rt)
@@ -275,8 +406,35 @@ void RenderTargetManager::Release()
 
 void RenderTargetManager::OnResize(const VkExtent2D &extent)
 {
-    // 阶段 A：占位。阶段 D 起按 RenderTargetDesc 重建已标记 resizable 的 RT。
-    (void)extent;
+    // 只重建显式声明 follow_window 的 RT。
+    // 离屏 RT 尺寸通常与窗口无关（如固定 512x512 的 RTT），不应被窗口缩放连带改变；
+    // Swapchain RT 不在本 registry 中，由 SwapchainModule 自行处理。
+    if(extent.width == 0 || extent.height == 0)
+        return;
+
+    for(RenderTargetEntry &entry : registry)
+    {
+        if(!entry.rt)
+            continue;
+
+        if(!entry.desc.follow_window || !entry.desc.resizable)
+            continue;
+
+        RenderTargetDesc desc = entry.desc;
+
+        desc.width  = extent.width;
+        desc.height = extent.height;
+
+        if(!RebuildOffscreenRT(static_cast<OffscreenRenderTarget *>(entry.rt), desc))
+        {
+            GLogError("[RenderTargetManager] follow-window RT resize to %ux%u failed",
+                      extent.width, extent.height);
+            continue;
+        }
+
+        entry.desc = desc;
+        entry.rt->OnResize(extent);
+    }
 }
 
 }//namespace hgl::graph
