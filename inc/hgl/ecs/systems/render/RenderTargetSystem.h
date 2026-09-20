@@ -32,7 +32,12 @@ namespace hgl
         public:
 
             void SetRenderContext(graph::RenderContext *ctx);
+
+            /// [框架内部接线] 由 ECSContext::OnResize 等场景调用，用于向子系统同步 RT 引用
             void SetRenderTarget(graph::IRenderTarget *rt);
+
+            /// [系统内缓存] RenderTargetSystem 自身缓存的 RT 引用。
+            /// 应用代码请用 ecs::ECSContext::GetRenderTarget()（唯一权威 getter）。
             graph::IRenderTarget *GetRenderTarget() const { return render_target; }
 
             void Update(float deltaTime) override;

@@ -42,6 +42,9 @@ public:
 public:
 
     RenderPass *            GetRenderPass   ()const{return sc_render_pass;}
+
+    /// [框架内部接线] SwapchainModule 自有 RT。
+    /// 应用代码请用 ecs::ECSContext::GetRenderTarget()（唯一权威 getter）。
     SwapchainRenderTarget * GetRenderTarget ()const{return sc_render_target;}
     bool                    GetSwapchainSize(VkExtent2D *)const;
     bool                    AcquireNextImage()const;

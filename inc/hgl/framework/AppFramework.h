@@ -115,6 +115,9 @@ namespace hgl
 
         // Swapchain access
         graph::SwapchainModule *GetSwapchainModule() { return sc_module; }
+
+        /// [框架内部接线] 仅供 AppFramework/WorkManager 初始化时使用。
+        /// 应用代码要取"当前渲染目标"，请统一用 ecs::ECSContext::GetRenderTarget()（唯一权威 getter）。
         graph::SwapchainRenderTarget *GetSwapchainRenderTarget()
         {
             return sc_module ? sc_module->GetRenderTarget() : nullptr;

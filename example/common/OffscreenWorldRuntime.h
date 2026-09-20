@@ -28,6 +28,7 @@ namespace hgl::example
     class OffscreenWorldRuntime
     {
     private:
+        graph::GraphicsContext *gc_ = nullptr;
         graph::IRenderTarget *rt_ = nullptr;
         ecs::ECSContext *world_ = nullptr;
         std::unique_ptr<ecs::RenderSystemCore> render_core_;
@@ -49,8 +50,19 @@ namespace hgl::example
                 world_ = nullptr;
             }
 
-            delete rt_;
-            rt_ = nullptr;
+            // RT 所有权归 RenderTargetManager（注册表追踪），用 Destroy() 而非 delete，
+            // 否则 Manager::Release() 会二次释放。
+            if (rt_)
+            {
+                auto *rtm = gc_ ? gc_->GetRenderTargetManager() : nullptr;
+
+                if (rtm)
+                    rtm->Destroy(static_cast<graph::RenderTarget *>(rt_));
+                else
+                    delete rt_;   // Manager 不可达时的兜底
+
+                rt_ = nullptr;
+            }
         }
 
         bool Init(WorkObject *owner, const OffscreenWorldConfig &cfg)
@@ -62,11 +74,11 @@ namespace hgl::example
             if (!main_world)
                 return false;
 
-            graph::GraphicsContext *gc = main_world->GetGraphicsContext();
-            if (!gc)
+            gc_ = main_world->GetGraphicsContext();
+            if (!gc_)
                 return false;
 
-            graph::VulkanDevice *device = gc->GetDevice();
+            graph::VulkanDevice *device = gc_->GetDevice();
             if (!device)
                 return false;
 
@@ -80,7 +92,7 @@ namespace hgl::example
             graph::FramebufferInfo fbi(color_fmt, depth_fmt);
             fbi.SetExtent(cfg.width, cfg.height);
 
-            rt_ = graph::RenderTargetManager::CreateRTFromGraphicsContext(gc, main_world, &fbi);
+            rt_ = graph::RenderTargetManager::CreateRTFromGraphicsContext(gc_, main_world, &fbi);
             if (!rt_)
                 return false;
 

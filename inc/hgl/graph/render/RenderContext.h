@@ -64,12 +64,16 @@ namespace hgl::graph
         /**
          * 设置当前渲染目标
          * @param rt 渲染目标
+         * @note [框架内部接线] 由 RenderTargetSystem 在 RenderPreBeginFrame 相位自动同步，
+         *       应用代码不应手动调用。
          */
         void SetCurrentRenderTarget(IRenderTarget* rt);
 
         /**
-         * 获取当前渲染目标
+         * 获取当前渲染目标（帧内"当前"语义，随渲染进程变化）
          * @return 当前渲染目标指针，未设置返回 nullptr
+         * @note 取"本世界绑定的 RT"请用 ecs::ECSContext::GetRenderTarget()（唯一权威 getter）。
+         *       此处仅表示 RenderContext 此刻指向的 RT，可能为空或已被切换。
          */
         IRenderTarget* GetCurrentRenderTarget() const;
 

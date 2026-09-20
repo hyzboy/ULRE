@@ -348,7 +348,12 @@ namespace hgl
             /// 设置渲染目标（用于窗口 resize 等场景重建 render target）
             void SetRenderTarget(hgl::graph::IRenderTarget* target) { render_target = target; }
 
-            /// 获取渲染目标
+            /// [唯一权威 getter] 获取本世界绑定的渲染目标。
+            ///
+            /// 应用代码取 RT 一律走此入口。其余入口
+            /// （RenderContext::GetCurrentRenderTarget / AppFramework::GetSwapchainRenderTarget /
+            ///  SwapchainModule::GetRenderTarget / RenderTargetSystem::GetRenderTarget）
+            /// 均为框架内部接线或系统内缓存，不应在应用层直接依赖。
             hgl::graph::IRenderTarget* GetRenderTarget() { return render_target; }
 
             /// 获取当前渲染命令缓冲区（仅在 Render() 执行期间有效）
