@@ -35,7 +35,7 @@ namespace hgl::graph::mtl
               << entry.semantic_layer
               << entry.set_type
               << entry.ssbo_type
-              << entry.material_ssbo_type;
+              << entry.global_ssbo_type;
             return h;
         }
 
@@ -49,7 +49,7 @@ namespace hgl::graph::mtl
 
             hgl::hash::FNV1aHasher64 h;
             h << entry.ssbo_type
-              << entry.material_ssbo_type;
+              << entry.global_ssbo_type;
             return h;
         }
 
@@ -79,7 +79,7 @@ namespace hgl::graph::mtl
                     source.ssbo_type = SSBOType::LocalToWorldIndex;
 
             if (source.semantic == DescriptorSemantic::MaterialPrivateData
-             && !IsMaterialSSBOType(source.material_ssbo_type))
+             && !IsGlobalSSBOType(source.global_ssbo_type))
                 return false;
 
             if (!source.has_requirement_policy)
@@ -132,7 +132,7 @@ namespace hgl::graph::mtl
 
     bool BuildEffectiveDescriptorContract(
         const DescriptorContract &base_contract,
-        const MaterialSSBOType material_private_data,
+        const GlobalSSBOType material_private_data,
         DescriptorContract &out_contract)
     {
         out_contract = base_contract;
@@ -142,10 +142,10 @@ namespace hgl::graph::mtl
             if (entry.semantic != DescriptorSemantic::MaterialPrivateData)
                 continue;
 
-            if (!IsMaterialSSBOType(material_private_data))
+            if (!IsGlobalSSBOType(material_private_data))
                 return false;
 
-            entry.material_ssbo_type = material_private_data;
+            entry.global_ssbo_type = material_private_data;
             entry.ssbo_type = SSBOType::UserDefined;
 
             if (entry.stage_flags == 0)
@@ -188,7 +188,7 @@ namespace hgl::graph::mtl
                 return false;
 
             if (entry.semantic == DescriptorSemantic::MaterialPrivateData
-             && (!IsMaterialSSBOType(entry.material_ssbo_type)
+             && (!IsGlobalSSBOType(entry.global_ssbo_type)
               || entry.ssbo_type != SSBOType::UserDefined))
                 return false;
 
@@ -224,7 +224,7 @@ namespace hgl::graph::mtl
             req.semantic_layer = entry.semantic_layer;
             req.set_type = entry.set_type;
             req.ssbo_type = entry.ssbo_type;
-            req.material_ssbo_type = entry.material_ssbo_type;
+            req.global_ssbo_type = entry.global_ssbo_type;
             req.ssbo_id = entry.ssbo_id;
             req.stage_flags = entry.stage_flags;
             req.required = entry.required;
@@ -290,7 +290,7 @@ namespace hgl::graph::mtl
                            << entry->semantic_layer
                            << entry->set_type
                            << entry->ssbo_type
-                           << entry->material_ssbo_type
+                           << entry->global_ssbo_type
                            << entry->stage_flags
                            << entry->array_count
                            << entry->required

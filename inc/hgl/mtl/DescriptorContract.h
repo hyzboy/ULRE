@@ -26,7 +26,7 @@ namespace hgl::graph::mtl
 
     bool BuildEffectiveDescriptorContract(
         const DescriptorContract &base_contract,
-        MaterialSSBOType material_private_data,
+        GlobalSSBOType material_private_data,
         DescriptorContract &out_contract);
 
     bool BuildResourceSchemaFromContract(

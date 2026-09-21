@@ -7,7 +7,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
@@ -105,7 +105,7 @@ private:
 #endif//DRAW_GIZMO
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
     std::vector<MaterialDataAccessor> mesh_rows;           ///<每个物体一行 PBR 参数
@@ -418,7 +418,7 @@ private:
     ///   箭头:蓝色光滑电介质
     bool CreateMeshMaterialRows()
     {
-        auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
@@ -435,7 +435,7 @@ private:
 
         for (const auto &row : pbr_rows)
         {
-            mesh_rows.push_back(domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>());
+            mesh_rows.push_back(domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>());
 
             if (!mesh_rows.back())
                 return false;
@@ -443,7 +443,7 @@ private:
             if (!mesh_rows.back().Write(row))
                 return false;
 
-            if (!mesh_rows.back().GetMaterialSSBOBinding().IsValid())
+            if (!mesh_rows.back().GetGlobalSSBOBinding().IsValid())
                 return false;
         }
 
@@ -490,7 +490,7 @@ private:
             primitive_comp->SetMaterialTextureResource("normal", normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_struct{};
-            floor_struct = mesh_rows[0].GetMaterialSSBOBinding();
+            floor_struct = mesh_rows[0].GetGlobalSSBOBinding();
             primitive_comp->SetMaterialDataResource(floor_struct);
             primitive_comp->SetVisible(true);
         }
@@ -524,7 +524,7 @@ private:
 
             primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
-            mesh_struct = mesh_rows[row_index].GetMaterialSSBOBinding();
+            mesh_struct = mesh_rows[row_index].GetGlobalSSBOBinding();
             primitive_comp->SetMaterialDataResource(mesh_struct);
             primitive_comp->SetVisible(true);
 

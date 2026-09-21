@@ -86,7 +86,7 @@ struct MaterialCompileConfig
     // Per-material SSBO 单一声明（名称为 DefaultMaterialPrivateDataName）。
     // Material payloads are tracked with the material-specific enum, not the generic
     // runtime SSBO enum.
-    MaterialSSBOType material_private_data = MaterialSSBOType::PBRSurface;
+    GlobalSSBOType material_private_data = GlobalSSBOType::PBRSurface;
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileMaterial checks Layout requirements ⊆ Definition capabilities.
     const mtl::MaterialDefinition *material_definition = nullptr;

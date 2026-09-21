@@ -402,7 +402,7 @@ namespace hgl::ecs
         batch.draw_batches.reserve(count);
 
         auto *gc = world ? world->GetGraphicsContext() : nullptr;
-        auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
+        auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
         auto *dev = world ? world->GetGPUDevice() : nullptr;
         auto *id_storage = world ? world->GetDrawItemIDStorage() : nullptr;
 

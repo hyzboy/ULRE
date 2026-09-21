@@ -16,7 +16,7 @@ namespace hgl::graph::mtl
         const char *        glsl_type;
         DescriptorSemantic  semantic = DescriptorSemantic::Unknown;
         SSBOType            ssbo_type = SSBOType::UserDefined;
-        MaterialSSBOType    material_ssbo_type = MaterialSSBOType::PBRSurface;
+        GlobalSSBOType    global_ssbo_type = GlobalSSBOType::PBRSurface;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         uint32_t            ssbo_id = MakeRecipeSSBOId(0);
 

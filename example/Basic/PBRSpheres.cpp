@@ -21,7 +21,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/color/ColorPacking.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -91,7 +91,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
     MaterialDataAccessor sphere_slot_accessors[GRID_SIZE][GRID_SIZE]{};
@@ -274,7 +274,7 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
@@ -283,7 +283,7 @@ private:
             for (uint col = 0; col < GRID_SIZE; ++col)
             {
                 sphere_slot_accessors[row][col] =
-                    domain_manager->GetMaterialDataAccessor<ssbo::PBRSurfaceRow>();
+                    domain_manager->GetAccessor<ssbo::PBRSurfaceRow>();
                 if (!sphere_slot_accessors[row][col])
                     return false;
 
@@ -446,7 +446,7 @@ private:
         if (!InitMaterialDataSSBO())
             return false;
 
-        if (!(sphere_recipe.material_ssbo_binding = sphere_slot_accessors[0][0].GetMaterialSSBOBinding()).IsValid())
+        if (!(sphere_recipe.material_ssbo_binding = sphere_slot_accessors[0][0].GetGlobalSSBOBinding()).IsValid())
             return false;
 
         if (!CreateBasePrimitives())
@@ -497,7 +497,7 @@ private:
                         row))
                     return false;
                 hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
-                sphere_struct = sphere_slot_accessors[row][col].GetMaterialSSBOBinding();
+                sphere_struct = sphere_slot_accessors[row][col].GetGlobalSSBOBinding();
                 prim_comp->SetMaterialDataResource(sphere_struct);
                 prim_comp->SetVisible(true);
             }

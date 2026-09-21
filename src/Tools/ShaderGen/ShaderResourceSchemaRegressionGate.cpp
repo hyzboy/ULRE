@@ -1553,8 +1553,8 @@ namespace
         texture.required = true;
         recipe.textures.emplace_back(texture);
 
-        MaterialSSBOBinding asset{
-            MaterialSSBOType::PBRSurface,
+        GlobalSSBOBinding asset{
+            GlobalSSBOType::PBRSurface,
             41,
             3};
         recipe.material_ssbo_binding = asset;
@@ -1698,7 +1698,7 @@ namespace
         {
             result.diagnostics.emplace_back("canonical PureColor must exist");
         }
-        else if (pure_color.material_private_data != MaterialSSBOType::EmissiveSurface
+        else if (pure_color.material_private_data != GlobalSSBOType::EmissiveSurface
                || pure_color.vertex_semantic_requirements.GetCount() != 1)
             result.diagnostics.emplace_back("canonical PureColor contract is not semantic-only");
 
@@ -2268,7 +2268,7 @@ namespace
         }
         else
         {
-            if (pure_color.material_private_data != MaterialSSBOType::EmissiveSurface
+            if (pure_color.material_private_data != GlobalSSBOType::EmissiveSurface
              || pure_color.vertex_semantic_requirements.GetCount() != 1)
                 result.diagnostics.emplace_back("PureColor contract is not canonical");
         }
@@ -2362,14 +2362,14 @@ namespace
         return result;
     }
 
-    static GateResult RunMaterialSSBOBindingKeyCase()
+    static GateResult RunGlobalSSBOBindingKeyCase()
     {
         GateResult result;
         result.name = "Y1a.material-ssbo-binding-key";
 
         MaterialRecipe recipe{};
         recipe.material_ssbo_binding = {
-            MaterialSSBOType::EmissiveSurface,
+            GlobalSSBOType::EmissiveSurface,
             11,
             7};
         if (!recipe.material_ssbo_binding.IsValid())
@@ -2379,7 +2379,7 @@ namespace
         }
 
         recipe.material_ssbo_binding = {
-            MaterialSSBOType::EmissiveSurface,
+            GlobalSSBOType::EmissiveSurface,
             44,
             9};
         if (!recipe.material_ssbo_binding.IsValid())
@@ -2390,7 +2390,7 @@ namespace
 
         MaterialRecipe missing_row_id_recipe{};
         missing_row_id_recipe.material_ssbo_binding = {
-            MaterialSSBOType::EmissiveSurface,
+            GlobalSSBOType::EmissiveSurface,
             55,
             uint32_t(-1)};
         if (missing_row_id_recipe.material_ssbo_binding.IsValid())
@@ -2404,14 +2404,14 @@ namespace
                 ? &recipe.material_ssbo_binding : nullptr;
         if (!material_data || material_data->ssbo_id != 44
          || material_data->data_index != 9
-         || material_data->ssbo_type != MaterialSSBOType::EmissiveSurface)
+         || material_data->ssbo_type != GlobalSSBOType::EmissiveSurface)
         {
             result.diagnostics.emplace_back(
                 "material SSBO binding replacement did not preserve its identity");
         }
 
         if (!material_data
-         || material_data->ssbo_type != MaterialSSBOType::EmissiveSurface)
+         || material_data->ssbo_type != GlobalSSBOType::EmissiveSurface)
         {
             result.diagnostics.emplace_back(
                 "material SSBO binding type did not remain explicit");
@@ -2420,16 +2420,16 @@ namespace
         MaterialRecipe no_binding_recipe{};
         if (ResolveRecipeSSBOType(
                 recipe,
-                MaterialSSBOType::PBRSurface)
-                != MaterialSSBOType::EmissiveSurface
+                GlobalSSBOType::PBRSurface)
+                != GlobalSSBOType::EmissiveSurface
          || ResolveRecipeSSBOType(
                 no_binding_recipe,
-                MaterialSSBOType::PBRSurface)
-                != MaterialSSBOType::PBRSurface
+                GlobalSSBOType::PBRSurface)
+                != GlobalSSBOType::PBRSurface
          || ResolveRecipeSSBOType(
                 recipe,
-                MaterialSSBOType::EmissiveSurface)
-                != MaterialSSBOType::EmissiveSurface)
+                GlobalSSBOType::EmissiveSurface)
+                != GlobalSSBOType::EmissiveSurface)
         {
             result.diagnostics.emplace_back(
                 "material authoring must inherit recipe SSBO type unless an explicit material override is supplied");
@@ -3663,7 +3663,7 @@ namespace
         };
 
         MaterialCompileConfig config{};
-        config.material_private_data = MaterialSSBOType::EmissiveSurface;
+        config.material_private_data = GlobalSSBOType::EmissiveSurface;
         config.defer_finalize = true;
         // mesh 化后顶点路径统一走 Mesh stage（VS 已彻底废弃）
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
@@ -3776,7 +3776,7 @@ namespace
             nullptr,
             0};
         MaterialCompileConfig texture_config{};
-        texture_config.material_private_data = MaterialSSBOType::PBRSurface;
+        texture_config.material_private_data = GlobalSSBOType::PBRSurface;
         texture_config.material_definition = &texture_definition;
         texture_config.defer_finalize = true;
         texture_config.shader_stage_flag_bits =
@@ -3859,7 +3859,7 @@ namespace
                 nullptr,
                 DescriptorSemantic::LocalToWorld,
                 SSBOType::UserDefined,
-                MaterialSSBOType::PBRSurface,
+                GlobalSSBOType::PBRSurface,
                 DescriptorSemanticLayer::SSBO
             }
         };
@@ -3959,7 +3959,7 @@ namespace
                     nullptr,
                     DescriptorSemantic::ViewportInfo,
                     SSBOType::UserDefined,
-                    MaterialSSBOType::PBRSurface,
+                    GlobalSSBOType::PBRSurface,
                     DescriptorSemanticLayer::UBO
                 },
                 {
@@ -3970,7 +3970,7 @@ namespace
                     nullptr,
                     DescriptorSemantic::MaterialPrivateData,
                     SSBOType::UserDefined,
-                    MaterialSSBOType::PBRSurface,
+                    GlobalSSBOType::PBRSurface,
                     DescriptorSemanticLayer::SSBO,
                     MakeRecipeSSBOId(0),
                     true,
@@ -4539,26 +4539,26 @@ int main(const int argc, char **argv)
     {
         constexpr SerializedDescriptorEntry valid_entries[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, SSBOType::UserDefined, MaterialSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, SSBOType::UserDefined, MaterialSSBOType::PBRSurface, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-contract-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
         constexpr SerializedDescriptorEntry unknown_semantic[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, SSBOType::UserDefined, MaterialSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
 
         constexpr SerializedDescriptorEntry generic_material_type[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "EmissiveSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, SSBOType::LocalToWorld, MaterialSSBOType::EmissiveSurface, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "EmissiveSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, SSBOType::LocalToWorld, GlobalSSBOType::EmissiveSurface, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B2.generic-material-type-hard-fail", generic_material_type, 1, false));
 
         constexpr SerializedDescriptorEntry palette_explicit[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, SSBOType::UserDefined, MaterialSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("C.scene-color-palette-explicit", palette_explicit, 1, true));
     }
@@ -4575,7 +4575,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunTransformGraphModelCase());
     if (run_materialization) results.push_back(RunTransformGraphCompositionCase());
     if (run_cache) results.push_back(RunAuthoritativeMaterialCacheIdentityCase());
-    if (run_descriptor) results.push_back(RunMaterialSSBOBindingKeyCase());
+    if (run_descriptor) results.push_back(RunGlobalSSBOBindingKeyCase());
     if (run_materialization) results.push_back(RunResolvedMaterialRenderStateCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
     if (run_materialization) results.push_back(RunMaterialLibraryContractCase());

@@ -178,7 +178,6 @@ bool GlobalSSBOBufferRegistry::TryGetRowBuffer(
 
         const auto gtype = static_cast<GlobalSSBOType>(index);
         out_info.global_ssbo_type = gtype;
-        out_info.material_ssbo_type = ToMaterialSSBOType(gtype);
         out_info.cpu_base = pool.GetCPUBase();
         out_info.gpu_base = pool.GetGPUBase();
         out_info.row_bytes = pool.GetRowBytes();

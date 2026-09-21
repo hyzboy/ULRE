@@ -210,7 +210,7 @@ Geometry *GeometryCreater::Create()
         auto *dev = device ? device : (vdm ? vdm->GetDevice() : nullptr);
         if (gc && dev)
         {
-            if (auto *pool = gc->GetMeshDrawParamsPool())
+            if (auto *pool = gc->GetGlobalSSBOBufferRegistry())
                 geometry->RegisterMeshDrawParams(pool, dev);
         }
     }
@@ -290,7 +290,7 @@ Geometry *CreateGeometry(VulkanDevice *device, const GeometryVertexFormat &geome
         auto *gc = bm->GetGraphicsContext();
         if (gc && device)
         {
-            if (auto *pool = gc->GetMeshDrawParamsPool())
+            if (auto *pool = gc->GetGlobalSSBOBufferRegistry())
                 geometry->RegisterMeshDrawParams(pool, device);
         }
     }

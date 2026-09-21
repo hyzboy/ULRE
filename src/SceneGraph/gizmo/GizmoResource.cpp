@@ -12,7 +12,7 @@
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
 #include"GizmoResource.h"
@@ -39,7 +39,7 @@ namespace hgl::graph
         struct GizmoResource
         {
             using ColorDataAccessor =
-                MaterialSSBODataAccessor;
+                GlobalSSBODataAccessor;
 
             ColorDataAccessor color_row_accessors[size_t(GizmoColor::RANGE_SIZE)]{};
             VertexDataManager * vdm;
@@ -91,7 +91,7 @@ namespace hgl::graph
                 return false;
 
             auto *buffer_manager = graphics_context->GetBufferManager();
-            auto *domain_manager = graphics_context->GetMaterialSSBOBufferRegistry();
+            auto *domain_manager = graphics_context->GetGlobalSSBOBufferRegistry();
             if (!buffer_manager || !domain_manager)
                 return false;
 
@@ -104,7 +104,7 @@ namespace hgl::graph
                 {
                     auto &accessor = gr->color_row_accessors[i];
                     accessor =
-                        domain_manager->GetMaterialDataAccessor<ssbo::EmissiveSurfaceRow>();
+                        domain_manager->GetAccessor<ssbo::EmissiveSurfaceRow>();
                     if (!accessor)
                         return false;
 
@@ -123,7 +123,7 @@ namespace hgl::graph
                     recipe.mtl_def_id = "builtin/pure_color";
                     recipe.textures.clear();
                     recipe.material_ssbo_binding =
-                        accessor.GetMaterialSSBOBinding();
+                        accessor.GetGlobalSSBOBinding();
                     if (!recipe.material_ssbo_binding.IsValid())
                         return false;
                 }

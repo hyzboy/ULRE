@@ -23,7 +23,7 @@
 
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/log/Log.h>
 #include<memory>
@@ -88,7 +88,7 @@ private:
     graph::mtl::MaterialRecipe plane_recipe{};
     PrimitiveAsset             plane_asset{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
     MaterialDataAccessor plane_material_data_accessor{};
     MaterialDataAccessor line_material_data_accessor{};
 
@@ -182,22 +182,22 @@ private:
         if(!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         plane_material_data_accessor =
-            domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+            domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!plane_material_data_accessor)
             return false;
 
         line_material_data_accessor =
-            domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+            domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!line_material_data_accessor)
             return false;
 
-        if (!(plane_recipe.material_ssbo_binding = plane_material_data_accessor.GetMaterialSSBOBinding()).IsValid()
-         || !(line_recipe.material_ssbo_binding = line_material_data_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(plane_recipe.material_ssbo_binding = plane_material_data_accessor.GetGlobalSSBOBinding()).IsValid()
+         || !(line_recipe.material_ssbo_binding = line_material_data_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
         graph::ssbo::EmissiveSurfaceRow plane_row{};
@@ -222,7 +222,7 @@ private:
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource plane_struct{};
-            plane_struct = plane_material_data_accessor.GetMaterialSSBOBinding();
+            plane_struct = plane_material_data_accessor.GetGlobalSSBOBinding();
             primitive_comp->SetMaterialDataResource(plane_struct);
             primitive_comp->SetVisible(true);
         }
@@ -242,7 +242,7 @@ private:
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&line_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource line_struct{};
-            line_struct = line_material_data_accessor.GetMaterialSSBOBinding();
+            line_struct = line_material_data_accessor.GetGlobalSSBOBinding();
             primitive_comp->SetMaterialDataResource(line_struct);
             primitive_comp->SetVisible(true);
         }

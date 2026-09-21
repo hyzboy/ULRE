@@ -18,7 +18,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -202,7 +202,7 @@ void main() {
 class ComputeFrustumCullApp : public WorkObject
 {
     Geometry                 *geometry = nullptr;
-    MaterialSSBODataAccessor  mtl_data_ssbo_accessor{};
+    GlobalSSBODataAccessor  mtl_data_ssbo_accessor{};
     MaterialRecipe            cube_recipe{};
     PrimitiveAsset            cube_asset{};
 
@@ -259,7 +259,7 @@ private:
             return false;
 
         auto *gc = GetGraphicsContext();
-        auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
+        auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
         if (pool && device)
             geometry->EnsureMeshDrawParams(pool, device);
 
@@ -269,11 +269,11 @@ private:
 
     bool InitMISSBO()
     {
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+        mtl_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!mtl_data_ssbo_accessor)
             return false;
 
@@ -324,7 +324,7 @@ private:
         cube_recipe.recipe_name = "ComputeFrustumCull.CubeMaterial";
         cube_recipe.mtl_def_id  = "DebugNormalColor";
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
@@ -348,7 +348,7 @@ private:
             auto prim = e->AddComponent<InstancedPrimitiveComponent>();
             prim->SetPrimitiveAsset(&cube_asset);
             PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
-            named_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
+            named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
             prim->SetMaterialDataResource(named_struct);
             prim->SetInstanceCount(1);
             prim->SetMaxInstances(1);

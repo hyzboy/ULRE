@@ -365,12 +365,12 @@ namespace hgl::graph::mtl
             return ParseShaderCodeModuleSemantic(name.c_str(), out);
         }
 
-        bool ParseMaterialSSBOType(const std::string &name, MaterialSSBOType &out)
+        bool ParseGlobalSSBOType(const std::string &name, GlobalSSBOType &out)
         {
-            for (uint32 i = 0; i < static_cast<uint32>(MaterialSSBOType::RANGE_SIZE); ++i)
+            for (uint32 i = 0; i < static_cast<uint32>(GlobalSSBOType::RANGE_SIZE); ++i)
             {
-                const MaterialSSBOType type = static_cast<MaterialSSBOType>(i);
-                if (name == GetMaterialSSBOTypeName(type))
+                const GlobalSSBOType type = static_cast<GlobalSSBOType>(i);
+                if (name == GetGlobalSSBOTypeName(type))
                 {
                     out = type;
                     return true;
@@ -910,9 +910,9 @@ namespace hgl::graph::mtl
                     if (!item.is_table()
                      || !item.contains("type") || !item.at("type").is_string())
                         return false;
-                    MaterialSSBOType type;
-                    if (!ParseMaterialSSBOType(item.at("type").as_string(), type)
-                     || !IsMaterialSSBOType(type))
+                    GlobalSSBOType type;
+                    if (!ParseGlobalSSBOType(item.at("type").as_string(), type)
+                     || !IsGlobalSSBOType(type))
                         return false;
                     out.definition.material_private_data = type;
                 }

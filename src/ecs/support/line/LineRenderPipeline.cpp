@@ -646,7 +646,7 @@ namespace hgl::ecs
                     "ECS:Line:MeshDrawCommands", sizeof(graph::mtl::MeshDrawCommand));
 
             auto *gc_l = context_ ? context_->GetGraphicsContext() : nullptr;
-            auto *pool = gc_l ? gc_l->GetMeshDrawParamsPool() : nullptr;
+            auto *pool = gc_l ? gc_l->GetGlobalSSBOBufferRegistry() : nullptr;
 
             if (line_buffer_.geometry && pool && device_)
                 line_buffer_.geometry->EnsureMeshDrawParams(pool, device_);

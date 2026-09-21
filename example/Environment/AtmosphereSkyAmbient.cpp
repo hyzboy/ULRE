@@ -10,7 +10,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -73,7 +73,7 @@ private:
     graph::mtl::MaterialRecipe sky_recipe{};
     graph::mtl::MaterialRecipe mesh_recipe{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     MaterialDataAccessor material_data_ssbo_accessor{};
 
@@ -101,7 +101,7 @@ private:
         mesh_recipe.recipe_name = "AtmosphereSkyAmbient.Lit";
         mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -125,7 +125,7 @@ private:
 
     bool InitMaterialDataSSBO()
     {
-        auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
@@ -135,7 +135,7 @@ private:
         material_data.roughness    = 0.92f;
         material_data.normal_scale = 0.35f;
 
-        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
+        material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!material_data_ssbo_accessor)
             return false;
 
@@ -289,7 +289,7 @@ private:
             primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
 
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
-            mesh_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
+            mesh_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
             primitive_comp->SetMaterialDataResource(mesh_struct);
             primitive_comp->SetVisible(true);
 

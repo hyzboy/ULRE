@@ -9,7 +9,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 
 #include<hgl/graph/module/EnvironmentManager.h>
@@ -527,7 +527,7 @@ private:
     graph::mtl::MaterialRecipe scene_recipe{};
     graph::mtl::MaterialRecipe receiver_recipe{};
 
-    using MaterialDataAccessor = graph::MaterialSSBODataAccessor;
+    using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
     using MaterialBinding      = hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource;
 
     MaterialDataAccessor material_data_ssbo_accessor{};
@@ -620,7 +620,7 @@ private:
 
     bool InitMaterialDataSSBO()
     {
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return LogStageFail("ShadowMapApp::InitMaterialDataSSBO", "material ssbo registry is null");
 
@@ -630,14 +630,14 @@ private:
         scene_material_data.roughness    = 0.92f;
         scene_material_data.normal_scale = 0.35f;
 
-        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
+        material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!material_data_ssbo_accessor)
             return LogStageFail("ShadowMapApp::InitMaterialDataSSBO", "create accessor failed");
 
         if (!material_data_ssbo_accessor.Write(scene_material_data))
             return LogStageFail("ShadowMapApp::InitMaterialDataSSBO", "write material data failed");
 
-        scene_material_binding = material_data_ssbo_accessor.GetMaterialSSBOBinding();
+        scene_material_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding();
         if (!scene_material_binding.IsValid())
             return LogStageFail("ShadowMapApp::InitMaterialDataSSBO", "material SSBO binding invalid");
 

@@ -2,84 +2,85 @@
 
 #include <hgl/CoreType.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
+#include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <cstddef>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
 
 namespace hgl::graph::ssbo
 {
-    constexpr const char EmissiveSurfaceMaterialSSBOGLSL[] = "vec4 color;";
-    constexpr const char PBRSurfaceMaterialSSBOGLSL[] = R"(
+    constexpr const char EmissiveSurfaceGlobalSSBOGLSL[] = "vec4 color;";
+    constexpr const char PBRSurfaceGlobalSSBOGLSL[] = R"(
         vec4  base_color;
         float metallic;
         float roughness;
         float normal_scale;
         float fresnel;
     )";
-    constexpr const char TransmissionSurfaceMaterialSSBOGLSL[] = "uint trans_color; uint reserved0[3];";
+    constexpr const char TransmissionSurfaceGlobalSSBOGLSL[] = "uint trans_color; uint reserved0[3];";
 
-    inline const char *GetMaterialSSBOStructName(const mtl::MaterialSSBOType type) noexcept
+    inline const char *GetGlobalSSBOStructName(const GlobalSSBOType type) noexcept
     {
         switch (type)
         {
-        case mtl::MaterialSSBOType::EmissiveSurface:         return "EmissiveSurfaceData";
-        case mtl::MaterialSSBOType::PBRSurface:              return "PBRSurfaceData";
-        case mtl::MaterialSSBOType::TransmissionSurface:     return "TransmissionSurfaceData";
+        case GlobalSSBOType::EmissiveSurface:         return "EmissiveSurfaceData";
+        case GlobalSSBOType::PBRSurface:              return "PBRSurfaceData";
+        case GlobalSSBOType::TransmissionSurface:     return "TransmissionSurfaceData";
         default:                                     return nullptr;
         }
     }
 
     // Arena+BDA 路径的 buffer_reference 行结构名（与 MaterialDataRows.h 的 C++ 行结构同名）
 
-    // 行结构类型 → MaterialSSBOType 编译期映射（MaterialSSBOBufferRegistry
+    // 行结构类型 → GlobalSSBOType 编译期映射（GlobalSSBOBufferRegistry
     // 由 T 反查类型；新增行结构时在此登记一行）。
-    template<typename T> struct MaterialRowTypeTraits;
-    template<> struct MaterialRowTypeTraits<PBRSurfaceRow>              { static constexpr mtl::MaterialSSBOType TYPE = mtl::MaterialSSBOType::PBRSurface; };
-    template<> struct MaterialRowTypeTraits<EmissiveSurfaceRow>         { static constexpr mtl::MaterialSSBOType TYPE = mtl::MaterialSSBOType::EmissiveSurface; };
-    template<> struct MaterialRowTypeTraits<TransmissionSurfaceRow>     { static constexpr mtl::MaterialSSBOType TYPE = mtl::MaterialSSBOType::TransmissionSurface; };
+    template<typename T> struct GlobalRowTypeTraits;
+    template<> struct GlobalRowTypeTraits<PBRSurfaceRow>              { static constexpr GlobalSSBOType TYPE = GlobalSSBOType::PBRSurface; };
+    template<> struct GlobalRowTypeTraits<EmissiveSurfaceRow>         { static constexpr GlobalSSBOType TYPE = GlobalSSBOType::EmissiveSurface; };
+    template<> struct GlobalRowTypeTraits<TransmissionSurfaceRow>     { static constexpr GlobalSSBOType TYPE = GlobalSSBOType::TransmissionSurface; };
 
-    inline const char *GetMaterialSSBORowName(const mtl::MaterialSSBOType type) noexcept
+    inline const char *GetGlobalSSBORowName(const GlobalSSBOType type) noexcept
     {
         switch (type)
         {
-        case mtl::MaterialSSBOType::EmissiveSurface:         return "EmissiveSurfaceRow";
-        case mtl::MaterialSSBOType::PBRSurface:              return "PBRSurfaceRow";
-        case mtl::MaterialSSBOType::TransmissionSurface:     return "TransmissionSurfaceRow";
+        case GlobalSSBOType::EmissiveSurface:         return "EmissiveSurfaceRow";
+        case GlobalSSBOType::PBRSurface:              return "PBRSurfaceRow";
+        case GlobalSSBOType::TransmissionSurface:     return "TransmissionSurfaceRow";
         default:                                     return nullptr;
         }
     }
 
     // GLSL buffer 声明名（struct 名去 "Data" 后缀 + "Buffer"——显式表，
     // 不做字符串剥除：改 struct 名时 buffer 名独立可控）
-    inline const char *GetMaterialSSBOBufferName(const mtl::MaterialSSBOType type) noexcept
+    inline const char *GetGlobalSSBOBufferName(const GlobalSSBOType type) noexcept
     {
         switch (type)
         {
-        case mtl::MaterialSSBOType::EmissiveSurface:         return "EmissiveSurfaceBuffer";
-        case mtl::MaterialSSBOType::PBRSurface:              return "PBRSurfaceBuffer";
-        case mtl::MaterialSSBOType::TransmissionSurface:     return "TransmissionSurfaceBuffer";
+        case GlobalSSBOType::EmissiveSurface:         return "EmissiveSurfaceBuffer";
+        case GlobalSSBOType::PBRSurface:              return "PBRSurfaceBuffer";
+        case GlobalSSBOType::TransmissionSurface:     return "TransmissionSurfaceBuffer";
         default:                                     return nullptr;
         }
     }
 
-    inline const char *GetMaterialSSBOStructGLSL(const mtl::MaterialSSBOType type) noexcept
+    inline const char *GetGlobalSSBOStructGLSL(const GlobalSSBOType type) noexcept
     {
         switch (type)
         {
-        case mtl::MaterialSSBOType::EmissiveSurface:     return EmissiveSurfaceMaterialSSBOGLSL;
-        case mtl::MaterialSSBOType::PBRSurface:              return PBRSurfaceMaterialSSBOGLSL;
-        case mtl::MaterialSSBOType::TransmissionSurface:     return TransmissionSurfaceMaterialSSBOGLSL;
+        case GlobalSSBOType::EmissiveSurface:     return EmissiveSurfaceGlobalSSBOGLSL;
+        case GlobalSSBOType::PBRSurface:              return PBRSurfaceGlobalSSBOGLSL;
+        case GlobalSSBOType::TransmissionSurface:     return TransmissionSurfaceGlobalSSBOGLSL;
         default:                                 return nullptr;
         }
     }
 
-    inline bool TryGetMaterialSSBOLayout(const mtl::MaterialSSBOType type,
+    inline bool TryGetGlobalSSBOLayout(const GlobalSSBOType type,
                                          const char *&struct_name,
                                          const char *&glsl_codes,
                                          uint32_t &struct_bytes) noexcept
     {
-        struct_name = GetMaterialSSBOStructName(type);
-        glsl_codes = GetMaterialSSBOStructGLSL(type);
-        struct_bytes = mtl::GetMaterialSSBOTypeStructStride(type);
+        struct_name = GetGlobalSSBOStructName(type);
+        glsl_codes = GetGlobalSSBOStructGLSL(type);
+        struct_bytes = GetGlobalSSBOTypeStructStride(type);
         return struct_name != nullptr && glsl_codes != nullptr && struct_bytes > 0;
     }
 

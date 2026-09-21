@@ -7,7 +7,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 
 #include<hgl/graph/module/EnvironmentManager.h>
@@ -118,7 +118,7 @@ private:
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     MaterialDataAccessor material_data_ssbo_accessor{};
     graph::ssbo::PBRSurfaceRow sphere_material_data{};
@@ -150,11 +150,11 @@ private:
         if (!gc)
             return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "graphics context is null");
 
-        auto *domain_manager = gc->GetMaterialSSBOBufferRegistry();
+        auto *domain_manager = gc->GetGlobalSSBOBufferRegistry();
         if (!domain_manager)
             return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "resource domain manager is null");
 
-        material_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
+        material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!material_data_ssbo_accessor)
             return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "CreateSSBO failed");
 
@@ -302,7 +302,7 @@ public:
         sphere_recipe.recipe_name = "RTTColorDepth.OffscreenSphere";
         sphere_recipe.mtl_def_id = "Lit";
         sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
@@ -324,7 +324,7 @@ public:
         prim_comp->SetMaterialTextureResource("normal", sphere_normal_tex, sphere_sampler);
         prim_comp->SetMaterialTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
-        sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
+        sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
         prim_comp->SetMaterialDataResource(sphere_struct);
         prim_comp->SetVisible(true);
 
@@ -392,7 +392,7 @@ struct DisplayCube
     PrimitiveAsset asset;
     graph::mtl::MaterialRecipe recipe{};
 
-    using MaterialDataAccessor = graph::MaterialSSBODataAccessor;
+    using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
     MaterialDataAccessor accessor{};
     graph::ssbo::PBRSurfaceRow material_data{};
 
@@ -446,11 +446,11 @@ private:
 
     bool InitMaterialDataSSBO(DisplayCube &cube)
     {
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return LogStageFail("App::InitMaterialDataSSBO", "resource domain manager is null");
 
-        cube.accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
+        cube.accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!cube.accessor)
             return LogStageFail("App::InitMaterialDataSSBO", "CreateSSBO failed");
 
@@ -529,7 +529,7 @@ private:
         cube.recipe.recipe_name = cube.recipe_name;
         cube.recipe.mtl_def_id = "Lit";
         cube.recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(cube.recipe.material_ssbo_binding = cube.accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(cube.recipe.material_ssbo_binding = cube.accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("App::CreateDisplayCube", "register material SSBO binding failed");
 
         cube.asset = PrimitiveAsset(cube.geometry, &cube.recipe, PrimitiveType::Triangles);
@@ -549,7 +549,7 @@ private:
         // 唯一区别：绑定的离屏纹理不同（颜色 / 深度）
         prim_comp->SetMaterialTextureResource("base_color", cube.texture, cube.sampler);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
-        cube_struct = cube.accessor.GetMaterialSSBOBinding();
+        cube_struct = cube.accessor.GetGlobalSSBOBinding();
         prim_comp->SetMaterialDataResource(cube_struct);
         prim_comp->SetVisible(true);
 

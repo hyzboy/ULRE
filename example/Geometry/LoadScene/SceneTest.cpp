@@ -3,7 +3,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
@@ -73,7 +73,7 @@ private:
     struct MaterialData
     {
         using MaterialDataAccessor =
-            graph::MaterialSSBODataAccessor;
+            graph::GlobalSSBODataAccessor;
 
         GeometryVertexFormat geometry_vertex_format;
         MaterialDataAccessor mtl_data_ssbo_accessors[COLOR_COUNT]{};
@@ -101,7 +101,7 @@ private:
         if (!md)
             return false;
 
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
@@ -109,7 +109,7 @@ private:
         for (uint32_t i = 0; i < color_count; ++i)
         {
             md->mtl_data_ssbo_accessors[i] =
-                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
             if (!md->mtl_data_ssbo_accessors[i])
                 return false;
 
@@ -152,7 +152,7 @@ private:
         scene_recipe.recipe_name = "LoadScene.DebugNormalColor";
         scene_recipe.mtl_def_id = "DebugNormalColor";
         scene_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(scene_recipe.material_ssbo_binding = solid.mtl_data_ssbo_accessors[0].GetMaterialSSBOBinding()).IsValid())
+        if (!(scene_recipe.material_ssbo_binding = solid.mtl_data_ssbo_accessors[0].GetGlobalSSBOBinding()).IsValid())
             return false;
 
         return LoadStaticMeshSceneAsPrimitiveAssets(
@@ -205,7 +205,7 @@ private:
                 se.primitive_comp->SetPrimitiveAsset(&asset);
                 hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource scene_struct{};
                 scene_struct =
-                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetMaterialSSBOBinding();
+                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetGlobalSSBOBinding();
                 se.primitive_comp->SetMaterialDataResource(scene_struct);
                 se.primitive_comp->SetVisible(true);
 

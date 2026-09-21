@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/mtl/SerializedDescriptorEntry.h>
+#include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -19,7 +20,7 @@ namespace hgl::graph::mtl
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         DescriptorSetType set_type = DescriptorSetType::Unknown;
         SSBOType ssbo_type = SSBOType::UserDefined;
-        MaterialSSBOType material_ssbo_type = MaterialSSBOType::PBRSurface;
+        GlobalSSBOType global_ssbo_type = GlobalSSBOType::PBRSurface;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
         uint32_t stage_flags = 0;
 
@@ -138,7 +139,7 @@ namespace hgl::graph::mtl
             req.semantic_layer = NormalizeSemanticLayer(entry);
             req.set_type = entry.set_type;
             req.ssbo_type = entry.ssbo_type;
-            req.material_ssbo_type = entry.material_ssbo_type;
+            req.global_ssbo_type = entry.global_ssbo_type;
             req.ssbo_id = entry.ssbo_id;
             req.stage_flags = entry.stage_flags;
             req.name = entry.name ? entry.name : "";
@@ -166,7 +167,7 @@ namespace hgl::graph::mtl
             if (req.semantic == DescriptorSemantic::MaterialPrivateData)
             {
                 req.ssbo_type = entry.ssbo_type;
-                // Material payloads are tracked by MaterialSSBOType, not the
+                // Material payloads are tracked by GlobalSSBOType, not the
                 // generic SSBOType namespace. Keep the generic runtime field as
                 // UserDefined unless a non-material runtime binding is authored.
             }
@@ -190,7 +191,7 @@ namespace hgl::graph::mtl
                   << req.semantic_layer
                   << req.set_type
                   << req.ssbo_type
-                  << req.material_ssbo_type;
+                  << req.global_ssbo_type;
 
                 req.logical_resource_id = h;
             }
@@ -208,7 +209,7 @@ namespace hgl::graph::mtl
                 hgl::hash::FNV1aHasher64 h;
 
                 h << req.ssbo_type
-                  << req.material_ssbo_type;
+                  << req.global_ssbo_type;
 
                 req.resource_schema_id = h;
             }
@@ -235,7 +236,7 @@ namespace hgl::graph::mtl
               << req.semantic_layer
               << req.set_type
               << req.ssbo_type
-              << req.material_ssbo_type
+              << req.global_ssbo_type
               << req.ssbo_id
               << req.stage_flags
               << req.required
@@ -321,9 +322,9 @@ namespace hgl::graph::mtl
 
             if (req.semantic == DescriptorSemantic::MaterialPrivateData)
             {
-                if (!IsMaterialSSBOType(req.material_ssbo_type))
+                if (!IsGlobalSSBOType(req.global_ssbo_type))
                 {
-                    std::string message = "Descriptor material_ssbo_type is invalid for material payload semantic; an explicit material type is required: ";
+                    std::string message = "Descriptor global_ssbo_type is invalid for material payload semantic; an explicit material type is required: ";
                     message += context;
                     diagnostics.push_back(std::move(message));
                     continue;
@@ -331,7 +332,7 @@ namespace hgl::graph::mtl
 
                 if (req.ssbo_type != SSBOType::UserDefined)
                 {
-                    std::string message = "Descriptor ssbo_type must remain UserDefined for material payload semantic; material payloads use MaterialSSBOType: ";
+                    std::string message = "Descriptor ssbo_type must remain UserDefined for material payload semantic; material payloads use GlobalSSBOType: ";
                     message += context;
                     diagnostics.push_back(std::move(message));
                     continue;
@@ -366,7 +367,7 @@ namespace hgl::graph::mtl
                  && lhs.semantic_layer == rhs.semantic_layer
                  && lhs.set_type == rhs.set_type
                  && lhs.ssbo_type == rhs.ssbo_type
-                 && lhs.material_ssbo_type == rhs.material_ssbo_type
+                 && lhs.global_ssbo_type == rhs.global_ssbo_type
                  && lhs.ssbo_id == rhs.ssbo_id
                  && lhs.stage_flags == rhs.stage_flags
                  && lhs.glsl_type == rhs.glsl_type;

@@ -17,7 +17,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
@@ -97,7 +97,7 @@ private:
     struct MaterialData
     {
         using MaterialDataAccessor =
-            graph::MaterialSSBODataAccessor;
+            graph::GlobalSSBODataAccessor;
 
         MaterialDataAccessor material_data_ssbo_accessors[COLOR_COUNT]{};
     };
@@ -150,7 +150,7 @@ private:
         if (!md)
             return false;
 
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
@@ -158,7 +158,7 @@ private:
         for (uint32_t i = 0; i < color_count; ++i)
         {
             md->material_data_ssbo_accessors[i] =
-                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
             if (!md->material_data_ssbo_accessors[i])
                 return false;
 
@@ -187,7 +187,7 @@ private:
         if (!InitMaterialForDBS(&solid))
             return false;
 
-        return (solid_recipe.material_ssbo_binding = solid.material_data_ssbo_accessors[0].GetMaterialSSBOBinding()).IsValid();
+        return (solid_recipe.material_ssbo_binding = solid.material_data_ssbo_accessors[0].GetGlobalSSBOBinding()).IsValid();
     }
 
     bool InitWireMDP()
@@ -195,7 +195,7 @@ private:
         if (!InitMaterialForDBS(&wire))
             return false;
 
-        return (wire_recipe.material_ssbo_binding = wire.material_data_ssbo_accessors[0].GetMaterialSSBOBinding()).IsValid();
+        return (wire_recipe.material_ssbo_binding = wire.material_data_ssbo_accessors[0].GetGlobalSSBOBinding()).IsValid();
     }
 
     bool InitVDM()
@@ -550,7 +550,7 @@ private:
             floor_mesh->primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_struct{};
             floor_struct =
-                solid.material_data_ssbo_accessors[floor_mesh->color_index].GetMaterialSSBOBinding();
+                solid.material_data_ssbo_accessors[floor_mesh->color_index].GetGlobalSSBOBinding();
             floor_mesh->primitive_comp->SetMaterialDataResource(floor_struct);
             floor_mesh->primitive_comp->SetVisible(true);
         }
@@ -581,7 +581,7 @@ private:
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
-                solid.material_data_ssbo_accessors[rm->color_index].GetMaterialSSBOBinding();
+                solid.material_data_ssbo_accessors[rm->color_index].GetGlobalSSBOBinding();
             rm->primitive_comp->SetMaterialDataResource(mesh_struct);
             rm->primitive_comp->SetVisible(true);
 
@@ -623,7 +623,7 @@ private:
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource bbox_struct{};
-            bbox_struct = wire.material_data_ssbo_accessors[5].GetMaterialSSBOBinding();
+            bbox_struct = wire.material_data_ssbo_accessors[5].GetGlobalSSBOBinding();
             bbox->primitive_comp->SetMaterialDataResource(bbox_struct);
             bbox->primitive_comp->SetVisible(true);
 

@@ -4,6 +4,7 @@
 #include <hgl/mtl/PipelineConfig.h>
 #include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
+#include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/vk/VK.h>
@@ -32,7 +33,7 @@ namespace hgl::graph::mtl
     };
 
     // 一个 recipe 至多包含一个材质数据绑定。材质数据通过
-    // MaterialSSBOBinding 的类型、物理 SSBO 和行 ID 定位。
+    // GlobalSSBOBinding 的类型、物理 SSBO 和行 ID 定位。
 
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
     // 供 Step C 的 Definition→SerializedDescriptorEntry 推导使用。
@@ -294,8 +295,8 @@ namespace hgl::graph::mtl
         std::string definition_name;                                 // 人类可读名称
 
         // Part-B: 材质私有数据 SSBO（单一声明，名字为 DefaultMaterialPrivateDataName）。
-        // MaterialSSBOType 是材质域专用枚举；不再混入通用 SSBOType。
-        MaterialSSBOType material_private_data = MaterialSSBOType::PBRSurface;
+        // GlobalSSBOType：统一的全局 SSBO 池类型（材质表面字段与 MeshDrawParams 共用）。
+        GlobalSSBOType material_private_data = GlobalSSBOType::PBRSurface;
 
         // Part-B3: UBO 资源能力声明。
         // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
@@ -504,7 +505,7 @@ namespace hgl::graph::mtl
         MaterialRenderStateOverrides render_state_overrides;
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
-        MaterialSSBOBinding material_ssbo_binding; // 可选的唯一材质数据运行时绑定
+        GlobalSSBOBinding material_ssbo_binding; // 可选的唯一材质数据运行时绑定
     };
 
     inline ResolvedMaterialRenderState ResolveMaterialRenderState(
@@ -569,11 +570,11 @@ namespace hgl::graph::mtl
             && overrides.has_pipeline_config;
     }
 
-    inline MaterialSSBOType ResolveRecipeSSBOType(
+    inline GlobalSSBOType ResolveRecipeSSBOType(
         const MaterialRecipe &recipe,
-        const MaterialSSBOType authored_type) noexcept
+        const GlobalSSBOType authored_type) noexcept
     {
-        if (authored_type != MaterialSSBOType::PBRSurface)
+        if (authored_type != GlobalSSBOType::PBRSurface)
             return authored_type;
 
         if (recipe.material_ssbo_binding.IsValid())

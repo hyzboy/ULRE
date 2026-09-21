@@ -3,17 +3,29 @@
 #include <hgl/type/EnumUtil.h>
 #include <hgl/CoreType.h>
 
-namespace hgl::graph::mtl
+namespace hgl::graph
 {
-    enum class MaterialSSBOType : uint16_t
+    /**
+     * GlobalSSBOType - 全局单一数组池类型枚举
+     * 统一管理由 GlobalSSBOBufferRegistry 托管的固定上限 Arena 行池
+     * （MeshDrawParams + 材质表面字段；原 mtl::MaterialSSBOType 已并入本枚举）。
+     * 每个类型在 GPU 侧拥有唯一持久 BDA，并映射至 Set 0 Binding 4 GlobalAddressesInfo。
+     */
+    enum class GlobalSSBOType : uint8_t
     {
-        PBRSurface = 0,
+        MeshDrawParams = 0,
+        PBRSurface,
         EmissiveSurface,
         TransmissionSurface,
 
-        ENUM_CLASS_RANGE(PBRSurface, TransmissionSurface)
+        ENUM_CLASS_RANGE(MeshDrawParams, TransmissionSurface)
     };
 
+    constexpr uint32_t GlobalSSBOTypeCount = static_cast<uint32_t>(GlobalSSBOType::RANGE_SIZE);
+}
+
+namespace hgl::graph::mtl
+{
     // SSBO 类型枚举：用于在 Recipe/Spec 中以稳定整数传递“结构体数据落在哪类缓冲”。
     enum class SSBOType : uint16_t
     {
@@ -28,47 +40,6 @@ namespace hgl::graph::mtl
     };
 
     using SSBOCategory = SSBOType;
-    constexpr bool IsMaterialSSBOType(const MaterialSSBOType type) noexcept
-    {
-        switch (type)
-        {
-        case MaterialSSBOType::PBRSurface:
-        case MaterialSSBOType::EmissiveSurface:
-        case MaterialSSBOType::TransmissionSurface:
-            return true;
-        default:
-            return false;
-        }
-    }
-
-    /**
-     * Identifies one live material-data row in a shared material SSBO.
-     * The type selects the physical backing buffer; data_index selects its row.
-     */
-    struct MaterialSSBOBinding
-    {
-        MaterialSSBOType ssbo_type = MaterialSSBOType::PBRSurface;
-        uint32_t ssbo_id = 0;
-        uint32_t data_index = uint32_t(-1);
-
-        constexpr bool IsValid() const noexcept
-        {
-            return IsMaterialSSBOType(ssbo_type)
-                && ssbo_id != 0
-                && data_index != uint32_t(-1);
-        }
-    };
-
-    inline const char *GetMaterialSSBOTypeName(const MaterialSSBOType type) noexcept
-    {
-        switch (type)
-        {
-        case MaterialSSBOType::PBRSurface: return "PBRSurface";
-        case MaterialSSBOType::EmissiveSurface: return "EmissiveSurface";
-        case MaterialSSBOType::TransmissionSurface: return "TransmissionSurface";
-        default: return "UnknownMaterialSSBO";
-        }
-    }
 
     inline const char *GetSSBOTypeName(const SSBOType type) noexcept
     {
@@ -82,21 +53,6 @@ namespace hgl::graph::mtl
         }
     }
 
-    inline uint32_t GetMaterialSSBOTypeStructVersion(const MaterialSSBOType type) noexcept
-    {
-        switch (type)
-        {
-        case MaterialSSBOType::PBRSurface:
-        case MaterialSSBOType::EmissiveSurface:
-        case MaterialSSBOType::TransmissionSurface:
-            return 1;
-        default:
-            break;
-        }
-
-        return 0;
-    }
-
     inline uint32_t GetSSBOTypeStructVersion(const SSBOType type) noexcept
     {
         switch (type)
@@ -104,23 +60,6 @@ namespace hgl::graph::mtl
         case SSBOType::LocalToWorldIndex:
         case SSBOType::LocalToWorld:
             return 1;
-        default:
-            break;
-        }
-
-        return 0;
-    }
-
-    inline uint32_t GetMaterialSSBOTypeStructStride(const MaterialSSBOType type) noexcept
-    {
-        switch (type)
-        {
-        case MaterialSSBOType::PBRSurface:
-            return sizeof(float) * 8;
-        case MaterialSSBOType::EmissiveSurface:
-            return sizeof(float) * 4;
-        case MaterialSSBOType::TransmissionSurface:
-            return sizeof(uint32_t) * 4;
         default:
             break;
         }

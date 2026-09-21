@@ -14,7 +14,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -60,7 +60,7 @@ private:
     Entity *      camera_entity  =nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     Geometry *            geometry = nullptr;
     MaterialDataAccessor mtl_data_ssbo_accessor{};
@@ -111,11 +111,11 @@ private:
         if (!ecs_context)
             return false;
 
-        auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+        mtl_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!mtl_data_ssbo_accessor)
             return false;
 
@@ -144,13 +144,13 @@ private:
         cube_recipe.recipe_name = "SimpleCube.DebugNormalColor";
         cube_recipe.mtl_def_id = "DebugNormalColor";
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
-        named_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
+        named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
         primitive_comp->SetMaterialDataResource(named_struct);
         primitive_comp->SetVisible(true);
 

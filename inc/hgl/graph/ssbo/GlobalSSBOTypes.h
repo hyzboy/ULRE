@@ -6,22 +6,7 @@
 
 namespace hgl::graph
 {
-    /**
-     * GlobalSSBOType - 全局单一数组池类型枚举
-     * 用于统一管理由 GlobalSSBOBufferRegistry 托管的固定上限 Arena 行池。
-     * 每个类型在 GPU 侧拥有唯一持久 BDA，并映射至 Set 0 Binding 4 GlobalAddressesInfo。
-     */
-    enum class GlobalSSBOType : uint8_t
-    {
-        MeshDrawParams = 0,
-        PBRSurface,
-        EmissiveSurface,
-        TransmissionSurface,
-
-        ENUM_CLASS_RANGE(MeshDrawParams, TransmissionSurface)
-    };
-
-    constexpr uint32_t GlobalSSBOTypeCount = static_cast<uint32_t>(GlobalSSBOType::RANGE_SIZE);
+    // GlobalSSBOType 枚举定义于 SSBOTypes.h（供仅含 SSBOTypes.h 的 mtl 头直接使用）。
 
     constexpr bool IsGlobalSSBOType(const GlobalSSBOType type) noexcept
     {
@@ -40,27 +25,52 @@ namespace hgl::graph
         }
     }
 
-    inline GlobalSSBOType ToGlobalSSBOType(const mtl::MaterialSSBOType mat_type) noexcept
+    inline uint32_t GetGlobalSSBOTypeStructVersion(const GlobalSSBOType type) noexcept
     {
-        switch (mat_type)
+        switch (type)
         {
-        case mtl::MaterialSSBOType::PBRSurface:         return GlobalSSBOType::PBRSurface;
-        case mtl::MaterialSSBOType::EmissiveSurface:    return GlobalSSBOType::EmissiveSurface;
-        case mtl::MaterialSSBOType::TransmissionSurface:return GlobalSSBOType::TransmissionSurface;
-        default:                                        return GlobalSSBOType::PBRSurface;
+        case GlobalSSBOType::PBRSurface:
+        case GlobalSSBOType::EmissiveSurface:
+        case GlobalSSBOType::TransmissionSurface:
+            return 1;
+        default:
+            break;
         }
+
+        return 0;
     }
 
-    inline mtl::MaterialSSBOType ToMaterialSSBOType(const GlobalSSBOType global_type) noexcept
+    inline uint32_t GetGlobalSSBOTypeStructStride(const GlobalSSBOType type) noexcept
     {
-        switch (global_type)
+        switch (type)
         {
-        case GlobalSSBOType::PBRSurface:         return mtl::MaterialSSBOType::PBRSurface;
-        case GlobalSSBOType::EmissiveSurface:    return mtl::MaterialSSBOType::EmissiveSurface;
-        case GlobalSSBOType::TransmissionSurface:return mtl::MaterialSSBOType::TransmissionSurface;
-        default:                                 return mtl::MaterialSSBOType::PBRSurface;
+        case GlobalSSBOType::PBRSurface:            return sizeof(float) * 8;
+        case GlobalSSBOType::EmissiveSurface:       return sizeof(float) * 4;
+        case GlobalSSBOType::TransmissionSurface:   return sizeof(uint32_t) * 4;
+        default:
+            break;
         }
+
+        return 0;
     }
+
+    /**
+     * Identifies one live global-data row in a shared global SSBO.
+     * The type selects the physical backing buffer; data_index selects its row.
+     */
+    struct GlobalSSBOBinding
+    {
+        GlobalSSBOType ssbo_type = GlobalSSBOType::PBRSurface;
+        uint32_t ssbo_id = 0;
+        uint32_t data_index = uint32_t(-1);
+
+        constexpr bool IsValid() const noexcept
+        {
+            return IsGlobalSSBOType(ssbo_type)
+                && ssbo_id != 0
+                && data_index != uint32_t(-1);
+        }
+    };
 
     struct GlobalSSBOConfig
     {

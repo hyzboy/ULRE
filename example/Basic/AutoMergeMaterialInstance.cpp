@@ -15,7 +15,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -72,7 +72,7 @@ private:
 
     // MI 结构体 SSBO
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     MaterialDataAccessor triangle_data_accessors[DRAW_OBJECT_COUNT]{};
 
@@ -95,7 +95,7 @@ private:
         triangle_recipe.mtl_def_id = "builtin/pure_color";
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
-        if (!(triangle_recipe.material_ssbo_binding = triangle_data_accessors[0].GetMaterialSSBOBinding()).IsValid())
+        if (!(triangle_recipe.material_ssbo_binding = triangle_data_accessors[0].GetGlobalSSBOBinding()).IsValid())
             return false;
 
         triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);
@@ -174,7 +174,7 @@ private:
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource tri_struct{};
-            tri_struct = triangle_data_accessors[i].GetMaterialSSBOBinding();
+            tri_struct = triangle_data_accessors[i].GetGlobalSSBOBinding();
             primitive_comp->SetMaterialDataResource(tri_struct);
             primitive_comp->SetVisible(true);
 
@@ -200,14 +200,14 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
             triangle_data_accessors[i] =
-                domain_manager->GetMaterialDataAccessor<ssbo::EmissiveSurfaceRow>();
+                domain_manager->GetAccessor<ssbo::EmissiveSurfaceRow>();
             if (!triangle_data_accessors[i])
                 return false;
 

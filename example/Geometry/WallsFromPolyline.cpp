@@ -9,7 +9,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
@@ -51,7 +51,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     graph::ssbo::PBRSurfaceRow material_data;
     graph::mtl::MaterialRecipe wall_recipe{};
@@ -114,7 +114,7 @@ public:
             prim_comp->SetPrimitiveAsset(&wall_meshes[i]);
             prim_comp->SetMaterialTextureResource("base_color", base_color_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource wall_struct{};
-            wall_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
+            wall_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
             prim_comp->SetMaterialDataResource(wall_struct);
             prim_comp->SetVisible(true);
         }
@@ -141,12 +141,12 @@ public:
         wall_recipe.mtl_def_id = "Lit";
         wall_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
 
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         auto *buffer_manager = GetManager<BufferManager>();
         if (!domain_manager || !buffer_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
+        mtl_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!mtl_data_ssbo_accessor)
             return false;
 
@@ -154,7 +154,7 @@ public:
         if (!mtl_data_ssbo_accessor.Write(material_row))
             return false;
 
-        if (!(wall_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(wall_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.

@@ -40,7 +40,7 @@ namespace hgl::ecs
         void ResetMaterialDataAuthoringResource(
             PrimitiveComponent::MaterialDataAuthoringResource &resource)
         {
-            resource.ssbo_type = hgl::graph::mtl::MaterialSSBOType::PBRSurface;
+            resource.ssbo_type = hgl::graph::GlobalSSBOType::PBRSurface;
             resource.ssbo_id = 0;
             resource.buffer = nullptr;
             resource.element_capacity = 0;
@@ -348,8 +348,8 @@ namespace hgl::ecs
             materialDataResource;
         if (resource.authored)
         {
-            hgl::graph::mtl::MaterialSSBOBinding material_ssbo_binding =
-                resource.GetMaterialSSBOBinding();
+            hgl::graph::GlobalSSBOBinding material_ssbo_binding =
+                resource.GetGlobalSSBOBinding();
             material_ssbo_binding.ssbo_type =
                 hgl::graph::mtl::ResolveRecipeSSBOType(
                     out_recipe,
@@ -521,11 +521,11 @@ namespace hgl::ecs
             return;
         }
 
-        if (!resource.GetMaterialSSBOBinding().IsValid())
+        if (!resource.GetGlobalSSBOBinding().IsValid())
         {
             GLogError(
                 "[PrimitiveComponent] Material data resource rejected missing active row ID type=%s ssbo_id=%u data_index=%u",
-                hgl::graph::mtl::GetMaterialSSBOTypeName(
+                hgl::graph::GetGlobalSSBOTypeName(
                     resource.ssbo_type),
                 resource.ssbo_id,
                 resource.data_index);

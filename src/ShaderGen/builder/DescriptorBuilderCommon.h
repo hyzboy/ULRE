@@ -31,7 +31,7 @@ namespace hgl::graph::mtl::descriptor_builder_common
             set_type, stage_flags,
             name, struct_name, nullptr, semantic,
             ssbo_type,
-            MaterialSSBOType::PBRSurface,
+            GlobalSSBOType::PBRSurface,
             GetDescriptorSemanticLayer(semantic)
         });
     }

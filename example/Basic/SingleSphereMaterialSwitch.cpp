@@ -21,7 +21,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/ColorPacking.h>
 #include<hgl/log/Log.h>
@@ -72,7 +72,7 @@ private:
     PrimitiveComponent *sphere_primitive_component = nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
@@ -160,30 +160,30 @@ private:
         if (!sampler)
             return LogFail("InitMaterials", "failed to create sampler");
 
-        auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
 
         near_material_data_ssbo_accessor =
-            domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
+            domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!near_material_data_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
 
         far_material_data_ssbo_accessor =
-            domain_manager->GetMaterialDataAccessor<graph::ssbo::PBRSurfaceRow>();
+            domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!far_material_data_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
 
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
         near_recipe.mtl_def_id = "Lit";
         near_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(near_recipe.material_ssbo_binding = near_material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(near_recipe.material_ssbo_binding = near_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogFail("InitMaterials", "near material SSBO binding failed");
 
         far_recipe = near_recipe;
         far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
         far_recipe.mtl_def_id = "Lit";
-        if (!(far_recipe.material_ssbo_binding = far_material_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(far_recipe.material_ssbo_binding = far_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogFail("InitMaterials", "far material SSBO binding failed");
 
         return true;
@@ -263,7 +263,7 @@ private:
         }
 
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
-        sphere_struct = material_data_ssbo_accessor.GetMaterialSSBOBinding();
+        sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
         sphere_primitive_component->SetMaterialDataResource(sphere_struct);
         return true;
     }

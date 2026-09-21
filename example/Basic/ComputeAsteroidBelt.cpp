@@ -23,7 +23,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -276,7 +276,7 @@ class ComputeAsteroidBeltApp : public WorkObject
 
     // 主星 (Planet)
     Geometry                 *planet_geometry = nullptr;
-    MaterialSSBODataAccessor  planet_mtl_accessor{};
+    GlobalSSBODataAccessor  planet_mtl_accessor{};
     MaterialRecipe            planet_recipe{};
     PrimitiveAsset            planet_asset{};
     Entity                   *planet_entity   = nullptr;
@@ -289,7 +289,7 @@ class ComputeAsteroidBeltApp : public WorkObject
     PrimitiveAsset            asteroid_assets[GEOMETRY_VARIANT_COUNT]{};
 
     // 陨星材质（使用 EmissiveSurface 彩色太空矿石表）
-    MaterialSSBODataAccessor  asteroid_mtl_accessors[GEOMETRY_VARIANT_COUNT]{};
+    GlobalSSBODataAccessor  asteroid_mtl_accessors[GEOMETRY_VARIANT_COUNT]{};
     uint32_t                  mineral_payload_indices[GEOMETRY_VARIANT_COUNT]{};
     MaterialRecipe            asteroid_recipe{};
     ShaderProgram            *asteroid_shader_program = nullptr;
@@ -444,7 +444,7 @@ private:
         });
 
         auto *gc   = GetGraphicsContext();
-        auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
+        auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
         auto *dev  = GetDevice();
 
         planet_geometry->EnsureMeshDrawParams(pool, dev);
@@ -495,12 +495,12 @@ private:
 
     bool InitMaterials()
     {
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         // 1. 主星发光材质（深邃恒星/气态巨行星金黄琥珀色谱）
-        planet_mtl_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+        planet_mtl_accessor = domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!planet_mtl_accessor)
             return false;
 
@@ -512,7 +512,7 @@ private:
         planet_recipe.recipe_name = "ComputeAsteroidBelt.PlanetMaterial";
         planet_recipe.mtl_def_id  = "builtin/pure_color";
         planet_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        planet_recipe.material_ssbo_binding = planet_mtl_accessor.GetMaterialSSBOBinding();
+        planet_recipe.material_ssbo_binding = planet_mtl_accessor.GetGlobalSSBOBinding();
 
         // 2. 陨星群材质（10 种太空矿物色系）
         const Color4f mineral_palette[GEOMETRY_VARIANT_COUNT] = {
@@ -530,7 +530,7 @@ private:
 
         for (uint32_t i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            asteroid_mtl_accessors[i] = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+            asteroid_mtl_accessors[i] = domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
             if (!asteroid_mtl_accessors[i])
                 return false;
 
@@ -545,7 +545,7 @@ private:
         asteroid_recipe.recipe_name = "ComputeAsteroidBelt.AsteroidMaterial";
         asteroid_recipe.mtl_def_id  = "DebugNormalColor";
         asteroid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        asteroid_recipe.material_ssbo_binding = asteroid_mtl_accessors[0].GetMaterialSSBOBinding();
+        asteroid_recipe.material_ssbo_binding = asteroid_mtl_accessors[0].GetGlobalSSBOBinding();
 
         return true;
     }
@@ -567,7 +567,7 @@ private:
         auto planet_prim = planet_entity->AddComponent<PrimitiveComponent>();
         planet_prim->SetPrimitiveAsset(&planet_asset);
         PrimitiveComponent::MaterialDataAuthoringResource p_res{};
-        p_res = planet_mtl_accessor.GetMaterialSSBOBinding();
+        p_res = planet_mtl_accessor.GetGlobalSSBOBinding();
         planet_prim->SetMaterialDataResource(p_res);
         planet_prim->SetVisible(true);
 
@@ -588,7 +588,7 @@ private:
             auto prim = e->AddComponent<InstancedPrimitiveComponent>();
             prim->SetPrimitiveAsset(&asteroid_assets[i]);
             PrimitiveComponent::MaterialDataAuthoringResource a_res{};
-            a_res = asteroid_mtl_accessors[i].GetMaterialSSBOBinding();
+            a_res = asteroid_mtl_accessors[i].GetGlobalSSBOBinding();
             prim->SetMaterialDataResource(a_res);
             prim->SetInstanceCount(INSTANCES_PER_GEOM);
             prim->SetMaxInstances(INSTANCES_PER_GEOM);

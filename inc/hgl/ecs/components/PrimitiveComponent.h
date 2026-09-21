@@ -67,7 +67,7 @@ namespace hgl::ecs
         };
 
         struct MaterialDataAuthoringResource
-            : hgl::graph::mtl::MaterialSSBOBinding
+            : hgl::graph::GlobalSSBOBinding
         {
             hgl::graph::DeviceBuffer *buffer = nullptr;
             uint32_t element_capacity = 0;
@@ -78,14 +78,14 @@ namespace hgl::ecs
                 const MaterialDataAuthoringResource &) = default;
 
             MaterialDataAuthoringResource &operator=(
-                const hgl::graph::mtl::MaterialSSBOBinding &binding) noexcept
+                const hgl::graph::GlobalSSBOBinding &binding) noexcept
             {
-                hgl::graph::mtl::MaterialSSBOBinding::operator=(binding);
+                hgl::graph::GlobalSSBOBinding::operator=(binding);
                 return *this;
             }
 
-            hgl::graph::mtl::MaterialSSBOBinding
-                GetMaterialSSBOBinding() const noexcept
+            hgl::graph::GlobalSSBOBinding
+                GetGlobalSSBOBinding() const noexcept
             {
                 return {ssbo_type, ssbo_id, data_index};
             }

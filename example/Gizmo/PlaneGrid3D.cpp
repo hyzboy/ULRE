@@ -6,7 +6,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -38,7 +38,7 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
     MaterialDataAccessor material_data_accessors[3]{};
 
     Geometry *         geom_plane_grid     =nullptr;
@@ -80,7 +80,7 @@ private:
 
     bool Add(
         const char *name,
-        const graph::mtl::MaterialSSBOBinding &material_ssbo_binding,
+        const graph::GlobalSSBOBinding &material_ssbo_binding,
         const glm::quat &rotation)
     {
         if (!material_ssbo_binding.IsValid())
@@ -117,25 +117,25 @@ private:
         plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
         plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
         plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-        if (!(plane_grid_recipe.material_ssbo_binding = material_data_accessors[0].GetMaterialSSBOBinding()).IsValid())
+        if (!(plane_grid_recipe.material_ssbo_binding = material_data_accessors[0].GetGlobalSSBOBinding()).IsValid())
             return false;
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 
         if(!Add(
                 "PlaneXY",
-                material_data_accessors[0].GetMaterialSSBOBinding(),
+                material_data_accessors[0].GetGlobalSSBOBinding(),
                 glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
             return false;
 
         const float rot90 = glm::radians(90.0f);
         if(!Add(
                 "PlaneYZ",
-                material_data_accessors[1].GetMaterialSSBOBinding(),
+                material_data_accessors[1].GetGlobalSSBOBinding(),
                 glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
             return false;
         if(!Add(
                 "PlaneXZ",
-                material_data_accessors[2].GetMaterialSSBOBinding(),
+                material_data_accessors[2].GetGlobalSSBOBinding(),
                 glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
             return false;
 
@@ -147,7 +147,7 @@ private:
         if (!ecs_context)
             return false;
 
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
@@ -155,7 +155,7 @@ private:
         for (uint32_t i = 0; i < 3; ++i)
         {
             material_data_accessors[i] =
-                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
             if (!material_data_accessors[i])
                 return false;
 

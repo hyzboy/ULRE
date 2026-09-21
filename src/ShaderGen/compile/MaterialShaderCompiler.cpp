@@ -348,14 +348,14 @@ static bool CreateBuildContext(
 static bool ResolveEffectiveMaterialPrivateData(
     const MaterialCompileConfig &config,
     CompileContext &c,
-    MaterialSSBOType &out_material_private_data)
+    GlobalSSBOType &out_material_private_data)
 {
     (void)c;
     out_material_private_data = config.material_private_data;
 
     // Material payloads are tracked by the material-specific enum; the generic
     // SSBOType namespace is reserved for non-material resources only.
-    return IsMaterialSSBOType(out_material_private_data);
+    return IsGlobalSSBOType(out_material_private_data);
 }
 
 // ── Step 3b: 有效契约 ────────────────────────────────────────────────────────
@@ -364,7 +364,7 @@ static bool ResolveEffectiveMaterialPrivateData(
 // 渲染侧建表/绑定表判定统一读该标志。契约恒 Scene UBO 条目。
 static bool BuildEffectiveDescriptorEntries(
     const DescriptorContract &base_contract,
-    const MaterialSSBOType material_private_data,
+    const GlobalSSBOType material_private_data,
     CompileContext &c,
     DescriptorContract &out_effective_contract)
 {
@@ -527,7 +527,7 @@ ShaderBuildContext *CompileMaterial(
     // ── Step 3: Add Descriptors from SerializedDescriptorEntry[] ──
     // MaterialDefinition/CompileConfig supplies the material payload type;
     // provider metadata no longer contributes descriptor declarations.
-    MaterialSSBOType effective_material_private_data = MaterialSSBOType::PBRSurface;
+    GlobalSSBOType effective_material_private_data = GlobalSSBOType::PBRSurface;
     if (!ResolveEffectiveMaterialPrivateData(config, c, effective_material_private_data))
         return FailCompile(c);
 
@@ -628,7 +628,7 @@ ShaderBuildContext *CompileMaterial(
         && (!config.resource_manifest
          || config.resource_manifest->texture_reference_count != 0);
     const bool has_material_ssbo_payload =
-        IsMaterialSSBOType(effective_material_private_data)
+        IsGlobalSSBOType(effective_material_private_data)
         && (!config.material_definition
          || config.material_definition->vertex_varying.emit_data_index_id);
     shader_resource_schema.requires_runtime_data_rows =

@@ -169,10 +169,10 @@ static bool MaterialSourceRequiresMaterialDataRow(
 }
 
 static bool MaterialDefinitionRequiresPayloadRow(
-    const MaterialSSBOType material_private_data,
+    const GlobalSSBOType material_private_data,
     const MaterialDefinition *material_definition) noexcept
 {
-    if (!IsMaterialSSBOType(material_private_data))
+    if (!IsGlobalSSBOType(material_private_data))
         return false;
 
     if (!material_definition)
@@ -195,7 +195,7 @@ static bool MaterialDefinitionRequiresPayloadRow(
 // 统一依据单一 material_private_data 声明生成并注入 Fragment 阶段。
 // 变量名固定为 DefaultMaterialPrivateDataName。
 bool BuildMaterialSSBODeclarations(
-    const MaterialSSBOType material_private_data,
+    const GlobalSSBOType material_private_data,
     const MaterialDefinition *material_definition,
     const MaterialTextureReferenceLayout *texture_layout,
     std::string &out_decls,
@@ -216,9 +216,9 @@ bool BuildMaterialSSBODeclarations(
 
     if (has_payload)
     {
-        const char *struct_name  = ssbo::GetMaterialSSBOStructName(material_private_data);
-        const char *row_struct = ssbo::GetMaterialSSBORowName(material_private_data);
-        const char *struct_codes = ssbo::GetMaterialSSBOStructGLSL(material_private_data);
+        const char *struct_name  = ssbo::GetGlobalSSBOStructName(material_private_data);
+        const char *row_struct = ssbo::GetGlobalSSBORowName(material_private_data);
+        const char *struct_codes = ssbo::GetGlobalSSBOStructGLSL(material_private_data);
         if (!row_struct || !struct_codes || !struct_name)
         {
             out_error = "unsupported material row type for GLSL generation";
@@ -275,9 +275,9 @@ bool BuildMaterialSSBODeclarations(
         const char *ubo_field = nullptr;
         switch (material_private_data)
         {
-        case MaterialSSBOType::PBRSurface:          ubo_field = "addr_pbr_surface"; break;
-        case MaterialSSBOType::EmissiveSurface:     ubo_field = "addr_emissive_surface"; break;
-        case MaterialSSBOType::TransmissionSurface: ubo_field = "addr_transmission_surface"; break;
+        case GlobalSSBOType::PBRSurface:          ubo_field = "addr_pbr_surface"; break;
+        case GlobalSSBOType::EmissiveSurface:     ubo_field = "addr_emissive_surface"; break;
+        case GlobalSSBOType::TransmissionSurface: ubo_field = "addr_transmission_surface"; break;
         default:                                    ubo_field = nullptr; break;
         }
         if (!ubo_field)
@@ -286,7 +286,7 @@ bool BuildMaterialSSBODeclarations(
             return false;
         }
 
-        const uint32_t stride = mtl::GetMaterialSSBOTypeStructStride(material_private_data);
+        const uint32_t stride = GetGlobalSSBOTypeStructStride(material_private_data);
 
         out_macros += "#define MTL_ROW(i) ";
         out_macros += row_struct;
@@ -329,7 +329,7 @@ bool BuildMaterialSSBODeclarations(
 }
 
 bool BuildMaterialResourceDocument(
-    const MaterialSSBOType material_private_data,
+    const GlobalSSBOType material_private_data,
     const MaterialDefinition *material_definition,
     ShaderDocument &out_document,
     std::string &out_error)
@@ -394,7 +394,7 @@ bool BuildMaterialResourceDocument(
 
     const std::string fragment_index_tables =
         BuildFSIndexTableDecls(
-            IsMaterialSSBOType(material_private_data)
+            IsGlobalSSBOType(material_private_data)
          || (texture_layout_ptr && texture_layout_ptr->HasReferences()));
     if (!fragment_index_tables.empty())
     {
@@ -607,7 +607,7 @@ bool BuildMaterialStageDocument(
     const ShaderStage stage,
     const char *material,
     const MaterialCompileConfig &config,
-    const MaterialSSBOType material_private_data,
+    const GlobalSSBOType material_private_data,
     ShaderDocument &out_document,
     ShaderDocumentDiagnostics &out_diagnostics)
 {

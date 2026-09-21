@@ -22,7 +22,7 @@ namespace hgl::ecs
         // They must not be sourced from a shared recipe/spec cache entry.
         uint32_t data_index_row = uint32_t(-1);  // Shared material SSBO row ID.
 
-        // MaterialSSBOType 独立共享缓冲中的实例数据行 CPU/GPU 地址。
+        // GlobalSSBOType 独立共享缓冲中的实例数据行 CPU/GPU 地址。
         void    *material_row_cpu = nullptr;
         uint64_t material_row_gpu = 0;
 

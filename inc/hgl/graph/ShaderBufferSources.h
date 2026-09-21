@@ -88,7 +88,7 @@ namespace hgl::graph::mtl
         "MeshDrawParams 布局必须与 GLSL std430 声明逐字段一致（24B 头部 + 11×uint64 基址 = 112B）");
 
     // mesh per-draw 命令参数行（IndirectMeshDraw）：
-    // 几何体的 112B 顶点流参数与 BDA 已池化在全局 MeshDrawParamsPool 中，
+    // 几何体的 112B 顶点流参数与 BDA 已池化在全局 GlobalSSBOBufferRegistry 中，
     // 每个 draw batch 仅需下发 GeometryID 与 first_instance（8B）。
     #define HGL_MESH_DRAW_COMMAND_FIELD_LIST(M) \
         M(geometry_id,    "uint", uint32_t)     \

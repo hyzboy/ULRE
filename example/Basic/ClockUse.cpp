@@ -17,7 +17,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/log/Log.h>
@@ -77,7 +77,7 @@ private:
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     MaterialDataAccessor tick_data_ssbo_accessor{};
     MaterialDataAccessor hand_data_ssbo_accessors[3]{};
@@ -112,7 +112,7 @@ private:
         clock_recipe.mtl_def_id = "builtin/pure_color";
         clock_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
-        if (!(clock_recipe.material_ssbo_binding = tick_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(clock_recipe.material_ssbo_binding = tick_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 
@@ -154,12 +154,12 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
         tick_data_ssbo_accessor =
-            domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+            domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!tick_data_ssbo_accessor)
             return false;
 
@@ -176,7 +176,7 @@ private:
         for (uint i = 0; i < 3; ++i)
         {
             hand_data_ssbo_accessors[i] =
-                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
             if (!hand_data_ssbo_accessors[i])
                 return false;
 
@@ -232,7 +232,7 @@ private:
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource tick_struct{};
-            tick_struct = tick_data_ssbo_accessor.GetMaterialSSBOBinding();
+            tick_struct = tick_data_ssbo_accessor.GetGlobalSSBOBinding();
             primitive_comp->SetMaterialDataResource(tick_struct);
             primitive_comp->SetVisible(true);
 
@@ -265,7 +265,7 @@ private:
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource hand_struct{};
-            hand_struct = hand_data_ssbo_accessors[i].GetMaterialSSBOBinding();
+            hand_struct = hand_data_ssbo_accessors[i].GetGlobalSSBOBinding();
             primitive_comp->SetMaterialDataResource(hand_struct);
             primitive_comp->SetVisible(true);
 

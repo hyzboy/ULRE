@@ -8,7 +8,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
@@ -49,7 +49,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
     MaterialDataAccessor mtl_data_ssbo_accessor{};
@@ -67,11 +67,11 @@ private:
 
     bool InitMDP()
     {
-        auto* domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
 
-        mtl_data_ssbo_accessor = domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+        mtl_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
         if (!mtl_data_ssbo_accessor)
             return false;
 
@@ -83,7 +83,7 @@ private:
         mesh_recipe.recipe_name = "ExtrudedPolygonTest.DebugNormalColor";
         mesh_recipe.mtl_def_id = "DebugNormalColor";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(mesh_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+        if (!(mesh_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
         return true;
@@ -188,7 +188,7 @@ private:
 
         prim_comp->SetPrimitiveAsset(mesh_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
-        mesh_struct = mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
+        mesh_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
         prim_comp->SetMaterialDataResource(mesh_struct);
         prim_comp->SetVisible(true);
 

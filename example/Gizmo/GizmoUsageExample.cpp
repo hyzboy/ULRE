@@ -16,7 +16,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/Color.h>
 
@@ -73,7 +73,7 @@ private:
     graph::mtl::MaterialRecipe grid_recipe{};
     PrimitiveAsset             grid_asset{};
     using MaterialDataAccessor =
-        graph::MaterialSSBODataAccessor;
+        graph::GlobalSSBODataAccessor;
     MaterialDataAccessor grid_mtl_data_ssbo_accessor{};
     Geometry *grid_geometry = nullptr;
 
@@ -108,12 +108,12 @@ private:
 
             geometry_manager->Add(grid_geometry);
 
-            auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+            auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
             if (!domain_manager)
                 return false;
 
             grid_mtl_data_ssbo_accessor =
-                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
             if (!grid_mtl_data_ssbo_accessor)
                 return false;
 
@@ -130,13 +130,13 @@ private:
             grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
             grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
             grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-            if (!(grid_recipe.material_ssbo_binding = grid_mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+            if (!(grid_recipe.material_ssbo_binding = grid_mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
                 return false;
             grid_asset = PrimitiveAsset(grid_geometry, &grid_recipe, PrimitiveType::Lines);
         }
 
         {
-            auto *domain_manager = GetManager<MaterialSSBOBufferRegistry>();
+            auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
             if (!domain_manager)
                 return false;
 
@@ -156,7 +156,7 @@ private:
             geometry_manager->Add(cube_geometry);
 
             cube_mtl_data_ssbo_accessor =
-                domain_manager->GetMaterialDataAccessor<graph::ssbo::EmissiveSurfaceRow>();
+                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
             if (!cube_mtl_data_ssbo_accessor)
                 return false;
 
@@ -168,7 +168,7 @@ private:
             cube_recipe.recipe_name = "GizmoUsageExample.DebugNormalColor";
             cube_recipe.mtl_def_id = "DebugNormalColor";
             cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-            if (!(cube_recipe.material_ssbo_binding = cube_mtl_data_ssbo_accessor.GetMaterialSSBOBinding()).IsValid())
+            if (!(cube_recipe.material_ssbo_binding = cube_mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
                 return false;
             cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         }
@@ -191,7 +191,7 @@ private:
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         plane_primitive_comp->SetPrimitiveAsset(&grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource plane_struct{};
-        plane_struct = grid_mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
+        plane_struct = grid_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
         plane_primitive_comp->SetMaterialDataResource(plane_struct);
         plane_primitive_comp->SetVisible(true);
 
@@ -205,7 +205,7 @@ private:
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
-        cube_struct = cube_mtl_data_ssbo_accessor.GetMaterialSSBOBinding();
+        cube_struct = cube_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
         cube_primitive_comp->SetMaterialDataResource(cube_struct);
         cube_primitive_comp->SetVisible(true);
 

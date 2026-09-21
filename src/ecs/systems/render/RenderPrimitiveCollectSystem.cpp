@@ -19,7 +19,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
-#include<hgl/graph/module/MaterialSSBOBufferRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 
 #include<hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include<hgl/graph/render/RenderContext.h>
@@ -77,10 +77,10 @@ namespace hgl::ecs
             return primitive_comp->EnsureRuntimeGeometryBinding(material);
         }
 
-        inline graph::mtl::MaterialSSBOType ResolveMaterialSSBORequirementType(
+        inline graph::GlobalSSBOType ResolveMaterialSSBORequirementType(
             const graph::mtl::ShaderResourceSlot &req) noexcept
         {
-            return req.material_ssbo_type;
+            return req.global_ssbo_type;
         }
 
         bool BuildResolvedRecipe(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
@@ -240,7 +240,7 @@ namespace hgl::ecs
                         "[MaterialBinding] Material data binding missing or invalid owner=%s descriptor=%s type=%s",
                         owner_name ? owner_name : "<null>",
                         req.name.empty() ? "<unnamed>" : req.name.c_str(),
-                        graph::mtl::GetMaterialSSBOTypeName(
+                        graph::GetGlobalSSBOTypeName(
                             ResolveMaterialSSBORequirementType(req)));
                     return false;
                 }
@@ -560,13 +560,13 @@ namespace hgl::ecs
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialPrivateData)
                     continue;
 
-                const graph::mtl::MaterialSSBOType material_ssbo_type =
+                const graph::GlobalSSBOType global_ssbo_type =
                     ResolveMaterialSSBORequirementType(req);
-                const uint32_t stride = graph::mtl::GetMaterialSSBOTypeStructStride(material_ssbo_type);
+                const uint32_t stride = graph::GetGlobalSSBOTypeStructStride(global_ssbo_type);
                 if (stride == 0)
                     continue;
 
-                rdbs->RegisterMaterialStructLayout(material_ssbo_type, req.ssbo_id, stride);
+                rdbs->RegisterMaterialStructLayout(global_ssbo_type, req.ssbo_id, stride);
             }
         }
 
@@ -706,7 +706,7 @@ namespace hgl::ecs
                 GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s type=%s",
                             GetPrimitiveOwnerName(primitive_comp),
                             req.name.empty() ? "<unnamed>" : req.name.c_str(),
-                            graph::mtl::GetMaterialSSBOTypeName(
+                            graph::GetGlobalSSBOTypeName(
                                 ResolveMaterialSSBORequirementType(req)));
                 return false;
             }
@@ -748,9 +748,9 @@ namespace hgl::ecs
 
                 auto *graphics_context = world->GetGraphicsContext();
                 auto *material_domain = graphics_context
-                    ? graphics_context->GetMaterialSSBOBufferRegistry()
+                    ? graphics_context->GetGlobalSSBOBufferRegistry()
                     : nullptr;
-                graph::MaterialRowBufferInfo material_buffer{};
+                graph::GlobalRowBufferInfo material_buffer{};
                 if (!material_domain
                  || !material_domain->TryGetRowBuffer(
                         asset_binding.ssbo_id,
@@ -759,25 +759,25 @@ namespace hgl::ecs
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer missing for %s type=%s ssbo_id=%u",
                         GetPrimitiveOwnerName(primitive_comp),
-                        graph::mtl::GetMaterialSSBOTypeName(
+                        graph::GetGlobalSSBOTypeName(
                             asset_binding.ssbo_type),
                         asset_binding.ssbo_id);
                     return false;
                 }
-                if (!material_domain->IsMaterialDataIDActive(
+                if (!material_domain->IsActive(
                         asset_binding.ssbo_type,
                         asset_binding.data_index))
                 {
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: inactive material row ID for %s type=%s ssbo_id=%u data_index=%u",
                         GetPrimitiveOwnerName(primitive_comp),
-                        graph::mtl::GetMaterialSSBOTypeName(
+                        graph::GetGlobalSSBOTypeName(
                             asset_binding.ssbo_type),
                         asset_binding.ssbo_id,
                         asset_binding.data_index);
                     return false;
                 }
-                if (material_buffer.material_ssbo_type
+                if (material_buffer.global_ssbo_type
                         != asset_binding.ssbo_type
                  || material_buffer.gpu_base == 0
                  || material_buffer.row_bytes == 0
@@ -787,10 +787,10 @@ namespace hgl::ecs
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer invalid for %s type=%s buffer_type=%s ssbo_id=%u data_index=%u capacity=%u row_bytes=%u",
                         GetPrimitiveOwnerName(primitive_comp),
-                        graph::mtl::GetMaterialSSBOTypeName(
+                        graph::GetGlobalSSBOTypeName(
                             asset_binding.ssbo_type),
-                        graph::mtl::GetMaterialSSBOTypeName(
-                            material_buffer.material_ssbo_type),
+                        graph::GetGlobalSSBOTypeName(
+                            material_buffer.global_ssbo_type),
                         asset_binding.ssbo_id,
                         asset_binding.data_index,
                         material_buffer.row_capacity,
@@ -1378,7 +1378,7 @@ namespace hgl::ecs
                 if (auto *geom = primitiveComp->GetPrimitiveAsset()->GetGeometry())
                 {
                     auto *gc = world ? world->GetGraphicsContext() : nullptr;
-                    auto *pool = gc ? gc->GetMeshDrawParamsPool() : nullptr;
+                    auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
                     auto *dev = world ? world->GetGPUDevice() : nullptr;
                     if (pool && dev)
                     {

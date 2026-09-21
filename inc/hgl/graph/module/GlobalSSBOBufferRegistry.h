@@ -52,31 +52,21 @@ public:
     uint32_t GetSSBOId() const { return ssbo_id; }
     GlobalSSBOType GetGlobalSSBOType() const { return global_ssbo_type; }
 
-    mtl::MaterialSSBOType GetMaterialSSBOType() const
+    GlobalSSBOBinding GetGlobalSSBOBinding() const
     {
-        return ToMaterialSSBOType(global_ssbo_type);
-    }
-
-    mtl::MaterialSSBOBinding GetMaterialSSBOBinding() const
-    {
-        return {GetMaterialSSBOType(), ssbo_id, GetRowID()};
+        return {global_ssbo_type, ssbo_id, GetRowID()};
     }
 };
 
-using MaterialSSBODataAccessor = GlobalSSBODataAccessor;
-
 struct GlobalRowBufferInfo
 {
-    GlobalSSBOType global_ssbo_type = GlobalSSBOType::MeshDrawParams;
-    mtl::MaterialSSBOType material_ssbo_type = mtl::MaterialSSBOType::PBRSurface;
+    GlobalSSBOType global_ssbo_type = GlobalSSBOType::PBRSurface;
     void *cpu_base = nullptr;
     uint64_t gpu_base = 0;
     uint32_t row_bytes = 0;
     uint32_t row_capacity = 0;
     DeviceBuffer *buffer = nullptr;
 };
-
-using MaterialRowBufferInfo = GlobalRowBufferInfo;
 
 /**
  * GlobalSSBOBufferRegistry —— 全局单一数组 SSBO 行池统一注册管理器。
@@ -133,11 +123,6 @@ public:
         return pool ? pool->GetGPUBase() : 0;
     }
 
-    uint64_t GetGPUBase(mtl::MaterialSSBOType mat_type) const
-    {
-        return GetGPUBase(ToGlobalSSBOType(mat_type));
-    }
-
     const IGPUBuffer *GetGlobalAddressesUBO() const
     {
         return global_addresses_ubo ? global_addresses_ubo->GetGPUBuffer() : nullptr;
@@ -181,11 +166,6 @@ public:
         return pool ? pool->IsActive(id) : false;
     }
 
-    bool IsMaterialDataIDActive(mtl::MaterialSSBOType material_type, uint32_t data_id) const
-    {
-        return IsActive(ToGlobalSSBOType(material_type), data_id);
-    }
-
     DeviceBuffer *GetBuffer(GlobalSSBOType type) const
     {
         const auto *pool = GetPool(type);
@@ -216,22 +196,17 @@ public:
         return GlobalSSBODataAccessor(pool, type, pool->GetSSBOId());
     }
 
-    GlobalSSBODataAccessor GetMaterialDataAccessor(mtl::MaterialSSBOType material_type)
-    {
-        return GetAccessor(ToGlobalSSBOType(material_type));
-    }
-
     template<typename T>
-    GlobalSSBODataAccessor GetMaterialDataAccessor()
+    GlobalSSBODataAccessor GetAccessor()
     {
         GlobalSSBODataAccessor accessor =
-            GetMaterialDataAccessor(ssbo::MaterialRowTypeTraits<T>::TYPE);
+            GetAccessor(ssbo::GlobalRowTypeTraits<T>::TYPE);
 
         if (accessor && accessor.GetRowBytes() != sizeof(T))
         {
             GLogError(
                 "[GlobalSSBOBufferRegistry] Material accessor row-size mismatch: type=%s expected=%u actual=%zu",
-                mtl::GetMaterialSSBOTypeName(ssbo::MaterialRowTypeTraits<T>::TYPE),
+                GetGlobalSSBOTypeName(ssbo::GlobalRowTypeTraits<T>::TYPE),
                 accessor.GetRowBytes(),
                 sizeof(T));
             return {};
@@ -242,7 +217,7 @@ public:
 
     bool TryGetRowBuffer(uint32_t ssbo_id, GlobalRowBufferInfo &out_info) const;
 
-    // ---- MeshDrawParams 便捷接口（平滑过渡 MeshDrawParamsPool） ----
+    // ---- MeshDrawParams 便捷接口（平滑过渡 GlobalSSBOBufferRegistry） ----
 
     uint32_t Acquire(const mtl::MeshDrawParams &params)
     {
@@ -279,7 +254,5 @@ public:
     }
 };
 
-using MaterialSSBOBufferRegistry = GlobalSSBOBufferRegistry;
-using MeshDrawParamsPool = GlobalSSBOBufferRegistry;
 
 } // namespace hgl::graph
