@@ -1416,10 +1416,8 @@ namespace hgl::ecs
                     entity_id, transform, primitiveComp, material_for_item, world);
             }
 
-            glm::vec3 worldPos = transform->GetWorldPosition();
-            item->worldPosition = worldPos;
-            glm::vec3 toCamera = worldPos - camera_pos;
-            item->distanceToCamera = glm::length(toCamera);
+            const glm::vec3 worldPos = transform->GetWorldPosition();
+            item->distanceToCamera = glm::length(worldPos - camera_pos);
 
             item->UpdateWorldMatrix();
 

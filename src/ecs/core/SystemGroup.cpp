@@ -53,11 +53,6 @@ namespace hgl
             installers[name] = std::move(installer);
         }
 
-        bool SystemGroupRegistry::HasGroupInstaller(const std::string& name) const
-        {
-            return installers.find(name) != installers.end();
-        }
-
         bool SystemGroupRegistry::EnsureGroupSystems(const std::string& name, ECSContext* context, hgl::graph::IRenderTarget* default_rt)
         {
             auto it = installers.find(name);
@@ -83,14 +78,6 @@ namespace hgl
             }
 
             return true;
-        }
-
-        bool SystemGroupRegistry::IsGroupEnabled(const std::string& name) const
-        {
-            auto it = groups.find(name);
-            if (it == groups.end())
-                return false;
-            return it->second.enabled;
         }
 
         std::vector<SystemGroup> SystemGroupRegistry::GetAllGroups() const
@@ -128,20 +115,6 @@ namespace hgl
             if (it == groups.end())
                 return nullptr;
             return &it->second;
-        }
-
-        SystemGroup* SystemGroupRegistry::GetGroupMutable(const std::string& name)
-        {
-            auto it = groups.find(name);
-            if (it == groups.end())
-                return nullptr;
-            return &it->second;
-        }
-
-        void SystemGroupRegistry::Clear()
-        {
-            GLogDebug("[SystemGroup] Clearing all %zu registered groups", groups.size());
-            groups.clear();
         }
 
         void SystemGroupRegistry::DebugPrint() const

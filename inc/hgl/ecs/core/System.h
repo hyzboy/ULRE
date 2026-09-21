@@ -31,23 +31,16 @@ namespace hgl
             RenderSwapchainNextImage,   // acquire swapchain image
             RenderPreBeginFrame,        // per-frame env / viewport sync
                                         //   EnvironmentSystem, RenderTargetSystem
-            RenderResourceSetup,        // lazy one-time GPU resource creation
-                                        //   QuadResourcePrepareSystem
-            RenderMaterialBind,         // per-entity material / texture binding
-                                        //   QuadMaterialBindingSystem
 
             // ── Pre-pass CPU work (command buffer open, outside render pass) ─
-            RenderBeginFrame,       // open command buffer, record frame UBOs
             RenderCollect,          // collect / cull visible components
             RenderBatch,            // build batches, write VABs (StagedBuffer writes)
             RenderBufferCommit,     // finalize staged CPU writes
             RenderBufferUpload,     // GPU transfer: vkCmdCopyBuffer
             RenderFrameSync,        // sync frame UBOs/descriptors after upload
-                                    //   RenderFrameUBOSyncSystem
 
             // ── Inside render pass ──────────────────────────────────────────
             RenderDrawSubmit,       // record draw commands
-            RenderPostProcess,      // post-process effects
             RenderDebug,            // debug overlays
 
             // ── Post-pass ───────────────────────────────────────────────────
@@ -102,9 +95,6 @@ namespace hgl
 
             /// Get dependencies (systems that must run before this one)
             const std::vector<std::type_index>& GetDependencies() const { return dependencies; }
-
-            /// Called after all dependencies are ready
-            virtual void OnDependenciesReady() {}
 
             /// Set the context (called by Context when system is registered)
             void SetContext(ECSContext* ctx) { context = ctx; }

@@ -257,7 +257,6 @@ namespace hgl::ecs
         // Kept as a no-op compatibility override while some call sites/vtables still
         // expect a concrete PrimitiveComponent::Render symbol. ECS render path does
         // not use this entry for actual draw submission.
-        void Render(const glm::mat4& worldMatrix) override;
 
         // Component lifecycle
         void OnAttach() override;

@@ -25,7 +25,6 @@ namespace hgl::ecs
         if (transform)
         {
             worldMatrix = transform->GetWorldMatrix();
-            worldPosition = transform->GetWorldPosition();
         }
     }
 
@@ -84,7 +83,6 @@ namespace hgl::ecs
         if (transform)
         {
             worldMatrix = transform->GetWorldMatrix();
-            worldPosition = transform->GetWorldPosition();
         }
     }
 }//namespace hgl::ecs

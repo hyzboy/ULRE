@@ -29,7 +29,6 @@ namespace hgl::ecs
 
         void Initialize() override;
         void Update(float deltaTime) override;
-        void OnDependenciesReady() override;
     };
 }//namespace hgl::ecs
 

@@ -28,7 +28,6 @@ namespace hgl
 namespace hgl::ecs
 {
     // Forward declarations
-    class World;
     class RenderableComponent;
 
     /**
@@ -39,10 +38,8 @@ namespace hgl::ecs
     {
     public:
         uint32_t index = 0;                      // Index in batch
-        uint32_t transform_version = 0;          // Transform version for dirty tracking
         uint32_t transform_index = 0;            // Transform index in buffer
 
-        glm::vec3 worldPosition{};               // World space position
         float distanceToCamera = 0.0f;           // Distance to camera for sorting
         bool isVisible = true;                   // Visibility flag
 

@@ -77,12 +77,6 @@ namespace hgl
                 return components.ContainsKey(typeid(T).hash_code());
             }
 
-            /// Check if entity has component by type_index
-            bool HasComponentByType(const std::type_index& type) const
-            {
-                return components.ContainsKey(type.hash_code());
-            }
-
             /// Remove component by type
             template<typename T>
             void RemoveComponent()

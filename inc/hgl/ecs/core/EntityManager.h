@@ -33,9 +33,6 @@ namespace hgl::ecs
         EntityManager(uint32_t capacity = 1000);
         ~EntityManager();
 
-        /// Create new entity with given name
-        EntityID CreateEntity(const std::string& name = "Entity");
-
         /// Create new entity from a pre-constructed instance
         EntityID CreateEntity(std::unique_ptr<Entity> entity);
 
@@ -49,24 +46,12 @@ namespace hgl::ecs
         /// Check if ID is valid and points to alive entity
         bool IsValidID(EntityID id) const;
 
-        /// Get count of alive entities
-        uint32_t GetEntityCount() const;
-
-        /// Get all alive entity IDs
-        void GetAllEntities(std::vector<EntityID>& out_ids) const;
-
         /// Get all alive entity pointers
         void GetAllEntityPointers(std::vector<Entity*>& out_entities);
         void GetAllEntityPointers(std::vector<const Entity*>& out_entities) const;
 
         /// Clear all entities
         void Clear();
-
-        /// Get slot count (including dead slots)
-        uint32_t GetSlotCount() const { return (uint32_t)slots.size(); }
-
-        /// Get capacity
-        uint32_t GetCapacity() const { return max_entities; }
 
     private:
         void ExpandSlots(uint32_t new_capacity);

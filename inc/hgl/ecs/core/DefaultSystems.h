@@ -14,20 +14,13 @@ namespace hgl
     {
         class ECSContext;
         class InputSystem;
-        class CameraSystem;
-        class LineBoundsUpdateSystem;
-        class LineCollectSystem;
-        class LineRenderSystem;
-        class LineStatsSystem;
 
+        /// RegisterDefaultEcsSystems 的返回值：应用侧只消费 input_system
+        ///（AppFramework 取其事件分发器挂事件链）；其余系统按 SystemGroup
+        /// 自行管理，需要时经 ECSContext::GetSystem<T>() 查询。
         struct DefaultEcsSystems
         {
             std::shared_ptr<InputSystem> input_system;
-            std::shared_ptr<CameraSystem> camera_system;
-            std::shared_ptr<LineBoundsUpdateSystem> line_bounds_update_system;
-            std::shared_ptr<LineCollectSystem> line_collect_system;
-            std::shared_ptr<LineRenderSystem> line_render_system;
-            std::shared_ptr<LineStatsSystem> line_stats_system;
         };
 
         void EnsureCoreEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt = nullptr);

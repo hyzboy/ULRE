@@ -310,24 +310,6 @@ namespace hgl::ecs
         return camera_info;
     }
 
-    void CameraSystem::SyncCameraUBO()
-    {
-        if (!camera_ubo)
-            return;
-
-        // W6 单写点：仅相机矩阵实际变化时提交（此前无条件 Update+MarkDirty，
-        // 与 CameraSystem::Update 的双写每帧传两次相同数据）
-        if (!camera_ubo_dirty)
-            return;
-
-        camera_ubo_dirty = false;
-
-        if (camera_info)
-            camera_ubo->Update(*camera_info);
-
-        camera_ubo->MarkDirty();
-    }
-
     void CameraSystem::CommitCameraUBO()
     {
         if (!camera_ubo || !camera_info)
@@ -337,7 +319,6 @@ namespace hgl::ecs
         // 固定全量写入，不依赖脏标记（host-visible 映射直写，代价可忽略）
         camera_ubo->Update(*camera_info);    // 拷贝数据 + 置脏
         camera_ubo->Commit();                // 标脏交 L2
-        camera_ubo_dirty = false;
     }
 
     void CameraSystem::Update(float deltaTime)
@@ -420,6 +401,12 @@ namespace hgl::ecs
         input_state.mouse_pos = input_system->GetMouseCoord();
         input_state.mouse_delta = input_state.mouse_pos - input_state.last_mouse_pos;
 
+        // 更新鼠标位置
+        input_state.last_mouse_pos = input_state.mouse_pos;
+        input_state.mouse_pos = input_system->GetMouseCoord();
+        input_state.mouse_delta = input_state.mouse_pos - input_state.last_mouse_pos;
+
+        // 鼠标被其他消费者（如 Gizmo 拖拽）独占时，相机不响应输入
         const bool mouse_blocked = input_system->IsMouseCaptured() && !input_system->IsMouseCapturedBy(this);
 
         // 获取动作状态
@@ -553,8 +540,6 @@ namespace hgl::ecs
                 camera->camera_data
             );
 
-            // W6 单写点：实际更新了 camera_info 才标记 UBO 待提交
-            camera_ubo_dirty = true;
         }
 
         camera->matrix_dirty = false;

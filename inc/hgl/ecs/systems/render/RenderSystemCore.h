@@ -49,21 +49,15 @@ class RenderSystemCore
 {
     OBJECT_LOGGER
 
-public:
-    static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-
 private:
     ECSContext* world;
     hgl::graph::VulkanDevice* gpu_device;
     hgl::graph::IRenderTarget* render_target;
 
-    // Vulkan 同步原语
-    std::vector<VkFence> frame_fences;
-    std::vector<VkSemaphore> image_available_semaphores;
-    std::vector<VkSemaphore> render_finished_semaphores;
+    // 帧同步由渲染目标自身持有（SwapchainRenderTarget 的 sync_slots /
+    // 离屏 RT 的队列 fence），本类不重复管理同步原语
 
     // 当前帧状态
-    uint32_t current_frame = 0;
     uint64_t render_submission_serial = 0;
     uint32_t swapchain_image_index = 0;
     bool frame_begun = false;
@@ -164,37 +158,6 @@ public:
      * 仅在 BeginFrame() 之后有效
      */
     uint32_t GetSwapchainImageIndex() const { return swapchain_image_index; }
-
-    /**
-     * 获取 Vulkan 设备
-     */
-    hgl::graph::VulkanDevice* GetGPUDevice() { return gpu_device; }
-
-    /**
-     * 获取当前帧号（从 0 开始）
-     *
-     * 每次 EndFrame() 后递增
-     */
-    uint32_t GetCurrentFrameIndex() const { return current_frame; }
-
-    /**
-     * Monotonic serial of the frame currently being prepared. Unlike the
-     * swapchain image index, this value never cycles during a device session.
-     */
-    uint64_t GetRenderSubmissionSerial() const
-    {
-        return render_submission_serial;
-    }
-
-    /**
-     * 获取 Frames In Flight 数量（通常为 3）
-     */
-    uint32_t GetMaxFramesInFlight() const { return MAX_FRAMES_IN_FLIGHT; }
-
-    /**
-     * 检查是否在 BeginFrame/EndFrame 间
-     */
-    bool IsFrameInProgress() const { return frame_begun; }
 };
 
 } // namespace hgl::ecs

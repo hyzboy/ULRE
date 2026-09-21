@@ -87,18 +87,11 @@ namespace hgl
     void WorkObject::Tick(double delta)
     {
         if (world)
-        {
             world->Tick(static_cast<float>(delta));
-            return;
-        }
-
     }
 
-    void WorkObject::Render(double delta_time)
-    {
-        if (world)
-            return;
-    }
+    // WorkObject::Render：ECS 模式下是渲染帧内的 pre_render 回调
+    //（BeginRenderPass 之后、系统绘制之前），基类默认无操作。
 
     // Resource helpers removed. Use RenderContext/GraphicsContext directly.
 }//namespace hgl

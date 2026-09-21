@@ -9,7 +9,6 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/EntityHandle.h
     ${ECS_INCLUDE_PATH}/core/EntityManager.h
     ${ECS_INCLUDE_PATH}/core/System.h
-    ${ECS_INCLUDE_PATH}/core/SystemProfiler.h
     ${ECS_INCLUDE_PATH}/core/Context.h
     ${ECS_INCLUDE_PATH}/core/RenderGraph.h
     ${ECS_INCLUDE_PATH}/core/SystemGroup.h
@@ -25,7 +24,6 @@ set(ECS_CORE_FILES
     core/Entity.cpp
     core/EntityManager.cpp
     core/System.cpp
-    core/SystemProfiler.cpp
     core/Context.cpp
     support/RenderResource.cpp
     core/RenderGraph.cpp

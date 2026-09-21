@@ -88,22 +88,6 @@ namespace hgl
 
         // ========== RenderGraph Implementations ==========
 
-        size_t RenderGraph::GetEnabledPassCount() const
-        {
-            size_t count = 0;
-            for (const auto& pass : passes)
-            {
-                if (pass.enabled)
-                    count++;
-            }
-            return count;
-        }
-
-        void ECSContext::Render(float deltaTime, const RenderGraph& graph)
-        {
-            Render(deltaTime, graph, nullptr);
-        }
-
         void ECSContext::ExecuteRenderGraphPasses(const RenderGraph& graph,
                                                   float deltaTime,
                                                   const std::function<void(float)>& pre_render)

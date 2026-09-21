@@ -10,7 +10,7 @@ namespace hgl::ecs {
 
 RenderSystemCore::RenderSystemCore(ECSContext* ctx)
     : world(ctx), gpu_device(nullptr), render_target(nullptr),
-    current_frame(0), swapchain_image_index(0), frame_begun(false), render_pass_begun(false) {
+    swapchain_image_index(0), frame_begun(false), render_pass_begun(false) {
     if (!world) {
         LogError("RenderSystemCore: ECSContext is null");
     }
@@ -124,7 +124,6 @@ void RenderSystemCore::EndFrame() {
 
     render_target->EndRender();
 
-    current_frame++;
     ++render_submission_serial;
     render_cmd = nullptr;
     frame_begun = false;

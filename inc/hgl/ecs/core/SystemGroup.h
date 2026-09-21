@@ -74,19 +74,12 @@ namespace hgl
             /// Register installer callback for a group (plugin style)
             void RegisterGroupInstaller(const std::string& name, GroupInstaller installer);
 
-            /// Check if installer exists for a group
-            bool HasGroupInstaller(const std::string& name) const;
-
             /// Ensure systems for a group are installed
             bool EnsureGroupSystems(const std::string& name, ECSContext* context, hgl::graph::IRenderTarget* default_rt);
 
             /// Enable/disable a system group by name
             /// Returns false if group not found
             bool SetGroupEnabled(const std::string& name, bool enabled);
-
-            /// Check if a group is enabled
-            /// Returns false if group not found
-            bool IsGroupEnabled(const std::string& name) const;
 
             /// Get all registered groups
             std::vector<SystemGroup> GetAllGroups() const;
@@ -97,48 +90,9 @@ namespace hgl
             /// Get a specific group by name (returns nullptr if not found)
             const SystemGroup* GetGroup(const std::string& name) const;
 
-            /// Get group by name (mutable)
-            SystemGroup* GetGroupMutable(const std::string& name);
-
-            /// Clear all registered groups
-            void Clear();
-
             /// Print group registry info for debugging
             void DebugPrint() const;
         };
-
-        /**
-         * Helper RAII class for temporarily enabling/disabling a group
-         * Restores previous state on destruction
-         */
-        class ScopedSystemGroupState
-        {
-        private:
-            std::string group_name;
-            bool prev_enabled;
-
-        public:
-            ScopedSystemGroupState(const std::string& name, bool enable_state)
-                : group_name(name), prev_enabled(false)
-            {
-                auto& registry = SystemGroupRegistry::Get();
-                prev_enabled = registry.IsGroupEnabled(name);
-                registry.SetGroupEnabled(name, enable_state);
-            }
-
-            ~ScopedSystemGroupState()
-            {
-                SystemGroupRegistry::Get().SetGroupEnabled(group_name, prev_enabled);
-            }
-
-            // Non-copyable
-            ScopedSystemGroupState(const ScopedSystemGroupState&) = delete;
-            ScopedSystemGroupState& operator=(const ScopedSystemGroupState&) = delete;
-        };
-
-        using RenderSystemGroup = SystemGroup;
-        using RenderSystemGroupRegistry = SystemGroupRegistry;
-        using ScopedGroupState = ScopedSystemGroupState;
 
     } // namespace ecs
 } // namespace hgl

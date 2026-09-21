@@ -95,18 +95,6 @@ namespace hgl
             {
                 passes.push_back(pass);
             }
-
-            /// Clear all passes
-            void Clear()
-            {
-                passes.clear();
-            }
-
-            /// Get totalpass count (including disabled ones)
-            size_t GetPassCount() const { return passes.size(); }
-
-            /// Get count of enabled passes
-            size_t GetEnabledPassCount() const;
         };
 
         /**

@@ -225,7 +225,6 @@ namespace hgl::ecs
             return false;
 
         ctx->MarkSystemGroupInstalled(group_name);
-        ctx->GetSystemProfiler().MarkGroupEnsured(group_name);
         return true;
     }
 
@@ -244,11 +243,6 @@ namespace hgl::ecs
         hgl::ecs::EnsureSystemGroupsRegistered(ctx);
 
         systems.input_system = ctx->GetSystem<ecs::InputSystem>();
-        systems.camera_system = ctx->GetSystem<ecs::CameraSystem>();
-        systems.line_bounds_update_system = ctx->GetSystem<ecs::LineBoundsUpdateSystem>();
-        systems.line_collect_system = ctx->GetSystem<ecs::LineCollectSystem>();
-        systems.line_render_system = ctx->GetSystem<ecs::LineRenderSystem>();
-        systems.line_stats_system = ctx->GetSystem<ecs::LineStatsSystem>();
 
         return systems;
     }

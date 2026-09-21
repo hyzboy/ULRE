@@ -43,13 +43,7 @@ namespace hgl
         }
         else
         {
-            if(last_render_time<=0)
-            {
-                delta_time=0;
-                last_render_time=cur_time;
-            }
-            else
-                delta_time=cur_time-last_render_time;
+            delta_time=cur_time-last_render_time;
 
             if(!can_render)
                 can_render=delta_time>=frame_time;
@@ -94,7 +88,6 @@ namespace hgl
         last_update_time=last_render_time=0;
 
         Window *win=app_framework ? app_framework->GetWindow() : nullptr;
-        graph::VulkanDevice *dev=app_framework ? app_framework->GetDevice() : wo->GetDevice();
         const bool has_window=win!=nullptr;
 
         while(!cur_work_object->IsDestroy())

@@ -106,7 +106,7 @@ namespace hgl
 
         virtual void Tick(double);
 
-        virtual void Render(double delta_time);
+        virtual void Render(double delta_time) {}   ///< ECS 渲染帧内的 pre_render 回调（BeginRenderPass 后、系统绘制前），基类无操作
 
     public:
 

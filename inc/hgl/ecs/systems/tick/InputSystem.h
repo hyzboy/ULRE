@@ -53,6 +53,7 @@ namespace hgl::ecs
         bool IsMouseButtonDown(int) const = delete;
         bool IsMouseButtonDown(unsigned int) const = delete;
 
+        /// 鼠标独占捕获（Gizmo 拖拽时使用：捕获期间其他消费者不响应鼠标动作）
         bool BeginMouseCapture(void* owner);
         void EndMouseCapture(void* owner);
         bool IsMouseCaptured() const { return mouse_capture_owner != nullptr; }
@@ -74,17 +75,8 @@ namespace hgl::ecs
         /// 查询动作是否处于激活状态 / Check if action is active
         bool IsActionActive(io::ActionID action) const;
 
-        /// 查询动作本帧是否开始 / Check if action started this frame
-        bool WasActionStarted(io::ActionID action) const;
-
-        /// 查询动作本帧是否结束 / Check if action completed this frame
-        bool WasActionCompleted(io::ActionID action) const;
-
         /// 获取1D模拟量动作值（按帧累计） / Get analog 1D action value (per-frame)
         float GetActionAnalog1D(io::ActionID action) const;
-
-        /// 获取动作最新值 / Get latest action value
-        io::ActionValue GetActionValue(io::ActionID action) const;
 
     public:
 
@@ -95,5 +87,3 @@ namespace hgl::ecs
         void EndFrame();
     };
 }//namespace hgl::ecs
-
-

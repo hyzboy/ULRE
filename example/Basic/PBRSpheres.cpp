@@ -519,7 +519,6 @@ private:
             camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
             if (ecs_world->IsActive())
             {
-                camera_system->OnDependenciesReady();
                 camera_system->Initialize();
             }
         }

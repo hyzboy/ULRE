@@ -682,10 +682,6 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveComponent::Render(const glm::mat4& worldMatrix)
-    {
-        (void)worldMatrix;
-    }
 
     void PrimitiveComponent::OnAttach()
     {

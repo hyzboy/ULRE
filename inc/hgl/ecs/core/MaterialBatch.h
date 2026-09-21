@@ -44,7 +44,6 @@ namespace hgl::ecs
         ShaderProgramPipelineKey                key;                                        ///<材质/管线键
         std::vector<RenderItem *>               items;                                      ///<渲染项列表
         uint32_t                                static_count            = 0;                ///<静态项数量
-        const graph::CameraInfo *               cameraInfo              = nullptr;          ///<相机信息
         graph::VulkanDevice *                   device                  = nullptr;          ///<设备指针
         graph::BufferManager *                  buffer_manager          = nullptr;          ///<缓冲区管理器
 
@@ -92,6 +91,5 @@ namespace hgl::ecs
 
         void Clear();
         void AddItem(RenderItem* item);
-        bool HasMovableRange() const { return static_count < items.size(); }
     };
 }//namespace hgl::ecs

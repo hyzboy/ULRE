@@ -48,10 +48,6 @@ namespace hgl::ecs
         }
     }
 
-    void VisibilitySystem::OnDependenciesReady()
-    {
-        System::OnDependenciesReady();
-    }
 
     void VisibilitySystem::Update(float /*deltaTime*/)
     {

@@ -39,8 +39,6 @@ namespace hgl::ecs
         float GetBoundingRadius() const { return boundingRadius; }
         void SetBoundingRadius(float radius) { boundingRadius = radius; }
 
-        // Override in derived classes for specific rendering
-        virtual void Render(const glm::mat4& worldMatrix) {}
     };
 }//namespace hgl::ecs
 

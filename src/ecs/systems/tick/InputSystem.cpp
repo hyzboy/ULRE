@@ -155,36 +155,12 @@ namespace hgl::ecs
         return false;
     }
 
-    bool InputSystem::WasActionStarted(io::ActionID action) const
-    {
-        auto value = action_started.GetValuePointer(action);
-        if (value)
-            return *value;
-        return false;
-    }
-
-    bool InputSystem::WasActionCompleted(io::ActionID action) const
-    {
-        auto value = action_completed.GetValuePointer(action);
-        if (value)
-            return *value;
-        return false;
-    }
-
     float InputSystem::GetActionAnalog1D(io::ActionID action) const
     {
         auto value = action_analog_1d.GetValuePointer(action);
         if (value)
             return *value;
         return 0.0f;
-    }
-
-    io::ActionValue InputSystem::GetActionValue(io::ActionID action) const
-    {
-        auto value = action_values.GetValuePointer(action);
-        if (value)
-            return *value;
-        return io::ActionValue();
     }
 
     void InputSystem::Update(float deltaTime)

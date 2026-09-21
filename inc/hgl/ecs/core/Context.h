@@ -7,7 +7,6 @@
 #include<hgl/ecs/core/RenderGraph.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
-#include<hgl/ecs/core/SystemProfiler.h>
 #include<hgl/log/Log.h>
 #include<memory>
 #include<functional>
@@ -86,7 +85,6 @@ namespace hgl
 
             // Component-driven system-group activity tracking
             std::unordered_map<std::string, uint32_t> system_group_component_counts;
-            std::set<std::string> known_system_groups;
             std::set<std::string> installed_system_groups;
 
             struct OrderedSystem
@@ -130,8 +128,6 @@ namespace hgl
             bool shutdown_in_progress = false;
 
             RenderFrameCache render_frame_cache;
-            SystemProfiler profiler;
-            bool system_profiling_enabled = true;
             uint32_t frame_index = 0;
             uint64_t render_submission_serial = 0;
             /// Unified render pipeline registry: name → RenderPipelineBase
@@ -199,19 +195,14 @@ namespace hgl
             // 以下相位方法仅由上述两者与托管帧流程按 ExecutionPhase 顺序编排。
 
             void RenderDrawOnly(graph::RenderCmdBuffer *cmd, float deltaTime);
-            void Render(float deltaTime, const RenderGraph& graph);
             void Render(float deltaTime, const RenderGraph& graph, const std::function<void(float)> &pre_render);
 
             /// Run pre-begin-frame render updates (no command buffer).
-            /// Covers RenderPreBeginFrame + RenderResourceSetup + RenderMaterialBind.
             void RenderPreBeginFrame(float deltaTime);
 
-            void RenderResourceSetup(float deltaTime);
-            void RenderMaterialBind(float deltaTime);
             void RenderSwapchainNextImage(float deltaTime);
             bool AcquireSwapchainImage(float deltaTime = 0.0f);
             void SyncRenderTargetViewport();
-            void RenderBeginFrame(float deltaTime);
             void RenderBufferCommit(float deltaTime);
             void RenderBufferUpload(float deltaTime);
             void RenderFrameSync(float deltaTime);
@@ -260,9 +251,6 @@ namespace hgl
 
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
-
-            SystemProfiler& GetSystemProfiler() { return profiler; }
-            const SystemProfiler& GetSystemProfiler() const { return profiler; }
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
@@ -379,7 +367,6 @@ namespace hgl
                     return nullptr;
 
                 entity->SetContext(this);
-                entity->OnCreate();
                 return static_cast<T*>(entity);
             }
 
@@ -404,13 +391,6 @@ namespace hgl
             {
                 if (entity_manager)
                     entity_manager->DestroyEntity(id);
-            }
-
-            /// Get all alive entity pointers
-            void GetAllEntities(std::vector<Entity*>& out_entities)
-            {
-                if (entity_manager)
-                    entity_manager->GetAllEntityPointers(out_entities);
             }
 
             /// Get all alive entity pointers (const version)

@@ -16,11 +16,6 @@ namespace hgl::ecs
         Clear();
     }
 
-    EntityID EntityManager::CreateEntity(const std::string& name)
-    {
-        return CreateEntity(std::make_unique<Entity>(name));
-    }
-
     EntityID EntityManager::CreateEntity(std::unique_ptr<Entity> entity)
     {
         if (!entity)
@@ -59,11 +54,10 @@ namespace hgl::ecs
         slot.generation = generation;
 
     #if ULRE_ECS_DEBUG_API
-        LogDebug("[EntityManager] CreateEntity name='%s' id=(%u,%u) alive_count=%u",
+        LogDebug("[EntityManager] CreateEntity name='%s' id=(%u,%u)",
              slot.entity ? slot.entity->GetName().c_str() : "<null>",
              id.index,
-             id.generation,
-             GetEntityCount());
+             id.generation);
     #endif
 
         return id;
@@ -88,10 +82,7 @@ namespace hgl::ecs
     #endif
         if (slot.entity)
         {
-            if (auto *ctx = slot.entity->GetContext())
-
             slot.entity->DetachAllComponents(true);
-            slot.entity->OnDestroy();
         }
         slot.entity.reset();
         slot.alive = false;
@@ -123,30 +114,6 @@ namespace hgl::ecs
 
         const EntitySlot& slot = slots[id.index];
         return slot.alive && slot.generation == id.generation;
-    }
-
-    uint32_t EntityManager::GetEntityCount() const
-    {
-        uint32_t count = 0;
-        for (const auto& slot : slots)
-        {
-            if (slot.alive)
-                count++;
-        }
-        return count;
-    }
-
-    void EntityManager::GetAllEntities(std::vector<EntityID>& out_ids) const
-    {
-        out_ids.clear();
-
-        for (uint32_t i = 0; i < slots.size(); ++i)
-        {
-            if (slots[i].alive)
-            {
-                out_ids.push_back(EntityID(i, slots[i].generation));
-            }
-        }
     }
 
     void EntityManager::GetAllEntityPointers(std::vector<Entity*>& out_entities)
@@ -187,10 +154,7 @@ namespace hgl::ecs
         {
             if (slot.entity)
             {
-                if (auto *ctx = slot.entity->GetContext())
-
                 slot.entity->DetachAllComponents(true);
-                slot.entity->OnDestroy();
                 ++detach_count;
             }
             slot.entity.reset();

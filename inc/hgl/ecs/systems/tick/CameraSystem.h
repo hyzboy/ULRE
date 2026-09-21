@@ -97,9 +97,6 @@ namespace hgl
             graph::StructView<graph::CameraInfo>* camera_ubo = nullptr;
             bool camera_ubo_managed = false;
             bool first_update_pending = true;
-            // W6 单写点：camera_info 实际更新（UpdateMatrices）时置位，
-            // SyncCameraUBO 消费后清除——相机静止时不再每帧重传 UBO
-            bool camera_ubo_dirty = true;
 
         public:
 
@@ -110,9 +107,6 @@ namespace hgl
 
             void Update(float deltaTime) override;
 
-            CameraInputMapping& GetInputMapping() { return input_mapping; }
-            const CameraInputMapping& GetInputMapping() const { return input_mapping; }
-
             void SetRenderContext(graph::RenderContext* ctx);
             void SetViewportInfo(const graph::ViewportInfo* vp);
 
@@ -121,7 +115,6 @@ namespace hgl
             const graph::ViewportInfo* GetViewportInfo() const { return viewport_info; }
 
             graph::StructView<graph::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
-            void SyncCameraUBO();
 
             // ViewUBOCommitSystem 专用：pass 开始时无条件全量写入（不依赖脏标记）
             void CommitCameraUBO();

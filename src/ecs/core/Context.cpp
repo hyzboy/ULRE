@@ -80,9 +80,7 @@ namespace hgl
             if (auto upload_system = GetSystem<RenderBufferUploadSystem>())
                 upload_system->SetDevice(gpu_device);
 
-            RegisterComponentQueryBase<RenderableComponent>();
             RegisterComponentQueryBase<PrimitiveComponent>();
-            RegisterComponentQueryBase<MaterialComponent>();
 
             // Ensure TransformSystem is registered and bound to this world
             {
@@ -135,7 +133,6 @@ namespace hgl
                 {
                     if (entry.system)
                     {
-                        entry.system->OnDependenciesReady();
                         entry.system->Initialize();
                     }
                 }
@@ -144,13 +141,11 @@ namespace hgl
                 {
                     if (entry.system)
                     {
-                        entry.system->OnDependenciesReady();
                         entry.system->Initialize();
                     }
                 }
 
             active = true;
-            OnCreate();
             return true;
         }
 
@@ -167,7 +162,6 @@ namespace hgl
 
             if (active)
             {
-                camera_system->OnDependenciesReady();
                 camera_system->Initialize();
             }
 
@@ -233,7 +227,6 @@ namespace hgl
                 tick_dependencies.Clear();
                 render_dependencies.Clear();
                 system_group_component_counts.clear();
-                known_system_groups.clear();
                 installed_system_groups.clear();
                 static_transforms.clear();
                 movable_transforms.clear();
@@ -277,7 +270,6 @@ namespace hgl
 
             component_registry.Clear();
             system_group_component_counts.clear();
-            known_system_groups.clear();
             installed_system_groups.clear();
             static_transforms.clear();
             movable_transforms.clear();
@@ -287,7 +279,6 @@ namespace hgl
                      render_frame_cache.materialBatches.GetCount());
             render_frame_cache.materialBatches.Clear();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
-            OnDestroy();
             shutdown_in_progress = false;
         }
 
@@ -563,26 +554,8 @@ namespace hgl
                 return;
 
             // Run all phases that execute before the command buffer opens:
-            // PreBeginFrame → ResourceSetup → MaterialBind (strict enum order)
+            // PreBeginFrame（EnvironmentSystem/RenderTargetSystem 等）
             RunRenderPhaseUpdates(ExecutionPhase::RenderPreBeginFrame,  deltaTime);
-            RunRenderPhaseUpdates(ExecutionPhase::RenderResourceSetup,  deltaTime);
-            RunRenderPhaseUpdates(ExecutionPhase::RenderMaterialBind,   deltaTime);
-        }
-
-        void ECSContext::RenderResourceSetup(float deltaTime)
-        {
-            if (!active)
-                return;
-
-            RunRenderPhaseUpdates(ExecutionPhase::RenderResourceSetup, deltaTime);
-        }
-
-        void ECSContext::RenderMaterialBind(float deltaTime)
-        {
-            if (!active)
-                return;
-
-            RunRenderPhaseUpdates(ExecutionPhase::RenderMaterialBind, deltaTime);
         }
 
         void ECSContext::RenderSwapchainNextImage(float deltaTime)
@@ -637,14 +610,6 @@ namespace hgl
                 target->OnResize(ext);
         }
 
-        void ECSContext::RenderBeginFrame(float deltaTime)
-        {
-            if (!active)
-                return;
-
-            RunRenderPhaseUpdates(ExecutionPhase::RenderBeginFrame, deltaTime);
-        }
-
         void ECSContext::RenderBufferCommit(float deltaTime)
         {
             if (!active)
@@ -677,7 +642,6 @@ namespace hgl
             // Strict enum order — all CPU work and GPU uploads happen
             // before BeginRenderPass; the render pass only issues draw commands.
             SetFrameIndex(frameIndex);
-            RenderBeginFrame(deltaTime);                                         // open cmd buffer, record frame UBOs
             RunRenderPhaseUpdates(ExecutionPhase::RenderCollect,     deltaTime); // collect / cull visible components
             RunRenderPhaseUpdates(ExecutionPhase::RenderBatch,       deltaTime); // write VABs (StagedBuffer → marks dirty)
             RenderBufferCommit(deltaTime);                                       // finalize staged CPU writes
@@ -762,11 +726,7 @@ namespace hgl
 //            HGL_CAPTURE_SCOPE();
 //            LogDebug("[ECS] Update Begin: %s", system->GetName().c_str());
 
-            if (system_profiling_enabled)
-                profiler.Begin(system);
             system->Update(deltaTime);
-            if (system_profiling_enabled)
-                profiler.End(system);
 
 //            LogDebug("[ECS] Update End: %s", system->GetName().c_str());
         }
@@ -792,11 +752,7 @@ namespace hgl
 //                HGL_CAPTURE_SCOPE();
 //                LogDebug("[ECS] Render Begin: %s (phase %d)", entry.system->GetName().c_str(), entry.phase);
 
-                if (system_profiling_enabled)
-                    profiler.Begin(entry.system.get());
                 entry.system->Render(current_render_cmd, deltaTime);
-                if (system_profiling_enabled)
-                    profiler.End(entry.system.get());
 
 //                LogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
             }
@@ -1008,7 +964,6 @@ namespace hgl
             }
             if (active)
             {
-                system->OnDependenciesReady();
                 system->Initialize();
             }
         }
@@ -1073,16 +1028,12 @@ namespace hgl
             if (group_name && group_name[0] != '\0')
             {
                 const std::string group(group_name);
-                known_system_groups.insert(group);
 
                 auto& count = system_group_component_counts[group];
                 ++count;
 
                 EnsureSystemGroupSystems(this, group, GetRenderTarget());
                 SetElementTypeSystemsEnabled(group, true);
-
-                profiler.MarkGroupEnsured(group);
-                profiler.UpdateGroupState(group, count, true);
             }
 
             for (const auto& entry : component_query_bases)
@@ -1105,7 +1056,6 @@ namespace hgl
             if (group_name && group_name[0] != '\0')
             {
                 const std::string group(group_name);
-                known_system_groups.insert(group);
 
                 auto it = system_group_component_counts.find(group);
                 if (it != system_group_component_counts.end())
@@ -1118,7 +1068,6 @@ namespace hgl
                         SetElementTypeSystemsEnabled(group, false);
                     }
 
-                    profiler.UpdateGroupState(group, it->second, it->second > 0);
                 }
             }
 

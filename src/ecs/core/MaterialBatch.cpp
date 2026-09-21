@@ -11,7 +11,6 @@ namespace hgl::ecs
     MaterialBatch::MaterialBatch(const ShaderProgramPipelineKey& k, graph::VulkanDevice* dev, graph::BufferManager* bm)
         : key(k)
         , static_count(0)
-        , cameraInfo(nullptr)
         , device(dev)
         , buffer_manager(bm)
         , draw_batches_count(0)

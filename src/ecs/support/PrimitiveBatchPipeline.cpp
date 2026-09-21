@@ -1074,7 +1074,6 @@ namespace hgl::ecs
             if (!batch_ptr)
             {
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
-                batch->cameraInfo = camera_info;
                 batch->transform_buffer = shared_transform_buffer;
                 batch->AddItem(item);
                 cache.materialBatches[key] = std::move(batch);
