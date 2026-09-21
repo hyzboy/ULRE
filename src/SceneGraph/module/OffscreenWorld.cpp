@@ -180,13 +180,10 @@ namespace hgl::graph
 
     void OffscreenWorld::RestoreMainRenderContext()
     {
-        if(!render_context_ || !main_world_)
-            return;
-
-        // 子世界的 RenderTargetSystem 在 RenderPreBeginFrame 相位会把
-        // RenderContext 的 current RT 改写为本世界的离屏 RT。主世界下一帧
-        // 若直接用它，会渲染到错误目标；这里显式恢复为主世界的 RT。
-        render_context_->SetCurrentRenderTarget(main_world_->GetRenderTarget());
+        // 原"恢复 RenderContext::current_render_target"已随 RenderContext 双状态
+        // 删除而不再需要：主世界的渲染目标权威在主世界 ECSContext::render_target，
+        // 子世界 Render() 期间的临时切换由 ECSContext::RenderTo 内部保存/恢复，
+        // 不会外泄到主世界。
     }
 
     Texture2D *OffscreenWorld::GetColorTexture(const uint32_t index)const

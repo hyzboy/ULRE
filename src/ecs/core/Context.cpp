@@ -472,10 +472,10 @@ namespace hgl
             const hgl::Color4f saved_clear = rt->GetClearColor();
             rt->SetClearColor(clear);
 
-            // 必须同步 RenderTargetSystem：它缓存的 RT 若不跟随切换，
-            // RenderContext::GetCurrentRenderTarget() 在本 Pass 内仍返回主 RT，
-            // 渲染期管线解析会按主 RenderPass 键控，导致把主管线
-            // （带颜色附件）画进 depth-only 离屏 Pass（VUID-06179/08914）。
+            // 必须同步 RenderTargetSystem：它缓存的 RT 若不跟随切换，本 Pass 内
+            // CameraSystem 的 viewport 等仍按主 RT 工作，且渲染期管线解析会按
+            // 主 RenderPass 键控，把主管线（带颜色附件）画进 depth-only 离屏
+            // Pass（VUID-06179/08914，历史上 RenderContext 副本不同步时踩过）。
             auto rts = GetSystem<RenderTargetSystem>();
             graph::IRenderTarget *rts_saved = rts ? rts->GetRenderTarget() : nullptr;
             if (rts)
@@ -1053,7 +1053,13 @@ namespace hgl
         void ECSContext::SetFrameIndex(const uint32_t index)
         {
             frame_index = index;
-            TransformAssignmentBuffer::SetFrameIndex(index);
+
+            // 世界私有直推：只推进本世界 TransformSystem 的 L2W ring 帧索引
+            // （旧静态广播会触达所有世界的 buffer，且静态表析构不摘除留悬空）
+            auto ts = GetSystem<TransformSystem>();
+            if (ts)
+                if (auto *tb = ts->GetTransformBuffer())
+                    tb->SetFrameIndex(index);
         }
 
         void ECSContext::RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp)

@@ -1025,8 +1025,8 @@ namespace hgl::ecs
         }
 
         auto buffer_manager = GetBufferManager();
-        auto* render_ctx = world ? world->GetRenderContext() : nullptr;
-        auto* rt = render_ctx ? render_ctx->GetCurrentRenderTarget() : nullptr;
+        // 当前渲染目标唯一权威：world->GetRenderTarget()（RenderContext 副本已删除）
+        auto* rt = world ? world->GetRenderTarget() : nullptr;
         auto* current_render_pass = rt ? rt->GetRenderPass() : nullptr;
 
         for (auto& itemPtr : cache.renderItems)

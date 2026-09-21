@@ -62,12 +62,10 @@ bool RenderSystemCore::BeginFrame() {
         return false;
     }
 
-    // 接线到 RenderContext::current_render_cmd_buf——供 wo->Render（ECS pre_render 回调）
-    // 及示例经 GetCurrentRenderCmdBuffer() 获取当前命令缓冲（原接口从未被设置）
+    // 命令缓冲的帧内权威在 ECSContext::SetCurrentRenderCmd（BeginManagedRenderFrame
+    // 也会调它）——RenderContext::current_render_cmd_buf 副本已删除
     if (world)
     {
-        if (auto *rc = world->GetRenderContext())
-            rc->SetCurrentRenderCmdBuffer(render_cmd);
         world->SetRenderSubmissionSerial(render_submission_serial);
     }
 

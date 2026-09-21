@@ -169,7 +169,8 @@ class TestApp:public WorkObject
         VkFormat color_format=VK_FORMAT_UNDEFINED;
         VkFormat depth_format=VK_FORMAT_UNDEFINED;
 
-        if(auto *rt = GetRenderContext() ? GetRenderContext()->GetCurrentRenderTarget() : nullptr)
+        // 当前渲染目标唯一权威：ECSContext::GetRenderTarget()（RenderContext 副本已删除）
+        if(auto *rt = GetECSContext() ? GetECSContext()->GetRenderTarget() : nullptr)
         {
             auto att=rt->GetColorAttachment(0);
             color_format=att.format;
@@ -220,7 +221,8 @@ public:
         auto *ecs=GetECSContext();
         if(!ecs)return;
 
-        auto *cmd=ecs->GetRenderContext()->GetCurrentRenderCmdBuffer();
+        // 当前命令缓冲唯一权威：ECSContext::GetCurrentRenderCmd()（RenderContext 副本已删除）
+        auto *cmd=ecs->GetCurrentRenderCmd();
         if(!cmd)return;
 
         vkCmdBindPipeline(VkCommandBuffer(*cmd),VK_PIPELINE_BIND_POINT_GRAPHICS,mesh_pipeline);

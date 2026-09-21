@@ -618,8 +618,9 @@ namespace hgl::ecs
         if (primitive_comp->GetOverridePipeline())
             return true;
 
-        auto *render_context = world->GetRenderContext();
-        auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : world->GetRenderTarget();
+        // 当前渲染目标唯一权威：world->GetRenderTarget()（RenderContext 副本已删除；
+        // RenderTo 切 RT 时会同步本世界的 render_target 指针）
+        auto *render_target = world->GetRenderTarget();
         auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
         if (!render_pass)
             return false;

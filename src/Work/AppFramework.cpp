@@ -250,7 +250,6 @@ namespace hgl
         if (render_context)
         {
             render_context->SetGraphicsContext(graphics_context);
-            render_context->SetCurrentRenderTarget(GetSwapchainRenderTarget());
         }
 
         // W3 合并：注册默认系统后一次性 Initialize（GPU 绑定 + 系统初始化）
@@ -284,9 +283,6 @@ namespace hgl
             // Then notify all dependent systems via OnResize
             default_ecs_context->OnResize(ext);
         }
-
-        if (render_context)
-            render_context->SetCurrentRenderTarget(GetSwapchainRenderTarget());
     }
 
     void AppFramework::OnActive(bool)

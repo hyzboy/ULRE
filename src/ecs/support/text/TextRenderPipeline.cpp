@@ -595,9 +595,8 @@ namespace hgl::ecs
 
         material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
 
-        render_target = render_context->GetCurrentRenderTarget();
-        if (!render_target && world)
-            render_target = world->GetRenderTarget();
+        // 当前渲染目标唯一权威：world->GetRenderTarget()（RenderContext 副本已删除）
+        render_target = world ? world->GetRenderTarget() : nullptr;
 
         render_pass = render_target ? render_target->GetRenderPass() : nullptr;
 

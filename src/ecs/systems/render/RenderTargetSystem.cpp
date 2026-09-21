@@ -42,8 +42,9 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        if (render_context && render_target)
-            render_context->SetCurrentRenderTarget(render_target);
+        // 原 render_context->SetCurrentRenderTarget(render_target) 已随 RenderContext
+        // 双状态删除而移除：当前渲染目标唯一权威在 ECSContext::render_target
+        //（本系统 SetRenderTarget 时已同步 context 侧指针），消费方一律读它。
 
         auto camera_system = context->GetSystem<CameraSystem>();
         if (camera_system)

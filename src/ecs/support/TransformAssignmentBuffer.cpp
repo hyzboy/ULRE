@@ -156,7 +156,6 @@ namespace hgl::ecs
             if (device)
                 MaxTransformCount = device->GetSSBORange() / sizeof(math::Matrix4f);
         }
-        all_instances.push_back(this);
     }
 
     void TransformAssignmentBuffer::EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy)
@@ -598,14 +597,8 @@ namespace hgl::ecs
         return true;
     }
 
-    std::vector<TransformAssignmentBuffer*> TransformAssignmentBuffer::all_instances;
-
     void TransformAssignmentBuffer::SetFrameIndex(const uint32_t index)
     {
-        for (auto *inst : all_instances)
-        {
-            if (inst)
-                inst->ring_layout.SetFrameIndex(index);
-        }
+        ring_layout.SetFrameIndex(index);
     }
 }//namespace hgl::ecs

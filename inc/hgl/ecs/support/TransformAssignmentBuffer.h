@@ -52,7 +52,6 @@ namespace hgl::ecs
         graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(SSBO)
         graph::BufferAllocPolicy transform_policy;     ///<Transform buffer allocation policy
 
-        static std::vector<TransformAssignmentBuffer*> all_instances;
         graph::RingLayout ring_layout;   ///<静态段 + 动态段×帧数 的环形行布局算术（不持有 buffer）
 
         void StatTransform(const size_t required_count,graph::BufferAllocPolicy policy);
@@ -85,6 +84,9 @@ namespace hgl::ecs
                           const std::vector<TransformDataStorage::HandleID>& handles,
                           const std::vector<uint32_t>& dirty_indices);
 
-        static void SetFrameIndex(const uint32_t index);   ///<推进 ring 帧索引（Context::SetFrameIndex 转发）
+        /// 推进 ring 帧索引。世界私有：由本世界的 ECSContext::SetFrameIndex
+        /// 经 TransformSystem::GetTransformBuffer() 直推（不再全局广播——
+        /// 那会让一个世界推进触达所有世界，且静态实例表析构不摘除留悬空）
+        void SetFrameIndex(const uint32_t index);
     };
 }//namespace hgl::ecs

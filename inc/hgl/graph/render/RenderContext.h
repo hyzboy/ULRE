@@ -13,38 +13,21 @@ namespace hgl::graph
     /**
      * RenderContext: 渲染执行上下文
      *
-     * 职责:
-    * - 管理渲染命令缓冲区和渲染目标
-    * - 提供帧/Pass相关的渲染状态
-     * - 支持多场景、多渲染目标
+     * 职责（收敛后）:
+     * - 仅作为"当前 GraphicsContext 的轻桥"，供持有它的系统/管线取资源管理器
      *
-     * 特点:
-     * - 显式依赖注入（消除隐晦的全局依赖）
-     * - 职责清晰分离
-     * - 易于测试和扩展
-     * - API 透明而非通过宏隐藏
+     * 曾经持有的 current_render_target / current_render_cmd_buf 两份状态
+     * 已删除——它们与 ECSContext::render_target / current_render_cmd 完全
+     * 重复，靠每帧同步维持一致，不同步即是跨 Pass 管线误用 bug 的根源
+     * （见 c778f1fb2）。
      *
-     * 使用示例:
-     * ```cpp
-     * RenderContext* ctx = gpu_framework->GetRenderContext();
-     *
-      * // 渲染状态
-      * ctx->SetCurrentRenderTarget(rt);
-      * ctx->SetCurrentRenderCmdBuffer(cmd);
-     *
-      * // 资源访问
-      * auto graphics = ctx->GetGraphicsContext();
-      * auto mat_mgr = graphics ? graphics->GetMaterialManager() : nullptr;
-     * ```
+     * 当前渲染目标唯一权威：ecs::ECSContext::GetRenderTarget()
+     * 当前命令缓冲唯一权威：ecs::ECSContext::GetCurrentRenderCmd()
      */
     class RenderContext
     {
     private:
         GraphicsContext* graphics_context = nullptr;
-
-        // 当前渲染状态
-        RenderCmdBuffer* current_render_cmd_buf = nullptr;
-        IRenderTarget* current_render_target = nullptr;
 
     public:
         RenderContext() = default;
@@ -56,44 +39,9 @@ namespace hgl::graph
         RenderContext& operator=(const RenderContext&) = delete;
 
     public:
-        // ===== 渲染状态相关接口 =====
 
-    public:
-        // ===== 渲染目标和命令缓冲区管理 =====
-
-        /**
-         * 设置当前渲染目标
-         * @param rt 渲染目标
-         * @note [框架内部接线] 由 RenderTargetSystem 在 RenderPreBeginFrame 相位自动同步，
-         *       应用代码不应手动调用。
-         */
-        void SetCurrentRenderTarget(IRenderTarget* rt);
-
-        /**
-         * 获取当前渲染目标（帧内"当前"语义，随渲染进程变化）
-         * @return 当前渲染目标指针，未设置返回 nullptr
-         * @note 取"本世界绑定的 RT"请用 ecs::ECSContext::GetRenderTarget()（唯一权威 getter）。
-         *       此处仅表示 RenderContext 此刻指向的 RT，可能为空或已被切换。
-         */
-        IRenderTarget* GetCurrentRenderTarget() const;
-
-        /**
-         * 设置当前渲染命令缓冲区
-         * @param cmd 渲染命令缓冲区
-         */
-        void SetCurrentRenderCmdBuffer(RenderCmdBuffer* cmd);
-
-        /**
-         * 获取当前渲染命令缓冲区
-         * @return 当前渲染命令缓冲区指针，未设置返回 nullptr
-         */
-        RenderCmdBuffer* GetCurrentRenderCmdBuffer() const;
-
-    public:
         void SetGraphicsContext(GraphicsContext* ctx) { graphics_context = ctx; }
         GraphicsContext* GetGraphicsContext() const { return graphics_context; }
-
-    public:
 
         template<typename T> T *GetManager()
         {
