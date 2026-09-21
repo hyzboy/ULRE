@@ -74,10 +74,13 @@ void RenderTargetData::Clear()
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);
 
-    // cmd_buf and queue will be cleared separately or by their owners
-    // DO NOT delete them here as they may still be referenced
-    cmd_buf = nullptr;
-    queue = nullptr;
+    // queue（含其 fence 数组）与 cmd_buf 由 CreateOffscreenRT 创建、本结构独占，
+    // 仅在 OffscreenRenderTarget 析构走到这里时销毁。此前只置空不销毁，
+    // 导致 fence 泄漏至 vkDestroyDevice（VUID-vkDestroyDevice-device-05137）。
+    // 注意：必须在置空前销毁，且本结构无其它持有者（SwapchainRenderTarget
+    // 使用自有 sync_slots，不经此处）。
+    SAFE_CLEAR(cmd_buf);
+    SAFE_CLEAR(queue);
 
     // Textures are managed by TextureManager, so just clear the pointers
     // Do NOT delete the textures themselves to avoid double deletion
