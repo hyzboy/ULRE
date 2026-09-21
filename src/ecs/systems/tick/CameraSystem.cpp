@@ -401,11 +401,6 @@ namespace hgl::ecs
         input_state.mouse_pos = input_system->GetMouseCoord();
         input_state.mouse_delta = input_state.mouse_pos - input_state.last_mouse_pos;
 
-        // 更新鼠标位置
-        input_state.last_mouse_pos = input_state.mouse_pos;
-        input_state.mouse_pos = input_system->GetMouseCoord();
-        input_state.mouse_delta = input_state.mouse_pos - input_state.last_mouse_pos;
-
         // 鼠标被其他消费者（如 Gizmo 拖拽）独占时，相机不响应输入
         const bool mouse_blocked = input_system->IsMouseCaptured() && !input_system->IsMouseCapturedBy(this);
 
