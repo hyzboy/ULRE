@@ -56,10 +56,6 @@ namespace hgl::graph
         if (!sampler_manager)
             return false;
 
-        geometry_manager = module_manager->GetOrCreate<GeometryManager>();
-        if (!geometry_manager)
-            return false;
-
         material_manager = module_manager->GetOrCreate<ShaderProgramManager>();
         if (!material_manager)
             return false;
@@ -74,6 +70,12 @@ namespace hgl::graph
 
         global_ssbo_registry = module_manager->GetOrCreate<GlobalSSBOBufferRegistry>();
         if (!global_ssbo_registry)
+            return false;
+
+        // GeometryManager 必须在 GlobalSSBOBufferRegistry 之后创建：GraphModuleManager
+        // 按创建逆序释放，几何体析构时会向 MeshDrawParams 池归还行号，要求池仍存活。
+        geometry_manager = module_manager->GetOrCreate<GeometryManager>();
+        if (!geometry_manager)
             return false;
 
         // 环境综合信息统一管理（sky 等）。必须在 BufferManager 之后创建：

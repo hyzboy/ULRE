@@ -25,7 +25,8 @@ Geometry::~Geometry()
 {
     LogVerbose("~Geometry: "+geometry_name);
 
-    if (mesh_draw_params_pool && geometry_id != 0)
+    if (mesh_draw_params_pool && geometry_id != 0
+     && mesh_draw_params_pool->IsActive(GlobalSSBOType::MeshDrawParams, geometry_id))
     {
         mesh_draw_params_pool->ReleaseID(geometry_id);
         geometry_id = 0;
