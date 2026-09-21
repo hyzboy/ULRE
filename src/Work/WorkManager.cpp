@@ -61,7 +61,6 @@ namespace hgl
                 return;
 
             last_render_time=cur_time;
-            wo->GetECSContext()->SetClearColor(wo->GetClearColor());
             wo->GetECSContext()->Render(static_cast<float>(delta_time),
                                         [wo](float dt){ wo->Render(static_cast<double>(dt)); });
             wo->ClearRenderDirty();

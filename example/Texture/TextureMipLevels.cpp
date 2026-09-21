@@ -401,7 +401,6 @@ private:
 public:
 
     TextureMipLevelsApp() = default;
-    explicit TextureMipLevelsApp(std::shared_ptr<ecs::ECSContext> ctx) : WorkObject(std::move(ctx)) {}
 
     void Tick(double) override
     {

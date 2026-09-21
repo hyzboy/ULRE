@@ -360,8 +360,6 @@ namespace hgl
             RenderPreBeginFrame(deltaTime);
             SyncRenderTargetViewport();
 
-            render_core->SetClearColor(clear_color);
-
 //            LogInfo("[ECS RENDER] Calling BeginFrame");
             if (!render_core->BeginFrame())
             {
@@ -468,7 +466,11 @@ namespace hgl
             // RenderSystemCore::BeginFrame() 每次重取 world->GetRenderTarget()，
             // 因此能正确拿到临时切换后的 RT。
             graph::IRenderTarget *saved_target = render_target;
-            hgl::Color4f          saved_clear  = clear_color;
+
+            // clear 覆盖语义：临时改写目标 RT 上的清屏色（唯一权威），
+            // 渲染结束（含失败路径）后恢复原声明值。
+            const hgl::Color4f saved_clear = rt->GetClearColor();
+            rt->SetClearColor(clear);
 
             // 必须同步 RenderTargetSystem：它缓存的 RT 若不跟随切换，
             // RenderContext::GetCurrentRenderTarget() 在本 Pass 内仍返回主 RT，
@@ -480,7 +482,6 @@ namespace hgl
                 rts->SetRenderTarget(rt);
 
             render_target = rt;
-            clear_color   = clear;
 
             bool ok = false;
 
@@ -493,7 +494,7 @@ namespace hgl
             }
 
             render_target = saved_target;
-            clear_color   = saved_clear;
+            rt->SetClearColor(saved_clear);
 
             if (rts)
                 rts->SetRenderTarget(rts_saved ? rts_saved : saved_target);

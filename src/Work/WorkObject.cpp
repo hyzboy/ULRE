@@ -11,22 +11,20 @@
 
 namespace hgl
 {
-    WorkObject::WorkObject(std::shared_ptr<ecs::ECSContext> ctx)
-        : world(std::move(ctx))
+    void WorkObject::SetECSContext(ecs::ECSContext *ctx)
     {
+        world = ctx;
         if (world)
-        {
             render_context = world->GetRenderContext();
-        }
     }
 
-    void WorkObject::_InitializeWithECSContext_INTERNAL_DO_NOT_CALL(std::shared_ptr<ecs::ECSContext> ctx)
+    void WorkObject::SetClearColor(const Color4f &color)
     {
-        world = std::move(ctx);
+        // 清屏色唯一权威在渲染目标上（RenderTargetDesc::clear_color）。
+        // 写主世界绑定的 RT；world 未就绪时丢弃（Init 前不应设置）。
         if (world)
-        {
-            render_context = world->GetRenderContext();
-        }
+            if (auto *rt = world->GetRenderTarget())
+                rt->SetClearColor(color);
     }
 
     graph::Camera *WorkObject::GetCamera()

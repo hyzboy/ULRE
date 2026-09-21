@@ -26,7 +26,7 @@ protected:
 
     bool        CreateSwapchainFBO(Swapchain *);
     Swapchain * CreateSwapchain();
-    bool        CreateSwapchainRenderTarget();
+    bool        CreateSwapchainRenderTarget(SwapchainRenderTarget *inherit_from=nullptr);
 
 public:
 

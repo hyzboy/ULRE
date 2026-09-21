@@ -192,7 +192,6 @@ private:
 
 public:
     TestApp() = default;
-    explicit TestApp(std::shared_ptr<ecs::ECSContext> ctx) : WorkObject(std::move(ctx)) {}
     bool Init() override
     {
         if(!InitTexture())

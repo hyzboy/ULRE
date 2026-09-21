@@ -82,12 +82,8 @@ namespace hgl
             {
                 WorkManager wm(&app);
 
-                std::shared_ptr<ecs::ECSContext> world;
-                if (app.GetECSContext())
-                    world = std::shared_ptr<ecs::ECSContext>(app.GetECSContext(), [](ecs::ECSContext*){});
-
                 WO *wo=new WO();
-                wo->_InitializeWithECSContext_INTERNAL_DO_NOT_CALL(world);
+                wo->SetECSContext(app.GetECSContext());
 
                 if(!wo->Init())
                 {

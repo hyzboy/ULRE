@@ -93,8 +93,10 @@ bool RenderSystemCore::BeginRenderPass()
     // depth-only RT（shadow map）没有颜色附件：此时 clear_values[0] 是深度槽
     // （VkClearValue 的 color 与 depthStencil 是同一 union），写颜色会覆盖
     // 深度清屏值。深度的清屏值由 BeginRendering 内部置为 1.0f。
+    //
+    // 清屏色唯一权威在 RT 上（RenderTargetDesc::clear_color / SetClearColor）
     if (render_target && render_target->GetColorCount() > 0)
-        render_cmd->SetClearColor(0, clear_color);
+        render_cmd->SetClearColor(0, render_target->GetClearColor());
 
     render_cmd->BeginRendering(render_target);   // Dynamic Rendering（替代传统 BeginRenderPass）
     render_pass_begun = true;

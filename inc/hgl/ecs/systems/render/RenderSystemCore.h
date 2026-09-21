@@ -69,8 +69,6 @@ private:
     bool frame_begun = false;
     bool render_pass_begun = false;
 
-    hgl::Color4f clear_color{0,0,0,1};
-
     // 渲染命令缓冲区
     hgl::graph::RenderCmdBuffer* render_cmd = nullptr;
 
@@ -157,8 +155,8 @@ public:
         return frame_begun ? render_cmd : nullptr;
     }
 
-    void SetClearColor(const hgl::Color4f &color) { clear_color = color; }
-    const hgl::Color4f &GetClearColor() const { return clear_color; }
+    /// clear 值不再由本类缓存：BeginRenderPass 直接读当前 render_target 上的
+    /// 权威清屏色（IRenderTarget::GetClearColor，由 RenderTargetDesc 声明）
 
     /**
      * 获取当前的 Swapchain 图像索引

@@ -152,7 +152,6 @@ namespace hgl
 
             std::unique_ptr<RenderSystemCore> render_core;
             bool wait_idle_enabled = false;
-            hgl::Color4f clear_color{0,0,0,1};
 
             /// Cached adaptive render graph (auto-culls based on scene content)
             mutable RenderGraph cached_adaptive_render_graph;
@@ -275,8 +274,6 @@ namespace hgl
             {
                 return render_submission_serial;
             }
-
-            void SetClearColor(const hgl::Color4f &color) { clear_color = color; }
 
             void SetWaitIdleEnabled(bool enabled) { wait_idle_enabled = enabled; }
 

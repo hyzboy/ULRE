@@ -184,7 +184,7 @@ Swapchain *SwapchainModule::CreateSwapchain()
     return(nullptr);
 }
 
-bool SwapchainModule::CreateSwapchainRenderTarget()
+bool SwapchainModule::CreateSwapchainRenderTarget(SwapchainRenderTarget *inherit_from)
 {
     if(!ecs_context)
         return(false);
@@ -209,6 +209,14 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
     }
 
     sc_render_target=new SwapchainRenderTarget(ecs_context,swapchain,sync_slots,count);
+
+    // resize 重建时从旧 RT 继承用户声明（clear_color / env_profile 唯一权威在 RT 上，
+    // 不继承的话窗口一缩放清屏色就会回到默认黑）
+    if(sc_render_target && inherit_from)
+    {
+        sc_render_target->SetClearColor(inherit_from->GetClearColor());
+        sc_render_target->SetEnvironmentProfile(inherit_from->GetEnvironmentProfile());
+    }
 
     if(ecs_context)
         ecs_context->SetRenderTarget(sc_render_target);
@@ -261,13 +269,17 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     if(auto *device=GetDevice())
         device->WaitIdle();
 
-    SAFE_CLEAR(sc_render_target);
+    // 暂存旧 RT 供新 RT 继承声明值，新 RT 接好后再销毁
+    SwapchainRenderTarget *old_rt=sc_render_target;
+    sc_render_target=nullptr;
 
     VulkanSurface *surface=GetSurface();
     surface->RefreshCaps();
 
-    if(!CreateSwapchainRenderTarget())
+    if(!CreateSwapchainRenderTarget(old_rt))
         LogError("SwapchainModule::OnResize: CreateSwapchainRenderTarget failed");
+
+    SAFE_CLEAR(old_rt);
 }
 
 bool SwapchainModule::GetSwapchainSize(VkExtent2D *ext)const

@@ -31,12 +31,11 @@ namespace hgl
 
     private:
 
-        std::shared_ptr<ecs::ECSContext> world;
+        ecs::ECSContext *world=nullptr;
 
         graph::RenderContext *render_context=nullptr;
 
         bool render_dirty=true;
-        Color4f clear_color{0,0,0,1};
 
     protected:
 
@@ -44,7 +43,7 @@ namespace hgl
 
     public:
 
-        ecs::ECSContext *           GetECSContext       (){return world.get();}
+        ecs::ECSContext *           GetECSContext       (){return world;}
         graph::RenderContext *      GetRenderContext    (){return render_context;}
         graph::GraphicsContext *    GetGraphicsContext  ()
         {
@@ -79,8 +78,9 @@ namespace hgl
 
         const math::Vector2i *      GetMouseCoord       ()const;
 
-        void SetClearColor(const Color4f &color) { clear_color = color; }
-        const Color4f &GetClearColor() const { return clear_color; }
+        /// 设置清屏色。清屏色唯一权威在渲染目标上（RenderTargetDesc::clear_color），
+        /// 本方法转发写入当前世界绑定的 RT——与离屏 RT 的 desc 声明同一存储。
+        void SetClearColor(const Color4f &color);
 
     public:
 
@@ -93,17 +93,14 @@ namespace hgl
     protected:
 
         // 保护的默认构造函数，用于子类或框架初始化
-        WorkObject() : world(nullptr), render_context(nullptr) {}
+        WorkObject() = default;
 
     public:
 
-        explicit WorkObject(std::shared_ptr<ecs::ECSContext> ctx);
-
         virtual ~WorkObject()=default;
 
-        // 内部初始化函数，仅由AppFramework/WorkManager调用
-        // DO NOT USE DIRECTLY IN APPLICATION CODE
-        void _InitializeWithECSContext_INTERNAL_DO_NOT_CALL(std::shared_ptr<ecs::ECSContext> ctx);
+        /// 注入 ECS 世界（由 RunFramework / 外部事件循环驱动方在 Init() 之前调用）
+        void SetECSContext(ecs::ECSContext *ctx);
 
         virtual bool Init()=0;
 
