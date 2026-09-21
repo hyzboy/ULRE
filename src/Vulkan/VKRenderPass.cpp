@@ -61,8 +61,26 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     request.frame_output.color_attachment_count = color_formats.GetCount();
     request.frame_output.depth_stencil_format = depth_format;
     request.debug_name = &name;
-    request.shader_stages = &ssci_list;
     request.pipeline_layout = pl;
+
+    // depth-only 渲染通道（零颜色附件，如 shadow map）：不透明材质直接去掉片元
+    // 着色阶段——深度写入不依赖 FS，整段 lit 着色计算全部省去（FS 的 outColor
+    // 在此通道也无处写入，VVL 会报 fragment-output 未使用写告警）。带 alpha 混合
+    // /A2C 的材质保留 FS：其 discard/覆盖行为依赖片元着色器。
+    ShaderStageCreateInfoList depth_only_stage_list;
+
+    if(color_formats.GetCount()==0
+     &&!config.alpha_blend
+     &&!config.alpha_to_coverage)
+    {
+        for(const VkPipelineShaderStageCreateInfo &sci:ssci_list)
+            if(!(sci.stage & VK_SHADER_STAGE_FRAGMENT_BIT))
+                depth_only_stage_list.Add(sci);
+
+        request.shader_stages=&depth_only_stage_list;
+    }
+    else
+        request.shader_stages=&ssci_list;
 
     FinalPipelineResolveResult resolve_result{};
     if(!PipelineResolver::ResolveFinalPipeline(request, resolve_result))
