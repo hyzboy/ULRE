@@ -109,10 +109,6 @@ set(ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES
     systems/render/ViewUBOCommitSystem.cpp
 )
 
-set(ECS_SYS_15_RenderFrameSync_RenderFrameUBOSyncSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderFrameUBOSyncSystem.h
-    systems/render/RenderFrameUBOSyncSystem.cpp
-)
 
 set(ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderSceneUBOSystem.h
@@ -263,7 +259,6 @@ set(ECS_SOURCE
 
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES}
-    ${ECS_SYS_15_RenderFrameSync_RenderFrameUBOSyncSystem_FILES}
     ${ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
     ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
@@ -298,7 +293,6 @@ source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${EC
 source_group("ECS\\Systems\\09B RenderPreBeginFrame_ColorPaletteSystem" FILES ${ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES})
 source_group("ECS\\Systems\\13B RenderBufferCommit_ViewUBOCommitSystem" FILES ${ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
-source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameUBOSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameUBOSyncSystem_FILES})
 source_group("ECS\\Systems\\15B RenderFrameSync_RenderSceneUBOSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
 source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})

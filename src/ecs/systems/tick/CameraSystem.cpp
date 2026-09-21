@@ -222,8 +222,6 @@ namespace hgl::ecs
         SetExecutionPhase(ExecutionPhase::TickCamera);
 
         // Declare dependencies
-        AddDependency<InputSystem>();     // Needs input for camera control
-        AddDependency<TransformSystem>(); // Needs transforms updated first
 
         first_person_mode = std::make_unique<FirstPersonCameraMode>();
         view_model_mode = std::make_unique<ViewModelCameraMode>();

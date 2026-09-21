@@ -232,9 +232,7 @@ public:
         // EN: Setup camera
         if (ecs_world)
         {
-            auto camera_system = ecs_world->GetSystem<CameraSystem>();
-            if (!camera_system)
-                camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
+            auto camera_system = ecs_world->EnsureCameraSystem();
 
             camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
             auto camera = camera_entity->AddComponent<CameraComponent>();

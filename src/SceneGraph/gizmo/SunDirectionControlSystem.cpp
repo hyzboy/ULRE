@@ -19,8 +19,6 @@ SunDirectionControlSystem::SunDirectionControlSystem()
     : hgl::ecs::System("SunDirectionControlSystem")
 {
     SetExecutionPhase(hgl::ecs::ExecutionPhase::TickPostCamera);
-    AddDependency<hgl::ecs::InputSystem>();
-    AddDependency<hgl::ecs::CameraSystem>();
 }
 
 SunDirectionControlSystem::~SunDirectionControlSystem()

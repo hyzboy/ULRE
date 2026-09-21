@@ -12,9 +12,6 @@ namespace hgl::ecs
         : System(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderSubmit);
-        AddDependency<PrimitiveRenderSystem>();
-        AddDependency<TextRenderSystem>();
-        AddDependency<LineRenderSystem>();
     }
 
     void SwapchainSubmitSystem::Update(float /*deltaTime*/)

@@ -101,7 +101,7 @@ namespace hgl::graph
             world_->RegisterTickSystem<ecs::InputSystem>();
 
         if(desc.register_camera_system)
-            camera_system_ = world_->RegisterTickSystem<ecs::CameraSystem>(world_.get());
+            camera_system_ = world_->EnsureCameraSystem();
 
         IRenderTarget *rt = rt_.get();
 

@@ -32,8 +32,6 @@ TransformGizmoSystem::TransformGizmoSystem()
     , default_mode(GizmoMode::MoveWorld)
 {
     SetExecutionPhase(hgl::ecs::ExecutionPhase::TickPostCamera);
-    AddDependency<hgl::ecs::InputSystem>();
-    AddDependency<hgl::ecs::CameraSystem>();
 }
 
 TransformGizmoSystem::~TransformGizmoSystem()

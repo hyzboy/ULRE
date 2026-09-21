@@ -33,6 +33,11 @@ namespace hgl
 
     void WorkManager::Render(WorkObject *wo)
     {
+        // 所有 WorkObject 均经 RunFramework/Qt 外壳注入 ECSContext，
+        // 渲染统一走 ECS 托管帧；wo->Render 是帧内 pre_render 回调。
+        if (!wo || !wo->GetECSContext())
+            return;
+
         double delta_time;
         bool can_render=wo->IsRenderDirty();
 
@@ -49,23 +54,13 @@ namespace hgl
                 can_render=delta_time>=frame_time;
         }
 
-        if (wo && wo->GetECSContext())
-        {
-            if (!can_render)
-                return;
-
-            last_render_time=cur_time;
-            wo->GetECSContext()->Render(static_cast<float>(delta_time),
-                                        [wo](float dt){ wo->Render(static_cast<double>(dt)); });
-            wo->ClearRenderDirty();
+        if (!can_render)
             return;
-        }
 
-        if(can_render)
-        {
-            last_render_time=cur_time;
-            wo->Render(delta_time);
-        }
+        last_render_time=cur_time;
+        wo->GetECSContext()->Render(static_cast<float>(delta_time),
+                                    [wo](float dt){ wo->Render(static_cast<double>(dt)); });
+        wo->ClearRenderDirty();
     }
 
     void WorkManager::RunFrame(WorkObject *wo)
@@ -94,16 +89,9 @@ namespace hgl
         {
             cur_time=GetTimeSec();
 
-            if (app_framework)
-                app_framework->Tick();
-
-            if(cur_work_object->IsTickable())
-                Tick(cur_work_object);
-
-            if(has_window?win->IsVisible():true)//&&cur_work_object->IsRenderable())
-            {
-                Render(cur_work_object);
-            }
+            // 窗口最小化/隐藏时跳过整帧（Tick+Render）
+            if(!has_window || win->IsVisible())
+                RunFrame(cur_work_object);   // Tick + Render（与外部事件循环驱动共用同一实现）
 
             if(has_window)
             {

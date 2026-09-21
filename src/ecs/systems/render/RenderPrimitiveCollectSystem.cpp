@@ -384,8 +384,6 @@ namespace hgl::ecs
         SetRenderElementType("Primitive");
 
         // Declare dependencies
-        AddDependency<TransformSystem>(); // Needs world transforms
-        AddDependency<CameraSystem>();    // Needs camera info
     }
 
     bool RenderPrimitiveCollectSystem::ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,

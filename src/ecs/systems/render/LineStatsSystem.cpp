@@ -11,8 +11,6 @@ namespace hgl::ecs
     {
         SetExecutionPhase(ExecutionPhase::RenderStat);
         SetRenderElementType("Line");
-        AddDependency<LineCollectSystem>();
-        AddDependency<LineRenderSystem>();
     }
 
     void LineStatsSystem::Update(float /*deltaTime*/)

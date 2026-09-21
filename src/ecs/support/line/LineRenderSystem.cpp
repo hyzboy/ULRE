@@ -12,8 +12,6 @@ namespace hgl::ecs
     {
         SetExecutionPhase(ExecutionPhase::RenderDrawSubmit);
         SetRenderElementType("Line");
-        AddDependency<LineBuildSystem>();
-        AddDependency<RenderBufferUploadSystem>();
     }
 
     RenderPipelineBase* LineRenderSystem::GetPipeline(ECSContext* context)

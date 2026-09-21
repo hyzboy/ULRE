@@ -297,15 +297,7 @@ private:
         if (!ecs_world)
             return LogFail("EnsureCameraSystem", "ECS context is null");
 
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if (!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if (ecs_world->IsActive())
-            {
-                camera_system->Initialize();
-            }
-        }
+        auto camera_system = ecs_world->EnsureCameraSystem();
 
         return camera_system != nullptr;
     }

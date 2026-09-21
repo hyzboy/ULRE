@@ -11,9 +11,7 @@ namespace hgl::ecs
     {
         SetExecutionPhase(ExecutionPhase::RenderDrawSubmit);
         SetRenderElementType("Text");
-        AddDependency<TextSyncSystem>();
         AddDependency<PrimitiveRenderSystem>();
-        AddDependency<RenderBufferUploadSystem>();
     }
 
     RenderPipelineBase* TextRenderSystem::GetPipeline(ECSContext* context)

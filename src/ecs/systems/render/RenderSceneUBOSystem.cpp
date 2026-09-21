@@ -6,7 +6,6 @@
 #include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/RenderResource.h>
-#include<hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -98,10 +97,6 @@ namespace hgl::ecs
         : System(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderFrameSync);
-        AddDependency<RenderFrameUBOSyncSystem>();
-        AddDependency<EnvironmentSystem>();
-        AddDependency<RenderTargetSystem>();
-        AddDependency<CameraSystem>();
     }
 
     RenderSceneUBOSystem::~RenderSceneUBOSystem()

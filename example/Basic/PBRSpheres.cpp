@@ -513,15 +513,7 @@ private:
             return false;
         }
 
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if (!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if (ecs_world->IsActive())
-            {
-                camera_system->Initialize();
-            }
-        }
+        auto camera_system = ecs_world->EnsureCameraSystem();
 
         if (!camera_system) {
             printf("[ERROR] EnsureCameraSystem: Failed to get or create camera system\n");

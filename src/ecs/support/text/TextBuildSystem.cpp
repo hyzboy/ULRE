@@ -9,7 +9,6 @@ namespace hgl::ecs
     {
         SetExecutionPhase(ExecutionPhase::RenderBatch);
         SetRenderElementType("Text");
-        AddDependency<TextCollectSystem>();
     }
 
     RenderPipelineBase* TextBuildSystem::GetPipeline(ECSContext* context)
