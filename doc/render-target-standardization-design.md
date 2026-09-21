@@ -14,8 +14,18 @@
 | B 描述子与工厂 | **已完成** | 见下方"阶段 B"各项，均带 [x] |
 | C OffscreenWorld 入引擎 | **已完成** | 见下方"阶段 C"各项，均带 [x] |
 | D resize 与 RenderGraph 集成 | **部分完成** | resize 与 GUI 清理已完成；RenderGraph 跨 RT pass 链拆分见下方说明 |
+| E depth-only（shadow map） | **已完成** | 见下方"阶段 E"，`example/Basic/ShadowMap.cpp` 落地验证 |
 
-子世界/离屏 RT 的专门约定见 `doc/ecs/ecs_sub_world.md`。
+**本文档主体计划至此全部落地**。阶段 E 之后的后续修复（2026-09-21，
+不再回写正文，详见 git log）：depth-only 管线剥离 fragment stage
+（a379c712f）；RenderTo 同步 RenderTargetSystem + 管线缓存按 RenderPass
+持有（c778f1fb2）；RenderTargetData::Clear 真正销毁 queue/cmd_buf
+（337968861）；MaterialSSBO → GlobalSSBO 改名（e9f5ec8bd）。
+
+离屏/子世界的现行形态：引擎内 `graph::OffscreenWorld`
+（`inc/hgl/graph/module/OffscreenWorld.h`）——RT + ECSContext + 系统一行
+创建，`Render()`/`Resize()` 驱动；原 `doc/ecs/ecs_sub_world.md` 所述的
+ContextRole 门控从未启用、已随 ECS 清理删除。
 
 ---
 
@@ -144,7 +154,7 @@ world_->SetCurrentRenderCmd(nullptr);
 | P6 | **样板 100+ 行**：只为开一个 RT | `OffscreenWorldRuntime.h` | 每个用例复制粘贴 |
 | P7 | **clear_color 三处存储**：`WorkObject::clear_color`、`ECSContext::clear_color`、`RenderSystemCore::clear_color` | `WorkObject.h:53`、`Context.h:174`、`RenderSystemCore.h:72` | 语义分散，改一处不够 |
 | P8 | **命名不一致**：`IRenderTarget` / `RenderTarget` / `SwapchainRenderTarget`；文件 `VKRenderTargetSingle.h` ↔ 类 `RenderTarget`；`FramebufferInfo` / `FBOInfo` / `SwapchainRenderbufferInfo` 三套 | `VKRenderbufferInfo.h:176/189/224` | 读代码要猜 |
-| P9 | **子世界文档缺失** | `doc/ecs/ecs_sub_world.md` 为 0 字节 | 离屏约定无文字依据 |
+| P9 | **子世界文档缺失** | `doc/ecs/ecs_sub_world.md` 为 0 字节 | 离屏约定无文字依据（该文档曾补写，已随 ContextRole 门控删除一并移除） |
 
 ---
 
@@ -288,7 +298,7 @@ offscreen->Resize(1024, 1024);                  // 阶段 D 后可用
 - [x] 1. 删除 `RenderTargetManager::CreateRT` 两个零调用重载。
 - [x] 2. `RenderTargetManager` 增加 RT 注册表 + `GetAliveCount()`，创建点登记入表。
 - [x] 3. 统一 getter 文档化：标注唯一权威，其余标框架内部。
-- [x] 4. 补 `doc/ecs/ecs_sub_world.md`（原为 0 字节）。
+- [x] 4. 补 `doc/ecs/ecs_sub_world.md`（原为 0 字节；后随 ContextRole 门控体系删除而移除）。
 
 阶段 A 落地明细：
 
