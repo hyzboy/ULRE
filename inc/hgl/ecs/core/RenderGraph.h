@@ -112,17 +112,11 @@ namespace hgl
         /**
          * Ensure system groups are registered for the currently registered systems in context.
          * Idempotent: registers only groups that are missing (no Clear, no full rescan).
-         * Group records feed pass construction in CreateAdaptiveRenderGraph/
-         * CreateDefaultLinearGraph; the installer path (DefaultSystems) registers
+         * Group records feed pass construction in CreateAdaptiveRenderGraph;
+         * the installer path (DefaultSystems) registers
          * systems/pipelines, this fills in the group metadata once.
          */
         void EnsureSystemGroupsRegistered(ECSContext* context);
-
-        /**
-         * Create the default linear render graph with all system groups enabled
-         * Maintains backward compatibility with existing render flow
-         */
-        RenderGraph CreateDefaultLinearGraph(ECSContext* context);
 
         /**
          * Scene statistics for adaptive graph generation
@@ -154,12 +148,6 @@ namespace hgl
          * Gather scene component statistics. Call this to understand what's in the world.
          */
         SceneStats GatherSceneStats(ECSContext* context);
-
-        /**
-         * Create RenderGraph adapted to scene content.
-         * Skips render phases and systems for content types not present.
-         */
-        RenderGraph CreateAdaptiveRenderGraph(ECSContext* context);
 
         /**
          * Create RenderGraph adapted to scene content using pre-gathered stats.

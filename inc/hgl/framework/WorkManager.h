@@ -34,11 +34,6 @@ namespace hgl
             af->AddChildDispatcher(this);
         }
 
-        explicit WorkManager(std::shared_ptr<ecs::ECSContext> ctx)
-        {
-            app_framework=nullptr;
-        }
-
         virtual ~WorkManager()
         {
             if (app_framework)
@@ -46,12 +41,6 @@ namespace hgl
             if(cur_work_object)
                 OnChangeWorkObject(cur_work_object, nullptr);
             SAFE_CLEAR(cur_work_object);
-        }
-
-        void SetFPS(uint f)
-        {
-            fps=f;
-            frame_time=1.0f/double(fps);
         }
 
                 void Tick   (WorkObject *wo);
@@ -117,4 +106,4 @@ namespace hgl
 
         return result;
     }
-}//namespcae hgl
+}//namespace hgl

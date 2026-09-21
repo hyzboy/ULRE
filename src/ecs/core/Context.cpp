@@ -154,34 +154,6 @@ namespace hgl
             return true;
         }
 
-        Entity* ECSContext::CreateChildEntity(Entity *parent,
-                                               const ChildEntityDesc &desc,
-                                               std::vector<EntityID> *out_entity_ids,
-                                               std::shared_ptr<TransformComponent> *out_transform)
-        {
-            if (!parent)
-                return nullptr;
-
-            auto *entity = CreateEntity<Entity>(desc.name ? desc.name : "Entity");
-            if (!entity)
-                return nullptr;
-
-            auto transform = entity->AddComponent<TransformComponent>(desc.mobility);
-            if (!transform)
-                return nullptr;
-
-            transform->SetLocalTRS(desc.position, desc.rotation, desc.scale);
-            transform->SetParent(parent->GetEntityID());
-
-            if (out_transform)
-                *out_transform = transform;
-
-            if (out_entity_ids)
-                out_entity_ids->push_back(entity->GetEntityID());
-
-            return entity;
-        }
-
         std::shared_ptr<CameraSystem> ECSContext::EnsureCameraSystem()
         {
             auto camera_system = GetSystem<CameraSystem>();
@@ -217,23 +189,6 @@ namespace hgl
 
 //            LogDebug("[ECS] Registering render pipeline: %s", name.c_str());
             render_pipelines[name] = std::move(pipeline);
-        }
-
-        bool ECSContext::IsRenderPipelineEnabled(const std::string& name) const
-        {
-            auto it = render_pipelines.find(name);
-            if (it != render_pipelines.end())
-                return it->second != nullptr;  // If registered and not null, it's enabled
-            return false;
-        }
-
-        std::vector<std::string> ECSContext::GetRenderPipelineNames() const
-        {
-            std::vector<std::string> names;
-            names.reserve(render_pipelines.size());
-            for (const auto& pair : render_pipelines)
-                names.push_back(pair.first);
-            return names;
         }
 
         void ECSContext::Shutdown()
@@ -313,8 +268,6 @@ namespace hgl
 
             tick_systems.Clear();
             render_systems.Clear();
-            global_render_system_count = 0;
-            local_gameplay_system_count = 0;
 
             // Destroy all entities
             if (entity_manager)
@@ -548,15 +501,6 @@ namespace hgl
             return ok;
         }
 
-        bool ECSContext::RenderTo(graph::IRenderTarget *rt, float deltaTime)
-        {
-            if (!rt)
-                return false;
-
-            // 清屏色以 RT 上声明的值为准（RenderTargetDesc::clear_color）
-            return RenderTo(rt, rt->GetClearColor(), deltaTime);
-        }
-
         void ECSContext::OnResize(const VkExtent2D &extent)
         {
             HGL_CAPTURE_SCOPE();
@@ -590,45 +534,26 @@ namespace hgl
             }
         }
 
-        void ECSContext::Render(float deltaTime)
-        {
-            // W2 收敛：图选择逻辑唯一实现在 Render(dt, pre)——此处纯转发
-            Render(deltaTime, std::function<void(float)>{});
-        }
-
         void ECSContext::Render(float deltaTime, const std::function<void(float)> &pre_render)
         {
-            if (use_adaptive_render_graph)
+            // 只在场景结构变化（scene_structure_dirty）时重新 gather，
+            // 避免每帧全量遍历所有 entity/component（结构稳定时零开销）。
+            if (scene_structure_dirty)
             {
-                // 只在场景结构变化（scene_structure_dirty）时重新 gather，
-                // 避免每帧全量遍历所有 entity/component（结构稳定时零开销）。
-                if (scene_structure_dirty)
-                {
-                    SceneStats stats = GatherSceneStats(this);
-                    uint64_t current_hash = stats.GetHash();
+                SceneStats stats = GatherSceneStats(this);
+                uint64_t current_hash = stats.GetHash();
 
-                    if (current_hash != cached_adaptive_scene_hash)
-                    {
+                if (current_hash != cached_adaptive_scene_hash)
+                {
 //                        LogDebug("[ECS] Adaptive RenderGraph scene hash changed: %llu -> %llu, regenerating",cached_adaptive_scene_hash, current_hash);
-                        cached_adaptive_render_graph = CreateAdaptiveRenderGraph(this, stats);
-                        cached_adaptive_scene_hash = current_hash;
-                    }
-
-                    scene_structure_dirty = false;
+                    cached_adaptive_render_graph = CreateAdaptiveRenderGraph(this, stats);
+                    cached_adaptive_scene_hash = current_hash;
                 }
 
-                Render(deltaTime, cached_adaptive_render_graph, pre_render);
+                scene_structure_dirty = false;
             }
-            else
-            {
-                // Lazy-initialize default graph cache on first use
-                if (!default_render_graph_initialized)
-                {
-                    cached_default_render_graph = CreateDefaultLinearGraph(this);
-                    default_render_graph_initialized = true;
-                }
-                Render(deltaTime, cached_default_render_graph, pre_render);
-            }
+
+            Render(deltaTime, cached_adaptive_render_graph, pre_render);
         }
 
         void ECSContext::RenderPreBeginFrame(float deltaTime)
@@ -879,16 +804,6 @@ namespace hgl
                 gpu_device->SetDrawPhaseActive(false);
         }
 
-        void ECSContext::ClearEntities()
-        {
-            if (entity_manager)
-                entity_manager->Clear();
-
-            component_registry.Clear();
-            static_transforms.clear();
-            movable_transforms.clear();
-        }
-
         void ECSContext::SortTickSystems()
         {
             SortSystemList(tick_system_order, tick_dependencies, tick_order_dirty, "Tick");
@@ -1039,36 +954,10 @@ namespace hgl
                            effective_is_render ? "render" : "tick");
             }
 
-            if (effective_is_render && !allow_render_system_registration)
-            {
-                ++rejected_render_system_registration_count;
-
-            #if ULRE_ECS_DEBUG_API
-                if (!rejected_render_system_registration_logged)
-                {
-                    rejected_render_system_registration_logged = true;
-                    LogWarning("[ECS] Render system registration rejected in context '%s'. Example system='%s'",
-                               GetName().c_str(),
-                               system->GetName().c_str());
-                }
-            #endif
-                return;
-            }
-
             auto& sys_map = effective_is_render ? render_systems : tick_systems;
             auto& order_list = effective_is_render ? render_system_order : tick_system_order;
             auto& dirty_flag = effective_is_render ? render_order_dirty : tick_order_dirty;
             auto& deps = effective_is_render ? render_dependencies : tick_dependencies;
-            const bool is_new_registration = (sys_map.GetValuePointer(key) == nullptr);
-
-            if (is_new_registration)
-            {
-                if (effective_is_render && context_role == ContextRole::RootShared)
-                    ++global_render_system_count;
-
-                if (!effective_is_render && context_role == ContextRole::LocalSubWorld)
-                    ++local_gameplay_system_count;
-            }
 
             sys_map[key] = system;
 
@@ -1144,96 +1033,6 @@ namespace hgl
                 list->push_back(dependency_key);
                 order_dirty = true;
             }
-        }
-        bool ECSContext::SetSystemEnabledByKey(size_t key, bool enabled)
-        {
-            if (auto *system = tick_systems.GetValuePointer(key))
-            {
-                if (*system)
-                    (*system)->SetEnabled(enabled);
-                return true;
-            }
-
-            if (auto *system = render_systems.GetValuePointer(key))
-            {
-                if (*system)
-                    (*system)->SetEnabled(enabled);
-                return true;
-            }
-
-            return false;
-        }
-
-        bool ECSContext::RemoveSystemByKey(size_t key)
-        {
-            // A6 生命周期语义：销毁后从注册表移除（GetSystem 返回 null——新查询安全）；
-            // 已持有的裸指针（如 MaterialBatch::transform_buffer）随之失效——
-            // 引擎惯例：系统不跨帧缓存系统指针；运行期销毁系统后旧指针不得再使用
-            auto remove_from = [&](auto &sys_map,
-                                   auto &order_list,
-                                   auto &deps,
-                                   bool &order_dirty) -> bool
-            {
-                auto *holder = sys_map.GetValuePointer(key);
-                if (!holder)
-                    return false;
-
-                const auto removed_system = *holder;
-                const int removed_phase = removed_system ? static_cast<int>(removed_system->GetExecutionPhase()) : -1;
-
-                if (*holder)
-                    (*holder)->Shutdown();
-
-                sys_map.DeleteByKey(key);
-                deps.DeleteByKey(key);
-
-                for (auto &pair : deps)
-                {
-                    auto &vec = pair.second;
-                    vec.erase(std::remove(vec.begin(), vec.end(), key), vec.end());
-                }
-
-                order_list.erase(std::remove_if(order_list.begin(),
-                                                order_list.end(),
-                                                [key](const OrderedSystem &entry)
-                                                {
-                                                    return entry.key == key;
-                                                }),
-                                 order_list.end());
-
-                if (removed_system)
-                {
-                    const bool removed_is_render = removed_phase >= static_cast<int>(ExecutionPhase::RenderSwapchainNextImage);
-
-                    if (removed_is_render && context_role == ContextRole::RootShared && global_render_system_count > 0)
-                        --global_render_system_count;
-
-                    if (!removed_is_render && context_role == ContextRole::LocalSubWorld && local_gameplay_system_count > 0)
-                        --local_gameplay_system_count;
-
-                    for (auto it = systems_by_element_type.begin(); it != systems_by_element_type.end();)
-                    {
-                        auto& vec = it->second;
-                        vec.erase(std::remove(vec.begin(), vec.end(), removed_system), vec.end());
-
-                        if (vec.empty())
-                            it = systems_by_element_type.erase(it);
-                        else
-                            ++it;
-                    }
-                }
-
-                order_dirty = true;
-                return true;
-            };
-
-            if (remove_from(tick_systems, tick_system_order, tick_dependencies, tick_order_dirty))
-                return true;
-
-            if (remove_from(render_systems, render_system_order, render_dependencies, render_order_dirty))
-                return true;
-
-            return false;
         }
 
         hgl::graph::GraphicsContext* ECSContext::GetGraphicsContext()
@@ -1494,15 +1293,6 @@ namespace hgl
             }
         }
 
-        uint32_t ECSContext::GetSystemGroupComponentCount(const std::string& group_name) const
-        {
-            auto it = system_group_component_counts.find(group_name);
-            if (it == system_group_component_counts.end())
-                return 0;
-
-            return it->second;
-        }
-
         bool ECSContext::IsSystemGroupInstalled(const std::string& group_name) const
         {
             if (group_name.empty())
@@ -1517,88 +1307,6 @@ namespace hgl
                 return;
 
             installed_system_groups.insert(group_name);
-        }
-
-        void ECSContext::GetKnownSystemGroups(std::vector<std::string>& out_group_names) const
-        {
-            out_group_names.clear();
-            out_group_names.reserve(known_system_groups.size());
-
-            for (const auto& group_name : known_system_groups)
-                out_group_names.push_back(group_name);
-        }
-
-        void ECSContext::DisableUnusedSystemGroups()
-        {
-            for (const auto& group_name : known_system_groups)
-            {
-                if (GetSystemGroupComponentCount(group_name) == 0)
-                {
-                    SetElementTypeSystemsEnabled(group_name, false);
-                    profiler.UpdateGroupState(group_name, 0, false);
-                }
-            }
-        }
-
-        bool ECSContext::DisableSystemGroup(const std::string& group_name)
-        {
-            if (group_name.empty())
-                return false;
-
-            SetElementTypeSystemsEnabled(group_name, false);
-            profiler.UpdateGroupState(group_name, GetSystemGroupComponentCount(group_name), false);
-            return true;
-        }
-
-        bool ECSContext::CleanupSystemGroup(const std::string& group_name, bool remove_systems)
-        {
-            if (group_name.empty())
-                return false;
-
-            SetElementTypeSystemsEnabled(group_name, false);
-            profiler.UpdateGroupState(group_name, GetSystemGroupComponentCount(group_name), false);
-
-            if (!remove_systems)
-                return true;
-
-            auto it = systems_by_element_type.find(group_name);
-            if (it == systems_by_element_type.end())
-                return false;
-
-            std::vector<std::shared_ptr<System>> systems = it->second;
-            for (const auto& system : systems)
-            {
-                if (!system)
-                    continue;
-
-                const size_t key = typeid(*system).hash_code();
-                RemoveSystemByKey(key);
-            }
-
-            systems_by_element_type.erase(group_name);
-            profiler.RemoveGroupProfile(group_name);
-            return true;
-        }
-
-        size_t ECSContext::CleanupUnusedSystemGroups(bool remove_systems)
-        {
-            std::vector<std::string> targets;
-            targets.reserve(known_system_groups.size());
-
-            for (const auto& group_name : known_system_groups)
-            {
-                if (GetSystemGroupComponentCount(group_name) == 0)
-                    targets.push_back(group_name);
-            }
-
-            size_t cleaned = 0;
-            for (const auto& group_name : targets)
-            {
-                if (CleanupSystemGroup(group_name, remove_systems))
-                    ++cleaned;
-            }
-
-            return cleaned;
         }
     }//namespace ecs
 }//namespace hgl

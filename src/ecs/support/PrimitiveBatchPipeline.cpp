@@ -8,7 +8,6 @@
 #include<cstring>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/BoundingBoxComponent.h>
-#include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>

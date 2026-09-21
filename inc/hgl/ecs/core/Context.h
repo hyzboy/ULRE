@@ -72,19 +72,6 @@ namespace hgl
             ECSContext(const std::string& name = "World");
             ~ECSContext() override;
 
-            enum class SystemOwnershipScope : uint8_t
-            {
-                Auto = 0,
-                GlobalShared = 1,
-                LocalIsolated = 2
-            };
-
-            enum class ContextRole : uint8_t
-            {
-                RootShared = 0,
-                LocalSubWorld = 1
-            };
-
         private:
             OBJECT_LOGGER
 
@@ -141,12 +128,6 @@ namespace hgl
 
             bool active = false;
             bool shutdown_in_progress = false;
-            ContextRole context_role = ContextRole::RootShared;
-            bool allow_render_system_registration = true;
-            uint32_t rejected_render_system_registration_count = 0;
-            bool rejected_render_system_registration_logged = false;
-            uint32_t global_render_system_count = 0;
-            uint32_t local_gameplay_system_count = 0;
 
             RenderFrameCache render_frame_cache;
             SystemProfiler profiler;
@@ -173,14 +154,9 @@ namespace hgl
             bool wait_idle_enabled = false;
             hgl::Color4f clear_color{0,0,0,1};
 
-            /// Cached default linear render graph (created once, reused every frame)
-            mutable RenderGraph cached_default_render_graph;
-            mutable bool default_render_graph_initialized = false;
-
             /// Cached adaptive render graph (auto-culls based on scene content)
             mutable RenderGraph cached_adaptive_render_graph;
             mutable uint64_t cached_adaptive_scene_hash = ~0ULL;  // sentinel: "not computed yet"
-            mutable bool use_adaptive_render_graph = true;  // default: use adaptive mode
             mutable bool scene_structure_dirty = true;  // 场景结构（entity/component 增删）变化标记，下次 Render 重 gather
 
             /// Graphics context adapter (Phase 2) - now raw pointer
@@ -202,8 +178,6 @@ namespace hgl
             OrderedSystem* FindOrderedSystem(std::vector<OrderedSystem>& list, size_t key);
             void AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system);
             void AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key);
-            bool SetSystemEnabledByKey(size_t key, bool enabled);
-            bool RemoveSystemByKey(size_t key);
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
             void RunRenderPhaseUpdates(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
@@ -220,6 +194,36 @@ namespace hgl
             void ExecuteRenderGraphPasses(const RenderGraph& graph,
                                           float deltaTime,
                                           const std::function<void(float)> &pre_render);
+
+            // ========== 帧驱动内部编排（应用层勿直接调用） ==========
+            // 公共入口只有 Render(dt, pre_render) 与 RenderTo(rt, clear, dt)；
+            // 以下相位方法仅由上述两者与托管帧流程按 ExecutionPhase 顺序编排。
+
+            void RenderDrawOnly(graph::RenderCmdBuffer *cmd, float deltaTime);
+            void Render(float deltaTime, const RenderGraph& graph);
+            void Render(float deltaTime, const RenderGraph& graph, const std::function<void(float)> &pre_render);
+
+            /// Run pre-begin-frame render updates (no command buffer).
+            /// Covers RenderPreBeginFrame + RenderResourceSetup + RenderMaterialBind.
+            void RenderPreBeginFrame(float deltaTime);
+
+            void RenderResourceSetup(float deltaTime);
+            void RenderMaterialBind(float deltaTime);
+            void RenderSwapchainNextImage(float deltaTime);
+            bool AcquireSwapchainImage(float deltaTime = 0.0f);
+            void SyncRenderTargetViewport();
+            void RenderBeginFrame(float deltaTime);
+            void RenderBufferCommit(float deltaTime);
+            void RenderBufferUpload(float deltaTime);
+            void RenderFrameSync(float deltaTime);
+
+            /// Orchestrate pre-pass render setup phases for a specific frame index.
+            /// Strict order: BeginFrame → Collect → Batch → BufferCommit → BufferUpload → FrameSync
+            void PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime = 0.0f);
+
+            void RenderSubmit(float deltaTime);
+            bool SubmitFrameToRenderTarget(float deltaTime = 0.0f);
+
         public:
 
             /// 初始化世界（W3 合并：GPU 设备/渲染目标绑定 + 系统注册与初始化，
@@ -235,11 +239,6 @@ namespace hgl
             /// Tick all non-render systems and entities
             void Tick(float deltaTime);
 
-            /// Compatibility entry for recording into an existing command buffer.
-            /// 离屏/手动命令缓冲流程：Update 相位已由 PrepareRenderPassSetup
-            /// 执行，仅录制绘制命令（由 RenderTo / OffscreenWorld 使用）
-            void RenderDrawOnly(graph::RenderCmdBuffer *cmd, float deltaTime);
-
             /// 把本世界的一帧渲染到指定 RenderTarget（离屏/子世界的标准入口）
             ///
             /// 内部复用 BeginManagedRenderFrame + RenderDrawOnly + EndManagedRenderFrame，
@@ -251,33 +250,9 @@ namespace hgl
             /// @note 会跳过 swapchain 图像获取（离屏 RT 无 swapchain 图像）
             bool RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime = 0.0f);
 
-            /// 使用 RT 上声明的清屏色（RenderTargetDesc::clear_color）渲染一帧
-            bool RenderTo(graph::IRenderTarget *rt, float deltaTime = 0.0f);
-
-            /// Preferred public frame driver is Render(float).
-
-            /// Internal-style draw-only recording entry kept for compatibility with
-            /// prepared-frame callers such as subworld/offscreen helpers.
-            /// Run a full render frame (Begin/Render/End/Sync)
-            void Render(float deltaTime);
-
             /// Run a full render frame with a pre-render callback
+            /// （主窗口帧驱动唯一公共入口，由 WorkManager 调用）
             void Render(float deltaTime, const std::function<void(float)> &pre_render);
-
-            /// Run a full render frame using a custom RenderGraph (supports multi-RT, conditional passes)
-            void Render(float deltaTime, const RenderGraph& graph);
-
-            /// Run a full render frame using a custom RenderGraph with a pre-render callback
-            void Render(float deltaTime, const RenderGraph& graph, const std::function<void(float)> &pre_render);
-
-            /// Control whether to use adaptive RenderGraph (default: true)
-            /// If true: automatically culls render passes based on scene content (no Primitives → skip collect/batch, etc.)
-            /// If false: uses default linear graph regardless of scene content
-            void SetAdaptiveRenderGraphEnabled(bool enabled) { use_adaptive_render_graph = enabled; }
-            bool GetAdaptiveRenderGraphEnabled() const { return use_adaptive_render_graph; }
-
-            /// Invalidate cached adaptive graph to force re-computation on next render
-            void InvalidateAdaptiveRenderGraph() { cached_adaptive_scene_hash = ~0ULL; }
 
             /// Mark scene structure (entity/component add/remove) as changed.
             /// Called automatically by component attach/detach; next Render re-gathers
@@ -287,53 +262,6 @@ namespace hgl
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
 
-            /// Run pre-begin-frame render updates (no command buffer).
-            /// Covers RenderPreBeginFrame + RenderResourceSetup + RenderMaterialBind.
-            void RenderPreBeginFrame(float deltaTime);
-
-            /// Run lazy GPU resource-creation phase (QuadResourcePrepareSystem, etc.)
-            void RenderResourceSetup(float deltaTime);
-
-            /// Run per-entity material/texture binding phase (QuadMaterialBindingSystem, etc.)
-            void RenderMaterialBind(float deltaTime);
-
-            /// Run swapchain image acquisition updates (no command buffer)
-            void RenderSwapchainNextImage(float deltaTime);
-
-            /// Acquire swapchain image for current frame with ECS-system-first fallback.
-            bool AcquireSwapchainImage(float deltaTime = 0.0f);
-
-            /// Ensure render target viewport metadata is synced with current extent.
-            void SyncRenderTargetViewport();
-
-            /// Run begin-frame render updates (frame index available)
-            void RenderBeginFrame(float deltaTime);
-
-            /// Run explicit buffer commit cycle updates
-            void RenderBufferCommit(float deltaTime);
-
-            /// Run explicit buffer upload cycle updates (must run before render pass)
-            void RenderBufferUpload(float deltaTime);
-
-            /// Run frame-sync phase: sync UBOs/descriptors after upload
-            /// (replaces RenderPostBeginFrame; runs before BeginRenderPass)
-            void RenderFrameSync(float deltaTime);
-
-            /// Orchestrate pre-pass render setup phases for a specific frame index.
-            /// Strict order: BeginFrame → Collect → Batch → BufferCommit → BufferUpload → FrameSync
-            void PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime = 0.0f);
-
-            /// Run frame submit updates (no command buffer)
-            void RenderSubmit(float deltaTime);
-
-            /// Submit current frame with ECS-system-first fallback.
-            bool SubmitFrameToRenderTarget(float deltaTime = 0.0f);
-
-            /// Clear all entities and component registries
-            void ClearEntities();
-
-            void SetSystemProfilingEnabled(bool enabled) { system_profiling_enabled = enabled; }
-            bool IsSystemProfilingEnabled() const { return system_profiling_enabled; }
             SystemProfiler& GetSystemProfiler() { return profiler; }
             const SystemProfiler& GetSystemProfiler() const { return profiler; }
 
@@ -349,10 +277,8 @@ namespace hgl
             }
 
             void SetClearColor(const hgl::Color4f &color) { clear_color = color; }
-            const hgl::Color4f &GetClearColor() const { return clear_color; }
 
             void SetWaitIdleEnabled(bool enabled) { wait_idle_enabled = enabled; }
-            bool IsWaitIdleEnabled() const { return wait_idle_enabled; }
 
             // ========== GPU 设备和资源接口（Phase 1 新增） ==========
 
@@ -398,12 +324,6 @@ namespace hgl
             /// @param name: pipeline group name
             /// @param pipeline: newly created pipeline instance
             void RegisterRenderPipeline(const std::string& name, std::unique_ptr<RenderPipelineBase> pipeline);
-
-            /// Check if a render pipeline is registered and enabled
-            bool IsRenderPipelineEnabled(const std::string& name) const;
-
-            /// Get all registered pipeline names
-            std::vector<std::string> GetRenderPipelineNames() const;
 
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"
@@ -466,24 +386,6 @@ namespace hgl
                 return static_cast<T*>(entity);
             }
 
-            /// Descriptor for creating a child entity with a TransformComponent.
-            struct ChildEntityDesc
-            {
-                const char *name     = nullptr;
-                glm::vec3   position = glm::vec3(0.0f);
-                glm::quat   rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-                glm::vec3   scale    = glm::vec3(1.0f);
-                Mobility    mobility = Mobility::Movable;
-            };
-
-            /// Create a named child entity with a TransformComponent already set up.
-            /// Appends the new EntityID to out_entity_ids when provided.
-            /// Returns the TransformComponent via out_transform when provided.
-            Entity* CreateChildEntity(Entity *parent,
-                                      const ChildEntityDesc &desc,
-                                      std::vector<EntityID> *out_entity_ids = nullptr,
-                                      std::shared_ptr<TransformComponent> *out_transform = nullptr);
-
             /// Get entity by ID
             Entity* GetEntity(EntityID id)
             {
@@ -505,13 +407,6 @@ namespace hgl
             {
                 if (entity_manager)
                     entity_manager->DestroyEntity(id);
-            }
-
-            /// Get all alive entity IDs
-            void GetAllEntityIDs(std::vector<EntityID>& out_ids) const
-            {
-                if (entity_manager)
-                    entity_manager->GetAllEntities(out_ids);
             }
 
             /// Get all alive entity pointers
@@ -547,116 +442,14 @@ namespace hgl
             template<typename T, typename... Args>
             std::shared_ptr<T> RegisterTickSystem(Args&&... args)
             {
-                return RegisterTickSystemScoped<T>(SystemOwnershipScope::Auto, std::forward<Args>(args)...);
+                return RegisterSystem<T>(false, std::forward<Args>(args)...);
             }
 
             /// Register a render system
             template<typename T, typename... Args>
             std::shared_ptr<T> RegisterRenderSystem(Args&&... args)
             {
-                return RegisterRenderSystemScoped<T>(SystemOwnershipScope::Auto, std::forward<Args>(args)...);
-            }
-
-            template<typename T, typename... Args>
-            std::shared_ptr<T> RegisterTickSystemScoped(SystemOwnershipScope scope, Args&&... args)
-            {
-                if (!CanRegisterGameplaySystemInThisContext())
-                {
-                #if ULRE_ECS_DEBUG_API
-                    LogWarning("[ECS] Tick system registration rejected by context gate. context='%s' system_type='%s'",
-                               GetName().c_str(),
-                               typeid(T).name());
-                #endif
-                    return nullptr;
-                }
-
-                if (scope == SystemOwnershipScope::GlobalShared && context_role == ContextRole::LocalSubWorld)
-                {
-                #if ULRE_ECS_DEBUG_API
-                    LogWarning("[ECS] Tick system registration rejected by scope. context='%s' scope=GlobalShared system_type='%s'",
-                               GetName().c_str(),
-                               typeid(T).name());
-                #endif
-                    return nullptr;
-                }
-
-                if (scope == SystemOwnershipScope::LocalIsolated && context_role == ContextRole::RootShared)
-                {
-                #if ULRE_ECS_DEBUG_API
-                    LogWarning("[ECS] Tick system registration rejected by scope. context='%s' scope=LocalIsolated system_type='%s'",
-                               GetName().c_str(),
-                               typeid(T).name());
-                #endif
-                    return nullptr;
-                }
-
-                return RegisterSystem<T>(false, std::forward<Args>(args)...);
-            }
-
-            template<typename T, typename... Args>
-            std::shared_ptr<T> RegisterRenderSystemScoped(SystemOwnershipScope scope, Args&&... args)
-            {
-                if (scope == SystemOwnershipScope::GlobalShared && context_role == ContextRole::LocalSubWorld)
-                {
-                    ++rejected_render_system_registration_count;
-
-                #if ULRE_ECS_DEBUG_API
-                    if (!rejected_render_system_registration_logged)
-                    {
-                        rejected_render_system_registration_logged = true;
-                        LogWarning("[ECS] Render system registration rejected by scope. context='%s' scope=GlobalShared system_type='%s'",
-                                   GetName().c_str(),
-                                   typeid(T).name());
-                    }
-                #endif
-                    return nullptr;
-                }
-
-                if (scope == SystemOwnershipScope::LocalIsolated && context_role == ContextRole::RootShared)
-                {
-                    ++rejected_render_system_registration_count;
-
-                #if ULRE_ECS_DEBUG_API
-                    if (!rejected_render_system_registration_logged)
-                    {
-                        rejected_render_system_registration_logged = true;
-                        LogWarning("[ECS] Render system registration rejected by scope. context='%s' scope=LocalIsolated system_type='%s'",
-                                   GetName().c_str(),
-                                   typeid(T).name());
-                    }
-                #endif
-                    return nullptr;
-                }
-
-                if (!CanRegisterRenderSystemInThisContext())
-                {
-                    ++rejected_render_system_registration_count;
-
-                #if ULRE_ECS_DEBUG_API
-                    if (!rejected_render_system_registration_logged)
-                    {
-                        rejected_render_system_registration_logged = true;
-                        LogWarning("[ECS] Render system registration rejected before instantiate. context='%s' system_type='%s'",
-                                   GetName().c_str(),
-                                   typeid(T).name());
-                    }
-                #endif
-                    return nullptr;
-                }
-
                 return RegisterSystem<T>(true, std::forward<Args>(args)...);
-            }
-
-            template<typename T>
-            bool SetSystemEnabled(bool enabled)
-            {
-                return SetSystemEnabledByKey(typeid(T).hash_code(), enabled);
-            }
-
-            template<typename T>
-            bool RemoveSystem()
-            {
-                return RemoveSystemByKey(typeid(T).hash_code());
             }
 
              /// Get a system by type
@@ -682,29 +475,11 @@ namespace hgl
             /// Set enabled state for all systems of a given render element type
             void SetElementTypeSystemsEnabled(const std::string& element_type, bool enabled);
 
-            /// Get tracked component count for a system group
-            uint32_t GetSystemGroupComponentCount(const std::string& group_name) const;
-
             /// Check whether the system group installer has already run for this context
             bool IsSystemGroupInstalled(const std::string& group_name) const;
 
             /// Mark a system group as installed in this context (idempotent)
             void MarkSystemGroupInstalled(const std::string& group_name);
-
-            /// Get all known system group names (seen from component registration)
-            void GetKnownSystemGroups(std::vector<std::string>& out_group_names) const;
-
-            /// Disable all groups whose tracked component count is zero (systems stay resident)
-            void DisableUnusedSystemGroups();
-
-            /// Disable a specific system group (systems stay resident)
-            bool DisableSystemGroup(const std::string& group_name);
-
-            /// Cleanup a specific system group. When remove_systems=true, unregister the group's systems.
-            bool CleanupSystemGroup(const std::string& group_name, bool remove_systems = false);
-
-            /// Cleanup all unused groups (component count == 0). Returns cleaned group count.
-            size_t CleanupUnusedSystemGroups(bool remove_systems = false);
 
         public:
             RenderFrameCache& GetRenderFrameCache() { return render_frame_cache; }
@@ -712,15 +487,6 @@ namespace hgl
 
             /// Check if world is active
             bool IsActive() const { return active; }
-
-            /// Gate for local render-system registration. Used by hybrid SubWorld policy.
-            bool CanRegisterRenderSystemInThisContext() const { return allow_render_system_registration; }
-            bool CanRegisterGameplaySystemInThisContext() const { return true; }
-
-            /// Context role used by scoped ownership registration checks.
-            void SetContextRole(ContextRole value) { context_role = value; }
-            ContextRole GetContextRole() const { return context_role; }
-            bool IsLocalSubWorldContext() const { return context_role == ContextRole::LocalSubWorld; }
 
             /// 获取指定类型的组件列表（自动清理已失效的弱引用）
             template<typename T>

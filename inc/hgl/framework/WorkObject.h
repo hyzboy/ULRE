@@ -16,19 +16,6 @@ namespace hgl
         class Camera;
         struct ViewportInfo;
         struct CameraInfo;
-
-        class Texture2D;
-        class Texture2DArray;
-        class TextureCube;
-        class Geometry;
-        class GeometryCreater;
-        class Sampler;
-        class Texture;
-
-        namespace mtl
-        {
-            class ShaderBuildContext;
-        }
     }
 
     /**
@@ -48,7 +35,6 @@ namespace hgl
 
         graph::RenderContext *render_context=nullptr;
 
-        bool destroy_flag=false;
         bool render_dirty=true;
         Color4f clear_color{0,0,0,1};
 
@@ -85,11 +71,6 @@ namespace hgl
             auto *gc = GetGraphicsContext();
             return gc ? gc->GetManager<T>() : nullptr;
         }
-        graph::VulkanDevAttr *      GetDevAttr          ()
-        {
-            auto *device = GetDevice();
-            return device ? device->GetDevAttr() : nullptr;
-        }
 
         const VkExtent2D *          GetExtent           ();
         const graph::ViewportInfo * GetViewportInfo     ()const;
@@ -103,8 +84,7 @@ namespace hgl
 
     public:
 
-        const   bool IsDestroy  ()const{return destroy_flag;}
-                void MarkDestory(){destroy_flag=true;}
+        const   bool IsDestroy  ()const{return false;}   ///< 退出机制未实现，恒 false（见 WorkManager::Run）
 
         const   bool IsRenderDirty  ()const{return render_dirty;}
                 void MarkRenderDirty(){render_dirty=true;}
@@ -127,8 +107,6 @@ namespace hgl
 
         virtual bool Init()=0;
 
-        virtual void OnResize(const VkExtent2D &){}
-
         virtual void Tick(double);
 
         virtual void Render(double delta_time);
@@ -137,4 +115,4 @@ namespace hgl
 
         // Use RenderContext/GraphicsContext directly for resource creation.
     };//class WorkObject
-}//namespcae hgl
+}//namespace hgl

@@ -55,9 +55,7 @@ set(ECS_SYS_02_TickTransform_TransformSystem_FILES
     components/TransformComponent.cpp
 )
 
-set(ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/tick/BoundingBoxUpdateSystem.h
-    systems/tick/BoundingBoxUpdateSystem.cpp
+set(ECS_SYS_03_TickTransform_BoundingBoxComponent_FILES
     ${ECS_INCLUDE_PATH}/components/BoundingBoxComponent.h
     components/BoundingBoxComponent.cpp
 )
@@ -256,7 +254,7 @@ set(ECS_SOURCE
     ${ECS_SYS_00_RenderSystemCore_FILES}
     ${ECS_SYS_01_TickInput_InputSystem_FILES}
     ${ECS_SYS_02_TickTransform_TransformSystem_FILES}
-    ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES}
+    ${ECS_SYS_03_TickTransform_BoundingBoxComponent_FILES}
     ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES}
     ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
     ${ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES}
@@ -293,7 +291,7 @@ source_group("ECS\\Core" FILES ${ECS_CORE_FILES})
 source_group("ECS\\Systems\\00 RenderSystemCore" FILES ${ECS_SYS_00_RenderSystemCore_FILES})
 source_group("ECS\\Systems\\01 TickInput_InputSystem" FILES ${ECS_SYS_01_TickInput_InputSystem_FILES})
 source_group("ECS\\Systems\\02 TickTransform_TransformSystem" FILES ${ECS_SYS_02_TickTransform_TransformSystem_FILES})
-source_group("ECS\\Systems\\03 TickTransform_BoundingBoxUpdateSystem" FILES ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES})
+source_group("ECS\\Systems\\03 TickTransform_BoundingBoxComponent" FILES ${ECS_SYS_03_TickTransform_BoundingBoxComponent_FILES})
 source_group("ECS\\Systems\\04 TickTransform_VisibilitySystem" FILES ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES})
 source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickCamera_CameraSystem_FILES})
 source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainAcquireSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES})

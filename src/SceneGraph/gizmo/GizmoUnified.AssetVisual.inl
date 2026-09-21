@@ -1,3 +1,32 @@
+static hgl::ecs::Entity *CreateChildEntityWithTransform(hgl::ecs::ECSContext *world,
+                                                        hgl::ecs::Entity *parent,
+                                                        const char *name,
+                                                        const glm::vec3 &position,
+                                                        const glm::quat &rotation,
+                                                        const glm::vec3 &scale,
+                                                        std::vector<hgl::ecs::EntityID> *out_entity_ids,
+                                                        std::shared_ptr<hgl::ecs::TransformComponent> *out_transform)
+{
+    auto *entity = world->CreateEntity<hgl::ecs::Entity>(name);
+    if (!entity)
+        return nullptr;
+
+    auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+    if (!transform)
+        return nullptr;
+
+    transform->SetLocalTRS(position, rotation, scale);
+    transform->SetParent(parent->GetEntityID());
+
+    if (out_transform)
+        *out_transform = transform;
+
+    if (out_entity_ids)
+        out_entity_ids->push_back(entity->GetEntityID());
+
+    return entity;
+}
+
 static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
                                                   hgl::ecs::Entity *parent,
                                                   const char *name,
@@ -9,12 +38,14 @@ static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
     if (!gizmo || !parent)
         return nullptr;
 
-    hgl::ecs::ECSContext::ChildEntityDesc desc;
-    desc.name     = name ? name : "GizmoAssetVisual";
-    desc.position = glm::vec3(position);
-    desc.rotation = rotation;
-    desc.scale    = glm::vec3(scale);
-    return gizmo->world->CreateChildEntity(parent, desc, &gizmo->asset_visual_entity_ids, out_transform);
+    return CreateChildEntityWithTransform(gizmo->world,
+                                          parent,
+                                          name ? name : "GizmoAssetVisual",
+                                          glm::vec3(position),
+                                          rotation,
+                                          glm::vec3(scale),
+                                          &gizmo->asset_visual_entity_ids,
+                                          out_transform);
 }
 
 struct PrimitiveDesc
@@ -73,9 +104,14 @@ static bool MakeAndAttachPrimitive(std::vector<GizmoVisualPrimitive> &primitives
                                     std::vector<hgl::ecs::EntityID> &entity_ids,
                                     const PrimitiveDesc &desc)
 {
-    hgl::ecs::ECSContext::ChildEntityDesc d;
-    d.name = desc.name; d.position = glm::vec3(desc.pos); d.rotation = desc.rot; d.scale = glm::vec3(desc.scale);
-    auto *entity = world->CreateChildEntity(parent, d, &entity_ids, desc.out_transform);
+    auto *entity = CreateChildEntityWithTransform(world,
+                                                  parent,
+                                                  desc.name,
+                                                  glm::vec3(desc.pos),
+                                                  desc.rot,
+                                                  glm::vec3(desc.scale),
+                                                  &entity_ids,
+                                                  desc.out_transform);
     if (!entity)
         return false;
     return AttachAssetModePrimitive(primitives, entity, desc.shape, desc.color, desc.group_id);

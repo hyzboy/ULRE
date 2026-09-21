@@ -230,11 +230,6 @@ namespace hgl
             return stats;
         }
 
-        RenderGraph CreateAdaptiveRenderGraph(ECSContext* context)
-        {
-            return CreateAdaptiveRenderGraph(context, GatherSceneStats(context));
-        }
-
         RenderGraph CreateAdaptiveRenderGraph(ECSContext* context, const SceneStats& stats)
         {
             RenderGraph graph;
@@ -283,46 +278,6 @@ namespace hgl
             // - Components declare their group via Component::GetSystemGroupName()
             // - Systems declare their group via System::SetRenderElementType()
             // - RenderGraph builds passes from the name mapping at runtime
-
-            return graph;
-        }
-
-        RenderGraph CreateDefaultLinearGraph(ECSContext* context)
-        {
-            RenderGraph graph;
-
-            auto& registry = SystemGroupRegistry::Get();
-            EnsureSystemGroupsRegistered(context);
-
-            // Enable all registered groups for default graph (full compatibility)
-            const auto all_groups = registry.GetAllGroups();
-            for (const auto& group : all_groups)
-            {
-                registry.SetGroupEnabled(group.name, true);
-                if (context)
-                {
-                    context->SetElementTypeSystemsEnabled(group.name, true);
-                }
-            }
-
-//            MLogDebug(RenderGraph,"[RenderGraph] CreateDefaultLinearGraph: All groups ENABLED");
-
-            // Build passes from all enabled groups
-            auto enabled_groups = registry.GetEnabledGroups();
-            for (const auto& group : enabled_groups)
-            {
-//                MLogDebug(RenderGraph,"[RenderGraph] Adding pass for group '%s' (phases %d-%d)",group.name.c_str(),static_cast<int>(group.startPhase),static_cast<int>(group.endPhase));
-
-                graph.Add(RenderGraph::Pass(
-                    group.startPhase,
-                    group.endPhase,
-                    nullptr,
-                    true,  // enabled
-                    true,  // run Update()
-                    true,  // submit transforms
-                    true   // run Render()
-                ));
-            }
 
             return graph;
         }

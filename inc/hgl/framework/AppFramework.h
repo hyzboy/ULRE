@@ -41,9 +41,8 @@ namespace hgl
      * AppFramework app("MyApp");
      * app.Init(1280, 720);
      * WorkManager wm(&app);
-    * auto world = std::shared_ptr<ecs::ECSContext>(app.GetECSContext(), [](ecs::ECSContext*){});
-    * MyWorkObject *wo = new MyWorkObject(world);
-    * wm.Run(wo);
+     * MyWorkObject *wo = new MyWorkObject();   // 经 RunFramework 创建时由框架注入 ECSContext
+     * wm.Run(wo);
      * ```
      */
     class AppFramework : public io::WindowEvent
@@ -64,9 +63,18 @@ namespace hgl
 
     protected:
 
-        math::Vector2i mouse_coord;
-
         virtual io::EventProcResult OnEvent(const io::EventHeader &header, const uint64 data) override;
+
+        /// [框架内部接线] 仅供 AppFramework 初始化/resize 时使用。
+        /// 应用代码要取"当前渲染目标"，请统一用 ecs::ECSContext::GetRenderTarget()（唯一权威 getter）。
+        graph::SwapchainRenderTarget *GetSwapchainRenderTarget()
+        {
+            return sc_module ? sc_module->GetRenderTarget() : nullptr;
+        }
+        const graph::SwapchainRenderTarget *GetSwapchainRenderTarget() const
+        {
+            return sc_module ? sc_module->GetRenderTarget() : nullptr;
+        }
 
     public:
         explicit AppFramework(const OSString &name);
@@ -103,36 +111,12 @@ namespace hgl
 
     public:
         // Application state access
-        const OSString &GetAppName() const { return app_name; }
         Window *GetWindow() const { return win; }
-        graph::VulkanInstance *GetInstance() const { return inst; }
         graph::VulkanDevice *GetDevice() const { return device; }
-        const math::Vector2i &GetMouseCoord() const { return mouse_coord; }
-
-        // Graphics context access
-        graph::GraphicsContext *GetGraphicsContext() { return graphics_context; }
-        const graph::GraphicsContext *GetGraphicsContext() const { return graphics_context; }
-
-        // Swapchain access
-        graph::SwapchainModule *GetSwapchainModule() { return sc_module; }
-
-        /// [框架内部接线] 仅供 AppFramework/WorkManager 初始化时使用。
-        /// 应用代码要取"当前渲染目标"，请统一用 ecs::ECSContext::GetRenderTarget()（唯一权威 getter）。
-        graph::SwapchainRenderTarget *GetSwapchainRenderTarget()
-        {
-            return sc_module ? sc_module->GetRenderTarget() : nullptr;
-        }
-        const graph::SwapchainRenderTarget *GetSwapchainRenderTarget() const
-        {
-            return sc_module ? sc_module->GetRenderTarget() : nullptr;
-        }
 
         // ECS access
         ecs::ECSContext *GetECSContext() { return default_ecs_context; }
         const ecs::ECSContext *GetECSContext() const { return default_ecs_context; }
-
-        graph::RenderContext *GetRenderContext() { return render_context.get(); }
-        const graph::RenderContext *GetRenderContext() const { return render_context.get(); }
     };
 
 } // namespace hgl

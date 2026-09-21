@@ -103,4 +103,4 @@ namespace hgl
     }
 
     // Resource helpers removed. Use RenderContext/GraphicsContext directly.
-}//namespcae hgl
+}//namespace hgl

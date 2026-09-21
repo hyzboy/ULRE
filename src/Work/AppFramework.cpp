@@ -134,18 +134,6 @@ namespace hgl
             }
         }
 
-        // Track mouse coords (for legacy compatibility)
-        if (header.type == io::InputEventSource::Mouse)
-        {
-            if (io::MouseAction(header.id) == io::MouseAction::Move)
-            {
-                const io::MouseEventData *med = (const io::MouseEventData *)&data;
-
-                mouse_coord.x = med->x;
-                mouse_coord.y = med->y;
-            }
-        }
-
         return io::WindowEvent::OnEvent(header, data);
     }
 
