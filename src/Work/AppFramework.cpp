@@ -122,18 +122,11 @@ namespace hgl
 
     io::EventProcResult AppFramework::OnEvent(const io::EventHeader &header, const uint64 data)
     {
-        // Forward events to ECS InputSystem
-        if (default_ecs_context)
-        {
-            auto input_sys = default_ecs_context->GetSystem<ecs::InputSystem>();
-            if (input_sys)
-            {
-                auto *event_dispatcher = input_sys->GetEventDispatcher();
-                if (event_dispatcher)
-                    event_dispatcher->OnEvent(header, data);
-            }
-        }
-
+        // InputSystem 的事件分发只走一条路径：RegisterDefaultEcsSystems 时已把
+        // InputSystem（自身即 dispatcher）AddChildDispatcher 挂到本对象
+        //（下方 WindowEvent::OnEvent → EventDispatcher::OnEvent 会遍历 children）。
+        // 此处不再手工转发——双路径会让每个输入事件投递两次，实测滚轮
+        // 等累加量（wheel_delta += ...）翻倍（注入 10 条滚轮 → InputSystem 收 20 次）。
         return io::WindowEvent::OnEvent(header, data);
     }
 
