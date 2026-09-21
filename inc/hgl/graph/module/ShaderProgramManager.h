@@ -49,7 +49,7 @@ private:
 
     VkDescriptorSetLayout bindless_layout_ = VK_NULL_HANDLE;   ///< 全局 Bindless Texture Set 布局（Set 1）
     VkDescriptorSetLayout scene_layout_    = VK_NULL_HANDLE;   ///< 全局 Scene UBO Set 布局（Set 0，设备级）
-    VkPipelineLayout shared_pipeline_layout_ = VK_NULL_HANDLE;  ///<全材质共享 pipeline layout 单例（惰建，不拥有）
+    VkPipelineLayout shared_pipeline_layout_ = VK_NULL_HANDLE;  ///<全材质共享 pipeline layout 单例（惰建，由本模块拥有，Release() 时销毁）
 
     ShaderProgramManager(GraphicsContext *);
     ~ShaderProgramManager()=default;
@@ -101,22 +101,7 @@ public: //Release
 
 public: // Override Release from GraphModule - cleanup all resources
 
-    void Release() override
-    {
-        // 清理所有材质
-        if (rm_material.GetCount() > 0)
-            rm_material.Clear();
-
-        shader_program_cache.Clear();
-
-        ValueArray<ShaderModule *> shader_modules;
-        shader_module_cache.GetValues(shader_modules);
-        for (int i = 0; i < shader_modules.GetCount(); ++i)
-        {
-            delete shader_modules[i];
-        }
-        shader_module_cache.Clear();
-    }
+    void Release() override;
 
 public: //Shader
 

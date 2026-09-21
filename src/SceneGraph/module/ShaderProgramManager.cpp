@@ -311,6 +311,34 @@ GRAPH_MODULE_CONSTRUCT(ShaderProgramManager)
     (void)mtl::GetMaterialDefinitionFileRegistry();
 }
 
+void ShaderProgramManager::Release()
+{
+    // 清理所有材质
+    if (rm_material.GetCount() > 0)
+        rm_material.Clear();
+
+    shader_program_cache.Clear();
+
+    ValueArray<ShaderModule *> shader_modules;
+    shader_module_cache.GetValues(shader_modules);
+    for (int i = 0; i < shader_modules.GetCount(); ++i)
+    {
+        delete shader_modules[i];
+    }
+    shader_module_cache.Clear();
+
+    // 共享全局 pipeline layout 由本模块惰建拥有，材质（及以其创建的管线）
+    // 清理完毕后在此销毁；否则会泄漏至 vkDestroyDevice（VUID-05137）。
+    // VkPipelineLayout 与 VkPipeline 同为 VkDevice 的 child，先于管线销毁合法。
+    if (shared_pipeline_layout_ != VK_NULL_HANDLE)
+    {
+        if (VulkanDevice *device = GetDevice())
+            vkDestroyPipelineLayout(device->GetDevice(), shared_pipeline_layout_, nullptr);
+
+        shared_pipeline_layout_ = VK_NULL_HANDLE;
+    }
+}
+
 const ShaderModule *ShaderProgramManager::CreateShaderModule(const AnsiString &sm_name,const mtl::ShaderCreateInfo *sci)
 {
     VulkanDevice *device = GetDevice();
