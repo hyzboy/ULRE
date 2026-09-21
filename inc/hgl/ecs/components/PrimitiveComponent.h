@@ -115,8 +115,10 @@ namespace hgl::ecs
 
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
-        hgl::graph::Pipeline* resolvedRuntimePipeline = nullptr; // (not owned)
-        hgl::graph::RenderPass* resolvedRuntimeRenderPass = nullptr; // (not owned)
+        // 每个 RenderPass（≈每个 RenderTarget）各自持有解析出的管线——同一世界
+        // 被 RenderTo 到多个 RT（如 ShadowMap 的 depth-only 离屏 Pass）时，
+        // 各 RT 使用各自格式匹配的管线，互不驱逐。Pipeline 归 RenderPass 所有。
+        hgl::UnorderedMap<hgl::graph::RenderPass *, hgl::graph::Pipeline *> resolvedRuntimePipelineMap;
         void InvalidateResolvedRuntimePipeline();
 
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
@@ -174,15 +176,21 @@ namespace hgl::ecs
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
         void ClearOverridePipeline() { overridePipeline = nullptr; }
 
-        void SetResolvedRuntimePipeline(hgl::graph::Pipeline *p, hgl::graph::RenderPass *rp = nullptr)
+        void SetResolvedRuntimePipeline(hgl::graph::RenderPass *rp, hgl::graph::Pipeline *p)
         {
-            resolvedRuntimePipeline = p;
-            resolvedRuntimeRenderPass = rp;
+            if (!rp || !p)
+                return;
+
+            if (hgl::graph::Pipeline **existing = resolvedRuntimePipelineMap.GetValuePointer(rp))
+                *existing = p;
+            else
+                resolvedRuntimePipelineMap.Add(rp, p);
         }
 
-        hgl::graph::Pipeline* GetResolvedRuntimePipeline() const { return resolvedRuntimePipeline; }
-        hgl::graph::RenderPass* GetResolvedRuntimeRenderPass() const { return resolvedRuntimeRenderPass; }
-        void ClearResolvedRuntimePipeline() { resolvedRuntimePipeline = nullptr; resolvedRuntimeRenderPass = nullptr; }
+        bool HasResolvedRuntimePipeline(hgl::graph::RenderPass *rp) const
+        {
+            return rp && resolvedRuntimePipelineMap.ContainsKey(rp);
+        }
 
         void SetTransformPolicySpec(const TransformPolicySpec& spec) { transformPolicySpec = spec; }
         const TransformPolicySpec& GetTransformPolicySpec() const { return transformPolicySpec; }
@@ -220,8 +228,8 @@ namespace hgl::ecs
         // ShaderProgram access (returns override if set, otherwise descriptor-bound material)
         hgl::graph::ShaderProgram* GetShaderProgram() const;
 
-        // Pipeline access: override → runtime resolved
-        hgl::graph::Pipeline* GetPipeline() const;
+        // Pipeline access: override → runtime resolved (per render pass)
+        hgl::graph::Pipeline* GetPipelineForRenderPass(hgl::graph::RenderPass *render_pass) const;
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;

@@ -1037,7 +1037,7 @@ namespace hgl::ecs
                 continue;
 
             auto* shader_prog = item->GetShaderProgram();
-            auto* pipeline = item->GetPipeline();
+            auto* pipeline = item->GetPipeline(current_render_pass);
             auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
             auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
             const std::shared_ptr<MaterialComponent> material_comp = prim_item ? prim_item->GetMaterialComponent() : nullptr;

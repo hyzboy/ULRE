@@ -58,7 +58,7 @@ namespace hgl::ecs
 
         // ShaderProgram batching interface
         hgl::graph::ShaderProgram* GetShaderProgram() const override;
-        hgl::graph::Pipeline* GetPipeline() const override;
+        hgl::graph::Pipeline* GetPipeline(hgl::graph::RenderPass* render_pass) const override;
         const hgl::graph::GeometryDataBuffer *GetGeometryDataBuffer() const override;
         const hgl::graph::GeometryDrawRange *GetGeometryDrawRange() const override;
         TransformPolicySpec GetTransformPolicySpec() const override;

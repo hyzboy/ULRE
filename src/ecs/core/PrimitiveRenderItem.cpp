@@ -49,9 +49,9 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetShaderProgram() : nullptr;
     }
 
-    hgl::graph::Pipeline* PrimitiveRenderItem::GetPipeline() const
+    hgl::graph::Pipeline* PrimitiveRenderItem::GetPipeline(hgl::graph::RenderPass* render_pass) const
     {
-        return primitiveComp ? primitiveComp->GetPipeline() : nullptr;
+        return primitiveComp ? primitiveComp->GetPipelineForRenderPass(render_pass) : nullptr;
     }
 
     const hgl::graph::GeometryDataBuffer *PrimitiveRenderItem::GetGeometryDataBuffer() const

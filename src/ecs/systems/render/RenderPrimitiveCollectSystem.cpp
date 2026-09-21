@@ -624,13 +624,9 @@ namespace hgl::ecs
         if (!render_pass)
             return false;
 
-        if (primitive_comp->GetResolvedRuntimePipeline()
-         && primitive_comp->GetResolvedRuntimeRenderPass() != render_pass)
-        {
-            primitive_comp->ClearResolvedRuntimePipeline();
-        }
-
-        if (primitive_comp->GetResolvedRuntimePipeline())
+        // 每个 RenderPass 各自有解析好的管线（跨 RT 不互相驱逐）；
+        // 该 Pass 已解析过则直接复用。
+        if (primitive_comp->HasResolvedRuntimePipeline(render_pass))
             return true;
 
         graph::mtl::MaterialRecipe effective_recipe = material_comp->cached_effective_recipe;
@@ -651,7 +647,7 @@ namespace hgl::ecs
             return false;
         }
 
-        primitive_comp->SetResolvedRuntimePipeline(resolved_pipeline, render_pass);
+        primitive_comp->SetResolvedRuntimePipeline(render_pass, resolved_pipeline);
         return true;
     }
 

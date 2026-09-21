@@ -562,8 +562,7 @@ namespace hgl::ecs
 
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()
     {
-        resolvedRuntimePipeline = nullptr;
-        resolvedRuntimeRenderPass = nullptr;
+        resolvedRuntimePipelineMap.Clear();
     }
 
     hgl::graph::ShaderProgram* PrimitiveComponent::GetShaderProgram() const
@@ -572,13 +571,16 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    hgl::graph::Pipeline* PrimitiveComponent::GetPipeline() const
+    hgl::graph::Pipeline* PrimitiveComponent::GetPipelineForRenderPass(hgl::graph::RenderPass* render_pass) const
     {
         if (overridePipeline)
             return overridePipeline;
 
-        // Return the pipeline resolved during collect/prepare phases.
-        return resolvedRuntimePipeline;
+        // Return the pipeline resolved for THIS render pass during collect/prepare phases.
+        // 注意：GetValuePointer 的 const 重载返回 const V*，此处需要可变指针语义，
+        // 但 map 内容并不修改，用非 const this 的映射读取即可。
+        auto *p = const_cast<PrimitiveComponent *>(this)->resolvedRuntimePipelineMap.GetValuePointer(render_pass);
+        return p ? *p : nullptr;
     }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const
@@ -716,8 +718,7 @@ namespace hgl::ecs
         ResetMaterialRecipe(materialRecipeOverride);
         hasMaterialRecipeOverride = false;
         ClearMaterialAuthoringResources();
-        resolvedRuntimePipeline = nullptr;
-        resolvedRuntimeRenderPass = nullptr;
+        resolvedRuntimePipelineMap.Clear();
         render_item_descriptor = {};
         ++material_authored_generation;
     }

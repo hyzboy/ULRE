@@ -517,6 +517,15 @@ namespace hgl
             graph::IRenderTarget *saved_target = render_target;
             hgl::Color4f          saved_clear  = clear_color;
 
+            // 必须同步 RenderTargetSystem：它缓存的 RT 若不跟随切换，
+            // RenderContext::GetCurrentRenderTarget() 在本 Pass 内仍返回主 RT，
+            // 渲染期管线解析会按主 RenderPass 键控，导致把主管线
+            // （带颜色附件）画进 depth-only 离屏 Pass（VUID-06179/08914）。
+            auto rts = GetSystem<RenderTargetSystem>();
+            graph::IRenderTarget *rts_saved = rts ? rts->GetRenderTarget() : nullptr;
+            if (rts)
+                rts->SetRenderTarget(rt);
+
             render_target = rt;
             clear_color   = clear;
 
@@ -532,6 +541,9 @@ namespace hgl
 
             render_target = saved_target;
             clear_color   = saved_clear;
+
+            if (rts)
+                rts->SetRenderTarget(rts_saved ? rts_saved : saved_target);
 
             return ok;
         }

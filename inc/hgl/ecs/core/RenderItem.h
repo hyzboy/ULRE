@@ -14,6 +14,7 @@ namespace hgl
         class ShaderProgram;
         class DescriptorBindingSet;
         class Pipeline;
+        class RenderPass;
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
     }
@@ -56,7 +57,9 @@ namespace hgl::ecs
 
         // For material batching support
         virtual hgl::graph::ShaderProgram* GetShaderProgram() const = 0;
-        virtual hgl::graph::Pipeline* GetPipeline() const = 0;
+        // 管线按 RenderPass 维度解析：同一世界渲染到多个 RT（如 ShadowMap 的
+        // depth-only 离屏 Pass）时，各 RT 使用各自格式匹配的管线。
+        virtual hgl::graph::Pipeline* GetPipeline(hgl::graph::RenderPass* render_pass) const = 0;
         virtual const hgl::graph::GeometryDataBuffer *GetGeometryDataBuffer() const = 0;
         virtual const hgl::graph::GeometryDrawRange *GetGeometryDrawRange() const = 0;
 
