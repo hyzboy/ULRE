@@ -109,7 +109,7 @@ VertexDataManager *Geometry::GetVDM()const
     return geometry_data->GetVDM();
 }
 
-bool Geometry::RegisterMeshDrawParams(MeshDrawParamsPool *pool, VulkanDevice *dev)
+bool Geometry::RegisterMeshDrawParams(GlobalSSBOBufferRegistry *pool, VulkanDevice *dev)
 {
     if (!pool || !dev || !geometry_data)
         return false;

@@ -149,7 +149,7 @@ namespace hgl::graph
 
         // Gizmo 驻留资源(VDM/GeometryCreater/颜色行租约)挂在文件级 static 上,
         // 无人释放会在 static 析构(晚于本函数)时把行还回已销毁的
-        // MaterialSSBOBufferRegistry 行池 —— 必须趁设备与模块还活着时释放。
+        // GlobalSSBOBufferRegistry 行池 —— 必须趁设备与模块还活着时释放。
         ForceReleaseGizmoSystemResources();
 
         std::cout << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager" << std::endl;
