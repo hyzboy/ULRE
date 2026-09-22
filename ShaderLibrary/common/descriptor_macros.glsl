@@ -48,6 +48,10 @@
 #define GLOBAL_ADDRESSES_BINDING 4
 #endif
 
+#ifndef SHADOW_BINDING
+#define SHADOW_BINDING 5
+#endif
+
 #ifndef BINDLESS_SET
 #define BINDLESS_SET 1
 #endif

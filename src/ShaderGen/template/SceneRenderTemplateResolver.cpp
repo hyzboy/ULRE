@@ -17,7 +17,7 @@ namespace hgl::graph::mtl
             "lighting/direct_cook_torrance_pbr.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::ShadowProvider,
-            "identity_shadow", "shadow/identity.glsl");
+            "pcf_shadow", "shadow/pcf_shadow.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::AmbientLightProvider,
             "indirect_sky_ambient",

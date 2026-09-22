@@ -36,7 +36,7 @@ vec3 EvalDirectLighting(
     vec3 diffuse  = kd * lighting.baseColor / 3.14159265 * NdotL;
     vec3 specular = D * G * F / max(4.0 * NdotV * NdotL, 1e-4) * NdotL;
 
-    return (diffuse + specular) * lighting.mainLightColor;
+    return (diffuse + specular) * lighting.mainLightColor * lighting.shadowFactor;
 }
 
 #endif // DIRECT_COOK_TORRANCE_PBR_GLSL

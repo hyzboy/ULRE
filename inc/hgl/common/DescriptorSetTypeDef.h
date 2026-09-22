@@ -16,15 +16,17 @@ namespace hgl::graph
         Viewport=2,      ///< 视口 UBO
         ColorPalette=3,  ///< 顶点调色板 UBO
         GlobalAddresses=4, ///< 全局地址 UBO（MeshDrawParams 等池基址）
+        Shadow=5,        ///< 阴影参数 UBO（光照空间 VP 矩阵、PCF 参数等）
 
-        ENUM_CLASS_RANGE(Camera,GlobalAddresses)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
+        ENUM_CLASS_RANGE(Camera,Shadow)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
     };
 
     /// ABI 锚点：以下数值被 ShaderLibrary/common/descriptor_macros.glsl 与运行时绑定表依赖，
     /// 变更即破坏全部已编译着色器；static_assert 保证插入新条目引发的静默重编号在编译期暴露。
     static_assert(int(SceneBinding::Camera)==0
                && int(SceneBinding::Viewport)==2
-               && int(SceneBinding::GlobalAddresses)==4,
+               && int(SceneBinding::GlobalAddresses)==4
+               && int(SceneBinding::Shadow)==5,
                   "Scene UBO binding ABI changed");
 
     /// ── 兼容别名：既有调用点继续使用 kXxx 常量名，数值真源已上收至上述枚举 ──
@@ -33,6 +35,7 @@ namespace hgl::graph
     constexpr const int kSceneBindingViewport        = int(SceneBinding::Viewport);      ///< 视口 UBO
     constexpr const int kSceneBindingColorPalette    = int(SceneBinding::ColorPalette);  ///< 顶点调色板 UBO
     constexpr const int kSceneBindingGlobalAddresses = int(SceneBinding::GlobalAddresses); ///< 全局地址 UBO
+    constexpr const int kSceneBindingShadow          = int(SceneBinding::Shadow);        ///< 阴影参数 UBO
 
     enum class DescriptorSetType:int
     {
@@ -105,6 +108,7 @@ namespace hgl::graph
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "VIEWPORT_BINDING",          nullptr,   int(SceneBinding::Viewport),               nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "COLOR_PALETTE_BINDING",     nullptr,   int(SceneBinding::ColorPalette),           nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "GLOBAL_ADDRESSES_BINDING",  nullptr,   int(SceneBinding::GlobalAddresses),        nullptr},
+        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "SHADOW_BINDING",            nullptr,   int(SceneBinding::Shadow),                 nullptr},
 
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Bindless, "BINDLESS_SET",              nullptr,                                   -1, nullptr},
     };

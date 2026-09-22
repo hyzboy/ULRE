@@ -82,4 +82,13 @@ layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesI
     uint64_t addr_draw_item_ids;
 } global_addresses;
 
+layout(set=SCENE_SET, binding=SHADOW_BINDING) uniform ShadowInfo
+{
+    mat4 shadow_vp;
+    vec4 shadow_params;
+    vec2 shadow_map_size;
+    vec2 inv_shadow_map_size;
+    uvec4 shadow_tex;
+} shadow;
+
 #endif // HGL_SCENE_UBO_GLSL

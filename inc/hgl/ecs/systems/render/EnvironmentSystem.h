@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/graph/ubo/SkyInfo.h>
+#include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 
 namespace hgl
@@ -44,6 +45,13 @@ namespace hgl
 
             void SetSkyInfo(const graph::SkyInfo &info, bool immediate = true);
             void MarkSkyDirty();
+
+            // 编辑 ShadowInfo
+            graph::ShadowInfo *EditShadowInfo();
+            const graph::ShadowInfo *GetShadowInfo() const;
+
+            void SetShadowInfo(const graph::ShadowInfo &info, bool immediate = true);
+            void MarkShadowDirty();
         };
     }//namespace ecs
 }//namespace hgl

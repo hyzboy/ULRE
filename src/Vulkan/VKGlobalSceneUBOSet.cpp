@@ -66,14 +66,16 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
         bindings[4].descriptorCount = 1;
         bindings[4].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // PARTIALLY_BOUND：允许未写入的 binding（如 palette/sky）保持为空而不触发校验错误。
-        VkDescriptorBindingFlags binding_flags[kBindingCount] = {
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
-        };
+        // binding=5 : shadow
+        bindings[5].binding         = uint32_t(kSceneBindingShadow);
+        bindings[5].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        bindings[5].descriptorCount = 1;
+        bindings[5].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
+
+        // PARTIALLY_BOUND：允许未写入的 binding（如 palette/sky/shadow）保持为空而不触发校验错误。
+        VkDescriptorBindingFlags binding_flags[kBindingCount];
+        for (uint32_t i = 0; i < kBindingCount; ++i)
+            binding_flags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
 
         VkDescriptorSetLayoutBindingFlagsCreateInfo flags_ci{};
         flags_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;

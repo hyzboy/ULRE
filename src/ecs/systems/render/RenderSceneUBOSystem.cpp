@@ -345,8 +345,32 @@ namespace hgl::ecs
         return env_manager->GetSkyUBO(profile_id);
     }
 
-    // 全局 Scene UBO 描述符集更新：一帧写一次（camera=0/sky=1/viewport=2/palette=3）。
-    // camera/viewport 为所有材质必需；sky 与 color_palette 为可选（布局已带
+    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveShadowUBO()
+    {
+        if (!context)
+            return nullptr;
+
+        graph::GraphicsContext *graphics_context = nullptr;
+        if (auto *rc = context->GetRenderContext())
+            graphics_context = rc->GetGraphicsContext();
+        if (!graphics_context)
+            graphics_context = context->GetGraphicsContext();
+        if (!graphics_context)
+            return nullptr;
+
+        auto *env_manager = graphics_context->GetEnvironmentManager();
+        if (!env_manager)
+            return nullptr;
+
+        graph::EnvProfileID profile_id = graph::kEnvProfileDefault;
+        if (auto *rt = context->GetRenderTarget())
+            profile_id = rt->GetEnvironmentProfile();
+
+        return env_manager->GetShadowUBO(profile_id);
+    }
+
+    // 全局 Scene UBO 描述符集更新：一帧写一次（camera=0/sky=1/viewport=2/palette=3/global_addresses=4/shadow=5）。
+    // camera/viewport 为所有材质必需；sky/shadow 与 color_palette 为可选（布局已带
     // PARTIALLY_BOUND 位，未静态使用的 binding 允许为空）。palette 由
     // LineRenderPipeline 等在初始化时写入 binding=3。
     // （绑定时代死段——per-material apply_requirement/MP/批覆盖——已随
@@ -359,6 +383,7 @@ namespace hgl::ecs
         const auto *viewport_ubo = ResolveViewportUBO();
         const auto *camera_ubo = ResolveCameraUBO();
         const auto *sky_ubo = ResolveSkyUBO();
+        const auto *shadow_ubo = ResolveShadowUBO();
         const auto *global_addresses_ubo = ResolveGlobalAddressesUBO();
 
         auto *global_scene_set = GetGlobalSceneUBOSet(context);
@@ -369,15 +394,18 @@ namespace hgl::ecs
             global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingViewport), viewport_ubo);
             if (sky_ubo)
                 global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingSky), sky_ubo);
+            if (shadow_ubo)
+                global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingShadow), shadow_ubo);
             if (global_addresses_ubo)
                 global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingGlobalAddresses), global_addresses_ubo);
         }
         else if (global_scene_set && global_scene_set->IsValid())
         {
-            GLogWarning("[SceneUBO] Scene UBO set not bound: camera=%p viewport=%p sky=%p",
+            GLogWarning("[SceneUBO] Scene UBO set not bound: camera=%p viewport=%p sky=%p shadow=%p",
                         (const void *)viewport_ubo,
                         (const void *)camera_ubo,
-                        (const void *)sky_ubo);
+                        (const void *)sky_ubo,
+                        (const void *)shadow_ubo);
         }
     }
 

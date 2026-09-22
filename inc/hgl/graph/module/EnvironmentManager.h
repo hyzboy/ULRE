@@ -39,6 +39,7 @@ namespace hgl::graph
             AnsiString      name;
             EnvironmentInfo cpu;                                               ///< CPU 侧唯一权威数据
             StructView<SkyInfo> *sky_ubo = nullptr;              ///< sky 段 GPU 物化（懒创建，default 例外）
+            StructView<ShadowInfo> *shadow_ubo = nullptr;        ///< shadow 段 GPU 物化（懒创建，default 例外）
         };
 
     private:
@@ -50,6 +51,7 @@ namespace hgl::graph
         Profile *FindProfile(const AnsiString &name) const;
 
         bool MaterializeSkyUBO(Profile *profile);
+        bool MaterializeShadowUBO(Profile *profile);
 
         void EnsureDefault();
 
@@ -75,7 +77,10 @@ namespace hgl::graph
         /// sky 段 GPU buffer（绑定层用；懒物化，default 保证已就绪）
         const IGPUBuffer *GetSkyUBO(EnvProfileID id);
 
-        /// ViewUBOCommitSystem 专用：pass 开始时把所有已物化 profile 的 sky 段
+        /// shadow 段 GPU buffer（绑定层用；懒物化，default 保证已就绪）
+        const IGPUBuffer *GetShadowUBO(EnvProfileID id);
+
+        /// ViewUBOCommitSystem 专用：pass 开始时把所有已物化 profile 的 sky 与 shadow 段
         /// 无条件全量写入 GPU（不依赖脏标记）
         void CommitMaterialized();
     };//class EnvironmentManager

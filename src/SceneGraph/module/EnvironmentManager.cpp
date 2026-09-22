@@ -67,6 +67,46 @@ namespace hgl::graph
         return true;
     }
 
+    bool EnvironmentManager::MaterializeShadowUBO(Profile *profile)
+    {
+        if (!profile || profile->shadow_ubo)
+            return profile && profile->shadow_ubo;
+
+        auto *gc = GetGraphicsContext();
+        if (!gc)
+            return false;
+
+        auto *buffer_manager = gc->GetBufferManager();
+        if (!buffer_manager)
+            return false;
+
+        GLogInfo(u8"[EnvironmentManager] MaterializeShadowUBO: %s", profile->name.c_str());
+
+        AnsiString buf_name = "ShadowUBO:";
+        buf_name += profile->name;
+
+        auto *buf = buffer_manager->CreateUBO(buf_name,
+                                              StructView<ShadowInfo>::GetSize());
+        if (!buf)
+        {
+            GLogError("[EnvironmentManager] create shadow UBO failed: %s", profile->name.c_str());
+            return false;
+        }
+
+        buf->SetUpdateClass(BufferUpdateClass::Deferred);
+        profile->shadow_ubo = StructView<ShadowInfo>::Create(buf, false);
+        if (!profile->shadow_ubo)
+        {
+            buffer_manager->Release(buf);
+            GLogError("[EnvironmentManager] create shadow accessor failed: %s", profile->name.c_str());
+            return false;
+        }
+
+        profile->shadow_ubo->Update(profile->cpu.shadow);    // 拷贝数据 + 置脏
+        profile->shadow_ubo->Commit();                      // 标脏交 L2
+        return true;
+    }
+
     void EnvironmentManager::EnsureDefault()
     {
         if (FindProfile(kEnvProfileDefault))
@@ -87,9 +127,11 @@ namespace hgl::graph
 
         // default 立即物化并标脏：任何 world 第一帧的设备级上传扫描即可拿到有效数据。
         MaterializeSkyUBO(p);
+        MaterializeShadowUBO(p);
 
-        GLogInfo(u8"[EnvironmentManager] default profile ready (sky UBO=%p)",
-                 (void *)(p->sky_ubo ? p->sky_ubo->GetGPUBuffer() : nullptr));
+        GLogInfo(u8"[EnvironmentManager] default profile ready (sky UBO=%p, shadow UBO=%p)",
+                 (void *)(p->sky_ubo ? p->sky_ubo->GetGPUBuffer() : nullptr),
+                 (void *)(p->shadow_ubo ? p->shadow_ubo->GetGPUBuffer() : nullptr));
     }
 
     EnvironmentManager::EnvironmentManager(GraphicsContext *gc)
@@ -124,6 +166,16 @@ namespace hgl::graph
                 auto *buf = p->sky_ubo->GetBuffer();
                 delete p->sky_ubo;
                 p->sky_ubo = nullptr;
+
+                if (buffer_manager && buf)
+                    buffer_manager->Release(buf);
+            }
+
+            if (p->shadow_ubo)
+            {
+                auto *buf = p->shadow_ubo->GetBuffer();
+                delete p->shadow_ubo;
+                p->shadow_ubo = nullptr;
 
                 if (buffer_manager && buf)
                     buffer_manager->Release(buf);
@@ -173,20 +225,33 @@ namespace hgl::graph
             p->sky_ubo->Update(p->cpu.sky);    // 拷贝数据 + 置脏
             p->sky_ubo->Commit();              // 标脏交 L2
         }
-        // 未物化时无需标记：MaterializeSkyUBO 会用当前 cpu 数据初始化
+        if (p->shadow_ubo)
+        {
+            p->shadow_ubo->Update(p->cpu.shadow);
+            p->shadow_ubo->Commit();
+        }
+        // 未物化时无需标记：MaterializeSkyUBO / MaterializeShadowUBO 会用当前 cpu 数据初始化
     }
 
     void EnvironmentManager::CommitMaterialized()
     {
-        // 视图三件套契约：pass 开始固定写入。sky UBO 是 host-visible 映射直写，
+        // 视图三件套契约：pass 开始固定写入。sky 与 shadow UBO 是 host-visible 映射直写，
         // 每个已物化 profile 全量写一次（通常只有 default，几十字节，代价可忽略）
         for (auto *p : profiles)
         {
-            if (!p || !p->sky_ubo)
+            if (!p)
                 continue;
 
-            p->sky_ubo->Update(p->cpu.sky);    // 拷贝数据 + 置脏
-            p->sky_ubo->Commit();              // 标脏交 L2
+            if (p->sky_ubo)
+            {
+                p->sky_ubo->Update(p->cpu.sky);    // 拷贝数据 + 置脏
+                p->sky_ubo->Commit();              // 标脏交 L2
+            }
+            if (p->shadow_ubo)
+            {
+                p->shadow_ubo->Update(p->cpu.shadow);
+                p->shadow_ubo->Commit();
+            }
         }
     }
 
@@ -204,5 +269,21 @@ namespace hgl::graph
             return nullptr;
 
         return p->sky_ubo->GetGPUBuffer();
+    }
+
+    const IGPUBuffer *EnvironmentManager::GetShadowUBO(EnvProfileID id)
+    {
+        EnsureDefault();
+
+        Profile *p = FindProfile(id);
+        if (!p)
+            p = FindProfile(kEnvProfileDefault);
+        if (!p)
+            return nullptr;
+
+        if (!MaterializeShadowUBO(p))
+            return nullptr;
+
+        return p->shadow_ubo->GetGPUBuffer();
     }
 }//namespace hgl::graph

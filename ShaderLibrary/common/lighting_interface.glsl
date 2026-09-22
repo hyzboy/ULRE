@@ -26,6 +26,8 @@ struct LightingInput
     vec3  mainLightColor;
     vec3  ambientColor;
     vec3  reflectionColor;
+
+    float shadowFactor;
 };
 
 // A lighting algorithm consumes only LightingInput and returns final RGBA.

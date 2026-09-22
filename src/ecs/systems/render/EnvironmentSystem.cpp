@@ -96,4 +96,51 @@ namespace hgl::ecs
         if (auto *manager = ResolveManager())
             manager->MarkDirty(ResolveProfileID());
     }
+
+    graph::ShadowInfo *EnvironmentSystem::EditShadowInfo()
+    {
+        auto *manager = ResolveManager();
+        if (!manager)
+            return nullptr;
+
+        auto *info = manager->Edit(ResolveProfileID());
+        if (!info)
+            return nullptr;
+
+        return &info->shadow;
+    }
+
+    const graph::ShadowInfo *EnvironmentSystem::GetShadowInfo() const
+    {
+        auto *manager = const_cast<EnvironmentSystem *>(this)->ResolveManager();
+        if (!manager)
+            return nullptr;
+
+        const auto *info = manager->Get(ResolveProfileID());
+        if (!info)
+            return nullptr;
+
+        return &info->shadow;
+    }
+
+    void EnvironmentSystem::SetShadowInfo(const graph::ShadowInfo &info, bool immediate)
+    {
+        auto *manager = ResolveManager();
+        if (!manager)
+            return;
+
+        auto *env = manager->Edit(ResolveProfileID());
+        if (!env)
+            return;
+
+        env->shadow = info;
+        if (immediate)
+            manager->MarkDirty(ResolveProfileID());
+    }
+
+    void EnvironmentSystem::MarkShadowDirty()
+    {
+        if (auto *manager = ResolveManager())
+            manager->MarkDirty(ResolveProfileID());
+    }
 }//namespace hgl::ecs

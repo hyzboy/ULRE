@@ -32,6 +32,7 @@ LightingInput BuildForwardLightingInput(
     lighting.mainLightColor = vec3(0.0);
     lighting.ambientColor = vec3(0.0);
     lighting.reflectionColor = vec3(0.0);
+    lighting.shadowFactor = 1.0;
     return lighting;
 }
 

@@ -28,4 +28,4 @@ textures = [
     { name = "opacity_mask", sampler = "Sampler2DArray", required = false },
     { name = "normal", sampler = "Sampler2DArray", required = false, channels = 2 }
 ]
-samplers = ["Trilinear", "Linear"]
+samplers = ["Trilinear", "Linear", "ShadowMap"]

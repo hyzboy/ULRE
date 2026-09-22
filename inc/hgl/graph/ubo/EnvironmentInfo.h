@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/ubo/SkyInfo.h>
+#include<hgl/graph/ubo/ShadowInfo.h>
 #include<cstdint>
 
 namespace hgl::graph
@@ -18,7 +19,8 @@ namespace hgl::graph
      */
     struct EnvironmentInfo
     {
-        SkyInfo sky;
+        SkyInfo     sky;
+        ShadowInfo  shadow;
 
         // 预留：FogInfo fog; ...
     };

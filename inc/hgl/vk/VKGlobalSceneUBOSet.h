@@ -21,6 +21,7 @@ namespace hgl::graph
      *   binding=2 : viewport         (kSceneBindingViewport)
      *   binding=3 : color_palette    (kSceneBindingColorPalette)
      *   binding=4 : global_addresses (kSceneBindingGlobalAddresses)
+     *   binding=5 : shadow           (kSceneBindingShadow)
      *
      * 注：与 BindlessTextureManager 一样属于设备级全局资源，
      *     由 GraphicsContext 持有并管理生命周期。

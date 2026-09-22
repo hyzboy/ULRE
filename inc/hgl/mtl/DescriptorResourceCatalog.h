@@ -49,6 +49,7 @@ namespace hgl::graph::mtl
         { DescriptorSemantic::SkyInfo,              ResourceCatalogClass::SceneGlobal, &SBS_SkyInfo,          DescriptorSetType::Scene,    int(SceneBinding::Sky),              SSBOType::UserDefined, false },
         { DescriptorSemantic::MaterialColorPalette, ResourceCatalogClass::SceneGlobal, &SBS_ColorPalette,     DescriptorSetType::Scene,    int(SceneBinding::ColorPalette),     SSBOType::UserDefined, false },
         { DescriptorSemantic::GlobalAddresses,      ResourceCatalogClass::SceneGlobal, &SBS_GlobalAddresses, DescriptorSetType::Scene,    int(SceneBinding::GlobalAddresses),  SSBOType::UserDefined, true  },
+        { DescriptorSemantic::ShadowInfo,           ResourceCatalogClass::SceneGlobal, &SBS_ShadowInfo,       DescriptorSetType::Scene,    int(SceneBinding::Shadow),           SSBOType::UserDefined, true  },
 
         // ── PerDraw/PerObject 行已删（A6-2b-b2：L2W/L2WIndex/MeshDrawParams
         // 及材质行表全 BDA——无描述符无目录行；数据槽行表需求由

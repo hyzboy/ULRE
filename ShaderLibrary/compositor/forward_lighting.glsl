@@ -34,6 +34,7 @@ LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si)
     lighting.mainLightColor = GetSkyMainLightColor();
     lighting.ambientColor = GetSkyAmbientColor();
     lighting.reflectionColor = vec3(0.0);
+    lighting.shadowFactor = GetShadowFactor(si);
     return lighting;
 }
 

@@ -38,4 +38,11 @@ namespace hgl::graph::mtl
         "global_addresses",
         "GlobalAddressesInfo"
     };
+
+    constexpr const ShaderBufferSource SBS_ShadowInfo =
+    {
+        DescriptorSetType::Scene,
+        "shadow",
+        "ShadowInfo"
+    };
 }

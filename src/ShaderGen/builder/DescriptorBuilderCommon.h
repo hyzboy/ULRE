@@ -65,6 +65,13 @@ inline void PushMaterialColorPalette(std::vector<SerializedDescriptorEntry> &v,
                SSBOType::UserDefined, stage_flags);
 }
 
+inline void PushShadow(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+{
+    PushBySpec(v, DescriptorSetType::Scene,
+               "shadow", "ShadowInfo", DescriptorSemantic::ShadowInfo,
+               SSBOType::UserDefined, stage_flags);
+}
+
 inline void MergeUBODescriptor(
     std::vector<SerializedDescriptorEntry> &v,
     const DescriptorSemantic semantic,
@@ -102,6 +109,9 @@ inline void MergeUBODescriptor(
         break;
     case DescriptorSemantic::MaterialColorPalette:
         PushMaterialColorPalette(v, stage_flags);
+        break;
+    case DescriptorSemantic::ShadowInfo:
+        PushShadow(v, stage_flags);
         break;
     }
     if (has_policy && !v.empty())

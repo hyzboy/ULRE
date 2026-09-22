@@ -30,7 +30,8 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(MaterialTexture) \
     HGL_SEMANTIC(MaterialSampler) \
     HGL_SEMANTIC(MaterialColorPalette) \
-    HGL_SEMANTIC(GlobalAddresses)
+    HGL_SEMANTIC(GlobalAddresses) \
+    HGL_SEMANTIC(ShadowInfo)
 
     enum class DescriptorSemantic : uint8
     {
@@ -38,7 +39,7 @@ namespace hgl::graph::mtl
         HGL_DESCRIPTOR_SEMANTIC_LIST
 #undef HGL_SEMANTIC
 
-        ENUM_CLASS_RANGE(Unknown,GlobalAddresses)
+        ENUM_CLASS_RANGE(Unknown,ShadowInfo)
     };
 
     /// 语义名（诊断/校验消息用）。与枚举同源：新增语义无需改本函数。
@@ -78,6 +79,7 @@ namespace hgl::graph::mtl
             case DescriptorSemantic::ViewportInfo:
             case DescriptorSemantic::CameraInfo:
             case DescriptorSemantic::SkyInfo:
+            case DescriptorSemantic::ShadowInfo:
                 return DescriptorSemanticLayer::UBO;
 
             case DescriptorSemantic::MaterialTexture:

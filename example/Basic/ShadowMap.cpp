@@ -14,6 +14,9 @@
 
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/ubo/SkyInfo.h>
+#include<hgl/graph/ubo/ShadowInfo.h>
+#include<hgl/graph/camera/ReversedZProj.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -412,12 +415,8 @@ public:
     std::vector<Geometry *>     meshes;                     ///< 环上的标准网格
     std::vector<float>          mesh_lift;                  ///< 各网格落到地面所需的抬升量
 
-    /// 接收面在**离屏世界**用：普通 Lit 材质（阴影 Pass 里根本不画它，
-    /// 这里只是保持资源完整）
+    /// 接收面与网格全员使用统一的标准 Lit 材质
     PrimitiveAsset              plane_asset{};
-
-    /// 接收面在**主世界**用：ShadowReceiver 材质（会采样 shadow map）
-    PrimitiveAsset              receiver_asset{};
 
     std::vector<PrimitiveAsset> mesh_assets;
 
@@ -425,7 +424,6 @@ public:
     {
         return receiver_plane
             && plane_asset.IsValid()
-            && receiver_asset.IsValid()
             && !meshes.empty()
             && meshes.size() == mesh_assets.size()
             && meshes.size() == mesh_lift.size();
@@ -525,7 +523,6 @@ private:
     ShadowScene scene;
 
     graph::mtl::MaterialRecipe scene_recipe{};
-    graph::mtl::MaterialRecipe receiver_recipe{};
 
     using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
     using MaterialBinding      = hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource;
@@ -539,11 +536,7 @@ private:
     Texture2D *roughness_texture = nullptr;
     Sampler   *scene_sampler     = nullptr;
 
-    /// 材质纹理绑定的 sampler 只是"已授权"的凭证（见 PrimitiveComponent::
-    /// AppendTextureBinding —— sampler 不写进 recipe），真正生效的采样器是
-    /// shader 里的编译期预设宏（shadow map 走 ShadowMapSampler = Nearest）。
-    /// 这里复用一个 sampler 即可。
-    Sampler   *shadow_sampler = nullptr;
+    uint32_t shadow_map_handle = 0;
 
     ShadowDepthPass *depth_pass = nullptr;
 
@@ -590,6 +583,8 @@ private:
     /// 不需要 toggling is_main_camera。
     std::shared_ptr<CameraComponent> main_camera;
     std::shared_ptr<CameraComponent> light_camera;
+
+    PrimitiveComponent *receiver_prim = nullptr;
 
     /// 主世界的环境系统与它的 SkyInfo 数据。sun_direction 从这里写进去。
     std::shared_ptr<EnvironmentSystem> environment_system;
@@ -652,21 +647,12 @@ private:
         if (!texture_manager || !sampler_manager)
             return LogStageFail("ShadowMapApp::InitMaterial", "texture/sampler manager missing");
 
-        // ── 场景材质（环上网格用，与 BasicLitMeshes 同一套砖墙贴图） ──
+        // ── 全场景统一使用标准 Lit 材质（地面与环上网格共用，自然支持投射与接收阴影） ──
         scene_recipe.recipe_name = "ShadowMap.Scene";
         scene_recipe.mtl_def_id  = "Lit";
         scene_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!(scene_recipe.material_ssbo_binding = scene_material_binding).IsValid())
             return LogStageFail("ShadowMapApp::InitMaterial", "scene recipe material SSBO binding invalid");
-
-        // ── 接收面材质（地面用，会采样 shadow map） ──
-        // 定义在 ShaderLibrary/material/shadow_receiver.material.toml：
-        // 与 Lit 同构，只是 material_source_module 换成了 shadow_receiver_source.glsl
-        receiver_recipe.recipe_name = "ShadowMap.Receiver";
-        receiver_recipe.mtl_def_id  = "ShadowReceiver";
-        receiver_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        if (!(receiver_recipe.material_ssbo_binding = scene_material_binding).IsValid())
-            return LogStageFail("ShadowMapApp::InitMaterial", "receiver recipe material SSBO binding invalid");
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
@@ -683,10 +669,6 @@ private:
         scene_sampler = sampler_manager->CreateSampler();
         if (!scene_sampler)
             return LogStageFail("ShadowMapApp::InitMaterial", "create scene sampler failed");
-
-        shadow_sampler = sampler_manager->CreateSampler();
-        if (!shadow_sampler)
-            return LogStageFail("ShadowMapApp::InitMaterial", "create shadow sampler failed");
 
         return true;
     }
@@ -870,16 +852,10 @@ private:
             })))
             return false;
 
-        // ── 组装资产（离屏 / 主世界各一份，引用同一批 Geometry） ──
-        // 接收面要两份：离屏世界用 Lit（虽然阴影 Pass 不画地面，保持资源完整），
-        // 主世界用 ShadowReceiver（采样 shadow map）
+        // ── 组装资产（地面与网格全员使用统一的 Lit 材质配方） ──
         scene.plane_asset = PrimitiveAsset(scene.receiver_plane, &scene_recipe, PrimitiveType::Triangles);
         if (!scene.plane_asset.IsValid())
             return LogStageFail("ShadowMapApp::CreateSceneGeometry", "create receiver plane asset failed");
-
-        scene.receiver_asset = PrimitiveAsset(scene.receiver_plane, &receiver_recipe, PrimitiveType::Triangles);
-        if (!scene.receiver_asset.IsValid())
-            return LogStageFail("ShadowMapApp::CreateSceneGeometry", "create shadow-receiver plane asset failed");
 
         scene.mesh_assets.reserve(scene.meshes.size());
         for (auto *geom : scene.meshes)
@@ -898,49 +874,25 @@ private:
         return true;
     }
 
-    /// 给环上网格挂场景材质（砖墙 base_color/normal/roughness + PBR 参数）。
-    /// 这些网格只负责**投射**阴影，材质本身与蓝本 BasicLitMeshes 完全一致。
-    void ApplyMeshMaterial(PrimitiveComponent *prim)
+    /// 给实体挂标准 Lit 材质（砖墙 base_color/normal/roughness + PBR 参数）。
+    /// 地面（is_receiver_plane）只挂 base_color，避免 20x 平铺糊掉法线；网格挂全套贴图。
+    void ApplyMeshMaterial(PrimitiveComponent *prim, bool is_receiver_plane = false)
     {
         if (!prim)
             return;
 
         prim->SetMaterialTextureResource("base_color", base_texture, scene_sampler);
-        prim->SetMaterialTextureResource("normal", normal_texture, scene_sampler);
-        prim->SetMaterialTextureResource("roughness", roughness_texture, scene_sampler);
-        prim->SetMaterialDataResource(scene_material_binding);
-        prim->SetVisible(true);
-    }
-
-    /// 给接收面挂 ShadowReceiver 材质
-    ///
-    /// @param shadow_map 光源视角的深度图；为 nullptr 时只挂 albedo（材质里的
-    ///        shadow_map 槽保持未绑定 → EvalShadowReceiverMask 返回 1.0，即全亮）
-    void ApplyReceiverMaterial(PrimitiveComponent *prim, Texture2D *shadow_map)
-    {
-        if (!prim)
-            return;
-
-        // 接收面是 1×1 UV 铺满 20×20 的大平面，normal/roughness 会被放大 20 倍
-        // 糊成一片，反而把地面弄脏；所以这里只保留 base_color。
-        prim->SetMaterialTextureResource("base_color", base_texture, scene_sampler);
-
-        if (shadow_map)
+        if (!is_receiver_plane)
         {
-            if (!prim->SetMaterialTextureResource("shadow_map", shadow_map, shadow_sampler))
-                GLogError("[ShadowMap][ApplyReceiverMaterial] bind shadow_map failed");
+            prim->SetMaterialTextureResource("normal", normal_texture, scene_sampler);
+            prim->SetMaterialTextureResource("roughness", roughness_texture, scene_sampler);
         }
-
         prim->SetMaterialDataResource(scene_material_binding);
         prim->SetVisible(true);
     }
 
     /// 把场景铺进主世界（接收面 + 环上网格）。
-    ///
-    /// @param include_receiver 是否放进接收面。
-    ///        本用例现在**总是放**（shadow pass 也渲染地面，见 RenderShadowMap）；
-    ///        这个开关保留下来是为了方便单独验证"只有网格"的画面。
-    bool PopulateScene(ECSContext *world, const char *stage, const bool include_receiver, Texture2D *shadow_map)
+    bool PopulateScene(ECSContext *world, const char *stage, const bool include_receiver)
     {
         if (!world)
             return LogStageFail(stage, "world is null");
@@ -960,8 +912,9 @@ private:
             transform->SetLocalScale(glm::vec3(kReceiverPlaneScale, kReceiverPlaneScale, 1.0f));
             transform->SetMovable(false);
 
-            prim_comp->SetPrimitiveAsset(&scene.receiver_asset);
-            ApplyReceiverMaterial(prim_comp.get(), shadow_map);
+            prim_comp->SetPrimitiveAsset(&scene.plane_asset);
+            ApplyMeshMaterial(prim_comp.get(), /*is_receiver_plane=*/true);
+            receiver_prim = prim_comp.get();
         }
 
         // ── 环上网格：与蓝本相同的排布，额外按 AABB 抬到地面之上 ──
@@ -1066,13 +1019,19 @@ private:
         if (!light_camera)
             return;
 
-        light_camera->target = math::Vector3f(0, 0, 0);
-        light_camera->distance = kLightDistance;
-        light_camera->yaw = azimuth_deg + 180.0f;
-        light_camera->pitch = -kLightElevationDeg;
-        light_camera->fov = kLightFov;
-        light_camera->near_plane = kLightNear;
-        light_camera->far_plane = kLightFar;
+        const float e = glm::radians(kLightElevationDeg);
+        const float a = glm::radians(azimuth_deg);
+        const glm::vec3 to_sun(cosf(e) * cosf(a), cosf(e) * sinf(a), sinf(e));
+
+        light_camera->target       = math::Vector3f(0, 0, 0);
+        light_camera->distance     = kLightDistance;
+        light_camera->position     = to_sun * kLightDistance;
+        light_camera->world_up     = math::Vector3f(0, 0, 1);
+        light_camera->yaw          = azimuth_deg + 180.0f;
+        light_camera->pitch        = -kLightElevationDeg;
+        light_camera->fov          = kLightFov;
+        light_camera->near_plane   = kLightNear;
+        light_camera->far_plane    = kLightFar;
         light_camera->matrix_dirty = true;
     }
 
@@ -1127,12 +1086,18 @@ private:
         if (!rt || !ecs_context)
             return LogStageFail("ShadowMapApp::RenderShadowMap", "depth target / ecs context missing");
 
+        // if (receiver_prim)
+        //     receiver_prim->SetVisible(false);
+
         ecs::RenderPassRequest req;
         req.target           = rt;
         req.camera           = light_camera.get();
         req.use_target_clear = true;
 
         const bool ok = ecs_context->RenderTo(req);
+
+        // if (receiver_prim)
+        //     receiver_prim->SetVisible(true);
 
         if (!ok)
             return LogStageFail("ShadowMapApp::RenderShadowMap", "ECSContext::RenderTo failed");
@@ -1273,6 +1238,33 @@ private:
 
         // ── 3) 把相机真实的 forward 同步给 SkyInfo（主世界的方向光也随之转） ──
         SyncSunDirectionFromLightCamera();
+
+        // ── 4) 同步 ShadowInfo（光源 VP 矩阵、参数、尺寸、纹理句柄） ──
+        SyncShadowInfo();
+    }
+
+    /// 将光源空间 View-Projection 矩阵及阴影控制参数同步至全局 ShadowInfo UBO
+    void SyncShadowInfo()
+    {
+        if (!light_camera || !environment_system)
+            return;
+
+        auto *shadow_info = environment_system->EditShadowInfo();
+        if (!shadow_info)
+            return;
+
+        const float fov_rad = glm::radians(light_camera->fov);
+        const float aspect  = 1.0f; // 正方形 1024x1024 shadow map
+        const math::Matrix4f proj = MakeInfiniteReversedZProj(fov_rad, aspect, light_camera->near_plane);
+        const math::Matrix4f view = math::LookAtMatrix(light_camera->position, light_camera->target, light_camera->world_up);
+
+        shadow_info->shadow_vp           = proj * view;
+        shadow_info->shadow_params       = math::Vector4f(0.002f, 1.5f, 0.12f, 0.0f);
+        shadow_info->shadow_map_size     = math::Vector2f(static_cast<float>(kShadowMapSize), static_cast<float>(kShadowMapSize));
+        shadow_info->inv_shadow_map_size = math::Vector2f(1.0f / static_cast<float>(kShadowMapSize), 1.0f / static_cast<float>(kShadowMapSize));
+        shadow_info->shadow_tex          = math::Vector4u(shadow_map_handle, 0, 0, 0);
+
+        environment_system->MarkShadowDirty();
     }
 
     bool SetupMainCamera()
@@ -1317,12 +1309,10 @@ public:
             if (auto *sm = gc->GetManager<SamplerManager>())
             {
                 if (scene_sampler)  sm->Release(scene_sampler);
-                if (shadow_sampler) sm->Release(shadow_sampler);
             }
         }
 
         scene_sampler  = nullptr;
-        shadow_sampler = nullptr;
     }
 
     /// 逐帧推进：光源环绕 + 重拍 shadow map + 网格自转。
@@ -1420,8 +1410,18 @@ public:
         if (!shadow_map_tex)
             return LogStageFail("ShadowMapApp::Init", "shadow map depth texture unavailable");
 
-        // ── 主世界：接收面（会采样 shadow map）+ 环上网格 + 两台相机 ──
-        if (!PopulateScene(ecs_context, "ShadowMapApp::Init:MainWorld", true, shadow_map_tex))
+        auto *btm = GetGraphicsContext()->GetBindlessTextureManager();
+        if (!btm)
+            return LogStageFail("ShadowMapApp::Init", "bindless texture manager is null");
+
+        shadow_map_handle = btm->RegisterTexture(shadow_map_tex);
+        if (shadow_map_handle == 0)
+            return LogStageFail("ShadowMapApp::Init", "register shadow map texture failed");
+
+        GLogInfo("[ShadowMap][ShadowMapApp::Init] registered shadow map bindless handle=%u", shadow_map_handle);
+
+        // ── 主世界：接收面 + 环上网格 + 两台相机（全员统一使用标准 Lit 材质） ──
+        if (!PopulateScene(ecs_context, "ShadowMapApp::Init:MainWorld", true))
             return LogStageFail("ShadowMapApp::Init", "populate main world failed");
 
         if (!SetupMainCamera())
@@ -1430,13 +1430,14 @@ public:
         if (!CreateLightCamera(ecs_context))
             return LogStageFail("ShadowMapApp::Init", "CreateLightCamera failed");
 
-        // 第一帧之前就要有正确的 shadow map 与 sun_direction：
+        // 第一帧之前就要有正确的 shadow map 与 sun_direction 以及 ShadowInfo：
         // 主循环里 Tick 在 Render 之前，而 WorkManager 的**第一次** Tick 会因为
         // delta < frame_time 被跳过，所以不能指望 UpdateAnimation 来补这一发。
         if (!RenderShadowMap())
             return LogStageFail("ShadowMapApp::Init", "RenderShadowMap failed");
 
         SyncSunDirectionFromLightCamera();
+        SyncShadowInfo();
 
         GLogInfo("[ShadowMap][ShadowMapApp::Init] success shadow_map=%p layout=%u size=%ux%u sun=(%.3f,%.3f,%.3f)",
                  (void *)shadow_map_tex,
