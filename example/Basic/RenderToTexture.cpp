@@ -603,8 +603,10 @@ public:
         return true;
     }
 
-    void Render(double delta_time) override
+    void Tick(double delta_time) override
     {
+        // 逻辑更新写在 Tick（渲染前）——TransformSystem 在渲染帧内提交变换，
+        // Tick 里改与本回调内改同帧等价，且不占用命令缓冲录制时间
         if (cube_transform)
         {
             cube_theta += static_cast<float>(delta_time) * 0.8f;
@@ -615,7 +617,7 @@ public:
             cube_transform->SetLocalRotation(rot_z * rot_x);
         }
 
-        WorkObject::Render(delta_time);
+        WorkObject::Tick(delta_time);
     }
 };
 

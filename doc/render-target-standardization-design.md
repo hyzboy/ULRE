@@ -47,12 +47,15 @@ ContextRole 门控从未启用、已随 ECS 清理删除。
 
 ```cpp
 wo->GetECSContext()->Render(static_cast<float>(delta_time),
-                            [wo](float dt){ wo->Render(static_cast<double>(dt)); });
+                            [wo](float dt){ wo->OnRenderPass(static_cast<double>(dt)); });
 ```
 
-**`WorkObject::Render` 是 pre-render 回调，不是绘制入口。** 它在 `BeginRenderPass` 之前执行，
-所以 `RenderToTexture.cpp:595` 里转 cube 的 transform 能生效；真正的绘制由 `ECSContext` 的
-RenderGraph 完成。基类 `WorkObject::Render` 是空实现（`src/Work/WorkObject.cpp:99`）。
+**`WorkObject::OnRenderPass` 是渲染帧内的录制回调，不是绘制入口，也不是逻辑更新处。**
+它在 `BeginRenderPass`（动态渲染 pass 已开）之后、ECS 系统绘制之前执行——
+合同是"current_render_cmd 有效，只准录制绘制命令"；改场景状态（transform/材质动画等）
+属于 `Tick`（TransformSystem 在该回调之后才提交变换，两处改同帧等价，Tick 语义正确）。
+范本：`example/Basic/SimpleMeshTriangle.cpp`。（旧名 `Render` 保留为 deprecated 别名；
+本文档早期版本误写为"BeginRenderPass 之前执行"，已修正。）
 
 `WorkObject` 提供的能力全部是转发：`GetECSContext` / `GetRenderContext` / `GetGraphicsContext`
 / `GetDevice` / `GetManager<T>()` / `GetCamera` / `GetViewportInfo` / `SetClearColor`。

@@ -59,7 +59,7 @@ namespace hgl
 
         last_render_time=cur_time;
         wo->GetECSContext()->Render(static_cast<float>(delta_time),
-                                    [wo](float dt){ wo->Render(static_cast<double>(dt)); });
+                                    [wo](float dt){ wo->OnRenderPass(static_cast<double>(dt)); });
         wo->ClearRenderDirty();
     }
 

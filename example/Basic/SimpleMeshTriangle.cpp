@@ -213,10 +213,10 @@ public:
         return(true);
     }
 
-    void Render(double) override
+    void OnRenderPass(double) override
     {
-        // wo->Render 是 ECS 的 pre_render 回调——在 BeginManagedRenderFrame 的
-        // BeginRenderPass（dynamic rendering）之后、ECS 系统绘制之前调用，处于 render pass 内，
+        // OnRenderPass：渲染帧内录制钩子——BeginRenderPass（dynamic rendering）
+        // 之后、ECS 系统绘制之前调用，处于 render pass 内，
         // 直接拿当前 cmd buffer 绘制即可（无需自开 render pass）
         auto *ecs=GetECSContext();
         if(!ecs)return;

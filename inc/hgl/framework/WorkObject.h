@@ -21,7 +21,8 @@ namespace hgl
     /**
     * 工作对象</p>
     *
-    * WorkObject被定义为工作对象，所有的渲染控制都需要被写在WorkObject的Render函数下。
+    * 逻辑更新写在 Tick（每帧、渲染前）；渲染帧内的录制钩子是 OnRenderPass。
+    * 两者时序与合同见 OnRenderPass 的注释——不要在 OnRenderPass 里改场景状态。
     */
     class WorkObject:public TickObject
     {
@@ -106,7 +107,19 @@ namespace hgl
 
         virtual void Tick(double);
 
-        virtual void Render(double delta_time) {}   ///< ECS 渲染帧内的 pre_render 回调（BeginRenderPass 后、系统绘制前），基类无操作
+        /// 渲染帧内录制钩子：动态渲染 pass 已开（BeginRenderPass 之后）、
+        /// ECS 系统绘制之前、命令缓冲录制中执行。
+        ///
+        /// 合同：current_render_cmd 有效，只准录制绘制命令（vkCmdDraw 等）；
+        /// **不要在此修改场景状态**（transform/材质等）——那属于 Tick
+        ///（TransformSystem 在本回调之后才提交变换，Tick 里改与本回调里改
+        /// 效果同帧等价；放 Tick 语义正确且不占用录制时间）。
+        /// 范本：example/Basic/SimpleMeshTriangle.cpp
+        virtual void OnRenderPass(double delta_time) {}
+
+        /// [[deprecated]] 旧名。语义同 OnRenderPass——历史上名字误导了大量
+        /// 示例在渲染回调里写逻辑更新，新代码一律重写 OnRenderPass。
+        virtual void Render(double delta_time) {}
 
     public:
 

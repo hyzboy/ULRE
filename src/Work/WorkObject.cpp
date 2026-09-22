@@ -90,8 +90,8 @@ namespace hgl
             world->Tick(static_cast<float>(delta));
     }
 
-    // WorkObject::Render：ECS 模式下是渲染帧内的 pre_render 回调
-    //（BeginRenderPass 之后、系统绘制之前），基类默认无操作。
+    // WorkObject::OnRenderPass：渲染帧内录制钩子（BeginRenderPass 之后、
+    // 系统绘制之前），基类无操作；旧名 Render 保留为 deprecated 别名。
 
     // Resource helpers removed. Use RenderContext/GraphicsContext directly.
 }//namespace hgl
