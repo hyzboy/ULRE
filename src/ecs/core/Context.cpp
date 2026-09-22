@@ -429,11 +429,12 @@ namespace hgl
                 current_render_cmd = nullptr;
         }
 
-        bool ECSContext::RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime)
+        bool ECSContext::RenderTo(const RenderPassRequest &req)
         {
             if (!active)
                 return false;
 
+            graph::IRenderTarget *rt = req.target;
             if (!rt)
             {
                 LogError("[ECSContext::RenderTo] render target is null");
@@ -448,7 +449,8 @@ namespace hgl
             // clear 覆盖语义：临时改写目标 RT 上的清屏色（唯一权威），
             // 渲染结束（含失败路径）后恢复原声明值。
             const hgl::Color4f saved_clear = rt->GetClearColor();
-            rt->SetClearColor(clear);
+            if (!req.use_target_clear)
+                rt->SetClearColor(req.clear);
 
             // 必须同步 RenderTargetSystem：它缓存的 RT 若不跟随切换，本 Pass 内
             // CameraSystem 的 viewport 等仍按主 RT 工作，且渲染期管线解析会按
@@ -464,15 +466,16 @@ namespace hgl
             bool ok = false;
 
             // 离屏 RT 无 swapchain 图像可获取，跳过 AcquireSwapchainImage
-            if (BeginManagedRenderFrame(deltaTime, false))
+            if (BeginManagedRenderFrame(req.delta_time, false))
             {
-                RenderDrawOnly(render_core->GetRenderCmd(), deltaTime);
-                EndManagedRenderFrame(deltaTime);
+                RenderDrawOnly(render_core->GetRenderCmd(), req.delta_time);
+                EndManagedRenderFrame(req.delta_time);
                 ok = true;
             }
 
             render_target = saved_target;
-            rt->SetClearColor(saved_clear);
+            if (!req.use_target_clear)
+                rt->SetClearColor(saved_clear);
 
             // 本帧离屏提交完成后等该 RT 自己的 queue fence（微秒级，非全设备
             // 排空）：离屏 RT 单命令缓冲，下一帧 RenderTo 会 vkBeginCommandBuffer
@@ -486,6 +489,16 @@ namespace hgl
                 rts->SetRenderTarget(rts_saved ? rts_saved : saved_target);
 
             return ok;
+        }
+
+        bool ECSContext::RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime)
+        {
+            RenderPassRequest req;
+            req.target          = rt;
+            req.clear           = clear;
+            req.use_target_clear = false;
+            req.delta_time      = deltaTime;
+            return RenderTo(req);
         }
 
         void ECSContext::OnResize(const VkExtent2D &extent)

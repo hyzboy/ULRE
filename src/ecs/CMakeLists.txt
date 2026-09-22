@@ -11,6 +11,7 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/System.h
     ${ECS_INCLUDE_PATH}/core/Context.h
     ${ECS_INCLUDE_PATH}/core/RenderGraph.h
+    ${ECS_INCLUDE_PATH}/core/RenderPassRequest.h
     ${ECS_INCLUDE_PATH}/core/SystemGroup.h
     ${ECS_INCLUDE_PATH}/core/DefaultSystems.h
     ${ECS_INCLUDE_PATH}/core/MaterialBatch.h

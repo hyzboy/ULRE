@@ -5,6 +5,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/core/RenderGraph.h>
+#include<hgl/ecs/core/RenderPassRequest.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/log/Log.h>
@@ -224,15 +225,19 @@ namespace hgl
             /// Tick all non-render systems and entities
             void Tick(float deltaTime);
 
-            /// 把本世界的一帧渲染到指定 RenderTarget（离屏/子世界的标准入口）
+            /// 把本世界的一帧渲染到指定 RenderTarget（离屏/子 pass 的标准入口，
+            /// RT 标准化 §3.4 的一等 pass 描述）
             ///
             /// 内部复用 BeginManagedRenderFrame + RenderDrawOnly + EndManagedRenderFrame，
             /// 与主窗口路径**共用同一套帧驱动**，不新增平行实现。
+            /// request.camera 非空时本 pass 用它解算共享相机数据（pass 级
+            /// 相机覆盖，shadow map 等多相机场景的标准做法）。
             ///
-            /// @param rt    目标 RT；调用期间临时作为本世界的 render_target
-            /// @param clear 清屏色
             /// @return 成功返回 true
             /// @note 会跳过 swapchain 图像获取（离屏 RT 无 swapchain 图像）
+            bool RenderTo(const RenderPassRequest &req);
+
+            /// 便捷重载：显式清屏色（等价于 request{target=rt, clear, use_target_clear=false}）
             bool RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime = 0.0f);
 
             /// Run a full render frame with a pre-render callback
