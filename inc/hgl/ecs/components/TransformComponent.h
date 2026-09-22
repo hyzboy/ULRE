@@ -165,7 +165,6 @@ namespace hgl
 
         public:
 
-            void OnUpdate(float deltaTime) override;
             void OnAttach() override;
             void OnDetach() override;
 

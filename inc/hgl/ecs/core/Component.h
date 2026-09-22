@@ -36,9 +36,6 @@ namespace hgl
             /// Called when component is attached to an entity
             virtual void OnAttach() {}
 
-            /// Called each frame
-            virtual void OnUpdate(float deltaTime) {}
-
             /// Called when component is detached from an entity
             virtual void OnDetach() {}
 

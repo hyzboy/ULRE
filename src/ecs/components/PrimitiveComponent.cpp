@@ -689,12 +689,6 @@ namespace hgl::ecs
         EnsureRenderItemStorageAllocated();
     }
 
-    void PrimitiveComponent::OnUpdate(float deltaTime)
-    {
-        RenderableComponent::OnUpdate(deltaTime);
-        // Update logic if needed (e.g., animation updates)
-    }
-
     void PrimitiveComponent::OnDetach()
     {
         RenderableComponent::OnDetach();

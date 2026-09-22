@@ -553,19 +553,9 @@ namespace hgl
             SetMobility(isMovable ? Mobility::Movable : Mobility::Static);
         }
 
-        void TransformComponent::OnUpdate(float deltaTime)
-        {
-            (void)deltaTime;
-
-            if (fixed_pixel_sizing_enabled && fixed_pixel_camera_info && fixed_pixel_viewport_info)
-            {
-                ApplyFixedPixelUniformScale(fixed_pixel_camera_info,
-                                            fixed_pixel_viewport_info,
-                                            fixed_pixel_diameter,
-                                            fixed_pixel_reference_world_diameter,
-                                            fixed_pixel_min_scale);
-            }
-        }
+        // 原 OnUpdate 每帧重算 fixed_pixel 的通道已删除：gizmo 的
+        // TransformGizmoSystem 在 TickPostCamera 相位每帧调
+        // SetFixedPixelSizingContext（设置时即时 Apply），是主通道。
 
         void TransformComponent::OnAttach()
         {

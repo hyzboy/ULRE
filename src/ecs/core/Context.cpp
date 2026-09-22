@@ -296,17 +296,11 @@ namespace hgl
                     RunSystemUpdate(entry.system.get(), deltaTime);
             }
 
-            // Update all entities
-            if (entity_manager)
-            {
-                std::vector<Entity*> entities;
-                entity_manager->GetAllEntityPointers(entities);
-                for (auto entity : entities)
-                {
-                    if (entity)
-                        entity->OnUpdate(deltaTime);
-                }
-            }
+            // 原每帧全实体 × 全组件的 OnUpdate 虚分发已删除——其唯一有效实现
+            // （TransformComponent 的 fixed_pixel 等像素缩放）由 gizmo 的
+            // TransformGizmoSystem 在 TickPostCamera 相位经
+            // SetFixedPixelSizingContext 即时重算（本就是主通道）。
+            // 逻辑更新归 tick 系统，不归组件。
 
             if (auto input_system = GetSystem<InputSystem>())
             {

@@ -218,7 +218,6 @@ namespace hgl
 
             // Component lifecycle hooks
             void OnAttach() override {}
-            void OnUpdate(float deltaTime) override {}
             void OnDetach() override {}
 
             static const char* GetSerializationType();

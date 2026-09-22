@@ -53,12 +53,10 @@ namespace hgl
 
         public: // Lifecycle methods
         // 生命周期动词三套体系（W7 评估：不同阶段，非重复概念——勿统一改名）：
-        //   Object::OnUpdate                      —— 每帧更新（Entity 消费）
         //   Component::OnAttach/OnDetach          —— 组件挂载/卸载
         //   System::Initialize/Update/Shutdown    —— 系统初始化/运行
-
-            /// Called every frame for updates
-            virtual void OnUpdate(float) {}
+        //（原 Object::OnUpdate 每帧更新链已删除——逻辑更新归 tick 系统，
+        //  不归组件；见 ECSContext::Tick 注释）
         };
     }//namespace ecs
 }//namespace hgl

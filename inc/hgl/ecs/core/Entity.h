@@ -94,9 +94,6 @@ namespace hgl
 
         public:
 
-            /// Update all components
-            void OnUpdate(float deltaTime) override;
-
             /// Get all components (for serialization)
             void GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const;
 

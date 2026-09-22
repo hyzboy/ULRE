@@ -53,15 +53,6 @@ namespace hgl
             MarkSceneDirty();
         }
 
-        void Entity::OnUpdate(float deltaTime)
-        {
-            // Update all components
-            for (auto& pair : components)
-            {
-                pair.second->OnUpdate(deltaTime);
-            }
-        }
-
         void Entity::GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const
         {
             out.clear();

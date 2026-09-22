@@ -260,7 +260,6 @@ namespace hgl::ecs
 
         // Component lifecycle
         void OnAttach() override;
-        void OnUpdate(float deltaTime) override;
         void OnDetach() override;
     };
 }//namespace hgl::ecs
