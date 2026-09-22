@@ -273,6 +273,14 @@ namespace hgl::ecs
         EnsureCameraResources();
     }
 
+    void CameraSystem::ForceRefreshSelectedCamera()
+    {
+        auto cameras = CollectCameras();
+        CameraComponent* selected = override_camera ? override_camera : SelectMainCamera(cameras);
+        if (selected)
+            selected->matrix_dirty = true;
+    }
+
     void CameraSystem::SetViewportInfo(const graph::ViewportInfo* vp)
     {
         uint old_w = 0;
@@ -339,6 +347,21 @@ namespace hgl::ecs
             input_system = context->GetSystem<InputSystem>().get();
         }
 
+        // pass 级相机覆盖（RenderTo(request.camera) 期间）：只处理覆盖相机，
+        // 强制重算——共享 camera_data/camera_info 反映它；跳过用户输入
+        //（pass 相机由程序设定，不吃输入），也跳过其余相机（避免它们的
+        // 解算覆盖共享数据）。
+        if (override_camera)
+        {
+            BindCameraResources(override_camera);
+            override_camera->matrix_dirty = true;
+
+            UpdateBasis(override_camera);
+            UpdateTransform(override_camera);
+            UpdateMatrices(override_camera);
+            return;
+        }
+
         EnsureInputContext();
 
         // 收集所有摄像机
@@ -362,8 +385,11 @@ namespace hgl::ecs
             if (first_update_pending)
                 camera_comp->matrix_dirty = true;
 
-            // 处理输入
-            ProcessInput(camera_comp.get(), deltaTime);
+            const bool is_main = (camera_comp.get() == main_camera);
+
+            // 只有主相机响应玩家输入，从属相机跳过输入
+            if (is_main)
+                ProcessInput(camera_comp.get(), deltaTime);
 
             // 更新局部坐标系
             UpdateBasis(camera_comp.get());
@@ -371,8 +397,12 @@ namespace hgl::ecs
             // 更新位置和目标
             UpdateTransform(camera_comp.get());
 
-            // 更新矩阵
-            UpdateMatrices(camera_comp.get());
+            // 关键隔离：只有主相机才允许写入共享的 camera_info！
+            // 从属相机若没有独立 camera_info，绝不能在常规 Update 中覆盖共享数据
+            if (is_main || camera_comp->camera_info != camera_info)
+            {
+                UpdateMatrices(camera_comp.get());
+            }
         }
 
         if (first_update_pending)

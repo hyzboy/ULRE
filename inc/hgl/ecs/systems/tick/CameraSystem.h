@@ -98,6 +98,11 @@ namespace hgl
             bool camera_ubo_managed = false;
             bool first_update_pending = true;
 
+            /// pass 级相机覆盖（RenderTo(request.camera) 期间非空）：
+            /// Update 只处理该相机并强制重算——共享 camera_data/camera_info
+            /// 反映它而非主相机；pass 结束由 RenderTo 恢复
+            CameraComponent* override_camera = nullptr;
+
         public:
 
             CameraSystem(ECSContext* ctx = nullptr);
@@ -109,6 +114,15 @@ namespace hgl
 
             void SetRenderContext(graph::RenderContext* ctx);
             void SetViewportInfo(const graph::ViewportInfo* vp);
+
+            /// pass 级相机覆盖（RenderTo 期间由 ECSContext 设置/解除）
+            void SetOverrideCamera(CameraComponent* camera) { override_camera = camera; }
+            CameraComponent* GetOverrideCamera() const { return override_camera; }
+
+            /// 强制下一次 Update 重算当前选中相机（主相机）的矩阵——
+            /// pass 覆盖解除后恢复共享数据用（主相机可能不脏，否则
+            /// 共享 camera_info 会残留 pass 相机的矩阵）
+            void ForceRefreshSelectedCamera();
 
             graph::Camera* GetCamera();
             const graph::CameraInfo* GetCameraInfo() const;

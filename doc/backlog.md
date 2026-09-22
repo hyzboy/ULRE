@@ -79,6 +79,17 @@
 - **触发条件**：与 A1 同做才有意义（GPU 侧链路通了，N 份
   cmd_buf+queue+fence 轮转才换来真重叠）。
 
+### A8. CameraInfo 全局 SSBO 化与 PushConstants 索引（多相机同帧并发）
+
+- **现状**：CameraInfo 目前作为全局 Scene 集（set=0）的固定 UBO（单份绑定），
+  多相机/子 pass（如 shadow map、反射、多视口）需在 pass 间串行覆盖写入并排空/同步。
+- **做法**：将所有 CameraInfo 注册到 `GlobalSSBOBufferRegistry` 中的全局 SSBO 数组，
+  渲染各 pass 或 draw item 时通过 `vkCmdPushConstants` 传递 `camera_id`，
+  shader 索引读取对应相机的矩阵与视口参数，彻底解耦 pass 间覆写和 UBO 资源串扰。
+- **规模**：影响面广，涉及 ShaderGen（UBO 语义转 SSBO）、材质管线 Layout、
+  PushConstants 布局与相关 RenderSystem 改造。
+- **触发条件**：当场景需要多视口同帧输出、并发多相机渲染或消除 pass 间相机 UBO 同步点时。
+
 ## B 线：ECS/框架残余小项（低优先，顺手做）
 
 | 项 | 现状 | 备注 |

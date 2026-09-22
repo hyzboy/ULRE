@@ -446,6 +446,11 @@ namespace hgl
             // 因此能正确拿到临时切换后的 RT。
             graph::IRenderTarget *saved_target = render_target;
 
+            // 共享 per-frame 资源保护（上沿）：Camera UBO 与 L2W ring 为单份内存，
+            // 覆写前等在途主帧 GPU 完成，防止其 draw 读到覆盖后的数据
+            if (saved_target)
+                saved_target->WaitFence();
+
             // clear 覆盖语义：临时改写目标 RT 上的清屏色（唯一权威），
             // 渲染结束（含失败路径）后恢复原声明值。
             const hgl::Color4f saved_clear = rt->GetClearColor();
@@ -463,6 +468,17 @@ namespace hgl
 
             render_target = rt;
 
+            // pass 级相机覆盖：本 pass 用指定相机解算共享相机数据。
+            // SetOverrideCamera 只设覆盖目标，**显式驱动一次 Update**：
+            // 覆盖分支只解算覆盖相机（不吃输入）；此时 RTSystem 已把 viewport 同步为本 RT。
+            auto camera_system = GetSystem<CameraSystem>();
+            const bool use_camera_override = (req.camera != nullptr && camera_system);
+            if (use_camera_override)
+            {
+                camera_system->SetOverrideCamera(req.camera);
+                camera_system->Update(req.delta_time);
+            }
+
             bool ok = false;
 
             // 离屏 RT 无 swapchain 图像可获取，跳过 AcquireSwapchainImage
@@ -473,20 +489,26 @@ namespace hgl
                 ok = true;
             }
 
+            // 关键同步（下沿保护）：本帧离屏提交完成后立即等该 RT 自己的 queue fence！
+            // 必须在恢复主相机共享数据前等，因为 GPU 仍在异步读取本 pass 提交的光源
+            // CameraUBO；若未等即在 CPU 上 Update(0.0f) 覆盖主相机数据，会踩踏 GPU 正在读取的内存，
+            // 导致 shadow map 被画成主相机视角（间歇性阴影闪烁丢失）。
+            if (ok)
+                rt->WaitFence();
+
             render_target = saved_target;
             if (!req.use_target_clear)
                 rt->SetClearColor(saved_clear);
 
-            // 本帧离屏提交完成后等该 RT 自己的 queue fence（微秒级，非全设备
-            // 排空）：离屏 RT 单命令缓冲，下一帧 RenderTo 会 vkBeginCommandBuffer
-            // 重录同一缓冲——必须等上一笔提交完成；同时主帧若采样本帧离屏
-            // 结果（如 shadow map），CPU 侧等到 fence 即保证 GPU 已完成写入
-            // 与布局转换。首次渲染（尚无提交）时 fence 等待安全直通。
-            if (ok)
-                rt->WaitFence();
-
             if (rts)
                 rts->SetRenderTarget(rts_saved ? rts_saved : saved_target);
+
+            if (use_camera_override)
+            {
+                camera_system->SetOverrideCamera(nullptr);
+                camera_system->ForceRefreshSelectedCamera();
+                camera_system->Update(0.0f);
+            }
 
             return ok;
         }

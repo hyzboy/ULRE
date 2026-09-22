@@ -1114,54 +1114,12 @@ private:
         return true;
     }
 
-    /// 把某台相机的矩阵写成"当帧生效"的相机数据。
-    ///
-    /// 相机 UBO 的契约是"每个 RT/RenderPass 开始时全量写入"
-    /// （见 CameraSystem::CommitCameraUBO 的注释），而 CameraSystem 只有**一份**
-    /// camera_info / camera_data（单写点）。关键在于 UpdateMatrices 的开头是
-    ///     if (!camera->matrix_dirty) return;
-    /// 于是"给谁置脏，Update 跑完共享数据就是谁的"。
-    ///
-    /// CameraSystem::Update 是公开的（UpdateBasis/UpdateTransform/UpdateMatrices
-    /// 都是 private），所以示例层就用这个"脏标记选相机"的路子切换，不必去改引擎头。
-    ///
-    /// @param viewport 该 Pass 的视口。**必须给对**：投影的宽高比由它算 ——
-    ///                 shadow map 是 1024×1024（aspect = 1），主画面是交换链尺寸。
-    void ActivateCamera(CameraComponent *camera, const graph::ViewportInfo *viewport)
-    {
-        if (!camera || !camera_system || !viewport)
-            return;
-
-        // 两台相机共用同一份共享数据，但只有目标相机是"脏"的
-        auto bind = [this, camera, viewport](CameraComponent *c)
-        {
-            if (!c)
-                return;
-
-            c->camera_data   = camera_system->GetCamera();
-            c->camera_info   = const_cast<CameraInfo *>(camera_system->GetCameraInfo());
-            c->viewport_info = viewport;
-            c->matrix_dirty  = (c == camera);
-        };
-
-        bind(main_camera.get());
-        bind(light_camera.get());
-
-        camera_system->Update(0.0f);
-    }
-
     /// 用光源相机把**主世界**渲染进 shadow map。
     ///
-    /// 全程只有一个 ECSContext（原因见 ShadowDepthPass 顶部）：
-    ///   1. 把光源相机切成当帧生效的相机，并给它 shadow RT 的正方形视口；
-    ///   2. `ECSContext::RenderTo` 临时把本世界的 render_target 切到 depth-only RT，
-    ///      于是 RenderPreBeginFrame / ViewUBOCommitSystem 都按该 RT 的视口工作，
-    ///      渲染结束后 render_target 自动还原；
-    ///   3. 再把主相机切回来，供随后的正常一帧使用。
-    ///
-    /// 地面**不排除**：遮挡判据是"采样深度 > 地面自身深度"，地面被写进深度图
-    /// 恰好让裸地满足 d == ground_depth（不算遮挡）；好处是完全不依赖深度清屏值，
-    /// 也不必每帧去 toggle 可见性。
+    /// 通过 RenderPassRequest 携带 light_camera 覆盖：
+    ///   1. `ECSContext::RenderTo` 内部自动将 RenderTargetSystem 切到 shadow RT 并同步 1024x1024 视口；
+    ///   2. CameraSystem 在 pass 期间只解算 light_camera 写入共享 camera_info（不响应输入）；
+    ///   3. pass 结束后自动还原主 RT、主视口并重新解算主相机。
     bool RenderShadowMap()
     {
         auto *rt = depth_pass ? depth_pass->GetRenderTarget() : nullptr;
@@ -1169,13 +1127,12 @@ private:
         if (!rt || !ecs_context)
             return LogStageFail("ShadowMapApp::RenderShadowMap", "depth target / ecs context missing");
 
-        ActivateCamera(light_camera.get(), rt->GetViewportInfo());
+        ecs::RenderPassRequest req;
+        req.target           = rt;
+        req.camera           = light_camera.get();
+        req.use_target_clear = true;
 
-        const bool ok = ecs_context->RenderTo(rt, rt->GetClearColor(), 0.0f);
-
-        // 还原：下一次（真正的）Render 要用主相机
-        auto *main_rt = ecs_context->GetRenderTarget();
-        ActivateCamera(main_camera.get(), main_rt ? main_rt->GetViewportInfo() : nullptr);
+        const bool ok = ecs_context->RenderTo(req);
 
         if (!ok)
             return LogStageFail("ShadowMapApp::RenderShadowMap", "ECSContext::RenderTo failed");
@@ -1245,7 +1202,7 @@ private:
     /// "两个方向差了 1e-6、只在贴图边缘露出来"的怪问题。
     ///
     /// 必须在 RenderShadowMap() **之后**调用 —— 光源相机的矩阵与 forward
-    /// 是 ActivateCamera 在里面手动解算的。
+    /// 是 RenderTo(req.camera) 在里面解算的。
     void SyncSunDirectionFromLightCamera()
     {
         if (!light_camera || !environment_system || !sky_info)
@@ -1419,9 +1376,7 @@ public:
         if (!camera_system)
             return LogStageFail("ShadowMapApp::Init", "camera system is null");
 
-        // 先跑一次，让 CameraSystem 物化它的 camera_ubo / camera_info ——
-        // 否则 ActivateCamera 里读到的 GetCameraInfo() 还是 nullptr，
-        // 光源相机的矩阵根本写不进去（UpdateMatrices 会因为 camera_info 为空而跳过）。
+        // 先跑一次，让 CameraSystem 物化它的 camera_ubo / camera_info
         camera_system->Update(0.0f);
 
         // 把系统级 viewport 固定成主画面尺寸：它只在为 null 时才会去 latch
