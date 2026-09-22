@@ -147,7 +147,6 @@ namespace hgl
             hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
 
             std::unique_ptr<RenderSystemCore> render_core;
-            bool wait_idle_enabled = false;
 
             /// Cached adaptive render graph (auto-culls based on scene content)
             mutable RenderGraph cached_adaptive_render_graph;
@@ -262,8 +261,6 @@ namespace hgl
             {
                 return render_submission_serial;
             }
-
-            void SetWaitIdleEnabled(bool enabled) { wait_idle_enabled = enabled; }
 
             // ========== GPU 设备和资源接口（Phase 1 新增） ==========
 

@@ -1455,15 +1455,11 @@ public:
         if (!depth_pass->Init(GetGraphicsContext(), kShadowMapSize))
             return LogStageFail("ShadowMapApp::Init", "ShadowDepthPass::Init failed");
 
-        // 逐帧重拍 shadow map 必须打开 wait-idle。
-        // 离屏 RT（RenderTargetData）只持有**一个**命令缓冲，而 EndManagedRenderFrame
-        // 默认并不等 GPU（wait_idle_enabled 默认 false）。一次性渲染不会暴露这一点；
-        // 本用例每帧都要往它里面录一次，不等就会撞上上一帧还没执行完的同一个命令缓冲：
-        //     vkBeginCommandBuffer(): on active VkCommandBuffer ... before it has completed
-        //     vkQueueSubmit(): ... is already in use and is not marked for simultaneous use
-        // 紧随其后就是 VK_ERROR_DEVICE_LOST。对 1024×1024 depth-only 来说，
-        // 每帧同步一次的代价可以忽略。
-        ecs_context->SetWaitIdleEnabled(true);
+        // 逐帧重拍的同步由引擎内 RenderTo 保证：每次离屏提交完成后等该 RT
+        // 自己的 queue fence（微秒级），既避免下一帧重录单命令缓冲时撞上
+        // 未完成的上一笔提交，也保证主帧采样 shadow map 时 GPU 已完成写入。
+        // （旧方案是在主 ECSContext 上 SetWaitIdleEnabled(true)——每帧两次
+        // 全设备排空，连坐主渲染，已随引擎侧 fence 等待移除。）
 
         Texture2D *shadow_map_tex = depth_pass->GetDepthTexture();
         if (!shadow_map_tex)

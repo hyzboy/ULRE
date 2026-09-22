@@ -388,13 +388,6 @@ namespace hgl
             {
                 LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
             }
-
-            if (wait_idle_enabled)
-            {
-//                LogInfo("[ECS RENDER] Calling WaitIdle");
-                if (auto *device = GetGPUDevice())
-                    device->WaitIdle();
-            }
         }
 
         void ECSContext::RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
@@ -486,6 +479,14 @@ namespace hgl
 
             render_target = saved_target;
             rt->SetClearColor(saved_clear);
+
+            // 本帧离屏提交完成后等该 RT 自己的 queue fence（微秒级，非全设备
+            // 排空）：离屏 RT 单命令缓冲，下一帧 RenderTo 会 vkBeginCommandBuffer
+            // 重录同一缓冲——必须等上一笔提交完成；同时主帧若采样本帧离屏
+            // 结果（如 shadow map），CPU 侧等到 fence 即保证 GPU 已完成写入
+            // 与布局转换。首次渲染（尚无提交）时 fence 等待安全直通。
+            if (ok)
+                rt->WaitFence();
 
             if (rts)
                 rts->SetRenderTarget(rts_saved ? rts_saved : saved_target);

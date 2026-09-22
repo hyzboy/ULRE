@@ -167,11 +167,11 @@ namespace hgl
             // Canonical frame entry with RenderGraph
 //            LogInfo("[ECS RENDER] ===== Frame Start (RenderGraph with %zu passes) =====", graph.GetEnabledPassCount());
 
-            if (!BeginManagedRenderFrame(0.0f))
+            if (!BeginManagedRenderFrame(deltaTime))
                 return;
 
             ExecuteRenderGraphPasses(graph, deltaTime, pre_render);
-            EndManagedRenderFrame(0.0f);
+            EndManagedRenderFrame(deltaTime);
 
 //            LogInfo("[ECS RENDER] ===== Frame End (RenderGraph) =====");
         }
