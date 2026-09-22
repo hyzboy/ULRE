@@ -62,45 +62,12 @@ namespace hgl
             return it->second(context, default_rt);
         }
 
-        bool SystemGroupRegistry::SetGroupEnabled(const std::string& name, bool enabled)
-        {
-            auto it = groups.find(name);
-            if (it == groups.end())
-            {
-                GLogWarning("[SystemGroup] Attempted to set enabled state for non-existent group: %s", name.c_str());
-                return false;
-            }
-
-            if (it->second.enabled != enabled)
-            {
-                GLogDebug("[SystemGroup] Group '%s' %s", name.c_str(), enabled ? "ENABLED" : "DISABLED");
-                it->second.enabled = enabled;
-            }
-
-            return true;
-        }
-
         std::vector<SystemGroup> SystemGroupRegistry::GetAllGroups() const
         {
             std::vector<SystemGroup> result;
             for (const auto& [name, group] : groups)
             {
                 result.push_back(group);
-            }
-            // Sort by startPhase for consistent ordering
-            std::sort(result.begin(), result.end(),
-                     [](const SystemGroup& a, const SystemGroup& b)
-                     { return a.startPhase < b.startPhase; });
-            return result;
-        }
-
-        std::vector<SystemGroup> SystemGroupRegistry::GetEnabledGroups() const
-        {
-            std::vector<SystemGroup> result;
-            for (const auto& [name, group] : groups)
-            {
-                if (group.enabled)
-                    result.push_back(group);
             }
             // Sort by startPhase for consistent ordering
             std::sort(result.begin(), result.end(),
@@ -124,11 +91,10 @@ namespace hgl
 
             for (const auto& [name, group] : groups)
             {
-                GLogInfo("[SystemGroup]   %-12s [%3d - %3d] %s",
+                GLogInfo("[SystemGroup]   %-12s [%3d - %3d]",
                          name.c_str(),
                          static_cast<int>(group.startPhase),
-                         static_cast<int>(group.endPhase),
-                         group.enabled ? "ENABLED" : "DISABLED");
+                         static_cast<int>(group.endPhase));
             }
 
             GLogInfo("[SystemGroup] ===================================");

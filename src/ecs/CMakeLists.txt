@@ -1,6 +1,6 @@
 ﻿SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
 
-option(ULRE_ECS_DEBUG_API "Enable ECS debug API surface" ON)
+option(ULRE_ECS_DEBUG_API "Enable ECS debug API surface" OFF)
 
 set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/Object.h

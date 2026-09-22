@@ -20,10 +20,6 @@
 #include<hgl/ecs/core/ShaderProgramPipelineKey.h>
 #include<hgl/color/Color4f.h>
 
-#ifndef ULRE_ECS_DEBUG_API
-#define ULRE_ECS_DEBUG_API 1
-#endif
-
 namespace hgl {
     namespace graph {
         class RenderCmdBuffer;

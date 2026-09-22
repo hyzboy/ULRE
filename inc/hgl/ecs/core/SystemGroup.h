@@ -36,18 +36,19 @@ namespace hgl
             /// Ending ExecutionPhase for this group (inclusive)
             ExecutionPhase endPhase;
 
-            /// Whether this group is currently enabled
-            bool enabled = true;
-
             SystemGroup() = default;
 
-            SystemGroup(const std::string& n, ExecutionPhase start, ExecutionPhase end, bool en = true)
-                : name(n), startPhase(start), endPhase(end), enabled(en) {}
+            SystemGroup(const std::string& n, ExecutionPhase start, ExecutionPhase end)
+                : name(n), startPhase(start), endPhase(end) {}
         };
 
         /**
-         * Global registry for system groups
-         * Supports both metadata (phase range, enabled state) and plugin installers.
+         * Global registry for system groups (group definitions + plugin installers)
+         *
+         * 只承载真正的全局不变量：组定义（name + 相位区间）与安装器。
+         * 组的"是否启用"是每世界状态，由 CreateAdaptiveRenderGraph 按
+         * 本世界 SceneStats 即时推导——不再存入本注册表（历史上存全局
+         * 会在多世界建图时互相覆盖）。
          */
         class SystemGroupRegistry
         {
@@ -77,15 +78,8 @@ namespace hgl
             /// Ensure systems for a group are installed
             bool EnsureGroupSystems(const std::string& name, ECSContext* context, hgl::graph::IRenderTarget* default_rt);
 
-            /// Enable/disable a system group by name
-            /// Returns false if group not found
-            bool SetGroupEnabled(const std::string& name, bool enabled);
-
             /// Get all registered groups
             std::vector<SystemGroup> GetAllGroups() const;
-
-            /// Get only enabled groups (sorted by startPhase)
-            std::vector<SystemGroup> GetEnabledGroups() const;
 
             /// Get a specific group by name (returns nullptr if not found)
             const SystemGroup* GetGroup(const std::string& name) const;

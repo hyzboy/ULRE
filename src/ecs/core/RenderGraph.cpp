@@ -74,7 +74,7 @@ namespace hgl
                 if (!has_phase)
                     continue;
 
-                registry.RegisterGroup(SystemGroup(element_type, start_phase, end_phase, true));
+                registry.RegisterGroup(SystemGroup(element_type, start_phase, end_phase));
                 ++added;
             }
 
@@ -223,30 +223,25 @@ namespace hgl
             auto& registry = SystemGroupRegistry::Get();
             EnsureSystemGroupsRegistered(context);
 
-            // Enable/disable groups based on detected component-driven groups
+            // 组启用状态由**本世界的 stats** 即时推导（不再写入全局注册表——
+            // enabled 是每世界状态，全局存储会在多世界建图时互相覆盖；
+            // registry 只保留组定义+installer 这类真正的全局不变量）。
             const auto all_groups = registry.GetAllGroups();
             for (const auto& group : all_groups)
             {
                 const bool enabled = stats.HasGroup(group.name);
-                registry.SetGroupEnabled(group.name, enabled);
 
                 if (context)
                 {
                     context->SetElementTypeSystemsEnabled(group.name, enabled);
                 }
 
-//                MLogDebug(RenderGraph,"[RenderGraph] Group '%s': %s",group.name.c_str(), enabled ? "ENABLED" : "DISABLED");
-            }
+                if (!enabled)
+                    continue;
 
-            // === Build passes from enabled groups ===
-            // Each enabled group becomes a pass in the graph
-            auto enabled_groups = registry.GetEnabledGroups();
-//            MLogDebug(RenderGraph,"[RenderGraph] Adding %zu enabled system groups as passes", enabled_groups.size());
-
-            for (const auto& group : enabled_groups)
-            {
 //                MLogDebug(RenderGraph,"[RenderGraph] Adding pass for group '%s' (phases %d-%d)",group.name.c_str(),static_cast<int>(group.startPhase),static_cast<int>(group.endPhase));
 
+                // Each enabled group becomes a pass in the graph
                 graph.Add(RenderGraph::Pass(
                     group.startPhase,
                     group.endPhase,
