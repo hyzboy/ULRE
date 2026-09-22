@@ -58,7 +58,10 @@ namespace hgl::ecs
         const auto &registry = active_device->GetGPUBufferRegistry();
         if (registry.empty())
         {
-            GLogInfo("[RenderBufferUpload] skip: GPU buffer registry is empty");
+            // 空 registry 是常态：设备上没有存活的 StagedBuffer（当前上传
+            // 路径多为 host-visible 直写 + 上方 SyncToGPU），静默跳过即可，
+            // 不打日志（曾每帧两条刷屏）。首个 StagedBuffer 创建后本循环
+            // 自然开始工作。
             return;
         }
 

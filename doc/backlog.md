@@ -9,31 +9,37 @@
 
 ## A 线：渲染架构演进
 
-### A1. GPU 提交原语升级（semaphore 链）
+### A1. GPU 提交原语升级（semaphore 链 / per-frame 资源多份化）
 
 - **现状**：三个前置缺陷——`DeviceQueue::Submit` 只支持单个 wait semaphore；
   `SwapchainRenderTarget::Submit(Semaphore*)` 显式忽略外部 wait_sem；
   离屏 `RenderTargetData::Submit` 在 `wait_sem==nullptr` 时不 signal。
-  当前离屏逐帧同步是 CPU 侧 fence 等待（5a，`RenderTo` 提交后
-  `rt->WaitFence()`），每帧一次 CPU-GPU 同步点。
+  **且 Camera/Viewport UBO 与 L2W ring 段是单份 host-visible 内存**
+  （`CriticalPerFrame` 仅为内存分类标签，无轮转副本）——RenderTo 覆写
+  它们前必须等在途主帧（上沿 fence），离屏提交后等离屏 fence 确保 GPU 消费完
+  光源 UBO 后才还原主相机数据（下沿 fence），每帧 2 次 CPU-GPU 同步点即源于此。
 - **做法**：wait semaphore 列表化（或 timeline semaphore）；离屏提交恒
-  signal；`RenderTo` 把待等信号量传递给主帧提交。
+  signal；`RenderTo` 把待等信号量传递给主帧提交。**或** camera/viewport
+  UBO 与 L2W 段 per-frame 多份化（按 frame_index 轮转副本）——任一路径
+  均可解除 fence 等待。
 - **规模**：6–7 文件，~150 行，触及队列提交原语。
-- **触发条件**：出现多个逐帧离屏 RT（fence 等待逐个累积）或级联 pass 链。
-  单 shadow map 场景 fence 方案已够。
+- **触发条件**：出现多个逐帧离屏 RT（fence 等待逐个累积）、级联 pass 链，
+  或 shadow pass 双向 fence 等待成为帧率瓶颈时。单 shadow map 场景
+  当前方案正确且可接受。
 
-### A2. RenderPassRequest（RT 标准化收官）
+### A2. ~~RenderPassRequest（RT 标准化收官）~~ **已完成（f99f8dda1，2026-09-23）**
 
-- **现状**：`RenderTo(rt, clear, dt)` 无 camera_override——ShadowMap 靠
-  两相机 matrix_dirty 脏标记 hack 切换（`ActivateCamera`）；RenderTo 期间
-  viewport/aspect 归属未定义（示例手动 `SetViewportInfo` 防污染）；
-  CameraSystem 单份共享 camera_data/camera_info 是多相机问题的共同根源。
-- **做法**：`RenderPassRequest{world, target, clear, camera_override,
-  viewport}` 作为 pass 级一等描述（设计文档 §3.4 已有规划）；ShadowMap
-  的 hack 与 viewport 防护随之删除。
-- **规模**：Context/CameraSystem，~100–150 行。
-- **触发条件**：任意多相机/多视口特性之前；A3/A4 的前置。
-- **性价比最高的入口**：验证用例（ShadowMap）现成。
+- **已落地**：`RenderPassRequest{target, clear, use_target_clear, delta_time, camera}` +
+  `ECSContext::RenderTo(request)`（三参重载保留为包装）；CameraSystem
+  pass 级相机覆盖（override_camera，RenderTo 期间只解算覆盖相机、结束
+  自动恢复）；常规更新中主从相机严格隔离（仅主相机响应输入与写入共享数据）；
+  viewport 随 RT 切换由 RTSystem SyncSubsystems 内建同步。
+  离屏提交后立即 WaitFence 彻底根治 UBO 踩踏造成的闪烁。
+  ShadowMap 已迁移（ActivateCamera hack 与 viewport 手动防护删除，
+  sun 向量与迁移前一致且阴影稳定无闪烁）。
+- **衍生待办**：CameraSystem 多相机共享数据（单份 camera_data）仍是
+  "串行 pass"模型——真并行多视口（同帧多相机同时渲染）需要共享数据
+  实例化或全局 SSBO 化（见 A8），留待 A3/多视口用例出现时评估。
 
 ### A3. RenderGraph 跨 RT pass 链
 
