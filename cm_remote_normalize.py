@@ -95,6 +95,44 @@ def fetch_url(kinds: Dict[str, str]) -> str:
     return kinds.get("fetch") or kinds.get("push") or ""
 
 
+def list_remotes_for_gitdir(git_dir: str, cwd: str = ".") -> Dict[str, Dict[str, str]]:
+    """读取 .git/modules/*/config 这类 git-dir 配置，不依赖工作树目录。"""
+    code, out, _ = run_git(["--git-dir", git_dir, "remote", "-v"], cwd)
+    if code != 0:
+        return {}
+    remotes: "Dict[str, Dict[str, str]]" = {}
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        name, url, kind = parts[0], parts[1], parts[2].strip("()")
+        remotes.setdefault(name, {})[kind] = url
+    return remotes
+
+
+def has_hyzgame_like_remote(remotes: Dict[str, Dict[str, str]]) -> bool:
+    """判断是否存在 hyzgame 相关的远端（旧地址、hyzgame.host 或已命名 hyzgame）。"""
+    for kinds in remotes.values():
+        for url in (kinds.get("fetch"), kinds.get("push")):
+            if not url:
+                continue
+            if url.startswith(OLD_HYZ_PREFIX) or HYZ_HOST in url:
+                return True
+    return False
+
+
+def find_submodule_gitdirs(root: str) -> List[str]:
+    """遍历 .git/modules 下所有已初始化 submodule 的 gitdir。"""
+    modules_root = os.path.join(root, ".git", "modules")
+    if not os.path.isdir(modules_root):
+        return []
+    result: List[str] = []
+    for current, _, files in os.walk(modules_root):
+        if "config" in files:
+            result.append(os.path.normpath(current))
+    return sorted(result)
+
+
 # ---------------------------------------------------------------- 仓库发现
 
 def parse_gitmodules(root: str) -> List[Tuple[str, str]]:
@@ -185,13 +223,24 @@ def derive_repo_name(path: str, remotes: Dict[str, Dict[str, str]]) -> str:
     return os.path.basename(path.rstrip("\\/")) + ".git"
 
 
-def plan_repo(display: str, path: str, repo_name: str) -> Tuple[List[Change], List[str]]:
-    """针对单个仓库生成改动计划。不修改任何东西。返回 (changes, resulting_state)。"""
+def add_change(changes: List[Change], ch: Change) -> None:
+    """避免重复的远端命令被重复安排。"""
+    if any(c.kind == ch.kind and c.args == ch.args and c.desc == ch.desc for c in changes):
+        return
+    changes.append(ch)
+
+
+def plan_remotes(display: str, path: str, repo_name: str,
+                remotes: Dict[str, Dict[str, str]],
+                git_dir: Optional[str] = None) -> Tuple[List[Change], List[str]]:
+    """基于已解析好的 remote 映射生成改动计划。支持普通工作树和 .git/modules gitdir。"""
     changes: List[Change] = []
-    remotes = list_remotes(path)
     if not remotes:
-        changes.append(Change("warn", "无远端（或不是 git 仓库），跳过"))
+        add_change(changes, Change("warn", "无远端（或不是 git 仓库），跳过"))
         return changes, []
+
+    all_gh = [(n, fetch_url(k)) for n, k in remotes.items()
+              if fetch_url(k).startswith(GITHUB_PREFIX)]
 
     # ---- 规则 1：老 hyzgame 地址 -> 新地址，并改名 hyzgame
     victims = [(n, fetch_url(k)) for n, k in remotes.items()
@@ -201,70 +250,107 @@ def plan_repo(display: str, path: str, repo_name: str) -> Tuple[List[Change], Li
             new_url = ensure_git_suffix(NEW_HYZ_PREFIX + url[len(OLD_HYZ_PREFIX):])
             if n != HYZ_NAME:
                 if HYZ_NAME in remotes and fetch_url(remotes[HYZ_NAME]) != new_url:
-                    changes.append(Change(
+                    add_change(changes, Change(
                         "warn",
                         f"远端 '{HYZ_NAME}' 已存在且指向 {fetch_url(remotes[HYZ_NAME])}，"
                         f"未自动处理 '{n}'（{url}）以免冲突"))
                     continue
-                changes.append(Change("ok", f"rename 远端 '{n}' -> '{HYZ_NAME}'",
-                                      ["rename", n, HYZ_NAME]))
-            if has_pushurl(path, n) and remotes.get(n, {}).get("push", "").startswith(OLD_HYZ_PREFIX):
-                changes.append(Change("ok", f"set-url --push {HYZ_NAME} -> {new_url}",
-                                      ["set-url", "--push", HYZ_NAME, new_url]))
-            changes.append(Change("ok", f"set-url {HYZ_NAME}: {url} -> {new_url}",
-                                  ["set-url", HYZ_NAME, new_url]))
+                add_change(changes, Change("ok", f"rename 远端 '{n}' -> '{HYZ_NAME}'",
+                                          ["rename", n, HYZ_NAME]))
+            if not git_dir and has_pushurl(path, n) and remotes.get(n, {}).get("push", "").startswith(OLD_HYZ_PREFIX):
+                add_change(changes, Change("ok", f"set-url --push {HYZ_NAME} -> {new_url}",
+                                          ["set-url", "--push", HYZ_NAME, new_url]))
+            add_change(changes, Change("ok", f"set-url {HYZ_NAME}: {url} -> {new_url}",
+                                      ["set-url", HYZ_NAME, new_url]))
 
     # ---- 规则 2：唯一的 github.com/hyzboy/CM 远端 -> 改名为 github
-    all_gh = [(n, fetch_url(k)) for n, k in remotes.items()
-              if fetch_url(k).startswith(GITHUB_PREFIX)]
     if GH_NAME in remotes:
-        # 已经有个名叫 github 的远端就不用改名了；多余的同前缀远端交给规则 3 纠偏
-        if not fetch_url(remotes[GH_NAME]).startswith(GITHUB_PREFIX) and all_gh:
-            changes.append(Change(
+        gh_url = fetch_url(remotes[GH_NAME])
+        if gh_url.startswith(GITHUB_PREFIX):
+            normalized = ensure_git_suffix(gh_url)
+            if gh_url != normalized:
+                add_change(changes, Change(
+                    "ok",
+                    f"set-url {GH_NAME}: {gh_url} -> {normalized}（补齐 .git）",
+                    ["set-url", GH_NAME, normalized]))
+        elif all_gh:
+            add_change(changes, Change(
                 "warn",
-                f"远端 '{GH_NAME}' 指向的不是 {GITHUB_PREFIX}*（{fetch_url(remotes[GH_NAME])}），"
+                f"远端 '{GH_NAME}' 指向的不是 {GITHUB_PREFIX}*（{gh_url}），"
                 f"同时还存在 {len(all_gh)} 个同前缀远端，未自动改名"))
     else:
         if len(all_gh) == 1:
             n, url = all_gh[0]
-            changes.append(Change("ok", f"rename 远端 '{n}' -> '{GH_NAME}'",
-                                  ["rename", n, GH_NAME]))
+            add_change(changes, Change("ok", f"rename 远端 '{n}' -> '{GH_NAME}'",
+                                      ["rename", n, GH_NAME]))
+            normalized = ensure_git_suffix(url)
+            if url != normalized:
+                add_change(changes, Change("ok", f"set-url {GH_NAME}: {url} -> {normalized}（补齐 .git）",
+                                          ["set-url", GH_NAME, normalized]))
         elif len(all_gh) > 1:
             detail = ", ".join(f"{n}({u})" for n, u in all_gh)
-            changes.append(Change(
+            add_change(changes, Change(
                 "warn", f"存在多个 {GITHUB_PREFIX}* 远端，跳过改名以免误伤：{detail}"))
 
     # ---- 规则 3：兜底补齐 hyzgame（名为 hyzgame + 指向 git.hyzgame.com）
+    hyz_url = fetch_url(remotes.get(HYZ_NAME, {}))
+    if hyz_url and HYZ_HOST in hyz_url:
+        normalized = ensure_git_suffix(hyz_url)
+        if hyz_url != normalized:
+            add_change(changes, Change("ok", f"set-url {HYZ_NAME}: {hyz_url} -> {normalized}（补齐 .git）",
+                                      ["set-url", HYZ_NAME, normalized]))
+
     has_named = HYZ_NAME in remotes
     has_host = any(HYZ_HOST in u for k in remotes.values()
                    for u in (k.get("fetch"), k.get("push")) if u)
     if not (has_named and has_host):
         if has_named:
-            # 名字对了但地址不对
             url = HYZ_BASE + repo_name
-            changes.append(Change("ok", f"set-url {HYZ_NAME} -> {url}（原地址不含 {HYZ_HOST}）",
-                                  ["set-url", HYZ_NAME, url]))
+            add_change(changes, Change("ok", f"set-url {HYZ_NAME} -> {url}（原地址不含 {HYZ_HOST}）",
+                                      ["set-url", HYZ_NAME, url]))
         else:
             candidates = [n for n, k in remotes.items()
                           if any(HYZ_HOST in u for u in (k.get("fetch"), k.get("push")) if u)]
             if len(candidates) == 1:
-                changes.append(Change("ok", f"rename 远端 '{candidates[0]}' -> '{HYZ_NAME}'",
-                                      ["rename", candidates[0], HYZ_NAME]))
+                old_name = candidates[0]
+                old_url = fetch_url(remotes[old_name])
+                if old_name != HYZ_NAME:
+                    add_change(changes, Change("ok", f"rename 远端 '{old_name}' -> '{HYZ_NAME}'",
+                                              ["rename", old_name, HYZ_NAME]))
+                normalized = ensure_git_suffix(old_url)
+                if old_url != normalized:
+                    add_change(changes, Change("ok", f"set-url {HYZ_NAME}: {old_url} -> {normalized}（补齐 .git）",
+                                              ["set-url", HYZ_NAME, normalized]))
             else:
                 url = HYZ_BASE + repo_name
-                changes.append(Change("ok", f"add 远端 {HYZ_NAME} -> {url}",
-                                      ["add", HYZ_NAME, url]))
+                add_change(changes, Change("ok", f"add 远端 {HYZ_NAME} -> {url}",
+                                          ["add", HYZ_NAME, url]))
+
+    # ---- 规则 4：如果只有 hyzgame/旧 hyzgame 远端，没有 github，则补齐 github
+    if (has_hyzgame_like_remote(remotes) and GH_NAME not in remotes and not all_gh):
+        github_url = ensure_git_suffix(GITHUB_PREFIX + repo_name)
+        add_change(changes, Change(
+            "ok",
+            f"add 远端 {GH_NAME} -> {github_url}（仅存在 hyzgame 远端，补齐 github）",
+            ["add", GH_NAME, github_url]))
 
     return changes, []
 
 
-def apply_repo(path: str, changes: List[Change]) -> None:
+def plan_repo(display: str, path: str, repo_name: str) -> Tuple[List[Change], List[str]]:
+    """针对单个仓库生成改动计划。不修改任何东西。返回 (changes, resulting_state)。"""
+    remotes = list_remotes(path)
+    return plan_remotes(display, path, repo_name, remotes)
+
+
+def apply_repo(path: str, changes: List[Change], git_dir: Optional[str] = None) -> None:
     for ch in changes:
         if ch.kind != "ok" or not ch.args:
             continue
         if ch.args[0] in ("rename", "add", "set-url"):
-            # 三种指令的 args 已经是完整的 git remote 子参数
-            code, _, err = run_git(["remote"] + ch.args, path)
+            cmd = [] if git_dir is None else ["--git-dir", git_dir]
+            cmd += ["remote"] + ch.args
+            code, _, err = run_git(cmd, path)
         else:
             continue
         print(f"      [{'OK' if code == 0 else 'FAIL'}] git remote {' '.join(ch.args)}"
@@ -338,6 +424,30 @@ def main() -> int:
             else:
                 for ch in actionable:
                     print(f"      [计划] git remote {' '.join(ch.args)}")
+        print()
+
+    # 修正 submodule 的独立 gitdir 配置（.git/modules/.../config）
+    for git_dir in find_submodule_gitdirs(root):
+        rel = os.path.relpath(git_dir, os.path.join(root, ".git", "modules"))
+        display = os.path.basename(rel) if rel and rel != "." else os.path.basename(root)
+        remotes = list_remotes_for_gitdir(git_dir, root)
+        if not remotes:
+            continue
+        repo_name = derive_repo_name(git_dir, remotes)
+        changes, _ = plan_remotes(display, git_dir, repo_name, remotes, git_dir)
+        actionable = [c for c in changes if c.kind == "ok"]
+        if not actionable:
+            continue
+        print(f"=== [submodule-gitdir] {display}  ({git_dir})")
+        for ch in changes:
+            print(f"    {SYMBOL.get(ch.kind, '?')} {ch.desc}")
+            if ch.kind == "warn":
+                warned += 1
+        if args.apply:
+            apply_repo(root, changes, git_dir)
+        else:
+            for ch in actionable:
+                print(f"      [计划] git --git-dir {git_dir} {' '.join(ch.args)}")
         print()
 
     print("-" * 60)
