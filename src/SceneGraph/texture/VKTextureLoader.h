@@ -74,6 +74,7 @@ public:
         OnExtent(extent);
 
         tci->SetData(buf,extent);
+        tci->total_bytes=buf?buf->GetSize():0;
 
         tci->origin_mipmaps=tex_file_header.mipmaps;
 

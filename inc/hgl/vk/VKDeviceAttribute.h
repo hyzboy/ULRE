@@ -68,13 +68,6 @@ struct VulkanDevAttr
     PFN_vkCmdBindDescriptorBuffersEXT            cmd_bind_descriptor_buffers =nullptr;
     PFN_vkCmdSetDescriptorBufferOffsetsEXT       cmd_set_descriptor_buffer_offsets =nullptr;
 
-    // VK_EXT_host_image_copy
-    bool                                support_host_image_copy = false;
-    PFN_vkCopyMemoryToImageEXT          copy_memory_to_image = nullptr;
-    PFN_vkCopyImageToMemoryEXT          copy_image_to_memory = nullptr;
-    PFN_vkCopyImageToImageEXT           copy_image_to_image = nullptr;
-    PFN_vkTransitionImageLayoutEXT      transition_image_layout = nullptr;
-
 #ifdef _DEBUG
     DebugUtils *                        debug_utils     =nullptr;
 #endif//_DEBUG

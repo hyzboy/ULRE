@@ -62,13 +62,10 @@ private:
 
     bool support_u8_index=false;
     bool support_descriptor_buffer=false;
-    bool support_host_image_copy=false;
     VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features{};
     VkPhysicalDeviceMeshShaderPropertiesEXT mesh_shader_properties{};
     VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};
     VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptor_buffer_properties{};
-    VkPhysicalDeviceHostImageCopyFeaturesEXT host_image_copy_features{};
-    VkPhysicalDeviceHostImageCopyPropertiesEXT host_image_copy_properties{};
     VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
 
 public:
@@ -125,10 +122,6 @@ public:
     const VkPhysicalDeviceDescriptorBufferFeaturesEXT &GetDescriptorBufferFeatures()const{return descriptor_buffer_features;}
     const VkPhysicalDeviceDescriptorBufferPropertiesEXT &GetDescriptorBufferProperties()const{return descriptor_buffer_properties;}
 
-    const bool              SupportHostImageCopy()const{return support_host_image_copy;}
-    const VkPhysicalDeviceHostImageCopyFeaturesEXT &GetHostImageCopyFeatures()const{return host_image_copy_features;}
-    const VkPhysicalDeviceHostImageCopyPropertiesEXT &GetHostImageCopyProperties()const{return host_image_copy_properties;}
-    bool                    SupportHostImageCopyFormat(VkFormat format)const;
     uint32_t                GetTransferFamilyIndex(uint32_t graphics_family)const;
 
 public:

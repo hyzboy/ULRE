@@ -18,7 +18,7 @@ namespace hgl::graph
     /**
      * 统一纹理上传队列管理器。
      * 支持四级优先级（Immediate/High/Normal/Low）、可撤销（Cancel/Discard）、
-     * Staging显存背压控制、双路径提交（HostImageCopy直写 / GPU DMA传输）。
+     * Staging显存背压控制、双队列提交（专用 Transfer 队列 DMA / Graphics 队列 DMA）。
      */
     class TextureUploadQueue
     {
@@ -61,7 +61,6 @@ namespace hgl::graph
     private:
         void EnsureResources();
         bool DispatchTask(TextureUploadTask *task);
-        bool DispatchHostImageCopy(TextureUploadTask *task);
         bool DispatchGpuTransferDma(TextureUploadTask *task);
         bool DispatchGpuGraphicsDma(TextureUploadTask *task);
 

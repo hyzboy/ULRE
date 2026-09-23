@@ -67,27 +67,22 @@ namespace hgl::graph
         if (!device_)
             return;
 
-        GLogInfo(u8"[TextureUploadQueue] EnsureResources: Creating transfer_queue...");
         if (!transfer_queue_)
         {
             transfer_queue_ = device_->CreateTransferQueue("TextureUploadTransferQueue", 2);
         }
-        GLogInfo(u8"[TextureUploadQueue] EnsureResources: Creating transfer_cmd_buf...");
         if (!transfer_cmd_buf_)
         {
             transfer_cmd_buf_ = device_->CreateTransferTextureCommandBuffer("TextureUploadTransferCmdBuf");
         }
-        GLogInfo(u8"[TextureUploadQueue] EnsureResources: Creating graphics_queue...");
         if (!graphics_queue_)
         {
             graphics_queue_ = device_->CreateQueue("TextureUploadGraphicsQueue", 2);
         }
-        GLogInfo(u8"[TextureUploadQueue] EnsureResources: Creating graphics_cmd_buf...");
         if (!graphics_cmd_buf_)
         {
             graphics_cmd_buf_ = device_->CreateTextureCommandBuffer("TextureUploadGraphicsCmdBuf");
         }
-        GLogInfo(u8"[TextureUploadQueue] EnsureResources: Done");
     }
 
     uint64_t TextureUploadQueue::Enqueue(TextureUploadTask *task)
@@ -101,20 +96,11 @@ namespace hgl::graph
         task->task_id = task_id;
         task->state = UploadTaskState::Queued;
 
-        // 自动判定后端
+        // 自动判定后端（仅在 GPU 专用 Transfer DMA 与 Graphics DMA 之间选择）
         if (task->backend == UploadBackendType::Auto)
         {
-            const VulkanPhyDevice *phy = device_ ? device_->GetPhyDevice() : nullptr;
-            const VulkanDevAttr *attr = device_ ? device_->GetDevAttr() : nullptr;
-            const VkFormat fmt = task->target_texture ? task->target_texture->GetFormat() : VK_FORMAT_UNDEFINED;
-
-            if (attr && attr->copy_memory_to_image && attr->transition_image_layout &&
-                phy && phy->SupportHostImageCopyFormat(fmt) && !task->auto_mipmaps)
-            {
-                task->backend = UploadBackendType::HostImageCopy;
-            }
-            else if (device_ && device_->GetTransferFamilyIndex() != VK_QUEUE_FAMILY_IGNORED &&
-                     !task->auto_mipmaps && task->priority != UploadPriority::Immediate)
+            if (device_ && device_->GetTransferFamilyIndex() != VK_QUEUE_FAMILY_IGNORED &&
+                !task->auto_mipmaps && task->priority != UploadPriority::Immediate)
             {
                 task->backend = UploadBackendType::GpuTransferDma;
             }
@@ -232,8 +218,6 @@ namespace hgl::graph
 
         switch (task->backend)
         {
-            case UploadBackendType::HostImageCopy:
-                return DispatchHostImageCopy(task);
             case UploadBackendType::GpuTransferDma:
                 return DispatchGpuTransferDma(task);
             case UploadBackendType::GpuGraphicsDma:
@@ -242,141 +226,15 @@ namespace hgl::graph
         }
     }
 
-    bool TextureUploadQueue::DispatchHostImageCopy(TextureUploadTask *task)
-    {
-        if (!task || !task->tci || !task->target_texture || !device_)
-            return false;
-
-        TextureCreateInfo *tci = task->tci;
-        Texture *tex = task->target_texture;
-        VkImage image = tex->GetImage();
-        if (image == VK_NULL_HANDLE)
-            return false;
-
-        VulkanDevAttr *attr = device_->GetDevAttr();
-        if (!attr || !attr->copy_memory_to_image || !attr->transition_image_layout)
-            return false;
-
-        const void *pixels = tci->pixels ? tci->pixels : (tci->buffer ? tci->buffer->Map() : nullptr);
-        if (!pixels)
-        {
-            LogError(u8"[TextureUploadQueue] HostImageCopy failed: no pixel data");
-            return false;
-        }
-
-        const uint32_t mip_levels = tci->target_mipmaps > 0 ? tci->target_mipmaps : 1;
-
-        // 1. Transition layout: UNDEFINED -> GENERAL (Host Image Copy 规范通用目标布局)
-        VkHostImageLayoutTransitionInfoEXT trans_info{};
-        trans_info.sType = VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO_EXT;
-        trans_info.pNext = nullptr;
-        trans_info.image = image;
-        trans_info.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        trans_info.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-        trans_info.subresourceRange.aspectMask = tex->GetAspect();
-        trans_info.subresourceRange.baseMipLevel = 0;
-        trans_info.subresourceRange.levelCount = mip_levels;
-        trans_info.subresourceRange.baseArrayLayer = 0;
-        trans_info.subresourceRange.layerCount = 1;
-
-        VkResult res = attr->transition_image_layout(device_->GetDevice(), 1, &trans_info);
-        if (res != VK_SUCCESS)
-        {
-            LogError(u8"[TextureUploadQueue] Host transition UNDEFINED -> GENERAL failed: %d", res);
-            if (tci->buffer) tci->buffer->Unmap();
-            return false;
-        }
-
-        // 2. Prepare regions for each mip level
-        AutoDeleteArray<VkMemoryToImageCopyEXT> regions(mip_levels);
-        regions.zero();
-
-        VkDeviceSize offset = 0;
-        uint32_t width = tci->extent.width;
-        uint32_t height = tci->extent.height;
-        uint32_t rolling_level_bytes = tci->mipmap_zero_total_bytes;
-
-        for (uint32_t level = 0; level < mip_levels; ++level)
-        {
-            VkMemoryToImageCopyEXT &reg = regions[level];
-            reg.sType = VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY_EXT;
-            reg.pNext = nullptr;
-            reg.pHostPointer = static_cast<const uint8_t *>(pixels) + offset;
-            reg.memoryRowLength = 0;
-            reg.memoryImageHeight = 0;
-            reg.imageSubresource.aspectMask = tex->GetAspect();
-            reg.imageSubresource.mipLevel = level;
-            reg.imageSubresource.baseArrayLayer = 0;
-            reg.imageSubresource.layerCount = 1;
-            reg.imageOffset = {0, 0, 0};
-            reg.imageExtent.width = width;
-            reg.imageExtent.height = height;
-            reg.imageExtent.depth = 1;
-
-            const bool can_half_width = (width > 1);
-            const bool can_half_height = (height > 1);
-
-            uint32_t level_bytes = 0;
-            if (IsBlockCompressedFormat(tex->GetFormat()))
-            {
-                if (GetBlockCompressedLevelBytes(tex->GetFormat(), width, height, level_bytes))
-                    offset += level_bytes;
-            }
-            else
-            {
-                if (rolling_level_bytes < 8)
-                    offset += 8;
-                else
-                    offset += rolling_level_bytes;
-
-                if (can_half_width) rolling_level_bytes >>= 1;
-                if (can_half_height) rolling_level_bytes >>= 1;
-            }
-
-            if (can_half_width) width >>= 1;
-            if (can_half_height) height >>= 1;
-        }
-
-        VkCopyMemoryToImageInfoEXT copy_info{};
-        copy_info.sType = VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO_EXT;
-        copy_info.pNext = nullptr;
-        copy_info.flags = 0;
-        copy_info.dstImage = image;
-        copy_info.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL;
-        copy_info.regionCount = mip_levels;
-        copy_info.pRegions = regions.data();
-
-        res = attr->copy_memory_to_image(device_->GetDevice(), &copy_info);
-        if (res != VK_SUCCESS)
-        {
-            LogError(u8"[TextureUploadQueue] vkCopyMemoryToImageEXT failed: %d", res);
-            if (tci->buffer) tci->buffer->Unmap();
-            return false;
-        }
-
-        // Host Image Copy 直接写入 GENERAL 布局，GPU 着色器通过 bindless 描述符直接以此布局采样
-        tex->SetImageLayout(VK_IMAGE_LAYOUT_GENERAL);
-
-        if (tci->buffer)
-            tci->buffer->Unmap();
-
-        task->state = UploadTaskState::Completed;
-        if (task->on_complete)
-            task->on_complete(task, task->user_data);
-
-        completed_tasks_.Add(task);
-
-        LogInfo(u8"[TextureUploadQueue] HostImageCopy completed for task %llu (tex=%p)",
-                task->task_id, (const void *)tex);
-        return true;
-    }
-
     bool TextureUploadQueue::DispatchGpuTransferDma(TextureUploadTask *task)
     {
         if (!task || !task->tci || !task->target_texture || !device_)
             return false;
 
         EnsureResources();
+
+        if (transfer_queue_)
+            transfer_queue_->WaitLastSubmitFence();
 
         TextureCreateInfo *tci = task->tci;
         Texture *tex = task->target_texture;
@@ -393,8 +251,7 @@ namespace hgl::graph
         }
 
         task->staging_bytes = total_bytes;
-        task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes,
-                                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
         if (!task->staging_buffer)
         {
             if (tci->buffer) tci->buffer->Unmap();
@@ -486,12 +343,14 @@ namespace hgl::graph
             VK_PIPELINE_STAGE_2_COPY_BIT,
             VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
             VK_ACCESS_2_TRANSFER_WRITE_BIT,
-            VK_ACCESS_2_SHADER_READ_BIT,
+            VK_ACCESS_2_NONE,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             subresource_range);
 
         transfer_cmd_buf_->End();
+
+        tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         Semaphore *sem = device_->CreateGPUSemaphore("TextureUploadTransferCompleteSem");
         task->transfer_sem = sem;
@@ -528,6 +387,9 @@ namespace hgl::graph
 
         EnsureResources();
 
+        if (graphics_queue_)
+            graphics_queue_->WaitLastSubmitFence();
+
         TextureCreateInfo *tci = task->tci;
         Texture *tex = task->target_texture;
         VkImage image = tex->GetImage();
@@ -543,8 +405,7 @@ namespace hgl::graph
         }
 
         task->staging_bytes = total_bytes;
-        task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes,
-                                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
         if (!task->staging_buffer)
         {
             if (tci->buffer) tci->buffer->Unmap();
@@ -663,6 +524,8 @@ namespace hgl::graph
 
         graphics_cmd_buf_->End();
 
+        tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
         graphics_queue_->Submit(graphics_cmd_buf_, nullptr, nullptr);
 
         task->state = UploadTaskState::InFlight;
@@ -741,13 +604,10 @@ namespace hgl::graph
                 }
 
                 // Staging 显存背压控制
-                if (task->backend != UploadBackendType::HostImageCopy)
+                if (current_staging_bytes_ + task->staging_bytes > max_staging_bytes_ && current_staging_bytes_ > 0)
                 {
-                    if (current_staging_bytes_ + task->staging_bytes > max_staging_bytes_ && current_staging_bytes_ > 0)
-                    {
-                        // 显存预算达上限，暂缓派发本批 DMA 任务
-                        break;
-                    }
+                    // 显存预算达上限，暂缓派发本批 DMA 任务
+                    break;
                 }
 
                 queued_tasks_[p].Delete(0);

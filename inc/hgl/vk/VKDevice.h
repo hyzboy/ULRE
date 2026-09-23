@@ -112,7 +112,6 @@ public:
 
                 bool                SupportDrawIndirectCount()const {return attr && attr->cmd_draw_mesh_tasks_indirect_count != nullptr;}
                 bool                IsDescriptorBufferActive()const {return attr && attr->use_descriptor_buffer;}
-                bool                SupportHostImageCopy()const {return attr && attr->support_host_image_copy;}
 
                 void                WaitIdle            ()const;
 

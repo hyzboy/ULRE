@@ -279,9 +279,6 @@ uint64_t TextureManager::CreateTexture2DAsync(TextureCreateInfo *tci,
     {
         Image2DCreateInfo ici(tci->usage, tci->tiling, tci->format, tci->extent, tci->target_mipmaps);
 
-        if (GetPhyDevice() && GetPhyDevice()->SupportHostImageCopyFormat(tci->format))
-            ici.usage |= VK_IMAGE_USAGE_HOST_TRANSFER_BIT;
-
         uint32_t queue_families[2] = {
             GetDevice()->GetGraphicsFamilyIndex(),
             GetDevice()->GetTransferFamilyIndex()

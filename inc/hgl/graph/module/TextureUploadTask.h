@@ -6,6 +6,8 @@
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
 #include <hgl/vk/VKQueue.h>
+#include <hgl/vk/VKSemaphore.h>
+#include <hgl/vk/VKFence.h>
 
 namespace hgl::graph
 {
@@ -32,7 +34,6 @@ namespace hgl::graph
     enum class UploadBackendType : uint8_t
     {
         Auto,               // 自动判定
-        HostImageCopy,      // VK_EXT_host_image_copy CPU 直写
         GpuTransferDma,     // 专用 Transfer 队列 DMA 传输
         GpuGraphicsDma      // Graphics 队列 DMA 传输（用于需 Blit 生成 Mipmap 等）
     };

@@ -1,6 +1,6 @@
 # 统一异步纹理上传系统与 Bindless 集成技术设计与使用指南
 
-> 文档状态：2026-09-23 定稿。本系统为自研引擎构建了统一的纹理上传与调度基础设施，支持 `VK_EXT_host_image_copy` CPU 零拷贝与专用 Transfer Queue DMA 传输双后端，提供 4 级优先级调度、显存背压控制、任务撤销与退避，并与 `VK_EXT_descriptor_buffer` Bindless 体系实现了原子槽位热更新。
+> 文档状态：2026-09-23 定稿。本系统为自研引擎构建了统一的纹理上传与调度基础设施，全面采用 GPU 独立专用 Transfer 队列 DMA 纯硬件搬运架构，弃用 CPU 模拟排布的 HostImageCopy，提供 4 级优先级调度、Staging 显存背压控制、任务撤销与退避，并与 `VK_EXT_descriptor_buffer` Bindless 体系实现了原子槽位热更新。
 
 ---
 
@@ -12,7 +12,7 @@
 3. **描述符集与绑定位冲突**：在完全弃用传统 Descriptor Pool、迁移至 `VK_EXT_descriptor_buffer` 的架构下，异步加载的纹理必须能在完成时无锁地热更新至 GPU 的 Bindless 描述符表中。
 
 基于上述背景，我们设计并落地了统一纹理上传管理器（`TextureUploadQueue` 与 `TextureUploadTask`），核心设计原则包括：
-- **双提交后端自动切换**：硬件支持时优先选用 `VK_EXT_host_image_copy`（Vulkan 1.4 core），避免创建 CPU-to-GPU 的 Staging Buffer；回退路径选用专用异步传输队列（Transfer Queue Family）。
+- **纯硬件 DMA 异步传输**：优先选用硬件独立异步传输队列（Transfer Queue Family），由 GPU 硬件 Copy Engine 在搬运时线速完成 Optimal Tiling（Morton/Z-Order）重排，避免 CPU 软件 Swizzle 耗时与 Cache 冲刷。
 - **4 级优先级队列调度**：分为 `Immediate`（立即同步直达）、`High`（高优先级可视视锥贴图）、`Normal`（常规材质贴图）、`Low`（远景与后台预加载）。
 - **支持动态撤销（Cancellation & Discard）**：未出队任务立即安全销毁；已在 GPU 传输中的任务标记为 `Discarded`，完成时自动释放资源而不触发回调。
 - **显存水位背压控制（Backpressure）**：限制在飞 Staging Buffer 总体积（默认 128MB），避免爆发式加载导致 OOM。
@@ -33,22 +33,22 @@ graph TD
         C --> D{优先级分类入队}
         D -->|Immediate| E[立即同帧执行]
         D -->|High / Normal / Low| F[四级就绪队列]
-        F -->|每帧 Update / 预算判定| G{检测 HostImageCopy 特性}
+        F -->|每帧 Update / 预算判定| G{任务分流}
     end
 
-    subgraph 后端 1: Host Image Copy
-        G -->|支持且无需 Blit Mipmap| H[vkTransitionImageLayoutEXT<br/>UNDEFINED -> GENERAL]
-        H --> I[vkCopyMemoryToImageEXT<br/>CPU直写显存]
+    subgraph 后端 1: 专用 Transfer 队列 DMA
+        G -->|非 Immediate 且无需生成 Mipmap| H[分配 Staging Buffer 写入]
+        H --> I[独立 Transfer Queue 硬件 DMA 拷贝]
+        I --> J[收集 pending_wait_semaphores_]
     end
 
-    subgraph 后端 2: GPU DMA Transfer
-        G -->|不支持或需生成 Mipmap| J[分配 Staging Buffer 写入]
-        J --> K[专用 Transfer Queue 录制提交]
-        K --> L[收集 pending_wait_semaphores_]
+    subgraph 后端 2: Graphics 队列 DMA
+        G -->|需要 Blit 生成 Mipmap 等| K[分配 Staging Buffer 写入]
+        K --> L[Graphics Queue 拷贝并执行 Blit]
     end
 
     E --> M[任务标记 Completed / Discarded]
-    I --> M
+    J --> M
     L --> M
 
     subgraph 帧同步与呈现
@@ -56,7 +56,7 @@ graph TD
         N -->|4. 若关联 bindless_handle| O[BindlessTextureManager::UpdateTextureHandle]
         O -->|写入 Descriptor Buffer| P[GPU 采样生效 / 动态无感替换]
         N -->|5. 触发 on_complete 回调| Q[通知客户端对象就绪]
-        L -.->|6. 注入 SwapchainRenderTarget::Submit| R[Graphics 队列等待 Transfer 完成信号量]
+        J -.->|6. 注入 SwapchainRenderTarget::Submit| R[Graphics 队列等待 Transfer 完成信号量]
     end
 ```
 
@@ -80,7 +80,7 @@ enum class UploadPriority : uint8_t
 enum class UploadTaskState : uint8_t
 {
     Queued,             // 在队列等待调度
-    InFlight,           // 已提交至 GPU 传输或正在直写
+    InFlight,           // 已提交至 GPU 传输
     Completed,          // 上传完成，已就绪
     Cancelled,          // 调度前已被取消
     Discarded           // GPU 执行中被撤销，完成后直接丢弃
@@ -89,7 +89,6 @@ enum class UploadTaskState : uint8_t
 enum class UploadBackendType : uint8_t
 {
     Auto,               // 自动判定
-    HostImageCopy,      // VK_EXT_host_image_copy CPU 直写
     GpuTransferDma,     // 专用 Transfer 队列 DMA 传输
     GpuGraphicsDma      // Graphics 队列 DMA 传输（用于需 Blit 生成 Mipmap 等）
 };
@@ -129,27 +128,22 @@ struct TextureUploadTask
 
 ---
 
-## 4. 关键技术突破与规范适配
+## 4. 关键技术设计与硬件架构决策
 
-### 4.1 Vulkan 1.4 `VK_EXT_host_image_copy` 严格规范与 Intel Arc 驱动约束
-在实现 Host Image Copy 路径时，若按照常规思路将图像由 `UNDEFINED` 转换至 `TRANSFER_DST_OPTIMAL`，再调用 `vkCopyMemoryToImageEXT` 并转换到 `SHADER_READ_ONLY_OPTIMAL`，在 Vulkan 1.4 验证层及 Intel Arc 等现代 GPU 上会触发严厉的校验报错：
+### 4.1 全面弃用 Host Image Copy（HIC）的技术原因
+在系统演进与深入硬件体系结构剖析后，引擎全面移除了 `VK_EXT_host_image_copy`（HIC）路径，决策原因如下：
 
-- **VUID-VkHostImageLayoutTransitionInfo-newLayout-09057**：`newLayout` 必须在 `VkPhysicalDeviceHostImageCopyPropertiesEXT::pCopyDstLayouts` 列表中。
-- **VUID-VkCopyMemoryToImageInfo-dstImageLayout-09060**：`dstImageLayout` 必须在 `pCopyDstLayouts` 列表中。
-
-在 Intel Arc 驱动实现中，`pCopyDstLayouts` **仅包含一个布局**：`VK_IMAGE_LAYOUT_GENERAL`！
-
-#### 解决机制：全链路 `VK_IMAGE_LAYOUT_GENERAL` 闭环
-1. **CPU 直写转换**：在 `DispatchHostImageCopy`（`src/SceneGraph/module/TextureUploadQueue.cpp`）中：
-   - 使用 `vkTransitionImageLayoutEXT` 将子资源直接从 `VK_IMAGE_LAYOUT_UNDEFINED` 转换为 `VK_IMAGE_LAYOUT_GENERAL`。
-   - 在 `VK_IMAGE_LAYOUT_GENERAL` 布局下调用 `vkCopyMemoryToImageEXT` 直写各 Mipmap 级别。
-2. **状态记录**：调用 `target_texture->SetImageLayout(VK_IMAGE_LAYOUT_GENERAL)` 记录当前图像布局。
-3. **Bindless 采样契约**：在 `BindlessTextureManager::UpdateTextureHandle` 中：
-   - 提取 `tex->GetImageLayout()`，将写向 Descriptor Buffer 的采样器描述符图像布局设定为 `VK_IMAGE_LAYOUT_GENERAL`。
-   - 确保了着色器在采样该句柄时，GPU 硬件期望的布局与图像实际驻留布局完全一致，实现 **0 Vulkan Validation Layer 错误**。
+1. **GPU 硬件 Tiler vs CPU 软件 Swizzling 差距极大**：
+   - GPU 显存中的最优排布（Optimal Tiling）通常为 Morton / Z-Order 瓦片化曲线。
+   - **GPU 专用 DMA 引擎（Copy Engine / SDMA）**：拥有专用硅片硬件转排电路，在线速数据搬运的同时瞬间完成瓦片化重排，完全不耗费 CPU 算力与 3D 渲染管线。
+   - **CPU 软件 Swizzling（HIC 缺陷）**：驱动在调用 `vkCopyMemoryToImageEXT` 时，由 CPU 核心在用户空间运行复杂嵌套循环计算瓦片坐标并逐像素拷贝。对大图（2K/4K 等），单核 CPU 将被吃满 5~15ms 造成剧烈掉帧，且会将 CPU L1/L2/L3 缓存洗刷殆尽（Cache Thrashing）。
+2. **驱动实现布局受限**：
+   - 在主流驱动（如 Intel Arc）中，`pCopyDstLayouts` 仅允许 `VK_IMAGE_LAYOUT_GENERAL` 布局。若要让采样器在 `VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL` 下工作，仍须插入 GPU 队列管线屏障，丧失了纯 Host 操作的独立性。
+3. **架构统一性**：
+   - 移除 HIC 后，全平台（独立显卡、核芯显卡、Apple M / AMD UMA）统一采用纯 GPU DMA 传输，代码分支减少，驱动兼容性与稳定性达到最优。
 
 ### 4.2 专用 Transfer 队列并发共享（Concurrent Sharing Mode）
-对于需要 GPU 生成 Mipmap（Blit）或设备不支持 HostImageCopy 的场景，系统走异步 DMA 传输路径：
+引擎全面基于异步 Transfer DMA 传输路径：
 - **并发图像创建**：创建 `VkImage` 时传入 `graphics_family` 与 `transfer_family` 两个索引，配置 `VK_SHARING_MODE_CONCURRENT`。
 - **免除队列所有权屏障**：无需在 Transfer 队列与 Graphics 队列之间插入复杂的 `release`/`acquire` 屏障。
 - **跨队列同步**：Transfer 队列在提交 `vkQueueSubmit2` 时点亮 `task->signal_semaphore`，该信号量被 `TextureUploadQueue` 收集，并注入主渲染帧的 `SwapchainRenderTarget::Submit` 的等待列表，在 `FRAGMENT_SHADER_BIT` 阶段阻塞主管线直到传输完毕。

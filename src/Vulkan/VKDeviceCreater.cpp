@@ -84,8 +84,6 @@ namespace
         if(physical_device->SupportDescriptorBuffer())
             ext_list->Add(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
 
-        if(physical_device->SupportHostImageCopy())
-            ext_list->Add(VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME);
         // indexTypeUint8 走 VkPhysicalDeviceVulkan14Features（1.4 核心），无需 EXT_INDEX_TYPE_UINT8 扩展
     }
 
@@ -262,13 +260,6 @@ namespace
                           int(f->extendedDynamicState3ColorWriteMask), int(f->extendedDynamicState3PolygonMode), int(f->extendedDynamicState3AlphaToCoverageEnable));
                 break;
             }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT:
-            {
-                const auto *f = static_cast<const VkPhysicalDeviceHostImageCopyFeaturesEXT *>(curr);
-                GLogError(u8"    [%u] HostImageCopyFeaturesEXT (sType=%d): hostImageCopy=%d",
-                          node_index, int(hdr->sType), int(f->hostImageCopy));
-                break;
-            }
             default:
                 GLogError(u8"    [%u] 未知 sType = %d, ptr = %p", node_index, int(hdr->sType), curr);
                 break;
@@ -346,7 +337,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT     eds1{};
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT    eds3{};
     VkPhysicalDeviceDescriptorBufferFeaturesEXT         desc_buffer_features{};
-    VkPhysicalDeviceHostImageCopyFeaturesEXT            host_image_copy_features{};
 
     // Vulkan 1.1: shaderDrawParameters —— SSBO 顶点输入 gl_BaseVertexARB 读取必需
     // （ShaderDrawParameters capability 由该特性启用；设备 v1.4 必支持）
@@ -438,8 +428,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         }
 
         vulkan14_features.pushDescriptor = dev14.pushDescriptor;
-        if(physical_device->SupportHostImageCopy())
-            vulkan14_features.hostImageCopy = VK_TRUE;
 
         create_info.pNext=&vulkan14_features;
     }
@@ -484,14 +472,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         desc_buffer_features.descriptorBuffer = VK_TRUE;
         desc_buffer_features.descriptorBufferPushDescriptors = physical_device->GetDescriptorBufferFeatures().descriptorBufferPushDescriptors;
         create_info.pNext = &desc_buffer_features;
-    }
-
-    if(!physical_device->SupportVulkan14() && physical_device->SupportHostImageCopy())
-    {
-        host_image_copy_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT;
-        host_image_copy_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
-        host_image_copy_features.hostImageCopy = VK_TRUE;
-        create_info.pNext = &host_image_copy_features;
     }
 
     VkDevice device = VK_NULL_HANDLE;
@@ -693,26 +673,6 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
         if(auto fp = device_attr->GetDeviceProc<PFN_vkCmdSetDescriptorBufferOffsetsEXT>("vkCmdSetDescriptorBufferOffsetsEXT"))
             device_attr->cmd_set_descriptor_buffer_offsets = *fp;
-    }
-
-    // Host Image Copy 函数指针（VK_EXT_host_image_copy）
-    if(physical_device->SupportHostImageCopy())
-    {
-        device_attr->support_host_image_copy = true;
-
-        if(auto fp = device_attr->GetDeviceProc<PFN_vkCopyMemoryToImageEXT>("vkCopyMemoryToImageEXT"))
-            device_attr->copy_memory_to_image = *fp;
-
-        if(auto fp = device_attr->GetDeviceProc<PFN_vkCopyImageToMemoryEXT>("vkCopyImageToMemoryEXT"))
-            device_attr->copy_image_to_memory = *fp;
-
-        if(auto fp = device_attr->GetDeviceProc<PFN_vkCopyImageToImageEXT>("vkCopyImageToImageEXT"))
-            device_attr->copy_image_to_image = *fp;
-
-        if(auto fp = device_attr->GetDeviceProc<PFN_vkTransitionImageLayoutEXT>("vkTransitionImageLayoutEXT"))
-            device_attr->transition_image_layout = *fp;
-
-        GLogInfo(u8"[VKDeviceCreater] VK_EXT_host_image_copy 扩展已启用并加载函数指针");
     }
 
     device_attr->surface_format=surface_format;
