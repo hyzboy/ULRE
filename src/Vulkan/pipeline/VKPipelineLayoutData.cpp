@@ -8,6 +8,8 @@ namespace
     {
         VkDescriptorSetLayoutCreateInfo empty_ci{};
         empty_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        empty_ci.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR
+                              | VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
         empty_ci.bindingCount = 0;
 
         VkDescriptorSetLayout empty_layout = VK_NULL_HANDLE;

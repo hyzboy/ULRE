@@ -31,19 +31,19 @@ namespace hgl::graph
     private:
         VkDevice device_ = VK_NULL_HANDLE;
 
-        VkDescriptorPool pool_        = VK_NULL_HANDLE;
         VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
-        VkDescriptorSet  set_         = VK_NULL_HANDLE;
+        PFN_vkCmdPushDescriptorSet push_fn_ = nullptr;
 
-        // 已绑定的 buffer（避免每帧重复 vkUpdateDescriptorSets）
-        VkBuffer bound_buffers_[size_t(SceneBinding::RANGE_SIZE)]{};
+        // 已配置的 buffer 信息（供 vkCmdPushDescriptorSet 组装）
+        mutable VkDescriptorBufferInfo bound_buffers_info_[size_t(SceneBinding::RANGE_SIZE)]{};
+        mutable bool binding_valid_[size_t(SceneBinding::RANGE_SIZE)]{};
 
     public:
         GlobalSceneUBOSet() = default;
         ~GlobalSceneUBOSet() { Destroy(); }
 
         /**
-         * 创建描述符池、布局、描述符集。
+         * 创建描述符集布局并加载 Push Descriptor 指针。
          * 必须在 VkDevice 创建完毕后调用一次。
          */
         bool Init(VkDevice device);
@@ -51,21 +51,19 @@ namespace hgl::graph
         /** 释放所有 Vulkan 资源 */
         void Destroy();
 
-        bool IsValid() const { return set_ != VK_NULL_HANDLE; }
+        bool IsValid() const { return layout_ != VK_NULL_HANDLE && push_fn_ != nullptr; }
 
         VkDescriptorSetLayout GetLayout() const { return layout_; }
-        VkDescriptorSet       GetSet()    const { return set_; }
 
         /**
-         * 将指定 binding 的 UBO 写入描述符集。
-         * 仅当 buffer 变化时才触发 vkUpdateDescriptorSets。
-         * @param binding kSceneBindingCamera / kSceneBindingSky / kSceneBindingViewport / kSceneBindingColorPalette
-         * @param gpu     对应 UBO 的 GPU buffer（nullptr 时不更新）
+         * 将指定 binding 的 UBO 记录到推送缓存。
+         * @param binding kSceneBindingCamera / kSceneBindingSky / kSceneBindingViewport / kSceneBindingColorPalette 等
+         * @param gpu     对应 UBO 的 GPU buffer（nullptr 时禁用该 binding）
          */
         bool UpdateUBO(uint32_t binding, const IGPUBuffer *gpu);
 
         /**
-         * 绑定到命令缓冲区（Set 0）。
+         * 通过 Push Descriptor 直接向命令缓冲区推送 Set 0。
          * @param cmd             目标命令缓冲
          * @param pipeline_layout 当前管线布局（其 set 0 必须与本集 layout 一致）
          * @param bind_point      绑定点：图形管线用 GRAPHICS（默认），ComputeCmdBuffer 用 COMPUTE

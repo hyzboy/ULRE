@@ -104,7 +104,6 @@ public:
                 VkDevice            GetDevice           ()const {return attr->device;}
     const       VulkanPhyDevice *   GetPhyDevice        ()const {return attr->physical_device;}
 
-                VkDescriptorPool    GetDescriptorPool   ()      {return attr->desc_pool;}
                 VkPipelineCache     GetPipelineCache    ()      {return attr->pipeline_cache;}
 
     const       VkFormat            GetSurfaceFormat    ()const {return attr->surface_format.format;}
@@ -112,6 +111,7 @@ public:
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
 
                 bool                SupportDrawIndirectCount()const {return attr && attr->cmd_draw_mesh_tasks_indirect_count != nullptr;}
+                bool                IsDescriptorBufferActive()const {return attr && attr->use_descriptor_buffer;}
 
                 void                WaitIdle            ()const;
 

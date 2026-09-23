@@ -89,7 +89,7 @@ namespace hgl::graph
         if (!bindless_texture_manager_)
             return false;
 
-        if (!bindless_texture_manager_->Init(device->GetDevice()))
+        if (!bindless_texture_manager_->Init(device))
             return false;
 
         // 统一 Sampler 注册：解析 sampler.toml → 按序 vkCreateSampler 写 binding=1。

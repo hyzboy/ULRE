@@ -344,6 +344,9 @@ namespace hgl::graph
         ci.subpass = 0;
         ci.pNext = &rendering_ci;
 
+        if (request.device && request.device->IsDescriptorBufferActive())
+            ci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
         return vkCreateGraphicsPipelines(*request.device,
                                          request.pipeline_cache,
                                          1,

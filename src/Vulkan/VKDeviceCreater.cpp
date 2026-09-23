@@ -80,6 +80,9 @@ namespace
 
         if(require.texture_compression.PVRTC>=VulkanHardwareRequirement::SupportLevel::Want)                   //前面检测过了，所以这里不用再次检测是否支持
             ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
+
+        if(physical_device->SupportDescriptorBuffer())
+            ext_list->Add(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
         // indexTypeUint8 走 VkPhysicalDeviceVulkan14Features（1.4 核心），无需 EXT_INDEX_TYPE_UINT8 扩展
     }
 
@@ -159,36 +162,6 @@ namespace
 
         copy(extent,ext,1);
         return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,miplevel,VK_IMAGE_ASPECT_DEPTH_BIT,img);
-    }
-
-    VkDescriptorPool CreateDescriptorPool(VkDevice device,uint32_t sets_count)
-    {
-        VkDescriptorPoolSize pool_size[]=
-        {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, sets_count},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          sets_count},
-            {VK_DESCRIPTOR_TYPE_SAMPLER,                sets_count},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         sets_count},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, sets_count},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         sets_count},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, sets_count},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       sets_count}
-        };
-
-        VkDescriptorPoolCreateInfo dp_create_info;
-        dp_create_info.sType        =VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        dp_create_info.pNext        =nullptr;
-        dp_create_info.flags        =VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
-        dp_create_info.maxSets      =sets_count;
-        dp_create_info.poolSizeCount=sizeof(pool_size)/sizeof(VkDescriptorPoolSize);
-        dp_create_info.pPoolSizes   =pool_size;
-
-        VkDescriptorPool desc_pool;
-
-        if(vkCreateDescriptorPool(device,&dp_create_info,nullptr,&desc_pool)!=VK_SUCCESS)
-            return(VK_NULL_HANDLE);
-
-        return desc_pool;
     }
 
     void LogDeviceCreateInfo(const VkDeviceCreateInfo *create_info, const VkResult result)
@@ -338,6 +311,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     VkPhysicalDeviceMeshShaderFeaturesEXT               mesh_features{};
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT     eds1{};
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT    eds3{};
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT         desc_buffer_features{};
 
     // Vulkan 1.1: shaderDrawParameters —— SSBO 顶点输入 gl_BaseVertexARB 读取必需
     // （ShaderDrawParameters capability 由该特性启用；设备 v1.4 必支持）
@@ -407,14 +381,20 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     }
 
 
-    if(physical_device->SupportU8Index()
-     &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
     {
-        // Vulkan 1.4 核心：indexTypeUint8 经 VkPhysicalDeviceVulkan14Features 启用
-        //（原 VkPhysicalDeviceIndexTypeUint8FeaturesEXT 扩展结构在 1.4 下冗余）
+        const VkPhysicalDeviceVulkan14Features &dev14 = physical_device->GetFeatures14();
+
+        // Vulkan 1.4 核心：indexTypeUint8 与 pushDescriptor 经 VkPhysicalDeviceVulkan14Features 启用
         vulkan14_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
         vulkan14_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
-        vulkan14_features.indexTypeUint8 = physical_device->GetFeatures14().indexTypeUint8;
+
+        if(physical_device->SupportU8Index()
+         &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
+        {
+            vulkan14_features.indexTypeUint8 = dev14.indexTypeUint8;
+        }
+
+        vulkan14_features.pushDescriptor = dev14.pushDescriptor;
 
         create_info.pNext=&vulkan14_features;
     }
@@ -450,6 +430,14 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         eds3.extendedDynamicState3PolygonMode         = VK_TRUE;   // POLYGON_MODE
         eds3.extendedDynamicState3AlphaToCoverageEnable = VK_TRUE; // ALPHA_TO_COVERAGE_ENABLE
         create_info.pNext = &eds3;
+    }
+
+    if(physical_device->SupportDescriptorBuffer())
+    {
+        desc_buffer_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+        desc_buffer_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        desc_buffer_features.descriptorBuffer = VK_TRUE;
+        create_info.pNext = &desc_buffer_features;
     }
 
     VkDevice device = VK_NULL_HANDLE;
@@ -598,6 +586,36 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
             device_attr->cmd_set_alpha_to_coverage_enable=*fp;
     }
 
+    // Push Descriptor 函数指针（Vulkan 1.4 core / VK_KHR_push_descriptor）
+    {
+        auto fp = device_attr->GetDeviceProc<PFN_vkCmdPushDescriptorSet>("vkCmdPushDescriptorSet");
+        if(!fp)
+            fp = device_attr->GetDeviceProc<PFN_vkCmdPushDescriptorSet>("vkCmdPushDescriptorSetKHR");
+        if(fp)
+            device_attr->cmd_push_descriptor_set = *fp;
+    }
+
+    // Descriptor Buffer 函数指针（VK_EXT_descriptor_buffer）
+    if(physical_device->SupportDescriptorBuffer())
+    {
+        device_attr->use_descriptor_buffer = true;
+
+        if(auto fp = device_attr->GetDeviceProc<PFN_vkGetDescriptorSetLayoutSizeEXT>("vkGetDescriptorSetLayoutSizeEXT"))
+            device_attr->get_descriptor_set_layout_size = *fp;
+
+        if(auto fp = device_attr->GetDeviceProc<PFN_vkGetDescriptorSetLayoutBindingOffsetEXT>("vkGetDescriptorSetLayoutBindingOffsetEXT"))
+            device_attr->get_descriptor_set_layout_binding_offset = *fp;
+
+        if(auto fp = device_attr->GetDeviceProc<PFN_vkGetDescriptorEXT>("vkGetDescriptorEXT"))
+            device_attr->get_descriptor = *fp;
+
+        if(auto fp = device_attr->GetDeviceProc<PFN_vkCmdBindDescriptorBuffersEXT>("vkCmdBindDescriptorBuffersEXT"))
+            device_attr->cmd_bind_descriptor_buffers = *fp;
+
+        if(auto fp = device_attr->GetDeviceProc<PFN_vkCmdSetDescriptorBufferOffsetsEXT>("vkCmdSetDescriptorBufferOffsetsEXT"))
+            device_attr->cmd_set_descriptor_buffer_offsets = *fp;
+    }
+
     device_attr->surface_format=surface_format;
 
     GetDeviceQueue(device_attr);
@@ -605,11 +623,6 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     device_attr->cmd_pool=CreateCommandPool(device_attr->device,graphics_family);
 
     if(!device_attr->cmd_pool)
-        return(nullptr);
-
-    device_attr->desc_pool=CreateDescriptorPool(device_attr->device,require.descriptor_pool);
-
-    if(!device_attr->desc_pool)
         return(nullptr);
 
     device_attr->pipeline_cache=CreatePipelineCache(device_attr->device,physical_device->GetProperties());
@@ -628,7 +641,6 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
             device_attr->debug_utils->SetDevice(device_attr->device,"Device:"+AnsiString(physical_device->GetDeviceName()));
             device_attr->debug_utils->SetSurfaceKHR(surface->GetSurface(),"Surface");
             device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"Main Command Pool");
-            device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"Main Descriptor Pool");
             device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"Main Pipeline Cache");
         }
     #endif//_DEBUG
@@ -775,16 +787,18 @@ bool VulkanDeviceCreater::RequirementCheck()
         }
 
         // bindless 集使用 UPDATE_AFTER_BIND 池，普通与 update-after-bind 两类上限均须满足
+        // binding=0(texture2DArray) 与 binding=2(textureCube) 各占 kMax 个，总计 2 * kMax
+        constexpr uint32_t kRequiredSampledImages = BindlessTextureManager::kMax * 2;
         const VkPhysicalDeviceVulkan12Properties &props12 = physical_device->GetProperties12();
 
-        if(limits.maxDescriptorSetSampledImages        < BindlessTextureManager::kMax
-        || props12.maxDescriptorSetUpdateAfterBindSampledImages < BindlessTextureManager::kMax
+        if(limits.maxDescriptorSetSampledImages        < kRequiredSampledImages
+        || props12.maxDescriptorSetUpdateAfterBindSampledImages < kRequiredSampledImages
         || limits.maxDescriptorSetSamplers             < BindlessTextureManager::kMaxSampler
         || props12.maxDescriptorSetUpdateAfterBindSamplers      < BindlessTextureManager::kMaxSampler)
         {
             GLogError(u8"[VulkanDeviceCreater] 物理设备描述符集上限不足（bindless 硬需求）: "
                         u8"需要 SampledImage=%u / Sampler=%u，实际 %u/%u %u/%u",
-                BindlessTextureManager::kMax,
+                kRequiredSampledImages,
                 BindlessTextureManager::kMaxSampler,
                 limits.maxDescriptorSetSampledImages,          props12.maxDescriptorSetUpdateAfterBindSampledImages,
                 limits.maxDescriptorSetSamplers,               props12.maxDescriptorSetUpdateAfterBindSamplers);

@@ -29,9 +29,6 @@ VulkanDevAttr::~VulkanDevAttr()
         vkDestroyPipelineCache(device,pipeline_cache,nullptr);
     }
 
-    if(desc_pool)
-        vkDestroyDescriptorPool(device,desc_pool,nullptr);
-
     if(cmd_pool)
     {
         VulkanDevice *owner = VulkanDevice::FromDevice(device);

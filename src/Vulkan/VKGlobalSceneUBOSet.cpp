@@ -1,5 +1,6 @@
-﻿#include <hgl/vk/VKGlobalSceneUBOSet.h>
+#include <hgl/vk/VKGlobalSceneUBOSet.h>
 #include <hgl/vk/buffer/IGPUBuffer.h>
+#include <hgl/vk/VKDevice.h>
 #include <hgl/log/Log.h>
 #include <hgl/common/ShaderStageDef.h>
 
@@ -10,26 +11,17 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
 {
     device_ = device;
 
-    // ── 描述符池 ─────────────────────────────────────────────────────
+    VulkanDevice *vdev = VulkanDevice::FromDevice(device);
+    if (vdev && vdev->GetDevAttr())
+        push_fn_ = vdev->GetDevAttr()->cmd_push_descriptor_set;
+
+    if (!push_fn_)
     {
-        VkDescriptorPoolSize pool_sizes[1] = {
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, uint32_t(SceneBinding::RANGE_SIZE) }
-        };
-
-        VkDescriptorPoolCreateInfo pool_ci{};
-        pool_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_ci.maxSets       = 1;
-        pool_ci.poolSizeCount = 1;
-        pool_ci.pPoolSizes    = pool_sizes;
-
-        if (vkCreateDescriptorPool(device_, &pool_ci, nullptr, &pool_) != VK_SUCCESS)
-        {
-            GLogError(u8"[GlobalSceneUBOSet] Failed to create descriptor pool");
-            return false;
-        }
+        GLogError(u8"[GlobalSceneUBOSet] cmd_push_descriptor_set not found (pushDescriptor not supported?)");
+        return false;
     }
 
-    // ── 描述符集布局（camera=0 / sky=1 / viewport=2 / color_palette=3 / global_addresses=4）──
+    // ── 描述符集布局（camera=0 / sky=1 / viewport=2 / color_palette=3 / global_addresses=4 / shadow=5）──
     // stageFlags 加 COMPUTE：compute 管线复用全局 layout 时可按需读这些 UBO
     //（如按 viewport 尺寸定 dispatch 维度）；graphics 侧不受影响（stage 声明超集合法）。
     {
@@ -85,32 +77,19 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
         VkDescriptorSetLayoutCreateInfo layout_ci{};
         layout_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layout_ci.pNext        = &flags_ci;
+        layout_ci.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR
+                               | VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
         layout_ci.bindingCount = kBindingCount;
         layout_ci.pBindings    = bindings;
 
         if (vkCreateDescriptorSetLayout(device_, &layout_ci, nullptr, &layout_) != VK_SUCCESS)
         {
-            GLogError(u8"[GlobalSceneUBOSet] Failed to create descriptor set layout");
+            GLogError(u8"[GlobalSceneUBOSet] Failed to create push descriptor set layout");
             return false;
         }
     }
 
-    // ── 描述符集分配 ─────────────────────────────────────────────────
-    {
-        VkDescriptorSetAllocateInfo alloc_info{};
-        alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_info.descriptorPool     = pool_;
-        alloc_info.descriptorSetCount = 1;
-        alloc_info.pSetLayouts        = &layout_;
-
-        if (vkAllocateDescriptorSets(device_, &alloc_info, &set_) != VK_SUCCESS)
-        {
-            GLogError(u8"[GlobalSceneUBOSet] Failed to allocate descriptor set");
-            return false;
-        }
-    }
-
-    GLogInfo(u8"[GlobalSceneUBOSet] Initialized (camera=0, sky=1, viewport=2, color_palette=3, global_addresses=4)");
+    GLogInfo(u8"[GlobalSceneUBOSet] Initialized with Push Descriptor (camera=0, sky=1, viewport=2, color_palette=3, global_addresses=4, shadow=5)");
     return true;
 }
 
@@ -119,68 +98,86 @@ void GlobalSceneUBOSet::Destroy()
     if (device_ == VK_NULL_HANDLE)
         return;
 
-    // pool 释放时自动释放 set
-    if (pool_ != VK_NULL_HANDLE)
-    {
-        vkDestroyDescriptorPool(device_, pool_, nullptr);
-        pool_ = VK_NULL_HANDLE;
-        set_  = VK_NULL_HANDLE;
-    }
-
     if (layout_ != VK_NULL_HANDLE)
     {
         vkDestroyDescriptorSetLayout(device_, layout_, nullptr);
         layout_ = VK_NULL_HANDLE;
     }
 
+    push_fn_ = nullptr;
     device_ = VK_NULL_HANDLE;
+
+    for (size_t i = 0; i < size_t(SceneBinding::RANGE_SIZE); ++i)
+    {
+        bound_buffers_info_[i] = {};
+        binding_valid_[i] = false;
+    }
 }
 
 bool GlobalSceneUBOSet::UpdateUBO(uint32_t binding, const IGPUBuffer *gpu)
 {
-    if (set_ == VK_NULL_HANDLE || !gpu || binding >= uint32_t(SceneBinding::RANGE_SIZE))
+    if (layout_ == VK_NULL_HANDLE || binding >= uint32_t(SceneBinding::RANGE_SIZE))
         return false;
+
+    if (!gpu)
+    {
+        binding_valid_[binding] = false;
+        bound_buffers_info_[binding] = {};
+        return true;
+    }
 
     const VkBuffer vk_buf = gpu->GetVkDeviceBuffer();
     if (vk_buf == VK_NULL_HANDLE)
+    {
+        binding_valid_[binding] = false;
+        bound_buffers_info_[binding] = {};
         return false;
+    }
 
-    // 同一 buffer 无需重复写入
-    if (bound_buffers_[binding] == vk_buf)
-        return true;
-
-    VkDescriptorBufferInfo buf_info{};
-    buf_info.buffer = vk_buf;
-    buf_info.offset = 0;
-    buf_info.range  = gpu->GetSize();
-
-    VkWriteDescriptorSet write{};
-    write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    write.dstSet          = set_;
-    write.dstBinding      = binding;
-    write.dstArrayElement = 0;
-    write.descriptorCount = 1;
-    write.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    write.pBufferInfo     = &buf_info;
-
-    vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
-
-    bound_buffers_[binding] = vk_buf;
+    bound_buffers_info_[binding].buffer = vk_buf;
+    bound_buffers_info_[binding].offset = 0;
+    bound_buffers_info_[binding].range  = gpu->GetSize();
+    binding_valid_[binding]             = true;
     return true;
 }
 
 void GlobalSceneUBOSet::BindToCmd(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout,
                                   VkPipelineBindPoint bind_point) const
 {
-    if (set_ == VK_NULL_HANDLE)
+    if (layout_ == VK_NULL_HANDLE || !push_fn_ || cmd == VK_NULL_HANDLE)
         return;
 
-    vkCmdBindDescriptorSets(cmd,
-                            bind_point,
-                            pipeline_layout,
-                            uint32_t(DescriptorSetType::Scene),
-                            1, &set_,
-                            0, nullptr);
+    constexpr uint32_t kMaxBindings = uint32_t(SceneBinding::RANGE_SIZE);
+    VkWriteDescriptorSet writes[kMaxBindings];
+    uint32_t write_count = 0;
+
+    for (uint32_t i = 0; i < kMaxBindings; ++i)
+    {
+        if (!binding_valid_[i])
+            continue;
+
+        VkWriteDescriptorSet &w = writes[write_count++];
+        w.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        w.pNext           = nullptr;
+        w.dstSet          = VK_NULL_HANDLE;
+        w.dstBinding      = i;
+        w.dstArrayElement = 0;
+        w.descriptorCount = 1;
+        w.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        w.pImageInfo      = nullptr;
+        w.pBufferInfo     = &bound_buffers_info_[i];
+        w.pTexelBufferView= nullptr;
+    }
+
+    if (write_count > 0)
+    {
+        push_fn_(cmd,
+                 bind_point,
+                 pipeline_layout,
+                 uint32_t(DescriptorSetType::Scene),
+                 write_count,
+                 writes);
+    }
 }
 
 }//namespace hgl::graph

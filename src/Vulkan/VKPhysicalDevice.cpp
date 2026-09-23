@@ -68,6 +68,14 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
     const uint32_t version_major = VK_API_VERSION_MAJOR(api_version);
     const uint32_t version_minor = VK_API_VERSION_MINOR(api_version);
 
+    // 首先枚举设备扩展，以便后续特性/属性链能正确检查扩展支持
+    {
+        uint32_t exten_count;
+        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,nullptr);
+        extension_properties.Resize(exten_count);
+        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
+    }
+
     {
         mem_zero(features11);
         mem_zero(features12);
@@ -130,9 +138,19 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
             *ppNext=&mesh_shader_features;
             ppNext=&mesh_shader_features.pNext;
 
+            // VK_EXT_descriptor_buffer
+            if(CheckExtensionSupport(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME))
+            {
+                descriptor_buffer_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+                descriptor_buffer_features.pNext=nullptr;
+                *ppNext=&descriptor_buffer_features;
+                ppNext=&descriptor_buffer_features.pNext;
+            }
+
             func(physical_device,&features2);
 
             mem_copy(features,features2.features);
+            support_descriptor_buffer = descriptor_buffer_features.descriptorBuffer;
         }
         else
         {
@@ -199,6 +217,15 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 ppNext=&mesh_shader_properties.pNext;
             }
 
+            // VK_EXT_descriptor_buffer properties
+            if(CheckExtensionSupport(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME))
+            {
+                descriptor_buffer_properties.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+                descriptor_buffer_properties.pNext=nullptr;
+                *ppNext=&descriptor_buffer_properties;
+                ppNext=&descriptor_buffer_properties.pNext;
+            }
+
             func(physical_device,&properties2);
 
             mem_copy(properties,properties2.properties);
@@ -246,16 +273,6 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                  debug_front.c_str(), version_major, version_minor);
 
         debug_out(debug_front.c_str(),layer_properties);
-    }
-
-    {
-        uint32_t exten_count;
-
-        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,nullptr);
-
-        extension_properties.Resize(exten_count);
-        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
-
         debug_out(debug_front.c_str(),extension_properties);
     }
 
@@ -281,6 +298,14 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
              mesh_shader_features.taskShader,
              mesh_shader_features.meshShader,
              mesh_shader_features.meshShaderQueries);
+
+    // VK_EXT_descriptor_buffer 状态记录
+    GLogInfo("%s descriptor buffer: (supported=%d, sampledImageSize=%zu, samplerSize=%zu, offsetAlignment=%zu)",
+             debug_front.c_str(),
+             support_descriptor_buffer ? 1 : 0,
+             (size_t)descriptor_buffer_properties.sampledImageDescriptorSize,
+             (size_t)descriptor_buffer_properties.samplerDescriptorSize,
+             (size_t)descriptor_buffer_properties.descriptorBufferOffsetAlignment);
 
     physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 

@@ -204,13 +204,14 @@ int main(int argc, char **argv)
     GLogInfo(u8"--- Testing Stage 3: GlobalAddresses UBO & Shader BDA Resolution ---");
     {
         // 1. Memory layout verification
-        static_assert(sizeof(graph::GlobalAddresses) == 48, "GlobalAddresses must be exactly 48 bytes");
+        static_assert(sizeof(graph::GlobalAddresses) == 56, "GlobalAddresses must be exactly 56 bytes");
         static_assert(offsetof(graph::GlobalAddresses, addr_mesh_draw_params) == 0);
         static_assert(offsetof(graph::GlobalAddresses, addr_pbr_surface) == 8);
         static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 16);
         static_assert(offsetof(graph::GlobalAddresses, addr_transmission_surface) == 24);
         static_assert(offsetof(graph::GlobalAddresses, addr_global_render_items) == 32);
         static_assert(offsetof(graph::GlobalAddresses, addr_draw_item_ids) == 40);
+        static_assert(offsetof(graph::GlobalAddresses, addr_camera_info) == 48);
 
         graph::GlobalAddresses ga{};
         if (ga.addr_global_render_items != 0 || ga.addr_draw_item_ids != 0)

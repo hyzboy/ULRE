@@ -407,6 +407,10 @@ ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkS
     VkComputePipelineCreateInfo compute_pipeline_info = {};
     compute_pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     compute_pipeline_info.layout = pipeline_layout;
+
+    if (IsDescriptorBufferActive())
+        compute_pipeline_info.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
     compute_pipeline_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     compute_pipeline_info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
     compute_pipeline_info.stage.module = shader_module;

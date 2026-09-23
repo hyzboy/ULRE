@@ -25,11 +25,10 @@ struct VulkanDevAttr
     bool                                uint8_index_type    =false;
     bool                                uint32_index_type   =false;
     bool                                wide_lines          =false;
+    bool                                use_descriptor_buffer =false;
 
     VkDevice                            device          =VK_NULL_HANDLE;
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
-
-    VkDescriptorPool                    desc_pool       =VK_NULL_HANDLE;
 
     VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
 
@@ -49,6 +48,16 @@ struct VulkanDevAttr
     PFN_vkCmdSetColorWriteMaskEXT       cmd_set_color_write_mask =nullptr;
     PFN_vkCmdSetPolygonModeEXT          cmd_set_polygon_mode =nullptr;
     PFN_vkCmdSetAlphaToCoverageEnableEXT cmd_set_alpha_to_coverage_enable =nullptr;
+
+    // Push Descriptor（Vulkan 1.4 核心 / VK_KHR_push_descriptor）
+    PFN_vkCmdPushDescriptorSet          cmd_push_descriptor_set =nullptr;
+
+    // Descriptor Buffer（VK_EXT_descriptor_buffer）
+    PFN_vkGetDescriptorSetLayoutSizeEXT          get_descriptor_set_layout_size =nullptr;
+    PFN_vkGetDescriptorSetLayoutBindingOffsetEXT get_descriptor_set_layout_binding_offset =nullptr;
+    PFN_vkGetDescriptorEXT                       get_descriptor =nullptr;
+    PFN_vkCmdBindDescriptorBuffersEXT            cmd_bind_descriptor_buffers =nullptr;
+    PFN_vkCmdSetDescriptorBufferOffsetsEXT       cmd_set_descriptor_buffer_offsets =nullptr;
 
 #ifdef _DEBUG
     DebugUtils *                        debug_utils     =nullptr;

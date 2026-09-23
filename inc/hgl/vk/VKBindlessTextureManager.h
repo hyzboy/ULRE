@@ -4,14 +4,17 @@
 #include <hgl/type/String.h>
 #include <hgl/type/UnorderedMap.h>
 #include <hgl/type/ValueArray.h>
+#include <hgl/log/Log.h>
 
 namespace hgl::graph
 {
     class Texture;
     class Sampler;
+    class VulkanDevice;
+    struct VulkanDevAttr;
 
     /**
-     * 全局 Bindless 纹理管理器（对应 Descriptor Set 3）。
+     * 全局 Bindless 纹理管理器（对应 Descriptor Set 1）。
      *
      * 纹理与 sampler 彻底分离：
      *   binding=0 : texture2DArray[]（SAMPLED_IMAGE，非均匀索引）
@@ -20,16 +23,17 @@ namespace hgl::graph
      *              单张=6 层的 CUBE_ARRAY companion view；与 binding=0 共享
      *              1-based handle 空间，按纹理类型分流）
      *
+     * 基于 VK_EXT_descriptor_buffer：通过 Host-visible GPU 内存
+     * 直接由 CPU 写入描述符，零 Pool 开销与驱动验证消耗。
+     *
      * RegisterTexture 返回纯 tex_handle（1-based，0=无效）；
      * RegisterSamplers 按 ShaderLibrary/sampler.toml 的顺序一次性创建全部 sampler，
      * GLSL 侧以编译期 "#define <name>Sampler <idx>u" 引用，SSBO 只存纯 tex_handle。
-     *
-     * 注：描述符集使用 UPDATE_AFTER_BIND + PARTIALLY_BOUND，
-     *     可在帧内随时注册新纹理（binding=0 支持 update-after-bind；
-     *     binding=1 采样器池仅 PARTIALLY_BOUND，注册须发生在集合绑定前）。
      */
     class BindlessTextureManager
     {
+        OBJECT_LOGGER
+
     public:
         // 一次最多支持的纹理数量（可按需调大，受 maxDescriptorSetSampledImages 约束）
         static constexpr uint32_t kMax = 8192;
@@ -38,11 +42,23 @@ namespace hgl::graph
         static constexpr uint32_t kMaxSampler = 64;
 
     private:
-        VkDevice device_ = VK_NULL_HANDLE;
+        VkDevice       device_ = VK_NULL_HANDLE;
+        VulkanDevAttr *attr_   = nullptr;
 
-        VkDescriptorPool pool_        = VK_NULL_HANDLE;
+        // ── Descriptor Buffer 资源 ──
+        VkBuffer        desc_buffer_             = VK_NULL_HANDLE;
+        VkDeviceMemory  desc_memory_             = VK_NULL_HANDLE;
+        VkDeviceAddress desc_buffer_address_     = 0;
+        uint8_t *       mapped_ptr_              = nullptr;
+        VkDeviceSize    layout_size_             = 0;
+        VkDeviceSize    binding_offset_0_        = 0; // texture2DArray[]
+        VkDeviceSize    binding_offset_1_        = 0; // sampler[]
+        VkDeviceSize    binding_offset_2_        = 0; // textureCubeArray[]
+        size_t          sampled_image_desc_size_ = 0;
+        size_t          sampler_desc_size_       = 0;
+
+        // 描述符集布局
         VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
-        VkDescriptorSet  set_         = VK_NULL_HANDLE;
 
         // 1-based 纹理 handle 池；0=无效
         uint32_t next_handle_ = 1;
@@ -53,23 +69,29 @@ namespace hgl::graph
         // 统一注册机制：由 RegisterSamplers 创建的 VkSampler 句柄，index = 预设索引。
         hgl::ValueArray<VkSampler> samplers_;
 
+    private:
+        bool InitDescriptorBuffer();
+
     public:
         BindlessTextureManager() = default;
         ~BindlessTextureManager() { Destroy(); }
 
         /**
-         * 创建描述符池、布局、描述符集。
-         * 必须在 VkDevice 创建完毕后调用一次。
+         * 创建描述符布局与缓冲区。
+         * 基于 VK_EXT_descriptor_buffer。
          */
-        bool Init(VkDevice device);
+        bool Init(VulkanDevice *device);
+        bool Init(VkDevice device, VulkanDevAttr *attr = nullptr);
 
         /** 释放所有 Vulkan 资源 */
         void Destroy();
 
-        bool IsValid() const { return set_ != VK_NULL_HANDLE; }
+        bool IsValid() const
+        {
+            return desc_buffer_ != VK_NULL_HANDLE && mapped_ptr_ != nullptr;
+        }
 
         VkDescriptorSetLayout GetLayout() const { return layout_; }
-        VkDescriptorSet       GetSet()    const { return set_; }
 
         // ── 统一 Sampler 注册 ─────────────────────────────────────────────
         //

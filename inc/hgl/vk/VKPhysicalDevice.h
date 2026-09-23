@@ -61,8 +61,11 @@ class VulkanPhyDevice
 private:
 
     bool support_u8_index=false;
+    bool support_descriptor_buffer=false;
     VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features{};
     VkPhysicalDeviceMeshShaderPropertiesEXT mesh_shader_properties{};
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};
+    VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptor_buffer_properties{};
     VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
 
 public:
@@ -112,6 +115,10 @@ public:
     const VkDeviceSize      GetMaxBufferSize()const{return properties13.maxBufferSize;}
 
     const uint32_t          GetMaxPushDescriptors()const{return properties14.maxPushDescriptors;}
+    const bool              SupportPushDescriptor()const{return features14.pushDescriptor;}
+    const bool              SupportDescriptorBuffer()const{return support_descriptor_buffer;}
+    const VkPhysicalDeviceDescriptorBufferFeaturesEXT &GetDescriptorBufferFeatures()const{return descriptor_buffer_features;}
+    const VkPhysicalDeviceDescriptorBufferPropertiesEXT &GetDescriptorBufferProperties()const{return descriptor_buffer_properties;}
 
 public:
 

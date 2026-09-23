@@ -103,15 +103,11 @@ struct VulkanHardwareRequirement
     // 1.0 特性
     SupportLevel shaderInt64;                  ///<要求支持着色器 64 位整数(BDA 指针运算依赖)
 
-    uint32_t descriptor_pool;                  ///<描述符池大小(默认1024)
-
 public:
 
     VulkanHardwareRequirement()
     {
         mem_zero(*this);
-
-        descriptor_pool=1024;
 
         geometryShader=SupportLevel::Want;
 
