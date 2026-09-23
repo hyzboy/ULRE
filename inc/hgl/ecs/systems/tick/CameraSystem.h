@@ -14,6 +14,7 @@ namespace hgl::graph
     struct CameraInfo;
     class ViewportInfo;
     class RenderContext;
+    class GlobalSSBOBufferRegistry;
     template<typename T> class StructView;
 }
 
@@ -161,9 +162,10 @@ namespace hgl
             CameraModeProcessor* GetModeProcessor(CameraComponent::ControlMode mode) const;
 
             CameraComponent* SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras) const;
-            void BindCameraResources(CameraComponent* camera);
+            void BindCameraResources(CameraComponent* camera, bool is_main = false);
             void EnsureCameraResources();
             void MarkAllCameraMatricesDirty();
+            graph::GlobalSSBOBufferRegistry *ResolveGlobalSSBORegistry();
 
             // === 数学辅助函数 / Math helper functions ===
 

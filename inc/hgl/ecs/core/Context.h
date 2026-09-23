@@ -143,6 +143,9 @@ namespace hgl
             /// 当前渲染 Pass 的命令缓冲区（在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
 
+            /// 当前渲染 Pass 的活跃相机 SSBO 行号（用于 PushConstants 索引多相机）
+            uint32_t active_camera_id = 0;
+
             std::unique_ptr<RenderSystemCore> render_core;
 
             /// Cached adaptive render graph (auto-culls based on scene content)
@@ -282,6 +285,10 @@ namespace hgl
             /// 获取当前渲染命令缓冲区（仅在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return current_render_cmd; }
             void SetCurrentRenderCmd(hgl::graph::RenderCmdBuffer* cmd) { current_render_cmd = cmd; }
+
+            /// 获取与设置当前活跃相机 SSBO 行号（用于 PushConstants 索引多相机）
+            uint32_t GetActiveCameraID() const { return active_camera_id; }
+            void SetActiveCameraID(uint32_t id) { active_camera_id = id; }
 
             /// Graphics context adapter (Phase 2)
             void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { graphics_context = ctx; }

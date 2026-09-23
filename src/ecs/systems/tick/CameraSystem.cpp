@@ -10,6 +10,7 @@
 #include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/graph/ShaderBufferSources.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
 #include<cmath>
@@ -348,12 +349,10 @@ namespace hgl::ecs
         }
 
         // pass 级相机覆盖（RenderTo(request.camera) 期间）：只处理覆盖相机，
-        // 强制重算——共享 camera_data/camera_info 反映它；跳过用户输入
-        //（pass 相机由程序设定，不吃输入），也跳过其余相机（避免它们的
-        // 解算覆盖共享数据）。
+        // 强制重算——独立解算覆盖相机矩阵并写入其独立的全局 SSBO 槽位（同时同步 UBO 兼容旧接口）
         if (override_camera)
         {
-            BindCameraResources(override_camera);
+            BindCameraResources(override_camera, override_camera->is_main_camera);
             override_camera->matrix_dirty = true;
 
             UpdateBasis(override_camera);
@@ -370,8 +369,6 @@ namespace hgl::ecs
             return;
 
         CameraComponent* main_camera = SelectMainCamera(cameras);
-        if (main_camera)
-            BindCameraResources(main_camera);
 
         // 收集输入状态
         CollectInput();
@@ -387,6 +384,8 @@ namespace hgl::ecs
 
             const bool is_main = (camera_comp.get() == main_camera);
 
+            BindCameraResources(camera_comp.get(), is_main);
+
             // 只有主相机响应玩家输入，从属相机跳过输入
             if (is_main)
                 ProcessInput(camera_comp.get(), deltaTime);
@@ -397,12 +396,8 @@ namespace hgl::ecs
             // 更新位置和目标
             UpdateTransform(camera_comp.get());
 
-            // 关键隔离：只有主相机才允许写入共享的 camera_info！
-            // 从属相机若没有独立 camera_info，绝不能在常规 Update 中覆盖共享数据
-            if (is_main || camera_comp->camera_info != camera_info)
-            {
-                UpdateMatrices(camera_comp.get());
-            }
+            // 每个相机各自解算并写入自己的 SSBO 行
+            UpdateMatrices(camera_comp.get());
         }
 
         if (first_update_pending)
@@ -524,6 +519,19 @@ namespace hgl::ecs
         return nullptr;
     }
 
+    graph::GlobalSSBOBufferRegistry* CameraSystem::ResolveGlobalSSBORegistry()
+    {
+        if (!context)
+            return nullptr;
+        auto *rc = context->GetRenderContext();
+        if (!rc)
+            return nullptr;
+        auto *gc = rc->GetGraphicsContext();
+        if (!gc)
+            return nullptr;
+        return gc->GetGlobalSSBOBufferRegistry();
+    }
+
     void CameraSystem::UpdateMatrices(CameraComponent* camera)
     {
         if (!camera || !camera->matrix_dirty)
@@ -562,7 +570,23 @@ namespace hgl::ecs
                 camera->viewport_info,
                 camera->camera_data
             );
+        }
 
+        // 写入当前相机在全局 SSBO 中的独立持久槽位
+        if (camera->camera_info)
+        {
+            if (auto *registry = ResolveGlobalSSBORegistry())
+            {
+                registry->WriteCamera(camera->camera_id, *camera->camera_info);
+            }
+        }
+
+        // 若为主相机或处于 pass 覆盖态，同步更新全局 camera_ubo（保证向后兼容）
+        if (camera->camera_id == 0 || camera->is_main_camera || camera == override_camera)
+        {
+            if (this->camera_info && camera->camera_info)
+                *this->camera_info = *camera->camera_info;
+            CommitCameraUBO();
         }
 
         camera->matrix_dirty = false;
@@ -586,7 +610,7 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    void CameraSystem::BindCameraResources(CameraComponent* camera)
+    void CameraSystem::BindCameraResources(CameraComponent* camera, bool is_main)
     {
         if (!camera)
             return;
@@ -597,10 +621,25 @@ namespace hgl::ecs
         if (!viewport_info && camera->viewport_info)
             viewport_info = camera->viewport_info;
 
-        camera->camera_data = &camera_data;
-        camera->camera_info = camera_info;
-        if (viewport_info)
+        if (!camera->camera_data)
+            camera->camera_data = &camera->local_camera_data;
+        if (!camera->camera_info)
+            camera->camera_info = &camera->local_camera_info;
+
+        if (viewport_info && !camera->viewport_info)
             camera->viewport_info = viewport_info;
+
+        if (is_main || camera->is_main_camera)
+        {
+            camera->camera_id = 0;
+        }
+        else if (camera->camera_id == 0)
+        {
+            if (auto *registry = ResolveGlobalSSBORegistry())
+            {
+                camera->camera_id = registry->AcquireCamera();
+            }
+        }
     }
 
     void CameraSystem::EnsureCameraResources()

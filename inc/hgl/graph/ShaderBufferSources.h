@@ -200,22 +200,24 @@ namespace hgl::graph::mtl
     // ── 根地址表（RootAddresses）——push constant 承载的全局表设备地址 ──────────
     // 全部 SSBO 走 BDA 后，shader 每个 buffer_reference 起点都需要一个地址来源；
     // 8 张表（MeshDrawParams/L2W/L2WIndex/mtl_data_addrs/texture_references/文本三表）的地址
-    // 集中在此，渲染路径每 MaterialBatch 渲染前一次 PushConstants 下发（64B）。
+    // 集中在此，渲染路径每 MaterialBatch 渲染前一次 PushConstants 下发（72B）。
     // 单一真源（X 列表）：CPU struct / GLSL 字段名 / GLSL 字段类型从这一份生成，
     // A3 发射 push_constant block 时遍历名字+类型表——改字段只改这里。
     #define HGL_ROOT_ADDRESSES_FIELD_LIST(M)  \
-        M(addr_mesh_draw_params,   uint64_t)  \
-        M(addr_l2w,                uint64_t)  \
-        M(addr_l2w_index,          uint64_t)  \
-        M(addr_mtl_data_addrs,     uint64_t)  \
-        M(addr_texture_references, uint64_t)  \
-        M(addr_text_char_info,     uint64_t)  \
-        M(addr_text_char_style,    uint64_t)  \
-        M(addr_text_char_instance, uint64_t)
+        M(addr_mesh_draw_params,   "uint64_t", uint64_t)  \
+        M(addr_l2w,                "uint64_t", uint64_t)  \
+        M(addr_l2w_index,          "uint64_t", uint64_t)  \
+        M(addr_mtl_data_addrs,     "uint64_t", uint64_t)  \
+        M(addr_texture_references, "uint64_t", uint64_t)  \
+        M(addr_text_char_info,     "uint64_t", uint64_t)  \
+        M(addr_text_char_style,    "uint64_t", uint64_t)  \
+        M(addr_text_char_instance, "uint64_t", uint64_t)  \
+        M(camera_id,               "uint",     uint32_t)  \
+        M(_pad_camera,             "uint",     uint32_t)
 
     struct RootAddresses
     {
-    #define HGL_RA_CPU_FIELD(name, cpu_type) cpu_type name;
+    #define HGL_RA_CPU_FIELD(name, glsl_type, cpu_type) cpu_type name;
         HGL_ROOT_ADDRESSES_FIELD_LIST(HGL_RA_CPU_FIELD)
 
     #undef HGL_RA_CPU_FIELD
@@ -224,15 +226,15 @@ namespace hgl::graph::mtl
     // GLSL 字段名（A3 发射 push_constant block 遍历）
     constexpr const char *const kRootAddressesFieldNames[] =
     {
-    #define HGL_RA_NAME_FIELD(name, cpu_type) #name,
+    #define HGL_RA_NAME_FIELD(name, glsl_type, cpu_type) #name,
         HGL_ROOT_ADDRESSES_FIELD_LIST(HGL_RA_NAME_FIELD)
     #undef HGL_RA_NAME_FIELD
     };
 
-    // GLSL 字段类型（全 uint64_t——buffer_reference 地址）
+    // GLSL 字段类型（buffer_reference 地址与 uint 标量）
     constexpr const char *const kRootAddressesFieldGLSLTypes[] =
     {
-    #define HGL_RA_GLSL_FIELD(name, cpu_type) "uint64_t",
+    #define HGL_RA_GLSL_FIELD(name, glsl_type, cpu_type) glsl_type,
         HGL_ROOT_ADDRESSES_FIELD_LIST(HGL_RA_GLSL_FIELD)
     #undef HGL_RA_GLSL_FIELD
     };
@@ -240,22 +242,24 @@ namespace hgl::graph::mtl
     constexpr uint32 kRootAddressesFieldCount =
         static_cast<uint32>(sizeof(kRootAddressesFieldNames) / sizeof(kRootAddressesFieldNames[0]));
 
-    // 布局断言：全 uint64 标量，无 padding——offset 0..56 按 8B 步进，sizeof == 64
+    // 布局断言：8×uint64 连续 + 2×uint32，无额外 padding，sizeof == 72
     constexpr bool RootAddressesLayoutValid() noexcept
     {
         const size_t offsets[] =
         {
-    #define HGL_RA_OFFSET_FIELD(name, cpu_type) offsetof(RootAddresses, name),
+    #define HGL_RA_OFFSET_FIELD(name, glsl_type, cpu_type) offsetof(RootAddresses, name),
             HGL_ROOT_ADDRESSES_FIELD_LIST(HGL_RA_OFFSET_FIELD)
     #undef HGL_RA_OFFSET_FIELD
         };
-        for (uint32 i = 0; i < kRootAddressesFieldCount; ++i)
+        for (uint32 i = 0; i < 8; ++i)
         {
             if (offsets[i] != i * 8u)
                 return false;
         }
-        return sizeof(RootAddresses) == 64;
+        if (offsets[8] != 64u || offsets[9] != 68u)
+            return false;
+        return sizeof(RootAddresses) == 72;
     }
     static_assert(RootAddressesLayoutValid(),
-        "RootAddresses 布局必须 8×uint64 连续（offset 0..56，sizeof=64）——与 GLSL push_constant block 逐字段一致");
+        "RootAddresses 布局必须 8×uint64 + 2×uint32 连续（sizeof=72）——与 GLSL push_constant block 逐字段一致");
 }

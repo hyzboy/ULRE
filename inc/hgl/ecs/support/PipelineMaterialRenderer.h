@@ -134,6 +134,7 @@ namespace hgl::ecs
                     uint32_t batch_count,
                     TransformAssignmentBuffer* transform_buffer,
                     const MaterialBatch *owner_batch = nullptr,
-                    graph::RenderContext *render_context = nullptr);
+                    graph::RenderContext *render_context = nullptr,
+                    uint32_t camera_id = 0);
     };
 }//namespace hgl::ecs

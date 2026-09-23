@@ -35,7 +35,8 @@ namespace hgl::graph
                                   uint64_t    addr_texture_references = 0,
                                   IGPUBuffer *text_char_info          = nullptr,
                                   IGPUBuffer *text_char_style         = nullptr,
-                                  IGPUBuffer *text_char_inst          = nullptr)
+                                  IGPUBuffer *text_char_inst          = nullptr,
+                                  uint32_t    camera_id               = 0)
     {
         if (!cmd || !dev || !layout)
             return;
@@ -56,6 +57,8 @@ namespace hgl::graph
         fill(ra.addr_text_char_info,      text_char_info);
         fill(ra.addr_text_char_style,     text_char_style);
         fill(ra.addr_text_char_instance,  text_char_inst);
+        ra.camera_id    = camera_id;
+        ra._pad_camera  = 0;
 
         cmd->PushConstants(layout, &ra, sizeof(ra));
     }

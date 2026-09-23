@@ -1,6 +1,7 @@
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/BufferManager.h>
+#include <hgl/graph/CameraInfo.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
 #include <hgl/log/Log.h>
 
@@ -15,6 +16,7 @@ namespace
         { GlobalSSBOType::PBRSurface,          "PBRSurface",          sizeof(ssbo::PBRSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::EmissiveSurface,     "EmissiveSurface",     sizeof(ssbo::EmissiveSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::TransmissionSurface, "TransmissionSurface", sizeof(ssbo::TransmissionSurfaceRow), 1024u, 1u },
+        { GlobalSSBOType::CameraInfo,          "CameraInfo",          sizeof(CameraInfo), 64u, 1u },
     };
 }
 
@@ -115,6 +117,7 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO()
     ga.addr_transmission_surface = GetGPUBase(GlobalSSBOType::TransmissionSurface);
     ga.addr_global_render_items  = 0;
     ga.addr_draw_item_ids        = 0;
+    ga.addr_camera_info          = GetGPUBase(GlobalSSBOType::CameraInfo);
 
     global_addresses_ubo->Update(ga);
     global_addresses_ubo->Commit();

@@ -10,6 +10,8 @@
 #include <hgl/vk/buffer/ActiveRowLease.h>
 #include <hgl/vk/buffer/StructView.h>
 
+#include <hgl/graph/CameraInfo.h>
+
 namespace hgl::graph
 {
 
@@ -251,6 +253,41 @@ public:
     DeviceBuffer *GetMeshDrawParamsBuffer() const
     {
         return GetBuffer(GlobalSSBOType::MeshDrawParams);
+    }
+
+    // ---- CameraInfo 便捷接口 ----
+
+    uint32_t AcquireCamera()
+    {
+        return Acquire(GlobalSSBOType::CameraInfo);
+    }
+
+    uint32_t AcquireCamera(const CameraInfo &info)
+    {
+        uint32_t id = Acquire(GlobalSSBOType::CameraInfo);
+        if (id != ActiveRowPool::InvalidRowID)
+            Write(GlobalSSBOType::CameraInfo, id, &info, sizeof(CameraInfo));
+        return id;
+    }
+
+    bool WriteCamera(uint32_t id, const CameraInfo &info)
+    {
+        return Write(GlobalSSBOType::CameraInfo, id, &info, sizeof(CameraInfo));
+    }
+
+    bool ReleaseCamera(uint32_t id)
+    {
+        return ReleaseID(GlobalSSBOType::CameraInfo, id);
+    }
+
+    uint64_t GetCameraInfoGPUBase() const
+    {
+        return GetGPUBase(GlobalSSBOType::CameraInfo);
+    }
+
+    DeviceBuffer *GetCameraInfoBuffer() const
+    {
+        return GetBuffer(GlobalSSBOType::CameraInfo);
     }
 };
 

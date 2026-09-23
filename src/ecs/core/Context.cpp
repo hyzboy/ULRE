@@ -477,6 +477,11 @@ namespace hgl
             {
                 camera_system->SetOverrideCamera(req.camera);
                 camera_system->Update(req.delta_time);
+                active_camera_id = req.camera->camera_id;
+            }
+            else
+            {
+                active_camera_id = 0;
             }
 
             bool ok = false;
@@ -509,6 +514,7 @@ namespace hgl
                 camera_system->ForceRefreshSelectedCamera();
                 camera_system->Update(0.0f);
             }
+            active_camera_id = 0;
 
             return ok;
         }

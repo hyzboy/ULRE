@@ -101,11 +101,12 @@ namespace hgl::ecs
     }
 
     void PipelineMaterialRenderer::Render(graph::RenderCmdBuffer* rcb,
-                                              const DrawBatchArray& batches,
-                                              uint32_t batch_count,
-                                              TransformAssignmentBuffer* transform_buffer,
-                                              const MaterialBatch *owner_batch,
-                                              graph::RenderContext *render_context)
+                                          const DrawBatchArray& batches,
+                                          uint32_t batch_count,
+                                          TransformAssignmentBuffer* transform_buffer,
+                                          const MaterialBatch *owner_batch,
+                                          graph::RenderContext *render_context,
+                                          uint32_t camera_id)
     {
         // 前置条件检查
         if (!rcb)
@@ -180,7 +181,9 @@ namespace hgl::ecs
                     ? owner_batch->l2w_index_buffer->GetGPUBuffer() : nullptr,
                 owner_batch->material_data_index_rows_buffer
                     ? owner_batch->material_data_index_rows_buffer->GetGPUBuffer() : nullptr,
-                owner_batch->texture_reference_base_addr);
+                owner_batch->texture_reference_base_addr,
+                nullptr, nullptr, nullptr,
+                camera_id);
         }
 
         // 批次级描述符覆盖（batch_descriptor_mp）与材质级绑定（BindDescriptorSets(material)）

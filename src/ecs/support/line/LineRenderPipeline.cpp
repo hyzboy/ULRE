@@ -758,13 +758,21 @@ namespace hgl::ecs
         if (bound_transform_data_buffer_)
             l2w_gpu = bound_transform_data_buffer_->GetGPUBuffer();
 
+        const uint32_t active_cam_id = context_ ? context_->GetActiveCameraID() : 0;
         graph::PushRootAddresses(
             cmd,
             device_,
             material_->GetPipelineLayout(),
             line_buffer_.mesh_draw_params
                 ? line_buffer_.mesh_draw_params->GetGPUBuffer() : nullptr,
-            l2w_gpu);
+            l2w_gpu,
+            nullptr,
+            nullptr,
+            0,
+            nullptr,
+            nullptr,
+            nullptr,
+            active_cam_id);
 
         line_buffer_.Draw(cmd);
 

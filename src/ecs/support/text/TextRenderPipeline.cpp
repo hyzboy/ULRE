@@ -286,6 +286,7 @@ namespace hgl::ecs
             // pc_root.addr_mesh_draw_params 解引用参数表 row 0；文本三表地址和
             // mtl_data_addrs 行表均经 pc_root 传入。文本 shader 的 MTL_TEX(0)
             // 从该地址表取得当前字体图集的独立引用行。
+            const uint32_t active_cam_id = world ? world->GetActiveCameraID() : 0;
             graph::PushRootAddresses(
                 cmd,
                 frame_device,
@@ -298,7 +299,8 @@ namespace hgl::ecs
                 res.texture_pool_base,
                 res.char_info_buffer     ? res.char_info_buffer->GetGPUBuffer() : nullptr,
                 res.char_style_buffer    ? res.char_style_buffer->GetGPUBuffer() : nullptr,
-                res.char_instance_buffer ? res.char_instance_buffer->GetGPUBuffer() : nullptr);
+                res.char_instance_buffer ? res.char_instance_buffer->GetGPUBuffer() : nullptr,
+                active_cam_id);
 
             // 文本三表/mesh_draw_params/mtl_data_addrs 已全走 pc_root（BDA）——
             // 无 PerObject descriptor 可绑（A5-2）；Scene/Bindless 全局集下方绑定

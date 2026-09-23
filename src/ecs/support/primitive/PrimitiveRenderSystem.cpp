@@ -88,7 +88,8 @@ namespace hgl::ecs
                              batch->draw_batches_count,
                              batch->transform_buffer,
                              batch,
-                             context->GetRenderContext());
+                             context->GetRenderContext(),
+                             context->GetActiveCameraID());
         }
     }
 }

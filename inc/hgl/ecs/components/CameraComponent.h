@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/Component.h>
 #include<hgl/math/Vector.h>
+#include<hgl/graph/camera/Camera.h>
 #include<memory>
 #include <hgl/type/UnorderedMap.h>
 #include<utility>
@@ -9,8 +10,6 @@
 
 namespace hgl::graph
 {
-    struct Camera;
-    struct CameraInfo;
     class ViewportInfo;
 }
 
@@ -72,10 +71,14 @@ namespace hgl
 
             math::Vector2f input_invert;    ///< 输入反转 (x, y) / Input inversion
 
-            // === 外部引用 / External references ===
+            // === 独立数据与外部引用 / Local buffers and references ===
+            graph::Camera local_camera_data{};
+            graph::CameraInfo local_camera_info{};
+
             graph::Camera* camera_data;             ///< 摄像机数据指针 / Camera data pointer
             graph::CameraInfo* camera_info;         ///< 摄像机信息指针 / Camera info pointer
             const graph::ViewportInfo* viewport_info; ///< 视口信息指针 / Viewport info pointer
+            uint32_t camera_id = 0;                 ///< 全局 SSBO 行号 / Global SSBO row index
 
             // === 标记 / Flags ===
             bool is_main_camera;            ///< 是否为主摄像机 / Is main camera

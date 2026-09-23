@@ -26,9 +26,10 @@ namespace hgl::ecs
         , zoom_sensitivity(0.1f)
         , move_speed(5.0f)
         , input_invert(1.0f, 1.0f)
-        , camera_data(nullptr)
-        , camera_info(nullptr)
+        , camera_data(&local_camera_data)
+        , camera_info(&local_camera_info)
         , viewport_info(nullptr)
+        , camera_id(0)
         , is_main_camera(false)
         , matrix_dirty(true)
     {

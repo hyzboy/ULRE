@@ -21,6 +21,7 @@ namespace hgl::graph
         case GlobalSSBOType::PBRSurface:           return "PBRSurface";
         case GlobalSSBOType::EmissiveSurface:      return "EmissiveSurface";
         case GlobalSSBOType::TransmissionSurface:  return "TransmissionSurface";
+        case GlobalSSBOType::CameraInfo:           return "CameraInfo";
         default:                                   return "UnknownGlobalSSBO";
         }
     }
@@ -32,6 +33,7 @@ namespace hgl::graph
         case GlobalSSBOType::PBRSurface:
         case GlobalSSBOType::EmissiveSurface:
         case GlobalSSBOType::TransmissionSurface:
+        case GlobalSSBOType::CameraInfo:
             return 1;
         default:
             break;
@@ -47,6 +49,7 @@ namespace hgl::graph
         case GlobalSSBOType::PBRSurface:            return sizeof(float) * 8;
         case GlobalSSBOType::EmissiveSurface:       return sizeof(float) * 4;
         case GlobalSSBOType::TransmissionSurface:   return sizeof(uint32_t) * 4;
+        case GlobalSSBOType::CameraInfo:            return 656; // sizeof(CameraInfo)
         default:
             break;
         }

@@ -21,7 +21,12 @@
 
 #include "common/descriptor_macros.glsl"
 
-layout(set=SCENE_SET, binding=CAMERA_BINDING) uniform CameraInfo
+#extension GL_EXT_buffer_reference : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_ARB_gpu_shader_int64 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+
+struct CameraInfoData
 {
     mat4 projection;
     mat4 inverse_projection;
@@ -32,15 +37,26 @@ layout(set=SCENE_SET, binding=CAMERA_BINDING) uniform CameraInfo
     vec4 frustum_planes[6];
     mat4 sky;
     vec3 pos;
+    float _pad_pos;
     vec3 view_line;
+    float _pad_vl;
     vec3 world_up;
+    float _pad_wu;
     vec3 camera_facing_up;
+    float _pad_cfu;
     vec3 camera_facing_right;
+    float _pad_cfr;
     float znear, zfar;
     uint use_reversed_z;
     float _pad_ci0;
     vec3 camera_world_pos;
-} camera;
+    float _pad_cwp;
+};
+
+layout(buffer_reference, scalar, buffer_reference_align=64) readonly buffer CameraInfoBufferRef
+{
+    CameraInfoData cameras[];
+};
 
 layout(set=SCENE_SET, binding=SKY_BINDING) uniform SkyInfo
 {
@@ -69,9 +85,6 @@ layout(scalar, set=SCENE_SET, binding=COLOR_PALETTE_BINDING) uniform ColorPalett
     uint color[256];
 } color_palette;
 
-#extension GL_ARB_gpu_shader_int64 : enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
-
 layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
 {
     uint64_t addr_mesh_draw_params;
@@ -80,6 +93,7 @@ layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesI
     uint64_t addr_transmission_surface;
     uint64_t addr_global_render_items;
     uint64_t addr_draw_item_ids;
+    uint64_t addr_camera_info;
 } global_addresses;
 
 layout(set=SCENE_SET, binding=SHADOW_BINDING) uniform ShadowInfo
@@ -90,5 +104,7 @@ layout(set=SCENE_SET, binding=SHADOW_BINDING) uniform ShadowInfo
     vec2 inv_shadow_map_size;
     uvec4 shadow_tex;
 } shadow;
+
+#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]
 
 #endif // HGL_SCENE_UBO_GLSL
