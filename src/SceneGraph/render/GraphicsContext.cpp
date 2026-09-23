@@ -210,24 +210,75 @@ namespace hgl::graph
         return device ? device->GetDevice() : VK_NULL_HANDLE;
     }
 
+    static void BindGlobalDescriptorsInternal(VkCommandBuffer cmd_buf,
+                                              VkPipelineLayout layout,
+                                              VkPipelineBindPoint bind_point,
+                                              VulkanDevice *device,
+                                              GlobalSceneUBOSet *scene_set,
+                                              BindlessTextureManager *bindless_mgr)
+    {
+        auto *attr = device ? device->GetDevAttr() : nullptr;
+        uint32_t bindless_buffer_index = 0;
+
+        if (attr && attr->cmd_bind_descriptor_buffers)
+        {
+            VkDescriptorBufferBindingInfoEXT binding_infos[2]{};
+            VkDescriptorBufferBindingPushDescriptorBufferHandleEXT push_handle{};
+            uint32_t buffer_count = 0;
+
+            if (bindless_mgr && bindless_mgr->IsValid())
+            {
+                bindless_buffer_index = buffer_count;
+                auto &b = binding_infos[buffer_count++];
+                b.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
+                b.pNext   = nullptr;
+                b.address = bindless_mgr->GetDescriptorBufferAddress();
+                b.usage   = VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT
+                          | VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
+            }
+
+            if (scene_set && scene_set->IsValid() && scene_set->NeedsPushDescriptorBuffer())
+            {
+                push_handle.sType  = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_PUSH_DESCRIPTOR_BUFFER_HANDLE_EXT;
+                push_handle.pNext  = nullptr;
+                push_handle.buffer = scene_set->GetPushDescriptorBuffer();
+
+                auto &b = binding_infos[buffer_count++];
+                b.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
+                b.pNext   = &push_handle;
+                b.address = scene_set->GetPushDescriptorBufferAddress();
+                b.usage   = VK_BUFFER_USAGE_PUSH_DESCRIPTORS_DESCRIPTOR_BUFFER_BIT_EXT
+                          | VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
+            }
+
+            if (buffer_count > 0)
+            {
+                attr->cmd_bind_descriptor_buffers(cmd_buf, buffer_count, binding_infos);
+            }
+        }
+
+        if (scene_set && scene_set->IsValid())
+        {
+            scene_set->BindToCmd(cmd_buf, layout, bind_point);
+        }
+
+        if (bindless_mgr && bindless_mgr->IsValid())
+        {
+            bindless_mgr->BindOffsetToCmd(cmd_buf,
+                                          layout,
+                                          static_cast<uint32_t>(graph::DescriptorSetType::Bindless),
+                                          bindless_buffer_index,
+                                          bind_point);
+        }
+    }
+
     void GraphicsContext::BindGlobalDescriptorSets(RenderCmdBuffer *cmd, VkPipelineLayout layout)
     {
         if (!cmd || cmd->scene_sets_bound)
             return;
 
-        if (auto *scene_set = GetGlobalSceneUBOSet();
-            scene_set && scene_set->IsValid())
-        {
-            scene_set->BindToCmd(*cmd, layout);
-        }
-
-        if (auto *bindless_mgr = GetBindlessTextureManager();
-            bindless_mgr && bindless_mgr->IsValid())
-        {
-            bindless_mgr->BindToCmd(*cmd,
-                                    layout,
-                                    static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
-        }
+        BindGlobalDescriptorsInternal(*cmd, layout, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      device, GetGlobalSceneUBOSet(), GetBindlessTextureManager());
 
         cmd->scene_sets_bound = true;
     }
@@ -237,20 +288,8 @@ namespace hgl::graph
         if (!cmd || cmd->scene_sets_bound)
             return;
 
-        if (auto *scene_set = GetGlobalSceneUBOSet();
-            scene_set && scene_set->IsValid())
-        {
-            scene_set->BindToCmd(*cmd, layout, VK_PIPELINE_BIND_POINT_COMPUTE);
-        }
-
-        if (auto *bindless_mgr = GetBindlessTextureManager();
-            bindless_mgr && bindless_mgr->IsValid())
-        {
-            bindless_mgr->BindToCmd(*cmd,
-                                    layout,
-                                    static_cast<uint32_t>(graph::DescriptorSetType::Bindless),
-                                    VK_PIPELINE_BIND_POINT_COMPUTE);
-        }
+        BindGlobalDescriptorsInternal(*cmd, layout, VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      device, GetGlobalSceneUBOSet(), GetBindlessTextureManager());
 
         cmd->scene_sets_bound = true;
     }

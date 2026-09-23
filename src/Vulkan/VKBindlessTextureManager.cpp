@@ -379,12 +379,31 @@ bool BindlessTextureManager::RebuildSampler(uint32_t index, const VkSamplerCreat
     return true;
 }
 
+void BindlessTextureManager::BindOffsetToCmd(VkCommandBuffer cmd,
+                                             VkPipelineLayout pipeline_layout,
+                                             uint32_t set_index,
+                                             uint32_t buffer_index,
+                                             VkPipelineBindPoint bind_point) const
+{
+    if (!IsValid() || !attr_ || !attr_->cmd_set_descriptor_buffer_offsets)
+        return;
+
+    const VkDeviceSize buffer_offset = 0;
+    attr_->cmd_set_descriptor_buffer_offsets(cmd,
+                                            bind_point,
+                                            pipeline_layout,
+                                            set_index,
+                                            1,
+                                            &buffer_index,
+                                            &buffer_offset);
+}
+
 void BindlessTextureManager::BindToCmd(VkCommandBuffer cmd,
                                        VkPipelineLayout pipeline_layout,
                                        uint32_t set_index,
                                        VkPipelineBindPoint bind_point) const
 {
-    if (!IsValid())
+    if (!IsValid() || !attr_ || !attr_->cmd_bind_descriptor_buffers)
         return;
 
     VkDescriptorBufferBindingInfoEXT binding_info{};
@@ -396,15 +415,7 @@ void BindlessTextureManager::BindToCmd(VkCommandBuffer cmd,
 
     attr_->cmd_bind_descriptor_buffers(cmd, 1, &binding_info);
 
-    const uint32_t buffer_index = 0;
-    const VkDeviceSize buffer_offset = 0;
-    attr_->cmd_set_descriptor_buffer_offsets(cmd,
-                                            bind_point,
-                                            pipeline_layout,
-                                            set_index,
-                                            1,
-                                            &buffer_index,
-                                            &buffer_offset);
+    BindOffsetToCmd(cmd, pipeline_layout, set_index, 0, bind_point);
 }
 
 }//namespace hgl::graph

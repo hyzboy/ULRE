@@ -437,6 +437,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         desc_buffer_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
         desc_buffer_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
         desc_buffer_features.descriptorBuffer = VK_TRUE;
+        desc_buffer_features.descriptorBufferPushDescriptors = physical_device->GetDescriptorBufferFeatures().descriptorBufferPushDescriptors;
         create_info.pNext = &desc_buffer_features;
     }
 

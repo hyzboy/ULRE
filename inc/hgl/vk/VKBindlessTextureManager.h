@@ -93,6 +93,9 @@ namespace hgl::graph
 
         VkDescriptorSetLayout GetLayout() const { return layout_; }
 
+        VkBuffer GetDescriptorBuffer() const { return desc_buffer_; }
+        VkDeviceAddress GetDescriptorBufferAddress() const { return desc_buffer_address_; }
+
         // ── 统一 Sampler 注册 ─────────────────────────────────────────────
         //
         // RegisterTexture 只写 binding=0 返回纯 tex_handle；RegisterSamplers 按
@@ -121,10 +124,24 @@ namespace hgl::graph
         uint32_t GetSamplerCount() const { return static_cast<uint32_t>(samplers_.GetCount()); }
 
         /**
-         * 绑定到命令缓冲区。
+         * 仅设置描述符缓冲区偏移（在描述符缓冲区已统一通过 vkCmdBindDescriptorBuffersEXT 绑定后使用）。
          * @param cmd            目标命令缓冲
          * @param pipeline_layout 当前管线布局
-         * @param set_index      绑定到第几个 descriptor set（通常 = 4）
+         * @param set_index      绑定到第几个 descriptor set（通常 = 1）
+         * @param buffer_index   对应 vkCmdBindDescriptorBuffersEXT 中该缓冲区所在的 binding index
+         * @param bind_point     绑定点：图形管线用 GRAPHICS（默认），ComputeCmdBuffer 用 COMPUTE
+         */
+        void BindOffsetToCmd(VkCommandBuffer cmd,
+                             VkPipelineLayout pipeline_layout,
+                             uint32_t set_index,
+                             uint32_t buffer_index = 0,
+                             VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS) const;
+
+        /**
+         * 绑定到命令缓冲区（独立绑定描述符缓冲区并设置偏移）。
+         * @param cmd            目标命令缓冲
+         * @param pipeline_layout 当前管线布局
+         * @param set_index      绑定到第几个 descriptor set（通常 = 1）
          * @param bind_point     绑定点：图形管线用 GRAPHICS（默认），ComputeCmdBuffer 用 COMPUTE
          */
         void BindToCmd(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t set_index,
