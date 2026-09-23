@@ -57,6 +57,17 @@ vec4 Sample2DArray(uint tex_handle, uint samp_idx, vec2 uv, float layer)
                    vec3(uv, layer));
 }
 
+// 硬件深度比较采样（ShadowPCFSampler + sampler2DArrayShadow）：
+// GPU 纹理单元在单个 tap 内完成 2x2 双线性百分比比较过滤（Hardware PCF）
+float Sample2DArrayShadow(uint tex_handle, uint samp_idx, vec2 uv, float layer, float ref_depth)
+{
+    if (tex_handle == 0u)
+        return 1.0;
+    return texture(sampler2DArrayShadow(bindless_tex[nonuniformEXT(tex_handle - 1u)],
+                                        bindless_samp[nonuniformEXT(samp_idx)]),
+                   vec4(uv, layer, ref_depth));
+}
+
 // Cubemap 方向采样（handle 与 2D 纹理共享编号空间；layer 对应第几张 Cubemap，
 // 单张 Cubemap 的 view 固定为 6 层，layer 传 0）
 vec4 SampleCubeArray(uint tex_handle, uint samp_idx, vec4 dir_layer)

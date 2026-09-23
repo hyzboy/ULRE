@@ -16,8 +16,8 @@
 #include "common/bindless_textures.glsl"
 #include "ubo/scene_ubo.glsl"
 
-#ifndef ShadowMapSampler
-#define ShadowMapSampler 7u
+#ifndef ShadowPCFSampler
+#define ShadowPCFSampler 4u
 #endif
 
 float EvalPCFShadow(vec3 worldPos)
@@ -48,23 +48,24 @@ float EvalPCFShadow(vec3 worldPos)
         return 1.0;
     }
 
-    const float current_depth = light_ndc.z;
+    // Reversed-Z 下深度比较：closer to light has greater Z
+    // current_depth + bias 作为参考深度，硬件比较采样器（GreaterOrEqual）
+    // 满足 ref >= depth 返回 1.0（未遮挡，受光），否则返回 0.0（被遮挡）
+    const float current_depth = light_ndc.z + bias;
     const float layer         = float(shadow.shadow_tex.y);
     const uint  tex_handle    = shadow.shadow_tex.x;
 
-    float occluded = 0.0;
+    float lit = 0.0;
     for (int dy = -1; dy <= 1; ++dy)
     {
         for (int dx = -1; dx <= 1; ++dx)
         {
-            const vec2  tap = shadow_uv + vec2(float(dx), float(dy)) * (texel * pcf_radius);
-            const float d   = Sample2DArray(tex_handle, ShadowMapSampler, tap, layer).r;
-
-            occluded += (d > current_depth + bias) ? 1.0 : 0.0;
+            const vec2 tap = shadow_uv + vec2(float(dx), float(dy)) * (texel * pcf_radius);
+            lit += Sample2DArrayShadow(tex_handle, ShadowPCFSampler, tap, layer, current_depth);
         }
     }
 
-    const float unshadowed = 1.0 - occluded * (1.0 / 9.0);
+    const float unshadowed = lit * (1.0 / 9.0);
     return mix(shadow.shadow_params.z, 1.0, unshadowed);
 }
 

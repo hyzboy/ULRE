@@ -54,7 +54,7 @@ mag_filter = "Linear"
 min_filter = "Linear"
 mipmap_mode = "Linear"
 address_mode = "ClampToEdge"
-compare_op = "LessOrEqual"
+compare_op = "GreaterOrEqual"
 
 [[samplers]]
 name = "Terrain"
