@@ -33,6 +33,9 @@ namespace hgl::graph
         int32_t texel_shift_x = 0;        // 本帧光空间位移（texel）
         int32_t texel_shift_y = 0;        // 本帧光空间位移（texel）
 
+        Matrix4f light_view = Matrix4f(1.0f); // 当前级联对应的光空间视图矩阵
+        Matrix4f light_proj = Matrix4f(1.0f); // 当前级联对应的正交投影矩阵
+
         uint32_t dirty_rect_count = 0;
         ShadowDirtyRect dirty_rects[4];
 

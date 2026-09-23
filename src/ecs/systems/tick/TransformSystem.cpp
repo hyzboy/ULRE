@@ -86,6 +86,7 @@ namespace hgl::ecs
             }
         }
 
+    #if HGL_TRANSFORM_DEBUG_LOGGING
         static uint32_t s_update_log_tick = 0;
         ++s_update_log_tick;
         if ((s_update_log_tick % 60u) == 1u)
@@ -97,6 +98,7 @@ namespace hgl::ecs
                      skipped_by_mask,
                      skipped_by_version);
         }
+    #endif//HGL_TRANSFORM_DEBUG_LOGGING
     }
 
     void TransformSystem::UpdateStaticDirty()
@@ -322,6 +324,7 @@ namespace hgl::ecs
         last_static_count = static_count;
         last_dynamic_count = dynamic_count;
 
+    #if HGL_TRANSFORM_DEBUG_LOGGING
         static uint32_t s_submit_log_tick = 0;
         ++s_submit_log_tick;
         if ((s_submit_log_tick % 60u) == 1u)
@@ -351,6 +354,7 @@ namespace hgl::ecs
                          dynamic_base);
             }
         }
+    #endif//[TransformSystem] SubmitTransformUpdates:
     }
 
     void TransformSystem::EnsureTransformBuffer()

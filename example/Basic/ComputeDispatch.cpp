@@ -3,16 +3,11 @@
  *
  * 演示内容：
  * 1. 直接给 GLSL 源码（不走 ShaderGen 生成器）创建 compute 管线
- *    ShaderProgramManager::CreateComputePipeline(name, glsl, user_layout)
- * 2. 用户自己的 SSBO 描述符集挂在 Set 2（Set 0/1 为引擎全局 Scene/Bindless 集）
+ *    ShaderProgramManager::CreateComputePipeline(name, glsl, push_constant_size)
+ * 2. 用户数据走 BDA：输入/输出 SSBO 的设备地址经 push constant 下发，shader 侧
+ *    layout(buffer_reference) 解引用——无用户描述符集（Set2 已随 BDA 终态退场）
  * 3. ComputeCmdBuffer 记录 vkCmdDispatch 并提交
  * 4. 读回结果验证（256 个 float 求平方）
- *
- * 对应 GLSL（#version 450）：
- *   layout(local_size_x = 64) in;
- *   layout(std430, set = 2, binding = 0) readonly  buffer InBuf  { float in_data[];  };
- *   layout(std430, set = 2, binding = 1) writeonly buffer OutBuf { float out_data[]; };
- *   out_data[gl_GlobalInvocationID.x] = in_data[gl_GlobalInvocationID.x] * in_data[gl_GlobalInvocationID.x];
  */
 
 #include<hgl/framework/WorkManager.h>
@@ -23,6 +18,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/log/Log.h>
+#include<cstdint>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -32,20 +28,37 @@ namespace
     constexpr uint32_t DATA_COUNT = 256;
     constexpr uint32_t GROUP_SIZE = 64;                             // 与 local_size_x 一致
 
-    // compute GLSL 直接给源码。Set0/1 是引擎全局集（Scene/Bindless），本例不使用；
-    // 用户数据一律放 Set2 起——这与 CreateComputePipeline 的专用 layout 约定一致。
+    // push constant 只承载两个缓冲区设备地址（BDA）；Set0/1 引擎全局集本例不使用。
+    struct DispatchPushConstants
+    {
+        uint64_t in_addr;
+        uint64_t out_addr;
+    };
+
+    static_assert(sizeof(DispatchPushConstants) == 16, "DispatchPushConstants 布局必须与 GLSL push_constant block 一致");
+
     constexpr const char COMPUTE_GLSL[] = R"(
 #version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 layout(local_size_x = 64) in;
 
-layout(std430, set = 2, binding = 0) restrict readonly  buffer InBuf  { float in_data[];  };
-layout(std430, set = 2, binding = 1) restrict writeonly buffer OutBuf { float out_data[]; };
+// 缓冲区地址经 push constant 下发（BDA），无 set 无 binding
+layout(buffer_reference, std430, buffer_reference_align=16) buffer FloatArrayRef { float data[]; };
+
+layout(push_constant) uniform PushConstants {
+    uint64_t in_addr;
+    uint64_t out_addr;
+} pc;
 
 void main()
 {
     const uint idx = gl_GlobalInvocationID.x;
 
-    out_data[idx] = in_data[idx] * in_data[idx];
+    FloatArrayRef in_buf  = FloatArrayRef(pc.in_addr);
+    FloatArrayRef out_buf = FloatArrayRef(pc.out_addr);
+
+    out_buf.data[idx] = in_buf.data[idx] * in_buf.data[idx];
 }
 )";
 }
@@ -57,80 +70,10 @@ class ComputeDispatchApp: public WorkObject
 
     ComputePipeline *compute_pipeline = nullptr;
 
-    ComputeCmdBuffer *compute_cmd = nullptr;
-    DeviceQueue      *compute_queue = nullptr;
-
-    VkDescriptorSetLayout user_layout = VK_NULL_HANDLE;
-    VkDescriptorPool      desc_pool   = VK_NULL_HANDLE;
-    VkDescriptorSet       user_set    = VK_NULL_HANDLE;
+    ComputeCmdBuffer *compute_cmd    = nullptr;
+    DeviceQueue      *compute_queue  = nullptr;
 
 private:
-
-    // 用户描述符集（Set 2）：binding0=输入 SSBO，binding1=输出 SSBO
-    bool CreateUserDescriptorSet(VulkanDevice *dev)
-    {
-        VkDescriptorSetLayoutBinding bindings[2]{};
-
-        bindings[0].binding         = 0;
-        bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT;
-
-        bindings[1].binding         = 1;
-        bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[1].descriptorCount = 1;
-        bindings[1].stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT;
-
-        VkDescriptorSetLayoutCreateInfo dsl_ci{};
-        dsl_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        dsl_ci.bindingCount = 2;
-        dsl_ci.pBindings    = bindings;
-
-        if (vkCreateDescriptorSetLayout(dev->GetDevice(), &dsl_ci, nullptr, &user_layout) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorPoolSize pool_size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2};
-
-        VkDescriptorPoolCreateInfo pool_ci{};
-        pool_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_ci.maxSets       = 1;
-        pool_ci.poolSizeCount = 1;
-        pool_ci.pPoolSizes    = &pool_size;
-
-        if (vkCreateDescriptorPool(dev->GetDevice(), &pool_ci, nullptr, &desc_pool) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorSetAllocateInfo alloc_ci{};
-        alloc_ci.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_ci.descriptorPool     = desc_pool;
-        alloc_ci.descriptorSetCount = 1;
-        alloc_ci.pSetLayouts        = &user_layout;
-
-        if (vkAllocateDescriptorSets(dev->GetDevice(), &alloc_ci, &user_set) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorBufferInfo in_info  = *input_buffer ->GetBufferInfo();
-        VkDescriptorBufferInfo out_info = *output_buffer->GetBufferInfo();
-
-        VkWriteDescriptorSet writes[2]{};
-
-        writes[0].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[0].dstSet           = user_set;
-        writes[0].dstBinding       = 0;
-        writes[0].descriptorCount  = 1;
-        writes[0].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        writes[0].pBufferInfo      = &in_info;
-
-        writes[1].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[1].dstSet           = user_set;
-        writes[1].dstBinding       = 1;
-        writes[1].descriptorCount  = 1;
-        writes[1].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        writes[1].pBufferInfo      = &out_info;
-
-        vkUpdateDescriptorSets(dev->GetDevice(), 2, writes, 0, nullptr);
-        return true;
-    }
 
     // 记录并提交一次 dispatch，然后读回输出验证
     bool DispatchAndVerify()
@@ -151,8 +94,18 @@ private:
         // 全局集绑定（COMPUTE bind point，每 cmd 一次）——compute 管线复用共享全局 layout 时使用
         GetGraphicsContext()->BindGlobalDescriptorSets(compute_cmd, compute_pipeline->GetPipelineLayout());
 
-        // 用户数据集在 Set 2
-        compute_cmd->BindDescriptorSets(compute_pipeline->GetPipelineLayout(), 2, &user_set, 1);
+        // 用户数据缓冲区地址经 push constant 下发（BDA）
+        DispatchPushConstants pc{};
+        pc.in_addr  = dev->GetBufferDeviceAddressAligned16(input_buffer ->GetBuffer());
+        pc.out_addr = dev->GetBufferDeviceAddressAligned16(output_buffer->GetBuffer());
+
+        if (pc.in_addr == 0 || pc.out_addr == 0)
+        {
+            GLogError(u8"[ComputeDispatch] 缓冲区设备地址无效（BDA 16B 对齐承诺失败）");
+            return false;
+        }
+
+        compute_cmd->PushConstants(compute_pipeline->GetPipelineLayout(), &pc, sizeof(pc));
 
         compute_cmd->Dispatch(DATA_COUNT / GROUP_SIZE);
 
@@ -212,20 +165,18 @@ public:
         input_buffer = gc->GetBufferManager()->CreateSSBO("ComputeDispatch.In", sizeof(in_data), in_data);
 
         // 输出：HOST_VISIBLE|HOST_COHERENT（CPUVisible），dispatch 后可直接映射读取
-        output_buffer = dev->CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        // 输入/输出都带 SHADER_DEVICE_ADDRESS_BIT——地址经 push constant 下发（BDA）
+        output_buffer = dev->CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                                           sizeof(in_data), sizeof(in_data),
                                           BufferAllocPolicy::CPUVisible);
 
         if (!input_buffer || !output_buffer)
             return false;
 
-        if (!CreateUserDescriptorSet(dev))
-            return false;
-
         // 直接源码创建 compute 管线（编译 GLSL → ShaderModule → ComputePipeline）
         compute_pipeline = gc->GetMaterialManager()->CreateComputePipeline("ComputeDispatch.Squares",
                                                                            COMPUTE_GLSL,
-                                                                           user_layout);
+                                                                           sizeof(DispatchPushConstants));
         if (!compute_pipeline)
             return false;
 

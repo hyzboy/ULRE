@@ -223,15 +223,6 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(VkPipelineLayout pipeline_layout,const uint32_t first_set,const VkDescriptorSet *ds_list,const uint32_t ds_count,const uint32_t *offset,const uint32_t offset_count)
-    {
-        if(!ds_list||ds_count<=0)return(false);
-
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,first_set,ds_count,ds_list,offset_count,offset);
-
-        return(true);
-    }
-
     void PushConstants(VkShaderStageFlagBits shader_stage_bit,uint32_t offset,uint32_t size,const void *pValues)
     {
         vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_stage_bit,offset,size,pValues);
@@ -300,15 +291,6 @@ public:
         if(!p)return(false);
 
         vkCmdBindPipeline(cmd_buf,VK_PIPELINE_BIND_POINT_COMPUTE,*p);
-        return(true);
-    }
-
-    bool BindDescriptorSets(VkPipelineLayout pipeline_layout,const uint32_t first_set,const VkDescriptorSet *ds_list,const uint32_t ds_count,const uint32_t *offset=nullptr,const uint32_t offset_count=0)
-    {
-        if(!ds_list||ds_count<=0)return(false);
-
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_COMPUTE,pipeline_layout,first_set,ds_count,ds_list,offset_count,offset);
-
         return(true);
     }
 

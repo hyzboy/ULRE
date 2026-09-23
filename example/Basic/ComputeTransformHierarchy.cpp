@@ -36,37 +36,33 @@ namespace
     {
         uint32_t level_start_offset;
         uint32_t level_node_count;
+        uint64_t local_addr;        // local_matrices 表设备地址（BDA）
+        uint64_t parent_addr;       // parent_indices 表设备地址
+        uint64_t eval_order_addr;   // eval_order 表设备地址
+        uint64_t world_addr;        // world_matrices 表设备地址（读写）
     };
+
+    static_assert(sizeof(LevelPushConstant) == 40, "LevelPushConstant 布局必须与 GLSL push_constant block 一致");
 
     constexpr const char COMPUTE_TRANSFORM_GLSL[] = R"(
 #version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 layout(local_size_x = 64) in;
 
 layout(push_constant) uniform LevelPushConstant
 {
     uint level_start_offset;
     uint level_node_count;
+    uint64_t local_addr;
+    uint64_t parent_addr;
+    uint64_t eval_order_addr;
+    uint64_t world_addr;
 } pc;
 
-layout(std430, set = 2, binding = 0) restrict readonly buffer LocalMatricesBuf
-{
-    mat4 local_matrices[];
-};
-
-layout(std430, set = 2, binding = 1) restrict readonly buffer ParentIndicesBuf
-{
-    uint parent_indices[];
-};
-
-layout(std430, set = 2, binding = 2) restrict readonly buffer EvalOrderBuf
-{
-    uint eval_order[];
-};
-
-layout(std430, set = 2, binding = 3) restrict buffer WorldMatricesBuf
-{
-    mat4 world_matrices[];
-};
+// 四张表全走 BDA：地址经 push constant 下发，无 set 无 binding
+layout(buffer_reference, std430, buffer_reference_align=16) buffer Mat4ArrayRef { mat4 values[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer UintArrayRef { uint values[]; };
 
 const uint INVALID_HANDLE = 0xFFFFFFFFu;
 
@@ -76,18 +72,23 @@ void main()
     if (local_idx >= pc.level_node_count)
         return;
 
-    uint node_idx = eval_order[pc.level_start_offset + local_idx];
-    uint parent_idx = parent_indices[node_idx];
+    Mat4ArrayRef local_matrices = Mat4ArrayRef(pc.local_addr);
+    UintArrayRef parent_indices = UintArrayRef(pc.parent_addr);
+    UintArrayRef eval_order     = UintArrayRef(pc.eval_order_addr);
+    Mat4ArrayRef world_matrices = Mat4ArrayRef(pc.world_addr);
 
-    mat4 local_mat = local_matrices[node_idx];
+    uint node_idx = eval_order.values[pc.level_start_offset + local_idx];
+    uint parent_idx = parent_indices.values[node_idx];
+
+    mat4 local_mat = local_matrices.values[node_idx];
 
     if (parent_idx != INVALID_HANDLE)
     {
-        world_matrices[node_idx] = world_matrices[parent_idx] * local_mat;
+        world_matrices.values[node_idx] = world_matrices.values[parent_idx] * local_mat;
     }
     else
     {
-        world_matrices[node_idx] = local_mat;
+        world_matrices.values[node_idx] = local_mat;
     }
 }
 )";
@@ -105,10 +106,6 @@ class ComputeTransformHierarchyApp: public WorkObject
     ComputePipeline *compute_pipeline = nullptr;
     ComputeCmdBuffer *compute_cmd     = nullptr;
     DeviceQueue      *compute_queue   = nullptr;
-
-    VkDescriptorSetLayout user_layout = VK_NULL_HANDLE;
-    VkDescriptorPool      desc_pool   = VK_NULL_HANDLE;
-    VkDescriptorSet       user_set    = VK_NULL_HANDLE;
 
     uint32_t total_node_count = 0;
     ecs::TransformDataStorage::HandleID root_handles[4]{};
@@ -187,69 +184,6 @@ private:
                  total_node_count, storage.GetLevelCount());
     }
 
-    bool CreateUserDescriptorSet(VulkanDevice *dev)
-    {
-        VkDescriptorSetLayoutBinding bindings[4]{};
-
-        for (uint32_t i = 0; i < 4; ++i)
-        {
-            bindings[i].binding         = i;
-            bindings[i].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            bindings[i].descriptorCount = 1;
-            bindings[i].stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-
-        VkDescriptorSetLayoutCreateInfo dsl_ci{};
-        dsl_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        dsl_ci.bindingCount = 4;
-        dsl_ci.pBindings    = bindings;
-
-        if (vkCreateDescriptorSetLayout(dev->GetDevice(), &dsl_ci, nullptr, &user_layout) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorPoolSize pool_size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4};
-
-        VkDescriptorPoolCreateInfo pool_ci{};
-        pool_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_ci.maxSets       = 1;
-        pool_ci.poolSizeCount = 1;
-        pool_ci.pPoolSizes    = &pool_size;
-
-        if (vkCreateDescriptorPool(dev->GetDevice(), &pool_ci, nullptr, &desc_pool) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorSetAllocateInfo alloc_ci{};
-        alloc_ci.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_ci.descriptorPool     = desc_pool;
-        alloc_ci.descriptorSetCount = 1;
-        alloc_ci.pSetLayouts        = &user_layout;
-
-        if (vkAllocateDescriptorSets(dev->GetDevice(), &alloc_ci, &user_set) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorBufferInfo b_info[4]{
-            *local_buffer     ->GetBufferInfo(),
-            *parent_buffer    ->GetBufferInfo(),
-            *eval_order_buffer->GetBufferInfo(),
-            *world_buffer     ->GetBufferInfo()
-        };
-
-        VkWriteDescriptorSet writes[4]{};
-
-        for (uint32_t i = 0; i < 4; ++i)
-        {
-            writes[i].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[i].dstSet          = user_set;
-            writes[i].dstBinding      = i;
-            writes[i].descriptorCount = 1;
-            writes[i].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            writes[i].pBufferInfo     = &b_info[i];
-        }
-
-        vkUpdateDescriptorSets(dev->GetDevice(), 4, writes, 0, nullptr);
-        return true;
-    }
-
     bool DispatchAndVerify(bool log_verbose = true)
     {
         if (!compute_cmd || !compute_queue)
@@ -260,7 +194,22 @@ private:
 
         compute_cmd->BindPipeline(compute_pipeline);
         GetGraphicsContext()->BindGlobalDescriptorSets(compute_cmd, compute_pipeline->GetPipelineLayout());
-        compute_cmd->BindDescriptorSets(compute_pipeline->GetPipelineLayout(), 2, &user_set, 1);
+
+        // 四张表的设备地址（BDA）——每层 push 一次，随层 offset/count 一起下发
+        VulkanDevice *dev = GetDevice();
+        if (!dev)
+            return false;
+
+        const uint64_t local_addr      = dev->GetBufferDeviceAddressAligned16(local_buffer     ->GetBuffer());
+        const uint64_t parent_addr     = dev->GetBufferDeviceAddressAligned16(parent_buffer    ->GetBuffer());
+        const uint64_t eval_order_addr = dev->GetBufferDeviceAddressAligned16(eval_order_buffer->GetBuffer());
+        const uint64_t world_addr      = dev->GetBufferDeviceAddressAligned16(world_buffer     ->GetBuffer());
+
+        if (local_addr == 0 || parent_addr == 0 || eval_order_addr == 0 || world_addr == 0)
+        {
+            GLogError(u8"[ComputeTransformHierarchy] 缓冲区设备地址无效（BDA 16B 对齐承诺失败）");
+            return false;
+        }
 
         const uint32_t level_count = storage.GetLevelCount();
 
@@ -273,7 +222,7 @@ private:
             if (count == 0)
                 continue;
 
-            LevelPushConstant pc{ offset, count };
+            LevelPushConstant pc{ offset, count, local_addr, parent_addr, eval_order_addr, world_addr };
             compute_cmd->PushConstants(compute_pipeline->GetPipelineLayout(), &pc, sizeof(LevelPushConstant));
 
             const uint32_t group_x = (count + 63) / 64;
@@ -366,15 +315,12 @@ public:
         parent_buffer     = gc->GetBufferManager()->CreateSSBO("ComputeTransform.Parent", idx_bytes, (void *)storage.GetParentIndicesData());
         eval_order_buffer = gc->GetBufferManager()->CreateSSBO("ComputeTransform.EvalOrder", idx_bytes, (void *)storage.GetEvalOrderData());
 
-        // 输出 SSBO（CPU 可见，方便读回验证）
-        world_buffer      = dev->CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        // 输出 SSBO（CPU 可见，方便读回验证；BDA usage：地址经 push constant 下发）
+        world_buffer      = dev->CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                                               mat_bytes, mat_bytes,
                                               BufferAllocPolicy::CPUVisible);
 
         if (!local_buffer || !parent_buffer || !eval_order_buffer || !world_buffer)
-            return false;
-
-        if (!CreateUserDescriptorSet(dev))
             return false;
 
         compute_cmd   = dev->CreateComputeCommandBuffer("ComputeTransformHierarchy");
@@ -386,7 +332,6 @@ public:
         compute_pipeline = gc->GetMaterialManager()->CreateComputePipeline(
             "ComputeTransformHierarchy.Pipeline",
             COMPUTE_TRANSFORM_GLSL,
-            user_layout,
             sizeof(LevelPushConstant)
         );
 

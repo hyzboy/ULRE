@@ -111,6 +111,7 @@ namespace hgl
             }
             MarkDirty(ToChangeMask(TransformChange::Position));
 
+        #if HGL_TRANSFORM_DEBUG_LOGGING
             static uint32_t s_pos_log_tick = 0;
             ++s_pos_log_tick;
             if ((s_pos_log_tick % 120u) == 1u)
@@ -124,6 +125,7 @@ namespace hgl
                          static_cast<unsigned long long>(GetVersion()),
                          matrixDirty ? 1 : 0);
             }
+        #endif//HGL_TRANSFORM_DEBUG_LOGGING
         }
 
         glm::quat TransformComponent::GetLocalRotation() const
@@ -142,6 +144,7 @@ namespace hgl
             }
             MarkDirty(ToChangeMask(TransformChange::Rotation));
 
+        #if HGL_TRANSFORM_DEBUG_LOGGING
             static uint32_t s_rot_log_tick = 0;
             ++s_rot_log_tick;
             if ((s_rot_log_tick % 180u) == 1u)
@@ -156,6 +159,7 @@ namespace hgl
                          static_cast<unsigned long long>(GetVersion()),
                          matrixDirty ? 1 : 0);
             }
+        #endif//HGL_TRANSFORM_DEBUG_LOGGING
         }
 
         glm::vec3 TransformComponent::GetLocalScale() const
@@ -174,6 +178,7 @@ namespace hgl
             }
             MarkDirty(ToChangeMask(TransformChange::Scale));
 
+        #if HGL_TRANSFORM_DEBUG_LOGGING
             static uint32_t s_scale_log_tick = 0;
             ++s_scale_log_tick;
             if ((s_scale_log_tick % 180u) == 1u)
@@ -187,6 +192,7 @@ namespace hgl
                          static_cast<unsigned long long>(GetVersion()),
                          matrixDirty ? 1 : 0);
             }
+        #endif//HGL_TRANSFORM_DEBUG_LOGGING
         }
 
         void TransformComponent::SetLocalTRS(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)

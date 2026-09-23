@@ -84,6 +84,11 @@ namespace hgl
             bool is_main_camera;            ///< 是否为主摄像机 / Is main camera
             bool matrix_dirty;              ///< 矩阵脏标记 / Matrix dirty flag
 
+            // === 自定义矩阵覆盖（如 CSM / 正交光源相机）===
+            bool custom_matrices = false;
+            math::Matrix4f custom_view{1.0f};
+            math::Matrix4f custom_projection{1.0f};
+
         public:
 
             CameraComponent(const std::string& name = "Camera");

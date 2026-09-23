@@ -203,6 +203,8 @@ namespace hgl::graph
 
             CascadeUpdateResult &update_res = out_updates[c];
             update_res.cascade_index = c;
+            update_res.light_view = light_view;
+            update_res.light_proj = light_proj;
 
             const float snapped_cx = snapped_center.x;
             const float snapped_cy = snapped_center.y;

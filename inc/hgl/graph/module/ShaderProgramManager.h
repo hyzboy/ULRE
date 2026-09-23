@@ -122,13 +122,14 @@ public: //Compute（直接源码路径，不走 ShaderGen 生成器）
 
     /**
      * 直接源码创建 compute 管线：GLSL 源码 → 编译 → ShaderModule → ComputePipeline
-     * 专用 layout：Set0=全局 Scene 集 / Set1=全局 Bindless 集 / Set2=用户集（可选，自己的 UBO/SSBO）
-     * push constant：COMPUTE stage、offset 0、大小由 push_constant_size 指定（≤128B，spec 保证值）
+     * 专用 layout：Set0=全局 Scene 集 / Set1=全局 Bindless 集（与图形管线同构，都带 DB 位）
+     * 用户数据一律走 BDA：push constant 里下发 buffer 设备地址，shader 侧用
+     *   layout(buffer_reference, ...) 解引用——不再有第三集用户描述符集
+     *  push constant：COMPUTE stage、offset 0、大小由 push_constant_size 指定（≤128B，spec 保证值）
      * 返回的 ComputePipeline 由调用方 delete（析构时连带销毁专用 layout，不影响共享全局 layout）
      */
     ComputePipeline *CreateComputePipeline(const AnsiString &name,
                                            const AnsiString &glsl_source,
-                                           VkDescriptorSetLayout user_layout = VK_NULL_HANDLE,
                                            const uint32_t push_constant_size = 0);
 
 public: //ShaderProgram

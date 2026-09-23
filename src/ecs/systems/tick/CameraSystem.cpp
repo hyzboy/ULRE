@@ -11,6 +11,7 @@
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/math/geometry/Frustum.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
 #include<cmath>
@@ -544,21 +545,49 @@ namespace hgl::ecs
         }
 
         // 更新camera_info
-        if (camera->camera_info && camera->viewport_info && camera->camera_data)
+        if (camera->camera_info)
         {
-            // 计算视图矩阵
-            camera->camera_info->view = math::LookAtMatrix(
-                camera->position,
-                camera->target,
-                camera->world_up
-            );
+            if (camera->custom_matrices)
+            {
+                camera->camera_info->view               = camera->custom_view;
+                camera->camera_info->projection         = camera->custom_projection;
+                camera->camera_info->inverse_projection = math::Inverse(camera->camera_info->projection);
+                camera->camera_info->inverse_view       = math::Inverse(camera->camera_info->view);
+                camera->camera_info->vp                 = camera->camera_info->projection * camera->camera_info->view;
+                camera->camera_info->inverse_vp         = math::Inverse(camera->camera_info->vp);
 
-            // 调用RefreshCameraInfo更新所有矩阵
-            graph::RefreshCameraInfo(
-                camera->camera_info,
-                camera->viewport_info,
-                camera->camera_data
-            );
+                math::GetFrustumPlanes(camera->camera_info->frustum_planes, camera->camera_info->vp);
+
+                glm::mat4 tmp = camera->camera_info->view;
+                tmp[3] = glm::vec4(0, 0, 0, 1);
+                camera->camera_info->sky = camera->camera_info->projection * tmp;
+
+                camera->camera_info->pos                = camera->position;
+                camera->camera_info->view_line          = camera->forward;
+                camera->camera_info->world_up           = camera->world_up;
+                camera->camera_info->camera_facing_right = math::Vector3f(camera->camera_info->view[0][0], camera->camera_info->view[1][0], camera->camera_info->view[2][0]);
+                camera->camera_info->camera_facing_up   = math::Vector3f(camera->camera_info->view[0][1], camera->camera_info->view[0][1], camera->camera_info->view[2][1]);
+                camera->camera_info->znear              = camera->near_plane;
+                camera->camera_info->zfar               = camera->far_plane;
+                camera->camera_info->use_reversed_z     = 1;
+                camera->camera_info->_pad_ci0           = 0.0f;
+            }
+            else if (camera->viewport_info && camera->camera_data)
+            {
+                // 计算视图矩阵
+                camera->camera_info->view = math::LookAtMatrix(
+                    camera->position,
+                    camera->target,
+                    camera->world_up
+                );
+
+                // 调用RefreshCameraInfo更新所有矩阵
+                graph::RefreshCameraInfo(
+                    camera->camera_info,
+                    camera->viewport_info,
+                    camera->camera_data
+                );
+            }
         }
 
         // 写入当前相机在全局 SSBO 中的独立持久槽位

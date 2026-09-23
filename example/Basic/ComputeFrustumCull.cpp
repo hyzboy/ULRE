@@ -63,10 +63,30 @@ namespace
         glm::vec4 frustum_planes[6];
         uint32_t  candidate_count;
         uint32_t  mesh_group_count_x;
+        uint64_t  addr_table;           // CullAddressTable 设备地址（BDA）
     };
+
+    static_assert(sizeof(CullPushConstants) == 112, "CullPushConstants 布局必须与 GLSL push_constant block 一致");
+
+    // 7 张表地址的表（写一次）：compute 侧只有 push constant + BDA，无描述符集；
+    // 高 128B push constant 放不下 7 个地址，因此地址本身放在一张小表里，pc 只下发表的地址。
+    struct CullAddressTable
+    {
+        uint64_t candidates;
+        uint64_t world_matrices;
+        uint64_t geometry_aabbs;
+        uint64_t visible_items;
+        uint64_t draw_count;
+        uint64_t indirect_commands;
+        uint64_t visible_l2w_indices;
+    };
+
+    static_assert(sizeof(CullAddressTable) == 56, "CullAddressTable 布局必须与 GLSL buffer_reference 块一致");
 
     constexpr const char COMPUTE_CULL_GLSL[] = R"(
 #version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 struct DrawItem4ID {
@@ -91,44 +111,47 @@ layout(push_constant) uniform PushConstants {
     vec4 frustum_planes[6];
     uint candidate_count;
     uint mesh_group_count_x;
+    uint64_t addr_table;
 } pc;
 
-layout(std430, set = 2, binding = 0) readonly buffer CandidateBuffer {
-    DrawItem4ID candidate_items[];
+// 7 张表的地址表（BDA：地址经 push constant → 表 → buffer_reference 两级寻址，无 set 无 binding）
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer CullAddressTableRef
+{
+    uint64_t candidates;
+    uint64_t world_matrices;
+    uint64_t geometry_aabbs;
+    uint64_t visible_items;
+    uint64_t draw_count;
+    uint64_t indirect_commands;
+    uint64_t visible_l2w_indices;
 };
 
-layout(std430, set = 2, binding = 1) readonly buffer WorldMatricesBuffer {
-    mat4 world_matrices[];
-};
-
-layout(std430, set = 2, binding = 2) readonly buffer GeometryAABBBuffer {
-    GeometryAABB geometry_aabbs[];
-};
-
-layout(std430, set = 2, binding = 3) writeonly buffer VisibleBuffer {
-    DrawItem4ID visible_items[];
-};
-
-layout(std430, set = 2, binding = 4) buffer DrawCountBuffer {
-    uint draw_count;
-};
-
-layout(std430, set = 2, binding = 5) writeonly buffer IndirectCmdsBuffer {
-    DrawMeshTasksIndirectCommand indirect_commands[];
-};
-
-layout(std430, set = 2, binding = 6) writeonly buffer VisibleL2WIndicesBuffer {
-    uint visible_l2w_indices[];
-};
+layout(buffer_reference, std430, buffer_reference_align=16) buffer CandidateRef     { DrawItem4ID items[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer WorldMatricesRef { mat4 mats[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer GeometryAABBRef  { GeometryAABB boxes[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer VisibleItemsRef  { DrawItem4ID items[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer DrawCountRef     { uint value; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer IndirectCmdsRef  { DrawMeshTasksIndirectCommand cmds[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer UintArrayRef     { uint values[]; };
 
 void main() {
     uint g_idx = gl_GlobalInvocationID.x;
     if (g_idx >= pc.candidate_count)
         return;
 
-    DrawItem4ID item = candidate_items[g_idx];
-    mat4 l2w = world_matrices[item.transform_id];
-    GeometryAABB aabb = geometry_aabbs[item.geometry_id];
+    CullAddressTableRef table = CullAddressTableRef(pc.addr_table);
+
+    CandidateRef     candidates           = CandidateRef(table.candidates);
+    WorldMatricesRef world_matrices       = WorldMatricesRef(table.world_matrices);
+    GeometryAABBRef  geometry_aabbs       = GeometryAABBRef(table.geometry_aabbs);
+    VisibleItemsRef  visible_items        = VisibleItemsRef(table.visible_items);
+    DrawCountRef     draw_count           = DrawCountRef(table.draw_count);
+    IndirectCmdsRef  indirect_commands    = IndirectCmdsRef(table.indirect_commands);
+    UintArrayRef     visible_l2w_indices  = UintArrayRef(table.visible_l2w_indices);
+
+    DrawItem4ID item = candidates.items[g_idx];
+    mat4 l2w = world_matrices.mats[item.transform_id];
+    GeometryAABB aabb = geometry_aabbs.boxes[item.geometry_id];
 
     vec3 world_center = (l2w * vec4(aabb.center.xyz, 1.0)).xyz;
     mat3 m = mat3(l2w);
@@ -150,10 +173,10 @@ void main() {
     }
 
     if (visible) {
-        uint slot = atomicAdd(draw_count, 1);
-        visible_items[slot] = item;
-        indirect_commands[slot] = DrawMeshTasksIndirectCommand(pc.mesh_group_count_x, 1, 1);
-        visible_l2w_indices[slot] = item.transform_id;
+        uint slot = atomicAdd(draw_count.value, 1);
+        visible_items.items[slot] = item;
+        indirect_commands.cmds[slot] = DrawMeshTasksIndirectCommand(pc.mesh_group_count_x, 1, 1);
+        visible_l2w_indices.values[slot] = item.transform_id;
     }
 }
 )";
@@ -209,20 +232,19 @@ class ComputeFrustumCullApp : public WorkObject
     ECSContext *ecs_context   = nullptr;
     Entity     *camera_entity = nullptr;
 
-    // GPU Compute 资源
-    DeviceBuffer           *candidate_buffer          = nullptr; // Set 2, Binding 0
-    DeviceBuffer           *world_matrices_buffer     = nullptr; // Set 2, Binding 1 (Storage | BDA)
-    DeviceBuffer           *geometry_aabbs_buffer     = nullptr; // Set 2, Binding 2
-    DeviceBuffer           *visible_buffer            = nullptr; // Set 2, Binding 3
-    DeviceBuffer           *count_buffer              = nullptr; // Set 2, Binding 4
-    IndirectMeshTaskBuffer *indirect_cmds_buffer      = nullptr; // Set 2, Binding 5 (Storage | Indirect)
-    DeviceBuffer           *visible_l2w_indices_buffer= nullptr; // Set 2, Binding 6 (Storage | BDA)
+    // GPU Compute 资源（全部经 BDA 寻址：地址在 CullAddressTable 里，pc 只下发表地址）
+    DeviceBuffer           *candidate_buffer          = nullptr; // 候选 4-ID 表
+    DeviceBuffer           *world_matrices_buffer     = nullptr; // L2W 表
+    DeviceBuffer           *geometry_aabbs_buffer     = nullptr; // 几何 AABB 表
+    DeviceBuffer           *visible_buffer            = nullptr; // 紧凑输出 4-ID
+    DeviceBuffer           *count_buffer              = nullptr; // draw count
+    IndirectMeshTaskBuffer *indirect_cmds_buffer      = nullptr; // 间接绘制命令（Storage | Indirect）
+    DeviceBuffer           *visible_l2w_indices_buffer= nullptr; // 可见 L2W 索引
     DeviceBuffer           *mesh_draw_params_buffer   = nullptr; // MeshDrawCommand SSBO (BDA)
     DeviceBuffer           *material_data_rows_buffer = nullptr; // MaterialInstanceAddresses SSBO (BDA)
+    DeviceBuffer           *address_table_buffer      = nullptr; // CullAddressTable（7 个缓冲区设备地址）
 
-    VkDescriptorSetLayout   user_layout      = VK_NULL_HANDLE;
-    VkDescriptorPool        desc_pool        = VK_NULL_HANDLE;
-    VkDescriptorSet         user_set         = VK_NULL_HANDLE;
+    uint64_t                address_table_addr        = 0;       // address_table_buffer 设备地址
 
     ComputePipeline        *compute_pipeline = nullptr;
     ComputeCmdBuffer       *compute_cmd      = nullptr;
@@ -395,7 +417,7 @@ private:
         // 1. 创建 CandidateBuffer、WorldMatricesBuffer、GeometryAABBBuffer (输入)
         candidate_buffer = dev->CreateBuffer(
             "ComputeFrustumCull.CandidateBuf",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             sizeof(DrawItem4ID) * TOTAL_CUBES,
             sizeof(DrawItem4ID) * TOTAL_CUBES,
             cpu_candidates,
@@ -413,7 +435,7 @@ private:
 
         geometry_aabbs_buffer = dev->CreateBuffer(
             "ComputeFrustumCull.AABBsBuf",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             sizeof(GeometryAABB) * TOTAL_CUBES,
             sizeof(GeometryAABB) * TOTAL_CUBES,
             cpu_geometry_aabbs,
@@ -423,14 +445,14 @@ private:
         // 2. 创建 VisibleBuffer (紧凑输出 4-ID)
         visible_buffer = dev->CreateBuffer(
             "ComputeFrustumCull.VisibleBuf",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             sizeof(DrawItem4ID) * TOTAL_CUBES,
             sizeof(DrawItem4ID) * TOTAL_CUBES,
             nullptr,
             BufferAllocPolicy::CPUVisible
         );
 
-        // 3. 创建 DrawCountBuffer (支持 Compute Shader 写入 + DrawIndirectCount 读取)
+        // 3. 创建 DrawCountBuffer (支持 Compute Shader 写入 + DrawIndirectCount 读取，带 BDA)
         count_buffer = dev->CreateDrawCountBuffer("ComputeFrustumCull.CountBuffer", 1, BufferAllocPolicy::CPUVisible);
 
         // 4. 创建 IndirectCommandsBuffer (支持 Compute Shader 写入 + DrawMeshTasks 读取)
@@ -438,10 +460,10 @@ private:
             TOTAL_CUBES,
             BufferAllocPolicy::CPUVisible,
             "ComputeFrustumCull.IndirectCmds",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         );
 
-        // 5. 创建 VisibleL2WIndicesBuffer (Set 2, Binding 6，由 Compute Shader 紧凑写入，Mesh Shader 通过 BDA 寻址)
+        // 5. 创建 VisibleL2WIndicesBuffer（由 Compute Shader 紧凑写入，Mesh Shader 通过 BDA 寻址）
         visible_l2w_indices_buffer = dev->CreateBuffer(
             "ComputeFrustumCull.VisibleL2WIndices",
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
@@ -493,68 +515,43 @@ private:
             return false;
         }
 
-        // 8. 用户描述符集（Set 2, Bindings 0..6）
-        VkDescriptorSetLayoutBinding bindings[7]{};
-        for (uint32_t b = 0; b < 7; ++b)
+        // 8. 地址表（BDA）：7 个缓冲区设备地址写一次——compute 侧只经 push constant 拿到表地址
+        CullAddressTable address_table{};
+        address_table.candidates          = dev->GetBufferDeviceAddressAligned16(candidate_buffer          ->GetBuffer());
+        address_table.world_matrices      = dev->GetBufferDeviceAddressAligned16(world_matrices_buffer     ->GetBuffer());
+        address_table.geometry_aabbs      = dev->GetBufferDeviceAddressAligned16(geometry_aabbs_buffer     ->GetBuffer());
+        address_table.visible_items       = dev->GetBufferDeviceAddressAligned16(visible_buffer            ->GetBuffer());
+        address_table.draw_count          = dev->GetBufferDeviceAddressAligned16(count_buffer              ->GetBuffer());
+        address_table.indirect_commands   = dev->GetBufferDeviceAddressAligned16(indirect_cmds_buffer      ->GetBuffer());
+        address_table.visible_l2w_indices = dev->GetBufferDeviceAddressAligned16(visible_l2w_indices_buffer->GetBuffer());
+
+        if (address_table.candidates == 0 || address_table.world_matrices == 0 || address_table.geometry_aabbs == 0 ||
+            address_table.visible_items == 0 || address_table.draw_count == 0 || address_table.indirect_commands == 0 ||
+            address_table.visible_l2w_indices == 0)
         {
-            bindings[b].binding         = b;
-            bindings[b].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            bindings[b].descriptorCount = 1;
-            bindings[b].stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT;
+            GLogError(u8"[ComputeFrustumCull] 缓冲区设备地址无效（BDA 16B 对齐承诺失败）");
+            return false;
         }
 
-        VkDescriptorSetLayoutCreateInfo dsl_ci{};
-        dsl_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        dsl_ci.bindingCount = 7;
-        dsl_ci.pBindings    = bindings;
+        address_table_buffer = dev->CreateBuffer(
+            "ComputeFrustumCull.AddressTable",
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            sizeof(CullAddressTable), sizeof(CullAddressTable),
+            &address_table,
+            BufferAllocPolicy::CPUVisible
+        );
 
-        if (vkCreateDescriptorSetLayout(dev->GetDevice(), &dsl_ci, nullptr, &user_layout) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorPoolSize pool_size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 7};
-        VkDescriptorPoolCreateInfo pool_ci{};
-        pool_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_ci.maxSets       = 1;
-        pool_ci.poolSizeCount = 1;
-        pool_ci.pPoolSizes    = &pool_size;
-
-        if (vkCreateDescriptorPool(dev->GetDevice(), &pool_ci, nullptr, &desc_pool) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorSetAllocateInfo alloc_ci{};
-        alloc_ci.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_ci.descriptorPool     = desc_pool;
-        alloc_ci.descriptorSetCount = 1;
-        alloc_ci.pSetLayouts        = &user_layout;
-
-        if (vkAllocateDescriptorSets(dev->GetDevice(), &alloc_ci, &user_set) != VK_SUCCESS)
-            return false;
-
-        // 绑定 7 个描述符
-        VkDescriptorBufferInfo buf_infos[7]{
-            *candidate_buffer->GetBufferInfo(),
-            *world_matrices_buffer->GetBufferInfo(),
-            *geometry_aabbs_buffer->GetBufferInfo(),
-            *visible_buffer->GetBufferInfo(),
-            *count_buffer->GetBufferInfo(),
-            *indirect_cmds_buffer->GetBufferInfo(),
-            *visible_l2w_indices_buffer->GetBufferInfo()
-        };
-
-        VkWriteDescriptorSet writes[7]{};
-        for (uint32_t b = 0; b < 7; ++b)
+        if (!address_table_buffer)
         {
-            writes[b].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[b].dstSet          = user_set;
-            writes[b].dstBinding      = b;
-            writes[b].descriptorCount = 1;
-            writes[b].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            writes[b].pBufferInfo     = &buf_infos[b];
+            GLogError(u8"[ComputeFrustumCull] 地址表缓冲区创建失败");
+            return false;
         }
 
-        vkUpdateDescriptorSets(dev->GetDevice(), 7, writes, 0, nullptr);
+        address_table_addr = dev->GetBufferDeviceAddressAligned16(address_table_buffer->GetBuffer());
+        if (address_table_addr == 0)
+            return false;
 
-        // 6. 创建 Compute Pipeline
+        // 9. 创建 Compute Pipeline（用户数据全走 BDA，无第三集描述符集）
         GraphicsContext *gc = GetGraphicsContext();
         if (!gc || !gc->GetMaterialManager())
             return false;
@@ -562,7 +559,6 @@ private:
         compute_pipeline = gc->GetMaterialManager()->CreateComputePipeline(
             "ComputeFrustumCull.Pipeline",
             COMPUTE_CULL_GLSL,
-            user_layout,
             sizeof(CullPushConstants)
         );
 
@@ -586,8 +582,6 @@ public:
         auto *dev = GetDevice();
         if (dev)
         {
-            if (user_layout)                vkDestroyDescriptorSetLayout(dev->GetDevice(), user_layout, nullptr);
-            if (desc_pool)                  vkDestroyDescriptorPool(dev->GetDevice(), desc_pool, nullptr);
             if (compute_cmd)                delete compute_cmd;
             if (candidate_buffer)           delete candidate_buffer;
             if (world_matrices_buffer)      delete world_matrices_buffer;
@@ -598,6 +592,7 @@ public:
             if (visible_l2w_indices_buffer) delete visible_l2w_indices_buffer;
             if (mesh_draw_params_buffer)    delete mesh_draw_params_buffer;
             if (material_data_rows_buffer)  delete material_data_rows_buffer;
+            if (address_table_buffer)       delete address_table_buffer;
         }
     }
 
@@ -658,6 +653,7 @@ public:
         }
         pc.candidate_count    = TOTAL_CUBES;
         pc.mesh_group_count_x = 1; // 1 个 64 线程 meshlet 处理 36 个顶点
+        pc.addr_table         = address_table_addr;
 
         // 2. Compute Shader 分派：先清零 count_buffer，然后执行视锥剔除与紧凑输出
         compute_cmd->Begin();
@@ -674,7 +670,6 @@ public:
 
         // 2b. 分派剔除计算着色器
         compute_cmd->BindPipeline(compute_pipeline);
-        compute_cmd->BindDescriptorSets(compute_pipeline->GetPipelineLayout(), 2, &user_set, 1);
         compute_cmd->PushConstants(compute_pipeline->GetPipelineLayout(), &pc, sizeof(pc));
         compute_cmd->Dispatch((TOTAL_CUBES + 63) / 64, 1, 1);
 

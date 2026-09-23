@@ -381,12 +381,14 @@ public: //Buffer相关
         return CreateINBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    // 间接绘制计数缓冲（INDIRECT|STORAGE|TRANSFER_DST，支持 Compute Shader 写入与 DrawMeshTasksIndirectCount 读取）
+    // 间接绘制计数缓冲（INDIRECT|STORAGE|TRANSFER_DST|SHADER_DEVICE_ADDRESS，支持 Compute Shader 写入
+    // 与 DrawMeshTasksIndirectCount 读取）。带 BDA usage：compute 侧地址经 push constant 下发后
+    // 用 buffer_reference 直接写计数值（无描述符集）。
     DeviceBuffer *CreateDrawCountBuffer(const AnsiString &name, uint32_t count = 1, BufferAllocPolicy policy = BufferAllocPolicy::Auto, const std::source_location &loc = std::source_location::current())
     {
         const VkDeviceSize bytes = sizeof(uint32_t) * (count > 0 ? count : 1);
         DeviceBuffer *buf = CreateBuffer(name,
-                                         VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                         VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                                          bytes, bytes, nullptr, policy, SharingMode::Exclusive, BufferUpdateClass::Default, loc);
         return buf;
     }

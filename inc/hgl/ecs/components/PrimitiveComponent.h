@@ -74,6 +74,15 @@ namespace hgl::ecs
             uint32_t byte_stride = 0;
             bool authored = false;
 
+            MaterialDataAuthoringResource() = default;
+            MaterialDataAuthoringResource(
+                const MaterialDataAuthoringResource &) = default;
+            MaterialDataAuthoringResource(
+                const hgl::graph::GlobalSSBOBinding &binding) noexcept
+                : hgl::graph::GlobalSSBOBinding(binding)
+            {
+            }
+
             MaterialDataAuthoringResource &operator=(
                 const MaterialDataAuthoringResource &) = default;
 

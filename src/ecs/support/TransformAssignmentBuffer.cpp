@@ -24,9 +24,11 @@ namespace hgl::ecs
 
         static bool ShouldEmitPeriodicLog(const uint32_t period = 120)
         {
-            static uint32_t tick = 0;
-            ++tick;
-            return (tick % period) == 1;
+            //static uint32_t tick = 0;
+            //++tick;
+            //return (tick % period) == 1;
+
+            return false;
         }
 
         static void LogDeviceBufferSnapshot(const char *tag, const graph::DeviceBuffer *buffer)
@@ -378,6 +380,7 @@ namespace hgl::ecs
                 }
             }
 
+        #if HGL_TRANSFORM_DEBUG_LOGGING
             GLogInfo("[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d sample_handle=%u sample_pos=(%.3f, %.3f, %.3f)",
                       static_count,
                       base_index,
@@ -399,6 +402,7 @@ namespace hgl::ecs
                          static_cast<unsigned long long>(span_size_bytes),
                          ring_layout.GetFrameIndex());
             }
+        #endif//HGL_TRANSFORM_DEBUG_LOGGING
         }
     }
 

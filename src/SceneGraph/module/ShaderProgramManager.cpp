@@ -449,13 +449,12 @@ const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiSt
 
 ComputePipeline *ShaderProgramManager::CreateComputePipeline(const AnsiString &name,
                                                              const AnsiString &glsl_source,
-                                                             VkDescriptorSetLayout user_layout,
                                                              const uint32_t push_constant_size)
 {
     VulkanDevice *device=GetDevice();
     if(!device)return(nullptr);
 
-    // 专用 layout 挂在全局 Scene/Bindless 集之后——两者必须已由 GraphicsContext::Init 就绪
+    // 全局 Scene/Bindless 集必须已由 GraphicsContext::Init 就绪
     if(bindless_layout_==VK_NULL_HANDLE||scene_layout_==VK_NULL_HANDLE)
     {
         GLogError(u8"[ShaderProgramManager] global sets not ready, cannot create compute pipeline (init GraphicsContext first?)");
@@ -473,11 +472,15 @@ ComputePipeline *ShaderProgramManager::CreateComputePipeline(const AnsiString &n
     const ShaderModule *sm=CreateComputeShaderModule(name,glsl_source);
     if(!sm)return(nullptr);
 
-    VkDescriptorSetLayout dsl[3]={scene_layout_,bindless_layout_,user_layout};
+    // BDA 终态：compute 管线与全材质布局同构——只有 Scene(0)/Bindless(1) 两集，且两集都带
+    // DESCRIPTOR_BUFFER 位（spec 要求同一 pipeline layout 内的 set layout「全带或全不带」，
+    // VUID-VkPipelineLayoutCreateInfo-pSetLayouts-08008）。第三个用户描述符集已退场：
+    // 用户数据走 BDA（push constant 下发设备地址 + buffer_reference），无 set 无 binding。
+    VkDescriptorSetLayout dsl[DESCRIPTOR_SET_TYPE_COUNT]={scene_layout_,bindless_layout_};
 
     VkPipelineLayoutCreateInfo layout_ci{};
     layout_ci.sType        =VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_ci.setLayoutCount=(user_layout!=VK_NULL_HANDLE)?3:2;
+    layout_ci.setLayoutCount=DESCRIPTOR_SET_TYPE_COUNT;
     layout_ci.pSetLayouts  =dsl;
 
     VkPushConstantRange pc_range{};

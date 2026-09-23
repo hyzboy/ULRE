@@ -51,26 +51,35 @@ namespace
     {
         uint32_t max_draws;
         float    cutoff_ratio;
+        uint64_t count_addr;     // DrawCountBuffer 设备地址（BDA）
     };
+
+    static_assert(sizeof(CountPushConstants) == 16, "CountPushConstants 布局必须与 GLSL push_constant block 一致");
 
     constexpr const char COMPUTE_COUNT_GLSL[] = R"(
 #version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 layout(local_size_x = 1) in;
 
-layout(std430, set = 2, binding = 0) buffer DrawCountBuffer {
+// 计数值经 BDA 写入：地址由 push constant 下发，无 set 无 binding
+layout(buffer_reference, std430, buffer_reference_align=16) buffer DrawCountRef {
     uint draw_count;
 };
 
 layout(push_constant) uniform PushConstants {
     uint max_draws;
     float cutoff_ratio;
+    uint64_t count_addr;
 } pc;
 
 void main() {
     uint count = uint(round(float(pc.max_draws) * pc.cutoff_ratio));
     if (count > pc.max_draws)
         count = pc.max_draws;
-    draw_count = count;
+
+    DrawCountRef counter = DrawCountRef(pc.count_addr);
+    counter.draw_count = count;
 }
 )";
 
@@ -130,10 +139,6 @@ private:
     ComputePipeline  *compute_pipeline = nullptr;
     ComputeCmdBuffer *compute_cmd      = nullptr;
     DeviceQueue      *compute_queue    = nullptr;
-
-    VkDescriptorSetLayout user_layout = VK_NULL_HANDLE;
-    VkDescriptorPool      desc_pool   = VK_NULL_HANDLE;
-    VkDescriptorSet       user_set    = VK_NULL_HANDLE;
 
     float    anim_time        = 0.0f;
     uint32_t tick_frame_count = 0;
@@ -249,52 +254,7 @@ private:
             return false;
         }
 
-        // 2. 用户描述符集（Set 2, Binding 0 = count_buffer）
-        VkDescriptorSetLayoutBinding binding{};
-        binding.binding         = 0;
-        binding.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        binding.descriptorCount = 1;
-        binding.stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT;
-
-        VkDescriptorSetLayoutCreateInfo dsl_ci{};
-        dsl_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        dsl_ci.bindingCount = 1;
-        dsl_ci.pBindings    = &binding;
-
-        if (vkCreateDescriptorSetLayout(dev->GetDevice(), &dsl_ci, nullptr, &user_layout) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorPoolSize pool_size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1};
-        VkDescriptorPoolCreateInfo pool_ci{};
-        pool_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_ci.maxSets       = 1;
-        pool_ci.poolSizeCount = 1;
-        pool_ci.pPoolSizes    = &pool_size;
-
-        if (vkCreateDescriptorPool(dev->GetDevice(), &pool_ci, nullptr, &desc_pool) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorSetAllocateInfo alloc_ci{};
-        alloc_ci.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_ci.descriptorPool     = desc_pool;
-        alloc_ci.descriptorSetCount = 1;
-        alloc_ci.pSetLayouts        = &user_layout;
-
-        if (vkAllocateDescriptorSets(dev->GetDevice(), &alloc_ci, &user_set) != VK_SUCCESS)
-            return false;
-
-        VkDescriptorBufferInfo count_info = *count_buffer->GetBufferInfo();
-        VkWriteDescriptorSet write{};
-        write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.dstSet          = user_set;
-        write.dstBinding      = 0;
-        write.descriptorCount = 1;
-        write.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        write.pBufferInfo     = &count_info;
-
-        vkUpdateDescriptorSets(dev->GetDevice(), 1, &write, 0, nullptr);
-
-        // 3. 创建 Compute Pipeline
+        // 2. 创建 Compute Pipeline（用户数据走 BDA：push constant 下发 count_buffer 地址）
         GraphicsContext *gc = GetGraphicsContext();
         if (!gc || !gc->GetMaterialManager())
             return false;
@@ -302,7 +262,6 @@ private:
         compute_pipeline = gc->GetMaterialManager()->CreateComputePipeline(
             "ComputeIndirectCount.Pipeline",
             COMPUTE_COUNT_GLSL,
-            user_layout,
             sizeof(CountPushConstants)
         );
 
@@ -323,11 +282,8 @@ public:
 
     ~ComputeIndirectCountApp() override
     {
-        auto *dev = GetDevice();
-        if (dev)
+        if (GetDevice())
         {
-            if (user_layout) vkDestroyDescriptorSetLayout(dev->GetDevice(), user_layout, nullptr);
-            if (desc_pool)   vkDestroyDescriptorPool(dev->GetDevice(), desc_pool, nullptr);
             if (compute_cmd)   delete compute_cmd;
             if (count_buffer)  delete count_buffer;
         }
@@ -363,18 +319,27 @@ public:
 
     void Tick(double delta_time) override
     {
+        VulkanDevice *dev = GetDevice();
+        if (!dev)
+            return;
+
         anim_time += static_cast<float>(delta_time);
 
         // 动态计算剔除比例（0.0 ~ 1.0 连续平滑周期变化）
         const float cutoff_ratio = 0.5f + 0.5f * std::sin(anim_time * 2.0f);
         const uint32_t expected_count = static_cast<uint32_t>(std::round(float(TOTAL_CUBES) * cutoff_ratio));
 
-        // 1. Compute Shader 分派：在 GPU 写入 count_buffer
-        CountPushConstants pc{TOTAL_CUBES, cutoff_ratio};
+        // 1. Compute Shader 分派：在 GPU 写入 count_buffer（地址经 push constant 下发）
+        CountPushConstants pc{TOTAL_CUBES, cutoff_ratio, dev->GetBufferDeviceAddressAligned16(count_buffer->GetBuffer())};
+
+        if (pc.count_addr == 0)
+        {
+            GLogError(u8"[ComputeIndirectCount] count_buffer 设备地址无效（BDA 16B 对齐承诺失败）");
+            return;
+        }
 
         compute_cmd->Begin();
         compute_cmd->BindPipeline(compute_pipeline);
-        compute_cmd->BindDescriptorSets(compute_pipeline->GetPipelineLayout(), 2, &user_set, 1);
         compute_cmd->PushConstants(compute_pipeline->GetPipelineLayout(), &pc, sizeof(pc));
         compute_cmd->Dispatch(1, 1, 1);
 

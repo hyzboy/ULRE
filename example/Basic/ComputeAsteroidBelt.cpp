@@ -91,12 +91,31 @@ namespace
         glm::vec4 frustum_planes[6];
         float     time;
         uint32_t  total_asteroids;
+        uint64_t  addr_table;          // SimulationAddressTable 设备地址（BDA）
     };
+
+    static_assert(sizeof(SimulationPushConstants) == 112, "SimulationPushConstants 布局必须与 GLSL push_constant block 一致");
+
+    // Sim 侧 5 张表地址（写一次）——pc 128B 放不下 5 个地址，地址本身放这张小表里
+    struct SimulationAddressTable
+    {
+        uint64_t orbit_params;
+        uint64_t geometry_aabbs;
+        uint64_t world_matrices;
+        uint64_t l2w_indices;
+        uint64_t counts;
+    };
+
+    static_assert(sizeof(SimulationAddressTable) == 40, "SimulationAddressTable 布局必须与 GLSL buffer_reference 块一致");
 
     struct FinalizePushConstants
     {
         uint32_t mesh_group_counts[GEOMETRY_VARIANT_COUNT];
+        uint64_t counts_addr;          // DrawCounts 表设备地址（BDA）
+        uint64_t indirect_cmds_addr;   // 间接命令表设备地址（BDA）
     };
+
+    static_assert(sizeof(FinalizePushConstants) == 56, "FinalizePushConstants 布局必须与 GLSL push_constant block 一致");
 
     struct DrawCountData
     {
@@ -107,6 +126,8 @@ namespace
     // ── 计算着色器 1：开普勒轨道 + 3D正弦波 + 翻滚自转 + 视锥剔除与紧凑输出 ──
     constexpr char COMPUTE_SIM_CULL_GLSL[] = R"(#version 460
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
 struct AsteroidOrbitParam {
     float base_radius;
@@ -131,28 +152,24 @@ layout(push_constant) uniform SimPushConstants {
     vec4 frustum_planes[6];
     float time;
     uint total_asteroids;
+    uint64_t addr_table;
 } pc;
 
-layout(std430, set = 2, binding = 0) readonly buffer OrbitParamsBuf {
-    AsteroidOrbitParam orbit_params[];
+// 5 张表全走 BDA：地址表经 push constant 下发，无 set 无 binding
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer SimAddressTableRef
+{
+    uint64_t orbit_params;
+    uint64_t geometry_aabbs;
+    uint64_t world_matrices;
+    uint64_t l2w_indices;
+    uint64_t counts;
 };
 
-layout(std430, set = 2, binding = 1) readonly buffer GeometryAABBsBuf {
-    GeometryAABB geometry_aabbs[];
-};
-
-layout(std430, set = 2, binding = 2) writeonly buffer WorldMatsBuf {
-    mat4 world_matrices[];
-};
-
-layout(std430, set = 2, binding = 3) buffer L2WIndexBuf {
-    uint l2w_indices[];
-};
-
-layout(std430, set = 2, binding = 4) buffer CountsBuf {
-    uint total_visible;
-    uint geom_visible[10];
-};
+layout(buffer_reference, std430, buffer_reference_align=16) buffer OrbitParamsRef   { AsteroidOrbitParam params[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer GeometryAABBsRef { GeometryAABB boxes[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer WorldMatsRef     { mat4 mats[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer UintArrayRef     { uint values[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer CountsRef        { uint total_visible; uint geom_visible[10]; };
 
 mat3 RotationAxis(vec3 axis, float angle) {
     float s = sin(angle);
@@ -172,7 +189,15 @@ void main() {
     if (idx >= pc.total_asteroids)
         return;
 
-    AsteroidOrbitParam p = orbit_params[idx];
+    SimAddressTableRef table = SimAddressTableRef(pc.addr_table);
+
+    OrbitParamsRef   orbit_params   = OrbitParamsRef(table.orbit_params);
+    GeometryAABBsRef geometry_aabbs = GeometryAABBsRef(table.geometry_aabbs);
+    WorldMatsRef     world_matrices = WorldMatsRef(table.world_matrices);
+    UintArrayRef     l2w_indices    = UintArrayRef(table.l2w_indices);
+    CountsRef        counts         = CountsRef(table.counts);
+
+    AsteroidOrbitParam p = orbit_params.params[idx];
 
     // 1. 开普勒差速环绕 + 径向正弦微波
     float angle = p.base_angle + p.orbit_speed * pc.time;
@@ -196,11 +221,11 @@ void main() {
         vec4(x, y, z, 1.0)
     );
 
-    world_matrices[idx] = l2w;
+    world_matrices.mats[idx] = l2w;
 
     // 4. 6 平面视锥体剔除 (Vulkan RH_ZO 语义)
     uint geom_id = idx / 100000;
-    GeometryAABB aabb = geometry_aabbs[geom_id];
+    GeometryAABB aabb = geometry_aabbs.boxes[geom_id];
     vec3 world_center = (l2w * vec4(aabb.center.xyz, 1.0)).xyz;
     mat3 m = mat3(l2w);
     vec3 extents = aabb.extents.xyz;
@@ -218,9 +243,9 @@ void main() {
     }
 
     if (visible) {
-        atomicAdd(total_visible, 1);
-        uint slot = atomicAdd(geom_visible[geom_id], 1);
-        l2w_indices[geom_id * 100000 + slot] = idx;
+        atomicAdd(counts.total_visible, 1);
+        uint slot = atomicAdd(counts.geom_visible[geom_id], 1);
+        l2w_indices.values[geom_id * 100000 + slot] = idx;
     }
 }
 )";
@@ -228,6 +253,8 @@ void main() {
     // ── 计算着色器 2：间接命令动态生成 (Finalize Indirect Commands) ──
     constexpr char COMPUTE_FINALIZE_CMDS_GLSL[] = R"(#version 460
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
 struct DrawMeshTasksIndirectCommand {
     uint groupCountX;
@@ -237,16 +264,13 @@ struct DrawMeshTasksIndirectCommand {
 
 layout(push_constant) uniform FinalizePushConstants {
     uint mesh_group_counts[10];
+    uint64_t counts_addr;
+    uint64_t indirect_cmds_addr;
 } pc;
 
-layout(std430, set = 2, binding = 0) readonly buffer CountsBuf {
-    uint total_visible;
-    uint geom_visible[10];
-};
-
-layout(std430, set = 2, binding = 1) writeonly buffer IndirectCmdsBuf {
-    DrawMeshTasksIndirectCommand indirect_commands[];
-};
+// 两张表地址直接进 push constant（BDA），无 set 无 binding
+layout(buffer_reference, std430, buffer_reference_align=16) buffer CountsRef       { uint total_visible; uint geom_visible[10]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer IndirectCmdsRef { DrawMeshTasksIndirectCommand cmds[]; };
 
 layout(local_size_x = 10) in;
 
@@ -254,9 +278,12 @@ void main() {
     uint g = gl_LocalInvocationID.x;
     if (g >= 10) return;
 
-    indirect_commands[g].groupCountX = pc.mesh_group_counts[g];
-    indirect_commands[g].groupCountY = geom_visible[g];
-    indirect_commands[g].groupCountZ = 1;
+    CountsRef       counts            = CountsRef(pc.counts_addr);
+    IndirectCmdsRef indirect_commands = IndirectCmdsRef(pc.indirect_cmds_addr);
+
+    indirect_commands.cmds[g].groupCountX = pc.mesh_group_counts[g];
+    indirect_commands.cmds[g].groupCountY = counts.geom_visible[g];
+    indirect_commands.cmds[g].groupCountZ = 1;
 }
 )";
 
@@ -310,17 +337,17 @@ class ComputeAsteroidBeltApp : public WorkObject
     IndirectMeshTaskBuffer   *indirect_cmds_buffer      = nullptr; // 120 B (Storage | Indirect)
     DeviceBuffer             *readback_count_buffer     = nullptr; // 44 B (CPUVisible)
 
+    DeviceBuffer             *sim_address_table_buffer  = nullptr; // Sim 5 张表地址表（写一次）
+    uint64_t                  sim_address_table_addr    = 0;
+    uint64_t                  finalize_counts_addr      = 0;
+    uint64_t                  finalize_indirect_cmds_addr = 0;
+
     // Compute Pipeline 1 (Sim + Cull)
-    VkDescriptorSetLayout     sim_layout       = VK_NULL_HANDLE;
-    VkDescriptorSet           sim_set          = VK_NULL_HANDLE;
     ComputePipeline          *sim_pipeline     = nullptr;
 
     // Compute Pipeline 2 (Finalize Indirect Cmds)
-    VkDescriptorSetLayout     finalize_layout  = VK_NULL_HANDLE;
-    VkDescriptorSet           finalize_set     = VK_NULL_HANDLE;
     ComputePipeline          *finalize_pipeline= nullptr;
 
-    VkDescriptorPool          desc_pool        = VK_NULL_HANDLE;
     ComputeCmdBuffer         *compute_cmd      = nullptr;
     DeviceQueue              *compute_queue    = nullptr;
 
@@ -691,7 +718,7 @@ private:
 
         orbit_params_buffer = dev->CreateBuffer(
             "Asteroids.OrbitParams",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             sizeof(AsteroidOrbitParam) * TOTAL_ASTEROIDS,
             sizeof(AsteroidOrbitParam) * TOTAL_ASTEROIDS,
             orbit_params,
@@ -702,7 +729,7 @@ private:
         // 2. 包围盒表 (320 B)
         geometry_aabbs_buffer = dev->CreateBuffer(
             "Asteroids.GeometryAABBs",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             sizeof(GeometryAABB) * GEOMETRY_VARIANT_COUNT,
             sizeof(GeometryAABB) * GEOMETRY_VARIANT_COUNT,
             cpu_geometry_aabbs,
@@ -732,7 +759,7 @@ private:
         // 5. 计数缓冲 (44 B，含 1 个总可见数 + 10 个分几何体可见数)
         draw_count_buffer = dev->CreateBuffer(
             "Asteroids.DrawCounts",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             sizeof(DrawCountData),
             sizeof(DrawCountData),
             nullptr,
@@ -803,109 +830,51 @@ private:
             GEOMETRY_VARIANT_COUNT,
             BufferAllocPolicy::GPUOnly,
             ObjectNameBuilder("Asteroids.IndirectMeshTaskBuffer"),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         );
 
-        // 8. 描述符集与管线构建
-        // 8a. 创建 Descriptor Pool (7 个 StorageBuffer 描述符)
-        VkDescriptorPoolSize pool_size{};
-        pool_size.type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        pool_size.descriptorCount = 10;
+        // 8. 地址表（BDA）：用户数据全走 push constant + buffer_reference，无描述符集。
+        // Sim 侧 5 张表地址写一次（pc 放不下 5 个地址）；Finalize 侧 2 个地址直接进 pc。
+        SimulationAddressTable sim_address_table{};
+        sim_address_table.orbit_params    = dev->GetBufferDeviceAddressAligned16(orbit_params_buffer  ->GetBuffer());
+        sim_address_table.geometry_aabbs  = dev->GetBufferDeviceAddressAligned16(geometry_aabbs_buffer->GetBuffer());
+        sim_address_table.world_matrices  = dev->GetBufferDeviceAddressAligned16(world_matrices_buffer->GetBuffer());
+        sim_address_table.l2w_indices     = dev->GetBufferDeviceAddressAligned16(l2w_index_buffer     ->GetBuffer());
+        sim_address_table.counts          = dev->GetBufferDeviceAddressAligned16(draw_count_buffer    ->GetBuffer());
 
-        VkDescriptorPoolCreateInfo pool_info{};
-        pool_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_info.maxSets       = 2;
-        pool_info.poolSizeCount = 1;
-        pool_info.pPoolSizes    = &pool_size;
-
-        if (vkCreateDescriptorPool(dev->GetDevice(), &pool_info, nullptr, &desc_pool) != VK_SUCCESS)
+        if (sim_address_table.orbit_params == 0 || sim_address_table.geometry_aabbs == 0 ||
+            sim_address_table.world_matrices == 0 || sim_address_table.l2w_indices == 0 ||
+            sim_address_table.counts == 0)
+        {
+            GLogError(u8"[ComputeAsteroidBelt] 缓冲区设备地址无效（BDA 16B 对齐承诺失败）");
             return false;
-
-        // 8b. Layout 1: Simulation & Cull (5 Storage Buffers)
-        VkDescriptorSetLayoutBinding sim_bindings[5]{};
-        for (uint32_t b = 0; b < 5; ++b)
-        {
-            sim_bindings[b].binding         = b;
-            sim_bindings[b].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            sim_bindings[b].descriptorCount = 1;
-            sim_bindings[b].stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT;
         }
 
-        VkDescriptorSetLayoutCreateInfo sim_layout_info{};
-        sim_layout_info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        sim_layout_info.bindingCount = 5;
-        sim_layout_info.pBindings    = sim_bindings;
+        sim_address_table_buffer = dev->CreateBuffer(
+            "Asteroids.SimAddressTable",
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            sizeof(SimulationAddressTable), sizeof(SimulationAddressTable),
+            &sim_address_table,
+            BufferAllocPolicy::CPUVisible
+        );
 
-        if (vkCreateDescriptorSetLayout(dev->GetDevice(), &sim_layout_info, nullptr, &sim_layout) != VK_SUCCESS)
+        if (!sim_address_table_buffer)
+        {
+            GLogError(u8"[ComputeAsteroidBelt] Sim 地址表缓冲区创建失败");
             return false;
-
-        // 8c. Layout 2: Finalize Indirect Commands (2 Storage Buffers)
-        VkDescriptorSetLayoutBinding fin_bindings[2]{};
-        for (uint32_t b = 0; b < 2; ++b)
-        {
-            fin_bindings[b].binding         = b;
-            fin_bindings[b].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            fin_bindings[b].descriptorCount = 1;
-            fin_bindings[b].stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT;
         }
 
-        VkDescriptorSetLayoutCreateInfo fin_layout_info{};
-        fin_layout_info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        fin_layout_info.bindingCount = 2;
-        fin_layout_info.pBindings    = fin_bindings;
+        sim_address_table_addr = dev->GetBufferDeviceAddressAligned16(sim_address_table_buffer->GetBuffer());
 
-        if (vkCreateDescriptorSetLayout(dev->GetDevice(), &fin_layout_info, nullptr, &finalize_layout) != VK_SUCCESS)
+        finalize_counts_addr        = dev->GetBufferDeviceAddressAligned16(draw_count_buffer  ->GetBuffer());
+        finalize_indirect_cmds_addr = dev->GetBufferDeviceAddressAligned16(indirect_cmds_buffer->GetBuffer());
+
+        if (sim_address_table_addr == 0 || finalize_counts_addr == 0 || finalize_indirect_cmds_addr == 0)
+        {
+            GLogError(u8"[ComputeAsteroidBelt] 地址表/pc 地址无效（BDA 16B 对齐承诺失败）");
             return false;
-
-        // 8d. 分配并更新描述符集
-        VkDescriptorSetAllocateInfo alloc_info{};
-        alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_info.descriptorPool     = desc_pool;
-        alloc_info.descriptorSetCount = 1;
-        alloc_info.pSetLayouts        = &sim_layout;
-        vkAllocateDescriptorSets(dev->GetDevice(), &alloc_info, &sim_set);
-
-        alloc_info.pSetLayouts        = &finalize_layout;
-        vkAllocateDescriptorSets(dev->GetDevice(), &alloc_info, &finalize_set);
-
-        // 更新 Set 0 (Sim + Cull)
-        VkDescriptorBufferInfo sim_buf_infos[5]{
-            *orbit_params_buffer->GetBufferInfo(),
-            *geometry_aabbs_buffer->GetBufferInfo(),
-            *world_matrices_buffer->GetBufferInfo(),
-            *l2w_index_buffer->GetBufferInfo(),
-            *draw_count_buffer->GetBufferInfo(),
-        };
-
-        VkWriteDescriptorSet sim_writes[5]{};
-        for (uint32_t b = 0; b < 5; ++b)
-        {
-            sim_writes[b].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            sim_writes[b].dstSet          = sim_set;
-            sim_writes[b].dstBinding      = b;
-            sim_writes[b].descriptorCount = 1;
-            sim_writes[b].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            sim_writes[b].pBufferInfo     = &sim_buf_infos[b];
         }
-        vkUpdateDescriptorSets(dev->GetDevice(), 5, sim_writes, 0, nullptr);
 
-        // 更新 Set 1 (Finalize Commands)
-        VkDescriptorBufferInfo fin_buf_infos[2]{
-            *draw_count_buffer->GetBufferInfo(),
-            *indirect_cmds_buffer->GetBufferInfo(),
-        };
-
-        VkWriteDescriptorSet fin_writes[2]{};
-        for (uint32_t b = 0; b < 2; ++b)
-        {
-            fin_writes[b].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            fin_writes[b].dstSet          = finalize_set;
-            fin_writes[b].dstBinding      = b;
-            fin_writes[b].descriptorCount = 1;
-            fin_writes[b].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            fin_writes[b].pBufferInfo     = &fin_buf_infos[b];
-        }
-        vkUpdateDescriptorSets(dev->GetDevice(), 2, fin_writes, 0, nullptr);
 
         // 8e. 创建 Compute Pipelines
         GraphicsContext *gc = GetGraphicsContext();
@@ -915,14 +884,12 @@ private:
         sim_pipeline = gc->GetMaterialManager()->CreateComputePipeline(
             "Asteroids.SimPipeline",
             COMPUTE_SIM_CULL_GLSL,
-            sim_layout,
             sizeof(SimulationPushConstants)
         );
 
         finalize_pipeline = gc->GetMaterialManager()->CreateComputePipeline(
             "Asteroids.FinalizePipeline",
             COMPUTE_FINALIZE_CMDS_GLSL,
-            finalize_layout,
             sizeof(FinalizePushConstants)
         );
 
@@ -951,9 +918,6 @@ public:
         auto *dev = GetDevice();
         if (dev)
         {
-            if (sim_layout)               vkDestroyDescriptorSetLayout(dev->GetDevice(), sim_layout, nullptr);
-            if (finalize_layout)          vkDestroyDescriptorSetLayout(dev->GetDevice(), finalize_layout, nullptr);
-            if (desc_pool)                vkDestroyDescriptorPool(dev->GetDevice(), desc_pool, nullptr);
             if (compute_cmd)              delete compute_cmd;
             if (orbit_params_buffer)      delete orbit_params_buffer;
             if (geometry_aabbs_buffer)    delete geometry_aabbs_buffer;
@@ -964,6 +928,7 @@ public:
             if (material_data_rows_buffer)delete material_data_rows_buffer;
             if (indirect_cmds_buffer)     delete indirect_cmds_buffer;
             if (readback_count_buffer)    delete readback_count_buffer;
+            if (sim_address_table_buffer) delete sim_address_table_buffer;
         }
 
         for (uint32_t i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
@@ -1032,12 +997,15 @@ public:
         }
         sim_pc.time            = elapsed_time;
         sim_pc.total_asteroids = TOTAL_ASTEROIDS;
+        sim_pc.addr_table      = sim_address_table_addr;
 
         FinalizePushConstants fin_pc{};
         for (uint32_t i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
             fin_pc.mesh_group_counts[i] = mesh_group_counts[i];
         }
+        fin_pc.counts_addr        = finalize_counts_addr;
+        fin_pc.indirect_cmds_addr = finalize_indirect_cmds_addr;
 
         // 2. 录制并提交 Compute Shader 模拟与剔除
         compute_cmd->Begin();
@@ -1054,7 +1022,6 @@ public:
 
         // 2b. 分派 Simulation & Culling (1,000,000 线程，3907 工作组)
         compute_cmd->BindPipeline(sim_pipeline);
-        compute_cmd->BindDescriptorSets(sim_pipeline->GetPipelineLayout(), 2, &sim_set, 1);
         compute_cmd->PushConstants(sim_pipeline->GetPipelineLayout(), &sim_pc, sizeof(sim_pc));
         compute_cmd->Dispatch((TOTAL_ASTEROIDS + 255) / 256, 1, 1);
 
@@ -1069,7 +1036,6 @@ public:
 
         // 2d. 分派 Finalize Indirect Commands (1 工作组，10 线程)
         compute_cmd->BindPipeline(finalize_pipeline);
-        compute_cmd->BindDescriptorSets(finalize_pipeline->GetPipelineLayout(), 2, &finalize_set, 1);
         compute_cmd->PushConstants(finalize_pipeline->GetPipelineLayout(), &fin_pc, sizeof(fin_pc));
         compute_cmd->Dispatch(1, 1, 1);
 
