@@ -76,7 +76,7 @@ bool RenderSystemCore::BeginFrame() {
     return true;
 }
 
-bool RenderSystemCore::BeginRenderPass()
+bool RenderSystemCore::BeginRenderPass(const hgl::graph::RenderPassOptions *options)
 {
     if (!frame_begun || !render_cmd)
     {
@@ -96,7 +96,7 @@ bool RenderSystemCore::BeginRenderPass()
     if (render_target && render_target->GetColorCount() > 0)
         render_cmd->SetClearColor(0, render_target->GetClearColor());
 
-    render_cmd->BeginRendering(render_target);   // Dynamic Rendering（替代传统 BeginRenderPass）
+    render_cmd->BeginRendering(render_target, options);   // Dynamic Rendering（替代传统 BeginRenderPass）
     render_pass_begun = true;
     return true;
 }

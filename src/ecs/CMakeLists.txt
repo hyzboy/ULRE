@@ -340,6 +340,12 @@ if(MSVC)
     set_target_properties(TestCascadedShadowController PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+add_executable(TestCSMIncrementalPass support/TestCSMIncrementalPass.cpp)
+target_link_libraries(TestCSMIncrementalPass PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestCSMIncrementalPass PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -361,4 +367,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestCascadedShadowController
         PROPERTIES LABELS "csm;shadow")
+
+    add_test(
+        NAME TestCSMIncrementalPass
+        COMMAND TestCSMIncrementalPass)
+    set_tests_properties(
+        TestCSMIncrementalPass
+        PROPERTIES LABELS "csm;pass")
 endif()

@@ -12,6 +12,7 @@ namespace hgl {
         class IRenderTarget;
         class VulkanDevice;
         class RenderCmdBuffer;
+        struct RenderPassOptions;
     }
 }
 
@@ -114,7 +115,7 @@ public:
      * Begin render pass on current frame command buffer.
      * Must be called after BeginFrame() and before issuing draw commands.
      */
-    bool BeginRenderPass();
+    bool BeginRenderPass(const hgl::graph::RenderPassOptions *options = nullptr);
 
     /**
      * 结束一帧的渲染

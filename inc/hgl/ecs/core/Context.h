@@ -29,6 +29,7 @@ namespace hgl {
         class GraphicsContext;  // 图形资源管理器（原IGraphicsContext）
         class VulkanDevice;
         class RenderContext;
+        struct RenderPassOptions;
     }
 }
 
@@ -146,6 +147,9 @@ namespace hgl
             /// 当前渲染 Pass 的活跃相机 SSBO 行号（用于 PushConstants 索引多相机）
             uint32_t active_camera_id = 0;
 
+            /// 当前渲染 Pass 的物体移动性过滤（-1 = 全部，0 = 仅静态 Static，1 = 仅动态 Movable）
+            int active_mobility_filter = -1;
+
             std::unique_ptr<RenderSystemCore> render_core;
 
             /// Cached adaptive render graph (auto-culls based on scene content)
@@ -178,7 +182,7 @@ namespace hgl
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
             bool EnsureRenderCoreInitialized();
-            bool BeginManagedRenderFrame(float deltaTime, bool need_swapchain_acquire = true);
+            bool BeginManagedRenderFrame(float deltaTime, bool need_swapchain_acquire = true, const graph::RenderPassOptions *options = nullptr);
             void EndManagedRenderFrame(float deltaTime);
             void RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
                                                ExecutionPhase maxPhase,
@@ -258,6 +262,9 @@ namespace hgl
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
+
+            int GetActiveMobilityFilter() const { return active_mobility_filter; }
+
             void SetRenderSubmissionSerial(const uint64_t serial)
             {
                 render_submission_serial = serial;

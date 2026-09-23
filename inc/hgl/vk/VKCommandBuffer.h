@@ -113,6 +113,17 @@ public:
 #endif//_DEBUG
 };//class VulkanCmdBuffer
 
+struct RenderPassOptions
+{
+    bool load_color = false;
+    bool load_depth = false;
+    VkImageLayout depth_old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    bool use_scissor = false;
+    VkRect2D scissor{};
+    bool clear_scissor_depth = false;
+    float clear_depth_value = 0.0f; // Reversed-Z 默认（0.0f = 远平面）
+};
+
 class RenderCmdBuffer:public VulkanCmdBuffer
 {
 private:
@@ -184,10 +195,15 @@ public:
         vkCmdBeginRendering(cmd_buf,ri);
     }
 
+    using RenderPassOptions = hgl::graph::RenderPassOptions;
+
     // Dynamic Rendering：直接从 render target 取附件构造 VkRenderingInfo
     // （替代 BeginRenderPass 的 framebuffer 路径——无 render pass/framebuffer 依赖）
     // 实现见 VKCommandBufferRender.cpp（需 IRenderTarget 完整定义，避免循环 include）
-    bool BeginRendering(IRenderTarget *rt);
+    bool BeginRendering(IRenderTarget *rt, const RenderPassOptions *options = nullptr);
+
+    // 局部深度区域清空（使用 vkCmdClearAttachments，必须在 BeginRendering 内部调用）
+    void ClearDepthRect(const VkRect2D &rect, float depth = 0.0f);
 
     void EndRendering()
     {

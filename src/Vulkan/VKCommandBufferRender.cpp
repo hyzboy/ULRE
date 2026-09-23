@@ -7,7 +7,8 @@
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 
-namespace hgl::graph{
+namespace hgl::graph
+{
 RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
 {
     cv_count=0;
@@ -32,7 +33,7 @@ void RenderCmdBuffer::SetRenderArea(const VkExtent2D &ext2d)
     render_area.extent=ext2d;
 }
 
-bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
+bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions *options)
 {
     if(!rt)return(false);
 
@@ -68,12 +69,26 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
         {
             VkImageMemoryBarrier2 &db=barriers[color_count];
 
+            const bool load_depth = options && options->load_depth;
+            VkImageLayout old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+            VkPipelineStageFlags2 src_stage = VK_PIPELINE_STAGE_2_NONE;
+            VkAccessFlags2 src_access = VK_ACCESS_2_NONE;
+
+            if (load_depth)
+            {
+                old_layout = (options && options->depth_old_layout != VK_IMAGE_LAYOUT_UNDEFINED)
+                             ? options->depth_old_layout
+                             : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                src_stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                src_access = VK_ACCESS_2_SHADER_READ_BIT;
+            }
+
             db.sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-            db.srcStageMask        =VK_PIPELINE_STAGE_2_NONE;
-            db.srcAccessMask       =VK_ACCESS_2_NONE;
+            db.srcStageMask        =src_stage;
+            db.srcAccessMask       =src_access;
             db.dstStageMask        =VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT|VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
             db.dstAccessMask       =VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-            db.oldLayout           =VK_IMAGE_LAYOUT_UNDEFINED;
+            db.oldLayout           =old_layout;
             db.newLayout           =VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             db.srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
             db.dstQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
@@ -137,10 +152,12 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
         const RenderingAttachment att=rt->GetColorAttachment(i);
         if(!att.IsValid())continue;
 
+        const bool load_color = options && options->load_color;
+
         color_atts[i].sType         =VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
         color_atts[i].imageView     =att.image_view;
         color_atts[i].imageLayout   =VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        color_atts[i].loadOp        =VK_ATTACHMENT_LOAD_OP_CLEAR;
+        color_atts[i].loadOp        =load_color ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
         color_atts[i].storeOp       =VK_ATTACHMENT_STORE_OP_STORE;
         color_atts[i].clearValue    =(i<cv_count)?clear_values[i]:VkClearValue{};
     }
@@ -153,10 +170,12 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
 
         if(att.IsValid())
         {
+            const bool load_depth = options && options->load_depth;
+
             depth_att.sType         =VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
             depth_att.imageView     =att.image_view;
             depth_att.imageLayout   =VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            depth_att.loadOp        =VK_ATTACHMENT_LOAD_OP_CLEAR;
+            depth_att.loadOp        =load_depth ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
             depth_att.storeOp       =VK_ATTACHMENT_STORE_OP_STORE;
             depth_att.clearValue    =(color_count<cv_count)?clear_values[color_count]:VkClearValue{};
         }
@@ -173,11 +192,49 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
     vkCmdBeginRendering(cmd_buf,&ri);
 
     vkCmdSetViewport(cmd_buf,0,1,&viewport);
-    vkCmdSetScissor(cmd_buf,0,1,&render_area);
+
+    if (options && options->use_scissor)
+    {
+        vkCmdSetScissor(cmd_buf,0,1,&options->scissor);
+    }
+    else
+    {
+        vkCmdSetScissor(cmd_buf,0,1,&render_area);
+    }
+
+    if (options && options->clear_scissor_depth && rt->hasDepth())
+    {
+        VkClearAttachment clear_att{};
+        clear_att.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        clear_att.clearValue.depthStencil.depth = options->clear_depth_value;
+        clear_att.clearValue.depthStencil.stencil = 0;
+
+        VkClearRect clear_rect{};
+        clear_rect.rect = options->use_scissor ? options->scissor : render_area;
+        clear_rect.baseArrayLayer = 0;
+        clear_rect.layerCount = 1;
+
+        vkCmdClearAttachments(cmd_buf, 1, &clear_att, 1, &clear_rect);
+    }
 
     pipeline_layout=VK_NULL_HANDLE;
 
     return(true);
+}
+
+void RenderCmdBuffer::ClearDepthRect(const VkRect2D &rect, float depth)
+{
+    VkClearAttachment clear_att{};
+    clear_att.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    clear_att.clearValue.depthStencil.depth = depth;
+    clear_att.clearValue.depthStencil.stencil = 0;
+
+    VkClearRect clear_rect{};
+    clear_rect.rect = rect;
+    clear_rect.baseArrayLayer = 0;
+    clear_rect.layerCount = 1;
+
+    vkCmdClearAttachments(cmd_buf, 1, &clear_att, 1, &clear_rect);
 }
 
 void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)

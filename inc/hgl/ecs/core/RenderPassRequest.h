@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/color/Color4f.h>
+#include<vulkan/vulkan.h>
 
 namespace hgl
 {
@@ -44,6 +45,22 @@ namespace hgl
             /// 只处理该相机、强制重算矩阵、不吃用户输入）；pass 结束后
             /// 自动恢复主相机的共享数据。
             CameraComponent *camera = nullptr;
+
+            /// 可选：是否保留原有深度内容（VK_ATTACHMENT_LOAD_OP_LOAD）
+            /// 用于 CSM 增量滚动更新已有深度图，避免全图清空
+            bool load_depth = false;
+
+            /// 可选：是否限制光栅化区域（局部裁剪）
+            bool use_scissor = false;
+            VkRect2D scissor{};
+
+            /// 可选：是否局部清空 scissor 区域的深度（Reversed-Z: 0.0f）
+            /// 用于 CSM 增量滚动时仅清除新进入视野的条带
+            bool clear_scissor_depth = false;
+
+            /// 可选：物体移动性过滤（-1 = 全部，0 = 仅静态 Static，1 = 仅动态 Movable）
+            /// 中远景 CSM 静态滚动缓存级联可设置为 0（仅绘制静态物体）
+            int mobility_filter = -1;
         };
     }//namespace ecs
 }//namespace hgl

@@ -30,6 +30,7 @@
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
+#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
@@ -327,7 +328,7 @@ namespace hgl
             return true;
         }
 
-        bool ECSContext::BeginManagedRenderFrame(float deltaTime, const bool need_swapchain_acquire)
+        bool ECSContext::BeginManagedRenderFrame(float deltaTime, const bool need_swapchain_acquire, const graph::RenderPassOptions *options)
         {
             if (!active)
                 return false;
@@ -368,7 +369,7 @@ namespace hgl
             PrepareRenderPassSetup(render_core->GetSwapchainImageIndex(), deltaTime);
 
 //            LogInfo("[ECS RENDER] Calling BeginRenderPass");
-            if (!render_core->BeginRenderPass())
+            if (!render_core->BeginRenderPass(options))
             {
                 LogWarning("[ECS RENDER] BeginRenderPass FAILED");
                 render_core->EndFrame();
@@ -496,15 +497,29 @@ namespace hgl
                 active_camera_id = 0;
             }
 
+            active_mobility_filter = req.mobility_filter;
+
+            graph::RenderPassOptions pass_options;
+            pass_options.load_depth = req.load_depth;
+            pass_options.use_scissor = req.use_scissor;
+            pass_options.scissor = req.scissor;
+            pass_options.clear_scissor_depth = req.clear_scissor_depth;
+            pass_options.clear_depth_value = 0.0f; // Reversed-Z (0.0f = far)
+
+            const graph::RenderPassOptions *p_options =
+                (req.load_depth || req.use_scissor || req.clear_scissor_depth) ? &pass_options : nullptr;
+
             bool ok = false;
 
             // 离屏 RT 无 swapchain 图像可获取，跳过 AcquireSwapchainImage
-            if (BeginManagedRenderFrame(req.delta_time, false))
+            if (BeginManagedRenderFrame(req.delta_time, false, p_options))
             {
                 RenderDrawOnly(render_core->GetRenderCmd(), req.delta_time);
                 EndManagedRenderFrame(req.delta_time);
                 ok = true;
             }
+
+            active_mobility_filter = -1;
 
             // 关键同步（下沿保护）：本帧离屏提交完成后立即等该 RT 自己的 queue fence！
             // 必须在恢复主相机共享数据前等，因为 GPU 仍在异步读取本 pass 提交的光源

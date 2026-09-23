@@ -1115,6 +1115,8 @@ namespace hgl::ecs
             visibility_storage = vis_system->GetStorage();
         }
 
+        const int active_mobility_filter = world ? world->GetActiveMobilityFilter() : -1;
+
         std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
         world->GetComponents<PrimitiveComponent>(primitives);
 
@@ -1154,6 +1156,13 @@ namespace hgl::ecs
             Entity* entity = primitiveComp->GetOwner();
             if (!entity)
                 continue;
+
+            if (active_mobility_filter >= 0)
+            {
+                auto transform = entity->GetComponent<TransformComponent>();
+                if (!transform || static_cast<int>(transform->GetMobility()) != active_mobility_filter)
+                    continue;
+            }
 
             if (!primitiveComp->HasAnyMaterialRecipeSource())
                 continue;
@@ -1240,6 +1249,18 @@ namespace hgl::ecs
             if (!entity)
             {
                 ++skipped_no_owner;
+                continue;
+            }
+
+            auto transform = entity->GetComponent<TransformComponent>();
+            if (!transform)
+            {
+                ++skipped_no_transform;
+                continue;
+            }
+
+            if (active_mobility_filter >= 0 && static_cast<int>(transform->GetMobility()) != active_mobility_filter)
+            {
                 continue;
             }
 
@@ -1349,13 +1370,6 @@ namespace hgl::ecs
                             material_comp->valid ? 1 : 0);
                     }
                 }
-            }
-
-            auto transform = entity->GetComponent<TransformComponent>();
-            if (!transform)
-            {
-                ++skipped_no_transform;
-                continue;
             }
 
             auto material_for_item = entity->GetComponent<MaterialComponent>();
