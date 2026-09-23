@@ -7,15 +7,18 @@
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/data/ImageRegion.h>
 #include<hgl/vk/VKTexture.h>
-
-#include<vector>
+#include<hgl/graph/module/TextureUploadTask.h>
+#include<hgl/graph/module/TextureUploadQueue.h>
 
 namespace hgl::graph{
+
+class BindlessTextureManager;
 
 GRAPH_MODULE_CLASS(TextureManager)
 {
     DeviceQueue *texture_queue=nullptr;
     TextureCmdBuffer *texture_cmd_buf=nullptr;
+    TextureUploadQueue *upload_queue=nullptr;
 
 private:
 
@@ -127,11 +130,33 @@ public:
 public: // Load
 
     Texture2D *         LoadTexture2D(const OSString &,bool auto_mipmaps=false);
+    uint64_t            LoadTexture2DAsync(const OSString &filename,
+                                           bool auto_mipmaps = false,
+                                           UploadPriority priority = UploadPriority::Normal,
+                                           uint32_t bindless_handle = 0,
+                                           void (*callback)(TextureUploadTask *, void *) = nullptr,
+                                           void *user_data = nullptr);
     TextureCube *       LoadTextureCube(const OSString &,bool auto_mipmaps=false);
 
     Texture2DArray *    CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,const uint32_t mip_levels=1);
     bool                LoadTexture2DArray(Texture2DArray *,const uint32_t layer,const OSString &);
     bool                GenerateTexture2DArrayMipmaps(Texture2DArray *,const uint32_t layer);
+
+public: // Async Upload Queue
+
+    TextureUploadQueue *GetUploadQueue() { return upload_queue; }
+
+    uint64_t CreateTexture2DAsync(TextureCreateInfo *tci,
+                                 UploadPriority priority = UploadPriority::Normal,
+                                 uint32_t bindless_handle = 0,
+                                 void (*callback)(TextureUploadTask *, void *) = nullptr,
+                                 void *user_data = nullptr);
+
+    bool CancelUpload(uint64_t task_id);
+    UploadTaskState GetUploadState(uint64_t task_id);
+    void WaitUpload(uint64_t task_id);
+
+    void UpdateUploadQueue(BindlessTextureManager *bindless_mgr = nullptr);
 
 public: //TileData
 

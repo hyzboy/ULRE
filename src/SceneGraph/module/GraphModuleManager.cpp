@@ -35,10 +35,12 @@ void GraphModuleManager::SetGraphicsContext(GraphicsContext *gc)
     if(module_list.GetCount()==0)
         return;
 
-    for(auto **gm=module_list.begin();gm<=module_list.last();++gm)
+    const int count = module_list.GetCount();
+    for(int i = 0; i < count; ++i)
     {
-        if(*gm)
-            (*gm)->SetGraphicsContext(gc);
+        GraphModule *gm = module_list[i];
+        if(gm)
+            gm->SetGraphicsContext(gc);
     }
 }
 

@@ -85,7 +85,7 @@ namespace hgl
 
     public:
 
-        const   bool IsDestroy  ()const{return false;}   ///< 退出机制未实现，恒 false（见 WorkManager::Run）
+        virtual const bool IsDestroy  ()const{return false;}   ///< 退出机制未实现，恒 false（见 WorkManager::Run）
 
         const   bool IsRenderDirty  ()const{return render_dirty;}
                 void MarkRenderDirty(){render_dirty=true;}

@@ -47,6 +47,21 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
     if(!tci->image)
     {
         Image2DCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent,tci->target_mipmaps);
+
+        if (GetPhyDevice() && GetPhyDevice()->SupportHostImageCopyFormat(tci->format))
+            ici.usage |= VK_IMAGE_USAGE_HOST_TRANSFER_BIT;
+
+        uint32_t queue_families[2] = {
+            GetDevice()->GetGraphicsFamilyIndex(),
+            GetDevice()->GetTransferFamilyIndex()
+        };
+        if (queue_families[0] != queue_families[1] && queue_families[1] != VK_QUEUE_FAMILY_IGNORED)
+        {
+            ici.sharingMode = VK_SHARING_MODE_CONCURRENT;
+            ici.queueFamilyIndexCount = 2;
+            ici.pQueueFamilyIndices = queue_families;
+        }
+
         tci->image=CreateImage(&ici);
 
         if(!tci->image)

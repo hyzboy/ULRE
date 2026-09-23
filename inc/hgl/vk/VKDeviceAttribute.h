@@ -17,8 +17,12 @@ struct VulkanDevAttr
 
     VulkanSurface *                     surface         =nullptr;
 
+    uint32_t                            graphics_family_index = 0;
+    uint32_t                            transfer_family_index = 0;
+
     VkQueue                             graphics_queue  =VK_NULL_HANDLE;
     VkQueue                             present_queue   =VK_NULL_HANDLE;
+    VkQueue                             transfer_queue  =VK_NULL_HANDLE;
 
     VkSurfaceFormatKHR                  surface_format;
 
@@ -29,6 +33,7 @@ struct VulkanDevAttr
 
     VkDevice                            device          =VK_NULL_HANDLE;
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
+    VkCommandPool                       transfer_cmd_pool =VK_NULL_HANDLE;
 
     VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
 
@@ -62,6 +67,13 @@ struct VulkanDevAttr
     PFN_vkGetDescriptorEXT                       get_descriptor =nullptr;
     PFN_vkCmdBindDescriptorBuffersEXT            cmd_bind_descriptor_buffers =nullptr;
     PFN_vkCmdSetDescriptorBufferOffsetsEXT       cmd_set_descriptor_buffer_offsets =nullptr;
+
+    // VK_EXT_host_image_copy
+    bool                                support_host_image_copy = false;
+    PFN_vkCopyMemoryToImageEXT          copy_memory_to_image = nullptr;
+    PFN_vkCopyImageToMemoryEXT          copy_image_to_memory = nullptr;
+    PFN_vkCopyImageToImageEXT           copy_image_to_image = nullptr;
+    PFN_vkTransitionImageLayoutEXT      transition_image_layout = nullptr;
 
 #ifdef _DEBUG
     DebugUtils *                        debug_utils     =nullptr;

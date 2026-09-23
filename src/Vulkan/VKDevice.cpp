@@ -277,14 +277,14 @@ void VulkanDevice::WaitIdle() const
     }
 }
 
-VkCommandBuffer VulkanDevice::CreateCommandBuffer(const AnsiString &name)
+VkCommandBuffer VulkanDevice::CreateCommandBuffer(VkCommandPool pool, const AnsiString &name)
 {
-    if(!attr->cmd_pool)
+    if(!pool)
         return(VK_NULL_HANDLE);
 
     CommandBufferAllocateInfo cmd;
 
-    cmd.commandPool         =attr->cmd_pool;
+    cmd.commandPool         =pool;
     cmd.level               =VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cmd.commandBufferCount  =1;
 
@@ -301,6 +301,11 @@ VkCommandBuffer VulkanDevice::CreateCommandBuffer(const AnsiString &name)
 #endif//_DEBUG
 
     return cmd_buf;
+}
+
+VkCommandBuffer VulkanDevice::CreateCommandBuffer(const AnsiString &name)
+{
+    return CreateCommandBuffer(attr->cmd_pool, name);
 }
 
 RenderCmdBuffer *VulkanDevice::CreateRenderCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc)
@@ -321,7 +326,20 @@ TextureCmdBuffer *VulkanDevice::CreateTextureCommandBuffer(const ObjectNameBuild
 
     if(cb==VK_NULL_HANDLE)return(nullptr);
 
-    TextureCmdBuffer *result = new TextureCmdBuffer(attr,cb);
+    TextureCmdBuffer *result = new TextureCmdBuffer(attr,cb,attr->cmd_pool);
+    if (result)
+        TrackObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)(uintptr_t)cb, name.Append(ObjectTypeTag::VKTextureCommandBuffer), loc);
+    return result;
+}
+
+TextureCmdBuffer *VulkanDevice::CreateTransferTextureCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc)
+{
+    VkCommandPool pool = attr->transfer_cmd_pool ? attr->transfer_cmd_pool : attr->cmd_pool;
+    VkCommandBuffer cb = CreateCommandBuffer(pool, name.ToString());
+
+    if(cb == VK_NULL_HANDLE) return nullptr;
+
+    TextureCmdBuffer *result = new TextureCmdBuffer(attr, cb, pool);
     if (result)
         TrackObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)(uintptr_t)cb, name.Append(ObjectTypeTag::VKTextureCommandBuffer), loc);
     return result;
@@ -399,6 +417,27 @@ DeviceQueue *VulkanDevice::CreateQueue(const ObjectNameBuilder &name, const uint
     // Note: We don't track VkQueue because it's retrieved via vkGetDeviceQueue and
     // is implicitly destroyed when VkDevice is destroyed. Multiple DeviceQueue C++ wrappers
     // may share the same VkQueue handle.
+    return result;
+}
+
+DeviceQueue *VulkanDevice::CreateTransferQueue(const ObjectNameBuilder &name, const uint32_t fence_count, const bool create_signaled, const std::source_location &loc)
+{
+    if(fence_count<=0)return(nullptr);
+
+    Fence **fence_list=new Fence *[fence_count];
+
+    const std::string base_name = name.ToString().c_str();
+    for(uint32_t i=0;i<fence_count;i++)
+    {
+        std::string fence_name = base_name;
+        fence_name += ":Fence[";
+        fence_name += std::to_string(i);
+        fence_name += "]";
+        fence_list[i] = CreateFence(ObjectNameBuilder(fence_name.c_str()), create_signaled, loc);
+    }
+
+    VkQueue q = attr->transfer_queue ? attr->transfer_queue : attr->graphics_queue;
+    DeviceQueue *result = new DeviceQueue(attr, q, fence_list, fence_count);
     return result;
 }
 

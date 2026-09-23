@@ -64,7 +64,7 @@ public:
 
     DeviceBuffer *GetBuffer(){return buf;}
 
-    T *CreateTexture(const TextureFileHeader &tex_file_header,const VkFormat &tex_format,const uint32 top_mipmap_bytes)
+    TextureCreateInfo *CreateTextureCreateInfo(const TextureFileHeader &tex_file_header,const VkFormat &tex_format,const uint32 top_mipmap_bytes)
     {
         U8String texture_name = filename.IsEmpty() ? U8String((const u8char*)u8"Texture") : to_u8(filename.c_str(), filename.Length());
         TextureCreateInfo *tci=new TextureCreateInfo(tex_format, texture_name);
@@ -92,13 +92,21 @@ public:
 
         tci->mipmap_zero_total_bytes=top_mipmap_bytes;
 
+        buf=nullptr;
+        return tci;
+    }
+
+    T *CreateTexture(const TextureFileHeader &tex_file_header,const VkFormat &tex_format,const uint32 top_mipmap_bytes)
+    {
+        TextureCreateInfo *tci = CreateTextureCreateInfo(tex_file_header, tex_format, top_mipmap_bytes);
+        if(!tci)
+            return nullptr;
+
         SAFE_CLEAR(tex);
         tex=OnCreateTexture(tci);
 
         if(!tex)
             return nullptr;
-
-        buf=nullptr;
 
         T *result=tex;
         tex=nullptr;

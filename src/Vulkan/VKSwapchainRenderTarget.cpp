@@ -3,6 +3,10 @@
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKSwapchain.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/TextureUploadQueue.h>
 #include<hgl/Macro.h>
 #include<hgl/log/Log.h>
 
@@ -97,13 +101,42 @@ bool SwapchainRenderTarget::Submit()
     SwapchainFrameSync& slot  = sync_slots[current_slot];
     SwapchainImage*     image = swapchain->sc_image + acquired_image;
 
-    // Submit: wait image_available, signal render_finished
-    if (!slot.queue->Submit(image->cmd_buf, slot.image_available, slot.render_finished))
+    const VkSemaphore *extra_wait_sems = nullptr;
+    uint32_t extra_wait_count = 0;
+    TextureUploadQueue *upload_queue = nullptr;
+
+    if (ecs_context)
+    {
+        if (auto *gc = ecs_context->GetGraphicsContext())
+        {
+            if (auto *tm = gc->GetTextureManager())
+            {
+                upload_queue = tm->GetUploadQueue();
+                if (upload_queue)
+                {
+                    const auto &sems = upload_queue->GetPendingWaitSemaphores();
+                    if (sems.GetCount() > 0)
+                    {
+                        extra_wait_sems = sems.GetData();
+                        extra_wait_count = static_cast<uint32_t>(sems.GetCount());
+                    }
+                }
+            }
+        }
+    }
+
+    // Submit: wait image_available and any transfer semaphores, signal render_finished
+    if (!slot.queue->Submit(image->cmd_buf, extra_wait_sems, extra_wait_count, slot.image_available, slot.render_finished))
     {
         LogError("SwapchainRenderTarget: queue submit failed (slot=%u image=%u)",
                  current_slot, acquired_image);
         current_slot = (current_slot + 1) % slot_count;
         return false;
+    }
+
+    if (upload_queue && extra_wait_count > 0)
+    {
+        upload_queue->ClearPendingWaitSemaphores();
     }
 
     // Present: wait render_finished

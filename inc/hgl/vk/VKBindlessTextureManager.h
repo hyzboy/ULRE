@@ -108,6 +108,22 @@ namespace hgl::graph
         uint32_t RegisterTexture(Texture *tex);
 
         /**
+         * 预分配一个 1-based 纹理 handle（可选关联一个占位纹理写入描述符）。
+         * @param placeholder_tex 占位纹理（可为 nullptr）
+         * @return 1-based handle
+         */
+        uint32_t AllocateHandle(Texture *placeholder_tex = nullptr);
+
+        /**
+         * 动态更新指定 handle 槽位的描述符内容（原子写入 Host-visible Descriptor Buffer）。
+         * 用于异步纹理就绪后无缝替换占位符。
+         * @param tex_handle 目标 handle
+         * @param tex 目标纹理
+         * @return 是否更新成功
+         */
+        bool UpdateTextureHandle(uint32_t tex_handle, Texture *tex);
+
+        /**
          * 按预设顺序创建并注册所有 sampler（写 binding=1，index=数组顺序）。
          * 若之前已注册过 sampler，会先销毁旧句柄再重建。
          * 需在描述符集绑定前调用（binding=1 无 UPDATE_AFTER_BIND）。

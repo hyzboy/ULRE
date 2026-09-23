@@ -26,4 +26,27 @@ Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,b
 
     return loader.CreateTexture(loader.GetFileHeader(),loader.GetTextureFormat(),loader.GetZeroMipmapBytes());
 }
+
+uint64_t CreateTexture2DFromFileAsync(TextureManager *tm,
+                                     const OSString &filename,
+                                     bool auto_mipmaps,
+                                     UploadPriority priority,
+                                     uint32_t bindless_handle,
+                                     void (*callback)(TextureUploadTask *, void *),
+                                     void *user_data)
+{
+    if (!tm || filename.IsEmpty())
+        return 0;
+
+    VkTextureLoader<Texture2D, Texture2DLoader> loader(tm, auto_mipmaps, filename);
+
+    if (!loader.Load(filename))
+        return 0;
+
+    TextureCreateInfo *tci = loader.CreateTextureCreateInfo(loader.GetFileHeader(), loader.GetTextureFormat(), loader.GetZeroMipmapBytes());
+    if (!tci)
+        return 0;
+
+    return tm->CreateTexture2DAsync(tci, priority, bindless_handle, callback, user_data);
+}
 }//namespace hgl::graph

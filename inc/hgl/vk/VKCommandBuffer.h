@@ -20,13 +20,15 @@ protected:
 
     const VulkanDevAttr *dev_attr;
 
+    VkCommandPool cmd_pool;
+
     VkCommandBuffer cmd_buf;
 
     bool cmd_begin;
 
 public:
 
-    VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb);
+    VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb,VkCommandPool pool=VK_NULL_HANDLE);
     virtual ~VulkanCmdBuffer();
 
     operator VkCommandBuffer(){return cmd_buf;}
@@ -322,7 +324,7 @@ class TextureCmdBuffer:public VulkanCmdBuffer
 {
 public:
 
-    TextureCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
+    TextureCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb,VkCommandPool pool=VK_NULL_HANDLE):VulkanCmdBuffer(attr,cb,pool)
     {
     }
 

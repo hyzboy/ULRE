@@ -257,30 +257,40 @@ void BindlessTextureManager::Destroy()
     tex_cache_.Clear();
 }
 
-uint32_t BindlessTextureManager::RegisterTexture(Texture *tex)
+uint32_t BindlessTextureManager::AllocateHandle(Texture *placeholder_tex)
 {
-    if (!tex || !IsValid())
+    if (!IsValid())
         return 0;
 
-    const uint32_t *cached = tex_cache_.GetValuePointer(tex);
-    if (cached)
-        return *cached;
+    const uint32_t tex_handle = next_handle_++;
+    if (placeholder_tex)
+    {
+        UpdateTextureHandle(tex_handle, placeholder_tex);
+    }
+    return tex_handle;
+}
+
+bool BindlessTextureManager::UpdateTextureHandle(uint32_t tex_handle, Texture *tex)
+{
+    if (!tex || !IsValid() || tex_handle == 0 || tex_handle >= next_handle_)
+        return false;
 
     // Cubemap 纹理写 binding=2(textureCube[])，其余写 binding=0(texture2DArray[])
     const VkImageView cube_view = tex->GetBindlessCubeView();
 
     VkDescriptorImageInfo img_info{};
-    img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    img_info.imageLayout = (tex->GetImageLayout() != VK_IMAGE_LAYOUT_UNDEFINED)
+                         ? tex->GetImageLayout()
+                         : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     img_info.imageView   = cube_view ? cube_view
                                      : tex->GetBindlessArrayView();
 
     if (img_info.imageView == VK_NULL_HANDLE)
     {
         LogError(u8"[BindlessTextureManager] Failed to get valid image view for texture %p", (const void *)tex);
-        return 0;
+        return false;
     }
 
-    const uint32_t tex_handle = next_handle_++;
     tex_cache_.Add(tex, tex_handle);
 
     VkDescriptorGetInfoEXT get_info{};
@@ -293,11 +303,27 @@ uint32_t BindlessTextureManager::RegisterTexture(Texture *tex)
 
     attr_->get_descriptor(device_, &get_info, sampled_image_desc_size_, mapped_ptr_ + item_offset);
 
-    LogInfo(u8"[BindlessTextureManager] Register tex=%p handle=%u (%s) view=%p",
-            (const void *)tex,
+    LogInfo(u8"[BindlessTextureManager] Update handle=%u tex=%p (%s) view=%p",
             tex_handle,
+            (const void *)tex,
             cube_view ? "cubearray" : "2darray",
             img_info.imageView);
+    return true;
+}
+
+uint32_t BindlessTextureManager::RegisterTexture(Texture *tex)
+{
+    if (!tex || !IsValid())
+        return 0;
+
+    const uint32_t *cached = tex_cache_.GetValuePointer(tex);
+    if (cached)
+        return *cached;
+
+    const uint32_t tex_handle = next_handle_++;
+    if (!UpdateTextureHandle(tex_handle, tex))
+        return 0;
+
     return tex_handle;
 }
 

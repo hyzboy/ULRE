@@ -3,9 +3,10 @@
 #include<hgl/vk/VKDeviceAttribute.h>
 
 namespace hgl::graph{
-VulkanCmdBuffer::VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb)
+VulkanCmdBuffer::VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb,VkCommandPool pool)
 {
     dev_attr=attr;
+    cmd_pool=pool?pool:(attr?attr->cmd_pool:VK_NULL_HANDLE);
     cmd_buf=cb;
 
     cmd_begin=false;
@@ -17,7 +18,8 @@ VulkanCmdBuffer::~VulkanCmdBuffer()
     if (owner)
         owner->UntrackObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)(uintptr_t)cmd_buf);
 
-    vkFreeCommandBuffers(dev_attr->device,dev_attr->cmd_pool,1,&cmd_buf);
+    if(cmd_pool)
+        vkFreeCommandBuffers(dev_attr->device,cmd_pool,1,&cmd_buf);
 }
 
 bool VulkanCmdBuffer::Begin()

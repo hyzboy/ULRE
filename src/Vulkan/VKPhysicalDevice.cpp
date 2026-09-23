@@ -147,10 +147,20 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 ppNext=&descriptor_buffer_features.pNext;
             }
 
+            // VK_EXT_host_image_copy
+            if(CheckExtensionSupport(VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME))
+            {
+                host_image_copy_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT;
+                host_image_copy_features.pNext=nullptr;
+                *ppNext=&host_image_copy_features;
+                ppNext=&host_image_copy_features.pNext;
+            }
+
             func(physical_device,&features2);
 
             mem_copy(features,features2.features);
             support_descriptor_buffer = descriptor_buffer_features.descriptorBuffer;
+            support_host_image_copy = host_image_copy_features.hostImageCopy;
         }
         else
         {
@@ -224,6 +234,15 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 descriptor_buffer_properties.pNext=nullptr;
                 *ppNext=&descriptor_buffer_properties;
                 ppNext=&descriptor_buffer_properties.pNext;
+            }
+
+            // VK_EXT_host_image_copy properties
+            if(CheckExtensionSupport(VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME))
+            {
+                host_image_copy_properties.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES_EXT;
+                host_image_copy_properties.pNext=nullptr;
+                *ppNext=&host_image_copy_properties;
+                ppNext=&host_image_copy_properties.pNext;
             }
 
             func(physical_device,&properties2);
@@ -420,6 +439,56 @@ VkFormat VulkanPhyDevice::GetDepthStencilFormat(bool lower_to_high)const
     }
 
     return result;
+}
+
+bool VulkanPhyDevice::SupportHostImageCopyFormat(VkFormat format) const
+{
+    if(!support_host_image_copy)
+        return false;
+
+    VkFormatProperties3 props3{};
+    props3.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3;
+    props3.pNext = nullptr;
+
+    VkFormatProperties2 props2{};
+    props2.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
+    props2.pNext = &props3;
+
+    vkGetPhysicalDeviceFormatProperties2(physical_device, format, &props2);
+
+    return (props3.optimalTilingFeatures & VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT) != 0;
+}
+
+uint32_t VulkanPhyDevice::GetTransferFamilyIndex(uint32_t graphics_family) const
+{
+    const int count = queue_family_properties.GetCount();
+    // 1. 优先寻找纯传输队列族（有 TRANSFER，无 GRAPHICS 且无 COMPUTE）
+    for(int i = 0; i < count; ++i)
+    {
+        const VkQueueFamilyProperties &qfp = queue_family_properties[i];
+        if((qfp.queueFlags & VK_QUEUE_TRANSFER_BIT) &&
+           !(qfp.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+           !(qfp.queueFlags & VK_QUEUE_COMPUTE_BIT) &&
+           qfp.queueCount > 0)
+        {
+            return static_cast<uint32_t>(i);
+        }
+    }
+
+    // 2. 其次寻找非图形的传输队列族（例如 TRANSFER + COMPUTE）
+    for(int i = 0; i < count; ++i)
+    {
+        const VkQueueFamilyProperties &qfp = queue_family_properties[i];
+        if((qfp.queueFlags & VK_QUEUE_TRANSFER_BIT) &&
+           !(qfp.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+           qfp.queueCount > 0)
+        {
+            return static_cast<uint32_t>(i);
+        }
+    }
+
+    // 3. 回退为图形队列族（图形队列族强制隐式支持传输）
+    return graphics_family;
 }
 }//namespace hgl::graph
 

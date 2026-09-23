@@ -57,20 +57,55 @@ bool DeviceQueue::WaitLastSubmitFence(const bool wait_all,uint64_t time_out)
     return(true);
 }
 
-bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,Semaphore *wait_sem,Semaphore *complete_sem)
+bool DeviceQueue::IsLastSubmitComplete() const
+{
+    if(!has_last_submit || !fence_list)
+        return true;
+
+    Fence *f = fence_list[last_submitted_fence];
+    if(!f)
+        return true;
+
+    return f->GetStatus() == VK_SUCCESS;
+}
+
+bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,const VkSemaphore *extra_wait_sems,const uint32_t extra_wait_count,Semaphore *wait_sem,Semaphore *complete_sem)
 {
     if(!cmd_buf||cb_count==0)
         return(false);
 
-    VkSemaphoreSubmitInfo wait_sem_info{};
+    const uint32_t total_waits = (wait_sem ? 1 : 0) + extra_wait_count;
+    constexpr uint32_t STACK_WAIT_COUNT = 16;
+    VkSemaphoreSubmitInfo stack_wait_infos[STACK_WAIT_COUNT];
+    AutoDeleteArray<VkSemaphoreSubmitInfo> heap_wait_infos;
+    VkSemaphoreSubmitInfo *wait_infos = stack_wait_infos;
+
+    if(total_waits > STACK_WAIT_COUNT)
+    {
+        wait_infos = heap_wait_infos.alloc(total_waits);
+    }
+
+    uint32_t wait_idx = 0;
     if(wait_sem)
     {
-        wait_sem_info.sType     =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        wait_sem_info.pNext     =nullptr;
-        wait_sem_info.semaphore =*wait_sem;
-        wait_sem_info.value     =0;
-        wait_sem_info.stageMask =VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-        wait_sem_info.deviceIndex=0;
+        wait_infos[wait_idx].sType     =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        wait_infos[wait_idx].pNext     =nullptr;
+        wait_infos[wait_idx].semaphore =*wait_sem;
+        wait_infos[wait_idx].value     =0;
+        wait_infos[wait_idx].stageMask =VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        wait_infos[wait_idx].deviceIndex=0;
+        wait_idx++;
+    }
+
+    for(uint32_t i=0;i<extra_wait_count;i++)
+    {
+        wait_infos[wait_idx].sType     =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        wait_infos[wait_idx].pNext     =nullptr;
+        wait_infos[wait_idx].semaphore =extra_wait_sems[i];
+        wait_infos[wait_idx].value     =0;
+        wait_infos[wait_idx].stageMask =VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        wait_infos[wait_idx].deviceIndex=0;
+        wait_idx++;
     }
 
     VkSemaphoreSubmitInfo signal_sem_info{};
@@ -106,8 +141,8 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     submit_info2.sType                      =VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
     submit_info2.pNext                      =nullptr;
     submit_info2.flags                      =0;
-    submit_info2.waitSemaphoreInfoCount     =wait_sem?1:0;
-    submit_info2.pWaitSemaphoreInfos        =wait_sem?&wait_sem_info:nullptr;
+    submit_info2.waitSemaphoreInfoCount     =total_waits;
+    submit_info2.pWaitSemaphoreInfos        =total_waits>0?wait_infos:nullptr;
     submit_info2.commandBufferInfoCount     =cb_count;
     submit_info2.pCommandBufferInfos        =cb_infos;
     submit_info2.signalSemaphoreInfoCount   =complete_sem?1:0;
@@ -146,14 +181,27 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     return(result==VK_SUCCESS);
 }
 
-bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
+bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,Semaphore *wait_sem,Semaphore *complete_sem)
 {
+    return Submit(cmd_buf, count, nullptr, 0, wait_sem, complete_sem);
+}
+
+bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,const VkSemaphore *extra_wait_sems,const uint32_t extra_wait_count,Semaphore *wait_sem,Semaphore *complete_sem)
+{
+    if(!cmd_buf)
+        return false;
+
     if(cmd_buf->IsBegin())
         cmd_buf->End();
 
     VkCommandBuffer vk_cmd=*cmd_buf;
 
-    return Submit(&vk_cmd,1,wait_sem,complete_sem);
+    return Submit(&vk_cmd,1,extra_wait_sems,extra_wait_count,wait_sem,complete_sem);
+}
+
+bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
+{
+    return Submit(cmd_buf, nullptr, 0, wait_sem, complete_sem);
 }
 }//namespace hgl::graph
 

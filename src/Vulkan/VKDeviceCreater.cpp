@@ -83,6 +83,9 @@ namespace
 
         if(physical_device->SupportDescriptorBuffer())
             ext_list->Add(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
+
+        if(physical_device->SupportHostImageCopy())
+            ext_list->Add(VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME);
         // indexTypeUint8 走 VkPhysicalDeviceVulkan14Features（1.4 核心），无需 EXT_INDEX_TYPE_UINT8 扩展
     }
 
@@ -120,9 +123,18 @@ namespace
 
     void GetDeviceQueue(VulkanDevAttr *attr)
     {
-        vkGetDeviceQueue(attr->device,attr->surface->GetGraphicsFamilyIndex(),0,&attr->graphics_queue);
+        vkGetDeviceQueue(attr->device,attr->graphics_family_index,0,&attr->graphics_queue);
 
         attr->present_queue=attr->graphics_queue;
+
+        if(attr->transfer_family_index != attr->graphics_family_index)
+        {
+            vkGetDeviceQueue(attr->device,attr->transfer_family_index,0,&attr->transfer_queue);
+        }
+        else
+        {
+            attr->transfer_queue = attr->graphics_queue;
+        }
     }
 
     VkCommandPool CreateCommandPool(VkDevice device,uint32_t graphics_family)
@@ -250,6 +262,13 @@ namespace
                           int(f->extendedDynamicState3ColorWriteMask), int(f->extendedDynamicState3PolygonMode), int(f->extendedDynamicState3AlphaToCoverageEnable));
                 break;
             }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT:
+            {
+                const auto *f = static_cast<const VkPhysicalDeviceHostImageCopyFeaturesEXT *>(curr);
+                GLogError(u8"    [%u] HostImageCopyFeaturesEXT (sType=%d): hostImageCopy=%d",
+                          node_index, int(hdr->sType), int(f->hostImageCopy));
+                break;
+            }
             default:
                 GLogError(u8"    [%u] 未知 sType = %d, ptr = %p", node_index, int(hdr->sType), curr);
                 break;
@@ -278,23 +297,38 @@ void OutputPhysicalDeviceCaps(const VulkanPhyDevice *);
 
 VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 {
-    float queue_priorities[1]={0.0};
+    const uint32_t transfer_family = physical_device->GetTransferFamilyIndex(graphics_family);
 
-    VkDeviceQueueCreateInfo queue_info;
-    queue_info.sType            =VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queue_info.pNext            =nullptr;
-    queue_info.queueFamilyIndex =graphics_family;
-    queue_info.queueCount       =1;
-    queue_info.pQueuePriorities =queue_priorities;
-    queue_info.flags            =0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
+    float queue_priorities[1]={0.0f};
+
+    VkDeviceQueueCreateInfo queue_infos[2]{};
+    uint32_t queue_create_count = 1;
+
+    queue_infos[0].sType            =VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queue_infos[0].pNext            =nullptr;
+    queue_infos[0].queueFamilyIndex =graphics_family;
+    queue_infos[0].queueCount       =1;
+    queue_infos[0].pQueuePriorities =queue_priorities;
+    queue_infos[0].flags            =0;
+
+    if(transfer_family != graphics_family)
+    {
+        queue_infos[1].sType            =VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queue_infos[1].pNext            =nullptr;
+        queue_infos[1].queueFamilyIndex =transfer_family;
+        queue_infos[1].queueCount       =1;
+        queue_infos[1].pQueuePriorities =queue_priorities;
+        queue_infos[1].flags            =0;
+        queue_create_count = 2;
+    }
 
     VkDeviceCreateInfo create_info;
 
     create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     create_info.pNext                   =nullptr;
     create_info.flags                   =0;
-    create_info.queueCreateInfoCount    =1;
-    create_info.pQueueCreateInfos       =&queue_info;
+    create_info.queueCreateInfoCount    =queue_create_count;
+    create_info.pQueueCreateInfos       =queue_infos;
     create_info.enabledExtensionCount   =ext_list.GetCount();
     create_info.ppEnabledExtensionNames =ext_list.GetData();
     create_info.enabledLayerCount       =0;
@@ -312,6 +346,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT     eds1{};
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT    eds3{};
     VkPhysicalDeviceDescriptorBufferFeaturesEXT         desc_buffer_features{};
+    VkPhysicalDeviceHostImageCopyFeaturesEXT            host_image_copy_features{};
 
     // Vulkan 1.1: shaderDrawParameters —— SSBO 顶点输入 gl_BaseVertexARB 读取必需
     // （ShaderDrawParameters capability 由该特性启用；设备 v1.4 必支持）
@@ -403,6 +438,8 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         }
 
         vulkan14_features.pushDescriptor = dev14.pushDescriptor;
+        if(physical_device->SupportHostImageCopy())
+            vulkan14_features.hostImageCopy = VK_TRUE;
 
         create_info.pNext=&vulkan14_features;
     }
@@ -447,6 +484,14 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         desc_buffer_features.descriptorBuffer = VK_TRUE;
         desc_buffer_features.descriptorBufferPushDescriptors = physical_device->GetDescriptorBufferFeatures().descriptorBufferPushDescriptors;
         create_info.pNext = &desc_buffer_features;
+    }
+
+    if(!physical_device->SupportVulkan14() && physical_device->SupportHostImageCopy())
+    {
+        host_image_copy_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT;
+        host_image_copy_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        host_image_copy_features.hostImageCopy = VK_TRUE;
+        create_info.pNext = &host_image_copy_features;
     }
 
     VkDevice device = VK_NULL_HANDLE;
@@ -515,6 +560,10 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
     if(graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
+
+    const uint32_t transfer_family=physical_device->GetTransferFamilyIndex(graphics_family);
+    device_attr->graphics_family_index = graphics_family;
+    device_attr->transfer_family_index = transfer_family;
 
     // 管线物化路径：仅单 pipeline（GPL 已整体删除——激活实测在混合材质上存在
     // 渲染正确性问题且无法用 RenderDoc 调试，详见 2026-08-29 提交记录）。
@@ -646,6 +695,26 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
             device_attr->cmd_set_descriptor_buffer_offsets = *fp;
     }
 
+    // Host Image Copy 函数指针（VK_EXT_host_image_copy）
+    if(physical_device->SupportHostImageCopy())
+    {
+        device_attr->support_host_image_copy = true;
+
+        if(auto fp = device_attr->GetDeviceProc<PFN_vkCopyMemoryToImageEXT>("vkCopyMemoryToImageEXT"))
+            device_attr->copy_memory_to_image = *fp;
+
+        if(auto fp = device_attr->GetDeviceProc<PFN_vkCopyImageToMemoryEXT>("vkCopyImageToMemoryEXT"))
+            device_attr->copy_image_to_memory = *fp;
+
+        if(auto fp = device_attr->GetDeviceProc<PFN_vkCopyImageToImageEXT>("vkCopyImageToImageEXT"))
+            device_attr->copy_image_to_image = *fp;
+
+        if(auto fp = device_attr->GetDeviceProc<PFN_vkTransitionImageLayoutEXT>("vkTransitionImageLayoutEXT"))
+            device_attr->transition_image_layout = *fp;
+
+        GLogInfo(u8"[VKDeviceCreater] VK_EXT_host_image_copy 扩展已启用并加载函数指针");
+    }
+
     device_attr->surface_format=surface_format;
 
     GetDeviceQueue(device_attr);
@@ -654,6 +723,17 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
     if(!device_attr->cmd_pool)
         return(nullptr);
+
+    if(transfer_family != graphics_family)
+    {
+        device_attr->transfer_cmd_pool=CreateCommandPool(device_attr->device,transfer_family);
+        if(!device_attr->transfer_cmd_pool)
+            return(nullptr);
+    }
+    else
+    {
+        device_attr->transfer_cmd_pool=device_attr->cmd_pool;
+    }
 
     device_attr->pipeline_cache=CreatePipelineCache(device_attr->device,physical_device->GetProperties());
 
@@ -671,6 +751,8 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
             device_attr->debug_utils->SetDevice(device_attr->device,"Device:"+AnsiString(physical_device->GetDeviceName()));
             device_attr->debug_utils->SetSurfaceKHR(surface->GetSurface(),"Surface");
             device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"Main Command Pool");
+            if(device_attr->transfer_cmd_pool && device_attr->transfer_cmd_pool != device_attr->cmd_pool)
+                device_attr->debug_utils->SetCommandPool(device_attr->transfer_cmd_pool,"Transfer Command Pool");
             device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"Main Pipeline Cache");
         }
     #endif//_DEBUG

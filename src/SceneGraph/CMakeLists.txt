@@ -20,6 +20,8 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/GraphModuleManager.h
                         ${SG_INCLUDE_PATH}/module/RenderPassManager.h
                         ${SG_INCLUDE_PATH}/module/TextureManager.h
+                        ${SG_INCLUDE_PATH}/module/TextureUploadTask.h
+                        ${SG_INCLUDE_PATH}/module/TextureUploadQueue.h
                         ${SG_INCLUDE_PATH}/module/SamplerManager.h
                         ${SG_INCLUDE_PATH}/module/ShaderProgramManager.h
                         ${SG_INCLUDE_PATH}/module/ShaderProgramLinkCache.h
@@ -41,6 +43,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/GraphModuleManager.cpp
                         module/RenderPassManager.cpp
                         module/TextureManager.cpp
+                        module/TextureUploadQueue.cpp
                         module/SamplerManager.cpp
                         module/ShaderProgramManager.cpp
                         module/ShaderProgramCreatePrecheckAdapter.cpp

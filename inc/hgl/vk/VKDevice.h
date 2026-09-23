@@ -85,10 +85,6 @@ class VulkanDevice
 
 private:
 
-    VkCommandBuffer CreateCommandBuffer(const AnsiString &);
-
-private:
-
     friend class VulkanDeviceCreater;
 
     VulkanDevice(VulkanDevAttr *da);
@@ -108,10 +104,15 @@ public:
 
     const       VkFormat            GetSurfaceFormat    ()const {return attr->surface_format.format;}
     const       VkColorSpaceKHR     GetColorSpace       ()const {return attr->surface_format.colorSpace;}
+                uint32_t            GetGraphicsFamilyIndex()const {return attr->graphics_family_index;}
+                uint32_t            GetTransferFamilyIndex()const {return attr->transfer_family_index;}
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
+                VkQueue             GetTransferQueue    ()      {return attr->transfer_queue;}
+                VkCommandPool       GetTransferCommandPool()const{return attr->transfer_cmd_pool;}
 
                 bool                SupportDrawIndirectCount()const {return attr && attr->cmd_draw_mesh_tasks_indirect_count != nullptr;}
                 bool                IsDescriptorBufferActive()const {return attr && attr->use_descriptor_buffer;}
+                bool                SupportHostImageCopy()const {return attr && attr->support_host_image_copy;}
 
                 void                WaitIdle            ()const;
 
@@ -415,8 +416,12 @@ public: //shader & material
 
 public: //Command Buffer 相关
 
+    VkCommandBuffer  CreateCommandBuffer(VkCommandPool pool, const AnsiString &name);
+    VkCommandBuffer  CreateCommandBuffer(const AnsiString &name);
+
     RenderCmdBuffer * CreateRenderCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
     TextureCmdBuffer *CreateTextureCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+    TextureCmdBuffer *CreateTransferTextureCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
     ComputeCmdBuffer *CreateComputeCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
 public:
@@ -426,6 +431,7 @@ public:
     Semaphore *  CreateGPUSemaphore(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
     DeviceQueue *CreateQueue(const ObjectNameBuilder &name, const uint32_t fence_count=1, const bool create_signaled=false, const std::source_location &loc = std::source_location::current());
+    DeviceQueue *CreateTransferQueue(const ObjectNameBuilder &name, const uint32_t fence_count=1, const bool create_signaled=false, const std::source_location &loc = std::source_location::current());
 
 public: // Compute Pipeline相关
 

@@ -56,6 +56,10 @@ public:
      */
     VkFence GetHandle() const noexcept { return fence; }
 
+    VkResult GetStatus() const noexcept { return vkGetFenceStatus(device, fence); }
+    VkResult Wait(uint64_t timeout = UINT64_MAX) const noexcept { return vkWaitForFences(device, 1, &fence, VK_TRUE, timeout); }
+    VkResult Reset() const noexcept { return vkResetFences(device, 1, &fence); }
+
 };//class Fence
 
 }//namespace hgl::graph

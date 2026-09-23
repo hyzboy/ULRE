@@ -53,7 +53,14 @@ public:
     */
     bool WaitLastSubmitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
 
+    /**
+    * 检查上一条提交是否已完成（非阻塞）
+    */
+    bool IsLastSubmitComplete() const;
+
+    bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,const VkSemaphore *extra_wait_sems,const uint32_t extra_wait_count,Semaphore *wait_sem,Semaphore *complete_sem);
     bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,Semaphore *wait_sem,Semaphore *complete_sem);
+    bool Submit(VulkanCmdBuffer *cmd_buf,const VkSemaphore *extra_wait_sems,const uint32_t extra_wait_count,Semaphore *wait_sem,Semaphore *complete_sem);
     bool Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem);
 };//class DeviceQueue
 }//namespace hgl::graph

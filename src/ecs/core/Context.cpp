@@ -26,6 +26,7 @@
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
@@ -347,6 +348,14 @@ namespace hgl
 //            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
             RenderPreBeginFrame(deltaTime);
             SyncRenderTargetViewport();
+
+            if (auto *gc = GetGraphicsContext())
+            {
+                if (auto *tm = gc->GetTextureManager())
+                {
+                    tm->UpdateUploadQueue(gc->GetBindlessTextureManager());
+                }
+            }
 
 //            LogInfo("[ECS RENDER] Calling BeginFrame");
             if (!render_core->BeginFrame())

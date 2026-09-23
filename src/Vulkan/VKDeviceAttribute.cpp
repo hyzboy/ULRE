@@ -37,6 +37,14 @@ VulkanDevAttr::~VulkanDevAttr()
         vkDestroyCommandPool(device,cmd_pool,nullptr);
     }
 
+    if(transfer_cmd_pool && transfer_cmd_pool != cmd_pool)
+    {
+        VulkanDevice *owner = VulkanDevice::FromDevice(device);
+        if (owner)
+            owner->UntrackObject(VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)(uintptr_t)transfer_cmd_pool);
+        vkDestroyCommandPool(device,transfer_cmd_pool,nullptr);
+    }
+
     if(device)
         vkDestroyDevice(device,nullptr);
 

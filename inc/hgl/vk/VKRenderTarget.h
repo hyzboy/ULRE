@@ -37,6 +37,8 @@ struct RenderingAttachment
 
 class IRenderTarget
 {
+protected:
+
     hgl::ecs::ECSContext *ecs_context;
 
     VkExtent2D extent;
