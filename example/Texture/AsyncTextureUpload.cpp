@@ -113,10 +113,10 @@ private:
             return false;
 
         // 加载占位小纹理
-        placeholder_tex = tex_manager->LoadTexture2D(OS_TEXT("res/image/Lena32.Tex2D"), false);
+        placeholder_tex = tex_manager->LoadTexture2D(OS_TEXT("res/image/Lena.Tex2D"), false);
         if (!placeholder_tex)
         {
-            GLogError(u8"Failed to load placeholder texture Lena32.Tex2D");
+            GLogError(u8"Failed to load placeholder texture Lena.Tex2D");
             return false;
         }
 

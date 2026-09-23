@@ -65,6 +65,10 @@
   直接拒绝（不假装支持）。
 - **触发条件**：点光源阴影（cubemap 6 面）、CSM（array）、前向 MSAA。
   desc 字段已预留位置。
+- **CSM 滚动缓存 Step 1**：已建立固定 4 级的 `ShadowInfo` 扩展契约，
+  保留旧单级字段作为 fallback，并追加级联 split、光空间 texel snap、
+  环形 offset、有效区域和 CPU 缓存状态。当前尚未启用 array attachment
+  或增量条带绘制；后续仍需完成 layer view、静态物体筛选和失效重建。
 
 ### A7. 离屏 RT in-flight 槽
 

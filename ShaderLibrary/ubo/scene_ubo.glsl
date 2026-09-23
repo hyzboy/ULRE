@@ -96,6 +96,19 @@ layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesI
     uint64_t addr_camera_info;
 } global_addresses;
 
+struct ShadowCascadeInfo
+{
+    mat4 shadow_vp;
+    vec4 shadow_params;
+    vec2 shadow_map_size;
+    vec2 inv_shadow_map_size;
+    uvec4 shadow_tex;
+    vec4 cascade_params;
+    vec4 cache_origin;
+    uvec4 cache_offset;
+    uvec4 cache_valid_rect;
+};
+
 layout(set=SCENE_SET, binding=SHADOW_BINDING) uniform ShadowInfo
 {
     mat4 shadow_vp;
@@ -103,6 +116,8 @@ layout(set=SCENE_SET, binding=SHADOW_BINDING) uniform ShadowInfo
     vec2 shadow_map_size;
     vec2 inv_shadow_map_size;
     uvec4 shadow_tex;
+    uvec4 csm_params;
+    ShadowCascadeInfo cascades[4];
 } shadow;
 
 #define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]
