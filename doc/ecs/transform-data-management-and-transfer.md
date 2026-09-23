@@ -153,28 +153,34 @@
 
 ## 6.2 TransformID 作为实例属性下发
 
-批处理阶段会把每个 item 的 `transform_index` 写入 TransformID VAB（R16UI）。
+批处理阶段会把每个 item 的 `transform_index` 写入 TransformID VAB——`VK_FORMAT_R32_UINT`（`VF_V1U`）；
+16 位方案（`HGL_TRANSFORM_ID_U32` 宏与 `RenderAssignDef.h` 的 `#if/#else` 分支）已整体删除，无条件写死 32 位。
 
 含义是：
 
-- 顶点/实例侧仅传一个小 ID。
-- shader 通过该 ID 到 LocalToWorld 缓冲取矩阵。
+- 顶点/实例侧仅传一个 32 位 ID。
+- shader 用该 ID 索引 LocalToWorld 表（表地址见 6.3，经 `pc_root` 下发）。
 
-这与项目文档中的“ID 走 Instance Rate，真实数据走 UBO/SSBO”完全一致。
+这与项目文档中的“ID 走 Instance Rate，真实数据走全局表”完全一致。
 
-## 6.3 描述符绑定 LocalToWorld
+## 6.3 LocalToWorld 表的 GPU 取数（BDA，无描述符绑定）
 
-`RenderDescriptorBindingSystem` 在处理材质语义时：
+描述符路径已整体退场：**没有** LocalToWorld 的描述符集/binding，也没有 `RenderDescriptorBindingSystem`
+（该类 2026-09-08 改名 `RenderSceneUBOSystem`，只剩场景 UBO 数据流与资源注册职责）与
+`BindTransform(material)`（`src/ecs/support/line/LineRenderPipeline.cpp:846` 只留了“不再 BindTransform 到
+描述符 set”的历史注记）。
 
-- 发现 `DescriptorSemantic::LocalToWorld`。
-- 调用 `batch->transform_buffer->BindTransform(material)`。
+当前链路：
 
-`BindTransform` 内部根据编译开关绑定：
+1. `TransformAssignmentBuffer` 持有 L2W 矩阵表与 L2W 索引表（identity + static + dynamic ring）；
+2. 渲染侧每 MaterialBatch（等同批次）在 draw 前调用 `graph::PushRootAddresses`（`inc/hgl/graph/RootAddressPush.h`），
+   把表设备地址塞进 72B 的 `RootAddresses` push constant：
+   - `pc_root.addr_l2w` ← L2W 矩阵表（`Matrix4f` 数组，stride 64B）
+   - `pc_root.addr_l2w_index` ← L2W 索引表（`uint32` 数组）
+3. shader 侧声明 `layout(buffer_reference, scalar, buffer_reference_align=16) buffer LocalToWorldDataRef`
+   （`ShaderLibrary/common/l2w_ssbo.glsl`），用 `LocalToWorldDataRef(pc_root.addr_l2w).mats[TransformID]` 取矩阵。
 
-- SSBO：`BindSSBO(SBS_LocalToWorld)`
-- 或 UBO：`BindUBO(SBS_LocalToWorld)`
-
-因此 draw 阶段材质描述符集已经持有当前帧有效的 LocalToWorld 数据源。
+因此 draw 时 shader 直接从显存解引用当前帧的 L2W 表——不需要描述符更新，也不存在“材质描述符集持有数据源”这一步。
 
 ---
 
@@ -213,13 +219,13 @@
 2. static/movable 分离，避免静态对象无意义每帧更新。
 3. 通过版本门控与 change mask，减少重复计算。
 4. 动态 ring 段保障多帧并行下的数据一致性。
-5. TransformID + SSBO/UBO 方案适合大批量实例。
+5. TransformID + BDA 表（地址经 `pc_root` 下发）适合大批量实例，无 per-draw 描述符。
 
 代价与注意点：
 
 1. 动态对象当前是“每帧全量写当前段”，在超大动态规模下带宽压力较高。
 2. 索引依赖 handle 顺序映射，layout 变化会引起批量重写。
-3. `TransformID` 若使用 16-bit 通道，需要关注溢出保护与规模上限。
+3. `TransformID` 已无条件收敛为 32 位（R32_UINT），16 位时代的溢出保护/规模上限不再适用。
 
 ---
 
@@ -230,7 +236,7 @@
 - 数据存储统一于 `TransformDataStorage`。
 - 更新策略由 `TransformSystem` 集中控制（movable 高频、static 按需）。
 - 上传由 `TransformAssignmentBuffer` 以“identity + static + dynamic ring”组织。
-- 渲染侧通过 TransformID + LocalToWorld 描述符完成矩阵取数。
+- 渲染侧通过 TransformID + `pc_root.addr_l2w`（buffer_reference）完成矩阵取数，无描述符绑定。
 
 该体系兼顾了可维护性（组件接口清晰）与性能基础（SOA、分组、脏区间、ring），
 是后续做更激进合批与实例化渲染的可靠底座。

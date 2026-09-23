@@ -74,10 +74,10 @@ MaterialShaderCompiler
 
 ### 3.1 创建 PBR 材质数据行
 
-`InitMaterialDataSSBO()` 通过 `MaterialSSBOBufferRegistry` 获取：
+`InitMaterialDataSSBO()` 通过 `GlobalSSBOBufferRegistry` 获取 `GlobalSSBODataAccessor`：
 
 ```cpp
-MaterialDataAccessor<PBRSurfaceRow>
+GetManager<GlobalSSBOBufferRegistry>()->GetAccessor<graph::ssbo::PBRSurfaceRow>()
 ```
 
 并写入：
@@ -105,7 +105,7 @@ inc/hgl/graph/ssbo/MaterialDataRows.h
 recipe_name = "SimpleSphere.Lit"
 mtl_def_id  = "Lit"
 pipeline    = MakeSolid3DConfig()
-material_ssbo_binding = PBRSurfaceRow 的 binding
+material_ssbo_binding = PBRSurfaceRow 行的 GlobalSSBOBinding
 ```
 
 其中 `mtl_def_id = "Lit"` 是整个 ShaderGen 链路的关键连接键。Recipe 本身不包含 GLSL，也不直接持有最终 Vulkan Shader 对象，它只是运行时材质实例的声明。
@@ -215,6 +215,8 @@ NTB 模块:
 采样器预设:
     Trilinear
     Linear
+    ShadowMap
+    ShadowPCF
 ```
 
 `normal` 声明带有双通道配置，具体的法线贴图处理由材质源码和 NTB provider 协同完成。
@@ -283,7 +285,7 @@ MeshTemplateComposer.h
 FragmentTemplateComposer.h
 MaterialStageInterface.h
 MaterialVertexVaryingConfig.h
-VertexNodeConfig.h
+VertexShaderNodeConfig.h
 VertexNodeConfigResolver.h
 ```
 
@@ -596,7 +598,7 @@ ShaderLibrary/sampler.toml
 ShaderLibrary/mesh/
 ```
 
-UBO 模块包括 `camera_info.glsl` 和 `sky_info.glsl`。`sampler.toml` 定义 `Trilinear`、`Linear` 等采样器预设。`mesh/` 下的字符四边形和线四边形模板服务于其它特殊绘制模式，不是球体路径的核心。
+UBO 模块现为单文件 `ubo/scene_ubo.glsl`（一个文件内声明 CameraInfo/SkyInfo/ViewportInfo/ColorPalette 四个 Scene 集(Set 0) block，未使用的 block 由 SPIR-V 编译期剔除）；原 `camera_info.glsl` / `sky_info.glsl` 已不存在。`sampler.toml` 定义 `Trilinear`、`Linear` 等采样器预设。`mesh/` 下的字符四边形（`char_quad.glsl.tmpl`）和线四边形（`line_quad.glsl.tmpl`）模板服务于其它特殊绘制模式，不是球体路径的核心。
 
 ## 8. Lit/PBR 数据流
 
@@ -606,10 +608,10 @@ UBO 模块包括 `camera_info.glsl` 和 `sky_info.glsl`。`sampler.toml` 定义 
 PBRSurfaceRow
     |
     v
-MaterialSSBOBufferRegistry
+GlobalSSBOBufferRegistry（GetAccessor<PBRSurfaceRow>()）
     |
     v
-material SSBO binding / data index
+GlobalSSBOBinding / MaterialInstanceAddresses.payload_index
     |
     v
 MTL_ROW(...)

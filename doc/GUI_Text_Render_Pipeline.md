@@ -18,13 +18,16 @@ ECS 层 (ecs/)
 渲染管线层 (TextRenderPipeline)
   RunCollect → RunBuild → RunSync → Render(cmd)
   三层 SSBO 数据模型 (L1 DeviceBuffer + L3 数组视图管理):
-    TextCharInfo (b14) / CharStyle (b15) / CharInstance (b16)
+    TextCharInfo / CharStyle / CharInstance（地址经 pc_root 下发，无 binding）
         │
 图形抽象层 (graph/font + SceneGraph)
   TextLayout → TileFont → FontSource → FontBitmapDataSource (SDF/Bitmap 双路径)
         │
 Vulkan 层
-  vkCmdBindPipeline → vkCmdBindDescriptorSets → vkCmdDrawMeshTasksEXT
+  vkCmdBindPipeline + ApplyPipelineState(EDS1/2/3)
+    → vkCmdPushConstants(pc_root: 三表/mesh_draw_params/mtl_data_addrs 地址)
+    → vkCmdBindDescriptorBuffersEXT + vkCmdSetDescriptorBufferOffsetsEXT(Scene(0)/Bindless(1))
+    → vkCmdDrawMeshTasksEXT
 ```
 
 ### SDF 双路径渲染
@@ -52,10 +55,10 @@ Vulkan 层
 - 表大小按需增长（容量不足才重建），新表映射区先清零。
 - 地址经 `pc_root`（BDA）传入 mesh shader，不做 descriptor 绑定。
 
-TextRenderPipeline 为三层 SSBO 各维护一对（buffer + 视图）：
-- `TextCharInfo` → binding 14
-- `CharStyle` → binding 15
-- `CharInstance` → binding 16
+TextRenderPipeline 为三层 SSBO 各维护一对（buffer + 视图），三张表的地址在 draw 前随 `pc_root`（`RootAddresses` push constant）一次下发（`graph::PushRootAddresses`，`inc/hgl/graph/RootAddressPush.h`）：
+- `TextCharInfo` → `pc_root.addr_text_char_info`
+- `CharStyle` → `pc_root.addr_text_char_style`
+- `CharInstance` → `pc_root.addr_text_char_instance`
 
 ---
 
@@ -91,7 +94,7 @@ TextRenderPipeline 为三层 SSBO 各维护一对（buffer + 视图）：
 | RenderCollect | TextCollectSystem (`src/ecs/support/text/TextCollectSystem.cpp`) | 收集所有 TextComponent，按 FontSource 分组 |
 | RenderBatch | TextBuildSystem (`src/ecs/support/text/TextBuildSystem.cpp`) | 排版 → 字形图集生成 → SSBO 数据准备 → 三层 SSBO 上传 |
 | RenderBatch | TextSyncSystem (`src/ecs/support/text/TextSyncSystem.cpp`) | 清除变更标记 |
-| RenderDrawSubmit | TextRenderSystem (`src/ecs/support/text/TextRenderSystem.cpp`) | 绑定管线/描述符 → DrawMeshTasks |
+| RenderDrawSubmit | TextRenderSystem (`src/ecs/support/text/TextRenderSystem.cpp`) | 绑定管线 + pc_root/全局集 → DrawMeshTasks |
 
 核心实现集中在 `TextRenderPipeline`（`src/ecs/support/text/TextRenderPipeline.cpp`）。
 
@@ -144,7 +147,7 @@ out_style.extra_advance_y = extra;
 
 `TextRenderPipeline` 把数据直接写进三个表的映射区（`ArrayView<T>::GetData()` + `MarkDirty()`），上传由 `RenderBufferUploadSystem` 统一执行：
 
-**TextCharInfo（binding 14，16B/字符，std430）**：
+**TextCharInfo（`pc_root.addr_text_char_info`，16B/字符，std430）**：
 
 ```cpp
 struct TextCharInfo {
@@ -159,7 +162,7 @@ struct TextCharInfo {
 };  // 16 bytes
 ```
 
-**CharStyle（binding 15，40B/样式，std430）**：
+**CharStyle（`pc_root.addr_text_char_style`，40B/样式，std430）**：
 
 ```cpp
 struct CharStyle {
@@ -178,7 +181,7 @@ struct CharStyle {
 
 CharStyle 定义在 `inc/hgl/graph/font/TextCharSSBO.h`，**CPU/GPU 共用同一布局**。CPU 侧通过 `TextRenderPipeline` 做 `Color4ub → packed uint32` 转换后直接写入。
 
-**CharInstance（binding 16，8B/实例，std430）**：
+**CharInstance（`pc_root.addr_text_char_instance`，8B/实例，std430）**：
 
 ```cpp
 struct CharInstance {
@@ -205,14 +208,17 @@ struct CharInstance {
 - Mesh Shader 模式：`CharQuad`，`max_invocations = 42`
 - `blend = "Transparent"` 启用 alpha 混合（`VK_BLEND_FACTOR_SRC_ALPHA` / `ONE_MINUS_SRC_ALPHA`），使 SDF smoothstep 抗锯齿边缘和阴影/勾边效果正确与背景混合
 
-### 5.2 描述符绑定
+### 5.2 描述符绑定（BDA 终态：两集 + push constant，无 per-material set）
 
-| Set | 内容 |
-|-----|------|
-| Set 0 (Scene) | Camera/Viewport UBO (`ViewportInfo`) |
-| Set 1 (PerObject) | b14: TextCharInfo SSBO, b15: CharStyle SSBO, b16: CharInstance SSBO, mesh_draw_params SSBO |
-| Set 2 (Material) | MaterialData, TextureLayer, DataIndex |
-| Set 3 (Bindless) | 全局纹理数组 |
+| 载体 | 内容 | 绑定时机 |
+|------|------|----------|
+| Set 0 `Scene` | 场景 UBO ×6：Camera / Sky / Viewport / ColorPalette / GlobalAddresses / Shadow（`SceneBinding`，`inc/hgl/common/DescriptorSetTypeDef.h`） | 每 cmd 首绑一次（`GraphicsContext::BindGlobalDescriptorSets` 守卫去重） |
+| Set 1 `Bindless` | 全局纹理数组（`Texture2DArray` + `Sampler` + `TextureCubeArray`） | 同上 |
+| push constant `RootAddresses`（72B） | 文本三表 / mesh_draw_params / L2W / L2WIndex / mtl_data_addrs / texture_references / camera_id 的设备地址 | 每字体一次，draw 前（`graph::PushRootAddresses`） |
+
+- 两个集都用 `VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT` 布局（Scene 集另带 push descriptor 位），经 `vkCmdBindDescriptorBuffersEXT` + `vkCmdSetDescriptorBufferOffsetsEXT` 绑定——**没有 `vkCmdBindDescriptorSets`、没有 per-material 集**。
+- 文本三表、mesh_draw_params、材质行表全部走 `pc_root` 里的设备地址 + `buffer_reference` 解引用（`ShaderLibrary/common/l2w_ssbo.glsl`、`ShaderLibrary/material/text_source_gpu.glsl`），**不存在 b14/b15/b16 这类绑定号**。
+- `TextRenderPipeline::Render()` 的实际序列：`BindPipeline` → `ApplyPipelineState`（EDS）→ `PushRootAddresses` → `BindGlobalDescriptorSets` → `DrawMeshTasks`（`src/ecs/support/text/TextRenderPipeline.cpp:280-315`）。
 
 ### 5.3 最终绘制调用
 
@@ -327,7 +333,7 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 ## 七、关键发现
 
 1. **使用 `vkCmdDrawMeshTasksEXT`** — CharQuad Mesh Shader 模式，每线程 1 字符实例生成 6 顶点 2 三角形
-2. **三层 SSBO 数据模型** — TextCharInfo (b14, 16B) / CharStyle (b15, 40B) / CharInstance (b16, 8B)，取代旧的 Position/UV/Index SSBO
+2. **三层 SSBO 数据模型** — TextCharInfo (16B) / CharStyle (40B) / CharInstance (8B)，地址经 `pc_root`（BDA）下发、无绑定号，取代旧的 Position/UV/Index SSBO
 3. **SDF 双路径渲染** — SDF 距离场（Linear 采样 + smoothstep 特效）与原始位图（Nearest 采样），通过 `TEXT_SDF_ENABLED` 编译宏切换
 4. **CharStyle CPU/GPU 统一定义** — `TextCharSSBO.h` 中 40B std430 布局，CPU 直接写入 packed 数据，GPU 直接读取，无需转换层
 5. **SDF 字体特效** — 加粗、勾边、阴影，全部在 Fragment Shader 端通过 smoothstep + over 合成实现

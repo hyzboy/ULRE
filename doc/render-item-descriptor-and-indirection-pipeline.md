@@ -140,33 +140,50 @@ class Entity
 
 ---
 
-## 6. 着色器全局集成方案
+## 6. 着色器全局集成方案（BDA 终态，两个地址载体）
 
-在全局 UBO（如 `SceneBinding` / `DrawInfoBinding`）中注入全局基址：
+全局基址不放在 `std140` 普通 UBO 里，而是分两个载体（都与 `VK_EXT_descriptor_buffer` 并存）：
+
+**① `GlobalAddressesInfo` UBO —— 全局 SSBO 类型池基址（启动写一次，持久有效）**
+
+`Set 0 / binding 4`（宏 `SCENE_SET` / `GLOBAL_ADDRESSES_BINDING`），56B = 7×`uint64_t`：
 
 ```glsl
-layout(set = 0, binding = 0, std140) uniform SceneBinding
+layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
 {
-    uint64_t addr_global_render_items;   // 全局一级图元描述符表基址 (16B uvec4)
-    uint64_t addr_draw_item_ids;         // 当前帧二级绘制索引表基址 (uint32_t，可选)
-    uint64_t addr_l2w_matrices;          // L2W Transform 矩阵表基址 (mat4)
-    uint64_t addr_mesh_draw_params;      // MeshDrawParams 表基址 (112B)
-    uint64_t addr_material_data;         // 材质属性数据行基址
-    uint64_t addr_texture_references;    // 材质纹理引用表基址
-};
+    uint64_t addr_mesh_draw_params;      // MeshDrawParams 表基址
+    uint64_t addr_pbr_surface;           // PBRSurfaceRow 行池基址
+    uint64_t addr_emissive_surface;      // EmissiveSurfaceRow 行池基址
+    uint64_t addr_transmission_surface;  // TransmissionSurfaceRow 行池基址
+    uint64_t addr_global_render_items;   // 全局一级图元描述符表基址 (16B 4-ID)
+    uint64_t addr_draw_item_ids;         // 当前帧二级绘制索引表基址 (uint32_t)
+    uint64_t addr_camera_info;           // CameraInfo 基址
+} global_addresses;
 ```
 
-任何着色器阶段只需 2 行代码即可完整解析绘制环境：
-```glsl
-// 1. 获取当前图元描述符 (支持连号直接取 或 查二级表)
-uvec4 desc = ResolveRenderItem(draw_index);
+真源：`inc/hgl/graph/ubo/GlobalAddresses.h`（含 `static_assert(sizeof(GlobalAddresses) == 56)`）与
+`ShaderLibrary/ubo/scene_ubo.glsl:88`；写入者 `GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO`
+（`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h`），一次性写入、零运行时 CPU 开销。
 
-// 2. 依据 4-ID 展开所有资源
-mat4 l2w_matrix          = l2w_buffer.mats[desc.x];
-MeshDrawParams mesh_draw = mesh_params_buffer.params[desc.y];
-// Fragment Shader 中：
-MaterialData mtl_row     = material_buffer.rows[desc.z];
-uint texture_index       = texture_ref_buffer.refs[desc.w].descriptor_index;
+**② `RootAddresses` push constant（72B）—— 按批次变化的表地址**
+
+每 MaterialBatch 在 draw 前由 `graph::PushRootAddresses`（`inc/hgl/graph/RootAddressPush.h`）下发，
+字段真源 `HGL_ROOT_ADDRESSES_FIELD_LIST`（`inc/hgl/graph/ShaderBufferSources.h`）：
+`addr_mesh_draw_params / addr_l2w / addr_l2w_index / addr_mtl_data_addrs / addr_texture_references /
+addr_text_char_info / addr_text_char_style / addr_text_char_instance / camera_id`，GLSL 侧即 `pc_root`。
+
+任何着色器阶段只需两行代码即可完整解析绘制环境（实现见 `ShaderLibrary/common/RenderItemResolve.glsl`）：
+
+```glsl
+// 1. 获取当前图元描述符 (连号直通 ResolveRenderItemDirect / 二级表 ResolveRenderItemIndexed)
+RenderItemDescriptor desc = ResolveRenderItemDirect(gl_InstanceIndex);
+
+// 2. 依据 4-ID 展开资源（全部经 buffer_reference 解引用，无描述符绑定）
+mat4   l2w       = LocalToWorldDataRef(pc_root.addr_l2w).mats[desc.transform_id];
+mat4   mesh_draw = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[desc.geometry_id];
+// Fragment Shader 中（宏由材质编译器生成，展开即 BDA 解引用）：
+// MTL_ROW(i)  → <RowStruct>(global_addresses.addr_pbr_surface + payload_index(i) * stride)
+// MTL_TEX(i)  → MaterialTextureReferencesRef(pc_root.addr_texture_references + tex_ref_index(i) * row_stride)
 ```
 
 ---
