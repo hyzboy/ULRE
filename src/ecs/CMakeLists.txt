@@ -346,6 +346,12 @@ if(MSVC)
     set_target_properties(TestCSMIncrementalPass PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+add_executable(TestBoundingVolumeCull support/TestBoundingVolumeCull.cpp)
+target_link_libraries(TestBoundingVolumeCull PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestBoundingVolumeCull PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -374,4 +380,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestCSMIncrementalPass
         PROPERTIES LABELS "csm;pass")
+
+    add_test(
+        NAME TestBoundingVolumeCull
+        COMMAND TestBoundingVolumeCull)
+    set_tests_properties(
+        TestBoundingVolumeCull
+        PROPERTIES LABELS "ecs;cull")
 endif()

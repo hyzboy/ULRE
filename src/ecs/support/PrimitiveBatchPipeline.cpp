@@ -2,6 +2,7 @@
 #include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/DrawItemCompaction.h>
+#include<hgl/ecs/support/BoundingVolumeCull.h>
 #include<source_location>
 #include<cstdlib>
 #include<cstdio>
@@ -187,21 +188,21 @@ namespace hgl::ecs
     bool PrimitiveBatchPipeline::TestFrustumWithWorldAABB(RenderItem* item, const BoundingBoxComponent* bbox)
     {
         const auto& world_aabb = bbox->GetWorldAABB();
-        const glm::vec3 world_center = world_aabb.GetCenter();
-        const glm::vec3 world_extents = world_aabb.GetExtent();
-        const float radius = glm::length(world_extents);
 
-        return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
+        //worldAABB 已包含实体缩放，可直接用 P/N 顶点法做精确判定
+        return frustum.BoxIn(world_aabb) != math::Frustum::Scope::OUTSIDE;
     }
 
     bool PrimitiveBatchPipeline::TestFrustumWithLocalAABB(RenderItem* item, const BoundingBoxComponent* bbox)
     {
         const glm::vec3 local_center = bbox->GetCenter();
         const glm::vec3 local_extents = bbox->GetExtents();
-        const float radius = glm::length(local_extents);
 
         const glm::mat4 worldMat = item->GetWorldMatrix();
         const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
+
+        //本地尺寸必须乘以世界缩放，否则放大的实体会被误剔除
+        const float radius = ToWorldBoundingRadius(glm::length(local_extents), worldMat);
 
         return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
     }
@@ -219,13 +220,17 @@ namespace hgl::ecs
         if (!transform)
             return false;
 
-        glm::vec3 worldPos = transform->GetWorldPosition();
-        float boundingRadius = primitiveComp->GetBoundingRadius();
+        const float boundingRadius = primitiveComp->GetBoundingRadius();
 
         if (boundingRadius <= 0.0f)
             return true;
 
-        return frustum.SphereIn(worldPos, boundingRadius) != math::Frustum::Scope::OUTSIDE;
+        const glm::vec3 worldPos = transform->GetWorldPosition();
+
+        //GetBoundingRadius() 由几何体本地 AABB 求得，不含实体缩放，这里补上世界缩放
+        const float worldRadius = ToWorldBoundingRadius(boundingRadius, item->GetWorldMatrix());
+
+        return frustum.SphereIn(worldPos, worldRadius) != math::Frustum::Scope::OUTSIDE;
     }
 
     void PrimitiveBatchPipeline::SortByDistance()
