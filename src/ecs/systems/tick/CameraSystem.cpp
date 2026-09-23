@@ -284,24 +284,13 @@ namespace hgl::ecs
 
     void CameraSystem::SetViewportInfo(const graph::ViewportInfo* vp)
     {
-        uint old_w = 0;
-        uint old_h = 0;
-        if (viewport_info)
-        {
-            old_w = viewport_info->GetViewportWidth();
-            old_h = viewport_info->GetViewportHeight();
-        }
+        uint new_w = vp ? vp->GetViewportWidth() : 0;
+        uint new_h = vp ? vp->GetViewportHeight() : 0;
 
-        uint new_w = 0;
-        uint new_h = 0;
-        if (vp)
-        {
-            new_w = vp->GetViewportWidth();
-            new_h = vp->GetViewportHeight();
-        }
-
-        const bool viewport_changed = (viewport_info != vp) || (old_w != new_w) || (old_h != new_h);
+        const bool viewport_changed = (viewport_info != vp) || (cached_viewport_width != new_w) || (cached_viewport_height != new_h);
         viewport_info = vp;
+        cached_viewport_width = new_w;
+        cached_viewport_height = new_h;
 
         if (viewport_changed)
             MarkAllCameraMatricesDirty();

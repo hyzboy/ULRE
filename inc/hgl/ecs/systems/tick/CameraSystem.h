@@ -98,6 +98,8 @@ namespace hgl
             graph::StructView<graph::CameraInfo>* camera_ubo = nullptr;
             bool camera_ubo_managed = false;
             bool first_update_pending = true;
+            uint cached_viewport_width = 0;
+            uint cached_viewport_height = 0;
 
             /// pass 级相机覆盖（RenderTo(request.camera) 期间非空）：
             /// Update 只处理该相机并强制重算——共享 camera_data/camera_info
@@ -124,6 +126,7 @@ namespace hgl
             /// pass 覆盖解除后恢复共享数据用（主相机可能不脏，否则
             /// 共享 camera_info 会残留 pass 相机的矩阵）
             void ForceRefreshSelectedCamera();
+            void MarkAllCameraMatricesDirty();
 
             graph::Camera* GetCamera();
             const graph::CameraInfo* GetCameraInfo() const;
@@ -164,7 +167,6 @@ namespace hgl
             CameraComponent* SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras) const;
             void BindCameraResources(CameraComponent* camera, bool is_main = false);
             void EnsureCameraResources();
-            void MarkAllCameraMatricesDirty();
             graph::GlobalSSBOBufferRegistry *ResolveGlobalSSBORegistry();
 
             // === 数学辅助函数 / Math helper functions ===

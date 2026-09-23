@@ -25,6 +25,9 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/GraphModuleManager.h>
+#include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include<hgl/log/Log.h>
 #include<hgl/object/ObjectTracker.h>
@@ -536,8 +539,7 @@ namespace hgl
             if (!active)
                 return;
 
-            // Log resize event
-//            LogInfo("[ECSContext] OnResize: %s %ux%u",GetName().c_str(), extent.width, extent.height);
+            LogInfo("[ECSContext] OnResize: %s %ux%u", GetName().c_str(), extent.width, extent.height);
 
             // Ensure render target viewport/UBO are updated immediately for this extent.
             if (render_target)
@@ -559,6 +561,13 @@ namespace hgl
 
                 // CN: LineRenderSystem 会在 Render 时延迟初始化
                 // EN: LineRenderSystem lazy-inits on first Render
+            }
+
+            auto camera_system = GetSystem<CameraSystem>();
+            if (camera_system)
+            {
+                camera_system->MarkAllCameraMatricesDirty();
+                camera_system->ForceRefreshSelectedCamera();
             }
         }
 
@@ -607,6 +616,16 @@ namespace hgl
             if (!active)
                 return false;
 
+            if (!RecreateSwapchainIfNeeded())
+            {
+                if (auto *target = GetRenderTarget())
+                {
+                    auto *swapchain_rt = dynamic_cast<graph::SwapchainRenderTarget *>(target);
+                    if (swapchain_rt && swapchain_rt->NeedsResize())
+                        return false;
+                }
+            }
+
             bool swapchain_ok = true;
             bool swapchain_system_present = false;
 
@@ -626,6 +645,9 @@ namespace hgl
                         swapchain_ok = swapchain_rt->NextFrame();
                 }
             }
+
+            if (!swapchain_ok)
+                RecreateSwapchainIfNeeded();
 
             return swapchain_ok;
         }
@@ -714,7 +736,30 @@ namespace hgl
                     submit_ok = target->Submit();
             }
 
-            return submit_ok;
+            const bool recreated = RecreateSwapchainIfNeeded();
+            return submit_ok || recreated;
+        }
+
+        bool ECSContext::RecreateSwapchainIfNeeded()
+        {
+            auto *target = GetRenderTarget();
+            auto *swapchain_rt = dynamic_cast<graph::SwapchainRenderTarget *>(target);
+            if (!swapchain_rt || !swapchain_rt->NeedsResize() || !graphics_context)
+                return false;
+
+            auto *module_manager = graphics_context->GetModuleManager();
+            auto *swapchain_module = module_manager ? module_manager->Get<graph::SwapchainModule>() : nullptr;
+            if (!swapchain_module)
+                return false;
+
+            VkExtent2D current_extent = swapchain_rt->GetExtent();
+            swapchain_module->OnResize(current_extent);
+            render_target = swapchain_module->GetRenderTarget();
+            if (render_target)
+            {
+                OnResize(render_target->GetExtent());
+            }
+            return render_target != nullptr;
         }
 
         void ECSContext::RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime)

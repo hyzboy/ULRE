@@ -261,10 +261,26 @@ namespace hgl
 
     void AppFramework::OnResize(uint w, uint h)
     {
+        GLogInfo("AppFramework::OnResize: window size %ux%u", w, h);
+
+        // WM_SIZE reports a zero extent while the window is minimized. Keep the
+        // current swapchain alive and rebuild it on the next non-zero resize.
+        if (w == 0 || h == 0)
+            return;
+
         VkExtent2D ext(w, h);
 
         if (sc_module)
             sc_module->OnResize(ext);
+
+        // Vulkan may clamp the surface extent. Propagate the actual swapchain
+        // extent to dependent managers instead of the raw WM_SIZE value.
+        if (sc_module)
+        {
+            VkExtent2D swapchain_ext;
+            if (sc_module->GetSwapchainSize(&swapchain_ext))
+                ext = swapchain_ext;
+        }
 
         if (graphics_context)
             graphics_context->OnResize(ext);

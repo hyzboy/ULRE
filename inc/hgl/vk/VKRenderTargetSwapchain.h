@@ -41,6 +41,7 @@ class SwapchainRenderTarget : public IRenderTarget
 
     SwapchainFrameSync* sync_slots          = nullptr;  ///< [slot_count] - owned
     DeviceQueue**       images_in_flight    = nullptr;  ///< [image_count] - which slot owns each image
+    bool                resize_required     = false;
 
     friend class SwapchainModule;
 
@@ -55,6 +56,8 @@ public:
 
     /// Acquire the next swapchain image. Handles slot-fence waiting and image ownership tracking.
     bool NextFrame();
+    bool NeedsResize() const { return resize_required; }
+    Swapchain* GetSwapchain() const { return swapchain; }
 
     // --- IRenderTarget interface ---
     Framebuffer*        GetFramebuffer()                    override;

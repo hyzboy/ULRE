@@ -68,9 +68,13 @@ bool SwapchainRenderTarget::NextFrame()
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
+        resize_required = true;
         LogWarning("vkAcquireNextImageKHR: OUT_OF_DATE");
         return false;
     }
+    if (result == VK_SUBOPTIMAL_KHR)
+        resize_required = true;
+
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
     {
         LogError("vkAcquireNextImageKHR failed, result=%d", (int)result);
@@ -115,8 +119,9 @@ bool SwapchainRenderTarget::Submit()
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
     {
+        resize_required = true;
         LogWarning("vkQueuePresentKHR: result=%d (OUT_OF_DATE or SUBOPTIMAL)", (int)result);
-        return false;
+        return result == VK_SUBOPTIMAL_KHR;
     }
     if (result != VK_SUCCESS)
     {

@@ -23,22 +23,41 @@ namespace hgl::graph{
 
 namespace
 {
-    VkSwapchainKHR CreateVulkanSwapChain(const VulkanDevAttr *dev_attr)
+    VkSwapchainKHR CreateVulkanSwapChain(const VulkanDevAttr *dev_attr, const VkExtent2D &extent, VkSwapchainKHR old_swapchain = VK_NULL_HANDLE)
     {
-        VkSwapchainCreateInfoKHR swapchain_ci;
-
         uint32_t image_count;
 
         const auto &surface_caps=dev_attr->surface->GetCapabilities();
 
-        if(surface_caps.maxImageCount<3)
-            image_count=surface_caps.maxImageCount;
-        else
-            if(surface_caps.maxImageCount>3)
-                image_count=3;
-            else
-                image_count=surface_caps.minImageCount;
+        image_count=surface_caps.minImageCount;
+        if(image_count<3)
+            image_count=3;
 
+        // maxImageCount == 0 means "no maximum" per Vulkan.
+        if(surface_caps.maxImageCount>0 && image_count>surface_caps.maxImageCount)
+            image_count=surface_caps.maxImageCount;
+
+        VkExtent2D actual_extent;
+        if(surface_caps.currentExtent.width != 0xFFFFFFFF && surface_caps.currentExtent.height != 0xFFFFFFFF
+           && surface_caps.currentExtent.width > 0 && surface_caps.currentExtent.height > 0)
+        {
+            actual_extent = surface_caps.currentExtent;
+        }
+        else
+        {
+            actual_extent = extent;
+        }
+
+        if(actual_extent.width < surface_caps.minImageExtent.width)
+            actual_extent.width = surface_caps.minImageExtent.width;
+        if(actual_extent.width > surface_caps.maxImageExtent.width)
+            actual_extent.width = surface_caps.maxImageExtent.width;
+        if(actual_extent.height < surface_caps.minImageExtent.height)
+            actual_extent.height = surface_caps.minImageExtent.height;
+        if(actual_extent.height > surface_caps.maxImageExtent.height)
+            actual_extent.height = surface_caps.maxImageExtent.height;
+
+        VkSwapchainCreateInfoKHR swapchain_ci{};
         swapchain_ci.sType=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         swapchain_ci.pNext=nullptr;
         swapchain_ci.flags=0;
@@ -46,7 +65,7 @@ namespace
         swapchain_ci.minImageCount=image_count;
         swapchain_ci.imageFormat=dev_attr->surface_format.format;
         swapchain_ci.imageColorSpace=dev_attr->surface_format.colorSpace;
-        swapchain_ci.imageExtent=surface_caps.currentExtent;
+        swapchain_ci.imageExtent=actual_extent;
         swapchain_ci.imageArrayLayers=1;
         swapchain_ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         swapchain_ci.queueFamilyIndexCount=0;
@@ -55,7 +74,7 @@ namespace
         swapchain_ci.compositeAlpha=dev_attr->surface->GetCompositeAlpha();
         swapchain_ci.presentMode=VK_PRESENT_MODE_FIFO_KHR;
         swapchain_ci.clipped=VK_TRUE;
-        swapchain_ci.oldSwapchain=VK_NULL_HANDLE;
+        swapchain_ci.oldSwapchain=old_swapchain;
 
         if(surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
             swapchain_ci.imageUsage|=VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -67,6 +86,13 @@ namespace
 
         VkSwapchainKHR swap_chain;
         VkResult result=vkCreateSwapchainKHR(dev_attr->device,&swapchain_ci,nullptr,&swap_chain);
+
+        if(result!=VK_SUCCESS && old_swapchain!=VK_NULL_HANDLE)
+        {
+            GLogWarning("vkCreateSwapchainKHR with oldSwapchain failed (result=%d), retrying with VK_NULL_HANDLE", (int)result);
+            swapchain_ci.oldSwapchain=VK_NULL_HANDLE;
+            result=vkCreateSwapchainKHR(dev_attr->device,&swapchain_ci,nullptr,&swap_chain);
+        }
 
         if(result!=VK_SUCCESS)
         {
@@ -145,7 +171,7 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
     return(true);
 }
 
-Swapchain *SwapchainModule::CreateSwapchain()
+Swapchain *SwapchainModule::CreateSwapchain(const VkExtent2D &extent, VkSwapchainKHR old_swapchain)
 {
     HGL_CAPTURE_SCOPE();
     auto *dev_attr=GetDevAttr();
@@ -160,13 +186,33 @@ Swapchain *SwapchainModule::CreateSwapchain()
 
     const auto &surface_caps=dev_attr->surface->GetCapabilities();
 
+    VkExtent2D actual_extent;
+    if(surface_caps.currentExtent.width != 0xFFFFFFFF && surface_caps.currentExtent.height != 0xFFFFFFFF
+       && surface_caps.currentExtent.width > 0 && surface_caps.currentExtent.height > 0)
+    {
+        actual_extent = surface_caps.currentExtent;
+    }
+    else
+    {
+        actual_extent = extent;
+    }
+
+    if(actual_extent.width < surface_caps.minImageExtent.width)
+        actual_extent.width = surface_caps.minImageExtent.width;
+    if(actual_extent.width > surface_caps.maxImageExtent.width)
+        actual_extent.width = surface_caps.maxImageExtent.width;
+    if(actual_extent.height < surface_caps.minImageExtent.height)
+        actual_extent.height = surface_caps.minImageExtent.height;
+    if(actual_extent.height > surface_caps.maxImageExtent.height)
+        actual_extent.height = surface_caps.maxImageExtent.height;
+
     swapchain->device=dev_attr->device;
-    swapchain->extent=surface_caps.currentExtent;
+    swapchain->extent=actual_extent;
     swapchain->transform=surface_caps.currentTransform;
     swapchain->surface_format=dev_attr->surface_format;
     swapchain->depth_format=dev_attr->physical_device->GetDepthFormat();
 
-    swapchain->swap_chain=CreateVulkanSwapChain(dev_attr);
+    swapchain->swap_chain=CreateVulkanSwapChain(dev_attr, actual_extent, old_swapchain);
 
     if(swapchain->swap_chain)
     {
@@ -184,12 +230,14 @@ Swapchain *SwapchainModule::CreateSwapchain()
     return(nullptr);
 }
 
-bool SwapchainModule::CreateSwapchainRenderTarget(SwapchainRenderTarget *inherit_from)
+bool SwapchainModule::CreateSwapchainRenderTarget(const VkExtent2D &extent, SwapchainRenderTarget *inherit_from)
 {
     if(!ecs_context)
         return(false);
 
-    Swapchain *swapchain=CreateSwapchain();
+    VkSwapchainKHR old_sc = (inherit_from && inherit_from->GetSwapchain()) ? inherit_from->GetSwapchain()->swap_chain : VK_NULL_HANDLE;
+
+    Swapchain *swapchain=CreateSwapchain(extent, old_sc);
     if(!swapchain)
         return(false);
 
@@ -243,7 +291,14 @@ SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_c
         dev_attr->debug_utils->SetRenderPass(sc_render_pass->GetVkRenderPass(),"SwapchainRenderPass");
 #endif//_DEBUG
 
-    if(!CreateSwapchainRenderTarget())
+    VkExtent2D init_extent = dev_attr->surface->GetCapabilities().currentExtent;
+    if(init_extent.width == 0xFFFFFFFF || init_extent.height == 0xFFFFFFFF || init_extent.width == 0 || init_extent.height == 0)
+    {
+        init_extent.width = 1280;
+        init_extent.height = 720;
+    }
+
+    if(!CreateSwapchainRenderTarget(init_extent))
         LogError("SwapchainModule: CreateSwapchainRenderTarget failed");
 }
 
@@ -263,6 +318,11 @@ void SwapchainModule::Release()
 
 void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
+    LogInfo("SwapchainModule::OnResize: requested extent=%ux%u", extent.width, extent.height);
+
+    if(extent.width == 0 || extent.height == 0)
+        return;
+
     if(ecs_context)
         ecs_context->SetRenderTarget(nullptr);
 
@@ -274,11 +334,46 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     sc_render_target=nullptr;
 
     VulkanSurface *surface=GetSurface();
+    if(!surface)
+    {
+        sc_render_target=old_rt;
+        if(ecs_context)
+            ecs_context->SetRenderTarget(sc_render_target);
+        LogError("SwapchainModule::OnResize: surface is null");
+        return;
+    }
+
     surface->RefreshCaps();
 
-    if(!CreateSwapchainRenderTarget(old_rt))
-        LogError("SwapchainModule::OnResize: CreateSwapchainRenderTarget failed");
+    const VkExtent2D &surface_extent=surface->GetCapabilities().currentExtent;
+    VkExtent2D target_extent = extent;
+    if(surface_extent.width != 0xFFFFFFFF && surface_extent.height != 0xFFFFFFFF
+       && surface_extent.width > 0 && surface_extent.height > 0)
+    {
+        target_extent = surface_extent;
+    }
 
+    if(target_extent.width == 0 || target_extent.height == 0)
+    {
+        sc_render_target=old_rt;
+        if(ecs_context)
+            ecs_context->SetRenderTarget(sc_render_target);
+        LogWarning("SwapchainModule::OnResize: target extent is 0, skipping recreation");
+        return;
+    }
+
+    if(!CreateSwapchainRenderTarget(target_extent, old_rt))
+    {
+        // Keep the previous render target usable if the transient resize
+        // state does not allow a new Vulkan swapchain to be created yet.
+        sc_render_target=old_rt;
+        if(ecs_context)
+            ecs_context->SetRenderTarget(sc_render_target);
+        LogError("SwapchainModule::OnResize: CreateSwapchainRenderTarget failed");
+        return;
+    }
+
+    LogInfo("SwapchainModule::OnResize: successfully recreated swapchain with extent=%ux%u", target_extent.width, target_extent.height);
     SAFE_CLEAR(old_rt);
 }
 

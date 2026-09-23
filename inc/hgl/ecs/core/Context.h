@@ -212,6 +212,7 @@ namespace hgl
 
             void RenderSubmit(float deltaTime);
             bool SubmitFrameToRenderTarget(float deltaTime = 0.0f);
+            bool RecreateSwapchainIfNeeded();
 
         public:
 

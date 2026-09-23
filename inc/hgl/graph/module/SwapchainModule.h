@@ -25,8 +25,8 @@ GRAPH_MODULE_CLASS(SwapchainModule)
 protected:
 
     bool        CreateSwapchainFBO(Swapchain *);
-    Swapchain * CreateSwapchain();
-    bool        CreateSwapchainRenderTarget(SwapchainRenderTarget *inherit_from=nullptr);
+    Swapchain * CreateSwapchain(const VkExtent2D &extent, VkSwapchainKHR old_swapchain = VK_NULL_HANDLE);
+    bool        CreateSwapchainRenderTarget(const VkExtent2D &extent, SwapchainRenderTarget *inherit_from=nullptr);
 
 public:
 
