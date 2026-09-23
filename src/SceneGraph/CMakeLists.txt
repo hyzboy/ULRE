@@ -92,7 +92,9 @@ SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/render/RenderContext.h
 SOURCE_GROUP("4.Rendering\\Core" FILES ${RENDERING_CORE_FILES})
 
 SET(RENDERING_LIGHTING_FILES ${SG_INCLUDE_PATH}/render/lighting/Light.h
-                             ${SG_INCLUDE_PATH}/render/lighting/ShadowPolicy.h)
+                             ${SG_INCLUDE_PATH}/render/lighting/ShadowPolicy.h
+                             ${SG_INCLUDE_PATH}/render/lighting/CascadedShadowController.h
+                             render/lighting/CascadedShadowController.cpp)
 
 SOURCE_GROUP("4.Rendering\\Lighting" FILES ${RENDERING_LIGHTING_FILES})
 

@@ -334,6 +334,12 @@ if(MSVC)
     set_target_properties(TestRenderItemDataStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+add_executable(TestCascadedShadowController support/TestCascadedShadowController.cpp)
+target_link_libraries(TestCascadedShadowController PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestCascadedShadowController PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -348,4 +354,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestRenderItemDataStorage
         PROPERTIES LABELS "ecs;render_item")
+
+    add_test(
+        NAME TestCascadedShadowController
+        COMMAND TestCascadedShadowController)
+    set_tests_properties(
+        TestCascadedShadowController
+        PROPERTIES LABELS "csm;shadow")
 endif()
