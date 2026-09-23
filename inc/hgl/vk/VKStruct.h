@@ -78,7 +78,6 @@ VKS_DEFINE(     RenderPassBeginInfo,            VK_STRUCTURE_TYPE_RENDER_PASS_BE
 
 VKS_DEFINE_KHR( PresentInfo,                    VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
 
-VKS_DEFINE(     SubmitInfo,                     VK_STRUCTURE_TYPE_SUBMIT_INFO)
 VKSF_DEFINE(    FenceCreateInfo,                VK_STRUCTURE_TYPE_FENCE_CREATE_INFO)
 VKSF_DEFINE(    SemaphoreCreateInfo,            VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO)
 
@@ -101,23 +100,127 @@ public:
     }
 };//struct ImageSubresourceRange:public VkImageSubresourceRange
 
-struct ImageMemoryBarrier:public vkstruct<VkImageMemoryBarrier,VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER>
+struct MemoryBarrier2 : public vkstruct<VkMemoryBarrier2, VK_STRUCTURE_TYPE_MEMORY_BARRIER_2>
 {
-public:
+    MemoryBarrier2() = default;
+    MemoryBarrier2(VkPipelineStageFlags2 src_stage, VkAccessFlags2 src_access,
+                   VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access)
+    {
+        this->srcStageMask  = src_stage;
+        this->srcAccessMask = src_access;
+        this->dstStageMask  = dst_stage;
+        this->dstAccessMask = dst_access;
+    }
+};
 
-    ImageMemoryBarrier()
+struct BufferMemoryBarrier2 : public vkstruct<VkBufferMemoryBarrier2, VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2>
+{
+    BufferMemoryBarrier2()
     {
         this->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         this->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     }
 
-    ImageMemoryBarrier(VkImage img)
+    BufferMemoryBarrier2(VkBuffer buf,
+                         VkPipelineStageFlags2 src_stage, VkAccessFlags2 src_access,
+                         VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access,
+                         VkDeviceSize buf_offset = 0, VkDeviceSize buf_size = VK_WHOLE_SIZE)
     {
-        this->image=img;
+        this->srcStageMask        = src_stage;
+        this->srcAccessMask       = src_access;
+        this->dstStageMask        = dst_stage;
+        this->dstAccessMask       = dst_access;
+        this->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        this->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        this->buffer              = buf;
+        this->offset              = buf_offset;
+        this->size                = buf_size;
+    }
+};
+
+struct ImageMemoryBarrier2 : public vkstruct<VkImageMemoryBarrier2, VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2>
+{
+    ImageMemoryBarrier2()
+    {
         this->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         this->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     }
-};//struct ImageMemoryBarrier:public vkstruct<VkImageMemoryBarrier,VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER>
+
+    ImageMemoryBarrier2(VkImage img)
+    {
+        this->image               = img;
+        this->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        this->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    }
+
+    ImageMemoryBarrier2(VkImage img,
+                        VkPipelineStageFlags2 src_stage, VkAccessFlags2 src_access,
+                        VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access,
+                        VkImageLayout old_layout, VkImageLayout new_layout,
+                        const VkImageSubresourceRange &range)
+    {
+        this->srcStageMask        = src_stage;
+        this->srcAccessMask       = src_access;
+        this->dstStageMask        = dst_stage;
+        this->dstAccessMask       = dst_access;
+        this->oldLayout           = old_layout;
+        this->newLayout           = new_layout;
+        this->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        this->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        this->image               = img;
+        this->subresourceRange    = range;
+    }
+};
+
+struct DependencyInfo : public vkstruct<VkDependencyInfo, VK_STRUCTURE_TYPE_DEPENDENCY_INFO>
+{
+    DependencyInfo() = default;
+
+    DependencyInfo(uint32_t img_count, const VkImageMemoryBarrier2 *img_barriers)
+    {
+        this->imageMemoryBarrierCount = img_count;
+        this->pImageMemoryBarriers    = img_barriers;
+    }
+
+    DependencyInfo(uint32_t buf_count, const VkBufferMemoryBarrier2 *buf_barriers)
+    {
+        this->bufferMemoryBarrierCount = buf_count;
+        this->pBufferMemoryBarriers    = buf_barriers;
+    }
+
+    DependencyInfo(uint32_t mem_count, const VkMemoryBarrier2 *mem_barriers)
+    {
+        this->memoryBarrierCount = mem_count;
+        this->pMemoryBarriers    = mem_barriers;
+    }
+};
+
+struct CommandBufferSubmitInfo : public vkstruct<VkCommandBufferSubmitInfo, VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO>
+{
+    CommandBufferSubmitInfo() = default;
+    CommandBufferSubmitInfo(VkCommandBuffer cb, uint32_t mask = 0)
+    {
+        this->commandBuffer = cb;
+        this->deviceMask    = mask;
+    }
+};
+
+struct SemaphoreSubmitInfo : public vkstruct<VkSemaphoreSubmitInfo, VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO>
+{
+    SemaphoreSubmitInfo() = default;
+    SemaphoreSubmitInfo(VkSemaphore sem, VkPipelineStageFlags2 stage, uint64_t val = 0, uint32_t dev_idx = 0)
+    {
+        this->semaphore   = sem;
+        this->value       = val;
+        this->stageMask   = stage;
+        this->deviceIndex = dev_idx;
+    }
+};
+
+struct SubmitInfo2 : public vkstruct<VkSubmitInfo2, VK_STRUCTURE_TYPE_SUBMIT_INFO_2>
+{
+    SubmitInfo2() = default;
+};
 
 struct SubpassDescription:public VkSubpassDescription
 {

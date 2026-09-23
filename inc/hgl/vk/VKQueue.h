@@ -6,12 +6,15 @@
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
+struct VulkanDevAttr;
+
 class DeviceQueue
 {
     OBJECT_LOGGER
 
 protected:
 
+    const VulkanDevAttr *dev_attr;
     VkDevice device;
     VkQueue queue;
 
@@ -21,13 +24,11 @@ protected:
     Fence **fence_list;
     uint32_t fence_count;
 
-    SubmitInfo submit_info;
-
 private:
 
     friend class VulkanDevice;
 
-    DeviceQueue(VkDevice dev,VkQueue q,Fence **,const uint32_t fc);
+    DeviceQueue(const VulkanDevAttr *attr,VkQueue q,Fence **,const uint32_t fc);
 
 public:
 

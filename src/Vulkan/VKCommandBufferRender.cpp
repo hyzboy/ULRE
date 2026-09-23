@@ -41,16 +41,18 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
 
     // Dynamic Rendering：无 render pass 的自动布局转换——必须先手动把附件
     // 从 UNDEFINED 转换到 attachment 布局（VUID-vkCmdBeginRendering-pRenderingInfo-09592/09588）
-    VkImageMemoryBarrier barriers[8]{};
+    VkImageMemoryBarrier2 barriers[8]{};
 
     for(uint32_t i=0;i<color_count;i++)
     {
         Texture2D *tex=rt->GetColorTexture(i);
         if(!tex)continue;
 
-        barriers[i].sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barriers[i].srcAccessMask       =0;
-        barriers[i].dstAccessMask       =VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        barriers[i].sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        barriers[i].srcStageMask        =VK_PIPELINE_STAGE_2_NONE;
+        barriers[i].srcAccessMask       =VK_ACCESS_2_NONE;
+        barriers[i].dstStageMask        =VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        barriers[i].dstAccessMask       =VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
         barriers[i].oldLayout           =VK_IMAGE_LAYOUT_UNDEFINED;
         barriers[i].newLayout           =VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         barriers[i].srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
@@ -64,11 +66,13 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
         Texture2D *depth_tex=rt->GetDepthTexture();
         if(depth_tex)
         {
-            VkImageMemoryBarrier &db=barriers[color_count];
+            VkImageMemoryBarrier2 &db=barriers[color_count];
 
-            db.sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            db.srcAccessMask       =0;
-            db.dstAccessMask       =VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            db.sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+            db.srcStageMask        =VK_PIPELINE_STAGE_2_NONE;
+            db.srcAccessMask       =VK_ACCESS_2_NONE;
+            db.dstStageMask        =VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT|VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+            db.dstAccessMask       =VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
             db.oldLayout           =VK_IMAGE_LAYOUT_UNDEFINED;
             db.newLayout           =VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             db.srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
@@ -84,13 +88,12 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt)
         }
     }
 
-    vkCmdPipelineBarrier(cmd_buf,
-                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT|VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                         0,
-                         0,nullptr,
-                         0,nullptr,
-                         color_count+has_depth,barriers);
+    VkDependencyInfo dep_info{};
+    dep_info.sType                    =VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    dep_info.imageMemoryBarrierCount =color_count+has_depth;
+    dep_info.pImageMemoryBarriers    =barriers;
+
+    PipelineBarrier2(&dep_info);
 
     // render_area / viewport 从 render target extent 设置
     //（原 BindFramebuffer 负责此初始化；dynamic rendering 下无 framebuffer，改在此处）
@@ -189,16 +192,18 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
     // ---- 窗口交换链：颜色附件转 PRESENT_SRC 交呈现引擎（维持原有语义）----
     if(rt->IsSwapchain())
     {
-        VkImageMemoryBarrier barriers[8]{};
+        VkImageMemoryBarrier2 barriers[8]{};
 
         for(uint32_t i=0;i<color_count;i++)
         {
             Texture2D *tex=rt->GetColorTexture(i);
             if(!tex)continue;
 
-            barriers[i].sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            barriers[i].srcAccessMask       =VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-            barriers[i].dstAccessMask       =0;
+            barriers[i].sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+            barriers[i].srcStageMask        =VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            barriers[i].srcAccessMask       =VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+            barriers[i].dstStageMask        =VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+            barriers[i].dstAccessMask       =VK_ACCESS_2_NONE;
             barriers[i].oldLayout           =VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             barriers[i].newLayout           =VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             barriers[i].srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
@@ -208,13 +213,14 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
         }
 
         if(color_count>0)
-            vkCmdPipelineBarrier(cmd_buf,
-                                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                                 0,
-                                 0,nullptr,
-                                 0,nullptr,
-                                 color_count,barriers);
+        {
+            VkDependencyInfo dep_info{};
+            dep_info.sType                    =VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dep_info.imageMemoryBarrierCount =color_count;
+            dep_info.pImageMemoryBarriers    =barriers;
+
+            PipelineBarrier2(&dep_info);
+        }
 
         return;
     }
@@ -225,7 +231,7 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
     // depth-only RT（shadow map）没有任何颜色附件，深度是唯一需要转换的附件——
     // 原实现只在 color_count>0 时才发 barrier，导致纯深度目标的深度停留在
     // attachment 布局，采样即为非法。
-    VkImageMemoryBarrier barriers[8]{};
+    VkImageMemoryBarrier2 barriers[8]{};
     uint32_t barrier_count=0;
 
     for(uint32_t i=0;i<color_count&&barrier_count<8;i++)
@@ -233,11 +239,13 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
         Texture2D *tex=rt->GetColorTexture(i);
         if(!tex)continue;
 
-        VkImageMemoryBarrier &b=barriers[barrier_count];
+        VkImageMemoryBarrier2 &b=barriers[barrier_count];
 
-        b.sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        b.srcAccessMask       =VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        b.dstAccessMask       =VK_ACCESS_SHADER_READ_BIT;
+        b.sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        b.srcStageMask        =VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        b.srcAccessMask       =VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        b.dstStageMask        =VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        b.dstAccessMask       =VK_ACCESS_2_SHADER_READ_BIT;
         b.oldLayout           =VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         b.newLayout           =VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         b.srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
@@ -250,11 +258,13 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
 
     if(depth_tex&&barrier_count<8)
     {
-        VkImageMemoryBarrier &b=barriers[barrier_count];
+        VkImageMemoryBarrier2 &b=barriers[barrier_count];
 
-        b.sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        b.srcAccessMask       =VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        b.dstAccessMask       =VK_ACCESS_SHADER_READ_BIT;
+        b.sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        b.srcStageMask        =VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT|VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        b.srcAccessMask       =VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        b.dstStageMask        =VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        b.dstAccessMask       =VK_ACCESS_2_SHADER_READ_BIT;
         b.oldLayout           =VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         b.newLayout           =VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         b.srcQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
@@ -270,13 +280,14 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
     }
 
     if(barrier_count>0)
-        vkCmdPipelineBarrier(cmd_buf,
-                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT|VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                             0,
-                             0,nullptr,
-                             0,nullptr,
-                             barrier_count,barriers);
+    {
+        VkDependencyInfo dep_info{};
+        dep_info.sType                    =VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dep_info.imageMemoryBarrierCount =barrier_count;
+        dep_info.pImageMemoryBarriers    =barriers;
+
+        PipelineBarrier2(&dep_info);
+    }
 }
 
 void RenderCmdBuffer::ApplyPipelineState(const mtl::MaterialPipelineConfig &config)

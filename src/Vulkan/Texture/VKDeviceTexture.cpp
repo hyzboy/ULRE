@@ -24,7 +24,7 @@ bool TextureManager::CheckFormatSupport(const VkFormat format,const uint32_t bit
         return(fp.linearTilingFeatures&bits);
 }
 
-bool TextureManager::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipelineStageFlags destinationStage)
+bool TextureManager::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipelineStageFlags2 destinationStage)
 {
     if(!info)
         return(false);
@@ -32,11 +32,11 @@ bool TextureManager::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipel
     if(info->bic_count==0)
         return(false);
 
-    texture_cmd_buf->ImageMemoryBarrier(info->image,
-        VK_PIPELINE_STAGE_HOST_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
+    texture_cmd_buf->ImageMemoryBarrier2(info->image,
+        VK_PIPELINE_STAGE_2_NONE,
+        VK_PIPELINE_STAGE_2_COPY_BIT,
+        VK_ACCESS_2_NONE,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         info->isr);
@@ -48,24 +48,17 @@ bool TextureManager::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipel
         info->bic_count,
         info->bic_list);
 
-    if(destinationStage==VK_PIPELINE_STAGE_TRANSFER_BIT)                            //接下来还有，一般是给自动生成mipmaps
+    if(destinationStage==VK_PIPELINE_STAGE_2_COPY_BIT || destinationStage==VK_PIPELINE_STAGE_2_BLIT_BIT)
     {
-        //texture_cmd_buf->ImageMemoryBarrier(info->image,
-        //    VK_PIPELINE_STAGE_TRANSFER_BIT,
-        //    VK_PIPELINE_STAGE_TRANSFER_BIT,
-        //    VK_ACCESS_TRANSFER_WRITE_BIT,
-        //    VK_ACCESS_TRANSFER_READ_BIT,
-        //    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        //    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        //    info->isr);
+        // 接下来有后续 Blit/Mipmap 处理，由调用者或后续步骤负责转换
     }
-    else// if(destinationStage==VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)              //接下来就给fragment shader用了，证明是最后一步
+    else
     {
-        texture_cmd_buf->ImageMemoryBarrier(info->image,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_ACCESS_SHADER_READ_BIT,
+        texture_cmd_buf->ImageMemoryBarrier2(info->image,
+            VK_PIPELINE_STAGE_2_COPY_BIT,
+            destinationStage,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_ACCESS_2_SHADER_READ_BIT,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             info->isr);
@@ -74,7 +67,7 @@ bool TextureManager::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipel
     return(true);
 }
 
-bool TextureManager::CopyBufferToImage(Texture *tex,VkBuffer buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::CopyBufferToImage(Texture *tex,VkBuffer buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags2 destinationStage)
 {
     if(!tex||buf==VK_NULL_HANDLE)
         return(false);

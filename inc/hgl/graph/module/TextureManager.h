@@ -60,20 +60,20 @@ private:     //Image
 
 private:    //texture
 
-    bool CopyBufferToImage      (const CopyBufferToImageInfo *info,VkPipelineStageFlags destinationStage);
+    bool CopyBufferToImage      (const CopyBufferToImageInfo *info,VkPipelineStageFlags2 destinationStage);
 
-    bool CopyBufferToImage      (Texture *,VkBuffer buf,const VkBufferImageCopy *,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags);//=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool CopyBufferToImage      (Texture *,VkBuffer buf,const VkBufferImageCopy *,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags2);//=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 
-    bool CopyBufferToImage2D    (Texture *tex,VkBuffer buf,const VkBufferImageCopy *bic_list,const int bic_count,  VkPipelineStageFlags dstStage){return CopyBufferToImage(tex,buf,bic_list,   bic_count,  0,1,dstStage);}
-    bool CopyBufferToImage2D    (Texture *tex,VkBuffer buf,const VkBufferImageCopy *bic,                           VkPipelineStageFlags dstStage){return CopyBufferToImage(tex,buf,bic,        1,          0,1,dstStage);}
+    bool CopyBufferToImage2D    (Texture *tex,VkBuffer buf,const VkBufferImageCopy *bic_list,const int bic_count,  VkPipelineStageFlags2 dstStage){return CopyBufferToImage(tex,buf,bic_list,   bic_count,  0,1,dstStage);}
+    bool CopyBufferToImage2D    (Texture *tex,VkBuffer buf,const VkBufferImageCopy *bic,                           VkPipelineStageFlags2 dstStage){return CopyBufferToImage(tex,buf,bic,        1,          0,1,dstStage);}
 
-    bool CopyBufferToImageCube  (Texture *tex,VkBuffer buf,const VkBufferImageCopy *bic_list,const int bic_count,  VkPipelineStageFlags dstStage){return CopyBufferToImage(tex,buf,bic_list,   bic_count,  0,6,dstStage);}
-    bool CopyBufferToImageCube  (Texture *tex,VkBuffer buf,const VkBufferImageCopy *bic,                           VkPipelineStageFlags dstStage){return CopyBufferToImage(tex,buf,bic,        1,          0,6,dstStage);}
+    bool CopyBufferToImageCube  (Texture *tex,VkBuffer buf,const VkBufferImageCopy *bic_list,const int bic_count,  VkPipelineStageFlags2 dstStage){return CopyBufferToImage(tex,buf,bic_list,   bic_count,  0,6,dstStage);}
+    bool CopyBufferToImageCube  (Texture *tex,VkBuffer buf,const VkBufferImageCopy *bic,                           VkPipelineStageFlags2 dstStage){return CopyBufferToImage(tex,buf,bic,        1,          0,6,dstStage);}
 
-    bool CommitTexture2D        (Texture2D *,VkBuffer buf,VkPipelineStageFlags stage);
+    bool CommitTexture2D        (Texture2D *,VkBuffer buf,VkPipelineStageFlags2 stage);
     bool CommitTexture2DMipmaps (Texture2D *,VkBuffer buf,const VkExtent3D &,uint32_t);
 
-    bool CommitTextureCube          (TextureCube *,VkBuffer buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags stage);
+    bool CommitTextureCube          (TextureCube *,VkBuffer buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags2 stage);
     bool CommitTextureCubeMipmaps   (TextureCube *,VkBuffer buf,const VkExtent3D &,uint32_t);
 
     bool SubmitTexture          (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
@@ -101,15 +101,15 @@ public: //Create/Chagne
 
     void Clear(TextureCreateInfo *);
 
-    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,                         const ValueArray<Image2DRegion> &,   VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,                         const RectScope2ui &,               VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2D(Texture2D *,const void *data,const VkDeviceSize size,  const RectScope2ui &,               VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,                         const ValueArray<Image2DRegion> &,   VkPipelineStageFlags2=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,                         const RectScope2ui &,               VkPipelineStageFlags2=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,const void *data,const VkDeviceSize size,  const RectScope2ui &,               VkPipelineStageFlags2=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 
-    bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,                       const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,                       const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags2=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 
     /// 整条 mip 链逐层拷入（源 buffer 布局 = .Tex2D 文件内的 level0..level(n-1) 连续排列）
-    bool ChangeTexture2DArrayMipmaps(Texture2DArray *,DeviceBuffer *buf,const VkExtent3D &extent,const uint32_t top_mipmap_bytes,const uint32_t base_layer,const uint32_t layer_count=1,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2DArray(Texture2DArray *,const void *data,const VkDeviceSize size,const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2DArrayMipmaps(Texture2DArray *,DeviceBuffer *buf,const VkExtent3D &extent,const uint32_t top_mipmap_bytes,const uint32_t base_layer,const uint32_t layer_count=1,VkPipelineStageFlags2=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2DArray(Texture2DArray *,const void *data,const VkDeviceSize size,const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags2=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 
 public:
 

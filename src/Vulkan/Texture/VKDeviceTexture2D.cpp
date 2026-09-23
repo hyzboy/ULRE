@@ -80,7 +80,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
         {
             if(tci->target_mipmaps<=1)      //本身不含mipmaps，但也不要mipmaps
             {
-                CommitTexture2D(tex,tci->buffer->GetBuffer(),VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+                CommitTexture2D(tex,tci->buffer->GetBuffer(),VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
             }
             else //本身有mipmaps数据
             {
@@ -90,7 +90,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
         else
         if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
         {
-            CommitTexture2D(tex,tci->buffer->GetBuffer(),VK_PIPELINE_STAGE_TRANSFER_BIT);
+            CommitTexture2D(tex,tci->buffer->GetBuffer(),VK_PIPELINE_STAGE_2_BLIT_BIT);
             GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tci->target_mipmaps,1);
         }
 
@@ -105,7 +105,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
     return tex;
 }
 
-bool TextureManager::CommitTexture2D(Texture2D *tex,VkBuffer buf,VkPipelineStageFlags destinationStage)
+bool TextureManager::CommitTexture2D(Texture2D *tex,VkBuffer buf,VkPipelineStageFlags2 destinationStage)
 {
     if(!tex||buf==VK_NULL_HANDLE)return(false);
 
@@ -175,10 +175,10 @@ bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,VkBuffer buf,const Vk
         if(can_half_height) height >>= 1;
     }
 
-    return CopyBufferToImage2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    return CopyBufferToImage2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 }
 
-bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf_dev,const ValueArray<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf_dev,const ValueArray<Image2DRegion> &ir_list,VkPipelineStageFlags2 destinationStage)
 {
     if(!tex||!buf_dev||ir_list.GetCount()<=0)
         return(false);
@@ -220,7 +220,7 @@ bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf_dev,const 
     return result;
 }
 
-bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const RectScope2ui &scope,VkPipelineStageFlags2 destinationStage)
 {
     if(!tex||!buf
         ||scope.GetWidth()<=0
@@ -239,7 +239,7 @@ bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const Rect
     return result;
 }
 
-bool TextureManager::ChangeTexture2D(Texture2D *tex,const void *data,const VkDeviceSize size,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,const void *data,const VkDeviceSize size,const RectScope2ui &scope,VkPipelineStageFlags2 destinationStage)
 {
     if(!tex||!data
         ||size<=0

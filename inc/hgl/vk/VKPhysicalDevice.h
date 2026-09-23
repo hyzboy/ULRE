@@ -116,6 +116,7 @@ public:
 
     const uint32_t          GetMaxPushDescriptors()const{return properties14.maxPushDescriptors;}
     const bool              SupportPushDescriptor()const{return features14.pushDescriptor;}
+    const bool              SupportSynchronization2()const{return features13.synchronization2;}
     const bool              SupportDescriptorBuffer()const{return support_descriptor_buffer;}
     const VkPhysicalDeviceDescriptorBufferFeaturesEXT &GetDescriptorBufferFeatures()const{return descriptor_buffer_features;}
     const VkPhysicalDeviceDescriptorBufferPropertiesEXT &GetDescriptorBufferProperties()const{return descriptor_buffer_properties;}

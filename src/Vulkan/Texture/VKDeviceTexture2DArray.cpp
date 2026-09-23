@@ -101,7 +101,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint
     return CreateTexture2DArray(tci);
 }
 
-bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf_dev,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf_dev,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags2 destinationStage)
 {
     if(!tex||!buf_dev
         ||layer_count<=0
@@ -122,7 +122,7 @@ bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf_
     return result;
 }
 
-bool TextureManager::ChangeTexture2DArrayMipmaps(Texture2DArray *tex,DeviceBuffer *buf_dev,const VkExtent3D &extent,const uint32_t top_mipmap_bytes,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2DArrayMipmaps(Texture2DArray *tex,DeviceBuffer *buf_dev,const VkExtent3D &extent,const uint32_t top_mipmap_bytes,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags2 destinationStage)
 {
     if(!tex||!buf_dev
         ||layer_count<=0
@@ -220,13 +220,13 @@ bool TextureManager::GenerateTexture2DArrayMipmaps(Texture2DArray *tex, const ui
     range.baseArrayLayer = layer;
 
     texture_cmd_buf->Begin();
-    //入口屏障：源 buffer 的写入（拷贝以 TRANSFER_BIT 结束，图像停在 TRANSFER_DST 布局）
-    //必须对 blit 读可见——原实现按 SHADER_READ_ONLY 作为 oldLayout，与本路径实际状态不符。
-    texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-                                        VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                        VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                        VK_ACCESS_TRANSFER_WRITE_BIT,
-                                        VK_ACCESS_TRANSFER_READ_BIT,
+    // 入口屏障：源 buffer 的写入（拷贝以 ALL_TRANSFER 结束，图像停在 TRANSFER_DST 布局）
+    // 必须对 blit 读可见
+    texture_cmd_buf->ImageMemoryBarrier2(tex->GetImage(),
+                                        VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                                        VK_PIPELINE_STAGE_2_BLIT_BIT,
+                                        VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                                        VK_ACCESS_2_TRANSFER_READ_BIT,
                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                         range);

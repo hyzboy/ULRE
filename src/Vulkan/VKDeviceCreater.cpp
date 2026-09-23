@@ -217,8 +217,8 @@ namespace
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES:
             {
                 const auto *f = static_cast<const VkPhysicalDeviceVulkan13Features *>(curr);
-                GLogError(u8"    [%u] Vulkan13Features (sType=%d): dynamicRendering=%d, maintenance4=%d",
-                          node_index, int(hdr->sType), int(f->dynamicRendering), int(f->maintenance4));
+                GLogError(u8"    [%u] Vulkan13Features (sType=%d): dynamicRendering=%d, maintenance4=%d, synchronization2=%d",
+                          node_index, int(hdr->sType), int(f->dynamicRendering), int(f->maintenance4), int(f->synchronization2));
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES:
@@ -369,13 +369,21 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     // - dynamicRendering：vkCmdBeginRendering/EndRendering 必须启用（VUID-vkCmdBeginRendering-dynamicRendering-06446）
     // - maintenance4：mesh shader 的 SPIR-V OpExecutionMode LocalSizeId 要求启用
     //   （glslang 16 生成 SPIR-V 1.6 时使用 LocalSizeId 而非 LocalSize；VUID-RuntimeSpirv-LocalSizeId-06434）
+    // - synchronization2：强制硬件要求，vkCmdPipelineBarrier2 / vkQueueSubmit2 核心路径
     {
         const VkPhysicalDeviceVulkan13Features &dev13 = physical_device->GetFeatures13();
+
+        if(!dev13.synchronization2)
+        {
+            GLogError(u8"[VKDeviceCreater] 硬件不支持 synchronization2，创建设备失败！");
+            return nullptr;
+        }
 
         vulkan13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
         vulkan13_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
         vulkan13_features.dynamicRendering = dev13.dynamicRendering;
         vulkan13_features.maintenance4     = dev13.maintenance4;
+        vulkan13_features.synchronization2 = VK_TRUE;
 
         create_info.pNext = &vulkan13_features;
     }
@@ -594,6 +602,27 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
             fp = device_attr->GetDeviceProc<PFN_vkCmdPushDescriptorSet>("vkCmdPushDescriptorSetKHR");
         if(fp)
             device_attr->cmd_push_descriptor_set = *fp;
+    }
+
+    // Synchronization2 函数指针（Vulkan 1.3 core / VK_KHR_synchronization2）
+    {
+        auto fp_barrier = device_attr->GetDeviceProc<PFN_vkCmdPipelineBarrier2>("vkCmdPipelineBarrier2");
+        if(!fp_barrier)
+            fp_barrier = device_attr->GetDeviceProc<PFN_vkCmdPipelineBarrier2>("vkCmdPipelineBarrier2KHR");
+        if(fp_barrier)
+            device_attr->cmd_pipeline_barrier2 = *fp_barrier;
+
+        auto fp_submit = device_attr->GetDeviceProc<PFN_vkQueueSubmit2>("vkQueueSubmit2");
+        if(!fp_submit)
+            fp_submit = device_attr->GetDeviceProc<PFN_vkQueueSubmit2>("vkQueueSubmit2KHR");
+        if(fp_submit)
+            device_attr->queue_submit2 = *fp_submit;
+
+        if(!device_attr->cmd_pipeline_barrier2 || !device_attr->queue_submit2)
+        {
+            GLogError(u8"[VKDeviceCreater] 无法获取 vkCmdPipelineBarrier2 或 vkQueueSubmit2 函数指针！");
+            return nullptr;
+        }
     }
 
     // Descriptor Buffer 函数指针（VK_EXT_descriptor_buffer）

@@ -52,6 +52,10 @@ struct VulkanDevAttr
     // Push Descriptor（Vulkan 1.4 核心 / VK_KHR_push_descriptor）
     PFN_vkCmdPushDescriptorSet          cmd_push_descriptor_set =nullptr;
 
+    // Synchronization2（Vulkan 1.3 核心 / VK_KHR_synchronization2）
+    PFN_vkCmdPipelineBarrier2           cmd_pipeline_barrier2 =nullptr;
+    PFN_vkQueueSubmit2                  queue_submit2 =nullptr;
+
     // Descriptor Buffer（VK_EXT_descriptor_buffer）
     PFN_vkGetDescriptorSetLayoutSizeEXT          get_descriptor_set_layout_size =nullptr;
     PFN_vkGetDescriptorSetLayoutBindingOffsetEXT get_descriptor_set_layout_binding_offset =nullptr;

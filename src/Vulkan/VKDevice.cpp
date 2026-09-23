@@ -395,7 +395,7 @@ DeviceQueue *VulkanDevice::CreateQueue(const ObjectNameBuilder &name, const uint
         fence_list[i] = CreateFence(ObjectNameBuilder(fence_name.c_str()), create_signaled, loc);
     }
 
-    DeviceQueue *result = new DeviceQueue(attr->device, attr->graphics_queue, fence_list, fence_count);
+    DeviceQueue *result = new DeviceQueue(attr, attr->graphics_queue, fence_list, fence_count);
     // Note: We don't track VkQueue because it's retrieved via vkGetDeviceQueue and
     // is implicitly destroyed when VkDevice is destroyed. Multiple DeviceQueue C++ wrappers
     // may share the same VkQueue handle.

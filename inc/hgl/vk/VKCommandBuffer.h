@@ -48,13 +48,53 @@ public:
         return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);
     }
 
+    void PipelineBarrier2(const VkDependencyInfo *dep_info);
+    void PipelineBarrier2(const VkDependencyInfo &dep_info);
+
+    void MemoryBarrier2(VkPipelineStageFlags2 src_stage,
+                        VkPipelineStageFlags2 dst_stage,
+                        VkAccessFlags2 src_access,
+                        VkAccessFlags2 dst_access);
+
+    void BufferMemoryBarrier2(VkBuffer buffer,
+                              VkPipelineStageFlags2 srcStageMask,
+                              VkPipelineStageFlags2 dstStageMask,
+                              VkAccessFlags2 srcAccessMask,
+                              VkAccessFlags2 dstAccessMask,
+                              VkDeviceSize offset=0,
+                              VkDeviceSize size=VK_WHOLE_SIZE);
+
+    void ImageMemoryBarrier2(VkImage image,
+                             VkPipelineStageFlags2 srcStageMask,
+                             VkPipelineStageFlags2 dstStageMask,
+                             VkAccessFlags2 srcAccessMask,
+                             VkAccessFlags2 dstAccessMask,
+                             VkImageLayout oldImageLayout,
+                             VkImageLayout newImageLayout,
+                             const VkImageSubresourceRange &subresourceRange);
+
     void BufferMemoryBarrier(VkBuffer buffer,
-                             VkPipelineStageFlags srcStageMask,
-                             VkPipelineStageFlags dstStageMask,
-                             VkAccessFlags srcAccessMask,
-                             VkAccessFlags dstAccessMask,
+                             VkPipelineStageFlags2 srcStageMask,
+                             VkPipelineStageFlags2 dstStageMask,
+                             VkAccessFlags2 srcAccessMask,
+                             VkAccessFlags2 dstAccessMask,
                              VkDeviceSize offset=0,
-                             VkDeviceSize size=VK_WHOLE_SIZE);
+                             VkDeviceSize size=VK_WHOLE_SIZE)
+    {
+        BufferMemoryBarrier2(buffer, srcStageMask, dstStageMask, srcAccessMask, dstAccessMask, offset, size);
+    }
+
+    void ImageMemoryBarrier(VkImage image,
+                            VkPipelineStageFlags2 srcStageMask,
+                            VkPipelineStageFlags2 dstStageMask,
+                            VkAccessFlags2 srcAccessMask,
+                            VkAccessFlags2 dstAccessMask,
+                            VkImageLayout oldImageLayout,
+                            VkImageLayout newImageLayout,
+                            const VkImageSubresourceRange &subresourceRange)
+    {
+        ImageMemoryBarrier2(image, srcStageMask, dstStageMask, srcAccessMask, dstAccessMask, oldImageLayout, newImageLayout, subresourceRange);
+    }
 
     void FillBuffer(VkBuffer buffer, VkDeviceSize offset, VkDeviceSize size, uint32_t data)
     {
@@ -231,22 +271,10 @@ public:
  */
 class ComputeCmdBuffer:public VulkanCmdBuffer
 {
-    VkBufferMemoryBarrier bufferMemoryBarrier;
-    VkImageMemoryBarrier imageMemoryBarrier;
-
 public:
 
     ComputeCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
     {
-        bufferMemoryBarrier.sType=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-        bufferMemoryBarrier.pNext=nullptr;
-        bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-        imageMemoryBarrier.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageMemoryBarrier.pNext=nullptr;
-        imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     }
 
     bool BindPipeline(ComputePipeline *p)
@@ -288,104 +316,18 @@ public: //dispatch
     {
         vkCmdDispatchIndirect(cmd_buf,buf,offset);
     }
-
-public: //barrier
-
-    template<typename ...ARGS> void PipelineBarrier       (ARGS...args){vkCmdPipelineBarrier  (cmd_buf,args...);}
-
-    // compute 写 storage buffer 后、后续 stage 读之前的内存同步
-    void BufferMemoryBarrier(VkBuffer buffer,
-                             VkPipelineStageFlags srcStageMask,
-                             VkPipelineStageFlags dstStageMask,
-                             VkAccessFlags srcAccessMask,
-                             VkAccessFlags dstAccessMask,
-                             VkDeviceSize offset=0,
-                             VkDeviceSize size=VK_WHOLE_SIZE)
-    {
-        bufferMemoryBarrier.srcAccessMask = srcAccessMask;
-        bufferMemoryBarrier.dstAccessMask = dstAccessMask;
-        bufferMemoryBarrier.buffer        = buffer;
-        bufferMemoryBarrier.offset        = offset;
-        bufferMemoryBarrier.size          = size;
-
-        vkCmdPipelineBarrier(   cmd_buf,
-                                srcStageMask,
-                                dstStageMask,
-                                0,
-                                0, nullptr,
-                                1, &bufferMemoryBarrier,
-                                0, nullptr);
-    }
-
-    // compute 写 storage image / 读 image 的布局与内存同步
-    void ImageMemoryBarrier(VkImage image,
-                            VkPipelineStageFlags srcStageMask,
-                            VkPipelineStageFlags dstStageMask,
-                            VkAccessFlags srcAccessMask,
-                            VkAccessFlags dstAccessMask,
-                            VkImageLayout oldImageLayout,
-                            VkImageLayout newImageLayout,
-                            VkImageSubresourceRange subresourceRange)
-    {
-        imageMemoryBarrier.srcAccessMask = srcAccessMask;
-        imageMemoryBarrier.dstAccessMask = dstAccessMask;
-        imageMemoryBarrier.oldLayout = oldImageLayout;
-        imageMemoryBarrier.newLayout = newImageLayout;
-        imageMemoryBarrier.image = image;
-        imageMemoryBarrier.subresourceRange = subresourceRange;
-
-        vkCmdPipelineBarrier(   cmd_buf,
-                                srcStageMask,
-                                dstStageMask,
-                                0,
-                                0, nullptr,
-                                0, nullptr,
-                                1, &imageMemoryBarrier);
-    }
 };//class ComputeCmdBuffer:public VulkanCmdBuffer
 
 class TextureCmdBuffer:public VulkanCmdBuffer
 {
-    VkImageMemoryBarrier imageMemoryBarrier;
-
 public:
 
     TextureCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
     {
-        imageMemoryBarrier.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageMemoryBarrier.pNext=nullptr;
-        imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     }
 
-    template<typename ...ARGS> void PipelineBarrier     (ARGS...args){vkCmdPipelineBarrier  (cmd_buf,args...);}
     template<typename ...ARGS> void CopyBufferToImage   (ARGS...args){vkCmdCopyBufferToImage(cmd_buf,args...);}
     template<typename ...ARGS> void CopyImageToBuffer   (ARGS...args){vkCmdCopyImageToBuffer(cmd_buf,args...);}
     template<typename ...ARGS> void BlitImage           (ARGS...args){vkCmdBlitImage        (cmd_buf,args...);}
-
-    void ImageMemoryBarrier(VkImage image,
-                            VkPipelineStageFlags srcStageMask,
-                            VkPipelineStageFlags dstStageMask,
-                            VkAccessFlags srcAccessMask,
-                            VkAccessFlags dstAccessMask,
-                            VkImageLayout oldImageLayout,
-                            VkImageLayout newImageLayout,
-                            VkImageSubresourceRange subresourceRange)
-    {
-        imageMemoryBarrier.srcAccessMask = srcAccessMask;
-        imageMemoryBarrier.dstAccessMask = dstAccessMask;
-        imageMemoryBarrier.oldLayout = oldImageLayout;
-        imageMemoryBarrier.newLayout = newImageLayout;
-        imageMemoryBarrier.image = image;
-        imageMemoryBarrier.subresourceRange = subresourceRange;
-
-        vkCmdPipelineBarrier(   cmd_buf,
-                                srcStageMask,
-                                dstStageMask,
-                                0,
-                                0, nullptr,
-                                0, nullptr,
-                                1, &imageMemoryBarrier);
-    }
 };//class TextureCmdBuffer:public VulkanCmdBuffer
 }//namespace hgl::graph

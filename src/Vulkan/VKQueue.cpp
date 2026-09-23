@@ -1,20 +1,18 @@
-﻿#include<hgl/vk/VKQueue.h>
+#include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKDeviceAttribute.h>
+#include<hgl/type/Smart.h>
 #include<hgl/log/Log.h>
 #include<cstdint>
-#include<chrono>
 
 namespace hgl::graph{
-namespace
-{
-    const VkPipelineStageFlags pipe_stage_flags=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-}//namespace
 
-DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
+DeviceQueue::DeviceQueue(const VulkanDevAttr *attr,VkQueue q,Fence **fl,const uint32_t fc)
 {
-    device=dev;
+    dev_attr=attr;
+    device=attr?attr->device:VK_NULL_HANDLE;
     queue=q;
 
     current_fence=0;
@@ -22,37 +20,19 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
     has_last_submit=false;
     fence_list=fl;
     fence_count=fc;
-
-    submit_info.pWaitDstStageMask       = &pipe_stage_flags;
 }
 
 DeviceQueue::~DeviceQueue()
 {
     LogDebug("DeviceQueue::~DeviceQueue() - fence_count=%u", fence_count);
-    // Note: VkQueue is retrieved via vkGetDeviceQueue and is implicitly destroyed
-    // when VkDevice is destroyed. Multiple DeviceQueue instances may share the same
-    // VkQueue handle, so we should NOT untrack it here.
-    // The VulkanDevice will handle cleanup of the actual queue.
-
     SAFE_CLEAR_OBJECT_ARRAY_OBJECT(fence_list,fence_count)
     LogDebug("DeviceQueue::~DeviceQueue() - Complete");
 }
 
 bool DeviceQueue::WaitQueue()
 {
-    auto start = std::chrono::high_resolution_clock::now();
-//    LogInfo("[FENCE] WaitQueue START queue=%p", (void*)queue);
-
     VkResult result=vkQueueWaitIdle(queue);
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-//    LogInfo("[FENCE] WaitQueue END result=%d time=%lldms", static_cast<int>(result), duration);
-
-    if(result!=VK_SUCCESS)
-        return(false);
-
-    return(true);
+    return(result==VK_SUCCESS);
 }
 
 bool DeviceQueue::WaitFence(const bool wait_all,uint64_t time_out)
@@ -66,14 +46,7 @@ bool DeviceQueue::WaitLastSubmitFence(const bool wait_all,uint64_t time_out)
         return(true);
 
     VkFence fence=*fence_list[last_submitted_fence];
-    auto start = std::chrono::high_resolution_clock::now();
-//    LogInfo("[FENCE] WaitLastSubmit START fence=%p last_fence=%u", (void*)fence, last_submitted_fence);
-
     VkResult result=vkWaitForFences(device,1,&fence,wait_all,time_out);
-
-    auto after_wait = std::chrono::high_resolution_clock::now();
-    auto wait_duration = std::chrono::duration_cast<std::chrono::milliseconds>(after_wait - start).count();
-//    LogInfo("[FENCE] WaitLastSubmit END result=%d time=%lldms", static_cast<int>(result), wait_duration);
 
     if(result!=VK_SUCCESS)
     {
@@ -86,60 +59,76 @@ bool DeviceQueue::WaitLastSubmitFence(const bool wait_all,uint64_t time_out)
 
 bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,Semaphore *wait_sem,Semaphore *complete_sem)
 {
-    VkSemaphore ws;
-    VkSemaphore cs;
+    if(!cmd_buf||cb_count==0)
+        return(false);
 
+    VkSemaphoreSubmitInfo wait_sem_info{};
     if(wait_sem)
     {
-        ws=*wait_sem;
-
-        submit_info.waitSemaphoreCount  =1;
-        submit_info.pWaitSemaphores     =&ws;
-    }
-    else
-    {
-        submit_info.waitSemaphoreCount  =0;
-        submit_info.pWaitSemaphores     =nullptr;
+        wait_sem_info.sType     =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        wait_sem_info.pNext     =nullptr;
+        wait_sem_info.semaphore =*wait_sem;
+        wait_sem_info.value     =0;
+        wait_sem_info.stageMask =VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        wait_sem_info.deviceIndex=0;
     }
 
-    // wait 信号的意思是等待这个Image有效
-    // signal 则是这个queue已执行完成，和fence功能类似。
-    // 所以Wait信号一般是上一次的signal信号
-
+    VkSemaphoreSubmitInfo signal_sem_info{};
     if(complete_sem)
     {
-        cs=*complete_sem;
-
-        submit_info.signalSemaphoreCount=1;
-        submit_info.pSignalSemaphores   =&cs;
+        signal_sem_info.sType     =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        signal_sem_info.pNext     =nullptr;
+        signal_sem_info.semaphore =*complete_sem;
+        signal_sem_info.value     =0;
+        signal_sem_info.stageMask =VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        signal_sem_info.deviceIndex=0;
     }
-    else
+
+    constexpr uint32_t STACK_CB_COUNT = 8;
+    VkCommandBufferSubmitInfo stack_cb_infos[STACK_CB_COUNT];
+    AutoDeleteArray<VkCommandBufferSubmitInfo> heap_cb_infos;
+    VkCommandBufferSubmitInfo *cb_infos = stack_cb_infos;
+
+    if(cb_count > STACK_CB_COUNT)
     {
-        submit_info.signalSemaphoreCount=0;
-        submit_info.pSignalSemaphores   =nullptr;
+        cb_infos = heap_cb_infos.alloc(cb_count);
     }
 
-    submit_info.commandBufferCount  =cb_count;
-    submit_info.pCommandBuffers     =cmd_buf;
+    for(uint32_t i=0;i<cb_count;i++)
+    {
+        cb_infos[i].sType           =VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        cb_infos[i].pNext           =nullptr;
+        cb_infos[i].commandBuffer   =cmd_buf[i];
+        cb_infos[i].deviceMask      =0;
+    }
+
+    VkSubmitInfo2 submit_info2{};
+    submit_info2.sType                      =VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    submit_info2.pNext                      =nullptr;
+    submit_info2.flags                      =0;
+    submit_info2.waitSemaphoreInfoCount     =wait_sem?1:0;
+    submit_info2.pWaitSemaphoreInfos        =wait_sem?&wait_sem_info:nullptr;
+    submit_info2.commandBufferInfoCount     =cb_count;
+    submit_info2.pCommandBufferInfos        =cb_infos;
+    submit_info2.signalSemaphoreInfoCount   =complete_sem?1:0;
+    submit_info2.pSignalSemaphoreInfos      =complete_sem?&signal_sem_info:nullptr;
 
     VkFence fence=*fence_list[current_fence];
-    auto submit_start = std::chrono::high_resolution_clock::now();
-//    LogInfo("[FENCE] Submit START fence=%p current_fence=%u", (void*)fence, current_fence);
 
     if (fence != VK_NULL_HANDLE)
     {
         VkResult reset_res = vkResetFences(device, 1, &fence);
-//        LogInfo("[FENCE] Submit reset fence result=%d", static_cast<int>(reset_res));
         if (reset_res != VK_SUCCESS)
         {
-            GLogWarning("[FENCE] Submit reset fence FAILED res=%d fence=%p", static_cast<int>(reset_res), (void *)fence);
+            LogWarning("[FENCE] Submit reset fence FAILED res=%d fence=%p", static_cast<int>(reset_res), (void *)fence);
         }
     }
 
-    VkResult result=vkQueueSubmit(queue,1,&submit_info,fence);
-    auto submit_end = std::chrono::high_resolution_clock::now();
-    auto submit_duration = std::chrono::duration_cast<std::chrono::milliseconds>(submit_end - submit_start).count();
-//    LogInfo("[FENCE] Submit END result=%d time=%lldms", static_cast<int>(result), submit_duration);
+    VkResult result;
+    if(dev_attr&&dev_attr->queue_submit2)
+        result=dev_attr->queue_submit2(queue,1,&submit_info2,fence);
+    else
+        result=vkQueueSubmit2(queue,1,&submit_info2,fence);
 
     if(result==VK_SUCCESS)
     {
@@ -149,8 +138,10 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
         if(++current_fence==fence_count)
             current_fence=0;
     }
-
-    //不在这里立即等待fence完成。等待操作放在下一帧开始前，确保上一帧完成后再复用该fence。
+    else
+    {
+        LogError("DeviceQueue::Submit vkQueueSubmit2 failed with result %d", static_cast<int>(result));
+    }
 
     return(result==VK_SUCCESS);
 }

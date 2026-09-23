@@ -63,19 +63,19 @@ TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
         texture_cmd_buf->Begin();
         if(tci->target_mipmaps==tci->origin_mipmaps)
         {
-            if(tci->target_mipmaps<=1)      //???????mipmaps????????mipmaps
+            if(tci->target_mipmaps<=1)      //本身不含mipmaps，但也不要mipmaps
             {
-                CommitTextureCube(tex,tci->buffer->GetBuffer(),tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+                CommitTextureCube(tex,tci->buffer->GetBuffer(),tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
             }
-            else //??????mipmaps????
+            else //本身有mipmaps数据
             {
                 CommitTextureCubeMipmaps(tex,tci->buffer->GetBuffer(),tci->extent,tci->mipmap_zero_total_bytes);
             }
         }
         else
-            if(tci->origin_mipmaps<=1)          //???????mipmaps????,?????mipmaps
+            if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
             {
-                CommitTextureCube(tex,tci->buffer->GetBuffer(),tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_TRANSFER_BIT);
+                CommitTextureCube(tex,tci->buffer->GetBuffer(),tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_2_BLIT_BIT);
                 GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,6);
             }
         texture_cmd_buf->End();
@@ -89,7 +89,7 @@ TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
     return tex;
 }
 
-bool TextureManager::CommitTextureCube(TextureCube *tex,VkBuffer buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
+bool TextureManager::CommitTextureCube(TextureCube *tex,VkBuffer buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags2 destinationStage)
 {
     if(!tex||buf==VK_NULL_HANDLE||!mipmaps_zero_bytes)return(false);
 
@@ -145,7 +145,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,VkBuffer buf,cons
         if(height>1){height>>=1;total_bytes>>=1;}
     }
 
-    return CopyBufferToImageCube(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    return CopyBufferToImageCube(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 }
 
 //bool VulkanDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const ValueArray<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)

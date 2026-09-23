@@ -38,11 +38,11 @@ void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,
         blit.dstOffsets[1] = {width,height,1};
         blit.dstSubresource.mipLevel = i;
 
-        texture_cmd_buf->ImageMemoryBarrier(image,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_ACCESS_TRANSFER_READ_BIT,
+        texture_cmd_buf->ImageMemoryBarrier2(image,
+            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_2_BLIT_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_ACCESS_2_TRANSFER_READ_BIT,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             subresourceRange);
@@ -53,11 +53,11 @@ void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,
             1, &blit,
             VK_FILTER_LINEAR);
 
-        texture_cmd_buf->ImageMemoryBarrier(image,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_TRANSFER_READ_BIT,
-            VK_ACCESS_SHADER_READ_BIT,
+        texture_cmd_buf->ImageMemoryBarrier2(image,
+            VK_PIPELINE_STAGE_2_BLIT_BIT,
+            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+            VK_ACCESS_2_TRANSFER_READ_BIT,
+            VK_ACCESS_2_SHADER_READ_BIT,
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             subresourceRange);
@@ -65,11 +65,11 @@ void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,
 
     subresourceRange.baseMipLevel = mipLevels - 1;
 
-    texture_cmd_buf->ImageMemoryBarrier(image,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_ACCESS_SHADER_READ_BIT,
+    texture_cmd_buf->ImageMemoryBarrier2(image,
+        VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        VK_ACCESS_2_SHADER_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         subresourceRange);
