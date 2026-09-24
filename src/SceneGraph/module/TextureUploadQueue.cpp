@@ -242,30 +242,39 @@ namespace hgl::graph
         if (image == VK_NULL_HANDLE)
             return false;
 
-        const void *pixels = tci->pixels ? tci->pixels : (tci->buffer ? tci->buffer->Map() : nullptr);
         const VkDeviceSize total_bytes = tci->total_bytes > 0 ? tci->total_bytes : (tci->buffer ? tci->buffer->GetSize() : 0);
-        if (!pixels || total_bytes == 0)
+        if (total_bytes == 0)
         {
-            LogError(u8"[TextureUploadQueue] GpuTransferDma failed: no pixel data");
+            LogError(u8"[TextureUploadQueue] GpuTransferDma failed: zero total bytes");
             return false;
         }
 
         task->staging_bytes = total_bytes;
-        task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
-        if (!task->staging_buffer)
+
+        if (tci->buffer)
         {
-            if (tci->buffer) tci->buffer->Unmap();
+            // 零拷贝直通：直接接管 tci->buffer 作为 Transfer 源缓冲，消除额外的 CPU 内存分配与 memcpy
+            task->staging_buffer = tci->buffer;
+            tci->buffer = nullptr;
+        }
+        else if (tci->pixels)
+        {
+            task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
+            if (!task->staging_buffer)
+                return false;
+
+            void *dst = task->staging_buffer->Map();
+            if (dst)
+            {
+                memcpy(dst, tci->pixels, total_bytes);
+                task->staging_buffer->Unmap();
+            }
+        }
+        else
+        {
+            LogError(u8"[TextureUploadQueue] GpuTransferDma failed: no pixel data or buffer");
             return false;
         }
-
-        void *dst = task->staging_buffer->Map();
-        if (dst)
-        {
-            memcpy(dst, pixels, total_bytes);
-            task->staging_buffer->Unmap();
-        }
-        if (tci->buffer)
-            tci->buffer->Unmap();
 
         current_staging_bytes_ += task->staging_bytes;
 
@@ -396,30 +405,39 @@ namespace hgl::graph
         if (image == VK_NULL_HANDLE)
             return false;
 
-        const void *pixels = tci->pixels ? tci->pixels : (tci->buffer ? tci->buffer->Map() : nullptr);
         const VkDeviceSize total_bytes = tci->total_bytes > 0 ? tci->total_bytes : (tci->buffer ? tci->buffer->GetSize() : 0);
-        if (!pixels || total_bytes == 0)
+        if (total_bytes == 0)
         {
-            LogError(u8"[TextureUploadQueue] GpuGraphicsDma failed: no pixel data");
+            LogError(u8"[TextureUploadQueue] GpuGraphicsDma failed: zero total bytes");
             return false;
         }
 
         task->staging_bytes = total_bytes;
-        task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
-        if (!task->staging_buffer)
+
+        if (tci->buffer)
         {
-            if (tci->buffer) tci->buffer->Unmap();
+            // 零拷贝直通：直接接管 tci->buffer 作为 Transfer 源缓冲，消除额外的 CPU 内存分配与 memcpy
+            task->staging_buffer = tci->buffer;
+            tci->buffer = nullptr;
+        }
+        else if (tci->pixels)
+        {
+            task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
+            if (!task->staging_buffer)
+                return false;
+
+            void *dst = task->staging_buffer->Map();
+            if (dst)
+            {
+                memcpy(dst, tci->pixels, total_bytes);
+                task->staging_buffer->Unmap();
+            }
+        }
+        else
+        {
+            LogError(u8"[TextureUploadQueue] GpuGraphicsDma failed: no pixel data or buffer");
             return false;
         }
-
-        void *dst = task->staging_buffer->Map();
-        if (dst)
-        {
-            memcpy(dst, pixels, total_bytes);
-            task->staging_buffer->Unmap();
-        }
-        if (tci->buffer)
-            tci->buffer->Unmap();
 
         current_staging_bytes_ += task->staging_bytes;
 

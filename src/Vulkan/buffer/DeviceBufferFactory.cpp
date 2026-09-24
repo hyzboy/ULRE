@@ -94,7 +94,10 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
 {
     if(size<=0)return(nullptr);
 
-    policy = ResolveBufferPolicy(this, policy);
+    if((buf_usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) && !(buf_usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT))
+        policy = BufferAllocPolicy::CPUVisible;
+    else
+        policy = ResolveBufferPolicy(this, policy);
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
@@ -166,7 +169,10 @@ DeviceBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
 {
     if(size<=0)return(nullptr);
 
-    policy = ResolveBufferPolicy(this, policy);
+    if((buf_usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) && !(buf_usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT))
+        policy = BufferAllocPolicy::CPUVisible;
+    else
+        policy = ResolveBufferPolicy(this, policy);
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {

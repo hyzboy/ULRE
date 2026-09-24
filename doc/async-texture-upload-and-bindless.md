@@ -224,6 +224,16 @@ if (state == UploadTaskState::Queued)
 | `UploadPriority::Normal` | 场景通用物件贴图、次级法线图 | 顺序调度，受 Staging 显存背压控制 |
 | `UploadPriority::Low` | 远景装饰贴图、后台环境图预热 | 低频调度，在飞 Staging 显存接近预算时主动推迟 |
 
+### 5.4 UMA（集显/APU）与零拷贝直接接管优化
+
+针对 Intel Core Ultra / AMD Ryzen APU / Apple Silicon 等统一内存架构（UMA），引擎执行了特定的数据链路穿透优化：
+1. **磁盘流直通零拷贝接管**：
+   从文件加载（`LoadTexture2DAsync`）时，`VKTextureLoader` 已经通过流式文件读取将像素直写入 `tci->buffer`（CPU 映射的 `DeviceBuffer`）。上传调度器通过所有权直接接管该缓冲作为 DMA 源，**消除了额外的 StagingBuffer 分配与 CPU 端的冗余 `memcpy`**（CPU 内存复制次数降为 0）。
+2. **纯传输缓冲 CPUVisible / Host-Cached 属性映射**：
+   对于所有具有 `VK_BUFFER_USAGE_TRANSFER_SRC_BIT` 且无 DST 属性的传输源缓冲，底层内存分配器自动解析为 `BufferAllocPolicy::CPUVisible`，集显环境下优先匹配 `HOST_CACHED` 属性，充分利用 CPU 的 L1/L2/L3 缓存提升文件 IO 吞吐。
+3. **GPU 硬件重排替代 CPU Swizzle**：
+   虽然 CPU 与 GPU 共享物理内存，但 GPU 纹理采样依赖二维瓦片排布（Optimal Tiling）。通过 GPU 硬件的 Transfer Copy Engine 进行转排，不仅转换速度比 CPU 快数十倍，而且将瓦片化期间的 CPU 占用率降至 0。
+
 ---
 
 ## 6. 验证与测试用例
