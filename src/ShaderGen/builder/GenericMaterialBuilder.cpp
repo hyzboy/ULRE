@@ -32,6 +32,12 @@
 #include <vector>
 #include <algorithm>
 
+#include <hgl/filesystem/FileSystem.h>
+#include <hgl/io/LoadDataArray.h>
+#include <hgl/thread/ThreadMutex.h>
+#include <hgl/type/UnorderedMap.h>
+#include <hgl/utf.h>
+
 namespace hgl::graph::mtl
 {
     static AnsiString s_last_build_generic_material_error;
@@ -608,6 +614,158 @@ namespace hgl::graph::mtl
         }
 
         // ═══════════════════════════════════════════════════════════════════
+        // ShaderLibrary 模块依赖内容哈希
+        //
+        // 最终文档（plan.ms / plan.fs）对 ShaderLibrary 里的 GLSL 模块只保留
+        // `#include "path"` 指令，真正的展开发生在编译期（GLSLCompiler 按
+        // -I <ShaderLibrary> 与 -I <ShaderLibrary>/common 搜索并拼接源文件）。
+        // 因此若只把文档正文纳入哈希，修改被 include 的模块 .glsl 不会改变
+        // stage key，磁盘上旧的 SPV 产物会被永久命中复用（曾导致长时间静默
+        // 运行陈旧阴影代码）。这里按同样的 include 搜索顺序递归遍历依赖闭包，
+        // 把每个模块文件的正文并入哈希，使模块内容变化必然产生新的 stage key。
+        // ═══════════════════════════════════════════════════════════════════
+
+        /// 以「长度前缀 + 原始字节」方式并入哈希，保证拼接边界可区分
+        void HashShaderLibraryText(
+            hgl::hash::FNV1aHasher64 &hasher, const char *text, const size_t length)
+        {
+            hasher << static_cast<uint64>(length);
+
+            if (text && length > 0)
+                hasher.AppendBytes(text, length);
+        }
+
+        /// 按 GLSLCompiler 的 include 搜索顺序解析模块文件的物理路径
+        OSString ResolveShaderLibraryModulePath(const AnsiString &include_path)
+        {
+            if (include_path.IsEmpty())
+                return OSString();
+
+            const std::string library_root = GetShaderLibraryPath();
+            if (library_root.empty())
+                return OSString();
+
+            std::string relative(include_path.c_str());
+            for (char &ch : relative)
+                if (ch == '\\')
+                    ch = '/';
+
+            const OSString root_path = ToOSString(library_root.c_str());
+            const OSString direct_path =
+                root_path + OS_TEXT("/") + ToOSString(relative.c_str());
+            if (filesystem::FileExist(direct_path))
+                return direct_path;
+
+            const OSString common_path =
+                root_path + OS_TEXT("/common/") + ToOSString(relative.c_str());
+            if (filesystem::FileExist(common_path))
+                return common_path;
+
+            return OSString();
+        }
+
+        /// 递归收集文档里的 `#include "..."`，把闭包内每个模块的正文并入哈希
+        void AccumulateGLSLIncludeClosure(
+            hgl::hash::FNV1aHasher64 &hasher,
+            const char *text, const size_t length, const int depth)
+        {
+            if (!text || length == 0 || depth > 24)
+                return;
+
+            size_t line_begin = 0;
+
+            while (line_begin < length)
+            {
+                size_t line_end = line_begin;
+                while (line_end < length && text[line_end] != '\n')
+                    ++line_end;
+
+                size_t cursor = line_begin;
+                while (cursor < line_end
+                    && (text[cursor] == ' ' || text[cursor] == '\t'))
+                    ++cursor;
+
+                if (line_end - cursor > 9
+                 && std::strncmp(text + cursor, "#include", 8) == 0)
+                {
+                    cursor += 8;
+
+                    while (cursor < line_end
+                        && (text[cursor] == ' ' || text[cursor] == '\t'))
+                        ++cursor;
+
+                    if (cursor < line_end && text[cursor] == '"')
+                    {
+                        const size_t name_begin = ++cursor;
+                        while (cursor < line_end && text[cursor] != '"')
+                            ++cursor;
+
+                        const AnsiString include_path(
+                            text + name_begin,
+                            static_cast<int>(cursor - name_begin));
+
+                        HashShaderLibraryText(
+                            hasher,
+                            include_path.c_str(),
+                            static_cast<size_t>(include_path.Length()));
+
+                        const OSString module_path =
+                            ResolveShaderLibraryModulePath(include_path);
+
+                        if (module_path.IsEmpty())
+                        {
+                            HashShaderLibraryText(hasher, "<module-missing>", 16);
+                        }
+                        else
+                        {
+                            const auto module_bytes =
+                                hgl::LoadFileToDataArray<uint8>(module_path);
+                            const char *module_text =
+                                reinterpret_cast<const char *>(module_bytes.data());
+
+                            HashShaderLibraryText(hasher, module_text, module_bytes.size());
+                            AccumulateGLSLIncludeClosure(
+                                hasher, module_text, module_bytes.size(), depth + 1);
+                        }
+                    }
+                }
+
+                line_begin = line_end + 1;
+            }
+        }
+
+        /// 计算一份最终文档的 ShaderLibrary 依赖闭包哈希（同一文档只算一次）
+        uint64 ComputeShaderLibraryDependencyHash(const char *document, const size_t length)
+        {
+            if (!document || length == 0)
+                return 0;
+
+            static hgl::ThreadMutex dependency_hash_mutex;
+            static hgl::UnorderedMap<uint64, uint64> dependency_hash_cache;
+
+            const uint64 document_hash = HashFinalShaderSource(document, length);
+
+            {
+                hgl::ThreadMutexLock lock(&dependency_hash_mutex);
+
+                uint64 cached_hash = 0;
+                if (dependency_hash_cache.Get(document_hash, cached_hash))
+                    return cached_hash;
+            }
+
+            hgl::hash::FNV1aHasher64 hasher;
+            AccumulateGLSLIncludeClosure(hasher, document, length, 0);
+            const uint64 dependency_hash = hasher;
+
+            {
+                hgl::ThreadMutexLock lock(&dependency_hash_mutex);
+                dependency_hash_cache.Add(document_hash, dependency_hash);
+            }
+
+            return dependency_hash;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
         // Phase 5 — compiler input / link spec
         // (originally MaterialDefinitionRegistry.cpp:533-596)
         // ═══════════════════════════════════════════════════════════════════
@@ -655,18 +813,29 @@ namespace hgl::graph::mtl
             const uint64 fragment_interface_hash =
                 HashFinalShaderSource(plan.fs.data(), plan.fs.size());
 
+            const uint64 mesh_shader_library_hash =
+                ComputeShaderLibraryDependencyHash(plan.ms.data(), plan.ms.size());
+            const uint64 fragment_shader_library_hash =
+                ComputeShaderLibraryDependencyHash(plan.fs.data(), plan.fs.size());
+
+            hgl::hash::FNV1aHasher64 mesh_module_graph_hasher;
+            mesh_module_graph_hasher << plan.resolved_provider_graph_hash
+                                     << mesh_shader_library_hash;
+            const uint64 mesh_module_graph_hash = mesh_module_graph_hasher;
+
             // mesh shader 材质：顶点阶段走 mesh stage
             plan.program_link.mesh_stage = BuildFinalShaderStageKey(
                 ShaderStage::Mesh,
                 plan.ms.data(),
                 plan.ms.size(),
-                plan.resolved_provider_graph_hash,
+                mesh_module_graph_hash,
                 mesh_interface_hash,
                 resource_contract_hash,
                 compiler_hash);
             hgl::hash::FNV1aHasher64 fragment_module_graph_hasher;
             fragment_module_graph_hasher << plan.manifest.stable_hash
-                                         << plan.resolved_template_hash;
+                                         << plan.resolved_template_hash
+                                         << fragment_shader_library_hash;
             const uint64 fragment_module_graph_hash =
                 fragment_module_graph_hasher;
             plan.program_link.fragment_stage = BuildFinalShaderStageKey(

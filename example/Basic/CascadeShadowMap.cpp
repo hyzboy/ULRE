@@ -166,6 +166,11 @@ private:
     };
     MovableTrack movable_tracks[kMovableCount];
 
+    // 调试开关：屏蔽 CSM 0（动态近景层），用于对比静态层 CSM 1..3 的覆盖效果
+    // 按住 F1 屏蔽 CSM 0，松开恢复
+    bool debug_mask_cascade0 = false;
+    double csm_diag_next_time = 0.0;
+
     // 性能与条带统计
     double elapsed_time = 0.0;
     double stats_timer = 0.0;
@@ -647,9 +652,75 @@ private:
         CascadeUpdateResult updates[kMaxShadowCascades];
         csm_controller.Update(main_cam, aspect, light_dir_math, *shadow_info, updates);
 
+        // 调试：屏蔽 CSM 0 时，让着色器把第 0 级视为未绑定（动态层恒为受光）
+        if (debug_mask_cascade0)
+        {
+            shadow_info->cascades[0].shadow_tex = Vector4u(0);
+            updates[0].need_full_update = false;
+            updates[0].ClearDirtyRects();
+        }
+
         // 确保非零以激活 shader 级联分支
-        shadow_info->shadow_tex.x = cascade_handles[0];
+        shadow_info->shadow_tex.x = debug_mask_cascade0 ? cascade_handles[1] : cascade_handles[0];
         environment_system->MarkShadowDirty();
+
+        // ==== TEMP DIAG: 核对送往 GPU 的 ShadowInfo 与近景探针的选级结果 ====
+        if (elapsed_time >= csm_diag_next_time)
+        {
+            csm_diag_next_time = elapsed_time + 2.0;
+
+            GLogInfo(u8"[CSMDIAG] mask_c0=%d csm_params=(%u,%u,%u,%u) handles=(%u,%u,%u,%u) shadow_tex.x=%u",
+                     debug_mask_cascade0 ? 1 : 0,
+                     shadow_info->csm_params.x, shadow_info->csm_params.y,
+                     shadow_info->csm_params.z, shadow_info->csm_params.w,
+                     cascade_handles[0], cascade_handles[1], cascade_handles[2], cascade_handles[3],
+                     shadow_info->shadow_tex.x);
+
+            const math::Vector3f cam_pos(main_cam.pos.x, main_cam.pos.y, main_cam.pos.z);
+            const math::Vector3f cam_fwd = main_cam.viewDirection;
+
+            for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
+            {
+                const auto &casc = shadow_info->cascades[c];
+                GLogInfo(u8"[CSMDIAG]   C%u tex.x=%u split=[%.2f,%.2f] blend=%.3f map=%.0f snap_origin=(%.2f,%.2f) texel=%.4f cache_off=(%u,%u)",
+                         c, casc.shadow_tex.x,
+                         casc.cascade_params.x, casc.cascade_params.y, casc.cascade_params.z,
+                         casc.shadow_map_size.x,
+                         casc.cache_origin.x, casc.cache_origin.y, casc.cache_origin.z,
+                         casc.cache_offset.x, casc.cache_offset.y);
+            }
+
+            const float probe_d[6] = { 3.0f, 10.0f, 20.0f, 30.0f, 45.0f, 70.0f };
+            const float fwd_len = (Length(cam_fwd) > 1.0e-6f) ? Length(cam_fwd) : 1.0f;
+
+            for (uint32_t i = 0; i < 6; ++i)
+            {
+                // 沿相机前向投射到地面 (z = 0)
+                const float along = probe_d[i];
+                math::Vector3f probe = cam_pos + cam_fwd * along;
+                probe.z = 0.0f;
+
+                const float vd = Dot(probe - cam_pos, cam_fwd) / fwd_len;
+
+                float z[4], u[4], v[4];
+                int   ok[4];
+                for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
+                {
+                    const math::Vector4f lc = shadow_info->cascades[c].shadow_vp * math::Vector4f(probe, 1.0f);
+                    ok[c] = (lc.w > 1.0e-6f) ? 1 : 0;
+                    z[c] = ok[c] ? (lc.z / lc.w) : 0.0f;
+                    u[c] = ok[c] ? (0.5f + 0.5f * lc.x / lc.w) : 0.0f;
+                    v[c] = ok[c] ? (0.5f + 0.5f * lc.y / lc.w) : 0.0f;
+                }
+
+                GLogInfo(u8"[CSMDIAG]   probe d=%.1f vd=%.2f | C0 %s z=%.4f uv=(%.3f,%.3f) | C1 %s z=%.4f uv=(%.3f,%.3f) | C2 %s z=%.4f uv=(%.3f,%.3f) | C3 %s z=%.4f uv=(%.3f,%.3f)",
+                         along, vd,
+                         ok[0] ? "in " : "out", z[0], u[0], v[0],
+                         ok[1] ? "in " : "out", z[1], u[1], v[1],
+                         ok[2] ? "in " : "out", z[2], u[2], v[2],
+                         ok[3] ? "in " : "out", z[3], u[3], v[3]);
+            }
+        }
 
         // 避免地面自身在阴影贴图中写入深度导致阴影自遮挡
         if (ground_prim)
@@ -666,6 +737,9 @@ private:
             auto *rt = cascade_rts[c].get();
             if (!rt)
                 continue;
+
+            if (c == 0 && debug_mask_cascade0)
+                continue; // 调试：跳过 CSM 0 渲染
 
             if (c == 0 || res.need_full_update)
             {
@@ -747,12 +821,21 @@ public:
 
         UpdateMovableAnimation(static_cast<float>(elapsed_time));
 
+        // 调试：按住 F1 屏蔽 CSM 0（仅静态层 CSM 1..3 生效），松开恢复
+        if (ecs_context)
+        {
+            auto input_system = ecs_context->GetSystem<InputSystem>();
+            if (input_system)
+                debug_mask_cascade0 = input_system->IsKeyDown(io::KeyboardButton::F1);
+        }
+
         RenderCSM();
 
         if (stats_timer >= 1.0)
         {
             const bool stationary_c13 = (last_c1_strips == 0 && last_c2_strips == 0 && last_c3_strips == 0);
-            GLogInfo(u8"[CSM Rolling Cache Stats] Cam=(%.1f, %.1f, %.1f) | C0=Full | C1=%u strips | C2=%u strips | C3=%u strips | Mid/Far Status: %s",
+            GLogInfo(u8"[CSM Rolling Cache Stats] C0=%s | Cam=(%.1f, %.1f, %.1f) | C1=%u strips | C2=%u strips | C3=%u strips | Mid/Far Status: %s",
+                     debug_mask_cascade0 ? u8"MASKED" : u8"Full",
                      main_camera->position.x, main_camera->position.y, main_camera->position.z,
                      last_c1_strips, last_c2_strips, last_c3_strips,
                      stationary_c13 ? u8"100% Cached (ZERO DrawCalls!)" : u8"Incremental Rolling Updating");
