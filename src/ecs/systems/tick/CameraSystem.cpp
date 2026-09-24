@@ -275,6 +275,20 @@ namespace hgl::ecs
         EnsureCameraResources();
     }
 
+    void CameraSystem::RestoreMainCamera()
+    {
+        override_camera = nullptr;
+
+        auto cameras = CollectCameras();
+        CameraComponent* main_cam = SelectMainCamera(cameras);
+        if (main_cam && main_cam->camera_info)
+        {
+            if (this->camera_info)
+                *this->camera_info = *main_cam->camera_info;
+            CommitCameraUBO();
+        }
+    }
+
     void CameraSystem::ForceRefreshSelectedCamera()
     {
         auto cameras = CollectCameras();
@@ -566,11 +580,12 @@ namespace hgl::ecs
                 camera->camera_info->view_line          = camera->forward;
                 camera->camera_info->world_up           = camera->world_up;
                 camera->camera_info->camera_facing_right = math::Vector3f(camera->camera_info->view[0][0], camera->camera_info->view[1][0], camera->camera_info->view[2][0]);
-                camera->camera_info->camera_facing_up   = math::Vector3f(camera->camera_info->view[0][1], camera->camera_info->view[0][1], camera->camera_info->view[2][1]);
+                camera->camera_info->camera_facing_up   = math::Vector3f(camera->camera_info->view[0][1], camera->camera_info->view[1][1], camera->camera_info->view[2][1]);
                 camera->camera_info->znear              = camera->near_plane;
                 camera->camera_info->zfar               = camera->far_plane;
                 camera->camera_info->use_reversed_z     = 1;
                 camera->camera_info->_pad_ci0           = 0.0f;
+                camera->camera_info->camera_world_pos   = camera->position;
             }
             else if (camera->viewport_info && camera->camera_data)
             {

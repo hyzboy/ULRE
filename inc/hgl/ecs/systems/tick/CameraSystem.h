@@ -122,6 +122,9 @@ namespace hgl
             void SetOverrideCamera(CameraComponent* camera) { override_camera = camera; }
             CameraComponent* GetOverrideCamera() const { return override_camera; }
 
+            /// pass 覆盖解除后恢复主相机共享数据（不重算矩阵、不消耗输入）
+            void RestoreMainCamera();
+
             /// 强制下一次 Update 重算当前选中相机（主相机）的矩阵——
             /// pass 覆盖解除后恢复共享数据用（主相机可能不脏，否则
             /// 共享 camera_info 会残留 pass 相机的矩阵）

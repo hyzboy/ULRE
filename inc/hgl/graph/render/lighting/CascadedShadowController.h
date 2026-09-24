@@ -65,6 +65,10 @@ namespace hgl::graph
         float pcf_radius = 1.5f;
         float darkness = 0.12f;
         float blend_width = 0.05f;        // 级联边缘混合带宽（UV 空间比例）
+        // 滚动缓存的沿光轴深度锚定步长（米）。>0 时把包围球中心沿光轴吸附到 step 的
+        // 整数倍，保证静态缓存的深度矩阵在 step 内恒定；跨步时整级联重建一次。
+        // 设为 0 表示禁用锚定（仅用于测试/调试：此时缓存深度会随相机连续漂移）。
+        float cache_anchor_step = 16.0f;
     };
 
     /**
@@ -83,6 +87,7 @@ namespace hgl::graph
         CascadedShadowConfig config_;
         ShadowCascadeCacheState cache_states_[kMaxShadowCascades];
         Vector4u cascade_textures_[kMaxShadowCascades];
+        float along_anchor_[kMaxShadowCascades] = { 0.0f };
         uint32_t scene_revision_ = 0;
 
     public:
@@ -127,6 +132,7 @@ namespace hgl::graph
                                     Matrix4f &out_view,
                                     Matrix4f &out_proj,
                                     Vector4f &out_snapped_center,
-                                    float &out_texel_size) const;
+                                    float &out_texel_size,
+                                    float &out_along_anchor) const;
     };
 }

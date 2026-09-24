@@ -186,6 +186,19 @@ namespace hgl::ecs
         if (!viewport_ubo)
             return;
 
+        if (context)
+        {
+            if (auto *rt = context->GetRenderTarget())
+            {
+                if (const auto *vi = rt->GetViewportInfo())
+                {
+                    viewport_ubo->Update(*vi);
+                    viewport_ubo->Commit();
+                    return;
+                }
+            }
+        }
+
         // 视图三件套契约：pass 开始固定写入，extent 取 pending 或当前 RT
         uint32_t w = pending_viewport_width;
         uint32_t h = pending_viewport_height;
@@ -209,6 +222,12 @@ namespace hgl::ecs
 
     graph::ViewportInfo *RenderSceneUBOSystem::GetViewportInfo()
     {
+        if (context)
+        {
+            if (auto *rt = context->GetRenderTarget())
+                return rt->GetViewportInfo();
+        }
+
         if (!viewport_ubo)
             EnsureViewportUBO();
 

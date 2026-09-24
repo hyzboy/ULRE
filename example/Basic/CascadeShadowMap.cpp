@@ -450,9 +450,9 @@ private:
         ground_prim = ground_entity->AddComponent<PrimitiveComponent>();
         ground_prim->SetPrimitiveAsset(&ground_primitive);
         ground_prim->SetMaterialTextureResource("base_color", base_color_texture, pbr_sampler,
-            PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 2); // Concrete_Tiles
+            PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0); // Concrete_Plain
         ground_prim->SetMaterialTextureResource("normal", normal_texture, pbr_sampler,
-            PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 2);
+            PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0);
         ground_prim->SetMaterialDataResource(ground_accessor.GetGlobalSSBOBinding());
         ground_prim->SetVisible(true);
 
@@ -744,6 +744,7 @@ public:
         stats_timer += delta;
 
         UpdateMovableAnimation(static_cast<float>(elapsed_time));
+
         RenderCSM();
 
         if (stats_timer >= 1.0)
@@ -753,6 +754,22 @@ public:
                      main_camera->position.x, main_camera->position.y, main_camera->position.z,
                      last_c1_strips, last_c2_strips, last_c3_strips,
                      stationary_c13 ? u8"100% Cached (ZERO DrawCalls!)" : u8"Incremental Rolling Updating");
+
+            // ==== TEMP DIAG: 核对主渲染时刻着色器实际读到的 camera（= 系统级 CameraInfo / camera_ubo）====
+            if (auto cam_sys = ecs_context->GetSystem<CameraSystem>())
+            {
+                auto *cam_core = cam_sys.get();
+                const graph::CameraInfo *ci = cam_core ? cam_core->GetCameraInfo() : nullptr;
+                if (ci)
+                {
+                    GLogInfo(u8"[DIAG] UBOcamera pos=(%.2f,%.2f,%.2f) view_line=(%.3f,%.3f,%.3f) world_pos=(%.2f,%.2f,%.2f) znear=%.3f",
+                             ci->pos.x, ci->pos.y, ci->pos.z,
+                             ci->view_line.x, ci->view_line.y, ci->view_line.z,
+                             ci->camera_world_pos.x, ci->camera_world_pos.y, ci->camera_world_pos.z,
+                             ci->znear);
+                }
+            }
+
             stats_timer = 0.0;
         }
     }

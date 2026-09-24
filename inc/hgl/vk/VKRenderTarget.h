@@ -42,6 +42,7 @@ protected:
     hgl::ecs::ECSContext *ecs_context;
 
     VkExtent2D extent;
+    ViewportInfo viewport_info;
 
     // 环境选择：本 RT 使用哪个环境 Profile（数据归 EnvironmentManager，
     // RT 只持引用；未设置即 default）。绑定由 RDBS 每帧按此解析。
@@ -138,6 +139,7 @@ public: // Command Buffer
 
 public:
     virtual ViewportInfo *      GetViewportInfo     ();
+    virtual const ViewportInfo *GetViewportInfo     () const;
 };//class IRenderTarget
 
 }//namespace hgl::graph

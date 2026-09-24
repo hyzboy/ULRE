@@ -21,11 +21,12 @@ VkDevice IRenderTarget::GetVkDevice()const
 
 ViewportInfo *IRenderTarget::GetViewportInfo()
 {
-    if (!ecs_context)
-        return nullptr;
+    return &viewport_info;
+}
 
-    auto sys = ecs_context->GetSystem<hgl::ecs::RenderSceneUBOSystem>();
-    return sys ? sys->GetViewportInfo() : nullptr;
+const ViewportInfo *IRenderTarget::GetViewportInfo() const
+{
+    return &viewport_info;
 }
 
 IRenderTarget::IRenderTarget(hgl::ecs::ECSContext *ctx,const VkExtent2D &ext)
@@ -39,12 +40,17 @@ IRenderTarget::~IRenderTarget() = default;
 void IRenderTarget::OnResize(const VkExtent2D &ext)
 {
     extent=ext;
+    viewport_info.Set(ext.width, ext.height);
 
     if (ecs_context)
     {
-        auto sys = ecs_context->GetSystem<hgl::ecs::RenderSceneUBOSystem>();
-        if (sys)
-            sys->SetViewportExtent(ext.width, ext.height);
+        // 仅在当前 RT 为活动渲染目标时同步系统级 UBO
+        if (ecs_context->GetRenderTarget() == this)
+        {
+            auto sys = ecs_context->GetSystem<hgl::ecs::RenderSceneUBOSystem>();
+            if (sys)
+                sys->SetViewportExtent(ext.width, ext.height);
+        }
     }
 }
 

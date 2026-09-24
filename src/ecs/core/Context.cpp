@@ -537,9 +537,7 @@ namespace hgl
 
             if (use_camera_override)
             {
-                camera_system->SetOverrideCamera(nullptr);
-                camera_system->ForceRefreshSelectedCamera();
-                camera_system->Update(0.0f);
+                camera_system->RestoreMainCamera();
             }
             active_camera_id = 0;
 
