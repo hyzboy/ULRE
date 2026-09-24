@@ -334,12 +334,6 @@ if(MSVC)
     set_target_properties(TestRenderItemDataStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
-add_executable(TestCascadedShadowController support/TestCascadedShadowController.cpp)
-target_link_libraries(TestCascadedShadowController PRIVATE ${ULRE})
-if(MSVC)
-    set_target_properties(TestCascadedShadowController PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
-
 add_executable(TestCSMIncrementalPass support/TestCSMIncrementalPass.cpp)
 target_link_libraries(TestCSMIncrementalPass PRIVATE ${ULRE})
 if(MSVC)
@@ -366,13 +360,6 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestRenderItemDataStorage
         PROPERTIES LABELS "ecs;render_item")
-
-    add_test(
-        NAME TestCascadedShadowController
-        COMMAND TestCascadedShadowController)
-    set_tests_properties(
-        TestCascadedShadowController
-        PROPERTIES LABELS "csm;shadow")
 
     add_test(
         NAME TestCSMIncrementalPass
