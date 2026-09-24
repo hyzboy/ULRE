@@ -403,9 +403,9 @@ private:
 
         CascadedShadowConfig cfg;
         cfg.cascade_count = 4;
-        cfg.split_distances[0] = 35.0f;  // CSM 0 (全动态近距，每帧重绘): 0.1m ~ 35.0m
-        cfg.split_distances[1] = 80.0f;  // CSM 1 (静态近+中距，与CSM 0重叠覆盖，滚动更新): 0.1m ~ 80.0m
-        cfg.split_distances[2] = 160.0f; // CSM 2 (静态远景，不重叠，滚动更新): 80.0m ~ 160.0m
+        cfg.split_distances[0] = 50.0f;  // CSM 0 (全动态近距，每帧重绘): 0.1m ~ 50.0m
+        cfg.split_distances[1] = 50.0f;  // CSM 1 (静态近+中距，与CSM 0重叠覆盖，滚动更新): 0.1m ~ 50.0m
+        cfg.split_distances[2] = 160.0f; // CSM 2 (静态远景，不重叠，滚动更新): 50.0m ~ 160.0m
         cfg.split_distances[3] = 300.0f; // CSM 3 (静态超远景，不重叠，滚动更新): 160.0m ~ 300.0m
         cfg.max_distance = 300.0f;
         cfg.use_custom_splits = true;
