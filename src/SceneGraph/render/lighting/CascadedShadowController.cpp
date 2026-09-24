@@ -88,7 +88,7 @@ namespace hgl::graph
                                                          float &out_texel_size,
                                                          float &out_along_anchor) const
     {
-        Vector3f light_forward = -glm::normalize(light_dir);
+        Vector3f light_forward = glm::normalize(light_dir);
         Vector3f light_up(0.0f, 0.0f, 1.0f);
         if (std::abs(glm::dot(light_forward, light_up)) > 0.99f)
             light_up = Vector3f(0.0f, 1.0f, 0.0f);
@@ -180,10 +180,10 @@ namespace hgl::graph
         const float top    = radius;
 
         const float znear = 0.1f;
-        // 深度范围额外加一个锚定步长：锚定只保证 center 在 [A, A+step] 内，
-        // 视锥在光轴方向还会再向前延伸 radius，必须留出这段余量才不会把接收者
-        // 的深度裁到 [0,1] 之外（否则近处级联的远端会整片失去阴影）。
-        const float zfar  = 2.0f * radius + config_.caster_depth_margin + anchor_step;
+        // 远平面既要容纳包围球自身向后延伸的 radius + anchor_step，
+        // 也要留足接收者（如地面在包围球下方较深位置）的深度余量（对称扩展 caster_depth_margin），
+        // 否则相机升高、俯仰或晃动时，下方的地面深度就会超过 zfar 被裁掉（light_ndc.z < 0.0 判为无阴影）。
+        const float zfar  = 2.0f * radius + 2.0f * config_.caster_depth_margin + anchor_step;
 
         const Matrix4f light_proj = OrthoMatrixReversedZ(left, right, bottom, top, znear, zfar);
 

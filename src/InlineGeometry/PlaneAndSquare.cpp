@@ -160,13 +160,32 @@ namespace hgl::graph::inline_geometry
                         normal2->Write(FloatToHalf(p), FloatToHalf(q));
                 }
             }
+            else
+            {
+                // 标准非压缩法线（VF_V3F / VK_FORMAT_R32G32B32_SFLOAT）
+                auto normal = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Normal);
+                if(normal.IsValid())
+                    normal->RepeatWrite(xy_normal, 4);
+            }
         }
 
         {
-            auto tangent = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Tangent);
-
-            if(tangent.IsValid())
-                tangent->RepeatWrite(xy_tangent,4);
+            VAB *tan_vab = pc->GetVAB(VAN::Tangent);
+            if(tan_vab && tan_vab->GetFormat() == VK_FORMAT_R32G32B32A32_SFLOAT)
+            {
+                auto tangent4 = pc->GetTypedArrayView<TypedArrayView4f>(VAN::Tangent);
+                if(tangent4.IsValid())
+                {
+                    Vector4f t4(xy_tangent.x, xy_tangent.y, xy_tangent.z, 1.0f);
+                    tangent4->RepeatWrite(t4, 4);
+                }
+            }
+            else
+            {
+                auto tangent = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Tangent);
+                if(tangent.IsValid())
+                    tangent->RepeatWrite(xy_tangent, 4);
+            }
         }
 
         {
