@@ -35,6 +35,7 @@ namespace hgl::graph
 
         Matrix4f light_view = Matrix4f(1.0f); // 当前级联对应的光空间视图矩阵
         Matrix4f light_proj = Matrix4f(1.0f); // 当前级联对应的正交投影矩阵
+        float sphere_radius = 0.0f;           // 该级联包围球半径（=深度范围的一半，供上层换算 bias 的世界单位）
 
         uint32_t dirty_rect_count = 0;
         ShadowDirtyRect dirty_rects[4];

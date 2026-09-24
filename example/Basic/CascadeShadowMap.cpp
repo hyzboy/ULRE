@@ -174,6 +174,11 @@ private:
     uint32_t last_c2_strips = 0;
     uint32_t last_c3_strips = 0;
 
+    // ── 阴影深度 bias（背面渲染的贴合补偿，运行时可调）──
+    CascadedShadowConfig csm_config{};
+    float cascade_radius0 = 0.0f; // 级联 0 包围球半径（把归一化 bias 折算成世界偏移用）
+    bool bias_key_prev[2]{};      // [0]=[ 减小, [1]=] 增大，边沿触发
+
 private:
 
     bool InitTextures()
@@ -396,7 +401,7 @@ private:
         if (!rtm || !btm)
             return false;
 
-        CascadedShadowConfig cfg;
+        CascadedShadowConfig &cfg = csm_config;
         cfg.cascade_count = 4;
         cfg.split_distances[0] = 50.0f;  // CSM 0 (全动态近距，每帧重绘): 0.1m ~ 50.0m
         cfg.split_distances[1] = 50.0f;  // CSM 1 (静态近+中距，与CSM 0重叠覆盖，滚动更新): 0.1m ~ 50.0m
@@ -407,11 +412,21 @@ private:
         cfg.c0_dynamic_overlay = true;  // 启用动静分层模式
         cfg.shadow_map_size = static_cast<float>(kShadowMapSize);
         cfg.caster_depth_margin = 120.0f;
-        cfg.bias = 0.0003f;
+        // ── 深度 bias（归一化深度，作用于接收者深度）─────────────────────────
+        // shadow map 渲染的是**背面**：贴图里记的是物体背光侧的深度（比正面更远）。
+        // 受光判定为 ref >= stored（ShadowPCF 采样器 compare_op=GreaterOrEqual，
+        // ref = light_ndc.z + bias），reversed-Z 下"值越大越靠近光源"。
+        // 因此正 bias 会把阴影朝光源方向推 → 接触点/地面被判为受光 → 漏光、peter-panning；
+        // 负 bias 把接收者深度朝物体背面方向拉 → 阴影贴合、接触点变实，但过大会出现
+        // 半影光晕。背面渲染的贴合量需要约等于遮挡体沿光轴的厚度在光空间里的占比，
+        // 故这里取负值；运行时用 [ / ] 现场微调（世界偏移 ≈ bias × 级联深度范围）。
+        cfg.bias = -0.003f;
         cfg.pcf_radius = 1.5f;
         cfg.darkness = 0.15f;
         cfg.blend_width = 0.05f;
         csm_controller.SetConfig(cfg);
+
+        GLogInfo(u8"[CSM] shadow bias=%.5f (back-face shadow map; press [ / ] to tune)", cfg.bias);
 
         for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
         {
@@ -647,6 +662,9 @@ private:
         CascadeUpdateResult updates[kMaxShadowCascades];
         csm_controller.Update(main_cam, aspect, light_dir_math, *shadow_info, updates);
 
+        // 级联 0 的包围球半径（sphere_radius 即深度范围的一半），用于 bias 的世界单位折算
+        cascade_radius0 = updates[0].sphere_radius;
+
         // 确保非零以激活 shader 级联分支
         shadow_info->shadow_tex.x = cascade_handles[0];
         environment_system->MarkShadowDirty();
@@ -716,6 +734,48 @@ private:
             ground_prim->SetVisible(true);
     }
 
+    /// 深度 bias 运行时微调：`[` 减小 / `]` 增大（边沿触发，每次一个步长）
+    void TuneShadowBias()
+    {
+        if (!ecs_context)
+            return;
+
+        auto input_system = ecs_context->GetSystem<InputSystem>();
+        if (!input_system)
+            return;
+
+        constexpr float kStep = 0.0005f;
+        constexpr float kMin = -0.02f;
+        constexpr float kMax = 0.01f;
+
+        const bool key_dec = input_system->IsKeyDown(io::KeyboardButton::LeftBracket);
+        const bool key_inc = input_system->IsKeyDown(io::KeyboardButton::RightBracket);
+
+        float new_bias = csm_config.bias;
+        if (key_dec && !bias_key_prev[0])
+            new_bias -= kStep;
+        if (key_inc && !bias_key_prev[1])
+            new_bias += kStep;
+
+        bias_key_prev[0] = key_dec;
+        bias_key_prev[1] = key_inc;
+
+        if (new_bias < kMin)
+            new_bias = kMin;
+        if (new_bias > kMax)
+            new_bias = kMax;
+        if (new_bias == csm_config.bias)
+            return;
+
+        csm_config.bias = new_bias;
+        csm_controller.SetConfig(csm_config);
+
+        // 只改接收者侧的比较基准，滚动缓存里的深度仍然有效，无需重建级联
+        const float zfar0 = 2.0f * cascade_radius0 + 2.0f * csm_config.caster_depth_margin;
+        GLogInfo(u8"[Shadow Bias] bias=%.5f | cascade0 depth range=%.1fm -> world offset=%.3fm | negative=shadows hug the caster (crisper), positive=shadows detach toward the light (light leak)",
+                 csm_config.bias, zfar0, csm_config.bias * zfar0);
+    }
+
 public:
     ~CascadeShadowMapApp() override
     {
@@ -746,6 +806,8 @@ public:
         stats_timer += delta;
 
         UpdateMovableAnimation(static_cast<float>(elapsed_time));
+
+        TuneShadowBias();
 
         RenderCSM();
 

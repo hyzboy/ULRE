@@ -263,10 +263,18 @@ bool ECSContext::RenderTo(IRenderTarget *rt, const Color4f &clear, float dt = 0.
 `ECSContext::RenderTo(const RenderPassRequest &)`（`src/ecs/core/Context.cpp:445`）已是离屏/子 pass 一等入口，
 内部复用 `BeginManagedRenderFrame(…, need_swapchain_acquire=false, &RenderPassOptions)` + `RenderDrawOnly`
 + `EndManagedRenderFrame`，字段含 `target / camera / clear_color / use_target_clear / load_depth /
-use_scissor / scissor / clear_scissor_depth / mobility_filter`；`RenderPassOptions` 在
+use_scissor / scissor / clear_scissor_depth / mobility_filter / cull_mode_override`；`RenderPassOptions` 在
 `inc/hgl/vk/VKCommandBuffer.h:116`。实际使用者：`example/Basic/ShadowMap.cpp:1097`、
 `example/Basic/CascadeShadowMap.cpp:683,704`。剩余缺口是 `RenderGraph::Pass::renderTarget`
 跨 RT pass 链（执行器目前只输出 `LogWarning`，见 `src/ecs/core/RenderGraph.cpp:110-118`）。
+
+**pass 级剔除覆盖（`cull_mode_override`）**：`-1` 表示自动（沿用材质配置），其余值为
+`VkCullModeFlags`。自动规则：**depth-only 目标**（零颜色附件——本引擎里只有 shadow map）
+默认渲染模型**背面**（`VK_CULL_MODE_FRONT_BIT`），即阴影贴图记录背向光源的表面深度，
+以减轻自阴影 acne / peter-panning；其余 pass 沿用材质配置。材质显式声明双面
+（`MaterialPipelineConfig::cull_mode == VK_CULL_MODE_NONE`）时不受覆盖改写。
+绕序前提：主相机透视投影与光源正交投影同为 RH + 负 Y 分量（`m11 < 0`），二者绕序不反转，
+故剔除正面即剔除几何正面。
 
 ### 3.5 OffscreenWorld 提升为引擎设施
 

@@ -61,6 +61,11 @@ namespace hgl
             /// 可选：物体移动性过滤（-1 = 全部，0 = 仅静态 Static，1 = 仅动态 Movable）
             /// 中远景 CSM 静态滚动缓存级联可设置为 0（仅绘制静态物体）
             int mobility_filter = -1;
+
+            /// 可选：本 pass 的光栅化剔除模式覆盖（VkCullModeFlags）。
+            /// -1（默认）= 自动：depth-only 目标（shadow map）渲染模型背面（剔除正面），
+            /// 其余 pass 沿用材质配置。显式赋值可强制本 pass 的剔除行为。
+            int cull_mode_override = -1;
         };
     }//namespace ecs
 }//namespace hgl

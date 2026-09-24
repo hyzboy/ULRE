@@ -122,6 +122,10 @@ struct RenderPassOptions
     VkRect2D scissor{};
     bool clear_scissor_depth = false;
     float clear_depth_value = 0.0f; // Reversed-Z 默认（0.0f = 远平面）
+
+    /// 剔除模式覆盖：-1 = 自动（depth-only 目标按"渲染背面"处理，其余沿用材质配置）；
+    /// 其余取值为 VkCullModeFlags（VK_CULL_MODE_*）——强制本 pass 的剔除行为
+    int cull_mode_override = -1;
 };
 
 class RenderCmdBuffer:public VulkanCmdBuffer
@@ -134,6 +138,10 @@ private:
     VkViewport viewport;
 
     VkPipelineLayout pipeline_layout;
+
+    /// 本 pass 生效的剔除模式覆盖（-1 = 沿用材质配置）；由 BeginRendering 按
+    /// RenderPassOptions / 目标附件形态解析，绘制时在 ApplyPipelineState 里应用
+    int cull_mode_override;
 
     /*
     * 绝大部分desc绑定会全部使用这些自动绑定器绑定

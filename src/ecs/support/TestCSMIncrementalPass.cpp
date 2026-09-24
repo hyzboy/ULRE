@@ -44,6 +44,11 @@ int main(int argc, char** argv)
             GLogError(u8"Test 1 Failed: req.mobility_filter should be -1 by default");
             return 1;
         }
+        if (req.cull_mode_override != -1)
+        {
+            GLogError(u8"Test 1 Failed: req.cull_mode_override should be -1 (auto) by default");
+            return 1;
+        }
         GLogInfo(u8"Test 1 Passed: RenderPassRequest defaults verified.");
     }
 
@@ -64,10 +69,23 @@ int main(int argc, char** argv)
         opts.scissor.extent = { 256, 512 };
         opts.clear_scissor_depth = true;
         opts.clear_depth_value = 0.0f; // Reversed-Z far plane
+        opts.cull_mode_override = static_cast<int>(VK_CULL_MODE_FRONT_BIT);
 
         if (!opts.load_depth || !opts.use_scissor || !opts.clear_scissor_depth || opts.clear_depth_value != 0.0f)
         {
             GLogError(u8"Test 2 Failed: RenderPassOptions values not preserved");
+            return 2;
+        }
+        if (opts.cull_mode_override != static_cast<int>(VK_CULL_MODE_FRONT_BIT))
+        {
+            GLogError(u8"Test 2 Failed: RenderPassOptions cull override not preserved");
+            return 2;
+        }
+
+        RenderPassOptions opts_auto;
+        if (opts_auto.cull_mode_override != -1)
+        {
+            GLogError(u8"Test 2 Failed: RenderPassOptions cull override default should be -1 (auto)");
             return 2;
         }
         GLogInfo(u8"Test 2 Passed: RenderPassOptions configuration verified.");

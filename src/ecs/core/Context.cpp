@@ -505,9 +505,11 @@ namespace hgl
             pass_options.scissor = req.scissor;
             pass_options.clear_scissor_depth = req.clear_scissor_depth;
             pass_options.clear_depth_value = 0.0f; // Reversed-Z (0.0f = far)
+            pass_options.cull_mode_override = req.cull_mode_override;
 
             const graph::RenderPassOptions *p_options =
-                (req.load_depth || req.use_scissor || req.clear_scissor_depth) ? &pass_options : nullptr;
+                (req.load_depth || req.use_scissor || req.clear_scissor_depth
+                 || req.cull_mode_override >= 0) ? &pass_options : nullptr;
 
             bool ok = false;
 

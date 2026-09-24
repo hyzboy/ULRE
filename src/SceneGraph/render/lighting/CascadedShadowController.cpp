@@ -236,6 +236,8 @@ namespace hgl::graph
             update_res.cascade_index = c;
             update_res.light_view = light_view;
             update_res.light_proj = light_proj;
+            // texel_size = 2*radius/map_size ⇒ 反解包围球半径，供上层把归一化 bias 折算成世界偏移
+            update_res.sphere_radius = texel_size * map_size * 0.5f;
 
             const float snapped_cx = snapped_center.x;
             const float snapped_cy = snapped_center.y;
