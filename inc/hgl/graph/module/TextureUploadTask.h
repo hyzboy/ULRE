@@ -53,6 +53,8 @@ namespace hgl::graph
 
         DeviceBuffer *      staging_buffer   = nullptr;      // DMA 路径的暂存缓冲
         VkDeviceSize        staging_bytes    = 0;
+        bool                is_ring_staging  = false;        // 是否使用共享环形 Staging 缓冲
+        VkDeviceSize        ring_offset      = 0;            // 环形缓冲内的起始偏移
 
         Semaphore *         transfer_sem     = nullptr;      // Transfer 队列完成信号量包装
         VkSemaphore         signal_semaphore = VK_NULL_HANDLE; // Transfer 队列完成信号量句柄
@@ -70,7 +72,8 @@ namespace hgl::graph
         {
             if (staging_buffer)
             {
-                delete staging_buffer;
+                if (!is_ring_staging)
+                    delete staging_buffer;
                 staging_buffer = nullptr;
             }
             if (transfer_sem)

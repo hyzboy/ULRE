@@ -21,6 +21,213 @@ namespace hgl::graph
                          const uint32_t base_array_layer,
                          const uint32_t layer_count);
 
+    class StagingRingBuffer
+    {
+    public:
+        static constexpr VkDeviceSize RING_ALIGNMENT = 256;
+
+        struct Block
+        {
+            uint64_t     task_id  = 0;
+            VkDeviceSize offset   = 0;
+            VkDeviceSize size     = 0;
+            bool         wrapped  = false;
+            bool         freed    = false;
+
+            bool operator==(const Block &o) const
+            {
+                return task_id == o.task_id && offset == o.offset;
+            }
+        };
+
+    private:
+        VulkanDevice *      device_          = nullptr;
+        DeviceBuffer *      buffer_          = nullptr;
+        uint8_t *           mapped_ptr_      = nullptr;
+        VkDeviceSize        capacity_        = 0;
+        VkDeviceSize        head_            = 0;
+        VkDeviceSize        tail_            = 0;
+        VkDeviceSize        allocated_bytes_ = 0;
+        ValueArray<Block>   active_blocks_;
+
+    public:
+        StagingRingBuffer() = default;
+        ~StagingRingBuffer() { Cleanup(); }
+
+        bool Init(VulkanDevice *device, VkDeviceSize size)
+        {
+            Cleanup();
+            if (!device || size == 0)
+                return false;
+
+            device_ = device;
+            capacity_ = size;
+            buffer_ = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, capacity_);
+            if (!buffer_)
+                return false;
+
+            mapped_ptr_ = static_cast<uint8_t *>(buffer_->Map());
+            if (!mapped_ptr_)
+            {
+                delete buffer_;
+                buffer_ = nullptr;
+                return false;
+            }
+
+            head_ = 0;
+            tail_ = 0;
+            allocated_bytes_ = 0;
+            return true;
+        }
+
+        void Cleanup()
+        {
+            if (buffer_)
+            {
+                buffer_->Unmap();
+                delete buffer_;
+                buffer_ = nullptr;
+            }
+            mapped_ptr_ = nullptr;
+            head_ = 0;
+            tail_ = 0;
+            allocated_bytes_ = 0;
+            active_blocks_.Clear();
+            device_ = nullptr;
+        }
+
+        bool Allocate(uint64_t task_id, VkDeviceSize size, VkDeviceSize &out_offset, void *&out_mapped_ptr)
+        {
+            if (!buffer_ || !mapped_ptr_ || size == 0)
+                return false;
+
+            // 单次贴图尺寸若超过环容量一半，回退至独立 StagingBuffer
+            if (size > (capacity_ / 2))
+                return false;
+
+            const VkDeviceSize aligned_size = (size + (RING_ALIGNMENT - 1)) & ~(RING_ALIGNMENT - 1);
+
+            if (active_blocks_.IsEmpty())
+            {
+                head_ = 0;
+                tail_ = 0;
+                allocated_bytes_ = 0;
+
+                out_offset = 0;
+                out_mapped_ptr = mapped_ptr_;
+                head_ = aligned_size;
+                allocated_bytes_ = aligned_size;
+
+                Block b;
+                b.task_id = task_id;
+                b.offset = 0;
+                b.size = aligned_size;
+                b.wrapped = false;
+                b.freed = false;
+                active_blocks_.Add(b);
+                return true;
+            }
+
+            if (head_ >= tail_)
+            {
+                if (head_ + aligned_size <= capacity_)
+                {
+                    out_offset = head_;
+                    out_mapped_ptr = mapped_ptr_ + head_;
+                    head_ += aligned_size;
+                    allocated_bytes_ += aligned_size;
+
+                    Block b;
+                    b.task_id = task_id;
+                    b.offset = out_offset;
+                    b.size = aligned_size;
+                    b.wrapped = false;
+                    b.freed = false;
+                    active_blocks_.Add(b);
+                    return true;
+                }
+
+                if (tail_ > aligned_size)
+                {
+                    out_offset = 0;
+                    out_mapped_ptr = mapped_ptr_;
+                    head_ = aligned_size;
+                    allocated_bytes_ += aligned_size;
+
+                    Block b;
+                    b.task_id = task_id;
+                    b.offset = 0;
+                    b.size = aligned_size;
+                    b.wrapped = true;
+                    b.freed = false;
+                    active_blocks_.Add(b);
+                    return true;
+                }
+
+                return false;
+            }
+            else
+            {
+                if (head_ + aligned_size < tail_)
+                {
+                    out_offset = head_;
+                    out_mapped_ptr = mapped_ptr_ + head_;
+                    head_ += aligned_size;
+                    allocated_bytes_ += aligned_size;
+
+                    Block b;
+                    b.task_id = task_id;
+                    b.offset = out_offset;
+                    b.size = aligned_size;
+                    b.wrapped = false;
+                    b.freed = false;
+                    active_blocks_.Add(b);
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        void Free(uint64_t task_id)
+        {
+            for (int i = 0; i < active_blocks_.GetCount(); ++i)
+            {
+                if (active_blocks_[i].task_id == task_id)
+                {
+                    active_blocks_[i].freed = true;
+                    break;
+                }
+            }
+
+            while (!active_blocks_.IsEmpty() && active_blocks_[0].freed)
+            {
+                const Block &b = active_blocks_[0];
+                if (allocated_bytes_ >= b.size)
+                    allocated_bytes_ -= b.size;
+                else
+                    allocated_bytes_ = 0;
+
+                if (b.wrapped)
+                    tail_ = b.size;
+                else
+                    tail_ = b.offset + b.size;
+
+                active_blocks_.Delete(0);
+            }
+
+            if (active_blocks_.IsEmpty())
+            {
+                head_ = 0;
+                tail_ = 0;
+                allocated_bytes_ = 0;
+            }
+        }
+
+        DeviceBuffer *GetBuffer() const { return buffer_; }
+        bool          IsInitialized() const { return buffer_ != nullptr; }
+    };
+
     TextureUploadQueue::TextureUploadQueue(VulkanDevice *device)
         : device_(device)
     {
@@ -32,6 +239,8 @@ namespace hgl::graph
         if (device_)
             device_->WaitIdle();
 
+        SAFE_CLEAR(transfer_ring_);
+        SAFE_CLEAR(graphics_ring_);
         SAFE_CLEAR(transfer_cmd_buf_);
         SAFE_CLEAR(graphics_cmd_buf_);
         SAFE_CLEAR(transfer_queue_);
@@ -66,6 +275,17 @@ namespace hgl::graph
     {
         if (!device_)
             return;
+
+        if (!transfer_ring_)
+        {
+            transfer_ring_ = new StagingRingBuffer();
+            transfer_ring_->Init(device_, 16ULL * 1024 * 1024);
+        }
+        if (!graphics_ring_)
+        {
+            graphics_ring_ = new StagingRingBuffer();
+            graphics_ring_->Init(device_, 16ULL * 1024 * 1024);
+        }
 
         if (!transfer_queue_)
         {
@@ -201,8 +421,17 @@ namespace hgl::graph
             if (task->staging_buffer)
             {
                 current_staging_bytes_ -= task->staging_bytes;
-                delete task->staging_buffer;
+                if (!task->is_ring_staging)
+                    delete task->staging_buffer;
                 task->staging_buffer = nullptr;
+            }
+
+            if (task->is_ring_staging)
+            {
+                if (task->backend == UploadBackendType::GpuTransferDma && transfer_ring_)
+                    transfer_ring_->Free(task->task_id);
+                else if (graphics_ring_)
+                    graphics_ring_->Free(task->task_id);
             }
 
             task->state = UploadTaskState::Completed;
@@ -256,18 +485,35 @@ namespace hgl::graph
             // 零拷贝直通：直接接管 tci->buffer 作为 Transfer 源缓冲，消除额外的 CPU 内存分配与 memcpy
             task->staging_buffer = tci->buffer;
             tci->buffer = nullptr;
+            task->is_ring_staging = false;
+            task->ring_offset = 0;
         }
         else if (tci->pixels)
         {
-            task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
-            if (!task->staging_buffer)
-                return false;
-
-            void *dst = task->staging_buffer->Map();
-            if (dst)
+            void *mapped_ptr = nullptr;
+            VkDeviceSize ring_offset = 0;
+            if (transfer_ring_ && transfer_ring_->Allocate(task->task_id, total_bytes, ring_offset, mapped_ptr))
             {
-                memcpy(dst, tci->pixels, total_bytes);
-                task->staging_buffer->Unmap();
+                memcpy(mapped_ptr, tci->pixels, total_bytes);
+                task->staging_buffer = transfer_ring_->GetBuffer();
+                task->is_ring_staging = true;
+                task->ring_offset = ring_offset;
+            }
+            else
+            {
+                task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
+                if (!task->staging_buffer)
+                    return false;
+
+                task->is_ring_staging = false;
+                task->ring_offset = 0;
+
+                void *dst = task->staging_buffer->Map();
+                if (dst)
+                {
+                    memcpy(dst, tci->pixels, total_bytes);
+                    task->staging_buffer->Unmap();
+                }
             }
         }
         else
@@ -309,7 +555,7 @@ namespace hgl::graph
         for (uint32_t level = 0; level < mip_levels; ++level)
         {
             VkBufferImageCopy &bic = bic_list[level];
-            bic.bufferOffset = offset;
+            bic.bufferOffset = task->ring_offset + offset;
             bic.bufferRowLength = 0;
             bic.bufferImageHeight = 0;
             bic.imageSubresource.aspectMask = tex->GetAspect();
@@ -375,8 +621,16 @@ namespace hgl::graph
         {
             transfer_queue_->WaitLastSubmitFence();
             current_staging_bytes_ -= task->staging_bytes;
-            delete task->staging_buffer;
+            if (!task->is_ring_staging && task->staging_buffer)
+            {
+                delete task->staging_buffer;
+            }
             task->staging_buffer = nullptr;
+
+            if (task->is_ring_staging && transfer_ring_)
+            {
+                transfer_ring_->Free(task->task_id);
+            }
 
             task->state = UploadTaskState::Completed;
             if (task->on_complete)
@@ -422,15 +676,30 @@ namespace hgl::graph
         }
         else if (tci->pixels)
         {
-            task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
-            if (!task->staging_buffer)
-                return false;
-
-            void *dst = task->staging_buffer->Map();
-            if (dst)
+            void *mapped_ptr = nullptr;
+            VkDeviceSize ring_offset = 0;
+            if (graphics_ring_ && graphics_ring_->Allocate(task->task_id, total_bytes, ring_offset, mapped_ptr))
             {
-                memcpy(dst, tci->pixels, total_bytes);
-                task->staging_buffer->Unmap();
+                memcpy(mapped_ptr, tci->pixels, total_bytes);
+                task->staging_buffer = graphics_ring_->GetBuffer();
+                task->is_ring_staging = true;
+                task->ring_offset = ring_offset;
+            }
+            else
+            {
+                task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
+                if (!task->staging_buffer)
+                    return false;
+
+                task->is_ring_staging = false;
+                task->ring_offset = 0;
+
+                void *dst = task->staging_buffer->Map();
+                if (dst)
+                {
+                    memcpy(dst, tci->pixels, total_bytes);
+                    task->staging_buffer->Unmap();
+                }
             }
         }
         else
@@ -466,7 +735,7 @@ namespace hgl::graph
         {
             // 只拷贝 Level 0，然后 Blit 生成后续 Mipmaps
             VkBufferImageCopy bic{};
-            bic.bufferOffset = 0;
+            bic.bufferOffset = task->ring_offset;
             bic.bufferRowLength = 0;
             bic.bufferImageHeight = 0;
             bic.imageSubresource.aspectMask = tex->GetAspect();
@@ -491,7 +760,7 @@ namespace hgl::graph
             for (uint32_t level = 0; level < mip_levels; ++level)
             {
                 VkBufferImageCopy &bic = bic_list[level];
-                bic.bufferOffset = offset;
+                bic.bufferOffset = task->ring_offset + offset;
                 bic.bufferRowLength = 0;
                 bic.bufferImageHeight = 0;
                 bic.imageSubresource.aspectMask = tex->GetAspect();
@@ -553,8 +822,16 @@ namespace hgl::graph
         {
             graphics_queue_->WaitLastSubmitFence();
             current_staging_bytes_ -= task->staging_bytes;
-            delete task->staging_buffer;
+            if (!task->is_ring_staging && task->staging_buffer)
+            {
+                delete task->staging_buffer;
+            }
             task->staging_buffer = nullptr;
+
+            if (task->is_ring_staging && graphics_ring_)
+            {
+                graphics_ring_->Free(task->task_id);
+            }
 
             task->state = UploadTaskState::Completed;
             if (task->on_complete)
@@ -586,8 +863,17 @@ namespace hgl::graph
                     if (task->staging_buffer)
                     {
                         current_staging_bytes_ -= task->staging_bytes;
-                        delete task->staging_buffer;
+                        if (!task->is_ring_staging)
+                            delete task->staging_buffer;
                         task->staging_buffer = nullptr;
+                    }
+
+                    if (task->is_ring_staging)
+                    {
+                        if (task->backend == UploadBackendType::GpuTransferDma && transfer_ring_)
+                            transfer_ring_->Free(task->task_id);
+                        else if (graphics_ring_)
+                            graphics_ring_->Free(task->task_id);
                     }
 
                     if (task->state == UploadTaskState::InFlight)

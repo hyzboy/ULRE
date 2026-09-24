@@ -229,9 +229,11 @@ if (state == UploadTaskState::Queued)
 针对 Intel Core Ultra / AMD Ryzen APU / Apple Silicon 等统一内存架构（UMA），引擎执行了特定的数据链路穿透优化：
 1. **磁盘流直通零拷贝接管**：
    从文件加载（`LoadTexture2DAsync`）时，`VKTextureLoader` 已经通过流式文件读取将像素直写入 `tci->buffer`（CPU 映射的 `DeviceBuffer`）。上传调度器通过所有权直接接管该缓冲作为 DMA 源，**消除了额外的 StagingBuffer 分配与 CPU 端的冗余 `memcpy`**（CPU 内存复制次数降为 0）。
-2. **纯传输缓冲 CPUVisible / Host-Cached 属性映射**：
+2. **环形 Staging 显存复用池（`StagingRingBuffer`）**：
+   对于动态内存生成的贴图或像素数据（`tci->pixels`），队列内部维护双队列专用环形 Staging 缓冲池（默认各 16MB）。在任务分配时按 256 字节对齐直接切片，写入持久映射内存，任务在 GPU 消费完成后自动推进读指针回收，**彻底避免了高频任务频繁调用 `vkAllocateMemory` 与 `vkFreeMemory` 带来的操作系统内核页表抖动与内存碎片**；单次超过 8MB 的大图则平滑回退至独立缓冲。
+3. **纯传输缓冲 CPUVisible / Host-Cached 属性映射**：
    对于所有具有 `VK_BUFFER_USAGE_TRANSFER_SRC_BIT` 且无 DST 属性的传输源缓冲，底层内存分配器自动解析为 `BufferAllocPolicy::CPUVisible`，集显环境下优先匹配 `HOST_CACHED` 属性，充分利用 CPU 的 L1/L2/L3 缓存提升文件 IO 吞吐。
-3. **GPU 硬件重排替代 CPU Swizzle**：
+4. **GPU 硬件重排替代 CPU Swizzle**：
    虽然 CPU 与 GPU 共享物理内存，但 GPU 纹理采样依赖二维瓦片排布（Optimal Tiling）。通过 GPU 硬件的 Transfer Copy Engine 进行转排，不仅转换速度比 CPU 快数十倍，而且将瓦片化期间的 CPU 占用率降至 0。
 
 ---
@@ -243,4 +245,5 @@ if (state == UploadTaskState::Queued)
 2. **High 优先级 + Bindless 热更新**：验证高优先级任务完成后，Descriptor Buffer 的原子覆盖与几何体贴图无感切换。
 3. **Normal / Low 优先级**：验证基于多优先级的队列调度顺序与 Mipmap 完整性。
 4. **运行时任务撤销**：入队后立即触发 `CancelUpload`，验证状态机转换为 `Cancelled/Discarded`，确保无内存泄漏、无野指针悬挂。
-5. **Vulkan 验证层合规性**：经 LunarG Validation Layer 实测，全生命周期保持 **0 Validation Errors**。
+5. **内存像素与环形 Staging 缓冲池切片**：验证动态内存贴图自动走专用环形显存池，无需独立显存申请，高效切片并自动回收。
+6. **Vulkan 验证层合规性**：经 LunarG Validation Layer 实测，全生命周期保持 **0 Validation Errors**。

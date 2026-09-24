@@ -255,6 +255,29 @@ private:
         GLogInfo(u8"[AsyncTextureUpload] CancelUpload result = %s, current state = %d",
                  cancel_ok ? "SUCCESS" : "FAILED", static_cast<int>(state));
 
+        // 6. 内存像素贴图任务（验证环形 Staging 显存复用池切片分配）
+        constexpr uint32_t MEM_DIM = 64;
+        static uint32_t mem_pixels[MEM_DIM * MEM_DIM];
+        for (uint32_t i = 0; i < MEM_DIM * MEM_DIM; ++i)
+            mem_pixels[i] = 0xFF00FF00; // 纯绿 RGBA8
+
+        ColorTextureCreateInfo *mem_tci = new ColorTextureCreateInfo(
+            PF_RGBA8UN,
+            VkExtent2D{MEM_DIM, MEM_DIM},
+            U8String((const u8char *)u8"MemTexture64"));
+        mem_tci->pixels = mem_pixels;
+        mem_tci->total_bytes = sizeof(mem_pixels);
+        mem_tci->origin_mipmaps = 1;
+        mem_tci->target_mipmaps = 1;
+
+        uint64_t mem_task_id = tex_manager->CreateTexture2DAsync(
+            mem_tci,
+            UploadPriority::Normal,
+            0,
+            OnUploadTaskFinished,
+            nullptr);
+        GLogInfo(u8"[AsyncTextureUpload] Enqueued Memory Pixels Ring Task ID = %llu", mem_task_id);
+
         return true;
     }
 

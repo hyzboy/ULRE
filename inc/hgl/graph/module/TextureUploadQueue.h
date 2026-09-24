@@ -14,11 +14,13 @@ namespace hgl::graph
     class DeviceQueue;
     class TextureCmdBuffer;
     class Semaphore;
+    class StagingRingBuffer;
 
     /**
      * 统一纹理上传队列管理器。
      * 支持四级优先级（Immediate/High/Normal/Low）、可撤销（Cancel/Discard）、
-     * Staging显存背压控制、双队列提交（专用 Transfer 队列 DMA / Graphics 队列 DMA）。
+     * Staging显存背压控制、双队列提交（专用 Transfer 队列 DMA / Graphics 队列 DMA）、
+     * 零拷贝直通与环形 Staging 显存复用池。
      */
     class TextureUploadQueue
     {
@@ -32,6 +34,9 @@ namespace hgl::graph
 
         DeviceQueue *       graphics_queue_      = nullptr;
         TextureCmdBuffer *  graphics_cmd_buf_    = nullptr;
+
+        StagingRingBuffer * transfer_ring_       = nullptr;
+        StagingRingBuffer * graphics_ring_       = nullptr;
 
         VkDeviceSize        max_staging_bytes_   = 128ULL * 1024 * 1024; // 默认 128 MB 预算
         VkDeviceSize        current_staging_bytes_ = 0;
