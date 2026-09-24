@@ -398,14 +398,16 @@ private:
 
         CascadedShadowConfig cfg;
         cfg.cascade_count = 4;
-        cfg.split_distances[0] = 15.0f;
-        cfg.split_distances[1] = 45.0f;
-        cfg.split_distances[2] = 100.0f;
-        cfg.split_distances[3] = 250.0f;
+        cfg.split_distances[0] = 35.0f;  // CSM 0 (全动态近距，每帧重绘): 0.1m ~ 35.0m
+        cfg.split_distances[1] = 80.0f;  // CSM 1 (静态近+中距，与CSM 0重叠覆盖，滚动更新): 0.1m ~ 80.0m
+        cfg.split_distances[2] = 160.0f; // CSM 2 (静态远景，不重叠，滚动更新): 80.0m ~ 160.0m
+        cfg.split_distances[3] = 300.0f; // CSM 3 (静态超远景，不重叠，滚动更新): 160.0m ~ 300.0m
+        cfg.max_distance = 300.0f;
         cfg.use_custom_splits = true;
+        cfg.c0_dynamic_overlay = true;  // 启用动静分层模式
         cfg.shadow_map_size = static_cast<float>(kShadowMapSize);
         cfg.caster_depth_margin = 120.0f;
-        cfg.bias = 0.0015f;
+        cfg.bias = 0.0003f;
         cfg.pcf_radius = 1.5f;
         cfg.darkness = 0.15f;
         cfg.blend_width = 0.05f;
@@ -473,13 +475,13 @@ private:
             }
             else
             {
-                // 中远景静态物体均匀覆盖在 [-85, 85] 纵深
+                // 静态物体全场景覆盖：横向 [-85, 85]，纵向覆盖近距到远景 [-20, 180]
                 x = (Hash01(i, 0, 307u) * 2.0f - 1.0f) * 85.0f;
-                y = (Hash01(i, 1, 409u) * 2.0f - 1.0f) * 85.0f;
+                y = Hash01(i, 1, 409u) * 200.0f - 20.0f;
 
-                // 避开玩家初始诞生点 (0, -25)
-                if (glm::distance(glm::vec2(x, y), glm::vec2(0.0f, -25.0f)) < 8.0f)
-                    x += 15.0f;
+                // 避开玩家初始诞生点 (0, -28)
+                if (glm::distance(glm::vec2(x, y), glm::vec2(0.0f, -28.0f)) < 6.0f)
+                    x += 12.0f;
             }
 
             const uint32_t geom_idx = HashU32(i, 2, 521u) % kBuiltinGeomCount;
@@ -677,8 +679,8 @@ private:
                 req.load_depth = false;
                 req.use_scissor = false;
                 req.clear_scissor_depth = false;
-                // 级联 0 渲染全场景（动静全量）；中远景级联如果全量重建仅收集静态物体
-                req.mobility_filter = (c == 0) ? -1 : static_cast<int>(Mobility::Static);
+                // 级联 0 仅收集动态物体（Movable）；中远景级联仅收集静态物体（Static）
+                req.mobility_filter = (c == 0) ? static_cast<int>(Mobility::Movable) : static_cast<int>(Mobility::Static);
 
                 ecs_context->RenderTo(req);
             }

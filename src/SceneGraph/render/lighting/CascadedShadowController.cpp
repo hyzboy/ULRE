@@ -220,7 +220,7 @@ namespace hgl::graph
 
         for (uint32_t c = 0; c < count; ++c)
         {
-            const float split_near = (c == 0) ? near_z : splits[c - 1];
+            const float split_near = (c == 0 || (c == 1 && config_.c0_dynamic_overlay)) ? near_z : splits[c - 1];
             const float split_far  = splits[c];
 
             Matrix4f light_view(1.0f);
@@ -242,7 +242,7 @@ namespace hgl::graph
 
             if (c == 0)
             {
-                // 级联 0：动态近景，每帧全量重绘
+                // 级联 0：全动态近距，每帧全量重绘
                 update_res.need_full_update = true;
                 update_res.is_static_cache = false;
                 update_res.AddDirtyRect(ShadowDirtyRect{0, 0, W, H});
@@ -258,7 +258,7 @@ namespace hgl::graph
             }
             else
             {
-                // 级联 1..N：中远景静态滚动缓存
+                // 级联 1..N：静态滚动缓存（含 CSM 1 近+中景、CSM 2 远景、CSM 3 超远景；相机不移动不更新）
                 update_res.is_static_cache = true;
 
                 if (cache_states_[c].valid == 0 || cache_states_[c].scene_revision != scene_revision_ ||
@@ -289,14 +289,13 @@ namespace hgl::graph
 
                     if (shift_x == 0 && shift_y == 0)
                     {
-                        // 未跨越整像素：完全命中缓存，0 绘制开销
+                        // 未跨越整像素：完全命中缓存，0 绘制开销（相机不移动不更新）
                         update_res.need_full_update = false;
                         update_res.ClearDirtyRects();
                     }
-                    else if (std::abs(shift_x) >= static_cast<int32_t>(W) ||
-                             std::abs(shift_y) >= static_cast<int32_t>(H))
+                    else
                     {
-                        // 位移超出整张贴图：全量重建
+                        // 相机移动跨越整像素：滚动更新刷新至新中心
                         update_res.need_full_update = true;
                         update_res.AddDirtyRect(ShadowDirtyRect{0, 0, W, H});
 
@@ -304,55 +303,6 @@ namespace hgl::graph
                         cache_states_[c].texel_world_size = Vector2f(texel_size, texel_size);
                         cache_states_[c].scroll_offset = Vector4u(0, 0, 0, 0);
                         cache_states_[c].valid_rect = Vector4u(0, 0, W, H);
-                        along_anchor_[c] = along_anchor;
-                        ++cache_states_[c].generation;
-                    }
-                    else
-                    {
-                        // 增量滚动更新：计算环形模偏与脏条带
-                        update_res.need_full_update = false;
-
-                        const uint32_t prev_ox = cache_states_[c].scroll_offset.x;
-                        const uint32_t prev_oy = cache_states_[c].scroll_offset.y;
-
-                        const uint32_t new_ox = static_cast<uint32_t>((static_cast<int64_t>(prev_ox) + shift_x) % W + W) % W;
-                        const uint32_t new_oy = static_cast<uint32_t>((static_cast<int64_t>(prev_oy) + shift_y) % H + H) % H;
-
-                        if (shift_x != 0)
-                        {
-                            const uint32_t x_start = (shift_x > 0) ? prev_ox : new_ox;
-                            const uint32_t x_count = (shift_x > 0) ? static_cast<uint32_t>(shift_x) : static_cast<uint32_t>(-shift_x);
-
-                            if (x_start + x_count <= W)
-                            {
-                                update_res.AddDirtyRect(ShadowDirtyRect{x_start, 0, x_count, H});
-                            }
-                            else
-                            {
-                                update_res.AddDirtyRect(ShadowDirtyRect{x_start, 0, W - x_start, H});
-                                update_res.AddDirtyRect(ShadowDirtyRect{0, 0, x_count - (W - x_start), H});
-                            }
-                        }
-
-                        if (shift_y != 0)
-                        {
-                            const uint32_t y_start = (shift_y > 0) ? prev_oy : new_oy;
-                            const uint32_t y_count = (shift_y > 0) ? static_cast<uint32_t>(shift_y) : static_cast<uint32_t>(-shift_y);
-
-                            if (y_start + y_count <= H)
-                            {
-                                update_res.AddDirtyRect(ShadowDirtyRect{0, y_start, W, y_count});
-                            }
-                            else
-                            {
-                                update_res.AddDirtyRect(ShadowDirtyRect{0, y_start, W, H - y_start});
-                                update_res.AddDirtyRect(ShadowDirtyRect{0, 0, W, y_count - (H - y_start)});
-                            }
-                        }
-
-                        cache_states_[c].snapped_origin = Vector2f(snapped_cx, snapped_cy);
-                        cache_states_[c].texel_world_size = Vector2f(texel_size, texel_size);
-                        cache_states_[c].scroll_offset = Vector4u(new_ox, new_oy, static_cast<uint32_t>(shift_x), static_cast<uint32_t>(shift_y));
                         along_anchor_[c] = along_anchor;
                         ++cache_states_[c].generation;
                     }
@@ -377,7 +327,7 @@ namespace hgl::graph
             casc.cache_valid_rect = Vector4u(0, 0, W, H);
         }
 
-        out_shadow_info.csm_params = Vector4u(count, 1, 0, 0);
+        out_shadow_info.csm_params = Vector4u(count, config_.c0_dynamic_overlay ? 2u : 1u, 0, 0);
 
         // 单级回退字段同步（自动使用第0级）
         out_shadow_info.shadow_vp = out_shadow_info.cascades[0].shadow_vp;

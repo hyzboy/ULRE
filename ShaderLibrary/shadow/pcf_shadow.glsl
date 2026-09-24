@@ -85,6 +85,85 @@ float EvalCascadeShadowAt(uint c, vec3 worldPos, out float out_edge_dist)
     return EvalCascadePCF(c, light_ndc, uv);
 }
 
+// 评估指定级联区间 [first_c, last_c] 内的阴影因子，包含选级、回退与边界混合
+float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_depth)
+{
+    uint selected = 0xFFFFFFFFu;
+    for (uint c = first_c; c <= last_c; ++c)
+    {
+        if (shadow.cascades[c].shadow_tex.x == 0u)
+            continue;
+
+        selected = c;
+        if (view_depth <= shadow.cascades[c].cascade_params.y)
+            break;
+    }
+
+    if (selected == 0xFFFFFFFFu)
+        return 1.0;
+
+    float edge_dist = -1.0;
+    float shadow_factor = EvalCascadeShadowAt(selected, worldPos, edge_dist);
+
+    if (edge_dist < 0.0)
+    {
+        if (selected + 1u <= last_c)
+        {
+            float other_edge = -1.0;
+            const float other = EvalCascadeShadowAt(selected + 1u, worldPos, other_edge);
+            if (other_edge >= 0.0)
+            {
+                shadow_factor = other;
+                edge_dist = other_edge;
+            }
+        }
+
+        if (edge_dist < 0.0 && selected > first_c)
+        {
+            float other_edge = -1.0;
+            const float other = EvalCascadeShadowAt(selected - 1u, worldPos, other_edge);
+            if (other_edge >= 0.0)
+            {
+                shadow_factor = other;
+                edge_dist = other_edge;
+            }
+        }
+
+        if (edge_dist < 0.0)
+            return 1.0;
+    }
+
+    // 级联边界混合
+    const float blend_width = shadow.cascades[selected].cascade_params.z;
+    if (blend_width > 0.0)
+    {
+        const float split_near = shadow.cascades[selected].cascade_params.x;
+        const float split_far  = shadow.cascades[selected].cascade_params.y;
+        const float band       = blend_width * max(split_far - split_near, 1.0e-3);
+
+        const float fade_depth = clamp((split_far - view_depth) / band, 0.0, 1.0);
+        const float fade_uv    = smoothstep(0.0, blend_width, edge_dist);
+        const float blend      = min(fade_depth, fade_uv);
+
+        if (blend < 1.0)
+        {
+            if (selected + 1u <= last_c)
+            {
+                float next_edge = -1.0;
+                const float next_shadow = EvalCascadeShadowAt(selected + 1u, worldPos, next_edge);
+                if (next_edge >= 0.0)
+                    return mix(next_shadow, shadow_factor, blend);
+            }
+            else
+            {
+                return mix(1.0, shadow_factor, blend);
+            }
+        }
+    }
+
+    return shadow_factor;
+}
+
 float EvalPCFShadow(vec3 worldPos)
 {
     if (shadow.shadow_tex.x == 0u)
@@ -96,94 +175,49 @@ float EvalPCFShadow(vec3 worldPos)
         const uint cascade_count = min(shadow.csm_params.x, 4u);
 
         // ── 选级：按"相机 → 片元"的前向深度与每级 cascade_params.y(=split_far) 匹配 ──
-        // 不能用"片元投影 UV 是否落在某一级联方框内"来选级：方框外仍可能有大量
-        // 可见几何体（典型是 500x500 的地面），旧实现会把它们全部落到循环末尾的
-        // return 1.0（恒受光），表现为"地面大片不接收阴影"。
-        // 级联方框是按该级段视锥包围球构建的，因此"前向深度 <= split_far 的视锥内
-        // 片元必然落在该级联方框内"，按深度选级与方框构建完全自洽。
         const vec3  cam_fwd_raw = camera.view_line;
         const float cam_fwd_len = length(cam_fwd_raw);
 
-        // 前向深度与 split_far 同一度量（级联正是沿 cam_forward 分段的）。
-        // view_line 异常（未初始化）时退化为欧氏距离，避免 NaN 让所有比较失效。
         const float view_depth = (cam_fwd_len > 1.0e-6)
                                ? dot(worldPos - camera.camera_world_pos, cam_fwd_raw / cam_fwd_len)
                                : length(worldPos - camera.camera_world_pos);
 
-        uint selected = 0xFFFFFFFFu;    // 0xFFFFFFFF = 尚无有效级联
-        for (uint c = 0u; c < cascade_count; ++c)
+        // csm_params.y == 2u: 动静分层叠加模式（CSM 0 动态层，CSM 1..N-1 静态层）
+        if (shadow.csm_params.y == 2u && cascade_count > 1u)
         {
-            if (shadow.cascades[c].shadow_tex.x == 0u)
-                continue;
+            // 1. 静态层覆盖链（从级联 1 到最后一级，全场景静态阴影）
+            const float static_shadow = EvalCascadeChain(1u, cascade_count - 1u, worldPos, view_depth);
 
-            selected = c;
-            if (view_depth <= shadow.cascades[c].cascade_params.y)
-                break;
-        }
-
-        if (selected == 0xFFFFFFFFu)    // 所有级联都没有阴影贴图
-            return 1.0;
-
-        float edge_dist = -1.0;
-        float shadow_factor = EvalCascadeShadowAt(selected, worldPos, edge_dist);
-
-        if (edge_dist < 0.0)
-        {
-            // 所选级联的深度窗口不覆盖本片元（片元高出/低于该级联的深度范围）：
-            // 依次改试相邻级联，都没有数据才判定为受光。
-            if (selected + 1u < cascade_count)
+            // 2. 动态层（级联 0，仅在动态距离内求值并在远端淡出）
+            float dynamic_shadow = 1.0;
+            const float dyn_far = shadow.cascades[0].cascade_params.y;
+            if (shadow.cascades[0].shadow_tex.x != 0u && view_depth <= dyn_far)
             {
-                float other_edge = -1.0;
-                const float other = EvalCascadeShadowAt(selected + 1u, worldPos, other_edge);
-                if (other_edge >= 0.0)
-                    return other;
-            }
+                float dyn_edge = -1.0;
+                dynamic_shadow = EvalCascadeShadowAt(0u, worldPos, dyn_edge);
 
-            if (selected > 0u)
-            {
-                float other_edge = -1.0;
-                const float other = EvalCascadeShadowAt(selected - 1u, worldPos, other_edge);
-                if (other_edge >= 0.0)
-                    return other;
-            }
-
-            return 1.0;
-        }
-
-        // ── 级联边界混合 ──
-        // 取两种"本级联即将失效"判据中较小者，避免出现硬边：
-        //   1) 距离：接近本级 cascade_params.y(=split_far) 时交给下一级（更远、覆盖更大）
-        //   2) UV：接近本级方框边界时（cascade_params.z=blend_width，UV 空间比例）
-        // 最后一级向受光淡出，避免阴影在覆盖范围外被硬切。
-        const float blend_width = shadow.cascades[selected].cascade_params.z;
-
-        if (blend_width > 0.0)
-        {
-            const float split_near = shadow.cascades[selected].cascade_params.x;
-            const float split_far  = shadow.cascades[selected].cascade_params.y;
-            const float band       = blend_width * max(split_far - split_near, 1.0e-3);
-
-            const float fade_depth = clamp((split_far - view_depth) / band, 0.0, 1.0);
-            const float fade_uv    = smoothstep(0.0, blend_width, edge_dist);
-            const float blend      = min(fade_depth, fade_uv);
-
-            if (blend < 1.0)
-            {
-                if (selected + 1u < cascade_count)
+                const float dyn_blend_w = shadow.cascades[0].cascade_params.z;
+                if (dyn_blend_w > 0.0 && dyn_edge >= 0.0)
                 {
-                    float next_edge = -1.0;
-                    const float next_shadow = EvalCascadeShadowAt(selected + 1u, worldPos, next_edge);
-                    if (next_edge >= 0.0)
-                        return mix(next_shadow, shadow_factor, blend);
+                    const float dyn_near = shadow.cascades[0].cascade_params.x;
+                    const float band = dyn_blend_w * max(dyn_far - dyn_near, 1.0e-3);
+                    const float fade_depth = clamp((dyn_far - view_depth) / band, 0.0, 1.0);
+                    const float fade_uv = smoothstep(0.0, dyn_blend_w, dyn_edge);
+                    const float blend = min(fade_depth, fade_uv);
+                    dynamic_shadow = mix(1.0, dynamic_shadow, blend);
                 }
-                else
+                else if (dyn_edge < 0.0)
                 {
-                    return mix(1.0, shadow_factor, blend);
+                    dynamic_shadow = 1.0;
                 }
             }
+
+            // 动静合并：取更暗的阴影因子
+            return min(dynamic_shadow, static_shadow);
         }
 
-        return shadow_factor;
+        // 常规单链 CSM 模式
+        return EvalCascadeChain(0u, cascade_count - 1u, worldPos, view_depth);
     }
 
     // 单级阴影回退路径（csm_params.x == 0）

@@ -59,6 +59,7 @@ namespace hgl::graph
         float max_distance = 250.0f;      // 阴影最远裁剪距离
         float split_distances[kMaxShadowCascades] = { 15.0f, 45.0f, 100.0f, 250.0f }; // 自定义切分距离
         bool use_custom_splits = true;    // 是否优先使用自定义切分距离
+        bool c0_dynamic_overlay = false;  // CSM 0 仅作为近景动态阴影层，静态阴影由 CSM 1..N 从 near_z 起覆盖
         float shadow_map_size = 1024.0f;  // 贴图边长（默认 1024x1024）
         float caster_depth_margin = 100.0f; // 光源视锥沿 -Z 延伸余量（容纳视锥外背向光源的投影物）
         float bias = 0.002f;
