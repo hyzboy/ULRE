@@ -394,6 +394,17 @@ namespace hgl::graph::mtl
             }
 
             AppendTextureChannelDefines(defines, input);
+
+            // 阴影 PCF 采样宏：只有模板真的带 shadow_provider 槽时才发射。
+            // 该宏落在 .tmpl 的 {{defines}} 块（早于 {{module_includes}}），
+            // 因此 pcf_shadow.glsl 的 #ifndef 会取这里的值。
+            if (ResolvedInclude(input, ShaderModuleSlotRole::ShadowProvider))
+            {
+                defines += "#define HGL_SHADOW_PCF_POISSON_TAPS ";
+                defines += std::to_string(input.shadow_pcf_poisson_taps);
+                defines += "\n";
+            }
+
             if (input.alpha_test)
             {
                 defines += "#define HGL_ALPHA_TEST 1\n#define HGL_ALPHA_CUTOFF ";

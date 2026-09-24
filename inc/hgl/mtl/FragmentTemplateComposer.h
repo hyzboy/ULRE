@@ -34,6 +34,12 @@ namespace hgl::graph::mtl
             // 注入 MTL_TEX_<NAME>_CHANNELS=2，ntb 模块据此走 XY + 还原 Z 分支。
             const std::vector<MaterialTextureDeclaration>
                 *texture_declarations = nullptr;
+
+            // 阴影 PCF 采样方式（生成期宏，发射到模板的 {{defines}} 块）：
+            //   0   → pcf_shadow 走旧版 3x3 网格盒式采样
+            //   > 0 → Poisson 磁盘采样，值 = 采样数（上限 32）
+            // 仅当模板真的带 shadow_provider 槽时才会发射该宏。
+            hgl::uint32 shadow_pcf_poisson_taps = 16;
         };
 
         bool Compose(

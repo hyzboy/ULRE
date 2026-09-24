@@ -20,6 +20,66 @@
 #define ShadowPCFSampler 4u
 #endif
 
+// ── PCF 采样方式（编译期宏，由 ShaderGen 生成 GLSL 时注入）─────────────────
+// 值 = Poisson 磁盘采样数：
+//   0   → 旧版 3x3 网格盒式采样（保留以便 A/B 对比与回退）
+//   > 0 → 单位圆 Poisson 磁盘采样（上限 32），叠加每片元旋转抖动
+// 注入点：FragmentTemplateComposer::BuildFragmentDefines（模板带
+// shadow_provider 槽时发射）。下面的默认值仅在单独编译本模块时生效。
+#ifndef HGL_SHADOW_PCF_POISSON_TAPS
+#define HGL_SHADOW_PCF_POISSON_TAPS 16
+#endif
+
+#if HGL_SHADOW_PCF_POISSON_TAPS > 0
+// 32 点 Poisson 磁盘（固定种子生成，半径归一化到 1，最小间距 ≈ 0.27）。
+// 采样范围与旧版 3x3 盒式一致：偏移量 = 磁盘坐标 * texel * pcf_radius。
+const vec2 ShadowPoissonDisk[32] = vec2[32](
+    vec2( 0.000000,  0.000000), vec2(-0.978611, -0.205718), vec2( 0.733448,  0.676034),
+    vec2( 0.004679, -0.997756), vec2( 0.927512, -0.349982), vec2(-0.330630,  0.941093),
+    vec2(-0.839914,  0.453569), vec2(-0.482138, -0.560177), vec2( 0.385253, -0.536410),
+    vec2( 0.159607,  0.559925), vec2( 0.571619,  0.115694), vec2(-0.348539,  0.358100),
+    vec2(-0.035266, -0.447095), vec2(-0.482025, -0.118002), vec2( 0.289812,  0.948986),
+    vec2( 0.988193,  0.026413), vec2( 0.402792, -0.912604), vec2(-0.762932,  0.103883),
+    vec2( 0.737857, -0.672531), vec2(-0.652872,  0.732887), vec2(-0.345053, -0.899931),
+    vec2( 0.319079, -0.148446), vec2( 0.492496,  0.443917), vec2(-0.855182, -0.515254),
+    vec2( 0.900179,  0.351873), vec2(-0.145322,  0.685199), vec2( 0.647886, -0.202118),
+    vec2( 0.254332,  0.223268), vec2(-0.046856,  0.340706), vec2(-0.020054,  0.942472),
+    vec2( 0.436034,  0.718961), vec2( 0.140202, -0.678706));
+
+// 每片元旋转相位：gl_FragCoord 生成交错梯度噪声（Jimenez）再映射到 [0, 2π)。
+// 不抖动时固定采样图案会在大平面上形成结构性走样。
+float ShadowPoissonPhase(vec2 frag_coord)
+{
+    const float noise =
+        fract(52.9829189 * fract(0.06711056 * frag_coord.x + 0.00583715 * frag_coord.y));
+    return noise * 6.28318530717958648;
+}
+
+// Poisson 磁盘 PCF：返回受光比例 ∈ [0,1]（未乘 darkness）。
+// wrap_uv = true 时对每次采样做 fract() 环形寻址（滚动缓存 Toroidal Clipmap）。
+float EvalPoissonPCF(uint tex_handle, uint layer, vec2 uv, vec2 texel,
+                     float radius, float ref_depth, bool wrap_uv, float phase)
+{
+    const float cos_phase = cos(phase);
+    const float sin_phase = sin(phase);
+    const vec2  scale     = texel * radius;
+
+    float lit = 0.0;
+    for (int i = 0; i < min(HGL_SHADOW_PCF_POISSON_TAPS, 32); ++i)
+    {
+        const vec2 p = ShadowPoissonDisk[i];
+        const vec2 rotated = vec2(p.x * cos_phase - p.y * sin_phase,
+                                  p.x * sin_phase + p.y * cos_phase);
+        vec2 tap = uv + rotated * scale;
+        if (wrap_uv)
+            tap = fract(tap);
+        lit += Sample2DArrayShadow(tex_handle, ShadowPCFSampler, tap, layer, ref_depth);
+    }
+
+    return lit * (1.0 / float(min(HGL_SHADOW_PCF_POISSON_TAPS, 32)));
+}
+#endif
+
 float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv)
 {
     const vec2  texel      = shadow.cascades[c].inv_shadow_map_size;
@@ -35,6 +95,11 @@ float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv)
     const float layer         = float(shadow.cascades[c].shadow_tex.y);
     const uint  tex_handle    = shadow.cascades[c].shadow_tex.x;
 
+#if HGL_SHADOW_PCF_POISSON_TAPS > 0
+    const float unshadowed = EvalPoissonPCF(tex_handle, ShadowPCFSampler, phys_uv, texel,
+                                            pcf_radius, current_depth, true,
+                                            ShadowPoissonPhase(gl_FragCoord.xy));
+#else
     float lit = 0.0;
     for (int dy = -1; dy <= 1; ++dy)
     {
@@ -46,6 +111,8 @@ float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv)
     }
 
     const float unshadowed = lit * (1.0 / 9.0);
+#endif
+
     return mix(shadow.cascades[c].shadow_params.z, 1.0, unshadowed);
 }
 
@@ -251,6 +318,11 @@ float EvalPCFShadow(vec3 worldPos)
     const float layer         = float(shadow.shadow_tex.y);
     const uint  tex_handle    = shadow.shadow_tex.x;
 
+#if HGL_SHADOW_PCF_POISSON_TAPS > 0
+    const float unshadowed = EvalPoissonPCF(tex_handle, ShadowPCFSampler, shadow_uv, texel,
+                                            pcf_radius, current_depth, false,
+                                            ShadowPoissonPhase(gl_FragCoord.xy));
+#else
     float lit = 0.0;
     for (int dy = -1; dy <= 1; ++dy)
     {
@@ -262,6 +334,8 @@ float EvalPCFShadow(vec3 worldPos)
     }
 
     const float unshadowed = lit * (1.0 / 9.0);
+#endif
+
     return mix(shadow.shadow_params.z, 1.0, unshadowed);
 }
 
