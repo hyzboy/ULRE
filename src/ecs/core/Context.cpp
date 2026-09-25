@@ -328,6 +328,43 @@ namespace hgl
             return true;
         }
 
+        void ECSContext::ExecuteScenePrePassWorkflow(float deltaTime)
+        {
+            switch (scene_pipeline_mode)
+            {
+                case ScenePipelineMode::StandardLitCSM:
+                {
+                    // ── 黄金路径：标准 3D / FPS / TPS 陆地场景主光级联阴影自动化 ──
+                    if (auto env = GetSystem<EnvironmentSystem>())
+                    {
+                        if (env->IsMainLightShadowEnabled())
+                        {
+                            if (auto cam_sys = GetSystem<CameraSystem>())
+                            {
+                                if (auto *main_cam = cam_sys->GetMainCameraComponent())
+                                {
+                                    env->RenderMainLightShadowPass(main_cam, deltaTime);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case ScenePipelineMode::TopDownRTS:
+                case ScenePipelineMode::AerialLowAltitude:
+                case ScenePipelineMode::AerialHighAltitude:
+                case ScenePipelineMode::Space3D:
+                case ScenePipelineMode::SideScroll2D:
+                    // 预留特定场景类型硬编码路径空壳
+                    break;
+
+                case ScenePipelineMode::Custom:
+                default:
+                    break;
+            }
+        }
+
         bool ECSContext::BeginManagedRenderFrame(float deltaTime, const bool need_swapchain_acquire, const graph::RenderPassOptions *options)
         {
             if (!active)
@@ -348,6 +385,13 @@ namespace hgl
 
 //            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
             RenderPreBeginFrame(deltaTime);
+
+            if (need_swapchain_acquire)
+            {
+                // 主世界渲染帧前置阶段：按当前场景工作流硬编码执行预处理 Pass（如 CSM 级联阴影）
+                ExecuteScenePrePassWorkflow(deltaTime);
+            }
+
             SyncRenderTargetViewport();
 
             if (auto *gc = GetGraphicsContext())

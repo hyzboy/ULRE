@@ -6,6 +6,7 @@
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/core/RenderGraph.h>
 #include<hgl/ecs/core/RenderPassRequest.h>
+#include<hgl/ecs/core/ScenePipelineMode.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/log/Log.h>
@@ -156,6 +157,9 @@ namespace hgl
             glm::vec3 current_pass_shadow_origin{0.0f};
             bool has_shadow_origin = false;
 
+            /// 场景渲染工作流模式（默认 StandardLitCSM：标准 3D 陆地主光级联阴影）
+            ScenePipelineMode scene_pipeline_mode = ScenePipelineMode::StandardLitCSM;
+
             std::unique_ptr<RenderSystemCore> render_core;
 
             /// Cached adaptive render graph (auto-culls based on scene content)
@@ -188,6 +192,7 @@ namespace hgl
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
             bool EnsureRenderCoreInitialized();
+            void ExecuteScenePrePassWorkflow(float deltaTime);
             bool BeginManagedRenderFrame(float deltaTime, bool need_swapchain_acquire = true, const graph::RenderPassOptions *options = nullptr);
             void EndManagedRenderFrame(float deltaTime);
             void RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
@@ -274,6 +279,9 @@ namespace hgl
             bool IsCurrentPassShadow() const { return is_current_pass_shadow; }
             bool HasShadowOrigin() const { return has_shadow_origin; }
             const glm::vec3 &GetShadowOrigin() const { return current_pass_shadow_origin; }
+
+            void SetScenePipelineMode(ScenePipelineMode mode) { scene_pipeline_mode = mode; }
+            ScenePipelineMode GetScenePipelineMode() const { return scene_pipeline_mode; }
 
             void SetRenderSubmissionSerial(const uint64_t serial)
             {
