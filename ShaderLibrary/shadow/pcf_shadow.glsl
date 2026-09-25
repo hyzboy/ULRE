@@ -274,12 +274,20 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
 
         if (blend < 1.0)
         {
-            if (selected + 1u <= last_c)
+            if (selected + 1u <= last_c && shadow.cascades[selected + 1u].shadow_tex.x != 0u)
             {
                 float next_edge = -1.0;
                 const float next_shadow = EvalCascadeShadowAt(selected + 1u, worldPos, next_edge);
                 if (next_edge >= 0.0)
-                    return mix(next_shadow, shadow_factor, blend);
+                {
+                    // 在交界过渡区：本级阴影平滑淡出，同时与下一级阴影叠加取暗 min()，彻底消除生硬的单向替代感
+                    const float current_faded = mix(1.0, shadow_factor, blend);
+                    return min(current_faded, next_shadow);
+                }
+                else
+                {
+                    return mix(1.0, shadow_factor, blend);
+                }
             }
             else
             {
