@@ -29,6 +29,7 @@
 
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
+#include <hgl/ecs/core/ScenePipelineMode.h>
 #include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/ShadowComponent.h>
@@ -151,11 +152,6 @@ private:
     graph::mtl::MaterialRecipe lit_recipe{};
     graph::GlobalSSBODataAccessor material_accessors[kPBRTextureCount]{};
     graph::GlobalSSBODataAccessor ground_accessor{};
-
-    // ── CSM 级联阴影控制器与离屏 RT ──
-    CascadedShadowController csm_controller;
-    graph::RenderTargetHandle cascade_rts[kMaxShadowCascades]{};
-    uint32_t cascade_handles[kMaxShadowCascades]{};
 
     // 静态太阳光方向（指向场景地面）
     glm::vec3 sun_direction{0.5f, 0.6f, 0.8f};
@@ -410,9 +406,7 @@ private:
 
     bool InitCSMTargets()
     {
-        auto *rtm = GetGraphicsContext()->GetRenderTargetManager();
-        auto *btm = GetGraphicsContext()->GetBindlessTextureManager();
-        if (!rtm || !btm)
+        if (!environment_system)
             return false;
 
         CascadedShadowConfig &cfg = csm_config;
@@ -426,59 +420,17 @@ private:
         cfg.c0_dynamic_overlay = true;  // 启用动静分层模式
         cfg.shadow_map_size = static_cast<float>(kShadowMapSize);
         cfg.caster_depth_margin = 120.0f;
-        // ── 深度 bias（世界单位，逐级联自动换算）──────────────────────────────
-        // shadow map 渲染的是**背面**：贴图里记的是物体背光侧的深度（比正面更远）。
-        // 受光判定为 ref >= stored（ShadowPCF 采样器 compare_op=GreaterOrEqual，
-        // ref = light_ndc.z + bias），reversed-Z 下"值越大越靠近光源"。
-        // 因此正 bias 会把阴影朝光源方向推 → 接触点/地面被判为受光 → 漏光、peter-panning；
-        // 负 bias 把接收者深度朝物体背面方向拉 → 阴影贴合、接触点变实，但过大会出现
-        // 半影光晕。背面渲染的贴合量需要约等于遮挡体沿光轴的厚度在光空间里的占比。
-        //
-        // 这里用 bias_world 而不是归一化 bias：归一化 bias 的世界效果 = bias × 该级联
-        // 深度范围，而 example 的 4 个级联深度范围相差 2.6 倍（约 376m / 376m / 640m / 976m），
-        // 同一个归一化值在远景级联上会放大成 2.6 倍偏移。bias_world 由控制器按每级深度
-        // 范围换算，全场景保持同一个世界偏移（约 1.15m 贴合量）。
-        // 运行时用 [ / ] 现场微调（步长 kShadowTuneStepWorld），bias_world 为 0 时会退回 cfg.bias。
         cfg.bias = -0.003f;                    // 仅在 bias_world == 0 时生效（历史行为）
         cfg.bias_world = kShadowBiasWorld;     // 见文件头 kShadowBiasWorld
-        // ── Normal-offset（法线偏移，世界单位米）────────────────────────────────
-        // 接收者沿几何法线外推后再采样，外推量按 tan(θ) 随入射角放大：只推斜射面，
-        // 正面几乎不动。补的正是上面 bias 的短板——bias 与角度无关，为掠射面的 acne
-        // 调大就会让所有正面一起漏光。两者互补：法线偏移把"不得不压"的部分卸掉，
-        // bias_world 就能往回收。
-        // 运行时用 - / = 现场微调（步长 kShadowTuneStepWorld，最低 0 = 关闭）。
         cfg.normal_offset_world = kShadowNormalOffsetWorld; // 见文件头同名常量
         cfg.pcf_radius = 1.5f;
         cfg.darkness = 0.15f;
         cfg.blend_width = 0.05f;
-        csm_controller.SetConfig(cfg);
 
         GLogInfo(u8"[CSM] shadow bias_world=%.2fm normal_offset=%.2fm (back-face shadow map; press [ / ] and - / = to tune)",
                  cfg.bias_world, cfg.normal_offset_world);
 
-        for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
-        {
-            RenderTargetDesc desc = RenderTargetDesc::OffscreenDepthOnly(
-                kShadowMapSize, kShadowMapSize,
-                AnsiString("CSM_Cascade_") + AnsiString::numberOf(c),
-                PF_D32F);
-
-            cascade_rts[c] = rtm->Create(desc);
-            if (!cascade_rts[c] || !cascade_rts[c]->hasDepth())
-                return false;
-
-            auto *depth_tex = cascade_rts[c]->GetDepthTexture();
-            if (!depth_tex)
-                return false;
-
-            cascade_handles[c] = btm->RegisterTexture(depth_tex);
-            if (cascade_handles[c] == 0)
-                return false;
-
-            csm_controller.SetCascadeTexture(c, cascade_handles[c], 0);
-        }
-
-        return true;
+        return environment_system->EnableMainLightShadow(cfg, kShadowMapSize);
     }
 
     bool PopulateWorld()
@@ -621,13 +573,6 @@ private:
         main_camera->move_speed = 22.0f;
         main_camera->rotation_sensitivity = 0.18f;
 
-        auto *light_entity = ecs_context->CreateEntity<Entity>("CSMLightCamera");
-        light_camera = light_entity->AddComponent<CameraComponent>();
-        light_camera->is_main_camera = false;
-
-        // 光源相机只作为 shadow pass 的容器：其 view/projection 每帧由 CSM 控制器写入
-        // custom_view / custom_projection。因此它的 position / forward 没有几何意义
-        // （保持组件默认值），shadow pass 的 shader 不得消费 camera_world_pos / view_line。
         camera_system->Update(0.0f);
         if (auto *main_rt = ecs_context->GetRenderTarget())
             camera_system->SetViewportInfo(main_rt->GetViewportInfo());
@@ -667,107 +612,6 @@ private:
             const float gx = std::floor(main_camera->position.x / kSnapGrid) * kSnapGrid;
             const float gy = std::floor(main_camera->position.y / kSnapGrid) * kSnapGrid;
             ground_transform->SetLocalPosition(glm::vec3(gx, gy, 0.0f));
-        }
-    }
-
-    void RenderCSM()
-    {
-        if (!ecs_context || !environment_system || !main_camera || !light_camera)
-            return;
-
-        auto *shadow_info = environment_system->EditShadowInfo();
-        if (!shadow_info)
-            return;
-
-        // 提取主相机当前数据
-        graph::Camera main_cam;
-        main_cam.pos = main_camera->position;
-        main_cam.viewDirection = main_camera->forward;
-        main_cam.world_up = main_camera->world_up;
-        main_cam.fovY = main_camera->fov > 0.0f ? main_camera->fov : 60.0f;
-        main_cam.znear = main_camera->near_plane > 0.0f ? main_camera->near_plane : 0.1f;
-        main_cam.zfar = main_camera->far_plane > 0.0f ? main_camera->far_plane : 500.0f;
-
-        const auto *vp = main_camera->viewport_info;
-        const float aspect = (vp && vp->GetViewportHeight() > 0)
-            ? vp->GetAspectRatio()
-            : (16.0f / 9.0f);
-
-        CascadeUpdateResult updates[kMaxShadowCascades];
-        csm_controller.Update(main_cam, aspect, light_dir_math, *shadow_info, updates);
-
-        // 记录各级联的包围球半径与深度范围，供 bias 的运行时微调换算/打印使用
-        cascade_radius0 = updates[0].sphere_radius;
-        for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
-            cascade_depth_range[c] = updates[c].depth_range;
-
-        // 确保非零以激活 shader 级联分支
-        shadow_info->shadow_tex.x = cascade_handles[0];
-        environment_system->MarkShadowDirty();
-
-        last_c0_draws = 1;
-        last_c1_strips = updates[1].need_full_update ? 1 : updates[1].dirty_rect_count;
-        last_c2_strips = updates[2].need_full_update ? 1 : updates[2].dirty_rect_count;
-        last_c3_strips = updates[3].need_full_update ? 1 : updates[3].dirty_rect_count;
-
-        for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
-        {
-            const auto &res = updates[c];
-            auto *rt = cascade_rts[c].get();
-            if (!rt)
-                continue;
-
-            if (c == 0 || res.need_full_update)
-            {
-                // 全量重绘
-                RenderPassRequest req;
-                req.target = rt;
-                req.camera = light_camera.get();
-                light_camera->custom_matrices = true;
-                light_camera->custom_view = res.light_view;
-                light_camera->custom_projection = res.light_proj;
-                req.load_depth = false;
-                req.use_scissor = false;
-                req.clear_scissor_depth = false;
-                // 阴影贴图记录模型**背面**的深度（避开自身共面 acne），必须显式声明剔除正面，
-                // 引擎不做隐式推断
-                req.cull_mode = CullMode::Front;
-                req.is_shadow_pass = true;
-                req.shadow_reference_camera = main_camera.get();
-                // 级联 0 仅收集动态物体（Movable）；中远景级联仅收集静态物体（Static）
-                req.mobility_filter = (c == 0) ? static_cast<int>(Mobility::Movable) : static_cast<int>(Mobility::Static);
-
-                ecs_context->RenderTo(req);
-            }
-            else if (res.dirty_rect_count > 0)
-            {
-                // 滚动增量条带更新
-                for (uint32_t r = 0; r < res.dirty_rect_count; ++r)
-                {
-                    const auto &rect = res.dirty_rects[r];
-                    RenderPassRequest req;
-                    req.target = rt;
-                    req.camera = light_camera.get();
-                    light_camera->custom_matrices = true;
-                    light_camera->custom_view = res.light_view;
-                    light_camera->custom_projection = res.light_proj;
-                    req.load_depth = true; // 保留旧深度图内容
-                    req.use_scissor = true;
-                    req.scissor.offset = { static_cast<int32_t>(rect.x), static_cast<int32_t>(rect.y) };
-                    req.scissor.extent = { rect.width, rect.height };
-                    req.clear_scissor_depth = true; // 局部清空条带区域（Reversed-Z 远平面 0.0f）
-                    req.cull_mode = CullMode::Front; // 同上：阴影贴图渲染背面
-                    req.is_shadow_pass = true;
-                    req.shadow_reference_camera = main_camera.get();
-                    req.mobility_filter = static_cast<int>(Mobility::Static); // 仅收集静态物体
-
-                    ecs_context->RenderTo(req);
-                }
-            }
-            else
-            {
-                // 静止命中：0 DrawCall！
-            }
         }
     }
 
@@ -824,7 +668,11 @@ private:
             csm_config.bias = new_bias;
         }
 
-        csm_controller.SetConfig(csm_config);
+        if (environment_system)
+        {
+            if (auto *ctrl = environment_system->GetShadowController())
+                ctrl->SetConfig(csm_config);
+        }
 
         // 只改接收者侧的比较基准，滚动缓存里的深度仍然有效，无需重建级联。
         // 用上一帧真实 Update 记录的深度范围直接换算，**不能**在这里再调一次
@@ -882,7 +730,11 @@ private:
             return;
 
         csm_config.normal_offset_world = new_offset;
-        csm_controller.SetConfig(csm_config);
+        if (environment_system)
+        {
+            if (auto *ctrl = environment_system->GetShadowController())
+                ctrl->SetConfig(csm_config);
+        }
 
         const char *state = (new_offset > 0.0f) ? "on" : "off";
         GLogInfo(u8"[Shadow Normal Offset] strength=%.2fm (%s) - tan(theta) weighted, clamped to 1.50m",
@@ -923,8 +775,6 @@ public:
         TuneShadowBias();
         TuneShadowNormalOffset();
 
-        RenderCSM();
-
         if (stats_timer >= 1.0)
         {
             const bool stationary_c13 = (last_c1_strips == 0 && last_c2_strips == 0 && last_c3_strips == 0);
@@ -947,20 +797,8 @@ public:
 
         ecs_context->SetResourceNamePrefix("CascadeShadowMap:MainScene");
 
-        if (!InitTextures())
-            return false;
-        if (!InitMaterial())
-            return false;
-        if (!InitVDM())
-            return false;
-        if (!CreateGeometries())
-            return false;
-        if (!InitCSMTargets())
-            return false;
-        if (!PopulateWorld())
-            return false;
-        if (!SetupCameras())
-            return false;
+        // 显式声明场景工作流模式（黄金路径：标准 3D 陆地主光级联阴影）
+        ecs_context->SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
 
         environment_system = ecs_context->GetSystem<EnvironmentSystem>();
         if (!environment_system)
@@ -979,7 +817,22 @@ public:
         sky_info->SetTime(9, 30, 0);
         environment_system->MarkSkyDirty();
 
-        GLogInfo(u8"=== CascadeShadowMapApp initialized successfully (100 objects, 4 cascades rolling cache) ===");
+        if (!InitTextures())
+            return false;
+        if (!InitMaterial())
+            return false;
+        if (!InitVDM())
+            return false;
+        if (!CreateGeometries())
+            return false;
+        if (!InitCSMTargets())
+            return false;
+        if (!PopulateWorld())
+            return false;
+        if (!SetupCameras())
+            return false;
+
+        GLogInfo(u8"=== CascadeShadowMapApp initialized successfully (100 objects, 4 cascades automated pipeline) ===");
         return true;
     }
 };

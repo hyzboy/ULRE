@@ -1,9 +1,11 @@
 #include <hgl/ecs/core/RenderPassRequest.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
+#include <hgl/ecs/core/ScenePipelineMode.h>
 #include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/ShadowComponent.h>
+#include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/graph/render/lighting/CascadedShadowController.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/io/FileInputStream.h>
@@ -1117,6 +1119,66 @@ int main(int argc, char** argv)
             }
 
             GLogInfo(u8"Test 8 Passed: ShadowComponent, Default Convention & Caster Culling Contracts verified.");
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Test 9: ScenePipelineMode & Automated Shadow Workflow Contracts
+        // ─────────────────────────────────────────────────────────────
+        {
+            // 9A: 默认管线模式为 StandardLitCSM（黄金路径）
+            ECSContext ctx;
+            if (ctx.GetScenePipelineMode() != ScenePipelineMode::StandardLitCSM)
+            {
+                GLogError(u8"Test 9A Failed: default ScenePipelineMode must be StandardLitCSM");
+                return 9;
+            }
+
+            // 9B: 模式切换与预留场景枚举契约
+            ctx.SetScenePipelineMode(ScenePipelineMode::TopDownRTS);
+            if (ctx.GetScenePipelineMode() != ScenePipelineMode::TopDownRTS)
+            {
+                GLogError(u8"Test 9B Failed: ScenePipelineMode::TopDownRTS switch failed");
+                return 9;
+            }
+            ctx.SetScenePipelineMode(ScenePipelineMode::AerialLowAltitude);
+            if (ctx.GetScenePipelineMode() != ScenePipelineMode::AerialLowAltitude)
+            {
+                GLogError(u8"Test 9B Failed: ScenePipelineMode::AerialLowAltitude switch failed");
+                return 9;
+            }
+            ctx.SetScenePipelineMode(ScenePipelineMode::Space3D);
+            if (ctx.GetScenePipelineMode() != ScenePipelineMode::Space3D)
+            {
+                GLogError(u8"Test 9B Failed: ScenePipelineMode::Space3D switch failed");
+                return 9;
+            }
+
+            // 9C: CameraSystem::GetMainCameraComponent 权威获取契约
+            auto cam_sys = ctx.RegisterTickSystem<CameraSystem>();
+            if (!cam_sys)
+            {
+                GLogError(u8"Test 9C Failed: CameraSystem registration failed");
+                return 9;
+            }
+
+            auto e_cam = ctx.CreateEntity<Entity>("TestMainCamera");
+            auto cam_comp = e_cam->AddComponent<CameraComponent>();
+            cam_comp->is_main_camera = true;
+            cam_comp->position = math::Vector3f(12.0f, 34.0f, 56.0f);
+
+            auto *resolved_main_cam = cam_sys->GetMainCameraComponent();
+            if (resolved_main_cam != cam_comp.get())
+            {
+                GLogError(u8"Test 9C Failed: GetMainCameraComponent must resolve the camera marked is_main_camera");
+                return 9;
+            }
+            if (resolved_main_cam->position.x != 12.0f)
+            {
+                GLogError(u8"Test 9C Failed: resolved main camera position mismatch");
+                return 9;
+            }
+
+            GLogInfo(u8"Test 9 Passed: ScenePipelineMode & Automated Shadow Workflow Contracts verified.");
         }
     }
 
