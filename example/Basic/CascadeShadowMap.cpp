@@ -67,6 +67,15 @@ namespace
     constexpr uint32_t kShadowMapSize = 1024;
     constexpr float    kGroundExtent = 500.0f;
 
+    // ── 阴影受光侧参数（世界单位米）——示例的"配方值"，调好后固化在这里 ────────
+    // 两者互补：法线偏移按 tan(θ) 加权，只推斜射面（消掠射角 acne），正面几乎不动；
+    // 深度 bias 与角度无关，负责整体贴合量（负值 = 阴影贴着遮挡体）。
+    // 调参顺序：先找掠射面刚好看不到条纹的最小 offset，再把 |bias_world| 往 0 收，
+    // 收到接触点刚要漏光为止。运行时仍可用 `-`/`=` 调 offset、`[`/`]` 调 bias 微调。
+    constexpr float kShadowNormalOffsetWorld = 0.35f;  // 米；量级 ≈ 一个纹素的世界尺寸（CSM 0: 188m/1024texel）
+    constexpr float kShadowBiasWorld         = -1.15f; // 米；负值 = 贴合遮挡体（正值会漏光）
+    constexpr float kShadowTuneStepWorld     = 0.05f;  // 运行时微调步长（两种参数共用，米）
+
     constexpr const os_char *PBR_FOLDER_NAME[kPBRTextureCount] =
     {
         OS_TEXT("Concrete_Plain"),
@@ -176,8 +185,12 @@ private:
 
     // ── 阴影深度 bias（背面渲染的贴合补偿，运行时可调）──
     CascadedShadowConfig csm_config{};
-    float cascade_radius0 = 0.0f; // 级联 0 包围球半径（把归一化 bias 折算成世界偏移用）
+    float cascade_radius0 = 0.0f; // 级联 0 包围球半径（供上层换算世界单位用）
+    // 各级联正交投影的深度范围（米），由 RenderCSM 里那次真实 Update 记录；
+    // bias_world 除以它即得该级需要写入的归一化 bias
+    float cascade_depth_range[kMaxShadowCascades]{};
     bool bias_key_prev[2]{};      // [0]=[ 减小, [1]=] 增大，边沿触发
+    bool no_key_prev[2]{};        // [0]=- 减小, [1]== 增大（normal-offset），边沿触发
 
 private:
 
@@ -412,21 +425,35 @@ private:
         cfg.c0_dynamic_overlay = true;  // 启用动静分层模式
         cfg.shadow_map_size = static_cast<float>(kShadowMapSize);
         cfg.caster_depth_margin = 120.0f;
-        // ── 深度 bias（归一化深度，作用于接收者深度）─────────────────────────
+        // ── 深度 bias（世界单位，逐级联自动换算）──────────────────────────────
         // shadow map 渲染的是**背面**：贴图里记的是物体背光侧的深度（比正面更远）。
         // 受光判定为 ref >= stored（ShadowPCF 采样器 compare_op=GreaterOrEqual，
         // ref = light_ndc.z + bias），reversed-Z 下"值越大越靠近光源"。
         // 因此正 bias 会把阴影朝光源方向推 → 接触点/地面被判为受光 → 漏光、peter-panning；
         // 负 bias 把接收者深度朝物体背面方向拉 → 阴影贴合、接触点变实，但过大会出现
-        // 半影光晕。背面渲染的贴合量需要约等于遮挡体沿光轴的厚度在光空间里的占比，
-        // 故这里取负值；运行时用 [ / ] 现场微调（世界偏移 ≈ bias × 级联深度范围）。
-        cfg.bias = -0.003f;
+        // 半影光晕。背面渲染的贴合量需要约等于遮挡体沿光轴的厚度在光空间里的占比。
+        //
+        // 这里用 bias_world 而不是归一化 bias：归一化 bias 的世界效果 = bias × 该级联
+        // 深度范围，而 example 的 4 个级联深度范围相差 2.6 倍（约 376m / 376m / 640m / 976m），
+        // 同一个归一化值在远景级联上会放大成 2.6 倍偏移。bias_world 由控制器按每级深度
+        // 范围换算，全场景保持同一个世界偏移（约 1.15m 贴合量）。
+        // 运行时用 [ / ] 现场微调（步长 kShadowTuneStepWorld），bias_world 为 0 时会退回 cfg.bias。
+        cfg.bias = -0.003f;                    // 仅在 bias_world == 0 时生效（历史行为）
+        cfg.bias_world = kShadowBiasWorld;     // 见文件头 kShadowBiasWorld
+        // ── Normal-offset（法线偏移，世界单位米）────────────────────────────────
+        // 接收者沿几何法线外推后再采样，外推量按 tan(θ) 随入射角放大：只推斜射面，
+        // 正面几乎不动。补的正是上面 bias 的短板——bias 与角度无关，为掠射面的 acne
+        // 调大就会让所有正面一起漏光。两者互补：法线偏移把"不得不压"的部分卸掉，
+        // bias_world 就能往回收。
+        // 运行时用 - / = 现场微调（步长 kShadowTuneStepWorld，最低 0 = 关闭）。
+        cfg.normal_offset_world = kShadowNormalOffsetWorld; // 见文件头同名常量
         cfg.pcf_radius = 1.5f;
         cfg.darkness = 0.15f;
         cfg.blend_width = 0.05f;
         csm_controller.SetConfig(cfg);
 
-        GLogInfo(u8"[CSM] shadow bias=%.5f (back-face shadow map; press [ / ] to tune)", cfg.bias);
+        GLogInfo(u8"[CSM] shadow bias_world=%.2fm normal_offset=%.2fm (back-face shadow map; press [ / ] and - / = to tune)",
+                 cfg.bias_world, cfg.normal_offset_world);
 
         for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
         {
@@ -594,6 +621,9 @@ private:
         light_camera = light_entity->AddComponent<CameraComponent>();
         light_camera->is_main_camera = false;
 
+        // 光源相机只作为 shadow pass 的容器：其 view/projection 每帧由 CSM 控制器写入
+        // custom_view / custom_projection。因此它的 position / forward 没有几何意义
+        // （保持组件默认值），shadow pass 的 shader 不得消费 camera_world_pos / view_line。
         camera_system->Update(0.0f);
         if (auto *main_rt = ecs_context->GetRenderTarget())
             camera_system->SetViewportInfo(main_rt->GetViewportInfo());
@@ -662,8 +692,10 @@ private:
         CascadeUpdateResult updates[kMaxShadowCascades];
         csm_controller.Update(main_cam, aspect, light_dir_math, *shadow_info, updates);
 
-        // 级联 0 的包围球半径（sphere_radius 即深度范围的一半），用于 bias 的世界单位折算
+        // 记录各级联的包围球半径与深度范围，供 bias 的运行时微调换算/打印使用
         cascade_radius0 = updates[0].sphere_radius;
+        for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
+            cascade_depth_range[c] = updates[c].depth_range;
 
         // 确保非零以激活 shader 级联分支
         shadow_info->shadow_tex.x = cascade_handles[0];
@@ -697,6 +729,9 @@ private:
                 req.load_depth = false;
                 req.use_scissor = false;
                 req.clear_scissor_depth = false;
+                // 阴影贴图记录模型**背面**的深度（避开自身共面 acne），必须显式声明剔除正面，
+                // 引擎不做隐式推断
+                req.cull_mode = CullMode::Front;
                 // 级联 0 仅收集动态物体（Movable）；中远景级联仅收集静态物体（Static）
                 req.mobility_filter = (c == 0) ? static_cast<int>(Mobility::Movable) : static_cast<int>(Mobility::Static);
 
@@ -719,6 +754,7 @@ private:
                     req.scissor.offset = { static_cast<int32_t>(rect.x), static_cast<int32_t>(rect.y) };
                     req.scissor.extent = { rect.width, rect.height };
                     req.clear_scissor_depth = true; // 局部清空条带区域（Reversed-Z 远平面 0.0f）
+                    req.cull_mode = CullMode::Front; // 同上：阴影贴图渲染背面
                     req.mobility_filter = static_cast<int>(Mobility::Static); // 仅收集静态物体
 
                     ecs_context->RenderTo(req);
@@ -734,7 +770,14 @@ private:
             ground_prim->SetVisible(true);
     }
 
-    /// 深度 bias 运行时微调：`[` 减小 / `]` 增大（边沿触发，每次一个步长）
+    /// 由世界偏移换算某级联的归一化 bias（打印用；depth_range<=0 时返回 0）
+    static float ResolvedBiasOf(float bias_world, float depth_range)
+    {
+        return (depth_range > 0.0f) ? (bias_world / depth_range) : 0.0f;
+    }
+
+    /// 深度 bias 运行时微调：`[` 推向正偏移（更漏光）/ `]` 推向负偏移（更贴合），
+    /// 边沿触发。bias_world 非 0 时按米调，否则回退调归一化 bias。
     void TuneShadowBias()
     {
         if (!ecs_context)
@@ -744,14 +787,15 @@ private:
         if (!input_system)
             return;
 
-        constexpr float kStep = 0.0005f;
-        constexpr float kMin = -0.02f;
-        constexpr float kMax = 0.01f;
-
         const bool key_dec = input_system->IsKeyDown(io::KeyboardButton::LeftBracket);
         const bool key_inc = input_system->IsKeyDown(io::KeyboardButton::RightBracket);
 
-        float new_bias = csm_config.bias;
+        const bool use_world = (csm_config.bias_world != 0.0f);
+        const float kStep = use_world ? kShadowTuneStepWorld : 0.0005f;
+        const float kMin = use_world ? -8.0f : -0.02f;
+        const float kMax = use_world ? 2.0f : 0.01f;
+
+        float new_bias = use_world ? csm_config.bias_world : csm_config.bias;
         if (key_dec && !bias_key_prev[0])
             new_bias -= kStep;
         if (key_inc && !bias_key_prev[1])
@@ -764,16 +808,84 @@ private:
             new_bias = kMin;
         if (new_bias > kMax)
             new_bias = kMax;
-        if (new_bias == csm_config.bias)
-            return;
 
-        csm_config.bias = new_bias;
+        // bias_world 模式下不要被 0 卡住（0 代表"退回归一化 bias"）
+        if (use_world)
+        {
+            if (new_bias == csm_config.bias_world)
+                return;
+            csm_config.bias_world = new_bias;
+        }
+        else
+        {
+            if (new_bias == csm_config.bias)
+                return;
+            csm_config.bias = new_bias;
+        }
+
         csm_controller.SetConfig(csm_config);
 
-        // 只改接收者侧的比较基准，滚动缓存里的深度仍然有效，无需重建级联
-        const float zfar0 = 2.0f * cascade_radius0 + 2.0f * csm_config.caster_depth_margin;
-        GLogInfo(u8"[Shadow Bias] bias=%.5f | cascade0 depth range=%.1fm -> world offset=%.3fm | negative=shadows hug the caster (crisper), positive=shadows detach toward the light (light leak)",
-                 csm_config.bias, zfar0, csm_config.bias * zfar0);
+        // 只改接收者侧的比较基准，滚动缓存里的深度仍然有效，无需重建级联。
+        // 用上一帧真实 Update 记录的深度范围直接换算，**不能**在这里再调一次
+        // csm_controller.Update 取数：那会把缓存的 snapped_origin 提前推进，
+        // 下一帧就会拿旧贴图当新中心用（静态阴影滑动）。
+        const float w = csm_config.bias_world;
+        if (w != 0.0f)
+        {
+            GLogInfo(u8"[Shadow Bias] bias_world=%.2fm normalized=[%.5f %.5f %.5f %.5f] (per-cascade depth range=[%.0f %.0f %.0f %.0f]m)",
+                     w,
+                     ResolvedBiasOf(w, cascade_depth_range[0]), ResolvedBiasOf(w, cascade_depth_range[1]),
+                     ResolvedBiasOf(w, cascade_depth_range[2]), ResolvedBiasOf(w, cascade_depth_range[3]),
+                     cascade_depth_range[0], cascade_depth_range[1], cascade_depth_range[2], cascade_depth_range[3]);
+        }
+        else
+        {
+            GLogInfo(u8"[Shadow Bias] normalized bias=%.5f (bias_world disabled)", csm_config.bias);
+        }
+
+        GLogInfo(u8"[Shadow Bias] negative=shadows hug the caster (crisper), positive=shadows detach toward the light (light leak)");
+    }
+
+    /// Normal-offset 强度运行时微调：`-` 减小 / `=` 增大（米），边沿触发。
+    /// 与深度 bias 不同，这里调的是**接收者采样位置**，同样不需要重建级联缓存。
+    void TuneShadowNormalOffset()
+    {
+        if (!ecs_context)
+            return;
+
+        auto input_system = ecs_context->GetSystem<InputSystem>();
+        if (!input_system)
+            return;
+
+        const bool key_dec = input_system->IsKeyDown(io::KeyboardButton::Minus);
+        const bool key_inc = input_system->IsKeyDown(io::KeyboardButton::Equals);
+
+        constexpr float kStep = kShadowTuneStepWorld;
+        constexpr float kMax = 4.0f;
+
+        float new_offset = csm_config.normal_offset_world;
+        if (key_dec && !no_key_prev[0])
+            new_offset -= kStep;
+        if (key_inc && !no_key_prev[1])
+            new_offset += kStep;
+
+        no_key_prev[0] = key_dec;
+        no_key_prev[1] = key_inc;
+
+        if (new_offset < 0.0f)
+            new_offset = 0.0f;
+        if (new_offset > kMax)
+            new_offset = kMax;
+
+        if (new_offset == csm_config.normal_offset_world)
+            return;
+
+        csm_config.normal_offset_world = new_offset;
+        csm_controller.SetConfig(csm_config);
+
+        const char *state = (new_offset > 0.0f) ? "on" : "off";
+        GLogInfo(u8"[Shadow Normal Offset] strength=%.2fm (%s) - tan(theta) weighted, clamped to 1.50m",
+                 new_offset, state);
     }
 
 public:
@@ -808,6 +920,7 @@ public:
         UpdateMovableAnimation(static_cast<float>(elapsed_time));
 
         TuneShadowBias();
+        TuneShadowNormalOffset();
 
         RenderCSM();
 

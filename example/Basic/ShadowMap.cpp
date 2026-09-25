@@ -1093,6 +1093,7 @@ private:
         req.target           = rt;
         req.camera           = light_camera.get();
         req.use_target_clear = true;
+        req.cull_mode        = ecs::CullMode::Front; // 阴影贴图渲染模型背面（显式声明，无隐式推断）
 
         const bool ok = ecs_context->RenderTo(req);
 

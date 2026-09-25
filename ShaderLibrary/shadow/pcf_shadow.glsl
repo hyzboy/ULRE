@@ -80,6 +80,66 @@ float EvalPoissonPCF(uint tex_handle, uint layer, vec2 uv, vec2 texel,
 }
 #endif
 
+// ── Normal-offset shadow mapping（编译期宏，由 ShaderGen 生成 GLSL 时注入）────
+//   0 → 关闭：着色点原样送去采样，完全依赖深度 bias 压 acne
+//   1 → 开启
+// 注入点：FragmentTemplateComposer::BuildFragmentDefines（模板带 shadow_provider
+// 槽时发射）。下面的默认值仅在单独编译本模块时生效。
+//
+// 宏管"有没有这段代码"，运行时强度管"用多大劲"：强度来自
+// ShadowCascadeInfo::shadow_params.w（世界单位米，控制器把同一个值写进每一级，
+// 故读级联 0 即可；未配置时为结构体默认值 0.0 ⇒ 等价于不偏移）。
+// 宏关掉时连一次 normalize/dot 都不会留下。
+#ifndef HGL_SHADOW_NORMAL_OFFSET
+#define HGL_SHADOW_NORMAL_OFFSET 1
+#endif
+
+/// 法线偏移量的硬上限（世界单位米）。夹住 tan(θ) 在掠射角处的发散，
+/// 否则 tan→+∞ 会把采样点甩到相邻物体背后，表现为"阴影脱离物体/漏光"。
+const float SHADOW_NORMAL_OFFSET_MAX = 1.5;
+
+#if HGL_SHADOW_NORMAL_OFFSET > 0
+/// 沿几何法线外推着色点，返回用于**采样**的世界坐标。
+///
+///   offset = clamp(strength * tan(θ), 0, MAX)，θ = 几何法线与入射光的夹角
+///   采样点 = world_pos + N * offset
+///
+/// 为什么是 tan(θ)：acne 的深度误差 ∝ 表面在一个纹素跨度内沿光轴的高度变化
+/// ∝ tan(θ)。正面受光（θ≈0）几乎不需要偏移，掠射面（θ→90°）才需要大偏移。
+/// 这恰好补上固定深度 bias 的短板——bias 与角度无关，为掠射面调大就会让所有
+/// 正面一起"漏光"（peter-panning）；法线偏移只推斜射面，正面纹丝不动。
+///
+/// 用**几何**法线（SurfaceInput.worldNormal）而非着色法线：normal map 的扰动
+/// 只改变外观、不改变真实轮廓，拿它做偏移会在法线花纹上抖出噪点。
+///
+/// 光方向取 sky.sun_direction —— 与本引擎其余阴影接收代码
+/// （material/shadow_receiver_source.glsl）同源，其约定是 forward = -sun_direction，
+/// 故 sun_direction 指向**光源**，正是这里要的 L。若某个场景把 CSM 光与
+/// sun_direction 驱动成两个不同的方向，请把强度置 0 或关掉宏。
+vec3 ShadowNormalOffsetPosition(vec3 world_pos, vec3 world_normal, float strength)
+{
+    if (strength <= 0.0)
+        return world_pos;
+
+    const float n_len = length(world_normal);
+    if (n_len <= 1.0e-6)
+        return world_pos;
+
+    const vec3  N         = world_normal / n_len;
+    const vec3  L         = normalize(sky.sun_direction.xyz);
+    const float cos_theta = dot(N, L);
+
+    // 背光面本来就在阴影里，偏移没有意义；同时 cos→0 时 tan 发散，必须挡掉
+    if (cos_theta <= 1.0e-3)
+        return world_pos;
+
+    const float sin_theta = sqrt(max(1.0 - cos_theta * cos_theta, 0.0));
+    const float offset    = min(strength * (sin_theta / cos_theta), SHADOW_NORMAL_OFFSET_MAX);
+
+    return world_pos + N * offset;
+}
+#endif
+
 float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv)
 {
     const vec2  texel      = shadow.cascades[c].inv_shadow_map_size;
@@ -231,7 +291,7 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
     return shadow_factor;
 }
 
-float EvalPCFShadow(vec3 worldPos)
+float EvalPCFShadowAt(vec3 worldPos, vec3 selectPos)
 {
     if (shadow.shadow_tex.x == 0u)
         return 1.0;
@@ -242,12 +302,14 @@ float EvalPCFShadow(vec3 worldPos)
         const uint cascade_count = min(shadow.csm_params.x, 4u);
 
         // ── 选级：按"相机 → 片元"的前向深度与每级 cascade_params.y(=split_far) 匹配 ──
+        // 用 selectPos（未做算法线偏移的真实着色点）：法线偏移只是采样技巧，
+        // 不该把片元推过 split 边界，否则级联接缝处会闪出错误的一级。
         const vec3  cam_fwd_raw = camera.view_line;
         const float cam_fwd_len = length(cam_fwd_raw);
 
         const float view_depth = (cam_fwd_len > 1.0e-6)
-                               ? dot(worldPos - camera.camera_world_pos, cam_fwd_raw / cam_fwd_len)
-                               : length(worldPos - camera.camera_world_pos);
+                               ? dot(selectPos - camera.camera_world_pos, cam_fwd_raw / cam_fwd_len)
+                               : length(selectPos - camera.camera_world_pos);
 
         // csm_params.y == 2u: 动静分层叠加模式（CSM 0 动态层，CSM 1..N-1 静态层）
         if (shadow.csm_params.y == 2u && cascade_count > 1u)
@@ -339,9 +401,24 @@ float EvalPCFShadow(vec3 worldPos)
     return mix(shadow.shadow_params.z, 1.0, unshadowed);
 }
 
+/// 兼容入口：采样点与选级点相同。
+float EvalPCFShadow(vec3 worldPos)
+{
+    return EvalPCFShadowAt(worldPos, worldPos);
+}
+
 float GetShadowFactor(SurfaceInput surface)
 {
-    return EvalPCFShadow(surface.worldPos);
+    vec3 sample_pos = surface.worldPos;
+
+#if HGL_SHADOW_NORMAL_OFFSET > 0
+    // shadow_params.w = 法线偏移强度（世界单位米）。控制器把同一个值写进每一级，
+    // 因此读级联 0 即可；未配置时该字段是结构体默认值 0.0，等于不偏移。
+    sample_pos = ShadowNormalOffsetPosition(surface.worldPos, surface.worldNormal,
+                                           shadow.cascades[0].shadow_params.w);
+#endif
+
+    return EvalPCFShadowAt(sample_pos, surface.worldPos);
 }
 
 #endif // PCF_SHADOW_GLSL
