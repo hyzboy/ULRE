@@ -179,9 +179,12 @@ float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv)
 // 对单个级联求阴影因子。
 //
 // out_edge_dist 返回片元在 UV 空间到级联方框边界的距离（可为负，表示已越界）：
-//   > 0  该级联在本片元处有数据，可参与边界混合
-//   < 0  该级联在本片元处**没有可用数据**（片元落在该级联的深度窗口之外）。
-//        调用者必须改试相邻级联，绝不能据此判定为"受光"，否则大片地面会被判成无阴影。
+//   >= 0 该级联在本片元处有数据，可参与边界混合
+//   < 0  该级联在本片元处**没有可用数据**（片元落在该级联的深度窗口之外 / 背向光源）。
+//
+// out_edge_dist 目前只服务于动态层（级联 0）的方框边界淡出。
+// 它**不能**用来决定"换一级联"：级联归属必须按深度区间判定（见 EvalCascadeChain），
+// 否则用一个更远的级联去顶替"本级无数据"的片元，会把远景贴图渗进近景范围。
 //
 // UV 越界时按半纹素 clamp 采样，而不是回退 return 1.0：级联方框是包围球的
 // XY 外接方框，方框外的片元仍是可见几何体，直接把最近纹素的深度用上比判成
@@ -212,58 +215,61 @@ float EvalCascadeShadowAt(uint c, vec3 worldPos, out float out_edge_dist)
     return EvalCascadePCF(c, light_ndc, uv);
 }
 
-// 评估指定级联区间 [first_c, last_c] 内的阴影因子，包含选级、回退与边界混合
+// 评估指定级联区间 [first_c, last_c] 内的阴影因子。
+//
+// 硬规则（改动前请先读 .ai/skills/SKILL_CASCADED_SHADOW_CSM.md 第 2 节）：
+//   1. 级联归属**只**由 view_depth 与 cascade_params.y(=split_far) 决定：
+//      每级只负责自己的 [split_near, split_far) 区间，同级重叠时由更近的一级负责；
+//   2. 被屏蔽的级联（shadow_tex.x == 0）在它自己的区间里就是"没有任何阴影数据"，
+//      必须返回受光。**绝不允许下沉到更远的级联去顶替**，否则关闭 CSM 1 后
+//      近景（0.1~50m）会被 CSM 2 那张粗粒度贴图接管 —— 现象正是
+//      "CSM 2 的内容出现在 CSM 1 的范围"，而且因为两张贴图画的是同一批静态物件，
+//      交接处看起来还是无缝的，极易误判为"映射错位"。
+//   3. 被屏蔽的级联**不得影响别的级联**：本级区间内的结果与本级之后各级的开关无关。
 float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_depth)
 {
-    uint selected = 0xFFFFFFFFu;
+    uint selected = last_c;                 // 超出所有区间时由最后一级兜底
     for (uint c = first_c; c <= last_c; ++c)
     {
-        if (shadow.cascades[c].shadow_tex.x == 0u)
-            continue;
-
-        selected = c;
         if (view_depth <= shadow.cascades[c].cascade_params.y)
+        {
+            selected = c;
             break;
+        }
     }
 
-    if (selected == 0xFFFFFFFFu)
+    // 该深度区间无阴影数据（本级被屏蔽）→ 受光，禁止下沉到更远的级联
+    if (shadow.cascades[selected].shadow_tex.x == 0u)
         return 1.0;
 
+    const float split_near = shadow.cascades[selected].cascade_params.x;
+    const float split_far  = shadow.cascades[selected].cascade_params.y;
+    // 交界带宽度：世界单位（米），由控制器写入 cascade_params.w；
+    // 用世界单位而非比例，是为了让各级交界带的视觉宽度一致
+    const float band = shadow.cascades[selected].cascade_params.w;
+
     float edge_dist = -1.0;
-    float shadow_factor = EvalCascadeShadowAt(selected, worldPos, edge_dist);
+    const float shadow_factor = EvalCascadeShadowAt(selected, worldPos, edge_dist);
 
-    // 级联边界混合：严格基于 view_depth 深度，仅在靠近 split_far 边界过渡带时做平滑叠加
-    // 严禁利用光空间 UV 边缘把远景级联（如 CSM 2）反向渗透进近景级联（如 CSM 1）的范围
-    const float blend_width = shadow.cascades[selected].cascade_params.z;
-    if (blend_width > 0.0)
+    // 交界带：与下一级取暗叠加(min)，本级始终保持整强度、不做淡出。
+    // 这样交界处是"叠加"而不是"本级被下一级顶替"；下一级在此处无数据时返回 1.0，
+    // 对 min() 天然无副作用。
+    // 注意：下一级被屏蔽时直接返回本级结果，屏蔽一级不得波及相邻级。
+    if (band > 0.0 && selected + 1u <= last_c
+        && shadow.cascades[selected + 1u].shadow_tex.x != 0u
+        && view_depth > (split_far - band))
     {
-        const float split_near = shadow.cascades[selected].cascade_params.x;
-        const float split_far  = shadow.cascades[selected].cascade_params.y;
-        const float band       = blend_width * max(split_far - split_near, 1.0e-3);
+        float next_edge = -1.0;
+        return min(shadow_factor, EvalCascadeShadowAt(selected + 1u, worldPos, next_edge));
+    }
 
-        if (view_depth > (split_far - band))
-        {
-            const float fade_depth = clamp((split_far - view_depth) / band, 0.0, 1.0);
-            if (selected + 1u <= last_c && shadow.cascades[selected + 1u].shadow_tex.x != 0u)
-            {
-                float next_edge = -1.0;
-                const float next_shadow = EvalCascadeShadowAt(selected + 1u, worldPos, next_edge);
-                if (next_edge >= 0.0)
-                {
-                    // 在交界过渡区：本级阴影平滑淡出，同时与下一级阴影叠加取暗 min()，彻底消除生硬的单向替代感
-                    const float current_faded = mix(1.0, shadow_factor, fade_depth);
-                    return min(current_faded, next_shadow);
-                }
-                else
-                {
-                    return mix(1.0, shadow_factor, fade_depth);
-                }
-            }
-            else
-            {
-                return mix(1.0, shadow_factor, fade_depth);
-            }
-        }
+    // 末级：在 max_distance 附近按比例带平滑淡出到受光，避免阴影范围边缘硬切
+    if (selected + 1u > last_c)
+    {
+        const float outer_band = shadow.cascades[selected].cascade_params.z
+                               * max(split_far - split_near, 1.0e-3);
+        if (outer_band > 0.0 && view_depth > (split_far - outer_band))
+            return mix(1.0, shadow_factor, clamp((split_far - view_depth) / outer_band, 0.0, 1.0));
     }
 
     return shadow_factor;

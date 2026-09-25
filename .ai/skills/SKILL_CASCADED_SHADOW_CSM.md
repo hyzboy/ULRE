@@ -94,6 +94,48 @@ return min(dynamic_shadow, static_shadow);                                      
 与每级 `cascade_params.y`（= `split_far`）比较，**不是**用 `shadow_vp` 反推。
 因此 `cascade_params.x/y` 必须写真实切分距离，改动切分就要同步。
 
+### 2.x 硬规则：**屏蔽级联 = 该深度区间无阴影数据**
+
+`SetCascadeEnabled(c, false)` / `cascade_mask` 会把 `cascades[c].shadow_tex` 置 0，
+CPU 侧跳过该级的渲染。shader 侧必须遵守：
+
+1. **级联归属只由 `view_depth` 与 `cascade_params.y` 决定**，与"该级是否被屏蔽"无关：
+   ```glsl
+   uint selected = last_c;
+   for (uint c = first_c; c <= last_c; ++c)
+       if (view_depth <= shadow.cascades[c].cascade_params.y) { selected = c; break; }
+   if (shadow.cascades[selected].shadow_tex.x == 0u)
+       return 1.0;   // 该区间无数据 → 受光
+   ```
+2. **绝对禁止"跳过被屏蔽的级联、把该区间交给更远的级联"**。曾经写成
+   `if (shadow_tex.x == 0u) continue;`（选级循环内），后果：
+   关掉 CSM 1 后，20m 处的片元继续判 `20 <= split_far(CSM2)=160` → 命中 CSM 2，
+   于是**近景（0.1–50m）被 CSM 2 那张粗粒度贴图接管** —— 现象即
+   "CSM 2 的内容出现在 CSM 1 的范围"。因为两张贴图画的是同一批静态物件，
+   交界处看起来还是**无缝**的，极易误判成"映射错位"或"包围盒漂移"。
+3. **被屏蔽的级联不得影响相邻级**：交界带里取暗叠加前要判
+   `cascades[selected+1].shadow_tex.x != 0u`，否则屏蔽一级会波及相邻级。
+4. 反向情形天然正确：CSM 0（动态层）被屏蔽而 CSM 1 在时，
+   `min(EvalCascadeShadowAt(0)/*1.0*/, static)` 仍得到静态阴影。
+
+回归点：`TestCSMIncrementalPass` Test 7C 含契约字符串
+`shadow.cascades[selected].shadow_tex.x == 0u`，删除该判断即失败。
+
+### 2.y 交界带：`cascade_params.w` = **世界单位米**
+
+- `cascade_params.z` = 比例（末级 `max_distance` 边缘淡出 + 动态层 CSM 0 边界淡出）。
+- `cascade_params.w` = **交界带宽度（米，`config.blend_distance`）**，示例 1.5m。
+- 交界带内**近级始终整强度参与、不做淡出**，只把远级结果 `min()` 进来 ——
+  于是交界处表现为"叠加取暗"而不是"近级被远级顶替"。
+  曾经让近级 `mix(1.0, shadow, fade_depth)` 淡出、远级只在近级"没数据"时介入，
+  结果是交界处出现生硬的单向替代感。
+- 带宽必须**小（1–2m）**：远级贴图更粗（PCF 半径折算到世界更大），
+  带宽一大就会看到"近景换成远景贴图"。设置 0 表示硬切换。
+- 历史坑：`.w` 曾被当作 flags 写（`c > 0 ? 1 : 0`），而 shader 把它当**比例**乘上
+  `(split_far - split_near)` 用 → 1.0 表示"整个级联区间都是过渡带"，
+  死旋钮 + 近级整段被远级顶替。**写 UBO 字段前先核对 `ShadowInfo.h` 的语义注释。**
+
+
 ---
 
 ## 3. 级联拟合与双轴锚定（本 SKILL 的核心）
@@ -402,7 +444,8 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | `normal_offset_world` | 0 | **法线偏移强度（米）**，按 `tan(θ)` 加权，0 = 关闭（示例 **0.35**，§5.2） |
 | `pcf_radius` | 1.5 | PCF 采样半径（texel 倍数） |
 | `darkness` | 0.12 | 全阴影时的最暗因子（示例 0.15） |
-| `blend_width` | 0.05 | 级联边界混合带宽（UV 比例） |
+| `blend_width` | 0.05 | 比例：末级 `max_distance` 边缘淡出带 + 动态层 CSM 0 边界淡出带（占本级深度区间） |
+| `blend_distance` | 1.5 | **相邻级联交界带宽度（世界单位米）**，写进 `cascade_params.w`；只做取暗叠加、近级不做淡出；0 = 硬切换（§2.y） |
 | `cache_anchor_step` | 16.0 | **沿光轴**深度锚定步长（米）；0 = 禁用（缓存深度会随相机漂移） |
 | `cache_lateral_anchor_step` | 2.0 | **横向**锚定步长（米）；0 = 禁用（每跨 texel 即整级重绘） |
 
@@ -434,7 +477,7 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | **Test 6D** | `bias_world != 0` 必须压过 `per_cascade_bias_scale`（优先级契约） | `Test 6D Passed` |
 | **Test 7A** | `normal_offset_world` 逐级写进 `shadow_params.w`：默认配置（结构体默认 0）必须逐级为 0（不擅自改变历史行为）；显式配置后逐级同值且镜像到单级回退字段 | `[CSM-NORMAL-OFFSET] default strength=0.00m ...` / `configured strength=0.35m on [0.350000 ×4] (mirror=0.350000)` |
 | **Test 7B** | **正交性**：`bias_world` 与 `normal_offset_world` 同时开，逐级世界 bias 仍恒为 `bias_world`、`w` 仍等于配置值（各写不同分量，互不干扰） | `Test 7B Passed` |
-| **Test 7C** | **shader 源码契约**（读真实文件，8 项 `Contains`）：编译期宏 / 偏移辅助函数 / 宏守卫 / `shadow_params.w` 读取 / `sin_theta / cos_theta` / 背光早退 / `tan` 上限 clamp / `EvalPCFShadowAt(sample_pos, surface.worldPos)` 选级分离 | `Test 7C Passed: shader source contract holds (8 checks, 18104 bytes)` |
+| **Test 7C** | **shader 源码契约**（读真实文件，10 项 `Contains`）：编译期宏 / 偏移辅助函数 / 宏守卫 / `shadow_params.w` 读取 / `sin_theta / cos_theta` / 背光早退 / `tan` 上限 clamp / `EvalPCFShadowAt(sample_pos, surface.worldPos)` 选级分离 / **`shadow.cascades[selected].shadow_tex.x == 0u` 屏蔽级联不降级（§2.x）** / **`cascade_params.w` 交界带取自控制器写入字段（§2.y）** | `Test 7C Passed: shader source contract holds (10 checks, 18970 bytes)` |
 
 ### 写这类断言的两个硬要求
 
@@ -530,6 +573,10 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 - [ ] 给接收者加新的采样位置扰动（如再叠一层 offset）？确认**选级仍用未偏移的位置**
       （`EvalPCFShadowAt(worldPos, selectPos)` 的第二个入参）。
 - [ ] 动过切分距离？同时确认 shader 选级用的 `cascade_params.x/y` 与新距离一致。
+- [ ] 用了 `SetCascadeEnabled(false)` / `cascade_mask`？症状"关掉 CSM 1 后中远景还是出现 CSM 2/3 的内容"、
+      "交界处像单向替代"时**先查 `EvalCascadeChain` 的选级循环**：必须"先按 `view_depth` 定级、再判
+      `shadow_tex.x == 0` 返回受光"，绝不能 `continue` 跳过被屏蔽级（§2.x）。顺手确认
+      `cascade_params.w` 没被当成 flags 写（§2.y）。
 - [ ] 动过 `castShadow` 相关逻辑？确认静态级**只在** `need_full_update || dirty_rect_count > 0`
       时发 DrawCall。
 - [ ] 源文件必须是**无 BOM UTF-8**（MSVC 未设 `/utf-8`；用 PowerShell 改文件时

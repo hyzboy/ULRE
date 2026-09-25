@@ -383,7 +383,7 @@ namespace hgl::graph
             else if (out_shadow_info.shadow_tex.x > 0)
                 casc.shadow_tex = Vector4u(out_shadow_info.shadow_tex.x, c, 0, 0);
 
-            casc.cascade_params = Vector4f(split_near, split_far, config_.blend_width, (c > 0 ? 1.0f : 0.0f));
+            casc.cascade_params = Vector4f(split_near, split_far, config_.blend_width, config_.blend_distance);
             casc.cache_origin = Vector4f(snapped_cx, snapped_cy, texel_size, texel_size);
             casc.cache_offset = cache_states_[c].scroll_offset;
             casc.cache_valid_rect = Vector4u(0, 0, W, H);

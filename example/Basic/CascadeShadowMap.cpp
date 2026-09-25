@@ -426,7 +426,8 @@ private:
         cfg.normal_offset_world = kShadowNormalOffsetWorld; // 见文件头同名常量
         cfg.pcf_radius = 1.5f;
         cfg.darkness = 0.15f;
-        cfg.blend_width = 0.15f; // 15% 平滑重叠过渡带，消除 1-2 级联交界生硬替代感
+        cfg.blend_width = 0.05f;   // 动态层(CSM 0)边界淡出带 + 末级 300m 边缘淡出带（占区间比例）
+        cfg.blend_distance = 1.5f; // 相邻级联交界带（世界米）: 只做取暗叠加, 近级不淡出
 
         GLogInfo(u8"[CSM] shadow bias_world=%.2fm normal_offset=%.2fm (back-face shadow map; press [ / ] and - / = to tune)",
                  cfg.bias_world, cfg.normal_offset_world);

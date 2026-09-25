@@ -1026,6 +1026,11 @@ int main(int argc, char** argv)
                 { "SHADOW_NORMAL_OFFSET_MAX",        "tan() clamp is missing (grazing angle will diverge)" },
                 { "EvalPCFShadowAt(sample_pos, surface.worldPos)",
                   "offset must not leak into cascade selection (selectPos must stay un-offset)" },
+                { "shadow.cascades[selected].shadow_tex.x == 0u",
+                  "masked cascade must yield LIT inside its own depth interval; letting selection "
+                  "descend to a farther cascade makes CSM 2 take over CSM 1's near range" },
+                { "cascade_params.w",
+                  "junction band must be read from the world-space field the controller writes (dead knob)" },
             };
 
             for (const ShaderContract &k : kContracts)
