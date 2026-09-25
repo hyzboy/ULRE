@@ -1,6 +1,9 @@
 #include <hgl/ecs/core/RenderPassRequest.h>
 #include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/components/TransformComponent.h>
+#include <hgl/ecs/components/PrimitiveComponent.h>
+#include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/graph/render/lighting/CascadedShadowController.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/io/FileInputStream.h>
@@ -52,6 +55,16 @@ int main(int argc, char** argv)
         if (req.cull_mode != CullMode::Inherit)
         {
             GLogError(u8"Test 1 Failed: req.cull_mode should be CullMode::Inherit by default");
+            return 1;
+        }
+        if (req.is_shadow_pass != false)
+        {
+            GLogError(u8"Test 1 Failed: req.is_shadow_pass should be false by default");
+            return 1;
+        }
+        if (req.shadow_reference_camera != nullptr)
+        {
+            GLogError(u8"Test 1 Failed: req.shadow_reference_camera should be nullptr by default");
             return 1;
         }
         GLogInfo(u8"Test 1 Passed: RenderPassRequest defaults verified.");
@@ -1026,6 +1039,84 @@ int main(int argc, char** argv)
                      u8"macro + shadow_params.w + tan(theta) formula + sample/select split.",
                      static_cast<int>(sizeof(kContracts) / sizeof(kContracts[0])),
                      static_cast<long long>(size));
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Test 8: ShadowComponent, Default Convention & Caster Culling Contracts
+        // ─────────────────────────────────────────────────────────────
+        {
+            // 8A: 独立 ShadowComponent 默认值
+            ShadowComponent sc;
+            if (!sc.CanCastShadow() || sc.GetMaxDistance() != 0.0f || !sc.CanReceiveShadow() || sc.GetBiasMultiplier() != 1.0f)
+            {
+                GLogError(u8"Test 8A Failed: ShadowComponent default values incorrect");
+                return 8;
+            }
+
+            // 8B: 实体未挂载 ShadowComponent 时，Renderable/Primitive 缺省回退约定（默认投射且接收）
+            Entity e1("TestEntity_NoShadowComp");
+            auto prim1 = e1.AddComponent<PrimitiveComponent>();
+            if (!prim1->CanCastShadow())
+            {
+                GLogError(u8"Test 8B Failed: PrimitiveComponent without ShadowComponent must default CanCastShadow to true");
+                return 8;
+            }
+            if (prim1->GetShadowMaxDistance() != 0.0f)
+            {
+                GLogError(u8"Test 8B Failed: PrimitiveComponent without ShadowComponent must default max distance to 0.0f");
+                return 8;
+            }
+            if (!prim1->CanReceiveShadow())
+            {
+                GLogError(u8"Test 8B Failed: PrimitiveComponent without ShadowComponent must default CanReceiveShadow to true");
+                return 8;
+            }
+
+            // 8C: 显式挂载 ShadowComponent 特异化控制
+            Entity e2("TestEntity_WithShadowComp");
+            auto prim2 = e2.AddComponent<PrimitiveComponent>();
+            auto shadow2 = e2.AddComponent<ShadowComponent>();
+            shadow2->SetCastShadow(false);
+            shadow2->SetMaxDistance(45.0f);
+            shadow2->SetReceiveShadow(false);
+
+            if (prim2->CanCastShadow() != false)
+            {
+                GLogError(u8"Test 8C Failed: PrimitiveComponent must reflect attached ShadowComponent cast_shadow=false");
+                return 8;
+            }
+            if (prim2->GetShadowMaxDistance() != 45.0f)
+            {
+                GLogError(u8"Test 8C Failed: PrimitiveComponent must reflect attached ShadowComponent max_distance=45.0f");
+                return 8;
+            }
+            if (prim2->CanReceiveShadow() != false)
+            {
+                GLogError(u8"Test 8C Failed: PrimitiveComponent must reflect attached ShadowComponent receive_shadow=false");
+                return 8;
+            }
+
+            // 8D: 距离剔除数学与边界验证
+            const glm::vec3 cam_pos(0.0f, 0.0f, 10.0f);
+            const glm::vec3 inside_pos(0.0f, 0.0f, 30.0f);  // dist = 20m <= 45m -> retain
+            const glm::vec3 outside_pos(0.0f, 0.0f, 60.0f); // dist = 50m > 45m -> cull
+
+            const float inside_dist_sqr = glm::dot(inside_pos - cam_pos, inside_pos - cam_pos);
+            const float outside_dist_sqr = glm::dot(outside_pos - cam_pos, outside_pos - cam_pos);
+            const float max_dist_sqr = shadow2->GetMaxDistance() * shadow2->GetMaxDistance();
+
+            if (inside_dist_sqr > max_dist_sqr)
+            {
+                GLogError(u8"Test 8D Failed: inside object incorrectly culled");
+                return 8;
+            }
+            if (outside_dist_sqr <= max_dist_sqr)
+            {
+                GLogError(u8"Test 8D Failed: outside object not culled");
+                return 8;
+            }
+
+            GLogInfo(u8"Test 8 Passed: ShadowComponent, Default Convention & Caster Culling Contracts verified.");
         }
     }
 

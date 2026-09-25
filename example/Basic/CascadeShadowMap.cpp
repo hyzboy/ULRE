@@ -31,6 +31,7 @@
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
+#include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -500,6 +501,9 @@ private:
         ground_prim->SetMaterialDataResource(ground_accessor.GetGlobalSSBOBinding());
         ground_prim->SetVisible(true);
 
+        auto ground_shadow = ground_entity->AddComponent<ShadowComponent>();
+        ground_shadow->SetCastShadow(false); // 规范化声明：地面不投射阴影，防止自遮挡
+
         // 2. 随机分布 100 个几何体覆盖 200m 纵深
         for (uint32_t i = 0; i < kTotalObjectCount; ++i)
         {
@@ -701,10 +705,6 @@ private:
         shadow_info->shadow_tex.x = cascade_handles[0];
         environment_system->MarkShadowDirty();
 
-        // 避免地面自身在阴影贴图中写入深度导致阴影自遮挡
-        if (ground_prim)
-            ground_prim->SetVisible(false);
-
         last_c0_draws = 1;
         last_c1_strips = updates[1].need_full_update ? 1 : updates[1].dirty_rect_count;
         last_c2_strips = updates[2].need_full_update ? 1 : updates[2].dirty_rect_count;
@@ -732,6 +732,8 @@ private:
                 // 阴影贴图记录模型**背面**的深度（避开自身共面 acne），必须显式声明剔除正面，
                 // 引擎不做隐式推断
                 req.cull_mode = CullMode::Front;
+                req.is_shadow_pass = true;
+                req.shadow_reference_camera = main_camera.get();
                 // 级联 0 仅收集动态物体（Movable）；中远景级联仅收集静态物体（Static）
                 req.mobility_filter = (c == 0) ? static_cast<int>(Mobility::Movable) : static_cast<int>(Mobility::Static);
 
@@ -755,6 +757,8 @@ private:
                     req.scissor.extent = { rect.width, rect.height };
                     req.clear_scissor_depth = true; // 局部清空条带区域（Reversed-Z 远平面 0.0f）
                     req.cull_mode = CullMode::Front; // 同上：阴影贴图渲染背面
+                    req.is_shadow_pass = true;
+                    req.shadow_reference_camera = main_camera.get();
                     req.mobility_filter = static_cast<int>(Mobility::Static); // 仅收集静态物体
 
                     ecs_context->RenderTo(req);
@@ -765,9 +769,6 @@ private:
                 // 静止命中：0 DrawCall！
             }
         }
-
-        if (ground_prim)
-            ground_prim->SetVisible(true);
     }
 
     /// 由世界偏移换算某级联的归一化 bias（打印用；depth_range<=0 时返回 0）
