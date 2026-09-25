@@ -23,6 +23,7 @@ namespace hgl
             std::string componentName;
             EntityID owner_id;
             ECSContext* owner_context = nullptr;
+            Entity* owner_entity = nullptr;
             uint64_t version = 0;
             uint32_t change_mask = 0;
 
@@ -58,6 +59,11 @@ namespace hgl
             {
                 owner_id = id;
                 owner_context = context;
+            }
+
+            void SetOwnerEntity(Entity* entity)
+            {
+                owner_entity = entity;
             }
 
             /// Get the owner entity ID

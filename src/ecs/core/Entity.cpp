@@ -48,6 +48,7 @@ namespace hgl
 
             components[type_hash] = component;
             component->SetOwner(id, context);
+            component->SetOwnerEntity(this);
             RegisterToContext(type_hash, component);
             component->OnAttach();
             MarkSceneDirty();
