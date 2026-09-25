@@ -67,10 +67,32 @@ namespace hgl::graph
         return true;
     }
 
+    void EnvironmentManager::ReleaseShadowRing(Profile *profile)
+    {
+        if (!profile)
+            return;
+
+        auto *gc = GetGraphicsContext();
+        auto *buffer_manager = gc ? gc->GetBufferManager() : nullptr;
+
+        for (uint32_t i = 0; i < kShadowUboRing; ++i)
+        {
+            if (!profile->shadow_ring[i])
+                continue;
+
+            auto *buf = profile->shadow_ring[i]->GetBuffer();
+            delete profile->shadow_ring[i];
+            profile->shadow_ring[i] = nullptr;
+
+            if (buffer_manager && buf)
+                buffer_manager->Release(buf);
+        }
+    }
+
     bool EnvironmentManager::MaterializeShadowUBO(Profile *profile)
     {
-        if (!profile || profile->shadow_ubo)
-            return profile && profile->shadow_ubo;
+        if (!profile || profile->shadow_ring[0])
+            return profile && profile->shadow_ring[0];
 
         auto *gc = GetGraphicsContext();
         if (!gc)
@@ -80,30 +102,41 @@ namespace hgl::graph
         if (!buffer_manager)
             return false;
 
-        GLogInfo(u8"[EnvironmentManager] MaterializeShadowUBO: %s", profile->name.c_str());
+        GLogInfo(u8"[EnvironmentManager] MaterializeShadowUBO: %s ring=%u",
+                 profile->name.c_str(), kShadowUboRing);
 
-        AnsiString buf_name = "ShadowUBO:";
-        buf_name += profile->name;
-
-        auto *buf = buffer_manager->CreateUBO(buf_name,
-                                              StructView<ShadowInfo>::GetSize());
-        if (!buf)
+        for (uint32_t i = 0; i < kShadowUboRing; ++i)
         {
-            GLogError("[EnvironmentManager] create shadow UBO failed: %s", profile->name.c_str());
-            return false;
-        }
+            AnsiString buf_name = "ShadowUBO:";
+            buf_name += profile->name;
+            buf_name += ":";
+            buf_name += AnsiString::numberOf(i);
 
-        buf->SetUpdateClass(BufferUpdateClass::Deferred);
-        profile->shadow_ubo = StructView<ShadowInfo>::Create(buf, false);
-        if (!profile->shadow_ubo)
-        {
-            buffer_manager->Release(buf);
-            GLogError("[EnvironmentManager] create shadow accessor failed: %s", profile->name.c_str());
-            return false;
-        }
+            auto *buf = buffer_manager->CreateUBO(buf_name,
+                                                  StructView<ShadowInfo>::GetSize());
+            if (!buf)
+            {
+                GLogError("[EnvironmentManager] create shadow UBO failed: %s slot=%u",
+                          profile->name.c_str(), i);
+                ReleaseShadowRing(profile);
+                return false;
+            }
 
-        profile->shadow_ubo->Update(profile->cpu.shadow);    // 拷贝数据 + 置脏
-        profile->shadow_ubo->Commit();                      // 标脏交 L2
+            buf->SetUpdateClass(BufferUpdateClass::Deferred);
+            profile->shadow_ring[i] = StructView<ShadowInfo>::Create(buf, false);
+            if (!profile->shadow_ring[i])
+            {
+                buffer_manager->Release(buf);
+                GLogError("[EnvironmentManager] create shadow accessor failed: %s slot=%u",
+                          profile->name.c_str(), i);
+                ReleaseShadowRing(profile);
+                return false;
+            }
+
+            // 每槽一份初始数据。之后只写 acquire 完成的那一槽，避免踩在途帧。
+            profile->shadow_ring[i]->Update(profile->cpu.shadow);
+            profile->shadow_ring[i]->Commit();
+        }
         return true;
     }
 
@@ -129,9 +162,9 @@ namespace hgl::graph
         MaterializeSkyUBO(p);
         MaterializeShadowUBO(p);
 
-        GLogInfo(u8"[EnvironmentManager] default profile ready (sky UBO=%p, shadow UBO=%p)",
+        GLogInfo(u8"[EnvironmentManager] default profile ready (sky UBO=%p, shadow ring0=%p)",
                  (void *)(p->sky_ubo ? p->sky_ubo->GetGPUBuffer() : nullptr),
-                 (void *)(p->shadow_ubo ? p->shadow_ubo->GetGPUBuffer() : nullptr));
+                 (void *)(p->shadow_ring[0] ? p->shadow_ring[0]->GetGPUBuffer() : nullptr));
     }
 
     EnvironmentManager::EnvironmentManager(GraphicsContext *gc)
@@ -171,15 +204,7 @@ namespace hgl::graph
                     buffer_manager->Release(buf);
             }
 
-            if (p->shadow_ubo)
-            {
-                auto *buf = p->shadow_ubo->GetBuffer();
-                delete p->shadow_ubo;
-                p->shadow_ubo = nullptr;
-
-                if (buffer_manager && buf)
-                    buffer_manager->Release(buf);
-            }
+            ReleaseShadowRing(p);
         }
     }
 
@@ -225,18 +250,16 @@ namespace hgl::graph
             p->sky_ubo->Update(p->cpu.sky);    // 拷贝数据 + 置脏
             p->sky_ubo->Commit();              // 标脏交 L2
         }
-        if (p->shadow_ubo)
-        {
-            p->shadow_ubo->Update(p->cpu.shadow);
-            p->shadow_ubo->Commit();
-        }
-        // 未物化时无需标记：MaterializeSkyUBO / MaterializeShadowUBO 会用当前 cpu 数据初始化
+        // shadow 不在这里写 GPU。调用点在 Tick（阴影 pass 之前），交换链上仍有
+        // 1~2 帧在飞读着同一块 ShadowInfo。写 CPU 即可，GPU 槽由 CommitMaterialized
+        // 在 acquire 之后写入。
     }
 
-    void EnvironmentManager::CommitMaterialized()
+    void EnvironmentManager::CommitMaterialized(uint32_t shadow_frame_index, bool commit_shadow)
     {
-        // 视图三件套契约：pass 开始固定写入。sky 与 shadow UBO 是 host-visible 映射直写，
-        // 每个已物化 profile 全量写一次（通常只有 default，几十字节，代价可忽略）
+        if (shadow_frame_index >= kShadowUboRing)
+            shadow_frame_index %= kShadowUboRing;
+
         for (auto *p : profiles)
         {
             if (!p)
@@ -244,13 +267,13 @@ namespace hgl::graph
 
             if (p->sky_ubo)
             {
-                p->sky_ubo->Update(p->cpu.sky);    // 拷贝数据 + 置脏
-                p->sky_ubo->Commit();              // 标脏交 L2
+                p->sky_ubo->Update(p->cpu.sky);
+                p->sky_ubo->Commit();
             }
-            if (p->shadow_ubo)
+            if (commit_shadow && p->shadow_ring[shadow_frame_index])
             {
-                p->shadow_ubo->Update(p->cpu.shadow);
-                p->shadow_ubo->Commit();
+                p->shadow_ring[shadow_frame_index]->Update(p->cpu.shadow);
+                p->shadow_ring[shadow_frame_index]->Commit();
             }
         }
     }
@@ -271,7 +294,7 @@ namespace hgl::graph
         return p->sky_ubo->GetGPUBuffer();
     }
 
-    const IGPUBuffer *EnvironmentManager::GetShadowUBO(EnvProfileID id)
+    const IGPUBuffer *EnvironmentManager::GetShadowUBO(EnvProfileID id, uint32_t frame_index)
     {
         EnsureDefault();
 
@@ -284,6 +307,9 @@ namespace hgl::graph
         if (!MaterializeShadowUBO(p))
             return nullptr;
 
-        return p->shadow_ubo->GetGPUBuffer();
+        if (frame_index >= kShadowUboRing)
+            frame_index %= kShadowUboRing;
+
+        return p->shadow_ring[frame_index] ? p->shadow_ring[frame_index]->GetGPUBuffer() : nullptr;
     }
 }//namespace hgl::graph

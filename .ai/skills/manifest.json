@@ -49,6 +49,15 @@
       "estimated_time_minutes": 5
     },
     {
+      "id": "cascaded-shadow-csm",
+      "name": "Cascaded Shadow Maps (CSM)",
+      "path": "SKILL_CASCADED_SHADOW_CSM.md",
+      "description": "Design and troubleshooting reference for directional-light CSM: dynamic/static cascade layering, static rolling cache (axial + lateral anchoring), back-face shadow maps and bias polarity, per-cascade bias, normal-offset (tan-theta weighted), Poisson PCF switch, contract tests, and a symptom-to-root-cause table.",
+      "tags": ["shadow", "csm", "cascade", "bias", "normal-offset", "pcf", "cache", "lighting", "reference"],
+      "difficulty": "advanced",
+      "estimated_time_minutes": 20
+    },
+    {
       "id": "skills-index",
       "name": "Skills Index",
       "path": "SKILL_INDEX.md",

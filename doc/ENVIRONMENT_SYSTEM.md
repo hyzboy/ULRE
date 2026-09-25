@@ -9,7 +9,7 @@
 
 1. **数据放哪**——集中在一个设备级管理器,而不是每个 ECS world 各自建 UBO(旧 EnvironmentSystem 模式,多 RT 下会互相争抢共享描述符集的 sky binding);
 2. **谁用哪份**——RT/WORLD 只持有一个 `EnvProfileID` 引用,不复制数据;未设置即用内置 default;
-3. **什么时候写 GPU**——视图三件套(camera/viewport/sky;环境 profile 的 sky 段与 shadow 段由同一固定写入点一并写)在每个 RT/RenderPass 开始时**固定全量写入**,不依赖脏标记。
+3. **什么时候写 GPU**——sky 在每个 RT/RenderPass 开始时固定全量写入。shadow 不是单份:按交换链 acquired image 分槽,只在交换链帧 acquire 之后写入当前槽。详见 `doc/shadow-ubo-inflight-overwrite.md`。
 
 ### 分层总览
 
@@ -62,12 +62,12 @@ struct Profile
     AnsiString      name;
     EnvironmentInfo cpu;                                // CPU 权威数据
     StructView<SkyInfo>    *sky_ubo    = nullptr;       // sky 段 GPU 物化(懒创建,default 例外)
-    StructView<ShadowInfo> *shadow_ubo = nullptr;       // shadow 段 GPU 物化(懒创建,default 例外)
+    StructView<ShadowInfo> *shadow_ring[kShadowUboRing] = {}; // 按 acquired image 分槽,不是单份
 };
 ```
 
-- 每个 profile 的每类信息物化为**一份自己的 UBO**;多个 RT 选同一 profile 时**共享同一块 buffer**(只读,数据不变零上传),不按 RT 复制。
-- UBO 命名 `"SkyUBO:<profile名>"` / `"ShadowUBO:<profile名>"`,走 `BufferManager::CreateUBO` + `StructView`,并设 `SetUpdateClass(BufferUpdateClass::Deferred)`(`src/SceneGraph/module/EnvironmentManager.cpp:42-54`、`:85-97`);shader source 分别是 `mtl::SBS_SkyInfo` / `mtl::SBS_ShadowInfo`(`inc/hgl/graph/ubo/UBOShaderSources.h:31-48`),对应 Scene Set binding 1 / binding 5。
+- sky 每个 profile 物化**一份** UBO;多个 RT 选同一 profile 时共享这一块。shadow 每个 profile 物化 `kShadowUboRing`(8) 份,按下标 = 交换链 `acquired_image`。不是按 RT 复制。
+- UBO 命名 `"SkyUBO:<profile名>"` / `"ShadowUBO:<profile名>:<slot>"`,走 `BufferManager::CreateUBO` + `StructView`,并设 `SetUpdateClass(BufferUpdateClass::Deferred)`。`Deferred` 的「延迟到下一帧」语义**没有实现**,不能靠它避免跨帧覆写。shader source 分别是 `mtl::SBS_SkyInfo` / `mtl::SBS_ShadowInfo`,对应 Scene Set binding 1 / binding 5。
 
 ### 关键 API
 
@@ -76,10 +76,10 @@ struct Profile
 | `Create(name, init_info)` | 注册 profile(重名返回已有句柄) |
 | `Find(name)` | 名字查句柄,失败 `kEnvProfileInvalid` |
 | `Edit(id)` / `Get(id)` | 取 CPU 权威数据指针(可写/只读),无效句柄返回 nullptr |
-| `MarkDirty(id)` | 数据改完调用:`Update(cpu)+Commit()` 完整写入 sky 与 shadow 段(`EnvironmentManager.cpp:217-234`) |
+| `MarkDirty(id)` | sky:`Update(cpu)+Commit()` 立即写入。shadow **不写 GPU**(调用点在 acquire 之前,写了会踩在途主帧) |
 | `GetSkyUBO(id)` | 绑定层用,取 sky 段 GPU buffer(懒物化;无效句柄回退 default) |
-| `GetShadowUBO(id)` | 绑定层用,取 shadow 段 GPU buffer(懒物化;无效句柄回退 default) |
-| `CommitMaterialized()` | ViewUBOCommitSystem 用:所有已物化 profile 的 sky + shadow 段全量写入(`EnvironmentManager.cpp:236-256`) |
+| `GetShadowUBO(id, frame_index)` | 绑定层用。`frame_index` 必须是本帧 acquired image,与写入槽一致;离屏传 0 |
+| `CommitMaterialized(frame, commit_shadow)` | ViewUBOCommitSystem 用。sky 每次都写;shadow 仅 `commit_shadow==true`(当前 RT 是交换链)时写 `shadow_ring[frame]` |
 
 ### default Profile 的特殊性
 
@@ -95,7 +95,7 @@ struct Profile
 - `accessor->Update(data)`(拷贝进映射窗口 + 置脏,`inc/hgl/vk/buffer/StructView.h:200`)接着 `accessor->Commit()`(把窗口范围标脏交 L2,`StructView.h:215`)——只调其中一个都不完整;
 - 直接改 `Data()` 返回的指针后必须自己 `Commit()`,否则数据停在映射窗口未提交(历史上 sky 丢数据就是这个原因);
 - manager 内所有写入路径都遵守这一约定:`MaterializeSkyUBO`(`EnvironmentManager.cpp:65-66`)、`MaterializeShadowUBO`(`:105-106`)、`MarkDirty`(`:217-234`)、`CommitMaterialized`(`:236-256`);
-- 注:`MarkDirty` 现在**就是**"拷数据 + Commit"的完整写入,不是只打空标记;`EnvironmentSystem::MarkSkyDirty()/MarkShadowDirty()` 转发到它即可当帧生效。
+- 注:`MarkSkyDirty()` 转发到 `MarkDirty`,sky 当帧写入 GPU。`MarkShadowDirty()` 同样转发,但 shadow 的 GPU 写入推迟到交换链 acquire 之后的 `CommitMaterialized`。不要把 shadow 加回 `MarkDirty` 的 GPU 写入。跨帧覆写的症状与修复见 `doc/shadow-ubo-inflight-overwrite.md`。
 
 ## 4. 选择层:RT 持有句柄
 
@@ -167,7 +167,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 - camera:`CameraSystem::CommitCameraUBO()`
 - viewport:`RenderSceneUBOSystem::CommitViewportUBO()`
-- sky + shadow:`EnvironmentManager::CommitMaterialized()`(两个段落都写)
+- sky:每次 `CommitMaterialized` 都写。shadow:仅当前 RT 为交换链时写入 `shadow_ring[acquired_image]`。离屏 pass 不写 shadow 槽。
 
 (实现:`src/ecs/systems/render/ViewUBOCommitSystem.cpp:14` 定阶段,`:17-36` 三个调用点)
 
@@ -175,7 +175,8 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 | 信息 | 写入策略 |
 |---|---|
-| camera / viewport / sky / shadow | **pass 开始固定全量写**(视图状态,时序契约;shadow 与 sky 同由 `CommitMaterialized()` 写) |
+| camera / viewport / sky | **pass 开始固定全量写** |
+| shadow | 交换链帧 acquire 之后只写当前 image 槽;Tick 里的 `MarkShadowDirty` 不写 GPU。见 `doc/shadow-ubo-inflight-overwrite.md` |
 | ColorPalette | 变化时写一次(内容基本静态) |
 | 材质 SSBO(PBRSurface 等) | 作者侧 `Commit()`,不在此管 |
 

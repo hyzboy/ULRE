@@ -33,13 +33,18 @@ namespace hgl::graph
     {
     public:
 
+        /// ShadowInfo 按交换链图像分槽。slot_count == image_count（本引擎至少 3），
+        /// 多帧同时在飞；单份 host-visible UBO 会被下一帧 CPU 覆写，主帧采样读到
+        /// 别的帧的级联矩阵（阴影逐帧左右/远近跳）。8 覆盖常见 image_count。
+        static constexpr uint32_t kShadowUboRing = 8;
+
         struct Profile
         {
             EnvProfileID    id = kEnvProfileInvalid;
             AnsiString      name;
             EnvironmentInfo cpu;                                               ///< CPU 侧唯一权威数据
             StructView<SkyInfo> *sky_ubo = nullptr;              ///< sky 段 GPU 物化（懒创建，default 例外）
-            StructView<ShadowInfo> *shadow_ubo = nullptr;        ///< shadow 段 GPU 物化（懒创建，default 例外）
+            StructView<ShadowInfo> *shadow_ring[kShadowUboRing] = {}; ///< 每帧一份，按下标 = acquired image
         };
 
     private:
@@ -52,6 +57,7 @@ namespace hgl::graph
 
         bool MaterializeSkyUBO(Profile *profile);
         bool MaterializeShadowUBO(Profile *profile);
+        void ReleaseShadowRing(Profile *profile);
 
         void EnsureDefault();
 
@@ -71,17 +77,19 @@ namespace hgl::graph
         EnvironmentInfo *Edit(EnvProfileID id);
         const EnvironmentInfo *Get(EnvProfileID id) const;
 
-        /// 数据改完调用；由设备级 dirty 扫描统一上传
+        /// 数据改完调用。sky 立即写入单份 UBO；shadow 只留在 CPU，
+        /// 等交换链 acquire 之后由 CommitMaterialized 写入本帧槽。
         void MarkDirty(EnvProfileID id);
 
         /// sky 段 GPU buffer（绑定层用；懒物化，default 保证已就绪）
         const IGPUBuffer *GetSkyUBO(EnvProfileID id);
 
-        /// shadow 段 GPU buffer（绑定层用；懒物化，default 保证已就绪）
-        const IGPUBuffer *GetShadowUBO(EnvProfileID id);
+        /// shadow 段 GPU buffer（绑定层用）。frame_index 必须是本帧 acquired image，
+        /// 与 CommitMaterialized 写入的槽一致；离屏 pass 没有在途交换链槽，传 0。
+        const IGPUBuffer *GetShadowUBO(EnvProfileID id, uint32_t frame_index = 0);
 
-        /// ViewUBOCommitSystem 专用：pass 开始时把所有已物化 profile 的 sky 与 shadow 段
-        /// 无条件全量写入 GPU（不依赖脏标记）
-        void CommitMaterialized();
+        /// ViewUBOCommitSystem 专用：pass 开始固定写入。
+        /// commit_shadow 仅在当前 RT 是交换链（acquire 已完成、该图像槽空闲）时为 true。
+        void CommitMaterialized(uint32_t shadow_frame_index, bool commit_shadow);
     };//class EnvironmentManager
 }//namespace hgl::graph

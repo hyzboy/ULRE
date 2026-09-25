@@ -1,6 +1,6 @@
 # ECS Render System SKILL合集
 
-本目录包含10个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
+本目录包含11个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph、**级联阴影CSM**和快速参考。
 
 ## ⚠️ 首先必读
 
@@ -246,6 +246,32 @@
 我需要快速完成某项工作
 我想复制代码模板
 我需要检查Checklist
+→ 使用这个SKILL
+```
+
+---
+
+### 6. [SKILL_CASCADED_SHADOW_CSM.md](SKILL_CASCADED_SHADOW_CSM.md)
+**适用：级联阴影CSM、动静分层阴影、静态滚动缓存、阴影bias与PCF调参、阴影故障排查**
+
+- 🌗 动静分层架构（CSM 0 动态逐帧 / CSM 1-3 静态滚动缓存，覆盖区间必须重叠）
+- 📐 级联拟合与**双轴锚定**（沿光轴 `cache_anchor_step` + 横向 `cache_lateral_anchor_step`）
+- ⚠️ 锚定基准必须是 `cx0` 而非 `cx`（否则光照矩阵随相机滑动）
+- 🌑 背面渲染 + reversed-Z 下的 **bias 极性**（负值贴合、正值漏光）
+- 📏 **逐级联 bias**（`bias_world` 世界单位换算 / `per_cascade_bias_scale`，各级深度范围相差 2.75 倍）
+- 🧭 **法线偏移**（`normal_offset_world` + `HGL_SHADOW_NORMAL_OFFSET`，`tan(θ)` 加权，只推斜射面）
+- ✨ Poisson PCF 宏开关（`HGL_SHADOW_PCF_POISSON_TAPS`）
+- 🧪 契约测试与**反证有牙性**方法论
+- 🩺 故障诊断表（近距无阴影 / 阴影滑动 / 每帧全量重绘 / 边缘丢失 / 漏光）
+
+**快速导航：**
+```
+阴影没出来 / 时有时无？
+静态阴影随相机移动而滑动？
+滚动缓存退化成每帧全量重绘？
+要调 bias / PCF 软硬度？
+陡峭表面有条纹（acne）/ 接触点断开？
+逐级联 bias 要不要分开调？
 → 使用这个SKILL
 ```
 

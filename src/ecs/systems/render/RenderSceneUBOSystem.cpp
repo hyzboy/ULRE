@@ -382,10 +382,15 @@ namespace hgl::ecs
             return nullptr;
 
         graph::EnvProfileID profile_id = graph::kEnvProfileDefault;
+        uint32_t frame_index = 0;
         if (auto *rt = context->GetRenderTarget())
+        {
             profile_id = rt->GetEnvironmentProfile();
+            if (rt->IsSwapchain())
+                frame_index = rt->GetCurrentFrameIndex();
+        }
 
-        return env_manager->GetShadowUBO(profile_id);
+        return env_manager->GetShadowUBO(profile_id, frame_index);
     }
 
     // 全局 Scene UBO 描述符集更新：一帧写一次（camera=0/sky=1/viewport=2/palette=3/global_addresses=4/shadow=5）。
