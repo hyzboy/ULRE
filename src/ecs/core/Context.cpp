@@ -385,13 +385,6 @@ namespace hgl
 
 //            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
             RenderPreBeginFrame(deltaTime);
-
-            if (need_swapchain_acquire)
-            {
-                // 主世界渲染帧前置阶段：按当前场景工作流硬编码执行预处理 Pass（如 CSM 级联阴影）
-                ExecuteScenePrePassWorkflow(deltaTime);
-            }
-
             SyncRenderTargetViewport();
 
             if (auto *gc = GetGraphicsContext())

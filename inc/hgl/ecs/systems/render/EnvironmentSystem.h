@@ -74,6 +74,10 @@ namespace hgl
 
             graph::CascadedShadowController *GetShadowController() const { return shadow_controller; }
             graph::IRenderTarget *GetCascadeRenderTarget(uint32_t cascade_index) const;
+            float GetCascadeDepthRange(uint32_t cascade_index) const
+            {
+                return (cascade_index < graph::kMaxShadowCascades) ? cascade_depth_range[cascade_index] : 0.0f;
+            }
 
             /// 驱动主光源阴影 Pass（全自动解算 4 级联、更新 UBO 并光栅化深度图）
             void RenderMainLightShadowPass(CameraComponent *main_camera, float deltaTime);

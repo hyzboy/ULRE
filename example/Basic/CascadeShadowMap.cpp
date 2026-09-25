@@ -681,11 +681,16 @@ private:
         const float w = csm_config.bias_world;
         if (w != 0.0f)
         {
+            const float d0 = environment_system ? environment_system->GetCascadeDepthRange(0) : 0.0f;
+            const float d1 = environment_system ? environment_system->GetCascadeDepthRange(1) : 0.0f;
+            const float d2 = environment_system ? environment_system->GetCascadeDepthRange(2) : 0.0f;
+            const float d3 = environment_system ? environment_system->GetCascadeDepthRange(3) : 0.0f;
+
             GLogInfo(u8"[Shadow Bias] bias_world=%.2fm normalized=[%.5f %.5f %.5f %.5f] (per-cascade depth range=[%.0f %.0f %.0f %.0f]m)",
                      w,
-                     ResolvedBiasOf(w, cascade_depth_range[0]), ResolvedBiasOf(w, cascade_depth_range[1]),
-                     ResolvedBiasOf(w, cascade_depth_range[2]), ResolvedBiasOf(w, cascade_depth_range[3]),
-                     cascade_depth_range[0], cascade_depth_range[1], cascade_depth_range[2], cascade_depth_range[3]);
+                     ResolvedBiasOf(w, d0), ResolvedBiasOf(w, d1),
+                     ResolvedBiasOf(w, d2), ResolvedBiasOf(w, d3),
+                     d0, d1, d2, d3);
         }
         else
         {

@@ -208,6 +208,7 @@ namespace hgl::ecs
             }
 
             cascade_handles[c] = btm->RegisterTexture(depth_tex);
+            shadow_controller->SetCascadeTexture(c, cascade_handles[c], 0);
         }
 
         light_camera = std::make_shared<CameraComponent>("AutoCSMLightCamera");

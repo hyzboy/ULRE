@@ -167,6 +167,9 @@ namespace hgl
             // Canonical frame entry with RenderGraph
 //            LogInfo("[ECS RENDER] ===== Frame Start (RenderGraph with %zu passes) =====", graph.GetEnabledPassCount());
 
+            // ── 黄金路径：在主帧 AcquireSwapchainImage 之前执行场景预处理 Pass（主光 CSM 阴影）──
+            ExecuteScenePrePassWorkflow(deltaTime);
+
             if (!BeginManagedRenderFrame(deltaTime))
                 return;
 
