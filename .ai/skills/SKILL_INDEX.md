@@ -1,6 +1,6 @@
 # ECS Render System SKILL合集
 
-本目录包含11个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph、**级联阴影CSM**和快速参考。
+本目录包含12个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph、**级联阴影CSM**、**ECS架构解耦设计规范**和快速参考。
 
 ## ⚠️ 首先必读
 
@@ -272,6 +272,27 @@
 要调 bias / PCF 软硬度？
 陡峭表面有条纹（acne）/ 接触点断开？
 逐级联 bias 要不要分开调？
+→ 使用这个SKILL
+```
+
+---
+
+### 7. [SKILL_ECS_DECOUPLING_AND_DESIGN_PRINCIPLES.md](SKILL_ECS_DECOUPLING_AND_DESIGN_PRINCIPLES.md)
+**适用：ECS架构解耦、子组件挂接设计、场景环境归属、渲染管线自动化托管边界**
+
+- 🏛️ 场景环境归属 vs 实体行为归属（环境归世界，行为归实体）
+- 🧩 正交子组件 vs 臃肿上帝基类（严禁在 RenderableComponent 中堆砌阴影/材质等特异化属性）
+- 📦 约定优于配置（缺省回退范式：未挂载即默认开启，显式挂载即特异化覆盖）
+- 🛡️ 渲染管线自动化闭环（应用层只声明意图，管线内部闭环编排 Pass，严禁泄漏底层细节）
+- ⚡ 跨组件访问性能保护（组件生命周期事件弱指针缓存，消除热循环哈希开销）
+- 📋 系统解耦检查清单 (Checklist)
+
+**快速导航：**
+```
+要给实体添加新的渲染控制属性？
+犹豫放基类还是做成独立组件？
+如何避免应用层背负底层渲染循环细节？
+如何设计无心智负担的缺省默认行为？
 → 使用这个SKILL
 ```
 
