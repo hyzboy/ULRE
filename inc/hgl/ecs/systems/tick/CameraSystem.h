@@ -135,6 +135,9 @@ namespace hgl
             const graph::CameraInfo* GetCameraInfo() const;
             const graph::ViewportInfo* GetViewportInfo() const { return viewport_info; }
 
+            /// 获取当前场景中激活的主相机组件
+            CameraComponent *GetMainCameraComponent();
+
             graph::StructView<graph::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
 
             // ViewUBOCommitSystem 专用：pass 开始时无条件全量写入（不依赖脏标记）

@@ -653,6 +653,12 @@ namespace hgl::ecs
         return nullptr;
     }
 
+    CameraComponent* CameraSystem::GetMainCameraComponent()
+    {
+        auto cameras = CollectCameras();
+        return SelectMainCamera(cameras);
+    }
+
     void CameraSystem::BindCameraResources(CameraComponent* camera, bool is_main)
     {
         if (!camera)
