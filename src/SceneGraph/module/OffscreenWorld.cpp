@@ -42,6 +42,7 @@ namespace hgl::graph
 
         gc_         = gc;
         main_world_ = main_world;
+        cull_mode_  = desc.cull_mode;
 
         if(main_world_)
             render_context_ = main_world_->GetRenderContext();
@@ -146,7 +147,7 @@ namespace hgl::graph
         world_->Tick(delta_time);
 
         // 复用与主窗口路径相同的帧驱动（BeginManagedRenderFrame + RenderDrawOnly + EndManagedRenderFrame）
-        world_->RenderTo(rt_.get(), clear_color, delta_time);
+        world_->RenderTo(rt_.get(), clear_color, delta_time, cull_mode_);
 
         RestoreMainRenderContext();
     }

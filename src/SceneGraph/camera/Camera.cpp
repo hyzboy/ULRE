@@ -6,21 +6,9 @@
 
 namespace hgl::graph
 {
-    void RefreshCameraInfo(CameraInfo *ci,const ViewportInfo *vi,const Camera *cam)
+    void RefreshCameraInfoDerived(CameraInfo *ci)
     {
-        if(!ci || !vi || !cam) return;
-        if(cam->znear <= 0.0f) return;
-
-        if(cam->use_reversed_z)
-        {
-            const float fov_radians = cam->fovY * (3.14159265358979323846f / 180.0f);
-            ci->projection = MakeInfiniteReversedZProj(fov_radians, vi->GetAspectRatio(), cam->znear);
-        }
-        else
-        {
-            if(cam->zfar <= cam->znear) return;
-            ci->projection = math::PerspectiveMatrix(cam->fovY, vi->GetAspectRatio(), cam->znear, cam->zfar);
-        }
+        if(!ci) return;
 
         ci->inverse_projection     =Inverse(ci->projection);
 
@@ -37,6 +25,11 @@ namespace hgl::graph
 
             ci->sky=ci->projection*tmp;
         }
+    }
+
+    void RefreshCameraInfoCamera(CameraInfo *ci,const Camera *cam)
+    {
+        if(!ci || !cam) return;
 
         ci->pos                    =cam->pos;
         ci->view_line              =cam->viewDirection;
@@ -63,5 +56,25 @@ namespace hgl::graph
 
         // NOTE: Camera-Relative view 矩阵平移归零和 pos=0 暂不启用，
         // 需等 TransformAssignmentBuffer::SetCameraOffset 完整接入后再启用。
+    }
+
+    void RefreshCameraInfo(CameraInfo *ci,const ViewportInfo *vi,const Camera *cam)
+    {
+        if(!ci || !vi || !cam) return;
+        if(cam->znear <= 0.0f) return;
+
+        if(cam->use_reversed_z)
+        {
+            const float fov_radians = cam->fovY * (3.14159265358979323846f / 180.0f);
+            ci->projection = MakeInfiniteReversedZProj(fov_radians, vi->GetAspectRatio(), cam->znear);
+        }
+        else
+        {
+            if(cam->zfar <= cam->znear) return;
+            ci->projection = math::PerspectiveMatrix(cam->fovY, vi->GetAspectRatio(), cam->znear, cam->zfar);
+        }
+
+        RefreshCameraInfoDerived(ci);
+        RefreshCameraInfoCamera(ci,cam);
     }
 }//namespace hgl::graph

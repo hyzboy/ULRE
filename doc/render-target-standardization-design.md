@@ -263,15 +263,30 @@ bool ECSContext::RenderTo(IRenderTarget *rt, const Color4f &clear, float dt = 0.
 `ECSContext::RenderTo(const RenderPassRequest &)`（`src/ecs/core/Context.cpp:445`）已是离屏/子 pass 一等入口，
 内部复用 `BeginManagedRenderFrame(…, need_swapchain_acquire=false, &RenderPassOptions)` + `RenderDrawOnly`
 + `EndManagedRenderFrame`，字段含 `target / camera / clear_color / use_target_clear / load_depth /
-use_scissor / scissor / clear_scissor_depth / mobility_filter / cull_mode_override`；`RenderPassOptions` 在
+use_scissor / scissor / clear_scissor_depth / mobility_filter / cull_mode`；`RenderPassOptions` 在
 `inc/hgl/vk/VKCommandBuffer.h:116`。实际使用者：`example/Basic/ShadowMap.cpp:1097`、
 `example/Basic/CascadeShadowMap.cpp:683,704`。剩余缺口是 `RenderGraph::Pass::renderTarget`
 跨 RT pass 链（执行器目前只输出 `LogWarning`，见 `src/ecs/core/RenderGraph.cpp:110-118`）。
 
-**pass 级剔除覆盖（`cull_mode_override`）**：`-1` 表示自动（沿用材质配置），其余值为
-`VkCullModeFlags`。自动规则：**depth-only 目标**（零颜色附件——本引擎里只有 shadow map）
-默认渲染模型**背面**（`VK_CULL_MODE_FRONT_BIT`），即阴影贴图记录背向光源的表面深度，
-以减轻自阴影 acne / peter-panning；其余 pass 沿用材质配置。材质显式声明双面
+**pass 级剔除模式（`CullMode`）**：`RenderPassRequest::cull_mode` / `RenderPassOptions::cull_mode`
+取值 `hgl::ecs::CullMode`（`Inherit = -1`、`None = 0`、`Front = 1`、`Back = 2`），
+数值与 `VkCullModeFlags` 对齐，底层直接 `static_cast` 透传。`Inherit` 表示沿用材质配置。
+
+**本引擎不做任何隐式剔除推断**：目标是否为 depth-only 与剔除模式**完全无关**。
+（历史包袱：早期实现有一条“零颜色附件 ⇒ 自动 `VK_CULL_MODE_FRONT_BIT`”的规则，
+它会让任何新增的 depth-only pass 在无人察觉的情况下被改成背面渲染，已删除。）
+需要“渲染模型背面”的 pass 必须**显式声明**，三条路径任选：
+
+| 显式声明点 | 用途 |
+|---|---|
+| `RenderPassRequest::cull_mode`（如 shadow pass） | 逐 pass 覆盖 |
+| `RenderPassOptions::cull_mode`（`BeginManagedRenderFrame`） | 底层逐 pass 覆盖 |
+| `OffscreenWorldDesc::cull_mode` / `ECSContext::RenderTo(rt, clear, dt, cull_mode)` | 整个离屏世界统一 |
+
+阴影贴图渲染背面（`CullMode::Front`）的意义：贴图记录背向光源的表面深度，
+避开接收面与投射面共面造成的自阴影 acne / peter-panning；代价是必须配合
+**负** depth bias（reversed-Z 下负 bias 让接收者基准朝物体背面拉，见
+`ShaderLibrary/shadow/pcf_shadow.glsl`）。材质显式声明双面
 （`MaterialPipelineConfig::cull_mode == VK_CULL_MODE_NONE`）时不受覆盖改写。
 绕序前提：主相机透视投影与光源正交投影同为 RH + 负 Y 分量（`m11 < 0`），二者绕序不反转，
 故剔除正面即剔除几何正面。

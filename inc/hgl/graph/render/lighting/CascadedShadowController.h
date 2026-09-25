@@ -35,7 +35,9 @@ namespace hgl::graph
 
         Matrix4f light_view = Matrix4f(1.0f); // 当前级联对应的光空间视图矩阵
         Matrix4f light_proj = Matrix4f(1.0f); // 当前级联对应的正交投影矩阵
-        float sphere_radius = 0.0f;           // 该级联包围球半径（=深度范围的一半，供上层换算 bias 的世界单位）
+        float sphere_radius = 0.0f;           // 该级联包围球半径（供上层换算 bias 的世界单位）
+        float depth_range = 0.0f;             // 该级联正交投影的深度范围（zfar - znear，米）
+        float resolved_bias = 0.0f;           // 该级联实际写入 UBO 的归一化 bias
 
         uint32_t dirty_rect_count = 0;
         ShadowDirtyRect dirty_rects[4];
@@ -64,6 +66,36 @@ namespace hgl::graph
         float shadow_map_size = 1024.0f;  // 贴图边长（默认 1024x1024）
         float caster_depth_margin = 100.0f; // 光源视锥沿 -Z 延伸余量（容纳视锥外背向光源的投影物）
         float bias = 0.002f;
+        // ── 逐级联 bias ──────────────────────────────────────────────────────────
+        // bias 是**归一化深度**偏移，它的世界效果 = bias × 该级联的深度范围。而各级联
+        // 的深度范围差异极大（默认配置下近距级联约 376m、超远距级联约 976m），同一个
+        // bias 在远景级联上会产生 2.6 倍的世界偏移：按近景调好的"贴合"取值套到远景
+        // 就变成"半影光晕"，反之远景调好了近景又会漏光。
+        //
+        // 两种修正方式（按需选一）：
+        //   1) bias_world != 0：把 bias 解释为**世界单位偏移（米）**，逐级联按各自
+        //      深度范围自动换算（bias_c = bias_world / depth_range_c）。全场景的世界
+        //      偏移恒定，只剩一个直觉旋钮，推荐用法。
+        //   2) per_cascade_bias_scale[c]：直接给每级一个乘数，用于精细微调（默认全 1，
+        //      即历史行为）。bias_world 非 0 时本项被忽略。
+        // 解析结果见 CascadeUpdateResult::resolved_bias / depth_range。
+        float bias_world = 0.0f;
+        float per_cascade_bias_scale[kMaxShadowCascades] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        // ── Normal-offset shadow mapping ──────────────────────────────────────
+        // 接收者沿**几何法线**外推后再去采样阴影（世界单位米，0 = 关闭）。外推量
+        // 按 tan(θ) 随入射角放大（θ = 法线与光线夹角），因此只推斜射面、正面几乎
+        // 不动 —— 这正是固定深度 bias 做不到的部分：bias 与角度无关，为掠射面调大
+        // 就会让所有正面一起漏光（peter-panning）。
+        //
+        // 与 bias 的关系：两者互补而非替代。纯深度 bias 是为了压 acne 而不得不让
+        // 阴影整体贴着遮挡体（甚至略微膨胀）；法线偏移把这份"不得不"卸掉大半，
+        // 于是 bias_world 可以往回收。调参顺序：先把法线偏移调到掠射面无 acne，
+        // 再把 |bias_world| 收小到接触点刚好不漏光。
+        //
+        // 该值写入 ShadowCascadeInfo::shadow_params.w（原本保留未用，std140 ABI
+        // 不变），每级写同一个值，shader 读级联 0。shader 侧还有编译期宏
+        // HGL_SHADOW_NORMAL_OFFSET 作为总开关（见 ShaderLibrary/shadow/pcf_shadow.glsl）。
+        float normal_offset_world = 0.0f;
         float pcf_radius = 1.5f;
         float darkness = 0.12f;
         float blend_width = 0.05f;        // 级联边缘混合带宽（UV 空间比例）
@@ -71,6 +103,13 @@ namespace hgl::graph
         // 整数倍，保证静态缓存的深度矩阵在 step 内恒定；跨步时整级联重建一次。
         // 设为 0 表示禁用锚定（仅用于测试/调试：此时缓存深度会随相机连续漂移）。
         float cache_anchor_step = 16.0f;
+        // 滚动缓存的横向锚定步长（米）。>0 时把静态级联（CSM 1..N）的包围球中心在
+        // 光源的 right/up 两轴上粗粒度吸附，使相机横向移动 step 内不产生 texel 位移，
+        // 从而避免"每跨越 1 个 texel 就整级重绘"。
+        // 代价：中心最多偏离真实中心 step*0.707，必须把包围球半径扩大同样的量以保住
+        // 视锥覆盖率，等价于静态级联纹素精度下降（step=2 时近距级联约 -12%）。
+        // 设为 0 表示禁用（横向每跨 texel 即整级重绘）。
+        float cache_lateral_anchor_step = 2.0f;
     };
 
     /**
@@ -80,7 +119,7 @@ namespace hgl::graph
      * 1. 级联划分（Split 距离计算）；
      * 2. 光空间视锥拟合、定向投影构建及 Texel Snapping 消除阴影抖动；
      * 3. 级联 0（近景）逐帧全量更新判定；
-     * 4. 级联 1..N（中远景静态缓存）环形寻址（Toroidal Clipmap）位移与 Dirty Rect 条带计算；
+     * 4. 级联 1..N（中远景静态缓存）的锚定与失效判定：横向/沿光轴粗锚定 + texel 位移检测；
      * 5. 同步输出标准 ShadowInfo UBO 数据与 ShadowCascadeCacheState。
      */
     class CascadedShadowController
@@ -135,6 +174,7 @@ namespace hgl::graph
                                     Matrix4f &out_proj,
                                     Vector4f &out_snapped_center,
                                     float &out_texel_size,
-                                    float &out_along_anchor) const;
+                                    float &out_along_anchor,
+                                    float lateral_step = 0.0f) const;
     };
 }

@@ -565,27 +565,37 @@ namespace hgl::ecs
             {
                 camera->camera_info->view               = camera->custom_view;
                 camera->camera_info->projection         = camera->custom_projection;
-                camera->camera_info->inverse_projection = math::Inverse(camera->camera_info->projection);
-                camera->camera_info->inverse_view       = math::Inverse(camera->camera_info->view);
-                camera->camera_info->vp                 = camera->camera_info->projection * camera->camera_info->view;
-                camera->camera_info->inverse_vp         = math::Inverse(camera->camera_info->vp);
 
-                math::GetFrustumPlanes(camera->camera_info->frustum_planes, camera->camera_info->vp);
+                // 派生量与非矩阵字段一律委托给与主相机路径同一份实现，禁止在本分支
+                // 另写一份：view_line / camera_world_pos 是阴影级联选级的输入
+                // （ShaderLibrary/shadow/pcf_shadow.glsl EvalPCFShadow），
+                // camera_facing_* 是 billboard 的输入（orient_camera_facing.glsl），
+                // 两条路径曾各自实现而漂移。
+                graph::RefreshCameraInfoDerived(camera->camera_info);
 
-                glm::mat4 tmp = camera->camera_info->view;
-                tmp[3] = glm::vec4(0, 0, 0, 1);
-                camera->camera_info->sky = camera->camera_info->projection * tmp;
+                if (camera->camera_data)
+                {
+                    // camera_data 已在本函数开头上方由组件字段同步，是权威源
+                    // （含 use_reversed_z 引擎约定与 double 精度世界坐标）
+                    graph::RefreshCameraInfoCamera(camera->camera_info, camera->camera_data);
+                }
+                else
+                {
+                    // camera_data 缺失（组件异常）：用组件字段临时构造源数据
+                    graph::Camera fallback;
 
-                camera->camera_info->pos                = camera->position;
-                camera->camera_info->view_line          = camera->forward;
-                camera->camera_info->world_up           = camera->world_up;
-                camera->camera_info->camera_facing_right = math::Vector3f(camera->camera_info->view[0][0], camera->camera_info->view[1][0], camera->camera_info->view[2][0]);
-                camera->camera_info->camera_facing_up   = math::Vector3f(camera->camera_info->view[0][1], camera->camera_info->view[1][1], camera->camera_info->view[2][1]);
-                camera->camera_info->znear              = camera->near_plane;
-                camera->camera_info->zfar               = camera->far_plane;
-                camera->camera_info->use_reversed_z     = 1;
-                camera->camera_info->_pad_ci0           = 0.0f;
-                camera->camera_info->camera_world_pos   = camera->position;
+                    fallback.pos               = camera->position;
+                    fallback.viewDirection     = camera->forward;
+                    fallback.world_up          = camera->world_up;
+                    fallback.znear             = camera->near_plane;
+                    fallback.zfar              = camera->far_plane;
+                    fallback.world_position_double = math::Vector3d(
+                        static_cast<double>(camera->position.x),
+                        static_cast<double>(camera->position.y),
+                        static_cast<double>(camera->position.z));
+
+                    graph::RefreshCameraInfoCamera(camera->camera_info, &fallback);
+                }
             }
             else if (camera->viewport_info && camera->camera_data)
             {

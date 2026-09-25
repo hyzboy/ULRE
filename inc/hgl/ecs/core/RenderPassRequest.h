@@ -14,6 +14,17 @@ namespace hgl
     {
         class CameraComponent;
 
+        /// 本 pass 的光栅化剔除模式。
+        /// 数值与 VkCullModeFlags 对齐（可直接透传）；Inherit 是本引擎的“无覆盖”哨兵值。
+        /// 剔除模式**不做隐式推断**：需要背面投射阴影（shadow map）的 pass 必须显式声明 Front。
+        enum class CullMode : int
+        {
+            Inherit = -1,   ///< 沿用材质配置（默认）
+            None    = 0,    ///< VK_CULL_MODE_NONE：不剔除
+            Front   = 1,    ///< VK_CULL_MODE_FRONT_BIT：剔除正面（即“渲染模型背面”）
+            Back    = 2,    ///< VK_CULL_MODE_BACK_BIT：剔除背面
+        };
+
         /**
          * RenderPassRequest —— pass 级渲染请求的一等描述（RT 标准化 §3.4 收官）
          *
@@ -62,10 +73,11 @@ namespace hgl
             /// 中远景 CSM 静态滚动缓存级联可设置为 0（仅绘制静态物体）
             int mobility_filter = -1;
 
-            /// 可选：本 pass 的光栅化剔除模式覆盖（VkCullModeFlags）。
-            /// -1（默认）= 自动：depth-only 目标（shadow map）渲染模型背面（剔除正面），
-            /// 其余 pass 沿用材质配置。显式赋值可强制本 pass 的剔除行为。
-            int cull_mode_override = -1;
+            /// 可选：本 pass 的光栅化剔除模式（见 CullMode）。
+            /// Inherit（默认）= 沿用材质配置；显式值强制本 pass 行为，引擎不做任何隐式推断
+            /// （不会因为目标是 depth-only 就自动翻面）。阴影 pass 用 CullMode::Front
+            /// 实现“背面渲染”。材质显式声明双面（NONE）时，显式覆盖不生效，语义不被改写。
+            CullMode cull_mode = CullMode::Inherit;
         };
     }//namespace ecs
 }//namespace hgl

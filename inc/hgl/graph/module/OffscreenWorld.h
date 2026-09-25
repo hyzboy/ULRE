@@ -30,6 +30,7 @@
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
+#include<hgl/ecs/core/RenderPassRequest.h>
 
 #include<memory>
 #include<string>
@@ -60,6 +61,12 @@ namespace hgl::graph
         /// 仅深度附件（shadow map 等）：零颜色附件，深度渲染后处于可采样布局，
         /// 可直接 GetDepthTexture() 绑定采样
         bool depth_only = false;
+
+        /// 本世界 pass 的光栅化剔除模式（显式声明，引擎不做隐式推断）。
+        /// @note 目标是否为深度-only 与剔除模式**无关**：深度用途若需要“渲染模型
+        ///       背面”（阴影贴图），必须在这里显式写 ecs::CullMode::Front；
+        ///       默认 Inherit 沿用材质配置。
+        ecs::CullMode cull_mode = ecs::CullMode::Inherit;
 
         /// 深度格式；PF_UNDEFINED 表示由设备默认深度格式决定
         VkFormat depth_format = PF_UNDEFINED;
@@ -137,6 +144,9 @@ namespace hgl::graph
 
         /// RT 的 RAII 句柄；声明在 world_ 之前，故析构时晚于 world_ 释放
         RenderTargetHandle  rt_;
+
+        /// 本世界 pass 的剔除模式（取自 desc，显式声明）
+        ecs::CullMode       cull_mode_       = ecs::CullMode::Inherit;
 
         std::unique_ptr<ecs::ECSContext> world_;
 

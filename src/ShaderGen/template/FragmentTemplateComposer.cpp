@@ -403,6 +403,9 @@ namespace hgl::graph::mtl
                 defines += "#define HGL_SHADOW_PCF_POISSON_TAPS ";
                 defines += std::to_string(input.shadow_pcf_poisson_taps);
                 defines += "\n";
+                defines += "#define HGL_SHADOW_NORMAL_OFFSET ";
+                defines += std::to_string(input.shadow_normal_offset);
+                defines += "\n";
             }
 
             if (input.alpha_test)

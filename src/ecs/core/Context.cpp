@@ -505,11 +505,11 @@ namespace hgl
             pass_options.scissor = req.scissor;
             pass_options.clear_scissor_depth = req.clear_scissor_depth;
             pass_options.clear_depth_value = 0.0f; // Reversed-Z (0.0f = far)
-            pass_options.cull_mode_override = req.cull_mode_override;
+            pass_options.cull_mode = static_cast<int>(req.cull_mode);
 
             const graph::RenderPassOptions *p_options =
                 (req.load_depth || req.use_scissor || req.clear_scissor_depth
-                 || req.cull_mode_override >= 0) ? &pass_options : nullptr;
+                 || req.cull_mode != CullMode::Inherit) ? &pass_options : nullptr;
 
             bool ok = false;
 
@@ -546,13 +546,14 @@ namespace hgl
             return ok;
         }
 
-        bool ECSContext::RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime)
+        bool ECSContext::RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime, CullMode cull_mode)
         {
             RenderPassRequest req;
             req.target          = rt;
             req.clear           = clear;
             req.use_target_clear = false;
             req.delta_time      = deltaTime;
+            req.cull_mode       = cull_mode;
             return RenderTo(req);
         }
 

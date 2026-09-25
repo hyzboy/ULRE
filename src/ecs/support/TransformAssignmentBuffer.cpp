@@ -265,20 +265,20 @@ namespace hgl::ecs
         {
             RebuildTrackedDirtyRanges(tbuf, flush_ranges);
 
-            GLogInfo("[TransformAssignmentBuffer] Static L2W flush: ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d",
-                      static_cast<uint32_t>(flush_ranges.size()),
-                      static_cast<uint32_t>(dirty_indices.size()),
-                      static_cast<unsigned long long>(total_written_bytes),
-                      tbuf->IsDirty() ? 1 : 0);
+            //GLogInfo("[TransformAssignmentBuffer] Static L2W flush: ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d",
+            //          static_cast<uint32_t>(flush_ranges.size()),
+            //          static_cast<uint32_t>(dirty_indices.size()),
+            //          static_cast<unsigned long long>(total_written_bytes),
+            //          tbuf->IsDirty() ? 1 : 0);
 
-            if (ShouldEmitPeriodicLog(60))
-            {
-                GLogInfo("[TransformAssignmentBuffer] Static L2W detail: min=%u max=%u span_offset=%llu span_size=%llu",
-                         min_first,
-                         max_last,
-                         static_cast<unsigned long long>(span_offset_bytes),
-                         static_cast<unsigned long long>(span_size_bytes));
-            }
+            //if (ShouldEmitPeriodicLog(60))
+            //{
+            //    GLogInfo("[TransformAssignmentBuffer] Static L2W detail: min=%u max=%u span_offset=%llu span_size=%llu",
+            //             min_first,
+            //             max_last,
+            //             static_cast<unsigned long long>(span_offset_bytes),
+            //             static_cast<unsigned long long>(span_size_bytes));
+            //}
         }
     }
 

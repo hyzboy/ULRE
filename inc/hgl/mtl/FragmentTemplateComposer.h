@@ -40,6 +40,13 @@ namespace hgl::graph::mtl
             //   > 0 → Poisson 磁盘采样，值 = 采样数（上限 32）
             // 仅当模板真的带 shadow_provider 槽时才会发射该宏。
             hgl::uint32 shadow_pcf_poisson_taps = 16;
+
+            // Normal-offset shadow mapping 总开关（生成期宏）：
+            //   0 → 不编译法线偏移代码，只靠深度 bias
+            //   1 → 编译；运行时强度仍由 ShadowCascadeInfo::shadow_params.w 决定
+            //       （0 = 不偏移），即"有没有这段代码"与"用多大劲"分开控制。
+            // 仅当模板真的带 shadow_provider 槽时才会发射该宏。
+            hgl::uint32 shadow_normal_offset = 1;
         };
 
         bool Compose(

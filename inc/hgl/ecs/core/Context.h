@@ -246,7 +246,7 @@ namespace hgl
             bool RenderTo(const RenderPassRequest &req);
 
             /// 便捷重载：显式清屏色（等价于 request{target=rt, clear, use_target_clear=false}）
-            bool RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime = 0.0f);
+            bool RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime = 0.0f, CullMode cull_mode = CullMode::Inherit);
 
             /// Run a full render frame with a pre-render callback
             /// （主窗口帧驱动唯一公共入口，由 WorkManager 调用）

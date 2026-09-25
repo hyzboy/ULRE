@@ -13,13 +13,16 @@ namespace hgl::graph
      * 单个 CSM 级联的数据契约。
      *
      * shadow_vp / shadow_params / shadow_map_size / inv_shadow_map_size /
-     * shadow_tex 与现有单级阴影字段保持相同含义。其余字段为滚动缓存
-     * 预留，Step 1 只生产并传递这些元数据，尚不改变渲染路径。
+     * shadow_tex 与现有单级阴影字段保持相同含义。
+     *
+     * shadow_params.w = normal-offset 强度（世界单位米，0 = 关闭）。
+     * 该字段原本保留未用，现在承载法线偏移强度，std140 布局不变。
      *
      * cascade_params:
      *   x = split near，y = split far，z = blend width，w = flags
      * cache_origin:
      *   x/y = 光空间中已 snap 的缓存原点，z/w = 每个 texel 对应的光空间尺寸
+     *         （z = 每个纹素的世界尺寸，normal-offset 若要做"纹素相对"变体可用）
      * cache_offset:
      *   x/y = 物理贴图中的环形偏移（texel），z/w = 保留
      * cache_valid_rect:
@@ -64,7 +67,8 @@ namespace hgl::graph
      *
      * 对齐标准 std140 布局：
      *   - shadow_vp: 光照空间 View-Projection 矩阵（world -> light clip）
-     *   - shadow_params: x = bias (0.002), y = pcf_radius (1.5), z = darkness (0.12), w = unused
+     *   - shadow_params: x = bias (0.002), y = pcf_radius (1.5), z = darkness (0.12),
+     *                    w = normal-offset 强度（世界单位米，0 = 关闭）
      *   - shadow_map_size: 贴图尺寸 (如 1024, 1024)
      *   - inv_shadow_map_size: 贴图像素大小 (如 1/1024, 1/1024)
      *   - shadow_tex: x = bindless 纹理句柄 (1-based, 0=未绑定), y = 贴图 array layer, z/w = 保留

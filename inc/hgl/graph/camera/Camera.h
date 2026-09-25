@@ -19,7 +19,7 @@ namespace hgl::graph
 
         Vector3f viewDirection;     ///<视线方向 normalize(camera_pos - target)，从相机指向远方
 
-        bool use_reversed_z;        ///<是否使用 Reversed-Z + Infinite Far（默认 false）
+        bool use_reversed_z;        ///<是否使用 Reversed-Z + Infinite Far（引擎当前全局启用，默认 true）
 
         Vector3d world_position_double; ///<double 精度世界坐标（Camera-Relative Rendering 用）
 
@@ -39,6 +39,26 @@ namespace hgl::graph
 
         Vector3d GetWorldPositionDouble() const { return world_position_double; }
     };//struct Camera
+
+    /**
+     * 由 ci->view / ci->projection 推导全部派生量（inverse_* / vp / frustum_planes / sky）
+     *
+     * @note 不修改 view / projection 本身。自定义矩阵相机（如 CSM 光源相机）应先写入
+     *       自己的 view / projection，再调用本函数，得到与主相机路径完全一致的派生量。
+     */
+    void RefreshCameraInfoDerived(CameraInfo *);
+
+    /**
+     * 由 Camera 源数据填充 CameraInfo 的非矩阵字段
+     * （pos / view_line / world_up / camera_facing_right,up / znear / zfar /
+     *   use_reversed_z / _pad_ci0 / camera_world_pos）
+     *
+     * @note 这些字段是 shader 的权威输入（阴影级联选级用 camera_world_pos + view_line，
+     *       billboard 用 camera_facing_*），主相机路径与自定义矩阵路径必须共用本函数，
+     *       禁止各自复制一份实现——历史上两条路径漂移过，导致同一帧内不同消费者
+     *       看到不一致的相机基准。
+     */
+    void RefreshCameraInfoCamera(CameraInfo *,const Camera *);
 
     void RefreshCameraInfo(CameraInfo *,const ViewportInfo *,const Camera *);
 }//namespace hgl::graph

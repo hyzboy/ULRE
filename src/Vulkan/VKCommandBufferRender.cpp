@@ -7,6 +7,7 @@
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 
+
 namespace hgl::graph
 {
 RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
@@ -18,7 +19,7 @@ RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):V
     mem_zero(viewport);
 
     pipeline_layout=VK_NULL_HANDLE;
-    cull_mode_override=-1;
+    cull_mode=-1;
 }
 
 RenderCmdBuffer::~RenderCmdBuffer()
@@ -220,27 +221,15 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
 
     pipeline_layout=VK_NULL_HANDLE;
 
-    // pass 级剔除模式解析：
-    //  1) 显式覆盖（RenderPassOptions::cull_mode_override >= 0）优先；
-    //  2) 未显式指定时，**depth-only 目标**（零颜色附件——本引擎里只有 shadow map）
-    //     默认渲染模型**背面**（剔除正面）：阴影贴图记录的是背向光源的表面深度，
-    //     能避开接收面自身与投射面共面造成的自阴影 acne / peter-panning；
-    //  3) 其余 pass 沿用材质配置。
+    // pass 级剔除模式：只接受显式声明（ecs::CullMode → RenderPassOptions::cull_mode）。
+    // 本层不做任何隐式推断——尤其**不再**因为目标是 depth-only 就自动翻面：那会让
+    // 任何新增的 depth-only pass 在无人察觉的情况下被改成背面渲染（OffscreenWorld
+    // 的 depth_only 目标就属于这一类）。
     //
-    // 绕序前提：主相机的透视投影与光源的正交投影同为 RH + 负 Y 分量（m11 < 0），
-    // 二者绕序不反转，故 VK_CULL_MODE_FRONT_BIT 剔除的就是几何正面。
-    if (options && options->cull_mode_override >= 0)
-    {
-        cull_mode_override = options->cull_mode_override;
-    }
-    else if (color_count == 0 && has_depth)
-    {
-        cull_mode_override = static_cast<int>(VK_CULL_MODE_FRONT_BIT);
-    }
-    else
-    {
-        cull_mode_override = -1;
-    }
+    // 需要背面投射阴影（shadow map）的 pass 在 RenderPassRequest 里显式写
+    // CullMode::Front。绕序前提：主相机的透视投影与光源的正交投影同为 RH + 负 Y
+    // 分量（m11 < 0），二者绕序不反转，故 VK_CULL_MODE_FRONT_BIT 剔除的就是几何正面。
+    cull_mode = options ? options->cull_mode : -1;
 
     return(true);
 }
@@ -381,15 +370,15 @@ void RenderCmdBuffer::ApplyPipelineState(const mtl::MaterialPipelineConfig &conf
 
     if(dev_attr->cmd_set_cull_mode)
     {
-        // pass 级覆盖（如 shadow map 渲染背面）优先于材质配置；材质显式声明
+        // pass 级显式声明（如 shadow map 渲染背面）优先于材质配置；材质显式声明
         // 双面（cull NONE——MaterialPipelineConfig 默认 Back，double_sided / Lines
         // 图元在管线创建时被合并为 NONE）时保持双面，语义不被 pass 覆盖改写
-        VkCullModeFlags cull_mode = config.cull_mode;
+        VkCullModeFlags cull_mode_value = config.cull_mode;
 
-        if(cull_mode_override >= 0 && cull_mode != VK_CULL_MODE_NONE)
-            cull_mode = static_cast<VkCullModeFlags>(cull_mode_override);
+        if(cull_mode >= 0 && cull_mode_value != VK_CULL_MODE_NONE)
+            cull_mode_value = static_cast<VkCullModeFlags>(cull_mode);
 
-        dev_attr->cmd_set_cull_mode(cmd_buf, cull_mode);
+        dev_attr->cmd_set_cull_mode(cmd_buf, cull_mode_value);
     }
 
     if(dev_attr->cmd_set_depth_test_enable)

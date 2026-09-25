@@ -4,6 +4,13 @@
 #include <numbers>
 #include <cmath>
 
+namespace
+{
+    // 阴影正交投影的近平面。CalculateCascadeBounds 用它建投影，Update 用它反推
+    // 每级的深度范围（zfar - znear）以做逐级联 bias 解析，两处必须一致。
+    constexpr float kShadowOrthoNearZ = 0.1f;
+}
+
 namespace hgl::graph
 {
     CascadedShadowController::CascadedShadowController()
@@ -86,7 +93,8 @@ namespace hgl::graph
                                                          Matrix4f &out_proj,
                                                          Vector4f &out_snapped_center,
                                                          float &out_texel_size,
-                                                         float &out_along_anchor) const
+                                                         float &out_along_anchor,
+                                                         float lateral_step) const
     {
         Vector3f light_forward = glm::normalize(light_dir);
         Vector3f light_up(0.0f, 0.0f, 1.0f);
@@ -129,6 +137,25 @@ namespace hgl::graph
         const Vector3f light_right = glm::normalize(glm::cross(light_forward, light_up));
         const Vector3f light_up_actual = glm::cross(light_right, light_forward);
 
+        // ── 横向粗锚定（滚动静态缓存的必要条件之二）────────────────────────────
+        // 仅沿光轴锚定是不够的：横向只要相机移动 1 个 texel，包围球中心就整体平移
+        // 1 个 texel，缓存里的旧内容全部错位。实测 600 帧横向行走会把静态级联打成
+        // 每 1.4 帧一次整级全量重绘（CSM1 435/600），"滚动更新"退化为"逐帧全量"。
+        //
+        // 做法：把包围球中心在 light_right / -light_up_actual 两轴上吸附到
+        // lateral_step 的整数倍。step 内中心完全静止 ⇒ 布局矩阵恒定，且 texel 吸附
+        // 后位移恒为 0 ⇒ 缓存整段有效。跨格时中心跳变 step，位移必然非零而触发重建。
+        //
+        // 代价：吸附点只有落在 step 的整数格上，真实包围球中心在格内最远可偏离
+        // step/2（每轴），即对角 0.707*step；因此必须把包围球半径扩大同样的量，
+        // 否则视锥切片角点会掉出正交视窗（画面边缘物体没有阴影）。
+        // 半径变大 ⇒ texel 变粗，这是本方案用一点静态阴影精度换掉绝大部分重绘开销。
+        // 注意这里必须用 round 而不是 floor：floor 的偏离量是整整一个步长（[0,step)），
+        // 半径就要按 1.414*step 扩，几乎翻倍。
+        const float lateral_anchor = (lateral_step > 0.0f) ? lateral_step : 0.0f;
+        if (lateral_anchor > 0.0f)
+            radius += lateral_anchor * 0.708f;
+
         // ── 沿光轴的深度锚定（滚动静态缓存的必要条件）────────────────────────
         // 中远景级联走的是"静态物体滚动缓存"：整张 shadowmap 里的深度是多帧累积
         // 的结果，只有脏条带会被重绘。这要求光空间视图/投影矩阵的**深度分量**在
@@ -157,8 +184,17 @@ namespace hgl::graph
         // 将包围球投影到固定光空间坐标系：
         // X 对应 light_right (UV 的 U 轴)
         // Y 对应 -light_up_actual (Vulkan UV 的 V 轴向向下)
-        const float cx = glm::dot(anchored_center, light_right);
-        const float cy = glm::dot(anchored_center, -light_up_actual);
+        const float cx0 = glm::dot(anchored_center, light_right);
+        const float cy0 = glm::dot(anchored_center, -light_up_actual);
+
+        float cx = cx0;
+        float cy = cy0;
+
+        if (lateral_anchor > 0.0f)
+        {
+            cx = std::round(cx0 / lateral_anchor) * lateral_anchor;
+            cy = std::round(cy0 / lateral_anchor) * lateral_anchor;
+        }
 
         const float map_size = (config_.shadow_map_size > 0.0f) ? config_.shadow_map_size : 1024.0f;
         const float texel_size = (2.0f * radius) / map_size;
@@ -167,9 +203,17 @@ namespace hgl::graph
         const float snapped_cy = std::floor(cy / texel_size) * texel_size;
 
         // 计算吸附后的世界空间包围球中心
+        //
+        // 关键：这里必须回到**粗锚定点**（cx/cy）而不是原始中心（cx0/cy0）。
+        // 若用 (snapped_cx - cx)，则 coarse 吸附被抵消，包围球中心仍随视锥每帧连续
+        // 移动 ⇒ 光空间视图/投影矩阵每帧都变 ⇒ 缓存里的旧深度被新矩阵解读，
+        // 静态阴影在缓存有效期内会整体滑动。回到锚定点后，光照矩阵在一个锚定格
+        // 内完全恒定，缓存命中时矩阵与生成该深度时的矩阵严格一致（这才是"静态
+        // 滚动缓存"能成立的前提）；格内视锥相对窗口最多漂移 0.707*step，由上面的
+        // 半径补偿保证仍被覆盖。
         const Vector3f snapped_sphere_center = anchored_center
-                                             + (snapped_cx - cx) * light_right
-                                             + (snapped_cy - cy) * (-light_up_actual);
+                                             + (snapped_cx - cx0) * light_right
+                                             + (snapped_cy - cy0) * (-light_up_actual);
 
         const Vector3f light_eye = snapped_sphere_center - light_forward * (radius + config_.caster_depth_margin);
         const Matrix4f light_view = LookAtMatrix(light_eye, snapped_sphere_center, light_up_actual);
@@ -179,7 +223,7 @@ namespace hgl::graph
         const float bottom = -radius;
         const float top    = radius;
 
-        const float znear = 0.1f;
+        const float znear = kShadowOrthoNearZ;
         // 远平面既要容纳包围球自身向后延伸的 radius + anchor_step，
         // 也要留足接收者（如地面在包围球下方较深位置）的深度余量（对称扩展 caster_depth_margin），
         // 否则相机升高、俯仰或晃动时，下方的地面深度就会超过 zfar 被裁掉（light_ndc.z < 0.0 判为无阴影）。
@@ -230,7 +274,8 @@ namespace hgl::graph
             float along_anchor = 0.0f;
 
             CalculateCascadeBounds(main_cam, aspect, split_near, split_far, light_dir,
-                                   light_view, light_proj, snapped_center, texel_size, along_anchor);
+                                   light_view, light_proj, snapped_center, texel_size, along_anchor,
+                                   (c == 0) ? 0.0f : config_.cache_lateral_anchor_step);
 
             CascadeUpdateResult &update_res = out_updates[c];
             update_res.cascade_index = c;
@@ -238,6 +283,20 @@ namespace hgl::graph
             update_res.light_proj = light_proj;
             // texel_size = 2*radius/map_size ⇒ 反解包围球半径，供上层把归一化 bias 折算成世界偏移
             update_res.sphere_radius = texel_size * map_size * 0.5f;
+
+            // 该级联的深度范围，与 CalculateCascadeBounds 里 zfar 的推导保持一致
+            // （radius 已由 texel_size 精确反解，lateral 补偿只有 c > 0 才有，已包含在内）
+            const float anchor_step_zfar = (config_.cache_anchor_step > 0.0f) ? config_.cache_anchor_step : 0.0f;
+            const float zfar_c = 2.0f * update_res.sphere_radius
+                               + 2.0f * config_.caster_depth_margin
+                               + anchor_step_zfar;
+            update_res.depth_range = zfar_c - kShadowOrthoNearZ;
+
+            // 逐级联 bias 解析：世界单位优先（全场景世界偏移恒定），否则用归一化 bias 乘每级系数
+            float resolved_bias = config_.bias * config_.per_cascade_bias_scale[c];
+            if (config_.bias_world != 0.0f && update_res.depth_range > 0.0f)
+                resolved_bias = config_.bias_world / update_res.depth_range;
+            update_res.resolved_bias = resolved_bias;
 
             const float snapped_cx = snapped_center.x;
             const float snapped_cy = snapped_center.y;
@@ -314,7 +373,8 @@ namespace hgl::graph
             // 写入该级联的标准 ShadowCascadeInfo
             auto &casc = out_shadow_info.cascades[c];
             casc.shadow_vp = light_proj * light_view;
-            casc.shadow_params = Vector4f(config_.bias, config_.pcf_radius, config_.darkness, 0.0f);
+            casc.shadow_params = Vector4f(update_res.resolved_bias, config_.pcf_radius,
+                                          config_.darkness, config_.normal_offset_world);
             casc.shadow_map_size = Vector2f(map_size, map_size);
             casc.inv_shadow_map_size = Vector2f(1.0f / map_size, 1.0f / map_size);
 
