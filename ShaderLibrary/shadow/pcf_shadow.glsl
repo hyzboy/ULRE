@@ -232,35 +232,8 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
     float edge_dist = -1.0;
     float shadow_factor = EvalCascadeShadowAt(selected, worldPos, edge_dist);
 
-    if (edge_dist < 0.0)
-    {
-        if (selected + 1u <= last_c)
-        {
-            float other_edge = -1.0;
-            const float other = EvalCascadeShadowAt(selected + 1u, worldPos, other_edge);
-            if (other_edge >= 0.0)
-            {
-                shadow_factor = other;
-                edge_dist = other_edge;
-            }
-        }
-
-        if (edge_dist < 0.0 && selected > first_c)
-        {
-            float other_edge = -1.0;
-            const float other = EvalCascadeShadowAt(selected - 1u, worldPos, other_edge);
-            if (other_edge >= 0.0)
-            {
-                shadow_factor = other;
-                edge_dist = other_edge;
-            }
-        }
-
-        if (edge_dist < 0.0)
-            return 1.0;
-    }
-
-    // 级联边界混合
+    // 级联边界混合：严格基于 view_depth 深度，仅在靠近 split_far 边界过渡带时做平滑叠加
+    // 严禁利用光空间 UV 边缘把远景级联（如 CSM 2）反向渗透进近景级联（如 CSM 1）的范围
     const float blend_width = shadow.cascades[selected].cascade_params.z;
     if (blend_width > 0.0)
     {
@@ -268,12 +241,9 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
         const float split_far  = shadow.cascades[selected].cascade_params.y;
         const float band       = blend_width * max(split_far - split_near, 1.0e-3);
 
-        const float fade_depth = clamp((split_far - view_depth) / band, 0.0, 1.0);
-        const float fade_uv    = smoothstep(0.0, blend_width, edge_dist);
-        const float blend      = min(fade_depth, fade_uv);
-
-        if (blend < 1.0)
+        if (view_depth > (split_far - band))
         {
+            const float fade_depth = clamp((split_far - view_depth) / band, 0.0, 1.0);
             if (selected + 1u <= last_c && shadow.cascades[selected + 1u].shadow_tex.x != 0u)
             {
                 float next_edge = -1.0;
@@ -281,17 +251,17 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
                 if (next_edge >= 0.0)
                 {
                     // 在交界过渡区：本级阴影平滑淡出，同时与下一级阴影叠加取暗 min()，彻底消除生硬的单向替代感
-                    const float current_faded = mix(1.0, shadow_factor, blend);
+                    const float current_faded = mix(1.0, shadow_factor, fade_depth);
                     return min(current_faded, next_shadow);
                 }
                 else
                 {
-                    return mix(1.0, shadow_factor, blend);
+                    return mix(1.0, shadow_factor, fade_depth);
                 }
             }
             else
             {
-                return mix(1.0, shadow_factor, blend);
+                return mix(1.0, shadow_factor, fade_depth);
             }
         }
     }
