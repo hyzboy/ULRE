@@ -75,7 +75,7 @@ namespace
     // 调参顺序：先找掠射面刚好看不到条纹的最小 offset，再把 |bias_world| 往 0 收，
     // 收到接触点刚要漏光为止。运行时仍可用 `-`/`=` 调 offset、`[`/`]` 调 bias 微调。
     constexpr float kShadowNormalOffsetWorld = 0.35f;  // 米；量级 ≈ 一个纹素的世界尺寸（CSM 0: 188m/1024texel）
-    constexpr float kShadowBiasWorld         = -1.15f; // 米；负值 = 贴合遮挡体（正值会漏光）
+    constexpr float kShadowBiasWorld         = -0.20f; // 米；负值 = 贴合遮挡体（避免过负导致 Cube/球受光面自遮挡；运行时可用 [ / ] 调）
     constexpr float kShadowTuneStepWorld     = 0.05f;  // 运行时微调步长（两种参数共用，米）
 
     constexpr const os_char *PBR_FOLDER_NAME[kPBRTextureCount] =
@@ -188,6 +188,7 @@ private:
     float cascade_depth_range[kMaxShadowCascades]{};
     bool bias_key_prev[2]{};      // [0]=[ 减小, [1]=] 增大，边沿触发
     bool no_key_prev[2]{};        // [0]=- 减小, [1]== 增大（normal-offset），边沿触发
+    bool f_key_prev[4]{};         // F1..F4 级联屏蔽切换边沿触发
 
 private:
 
@@ -746,6 +747,41 @@ private:
                  new_offset, state);
     }
 
+    /// 级联调试开关：F1..F4 切换屏蔽对应级联（边沿触发）
+    void TuneCascadeMask()
+    {
+        if (!ecs_context || !environment_system)
+            return;
+
+        auto input_system = ecs_context->GetSystem<InputSystem>();
+        if (!input_system)
+            return;
+
+        const bool keys[4] = {
+            input_system->IsKeyDown(io::KeyboardButton::F1),
+            input_system->IsKeyDown(io::KeyboardButton::F2),
+            input_system->IsKeyDown(io::KeyboardButton::F3),
+            input_system->IsKeyDown(io::KeyboardButton::F4)
+        };
+
+        for (uint32_t c = 0; c < 4; ++c)
+        {
+            if (keys[c] && !f_key_prev[c])
+            {
+                bool cur_enabled = environment_system->IsCascadeEnabled(c);
+                environment_system->SetCascadeEnabled(c, !cur_enabled);
+
+                GLogInfo(u8"[Cascade Switch] Cascade %u -> %s | State: [C0:%s C1:%s C2:%s C3:%s]",
+                         c, !cur_enabled ? u8"ENABLED" : u8"MASKED/OFF",
+                         environment_system->IsCascadeEnabled(0) ? "ON" : "OFF",
+                         environment_system->IsCascadeEnabled(1) ? "ON" : "OFF",
+                         environment_system->IsCascadeEnabled(2) ? "ON" : "OFF",
+                         environment_system->IsCascadeEnabled(3) ? "ON" : "OFF");
+            }
+            f_key_prev[c] = keys[c];
+        }
+    }
+
 public:
     ~CascadeShadowMapApp() override
     {
@@ -779,6 +815,7 @@ public:
 
         TuneShadowBias();
         TuneShadowNormalOffset();
+        TuneCascadeMask();
 
         if (stats_timer >= 1.0)
         {

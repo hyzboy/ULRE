@@ -282,11 +282,28 @@ namespace hgl::ecs
         for (uint32_t c = 0; c < graph::kMaxShadowCascades; ++c)
             cascade_depth_range[c] = updates[c].depth_range;
 
-        shadow_info->shadow_tex.x = cascade_handles[0];
+        // 级联屏蔽处理：若某级被关闭，将 shadow_tex 置 0，使 Shader 判定该级全受光（无阴影）
+        uint32_t active_global_tex = 0;
+        for (uint32_t c = 0; c < graph::kMaxShadowCascades; ++c)
+        {
+            if (!IsCascadeEnabled(c))
+            {
+                shadow_info->cascades[c].shadow_tex = math::Vector4u(0);
+            }
+            else if (active_global_tex == 0)
+            {
+                active_global_tex = cascade_handles[c];
+            }
+        }
+
+        shadow_info->shadow_tex.x = active_global_tex;
         MarkShadowDirty();
 
         for (uint32_t c = 0; c < graph::kMaxShadowCascades; ++c)
         {
+            if (!IsCascadeEnabled(c))
+                continue; // 该级联被关闭，跳过渲染
+
             const auto &res = updates[c];
             auto *rt = cascade_rts[c].get();
             if (!rt)

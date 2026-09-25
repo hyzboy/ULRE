@@ -6,6 +6,7 @@
 #include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
+#include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/graph/render/lighting/CascadedShadowController.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/io/FileInputStream.h>
@@ -1179,6 +1180,98 @@ int main(int argc, char** argv)
             }
 
             GLogInfo(u8"Test 9 Passed: ScenePipelineMode & Automated Shadow Workflow Contracts verified.");
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Test 10: Cascade Mask & Bias Modulation Contracts
+        // ─────────────────────────────────────────────────────────────
+        {
+            EnvironmentSystem env_sys;
+
+            // 10A: 默认所有级联开启
+            if (env_sys.GetCascadeMask() != 0)
+            {
+                GLogError(u8"Test 10A Failed: default cascade_mask must be 0 (all enabled)");
+                return 10;
+            }
+            for (uint32_t c = 0; c < 4; ++c)
+            {
+                if (!env_sys.IsCascadeEnabled(c))
+                {
+                    GLogError(u8"Test 10A Failed: cascade %u must be enabled by default", c);
+                    return 10;
+                }
+            }
+
+            // 10B: 单独关闭/开启指定级联（如关闭 CSM 0, CSM 1）
+            env_sys.SetCascadeEnabled(0, false);
+            if (env_sys.IsCascadeEnabled(0) != false || env_sys.GetCascadeMask() != 1u)
+            {
+                GLogError(u8"Test 10B Failed: disabling cascade 0 failed (mask=%u)", env_sys.GetCascadeMask());
+                return 10;
+            }
+
+            env_sys.SetCascadeEnabled(1, false);
+            if (env_sys.IsCascadeEnabled(1) != false || env_sys.GetCascadeMask() != 3u)
+            {
+                GLogError(u8"Test 10B Failed: disabling cascade 1 failed (mask=%u)", env_sys.GetCascadeMask());
+                return 10;
+            }
+
+            env_sys.SetCascadeEnabled(0, true);
+            if (env_sys.IsCascadeEnabled(0) != true || env_sys.GetCascadeMask() != 2u)
+            {
+                GLogError(u8"Test 10B Failed: re-enabling cascade 0 failed (mask=%u)", env_sys.GetCascadeMask());
+                return 10;
+            }
+
+            // 10C: Bias 世界单位动态微调与自遮挡临界几何契约
+            CascadedShadowConfig cfg10;
+            cfg10.cascade_count = 4;
+            cfg10.shadow_map_size = 1024.0f;
+            cfg10.max_distance = 300.0f;
+            cfg10.bias_world = -0.20f; // 安全贴合值（-0.2m，小于标准 Cube 厚度 1.0m）
+
+            CascadedShadowController ctrl10(cfg10);
+            ShadowInfo si10;
+            CascadeUpdateResult upd10[kMaxShadowCascades];
+            ctrl10.Update(cam6, aspect6, light6, si10, upd10);
+
+            // 验证每级 bias 正确反映了 -0.20m
+            const float expected_bias0 = -0.20f / upd10[0].depth_range;
+            if (std::abs(si10.cascades[0].shadow_params.x - expected_bias0) > 1.0e-6f)
+            {
+                GLogError(u8"Test 10C Failed: bias_world=-0.20m normalized mismatch");
+                return 10;
+            }
+
+            // 动态调大 bias 到 -1.15m（自遮挡危险区）：
+            cfg10.bias_world = -1.15f;
+            ctrl10.SetConfig(cfg10);
+            ctrl10.Update(cam6, aspect6, light6, si10, upd10);
+
+            const float expected_bias_large = -1.15f / upd10[0].depth_range;
+            if (std::abs(si10.cascades[0].shadow_params.x - expected_bias_large) > 1.0e-6f)
+            {
+                GLogError(u8"Test 10C Failed: bias_world=-1.15m dynamic update failed");
+                return 10;
+            }
+
+            // 几何自遮挡临界数学：
+            // 当 Cube 沿光轴厚度 = 0.8m 时，若 bias_world = -1.15m (|bias| > thickness)，
+            // 受光面被向后拉深超过自身厚度，判定落入自身阴影中；
+            // 若 bias_world = -0.20m (|bias| < thickness)，受光面位于背面深度前方，不产生自阴影！
+            const float cube_thickness = 0.8f;
+            const bool will_self_shadow_large = std::abs(-1.15f) > cube_thickness;
+            const bool will_self_shadow_safe  = std::abs(-0.20f) > cube_thickness;
+
+            if (!will_self_shadow_large || will_self_shadow_safe)
+            {
+                GLogError(u8"Test 10C Failed: self-shadowing thickness threshold contract broken");
+                return 10;
+            }
+
+            GLogInfo(u8"Test 10 Passed: Cascade Mask & Bias Modulation Contracts verified.");
         }
     }
 

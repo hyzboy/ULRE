@@ -39,6 +39,7 @@ namespace hgl
             graph::RenderTargetHandle cascade_rts[graph::kMaxShadowCascades]{};
             std::shared_ptr<CameraComponent> light_camera;
             bool shadow_enabled = false;
+            uint32_t cascade_mask = 0; // bit c == 1 表示屏蔽级联 c
             uint32_t cascade_handles[graph::kMaxShadowCascades] = {};
             float cascade_depth_range[graph::kMaxShadowCascades] = {};
 
@@ -71,6 +72,22 @@ namespace hgl
             bool EnableMainLightShadow(const graph::CascadedShadowConfig &config, uint32_t shadow_map_size = 1024);
             void DisableMainLightShadow();
             bool IsMainLightShadowEnabled() const { return shadow_enabled; }
+
+            // ── 调试与调优：级联屏蔽控制（支持运行时关闭/打开指定层） ──
+            void SetCascadeMask(uint32_t mask) { cascade_mask = mask; }
+            uint32_t GetCascadeMask() const { return cascade_mask; }
+            void SetCascadeEnabled(uint32_t c, bool enabled)
+            {
+                if (c < graph::kMaxShadowCascades)
+                {
+                    if (enabled) cascade_mask &= ~(1u << c);
+                    else cascade_mask |= (1u << c);
+                }
+            }
+            bool IsCascadeEnabled(uint32_t c) const
+            {
+                return (c < graph::kMaxShadowCascades) && ((cascade_mask & (1u << c)) == 0);
+            }
 
             graph::CascadedShadowController *GetShadowController() const { return shadow_controller; }
             graph::IRenderTarget *GetCascadeRenderTarget(uint32_t cascade_index) const;
