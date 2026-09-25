@@ -20,6 +20,7 @@
 #include<type_traits>
 #include<hgl/ecs/core/ShaderProgramPipelineKey.h>
 #include<hgl/color/Color4f.h>
+#include<glm/glm.hpp>
 
 namespace hgl {
     namespace graph {
@@ -150,6 +151,11 @@ namespace hgl
             /// 当前渲染 Pass 的物体移动性过滤（-1 = 全部，0 = 仅静态 Static，1 = 仅动态 Movable）
             int active_mobility_filter = -1;
 
+            /// 当前 Pass 是否为阴影贴图生成 Pass
+            bool is_current_pass_shadow = false;
+            glm::vec3 current_pass_shadow_origin{0.0f};
+            bool has_shadow_origin = false;
+
             std::unique_ptr<RenderSystemCore> render_core;
 
             /// Cached adaptive render graph (auto-culls based on scene content)
@@ -264,6 +270,10 @@ namespace hgl
             uint32_t GetFrameIndex() const { return frame_index; }
 
             int GetActiveMobilityFilter() const { return active_mobility_filter; }
+
+            bool IsCurrentPassShadow() const { return is_current_pass_shadow; }
+            bool HasShadowOrigin() const { return has_shadow_origin; }
+            const glm::vec3 &GetShadowOrigin() const { return current_pass_shadow_origin; }
 
             void SetRenderSubmissionSerial(const uint64_t serial)
             {

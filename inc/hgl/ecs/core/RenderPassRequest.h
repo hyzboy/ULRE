@@ -78,6 +78,14 @@ namespace hgl
             /// （不会因为目标是 depth-only 就自动翻面）。阴影 pass 用 CullMode::Front
             /// 实现“背面渲染”。材质显式声明双面（NONE）时，显式覆盖不生效，语义不被改写。
             CullMode cull_mode = CullMode::Inherit;
+
+            /// 可选：标记本 pass 是否为阴影贴图生成 pass（如 CSM / ShadowMap）。
+            /// 为 true 时收集系统自动跳过 CanCastShadow()==false 的组件，
+            /// 并在 max_cast_distance > 0 时按与观察相机或主相机的距离进行剔除。
+            bool is_shadow_pass = false;
+
+            /// 可选：阴影距离剔除的参考相机。若为空则优先采用场景主相机，无主相机时回退至当前相机。
+            const CameraComponent *shadow_reference_camera = nullptr;
         };
     }//namespace ecs
 }//namespace hgl

@@ -498,6 +498,26 @@ namespace hgl
             }
 
             active_mobility_filter = req.mobility_filter;
+            is_current_pass_shadow = req.is_shadow_pass;
+            has_shadow_origin = false;
+
+            if (req.is_shadow_pass)
+            {
+                if (req.shadow_reference_camera)
+                {
+                    current_pass_shadow_origin = glm::vec3(req.shadow_reference_camera->position);
+                    has_shadow_origin = true;
+                }
+                else if (camera_system)
+                {
+                    auto *cam = camera_system->GetCamera();
+                    if (cam)
+                    {
+                        current_pass_shadow_origin = glm::vec3(cam->pos.x, cam->pos.y, cam->pos.z);
+                        has_shadow_origin = true;
+                    }
+                }
+            }
 
             graph::RenderPassOptions pass_options;
             pass_options.load_depth = req.load_depth;
@@ -522,6 +542,8 @@ namespace hgl
             }
 
             active_mobility_filter = -1;
+            is_current_pass_shadow = false;
+            has_shadow_origin = false;
 
             // 关键同步（下沿保护）：本帧离屏提交完成后立即等该 RT 自己的 queue fence！
             // 必须在恢复主相机共享数据前等，因为 GPU 仍在异步读取本 pass 提交的光源

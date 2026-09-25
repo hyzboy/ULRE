@@ -1164,6 +1164,25 @@ namespace hgl::ecs
                     continue;
             }
 
+            if (world && world->IsCurrentPassShadow())
+            {
+                if (!primitiveComp->CanCastShadow())
+                    continue;
+
+                const float max_dist = primitiveComp->GetShadowMaxDistance();
+                if (max_dist > 0.0f && world->HasShadowOrigin())
+                {
+                    auto transform = entity->GetComponent<TransformComponent>();
+                    if (transform)
+                    {
+                        const glm::vec3 world_pos = transform->GetWorldPosition();
+                        const glm::vec3 diff = world_pos - world->GetShadowOrigin();
+                        if (glm::dot(diff, diff) > max_dist * max_dist)
+                            continue;
+                    }
+                }
+            }
+
             if (!primitiveComp->HasAnyMaterialRecipeSource())
                 continue;
 
@@ -1262,6 +1281,25 @@ namespace hgl::ecs
             if (active_mobility_filter >= 0 && static_cast<int>(transform->GetMobility()) != active_mobility_filter)
             {
                 continue;
+            }
+
+            if (world && world->IsCurrentPassShadow())
+            {
+                if (!primitiveComp->CanCastShadow())
+                {
+                    continue;
+                }
+
+                const float max_dist = primitiveComp->GetShadowMaxDistance();
+                if (max_dist > 0.0f && world->HasShadowOrigin())
+                {
+                    const glm::vec3 world_pos = transform->GetWorldPosition();
+                    const glm::vec3 diff = world_pos - world->GetShadowOrigin();
+                    if (glm::dot(diff, diff) > max_dist * max_dist)
+                    {
+                        continue;
+                    }
+                }
             }
 
             if (!primitiveComp->HasAnyMaterialRecipeSource())
