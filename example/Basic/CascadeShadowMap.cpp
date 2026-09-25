@@ -74,7 +74,7 @@ namespace
     // 深度 bias 与角度无关，负责整体贴合量（负值 = 阴影贴着遮挡体）。
     // 调参顺序：先找掠射面刚好看不到条纹的最小 offset，再把 |bias_world| 往 0 收，
     // 收到接触点刚要漏光为止。运行时仍可用 `-`/`=` 调 offset、`[`/`]` 调 bias 微调。
-    constexpr float kShadowNormalOffsetWorld = 0.35f;  // 米；量级 ≈ 一个纹素的世界尺寸（CSM 0: 188m/1024texel）
+    constexpr float kShadowNormalOffsetWorld = 0.10f;  // 米；用户实测最佳值（按键微调确立；消掠射角 acne 且不导致悬浮）
     constexpr float kShadowBiasWorld         = -0.20f; // 米；负值 = 贴合遮挡体（避免过负导致 Cube/球受光面自遮挡；运行时可用 [ / ] 调）
     constexpr float kShadowTuneStepWorld     = 0.05f;  // 运行时微调步长（两种参数共用，米）
 

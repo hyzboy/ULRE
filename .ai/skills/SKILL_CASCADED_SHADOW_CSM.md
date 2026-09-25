@@ -367,7 +367,7 @@ reversed-Z 下"值越大越靠近光源"。因此：
 | 公式 | `offset = min(strength * (sin_theta / cos_theta), SHADOW_NORMAL_OFFSET_MAX)`；`sample_pos = world_pos + N * offset` |
 | 上限 | `SHADOW_NORMAL_OFFSET_MAX = 1.5`（米，挡 `tan` 在掠射角发散） |
 | 早退 | `strength <= 0` / 法线零长 / `cos_theta <= 1.0e-3`（背光面本就在阴影里，偏移无意义且 `tan` 发散） |
-| 配置字段 | `CascadedShadowConfig::normal_offset_world`（默认 `0.0f`，示例 **0.35m**） |
+| 配置字段 | `CascadedShadowConfig::normal_offset_world`（默认 `0.0f`，示例 **0.10m**） |
 
 四条硬约束：
 
@@ -384,10 +384,10 @@ reversed-Z 下"值越大越靠近光源"。因此：
 
 **与 bias 的分工与调参顺序**：两者互补而非替代。先把 `normal_offset_world` 调到掠射面无
 acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合）。示例配
-`normal_offset_world = 0.35m` + `bias_world = -1.15m`。
+`normal_offset_world = 0.10m` + `bias_world = -1.15m`。
 
 **强度取值的量级参考**：acne 的深度误差量级 ≈ 一个纹素的世界尺寸（示例 CSM 0 半径约
-188m / 1024 texel ⇒ ≈0.37m），故初值取 0.35m。
+188m / 1024 texel ⇒ ≈0.37m），经实机微调确立 0.10m（消掠射角 acne 且接触点不悬浮）。
 
 运行时 `-`（减小）/ `=`（增大）按 **0.05m** 步长微调（范围 `[0, 4]`）。改的是纯配置，
 **不需要**重建级联缓存（与 §5.1 的 `[`/`]` 同理）。
@@ -441,7 +441,7 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | `bias` | 0.002 | 归一化深度 bias；仅 `bias_world == 0` 时生效 |
 | `bias_world` | 0 | **世界单位偏移（米）**，逐级自动换算，非 0 时压过上面两项（示例 **-1.15**） |
 | `per_cascade_bias_scale[4]` | 全 1 | 逐级 bias 乘数（§5.1） |
-| `normal_offset_world` | 0 | **法线偏移强度（米）**，按 `tan(θ)` 加权，0 = 关闭（示例 **0.35**，§5.2） |
+| `normal_offset_world` | 0 | **法线偏移强度（米）**，按 `tan(θ)` 加权，0 = 关闭（示例 **0.10**，§5.2） |
 | `pcf_radius` | 1.5 | PCF 采样半径（texel 倍数） |
 | `darkness` | 0.12 | 全阴影时的最暗因子（示例 0.15） |
 | `blend_width` | 0.05 | 比例：末级 `max_distance` 边缘淡出带 + 动态层 CSM 0 边界淡出带（占本级深度区间） |
