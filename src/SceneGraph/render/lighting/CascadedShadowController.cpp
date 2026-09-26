@@ -6,8 +6,8 @@
 
 namespace
 {
-    // 阴影正交投影的近平面。CalculateCascadeBounds 用它建投影，Update 用它反推
-    // 每级的深度范围（zfar - znear）以做逐级联 bias 解析，两处必须一致。
+    // 阴影正交投影的近平面。CalculateCascadeBounds 用它建投影并输出每级 zfar，
+    // Update 用（zfar - znear）做逐级联 bias 解析——zfar 唯一推导处在拟合函数内。
     constexpr float kShadowOrthoNearZ = 0.1f;
 }
 
@@ -94,6 +94,7 @@ namespace hgl::graph
                                                          Vector4f &out_snapped_center,
                                                          float &out_texel_size,
                                                          float &out_along_anchor,
+                                                         float &out_zfar,
                                                          float lateral_step) const
     {
         Vector3f light_forward = glm::normalize(light_dir);
@@ -228,6 +229,7 @@ namespace hgl::graph
         // 也要留足接收者（如地面在包围球下方较深位置）的深度余量（对称扩展 caster_depth_margin），
         // 否则相机升高、俯仰或晃动时，下方的地面深度就会超过 zfar 被裁掉（light_ndc.z < 0.0 判为无阴影）。
         const float zfar  = 2.0f * radius + 2.0f * config_.caster_depth_margin + anchor_step;
+        out_zfar = zfar; // A9：zfar 的唯一推导处——Update 只消费本输出，不再反推
 
         const Matrix4f light_proj = OrthoMatrixReversedZ(left, right, bottom, top, znear, zfar);
 
@@ -272,9 +274,11 @@ namespace hgl::graph
             Vector4f snapped_center(0.0f);
             float texel_size = 1.0f;
             float along_anchor = 0.0f;
+            float zfar_c = 0.0f;
 
             CalculateCascadeBounds(main_cam, aspect, split_near, split_far, light_dir,
                                    light_view, light_proj, snapped_center, texel_size, along_anchor,
+                                   zfar_c,
                                    (c == 0) ? 0.0f : config_.cache_lateral_anchor_step);
 
             CascadeUpdateResult &update_res = out_updates[c];
@@ -284,12 +288,8 @@ namespace hgl::graph
             // texel_size = 2*radius/map_size ⇒ 反解包围球半径，供上层把归一化 bias 折算成世界偏移
             update_res.sphere_radius = texel_size * map_size * 0.5f;
 
-            // 该级联的深度范围，与 CalculateCascadeBounds 里 zfar 的推导保持一致
-            // （radius 已由 texel_size 精确反解，lateral 补偿只有 c > 0 才有，已包含在内）
-            const float anchor_step_zfar = (config_.cache_anchor_step > 0.0f) ? config_.cache_anchor_step : 0.0f;
-            const float zfar_c = 2.0f * update_res.sphere_radius
-                               + 2.0f * config_.caster_depth_margin
-                               + anchor_step_zfar;
+            // A9：深度范围直接消费 CalculateCascadeBounds 输出的 zfar——
+            // 公式唯一推导处在拟合函数内，Update 不再反推（防两处手抄漂移）。
             update_res.depth_range = zfar_c - kShadowOrthoNearZ;
 
             // 逐级联 bias 解析：世界单位优先（全场景世界偏移恒定），否则用归一化 bias 乘每级系数
@@ -344,9 +344,6 @@ namespace hgl::graph
                     const float dy = snapped_cy - cache_states_[c].snapped_origin.y;
                     const int32_t shift_x = static_cast<int32_t>(std::round(dx / texel_size));
                     const int32_t shift_y = static_cast<int32_t>(std::round(dy / texel_size));
-
-                    update_res.texel_shift_x = shift_x;
-                    update_res.texel_shift_y = shift_y;
 
                     if (shift_x == 0 && shift_y == 0)
                     {

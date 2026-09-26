@@ -30,8 +30,6 @@ namespace hgl::graph
         uint32_t cascade_index = 0;
         bool need_full_update = false;    // 是否需要全量重绘（如近景级联0、首次生成、或移动超限）
         bool is_static_cache = false;     // 是否为中远景静态滚动缓存
-        int32_t texel_shift_x = 0;        // 本帧光空间位移（texel）
-        int32_t texel_shift_y = 0;        // 本帧光空间位移（texel）
 
         Matrix4f light_view = Matrix4f(1.0f); // 当前级联对应的光空间视图矩阵
         Matrix4f light_proj = Matrix4f(1.0f); // 当前级联对应的正交投影矩阵
@@ -181,6 +179,7 @@ namespace hgl::graph
                                     Vector4f &out_snapped_center,
                                     float &out_texel_size,
                                     float &out_along_anchor,
+                                    float &out_zfar,
                                     float lateral_step = 0.0f) const;
     };
 }
