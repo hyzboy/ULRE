@@ -169,10 +169,10 @@ GRAPHICS capability，transfer queue 会被 VVL 拒）→ CopyImageToBuffer →
 |------|------|
 | `89323c651` | depth-only 通道按片元 discard 豁免 FS 剥离（终极根因） |
 | `fcbe4d6ce` | pipeline 复用校验 program 身份（防旧 SPIRV 永久复用） |
-| `a52bf630c` | WriteBatchIndexRows 纹理引用池基址与 4-ID 解析分支解耦 |
+| `a52bf630c` | WriteBatchIndexRows 行表内容诊断块（TEMP-DIAG，第 0 步已删除） |
 | `b337d8a50` | masked caster 行未就绪跳过 + 固化防御 |
 | `9b364a6f8` | AlphaTestShadow 深度图读回取证工具 |
-| `3bd9d0c02` | AlphaTestShadow 用例 + A1-4 片元/collect 侧修复（用户提交） |
+| `3bd9d0c02` | AlphaTestShadow 用例 + A1-4 片元/collect 侧修复 + **纹理引用池基址与 4-ID 解析分支解耦**（base_addr 的实际归属，提交信息未提及）（用户提交） |
 
 相关文档：`doc/csm-review-2026-09-25.md`（A1/A4/A2/A3/A1-4 的来源）；
 `.ai/skills/SKILL_CASCADED_SHADOW_CSM.md`（ShadowCasterMasked 链路章节，

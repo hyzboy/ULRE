@@ -226,7 +226,8 @@ if (world && world->IsCurrentPassShadow())
 | A2 CameraInfo 行泄漏 | ✅ 完成 | Disable 归还 + 10D 源码契约；正反双取证（20 轮 Enable/Disable 行池稳定） |
 | A3 静态缓存失效链 | ✅ 完成 | TransformSystem 检出 → static_scene_revision → EnvironmentSystem 消费；9D 行为契约；`InvalidateMainLightStaticShadowCache()` 转发 API |
 | A1-4 masked caster 行 | ✅ 完成 | 过程中发现并修复 **depth-only FS 剥除**（终极根因）、pipeline program 键控、base_addr 断链、forward alpha test 未接线等 7 层问题——详见附记文档；深度图读回判读：棋盘投影填充 ~57%=镂空 |
-| A5 / A6 / A7-A10 / T 系列 | ⬜ 待做 | 顺序不变 |
+| A9 zfar 合一 / A7 texel_shift 删除 / T10 注释 / 窗口标题 / T2 / T7 | ✅ 完成 | 快赢组 `e04feacf5`、`3457123ff`、`3ebb66603`（demote feature 清零 VVL 告警） |
+| A5 / A6 / A8 / T4 / T5 / T6 / T8 等剩余项 | ⬜ 待做 | 已收进 `doc/backlog.md` **D 线**（D1–D9）；T5 用户明确留置 |
 | 文档同步 | 🟨 部分 | SKILL_CASCADED_SHADOW_CSM 的 A1/A3/A4 条目已更新；本清单剩余项（bias_world 示例值、窗口标题、shadow-component 文档标注）待 A5 一并处理 |
 
 新发现并已另案记录的问题：`SetLocalPosition` 等无同值短路（每帧重复 set 同值

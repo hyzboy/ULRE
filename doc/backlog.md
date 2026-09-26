@@ -130,6 +130,11 @@
   棋盘投影填充 ~57%=镂空）。豁免被改回时契约测试全绿但功能坏。
 - **做法**：把"dump 深度图 + 填充率断言（50-65% 区间）"收进
   `TestCSMIncrementalPass`（headless 读回路径已验证可行）。
+- **判读口径（2026-09-26 实测补充，务必按此实现）**：填充率必须**相对非零
+  像素的包围盒**统计，不能相对整图——`AlphaTestShadow` 第 45 帧实测
+  c0：非零包围盒 112x58（占全图仅 0.62%），**框内填充 57.6%**（=镂空达标）；
+  整图口径只有 0.4%，当断言用会立刻失败。同级联 c1 该场景为全空（静态级联
+  无 caster），断言只对 c0 生效。
 - **规模**：~100 行（读回 helper 移入测试 + 断言）。**无触发条件，建议随下
   一次 shadow 相关改动一并做**。
 
@@ -188,6 +193,38 @@
   全槽排空、Update 每帧 5 次的问题一并解决）。**依赖 T8 数据决定收益**。
 - **规模**：T8 半天（工具已有 DumpCascadeDepth 基础）；T6 2-3 天；A6 1-2 天。
 
+### D8. FS 剥除豁免的判据收敛（SPIRV 扫描常量错误，2026-09-26 新发现）
+
+- **现状**：`ShaderProgram` 的 FS 保留判据有三层，其中一层从不触发——
+  `ShaderProgramManager::ScanSPVHasDiscard` 用 `OpKill = 101`、
+  `DemoteToHelperInvocation capability = 5407`，**两个常量都是错的**
+  （官方 `spirv.hpp`：`OpKill = 252`、`CapabilityDemoteToHelperInvocation = 5379`、
+  `OpTerminateInvocation = 4416`、`OpDemoteToHelperInvocation = 5380`；
+  101 实际是 `OpImageQueryFormat` → 片元里出现 imageQuery* 会误保留 FS，
+  只损失性能）。当前 masked caster 正确性实际由另两层撑住：
+  FinalGLSL 文本扫描 `"discard"`（`ShaderProgramManager.cpp` 的
+  `fragment_shader_required = GetFinalGLSL().find("discard")`）+ recipe 语义兜底
+  `render_state.alpha_test || dither`（`VKRenderPass.cpp` 的
+  `keep_fragment_shader`）。即 `89323c651` 声称的"根因修复"并未生效。
+- **做法**：二选一——①修正常量并覆盖 OpKill/OpTerminateInvocation/
+  OpDemoteToHelperInvocation + capability 两种形式；②按零兼容偏好**删掉
+  SPIRV 扫描**，把"文本扫描 + recipe 语义"定为唯一判据并写进注释。
+- **验收**：D1 的深度镂空契约做完后，临时去掉 recipe 兜底，看剩余判据能否
+  独立撑住 masked 影子（预期失败 → 作为删/修的裁决证据）。
+- **规模**：修常量 ~10 行；删除 ~30 行。
+- **触发条件**：随 D1 一起做。
+
+### D9. 行未就绪跳过路径的告警与收敛（A1-4 残留）
+
+- **现状**：`RenderPrimitiveCollectSystem` 阴影分支对 "masked caster 行未就绪"
+  的处理是静默 `BumpStaticSceneRevision()` + `continue`——设计意图是首帧收敛
+  （下帧行就绪即恢复）。但若 forward 链对该 primitive **持续**失败/行永不就绪，
+  就退化为"每帧 bump → 静态级联每帧全量重画"（`100% Cached` 再不出现）且
+  该 caster 的影子长期缺席，全程无日志。
+- **做法**：该分支加一次性告警（每材质一次，含 primitive 名与原因）+ 收敛
+  上限（或仅当 `last_materialize_epoch != 0` 时才 bump，避免首帧前的空转）。
+- **规模**：~20 行。**触发条件**：随下一次阴影/物化链改动。
+
 ### 留置
 
 - **T5 ScenePipelineMode 空壳**：用户明确留置（未实现模式不加告警）。
@@ -205,7 +242,8 @@ A5(比较采样) ◄──同做───────────┘            
   与 A4 的光照矩阵通路，且不依赖任何其它项。
 - B/C 线与 A 线无耦合，随手清。
 - **D 线内部顺序**：D1（锁死 masked 链成果，随下次 shadow 改动）→
-  D2（pipeline 键正确性）→ D3/D4（决策项）→ **T8 量测** →
+  D8（随 D1 裁决 FS 判据：修常量或删扫描）→ D2（pipeline 键正确性）→
+  D9（行未就绪路径告警/收敛）→ D3/D4（决策项）→ **T8 量测** →
   T6 拆分 → A6 合并。D 线与 A 线 A1/A7（提交原语/in-flight 槽）强相关：
   A6 的 4 次全槽排空问题在 A1 的 per-frame 多份化落地后可能自然消失，
   两者做前先对齐。

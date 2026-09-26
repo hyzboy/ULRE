@@ -1028,25 +1028,6 @@ namespace hgl::ecs
                     }
 
                     mi_gpu->Unmap();
-
-                    // TEMP-DIAG(mask): 行表内容探测（取证后还原）
-                    if (item_count <= 4)
-                    {
-                        for (size_t i = 0; i < item_count; ++i)
-                        {
-                            const auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
-                            const auto *mc = prim_item ? prim_item->GetMaterialComponent().get() : nullptr;
-                            GLogInfo("[DIAG-ROWS] batch=%s row[%zu]=(payload=%u,texref=%u) comp_row=%d comp_texconf_row=%u zero_addr=%llu valid=%d",
-                                     batch.key.shader_program ? batch.key.shader_program->GetName().c_str() : "?",
-                                     i,
-                                     row_ptr[i].payload_index,
-                                     row_ptr[i].texture_reference_index,
-                                     mc ? (int)mc->data_index_row : -999,
-                                     mc ? mc->material_texture_configuration.row_index : 0u,
-                                     mc ? (unsigned long long)mc->material_texture_zero_row_gpu : 0ull,
-                                     mc ? (int)mc->valid : -1);
-                        }
-                    }
                 }
                 return;
             }

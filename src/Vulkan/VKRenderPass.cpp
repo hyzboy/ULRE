@@ -64,24 +64,6 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     request.debug_name = &name;
     request.pipeline_layout = pl;
 
-    // TEMP-DIAG: pipeline key 取证（还原）——module 指针与 stages hash
-    {
-        static int key_diag = 0;
-        if (key_diag < 40)
-        {
-            ++key_diag;
-            AnsiString mods;
-            for (const VkPipelineShaderStageCreateInfo &sci : ssci_list)
-            {
-                char mod_buf[32];
-                snprintf(mod_buf, sizeof(mod_buf), "[stage=%d mod=%p]", int(sci.stage), (void *)sci.module);
-                mods += mod_buf;
-            }
-            GLogInfo("[DIAG-PKEY] name=%s stages=%s keep_fs=%d",
-                     name.c_str(), mods.c_str(), int(keep_fragment_shader));
-        }
-    }
-
     // depth-only 渲染通道（零颜色附件，如 shadow map）：不透明材质直接去掉片元
     // 着色阶段——深度写入不依赖 FS，整段 lit 着色计算全部省去（FS 的 outColor
     // 在此通道也无处写入，VVL 会报 fragment-output 未使用写告警）。带 alpha 混
