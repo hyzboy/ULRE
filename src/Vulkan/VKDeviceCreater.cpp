@@ -484,6 +484,14 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         vulkan13_features.maintenance4     = dev13.maintenance4;
         vulkan13_features.synchronization2 = VK_TRUE;
 
+        // DemoteToHelperInvocation：GLSL discard 经 glslang 编译为 demote
+        // （SPIR-V OpCapability DemoteToHelperInvocation）——alpha test 镂空
+        // 材质（ShadowCasterMasked 等）依赖其抑制深度/颜色写入。feature 未
+        // 启用时 demote 行为未定义（VVL 会告警，部分驱动忽略 discard）。
+        // 硬件不支持时保持关闭（由上层材质按需回退 opaque 路径）。
+        vulkan13_features.shaderDemoteToHelperInvocation =
+            dev13.shaderDemoteToHelperInvocation ? VK_TRUE : VK_FALSE;
+
         create_info.pNext = &vulkan13_features;
     }
 
