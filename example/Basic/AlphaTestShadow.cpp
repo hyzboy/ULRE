@@ -34,6 +34,9 @@
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 
 #include <glm/glm.hpp>
+#include <algorithm>
+#include <cstring>
+#include <vector>
 #include <cmath>
 
 using namespace hgl;
@@ -102,6 +105,139 @@ private:
     graph::mtl::MaterialRecipe alpha_recipe{};
     graph::mtl::MaterialRecipe ground_recipe{}; // 无 alpha_test：地面实心，避免镂空干扰影子判读
     graph::GlobalSSBODataAccessor material_accessor{};
+
+    bool depth_dumped = false;
+
+    // ── 深度图读回取证（用户建议：直接看 shadow map depth）──────────────────
+    // 帧外 immediate submit：depth image → readback buffer → BMP 灰度落盘。
+    // 8bit 精度足够分辨"镂空（clear 值）vs 实心"。
+    bool DumpCascadeDepth(graph::IRenderTarget *rt, const char *filename)
+    {
+        auto *gc = GetGraphicsContext();
+        auto *device = gc->GetDevice();
+        if (!gc || !device || !rt)
+            return false;
+
+        auto *tex = rt->GetDepthTexture();
+        if (!tex)
+            return false;
+
+        const uint32_t w = tex->GetWidth();
+        const uint32_t h = tex->GetHeight();
+        const VkDeviceSize bytes = VkDeviceSize(w) * h * sizeof(float);
+
+        auto *staging = device->CreateBuffer(
+            ObjectNameBuilder(AnsiString("AlphaTestShadow:") + filename),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT, bytes, bytes, nullptr,
+            BufferAllocPolicy::Readback, SharingMode::Exclusive);
+        if (!staging)
+            return false;
+
+        // graphics pool + graphics queue：depth aspect 的拷贝需要 GRAPHICS。
+        // CreateCommandBuffer(name) 内部用 cmd_pool（未公开 free 所需访问器）
+        // ——一次性诊断，cmd 保留至设备销毁，可接受。
+        VkCommandBuffer cmd = device->CreateCommandBuffer(
+            AnsiString("AlphaTestShadow:DepthDumpCmd"));
+        if (!cmd)
+            return false;
+
+        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(cmd, &bi);
+
+        const VkImageLayout cur_layout = tex->GetImageLayout() != VK_IMAGE_LAYOUT_UNDEFINED
+                                             ? tex->GetImageLayout()
+                                             : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+
+        VkImageMemoryBarrier to_src{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+        to_src.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        to_src.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        to_src.oldLayout = cur_layout;
+        to_src.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        to_src.image = tex->GetImage();
+        to_src.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+        vkCmdPipelineBarrier(cmd,
+                             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             0, 0, nullptr, 0, nullptr, 1, &to_src);
+
+        VkBufferImageCopy region{};
+        region.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+        region.imageExtent = {w, h, 1};
+        vkCmdCopyImageToBuffer(cmd, tex->GetImage(),
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               staging->GetBuffer(), 1, &region);
+
+        VkImageMemoryBarrier to_attach = to_src;
+        to_src.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        to_attach.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        to_attach.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        to_attach.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        to_attach.newLayout = cur_layout;
+        vkCmdPipelineBarrier(cmd,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                             0, 0, nullptr, 0, nullptr, 1, &to_attach);
+
+        vkEndCommandBuffer(cmd);
+
+        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        VkFence fence;
+        vkCreateFence(device->GetDevice(), &fi, nullptr, &fence);
+
+        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        si.commandBufferCount = 1;
+        si.pCommandBuffers = &cmd;
+        vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence);
+        vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+        vkDestroyFence(device->GetDevice(), fence, nullptr);
+
+        // 读回 → 8bit 灰度 BMP（reversed-Z：近处亮/远处暗，镂空=clear 值）
+        const float *depth = static_cast<const float *>(staging->GetGPUBuffer()->Map(0, bytes));
+        if (!depth)
+            return false;
+
+        const uint32_t row_pitch = w * 3;
+        const uint32_t bmp_bytes = 54 + row_pitch * h;
+        std::vector<uint8> bmp(bmp_bytes, 0);
+
+        const uint32_t data_off = 54;
+        bmp[0] = 'B'; bmp[1] = 'M';
+        const uint32_t file_size = bmp_bytes;
+        std::memcpy(&bmp[2], &file_size, 4);
+        const uint32_t reserved = 0, pix_off = 54;
+        std::memcpy(&bmp[10], &pix_off, 4);
+        const uint32_t header_size = 40, plane = 1, bpp = 24, comp = 0;
+        std::memcpy(&bmp[14], &header_size, 4);
+        std::memcpy(&bmp[18], &w, 4);
+        std::memcpy(&bmp[22], &h, 4);
+        std::memcpy(&bmp[26], &plane, 2);
+        std::memcpy(&bmp[28], &bpp, 2);
+        std::memcpy(&bmp[30], &comp, 4);
+
+        for (uint32_t y = 0; y < h; ++y)
+        {
+            const uint32_t out_y = h - 1 - y; // BMP 底行在前
+            for (uint32_t x = 0; x < w; ++x)
+            {
+                const float d = depth[y * w + x];
+                const uint8 g = uint8((std::min)(std::max(d, 0.0f), 1.0f) * 255.0f);
+                const uint32_t o = data_off + out_y * row_pitch + x * 3;
+                bmp[o] = g; bmp[o + 1] = g; bmp[o + 2] = g;
+            }
+        }
+        staging->GetGPUBuffer()->Unmap();
+
+        filesystem::SaveMemoryToFile(ToOSString(AnsiString(filename)),
+                                     bmp.data(),
+                                     static_cast<int64>(bmp.size()));
+        GLogInfo("[DepthDump] %s saved (%ux%u)", filename, w, h);
+
+        delete staging;
+        return true;
+    }
 
 public:
     ~AlphaTestShadowApp() override
@@ -337,6 +473,32 @@ public:
     }
 
 public:
+    void Tick(double delta) override
+    {
+        WorkObject::Tick(delta);
+
+        // 深度图直接读回取证（第 45 帧，一次性）
+        if (!depth_dumped)
+        {
+            static int dump_frame = 0;
+            if (++dump_frame >= 45)
+            {
+                depth_dumped = true;
+
+                for (uint32_t c = 0; c < 2; ++c)
+                {
+                    auto *rt = environment_system->GetCascadeRenderTarget(c);
+                    if (rt)
+                    {
+                        const AnsiString fn = AnsiString("cascade_depth_c") +
+                            AnsiString::numberOf(c) + ".bmp";
+                        DumpCascadeDepth(rt, fn.c_str());
+                    }
+                }
+            }
+        }
+    }
+
     bool Init() override
     {
         SetClearColor(Color4f(0.12f, 0.12f, 0.14f, 1.0f));
