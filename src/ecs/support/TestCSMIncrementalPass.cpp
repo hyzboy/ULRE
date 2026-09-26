@@ -1389,8 +1389,9 @@ int main(int argc, char** argv)
     // 曾因此完全失效，而当时本套契约测试全绿（豁免被改回也不会被发现）。
     // 本可执行文件无图形设备（图像级判读在 `AlphaTestShadow --selfcheck` 的
     // 深度图读回 + 包围盒填充率断言里），所以这里钉住"判据链是否还在"：
-    // 剥离点必须检查 keep_fragment_shader、recipe 语义必须参与判据、程序级
-    // discard 标志必须有生产者与消费者、masked caster 必须真的评估 alpha。
+    // 剥离点必须检查 keep_fragment_shader、recipe 语义必须参与判据、masked
+    // caster 必须真的评估 alpha；同时**禁止**程序级 discard 扫描复活（D8 实测
+    // 两层实现恒 false，判据已收敛为 recipe 语义一条）。
     // ─────────────────────────────────────────────────────────────
     {
         struct SourceContract
@@ -1399,6 +1400,7 @@ int main(int argc, char** argv)
             const OSString path;   // 仓库相对路径
             const char *needle;
             const char *why;
+            bool        forbidden = false;   // true：该 needle 必须**不存在**（禁复活）
         };
 
         const SourceContract kFSContracts[] =
@@ -1413,10 +1415,6 @@ int main(int argc, char** argv)
             { "VKRenderPass.cpp", OS_TEXT("src/Vulkan/VKRenderPass.cpp"),
               "render_state.dither",
               "recipe 的 dither 不再是 FS 保留判据（抖动覆盖语义丢失）" },
-            { "ShaderProgramManager.cpp", OS_TEXT("src/SceneGraph/module/ShaderProgramManager.cpp"),
-              "fragment_shader_required =",
-              "没有任何代码设置 ShaderProgram::fragment_shader_required，"
-              "IsFragmentShaderRequired() 恒 false（程序级 discard 判定失效）" },
             { "FragmentTemplateComposer.cpp", OS_TEXT("src/ShaderGen/template/FragmentTemplateComposer.cpp"),
               "ShadowCasterMasked",
               "masked caster 模板分派丢失（depth-purpose 不再区分 alpha test 材质）" },
@@ -1435,7 +1433,17 @@ int main(int argc, char** argv)
             { "RenderPrimitiveCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "MaterialRequiresRecipeRuntimeRows",
-              "阴影 pass 不再判定 masked caster 的纹理行需求——行未就绪时仍采深度会写出实心影子" },
+              "阴影 pass 不再判定 masked caster 的行需求——行未就绪时仍采深度会写出实心影子" },
+            // ── 禁复活（D8 收敛，2026-09-26 实测证据见 doc/backlog.md D8）──
+            { "ShaderProgramManager.cpp", OS_TEXT("src/SceneGraph/module/ShaderProgramManager.cpp"),
+              "ScanSPVHasDiscard",
+              "程序级 SPIRV 扫描已按 D8 删除（常量写错从未命中 + 唯一调用点在 stage 缓存"
+              "命中分支 + 结果被文本扫描硬赋值覆盖，实测三层恒 0）；确需程序级判据请重做",
+              true },
+            { "VKShaderProgram.h", OS_TEXT("inc/hgl/vk/VKShaderProgram.h"),
+              "FragmentShaderRequired",
+              "ShaderProgram 的 FS-required 标志已按 D8 删除——FS 保留判据只能来自 recipe 语义",
+              true },
         };
 
         for (const SourceContract &k : kFSContracts)
@@ -1461,17 +1469,20 @@ int main(int argc, char** argv)
                     src.Strcat(chunk, static_cast<int>(got));
             }
 
-            if (!src.Contains(k.needle))
+            const bool hit = src.Contains(k.needle);
+            if (k.forbidden ? hit : !hit)
             {
-                GLogError(u8"Test 11 Failed: %s -- '%s' not found in %s",
+                GLogError(k.forbidden
+                              ? u8"Test 11 Failed: %s -- '%s' 重新出现在 %s（D8 禁复活）"
+                              : u8"Test 11 Failed: %s -- '%s' not found in %s",
                           k.why, k.needle, k.file);
                 return 11;
             }
         }
 
         GLogInfo(u8"Test 11 Passed: masked caster FS-retention source contract holds (%d checks) -- "
-                 u8"keep_fragment_shader + recipe alpha_test/dither + fragment_shader_required "
-                 u8"producer + masked alpha evaluation.",
+                 u8"keep_fragment_shader + recipe alpha_test/dither + masked alpha evaluation "
+                 u8"+ no revived program-level discard scan.",
                  static_cast<int>(sizeof(kFSContracts) / sizeof(kFSContracts[0])));
     }
 

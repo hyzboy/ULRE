@@ -127,11 +127,14 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipel
     if(!mtl)
         return(nullptr);
 
+    // 颜色通道专用重载（line/text）：keep_fragment_shader = false——depth-only
+    // 通道的 FS 保留判据需要 recipe 语义，本重载无法表达（MaterialPipelineConfig
+    // 无 alpha_test/dither 字段），有 depth-only 需求的材质请走 recipe 重载。
     Pipeline *p = CreatePipeline(mtl->GetName(),
                                   mtl->GetStageList(),
                                   mtl->GetPipelineLayout(),
                                   config,
-                                  mtl->IsFragmentShaderRequired());
+                                  false);
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);
@@ -166,11 +169,12 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
         render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
 
     // alpha test / dither 的 discard 依赖片元——depth-only 通道不得剥 FS。
-    // （mtl->IsFragmentShaderRequired 为 SPIRV 扫描结果；recipe 的
-    // alpha_test/dither 是语义层判据，双保险。）
+    // 判据 = recipe 语义（alpha_test/dither）——与 ShadowCasterMasked 模板分派
+    // 同源（ShaderProgramManager 的模板选择也用 normalize 后的 alpha_test）。
+    // 曾经的程序级判据（SPIRV 扫描 + FinalGLSL 文本扫描）经 D8 实测恒 false
+    // （常量写错 / include 不在文本里），已整体删除——勿再引入第二套判据。
     const bool keep_fragment_shader =
-        mtl->IsFragmentShaderRequired()
-     || render_state.alpha_test
+        render_state.alpha_test
      || render_state.dither;
 
     Pipeline *p = CreatePipeline(mtl->GetName(),

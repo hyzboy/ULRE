@@ -98,6 +98,7 @@
 | TickObject 双名同物 + 继承趋零 | `hgl/type/TickObject.h` 旧版无人用仍在编译 | 跨 CMCore 子仓库 |
 | AppFramework 空虚函数/死参 | OnActive/OnClose/Tick 空、`(void)argc` | 化妆级 |
 | `DetachAllComponents(bool)` 参数无效 | 只进日志不进分支 | 顺手 |
+| 示例**干净退出**时泄漏 + CRT abort（退出码 3） | `CascadeShadowMap` 关窗后：133 条 `[LEAK]`（TransferSrcBuffer 27 / Texture_ 21 / UBO:ShadowUBO 8 / Shader stage 7 / VAB_ 6 / SSBO:ECS:Batch:* …）+ `BufferManager::Release` 清理 → 弹 "Microsoft Visual C++ Runtime Library" abort 对话框，进程退出码 **3** | 2026-09-26 冒烟时发现（两次复现）。**与 D1/D8 无关**：示例自身未改，D8 diff 零资源生命周期行（已 grep 核对）。`shutdown_object_tracker` 只 delete tracker、不 abort ⇒ 来源在设备/静态析构期。**注意**：拿 CSM 示例做冒烟时退出码 3 不是回归信号，判据是日志内容（路由/缓存/0 VUID） |
 
 ## C 线：构建与文档
 
@@ -147,9 +148,9 @@
 - **破坏验证（已验证非空洞）**：① 测试里把某条 needle 改错 → `Test 11 Failed`
   点名文件+needle+后果，退出码 11；② 把判读带下限临时改 0.90 → `[D1-CONTRACT]
   c0 FAIL: 包围盒填充率 57.6% < 90%`，selfcheck 退出码 1。两处均已还原并复跑绿。
-- **剩余**：本契约覆盖"判据链还在（源码层）+ 链路端到端生效（图像层）"；D8
-  （SPIRV 扫描常量）仍待裁决 —— 无论修常量还是删扫描，Test 11 的 needle 集合
-  都成立（只依赖 recipe 语义 + 生产者存在性，不依赖具体扫描实现）。
+- **剩余**：本契约覆盖"判据链还在（源码层）+ 链路端到端生效（图像层）"。D8 已用
+  其破坏验证现场裁决并落地（删程序级扫描）→ Test 11 的 needle 随之收敛为
+  9 条正向（recipe 判据 + masked 链）+ 2 条禁复活（见 D8）。
 
 ### D2. pipeline 缓存键纳入 shader 内容（新卡②）+ 同构排查（新卡③）
 
@@ -206,26 +207,40 @@
   全槽排空、Update 每帧 5 次的问题一并解决）。**依赖 T8 数据决定收益**。
 - **规模**：T8 半天（工具已有 DumpCascadeDepth 基础）；T6 2-3 天；A6 1-2 天。
 
-### D8. FS 剥除豁免的判据收敛（SPIRV 扫描常量错误，2026-09-26 新发现）
+### ~~D8. FS 剥除豁免的判据收敛~~ ✅ 已完成（2026-09-26，实测裁决：**删程序级扫描**）
 
-- **现状**：`ShaderProgram` 的 FS 保留判据有三层，其中一层从不触发——
-  `ShaderProgramManager::ScanSPVHasDiscard` 用 `OpKill = 101`、
-  `DemoteToHelperInvocation capability = 5407`，**两个常量都是错的**
-  （官方 `spirv.hpp`：`OpKill = 252`、`CapabilityDemoteToHelperInvocation = 5379`、
-  `OpTerminateInvocation = 4416`、`OpDemoteToHelperInvocation = 5380`；
-  101 实际是 `OpImageQueryFormat` → 片元里出现 imageQuery* 会误保留 FS，
-  只损失性能）。当前 masked caster 正确性实际由另两层撑住：
-  FinalGLSL 文本扫描 `"discard"`（`ShaderProgramManager.cpp` 的
-  `fragment_shader_required = GetFinalGLSL().find("discard")`）+ recipe 语义兜底
-  `render_state.alpha_test || dither`（`VKRenderPass.cpp` 的
-  `keep_fragment_shader`）。即 `89323c651` 声称的"根因修复"并未生效。
-- **做法**：二选一——①修正常量并覆盖 OpKill/OpTerminateInvocation/
-  OpDemoteToHelperInvocation + capability 两种形式；②按零兼容偏好**删掉
-  SPIRV 扫描**，把"文本扫描 + recipe 语义"定为唯一判据并写进注释。
-- **验收**：D1 的深度镂空契约做完后，临时去掉 recipe 兜底，看剩余判据能否
-  独立撑住 masked 影子（预期失败 → 作为删/修的裁决证据）。
-- **规模**：修常量 ~10 行；删除 ~30 行。
-- **触发条件**：随 D1 一起做。
+- **实测证据（三层判据探针，AlphaTestShadow 实跑 `[D8-PROBE]`）**：所有程序
+  `spirv-scan=0`、`text-scan=0` → `IsFragmentShaderRequired()` **恒 false**；
+  `keep_fs=1` 只出现在 `recipe_at=1` 的程序上 ⇒ **唯一真正生效的判据是 recipe
+  语义**，此前文档/提交声称的"SPIRV 扫描撑住 masked 影子"不成立：
+  - SPIRV 扫描：`OpKill = 101`（真值 **252**）、cap `5407`（真值 **5379**）全错
+    → 从不命中；且**唯一调用点在 stage 缓存命中分支**（冷缓存首编译根本
+    不扫）。
+  - FinalGLSL 文本扫描：结构性失明——实测 `shader-cache/stage/stage-16-*.frag`
+    含 `HGLApplyAlpha(...)` 调用而 **0 处 `discard` 字面量**（include 的
+    alpha_compositor 不在该文本里；glsl_len 12551/16673/16732 全部 0 命中）。
+  - 且该处是**硬赋值**（`fragment_shader_required = ...find("discard")`），会把
+    SPIRV 扫描的 true 覆盖成 false ⇒ **修常量也无效**，必须同时改三处。
+- **裁决依据**：① 两层程序级实现在实测中都是死的；② 引擎全部路径的模板选择
+  与 FS 保留用**同一输入**（normalize 后的 recipe `alpha_test`，见
+  `ShaderProgramManager.cpp` 的 `masked ? ShadowCasterMasked : ShadowCasterOpaque`）
+  ⇒ 未声明 alpha_test 的材质根本不会生成带 discard 的影子程序（ShadowCasterOpaque
+  里没有 discard），判据完备；③ 符合零兼容偏好，不留恒假机制。
+- **落地**（净 −45/+24）：删 `ScanSPVHasDiscard`、文本扫描块、
+  `ShaderProgramManager::SetFragmentShaderRequired` 中转、
+  `ShaderProgram::fragment_shader_required` 与 `IsFragmentShaderRequired()`；
+  `RenderPass::CreatePipeline(ShaderProgram*, const MaterialRecipe&)` 判据收敛为
+  `render_state.alpha_test || render_state.dither`；config 重载（line/text 颜色
+  通道）显式传 `false` 并注明"depth-only 需求须走 recipe 重载"；原位置留注释
+  说明被删原因（**勿再引入第二套判据**）。
+- **禁复活契约**：Test 11 新增 2 条反向 needle（`ScanSPVHasDiscard`、
+  `FragmentShaderRequired` 必须不存在）。
+- **验收**：Debug 构建通过；`TestCSMIncrementalPass` 全绿（Test 11 = 11 checks）；
+  `ATS_SELFCHECK=1` 跑 `AlphaTestShadow` → c0 仍 **57.6% PASS**（**删除 = 行为
+  no-op**，实测证实）；`CascadeShadowMap` 冒烟无回归。
+- **若改走"程序级扫描"**：属**重做**而非修常量——需扫在模块创建处并覆盖编译+
+  缓存两条路径、OR 语义、补 `OpTerminateInvocation=4416`/
+  `OpDemoteToHelperInvocation=5380`/cap `5379`，且删掉文本扫描（它只会覆盖结果）。
 
 ### D9. 行未就绪跳过路径的告警与收敛（A1-4 残留）
 
@@ -255,8 +270,8 @@ A5(比较采样) ◄──同做───────────┘            
   与 A4 的光照矩阵通路，且不依赖任何其它项。
 - B/C 线与 A 线无耦合，随手清。
 - **D 线内部顺序**：~~D1~~ ✅（已锁死 masked 链：Test 11 源码契约 + AlphaTestShadow
-  自判）→ D8（裁决 FS 判据：修常量或删扫描；D1 的破坏验证已备好现场）→
-  D2（pipeline 键正确性）→
+  自判）→ ~~D8~~ ✅（实测裁决：程序级扫描恒 false → 删除，判据收敛为 recipe 语义）
+  → D2（pipeline 键正确性）→
   D9（行未就绪路径告警/收敛）→ D3/D4（决策项）→ **T8 量测** →
   T6 拆分 → A6 合并。D 线与 A 线 A1/A7（提交原语/in-flight 槽）强相关：
   A6 的 4 次全槽排空问题在 A1 的 per-frame 多份化落地后可能自然消失，

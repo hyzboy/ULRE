@@ -72,10 +72,6 @@ private: // Helper methods with integrated DebugUtils
                                              const mtl::ShaderCreateInfoMap &sci_map);
 
 public: //Add
-    // fragment_shader_required 的中转 setter——BuildShaderModulesFromCreateInfoMap
-    // 是自由函数（不在 friend 授信范围内），经此写入。
-    void SetFragmentShaderRequired(ShaderProgram *mtl, bool v);
-
 
     ShaderProgramID Add(ShaderProgram *mtl) { return rm_material.Add(mtl); }
 

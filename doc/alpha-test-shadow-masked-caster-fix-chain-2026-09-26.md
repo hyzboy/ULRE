@@ -85,7 +85,7 @@ GPU 侧寻址（两级）
 | 4 | **forward 管线** | **forward alpha test 从未接线**——HGLApplyAlpha 只有 shadow 模板调用；forward_lit.glsl.tmpl 靠 HGLComposeColor(color.a)，PBR 光照输出 alpha 恒 1 | 模板加 `#ifdef HGL_ALPHA_TEST HGLApplyAlpha(EvalAlpha(si, materialDataIndex)) #endif` |
 | 5 | 行寻址 | `EvalAlpha(si, 0u)` 硬编码行表第 0 行（batch 内错物体） | 改用 wiring 生成的 `materialDataIndex`（fragDataIndexID，coverage 的 DataIndexID 语义驱动） |
 | 6 | batch 地址 | `batch.texture_reference_base_addr`（= pc_root.addr_texture_references）只在 desc 未解析的 fallback 分支设置——稳态恒 0 | 与 resolved 分支解耦，每 item 幂等设置 |
-| 7 | **pipeline 组装（终极）** | **depth-only 快速路径无条件剥片元 stage**——discard 从未进 VkPipeline | ShaderProgram::IsFragmentShaderRequired（SPIRV 扫描）+ CreatePipeline keep_fragment_shader 豁免 |
+| 7 | **pipeline 组装（终极）** | **depth-only 快速路径无条件剥片元 stage**——discard 从未进 VkPipeline | `CreatePipeline` 的 `keep_fragment_shader` 豁免；判据 = recipe `alpha_test`/`dither`（D8 实测：程序级 SPIRV/文本扫描恒 false，已删——勿信"SPIRV 扫描撑住"的旧说法） |
 
 附带修复：
 - **pipeline 复用加 program 身份键控**（resolvedRuntimePipelineProgramMap）——
@@ -127,11 +127,11 @@ ATS_SELFCHECK=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe; echo $?
 | ~100% | 实心——片元被剥或 opacity 采样恒 1.0 |
 | 全空 | 片元被剥 + 全 discard / 物体未进深度图 |
 
-源码层判据链由 `TestCSMIncrementalPass` 的 **Test 11**（10 条 needle）把守，
-不需要设备：剥离点检查 `keep_fragment_shader`、recipe 语义（`alpha_test`/
-`dither`）参与判据、`fragment_shader_required` 有生产者、masked caster 模板真
-评估 alpha。两层合起来才能覆盖"判据被改回"（Test 11 抓）与"链路实际失效"
-（AlphaTestShadow 抓）。
+源码层判据链由 `TestCSMIncrementalPass` 的 **Test 11** 把守，不需要设备：剥离点
+检查 `keep_fragment_shader`、recipe 语义（`alpha_test`/`dither`）参与判据、
+masked caster 模板真评估 alpha，并**禁止**程序级 discard 扫描复活（D8：两层
+程序级扫描实测恒 false，已删）。两层合起来才能覆盖"判据被改回"（Test 11 抓）
+与"链路实际失效"（AlphaTestShadow 抓）。
 
 ### 4.2 SPIRV 反汇编（验证 discard/采样是否真的编译进）
 

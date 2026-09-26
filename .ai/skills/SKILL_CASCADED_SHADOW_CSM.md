@@ -333,10 +333,13 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
    都静默 fallback 1.0 → **影子实心**。`texture_reference_base_addr` 必须
    与 4-ID 解析分支无关地幂等设置（曾在 resolved 分支漏设）。
 3. **depth-only FS 剥除豁免**：`RenderPass::CreatePipeline` 对零颜色附件通道
-   默认剥离片元 stage（不透明优化）——含 discard 的 program 由
-   `ShaderProgram::IsFragmentShaderRequired()`（SPIRV 扫描 OpKill/
-   OpDemoteToHelperInvocation）+ recipe `alpha_test`/`dither` 豁免。
-   **新增镂空类模板时确认此豁免生效**，否则深度图实心且无任何报错。
+   默认剥离片元 stage（不透明优化）——**判据只有一条**：normalize 后的 recipe
+   `alpha_test`/`dither`（与 `masked ? ShadowCasterMasked : ShadowCasterOpaque`
+   模板分派同源）。D8（2026-09-26）实测此前的两个程序级判据（SPIRV 扫描：常量
+   写错 + 只在 stage 缓存命中分支运行；FinalGLSL 文本扫描：include 的
+   alpha_compositor 不在文本里）**恒 false**，已整体删除，`ShaderProgram` 不再有
+   `fragment_shader_required` 标志。**新增镂空类模板时必须确认 recipe 声明了
+   `alpha_test`/`dither`**，否则深度图实心且无任何报错。
 4. **pipeline 复用带 program 身份键控**（`resolvedRuntimePipelineProgramMap`）：
    shader 更新生成新 program 对象后必须重建 pipeline——仅按 RenderPass 键控
    会永久复用旧 SPIRV。
@@ -590,7 +593,7 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | **启动几帧**阴影闪现 | — | 尚无 warm-up 流程（见 §10） |
 | 拖拽时阴影**一帧左一帧右 / 一帧近一帧远**，静止后正常；RenderDoc 截帧永远正常 | 不是拟合公式。先确认 `ShadowInfo` 是否又变回单份 UBO | 在途主帧还在读 binding 5 时，CPU 覆写了同一块 `ShadowInfo`。修复与禁令见 `doc/shadow-ubo-inflight-overwrite.md`。不要用每帧 `WaitFence()` 全槽排空来压症状 |
 | 静态阴影能渲染但**读到就没了** | 是否每帧都发了静态级的 DrawCall | 静态级被错误地也当成了逐帧层 |
-| **alpha test 物体的阴影是实心的**（本体镂空正常） | `RenderPass::CreatePipeline` 的 depth-only FS 剥除豁免 | 片元含 discard 却被 depth-only 快速路径剥掉（`IsFragmentShaderRequired` 判定失效/未走）；或 `batch.texture_reference_base_addr`=0（MTL_TEX 解引用 0 → fallback 1.0）。**取证**：`AlphaTestShadow` 第 45 帧自动判读 c0 的 `[D1-CONTRACT]` 行（**包围盒内**填充率 57.6%=镂空、~100%=实心、全空=未进深度图）；`ATS_SELFCHECK=1` 时以退出码给出结论（0/1）。判据链本身由 `TestCSMIncrementalPass` Test 11 源码契约把守 |
+| **alpha test 物体的阴影是实心的**（本体镂空正常） | 物件的 recipe 是否声明了 `alpha_test`/`dither`（depth-only FS 保留的**唯一**判据，D8 后程序级扫描已删） | 片元含 discard 却被 depth-only 快速路径剥掉；或 `batch.texture_reference_base_addr`=0（MTL_TEX 解引用 0 → fallback 1.0）。**取证**：`AlphaTestShadow` 第 45 帧自动判读 c0 的 `[D1-CONTRACT]` 行（**包围盒内**填充率 57.6%=镂空、~100%=实心、全空=未进深度图）；`ATS_SELFCHECK=1` 时以退出码给出结论（0/1）。判据链本身由 `TestCSMIncrementalPass` Test 11 源码契约把守 |
 | **masked 物体在深度图里缺失**（影子不出现或固化消失） | collect 日志 `ResolveMaterialProgramForPrimitive failed` | 首帧 resolve 失败 + 静态缓存固化。行未就绪时已跳过+bump revision（收敛）；手动调 `InvalidateMainLightStaticShadowCache()` 立即重画 |
 
 **诊断手段**：
