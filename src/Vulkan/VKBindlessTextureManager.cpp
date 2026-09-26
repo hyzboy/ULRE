@@ -398,9 +398,23 @@ bool BindlessTextureManager::UpdateTextureHandle(uint32_t tex_handle, Texture *t
     // Cubemap 纹理写 binding=2(textureCube[])，其余写 binding=0(texture2DArray[])
     const VkImageView cube_view = tex->GetBindlessCubeView();
 
+    // 采样描述符只接受"可采样布局"。纹理跟踪布局可能是 PRESENT_SRC_KHR 或附件布局
+    // （渲染刚写过），此时按采样前的目标布局注册为 SHADER_READ_ONLY_OPTIMAL。
+    const VkImageLayout tex_layout = tex->GetImageLayout();
+
+    if (tex_layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+     && tex_layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+     && tex_layout != VK_IMAGE_LAYOUT_GENERAL)
+    {
+        LogWarning(u8"[BindlessTextureManager] 纹理 %p 当前布局 %d 不可采样，按 SHADER_READ_ONLY_OPTIMAL 注册",
+                   (const void *)tex, static_cast<int>(tex_layout));
+    }
+
     VkDescriptorImageInfo img_info{};
-    img_info.imageLayout = (tex->GetImageLayout() != VK_IMAGE_LAYOUT_UNDEFINED)
-                         ? tex->GetImageLayout()
+    img_info.imageLayout = (tex_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                         || tex_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+                         || tex_layout == VK_IMAGE_LAYOUT_GENERAL)
+                         ? tex_layout
                          : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     img_info.imageView   = cube_view ? cube_view
                                      : tex->GetBindlessArrayView();

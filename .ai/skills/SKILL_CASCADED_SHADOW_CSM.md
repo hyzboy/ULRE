@@ -537,6 +537,80 @@ C1: fullC=<整级重建> stripC=<条带> hitC=<命中> | C2: ... | C3: ...
 
 ---
 
+### 4.10 附件读回与落盘：下沉引擎 API + CM2D 写出（E1，2026-09-26 落地）
+
+引擎侧新增 `inc/hgl/vk/VKTextureReadback.h` + `src/Vulkan/VKTextureReadback.cpp`（`hgl::graph`，已注册进
+`src/Vulkan/CMakeLists.txt`）：
+
+```cpp
+bool ReadbackTexture(VulkanDevice *device, Texture *tex,
+                     std::vector<uint8_t> &out_pixels, TextureReadbackInfo *out_info = nullptr);
+bool ReadbackColorTarget(IRenderTarget *rt, std::vector<uint8_t> &out, uint32_t color_index = 0,
+                         TextureReadbackInfo *out_info = nullptr);
+bool ReadbackDepthTarget(IRenderTarget *rt, std::vector<uint8_t> &out, TextureReadbackInfo *out_info = nullptr);
+```
+
+- 内部：`vkQueueWaitIdle` 排空 → staging（`BufferAllocPolicy::Readback`）→ `TextureCmdBuffer`
+  一次性 barrier（当前布局 → `TRANSFER_SRC_OPTIMAL`）→ `CopyImageToBuffer` → barrier 还原 →
+  提交 + fence 等待 → map → 释放。**读回前后布局不变**；aspect 取 `Texture::GetAspect()`
+  （纯深度格式不声明 STENCIL 位，与渲染侧规则一致）。
+- 像素是**原始字节、行主序自上而下**（与 Vulkan 图像坐标一致 ⇒ 落盘无需翻转）；每像素字节数 =
+  `GetStrideByFormat(格式)`；`TextureReadbackInfo` 回传 w/h/pixel_size/row_pitch/format/is_depth。
+- 只用于**离线/诊断**（每次调用排空队列 + 新建 staging/cmd）⇒ 不进每帧热路径。
+
+**配套引擎修复（关键）**：`RenderCmdBuffer::BeginRendering` / `EndRenderingPresent` 现在把每种转换的
+`newLayout` 同步写回纹理跟踪（`Texture::SetImageLayout`）。此前 `EndRenderingPresent` 只在 barrier 里把
+交换链颜色图转到 `PRESENT_SRC_KHR`，纹理上跟踪的值却停在 `SHADER_READ_ONLY_OPTIMAL` ⇒ 任何拿
+`GetImageLayout()` 当 `oldLayout` 的代码都会触发校验层"非法转换"且拷贝不可信（原示例因此**硬编码**
+`PRESENT_SRC_KHR`）。另：`VKBindlessTextureManager` 对不可采样布局（PRESENT_SRC/附件布局）回落
+`SHADER_READ_ONLY_OPTIMAL` 注册——布局跟踪变准后不能把非法布局写进采样描述符。
+
+**示例侧落盘改 CM2D**：`bitmap::SaveBitmapToTGA(&out, rgb, w, h, 3, 8)`（`hgl/2d/BitmapSave.h`）⇒
+手写 BMP 头 + 底行翻转全删。CM2D 写的是 **UPPER_LEFT（行序自上而下）**，与读回顺序一致（BMP 是底行在前）。
+示例只保留"取哪张图 + 怎么判读"：ATS `DumpCascadeDepth`/`DumpColorTarget`、CSM `ReadbackCascadeDepth`/`SaveDepthTga`。
+
+**⚠ 已知缺口（读回交换链颜色图）**：present 之后交换链图**不再被 acquire**，从帧外提交它的布局转换违反
+"presentable image 必须在 acquire 与 present 之间使用" ⇒ 校验层报
+`vkQueueSubmit(): performs a layout transition on presentable VkImage ... has not been acquired`。
+该 VUID **改造前就存在**（旧代码同样转这张图，且实测拷贝内容有效：D2/D3 契约数值与改造前逐位一致）。
+彻底消除需帧内做（acquire 后 / present 前）或用 acquire+copy+present 的截图路径。
+
+**E1 验收数据（与手写回读版本逐项相同 ⇒ 改的是通路不是数据）**：
+`ATS_SELFCHECK=1` rc=0；`[D1-CONTRACT] c0 PASS bbox=112x58 filled=3740 填充率 57.6%`；
+`[D3-CONTRACT] receive_shadow 18189 px / 反向 0 px`、`bias ×1000 600662 px`；
+`[DepthDump] 1024x1024`、`[ColorDump] 1280x720 mean_lum=113.3/112.3/134.0`；
+`CSM_CACHE_DIFF=1 CSM_AUTOWALK=24` 74 轮 `不一致=0`。
+契约测试 **Test 21**（源码契约）：三入口 + `CopyImageToBuffer`/`vkQueueWaitIdle` + CMakeLists 注册 +
+`Begin/EndRendering` 的 `SetImageLayout` 同步 + 示例零自研残留（`SaveMemoryToFile`/`vkCmdCopyImageToBuffer`
+必须消失）。破坏验证：移除 `SetImageLayout(PRESENT_SRC_KHR)` ⇒ rc=21；移除 CMakeLists 注册 ⇒ rc=21；恢复 ⇒ 21 Passed。
+
+**落盘命名约定（2026-09-26 用户裁定"走 A 方案 + 文件名写清楚宽高和格式"）**：诊断文件名一律
+`<stem>_<W>x<H>_<tag>.<ext>`：
+
+| tag / ext | 含义 | 说明 |
+|---|---|---|
+| `_f32.raw` | **裸 float32 全精度** | 零转换（就是回读到的 GPU 字节），行紧排、小端；numpy：`np.fromfile("cascade_depth_c0_1024x1024_f32.raw", dtype="<f4").reshape(1024,1024)` |
+| `_r8.tga` | 8bit **单通道**灰度可视化副本 | CM2D `channels=1` ⇒ image_type=3 / 8bpp（1MB/1024²，比 3 通道省 2/3） |
+| `_<引擎格式名>.raw` | 颜色附件原生打包 | 本管线是 `A2BGR10UN`（10bit/通道打包进 32bit），零转换 |
+| `_<引擎格式名>_low8x3.tga` | 颜色的低 3 字节截断视图 | 只有人眼看形态的用途，**不是**精确数据 |
+
+**⚠ 颜色目标不是 8bit**：交换链颜色图实测 `VK_FORMAT_A2B10G10R10_UNORM_PACK32` ⇒ 旧 8bit BMP/灰度
+分析一直在**截断低 2bit**（D3 契约数值因此不变、仍可用，但精确分析必须读 `.raw`）。这也解释了为什么
+"低 3 字节均值"能当亮度代理：与通道序无关，且截断对三通道是等比例的。
+
+**独立验证（Python 复算，完全不经过 C++ 代码）**：
+- `cascade_depth_c0_1024x1024_f32.raw`（4194304B）复算 = filled **3740** / bbox **112x58** / **57.6%**
+  ⇒ 与 D1 契约值逐项相同；
+- `cascade_depth_c0_1024x1024_r8.tga` 头解析 = type 3 / 1024x1024 / 8bpp / upper-left，且与 f32 量化
+  **逐像素 0 不一致**；
+- `ats_d3_A_receive_on_1280x720_A2BGR10UN.raw`（3686400B）复算 mean_lum = **113.3** = 日志值
+  ⇒ `.raw` 与判定用的是同一份字节。
+
+CSM 侧 `csm_cachediff_c*_{A,B,D}` 同样落 `.raw`（D 标 `f32x5`）+ `_r8.tga`；该分支**只在"平坦区真有差异"
+时触发**，S6 结案后差异恒 0 ⇒ 本会话未能实测触发（历史上有真实差异时它确实产出过 `csm_cachediff_*.bmp`）。
+
+---
+
 ## 5. 背面渲染与 bias 极性
 
 **阴影贴图渲染模型背面**（`req.cull_mode = CullMode::Front`）：贴图里存的是物体背光侧

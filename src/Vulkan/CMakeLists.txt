@@ -266,6 +266,12 @@ SET(VK_HIGH_LEVEL_HEADERS       ${VK_INCLUDE_PATH}/VKShaderProgram.h
 
 SOURCE_GROUP("HighLevelHeaders" FILES ${VK_HIGH_LEVEL_HEADERS})
 
+# --- 15. Texture / RenderTarget Readback (GPU → CPU) ---
+SET(VK_TEXTURE_READBACK_FILES   ${VK_INCLUDE_PATH}/VKTextureReadback.h
+                                VKTextureReadback.cpp)
+
+SOURCE_GROUP("TextureReadback" FILES ${VK_TEXTURE_READBACK_FILES})
+
 # ============================================================================
 # Combine all Vulkan files
 # ============================================================================
@@ -290,7 +296,8 @@ SET(VULKAN_ALL_FILES    ${VK_DEVICE_INSTANCE_FILES}
                         ${VK_BUFFER_OPS_FILES}
                         ${VULKAN_RENDER_DEVICE_SOURCE}
                         ${GEOMETRY_VERTEX_DATA_FILES}
-                        ${VK_HIGH_LEVEL_HEADERS})
+                        ${VK_HIGH_LEVEL_HEADERS}
+                        ${VK_TEXTURE_READBACK_FILES})
 
 # ============================================================================
 # Build Library

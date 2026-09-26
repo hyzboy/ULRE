@@ -1,4 +1,4 @@
-#include <hgl/ecs/core/RenderPassRequest.h>
+﻿#include <hgl/ecs/core/RenderPassRequest.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/ScenePipelineMode.h>
@@ -3126,6 +3126,103 @@ int main(int argc, char** argv)
                  u8"旋转相位 texel 变化帧=%u | 平移残差 samples=%u nonzero=%u = %.4f 纹素, B=%u)",
                  segments, drift_frames, worst_rel_drift, edge_shift_texel,
                  drift_frames_rot, samples, nonzero, residual_texel, band);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 21: 附件读回下沉（引擎 API）+ 布局跟踪同步 + 示例零自研回读残留
+    // ─────────────────────────────────────────────────────────────
+    {
+        auto load_src = [](const OSString &path, AnsiString &out) -> bool
+        {
+            hgl::io::OpenFileInputStream fis(path);
+
+            if (!fis)
+                return false;
+
+            char chunk[4096];
+            int64 got;
+
+            while ((got = fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
+                out.Strcat(chunk, static_cast<int>(got));
+
+            return true;
+        };
+
+        AnsiString hdr, impl, cmdbuf, cmake, ats, csm;
+
+        if (!load_src(OS_TEXT("inc/hgl/vk/VKTextureReadback.h"), hdr)
+         || !load_src(OS_TEXT("src/Vulkan/VKTextureReadback.cpp"), impl))
+        {
+            GLogError(u8"Test 21 Failed: 引擎回读文件缺失（VKTextureReadback.h/.cpp）");
+            return 21;
+        }
+
+        if (!hdr.Contains("ReadbackTexture(")
+         || !hdr.Contains("ReadbackColorTarget(")
+         || !hdr.Contains("ReadbackDepthTarget(")
+         || !impl.Contains("CopyImageToBuffer(")
+         || !impl.Contains("vkQueueWaitIdle(")
+         || !impl.Contains("VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL"))
+        {
+            GLogError(u8"Test 21 Failed: 引擎回读 API 不完整（入口声明或拷贝/排空/布局处理缺失）");
+            return 21;
+        }
+
+        if (!load_src(OS_TEXT("src/Vulkan/CMakeLists.txt"), cmake)
+         || !cmake.Contains("VKTextureReadback.cpp"))
+        {
+            GLogError(u8"Test 21 Failed: 回读实现未注册进构建（需从仓库根运行，且 VKTextureReadback.cpp 在 src/Vulkan/CMakeLists.txt 中）");
+            return 21;
+        }
+
+        // 布局跟踪同步：渲染结束/开始时必须把真实布局写回纹理。不同步的话交换链颜色图
+        // 会停在 SHADER_READ_ONLY_OPTIMAL，任何据此做转换/读回的代码都用错 oldLayout
+        //（原示例因此硬编码 PRESENT_SRC_KHR）。
+        if (!load_src(OS_TEXT("src/Vulkan/VKCommandBufferRender.cpp"), cmdbuf)
+         || !cmdbuf.Contains("SetImageLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)")
+         || !cmdbuf.Contains("SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)"))
+        {
+            GLogError(u8"Test 21 Failed: 布局跟踪未同步（BeginRendering/EndRenderingPresent 缺 SetImageLayout）");
+            return 21;
+        }
+
+        if (!load_src(OS_TEXT("example/Basic/AlphaTestShadow.cpp"), ats)
+         || !load_src(OS_TEXT("example/Basic/CascadeShadowMap.cpp"), csm))
+        {
+            GLogError(u8"Test 21 Failed: 无法读示例源（需从仓库根运行）");
+            return 21;
+        }
+
+        if (!ats.Contains("graph::ReadbackDepthTarget(")
+         || !ats.Contains("graph::ReadbackColorTarget(")
+         || !ats.Contains("bitmap::SaveBitmapToTGA(")
+         || !ats.Contains("MakeDumpName(")
+         || !ats.Contains("SaveRaw("))
+        {
+            GLogError(u8"Test 21 Failed: AlphaTestShadow 未改用引擎回读 + 裸 F32 落盘 + CM2D 写出");
+            return 21;
+        }
+
+        if (!csm.Contains("graph::ReadbackDepthTarget(")
+         || !csm.Contains("bitmap::SaveBitmapToTGA(")
+         || !csm.Contains("MakeDumpName(")
+         || !csm.Contains("SaveRaw("))
+        {
+            GLogError(u8"Test 21 Failed: CascadeShadowMap 未改用引擎回读 + 裸 F32 落盘 + CM2D 写出");
+            return 21;
+        }
+
+        if (ats.Contains("vkCmdCopyImageToBuffer")
+         || csm.Contains("vkCmdCopyImageToBuffer")
+         || ats.Contains("= 'B';")
+         || csm.Contains("= 'B';"))
+        {
+            GLogError(u8"Test 21 Failed: 示例仍残留自研读回（vkCmdCopyImageToBuffer）或手写 BMP 头（= 'B';）");
+            return 21;
+        }
+
+        GLogInfo(u8"Test 21 Passed: 附件读回已下沉引擎（ReadbackTexture/Color/Depth + 布局跟踪同步），"
+                 u8"示例落盘为 裸 F32 .raw + CM2D 8bit 灰度 .tga（文件名自带 宽x高/格式）且零自研拷贝残留");
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

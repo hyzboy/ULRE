@@ -1,4 +1,4 @@
-#include <hgl/framework/WorkManager.h>
+﻿#include <hgl/framework/WorkManager.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VertexDataManager.h>
@@ -16,6 +16,7 @@
 #include <hgl/graph/ubo/ShadowInfo.h>
 #include <hgl/graph/camera/ReversedZProj.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
+#include <hgl/vk/VKTextureReadback.h>
 #include <hgl/graph/geo/InlineGeometry.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/core/GraphicsContext.h>
@@ -26,6 +27,7 @@
 #include <hgl/graph/ssbo/LitMaterialData.h>
 #include <hgl/filesystem/Filename.h>
 #include <hgl/filesystem/FileSystem.h>
+#include <hgl/2d/BitmapSave.h>
 
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
@@ -265,98 +267,26 @@ private:
 
 private:
 
-    /// 读回某级联深度图（物理贴图，float 行主序 y*M+x）。诊断用：immediate submit。
+    /// 读回某级联深度图（物理贴图，float 行主序 y*M+x）。诊断用：走引擎回读（同步、帧外）。
     bool ReadbackCascadeDepth(graph::IRenderTarget *rt, std::vector<float> &out)
     {
-        auto *gc = GetGraphicsContext();
-        auto *device = gc ? gc->GetDevice() : nullptr;
-        if (!device || !rt)
+        out.clear();
+
+        std::vector<uint8_t> pixels;
+        graph::TextureReadbackInfo info;
+
+        if (!graph::ReadbackDepthTarget(rt, pixels, &info))
             return false;
 
-        auto *tex = rt->GetDepthTexture();
-        if (!tex)
+        if (info.pixel_size != sizeof(float))
             return false;
 
-        const uint32_t w = tex->GetWidth();
-        const uint32_t h = tex->GetHeight();
-        const VkDeviceSize bytes = VkDeviceSize(w) * h * sizeof(float);
-        out.assign(static_cast<size_t>(w) * h, 0.0f);
+        const size_t count = static_cast<size_t>(info.width) * info.height;
 
-        device->WaitIdle();   // 诊断：先在途帧收尾再动这张图（一次性开销，可接受）
+        out.resize(count);
+        std::memcpy(out.data(), pixels.data(), count * sizeof(float));
 
-        auto *staging = device->CreateBuffer(
-            ObjectNameBuilder(AnsiString("CascadeShadowMap:CacheDiff")),
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT, bytes, bytes, nullptr,
-            BufferAllocPolicy::Readback, SharingMode::Exclusive);
-        if (!staging)
-            return false;
-
-        VkCommandBuffer cmd = device->CreateCommandBuffer(
-            AnsiString("CascadeShadowMap:CacheDiffCmd"));
-        if (!cmd)
-        {
-            delete staging;
-            return false;
-        }
-
-        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(cmd, &bi);
-
-        const VkImageLayout cur_layout = tex->GetImageLayout() != VK_IMAGE_LAYOUT_UNDEFINED
-                                             ? tex->GetImageLayout()
-                                             : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-
-        VkImageMemoryBarrier to_src{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-        to_src.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        to_src.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        to_src.oldLayout = cur_layout;
-        to_src.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        to_src.image = tex->GetImage();
-        to_src.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &to_src);
-
-        VkBufferImageCopy region{};
-        region.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
-        region.imageExtent = {w, h, 1};
-        vkCmdCopyImageToBuffer(cmd, tex->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               staging->GetBuffer(), 1, &region);
-
-        VkImageMemoryBarrier to_attach = to_src;
-        to_attach.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        to_attach.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-                                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        to_attach.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        to_attach.newLayout = cur_layout;
-        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                             0, 0, nullptr, 0, nullptr, 1, &to_attach);
-
-        vkEndCommandBuffer(cmd);
-
-        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        VkFence fence;
-        vkCreateFence(device->GetDevice(), &fi, nullptr, &fence);
-
-        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        si.commandBufferCount = 1;
-        si.pCommandBuffers = &cmd;
-        vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence);
-        vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
-        vkDestroyFence(device->GetDevice(), fence, nullptr);
-
-        bool ok = false;
-        if (const float *src = static_cast<const float *>(staging->GetGPUBuffer()->Map(0, bytes)))
-        {
-            std::memcpy(out.data(), src, static_cast<size_t>(bytes));
-            staging->GetGPUBuffer()->Unmap();
-            ok = true;
-        }
-
-        delete staging;
-        return ok;
+        return true;
     }
 
     /// S5 对拍状态机（Tick 每帧调用；`CSM_CACHE_DIFF=1` 才活）。
@@ -592,6 +522,8 @@ private:
                 total_mismatch += mismatch;
                 total_flat += flat_mismatch;
 
+                // 只在"平坦区真有差异"时落图：S6 结案后差异恒 0，这条路径是**失败时才走**的诊断
+                //（历史上真实差异出现时它确实产出过 csm_cachediff_*.bmp；无差异时静默）。
                 if (flat_mismatch > 0)
                 {
                     // 注意：GLog* 展开为 {...} 块 ⇒ 这里必须显式花括号（否则 else 报 C2181）
@@ -630,14 +562,14 @@ private:
                     }
 
                     char fn[256];
-                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_A.bmp", c);
-                    SaveDepthBmp(fn, mapped, M);
-                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_B.bmp", c);
-                    SaveDepthBmp(fn, B, M);
-                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_D.bmp", c);
-                    SaveDepthBmp(fn, diff, M);
-                    GLogWarning(u8"[CSM-CACHE-DIFF] c=%u 已落图 csm_cachediff_c%u_{A,B,D}.bmp（A=按偏移映射 / B=整级重建 / D=差异x5）",
-                                c, c);
+                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_A", c);
+                    SaveDepthDump(fn, mapped, M, "f32");
+                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_B", c);
+                    SaveDepthDump(fn, B, M, "f32");
+                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_D", c);
+                    SaveDepthDump(fn, diff, M, "f32x5");
+                    GLogWarning(u8"[CSM-CACHE-DIFF] c=%u 已落盘 csm_cachediff_c%u_*_%ux%u_f32.raw（A=按偏移映射 / B=整级重建 / D=差异x5，D 的文件名标 f32x5）+ 同名 _r8.tga 可视化副本",
+                                c, c, M, M);
 
                     // 位移扫描：差异能否用一个整体整数位移解释？（沿 x/y 各扫 ±24：
                     // 条带宽 B=16，若"清晰区与内容错开一个条带"则应命中 ±B）
@@ -832,37 +764,56 @@ private:
         }
     }
 
-    /// 诊断：float 深度写 24bit 灰度 BMP（反 Z ⇒ 近处亮）。仅对拍失败时用。
-    bool SaveDepthBmp(const char *path, const std::vector<float> &d, uint32_t M)
+    // ── 诊断落盘 ───────────────────────────────────────────────────────────
+    // 文件名一律自带 **宽x高 + 数据格式**（`<stem>_<M>x<M>_<tag>.<ext>`），不让读的人靠猜：
+    //   _f32.raw = 裸 float32（零转换、行紧排、小端）——数值分析用，numpy:
+    //              np.fromfile('..._1024x1024_f32.raw', dtype='<f4').reshape(1024,1024)
+    //   _r8.tga  = 8bit 灰度可视化副本（人眼看差异；量化会压平反 Z 的远景层次）——走 CM2D
+    AnsiString MakeDumpName(const char *stem, uint32_t w, uint32_t h, const char *tag, const char *ext)
+    {
+        return AnsiString(stem) + "_" + AnsiString::numberOf(w) + "x" + AnsiString::numberOf(h)
+             + "_" + tag + "." + ext;
+    }
+
+    /// 裸数据落盘（零转换：读回得到的字节原样写盘）
+    bool SaveRaw(const char *path, const void *data, size_t bytes)
+    {
+        if (!data || !bytes)
+            return false;
+
+        return filesystem::SaveMemoryToFile(ToOSString(AnsiString(path)), data, static_cast<int64>(bytes))
+            == static_cast<int64>(bytes);
+    }
+
+    /// 8bit **单通道**灰度 TGA（CM2D：channels=1 ⇒ image_type=3 / 8bpp）——深度可视化用，
+    /// 与文件名里的 `_r8` 严格对应（1 通道 1 字节/像素，无 3 通道复制）。
+    bool SaveGrayTga(const char *filename, uint8 *gray, uint32_t w, uint32_t h)
+    {
+        io::OpenFileOutputStream out(ToOSString(AnsiString(filename)), io::FileOpenMode::CreateTrunc);
+
+        if (!out)
+            return false;
+
+        return bitmap::SaveBitmapToTGA(&out, gray, w, h, 1, 8);
+    }
+
+    /// 诊断：float 深度落两份 —— 裸 F32（.raw，零转换）+ 8bit 灰度（.tga，人眼看）。
+    /// 文件名自带 宽x高 与格式：`<stem>_<M>x<M>_<value_tag>.raw` / `<stem>_<M>x<M>_r8.tga`。
+    /// value_tag 说明数值含义（f32=原样反 Z 深度；f32x5=差异放大 5 倍后）。
+    bool SaveDepthDump(const char *stem, const std::vector<float> &d, uint32_t M, const char *value_tag)
     {
         if (d.size() != static_cast<size_t>(M) * M)
             return false;
 
-        const uint32_t row_bytes = ((M * 3 + 3) / 4) * 4;   // BMP 每行 4 字节对齐
-        const uint32_t pix_bytes = row_bytes * M;
-        const uint32_t file_bytes = 54 + pix_bytes;
+        if (!SaveRaw(MakeDumpName(stem, M, M, value_tag, "raw").c_str(),
+                     d.data(), d.size() * sizeof(float)))
+            return false;
 
-        std::vector<uint8_t> buf(file_bytes, 0);
-        buf[0] = 'B';
-        buf[1] = 'M';
-
-        auto put32 = [&buf](uint32_t off, uint32_t v) {
-            buf[off] = static_cast<uint8_t>(v & 0xFF);
-            buf[off + 1] = static_cast<uint8_t>((v >> 8) & 0xFF);
-            buf[off + 2] = static_cast<uint8_t>((v >> 16) & 0xFF);
-            buf[off + 3] = static_cast<uint8_t>((v >> 24) & 0xFF);
-        };
-        put32(2, file_bytes);
-        put32(10, 54);   // 像素数据偏移
-        put32(14, 40);   // BITMAPINFOHEADER
-        put32(18, M);
-        put32(22, M);
-        buf[26] = 1;     // planes
-        buf[28] = 24;    // bpp
+        std::vector<uint8_t> gray(static_cast<size_t>(M) * M, 0);   // 单通道 8bit，TGA 行序自上而下
 
         for (uint32_t y = 0; y < M; ++y)
         {
-            uint8_t *row = buf.data() + 54 + static_cast<size_t>(M - 1 - y) * row_bytes;   // BMP 自底向上
+            uint8_t *row = gray.data() + static_cast<size_t>(y) * M;
             for (uint32_t x = 0; x < M; ++x)
             {
                 float v = d[static_cast<size_t>(y) * M + x];
@@ -871,18 +822,11 @@ private:
                 if (v > 1.0f)
                     v = 1.0f;
                 const uint8_t g = static_cast<uint8_t>(v * 255.0f + 0.5f);
-                row[x * 3 + 0] = g;
-                row[x * 3 + 1] = g;
-                row[x * 3 + 2] = g;
+                row[x] = g;
             }
         }
 
-        FILE *fp = fopen(path, "wb");
-        if (!fp)
-            return false;
-        const size_t wrote = fwrite(buf.data(), 1, buf.size(), fp);
-        fclose(fp);
-        return wrote == buf.size();
+        return SaveGrayTga(MakeDumpName(stem, M, M, "r8", "tga").c_str(), gray.data(), M, M);
     }
 
     bool InitTextures()

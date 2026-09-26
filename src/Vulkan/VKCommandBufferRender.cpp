@@ -1,4 +1,4 @@
-#include<hgl/vk/VKCommandBuffer.h>
+﻿#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKFramebuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
@@ -62,6 +62,8 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
         barriers[i].dstQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
         barriers[i].image               =tex->GetImage();
         barriers[i].subresourceRange    ={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+
+        tex->SetImageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);   // 布局跟踪同步
     }
 
     if(has_depth)
@@ -102,6 +104,8 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
                                          ?static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT)
                                          :static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT),
                                     0,1,0,1};
+
+            depth_tex->SetImageLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);   // 布局跟踪同步
         }
     }
 
@@ -279,6 +283,11 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
             barriers[i].dstQueueFamilyIndex =VK_QUEUE_FAMILY_IGNORED;
             barriers[i].image               =tex->GetImage();
             barriers[i].subresourceRange    ={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+
+            // 布局跟踪：barrier 落地后纹理真实布局就是 newLayout。不同步跟踪值会让
+            // GetImageLayout() 停在更早的布局（如 SHADER_READ_ONLY_OPTIMAL），任何据此
+            // 做转换/读回的代码都会用错 oldLayout（校验层报非法转换、拷贝不可信）。
+            tex->SetImageLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         }
 
         if(color_count>0)
@@ -322,6 +331,8 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
         b.image               =tex->GetImage();
         b.subresourceRange    ={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
 
+        tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);   // 同上：布局跟踪同步
+
         ++barrier_count;
     }
 
@@ -344,6 +355,8 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
                                      ?static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT)
                                      :static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT),
                                 0,1,0,1};
+
+        depth_tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);   // 同上：布局跟踪同步
 
         ++barrier_count;
     }

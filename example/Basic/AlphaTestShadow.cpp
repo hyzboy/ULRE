@@ -1,4 +1,4 @@
-#include <hgl/framework/WorkManager.h>
+﻿#include <hgl/framework/WorkManager.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VertexDataManager.h>
@@ -13,6 +13,8 @@
 #include <hgl/graph/ubo/SkyInfo.h>
 #include <hgl/graph/ubo/ShadowInfo.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
+#include <hgl/vk/VKTextureReadback.h>
+#include <hgl/vk/VKFormat.h>
 #include <hgl/graph/geo/InlineGeometry.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/core/GraphicsContext.h>
@@ -22,6 +24,7 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/filesystem/Filename.h>
 #include <hgl/filesystem/FileSystem.h>
+#include <hgl/2d/BitmapSave.h>
 
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
@@ -163,116 +166,82 @@ private:
     bool d3_receive_ok = false;
     bool d3_bias_ok = false;
 
+    // ── 取证落盘 ───────────────────────────────────────────────────────────
+    // 文件名一律自带 **宽x高 + 数据格式**（`<stem>_<W>x<H>_<tag>.<ext>`），不让读的人靠猜：
+    //   _f32.raw = 裸 float32（零转换、行紧排、小端）——数值分析用，numpy:
+    //              np.fromfile('..._1024x1024_f32.raw', dtype='<f4').reshape(1024,1024)
+    //   _r8.tga  = 8bit 灰度可视化副本（人眼看镂空/实心；量化会压平反 Z 的远景层次）——走 CM2D
+    AnsiString MakeDumpName(const char *stem, uint32_t w, uint32_t h, const char *tag, const char *ext)
+    {
+        return AnsiString(stem) + "_" + AnsiString::numberOf(w) + "x" + AnsiString::numberOf(h)
+             + "_" + tag + "." + ext;
+    }
+
+    /// 裸数据落盘（零转换：读回得到的字节原样写盘）
+    bool SaveRaw(const char *path, const void *data, size_t bytes)
+    {
+        if (!data || !bytes)
+            return false;
+
+        return filesystem::SaveMemoryToFile(ToOSString(AnsiString(path)), data, static_cast<int64>(bytes))
+            == static_cast<int64>(bytes);
+    }
+
+    /// 8bit **单通道**灰度 TGA（CM2D：channels=1 ⇒ image_type=3 / 8bpp）——深度可视化用，
+    /// 与文件名里的 `_r8` 严格对应（1 通道 1 字节/像素，无 3 通道复制）。
+    bool SaveGrayTga(const char *filename, uint8 *gray, uint32_t w, uint32_t h)
+    {
+        io::OpenFileOutputStream out(ToOSString(AnsiString(filename)), io::FileOpenMode::CreateTrunc);
+
+        if (!out)
+            return false;
+
+        return bitmap::SaveBitmapToTGA(&out, gray, w, h, 1, 8);
+    }
+
+    /// 3 通道 8bit TGA（color 附件用）：行序自上而下（与读回顺序一致，无需翻转）。
+    bool SaveRgbTga(const char *filename, uint8 *rgb, uint32_t w, uint32_t h)
+    {
+        io::OpenFileOutputStream out(ToOSString(AnsiString(filename)), io::FileOpenMode::CreateTrunc);
+
+        if (!out)
+            return false;
+
+        return bitmap::SaveBitmapToTGA(&out, rgb, w, h, 3, 8);
+    }
+
     // ── 深度图读回取证（用户建议：直接看 shadow map depth）──────────────────
-    // 帧外 immediate submit：depth image → readback buffer → BMP 灰度落盘。
-    // 8bit 精度足够分辨"镂空（clear 值）vs 实心"。
+    // 回读走引擎基础功能（graph::ReadbackDepthTarget）：暂存缓冲、布局转换、围栏与释放全在
+    // 引擎侧；示例把 float 深度按原精度落裸 .raw，另存一份 8bit 灰度 .tga 供人眼判读
+    //（8bit 足够分辨"镂空（clear 值）vs 实心"，但会压平反 Z 的远景层次 ⇒ 数值结论一律用 .raw）。
     // out_stats != nullptr 时顺带算出 D1 契约用的填充统计（同一遍扫描，零额外读回）。
     bool DumpCascadeDepth(graph::IRenderTarget *rt, const char *filename,
                           DepthFillStats *out_stats = nullptr)
     {
-        auto *gc = GetGraphicsContext();
-        auto *device = gc->GetDevice();
-        if (!gc || !device || !rt)
+        if (!rt)
             return false;
 
-        auto *tex = rt->GetDepthTexture();
-        if (!tex)
+        std::vector<uint8_t> pixels;
+        graph::TextureReadbackInfo info;
+
+        if (!graph::ReadbackDepthTarget(rt, pixels, &info))
+        {
+            GLogWarning("[DepthDump] %s 读回失败", filename);
             return false;
+        }
 
-        const uint32_t w = tex->GetWidth();
-        const uint32_t h = tex->GetHeight();
-        const VkDeviceSize bytes = VkDeviceSize(w) * h * sizeof(float);
-
-        auto *staging = device->CreateBuffer(
-            ObjectNameBuilder(AnsiString("AlphaTestShadow:") + filename),
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT, bytes, bytes, nullptr,
-            BufferAllocPolicy::Readback, SharingMode::Exclusive);
-        if (!staging)
+        if (info.pixel_size != sizeof(float))
+        {
+            GLogWarning("[DepthDump] %s 深度每像素 %u 字节，本示例只处理 32F",
+                        filename, info.pixel_size);
             return false;
+        }
 
-        // graphics pool + graphics queue：depth aspect 的拷贝需要 GRAPHICS。
-        // CreateCommandBuffer(name) 内部用 cmd_pool（未公开 free 所需访问器）
-        // ——一次性诊断，cmd 保留至设备销毁，可接受。
-        VkCommandBuffer cmd = device->CreateCommandBuffer(
-            AnsiString("AlphaTestShadow:DepthDumpCmd"));
-        if (!cmd)
-            return false;
+        const uint32_t w = info.width;
+        const uint32_t h = info.height;
+        const float *depth = reinterpret_cast<const float *>(pixels.data());
 
-        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(cmd, &bi);
-
-        const VkImageLayout cur_layout = tex->GetImageLayout() != VK_IMAGE_LAYOUT_UNDEFINED
-                                             ? tex->GetImageLayout()
-                                             : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-
-        VkImageMemoryBarrier to_src{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-        to_src.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        to_src.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        to_src.oldLayout = cur_layout;
-        to_src.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        to_src.image = tex->GetImage();
-        to_src.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-        vkCmdPipelineBarrier(cmd,
-                             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             0, 0, nullptr, 0, nullptr, 1, &to_src);
-
-        VkBufferImageCopy region{};
-        region.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
-        region.imageExtent = {w, h, 1};
-        vkCmdCopyImageToBuffer(cmd, tex->GetImage(),
-                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               staging->GetBuffer(), 1, &region);
-
-        VkImageMemoryBarrier to_attach = to_src;
-        to_src.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        to_attach.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        to_attach.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-                                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        to_attach.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        to_attach.newLayout = cur_layout;
-        vkCmdPipelineBarrier(cmd,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                             0, 0, nullptr, 0, nullptr, 1, &to_attach);
-
-        vkEndCommandBuffer(cmd);
-
-        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        VkFence fence;
-        vkCreateFence(device->GetDevice(), &fi, nullptr, &fence);
-
-        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        si.commandBufferCount = 1;
-        si.pCommandBuffers = &cmd;
-        vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence);
-        vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
-        vkDestroyFence(device->GetDevice(), fence, nullptr);
-
-        // 读回 → 8bit 灰度 BMP（reversed-Z：近处亮/远处暗，镂空=clear 值）
-        const float *depth = static_cast<const float *>(staging->GetGPUBuffer()->Map(0, bytes));
-        if (!depth)
-            return false;
-
-        const uint32_t row_pitch = w * 3;
-        const uint32_t bmp_bytes = 54 + row_pitch * h;
-        std::vector<uint8> bmp(bmp_bytes, 0);
-
-        const uint32_t data_off = 54;
-        bmp[0] = 'B'; bmp[1] = 'M';
-        const uint32_t file_size = bmp_bytes;
-        std::memcpy(&bmp[2], &file_size, 4);
-        const uint32_t reserved = 0, pix_off = 54;
-        std::memcpy(&bmp[10], &pix_off, 4);
-        const uint32_t header_size = 40, plane = 1, bpp = 24, comp = 0;
-        std::memcpy(&bmp[14], &header_size, 4);
-        std::memcpy(&bmp[18], &w, 4);
-        std::memcpy(&bmp[22], &h, 4);
-        std::memcpy(&bmp[26], &plane, 2);
-        std::memcpy(&bmp[28], &bpp, 2);
-        std::memcpy(&bmp[30], &comp, 4);
+        std::vector<uint8> gray(static_cast<size_t>(w) * h, 0);
 
         // D1：几何像素统计（reversed-Z → clear=0、几何=近处亮）。单遍即可——包围盒
         // 内不会出现包围盒外的几何像素，故 filled 总数就是框内填充数。
@@ -280,13 +249,12 @@ private:
 
         for (uint32_t y = 0; y < h; ++y)
         {
-            const uint32_t out_y = h - 1 - y; // BMP 底行在前
             for (uint32_t x = 0; x < w; ++x)
             {
-                const float d = depth[y * w + x];
+                const float d = depth[static_cast<size_t>(y) * w + x];
                 const uint8 g = uint8((std::min)(std::max(d, 0.0f), 1.0f) * 255.0f);
-                const uint32_t o = data_off + out_y * row_pitch + x * 3;
-                bmp[o] = g; bmp[o + 1] = g; bmp[o + 2] = g;
+
+                gray[static_cast<size_t>(y) * w + x] = g;
 
                 if (d > kDepthGeometryThreshold)
                 {
@@ -298,7 +266,6 @@ private:
                 }
             }
         }
-        staging->GetGPUBuffer()->Unmap();
 
         if (out_stats)
         {
@@ -312,175 +279,97 @@ private:
                                          static_cast<float>(out_stats->bbox_w * out_stats->bbox_h);
         }
 
-        filesystem::SaveMemoryToFile(ToOSString(AnsiString(filename)),
-                                     bmp.data(),
-                                     static_cast<int64>(bmp.size()));
-        GLogInfo("[DepthDump] %s saved (%ux%u)", filename, w, h);
+        // 裸 F32（零转换：直接写读回的 GPU 字节）+ 8bit 灰度可视化副本
+        const AnsiString raw_name = MakeDumpName(filename, w, h, "f32", "raw");
+        const AnsiString tga_name = MakeDumpName(filename, w, h, "r8", "tga");   // 单通道灰度
 
-        delete staging;
+        if (!SaveRaw(raw_name.c_str(), depth, static_cast<size_t>(w) * h * sizeof(float)))
+            return false;
+
+        if (!SaveGrayTga(tga_name.c_str(), gray.data(), w, h))
+            return false;
+
+        GLogInfo("[DepthDump] %s saved: %s (F32 全精度) + %s (8bit 灰度可视化)",
+                 filename, raw_name.c_str(), tga_name.c_str());
         return true;
     }
 
-    // ── D3 契约：颜色读回（主帧 → staging → BMP + 亮度图）────────────────────
-    // 与 DumpCascadeDepth 同构，只是换成颜色附件（aspect COLOR）。
+    // ── D3 契约：颜色读回（主帧 → 引擎回读 → TGA + 亮度图）────────────────────
+    // 与 DumpCascadeDepth 同构，换成颜色附件；交换链颜色图的真实布局（PRESENT_SRC_KHR）
+    // 由引擎在渲染结束时同步进纹理跟踪布局，示例不再硬编码布局。
     // 亮度图取 3 个低字节的均值：与 RGBA/BGRA 通道顺序无关（alpha 恒在第 4 字节），
-    // 因此"变亮/变暗"的判定不需要知道具体格式；BMP 按低字节顺序写出，纯作人工看图。
+    // 因此"变亮/变暗"的判定不需要知道具体格式；TGA 按低字节顺序写出，纯作人工看图。
     bool DumpColorTarget(graph::IRenderTarget *rt, const char *filename,
                          std::vector<uint8_t> *out_lum)
     {
-        auto *gc = GetGraphicsContext();
-        auto *device = gc ? gc->GetDevice() : nullptr;
-        if (!gc || !device || !rt)
+        if (!rt)
             return false;
 
-        auto *tex = rt->GetColorTexture(0);
-        if (!tex)
-            return false;
+        std::vector<uint8_t> pixels;
+        graph::TextureReadbackInfo info;
 
-        const uint32_t w = tex->GetWidth();
-        const uint32_t h = tex->GetHeight();
-        if (w == 0 || h == 0)
-            return false;
-
-        const VkDeviceSize bytes = VkDeviceSize(w) * h * 4;   // 8bit RGBA/BGRA 交换链
-
-        auto *staging = device->CreateBuffer(
-            ObjectNameBuilder(AnsiString("AlphaTestShadow:") + filename),
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT, bytes, bytes, nullptr,
-            BufferAllocPolicy::Readback, SharingMode::Exclusive);
-        if (!staging)
-            return false;
-
-        VkCommandBuffer cmd = device->CreateCommandBuffer(
-            AnsiString("AlphaTestShadow:ColorDumpCmd"));
-        if (!cmd)
+        if (!graph::ReadbackColorTarget(rt, pixels, 0, &info))
         {
-            delete staging;
+            GLogWarning("[ColorDump] %s 读回失败", filename);
             return false;
         }
 
-        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(cmd, &bi);
+        const uint32_t w = info.width;
+        const uint32_t h = info.height;
 
-        // 交换链颜色图提交时点的真实布局是 PRESENT_SRC_KHR（框架 present 之后）。
-        // Texture2D 上跟踪的 GetImageLayout() 停留在该图被当作采样源时的
-        // SHADER_READ_ONLY_OPTIMAL——拿它当 oldLayout 会被校验层判为非法转换
-        //（实测：expects SHADER_READ_ONLY_OPTIMAL, current PRESENT_SRC_KHR），
-        // 转换非法则拷贝内容不可信。本函数是一次性取证工具，故按提交时点的
-        // 真实布局做转换并在结尾还原。
-        const VkImageLayout cur_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkImageMemoryBarrier to_src{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-        to_src.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        to_src.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        to_src.oldLayout = cur_layout;
-        to_src.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        to_src.image = tex->GetImage();
-        to_src.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-        vkCmdPipelineBarrier(cmd,
-                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             0, 0, nullptr, 0, nullptr, 1, &to_src);
-
-        VkBufferImageCopy region{};
-        region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-        region.imageExtent = {w, h, 1};
-        vkCmdCopyImageToBuffer(cmd, tex->GetImage(),
-                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               staging->GetBuffer(), 1, &region);
-
-        VkImageMemoryBarrier restore = to_src;
-        restore.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        restore.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-                                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        restore.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        restore.newLayout = cur_layout;
-        vkCmdPipelineBarrier(cmd,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                             0, 0, nullptr, 0, nullptr, 1, &restore);
-
-        vkEndCommandBuffer(cmd);
-
-        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        VkFence fence;
-        vkCreateFence(device->GetDevice(), &fi, nullptr, &fence);
-
-        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        si.commandBufferCount = 1;
-        si.pCommandBuffers = &cmd;
-        vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence);
-        vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
-        vkDestroyFence(device->GetDevice(), fence, nullptr);
-
-        const uint8 *px = static_cast<const uint8 *>(staging->GetGPUBuffer()->Map(0, bytes));
-        if (!px)
-        {
-            delete staging;
+        if (w == 0 || h == 0 || info.pixel_size < 4)
             return false;
-        }
 
-        const uint32_t row_pitch = w * 3;
-        std::vector<uint8> bmp(54 + row_pitch * h, 0);
-        const uint32_t data_off = 54;
-        bmp[0] = 'B';
-        bmp[1] = 'M';
-        const uint32_t file_size = static_cast<uint32_t>(bmp.size());
-        std::memcpy(&bmp[2], &file_size, 4);
-        const uint32_t pix_off = 54;
-        std::memcpy(&bmp[10], &pix_off, 4);
-        const uint32_t header_size = 40, plane = 1, bpp = 24, comp = 0;
-        std::memcpy(&bmp[14], &header_size, 4);
-        std::memcpy(&bmp[18], &w, 4);
-        std::memcpy(&bmp[22], &h, 4);
-        std::memcpy(&bmp[26], &plane, 2);
-        std::memcpy(&bmp[28], &bpp, 2);
-        std::memcpy(&bmp[30], &comp, 4);
+        std::vector<uint8> rgb(static_cast<size_t>(w) * h * 3, 0);
 
-        // 读回像素按**屏幕坐标自上而下**存成 RGB 三元组（源为 BGRA：p[0]=B）。
-        // 用三通道而非单亮度：本场景地面是饱和红、影子落在其上偏灰蓝，
-        // "变亮/变暗"这种单值方向在此场景里会得出反直觉结论（红的 RGB 均值
-        // 反而低于灰影），必须按通道比较才能既判位置又判方向。
         if (out_lum)
-            out_lum->assign(size_t(w) * size_t(h) * 3, 0);
+            out_lum->assign(static_cast<size_t>(w) * h * 3, 0);
 
         uint64_t lum_sum = 0;
 
         for (uint32_t y = 0; y < h; ++y)
         {
-            const uint32_t out_y = h - 1 - y;                  // BMP 底行在前
             for (uint32_t x = 0; x < w; ++x)
             {
-                const uint8 *p = px + (size_t(y) * w + x) * 4;
+                const uint8 *p = pixels.data() + (static_cast<size_t>(y) * w + x) * info.pixel_size;
                 const uint8 lum = uint8((uint32(p[0]) + uint32(p[1]) + uint32(p[2])) / 3);
                 lum_sum += lum;
 
                 if (out_lum)
                 {
-                    const size_t m = (size_t(y) * w + x) * 3;
+                    const size_t m = (static_cast<size_t>(y) * w + x) * 3;
                     (*out_lum)[m + 0] = p[2];   // R
                     (*out_lum)[m + 1] = p[1];   // G
                     (*out_lum)[m + 2] = p[0];   // B
                 }
 
-                const uint32_t o = data_off + out_y * row_pitch + x * 3;
-                bmp[o] = p[0];
-                bmp[o + 1] = p[1];
-                bmp[o + 2] = p[2];
+                uint8 *o = rgb.data() + (static_cast<size_t>(y) * w + x) * 3;
+                o[0] = p[0];
+                o[1] = p[1];
+                o[2] = p[2];
             }
         }
-        staging->GetGPUBuffer()->Unmap();
 
-        filesystem::SaveMemoryToFile(ToOSString(AnsiString(filename)),
-                                     bmp.data(),
-                                     static_cast<int64>(bmp.size()));
+        // 颜色附件的真实格式由引擎回传：本管线是 A2BGR10UN（10bit/通道打包进 32bit）
+        // ⇒ 8bit 图像只是**截断视图**，所以要另存裸包（零转换，保住 10bit）。文件名同时
+        // 标注源格式与截断方式，避免把截断图当成精确数据。
+        const VulkanFormat *vf = GetVulkanFormat(info.format);
+        const char *fmt_tag = vf ? vf->name : "unknown";
 
-        GLogInfo("[ColorDump] %s saved (%ux%u) mean_lum=%.1f",
-                 filename, w, h,
-                 float(double(lum_sum) / double(size_t(w) * size_t(h))));
+        const AnsiString raw_name = MakeDumpName(filename, w, h, fmt_tag, "raw");
+        const AnsiString trunc_tag = AnsiString(fmt_tag) + "_low8x3";
+        const AnsiString tga_name = MakeDumpName(filename, w, h, trunc_tag.c_str(), "tga");
 
-        delete staging;
+        if (!SaveRaw(raw_name.c_str(), pixels.data(), pixels.size()))
+            return false;
+
+        if (!SaveRgbTga(tga_name.c_str(), rgb.data(), w, h))
+            return false;
+
+        GLogInfo("[ColorDump] %s saved: %s (原生 %s 打包) + %s (%ux%u 低 3 字节截断视图) mean_lum=%.1f",
+                 filename, raw_name.c_str(), fmt_tag, tga_name.c_str(), w, h,
+                 float(double(lum_sum) / double(static_cast<size_t>(w) * h)));
+
         return true;
     }
 
@@ -778,7 +667,7 @@ public:
                         continue;
 
                     const AnsiString fn = AnsiString("cascade_depth_c") +
-                        AnsiString::numberOf(c) + ".bmp";
+                        AnsiString::numberOf(c);
 
                     DepthFillStats stats;
                     const bool dumped = DumpCascadeDepth(rt, fn.c_str(), &stats);
@@ -852,7 +741,7 @@ public:
 
             if (d3_frame == 1)
             {
-                DumpColorTarget(main_rt, "ats_d3_A_receive_on.bmp", &d3_lum[0]);
+                DumpColorTarget(main_rt, "ats_d3_A_receive_on", &d3_lum[0]);
             }
             else if (d3_frame == 2)
             {
@@ -870,7 +759,7 @@ public:
             }
             else if (d3_frame == 4)
             {
-                DumpColorTarget(main_rt, "ats_d3_B_receive_off.bmp", &d3_lum[1]);
+                DumpColorTarget(main_rt, "ats_d3_B_receive_off", &d3_lum[1]);
             }
             else if (d3_frame == 5)
             {
@@ -890,7 +779,7 @@ public:
             }
             else if (d3_frame == 8)
             {
-                DumpColorTarget(main_rt, "ats_d3_C_bias_x1000.bmp", &d3_lum[2]);
+                DumpColorTarget(main_rt, "ats_d3_C_bias_x1000", &d3_lum[2]);
                 d3_done = true;
 
                 // 对照组（ATS_D3_NOKNOB=1）：三帧都读回、但一个旋钮都不拨。

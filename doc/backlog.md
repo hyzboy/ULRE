@@ -535,6 +535,40 @@
 
 ### E1. 附件读回落盘下沉为引擎基础功能 + 图像写出改用 CM2D（2026-09-26 用户留置）
 
+**状态：✅ 已落地（2026-09-26）**。落点：
+- 引擎新 API：`inc/hgl/vk/VKTextureReadback.h` + `src/Vulkan/VKTextureReadback.cpp`
+  （`ReadbackTexture` / `ReadbackColorTarget` / `ReadbackDepthTarget`；同步、帧外、读回前后布局不变；
+  原始字节行主序自上而下；`GetStrideByFormat` 定每像素字节数；已注册进 `src/Vulkan/CMakeLists.txt`）。
+- 配套引擎修复：`RenderCmdBuffer::BeginRendering`/`EndRenderingPresent` 把 `newLayout` 同步写回
+  纹理布局跟踪（`Texture::SetImageLayout`）——这条是**根因修复**：交换链颜色图此前跟踪值停在
+  `SHADER_READ_ONLY_OPTIMAL`，示例只能硬编码 `PRESENT_SRC_KHR`；同时
+  `VKBindlessTextureManager` 对不可采样布局回落 `SHADER_READ_ONLY_OPTIMAL` 注册。
+- 示例：ATS `DumpCascadeDepth`/`DumpColorTarget`、CSM `ReadbackCascadeDepth`/`SaveDepthTga` 全部改调引擎 API；
+  手写 BMP 头改 `bitmap::SaveBitmapToTGA(&out, rgb, w, h, 3, 8)`（CM2D，UPPER_LEFT 行序与读回一致，
+  底行翻转随之删除）；诊断图扩展名 `.bmp` → `.tga`。
+- 验收（全部满足，方法：与改造前日志逐项比对）：`ATS_SELFCHECK=1` rc=0；c0 填充率 57.6%
+  （bbox 112x58 filled 3740）；D3 `18189 px / 0 px` 与 `600662 px` 不变；`mean_lum=113.3/112.3/134.0` 不变；
+  `CSM_CACHE_DIFF=1 CSM_AUTOWALK=24` 74 轮 `不一致=0`；`TestCSMIncrementalPass` **21 Passed**/rc=0
+  （新增 Test 21 源码契约 + 破坏验证双向咬住）。
+- **遗留（新发现，非本次引入）**：从帧外读回**交换链颜色图**会触发
+  `vkQueueSubmit(): ... presentable VkImage ... has not been acquired`（改造前同样存在：旧代码硬编码
+  `PRESENT_SRC_KHR` 转的就是这张图，实测拷贝有效）。彻底消除需在帧内 acquire 后/present 前读回，
+  或做 acquire+copy+present 的截图路径；届时 `DumpColorTarget` 换用该路径即可。
+- **落盘精度与命名（2026-09-26 追加，用户裁定"走 A 方案 + 文件名写清楚宽高和格式"）**：
+  诊断文件名统一 `<stem>_<W>x<H>_<tag>.<ext>`；深度除 8bit 可视化外一律**裸 float32 全精度落盘**
+  （`_f32.raw`，零转换，numpy `np.fromfile(dtype='<f4').reshape(h,w)` 直读）；深度可视化改为
+  **真单通道** 8bit TGA（`_r8.tga`，CM2D channels=1 ⇒ image_type=3，1MB/1024²）。
+  独立验证（Python 复算，不经 C++）：`cascade_depth_c0_1024x1024_f32.raw` 复算 = filled 3740 /
+  bbox 112x58 / 57.6%（= D1 契约）；`ats_d3_A_..._A2BGR10UN.raw` 复算 mean_lum = 113.3（= 日志值）。
+- **⚠ 颜色目标实测是 10bit**：交换链颜色图 `VK_FORMAT_A2B10G10R10_UNORM_PACK32`
+  ⇒ 旧 8bit BMP/灰度分析一直在**截断低 2bit**（D3 契约数值不受影响、仍有效，但精确分析必须读 `.raw`）；
+  颜色落盘命名已标注源格式与截断视图（`_A2BGR10UN.raw` + `_A2BGR10UN_low8x3.tga`）。
+  CSM 的 `csm_cachediff_c*_{A,B,D}` 同步落 `.raw`（D 标 `f32x5`）+ `_r8.tga`，但该分支只在"平坦区真有差异"
+  时触发（S6 结案后差异恒 0），本会话未实测触发。
+
+<details><summary>原始录入（2026-09-26 留置时）</summary>
+
+
 - **现状**：`example/Basic/AlphaTestShadow.cpp` 自带两套一次性取证工具，形态都是
   「RT 附件 → staging buffer → CPU → **手写 BMP**」，且各自重复实现了一遍
   immediate submit / 首尾 barrier / 布局还原 / staging 生命周期：
@@ -568,6 +602,8 @@
 - **验收**：示例删掉自带 BMP 代码后仍能产出 D1/D3 契约（`ATS_SELFCHECK=1` exit 0、
   c0 填充率 57.6%、D3 `18189 px / 600662 px` 不变）；新 API 配
   `TestCSMIncrementalPass` 源码契约或单测；`res/`（用户自管）不动。
+
+</details>
 
 ## 关联顺序
 
