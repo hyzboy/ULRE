@@ -107,13 +107,31 @@ immediate submit（**graphics queue**——depth aspect 的 CopyImageToBuffer �
 GRAPHICS capability，transfer queue 会被 VVL 拒）→ CopyImageToBuffer →
 8bit 灰度 BMP 落盘（工作目录）。
 
-判读基准（棋盘 cube，CSM0）：
+**2026-09-26 起自动判读（D1 契约）**：同一次读回顺带统计 c0 的**非零像素
+包围盒内**填充率，打印 `[D1-CONTRACT] c0 PASS/FAIL`；`ATS_SELFCHECK=1`（或
+`--selfcheck`）时按退出码结束（0=PASS / 1=FAIL），可直接当回归门：
 
-| 填充率（投影区非 clear 像素占比） | 含义 |
+```
+ATS_SELFCHECK=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe; echo $?
+[DepthDump] cascade_depth_c0.bmp saved (1024x1024)
+[D1-CONTRACT] c0 PASS: bbox=112x58 filled=3740 填充率 57.6% (期望 50-65%)
+[D1-CONTRACT] selfcheck: PASS (exit 0)
+```
+
+判读基准（棋盘 cube，CSM0）——**必须是包围盒内占比**：c0 包围盒实测
+112x58（占全图仅 0.62%），整图口径会把 57.6% 稀释成 0.4%：
+
+| 包围盒内填充率 | 含义 |
 |----------------------------------|------|
-| ~50-60% | 棋盘镂空生效（白格挡光黑格透光 + 多面投影叠加） |
+| 50-65%（实测 57.6%） | 棋盘镂空生效（白格挡光黑格透光 + 多面投影叠加） |
 | ~100% | 实心——片元被剥或 opacity 采样恒 1.0 |
 | 全空 | 片元被剥 + 全 discard / 物体未进深度图 |
+
+源码层判据链由 `TestCSMIncrementalPass` 的 **Test 11**（10 条 needle）把守，
+不需要设备：剥离点检查 `keep_fragment_shader`、recipe 语义（`alpha_test`/
+`dither`）参与判据、`fragment_shader_required` 有生产者、masked caster 模板真
+评估 alpha。两层合起来才能覆盖"判据被改回"（Test 11 抓）与"链路实际失效"
+（AlphaTestShadow 抓）。
 
 ### 4.2 SPIRV 反汇编（验证 discard/采样是否真的编译进）
 

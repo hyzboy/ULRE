@@ -123,20 +123,33 @@
 > 新卡）。快赢组（A9/A7/T10/T2/T7 + demote feature）已完成不再列。
 > 深度图读回报证工具见 `example/Basic/AlphaTestShadow.cpp` 的 DumpCascadeDepth。
 
-### D1. 深度镂空判读升级为自动契约（新卡④，优先）
+### ~~D1. 深度镂空判读升级为自动契约~~ ✅ 已完成（2026-09-26）
 
 - **现状**：depth-only 通道的 FS 剥除豁免（`IsFragmentShaderRequired`）与
   masked 链各层修复目前只有手动验证（`AlphaTestShadow` + 深度图读回，
   棋盘投影填充 ~57%=镂空）。豁免被改回时契约测试全绿但功能坏。
-- **做法**：把"dump 深度图 + 填充率断言（50-65% 区间）"收进
-  `TestCSMIncrementalPass`（headless 读回路径已验证可行）。
-- **判读口径（2026-09-26 实测补充，务必按此实现）**：填充率必须**相对非零
-  像素的包围盒**统计，不能相对整图——`AlphaTestShadow` 第 45 帧实测
-  c0：非零包围盒 112x58（占全图仅 0.62%），**框内填充 57.6%**（=镂空达标）；
-  整图口径只有 0.4%，当断言用会立刻失败。同级联 c1 该场景为全空（静态级联
-  无 caster），断言只对 c0 生效。
-- **规模**：~100 行（读回 helper 移入测试 + 断言）。**无触发条件，建议随下
-  一次 shadow 相关改动一并做**。
+- **交付**（两段式，原计划"全收进 `TestCSMIncrementalPass`"不可行——该可执行
+  文件**无 GraphicsContext/设备**，0 处设备引用，做不了读回）：
+  1. `TestCSMIncrementalPass` **Test 11**：masked 链**源码契约**（10 条 needle）
+     —— 剥离点必须检查 `keep_fragment_shader`、recipe 语义（`alpha_test`/
+     `dither`）必须参与判据、`fragment_shader_required` 必须有生产者、masked
+     caster 模板必须真评估 alpha（`ShadowCasterMasked`/`EvalAlpha`/
+     `HGLApplyAlpha`）、forward 本体必须接线 alpha test、阴影 pass 必须判定
+     `MaterialRequiresRecipeRuntimeRows`。诊断信息直指"哪条判据没了+后果"。
+  2. `AlphaTestShadow` **自判自检**：第 45 帧读回深度图后立即算 c0 包围盒填充率
+     并打印 `[D1-CONTRACT] c0 PASS/FAIL`；`ATS_SELFCHECK=1`（或 `--selfcheck`）
+     时按契约退出码结束（0=PASS / 1=FAIL）。回归门 = 一条命令看退出码。
+- **判读口径（2026-09-26 实测，已在代码里写死）**：填充率必须**相对非零
+  像素的包围盒**统计，不能相对整图——c0 实测包围盒 112x58（占全图仅 0.62%），
+  **框内填充 57.6%**；整图口径只有 0.4%，当断言用会立刻失败。只对 c0 断言
+  （c1 静态层在本场景无 caster，全空是预期值）。判读带 50-65%：实心 ~100%、
+  全空 ~0% 都在带外。
+- **破坏验证（已验证非空洞）**：① 测试里把某条 needle 改错 → `Test 11 Failed`
+  点名文件+needle+后果，退出码 11；② 把判读带下限临时改 0.90 → `[D1-CONTRACT]
+  c0 FAIL: 包围盒填充率 57.6% < 90%`，selfcheck 退出码 1。两处均已还原并复跑绿。
+- **剩余**：本契约覆盖"判据链还在（源码层）+ 链路端到端生效（图像层）"；D8
+  （SPIRV 扫描常量）仍待裁决 —— 无论修常量还是删扫描，Test 11 的 needle 集合
+  都成立（只依赖 recipe 语义 + 生产者存在性，不依赖具体扫描实现）。
 
 ### D2. pipeline 缓存键纳入 shader 内容（新卡②）+ 同构排查（新卡③）
 
@@ -241,8 +254,9 @@ A5(比较采样) ◄──同做───────────┘            
 - **性价比最高的入口是 A2**：解锁 ShadowMap hack 清理（验证用例现成）
   与 A4 的光照矩阵通路，且不依赖任何其它项。
 - B/C 线与 A 线无耦合，随手清。
-- **D 线内部顺序**：D1（锁死 masked 链成果，随下次 shadow 改动）→
-  D8（随 D1 裁决 FS 判据：修常量或删扫描）→ D2（pipeline 键正确性）→
+- **D 线内部顺序**：~~D1~~ ✅（已锁死 masked 链：Test 11 源码契约 + AlphaTestShadow
+  自判）→ D8（裁决 FS 判据：修常量或删扫描；D1 的破坏验证已备好现场）→
+  D2（pipeline 键正确性）→
   D9（行未就绪路径告警/收敛）→ D3/D4（决策项）→ **T8 量测** →
   T6 拆分 → A6 合并。D 线与 A 线 A1/A7（提交原语/in-flight 槽）强相关：
   A6 的 4 次全槽排空问题在 A1 的 per-frame 多份化落地后可能自然消失，

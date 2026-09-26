@@ -35,6 +35,7 @@
 
 #include <glm/glm.hpp>
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 #include <cmath>
@@ -45,6 +46,21 @@ using namespace hgl::ecs;
 
 namespace
 {
+    // D1 契约自检开关：`ATS_SELFCHECK=1`（或命令行 `--selfcheck`）→ 第 45 帧
+    // 深度图判读后按契约退出码结束进程（0=PASS / 1=FAIL）；默认不退出，供人工
+    // 看图。注意：自检路径用 std::exit，会跳过框架析构与对象泄漏检查——这是
+    // 有意为之（一次性验证工具，退出码优先）。
+    bool g_selfcheck = false;
+
+    // 深度图几何像素阈值：reversed-Z 下 clear=0、几何=近处亮；取 0.02 而非 0，
+    // 避免把量化/滤波残差算成几何。
+    constexpr float kDepthGeometryThreshold = 0.02f;
+
+    // D1 契约判读带：相对"非零像素包围盒"的填充率。棋盘镂空实测 57.6%，
+    // 实心(~100%)与全空(~0%)都在带外。
+    constexpr float kContractFillMin = 0.50f;
+    constexpr float kContractFillMax = 0.65f;
+
     GeometryVertexFormat CreateStandardTextureArrayGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -106,12 +122,28 @@ private:
     graph::mtl::MaterialRecipe ground_recipe{}; // 无 alpha_test：地面实心，避免镂空干扰影子判读
     graph::GlobalSSBODataAccessor material_accessor{};
 
+    // ── D1 契约：深度图镂空自动判读 ─────────────────────────────────────────
+    // 判读口径：**相对非零（几何）像素包围盒**的填充率。整图口径不可用——该
+    // 场景包围盒仅占全图 ~0.6%，57.6% 会被稀释成 0.4%。期望带 50–65%。
+    struct DepthFillStats
+    {
+        uint32_t bbox_w = 0;
+        uint32_t bbox_h = 0;
+        uint32_t filled = 0;      // 几何像素总数（= 包围盒内填充数）
+        float    ratio = 0.0f;    // filled / (bbox_w * bbox_h)
+        bool     empty = true;    // 整图没有任何几何像素
+    };
+
     bool depth_dumped = false;
+    bool contract_done = false;   // c0 契约已判读
+    bool contract_ok = false;     // c0 契约结果（selfcheck 退出码依据）
 
     // ── 深度图读回取证（用户建议：直接看 shadow map depth）──────────────────
     // 帧外 immediate submit：depth image → readback buffer → BMP 灰度落盘。
     // 8bit 精度足够分辨"镂空（clear 值）vs 实心"。
-    bool DumpCascadeDepth(graph::IRenderTarget *rt, const char *filename)
+    // out_stats != nullptr 时顺带算出 D1 契约用的填充统计（同一遍扫描，零额外读回）。
+    bool DumpCascadeDepth(graph::IRenderTarget *rt, const char *filename,
+                          DepthFillStats *out_stats = nullptr)
     {
         auto *gc = GetGraphicsContext();
         auto *device = gc->GetDevice();
@@ -217,6 +249,10 @@ private:
         std::memcpy(&bmp[28], &bpp, 2);
         std::memcpy(&bmp[30], &comp, 4);
 
+        // D1：几何像素统计（reversed-Z → clear=0、几何=近处亮）。单遍即可——包围盒
+        // 内不会出现包围盒外的几何像素，故 filled 总数就是框内填充数。
+        uint32_t min_x = w, min_y = h, max_x = 0, max_y = 0, filled = 0;
+
         for (uint32_t y = 0; y < h; ++y)
         {
             const uint32_t out_y = h - 1 - y; // BMP 底行在前
@@ -226,9 +262,30 @@ private:
                 const uint8 g = uint8((std::min)(std::max(d, 0.0f), 1.0f) * 255.0f);
                 const uint32_t o = data_off + out_y * row_pitch + x * 3;
                 bmp[o] = g; bmp[o + 1] = g; bmp[o + 2] = g;
+
+                if (d > kDepthGeometryThreshold)
+                {
+                    ++filled;
+                    if (x < min_x) min_x = x;
+                    if (x > max_x) max_x = x;
+                    if (y < min_y) min_y = y;
+                    if (y > max_y) max_y = y;
+                }
             }
         }
         staging->GetGPUBuffer()->Unmap();
+
+        if (out_stats)
+        {
+            out_stats->filled = filled;
+            out_stats->empty = (filled == 0);
+            out_stats->bbox_w = out_stats->empty ? 0 : (max_x - min_x + 1);
+            out_stats->bbox_h = out_stats->empty ? 0 : (max_y - min_y + 1);
+            out_stats->ratio = out_stats->empty
+                                   ? 0.0f
+                                   : static_cast<float>(filled) /
+                                         static_cast<float>(out_stats->bbox_w * out_stats->bbox_h);
+        }
 
         filesystem::SaveMemoryToFile(ToOSString(AnsiString(filename)),
                                      bmp.data(),
@@ -477,7 +534,7 @@ public:
     {
         WorkObject::Tick(delta);
 
-        // 深度图直接读回取证（第 45 帧，一次性）
+        // 深度图直接读回取证（第 45 帧，一次性）+ D1 契约自判
         if (!depth_dumped)
         {
             static int dump_frame = 0;
@@ -488,12 +545,62 @@ public:
                 for (uint32_t c = 0; c < 2; ++c)
                 {
                     auto *rt = environment_system->GetCascadeRenderTarget(c);
-                    if (rt)
+                    if (!rt)
+                        continue;
+
+                    const AnsiString fn = AnsiString("cascade_depth_c") +
+                        AnsiString::numberOf(c) + ".bmp";
+
+                    DepthFillStats stats;
+                    const bool dumped = DumpCascadeDepth(rt, fn.c_str(), &stats);
+
+                    // D1 契约只判 c0：动态层含两个 cube（棋盘镂空 + 无 mask 实心）；
+                    // c1 静态层在本场景无 caster（实测全空），判它无意义。
+                    if (c != 0)
+                        continue;
+
+                    contract_done = true;
+
+                    if (!dumped)
                     {
-                        const AnsiString fn = AnsiString("cascade_depth_c") +
-                            AnsiString::numberOf(c) + ".bmp";
-                        DumpCascadeDepth(rt, fn.c_str());
+                        GLogError(u8"[D1-CONTRACT] c0 FAIL: 深度图读回失败");
                     }
+                    else if (stats.empty)
+                    {
+                        GLogError(u8"[D1-CONTRACT] c0 FAIL: 深度图全空（片元被剥离后 alpha 恒 0，"
+                                  u8"或 caster 未进入深度图）");
+                    }
+                    else if (stats.ratio < kContractFillMin)
+                    {
+                        GLogError(u8"[D1-CONTRACT] c0 FAIL: 包围盒填充率 %.1f%% < %.0f%% "
+                                  u8"(bbox=%ux%u filled=%u) -- 镂空过度或几何缺失",
+                                  stats.ratio * 100.0f, kContractFillMin * 100.0f,
+                                  stats.bbox_w, stats.bbox_h, stats.filled);
+                    }
+                    else if (stats.ratio > kContractFillMax)
+                    {
+                        GLogError(u8"[D1-CONTRACT] c0 FAIL: 包围盒填充率 %.1f%% > %.0f%% "
+                                  u8"(bbox=%ux%u filled=%u) -- mask 未生效，影子退化为实心",
+                                  stats.ratio * 100.0f, kContractFillMax * 100.0f,
+                                  stats.bbox_w, stats.bbox_h, stats.filled);
+                    }
+                    else
+                    {
+                        contract_ok = true;
+                        GLogInfo(u8"[D1-CONTRACT] c0 PASS: bbox=%ux%u filled=%u 填充率 %.1f%% "
+                                 u8"(期望 %.0f-%.0f%%)",
+                                 stats.bbox_w, stats.bbox_h, stats.filled,
+                                 stats.ratio * 100.0f,
+                                 kContractFillMin * 100.0f, kContractFillMax * 100.0f);
+                    }
+                }
+
+                if (g_selfcheck)
+                {
+                    const bool ok = contract_done && contract_ok;
+                    GLogInfo(u8"[D1-CONTRACT] selfcheck: %s (exit %d)",
+                             ok ? "PASS" : "FAIL", ok ? 0 : 1);
+                    std::exit(ok ? 0 : 1);
                 }
             }
         }
@@ -542,12 +649,24 @@ public:
 
         GLogInfo(u8"=== AlphaTestShadow initialized (2 cubes: masked + fallback-opaque) ===");
         GLogInfo(u8"预期: MaskedCube 影子=棋盘镂空, FallbackCube 影子=实心方影, 两者本体均镂空");
+        GLogInfo(u8"D1 契约: 第 45 帧读回 c0 深度图并判读包围盒内填充率(期望 50-65%%); "
+                 u8"设 ATS_SELFCHECK=1 或加 --selfcheck 则按契约退出码结束(0=PASS/1=FAIL)");
         return true;
     }
 };
 
 int os_main(int argc, os_char **argv)
 {
+    // D1 契约自检：ATS_SELFCHECK=1（或命令行 --selfcheck）→ 第 45 帧深度图判读后
+    // 按契约退出码结束进程（0=通过 / 1=失败），便于脚本化回归；不带则保持交互，
+    // 供人工看图。
+    if (const char *env = std::getenv("ATS_SELFCHECK"))
+        g_selfcheck = (env[0] != '\0' && env[0] != '0');
+
+    for (int i = 1; i < argc; ++i)
+        if (argv[i] && OSString(argv[i]) == OSString(OS_TEXT("--selfcheck")))
+            g_selfcheck = true;
+
     return RunFramework<AlphaTestShadowApp>(
         OS_TEXT("Alpha Test Shadow (masked vs fallback-opaque cascade shadow)"),
         argc, argv, 1280, 720);

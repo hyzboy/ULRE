@@ -590,7 +590,7 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | **启动几帧**阴影闪现 | — | 尚无 warm-up 流程（见 §10） |
 | 拖拽时阴影**一帧左一帧右 / 一帧近一帧远**，静止后正常；RenderDoc 截帧永远正常 | 不是拟合公式。先确认 `ShadowInfo` 是否又变回单份 UBO | 在途主帧还在读 binding 5 时，CPU 覆写了同一块 `ShadowInfo`。修复与禁令见 `doc/shadow-ubo-inflight-overwrite.md`。不要用每帧 `WaitFence()` 全槽排空来压症状 |
 | 静态阴影能渲染但**读到就没了** | 是否每帧都发了静态级的 DrawCall | 静态级被错误地也当成了逐帧层 |
-| **alpha test 物体的阴影是实心的**（本体镂空正常） | `RenderPass::CreatePipeline` 的 depth-only FS 剥除豁免 | 片元含 discard 却被 depth-only 快速路径剥掉（`IsFragmentShaderRequired` 判定失效/未走）；或 `batch.texture_reference_base_addr`=0（MTL_TEX 解引用 0 → fallback 1.0）。**取证**：`AlphaTestShadow::DumpCascadeDepth` 读级联深度——填充 ~57%=镂空、~100%=实心 |
+| **alpha test 物体的阴影是实心的**（本体镂空正常） | `RenderPass::CreatePipeline` 的 depth-only FS 剥除豁免 | 片元含 discard 却被 depth-only 快速路径剥掉（`IsFragmentShaderRequired` 判定失效/未走）；或 `batch.texture_reference_base_addr`=0（MTL_TEX 解引用 0 → fallback 1.0）。**取证**：`AlphaTestShadow` 第 45 帧自动判读 c0 的 `[D1-CONTRACT]` 行（**包围盒内**填充率 57.6%=镂空、~100%=实心、全空=未进深度图）；`ATS_SELFCHECK=1` 时以退出码给出结论（0/1）。判据链本身由 `TestCSMIncrementalPass` Test 11 源码契约把守 |
 | **masked 物体在深度图里缺失**（影子不出现或固化消失） | collect 日志 `ResolveMaterialProgramForPrimitive failed` | 首帧 resolve 失败 + 静态缓存固化。行未就绪时已跳过+bump revision（收敛）；手动调 `InvalidateMainLightStaticShadowCache()` 立即重画 |
 
 **诊断手段**：

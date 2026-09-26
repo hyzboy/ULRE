@@ -1381,6 +1381,100 @@ int main(int argc, char** argv)
         }
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 11: masked caster 片元链路源码契约（D1）
+    //
+    // 背景：depth-only 通道（零颜色附件）会剥离片元 stage；含 discard 的材质
+    // （alpha test / dither）被剥掉后会在深度图退化为实心——ShadowCasterMasked
+    // 曾因此完全失效，而当时本套契约测试全绿（豁免被改回也不会被发现）。
+    // 本可执行文件无图形设备（图像级判读在 `AlphaTestShadow --selfcheck` 的
+    // 深度图读回 + 包围盒填充率断言里），所以这里钉住"判据链是否还在"：
+    // 剥离点必须检查 keep_fragment_shader、recipe 语义必须参与判据、程序级
+    // discard 标志必须有生产者与消费者、masked caster 必须真的评估 alpha。
+    // ─────────────────────────────────────────────────────────────
+    {
+        struct SourceContract
+        {
+            const char *file;      // 打印用短名
+            const OSString path;   // 仓库相对路径
+            const char *needle;
+            const char *why;
+        };
+
+        const SourceContract kFSContracts[] =
+        {
+            { "VKRenderPass.cpp", OS_TEXT("src/Vulkan/VKRenderPass.cpp"),
+              "&&!keep_fragment_shader",
+              "depth-only 通道剥离片元 stage 时不再检查 keep_fragment_shader——"
+              "含 discard 的材质会在深度图退化为实心" },
+            { "VKRenderPass.cpp", OS_TEXT("src/Vulkan/VKRenderPass.cpp"),
+              "render_state.alpha_test",
+              "recipe 的 alpha_test 不再是 FS 保留判据（discard 语义丢失）" },
+            { "VKRenderPass.cpp", OS_TEXT("src/Vulkan/VKRenderPass.cpp"),
+              "render_state.dither",
+              "recipe 的 dither 不再是 FS 保留判据（抖动覆盖语义丢失）" },
+            { "ShaderProgramManager.cpp", OS_TEXT("src/SceneGraph/module/ShaderProgramManager.cpp"),
+              "fragment_shader_required =",
+              "没有任何代码设置 ShaderProgram::fragment_shader_required，"
+              "IsFragmentShaderRequired() 恒 false（程序级 discard 判定失效）" },
+            { "FragmentTemplateComposer.cpp", OS_TEXT("src/ShaderGen/template/FragmentTemplateComposer.cpp"),
+              "ShadowCasterMasked",
+              "masked caster 模板分派丢失（depth-purpose 不再区分 alpha test 材质）" },
+            { "FragmentTemplateComposer.cpp", OS_TEXT("src/ShaderGen/template/FragmentTemplateComposer.cpp"),
+              "HGLApplyAlpha(",
+              "shadow 模板不再调用 HGLApplyAlpha——discard 不会进入 SPIRV，深度图实心" },
+            { "FragmentTemplateComposer.cpp", OS_TEXT("src/ShaderGen/template/FragmentTemplateComposer.cpp"),
+              "EvalAlpha(",
+              "masked caster 不再评估材质 alpha（opacity_mask 采样链断裂）" },
+            { "forward_lit.glsl.tmpl", OS_TEXT("ShaderLibrary/fragment/forward_lit.glsl.tmpl"),
+              "HGL_ALPHA_TEST",
+              "forward 本体未接线 alpha test（物件本体不再镂空，只剩影子镂空）" },
+            { "forward_lit.glsl.tmpl", OS_TEXT("ShaderLibrary/fragment/forward_lit.glsl.tmpl"),
+              "HGLApplyAlpha(",
+              "forward 本体的 discard 调用丢失（PBR 输出 alpha 恒 1，alpha test 永不触发）" },
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "MaterialRequiresRecipeRuntimeRows",
+              "阴影 pass 不再判定 masked caster 的纹理行需求——行未就绪时仍采深度会写出实心影子" },
+        };
+
+        for (const SourceContract &k : kFSContracts)
+        {
+            hgl::io::OpenFileInputStream fis(k.path);
+            if (!fis)
+            {
+                GLogError(u8"Test 11 Failed: cannot open %s (run from repo root)", k.file);
+                return 11;
+            }
+
+            if (fis->GetSize() <= 0)
+            {
+                GLogError(u8"Test 11 Failed: %s is empty", k.file);
+                return 11;
+            }
+
+            AnsiString src;
+            {
+                char chunk[4096];
+                int64 got;
+                while ((got = fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
+                    src.Strcat(chunk, static_cast<int>(got));
+            }
+
+            if (!src.Contains(k.needle))
+            {
+                GLogError(u8"Test 11 Failed: %s -- '%s' not found in %s",
+                          k.why, k.needle, k.file);
+                return 11;
+            }
+        }
+
+        GLogInfo(u8"Test 11 Passed: masked caster FS-retention source contract holds (%d checks) -- "
+                 u8"keep_fragment_shader + recipe alpha_test/dither + fragment_shader_required "
+                 u8"producer + masked alpha evaluation.",
+                 static_cast<int>(sizeof(kFSContracts) / sizeof(kFSContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }
