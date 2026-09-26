@@ -526,18 +526,6 @@ namespace hgl::ecs
             return false;
         }
 
-        // A1-4：masked caster（ShadowCasterMasked 模板）的片元要采样 opacity
-        // mask，而纹理引用行只由 forward 物化链写、prepass 又早于任何物化
-        // ——行未就绪时 alpha 掩码失效。接线前显式告警；慢路径仅在首次/失
-        // 效后走到，天然每材质一次，不刷屏。
-        if (graph::mtl::MaterialRequiresRecipeRuntimeRows(
-                resolved_program->GetShaderResourceSchema()))
-        {
-            GLogWarning(
-                "[RenderPrimitiveCollectSystem] Masked shadow caster '%s' requires materialized texture rows; shadow-pass alpha masking is NOT wired yet (see csm-review A1-4).",
-                GetPrimitiveOwnerName(primitive_comp));
-        }
-
         // effective_recipe 出自 BuildResolvedAuthoringMaterialRecipe（组件边界
         // 已 NormalizeRecipe），直接作 normalized recipe 供 CreatePipeline 用。
         material_comp->shadow_program = resolved_program;
@@ -558,6 +546,18 @@ namespace hgl::ecs
         // forward pass，不感知当前 pass。
         if (world->IsCurrentPassShadow())
             return ResolveShadowCasterProgram(primitive_comp, material_comp);
+
+        return ResolveForwardProgram(primitive_comp, material_comp);
+    }
+
+    // Forward 槽解析（主帧着色程序）。阴影 pass 中 masked caster 的行物化
+    // 也会借道此处（见主循环 A1-4 分支）——纹理行是 per-primitive 共享
+    // 状态，与 program 无关。
+    bool RenderPrimitiveCollectSystem::ResolveForwardProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                                             const std::shared_ptr<MaterialComponent> &material_comp)
+    {
+        if (!world || !primitive_comp || !material_comp)
+            return false;
 
         // P3: Fast-path — if nothing has changed since last resolve, skip all work.
         if (!material_comp->program_dirty
@@ -1492,6 +1492,10 @@ namespace hgl::ecs
                         // 拖垮（持续失败时每帧 retire+重建）。清槽后下个阴影
                         // 帧快路径自然失配并重试。
                         material_comp->shadow_program = nullptr;
+                        // 固化防御：本帧深度图缺了这个 caster，静态级联若全量
+                        // 重绘过就会把"无它"的内容缓存住。借 A3 revision 链让
+                        // EnvironmentSystem 下帧失效重画，直至 resolve 成功。
+                        world->BumpStaticSceneRevision();
                     }
                     else
                     {
@@ -1501,15 +1505,49 @@ namespace hgl::ecs
                 }
                 else if (world->IsCurrentPassShadow())
                 {
-                    // A1：阴影 pass 精简链。ShadowCaster 程序不消费材质行/纹理
-                    // 配置，无需 PrepareActivePlanResources/Materialize；且那两
-                    // 条链是 forward 槽语义，在阴影 pass 中执行会以 forward
-                    // program（可能尚未解析）做资源准备并污染其缓存状态。
+                    // A1：阴影 pass 精简链。ShadowCaster 程序不消费材质 SSBO
+                    // payload，无需常规 payload 链；且那条链是 forward 槽语义，
+                    // 在阴影 pass 中执行会以 forward program（可能尚未解析）
+                    // 做资源准备并污染其缓存状态。
                     //
                     // A1-1：不写共享 valid——它是"forward 完整物化链成功"的
                     // 标志，pre-scan 以它做重试触发与 epoch 闸门：阴影失败置
                     // false 会拖全场景每帧重物化；阴影成功置 true 会抹掉
                     // forward 失败的重试触发。失败只清阴影槽自重试。
+                    //
+                    // A1-4：masked caster（ShadowCasterMasked 模板）的片元要
+                    // 采样 opacity mask → schema 需要运行时行。行内容是
+                    // per-primitive 共享状态（WriteBatchIndexRows 只读
+                    // MaterialComponent 的 data_index_row / 纹理配置），与
+                    // program 无关——故直接借 forward 链解析+准备+物化，
+                    // 主帧进来时命中 P1-1 快路径，不重复物化。
+                    const bool shadow_needs_rows =
+                        material_comp->shadow_program
+                     && graph::mtl::MaterialRequiresRecipeRuntimeRows(
+                            material_comp->shadow_program->GetShaderResourceSchema());
+
+                    if (shadow_needs_rows
+                     && (material_comp->runtime_dirty
+                      || material_comp->last_materialize_epoch != materialize_epoch
+                      || !material_comp->valid))
+                    {
+                        if (!ResolveForwardProgram(primitiveComp, material_comp)
+                         || !PrepareActivePlanResources(
+                                world,
+                                primitiveComp,
+                                material_comp->program,
+                                material_comp->cached_effective_recipe)
+                         || !MaterializeRecipeRowsForPrimitive(
+                                primitiveComp, material_comp))
+                        {
+                            GLogWarning(
+                                "[RenderPrimitiveCollectSystem] Shadow pass masked-caster row materialization failed for %s (alpha mask will read empty rows this frame)",
+                                GetPrimitiveOwnerName(primitiveComp));
+                            InvalidateRecipeRuntime(material_comp, false);
+                            material_comp->MarkFailed();
+                        }
+                    }
+
                     if (!EnsureRuntimeGeometryFromAsset(
                             world, primitiveComp, material_comp))
                     {
@@ -1517,6 +1555,7 @@ namespace hgl::ecs
                             "[RenderPrimitiveCollectSystem] Shadow pass geometry failed for %s",
                             GetPrimitiveOwnerName(primitiveComp));
                         material_comp->shadow_program = nullptr;
+                        world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                     else if (!ResolveRuntimePipelineForPrimitive(
                                  primitiveComp, material_comp))
@@ -1525,6 +1564,7 @@ namespace hgl::ecs
                             "[RenderPrimitiveCollectSystem] Shadow pass pipeline failed for %s",
                             GetPrimitiveOwnerName(primitiveComp));
                         material_comp->shadow_program = nullptr;
+                        world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                 }
                 else if (!any_material_work

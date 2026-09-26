@@ -12,6 +12,12 @@ void main()
 {
 {{surface_input_wiring}}
     const SurfaceOutput surface = EvalSurface(si, materialDataIndex);
+#ifdef HGL_ALPHA_TEST
+    // alpha test 材质：按材质源的 alpha 槽丢弃片元（与 ShadowCasterMasked 的
+    // EvalAlpha 同语义——opacity_mask 未绑定时 SampleOptional 保底 1.0）。
+    // 光照输出的 alpha 恒为 1，不能用作覆盖判定。
+    HGLApplyAlpha(EvalAlpha(si, materialDataIndex));
+#endif
     const LightingInput lighting = BuildForwardLightingInput(surface, si);
     const vec4 finalColor = EvalLighting(lighting);
     WriteMaterialOutput(HGLComposeColor(finalColor));

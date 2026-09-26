@@ -37,6 +37,8 @@ namespace hgl::ecs
 
         bool ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                                 const std::shared_ptr<MaterialComponent> &material_comp);
+        bool ResolveForwardProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                   const std::shared_ptr<MaterialComponent> &material_comp);
         bool ResolveShadowCasterProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                         const std::shared_ptr<MaterialComponent> &material_comp);
         bool ResolveRuntimePipelineForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,

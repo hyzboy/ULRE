@@ -138,6 +138,7 @@ private:
     VertexDataManager *vdm = nullptr;
     Texture2DArray *base_color_texture = nullptr;
     Texture2DArray *normal_texture = nullptr;
+    Texture2DArray *alpha_base_texture = nullptr; // A1-4: alpha test 物体专用（1 层 RGBA8 棋盘）
     Sampler *pbr_sampler = nullptr;
 
     Geometry *builtin_geometries[kBuiltinGeomCount]{};
@@ -149,7 +150,11 @@ private:
     std::shared_ptr<TransformComponent> ground_transform;
     std::shared_ptr<PrimitiveComponent> ground_prim;
 
+    Geometry *alpha_geometry = nullptr;
+    PrimitiveAsset alpha_primitive{};
+
     graph::mtl::MaterialRecipe lit_recipe{};
+    graph::mtl::MaterialRecipe alpha_recipe{}; // A1-4: alpha_test=true → ShadowCasterMasked 路由
     graph::GlobalSSBODataAccessor material_accessors[kPBRTextureCount]{};
     graph::GlobalSSBODataAccessor ground_accessor{};
 
@@ -189,6 +194,7 @@ private:
     bool bias_key_prev[2]{};      // [0]=[ 减小, [1]=] 增大，边沿触发
     bool no_key_prev[2]{};        // [0]=- 减小, [1]== 增大（normal-offset），边沿触发
     bool f_key_prev[4]{};         // F1..F4 级联屏蔽切换边沿触发
+    bool r_key_prev = false;      // R：手动失效静态级联缓存（A3 API 演示）
 
 private:
 
@@ -254,6 +260,23 @@ private:
             }
         }
 
+        // A1-4：alpha test 物体专用 baseColor（1 层 RGBA8 UNORM 棋盘，黑格
+        // alpha=0）。ShadowCasterMasked 的 EvalAlpha 采样该纹理丢黑格。
+        alpha_base_texture = texture_manager->CreateTexture2DArray(
+            "csm_alpha_baseColor_array", 256, 256, 1,
+            VK_FORMAT_R8G8B8A8_UNORM, 1);
+        if (!alpha_base_texture)
+            return false;
+
+        if (!texture_manager->LoadTexture2DArray(
+                alpha_base_texture, 0,
+                filesystem::JoinPathWithFilename(
+                    OS_TEXT("res/image/pbr/AlphaChecker"), OS_TEXT("baseColor.Tex2D"))))
+        {
+            GLogError("InitTextures: Failed to load alpha checker texture");
+            return false;
+        }
+
         auto *sampler_manager = GetManager<SamplerManager>();
         pbr_sampler = sampler_manager ? sampler_manager->CreateSampler() : nullptr;
 
@@ -298,7 +321,18 @@ private:
         ground_accessor.Write(ground_row);
 
         lit_recipe.material_ssbo_binding = material_accessors[0].GetGlobalSSBOBinding();
-        return lit_recipe.material_ssbo_binding.IsValid();
+        if (!lit_recipe.material_ssbo_binding.IsValid())
+            return false;
+
+        // A1-4：alpha test 材质——resolve 侧据此路由 ShadowCasterMasked（阴影）
+        // 并在片元里 EvalAlpha 丢弃低于阈值的纹素。与 lit 共享材质 SSBO 行。
+        alpha_recipe = lit_recipe;
+        alpha_recipe.recipe_name = "CascadeShadowMap.AlphaTest";
+        alpha_recipe.render_state_overrides.has_alpha_test = true;
+        alpha_recipe.render_state_overrides.alpha_test = true;
+        alpha_recipe.render_state_overrides.has_alpha_cutoff = true;
+        alpha_recipe.render_state_overrides.alpha_cutoff = 0.5f;
+        return true;
     }
 
     bool InitVDM()
@@ -548,6 +582,45 @@ private:
             prim->SetVisible(true);
         }
 
+        // ── A1-4：alpha test 物体（Static，近景，验证 ShadowCasterMasked 的
+        // 镂空阴影与纹理行物化接线）。棋盘黑格 alpha=0 → 阴影应同样镂空。──
+        {
+            alpha_geometry = builtin_geometries[9]; // 复用 Cube 几何
+            alpha_primitive = PrimitiveAsset(alpha_geometry, &alpha_recipe, PrimitiveType::Triangles);
+            if (!alpha_primitive.IsValid())
+                return false;
+
+            const glm::vec3 alpha_positions[4] = {
+                glm::vec3(-4.0f, -13.0f, 1.52f),
+                glm::vec3( 6.0f,  -6.0f, 8.0f),  // 悬空：影子投在视野中央地面，俯视可见镂空
+                glm::vec3( 2.0f,   6.0f, 1.22f),
+                glm::vec3(-6.0f,  14.0f, 1.22f),
+            };
+
+            for (uint32_t i = 0; i < 4; ++i)
+            {
+                Entity *e = ecs_context->CreateEntity<Entity>(
+                    (AnsiString("AlphaCube_") + AnsiString::numberOf(i)).c_str());
+
+                auto tf = e->AddComponent<TransformComponent>(Mobility::Static);
+                tf->SetLocalPosition(alpha_positions[i]);
+                const float s = (i == 0) ? 3.0f : 2.4f;
+                tf->SetLocalScale(glm::vec3(s));
+                tf->SetLocalRotation(glm::quat(glm::vec3(0.0f, 0.4f + 0.2f * i, 0.0f)));
+
+                auto prim = e->AddComponent<PrimitiveComponent>();
+                prim->SetPrimitiveAsset(&alpha_primitive);
+                // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked
+                // 的 EvalAlpha（采样 .r，0 = 镂空）——影子应呈同图案棋盘孔。
+                prim->SetMaterialTextureResource("base_color", alpha_base_texture, pbr_sampler,
+                    PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0);
+                prim->SetMaterialTextureResource("opacity_mask", alpha_base_texture, pbr_sampler,
+                    PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0);
+                prim->SetMaterialDataResource(material_accessors[0].GetGlobalSSBOBinding());
+                prim->SetVisible(true);
+            }
+        }
+
         return true;
     }
 
@@ -761,6 +834,18 @@ private:
         auto input_system = ecs_context->GetSystem<InputSystem>();
         if (!input_system)
             return;
+
+        // R：手动失效静态级联滚动缓存（A3 转发 API）。可用于：静态物体
+        // 增删/换材质后强制重画；以及诊断"影子固化"类问题。
+        {
+            const bool r_down = input_system->IsKeyDown(io::KeyboardButton::R);
+            if (r_down && !r_key_prev)
+            {
+                environment_system->InvalidateMainLightStaticShadowCache();
+                GLogInfo(u8"[Cascade Switch] static cascade cache invalidated (R)");
+            }
+            r_key_prev = r_down;
+        }
 
         const bool keys[4] = {
             input_system->IsKeyDown(io::KeyboardButton::F1),

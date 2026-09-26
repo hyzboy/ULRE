@@ -3,6 +3,7 @@
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include "../compile/MaterialShaderEmitter.h"
 #include <fstream>
 #include <map>
 #include <string>
@@ -558,6 +559,16 @@ namespace hgl::graph::mtl
                     IncludeTemplate("common/surface_interface.glsl"),
                     "ShadowCaster.SurfaceInterface", "common/surface_interface.glsl");
 
+                // A1-4：masked 片元经 material source 的 EvalMaterialAlpha 消费
+                // MTL_ROW 宏（global_addresses.addr_pbr_surface）——pc_root push
+                // constant 与 BDA 扩展由 BuildMaterialStageDocument 的 material
+                // injection 对所有程序注入，这里只补 global_addresses 声明
+                // （scene_ubo）。必须排在 SurfaceInterface 之后：SCENE_SET/
+                // GLOBAL_ADDRESSES_BINDING 宏由其内的 descriptor_macros 提供。
+                AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
+                    IncludeTemplate("ubo/scene_ubo.glsl"),
+                    "ShadowCaster.SceneUbo", "ubo/scene_ubo.glsl");
+
                 if (!AppendFragmentInputDeclarations(
                         input.fragment_inputs, "ShadowCaster.FragmentInputs", document))
                     return false;
@@ -580,6 +591,7 @@ namespace hgl::graph::mtl
             AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
                 IncludeTemplate("common/alpha_compositor.glsl"),
                 "ShadowCaster.Alpha", "common/alpha_compositor.glsl");
+
             const char *material_source_module = ResolvedInclude(
                 input, ShaderModuleSlotRole::MaterialSourceProvider);
             if (material_source_module)
@@ -595,18 +607,11 @@ namespace hgl::graph::mtl
                 IncludeTemplate(surface_module), "ShadowCaster.Surface",
                 surface_module);
 
-            std::string main_body =
-                "\nvoid main()\n{\n"
-                "    SurfaceInput si;\n"
-                "    si.worldPos = vec3(0.0);\n"
-                "    si.worldNormal = vec3(0.0, 0.0, 1.0);\n"
-                "    si.uv0 = vec2(0.0);\n"
-                "    si.uv1 = vec2(0.0);\n"
-                "    si.vertexColor = vec4(1.0);\n"
-                "    si.viewDir = vec3(0.0, 0.0, 1.0);\n"
-                "    si.screenPos = gl_FragCoord.xy;\n"
-                "    si.luminance = 1.0;\n"
-                "    si.styleID = 0u;\n";
+            // A1-4：si 由 BuildGLSLMaterialSurfaceInput 的 wiring 完整生成
+            // （声明+零值初始化+真实来源填充）。此前手写 si 初始化在 wiring
+            // 之前会造成 'si' redefinition——wiring 缺失（fragment_inputs 为
+            // null）时才用手写零值兜底。
+            std::string main_body = "\nvoid main()\n{\n";
             if (input.fragment_inputs)
             {
                 AnsiString wiring;
@@ -614,6 +619,20 @@ namespace hgl::graph::mtl
                         *input.fragment_inputs, false, wiring))
                     return false;
                 main_body += wiring.c_str();
+            }
+            else
+            {
+                main_body +=
+                    "    SurfaceInput si;\n"
+                    "    si.worldPos = vec3(0.0);\n"
+                    "    si.worldNormal = vec3(0.0, 0.0, 1.0);\n"
+                    "    si.uv0 = vec2(0.0);\n"
+                    "    si.uv1 = vec2(0.0);\n"
+                    "    si.vertexColor = vec4(1.0);\n"
+                    "    si.viewDir = vec3(0.0, 0.0, 1.0);\n"
+                    "    si.screenPos = gl_FragCoord.xy;\n"
+                    "    si.luminance = 1.0;\n"
+                    "    si.styleID = 0u;\n";
             }
             main_body +=
                 "    const float alpha = EvalAlpha(si, 0u);\n"
