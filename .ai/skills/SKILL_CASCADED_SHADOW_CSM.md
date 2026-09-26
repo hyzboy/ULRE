@@ -347,6 +347,9 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
    queue + CopyImageToBuffer + BMP）。判读：棋盘 cube 深度投影填充 ~57%=镂空、
    ~100%=实心、全空=片元被剥或全 discard。地面上看影子不如直接读深度图
    （地面纹理/环境光/透视压缩都会干扰判读）。
+7. **后续工作**（深度镂空自动契约、pipeline 键内容 hash、拆分等）见
+   `doc/backlog.md` **D 线**；完整修复因果链见
+   `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`。
 
 ---
 

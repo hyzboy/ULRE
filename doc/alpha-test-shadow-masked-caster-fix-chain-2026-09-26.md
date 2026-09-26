@@ -175,4 +175,8 @@ GRAPHICS capability，transfer queue 会被 VVL 拒）→ CopyImageToBuffer →
 | `3bd9d0c02` | AlphaTestShadow 用例 + A1-4 片元/collect 侧修复（用户提交） |
 
 相关文档：`doc/csm-review-2026-09-25.md`（A1/A4/A2/A3/A1-4 的来源）；
-`.ai/skills/SKILL_CASCADED_SHADOW_CSM.md`（ShadowCasterMasked 链路章节）。
+`.ai/skills/SKILL_CASCADED_SHADOW_CSM.md`（ShadowCasterMasked 链路章节，
+§4.5）；
+`doc/backlog.md` **D 线**（本轮后续：深度镂空自动契约/pipeline 键内容
+hash/TransformComponent 同值短路/性能账目→拆分→合并）与 **A 线 A1/A7**
+（提交原语/in-flight 槽——与本链的 fence 等待问题强相关）。
