@@ -152,6 +152,11 @@ namespace hgl
             /// 当前渲染 Pass 的物体移动性过滤（-1 = 全部，0 = 仅静态 Static，1 = 仅动态 Movable）
             int active_mobility_filter = -1;
 
+            /// 静态场景 revision：任何 Static transform 被检出变更时递增（A3）。
+            /// 消费方（如 EnvironmentSystem 的静态级联阴影缓存）记录上次消费值，
+            /// 与当前值不等即知"静态场景已变"，做对应的缓存失效。只增不减。
+            uint64_t static_scene_revision = 0;
+
             /// 当前 Pass 是否为阴影贴图生成 Pass
             bool is_current_pass_shadow = false;
             glm::vec3 current_pass_shadow_origin{0.0f};
@@ -275,6 +280,10 @@ namespace hgl
             uint32_t GetFrameIndex() const { return frame_index; }
 
             int GetActiveMobilityFilter() const { return active_mobility_filter; }
+
+            /// Static transform 变更检出时递增（由 TransformSystem 调用；A3 静态缓存失效链）
+            void BumpStaticSceneRevision() { ++static_scene_revision; }
+            uint64_t GetStaticSceneRevision() const { return static_scene_revision; }
 
             bool IsCurrentPassShadow() const { return is_current_pass_shadow; }
             bool HasShadowOrigin() const { return has_shadow_origin; }

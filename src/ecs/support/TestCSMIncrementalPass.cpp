@@ -6,6 +6,7 @@
 #include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
+#include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/graph/render/lighting/CascadedShadowController.h>
 #include <hgl/vk/VKCommandBuffer.h>
@@ -1186,6 +1187,72 @@ int main(int argc, char** argv)
             {
                 GLogError(u8"Test 9C Failed: resolved main camera position mismatch");
                 return 9;
+            }
+
+            // 9D: A3 静态场景 revision 失效链契约。
+            // 静态级联滚动缓存的"静态"前提由该链兜底：TransformSystem 在
+            // SubmitTransformUpdates 检出 Static transform 变更 → 递增
+            // ECSContext::static_scene_revision → EnvironmentSystem 的阴影
+            // prepass 比对消费并 InvalidateStaticCache。历史教训：失效钩子
+            // 曾只有 API（InvalidateStaticCache 零调用者），静态缓存默认
+            // "场景永不变"——相机静止时移走静态物体，旧阴影挂在原地。
+            {
+                auto tf_sys = ctx.RegisterTickSystem<TransformSystem>();
+                if (!tf_sys)
+                {
+                    GLogError(u8"Test 9D Failed: TransformSystem registration failed");
+                    return 9;
+                }
+
+                const uint64_t revision_base = ctx.GetStaticSceneRevision();
+
+                auto e_static = ctx.CreateEntity<Entity>("TestStaticMover");
+                auto tf_static = e_static->AddComponent<TransformComponent>(Mobility::Static);
+                tf_static->SetLocalPosition(math::Vector3f(5.0f, 6.0f, 7.0f));
+
+                // 检出：提交后 revision 必须前移（移动静态物体必须打破静态缓存）
+                tf_sys->SubmitTransformUpdates();
+                if (ctx.GetStaticSceneRevision() == revision_base)
+                {
+                    GLogError(u8"Test 9D Failed: moving a Static transform must bump static_scene_revision "
+                              u8"(static cascade cache would keep stale depth forever)");
+                    return 9;
+                }
+
+                // 稳态：无变更的重复提交不得继续递增（否则每帧全量重建静态级联）
+                tf_sys->SubmitTransformUpdates();
+                if (ctx.GetStaticSceneRevision() != revision_base + 1)
+                {
+                    GLogError(u8"Test 9D Failed: unchanged scene must not keep bumping static_scene_revision");
+                    return 9;
+                }
+
+                // EnvironmentSystem 消费端接线：阴影 prepass 必须比对 revision
+                // 并调用 InvalidateStaticCache（防止消费逻辑被静默删除）。
+                {
+                    static const OSString kEnvSysPath =
+                        OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp");
+                    hgl::io::OpenFileInputStream env_fis(kEnvSysPath);
+                    if (!env_fis)
+                    {
+                        GLogError(u8"Test 9D Failed: cannot open EnvironmentSystem.cpp (run from repo root)");
+                        return 9;
+                    }
+                    AnsiString env_src;
+                    {
+                        char chunk[4096];
+                        int64 got;
+                        while ((got = env_fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
+                            env_src.Strcat(chunk, static_cast<int>(got));
+                    }
+                    if (!env_src.Contains("InvalidateStaticCache()")
+                     || !env_src.Contains("GetStaticSceneRevision()"))
+                    {
+                        GLogError(u8"Test 9D Failed: RenderMainLightShadowPass must consume static_scene_revision "
+                                  u8"and call InvalidateStaticCache (static cache invalidation chain severed)");
+                        return 9;
+                    }
+                }
             }
 
             GLogInfo(u8"Test 9 Passed: ScenePipelineMode & Automated Shadow Workflow Contracts verified.");

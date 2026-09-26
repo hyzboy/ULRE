@@ -215,6 +215,10 @@ namespace hgl::ecs
         light_camera = std::make_shared<CameraComponent>("AutoCSMLightCamera");
         light_camera->is_main_camera = false;
 
+        // A3：以 Enable 时刻的 revision 为消费基线，避免启用后第一帧立即
+        // 多做一次静态级联全量重建。
+        consumed_static_scene_revision = context ? context->GetStaticSceneRevision() : 0;
+
         shadow_enabled = true;
         GLogInfo("[EnvironmentSystem] Main light shadow enabled successfully (4 cascades, size=%u)", shadow_map_size);
         return true;
@@ -260,6 +264,22 @@ namespace hgl::ecs
         return nullptr;
     }
 
+    void EnvironmentSystem::InvalidateMainLightStaticShadowCache()
+    {
+        // 双通道失效：控制器缓存立即作废（下帧 Update 全量重建），revision
+        // 消费点前移防止随后到达的 TransformSystem 旧信号重复触发。
+        // shadow_enabled == false 时也递增 context revision：Enable 的基线
+        // 取的是"当时"值，提前 bump 的变更信号会在启用后被消费。
+        if (shadow_controller)
+            shadow_controller->InvalidateStaticCache();
+
+        if (context)
+        {
+            context->BumpStaticSceneRevision();
+            consumed_static_scene_revision = context->GetStaticSceneRevision();
+        }
+    }
+
     void EnvironmentSystem::RenderMainLightShadowPass(CameraComponent *main_camera, float deltaTime)
     {
         if (!shadow_enabled || !shadow_controller || !context || !main_camera || !light_camera)
@@ -290,6 +310,23 @@ namespace hgl::ecs
         const float aspect = (vp && vp->GetViewportHeight() > 0)
             ? vp->GetAspectRatio()
             : (16.0f / 9.0f);
+
+        // A3：TransformSystem 在 TickTransform 检出 Static transform 变更时
+        // 递增 static_scene_revision（含位置/旋转/缩放/父子/Mobility）。此处
+        // 比对消费：revision 前移即失效静态级联缓存，当帧 prepass 全量重建，
+        // 随后追平不再触发。static 级联的"静态"前提由该钩子兜底——否则
+        // 相机静止时缓存的旧深度永不刷新。
+        if (context)
+        {
+            const uint64_t revision = context->GetStaticSceneRevision();
+            if (revision != consumed_static_scene_revision)
+            {
+                shadow_controller->InvalidateStaticCache();
+                consumed_static_scene_revision = revision;
+                GLogInfo("[EnvironmentSystem] static scene revision %llu -> invalidating static cascade cache",
+                         static_cast<unsigned long long>(revision));
+            }
+        }
 
         graph::CascadeUpdateResult updates[graph::kMaxShadowCascades];
         shadow_controller->Update(main_cam, aspect, light_dir_math, *shadow_info, updates);

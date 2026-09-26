@@ -290,9 +290,20 @@ for c in 0..count-1:
 
 > **现状说明**：`cache_offset` / `cache_valid_rect` / `scroll_offset` 目前恒为
 > `(0,0,0,0)` 与 `(0,0,W,H)`，即**环形寻址（Toroidal clipmap）管线尚未启用**，
-> `pcf_shadow.glsl` 里的 `offset_uv`/`fract` 是恒等变换。滚动目前靠"整级重建"
+> `pcf_shadow.glsl` 里的 `offset_uv`/UV 变换按 `cache_offset` 非零自适应
+> （非零才 wrap，否则 clamp——A4）。滚动目前靠"整级重建"
 > 实现而不是"条带搬移"。这是已知的后续工作，不是缺陷；改它必须同时改
 > `cache_states_` 三处写入与 shader 的 UV 变换。
+>
+> **静态缓存失效链（A3，已接线）**：决策树里 `scene_revision 变` 的信号源是
+> `TransformSystem::SubmitTransformUpdates`——检出任何 Static transform 变更
+> （LocalTRS/父子/Mobility）即递增 `ECSContext::static_scene_revision`，
+> `EnvironmentSystem::RenderMainLightShadowPass` 比对消费并调用
+> `InvalidateStaticCache()`（当帧 prepass 全量重建）。**注意**：`SetLocalPosition`
+> 等 setter 没有同值短路——每帧重复 set 同值（如网格吸附逻辑）也会被判为
+> 变更，把静态级联打成每帧全量重绘；调用方必须"值变了才 set"。运行时
+> 新增/删除静态物体、替换其材质/贴图不走此链，需手动调
+> `EnvironmentSystem::InvalidateMainLightStaticShadowCache()`。
 
 ---
 
@@ -521,7 +532,7 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 |------|------|----------|
 | 静态物件**近距**没有阴影 | `c0_dynamic_overlay` 与 `split_distances[1]` | CSM 1 的 `split_near` 不是 `znear`；或 CSM 0 收不到静态物件而 CSM 1 不覆盖近距 |
 | 相机移动时静态阴影**整体滑动** | 3.1 第 8 步的基准 | 用了 `cx` 而不是 `cx0`（§3.4） |
-| 静态级联**每帧全量重绘** | `[CSM Rolling Cache Stats]`、`cache_lateral_anchor_step` | 横向锚定被禁用 / `=0` / 被 3.4 的缺陷抵消 |
+| 静态级联**每帧全量重绘** | `[CSM Rolling Cache Stats]`、`cache_lateral_anchor_step` | 横向锚定被禁用 / `=0` / 被 3.4 的缺陷抵消；或某 Static transform 每帧被重复 set 同值（A3 链每帧失效，搜 `invalidating static cascade` 日志定位调用方） |
 | **远处地面**不再接收阴影 | `along_anchor_` 是否在变、`cache_anchor_step` | 沿光轴锚定失效 ⇒ 缓存旧深度被新矩阵解释 |
 | 相机抬高/俯仰后**一片地面**无阴影 | `caster_depth_margin` | `zfar` 不够，地面深度被裁 |
 | 阴影**边缘一圈没有阴影** | `worst_ndc`、半径补偿 | `0.708*step` 补偿缺失或不匹配 `round`/`floor` 选择 |
@@ -557,6 +568,8 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | 单张 shadow atlas | 目前 4 张独立 D32F RT，无 atlas 合并 |
 | 逐物体脏追踪 | 脏粒度是"整级联"，不是"受影响的物体集合" |
 | ~~ShadowInfo 单份 UBO 被在途帧覆写~~ | 已分槽（`kShadowUboRing`，按下标 = acquired image）。`MarkDirty` 不再写 shadow GPU。见 `doc/shadow-ubo-inflight-overwrite.md` |
+| ~~ShadowCaster 专用程序未接线~~ | 已实现（A1）：阴影 pass 走 `MaterialComponent` 双槽（`shadow_program`，`ShadowCasterOpaque/Masked` 模板）；masked caster 的纹理行物化仍未接线（运行时会打 warning） |
+| ~~静态缓存失效链缺失~~ | 已接线（A3）：TransformSystem 检出 Static 变更 → `static_scene_revision` → EnvironmentSystem 消费失效。剩余缺口：新增/删除静态物体与材质/贴图替换需手动调 `InvalidateMainLightStaticShadowCache()`；`SetLocalPosition` 等无同值短路 |
 
 ---
 

@@ -613,7 +613,11 @@ private:
             constexpr float kSnapGrid = 10.0f;
             const float gx = std::floor(main_camera->position.x / kSnapGrid) * kSnapGrid;
             const float gy = std::floor(main_camera->position.y / kSnapGrid) * kSnapGrid;
-            ground_transform->SetLocalPosition(glm::vec3(gx, gy, 0.0f));
+            // Static transform 重复 set 同值也会被判为变更（A3 revision 链会
+            // 据此重建静态级联）——吸附格未跨时不得重设。
+            const glm::vec3 snapped(gx, gy, 0.0f);
+            if (snapped != ground_transform->GetLocalPosition())
+                ground_transform->SetLocalPosition(snapped);
         }
     }
 

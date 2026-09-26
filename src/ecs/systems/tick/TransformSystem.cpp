@@ -169,6 +169,12 @@ namespace hgl::ecs
             if (has_dirty_static)
             {
                 UpdateStaticDirty();
+
+                // A3：静态场景 revision 递增。静态级联阴影滚动缓存的正确性前提
+                // 是"缓存有效期内静态物体不动"，此检出点是其唯一权威信号源；
+                // EnvironmentSystem 在 RenderPreBeginFrame 比对消费（同帧失效，
+                // 当帧 prepass 即重建）。
+                world->BumpStaticSceneRevision();
             }
         }
 
