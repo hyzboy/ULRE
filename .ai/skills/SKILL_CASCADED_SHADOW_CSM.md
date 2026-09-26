@@ -449,6 +449,87 @@ normal_offset 0.10m；4 相位 × 128 帧、2m/帧）
 
 ---
 
+### 4.7 滚动缓存的**收益量化**与**整级↔条带对拍**（S5，2026-09-26）
+
+**收益（示例 stats，1s 窗口平均）**：`[CSM Rolling Cache Stats] C1: 11 strips(band=16t
+avg=0.29% off=(80,0) full=0) | C2: ... avg=0.10% | C3: ... avg=0.05%` ⇒ 滚动命中时
+**每帧只重画贴图的 0.05~0.31%**（整级重建是 100%），`full` 计数同时区分"整级重建"
+与"纯命中"（旧判据 `strips==0 ⇒ 100% Cached` 会把整级重建帧误报为命中）。
+
+**对拍工具**（示例内，`CsmCacheDiff`；CPU 契约测不到 GPU 侧光栅化与 scissor 坐标系）：
+
+```bash
+CSM_CACHE_DIFF=1 CSM_AUTOWALK=24 ./CascadeShadowMap.exe   # 冻结动画 + 相机自动前进
+# CSM_CACHE_DIFF_FREEZE=0 关冻结（用于自证"帧间内容在变"）
+```
+
+- **A** = 环形滚动帧（`offset≠0`）、**B** = `InvalidateMainLightStaticShadowCache`
+  后的整级重建帧（`offset=0`）、**B2** = 紧接着的第二次整级重建。
+- A 先按读侧映射 `phys=(layout+O) mod M` 拉回布局坐标系，再与 B 逐纹素比。
+- 判读：`B vs B2` 必须 0（否则帧间内容在变、方法不可信）；差异再按
+  **形状分类**（A缺 / A多 / 双方有几何）、**32×32 分布图**、**位移扫描**
+  （x/y 各 ±24：最优位移 ≠ (0,0) ⇒ 错位；= (0,0) ⇒ 内容差异）判定；
+  失败时落 `csm_cachediff_c<N>_{A,B,D}.bmp`（D=|A−B|×5，灰度=反 Z 深度）。
+
+**2026-09-26 实测结论（未收敛）**：`B vs B2 = 0`；c2/c3 一致（1~2 texel、max|Δ|=1.25e-6）；
+**c1 每轮不一致 400~1900 texel**（窗口 0.1~0.3%，max|Δ|≈0.4，集中在剪影处）。
+已排除：动画伪影（从第 0 帧冻结可移动物体后差异不变）、整体错位（±24 扫描无命中）、
+写侧平移量不准（`texel_size=2r/M` 与 ortho `∓radius` 严格一致 ⇒ 整数 texel 精确平移，
+光栅化应平移不变）、两路径 caster 筛选不对称（全量路径对静态级联同为 `Static`）。
+⇒ **根因待定位，最短路径是 RenderDoc 抓"条带帧 vs 整级重建帧"对比 draw/scissor 状态**
+（见 backlog D5/S6）。在这条收敛前，别把"条带内容与整级重建等价"当作已证事实。
+
+---
+
+### 4.8 滚动缓存的**计数器**与两个读数陷阱（S5/S6 交界，2026-09-26）
+
+**单调计数器**（控制器内累计、不重置；示例每秒打印一行 `[CSM Cache Counters]`）：
+
+```
+Upd=<Update 调用数> Inv=<InvalidateStaticCache 调用数> frames=<帧数> |
+C1: fullC=<整级重建> stripC=<条带> hitC=<命中> | C2: ... | C3: ...
+```
+
+判据：`Upd == frames`（每帧恰好一次 Update）；`fullC + stripC + hitC == Upd`（每帧每级必落一支）；
+`fullC ≥ Inv`（每次失效至少让每级各重建一次）；静置时 `stripC == 0 / hitC == frames`。
+
+**陷阱 1：只显示"窗口最后一帧"的字段会骗你。** 旧 stats 的 `full=` 是末帧快照（60 帧里只有
+2~5 帧整级重建，末帧多半是命中）⇒ 看上去像"失效了却从不重建"，实际 `fullC == Inv` 完全正常。
+**凡"事件型"指标（整级重建/失效/跨格）一律用累计计数器差分，不要用最近一帧快照。**
+
+**陷阱 2：环形偏移是 `uint32`，大数值是负数。** `off=(992,0)` = `-32`（一次反向跨格）、
+`1008 = -16`、`976 = -48`；`off` 恒为 `band` 的整数倍 ⇒ 见到非整数倍（如 `922`）先怀疑读错行。
+
+---
+
+### 4.9 阴影 pass 的收集侧日志与 S6 差异排查（2026-09-26）
+
+`CSM_PASS_LOG=1`（默认静默）打开两类逐 pass 日志：
+
+```
+[S6-PASS]    cascade=1 kind=full|strip mobility=0 off=(16,0) view_t=(..) rect=(0,0,16,1024) load_depth=1
+[S6-COLLECT] shadow pass mobility=0 items=84 idsum=0x14820000 skipped(invisible=0 no_owner=0 no_transform=0)
+```
+
+`items`/`idsum` 是 `RenderPrimitiveCollectSystem` 收集末端统计的"产出图元数 + Σ(entity_index<<16|gen)"
+⇒ **判断两帧是否收到同一批 caster**：相同 ⇒ 差异在光栅化侧；不同 ⇒ 差异在收集/剔除侧。
+
+**读法要点**：
+- `[S6-COLLECT]` 与紧随其后的 `[S6-PASS]`（或前一行）配对读——收集发生在 `RenderTo` 内部。
+- `mobility=0` 是 Static（中远景静态缓存），`=1` 是 Movable（cascade 0 动态层）。
+- `rect` 是**物理**坐标（含环形跨缝拆分）；`off` 是该级累加的环形偏移（uint32 ⇒ 大数=负数）。
+
+**S6 已排除的两条**（都做了定量）：
+1. 收集/剔除：条带帧 vs 整级帧 `items`/`idsum` 完全一致 ⇒ 不是 caster 集合问题。
+2. 写侧矩阵：`P·(T·V)` 相对 `P·V` 的**位级残差 0.0001 纹素**；帧段内矩阵漂移 1.465e-07 相对
+   （贴图边缘 0.0001 纹素）⇒ 都远不足以解释实测 ~3e2 纹素差异（见 Test 20）。
+
+**S6 的关键线索**：对拍差异 bbox 落在贴图中部/右侧，**不含刚画的新条带**（条带在 `x∈[0,16)`，
+那里零差异）⇒ **条带写入是精确的**，差异全在"更早跨格写进缓存、此后未被重画"的老内容上
+⇒ 形态符合"某次跨格的清除/写入把脏数据烘进缓存"（下次整级重建才消失）。
+
+---
+
 ## 5. 背面渲染与 bias 极性
 
 **阴影贴图渲染模型背面**（`req.cull_mode = CullMode::Front`）：贴图里存的是物体背光侧
@@ -737,6 +818,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | 阴影**边缘一圈没有阴影** | `worst_ndc`、半径补偿 | `0.708·L` 补偿缺失或不匹配 `round`/`floor` 选择（L 由 `cache_scroll_band_texels` 派生） |
 | 相机移动时静态阴影**整体滑动一个步长** | `cache_offset`、`light_view_draw` | 偏移累加方向错（`O += shift`，不是 `-= shift`）或写侧平移 y 符号错（应为 `-offset.y*texel`）；跑 Test 17 ①（物理不动）/②（写读一致）定位 |
 | 静态阴影**整片消失/落后一段** | `need_full_update` 与 `cache_offset` | 非零偏移下走了整级重画（偏移未清零）⇒ 光栅器无环绕、尾部 `|O|` 条带被裁；查 Test 17 ③ |
+| 条带重画区与整级重建**内容不一致**（每轮 400~1900 texel、集中在剪影、max|Δ|≈0.4） | 示例对拍：`CSM_CACHE_DIFF=1 CSM_AUTOWALK=24`（§4.7） | 已排除动画/整体错位/平移量/筛选不对称；**根因待定位**（backlog D5/S6，建议 RenderDoc 抓条带帧 vs 整级帧对比 draw/scissor） |
 | 贴图**边缘一条 1~2 texel 宽亮/暗线**（pcf 半径外扩后显现） | `AppendWrappedStrip` | 跨缝条带未拆成两段或被截短（`M % B != 0` 时可达）；跑 Test 17 子用例 (e) 与面积契约⑤ |
 | 贴图上一条**随相机移动的 1~2 texel 错影线**（在阴影区内，不在贴图几何边缘） | Test 18 的 margin/required | seam 真实可达：级联世界半径过小（r0 ≲ 6m）或 `normal_offset`/`pcf_radius`/切分距离调整吃掉了余量；按 §4.6 的 slack 公式核算，必要时下调 `normal_offset_world` 或该级关横向滚动 |
 | 相机移动时静态级联**频繁整级重建** | `along_anchor`（深度锚点） | `cache_anchor_step` 太小 ⇒ 每 `step` 米跨一次就整级重建并清零偏移（会同时抹掉滚动收益） |
@@ -757,9 +839,14 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 **诊断手段**：
 
 ```
-[CSM Rolling Cache Stats] Cam=(...) | C1=n strips | C2=... | C3=... | Mid/Far Status: ...
+[CSM Rolling Cache Stats] Cam=(x,y,z) | C1=n strips(band=16t avg=0.29% off=(80,0) full=0) | C2=... | C3=... | Mid/Far Status: ...
 ```
-`strips == 0` 表示完全命中（0 DrawCall）；静止时这条应当持续为 0。
+
+`strips==0 && full==0` 表示窗口内完全命中（0 DrawCall）；`avg` 是窗口平均每帧重画占比
+（滚动方案收益，整级重建为 100%）；`full` 是窗口内**真实**整级重建次数（来自单调计数器差分，
+不是末帧快照——见 §4.8）。`full>0` 说明窗口内有整级重建（横向锚定跨格、深度锚点跨步、
+静态场景 revision 变更，或有人调了 `InvalidateMainLightStaticShadowCache`）。静置不动时这条应
+持续 `0 strips / 0 full / 100% Cached`。GPU 侧"整级 vs 条带"对拍见 §4.7，计数器见 §4.8。
 
 ---
 
@@ -771,7 +858,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | Slope-scaled / 硬件 depth bias | 引擎无 `vkCmdSetDepthBias`，动态状态列表缺 `VK_DYNAMIC_STATE_DEPTH_BIAS` |
 | ~~Normal-offset shadow mapping~~ | 已实现（§5.2：`normal_offset_world` + `HGL_SHADOW_NORMAL_OFFSET`，`tan(θ)` 加权） |
 | 首帧 warm-up | 未实现，启动前几帧会出现阴影闪现 |
-| 环形寻址（Toroidal clipmap） | ~~未启用~~ → **S2 已启用**：偏移按跨格量累加（`scroll_offset` → `casc.cache_offset`）、写侧改用 `light_view_draw`、只重画新暴露条带（含跨缝拆分）。剩余：stats 计数未接线（示例恒显 `0 strips/100% Cached`，S5）、GPU 侧整级 vs 条带深度图对照量测（S5 + E1 读回） |
+| 环形寻址（Toroidal clipmap） | ~~未启用~~ → **S2 已启用**：偏移按跨格量累加（`scroll_offset` → `casc.cache_offset`）、写侧改用 `light_view_draw`、只重画新暴露条带（含跨缝拆分）。**S5 已接 stats + 收益量化 + 对拍工具**（§4.7：每帧重画 0.05~0.31%）；但**对拍发现"条带重画内容 ≠ 整级重建内容"（c1 每轮 400~1900 texel，剪影处）且根因未定** ⇒ 见 backlog D5/S6 |
 | caster/receiver 标志位 | 只有 `Mobility` 动/静二分，没有"投射/接收"独立标志 |
 | 静态级联分辨率与更新频率解耦 | 静态级联被迫跟动态级联同分辨率同 `caster_depth_margin` |
 | 单张 shadow atlas | 目前 4 张独立 D32F RT，无 atlas 合并 |
