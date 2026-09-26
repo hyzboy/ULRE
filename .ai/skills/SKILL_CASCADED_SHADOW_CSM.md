@@ -19,6 +19,8 @@
 | `ShaderLibrary/shadow/pcf_shadow.glsl` | `EvalCascadePCF`、`EvalCascadeShadowAt`、`EvalCascadeChain`、`EvalPCFShadow`（选级 + 动静合并） |
 | `src/ShaderGen/template/FragmentTemplateComposer.cpp` | 发射 `HGL_SHADOW_PCF_POISSON_TAPS` 宏（仅当模板含 ShadowProvider 槽） |
 | `example/Basic/CascadeShadowMap.cpp` | 参考用法：4 张 D32F 离屏 RT、`light_camera` 覆写矩阵、F1 之外只有 `[`/`]` 调 bias |
+| `example/Basic/AlphaTestShadow.cpp` | alpha test 镂空阴影最小用例（masked vs fallback-opaque 对照）+ `DumpCascadeDepth` 级联深度读回报证工具 |
+| `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md` | ShadowCasterMasked 修复链全记录（7 层因果、两级寻址、取证方法） |
 | `src/ecs/support/TestCSMIncrementalPass.cpp` | 契约测试（Test 1-4 渲染选项、Test 5A 重绘预算、Test 5B 矩阵恒定性+覆盖率、Test 5C 旋转恒定性、Test 6A-D 逐级联 bias） |
 | `doc/shadow-ubo-inflight-overwrite.md` | 拖拽时阴影逐帧左右/远近跳：单份 ShadowInfo 被在途帧覆写，以及分槽修复 |
 
@@ -139,6 +141,13 @@ CPU 侧跳过该级的渲染。shader 侧必须遵守：
 ---
 
 ## 3. 级联拟合与双轴锚定（本 SKILL 的核心）
+
+### 3.0 两个有意识的设计决策（勿"顺手统一"）
+
+| 决策 | 理由 | 代价（已接受） |
+|------|------|----------------|
+| **包围球 + 正交方框拟合**（而非光空间 AABB 收紧） | 朝向无关的 radius——锚定/缓存矩阵恒定性（§3.3、Test 5C 旋转恒定性）依赖它；AABB 随朝向变化，缓存命中率崩塌 | 纹素利用率损失 ~1.4-2×（方框对角覆盖球）。若未来做精度优化，须**同时**补偿锚定（AABB 中心也吸附），并重跑 Test 5B/5C |
+| **手搓 4 张离屏 RT 而非复用 OffscreenWorld**（`depth_only`+`cull_mode`） | 阴影 pass 必须**复用主世界实体**（同一 ECSContext 的 collect/batch 数据），OffscreenWorld 是"另起一套实体集合"的机制，语义不匹配 | 4 张独立 D32F RT 的显存与 bindless 槽（§10 atlas 条目）。若未来统一，须先给 OffscreenWorld 加"引用外部实体"模式 |
 
 ### 3.1 逐步流程
 
@@ -305,6 +314,40 @@ for c in 0..count-1:
 > 新增/删除静态物体、替换其材质/贴图不走此链，需手动调
 > `EnvironmentSystem::InvalidateMainLightStaticShadowCache()`。
 
+### 4.5 ShadowCasterMasked 数据链（alpha test 镂空阴影，2026-09-26 接线）
+
+masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任何一层前
+先读本节（完整因果链见 `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`）：
+
+1. **程序双槽**：阴影 pass 的 program 存 `MaterialComponent::shadow_program`
+   （与 forward 槽独立），由 `ResolveShadowCasterProgram` 解析——模板分派按
+   recipe 的 `alpha_test` 走 `ShadowCasterMasked`（片元采样 opacity_mask 并
+   `HGLApplyAlpha` discard）。**阴影帧绝不代 forward 物化纹理行**——两条物化
+   链会互踢纹理配置行；行未就绪（`valid==false`，首帧 prepass 早于主帧物化）
+   时跳过本帧该 caster，并 bump `static_scene_revision` 触发下帧重画（收敛）。
+2. **两级寻址**（片元 `MTL_TEX(i)`）：`pc_root.addr_mtl_data_addrs` 指向
+   **batch 行表**（`WriteBatchIndexRows` 每行 {payload_index,
+   texture_reference_index}，`gl_InstanceIndex` = 行号）→
+   `pc_root.addr_texture_references`（**纹理配置池基址**，即
+   `material_texture_zero_row_gpu`）+ texref*stride = 配置行。任一地址为 0
+   都静默 fallback 1.0 → **影子实心**。`texture_reference_base_addr` 必须
+   与 4-ID 解析分支无关地幂等设置（曾在 resolved 分支漏设）。
+3. **depth-only FS 剥除豁免**：`RenderPass::CreatePipeline` 对零颜色附件通道
+   默认剥离片元 stage（不透明优化）——含 discard 的 program 由
+   `ShaderProgram::IsFragmentShaderRequired()`（SPIRV 扫描 OpKill/
+   OpDemoteToHelperInvocation）+ recipe `alpha_test`/`dither` 豁免。
+   **新增镂空类模板时确认此豁免生效**，否则深度图实心且无任何报错。
+4. **pipeline 复用带 program 身份键控**（`resolvedRuntimePipelineProgramMap`）：
+   shader 更新生成新 program 对象后必须重建 pipeline——仅按 RenderPass 键控
+   会永久复用旧 SPIRV。
+5. **主帧同步**：forward 管线的 alpha test 同语义（`forward_lit.glsl.tmpl` 的
+   `#ifdef HGL_ALPHA_TEST HGLApplyAlpha(EvalAlpha(si, materialDataIndex))`）——
+   本体与影子用同一 opacity_mask 槽。
+6. **取证**：深度图直接读回（`AlphaTestShadow::DumpCascadeDepth`，graphics
+   queue + CopyImageToBuffer + BMP）。判读：棋盘 cube 深度投影填充 ~57%=镂空、
+   ~100%=实心、全空=片元被剥或全 discard。地面上看影子不如直接读深度图
+   （地面纹理/环境光/透视压缩都会干扰判读）。
+
 ---
 
 ## 5. 背面渲染与 bias 极性
@@ -343,7 +386,7 @@ reversed-Z 下"值越大越靠近光源"。因此：
 - `depth_range` = 该级正交投影的深度范围（`zfar - znear`，米）
 - `resolved_bias` = 该级真正写入 UBO 的归一化值，即 `cascades[c].shadow_params.x`
 
-示例 `CascadeShadowMap.cpp` 用 `bias_world = -1.15f`，`[`/`]` 按 **0.05m** 步长调米数，
+示例 `CascadeShadowMap.cpp` 用 `bias_world = -0.20f`，`[`/`]` 按 **0.05m** 步长调米数，
 并打印逐级归一化值与逐级深度范围，可直接看到"归一化不同、世界偏移相同"。
 
 > 注意：`CascadeUpdateResult` 只有 `sphere_radius`/`depth_range` 这类**纯读**数据可用于
@@ -395,7 +438,7 @@ reversed-Z 下"值越大越靠近光源"。因此：
 
 **与 bias 的分工与调参顺序**：两者互补而非替代。先把 `normal_offset_world` 调到掠射面无
 acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合）。示例配
-`normal_offset_world = 0.10m` + `bias_world = -1.15m`。
+`normal_offset_world = 0.10m` + `bias_world = -0.20m`。
 
 **强度取值的量级参考**：acne 的深度误差量级 ≈ 一个纹素的世界尺寸（示例 CSM 0 半径约
 188m / 1024 texel ⇒ ≈0.37m），经实机微调确立 0.10m（消掠射角 acne 且接触点不悬浮）。
@@ -450,7 +493,7 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | `shadow_map_size` | 1024 | 贴图边长 |
 | `caster_depth_margin` | 100 | 光源视锥沿 -Z 余量（示例 120） |
 | `bias` | 0.002 | 归一化深度 bias；仅 `bias_world == 0` 时生效 |
-| `bias_world` | 0 | **世界单位偏移（米）**，逐级自动换算，非 0 时压过上面两项（示例 **-1.15**） |
+| `bias_world` | 0 | **世界单位偏移（米）**，逐级自动换算，非 0 时压过上面两项（示例 **-0.20**） |
 | `per_cascade_bias_scale[4]` | 全 1 | 逐级 bias 乘数（§5.1） |
 | `normal_offset_world` | 0 | **法线偏移强度（米）**，按 `tan(θ)` 加权，0 = 关闭（示例 **0.10**，§5.2） |
 | `pcf_radius` | 1.5 | PCF 采样半径（texel 倍数） |
@@ -544,6 +587,8 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | **启动几帧**阴影闪现 | — | 尚无 warm-up 流程（见 §10） |
 | 拖拽时阴影**一帧左一帧右 / 一帧近一帧远**，静止后正常；RenderDoc 截帧永远正常 | 不是拟合公式。先确认 `ShadowInfo` 是否又变回单份 UBO | 在途主帧还在读 binding 5 时，CPU 覆写了同一块 `ShadowInfo`。修复与禁令见 `doc/shadow-ubo-inflight-overwrite.md`。不要用每帧 `WaitFence()` 全槽排空来压症状 |
 | 静态阴影能渲染但**读到就没了** | 是否每帧都发了静态级的 DrawCall | 静态级被错误地也当成了逐帧层 |
+| **alpha test 物体的阴影是实心的**（本体镂空正常） | `RenderPass::CreatePipeline` 的 depth-only FS 剥除豁免 | 片元含 discard 却被 depth-only 快速路径剥掉（`IsFragmentShaderRequired` 判定失效/未走）；或 `batch.texture_reference_base_addr`=0（MTL_TEX 解引用 0 → fallback 1.0）。**取证**：`AlphaTestShadow::DumpCascadeDepth` 读级联深度——填充 ~57%=镂空、~100%=实心 |
+| **masked 物体在深度图里缺失**（影子不出现或固化消失） | collect 日志 `ResolveMaterialProgramForPrimitive failed` | 首帧 resolve 失败 + 静态缓存固化。行未就绪时已跳过+bump revision（收敛）；手动调 `InvalidateMainLightStaticShadowCache()` 立即重画 |
 
 **诊断手段**：
 
@@ -568,7 +613,7 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | 单张 shadow atlas | 目前 4 张独立 D32F RT，无 atlas 合并 |
 | 逐物体脏追踪 | 脏粒度是"整级联"，不是"受影响的物体集合" |
 | ~~ShadowInfo 单份 UBO 被在途帧覆写~~ | 已分槽（`kShadowUboRing`，按下标 = acquired image）。`MarkDirty` 不再写 shadow GPU。见 `doc/shadow-ubo-inflight-overwrite.md` |
-| ~~ShadowCaster 专用程序未接线~~ | 已实现（A1）：阴影 pass 走 `MaterialComponent` 双槽（`shadow_program`，`ShadowCasterOpaque/Masked` 模板）；masked caster 的纹理行物化仍未接线（运行时会打 warning） |
+| ~~ShadowCaster 专用程序未接线~~ | 已实现（A1 + A1-4）：阴影 pass 走 `MaterialComponent` 双槽（`shadow_program`，`ShadowCasterOpaque/Masked` 模板）；masked caster 的 opacity_mask 采样链完整（纹理引用行由 forward 物化链持有，深度镂空经深度图读回验证）。链路细节见 §4.5 |
 | ~~静态缓存失效链缺失~~ | 已接线（A3）：TransformSystem 检出 Static 变更 → `static_scene_revision` → EnvironmentSystem 消费失效。剩余缺口：新增/删除静态物体与材质/贴图替换需手动调 `InvalidateMainLightStaticShadowCache()`；`SetLocalPosition` 等无同值短路 |
 
 ---

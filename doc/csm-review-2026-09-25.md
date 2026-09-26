@@ -214,6 +214,32 @@ if (world && world->IsCurrentPassShadow())
 
 ---
 
+## 4.5 执行结果附记（2026-09-26 更新）
+
+§3 执行顺序的落地状态（提交号见 `git log`；取证方法与判读基准见
+`doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`）：
+
+| 项 | 状态 | 说明 |
+|----|------|------|
+| A1 阴影 pass 程序接线 | ✅ 完成 | MaterialComponent 双槽（forward/shadow_program 分离）；`shadow_caster_opaque` 路由 + validation 0 VUID |
+| A4 PCF 边缘 fract | ✅ 完成 | `cache_offset` 非零自适应 wrap/clamp；Test 7C 第 11 条契约锁定 |
+| A2 CameraInfo 行泄漏 | ✅ 完成 | Disable 归还 + 10D 源码契约；正反双取证（20 轮 Enable/Disable 行池稳定） |
+| A3 静态缓存失效链 | ✅ 完成 | TransformSystem 检出 → static_scene_revision → EnvironmentSystem 消费；9D 行为契约；`InvalidateMainLightStaticShadowCache()` 转发 API |
+| A1-4 masked caster 行 | ✅ 完成 | 过程中发现并修复 **depth-only FS 剥除**（终极根因）、pipeline program 键控、base_addr 断链、forward alpha test 未接线等 7 层问题——详见附记文档；深度图读回判读：棋盘投影填充 ~57%=镂空 |
+| A5 / A6 / A7-A10 / T 系列 | ⬜ 待做 | 顺序不变 |
+| 文档同步 | 🟨 部分 | SKILL_CASCADED_SHADOW_CSM 的 A1/A3/A4 条目已更新；本清单剩余项（bias_world 示例值、窗口标题、shadow-component 文档标注）待 A5 一并处理 |
+
+新发现并已另案记录的问题：`SetLocalPosition` 等无同值短路（每帧重复 set 同值
+会被 A3 链判为变更 → 静态级联每帧全量重绘；示例已修，引擎级短路待决策）。
+
+A7 原文的两处状态修正（正文保留历史，不回改）：`InvalidateStaticCache()` 与
+`GetCascadeRenderTarget()` **已有调用者**（A3 失效链接线 / AlphaTestShadow
+深度读回），不再是未消费 API；`texel_shift_x/y` 已删除（环形寻址落地时随
+条带机制一并重设计）。A9 的 zfar 双份公式已合一（`CalculateCascadeBounds`
+输出 zfar，Update 只消费）；窗口标题已去掉 "Toroidal Cache"。
+
+---
+
 ## 5. 复现方法
 
 ```bash
