@@ -785,8 +785,9 @@ namespace hgl::ecs
             return false;
 
         // 每个 RenderPass 各自有解析好的管线（跨 RT 不互相驱逐）；
-        // 该 Pass 已解析过则直接复用。
-        if (primitive_comp->HasResolvedRuntimePipeline(render_pass))
+        // 复用校验含 program 身份——shader 更新（新 program 对象）时重建，
+        // 防止旧 program 的 pipeline 被无限复用（masked 阴影失效根因）。
+        if (primitive_comp->HasResolvedRuntimePipeline(render_pass, program))
             return true;
 
         // ShadowCaster 无绑定 recipe，直接用解析槽里缓存的 normalized
@@ -811,7 +812,7 @@ namespace hgl::ecs
             return false;
         }
 
-        primitive_comp->SetResolvedRuntimePipeline(render_pass, resolved_pipeline);
+        primitive_comp->SetResolvedRuntimePipeline(render_pass, resolved_pipeline, program);
         return true;
     }
 
