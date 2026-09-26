@@ -23,16 +23,30 @@ namespace hgl::graph
 
     /**
      * 单个级联的更新决策与绘制参数。
-     * 固定容量脏矩形池（滚动更新最多产生 4 个无重叠矩形），保持 POD 内存特性，避免逐帧堆分配。
+     * 固定容量脏矩形池（环形滚动最多产生 4 个矩形：列/行条带各可跨贴图接缝一分为二；
+     * 两轴同时跨格时角落有小面积重叠——重复绘制的是同值内容，无副作用），
+     * 保持 POD 内存特性，避免逐帧堆分配。
      */
     struct CascadeUpdateResult
     {
         uint32_t cascade_index = 0;
-        bool need_full_update = false;    // 是否需要全量重绘（如近景级联0、首次生成、或移动超限）
+        bool need_full_update = false;    // 是否需要全量重绘（级联0、首次生成、场景/深度锚点失效、或位移不是整步滚动）
         bool is_static_cache = false;     // 是否为中远景静态滚动缓存
 
-        Matrix4f light_view = Matrix4f(1.0f); // 当前级联对应的光空间视图矩阵
+        Matrix4f light_view = Matrix4f(1.0f); // 未偏移的光空间视图矩阵（读侧 shadow_vp = light_proj*本矩阵）
         Matrix4f light_proj = Matrix4f(1.0f); // 当前级联对应的正交投影矩阵
+        /// 写侧专用：把投射内容光栅化到**物理贴图**坐标系的光照 view。
+        /// = light_view 左乘光空间平移 (cache_offset.xy * texel_world)，与读侧 shader 的
+        /// `fract(shadow_uv + cache_offset * inv_shadow_map_size)` 落在同一坐标系。
+        /// cache_offset == 0 时与 light_view 逐位相同（未滚动路径零变化）。
+        /// ⚠ 非零偏移下"整级重画"并不覆盖整张贴图：光栅器没有环绕，内容落在
+        /// [O, 1+O) 而被裁掉尾部 |O| 条带 ⇒ 尾部条带必须由 dirty_rects 单独补画。
+        Matrix4f light_view_draw = Matrix4f(1.0f);
+        /// 本帧该级联的环形偏移（texel，x/y 有效，z/w 保留=0）。与写进
+        /// ShadowInfo.cascades[c].cache_offset 的值相同，供上层与契约测试查询。
+        Vector4u cache_offset = Vector4u(0);
+        /// 该级联每个纹素对应的世界尺寸（写侧平移换算量 / 步长 L = B * 本值）。
+        float texel_world_size = 0.0f;
         float sphere_radius = 0.0f;           // 该级联包围球半径（供上层换算 bias 的世界单位）
         float depth_range = 0.0f;             // 该级联正交投影的深度范围（zfar - znear，米）
         float resolved_bias = 0.0f;           // 该级联实际写入 UBO 的归一化 bias

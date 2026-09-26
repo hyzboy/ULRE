@@ -367,7 +367,10 @@ namespace hgl::ecs
                 req.target = rt;
                 req.camera = light_camera.get();
                 light_camera->custom_matrices = true;
-                light_camera->custom_view = res.light_view;
+                // 写侧用 light_view_draw：非零环形偏移时它把内容光栅化到物理贴图坐标系，
+                // 与读侧 shader 的 fract(shadow_uv + cache_offset·texel) 对齐（偏移为 0 时
+                // 它与 light_view 逐位相同）。
+                light_camera->custom_view = res.light_view_draw;
                 light_camera->custom_projection = res.light_proj;
                 req.load_depth = false;
                 req.use_scissor = false;
@@ -388,7 +391,9 @@ namespace hgl::ecs
                     req.target = rt;
                     req.camera = light_camera.get();
                     light_camera->custom_matrices = true;
-                    light_camera->custom_view = res.light_view;
+                    // 局部条带重画：dirty_rects 已是**物理**坐标（含环形接缝拆分），
+                    // 用写侧矩阵落在同一坐标系；load_depth=true 保留其余缓存内容。
+                    light_camera->custom_view = res.light_view_draw;
                     light_camera->custom_projection = res.light_proj;
                     req.load_depth = true;
                     req.use_scissor = true;

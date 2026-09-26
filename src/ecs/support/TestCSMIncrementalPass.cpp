@@ -258,13 +258,16 @@ int main(int argc, char** argv)
 
         // ─────────────────────────────────────────────────────────
         // Test 5B: 静态滚动缓存的两条硬契约
-        //   5B-1 矩阵恒定性：缓存命中（need_full_update==false）意味着本帧不重绘贴图，
-        //        因此本帧用的 light_proj*light_view 必须与"生成该贴图那一帧"完全一致；
+        //   5B-1 矩阵恒定性：内容刷新帧（整级重建 或 环形条带滚动，S2）会把布局矩阵推进到
+        //        新锚定格；此后到下一次刷新之间的**纯命中帧**必须与该矩阵完全一致——
         //        否则贴图里的深度被另一个矩阵解读，静态阴影会在锚定格内整体滑动。
         //        （历史缺陷：横向吸附量被二次吸附抵消 ⇒ 矩阵仍随相机连续移动）
-        //   5B-2 覆盖率：窗口冻结在粗锚定点上，格内视锥最多漂移 step*0.707，半径补偿
-        //        不足时切片角点落到正交视窗之外 ⇒ 边缘物体没有阴影。子用例故意让补偿
-        //        量与半径同量级（真实配置下补偿只占半径百分之几），保证补偿一旦缺失
+        //        注意：跨格时矩阵**本来就该**移动恰好 B texel（旧内容靠 cache_offset 原地
+        //        续用），所以判据是"纯命中帧之间矩阵不变"，不是"矩阵永不移动"；
+        //        "跨格后内容仍原地有效"由 Test 17 的物理不动点契约单独把守。
+        //   5B-2 覆盖率：窗口冻结在内容刷新帧的粗锚定点上，格内视锥最多漂移 step*0.707，
+        //        半径补偿不足时切片角点落到正交视窗之外 ⇒ 边缘物体没有阴影。子用例故意让
+        //        补偿量与半径同量级（真实配置下补偿只占半径百分之几），保证补偿一旦缺失
         //        断言必然失败。
         // ─────────────────────────────────────────────────────────
         {
@@ -314,7 +317,11 @@ int main(int argc, char** argv)
                     {
                         const Matrix4f vp = supd[c].light_proj * supd[c].light_view;
 
-                        if (supd[c].need_full_update)
+                        // 内容刷新帧 = 整级重建 **或** 环形条带重画（S2）：两者都会把布局矩阵
+                        // 推进到新锚定格（跨格位移恰为 B texel，旧内容靠 cache_offset 原地
+                        // 续用），所以引用矩阵必须随之更新。只有"纯命中帧"（既没重建也没条带）
+                        // 才必须与上一次刷新的矩阵逐元素相同——否则贴图深度被另一个矩阵解读。
+                        if (supd[c].need_full_update || supd[c].dirty_rect_count > 0)
                         {
                             redraw_vp[c] = vp;
                             redraw_valid[c] = true;
@@ -423,9 +430,10 @@ int main(int argc, char** argv)
 
                     for (uint32_t c = 1; c < 4; ++c)
                     {
-                        // 缓存命中帧沿用它一开始被重绘时的矩阵：贴图里的深度就是按那个
-                        // 矩阵写进去的，覆盖率必须按同一矩阵判定。
-                        if (supd[c].need_full_update || !frozen_valid[c])
+                        // 内容刷新帧（整级重建 或 环形条带）沿用它把内容写进贴图时的矩阵：
+                        // 贴图里的深度就是按那个矩阵 + cache_offset 写/读的，覆盖率必须按
+                        // 同一矩阵判定。
+                        if (supd[c].need_full_update || supd[c].dirty_rect_count > 0 || !frozen_valid[c])
                         {
                             frozen_vp[c] = supd[c].light_proj * supd[c].light_view;
                             frozen_valid[c] = true;
@@ -533,7 +541,8 @@ int main(int argc, char** argv)
             {
                 const Matrix4f vp = supd[c].light_proj * supd[c].light_view;
 
-                if (supd[c].need_full_update)
+                // 内容刷新帧（整级重建 或 环形条带滚动）⇒ 更新引用；纯命中帧必须矩阵不变
+                if (supd[c].need_full_update || supd[c].dirty_rect_count > 0)
                 {
                     spin_vp[c] = vp;
                     spin_radius[c] = supd[c].sphere_radius;
@@ -2045,6 +2054,502 @@ int main(int argc, char** argv)
 
         GLogInfo(u8"Test 16 Passed: horizontal anchor step is texel-denominated (S1) -- "
                  u8"L/texel == B exactly, loss == 1.416*B/M, c0 unaffected, degenerate B fails safe.");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 17: 环形滚动（S2）—— 偏移补偿 + 物理条带的坐标一致性契约
+    //
+    // 滚动缓存成立的全部数学压在这两条不变式上（任一符号错 ⇒ 阴影整体滑一整个步长）：
+    //   ① 物理不动：固定世界点在物理贴图上的位置，跨格前后**不变**
+    //      （旧内容原地继续有效，靠读侧 fract(uv + O·texel) 映射回正确位置）
+    //   ② 写读一致：写侧矩阵投出的 uv ≡ 读侧 fract(uv + O·texel)
+    // 另钉死三条排除项：
+    //   ③ 整级重建 ⇒ 偏移必为 0（非零偏移的"整级重画"会漏掉尾部 |O| 条带，光栅器无环绕）
+    //   ④ 纯滚动 ⇒ 偏移按 ±B 累加（mod M 回绕），条带覆盖全部"新暴露"内容
+    //   ⑤ 位移不是整步（未开横向锚定）⇒ 回落整级重建 + 偏移清零
+    // 本用例要求真的走到纯滚动（跨格 ≥ 8 次），否则视为空跑失败。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const uint32_t kProbeCount = 8;
+        const float kProbeX[kProbeCount] = { 2.0f, 6.0f, 11.0f, 20.0f, 34.0f, 58.0f, 88.0f, 130.0f };
+
+        const Vector3f light_dir = glm::normalize(Vector3f(0.5f, 0.8f, -1.0f));
+        const float aspect = 16.0f / 9.0f;
+
+        auto make_camera = []()
+        {
+            Camera c;
+            c.znear = 0.1f; c.zfar = 500.0f; c.fovY = 60.0f;
+            c.pos = Vector3f(0.0f, 0.0f, 1.7f);
+            c.world_up = Vector3f(0.0f, 1.0f, 0.0f);      // 显式：默认 (0,0,1) 与 +x 视线共线会 NaN
+            c.viewDirection = Vector3f(1.0f, 0.0f, 0.0f); // 沿 +x 行走：跨格方向确定
+            return c;
+        };
+
+        // 读侧公式（与 pcf_shadow.glsl 一致）：uv = 0.5 + 0.5*ndc.xy
+        const auto layout_uv = [](const Matrix4f &vp, const Vector3f &p)
+        {
+            const Vector4f clip = vp * Vector4f(p.x, p.y, p.z, 1.0f);
+            return Vector2f(0.5f + 0.5f * clip.x, 0.5f + 0.5f * clip.y);
+        };
+        const auto inside_unit = [](const Vector2f &uv)
+        {
+            return uv.x > 0.02f && uv.x < 0.98f && uv.y > 0.02f && uv.y < 0.98f;
+        };
+        // 环形差值：a ≡ b (mod 1) 时为 0
+        const auto wrap_delta = [](float a, float b)
+        {
+            const float d = a - b;
+            return std::abs(d - std::round(d));
+        };
+
+        CascadedShadowConfig scfg;
+        scfg.cascade_count = 4;
+        scfg.c0_dynamic_overlay = true;
+        scfg.shadow_map_size = 1024.0f;
+        scfg.max_distance = 300.0f;
+        scfg.cache_anchor_step = 16.0f;
+        scfg.cache_scroll_band_texels[1] = 16;
+        scfg.cache_scroll_band_texels[2] = 16;
+        scfg.cache_scroll_band_texels[3] = 32;
+
+        const uint32_t kBand[4] = { 0, 16, 16, 32 };
+        const float M = scfg.shadow_map_size;
+
+        CascadedShadowController scroll_ctrl(scfg);
+        Camera scroll_cam = make_camera();
+
+        ShadowInfo sinfo;
+        CascadeUpdateResult supd[kMaxShadowCascades];
+
+        Matrix4f prev_vp[4];                     // 上一帧的布局矩阵（判定"旧内容覆盖范围"）
+        Vector2f prev_phys[4][kProbeCount];      // 上一帧的**物理** uv（不动点判据）
+        bool prev_inside[4][kProbeCount] = {};   // 上一帧在框内（留余量）⇒ phys 有意义
+        bool prev_scrolled[4] = {};              // 上一帧不是整级重建（内容未重光栅化）
+        uint32_t crossings[4] = {};
+        uint32_t scroll_hits = 0;
+        uint32_t strip_checks = 0;
+        uint32_t neg_crossings = 0;  // 反向跨格次数（接缝拆分分支的唯一可达来源）
+        uint32_t uoff_prev_x[4] = {};
+        uint32_t uoff_prev_y[4] = {};
+        constexpr uint32_t kStripSamples = 128;  // 每轴条带探针数（覆盖 B=16 texel 的窄带）
+
+        // ④ 的检查体提取为 lambda：主用例（默认 B）与子用例 (e)（B ∤ M ⇒ 可跨缝）共用。
+        //    独立判据：探针由**当前帧**的框几何生成（z_view=0 平面上的网格，以 uv→世界点
+        //    反算，不引用条带公式），"是否新暴露"由**上一帧矩阵**判定（uv_prev 落在
+        //    [0,1)² 之外 ⇒ 旧内容覆盖不到它）⇒ 它的物理位置必须落在本帧 dirty_rects 的
+        //    并集内，否则该处阴影保持过期内容。返回 0 通过，17 失败（已打印原因）。
+        const auto check_strip_coverage = [&](const CascadeUpdateResult &res, uint32_t c,
+                                             const Matrix4f &vp_read, const Matrix4f &vp_prev,
+                                             const Vector4u &off, uint32_t &counter) -> int
+        {
+            const Matrix4f inv_view = glm::inverse(res.light_view);
+            const float rr = res.sphere_radius;
+
+            for (uint32_t axis = 0; axis < 2; ++axis)
+            {
+                for (uint32_t s = 0; s < kStripSamples; ++s)
+                {
+                    const float t = (static_cast<float>(s) + 0.5f) / static_cast<float>(kStripSamples);
+                    const float u = (axis == 0) ? t : 0.5f;
+                    const float v = (axis == 0) ? 0.5f : t;
+
+                    const Vector4f view_pos(2.0f * rr * (u - 0.5f),
+                                            2.0f * rr * (0.5f - v), 0.0f, 1.0f);
+                    const Vector4f world = inv_view * view_pos;
+                    const Vector3f P(world.x, world.y, world.z);
+
+                    // 生成器自检：该点的当前布局 uv 必须等于我请求的 (u,v)
+                    const Vector2f uv_now = layout_uv(vp_read, P);
+                    if (std::abs(uv_now.x - u) > 1.0e-3f || std::abs(uv_now.y - v) > 1.0e-3f)
+                    {
+                        GLogError(u8"Test 17 Failed: 条带探针生成器自检失败（请求 uv=(%.4f,%.4f) "
+                                  u8"实得 (%.4f,%.4f)）——uv↔view 映射假设有误，条带覆盖判据不可信",
+                                  u, v, uv_now.x, uv_now.y);
+                        return 17;
+                    }
+
+                    const Vector2f uv_prev = layout_uv(vp_prev, P);
+                    if (uv_prev.x >= 0.0f && uv_prev.x < 1.0f &&
+                        uv_prev.y >= 0.0f && uv_prev.y < 1.0f)
+                        continue;   // 旧内容覆盖得到，不需要重画
+
+                    const float fx = uv_now.x * M + static_cast<float>(off.x);
+                    const float fy = uv_now.y * M + static_cast<float>(off.y);
+                    const float wrapped_x = fx - std::floor(fx / M) * M;
+                    const float wrapped_y = fy - std::floor(fy / M) * M;
+
+                    bool covered = false;
+                    for (uint32_t r = 0; r < res.dirty_rect_count; ++r)
+                    {
+                        const ShadowDirtyRect &rect = res.dirty_rects[r];
+                        if (wrapped_x >= static_cast<float>(rect.x) &&
+                            wrapped_x < static_cast<float>(rect.x + rect.width) &&
+                            wrapped_y >= static_cast<float>(rect.y) &&
+                            wrapped_y < static_cast<float>(rect.y + rect.height))
+                        {
+                            covered = true;
+                            break;
+                        }
+                    }
+                    if (!covered)
+                    {
+                        GLogError(u8"Test 17 Failed: cascade %u 新暴露内容（旧框 uv=(%.4f,%.4f) 在外）"
+                                  u8"的物理位置 (%.2f,%.2f) 不在任何 dirty_rect 内（O=(%u,%u)）"
+                                  u8"——条带漏画，该处阴影会保持过期内容",
+                                  c, uv_prev.x, uv_prev.y, wrapped_x, wrapped_y, off.x, off.y);
+                        return 17;
+                    }
+                    ++counter;
+                }
+            }
+            return 0;
+        };
+
+        // 跨缝拆分的可观测签名：同一帧里贴图**两端**各有一段 x 受限、y 占满高的矩形
+        // （单条带只占一端；角落双轴重合是"一条竖 + 一条横"，不会给出两段竖条）。
+        const auto has_vertical_seam_split = [&](const CascadeUpdateResult &res) -> bool
+        {
+            for (uint32_t a = 0; a < res.dirty_rect_count; ++a)
+            {
+                const ShadowDirtyRect &ra = res.dirty_rects[a];
+                if (ra.x != 0 || ra.width >= static_cast<uint32_t>(M) ||
+                    ra.height < static_cast<uint32_t>(M))
+                    continue;
+                for (uint32_t b = 0; b < res.dirty_rect_count; ++b)
+                {
+                    const ShadowDirtyRect &rb = res.dirty_rects[b];
+                    if (a != b && rb.width < static_cast<uint32_t>(M) &&
+                        rb.height >= static_cast<uint32_t>(M) &&
+                        rb.x + rb.width == static_cast<uint32_t>(M))
+                        return true;
+                }
+            }
+            return false;
+        };
+
+        // 面积契约：纯滚动帧里"沿主轴各段宽度之和 == |该轴位移量|"（拆分只改变分段位置，
+        // 不改变总宽）。与 ④ 的位置判据互补：④ 管"该画的地方有没有画"，本判据管"该画的
+        // 总量对不对"⇒ 段落被截短一纹素、漏段、或在命中帧（位移 0）多画，都会被咬住。
+        const auto check_strip_area = [&](const CascadeUpdateResult &res, uint32_t c,
+                                         uint32_t delta_x, uint32_t delta_y, uint32_t band) -> int
+        {
+            const uint32_t wrap_neg = (band > 0) ? (static_cast<uint32_t>(M) - band) : 0;
+            const uint32_t expect_x = (band > 0 && (delta_x == band || delta_x == wrap_neg)) ? band : 0;
+            const uint32_t expect_y = (band > 0 && (delta_y == band || delta_y == wrap_neg)) ? band : 0;
+
+            uint32_t sum_x = 0, sum_y = 0;
+            for (uint32_t r = 0; r < res.dirty_rect_count; ++r)
+            {
+                const ShadowDirtyRect &rect = res.dirty_rects[r];
+                if (rect.height >= static_cast<uint32_t>(M) && rect.width < static_cast<uint32_t>(M))
+                    sum_x += rect.width;      // 竖直条带（含拆分后的两段）
+                else if (rect.width >= static_cast<uint32_t>(M) && rect.height < static_cast<uint32_t>(M))
+                    sum_y += rect.height;     // 水平条带（含拆分后的两段）
+            }
+
+            if (sum_x != expect_x || sum_y != expect_y)
+            {
+                GLogError(u8"Test 17 Failed: cascade %u 条带宽度之和 (x=%u,y=%u) ≠ 该轴位移量 "
+                          u8"(x=%u,y=%u)（delta=(%u,%u) B=%u）——条带被截短/漏段（或命中帧多画），"
+                          u8"贴图会残留过期内容",
+                          c, sum_x, sum_y, expect_x, expect_y, delta_x, delta_y, band);
+                return 17;
+            }
+            return 0;
+        };
+
+        for (uint32_t f = 0; f < 400; ++f)
+        {
+            // 前 200 帧朝 +x（正向跨格：条带恰好终止于偏移处，不跨缝），后 200 帧反向。
+            // 反向跨格时条带起点 = 新偏移，起点落在贴图末 B 个纹素内就会**跨过接缝**，
+            // 必须被拆成两段矩形（环形缓存里贴图两端物理相邻）——该分支只在反向行程
+            // 可达，因此行程必须双向。
+            // 步长 < c1 的锚定步长 L≈2.13m ⇒ 每帧最多跨 1 格（不触发多格回落），
+            // 偏移才能连续累积到 ±M 回绕。
+            scroll_cam.pos.x += (f < 200) ? 2.0f : -2.0f;
+            scroll_ctrl.Update(scroll_cam, aspect, light_dir, sinfo, supd);
+
+            for (uint32_t c = 1; c < 4; ++c)
+            {
+                const CascadeUpdateResult &res = supd[c];
+                const Vector4u &off = res.cache_offset;
+                const float texel_uv = 1.0f / M;   // 1 纹素 = 1/M uv
+
+                // ③ 整级重建必须清偏移（否则尾部条带会缺内容）
+                if (res.need_full_update && (off.x != 0 || off.y != 0))
+                {
+                    GLogError(u8"Test 17 Failed: cascade %u 整级重建时 cache_offset=(%u,%u) 非零"
+                              u8"（非零偏移下整级重画会漏掉尾部 |O| 条带 ⇒ 贴图尾部残留旧内容）",
+                              c, off.x, off.y);
+                    return 17;
+                }
+                // UBO 里的偏移必须与结果一致（读侧靠它做环绕）
+                if (sinfo.cascades[c].cache_offset.x != off.x || sinfo.cascades[c].cache_offset.y != off.y)
+                {
+                    GLogError(u8"Test 17 Failed: cascade %u 的 ShadowInfo.cache_offset=(%u,%u) 与"
+                              u8"CascadeUpdateResult=(%u,%u) 不一致（读侧环绕会错位）",
+                              c, sinfo.cascades[c].cache_offset.x, sinfo.cascades[c].cache_offset.y,
+                              off.x, off.y);
+                    return 17;
+                }
+                // 偏移量级：必须是 B 的整数倍（环形滚动的量子）
+                if (kBand[c] > 0 && (off.x % kBand[c] != 0 || off.y % kBand[c] != 0))
+                {
+                    GLogError(u8"Test 17 Failed: cascade %u 偏移 (%u,%u) 不是步长 B=%u 的整数倍"
+                              u8"（环形偏移必须按整数个锚定格累加）",
+                              c, off.x, off.y, kBand[c]);
+                    return 17;
+                }
+
+                // c0 与所有"偏移为 0"的帧：写侧矩阵必须与未偏移矩阵逐位相同
+                if (off.x == 0 && off.y == 0)
+                {
+                    for (int row = 0; row < 4; ++row)
+                        for (int col = 0; col < 4; ++col)
+                            if (std::abs(res.light_view_draw[row][col] - res.light_view[row][col]) > 0.0f)
+                            {
+                                GLogError(u8"Test 17 Failed: cascade %u 偏移为 0 时 light_view_draw"
+                                          u8" 与 light_view 不逐位相同（未滚动路径不应有额外变换）", c);
+                                return 17;
+                            }
+                }
+
+                const Matrix4f vp_read = res.light_proj * res.light_view;
+                const Matrix4f vp_draw = res.light_proj * res.light_view_draw;
+
+                for (uint32_t i = 0; i < kProbeCount; ++i)
+                {
+                    const Vector3f P(kProbeX[i], 0.0f, 1.0f);
+                    const Vector2f uv = layout_uv(vp_read, P);
+                    const bool inside     = inside_unit(uv);
+                    const bool has_prev   = (f > 0);
+
+                    float phys_x = 0.0f, phys_y = 0.0f;
+
+                    if (inside)
+                    {
+                        // ② 写读一致：写侧投出的 uv ≡ 读侧 fract(uv + O·texel)
+                        const Vector2f uv_draw = layout_uv(vp_draw, P);
+                        phys_x = uv.x + static_cast<float>(off.x) * texel_uv;
+                        phys_y = uv.y + static_cast<float>(off.y) * texel_uv;
+
+                        if (wrap_delta(uv_draw.x, phys_x) > 1.0e-4f ||
+                            wrap_delta(uv_draw.y, phys_y) > 1.0e-4f)
+                        {
+                            GLogError(u8"Test 17 Failed: cascade %u 探针 %u 写侧 uv=(%.6f,%.6f) 与"
+                                      u8"读侧 fract(uv+O·texel)=(%.6f,%.6f) 不一致（O=(%u,%u) texel=%.6f m）"
+                                      u8"——写读坐标系错位，阴影会整体平移",
+                                      c, i, uv_draw.x, uv_draw.y,
+                                      phys_x - std::floor(phys_x), phys_y - std::floor(phys_y),
+                                      off.x, off.y, res.texel_world_size);
+                            return 17;
+                        }
+
+                        // ① 物理不动：连续两个"非整级重建"帧里，同一世界点的物理位置必须不变
+                        if (has_prev && prev_inside[c][i] && prev_scrolled[c] && !res.need_full_update)
+                        {
+                            if (wrap_delta(phys_x, prev_phys[c][i].x) > 1.0e-4f ||
+                                wrap_delta(phys_y, prev_phys[c][i].y) > 1.0e-4f)
+                            {
+                                GLogError(u8"Test 17 Failed: cascade %u 探针 %u 物理位置从 (%.6f,%.6f) 跳到"
+                                          u8"(%.6f,%.6f) —— 旧内容没有原地继续有效（环形补偿符号/量级错），"
+                                          u8"表现为相机移动时静态阴影整体滑动",
+                                          c, i, prev_phys[c][i].x, prev_phys[c][i].y, phys_x, phys_y);
+                                return 17;
+                            }
+                        }
+
+                        prev_phys[c][i] = Vector2f(phys_x, phys_y);
+                    }
+
+                    prev_inside[c][i] = inside;
+                }
+
+                // ④ 新暴露内容必须被条带覆盖。
+                //    独立判据：探针由**当前帧**的框几何生成（z_view=0 平面上的网格，
+                //    以 uv→世界点反算，不引用条带公式），"是否新暴露"由**上一帧矩阵**
+                //    判定（uv_prev 落在 [0,1)² 之外 ⇒ 旧内容覆盖不到它）⇒ 它的物理位置
+                //    必须落在本帧 dirty_rects 的并集内，否则该处阴影保持过期内容。
+                if (f > 0 && !res.need_full_update && res.dirty_rect_count > 0)
+                {
+                    const int rc = check_strip_coverage(res, c, vp_read, prev_vp[c], off, strip_checks);
+                    if (rc != 0)
+                        return rc;
+                }
+
+                // 偏移增量可观测 ⇒ 用它判定跨格方向与量级（同时供面积契约使用）：
+                //   正向跨格 ⇒ delta == B（条带恰好终止于偏移处，不跨缝）
+                //   反向跨格 ⇒ delta == M−B（条带起点 = 新偏移，落在贴图末 B 纹素内即跨缝）
+                //   多格跳变/整级重建 ⇒ need_full_update，偏移被清零，不作为条带依据
+                uint32_t delta_x = 0;
+                uint32_t delta_y = 0;
+                if (f > 0)
+                {
+                    const uint32_t mw = static_cast<uint32_t>(M);
+                    delta_x = (off.x + mw - uoff_prev_x[c]) % mw;
+                    delta_y = (off.y + mw - uoff_prev_y[c]) % mw;
+                    if (delta_x != 0 && delta_x == mw - static_cast<uint32_t>(kBand[c]))
+                        ++neg_crossings;
+                }
+                uoff_prev_x[c] = off.x;
+                uoff_prev_y[c] = off.y;
+
+                if (!res.need_full_update)
+                {
+                    const int rc = check_strip_area(res, c, delta_x, delta_y,
+                                                    static_cast<uint32_t>(kBand[c]));
+                    if (rc != 0)
+                        return rc;
+                }
+
+                prev_vp[c] = vp_read;
+                prev_scrolled[c] = !res.need_full_update;
+                if (!res.need_full_update)
+                {
+                    ++scroll_hits;
+                    if (kBand[c] > 0 && res.dirty_rect_count > 0)
+                        ++crossings[c];
+                }
+            }
+        }
+
+        // ── (e) 跨接缝拆分：B ∤ M 才可达 ─────────────────────────────────────────
+        // 默认 B{16,16,32} 都整除 M=1024 ⇒ 偏移恒为 B 的整数倍 ⇒ 条带 start+width 恰好
+        // ≤ M，**永不跨缝**（该分支在默认配置下不可达，但仍必须在 B 不整除 M 的配置下
+        // 正确，例如 B=24：1024 % 24 = 16 ⇒ 偏移可取到贴图末 B 纹素内 ⇒ 条带跨缝）。
+        // 该子用例用 B=24 走一趟双向行程，把"跨缝必须拆成两段"钉死。
+        {
+            CascadedShadowConfig ecfg = scfg;
+            ecfg.cache_scroll_band_texels[1] = 24;
+            ecfg.cache_scroll_band_texels[2] = 24;
+            ecfg.cache_scroll_band_texels[3] = 24;
+            // 深度锚点（沿光轴 step）在这里故意放到全程不会跨过：它跨一次就把偏移清零，
+            // 而横向偏移要累积到"末 B 纹素"需要连续几十次跨格不被重置（B=24 时从 M−B
+            // 降到 16 需 41 次）。深度锚点本身的行为由 Test 5B-2 覆盖，此处只隔离横向滚动。
+            ecfg.cache_anchor_step = 4096.0f;
+
+            CascadedShadowController ectrl(ecfg);
+            ShadowInfo einfo;
+            CascadeUpdateResult eupd[kMaxShadowCascades];
+            Matrix4f epvp[4];
+            Camera ecam = scroll_cam;
+            ecam.pos = Vector3f(0.0f, 0.0f, 1.7f);
+
+            uint32_t e_checks = 0;
+            uint32_t e_splits = 0;
+            uint32_t e_negs = 0;
+            uint32_t e_offs[4] = {};
+            uint32_t e_offs_y[4] = {};
+
+            for (uint32_t f = 0; f < 400; ++f)
+            {
+                // 步长 3.0m < B=24 档的 L(≈3.23m) ⇒ 每帧最多跨一格，偏移可连续累积；
+                // 双向行程保证偏移遍历 [0,M) 内足够多的 8 的倍数（≥128 个）以命中"末 B 纹素"。
+                ecam.pos.x += (f < 200) ? 3.0f : -3.0f;
+                ectrl.Update(ecam, aspect, light_dir, einfo, eupd);
+
+                for (uint32_t c = 1; c < 4; ++c)
+                {
+                    const CascadeUpdateResult &res = eupd[c];
+                    const Vector4u &off = res.cache_offset;
+                    const Matrix4f evp = res.light_proj * res.light_view;
+
+                    if (f > 0 && !res.need_full_update && res.dirty_rect_count > 0)
+                    {
+                        const int rc = check_strip_coverage(res, c, evp, epvp[c], off, e_checks);
+                        if (rc != 0)
+                            return rc;
+                    }
+                    if (!res.need_full_update && has_vertical_seam_split(res))
+                        ++e_splits;
+                    uint32_t edx = 0, edy = 0;
+                    if (f > 0)
+                    {
+                        const uint32_t mw = static_cast<uint32_t>(M);
+                        edx = (off.x + mw - e_offs[c]) % mw;
+                        edy = (off.y + mw - e_offs_y[c]) % mw;
+                        if (edx != 0 && edx == mw - 24u)
+                            ++e_negs;
+                    }
+                    e_offs[c] = off.x;
+                    e_offs_y[c] = off.y;
+                    if (!res.need_full_update)
+                    {
+                        const int arc = check_strip_area(res, c, edx, edy, 24u);
+                        if (arc != 0)
+                            return arc;
+                    }
+                    epvp[c] = evp;
+                }
+            }
+
+            if (e_splits < 1 || e_checks < 8 || e_negs < 8)
+            {
+                GLogError(u8"Test 17(e) Failed: B=24（1024 %% 24 = 16）下跨接缝拆分分支未被走到"
+                          u8"（覆盖检查 %u 次 / 跨缝拆分 %u 次 / 反向跨格 %u 次）——"
+                          u8"跨缝条带的尾部 |O| 纹素会漏画，贴图末端残留过期内容",
+                          e_checks, e_splits, e_negs);
+                return 17;
+            }
+            GLogInfo(u8"[CSM-SEAM] B=24 M=1024 覆盖检查=%u 次 跨缝拆分=%u 次 反向跨格=%u 次",
+                     e_checks, e_splits, e_negs);
+        }
+
+        // 空跑保护：必须真的走到纯滚动（每级至少若干次跨格），否则上面的不变式是废话
+        const uint32_t total_crossings = crossings[1] + crossings[2] + crossings[3];
+        if (total_crossings < 8 || strip_checks < 8 || scroll_hits < 20 || neg_crossings < 4)
+        {
+            GLogError(u8"Test 17 Failed: 用例没走到环形滚动（跨格 %u 次 / 条带覆盖检查 %u 次 / "
+                      u8"命中帧 %u / 反向跨格 %u 次）——探针或轨迹设置失效，契约形同虚设",
+                      total_crossings, strip_checks, scroll_hits, neg_crossings);
+            return 17;
+        }
+
+        // ⑤ 位移不是整步（横向锚定关闭 ⇒ snapped 原点按 texel 连续移动）⇒ 必须回落整级重建且偏移清零
+        {
+            CascadedShadowConfig ncfg = scfg;
+            for (uint32_t i = 0; i < kMaxShadowCascades; ++i)
+                ncfg.cache_scroll_band_texels[i] = 0;   // 关横向锚定
+
+            CascadedShadowController nostep_ctrl(ncfg);
+            Camera nostep_cam = make_camera();
+            ShadowInfo ninfo;
+            CascadeUpdateResult nupd[kMaxShadowCascades];
+
+            uint32_t fallback_frames = 0;
+            for (uint32_t f = 0; f < 24; ++f)
+            {
+                nostep_cam.pos.x += 0.7f;
+                nostep_ctrl.Update(nostep_cam, aspect, light_dir, ninfo, nupd);
+                for (uint32_t c = 1; c < 4; ++c)
+                {
+                    if (nupd[c].need_full_update)
+                        ++fallback_frames;
+                    if (nupd[c].cache_offset.x != 0 || nupd[c].cache_offset.y != 0)
+                    {
+                        GLogError(u8"Test 17 Failed: 未开横向锚定（位移非整步）时 cascade %u 仍产生"
+                                  u8"偏移 (%u,%u)——条带兜不住这种位移，必须回落整级重建并清零偏移",
+                                  c, nupd[c].cache_offset.x, nupd[c].cache_offset.y);
+                        return 17;
+                    }
+                }
+            }
+            if (fallback_frames < 12)
+            {
+                GLogError(u8"Test 17 Failed: 未开锚定的用例没有触发足够的整级重建（%u 次）"
+                          u8"——回落路径没有被验证到", fallback_frames);
+                return 17;
+            }
+        }
+
+        GLogInfo(u8"[CSM-SCROLL] frames=400 crossings=[%u,%u,%u] 条带覆盖检查=%u 次 命中帧=%u "
+                 u8"反向跨格=%u 次 off3=(%u,%u) 非整步回落=OK",
+                 crossings[1], crossings[2], crossings[3], strip_checks, scroll_hits, neg_crossings,
+                 supd[3].cache_offset.x, supd[3].cache_offset.y);
+        GLogInfo(u8"Test 17 Passed: toroidal scroll offset/strip coordinates hold "
+                 u8"(write==read, content physically fixed, full redraw clears offset, "
+                 u8"non-integer step falls back).");
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

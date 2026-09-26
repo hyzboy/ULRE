@@ -13,6 +13,49 @@ namespace
 
 namespace hgl::graph
 {
+    namespace
+    {
+        /// 环形偏移累加：off + delta 归一到 [0, map_size)（delta 允许为负）
+        inline uint32_t WrapTexelOffset(uint32_t off, int32_t delta, uint32_t map_size)
+        {
+            if (map_size == 0)
+                return 0;
+            const int64_t m = static_cast<int64_t>(map_size);
+            const int64_t v = (static_cast<int64_t>(off) + static_cast<int64_t>(delta)) % m;
+            return static_cast<uint32_t>((v + m) % m);
+        }
+
+        /// 把"物理坐标下的条带"追加进脏矩形池：主轴起点 start、宽 width（texel）。
+        /// 条带可以跨贴图接缝（start + width > map_size）——环形缓存里"贴图右边缘"与
+        /// "左边缘"物理相邻，跨缝条带必须拆成两段矩形，否则尾部 width-first 个纹素
+        /// 不会被重画（该处阴影保持过期内容，表现为贴图边缘一条 1~2 纹素宽的亮/暗带）。
+        /// vertical = true  ⇒ 竖直条带（x 受限、y 占满全高）
+        /// vertical = false ⇒ 水平条带（y 受限、x 占满全宽）
+        inline void AppendWrappedStrip(CascadeUpdateResult &res, uint32_t start, uint32_t width,
+                                       uint32_t map_size, bool vertical)
+        {
+            if (map_size == 0 || width == 0 || width >= map_size)
+                return;
+
+            const uint32_t begin = start % map_size;
+            const uint32_t rest  = map_size - begin;   // 从 begin 到贴图末端的纹素数
+            const uint32_t first = (width < rest) ? width : rest;
+
+            if (vertical)
+            {
+                res.AddDirtyRect(ShadowDirtyRect{ begin, 0, first, map_size });
+                if (width > first)
+                    res.AddDirtyRect(ShadowDirtyRect{ 0, 0, width - first, map_size });
+            }
+            else
+            {
+                res.AddDirtyRect(ShadowDirtyRect{ 0, begin, map_size, first });
+                if (width > first)
+                    res.AddDirtyRect(ShadowDirtyRect{ 0, 0, map_size, width - first });
+            }
+        }
+    }
+
     CascadedShadowController::CascadedShadowController()
     {
         for (uint32_t i = 0; i < kMaxShadowCascades; ++i)
@@ -358,6 +401,8 @@ namespace hgl::graph
                     const float dy = snapped_cy - cache_states_[c].snapped_origin.y;
                     const int32_t shift_x = static_cast<int32_t>(std::round(dx / texel_size));
                     const int32_t shift_y = static_cast<int32_t>(std::round(dy / texel_size));
+                    // 该级横向锚定步长（texel）：纯滚动要求"跨格位移恰为 ±B"（见下）
+                    const int32_t band = static_cast<int32_t>(config_.cache_scroll_band_texels[c]);
 
                     if (shift_x == 0 && shift_y == 0)
                     {
@@ -365,9 +410,52 @@ namespace hgl::graph
                         update_res.need_full_update = false;
                         update_res.ClearDirtyRects();
                     }
+                    else if (band > 0 &&
+                             (shift_x == 0 || std::abs(shift_x) == band) &&
+                             (shift_y == 0 || std::abs(shift_y) == band))
+                    {
+                        // 环形滚动：横向锚定把缓存原点吸附到 L = B·texel 的整数倍格点上，
+                        // 因此"跨格"必然让内容位移恰好 ±B texel —— 这正是可条带化的纯滚动。
+                        // 旧内容在物理贴图里**原地继续有效**：偏移按跨格量累加补偿，读侧
+                        // fract(shadow_uv + O·texel) 把旧内容映射回正确位置；本帧只需重画
+                        // "新暴露"的 |shift| 宽条带。
+                        // 位移不是整步（例：朝向变化 ⇒ 半径/texel 变 ⇒ 格点非等距跳动）或该级
+                        // 没开横向锚定（B=0）⇒ 条带兜不住，走下面的整级重建分支。
+                        // 偏移必须与写侧矩阵（light_view_draw）同帧落地：非零偏移下"整级重画"
+                        // 反而会漏掉尾部 |O| 条带（光栅器没有环绕，内容落在 [O,1+O) 而被裁），
+                        // 所以本分支走局部 scissor 路径。
+                        Vector4u &offset = cache_states_[c].scroll_offset;
+                        // 读侧 uv = 0.5 ± 0.5·ndc，两条轴的 ndc 都**反向**于 snapped 原点
+                        // （cx/cy 增 ⇒ view 坐标减、且 V 轴向下 ⇒ 两轴同号）
+                        // ⇒ 内容在 uv 上的位移 s = -shift，偏移补偿 O += shift。
+                        offset.x = WrapTexelOffset(offset.x, shift_x, W);
+                        offset.y = WrapTexelOffset(offset.y, shift_y, H);
+
+                        // 新暴露条带在**物理**坐标下的起点：s>0(s<0) 缺的是低(高)端
+                        //   start = (M - max(-s, 0) + O) mod M,  s = -shift
+                        const uint32_t start_x = (shift_x > 0) ? WrapTexelOffset(offset.x, -shift_x, W)
+                                                               : offset.x;
+                        const uint32_t start_y = (shift_y > 0) ? WrapTexelOffset(offset.y, -shift_y, H)
+                                                               : offset.y;
+
+                        update_res.need_full_update = false;
+                        update_res.ClearDirtyRects();
+                        if (shift_x != 0)
+                            AppendWrappedStrip(update_res, start_x,
+                                               static_cast<uint32_t>(std::abs(shift_x)), W, true);
+                        if (shift_y != 0)
+                            AppendWrappedStrip(update_res, start_y,
+                                               static_cast<uint32_t>(std::abs(shift_y)), H, false);
+
+                        cache_states_[c].snapped_origin = Vector2f(snapped_cx, snapped_cy);
+                        cache_states_[c].texel_world_size = Vector2f(texel_size, texel_size);
+                        cache_states_[c].valid_rect = Vector4u(0, 0, W, H);
+                        along_anchor_[c] = along_anchor;
+                        ++cache_states_[c].generation;
+                    }
                     else
                     {
-                        // 相机移动跨越整像素：滚动更新刷新至新中心
+                        // 位移不是整步：整级重建 + 偏移清零（内容重画回未旋转的原点系）
                         update_res.need_full_update = true;
                         update_res.AddDirtyRect(ShadowDirtyRect{0, 0, W, H});
 
@@ -384,6 +472,23 @@ namespace hgl::graph
             // 写入该级联的标准 ShadowCascadeInfo
             auto &casc = out_shadow_info.cascades[c];
             casc.shadow_vp = light_proj * light_view;
+            // 写侧矩阵：非零环形偏移时把投射内容光栅化到**物理贴图**坐标系，使内容落在
+            // 读侧 fract(uv + O·texel) 会去取的位置（偏移为 0 时与 light_view 逐位相同）。
+            // x 取正、y 取负：把 y 取负是因为正交投影的 y 是反向的（OrthoMatrixReversedZ
+            // 用 2/(bottom-top)、V 轴向下），而偏移量按 uv 定义。
+            update_res.texel_world_size = texel_size;
+            update_res.cache_offset = cache_states_[c].scroll_offset;
+            if (update_res.cache_offset.x != 0 || update_res.cache_offset.y != 0)
+            {
+                update_res.light_view_draw =
+                    TranslateMatrix(static_cast<float>(update_res.cache_offset.x) * texel_size,
+                                    -static_cast<float>(update_res.cache_offset.y) * texel_size,
+                                    0.0f) * light_view;
+            }
+            else
+            {
+                update_res.light_view_draw = light_view;
+            }
             casc.shadow_params = Vector4f(update_res.resolved_bias, config_.pcf_radius,
                                           config_.darkness, config_.normal_offset_world);
             casc.shadow_map_size = Vector2f(map_size, map_size);
@@ -396,7 +501,7 @@ namespace hgl::graph
 
             casc.cascade_params = Vector4f(split_near, split_far, config_.blend_width, config_.blend_distance);
             casc.cache_origin = Vector4f(snapped_cx, snapped_cy, texel_size, texel_size);
-            casc.cache_offset = cache_states_[c].scroll_offset;
+            casc.cache_offset = update_res.cache_offset;
             casc.cache_valid_rect = Vector4u(0, 0, W, H);
         }
 

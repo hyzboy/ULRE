@@ -312,14 +312,30 @@ for c in 0..count-1:
 | 其余 | 什么都不做 |
 
 `light_camera->custom_matrices = true` + `custom_view/custom_projection = res.*` 是必需步骤
-（`CameraSystem` 的 `custom_matrices` 分支会跳过常规矩阵推导）。
+（`CameraSystem` 的 `custom_matrices` 分支会跳过常规矩阵推导）。**`custom_view` 一律取
+`res.light_view_draw`**（不是 `light_view`）：非零环形偏移时它把内容光栅化到物理贴图
+坐标系，与读侧 `fract(uv + cache_offset*inv_map_size)` 对齐；偏移为 0 时两者逐位相同。
 
-> **现状说明**：`cache_offset` / `cache_valid_rect` / `scroll_offset` 目前恒为
-> `(0,0,0,0)` 与 `(0,0,W,H)`，即**环形寻址（Toroidal clipmap）管线尚未启用**，
-> `pcf_shadow.glsl` 里的 `offset_uv`/UV 变换按 `cache_offset` 非零自适应
-> （非零才 wrap，否则 clamp——A4）。滚动目前靠"整级重建"
-> 实现而不是"条带搬移"。这是已知的后续工作，不是缺陷；改它必须同时改
-> `cache_states_` 三处写入与 shader 的 UV 变换。
+> **现状说明（S2 已启用环形寻址）**：`cache_offset` 不再恒 0——静态级联（1..N）跨格时
+> 偏移按跨格量累加（`scroll_offset` 为 `uint32` 真源，写进 `casc.cache_offset` 与读侧
+> shader 的 `fract(shadow_uv + cache_offset*inv_map_size)` 对齐）；`cache_valid_rect`
+> 仍为 `(0,0,W,H)`（整张贴图恒有效：环形滚动下旧内容原地续用）。
+>
+> **写读坐标系的唯一契约（改任何一处前必读）**：非零偏移下写侧必须用
+> `CascadeUpdateResult::light_view_draw`（= `light_view` 左乘光空间平移
+> `(offset.x*texel, -offset.y*texel, 0)` —— **y 取负**是因为 `OrthoMatrixReversedZ`
+> 用 `2/(bottom-top)`，V 轴向下），而不是 `light_view`；`EnvironmentSystem` 两条路径
+> （全量/条带 scissor）都已改用 `light_view_draw`，偏移为 0 时它与 `light_view`
+> 逐位相同（未滚动路径零变化）。三条同时成立的不变式：
+> ① **物理不动**：固定世界点在物理贴图上的位置跨格前后不变（旧内容原地继续有效）；
+> ② **写读一致**：写侧矩阵投出的 uv ≡ 读侧 `fract(uv + O*texel)`；
+> ③ **整级重建必清偏移**（否则非零偏移下"整级重画"会漏掉尾部 `|O|` 条带——光栅器
+> 没有环绕，内容落在 `[O, 1+O)` 被裁）。
+>
+> **条带可达性（改 B/M 时必算）**：`AppendWrappedStrip` 的"跨缝拆成两段"分支**只在
+> `M % B != 0` 时可达**——偏移恒为 `B` 的整数倍，故 `M % B == 0` 时 `start+width ≤ M`
+> 恒成立（默认 `{16,16,32}` 与 `M=1024` 即此情形，测试里用 `B=24` 才走到）。
+> 该分支不是死代码：用户可配 `B`/`shadow_map_size` 使 `M % B != 0`。
 >
 > **静态缓存失效链（A3，已接线）**：决策树里 `scene_revision 变` 的信号源是
 > `TransformSystem::SubmitTransformUpdates`——检出任何 Static transform 变更
@@ -330,6 +346,9 @@ for c in 0..count-1:
 > 变更，把静态级联打成每帧全量重绘；调用方必须"值变了才 set"。运行时
 > 新增/删除静态物体、替换其材质/贴图不走此链，需手动调
 > `EnvironmentSystem::InvalidateMainLightStaticShadowCache()`。
+> 另注意**深度锚点（`cache_anchor_step`）跨步也会整级重建并清零偏移**——它是滚动
+> 偏移累积的最大杀手：偏移要连续几十次跨格不被重置，才可能落到"贴图末 B 纹素内"
+> 从而走到跨缝拆分分支（测试子用例 (e) 就是为此把 `cache_anchor_step` 放到 4096）。
 
 ### 4.5 ShadowCasterMasked 数据链（alpha test 镂空阴影，2026-09-26 接线）
 
@@ -382,6 +401,8 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
 7. **后续工作**（TransformComponent 同值短路、级联重配置形态、拆分等）见
    `doc/backlog.md` **D 线**（D1/D8/D2 已完成 ✅）；完整修复因果链见
    `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`。
+
+---
 
 ---
 
@@ -621,7 +642,8 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | **Test 12** | pipeline 键内容化（SPIRV 内容 hash 登记/消费/注销 + 2 条禁复活） | `Test 12 Passed: ... (7 checks)` |
 | **Test 13** | 阴影跳过路径告警与收敛（一次性告警/上限/降频/清零 + 2 条禁刷屏） | `Test 13 Passed: ... (7 checks)` |
 | **Test 15** | **静态物件运行期写入留痕**（11 源码 + 5 行为）：八条写入路径都留痕、同值写也告警且只告警一次、未 arm（无静态变更）不告警、`Movable` 不告警（§D4） | `Test 15 Passed: ... (11+5 checks)` |
-| **Test 16** | **横向锚定步长是 texel 口径**（S1）：独立量测 `texel(B)` 与 `texel(0)` 反解 `L`，断言 `L/texel ≡ B`（整数 texel 量子）、精度损失 `= 1.416·B/(M−1.416B)`、c0 不受 B 影响、`B ≥ M/1.416` 退化时 fail-safe 回禁用、B 单调；源码 needle 2 条 + 禁复活世界米字段 | `[CSM-BAND] B={0,16,16,32} texel(bare)=[0.03819 ...] loss=[2.26% 2.26% 4.63%]` |：行结构唯一真源 X 列表 + 行大小自动推导 + 发射端遍历列表 + 写入端取 `CanReceiveShadow/GetBiasMultiplier` + 片元端 `GetShadowReceiveParams`/不接收早退/倍率乘进 bias 与法线偏移 + 3 条**禁复活** needle（`sizeof(MaterialInstanceAddresses) == 8`、发射端 `uint payload_index` 手写、`EvalPCFShadowAt(sample_pos, surface.worldPos)` 无倍率调用） | `Test 14 Passed: shadow receive-side knob contract holds (22 checks)` |
+| **Test 16** | **横向锚定步长是 texel 口径**（S1）：独立量测 `texel(B)` 与 `texel(0)` 反解 `L`，断言 `L/texel ≡ B`（整数 texel 量子）、精度损失 `= 1.416·B/(M−1.416B)`、c0 不受 B 影响、`B ≥ M/1.416` 退化时 fail-safe 回禁用、B 单调；源码 needle 2 条 + 禁复活世界米字段 | `[CSM-BAND] B={0,16,16,32} texel(bare)=[0.03819 ...] loss=[2.26% 2.26% 4.63%]` |
+| **Test 17** | **环形滚动的坐标契约**（S2，主用例 3 条纯 CPU 不变式 + 子用例 (e) 跨缝）：① 物理不动（同一世界点物理 uv 跨格不变）② 写读一致（`vp_draw` 投出的 uv ≡ `fract(uv+O·texel)`）③ 整级重建必清偏移 ④ 新暴露内容必须落在 `dirty_rects` 并集内（探针由当前框几何生成、是否"新暴露"由**上一帧矩阵**独立判定）⑤ 面积契约（纯滚动帧沿主轴各段宽度之和 == 该轴位移量，咬住 1 纹素截短/多画）⑥ 非整步回落（`cache_anchor_step=0` 档）+ 空跑守卫（跨格/覆盖检查/命中帧/反向跨格计数） | `[CSM-SCROLL] frames=400 crossings=[349,207,44] 条带覆盖检查=1602 次 命中帧=1135 反向跨格=268 次` + `[CSM-SEAM] B=24 M=1024 覆盖检查=2577 次 跨缝拆分=8 次 反向跨格=297 次` |
 
 ### 写这类断言的两个硬要求
 
@@ -669,6 +691,10 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | **远处地面**不再接收阴影 | `along_anchor_` 是否在变、`cache_anchor_step` | 沿光轴锚定失效 ⇒ 缓存旧深度被新矩阵解释 |
 | 相机抬高/俯仰后**一片地面**无阴影 | `caster_depth_margin` | `zfar` 不够，地面深度被裁 |
 | 阴影**边缘一圈没有阴影** | `worst_ndc`、半径补偿 | `0.708·L` 补偿缺失或不匹配 `round`/`floor` 选择（L 由 `cache_scroll_band_texels` 派生） |
+| 相机移动时静态阴影**整体滑动一个步长** | `cache_offset`、`light_view_draw` | 偏移累加方向错（`O += shift`，不是 `-= shift`）或写侧平移 y 符号错（应为 `-offset.y*texel`）；跑 Test 17 ①（物理不动）/②（写读一致）定位 |
+| 静态阴影**整片消失/落后一段** | `need_full_update` 与 `cache_offset` | 非零偏移下走了整级重画（偏移未清零）⇒ 光栅器无环绕、尾部 `|O|` 条带被裁；查 Test 17 ③ |
+| 贴图**边缘一条 1~2 texel 宽亮/暗线**（pcf 半径外扩后显现） | `AppendWrappedStrip` | 跨缝条带未拆成两段或被截短（`M % B != 0` 时可达）；跑 Test 17 子用例 (e) 与面积契约⑤ |
+| 相机移动时静态级联**频繁整级重建** | `along_anchor`（深度锚点） | `cache_anchor_step` 太小 ⇒ 每 `step` 米跨一次就整级重建并清零偏移（会同时抹掉滚动收益） |
 | 接触点**漏光 / peter-panning** | `bias` 符号 | 背面渲染下 bias 取了正值（§5） |
 | 陡峭表面**条纹**（acne） | `normal_offset_world`、`bias` 绝对值、`pcf_radius` | 先开法线偏移（§5.2）；仍不干净才是缺 slope-scaled bias（§5 末尾） |
 | 法线偏移调大后**接触点反而断开** | `normal_offset_world`、`bias` 符号 | 法线偏移推过头（`tan` 在近掠射角权重很大）⇒ 收小强度，或把 `|bias_world|` 往贴合方向补一点 |
@@ -700,7 +726,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | Slope-scaled / 硬件 depth bias | 引擎无 `vkCmdSetDepthBias`，动态状态列表缺 `VK_DYNAMIC_STATE_DEPTH_BIAS` |
 | ~~Normal-offset shadow mapping~~ | 已实现（§5.2：`normal_offset_world` + `HGL_SHADOW_NORMAL_OFFSET`，`tan(θ)` 加权） |
 | 首帧 warm-up | 未实现，启动前几帧会出现阴影闪现 |
-| 环形寻址（Toroidal clipmap） | `cache_offset`/`scroll_offset` 恒 0，滚动靠整级重建而非条带搬移 |
+| 环形寻址（Toroidal clipmap） | ~~未启用~~ → **S2 已启用**：偏移按跨格量累加（`scroll_offset` → `casc.cache_offset`）、写侧改用 `light_view_draw`、只重画新暴露条带（含跨缝拆分）。剩余：stats 计数未接线（示例恒显 `0 strips/100% Cached`，S5）、GPU 侧整级 vs 条带深度图对照量测（S5 + E1 读回） |
 | caster/receiver 标志位 | 只有 `Mobility` 动/静二分，没有"投射/接收"独立标志 |
 | 静态级联分辨率与更新频率解耦 | 静态级联被迫跟动态级联同分辨率同 `caster_depth_margin` |
 | 单张 shadow atlas | 目前 4 张独立 D32F RT，无 atlas 合并 |

@@ -284,7 +284,7 @@
   解释了冒烟日志里那 2 次（长跑 16 次）`invalidating static cascade` 的来源：不是回归，
   是示例自身的刻意取舍（代码处已加注释说明）。
 
-### D5. A8 scissor 增量分支：接通条带滚动（路线 A，S1 ✅）
+### D5. A8 scissor 增量分支：接通条带滚动（路线 A，S1 ✅ / S2 ✅）
 - **决策（2026-09-26 用户）**：走**路线 A**——接通 Toroidal 条带滚动，不删死分支；
   与 A6（4 级联合并）**解耦推进**（A6 之后再合并，条带滚动先独立可用）。
 - **主参数口径（用户裁定）**：横向锚定步长以 **shadowmap 侧 texel 数 `B_c`** 为主参数，
@@ -316,11 +316,38 @@
   - **破坏验证 ×3**：①补偿系数 0.708→0.5（needle 全中）⇒ `锚定格 11.373 texel ≠ B=16` exit 16；
     ②旧世界米字段复活 ⇒ 禁复活 needle 咬 exit 16；③调用点改成共享 `[1]` ⇒
     `cascade 3 锚定格 16.000 texel ≠ B=32` exit 16。
-- **后续（S2–S5，未开始）**：S2 控制器产 `cache_offset`（texel，环形累加 mod M）+ 条带矩形
-  （列+行 2 rect，各外扩 PCF 2 texel）；S3 跨格判据改 `need_full_update=false` + 条带 rect，
-  复活 `EnvironmentSystem.cpp:386-403` 局部 scissor 分支 + 上限阈值回落整级重建；S4 shader
-  `toroidal_wrap` 实测边界杂斑（不足则条带内 wrap、带外 clamp）；S5 量测（stats 加
-  `band=N texel/area=P%/offset=(x,y)`）+ 用 E1 读回工具对拍整级 vs 条带同帧深度图找接缝。
+- **S2 ✅（2026-09-26，含原计划的 S3 内容——跨格判据 + 复活 scissor 分支一并落地）**：
+  - **控制器**：`scroll_offset`（`uint32` texel，真源）按跨格量累加 `O += shift`（mod M，`WrapTexelOffset`）；
+    旧内容原地续用，只产出"新暴露条带"矩形（`AppendWrappedStrip`，跨贴图接缝时拆成两段，
+    池容量 4 = 列/行各可拆 2）。跨格判据：`shift == 0` 命中 / `|shift| == B` 纯滚动 /
+    其余（多格跳变、朝向变化导致格点不等距、该级 `B=0`）⇒ 整级重建 + **偏移清零**。
+  - **写侧**：新增 `CascadeUpdateResult::light_view_draw = TranslateMatrix(offset.x*texel, −offset.y*texel, 0)·light_view`
+    （y 取负：`OrthoMatrixReversedZ` 用 `2/(bottom-top)`、V 轴向下）；`EnvironmentSystem` 全量路径与
+    条带 scissor 路径**都**改用 `light_view_draw`。⚠ 非零偏移下"整级重画"不覆盖整张贴图
+    （光栅器无环绕，内容落在 `[O,1+O)` 被裁）⇒ 偏移必须与条带同帧落地、整级重建必须清零。
+  - **`max_band_frac=0.25` 与 `min_band_texels=8` 经实现后判定为不需要**：瞬移/传送/多格跳变
+    由"位移必须恰为 ±B"这一条判据直接兜住（比 1/4 阈值更严格），薄条带由 `B ≥ 16` 的
+    默认档 + 配置建议覆盖 ⇒ 不再引入这两个字段（零冗余）。
+  - **验收**：**Test 17**（新增，主用例 3 条不变式 + 4 项补充 + 子用例 (e)）`[CSM-SCROLL] frames=400
+    crossings=[349,207,44] 条带覆盖检查=1602 次 命中帧=1135 反向跨格=268 次 off3=(0,0)` +
+    `[CSM-SEAM] B=24 M=1024 覆盖检查=2577 次 跨缝拆分=8 次 反向跨格=297 次`；Test 5A
+    `full=[600,2,2,3] band=[0,31,15,3]`（滚动不再是整级重建）；5B-1/5B-2/5C 判据同步改为
+    "内容刷新帧（整级 或 条带）更新引用矩阵，纯命中帧矩阵不变"；`ATS_SELFCHECK=1` exit 0
+    （D1 57.6% / D3 18189px·600662px 契约数值不变）。
+  - **GPU 侧联调（临时探针，已撤）**：示例强行走 20s ⇒ `[S2-PROBE] 条带帧=121 累计矩形=124
+    非零偏移帧=121 off=(48,1008) rect0=(0,1008,1024,16)`、**0 VUID/[ERROR]**。
+  - **破坏验证 ×8（全部有牙，exit 17）**：偏移累加反号 / 写侧 y 符号反 / 条带起点错端 /
+    跨缝不拆分 / 跨缝段宽度丢一 / 整级重建不清偏移 / 命中帧多画条带 / 条带宽度多一纹素。
+  - **实现期发现（重要）**：`AppendWrappedStrip` 的跨缝拆分**只在 `M % B != 0` 时可达**
+    （正向跨格条带终点恰为偏移、反向跨格起点恰为新偏移，偏移恒为 B 的整数倍 ⇒
+    `M % B == 0` 时 `start+width ≤ M` 恒成立）；默认 `{16,16,32}`/M=1024 即不可达，
+    因此测试用 `B=24` 专门覆盖该分支。另外**深度锚点 `cache_anchor_step` 跨步会清零偏移**，
+    是偏移累积的最大杀手（跨缝需连续 40+ 次跨格不被打断）——子用例 (e) 为此把 `anchor_step`
+    放到 4096 以隔离横向滚动。
+- **后续（S4–S5，未开始）**：S4 实测 shader `toroidal_wrap` 边界（`cache_offset≠0` 已生效，
+  需确认贴图边缘 ~2 texel 无杂斑圈，必要时条带内 wrap、带外 clamp）；S5 量测——
+  示例 stats 接 `band=N texel / area=P% / offset=(x,y)`（现仍恒 `0 strips/100% Cached`）
+  + 用 **E1** 读回工具对拍整级 vs 条带同帧深度图找接缝。
 - **S1 遗留待同步**：示例 stats `C1/C2/C3 = N strips` 仍恒 0（S5 接）；`texel_world_size`
   仍只写不读（S5 用）。
 
