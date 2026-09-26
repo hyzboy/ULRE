@@ -44,6 +44,19 @@ namespace hgl::ecs
         uint64_t recipe_hash = 0;
         uint64_t program_build_context_hash = 0;
 
+        // ── ShadowCaster 程序槽（阴影 pass 专用，与上面的 forward 槽完全独立）──
+        // 同一物体每帧先在阴影 pass 采深度、再在主帧做着色，两个 pass 的程序
+        // purpose 不同。若共用一个 program 单槽，purpose 每帧 Forward↔Shadow
+        // 乒乓会让 InvalidateRecipeRuntime 反复 retire 纹理配置、
+        // MaterializeRecipeRows 的无行早退把 valid 打成 false，从而禁用
+        // P1-1 全干净帧快路径（每帧每物体两次完整物化链）。
+        // ShadowCaster 模板无 material/sky descriptors，不需要物化行与纹理
+        // 配置，只持 program 与 CreatePipeline 消费的 normalized recipe。
+        hgl::graph::ShaderProgram *shadow_program = nullptr;
+        uint64_t shadow_program_build_context_hash = 0;
+        uint32_t shadow_tracked_material_authored_generation = 0;
+        graph::mtl::MaterialRecipe shadow_cached_normalized_recipe{};
+
         // Cached normalized recipe — avoids redundant NormalizeRecipe in CreatePipeline.
         // Its validity is tracked by recipe_hash (same value that produced it).
         graph::mtl::MaterialRecipe cached_normalized_recipe{};

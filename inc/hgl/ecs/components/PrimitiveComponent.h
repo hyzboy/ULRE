@@ -108,9 +108,7 @@ namespace hgl::ecs
             hgl::graph::PrimitiveVariantPurpose::Surface;
         hgl::graph::GeometryDataBuffer *runtime_data_buffer = nullptr;
         hgl::graph::GeometryDrawRange *runtime_draw_range = nullptr;
-        hgl::graph::Geometry *runtime_geometry = nullptr;
-        hgl::graph::ShaderProgram *runtime_material = nullptr;
-        hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
+        hgl::graph::Geometry *runtime_geometry = nullptr;        hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
         bool hasMaterialRecipeOverride = false;
         hgl::graph::mtl::MaterialRecipe materialRecipeOverride;
         hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>

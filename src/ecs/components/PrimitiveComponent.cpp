@@ -129,10 +129,13 @@ namespace hgl::ecs
             return false;
         }
 
+        // SSBO 顶点方案无 VIL：GeometryDataBuffer 的内容与布局只由 geometry
+        // 决定，program 按语义索引读同一缓冲，与缓冲构建无关。哨兵只看
+        // geometry 身份——若按 program 指针比较，Forward↔Shadow 双槽交替或
+        // program 重解析都会让几何缓冲每帧销毁重建（顶点数据整段重传）。
         const bool needs_rebuild =
             (!runtime_data_buffer)
-         || (runtime_geometry != geometry)
-         || (runtime_material != material);
+         || (runtime_geometry != geometry);
 
         if (needs_rebuild)
         {
@@ -163,7 +166,6 @@ namespace hgl::ecs
             }
 
             runtime_geometry = geometry;
-            runtime_material = material;
         }
 
         if (!runtime_data_buffer->Update(geometry))
@@ -182,7 +184,6 @@ namespace hgl::ecs
         SAFE_CLEAR(runtime_data_buffer);
         SAFE_CLEAR(runtime_draw_range);
         runtime_geometry = nullptr;
-        runtime_material = nullptr;
     }
 
     const hgl::graph::GeometryDataBuffer *PrimitiveComponent::GetRuntimeGeometryDataBuffer() const

@@ -64,7 +64,13 @@ namespace hgl::ecs
             if (!asset)
                 return true;
 
-            auto *material = material_comp->program;
+            // SSBO 顶点方案无 VIL，GeometryDataBuffer 的内容只由 geometry 决定，
+            // program 参数仅作绑定哨兵。阴影 pass 先于主帧首解析时 forward
+            // program 尚为空，退回 shadow 槽保证绑定可建；哨兵始终以 forward
+            // program 为准，避免两个槽的程序指针交替触发几何缓冲销毁重建。
+            auto *material = material_comp->program
+                                 ? material_comp->program
+                                 : material_comp->shadow_program;
             if (!material)
             {
                 GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed: material program null owner=%s valid=%d program_dirty=%d runtime_dirty=%d",
@@ -91,6 +97,44 @@ namespace hgl::ecs
                 return false;
 
             return primitive_comp->BuildResolvedAuthoringMaterialRecipe(out_recipe, material_program);
+        }
+
+        // program 解析（forward 与 ShadowCaster 双槽）共用的构建上下文输入：
+        // primitive 类型与顶点格式来自 asset（无 asset 时 Triangles + 空格式）。
+        void GetPrimitiveProgramBuildInputs(
+            const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+            graph::PrimitiveType &out_primitive_type,
+            const graph::GeometryVertexFormat *&out_geometry_vertex_format)
+        {
+            out_primitive_type = graph::PrimitiveType::Triangles;
+            out_geometry_vertex_format = nullptr;
+            if (const auto *asset = primitive_comp->GetPrimitiveAsset())
+            {
+                if (auto *asset_geometry = asset->GetGeometry())
+                    out_geometry_vertex_format =
+                        &asset_geometry->GetGeometryVertexFormat();
+                out_primitive_type = asset->GetPrimitiveType();
+            }
+        }
+
+        bool ResolveGraphicsAndMaterialManager(
+            ECSContext *world,
+            graph::GraphicsContext *&out_graphics,
+            graph::ShaderProgramManager *&out_material_manager)
+        {
+            out_graphics = world->GetGraphicsContext();
+            if (!out_graphics)
+            {
+                auto *render_context = world->GetRenderContext();
+                out_graphics = render_context
+                                   ? render_context->GetGraphicsContext()
+                                   : nullptr;
+            }
+            if (!out_graphics)
+                return false;
+
+            out_material_manager = out_graphics->GetMaterialManager();
+            return out_material_manager != nullptr;
         }
 
         const graph::mtl::RecipeTextureBinding *FindRecipeTextureBinding(
@@ -386,11 +430,134 @@ namespace hgl::ecs
         // Declare dependencies
     }
 
+    // A1：阴影 pass 的专用 ShadowCaster 程序解析（独立于下方 forward 链）。
+    //
+    // 前向着色程序画深度图会把整套 PBR/PCF/天空片元开销花在不存在的颜色附
+    // 件上，且其 PCF 采样恰命中当前 pass 的 depth attachment（Vulkan
+    // attachment feedback loop）。ShadowCaster 模板无 material/sky
+    // descriptors，本路径只解析 program 与 CreatePipeline 消费的 normalized
+    // recipe；物化行、纹理配置等 forward 槽状态一概不动——否则 purpose 每帧
+    // Forward↔Shadow 乒乓会让 InvalidateRecipeRuntime 反复 retire 纹理配置，
+    // 并禁用 P1-1 全干净帧快路径。
+    bool RenderPrimitiveCollectSystem::ResolveShadowCasterProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                                                  const std::shared_ptr<MaterialComponent> &material_comp)
+    {
+        if (!world || !primitive_comp || !material_comp)
+            return false;
+
+        graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
+        const graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
+        GetPrimitiveProgramBuildInputs(primitive_comp, primitive_type,
+                                       geometry_vertex_format);
+
+        graph::GraphicsContext *graphics = nullptr;
+        graph::ShaderProgramManager *material_manager = nullptr;
+        if (!ResolveGraphicsAndMaterialManager(world, graphics, material_manager))
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] ShadowCaster resolve failed: graphics/material manager null for %s",
+                        GetPrimitiveOwnerName(primitive_comp));
+            return false;
+        }
+
+        // 与 forward 槽同一判据粒度：build context hash 覆盖 primitive_type/
+        // 顶点格式/设备 profile/purpose——SetPrimitiveAsset、变体切换都不 bump
+        // authored generation，只看 generation 会漏掉顶点格式变化；authored
+        // generation 再覆盖 recipe/纹理 authored 变化。
+        const uint64_t build_context_hash =
+            graph::mtl::HashMaterialProgramBuildContext(
+                primitive_type,
+                geometry_vertex_format,
+                graphics->GetPhysicalDeviceProfile(),
+                graph::mtl::ShaderProgramPurpose::ShadowDepth);
+
+        if (material_comp->shadow_program
+         && material_comp->shadow_program_build_context_hash == build_context_hash
+         && material_comp->shadow_tracked_material_authored_generation
+                == primitive_comp->GetMaterialAuthoredGeneration())
+            return true;
+
+        graph::mtl::MaterialRecipe effective_recipe{};
+        if (!BuildResolvedRecipe(primitive_comp, nullptr, effective_recipe))
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] ShadowCaster BuildResolvedRecipe failed for %s",
+                        GetPrimitiveOwnerName(primitive_comp));
+            return false;
+        }
+
+        // purpose 固定为 ShadowDepth：SelectCurrentSceneRenderTemplateRequest
+        // 依此分派 ShadowCasterOpaque/Masked（按 recipe 的 alpha_test）。
+        graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
+        mtl_request.recipe = effective_recipe;
+        mtl_request.primitive_type = primitive_type;
+        mtl_request.geometry_vertex_format = geometry_vertex_format;
+        mtl_request.shader_program_purpose =
+            graph::mtl::ShaderProgramPurpose::ShadowDepth;
+        graph::mtl::MaterialDefinition template_definition{};
+        if (!graph::mtl::TryGetMaterialDefinitionByID(
+                effective_recipe.mtl_def_id, template_definition)
+         && !graph::mtl::TryGetMaterialDefinitionByID(
+                graph::mtl::GetFallbackMaterialDefinitionID(),
+                template_definition))
+        {
+            GLogWarning(
+                "[RenderPrimitiveCollectSystem] ShadowCaster cannot select template for material=%s",
+                effective_recipe.mtl_def_id.c_str());
+            return false;
+        }
+        if (!graph::SelectCurrentSceneRenderTemplateRequest(
+                template_definition, mtl_request,
+                mtl_request.render_template_request))
+        {
+            GLogWarning(
+                "[RenderPrimitiveCollectSystem] ShadowCaster template selection failed for material=%s",
+                effective_recipe.mtl_def_id.c_str());
+            return false;
+        }
+
+        graph::ShaderProgram *resolved_program =
+            material_manager->AcquireShaderProgram(mtl_request);
+        if (!resolved_program)
+        {
+            GLogWarning(
+                "[RenderPrimitiveCollectSystem] ShadowCaster AcquireShaderProgram failed for %s recipe=%s mtl_def_id=%s",
+                GetPrimitiveOwnerName(primitive_comp),
+                effective_recipe.recipe_name.c_str(),
+                effective_recipe.mtl_def_id.c_str());
+            return false;
+        }
+
+        // A1-4：masked caster（ShadowCasterMasked 模板）的片元要采样 opacity
+        // mask，而纹理引用行只由 forward 物化链写、prepass 又早于任何物化
+        // ——行未就绪时 alpha 掩码失效。接线前显式告警；慢路径仅在首次/失
+        // 效后走到，天然每材质一次，不刷屏。
+        if (graph::mtl::MaterialRequiresRecipeRuntimeRows(
+                resolved_program->GetShaderResourceSchema()))
+        {
+            GLogWarning(
+                "[RenderPrimitiveCollectSystem] Masked shadow caster '%s' requires materialized texture rows; shadow-pass alpha masking is NOT wired yet (see csm-review A1-4).",
+                GetPrimitiveOwnerName(primitive_comp));
+        }
+
+        // effective_recipe 出自 BuildResolvedAuthoringMaterialRecipe（组件边界
+        // 已 NormalizeRecipe），直接作 normalized recipe 供 CreatePipeline 用。
+        material_comp->shadow_program = resolved_program;
+        material_comp->shadow_program_build_context_hash = build_context_hash;
+        material_comp->shadow_cached_normalized_recipe = effective_recipe;
+        material_comp->shadow_tracked_material_authored_generation =
+            primitive_comp->GetMaterialAuthoredGeneration();
+        return true;
+    }
+
     bool RenderPrimitiveCollectSystem::ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                                                           const std::shared_ptr<MaterialComponent> &material_comp)
     {
         if (!world || !primitive_comp || !material_comp)
             return false;
+
+        // A1：阴影 pass 一律走专用 ShadowCaster 程序槽；下方解析链只服务
+        // forward pass，不感知当前 pass。
+        if (world->IsCurrentPassShadow())
+            return ResolveShadowCasterProgram(primitive_comp, material_comp);
 
         // P3: Fast-path — if nothing has changed since last resolve, skip all work.
         if (!material_comp->program_dirty
@@ -408,35 +575,19 @@ namespace hgl::ecs
         }
 
         const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(effective_recipe);
-        auto *graphics = world->GetGraphicsContext();
-        if (!graphics)
+        graph::GraphicsContext *graphics = nullptr;
+        graph::ShaderProgramManager *material_manager = nullptr;
+        if (!ResolveGraphicsAndMaterialManager(world, graphics, material_manager))
         {
-            auto *render_context = world->GetRenderContext();
-            graphics = render_context ? render_context->GetGraphicsContext() : nullptr;
-        }
-        if (!graphics)
-        {
-            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: graphics context null for %s",
-                        GetPrimitiveOwnerName(primitive_comp));
-            return false;
-        }
-
-        auto *material_manager = graphics->GetMaterialManager();
-        if (!material_manager)
-        {
-            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: material manager null for %s",
+            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: graphics/material manager null for %s",
                         GetPrimitiveOwnerName(primitive_comp));
             return false;
         }
 
         graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
         const graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
-        if (const auto *asset = primitive_comp->GetPrimitiveAsset())
-        {
-            if (auto *asset_geometry = asset->GetGeometry())
-                geometry_vertex_format = &asset_geometry->GetGeometryVertexFormat();
-            primitive_type = asset->GetPrimitiveType();
-        }
+        GetPrimitiveProgramBuildInputs(primitive_comp, primitive_type,
+                                       geometry_vertex_format);
 
         // 渲染变体 purpose 必须先于脏检查解析——若 Forward↔Shadow 切换而
         // recipe/geometry/profile 不变，哈希不含 purpose 会复用错误的 program
@@ -610,7 +761,17 @@ namespace hgl::ecs
     bool RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                                                           const std::shared_ptr<MaterialComponent> &material_comp)
     {
-        if (!world || !primitive_comp || !material_comp || !material_comp->program)
+        if (!world || !primitive_comp || !material_comp)
+            return false;
+
+        // A1：阴影 pass 用 ShadowCaster 槽的 program/recipe。管线按 render_pass
+        // 键控缓存在 PrimitiveComponent 上，两槽各自对应不同 RenderPass，互不
+        // 驱逐。
+        const bool shadow_pass = world->IsCurrentPassShadow();
+        graph::ShaderProgram *program = shadow_pass
+                                            ? material_comp->shadow_program
+                                            : material_comp->program;
+        if (!program)
             return false;
 
         if (primitive_comp->GetOverridePipeline())
@@ -628,21 +789,25 @@ namespace hgl::ecs
         if (primitive_comp->HasResolvedRuntimePipeline(render_pass))
             return true;
 
-        graph::mtl::MaterialRecipe effective_recipe = material_comp->cached_effective_recipe;
+        // ShadowCaster 无绑定 recipe，直接用解析槽里缓存的 normalized
+        // recipe；forward 保持 effective/normalized 复用逻辑。
+        graph::mtl::MaterialRecipe effective_recipe =
+            shadow_pass
+                ? material_comp->shadow_cached_normalized_recipe
+                : material_comp->cached_effective_recipe;
 
-        // Reuse cached normalized recipe when effective recipe hasn't changed
-        // since it was last normalized in ResolveMaterialProgramForPrimitive.
-        if (material_comp->recipe_hash
-         == material_comp->cached_effective_recipe_hash)
+        if (!shadow_pass
+         && material_comp->recipe_hash
+                == material_comp->cached_effective_recipe_hash)
             effective_recipe = material_comp->cached_normalized_recipe;
 
-        graph::Pipeline *resolved_pipeline = render_pass->CreatePipeline(material_comp->program,
+        graph::Pipeline *resolved_pipeline = render_pass->CreatePipeline(program,
                                                                          effective_recipe);
         if (!resolved_pipeline)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipeline failed: CreatePipeline failed for %s material=%s",
                         GetPrimitiveOwnerName(primitive_comp),
-                        material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
+                        program->GetName().c_str());
             return false;
         }
 
@@ -1319,8 +1484,48 @@ namespace hgl::ecs
                     GLogWarning(
                         "[RenderPrimitiveCollectSystem] ResolveMaterialProgramForPrimitive failed for %s",
                         GetPrimitiveOwnerName(primitiveComp));
-                    InvalidateRecipeRuntime(material_comp, true);
-                    material_comp->MarkFailed();
+                    if (world->IsCurrentPassShadow())
+                    {
+                        // A1-2：阴影解析失败只清阴影槽。InvalidateRecipeRuntime
+                        // 的 retire 纹理配置/清物化行/置 program_dirty 全是
+                        // forward 槽语义，由阴影失败触发会把 forward 链整链
+                        // 拖垮（持续失败时每帧 retire+重建）。清槽后下个阴影
+                        // 帧快路径自然失配并重试。
+                        material_comp->shadow_program = nullptr;
+                    }
+                    else
+                    {
+                        InvalidateRecipeRuntime(material_comp, true);
+                        material_comp->MarkFailed();
+                    }
+                }
+                else if (world->IsCurrentPassShadow())
+                {
+                    // A1：阴影 pass 精简链。ShadowCaster 程序不消费材质行/纹理
+                    // 配置，无需 PrepareActivePlanResources/Materialize；且那两
+                    // 条链是 forward 槽语义，在阴影 pass 中执行会以 forward
+                    // program（可能尚未解析）做资源准备并污染其缓存状态。
+                    //
+                    // A1-1：不写共享 valid——它是"forward 完整物化链成功"的
+                    // 标志，pre-scan 以它做重试触发与 epoch 闸门：阴影失败置
+                    // false 会拖全场景每帧重物化；阴影成功置 true 会抹掉
+                    // forward 失败的重试触发。失败只清阴影槽自重试。
+                    if (!EnsureRuntimeGeometryFromAsset(
+                            world, primitiveComp, material_comp))
+                    {
+                        GLogWarning(
+                            "[RenderPrimitiveCollectSystem] Shadow pass geometry failed for %s",
+                            GetPrimitiveOwnerName(primitiveComp));
+                        material_comp->shadow_program = nullptr;
+                    }
+                    else if (!ResolveRuntimePipelineForPrimitive(
+                                 primitiveComp, material_comp))
+                    {
+                        GLogWarning(
+                            "[RenderPrimitiveCollectSystem] Shadow pass pipeline failed for %s",
+                            GetPrimitiveOwnerName(primitiveComp));
+                        material_comp->shadow_program = nullptr;
+                    }
                 }
                 else if (!any_material_work
                          && material_comp->last_materialize_epoch == materialize_epoch)
