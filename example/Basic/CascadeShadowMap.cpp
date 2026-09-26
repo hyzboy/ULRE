@@ -232,6 +232,19 @@ private:
         float autowalk = 0.0f;   // 主相机自动前进速度（m/s，沿 +x）；0 = 关
         int    state    = 0;      // 0=等滚动帧 1=已读回A 2=等整级重建帧 3=自查B vs B2
         uint32_t rounds = 0;      // 已完成的轮数
+        uint32_t frame_no = 0;                    // 每帧 ++（年龄基准）
+        uint32_t full_seen[4] = {};               // 上次观察到的该级整级重建累计计数
+        uint32_t last_full_frame[4] = {};         // 该级最近一次整级重建发生的帧号
+        uint32_t strip_at_full[4] = {};           // 上次整级重建时的条带累计计数
+        uint32_t upd_at_full[4] = {};             // 上次整级重建时的 Update 累计计数
+        bool     pending = false;                 // 已看到条带帧（已停走），等静置结束
+        uint32_t walk_target = 1;                 // 本轮要先走过去几次跨格再取 A（逐轮 +1，覆盖环形回绕）
+        uint32_t walk_done = 0;                   // 本轮已跨格次数
+        uint32_t strip_seen = 0;                  // c1 条带累计计数快照（探测跨格事件）
+        uint32_t settle = 0;                      // 停走后的静置帧计数（读回前先稳定）
+        uint32_t age_frames[4]  = {};             // A 帧：距上次整级重建的帧数
+        uint32_t age_strips[4]  = {};             // A 帧：自上次重建以来的条带次数
+        uint32_t age_updates[4] = {};             // A 帧：自上次重建以来的 Update 次数
         uint32_t rolling_mask = 0;                    // A 帧处于条带滚动的级联位掩码
         uint32_t offset[4][2] = {};                   // A 帧各级环形偏移（texel）
         std::vector<float> roll[4];                   // A：滚动帧深度（物理贴图）
@@ -357,6 +370,22 @@ private:
         if (!ctrl)
             return;
 
+        // 年龄基准：每当某级的"整级重建"累计计数增加，就记录该帧与当时的条带/Update 计数。
+        // 用来自证"对拍差异是否随缓存年龄增长"——若差异随年龄增长 ⇒ 缓存在渐进腐化；
+        // 若固定量级 ⇒ 每次跨格只注入同等小误差。
+        ++cache_diff.frame_no;
+        for (uint32_t c = 1; c < kMaxShadowCascades; ++c)
+        {
+            const uint32_t fc = ctrl->GetFullUpdateCallCount(c);
+            if (fc != cache_diff.full_seen[c])
+            {
+                cache_diff.full_seen[c]       = fc;
+                cache_diff.last_full_frame[c] = cache_diff.frame_no;
+                cache_diff.strip_at_full[c]   = ctrl->GetStripUpdateCallCount(c);
+                cache_diff.upd_at_full[c]     = ctrl->GetUpdateCallCount();
+            }
+        }
+
         if (cache_diff.state == 0)   // 等"至少一级处于条带滚动"
         {
             uint32_t mask = 0;
@@ -366,12 +395,44 @@ private:
                 if (s.strip_count > 0 && (s.offset.x != 0 || s.offset.y != 0))
                     mask |= (1u << c);
             }
-            if (!mask)
+            if (!cache_diff.pending)
+            {
+                // 逐轮把"先走过去的跨格次数"递增（1,2,3,…），让 A 帧的环形偏移逐轮
+                // 变成 16,32,48,… 直到越过贴图尺寸发生**回绕**——否则每轮都被强制整级
+                // 重建清零，永远只测到 offset=16 这一种位置。
+                cache_diff.walk_target = cache_diff.rounds + 1 < 70 ? cache_diff.rounds + 1 : 70;
+                const uint32_t sc = ctrl->GetStripUpdateCallCount(1);
+                if (cache_diff.walk_done == 0 && cache_diff.strip_seen == 0)
+                    cache_diff.strip_seen = sc;                  // 本轮起点
+                cache_diff.walk_done = sc - cache_diff.strip_seen;   // 本轮已跨格次数
+                if (cache_diff.walk_done < cache_diff.walk_target)
+                    return;                                       // 继续前进（mask 可能为 0，无妨）
+
+                if (!mask)
+                    return;                                       // 刚跨格但本帧没有可取的条带状态，下帧再来
+
+                // 关键：行走中直接读回会"内容跨帧错配"——读回的深度图是"停走前那一帧"
+                // 渲染的，而 offset 状态可能已经又跨了一格 ⇒ 对拍退化成整图错位（假差异）。
+                // 所以达到目标跨格数后立刻停走（pending=true），静置 5 帧（相机与光照盒
+                // 都不动）再读回。
+                cache_diff.rolling_mask = mask;
+                cache_diff.pending = true;
+                cache_diff.settle = 0;
                 return;
+            }
+
+            if (cache_diff.settle < 5)
+            {
+                ++cache_diff.settle;
+                return;
+            }
+            cache_diff.pending = false;
+            cache_diff.settle = 0;
+            const uint32_t roll_mask = cache_diff.rolling_mask;
 
             for (uint32_t c = 1; c < kMaxShadowCascades; ++c)
             {
-                if ((mask & (1u << c)) == 0)
+                if ((roll_mask & (1u << c)) == 0)
                     continue;
                 auto *rt = environment_system->GetCascadeRenderTarget(c);
                 if (!rt || !ReadbackCascadeDepth(rt, cache_diff.roll[c]))
@@ -380,14 +441,21 @@ private:
                 const auto &s = ctrl->GetUpdateStats(c);
                 cache_diff.offset[c][0] = s.offset.x;
                 cache_diff.offset[c][1] = s.offset.y;
+                cache_diff.age_frames[c]  = cache_diff.frame_no - cache_diff.last_full_frame[c];
+                cache_diff.age_strips[c]  = ctrl->GetStripUpdateCallCount(c) - cache_diff.strip_at_full[c];
+                cache_diff.age_updates[c] = ctrl->GetUpdateCallCount() - cache_diff.upd_at_full[c];
             }
 
             cache_diff.rolling_mask = mask;
             cache_diff.state = 1;
-            GLogInfo(u8"[CSM-CACHE-DIFF] A 帧已读回：滚动级联掩码=0x%X offset c1=(%u,%u) c2=(%u,%u) c3=(%u,%u)",
-                     mask, cache_diff.offset[1][0], cache_diff.offset[1][1],
+            GLogInfo(u8"[CSM-CACHE-DIFF] A 帧已读回：滚动级联掩码=0x%X offset c1=(%u,%u) c2=(%u,%u) c3=(%u,%u) "
+                     u8"年龄 c1=%u帧/%u条带/%uUpd c2=%u帧/%u条带/%uUpd c3=%u帧/%u条带/%uUpd",
+                     roll_mask, cache_diff.offset[1][0], cache_diff.offset[1][1],
                      cache_diff.offset[2][0], cache_diff.offset[2][1],
-                     cache_diff.offset[3][0], cache_diff.offset[3][1]);
+                     cache_diff.offset[3][0], cache_diff.offset[3][1],
+                     cache_diff.age_frames[1], cache_diff.age_strips[1], cache_diff.age_updates[1],
+                     cache_diff.age_frames[2], cache_diff.age_strips[2], cache_diff.age_updates[2],
+                     cache_diff.age_frames[3], cache_diff.age_strips[3], cache_diff.age_updates[3]);
             return;
         }
 
@@ -622,15 +690,17 @@ private:
                     }
 
                     const uint32_t window = (wx1 - wx0 + 1) * (wy1 - wy0 + 1);
-                    GLogInfo(u8"[CSM-CACHE-DIFF] c=%u 位移扫描（窗口 %u 纹素，x/y 各 ±24）：d=0 不一致=%u(%.1f%%) / 最优位移=(%d,%d) 残余=%u(%.1f%%)",
-                             c, window, cnt0, 100.0f * static_cast<float>(cnt0) / static_cast<float>(window),
+                    GLogInfo(u8"[CSM-CACHE-DIFF] c=%u 年龄=%u帧/%u条带 位移扫描（窗口 %u 纹素，x/y 各 ±24）：d=0 不一致=%u(%.1f%%) / 最优位移=(%d,%d) 残余=%u(%.1f%%)",
+                             c, cache_diff.age_frames[c], cache_diff.age_strips[c],
+                             window, cnt0, 100.0f * static_cast<float>(cnt0) / static_cast<float>(window),
                              best_dx, best_dy, best_cnt,
                              100.0f * static_cast<float>(best_cnt) / static_cast<float>(window));
                 }
                 else
                 {
-                    GLogInfo(u8"[CSM-CACHE-DIFF] c=%u offset=(%u,%u) 纹素=%u 不一致=%u(全部落在剪影边，平坦区 0) max|Δ|=%.6e ⇒ 条带路径与整级重建几何一致",
-                             c, ox, oy, M * M, mismatch, max_abs);
+                    GLogInfo(u8"[CSM-CACHE-DIFF] c=%u 年龄=%u帧/%u条带/%uUpd offset=(%u,%u) 纹素=%u 不一致=%u(全部落在剪影边，平坦区 0) max|Δ|=%.6e ⇒ 条带路径与整级重建几何一致",
+                             c, cache_diff.age_frames[c], cache_diff.age_strips[c], cache_diff.age_updates[c],
+                             ox, oy, M * M, mismatch, max_abs);
                 }
 
                 cache_diff.roll[c].clear();
@@ -639,6 +709,8 @@ private:
             }
 
             ++cache_diff.rounds;
+            cache_diff.walk_done = 0;
+            cache_diff.strip_seen = 0;
             if (total_flat > 0)
             {
                 GLogError(u8"[CSM-CACHE-DIFF] 第 %u 轮汇总：不一致纹素总数=%u（平坦区 %u）⇒ 条带路径有问题（查 scissor 坐标/写侧平移/偏移方向）",
@@ -1587,7 +1659,7 @@ public:
 
         // ── 诊断/冒烟辅助：相机自动前进 + "整级 vs 条带"对拍 ──
         // 对拍进行中（state != 0）冻结相机：A/B 两帧的静态内容与布局矩阵必须一致。
-        if (cache_diff.autowalk > 0.0f && main_camera && cache_diff.state == 0)
+        if (cache_diff.autowalk > 0.0f && main_camera && cache_diff.state == 0 && !cache_diff.pending)
             main_camera->position.x += cache_diff.autowalk * static_cast<float>(delta);
 
         RunCacheDiff();
