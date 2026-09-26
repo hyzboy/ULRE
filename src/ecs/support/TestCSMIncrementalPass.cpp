@@ -2814,6 +2814,320 @@ int main(int argc, char** argv)
                  u8"and cache_offset-driven).");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // 19: 更新形态计数器不变式（把 S5/S6 的诊断口径钉成回归判据）
+    //   ① 每帧每级必落一支：fullC + stripC + hitC == Update 调用数
+    //   ② 静置不动零更新：连续 60 帧纯命中，stripC 与 fullC 都不增长
+    //   ③ 失效必致重建：InvalidateStaticCache() 后的首次 Update，每个静态级必须
+    //      整级重建且 cache_offset 清零（非零偏移下整级重画会漏掉尾部 |O| 条带）
+    // 反例敏感性：删掉任一支的计数器自增、或让失效不清偏移，本用例立即失败。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const Vector3f light_dir = glm::normalize(Vector3f(0.5f, 0.8f, -1.0f));
+        const float aspect = 16.0f / 9.0f;
+
+        auto make_camera = []()
+        {
+            Camera c;
+            c.znear = 0.1f; c.zfar = 500.0f; c.fovY = 60.0f;
+            c.pos = Vector3f(0.0f, 0.0f, 1.7f);
+            c.world_up = Vector3f(0.0f, 1.0f, 0.0f);   // 默认 (0,0,1) 与 +x 视线共线会 NaN
+            c.viewDirection = Vector3f(1.0f, 0.0f, 0.0f);
+            return c;
+        };
+
+        CascadedShadowConfig cfg;
+        cfg.cascade_count = 4;
+        cfg.c0_dynamic_overlay = true;
+        cfg.shadow_map_size = 1024.0f;
+        cfg.max_distance = 300.0f;
+        cfg.split_distances[0] = 50.0f;
+        cfg.split_distances[1] = 50.0f;
+        cfg.split_distances[2] = 160.0f;
+        cfg.split_distances[3] = 300.0f;
+        cfg.normal_offset_world = 0.10f;
+        cfg.pcf_radius = 1.5f;
+
+        CascadedShadowController ctrl(cfg);
+        ShadowInfo info;
+        CascadeUpdateResult upd[kMaxShadowCascades];
+        Camera cam = make_camera();
+        const Vector3f dir = glm::normalize(Vector3f(0.8f, 0.6f, 0.0f));
+
+        const auto sum_forms = [&ctrl](uint32_t c)
+        {
+            return ctrl.GetFullUpdateCallCount(c) + ctrl.GetStripUpdateCallCount(c)
+                 + ctrl.GetHitUpdateCallCount(c);
+        };
+
+        // ── 相位 1：推进 200 帧（命中/条带/整级重建混合）──
+        cam.viewDirection = dir;
+        uint32_t updates = 0;
+        for (uint32_t f = 0; f < 200; ++f)
+        {
+            cam.pos = Vector3f(0.0f, 0.0f, 1.7f) + dir * (0.05f * static_cast<float>(f));
+            ctrl.Update(cam, aspect, light_dir, info, upd);
+            ++updates;
+        }
+        for (uint32_t c = 1; c < 4; ++c)
+        {
+            if (sum_forms(c) != updates)
+            {
+                GLogError(u8"Test 19 Failed: cascade %u 形态计数和 %u ≠ Update 调用数 %u"
+                          u8"（fullC+stripC+hitC 必须每帧每级恰落一支：某分支漏计数）",
+                          c, sum_forms(c), updates);
+                return 19;
+            }
+        }
+        uint32_t strip_total = 0, full_total = 0;
+        for (uint32_t c = 1; c < 4; ++c)
+        {
+            strip_total += ctrl.GetStripUpdateCallCount(c);
+            full_total  += ctrl.GetFullUpdateCallCount(c);
+        }
+        if (strip_total == 0)
+        {
+            GLogError(u8"Test 19 Failed: 200 帧推进里一次条带滚动都没有（用例空转 ⇒ 判据无意义）");
+            return 19;
+        }
+
+        // ── 相位 2：静置 60 帧 ⇒ 只有命中 ──
+        uint32_t s0[kMaxShadowCascades] = {};
+        uint32_t f0[kMaxShadowCascades] = {};
+        uint32_t h0[kMaxShadowCascades] = {};
+        for (uint32_t c = 1; c < 4; ++c)
+        {
+            s0[c] = ctrl.GetStripUpdateCallCount(c);
+            f0[c] = ctrl.GetFullUpdateCallCount(c);
+            h0[c] = ctrl.GetHitUpdateCallCount(c);
+        }
+        for (uint32_t f = 0; f < 60; ++f)
+        {
+            ctrl.Update(cam, aspect, light_dir, info, upd);
+            ++updates;
+        }
+        for (uint32_t c = 1; c < 4; ++c)
+        {
+            if (ctrl.GetStripUpdateCallCount(c) != s0[c] || ctrl.GetFullUpdateCallCount(c) != f0[c])
+            {
+                GLogError(u8"Test 19 Failed: cascade %u 静置 60 帧仍发生绘制（条带 %u→%u / 整级 %u→%u）"
+                          u8"——相机不动时必须零更新",
+                          c, s0[c], ctrl.GetStripUpdateCallCount(c),
+                          f0[c], ctrl.GetFullUpdateCallCount(c));
+                return 19;
+            }
+            if (ctrl.GetHitUpdateCallCount(c) - h0[c] != 60)
+            {
+                GLogError(u8"Test 19 Failed: cascade %u 静置期命中 %u ≠ 60",
+                          c, ctrl.GetHitUpdateCallCount(c) - h0[c]);
+                return 19;
+            }
+            if (sum_forms(c) != updates)
+            {
+                GLogError(u8"Test 19 Failed: cascade %u 静置期形态计数和 %u ≠ %u",
+                          c, sum_forms(c), updates);
+                return 19;
+            }
+        }
+
+        // ── 相位 3：失效 ⇒ 恰好一次整级重建 + 偏移清零 ──
+        const uint32_t inv0 = ctrl.GetInvalidateCallCount();
+        ctrl.InvalidateStaticCache();
+        if (ctrl.GetInvalidateCallCount() != inv0 + 1)
+        {
+            GLogError(u8"Test 19 Failed: InvalidateStaticCache() 未计入失效计数器（%u → %u）",
+                      inv0, ctrl.GetInvalidateCallCount());
+            return 19;
+        }
+        uint32_t f1[kMaxShadowCascades] = {};
+        for (uint32_t c = 1; c < 4; ++c)
+            f1[c] = ctrl.GetFullUpdateCallCount(c);
+
+        ctrl.Update(cam, aspect, light_dir, info, upd);
+        ++updates;
+        for (uint32_t c = 1; c < 4; ++c)
+        {
+            if (ctrl.GetFullUpdateCallCount(c) != f1[c] + 1 || !upd[c].need_full_update)
+            {
+                GLogError(u8"Test 19 Failed: cascade %u 失效后首次 Update 未整级重建"
+                          u8"（fullC %u→%u，need_full_update=%d）——静态缓存失效链断裂",
+                          c, f1[c], ctrl.GetFullUpdateCallCount(c),
+                          upd[c].need_full_update ? 1 : 0);
+                return 19;
+            }
+            if (upd[c].cache_offset.x != 0 || upd[c].cache_offset.y != 0)
+            {
+                GLogError(u8"Test 19 Failed: cascade %u 失效重建后 cache_offset=(%u,%u) 非零"
+                          u8"（非零偏移下整级重画会漏掉尾部 |O| 条带）",
+                          c, upd[c].cache_offset.x, upd[c].cache_offset.y);
+                return 19;
+            }
+            if (sum_forms(c) != updates)
+            {
+                GLogError(u8"Test 19 Failed: cascade %u 失效帧后形态计数和 %u ≠ %u",
+                          c, sum_forms(c), updates);
+                return 19;
+            }
+        }
+
+        GLogInfo(u8"Test 19 Passed: cache update-form counters & invalidation chain hold "
+                 u8"(每级 fullC+stripC+hitC == Update 数；静置 60 帧纯命中；失效必致一次整级重建"
+                 u8"且偏移清零) -- frames=%u strips=%u fulls=%u invs=%u.",
+                 updates, strip_total, full_total, ctrl.GetInvalidateCallCount());
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 20: 缓存有效期内的矩阵恒定性 + 写侧平移的位级残差（S6 根因量化）
+    //
+    // 滚动缓存成立的前提是"缓存有效期内 P/V 严格不变"（注释见 CalculateCascadeBounds
+    // 第 226-236 行）。而 `radius` 由**拟合视锥角点**算出、再乘 1.02 + 横向锚定补偿，
+    // 全部连续量 ⇒ `texel_size = 2r/M`、`light_proj`、`light_eye` 距离、乃至横向锚定
+    // 步长 L 都随相机连续变化。本用例直接量测"同一个无整级重建的帧段内矩阵是否逐位
+    // 相同"，并把漂移换算成贴图边缘处的**等效纹素位移**（= (M/2)·相对漂移）。
+    //
+    // 同时量测写侧平移的位级残差：`P·(T·V)·x` 与 `(P·V)·x + 理想平移量` 的差。
+    // GPU 侧对拍（S6）实测：条带帧与整级帧收到的 caster 集合完全相同（items/idsum
+    // 一致）而深度图有 ~3e2 纹素不同、集中在剪影、max|Δ| = 剪影深度落差 ⇒ 差异只能
+    // 出自"同一世界内容被两套稍有不同的矩阵光栅化"。
+    //
+    // 判据：① 平移残差 ≪ 1 纹素；② 帧段内矩阵漂移换算到贴图边缘 ≤ 1 纹素
+    //        （超过即说明"格内矩阵恒定"的前提已破，S6 的差异会随行走距离放大）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const Vector3f light_dir = glm::normalize(Vector3f(0.5f, 0.8f, -1.0f));
+        const float aspect = 16.0f / 9.0f;
+
+        auto make_camera = []()
+        {
+            Camera c;
+            c.znear = 0.1f; c.zfar = 500.0f; c.fovY = 60.0f;
+            c.pos = Vector3f(0.0f, 0.0f, 1.7f);
+            c.world_up = Vector3f(0.0f, 1.0f, 0.0f);
+            c.viewDirection = Vector3f(1.0f, 0.0f, 0.0f);
+            return c;
+        };
+
+        CascadedShadowConfig cfg;
+        cfg.cascade_count = 4;
+        cfg.c0_dynamic_overlay = true;
+        cfg.shadow_map_size = 1024.0f;
+        cfg.max_distance = 300.0f;
+        cfg.split_distances[0] = 50.0f;
+        cfg.split_distances[1] = 50.0f;
+        cfg.split_distances[2] = 160.0f;
+        cfg.split_distances[3] = 300.0f;
+        cfg.normal_offset_world = 0.10f;
+        cfg.pcf_radius = 1.5f;
+
+        CascadedShadowController ctrl(cfg);
+        ShadowInfo info;
+        CascadeUpdateResult upd[kMaxShadowCascades];
+        Camera cam = make_camera();
+        const Vector3f dir = glm::normalize(Vector3f(0.8f, 0.6f, 0.0f));
+        cam.viewDirection = dir;
+
+        // ── 量测 A：帧段内矩阵稳定性（纯平移行走）──
+        const float kMap = 1024.0f;
+        double worst_rel_drift = 0.0;          // 相对 texel 漂移
+        uint32_t segments = 0, drift_frames = 0, drift_frames_rot = 0;
+        Matrix4f seg_vp(0.0f);
+        float seg_texel = 0.0f;
+        bool seg_open = false;
+
+        for (uint32_t f = 0; f < 300; ++f)
+        {
+            cam.pos = Vector3f(0.0f, 0.0f, 1.7f) + dir * (0.05f * static_cast<float>(f));
+            ctrl.Update(cam, aspect, light_dir, info, upd);
+
+            const uint32_t c = 1;
+            const Matrix4f vp = upd[c].light_proj * upd[c].light_view;
+            const float texel = upd[c].texel_world_size;
+
+            if (upd[c].need_full_update || !seg_open)
+            {
+                seg_vp = vp; seg_texel = texel; seg_open = true;
+                ++segments;
+                continue;
+            }
+
+            // 逐位比较矩阵；不同则量化漂移
+            bool same = true;
+            for (int r = 0; r < 4 && same; ++r)
+                for (int col = 0; col < 4; ++col)
+                    if (seg_vp[r][col] != vp[r][col]) { same = false; break; }
+
+            if (!same)
+            {
+                ++drift_frames;
+                const double rel = std::max(std::abs(static_cast<double>(texel) - seg_texel) / seg_texel,
+                                            std::abs(static_cast<double>(vp[0][0]) - seg_vp[0][0]) /
+                                                std::max(1.0e-20, std::abs(static_cast<double>(seg_vp[0][0]))));
+                worst_rel_drift = std::max(worst_rel_drift, rel);
+            }
+        }
+        // 旋转相位的对照：r 会随朝向变化（角点相对中心距离改变）
+        for (uint32_t f = 0; f < 120; ++f)
+        {
+            cam.viewDirection = glm::normalize(Vector3f(std::cos(0.02f * static_cast<float>(f)),
+                                                        std::sin(0.02f * static_cast<float>(f)), 0.0f));
+            ctrl.Update(cam, aspect, light_dir, info, upd);
+            if (!upd[1].need_full_update && seg_open && upd[1].texel_world_size != seg_texel)
+                ++drift_frames_rot;
+        }
+
+        const double edge_shift_texel = worst_rel_drift * static_cast<double>(kMap) * 0.5;
+
+        // ── 量测 B：写侧平移的位级残差 ──
+        const uint32_t band = cfg.cache_scroll_band_texels[1];
+        const float texel = upd[1].texel_world_size;
+        const float radius = upd[1].sphere_radius;
+        const Matrix4f V = upd[1].light_view;
+        const Matrix4f P = upd[1].light_proj;
+
+        Matrix4f T(1.0f);                          // 与写侧同构：T(O.x·texel, 0, 0)·V
+        T[3][0] = static_cast<float>(band) * texel;
+        const Matrix4f Vd = T * V;
+
+        const double ideal_ndc = static_cast<double>(band) * 2.0 / static_cast<double>(kMap);
+        double max_residual = 0.0;
+        uint32_t nonzero = 0, samples = 0;
+        for (int i = -2; i <= 2; ++i)
+            for (int j = -2; j <= 2; ++j)
+                for (int k = -2; k <= 2; ++k)
+                {
+                    const Vector3f p = cam.pos + Vector3f(static_cast<float>(i), static_cast<float>(j),
+                                                          static_cast<float>(k)) * (radius * 0.5f);
+                    const Vector4f a = (P * V)  * Vector4f(p, 1.0f);
+                    const Vector4f b = (P * Vd) * Vector4f(p, 1.0f);
+                    const double dx = std::abs(static_cast<double>(a.x) - static_cast<double>(b.x)) - ideal_ndc;
+                    const double dy = std::abs(static_cast<double>(a.y) - static_cast<double>(b.y));
+                    const double r = std::max(std::abs(dx), dy);
+                    if (r > 0.0) ++nonzero;
+                    max_residual = std::max(max_residual, r);
+                    ++samples;
+                }
+        const double residual_texel = max_residual / (2.0 / static_cast<double>(kMap));
+
+        if (residual_texel > 1.0)
+        {
+            GLogError(u8"Test 20 Failed: 写侧平移的位级残差 %.4f 纹素 超过 1 纹素", residual_texel);
+            return 20;
+        }
+        if (edge_shift_texel > 1.0)
+        {
+            GLogError(u8"Test 20 Failed: 帧段内矩阵漂移换算到贴图边缘 %.4f 纹素 > 1"
+                      u8"（'格内矩阵恒定'前提破裂 ⇒ 缓存内容会被新矩阵解读，S6 差异会随行走放大）",
+                      edge_shift_texel);
+            return 20;
+        }
+
+        GLogInfo(u8"Test 20 Passed: 缓存期矩阵稳定性与写侧平移残差受 1 纹素约束 "
+                 u8"(纯平移段: segments=%u 段内矩阵不同帧=%u worst_rel=%.3e ⇒ 边缘 %.4f 纹素 | "
+                 u8"旋转相位 texel 变化帧=%u | 平移残差 samples=%u nonzero=%u = %.4f 纹素, B=%u)",
+                 segments, drift_frames, worst_rel_drift, edge_shift_texel,
+                 drift_frames_rot, samples, nonzero, residual_texel, band);
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }
