@@ -972,6 +972,6 @@ public:
 int os_main(int argc, os_char **argv)
 {
     return RunFramework<CascadeShadowMapApp>(
-        OS_TEXT("Cascaded Shadow Map (CSM Rolling Toroidal Cache & Mobility Stream)"),
+        OS_TEXT("Cascaded Shadow Map (CSM Rolling Cache & Mobility Stream)"),
         argc, argv, 1600, 900);
 }

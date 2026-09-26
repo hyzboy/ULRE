@@ -69,6 +69,12 @@ bool RenderSystemCore::BeginFrame() {
         world->SetRenderSubmissionSerial(render_submission_serial);
     }
 
+    // T10 隐含不变量：本 index 驱动 L2W 等 per-frame ring 的槽位选择。
+    // 离屏 RenderTo（如 shadow prepass）发生主帧 acquire 之前，render_target
+    // 切到离屏 RT 后此处返回 0 → prepass 的 ring 写全部落在槽 0。当前正确性
+    // 依赖 RenderTo 开头的全槽排空（WaitFence all slots，见 Context.cpp 的
+    // BeginManagedRenderFrame(false) 路径）——若为性能改为只等当前槽，离屏
+    // 写会踩坏在途帧的 ring 槽 0，表现为偶发的顶点/矩阵错乱。
     swapchain_image_index = render_target->GetCurrentFrameIndex();
 
     frame_begun = true;
