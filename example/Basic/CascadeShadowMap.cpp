@@ -45,6 +45,10 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <vector>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -181,9 +185,59 @@ private:
     double elapsed_time = 0.0;
     double stats_timer = 0.0;
     uint32_t last_c0_draws = 1;
-    uint32_t last_c1_strips = 0;
-    uint32_t last_c2_strips = 0;
-    uint32_t last_c3_strips = 0;
+
+    // ── CSM 滚动缓存窗口统计（每帧采样 controller 的 CascadeUpdateStats，1s 汇总）──
+    // 判读：strips>0 ⇒ 环形滚动条带；fulls>0 ⇒ 整级重建；两者皆 0 ⇒ 纯命中（零绘制）。
+    struct CacheWindow
+    {
+        uint32_t strips       = 0;  // 窗口内条带矩形数累计
+        uint32_t strip_texels = 0;  // 窗口内条带面积累计（texel）
+        uint32_t frames       = 0;  // 窗口内采样帧数
+        uint32_t map_texels   = 0;  // 该级贴图纹素数（供窗口平均重画占比）
+        uint32_t last_off_x   = 0;  // 最近一帧环形偏移（texel）
+        uint32_t last_off_y   = 0;
+        uint32_t band_texels  = 0;  // 该级配置的锚定步长 B（texel）
+        // 单调计数差分（免疫"同帧多次 Update 覆盖 GetUpdateStats"盲点）：本窗口真实次数
+        uint32_t call_full    = 0;
+        uint32_t call_strip   = 0;
+        uint32_t call_hit     = 0;
+    };
+    CacheWindow cache_win[kMaxShadowCascades];
+
+    // 单调计数器差分基准（Update()/InvalidateStaticCache() 累计调用次数）
+    uint32_t cache_prev_calls = 0;
+    uint32_t cache_prev_invs  = 0;
+    uint32_t cache_prev_full[kMaxShadowCascades]  = {};
+    uint32_t cache_prev_strip[kMaxShadowCascades] = {};
+    uint32_t cache_prev_hit[kMaxShadowCascades]   = {};
+    uint32_t win_calls = 0;   // 本窗口 Update 调用累计（> frames ⇒ 每帧被多次调用）
+    uint32_t win_invs  = 0;   // 本窗口 InvalidateStaticCache 调用累计
+
+    // ── S5：整级 vs 条带 深度图对拍（`CSM_CACHE_DIFF=1`，配 `CSM_AUTOWALK=<m/s>`）──
+    // 条带/滚动是 GPU 侧增量：CPU 契约（Test 17/18）看不到光栅化结果与 scissor 坐标系。
+    // 本诊断在同一相机、同一静态内容下取两张物理深度图：
+    //   A) 环形滚动帧（offset≠0：内容 = 旧内容 + 新暴露条带）
+    //   B) 强制整级重建帧（InvalidateMainLightStaticShadowCache，offset=0）
+    // 按读侧映射比对：A 的物理 ((x+Ox) mod M, (y+Oy) mod M) 必须等于 B 的 (x, y)
+    // （静态内容与布局矩阵都没变）。差异若**成片**出现 = 条带漏画/错位（scissor
+    // 坐标、写侧平移、偏移累加之一错）；若**只落在剪影边** = 平移过的投影矩阵在
+    // 光栅化时非位精确（顶点投影被扰动 ⇒ 边函数取整不同），属预期。
+    // 判据：B 的 3x3 邻域深度跨度 > kCacheDiffEdgeEps 即算"剪影边"。
+    static constexpr float kCacheDiffEdgeEps = 1.0e-3f;
+
+    struct CacheDiff
+    {
+        bool  enabled  = false;
+        bool  freeze   = true;    // 对拍期间冻结相机与可移动物体动画（内容不变是比对前提）
+        float autowalk = 0.0f;   // 主相机自动前进速度（m/s，沿 +x）；0 = 关
+        int    state    = 0;      // 0=等滚动帧 1=已读回A 2=等整级重建帧 3=自查B vs B2
+        uint32_t rounds = 0;      // 已完成的轮数
+        uint32_t rolling_mask = 0;                    // A 帧处于条带滚动的级联位掩码
+        uint32_t offset[4][2] = {};                   // A 帧各级环形偏移（texel）
+        std::vector<float> roll[4];                   // A：滚动帧深度（物理贴图）
+        std::vector<float> full[4];                   // B：整级重建帧深度
+    };
+    CacheDiff cache_diff;
 
     // ── 阴影深度 bias（背面渲染的贴合补偿，运行时可调）──
     CascadedShadowConfig csm_config{};
@@ -197,6 +251,567 @@ private:
     bool r_key_prev = false;      // R：手动失效静态级联缓存（A3 API 演示）
 
 private:
+
+    /// 读回某级联深度图（物理贴图，float 行主序 y*M+x）。诊断用：immediate submit。
+    bool ReadbackCascadeDepth(graph::IRenderTarget *rt, std::vector<float> &out)
+    {
+        auto *gc = GetGraphicsContext();
+        auto *device = gc ? gc->GetDevice() : nullptr;
+        if (!device || !rt)
+            return false;
+
+        auto *tex = rt->GetDepthTexture();
+        if (!tex)
+            return false;
+
+        const uint32_t w = tex->GetWidth();
+        const uint32_t h = tex->GetHeight();
+        const VkDeviceSize bytes = VkDeviceSize(w) * h * sizeof(float);
+        out.assign(static_cast<size_t>(w) * h, 0.0f);
+
+        device->WaitIdle();   // 诊断：先在途帧收尾再动这张图（一次性开销，可接受）
+
+        auto *staging = device->CreateBuffer(
+            ObjectNameBuilder(AnsiString("CascadeShadowMap:CacheDiff")),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT, bytes, bytes, nullptr,
+            BufferAllocPolicy::Readback, SharingMode::Exclusive);
+        if (!staging)
+            return false;
+
+        VkCommandBuffer cmd = device->CreateCommandBuffer(
+            AnsiString("CascadeShadowMap:CacheDiffCmd"));
+        if (!cmd)
+        {
+            delete staging;
+            return false;
+        }
+
+        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(cmd, &bi);
+
+        const VkImageLayout cur_layout = tex->GetImageLayout() != VK_IMAGE_LAYOUT_UNDEFINED
+                                             ? tex->GetImageLayout()
+                                             : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+
+        VkImageMemoryBarrier to_src{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+        to_src.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        to_src.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        to_src.oldLayout = cur_layout;
+        to_src.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        to_src.image = tex->GetImage();
+        to_src.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &to_src);
+
+        VkBufferImageCopy region{};
+        region.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+        region.imageExtent = {w, h, 1};
+        vkCmdCopyImageToBuffer(cmd, tex->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               staging->GetBuffer(), 1, &region);
+
+        VkImageMemoryBarrier to_attach = to_src;
+        to_attach.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        to_attach.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        to_attach.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        to_attach.newLayout = cur_layout;
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                             0, 0, nullptr, 0, nullptr, 1, &to_attach);
+
+        vkEndCommandBuffer(cmd);
+
+        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        VkFence fence;
+        vkCreateFence(device->GetDevice(), &fi, nullptr, &fence);
+
+        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        si.commandBufferCount = 1;
+        si.pCommandBuffers = &cmd;
+        vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence);
+        vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+        vkDestroyFence(device->GetDevice(), fence, nullptr);
+
+        bool ok = false;
+        if (const float *src = static_cast<const float *>(staging->GetGPUBuffer()->Map(0, bytes)))
+        {
+            std::memcpy(out.data(), src, static_cast<size_t>(bytes));
+            staging->GetGPUBuffer()->Unmap();
+            ok = true;
+        }
+
+        delete staging;
+        return ok;
+    }
+
+    /// S5 对拍状态机（Tick 每帧调用；`CSM_CACHE_DIFF=1` 才活）。
+    /// 完成后自动回到 state 0 ⇒ 一轮跑多级/多次（每次抓到"恰好滚动的那几级"）。
+    void RunCacheDiff()
+    {
+        if (!cache_diff.enabled || !environment_system)
+            return;
+
+        auto *ctrl = environment_system->GetShadowController();
+        if (!ctrl)
+            return;
+
+        if (cache_diff.state == 0)   // 等"至少一级处于条带滚动"
+        {
+            uint32_t mask = 0;
+            for (uint32_t c = 1; c < kMaxShadowCascades; ++c)
+            {
+                const auto &s = ctrl->GetUpdateStats(c);
+                if (s.strip_count > 0 && (s.offset.x != 0 || s.offset.y != 0))
+                    mask |= (1u << c);
+            }
+            if (!mask)
+                return;
+
+            for (uint32_t c = 1; c < kMaxShadowCascades; ++c)
+            {
+                if ((mask & (1u << c)) == 0)
+                    continue;
+                auto *rt = environment_system->GetCascadeRenderTarget(c);
+                if (!rt || !ReadbackCascadeDepth(rt, cache_diff.roll[c]))
+                    return;                       // 读回失败：留在 state 0，下帧重试
+
+                const auto &s = ctrl->GetUpdateStats(c);
+                cache_diff.offset[c][0] = s.offset.x;
+                cache_diff.offset[c][1] = s.offset.y;
+            }
+
+            cache_diff.rolling_mask = mask;
+            cache_diff.state = 1;
+            GLogInfo(u8"[CSM-CACHE-DIFF] A 帧已读回：滚动级联掩码=0x%X offset c1=(%u,%u) c2=(%u,%u) c3=(%u,%u)",
+                     mask, cache_diff.offset[1][0], cache_diff.offset[1][1],
+                     cache_diff.offset[2][0], cache_diff.offset[2][1],
+                     cache_diff.offset[3][0], cache_diff.offset[3][1]);
+            return;
+        }
+
+        if (cache_diff.state == 1)
+        {
+            // 相机保持不动（本轮不再自动前进），强制下一帧整级重建、offset 归零
+            environment_system->InvalidateMainLightStaticShadowCache();
+            cache_diff.state = 2;
+            return;
+        }
+
+        if (cache_diff.state == 2)   // 等整级重建帧落地（full_update 且 offset==0）
+        {
+            uint32_t need = 0, ready = 0;
+            for (uint32_t c = 1; c < kMaxShadowCascades; ++c)
+            {
+                if ((cache_diff.rolling_mask & (1u << c)) == 0)
+                    continue;
+                ++need;
+                const auto &s = ctrl->GetUpdateStats(c);
+                if (s.full_update && s.offset.x == 0 && s.offset.y == 0)
+                    ++ready;
+            }
+            if (ready < need)
+                return;
+
+            const uint32_t M = kShadowMapSize;
+            uint32_t total_mismatch = 0;
+            uint32_t total_flat = 0;
+
+            for (uint32_t c = 1; c < kMaxShadowCascades; ++c)
+            {
+                if ((cache_diff.rolling_mask & (1u << c)) == 0)
+                    continue;
+
+                auto *rt = environment_system->GetCascadeRenderTarget(c);
+                if (!rt || !ReadbackCascadeDepth(rt, cache_diff.full[c]))
+                    return;
+
+                const auto &A = cache_diff.roll[c];
+                const auto &B = cache_diff.full[c];
+                if (A.size() != B.size() || B.size() != static_cast<size_t>(M) * M)
+                {
+                    GLogError(u8"[CSM-CACHE-DIFF] c=%u 读回尺寸不符（A=%zu B=%zu，期望 %u）",
+                              c, A.size(), B.size(), M * M);
+                    cache_diff.state = 0;
+                    return;
+                }
+
+                const uint32_t ox = cache_diff.offset[c][0] % M;
+                const uint32_t oy = cache_diff.offset[c][1] % M;
+
+                uint32_t mismatch = 0;
+                uint32_t edge_mismatch = 0;   // 差异落在深度跳变处（剪影边）
+                uint32_t flat_mismatch = 0;   // 差异落在平坦区（= 内容真缺失/错位）
+                uint32_t a_missing = 0;       // A 空、B 有几何 ⇒ 条带该画没画
+                uint32_t a_extra = 0;         // A 有几何、B 空 ⇒ A 多了内容（旧内容残留？）
+                uint32_t both_geom = 0;       // 两边都有几何但深度不同
+                float max_abs = 0.0f;
+                uint32_t bx0 = M, by0 = M, bx1 = 0, by1 = 0;
+
+                // 差异的 32x32 格分布：成片 / 成线 / 散布一眼可辨（每格 M/32 纹素）
+                constexpr uint32_t kGridN = 32;
+                const uint32_t cell = (M + kGridN - 1) / kGridN;
+                uint32_t cells[kGridN][kGridN] = {};
+
+                for (uint32_t y = 0; y < M; ++y)
+                {
+                    const uint32_t ay = (y + oy) % M;
+                    for (uint32_t x = 0; x < M; ++x)
+                    {
+                        const uint32_t ax = (x + ox) % M;
+                        const float a = A[static_cast<size_t>(ay) * M + ax];
+                        const float b = B[static_cast<size_t>(y) * M + x];
+                        const float d = (std::fabs)(a - b);
+                        if (d > 1.0e-6f)
+                        {
+                            ++mismatch;
+                            if (d > max_abs)
+                                max_abs = d;
+                            if (x < bx0) bx0 = x;
+                            if (x > bx1) bx1 = x;
+                            if (y < by0) by0 = y;
+                            if (y > by1) by1 = y;
+
+                            // 分类：取 B 的 3x3 邻域深度跨度。跨度大 = 该处是深度跳变
+                            // （剪影边），平移过的投影矩阵在光栅化时本就不保证位精确
+                            // （顶点投影被扰动 ⇒ 边函数取整不同）；跨度小仍在差异才是
+                            // "整片内容写错"的特征（条带漏画/错位/scissor 错）。
+                            float bmin = b, bmax = b;
+                            for (int dy = -1; dy <= 1; ++dy)
+                            {
+                                const uint32_t yy = static_cast<uint32_t>((static_cast<int>(y) + dy + M) % M);
+                                for (int dx = -1; dx <= 1; ++dx)
+                                {
+                                    const uint32_t xx = static_cast<uint32_t>((static_cast<int>(x) + dx + M) % M);
+                                    const float v = B[static_cast<size_t>(yy) * M + xx];
+                                    if (v < bmin) bmin = v;
+                                    if (v > bmax) bmax = v;
+                                }
+                            }
+
+                            if (bmax - bmin > kCacheDiffEdgeEps)
+                            {
+                                ++edge_mismatch;
+                            }
+                            else
+                            {
+                                ++flat_mismatch;
+                            }
+
+                            // 三分类：反 Z 下 0 = 空（清屏/远平面）
+                            const bool a_empty = a <= 1.0e-6f;
+                            const bool b_empty = b <= 1.0e-6f;
+                            if (a_empty && !b_empty)
+                            {
+                                ++a_missing;
+                            }
+                            else if (!a_empty && b_empty)
+                            {
+                                ++a_extra;
+                            }
+                            else
+                            {
+                                ++both_geom;
+                            }
+
+                            ++cells[y / cell < kGridN ? y / cell : kGridN - 1]
+                                   [x / cell < kGridN ? x / cell : kGridN - 1];
+                        }
+                    }
+                }
+
+                total_mismatch += mismatch;
+                total_flat += flat_mismatch;
+
+                if (flat_mismatch > 0)
+                {
+                    // 注意：GLog* 展开为 {...} 块 ⇒ 这里必须显式花括号（否则 else 报 C2181）
+                    GLogError(u8"[CSM-CACHE-DIFF] c=%u offset=(%u,%u) 纹素=%u 不一致=%u(剪影边 %u / 平坦区 %u) 形状分类[A缺 %u / A多 %u / 双方有几何 %u] max|Δ|=%.6e bbox=(%u,%u)-(%u,%u) ⇒ 平坦区有差异，内容真的错位/缺失",
+                              c, ox, oy, M * M, mismatch, edge_mismatch, flat_mismatch,
+                              a_missing, a_extra, both_geom, max_abs, bx0, by0, bx1, by1);
+
+                    // 差异分布图（32x32 格）：`.`=0，`1..9`=个位，`a..z`=10..35，`#`=>35
+                    for (uint32_t gy = 0; gy < kGridN; ++gy)
+                    {
+                        char line[kGridN + 1];
+                        for (uint32_t gx = 0; gx < kGridN; ++gx)
+                        {
+                            const uint32_t v = cells[gy][gx];
+                            line[gx] = (v == 0) ? '.'
+                                                : (v < 10 ? static_cast<char>('0' + v)
+                                                          : (v <= 35 ? static_cast<char>('a' + v - 10) : '#'));
+                        }
+                        line[kGridN] = '\0';
+                        GLogInfo(u8"[CSM-CACHE-DIFF] c=%u 分布[%02u] %s", c, gy, line);
+                    }
+
+                    // 落图看形态：A 按偏移映射回布局坐标系，B 原样，D = |A-B|×5
+                    std::vector<float> mapped(A.size(), 0.0f);
+                    std::vector<float> diff(A.size(), 0.0f);
+                    for (uint32_t y = 0; y < M; ++y)
+                    {
+                        for (uint32_t x = 0; x < M; ++x)
+                        {
+                            const float a = A[static_cast<size_t>((y + oy) % M) * M + ((x + ox) % M)];
+                            const float b = B[static_cast<size_t>(y) * M + x];
+                            mapped[static_cast<size_t>(y) * M + x] = a;
+                            const float dv = (std::fabs)(a - b) * 5.0f;
+                            diff[static_cast<size_t>(y) * M + x] = dv > 1.0f ? 1.0f : dv;
+                        }
+                    }
+
+                    char fn[256];
+                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_A.bmp", c);
+                    SaveDepthBmp(fn, mapped, M);
+                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_B.bmp", c);
+                    SaveDepthBmp(fn, B, M);
+                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_D.bmp", c);
+                    SaveDepthBmp(fn, diff, M);
+                    GLogWarning(u8"[CSM-CACHE-DIFF] c=%u 已落图 csm_cachediff_c%u_{A,B,D}.bmp（A=按偏移映射 / B=整级重建 / D=差异x5）",
+                                c, c);
+
+                    // 位移扫描：差异能否用一个整体整数位移解释？（沿 x/y 各扫 ±24：
+                    // 条带宽 B=16，若"清晰区与内容错开一个条带"则应命中 ±B）
+                    const uint32_t wx0 = bx0 > 4 ? bx0 - 4 : 0;
+                    const uint32_t wy0 = by0 > 4 ? by0 - 4 : 0;
+                    const uint32_t wx1 = (std::min)(bx1 + 4, M - 1);
+                    const uint32_t wy1 = (std::min)(by1 + 4, M - 1);
+
+                    auto count_at = [&](int dx, int dy) -> uint32_t {
+                        uint32_t cnt = 0;
+                        for (uint32_t y = wy0; y <= wy1; ++y)
+                        {
+                            for (uint32_t x = wx0; x <= wx1; ++x)
+                            {
+                                const uint32_t ax = static_cast<uint32_t>(
+                                    (static_cast<int>(x) + static_cast<int>(ox) + dx + 8 * static_cast<int>(M)) % static_cast<int>(M));
+                                const uint32_t ay = static_cast<uint32_t>(
+                                    (static_cast<int>(y) + static_cast<int>(oy) + dy + 8 * static_cast<int>(M)) % static_cast<int>(M));
+                                if ((std::fabs)(A[static_cast<size_t>(ay) * M + ax] - B[static_cast<size_t>(y) * M + x]) > 1.0e-6f)
+                                    ++cnt;
+                            }
+                        }
+                        return cnt;
+                    };
+
+                    const uint32_t cnt0 = count_at(0, 0);
+                    uint32_t best_cnt = cnt0;
+                    int best_dx = 0, best_dy = 0;
+
+                    for (int d = -24; d <= 24; ++d)
+                    {
+                        if (d == 0)
+                            continue;
+
+                        const uint32_t cx = count_at(d, 0);
+                        if (cx < best_cnt)
+                        {
+                            best_cnt = cx;
+                            best_dx = d;
+                            best_dy = 0;
+                        }
+
+                        const uint32_t cy = count_at(0, d);
+                        if (cy < best_cnt)
+                        {
+                            best_cnt = cy;
+                            best_dx = 0;
+                            best_dy = d;
+                        }
+                    }
+
+                    const uint32_t window = (wx1 - wx0 + 1) * (wy1 - wy0 + 1);
+                    GLogInfo(u8"[CSM-CACHE-DIFF] c=%u 位移扫描（窗口 %u 纹素，x/y 各 ±24）：d=0 不一致=%u(%.1f%%) / 最优位移=(%d,%d) 残余=%u(%.1f%%)",
+                             c, window, cnt0, 100.0f * static_cast<float>(cnt0) / static_cast<float>(window),
+                             best_dx, best_dy, best_cnt,
+                             100.0f * static_cast<float>(best_cnt) / static_cast<float>(window));
+                }
+                else
+                {
+                    GLogInfo(u8"[CSM-CACHE-DIFF] c=%u offset=(%u,%u) 纹素=%u 不一致=%u(全部落在剪影边，平坦区 0) max|Δ|=%.6e ⇒ 条带路径与整级重建几何一致",
+                             c, ox, oy, M * M, mismatch, max_abs);
+                }
+
+                cache_diff.roll[c].clear();
+                cache_diff.roll[c].shrink_to_fit();
+                // full[c] 留给 state 3 自查用，暂不清
+            }
+
+            ++cache_diff.rounds;
+            if (total_flat > 0)
+            {
+                GLogError(u8"[CSM-CACHE-DIFF] 第 %u 轮汇总：不一致纹素总数=%u（平坦区 %u）⇒ 条带路径有问题（查 scissor 坐标/写侧平移/偏移方向）",
+                          cache_diff.rounds, total_mismatch, total_flat);
+            }
+            else
+            {
+                GLogInfo(u8"[CSM-CACHE-DIFF] 第 %u 轮汇总：不一致纹素总数=%u（平坦区 0）⇒ 差异只在剪影边（平移矩阵下光栅化非位精确，预期行为；条带路径无内容缺失/错位）",
+                         cache_diff.rounds, total_mismatch);
+            }
+            // 自查：紧接着再强一次整级重建取 B2，比 B vs B2。
+            // 同一相机、同一内容时两次整级重建必须逐纹素相同；若这里也有差异
+            // ⇒ 帧间内容在变（如可移动物体动画），上面 A vs B 的数字就不作数。
+            cache_diff.state = 3;
+            environment_system->InvalidateMainLightStaticShadowCache();
+            return;
+        }
+
+        if (cache_diff.state == 3)
+        {
+            uint32_t need = 0, ready = 0;
+            for (uint32_t c = 1; c < kMaxShadowCascades; ++c)
+            {
+                if ((cache_diff.rolling_mask & (1u << c)) == 0)
+                    continue;
+                ++need;
+                const auto &s = ctrl->GetUpdateStats(c);
+                if (s.full_update && s.offset.x == 0 && s.offset.y == 0)
+                    ++ready;
+            }
+            if (ready < need)
+                return;
+
+            const uint32_t M = kShadowMapSize;
+            uint32_t self_mismatch = 0, self_edge = 0, self_flat = 0;
+
+            for (uint32_t c = 1; c < kMaxShadowCascades; ++c)
+            {
+                if ((cache_diff.rolling_mask & (1u << c)) == 0)
+                    continue;
+
+                auto *rt = environment_system->GetCascadeRenderTarget(c);
+                std::vector<float> b2;
+                if (!rt || !ReadbackCascadeDepth(rt, b2))
+                    return;
+
+                uint32_t mism = 0, edge = 0, flat = 0;
+                float mx = 0.0f;
+                CountDepthDiff(cache_diff.full[c], b2, M, 0, 0, mism, edge, flat, mx);
+                self_mismatch += mism;
+                self_edge += edge;
+                self_flat += flat;
+                GLogInfo(u8"[CSM-CACHE-DIFF] 自查 c=%u（连续两次整级重建、偏移 0）：不一致=%u(剪影边 %u / 平坦区 %u) max|Δ|=%.6e",
+                         c, mism, edge, flat, mx);
+
+                cache_diff.full[c].clear();
+                cache_diff.full[c].shrink_to_fit();
+            }
+
+            if (self_flat > 0)
+            {
+                GLogError(u8"[CSM-CACHE-DIFF] 自查汇总：不一致=%u（平坦区 %u）⇒ 帧间内容在变（动画/矩阵漂移），A vs B 的数字不能当条带路径的判据",
+                          self_mismatch, self_flat);
+            }
+            else
+            {
+                GLogInfo(u8"[CSM-CACHE-DIFF] 自查汇总：不一致=%u（平坦区 0）⇒ 整级重建可复现，A vs B 的差异只可能来自条带路径",
+                         self_mismatch);
+            }
+            cache_diff.state = 0;   // 继续抓下一轮（可能是别的级联）
+        }
+    }
+
+    /// 统计"按偏移映射后的 A"与"B"的不一致数（B 侧 3x3 邻域判剪影边）。自查用。
+    void CountDepthDiff(const std::vector<float> &A, const std::vector<float> &B, uint32_t M,
+                        uint32_t ox, uint32_t oy, uint32_t &mismatch, uint32_t &edge,
+                        uint32_t &flat, float &max_abs)
+    {
+        mismatch = edge = flat = 0;
+        max_abs = 0.0f;
+
+        if (A.size() != B.size() || B.size() != static_cast<size_t>(M) * M)
+            return;
+
+        for (uint32_t y = 0; y < M; ++y)
+        {
+            for (uint32_t x = 0; x < M; ++x)
+            {
+                const float a = A[static_cast<size_t>((y + oy) % M) * M + ((x + ox) % M)];
+                const float b = B[static_cast<size_t>(y) * M + x];
+                const float d = (std::fabs)(a - b);
+                if (d <= 1.0e-6f)
+                    continue;
+
+                ++mismatch;
+                if (d > max_abs)
+                    max_abs = d;
+
+                float bmin = b, bmax = b;
+                for (int dy = -1; dy <= 1; ++dy)
+                {
+                    const uint32_t yy = static_cast<uint32_t>((static_cast<int>(y) + dy + M) % M);
+                    for (int dx = -1; dx <= 1; ++dx)
+                    {
+                        const uint32_t xx = static_cast<uint32_t>((static_cast<int>(x) + dx + M) % M);
+                        const float v = B[static_cast<size_t>(yy) * M + xx];
+                        if (v < bmin)
+                            bmin = v;
+                        if (v > bmax)
+                            bmax = v;
+                    }
+                }
+
+                if (bmax - bmin > kCacheDiffEdgeEps)
+                    ++edge;
+                else
+                    ++flat;
+            }
+        }
+    }
+
+    /// 诊断：float 深度写 24bit 灰度 BMP（反 Z ⇒ 近处亮）。仅对拍失败时用。
+    bool SaveDepthBmp(const char *path, const std::vector<float> &d, uint32_t M)
+    {
+        if (d.size() != static_cast<size_t>(M) * M)
+            return false;
+
+        const uint32_t row_bytes = ((M * 3 + 3) / 4) * 4;   // BMP 每行 4 字节对齐
+        const uint32_t pix_bytes = row_bytes * M;
+        const uint32_t file_bytes = 54 + pix_bytes;
+
+        std::vector<uint8_t> buf(file_bytes, 0);
+        buf[0] = 'B';
+        buf[1] = 'M';
+
+        auto put32 = [&buf](uint32_t off, uint32_t v) {
+            buf[off] = static_cast<uint8_t>(v & 0xFF);
+            buf[off + 1] = static_cast<uint8_t>((v >> 8) & 0xFF);
+            buf[off + 2] = static_cast<uint8_t>((v >> 16) & 0xFF);
+            buf[off + 3] = static_cast<uint8_t>((v >> 24) & 0xFF);
+        };
+        put32(2, file_bytes);
+        put32(10, 54);   // 像素数据偏移
+        put32(14, 40);   // BITMAPINFOHEADER
+        put32(18, M);
+        put32(22, M);
+        buf[26] = 1;     // planes
+        buf[28] = 24;    // bpp
+
+        for (uint32_t y = 0; y < M; ++y)
+        {
+            uint8_t *row = buf.data() + 54 + static_cast<size_t>(M - 1 - y) * row_bytes;   // BMP 自底向上
+            for (uint32_t x = 0; x < M; ++x)
+            {
+                float v = d[static_cast<size_t>(y) * M + x];
+                if (!(v >= 0.0f))   // 兼容 NaN
+                    v = 0.0f;
+                if (v > 1.0f)
+                    v = 1.0f;
+                const uint8_t g = static_cast<uint8_t>(v * 255.0f + 0.5f);
+                row[x * 3 + 0] = g;
+                row[x * 3 + 1] = g;
+                row[x * 3 + 2] = g;
+            }
+        }
+
+        FILE *fp = fopen(path, "wb");
+        if (!fp)
+            return false;
+        const size_t wrote = fwrite(buf.data(), 1, buf.size(), fp);
+        fclose(fp);
+        return wrote == buf.size();
+    }
 
     bool InitTextures()
     {
@@ -465,6 +1080,19 @@ private:
 
         GLogInfo(u8"[CSM] shadow bias_world=%.2fm normal_offset=%.2fm (back-face shadow map; press [ / ] and - / = to tune)",
                  cfg.bias_world, cfg.normal_offset_world);
+
+        // S5 诊断开关（语义见 CacheDiff 注释）：CSM_CACHE_DIFF=1 + CSM_AUTOWALK=<m/s>
+        if (const char *env = std::getenv("CSM_CACHE_DIFF"))
+            cache_diff.enabled = (env[0] == '1' || env[0] == 't' || env[0] == 'T' ||
+                                  env[0] == 'y' || env[0] == 'Y');
+        if (const char *env = std::getenv("CSM_AUTOWALK"))
+            cache_diff.autowalk = static_cast<float>(std::atof(env));
+        // 默认冻结（内容不变是比对前提）；CSM_CACHE_DIFF_FREEZE=0 可关（用来自证"帧间内容在变"）
+        if (const char *env = std::getenv("CSM_CACHE_DIFF_FREEZE"))
+            cache_diff.freeze = !(env[0] == '0' || env[0] == 'n' || env[0] == 'N' || env[0] == 'f' || env[0] == 'F');
+        if (cache_diff.enabled)
+            GLogInfo(u8"[CSM-CACHE-DIFF] 对拍诊断已启用（autowalk=%.1f m/s）：等条带滚动帧取 A → 强制整级重建取 B → 逐纹素比对",
+                     cache_diff.autowalk);
 
         return environment_system->EnableMainLightShadow(cfg, kShadowMapSize);
     }
@@ -907,20 +1535,111 @@ public:
         elapsed_time += delta;
         stats_timer += delta;
 
-        UpdateMovableAnimation(static_cast<float>(elapsed_time));
+        // 对拍期间冻结可移动物体动画：必须**从第 0 帧**就冻结（否则缓存里已存在
+        // 动画中的旧内容，A 永远无法与 B 一致）；CSM_CACHE_DIFF_FREEZE=0 可关。
+        if (!(cache_diff.enabled && cache_diff.freeze))
+            UpdateMovableAnimation(static_cast<float>(elapsed_time));
 
         TuneShadowBias();
         TuneShadowNormalOffset();
         TuneCascadeMask();
 
+        // 采样各级联"最近一帧"的更新形态（条带数/条带面积/环形偏移/是否整级重建）
+        if (environment_system)
+        {
+            if (auto *ctrl = environment_system->GetShadowController())
+            {
+                // 单调计数器差分：Update 调用次数（> 帧数 ⇒ 同帧被多次调用，stats 会被覆盖）、
+                // 失效调用次数、各级真实的整级重建/条带/命中累计次数
+                const uint32_t calls = ctrl->GetUpdateCallCount();
+                const uint32_t invs  = ctrl->GetInvalidateCallCount();
+                win_calls += calls - cache_prev_calls;
+                win_invs  += invs - cache_prev_invs;
+                cache_prev_calls = calls;
+                cache_prev_invs  = invs;
+
+                for (uint32_t c = 1; c < kMaxShadowCascades; ++c)
+                {
+                    const auto &s = ctrl->GetUpdateStats(c);
+                    CacheWindow &w = cache_win[c];
+
+                    ++w.frames;
+                    w.strips += s.strip_count;
+                    w.strip_texels += s.strip_texels;
+
+                    const uint32_t f  = ctrl->GetFullUpdateCallCount(c);
+                    const uint32_t st = ctrl->GetStripUpdateCallCount(c);
+                    const uint32_t h  = ctrl->GetHitUpdateCallCount(c);
+                    w.call_full  += f  - cache_prev_full[c];
+                    w.call_strip += st - cache_prev_strip[c];
+                    w.call_hit   += h  - cache_prev_hit[c];
+                    cache_prev_full[c]  = f;
+                    cache_prev_strip[c] = st;
+                    cache_prev_hit[c]   = h;
+
+                    w.map_texels   = s.map_texels;
+                    w.last_off_x   = s.offset.x;
+                    w.last_off_y   = s.offset.y;
+                    w.band_texels  = csm_config.cache_scroll_band_texels[c];
+                }
+            }
+        }
+
+        // ── 诊断/冒烟辅助：相机自动前进 + "整级 vs 条带"对拍 ──
+        // 对拍进行中（state != 0）冻结相机：A/B 两帧的静态内容与布局矩阵必须一致。
+        if (cache_diff.autowalk > 0.0f && main_camera && cache_diff.state == 0)
+            main_camera->position.x += cache_diff.autowalk * static_cast<float>(delta);
+
+        RunCacheDiff();
+
         if (stats_timer >= 1.0)
         {
-            const bool stationary_c13 = (last_c1_strips == 0 && last_c2_strips == 0 && last_c3_strips == 0);
-            GLogInfo(u8"[CSM Rolling Cache Stats] Cam=(%.1f, %.1f, %.1f) | C1=%u strips | C2=%u strips | C3=%u strips | Mid/Far Status: %s",
-                     main_camera->position.x, main_camera->position.y, main_camera->position.z,
-                     last_c1_strips, last_c2_strips, last_c3_strips,
-                     stationary_c13 ? u8"100% Cached (ZERO DrawCalls!)" : u8"Incremental Rolling Updating");
+            const uint32_t win_strips = cache_win[1].strips + cache_win[2].strips + cache_win[3].strips;
+            const uint32_t win_fulls  = cache_win[1].call_full + cache_win[2].call_full + cache_win[3].call_full;
 
+            // 只有"条带与整级重建都为 0"才是纯命中窗口：整级重建同样是有绘制的帧，
+            // 旧版仅按 strips==0 判定 ⇒ 会把整级重建的窗口误报成 100% Cached。
+            // （u8"..." 是 const char8_t*，变量类型必须跟字面量一致）
+            const char8_t *status = (win_strips == 0 && win_fulls == 0)
+                                        ? u8"100% Cached (ZERO DrawCalls!)"
+                                        : (win_fulls == 0 ? u8"Rolling strips only"
+                                                          : u8"Full redraw + rolling strips");
+
+            // 窗口平均：每帧重画纹素占贴图的比例（滚动方案真正的收益指标）
+            auto avg_area_pct = [](const CacheWindow &w) -> float {
+                const uint64_t denom = static_cast<uint64_t>(w.frames) * w.map_texels;
+                return denom > 0 ? 100.0f * static_cast<float>(w.strip_texels) / static_cast<float>(denom) : 0.0f;
+            };
+
+            GLogInfo(u8"[CSM Rolling Cache Stats] Cam=(%.1f, %.1f, %.1f) | "
+                     u8"C1: %u strips(band=%ut avg=%.2f%% off=(%u,%u) full=%u) | "
+                     u8"C2: %u strips(band=%ut avg=%.2f%% off=(%u,%u) full=%u) | "
+                     u8"C3: %u strips(band=%ut avg=%.2f%% off=(%u,%u) full=%u) | "
+                     u8"Mid/Far Status: %s",
+                     main_camera->position.x, main_camera->position.y, main_camera->position.z,
+                     cache_win[1].strips, cache_win[1].band_texels, avg_area_pct(cache_win[1]),
+                     cache_win[1].last_off_x, cache_win[1].last_off_y, cache_win[1].call_full,
+                     cache_win[2].strips, cache_win[2].band_texels, avg_area_pct(cache_win[2]),
+                     cache_win[2].last_off_x, cache_win[2].last_off_y, cache_win[2].call_full,
+                     cache_win[3].strips, cache_win[3].band_texels, avg_area_pct(cache_win[3]),
+                     cache_win[3].last_off_x, cache_win[3].last_off_y, cache_win[3].call_full,
+                     status);
+
+            // 计数器差分（关键诊断）：`Upd > frames` ⇒ 同帧被多次 Update（stats 会被覆盖）；
+            // `Inv > 0` 而 `fullC == 0` ⇒ 失效调用没作用到这一份控制器状态（另有实例/未生效）。
+            GLogInfo(u8"[CSM Cache Counters] Upd=%u Inv=%u frames=%u | "
+                     u8"C1: fullC=%u stripC=%u hitC=%u | "
+                     u8"C2: fullC=%u stripC=%u hitC=%u | "
+                     u8"C3: fullC=%u stripC=%u hitC=%u",
+                     win_calls, win_invs, cache_win[1].frames,
+                     cache_win[1].call_full, cache_win[1].call_strip, cache_win[1].call_hit,
+                     cache_win[2].call_full, cache_win[2].call_strip, cache_win[2].call_hit,
+                     cache_win[3].call_full, cache_win[3].call_strip, cache_win[3].call_hit);
+
+            for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
+                cache_win[c] = CacheWindow{};
+            win_calls = 0;
+            win_invs  = 0;
             stats_timer = 0.0;
         }
     }
