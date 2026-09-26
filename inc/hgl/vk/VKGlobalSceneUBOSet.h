@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <vulkan/vulkan.h>
+#include <hgl/vk/VKConfig.h>
 
 #include <hgl/common/DescriptorSetTypeDef.h>
 #include <hgl/type/String.h>
@@ -35,8 +36,10 @@ namespace hgl::graph
         bool use_descriptor_buffer_ = false;
 
         // ── 传统 DescriptorPool 资源（回退路径） ──
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
         VkDescriptorPool pool_ = VK_NULL_HANDLE;
         VkDescriptorSet  set_  = VK_NULL_HANDLE;
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
         VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
         PFN_vkCmdPushDescriptorSet push_fn_ = nullptr;
@@ -53,7 +56,9 @@ namespace hgl::graph
 
     private:
         bool InitDescriptorBuffer();
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
         bool InitDescriptorPool();
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
     public:
         GlobalSceneUBOSet() = default;
@@ -70,16 +75,24 @@ namespace hgl::graph
 
         bool IsValid() const
         {
-            if (use_descriptor_buffer_)
-                return layout_ != VK_NULL_HANDLE && push_fn_ != nullptr;
-            else
-                return layout_ != VK_NULL_HANDLE && set_ != VK_NULL_HANDLE;
+            if (layout_ == VK_NULL_HANDLE)
+                return false;
+
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+            if (!use_descriptor_buffer_)
+                return set_ != VK_NULL_HANDLE;
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
+
+            return push_fn_ != nullptr;
         }
 
         bool IsDescriptorBufferMode() const { return use_descriptor_buffer_; }
 
         VkDescriptorSetLayout GetLayout() const { return layout_; }
+
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
         VkDescriptorSet       GetSet()    const { return set_; }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
         bool NeedsPushDescriptorBuffer() const { return use_descriptor_buffer_ && needs_push_buffer_; }
         VkBuffer GetPushDescriptorBuffer() const { return push_desc_buffer_; }

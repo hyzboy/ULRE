@@ -112,7 +112,9 @@ public:
 
                 bool                SupportDrawIndirectCount()const {return attr && attr->cmd_draw_mesh_tasks_indirect_count != nullptr;}
                 bool                IsDescriptorBufferActive()const {return attr && attr->use_descriptor_buffer;}
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
                 VkDescriptorPool    GetDescriptorPool   ()const {return attr ? attr->desc_pool : VK_NULL_HANDLE;}
+#endif
 
                 void                WaitIdle            ()const;
 

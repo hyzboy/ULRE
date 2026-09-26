@@ -187,6 +187,7 @@ bool BindlessTextureManager::InitDescriptorBuffer()
     return true;
 }
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
 bool BindlessTextureManager::InitDescriptorPool()
 {
     // ── 描述符池（UPDATE_AFTER_BIND） ──────────────────────────────────
@@ -272,6 +273,7 @@ bool BindlessTextureManager::InitDescriptorPool()
     LogInfo(u8"[BindlessTextureManager] 初始化 DescriptorPool 模式成功 (max_tex=%u, max_sampler=%u)", kMax, kMaxSampler);
     return true;
 }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
 bool BindlessTextureManager::Init(VulkanDevice *device)
 {
@@ -296,13 +298,23 @@ bool BindlessTextureManager::Init(VkDevice device, VulkanDevAttr *attr)
         if (InitDescriptorBuffer())
             return true;
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
         LogWarning(u8"[BindlessTextureManager] 初始化 Descriptor Buffer 模式失败，回退到 DescriptorPool 模式");
         Destroy();
         device_ = device;
         attr_   = attr;
+#else
+        LogError(u8"[BindlessTextureManager] 初始化 Descriptor Buffer 模式失败");
+        return false;
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
     }
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
     return InitDescriptorPool();
+#else
+    LogError(u8"[BindlessTextureManager] 设备未启用 Descriptor Buffer，无可用回退路径");
+    return false;
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 }
 
 void BindlessTextureManager::Destroy()
@@ -310,12 +322,14 @@ void BindlessTextureManager::Destroy()
     if (device_ == VK_NULL_HANDLE)
         return;
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (pool_ != VK_NULL_HANDLE)
     {
         vkDestroyDescriptorPool(device_, pool_, nullptr);
         pool_ = VK_NULL_HANDLE;
         set_  = VK_NULL_HANDLE;
     }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
     if (mapped_ptr_)
     {
@@ -399,19 +413,8 @@ bool BindlessTextureManager::UpdateTextureHandle(uint32_t tex_handle, Texture *t
 
     tex_cache_.Add(tex, tex_handle);
 
-    if (use_descriptor_buffer_)
-    {
-        VkDescriptorGetInfoEXT get_info{};
-        get_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
-        get_info.type               = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        get_info.data.pSampledImage = &img_info;
-
-        const VkDeviceSize base_offset = cube_view ? binding_offset_2_ : binding_offset_0_;
-        const VkDeviceSize item_offset = base_offset + (tex_handle - 1) * sampled_image_desc_size_;
-
-        attr_->get_descriptor(device_, &get_info, sampled_image_desc_size_, mapped_ptr_ + item_offset);
-    }
-    else
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+    if (!use_descriptor_buffer_)
     {
         VkWriteDescriptorSet write{};
         write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -423,6 +426,19 @@ bool BindlessTextureManager::UpdateTextureHandle(uint32_t tex_handle, Texture *t
         write.pImageInfo      = &img_info;
 
         vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    }
+    else
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
+    {
+        VkDescriptorGetInfoEXT get_info{};
+        get_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+        get_info.type               = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        get_info.data.pSampledImage = &img_info;
+
+        const VkDeviceSize base_offset = cube_view ? binding_offset_2_ : binding_offset_0_;
+        const VkDeviceSize item_offset = base_offset + (tex_handle - 1) * sampled_image_desc_size_;
+
+        attr_->get_descriptor(device_, &get_info, sampled_image_desc_size_, mapped_ptr_ + item_offset);
     }
 
     LogInfo(u8"[BindlessTextureManager] Update handle=%u tex=%p (%s) view=%p",
@@ -479,17 +495,8 @@ bool BindlessTextureManager::RegisterSamplers(const VkSamplerCreateInfo *infos, 
         }
         samplers_.Add(samp);
 
-        if (use_descriptor_buffer_)
-        {
-            VkDescriptorGetInfoEXT get_info{};
-            get_info.sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
-            get_info.type           = VK_DESCRIPTOR_TYPE_SAMPLER;
-            get_info.data.pSampler  = &samp;
-
-            const VkDeviceSize item_offset = binding_offset_1_ + i * sampler_desc_size_;
-            attr_->get_descriptor(device_, &get_info, sampler_desc_size_, mapped_ptr_ + item_offset);
-        }
-        else
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+        if (!use_descriptor_buffer_)
         {
             VkDescriptorImageInfo samp_info{};
             samp_info.sampler = samp;
@@ -504,6 +511,17 @@ bool BindlessTextureManager::RegisterSamplers(const VkSamplerCreateInfo *infos, 
             write.pImageInfo      = &samp_info;
 
             vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+        }
+        else
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
+        {
+            VkDescriptorGetInfoEXT get_info{};
+            get_info.sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+            get_info.type           = VK_DESCRIPTOR_TYPE_SAMPLER;
+            get_info.data.pSampler  = &samp;
+
+            const VkDeviceSize item_offset = binding_offset_1_ + i * sampler_desc_size_;
+            attr_->get_descriptor(device_, &get_info, sampler_desc_size_, mapped_ptr_ + item_offset);
         }
     }
 
@@ -526,17 +544,8 @@ bool BindlessTextureManager::RebuildSampler(uint32_t index, const VkSamplerCreat
         return false;
     }
 
-    if (use_descriptor_buffer_)
-    {
-        VkDescriptorGetInfoEXT get_info{};
-        get_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
-        get_info.type          = VK_DESCRIPTOR_TYPE_SAMPLER;
-        get_info.data.pSampler = &new_samp;
-
-        const VkDeviceSize item_offset = binding_offset_1_ + index * sampler_desc_size_;
-        attr_->get_descriptor(device_, &get_info, sampler_desc_size_, mapped_ptr_ + item_offset);
-    }
-    else
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+    if (!use_descriptor_buffer_)
     {
         VkDescriptorImageInfo samp_info{};
         samp_info.sampler = new_samp;
@@ -551,6 +560,17 @@ bool BindlessTextureManager::RebuildSampler(uint32_t index, const VkSamplerCreat
         write.pImageInfo      = &samp_info;
 
         vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    }
+    else
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
+    {
+        VkDescriptorGetInfoEXT get_info{};
+        get_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+        get_info.type          = VK_DESCRIPTOR_TYPE_SAMPLER;
+        get_info.data.pSampler = &new_samp;
+
+        const VkDeviceSize item_offset = binding_offset_1_ + index * sampler_desc_size_;
+        attr_->get_descriptor(device_, &get_info, sampler_desc_size_, mapped_ptr_ + item_offset);
     }
 
     // 替换成功后销毁旧句柄
@@ -571,11 +591,13 @@ void BindlessTextureManager::BindOffsetToCmd(VkCommandBuffer cmd,
     if (!IsValid())
         return;
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (!use_descriptor_buffer_)
     {
         BindToCmd(cmd, pipeline_layout, set_index, bind_point);
         return;
     }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
     if (!attr_ || !attr_->cmd_set_descriptor_buffer_offsets)
         return;
@@ -598,6 +620,7 @@ void BindlessTextureManager::BindToCmd(VkCommandBuffer cmd,
     if (!IsValid())
         return;
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (!use_descriptor_buffer_)
     {
         if (set_ != VK_NULL_HANDLE)
@@ -611,6 +634,7 @@ void BindlessTextureManager::BindToCmd(VkCommandBuffer cmd,
         }
         return;
     }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
     if (!attr_ || !attr_->cmd_bind_descriptor_buffers)
         return;

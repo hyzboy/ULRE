@@ -8,6 +8,7 @@
 namespace hgl::graph
 {
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
 bool GlobalSceneUBOSet::InitDescriptorPool()
 {
     // ── 描述符池 ─────────────────────────────────────────────────────
@@ -117,6 +118,7 @@ bool GlobalSceneUBOSet::InitDescriptorPool()
     GLogInfo(u8"[GlobalSceneUBOSet] Initialized with DescriptorPool (camera=0, sky=1, viewport=2, color_palette=3, global_addresses=4, shadow=5)");
     return true;
 }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
 bool GlobalSceneUBOSet::InitDescriptorBuffer()
 {
@@ -280,14 +282,24 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
         if (InitDescriptorBuffer())
             return true;
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
         GLogWarning(u8"[GlobalSceneUBOSet] 初始化 Descriptor Buffer 模式失败，回退到 DescriptorPool 模式");
         Destroy();
         device_ = device;
         if (vdev && vdev->GetDevAttr())
             attr_ = vdev->GetDevAttr();
+#else
+        GLogError(u8"[GlobalSceneUBOSet] 初始化 Descriptor Buffer 模式失败");
+        return false;
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
     }
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
     return InitDescriptorPool();
+#else
+    GLogError(u8"[GlobalSceneUBOSet] 设备未启用 Descriptor Buffer，无可用回退路径");
+    return false;
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 }
 
 void GlobalSceneUBOSet::Destroy()
@@ -295,12 +307,14 @@ void GlobalSceneUBOSet::Destroy()
     if (device_ == VK_NULL_HANDLE)
         return;
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (pool_ != VK_NULL_HANDLE)
     {
         vkDestroyDescriptorPool(device_, pool_, nullptr);
         pool_ = VK_NULL_HANDLE;
         set_  = VK_NULL_HANDLE;
     }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
     if (push_desc_buffer_ != VK_NULL_HANDLE)
     {
@@ -365,6 +379,7 @@ bool GlobalSceneUBOSet::UpdateUBO(uint32_t binding, const IGPUBuffer *gpu)
     bound_buffers_info_[binding].range  = gpu->GetSize();
     binding_valid_[binding]             = true;
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (!use_descriptor_buffer_ && set_ != VK_NULL_HANDLE)
     {
         VkWriteDescriptorSet write{};
@@ -378,6 +393,7 @@ bool GlobalSceneUBOSet::UpdateUBO(uint32_t binding, const IGPUBuffer *gpu)
 
         vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
     }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
     return true;
 }
@@ -388,6 +404,7 @@ void GlobalSceneUBOSet::BindToCmd(VkCommandBuffer cmd, VkPipelineLayout pipeline
     if (layout_ == VK_NULL_HANDLE || cmd == VK_NULL_HANDLE)
         return;
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (!use_descriptor_buffer_)
     {
         if (set_ != VK_NULL_HANDLE)
@@ -401,6 +418,7 @@ void GlobalSceneUBOSet::BindToCmd(VkCommandBuffer cmd, VkPipelineLayout pipeline
         }
         return;
     }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
     if (!push_fn_)
         return;

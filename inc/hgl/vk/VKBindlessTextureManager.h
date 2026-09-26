@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <vulkan/vulkan.h>
+#include <hgl/vk/VKConfig.h>
 #include <hgl/type/String.h>
 #include <hgl/type/UnorderedMap.h>
 #include <hgl/type/ValueArray.h>
@@ -47,8 +48,10 @@ namespace hgl::graph
         bool           use_descriptor_buffer_ = false;
 
         // ── Descriptor Pool 资源（传统回退路径） ──
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
         VkDescriptorPool pool_ = VK_NULL_HANDLE;
         VkDescriptorSet  set_  = VK_NULL_HANDLE;
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
         // ── Descriptor Buffer 资源 ──
         VkBuffer        desc_buffer_             = VK_NULL_HANDLE;
@@ -76,7 +79,9 @@ namespace hgl::graph
 
     private:
         bool InitDescriptorBuffer();
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
         bool InitDescriptorPool();
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
     public:
         BindlessTextureManager() = default;
@@ -94,14 +99,18 @@ namespace hgl::graph
 
         bool IsValid() const
         {
-            if (use_descriptor_buffer_)
-                return desc_buffer_ != VK_NULL_HANDLE && mapped_ptr_ != nullptr;
-            else
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+            if (!use_descriptor_buffer_)
                 return set_ != VK_NULL_HANDLE;
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
+            return desc_buffer_ != VK_NULL_HANDLE && mapped_ptr_ != nullptr;
         }
 
         bool IsDescriptorBufferMode() const { return use_descriptor_buffer_; }
+
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
         VkDescriptorSet GetDescriptorSet() const { return set_; }
+#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
         VkDescriptorSetLayout GetLayout() const { return layout_; }
 

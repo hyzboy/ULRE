@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/vk/VKConfig.h>
 #include<hgl/vk/VKInstance.h>
 #include<hgl/vk/VKTexture.h>
 
@@ -35,7 +36,9 @@ struct VulkanDevAttr
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
     VkCommandPool                       transfer_cmd_pool =VK_NULL_HANDLE;
 
+#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
     VkDescriptorPool                    desc_pool       =VK_NULL_HANDLE;
+#endif
 
     VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
 
