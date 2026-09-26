@@ -397,6 +397,30 @@ Semaphore *VulkanDevice::CreateGPUSemaphore(const ObjectNameBuilder &name, const
     return result;
 }
 
+Semaphore *VulkanDevice::CreateTimelineSemaphore(const ObjectNameBuilder &name,const uint64_t initial_value,const std::source_location &loc)
+{
+    VkSemaphoreTypeCreateInfo type_info{};
+    type_info.sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+    type_info.pNext         = nullptr;
+    type_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+    type_info.initialValue  = initial_value;
+
+    VkSemaphoreCreateInfo create_info{};
+    create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    create_info.pNext = &type_info;
+    create_info.flags = 0;
+
+    VkSemaphore sem;
+
+    if(vkCreateSemaphore(attr->device, &create_info, nullptr, &sem)!=VK_SUCCESS)
+        return(nullptr);
+
+    Semaphore *result = new Semaphore(attr->device, sem, SemaphoreType::Timeline, initial_value);
+    if (result)
+        TrackObject(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)(uintptr_t)sem, name.Append(ObjectTypeTag::VKSemaphore), loc);
+    return result;
+}
+
 DeviceQueue *VulkanDevice::CreateQueue(const ObjectNameBuilder &name, const uint32_t fence_count, const bool create_signaled, const std::source_location &loc)
 {
     if(fence_count<=0)return(nullptr);

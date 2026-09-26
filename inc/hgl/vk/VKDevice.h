@@ -446,6 +446,10 @@ public:
     Fence *      CreateFence(bool create_signaled, const std::source_location &loc = std::source_location::current());
     Semaphore *  CreateGPUSemaphore(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
+    /// 创建 timeline 信号量（A1/A7 的跨车道排序原语）。
+    /// 初始值一般取 0；此后每次提交前用 Semaphore::NextValue() 取信号值，作为该次提交的 signal value。
+    Semaphore *  CreateTimelineSemaphore(const ObjectNameBuilder &name, const uint64_t initial_value = 0, const std::source_location &loc = std::source_location::current());
+
     DeviceQueue *CreateQueue(const ObjectNameBuilder &name, const uint32_t fence_count=1, const bool create_signaled=false, const std::source_location &loc = std::source_location::current());
     DeviceQueue *CreateTransferQueue(const ObjectNameBuilder &name, const uint32_t fence_count=1, const bool create_signaled=false, const std::source_location &loc = std::source_location::current());
 

@@ -439,6 +439,16 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         vk12_features.descriptorBindingStorageBufferUpdateAfterBind = dev12.descriptorBindingStorageBufferUpdateAfterBind;
         vk12_features.descriptorBindingUpdateUnusedWhilePending   = dev12.descriptorBindingUpdateUnusedWhilePending;
 
+        // timeline semaphore：A1/A7 的跨车道排序原语（主帧一条车道 + 每个离屏 RT 一条）。
+        // 强制要求，无回退路径（零兼容）；硬件不支持即 fail-fast。
+        if(!dev12.timelineSemaphore)
+        {
+            GLogError(u8"[VKDeviceCreater] 硬件不支持 timelineSemaphore，创建设备失败！");
+            return nullptr;
+        }
+
+        vk12_features.timelineSemaphore                      = VK_TRUE;
+
         // GL_EXT_scalar_block_layout：ColorPalette UBO 使用 layout(scalar)
         // 使 uint[256] 紧凑打包（4 字节步长），与 C++ 端 1024 字节结构对齐。
         vk12_features.scalarBlockLayout = dev12.scalarBlockLayout;
