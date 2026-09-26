@@ -6,6 +6,7 @@
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/graph/render/RenderTargetDesc.h>
 #include<hgl/graph/module/RenderTargetManager.h>
+#include<memory>
 
 namespace hgl
 {
@@ -34,8 +35,10 @@ namespace hgl
 
             graph::RenderContext *render_context = nullptr;
 
-            // ── 主光级联阴影托管 ──
-            graph::CascadedShadowController *shadow_controller = nullptr;
+        // ── 主光级联阴影托管 ──
+        // controller 由本系统独占持有（unique_ptr）；类型在此仅前向声明，
+        // 析构在 EnvironmentSystem.cpp 中定义以支持不完整类型成员。
+        std::unique_ptr<graph::CascadedShadowController> shadow_controller;
             graph::RenderTargetHandle cascade_rts[graph::kMaxShadowCascades]{};
             std::shared_ptr<CameraComponent> light_camera;
             bool shadow_enabled = false;
@@ -89,7 +92,7 @@ namespace hgl
                 return (c < graph::kMaxShadowCascades) && ((cascade_mask & (1u << c)) == 0);
             }
 
-            graph::CascadedShadowController *GetShadowController() const { return shadow_controller; }
+            graph::CascadedShadowController *GetShadowController() const { return shadow_controller.get(); }
             graph::IRenderTarget *GetCascadeRenderTarget(uint32_t cascade_index) const;
             float GetCascadeDepthRange(uint32_t cascade_index) const
             {

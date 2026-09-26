@@ -6,6 +6,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/render/lighting/CascadedShadowController.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -15,7 +16,7 @@ namespace hgl::ecs
 {
     EnvironmentSystem::EnvironmentSystem(const std::string &name)
         : System(name)
-        , shadow_controller(nullptr)
+        , shadow_controller()
         , shadow_enabled(false)
     {
         SetExecutionPhase(ExecutionPhase::RenderPreBeginFrame);
@@ -181,7 +182,7 @@ namespace hgl::ecs
             return false;
         }
 
-        shadow_controller = new graph::CascadedShadowController();
+        shadow_controller = std::make_unique<graph::CascadedShadowController>();
         shadow_controller->SetConfig(config);
 
         for (uint32_t c = 0; c < graph::kMaxShadowCascades; ++c)
@@ -228,10 +229,24 @@ namespace hgl::ecs
             cascade_depth_range[c] = 0.0f;
         }
 
-        if (shadow_controller)
+        shadow_controller.reset();
+
+        // A2：光相机经 RenderTo→SetOverrideCamera→BindCameraResources 从
+        // GlobalSSBOBufferRegistry 占了一行 CameraInfo（AcquireCamera）。
+        // Disable 必须对称归还——registry 容量不预留、超限 fail-fast，
+        // 每次 Enable/Disable 泄漏一行迟早把行池顶满。camera_id==0 是
+        // "未分配"哨兵（主相机固定占 0 行），不可误归还。
+        if (light_camera && light_camera->camera_id != 0)
         {
-            delete shadow_controller;
-            shadow_controller = nullptr;
+            graph::GraphicsContext *gc = render_context
+                                             ? render_context->GetGraphicsContext()
+                                             : (context ? context->GetGraphicsContext() : nullptr);
+            if (auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr)
+            {
+                if (!registry->ReleaseCamera(light_camera->camera_id))
+                    GLogWarning("[EnvironmentSystem] DisableMainLightShadow: ReleaseCamera(%u) failed (row already freed?)",
+                                light_camera->camera_id);
+            }
         }
 
         light_camera.reset();

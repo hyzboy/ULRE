@@ -1280,6 +1280,36 @@ int main(int argc, char** argv)
                 return 10;
             }
 
+            // 10D: 光相机 CameraInfo 行归还契约（csm-review A2）
+            // light_camera 经 RenderTo→SetOverrideCamera→BindCameraResources 从
+            // GlobalSSBOBufferRegistry AcquireCamera 占行；DisableMainLightShadow
+            // 必须对称 ReleaseCamera——registry 容量不预留、超限 fail-fast，
+            // 每次 Enable/Disable 泄漏一行迟早把行池顶满。ReleaseCamera 曾是
+            // 全仓零调用 API，这里对源码断言防止归还逻辑被静默删掉。
+            {
+                static const OSString kEnvSysPath =
+                    OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp");
+                hgl::io::OpenFileInputStream env_fis(kEnvSysPath);
+                if (!env_fis)
+                {
+                    GLogError(u8"Test 10D Failed: cannot open EnvironmentSystem.cpp (run from repo root)");
+                    return 10;
+                }
+                AnsiString env_src;
+                {
+                    char chunk[4096];
+                    int64 got;
+                    while ((got = env_fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
+                        env_src.Strcat(chunk, static_cast<int>(got));
+                }
+                if (!env_src.Contains("ReleaseCamera(light_camera->camera_id)"))
+                {
+                    GLogError(u8"Test 10D Failed: DisableMainLightShadow must release the light camera's CameraInfo row "
+                              u8"(ReleaseCamera(light_camera->camera_id) not found; every Enable/Disable leaks a row otherwise)");
+                    return 10;
+                }
+            }
+
             GLogInfo(u8"Test 10 Passed: Cascade Mask & Bias Modulation Contracts verified.");
         }
     }
