@@ -65,6 +65,23 @@ namespace hgl::graph
     static_assert(std::is_trivially_copyable_v<CascadeUpdateResult>, "CascadeUpdateResult must be trivially copyable");
 
     /**
+     * 最近一帧某级联的更新形态（诊断/统计；不含矩阵，保持 POD）。
+     *
+     * 判读：`strip_count == 0 && !full_update` ⇒ 本帧该级联零绘制（纯命中）；
+     * `strip_count > 0` ⇒ 环形滚动条带，面积占比 = strip_texels / map_texels；
+     * `full_update` ⇒ 整级重建（此时 offset 必为 0）。上层 stats / 增量对拍用。
+     */
+    struct CascadeUpdateStats
+    {
+        bool     full_update  = false;       // 本帧整级重建
+        bool     cache_hit    = false;       // 本帧纯命中（零绘制）
+        uint32_t strip_count  = 0;           // 本帧条带矩形数
+        uint32_t strip_texels = 0;           // 本帧条带面积（texel）
+        uint32_t map_texels   = 0;           // 整图面积（texel，作分母）
+        Vector4u offset       = Vector4u(0); // 该级联环形偏移（texel）
+    };
+
+    /**
      * 级联阴影配置参数。
      */
     struct CascadedShadowConfig
@@ -156,9 +173,18 @@ namespace hgl::graph
     private:
         CascadedShadowConfig config_;
         ShadowCascadeCacheState cache_states_[kMaxShadowCascades];
+        CascadeUpdateStats update_stats_[kMaxShadowCascades];
         Vector4u cascade_textures_[kMaxShadowCascades];
         float along_anchor_[kMaxShadowCascades] = { 0.0f };
         uint32_t scene_revision_ = 0;
+
+        // 诊断计数器（单调累计，免疫"每帧多次 Update 覆盖 update_stats_"盲点）：
+        // 用于区分"失效未生效"与"已生效但被同帧后续 Update 覆盖"两种根因
+        uint32_t update_call_count_ = 0;
+        uint32_t invalidate_call_count_ = 0;
+        uint32_t full_update_call_count_[kMaxShadowCascades] = {};
+        uint32_t strip_update_call_count_[kMaxShadowCascades] = {};
+        uint32_t hit_update_call_count_[kMaxShadowCascades] = {};
 
     public:
         CascadedShadowController();
@@ -173,8 +199,25 @@ namespace hgl::graph
         /** 通知场景静态物体发生变更，强制中远景级联失效并全量重写 */
         void InvalidateStaticCache();
 
+        /** 诊断：Update() 累计调用次数（同帧多路径调用会 > 帧数） */
+        uint32_t GetUpdateCallCount() const { return update_call_count_; }
+        /** 诊断：InvalidateStaticCache() 累计调用次数（该实例上的真实生效次数） */
+        uint32_t GetInvalidateCallCount() const { return invalidate_call_count_; }
+        /** 诊断：某级"整级重建"累计次数（含被同帧后续 Update 覆盖的那些） */
+        uint32_t GetFullUpdateCallCount(uint32_t cascade_idx) const
+        { return cascade_idx < kMaxShadowCascades ? full_update_call_count_[cascade_idx] : 0u; }
+        /** 诊断：某级"条带滚动"累计次数 */
+        uint32_t GetStripUpdateCallCount(uint32_t cascade_idx) const
+        { return cascade_idx < kMaxShadowCascades ? strip_update_call_count_[cascade_idx] : 0u; }
+        /** 诊断：某级"完全命中"累计次数 */
+        uint32_t GetHitUpdateCallCount(uint32_t cascade_idx) const
+        { return cascade_idx < kMaxShadowCascades ? hit_update_call_count_[cascade_idx] : 0u; }
+
         /** 获取特定级联的 CPU 缓存状态 */
         const ShadowCascadeCacheState &GetCacheState(uint32_t cascade_idx) const;
+
+        /** 最近一帧该级联的更新形态（诊断/统计，见 CascadeUpdateStats）。 */
+        const CascadeUpdateStats &GetUpdateStats(uint32_t cascade_idx) const;
 
         /**
          * 逐帧计算级联矩阵与滚动缓存。

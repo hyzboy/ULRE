@@ -85,6 +85,7 @@ namespace hgl::graph
 
     void CascadedShadowController::InvalidateStaticCache()
     {
+        ++invalidate_call_count_;   // 诊断：累计失效调用次数
         ++scene_revision_;
         for (uint32_t i = 1; i < kMaxShadowCascades; ++i)
         {
@@ -97,6 +98,13 @@ namespace hgl::graph
         if (cascade_idx >= kMaxShadowCascades)
             return cache_states_[0];
         return cache_states_[cascade_idx];
+    }
+
+    const CascadeUpdateStats &CascadedShadowController::GetUpdateStats(uint32_t cascade_idx) const
+    {
+        if (cascade_idx >= kMaxShadowCascades)
+            return update_stats_[0];
+        return update_stats_[cascade_idx];
     }
 
     void CascadedShadowController::CalculateSplitDistances(float near_z, float far_z, float out_splits[kMaxShadowCascades]) const
@@ -303,6 +311,7 @@ namespace hgl::graph
                                          ShadowInfo &out_shadow_info,
                                          CascadeUpdateResult out_updates[kMaxShadowCascades])
     {
+        ++update_call_count_;   // 诊断：累计 Update 调用次数
         const uint32_t count = (config_.cascade_count > 0 && config_.cascade_count <= kMaxShadowCascades)
                              ? config_.cascade_count : kMaxShadowCascades;
 
@@ -383,6 +392,7 @@ namespace hgl::graph
                     (config_.cache_anchor_step > 0.0f && along_anchor_[c] != along_anchor))
                 {
                     // 首次生成 / 场景失效 / 深度锚点跨步：全量重绘
+                    ++full_update_call_count_[c];   // 诊断：整级重建次数
                     update_res.need_full_update = true;
                     update_res.AddDirtyRect(ShadowDirtyRect{0, 0, W, H});
 
@@ -407,6 +417,7 @@ namespace hgl::graph
                     if (shift_x == 0 && shift_y == 0)
                     {
                         // 未跨越整像素：完全命中缓存，0 绘制开销（相机不移动不更新）
+                        ++hit_update_call_count_[c];
                         update_res.need_full_update = false;
                         update_res.ClearDirtyRects();
                     }
@@ -440,6 +451,7 @@ namespace hgl::graph
 
                         update_res.need_full_update = false;
                         update_res.ClearDirtyRects();
+                        ++strip_update_call_count_[c];   // 诊断：条带滚动次数
                         if (shift_x != 0)
                             AppendWrappedStrip(update_res, start_x,
                                                static_cast<uint32_t>(std::abs(shift_x)), W, true);
@@ -456,6 +468,7 @@ namespace hgl::graph
                     else
                     {
                         // 位移不是整步：整级重建 + 偏移清零（内容重画回未旋转的原点系）
+                        ++full_update_call_count_[c];   // 诊断：整级重建次数
                         update_res.need_full_update = true;
                         update_res.AddDirtyRect(ShadowDirtyRect{0, 0, W, H});
 
@@ -503,6 +516,17 @@ namespace hgl::graph
             casc.cache_origin = Vector4f(snapped_cx, snapped_cy, texel_size, texel_size);
             casc.cache_offset = update_res.cache_offset;
             casc.cache_valid_rect = Vector4u(0, 0, W, H);
+
+            // 最近一帧更新形态（诊断/统计；示例 stats 与"整级 vs 条带"对拍消费）
+            CascadeUpdateStats &st = update_stats_[c];
+            st = CascadeUpdateStats{};
+            st.full_update  = update_res.need_full_update;
+            st.strip_count  = update_res.need_full_update ? 0u : update_res.dirty_rect_count;
+            st.cache_hit    = !update_res.need_full_update && update_res.dirty_rect_count == 0;
+            st.map_texels   = W * H;
+            st.offset       = update_res.cache_offset;
+            for (uint32_t r = 0; r < st.strip_count && r < 4; ++r)
+                st.strip_texels += update_res.dirty_rects[r].width * update_res.dirty_rects[r].height;
         }
 
         out_shadow_info.csm_params = Vector4u(count, config_.c0_dynamic_overlay ? 2u : 1u, 0, 0);
