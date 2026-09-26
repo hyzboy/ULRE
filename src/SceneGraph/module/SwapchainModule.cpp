@@ -244,6 +244,17 @@ bool SwapchainModule::CreateSwapchainRenderTarget(const VkExtent2D &extent, Swap
     VulkanDevice *device=GetDevice();
     const uint32_t count=swapchain->image_count;   // slot_count == image_count
 
+    // 主帧的 per-frame 数据槽固定为 [0, HGL_FRAME_SLOT_MAIN)，离屏 RT 的槽带接在其上
+    // （见 RenderOptions.h）。image_count 超出即 fail-fast —— 静默重叠会让 prepass
+    // 写坏在途主帧的每帧数据（改造前正是靠 RenderTo 全槽排空兜住的隐患）。
+    if(count > HGL_FRAME_SLOT_MAIN)
+    {
+        LogError("[SwapchainModule] image_count=%u 超出主帧数据槽上限 %u —— "
+                 "请提高 HGL_FRAME_SLOT_MAIN / HGL_FRAME_SLOT_TOTAL",
+                 count, uint32_t(HGL_FRAME_SLOT_MAIN));
+        return(false);
+    }
+
     SwapchainFrameSync *sync_slots=new SwapchainFrameSync[count];
 
     for(uint32_t i=0;i<count;i++)

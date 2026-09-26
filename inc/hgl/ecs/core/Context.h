@@ -6,6 +6,7 @@
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/core/RenderGraph.h>
 #include<hgl/ecs/core/RenderPassRequest.h>
+#include<hgl/vk/VKQueue.h>
 #include<hgl/ecs/core/ScenePipelineMode.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
@@ -148,6 +149,16 @@ namespace hgl
 
             /// 当前渲染 Pass 的活跃相机 SSBO 行号（用于 PushConstants 索引多相机）
             uint32_t active_camera_id = 0;
+
+            // ---- A1 车道等待列表（per-frame，见 RenderOptions.h 的车道说明）----
+
+            static constexpr uint32_t MAX_LANE_WAITS = 16;
+
+            graph::SemaphoreSubmit frame_lane_waits[MAX_LANE_WAITS];   ///<本帧已提交的各离屏 RT 车道值
+            uint32_t frame_lane_wait_count = 0;
+
+            graph::SemaphoreSubmit submit_waits[MAX_LANE_WAITS];       ///<下一次提交的额外等待列表
+            uint32_t submit_wait_count = 0;
 
             /// 当前渲染 Pass 的物体移动性过滤（-1 = 全部，0 = 仅静态 Static，1 = 仅动态 Movable）
             int active_mobility_filter = -1;
@@ -324,6 +335,17 @@ namespace hgl
             /// 获取与设置当前活跃相机 SSBO 行号（用于 PushConstants 索引多相机）
             uint32_t GetActiveCameraID() const { return active_camera_id; }
             void SetActiveCameraID(uint32_t id) { active_camera_id = id; }
+
+            // ---- A1 车道等待列表 ----
+
+            /// 设定下一次提交的等待列表（RenderTo / 主帧收尾用）
+            void SetSubmitWaits(const graph::SemaphoreSubmit *waits,uint32_t count);
+            /// 累积本帧离屏 RT 的车道值（主帧提交 await 它们）
+            void AddFrameLaneWait(graph::Semaphore *lane,uint64_t value);
+            /// 把当前累积复制为下一次提交的等待列表
+            void SetSubmitWaitsFromFrameLanes();
+            /// 提交系统取用等待列表；is_main_frame=true 时同时收尾清空本帧累积
+            const graph::SemaphoreSubmit *TakeSubmitWaits(uint32_t &count,bool is_main_frame);
 
             /// Graphics context adapter (Phase 2)
             void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { graphics_context = ctx; }

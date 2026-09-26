@@ -59,7 +59,8 @@ namespace hgl::graph
         OrderedSet<uint64_t> completed_task_ids_;
 
         // 收集本帧由 Transfer 队列发出、需 Graphics 队列在渲染前等待的信号量
-        ValueArray<VkSemaphore> pending_wait_semaphores_;
+        // （保留 Semaphore* 而非裸 VkSemaphore 句柄：提交链路要按类型区分二进制/timeline）
+        ValueArray<Semaphore *> pending_wait_semaphores_;
 
         ThreadMutex         mutex_;
 
@@ -101,7 +102,7 @@ namespace hgl::graph
         void Update();
 
         /** 获取需 Graphics 队列等待的 Transfer 完成信号量合集 */
-        const ValueArray<VkSemaphore> &GetPendingWaitSemaphores() const { return pending_wait_semaphores_; }
+        const ValueArray<Semaphore *> &GetPendingWaitSemaphores() const { return pending_wait_semaphores_; }
 
         /** 清空已接入等待链的信号量列表 */
         void ClearPendingWaitSemaphores() { pending_wait_semaphores_.Clear(); }

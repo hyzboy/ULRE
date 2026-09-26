@@ -32,10 +32,20 @@ SwapchainRenderTarget::SwapchainRenderTarget(
 
     // Zero-initialise per-image ownership table
     images_in_flight = new DeviceQueue*[swapchain->image_count]();
+
+    // 主帧车道（A1）：timeline 信号量。主帧提交 signal 一个递增值；离屏 prepass
+    // await 上一次主帧的值 ⇒ GPU 侧保证「prepass 覆写阴影前，在途主帧已读完」。
+    if (VulkanDevice *device = GetDevice())
+        main_lane = device->CreateTimelineSemaphore("Swapchain:MainLane");
+
+    if (!main_lane)
+        LogError("SwapchainRenderTarget: 主帧车道（timeline 信号量）创建失败");
 }
 
 SwapchainRenderTarget::~SwapchainRenderTarget()
 {
+    SAFE_CLEAR(main_lane);
+
     delete[] images_in_flight;
     images_in_flight = nullptr;
 
@@ -96,14 +106,21 @@ bool SwapchainRenderTarget::NextFrame()
     return true;
 }
 
-bool SwapchainRenderTarget::Submit()
+bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint32_t extra_wait_count)
 {
     SwapchainFrameSync& slot  = sync_slots[current_slot];
     SwapchainImage*     image = swapchain->sc_image + acquired_image;
 
-    const VkSemaphore *extra_wait_sems = nullptr;
-    uint32_t extra_wait_count = 0;
+    // 等待列表：本槽 image_available（COLOR_ATTACHMENT_OUTPUT）+ 本帧 Transfer 完成信号量
+    // + 调用方额外等待（A1：本帧各离屏 RT 的车道值）
+    constexpr uint32_t MAX_WAITS = 16;
+    SemaphoreSubmit waits[MAX_WAITS];
+    uint32_t wait_count = 0;
+
+    waits[wait_count++] = SemaphoreSubmit::WaitImage(slot.image_available);
+
     TextureUploadQueue *upload_queue = nullptr;
+    bool has_upload_waits = false;
 
     if (ecs_context)
     {
@@ -115,18 +132,40 @@ bool SwapchainRenderTarget::Submit()
                 if (upload_queue)
                 {
                     const auto &sems = upload_queue->GetPendingWaitSemaphores();
-                    if (sems.GetCount() > 0)
+                    const Semaphore *const *sem_list = sems.GetData();
+
+                    for (uint32_t i = 0; i < sems.GetCount() && wait_count < MAX_WAITS; i++)
                     {
-                        extra_wait_sems = sems.GetData();
-                        extra_wait_count = static_cast<uint32_t>(sems.GetCount());
+                        if (!sem_list[i])
+                            continue;
+
+                        waits[wait_count++] = SemaphoreSubmit::Wait(const_cast<Semaphore *>(sem_list[i]));
+                        has_upload_waits = true;
                     }
                 }
             }
         }
     }
 
-    // Submit: wait image_available and any transfer semaphores, signal render_finished
-    if (!slot.queue->Submit(image->cmd_buf, extra_wait_sems, extra_wait_count, slot.image_available, slot.render_finished))
+    for (uint32_t i = 0; i < extra_wait_count && wait_count < MAX_WAITS; i++)
+        if (extra_waits[i].semaphore)
+            waits[wait_count++] = extra_waits[i];
+
+    SemaphoreSubmit extra_signal = SemaphoreSubmit::Signal(slot.render_finished);
+    SemaphoreSubmit signals[2];
+    uint32_t signal_count = 0;
+
+    signals[signal_count++] = extra_signal;
+
+    // 主帧车道（A1）：signal 一个递增值，供下一次离屏 prepass await
+    if (main_lane)
+    {
+        main_lane_value = main_lane->NextValue();
+        signals[signal_count++] = SemaphoreSubmit::Signal(main_lane, main_lane_value);
+    }
+
+    // Submit: wait image_available + upload semaphores + 调用方额外等待（本帧各离屏 RT 车道）；signal render_finished + 主帧车道
+    if (!slot.queue->Submit(image->cmd_buf, waits, wait_count, signals, signal_count))
     {
         LogError("SwapchainRenderTarget: queue submit failed (slot=%u image=%u)",
                  current_slot, acquired_image);
@@ -134,7 +173,7 @@ bool SwapchainRenderTarget::Submit()
         return false;
     }
 
-    if (upload_queue && extra_wait_count > 0)
+    if (upload_queue && has_upload_waits)
     {
         upload_queue->ClearPendingWaitSemaphores();
     }
@@ -163,12 +202,6 @@ bool SwapchainRenderTarget::Submit()
     }
 
     return true;
-}
-
-bool SwapchainRenderTarget::Submit(Semaphore* /*wait_sem*/)
-{
-    // Swapchain RT manages its own image_available semaphore; external wait_sem is ignored
-    return Submit();
 }
 
 bool SwapchainRenderTarget::WaitFence()
@@ -220,11 +253,6 @@ Texture2D* SwapchainRenderTarget::GetDepthTexture()
 DeviceQueue* SwapchainRenderTarget::GetQueue()
 {
     return sync_slots[current_slot].queue;
-}
-
-Semaphore* SwapchainRenderTarget::GetRenderCompleteSemaphore()
-{
-    return sync_slots[current_slot].render_finished;
 }
 
 RenderCmdBuffer* SwapchainRenderTarget::GetRenderCmdBuffer()

@@ -69,54 +69,60 @@ bool DeviceQueue::IsLastSubmitComplete() const
     return f->GetStatus() == VK_SUCCESS;
 }
 
-bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,const VkSemaphore *extra_wait_sems,const uint32_t extra_wait_count,Semaphore *wait_sem,Semaphore *complete_sem)
+bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
+                         const SemaphoreSubmit *waits,const uint32_t wait_count,
+                         const SemaphoreSubmit *signals,const uint32_t signal_count)
 {
     if(!cmd_buf||cb_count==0)
         return(false);
 
-    const uint32_t total_waits = (wait_sem ? 1 : 0) + extra_wait_count;
-    constexpr uint32_t STACK_WAIT_COUNT = 16;
-    VkSemaphoreSubmitInfo stack_wait_infos[STACK_WAIT_COUNT];
+    constexpr uint32_t STACK_SEM_COUNT = 16;
+
+    VkSemaphoreSubmitInfo stack_wait_infos[STACK_SEM_COUNT];
+    VkSemaphoreSubmitInfo stack_signal_infos[STACK_SEM_COUNT];
     AutoDeleteArray<VkSemaphoreSubmitInfo> heap_wait_infos;
+    AutoDeleteArray<VkSemaphoreSubmitInfo> heap_signal_infos;
+
     VkSemaphoreSubmitInfo *wait_infos = stack_wait_infos;
+    if(wait_count > STACK_SEM_COUNT)
+        wait_infos = heap_wait_infos.alloc(wait_count);
 
-    if(total_waits > STACK_WAIT_COUNT)
+    // 等待列表：逐项拷贝（按信号量类型决定 value —— 二进制必须 0）
+    uint32_t real_wait_count = 0;
+    for(uint32_t i=0;i<wait_count;i++)
     {
-        wait_infos = heap_wait_infos.alloc(total_waits);
+        if(!waits[i].semaphore)
+            continue;
+
+        VkSemaphoreSubmitInfo &info = wait_infos[real_wait_count++];
+
+        info.sType      =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        info.pNext      =nullptr;
+        info.semaphore  =*waits[i].semaphore;
+        info.value      =waits[i].semaphore->IsTimeline()?waits[i].value:0;
+        info.stageMask  =waits[i].stage_mask;
+        info.deviceIndex=0;
     }
 
-    uint32_t wait_idx = 0;
-    if(wait_sem)
-    {
-        wait_infos[wait_idx].sType     =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        wait_infos[wait_idx].pNext     =nullptr;
-        wait_infos[wait_idx].semaphore =*wait_sem;
-        wait_infos[wait_idx].value     =0;
-        wait_infos[wait_idx].stageMask =VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-        wait_infos[wait_idx].deviceIndex=0;
-        wait_idx++;
-    }
+    VkSemaphoreSubmitInfo *signal_infos = stack_signal_infos;
+    if(signal_count > STACK_SEM_COUNT)
+        signal_infos = heap_signal_infos.alloc(signal_count);
 
-    for(uint32_t i=0;i<extra_wait_count;i++)
+    // 信号列表（A1：离屏提交恒 signal，主帧提交等它）
+    uint32_t real_signal_count = 0;
+    for(uint32_t i=0;i<signal_count;i++)
     {
-        wait_infos[wait_idx].sType     =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        wait_infos[wait_idx].pNext     =nullptr;
-        wait_infos[wait_idx].semaphore =extra_wait_sems[i];
-        wait_infos[wait_idx].value     =0;
-        wait_infos[wait_idx].stageMask =VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        wait_infos[wait_idx].deviceIndex=0;
-        wait_idx++;
-    }
+        if(!signals[i].semaphore)
+            continue;
 
-    VkSemaphoreSubmitInfo signal_sem_info{};
-    if(complete_sem)
-    {
-        signal_sem_info.sType     =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        signal_sem_info.pNext     =nullptr;
-        signal_sem_info.semaphore =*complete_sem;
-        signal_sem_info.value     =0;
-        signal_sem_info.stageMask =VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-        signal_sem_info.deviceIndex=0;
+        VkSemaphoreSubmitInfo &info = signal_infos[real_signal_count++];
+
+        info.sType      =VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        info.pNext      =nullptr;
+        info.semaphore  =*signals[i].semaphore;
+        info.value      =signals[i].semaphore->IsTimeline()?signals[i].value:0;
+        info.stageMask  =signals[i].stage_mask;
+        info.deviceIndex=0;
     }
 
     constexpr uint32_t STACK_CB_COUNT = 8;
@@ -141,12 +147,12 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     submit_info2.sType                      =VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
     submit_info2.pNext                      =nullptr;
     submit_info2.flags                      =0;
-    submit_info2.waitSemaphoreInfoCount     =total_waits;
-    submit_info2.pWaitSemaphoreInfos        =total_waits>0?wait_infos:nullptr;
+    submit_info2.waitSemaphoreInfoCount     =real_wait_count;
+    submit_info2.pWaitSemaphoreInfos        =real_wait_count>0?wait_infos:nullptr;
     submit_info2.commandBufferInfoCount     =cb_count;
     submit_info2.pCommandBufferInfos        =cb_infos;
-    submit_info2.signalSemaphoreInfoCount   =complete_sem?1:0;
-    submit_info2.pSignalSemaphoreInfos      =complete_sem?&signal_sem_info:nullptr;
+    submit_info2.signalSemaphoreInfoCount   =real_signal_count;
+    submit_info2.pSignalSemaphoreInfos      =real_signal_count>0?signal_infos:nullptr;
 
     VkFence fence=*fence_list[current_fence];
 
@@ -181,12 +187,9 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     return(result==VK_SUCCESS);
 }
 
-bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,Semaphore *wait_sem,Semaphore *complete_sem)
-{
-    return Submit(cmd_buf, count, nullptr, 0, wait_sem, complete_sem);
-}
-
-bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,const VkSemaphore *extra_wait_sems,const uint32_t extra_wait_count,Semaphore *wait_sem,Semaphore *complete_sem)
+bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,
+                         const SemaphoreSubmit *waits,const uint32_t wait_count,
+                         const SemaphoreSubmit *signals,const uint32_t signal_count)
 {
     if(!cmd_buf)
         return false;
@@ -196,12 +199,7 @@ bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,const VkSemaphore *extra_wait_
 
     VkCommandBuffer vk_cmd=*cmd_buf;
 
-    return Submit(&vk_cmd,1,extra_wait_sems,extra_wait_count,wait_sem,complete_sem);
-}
-
-bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
-{
-    return Submit(cmd_buf, nullptr, 0, wait_sem, complete_sem);
+    return Submit(&vk_cmd,1,waits,wait_count,signals,signal_count);
 }
 }//namespace hgl::graph
 

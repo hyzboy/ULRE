@@ -354,7 +354,7 @@ public:
 
         compute_cmd->End();
 
-        compute_queue->Submit(compute_cmd, nullptr, nullptr);
+        compute_queue->Submit(compute_cmd, nullptr, 0, nullptr, 0);
         compute_queue->WaitFence();
 
         // 3. CPU 读回验证：确认 GPU 计算并写入的数值 100% 正确

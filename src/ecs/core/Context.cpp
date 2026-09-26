@@ -496,6 +496,22 @@ namespace hgl
             // 因此能正确拿到临时切换后的 RT。
             graph::IRenderTarget *saved_target = render_target;
 
+            // A1：本次离屏提交在 GPU 侧等待主帧车道（上一次主帧提交的值）——
+            // 等效替代"上沿 CPU 等待"在 GPU 排序上的职责（CPU 侧写保护仍由 T3 解决）。
+            if (saved_target)
+            {
+                if (graph::Semaphore *main_lane = saved_target->GetMainLane())
+                {
+                    const uint64_t main_value = saved_target->GetMainLaneValue();
+
+                    if (main_value > 0)
+                    {
+                        const graph::SemaphoreSubmit main_wait = graph::SemaphoreSubmit::Wait(main_lane, main_value);
+                        SetSubmitWaits(&main_wait, 1);
+                    }
+                }
+            }
+
             // 共享 per-frame 资源保护（上沿）：Camera UBO 与 L2W ring 为单份内存，
             // 覆写前等在途主帧 GPU 完成，防止其 draw 读到覆盖后的数据
             if (saved_target)
@@ -589,6 +605,12 @@ namespace hgl
             if (ok)
                 rt->WaitFence();
 
+            // A1：本帧离屏 RT 的车道值累积给主帧提交等（RenderTargetData::Submit 已 signal）
+            if (ok)
+                AddFrameLaneWait(rt->GetLane(), rt->GetLaneValue());
+
+            SetSubmitWaitsFromFrameLanes();
+
             render_target = saved_target;
             if (!req.use_target_clear)
                 rt->SetClearColor(saved_clear);
@@ -603,6 +625,48 @@ namespace hgl
             active_camera_id = 0;
 
             return ok;
+        }
+
+        void ECSContext::SetSubmitWaits(const graph::SemaphoreSubmit *waits,const uint32_t count)
+        {
+            submit_wait_count = 0;
+
+            for(uint32_t i=0;i<count && submit_wait_count<MAX_LANE_WAITS;i++)
+                if(waits[i].semaphore)
+                    submit_waits[submit_wait_count++] = waits[i];
+        }
+
+        void ECSContext::AddFrameLaneWait(graph::Semaphore *lane,const uint64_t value)
+        {
+            if(!lane||value==0)
+                return;
+
+            if(frame_lane_wait_count>=MAX_LANE_WAITS)
+            {
+                LogWarning("[ECSContext] 车道等待列表已满(%u)，忽略 lane=%p value=%llu",
+                           MAX_LANE_WAITS,static_cast<void *>(lane),
+                           static_cast<unsigned long long>(value));
+                return;
+            }
+
+            frame_lane_waits[frame_lane_wait_count++] = graph::SemaphoreSubmit::Wait(lane,value);
+        }
+
+        void ECSContext::SetSubmitWaitsFromFrameLanes()
+        {
+            SetSubmitWaits(frame_lane_waits,frame_lane_wait_count);
+        }
+
+        const graph::SemaphoreSubmit *ECSContext::TakeSubmitWaits(uint32_t &count,const bool is_main_frame)
+        {
+            count = submit_wait_count;
+            submit_wait_count = 0;
+
+            // 主帧提交即本帧收尾：清空累积，下一帧重新收集
+            if(is_main_frame)
+                frame_lane_wait_count = 0;
+
+            return count>0?submit_waits:nullptr;
         }
 
         bool ECSContext::RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime, CullMode cull_mode)

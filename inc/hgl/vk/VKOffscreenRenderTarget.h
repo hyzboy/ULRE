@@ -52,21 +52,49 @@ public:
 
 public: // Command Buffer
 
-    DeviceQueue *       GetQueue            ()override{return data->queue;}
-    Semaphore *         GetRenderCompleteSemaphore()override{return data->render_complete_semaphore;}
+    DeviceQueue *       GetQueue            ()override{return data ? data->GetQueue() : nullptr;}
 
-    RenderCmdBuffer *   GetRenderCmdBuffer  ()override{return data->cmd_buf;}
+    /// 本 RT 的车道（离屏 pass 的完成时点，主帧提交 await 它）
+    Semaphore *         GetLane             ()override{return data ? data->GetLane() : nullptr;}
+    uint64_t            GetLaneValue        ()const override{return data ? data->GetLaneValue() : 0;}
 
-    virtual bool        Submit              (Semaphore *wait_sem)override
+    RenderCmdBuffer *   GetRenderCmdBuffer  ()override{return data ? data->GetCmdBuffer() : nullptr;}
+
+    /// 提交：extra_waits 由调用方给出（主帧车道、上传完成等）
+    virtual bool        Submit              (const SemaphoreSubmit *extra_waits,const uint32_t extra_wait_count)override
     {
         if(!data)
             return(false);
 
-        return data->Submit(wait_sem);
+        return data->Submit(extra_waits,extra_wait_count);
     }
 
-    bool                WaitQueue           ()override{return data->queue->WaitQueue();}
-    bool                WaitFence           ()override{return data->queue->WaitLastSubmitFence();}
+    /// per-frame 数据槽号（L2W ring / CameraInfo 行 / Viewport 槽按它取号）
+    uint32_t            GetCurrentFrameIndex()const override{return data ? data->GetCurrentFrameIndex() : 0;}
+
+    /// per-frame 数据槽总数（全局，主帧 + 离屏共用一段索引空间）
+    uint32_t            GetFrameCount       ()const override{return data ? data->GetFrameCount() : 1;}
+
+    bool                WaitQueue           ()override
+    {
+        DeviceQueue *q = GetQueue();
+        return q ? q->WaitQueue() : false;
+    }
+
+    /// 全槽排空：等本 RT 所有在途槽完成（resize / 生命周期 / 帧间同步点用）。
+    /// 逐槽的复用等待在 RenderTargetData::BeginRender 内完成，无需调用方参与。
+    bool                WaitFence           ()override
+    {
+        if(!data || !data->queues)
+            return(false);
+
+        bool ok = true;
+        for(uint32_t i = 0; i < data->slot_count; i++)
+            if(data->queues[i] && !data->queues[i]->WaitLastSubmitFence())
+                ok = false;
+
+        return ok;
+    }
 
 public:
 

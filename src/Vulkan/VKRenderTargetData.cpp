@@ -9,22 +9,49 @@
 
 namespace hgl::graph{
 
-bool RenderTargetData::Submit(Semaphore *wait_sem)
+bool RenderTargetData::Submit(const SemaphoreSubmit *extra_waits,const uint32_t extra_wait_count)
 {
-//    std::cerr << "[RenderTargetData] Submit queue=" << queue << " cmd_buf=" << cmd_buf << " wait_sem=" << wait_sem << " render_complete=" << render_complete_semaphore << std::endl;
-    if(!queue||!cmd_buf||!render_complete_semaphore)
+    DeviceQueue *    queue   = GetQueue();
+    RenderCmdBuffer *cmd_buf = GetCmdBuffer();
+
+    if(!queue||!cmd_buf)
         return(false);
 
-    // 离屏渲染没有后续等待该信号量的提交，继续 signal 会触发“重复 signal 未等待”的校验错误。
-    Semaphore *signal_sem = wait_sem ? render_complete_semaphore : nullptr;
-    bool ok = queue->Submit(cmd_buf, wait_sem, signal_sem);
+    // 等待列表：调用方给的额外等待（主导入方向：主帧车道、上传完成等）
+    constexpr uint32_t MAX_WAITS = 16;
+    SemaphoreSubmit waits[MAX_WAITS];
+    uint32_t wait_count = 0;
+
+    for(uint32_t i=0;i<extra_wait_count && wait_count<MAX_WAITS;i++)
+        if(extra_waits[i].semaphore)
+            waits[wait_count++] = extra_waits[i];
+
+    // 信号：本 RT 的车道（timeline）——主帧提交会 await 本帧提交过的值（A1）。
+    // timeline 允许「只 signal 无人等」，不存在二进制那种重复 signal 的非法状态。
+    SemaphoreSubmit signal_item = SemaphoreSubmit::Signal(lane, NextLaneValue());
+
+    bool ok = queue->Submit(cmd_buf, waits, wait_count, lane ? &signal_item : nullptr, lane ? 1u : 0u);
 //    std::cerr << "[RenderTargetData] Submit result=" << ok << std::endl;
     return ok;
 }
 
 RenderCmdBuffer *RenderTargetData::BeginRender()
 {
-//    std::cerr << "[RenderTargetData] BeginRender cmd_buf=" << cmd_buf << " fbo=" << fbo << std::endl;
+    if(!cmd_bufs||slot_count==0)
+        return(nullptr);
+
+    // 轮到下一个槽：复用前先等该槽自己的 fence（标准 WSI 模型；该槽从未提交过时
+    // WaitLastSubmitFence 内部直接返回 true，无需额外状态）。
+    //
+    // 槽游标在 BeginRender 前进、而不是在 Submit 之后前进：这样 EndManagedRenderFrame
+    // 提交完成后，GetRenderCompleteSemaphore() 读到的仍是**本次提交**那个槽的信号量
+    // （A1 的信号量链要用它作为主帧提交的等待对象）。
+    slot_index = (slot_index + 1) % slot_count;
+
+    if(DeviceQueue *queue = GetQueue())
+        queue->WaitLastSubmitFence();
+
+    RenderCmdBuffer *cmd_buf = GetCmdBuffer();
     if(!cmd_buf)
         return(nullptr);
 
@@ -35,7 +62,7 @@ RenderCmdBuffer *RenderTargetData::BeginRender()
 
 void RenderTargetData::EndRender()
 {
-//    std::cerr << "[RenderTargetData] EndRender cmd_buf=" << cmd_buf << std::endl;
+    RenderCmdBuffer *cmd_buf = GetCmdBuffer();
     if(!cmd_buf)
         return;
 
@@ -71,7 +98,6 @@ void RenderTargetData::EndRender()
 void RenderTargetData::Clear()
 {
     LogDebug("[RenderTargetData] Clear");
-    SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);
 
     // queue（含其 fence 数组）与 cmd_buf 由 CreateOffscreenRT 创建、本结构独占，
@@ -79,8 +105,30 @@ void RenderTargetData::Clear()
     // 导致 fence 泄漏至 vkDestroyDevice（VUID-vkDestroyDevice-device-05137）。
     // 注意：必须在置空前销毁，且本结构无其它持有者（SwapchainRenderTarget
     // 使用自有 sync_slots，不经此处）。
-    SAFE_CLEAR(cmd_buf);
-    SAFE_CLEAR(queue);
+    if(cmd_bufs)
+    {
+        for(uint32_t i=0;i<slot_count;i++)
+            SAFE_CLEAR(cmd_bufs[i]);
+
+        delete[] cmd_bufs;
+        cmd_bufs = nullptr;
+    }
+
+    if(queues)
+    {
+        for(uint32_t i=0;i<slot_count;i++)
+            SAFE_CLEAR(queues[i]);
+
+        delete[] queues;
+        queues = nullptr;
+    }
+
+    // 车道（timeline 信号量）由本结构独占，随 RT 销毁
+    SAFE_CLEAR(lane);
+    lane_value = 0;
+
+    slot_count = 0;
+    slot_index = 0;
 
     // Textures are managed by TextureManager, so just clear the pointers
     // Do NOT delete the textures themselves to avoid double deletion

@@ -2,6 +2,7 @@
 
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKSwapchain.h>
+#include<hgl/common/RenderOptions.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
@@ -43,6 +44,10 @@ class SwapchainRenderTarget : public IRenderTarget
     DeviceQueue**       images_in_flight    = nullptr;  ///< [image_count] - which slot owns each image
     bool                resize_required     = false;
 
+    /// 主帧车道（A1）：timeline 信号量，主帧提交 signal、离屏 prepass await 其上一次值
+    Semaphore*          main_lane           = nullptr;
+    uint64_t            main_lane_value     = 0;
+
     friend class SwapchainModule;
 
     SwapchainRenderTarget(hgl::ecs::ECSContext* ctx,
@@ -69,11 +74,13 @@ public:
     Texture2D*          GetDepthTexture()                   override;
 
     DeviceQueue*        GetQueue()                          override;
-    Semaphore*          GetRenderCompleteSemaphore()         override;
     RenderCmdBuffer*    GetRenderCmdBuffer()                 override;
 
-    bool                Submit(Semaphore* wait_sem)          override;
-    bool                Submit()                             override;
+    /// 主帧车道（A1）：主帧提交 signal，离屏 prepass await 上一次主帧的值
+    Semaphore*          GetMainLane()                        override { return main_lane; }
+    uint64_t            GetMainLaneValue()             const override { return main_lane_value; }
+
+    bool                Submit(const SemaphoreSubmit* extra_waits,uint32_t extra_wait_count) override;
 
     bool                WaitQueue()                          override;
     bool                WaitFence()                          override;
@@ -82,7 +89,9 @@ public:
     void                EndRender()                          override;
 
     uint32_t            GetCurrentFrameIndex()  const       override { return acquired_image; }
-    uint32_t            GetFrameCount()         const       override { return slot_count; }
+    /// per-frame 数据槽总数：主帧槽与离屏槽共用同一段索引空间（见 RenderOptions.h），
+    /// ring 类缓冲一律按它分配；本 RT 自己的在途槽数是 slot_count（= image_count）。
+    uint32_t            GetFrameCount()         const       override { return HGL_FRAME_SLOT_TOTAL; }
 
 };//class SwapchainRenderTarget
 

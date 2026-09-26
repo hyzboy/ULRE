@@ -66,7 +66,15 @@ struct RenderTargetDesc
     /// 不应因窗口缩放被连带改变。
     bool follow_window = false;
 
-    uint32_t fence_count = 1;
+    /// in-flight 帧槽数（A7）。
+    ///
+    /// 每个槽独占一组 {cmd_buf, queue(1 fence), render_complete_semaphore}，按提交次数
+    /// 轮转；复用某槽前等该槽自己的 fence（标准 WSI 模型）。1 = 每次提交前都等上一次
+    /// 提交完成（旧行为，零重叠）；每帧对同一 RT 提交多次时（如 CSM 每级一次）应设为
+    /// ≥ 每帧提交次数，才能换来真正的 CPU/GPU 重叠。
+    ///
+    /// 本值同时决定该 RT 占用的 per-frame 数据槽带宽度（见 RenderOptions.h 的槽划分）。
+    uint32_t slot_count = 1;
 
     // ---- 渲染参数（原散落在 WorkObject / ECSContext / RenderSystemCore 三处）----
 

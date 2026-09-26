@@ -611,9 +611,10 @@ namespace hgl::graph
         task->transfer_sem = sem;
         task->signal_semaphore = *sem;
 
-        transfer_queue_->Submit(transfer_cmd_buf_, nullptr, sem);
+        SemaphoreSubmit transfer_signal = SemaphoreSubmit::Signal(sem);
+        transfer_queue_->Submit(transfer_cmd_buf_, nullptr, 0, &transfer_signal, 1);
 
-        pending_wait_semaphores_.Add(*sem);
+        pending_wait_semaphores_.Add(sem);
         task->state = UploadTaskState::InFlight;
         in_flight_tasks_.Add(task);
 
@@ -813,7 +814,7 @@ namespace hgl::graph
 
         tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        graphics_queue_->Submit(graphics_cmd_buf_, nullptr, nullptr);
+        graphics_queue_->Submit(graphics_cmd_buf_, nullptr, 0, nullptr, 0);
 
         task->state = UploadTaskState::InFlight;
         in_flight_tasks_.Add(task);

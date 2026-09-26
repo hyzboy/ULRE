@@ -109,13 +109,15 @@ public:
 public: // Command Buffer
 
     virtual DeviceQueue *       GetQueue            ()=0;
-    virtual Semaphore *         GetRenderCompleteSemaphore()=0;
 
     virtual RenderCmdBuffer *   GetRenderCmdBuffer  ()=0;
 
-    virtual bool                Submit              (Semaphore *wait_sem)=0;
+    /// 提交本 RT。`extra_waits` 为调用方提供的额外等待列表（A1：主帧提交等本帧各离屏 RT
+    /// 的车道值；离屏提交等主帧车道 / 上传完成）；实现内部的固有等待（交换链
+    /// image_available、上传信号量）由各实现自行追加。
+    virtual bool                Submit              (const SemaphoreSubmit *extra_waits,uint32_t extra_wait_count)=0;
 
-    virtual bool                Submit              (){return Submit(nullptr);}
+    virtual bool                Submit              (){return Submit(nullptr,0);}
 
     virtual bool                WaitQueue           ()=0;
     virtual bool                WaitFence           ()=0;
@@ -136,6 +138,16 @@ public: // Command Buffer
     ///       任何未随头文件重编译的旧目标文件都会因 vtable 错位而调用到错误的函数
     ///       （表现为随机段错误）。放在末尾可让既有槽位偏移保持不变。
     virtual bool                IsSwapchain        ()const{return false;}
+
+public: // 车道（A1 双向跨帧排序；新虚函数一律追加在末尾，避免平移既有槽位）
+
+    /// 本 RT 的车道：离屏 RT 用它表达「本 RT 的提交完成」
+    virtual Semaphore *         GetLane             (){return nullptr;}
+    virtual uint64_t            GetLaneValue        ()const{return 0;}
+
+    /// 主帧车道：交换链 RT 用它表达「主帧提交完成」（离屏 prepass await 它上一次的值）
+    virtual Semaphore *         GetMainLane         (){return nullptr;}
+    virtual uint64_t            GetMainLaneValue    ()const{return 0;}
 
 public:
     virtual ViewportInfo *      GetViewportInfo     ();

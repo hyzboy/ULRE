@@ -66,6 +66,10 @@ private:
 
     std::vector<RenderTargetEntry> registry;
 
+    /// 下一个离屏 RT 的 per-frame 数据槽带起点（主帧槽之上整带分配，见 RenderOptions.h；
+    /// 由构造函数初始化为主帧槽上限，主帧槽按交换链 image_count 使用）
+    uint32_t next_offscreen_slot_base = 0;
+
     /// 把 desc 解析为 FramebufferInfo：补齐设备默认格式。
     /// - has_color 为假 → 零颜色附件（depth-only），不补默认颜色格式
     /// - has_color 为真且 color_formats 为空 → 补一个设备默认 surface format
@@ -106,13 +110,13 @@ public: // 创建
     OffscreenRenderTarget *CreateOffscreenRT(hgl::ecs::ECSContext *ecs_ctx,
                                              const AnsiString &name,
                                              const FramebufferInfo *fbi,
-                                             const uint32_t fence_count=1);
+                                             const uint32_t slot_count=1);
 
     /// [Deprecated] 便捷静态入口，保留以兼容旧调用；新代码请用 Create(desc)
     static OffscreenRenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
-                                                              const FramebufferInfo *fbi, const uint32_t fence_count=1);
+                                                              const FramebufferInfo *fbi, const uint32_t slot_count=1);
     static OffscreenRenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
-                                                              const AnsiString &name, const FramebufferInfo *fbi, const uint32_t fence_count=1);
+                                                              const AnsiString &name, const FramebufferInfo *fbi, const uint32_t slot_count=1);
 
 public: // 生命周期
 

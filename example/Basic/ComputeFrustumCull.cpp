@@ -716,7 +716,7 @@ public:
 
         compute_cmd->End();
 
-        compute_queue->Submit(compute_cmd, nullptr, nullptr);
+        compute_queue->Submit(compute_cmd, nullptr, 0, nullptr, 0);
         compute_queue->WaitFence();
 
         // 3. CPU 侧真值评估与比对验证

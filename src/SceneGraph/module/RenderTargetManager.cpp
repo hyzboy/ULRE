@@ -31,6 +31,9 @@ RenderTargetManager::RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContex
     rp_manager=rpm;
     ecs_context=ecs_ctx;
 
+    // 离屏 RT 的 per-frame 数据槽带从主帧槽之上开始分配（见 RenderOptions.h）
+    next_offscreen_slot_base = HGL_FRAME_SLOT_MAIN;
+
     // 回设到 GraphicsContext：其余 manager 由 module_manager->GetOrCreate 创建并
     // 赋给 GraphicsContext 成员，而 RTM 构造需要 ECSContext，只能外部创建。
     // 若此处不回设，gc->GetRenderTargetManager() 恒为 nullptr。
@@ -44,7 +47,7 @@ RenderTargetManager::~RenderTargetManager()
 }
 
 OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
-                                                                        const FramebufferInfo *fbi, const uint32_t fence_count)
+                                                                        const FramebufferInfo *fbi, const uint32_t slot_count)
 {
     // Generate a default name from the extent
     if(!fbi)
@@ -53,11 +56,11 @@ OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(Graphics
     const VkExtent2D extent = fbi->GetExtent();
     const AnsiString auto_name = "RT_" + AnsiString::numberOf(extent.width) + "x" + AnsiString::numberOf(extent.height);
 
-    return CreateRTFromGraphicsContext(gc, ecs_ctx, auto_name, fbi, fence_count);
+    return CreateRTFromGraphicsContext(gc, ecs_ctx, auto_name, fbi, slot_count);
 }
 
 OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
-                                                                        const AnsiString &name, const FramebufferInfo *fbi, const uint32_t fence_count)
+                                                                        const AnsiString &name, const FramebufferInfo *fbi, const uint32_t slot_count)
 {
     if(!gc || !ecs_ctx || !fbi)
         return(nullptr);
@@ -66,7 +69,7 @@ OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(Graphics
     if(!rtm)
         return(nullptr);
 
-    return rtm->CreateOffscreenRT(ecs_ctx, name, fbi, fence_count);
+    return rtm->CreateOffscreenRT(ecs_ctx, name, fbi, slot_count);
 }
 
 void RenderTargetDeleter::operator()(IRenderTarget *rt)const
@@ -140,7 +143,7 @@ RenderTargetHandle RenderTargetManager::Create(const RenderTargetDesc &desc)
     if(name.IsEmpty())
         name = "RT_" + AnsiString::numberOf(desc.width) + "x" + AnsiString::numberOf(desc.height);
 
-    OffscreenRenderTarget *rt = CreateOffscreenRT(ecs_context, name, &fbi, desc.fence_count);
+    OffscreenRenderTarget *rt = CreateOffscreenRT(ecs_context, name, &fbi, desc.slot_count);
 
     if(!rt)
         return(empty_handle);
@@ -168,7 +171,7 @@ RenderTargetHandle RenderTargetManager::Create(const RenderTargetDesc &desc)
 OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSContext *ecs_ctx,
                                                               const AnsiString &name,
                                                               const FramebufferInfo *fbi,
-                                                              const uint32_t fence_count)
+                                                              const uint32_t slot_count)
 {
     if(!fbi || !ecs_ctx)
         return(nullptr);
@@ -188,18 +191,78 @@ OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSConte
 
     RenderTargetData *rtd = new RenderTargetData{};
 
+    // ---- in-flight 槽（A7）----
+    // 每个槽独占一组 {cmd_buf, queue(1 fence), render_complete_semaphore}，按提交次数轮转
+    // （复用前等该槽 fence，见 RenderTargetData::BeginRender）；同时占一段 per-frame 数据槽带
+    // （主帧槽之上整带分配，见 RenderOptions.h 的槽划分）。
+    //
+    // 固定上限、不为极端场景预留增长：带越界即 fail-fast（属项目 bug，不是要扩容的场景）。
+    const uint32_t slots = (slot_count > 0) ? slot_count : 1;
+
+    if(next_offscreen_slot_base + slots > HGL_FRAME_SLOT_TOTAL)
+    {
+        GLogError("[RenderTargetManager] %s: in-flight 槽带越界（起点=%u 槽数=%u 上限=%u）"
+                 "—— 请减少该 RT 的 slot_count 或提高 HGL_FRAME_SLOT_TOTAL",
+                 name.c_str(), next_offscreen_slot_base, slots, HGL_FRAME_SLOT_TOTAL);
+        delete rtd;
+        return(nullptr);
+    }
+
+    rtd->slot_count       = slots;
+    rtd->slot_index       = slots - 1;              // 首次 BeginRender 前进后落在槽 0
+    rtd->data_slot_base   = next_offscreen_slot_base;
+    rtd->frame_slot_total = HGL_FRAME_SLOT_TOTAL;
+
+    rtd->cmd_bufs                   = new RenderCmdBuffer *[slots]();
+    rtd->queues                     = new DeviceQueue *[slots]();
+
+    if(!rtd->cmd_bufs || !rtd->queues)
+    {
+        GLogError("[RenderTargetManager] %s: 槽数组分配失败", name.c_str());
+        rtd->Clear();
+        delete rtd;
+        return(nullptr);
+    }
+
+    // 车道（A1）：本 RT 的 timeline 信号量 —— 提交时 signal、主帧提交 await 本帧的值，
+    // 取代改造前的二进制「渲染完成」信号量（二进制每帧重复 signal 需要配对的等待方）。
+    rtd->lane = device->CreateTimelineSemaphore(name + ":Lane");
+
+    if(!rtd->lane)
+    {
+        GLogError("[RenderTargetManager] %s: 车道（timeline 信号量）创建失败", name.c_str());
+        rtd->Clear();
+        delete rtd;
+        return(nullptr);
+    }
+
+    for(uint32_t i = 0; i < slots; i++)
+    {
+        const AnsiString slot_name = name + ":RT[slot" + AnsiString::numberOf(i) + "]";
+
+        rtd->queues[i]   = device->CreateQueue(slot_name, 1, false);
+        rtd->cmd_bufs[i] = device->CreateRenderCommandBuffer(slot_name);
+
+        if(!rtd->queues[i] || !rtd->cmd_bufs[i])
+        {
+            GLogError("[RenderTargetManager] %s: 槽 %u 设备资源创建失败", name.c_str(), i);
+            rtd->Clear();
+            delete rtd;
+            return(nullptr);
+        }
+    }
+
+    next_offscreen_slot_base += slots;
+
     if(!CreateAttachments(rtd, name, fbi))
     {
+        rtd->Clear();
         delete rtd;
         return(nullptr);
     }
 
     {
         const AnsiString rt_name = name + ":RT";
-
-        rtd->queue                     = device->CreateQueue(rt_name, fence_count, false);
-        rtd->render_complete_semaphore = device->CreateGPUSemaphore(rt_name);
-        rtd->cmd_buf                   = device->CreateRenderCommandBuffer(rt_name);
 
         OffscreenRenderTarget *rt = new OffscreenRenderTarget(ecs_ctx, rtd);
 

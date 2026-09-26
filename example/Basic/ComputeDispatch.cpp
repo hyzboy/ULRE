@@ -112,7 +112,7 @@ private:
         if (!compute_cmd->End())
             return false;
 
-        if (!compute_queue->Submit(compute_cmd, nullptr, nullptr))
+        if (!compute_queue->Submit(compute_cmd, nullptr, 0, nullptr, 0))
             return false;
 
         compute_queue->WaitFence();
