@@ -1506,46 +1506,26 @@ namespace hgl::ecs
                 else if (world->IsCurrentPassShadow())
                 {
                     // A1：阴影 pass 精简链。ShadowCaster 程序不消费材质 SSBO
-                    // payload，无需常规 payload 链；且那条链是 forward 槽语义，
-                    // 在阴影 pass 中执行会以 forward program（可能尚未解析）
-                    // 做资源准备并污染其缓存状态。
-                    //
-                    // A1-1：不写共享 valid——它是"forward 完整物化链成功"的
-                    // 标志，pre-scan 以它做重试触发与 epoch 闸门：阴影失败置
-                    // false 会拖全场景每帧重物化；阴影成功置 true 会抹掉
-                    // forward 失败的重试触发。失败只清阴影槽自重试。
+                    // payload；几何+管线即可绘制。
                     //
                     // A1-4：masked caster（ShadowCasterMasked 模板）的片元要
-                    // 采样 opacity mask → schema 需要运行时行。行内容是
-                    // per-primitive 共享状态（WriteBatchIndexRows 只读
-                    // MaterialComponent 的 data_index_row / 纹理配置），与
-                    // program 无关——故直接借 forward 链解析+准备+物化，
-                    // 主帧进来时命中 P1-1 快路径，不重复物化。
+                    // 采样 opacity mask → 需要纹理引用行。行由 **主帧 forward
+                    // 链** 物化并持有（行内容 per-primitive，与 program 无关，
+                    // shadow program 共读）。这里**绝不**在阴影帧代为物化：
+                    // 阴影帧与主帧两条物化链会互相 retire/重分配纹理配置行，
+                    // 深度图采样引用的池行随即漂移 → opacity 槽失效 → 影子
+                    // 退化为实心。行未就绪（valid==false，如首帧 prepass 早于
+                    // 任何主帧物化）时跳过本帧该 caster，并 bump static_scene_
+                    // revision 触发静态级联下帧重画，直至行就绪（收敛）。
                     const bool shadow_needs_rows =
                         material_comp->shadow_program
                      && graph::mtl::MaterialRequiresRecipeRuntimeRows(
                             material_comp->shadow_program->GetShaderResourceSchema());
 
-                    if (shadow_needs_rows
-                     && (material_comp->runtime_dirty
-                      || material_comp->last_materialize_epoch != materialize_epoch
-                      || !material_comp->valid))
+                    if (shadow_needs_rows && !material_comp->valid)
                     {
-                        if (!ResolveForwardProgram(primitiveComp, material_comp)
-                         || !PrepareActivePlanResources(
-                                world,
-                                primitiveComp,
-                                material_comp->program,
-                                material_comp->cached_effective_recipe)
-                         || !MaterializeRecipeRowsForPrimitive(
-                                primitiveComp, material_comp))
-                        {
-                            GLogWarning(
-                                "[RenderPrimitiveCollectSystem] Shadow pass masked-caster row materialization failed for %s (alpha mask will read empty rows this frame)",
-                                GetPrimitiveOwnerName(primitiveComp));
-                            InvalidateRecipeRuntime(material_comp, false);
-                            material_comp->MarkFailed();
-                        }
+                        world->BumpStaticSceneRevision();
+                        continue; // 本帧深度图不含它；下帧行就绪后重画
                     }
 
                     if (!EnsureRuntimeGeometryFromAsset(

@@ -611,7 +611,18 @@ namespace hgl::graph::mtl
             // （声明+零值初始化+真实来源填充）。此前手写 si 初始化在 wiring
             // 之前会造成 'si' redefinition——wiring 缺失（fragment_inputs 为
             // null）时才用手写零值兜底。
+            //
+            // dataIndex 同理：coverage 契约要求 DataIndexID 时 wiring 已生成
+            // `const uint materialDataIndex = fragDataIndexID;`（per-draw 行表
+            // 索引）。此前硬编码 EvalAlpha(si, 0u) 恒取行表第 0 行——batch 内
+            // 非 0 号物体的 opacity 槽读到别人的配置，未绑定即 fallback 1.0，
+            // 表现为"masked 阴影与 opaque 一样实心"。
             std::string main_body = "\nvoid main()\n{\n";
+            const bool wiring_data_index =
+                input.coverage_contract
+             && (input.coverage_contract->required_semantics
+                 & GetInterStageSemanticMask(InterStageSemantic::DataIndexID))
+                    != 0;
             if (input.fragment_inputs)
             {
                 AnsiString wiring;
@@ -619,6 +630,9 @@ namespace hgl::graph::mtl
                         *input.fragment_inputs, false, wiring))
                     return false;
                 main_body += wiring.c_str();
+                main_body += "    const float alpha = EvalAlpha(si, ";
+                main_body += wiring_data_index ? "materialDataIndex" : "0u";
+                main_body += ");\n";
             }
             else
             {
@@ -633,9 +647,9 @@ namespace hgl::graph::mtl
                     "    si.screenPos = gl_FragCoord.xy;\n"
                     "    si.luminance = 1.0;\n"
                     "    si.styleID = 0u;\n";
+                main_body += "    const float alpha = EvalAlpha(si, 0u);\n";
             }
             main_body +=
-                "    const float alpha = EvalAlpha(si, 0u);\n"
                 "    HGLApplyAlpha(alpha);\n"
                 "}\n";
             AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,

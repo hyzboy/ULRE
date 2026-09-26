@@ -997,7 +997,24 @@ namespace hgl::ecs
 
                                 row_ptr[i].texture_reference_index =
                                     material_comp->material_texture_configuration.row_index;
+                            }
+                        }
 
+                        // A1-4：batch 的纹理引用池基址（pc_root.addr_texture_
+                        // references）**无论 desc 是否 resolved 都要设置**——
+                        // 此前它只在 fallback 分支赋值：4-ID 描述符正常时（稳态
+                        // 每帧如此）addr_texture_references 恒 0，MTL_TEX 解引
+                        // 用地址 0 → tex_handle=0 → SampleOptional fallback
+                        // 1.0，masked 阴影退化为实心（本体批曾因首帧 desc 未
+                        // 同步偶然走过 fallback 才幸免）。
+                        {
+                            auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
+                            auto material_comp = primitive_item
+                                ? primitive_item->GetMaterialComponent()
+                                : nullptr;
+                            if (material_comp
+                             && batch.texture_reference_base_addr == 0)
+                            {
                                 if (material_comp->material_texture_zero_row_gpu)
                                     batch.texture_reference_base_addr =
                                         material_comp->material_texture_zero_row_gpu;
