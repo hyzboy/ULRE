@@ -199,7 +199,10 @@ int main(int argc, char** argv)
         cfg.shadow_map_size = 1024.0f;
         cfg.max_distance = 300.0f;
         cfg.cache_anchor_step = 16.0f;
-        cfg.cache_lateral_anchor_step = 2.0f;
+        // 横向锚定（S1：texel 口径，世界步长由 B 派生 ≈2.0/6.3/11.5 m @ 本配置）
+        cfg.cache_scroll_band_texels[1] = 16;
+        cfg.cache_scroll_band_texels[2] = 16;
+        cfg.cache_scroll_band_texels[3] = 32;
 
         CascadedShadowController ctrl(cfg);
         ShadowInfo shadow_info;
@@ -273,7 +276,9 @@ int main(int argc, char** argv)
                 ccfg.shadow_map_size = 1024.0f;
                 ccfg.max_distance = 300.0f;
                 ccfg.cache_anchor_step = 16.0f;
-                ccfg.cache_lateral_anchor_step = 2.0f;
+                ccfg.cache_scroll_band_texels[1] = 16;
+                ccfg.cache_scroll_band_texels[2] = 16;
+                ccfg.cache_scroll_band_texels[3] = 32;
 
                 CascadedShadowController cctrl(ccfg);
                 ShadowInfo cinfo;
@@ -374,7 +379,12 @@ int main(int argc, char** argv)
                 ccfg.split_distances[2] = 2.4f;
                 ccfg.split_distances[3] = 4.8f;
                 ccfg.cache_anchor_step = 16.0f;
-                ccfg.cache_lateral_anchor_step = 10.0f;
+                // 压力子用例：横向锚定格大到与切片半径同量级（原 lateral_step=10m 的等价形态）。
+                // texel 口径（S1）下 B=600 @ M=1024 ⇒ L = 2·B·r0/(M−1.416·B) ≈ 10.6 m（r0≈1.54m）
+                // ⇒ 半径补偿 ≈ 7.5 m ≈ 4.9×r0，与改前同量级 ⇒ 补偿一旦缺失断言必然失败。
+                ccfg.cache_scroll_band_texels[1] = 600;
+                ccfg.cache_scroll_band_texels[2] = 600;
+                ccfg.cache_scroll_band_texels[3] = 600;
 
                 CascadedShadowController cctrl(ccfg);
                 ShadowInfo cinfo;
@@ -455,7 +465,7 @@ int main(int argc, char** argv)
                     }
                 }
 
-                GLogInfo(u8"[CSM-COVERAGE] lateral_step=10m frames=%d fail=%u worst_ndc=[%f,%f,%f,%f]",
+                GLogInfo(u8"[CSM-COVERAGE] band=600texel(~10.6m) frames=%d fail=%u worst_ndc=[%f,%f,%f,%f]",
                          kStressFrames, coverage_fail, worst_ndc[0], worst_ndc[1],
                          worst_ndc[2], worst_ndc[3]);
 
@@ -484,7 +494,9 @@ int main(int argc, char** argv)
         ccfg.shadow_map_size = 1024.0f;
         ccfg.max_distance = 300.0f;
         ccfg.cache_anchor_step = 16.0f;        // 沿光轴锚定：矩阵的第三维只能按步进跳
-        ccfg.cache_lateral_anchor_step = 2.0f; // 横向锚定
+        ccfg.cache_scroll_band_texels[1] = 16; // 横向锚定（S1：texel 口径）
+        ccfg.cache_scroll_band_texels[2] = 16;
+        ccfg.cache_scroll_band_texels[3] = 32;
 
         CascadedShadowController cctrl(ccfg);
         ShadowInfo cinfo;
@@ -1863,6 +1875,177 @@ int main(int argc, char** argv)
                      u8"全部留痕。",
                      static_cast<int>(sizeof(kStaticWriteContracts) / sizeof(kStaticWriteContracts[0])));
         }
+
+    // ─────────────────────────────────────────────────────────────
+    // 16: 横向锚定步长的 **texel 口径**契约（D5/S1）。
+    //
+    // 主参数是 texel 数 B（不是世界米）：世界步长 L 与半径补偿都由 B 派生——
+    //     L = 2·B·r0 / (M − 1.416·B)，radius = r0 + 0.708·L  ⇒ L/texel ≡ B
+    //     精度损失 = 1.416·B/M（与切片半径 r0、贴图分辨率 M 都无关，只看 B/M）
+    // 为什么必须这样：L 同时是"环形偏移的量子"（`cache_offset` 是 uvec，滚动必须整数
+    // texel）与"半径补偿量"（决定静态阴影精度）。两个约束同时成立 ⇒ 锚定格必须是该级
+    // texel 的整数倍；若退回世界米口径，同一常量在不同级联折算出非整数 texel（实测旧
+    // 2m 常量 ≈ c1 15.7 / c2 5.1 / c3 2.8 texel），既破坏量子性，又让远景级联的条带退化
+    // 到比 PCF 外扩还窄。
+    //
+    // 本测试**不读被测代码的中间量**：用"有无锚定两次运行的 texel 之差"反解补偿量
+    //     texel(B) − texel(0) = 1.416·L/M  ⇒ L = (texel(B) − texel(0))·M/1.416
+    // 再断言 L/texel(B) 恰为 B（整数 texel 量子）与精度损失公式。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const float M = 1024.0f;
+
+        auto measure_texel = [&M](const uint32_t b1, const uint32_t b2, const uint32_t b3,
+                                  float out_texel[4]) -> bool
+        {
+            CascadedShadowConfig cfg;
+            cfg.cascade_count = 4;
+            cfg.c0_dynamic_overlay = true;
+            cfg.shadow_map_size = M;
+            cfg.max_distance = 300.0f;
+            cfg.cache_anchor_step = 16.0f;
+            cfg.cache_scroll_band_texels[0] = 0;   // c0 是逐帧全量动态层，永不加锚定
+            cfg.cache_scroll_band_texels[1] = b1;
+            cfg.cache_scroll_band_texels[2] = b2;
+            cfg.cache_scroll_band_texels[3] = b3;
+
+            CascadedShadowController ctrl(cfg);
+            ShadowInfo info;
+            Camera cam;
+            cam.znear = 0.1f;
+            cam.zfar = 500.0f;
+            cam.fovY = 60.0f;
+            cam.pos = Vector3f(0.0f, 0.0f, 1.7f);
+            // 注意 Camera 默认 world_up=(0,0,1)（Z 轴向上）；若视线与之平行，cross 退化成
+            // normalize(0)=NaN（半径会静默变 0）。这里显式给一组不共线的基准。
+            cam.world_up = Vector3f(0.0f, 1.0f, 0.0f);
+            cam.viewDirection = Vector3f(0.0f, 0.0f, -1.0f);
+
+            CascadeUpdateResult r[kMaxShadowCascades];
+            ctrl.Update(cam, 16.0f / 9.0f, glm::normalize(Vector3f(0.5f, 0.8f, -1.0f)), info, r);
+
+            for (uint32_t c = 0; c < 4; ++c)
+            {
+                if (!(r[c].sphere_radius > 0.0f) || !std::isfinite(r[c].sphere_radius))
+                    return false;
+                out_texel[c] = (2.0f * r[c].sphere_radius) / M;   // texel = 2r/M（sphere_radius 由 texel 反解）
+            }
+            return true;
+        };
+
+        float texel_off[4] = {0, 0, 0, 0};   // B = 0（禁用锚定）
+        float texel_def[4] = {0, 0, 0, 0};   // B = {0,16,16,32}（默认档）
+        float texel_dbl[4] = {0, 0, 0, 0};   // B = {0,32,32,64}（加倍：单调性）
+        float texel_bad[4] = {0, 0, 0, 0};   // B = 800 > M/1.416（退化 ⇒ fail-safe 禁用）
+
+        if (!measure_texel(0, 0, 0, texel_off) ||
+            !measure_texel(16, 16, 32, texel_def) ||
+            !measure_texel(32, 32, 64, texel_dbl) ||
+            !measure_texel(800, 800, 800, texel_bad))
+        {
+            GLogError(u8"Test 16 Failed: CascadeUpdateResult::sphere_radius 未产出（texel 无法量测）");
+            return 16;
+        }
+
+        const uint32_t bands[4] = {0, 16, 16, 32};
+
+        // (a)(b)(e) 逐级：L/texel 恰为 B；精度损失 == 1.416·B/M；B 加倍 ⇒ texel 单调变粗
+        for (uint32_t c = 1; c < 4; ++c)
+        {
+            const float B = static_cast<float>(bands[c]);
+            const float L_measured = (texel_def[c] - texel_off[c]) * M / 1.416f;
+            const float quantum = L_measured / texel_def[c];
+
+            if (std::abs(quantum - B) > B * 0.01f + 0.05f)
+            {
+                GLogError(u8"Test 16 Failed: cascade %u 锚定格 %.3f texel ≠ B=%.0f "
+                          u8"（L=2B·r0/(M−1.416B) 闭式被改 ⇒ 环形偏移不再是整数 texel）",
+                          c, quantum, B);
+                return 16;
+            }
+
+            const float loss = (texel_def[c] - texel_off[c]) / texel_off[c];
+            // 精确式：loss = 0.708·L/r0 = 1.416·B/(M − 1.416·B)（一阶近似是 1.416·B/M，
+            // 二者在 B=32 时差 4.6%：4.63% vs 4.43%，故必须用精确式）
+            const float loss_expected = 1.416f * B / (M - 1.416f * B);
+            if (std::abs(loss - loss_expected) > loss_expected * 0.02f + 1.0e-4f)
+            {
+                GLogError(u8"Test 16 Failed: cascade %u 精度损失 %.4f%% ≠ 1.416·B/(M−1.416B) = %.4f%% "
+                          u8"（B 口径的代价模型被破坏）",
+                          c, loss * 100.0f, loss_expected * 100.0f);
+                return 16;
+            }
+
+            if (!(texel_dbl[c] > texel_def[c] && texel_def[c] > texel_off[c]))
+            {
+                GLogError(u8"Test 16 Failed: cascade %u texel 未随 B 单调变粗（%.5f / %.5f / %.5f）",
+                          c, texel_off[c], texel_def[c], texel_dbl[c]);
+                return 16;
+            }
+        }
+
+        // (c) c0 不得被锚定波及（B=0）：三种配置下 texel 必须完全一致
+        if (std::abs(texel_def[0] - texel_off[0]) > 1.0e-6f ||
+            std::abs(texel_dbl[0] - texel_off[0]) > 1.0e-6f)
+        {
+            GLogError(u8"Test 16 Failed: cascade 0（动态层）被横向锚定波及（%.6f vs %.6f）",
+                      texel_def[0], texel_off[0]);
+            return 16;
+        }
+
+        // (d) 退化保护：B ≥ M/1.416 不得产生除零/负半径/NaN，而是退回"禁用锚定"
+        for (uint32_t c = 1; c < 4; ++c)
+        {
+            if (!std::isfinite(texel_bad[c]) || std::abs(texel_bad[c] - texel_off[c]) > 1.0e-4f)
+            {
+                GLogError(u8"Test 16 Failed: cascade %u 的 B=800(>M/1.416) 未 fail-safe 回禁用路径"
+                          u8"（texel=%.6f vs 禁用 %.6f）",
+                          c, texel_bad[c], texel_off[c]);
+                return 16;
+            }
+        }
+
+        GLogInfo(u8"[CSM-BAND] B={0,16,16,32} texel(bare)=[%.5f %.5f %.5f %.5f] "
+                 u8"texel(anchored)=[%.5f %.5f %.5f %.5f] loss=[%.2f%% %.2f%% %.2f%%]",
+                 texel_off[0], texel_off[1], texel_off[2], texel_off[3],
+                 texel_def[0], texel_def[1], texel_def[2], texel_def[3],
+                 (texel_def[1] - texel_off[1]) / texel_off[1] * 100.0f,
+                 (texel_def[2] - texel_off[2]) / texel_off[2] * 100.0f,
+                 (texel_def[3] - texel_off[3]) / texel_off[3] * 100.0f);
+
+        // (f) 源码契约：texel 口径主参数在位 + 世界米口径不得复活
+        static const SourceContract kBandContracts[] =
+        {
+            { "CascadedShadowController.h",
+              OS_TEXT("inc/hgl/graph/render/lighting/CascadedShadowController.h"),
+              "uint32_t cache_scroll_band_texels[kMaxShadowCascades] = { 0, 16, 16, 32 }",
+              "texel 口径主参数被删/改默认档——横向锚定步长退回世界米口径（失去跨分辨率可比的量子语义）" },
+            { "CascadedShadowController.cpp",
+              OS_TEXT("src/SceneGraph/render/lighting/CascadedShadowController.cpp"),
+              "lateral_anchor = (2.0f * band * radius) / denom;",
+              "L=2B·r0/(M−1.416B) 闭式被改——锚定格不再是该级 texel 的整数倍（环形偏移会引入亚 texel 抖动）" },
+            { "CascadedShadowController.cpp",
+              OS_TEXT("src/SceneGraph/render/lighting/CascadedShadowController.cpp"),
+              "const float denom = map_size - 1.416f * band;",
+              "退化保护被删——B ≥ M/1.416 时除零/负半径（NaN 半径会让整级联消失）" },
+            { "CascadedShadowController.cpp",
+              OS_TEXT("src/SceneGraph/render/lighting/CascadedShadowController.cpp"),
+              "config_.cache_scroll_band_texels[c]",
+              "调用点未逐级传 B——退化成所有级联共用一个步长（远景级联条带退化）" },
+            { "CascadedShadowController.h",
+              OS_TEXT("inc/hgl/graph/render/lighting/CascadedShadowController.h"),
+              "cache_lateral_anchor_step",
+              "世界米口径的横向锚定字段复活——与 texel 口径主参数并存会造成两套步长语义",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(16, kBandContracts,
+                                                       static_cast<uint>(sizeof(kBandContracts) / sizeof(kBandContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 16 Passed: horizontal anchor step is texel-denominated (S1) -- "
+                 u8"L/texel == B exactly, loss == 1.416*B/M, c0 unaffected, degenerate B fails safe.");
+    }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;

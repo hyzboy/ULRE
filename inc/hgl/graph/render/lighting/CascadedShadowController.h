@@ -107,13 +107,24 @@ namespace hgl::graph
         // 整数倍，保证静态缓存的深度矩阵在 step 内恒定；跨步时整级联重建一次。
         // 设为 0 表示禁用锚定（仅用于测试/调试：此时缓存深度会随相机连续漂移）。
         float cache_anchor_step = 16.0f;
-        // 滚动缓存的横向锚定步长（米）。>0 时把静态级联（CSM 1..N）的包围球中心在
-        // 光源的 right/up 两轴上粗粒度吸附，使相机横向移动 step 内不产生 texel 位移，
-        // 从而避免"每跨越 1 个 texel 就整级重绘"。
-        // 代价：中心最多偏离真实中心 step*0.707，必须把包围球半径扩大同样的量以保住
-        // 视锥覆盖率，等价于静态级联纹素精度下降（step=2 时近距级联约 -12%）。
-        // 设为 0 表示禁用（横向每跨 texel 即整级重绘）。
-        float cache_lateral_anchor_step = 2.0f;
+        /// 滚动缓存的横向锚定步长（**单位：纹素 texel**，逐级）。
+        ///
+        /// 为什么用 texel 而不是世界米：横向锚定格 L 同时是"环形偏移的量子"（必须是
+        /// 整数 texel，`cache_offset` 是 uvec）与"半径补偿量"（决定静态阴影精度），
+        /// 两者都只有按 shadowmap 侧表达才可跨分辨率/跨级联比较。世界步长由它派生：
+        ///
+        ///     L_c = 2·B·r0_c / (M − 1.416·B)        // r0 = 未补偿的包围球半径
+        ///     radius += 0.708·L_c                   // ⇒ 最终 texel = L_c / B，恰为 B 个纹素
+        ///     精度损失 = 0.708·L_c / r0_c = 1.416·B / (M − 1.416·B)（与 r0、分辨率都无关）
+        ///
+        /// 于是"锚定格恰为 B 个纹素"与"格内布局矩阵恒定"同时成立，且环形偏移天然整数。
+        /// 代价表（M=1024，精确式）：B=8 → 1.1% / 16 → 2.3% / 32 → 4.6% / 64 → 9.7% /
+        /// M/8 → 21.5%；B ≥ M/1.416 ⇒ 退化（代码 fail-safe 回"禁用锚定"）。
+        /// 把 M 开到 4096 也仍是同样的百分比（B/M 决定一切）——"贴图更大就能用更大的
+        /// 分数步长"不成立，大贴图的收益是同一个 B 对应更小的**世界**步长（滞后更小）。
+        /// 逐级给值：近景级联要小（世界步长小 = 陈旧带窄 + 精度损失小），远景可大。
+        /// 0 = 该级禁用横向锚定（每跨 texel 即整级重建，仅调试/测试用）。
+        uint32_t cache_scroll_band_texels[kMaxShadowCascades] = { 0, 16, 16, 32 };
     };
 
     /**
@@ -169,6 +180,8 @@ namespace hgl::graph
     private:
         void CalculateSplitDistances(float near_z, float far_z, float out_splits[kMaxShadowCascades]) const;
 
+        /// band_texels：该级联的横向锚定步长（texel 数）。0 = 禁用锚定。
+        /// 世界步长 L 与半径补偿由本函数内派生（见 .cpp 的推导注释）——调用方只给 texel 数。
         void CalculateCascadeBounds(const Camera &main_cam,
                                     float aspect,
                                     float split_near,
@@ -180,6 +193,6 @@ namespace hgl::graph
                                     float &out_texel_size,
                                     float &out_along_anchor,
                                     float &out_zfar,
-                                    float lateral_step = 0.0f) const;
+                                    uint32_t band_texels = 0) const;
     };
 }

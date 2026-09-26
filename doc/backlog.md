@@ -277,14 +277,52 @@
     （≈每帧一次）+ `100% Cached` **0 行** ⇒ 静态级联缓存彻底失效。探针已还原。
   - **误报门**：`ATS_SELFCHECK=1` 正常场景告警 **0 条**；`CascadeShadowMap` 冒烟告警
     **0 条**、缓存统计与基线一致 ⇒ 现有引擎/示例代码没有运行期写静态的调用点。
-- **未采用（明确记录）**：B′ 同值短路、C′ 写静态自动迁移到 Movable（渲染行为可见变化）。
+- **未采用（明确记录）**：B′ 同值短路、C′ 写静态自动迁移到 Movable。
+- **已知调用点裁决（2026-09-26 用户）**：`example/Basic/CascadeShadowMap.cpp:684-693` 的
+  `InfiniteGround`（Static，按相机做网格吸附）**保持 Static**——吸附有同值守卫、跨格
+  才写一次，接受「每跨格 1 次整级静态级联重建 + 首跨 1 条一次性告警」。该调用点同时
+  解释了冒烟日志里那 2 次（长跑 16 次）`invalidating static cascade` 的来源：不是回归，
+  是示例自身的刻意取舍（代码处已加注释说明）。
 
-### D5. A8 scissor 增量分支：实现条带滚动或删除
-
-- **现状**：`RenderMainLightShadowPass` 的 scissor 增量分支永不执行
-  （`ShadowDirtyRect` 池恒全图矩形）——与环形寻址（A 线 A6 的 CSM 部分）绑定。
-- **触发条件**：决定做 Toroidal 条带滚动（保留改造）或确认长期整级重建（删除
-  分支与 rect 池）。**依赖路线决策。**
+### D5. A8 scissor 增量分支：接通条带滚动（路线 A，S1 ✅）
+- **决策（2026-09-26 用户）**：走**路线 A**——接通 Toroidal 条带滚动，不删死分支；
+  与 A6（4 级联合并）**解耦推进**（A6 之后再合并，条带滚动先独立可用）。
+- **主参数口径（用户裁定）**：横向锚定步长以 **shadowmap 侧 texel 数 `B_c`** 为主参数，
+  世界米数是**派生量**（引擎数据模型本就是 texel 语义：`cache_offset`/`cache_valid_rect`
+  是 `uvec`）。**世界米口径被否定**：`texel = 2r/M` ⇒ M 翻倍则同一米步长折合的 texel 数
+  减半，"以米为准"无法保证跨分辨率一致。
+  - 闭式（S1 已落地）：`L_c = 2·B·r0_c/(M − 1.416·B)`，`radius += 0.708·L_c`
+    ⇒ `L_c/texel ≡ B`（环形偏移天然整数 texel）。
+  - 代价：**精度损失 = 1.416·B/(M − 1.416·B)**，与切片半径/分辨率都无关（只看 B/M）。
+    M=1024：B=16 → 2.26%、32 → 4.63%、64 → 9.7%、B=M/8 → 21.5%（旧口径一阶近似
+    `1.416·B/M` 偏乐观，B=32 时 4.43% vs 实际 4.63%）。**"1/8 也行"被量化否决**：
+    1/8 图恒为 21.5% 精度损失，且与分辨率无关（M 开到 4096 也一样，价码由 B/M 决定）。
+  - **1/4 的正确位置不是"更新间隔"而是"放弃条带的上限阈值"**：偏移 > 1/4 图 ⇒ 放弃条带
+    改整级重建（兜住瞬移/传送/极端速度），S3 落地。
+- **当前档**：`cache_scroll_band_texels = {0,16,16,32}`（示例口径世界步长 ≈2.0/6.3/11.5 m）。
+  更保守档 `{0,8,8,16}`（精度 1.1/1.1/2.3%，世界步长 1.0/3.1/11.5 m）备选。
+- **S1 ✅（2026-09-26）**：`float cache_lateral_anchor_step = 2.0f`（共享世界米，已删）
+  → `uint32_t cache_scroll_band_texels[kMaxShadowCascades] = {0,16,16,32}`（逐级 texel），
+  闭式派生 + 退化 fail-safe（`B ≥ M/1.416` ⇒ 回禁用锚定，不除零）。
+  - 修复的真问题：旧共享 2.0m 在 c3 折成 2.78 texel（**非整数** ⇒ 落地引入 ≤0.5 texel
+    静态内容亚像素抖动），且 c3 条带仅 2.8 texel、扣 PCF 外扩 2 texel 后有效新内容
+    ~0.8 texel（条带退化成"整条重叠带"）。
+  - **验收**：`TestCSMIncrementalPass` **Test 16**（新增，行为 6 项 + 源码 5 条含 1 条禁复活）
+    `[CSM-BAND] texel(bare)=[0.03819 0.11466 0.24092 0.60525] texel(anchored)=[0.03819
+    0.11725 0.24637 0.63327] loss=[2.26% 2.26% 4.63%]` ⇒ 与闭式逐位吻合；Test 5A 重绘
+    次数 `full=[600,33,17,6]`（旧 2m 口径 `[600,33,32,34]`，c2 −47%/c3 −82%）；Test 5B-1/5B-2
+    （B=600 压力）/5C 全绿；`ATS_SELFCHECK=1` exit 0（D1/D3 契约不变 ⇒ 接收侧零影响）；
+    CSM 示例冒烟 0 VUID、静态失效仍为 2 次（= InfiniteGround 跨格）。
+  - **破坏验证 ×3**：①补偿系数 0.708→0.5（needle 全中）⇒ `锚定格 11.373 texel ≠ B=16` exit 16；
+    ②旧世界米字段复活 ⇒ 禁复活 needle 咬 exit 16；③调用点改成共享 `[1]` ⇒
+    `cascade 3 锚定格 16.000 texel ≠ B=32` exit 16。
+- **后续（S2–S5，未开始）**：S2 控制器产 `cache_offset`（texel，环形累加 mod M）+ 条带矩形
+  （列+行 2 rect，各外扩 PCF 2 texel）；S3 跨格判据改 `need_full_update=false` + 条带 rect，
+  复活 `EnvironmentSystem.cpp:386-403` 局部 scissor 分支 + 上限阈值回落整级重建；S4 shader
+  `toroidal_wrap` 实测边界杂斑（不足则条带内 wrap、带外 clamp）；S5 量测（stats 加
+  `band=N texel/area=P%/offset=(x,y)`）+ 用 E1 读回工具对拍整级 vs 条带同帧深度图找接缝。
+- **S1 遗留待同步**：示例 stats `C1/C2/C3 = N strips` 仍恒 0（S5 接）；`texel_world_size`
+  仍只写不读（S5 用）。
 
 ### D6. prepass 入口防御（T4）
 

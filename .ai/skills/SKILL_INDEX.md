@@ -255,7 +255,7 @@
 **适用：级联阴影CSM、动静分层阴影、静态滚动缓存、阴影bias与PCF调参、阴影故障排查**
 
 - 🌗 动静分层架构（CSM 0 动态逐帧 / CSM 1-3 静态滚动缓存，覆盖区间必须重叠）
-- 📐 级联拟合与**双轴锚定**（沿光轴 `cache_anchor_step` + 横向 `cache_lateral_anchor_step`）
+- 📐 级联拟合与**双轴锚定**（沿光轴 `cache_anchor_step`(米) + 横向 `cache_scroll_band_texels[4]`(**texel**，逐级 `{0,16,16,32}`；世界步长 `L=2·B·r0/(M−1.416B)` 由 B 派生，精度代价 `1.416·B/(M−1.416B)` 只看 B/M））
 - ⚠️ 锚定基准必须是 `cx0` 而非 `cx`（否则光照矩阵随相机滑动）
 - 🌑 背面渲染 + reversed-Z 下的 **bias 极性**（负值贴合、正值漏光）
 - 📏 **逐级联 bias**（`bias_world` 世界单位换算 / `per_cascade_bias_scale`，各级深度范围相差 2.75 倍）

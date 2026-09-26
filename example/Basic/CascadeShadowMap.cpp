@@ -688,6 +688,12 @@ private:
             const float gy = std::floor(main_camera->position.y / kSnapGrid) * kSnapGrid;
             // Static transform 重复 set 同值也会被判为变更（A3 revision 链会
             // 据此重建静态级联）——吸附格未跨时不得重设。
+            //
+            // 有意保持 Static（2026-09-26 与 D4 一并裁决）：这张超大平面虽然确实
+            // 在运行期被重定位，但吸附带同值守卫、只在跨格时写一次，改成 Movable
+            // 反而让它每帧进 movable ring 段；此处接受「每跨格 1 次整级静态级联
+            // 全量重建」，也接受 D4 那条一次性"运行期写入 Static transform"告警
+            //（每组件只报一次）。
             const glm::vec3 snapped(gx, gy, 0.0f);
             if (snapped != ground_transform->GetLocalPosition())
                 ground_transform->SetLocalPosition(snapped);

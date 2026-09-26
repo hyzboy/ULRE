@@ -95,7 +95,7 @@ namespace hgl::graph
                                                          float &out_texel_size,
                                                          float &out_along_anchor,
                                                          float &out_zfar,
-                                                         float lateral_step) const
+                                                         uint32_t band_texels) const
     {
         Vector3f light_forward = glm::normalize(light_dir);
         Vector3f light_up(0.0f, 0.0f, 1.0f);
@@ -143,17 +143,32 @@ namespace hgl::graph
         // 1 个 texel，缓存里的旧内容全部错位。实测 600 帧横向行走会把静态级联打成
         // 每 1.4 帧一次整级全量重绘（CSM1 435/600），"滚动更新"退化为"逐帧全量"。
         //
-        // 做法：把包围球中心在 light_right / -light_up_actual 两轴上吸附到
-        // lateral_step 的整数倍。step 内中心完全静止 ⇒ 布局矩阵恒定，且 texel 吸附
-        // 后位移恒为 0 ⇒ 缓存整段有效。跨格时中心跳变 step，位移必然非零而触发重建。
+        // 做法：把包围球中心在 light_right / -light_up_actual 两轴上吸附到锚定格 L 的
+        // 整数倍。格内中心完全静止 ⇒ 布局矩阵恒定，缓存整段有效；跨格时中心跳变 L。
         //
-        // 代价：吸附点只有落在 step 的整数格上，真实包围球中心在格内最远可偏离
-        // step/2（每轴），即对角 0.707*step；因此必须把包围球半径扩大同样的量，
-        // 否则视锥切片角点会掉出正交视窗（画面边缘物体没有阴影）。
-        // 半径变大 ⇒ texel 变粗，这是本方案用一点静态阴影精度换掉绝大部分重绘开销。
-        // 注意这里必须用 round 而不是 floor：floor 的偏离量是整整一个步长（[0,step)），
-        // 半径就要按 1.414*step 扩，几乎翻倍。
-        const float lateral_anchor = (lateral_step > 0.0f) ? lateral_step : 0.0f;
+        // **步长以 shadowmap 侧表达（texel 数 B，不是世界米）**，理由：L 同时是
+        //   ① 环形偏移的量子——`cache_offset` 是 uvec，滚动必须按整数 texel 走；
+        //   ② 半径补偿量——格内真实中心最远偏离 L/2（每轴），对角 0.708·L，必须把半径
+        //      扩大同样的量，否则视锥切片角点掉出正交视窗（画面边缘物体没有阴影）。
+        // 而"半径变大 ⇒ texel 变粗"的比例是 0.708·L/r0，把它写成 B 的形式：
+        //     texel = 2(r0 + 0.708·L)/M,  L = B·texel
+        //     ⇒ L = 2·B·r0 / (M − 1.416·B)       （闭式，一次算准，无需迭代）
+        //     ⇒ 精度损失 = 0.708·L/r0 = 1.416·B/(M − 1.416·B)（与切片半径 r0、贴图分辨率 M 都无关）
+        // 于是"锚定格恰为 B 个纹素"（环形偏移天然整数）与"格内矩阵恒定"同时成立，
+        // 且代价只由 B/M 决定：B=16 ⇒ 2.3%，B=128(=M/8) ⇒ 21.5%（开到 4096 也一样）。
+        // 逐级给值：近景 B 小（世界步长小 ⇒ 滞后窄、精度损失小），远景可大。
+        // 必须用 round 而不是 floor 做格点吸附：floor 的偏离量是整整一个步长，半径就要
+        // 按 1.414·L 扩，几乎翻倍。
+        const float map_size = (config_.shadow_map_size > 0.0f) ? config_.shadow_map_size : 1024.0f;
+        float lateral_anchor = 0.0f;
+        if (band_texels > 0)
+        {
+            const float band = static_cast<float>(band_texels);
+            const float denom = map_size - 1.416f * band;   // B ≥ M/1.416 时退化
+            if (denom > 0.0f)
+                lateral_anchor = (2.0f * band * radius) / denom;
+        }
+
         if (lateral_anchor > 0.0f)
             radius += lateral_anchor * 0.708f;
 
@@ -197,7 +212,6 @@ namespace hgl::graph
             cy = std::round(cy0 / lateral_anchor) * lateral_anchor;
         }
 
-        const float map_size = (config_.shadow_map_size > 0.0f) ? config_.shadow_map_size : 1024.0f;
         const float texel_size = (2.0f * radius) / map_size;
 
         const float snapped_cx = std::floor(cx / texel_size) * texel_size;
@@ -279,7 +293,7 @@ namespace hgl::graph
             CalculateCascadeBounds(main_cam, aspect, split_near, split_far, light_dir,
                                    light_view, light_proj, snapped_center, texel_size, along_anchor,
                                    zfar_c,
-                                   (c == 0) ? 0.0f : config_.cache_lateral_anchor_step);
+                                   config_.cache_scroll_band_texels[c]);
 
             CascadeUpdateResult &update_res = out_updates[c];
             update_res.cascade_index = c;

@@ -216,24 +216,41 @@ CPU 侧跳过该级的渲染。shader 侧必须遵守：
 缓存里的旧内容全部错位。实测 600 帧横向行走（0.083m/帧）会把静态级联打成**每 1.4 帧一次
 整级全量重绘**（CSM1 435/600、CSM2 236/600、CSM3 101/600），"滚动更新"完全退化成"逐帧全量"。
 
-做法：把包围球中心在 `light_right` / `-light_up_actual` 两轴上吸附到 `lateral_step`
-（`cache_lateral_anchor_step`，默认 2m）的整数倍。step 内中心完全静止 ⇒ 布局矩阵恒定，
-texel 吸附后位移恒为 0 ⇒ 缓存整段有效；跨格时中心跳变 `step`，位移必然非零而触发重建。
-收益实测：**CSM1/2/3 重绘次数 -92% / -86% / -66%**（`full=[600,33,32,34]`）。
+做法：把包围球中心在 `light_right` / `-light_up_actual` 两轴上吸附到锚定格 `L` 的整数倍
+（`cache_scroll_band_texels[]`，**texel 口径**，默认 `{0,16,16,32}`；c0 不参与）。格内中心
+完全静止 ⇒ 布局矩阵恒定，texel 吸附后位移恒为 0 ⇒ 缓存整段有效；跨格时中心跳变 `L`，
+位移必然非零。收益实测：**CSM1/2/3 重绘次数 -92% / -86% / -66%**（旧 2m 口径
+`full=[600,33,32,34]`；现在 B=16/16/32 口径为 `full=[600,33,17,6]`——远景级联因世界步长
+更大而进一步省）。
+
+**步长为什么以 texel（而不是米）为主参数**：`L` 同时是 ①环形偏移的量子（`cache_offset`
+是 `uvec`，滚动必须按整数 texel 走）②半径补偿量。两个约束同时成立 ⇒ **逐级 `L_c` 必须是
+该级 texel 的整数倍**，所以给 B 而不是给米：
+
+```
+L_c = 2·B·r0_c / (M − 1.416·B)        radius += 0.708·L_c   ⇒  L_c / texel ≡ B
+精度损失 = 1.416·B / (M − 1.416·B)     （与切片半径 r0、贴图分辨率 M 都无关，只看 B/M）
+```
+
+旧的世界米口径（共享 2.0m）折成 texel 是 c1 15.4 / c2 5.1 / c3 2.8 —— 远景级联的条带比
+PCF 外扩（2 texel）还窄，"条带"会退化成"整条都是重叠带"。B 口径天然消除这个不对称。
+M=1024：B=16 → 2.26%、B=32 → 4.63%、B=64 → 9.7%、B=M/8 → 21.5%；B ≥ M/1.416 ⇒ 退化
+（代码 fail-safe 回"禁用锚定"）。**"贴图开到 4096 就能用 1/8 这种分数步长"不成立**：损失
+只由 B/M 决定，大贴图的收益是同一个 B 对应更小的**世界**步长（陈旧带窄、滞后小）。
 
 **为什么必须用 `round` 而不是 `floor`**：`round` 每轴偏离 ≤ `step/2`，对角 ≤ `0.707*step`，
 半径补 `0.708*step` 即可保覆盖；`floor` 的偏离范围是整个步长 `[0, step)`，半径要按
 `1.414*step` 扩，代价几乎翻倍。
 
-**代价**：`texel_size = 2*radius/map_size`，半径变大 ⇒ texel 变粗。`step=2m` 时近距级联
-（radius 约 60m）约粗 12%，即用一点静态阴影精度换掉绝大部分重绘开销。
+**代价**：`texel_size = 2*radius/map_size`，半径变大 ⇒ texel 变粗，比例 = `1.416·B/(M−1.416·B)`
+（B 口径下**与半径无关**，见上）⇒ 用一点静态阴影精度换掉绝大部分重绘开销。
 
 ### 3.4 ⚠ 锚定基准必须是 `cx0`/`cy0`，不是 `cx`/`cy`
 
 这是本模块历史上最隐蔽的一个缺陷，**改动第 8 步前务必读完**。
 
 `snapped_cx = floor(cx/texel_size)*texel_size`，而 `cx` 本身已经是 `round(cx0/step)*step`
-的粗格点。由于 `texel_size ≪ lateral_step`（约 `7e-3` vs `2`），
+的粗格点。由于 `texel_size ≪ L`（c1 约 `1.2e-1` vs `2.0`），
 
 ```
 snapped_cx ≈ cx            ⇒   (snapped_cx - cx) ≈ 0
@@ -566,12 +583,15 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | `blend_width` | 0.05 | 比例：末级 `max_distance` 边缘淡出带 + 动态层 CSM 0 边界淡出带（占本级深度区间） |
 | `blend_distance` | 1.5 | **相邻级联交界带宽度（世界单位米）**，写进 `cascade_params.w`；只做取暗叠加、近级不做淡出；0 = 硬切换（§2.y） |
 | `cache_anchor_step` | 16.0 | **沿光轴**深度锚定步长（米）；0 = 禁用（缓存深度会随相机漂移） |
-| `cache_lateral_anchor_step` | 2.0 | **横向**锚定步长（米）；0 = 禁用（每跨 texel 即整级重绘） |
+| `cache_scroll_band_texels[4]` | `{0,16,16,32}` | **横向**锚定步长（**texel**，逐级）；世界步长 `L_c=2·B·r0/(M−1.416·B)` 与半径补偿由 B 派生；0 = 该级禁用。c0（动态层）恒为 0 |
 
 两个 `anchor_step` 只用在中远景静态级联（`c > 0`），CSM 0 传 `0.0f`（它本来每帧全量重绘）。
 
-**改 `cache_lateral_anchor_step` 的影响面**：步长变大 ⇒ 重绘更少，但半径补偿 `0.708*step`
-同步变大 ⇒ texel 更粗（`step=10m` 时近距级联精度会明显劣化，`Test 5B-2` 就用这个值做压力测试）。
+**改 `cache_scroll_band_texels` 的影响面**：B 变大 ⇒ 世界步长变大 ⇒ 重绘更少，但半径补偿
+`0.708·L` 同步变大 ⇒ texel 更粗（比例 `1.416·B/(M−1.416·B)`，与分辨率无关；`Test 5B-2`
+用 B=600 做"补偿与半径同量级"的压力测试）。**不要用"图的比例"（1/8、1/4）当更新间隔**：
+1/8 图 = B=128 ⇒ 精度损失 21.5%（近景级联尤其明显）；1/4 的正确用途是**上限阈值**——
+偏移超过 1/4 图时放弃条带、直接整级重建（覆盖瞬移/传送，待 S3 落地）。
 
 ---
 
@@ -588,7 +608,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | Test 4 | 脏矩形 → `RenderPassRequest`（scissor）翻译 | `Test 4 Passed` |
 | **Test 5A** | 重绘预算：600 帧横向行走，c0 必须 600/600，c1..3 允许 ≤10% 全量 | `[CSM-CACHE] full=[600,33,32,34] band=[0,0,0,0]` |
 | **Test 5B-1** | **矩阵恒定性**：固定朝向平移 400 帧，缓存命中帧与最近一次重绘的 `light_proj*light_view` 逐元素差 ≤ `1e-3`，且 CSM1/2/3 都至少命中一次 | `[CSM-COHERENCE] frames=400 hits=[377,377,380] max_delta=0.000000 ... fail=0` |
-| **Test 5B-2** | **冻结窗口覆盖率**：薄切片 + `lateral_step=10m` 压力配置，8 位置 × 16 朝向共 128 帧，用**冻结矩阵**判定角点 NDC | `[CSM-COVERAGE] lateral_step=10m frames=128 fail=0 worst_ndc=[...]` |
+| **Test 5B-2** | **冻结窗口覆盖率**：薄切片 + B=600 texel（≈10.6m，补偿与半径同量级）压力配置，8 位置 × 16 朝向共 128 帧，用**冻结矩阵**判定角点 NDC | `[CSM-COVERAGE] band=600texel(~10.6m) frames=128 fail=0 worst_ndc=[...]` |
 | **Test 5C** | **原地旋转下的矩阵恒定性**：相机位置固定、`viewDirection` 绕圈 240 帧，缓存命中帧的 `light_proj*light_view` 必须与最近重绘帧逐元素相同；同时断言扫描确实产生命中帧、且拟合半径不随朝向变化（半径若随朝向变 ⇒ 贴图被逐帧缩放） | `[CSM-SPIN] frames=240 hits=347 max_delta=0.000000 max_radius_delta=0.000061m fail=0` |
 | **Test 6A** | 逐级联 bias 回归：默认配置（`bias_world=0`、scale 全 1）必须让 4 级写同一个 `bias`，且 `depth_range` 全为正、各级确实不同 | `[CSM-BIAS] default normalized=[...] depth_range=[346 349 619 953]m` |
 | **Test 6B** | `per_cascade_bias_scale=[1 2 3 0.5]` 必须逐级写进 `shadow_params.x`，且 `.y/.z` 不被带偏 | `[CSM-BIAS] per-cascade scale=[1 2 3 0.5] -> normalized=[...]` |
@@ -600,7 +620,8 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | **Test 11** | masked caster 链源码契约（10 条 needle，见 §4.5） | `Test 11 Passed: ...` |
 | **Test 12** | pipeline 键内容化（SPIRV 内容 hash 登记/消费/注销 + 2 条禁复活） | `Test 12 Passed: ... (7 checks)` |
 | **Test 13** | 阴影跳过路径告警与收敛（一次性告警/上限/降频/清零 + 2 条禁刷屏） | `Test 13 Passed: ... (7 checks)` |
-| **Test 14** | **接收侧旋钮落地契约**（22 checks，§5.3）：行结构唯一真源 X 列表 + 行大小自动推导 + 发射端遍历列表 + 写入端取 `CanReceiveShadow/GetBiasMultiplier` + 片元端 `GetShadowReceiveParams`/不接收早退/倍率乘进 bias 与法线偏移 + 3 条**禁复活** needle（`sizeof(MaterialInstanceAddresses) == 8`、发射端 `uint payload_index` 手写、`EvalPCFShadowAt(sample_pos, surface.worldPos)` 无倍率调用） | `Test 14 Passed: shadow receive-side knob contract holds (22 checks)` |
+| **Test 15** | **静态物件运行期写入留痕**（11 源码 + 5 行为）：八条写入路径都留痕、同值写也告警且只告警一次、未 arm（无静态变更）不告警、`Movable` 不告警（§D4） | `Test 15 Passed: ... (11+5 checks)` |
+| **Test 16** | **横向锚定步长是 texel 口径**（S1）：独立量测 `texel(B)` 与 `texel(0)` 反解 `L`，断言 `L/texel ≡ B`（整数 texel 量子）、精度损失 `= 1.416·B/(M−1.416B)`、c0 不受 B 影响、`B ≥ M/1.416` 退化时 fail-safe 回禁用、B 单调；源码 needle 2 条 + 禁复活世界米字段 | `[CSM-BAND] B={0,16,16,32} texel(bare)=[0.03819 ...] loss=[2.26% 2.26% 4.63%]` |：行结构唯一真源 X 列表 + 行大小自动推导 + 发射端遍历列表 + 写入端取 `CanReceiveShadow/GetBiasMultiplier` + 片元端 `GetShadowReceiveParams`/不接收早退/倍率乘进 bias 与法线偏移 + 3 条**禁复活** needle（`sizeof(MaterialInstanceAddresses) == 8`、发射端 `uint payload_index` 手写、`EvalPCFShadowAt(sample_pos, surface.worldPos)` 无倍率调用） | `Test 14 Passed: shadow receive-side knob contract holds (22 checks)` |
 
 ### 写这类断言的两个硬要求
 
@@ -644,10 +665,10 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 |------|------|----------|
 | 静态物件**近距**没有阴影 | `c0_dynamic_overlay` 与 `split_distances[1]` | CSM 1 的 `split_near` 不是 `znear`；或 CSM 0 收不到静态物件而 CSM 1 不覆盖近距 |
 | 相机移动时静态阴影**整体滑动** | 3.1 第 8 步的基准 | 用了 `cx` 而不是 `cx0`（§3.4） |
-| 静态级联**每帧全量重绘** | `[CSM Rolling Cache Stats]`、`cache_lateral_anchor_step` | 横向锚定被禁用 / `=0` / 被 3.4 的缺陷抵消；或某 Static transform 每帧被重复 set 同值（A3 链每帧失效，搜 `invalidating static cascade` 日志定位调用方） |
+| 静态级联**每帧全量重绘** | `[CSM Rolling Cache Stats]`、`cache_scroll_band_texels` | 横向锚定被禁用 / 该级 `B=0` / 被 3.4 的缺陷抵消；或某 Static transform 每帧被重复 set 同值（A3 链每帧失效，搜 `invalidating static cascade` 日志定位调用方） |
 | **远处地面**不再接收阴影 | `along_anchor_` 是否在变、`cache_anchor_step` | 沿光轴锚定失效 ⇒ 缓存旧深度被新矩阵解释 |
 | 相机抬高/俯仰后**一片地面**无阴影 | `caster_depth_margin` | `zfar` 不够，地面深度被裁 |
-| 阴影**边缘一圈没有阴影** | `worst_ndc`、半径补偿 | `0.708*step` 补偿缺失或不匹配 `round`/`floor` 选择 |
+| 阴影**边缘一圈没有阴影** | `worst_ndc`、半径补偿 | `0.708·L` 补偿缺失或不匹配 `round`/`floor` 选择（L 由 `cache_scroll_band_texels` 派生） |
 | 接触点**漏光 / peter-panning** | `bias` 符号 | 背面渲染下 bias 取了正值（§5） |
 | 陡峭表面**条纹**（acne） | `normal_offset_world`、`bias` 绝对值、`pcf_radius` | 先开法线偏移（§5.2）；仍不干净才是缺 slope-scaled bias（§5 末尾） |
 | 法线偏移调大后**接触点反而断开** | `normal_offset_world`、`bias` 符号 | 法线偏移推过头（`tan` 在近掠射角权重很大）⇒ 收小强度，或把 `|bias_world|` 往贴合方向补一点 |
