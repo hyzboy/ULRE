@@ -564,7 +564,43 @@ namespace hgl::ecs
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()
     {
         resolvedRuntimePipelineMap.Clear();
-        resolvedRuntimePipelineProgramMap.Clear();
+    }
+
+    void PrimitiveComponent::SetResolvedRuntimePipeline(hgl::graph::RenderPass *rp,
+                                                        hgl::graph::Pipeline *p,
+                                                        hgl::graph::ShaderProgram *program)
+    {
+        if (!rp || !p)
+            return;
+
+        ResolvedRuntimePipeline entry;
+        entry.pipeline = p;
+
+        if (program)
+        {
+            entry.program_key     = program->GetProgramKey();
+            entry.has_program_key = true;
+        }
+
+        if (ResolvedRuntimePipeline *existing = resolvedRuntimePipelineMap.GetValuePointer(rp))
+            *existing = entry;
+        else
+            resolvedRuntimePipelineMap.Add(rp, entry);
+    }
+
+    bool PrimitiveComponent::HasResolvedRuntimePipeline(hgl::graph::RenderPass *render_pass,
+                                                        hgl::graph::ShaderProgram *program) const
+    {
+        if (!render_pass || !program)
+            return false;
+
+        const ResolvedRuntimePipeline *entry =
+            const_cast<PrimitiveComponent *>(this)->resolvedRuntimePipelineMap.GetValuePointer(render_pass);
+
+        if (!entry || !entry->pipeline || !entry->has_program_key)
+            return false;
+
+        return entry->program_key == program->GetProgramKey();
     }
 
     hgl::graph::ShaderProgram* PrimitiveComponent::GetShaderProgram() const
@@ -581,8 +617,8 @@ namespace hgl::ecs
         // Return the pipeline resolved for THIS render pass during collect/prepare phases.
         // 注意：GetValuePointer 的 const 重载返回 const V*，此处需要可变指针语义，
         // 但 map 内容并不修改，用非 const this 的映射读取即可。
-        auto *p = const_cast<PrimitiveComponent *>(this)->resolvedRuntimePipelineMap.GetValuePointer(render_pass);
-        return p ? *p : nullptr;
+        auto *entry = const_cast<PrimitiveComponent *>(this)->resolvedRuntimePipelineMap.GetValuePointer(render_pass);
+        return entry ? entry->pipeline : nullptr;
     }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const

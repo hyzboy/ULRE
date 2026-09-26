@@ -68,8 +68,14 @@ GPU 侧寻址（两级）
    shadow program 共读（双槽设计的基础）。
 2. **行表/配置池的写入与上传完全由 forward 物化链持有**——阴影帧不得代为物化
    （两条链会互踢纹理配置行：retire+重分配导致池行漂移）。
-3. **pipeline 复用必须校验 program 身份**（`resolvedRuntimePipelineProgramMap`）——
-   shader 更新会生成新 program 对象，仅按 RenderPass 键控会永久复用旧 SPIRV。
+3. **pipeline 复用必须校验 program 身份（结构化 digest）**——shader 更新会生成新
+   program 对象，仅按 RenderPass 键控会永久复用旧 SPIRV。但身份**不能用 program
+   指针**：对象释放后新对象可落到同一地址，指针比较会把两个不同 shader 判成同一个。
+   D2（2026-09-26）已把该机制收敛为单 map 条目
+   `PrimitiveComponent::ResolvedRuntimePipeline{Pipeline*, ShaderProgramKey}`，
+   复用校验比对 `ShaderProgramKey` digest；同源的 pipeline 缓存键
+   （`shader_stages_hash`）也从 VkShaderModule 句柄值改为 **SPIRV 内容 hash**
+   （详见 `doc/backlog.md` D2）。
 
 ---
 
@@ -88,9 +94,10 @@ GPU 侧寻址（两级）
 | 7 | **pipeline 组装（终极）** | **depth-only 快速路径无条件剥片元 stage**——discard 从未进 VkPipeline | `CreatePipeline` 的 `keep_fragment_shader` 豁免；判据 = recipe `alpha_test`/`dither`（D8 实测：程序级 SPIRV/文本扫描恒 false，已删——勿信"SPIRV 扫描撑住"的旧说法） |
 
 附带修复：
-- **pipeline 复用加 program 身份键控**（resolvedRuntimePipelineProgramMap）——
-  shader 更新生成新 program 对象后，旧 SPIRV 不再被永久复用
-  （取证时三版片元深度图逐像素一致的第二原因）。
+- **pipeline 复用加 program 身份键控**——shader 更新生成新 program 对象后，旧 SPIRV
+  不再被永久复用（取证时三版片元深度图逐像素一致的第二原因）。2026-09-26 的 D2 把
+  键从 program **指针**换成 `ShaderProgramKey` digest（同 map 存 pipeline），并把
+  pipeline 缓存键从 VkShaderModule 句柄值换成 SPIRV 内容 hash。
 - **masked caster 行未就绪策略**：撤销"阴影帧借道 forward 物化"（两链互踢纹理
   配置行），改为跳过本帧 + BumpStaticSceneRevision 触发重画（收敛）。
 - **WriteBatchIndexRows 行表探测诊断**（TEMP，已还原）确认 CPU 行表全程正确——
@@ -195,6 +202,7 @@ masked caster 模板真评估 alpha，并**禁止**程序级 discard 扫描复�
 相关文档：`doc/csm-review-2026-09-25.md`（A1/A4/A2/A3/A1-4 的来源）；
 `.ai/skills/SKILL_CASCADED_SHADOW_CSM.md`（ShadowCasterMasked 链路章节，
 §4.5）；
-`doc/backlog.md` **D 线**（本轮后续：深度镂空自动契约/pipeline 键内容
-hash/TransformComponent 同值短路/性能账目→拆分→合并）与 **A 线 A1/A7**
-（提交原语/in-flight 槽——与本链的 fence 等待问题强相关）。
+`doc/backlog.md` **D 线**（本轮后续：D1 深度镂空自动契约 ✅ / D8 片元判据收敛 ✅ /
+D2 pipeline 键内容化 ✅ / D3 四旋钮决策 / D4 TransformComponent 同值短路 /
+性能账目→拆分→合并）与 **A 线 A1/A7**（提交原语/in-flight 槽——与本链的 fence
+等待问题强相关）。

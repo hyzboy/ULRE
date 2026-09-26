@@ -340,9 +340,16 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
    alpha_compositor 不在文本里）**恒 false**，已整体删除，`ShaderProgram` 不再有
    `fragment_shader_required` 标志。**新增镂空类模板时必须确认 recipe 声明了
    `alpha_test`/`dither`**，否则深度图实心且无任何报错。
-4. **pipeline 复用带 program 身份键控**（`resolvedRuntimePipelineProgramMap`）：
-   shader 更新生成新 program 对象后必须重建 pipeline——仅按 RenderPass 键控
-   会永久复用旧 SPIRV。
+4. **pipeline 复用必须校验 program 身份，且身份禁用指针/句柄（D2，2026-09-26）**：
+   shader 更新会生成新 program 对象，仅按 RenderPass 键控会永久复用旧 SPIRV——但
+   身份**不能是 program 指针**（对象释放后新对象可落到同一地址 → 误判"同一个
+   program"）。现态：`PrimitiveComponent::ResolvedRuntimePipeline{Pipeline*,
+   ShaderProgramKey, has_program_key}` 单 map，复用校验比对 `ShaderProgramKey`
+   digest；pipeline 缓存键 `FinalPipelineKey::shader_stages_hash` 用 **SPIRV 内容
+   hash**（`VulkanDevice` 在 module 创建时登记、析构注销；查不到即 fail-fast 判键
+   不完整，**禁止退回 `VkShaderModule` 句柄值**——句柄可被复用，两个不同 shader 会
+   撞同一个键）。契约由 `TestCSMIncrementalPass` **Test 12**（7 checks，含 2 条禁复活）
+   把守；根因与验证见 `doc/backlog.md` D2。
 5. **主帧同步**：forward 管线的 alpha test 同语义（`forward_lit.glsl.tmpl` 的
    `#ifdef HGL_ALPHA_TEST HGLApplyAlpha(EvalAlpha(si, materialDataIndex))`）——
    本体与影子用同一 opacity_mask 槽。
@@ -350,8 +357,8 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
    queue + CopyImageToBuffer + BMP）。判读：棋盘 cube 深度投影填充 ~57%=镂空、
    ~100%=实心、全空=片元被剥或全 discard。地面上看影子不如直接读深度图
    （地面纹理/环境光/透视压缩都会干扰判读）。
-7. **后续工作**（深度镂空自动契约、pipeline 键内容 hash、拆分等）见
-   `doc/backlog.md` **D 线**；完整修复因果链见
+7. **后续工作**（TransformComponent 同值短路、级联重配置形态、拆分等）见
+   `doc/backlog.md` **D 线**（D1/D8/D2 已完成 ✅）；完整修复因果链见
    `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`。
 
 ---

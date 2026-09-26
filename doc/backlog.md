@@ -152,15 +152,45 @@
   其破坏验证现场裁决并落地（删程序级扫描）→ Test 11 的 needle 随之收敛为
   9 条正向（recipe 判据 + masked 链）+ 2 条禁复活（见 D8）。
 
-### D2. pipeline 缓存键纳入 shader 内容（新卡②）+ 同构排查（新卡③）
+### D2. pipeline 缓存键纳入 shader 内容（新卡②）+ 同构排查（新卡③） ✅ 2026-09-26
 
-- **现状**：`PipelineResolver::HashShaderStages` 用 VkShaderModule **指针值**
-  做 `FinalPipelineKey::shader_stages_hash`——module 销毁后新建同地址会错误
-  命中缓存（与已修复的 `resolvedRuntimePipelineMap` 无 program 键控同构）。
-- **做法**：ShaderModule 创建时算一次 SPIRV 内容 hash 存下来，key 用内容
-  hash；顺带排查 LineRenderPipeline/TextRenderPipeline 等自持 pipeline
-  缓存的同类模式。
-- **规模**：核心 ~20 行 + 排查半天。
+- **原状**：`PipelineResolver::HashShaderStages` 用 VkShaderModule **句柄值**做
+  `FinalPipelineKey::shader_stages_hash`——句柄在 module 销毁后可被新建模块复用，
+  两个不同的 shader 会算出同一个 key → 错误复用 pipeline。
+- **落地（身份改用内容，两处）**：
+  1. `VulkanDevice` 新增 SPIRV 内容 hash 注册表（`Register/Unregister/GetShaderModuleHash`，
+     键=句柄值、值=内容 hash、带互斥）；`CreateShaderModule` 创建成功后
+     `FNV1aHasher64::AppendBytes(spv_data,spv_size)` 登记，`~ShaderModule` 注销
+     （防句柄复用后残留旧身份）。全仓唯一 `vkCreateShaderModule` 调用点就在此处。
+  2. `HashShaderStages(device,stages)` 改为查内容 hash；查不到 → `GLogError` 点名
+     句柄+stage 并返回 0（键不完整 → fail-fast 重建，绝不静默退回句柄身份）。
+  3. **同构**：`PrimitiveComponent` 的已解析管线条目收敛为单 map
+     `{Pipeline*, ShaderProgramKey, has_program_key}`（原先 pipeline/program 两张
+     平行 map + **program 指针比较**）；复用校验改为比对结构化 digest——program
+     释放后新对象落到同一地址不再被误判成"同一个 program"。
+- **同构排查（全仓）**：Line/Text 自持 pipeline **无**句柄/指针键控缓存（各自持单个
+  pipeline / 按 `FontSource*` 分资源，统一走 `RenderPass::CreatePipeline` → 随本卡修复）；
+  `g_device_map` 在设备析构里 erase；其余 `(uintptr_t)` 命中全是命名/日志。
+  **遗留（记录待办，不在本卡）**：`resolvedRuntimePipelineMap` 以 `RenderPass*` 为键、
+  值为该 pass 拥有的 `Pipeline*`，而组件侧只在材质/配方变化时清空、pass 析构无人通知。
+  当前 `RenderPassManager` 按结构化 key 缓存 RenderPass 且只在 `Release()` 全清 →
+  运行期不复用地址，**暂无实害**；一旦 RT 在运行期重建（A6/D5 级联重配置路径）就必须补
+  「查 pass 名 + 校验 pipeline 归属」或「pass 析构时失效」，否则命中悬垂 Pipeline*。
+- **验证**：
+  | 门 | 结果 |
+  |---|---|
+  | `TestCSMIncrementalPass` | exit 0；Test 11 = 11 checks；**Test 12 = 7 checks**（pipeline 键身份契约：内容 hash 登记/消费/注销/全字节覆盖 + 2 条禁复活） |
+  | `ATS_SELFCHECK=1 AlphaTestShadow` | exit 0，`c0 PASS: bbox=112x58 filled=3740 57.6%`——与 D8 基线逐字节同值 = **行为 no-op** |
+  | `CascadeShadowMap` 冒烟 | 路由 105/100/4、0 `[ERROR]`、0 VUID；管线 **4 Created / 205 Reuse**（与 D2 前基线同值，无膨胀无复用退化）；`has no registered SPIRV hash` = 0（登记不漏、fail-fast 未触发） |
+- **破坏验证**：把 resolver 的 `module_hash` 临时改回 `(uint64_t)(uintptr_t)stages[i].module`
+  → `Test 12 Failed ... 'GetShaderModuleHash(' not found in VKPipelineResolver.cpp`，
+  退出码 **12**；还原后复跑绿。
+- **构建事故（记录，非代码缺陷）**：给 `VKDevice.h` 加成员的那次编辑**落在构建进行中**，
+  MSBuild 的 tlog 此后不再重编 `VKDevice.obj`/`VKDeviceCreater.obj`（obj mtime 比头文件新、
+  内容却是旧布局）→ 构造函数没构造新成员、使用者按新布局读 → 首次建 pipeline 键走**空 vptr**
+  崩（cdb 栈：`ThreadMutexLock::ThreadMutexLock` ← `VulkanDevice::RegisterShaderModuleHash`）。
+  清掉整棵 `find build -type d -path "*.dir/Debug"` obj 树重编后全绿。判定法：
+  `ls -la <header> <obj>` 看 obj 是否早于头文件（详见技能 crlf-safe-editing）。
 
 ### D3. receive_shadow / bias_multiplier 落地或删除（A5）
 
@@ -271,7 +301,9 @@ A5(比较采样) ◄──同做───────────┘            
 - B/C 线与 A 线无耦合，随手清。
 - **D 线内部顺序**：~~D1~~ ✅（已锁死 masked 链：Test 11 源码契约 + AlphaTestShadow
   自判）→ ~~D8~~ ✅（实测裁决：程序级扫描恒 false → 删除，判据收敛为 recipe 语义）
-  → D2（pipeline 键正确性）→
+  → ~~D2~~ ✅（pipeline 键改 SPIRV 内容 hash + 已解析管线身份改 program digest；
+  Test 12 = 7 checks。同构遗留：`resolvedRuntimePipelineMap` 的 `RenderPass*` 键
+  在**运行期 RT 重建**时才会变成悬垂，锁 A6/D5）→
   D9（行未就绪路径告警/收敛）→ D3/D4（决策项）→ **T8 量测** →
   T6 拆分 → A6 合并。D 线与 A 线 A1/A7（提交原语/in-flight 槽）强相关：
   A6 的 4 次全槽排空问题在 A1 的 per-frame 多份化落地后可能自然消失，

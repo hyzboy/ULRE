@@ -4,6 +4,7 @@
 #include<hgl/ecs/support/PositionSourceSpec.h>
 #include<hgl/ecs/support/TransformPolicySpec.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/ShaderProgramKey.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/render/RenderItemDescriptor.h>
 #include<hgl/type/String.h>
@@ -125,12 +126,22 @@ namespace hgl::ecs
         // 每个 RenderPass（≈每个 RenderTarget）各自持有解析出的管线——同一世界
         // 被 RenderTo 到多个 RT（如 ShadowMap 的 depth-only 离屏 Pass）时，
         // 各 RT 使用各自格式匹配的管线，互不驱逐。Pipeline 归 RenderPass 所有。
-        // program 键控副本：pipeline 的复用必须校验创建时的 program 身份——
-        // shader 源码/模板变化会生成新 program 对象（hash 不同），若仅按
-        // RenderPass 键控会持续复用旧 program 的管线（masked 阴影从未生效的
-        // 根因）。program 更换时由 HasResolvedRuntimePipeline 判定失效。
-        hgl::UnorderedMap<hgl::graph::RenderPass *, hgl::graph::Pipeline *> resolvedRuntimePipelineMap;
-        hgl::UnorderedMap<hgl::graph::RenderPass *, hgl::graph::ShaderProgram *> resolvedRuntimePipelineProgramMap;
+        // 复用必须校验创建时的 program 身份——shader 源码/模板变化会生成新 program
+        // （digest 不同），若仅按 RenderPass 键控会持续复用旧 program 的管线
+        // （masked 阴影从未生效的根因）。
+        // 身份用 ShaderProgramKey（结构化 digest）而**不是 program 指针**：program
+        // 对象释放后，新对象可能被分配到同一地址，指针比较会把两个不同的 shader
+        // 判成同一个 → 复用错误管线（与 pipeline 键用 VkShaderModule 句柄值同构，
+        // 见 doc/backlog.md D2）。pipeline + program 身份放在同一条目里，不再维护
+        // 两张手工同步的平行 map。
+        struct ResolvedRuntimePipeline
+        {
+            hgl::graph::Pipeline *pipeline = nullptr;
+            hgl::graph::mtl::ShaderProgramKey program_key;
+            bool                  has_program_key = false;
+        };
+
+        hgl::UnorderedMap<hgl::graph::RenderPass *, ResolvedRuntimePipeline> resolvedRuntimePipelineMap;
         void InvalidateResolvedRuntimePipeline();
 
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
@@ -188,42 +199,16 @@ namespace hgl::ecs
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
         void ClearOverridePipeline() { overridePipeline = nullptr; }
 
+        // 写入/校验在 PrimitiveComponent.cpp（此处只有 ShaderProgram 前置声明，
+        // 内联实现需要 GetProgramKey() 的完整定义）。
         void SetResolvedRuntimePipeline(hgl::graph::RenderPass *rp,
                                         hgl::graph::Pipeline *p,
-                                        hgl::graph::ShaderProgram *program)
-        {
-            if (!rp || !p)
-                return;
+                                        hgl::graph::ShaderProgram *program);
 
-            if (hgl::graph::Pipeline **existing = resolvedRuntimePipelineMap.GetValuePointer(rp))
-                *existing = p;
-            else
-                resolvedRuntimePipelineMap.Add(rp, p);
-
-            if (hgl::graph::ShaderProgram **existing_prog =
-                    resolvedRuntimePipelineProgramMap.GetValuePointer(rp))
-                *existing_prog = program;
-            else
-                resolvedRuntimePipelineProgramMap.Add(rp, program);
-        }
-
-        // 复用校验：RenderPass 命中且创建时的 program 一致。program 更换
-        // （shader 重编译/模板切换）时返回 false，让调用方重建管线。
+        // 复用校验：RenderPass 命中且创建时的 program 身份（结构化 digest）一致。
+        // program 更换（shader 重编译/模板切换）时返回 false，让调用方重建管线。
         bool HasResolvedRuntimePipeline(hgl::graph::RenderPass *render_pass,
-                                        hgl::graph::ShaderProgram *program) const
-        {
-            if (!render_pass || !program)
-                return false;
-
-            const hgl::graph::Pipeline *const *p =
-                resolvedRuntimePipelineMap.GetValuePointer(render_pass);
-            if (!p || !*p)
-                return false;
-
-            const hgl::graph::ShaderProgram *const *prog =
-                resolvedRuntimePipelineProgramMap.GetValuePointer(render_pass);
-            return prog && *prog == program;
-        }
+                                        hgl::graph::ShaderProgram *program) const;
 
         void SetTransformPolicySpec(const TransformPolicySpec& spec) { transformPolicySpec = spec; }
         const TransformPolicySpec& GetTransformPolicySpec() const { return transformPolicySpec; }

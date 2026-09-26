@@ -17,9 +17,9 @@ namespace hgl::graph
             return h;
         }
 
-        uint64_t HashShaderStages(const ShaderStageCreateInfoList *shader_stages)
+        uint64_t HashShaderStages(VulkanDevice *device, const ShaderStageCreateInfoList *shader_stages)
         {
-            if(!shader_stages || shader_stages->IsEmpty())
+            if(!device || !shader_stages || shader_stages->IsEmpty())
                 return 0;
 
             hgl::hash::FNV1aHasher64 h;
@@ -30,8 +30,23 @@ namespace hgl::graph
 
             for(uint i = 0; i < count; ++i)
             {
+                // module 身份必须是 **SPIRV 内容 hash**，不能用 VkShaderModule 句柄值：
+                // 句柄在 module 销毁后会被新建模块复用，两个不同的 shader 会算出同一个
+                // key → 错误复用 pipeline（D2；与 resolvedRuntimePipelineMap 无 program
+                // 键控同构）。句柄查不到内容 hash 时直接判键不完整（fail-fast：所有模块
+                // 都经 VulkanDevice::CreateShaderModule 创建并登记）。
+                const uint64_t module_hash = device->GetShaderModuleHash(stages[i].module);
+                if(module_hash == 0)
+                {
+                    GLogError("[PipelineResolver] shader module 0x%llx (stage 0x%x) has no registered SPIRV hash"
+                              " -- not created via VulkanDevice::CreateShaderModule? pipeline key cannot be built",
+                              (unsigned long long)(uintptr_t)stages[i].module,
+                              (unsigned)stages[i].stage);
+                    return 0;
+                }
+
                 h << stages[i].stage
-                  << (uint64_t)(uintptr_t)stages[i].module;
+                  << module_hash;
                 if(stages[i].pName)
                     h << stages[i].pName;
             }
@@ -193,7 +208,7 @@ namespace hgl::graph
     {
         out_key = {};
 
-        out_key.shader_stages_hash = HashShaderStages(request.shader_stages);
+        out_key.shader_stages_hash = HashShaderStages(request.device, request.shader_stages);
 
         out_key.color_attachment_count = request.frame_output.color_attachment_count;
         out_key.color_formats_hash = (request.frame_output.color_formats && request.frame_output.color_attachment_count > 0)

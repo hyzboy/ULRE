@@ -68,7 +68,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     // 着色阶段——深度写入不依赖 FS，整段 lit 着色计算全部省去（FS 的 outColor
     // 在此通道也无处写入，VVL 会报 fragment-output 未使用写告警）。带 alpha 混
     // 合/A2C 的材质保留 FS：其 discard/覆盖行为依赖片元着色器。片元含 discard
-    // （alpha test 等，program 层判定）的材质同理——剥掉后镂空材质在深度图
+    // （alpha test / dither，recipe 语义判定）的材质同理——剥掉后镂空材质在深度图
     // 退化为实心（ShadowCasterMasked 曾踩）。
     ShaderStageCreateInfoList depth_only_stage_list;
 

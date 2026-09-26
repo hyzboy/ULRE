@@ -16,6 +16,7 @@
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/log/Log.h>
+#include<hgl/thread/ThreadMutex.h>
 #include<hgl/object/ObjectTracker.h>
 #include<typeinfo>
 #include<type_traits>
@@ -132,6 +133,17 @@ public:
 
                 void                TrackBuffer         (BufferOwner *buf, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
                 void                TrackTexture        (Texture *tex, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+
+public: //ShaderModule 内容 hash 注册表（pipeline 缓存键身份，禁用手柄值——见 D2）
+
+                void                RegisterShaderModuleHash  (VkShaderModule module, uint64_t content_hash);
+                void                UnregisterShaderModuleHash(VkShaderModule module);
+                uint64_t            GetShaderModuleHash       (VkShaderModule module)const;
+
+private:
+
+                std::unordered_map<uint64_t, uint64_t>  shader_module_hashes;          ///< key = (uint64_t)VkShaderModule
+                mutable ThreadMutex                     shader_module_hashes_mutex;
 
 public:
 

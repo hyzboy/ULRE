@@ -13,6 +13,7 @@ class ShaderModule
 {
     VkDevice device;
     int ref_count;
+    uint64_t spv_content_hash;      ///< SPIRV 字节内容 hash（pipeline 缓存键的身份，见 D2）
 
 private:
 
@@ -20,7 +21,7 @@ private:
 
 public:
 
-    ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci);
+    ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,uint64_t content_hash);
     virtual ~ShaderModule();
 
     const int IncRef(){return ++ref_count;}
@@ -36,6 +37,10 @@ public:
     const bool                              IsMesh          ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Mesh;}
 
     const VkPipelineShaderStageCreateInfo * GetCreateInfo   ()const{return stage_create_info;}
+
+    /// SPIRV 字节内容 hash——pipeline 缓存键的身份依据（禁止用 module 句柄值：
+    /// 句柄在 module 销毁后可被新建模块复用，会让不同 shader 错误命中同一键）。
+    const uint64_t                          GetSPVContentHash()const{return spv_content_hash;}
 
     operator VkShaderModule                                 ()const{return stage_create_info->module;}
 };//class ShaderModule

@@ -1382,6 +1382,65 @@ int main(int argc, char** argv)
     }
 
     // ─────────────────────────────────────────────────────────────
+    // 源码契约公共检查器（Test 11 / Test 12 共用）
+    //
+    // 在指定源文件里查找 needle；`forbidden = true` 表示该 needle 必须**不存在**
+    // （用于钉住"某机制已删除，勿复活"）。命中/缺失都报"哪个文件、哪个 needle、
+    // 后果是什么"，失败返回 test_no 供调用方当退出码。只看源码文本，不需要图形
+    // 设备——本可执行文件没有 GraphicsContext。
+    // ─────────────────────────────────────────────────────────────
+    struct SourceContract
+    {
+        const char *file;      // 打印用短名
+        const OSString path;   // 仓库相对路径
+        const char *needle;
+        const char *why;
+        bool        forbidden = false;   // true：该 needle 必须**不存在**（禁复活）
+    };
+
+    auto verify_source_contracts = [](const int test_no, const SourceContract *list,
+                                      const uint count) -> int
+    {
+        for (uint i = 0; i < count; ++i)
+        {
+            const SourceContract &k = list[i];
+
+            hgl::io::OpenFileInputStream fis(k.path);
+            if (!fis)
+            {
+                GLogError(u8"Test %d Failed: cannot open %s (run from repo root)", test_no, k.file);
+                return test_no;
+            }
+
+            if (fis->GetSize() <= 0)
+            {
+                GLogError(u8"Test %d Failed: %s is empty", test_no, k.file);
+                return test_no;
+            }
+
+            AnsiString src;
+            {
+                char chunk[4096];
+                int64 got;
+                while ((got = fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
+                    src.Strcat(chunk, static_cast<int>(got));
+            }
+
+            const bool hit = src.Contains(k.needle);
+            if (k.forbidden ? hit : !hit)
+            {
+                GLogError(k.forbidden
+                              ? u8"Test %d Failed: %s -- '%s' 重新出现在 %s（禁复活）"
+                              : u8"Test %d Failed: %s -- '%s' not found in %s",
+                          test_no, k.why, k.needle, k.file);
+                return test_no;
+            }
+        }
+
+        return 0;
+    };
+
+    // ─────────────────────────────────────────────────────────────
     // Test 11: masked caster 片元链路源码契约（D1）
     //
     // 背景：depth-only 通道（零颜色附件）会剥离片元 stage；含 discard 的材质
@@ -1394,15 +1453,6 @@ int main(int argc, char** argv)
     // 两层实现恒 false，判据已收敛为 recipe 语义一条）。
     // ─────────────────────────────────────────────────────────────
     {
-        struct SourceContract
-        {
-            const char *file;      // 打印用短名
-            const OSString path;   // 仓库相对路径
-            const char *needle;
-            const char *why;
-            bool        forbidden = false;   // true：该 needle 必须**不存在**（禁复活）
-        };
-
         const SourceContract kFSContracts[] =
         {
             { "VKRenderPass.cpp", OS_TEXT("src/Vulkan/VKRenderPass.cpp"),
@@ -1446,44 +1496,64 @@ int main(int argc, char** argv)
               true },
         };
 
-        for (const SourceContract &k : kFSContracts)
-        {
-            hgl::io::OpenFileInputStream fis(k.path);
-            if (!fis)
-            {
-                GLogError(u8"Test 11 Failed: cannot open %s (run from repo root)", k.file);
-                return 11;
-            }
-
-            if (fis->GetSize() <= 0)
-            {
-                GLogError(u8"Test 11 Failed: %s is empty", k.file);
-                return 11;
-            }
-
-            AnsiString src;
-            {
-                char chunk[4096];
-                int64 got;
-                while ((got = fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
-                    src.Strcat(chunk, static_cast<int>(got));
-            }
-
-            const bool hit = src.Contains(k.needle);
-            if (k.forbidden ? hit : !hit)
-            {
-                GLogError(k.forbidden
-                              ? u8"Test 11 Failed: %s -- '%s' 重新出现在 %s（D8 禁复活）"
-                              : u8"Test 11 Failed: %s -- '%s' not found in %s",
-                          k.why, k.needle, k.file);
-                return 11;
-            }
-        }
+        if (const int failed = verify_source_contracts(11, kFSContracts,
+                                                       static_cast<uint>(sizeof(kFSContracts) /
+                                                                         sizeof(kFSContracts[0]))))
+            return failed;
 
         GLogInfo(u8"Test 11 Passed: masked caster FS-retention source contract holds (%d checks) -- "
                  u8"keep_fragment_shader + recipe alpha_test/dither + masked alpha evaluation "
                  u8"+ no revived program-level discard scan.",
                  static_cast<int>(sizeof(kFSContracts) / sizeof(kFSContracts[0])));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 12: pipeline 缓存键的内容身份契约（D2）
+    //
+    // 背景：`FinalPipelineKey::shader_stages_hash` 曾用 VkShaderModule **句柄值**
+    // 计算——句柄在模块销毁后可被新建模块复用，两个不同的 shader 会算出同一个
+    // key → 复用错误 pipeline（与已修复的 resolvedRuntimePipelineMap 无 program
+    // 键控同构）。现在键用 SPIRV 字节内容 hash：模块创建时在 VulkanDevice 登记、
+    // 析构时注销，resolver 按键时查内容 hash（查不到即 fail-fast 判键不完整）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kPipelineKeyContracts[] =
+        {
+            { "VKPipelineResolver.cpp", OS_TEXT("src/Vulkan/pipeline/VKPipelineResolver.cpp"),
+              "GetShaderModuleHash(",
+              "pipeline 键不再查 module 的 SPIRV 内容 hash（退回句柄值身份 = 不同 shader 撞键）" },
+            { "VKShaderModule.cpp", OS_TEXT("src/Vulkan/VKShaderModule.cpp"),
+              "RegisterShaderModuleHash(",
+              "模块创建时不再登记内容 hash——键构造会 fail-fast 直接失败（或退化为句柄身份）" },
+            { "VKShaderModule.cpp", OS_TEXT("src/Vulkan/VKShaderModule.cpp"),
+              "UnregisterShaderModuleHash(",
+              "模块析构不再注销内容 hash——句柄复用时可能残留旧身份，命中错误键" },
+            { "VKShaderModule.cpp", OS_TEXT("src/Vulkan/VKShaderModule.cpp"),
+              "AppendBytes(spv_data,spv_size)",
+              "内容 hash 不再覆盖 SPIRV 全部字节（截断/漏算会撞键）" },
+            { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
+              "mtl::ShaderProgramKey program_key;",
+              "已解析管线条目不再携带 program 结构化身份（退回指针身份）" },
+            // ── 禁复活 ──
+            { "VKPipelineResolver.cpp", OS_TEXT("src/Vulkan/pipeline/VKPipelineResolver.cpp"),
+              "(uint64_t)(uintptr_t)stages[i].module",
+              "shader stage 的 module 身份又变回句柄值（D2 已修：句柄值可被复用）",
+              true },
+            { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
+              "resolvedRuntimePipelineProgramMap",
+              "pipeline/program 两张平行 map 又回来了（同一职责两套实现，手工同步易漂移）",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(12, kPipelineKeyContracts,
+                                                       static_cast<uint>(sizeof(kPipelineKeyContracts) /
+                                                                         sizeof(kPipelineKeyContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 12 Passed: pipeline cache key identity contract holds (%d checks) -- "
+                 u8"SPIRV content hash registered at module creation, consumed by the resolver key, "
+                 u8"handle-value identity forbidden.",
+                 static_cast<int>(sizeof(kPipelineKeyContracts) / sizeof(kPipelineKeyContracts[0])));
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
