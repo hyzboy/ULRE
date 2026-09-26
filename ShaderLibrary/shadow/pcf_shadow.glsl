@@ -56,7 +56,9 @@ float ShadowPoissonPhase(vec2 frag_coord)
 }
 
 // Poisson 磁盘 PCF：返回受光比例 ∈ [0,1]（未乘 darkness）。
-// wrap_uv = true 时对每次采样做 fract() 环形寻址（滚动缓存 Toroidal Clipmap）。
+// wrap_uv = true 时对每次采样做 fract() 环形寻址（滚动缓存 Toroidal Clipmap，
+// 仅当该级联 cache_offset 非零时由调用方开启）；false 时越界 tap 钳在贴图
+// 边缘——fract 环绕会让边缘 tap 跳到贴图对侧取深度，留下一圈杂斑。
 float EvalPoissonPCF(uint tex_handle, uint layer, vec2 uv, vec2 texel,
                      float radius, float ref_depth, bool wrap_uv, float phase)
 {
@@ -71,8 +73,8 @@ float EvalPoissonPCF(uint tex_handle, uint layer, vec2 uv, vec2 texel,
         const vec2 rotated = vec2(p.x * cos_phase - p.y * sin_phase,
                                   p.x * sin_phase + p.y * cos_phase);
         vec2 tap = uv + rotated * scale;
-        if (wrap_uv)
-            tap = fract(tap);
+        tap = wrap_uv ? fract(tap)
+                      : clamp(tap, vec2(0.0), vec2(1.0));
         lit += Sample2DArrayShadow(tex_handle, ShadowPCFSampler, tap, layer, ref_depth);
     }
 
@@ -147,9 +149,18 @@ float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv)
     const float bias       = shadow.cascades[c].shadow_params.x;
 
     // 环形寻址（Toroidal Clipmap / 滚动缓存）：
-    // 若 cache_offset 非零，通过 offset 偏移并求余 fract() 映射回物理纹理坐标
+    // 若 cache_offset 非零，通过 offset 偏移并求余 fract() 映射回物理纹理坐标，
+    // taps 越界时环绕。cache_offset 恒为 0（滚动缓存未接线）时环绕只剩副作用：
+    // 半径 ~1.5 texel 的 PCF taps 越过贴图边界后跳到对侧取深度，在每个级联
+    // 方框边缘留 ~2 texel 宽的杂斑圈。故 wrap 由 cache_offset 驱动，未启用
+    // 滚动缓存时越界 tap 钳在贴图边缘（与"边界外无数据=最近纹素"语义一致）。
+    const bool toroidal_wrap =
+           shadow.cascades[c].cache_offset.x != 0.0
+        || shadow.cascades[c].cache_offset.y != 0.0;
+
     const vec2 offset_uv = vec2(shadow.cascades[c].cache_offset.xy) * texel;
-    const vec2 phys_uv   = fract(shadow_uv + offset_uv);
+    const vec2 phys_uv   = toroidal_wrap ? fract(shadow_uv + offset_uv)
+                                         : shadow_uv + offset_uv;
 
     const float current_depth = light_ndc.z + bias;
     const float layer         = float(shadow.cascades[c].shadow_tex.y);
@@ -157,7 +168,7 @@ float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv)
 
 #if HGL_SHADOW_PCF_POISSON_TAPS > 0
     const float unshadowed = EvalPoissonPCF(tex_handle, ShadowPCFSampler, phys_uv, texel,
-                                            pcf_radius, current_depth, true,
+                                            pcf_radius, current_depth, toroidal_wrap,
                                             ShadowPoissonPhase(gl_FragCoord.xy));
 #else
     float lit = 0.0;
@@ -165,7 +176,9 @@ float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv)
     {
         for (int dx = -1; dx <= 1; ++dx)
         {
-            const vec2 tap = fract(phys_uv + vec2(float(dx), float(dy)) * (texel * pcf_radius));
+            vec2 tap = phys_uv + vec2(float(dx), float(dy)) * (texel * pcf_radius);
+            tap = toroidal_wrap ? fract(tap)
+                                : clamp(tap, vec2(0.0), vec2(1.0));
             lit += Sample2DArrayShadow(tex_handle, ShadowPCFSampler, tap, layer, current_depth);
         }
     }

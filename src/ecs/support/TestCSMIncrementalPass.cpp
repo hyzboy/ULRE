@@ -1031,6 +1031,10 @@ int main(int argc, char** argv)
                   "descend to a farther cascade makes CSM 2 take over CSM 1's near range" },
                 { "cascade_params.w",
                   "junction band must be read from the world-space field the controller writes (dead knob)" },
+                { "cache_offset.x != 0.0",
+                  "toroidal wrap must be driven by cache_offset; a hardcoded fract() wraps edge "
+                  "PCF taps to the opposite side of the map and leaves a speckle ring at every "
+                  "cascade border while the rolling cache is not wired" },
             };
 
             for (const ShaderContract &k : kContracts)
