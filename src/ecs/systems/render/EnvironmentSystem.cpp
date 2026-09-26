@@ -10,6 +10,7 @@
 #include<hgl/graph/render/lighting/CascadedShadowController.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include <cstdlib>
 #include<hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -361,6 +362,11 @@ namespace hgl::ecs
             if (!rt)
                 continue;
 
+            // S6 诊断开关（CSM_PASS_LOG=1，默认静默）：逐 pass 打印级联/类型/scissor/写侧平移，
+            // 与 [S6-COLLECT] 的"图元数 + 实体 ID 校验和"配对读：同批 caster ⇒ 差异在光栅化侧；
+            // 不同批 ⇒ 差异在收集/剔除侧。
+            static const bool s6_pass_log = (std::getenv("CSM_PASS_LOG") != nullptr);
+
             if (c == 0 || res.need_full_update)
             {
                 RenderPassRequest req;
@@ -381,6 +387,13 @@ namespace hgl::ecs
                 req.mobility_filter = (c == 0) ? static_cast<int>(Mobility::Movable) : static_cast<int>(Mobility::Static);
 
                 context->RenderTo(req);
+
+                if (s6_pass_log)
+                    GLogInfo("[S6-PASS] cascade=%u kind=full mobility=%d off=(%u,%u) "
+                             "view_t=(%.4f,%.4f) load_depth=%d",
+                             c, req.mobility_filter, res.cache_offset.x, res.cache_offset.y,
+                             res.light_view_draw[3][0], res.light_view_draw[3][1],
+                             req.load_depth ? 1 : 0);
             }
             else if (res.dirty_rect_count > 0)
             {
@@ -406,6 +419,14 @@ namespace hgl::ecs
                     req.mobility_filter = static_cast<int>(Mobility::Static);
 
                     context->RenderTo(req);
+
+                    if (s6_pass_log)
+                        GLogInfo("[S6-PASS] cascade=%u kind=strip mobility=%d off=(%u,%u) "
+                                 "view_t=(%.4f,%.4f) rect=(%u,%u,%u,%u) load_depth=%d",
+                                 c, req.mobility_filter, res.cache_offset.x, res.cache_offset.y,
+                                 res.light_view_draw[3][0], res.light_view_draw[3][1],
+                                 rect.x, rect.y, rect.width, rect.height,
+                                 req.load_depth ? 1 : 0);
                 }
             }
         }

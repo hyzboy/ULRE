@@ -7,6 +7,7 @@
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/InstancedPrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
+#include <cstdlib>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
@@ -1442,6 +1443,8 @@ namespace hgl::ecs
         size_t skipped_invisible = 0;
         size_t skipped_no_owner = 0;
         size_t skipped_no_transform = 0;
+        // S6 诊断：本 pass 产出图元的实体 ID 校验和（判定"条带帧 vs 整级帧是否同一批 caster"）
+        uint64_t shadow_pass_idsum = 0;
         size_t added = 0;
 
         const glm::vec3 camera_pos = glm::vec3(cameraInfo->pos);
@@ -1760,15 +1763,23 @@ namespace hgl::ecs
             cache.renderItems.push_back(std::move(item));
             cache.renderableCount++;
             ++added;
+            shadow_pass_idsum += (static_cast<uint64_t>(entity_id.index) << 16) | entity_id.generation;
         }
 
-        //if (cache.renderableCount == 0)
-        //{
-        //    LogInfo("[RenderPrimitiveCollectSystem] No renderables: total=%zu visible=%zu no_owner=%zu no_transform=%zu",
-        //             primitives.size(),
-        //             added,
-        //             skipped_no_owner,
-        //             skipped_no_transform);
-        //}
+        // S6 诊断（CSM_PASS_LOG=1 打开，默认静默）：阴影 pass 的收集结论。
+        // 用途：判定"条带重画帧"与"整级重建帧"是否收到**同一批 caster**——
+        //   数量/校验和不同 ⇒ 差异根因在收集/剔除侧（视锥、mobility 筛、shadow_origin 距离、
+        //   程序 resolve 失败跳过）；
+        //   完全相同 ⇒ 差异在光栅化侧（写侧平移矩阵、scissor、清除矩形、深度值）。
+        // 校验和 = Σ entity_id（与顺序无关）。
+        static const bool s6_collect_log = (std::getenv("CSM_PASS_LOG") != nullptr);
+        if (s6_collect_log && world && world->IsCurrentPassShadow())
+        {
+            GLogInfo("[S6-COLLECT] shadow pass mobility=%d items=%zu idsum=0x%llx "
+                     "skipped(invisible=%zu no_owner=%zu no_transform=%zu)",
+                     active_mobility_filter, added,
+                     static_cast<unsigned long long>(shadow_pass_idsum),
+                     skipped_invisible, skipped_no_owner, skipped_no_transform);
+        }
     }
 }//namespace hgl::ecs
