@@ -9,6 +9,7 @@
 #include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/ShaderBuildContext.h>
+#include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialShaderCompiler.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
 #include<hgl/mtl/ShaderCreateInfo.h>
@@ -86,11 +87,46 @@ namespace
         }
     }
 
+    // SPIRV 指令流扫描：片元是否含 discard（OpKill / OpDemoteToHelperInvocation）。
+    // discard 通常由 GLSL 编译为 demote（DemoteToHelperInvocation capability=5407），
+    // 文本级 FinalGLSL 判定会漏（discard 在 include 的 alpha_compositor 里）——
+    // 必须扫 SPIRV。
+    bool ScanSPVHasDiscard(const uint32_t *words, size_t word_count)
+    {
+        if (word_count < 5)
+            return false;
+
+        constexpr uint32_t OpKill = 101;
+        constexpr uint32_t OpCapability = 17;
+        constexpr uint32_t CapDemoteToHelperInvocation = 5407;
+
+        size_t i = 5; // 跳过 magic/version/generator/bound/schema
+        while (i < word_count)
+        {
+            const uint32_t ins = words[i];
+            const uint32_t opcode = ins & 0xFFFFu;
+            const uint32_t word_count_of_inst = ins >> 16u;
+            if (word_count_of_inst == 0)
+                break;
+
+            if (opcode == OpKill)
+                return true;
+            if (opcode == OpCapability
+             && i + 1 < word_count
+             && words[i + 1] == CapDemoteToHelperInvocation)
+                return true;
+
+            i += word_count_of_inst;
+        }
+        return false;
+    }
+
     bool BuildShaderModulesFromCreateInfoMap(ShaderProgramManager *manager,
                                              const AnsiString &mtl_name,
                                              const mtl::ShaderCreateInfoMap &sci_map,
                                              const mtl::ShaderBuildContext *build_spec,
-                                             ShaderModuleMap *shader_maps)
+                                             ShaderModuleMap *shader_maps,
+                                             ShaderProgram *mtl)
     {
         if (!manager || !shader_maps)
             return false;
@@ -131,6 +167,18 @@ namespace
                     if (!module)
                         GLogError(u8"[ShaderProgramManager] failed to create Vulkan shader module from SPV: %s",
                                   cache_key->ToString().c_str());
+
+                    // 片元 discard 判定（SPIRV 指令流扫描，见 ScanSPVHasDiscard）
+                    if (module
+                     && stage == ShaderStage::Fragment
+                     && mtl
+                     && !mtl->IsFragmentShaderRequired()
+                     && ScanSPVHasDiscard(
+                            reinterpret_cast<const uint32_t *>(cached_spv.GetData()),
+                            cached_spv.GetCount() / sizeof(uint32_t)))
+                    {
+                        manager->SetFragmentShaderRequired(mtl, true);
+                    }
                 }
             }
 
@@ -566,6 +614,12 @@ VkPipelineLayout ShaderProgramManager::GetOrCreateGlobalPipelineLayout()
     return shared_pipeline_layout_;
 }
 
+void ShaderProgramManager::SetFragmentShaderRequired(ShaderProgram *mtl, bool v)
+{
+    if (mtl)
+        mtl->fragment_shader_required = v;
+}
+
 bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                                      const AnsiString &mtl_name,
                                                      const mtl::ShaderBuildContext *ctx,
@@ -578,12 +632,22 @@ bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                             mtl_name,
                                             sci_map,
                                             ctx,
-                                            mtl->shader_maps))
+                                            mtl->shader_maps,
+                                            mtl))
     {
         return false;
     }
 
     CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
+
+    // 片元 discard 判定（alpha test/coverage 材质在 depth-only 通道保留片元
+    // stage 的依据）：FinalGLSL 文本级扫描——discard 只能作为语句关键字出现，
+    // 注释误报仅造成"多保留一个片元"，正确性无损。
+    if(const mtl::ShaderCreateInfo *frag = sci_map[ShaderStage::Fragment])
+    {
+        mtl->fragment_shader_required =
+            frag->GetFinalGLSL().find("discard") != std::string::npos;
+    }
 
     // mesh 化后顶点输入统一走 SSBO，无 VBO 顶点输入布局（VS 遗留 vertex_input 已删）
 

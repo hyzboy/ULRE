@@ -50,7 +50,8 @@ RenderPass::~RenderPass()
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
                                       const ShaderStageCreateInfoList &ssci_list,
                                       VkPipelineLayout pl,
-                                      const mtl::MaterialPipelineConfig &config)
+                                      const mtl::MaterialPipelineConfig &config,
+                                      bool keep_fragment_shader)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -63,15 +64,36 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     request.debug_name = &name;
     request.pipeline_layout = pl;
 
+    // TEMP-DIAG: pipeline key 取证（还原）——module 指针与 stages hash
+    {
+        static int key_diag = 0;
+        if (key_diag < 40)
+        {
+            ++key_diag;
+            AnsiString mods;
+            for (const VkPipelineShaderStageCreateInfo &sci : ssci_list)
+            {
+                char mod_buf[32];
+                snprintf(mod_buf, sizeof(mod_buf), "[stage=%d mod=%p]", int(sci.stage), (void *)sci.module);
+                mods += mod_buf;
+            }
+            GLogInfo("[DIAG-PKEY] name=%s stages=%s keep_fs=%d",
+                     name.c_str(), mods.c_str(), int(keep_fragment_shader));
+        }
+    }
+
     // depth-only 渲染通道（零颜色附件，如 shadow map）：不透明材质直接去掉片元
     // 着色阶段——深度写入不依赖 FS，整段 lit 着色计算全部省去（FS 的 outColor
-    // 在此通道也无处写入，VVL 会报 fragment-output 未使用写告警）。带 alpha 混合
-    // /A2C 的材质保留 FS：其 discard/覆盖行为依赖片元着色器。
+    // 在此通道也无处写入，VVL 会报 fragment-output 未使用写告警）。带 alpha 混
+    // 合/A2C 的材质保留 FS：其 discard/覆盖行为依赖片元着色器。片元含 discard
+    // （alpha test 等，program 层判定）的材质同理——剥掉后镂空材质在深度图
+    // 退化为实心（ShadowCasterMasked 曾踩）。
     ShaderStageCreateInfoList depth_only_stage_list;
 
     if(color_formats.GetCount()==0
      &&!config.alpha_blend
-     &&!config.alpha_to_coverage)
+     &&!config.alpha_to_coverage
+     &&!keep_fragment_shader)
     {
         for(const VkPipelineShaderStageCreateInfo &sci:ssci_list)
             if(!(sci.stage & VK_SHADER_STAGE_FRAGMENT_BIT))
@@ -126,7 +148,8 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipel
     Pipeline *p = CreatePipeline(mtl->GetName(),
                                   mtl->GetStageList(),
                                   mtl->GetPipelineLayout(),
-                                  config);
+                                  config,
+                                  mtl->IsFragmentShaderRequired());
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);
@@ -160,10 +183,19 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
     if (render_state.double_sided)
         render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
 
+    // alpha test / dither 的 discard 依赖片元——depth-only 通道不得剥 FS。
+    // （mtl->IsFragmentShaderRequired 为 SPIRV 扫描结果；recipe 的
+    // alpha_test/dither 是语义层判据，双保险。）
+    const bool keep_fragment_shader =
+        mtl->IsFragmentShaderRequired()
+     || render_state.alpha_test
+     || render_state.dither;
+
     Pipeline *p = CreatePipeline(mtl->GetName(),
                                   mtl->GetStageList(),
                                   mtl->GetPipelineLayout(),
-                                  render_state.pipeline_config);
+                                  render_state.pipeline_config,
+                                  keep_fragment_shader);
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);

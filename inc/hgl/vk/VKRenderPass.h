@@ -36,7 +36,8 @@ protected:
     Pipeline *CreatePipeline(const AnsiString &,
                              const ShaderStageCreateInfoList &,
                              VkPipelineLayout,
-                             const mtl::MaterialPipelineConfig &config);
+                             const mtl::MaterialPipelineConfig &config,
+                             bool keep_fragment_shader = false);
 
 private:
 

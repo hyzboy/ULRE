@@ -42,6 +42,11 @@ class ShaderProgram
 
     VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;   ///<共享全局 pipeline layout(设备级单例,不拥有)
 
+    // 片元着色器是否含 discard（alpha test/coverage 判定）。RenderPass 的
+    // depth-only 快速路径据此决定能否剥离片元 stage——含 discard 的片元被
+    // 剥掉后镂空材质会在深度图退化为实心（ShadowCasterMasked 曾踩）。
+    bool fragment_shader_required = false;
+
 
 private:
 
@@ -62,6 +67,8 @@ public:
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return shader_stage_list;}
 
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
+
+    const   bool                                IsFragmentShaderRequired ()const { return fragment_shader_required; }
 
 public:
 
