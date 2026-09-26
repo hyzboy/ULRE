@@ -116,6 +116,82 @@
      ecs/transform-data-management（传输层改 push constants）、
      ecs/primitive-geometry-vdm（结构图）。
 
+## D 线：CSM/阴影后续（2026-09-26 review 消化 + masked 链深挖新卡）
+
+> 来源：`doc/csm-review-2026-09-25.md`（A5/A6/A7-A10/T 系列剩余）+
+> `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`（masked 链深挖
+> 新卡）。快赢组（A9/A7/T10/T2/T7 + demote feature）已完成不再列。
+> 深度图读回报证工具见 `example/Basic/AlphaTestShadow.cpp` 的 DumpCascadeDepth。
+
+### D1. 深度镂空判读升级为自动契约（新卡④，优先）
+
+- **现状**：depth-only 通道的 FS 剥除豁免（`IsFragmentShaderRequired`）与
+  masked 链各层修复目前只有手动验证（`AlphaTestShadow` + 深度图读回，
+  棋盘投影填充 ~57%=镂空）。豁免被改回时契约测试全绿但功能坏。
+- **做法**：把"dump 深度图 + 填充率断言（50-65% 区间）"收进
+  `TestCSMIncrementalPass`（headless 读回路径已验证可行）。
+- **规模**：~100 行（读回 helper 移入测试 + 断言）。**无触发条件，建议随下
+  一次 shadow 相关改动一并做**。
+
+### D2. pipeline 缓存键纳入 shader 内容（新卡②）+ 同构排查（新卡③）
+
+- **现状**：`PipelineResolver::HashShaderStages` 用 VkShaderModule **指针值**
+  做 `FinalPipelineKey::shader_stages_hash`——module 销毁后新建同地址会错误
+  命中缓存（与已修复的 `resolvedRuntimePipelineMap` 无 program 键控同构）。
+- **做法**：ShaderModule 创建时算一次 SPIRV 内容 hash 存下来，key 用内容
+  hash；顺带排查 LineRenderPipeline/TextRenderPipeline 等自持 pipeline
+  缓存的同类模式。
+- **规模**：核心 ~20 行 + 排查半天。
+
+### D3. receive_shadow / bias_multiplier 落地或删除（A5）
+
+- **现状**：`ShadowComponent` 四旋钮中 `receive_shadow`/`bias_multiplier`
+  零消费者（`CanCastShadow`/`GetShadowMaxDistance` 已消费）；文档
+  （shadow-component-and-automated-pipeline-design.md:19）把它们写成已生效。
+- **做法**：二选一——接收侧开关需接 shader/材质行（成本高于预期则先删
+  字段留接口，文档同步标注）。
+- **触发条件**：需要决策。规模：落地 ~2-3 天，删除 ~1 小时。
+
+### D4. TransformComponent 同值短路（新卡①）
+
+- **现状**：`SetLocalPosition` 等 setter 无同值短路，每帧重复 set 同值会被
+  A3 链判为变更 → 静态级联每帧全量重绘（示例网格吸附已修，引擎级未修）；
+  同时它也是"每帧全量上传静态矩阵"的隐性带宽浪费源。
+- **做法**：三 setter 加同值短路（语义变更，需排查依赖"重复 set 触发 dirty"
+  的调用点）。
+- **规模**：~20 行 + 排查半天。**触发条件**：出现静态级联每帧重绘且日志指向
+  同值 set 的场景（SKILL §9 已有诊断条目）。
+
+### D5. A8 scissor 增量分支：实现条带滚动或删除
+
+- **现状**：`RenderMainLightShadowPass` 的 scissor 增量分支永不执行
+  （`ShadowDirtyRect` 池恒全图矩形）——与环形寻址（A 线 A6 的 CSM 部分）绑定。
+- **触发条件**：决定做 Toroidal 条带滚动（保留改造）或确认长期整级重建（删除
+  分支与 rect 池）。**依赖路线决策。**
+
+### D6. prepass 入口防御（T4）
+
+- **现状**：自动化 shadow prepass 仅在 `RenderGraph.cpp:171` 一条入口被驱动，
+  新增/绕过入口时阴影静默失效（无断言无日志）。
+- **做法**：挂到 `BeginManagedRenderFrame` 并显式区分主帧/离屏帧，或入口
+  缺失时告警。
+- **规模**：~30 行。**触发条件**：新增第二条渲染入口时。
+
+### D7. 性能账目 → EnvironmentSystem 拆分 → 4 级联合并（T8 → T6 → A6，大组按序）
+
+- **T8**：量测 prepass GPU 时间 / 4 次 submit+全槽排空的 CPU 等待 / masked
+  caster 保留 FS 后的片元开销（A1 修复后收益才真实可测）。
+- **T6**：CSM 从 `EnvironmentSystem`（瘦转发层，现堆满控制器/4 RT/bindless/
+  光相机/固化防御）拆出 `MainLightShadowSystem`；A10（重复 Enable 重建
+  4 RT + 头文件重量）随 RAII 一并解决。
+- **A6**：4 级联合并单 command buffer / 单次 prepass（4 次 submit、4 次
+  全槽排空、Update 每帧 5 次的问题一并解决）。**依赖 T8 数据决定收益**。
+- **规模**：T8 半天（工具已有 DumpCascadeDepth 基础）；T6 2-3 天；A6 1-2 天。
+
+### 留置
+
+- **T5 ScenePipelineMode 空壳**：用户明确留置（未实现模式不加告警）。
+
 ## 关联顺序
 
 ```
@@ -128,3 +204,8 @@ A5(比较采样) ◄──同做───────────┘            
 - **性价比最高的入口是 A2**：解锁 ShadowMap hack 清理（验证用例现成）
   与 A4 的光照矩阵通路，且不依赖任何其它项。
 - B/C 线与 A 线无耦合，随手清。
+- **D 线内部顺序**：D1（锁死 masked 链成果，随下次 shadow 改动）→
+  D2（pipeline 键正确性）→ D3/D4（决策项）→ **T8 量测** →
+  T6 拆分 → A6 合并。D 线与 A 线 A1/A7（提交原语/in-flight 槽）强相关：
+  A6 的 4 次全槽排空问题在 A1 的 per-frame 多份化落地后可能自然消失，
+  两者做前先对齐。
