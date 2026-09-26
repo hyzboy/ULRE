@@ -125,7 +125,12 @@ namespace hgl::ecs
         // 每个 RenderPass（≈每个 RenderTarget）各自持有解析出的管线——同一世界
         // 被 RenderTo 到多个 RT（如 ShadowMap 的 depth-only 离屏 Pass）时，
         // 各 RT 使用各自格式匹配的管线，互不驱逐。Pipeline 归 RenderPass 所有。
+        // program 键控副本：pipeline 的复用必须校验创建时的 program 身份——
+        // shader 源码/模板变化会生成新 program 对象（hash 不同），若仅按
+        // RenderPass 键控会持续复用旧 program 的管线（masked 阴影从未生效的
+        // 根因）。program 更换时由 HasResolvedRuntimePipeline 判定失效。
         hgl::UnorderedMap<hgl::graph::RenderPass *, hgl::graph::Pipeline *> resolvedRuntimePipelineMap;
+        hgl::UnorderedMap<hgl::graph::RenderPass *, hgl::graph::ShaderProgram *> resolvedRuntimePipelineProgramMap;
         void InvalidateResolvedRuntimePipeline();
 
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
@@ -183,7 +188,9 @@ namespace hgl::ecs
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
         void ClearOverridePipeline() { overridePipeline = nullptr; }
 
-        void SetResolvedRuntimePipeline(hgl::graph::RenderPass *rp, hgl::graph::Pipeline *p)
+        void SetResolvedRuntimePipeline(hgl::graph::RenderPass *rp,
+                                        hgl::graph::Pipeline *p,
+                                        hgl::graph::ShaderProgram *program)
         {
             if (!rp || !p)
                 return;
@@ -192,11 +199,30 @@ namespace hgl::ecs
                 *existing = p;
             else
                 resolvedRuntimePipelineMap.Add(rp, p);
+
+            if (hgl::graph::ShaderProgram **existing_prog =
+                    resolvedRuntimePipelineProgramMap.GetValuePointer(rp))
+                *existing_prog = program;
+            else
+                resolvedRuntimePipelineProgramMap.Add(rp, program);
         }
 
-        bool HasResolvedRuntimePipeline(hgl::graph::RenderPass *rp) const
+        // 复用校验：RenderPass 命中且创建时的 program 一致。program 更换
+        // （shader 重编译/模板切换）时返回 false，让调用方重建管线。
+        bool HasResolvedRuntimePipeline(hgl::graph::RenderPass *render_pass,
+                                        hgl::graph::ShaderProgram *program) const
         {
-            return rp && resolvedRuntimePipelineMap.ContainsKey(rp);
+            if (!render_pass || !program)
+                return false;
+
+            const hgl::graph::Pipeline *const *p =
+                resolvedRuntimePipelineMap.GetValuePointer(render_pass);
+            if (!p || !*p)
+                return false;
+
+            const hgl::graph::ShaderProgram *const *prog =
+                resolvedRuntimePipelineProgramMap.GetValuePointer(render_pass);
+            return prog && *prog == program;
         }
 
         void SetTransformPolicySpec(const TransformPolicySpec& spec) { transformPolicySpec = spec; }

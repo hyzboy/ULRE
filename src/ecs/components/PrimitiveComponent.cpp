@@ -564,6 +564,7 @@ namespace hgl::ecs
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()
     {
         resolvedRuntimePipelineMap.Clear();
+        resolvedRuntimePipelineProgramMap.Clear();
     }
 
     hgl::graph::ShaderProgram* PrimitiveComponent::GetShaderProgram() const
