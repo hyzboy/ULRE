@@ -35,6 +35,8 @@ struct VulkanDevAttr
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
     VkCommandPool                       transfer_cmd_pool =VK_NULL_HANDLE;
 
+    VkDescriptorPool                    desc_pool       =VK_NULL_HANDLE;
+
     VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
 
     // 扩展函数指针（设备创建后经 vkGetDeviceProcAddr 加载一次，避免每次调用查询）

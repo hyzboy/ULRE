@@ -44,6 +44,11 @@ namespace hgl::graph
     private:
         VkDevice       device_ = VK_NULL_HANDLE;
         VulkanDevAttr *attr_   = nullptr;
+        bool           use_descriptor_buffer_ = false;
+
+        // ── Descriptor Pool 资源（传统回退路径） ──
+        VkDescriptorPool pool_ = VK_NULL_HANDLE;
+        VkDescriptorSet  set_  = VK_NULL_HANDLE;
 
         // ── Descriptor Buffer 资源 ──
         VkBuffer        desc_buffer_             = VK_NULL_HANDLE;
@@ -71,6 +76,7 @@ namespace hgl::graph
 
     private:
         bool InitDescriptorBuffer();
+        bool InitDescriptorPool();
 
     public:
         BindlessTextureManager() = default;
@@ -88,8 +94,14 @@ namespace hgl::graph
 
         bool IsValid() const
         {
-            return desc_buffer_ != VK_NULL_HANDLE && mapped_ptr_ != nullptr;
+            if (use_descriptor_buffer_)
+                return desc_buffer_ != VK_NULL_HANDLE && mapped_ptr_ != nullptr;
+            else
+                return set_ != VK_NULL_HANDLE;
         }
+
+        bool IsDescriptorBufferMode() const { return use_descriptor_buffer_; }
+        VkDescriptorSet GetDescriptorSet() const { return set_; }
 
         VkDescriptorSetLayout GetLayout() const { return layout_; }
 

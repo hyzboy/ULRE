@@ -40,7 +40,8 @@ namespace
 {
     void SetDeviceExtension(CharPointerList *ext_list,
                             const VulkanPhyDevice *physical_device,
-                            const VulkanHardwareRequirement &require)
+                            const VulkanHardwareRequirement &require,
+                            const bool enable_descriptor_buffer)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -81,7 +82,7 @@ namespace
         if(require.texture_compression.PVRTC>=VulkanHardwareRequirement::SupportLevel::Want)                   //前面检测过了，所以这里不用再次检测是否支持
             ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
 
-        if(physical_device->SupportDescriptorBuffer())
+        if(enable_descriptor_buffer)
             ext_list->Add(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
 
         // indexTypeUint8 走 VkPhysicalDeviceVulkan14Features（1.4 核心），无需 EXT_INDEX_TYPE_UINT8 扩展
@@ -172,6 +173,40 @@ namespace
 
         copy(extent,ext,1);
         return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,miplevel,VK_IMAGE_ASPECT_DEPTH_BIT,img);
+    }
+
+    VkDescriptorPool CreateDescriptorPool(VkDevice device,uint32_t sets_count)
+    {
+        VkDescriptorPoolSize pool_size[]=
+        {
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, sets_count},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          sets_count},
+            {VK_DESCRIPTOR_TYPE_SAMPLER,                sets_count},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         sets_count},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, sets_count},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         sets_count},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, sets_count},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       sets_count}
+        };
+
+        VkDescriptorPoolCreateInfo dp_create_info;
+        dp_create_info.sType        =VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        dp_create_info.pNext        =nullptr;
+        dp_create_info.flags        =VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        dp_create_info.maxSets      =sets_count;
+        dp_create_info.poolSizeCount=sizeof(pool_size)/sizeof(VkDescriptorPoolSize);
+        dp_create_info.pPoolSizes   =pool_size;
+
+        VkDescriptorPool desc_pool;
+
+        VkResult res = vkCreateDescriptorPool(device,&dp_create_info,nullptr,&desc_pool);
+        if(res != VK_SUCCESS)
+        {
+            GLogError(u8"vkCreateDescriptorPool 失败，VkResult = %d", int(res));
+            return(VK_NULL_HANDLE);
+        }
+
+        return desc_pool;
     }
 
     void LogDeviceCreateInfo(const VkDeviceCreateInfo *create_info, const VkResult result)
@@ -285,6 +320,41 @@ constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEG
 #ifdef _DEBUG
 void OutputPhysicalDeviceCaps(const VulkanPhyDevice *);
 #endif//_DEBUG
+
+bool VulkanDeviceCreater::IsDescriptorBufferSupported() const
+{
+    if(!physical_device || !physical_device->SupportDescriptorBuffer())
+        return false;
+
+    if(require.descriptorBuffer == VulkanHardwareRequirement::SupportLevel::DontCare)
+        return false;
+
+    // RenderDoc 截获环境下（加载了 renderdoc.dll 或设置了环境变量）自动禁用 Descriptor Buffer，回退到标准的 DescriptorPool 模式保证截帧正常
+#if HGL_OS == HGL_OS_Windows
+    if(::GetModuleHandleA("renderdoc.dll") != nullptr)
+    {
+        GLogInfo(u8"[VKDeviceCreater] 检测到 RenderDoc 正在截帧 (renderdoc.dll 已加载)，自动禁用 Descriptor Buffer 并回退到 DescriptorPool");
+        return false;
+    }
+
+    char env_buf[32];
+    if(::GetEnvironmentVariableA("HGL_FORCE_DESCRIPTOR_POOL", env_buf, sizeof(env_buf)) > 0
+    || ::GetEnvironmentVariableA("HGL_DISABLE_DESCRIPTOR_BUFFER", env_buf, sizeof(env_buf)) > 0
+    || ::GetEnvironmentVariableA("ENABLE_VULKAN_RENDERDOC_CAPTURE", env_buf, sizeof(env_buf)) > 0)
+    {
+        GLogInfo(u8"[VKDeviceCreater] 环境变量强制禁用 Descriptor Buffer，回退到 DescriptorPool");
+        return false;
+    }
+#else
+    if(getenv("HGL_FORCE_DESCRIPTOR_POOL") || getenv("HGL_DISABLE_DESCRIPTOR_BUFFER") || getenv("ENABLE_VULKAN_RENDERDOC_CAPTURE"))
+    {
+        GLogInfo(u8"[VKDeviceCreater] 环境变量强制禁用 Descriptor Buffer，回退到 DescriptorPool");
+        return false;
+    }
+#endif
+
+    return true;
+}
 
 VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 {
@@ -465,7 +535,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         create_info.pNext = &eds3;
     }
 
-    if(physical_device->SupportDescriptorBuffer())
+    if(IsDescriptorBufferSupported())
     {
         desc_buffer_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
         desc_buffer_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
@@ -549,7 +619,9 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     // 渲染正确性问题且无法用 RenderDoc 调试，详见 2026-08-29 提交记录）。
     // 现状：pipeline 只保留 shader 部分，全部渲染状态走 EDS 1/2/3 动态设置
     //（vkCmdSet* 渲染侧应用材质配置）；远期可迁 VK_EXT_shader_object。
-    SetDeviceExtension(&ext_list,physical_device,require);
+    const bool use_desc_buffer = IsDescriptorBufferSupported();
+
+    SetDeviceExtension(&ext_list,physical_device,require,use_desc_buffer);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
 
     device_attr->device=CreateDevice(graphics_family);
@@ -655,7 +727,7 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     }
 
     // Descriptor Buffer 函数指针（VK_EXT_descriptor_buffer）
-    if(physical_device->SupportDescriptorBuffer())
+    if(use_desc_buffer)
     {
         device_attr->use_descriptor_buffer = true;
 
@@ -673,6 +745,10 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
         if(auto fp = device_attr->GetDeviceProc<PFN_vkCmdSetDescriptorBufferOffsetsEXT>("vkCmdSetDescriptorBufferOffsetsEXT"))
             device_attr->cmd_set_descriptor_buffer_offsets = *fp;
+    }
+    else
+    {
+        device_attr->use_descriptor_buffer = false;
     }
 
     device_attr->surface_format=surface_format;
@@ -695,6 +771,11 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         device_attr->transfer_cmd_pool=device_attr->cmd_pool;
     }
 
+    device_attr->desc_pool=CreateDescriptorPool(device_attr->device,require.descriptor_pool);
+
+    if(!device_attr->desc_pool)
+        return(nullptr);
+
     device_attr->pipeline_cache=CreatePipelineCache(device_attr->device,physical_device->GetProperties());
 
     if(!device_attr->pipeline_cache)
@@ -713,6 +794,8 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
             device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"Main Command Pool");
             if(device_attr->transfer_cmd_pool && device_attr->transfer_cmd_pool != device_attr->cmd_pool)
                 device_attr->debug_utils->SetCommandPool(device_attr->transfer_cmd_pool,"Transfer Command Pool");
+            if(device_attr->desc_pool)
+                device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"Main Descriptor Pool");
             device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"Main Pipeline Cache");
         }
     #endif//_DEBUG
@@ -912,7 +995,6 @@ VulkanDevice *VulkanDeviceCreater::Create()
 
     if(!device)
     {
-        delete surface;
         surface=nullptr;
         return(nullptr);
     }

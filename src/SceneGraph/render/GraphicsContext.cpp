@@ -218,10 +218,11 @@ namespace hgl::graph
                                               BindlessTextureManager *bindless_mgr)
     {
         auto *attr = device ? device->GetDevAttr() : nullptr;
-        uint32_t bindless_buffer_index = 0;
+        const bool use_desc_buffer = device && device->IsDescriptorBufferActive();
 
-        if (attr && attr->cmd_bind_descriptor_buffers)
+        if (use_desc_buffer && attr && attr->cmd_bind_descriptor_buffers)
         {
+            uint32_t bindless_buffer_index = 0;
             VkDescriptorBufferBindingInfoEXT binding_infos[2]{};
             VkDescriptorBufferBindingPushDescriptorBufferHandleEXT push_handle{};
             uint32_t buffer_count = 0;
@@ -255,20 +256,36 @@ namespace hgl::graph
             {
                 attr->cmd_bind_descriptor_buffers(cmd_buf, buffer_count, binding_infos);
             }
-        }
 
-        if (scene_set && scene_set->IsValid())
-        {
-            scene_set->BindToCmd(cmd_buf, layout, bind_point);
-        }
+            if (scene_set && scene_set->IsValid())
+            {
+                scene_set->BindToCmd(cmd_buf, layout, bind_point);
+            }
 
-        if (bindless_mgr && bindless_mgr->IsValid())
+            if (bindless_mgr && bindless_mgr->IsValid())
+            {
+                bindless_mgr->BindOffsetToCmd(cmd_buf,
+                                              layout,
+                                              static_cast<uint32_t>(graph::DescriptorSetType::Bindless),
+                                              bindless_buffer_index,
+                                              bind_point);
+            }
+        }
+        else
         {
-            bindless_mgr->BindOffsetToCmd(cmd_buf,
-                                          layout,
-                                          static_cast<uint32_t>(graph::DescriptorSetType::Bindless),
-                                          bindless_buffer_index,
-                                          bind_point);
+            // 传统 DescriptorPool 双轨回退路径 (如 RenderDoc 环境或不支持 DescriptorBuffer 的设备)
+            if (scene_set && scene_set->IsValid())
+            {
+                scene_set->BindToCmd(cmd_buf, layout, bind_point);
+            }
+
+            if (bindless_mgr && bindless_mgr->IsValid())
+            {
+                bindless_mgr->BindToCmd(cmd_buf,
+                                        layout,
+                                        static_cast<uint32_t>(graph::DescriptorSetType::Bindless),
+                                        bind_point);
+            }
         }
     }
 

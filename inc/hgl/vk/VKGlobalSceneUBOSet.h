@@ -32,6 +32,11 @@ namespace hgl::graph
     private:
         VkDevice device_ = VK_NULL_HANDLE;
         VulkanDevAttr *attr_ = nullptr;
+        bool use_descriptor_buffer_ = false;
+
+        // ── 传统 DescriptorPool 资源（回退路径） ──
+        VkDescriptorPool pool_ = VK_NULL_HANDLE;
+        VkDescriptorSet  set_  = VK_NULL_HANDLE;
 
         VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
         PFN_vkCmdPushDescriptorSet push_fn_ = nullptr;
@@ -46,12 +51,16 @@ namespace hgl::graph
         mutable VkDescriptorBufferInfo bound_buffers_info_[size_t(SceneBinding::RANGE_SIZE)]{};
         mutable bool binding_valid_[size_t(SceneBinding::RANGE_SIZE)]{};
 
+    private:
+        bool InitDescriptorBuffer();
+        bool InitDescriptorPool();
+
     public:
         GlobalSceneUBOSet() = default;
         ~GlobalSceneUBOSet() { Destroy(); }
 
         /**
-         * 创建描述符集布局并加载 Push Descriptor 指针。
+         * 创建描述符集布局与缓冲区/描述符池。
          * 必须在 VkDevice 创建完毕后调用一次。
          */
         bool Init(VkDevice device);
@@ -59,11 +68,20 @@ namespace hgl::graph
         /** 释放所有 Vulkan 资源 */
         void Destroy();
 
-        bool IsValid() const { return layout_ != VK_NULL_HANDLE && push_fn_ != nullptr; }
+        bool IsValid() const
+        {
+            if (use_descriptor_buffer_)
+                return layout_ != VK_NULL_HANDLE && push_fn_ != nullptr;
+            else
+                return layout_ != VK_NULL_HANDLE && set_ != VK_NULL_HANDLE;
+        }
+
+        bool IsDescriptorBufferMode() const { return use_descriptor_buffer_; }
 
         VkDescriptorSetLayout GetLayout() const { return layout_; }
+        VkDescriptorSet       GetSet()    const { return set_; }
 
-        bool NeedsPushDescriptorBuffer() const { return needs_push_buffer_; }
+        bool NeedsPushDescriptorBuffer() const { return use_descriptor_buffer_ && needs_push_buffer_; }
         VkBuffer GetPushDescriptorBuffer() const { return push_desc_buffer_; }
         VkDeviceAddress GetPushDescriptorBufferAddress() const { return push_desc_address_; }
 

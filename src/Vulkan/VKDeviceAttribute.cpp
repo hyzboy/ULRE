@@ -45,6 +45,12 @@ VulkanDevAttr::~VulkanDevAttr()
         vkDestroyCommandPool(device,transfer_cmd_pool,nullptr);
     }
 
+    if(desc_pool)
+    {
+        vkDestroyDescriptorPool(device,desc_pool,nullptr);
+        desc_pool = VK_NULL_HANDLE;
+    }
+
     if(device)
         vkDestroyDevice(device,nullptr);
 

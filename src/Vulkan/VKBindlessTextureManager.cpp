@@ -174,6 +174,7 @@ bool BindlessTextureManager::InitDescriptorBuffer()
     }
 
     attr_->use_descriptor_buffer = true;
+    use_descriptor_buffer_       = true;
 
     LogInfo(u8"[BindlessTextureManager] 初始化 Descriptor Buffer 模式成功 (layout_size=%llu, offsets=[%llu, %llu, %llu], sampledImageSize=%zu, samplerSize=%zu, addr=0x%llx)",
             static_cast<unsigned long long>(layout_size_),
@@ -183,6 +184,92 @@ bool BindlessTextureManager::InitDescriptorBuffer()
             sampled_image_desc_size_,
             sampler_desc_size_,
             static_cast<unsigned long long>(desc_buffer_address_));
+    return true;
+}
+
+bool BindlessTextureManager::InitDescriptorPool()
+{
+    // ── 描述符池（UPDATE_AFTER_BIND） ──────────────────────────────────
+    VkDescriptorPoolSize pool_sizes[3] = {
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, kMax },        // binding=0 texture2DArray
+        { VK_DESCRIPTOR_TYPE_SAMPLER,       kMaxSampler }, // binding=1 sampler
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, kMax },        // binding=2 textureCube
+    };
+
+    VkDescriptorPoolCreateInfo pool_ci{};
+    pool_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_ci.flags         = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+    pool_ci.maxSets       = 1;
+    pool_ci.poolSizeCount = 3;
+    pool_ci.pPoolSizes    = pool_sizes;
+
+    if (vkCreateDescriptorPool(device_, &pool_ci, nullptr, &pool_) != VK_SUCCESS)
+    {
+        LogError(u8"[BindlessTextureManager] Failed to create descriptor pool");
+        return false;
+    }
+
+    // ── 描述符集布局 ──────────────────────────────────────────────────
+    VkDescriptorSetLayoutBinding bindings[3]{};
+
+    // binding=0 : texture2DArray[]（SAMPLED_IMAGE，非均匀索引）
+    bindings[0].binding         = 0;
+    bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    bindings[0].descriptorCount = kMax;
+    bindings[0].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+
+    // binding=1 : sampler[]（SAMPLER，非均匀索引）
+    bindings[1].binding         = 1;
+    bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
+    bindings[1].descriptorCount = kMaxSampler;
+    bindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+
+    // binding=2 : textureCubeArray[]
+    bindings[2].binding         = 2;
+    bindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    bindings[2].descriptorCount = kMax;
+    bindings[2].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+
+    VkDescriptorBindingFlags flags[3] = {
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
+    };
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo flags_ci{};
+    flags_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    flags_ci.bindingCount  = 3;
+    flags_ci.pBindingFlags = flags;
+
+    VkDescriptorSetLayoutCreateInfo layout_ci{};
+    layout_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_ci.pNext        = &flags_ci;
+    layout_ci.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+    layout_ci.bindingCount = 3;
+    layout_ci.pBindings    = bindings;
+
+    if (vkCreateDescriptorSetLayout(device_, &layout_ci, nullptr, &layout_) != VK_SUCCESS)
+    {
+        LogError(u8"[BindlessTextureManager] Failed to create descriptor set layout");
+        return false;
+    }
+
+    // ── 描述符集分配 ──────────────────────────────────────────────────
+    VkDescriptorSetAllocateInfo alloc_info{};
+    alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.descriptorPool     = pool_;
+    alloc_info.descriptorSetCount = 1;
+    alloc_info.pSetLayouts        = &layout_;
+
+    if (vkAllocateDescriptorSets(device_, &alloc_info, &set_) != VK_SUCCESS)
+    {
+        LogError(u8"[BindlessTextureManager] Failed to allocate descriptor set");
+        return false;
+    }
+
+    use_descriptor_buffer_ = false;
+
+    LogInfo(u8"[BindlessTextureManager] 初始化 DescriptorPool 模式成功 (max_tex=%u, max_sampler=%u)", kMax, kMaxSampler);
     return true;
 }
 
@@ -204,13 +291,31 @@ bool BindlessTextureManager::Init(VkDevice device, VulkanDevAttr *attr)
             attr_ = vk_dev->GetDevAttr();
     }
 
-    return InitDescriptorBuffer();
+    if (attr_ && attr_->use_descriptor_buffer && attr_->physical_device && attr_->physical_device->SupportDescriptorBuffer())
+    {
+        if (InitDescriptorBuffer())
+            return true;
+
+        LogWarning(u8"[BindlessTextureManager] 初始化 Descriptor Buffer 模式失败，回退到 DescriptorPool 模式");
+        Destroy();
+        device_ = device;
+        attr_   = attr;
+    }
+
+    return InitDescriptorPool();
 }
 
 void BindlessTextureManager::Destroy()
 {
     if (device_ == VK_NULL_HANDLE)
         return;
+
+    if (pool_ != VK_NULL_HANDLE)
+    {
+        vkDestroyDescriptorPool(device_, pool_, nullptr);
+        pool_ = VK_NULL_HANDLE;
+        set_  = VK_NULL_HANDLE;
+    }
 
     if (mapped_ptr_)
     {
@@ -251,9 +356,10 @@ void BindlessTextureManager::Destroy()
     }
     samplers_.Clear();
 
-    device_       = VK_NULL_HANDLE;
-    attr_         = nullptr;
-    next_handle_  = 1;
+    device_                = VK_NULL_HANDLE;
+    attr_                  = nullptr;
+    use_descriptor_buffer_ = false;
+    next_handle_           = 1;
     tex_cache_.Clear();
 }
 
@@ -293,15 +399,31 @@ bool BindlessTextureManager::UpdateTextureHandle(uint32_t tex_handle, Texture *t
 
     tex_cache_.Add(tex, tex_handle);
 
-    VkDescriptorGetInfoEXT get_info{};
-    get_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
-    get_info.type               = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    get_info.data.pSampledImage = &img_info;
+    if (use_descriptor_buffer_)
+    {
+        VkDescriptorGetInfoEXT get_info{};
+        get_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+        get_info.type               = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        get_info.data.pSampledImage = &img_info;
 
-    const VkDeviceSize base_offset = cube_view ? binding_offset_2_ : binding_offset_0_;
-    const VkDeviceSize item_offset = base_offset + (tex_handle - 1) * sampled_image_desc_size_;
+        const VkDeviceSize base_offset = cube_view ? binding_offset_2_ : binding_offset_0_;
+        const VkDeviceSize item_offset = base_offset + (tex_handle - 1) * sampled_image_desc_size_;
 
-    attr_->get_descriptor(device_, &get_info, sampled_image_desc_size_, mapped_ptr_ + item_offset);
+        attr_->get_descriptor(device_, &get_info, sampled_image_desc_size_, mapped_ptr_ + item_offset);
+    }
+    else
+    {
+        VkWriteDescriptorSet write{};
+        write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet          = set_;
+        write.dstBinding      = cube_view ? 2 : 0;
+        write.dstArrayElement = tex_handle - 1;   // 0-based array index
+        write.descriptorCount = 1;
+        write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        write.pImageInfo      = &img_info;
+
+        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    }
 
     LogInfo(u8"[BindlessTextureManager] Update handle=%u tex=%p (%s) view=%p",
             tex_handle,
@@ -357,13 +479,32 @@ bool BindlessTextureManager::RegisterSamplers(const VkSamplerCreateInfo *infos, 
         }
         samplers_.Add(samp);
 
-        VkDescriptorGetInfoEXT get_info{};
-        get_info.sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
-        get_info.type           = VK_DESCRIPTOR_TYPE_SAMPLER;
-        get_info.data.pSampler  = &samp;
+        if (use_descriptor_buffer_)
+        {
+            VkDescriptorGetInfoEXT get_info{};
+            get_info.sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+            get_info.type           = VK_DESCRIPTOR_TYPE_SAMPLER;
+            get_info.data.pSampler  = &samp;
 
-        const VkDeviceSize item_offset = binding_offset_1_ + i * sampler_desc_size_;
-        attr_->get_descriptor(device_, &get_info, sampler_desc_size_, mapped_ptr_ + item_offset);
+            const VkDeviceSize item_offset = binding_offset_1_ + i * sampler_desc_size_;
+            attr_->get_descriptor(device_, &get_info, sampler_desc_size_, mapped_ptr_ + item_offset);
+        }
+        else
+        {
+            VkDescriptorImageInfo samp_info{};
+            samp_info.sampler = samp;
+
+            VkWriteDescriptorSet write{};
+            write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet          = set_;
+            write.dstBinding      = 1;
+            write.dstArrayElement = i;             // index = 预设索引
+            write.descriptorCount = 1;
+            write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
+            write.pImageInfo      = &samp_info;
+
+            vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+        }
     }
 
     LogInfo(u8"[BindlessTextureManager] Registered %u samplers", count);
@@ -385,16 +526,32 @@ bool BindlessTextureManager::RebuildSampler(uint32_t index, const VkSamplerCreat
         return false;
     }
 
-    VkDescriptorImageInfo samp_info{};
-    samp_info.sampler = new_samp;
+    if (use_descriptor_buffer_)
+    {
+        VkDescriptorGetInfoEXT get_info{};
+        get_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+        get_info.type          = VK_DESCRIPTOR_TYPE_SAMPLER;
+        get_info.data.pSampler = &new_samp;
 
-    VkDescriptorGetInfoEXT get_info{};
-    get_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
-    get_info.type          = VK_DESCRIPTOR_TYPE_SAMPLER;
-    get_info.data.pSampler = &new_samp;
+        const VkDeviceSize item_offset = binding_offset_1_ + index * sampler_desc_size_;
+        attr_->get_descriptor(device_, &get_info, sampler_desc_size_, mapped_ptr_ + item_offset);
+    }
+    else
+    {
+        VkDescriptorImageInfo samp_info{};
+        samp_info.sampler = new_samp;
 
-    const VkDeviceSize item_offset = binding_offset_1_ + index * sampler_desc_size_;
-    attr_->get_descriptor(device_, &get_info, sampler_desc_size_, mapped_ptr_ + item_offset);
+        VkWriteDescriptorSet write{};
+        write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet          = set_;
+        write.dstBinding      = 1;
+        write.dstArrayElement = index;
+        write.descriptorCount = 1;
+        write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
+        write.pImageInfo      = &samp_info;
+
+        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    }
 
     // 替换成功后销毁旧句柄
     if (samplers_[static_cast<int>(index)] != VK_NULL_HANDLE)
@@ -411,7 +568,16 @@ void BindlessTextureManager::BindOffsetToCmd(VkCommandBuffer cmd,
                                              uint32_t buffer_index,
                                              VkPipelineBindPoint bind_point) const
 {
-    if (!IsValid() || !attr_ || !attr_->cmd_set_descriptor_buffer_offsets)
+    if (!IsValid())
+        return;
+
+    if (!use_descriptor_buffer_)
+    {
+        BindToCmd(cmd, pipeline_layout, set_index, bind_point);
+        return;
+    }
+
+    if (!attr_ || !attr_->cmd_set_descriptor_buffer_offsets)
         return;
 
     const VkDeviceSize buffer_offset = 0;
@@ -429,7 +595,24 @@ void BindlessTextureManager::BindToCmd(VkCommandBuffer cmd,
                                        uint32_t set_index,
                                        VkPipelineBindPoint bind_point) const
 {
-    if (!IsValid() || !attr_ || !attr_->cmd_bind_descriptor_buffers)
+    if (!IsValid())
+        return;
+
+    if (!use_descriptor_buffer_)
+    {
+        if (set_ != VK_NULL_HANDLE)
+        {
+            vkCmdBindDescriptorSets(cmd,
+                                    bind_point,
+                                    pipeline_layout,
+                                    set_index,
+                                    1, &set_,
+                                    0, nullptr);
+        }
+        return;
+    }
+
+    if (!attr_ || !attr_->cmd_bind_descriptor_buffers)
         return;
 
     VkDescriptorBufferBindingInfoEXT binding_info{};

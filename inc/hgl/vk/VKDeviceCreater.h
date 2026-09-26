@@ -103,11 +103,17 @@ struct VulkanHardwareRequirement
     // 1.0 特性
     SupportLevel shaderInt64;                  ///<要求支持着色器 64 位整数(BDA 指针运算依赖)
 
+    uint32_t descriptor_pool;                  ///<回退描述符池大小(默认1024)
+    SupportLevel descriptorBuffer;             ///<要求支持描述符缓冲区
+
 public:
 
     VulkanHardwareRequirement()
     {
         mem_zero(*this);
+
+        descriptor_pool=1024;
+        descriptorBuffer=SupportLevel::Want;
 
         geometryShader=SupportLevel::Want;
 
@@ -270,6 +276,8 @@ protected:
 protected:
 
     VkDevice CreateDevice(const uint32_t);
+
+    bool IsDescriptorBufferSupported() const;
 
 public:
 
