@@ -324,7 +324,12 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
    recipe 的 `alpha_test` 走 `ShadowCasterMasked`（片元采样 opacity_mask 并
    `HGLApplyAlpha` discard）。**阴影帧绝不代 forward 物化纹理行**——两条物化
    链会互踢纹理配置行；行未就绪（`valid==false`，首帧 prepass 早于主帧物化）
-   时跳过本帧该 caster，并 bump `static_scene_revision` 触发下帧重画（收敛）。
+   时跳过本帧该 caster，并 bump `static_scene_revision` 触发下帧重画。跳过/失败
+   路径（行未就绪 / 程序解析 / 几何 / 管线）统一走
+   `RenderPrimitiveCollectSystem::AdvanceShadowRetry`（D9）：首次跳过告警一次
+   （日志 `[RenderPrimitiveCollectSystem] shadow pass skip for '<名字>': <原因>`），
+   连续 120 帧仍失败则报错一次并把 bump 降频为每 60 帧一次（限速自愈）；
+   caster 成功画出后计数清零。
 2. **两级寻址**（片元 `MTL_TEX(i)`）：`pc_root.addr_mtl_data_addrs` 指向
    **batch 行表**（`WriteBatchIndexRows` 每行 {payload_index,
    texture_reference_index}，`gl_InstanceIndex` = 行号）→
@@ -601,7 +606,7 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | 拖拽时阴影**一帧左一帧右 / 一帧近一帧远**，静止后正常；RenderDoc 截帧永远正常 | 不是拟合公式。先确认 `ShadowInfo` 是否又变回单份 UBO | 在途主帧还在读 binding 5 时，CPU 覆写了同一块 `ShadowInfo`。修复与禁令见 `doc/shadow-ubo-inflight-overwrite.md`。不要用每帧 `WaitFence()` 全槽排空来压症状 |
 | 静态阴影能渲染但**读到就没了** | 是否每帧都发了静态级的 DrawCall | 静态级被错误地也当成了逐帧层 |
 | **alpha test 物体的阴影是实心的**（本体镂空正常） | 物件的 recipe 是否声明了 `alpha_test`/`dither`（depth-only FS 保留的**唯一**判据，D8 后程序级扫描已删） | 片元含 discard 却被 depth-only 快速路径剥掉；或 `batch.texture_reference_base_addr`=0（MTL_TEX 解引用 0 → fallback 1.0）。**取证**：`AlphaTestShadow` 第 45 帧自动判读 c0 的 `[D1-CONTRACT]` 行（**包围盒内**填充率 57.6%=镂空、~100%=实心、全空=未进深度图）；`ATS_SELFCHECK=1` 时以退出码给出结论（0/1）。判据链本身由 `TestCSMIncrementalPass` Test 11 源码契约把守 |
-| **masked 物体在深度图里缺失**（影子不出现或固化消失） | collect 日志 `ResolveMaterialProgramForPrimitive failed` | 首帧 resolve 失败 + 静态缓存固化。行未就绪时已跳过+bump revision（收敛）；手动调 `InvalidateMainLightStaticShadowCache()` 立即重画 |
+| **masked 物体在深度图里缺失**（影子不出现或固化消失） | collect 日志 `shadow pass skip for '<名字>': <原因>`（首帧起）或 `persisted 120 frames`（持续失败） | 首帧 resolve/行未就绪失败 + 静态缓存固化。跳过路径已带告警与收敛（D9：120 帧内每帧 bump 重画，之后降频到每 60 帧一次并报错）；手动调 `InvalidateMainLightStaticShadowCache()` 立即重画 |
 
 **诊断手段**：
 

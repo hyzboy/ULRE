@@ -46,6 +46,14 @@ namespace hgl::ecs
             return owner->GetName().c_str();
         }
 
+        // D9：阴影 pass 跳过路径的收敛参数。
+        // 持续跳过（行未就绪/解析失败等）时原本每帧 bump 静态级联 revision →
+        // 每帧全量重画且无任何日志。前 kShadowRetryFullBumpFrames 帧保持每帧 bump
+        // （正常情况下一两帧内就收敛），超过后降频到每 kShadowRetryBumpPeriod 帧一次，
+        // 并在跨越阈值时报一次错——既不刷屏也不放弃自愈。
+        constexpr uint32_t kShadowRetryFullBumpFrames = 120;
+        constexpr uint32_t kShadowRetryBumpPeriod     = 60;
+
 
         bool EnsureRuntimeGeometryFromAsset(ECSContext *world,
                                             const std::shared_ptr<PrimitiveComponent> &primitive_comp,
@@ -1253,6 +1261,37 @@ namespace hgl::ecs
         return true;
     }
 
+    // D9：阴影 pass 跳过/失败路径的统一收敛入口（见头文件注释）。
+    bool RenderPrimitiveCollectSystem::AdvanceShadowRetry(
+        const std::shared_ptr<MaterialComponent> &material_comp,
+        const char *reason,
+        const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+    {
+        if (!material_comp)
+            return false;
+
+        const uint32_t retries = ++material_comp->shadow_retry_frames;
+        const char *const name = GetPrimitiveOwnerName(primitive_comp);
+
+        if (retries == 1)
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] shadow pass skip for '%s': %s -- "
+                        "caster excluded from this frame's depth map; static cascade revision is bumped "
+                        "every frame for the first %u frames to converge",
+                        name, reason, kShadowRetryFullBumpFrames);
+        }
+        else if (retries == kShadowRetryFullBumpFrames + 1)
+        {
+            GLogError("[RenderPrimitiveCollectSystem] shadow pass skip for '%s' persisted %u frames (%s) -- "
+                      "throttling static cascade redraw to once every %u frames; this caster's shadow stays "
+                      "missing meanwhile (check the forward materialization chain)",
+                      name, kShadowRetryFullBumpFrames, reason, kShadowRetryBumpPeriod);
+        }
+
+        return retries <= kShadowRetryFullBumpFrames
+            || (retries % kShadowRetryBumpPeriod) == 0;
+    }
+
     void RenderPrimitiveCollectSystem::Update(float /*deltaTime*/)
     {
         if (!world)
@@ -1482,9 +1521,6 @@ namespace hgl::ecs
                 if (!ResolveMaterialProgramForPrimitive(
                             primitiveComp, material_comp))
                 {
-                    GLogWarning(
-                        "[RenderPrimitiveCollectSystem] ResolveMaterialProgramForPrimitive failed for %s",
-                        GetPrimitiveOwnerName(primitiveComp));
                     if (world->IsCurrentPassShadow())
                     {
                         // A1-2：阴影解析失败只清阴影槽。InvalidateRecipeRuntime
@@ -1496,10 +1532,18 @@ namespace hgl::ecs
                         // 固化防御：本帧深度图缺了这个 caster，静态级联若全量
                         // 重绘过就会把"无它"的内容缓存住。借 A3 revision 链让
                         // EnvironmentSystem 下帧失效重画，直至 resolve 成功。
-                        world->BumpStaticSceneRevision();
+                        // D9：告警与降频都经统一收敛入口——阴影 pass 只在此处
+                        // 输出一条（每 episode），不再外面逐帧刷屏。
+                        if (AdvanceShadowRetry(material_comp,
+                                               "shadow caster program resolve failed",
+                                               primitiveComp))
+                            world->BumpStaticSceneRevision();
                     }
                     else
                     {
+                        GLogWarning(
+                            "[RenderPrimitiveCollectSystem] ResolveMaterialProgramForPrimitive failed for %s",
+                            GetPrimitiveOwnerName(primitiveComp));
                         InvalidateRecipeRuntime(material_comp, true);
                         material_comp->MarkFailed();
                     }
@@ -1525,27 +1569,37 @@ namespace hgl::ecs
 
                     if (shadow_needs_rows && !material_comp->valid)
                     {
-                        world->BumpStaticSceneRevision();
+                        // D9：本路径原本完全静默（只 bump+continue）。原因经统一收敛
+                        // 入口记录：首次跳过告警一次；连续超过 kShadowRetryFullBumpFrames
+                        // 帧后报错并把 bump 降频——否则"每帧 bump → 静态级联每帧全量
+                        // 重画"会持续到场景结束且无任何日志。
+                        if (AdvanceShadowRetry(
+                                material_comp,
+                                "masked caster runtime rows not ready (forward chain has not materialized them)",
+                                primitiveComp))
+                            world->BumpStaticSceneRevision();
                         continue; // 本帧深度图不含它；下帧行就绪后重画
                     }
 
                     if (!EnsureRuntimeGeometryFromAsset(
                             world, primitiveComp, material_comp))
                     {
-                        GLogWarning(
-                            "[RenderPrimitiveCollectSystem] Shadow pass geometry failed for %s",
-                            GetPrimitiveOwnerName(primitiveComp));
                         material_comp->shadow_program = nullptr;
-                        world->BumpStaticSceneRevision(); // 固化防御（同上）
+                        // D9：告警与 bump 都经统一收敛入口（不再逐帧刷屏）
+                        if (AdvanceShadowRetry(material_comp,
+                                               "shadow pass geometry failed",
+                                               primitiveComp))
+                            world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                     else if (!ResolveRuntimePipelineForPrimitive(
                                  primitiveComp, material_comp))
                     {
-                        GLogWarning(
-                            "[RenderPrimitiveCollectSystem] Shadow pass pipeline failed for %s",
-                            GetPrimitiveOwnerName(primitiveComp));
                         material_comp->shadow_program = nullptr;
-                        world->BumpStaticSceneRevision(); // 固化防御（同上）
+                        // D9：同上
+                        if (AdvanceShadowRetry(material_comp,
+                                               "shadow pass pipeline failed",
+                                               primitiveComp))
+                            world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                 }
                 else if (!any_material_work
@@ -1696,6 +1750,12 @@ namespace hgl::ecs
             item->distanceToCamera = glm::length(worldPos - camera_pos);
 
             item->UpdateWorldMatrix();
+
+            // D9：阴影 pass 的 caster 本帧成功产出 item（shadow_program 非空）⇒
+            // 影子链已恢复正常，复位重试计数（下次失败重新告警 + 回到每帧 bump）。
+            if (material_for_item && world && world->IsCurrentPassShadow()
+             && material_for_item->shadow_program)
+                material_for_item->shadow_retry_frames = 0;
 
             cache.renderItems.push_back(std::move(item));
             cache.renderableCount++;

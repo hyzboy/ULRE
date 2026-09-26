@@ -77,6 +77,14 @@ namespace hgl::ecs
         // re-materialized before rendering.
         uint64_t last_materialize_epoch = 0;
 
+        // ── D9：阴影 pass 跳过路径的重试收敛状态 ──
+        // 阴影 pass 需要该 caster 但本帧画不了（masked 行未就绪 / 程序解析失败 /
+        // 几何或管线失败）时递增；该 caster 成功产出本帧 render item（shadow_program
+        // 非空）时清零。用途：① 首次跳过告警一次（不再静默，也不逐帧刷屏）；
+        // ② 收敛上限——连续跳过超过阈值后把静态级联失效从"每帧"降频为周期性，
+        // 否则持续失败会退化成"每帧 bump → 静态级联每帧全量重画"且全程无日志。
+        uint32_t shadow_retry_frames = 0;
+
     public:
 
         MaterialComponent(const std::string &name = "MaterialRuntime");

@@ -272,16 +272,36 @@
   缓存两条路径、OR 语义、补 `OpTerminateInvocation=4416`/
   `OpDemoteToHelperInvocation=5380`/cap `5379`，且删掉文本扫描（它只会覆盖结果）。
 
-### D9. 行未就绪跳过路径的告警与收敛（A1-4 残留）
+### D9. 行未就绪跳过路径的告警与收敛（A1-4 残留） ✅ 2026-09-26
 
-- **现状**：`RenderPrimitiveCollectSystem` 阴影分支对 "masked caster 行未就绪"
-  的处理是静默 `BumpStaticSceneRevision()` + `continue`——设计意图是首帧收敛
-  （下帧行就绪即恢复）。但若 forward 链对该 primitive **持续**失败/行永不就绪，
-  就退化为"每帧 bump → 静态级联每帧全量重画"（`100% Cached` 再不出现）且
-  该 caster 的影子长期缺席，全程无日志。
-- **做法**：该分支加一次性告警（每材质一次，含 primitive 名与原因）+ 收敛
-  上限（或仅当 `last_materialize_epoch != 0` 时才 bump，避免首帧前的空转）。
-- **规模**：~20 行。**触发条件**：随下一次阴影/物化链改动。
+- **原状**：`RenderPrimitiveCollectSystem` 阴影分支对 "masked caster 行未就绪" 的处理
+  是**静默** `BumpStaticSceneRevision()` + `continue`（设计意图首帧收敛）；程序解析/
+  几何/管线三条失败路径虽各有告警，但**逐帧刷屏**。四条路径都**无上限地每帧 bump**
+  ——持续失败 = 静态级联每帧全量重画（`100% Cached` 再不出现）+ 该 caster 影子长期
+  缺席，且（行未就绪那条）全程无日志。
+- **落地**：per-primitive 计数 `MaterialComponent::shadow_retry_frames` +
+  统一收敛入口 `RenderPrimitiveCollectSystem::AdvanceShadowRetry(material_comp, reason, primitive)`：
+  1. 四条跳过/失败路径（行未就绪、程序解析、几何、管线）全部改走该入口，
+     **原因字符串随调用点传入**（行未就绪 = `masked caster runtime rows not ready
+     (forward chain has not materialized them)`）；程序解析失败的逐帧告警**移入
+     forward 分支**，阴影侧只由收敛入口输出一条（不再双重刷屏）。
+  2. 首次跳过 → `GLogWarning` **一次**（primitive 名 + 原因 + "前 120 帧每帧 bump 以收敛"）。
+  3. 连续 `kShadowRetryFullBumpFrames = 120` 帧仍跳过 → `GLogError` **一次**，并把
+     bump 降频为每 `kShadowRetryBumpPeriod = 60` 帧一次（**限速自愈**：不再每帧全量
+     重画，但保留周期性重试，避免影子永久缺席）。
+  4. 该 caster 成功产出本帧 render item（`shadow_program` 非空）→ 计数清零，
+     下次失败重新告警、bump 回到每帧。
+- **验证**：
+  | 项 | 结果 |
+  |---|---|
+  | `TestCSMIncrementalPass` | exit 0；**Test 13 = 7 checks**（收敛入口/原因串/上限判定/降频公式/计数字段 + 2 条禁复活"逐帧刷屏告警"） |
+  | `ATS_SELFCHECK=1 AlphaTestShadow` | exit 0，c0 仍 `57.6%`（bbox=112x58 filled=3740）；**跳过告警恰好 2 条**（MaskedCube / FallbackCube 各一条，均在第 1 帧）、达上限 0 条 → 一帧内收敛、无刷屏 |
+  | `CascadeShadowMap` 冒烟 | 路由 105/100/4、0 VUID/ERROR、管线 4 Created/205 Reuse 与基线同值；告警 4 条（4 个 masked caster 各一条，首帧）、达上限 0 条、静态级联失效全程 2 次 |
+  | **注入验证（门有牙）** | 把条件临时改成恒 `shadow_needs_rows`（强制持续跳过）→ **每 caster 恰好 1 条告警 + 1 条达上限报错**（共 4+4，无刷屏）；静态级联 revision 终值 **565** ≈ 4 caster × [120 + (N−120)/60]，N≈1380 次跳过帧 ⇒ 降频公式逐字命中（不限频应为 4×1380≈5520 次），即"限速自愈"确实生效。还原后复跑绿 |
+- **教训**：`GLogInfo/GLogWarning/GLogError` 展开为 **`{...}` 块**（`CMCore/inc/hgl/log/Log.h:164-168`）
+  → `if (x) GLogWarning(...); else ...` 触发 **error C2181: illegal else without matching if**
+  （宏自带花括号 + 调用处 `;` 变空语句 ⇒ if 已闭合）。**if/else 链里用日志宏必须给分支加花括号。**
+- **规模实际**：核心 ~50 行（含注释）；契约 Test 13 ~50 行。
 
 ### 留置
 
@@ -304,7 +324,8 @@ A5(比较采样) ◄──同做───────────┘            
   → ~~D2~~ ✅（pipeline 键改 SPIRV 内容 hash + 已解析管线身份改 program digest；
   Test 12 = 7 checks。同构遗留：`resolvedRuntimePipelineMap` 的 `RenderPass*` 键
   在**运行期 RT 重建**时才会变成悬垂，锁 A6/D5）→
-  D9（行未就绪路径告警/收敛）→ D3/D4（决策项）→ **T8 量测** →
+  → ~~D9~~ ✅（阴影跳过路径统一收敛：一次性告警 + 120 帧上限后降频 bump，
+  Test 13 = 7 checks）→ D3/D4（决策项）→ **T8 量测** →
   T6 拆分 → A6 合并。D 线与 A 线 A1/A7（提交原语/in-flight 槽）强相关：
   A6 的 4 次全槽排空问题在 A1 的 per-frame 多份化落地后可能自然消失，
   两者做前先对齐。

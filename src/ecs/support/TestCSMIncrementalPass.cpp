@@ -1556,6 +1556,57 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kPipelineKeyContracts) / sizeof(kPipelineKeyContracts[0])));
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 13: 阴影跳过路径的告警/收敛契约（D9）
+    //
+    // 背景：masked caster 行未就绪时阴影帧跳过该 caster 并 bump 静态级联
+    // revision，设计意图是首帧收敛。但原实现**完全静默**，且若持续未就绪会退化成
+    // "每帧 bump → 静态级联每帧全量重画"直到场景结束（`100% Cached` 再不出现）。
+    // 现态：跳过/失败（行未就绪、程序解析失败、几何/管线失败）统一走
+    // AdvanceShadowRetry——首次告警一次（含 primitive 名与原因）、连续超过
+    // kShadowRetryFullBumpFrames 帧后报错并把 bump 降频为每 kShadowRetryBumpPeriod
+    // 帧一次；caster 成功产出 item 时复位计数。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kShadowRetryContracts[] =
+        {
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "AdvanceShadowRetry(",
+              "阴影跳过/失败路径不再走统一收敛入口（告警与 bump 降频都失效）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "masked caster runtime rows not ready",
+              "masked 行未就绪路径又不报原因了（退回静默跳过 = 持续失败全程无日志）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "kShadowRetryFullBumpFrames + 1",
+              "收敛上限判定没了（持续失败会一直每帧 bump → 每帧全量重画）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "kShadowRetryBumpPeriod) == 0",
+              "bump 降频公式没了（超上限后仍每帧 bump）" },
+            { "MaterialComponent.h", OS_TEXT("inc/hgl/ecs/components/MaterialComponent.h"),
+              "uint32_t shadow_retry_frames = 0;",
+              "per-primitive 重试计数没了（无法区分首帧收敛与持续失败）" },
+            // ── 禁复活：逐帧刷屏的旧告警 ──
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "Shadow pass geometry failed for ",
+              "阴影几何失败又逐帧刷告警（应由统一收敛入口每 episode 一次）",
+              true },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "Shadow pass pipeline failed for ",
+              "阴影管线失败又逐帧刷告警（应由统一收敛入口每 episode 一次）",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(13, kShadowRetryContracts,
+                                                       static_cast<uint>(sizeof(kShadowRetryContracts) /
+                                                                         sizeof(kShadowRetryContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 13 Passed: shadow skip-path alert/convergence contract holds (%d checks) -- "
+                 u8"one-shot warning with reason + ramp-up cap + throttled static redraw + per-primitive reset, "
+                 u8"no silent skip and no per-frame log spam.",
+                 static_cast<int>(sizeof(kShadowRetryContracts) / sizeof(kShadowRetryContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

@@ -43,6 +43,15 @@ namespace hgl::ecs
                                         const std::shared_ptr<MaterialComponent> &material_comp);
         bool ResolveRuntimePipelineForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                                 const std::shared_ptr<MaterialComponent> &material_comp);
+
+        // D9：阴影 pass 跳过/失败路径的统一收敛入口。
+        // 推进 material_comp->shadow_retry_frames：首次跳过与跨越收敛上限各告警
+        // 一次（含 primitive 名与原因）；返回本帧是否应 bump 静态级联 revision
+        // （前 kShadowRetryFullBumpFrames 帧每帧一次以快速收敛，之后每
+        // kShadowRetryBumpPeriod 帧一次——限速自愈，避免持续失败时每帧全量重画）。
+        bool AdvanceShadowRetry(const std::shared_ptr<MaterialComponent> &material_comp,
+                                const char *reason,
+                                const std::shared_ptr<PrimitiveComponent> &primitive_comp);
         bool MaterializeRecipeRowsForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                                const std::shared_ptr<MaterialComponent> &material_comp);
 
