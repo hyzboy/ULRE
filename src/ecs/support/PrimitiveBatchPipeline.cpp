@@ -4,12 +4,15 @@
 #include<hgl/ecs/support/DrawItemCompaction.h>
 #include<hgl/ecs/support/BoundingVolumeCull.h>
 #include<source_location>
+#include<cmath>
 #include<cstdlib>
 #include<cstdio>
 #include<cstring>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/BoundingBoxComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/RenderableComponent.h>
+#include<hgl/ecs/components/ShadowComponent.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
@@ -997,6 +1000,30 @@ namespace hgl::ecs
 
                                 row_ptr[i].texture_reference_index =
                                     material_comp->material_texture_configuration.row_index;
+                            }
+                        }
+
+                        // ── D3：接收侧阴影参数（逐图元）───────────────────────
+                        // ShadowComponent 未挂载时保持行的零值 = 引擎默认
+                        //（正常接收 + 倍率 1.0），与 D3 之前的行逐字节一致。
+                        // 该行每帧在 FinalizeBatch 重写，故运行期 SetReceiveShadow /
+                        // SetBiasMultiplier 下一帧即生效。
+                        if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(item))
+                        {
+                            if (auto renderable = prim_item->GetRenderable())
+                            {
+                                if (!renderable->CanReceiveShadow())
+                                    row_ptr[i].shadow_flags |=
+                                        graph::mtl::kMaterialShadowFlagNoReceive;
+
+                                const float bias_multiplier =
+                                    renderable->GetShadowBiasMultiplier();
+
+                                // 非法倍率（<=0 / NaN / inf）按"不调节"处理：
+                                // 行里留 0，着色侧视 0 为引擎默认 1.0。
+                                if (bias_multiplier > 0.0f
+                                 && std::isfinite(bias_multiplier))
+                                    row_ptr[i].shadow_bias_multiplier = bias_multiplier;
                             }
                         }
 

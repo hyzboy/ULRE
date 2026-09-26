@@ -170,6 +170,19 @@ namespace hgl::ecs
             {
                 UpdateStaticDirty();
 
+                // D4：静态物体被判脏 ⇒ 它已被渲染侧识别（在静态列表里并被消费）。
+                // 从"下一次"写入起算**运行期写**：本次（搭建/首次）写入不该告警，
+                // 之后再写就会整段重写静态矩阵 + 让全部静态级联缓存失效，故此时 arm，
+                // 由组件侧一次性告警（WarnStaticRuntimeWrite）。
+                // 这个位置有两个刻意选择：①在下面的 transform_buffer 早退**之前**，
+                // 无图形设备的路径（单元测试）同样成立；②只在真有静态变更时做
+                // （O(N) 只在罕见事件上付，稳态每帧仍是早退）。
+                for (const auto& weak_comp : static_transforms)
+                {
+                    if (auto comp = weak_comp.lock())
+                        comp->ArmStaticRuntimeWriteWarning();
+                }
+
                 // A3：静态场景 revision 递增。静态级联阴影滚动缓存的正确性前提
                 // 是"缓存有效期内静态物体不动"，此检出点是其唯一权威信号源；
                 // EnvironmentSystem 在 RenderPreBeginFrame 比对消费（同帧失效，
@@ -288,6 +301,7 @@ namespace hgl::ecs
                     auto comp = weak_comp.lock();
                     if (!comp)
                         continue;
+
                     const auto handle = comp->GetStorageHandle();
                     if (handle == TransformDataStorage::INVALID_HANDLE)
                         continue;

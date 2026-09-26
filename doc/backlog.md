@@ -98,7 +98,7 @@
 | TickObject 双名同物 + 继承趋零 | `hgl/type/TickObject.h` 旧版无人用仍在编译 | 跨 CMCore 子仓库 |
 | AppFramework 空虚函数/死参 | OnActive/OnClose/Tick 空、`(void)argc` | 化妆级 |
 | `DetachAllComponents(bool)` 参数无效 | 只进日志不进分支 | 顺手 |
-| 示例**干净退出**时泄漏 + CRT abort（退出码 3） | `CascadeShadowMap` 关窗后：133 条 `[LEAK]`（TransferSrcBuffer 27 / Texture_ 21 / UBO:ShadowUBO 8 / Shader stage 7 / VAB_ 6 / SSBO:ECS:Batch:* …）+ `BufferManager::Release` 清理 → 弹 "Microsoft Visual C++ Runtime Library" abort 对话框，进程退出码 **3** | 2026-09-26 冒烟时发现（两次复现）。**与 D1/D8 无关**：示例自身未改，D8 diff 零资源生命周期行（已 grep 核对）。`shutdown_object_tracker` 只 delete tracker、不 abort ⇒ 来源在设备/静态析构期。**注意**：拿 CSM 示例做冒烟时退出码 3 不是回归信号，判据是日志内容（路由/缓存/0 VUID） |
+| 示例**干净退出**时泄漏 + CRT abort（退出码 3） | `CascadeShadowMap` 关窗后：133 条 `[LEAK]`（TransferSrcBuffer 27 / Texture_ 21 / UBO:ShadowUBO 8 / Shader stage 7 / VAB_ 6 / SSBO:ECS:Batch:* …）+ `BufferManager::Release` 清理 → 弹 "Microsoft Visual C++ Runtime Library" abort 对话框，进程退出码 **3** | 2026-09-26 冒烟时发现（两次复现）。**与 D1/D8 无关**：示例自身未改，D8 diff 零资源生命周期行（已 grep 核对）。`shutdown_object_tracker` 只 delete tracker、不 abort ⇒ 来源在设备/静态析构期。**注意**：拿 CSM 示例做冒烟时退出码 3 不是回归信号，判据是日志内容（路由/缓存/0 VUID）。**2026-09-26 D3 冒烟第 3 次实跑 exit=0 且 0 VUID/ERROR** ⇒ 该 abort 是**间歇性**的（不是每次干净退出都触发），更不能用退出码当判据 |
 
 ## C 线：构建与文档
 
@@ -192,24 +192,92 @@
   清掉整棵 `find build -type d -path "*.dir/Debug"` obj 树重编后全绿。判定法：
   `ls -la <header> <obj>` 看 obj 是否早于头文件（详见技能 crlf-safe-editing）。
 
-### D3. receive_shadow / bias_multiplier 落地或删除（A5）
+### ~~D3. receive_shadow / bias_multiplier 落地~~ ✅（2026-09-26）
 
-- **现状**：`ShadowComponent` 四旋钮中 `receive_shadow`/`bias_multiplier`
-  零消费者（`CanCastShadow`/`GetShadowMaxDistance` 已消费）；文档
+- **原状**：`ShadowComponent` 四旋钮中 `receive_shadow`/`bias_multiplier` 零消费者
+  （`CanCastShadow`/`GetShadowMaxDistance` 已消费）；文档
   （shadow-component-and-automated-pipeline-design.md:19）把它们写成已生效。
-- **做法**：二选一——接收侧开关需接 shader/材质行（成本高于预期则先删
-  字段留接口，文档同步标注）。
-- **触发条件**：需要决策。规模：落地 ~2-3 天，删除 ~1 小时。
+- **裁决**：**落地**（用户拍板）——两者都是**逐图元**着色决策，既不是材质业务
+  数据也不是逐批共享量，所以随 per-draw 行表到达着色器。
+- **做法**：
+  1. **载体**：per-draw 行 `MaterialInstanceAddresses` **8B → 16B**，新增
+     `shadow_flags`（bit0 = 不接收）与 `shadow_bias_multiplier`（局部偏差倍率）；
+     行结构改为**唯一真源 X 列表** `HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST`
+     （`inc/hgl/graph/ShaderBufferSources.h`），CPU struct 与 GLSL struct 发射
+     同源遍历——新增/改名/调序字段只改一处，没有手写漂移面。
+  2. **写入端**：`PrimitiveBatchPipeline` 逐图元从 `ShadowComponent` 取
+     `CanReceiveShadow()` / `GetBiasMultiplier()` 写行；未挂载组件时行保持
+     零值 = 引擎默认（接收 + 倍率 1.0），与 D3 之前**逐字节一致**。
+  3. **着色端**：`pcf_shadow.glsl` 新增 `GetShadowReceiveParams(data_index)`
+     读行；`receive=false` 直接返回 1.0（不受影）；倍率逐级乘进
+     `EvalCascadePCF` 的深度 bias 与法线偏移，并沿
+     `EvalPCFShadowAt → EvalCascadeChain → EvalCascadeShadowAt → EvalCascadePCF`
+     逐点穿线；`forward_lighting/flat_lighting/*.glsl.tmpl/identity.glsl` 四处
+     签名同步传 `data_index`。
+  4. **零值语义**：行内倍率 0 视为"不调节"（回落 1.0），保证旧零值行为不变。
+- **规模**：代码 11 文件（`: `ShaderBufferSources.h` / `MaterialShaderEmitter.cpp` /
+  `pcf_shadow.glsl` / `forward_lighting.glsl` / `flat_lighting.glsl` /
+  `forward_lit.glsl.tmpl` / `forward_unlit.glsl.tmpl` / `identity.glsl` /
+  `PrimitiveBatchPipeline.cpp` / `TestCSMIncrementalPass.cpp` / `AlphaTestShadow.cpp`），
+  工作区累计 diff **+650/−38**（含 `AlphaTestShadow.cpp` 与 `TestCSMIncrementalPass.cpp`
+  里前序 D1/D9 的未提交改动）+ 4 份文档。
+- **证据**：
+  - 源码契约：`TestCSMIncrementalPass` **Test 14 = 22 checks**（行结构单源、
+    发射遍历、写入端取真值、片元端早退/缩放偏差，3 条"禁复活"needle）。
+  - 运行期契约（`ATS_SELFCHECK=1 AlphaTestShadow`，**逐像素对比**三帧颜色）：
+    默认帧 A → `SetReceiveShadow(false)` 帧 B：受影区 **18189 px 由"灰蓝"变回
+    "红地面"**、反向 0 px（影子整体消失，方向 + 位置都锁定）；
+    `SetBiasMultiplier(1000×)` 帧 C：外观变化 **600662 px**（倍率确实进入偏差计算）。
+  - **对照组**（`ATS_D3_NOKNOB=1`：照常读回三帧但一个旋钮都不拨）：外观变化
+    **0 px** ⇒ "读回+对比"链噪声底为 0，上面的差异只能归因于旋钮。
+  - **破坏验证**：把 `params.receive` 写死 `true` + 深度 bias 不乘倍率
+    → 运行期 exit **1**（两项都 0 px，并提示读回无差异）、源码契约
+    **Test 14 exit 14** 点名 needle；还原后复绿。
+  - 回归：`ATS_SELFCHECK` c0 仍 **57.6%**、`CascadeShadowMap` 冒烟路由/统计不变。
+- **踩坑**：本场景地面是**饱和红**（R≈198,G≈1,B≈31）、影子压上去呈灰蓝——
+  用"亮度（RGB 均值）"判方向会得出反直觉结论（红的均值比灰影低）；
+  判据必须按**通道**（"是否变红"）而不是亮度。另：交换链颜色图实际布局是
+  `PRESENT_SRC_KHR`，`Texture2D::GetImageLayout()` 停在 `SHADER_READ_ONLY_OPTIMAL`，
+  拿它当 oldLayout 会被校验层判非法转换（拷贝不可信）。
 
-### D4. TransformComponent 同值短路（新卡①）
+### ~~D4. TransformComponent 同值短路~~ ✅（2026-09-26，改判为"静态写入语义化"）
 
-- **现状**：`SetLocalPosition` 等 setter 无同值短路，每帧重复 set 同值会被
-  A3 链判为变更 → 静态级联每帧全量重绘（示例网格吸附已修，引擎级未修）；
-  同时它也是"每帧全量上传静态矩阵"的隐性带宽浪费源。
-- **做法**：三 setter 加同值短路（语义变更，需排查依赖"重复 set 触发 dirty"
-  的调用点）。
-- **规模**：~20 行 + 排查半天。**触发条件**：出现静态级联每帧重绘且日志指向
-  同值 set 的场景（SKILL §9 已有诊断条目）。
+- **原状**：`SetLocalPosition` 等 setter 无条件 `MarkDirty`（版本 +1），
+  `ShouldUpdateTransform` 用"版本变了"当变更判据 ⇒ **同值**写也被判为变更 ⇒
+  A3 链 `BumpStaticSceneRevision()` ⇒ 整段静态矩阵重写 + 全部静态级联缓存失效
+  （当帧 4 级全量重绘）+ `MarkDirty` 连带标脏整棵子树。
+- **关键澄清（先量化再动手）**：动静分离本来就在，且**没有**"静态每帧刷新 TRS/L2W"
+  这回事——`Movable` 每帧全量写 ring 段、`Static` 走版本门控的**增量**写
+  （`TransformSystem.cpp:207-281`），静态 L2W 只在被判脏时算。所以真问题不是
+  "缺同值短路"，而是**"静态被写"这件事没有值比较、也没有留痕**。
+- **裁决（用户拍板）**：**A′ 语义化**——不做同值短路。理由：短路只治"同值每帧写"
+  这一种写法，救不了**每帧写变化的值**这种真误用（那时值在变，短路毫无作用）；
+  而这类误用的正解是引擎早已有的 `SetMobility(Mobility::Movable)`（迁到 movable
+  通道：每帧 ring 写 + 动态级联）。所以把"运行期写静态"做成 **API 语义**：
+  一次性告警 + 把开发者引到正解，而不是替他猜。
+- **做法**：
+  1. `TransformComponent` 加 `static_runtime_write_armed`/`static_runtime_write_warned`
+     + `ArmStaticRuntimeWriteWarning()` / `IsStaticRuntimeWriteArmed()` /
+     `HasWarnedStaticRuntimeWrite()`；`WarnStaticRuntimeWrite(what)` 一条一次性
+     `GLogWarning`（含 setter 名 + 实体名 + id + 代价说明 + 正解指引）。
+  2. **八条写入路径**全部留痕：`SetLocalPosition/Rotation/Scale`、`SetLocalTRS`、
+     `SetWorldPosition/Rotation/Scale`、`SetParent`（改父级同样让全部静态级联失效）。
+  3. arming 点放在 `TransformSystem::SubmitTransformUpdates` 的 `has_dirty_static`
+     分支（**在 `transform_buffer` 早退之前** ⇒ 无图形设备的单元测试路径同样成立；
+     只在真有静态变更时付 O(N)，稳态仍然早退）——语义：**搭建/首次写入不告警，
+     之后的写入才被 warn**（"运行期"的判定基准就是"已被渲染侧识别过一次"）。
+  4. `Movable` 组件永不 arm / 永不告警；`SetMobility(Movable)` 之后写入不再是静态写入。
+- **规模**：3 文件（`TransformComponent.h/.cpp`、`TransformSystem.cpp`）+ 测试 + 文档。
+- **证据**：
+  - 契约：`TestCSMIncrementalPass` **Test 15 = 11 源码契约 + 5 行为**（搭建期不告警、
+    消费后 arm、运行期写入告警一次且不改写入语义、Movable 不受影响、迁移后不误报；
+    8 个 setter + 实现 + 守卫 + arming 共 11 条 needle）。
+  - **代价实测（根因钉死）**：注入探针 `ATS_D4_PROBE=1`（每帧对**静态**地面写**同值**）跑
+    15 秒 ⇒ 告警 **1 条**（每组件一次，不刷屏）+ `invalidating static cascade` **872 次**
+    （≈每帧一次）+ `100% Cached` **0 行** ⇒ 静态级联缓存彻底失效。探针已还原。
+  - **误报门**：`ATS_SELFCHECK=1` 正常场景告警 **0 条**；`CascadeShadowMap` 冒烟告警
+    **0 条**、缓存统计与基线一致 ⇒ 现有引擎/示例代码没有运行期写静态的调用点。
+- **未采用（明确记录）**：B′ 同值短路、C′ 写静态自动迁移到 Movable（渲染行为可见变化）。
 
 ### D5. A8 scissor 增量分支：实现条带滚动或删除
 
@@ -307,6 +375,44 @@
 
 - **T5 ScenePipelineMode 空壳**：用户明确留置（未实现模式不加告警）。
 
+## E 线：未来项（诊断工具下沉，待排期）
+
+### E1. 附件读回落盘下沉为引擎基础功能 + 图像写出改用 CM2D（2026-09-26 用户留置）
+
+- **现状**：`example/Basic/AlphaTestShadow.cpp` 自带两套一次性取证工具，形态都是
+  「RT 附件 → staging buffer → CPU → **手写 BMP**」，且各自重复实现了一遍
+  immediate submit / 首尾 barrier / 布局还原 / staging 生命周期：
+  - `DumpCascadeDepth(rt, name, DepthFillStats*)`（`:167-322`）：D32 深度附件（DEPTH
+    aspect）→ 读回 → 8bit 灰度 BMP（reversed-Z：近亮远暗，镂空=clear 值）+
+    同遍算 c0 包围盒内填充率（D1 契约）；
+  - `DumpColorTarget(rt, filename, out_lum)`（`:324-470`）：`rt->GetColorTexture(0)`
+    （COLOR aspect）→ 读回 → BMP + 逐像素低三字节均值（D3 契约）。
+  - 两处都手写 BMP 头 + 底行翻转，且都带着同一条教训：**交换链颜色图在提交时点的
+    真实布局是 `PRESENT_SRC_KHR`**，`Texture2D::GetImageLayout()` 停在
+    `SHADER_READ_ONLY_OPTIMAL`，拿它当 oldLayout 会被校验层判非法转换。
+- **目标（两件事）**：
+  1. **读回下沉**：把「immediate submit + old/new layout barrier（含提交时点真实布局
+     修正）+ staging 创建/回收 + aspect 选择」封装成引擎侧一次调用
+     （挂在 `RenderTarget`/`Texture2D` 上的 `ReadbackImage(aspect, ...)` 之类，
+     `src/Vulkan/` 内，目前全仓只有 `VKCommandBuffer.h` 出现过
+     `vkCmdCopyImageToBuffer`，没有可复用的读回工具），示例侧只留
+     「取哪张图 + 怎么判读」。
+  2. **图像写出改用 CM2D**：删掉示例里手写的 BMP 写入，改用
+     `CM2D/inc/hgl/2d/TGA.h` 的 `hgl::bitmap::SaveTga(filename, bmp)`
+     （模板适配 `hgl::bitmap::Bitmap<T,N>`：`GetData/GetWidth/GetHeight/GetChannels/
+     GetChannelBits`），或 `CM2D/inc/hgl/2d/BitmapSave.h` 的
+     `SaveBitmapToTGA(os, data, w, h, channels, bits)`；容器/头/字节序全部交给 CM2D，
+     不再自研。
+     **坑**：BMP 是底行在前，TGA 用 `TGAImageDesc::direction` 表达方向
+     （0=lower-left / 1=upper-left）⇒ 迁移时必须显式选对方向，否则读回的图上下翻转
+     （现有 BMP 代码正是靠「底行在前」翻转过一次）。
+- **规模估计**：引擎侧读回下沉 ~150-200 行；示例删 ~250 行；CM2D 写出替换 ~30 行。
+- **触发时机**：不影响引擎正确性，**不排在本轮**；下一次需要图像/深度取证时顺手做，
+  或与 **T8 量测**（性能账目，届时需要多次读回取证）一并做。
+- **验收**：示例删掉自带 BMP 代码后仍能产出 D1/D3 契约（`ATS_SELFCHECK=1` exit 0、
+  c0 填充率 57.6%、D3 `18189 px / 600662 px` 不变）；新 API 配
+  `TestCSMIncrementalPass` 源码契约或单测；`res/`（用户自管）不动。
+
 ## 关联顺序
 
 ```
@@ -325,7 +431,12 @@ A5(比较采样) ◄──同做───────────┘            
   Test 12 = 7 checks。同构遗留：`resolvedRuntimePipelineMap` 的 `RenderPass*` 键
   在**运行期 RT 重建**时才会变成悬垂，锁 A6/D5）→
   → ~~D9~~ ✅（阴影跳过路径统一收敛：一次性告警 + 120 帧上限后降频 bump，
-  Test 13 = 7 checks）→ D3/D4（决策项）→ **T8 量测** →
+  Test 13 = 7 checks）
+  → ~~D3~~ ✅（接收侧旋钮落地：per-draw 行 8B→16B +
+  行结构唯一真源 X 列表；Test 14 = 22 checks + 运行期逐像素对照/破坏验证）
+  → ~~D4~~ ✅（静态写入语义化 A′：运行期写 Static 一次性告警 + 引导
+  `SetMobility(Movable)`；Test 15 = 11 源码 + 5 行为契约，探针实测每帧同值写
+  ⇒ 15s 内 872 次级联失效）→ **D5（决策项）** → **T8 量测** →
   T6 拆分 → A6 合并。D 线与 A 线 A1/A7（提交原语/in-flight 槽）强相关：
   A6 的 4 次全槽排空问题在 A1 的 per-frame 多份化落地后可能自然消失，
   两者做前先对齐。

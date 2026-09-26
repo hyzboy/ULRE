@@ -15,7 +15,7 @@ void main()
 {
 {{surface_input_wiring}}
     const SurfaceOutput surface = EvalSurface(si, materialDataIndex);
-    const LightingInput lighting = BuildForwardLightingInput(surface, si);
+    const LightingInput lighting = BuildForwardLightingInput(surface, si, materialDataIndex);
     const vec4 finalColor = EvalLighting(lighting);
     WriteMaterialOutput(HGLComposeColor(finalColor));
 }

@@ -1025,7 +1025,7 @@ int main(int argc, char** argv)
                 { "cos_theta <= 1.0e-3",
                   "back-facing early-out is missing (dark surfaces would be pushed off the caster)" },
                 { "SHADOW_NORMAL_OFFSET_MAX",        "tan() clamp is missing (grazing angle will diverge)" },
-                { "EvalPCFShadowAt(sample_pos, surface.worldPos)",
+                { "EvalPCFShadowAt(sample_pos, surface.worldPos, receive_params.bias_multiplier)",
                   "offset must not leak into cascade selection (selectPos must stay un-offset)" },
                 { "shadow.cascades[selected].shadow_tex.x == 0u",
                   "masked cascade must yield LIT inside its own depth interval; letting selection "
@@ -1379,6 +1379,100 @@ int main(int argc, char** argv)
 
             GLogInfo(u8"Test 10 Passed: Cascade Mask & Bias Modulation Contracts verified.");
         }
+
+        {
+            // 本测试自带上下文（不依赖其它测试块的局部 ctx）：默认构造的
+            // ECSContext 已含 world/transform storage，可建实体并注册 TransformSystem。
+            ECSContext ctx;
+
+            auto tf_sys = ctx.RegisterTickSystem<TransformSystem>();
+            if (!tf_sys)
+            {
+                GLogError(u8"Test 15 Failed: TransformSystem registration failed");
+                return 15;
+            }
+
+            // (a) 搭建期（组件刚建、尚未被渲染侧消费）：不 arm、不告警
+            auto e_static = ctx.CreateEntity<Entity>("TestStaticLateWriter");
+            auto tf_static = e_static ? e_static->AddComponent<TransformComponent>(Mobility::Static)
+                                      : nullptr;
+            if (!tf_static)
+            {
+                GLogError(u8"Test 15 Failed: 无法创建 Static TransformComponent");
+                return 15;
+            }
+
+            tf_static->SetLocalPosition(math::Vector3f(1.0f, 2.0f, 3.0f));
+
+            if (tf_static->IsStaticRuntimeWriteArmed() || tf_static->HasWarnedStaticRuntimeWrite())
+            {
+                GLogError(u8"Test 15 Failed: 搭建期写入静态 transform 不得告警"
+                          u8"（否则每个示例的场景搭建都会刷出误报）");
+                return 15;
+            }
+
+            // (b) 被渲染侧消费（首次静态段上传）之后必须 arm
+            tf_sys->SubmitTransformUpdates();
+            if (!tf_static->IsStaticRuntimeWriteArmed())
+            {
+                GLogError(u8"Test 15 Failed: 静态 transform 被渲染侧消费后未 arm 运行期写入告警"
+                          u8"（D4 的留痕语义整体失效，运行期写静态又变静默）");
+                return 15;
+            }
+
+            // (c) arm 之后再写 ⇒ 必须告警一次（且写入语义不变：值真的写进去）
+            tf_static->SetLocalPosition(math::Vector3f(4.0f, 5.0f, 6.0f));
+            if (!tf_static->HasWarnedStaticRuntimeWrite())
+            {
+                GLogError(u8"Test 15 Failed: 运行期写入 Static transform 未告警"
+                          u8"（静默整段重写静态矩阵 + 全部静态级联失效）");
+                return 15;
+            }
+            tf_static->SetLocalPosition(math::Vector3f(4.0f, 5.0f, 6.0f));
+            if (!tf_static->IsDirty())
+            {
+                GLogError(u8"Test 15 Failed: 告警不得改变写入语义（值必须照旧写进去 + 标脏）");
+                return 15;
+            }
+
+            // (d) Movable 完全不受影响（永不 arm / 永不告警）
+            auto e_movable = ctx.CreateEntity<Entity>("TestMovableWriter");
+            auto tf_movable = e_movable ? e_movable->AddComponent<TransformComponent>(Mobility::Movable)
+                                        : nullptr;
+            if (!tf_movable)
+            {
+                GLogError(u8"Test 15 Failed: 无法创建 Movable TransformComponent");
+                return 15;
+            }
+
+            tf_sys->SubmitTransformUpdates();
+            tf_movable->SetLocalPosition(math::Vector3f(7.0f, 8.0f, 9.0f));
+            if (tf_movable->IsStaticRuntimeWriteArmed() || tf_movable->HasWarnedStaticRuntimeWrite())
+            {
+                GLogError(u8"Test 15 Failed: Movable 组件被静态写入告警波及（会误报每帧移动的对象）");
+                return 15;
+            }
+
+            // (e) SetMobility(Movable) 是"会动"的正解：迁移后写入不再算静态写入
+            auto e_migrate = ctx.CreateEntity<Entity>("TestStaticMigratedWriter");
+            auto tf_migrate = e_migrate ? e_migrate->AddComponent<TransformComponent>(Mobility::Static)
+                                        : nullptr;
+            if (!tf_migrate)
+            {
+                GLogError(u8"Test 15 Failed: 无法创建待迁移 TransformComponent");
+                return 15;
+            }
+
+            tf_sys->SubmitTransformUpdates();          // 先 arm（模拟已进场景）
+            tf_migrate->SetMobility(Mobility::Movable); // 正解：迁到 movable 通道
+            tf_migrate->SetLocalPosition(math::Vector3f(13.0f, 14.0f, 15.0f));
+            if (tf_migrate->HasWarnedStaticRuntimeWrite())
+            {
+                GLogError(u8"Test 15 Failed: 迁移到 Movable 后的写入仍被判为静态写入"
+                          u8"（正解路径会被误报，开发者会被自己的告警劝退）");
+                return 15;
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -1606,6 +1700,169 @@ int main(int argc, char** argv)
                  u8"no silent skip and no per-frame log spam.",
                  static_cast<int>(sizeof(kShadowRetryContracts) / sizeof(kShadowRetryContracts[0])));
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 14: 接收侧阴影旋钮落地契约（D3）
+    //
+    // 背景：ShadowComponent 的 receive_shadow / bias_multiplier 长期**零消费者**
+    //（文档写着已生效、实际没人读）。D3 把两者接到 per-draw 行表
+    //（MaterialInstanceAddresses —— FS 早已按 dataIndex 寻址同一行）。
+    // 本测试钉住这条链的四段：
+    //   ① 行结构是 X 列表单源（CPU struct / 布局断言 / GLSL 发射同源，无手写漂移面）；
+    //   ② 发射端遍历该列表，不手写字段；
+    //   ③ 批处理写入端从 RenderableComponent 取真值（逐图元）；
+    //   ④ 片元端真的读该行，并据 receive 早退、据 bias_multiplier 缩放偏差。
+    // 任一段被"简化"掉，旋钮就重新变回死旋钮——这正是本测试存在的理由。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kShadowKnobContracts[] =
+        {
+            // ① 行结构单一真源 + 自动 scale 的布局断言
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST",
+              "per-draw 行结构不再是 X 列表单源——CPU/GLSL 两侧从此各自漂移" },
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "shadow_bias_multiplier",
+              "行结构里没有局部偏差倍率字段（bias_multiplier 旋钮无载体）" },
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "shadow_flags",
+              "行结构里没有接收标志位（receive_shadow 旋钮无载体）" },
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "kMaterialShadowFlagNoReceive",
+              "接收标志位的位定义缺失（GLSL 侧将只能硬编码数值）" },
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "MaterialInstanceAddressesLayoutValid",
+              "布局断言退回手列写法——加字段就得再补一条断言，早晚漏" },
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "sizeof(MaterialInstanceAddresses) == 8",
+              "行结构退回了 8B（D3 之前的形态）——接收侧旋钮又没地方放", true },
+
+            // ② 发射端遍历列表（不是手写字段）
+            { "MaterialShaderEmitter.cpp", OS_TEXT("src/ShaderGen/compile/MaterialShaderEmitter.cpp"),
+              "kMaterialInstanceAddressesFieldNames[field_index]",
+              "GLSL 行结构不再从 X 列表发射，而是手写字段——与 CPU 端的漂移面复活" },
+            { "MaterialShaderEmitter.cpp", OS_TEXT("src/ShaderGen/compile/MaterialShaderEmitter.cpp"),
+              "kMaterialShadowFlagNoReceive",
+              "接收标志位不再由 C++ 枚举发射（GLSL 侧数值会与 CPU 端脱钩）" },
+            { "MaterialShaderEmitter.cpp", OS_TEXT("src/ShaderGen/compile/MaterialShaderEmitter.cpp"),
+              "uint payload_index",
+              "GLSL 行结构退回手写字段发射——加字段必然漏改一侧", true },
+
+            // ③ 逐图元写入（真值来自 RenderableComponent）
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "renderable->CanReceiveShadow()",
+              "批处理写入端不再读 ShadowComponent 的接收开关（receive_shadow 又成死旋钮）" },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "row_ptr[i].shadow_flags",
+              "接收开关没有写进 per-draw 行（着色端读到的永远是默认值）" },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "GetShadowBiasMultiplier()",
+              "批处理写入端不再读局部偏差倍率（bias_multiplier 又成死旋钮）" },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "row_ptr[i].shadow_bias_multiplier = bias_multiplier;",
+              "局部偏差倍率没有写进 per-draw 行（着色端读到的永远是默认值）" },
+
+            // ④ 片元端读取 + 早退 + 缩放
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+              "GetShadowReceiveParams(data_index)",
+              "片元端不再读接收侧参数（row 里的值没人消费）" },
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+              "MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[data_index]",
+              "接收侧参数不是从 per-draw 行读的（dataIndex 与行号必须一致）" },
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+              "HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE",
+              "片元端不再判定接收标志位（receive_shadow 不生效）" },
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+              "if (!receive_params.receive)",
+              "不接收阴影的图元没有早退——仍会采样/选级，开关只影响噪音" },
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+              "shadow.cascades[c].shadow_params.x * bias_scale",
+              "级联路径的深度 bias 不再乘局部倍率（bias_multiplier 只改法线偏移）" },
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+              "* receive_params.bias_multiplier",
+              "法线偏移/采样调用不再带局部倍率（bias_multiplier 半途丢失）" },
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+              "return EvalPCFShadowAt(sample_pos, surface.worldPos);",
+              "阴影采样退回无倍率调用（bias_multiplier 无法到达采样点）", true },
+
+            // ⑤ 参数真的到达合成器（dataIndex 从 FS 模板一路传到 provider）
+            { "forward_lighting.glsl", OS_TEXT("ShaderLibrary/compositor/forward_lighting.glsl"),
+              "GetShadowFactor(si, data_index)",
+              "合成器不再把 per-draw 行号传给阴影 provider（旋钮在最后一步断链）" },
+            { "forward_lit.glsl.tmpl", OS_TEXT("ShaderLibrary/fragment/forward_lit.glsl.tmpl"),
+              "BuildForwardLightingInput(surface, si, materialDataIndex)",
+              "FS 模板不再传 materialDataIndex（行号在入口处就丢了）" },
+        };
+
+        if (const int failed = verify_source_contracts(14, kShadowKnobContracts,
+                                                       sizeof(kShadowKnobContracts) / sizeof(kShadowKnobContracts[0])))
+            return failed;
+
+        GLogInfo(u8"Test 14 Passed: shadow receive-side knob contract holds (%d checks) -- "
+                 u8"receive_shadow/bias_multiplier carried by the per-draw row from "
+                 u8"RenderableComponent to the fragment-side shadow factor.",
+                 static_cast<int>(sizeof(kShadowKnobContracts) / sizeof(kShadowKnobContracts[0])));
+    }
+
+        // ─────────────────────────────────────────────────────────────
+        // 15: D4 静态写入语义化契约（A′：把"静态写完不动"变成 API 语义）。
+        //
+        // "静态物体写一次就不动"是本引擎的硬约定：静态段写一次用很久，且静态级联
+        // 阴影缓存的**正确性前提**就是它。违反约定的**运行期**写入代价 = 整段静态
+        // 矩阵重写 + 全部静态级联缓存失效（当帧 4 级全量重绘）+ 连带标脏整棵子树。
+        // 因此组件侧必须留痕（每组件一次性告警），而不是静默生效。
+        // 本测试同时钉住行为（搭建期不告警 / 消费后告警一次 / Movable 不受影响）
+        // 与八条写入路径的源码契约（任何一条被删都会静默失效留痕语义）。
+        // ─────────────────────────────────────────────────────────────
+
+        {
+            static const SourceContract kStaticWriteContracts[] =
+            {
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "void TransformComponent::WarnStaticRuntimeWrite(const char *what)",
+                  "D4 一次性告警的实现被删——运行期写静态又变成静默生效" },
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "if (!IsStatic() || !static_runtime_write_armed || static_runtime_write_warned)",
+                  "告警守卫被改：要么搭建期误报，要么每帧刷屏（一次性语义失效）" },
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "WarnStaticRuntimeWrite(\"SetLocalPosition\");",
+                  "本地位置写入不再留痕（最常见的每帧写路径）" },
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "WarnStaticRuntimeWrite(\"SetLocalRotation\");",
+                  "本地旋转写入不再留痕" },
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "WarnStaticRuntimeWrite(\"SetLocalScale\");",
+                  "本地缩放写入不再留痕" },
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "WarnStaticRuntimeWrite(\"SetLocalTRS\");",
+                  "TRS 复合写入不再留痕（批量搭建/动画常用路径）" },
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "WarnStaticRuntimeWrite(\"SetWorldPosition\");",
+                  "世界位置写入不再留痕" },
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "WarnStaticRuntimeWrite(\"SetWorldRotation\");",
+                  "世界旋转写入不再留痕" },
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "WarnStaticRuntimeWrite(\"SetWorldScale\");",
+                  "世界缩放写入不再留痕" },
+                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                  "WarnStaticRuntimeWrite(\"SetParent\");",
+                  "改父级不再留痕（同样会让全部静态级联失效）" },
+                { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
+                  "comp->ArmStaticRuntimeWriteWarning();",
+                  "渲染侧不再 arm：搭建期与运行期无法区分（告警永不触发或永远误报）" },
+            };
+
+            if (const int failed = verify_source_contracts(15, kStaticWriteContracts,
+                                                           sizeof(kStaticWriteContracts) / sizeof(kStaticWriteContracts[0])))
+                return failed;
+
+            GLogInfo(u8"Test 15 Passed: static runtime-write contract holds "
+                     u8"(%d source checks + 5 behavioral checks) -- 搭建期不告警、渲染侧消费后"
+                     u8"运行期写入每组件告警一次、Movable 与已迁移对象不受影响、八条写入路径"
+                     u8"全部留痕。",
+                     static_cast<int>(sizeof(kStaticWriteContracts) / sizeof(kStaticWriteContracts[0])));
+        }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;

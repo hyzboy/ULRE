@@ -534,17 +534,33 @@ std::string BuildFSIndexTableDecls(const bool fs_has_runtime_rows)
     if (!fs_has_runtime_rows)
         return out;
 
-    // 每个 draw item 同时携带 payload 与纹理引用配置两个索引（8B）。
+    // 逐字段遍历 HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST（唯一真源在
+    // hgl/graph/ShaderBufferSources.h）——新增/改名/调序字段只改那份列表，
+    // 本函数与 CPU struct、布局断言自动跟随，无手写漂移面。
     out += "struct MaterialInstanceAddresses\n";
     out += "{\n";
-    out += "    uint payload_index;\n";
-    out += "    uint texture_reference_index;\n";
+    for (uint32 field_index = 0;
+         field_index < kMaterialInstanceAddressesFieldCount;
+         ++field_index)
+    {
+        out += "    ";
+        out += kMaterialInstanceAddressesFieldGLSLTypes[field_index];
+        out += " ";
+        out += kMaterialInstanceAddressesFieldNames[field_index];
+        out += ";\n";
+    }
     out += "};\n";
     out +=
-        "layout(buffer_reference, scalar, buffer_reference_align=8) buffer MaterialInstanceAddressesRef\n";
+        "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialInstanceAddressesRef\n";
     out += "{\n";
     out += "    MaterialInstanceAddresses values[];\n";
     out += "};\n";
+
+    // D3：阴影接收位（真源 = MaterialShadowFlags 枚举，避免 GLSL 侧硬编码数值）
+    out += "#define HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE ";
+    out += std::to_string(
+        static_cast<uint32>(kMaterialShadowFlagNoReceive));
+    out += "u\n";
 
     return out;
 }

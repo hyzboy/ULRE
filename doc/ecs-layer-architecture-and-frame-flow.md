@@ -494,6 +494,8 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 6. **帧缓存生命周期**：`cache.renderItems` 每帧重建（持有对象的是 `unique_ptr`），`materialBatches` 跨帧复用但每帧 `Clear()`——**不要跨帧缓存 `RenderItem*`**；`MaterialBatch::transform_buffer` 是非拥有指针。
 7. **物化 epoch 语义**：共享行表被重写会让「本帧被跳过的 primitive」行号失效，因此 `materialize_epoch` 不匹配时必须重物化（RPCS `:1141-1216` 的预扫描就是为此）。改收集逻辑时保留这条不变量。
 8. **静态/移动双通道**：`Mobility::Static` 的 GPU 写只在 `SubmitTransformUpdates` 里按需整批重写，`Movable` 每帧进 ring 段。把大量常驻对象设成 Movable 会每帧付出全量 ring 写代价。
+   - **静态物体的写入是"罕见且有全局代价的事件"（D4/A′）**：静态 L2W 只在被判脏时算；任一次写入都会让**整段**静态矩阵重写 + A3 链失效**全部**静态级联缓存（当帧 4 级全量重绘），`MarkDirty` 还会连带标脏整棵子树。因此运行期写 Static 会打一条一次性告警（`[TransformComponent] 运行期写入 Static transform（<setter>｜实体 '<名字>'）`，每组件一次），**搭建期（首次被渲染侧识别前）写入不告警**。
+   - **会动的对象就迁到 Movable**：`SetMobility(Mobility::Movable)`（`TransformComponent.cpp`，跨 SOA 存储迁移）——不要在每帧里写一个 Static 物体；同值写也一样（判据是版本号，不做值比较）。
 9. **`geometry_id == 0` 是「未注册」而不是「第 0 行」**：几何参数行 0 是预留零行（全 0 地址），shader 解引用不崩但什么都不画。`GeometryCreater::Create()` 会自动注册，私有构造路径要自己 `EnsureMeshDrawParams`。
 10. **诊断开关**：`ULRE_ARENA_DEBUG`（材质/寻址）、`SystemGroupRegistry::DebugPrint`（组定义）+ `[RenderGraph] active group`（谁在跑，需临时打开注释）、`[IndirectMeshDraw]`（合批是否生效）——排查「某系统没生效」按三层依次排除：组是否启用 → 系统是否注册/启用 → 相位是否被 pass 覆盖。
 

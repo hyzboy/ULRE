@@ -466,6 +466,53 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 
 ---
 
+### 5.3 接收侧旋钮：`receive_shadow` / `bias_multiplier`（D3 落地，2026-09-26）
+
+`ShadowComponent` 的两个接收侧旋钮是**逐图元**着色决策（同一批次里不同物件可以不同），
+所以它们不跟材质、也不跟批次走，而是随 **per-draw 行**到达片元着色器。
+
+| 项 | 值 / 位置 |
+|----|-----------|
+| 载体 | `MaterialInstanceAddresses`（per-draw 行，`inc/hgl/graph/ShaderBufferSources.h`）：**8B → 16B**，新增 `shadow_flags`（bit0 = 不接收）与 `shadow_bias_multiplier` |
+| 唯一真源 | `HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST`（X 列表）：CPU struct 与 GLSL struct 发射**同源遍历**，新增/改名/调序字段只改一处，没有手写漂移面 |
+| 写入端 | `PrimitiveBatchPipeline` 逐图元读 `CanReceiveShadow()` / `GetBiasMultiplier()` 写行 |
+| 读取端 | `pcf_shadow.glsl` 的 `GetShadowReceiveParams(data_index)` → `GetShadowFactor(surface, data_index)` |
+| 零值语义 | 行内倍率 `0` = "不调节"（回落 1.0）；未挂载 `ShadowComponent` 的行全零 = 接收 + 倍率 1.0，与接线**前逐字节一致** |
+| 不接收 | `shadow_flags` bit0 → `GetShadowFactor` 直接返回 `1.0`（**不采样**，零成本早退） |
+| 倍率 | 逐级乘进 `EvalCascadePCF` 的深度 bias（`shadow_params.x * bias_scale`）与 §5.2 的法线偏移强度；沿 `EvalPCFShadowAt → EvalCascadeChain → EvalCascadeShadowAt → EvalCascadePCF` 逐点穿线 |
+
+四条硬约束：
+
+1. **只影响接收者，不影响投射者**：`receive_shadow` 管的是"这个物件**自己**算不算影子"；
+   想让它不投影子用 `cast_shadow`（走 caster 收集，另一条链）。
+2. **选级必须用真实位置**：倍率只进 `EvalPCFShadowAt(worldPos, selectPos, bias_scale)` 的
+   采样与偏移，**不能**改 `selectPos`——否则片元被推过 split 边界，级联接缝会闪出错误的一级
+   （同 §5.2 约束 3）。
+3. **不要下沉到材质**：它是逐图元数据（`ShadowComponent`），不是材质业务数据也不是逐批共享量；
+   写进材质会让同材质的不同图元无法各自开关。
+4. **行结构改宽必须自动校验**：行大小断言要由字段列表**推导**（遍历求 sizeof），
+   别手写 `sizeof(MaterialInstanceAddresses) == 16`——加字段就漏改。
+
+**取证（两条命令给出结论）**：
+
+```
+ATS_SELFCHECK=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe              # D1 契约 + D3 三帧逐像素对照
+ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe   # 对照组：不拨旋钮 ⇒ 必须 0 px 变化
+```
+
+必须**两条都过**才说明差异来自旋钮（对照组是噪声底断言）。实测：
+`[D3-CONTRACT] receive_shadow PASS: 受影→未受影(变红) 18189 px / 未受影→受影 0 px`、
+`bias_multiplier PASS: 倍率×1000 后外观变化 600662 px`、对照组 `0 px`。
+
+> **口径坑**：判据必须按**通道**（"是否变红"），不能用亮度。`AlphaTestShadow` 的地面是
+> 饱和红（R≈198,G≈1,B≈31），影子压上去偏灰蓝——红的 RGB 均值**反而低于**灰影，
+> 用"变亮/变暗"会得出反方向结论。
+> 另：交换链颜色图提交时点的真实布局是 `PRESENT_SRC_KHR`，而
+> `Texture2D::GetImageLayout()` 停在 `SHADER_READ_ONLY_OPTIMAL`；拿它当 oldLayout
+> 会被校验层判非法转换（拷贝内容不可信）。
+
+---
+
 ## 6. Poisson PCF 开关
 
 `ShaderLibrary/shadow/pcf_shadow.glsl` 顶部：
@@ -549,7 +596,11 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | **Test 6D** | `bias_world != 0` 必须压过 `per_cascade_bias_scale`（优先级契约） | `Test 6D Passed` |
 | **Test 7A** | `normal_offset_world` 逐级写进 `shadow_params.w`：默认配置（结构体默认 0）必须逐级为 0（不擅自改变历史行为）；显式配置后逐级同值且镜像到单级回退字段 | `[CSM-NORMAL-OFFSET] default strength=0.00m ...` / `configured strength=0.35m on [0.350000 ×4] (mirror=0.350000)` |
 | **Test 7B** | **正交性**：`bias_world` 与 `normal_offset_world` 同时开，逐级世界 bias 仍恒为 `bias_world`、`w` 仍等于配置值（各写不同分量，互不干扰） | `Test 7B Passed` |
-| **Test 7C** | **shader 源码契约**（读真实文件，10 项 `Contains`）：编译期宏 / 偏移辅助函数 / 宏守卫 / `shadow_params.w` 读取 / `sin_theta / cos_theta` / 背光早退 / `tan` 上限 clamp / `EvalPCFShadowAt(sample_pos, surface.worldPos)` 选级分离 / **`shadow.cascades[selected].shadow_tex.x == 0u` 屏蔽级联不降级（§2.x）** / **`cascade_params.w` 交界带取自控制器写入字段（§2.y）** | `Test 7C Passed: shader source contract holds (10 checks, 18970 bytes)` |
+| **Test 7C** | **shader 源码契约**（读真实文件，10 项 `Contains`）：编译期宏 / 偏移辅助函数 / 宏守卫 / `shadow_params.w` 读取 / `sin_theta / cos_theta` / 背光早退 / `tan` 上限 clamp / `EvalPCFShadowAt(sample_pos, surface.worldPos, receive_params.bias_multiplier)` 选级分离 / **`shadow.cascades[selected].shadow_tex.x == 0u` 屏蔽级联不降级（§2.x）** / **`cascade_params.w` 交界带取自控制器写入字段（§2.y）** | `Test 7C Passed: shader source contract holds (10 checks, 18970 bytes)` |
+| **Test 11** | masked caster 链源码契约（10 条 needle，见 §4.5） | `Test 11 Passed: ...` |
+| **Test 12** | pipeline 键内容化（SPIRV 内容 hash 登记/消费/注销 + 2 条禁复活） | `Test 12 Passed: ... (7 checks)` |
+| **Test 13** | 阴影跳过路径告警与收敛（一次性告警/上限/降频/清零 + 2 条禁刷屏） | `Test 13 Passed: ... (7 checks)` |
+| **Test 14** | **接收侧旋钮落地契约**（22 checks，§5.3）：行结构唯一真源 X 列表 + 行大小自动推导 + 发射端遍历列表 + 写入端取 `CanReceiveShadow/GetBiasMultiplier` + 片元端 `GetShadowReceiveParams`/不接收早退/倍率乘进 bias 与法线偏移 + 3 条**禁复活** needle（`sizeof(MaterialInstanceAddresses) == 8`、发射端 `uint payload_index` 手写、`EvalPCFShadowAt(sample_pos, surface.worldPos)` 无倍率调用） | `Test 14 Passed: shadow receive-side knob contract holds (22 checks)` |
 
 ### 写这类断言的两个硬要求
 
@@ -607,6 +658,9 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 | 静态阴影能渲染但**读到就没了** | 是否每帧都发了静态级的 DrawCall | 静态级被错误地也当成了逐帧层 |
 | **alpha test 物体的阴影是实心的**（本体镂空正常） | 物件的 recipe 是否声明了 `alpha_test`/`dither`（depth-only FS 保留的**唯一**判据，D8 后程序级扫描已删） | 片元含 discard 却被 depth-only 快速路径剥掉；或 `batch.texture_reference_base_addr`=0（MTL_TEX 解引用 0 → fallback 1.0）。**取证**：`AlphaTestShadow` 第 45 帧自动判读 c0 的 `[D1-CONTRACT]` 行（**包围盒内**填充率 57.6%=镂空、~100%=实心、全空=未进深度图）；`ATS_SELFCHECK=1` 时以退出码给出结论（0/1）。判据链本身由 `TestCSMIncrementalPass` Test 11 源码契约把守 |
 | **masked 物体在深度图里缺失**（影子不出现或固化消失） | collect 日志 `shadow pass skip for '<名字>': <原因>`（首帧起）或 `persisted 120 frames`（持续失败） | 首帧 resolve/行未就绪失败 + 静态缓存固化。跳过路径已带告警与收敛（D9：120 帧内每帧 bump 重画，之后降频到每 60 帧一次并报错）；手动调 `InvalidateMainLightStaticShadowCache()` 立即重画 |
+| 静态级联**每帧**全量重绘（日志刷 `invalidating static cascade`、滚动缓存不再 `100% Cached`） | `[TransformComponent] 运行期写入 Static transform（<setter>｜实体 '<名字>'）` 告警 | **运行期写了 Static 物体**：静态段是"写一次用很久"的常驻区，任何一次写入都会整段重写静态矩阵 + 全部静态级联失效（D4 实测：每帧同值写 ⇒ 15s 内 872 次失效）。会动的对象在创建期 `SetMobility(Mobility::Movable)`（每帧 ring 写 + 动态级联）；编辑期一次性调整可忽略。告警每组件只报一次（D4/A′） |
+| `receive_shadow` / `bias_multiplier` **拨了没反应**（物件照样受影、倍率看不出变化） | 该图元的 per-draw 行是否真的写进去（`MaterialInstanceAddresses::shadow_flags` / `shadow_bias_multiplier`，§5.3） | ① 物件**没挂** `ShadowComponent` ⇒ 行全零 = 引擎默认（接收 + 倍率 1.0），这是有意行为不是 bug；② 该图元画的 recipe 没走 `pcf_shadow.glsl` 的 `GetShadowFactor`（例如 `identity.glsl` 占位恒 1.0）；③ 行结构改了但发射端没跟上——看生成后的 GLSL 里 `struct MaterialInstanceAddresses` 是否含新字段（Test 14 已把守）；④ 倍率在**不自投影**的场景里本来就看不出变化（无 acne 可消），用极端倍率（×1000）验证接线 |
+| 想验证"接收侧旋钮真的通了" | `ATS_SELFCHECK=1 AlphaTestShadow.exe` + `ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ...` | 两条都要过：前者 `[D3-CONTRACT] receive_shadow PASS`（受影→未受影 18189 px）、`bias_multiplier PASS`（600662 px）；后者对照组必须 **0 px**（噪声底），否则任何差异都不能归因给旋钮。判据必须按**通道**（是否变红）而非亮度，理由见 §5.3 口径坑 |
 
 **诊断手段**：
 

@@ -203,6 +203,8 @@ masked caster 模板真评估 alpha，并**禁止**程序级 discard 扫描复�
 `.ai/skills/SKILL_CASCADED_SHADOW_CSM.md`（ShadowCasterMasked 链路章节，
 §4.5）；
 `doc/backlog.md` **D 线**（本轮后续：D1 深度镂空自动契约 ✅ / D8 片元判据收敛 ✅ /
-D2 pipeline 键内容化 ✅ / D9 阴影跳过路径告警与收敛 ✅ / D3 四旋钮决策 /
-D4 TransformComponent 同值短路 / 性能账目→拆分→合并）与 **A 线 A1/A7**
-（提交原语/in-flight 槽——与本链的 fence 等待问题强相关）。
+D2 pipeline 键内容化 ✅ / D9 阴影跳过路径告警与收敛 ✅ / **D3 接收侧旋钮落地 ✅**
+（per-draw 行 8B→16B + 行结构唯一真源 X 列表，Test 14 = 22 checks + 运行期逐像素
+对照/破坏验证）/ D4 TransformComponent 同值短路 / D5 scissor 条带滚动决策 /
+性能账目→拆分→合并）与 **A 线 A1/A7**（提交原语/in-flight 槽——与本链的 fence
+等待问题强相关）。

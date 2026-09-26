@@ -18,7 +18,7 @@ void main()
     // 光照输出的 alpha 恒为 1，不能用作覆盖判定。
     HGLApplyAlpha(EvalAlpha(si, materialDataIndex));
 #endif
-    const LightingInput lighting = BuildForwardLightingInput(surface, si);
+    const LightingInput lighting = BuildForwardLightingInput(surface, si, materialDataIndex);
     const vec4 finalColor = EvalLighting(lighting);
     WriteMaterialOutput(HGLComposeColor(finalColor));
 }

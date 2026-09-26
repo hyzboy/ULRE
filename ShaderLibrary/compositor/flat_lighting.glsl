@@ -14,9 +14,12 @@
 #include "common/surface_interface.glsl"
 #include "common/lighting_interface.glsl"
 
+// flat 合成器不采样阴影，data_index 仅为与 forward_lighting 保持同一签名
+// （模板统一传 materialDataIndex）。
 LightingInput BuildForwardLightingInput(
     SurfaceOutput surface,
-    SurfaceInput surfaceInput)
+    SurfaceInput surfaceInput,
+    uint data_index)
 {
     LightingInput lighting;
     lighting.baseColor = surface.baseColor;

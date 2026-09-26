@@ -53,6 +53,8 @@ namespace hgl
             , cachedWorldMatrix(1.0f)
             , matrixDirty(true)
             , mobility(initial_mobility)
+            , static_runtime_write_armed(false)
+            , static_runtime_write_warned(false)
             , fixed_pixel_sizing_enabled(false)
             , fixed_pixel_diameter(160.0f)
             , fixed_pixel_reference_world_diameter(1.0f)
@@ -104,6 +106,8 @@ namespace hgl
 
         void TransformComponent::SetLocalPosition(const glm::vec3& pos)
         {
+            // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
+            WarnStaticRuntimeWrite("SetLocalPosition");
             local_pos = pos;
             if (storageHandle != TransformDataStorage::INVALID_HANDLE || owner_context)
             {
@@ -137,6 +141,8 @@ namespace hgl
 
         void TransformComponent::SetLocalRotation(const glm::quat& rot)
         {
+            // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
+            WarnStaticRuntimeWrite("SetLocalRotation");
             local_rot = rot;
             if (storageHandle != TransformDataStorage::INVALID_HANDLE || owner_context)
             {
@@ -171,6 +177,8 @@ namespace hgl
 
         void TransformComponent::SetLocalScale(const glm::vec3& scale)
         {
+            // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
+            WarnStaticRuntimeWrite("SetLocalScale");
             local_scale = scale;
             if (storageHandle != TransformDataStorage::INVALID_HANDLE || owner_context)
             {
@@ -197,6 +205,8 @@ namespace hgl
 
         void TransformComponent::SetLocalTRS(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
         {
+            // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
+            WarnStaticRuntimeWrite("SetLocalTRS");
             local_pos = pos;
             local_rot = rot;
             local_scale = scale;
@@ -249,6 +259,8 @@ namespace hgl
 
         void TransformComponent::SetWorldPosition(const glm::vec3& pos)
         {
+            // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
+            WarnStaticRuntimeWrite("SetWorldPosition");
             auto storage = GetStorage();
             Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
@@ -290,6 +302,8 @@ namespace hgl
 
         void TransformComponent::SetWorldRotation(const glm::quat& rot)
         {
+            // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
+            WarnStaticRuntimeWrite("SetWorldRotation");
             auto storage = GetStorage();
             Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
@@ -329,6 +343,8 @@ namespace hgl
 
         void TransformComponent::SetWorldScale(const glm::vec3& scale)
         {
+            // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
+            WarnStaticRuntimeWrite("SetWorldScale");
             auto storage = GetStorage();
             Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
@@ -464,6 +480,7 @@ namespace hgl
 
         void TransformComponent::SetParent(EntityID parent)
         {
+            WarnStaticRuntimeWrite("SetParent");
             // Remove from old parent
             if (parent_id.IsValid() && owner_context)
             {
@@ -724,6 +741,31 @@ namespace hgl
             }
 
             UpdateWorldMatrix();
+        }
+
+        // D4：运行期写 Static 物体的一次性告警。
+        // 触发条件 = 当前是 Static 且组件已被渲染侧消费过（armed）；场景搭建期
+        // （首次 SubmitTransformUpdates 之前）的写入不算"运行期"，故不告警。
+        // 每组件只报一次：真正的误用是"每帧写"，一次性告警足以暴露，不该刷屏。
+        void TransformComponent::WarnStaticRuntimeWrite(const char *what)
+        {
+            if (!IsStatic() || !static_runtime_write_armed || static_runtime_write_warned)
+                return;
+
+            static_runtime_write_warned = true;
+
+            const char *entity_name = "<no-owner>";
+            if (Entity *owner = GetOwner())
+                entity_name = owner->GetName().c_str();
+
+            GLogWarning(u8"[TransformComponent] 运行期写入 Static transform"
+                        u8"（%s｜实体 '%s' id=%u）：静态物体写入会整段重写静态矩阵并让"
+                        u8"**全部**静态级联缓存失效（当帧 4 级全量重绘），且连带标脏整棵子树。"
+                        u8"该对象若会动 ⇒ 创建期就用 SetMobility(Mobility::Movable)"
+                        u8"（迁到 movable 通道：每帧 ring 写 + 动态级联）；"
+                        u8"编辑期一次性调整可忽略——本告警每个组件只报一次。",
+                        what, entity_name,
+                        static_cast<uint32_t>(owner_id.index));
         }
 
         void TransformComponent::MarkDirty()

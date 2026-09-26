@@ -126,18 +126,77 @@ namespace hgl::graph::mtl
     }
     static_assert(MeshDrawCommandLayoutValid(), "MeshDrawCommand 布局必须为 2×uint32 (8B)");
 
-    // 每个 draw item 的材质实例索引行（8B）。
+    // 每个 draw item 的材质实例索引行（16B）。
     // payload_index 指向全局池（PBRSurface / EmissiveSurface / TransmissionSurface）的行号；
     // texture_reference_index 指向每材质 MaterialTextureReferencePool 的行号。
-    struct MaterialInstanceAddresses
+    //
+    // 后两个字段是**接收侧阴影参数**（D3）：阴影接收是逐图元的着色决策
+    // （ShadowComponent::receive_shadow / bias_multiplier），不是材质业务数据，
+    // 也不是逐批次共享量，故携带在本行——FS 已按 dataIndex（= 本表行号）寻址。
+    //
+    // 零值即引擎默认，任何零初始化的行（文本/线条/示例自建行）行为与 D3 之前一致：
+    //   shadow_bias_multiplier 0 → 视为 1.0（引擎默认倍率）
+    //   shadow_flags            0 → 未置位 = 正常接收阴影
+    //
+    // 单一真源（X 列表）：CPU struct / 布局断言 / GLSL struct 发射全部从这一份生成
+    //（发射端见 MaterialShaderEmitter::BuildFSIndexTableDecls）——改字段只改这里。
+    #define HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST(M)  \
+        M(payload_index,           "uint",  uint32_t)      \
+        M(texture_reference_index, "uint",  uint32_t)      \
+        M(shadow_bias_multiplier,  "float", float)         \
+        M(shadow_flags,            "uint",  uint32_t)
+
+    /// shadow_flags 位定义
+    enum MaterialShadowFlags : uint32
     {
-        uint32_t payload_index = 0;
-        uint32_t texture_reference_index = 0;
+        /// 置位 = 该图元**不接收**阴影（着色时恒按全受光处理）。
+        /// 不置位（含零初始化行）= 正常接收。
+        kMaterialShadowFlagNoReceive = 1u << 0,
     };
 
-    static_assert(sizeof(MaterialInstanceAddresses) == 8);
-    static_assert(offsetof(MaterialInstanceAddresses, payload_index) == 0);
-    static_assert(offsetof(MaterialInstanceAddresses, texture_reference_index) == 4);
+    struct MaterialInstanceAddresses
+    {
+    #define HGL_MIA_CPU_FIELD(name, glsl_type, cpu_type) cpu_type name = 0;
+        HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST(HGL_MIA_CPU_FIELD)
+    #undef HGL_MIA_CPU_FIELD
+    };
+
+    constexpr const char *const kMaterialInstanceAddressesFieldNames[] =
+    {
+    #define HGL_MIA_NAME_FIELD(name, glsl_type, cpu_type) #name,
+        HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST(HGL_MIA_NAME_FIELD)
+    #undef HGL_MIA_NAME_FIELD
+    };
+
+    constexpr const char *const kMaterialInstanceAddressesFieldGLSLTypes[] =
+    {
+    #define HGL_MIA_GLSL_FIELD(name, glsl_type, cpu_type) glsl_type,
+        HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST(HGL_MIA_GLSL_FIELD)
+    #undef HGL_MIA_GLSL_FIELD
+    };
+
+    constexpr uint32 kMaterialInstanceAddressesFieldCount =
+        static_cast<uint32>(sizeof(kMaterialInstanceAddressesFieldNames)
+                           / sizeof(kMaterialInstanceAddressesFieldNames[0]));
+
+    // 布局断言（scalar 布局，全标量成员无 padding）：4×4B = 16B，逐字段 4B 连续。
+    constexpr bool MaterialInstanceAddressesLayoutValid() noexcept
+    {
+        const size_t offsets[] =
+        {
+    #define HGL_MIA_OFFSET_FIELD(name, glsl_type, cpu_type) offsetof(MaterialInstanceAddresses, name),
+            HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST(HGL_MIA_OFFSET_FIELD)
+    #undef HGL_MIA_OFFSET_FIELD
+        };
+        for (uint32 i = 0; i < kMaterialInstanceAddressesFieldCount; ++i)
+        {
+            if (offsets[i] != i * 4u)
+                return false;
+        }
+        return sizeof(MaterialInstanceAddresses) == kMaterialInstanceAddressesFieldCount * 4u;
+    }
+    static_assert(MaterialInstanceAddressesLayoutValid(),
+                  "MaterialInstanceAddresses 布局必须为逐字段 4B 连续（scalar，无 padding）");
 
     // 4-ID 渲染项（DrawItem4ID，16B）：
     // 终态下每个可渲染图元只传递 4 个 32 位 ID，由 GPU Compute Culling 消费并紧凑化输出：

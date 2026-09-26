@@ -51,6 +51,7 @@ namespace
     // 看图。注意：自检路径用 std::exit，会跳过框架析构与对象泄漏检查——这是
     // 有意为之（一次性验证工具，退出码优先）。
     bool g_selfcheck = false;
+    bool g_d3_noknob = false;
 
     // 深度图几何像素阈值：reversed-Z 下 clear=0、几何=近处亮；取 0.02 而非 0，
     // 避免把量化/滤波残差算成几何。
@@ -60,6 +61,21 @@ namespace
     // 实心(~100%)与全空(~0%)都在带外。
     constexpr float kContractFillMin = 0.50f;
     constexpr float kContractFillMax = 0.65f;
+
+    // ── D3 契约：接收侧旋钮（receive_shadow / bias_multiplier）──────────────
+    // 判定方式是**逐像素对比**三帧颜色（相机/场景静止，除旋钮外逐帧一致；
+    // ATS_D3_NOKNOB=1 的对照组实测三帧逐像素完全相同 = 噪声底 0）。
+    // 注意本场景地面是饱和红(R≈198,G≈1,B≈31)、影子压在其上呈灰蓝——
+    // 所以用"是否变红"判"是否还在受影"，而不是用亮度（红的 RGB 均值反而
+    // 比灰影低，用亮度会得出反方向结论）。
+    constexpr int kColorDeltaChan = 40;   // 单通道变化阈值（0..255）
+    constexpr int kRedGap = 60;           // 判为"红地面"的 R-G / R-B 下限
+
+    // 接收开关：关掉后原影子区域应大面积变红（实测 ~1.9 万像素外观变化）
+    constexpr uint32_t kD3ReceiveMinRedPixels = 3000;
+    // 偏差倍率：用极端倍率证明它真的进入偏差计算（地面不自投影、本场景无 acne，
+    // 故只能用"外观是否随倍率改变"作判据；死旋钮会是 0 —— 对照组即 0）
+    constexpr uint32_t kD3BiasMinChangedPixels = 3000;
 
     GeometryVertexFormat CreateStandardTextureArrayGeometryVertexFormat()
     {
@@ -137,6 +153,15 @@ private:
     bool depth_dumped = false;
     bool contract_done = false;   // c0 契约已判读
     bool contract_ok = false;     // c0 契约结果（selfcheck 退出码依据）
+
+    // ── D3 契约状态 ──
+    std::shared_ptr<ShadowComponent> ground_shadow;   // 地面（接收面）的阴影组件
+    std::vector<uint8_t> d3_lum[3];                   // A/B/C 三帧亮度图
+    int  d3_frame = 0;                                // 深度判读之后的相对帧号
+    bool d3_done = false;
+    bool d3_noknob = false;                           // ATS_D3_NOKNOB=1 → 对照组（只读回不改旋钮）
+    bool d3_receive_ok = false;
+    bool d3_bias_ok = false;
 
     // ── 深度图读回取证（用户建议：直接看 shadow map depth）──────────────────
     // 帧外 immediate submit：depth image → readback buffer → BMP 灰度落盘。
@@ -296,6 +321,209 @@ private:
         return true;
     }
 
+    // ── D3 契约：颜色读回（主帧 → staging → BMP + 亮度图）────────────────────
+    // 与 DumpCascadeDepth 同构，只是换成颜色附件（aspect COLOR）。
+    // 亮度图取 3 个低字节的均值：与 RGBA/BGRA 通道顺序无关（alpha 恒在第 4 字节），
+    // 因此"变亮/变暗"的判定不需要知道具体格式；BMP 按低字节顺序写出，纯作人工看图。
+    bool DumpColorTarget(graph::IRenderTarget *rt, const char *filename,
+                         std::vector<uint8_t> *out_lum)
+    {
+        auto *gc = GetGraphicsContext();
+        auto *device = gc ? gc->GetDevice() : nullptr;
+        if (!gc || !device || !rt)
+            return false;
+
+        auto *tex = rt->GetColorTexture(0);
+        if (!tex)
+            return false;
+
+        const uint32_t w = tex->GetWidth();
+        const uint32_t h = tex->GetHeight();
+        if (w == 0 || h == 0)
+            return false;
+
+        const VkDeviceSize bytes = VkDeviceSize(w) * h * 4;   // 8bit RGBA/BGRA 交换链
+
+        auto *staging = device->CreateBuffer(
+            ObjectNameBuilder(AnsiString("AlphaTestShadow:") + filename),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT, bytes, bytes, nullptr,
+            BufferAllocPolicy::Readback, SharingMode::Exclusive);
+        if (!staging)
+            return false;
+
+        VkCommandBuffer cmd = device->CreateCommandBuffer(
+            AnsiString("AlphaTestShadow:ColorDumpCmd"));
+        if (!cmd)
+        {
+            delete staging;
+            return false;
+        }
+
+        VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(cmd, &bi);
+
+        // 交换链颜色图提交时点的真实布局是 PRESENT_SRC_KHR（框架 present 之后）。
+        // Texture2D 上跟踪的 GetImageLayout() 停留在该图被当作采样源时的
+        // SHADER_READ_ONLY_OPTIMAL——拿它当 oldLayout 会被校验层判为非法转换
+        //（实测：expects SHADER_READ_ONLY_OPTIMAL, current PRESENT_SRC_KHR），
+        // 转换非法则拷贝内容不可信。本函数是一次性取证工具，故按提交时点的
+        // 真实布局做转换并在结尾还原。
+        const VkImageLayout cur_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        VkImageMemoryBarrier to_src{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+        to_src.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        to_src.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        to_src.oldLayout = cur_layout;
+        to_src.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        to_src.image = tex->GetImage();
+        to_src.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        vkCmdPipelineBarrier(cmd,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             0, 0, nullptr, 0, nullptr, 1, &to_src);
+
+        VkBufferImageCopy region{};
+        region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        region.imageExtent = {w, h, 1};
+        vkCmdCopyImageToBuffer(cmd, tex->GetImage(),
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               staging->GetBuffer(), 1, &region);
+
+        VkImageMemoryBarrier restore = to_src;
+        restore.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        restore.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        restore.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        restore.newLayout = cur_layout;
+        vkCmdPipelineBarrier(cmd,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             0, 0, nullptr, 0, nullptr, 1, &restore);
+
+        vkEndCommandBuffer(cmd);
+
+        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        VkFence fence;
+        vkCreateFence(device->GetDevice(), &fi, nullptr, &fence);
+
+        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        si.commandBufferCount = 1;
+        si.pCommandBuffers = &cmd;
+        vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence);
+        vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+        vkDestroyFence(device->GetDevice(), fence, nullptr);
+
+        const uint8 *px = static_cast<const uint8 *>(staging->GetGPUBuffer()->Map(0, bytes));
+        if (!px)
+        {
+            delete staging;
+            return false;
+        }
+
+        const uint32_t row_pitch = w * 3;
+        std::vector<uint8> bmp(54 + row_pitch * h, 0);
+        const uint32_t data_off = 54;
+        bmp[0] = 'B';
+        bmp[1] = 'M';
+        const uint32_t file_size = static_cast<uint32_t>(bmp.size());
+        std::memcpy(&bmp[2], &file_size, 4);
+        const uint32_t pix_off = 54;
+        std::memcpy(&bmp[10], &pix_off, 4);
+        const uint32_t header_size = 40, plane = 1, bpp = 24, comp = 0;
+        std::memcpy(&bmp[14], &header_size, 4);
+        std::memcpy(&bmp[18], &w, 4);
+        std::memcpy(&bmp[22], &h, 4);
+        std::memcpy(&bmp[26], &plane, 2);
+        std::memcpy(&bmp[28], &bpp, 2);
+        std::memcpy(&bmp[30], &comp, 4);
+
+        // 读回像素按**屏幕坐标自上而下**存成 RGB 三元组（源为 BGRA：p[0]=B）。
+        // 用三通道而非单亮度：本场景地面是饱和红、影子落在其上偏灰蓝，
+        // "变亮/变暗"这种单值方向在此场景里会得出反直觉结论（红的 RGB 均值
+        // 反而低于灰影），必须按通道比较才能既判位置又判方向。
+        if (out_lum)
+            out_lum->assign(size_t(w) * size_t(h) * 3, 0);
+
+        uint64_t lum_sum = 0;
+
+        for (uint32_t y = 0; y < h; ++y)
+        {
+            const uint32_t out_y = h - 1 - y;                  // BMP 底行在前
+            for (uint32_t x = 0; x < w; ++x)
+            {
+                const uint8 *p = px + (size_t(y) * w + x) * 4;
+                const uint8 lum = uint8((uint32(p[0]) + uint32(p[1]) + uint32(p[2])) / 3);
+                lum_sum += lum;
+
+                if (out_lum)
+                {
+                    const size_t m = (size_t(y) * w + x) * 3;
+                    (*out_lum)[m + 0] = p[2];   // R
+                    (*out_lum)[m + 1] = p[1];   // G
+                    (*out_lum)[m + 2] = p[0];   // B
+                }
+
+                const uint32_t o = data_off + out_y * row_pitch + x * 3;
+                bmp[o] = p[0];
+                bmp[o + 1] = p[1];
+                bmp[o + 2] = p[2];
+            }
+        }
+        staging->GetGPUBuffer()->Unmap();
+
+        filesystem::SaveMemoryToFile(ToOSString(AnsiString(filename)),
+                                     bmp.data(),
+                                     static_cast<int64>(bmp.size()));
+
+        GLogInfo("[ColorDump] %s saved (%ux%u) mean_lum=%.1f",
+                 filename, w, h,
+                 float(double(lum_sum) / double(size_t(w) * size_t(h))));
+
+        delete staging;
+        return true;
+    }
+
+    // 逐像素对比两帧的**三通道外观**：
+    //   changed     = 任一通道变化 >= kColorDeltaChan 的像素数（位置证据）
+    //   grey_to_red = "受影(非红) → 未受影(红)"的像素数（方向证据）
+    //   red_to_grey = 反向
+    // 本场景地面是饱和红、影子压在其上呈灰蓝 → "变红"即"该像素不再受影"。
+    // 相机与场景静止，除被改动的旋钮外逐帧一致（对照组实测逐像素相同），
+    // 故差值只可能来自该旋钮。
+    static void CompareAppearance(const std::vector<uint8_t> &a,
+                                  const std::vector<uint8_t> &b,
+                                  uint32_t &out_changed,
+                                  uint32_t &out_grey_to_red,
+                                  uint32_t &out_red_to_grey)
+    {
+        out_changed = 0;
+        out_grey_to_red = 0;
+        out_red_to_grey = 0;
+
+        if (a.size() != b.size() || a.size() % 3 != 0)
+            return;
+
+        for (size_t i = 0; i < a.size(); i += 3)
+        {
+            const int ar = a[i], ag = a[i + 1], ab = a[i + 2];
+            const int br = b[i], bg = b[i + 1], bb = b[i + 2];
+
+            if (std::abs(br - ar) >= kColorDeltaChan ||
+                std::abs(bg - ag) >= kColorDeltaChan ||
+                std::abs(bb - ab) >= kColorDeltaChan)
+                ++out_changed;
+
+            const bool a_red = (ar - ag) >= kRedGap && (ar - ab) >= kRedGap;
+            const bool b_red = (br - bg) >= kRedGap && (br - bb) >= kRedGap;
+
+            if (!a_red && b_red)
+                ++out_grey_to_red;
+            else if (a_red && !b_red)
+                ++out_red_to_grey;
+        }
+    }
+
 public:
     ~AlphaTestShadowApp() override
     {
@@ -442,6 +670,7 @@ public:
 
             auto shadow = e->AddComponent<ShadowComponent>();
             shadow->SetCastShadow(false);
+            ground_shadow = shadow;   // D3 契约：运行期拨 receive_shadow / bias_multiplier
 
             auto prim = e->AddComponent<PrimitiveComponent>();
             prim->SetPrimitiveAsset(&ground_primitive);
@@ -597,11 +826,121 @@ public:
 
                 if (g_selfcheck)
                 {
-                    const bool ok = contract_done && contract_ok;
-                    GLogInfo(u8"[D1-CONTRACT] selfcheck: %s (exit %d)",
-                             ok ? "PASS" : "FAIL", ok ? 0 : 1);
-                    std::exit(ok ? 0 : 1);
+                    // 自检模式不再立即退出：D1 结果记录后转入 D3 相位
+                    //（接收侧旋钮端到端验证），最终由 D3 相位统一给出退出码。
+                    GLogInfo(u8"[D1-CONTRACT] c0: %s（自检将在 D3 相位结束后退出）",
+                             contract_ok ? "PASS" : "FAIL");
                 }
+            }
+        }
+
+        // ── D3 契约：接收侧旋钮（receive_shadow / bias_multiplier）端到端相位 ──
+        // 三帧各读回一次颜色，**逐像素**与基准帧比较。相机与场景静止，除被改动的
+        // 旋钮外逐帧一致（对照组 ATS_D3_NOKNOB=1 实测逐像素相同）→ 差值只能来自
+        // 该旋钮；判据用"是否变红"而非亮度，理由见文件头常量处的注释。
+        //   A（基准）  ：地面 ShadowComponent 默认值（接收 + 倍率 1.0）
+        //   B（不接收）：SetReceiveShadow(false) → 地面上的影子应整体消失
+        //                （影子区域大面积由"灰蓝"变回"红地面"）
+        //   C（倍率无关）：SetReceiveShadow(true) + SetBiasMultiplier(1000×) →
+        //                偏差被放大 1000 倍，影子必然改变（证明倍率进入了偏差计算）
+        if (g_selfcheck && depth_dumped && !d3_done)
+        {
+            ++d3_frame;
+
+            auto *main_rt = ecs_context ? ecs_context->GetRenderTarget() : nullptr;
+            d3_noknob = g_d3_noknob;
+
+            if (d3_frame == 1)
+            {
+                DumpColorTarget(main_rt, "ats_d3_A_receive_on.bmp", &d3_lum[0]);
+            }
+            else if (d3_frame == 2)
+            {
+                // ATS_D3_NOKNOB=1：对照组——三帧都读回、但**什么都不改**。
+                // 用来测"读回+对比"这条链自身的噪声底：若三帧仍逐像素相同，
+                // 则后续任何差异都只能来自旋钮；若不同，则读回不可信（换帧缓冲/
+                // 与渲染竞争），必须先把工具修好再看结论。
+                if (ground_shadow && !d3_noknob)
+                {
+                    ground_shadow->SetReceiveShadow(false);
+                    GLogInfo(u8"[D3-ROW] 地面 receive_shadow -> %d, bias_multiplier = %.6f",
+                             ground_shadow->CanReceiveShadow() ? 1 : 0,
+                             ground_shadow->GetBiasMultiplier());
+                }
+            }
+            else if (d3_frame == 4)
+            {
+                DumpColorTarget(main_rt, "ats_d3_B_receive_off.bmp", &d3_lum[1]);
+            }
+            else if (d3_frame == 5)
+            {
+                if (ground_shadow && !d3_noknob)
+                {
+                    // 极端倍率（1000×）：本场景地面**不自投影**（例子里显式
+                    // SetCastShadow(false)），静态级联里没有地面自身，因此
+                    // "倍率调小 → acne 重现"这条观察在这里不存在。改用极端倍率
+                    // 证明倍率确实进入了偏差计算——死旋钮的像素变化恒为 0，
+                    // 而对照组(ATS_D3_NOKNOB=1)实测就是 0。
+                    ground_shadow->SetReceiveShadow(true);
+                    ground_shadow->SetBiasMultiplier(1000.0f);
+                    GLogInfo(u8"[D3-ROW] 地面 receive_shadow -> %d, bias_multiplier = %.6f",
+                             ground_shadow->CanReceiveShadow() ? 1 : 0,
+                             ground_shadow->GetBiasMultiplier());
+                }
+            }
+            else if (d3_frame == 8)
+            {
+                DumpColorTarget(main_rt, "ats_d3_C_bias_x1000.bmp", &d3_lum[2]);
+                d3_done = true;
+
+                // 对照组（ATS_D3_NOKNOB=1）：三帧都读回、但一个旋钮都不拨。
+                // 它自己也是断言：外观变化必须为 0——否则"读回+对比"这条链有噪声，
+                // 后面任何旋钮差异都不能单独归因给旋钮。此处退出码 0 = 工具可信。
+                if (d3_noknob)
+                {
+                    uint32_t c_ab = 0, g_ab = 0, r_ab = 0;
+                    uint32_t c_ac = 0, g_ac = 0, r_ac = 0;
+                    CompareAppearance(d3_lum[0], d3_lum[1], c_ab, g_ab, r_ab);
+                    CompareAppearance(d3_lum[0], d3_lum[2], c_ac, g_ac, r_ac);
+                    const bool clean = (c_ab + c_ac) == 0;
+                    GLogInfo(u8"[D3-CONTRACT] 对照组(ATS_D3_NOKNOB=1) 噪声底 %s: "
+                             u8"逐像素外观变化 %u px（A→B %u / A→C %u，期望 0）",
+                             clean ? "PASS" : "FAIL", c_ab + c_ac, c_ab, c_ac);
+                    GLogInfo(u8"[D3-CONTRACT] selfcheck: %s (control, exit %d)",
+                             clean ? "PASS" : "FAIL", clean ? 0 : 1);
+                    std::exit(clean ? 0 : 1);
+                }
+
+                uint32_t changed = 0, g2r = 0, r2g = 0;
+                CompareAppearance(d3_lum[0], d3_lum[1], changed, g2r, r2g);
+                d3_receive_ok = (g2r >= kD3ReceiveMinRedPixels)
+                             && (r2g <= g2r / 4);
+
+                uint32_t bias_changed = 0, bias_g2r = 0, bias_r2g = 0;
+                CompareAppearance(d3_lum[0], d3_lum[2], bias_changed, bias_g2r, bias_r2g);
+                d3_bias_ok = (bias_changed >= kD3BiasMinChangedPixels);
+
+                // 三次读回两两完全一致 ⇒ 更可能是读回本身失败（布局/同步），
+                // 而不是"旋钮无效"——单独报出来，避免把工具问题当成引擎结论。
+                if ((changed + bias_changed) == 0)
+                    GLogError(u8"[D3-CONTRACT] 三帧读回两两逐像素相同——请先确认颜色读回"
+                              u8"（PRESENT_SRC→TRANSFER_SRC）是否真的取到了画面，再看旋钮；"
+                              u8"若本来就是对照组(ATS_D3_NOKNOB=1)，0 变化正是预期");
+
+                GLogInfo(u8"[D3-CONTRACT] receive_shadow %s: 关掉后 受影→未受影(变红) %u px / "
+                         u8"未受影→受影 %u px（同帧外观变化共 %u px；期望变红 >= %u 且反向 <= 变红/4）",
+                         d3_receive_ok ? "PASS" : "FAIL", g2r, r2g, changed,
+                         kD3ReceiveMinRedPixels);
+                GLogInfo(u8"[D3-CONTRACT] bias_multiplier %s: 倍率×1000 后外观变化 %u px"
+                         u8"（变红 %u / 变灰 %u；期望 >= %u，方向随 bias 符号而定）",
+                         d3_bias_ok ? "PASS" : "FAIL", bias_changed, bias_g2r, bias_r2g,
+                         kD3BiasMinChangedPixels);
+
+                const bool ok = contract_done && contract_ok
+                             && d3_receive_ok && d3_bias_ok;
+                GLogInfo(u8"[D3-CONTRACT] selfcheck: %s (exit %d)",
+                         ok ? "PASS" : "FAIL", ok ? 0 : 1);
+                std::exit(ok ? 0 : 1);
             }
         }
     }
@@ -666,6 +1005,11 @@ int os_main(int argc, os_char **argv)
     for (int i = 1; i < argc; ++i)
         if (argv[i] && OSString(argv[i]) == OSString(OS_TEXT("--selfcheck")))
             g_selfcheck = true;
+
+    // D3 对照组：照常读回三帧颜色，但不拨任何旋钮——用于确认"读回+逐像素对比"
+    // 这条链的噪声底为 0（三帧逐像素相同），否则任何差异都不能归因于旋钮。
+    if (const char *env = std::getenv("ATS_D3_NOKNOB"))
+        g_d3_noknob = (env[0] != '\0' && env[0] != '0');
 
     return RunFramework<AlphaTestShadowApp>(
         OS_TEXT("Alpha Test Shadow (masked vs fallback-opaque cascade shadow)"),

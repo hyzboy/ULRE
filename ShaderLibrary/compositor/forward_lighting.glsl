@@ -17,7 +17,8 @@
 #include "common/surface_interface.glsl"
 #include "common/lighting_interface.glsl"
 
-LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si)
+// D3：data_index = 本 FS 的材质数据行号（per-draw 行表），用于读该图元的接收侧阴影参数。
+LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si, uint data_index)
 {
     LightingInput lighting;
     lighting.baseColor = surf.baseColor;
@@ -34,7 +35,9 @@ LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si)
     lighting.mainLightColor = GetSkyMainLightColor();
     lighting.ambientColor = GetSkyAmbientColor();
     lighting.reflectionColor = vec3(0.0);
-    lighting.shadowFactor = GetShadowFactor(si);
+    // D3：阴影接收开关与局部偏差倍率随 per-draw 行到达（data_index = 本 FS 的
+    // 材质数据行号）。不接收阴影的图元在此恒得 1.0。
+    lighting.shadowFactor = GetShadowFactor(si, data_index);
     return lighting;
 }
 

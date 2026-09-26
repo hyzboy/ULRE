@@ -58,6 +58,17 @@ namespace hgl
             // Optimization settings
             Mobility mobility;
 
+            // ── D4：静态写入语义化 ─────────────────────────────────────────────
+            // "静态物体写一次就不动"是本引擎的硬约定（静态段写一次用很久；静态级联
+            // 阴影缓存的正确性前提就是"静态物体不动"）。违反约定的**运行期**写入会
+            // 整段重写静态矩阵并使全部静态级联缓存失效（当帧 4 级全量重绘），
+            // 因此必须留下痕迹而不是静默生效。
+            //   armed  —— 由 TransformSystem 在该组件已被渲染侧消费过后置位；
+            //             场景搭建期（首次 SubmitTransformUpdates 之前）写入不告警。
+            //   warned —— 每组件只报一次，避免每帧刷屏。
+            bool static_runtime_write_armed;
+            bool static_runtime_write_warned;
+
             // Fixed pixel-size mode (for gizmo/facing-quad-like controls)
             bool fixed_pixel_sizing_enabled;
             float fixed_pixel_diameter;
@@ -163,6 +174,15 @@ namespace hgl
             bool IsStatic() const { return mobility == Mobility::Static; }
             bool IsDirty() const { return matrixDirty; }
 
+            // ── D4：静态写入诊断（A′：把"静态写完不动"做成 API 语义）────────────
+            /// 组件已被渲染侧消费过（TransformSystem 在静态段同步时置位）。
+            /// 置位之后对 Static 物体的任何写入都算"运行期写"，代价是整段静态矩阵
+            /// 重写 + 全部静态级联缓存失效；会动的对象应当在创建期迁到 Movable。
+            void ArmStaticRuntimeWriteWarning() { static_runtime_write_armed = true; }
+            bool IsStaticRuntimeWriteArmed() const { return static_runtime_write_armed; }
+            /// 已经就"运行期写静态"报过一次（每组件一次，不刷屏）
+            bool HasWarnedStaticRuntimeWrite() const { return static_runtime_write_warned; }
+
         public:
 
             void OnAttach() override;
@@ -192,6 +212,9 @@ namespace hgl
             void UpdateWorldMatrix();
             void MigrateStorage(Mobility target_mobility);
             TransformDataStorage* GetStorage() const;
+
+            /// D4：运行期写 Static 物体的一次性告警（what = 调用方 setter 名）。
+            void WarnStaticRuntimeWrite(const char *what);
         };
     }//namespace ecs
 }//namespace hgl
