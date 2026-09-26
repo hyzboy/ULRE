@@ -2552,6 +2552,268 @@ int main(int argc, char** argv)
                  u8"non-integer step falls back).");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // 18: 环形寻址接缝可达性（S4）—— 证明 wrap 只发生在可见接收者够不到的地方
+    //
+    // 读侧是 `fract(uv + O·texel)`：整张贴图构成一个环，layout uv=0/1 是一条**跳变线
+    // （seam）**，其物理位置 = O（随偏移移动）。采样跨越 seam 会读到方框对侧的深度
+    // （世界距离 M 个 texel），因此只要可见接收者能贴到 seam，就会在那里留下一条
+    // 1~2 texel 宽的错影线。判据：视锥切片 8 个角点到方框边界的**最小余量（texel）**
+    // 必须大于采样可达半径：
+    //     可达半径 = pcf_radius（Poisson 磁盘 / 3x3 盒式最大 1.0·radius）
+    //              + normal_offset 硬上限 1.5m / texel_world_size（shader 里 tan(θ) 被 clamp）
+    // 余量（= (1-max|ndc|)/2 · M）与分辨率、级联世界半径自动缩放，故本用例逐级断言并
+    // 打印 slack 倍数；另钉住"极窄级联必然越过边界"的算例，使断言非空转。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const Vector3f light_dir = glm::normalize(Vector3f(0.5f, 0.8f, -1.0f));
+        const float aspect = 16.0f / 9.0f;
+        // pcf_shadow.glsl: SHADOW_NORMAL_OFFSET_MAX（源码契约里钉住它仍为 1.5）
+        const float kNormalOffsetHardCapM = 1.5f;
+
+        auto make_camera = []()
+        {
+            Camera c;
+            c.znear = 0.1f; c.zfar = 500.0f; c.fovY = 60.0f;
+            c.pos = Vector3f(0.0f, 0.0f, 1.7f);
+            c.world_up = Vector3f(0.0f, 1.0f, 0.0f);      // 显式：默认 (0,0,1) 与 +x 视线共线会 NaN
+            c.viewDirection = Vector3f(1.0f, 0.0f, 0.0f);
+            return c;
+        };
+
+        // 读侧公式（与 pcf_shadow.glsl 一致）：uv = 0.5 + 0.5*ndc.xy
+        const auto layout_uv = [](const Matrix4f &vp, const Vector3f &p)
+        {
+            const Vector4f clip = vp * Vector4f(p.x, p.y, p.z, 1.0f);
+            return Vector2f(0.5f + 0.5f * clip.x, 0.5f + 0.5f * clip.y);
+        };
+
+        // 与 example/Basic/CascadeShadowMap.cpp 同配置（B={0,16,16,32}、anchor=16m 用默认）
+        const auto make_cfg = [](float map_size)
+        {
+            CascadedShadowConfig cfg;
+            cfg.cascade_count = 4;
+            cfg.c0_dynamic_overlay = true;
+            cfg.shadow_map_size = map_size;
+            cfg.max_distance = 300.0f;
+            cfg.split_distances[0] = 50.0f;
+            cfg.split_distances[1] = 50.0f;
+            cfg.split_distances[2] = 160.0f;
+            cfg.split_distances[3] = 300.0f;
+            cfg.normal_offset_world = 0.10f;
+            cfg.pcf_radius = 1.5f;
+            return cfg;
+        };
+
+        struct SeamStat
+        {
+            float margin_min[4]   = { 1.0e9f, 1.0e9f, 1.0e9f, 1.0e9f };
+            float required_max[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            uint32_t wrap_frames[4] = {};
+        };
+
+        // 运动轨迹：分 4 个相位（朝向 0/60/120/180°，避开与 world_up=(0,1,0) 共线），
+        // 每相位内朝向固定、位置单调推进 —— 环形滚动的纯滚动分支要求**每帧位移恰跨一格**
+        // （|shift|==B），朝向乱转会让位移来回抹掉、多格跳变则回落整级重建，两种都拿不到
+        // wrap 生效帧。步长与级联锚定格 L_c = 2·B·r0/(M−1.416B) 有关：级联越窄/分辨率越高
+        // ⇒ L_c 越小 ⇒ 步长必须同步调小（否则每帧都是多格跳变 = 整级重建）。
+        const auto measure = [&](const CascadedShadowConfig &cfg, const uint32_t frames_per_phase,
+                                 const float step_m, SeamStat &st)
+        {
+            constexpr uint32_t kPhases = 4;
+            const float yaws[kPhases] = { 0.0f, 1.04719755f, 2.09439510f, 3.14159265f };
+            //                                   60°           120°          180°
+
+            for (uint32_t p = 0; p < kPhases; ++p)
+            {
+                const Vector3f dir(std::cos(yaws[p]), std::sin(yaws[p]), 0.0f);
+
+                CascadedShadowController ctrl(cfg);
+                Camera cam = make_camera();
+                cam.viewDirection = dir;
+                ShadowInfo info;
+                CascadeUpdateResult upd[kMaxShadowCascades];
+
+                for (uint32_t f = 0; f < frames_per_phase; ++f)
+                {
+                    cam.pos = Vector3f(0.0f, 0.0f, 1.7f) + dir * (static_cast<float>(f) * step_m);
+
+                    ctrl.Update(cam, aspect, light_dir, info, upd);
+
+                    const Vector3f cam_forward = dir;
+                    const Vector3f cam_right = glm::normalize(glm::cross(cam_forward, cam.world_up));
+                    const Vector3f cam_up = glm::cross(cam_right, cam_forward);
+                    const float tan_half = std::tan(cam.fovY * (std::numbers::pi / 180.0) * 0.5f);
+
+                    for (uint32_t c = 1; c < 4; ++c)
+                    {
+                        // 只有滚动帧（Offset 非零）才走 fract 环绕分支；未滚动帧的越界 tap
+                        // 钳在边缘，余量小也无副作用 ⇒ 只统计 wrap 真生效的帧。
+                        if ((upd[c].cache_offset.x == 0 && upd[c].cache_offset.y == 0)
+                            || upd[c].texel_world_size <= 0.0f)
+                            continue;
+
+                        ++st.wrap_frames[c];
+
+                        const Matrix4f vp_read = upd[c].light_proj * upd[c].light_view;
+                        const float s_near = (c == 1 && cfg.c0_dynamic_overlay)
+                                                 ? cam.znear : cfg.split_distances[c - 1];
+                        const float dists[2] = { s_near, cfg.split_distances[c] };
+
+                        float margin_ndc = 1.0e9f;
+                        for (int d = 0; d < 2; ++d)
+                        {
+                            const float hh = dists[d] * tan_half;
+                            const float ww = hh * aspect;
+                            for (int sx = -1; sx <= 1; sx += 2)
+                            {
+                                for (int sy = -1; sy <= 1; sy += 2)
+                                {
+                                    const Vector3f corner = cam.pos + cam_forward * dists[d]
+                                                          + cam_right * (ww * static_cast<float>(sx))
+                                                          + cam_up * (hh * static_cast<float>(sy));
+                                    const Vector2f uv = layout_uv(vp_read, corner);
+                                    margin_ndc = std::min(margin_ndc,
+                                                          std::min(std::min(uv.x, 1.0f - uv.x),
+                                                                   std::min(uv.y, 1.0f - uv.y)));
+                                }
+                            }
+                        }
+
+                        st.margin_min[c] = std::min(st.margin_min[c], margin_ndc * cfg.shadow_map_size);
+                        st.required_max[c] = std::max(st.required_max[c],
+                                                      cfg.pcf_radius
+                                                          + kNormalOffsetHardCapM / upd[c].texel_world_size);
+                    }
+                }
+            }
+        };
+
+        // ① 默认档（示例同配置）：逐级断言余量 > 可达半径（步长 2.0m < 各级 L_c）
+        SeamStat base;
+        measure(make_cfg(1024.0f), 128, 2.0f, base);
+
+        for (uint32_t c = 1; c < 4; ++c)
+        {
+            if (base.wrap_frames[c] < 4)
+            {
+                GLogError(u8"Test 18 Failed: cascade %u 在 512 帧轨迹里 wrap 生效帧只有 %u 帧"
+                          u8"——seam 余量在非滚动帧上量测没有意义，本用例形同虚设",
+                          c, base.wrap_frames[c]);
+                return 18;
+            }
+            if (base.margin_min[c] <= base.required_max[c])
+            {
+                GLogError(u8"Test 18 Failed: cascade %u 视锥角点距方框边界只剩 %.3f texel，"
+                          u8"而采样可达半径 %.3f texel——PCF/normal-offset 的 tap 会跨过 seam "
+                          u8"读到方框对侧深度，贴图上会出现一圈错影",
+                          c, base.margin_min[c], base.required_max[c]);
+                return 18;
+            }
+        }
+        GLogInfo(u8"[CSM-SEAM-MARGIN] margin(texel)=[%.1f,%.1f,%.1f] required=[%.1f,%.1f,%.1f] "
+                 u8"slack=[%.1fx,%.1fx,%.1fx] wrap_frames=[%u,%u,%u]",
+                 base.margin_min[1], base.margin_min[2], base.margin_min[3],
+                 base.required_max[1], base.required_max[2], base.required_max[3],
+                 base.margin_min[1] / base.required_max[1],
+                 base.margin_min[2] / base.required_max[2],
+                 base.margin_min[3] / base.required_max[3],
+                 base.wrap_frames[1], base.wrap_frames[2], base.wrap_frames[3]);
+
+        // ② 分辨率扫描：余量与可达半径都随 M 线性增长，slack 倍数应基本不变
+        //    （可达半径 = pcf + 1.5·M/(2r0)、余量 ≈ 0.13·M ⇒ slack ∝ 级联世界半径 r0）
+        {
+            const float sizes[4] = { 256.0f, 512.0f, 1024.0f, 2048.0f };
+            float slack[4] = {};
+            for (int i = 0; i < 4; ++i)
+            {
+                SeamStat st;
+                measure(make_cfg(sizes[i]), 96, 0.5f, st);
+                float worst = 1.0e9f;
+                for (uint32_t c = 1; c < 4; ++c)
+                    if (st.wrap_frames[c] > 0 && st.required_max[c] > 0.0f)
+                        worst = std::min(worst, st.margin_min[c] / st.required_max[c]);
+                slack[i] = worst;
+            }
+            // 分辨率提高不会让 seam 变得可达（最坏数不应随 M 恶化超过 10%）
+            if (slack[3] < slack[0] * 0.9f)
+            {
+                GLogError(u8"Test 18 Failed: 分辨率升高后 seam slack 反而恶化（M=256 → %.2fx，"
+                          u8"M=2048 → %.2fx）——可达半径/余量的缩放模型不再成立", slack[0], slack[3]);
+                return 18;
+            }
+            GLogInfo(u8"[CSM-SEAM-MARGIN] M=256/512/1024/2048 slack=[%.1fx,%.1fx,%.1fx,%.1fx]",
+                     slack[0], slack[1], slack[2], slack[3]);
+        }
+
+        // ③ 边界算例：级联世界半径越小，texel 越细 ⇒ 固定 1.5m 的 normal-offset 上限
+        //    折合的 texel 数越大，最终越过"余量"⇒ seam 变可达。此处钉住该边界**存在**，
+        //    证明 ① 的断言不是恒真。
+        {
+            CascadedShadowConfig narrow = make_cfg(1024.0f);
+            narrow.split_distances[0] = 1.0f;
+            narrow.split_distances[1] = 1.0f;
+            narrow.split_distances[2] = 2.0f;
+            narrow.split_distances[3] = 4.0f;
+            narrow.max_distance = 4.0f;
+
+            // 窄级联的锚定格只有 2~10cm，步长必须小到不触发多格跳变（5mm/帧）
+            SeamStat st;
+            measure(narrow, 384, 0.005f, st);
+
+            bool violated = false;
+            for (uint32_t c = 1; c < 4; ++c)
+                if (st.wrap_frames[c] > 0 && st.margin_min[c] <= st.required_max[c])
+                    violated = true;
+
+            if (!violated)
+            {
+                GLogError(u8"Test 18 Failed: 例级联（世界半径 <2m）也未越过 seam 边界"
+                          u8"——判据对配置不敏感，① 的断言等价于恒真");
+                return 18;
+            }
+            GLogInfo(u8"[CSM-SEAM-MARGIN] 窄级联边界算例（r0≈0.5~2m）margin=[%.1f,%.1f,%.1f] "
+                     u8"required=[%.1f,%.1f,%.1f] ⇒ 越过边界（配置约束：级联世界半径过小时"
+                     u8"须下调 normal_offset_world 或关闭横向滚动）",
+                     st.margin_min[1], st.margin_min[2], st.margin_min[3],
+                     st.required_max[1], st.required_max[2], st.required_max[3]);
+        }
+
+        // ④ 着色器源码契约：wrap 必须逐级由 cache_offset 驱动，且保留非滚动的 clamp 分支
+        {
+            const OSString kPcf(OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"));
+            const SourceContract seam_contracts[] =
+            {
+                { "pcf_shadow.glsl", kPcf, "shadow.cascades[c].cache_offset.x != 0.0",
+                  "wrap 必须逐级由该级联的 cache_offset 驱动（全局/编译期开关会让未滚动的级联也环绕）" },
+                { "pcf_shadow.glsl", kPcf, "fract(shadow_uv + offset_uv)",
+                  "读侧映射失效：物理 uv 不再与 cache_offset 对齐，滚动后阴影会整体滑一整个步长" },
+                { "pcf_shadow.glsl", kPcf, "fract(tap)",
+                  "tap 环绕缺失：条带尾部 |O| 纹素的采样会读到未刷新区域" },
+                { "pcf_shadow.glsl", kPcf, "clamp(tap, vec2(0.0), vec2(1.0))",
+                  "未滚动级联的越界 tap 必须钳在贴图边缘，否则方框边缘出现 1~2 texel 杂斑圈" },
+                { "pcf_shadow.glsl", kPcf, "const float SHADOW_NORMAL_OFFSET_MAX = 1.5;",
+                  "normal-offset 硬上限是 seam 余量判据的输入；改动它必须同步复核 Test 18 的模型" },
+                { "pcf_shadow.glsl", kPcf, "fract(shadow_uv)",
+                  "禁复活：不带偏移的 fract 意味着 wrap 与 cache_offset 解耦（未滚动也会环绕）",
+                  true },
+                { "pcf_shadow.glsl", kPcf, "HGL_SHADOW_TOROIDAL",
+                  "禁复活：环形寻址是逐级运行期决策，不得退回编译期全局开关",
+                  true },
+            };
+
+            const int src_rc = verify_source_contracts(18, seam_contracts,
+                                                       static_cast<uint>(sizeof(seam_contracts)
+                                                                         / sizeof(seam_contracts[0])));
+            if (src_rc != 0)
+                return src_rc;
+        }
+
+        GLogInfo(u8"Test 18 Passed: toroidal seam is out of reach for visible receivers "
+                 u8"(margin > pcf_radius + normal_offset_cap/texel; wrap stays per-cascade "
+                 u8"and cache_offset-driven).");
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

@@ -65,10 +65,12 @@
   直接拒绝（不假装支持）。
 - **触发条件**：点光源阴影（cubemap 6 面）、CSM（array）、前向 MSAA。
   desc 字段已预留位置。
-- **CSM 滚动缓存 Step 1**：已建立固定 4 级的 `ShadowInfo` 扩展契约，
-  保留旧单级字段作为 fallback，并追加级联 split、光空间 texel snap、
-  环形 offset、有效区域和 CPU 缓存状态。当前尚未启用 array attachment
-  或增量条带绘制；后续仍需完成 layer view、静态物体筛选和失效重建。
+- **CSM 滚动缓存**：**已落地**（2026-09-26）——固定 4 级 `ShadowInfo`、级联 split、光空间
+  texel snap、环形 offset + 有效区域 + CPU 缓存状态、array layer view（`SetCascadeTexture(handle, layer)`）、
+  静态物体筛选（条带路径 `mobility_filter=Static`）、失效重建（`InvalidateStaticCache`）**全部接通**，
+  横向锚定（texel 口径 B 档）+ 环形条带滚动 + 接缝可达性判据均已验收（backlog D5 S1/S2/S4 ✅）。
+  本卡剩余：cubemap 6 面（点光源阴影）与前向 MSAA 仍未实现（`fb_info.layers=1`、
+  `BeginRendering` 的 `layerCount=1` 硬编码、`RenderTargetDesc::samples != 1` 被 `IsValid()` 拒绝）。
 
 ### A7. 离屏 RT in-flight 槽
 
@@ -284,7 +286,7 @@
   解释了冒烟日志里那 2 次（长跑 16 次）`invalidating static cascade` 的来源：不是回归，
   是示例自身的刻意取舍（代码处已加注释说明）。
 
-### D5. A8 scissor 增量分支：接通条带滚动（路线 A，S1 ✅ / S2 ✅）
+### D5. A8 scissor 增量分支：接通条带滚动（路线 A，S1 ✅ / S2 ✅ / S4 ✅）
 - **决策（2026-09-26 用户）**：走**路线 A**——接通 Toroidal 条带滚动，不删死分支；
   与 A6（4 级联合并）**解耦推进**（A6 之后再合并，条带滚动先独立可用）。
 - **主参数口径（用户裁定）**：横向锚定步长以 **shadowmap 侧 texel 数 `B_c`** 为主参数，
@@ -344,10 +346,26 @@
     因此测试用 `B=24` 专门覆盖该分支。另外**深度锚点 `cache_anchor_step` 跨步会清零偏移**，
     是偏移累积的最大杀手（跨缝需连续 40+ 次跨格不被打断）——子用例 (e) 为此把 `anchor_step`
     放到 4096 以隔离横向滚动。
-- **后续（S4–S5，未开始）**：S4 实测 shader `toroidal_wrap` 边界（`cache_offset≠0` 已生效，
-  需确认贴图边缘 ~2 texel 无杂斑圈，必要时条带内 wrap、带外 clamp）；S5 量测——
-  示例 stats 接 `band=N texel / area=P% / offset=(x,y)`（现仍恒 `0 strips/100% Cached`）
-  + 用 **E1** 读回工具对拍整级 vs 条带同帧深度图找接缝。
+- **S4 ✅（2026-09-26，接缝可达性量化——不需要改 shader，`wrap` 判定**被证安全**）**：
+  - 判据（Test 18）：视锥切片 8 角点到方框边界的余量 `(1−max|ndc|)/2·M` 必须 >
+    可达半径 `pcf_radius + 1.5m/texel_world`（1.5 = shader 的 `SHADOW_NORMAL_OFFSET_MAX`，
+    即 normal-offset 的悲观上限；PCF 侧 Poisson 磁盘半径归一化到 1 ⇒ `1.0·pcf_radius`）。
+  - **示例配置实测**：`margin=[23.2,26.5,34.9]` texel vs `required=[13.0,5.3,3.5]`
+    texel ⇒ slack `=[1.8×,5.1×,10.0×]`（wrap 生效帧 459/381/308，防空跑守卫）。
+    ⇒ 安全，但 **c1 只有 1.8 倍余量**，且余量随 `normal_offset`/`pcf_radius`/切分距离
+    调整而消耗（Test 18 已把 `SHADOW_NORMAL_OFFSET_MAX = 1.5` 钉进源码契约）。
+  - **两条可迁移结论**：① slack 与分辨率**无关**（实测 M=256/512/1024/2048 →
+    1.9/1.9/1.8/1.8×），只随级联世界半径 r0 变化（`slack ≈ 0.17·r0`）——大贴图的收益是
+    同一 B 对应更小的世界步长，不是更安全的接缝；② **配置约束：级联世界半径
+    r0 ≲ 6m 时 seam 变可达**（Test 18 ③ 用 splits `{1,1,2,4}` 钉住该边界：
+    margin 24~34 texel vs required 151~585 texel ⇒ 断言非恒真），这种配置须下调
+    `normal_offset_world` 或该级关横向滚动。
+  - **不需要"条带内 wrap、带外 clamp"**：那条备选方案针对的是"可见接收者能贴到 seam"，
+    而 §4.6 的余量判据已证明够不到（1.8× 最小余量）；反过来若某配置真贴到 seam，
+    正确的修法是调配置，不是给 shader 再加一层分支。
+- **后续（S5，未开始）**：示例 stats 接 `band=N texel / area=P% / offset=(x,y)`
+  （现仍恒 `0 strips/100% Cached`）+ 用 **E1** 读回工具对拍整级 vs 条带同帧深度图
+  （E1 已被用户留置 ⇒ S5 可先用示例里现成的 `DumpCascadeDepth` 做，不必等 E1）。
 - **S1 遗留待同步**：示例 stats `C1/C2/C3 = N strips` 仍恒 0（S5 接）；`texel_world_size`
   仍只写不读（S5 用）。
 

@@ -404,6 +404,49 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
 
 ---
 
+### 4.6 环形读侧的**接缝（seam）可达性**（S4，2026-09-26 量测）
+
+读侧是 `fract(shadow_uv + cache_offset·texel)`：整张贴图构成一个环，`layout uv = 0/1`
+是一条**跳变线（seam）**，其物理位置 = `cache_offset`（滚动时随偏移移动）。采样跨越
+seam 会读到方框**对侧**的深度（世界距离 M 个 texel）⇒ 若可见接收者能贴到 seam，
+贴图上就有一条 1~2 texel 宽的错影线。这就是"wrap 必须由 `cache_offset` 驱动、
+未滚动时钳在边缘"的原始动机（Test 7C 钉住）。
+
+**判据（Test 18 逐帧/逐级断言）**：视锥切片 8 个角点到方框边界的**最小余量**必须
+大于采样可达半径
+
+```
+margin(texel)   = (1 − max|ndc_xy|)/2 · M        // ndc 由读侧 shadow_vp 投出
+required(texel) = pcf_radius + 1.5m / texel_world   // 1.5 = SHADOW_NORMAL_OFFSET_MAX 硬上限
+```
+
+`1.5m/texel` 这一项是 normal-offset 的**悲观**可达半径：偏移量 = `clamp(strength·tanθ, 0, 1.5)`
+（米），掠射面（θ→86°）会顶到 1.5m 上限；PCF 侧 Poisson 磁盘半径归一化到 1 ⇒ 最多
+`1.0·pcf_radius` 个 texel。
+
+**示例配置实测**（splits `{50,50,160,300}`、M=1024、B=`{0,16,16,32}`、pcf 1.5、
+normal_offset 0.10m；4 相位 × 128 帧、2m/帧）
+
+| 级联 | margin(texel) | required(texel) | slack |
+|---|---|---|---|
+| c1 | 23.2 | 13.0 | **1.8×** |
+| c2 | 26.5 | 5.3 | 5.1× |
+| c3 | 34.9 | 3.5 | 10.0× |
+
+⇒ 安全但 **c1 只有 1.8 倍余量**（近景级联 texel 最细 ⇒ required 最大）。
+
+**两条可迁移结论**：
+
+1. **slack 与分辨率无关，只随级联世界半径 r0 变化**：`required ≈ 1.5·M/(2r0)`、
+   `margin ≈ 0.13·M` ⇒ `slack ≈ 0.17·r0`。实测 M=256/512/1024/2048 的 slack =
+   1.9/1.9/1.8/1.8×（Test 18 ② 扫描）。所以"把贴图开大"不会让 seam 更安全或更危险。
+2. **配置约束：级联世界半径过小（r0 ≲ 6m）时 seam 变可达**（Test 18 ③ 用
+   splits `{1,1,2,4}` 钉住该边界：margin 24~34 texel vs required 151~585 texel）。
+   遇到这种配置要么下调 `normal_offset_world`、要么该级关横向滚动。**反过来也说明
+   提高 `SHADOW_NORMAL_OFFSET_MAX`、加大 `pcf_radius`、把 c1 的切分距离调小都会
+   吃掉余量**——Test 18 的源码契约已把 `SHADOW_NORMAL_OFFSET_MAX = 1.5` 钉住，
+   改动它会直接失败并要求同步复核模型。
+
 ---
 
 ## 5. 背面渲染与 bias 极性
@@ -644,6 +687,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | **Test 15** | **静态物件运行期写入留痕**（11 源码 + 5 行为）：八条写入路径都留痕、同值写也告警且只告警一次、未 arm（无静态变更）不告警、`Movable` 不告警（§D4） | `Test 15 Passed: ... (11+5 checks)` |
 | **Test 16** | **横向锚定步长是 texel 口径**（S1）：独立量测 `texel(B)` 与 `texel(0)` 反解 `L`，断言 `L/texel ≡ B`（整数 texel 量子）、精度损失 `= 1.416·B/(M−1.416B)`、c0 不受 B 影响、`B ≥ M/1.416` 退化时 fail-safe 回禁用、B 单调；源码 needle 2 条 + 禁复活世界米字段 | `[CSM-BAND] B={0,16,16,32} texel(bare)=[0.03819 ...] loss=[2.26% 2.26% 4.63%]` |
 | **Test 17** | **环形滚动的坐标契约**（S2，主用例 3 条纯 CPU 不变式 + 子用例 (e) 跨缝）：① 物理不动（同一世界点物理 uv 跨格不变）② 写读一致（`vp_draw` 投出的 uv ≡ `fract(uv+O·texel)`）③ 整级重建必清偏移 ④ 新暴露内容必须落在 `dirty_rects` 并集内（探针由当前框几何生成、是否"新暴露"由**上一帧矩阵**独立判定）⑤ 面积契约（纯滚动帧沿主轴各段宽度之和 == 该轴位移量，咬住 1 纹素截短/多画）⑥ 非整步回落（`cache_anchor_step=0` 档）+ 空跑守卫（跨格/覆盖检查/命中帧/反向跨格计数） | `[CSM-SCROLL] frames=400 crossings=[349,207,44] 条带覆盖检查=1602 次 命中帧=1135 反向跨格=268 次` + `[CSM-SEAM] B=24 M=1024 覆盖检查=2577 次 跨缝拆分=8 次 反向跨格=297 次` |
+| **Test 18** | **环形读侧的接缝可达性**（S4）：视锥切片 8 角点到方框边界的余量 `(1−max\|ndc\|)/2·M` 必须 > `pcf_radius + 1.5m/texel_world`；只统计 **wrap 真生效**（`cache_offset≠0`）的帧并要求每级 ≥4 帧（防空跑）；② 分辨率扫描 M=256..2048 断言 slack 不随 M 恶化；③ 极窄级联（splits `{1,1,2,4}`）必须**越过**边界（证明断言非恒真）；④ shader 源码契约 5 正 + 2 禁复活（`fract(shadow_uv)`、`HGL_SHADOW_TOROIDAL`），并钉住 `SHADOW_NORMAL_OFFSET_MAX = 1.5` | `[CSM-SEAM-MARGIN] margin=[23.2,26.5,34.9] required=[13.0,5.3,3.5] slack=[1.8x,5.1x,10.0x] wrap_frames=[459,381,308]` |：行结构唯一真源 X 列表 + 行大小自动推导 + 发射端遍历列表 + 写入端取 `CanReceiveShadow/GetBiasMultiplier` + 片元端 `GetShadowReceiveParams`/不接收早退/倍率乘进 bias 与法线偏移 + 3 条**禁复活** needle（`sizeof(MaterialInstanceAddresses) == 8`、发射端 `uint payload_index` 手写、`EvalPCFShadowAt(sample_pos, surface.worldPos)` 无倍率调用） | `Test 14 Passed: shadow receive-side knob contract holds (22 checks)` |
 
 ### 写这类断言的两个硬要求
 
@@ -694,6 +738,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | 相机移动时静态阴影**整体滑动一个步长** | `cache_offset`、`light_view_draw` | 偏移累加方向错（`O += shift`，不是 `-= shift`）或写侧平移 y 符号错（应为 `-offset.y*texel`）；跑 Test 17 ①（物理不动）/②（写读一致）定位 |
 | 静态阴影**整片消失/落后一段** | `need_full_update` 与 `cache_offset` | 非零偏移下走了整级重画（偏移未清零）⇒ 光栅器无环绕、尾部 `|O|` 条带被裁；查 Test 17 ③ |
 | 贴图**边缘一条 1~2 texel 宽亮/暗线**（pcf 半径外扩后显现） | `AppendWrappedStrip` | 跨缝条带未拆成两段或被截短（`M % B != 0` 时可达）；跑 Test 17 子用例 (e) 与面积契约⑤ |
+| 贴图上一条**随相机移动的 1~2 texel 错影线**（在阴影区内，不在贴图几何边缘） | Test 18 的 margin/required | seam 真实可达：级联世界半径过小（r0 ≲ 6m）或 `normal_offset`/`pcf_radius`/切分距离调整吃掉了余量；按 §4.6 的 slack 公式核算，必要时下调 `normal_offset_world` 或该级关横向滚动 |
 | 相机移动时静态级联**频繁整级重建** | `along_anchor`（深度锚点） | `cache_anchor_step` 太小 ⇒ 每 `step` 米跨一次就整级重建并清零偏移（会同时抹掉滚动收益） |
 | 接触点**漏光 / peter-panning** | `bias` 符号 | 背面渲染下 bias 取了正值（§5） |
 | 陡峭表面**条纹**（acne） | `normal_offset_world`、`bias` 绝对值、`pcf_radius` | 先开法线偏移（§5.2）；仍不干净才是缺 slope-scaled bias（§5 末尾） |
