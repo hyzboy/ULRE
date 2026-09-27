@@ -5,6 +5,7 @@
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/ubo/GlobalAddresses.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayoutEngine.h>
@@ -295,8 +296,10 @@ namespace hgl::ecs
             if (!addr_rc && world)
                 addr_rc = world->GetRenderContext();
             graph::GraphicsContext *addr_gc = addr_rc ? addr_rc->GetGraphicsContext() : nullptr;
+            // 表按帧槽多份：用本批次所属帧槽（= active_cam_row 的低位）取本槽表地址。
             const uint64_t addr_global_addresses =
-                addr_gc ? addr_gc->GetGlobalAddressesAddress() : 0;
+                addr_gc ? addr_gc->GetGlobalAddressesAddress(
+                              graph::GlobalAddressesSlotFromCameraRow(active_cam_row)) : 0;
 
             graph::PushRootAddresses(
                 cmd,

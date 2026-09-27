@@ -11,6 +11,7 @@
 #include <hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include <hgl/graph/render/RenderContext.h>
+#include <hgl/graph/ubo/GlobalAddresses.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/geo/GeometryCreater.h>
@@ -767,8 +768,10 @@ namespace hgl::ecs
         if (!addr_gc)
             if (auto *addr_rc = context_ ? context_->GetRenderContext() : nullptr)
                 addr_gc = addr_rc->GetGraphicsContext();
+        // 表按帧槽多份：用本批次所属帧槽（= active_cam_row 的低位）取本槽表地址。
         const uint64_t addr_global_addresses =
-            addr_gc ? addr_gc->GetGlobalAddressesAddress() : 0;
+            addr_gc ? addr_gc->GetGlobalAddressesAddress(
+                          graph::GlobalAddressesSlotFromCameraRow(active_cam_row)) : 0;
 
         graph::PushRootAddresses(
             cmd,

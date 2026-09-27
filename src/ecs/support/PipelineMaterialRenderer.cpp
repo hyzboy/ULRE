@@ -10,6 +10,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/graph/ubo/GlobalAddresses.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKGlobalSceneUBOSet.h>
@@ -173,8 +174,10 @@ namespace hgl::ecs
             // 全局地址表基址 = 本次 push 的根入口（其余全局地址都在表内，不再逐个 push）
             graph::GraphicsContext *addr_gc =
                 render_context ? render_context->GetGraphicsContext() : nullptr;
+            // 表按帧槽多份：本批次属于哪一帧槽由相机行号决定（行号 = camera_id*槽总数+槽）。
             const uint64_t addr_global_addresses =
-                addr_gc ? addr_gc->GetGlobalAddressesAddress() : 0;
+                addr_gc ? addr_gc->GetGlobalAddressesAddress(
+                              graph::GlobalAddressesSlotFromCameraRow(camera_id)) : 0;
 
             graph::PushRootAddresses(
                 cmd_buf,

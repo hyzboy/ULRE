@@ -90,8 +90,12 @@ private:
     ActiveRowPool pools[GlobalSSBOTypeCount];
     DeviceBuffer *global_addresses_table_buffer = nullptr;
     StructView<GlobalAddresses> *global_addresses_table = nullptr;
-    uint64_t      global_addresses_addr = 0;      ///< 表基址（pc_root.addr_global_addresses 取址源）
+    uint64_t      global_addresses_addr = 0;      ///< 表**第 0 槽**基址；第 n 槽 = 基址 + n*槽步长
     bool initialized = false;
+
+    /// CPU 侧镜像（表内容的真源）：写表时逐槽组合 —— 表本体只有一份，
+    /// 槽靠「基址 + 槽号*槽步长」切分。
+    GlobalAddresses global_addresses_global{};
 
     GlobalSSBOBufferRegistry(GraphicsContext *);
     ~GlobalSSBOBufferRegistry() = default;
@@ -128,8 +132,14 @@ public:
         return pool ? pool->GetGPUBase() : 0;
     }
 
-    /// 全局地址表基址（pc_root.addr_global_addresses 的取址来源；未初始化时为 0）
-    uint64_t GetGlobalAddressesAddress() const { return global_addresses_addr; }
+    /// 本帧槽的表地址（pc_root.addr_global_addresses 的取址来源；未初始化时为 0）。
+    /// 槽号取模 —— 调用方直接送 Context::GetFrameIndex() 或 CameraRow % 槽总数。
+    uint64_t GetGlobalAddressesAddress(uint32_t frame_slot) const;
+
+    /// 把当前全局字段写入某帧槽（内容无变化则跳过）。全局字段对所有帧槽相同，
+    /// 因此改全局字段后要 CommitAllSlots()。
+    bool CommitSlot(uint32_t frame_slot);
+    bool CommitAllSlots();
 
     void UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids);
 

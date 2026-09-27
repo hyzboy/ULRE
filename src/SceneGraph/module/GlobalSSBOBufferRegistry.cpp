@@ -97,8 +97,11 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
 
     // BDA：必须以 SHADER_DEVICE_ADDRESS usage 创建才拿得到设备地址（CreateUBO 的额外
     // usage 位是 0）；分配策略（ReBAR/暂存）由 usage 位派生，StructView 的写入路径不变。
-    global_addresses_table_buffer = bm->CreateSSBO("GlobalAddressesTable",
-                                                 StructView<GlobalAddresses>::GetSize());
+    // 表本体一份、**按帧槽切成 kGlobalAddressesSlotCount 份**：每帧只写自己那一槽
+    // （在途帧共享同一块表 ⇒ 单份会被覆盖写踩掉）。
+    global_addresses_table_buffer =
+        bm->CreateSSBO("GlobalAddressesTable",
+                       VkDeviceSize(kGlobalAddressesSlotStride) * kGlobalAddressesSlotCount);
     if (!global_addresses_table_buffer)
     {
         GLogError("[GlobalSSBOBufferRegistry] Failed to create GlobalAddressesTable buffer");
@@ -122,53 +125,86 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
         return false;
     }
 
-    GlobalAddresses ga{};
-    ga.addr_mesh_draw_params     = GetGPUBase(GlobalSSBOType::MeshDrawParams);
-    ga.addr_pbr_surface          = GetGPUBase(GlobalSSBOType::PBRSurface);
-    ga.addr_emissive_surface     = GetGPUBase(GlobalSSBOType::EmissiveSurface);
-    ga.addr_transmission_surface = GetGPUBase(GlobalSSBOType::TransmissionSurface);
-    ga.addr_global_render_items  = 0;
-    ga.addr_draw_item_ids        = 0;
-    ga.addr_camera_info          = GetGPUBase(GlobalSSBOType::CameraInfo);
-    ga.addr_color_palette        = 0;   // 由 ColorPaletteSystem 创建后注册（UpdateColorPaletteAddress）
+    global_addresses_global = GlobalAddresses{};
+    global_addresses_global.addr_mesh_draw_params     = GetGPUBase(GlobalSSBOType::MeshDrawParams);
+    global_addresses_global.addr_pbr_surface          = GetGPUBase(GlobalSSBOType::PBRSurface);
+    global_addresses_global.addr_emissive_surface     = GetGPUBase(GlobalSSBOType::EmissiveSurface);
+    global_addresses_global.addr_transmission_surface = GetGPUBase(GlobalSSBOType::TransmissionSurface);
+    global_addresses_global.addr_global_render_items  = 0;
+    global_addresses_global.addr_draw_item_ids        = 0;
+    global_addresses_global.addr_camera_info          = GetGPUBase(GlobalSSBOType::CameraInfo);
+    global_addresses_global.addr_color_palette        = 0;   // 由 ColorPaletteSystem 注册（UpdateColorPaletteAddress）
 
-    global_addresses_table->Update(ga);
-    global_addresses_table->Commit();
+    CommitAllSlots();
 
     return true;
 }
 
-void GlobalSSBOBufferRegistry::UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids)
+uint64_t GlobalSSBOBufferRegistry::GetGlobalAddressesAddress(uint32_t frame_slot) const
+{
+    if (global_addresses_addr == 0)
+        return 0;
+
+    return global_addresses_addr
+         + uint64_t(frame_slot % kGlobalAddressesSlotCount) * uint64_t(kGlobalAddressesSlotStride);
+}
+
+bool GlobalSSBOBufferRegistry::CommitSlot(uint32_t frame_slot)
 {
     if (!global_addresses_table)
+        return false;
+
+    auto *base = reinterpret_cast<uint8_t *>(global_addresses_table->Data());
+    if (!base)
+        return false;
+
+    const uint32_t slot = frame_slot % kGlobalAddressesSlotCount;
+
+    // 槽步长是上界（可能大于 sizeof）⇒ 按字节偏移取槽，不能写 slots[slot]。
+    auto *dst = reinterpret_cast<GlobalAddresses *>(base + size_t(slot) * kGlobalAddressesSlotStride);
+
+    const GlobalAddresses want = global_addresses_global;
+
+    if (memcmp(dst, &want, sizeof(GlobalAddresses)) == 0)
+        return false;
+
+    *dst = want;
+    global_addresses_table->Commit();
+    return true;
+}
+
+bool GlobalSSBOBufferRegistry::CommitAllSlots()
+{
+    bool any = false;
+
+    for (uint32_t slot = 0; slot < kGlobalAddressesSlotCount; ++slot)
+        any = CommitSlot(slot) || any;
+
+    return any;
+}
+
+void GlobalSSBOBufferRegistry::UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids)
+{
+    // 这两个是全局字段（所有帧槽相同）⇒ 改动后整表所有槽一起更新。
+    if (global_addresses_global.addr_global_render_items == addr_render_items
+     && global_addresses_global.addr_draw_item_ids == addr_draw_item_ids)
         return;
 
-    GlobalAddresses *ga = global_addresses_table->Data();
-    if (!ga)
-        return;
+    global_addresses_global.addr_global_render_items = addr_render_items;
+    global_addresses_global.addr_draw_item_ids       = addr_draw_item_ids;
 
-    if (ga->addr_global_render_items != addr_render_items || ga->addr_draw_item_ids != addr_draw_item_ids)
-    {
-        ga->addr_global_render_items = addr_render_items;
-        ga->addr_draw_item_ids = addr_draw_item_ids;
-        global_addresses_table->Commit();
-    }
+    CommitAllSlots();
 }
 
 void GlobalSSBOBufferRegistry::UpdateColorPaletteAddress(uint64_t addr_color_palette)
 {
-    if (!global_addresses_table)
+    // 全局字段（构造期写入、长期有效）⇒ 整表所有槽一起更新。
+    if (global_addresses_global.addr_color_palette == addr_color_palette)
         return;
 
-    GlobalAddresses *ga = global_addresses_table->Data();
-    if (!ga)
-        return;
+    global_addresses_global.addr_color_palette = addr_color_palette;
 
-    if (ga->addr_color_palette != addr_color_palette)
-    {
-        ga->addr_color_palette = addr_color_palette;
-        global_addresses_table->Commit();
-    }
+    CommitAllSlots();
 }
 
 bool GlobalSSBOBufferRegistry::InitializePools()
