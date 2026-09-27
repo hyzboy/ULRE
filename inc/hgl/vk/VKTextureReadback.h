@@ -19,6 +19,12 @@
  *   不做任何格式转换；每像素字节数取 `GetStrideByFormat(纹理格式)`。
  * - 每次调用新建 staging buffer 与一次性命令缓冲，读完即释放，并在提交前排空图形队列
  *   ⇒ 只用于**离线/诊断**，不要放进每帧渲染热路径。
+ *
+ * **交换链颜色图（可呈现图）只能在帧内读回**：它只在「acquire 之后、Present 之前」是
+ * 「已 acquire」状态，窗口外做布局转换/拷贝会触发真 VUID（presentable image has not been
+ * acquired）。`ReadbackColorTarget` 按 `IRenderTarget::IsColorReadbackWindowOpen()` 直接拒绝
+ * 窗口外的请求；帧内入口是 `SwapchainRenderTarget::SetInFrameReadbackHook()`——在该回调里
+ * 调用 `ReadbackColorTarget` 即可。离屏 RT 不受此限（其附件不是可呈现图）。
  */
 namespace hgl::graph
 {
@@ -46,6 +52,9 @@ namespace hgl::graph
                          TextureReadbackInfo *out_info = nullptr);
 
     /// 读回渲染目标的颜色附件（color_index 越界或该附件不存在返回 false）
+    ///
+    /// @note 交换链 RT：只允许在 `SetInFrameReadbackHook()` 的回调（帧内提交后、Present 前）里
+    ///       调用；窗口外调用被拒绝（真 VUID 的护栏），见文件头说明。
     bool ReadbackColorTarget(IRenderTarget *rt, std::vector<uint8_t> &out_pixels,
                              uint32_t color_index = 0,
                              TextureReadbackInfo *out_info = nullptr);

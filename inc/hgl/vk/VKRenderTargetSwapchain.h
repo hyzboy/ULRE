@@ -4,6 +4,7 @@
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/common/RenderOptions.h>
 #include<hgl/log/Log.h>
+#include<functional>
 
 namespace hgl::graph{
 
@@ -48,6 +49,13 @@ class SwapchainRenderTarget : public IRenderTarget
     Semaphore*          main_lane           = nullptr;
     uint64_t            main_lane_value     = 0;
 
+    /// 颜色读回窗口状态：`NextFrame()` 成功后开启，`Submit()` 收尾（Present 之后）关闭。
+    /// 只有在这个窗口里，交换链颜色图才是「已 acquire、未 present」⇒ 才可被访问。
+    bool                acquire_window_open = false;
+
+    /// 帧内回读钩子（一次性；见 SetInFrameReadbackHook）
+    std::function<void()> in_frame_readback_hook;
+
     friend class SwapchainModule;
 
     SwapchainRenderTarget(hgl::ecs::ECSContext* ctx,
@@ -63,6 +71,22 @@ public:
     bool NextFrame();
     bool NeedsResize() const { return resize_required; }
     Swapchain* GetSwapchain() const { return swapchain; }
+
+    /// 交换链颜色图是否处于「已 acquire、未 present」的窗口（IRenderTarget 覆写）。
+    /// 窗口外对交换链颜色图做任何访问（布局转换/拷贝/读回）都是真 VUID。
+    bool IsColorReadbackWindowOpen() const override { return acquire_window_open; }
+
+    /// 帧内回读钩子：在「本帧队列提交之后、vkQueuePresentKHR 之前」执行一次。
+    ///
+    /// 这是读回交换链颜色图的**唯一合法时点**——此时本帧绘制已提交且 image 仍处于 acquire 态；
+    /// 帧外（Tick / Present 之后）读回会触发
+    /// `vkQueueSubmit(): ... presentable VkImage ..., but the image has not been acquired`。
+    /// 钩子内直接调 `graph::ReadbackColorTarget(本 RT, ...)` 即可（引擎回读自身会排空图形队列，
+    /// 故拷贝读到的是本帧已完成的画面）。
+    ///
+    /// @note 一次性：执行后即清除。需要连续多帧回读就每帧重设。
+    /// @note 只在提交成功后才执行；提交失败的帧会把钩子留到下一次成功窗口。
+    void SetInFrameReadbackHook(std::function<void()> fn) { in_frame_readback_hook = std::move(fn); }
 
     // --- IRenderTarget interface ---
     Framebuffer*        GetFramebuffer()                    override;

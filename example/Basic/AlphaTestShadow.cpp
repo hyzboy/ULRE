@@ -1,5 +1,6 @@
 ﻿#include <hgl/framework/WorkManager.h>
 #include <hgl/vk/VKRenderTarget.h>
+#include <hgl/vk/VKRenderTargetSwapchain.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VertexDataManager.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
@@ -297,6 +298,7 @@ private:
     // ── D3 契约：颜色读回（主帧 → 引擎回读 → TGA + 亮度图）────────────────────
     // 与 DumpCascadeDepth 同构，换成颜色附件；交换链颜色图的真实布局（PRESENT_SRC_KHR）
     // 由引擎在渲染结束时同步进纹理跟踪布局，示例不再硬编码布局。
+    // 调用点唯一：帧内读回窗口（RequestColorDump 装的钩子）——帧外调会被引擎直接拒绝。
     // 亮度图取 3 个低字节的均值：与 RGBA/BGRA 通道顺序无关（alpha 恒在第 4 字节），
     // 因此"变亮/变暗"的判定不需要知道具体格式；TGA 按低字节顺序写出，纯作人工看图。
     //
@@ -375,6 +377,31 @@ private:
         GLogInfo("[ColorDump] %s saved: %s (原生 %s 打包) + %s (%ux%u 低 3 字节截断视图) mean_lum=%.1f",
                  filename, raw_name.c_str(), fmt_tag, tga_name.c_str(), w, h,
                  float(double(lum_sum) / double(static_cast<size_t>(w) * h)));
+
+        return true;
+    }
+
+    // ── 帧内读回请求：交换链颜色图只能在帧内「提交之后、present 之前」访问 ──────────
+    // 帧外（Tick 里直接）读回会触发真 VUID：presentable VkImage has not been acquired。
+    // 所以示例不在 Tick 里直接读颜色，而是给主帧 RT 装**一次性**钩子，由引擎在该窗口内回调，
+    // 回调里照常走 graph::ReadbackColorTarget（引擎回读会排空图形队列 ⇒ 读到的是本帧画面）。
+    // 注意帧号口径：钩子在**本帧**提交窗口内执行，请求发生在 Tick（本帧渲染之前）⇒ 读到的是
+    // 本帧渲染结果（旧实现读的是上一帧结果——因为它发生在 Tick，那时本帧还没渲染）。
+    bool RequestColorDump(graph::IRenderTarget *rt, const char *filename,
+                          std::vector<uint8_t> *out_lum)
+    {
+        auto *sc_rt = dynamic_cast<graph::SwapchainRenderTarget *>(rt);
+        if (!sc_rt)
+        {
+            GLogError(u8"[ColorDump] %s 请求失败：主帧渲染目标不是交换链 RT", filename);
+            return false;
+        }
+
+        sc_rt->SetInFrameReadbackHook([this, sc_rt, filename, out_lum]
+        {
+            if (!DumpColorTarget(sc_rt, filename, out_lum))
+                GLogError(u8"[ColorDump] %s 帧内回读失败（见上一行引擎日志）", filename);
+        });
 
         return true;
     }
@@ -738,6 +765,12 @@ public:
         //                （影子区域大面积由"灰蓝"变回"红地面"）
         //   C（倍率无关）：SetReceiveShadow(true) + SetBiasMultiplier(1000×) →
         //                偏差被放大 1000 倍，影子必然改变（证明倍率进入了偏差计算）
+        //
+        // 读回一律走帧内窗口（RequestColorDump → 钩子在「本帧提交后、present 前」执行）：
+        // 交换链颜色图只在那个窗口里可访问，帧外读回是真 VUID。因此请求帧 = 读到的渲染帧，
+        // 帧号口径比"Tick 里直接读"的旧实现整体前移一帧（旧实现 Tick 帧 N 读到的是渲染帧 N-1）：
+        //   A 请求于帧 1（读渲染 1）、B 请求于帧 3（读渲染 3，旋钮在帧 2 拨下）、
+        //   C 请求于帧 7（读渲染 7，旋钮在帧 5 拨下）、帧 8 结算。
         if (g_selfcheck && depth_dumped && !d3_done)
         {
             ++d3_frame;
@@ -747,7 +780,7 @@ public:
 
             if (d3_frame == 1)
             {
-                DumpColorTarget(main_rt, "ats_d3_A_receive_on", &d3_lum[0]);
+                RequestColorDump(main_rt, "ats_d3_A_receive_on", &d3_lum[0]);
             }
             else if (d3_frame == 2)
             {
@@ -763,9 +796,9 @@ public:
                              ground_shadow->GetBiasMultiplier());
                 }
             }
-            else if (d3_frame == 4)
+            else if (d3_frame == 3)
             {
-                DumpColorTarget(main_rt, "ats_d3_B_receive_off", &d3_lum[1]);
+                RequestColorDump(main_rt, "ats_d3_B_receive_off", &d3_lum[1]);
             }
             else if (d3_frame == 5)
             {
@@ -783,10 +816,24 @@ public:
                              ground_shadow->GetBiasMultiplier());
                 }
             }
+            else if (d3_frame == 7)
+            {
+                RequestColorDump(main_rt, "ats_d3_C_bias_x1000", &d3_lum[2]);
+            }
             else if (d3_frame == 8)
             {
-                DumpColorTarget(main_rt, "ats_d3_C_bias_x1000", &d3_lum[2]);
                 d3_done = true;
+
+                // 帧内读回是否**真的发生**：钩子只在提交成功的帧执行，任何一侧缺失都必须显式判负
+                // ——三个空缓冲逐像素对比会算出 0 差异，把"读回没发生"伪装成 PASS。
+                const bool d3_dumped = !d3_lum[0].empty()
+                                    && !d3_lum[1].empty()
+                                    && !d3_lum[2].empty();
+
+                if (!d3_dumped)
+                    GLogError(u8"[D3-CONTRACT] 帧内读回不完整（A/B/C 有效大小 %zu/%zu/%zu）"
+                              u8"——交换链颜色读回未发生，本相位结论无效",
+                              d3_lum[0].size(), d3_lum[1].size(), d3_lum[2].size());
 
                 // 对照组（ATS_D3_NOKNOB=1）：三帧都读回、但一个旋钮都不拨。
                 // 它自己也是断言：外观变化必须为 0——否则"读回+对比"这条链有噪声，
@@ -797,7 +844,7 @@ public:
                     uint32_t c_ac = 0, g_ac = 0, r_ac = 0;
                     CompareAppearance(d3_lum[0], d3_lum[1], c_ab, g_ab, r_ab);
                     CompareAppearance(d3_lum[0], d3_lum[2], c_ac, g_ac, r_ac);
-                    const bool clean = (c_ab + c_ac) == 0;
+                    const bool clean = d3_dumped && (c_ab + c_ac) == 0;
                     GLogInfo(u8"[D3-CONTRACT] 对照组(ATS_D3_NOKNOB=1) 噪声底 %s: "
                              u8"逐像素外观变化 %u px（A→B %u / A→C %u，期望 0）",
                              clean ? "PASS" : "FAIL", c_ab + c_ac, c_ab, c_ac);
@@ -817,9 +864,9 @@ public:
 
                 // 三次读回两两完全一致 ⇒ 更可能是读回本身失败（布局/同步），
                 // 而不是"旋钮无效"——单独报出来，避免把工具问题当成引擎结论。
-                if ((changed + bias_changed) == 0)
+                if (d3_dumped && (changed + bias_changed) == 0)
                     GLogError(u8"[D3-CONTRACT] 三帧读回两两逐像素相同——请先确认颜色读回"
-                              u8"（PRESENT_SRC→TRANSFER_SRC）是否真的取到了画面，再看旋钮；"
+                              u8"（帧内窗口 + PRESENT_SRC→TRANSFER_SRC）是否真的取到了画面，再看旋钮；"
                               u8"若本来就是对照组(ATS_D3_NOKNOB=1)，0 变化正是预期");
 
                 GLogInfo(u8"[D3-CONTRACT] receive_shadow %s: 关掉后 受影→未受影(变红) %u px / "
@@ -842,7 +889,7 @@ public:
                          static_cast<unsigned long long>(commit_rejects));
 
                 const bool ok = contract_done && contract_ok
-                             && d3_receive_ok && d3_bias_ok
+                             && d3_dumped && d3_receive_ok && d3_bias_ok
                              && d4_commit_ok;
                 GLogInfo(u8"[D3-CONTRACT] selfcheck: %s (exit %d)",
                          ok ? "PASS" : "FAIL", ok ? 0 : 1);

@@ -3148,12 +3148,15 @@ int main(int argc, char** argv)
             return true;
         };
 
-        AnsiString hdr, impl, cmdbuf, cmake, ats, csm;
+        AnsiString hdr, impl, cmdbuf, cmake, ats, csm, rt_hdr, sc_hdr;
 
         if (!load_src(OS_TEXT("inc/hgl/vk/VKTextureReadback.h"), hdr)
-         || !load_src(OS_TEXT("src/Vulkan/VKTextureReadback.cpp"), impl))
+         || !load_src(OS_TEXT("src/Vulkan/VKTextureReadback.cpp"), impl)
+         || !load_src(OS_TEXT("inc/hgl/vk/VKRenderTarget.h"), rt_hdr)
+         || !load_src(OS_TEXT("inc/hgl/vk/VKRenderTargetSwapchain.h"), sc_hdr))
         {
-            GLogError(u8"Test 21 Failed: 引擎回读文件缺失（VKTextureReadback.h/.cpp）");
+            GLogError(u8"Test 21 Failed: 引擎回读/渲染目标文件缺失"
+                      u8"（VKTextureReadback.h/.cpp、VKRenderTarget.h、VKRenderTargetSwapchain.h）");
             return 21;
         }
 
@@ -3221,7 +3224,23 @@ int main(int argc, char** argv)
             return 21;
         }
 
+        // 交换链颜色图只能在帧内「提交之后、present 之前」访问：引擎侧必须有访问窗口状态 +
+        // 窗口外拒绝，示例侧必须改用该窗口。缺任何一条，帧外读回（真 VUID：presentable image
+        // has not been acquired）就会悄悄回来——它不崩、拷贝内容看着还对，只有校验层日志能发现。
+        if (!rt_hdr.Contains("IsColorReadbackWindowOpen")
+         || !sc_hdr.Contains("SetInFrameReadbackHook")
+         || !sc_hdr.Contains("acquire_window_open")
+         || !impl.Contains("IsColorReadbackWindowOpen()")
+         || !ats.Contains("SetInFrameReadbackHook(")
+         || !ats.Contains("RequestColorDump("))
+        {
+            GLogError(u8"Test 21 Failed: 交换链颜色读回未收敛到帧内窗口（需 IRenderTarget 窗口状态 + "
+                      u8"SwapchainRenderTarget::SetInFrameReadbackHook + 读回侧窗口外拒绝 + 示例改用该窗口）");
+            return 21;
+        }
+
         GLogInfo(u8"Test 21 Passed: 附件读回已下沉引擎（ReadbackTexture/Color/Depth + 布局跟踪同步），"
+                 u8"交换链颜色读回收敛到帧内窗口（窗口状态 + 窗口外拒绝 + 示例 SetInFrameReadbackHook），"
                  u8"示例落盘为 裸 F32 .raw + CM2D 8bit 灰度 .tga（文件名自带 宽x高/格式）且零自研拷贝残留");
     }
 

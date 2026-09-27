@@ -152,6 +152,18 @@ public: // 车道（A1 双向跨帧排序；新虚函数一律追加在末尾，
 public:
     virtual ViewportInfo *      GetViewportInfo     ();
     virtual const ViewportInfo *GetViewportInfo     () const;
+
+public: // 附件访问窗口（新虚函数一律追加在末尾，避免平移既有槽位）
+
+    /// 颜色附件当前是否可被外部访问（读回 / 布局转换 / 拷贝都算访问）。
+    ///
+    /// 交换链 RT：只有在本帧 acquire 之后、Present 之前为真——窗口外访问交换链颜色图会触发
+    /// `vkQueueSubmit(): pSubmits[0] performs a layout transition on presentable VkImage ...,
+    /// but the image has not been acquired`（真 VUID）。帧内唯一入口是
+    /// `SwapchainRenderTarget::SetInFrameReadbackHook()`。
+    ///
+    /// 离屏 RT：恒为真（其 GPU 工作已由提交信号量/围栏排序，帧外读回是合法的）。
+    virtual bool                IsColorReadbackWindowOpen()const{return true;}
 };//class IRenderTarget
 
 }//namespace hgl::graph

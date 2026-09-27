@@ -237,6 +237,22 @@ namespace hgl::graph
         if (!rt)
             return false;
 
+        // 交换链颜色图（可呈现图）只在帧内「acquire 之后、Present 之前」可被访问：窗口外提交
+        // 布局转换/拷贝会触发 `vkQueueSubmit(): ... presentable VkImage ..., but the image has
+        // not been acquired`（真 VUID）。这里直接拒绝，把「帧外读回交换链颜色图」从可用能力里
+        // 去掉——需要它就在 SwapchainRenderTarget::SetInFrameReadbackHook() 的回调里调用本函数。
+        if (!rt->IsColorReadbackWindowOpen())
+        {
+            GLogError(u8"[Readback] 颜色附件不在读回窗口内（交换链图仅在本帧提交后、present 前可访问）"
+                      u8"——请用 SwapchainRenderTarget::SetInFrameReadbackHook() 在帧内读回");
+            out_pixels.clear();
+
+            if (out_info)
+                *out_info = TextureReadbackInfo{};
+
+            return false;
+        }
+
         return ReadbackTexture(rt->GetDevice(), rt->GetColorTexture(static_cast<int>(color_index)),
                                out_pixels, out_info);
     }

@@ -83,6 +83,7 @@ bool SwapchainRenderTarget::NextFrame()
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         resize_required = true;
+        acquire_window_open = false;
         LogWarning("vkAcquireNextImageKHR: OUT_OF_DATE");
         return false;
     }
@@ -91,6 +92,7 @@ bool SwapchainRenderTarget::NextFrame()
 
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
     {
+        acquire_window_open = false;
         LogError("vkAcquireNextImageKHR failed, result=%d", (int)result);
         return false;
     }
@@ -102,6 +104,10 @@ bool SwapchainRenderTarget::NextFrame()
 
     // 4. Claim this image for the current slot
     images_in_flight[acquired_image] = slot.queue;
+
+    // 5. 颜色读回窗口开启：本帧这张 image 已是「已 acquire、未 present」
+    //    （Submit 收尾时关闭；见 SwapchainRenderTarget::SetInFrameReadbackHook）
+    acquire_window_open = true;
 
     return true;
 }
@@ -170,12 +176,25 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         LogError("SwapchainRenderTarget: queue submit failed (slot=%u image=%u)",
                  current_slot, acquired_image);
         current_slot = (current_slot + 1) % slot_count;
+        acquire_window_open = false;
         return false;
     }
 
     if (upload_queue && has_upload_waits)
     {
         upload_queue->ClearPendingWaitSemaphores();
+    }
+
+    // ── 帧内回读窗口：本帧已提交、尚未 present ───────────────────────────────
+    // 此刻交换链 image 仍是「已 acquire、未 present」，是唯一能对它做布局转换/拷贝的时点。
+    // 钩子内（如 ReadbackColorTarget）会排空图形队列，故拷贝拿到的是本帧已完成的画面；
+    // 随后 present 照常在 render_finished 上等待，与本窗口无冲突。
+    if (in_frame_readback_hook)
+    {
+        auto hook = std::move(in_frame_readback_hook);
+        in_frame_readback_hook = nullptr;      // 一次性：执行后即清除
+
+        hook();
     }
 
     // Present: wait render_finished
@@ -185,6 +204,9 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
     present_info.pImageIndices      = &acquired_image;
 
     VkResult result = slot.queue->Present(&present_info);
+
+    // present 之后该 image 已归还交换链 ⇒ 本帧颜色访问窗口关闭（所有路径一致）
+    acquire_window_open = false;
 
     // Advance slot regardless of present result
     current_slot = (current_slot + 1) % slot_count;
