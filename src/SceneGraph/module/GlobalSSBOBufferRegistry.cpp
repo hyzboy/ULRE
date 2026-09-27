@@ -169,6 +169,7 @@ bool GlobalSSBOBufferRegistry::CommitSlot(uint32_t frame_slot)
 
     GlobalAddresses want = global_addresses_global;
     want.addr_sky      = global_addresses_slots[slot].sky;
+    want.addr_shadow   = global_addresses_slots[slot].shadow;
 
     if (memcmp(dst, &want, sizeof(GlobalAddresses)) == 0)
         return false;
@@ -227,6 +228,17 @@ void GlobalSSBOBufferRegistry::SetSkyAddress(uint64_t addr)
 {
     for (uint32_t slot = 0; slot < kGlobalAddressesSlotCount; ++slot)
         SetSkyAddress(slot, addr);
+}
+
+void GlobalSSBOBufferRegistry::SetShadowAddress(uint32_t frame_slot, uint64_t addr)
+{
+    GlobalAddressesSlot &slot = global_addresses_slots[frame_slot % kGlobalAddressesSlotCount];
+
+    if (slot.shadow == addr)
+        return;
+
+    slot.shadow = addr;
+    CommitSlot(frame_slot);
 }
 
 bool GlobalSSBOBufferRegistry::InitializePools()

@@ -114,6 +114,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
     // 每帧槽字段：表按 HGL_FRAME_SLOT_TOTAL 多份，pc_root.addr_global_addresses
     // 指向「本帧那一槽」，所以这几个地址总是当前帧的数据。
     uint64_t addr_sky;
+    uint64_t addr_shadow;
 };
 
 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
@@ -131,7 +132,9 @@ struct ShadowCascadeInfo
     uvec4 cache_valid_rect;
 };
 
-layout(set=SCENE_SET, binding=SHADOW_BINDING) uniform ShadowInfo
+// shadow（S2：地址进表，**按帧槽各一份** —— ring[i] 对应帧槽 i）退出 Scene 集绑定。
+// 宏名与成员名不变 ⇒ `shadow.*` 读点零改动。
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer ShadowInfoRef
 {
     mat4 shadow_vp;
     vec4 shadow_params;
@@ -140,7 +143,9 @@ layout(set=SCENE_SET, binding=SHADOW_BINDING) uniform ShadowInfo
     uvec4 shadow_tex;
     uvec4 csm_params;
     ShadowCascadeInfo cascades[4];
-} shadow;
+};
+
+#define shadow ShadowInfoRef(global_addresses.addr_shadow)
 
 #define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]
 

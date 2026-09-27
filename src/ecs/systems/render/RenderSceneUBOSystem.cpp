@@ -400,10 +400,8 @@ namespace hgl::ecs
          && viewport_ubo)
         {
             global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingViewport), viewport_ubo);
-            // sky 已改 BDA 寻址（地址在全局表内）⇒ 不再推送绑定：buffer 已是 SSBO，
-            // 继续按 UBO 描述符推送会被校验层判「用法与描述符类型不符」。
-            if (shadow_ubo)
-                global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingShadow), shadow_ubo);
+            // sky / shadow 均已改 BDA 寻址（地址在全局表内）⇒ 不再推送这两个绑定：它们的
+            // buffer 已是 SSBO，继续按 UBO 描述符推送会被校验层判「用法与描述符类型不符」。
         }
         else if (global_scene_set && global_scene_set->IsValid())
         {

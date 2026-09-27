@@ -137,6 +137,10 @@ namespace hgl::graph
         if (!buffer_manager)
             return false;
 
+        // ring 下标即帧槽号：地址表按帧槽分份，靠这条不变量对齐（改一处必改另一处）。
+        static_assert(kShadowUboRing == HGL_FRAME_SLOT_TOTAL,
+                      "阴影 ring 下标 = 帧槽号；与 GlobalAddresses 表槽数必须一致");
+
         GLogInfo(u8"[EnvironmentManager] MaterializeShadowUBO: %s ring=%u",
                  profile->name.c_str(), kShadowUboRing);
 
@@ -147,8 +151,10 @@ namespace hgl::graph
             buf_name += ":";
             buf_name += AnsiString::numberOf(i);
 
-            auto *buf = buffer_manager->CreateUBO(buf_name,
-                                                  StructView<ShadowInfo>::GetSize());
+            // 必须用 CreateSSBO：只有它带 SHADER_DEVICE_ADDRESS usage（BDA 取址前提）；
+            // shadow 数据自 S2 起经 global_addresses.addr_shadow 解引用，不再吃 Scene 集绑定。
+            auto *buf = buffer_manager->CreateSSBO(buf_name,
+                                                   StructView<ShadowInfo>::GetSize());
             if (!buf)
             {
                 GLogError("[EnvironmentManager] create shadow UBO failed: %s slot=%u",
@@ -171,6 +177,23 @@ namespace hgl::graph
             // 每槽一份初始数据。之后只写 acquire 完成的那一槽，避免踩在途帧。
             profile->shadow_ring[i]->Update(profile->cpu.shadow);
             profile->shadow_ring[i]->Commit();
+
+            // 地址进表：ring[i] 属于帧槽 i ⇒ 只写第 i 槽（每帧只读本槽 ⇒ 天然无竞争）。
+            if (auto *registry = gc->GetGlobalSSBOBufferRegistry())
+            {
+                const uint64_t addr =
+                    gc->GetDevice()->GetBufferDeviceAddressAligned16(buf->GetBuffer());
+
+                if (addr == 0)
+                {
+                    GLogError("[EnvironmentManager] shadow ring 取不到设备地址: %s slot=%u",
+                              profile->name.c_str(), i);
+                    ReleaseShadowRing(profile);
+                    return false;
+                }
+
+                registry->SetShadowAddress(i, addr);
+            }
         }
         return true;
     }

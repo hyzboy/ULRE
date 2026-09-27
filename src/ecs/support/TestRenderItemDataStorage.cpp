@@ -204,7 +204,7 @@ int main(int argc, char **argv)
     GLogInfo(u8"--- Testing Stage 3: GlobalAddresses UBO & Shader BDA Resolution ---");
     {
         // 1. Memory layout verification
-        static_assert(sizeof(graph::GlobalAddresses) == 72, "GlobalAddresses must be exactly 72 bytes");
+        static_assert(sizeof(graph::GlobalAddresses) == 80, "GlobalAddresses must be exactly 80 bytes");
         static_assert(offsetof(graph::GlobalAddresses, addr_mesh_draw_params) == 0);
         static_assert(offsetof(graph::GlobalAddresses, addr_pbr_surface) == 8);
         static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 16);
@@ -215,6 +215,8 @@ int main(int argc, char **argv)
         static_assert(offsetof(graph::GlobalAddresses, addr_color_palette) == 56);
         // 每帧槽字段：地址随帧槽变化（sky 单份 buffer ⇒ 写满所有槽）
         static_assert(offsetof(graph::GlobalAddresses, addr_sky) == 64);
+        // shadow 按帧槽各一份（ring[i] ↔ 帧槽 i）
+        static_assert(offsetof(graph::GlobalAddresses, addr_shadow) == 72);
 
         graph::GlobalAddresses ga{};
         if (ga.addr_global_render_items != 0 || ga.addr_draw_item_ids != 0)

@@ -100,6 +100,7 @@ private:
     struct GlobalAddressesSlot
     {
         uint64_t sky = 0;
+        uint64_t shadow = 0;
     };
     GlobalAddressesSlot global_addresses_slots[kGlobalAddressesSlotCount];
 
@@ -153,6 +154,7 @@ public:
     void SetSkyAddress(uint32_t frame_slot, uint64_t addr);
     /// sky 是单份 buffer（与帧槽无关）⇒ 一个地址写满所有帧槽。
     void SetSkyAddress(uint64_t addr);
+    void SetShadowAddress(uint32_t frame_slot, uint64_t addr);
 
     /// 调色板地址（BDA）：内容长期有效，地址只在 buffer 重建时才变（当前实现不重建）。
     void UpdateColorPaletteAddress(uint64_t addr_color_palette);

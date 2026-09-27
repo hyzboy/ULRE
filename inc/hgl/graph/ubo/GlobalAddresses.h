@@ -31,8 +31,9 @@ namespace hgl::graph
         uint64_t addr_camera_info = 0;
         uint64_t addr_color_palette = 0;
 
-        // ── 每帧槽字段：地址随帧槽变化（sky 的 buffer 每帧不同）──
+        // ── 每帧槽字段：地址随帧槽变化（sky / shadow 的 buffer 每帧不同）──
         uint64_t addr_sky = 0;
+        uint64_t addr_shadow = 0;
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽，见文件头）。
