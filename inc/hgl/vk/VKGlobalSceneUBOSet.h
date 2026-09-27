@@ -19,9 +19,7 @@ namespace hgl::graph
      * 一帧写一次、绑一次，不再走 per-material 描述符分配。
      *
      * 硬编码 binding（见 kSceneBinding* 常量）：
-     *   binding=0 : sky              (kSceneBindingSky)
-     *   binding=1 : viewport         (kSceneBindingViewport)
-     *   binding=2 : shadow           (kSceneBindingShadow)
+     *   binding=0 : viewport         (kSceneBindingViewport)
      *
      * 注：与 BindlessTextureManager 一样属于设备级全局资源，
      *     由 GraphicsContext 持有并管理生命周期。
@@ -98,7 +96,7 @@ namespace hgl::graph
 
         /**
          * 将指定 binding 的 UBO 记录到推送缓存。
-         * @param binding kSceneBindingSky / kSceneBindingViewport / kSceneBindingGlobalAddresses 等
+         * @param binding kSceneBindingViewport（Set 0 现仅 viewport 一项）
          * @param gpu     对应 UBO 的 GPU buffer（nullptr 时禁用该 binding）
          */
         bool UpdateUBO(uint32_t binding, const IGPUBuffer *gpu);

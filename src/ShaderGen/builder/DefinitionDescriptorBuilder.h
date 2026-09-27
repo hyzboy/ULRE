@@ -11,14 +11,8 @@
 
 namespace hgl::graph::mtl
 {
-struct BuildDescriptorOptions
-{
-    uint32_t sky_stage_flags = uint32_t(hgl::graph::kMeshFragment);
-};
-
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
-    const MaterialDefinition &definition,
-    const BuildDescriptorOptions &opt = {})
+    const MaterialDefinition &definition)
 {
     std::vector<SerializedDescriptorEntry> descriptors;
     descriptors.reserve(16);
@@ -26,8 +20,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     descriptor_builder_common::AppendDefinitionUBODescriptors(
         descriptors,
         definition,
-        uint32_t(hgl::graph::kMeshFragment),
-        opt.sky_stage_flags);
+        uint32_t(hgl::graph::kMeshFragment));
 
     // A6-2a/b1：L2W/L2WIndex/mtl_data_addrs 行表不再经契约声明——l2w_ssbo 由模板侧
     // 无条件注入，l2w_index/ResolveTransformID 无条件发射，FS mtl_data_addrs 门按编译配置

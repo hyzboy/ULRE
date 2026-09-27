@@ -393,6 +393,7 @@ namespace hgl::ecs
         const auto *shadow_ubo = ResolveShadowUBO();
 
         // 全局地址表已 BDA 化（无绑定无集）：这里只同步表内会变的字段
+        //（含 sky 地址；sky 已不再走 Scene 集绑定）
         SyncGlobalAddressesTable();
 
         auto *global_scene_set = GetGlobalSceneUBOSet(context);
@@ -400,8 +401,6 @@ namespace hgl::ecs
          && viewport_ubo)
         {
             global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingViewport), viewport_ubo);
-            // sky / shadow 均已改 BDA 寻址（地址在全局表内）⇒ 不再推送这两个绑定：它们的
-            // buffer 已是 SSBO，继续按 UBO 描述符推送会被校验层判「用法与描述符类型不符」。
         }
         else if (global_scene_set && global_scene_set->IsValid())
         {

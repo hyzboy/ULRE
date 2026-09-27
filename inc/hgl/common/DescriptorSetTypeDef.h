@@ -11,35 +11,28 @@ namespace hgl::graph
     ///（中间插入新条目会导致后续全部静默重编号，破坏已编译着色器缓存）。
     enum class SceneBinding : int
     {
-        /* 相机 UBO 绑定已删：相机数据走 BDA */
-        Sky=0,           ///< 天空/太阳光 UBO
-        Viewport=1,      ///< 视口 UBO
-        /* 顶点调色板绑定已删（原 ColorPalette）：调色板长期有效，
-           地址走 global_addresses.addr_color_palette（BDA，无绑定无集） */
-        /* 全局地址表绑定已删（原 GlobalAddresses）：表本体是 SSBO，
-           基址走 pc_root.addr_global_addresses（BDA，无绑定无集） */
-        Shadow=2,        ///< 阴影参数 UBO（光照空间 VP 矩阵、PCF 参数等）
+        /* 相机 / 调色板 / 全局地址表 / sky / shadow 绑定均已删：
+           地址一律走 global_addresses（BDA，无绑定无集）——
+           sky 经 addr_sky（单份 buffer，全帧槽同址）、
+           shadow 经 addr_shadow（按帧槽各一份） */
+        Viewport=0,      ///< 视口 UBO（每 pass / 每 RT ⇒ 唯一留在 Scene 集的绑定）
 
-        ENUM_CLASS_RANGE(Sky,Shadow)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
+        ENUM_CLASS_RANGE(Viewport,Viewport)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
     };
 
     /// ABI 锚点：以下数值被 ShaderLibrary/common/descriptor_macros.glsl 与运行时绑定表依赖，
     /// 变更即破坏全部已编译着色器；static_assert 保证插入新条目引发的静默重编号在编译期暴露。
-    static_assert(int(SceneBinding::Sky)==0
-               && int(SceneBinding::Viewport)==1
-               && int(SceneBinding::Shadow)==2,
+    static_assert(int(SceneBinding::Viewport)==0,
                   "Scene UBO binding ABI changed");
 
     /// ── 兼容别名：既有调用点继续使用 kXxx 常量名，数值真源已上收至上述枚举 ──
-    constexpr const int kSceneBindingSky             = int(SceneBinding::Sky);           ///< 天空/太阳光 UBO
     constexpr const int kSceneBindingViewport        = int(SceneBinding::Viewport);      ///< 视口 UBO
-    constexpr const int kSceneBindingShadow          = int(SceneBinding::Shadow);        ///< 阴影参数 UBO
 
     enum class DescriptorSetType:int
     {
         Unknown=-1,        ///<Phase 7 拼写修正：Unknown（枚举值不变，序列化契约不受影响）
 
-        Scene=0,        ///< 全局 UBO 集（sky/viewport/global_addresses/shadow），所有材质共用，一帧写/绑一次
+        Scene=0,        ///< 全局 UBO 集（只余 viewport），所有材质共用；sky/shadow/调色板/地址表已走 BDA
         Bindless=1,     ///< 全局 Bindless 纹理数组集合（Set 1），一帧绑一次
                         ///< （PerObject/Vertex/Material 集已随 BDA 化退场——行表/顶点流/材质行
                         ///<  均经 pc_root 地址 + buffer_reference 寻址，无 per-material 描述符；
@@ -100,10 +93,8 @@ namespace hgl::graph
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Scene,    "SCENE_SET",                 nullptr,                                   -1,
             "// ── Descriptor Set 索引 ──",                            true, true},
 
-        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "SKY_BINDING",               nullptr,   int(SceneBinding::Sky),        
-            "// ── Scene set ──",                                      true, true},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "VIEWPORT_BINDING",          nullptr,   int(SceneBinding::Viewport),               nullptr},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "SHADOW_BINDING",            nullptr,   int(SceneBinding::Shadow),                 nullptr},
+        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "VIEWPORT_BINDING",          nullptr,   int(SceneBinding::Viewport),
+            "// ── Scene set（只余 viewport）──",                      true, true},
 
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Bindless, "BINDLESS_SET",              nullptr,                                   -1, nullptr},
     };

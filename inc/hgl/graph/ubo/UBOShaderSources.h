@@ -11,17 +11,4 @@ namespace hgl::graph::mtl
         "ViewportInfo"
     };
 
-    constexpr const ShaderBufferSource SBS_SkyInfo =
-    {
-        DescriptorSetType::Scene,
-        "sky",
-        "SkyInfo"
-    };
-
-    constexpr const ShaderBufferSource SBS_ShadowInfo =
-    {
-        DescriptorSetType::Scene,
-        "shadow",
-        "ShadowInfo"
-    };
 }

@@ -140,57 +140,12 @@ static bool HasDescriptorSemantic(
     return false;
 }
 
-// ── 能力子集授权规则表（原 10 分支 switch 表驱动化）────────────────────────
-// 有条件内置资源的 definition 侧授权谓词，与资源目录（DescriptorResourceCatalog）
-// 平行：目录行 engine_builtin=false 且有 definition 侧规则的语义在此登记，
-// 交叉覆盖由下方 static_assert 保证。provider manifest 不再授权材质 payload。
-using DefinitionCapabilityRule =
-    bool (*)(const MaterialDefinition &definition,
-             const ShaderResourceSlot &req) noexcept;
-
-bool RuleUBORequirement(
-    const MaterialDefinition &definition,
-    const ShaderResourceSlot &req) noexcept
-{
-    return HasUBORequirement(definition, req.semantic);
-}
-
-struct DefinitionCapabilityRuleEntry
-{
-    DescriptorSemantic semantic;
-    DefinitionCapabilityRule rule;
-};
-
-constexpr DefinitionCapabilityRuleEntry kDefinitionCapabilityRules[] =
-{
-    { DescriptorSemantic::SkyInfo,                   &RuleUBORequirement },
-};
-
-constexpr DefinitionCapabilityRule FindDefinitionCapabilityRule(
-    const DescriptorSemantic semantic) noexcept
-{
-    for (const auto &row : kDefinitionCapabilityRules)
-        if (row.semantic == semantic)
-            return row.rule;
-    return nullptr;
-}
-
-// 交叉覆盖：规则表每一行必须是目录中 engine_builtin=false 的有条件行——
-// 无条件内置行不需要规则；未登记目录的语义查表不可达。
-constexpr bool CapabilityRulesMatchCatalog() noexcept
-{
-    for (const auto &row : kDefinitionCapabilityRules)
-    {
-        const DescriptorResourceCatalogEntry *cat =
-            FindResourceCatalogEntry(row.semantic);
-        if (!cat || cat->engine_builtin)
-            return false;
-    }
-    return true;
-}
-
-static_assert(CapabilityRulesMatchCatalog(),
-              "能力规则表行必须在资源目录中登记为有条件内置（engine_builtin=false）");
+// ── 能力子集授权：**只认无条件内置**（目录 engine_builtin）──────────────────
+// 原「能力规则表」（definition 侧条件授权谓词 + 目录交叉覆盖 static_assert）已整体
+// 删除：表内唯一行 SkyInfo 的 UBO 需求规则随 sky 退出 Scene 集绑定而失效——
+// sky 不再是描述符声明资源（shader 经 global_addresses.addr_sky 解引用），
+// definition 侧不可能再出现该 slot。其余语义（Unknown、MaterialTexture/Sampler
+// 等 bindless 通道）本就没有 definition 侧授权 ⇒ 无需表格。
 
 static bool ValidateDefinitionCapabilitySubset(
     const MaterialDefinition &definition,
@@ -204,19 +159,8 @@ static bool ValidateDefinitionCapabilitySubset(
         const DescriptorResourceCatalogEntry *cat =
             FindResourceCatalogEntry(req.semantic);
 
-        // 授权两层：① 无条件内置（目录 engine_builtin）→
-        // ② definition 侧规则（能力规则表）。
-        bool allowed = cat && cat->engine_builtin;
-
-        if (!allowed && cat)
-        {
-            const DefinitionCapabilityRule rule =
-                FindDefinitionCapabilityRule(req.semantic);
-            if (rule)
-                allowed = rule(definition, req);
-            // 未登记规则 = 无 definition 侧授权（Unknown、MaterialTexture/Sampler
-            // 等 bindless 通道）——保持 false
-        }
+        // 授权：只认无条件内置（目录 engine_builtin）；definition 侧规则表已删（见上）。
+        const bool allowed = cat && cat->engine_builtin;
 
         if (allowed)
             continue;

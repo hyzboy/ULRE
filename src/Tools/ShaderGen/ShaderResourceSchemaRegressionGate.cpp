@@ -1971,22 +1971,10 @@ namespace
                         return spec.GetShaderResourceSchema()
                             .requires_runtime_data_rows;
                     };
-                    const auto has_sky_resource =
-                        [](const ShaderBuildContext &spec)
-                    {
-                        for (const auto &requirement :
-                             spec.GetShaderResourceSchema().resources)
-                        {
-                            if (requirement.semantic
-                                    == DescriptorSemantic::SkyInfo)
-                                return true;
-                        }
-                        return false;
-                    };
+                    // sky 已 BDA 化（不在任何 shader 的资源声明里）⇒ 原「depth 不得携带
+                    // sky 资源」的检查已结构性成立，随 SkyInfo 语义退场一并删除。
                     if (has_material_resource(*depth)
-                     || has_sky_resource(*depth)
-                     || !has_material_resource(*masked_depth)
-                     || has_sky_resource(*masked_depth))
+                     || !has_material_resource(*masked_depth))
                     {
                         result.diagnostics.emplace_back(
                             "depth coverage resource pruning mismatch");
@@ -2703,7 +2691,7 @@ namespace
             "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
             "varyings = [\"emit_world_pos\", \"emit_world_normal\", \"emit_uv0\"]\n"
             "[resources]\n"
-            "ubos = [\"ViewportInfo\", \"SkyInfo\"]\n";
+            "ubos = [\"ViewportInfo\"]\n";
 
         MaterialDefinitionFileData data;
         const auto parse = ParseMaterialDefinitionFile(
@@ -2721,7 +2709,7 @@ namespace
              || definition.vertex_provider_policy != MaterialVertexProviderPolicy::AllowDerived
              || definition.vertex_node_config.position_mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
-             || definition.ubo_requirements.size() != 2
+             || definition.ubo_requirements.size() != 1
              || definition.texture_configuration_max_count
                     != DefaultMaterialTextureConfigurationCapacity
              || !ResolveMaterialRenderState(

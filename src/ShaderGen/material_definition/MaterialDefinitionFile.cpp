@@ -868,8 +868,6 @@ namespace hgl::graph::mtl
 
                     static const UBOSpec ubo_specs[] = {
                         { "ViewportInfo", DescriptorSemantic::ViewportInfo },
-                        { "SkyInfo",      DescriptorSemantic::SkyInfo      },
-                        { "ShadowInfo",   DescriptorSemantic::ShadowInfo   },
                     };
 
                     for (const auto &item : resources.at("ubos").as_array())

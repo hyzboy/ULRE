@@ -26,18 +26,10 @@
 #define SCENE_SET 0
 #endif
 
-// ── Scene set ──
-
-#ifndef SKY_BINDING
-#define SKY_BINDING 0
-#endif
+// ── Scene set（只余 viewport）──
 
 #ifndef VIEWPORT_BINDING
-#define VIEWPORT_BINDING 1
-#endif
-
-#ifndef SHADOW_BINDING
-#define SHADOW_BINDING 2
+#define VIEWPORT_BINDING 0
 #endif
 
 #ifndef BINDLESS_SET

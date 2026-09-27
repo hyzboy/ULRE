@@ -43,20 +43,6 @@ inline void PushViewport(std::vector<SerializedDescriptorEntry> &v, const uint32
                SSBOType::UserDefined, stage_flags);
 }
 
-inline void PushSky(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, DescriptorSetType::Scene,
-               "sky", "SkyInfo", DescriptorSemantic::SkyInfo,
-               SSBOType::UserDefined, stage_flags);
-}
-
-inline void PushShadow(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, DescriptorSetType::Scene,
-               "shadow", "ShadowInfo", DescriptorSemantic::ShadowInfo,
-               SSBOType::UserDefined, stage_flags);
-}
-
 inline void MergeUBODescriptor(
     std::vector<SerializedDescriptorEntry> &v,
     const DescriptorSemantic semantic,
@@ -86,13 +72,6 @@ inline void MergeUBODescriptor(
     case DescriptorSemantic::ViewportInfo:
         PushViewport(v, stage_flags);
         break;
-        break;
-    case DescriptorSemantic::SkyInfo:
-        PushSky(v, stage_flags);
-        break;
-    case DescriptorSemantic::ShadowInfo:
-        PushShadow(v, stage_flags);
-        break;
     }
     if (has_policy && !v.empty())
     {
@@ -106,17 +85,10 @@ inline void MergeUBODescriptor(
 inline void AppendDefinitionUBODescriptors(
     std::vector<SerializedDescriptorEntry> &v,
     const MaterialDefinition &definition,
-    const uint32_t default_stage_flags,
-    const uint32_t sky_stage_flags)
+    const uint32_t stage_flags)
 {
     for (const DescriptorSemantic semantic : definition.ubo_requirements)
-    {
-        const uint32_t stage_flags =
-            semantic == DescriptorSemantic::SkyInfo
-                ? sky_stage_flags
-                : default_stage_flags;
         MergeUBODescriptor(v, semantic, stage_flags);
-    }
 }
 
     // strcmp 包装（唯一实现，原三处副本收敛于此）：
