@@ -93,9 +93,15 @@ private:
     uint64_t      global_addresses_addr = 0;      ///< 表**第 0 槽**基址；第 n 槽 = 基址 + n*槽步长
     bool initialized = false;
 
-    /// CPU 侧镜像（表内容的真源）：写表时逐槽组合 —— 表本体只有一份，
-    /// 槽靠「基址 + 槽号*槽步长」切分。
+    /// CPU 侧镜像：全局字段（所有帧槽相同）+ 每帧槽字段（sky / shadow 地址）。
+    /// 写表时按槽组合 —— 表本体只有一份，槽靠「基址 + 槽号*槽步长」切分。
     GlobalAddresses global_addresses_global{};
+
+    struct GlobalAddressesSlot
+    {
+        uint64_t sky = 0;
+    };
+    GlobalAddressesSlot global_addresses_slots[kGlobalAddressesSlotCount];
 
     GlobalSSBOBufferRegistry(GraphicsContext *);
     ~GlobalSSBOBufferRegistry() = default;
@@ -136,12 +142,17 @@ public:
     /// 槽号取模 —— 调用方直接送 Context::GetFrameIndex() 或 CameraRow % 槽总数。
     uint64_t GetGlobalAddressesAddress(uint32_t frame_slot) const;
 
-    /// 把当前全局字段写入某帧槽（内容无变化则跳过）。全局字段对所有帧槽相同，
-    /// 因此改全局字段后要 CommitAllSlots()。
+    /// 按「全局字段 + 该槽的 sky/shadow 地址」组合并写入某帧槽（无变化则跳过）。
     bool CommitSlot(uint32_t frame_slot);
     bool CommitAllSlots();
 
     void UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids);
+
+    /// sky / shadow 的地址（每帧槽各一份）：写入本槽后 pc_root 指过来即可用。
+    /// 传 0 表示「本槽暂无该表」（着色器侧读到 0 地址即解引用 0 ⇒ 调用方须保证不读）。
+    void SetSkyAddress(uint32_t frame_slot, uint64_t addr);
+    /// sky 是单份 buffer（与帧槽无关）⇒ 一个地址写满所有帧槽。
+    void SetSkyAddress(uint64_t addr);
 
     /// 调色板地址（BDA）：内容长期有效，地址只在 buffer 重建时才变（当前实现不重建）。
     void UpdateColorPaletteAddress(uint64_t addr_color_palette);

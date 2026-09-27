@@ -135,6 +135,10 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
     global_addresses_global.addr_camera_info          = GetGPUBase(GlobalSSBOType::CameraInfo);
     global_addresses_global.addr_color_palette        = 0;   // 由 ColorPaletteSystem 注册（UpdateColorPaletteAddress）
 
+    // 每帧槽字段（sky / viewport / shadow）在各自 buffer 就绪后由 Set*Address 填；先整表清 0。
+    for (uint32_t slot = 0; slot < kGlobalAddressesSlotCount; ++slot)
+        global_addresses_slots[slot] = GlobalAddressesSlot{};
+
     CommitAllSlots();
 
     return true;
@@ -163,7 +167,8 @@ bool GlobalSSBOBufferRegistry::CommitSlot(uint32_t frame_slot)
     // 槽步长是上界（可能大于 sizeof）⇒ 按字节偏移取槽，不能写 slots[slot]。
     auto *dst = reinterpret_cast<GlobalAddresses *>(base + size_t(slot) * kGlobalAddressesSlotStride);
 
-    const GlobalAddresses want = global_addresses_global;
+    GlobalAddresses want = global_addresses_global;
+    want.addr_sky      = global_addresses_slots[slot].sky;
 
     if (memcmp(dst, &want, sizeof(GlobalAddresses)) == 0)
         return false;
@@ -205,6 +210,23 @@ void GlobalSSBOBufferRegistry::UpdateColorPaletteAddress(uint64_t addr_color_pal
     global_addresses_global.addr_color_palette = addr_color_palette;
 
     CommitAllSlots();
+}
+
+void GlobalSSBOBufferRegistry::SetSkyAddress(uint32_t frame_slot, uint64_t addr)
+{
+    GlobalAddressesSlot &slot = global_addresses_slots[frame_slot % kGlobalAddressesSlotCount];
+
+    if (slot.sky == addr)
+        return;
+
+    slot.sky = addr;
+    CommitSlot(frame_slot);
+}
+
+void GlobalSSBOBufferRegistry::SetSkyAddress(uint64_t addr)
+{
+    for (uint32_t slot = 0; slot < kGlobalAddressesSlotCount; ++slot)
+        SetSkyAddress(slot, addr);
 }
 
 bool GlobalSSBOBufferRegistry::InitializePools()

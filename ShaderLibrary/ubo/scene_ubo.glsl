@@ -61,7 +61,9 @@ layout(buffer_reference, scalar, buffer_reference_align=64) readonly buffer Came
     CameraInfoData cameras[];
 };
 
-layout(set=SCENE_SET, binding=SKY_BINDING) uniform SkyInfo
+// sky（S2：地址进表，退出 Scene 集绑定）：sky 是单份 buffer ⇒ 所有帧槽同址。
+// 宏名与成员名均不变 ⇒ 正文与生成侧的 `sky.*` 读点零改动。
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer SkyInfoRef
 {
     vec4 base_sky_color;
     vec4 sun_direction;
@@ -73,7 +75,9 @@ layout(set=SCENE_SET, binding=SKY_BINDING) uniform SkyInfo
     float moon_intensity;
     float halo_intensity;
     uvec4 env_tex;
-} sky;
+};
+
+#define sky SkyInfoRef(global_addresses.addr_sky)
 
 layout(set=SCENE_SET, binding=VIEWPORT_BINDING) uniform ViewportInfo
 {
@@ -107,6 +111,9 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
     uint64_t addr_draw_item_ids;
     uint64_t addr_camera_info;
     uint64_t addr_color_palette;
+    // 每帧槽字段：表按 HGL_FRAME_SLOT_TOTAL 多份，pc_root.addr_global_addresses
+    // 指向「本帧那一槽」，所以这几个地址总是当前帧的数据。
+    uint64_t addr_sky;
 };
 
 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)

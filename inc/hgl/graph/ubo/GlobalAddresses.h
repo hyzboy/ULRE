@@ -16,7 +16,7 @@ namespace hgl::graph
      * 覆盖写会踩到仍在执行的在途帧 —— 按槽分份后每帧只写自己那一槽，回到无竞争。
      *
      * 地址归口口径：**全局 / 长期有效**的地址进本表（材质私有池、渲染项表、相机行表、
-     * 调色板、天空 / 阴影）；**每批 / 每材质 / 本字体**的地址随 pc_root 走
+     * 调色板、天空 / 视口 / 阴影）；**每批 / 每材质 / 本字体**的地址随 pc_root 走
      *（同一帧内逐批不同，一张标量表装不下，见 RootAddressPush.h）。
      */
     struct GlobalAddresses
@@ -30,6 +30,9 @@ namespace hgl::graph
         uint64_t addr_draw_item_ids = 0;
         uint64_t addr_camera_info = 0;
         uint64_t addr_color_palette = 0;
+
+        // ── 每帧槽字段：地址随帧槽变化（sky 的 buffer 每帧不同）──
+        uint64_t addr_sky = 0;
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽，见文件头）。

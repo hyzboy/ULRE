@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
@@ -42,8 +43,10 @@ namespace hgl::graph
         AnsiString buf_name = "SkyUBO:";
         buf_name += profile->name;
 
-        auto *buf = buffer_manager->CreateUBO(buf_name,
-                                              StructView<SkyInfo>::GetSize());
+        // 必须用 CreateSSBO：只有它带 SHADER_DEVICE_ADDRESS usage（BDA 取址前提），
+        // sky 数据自 S2 起经 global_addresses.addr_sky 解引用，不再吃 Scene 集绑定。
+        auto *buf = buffer_manager->CreateSSBO(buf_name,
+                                               StructView<SkyInfo>::GetSize());
         if (!buf)
         {
             GLogError("[EnvironmentManager] create sky UBO failed: %s", profile->name.c_str());
@@ -64,6 +67,38 @@ namespace hgl::graph
         // （staged 由 RenderBufferUploadSystem 上传，直写缓冲立刻可见）。
         profile->sky_ubo->Update(profile->cpu.sky);    // 拷贝数据 + 置脏
         profile->sky_ubo->Commit();                    // 标脏交 L2
+
+        // sky 地址进表：**在 buffer 物化处注册**（这是地址唯一会变的地方）。
+        // 不能只靠每帧 SyncGlobalAddressesTable：那条路依赖世界/渲染上下文就绪，
+        // 漏跑一次 ⇒ 表里 addr_sky 恒 0 ⇒ 读 sky 的 shader 解引用 0 地址 ⇒ 设备丢失。
+        // sky 是单份 buffer ⇒ 一个地址写满所有帧槽。
+        auto *registry = gc->GetGlobalSSBOBufferRegistry();
+        if (!registry)
+        {
+            GLogError("[EnvironmentManager] sky 地址入表失败：GlobalSSBOBufferRegistry 不可用");
+            buffer_manager->Release(buf);
+            delete profile->sky_ubo;
+            profile->sky_ubo = nullptr;
+            return false;
+        }
+
+        const uint64_t sky_addr =
+            gc->GetDevice()->GetBufferDeviceAddressAligned16(buf->GetBuffer());
+        if (sky_addr == 0)
+        {
+            // 取不到地址 = shader 解引用 0 基址（UB）⇒ fail-fast（0 校验层消息抓不到这类崩）
+            GLogError("[EnvironmentManager] sky 取不到设备地址（usage / 16B 对齐）：%s",
+                      profile->name.c_str());
+            buffer_manager->Release(buf);
+            delete profile->sky_ubo;
+            profile->sky_ubo = nullptr;
+            return false;
+        }
+
+        registry->SetSkyAddress(sky_addr);
+        GLogInfo("[EnvironmentManager] sky addr=0x%llX 入表（全帧槽）",
+                 (unsigned long long)sky_addr);
+
         return true;
     }
 
