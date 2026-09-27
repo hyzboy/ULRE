@@ -6,7 +6,27 @@
 
 ## 0. 起点状态（新会话请先核对）
 
-- 分支 `CSM`，HEAD = 删死绑定相机 UBO 的提交（`refactor(mtl): 删除死绑定相机 UBO，相机数据统一走 BDA`）。
+- 分支 `CSM`；当前 HEAD 之前已落地 **T1：顶点调色板 BDA 化 + Scene 绑定重编号**
+  （`refactor(mtl): 顶点调色板改走 BDA（地址入全局地址表），Scene 绑定重编号`）。
+- **T1 的关键实测结论（别再按「palette 是死绑定」处理）**：调色板**不是**死绑定，它的读取点由
+  生成器发射——`src/ShaderGen/meshgen/MeshShaderVaryingGen.h:117-118` 拼出
+  `fragVertexColor[vid] = unpackUnorm4x8(color_palette.color[ColorIndex]);`（另有
+  `VertexABIBuilder.cpp:229-230` 引入 `vertex/s1_palette_index.glsl` 供索引）。
+  只在 `ShaderLibrary/**.glsl` 里 grep 会**假阴性**（那里只有一条注释）。
+- **落地形态**：buffer 改 `CreateSSBO`（带 SHADER_DEVICE_ADDRESS usage）；地址注册进
+  `GlobalAddresses::addr_color_palette`（**不进 pc_root**——调色板构造期写入、长期有效，
+  不占每 pass 的 push 带宽）；GLSL 侧
+  `#define color_palette ColorPaletteRef(global_addresses.addr_color_palette)`，**宏名不变** ⇒
+  shader 正文与生成侧发射的字符串都零改动。
+- **配套重编号**：Scene 绑定现在是 sky=0 / viewport=1 / global_addresses=2 / shadow=3
+  （`ColorPalette` 枚举项、`kSceneBindingColorPalette` 别名、目录行、`SBS_ColorPalette`、
+  `DescriptorSemantic::MaterialColorPalette`、能力规则、`MeshModeDescriptor` 的 resolver、
+  `MaterialDefinitionFile` 的 ubos 名表、材质 TOML、门夹具、golden 已同批清）。
+- **容量口径订正**：pc_root 现为 **72B**（8×uint64 + 2×uint32，见 `ShaderBufferSources.h` 的
+  `static_assert`），不是 56B（56B 曾是 `GlobalAddresses` 的尺寸，现 64B）。
+  全量平铺所需新增槽位见 §4.1。旧注释里的「7 张全局表 / 56B」已订正
+  （`RootAddressPush.h`、`VKPipelineLayoutData.cpp`、`MeshShaderGen` 头）。
+- 更完整的现状审计见 `doc/scene_ubo_bda_migration_ready.md`。
 - 基线判据（本会话实测，改动前后必须一致或差异可解释）：
   - 构建 `rc=0 / 0 errors`；`descriptor_macros_verify`（ALL 目标 + 门依赖）必须过。
   - ShaderGen 门 `ShaderResourceSchemaRegressionGate` = **39 PASS / 0 FAIL**（基线）。
@@ -18,11 +38,11 @@
 
 | 项 | 值 / 位置 |
 |---|---|
-| 待退役绑定 | sky=0、viewport=1、color_palette=2、global_addresses=3、shadow=4（`inc/hgl/common/DescriptorSetTypeDef.h` SceneBinding） |
-| GLSL 声明 | `ShaderLibrary/ubo/scene_ubo.glsl`：SkyInfo:61、ViewportInfo:75、ColorPalette:83、GlobalAddressesInfo:88、ShadowInfo:112 |
+| 待退役绑定 | sky=0、viewport=1、global_addresses=2、shadow=3（`inc/hgl/common/DescriptorSetTypeDef.h` SceneBinding）；**color_palette 已删**（T1） |
+| GLSL 声明 | `ShaderLibrary/ubo/scene_ubo.glsl`：SkyInfo、ViewportInfo、GlobalAddressesInfo（**已增 `addr_color_palette` 字段**）、ShadowInfo；**ColorPalette 已改 `buffer_reference` + 宏** |
 | 读取面（文件数） | sky 7、shadow 4、viewport 2、color_palette 2、global_addresses 2（全在 ShaderLibrary/**.glsl） |
 | 每帧写入 | `src/ecs/systems/render/RenderSceneUBOSystem.cpp:400/402/404/406`（Viewport/Sky/Shadow/GlobalAddresses） |
-| 第二个写入点 | `src/ecs/systems/render/ColorPaletteSystem.cpp:143`（kSceneBindingColorPalette） |
+| ~~第二个写入点~~ | 已删（T1）：`ColorPaletteSystem` 改为建 SSBO 并把地址注册进地址表（`ColorPaletteSystem.cpp` 的 `EnsureResources`） |
 | 布局/绑定 | `src/Vulkan/VKGlobalSceneUBOSet.cpp` 两处 layout builder（约 :34/:132）+ push descriptor 路径 |
 | 宏生成 | `ShaderLibrary/common/descriptor_macros.glsl` 为 `DescriptorMacroGen` 生成物，真源 = `DescriptorSetTypeDef.h` 的枚举 + `kDescriptorBindingMacros` 表；**禁止手改** |
 
@@ -46,14 +66,22 @@ L2W 表已经完成过同样的迁移，是标准样板：
 对每个 UBO：GLSL 声明 `uniform` 块 → `buffer_reference` 结构体；宏体从「读绑定」改为
 「`XxxRef(pc_root.addr_xxx)`」；地址经 `PushRootAddresses` 新增形参下发。
 **宏名不动**（`sky`、`view`、`color_palette`、`shadow`），所以 shader 正文零改动。
-建议顺序：`shadow` → `sky` → `color_palette` → `viewport`（读点少、依赖轻的先做），
-最后 `global_addresses`（它是地址表本身，退役后地址一律走 pc_root）。
+建议顺序（T1 调色板已完成，且**地址进了地址表而非 pc_root**）：`shadow` → `sky` → `viewport`，
+最后处理 `global_addresses` 本体（它退役后「静态地址表」这一层怎么留，见 §4.1/§4.2）。
 
 ## 4. 待决设计问题（新会话必须先拍板）
 
-1. **pc_root 容量**：现 56B。加 4~5 个 uint64 地址 ⇒ 约 96B。Vulkan 最低保证 128B，
-   但**必须用真机 limit 核对**（本项目要求硬件参数由主程序实测传入，不硬编码默认值；
-   已有 `VulkanPhysicalDeviceProfileCollector`）。若超限，方案退化为「保留 1 个 UBO 做地址表」。
+1. **pc_root 容量（已按真值重算）**：现 **72B**，硬顶 **128B**（compute 路径显式拒绝 `>128`：
+   `src/SceneGraph/module/ShaderProgramManager.cpp:466-472`；图形路径直接用
+   `sizeof(RootAddresses)`，`src/Vulkan/pipeline/VKPipelineLayoutData.cpp`）。
+   全量平铺要新增 **9 槽 = 72B**（sky / viewport / shadow + 地址表里 6 个字段：
+   pbr/emissive/transmission 池地址（`MTL_ROW` 生成宏消费）＋ render_items / draw_item_ids /
+   camera_info）⇒ **144B > 128B**。可选出路：
+   ①（推荐）**地址表降一级**：pc_root 只加 sky/viewport/shadow + `addr_addresses` 四槽（104B），
+      6 个池/表地址留在 `GlobalAddresses` 表里、表本身改由 pc_root 寻址——因为 GLSL 与生成侧拼的
+      都是 `global_addresses.addr_*` 字符串，正文零改动的卖点连生成侧一起成立；
+   ② 把 PBRSurface/EmissiveSurface/TransmissionSurface 三个池并进同一 arena（省 16B），
+      属池机制改造，不宜混进本批；③ 全平铺 128B（零余量）。
 2. **地址渠道统一**：相机现在走 `global_addresses` UBO，L2W 走 pc_root——两套并存是当前不一致点。
    建议统一走 pc_root（省掉地址表 UBO），但需回答容量问题。
 3. **Set 0 是否整体退场**：若 5 个绑定全清且 Bindless 集不依赖 Set 0，
@@ -68,7 +96,10 @@ L2W 表已经完成过同样的迁移，是标准样板：
 ## 5. 验证清单（每次改动都跑）
 
 1. `cmake --build build --config Debug --target ...`（含门）——`descriptor_macros_verify` 必须过。
-2. ShaderGen 门 = 39 PASS / 0 FAIL。**golden 会再次变化**：语义转储里的 Scene 资源行应当消失。
+2. ShaderGen 门 = **38 PASS / 0 FAIL**（T1 删掉了 `C.scene-color-palette-explicit` 用例：
+   39 → 38）。**golden 已变过一轮**（仅 `golden/vertex-palette-color-forward.txt`：
+   `resource_count 2→1` + MaterialColorPalette 资源行消失，`palette_color=1` varying 保留）。
+   后续每步仍会再变：语义转储里的 Scene 资源行应当逐个消失。
    刷新前必须 `diff --strip-trailing-cr golden/x.txt golden/x.txt.actual` 逐条核对，确认只有预期变化再 `cp`。
 3. Test 21 / TestRenderItemDataStorage / ATS 三契约 + selfcheck + 0 VUID / CSM 多轮不一致=0。
 
