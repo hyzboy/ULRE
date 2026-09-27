@@ -9,7 +9,8 @@ namespace hgl::graph
      * GlobalSSBOType - 全局单一数组池类型枚举
      * 统一管理由 GlobalSSBOBufferRegistry 托管的固定上限 Arena 行池
      * （MeshDrawParams + 材质表面字段；原 mtl::MaterialSSBOType 已并入本枚举）。
-     * 每个类型在 GPU 侧拥有唯一持久 BDA，并映射至 Set 0 Binding 4 GlobalAddressesInfo。
+     * 每个类型在 GPU 侧拥有唯一持久 BDA，地址登记进全局地址表（GlobalAddresses SSBO，
+     * 经 pc_root.addr_global_addresses 寻址——原 Set 0 的 GlobalAddressesInfo UBO 已退役）。
      */
     enum class GlobalSSBOType : uint8_t
     {

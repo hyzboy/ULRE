@@ -256,13 +256,17 @@ namespace hgl::graph::mtl
     static_assert(offsetof(GeometryAABB, center) == 0);
     static_assert(offsetof(GeometryAABB, extents) == 16);
 
-    // ── 根地址表（RootAddresses）——push constant 承载的全局表设备地址 ──────────
-    // 全部 SSBO 走 BDA 后，shader 每个 buffer_reference 起点都需要一个地址来源；
-    // 8 张表（MeshDrawParams/L2W/L2WIndex/mtl_data_addrs/texture_references/文本三表）的地址
-    // 集中在此，渲染路径每 MaterialBatch 渲染前一次 PushConstants 下发（72B）。
+    // ── 根地址表（RootAddresses）——push constant 承载的地址根入口 ──────────────
+    // 全部 SSBO 走 BDA 后，shader 每个 buffer_reference 起点都需要一个地址来源：
+    //   · addr_global_addresses = **全局地址表**（GlobalAddresses SSBO）的基址：所有全局 /
+    //     长期有效的表与池地址都从那张表里取，表内寻址，不再逐个 push；
+    //   · 其余 8 个 = **本批 / 本材质 / 本字体**的表地址（同帧内逐批不同，故无法集中于
+    //     一张表；它们本来就是每批重推的「本批 buffer 指针」）。
+    // 渲染路径每 MaterialBatch 渲染前一次 PushConstants 下发（80B）。
     // 单一真源（X 列表）：CPU struct / GLSL 字段名 / GLSL 字段类型从这一份生成，
     // A3 发射 push_constant block 时遍历名字+类型表——改字段只改这里。
     #define HGL_ROOT_ADDRESSES_FIELD_LIST(M)  \
+        M(addr_global_addresses,   "uint64_t", uint64_t)  \
         M(addr_mesh_draw_params,   "uint64_t", uint64_t)  \
         M(addr_l2w,                "uint64_t", uint64_t)  \
         M(addr_l2w_index,          "uint64_t", uint64_t)  \
@@ -301,24 +305,35 @@ namespace hgl::graph::mtl
     constexpr uint32 kRootAddressesFieldCount =
         static_cast<uint32>(sizeof(kRootAddressesFieldNames) / sizeof(kRootAddressesFieldNames[0]));
 
-    // 布局断言：8×uint64 连续 + 2×uint32，无额外 padding，sizeof == 72
+    // 布局断言（按 X 列表自动推导，不手列下标）：字段必须与 GLSL push_constant block
+    // 逐字段同序、每个字段的 offset == 前面所有字段大小之和、总大小 == 各字段大小之和
+    // ⇒ 无隐式 padding、无尾部 padding。增删/调序字段只改 X 列表，本断言自动跟随
+    //（手列下标会在加字段时静默过期，正是本断言要消灭的漂移面）。
     constexpr bool RootAddressesLayoutValid() noexcept
     {
+        const size_t sizes[] =
+        {
+    #define HGL_RA_SIZE_FIELD(name, glsl_type, cpu_type) sizeof(cpu_type),
+            HGL_ROOT_ADDRESSES_FIELD_LIST(HGL_RA_SIZE_FIELD)
+    #undef HGL_RA_SIZE_FIELD
+        };
         const size_t offsets[] =
         {
     #define HGL_RA_OFFSET_FIELD(name, glsl_type, cpu_type) offsetof(RootAddresses, name),
             HGL_ROOT_ADDRESSES_FIELD_LIST(HGL_RA_OFFSET_FIELD)
     #undef HGL_RA_OFFSET_FIELD
         };
-        for (uint32 i = 0; i < 8; ++i)
+
+        size_t expected = 0;
+        for (uint32 i = 0; i < kRootAddressesFieldCount; ++i)
         {
-            if (offsets[i] != i * 8u)
+            if (offsets[i] != expected)
                 return false;
+            expected += sizes[i];
         }
-        if (offsets[8] != 64u || offsets[9] != 68u)
-            return false;
-        return sizeof(RootAddresses) == 72;
+
+        return sizeof(RootAddresses) == expected;
     }
     static_assert(RootAddressesLayoutValid(),
-        "RootAddresses 布局必须 8×uint64 + 2×uint32 连续（sizeof=72）——与 GLSL push_constant block 逐字段一致");
+        "RootAddresses 字段必须与 GLSL push_constant block 逐字段同序且无 padding（uint64 地址在前、uint 标量在后）");
 }

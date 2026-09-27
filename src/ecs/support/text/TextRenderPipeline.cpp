@@ -288,10 +288,21 @@ namespace hgl::ecs
             // 从该地址表取得当前字体图集的独立引用行。
             // 相机行号（camera_id * 槽总数 + 本帧槽），着色器用它索引 cameras[]
             const uint32_t active_cam_row = world ? world->GetActiveCameraRow() : 0;
+
+            // 全局地址表基址 = 本次 push 的根入口（render_context 在本函数后段才赋值，
+            // 故先取已有值，缺失时回退到 world 的 RenderContext）
+            graph::RenderContext *addr_rc = render_context;
+            if (!addr_rc && world)
+                addr_rc = world->GetRenderContext();
+            graph::GraphicsContext *addr_gc = addr_rc ? addr_rc->GetGraphicsContext() : nullptr;
+            const uint64_t addr_global_addresses =
+                addr_gc ? addr_gc->GetGlobalAddressesAddress() : 0;
+
             graph::PushRootAddresses(
                 cmd,
                 frame_device,
                 res.material->GetPipelineLayout(),
+                addr_global_addresses,
                 res.mesh_draw_params ? res.mesh_draw_params->GetGPUBuffer() : nullptr,
                 nullptr, nullptr,
                 res.material_instance_addresses_buffer

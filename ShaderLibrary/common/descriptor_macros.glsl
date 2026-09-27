@@ -36,12 +36,8 @@
 #define VIEWPORT_BINDING 1
 #endif
 
-#ifndef GLOBAL_ADDRESSES_BINDING
-#define GLOBAL_ADDRESSES_BINDING 2
-#endif
-
 #ifndef SHADOW_BINDING
-#define SHADOW_BINDING 3
+#define SHADOW_BINDING 2
 #endif
 
 #ifndef BINDLESS_SET

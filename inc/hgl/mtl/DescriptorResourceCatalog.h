@@ -46,7 +46,6 @@ namespace hgl::graph::mtl
         // ── SceneGlobal：全局 UBO（一帧写/绑一次；binding=SceneBinding 枚举）──
         { DescriptorSemantic::ViewportInfo,         ResourceCatalogClass::SceneGlobal, &SBS_ViewportInfo,     DescriptorSetType::Scene,    int(SceneBinding::Viewport),         SSBOType::UserDefined, true  },
         { DescriptorSemantic::SkyInfo,              ResourceCatalogClass::SceneGlobal, &SBS_SkyInfo,          DescriptorSetType::Scene,    int(SceneBinding::Sky),              SSBOType::UserDefined, false },
-        { DescriptorSemantic::GlobalAddresses,      ResourceCatalogClass::SceneGlobal, &SBS_GlobalAddresses, DescriptorSetType::Scene,    int(SceneBinding::GlobalAddresses),  SSBOType::UserDefined, true  },
         { DescriptorSemantic::ShadowInfo,           ResourceCatalogClass::SceneGlobal, &SBS_ShadowInfo,       DescriptorSetType::Scene,    int(SceneBinding::Shadow),           SSBOType::UserDefined, true  },
 
         // ── PerDraw/PerObject 行已删（A6-2b-b2：L2W/L2WIndex/MeshDrawParams

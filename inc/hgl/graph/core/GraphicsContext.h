@@ -125,6 +125,10 @@ namespace hgl::graph
         GeometryManager *GetGeometryManager() { return geometry_manager; }
         SSBOBufferRegistry *GetSSBOBufferRegistry() { return resource_domain_manager; }
         GlobalSSBOBufferRegistry *GetGlobalSSBOBufferRegistry() { return global_ssbo_registry; }
+
+        /// 全局地址表基址（push constant 的根入口 addr_global_addresses 取址来源；未初始化 = 0）
+        /// 定义在 .cpp（此处只有 GlobalSSBOBufferRegistry 前置声明，不能取成员）
+        uint64_t GetGlobalAddressesAddress() const;
         EnvironmentManager *GetEnvironmentManager() { return env_manager; }
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
         const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }

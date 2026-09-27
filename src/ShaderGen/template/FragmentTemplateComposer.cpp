@@ -563,9 +563,9 @@ namespace hgl::graph::mtl
                 // MTL_ROW 宏（池基址取 global_addresses.addr_*，行号取
                 // pc_root.addr_mtl_data_addrs 的 payload_index）——pc_root push
                 // constant 与 BDA 扩展由 BuildMaterialStageDocument 的 material
-                // injection 对所有程序注入，这里只补 global_addresses 声明
-                // （scene_ubo）。必须排在 SurfaceInterface 之后：SCENE_SET/
-                // GLOBAL_ADDRESSES_BINDING 宏由其内的 descriptor_macros 提供。
+                // injection 对所有程序注入（含 pc_root 本身），这里只补
+                // global_addresses 的 buffer_reference 声明（scene_ubo）。必须排在
+                // SurfaceInterface 之后：SCENE_SET 等宏由其内的 descriptor_macros 提供。
                 AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
                     IncludeTemplate("ubo/scene_ubo.glsl"),
                     "ShadowCaster.SceneUbo", "ubo/scene_ubo.glsl");

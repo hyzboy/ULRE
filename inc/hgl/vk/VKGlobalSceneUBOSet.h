@@ -14,15 +14,14 @@ namespace hgl::graph
     /**
      * 全局 Scene UBO 描述符集（对应 Descriptor Set 0）。
      *
-     * 所有材质共用同一份 sky / viewport / global_addresses / shadow UBO
-     * （相机数据与调色板走 BDA，无绑定无集），
+     * 所有材质共用同一份 sky / viewport / shadow UBO
+     * （相机、调色板、全局地址表走 BDA，无绑定无集），
      * 一帧写一次、绑一次，不再走 per-material 描述符分配。
      *
      * 硬编码 binding（见 kSceneBinding* 常量）：
      *   binding=0 : sky              (kSceneBindingSky)
      *   binding=1 : viewport         (kSceneBindingViewport)
-     *   binding=2 : global_addresses (kSceneBindingGlobalAddresses)
-     *   binding=3 : shadow           (kSceneBindingShadow)
+     *   binding=2 : shadow           (kSceneBindingShadow)
      *
      * 注：与 BindlessTextureManager 一样属于设备级全局资源，
      *     由 GraphicsContext 持有并管理生命周期。

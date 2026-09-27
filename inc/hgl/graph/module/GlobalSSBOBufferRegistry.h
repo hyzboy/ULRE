@@ -80,15 +80,17 @@ struct GlobalRowBufferInfo
  *
  * 特性：
  * - 启动时表驱动一次性分配所有 Arena Buffer，终身不重建，BDA 终身恒定；
- * - 自身闭环管理 Set 0 Binding 4 的 GlobalAddressesInfo UBO（启动时一次性写入，0 运行时 CPU 开销）；
+ * - 自身闭环管理全局地址表（GlobalAddresses，SSBO + 设备地址；经 pc_root.addr_global_addresses
+ *   下发，无绑定无集），启动时一次性写入，0 运行时 CPU 开销；
  * - 提供类型擦除与泛型并存的统一 RAII 租约访问器 GlobalSSBODataAccessor。
  */
 GRAPH_MODULE_CLASS(GlobalSSBOBufferRegistry)
 {
 private:
     ActiveRowPool pools[GlobalSSBOTypeCount];
-    DeviceBuffer *global_addresses_ubo_buffer = nullptr;
-    StructView<GlobalAddresses> *global_addresses_ubo = nullptr;
+    DeviceBuffer *global_addresses_table_buffer = nullptr;
+    StructView<GlobalAddresses> *global_addresses_table = nullptr;
+    uint64_t      global_addresses_addr = 0;      ///< 表基址（pc_root.addr_global_addresses 取址源）
     bool initialized = false;
 
     GlobalSSBOBufferRegistry(GraphicsContext *);
@@ -99,7 +101,7 @@ private:
     void OnGraphicsContextChanged(GraphicsContext *) override;
     bool InitializePools();
     bool CreatePool(const GlobalSSBOConfig &config);
-    bool InitializeGlobalAddressesUBO();
+    bool InitializeGlobalAddressesTable();
 
 public:
     void Release() override;
@@ -126,10 +128,8 @@ public:
         return pool ? pool->GetGPUBase() : 0;
     }
 
-    const IGPUBuffer *GetGlobalAddressesUBO() const
-    {
-        return global_addresses_ubo ? global_addresses_ubo->GetGPUBuffer() : nullptr;
-    }
+    /// 全局地址表基址（pc_root.addr_global_addresses 的取址来源；未初始化时为 0）
+    uint64_t GetGlobalAddressesAddress() const { return global_addresses_addr; }
 
     void UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids);
 
@@ -195,8 +195,13 @@ public:
         auto *pool = GetPool(type);
         if (!initialized || !pool || !pool->IsReady() || pool->GetSSBOId() == 0)
         {
-            GLogError("[GlobalSSBOBufferRegistry] Accessor requested before ready: type=%s",
-                      GetGlobalSSBOTypeName(type));
+            // 三条件逐项打出：否则「未就绪」只能靠猜（initialized / 池就绪 / SSBO id）
+            GLogError("[GlobalSSBOBufferRegistry] Accessor requested before ready: type=%s"
+                      "（initialized=%d pool=%p IsReady=%d ssbo_id=%u）",
+                      GetGlobalSSBOTypeName(type),
+                      initialized ? 1 : 0, (const void *)pool,
+                      pool ? (pool->IsReady() ? 1 : 0) : 0,
+                      pool ? pool->GetSSBOId() : 0u);
             return {};
         }
         return GlobalSSBODataAccessor(pool, type, pool->GetSSBOId());

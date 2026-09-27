@@ -53,8 +53,9 @@ VkPipelineLayout VulkanDevice::CreateGlobalPipelineLayout(VkDescriptorSetLayout 
     pPipelineLayoutCreateInfo.setLayoutCount            = DESCRIPTOR_SET_TYPE_COUNT;
     pPipelineLayoutCreateInfo.pSetLayouts               = dsl;
 
-    // RootAddresses：push constant 承载 8 张全局表设备地址（72B = 8×uint64 + 2×uint32，
-    // sizeof(RootAddresses) 为准；容量口径以 ShaderBufferSources.h 的 static_assert 为真源）。
+    // RootAddresses：push constant 承载「全局地址表基址 + 本批表地址」（80B = 9×uint64 +
+    // 2×uint32，sizeof(RootAddresses) 为准；容量口径以 ShaderBufferSources.h 的真源与
+    // 128B 硬顶为界）。全局 / 长期有效的地址都在表内，见 RootAddressPush.h。
     // stage=Mesh|Fragment|Compute——mesh 读 MeshDrawParams/L2W/L2WIndex/文本表，
     // FS 读 mtl_data_addrs，compute 管线复用同一全局 layout 时按需读全局表地址。
     // IndirectMeshDraw 的 per-draw 段偏移仍走参数表 rows[gl_DrawID]

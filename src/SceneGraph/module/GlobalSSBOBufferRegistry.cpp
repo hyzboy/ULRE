@@ -37,20 +37,20 @@ void GlobalSSBOBufferRegistry::OnGraphicsContextChanged(GraphicsContext *gc)
 
 void GlobalSSBOBufferRegistry::Release()
 {
-    if (global_addresses_ubo)
+    if (global_addresses_table)
     {
-        delete global_addresses_ubo;
-        global_addresses_ubo = nullptr;
+        delete global_addresses_table;
+        global_addresses_table = nullptr;
     }
 
-    if (global_addresses_ubo_buffer)
+    if (global_addresses_table_buffer)
     {
         if (auto *gc = GetGraphicsContext())
         {
             if (auto *bm = gc->GetBufferManager())
-                bm->Release(global_addresses_ubo_buffer);
+                bm->Release(global_addresses_table_buffer);
         }
-        global_addresses_ubo_buffer = nullptr;
+        global_addresses_table_buffer = nullptr;
     }
 
     for (uint32_t index = 0; index < GlobalSSBOTypeCount; ++index)
@@ -82,9 +82,9 @@ bool GlobalSSBOBufferRegistry::CreatePool(const GlobalSSBOConfig &config)
     return true;
 }
 
-bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO()
+bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
 {
-    if (global_addresses_ubo)
+    if (global_addresses_table)
         return true;
 
     auto *gc = GetGraphicsContext();
@@ -95,18 +95,30 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO()
     if (!bm)
         return false;
 
-    global_addresses_ubo_buffer = bm->CreateUBO("GlobalAddressesUBO", StructView<GlobalAddresses>::GetSize());
-    if (!global_addresses_ubo_buffer)
+    // BDA：必须以 SHADER_DEVICE_ADDRESS usage 创建才拿得到设备地址（CreateUBO 的额外
+    // usage 位是 0）；分配策略（ReBAR/暂存）由 usage 位派生，StructView 的写入路径不变。
+    global_addresses_table_buffer = bm->CreateSSBO("GlobalAddressesTable",
+                                                 StructView<GlobalAddresses>::GetSize());
+    if (!global_addresses_table_buffer)
     {
-        GLogError("[GlobalSSBOBufferRegistry] Failed to create GlobalAddressesUBO buffer");
+        GLogError("[GlobalSSBOBufferRegistry] Failed to create GlobalAddressesTable buffer");
         return false;
     }
 
-    global_addresses_ubo_buffer->SetUpdateClass(BufferUpdateClass::Default);
-    global_addresses_ubo = StructView<GlobalAddresses>::Create(global_addresses_ubo_buffer, false);
-    if (!global_addresses_ubo)
+    global_addresses_table_buffer->SetUpdateClass(BufferUpdateClass::Default);
+    global_addresses_table = StructView<GlobalAddresses>::Create(global_addresses_table_buffer, false);
+    if (!global_addresses_table)
     {
-        GLogError("[GlobalSSBOBufferRegistry] Failed to create StructView for GlobalAddressesUBO");
+        GLogError("[GlobalSSBOBufferRegistry] Failed to create StructView for GlobalAddressesTable");
+        return false;
+    }
+
+    global_addresses_addr =
+        gc->GetDevice()->GetBufferDeviceAddressAligned16(global_addresses_table_buffer->GetBuffer());
+    if (global_addresses_addr == 0)
+    {
+        // 地址缺失 = shader 解引用 0 基址 = UB / 设备丢失（0 VUID 判据抓不到）⇒ fail-fast
+        GLogError("[GlobalSSBOBufferRegistry] GlobalAddressesTable 取不到设备地址（16B 对齐 / usage 检查）");
         return false;
     }
 
@@ -120,18 +132,18 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO()
     ga.addr_camera_info          = GetGPUBase(GlobalSSBOType::CameraInfo);
     ga.addr_color_palette        = 0;   // 由 ColorPaletteSystem 创建后注册（UpdateColorPaletteAddress）
 
-    global_addresses_ubo->Update(ga);
-    global_addresses_ubo->Commit();
+    global_addresses_table->Update(ga);
+    global_addresses_table->Commit();
 
     return true;
 }
 
 void GlobalSSBOBufferRegistry::UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids)
 {
-    if (!global_addresses_ubo)
+    if (!global_addresses_table)
         return;
 
-    GlobalAddresses *ga = global_addresses_ubo->Data();
+    GlobalAddresses *ga = global_addresses_table->Data();
     if (!ga)
         return;
 
@@ -139,23 +151,23 @@ void GlobalSSBOBufferRegistry::UpdateRenderItemAddresses(uint64_t addr_render_it
     {
         ga->addr_global_render_items = addr_render_items;
         ga->addr_draw_item_ids = addr_draw_item_ids;
-        global_addresses_ubo->Commit();
+        global_addresses_table->Commit();
     }
 }
 
 void GlobalSSBOBufferRegistry::UpdateColorPaletteAddress(uint64_t addr_color_palette)
 {
-    if (!global_addresses_ubo)
+    if (!global_addresses_table)
         return;
 
-    GlobalAddresses *ga = global_addresses_ubo->Data();
+    GlobalAddresses *ga = global_addresses_table->Data();
     if (!ga)
         return;
 
     if (ga->addr_color_palette != addr_color_palette)
     {
         ga->addr_color_palette = addr_color_palette;
-        global_addresses_ubo->Commit();
+        global_addresses_table->Commit();
     }
 }
 
@@ -186,7 +198,7 @@ bool GlobalSSBOBufferRegistry::InitializePools()
         }
     }
 
-    if (!InitializeGlobalAddressesUBO())
+    if (!InitializeGlobalAddressesTable())
     {
         Release();
         return false;

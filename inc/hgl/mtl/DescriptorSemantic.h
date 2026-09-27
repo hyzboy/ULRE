@@ -29,7 +29,6 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(MaterialPrivateData) \
     HGL_SEMANTIC(MaterialTexture) \
     HGL_SEMANTIC(MaterialSampler) \
-    HGL_SEMANTIC(GlobalAddresses) \
     HGL_SEMANTIC(ShadowInfo)
 
     enum class DescriptorSemantic : uint8

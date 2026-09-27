@@ -243,7 +243,12 @@ int main(int argc, char **argv)
 
                 #include "common/descriptor_macros.glsl"
 
-                layout(set = SCENE_SET, binding = GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
+                layout(push_constant) uniform RootAddresses
+                {
+                    uint64_t addr_global_addresses;
+                } pc_root;
+                
+                layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer GlobalAddressesRef
                 {
                     uint64_t addr_mesh_draw_params;
                     uint64_t addr_pbr_surface;
@@ -252,7 +257,9 @@ int main(int argc, char **argv)
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
                     uint64_t addr_color_palette;
-                } global_addresses;
+                };
+                
+                #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
 
                 struct RenderItemDescriptor
                 {
@@ -484,7 +491,12 @@ int main(int argc, char **argv)
 
                 #include "common/descriptor_macros.glsl"
 
-                layout(set = SCENE_SET, binding = GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
+                layout(push_constant) uniform RootAddresses
+                {
+                    uint64_t addr_global_addresses;
+                } pc_root;
+                
+                layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer GlobalAddressesRef
                 {
                     uint64_t addr_mesh_draw_params;
                     uint64_t addr_pbr_surface;
@@ -493,7 +505,9 @@ int main(int argc, char **argv)
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
                     uint64_t addr_color_palette;
-                } global_addresses;
+                };
+                
+                #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
 
                 struct RenderItemDescriptor
                 {
@@ -729,7 +743,12 @@ int main(int argc, char **argv)
 
                 #include "common/descriptor_macros.glsl"
 
-                layout(set = SCENE_SET, binding = GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
+                layout(push_constant) uniform RootAddresses
+                {
+                    uint64_t addr_global_addresses;
+                } pc_root;
+                
+                layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer GlobalAddressesRef
                 {
                     uint64_t addr_mesh_draw_params;
                     uint64_t addr_pbr_surface;
@@ -738,7 +757,9 @@ int main(int argc, char **argv)
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
                     uint64_t addr_color_palette;
-                } global_addresses;
+                };
+                
+                #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
 
                 struct RenderItemDescriptor
                 {

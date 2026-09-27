@@ -14,6 +14,8 @@
 //   binding 1: ViewportInfo viewport
 //   （原 binding 2 的 ColorPalette UBO 已删：调色板构造期写入、长期有效，
 //     地址经 global_addresses.addr_color_palette 以 buffer_reference 读取）
+//   （原 GlobalAddressesInfo UBO 已删：表本体改为 SSBO，基址经
+//     pc_root.addr_global_addresses 下发，宏名不变）
 //
 // 由 C++ 全局绑定，一次性声明，未使用的 block 在 SPIR-V 编译期自动剔除。
 
@@ -92,7 +94,10 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Colo
 
 #define color_palette ColorPaletteRef(global_addresses.addr_color_palette)
 
-layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
+// 全局地址表（**无绑定无集**）：表本体是 SSBO，基址经 pc_root.addr_global_addresses 下发。
+// 宏名不变 ⇒ 所有 `global_addresses.addr_*` 读点（含生成侧发射的 MTL_ROW / camera 宏）
+// 与 shader 正文零改动。
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer GlobalAddressesRef
 {
     uint64_t addr_mesh_draw_params;
     uint64_t addr_pbr_surface;
@@ -102,7 +107,9 @@ layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesI
     uint64_t addr_draw_item_ids;
     uint64_t addr_camera_info;
     uint64_t addr_color_palette;
-} global_addresses;
+};
+
+#define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
 
 struct ShadowCascadeInfo
 {

@@ -170,10 +170,17 @@ namespace hgl::ecs
                     l2w_gpu = l2w_buf->GetGPUBuffer();
             }
 
+            // 全局地址表基址 = 本次 push 的根入口（其余全局地址都在表内，不再逐个 push）
+            graph::GraphicsContext *addr_gc =
+                render_context ? render_context->GetGraphicsContext() : nullptr;
+            const uint64_t addr_global_addresses =
+                addr_gc ? addr_gc->GetGlobalAddressesAddress() : 0;
+
             graph::PushRootAddresses(
                 cmd_buf,
                 owner_batch->device,
                 material->GetPipelineLayout(),
+                addr_global_addresses,
                 owner_batch->mesh_draw_params_buffer
                     ? owner_batch->mesh_draw_params_buffer->GetGPUBuffer() : nullptr,
                 l2w_gpu,

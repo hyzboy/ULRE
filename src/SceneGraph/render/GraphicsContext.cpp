@@ -33,6 +33,13 @@ namespace hgl::graph
         Shutdown();
     }
 
+    // 全局地址表基址（pc_root 的根入口 addr_global_addresses 的取址来源）。
+    // 定义放这里而不是头里：头文件只有 GlobalSSBOBufferRegistry 的前置声明。
+    uint64_t GraphicsContext::GetGlobalAddressesAddress() const
+    {
+        return global_ssbo_registry ? global_ssbo_registry->GetGlobalAddressesAddress() : 0;
+    }
+
     bool GraphicsContext::Initialize()
     {
         if (!device)

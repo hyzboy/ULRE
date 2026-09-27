@@ -761,10 +761,20 @@ namespace hgl::ecs
         // 相机行号（camera_id * 槽总数 + 本帧槽）：着色器用它索引 cameras[]，
         // 离屏 pass 与主帧各自的相机数据落在不相交的行上。
         const uint32_t active_cam_row = context_ ? context_->GetActiveCameraRow() : 0;
+
+        // 全局地址表基址 = 本次 push 的根入口
+        graph::GraphicsContext *addr_gc = context_ ? context_->GetGraphicsContext() : nullptr;
+        if (!addr_gc)
+            if (auto *addr_rc = context_ ? context_->GetRenderContext() : nullptr)
+                addr_gc = addr_rc->GetGraphicsContext();
+        const uint64_t addr_global_addresses =
+            addr_gc ? addr_gc->GetGlobalAddressesAddress() : 0;
+
         graph::PushRootAddresses(
             cmd,
             device_,
             material_->GetPipelineLayout(),
+            addr_global_addresses,
             line_buffer_.mesh_draw_params
                 ? line_buffer_.mesh_draw_params->GetGPUBuffer() : nullptr,
             l2w_gpu,

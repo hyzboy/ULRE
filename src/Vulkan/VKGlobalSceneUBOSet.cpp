@@ -32,7 +32,7 @@ bool GlobalSceneUBOSet::InitDescriptorPool()
 
     // ── 描述符集布局（binding 0 的相机 UBO、binding 2 的调色板均已删：数据走 BDA）──
     // 绑定号以各条目 .binding 为准，数组按有效条目紧凑排列：sky=0 / viewport=1 /
-    // global_addresses=2 / shadow=3
+    // shadow=2（global_addresses 已改由 pc_root 寻址，不再占绑定）
     // stageFlags 加 COMPUTE：compute 管线复用全局 layout 时可按需读这些 UBO
     //（如按 viewport 尺寸定 dispatch 维度）；graphics 侧不受影响（stage 声明超集合法）。
     {
@@ -51,19 +51,13 @@ bool GlobalSceneUBOSet::InitDescriptorPool()
         bindings[1].descriptorCount = 1;
         bindings[1].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=2 : global_addresses
-        bindings[2].binding         = uint32_t(kSceneBindingGlobalAddresses);
+        // binding=2 : shadow（全局地址表已 BDA 化，不再占绑定）
+        bindings[2].binding         = uint32_t(kSceneBindingShadow);
         bindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[2].descriptorCount = 1;
         bindings[2].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=3 : shadow
-        bindings[3].binding         = uint32_t(kSceneBindingShadow);
-        bindings[3].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        bindings[3].descriptorCount = 1;
-        bindings[3].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
-
-        // PARTIALLY_BOUND：允许未写入的 binding（如 palette/sky/shadow）保持为空而不触发校验错误。
+        // PARTIALLY_BOUND：允许未写入的 binding（如 sky/shadow）保持为空而不触发校验错误。
         VkDescriptorBindingFlags binding_flags[kBindingCount];
         for (uint32_t i = 0; i < kBindingCount; ++i)
             binding_flags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
@@ -120,7 +114,7 @@ bool GlobalSceneUBOSet::InitDescriptorBuffer()
 
     // ── 描述符集布局（binding 0 的相机 UBO、binding 2 的调色板均已删：数据走 BDA）──
     // 绑定号以各条目 .binding 为准，数组按有效条目紧凑排列：sky=0 / viewport=1 /
-    // global_addresses=2 / shadow=3
+    // shadow=2（global_addresses 已改由 pc_root 寻址，不再占绑定）
     // stageFlags 加 COMPUTE：compute 管线复用全局 layout 时可按需读这些 UBO
     //（如按 viewport 尺寸定 dispatch 维度）；graphics 侧不受影响（stage 声明超集合法）。
     {
@@ -139,17 +133,11 @@ bool GlobalSceneUBOSet::InitDescriptorBuffer()
         bindings[1].descriptorCount = 1;
         bindings[1].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=2 : global_addresses
-        bindings[2].binding         = uint32_t(kSceneBindingGlobalAddresses);
+        // binding=2 : shadow（全局地址表已 BDA 化，不再占绑定）
+        bindings[2].binding         = uint32_t(kSceneBindingShadow);
         bindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[2].descriptorCount = 1;
         bindings[2].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
-
-        // binding=3 : shadow
-        bindings[3].binding         = uint32_t(kSceneBindingShadow);
-        bindings[3].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        bindings[3].descriptorCount = 1;
-        bindings[3].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
         VkDescriptorSetLayoutCreateInfo layout_ci{};
         layout_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -242,7 +230,7 @@ bool GlobalSceneUBOSet::InitDescriptorBuffer()
     }
 
     use_descriptor_buffer_ = true;
-    GLogInfo(u8"[GlobalSceneUBOSet] Initialized with Push Descriptor (sky=0, viewport=1, global_addresses=2, shadow=3)");
+    GLogInfo(u8"[GlobalSceneUBOSet] Initialized with Push Descriptor (sky=0, viewport=1, shadow=2)");
     return true;
 }
 

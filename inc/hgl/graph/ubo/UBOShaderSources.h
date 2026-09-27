@@ -18,13 +18,6 @@ namespace hgl::graph::mtl
         "SkyInfo"
     };
 
-    constexpr const ShaderBufferSource SBS_GlobalAddresses =
-    {
-        DescriptorSetType::Scene,
-        "global_addresses",
-        "GlobalAddressesInfo"
-    };
-
     constexpr const ShaderBufferSource SBS_ShadowInfo =
     {
         DescriptorSetType::Scene,

@@ -31,7 +31,6 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/ShaderBufferSources.h>
-#include<hgl/graph/ubo/GlobalAddresses.h>
 #include<cstdint>
 #include<cstring>
 #include<unordered_set>
@@ -149,10 +148,13 @@ namespace hgl::ecs
         }
     }
 
-    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveGlobalAddressesUBO()
+    // 全局地址表（SSBO，经 pc_root.addr_global_addresses 寻址）的每帧同步：
+    // 表里绝大多数字段是长期有效地址（初始化时一次写定），只有渲染项 / 绘制项两个字段
+    // 会随 storage 重建而变 —— 每帧把它们同步进表即可（不再是「每帧写一个 UBO 绑定」）。
+    void RenderSceneUBOSystem::SyncGlobalAddressesTable()
     {
         if (!context)
-            return nullptr;
+            return;
 
         graph::GraphicsContext *gc = nullptr;
         if (auto *rc = context->GetRenderContext())
@@ -161,11 +163,11 @@ namespace hgl::ecs
             gc = context->GetGraphicsContext();
 
         if (!gc)
-            return nullptr;
+            return;
 
         auto *registry = gc->GetGlobalSSBOBufferRegistry();
         if (!registry)
-            return nullptr;
+            return;
 
         uint64_t render_item_addr = 0;
         if (auto *storage = context->GetRenderItemStorage())
@@ -176,8 +178,6 @@ namespace hgl::ecs
             draw_item_ids_addr = id_storage->GetGPUAddress();
 
         registry->UpdateRenderItemAddresses(render_item_addr, draw_item_ids_addr);
-
-        return registry->GetGlobalAddressesUBO();
     }
 
     void RenderSceneUBOSystem::CommitViewportUBO()
@@ -377,7 +377,8 @@ namespace hgl::ecs
         return env_manager->GetShadowUBO(profile_id, frame_index);
     }
 
-    // 全局 Scene UBO 描述符集更新：一帧写一次（sky=0/viewport=1/global_addresses=2/shadow=3）。
+    // 全局 Scene UBO 描述符集更新：一帧写一次（sky=0/viewport=1/shadow=2）。
+    // 全局地址表已 BDA 化（表本体 SSBO，基址经 pc_root）——不在本集内。
     // viewport 为所有材质必需；sky/shadow 为可选（布局已带 PARTIALLY_BOUND 位，
     // 未静态使用的 binding 允许为空）。调色板已 BDA 化，不在本集内。
     // （绑定时代死段——per-material apply_requirement/MP/批覆盖——已随
@@ -390,7 +391,9 @@ namespace hgl::ecs
         const auto *viewport_ubo = ResolveViewportUBO();
         const auto *sky_ubo = ResolveSkyUBO();
         const auto *shadow_ubo = ResolveShadowUBO();
-        const auto *global_addresses_ubo = ResolveGlobalAddressesUBO();
+
+        // 全局地址表已 BDA 化（无绑定无集）：这里只同步表内会变的字段
+        SyncGlobalAddressesTable();
 
         auto *global_scene_set = GetGlobalSceneUBOSet(context);
         if (global_scene_set && global_scene_set->IsValid()
@@ -401,8 +404,6 @@ namespace hgl::ecs
                 global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingSky), sky_ubo);
             if (shadow_ubo)
                 global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingShadow), shadow_ubo);
-            if (global_addresses_ubo)
-                global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingGlobalAddresses), global_addresses_ubo);
         }
         else if (global_scene_set && global_scene_set->IsValid())
         {

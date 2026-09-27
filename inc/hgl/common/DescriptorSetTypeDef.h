@@ -14,10 +14,11 @@ namespace hgl::graph
         /* 相机 UBO 绑定已删：相机数据走 BDA */
         Sky=0,           ///< 天空/太阳光 UBO
         Viewport=1,      ///< 视口 UBO
-        /* 顶点调色板绑定已删（原 ColorPalette=2）：调色板长期有效，
+        /* 顶点调色板绑定已删（原 ColorPalette）：调色板长期有效，
            地址走 global_addresses.addr_color_palette（BDA，无绑定无集） */
-        GlobalAddresses=2, ///< 全局地址 UBO（MeshDrawParams 等池基址）
-        Shadow=3,        ///< 阴影参数 UBO（光照空间 VP 矩阵、PCF 参数等）
+        /* 全局地址表绑定已删（原 GlobalAddresses）：表本体是 SSBO，
+           基址走 pc_root.addr_global_addresses（BDA，无绑定无集） */
+        Shadow=2,        ///< 阴影参数 UBO（光照空间 VP 矩阵、PCF 参数等）
 
         ENUM_CLASS_RANGE(Sky,Shadow)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
     };
@@ -26,14 +27,12 @@ namespace hgl::graph
     /// 变更即破坏全部已编译着色器；static_assert 保证插入新条目引发的静默重编号在编译期暴露。
     static_assert(int(SceneBinding::Sky)==0
                && int(SceneBinding::Viewport)==1
-               && int(SceneBinding::GlobalAddresses)==2
-               && int(SceneBinding::Shadow)==3,
+               && int(SceneBinding::Shadow)==2,
                   "Scene UBO binding ABI changed");
 
     /// ── 兼容别名：既有调用点继续使用 kXxx 常量名，数值真源已上收至上述枚举 ──
     constexpr const int kSceneBindingSky             = int(SceneBinding::Sky);           ///< 天空/太阳光 UBO
     constexpr const int kSceneBindingViewport        = int(SceneBinding::Viewport);      ///< 视口 UBO
-    constexpr const int kSceneBindingGlobalAddresses = int(SceneBinding::GlobalAddresses); ///< 全局地址 UBO
     constexpr const int kSceneBindingShadow          = int(SceneBinding::Shadow);        ///< 阴影参数 UBO
 
     enum class DescriptorSetType:int
@@ -104,7 +103,6 @@ namespace hgl::graph
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "SKY_BINDING",               nullptr,   int(SceneBinding::Sky),        
             "// ── Scene set ──",                                      true, true},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "VIEWPORT_BINDING",          nullptr,   int(SceneBinding::Viewport),               nullptr},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "GLOBAL_ADDRESSES_BINDING",  nullptr,   int(SceneBinding::GlobalAddresses),        nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "SHADOW_BINDING",            nullptr,   int(SceneBinding::Shadow),                 nullptr},
 
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Bindless, "BINDLESS_SET",              nullptr,                                   -1, nullptr},
