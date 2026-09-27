@@ -125,11 +125,6 @@ namespace hgl::graph::mtl
         hgl::OrderedSet<DescriptorSemantic> &out_ubos)
     {
         out_ubos.Add(DescriptorSemantic::ViewportInfo);
-        const bool needs_camera = (node_cfg.projection == ProjectionMode::WorldCameraVP)
-                               || (node_cfg.orientation == OrientationMode::CameraFacingFree)
-                               || (node_cfg.orientation == OrientationMode::CameraFacingAxisY);
-        if (needs_camera)
-            out_ubos.Add(DescriptorSemantic::CameraInfo);
         if (varying_cfg.emit_vertex_color_from_palette)
             out_ubos.Add(DescriptorSemantic::MaterialColorPalette);
     }
@@ -140,7 +135,6 @@ namespace hgl::graph::mtl
         hgl::OrderedSet<DescriptorSemantic> &out_ubos)
     {
         out_ubos.Add(DescriptorSemantic::ViewportInfo);
-        out_ubos.Add(DescriptorSemantic::CameraInfo);
         if (varying_cfg.emit_vertex_color_from_palette)
             out_ubos.Add(DescriptorSemantic::MaterialColorPalette);
     }

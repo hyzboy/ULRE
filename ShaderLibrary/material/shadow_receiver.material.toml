@@ -34,7 +34,7 @@ requirements = ["Position", "UV0", "Normal"]
 varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]
 
 [resources]
-ubos = ["CameraInfo", "SkyInfo"]
+ubos = ["ViewportInfo", "SkyInfo"]
 textures = [
     { name = "base_color", sampler = "Sampler2DArray", required = false },
     { name = "shadow_map", sampler = "Sampler2DArray", required = false },

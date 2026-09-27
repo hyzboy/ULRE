@@ -858,11 +858,10 @@ namespace hgl::graph::mtl
                     if (!resources.at("ubos").is_array())
                         return false;
                     static const char *const names[] = {
-                        "ViewportInfo", "CameraInfo", "SkyInfo", "MaterialColorPalette", "ShadowInfo"
+                        "ViewportInfo", "SkyInfo", "MaterialColorPalette", "ShadowInfo"
                     };
                     static const DescriptorSemantic semantic_values[] = {
                         DescriptorSemantic::ViewportInfo,
-                        DescriptorSemantic::CameraInfo,
                         DescriptorSemantic::SkyInfo,
                         DescriptorSemantic::MaterialColorPalette,
                         DescriptorSemantic::ShadowInfo

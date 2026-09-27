@@ -43,13 +43,6 @@ inline void PushViewport(std::vector<SerializedDescriptorEntry> &v, const uint32
                SSBOType::UserDefined, stage_flags);
 }
 
-inline void PushCamera(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, DescriptorSetType::Scene,
-               "camera", "CameraInfo", DescriptorSemantic::CameraInfo,
-               SSBOType::UserDefined, stage_flags);
-}
-
 inline void PushSky(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     PushBySpec(v, DescriptorSetType::Scene,
@@ -101,8 +94,6 @@ inline void MergeUBODescriptor(
     case DescriptorSemantic::ViewportInfo:
         PushViewport(v, stage_flags);
         break;
-    case DescriptorSemantic::CameraInfo:
-        PushCamera(v, stage_flags);
         break;
     case DescriptorSemantic::SkyInfo:
         PushSky(v, stage_flags);

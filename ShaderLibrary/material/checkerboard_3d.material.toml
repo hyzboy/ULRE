@@ -19,4 +19,4 @@ normal_mode = "OptionalFaceFallback"
 varyings = ["emit_world_pos"]
 
 [resources]
-ubos = ["CameraInfo"]
+ubos = ["ViewportInfo"]

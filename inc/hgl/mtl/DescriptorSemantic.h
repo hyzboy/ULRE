@@ -21,7 +21,7 @@ namespace hgl::graph::mtl
     /* mesh per-draw 参数表（IndirectMeshDraw：所有 mesh 材质必备）*/ \
     HGL_SEMANTIC(MeshDrawParams) \
     HGL_SEMANTIC(ViewportInfo) \
-    HGL_SEMANTIC(CameraInfo) \
+    /* CameraInfo 已删（相机数据走 BDA）*/ \
     HGL_SEMANTIC(SkyInfo) \
     HGL_SEMANTIC(LocalToWorld) \
     HGL_SEMANTIC(LocalToWorldIndex) \
@@ -77,7 +77,6 @@ namespace hgl::graph::mtl
                 return DescriptorSemanticLayer::SSBO;
 
             case DescriptorSemantic::ViewportInfo:
-            case DescriptorSemantic::CameraInfo:
             case DescriptorSemantic::SkyInfo:
             case DescriptorSemantic::ShadowInfo:
                 return DescriptorSemanticLayer::UBO;

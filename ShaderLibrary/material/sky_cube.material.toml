@@ -19,6 +19,6 @@ requirements = ["Position"]
 varyings = ["emit_frag_direction", "emit_data_index_id"]
 
 [resources]
-ubos = ["CameraInfo"]
+ubos = ["ViewportInfo"]
 textures = [{ name = "sky_cube", sampler = "SamplerCube", required = true }]
 samplers = ["Trilinear"]

@@ -28,28 +28,24 @@
 
 // ── Scene set ──
 
-#ifndef CAMERA_BINDING
-#define CAMERA_BINDING 0
-#endif
-
 #ifndef SKY_BINDING
-#define SKY_BINDING 1
+#define SKY_BINDING 0
 #endif
 
 #ifndef VIEWPORT_BINDING
-#define VIEWPORT_BINDING 2
+#define VIEWPORT_BINDING 1
 #endif
 
 #ifndef COLOR_PALETTE_BINDING
-#define COLOR_PALETTE_BINDING 3
+#define COLOR_PALETTE_BINDING 2
 #endif
 
 #ifndef GLOBAL_ADDRESSES_BINDING
-#define GLOBAL_ADDRESSES_BINDING 4
+#define GLOBAL_ADDRESSES_BINDING 3
 #endif
 
 #ifndef SHADOW_BINDING
-#define SHADOW_BINDING 5
+#define SHADOW_BINDING 4
 #endif
 
 #ifndef BINDLESS_SET

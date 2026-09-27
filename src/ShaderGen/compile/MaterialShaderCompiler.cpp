@@ -163,7 +163,6 @@ struct DefinitionCapabilityRuleEntry
 
 constexpr DefinitionCapabilityRuleEntry kDefinitionCapabilityRules[] =
 {
-    { DescriptorSemantic::CameraInfo,                &RuleUBORequirement },
     { DescriptorSemantic::SkyInfo,                   &RuleUBORequirement },
     { DescriptorSemantic::MaterialColorPalette,      &RuleUBORequirement },
 };

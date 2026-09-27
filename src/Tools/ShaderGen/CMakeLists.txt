@@ -51,6 +51,13 @@ if(BUILD_TESTING)
         PROPERTIES LABELS "shadergen;baseline")
 endif()
 
+# 构建期校验（不止 ctest）：生成物一旦与真源漂移即构建失败。
+# 真源 = inc/hgl/common/DescriptorSetTypeDef.h 的 SceneBinding 枚举 + kDescriptorBindingMacros 规范表。
+add_custom_target(descriptor_macros_verify ALL
+    COMMAND $<TARGET_FILE:DescriptorMacroGen> --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/common/descriptor_macros.glsl
+    DEPENDS DescriptorMacroGen
+    COMMENT "校验 descriptor_macros.glsl 与真源一致")
+
 ####################################################################################################
 
 # s1_* 顶点 loader 宏一致性校验（规则从 GLSL 文本推导，无平行清单）
@@ -83,6 +90,7 @@ target_link_libraries(ShaderResourceSchemaRegressionGate
             CMCoreType)
 
 CreateProject(ShaderResourceSchemaRegressionGate)
+add_dependencies(ShaderResourceSchemaRegressionGate descriptor_macros_verify)
 
 target_compile_definitions(ShaderResourceSchemaRegressionGate
     PRIVATE ULRE_REPO_ROOT="${CMAKE_SOURCE_DIR}")

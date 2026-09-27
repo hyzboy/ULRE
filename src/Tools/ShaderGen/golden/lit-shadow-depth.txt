@@ -5,4 +5,4 @@ program_link present=1 valid=1 resource_layout_hash_set=1 vertex_input_hash_set=
 modules count=0
 varying data_index_id=0 vertex_color=0 uv0=0 world_pos=0 world_normal=0 luminance=0 frag_direction=0 transform_id_attr=0 palette_color=0 style_id=0
 resource_count=1
-resource semantic=CameraInfo layer=UBO declared_set=Scene set=global binding=global stages=Mesh|Fragment ssbo_type=UserDefined name=camera struct=CameraInfo required=1 fallback=0
+resource semantic=ViewportInfo layer=UBO declared_set=Scene set=global binding=global stages=Mesh|Fragment ssbo_type=UserDefined name=viewport struct=ViewportInfo required=1 fallback=0

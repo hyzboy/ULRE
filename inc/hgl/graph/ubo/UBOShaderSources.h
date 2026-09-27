@@ -11,13 +11,6 @@ namespace hgl::graph::mtl
         "ViewportInfo"
     };
 
-    constexpr const ShaderBufferSource SBS_CameraInfo =
-    {
-        DescriptorSetType::Scene,
-        "camera",
-        "CameraInfo"
-    };
-
     constexpr const ShaderBufferSource SBS_ColorPalette =
     {
         DescriptorSetType::Scene,

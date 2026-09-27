@@ -106,17 +106,10 @@ namespace hgl::graph::mtl
         const VertexShaderNodeConfig &node_cfg,
         uint32_t max_invocations,
         uint32_t max_vertices,
-        uint32_t max_primitives,
-        const bool force_camera_ubo = false)
+        uint32_t max_primitives)
     {
         hgl::OrderedSet<DescriptorSemantic> ubos;
         ubos.Add(DescriptorSemantic::ViewportInfo);
-        const bool needs_camera = force_camera_ubo
-                               || node_cfg.projection == ProjectionMode::WorldCameraVP
-                               || node_cfg.orientation == OrientationMode::CameraFacingFree
-                               || node_cfg.orientation == OrientationMode::CameraFacingAxisY;
-        if (needs_camera)
-            ubos.Add(DescriptorSemantic::CameraInfo);
 
         EmitMeshShaderHeaderResources(
             ms,
@@ -133,8 +126,7 @@ namespace hgl::graph::mtl
         const VertexShaderNodeConfig &node_cfg,
         uint32_t max_invocations,
         uint32_t max_vertices,
-        uint32_t max_primitives,
-        const bool force_camera_ubo = false)
+        uint32_t max_primitives)
     {
         EmitMeshShaderVersion(ms);
         EmitMeshShaderExtensions(ms);
@@ -143,8 +135,7 @@ namespace hgl::graph::mtl
             node_cfg,
             max_invocations,
             max_vertices,
-            max_primitives,
-            force_camera_ubo);
+            max_primitives);
     }
 
     // mesh shader 无 gl_InstanceIndex（VS 专属内置）——实例索引 = first_instance + gl_WorkGroupID.y

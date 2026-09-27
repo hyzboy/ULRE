@@ -11,26 +11,25 @@ namespace hgl::graph
     ///（中间插入新条目会导致后续全部静默重编号，破坏已编译着色器缓存）。
     enum class SceneBinding : int
     {
-        Camera=0,        ///< 相机 UBO
-        Sky=1,           ///< 天空/太阳光 UBO
-        Viewport=2,      ///< 视口 UBO
-        ColorPalette=3,  ///< 顶点调色板 UBO
-        GlobalAddresses=4, ///< 全局地址 UBO（MeshDrawParams 等池基址）
-        Shadow=5,        ///< 阴影参数 UBO（光照空间 VP 矩阵、PCF 参数等）
+        /* 相机 UBO 绑定已删：相机数据走 BDA */
+        Sky=0,           ///< 天空/太阳光 UBO
+        Viewport=1,      ///< 视口 UBO
+        ColorPalette=2,  ///< 顶点调色板 UBO
+        GlobalAddresses=3, ///< 全局地址 UBO（MeshDrawParams 等池基址）
+        Shadow=4,        ///< 阴影参数 UBO（光照空间 VP 矩阵、PCF 参数等）
 
-        ENUM_CLASS_RANGE(Camera,Shadow)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
+        ENUM_CLASS_RANGE(Sky,Shadow)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
     };
 
     /// ABI 锚点：以下数值被 ShaderLibrary/common/descriptor_macros.glsl 与运行时绑定表依赖，
     /// 变更即破坏全部已编译着色器；static_assert 保证插入新条目引发的静默重编号在编译期暴露。
-    static_assert(int(SceneBinding::Camera)==0
-               && int(SceneBinding::Viewport)==2
-               && int(SceneBinding::GlobalAddresses)==4
-               && int(SceneBinding::Shadow)==5,
+    static_assert(int(SceneBinding::Sky)==0
+               && int(SceneBinding::Viewport)==1
+               && int(SceneBinding::GlobalAddresses)==3
+               && int(SceneBinding::Shadow)==4,
                   "Scene UBO binding ABI changed");
 
     /// ── 兼容别名：既有调用点继续使用 kXxx 常量名，数值真源已上收至上述枚举 ──
-    constexpr const int kSceneBindingCamera          = int(SceneBinding::Camera);        ///< 相机 UBO
     constexpr const int kSceneBindingSky             = int(SceneBinding::Sky);           ///< 天空/太阳光 UBO
     constexpr const int kSceneBindingViewport        = int(SceneBinding::Viewport);      ///< 视口 UBO
     constexpr const int kSceneBindingColorPalette    = int(SceneBinding::ColorPalette);  ///< 顶点调色板 UBO
@@ -102,9 +101,8 @@ namespace hgl::graph
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Scene,    "SCENE_SET",                 nullptr,                                   -1,
             "// ── Descriptor Set 索引 ──",                            true, true},
 
-        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "CAMERA_BINDING",            nullptr,   int(SceneBinding::Camera),
+        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "SKY_BINDING",               nullptr,   int(SceneBinding::Sky),        
             "// ── Scene set ──",                                      true, true},
-        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "SKY_BINDING",               nullptr,   int(SceneBinding::Sky),                    nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "VIEWPORT_BINDING",          nullptr,   int(SceneBinding::Viewport),               nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "COLOR_PALETTE_BINDING",     nullptr,   int(SceneBinding::ColorPalette),           nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "GLOBAL_ADDRESSES_BINDING",  nullptr,   int(SceneBinding::GlobalAddresses),        nullptr},

@@ -2703,7 +2703,7 @@ namespace
             "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
             "varyings = [\"emit_world_pos\", \"emit_world_normal\", \"emit_uv0\"]\n"
             "[resources]\n"
-            "ubos = [\"CameraInfo\", \"SkyInfo\"]\n";
+            "ubos = [\"ViewportInfo\", \"SkyInfo\"]\n";
 
         MaterialDefinitionFileData data;
         const auto parse = ParseMaterialDefinitionFile(

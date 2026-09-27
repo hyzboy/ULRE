@@ -9,10 +9,10 @@
 // Scene 集（Set 0）全局统一基础 UBO 声明
 //
 // 对应 SceneBinding 枚举（固定 ABI）：
-//   binding 0: CameraInfo camera
-//   binding 1: SkyInfo sky
-//   binding 2: ViewportInfo viewport
-//   binding 3: ColorPalette color_palette
+//   （binding 0 的 CameraInfo UBO 已删，相机数据走 BDA）
+//   binding 0: SkyInfo sky
+//   binding 1: ViewportInfo viewport
+//   binding 2: ColorPalette color_palette
 //
 // 由 C++ 全局绑定，一次性声明，未使用的 block 在 SPIR-V 编译期自动剔除。
 

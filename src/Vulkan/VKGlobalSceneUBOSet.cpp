@@ -30,48 +30,44 @@ bool GlobalSceneUBOSet::InitDescriptorPool()
         }
     }
 
-    // ── 描述符集布局（camera=0 / sky=1 / viewport=2 / color_palette=3 / global_addresses=4 / shadow=5）──
+    // ── 描述符集布局（binding 0 的相机 UBO 已删：相机数据走 BDA global_addresses.addr_camera_info）──
+    // 绑定号以各条目 .binding 为准，数组按有效条目紧凑排列：sky=0 / viewport=1 / color_palette=2 /
+    // global_addresses=3 / shadow=4
     // stageFlags 加 COMPUTE：compute 管线复用全局 layout 时可按需读这些 UBO
     //（如按 viewport 尺寸定 dispatch 维度）；graphics 侧不受影响（stage 声明超集合法）。
     {
         constexpr uint32_t kBindingCount = uint32_t(SceneBinding::RANGE_SIZE);
         VkDescriptorSetLayoutBinding bindings[kBindingCount]{};
 
-        // binding=0 : camera
-        bindings[0].binding         = uint32_t(kSceneBindingCamera);
+        // binding=0 : sky
+        bindings[0].binding         = uint32_t(kSceneBindingSky);
         bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[0].descriptorCount = 1;
         bindings[0].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=1 : sky
-        bindings[1].binding         = uint32_t(kSceneBindingSky);
+        // binding=1 : viewport
+        bindings[1].binding         = uint32_t(kSceneBindingViewport);
         bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[1].descriptorCount = 1;
         bindings[1].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=2 : viewport
-        bindings[2].binding         = uint32_t(kSceneBindingViewport);
+        // binding=2 : color_palette
+        bindings[2].binding         = uint32_t(kSceneBindingColorPalette);
         bindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[2].descriptorCount = 1;
         bindings[2].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=3 : color_palette
-        bindings[3].binding         = uint32_t(kSceneBindingColorPalette);
+        // binding=3 : global_addresses
+        bindings[3].binding         = uint32_t(kSceneBindingGlobalAddresses);
         bindings[3].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[3].descriptorCount = 1;
         bindings[3].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=4 : global_addresses
-        bindings[4].binding         = uint32_t(kSceneBindingGlobalAddresses);
+        // binding=4 : shadow
+        bindings[4].binding         = uint32_t(kSceneBindingShadow);
         bindings[4].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[4].descriptorCount = 1;
         bindings[4].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
-
-        // binding=5 : shadow
-        bindings[5].binding         = uint32_t(kSceneBindingShadow);
-        bindings[5].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        bindings[5].descriptorCount = 1;
-        bindings[5].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
         // PARTIALLY_BOUND：允许未写入的 binding（如 palette/sky/shadow）保持为空而不触发校验错误。
         VkDescriptorBindingFlags binding_flags[kBindingCount];
@@ -128,48 +124,44 @@ bool GlobalSceneUBOSet::InitDescriptorBuffer()
         return false;
     }
 
-    // ── 描述符集布局（camera=0 / sky=1 / viewport=2 / color_palette=3 / global_addresses=4 / shadow=5）──
+    // ── 描述符集布局（binding 0 的相机 UBO 已删：相机数据走 BDA global_addresses.addr_camera_info）──
+    // 绑定号以各条目 .binding 为准，数组按有效条目紧凑排列：sky=0 / viewport=1 / color_palette=2 /
+    // global_addresses=3 / shadow=4
     // stageFlags 加 COMPUTE：compute 管线复用全局 layout 时可按需读这些 UBO
     //（如按 viewport 尺寸定 dispatch 维度）；graphics 侧不受影响（stage 声明超集合法）。
     {
         constexpr uint32_t kBindingCount = uint32_t(SceneBinding::RANGE_SIZE);
         VkDescriptorSetLayoutBinding bindings[kBindingCount]{};
 
-        // binding=0 : camera
-        bindings[0].binding         = uint32_t(kSceneBindingCamera);
+        // binding=0 : sky
+        bindings[0].binding         = uint32_t(kSceneBindingSky);
         bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[0].descriptorCount = 1;
         bindings[0].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=1 : sky
-        bindings[1].binding         = uint32_t(kSceneBindingSky);
+        // binding=1 : viewport
+        bindings[1].binding         = uint32_t(kSceneBindingViewport);
         bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[1].descriptorCount = 1;
         bindings[1].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=2 : viewport
-        bindings[2].binding         = uint32_t(kSceneBindingViewport);
+        // binding=2 : color_palette
+        bindings[2].binding         = uint32_t(kSceneBindingColorPalette);
         bindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[2].descriptorCount = 1;
         bindings[2].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=3 : color_palette
-        bindings[3].binding         = uint32_t(kSceneBindingColorPalette);
+        // binding=3 : global_addresses
+        bindings[3].binding         = uint32_t(kSceneBindingGlobalAddresses);
         bindings[3].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[3].descriptorCount = 1;
         bindings[3].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
-        // binding=4 : global_addresses
-        bindings[4].binding         = uint32_t(kSceneBindingGlobalAddresses);
+        // binding=4 : shadow
+        bindings[4].binding         = uint32_t(kSceneBindingShadow);
         bindings[4].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[4].descriptorCount = 1;
         bindings[4].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
-
-        // binding=5 : shadow
-        bindings[5].binding         = uint32_t(kSceneBindingShadow);
-        bindings[5].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        bindings[5].descriptorCount = 1;
-        bindings[5].stageFlags      = hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT;
 
         VkDescriptorSetLayoutCreateInfo layout_ci{};
         layout_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

@@ -322,22 +322,6 @@ namespace hgl::ecs
         return viewport_ubo ? viewport_ubo->GetGPUBuffer() : nullptr;
     }
 
-    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveCameraUBO() const
-    {
-        if (!context)
-            return nullptr;
-
-        auto camera_system = context->GetSystem<CameraSystem>();
-        if (!camera_system)
-            return nullptr;
-
-        auto *camera_ubo = camera_system->GetCameraUBO();
-        if (!camera_ubo)
-            return nullptr;
-
-        return camera_ubo->GetGPUBuffer();
-    }
-
     const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveSkyUBO()
     {
         if (!context)
@@ -405,16 +389,14 @@ namespace hgl::ecs
             return;
 
         const auto *viewport_ubo = ResolveViewportUBO();
-        const auto *camera_ubo = ResolveCameraUBO();
         const auto *sky_ubo = ResolveSkyUBO();
         const auto *shadow_ubo = ResolveShadowUBO();
         const auto *global_addresses_ubo = ResolveGlobalAddressesUBO();
 
         auto *global_scene_set = GetGlobalSceneUBOSet(context);
         if (global_scene_set && global_scene_set->IsValid()
-         && viewport_ubo && camera_ubo)
+         && viewport_ubo)
         {
-            global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingCamera),   camera_ubo);
             global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingViewport), viewport_ubo);
             if (sky_ubo)
                 global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingSky), sky_ubo);
@@ -425,9 +407,8 @@ namespace hgl::ecs
         }
         else if (global_scene_set && global_scene_set->IsValid())
         {
-            GLogWarning("[SceneUBO] Scene UBO set not bound: camera=%p viewport=%p sky=%p shadow=%p",
+            GLogWarning("[SceneUBO] Scene UBO set not bound: viewport=%p sky=%p shadow=%p",
                         (const void *)viewport_ubo,
-                        (const void *)camera_ubo,
                         (const void *)sky_ubo,
                         (const void *)shadow_ubo);
         }

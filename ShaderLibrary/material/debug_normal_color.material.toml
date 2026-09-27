@@ -18,5 +18,5 @@ requirements = ["Position", "Normal"]
 varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal"]
 
 [resources]
-ubos = ["CameraInfo"]
+ubos = ["ViewportInfo"]
 material_data = { type = "EmissiveSurface" }

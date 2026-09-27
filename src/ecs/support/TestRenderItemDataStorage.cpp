@@ -240,8 +240,7 @@ int main(int argc, char **argv)
                 #extension GL_ARB_gpu_shader_int64 : require
                 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
-                #define SCENE_SET 0
-                #define GLOBAL_ADDRESSES_BINDING 4
+                #include "common/descriptor_macros.glsl"
 
                 layout(set = SCENE_SET, binding = GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
                 {
@@ -481,8 +480,7 @@ int main(int argc, char **argv)
                 #extension GL_ARB_gpu_shader_int64 : require
                 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
-                #define SCENE_SET 0
-                #define GLOBAL_ADDRESSES_BINDING 4
+                #include "common/descriptor_macros.glsl"
 
                 layout(set = SCENE_SET, binding = GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
                 {
@@ -726,8 +724,7 @@ int main(int argc, char **argv)
                 #extension GL_ARB_gpu_shader_int64 : require
                 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
-                #define SCENE_SET 0
-                #define GLOBAL_ADDRESSES_BINDING 4
+                #include "common/descriptor_macros.glsl"
 
                 layout(set = SCENE_SET, binding = GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
                 {
