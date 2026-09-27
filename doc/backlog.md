@@ -550,10 +550,13 @@
   （bbox 112x58 filled 3740）；D3 `18189 px / 0 px` 与 `600662 px` 不变；`mean_lum=113.3/112.3/134.0` 不变；
   `CSM_CACHE_DIFF=1 CSM_AUTOWALK=24` 74 轮 `不一致=0`；`TestCSMIncrementalPass` **21 Passed**/rc=0
   （新增 Test 21 源码契约 + 破坏验证双向咬住）。
-- **遗留（新发现，非本次引入）**：从帧外读回**交换链颜色图**会触发
-  `vkQueueSubmit(): ... presentable VkImage ... has not been acquired`（改造前同样存在：旧代码硬编码
-  `PRESENT_SRC_KHR` 转的就是这张图，实测拷贝有效）。彻底消除需在帧内 acquire 后/present 前读回，
-  或做 acquire+copy+present 的截图路径；届时 `DumpColorTarget` 换用该路径即可。
+- **遗留（新发现，非本次引入）→ ✅ 已解决（2026-09-27，见 `doc/csm-readback-and-leak-followup.md` 第 1 项）**：
+  从帧外读回**交换链颜色图**曾触发 `vkQueueSubmit(): ... presentable VkImage ... has not been acquired`
+  （改造前同样存在：旧代码硬编码 `PRESENT_SRC_KHR` 转的就是这张图，实测拷贝有效）。现在改为：
+  交换链 RT 维护「颜色访问窗口」状态（`NextFrame()` 开、`Submit()` 收尾关）+ 帧内回读钩子
+  `SwapchainRenderTarget::SetInFrameReadbackHook()`（在「本帧提交后、present 前」执行一次，
+  示例在其中调 `ReadbackColorTarget`），读回侧按 `IRenderTarget::IsColorReadbackWindowOpen()`
+  拒绝窗口外请求 ⇒ 校验层消息 0、契约数值逐位不变。
 - **落盘精度与命名（2026-09-26 追加，用户裁定"走 A 方案 + 文件名写清楚宽高和格式"）**：
   诊断文件名统一 `<stem>_<W>x<H>_<tag>.<ext>`；深度除 8bit 可视化外一律**裸 float32 全精度落盘**
   （`_f32.raw`，零转换，numpy `np.fromfile(dtype='<f4').reshape(h,w)` 直读）；深度可视化改为
