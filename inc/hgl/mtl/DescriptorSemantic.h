@@ -29,7 +29,6 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(MaterialPrivateData) \
     HGL_SEMANTIC(MaterialTexture) \
     HGL_SEMANTIC(MaterialSampler) \
-    HGL_SEMANTIC(MaterialColorPalette) \
     HGL_SEMANTIC(GlobalAddresses) \
     HGL_SEMANTIC(ShadowInfo)
 
@@ -94,8 +93,6 @@ namespace hgl::graph::mtl
 
                 return DescriptorSemanticLayer::SSBO;
 
-            case DescriptorSemantic::MaterialColorPalette:
-                return DescriptorSemanticLayer::UBO;
         }
 
         return DescriptorSemanticLayer::Unknown;

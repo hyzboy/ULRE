@@ -857,26 +857,32 @@ namespace hgl::graph::mtl
                 {
                     if (!resources.at("ubos").is_array())
                         return false;
-                    static const char *const names[] = {
-                        "ViewportInfo", "SkyInfo", "MaterialColorPalette", "ShadowInfo"
+                    // 名 ↔ 语义成对（单一真源）：旧实现是两张并行数组 + 手列上界，
+                    // 上界写死 5 而表只有 4 项 ⇒ 越界读 names[4]。改结构化后
+                    // 增删一项只动一处，且不可能再错位。
+                    struct UBOSpec
+                    {
+                        const char *name;
+                        DescriptorSemantic semantic;
                     };
-                    static const DescriptorSemantic semantic_values[] = {
-                        DescriptorSemantic::ViewportInfo,
-                        DescriptorSemantic::SkyInfo,
-                        DescriptorSemantic::MaterialColorPalette,
-                        DescriptorSemantic::ShadowInfo
+
+                    static const UBOSpec ubo_specs[] = {
+                        { "ViewportInfo", DescriptorSemantic::ViewportInfo },
+                        { "SkyInfo",      DescriptorSemantic::SkyInfo      },
+                        { "ShadowInfo",   DescriptorSemantic::ShadowInfo   },
                     };
+
                     for (const auto &item : resources.at("ubos").as_array())
                     {
                         if (!item.is_string())
                             return false;
                         bool found = false;
-                        for (uint32 i = 0; i < 5; ++i)
+                        for (const UBOSpec &spec : ubo_specs)
                         {
-                            if (item.as_string() == names[i])
+                            if (item.as_string() == spec.name)
                             {
                                 out.definition.ubo_requirements.push_back(
-                                    semantic_values[i]);
+                                    spec.semantic);
                                 found = true;
                                 break;
                             }

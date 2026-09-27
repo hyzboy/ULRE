@@ -133,6 +133,9 @@ public:
 
     void UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids);
 
+    /// 调色板地址（BDA）：内容长期有效，地址只在 buffer 重建时才变（当前实现不重建）。
+    void UpdateColorPaletteAddress(uint64_t addr_color_palette);
+
     uint32_t Acquire(GlobalSSBOType type)
     {
         auto *pool = GetPool(type);

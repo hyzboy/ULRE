@@ -6,7 +6,8 @@
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
-#include<hgl/vk/VKGlobalSceneUBOSet.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -123,7 +124,10 @@ namespace hgl::ecs
         if (!bm)
             return;
 
-        auto *buf = bm->CreateUBO("ColorPaletteUBO", UBOColorPalette::GetSize());
+        // BDA：buffer 必须以 SHADER_DEVICE_ADDRESS usage 创建（CreateSSBO 全带，
+        // 内存分配 flag 由 usage 派生）——shader 侧无条件解引用该地址，
+        // 地址取不到即 fail-fast。
+        auto *buf = bm->CreateSSBO("ColorPaletteSSBO", UBOColorPalette::GetSize());
         if (!buf)
             return;
 
@@ -135,13 +139,25 @@ namespace hgl::ecs
 
         palette_ubo_managed = true;
 
-        // P1-2a: color_palette 已迁至全局 Scene UBO 集（Set 0, binding=3），
-        // 不再走 per-material 绑定；将 palette buffer 句柄写入全局集（写一次即可，
-        // buffer 句柄在整个生命周期内稳定不变）。
-        if (auto *global_scene_set = gc->GetGlobalSceneUBOSet())
+        // 地址注册进全局地址表：调色板属于「长期有效」的数据，**不进 pc_root**
+        //（后者只承载每 pass / 每帧变化的地址）。buffer 全程不 realloc ⇒ 地址稳定。
+        graph::VulkanDevice *device = bm->GetDevice();
+        if (!device)
+            return;
+
+        const uint64_t palette_addr =
+            device->GetBufferDeviceAddressAligned16(buf->GetBuffer());
+        if (palette_addr == 0)
         {
-            global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingColorPalette),
-                                        palette_ubo->GetGPUBuffer());
+            GLogError(u8"[ColorPaletteSystem] ColorPaletteSSBO 取不到设备地址（usage/16B 对齐不满足）");
+            return;
         }
+
+        if (auto *registry = gc->GetGlobalSSBOBufferRegistry())
+            registry->UpdateColorPaletteAddress(palette_addr);
+
+        GLogInfo(u8"[ColorPaletteSystem] ColorPaletteSSBO 就绪: addr=0x%llx size=%zu",
+                 static_cast<unsigned long long>(palette_addr),
+                 sizeof(graph::ColorPalette));
     }
 }//namespace hgl::ecs

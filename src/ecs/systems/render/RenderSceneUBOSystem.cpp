@@ -377,10 +377,9 @@ namespace hgl::ecs
         return env_manager->GetShadowUBO(profile_id, frame_index);
     }
 
-    // 全局 Scene UBO 描述符集更新：一帧写一次（camera=0/sky=1/viewport=2/palette=3/global_addresses=4/shadow=5）。
-    // camera/viewport 为所有材质必需；sky/shadow 与 color_palette 为可选（布局已带
-    // PARTIALLY_BOUND 位，未静态使用的 binding 允许为空）。palette 由
-    // LineRenderPipeline 等在初始化时写入 binding=3。
+    // 全局 Scene UBO 描述符集更新：一帧写一次（sky=0/viewport=1/global_addresses=2/shadow=3）。
+    // viewport 为所有材质必需；sky/shadow 为可选（布局已带 PARTIALLY_BOUND 位，
+    // 未静态使用的 binding 允许为空）。调色板已 BDA 化，不在本集内。
     // （绑定时代死段——per-material apply_requirement/MP/批覆盖——已随
     // desc_manager 机制退役整删，2026-09-08。）
     void RenderSceneUBOSystem::ApplyResourceLayoutBindings()

@@ -12,7 +12,8 @@
 //   （binding 0 的 CameraInfo UBO 已删，相机数据走 BDA）
 //   binding 0: SkyInfo sky
 //   binding 1: ViewportInfo viewport
-//   binding 2: ColorPalette color_palette
+//   （原 binding 2 的 ColorPalette UBO 已删：调色板构造期写入、长期有效，
+//     地址经 global_addresses.addr_color_palette 以 buffer_reference 读取）
 //
 // 由 C++ 全局绑定，一次性声明，未使用的 block 在 SPIR-V 编译期自动剔除。
 
@@ -80,10 +81,16 @@ layout(set=SCENE_SET, binding=VIEWPORT_BINDING) uniform ViewportInfo
     vec2 inv_viewport_resolution;
 } viewport;
 
-layout(scalar, set=SCENE_SET, binding=COLOR_PALETTE_BINDING) uniform ColorPalette
+// 调色板（256 项 RGBA8 打包，unpackUnorm4x8 解码）：构造期一次写入、长期有效
+// ⇒ 地址随地址表下发（不进 pc_root —— 后者只承载每 pass / 每帧变化的地址）。
+// 宏名保持不变：shader 正文与生成侧发射的
+//   unpackUnorm4x8(color_palette.color[ColorIndex]) 零改动。
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer ColorPaletteRef
 {
     uint color[256];
-} color_palette;
+};
+
+#define color_palette ColorPaletteRef(global_addresses.addr_color_palette)
 
 layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
 {
@@ -94,6 +101,7 @@ layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesI
     uint64_t addr_global_render_items;
     uint64_t addr_draw_item_ids;
     uint64_t addr_camera_info;
+    uint64_t addr_color_palette;
 } global_addresses;
 
 struct ShadowCascadeInfo

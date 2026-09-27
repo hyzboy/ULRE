@@ -11,13 +11,6 @@ namespace hgl::graph::mtl
         "ViewportInfo"
     };
 
-    constexpr const ShaderBufferSource SBS_ColorPalette =
-    {
-        DescriptorSetType::Scene,
-        "color_palette",
-        "ColorPalette"
-    };
-
     constexpr const ShaderBufferSource SBS_SkyInfo =
     {
         DescriptorSetType::Scene,

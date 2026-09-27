@@ -50,14 +50,6 @@ inline void PushSky(std::vector<SerializedDescriptorEntry> &v, const uint32_t st
                SSBOType::UserDefined, stage_flags);
 }
 
-inline void PushMaterialColorPalette(std::vector<SerializedDescriptorEntry> &v,
-                                     const uint32_t stage_flags)
-{
-    PushBySpec(v, DescriptorSetType::Scene,
-               "color_palette", "ColorPalette", DescriptorSemantic::MaterialColorPalette,
-               SSBOType::UserDefined, stage_flags);
-}
-
 inline void PushShadow(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     PushBySpec(v, DescriptorSetType::Scene,
@@ -98,9 +90,6 @@ inline void MergeUBODescriptor(
     case DescriptorSemantic::SkyInfo:
         PushSky(v, stage_flags);
         break;
-    case DescriptorSemantic::MaterialColorPalette:
-        PushMaterialColorPalette(v, stage_flags);
-        break;
     case DescriptorSemantic::ShadowInfo:
         PushShadow(v, stage_flags);
         break;
@@ -118,17 +107,14 @@ inline void AppendDefinitionUBODescriptors(
     std::vector<SerializedDescriptorEntry> &v,
     const MaterialDefinition &definition,
     const uint32_t default_stage_flags,
-    const uint32_t sky_stage_flags,
-    const uint32_t color_palette_stage_flags)
+    const uint32_t sky_stage_flags)
 {
     for (const DescriptorSemantic semantic : definition.ubo_requirements)
     {
         const uint32_t stage_flags =
             semantic == DescriptorSemantic::SkyInfo
                 ? sky_stage_flags
-                : semantic == DescriptorSemantic::MaterialColorPalette
-                    ? color_palette_stage_flags
-                    : default_stage_flags;
+                : default_stage_flags;
         MergeUBODescriptor(v, semantic, stage_flags);
     }
 }

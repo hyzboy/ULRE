@@ -19,9 +19,9 @@ namespace hgl
         /**
          * ColorPaletteSystem
          *
-         * 管理全局顶点调色板 UBO（Scene 集，Set 0, binding=3）。
-         * 与 EnvironmentSystem 一样，作为跨材质全局 UBO 的拥有者：
-         * 懒创建 UBO、dirty 追踪、写入全局 Scene 描述符集一次。
+         * 管理全局顶点调色板（BDA：SSBO + 设备地址，无绑定无集）。
+         * 懒创建 buffer、dirty 追踪、地址注册进全局地址表
+         *（global_addresses.addr_color_palette）；内容原地更新，地址不变。
          */
         class ColorPaletteSystem : public System
         {
@@ -31,7 +31,7 @@ namespace hgl
             UBOColorPalette *palette_ubo = nullptr;
             bool palette_ubo_managed = false;
 
-            graph::ColorPalette palette_cpu_;   ///< CPU 侧调色板（RGBA8 打包），默认全白
+            graph::ColorPalette palette_cpu_;   ///< CPU 侧调色板（RGBA8 打包），构造期以 COLOR 命名色表填充
             bool palette_dirty_ = false;
 
         public:

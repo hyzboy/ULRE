@@ -560,7 +560,8 @@ namespace hgl::graph::mtl
                     "ShadowCaster.SurfaceInterface", "common/surface_interface.glsl");
 
                 // A1-4：masked 片元经 material source 的 EvalMaterialAlpha 消费
-                // MTL_ROW 宏（global_addresses.addr_pbr_surface）——pc_root push
+                // MTL_ROW 宏（池基址取 global_addresses.addr_*，行号取
+                // pc_root.addr_mtl_data_addrs 的 payload_index）——pc_root push
                 // constant 与 BDA 扩展由 BuildMaterialStageDocument 的 material
                 // injection 对所有程序注入，这里只补 global_addresses 声明
                 // （scene_ubo）。必须排在 SurfaceInterface 之后：SCENE_SET/

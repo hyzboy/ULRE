@@ -299,7 +299,7 @@ namespace hgl::graph::mtl
         GlobalSSBOType material_private_data = GlobalSSBOType::PBRSurface;
 
         // Part-B3: UBO 资源能力声明。
-        // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
+        // 显式列出此材质可使用的标准 UBO（ViewportInfo/SkyInfo/ShadowInfo）。
         // 2D/3D 都走这条声明链路。
         std::vector<DescriptorSemantic> ubo_requirements;
 

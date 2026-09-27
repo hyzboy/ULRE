@@ -118,6 +118,7 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO()
     ga.addr_global_render_items  = 0;
     ga.addr_draw_item_ids        = 0;
     ga.addr_camera_info          = GetGPUBase(GlobalSSBOType::CameraInfo);
+    ga.addr_color_palette        = 0;   // 由 ColorPaletteSystem 创建后注册（UpdateColorPaletteAddress）
 
     global_addresses_ubo->Update(ga);
     global_addresses_ubo->Commit();
@@ -138,6 +139,22 @@ void GlobalSSBOBufferRegistry::UpdateRenderItemAddresses(uint64_t addr_render_it
     {
         ga->addr_global_render_items = addr_render_items;
         ga->addr_draw_item_ids = addr_draw_item_ids;
+        global_addresses_ubo->Commit();
+    }
+}
+
+void GlobalSSBOBufferRegistry::UpdateColorPaletteAddress(uint64_t addr_color_palette)
+{
+    if (!global_addresses_ubo)
+        return;
+
+    GlobalAddresses *ga = global_addresses_ubo->Data();
+    if (!ga)
+        return;
+
+    if (ga->addr_color_palette != addr_color_palette)
+    {
+        ga->addr_color_palette = addr_color_palette;
         global_addresses_ubo->Commit();
     }
 }

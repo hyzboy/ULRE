@@ -22,7 +22,7 @@ namespace hgl::graph::mtl
         ms += "#version 460\n";
     }
 
-    // RootAddresses push constant block 发射（7 张全局表设备地址）。
+    // RootAddresses push constant block 发射（8 张全局表设备地址，72B）。
     // SSBO 全 BDA 化后的唯一非 descriptor 根入口（无 set 无 binding；CPU 每
     // MaterialBatch push 一次）。字段顺序与 CPU struct RootAddresses 严格一致
     // （ShaderBufferSources.h HGL_ROOT_ADDRESSES_FIELD_LIST 遍历）。

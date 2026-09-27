@@ -67,7 +67,7 @@ namespace hgl::graph
     };
 
     /**
-     * 阴影参数 UBO（SceneBinding::Shadow / Set 0, Binding 4）
+     * 阴影参数 UBO（SceneBinding::Shadow / Set 0, Binding 3）
      *
      * 对齐标准 std140 布局：
      *   - shadow_vp: 光照空间 View-Projection 矩阵（world -> light clip）

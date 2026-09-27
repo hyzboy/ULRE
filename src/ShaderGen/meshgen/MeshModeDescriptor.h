@@ -119,24 +119,22 @@ namespace hgl::graph::mtl
     }
 
     // ── UBO Resolvers ───────────────────────────────────────────────────
+    // 调色板不再是 UBO/描述符语义（BDA：global_addresses.addr_color_palette），
+    // 故 emit_vertex_color_from_palette 不再产生任何 UBO 需求。
     inline void ResolveVertexPassthroughUbos(
         const VertexShaderNodeConfig &node_cfg,
-        const MaterialVertexVaryingConfig &varying_cfg,
+        const MaterialVertexVaryingConfig &/*varying_cfg*/,
         hgl::OrderedSet<DescriptorSemantic> &out_ubos)
     {
         out_ubos.Add(DescriptorSemantic::ViewportInfo);
-        if (varying_cfg.emit_vertex_color_from_palette)
-            out_ubos.Add(DescriptorSemantic::MaterialColorPalette);
     }
 
     inline void ResolveLineQuadUbos(
         const VertexShaderNodeConfig &/*node_cfg*/,
-        const MaterialVertexVaryingConfig &varying_cfg,
+        const MaterialVertexVaryingConfig &/*varying_cfg*/,
         hgl::OrderedSet<DescriptorSemantic> &out_ubos)
     {
         out_ubos.Add(DescriptorSemantic::ViewportInfo);
-        if (varying_cfg.emit_vertex_color_from_palette)
-            out_ubos.Add(DescriptorSemantic::MaterialColorPalette);
     }
 
     inline void ResolveCharQuadUbos(

@@ -117,8 +117,7 @@
  *
  *   a. **光照空间矩阵**：本用例靠"相机看向原点 + 常量 fov/near"把矩阵解析重建出来，
  *      换成任意光源（点光/聚光/自由朝向的方向光）就必须有真正的 light VP。
- *      Scene UBO 只有 Camera/Sky/Viewport/ColorPalette/GlobalAddresses 五个 binding，
- *      需新增 Shadow UBO（SceneBinding 枚举 + C++ 绑定 + ShaderLibrary/ubo/*.glsl）；
+ *      Scene UBO 有 Sky/Viewport/GlobalAddresses/Shadow 四个 binding（相机与调色板已走 BDA），
  *   b. **shadow provider**：ShaderLibrary/shadow/ 下只有 identity.glsl，
  *      GetShadowFactor() 恒返回 1.0。需实现按光照空间投影采样 + 深度比较（PCF）；
  *   c. **模板接线**：fragment/forward_lit.glsl.tmpl 的主流程当前**根本不调用**

@@ -1,10 +1,10 @@
 #pragma once
 
-// RootAddressPush.h — RootAddresses push constant 填充与下发（7 张全局表设备地址）
+// RootAddressPush.h — RootAddresses push constant 填充与下发（8 张全局表设备地址）
 //
-// SSBO 全 BDA 化后，shader 每个 buffer_reference 起点都需要一个地址来源；7 张全局表
+// SSBO 全 BDA 化后，shader 每个 buffer_reference 起点都需要一个地址来源；8 张全局表
 // （MeshDrawParams / L2W / L2WIndex / mtl_data_addrs / 文本三表）的地址集中在一个
-// 56B push constant block（RootAddresses，ShaderBufferSources.h X 列表）里，渲染路径
+// 72B push constant block（RootAddresses，ShaderBufferSources.h X 列表）里，渲染路径
 // 每 MaterialBatch/每绘制路径渲染前 PushConstants 一次（每材质一次的开销可忽略——
 // push 的是当批表地址，不是 per-draw 数据；一次 vkCmdDrawMeshTasksIndirectEXT 内
 // N 命令共享同一份，gl_DrawID 仍查行表，不违反间接合批）。

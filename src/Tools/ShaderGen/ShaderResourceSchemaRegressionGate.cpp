@@ -4558,11 +4558,6 @@ int main(const int argc, char **argv)
         };
         results.push_back(RunValidationCase("B2.generic-material-type-hard-fail", generic_material_type, 1, false));
 
-        constexpr SerializedDescriptorEntry palette_explicit[] =
-        {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
-        };
-        results.push_back(RunValidationCase("C.scene-color-palette-explicit", palette_explicit, 1, true));
     }
 
     if (run_materialization) results.push_back(RunMaterializationSharedInstanceCase());

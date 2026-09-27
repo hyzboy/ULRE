@@ -387,10 +387,7 @@ namespace hgl::graph::mtl
                         {
                             if (entry.semantic == DescriptorSemantic::SkyInfo)
                                 return true;
-                            // Material 集已退场；仅按语义裁剪变体差异项
-                            if (entry.semantic == DescriptorSemantic::MaterialColorPalette)
-                                return !plan.effective_vertex_varying.
-                                    emit_vertex_color_from_palette;
+                            // Material 集已退场；调色板绑定已 BDA 化（不再是描述符项）
                             // 其余（L2W/MeshDrawParams/数据槽/UBO）深度变体恒保留
                             return false;
                         }),

@@ -14,7 +14,6 @@ namespace hgl::graph::mtl
 struct BuildDescriptorOptions
 {
     uint32_t sky_stage_flags = uint32_t(hgl::graph::kMeshFragment);
-    uint32_t color_palette_stage_flags = uint32_t(hgl::graph::kMeshFragment);
 };
 
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
@@ -28,8 +27,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
         descriptors,
         definition,
         uint32_t(hgl::graph::kMeshFragment),
-        opt.sky_stage_flags,
-        opt.color_palette_stage_flags);
+        opt.sky_stage_flags);
 
     // A6-2a/b1：L2W/L2WIndex/mtl_data_addrs 行表不再经契约声明——l2w_ssbo 由模板侧
     // 无条件注入，l2w_index/ResolveTransformID 无条件发射，FS mtl_data_addrs 门按编译配置

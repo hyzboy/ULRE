@@ -204,7 +204,7 @@ int main(int argc, char **argv)
     GLogInfo(u8"--- Testing Stage 3: GlobalAddresses UBO & Shader BDA Resolution ---");
     {
         // 1. Memory layout verification
-        static_assert(sizeof(graph::GlobalAddresses) == 56, "GlobalAddresses must be exactly 56 bytes");
+        static_assert(sizeof(graph::GlobalAddresses) == 64, "GlobalAddresses must be exactly 64 bytes");
         static_assert(offsetof(graph::GlobalAddresses, addr_mesh_draw_params) == 0);
         static_assert(offsetof(graph::GlobalAddresses, addr_pbr_surface) == 8);
         static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 16);
@@ -212,6 +212,7 @@ int main(int argc, char **argv)
         static_assert(offsetof(graph::GlobalAddresses, addr_global_render_items) == 32);
         static_assert(offsetof(graph::GlobalAddresses, addr_draw_item_ids) == 40);
         static_assert(offsetof(graph::GlobalAddresses, addr_camera_info) == 48);
+        static_assert(offsetof(graph::GlobalAddresses, addr_color_palette) == 56);
 
         graph::GlobalAddresses ga{};
         if (ga.addr_global_render_items != 0 || ga.addr_draw_item_ids != 0)
@@ -250,6 +251,7 @@ int main(int argc, char **argv)
                     uint64_t addr_transmission_surface;
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
+                    uint64_t addr_color_palette;
                 } global_addresses;
 
                 struct RenderItemDescriptor
@@ -490,6 +492,7 @@ int main(int argc, char **argv)
                     uint64_t addr_transmission_surface;
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
+                    uint64_t addr_color_palette;
                 } global_addresses;
 
                 struct RenderItemDescriptor
@@ -734,6 +737,7 @@ int main(int argc, char **argv)
                     uint64_t addr_transmission_surface;
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
+                    uint64_t addr_color_palette;
                 } global_addresses;
 
                 struct RenderItemDescriptor
