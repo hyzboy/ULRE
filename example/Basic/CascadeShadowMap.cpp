@@ -522,8 +522,9 @@ private:
                 total_mismatch += mismatch;
                 total_flat += flat_mismatch;
 
-                // 只在"平坦区真有差异"时落图：S6 结案后差异恒 0，这条路径是**失败时才走**的诊断
-                //（历史上真实差异出现时它确实产出过 csm_cachediff_*.bmp；无差异时静默）。
+                // 只在"平坦区真有差异"时报警：S6 结案后差异恒 0，这条路径是**失败时才走**的诊断。
+                // 失败所需信息（offset / 纹素 / 不一致分类 / max|Δ| / bbox / 32x32 分布图）全在日志里；
+                // 不再往工作区落 csm_cachediff_* 图（需要看图时再按需加回）。
                 if (flat_mismatch > 0)
                 {
                     // 注意：GLog* 展开为 {...} 块 ⇒ 这里必须显式花括号（否则 else 报 C2181）
@@ -546,31 +547,7 @@ private:
                         GLogInfo(u8"[CSM-CACHE-DIFF] c=%u 分布[%02u] %s", c, gy, line);
                     }
 
-                    // 落图看形态：A 按偏移映射回布局坐标系，B 原样，D = |A-B|×5
-                    std::vector<float> mapped(A.size(), 0.0f);
-                    std::vector<float> diff(A.size(), 0.0f);
-                    for (uint32_t y = 0; y < M; ++y)
-                    {
-                        for (uint32_t x = 0; x < M; ++x)
-                        {
-                            const float a = A[static_cast<size_t>((y + oy) % M) * M + ((x + ox) % M)];
-                            const float b = B[static_cast<size_t>(y) * M + x];
-                            mapped[static_cast<size_t>(y) * M + x] = a;
-                            const float dv = (std::fabs)(a - b) * 5.0f;
-                            diff[static_cast<size_t>(y) * M + x] = dv > 1.0f ? 1.0f : dv;
-                        }
-                    }
-
-                    char fn[256];
-                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_A", c);
-                    SaveDepthDump(fn, mapped, M, "f32");
-                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_B", c);
-                    SaveDepthDump(fn, B, M, "f32");
-                    snprintf(fn, sizeof(fn), "csm_cachediff_c%u_D", c);
-                    SaveDepthDump(fn, diff, M, "f32x5");
-                    GLogWarning(u8"[CSM-CACHE-DIFF] c=%u 已落盘 csm_cachediff_c%u_*_%ux%u_f32.raw（A=按偏移映射 / B=整级重建 / D=差异x5，D 的文件名标 f32x5）+ 同名 _r8.tga 可视化副本",
-                                c, c, M, M);
-
+                    //（原 csm_cachediff_* 落图诊断已删——见上方注释；失败信息全在日志与分布图里）
                     // 位移扫描：差异能否用一个整体整数位移解释？（沿 x/y 各扫 ±24：
                     // 条带宽 B=16，若"清晰区与内容错开一个条带"则应命中 ±B）
                     const uint32_t wx0 = bx0 > 4 ? bx0 - 4 : 0;
