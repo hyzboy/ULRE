@@ -403,7 +403,9 @@ namespace hgl
             }
 
             SetCurrentRenderCmd(render_core->GetRenderCmd());
-            PrepareRenderPassSetup(render_core->GetSwapchainImageIndex(), deltaTime);
+            // per-frame 数据槽 = **当前 RT** 的槽（主帧 = 交换链槽 [0,4)，离屏 pass = 该 RT 的槽带 [4,8)），
+            // 两个方向天然不相交 ⇒ prepass 不再覆写主帧在途的 ring 槽（T10 根因）。
+            PrepareRenderPassSetup(render_target ? render_target->GetCurrentFrameIndex() : 0u, deltaTime);
 
 //            LogInfo("[ECS RENDER] Calling BeginRenderPass");
             if (!render_core->BeginRenderPass(options))
@@ -589,6 +591,9 @@ namespace hgl
             // 离屏 RT 无 swapchain 图像可获取，跳过 AcquireSwapchainImage
             if (BeginManagedRenderFrame(req.delta_time, false, p_options))
             {
+                // 本 pass 的 per-frame 数据槽 = 该 RT 的槽带（与主帧槽不相交）
+                SetFrameIndex(render_target ? render_target->GetCurrentFrameIndex() : 0u);
+
                 RenderDrawOnly(render_core->GetRenderCmd(), req.delta_time);
                 EndManagedRenderFrame(req.delta_time);
                 ok = true;
@@ -612,6 +617,10 @@ namespace hgl
             SetSubmitWaitsFromFrameLanes();
 
             render_target = saved_target;
+
+            // 归还主帧的 per-frame 数据槽（pass 期间被切到离屏槽）
+            SetFrameIndex(saved_target ? saved_target->GetCurrentFrameIndex() : 0u);
+
             if (!req.use_target_clear)
                 rt->SetClearColor(saved_clear);
 
@@ -848,6 +857,7 @@ namespace hgl
             // Strict enum order — all CPU work and GPU uploads happen
             // before BeginRenderPass; the render pass only issues draw commands.
             SetFrameIndex(frameIndex);
+
             RunRenderPhaseUpdates(ExecutionPhase::RenderCollect,     deltaTime); // collect / cull visible components
             RunRenderPhaseUpdates(ExecutionPhase::RenderBatch,       deltaTime); // write VABs (StagedBuffer → marks dirty)
             RenderBufferCommit(deltaTime);                                       // finalize staged CPU writes
