@@ -825,8 +825,19 @@ public:
                          d3_bias_ok ? "PASS" : "FAIL", bias_changed, bias_g2r, bias_r2g,
                          kD3BiasMinChangedPixels);
 
+                // 行池写入契约：任何 CommitRow 被拒都说明「写入没到 GPU」。
+                // 这类故障不会让画面崩，只会让数据悄悄不对（相机行错位就是这么来的）。
+                auto *ssbo_registry = GetManager<GlobalSSBOBufferRegistry>();
+                const uint64_t commit_rejects = ssbo_registry ? ssbo_registry->GetCommitRejectCount() : 0;
+                const bool d4_commit_ok = (commit_rejects == 0);
+
+                GLogInfo(u8"[D4-CONTRACT] 行池写入 %s: CommitRow 拒绝 %llu 次（期望 0）",
+                         d4_commit_ok ? "PASS" : "FAIL",
+                         static_cast<unsigned long long>(commit_rejects));
+
                 const bool ok = contract_done && contract_ok
-                             && d3_receive_ok && d3_bias_ok;
+                             && d3_receive_ok && d3_bias_ok
+                             && d4_commit_ok;
                 GLogInfo(u8"[D3-CONTRACT] selfcheck: %s (exit %d)",
                          ok ? "PASS" : "FAIL", ok ? 0 : 1);
                 std::exit(ok ? 0 : 1);

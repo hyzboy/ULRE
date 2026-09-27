@@ -6,6 +6,7 @@
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
@@ -594,6 +595,12 @@ namespace hgl
                 // 本 pass 的 per-frame 数据槽 = 该 RT 的槽带（与主帧槽不相交）
                 SetFrameIndex(render_target ? render_target->GetCurrentFrameIndex() : 0u);
 
+                // 本次 pass 的相机行：**按 req.camera 直接发布**。光源相机常常属于离屏世界，
+                // 本世界 CameraSystem 的 CollectCameras() 看不到它，靠通用发布会漏 ⇒
+                // shadow pass 用退化相机渲染（阴影整体消失、receive_shadow 拨动无像素变化）。
+                if (auto cs = GetSystem<CameraSystem>())
+                    cs->PublishCamera(req.camera, frame_index);
+
                 RenderDrawOnly(render_core->GetRenderCmd(), req.delta_time);
                 EndManagedRenderFrame(req.delta_time);
                 ok = true;
@@ -857,6 +864,13 @@ namespace hgl
             // Strict enum order — all CPU work and GPU uploads happen
             // before BeginRenderPass; the render pass only issues draw commands.
             SetFrameIndex(frameIndex);
+
+            // 相机行发布必须在这之后：本帧数据槽（frameIndex）此时才确定
+            // （主帧 = acquire 之后拿到的交换链槽；离屏 pass = 该 RT 的槽带）。
+            // 这里只覆盖本世界 CameraSystem 持有的相机；离屏 pass 的相机可能属于另一个世界，
+            // 由 RenderTo 按 req.camera 单独发布（见下）。
+            if (auto cs = GetSystem<CameraSystem>())
+                cs->PublishCameraRows(frameIndex);
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderCollect,     deltaTime); // collect / cull visible components
             RunRenderPhaseUpdates(ExecutionPhase::RenderBatch,       deltaTime); // write VABs (StagedBuffer → marks dirty)
@@ -1254,6 +1268,11 @@ namespace hgl
             if (ts)
                 if (auto *tb = ts->GetTransformBuffer())
                     tb->SetFrameIndex(index);
+        }
+
+        uint32_t ECSContext::GetActiveCameraRow() const
+        {
+            return graph::GlobalSSBOBufferRegistry::CameraRow(active_camera_id, frame_index);
         }
 
         void ECSContext::RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp)

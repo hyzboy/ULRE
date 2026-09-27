@@ -117,6 +117,45 @@ void ActiveRowPool::Reset()
     row_capacity = 0;
 }
 
+bool ActiveRowPool::ActivateAllRows()
+{
+    if (!IsReady())
+    {
+        GLogError("[ActiveRowPool] ActivateAllRows failed: pool not ready (ssbo_id=%u)", ssbo_id);
+        return false;
+    }
+
+    constexpr uint32_t kBatchSize = 512;    // 分块创建，避免大容量占栈
+
+    for (uint32_t start = 0; start < row_capacity; start += kBatchSize)
+    {
+        const uint32_t remaining = row_capacity - start;
+        const uint32_t count = (remaining > kBatchSize) ? kBatchSize : remaining;
+        int created[kBatchSize];
+
+        if (ids.CreateActive(created, int(count)) != int(count))
+        {
+            GLogError("[ActiveRowPool] ActivateAllRows failed: CreateActive(start=%u count=%u ssbo_id=%u)",
+                      start, count, ssbo_id);
+            return false;
+        }
+
+        // 行号必须恰好是 [start, start+count)：本方法用于行空间静态划分的池，
+        // 要求调用时行号空间为空。出现偏移说明该池已被分配过 ⇒ 前提不成立，fail-fast。
+        for (uint32_t i = 0; i < count; i++)
+        {
+            if (created[i] != int(start + i))
+            {
+                GLogError("[ActiveRowPool] ActivateAllRows: 行号偏移 created[%u]=%d 期望=%u (ssbo_id=%u)",
+                          i, created[i], start + i, ssbo_id);
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 ActiveRowPool::RowID ActiveRowPool::Acquire()
 {
     if (!IsReady())
@@ -195,6 +234,8 @@ bool ActiveRowPool::CommitRow(const RowID id)
      || id >= row_capacity
      || !IsActive(id))
     {
+        ++commit_reject_count;
+
         GLogError("[ActiveRowPool] CommitRow rejected invalid row: ssbo_id=%u id=%u",
                   ssbo_id, id);
         return false;

@@ -16,7 +16,7 @@ namespace
         { GlobalSSBOType::PBRSurface,          "PBRSurface",          sizeof(ssbo::PBRSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::EmissiveSurface,     "EmissiveSurface",     sizeof(ssbo::EmissiveSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::TransmissionSurface, "TransmissionSurface", sizeof(ssbo::TransmissionSurfaceRow), 1024u, 1u },
-        { GlobalSSBOType::CameraInfo,          "CameraInfo",          sizeof(CameraInfo), 64u, 1u },
+        { GlobalSSBOType::CameraInfo,          "CameraInfo",          sizeof(CameraInfo), 64u, 0u },
     };
 }
 
@@ -151,6 +151,19 @@ bool GlobalSSBOBufferRegistry::InitializePools()
     {
         if (!CreatePool(kGlobalSSBOConfigs[index]))
         {
+            Release();
+            return false;
+        }
+    }
+
+    // CameraInfo 的行空间由「相机序号 × per-frame 帧槽」静态划分（GlobalSSBOBufferRegistry::CameraRow），
+    // 行号不经 Acquire/Release ⇒ 整块预激活：CommitRow 的行校验恒成立，相机数据不会被静默拒绝写入。
+    // 因此该池的 reserve_rows 必须是 0（预留会让行号从 1 起、与 CameraRow 错位）。
+    if (auto *camera_pool = GetPool(GlobalSSBOType::CameraInfo))
+    {
+        if (!camera_pool->ActivateAllRows())
+        {
+            GLogError("[GlobalSSBOBufferRegistry] CameraInfo 行空间预激活失败");
             Release();
             return false;
         }

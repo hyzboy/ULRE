@@ -115,6 +115,18 @@ namespace hgl
 
             void Update(float deltaTime) override;
 
+            /// 发布单个相机在**指定帧槽**的 CameraInfo 行（行号 = camera_id * 槽总数 + slot）。
+            ///
+            /// 按**组件**发布：离屏 pass 的相机（如阴影光源相机）常属于另一个世界，
+            /// 本世界 CollectCameras() 看不到它，必须由 RenderTo 直接按 req.camera 调用。
+            void PublishCamera(const CameraComponent* camera, uint32_t frame_slot);
+
+            /// 发布本世界全部相机（由 ECSContext::PrepareRenderPassSetup 调用）。
+            ///
+            /// 不能在 tick 阶段发布：本帧数据槽要等 acquire（主帧）/ 进入离屏 pass
+            /// （RT 槽带）之后才确定，tick 时拿到的是上一帧的槽。
+            void PublishCameraRows(uint32_t frame_slot);
+
             void SetRenderContext(graph::RenderContext* ctx);
             void SetViewportInfo(const graph::ViewportInfo* vp);
 

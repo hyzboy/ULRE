@@ -758,7 +758,9 @@ namespace hgl::ecs
         if (bound_transform_data_buffer_)
             l2w_gpu = bound_transform_data_buffer_->GetGPUBuffer();
 
-        const uint32_t active_cam_id = context_ ? context_->GetActiveCameraID() : 0;
+        // 相机行号（camera_id * 槽总数 + 本帧槽）：着色器用它索引 cameras[]，
+        // 离屏 pass 与主帧各自的相机数据落在不相交的行上。
+        const uint32_t active_cam_row = context_ ? context_->GetActiveCameraRow() : 0;
         graph::PushRootAddresses(
             cmd,
             device_,
@@ -772,7 +774,7 @@ namespace hgl::ecs
             nullptr,
             nullptr,
             nullptr,
-            active_cam_id);
+            active_cam_row);
 
         line_buffer_.Draw(cmd);
 

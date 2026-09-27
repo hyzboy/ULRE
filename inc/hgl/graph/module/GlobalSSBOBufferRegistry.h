@@ -11,6 +11,7 @@
 #include <hgl/vk/buffer/StructView.h>
 
 #include <hgl/graph/CameraInfo.h>
+#include <hgl/common/RenderOptions.h>
 
 namespace hgl::graph
 {
@@ -256,18 +257,70 @@ public:
     }
 
     // ---- CameraInfo 便捷接口 ----
+    //
+    // 行空间由「相机序号 × per-frame 数据槽」静态划分：行号 = camera_id * kCameraInfoSlotCount + slot。
+    // 该池整块预激活（见 InitializePools 注释），行号不经 Acquire/Release ⇒ 与行池的分配策略解耦
+    // （Acquire 优先复用 idle，行号并不连续），且 CommitRow 的行校验恒成立。
+    // 序号 0 恒留给主相机，1..kMaxCameraCount-1 由下面的位图分配。
 
-    uint32_t AcquireCamera()
+    static constexpr uint32_t kCameraInfoSlotCount = HGL_FRAME_SLOT_TOTAL;
+    static constexpr uint32_t kCameraInfoRowCount  = 64u;
+    static constexpr uint32_t kMaxCameraCount      = kCameraInfoRowCount / kCameraInfoSlotCount;
+
+    static_assert(kCameraInfoRowCount % kCameraInfoSlotCount == 0,
+                  "CameraInfo 行池容量必须是帧槽总数的整数倍");
+
+    /// 相机行号（slot = per-frame 数据槽：主帧 [0,4)、离屏 RT 槽带 [4,8)）
+    static constexpr uint32_t CameraRow(uint32_t camera_id, uint32_t slot)
     {
-        return Acquire(GlobalSSBOType::CameraInfo);
+        return camera_id * kCameraInfoSlotCount + slot;
     }
 
-    uint32_t AcquireCamera(const CameraInfo &info)
+    /// 相机序号占用位图（下标 0 恒为主相机，不参与分配）
+    bool camera_slot_used[kMaxCameraCount] = {};
+
+    /// 分配相机序号：0 恒留给主相机，从 1 起取最小空闲位。耗尽 ⇒ 报错 + InvalidRowID（容量不扩容）。
+    uint32_t AcquireCamera()
     {
-        uint32_t id = Acquire(GlobalSSBOType::CameraInfo);
-        if (id != ActiveRowPool::InvalidRowID)
-            Write(GlobalSSBOType::CameraInfo, id, &info, sizeof(CameraInfo));
-        return id;
+        for (uint32_t id = 1; id < kMaxCameraCount; id++)
+        {
+            if (!camera_slot_used[id])
+            {
+                camera_slot_used[id] = true;
+                return id;
+            }
+        }
+
+        GLogError("[GlobalSSBOBufferRegistry] 相机数超过上限：上限 %u（CameraInfo 行池 %u 行 / %u 槽）",
+                  kMaxCameraCount, kCameraInfoRowCount, kCameraInfoSlotCount);
+        return ActiveRowPool::InvalidRowID;
+    }
+
+    /// 释放相机序号。序号 0 = 主相机，不可释放。
+    bool ReleaseCamera(uint32_t id)
+    {
+        if (id == 0 || id >= kMaxCameraCount || !camera_slot_used[id])
+        {
+            GLogError("[GlobalSSBOBufferRegistry] ReleaseCamera 拒绝无效序号：%u（1..%u 有效）",
+                      id, kMaxCameraCount - 1u);
+            return false;
+        }
+
+        camera_slot_used[id] = false;
+        return true;
+    }
+
+    /// 写入「某相机某帧槽」的 CameraInfo 行。越界直接报错：行空间是静态划分的，越界即项目 bug。
+    bool WriteCameraRow(uint32_t camera_id, uint32_t slot, const CameraInfo &info)
+    {
+        if (camera_id >= kMaxCameraCount || slot >= kCameraInfoSlotCount)
+        {
+            GLogError("[GlobalSSBOBufferRegistry] WriteCameraRow 越界：camera_id=%u slot=%u（上限 %u x %u）",
+                      camera_id, slot, kMaxCameraCount, kCameraInfoSlotCount);
+            return false;
+        }
+
+        return Write(GlobalSSBOType::CameraInfo, CameraRow(camera_id, slot), &info, sizeof(CameraInfo));
     }
 
     bool WriteCamera(uint32_t id, const CameraInfo &info)
@@ -275,9 +328,21 @@ public:
         return Write(GlobalSSBOType::CameraInfo, id, &info, sizeof(CameraInfo));
     }
 
-    bool ReleaseCamera(uint32_t id)
+    /// 全部行池的 CommitRow 被拒总次数。契约判据：正常运行恒为 0。
+    /// 写入被静默拒绝 = 数据根本没到 GPU —— 这类故障不会让画面崩，只会让数据悄悄不对。
+    uint64_t GetCommitRejectCount() const
     {
-        return ReleaseID(GlobalSSBOType::CameraInfo, id);
+        uint64_t total = 0;
+
+        for (uint32_t i = 0; i < GlobalSSBOTypeCount; ++i)
+        {
+            const auto *pool = GetPool(static_cast<GlobalSSBOType>(i));
+
+            if (pool)
+                total += pool->GetCommitRejectCount();
+        }
+
+        return total;
     }
 
     uint64_t GetCameraInfoGPUBase() const

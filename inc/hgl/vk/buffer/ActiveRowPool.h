@@ -43,6 +43,7 @@ protected:
     uint32_t      row_capacity = 0;
     uint32_t      reserved_rows = 0;        ///< 创建期预留行数（如 行0=零行），不参与分配
     ActiveIDManager ids;                    ///< 行号空间（FIFO 复用；上限 = row_capacity）
+    uint64_t      commit_reject_count = 0;  ///< CommitRow 被拒次数（越界/行未 Active）；契约用，正常恒为 0
 
     struct PendingRelease
     {
@@ -92,6 +93,21 @@ public:
     RowID Acquire();
     bool  Release(RowID id);
     bool  IsActive(RowID id) const;
+
+    /**
+     * 把行号空间 [0, row_capacity) 全部置为 Active。
+     *
+     * 用于**行空间完全由调用方静态划分**的池（如 CameraInfo：相机 × 帧槽）。
+     * 目的：CommitRow 的行校验恒成立；行号只由调用方算术决定，不依赖
+     * Acquire/Release —— Acquire 优先复用 idle 列表，行号并不保证连续。
+     *
+     * 必须在 Create() 之后、任何其它行号操作之前调用。
+     */
+    bool ActivateAllRows();
+
+    /// CommitRow 被拒次数（行越界 / 行未 Active）。契约判据：正常运行恒为 0。
+    uint64_t GetCommitRejectCount() const { return commit_reject_count; }
+
     uint32_t GetActiveCount() const { return uint32_t(ids.GetActiveCount()); }
     uint32_t GetReservedRowCount() const { return reserved_rows; }
 

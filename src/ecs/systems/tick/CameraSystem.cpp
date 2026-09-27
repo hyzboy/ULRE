@@ -615,14 +615,9 @@ namespace hgl::ecs
             }
         }
 
-        // 写入当前相机在全局 SSBO 中的独立持久槽位
-        if (camera->camera_info)
-        {
-            if (auto *registry = ResolveGlobalSSBORegistry())
-            {
-                registry->WriteCamera(camera->camera_id, *camera->camera_info);
-            }
-        }
+        // CameraInfo 不再在此写入：本帧数据槽（= 当前 RT 的槽）要等 acquire / 进入离屏 pass
+        // 之后才确定，tick 阶段写会落到上一帧的槽、主帧读到上一帧的相机数据。
+        // 改由 PublishCameraRows() / PublishCamera() 在 PrepareRenderPassSetup 与 RenderTo 中发布。
 
         // 若为主相机或处于 pass 覆盖态，同步更新全局 camera_ubo（保证向后兼容）
         if (camera->camera_id == 0 || camera->is_main_camera || camera == override_camera)
@@ -633,6 +628,29 @@ namespace hgl::ecs
         }
 
         camera->matrix_dirty = false;
+    }
+
+
+    void CameraSystem::PublishCamera(const CameraComponent *camera,const uint32_t frame_slot)
+    {
+        if (!camera || !camera->camera_info)
+            return;
+
+        auto *registry = ResolveGlobalSSBORegistry();
+        if (!registry)
+            return;
+
+        // 行号 = camera_id * 槽总数 + frame_slot：主帧槽 [0,4) 与离屏 RT 槽带 [4,8) 不相交，
+        // 离屏 prepass 写光源相机不会踩到主帧在途的那一份。行号越界由 registry 报错。
+        registry->WriteCameraRow(camera->camera_id, frame_slot, *camera->camera_info);
+    }
+
+    void CameraSystem::PublishCameraRows(const uint32_t frame_slot)
+    {
+        auto cameras = CollectCameras();
+
+        for (auto &camera : cameras)
+            PublishCamera(camera.get(), frame_slot);
     }
 
 

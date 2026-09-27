@@ -89,7 +89,7 @@ namespace hgl::ecs
                              batch->transform_buffer,
                              batch,
                              context->GetRenderContext(),
-                             context->GetActiveCameraID());
+                             context->GetActiveCameraRow());
         }
     }
 }
