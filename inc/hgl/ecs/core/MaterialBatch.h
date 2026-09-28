@@ -65,6 +65,7 @@ namespace hgl::ecs
         graph::DeviceBuffer *                   material_data_index_rows_buffer   = nullptr;  ///<每批 DataIndex 行表 SSBO（draw order）
         uint32_t                                material_data_index_rows_capacity = 0;        ///<DataIndex 行表容量（元素数）
         uint64_t                                texture_reference_base_addr       = 0;        ///<当前材质对应的 MaterialTextureReferencePool GPU 基址
+        uint64_t                                world_addresses_address           = 0;        ///<本批次所属**世界表**（WorldAddresses）本帧槽的基址；pc_root 用
 
         // GPU-Driven 渲染管线覆盖支持
         bool                                     gpu_driven_override               = false;    ///<该批次是否为 GPU-Driven 托管（跳过 CPU 侧 ICB 和行表生成）

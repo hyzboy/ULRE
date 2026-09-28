@@ -2797,6 +2797,69 @@ namespace
         return result;
     }
 
+    /// C++ 世界地址表（WorldAddresses.h）与 GLSL 侧 WorldAddressesRef 必须逐字段同序同型。
+    /// 与 S.global-addresses-struct-parity 同理：漏加字段 = shader 静默回退默认材质 / 解引用错地址。
+    static GateResult RunWorldAddressesStructParityCase()
+    {
+        GateResult result;
+        result.name = "W.world-addresses-struct-parity";
+
+        const std::string cpp_text =
+            ReadFileText(RepoRootPath("inc/hgl/graph/ubo/WorldAddresses.h"));
+        const std::string glsl_text =
+            ReadFileText(RepoRootPath("ShaderLibrary/ubo/scene_ubo.glsl"));
+
+        if (cpp_text.empty() || glsl_text.empty())
+        {
+            result.diagnostics.emplace_back(
+                "无法读取 WorldAddresses.h / scene_ubo.glsl（结构对表的两端）");
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        const std::vector<std::string> cpp_fields =
+            ExtractU64Fields(cpp_text, "struct WorldAddresses");
+        const std::vector<std::string> glsl_fields =
+            ExtractU64Fields(glsl_text, "buffer WorldAddressesRef");
+
+        if (cpp_fields.empty() || glsl_fields.empty())
+        {
+            result.diagnostics.emplace_back(
+                "WorldAddresses 字段提取为空（结构标记被改写？）C++="
+                + std::to_string(cpp_fields.size())
+                + " GLSL=" + std::to_string(glsl_fields.size()));
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        if (cpp_fields != glsl_fields)
+        {
+            std::string detail = "WorldAddresses 字段漂移（C++ "
+                + std::to_string(cpp_fields.size()) + " 项 / GLSL "
+                + std::to_string(glsl_fields.size()) + " 项）：";
+            const size_t count = cpp_fields.size() > glsl_fields.size()
+                               ? cpp_fields.size() : glsl_fields.size();
+            for (size_t i = 0; i < count; ++i)
+            {
+                const std::string lhs =
+                    i < cpp_fields.size() ? cpp_fields[i] : std::string("<缺>");
+                const std::string rhs =
+                    i < glsl_fields.size() ? glsl_fields[i] : std::string("<缺>");
+                if (lhs != rhs)
+                {
+                    detail += "第 " + std::to_string(i) + " 项 C++=" + lhs
+                            + " GLSL=" + rhs;
+                    break;
+                }
+            }
+            detail += "；漏加字段会让世界私有地址（相机行/渲染项）解引用错地址";
+            result.diagnostics.emplace_back(detail);
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunMaterialDefinitionFileSchemaCase()
     {
         GateResult result;
@@ -4701,6 +4764,7 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());
+    if (run_interface) results.push_back(RunWorldAddressesStructParityCase());
     if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());
     if (run_cache) results.push_back(RunProviderGraphIdentityCase());
     if (run_cache) results.push_back(RunProviderGraphCompositionCase());
