@@ -9,9 +9,11 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/ecs/core/ScenePipelineMode.h>
 #include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/log/Log.h>
 #include<memory>
+#include<cstdlib>
 #include<functional>
 #include<vector>
 #include<map>
@@ -162,8 +164,15 @@ namespace hgl
             /// 当前渲染 Pass 的命令缓冲区（在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
 
-            /// 当前渲染 Pass 的活跃相机 SSBO 行号（用于 PushConstants 索引多相机）
-            uint32_t active_camera_id = 0;
+            /// 当前渲染 Pass 的活跃相机**槽号**（世界内；用于 pc_root.camera_row 的行号算术）
+            uint32_t active_camera_id = CameraComponent::kDefaultSlot;
+
+            /// 本世界默认相机 = 0 号槽的拥有者（三级解析 `CameraSystem::SelectMainCamera()` 的落点）。
+            /// 用 weak_ptr 持有：相机可能是实体组件（注册表持有 shared_ptr），实体销毁后必须**自动失效**
+            /// （否则地址复用会让新相机"继承"默认相机身份）。常驻 fallback 相机由 `fallback_camera` 持有，
+            /// 它**不进 component_registry**（`CollectCameras()` 看不到它）。
+            std::weak_ptr<CameraComponent> default_camera;
+            std::shared_ptr<CameraComponent> fallback_camera;
 
             // ---- A1 车道等待列表（per-frame，见 RenderOptions.h 的车道说明）----
 
@@ -359,6 +368,35 @@ namespace hgl
             /// 着色器端 `pc_root.camera_row` 收到的就是这个行号（scene_ubo.glsl 的 cameras[] 下标），
             /// 因此离屏 pass 与主帧各自的相机数据落在不相交的行上。
             uint32_t GetActiveCameraRow() const;
+
+            /// 临时诊断（`CSM_CAMDIAG=1`）：某帧主帧绘制前比对"生效相机行"与默认相机
+            void DiagCheckActiveCameraRow() const;
+
+        private:
+
+            /// 上一帧做过相机行诊断的帧号 + 上一帧默认相机的整份数据（诊断用，`CSM_CAMDIAG`）
+            mutable uint32_t cam_diag_last_frame = UINT32_MAX;
+            mutable bool cam_diag_prev_info_valid = false;
+            mutable graph::CameraInfo cam_diag_prev_info{};
+            mutable bool cam_diag_verbose = (std::getenv("CSM_CAMDIAG_VERBOSE") != nullptr);
+
+        public:
+
+            /// 本世界默认相机（0 号槽的拥有者）；尚未解析出相机 / 相机已销毁时为 nullptr
+            CameraComponent* GetDefaultCamera() const { return default_camera.lock().get(); }
+            void SetDefaultCamera(const std::shared_ptr<CameraComponent>& camera) { default_camera = camera; }
+
+            /// 惰性创建**常驻** fallback 相机（位置 `(0,0,0)`、占 0 号槽）——
+            /// 三级解析的第 ③ 级：世界内一个相机组件都没有时，渲染仍必须有一个相机。
+            /// 创建后一直存在（不按需销毁），且不是 Entity 组件（不进 component_registry）。
+            CameraComponent* EnsureFallbackCamera();
+
+            bool IsFallbackCamera(const CameraComponent* camera) const
+            {
+                return camera != nullptr && camera == fallback_camera.get();
+            }
+
+            CameraComponent* GetFallbackCamera() const { return fallback_camera.get(); }
 
             // ---- A1 车道等待列表 ----
 

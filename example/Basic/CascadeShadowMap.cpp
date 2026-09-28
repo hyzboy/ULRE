@@ -254,6 +254,20 @@ private:
     };
     CacheDiff cache_diff;
 
+    // ── 逐帧转储（`CSM_FRAMEDUMP=<dir>`，可选 `CSM_FRAMEDUMP_FRAMES=<n>`）──────────────
+    // 抓"单帧整幅被拉伸 / 相机不对"这类**只出现一帧**的伪影：每帧在**帧内读回窗口**
+    // （提交后、present 前，见 VKTextureReadback.h 的说明）把主帧颜色读回，下采样成
+    // 160x90 的 PPM（P6）落盘。事后逐帧差分即可定位伪影帧，也能直接看图确认形态。
+    // 注意：读回会排空图形队列（同步）⇒ 帧率显著下降，仅诊断时开。
+    struct FrameDump
+    {
+        bool     enabled = false;
+        uint32_t max_frames = 600;
+        uint32_t requested = 0;
+        std::string dir;
+    };
+    FrameDump frame_dump;
+
     // ── 阴影深度 bias（背面渲染的贴合补偿，运行时可调）──
     CascadedShadowConfig csm_config{};
     float cascade_radius0 = 0.0f; // 级联 0 包围球半径（供上层换算世界单位用）
@@ -264,6 +278,142 @@ private:
     bool no_key_prev[2]{};        // [0]=- 减小, [1]== 增大（normal-offset），边沿触发
     bool f_key_prev[4]{};         // F1..F4 级联屏蔽切换边沿触发
     bool r_key_prev = false;      // R：手动失效静态级联缓存（A3 API 演示）
+
+    static constexpr uint32_t kDumpW = 160;
+    static constexpr uint32_t kDumpH = 90;
+
+private:
+
+    /// 把读回的原始像素解成 8bit RGB（引擎回读不做格式转换，这里按格式自行解包）
+    static void UnpackPixelToRGB(const uint8_t *p, const VkFormat fmt, uint8_t &r, uint8_t &g, uint8_t &b)
+    {
+        if (fmt == VK_FORMAT_A2B10G10R10_UNORM_PACK32 || fmt == VK_FORMAT_A2R10G10B10_UNORM_PACK32)
+        {
+            uint32_t v = 0;
+            std::memcpy(&v, p, 4);
+
+            // 通道序按 Vulkan 命名：低位起 R/G/B（A2B10G10R10 = R 在 bit0..9）
+            const uint32_t c0 = (v >> 0) & 0x3FF;
+            const uint32_t c1 = (v >> 10) & 0x3FF;
+            const uint32_t c2 = (v >> 20) & 0x3FF;
+
+            const bool bgra_order = (fmt == VK_FORMAT_A2R10G10B10_UNORM_PACK32);
+            r = static_cast<uint8_t>((bgra_order ? c2 : c0) >> 2);
+            g = static_cast<uint8_t>(c1 >> 2);
+            b = static_cast<uint8_t>((bgra_order ? c0 : c2) >> 2);
+            return;
+        }
+
+        if (fmt == VK_FORMAT_B8G8R8A8_UNORM || fmt == VK_FORMAT_B8G8R8A8_SRGB)
+        {
+            b = p[0]; g = p[1]; r = p[2];
+            return;
+        }
+
+        r = p[0]; g = p[1]; b = p[2];
+    }
+
+    /// 帧内回读窗口里的实际动作：读回 → 块平均下采样到 160x90 → 写 PPM
+    bool DumpFrameDownsampled(graph::IRenderTarget *rt, const uint32_t index)
+    {
+        std::vector<uint8_t> pixels;
+        graph::TextureReadbackInfo info;
+
+        if (!graph::ReadbackColorTarget(rt, pixels, 0, &info) ||
+            info.width == 0 || info.height == 0 || info.pixel_size < 3)
+        {
+            GLogWarning(u8"[FrameDump] 第 %u 帧读回失败", index);
+            return false;
+        }
+
+        const uint32_t w = info.width;
+        const uint32_t h = info.height;
+        const uint32_t bpp = info.pixel_size;
+
+        if (pixels.size() < static_cast<size_t>(w) * h * bpp)
+            return false;
+
+        std::vector<uint8_t> out(static_cast<size_t>(kDumpW) * kDumpH * 3, 0);
+        uint64_t lum_sum = 0;
+
+        for (uint32_t by = 0; by < kDumpH; ++by)
+        {
+            const uint32_t y0 = static_cast<uint32_t>(static_cast<uint64_t>(by) * h / kDumpH);
+            const uint32_t y1 = std::max(y0 + 1u, static_cast<uint32_t>(static_cast<uint64_t>(by + 1) * h / kDumpH));
+
+            for (uint32_t bx = 0; bx < kDumpW; ++bx)
+            {
+                const uint32_t x0 = static_cast<uint32_t>(static_cast<uint64_t>(bx) * w / kDumpW);
+                const uint32_t x1 = std::max(x0 + 1u, static_cast<uint32_t>(static_cast<uint64_t>(bx + 1) * w / kDumpW));
+
+                uint64_t sr = 0, sg = 0, sb = 0, n = 0;
+
+                for (uint32_t y = y0; y < y1 && y < h; ++y)
+                {
+                    const uint8_t *row = pixels.data() + static_cast<size_t>(y) * w * bpp;
+
+                    for (uint32_t x = x0; x < x1 && x < w; ++x)
+                    {
+                        uint8_t r = 0, g = 0, b = 0;
+                        UnpackPixelToRGB(row + static_cast<size_t>(x) * bpp, info.format, r, g, b);
+                        sr += r; sg += g; sb += b; ++n;
+                    }
+                }
+
+                const size_t o = (static_cast<size_t>(by) * kDumpW + bx) * 3;
+                const uint8_t r = static_cast<uint8_t>(n ? sr / n : 0);
+                const uint8_t g = static_cast<uint8_t>(n ? sg / n : 0);
+                const uint8_t b = static_cast<uint8_t>(n ? sb / n : 0);
+
+                out[o + 0] = r; out[o + 1] = g; out[o + 2] = b;
+
+                lum_sum += (static_cast<uint64_t>(r) * 299 + static_cast<uint64_t>(g) * 587 + static_cast<uint64_t>(b) * 114) / 1000;
+            }
+        }
+
+        char path[512];
+        std::snprintf(path, sizeof(path), "%s/frame_%05u.ppm", frame_dump.dir.c_str(), index);
+
+        FILE *fp = std::fopen(path, "wb");
+        if (!fp)
+        {
+            GLogWarning(u8"[FrameDump] 写文件失败：%s", path);
+            return false;
+        }
+
+        std::fprintf(fp, "P6\n%u %u\n255\n", kDumpW, kDumpH);
+        std::fwrite(out.data(), 1, out.size(), fp);
+        std::fclose(fp);
+
+        GLogInfo(u8"[FrameDump] frame=%u %s lum=%.2f src=%ux%u",
+                 index, path, static_cast<double>(lum_sum) / static_cast<double>(kDumpW * kDumpH),
+                 w, h);
+
+        return true;
+    }
+
+    /// Tick 里每帧装一次帧内回读钩子（帧内窗口由引擎回调，见 VKTextureReadback.h）
+    void RequestFrameDump()
+    {
+        auto *rt = ecs_context ? ecs_context->GetRenderTarget() : nullptr;
+        if (!rt)
+            return;
+
+        auto *sc_rt = dynamic_cast<graph::SwapchainRenderTarget *>(rt);
+        if (!sc_rt)
+        {
+            GLogWarning(u8"[FrameDump] 主帧渲染目标不是交换链 RT ⇒ 关闭逐帧转储");
+            frame_dump.enabled = false;
+            return;
+        }
+
+        const uint32_t index = frame_dump.requested++;
+
+        sc_rt->SetInFrameReadbackHook([this, sc_rt, index]
+        {
+            DumpFrameDownsampled(sc_rt, index);
+        });
+    }
 
 private:
 
@@ -1071,6 +1221,24 @@ private:
         cfg.blend_width = 0.05f;   // 动态层(CSM 0)边界淡出带 + 末级 300m 边缘淡出带（占区间比例）
         cfg.blend_distance = 1.5f; // 相邻级联交界带（世界米）: 只做取暗叠加, 近级不淡出
 
+        // 临时诊断：横向锚定步长 B（texel）可用 `CSM_BAND=a,b,c,d` 覆盖（默认 {0,16,16,32}）。
+        // 用途：B 越大，缓存原点吸附格点越粗 ⇒ 相机平滑移动时"跨格"的位移越大 ⇒
+        // 地面（受影面）的阴影映射按 B·texel 的步长跳一次（越大越像"拉扯"）。
+        // 置 0 = 关闭该级横向锚定（每帧走整级重建，阴影连续但每帧全量重绘）。
+        if (const char *env = std::getenv("CSM_BAND"))
+        {
+            int b[4] = {};
+            if (std::sscanf(env, "%d,%d,%d,%d", &b[0], &b[1], &b[2], &b[3]) == 4)
+            {
+                for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
+                    cfg.cache_scroll_band_texels[c] = static_cast<uint32_t>(std::max(0, b[c]));
+
+                GLogInfo(u8"[CSM] 横向锚定步长被 CSM_BAND 覆盖为 { %u, %u, %u, %u } texel",
+                         cfg.cache_scroll_band_texels[0], cfg.cache_scroll_band_texels[1],
+                         cfg.cache_scroll_band_texels[2], cfg.cache_scroll_band_texels[3]);
+            }
+        }
+
         GLogInfo(u8"[CSM] shadow bias_world=%.2fm normal_offset=%.2fm (back-face shadow map; press [ / ] and - / = to tune)",
                  cfg.bias_world, cfg.normal_offset_world);
 
@@ -1086,6 +1254,19 @@ private:
         if (cache_diff.enabled)
             GLogInfo(u8"[CSM-CACHE-DIFF] 对拍诊断已启用（autowalk=%.1f m/s）：等条带滚动帧取 A → 强制整级重建取 B → 逐纹素比对",
                      cache_diff.autowalk);
+
+        // 逐帧转储开关：CSM_FRAMEDUMP=<目录>（可选 CSM_FRAMEDUMP_FRAMES=<帧数>，默认 600）
+        if (const char *env = std::getenv("CSM_FRAMEDUMP"))
+        {
+            frame_dump.dir     = env;
+            frame_dump.enabled = (!frame_dump.dir.empty());
+
+            if (const char *nf = std::getenv("CSM_FRAMEDUMP_FRAMES"))
+                frame_dump.max_frames = static_cast<uint32_t>(std::atoi(nf));
+
+            GLogInfo(u8"[FrameDump] 逐帧转储已启用：目录=%s 上限=%u 帧",
+                     frame_dump.dir.c_str(), frame_dump.max_frames);
+        }
 
         return environment_system->EnableMainLightShadow(cfg, kShadowMapSize);
     }
@@ -1582,6 +1763,10 @@ public:
         // 对拍进行中（state != 0）冻结相机：A/B 两帧的静态内容与布局矩阵必须一致。
         if (cache_diff.autowalk > 0.0f && main_camera && cache_diff.state == 0 && !cache_diff.pending)
             main_camera->position.x += cache_diff.autowalk * static_cast<float>(delta);
+
+        // ── 逐帧转储（抓"单帧整幅被拉伸 / 相机不对"这类一次性伪影）──
+        if (frame_dump.enabled && frame_dump.requested < frame_dump.max_frames)
+            RequestFrameDump();
 
         RunCacheDiff();
 

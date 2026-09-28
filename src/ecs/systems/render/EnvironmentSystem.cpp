@@ -237,11 +237,12 @@ namespace hgl::ecs
 
         shadow_controller.reset();
 
-        // 光相机占的是**本世界**相机行存储的一个槽（CameraInfoStorage::AcquireCameraSlot，
+        // 光相机占的是**本世界**相机行存储的一个槽（`CameraInfoStorage::AcquireCameraSlot`，
         // 经 RenderTo→SetOverrideCamera→BindCameraResources 分配）。Disable 必须对称归还——
         // 世界槽位上限 16、超限报错不扩容，每次 Enable/Disable 泄漏一槽迟早把槽位顶满。
-        // camera_id==0 是"未分配"哨兵（0 号槽固定留给默认相机），不可误归还。
-        if (light_camera && light_camera->camera_id != 0)
+        // 未分配哨兵是 `CameraComponent::kInvalidSlot`（**不是 0**：0 = 本世界默认相机专属槽），
+        // 因此这里用 HasCameraSlot() 判定，不会误归还默认相机的槽。
+        if (light_camera && light_camera->HasCameraSlot())
         {
             auto *storage = context ? context->GetCameraInfoStorage() : nullptr;
             if (storage)

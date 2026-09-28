@@ -78,7 +78,27 @@ namespace hgl
             graph::Camera* camera_data;             ///< 摄像机数据指针 / Camera data pointer
             graph::CameraInfo* camera_info;         ///< 摄像机信息指针 / Camera info pointer
             const graph::ViewportInfo* viewport_info; ///< 视口信息指针 / Viewport info pointer
-            uint32_t camera_id = 0;                 ///< 相机槽号（世界内；0 = 本世界默认相机） / world-local camera slot (0 = default camera)
+            // === 相机槽（世界内）/ World-local camera slot ===
+            // 相机 = **世界相机存储里的一个槽 + 一个拥有者**（普通相机 / 灯光相机 / 镜子相机 /
+            // 系统内建相机），定稿见 doc/world-addresses-and-camera-model-plan.md §2/§3：
+            // - `kDefaultSlot`(0) = 本世界默认相机专属（三级解析的落点，常驻 fallback 也占它）；
+            // - 1..`kSlotCapacity`-1 由世界存储 `CameraInfoStorage::AcquireCameraSlot()` 给出，
+            //   拥有者负责归还；容量 16、超限 fail-fast、不扩容；
+            // - **未分配 = `kInvalidSlot`，不是 0**：0 是合法槽号，两者必须区分开
+            //   （历史写法用 0 同时表示"默认相机"与"未分配"，导致"没槽的相机"被当成默认相机发出去）。
+            static constexpr uint32_t kDefaultSlot  = 0u;
+            static constexpr uint32_t kSlotCapacity = 16u;
+            static constexpr uint32_t kInvalidSlot  = UINT32_MAX;
+
+            /// 是否已在本世界相机存储里认领到槽（0 号槽 = 默认相机，也算）
+            bool HasCameraSlot() const { return camera_id < kSlotCapacity; }
+
+            /// 认领该相机槽的**世界**（ECSContext 身份，只做相等比较；不参与渲染）。
+            /// 用途：pass 覆盖相机（`RenderTo(req.camera)`）必须属于**被渲染的那个世界** ——
+            /// 跨世界 = 项目 bug，按 fail-fast 拒绝（否则会把别的世界的相机数据按本世界的行号发出去）。
+            const void* world_owner = nullptr;
+
+            uint32_t camera_id = kInvalidSlot;      ///< 相机槽号（世界内；kDefaultSlot = 本世界默认相机，kInvalidSlot = 未分配）
 
             // === 标记 / Flags ===
             bool is_main_camera;            ///< 是否为主摄像机 / Is main camera

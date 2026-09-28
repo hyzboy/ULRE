@@ -29,7 +29,7 @@ namespace hgl::ecs
         , camera_data(&local_camera_data)
         , camera_info(&local_camera_info)
         , viewport_info(nullptr)
-        , camera_id(0)
+        , camera_id(CameraComponent::kInvalidSlot)
         , is_main_camera(false)
         , matrix_dirty(true)
     {

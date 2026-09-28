@@ -2,6 +2,7 @@
 
 #include <hgl/graph/CameraInfo.h>
 #include <hgl/common/RenderOptions.h>
+#include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/vk/buffer/ActiveRowPool.h>
 #include <hgl/type/String.h>
 
@@ -32,11 +33,20 @@ namespace hgl::ecs
     class CameraInfoStorage
     {
     public:
-        static constexpr uint32_t kSlotCapacity      = 16u;                              ///< 世界相机槽上限（fail-fast）
+        // 槽形状的**唯一真源**在 `CameraComponent`（相机自己带槽号）——这里只做别名 + parity 断言，
+        // 避免两个常量各写一份而漂移。
+        static constexpr uint32_t kSlotCapacity      = CameraComponent::kSlotCapacity;   ///< 世界相机槽上限（fail-fast）
         static constexpr uint32_t kFrameSlotCount    = HGL_FRAME_SLOT_TOTAL;             ///< per-frame 帧槽数
         static constexpr uint32_t kRowCount          = kSlotCapacity * kFrameSlotCount;  ///< 行空间（= 128）
-        static constexpr uint32_t kDefaultCameraSlot = 0u;                               ///< 0 号槽 = 本世界默认相机专属
-        static constexpr uint32_t INVALID_SLOT       = UINT32_MAX;
+        static constexpr uint32_t kDefaultCameraSlot = CameraComponent::kDefaultSlot;    ///< 0 号槽 = 本世界默认相机专属
+        static constexpr uint32_t INVALID_SLOT       = CameraComponent::kInvalidSlot;    ///< 未分配（≠ 0）
+
+        static_assert(kSlotCapacity == 16u, "世界相机槽容量必须是 16（doc/world-addresses-and-camera-model-plan.md §0.6）");
+        static_assert(kDefaultCameraSlot == 0u, "0 号槽 = 本世界默认相机");
+        static_assert(INVALID_SLOT >= kSlotCapacity, "未分配哨兵不得落在合法槽号区间内");
+
+        /// 合法槽号判定（写入 / 读取 / 行号算术的统一入口）
+        static constexpr bool IsValidSlot(const uint32_t slot) { return slot < kSlotCapacity; }
 
         /// 行号 = 相机槽 × 帧槽总数 + 帧槽
         static constexpr uint32_t CameraRow(const uint32_t camera_slot, const uint32_t frame_slot)

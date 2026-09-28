@@ -1210,6 +1210,73 @@ int main(int argc, char** argv)
                 return 9;
             }
 
+            // 9C+: 相机模型契约（三级解析第 ④ 级 = 常驻 fallback；相机槽语义）
+            // 背景：渲染**必须**有一个相机（doc/world-addresses-and-camera-model-plan.md §0.1/§3）：
+            // ① 0 号槽的默认相机 → ② 显式 is_main_camera → ③ 最小 EntityID 的相机
+            // → ④ 都没有 ⇒ 在 (0,0,0) 生成**常驻** fallback 并占 0 号槽。
+            {
+                ECSContext empty_world("TestNoCameraWorld");
+
+                auto no_cam_sys = empty_world.RegisterTickSystem<CameraSystem>();
+                if (!no_cam_sys)
+                {
+                    GLogError(u8"Test 9C+ Failed: CameraSystem registration failed");
+                    return 9;
+                }
+
+                if (empty_world.GetDefaultCamera() != nullptr)
+                {
+                    GLogError(u8"Test 9C+ Failed: a fresh world must not have a default camera before resolution");
+                    return 9;
+                }
+
+                auto *fallback = no_cam_sys->GetMainCameraComponent();   // 无相机 ⇒ 第 ④ 级
+                if (!fallback || !empty_world.IsFallbackCamera(fallback))
+                {
+                    GLogError(u8"Test 9C+ Failed: a world with no camera must resolve to the resident fallback camera");
+                    return 9;
+                }
+
+                if (fallback->position.x != 0.0f || fallback->position.y != 0.0f || fallback->position.z != 0.0f)
+                {
+                    GLogError(u8"Test 9C+ Failed: fallback camera must sit at (0,0,0)");
+                    return 9;
+                }
+
+                if (fallback->camera_id != CameraComponent::kDefaultSlot)
+                {
+                    GLogError(u8"Test 9C+ Failed: fallback camera must own slot 0 (got %u)", fallback->camera_id);
+                    return 9;
+                }
+
+                if (no_cam_sys->GetMainCameraComponent() != fallback)
+                {
+                    GLogError(u8"Test 9C+ Failed: fallback camera must be resident "
+                              u8"(re-resolving must return the same instance, not rebuild it)");
+                    return 9;
+                }
+
+                // 常驻 fallback **不进**组件表：否则它会参与"最小 EntityID 的相机"选主
+                std::vector<std::shared_ptr<CameraComponent>> registered;
+                empty_world.GetComponents<CameraComponent>(registered);
+                if (!registered.empty())
+                {
+                    GLogError(u8"Test 9C+ Failed: fallback camera must not be registered as a component (found %zu)",
+                              registered.size());
+                    return 9;
+                }
+
+                // 槽语义：**未分配哨兵不是 0**（0 = 本世界默认相机专属槽；历史写法把两者混用，
+                // 导致"没槽的相机"被当成默认相机发出去）。
+                CameraComponent fresh_camera("TestFreshCamera");
+                if (fresh_camera.HasCameraSlot() || fresh_camera.camera_id == CameraComponent::kDefaultSlot)
+                {
+                    GLogError(u8"Test 9C+ Failed: a fresh camera must start unallocated (kInvalidSlot), got %u",
+                              fresh_camera.camera_id);
+                    return 9;
+                }
+            }
+
             // 9D: A3 静态场景 revision 失效链契约。
             // 静态级联滚动缓存的"静态"前提由该链兜底：TransformSystem 在
             // SubmitTransformUpdates 检出 Static transform 变更 → 递增

@@ -101,6 +101,9 @@ namespace hgl
             uint cached_viewport_width = 0;
             uint cached_viewport_height = 0;
 
+            /// PublishCamera 遇到"相机没认领到槽"时的一次性告警闸（逐帧刷屏没有意义）
+            bool warned_publish_without_slot = false;
+
             /// pass 级相机覆盖（RenderTo(request.camera) 期间非空）：
             /// Update 只处理该相机并强制重算——共享 camera_data/camera_info
             /// 反映它而非主相机；pass 结束由 RenderTo 恢复
@@ -185,8 +188,22 @@ namespace hgl
 
             CameraModeProcessor* GetModeProcessor(CameraComponent::ControlMode mode) const;
 
-            CameraComponent* SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras) const;
-            void BindCameraResources(CameraComponent* camera, bool is_main = false);
+            /// 三级解析出本 pass 要用的相机（`doc/world-addresses-and-camera-model-plan.md` §3）：
+            /// ① 0 号槽的默认相机（含常驻 fallback）→ ② 显式 `is_main_camera` → ③ 最小 `EntityID` 的相机
+            /// → ④ 都没有则生成常驻 fallback（`(0,0,0)`、占 0 号槽）。**渲染必有一个相机**。
+            CameraComponent* SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras);
+
+            /// 让某相机认领 0 号槽（= 本世界默认相机），并记进世界（下一帧解析的第 ① 级）
+            CameraComponent* ClaimDefaultCamera(const std::shared_ptr<CameraComponent>& camera);
+
+            /// 绑槽 / 绑数据载体与 viewport（**只在本帧 tick / pass 覆盖上下文调用**）。
+            /// `is_default` = 本 pass 的默认相机（拿 0 号槽）；
+            /// 其它相机（灯光 / 镜子 / 系统内建）从世界存储按需分配 1..15 槽。
+            void BindCameraResources(CameraComponent* camera, bool is_default = false);
+
+            /// 只认领 **世界相机槽**（不含 viewport / 数据载体绑定）——发布路径
+            /// （`PublishCameraRows`，离屏 pass 的设置阶段也会走）专用：那里绑 viewport 会污染主帧投影。
+            void EnsureCameraSlot(CameraComponent* camera, bool is_default = false);
             void EnsureCameraResources();
 
             // === 数学辅助函数 / Math helper functions ===

@@ -38,6 +38,8 @@
 #include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
+#include<cstdlib>
+#include<cmath>
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
 #include<chrono>
@@ -330,6 +332,10 @@ namespace hgl
 
             world_addresses_addr = 0;
 
+            // 常驻 fallback 相机随世界销毁（不是 Entity 组件 ⇒ 不走 entity_manager->Clear()）
+            fallback_camera = nullptr;
+            default_camera.reset();
+
             shutdown_in_progress = false;
         }
 
@@ -591,11 +597,19 @@ namespace hgl
             {
                 camera_system->SetOverrideCamera(req.camera);
                 camera_system->Update(req.delta_time);
-                active_camera_id = req.camera->camera_id;
+
+                // 覆盖相机的槽在 Update → BindCameraResources 里认领；万一没认领到（存储未就绪 /
+                // 槽耗尽 / 相机属于别的世界被拒）就退回 0 号槽，别把非法槽号一路带到行号算术里。
+                const bool camera_in_this_world = (req.camera->world_owner == nullptr)
+                                               || (req.camera->world_owner == this);
+                active_camera_id = (camera_in_this_world && CameraInfoStorage::IsValidSlot(req.camera->camera_id))
+                                     ? req.camera->camera_id
+                                     : CameraInfoStorage::kDefaultCameraSlot;
             }
             else
             {
-                active_camera_id = 0;
+                // 无覆盖相机：本 pass 用"本世界默认相机"（0 号槽；三级解析已保证有）
+                active_camera_id = CameraInfoStorage::kDefaultCameraSlot;
             }
 
             active_mobility_filter = req.mobility_filter;
@@ -646,6 +660,16 @@ namespace hgl
                 // shadow pass 用退化相机渲染（阴影整体消失、receive_shadow 拨动无像素变化）。
                 // （历史注释曾误记为"光源相机属另一个世界"——真因与定稿见
                 //  doc/world-addresses-and-camera-model-plan.md §3/§7。）
+                // 契约：离屏 pass 的相机行必须落在**离屏槽带**（[HGL_FRAME_SLOT_MAIN, TOTAL)）。
+                // 若本 pass 的 RT 槽落在主帧带，离屏相机会覆写主帧在途的相机行
+                // ⇒ 主画面渲成离屏/光源相机视角（**只出现一帧**、间歇：主帧读到自己那一槽被覆写的行）。
+                if (req.camera && frame_index < HGL_FRAME_SLOT_MAIN)
+                {
+                    LogError("[ECSContext::RenderTo] 离屏 pass 的相机行落在主帧槽带：frame_index=%u "
+                             "camera=\"%s\" slot=%u（主帧在途的相机行会被这个 pass 覆写）",
+                             frame_index, req.camera->GetName().c_str(), req.camera->camera_id);
+                }
+
                 if (auto cs = GetSystem<CameraSystem>())
                     cs->PublishCamera(req.camera, frame_index);
 
@@ -686,7 +710,9 @@ namespace hgl
             {
                 camera_system->RestoreMainCamera();
             }
-            active_camera_id = 0;
+
+            // pass 退出：回到主帧的"本世界默认相机"（0 号槽；RestoreMainCamera 已把主相机重解算）
+            active_camera_id = CameraInfoStorage::kDefaultCameraSlot;
 
             return ok;
         }
@@ -1436,8 +1462,133 @@ namespace hgl
 
         uint32_t ECSContext::GetActiveCameraRow() const
         {
-            // 相机行号 = 相机槽 × 帧槽总数 + 帧槽（世界内算术，见 CameraInfoStorage::CameraRow）
-            return CameraInfoStorage::CameraRow(active_camera_id, frame_index);
+            // 槽号非法（本帧尚未解析出相机认领的槽 / 槽耗尽）⇒ 退回 **0 号槽**（默认相机 / 常驻 fallback）：
+            // 着色器拿到的永远是一个合法行，而不是按 INVALID_SLOT 算出的越界行（会读到别的世界的存储）。
+            const uint32_t slot = CameraInfoStorage::IsValidSlot(active_camera_id)
+                                    ? active_camera_id
+                                    : CameraInfoStorage::kDefaultCameraSlot;
+
+            // 临时诊断（`CSM_CAMDIAG=1`）：主帧绘制用的相机行，其内容必须就是默认相机的数据。
+            // 症状背景：主帧读到了光源相机的行 ⇒ 主画面渲成光源相机视角（只出现一帧、间歇）。
+            static const bool cam_diag = (std::getenv("CSM_CAMDIAG") != nullptr);
+            if (cam_diag && cam_diag_last_frame != frame_index)
+            {
+                cam_diag_last_frame = frame_index;
+                DiagCheckActiveCameraRow();
+            }
+
+            return CameraInfoStorage::CameraRow(slot, frame_index);
+        }
+
+        void ECSContext::DiagCheckActiveCameraRow() const
+        {
+            if (is_current_pass_shadow)
+                return;   // 阴影 pass 本就用光源相机，跳过
+
+            const uint32_t slot = active_camera_id;
+            if (slot != CameraInfoStorage::kDefaultCameraSlot)
+            {
+                GLogError("[CAMDIAG] 主帧生效相机槽 ≠ 0：slot=%u frame=%u（主帧必须用 0 号槽的默认相机）",
+                          slot, frame_index);
+                return;
+            }
+
+            const auto *storage = GetCameraInfoStorage();
+            const auto *def = GetDefaultCamera();
+            if (!storage || !def || !def->camera_info)
+                return;
+
+            const graph::CameraInfo *row = storage->GetCameraRow(slot, frame_index);
+            if (!row)
+            {
+                GLogError("[CAMDIAG] 主帧相机行读不到：slot=%u frame=%u", slot, frame_index);
+                return;
+            }
+
+            const graph::CameraInfo *expect = def->camera_info;
+            const bool same = (std::memcmp(row, expect, sizeof(graph::CameraInfo)) == 0);
+
+            if (!same)
+            {
+                // 逐字节比对：报出第一个不同的字段，并判断行里到底是"谁"的数据 / 是不是旧帧残留
+                const auto *a = reinterpret_cast<const uint8_t *>(row);
+                const auto *b = reinterpret_cast<const uint8_t *>(expect);
+                size_t diff_off = 0;
+                while (diff_off < sizeof(graph::CameraInfo) && a[diff_off] == b[diff_off])
+                    ++diff_off;
+
+                const auto *fb = fallback_camera ? fallback_camera->camera_info : nullptr;
+                const bool is_fallback = (fb && std::memcmp(row, fb, sizeof(graph::CameraInfo)) == 0);
+                const bool is_prev = (cam_diag_prev_info_valid &&
+                                      std::memcmp(row, &cam_diag_prev_info, sizeof(graph::CameraInfo)) == 0);
+
+                GLogError("[CAMDIAG] 主帧相机行 ≠ 本帧默认相机：frame=%u 首差偏移=%zuB(%.1f 个 float) "
+                          "row(pos=%.3f,%.3f,%.3f proj00=%.5f) default(%s pos=%.3f,%.3f,%.3f proj00=%.5f) "
+                          "%s%s",
+                          frame_index, diff_off, static_cast<double>(diff_off) / 4.0,
+                          row->camera_world_pos.x, row->camera_world_pos.y, row->camera_world_pos.z,
+                          row->projection[0][0],
+                          def->GetName().c_str(),
+                          expect->camera_world_pos.x, expect->camera_world_pos.y, expect->camera_world_pos.z,
+                          expect->projection[0][0],
+                          is_fallback ? "⇐ 内容 = 常驻 fallback 相机" : "",
+                          is_prev ? "⇐ 内容 = **上一帧**默认相机（滞后一帧）" : "");
+            }
+
+            if (cam_diag_verbose)
+            {
+                const uint32_t vw = def->viewport_info ? def->viewport_info->GetViewportWidth()  : 0u;
+                const uint32_t vh = def->viewport_info ? def->viewport_info->GetViewportHeight() : 0u;
+
+                // 本 pass 的 viewport（RenderTargetSystem 的当前 RT）：用来发现"相机用错 viewport 解算"
+                // （投影 aspect 变成离屏 RT 的 ⇒ 主帧整幅被拉伸）
+                const graph::ViewportInfo *cur_vp = nullptr;
+                if (auto rts = GetSystem<RenderTargetSystem>())
+                    if (auto *rt = rts->GetRenderTarget())
+                        cur_vp = rt->GetViewportInfo();
+
+                GLogInfo("[CAMDIAG-TRACE] frame=%u slot=%u rowpos=(%.3f,%.3f,%.3f) proj00=%.5f ok=%d "
+                         "cam_vp=%ux%u pass_vp=%ux%u",
+                         frame_index, slot,
+                         row->camera_world_pos.x, row->camera_world_pos.y, row->camera_world_pos.z,
+                         row->projection[0][0], same ? 1 : 0,
+                         vw, vh,
+                         cur_vp ? cur_vp->GetViewportWidth()  : 0u,
+                         cur_vp ? cur_vp->GetViewportHeight() : 0u);
+            }
+
+            cam_diag_prev_info = *expect;
+            cam_diag_prev_info_valid = true;
+        }
+
+        CameraComponent* ECSContext::EnsureFallbackCamera()
+        {
+            // 已存在 ⇒ 重新回到"默认相机"位置（可能被实体相机顶替过一轮，现在世界又没相机了）：
+            // 重新认领 0 号槽 + 重新成为本世界默认相机。
+            if (fallback_camera)
+            {
+                fallback_camera->camera_id = CameraComponent::kDefaultSlot;
+                default_camera = fallback_camera;
+                return fallback_camera.get();
+            }
+
+            // 三级解析第 ③ 级：世界内没有任何相机组件，但渲染**必须**有一个相机 ⇒ 在 (0,0,0) 强制生成。
+            // 常驻（创建后一直活着）、占 0 号槽、**不进 component_registry**（CollectCameras() 看不到它，
+            // 因此不会参与"最小 EntityID.index"的选主，也不会被当作实体相机的重复项）。
+            auto camera = std::make_shared<CameraComponent>("WorldFallbackCamera");
+            camera->position       = math::Vector3f(0.0f, 0.0f, 0.0f);
+            camera->target         = math::Vector3f(0.0f, 0.0f, 1.0f);
+            camera->camera_id      = CameraComponent::kDefaultSlot;
+            camera->is_main_camera = false;
+            camera->matrix_dirty   = true;
+
+            fallback_camera = camera;
+            default_camera  = camera;
+
+            GLogInfo("[ECS] %s: 世界内没有相机 ⇒ 在 (0,0,0) 生成常驻 fallback 相机（占 0 号槽）",
+                     GetName().c_str());
+
+            return fallback_camera.get();
         }
 
         void ECSContext::RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp)

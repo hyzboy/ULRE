@@ -42,15 +42,35 @@
 - **拥有者负责归还**：灯光销毁 / 镜面销毁 / `DisableMainLightShadow` 等对称归还（现状 CSM 的 `ReleaseCameraSlot` 对称释放即此规则的单灯特例）。
 - 容量 16、超限报错不扩容（既有约定）。
 
-## 3. 相机解析（渲染必须要一个相机）
+## 3. 相机解析（渲染必须要一个相机）—— **C1-4 已落地**
 
-`ResolveDefaultCamera()`（每帧 / 每 pass 解析，结果落到"本 pass 生效相机"）：
+`CameraSystem::SelectMainCamera(cameras)`（每帧 / 每 pass 解析，结果即"本 pass 生效相机"）：
 
-1. 0 号槽的**默认相机**存在 → 用它；
-2. 否则取**已加载 Entity 中 `EntityID.index` 最小**的相机 → 用它；
-3. 仍无 → 在 `(0,0,0)` **强制生成 fallback 相机**（占 0 号槽、常驻）。
+1. **0 号槽的默认相机**（`ECSContext::GetDefaultCamera()`，含常驻 fallback）仍在组件集合里 → 用它
+   （跨帧稳定：相机集合顺序变化 / 新增相机都不会把主相机换掉）；
+2. 否则**显式指定的主相机**（`camera->is_main_camera = true`，示例搭建期的写法）；
+3. 否则**已加载实体中 `EntityID` 最小**的相机（同实体多相机按组件注册顺序）；
+4. 仍无 → `ECSContext::EnsureFallbackCamera()`：在 `(0,0,0)` 强制生成 **常驻** fallback 相机
+   （占 0 号槽、不进 `component_registry`、创建后一直活着），并在日志里说明。
 
-CPU 侧消费者（剔除 / gizmo / Line 视锥 / shadow origin）统一通过"本 pass 生效相机"取数（`GetActiveCameraInfo()`），**不再**读世界共享的相机载体（该载体本轮删除）。
+选中的相机会**认领 0 号槽**（`ClaimDefaultCamera()` → `ECSContext::SetDefaultCamera()`；世界用
+`weak_ptr` 持有 ⇒ 相机实体销毁后自动失效，不会让地址复用者"继承"默认相机身份）。常驻 fallback 被
+实体相机顶替时会**交回 0 号槽**（槽是唯一的）。
+
+- **槽语义（唯一真源 = `CameraComponent`）**：`kDefaultSlot = 0`、`kSlotCapacity = 16`、
+  `kInvalidSlot = UINT32_MAX`，`HasCameraSlot()` 判定；`CameraInfoStorage` 的常量是它们的别名 +
+  `static_assert` parity。**未分配 ≠ 0**：0 是合法槽号（本世界默认相机专属）。
+- **pass 相机必须属本世界（fail-fast）**：`CameraComponent::world_owner`（认领槽的那个世界）在
+  `RenderTo(req.camera)` 的覆盖分支里比对，跨世界直接报错拒绝（契约 §6.6②）。
+- **发布路径也要能自愈**：`PublishCameraRows()` 由 `PrepareRenderPassSetup` 调用，**可能早于本帧的
+  `CameraSystem::Update`**（第一帧就是），因此它先做一次三级解析 + `EnsureCameraSlot()` 认领槽（都幂等），
+  否则相机的槽还是"未分配"⇒ 发布被跳过 ⇒ 主帧读到空行。
+- **⚠ viewport 只在 tick / pass 覆盖上下文里绑**：`BindCameraResources()`（绑 viewport + 数据载体）与
+  `EnsureCameraSlot()`（只认领槽）**必须分开**——发布路径也会在离屏 pass 的设置阶段被调用，那时
+  `viewport_info` 是**离屏 RT** 的，绑上去会让主相机用错投影（实测：ATS 的 D1 bbox 112x58 → 146x77、
+  D3 受影像素 18189 → 30766）。
+
+CPU 侧消费者（剔除 / gizmo / Line 视锥 / shadow origin）统一通过"本 pass 生效相机"取数（`GetActiveCameraInfo()`），**不再**读世界共享的相机载体（该载体在 C1-5 删除）。
 
 ## 4. 环境（Env / Sky / Shadow 随世界；viewport 全局）
 
@@ -78,7 +98,11 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 3. `ATS_SELFCHECK=1 AlphaTestShadow`：D1/D3/D4 契约 + selfcheck PASS + 0 VUID。
 4. `CSM_CACHE_DIFF=1 CSM_AUTOWALK=4 CascadeShadowMap`：多轮 `不一致=0`。
 5. 示例冒烟：`ShadowMap`（单世界）+ `RenderToTexture` / `RenderToTextureColorDepth`（双世界）0 VUID。
-6. 新增契约：①渲染期必解析出相机（无相机世界走 fallback 且相机在 `(0,0,0)`）；②`req.camera` 必须在本世界相机存储中占槽（跨世界 = fail-fast）；③两个世界同帧互不污染（相机行 / sky / shadow / render items 地址）；④表归属。
+6. 新增契约：①渲染期必解析出相机（无相机世界走 fallback 且相机在 `(0,0,0)`；**C1-4 已落地**：
+   `TestCSMIncrementalPass` 的 9C+ 用例断言 fallback 常驻 / 占 0 号槽 / 不进组件表）；
+   ②`req.camera` 必须在本世界相机存储中占槽（跨世界 = fail-fast；**C1-4 已落地**：
+   `CameraComponent::world_owner` 在 `CameraSystem::Update` 的覆盖分支比对）；③两个世界同帧互不污染
+   （相机行 / sky / shadow / render items 地址）；④表归属。
 
 ## 7. 事实订正清单（本轮核对；其它文档按此对齐）
 
@@ -101,5 +125,5 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 | C1-1 | ✅ | `CameraInfoStorage`（世界私有 128 行相机行存储）+ `WorldAddresses.h` + `ECSContext` 持有/创建 + CMake 登记 | purge → ShadowMap 构建 rc=0 → 冒烟 0 VUID |
 | C1-2 | ✅ | 世界表 SSBO（8 槽 × `kWorldAddressesSlotStride`）+ `pc_root.addr_world_addresses` + 三处 push（材质/线/文本批）+ `SetFrameIndex` 内 `SyncWorldAddresses` + 门 `W.world-addresses-struct-parity` | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` 21；`TestRenderItemDataStorage` rc=0；ATS 三契约与基线一致；CSM 对拍 8 轮 `不一致=0`；双世界冒烟 0 VUID |
 | C1-3 | ✅ | 相机行写入改走世界存储（`CameraSystem::PublishCamera` → `CameraInfoStorage::WriteCameraRow`、相机槽申请/归还 → `AcquireCameraSlot`/`ReleaseCameraSlot`）；GLSL `camera`/`global_render_items`/`draw_item_ids` 宏切到世界表；**删**全局表三字段（`addr_camera_info`/`addr_global_render_items`/`addr_draw_item_ids`）、`GlobalSSBOType::CameraInfo` 行池 + 相机号位图 + `AcquireCamera`/`ReleaseCamera`/`CameraRow`/`WriteCameraRow`/`WriteCamera`/`GetCameraInfoGPUBase`/`GetCameraInfoBuffer`/`UpdateRenderItemAddresses`/`RenderSceneUBOSystem::SyncGlobalAddressesTable`；`GlobalAddresses` 88B → **64B** | 同上全套 + `TestRenderItemDataStorage` 的 Test 8 改为断言两张表的新布局（88B→64B / 世界表 24B） |
-| C1-4 | ⬜ | 三级解析 + 0 号槽专属默认相机 + `req.camera` 必须属本世界（fail-fast） | 新增契约 ①②③（§6.6） |
+| C1-4 | ✅ | 相机模型：三级解析（默认相机 → 显式 `is_main_camera` → 最小 `EntityID` → 常驻 fallback）+ 0 号槽专属默认相机 + `kInvalidSlot` 哨兵（删"0 = 主相机 / 未分配"双关）+ 槽唯一真源上移到 `CameraComponent` + `world_owner` 跨世界 fail-fast + `EnsureCameraSlot()`（发布路径只认领槽，不绑 viewport） | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` **21 Passed**（含新 9C+ 相机模型契约）；`TestRenderItemDataStorage` rc=0；ATS 三契约与基线逐项一致（D1 112x58 / 57.6%、D3 18189 & 600662、D4 0、0 VUID）；CSM 对拍 8 轮 `不一致=0`；双世界 + ShadowMap 冒烟 0 VUID、0 槽耗尽/未认领/跨世界告警 |
 | C1-5 | ⬜ | 删世界共享相机载体（`camera_info` / `camera_ubo` / `CommitCameraUBO` / 别名兜底）+ `WorkObject::GetCamera/GetCameraInfo` + 28 示例别名 + `GetActiveCameraInfo()` | 门 + 示例冒烟 |
