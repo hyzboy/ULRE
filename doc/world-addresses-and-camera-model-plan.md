@@ -120,10 +120,40 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 
 ## 8. 执行进度（每批落地后更新；验证数字为实跑）
 
+### 8.1 已完成
+
 | 批次 | 状态 | 落地内容 | 验证 |
 |---|---|---|---|
 | C1-1 | ✅ | `CameraInfoStorage`（世界私有 128 行相机行存储）+ `WorldAddresses.h` + `ECSContext` 持有/创建 + CMake 登记 | purge → ShadowMap 构建 rc=0 → 冒烟 0 VUID |
 | C1-2 | ✅ | 世界表 SSBO（8 槽 × `kWorldAddressesSlotStride`）+ `pc_root.addr_world_addresses` + 三处 push（材质/线/文本批）+ `SetFrameIndex` 内 `SyncWorldAddresses` + 门 `W.world-addresses-struct-parity` | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` 21；`TestRenderItemDataStorage` rc=0；ATS 三契约与基线一致；CSM 对拍 8 轮 `不一致=0`；双世界冒烟 0 VUID |
 | C1-3 | ✅ | 相机行写入改走世界存储（`CameraSystem::PublishCamera` → `CameraInfoStorage::WriteCameraRow`、相机槽申请/归还 → `AcquireCameraSlot`/`ReleaseCameraSlot`）；GLSL `camera`/`global_render_items`/`draw_item_ids` 宏切到世界表；**删**全局表三字段（`addr_camera_info`/`addr_global_render_items`/`addr_draw_item_ids`）、`GlobalSSBOType::CameraInfo` 行池 + 相机号位图 + `AcquireCamera`/`ReleaseCamera`/`CameraRow`/`WriteCameraRow`/`WriteCamera`/`GetCameraInfoGPUBase`/`GetCameraInfoBuffer`/`UpdateRenderItemAddresses`/`RenderSceneUBOSystem::SyncGlobalAddressesTable`；`GlobalAddresses` 88B → **64B** | 同上全套 + `TestRenderItemDataStorage` 的 Test 8 改为断言两张表的新布局（88B→64B / 世界表 24B） |
 | C1-4 | ✅ | 相机模型：三级解析（默认相机 → 显式 `is_main_camera` → 最小 `EntityID` → 常驻 fallback）+ 0 号槽专属默认相机 + `kInvalidSlot` 哨兵（删"0 = 主相机 / 未分配"双关）+ 槽唯一真源上移到 `CameraComponent` + `world_owner` 跨世界 fail-fast + `EnsureCameraSlot()`（发布路径只认领槽，不绑 viewport） | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` **21 Passed**（含新 9C+ 相机模型契约）；`TestRenderItemDataStorage` rc=0；ATS 三契约与基线逐项一致（D1 112x58 / 57.6%、D3 18189 & 600662、D4 0、0 VUID）；CSM 对拍 8 轮 `不一致=0`；双世界 + ShadowMap 冒烟 0 VUID、0 槽耗尽/未认领/跨世界告警 |
-| C1-5 | ⬜ | 删世界共享相机载体（`camera_info` / `camera_ubo` / `CommitCameraUBO` / 别名兜底）+ `WorkObject::GetCamera/GetCameraInfo` + 28 示例别名 + `GetActiveCameraInfo()` | 门 + 示例冒烟 |
+| **C1-4a** | ✅ | **相机视图矩阵修复**（`CameraSystem::UpdateMatrices` 非 custom 分支）：视图一律用 `LookAtMatrix(position, position + forward, world_up)`，**禁用**可能"慢一拍"的 `target`（`position` 被外部直接写时 `target` 落后一帧 ⇒ 方向差 ~30° ⇒ 该帧整幅渲成另一机位；实测同姿态 `viewT` 1.2m ↔ 13.5m 横跳 = "隔几秒拉扯一次/刚出场抖"）。成因与排查法见 `doc/csm-mechanism.md` §5 | `viewT` 序列变为单调平滑；200 帧逐帧转储位移互相关 **0 跳变**；门 40/0；21 Passed；RIDS rc=0；ATS D1 112x58/57.6% 一致（D3 18187 vs 18189，−2px float 末位）；CSM 对拍 8 轮 `不一致=0`；三示例 0 VUID |
+| C1-4b | ✅ | **诊断设施**（全部 env 开关、默认零开销）：`CSM_CAMDIAG`（主帧相机行逐字节自检 + fallback/滞后判定）、`ULRE_CAMVIEW_DIAG`（解算期 viewport）、`ULRE_CAMVIEW_DIAG2`（解算期 pos/target/viewT）、`CSM_FRAMEDUMP`（逐帧 160×90 PPM 转储）、`CSM_BAND`（锚定步长 A/B）；永久契约：离屏 pass 写主帧槽带报错 | 见 `doc/csm-mechanism.md` §6 各条（含锚定 A/B 数据：`{0,16,16,32}` 中位 4.86% vs `{0,0,0,0}` 9.64% ⇒ 关锚定更抖，保持拍板值） |
+
+### 8.2 待办（按依赖排序）
+
+| 批次 | 目标 | 主要落点 | 判据 |
+|---|---|---|---|
+| **C1-5** | 删**世界共享相机载体**：剔除 / gizmo / Line 视锥 / shadow origin 统一走"本 pass 生效相机" | 删 `CameraSystem::camera_info` / `camera_ubo` / `CommitCameraUBO` / `UpdateMatrices` 里的兼容分支；删 `WorkObject::GetCamera/GetCameraInfo`；**28 个示例**的 `camera->camera_info = const_cast<...>(GetCameraInfo())` 别名全删；新增 `GetActiveCameraInfo()`（+ 2 处日志读） | 门 40/0、21 Passed、RIDS、ATS 三契约与基线一致、CSM 对拍 `不一致=0`、示例冒烟 0 VUID；全仓 `grep GetCameraInfo()` 只剩新的 `GetActiveCameraInfo()` |
+| **C1-6** | 契约收口：表归属 + 跨世界 + 渲染必解析出相机 | 门加"归属"契约（`GlobalAddresses` 不得出现世界私有地址、反之亦然）；§6.6 ①②已在 C1-4 落地，补③（两世界同帧互不污染：相机行 / sky / shadow / render items 地址）；`TestCSMIncrementalPass` 补"两世界同帧相机行互不覆写"用例 | 门 ≥ 42 PASS / 0 FAIL；21+ Passed |
+| **C2** | **Env 归世界**：profile 生命周期随世界 + `ResolveSkyUBO/ResolveShadowUBO` 改按世界 + `RenderSceneUBOSystem` / `ViewUBOCommitSystem` / `EnvironmentSystem` 取数点；`WorldAddresses` 的 `addr_sky/addr_shadow/addr_env` 接线（表内槽位已预留） | 世界表写入端 `SyncWorldAddresses`；改 `EnableMainLightShadow` / profile 选择 | 双世界冒烟（两世界不同 sky/shadow profile）0 VUID + 相机/sky/shadow 地址互不串 |
+| **C3** | 灯光 / 镜子相机通用化：每个投影阴影的灯光 → 申请一个相机槽（申请/归还随灯光生命周期），对齐 `doc/shadow-component-and-automated-pipeline-design.md` | `EnvironmentSystem` 现有单灯特例泛化；`CameraInfoStorage` 分配器已是通用槽 | 多灯阴影场景；槽耗尽 fail-fast 契约 |
+| **C4** | ComponentData 骨架：先 `CameraComponent` → `CameraData` + 世界级存储 + 槽访问器，再 Transform / Geometry / Material | 与 C1-5 合并代价小（都是相机存储收口），但回归面变宽 ⇒ 建议 C1-5 先落地 | 门 + 全示例 |
+
+### 8.3 基线与验证命令（改 CSM / 相机后逐项跑）
+
+```
+# 基线：门 40 PASS / 0 FAIL；TestCSMIncrementalPass 21 Passed；ATS D1 112x58 57.6% / D3 18187~18189 & 600662 / D4 0 / 0 VUID
+cmake --build build --config Debug --target ShadowMap AlphaTestShadow CascadeShadowMap TestCSMIncrementalPass TestRenderItemDataStorage ShaderResourceSchemaRegressionGate
+./build/out/Windows_64_Debug/ShaderResourceSchemaRegressionGate.exe
+./build/out/Windows_64_Debug/TestCSMIncrementalPass.exe          # 必须 cwd=仓库根（Test 7C 读 ShaderLibrary/）
+ATS_SELFCHECK=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
+CSM_CACHE_DIFF=1 CSM_AUTOWALK=4 ./build/out/Windows_64_Debug/CascadeShadowMap.exe   # 判据：多轮 不一致=0（需 timeout）
+```
+相机/视口类改动追加：`CSM_CAMDIAG=1`（行内容逐字节）、`ULRE_CAMVIEW_DIAG2=1`（解算期 viewT 单调）、`CSM_FRAMEDUMP=<dir>` + 位移互相关（判据：0 跳变）。
+改头文件/结构大小后先 `purge-stale-deps.sh`；清 `build/cache-hot/shader-cache`；**禁用 `| grep error` 判构建结果**。
+
+### 8.4 提交范围（本轮已本地提交，未推送）
+
+`C1-1/C1-2`（23:43–23:52）→ `C1-3`（00:38–00:42）→ `C1-4`（含 9C+ 契约与文档）→ **C1-4a 相机视图修复** `8744f004a`（02:31，含验证数据与文档/技能同步）。分支 `CSM` 领先 `hyzgame/CSM` **24** 个提交。
