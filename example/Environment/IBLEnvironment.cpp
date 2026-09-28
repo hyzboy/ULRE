@@ -576,8 +576,6 @@ private:
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
-        camera->camera_data = GetCamera();
-        camera->camera_info = const_cast<graph::CameraInfo*>(GetCameraInfo());
         camera->viewport_info = GetViewportInfo();
 
         return true;

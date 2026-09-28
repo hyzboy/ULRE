@@ -9,7 +9,6 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include <cstdlib>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
@@ -1298,13 +1297,9 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        // Lazily resolve cameraInfo from CameraSystem if not explicitly set
-        // (CameraSystem may be registered after RegisterDefaultEcsSystems runs)
-        if (!cameraInfo)
-        {
-            if (auto cam_sys = world->GetSystem<CameraSystem>())
-                cameraInfo = cam_sys->GetCameraInfo();
-        }
+        // 本 pass 生效相机的 CameraInfo（离屏 pass = pass 相机，主帧 = 主相机）：
+        // 每帧现取，**不缓存指针**——pass 之间相机会换（旧实现把指针缓存在安装期，pass 相机一上场就错）。
+        const graph::CameraInfo *cameraInfo = world->GetActiveCameraInfo();
 
         if (!cameraInfo)
             return;

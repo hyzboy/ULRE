@@ -74,9 +74,6 @@ namespace hgl
 
         const VkExtent2D *          GetExtent           ();
         const graph::ViewportInfo * GetViewportInfo     ()const;
-        graph::Camera *             GetCamera           ();
-        const graph::CameraInfo *   GetCameraInfo       ()const;
-
         const math::Vector2i *      GetMouseCoord       ()const;
 
         /// 设置清屏色。清屏色唯一权威在渲染目标上（RenderTargetDesc::clear_color），

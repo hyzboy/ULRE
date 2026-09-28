@@ -1,6 +1,5 @@
 #include<hgl/ecs/systems/render/ViewUBOCommitSystem.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/EnvironmentManager.h>
@@ -19,9 +18,6 @@ namespace hgl::ecs
     {
         if (!context)
             return;
-
-        if (auto camera_system = context->GetSystem<CameraSystem>())
-            camera_system->CommitCameraUBO();
 
         if (auto rdb = context->GetSystem<RenderSceneUBOSystem>())
             rdb->CommitViewportUBO();

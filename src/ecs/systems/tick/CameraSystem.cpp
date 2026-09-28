@@ -233,48 +233,12 @@ namespace hgl::ecs
         free_mode = std::make_unique<FreeCameraMode>();
     }
 
-    CameraSystem::~CameraSystem()
-    {
-        Shutdown();
-    }
-
-    void CameraSystem::Shutdown()
-    {
-        if (camera_ubo)
-        {
-            graph::BufferOwner *buf = camera_ubo->GetBuffer();
-            delete camera_ubo;
-            camera_ubo = nullptr;
-            camera_info = nullptr;
-
-            if (camera_ubo_managed && buf)
-            {
-                graph::BufferManager *buffer_manager = nullptr;
-                if (render_context)
-                {
-                    if (auto *gc = render_context->GetGraphicsContext())
-                        buffer_manager = gc->GetBufferManager();
-                }
-                if (!buffer_manager && context)
-                {
-                    if (auto *gc = context->GetGraphicsContext())
-                        buffer_manager = gc->GetBufferManager();
-                }
-
-                if (buffer_manager)
-                    buffer_manager->Release(buf);
-            }
-            camera_ubo_managed = false;
-        }
-    }
-
     void CameraSystem::SetRenderContext(graph::RenderContext* ctx)
     {
         if (render_context == ctx)
             return;
 
         render_context = ctx;
-        EnsureCameraResources();
     }
 
     void CameraSystem::RestoreMainCamera()
@@ -286,17 +250,13 @@ namespace hgl::ecs
         if (!main_cam)
             return;
 
-        // 覆盖相机（离屏 pass）在 UpdateMatrices 里把它**自己的**数据写进了共享相机载体
-        // （`camera == override_camera` 分支）；而主相机组件通常直接**别名**该载体
-        // （示例里的 `camera->camera_info = const_cast<CameraInfo*>(GetCameraInfo())`）
-        // ⇒ 只把 main_cam->camera_info 再拷一遍是自拷贝，什么也恢复不了。
-        // 后果：主帧的相机行（PublishCameraRows 从 camera->camera_info 取值）会带着离屏相机的数据
-        // —— 症状 = 主画面渲染成离屏相机视角（如 shadow map 的光源相机）、鼠标拖拽无效。
-        // 因此必须**重新解算主相机**，把它的矩阵与派生量重新写进它自己的 info / 共享载体。
+        // 覆盖相机（离屏 pass）在 UpdateMatrices 里写的是**它自己组件**的 CameraInfo
+        // （C1-5 后不再有世界共享载体）；但 pass 期间 viewport 会切到离屏 RT
+        // （SetViewportInfo 会标脏全部相机），所以 pass 结束后仍要**重新解算主相机**，
+        // 保证主帧的相机行（PublishCameraRows 从 camera->camera_info 取值）是按主 RT 的
+        // viewport 解出的——只做 struct 拷贝/指针切回是不够的。
         main_cam->matrix_dirty = true;
         UpdateMatrices(main_cam);
-
-        CommitCameraUBO();
     }
 
     void CameraSystem::ForceRefreshSelectedCamera()
@@ -321,33 +281,27 @@ namespace hgl::ecs
             MarkAllCameraMatricesDirty();
     }
 
-    graph::Camera* CameraSystem::GetCamera()
+    CameraComponent* CameraSystem::GetActiveCameraComponent()
     {
-        return &camera_data;
+        // pass 覆盖相机优先（离屏 pass 期间"本 pass 生效相机"就是它），否则走**本世界主相机的
+        // 三级解析**（复用 GetMainCameraComponent ⇒ 与 Update/PublishCameraRows 同一套解析与
+        // 幂等认领：① 已有默认相机 ② is_main_camera ③ 最小 EntityID ④ 常驻 fallback）。
+        if (override_camera)
+            return override_camera;
+
+        return GetMainCameraComponent();
     }
 
-    const graph::CameraInfo* CameraSystem::GetCameraInfo() const
+    const graph::CameraInfo* CameraSystem::GetActiveCameraInfo()
     {
-        return camera_info;
-    }
-
-    void CameraSystem::CommitCameraUBO()
-    {
-        if (!camera_ubo || !camera_info)
-            return;
-
-        // 视图三件套（camera/viewport/sky）契约：每个 RT/RenderPass 开始时
-        // 固定全量写入，不依赖脏标记（host-visible 映射直写，代价可忽略）
-        camera_ubo->Update(*camera_info);    // 拷贝数据 + 置脏
-        camera_ubo->Commit();                // 标脏交 L2
+        CameraComponent* camera = GetActiveCameraComponent();
+        return camera ? camera->camera_info : nullptr;
     }
 
     void CameraSystem::Update(float deltaTime)
     {
         if (!context)
             return;
-
-        EnsureCameraResources();
 
         if (!viewport_info)
         {
@@ -641,14 +595,6 @@ namespace hgl::ecs
         // 之后才确定，tick 阶段写会落到上一帧的槽、主帧读到上一帧的相机数据。
         // 改由 PublishCameraRows() / PublishCamera() 在 PrepareRenderPassSetup 与 RenderTo 中发布。
 
-        // 若为主相机或处于 pass 覆盖态，同步更新全局 camera_ubo（保证向后兼容）
-        if (camera->camera_id == CameraComponent::kDefaultSlot || camera->is_main_camera || camera == override_camera)
-        {
-            if (this->camera_info && camera->camera_info)
-                *this->camera_info = *camera->camera_info;
-            CommitCameraUBO();
-        }
-
         camera->matrix_dirty = false;
     }
 
@@ -787,9 +733,6 @@ namespace hgl::ecs
         if (!camera)
             return;
 
-        if (!camera_info && camera_ubo)
-            camera_info = camera_ubo->Data();
-
         if (!viewport_info && camera->viewport_info)
             viewport_info = camera->viewport_info;
 
@@ -839,41 +782,6 @@ namespace hgl::ecs
             {
                 camera->world_owner = context;
             }
-        }
-    }
-
-    void CameraSystem::EnsureCameraResources()
-    {
-        if (!render_context && context)
-            render_context = context->GetRenderContext();
-
-        auto *graphics_context = context ? context->GetGraphicsContext() : nullptr;
-        if (!graphics_context && render_context)
-            graphics_context = render_context->GetGraphicsContext();
-
-        if (!render_context && !graphics_context)
-            return;
-
-        if (!camera_ubo)
-        {
-            if (graphics_context)
-            {
-                auto *buffer_manager = graphics_context->GetBufferManager();
-                if (buffer_manager)
-                {
-                    auto *buf = buffer_manager->CreateUBO("CameraUBO", graph::StructView<graph::CameraInfo>::GetSize());
-                    if (buf)
-                    {
-                        buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
-                        camera_ubo = graph::StructView<graph::CameraInfo>::Create(buf, false);
-                    }
-                }
-            }
-
-            if (camera_ubo)
-                camera_ubo_managed = true;
-            if (camera_ubo)
-                camera_info = camera_ubo->Data();
         }
     }
 

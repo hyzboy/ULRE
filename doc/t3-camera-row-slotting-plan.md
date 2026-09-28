@@ -52,10 +52,13 @@ CPU 侧有两条写入者、两条读取者，**跨 pass 同时活跃**：
    行未申请则写入被拒、脏页不标记 ⇒ 相机数据到不了 GPU。**这是上一轮报错
    `CommitRow rejected invalid row: ssbo_id=5 id=4/12` 的全部原因。**
 2. **编号语义不能动**：`camera_id == 0` 在仓库里是「主相机」的既成判据
-   （`EnvironmentSystem.cpp:244` 释放门控、`CameraSystem.cpp:623` camera_ubo 门控、
-   `Context.cpp:552/:640` 的兜底 `active_camera_id = 0`）⇒ 主相机必须仍然是 0，
-   非主相机仍从 1 起递增。
-3. **容量不预留增长**：相机上限 8（= 行池 64 行 ÷ 8 槽），超限 fail-fast。
+   （`EnvironmentSystem.cpp:244` 释放门控、`Context.cpp` 的兜底 `active_camera_id = 0`；
+   ~~`CameraSystem.cpp` camera_ubo 门控~~ **该门控已于 C1-5 随世界共享载体一起删除**）⇒
+   主相机必须仍然是 0，非主相机仍从 1 起递增。（C1-4 起语义精化为「0 号槽 = 本世界默认相机专属」，
+   "未分配"改用 `kInvalidSlot` 哨兵。）
+3. **容量不预留增长**：相机上限 **16**（世界私有存储 16 槽 × 8 帧槽 = 128 行），超限 fail-fast。
+   （本文写作时是 8 = 全局行池 64 行 ÷ 8 槽；C1 起存储改世界私有、容量 16 —— 见
+   `doc/world-addresses-and-camera-model-plan.md`。）
 4. **不许依赖行号连续性**：`ActiveRowPool::Acquire()` 优先复用 idle 列表（FIFO，`ActiveIDManager`），
    只有「无 idle」时才 `CreateActive` 从水位连续创建 ⇒ `Acquire` 出来的行号**不保证连续**。
 5. **零兼容**：不做「有/无槽」双路径，不留旧单行 fallback。

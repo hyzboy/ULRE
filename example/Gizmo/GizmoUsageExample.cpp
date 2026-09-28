@@ -240,8 +240,6 @@ private:
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
-        camera->camera_data = camera_system->GetCamera();
-        camera->camera_info = const_cast<hgl::graph::CameraInfo *>(camera_system->GetCameraInfo());
         camera->viewport_info = camera_system->GetViewportInfo();
 
         return true;

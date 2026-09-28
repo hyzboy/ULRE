@@ -405,8 +405,6 @@ private:
         camera->is_main_camera= true;
         camera->matrix_dirty  = true;
 
-        camera->camera_data   = GetCamera();
-        camera->camera_info   = const_cast<graph::CameraInfo *>(GetCameraInfo());
         camera->viewport_info = GetViewportInfo();
 
         return true;
@@ -639,7 +637,7 @@ public:
         }
 
         // 1. 获取当前摄像机视锥体 6 个平面
-        const CameraInfo *ci = GetCameraInfo();
+        const CameraInfo *ci = ecs_context ? ecs_context->GetActiveCameraInfo() : nullptr;
         CullPushConstants pc{};
         if (ci)
         {

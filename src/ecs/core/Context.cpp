@@ -621,9 +621,9 @@ namespace hgl
                     current_pass_shadow_origin = glm::vec3(req.shadow_reference_camera->position);
                     has_shadow_origin = true;
                 }
-                else if (camera_system)
+                else
                 {
-                    auto *cam = camera_system->GetCamera();
+                    const graph::CameraInfo *cam = GetActiveCameraInfo();
                     if (cam)
                     {
                         current_pass_shadow_origin = glm::vec3(cam->pos.x, cam->pos.y, cam->pos.z);
@@ -1468,6 +1468,12 @@ namespace hgl
 
             // 行号 = 相机槽 × 帧槽总数 + 帧槽（世界内算术，见 CameraInfoStorage::CameraRow）
             return CameraInfoStorage::CameraRow(slot, frame_index);
+        }
+
+        const graph::CameraInfo* ECSContext::GetActiveCameraInfo()
+        {
+            auto camera_system = GetSystem<CameraSystem>();
+            return camera_system ? camera_system->GetActiveCameraInfo() : nullptr;
         }
 
         CameraComponent* ECSContext::EnsureFallbackCamera()

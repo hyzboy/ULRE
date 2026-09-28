@@ -339,8 +339,6 @@ public:
         camera->matrix_dirty = true;
 
         auto camera_system = offscreen->GetCameraSystem();
-        camera->camera_data = camera_system ? camera_system->GetCamera() : nullptr;
-        camera->camera_info = const_cast<CameraInfo *>(camera_system ? camera_system->GetCameraInfo() : nullptr);
         camera->viewport_info = camera_system ? camera_system->GetViewportInfo() : nullptr;
 
         LogStage("OffscreenPass::BuildSphere", "success");
@@ -409,8 +407,6 @@ private:
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
-        camera->camera_data = GetCamera();
-        camera->camera_info = const_cast<CameraInfo *>(GetCameraInfo());
         camera->viewport_info = GetViewportInfo();
         LogStage("RenderToTextureApp::SetupMainCamera", "success");
         return true;

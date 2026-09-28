@@ -576,10 +576,9 @@ private:
     /// 两台相机都在主世界里：
     ///   - main_camera：可见画面用，由 SetupMainCamera 创建；
     ///   - light_camera：拍 shadow map 用，由 CreateLightCamera 创建。
-    /// 相机 UBO 的契约是"每个 RT/RenderPass 开始时全量写入"
-    /// （见 CameraSystem::CommitCameraUBO 的注释），所以 shadow pass 只要在
-    /// RenderTo 之前手动把光源相机的矩阵写进 camera_info 即可，
-    /// 不需要 toggling is_main_camera。
+    /// 相机数据一律落在**组件自己的** CameraInfo（每个 pass 各写自己的行），
+    /// 所以 shadow pass 只要在 RenderTo 时把光源相机作为 pass 相机传进去即可
+    /// （`RenderTo(req.camera)` 会按它发布相机行），不需要 toggling is_main_camera。
     std::shared_ptr<CameraComponent> main_camera;
     std::shared_ptr<CameraComponent> light_camera;
 
@@ -1288,8 +1287,6 @@ private:
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
-        camera->camera_data   = GetCamera();
-        camera->camera_info   = const_cast<CameraInfo *>(GetCameraInfo());
         camera->viewport_info = GetViewportInfo();
 
         main_camera = camera;
@@ -1366,7 +1363,7 @@ public:
         if (!camera_system)
             return LogStageFail("ShadowMapApp::Init", "camera system is null");
 
-        // 先跑一次，让 CameraSystem 物化它的 camera_ubo / camera_info
+        // 先跑一次，让 CameraSystem 解算并发布相机行
         camera_system->Update(0.0f);
 
         // 把系统级 viewport 固定成主画面尺寸：它只在为 null 时才会去 latch

@@ -191,7 +191,7 @@ void TransformGizmoSystem::Update(float)
     if (!input_system || !camera_system)
         return;
 
-    const CameraInfo *camera_info = camera_system->GetCameraInfo();
+    const CameraInfo *camera_info = context->GetActiveCameraInfo();
     const ViewportInfo *viewport_info = camera_system->GetViewportInfo();
     if (!camera_info || !viewport_info)
         return;

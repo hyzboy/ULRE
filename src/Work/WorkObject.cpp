@@ -27,28 +27,6 @@ namespace hgl
                 rt->SetClearColor(color);
     }
 
-    graph::Camera *WorkObject::GetCamera()
-    {
-        if (world)
-        {
-            auto camera_system = world->GetSystem<ecs::CameraSystem>();
-            return camera_system ? camera_system->GetCamera() : nullptr;
-        }
-
-        return nullptr;
-    }
-
-    const graph::CameraInfo *WorkObject::GetCameraInfo() const
-    {
-        if (world)
-        {
-            auto camera_system = world->GetSystem<ecs::CameraSystem>();
-            return camera_system ? camera_system->GetCameraInfo() : nullptr;
-        }
-
-        return nullptr;
-    }
-
     const VkExtent2D *WorkObject::GetExtent()
     {
         if (world)

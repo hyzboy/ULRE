@@ -413,7 +413,7 @@ namespace hgl::ecs
         auto camera_system = context_->GetSystem<CameraSystem>();
         if (camera_system)
         {
-            const auto* cam = camera_system->GetCameraInfo();
+            const auto* cam = context_->GetActiveCameraInfo();
             if (cam)
             {
                 frustum.SetMatrix(cam->vp);

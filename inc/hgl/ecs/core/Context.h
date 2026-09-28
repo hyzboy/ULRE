@@ -368,6 +368,11 @@ namespace hgl
             /// 因此离屏 pass 与主帧各自的相机数据落在不相交的行上。
             uint32_t GetActiveCameraRow() const;
 
+            /// **本 pass 生效相机**的 CameraInfo（组件自己的那份，没有世界共享载体）。
+            /// 离屏 pass 期间 = `RenderTo(req.camera)` 的相机（如 CSM 光相机），主帧 = 本世界主相机。
+            /// 剔除 / gizmo / Line 视锥 / shadow origin 统一读这里，不要各自缓存指针。
+            const graph::CameraInfo* GetActiveCameraInfo();
+
             /// 本世界默认相机（0 号槽的拥有者）；尚未解析出相机 / 相机已销毁时为 nullptr
             CameraComponent* GetDefaultCamera() const { return default_camera.lock().get(); }
             void SetDefaultCamera(const std::shared_ptr<CameraComponent>& camera) { default_camera = camera; }

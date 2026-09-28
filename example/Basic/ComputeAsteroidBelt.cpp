@@ -655,8 +655,6 @@ private:
         camera->is_main_camera   = true;
         camera->matrix_dirty     = true;
 
-        camera->camera_data   = GetCamera();
-        camera->camera_info   = const_cast<graph::CameraInfo *>(GetCameraInfo());
         camera->viewport_info = GetViewportInfo();
 
         auto camera_system = ecs_context->EnsureCameraSystem();
@@ -983,7 +981,7 @@ public:
         }
 
         // 1. 获取当前摄像机 6 个视锥平面 (RH_ZO 约定)
-        const CameraInfo *ci = GetCameraInfo();
+        const CameraInfo *ci = ecs_context ? ecs_context->GetActiveCameraInfo() : nullptr;
         SimulationPushConstants sim_pc{};
         if (ci)
         {

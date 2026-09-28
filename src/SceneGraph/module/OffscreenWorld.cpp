@@ -122,9 +122,6 @@ namespace hgl::graph
         {
             camera_system_->SetRenderContext(render_context_);
             camera_system_->SetViewportInfo(rt->GetViewportInfo());
-
-            if(collect_system_)
-                collect_system_->SetCameraInfo(camera_system_->GetCameraInfo());
         }
 
         return true;

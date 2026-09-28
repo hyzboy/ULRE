@@ -154,7 +154,7 @@ if (auto *sky = environment_system->EditSkyInfo())
 RT → GetEnvironmentProfile() → manager->GetSkyUBO(id)             → registry->SetSkyAddress(...)     → global_addresses.addr_sky
 RT → GetEnvironmentProfile() → manager->GetShadowUBO(id, frame)   → registry->SetShadowAddress(...)  → global_addresses.addr_shadow
 本系统自持的 viewport buffer                                      → registry->SetViewportAddress(...) → global_addresses.addr_viewport(全帧槽同址)
-camera:CameraSystem::CommitCameraUBO() 写 camera_info + 相机行     → shader 经 pc_root.camera_row 读
+camera:CameraSystem 解算（Q 到组件自己的 CameraInfo）→ PublishCamera(Rows) 按 req.camera/主相机写**世界表相机行**     → shader 经 pc_root.camera_row 读
 (Scene 集 / binding 全部退场:以上都是"写表 / 读表",没有描述符可推)
 ```
 
@@ -173,7 +173,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 每个 RT/RenderPass 开始时**无条件全量写入**(不依赖脏标记):
 
-- camera:`CameraSystem::CommitCameraUBO()`
+- camera:`CameraSystem::PublishCamera(Rows)`（相机行；世界共享载体与 camera UBO 已于 C1-5 删除）
 - viewport:`RenderSceneUBOSystem::CommitViewportUBO()`
 - sky:每次 `CommitMaterialized` 都写。shadow:仅当前 RT 为交换链时写入 `shadow_ring[acquired_image]`。离屏 pass 不写 shadow 槽。
 

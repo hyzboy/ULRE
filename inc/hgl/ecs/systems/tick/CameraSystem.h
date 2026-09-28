@@ -93,10 +93,6 @@ namespace hgl
 
             graph::RenderContext* render_context = nullptr;
             const graph::ViewportInfo* viewport_info = nullptr;
-            graph::Camera camera_data{};
-            graph::CameraInfo* camera_info = nullptr;
-            graph::StructView<graph::CameraInfo>* camera_ubo = nullptr;
-            bool camera_ubo_managed = false;
             bool first_update_pending = true;
             uint cached_viewport_width = 0;
             uint cached_viewport_height = 0;
@@ -112,9 +108,7 @@ namespace hgl
         public:
 
             CameraSystem(ECSContext* ctx = nullptr);
-            ~CameraSystem() override;
-
-            void Shutdown() override;
+            ~CameraSystem() override = default;
 
             void Update(float deltaTime) override;
 
@@ -149,17 +143,17 @@ namespace hgl
             void ForceRefreshSelectedCamera();
             void MarkAllCameraMatricesDirty();
 
-            graph::Camera* GetCamera();
-            const graph::CameraInfo* GetCameraInfo() const;
             const graph::ViewportInfo* GetViewportInfo() const { return viewport_info; }
 
             /// 获取当前场景中激活的主相机组件
             CameraComponent *GetMainCameraComponent();
 
-            graph::StructView<graph::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
+            /// 本 pass 生效相机：pass 覆盖相机（RenderTo(req.camera) 期间）优先，否则本世界主相机。
+            /// 相机数据一律以**组件自己的** CameraInfo 为准（世界共享载体已退役）。
+            CameraComponent* GetActiveCameraComponent();
 
-            // ViewUBOCommitSystem 专用：pass 开始时无条件全量写入（不依赖脏标记）
-            void CommitCameraUBO();
+            /// 本 pass 生效相机的 CameraInfo（= 组件的 local_camera_info；无相机时为 nullptr）
+            const graph::CameraInfo* GetActiveCameraInfo();
 
         private:
 
@@ -171,7 +165,6 @@ namespace hgl
 
             /// 初始化输入映射上下文 / Ensure input context is setup
             void EnsureInputContext();
-
             /// 处理输入 / Process input
             void ProcessInput(CameraComponent* camera, float deltaTime);
 
@@ -204,7 +197,6 @@ namespace hgl
             /// 只认领 **世界相机槽**（不含 viewport / 数据载体绑定）——发布路径
             /// （`PublishCameraRows`，离屏 pass 的设置阶段也会走）专用：那里绑 viewport 会污染主帧投影。
             void EnsureCameraSlot(CameraComponent* camera, bool is_default = false);
-            void EnsureCameraResources();
 
             // === 数学辅助函数 / Math helper functions ===
 

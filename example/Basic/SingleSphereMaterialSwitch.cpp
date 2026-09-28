@@ -361,8 +361,6 @@ private:
         camera_component->is_main_camera = true;
         camera_component->matrix_dirty = true;
 
-        camera_component->camera_data = GetCamera();
-        camera_component->camera_info = const_cast<graph::CameraInfo *>(GetCameraInfo());
         camera_component->viewport_info = GetViewportInfo();
 
         return true;

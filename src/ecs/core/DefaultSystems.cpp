@@ -67,16 +67,12 @@ namespace
             return false;
 
         auto *device = ctx->GetGPUDevice();
-        const hgl::graph::CameraInfo *camera_info = nullptr;
-        if (auto camera_system = ctx->GetSystem<hgl::ecs::CameraSystem>())
-            camera_info = camera_system->GetCameraInfo();
 
         // Collect system stays: gathers PrimitiveComponents into RenderFrameCache
         auto render_collect_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveCollectSystem>(ctx);
         if (render_collect_system)
         {
             render_collect_system->SetWorld(ctx);
-            render_collect_system->SetCameraInfo(camera_info);
         }
 
         // Buffer upload is a shared utility system, not Primitive-specific

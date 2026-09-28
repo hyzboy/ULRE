@@ -273,10 +273,7 @@ private:
         camera_component->move_speed = 10.0f;
 
         // 连接到渲染系统 / Connect to rendering system
-        camera_component->camera_data = GetCamera();
-        camera_component->camera_info = const_cast<graph::CameraInfo*>(GetCameraInfo());
         camera_component->viewport_info = GetViewportInfo();
-        // camera_component->camera_ubo = nullptr; // UBO is managed internally
         camera_component->is_main_camera = true;
         camera_component->matrix_dirty = true;
 
@@ -319,8 +316,9 @@ public:
 
         const math::Vector2i &mouse_position=*mouse_position_ptr;
 
-        // 从 ECS 获取摄像机信息（替代旧的 CameraControl）
-        const CameraInfo *ci = GetCameraInfo();
+        // 从 ECS 获取摄像机信息（本 pass 生效相机）
+        ECSContext *ctx = GetECSContext();
+        const CameraInfo *ci = ctx ? ctx->GetActiveCameraInfo() : nullptr;
         const ViewportInfo *vi = GetViewportInfo();
 
         if(!ci || !vi)

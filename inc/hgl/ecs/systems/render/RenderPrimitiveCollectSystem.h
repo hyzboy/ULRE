@@ -27,7 +27,6 @@ namespace hgl::ecs
     private:
 
         ECSContext* world = nullptr;
-        const graph::CameraInfo* cameraInfo = nullptr;
 
         // Bumped whenever a frame rebuilds the global materialization tables
         // (i.e. a dirty frame that materializes at least one runtime-rows
@@ -63,8 +62,6 @@ namespace hgl::ecs
     public:
 
         void SetWorld(ECSContext* w) { world = w; }
-        void SetCameraInfo(const graph::CameraInfo* info) { cameraInfo = info; }
-        const graph::CameraInfo* GetCameraInfo() const { return cameraInfo; }
 
         void Update(float deltaTime) override;
     };
