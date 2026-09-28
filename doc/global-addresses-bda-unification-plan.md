@@ -54,7 +54,7 @@ mesh_draw_params（与 pc_root **重复**）、color_palette（本会话已 BDA 
 |---|---|---|
 | **S1 ✅ 已完成** | `GlobalAddresses` UBO → **SSBO**（`CreateSSBO` + `GetBufferDeviceAddressAligned16` fail-fast），pc_root 增 `addr_global_addresses`（72B→**80B**），GLSL 宏改经 pc_root 读表；Set 0 该 binding / `SBS_GlobalAddresses` / 语义 / 目录行 / 宏表 / 生成物同批清；`RenderSceneUBOSystem` 的 `ResolveGlobalAddressesUBO` 改为 `SyncGlobalAddressesTable`（只同步表内会变的两个字段） | 实测：build rc=0 / 0 errors；门 **38 PASS / 0 FAIL**（golden 无变化——SceneGlobal 行不入 golden）；TestCSMIncrementalPass 21 Passed；TestRenderItemDataStorage rc=0；LineRenderTest 0 校验层消息且 `ColorPaletteSSBO addr=0x308080000`、无 `addr_global_addresses=0` 警告 |
 | **S2 ✅ 已完成** | 地址表按 `HGL_FRAME_SLOT_TOTAL` 多份（每帧只写本槽）；**sky / viewport / shadow 的地址全部进表**（S2a/S2b/S2c/S2d）且三者均已退出 Set 0（S2e + S2d）——**Set 0 现已无任何绑定项** | 全绿：门 **39 PASS/0 FAIL**（含新增 `S.global-addresses-struct-parity`）；`TestRenderItemDataStorage` 五 Stage；`TestCSMIncrementalPass` 21 Passed；ATS 填充率 57.6% / selfcheck PASS / 0 校验层 / 0 设备丢失；CSM 不一致=0 / 0 校验层 / 0 设备丢失；LineRenderTest、DrawMultiLineText 0 校验层 / 0 设备丢失 |
-| S3 | `SCENE_SET` / `VKGlobalSceneUBOSet` / push descriptor / `descriptor_macros.glsl` 的 SCENE_SET 行整体删除（Set 0 已零绑定，删除不再牵动渲染路径）；`scene_ubo.glsl` 的 include 与材质语义列表解耦（宏已全走 BDA） | 门 39 PASS/0 FAIL（用例数需随删除更新）；全部示例载入材质 0 errors |
+| **S3 ✅ 已完成** | Scene 集**整体退场**：`SCENE_SET` / `VKGlobalSceneUBOSet` / push descriptor 路径 / `SceneBinding` 枚举 / 资源目录 / `SBS_*` / 三个语义枚举项 / `ubo_requirements` 字段 / 生成物里的 SCENE_SET 行全删；`DescriptorSetType` 收敛为唯一集合 **`Bindless=0`**；删面 **44 文件 +132/−1285**；`scene_ubo.glsl` 改为**无条件包含**（原先挂在会被清空的 UBO 需求集上——见 §2.5.1 第 3 条） | 全绿：门 **39 PASS / 0 FAIL**；RIDS 五 Stage；TCSM 21 Passed；ATS 填充率 57.6% / selfcheck PASS（`receive_shadow` 18189 px、`bias_multiplier` 600662 px，**与 S2d 基线逐位一致**）/ 0 校验层 / 0 设备丢失 / 材料编译失败 0；CSM 不一致=0 / 0 校验层；Line、DrawMultiLineText 0 校验层 / 0 设备丢失 |
 | S4 | viewport 收敛（**待用户拍板**）：(a) 地址进 pc_root（每 pass push）或 (b) 缩成 `uint16[2]×2` 进 pc_root 当数据、`ortho_matrix` 在 shader 里算 | 文本/线/常规示例 0 校验层消息；golden 无资源行变化 |
 | S5 | 收尾：陈旧注释（"7 张表/56B"、"Set 0 binding 4"）、门夹具、`doc/` 与技能同步 | 全仓 grep 零残留 |
 
@@ -110,6 +110,37 @@ buffer（`CommitViewportUBO()` 仅把当前 RT 的 w/h 覆盖写进去）⇒ **�
 - `timeout -k 5 <秒> <exe>` 只杀 bash 侧子壳，GUI 进程会活下来 ⇒ 每次运行后**立即再 taskkill**。
 - 被强杀的构建会留下半写 `.lib` ⇒ `LNK1236: corrupt or invalid COFF sections`；删掉该 lib 与
   对应 obj 重编即可（不是代码问题）。
+
+## 2.5 S3 实测（Scene 集整体退场）
+
+删除面分 8 类（每类漏一处即编译或断言失败）：真源绑定枚举 + 集合宏表行；集合枚举收敛 ⇒
+`Bindless` 由 1 变 0（连带 `dsl[]` 下标、`vkCmdBindDescriptorSets` 的 set 号——全走枚举名就不会漏）；
+生成物重发射；资源目录 / `SBS_*` / 三个语义枚举项与它们的**全部**消费方；`ubo_requirements`
+字段与其门内比较（随集退场的字段不留空壳）；运行时（集类 + `GraphicsContext` 成员/创建/销毁 +
+设备侧占位 layout + push descriptor 的函数指针与设备特性 + 三条渲染路径 include）；门夹具与 golden。
+
+**收益**：资源目录删空后「能力子集授权」失去真源 ⇒ 校验退化成一条**硬不变量**——
+`definition` 声明的描述符必须为空（TOML 的 `ubos` 键已删、viewport/sky/shadow 走 BDA、
+纹理/采样器走 bindless），出现任何一条即回归。
+
+### 2.5.1 这一轮踩到的四个坑（都已写进技能 `ulre-ssbo-vertex-input/references/descriptor-binding-retirement.md`）
+
+1. **生成器构建失败时 `--emit` 会静默用旧 exe**：产物留旧宏表，而 `--verify` 比对的是同一个
+   旧 exe 的期望值 ⇒ **通过**（两边都旧就自洽，假绿灯）。判据必须加**产物内容断言**
+   （`grep -c 'SCENE_SET' 产物 == 0` 且 `#define BINDLESS_SET 0`），且先看生成器目标 rc 再看 verify。
+2. **改了生成器的输出模板后必须先重生成再构建**：否则构建期的 `descriptor_macros_verify`
+   自定义步报 `MSB8066` 并**中断构建** ⇒ 该轮 exe 完全没重链。此时随后跑的任何示例都是
+   「旧二进制 + 新宏表」（`BINDLESS_SET` 1→0 变了）⇒ 出现 `0 px` 的**假回归**。
+   **规矩：见到 `MSB8066` 之后，本轮所有门结果一律作废，先修构建再整体复跑。**
+3. **「以需求集驱动公共 include」是定时炸弹**：`scene_ubo.glsl`（pc_root 之后的 BDA 地址表声明 +
+   `camera`/`vp`/`viewport`/`shadow` 宏）原先只在 `if (!ubos.IsEmpty())` 时被包含，而那个需求集的
+   唯一成员就是 viewport——viewport BDA 化后需求集空 ⇒ include 静默消失 ⇒ `camera.vp` 未定义 ⇒
+   材质 shader 编译失败 ⇒ **静默回退默认材质**（画面仍有几何、0 校验层、D3 契约门报 0 px 才暴露）。
+   已改为**无条件包含**，并把整条死掉的 `MeshUboResolver` / `resolve_ubos` / 三个空 resolver /
+   模式表项一起删净。**公共依赖必须无条件发射，绝不能挂在会变空的需求集合上。**
+4. **删语义枚举的连带**：`IsSemanticOptional` 的 case、`GetDefaultStructNameBySemantic`、
+   meshgen 的 resolver、builder 里只为剔该语义而存在的 `remove_if` —— 删一个语义会牵动一串
+   switch/表，报错点通常在共享头的一行而真因在多处消费方。先全仓 grep 该语义再动手。
 
 ## 3. 验证清单（沿用既有门）
 
