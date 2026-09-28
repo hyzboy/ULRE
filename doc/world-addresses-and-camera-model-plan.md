@@ -129,8 +129,6 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 | C1-3 | ✅ | 相机行写入改走世界存储（`CameraSystem::PublishCamera` → `CameraInfoStorage::WriteCameraRow`、相机槽申请/归还 → `AcquireCameraSlot`/`ReleaseCameraSlot`）；GLSL `camera`/`global_render_items`/`draw_item_ids` 宏切到世界表；**删**全局表三字段（`addr_camera_info`/`addr_global_render_items`/`addr_draw_item_ids`）、`GlobalSSBOType::CameraInfo` 行池 + 相机号位图 + `AcquireCamera`/`ReleaseCamera`/`CameraRow`/`WriteCameraRow`/`WriteCamera`/`GetCameraInfoGPUBase`/`GetCameraInfoBuffer`/`UpdateRenderItemAddresses`/`RenderSceneUBOSystem::SyncGlobalAddressesTable`；`GlobalAddresses` 88B → **64B** | 同上全套 + `TestRenderItemDataStorage` 的 Test 8 改为断言两张表的新布局（88B→64B / 世界表 24B） |
 | C1-4 | ✅ | 相机模型：三级解析（默认相机 → 显式 `is_main_camera` → 最小 `EntityID` → 常驻 fallback）+ 0 号槽专属默认相机 + `kInvalidSlot` 哨兵（删"0 = 主相机 / 未分配"双关）+ 槽唯一真源上移到 `CameraComponent` + `world_owner` 跨世界 fail-fast + `EnsureCameraSlot()`（发布路径只认领槽，不绑 viewport） | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` **21 Passed**（含新 9C+ 相机模型契约）；`TestRenderItemDataStorage` rc=0；ATS 三契约与基线逐项一致（D1 112x58 / 57.6%、D3 18189 & 600662、D4 0、0 VUID）；CSM 对拍 8 轮 `不一致=0`；双世界 + ShadowMap 冒烟 0 VUID、0 槽耗尽/未认领/跨世界告警 |
 | **C1-4a** | ✅ | **相机视图矩阵修复**（`CameraSystem::UpdateMatrices` 非 custom 分支）：视图一律用 `LookAtMatrix(position, position + forward, world_up)`，**禁用**可能"慢一拍"的 `target`（`position` 被外部直接写时 `target` 落后一帧 ⇒ 方向差 ~30° ⇒ 该帧整幅渲成另一机位；实测同姿态 `viewT` 1.2m ↔ 13.5m 横跳 = "隔几秒拉扯一次/刚出场抖"）。成因与排查法见 `doc/csm-mechanism.md` §5 | `viewT` 序列变为单调平滑；200 帧逐帧转储位移互相关 **0 跳变**；门 40/0；21 Passed；RIDS rc=0；ATS D1 112x58/57.6% 一致（D3 18187 vs 18189，−2px float 末位）；CSM 对拍 8 轮 `不一致=0`；三示例 0 VUID |
-| C1-4b | ✅ | **诊断设施**（全部 env 开关、默认零开销）：`CSM_CAMDIAG`（主帧相机行逐字节自检 + fallback/滞后判定）、`ULRE_CAMVIEW_DIAG`（解算期 viewport）、`ULRE_CAMVIEW_DIAG2`（解算期 pos/target/viewT）、`CSM_FRAMEDUMP`（逐帧 160×90 PPM 转储）、`CSM_BAND`（锚定步长 A/B）；永久契约：离屏 pass 写主帧槽带报错 | 见 `doc/csm-mechanism.md` §6 各条（含锚定 A/B 数据：`{0,16,16,32}` 中位 4.86% vs `{0,0,0,0}` 9.64% ⇒ 关锚定更抖，保持拍板值） |
-
 ### 8.2 待办（按依赖排序）
 
 | 批次 | 目标 | 主要落点 | 判据 |
@@ -151,7 +149,7 @@ cmake --build build --config Debug --target ShadowMap AlphaTestShadow CascadeSha
 ATS_SELFCHECK=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 CSM_CACHE_DIFF=1 CSM_AUTOWALK=4 ./build/out/Windows_64_Debug/CascadeShadowMap.exe   # 判据：多轮 不一致=0（需 timeout）
 ```
-相机/视口类改动追加：`CSM_CAMDIAG=1`（行内容逐字节）、`ULRE_CAMVIEW_DIAG2=1`（解算期 viewT 单调）、`CSM_FRAMEDUMP=<dir>` + 位移互相关（判据：0 跳变）。
+相机/视口类改动的追加核对：解算处打印 `camera_info->view[3]` + `pos/target/forward`（**同一姿态下 `viewT` 必须一致**，且随位置单调）；必要时逐帧转储颜色 + 亮度剖面位移互相关（判据：0 跳变）。这些打印/转储都是**临时**手段，定位完即删。
 改头文件/结构大小后先 `purge-stale-deps.sh`；清 `build/cache-hot/shader-cache`；**禁用 `| grep error` 判构建结果**。
 
 ### 8.4 提交范围（本轮已本地提交，未推送）
