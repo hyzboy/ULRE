@@ -32,6 +32,9 @@ namespace hgl {
         class GraphicsContext;  // 图形资源管理器（原IGraphicsContext）
         class VulkanDevice;
         class RenderContext;
+        class DeviceBuffer;
+        template<typename T> class StructView;
+        struct WorldAddresses;
         struct RenderPassOptions;
     }
 }
@@ -129,6 +132,13 @@ namespace hgl
             // 世界私有相机行存储：相机是**世界级观察者数据**（16 槽 × 帧槽数，0 号槽=本世界默认相机）
             // 定稿见 doc/world-addresses-and-camera-model-plan.md §2。
             std::unique_ptr<CameraInfoStorage> camera_info_storage;
+
+            // 世界地址表（WorldAddresses）：世界私有地址的 SSBO 表（HGL_FRAME_SLOT_TOTAL 槽 ×
+            // kWorldAddressesSlotStride），基址经 pc_root.addr_world_addresses 下发 ——
+            // 多世界渲染只需换这一个指针（相机行表 / 渲染项表 / DrawItemID 表都随世界）。
+            graph::StructView<graph::WorldAddresses> *world_addresses_table = nullptr;
+            graph::DeviceBuffer *world_addresses_buffer = nullptr;
+            uint64_t world_addresses_addr = 0;
 
             bool active = false;
             bool shutdown_in_progress = false;
@@ -292,6 +302,10 @@ namespace hgl
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
 
+            /// 创建世界地址表（SSBO：HGL_FRAME_SLOT_TOTAL 槽 × kWorldAddressesSlotStride + 持久 BDA）。
+            /// 世界 In,itialize 时调用；失败 = fail-fast（地址缺失会让 shader 解引用 0 = UB）。
+            bool InitializeWorldAddressesTable();
+
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
 
@@ -423,6 +437,13 @@ namespace hgl
             /// Get 世界私有相机行存储（相机 = 世界级观察者数据；0 号槽 = 本世界默认相机）
             CameraInfoStorage* GetCameraInfoStorage() { return camera_info_storage.get(); }
             const CameraInfoStorage* GetCameraInfoStorage() const { return camera_info_storage.get(); }
+
+            /// 世界地址表基址（**本帧槽**）：写入 pc_root.addr_world_addresses（0 = 尚未创建）
+            uint64_t GetWorldAddressesAddress(uint32_t frame_slot) const;
+
+            /// 把本世界的 world 私有地址（相机行表 / 渲染项表 / DrawItemID 表）同步进**当前帧槽**的世界表。
+            /// 槽 = 当前 RT 的帧槽（主帧 [0,4) / 离屏 [4,8)），由 SetFrameIndex 触发。
+            bool SyncWorldAddresses();
 
         public:
 

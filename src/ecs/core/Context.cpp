@@ -17,6 +17,10 @@
 #include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/CameraInfoStorage.h>
+#include<hgl/graph/ubo/WorldAddresses.h>
+#include<hgl/vk/buffer/StructView.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -93,6 +97,14 @@ namespace hgl
                     LogError("[ECSContext::Initialize] 世界相机行存储（CameraInfoStorage）创建失败");
                     return false;
                 }
+            }
+
+            // 世界地址表（WorldAddresses，SSBO + 持久 BDA）：表内是本世界的 world 私有地址，
+            // 基址经 pc_root.addr_world_addresses 下发 —— 多世界渲染只换这一个指针。
+            if (!InitializeWorldAddressesTable())
+            {
+                LogError("[ECSContext::Initialize] 世界地址表（WorldAddresses）创建失败");
+                return false;
             }
 
             // Propagate device to RenderBufferUploadSystem if it was registered first
@@ -298,6 +310,26 @@ namespace hgl
                      render_frame_cache.materialBatches.GetCount());
             render_frame_cache.materialBatches.Clear();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
+
+            // 世界地址表释放（StructView 非拥有 ⇒ buffer 走 BufferManager 归还）
+            if (world_addresses_table)
+            {
+                delete world_addresses_table;
+                world_addresses_table = nullptr;
+            }
+
+            if (world_addresses_buffer)
+            {
+                if (auto *gc = GetGraphicsContext())
+                {
+                    if (auto *bm = gc->GetBufferManager())
+                        bm->Release(world_addresses_buffer);
+                }
+                world_addresses_buffer = nullptr;
+            }
+
+            world_addresses_addr = 0;
+
             shutdown_in_progress = false;
         }
 
@@ -1274,6 +1306,118 @@ namespace hgl
             return render_context ? render_context->GetGraphicsContext() : nullptr;
         }
 
+        bool ECSContext::InitializeWorldAddressesTable()
+        {
+            if (world_addresses_table)
+                return true;
+
+            auto *gc = GetGraphicsContext();
+            if (!gc)
+            {
+                LogError("[ECSContext::InitializeWorldAddressesTable] graphics context is null");
+                return false;
+            }
+
+            auto *bm = gc->GetBufferManager();
+            if (!bm)
+            {
+                LogError("[ECSContext::InitializeWorldAddressesTable] buffer manager is null");
+                return false;
+            }
+
+            // BDA 要求：必须以 SHADER_DEVICE_ADDRESS usage 创建（CreateUBO 的额外 usage 位是 0）。
+            // 表本体一份、**按帧槽切成 kWorldAddressesSlotCount 份**：每帧只写自己那一槽。
+            char name_buf[192];
+            std::snprintf(name_buf, sizeof(name_buf),
+                          "World:%s:AddressesTable", GetName().c_str());
+
+            world_addresses_buffer = bm->CreateSSBO(
+                name_buf,
+                VkDeviceSize(graph::kWorldAddressesSlotStride) * graph::kWorldAddressesSlotCount);
+            if (!world_addresses_buffer)
+            {
+                LogError("[ECSContext::InitializeWorldAddressesTable] CreateSSBO failed");
+                return false;
+            }
+
+            world_addresses_buffer->SetUpdateClass(graph::BufferUpdateClass::Default);
+
+            world_addresses_table =
+                graph::StructView<graph::WorldAddresses>::Create(world_addresses_buffer, false);
+            if (!world_addresses_table)
+            {
+                LogError("[ECSContext::InitializeWorldAddressesTable] StructView create failed");
+                return false;
+            }
+
+            world_addresses_addr = gpu_device
+                ? gpu_device->GetBufferDeviceAddressAligned16(world_addresses_buffer->GetBuffer())
+                : 0;
+            if (world_addresses_addr == 0)
+            {
+                // 地址缺失 = shader 解引用 0 基址 = UB / 设备丢失（0 VUID 抓不到）⇒ fail-fast
+                LogError("[ECSContext::InitializeWorldAddressesTable] 世界地址表取不到设备地址（16B 对齐 / usage 检查）");
+                return false;
+            }
+
+            // 整表清零（每槽）：未发布的字段保持 0，由消费者自行判定"无数据"。
+            if (auto *base = reinterpret_cast<uint8_t *>(world_addresses_table->Data()))
+            {
+                for (uint32_t slot = 0; slot < graph::kWorldAddressesSlotCount; ++slot)
+                    *reinterpret_cast<graph::WorldAddresses *>(
+                        base + size_t(slot) * graph::kWorldAddressesSlotStride) = graph::WorldAddresses{};
+            }
+
+            world_addresses_table->Commit();
+
+            SyncWorldAddresses();
+            return true;
+        }
+
+        uint64_t ECSContext::GetWorldAddressesAddress(const uint32_t frame_slot) const
+        {
+            if (world_addresses_addr == 0)
+                return 0;
+
+            return world_addresses_addr
+                 + uint64_t(frame_slot % graph::kWorldAddressesSlotCount)
+                 * uint64_t(graph::kWorldAddressesSlotStride);
+        }
+
+        bool ECSContext::SyncWorldAddresses()
+        {
+            if (!world_addresses_table)
+                return false;
+
+            auto *base = reinterpret_cast<uint8_t *>(world_addresses_table->Data());
+            if (!base)
+                return false;
+
+            const uint32_t slot = frame_index % graph::kWorldAddressesSlotCount;
+
+            // 槽步长是上界（可能大于 sizeof）⇒ 按字节偏移取槽。
+            auto *dst = reinterpret_cast<graph::WorldAddresses *>(
+                base + size_t(slot) * graph::kWorldAddressesSlotStride);
+
+            graph::WorldAddresses want{};
+
+            if (camera_info_storage && camera_info_storage->IsReady())
+                want.addr_camera_info = camera_info_storage->GetGPUBase();
+
+            if (auto *storage = GetRenderItemStorage())
+                want.addr_global_render_items = storage->GetGPUAddress();
+
+            if (auto *id_storage = GetDrawItemIDStorage())
+                want.addr_draw_item_ids = id_storage->GetGPUAddress();
+
+            if (std::memcmp(dst, &want, sizeof(graph::WorldAddresses)) == 0)
+                return false;
+
+            *dst = want;
+            world_addresses_table->Commit();
+            return true;
+        }
+
         void ECSContext::SetFrameIndex(const uint32_t index)
         {
             frame_index = index;
@@ -1284,6 +1428,10 @@ namespace hgl
             if (ts)
                 if (auto *tb = ts->GetTransformBuffer())
                     tb->SetFrameIndex(index);
+
+            // 帧槽变了 ⇒ 本世界的地址表换到本槽（相机行表 / 渲染项表 / DrawItemID 表随世界，
+            // 每个 pass 各写自己的槽，不与在途帧/其它世界互踩）。
+            SyncWorldAddresses();
         }
 
         uint32_t ECSContext::GetActiveCameraRow() const
