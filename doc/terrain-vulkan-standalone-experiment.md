@@ -15,6 +15,11 @@
 > 可读参考实现树 `D:\SaschaWillems\Vulkan\examples\`（含 `meshshader`、`indirectdraw`、
 > `computecullandlod`、`bufferdeviceaddress`、`terraintessellation`）。
 > 附录 A 的 GLSL 骨架已用本机 `glslc --target-env=vulkan1.3` 与 `spirv-val` 编译校验通过。
+> **2026-09-28 指示（覆盖本文档首版口径）**：**不走 Task Shader**，走 **ComputeShader + MeshShader**；
+> 先由 **CPU 生成 Indirect Command Buffer**、**暂不做剔除**，将来迁进 compute 并在其中做 Frustum 剔除；
+> **开发期以稳定性为准、不追性能**；相位梯拆为「多 tile → LOD → 外扩遮缝 → ICB 化 → GPU-driven → 剔除」（§5）；
+> **遮缝方式由「向下挤出裙边」改为「与邻居外扩重叠」**（§3.3）—— ε 只需避开共面，故删掉裙深标定。
+>
 
 ---
 
@@ -26,15 +31,36 @@
 | 顶点缓冲 | 完全不存在（mesh 管线无顶点输入阶段） | `pVertexInputState`/`pInputAssemblyState` 必须为 NULL |
 | 高度存储 | **storage buffer + BDA**（`uint32` 装 16 位值起步） | 整数索引寻址；无采样器状态；见 §2.3 |
 | 分块 | 两级：**页**（流式单位）+ **tile**（绘制单位） | 避免 tile 跨页两级间接 |
-| Texture2DArray | 不用 | 层数上限；整数组共享 mip 链，无法按层流式 |
+| Texture2DArray | 不用 | 层数（规范下限 256 / 本机 2048）与整数组共享 mip 链；**本工程可读 mesh 阶段纹理，故理由只在"无 mip 需求 + 按层流式"** |
 | 纹理路线 | 独立工程里**可行**（可给 binding 加 `VK_SHADER_STAGE_MESH_BIT_EXT`），列为 A/B 对照实验 | ULRE 版受限，本工程无此约束 |
 | Sparse 稀疏驻留 | 硬件支持（本机 `sparseResidency*` 全 true），但**不作为第一阶段** | 工程量（HEAP 内存/page size/mip tail/`vkQueueBindSparse`）另计 |
 | Mipmap | 高度图**不做 mip**；做 per-tile min/max 金字塔 | mip 改变几何函数；远景开销在顶点数不在采样 |
-| 裂缝（LOD 接缝） | **裙边（skirt）为默认**；形变为可选优化 | 见 §3.3（T 型缝无法靠采样消除） |
+| 裂缝（LOD 接缝） | **外扩重叠（与邻居重叠 1 格）**为默认；形变为可选优化 | 见 §3.3（T 型缝无法靠采样消除；**不做向下裙边**） |
 | 参数传递 | 整数域贯穿到算出**元素索引**为止 | 浮点仅用于最终坐标/高度；`VkDeviceAddress` 是唯一 64 位出口 |
 | 世界坐标精度 | CPU double + tile 局部小浮点（`shaderFloat64` 本机 = false） | shader 内不能靠 double 兜 |
 | 绘制路径 | 单管线 + `vkCmdDrawMeshTasksIndirectCountEXT` | V4 一次提交全部 tile |
 | 帧资源 | 一开始就按帧槽多份化（tile 表/命令/count） | 独立工程可直接做对 |
+
+---
+
+## 0.1 设计基线（2026-09-28）：采纳 `doc/Terrain Vulkan 1.4.rtf` 的决策
+
+本工程是独立 Vulkan 工程，不受 ULRE 约束，但**设计意图**以工作区里更新的
+`doc/Terrain Vulkan 1.4.rtf`（Task+Mesh / GPU-Driven / BDA）为准。与本文档首版的差异如下
+（**冲突处以本表为准**）：
+
+| 议题 | 首版（本文档 v1） | 现口径（采纳 RTF） | 影响 |
+|---|---|---|---|
+| GPU-Driven 机制 | V4 用 compute 生成 tile 表 + 间接命令 + count | **ComputeShader + MeshShader 两阶段**（**不用 Task Shader**）：先 CPU 生成 Indirect Command Buffer（V4），再迁进 compute（V5）；剔除放最后（V6） | §5 改为 V4 ICB → V5 GPU-driven → V6 剔除；不启用 `taskShader` |
+| 网格拓扑 | 1 线程 = 1 格 = 4 顶点（8×8 格 = 256 顶点） | **9×9 = 81 顶点对应 8×8 格**（顶点复用）；外扩重叠后最坏 10×10 ⇒ **100 顶点 / 162 图元** | 顶点带宽降约 68%；索引发射仍是每线程 2 个图元 |
+| 高度存储 | `uint32[]` 装 16 位值 | **原生 `uint16_t[]`**（`storageBuffer16BitAccess` + `GL_EXT_shader_16bit_storage`） | 内存 / 带宽减半；本机实测 `storageBuffer16BitAccess / shaderInt16 = true` |
+| 地表法线 | 片元 `dFdx/dFdy` | **mesh 阶段中心差分**（`normalize(vec3(h_l-h_r, h_d-h_u, 2*world_step/height_scale))`） | 低模无刻面感；少一次法线贴图 |
+| 相机传递 | push constant 里塞 `mat4 vp`（PC 104B） | **精简 PC（两地址 + tile_index + stride + 两个尺度 + `overlap_epsilon` + world_texels = 104B）**，相对视口矩阵另路下发 | 独立工程可用 UBO 或 BDA 传矩阵 |
+| 遮缝方式 | V3 默认启用向下裙边 | **改为「与邻居外扩重叠」**：网格格域 = `cells + 1`，外扩带高度 −ε | 与 §3.3 一致（T 型缝必须遮）；**不需要裙深标定** |
+| 大世界精度 | CPU double + tile 局部小坐标 | **相机相对渲染**（relative_vp） | 与 §3.5 一致，另需把相对视口矩阵下发到 shader |
+
+**预算核对**（对本机 1024 上限与规范 256 下限同时成立）：顶点 ≤**100** ≤ 256、图元 ≤**162** ≤ 256
+⇒ **NV 系 `maxMeshOutputVertices=256` 的设备同样能跑**（本文档原「256 顶点刚好卡下限」的算法在 81/100 拓扑下更宽松）。
 
 ---
 
@@ -94,7 +120,7 @@
 | `timelineSemaphore` / `multiDrawIndirect` / `drawIndirectFirstInstance` | ✅ true | 可选优化 |
 | `sparseResidencyBuffer/Image2D/Image3D/Aliased` | ✅ 全 true | 硬件支持稀疏驻留（V5 可选，见 §6-R8） |
 
-需要开启的结构：`VkPhysicalDeviceMeshShaderFeaturesEXT{meshShader=TRUE, taskShader=FALSE}`、
+需要开启的结构：`VkPhysicalDeviceMeshShaderFeaturesEXT{meshShader=TRUE, taskShader=TRUE}`（Task 路径，见 §0.1）、
 `VkPhysicalDeviceVulkan12Features{bufferDeviceAddress, scalarBlockLayout, drawIndirectCount}`、
 `VkPhysicalDeviceFeatures{shaderInt64}`。
 若用 16 位存储（省内存）另需 `storageBuffer16BitAccess` + `GL_EXT_shader_16bit_storage`。
@@ -103,13 +129,13 @@
 
 | 上限 | 本机实测 | 规范保证下限 | 本方案占用 |
 |---|---|---|---|
-| `maxMeshOutputVertices` | **1024** | 256 | 256（64 线程 × 4 顶点） |
-| `maxMeshOutputPrimitives` | **1024** | 256 | 128 |
+| `maxMeshOutputVertices` | **1024** | 256 | **100**（外扩后最坏：角组 10×10；内部组 81） |
+| `maxMeshOutputPrimitives` | **1024** | 256 | **162**（角组 9×9×2；内部组 128） |
 | `maxMeshOutputMemorySize` | 524288 B | 32768 B | 远低于 |
 | `maxMeshOutputComponents` | 128 | — | ≤ 16（位置 + UV） |
 | `maxMeshWorkGroupInvocations` | 1024 | 128 | 64 |
 | `maxMeshWorkGroupSize` | (1024,1024,1024) | (128,1,1) | (64,1,1) |
-| `maxTaskPayloadSize` | 65504 | — | 未用（无 task shader） |
+| `maxTaskPayloadSize` | 65504 | — | 主线不用 Task（§0.1）；仅 V7 对照实验时涉及 |
 | `maxPushConstantsSize` | **256** | 128 | 104（见附录 A） |
 | `maxStorageBufferRange` | 4294967292 | — | 高度缓冲 < 1 GB |
 | `minStorageBufferOffsetAlignment` | 64 | — | 不适用（按元素索引寻址，见 §2.3） |
@@ -176,6 +202,77 @@ Submit(wait = imageAvailable + inFlight fence) / Present(wait = renderFinished)
 | `...\bufferdeviceaddress` | BDA 用法与 GLSL `buffer_reference` |
 | `...\terraintessellation` | 另一条地形路线（tessellation）对照 |
 
+### 2.6 对齐与尺寸约束（**走 buffer 不是纹理；2 的幂加在 LOD 上，不在数据尺寸上**）
+
+**结论先行**：mesh 顶点数不是瓶颈（≤100 顶点 / ≤162 图元，对上限 1024 与规范下限 256 都有一倍以上余量）；
+"超大高度图要对齐"是对的，但**纹理那套对齐规则一条都不适用**，真正需要 2 的幂的是 **LOD 的格步长与 tile 跨度**，
+不是高度数据（或纹理）的尺寸。
+
+**为什么高度走 buffer 而不是纹理（本工程有得选，但主线仍走 buffer）**
+
+1. **ULRE 版是被 E7 卡死的**：那边 bindless 纹理 binding 的 `stageFlags` 只有 `FRAGMENT|COMPUTE`，
+   mesh 阶段采样不到纹理。**本工程没有这条约束**（可给 binding 加 `VK_SHADER_STAGE_MESH_BIT_EXT`），
+   所以把「纹理路线 A/B」留在 V7 做对照实验——主线的理由见下面 2–4，与那条约束无关。
+2. **整数域**：`R16_UINT` **不能硬件双线性**、不能线性 blit；要硬件插值就得存 UNORM
+   （归一化丢高度语义、还要量化还原）。走 buffer 时顶点落在 texel 上（fraction = 0），
+   手动 4 读 + lerp 实际退化为单次读，滤波成本可以忽略。
+3. **少一整套状态**：无 sampler（filter / address mode）、无 image layout 转换（纹理要在 compute 写/读还得加 barrier）、
+   越界读就是普通索引加减（中心差分读 ±step 天然合法，§3.5）、分块不受 `maxImageArrayLayers` 限制。
+4. **地址稳定**：BDA 地址在 V5（compute 写表）后不变，compute 与 mesh 用同一地址读，无需重绑。
+
+代价（别只看好处）：没有硬件滤波 / 各向异性 / 自动归一化（高度由 shader 乘 `height_scale`），
+且 stride 与对齐要自己管（本节 (1)）。**与"不做 mipmap"是两件事**：mip 是另一个高度函数、
+破坏粗/细同值前提，和走 buffer 还是纹理无关。
+
+
+**（1）buffer 侧只有三条约束，全都与尺寸是否 2 的幂无关**
+
+| # | 约束 | 出处 | 对本方案的含义 |
+|---|---|---|---|
+| A1 | 物理指针访问必须带 `Aligned` 操作数，其值须是**被指向类型中最大标量宽度**的倍数 | `VUID-StandaloneSpirv-PhysicalStorageBuffer64-06314` | `uint16_t[]` ⇒ Aligned **2**；tile 行结构最大标量 4B ⇒ Aligned **4**（均已在 SPIR-V 里实测到） |
+| A2 | 指针值必须 ≥ 该 `Aligned` | `VUID-RuntimeSpirv-PhysicalStorageBuffer64-06315` | 高度缓冲基址 ≥2B、tile 表基址 ≥4B 对齐；取址后**断言**（驱动实测给 ≥16B、通常 256B，但不要假设） |
+| A3 | 被引用缓冲必须带 `SHADER_DEVICE_ADDRESS` | `VUID-RuntimeSpirv-PhysicalStorageBuffer64-11819` | 已在 §3.4/§0.1 的通路表里 |
+
+纹理路线的那些规则（`VkImage` texel block、`vkCmdCopyBufferToImage` 的 `bufferRowLength`/`bufferImageHeight`、
+`optimalBufferCopyRowPitchAlignment`、mip 链、array layer、sampler 寻址模式）**一条都不用管**。
+
+**（2）2 的幂的正确归属**
+
+| 对象 | 要不要 2 的幂 | 原因 |
+|---|---|---|
+| 格步长 `1 << lod` | **要** | 粗格点必须落在细格点上；且 texel = 位移而非乘除法 |
+| tile 跨度 `kTileSpan` | **要**（取 2 的幂最省心） | 必须是最大格步长的整数倍 ⇒ 任意 LOD 下 tile 原点都是所有步长的共同倍数（顶点级重合的前提） |
+| 世界高度图尺寸 | **不要** | 只需能被 `kTileSpan` 整除（配置校验拒绝不整除）；例 8192×6144 = 32×24 tile 合法。
+若不整除：**填充到整数倍**是可接受的替代——多分配几行几列、按 clamp 复制填边（世界随之略大于资产，程序化地形无所谓） |
+| 行 stride（texel） | **不要**（但建议 4 的倍数） | 只是我们自己的 `uint32` 步长；4 的倍数利于向量化读 |
+| 纹理（若走 R16_UNORM 路线） | **不要** | Vulkan **没有** POT 纹理要求（那是 GL 1.x / ES 1.x 的遗留约束）；那时要管的是 texel block 与拷贝行距 |
+
+**（3）超大高度图真正的天花板（与对齐无关，全是容量）**
+
+| 上限 | 本机实测 | 含义 |
+|---|---|---|
+| `maxStorageBufferRange` | 4 294 967 292（≈4 GiB） | 单缓冲可寻址范围 |
+| `maxMemoryAllocationSize` | 4 294 901 760（≈4 GiB − 64 KiB） | **单次分配**上限（二者取小） |
+| 16 位元素数 | ≈2³¹ texel | 世界边长 ≤ **46340** texel（1 m/texel ⇒ 46 km 见方） |
+
+超出这套天花板的出路：**多 buffer + 地址数组**（"页"机制，`page_index` 字段已预留）或 **sparse 驻留**（V7 实验）。
+本方案默认量级（256 texel/tile、1 m/texel、8192 m 世界）= 8192² × 2 B = **128 MB**，离天花板三个数量级。
+
+**（4）16 位路径的两个实测细节（本机 glslc 1.4.357 / spirv-val 通过）**
+
+```glsl
+#extension GL_EXT_shader_16bit_storage : require
+layout(buffer_reference, scalar, buffer_reference_align = 2) readonly buffer HeightRef { uint16_t data[]; };
+...
+return float(uint(HBUF.data[idx]));          // ✅ 必须两级转换
+// return float(HBUF.data[idx]);             // ✗ glslc: 'constructor' : can't convert
+```
+
+- SPIR-V 多出 `OpCapability StorageBuffer16BitAccess`（实测：32 位版 9536 B → 16 位版 9608 B）；
+- `OpLoad %ushort … Aligned 2`、`OpLoad %TerrainTile … Aligned 4`、`ArrayStride 2`（高度）/`ArrayStride 32`（tile 行）；
+- **可移植性门**：启动断言 `storageBuffer16BitAccess`（本机 true）——
+  `VUID-RuntimeSpirv-storageBuffer16BitAccess-11161`：为 false 时 16 位对象不得处于 `StorageBuffer` 存储类。
+
 ---
 
 ## 3. 目标架构
@@ -208,9 +305,9 @@ struct TerrainTile                   // 32B
 {
     uint32_t texel_origin_x;         // 全局 texel 原点（整数，精确）
     uint32_t texel_origin_y;
-    uint32_t cells;                  // 格数 = grid_dim - 1
+    uint32_t cells;                  // tile 自身格数/边（网格实际生成 cells + 1 格：外扩带）
     uint32_t lod;                    // 网格步长 = 1 << lod（texel）
-    float    height_min;             // 高度界：剔除 + 裂缝/裙深估算
+    float    height_min;             // 高度界：剔除 + LOD 误差上界
     float    height_max;
     uint32_t page_index;
     uint32_t flags;
@@ -237,7 +334,7 @@ struct TerrainTile
 若不用 `scalar` 而用 `std430`，`uint` 序列仍连续，但结构体数组的 stride 会被补到 16B——
 本项目本来就按 32B 设计，两者一致。
 
-### 3.3 裂缝的本质与消除手段（**LOD 接缝的正确结论**）
+### 3.3 裂缝的本质与遮缝手段（**LOD 接缝的正确结论**）
 
 **T 型交点缝是固有几何问题，不能靠采样方式消除。**
 
@@ -250,19 +347,28 @@ struct TerrainTile
 
 | 手段 | 说明 | 代价 | 本方案 |
 |---|---|---|---|
-| **a. 裙边（skirt）** | 每个 tile 边缘额外向下挤出一圈三角形，遮住缝隙 | 少量额外三角形；需确定深度 | **V3 默认** |
-| b. 顶点形变（geomorph / CDLOD morphing） | 细侧过渡带顶点向粗侧弦插值，视觉平滑、无额外几何 | 需要 morph 因子与过渡带判定 | V3+ 可选优化 |
-| c. 过渡带缝合 | 粗 tile 外圈改用细步长（与邻居一致） | tile 需知邻居 LOD，网格不再均匀 | 不采用 |
+| **a. 外扩重叠** | 每个 tile 的网格向 −X/−Y 各多生成 1 格；边界线两侧各有连续表面跨过 ⇒ 缝被**覆盖**（不是堵住） | 顶点 81→100、图元 128→162（上限内）；**无第二套索引逻辑** | **V3b 采用** |
+| b. 向下裙边（skirt） | 边缘额外向下挤一圈三角形，把缝堵住 | 独立索引逻辑 + 绕序处理 + 裙深参数 + **需按裂缝深度标定** | 不采用（2026-09-28 指示） |
+| c. 顶点形变（geomorph / CDLOD morphing） | 细侧过渡带顶点向粗侧弦插值 | 需要 morph 因子与过渡带判定 | 可选优化 |
 
 **双线性采样的真实作用**：把"高度函数"与"网格分辨率"解耦（网格点落在 texel 之间时避免阶梯），
-并让不同 LOD 在**任意**位置取到同一函数值——这使裂缝**有界且可量化**（是 a/b 的前提）。
-在"2 的幂 + texel 对齐"时它退化为直接取纹素（fraction = 0），因此**它不是消裂手段，也不该被当成消裂手段**。
+并让不同 LOD 在**任意**位置取到同一函数值 —— 这使裂缝**有界且可量化**（是 a/b/c 的前提）。
+在"2 的幂 + texel 对齐"时它退化为直接取纹素（fraction = 0），因此**它不是消裂手段**。
 
-**裙深怎么定（可量化）**：裂缝深度 = 共享边上 `|粗表面高度 - 细表面高度|` 的最大值，
-上界由该处高度曲线的曲率决定。实践两种取法：
-1. 保守：`skirt_depth = k * (height_max - height_min)`（k ≈ 0.5~1，本 tile 的极差已知，零额外数据）；
-2. 精确：由父级 tile 的误差度量给出（更紧，但需要层级数据）。
-→ 判据：`skirt_depth ≥ 实测最大裂缝深度`（见 §5 的自动量化判据）。
+**外扩重叠的四条要点**
+
+1. **ε 只需避开共面**：外扩带顶点高度 −= `overlap_epsilon × 格世界尺寸`（默认 `overlap_epsilon = 1e-3`）。
+   ε **不是**裙深：它不需要覆盖裂缝深度 ⇒ **不需要任何裂缝深度测量与标定**（相对裙边最大的稳定性收益）。
+   唯一要求：ε 在该距离上大于深度精度。
+2. **两侧对称外扩 ⇒ 不可能有孔洞**：一条边界线既是"本 tile 网格的边缘"、又是"邻居网格的内部"
+   （邻居也向本侧外扩了 1 格）。
+3. **平坦区无 z-fighting**：外扩带下沉 ε 后落在邻居表面之下；起伏区可能穿透邻居表面 ≤ LOD 误差 ⇒
+   1 格宽的细薄片（**不是孔洞**，视觉可接受）。
+4. **外扩采样天然合法**：外扩格的 texel 落在邻居范围内，高度缓冲连续 ⇒ **不需要 halo**；只有世界边界要 clamp。
+
+**判据（V3b，可自动判定）**：边界带无孔洞；平坦区多帧截图一致（无 z-fighting）；
+**关闭外扩（`flags` 位0）能复现 V3 的可见裂缝**；顶点 ≤100 / 图元 ≤162。
+第 1 条必须与第 3 条配对："开着没缝、关掉有缝"才算有效证据。
 
 **对角线约定**：格内固定按 `(TL,BL,TR)+(TR,BL,BR)` 或 `(TL,TR,BR)+(TL,BR,BL)` 之一对角化，
 全局一致。不一致只会造成亚 texel 级差异，但保持一致成本为零。
@@ -319,51 +425,67 @@ addr    = heights_base + index * 4                          // 唯一 64 位出�
 **判据**：出图；网格无空洞；validation 零 error（含 sync validation）；
 抽样 10 个 (gx,gy)，shader 输出高度与 CPU 同索引值一致。
 
-### V2 — 多 tile + 剔除
+### V2 — 多 tile 直发（**不剔除**）
 
-**内容**：CPU 合成 tile 表（`BuildTileList(view, lod_policy)` **纯函数**，V4 原样搬进 compute）；
-tile 级视锥剔除（用 `height_min/max` 作 Z 界）；
-命令数组 + `vkCmdDrawMeshTasksIndirectCountEXT`（count 由 CPU 写或先直接提交多次 draw）。
+**内容**：CPU 合成 tile 表（`BuildTileList(view, lod_policy)` **纯函数**，V5 原样搬进 compute）；
+**直发**：每个 tile 一次 `vkCmdDrawMeshTasksEXT(groups, 1, 1)`，tile 号经 push constant 下发；
+**不做剔除**（2026-09-28 指示：先不处理 Frustum）。tile 表按帧槽多份。
 
-**要点**：tile 表/命令数组按帧槽多份；`VkDrawMeshTasksIndirectCommandEXT{groupCountX, groupCountY=1, groupCountZ=1}`。
-宽 tile 如果超出 `maxMeshWorkGroupTotalCount`（本机 4194304）要拆——1K² 格不会碰到。
+**判据**：全部 tile 出图、拼合无重复/空洞（边界高亮材质）；draw 数 == tile 数；所有 tile 同 `lod`。
 
-**判据**：8×8 tile 拼合无重复/空洞（边界高亮材质）；视野外 tile 的 `groupCountX == 0`。
+### V3 — LOD（**仍不遮缝**）
 
-### V3 — LOD 与裂缝处理
+**内容**：`BuildTileList` 引入 LOD（相机距离 / 屏幕空间误差 + `height_min/max` 极差）；
+构建 per-tile min/max 金字塔（四叉树）供 LOD 误差度量与地平线遮挡；「2 的幂步长」纪律 + 对角线约定统一。
 
-**内容**：
-- `BuildTileList` 引入 LOD（相机距离/屏幕空间误差 + `height_min/max` 极差）；
-- **裙边**：tile 边缘额外 emit 一圈三角形（照 §3.3 的两种裙深取法）；
-- 构建 per-tile min/max 金字塔（四叉树）供 LOD 误差度量与地平线遮挡；
-- 「2 的幂步长」纪律 + 对角线约定统一。
+**判据**：**顶点级重合**（共享边粗格点高度差 == 0）；
+**"能看见裂缝"是预期结果**（同相机截图存档，作为 V3b 的对照）；拉远后 `lod` 上升、总组数下降。
 
-**判据（两条，均可自动判定）**：
-1. **顶点级重合**：共享边上所有粗格点位置，用细网格插值出的高度与粗网格顶点高度差 == 0；
-2. **裂缝量化**：沿共享边密集采样 `|粗表面高度 - 细表面高度|` 取最大值 → 断言
-   `skirt_depth ≥ 该最大值`。这条把"看起来没缝"变成可测的数字。
+### V3b — 外扩重叠遮缝
 
-### V4 — GPU-Driven
+**内容**：网格格域 = `cells + 1`（向 −X/−Y 各外扩 1 格），外扩带高度 −ε（§3.3）；
+`flags` 位0 可关闭外扩（对照用）。**不做向下裙边、不引入裙深参数。**
 
-**内容**：compute 写 tile 表 + 命令数组 + count（原子加）；`vkCmdFillBuffer` 归零 count；
-`vkCmdDrawMeshTasksIndirectCountEXT` 一次提交全部 tile；每帧槽独立缓冲。
+**判据**：见 §3.3 结尾四条。
+
+### V4 — ICB 化（CPU 生成 Indirect Command Buffer）
+
+**内容**：CPU 把命令写进 `VkDrawMeshTasksIndirectCommandEXT` 数组（每条 `{N²,1,1}`）+ count 缓冲；
+**一次** `vkCmdDrawMeshTasksIndirectCountEXT` 覆盖全部 tile，mesh 里 `tile = TBUF.t[gl_DrawID]`
+（命令序 = 表行序）。**仍不剔除。**
+
+**判据**：与 V3b **逐像素一致**；命令数 == tile 数；绘制调用数降为 1；`maxDrawCount` 与 count 实测值核对。
+
+### V5 — GPU-Driven（compute 生成，**不用 Task Shader**）
+
+**内容**：compute 写 tile 表 + 命令数组 + `atomicAdd` 写 count；`vkCmdFillBuffer` 归零 count；
+`vkCmdDrawMeshTasksIndirectCountEXT` 一次提交全部 tile；每帧槽独立缓冲。CPU 只提交一次 compute + 一次绘制。
+**仍不剔除**（只把生成搬家，保证与 V4 行为等价）。
 
 **三条硬约束**：
 1. count 归零 → append → 消费 的批次顺序正确，且归零目标与上一帧消费**不同帧槽**；
-2. tile 表/命令数组的 usage 必须含 `INDIRECT_BUFFER`（+ `SHADER_DEVICE_ADDRESS`）；
-3. 屏障用 `VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT` / `DRAW_INDIRECT`（sync2 写法更清晰）。
+2. tile 表 / 命令数组的 usage 必须含 `INDIRECT_BUFFER`（+ `SHADER_DEVICE_ADDRESS`）；
+3. 屏障用 `VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT` / `DRAW_INDIRECT`（sync2 写法更清晰）。
 
-**判据**：与 V3 **逐像素一致**（同相机同 LOD）；绘制调用数降为 1；
-`vkCmdDrawMeshTasksIndirectCountEXT` 的 `maxDrawCount` 与 count 实测值打印核对。
+**判据**：与 V4 **逐像素一致**；CPU 侧零逐 tile 写入；绘制调用数 = 1 且与 tile 数无关。
 
-### V5 — 可选实验（独立工程的独有价值）
+### V6 — CS 内 Frustum 剔除
+
+**内容**：compute 里用 tile AABB = `texel_origin + tile_span + height_min/max` 做视锥剔除（+ 地平线 / 背向），
+剔除掉的 tile 不 append 命令（count 变小）。这是第一个真正减少工作量的阶段。
+
+**判据**：可见集与 CPU 参考实现逐 tile 一致；视野外 tile 不出现在命令数组里。
+
+### V7 — 可选实验（独立工程的独有价值）
 
 | 实验 | 方法 | 价值 |
 |---|---|---|
 | 纹理路线 A/B | 高度改 `R16_UNORM` 纹理 + sampler（给 binding 加 `VK_SHADER_STAGE_MESH_BIT_EXT`），硬件双线性 vs 手动双线性 | 量化采样成本与代码复杂度（ULRE 里做不了） |
 | 稀疏驻留 | `VK_IMAGE_CREATE_SPARSE_BINDING_BIT` + HEAP 内存 + `vkQueueBindSparse` + 页/居民化 | 本机 `sparseResidency*` 全 true；验证"巨大虚拟高度图"路线 |
 | 网格着色器 LOD 变体 | 每 tile 网格分辨率随距离变化（非幂等步长） | 需回到双线性采样 + 定量评估 |
-| Task Shader 剔除 | 把 tile 剔除从 compute 搬到 task shader（`maxTaskPayloadSize` 本机 65504） | 对照两种剔除位置 |
+| Task Shader 对照 | 仅作开销对照（**不进主线**）：`EmitMeshTasksEXT` 分级分发 vs compute 生成 | 回答"Task 是否值得"；本机 `taskShader = true` |
+
+（首版此处「V4 路 1 = Task Shader 为主」已按 2026-09-28 指示取消；剔除也从 V2 移到 V6。）
 
 ---
 
@@ -377,11 +499,12 @@ tile 级视锥剔除（用 `height_min/max` 作 Z 界）；
 | mesh 输出正确性 | 抽样 10 个 (gx,gy) 输出高度做色 | 与 CPU 同索引值一致 |
 | 边缘组（非 2 的幂 cells，如 127/100） | 截图 + validation | 无空洞、无越界写 |
 | tile 拼接 | 边界高亮材质 | 无重复/空洞 |
+| 多 tile 直发（V2）/ ICB（V4） | 命令数组 dump + pipeline statistics | 全部 tile 出图、拼合无重复/空洞；命令数 == tile 数；绘制调用数 = 1（V4） |
 | LOD 顶点重合 | compute/CPU 自检 | 共享边粗格点高度差 == 0 |
-| **裂缝量化** | 边界密集采样取 max 差 | `skirt_depth ≥ max` |
-| 剔除正确性 | 命令数组 dump | 视野外 tile `groupCountX == 0` |
-| 性能 | timestamp query（period 52.08 ns） | 记录 V1→V4 的 mesh 阶段耗时/三角数/命令数 |
-| 回归 | 同相机同位置截图 | V2/V3/V4 与前一阶段在非 LOD 变化区域逐像素一致 |
+| **外扩遮缝** | 固定相机截图 + 多帧比对 + 关闭外扩对照 | 边界带无孔洞；平坦区无 z-fighting；**关掉能复现裂缝** |
+| 剔除正确性（V6） | 命令数组 dump | 视野外 tile 不出现在命令数组里（count 变小） |
+| 性能 | timestamp query（period 52.08 ns） | 记录 V1→V6 的 mesh 阶段耗时/三角数/命令数 |
+| 回归 | 同相机同位置截图 | 每阶段与前一阶段在非变化区域逐像素一致（V3→V3b 只该在边界带变化） |
 
 ---
 
@@ -394,17 +517,19 @@ tile 级视锥剔除（用 `height_min/max` 作 Z 界）；
 | R3 | 顶点输出写入方式 | 用户 varying 用 `varying[i] = ...` 直接数组索引（`gl_MeshVerticesEXT[]` 只含 `gl_Position` 等内建）；已编译验证 |
 | R4 | BDA 依赖 `bufferDeviceAddress + scalarBlockLayout + shaderInt64` | 三项作为硬性设备门槛在启动时断言；不满足则退描述符版 |
 | R5 | `shaderFloat64 = false`（本机） | 世界坐标精度只能靠 CPU double + 相机相对；不要指望 shader 内 double |
-| R6 | 帧槽竞态（本帧 compute 写 / 上一帧还在读） | 从 V2 起就按帧槽多份化，别等到 V4 |
-| R7 | 裂缝随 LOD 级差增大 | 裙深用可量化判据（§5）；先支持相邻级 ±1，跳级在 V3 自检里覆盖 |
+| R6 | 帧槽竞态（本帧 compute 写 / 上一帧还在读） | 从 V2 起就按帧槽多份化，别等到 V5 |
+| R7 | 外扩带与邻居表面共面 ⇒ z-fighting（平坦地形最明显）；起伏处穿透邻居表面 ⇒ 1 格宽细薄片 | 外扩带 −ε + 两侧对称外扩（§3.3）；判据含「平坦区多帧一致」；薄片不是孔洞，接受 |
 | R8 | 上 sparse 的诱惑 | 硬件支持但工程量独立（HEAP/page size/mip tail/绑定队列）；列为 V5 实验，不进主线 |
 | R9 | 平台差异（NV 的 256 顶点上限、不同 `maxPushConstantsSize`） | 全部上限从 `vkGetPhysicalDeviceProperties2` 查询后决定分组，不写死 |
 | R10 | 高度缓冲与 tile 表混在一张大 buffer 里导致对齐全乱 | 一缓冲一用途；高度只做"基地址 + 整数索引"（§2.3 寻址规则） |
+| R11 | 外扩带来每边界 1 格的重叠绘制（overdraw） | 开发期接受；若日后成瓶颈，只让「较粗一侧」外扩（需邻接 LOD 信息） |
+| R12 | 相位梯里「V6 剔除」之前误把剔除当成早期目标 | 2026-09-28 指示：V2–V5 **一律不剔除**，只在 V6 做；每阶段判据里不得出现剔除断言 |
 
 ---
 
 ## 7. 里程碑与回滚
 
-- 分支 `terrain-experiment`，每阶段 tag：`v1-single-tile` / `v2-tiles` / `v3-lod` / `v4-gpudriven`。
+- 分支 `terrain-experiment`，每阶段 tag：`v1-single-tile` / `v2-tiles` / `v3-lod` / `v3b-overlap` / `v4-icb` / `v5-gpudriven` / `v6-cull`。
 - 每个阶段保持"可运行且截图可对比"——回归判据依赖同相机同位置截图，因此每阶段都保留一个
   `--screenshot <phase>` 模式（固定相机路径），避免"改坏了才发现"。
 - GLSL 与 C++ 侧的 tile 结构若发生字段变化：两侧同一次提交内改完（附 `static_assert`），
@@ -420,110 +545,125 @@ tile 级视锥剔除（用 `height_min/max` 作 Z 界）；
 - 用户 varying 通过**直接数组索引写入**（`vUV[i] = ...`）；
 - 需要的扩展：`GL_EXT_mesh_shader` / `GL_EXT_buffer_reference` / `GL_EXT_scalar_block_layout` /
   `GL_ARB_gpu_shader_int64` / `GL_EXT_shader_explicit_arithmetic_types_int64`；
-- 生成的 SPIR-V capability：`Int64` / `MeshShadingEXT` / `PhysicalStorageBufferAddresses`。
+- 生成的 SPIR-V capability：`Int64` / `MeshShadingEXT` / `PhysicalStorageBufferAddresses` / `StorageBuffer16BitAccess`（16 位高度）；
+- 每个物理指针访问都带 `Aligned` 操作数（16 位 ⇒ 2，tile 行 ⇒ 4），见 §2.6；
+- **16→32 位必须两级转换**：`float(uint(h))`，直接 `float(h)` 会被 glslc 拒（`'constructor' : can't convert`）。
+
+下面这份 `terrain.mesh` 就是本机实测通过的那一份（`glslc --target-env=vulkan1.3` → SPIR-V **9608 B**；
+`spirv-val` 零 error；capability `MeshShadingEXT` / `PhysicalStorageBufferAddresses` / `Int64` / **`StorageBuffer16BitAccess`**；
+`OutputVertices 128` / `OutputPrimitivesEXT 192`（声明上限 ≥ 实产 ≤100/≤162）；对齐见 §2.6：
+`OpLoad %ushort … Aligned 2`（高度）、`OpLoad %TerrainTile … Aligned 4`、`ArrayStride 2 / 32`）：
 
 ```glsl
-// ---------- terrain.mesh ----------
 #version 460
 #extension GL_EXT_mesh_shader : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_16bit_storage : require
 #extension GL_ARB_gpu_shader_int64 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
-layout(local_size_x = 64) in;                                   // 64 线程 = 8×8 格
-layout(triangles, max_vertices = 256, max_primitives = 128) out;
+layout(local_size_x = 64) in;
+layout(triangles, max_vertices = 128, max_primitives = 192) out;
 
 struct TerrainTile
 {
     uint  texel_origin_x;
     uint  texel_origin_y;
-    uint  cells;                                                // 格数 = grid_dim - 1
-    uint  lod;
+    uint  cells;                  // tile 自身格数/边（ULRE 版恒 = 8 * groups_per_side）
+    uint  lod;                    // 格步长 = 1 << lod（texel）
     float height_min;
     float height_max;
     uint  page_index;
     uint  flags;
 };
 
-layout(push_constant) uniform PC                                 // 104B < 256B（本机实测上限）
+layout(push_constant) uniform PC
 {
     mat4     vp;
     uint64_t addr_heights;
     uint64_t addr_tiles;
     uint     tile_index;
-    uint     heights_stride;                                    // texel/行
-    float    texel_world_size;                                  // 一个 texel 的世界尺寸
-    float    height_scale;                                      // 高度单位 -> 世界单位
-    float    skirt_depth;
-    uint     _pad;
+    uint     heights_stride;
+    float    texel_world_size;
+    float    height_scale;
+    float    overlap_epsilon;      // 外扩带下沉量（× 本 tile 格世界尺寸，默认 1e-3）
+    uint     world_texels;         // 世界高度缓冲边长（clamp 用）
 } pc;
 
-layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer HeightRef { uint data[]; };
+// 高度：原生 16 位 ⇒ Aligned 必须是 2（VUID-06314：被指向类型最大标量宽度）
+layout(buffer_reference, scalar, buffer_reference_align = 2) readonly buffer HeightRef { uint16_t data[]; };
+// tile 行结构最大标量 4B ⇒ Aligned 4
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer TileRef   { TerrainTile t[]; };
-
 #define HBUF HeightRef(pc.addr_heights)
 #define TBUF TileRef(pc.addr_tiles)
 
 layout(location = 0) out vec2 vUV[];                             // 必须显式 location
 
-float SampleHeight(uint tx, uint ty)                             // 整数索引；16 位值在低 16 位
+float SampleHeightClamped(int tx, int ty)
 {
-    return float(HBUF.data[ty * pc.heights_stride + tx]);
+    const int m = int(pc.world_texels) - 1;
+    tx = clamp(tx, 0, m);
+    ty = clamp(ty, 0, m);
+    return float(uint(HBUF.data[uint(ty) * pc.heights_stride + uint(tx)]));  // 16→32 必须两级转换（§2.6）
 }
 
 void main()
 {
     const TerrainTile tile = TBUF.t[pc.tile_index];
-    const uint step    = 1u << tile.lod;                         // 2 的幂步长
-    const uint per_row = (tile.cells + 7u) / 8u;
-    const uint gid     = gl_WorkGroupID.x;
-    const uint gx0     = (gid % per_row) * 8u;
-    const uint gy0     = (gid / per_row) * 8u;
+    const uint N  = (tile.cells + 7u) / 8u;                      // 组数/边
+    const uint kx = gl_WorkGroupID.x % N;
+    const uint ky = gl_WorkGroupID.x / N;
 
-    // ⚠ SetMeshOutputsEXT 必须全组一致：边缘组用 2D 裁剪算出有效格数
-    const uint cols  = (gx0 >= tile.cells) ? 0u : min(8u, tile.cells - gx0);
-    const uint rows  = (gy0 >= tile.cells) ? 0u : min(8u, tile.cells - gy0);
-    const uint valid = cols * rows;
+    // 本组格域：自身格数（末组可能不足 8）+ 外扩 1 格（仅每轴最后一个组）
+    const uint cols = uint(min(int(tile.cells) - int(kx) * 8, 8)) + ((kx == N - 1u) ? 1u : 0u);
+    const uint rows = uint(min(int(tile.cells) - int(ky) * 8, 8)) + ((ky == N - 1u) ? 1u : 0u);
+    const int  cx0  = int(kx) * 8 - 1;                           // 格域起点（-1 = 外扩格，故用 int）
+    const int  cy0  = int(ky) * 8 - 1;
 
-    SetMeshOutputsEXT(valid * 4u, valid * 2u);
-    if (valid == 0u)
-        return;
+    const uint vpc  = cols + 1u;                                 // 顶点列数（2..10 ⇒ 顶点 ≤ 100）
+    const uint vtot = vpc * (rows + 1u);
+    const uint ptot = cols * rows * 2u;                          // 图元 ≤ 162
 
-    const uint lx = gl_LocalInvocationIndex & 7u;
-    const uint ly = gl_LocalInvocationIndex >> 3u;
-    if (lx >= cols || ly >= rows)
-        return;
+    SetMeshOutputsEXT(vtot, ptot);                               // 组内一致（由 kx/ky 决定，不看线程）
 
-    const uint cx = gx0 + lx;
-    const uint cy = gy0 + ly;
-    const uint tx = tile.texel_origin_x + (cx << tile.lod);      // 整数域
-    const uint ty = tile.texel_origin_y + (cy << tile.lod);
+    const uint  li = gl_LocalInvocationIndex;
+    const float cs = pc.texel_world_size * float(1u << tile.lod); // 本 tile 的格世界尺寸
 
-    const uint compact  = ly * cols + lx;                        // 紧凑槽位（勿用 gl_LocalInvocationIndex）
-    const uint base_vid = compact * 4u;
-
-    const float h0 = SampleHeight(tx,         ty        );
-    const float h1 = SampleHeight(tx + step,  ty        );
-    const float h2 = SampleHeight(tx,         ty + step );
-    const float h3 = SampleHeight(tx + step,  ty + step );
-
-    const float gx[4] = float[4](float(cx), float(cx + 1u), float(cx),       float(cx + 1u));
-    const float gy[4] = float[4](float(cy), float(cy),       float(cy + 1u), float(cy + 1u));
-    const float gh[4] = float[4](h0, h1, h2, h3);
-
-    const float cs = pc.texel_world_size * float(step);
-
-    for (uint i = 0u; i < 4u; ++i)
+    for (uint i = li; i < vtot; i += 64u)
     {
-        const vec3 world = vec3(gx[i] * cs, gy[i] * cs, gh[i] * pc.height_scale);
-        gl_MeshVerticesEXT[base_vid + i].gl_Position = pc.vp * vec4(world, 1.0);
-        vUV[base_vid + i] = vec2(gx[i], gy[i]);
+        const uint vx = i % vpc;
+        const uint vy = i / vpc;
+        const int  cx = cx0 + int(vx);
+        const int  cy = cy0 + int(vy);
+
+        const int tx = int(tile.texel_origin_x) + (cx << int(tile.lod));
+        const int ty = int(tile.texel_origin_y) + (cy << int(tile.lod));
+
+        float hw = SampleHeightClamped(tx, ty) * pc.height_scale;
+        if (cx < 0 || cy < 0)                                    // 外扩带：压 ε 藏在邻居表面之下（§3.3）
+            hw -= pc.overlap_epsilon * cs;
+
+        const vec3 world = vec3(float(cx) * cs, float(cy) * cs, hw);
+        gl_MeshVerticesEXT[i].gl_Position = pc.vp * vec4(world, 1.0);
+        vUV[i] = vec2(float(cx), float(cy));
     }
 
-    // 对角线约定固定：(TL,BL,TR) + (TR,BL,BR)
-    gl_PrimitiveTriangleIndicesEXT[compact * 2u + 0u] = uvec3(base_vid + 0u, base_vid + 2u, base_vid + 1u);
-    gl_PrimitiveTriangleIndicesEXT[compact * 2u + 1u] = uvec3(base_vid + 1u, base_vid + 2u, base_vid + 3u);
+    // 图元：格 (cxl,cyl) → 顶点 (cxl,cyl)(cxl,cyl+1)(cxl+1,cyl)(cxl+1,cyl+1)
+    // 对角线约定固定 (TL,BL,TR) + (TR,BL,BR)，全局一致
+    for (uint i = li; i < ptot; i += 64u)
+    {
+        const uint cell = i >> 1u;
+        const uint cxl  = cell % cols;
+        const uint cyl  = cell / cols;
+        const uint v00  = cyl * vpc + cxl;
+        const uint v01  = (cyl + 1u) * vpc + cxl;
+        const uint v10  = v00 + 1u;
+        const uint v11  = v01 + 1u;
+        gl_PrimitiveTriangleIndicesEXT[i] = ((i & 1u) == 0u)
+            ? uvec3(v00, v01, v10)
+            : uvec3(v10, v01, v11);
+    }
 }
 ```
 
@@ -546,28 +686,38 @@ void main()
 "$VULKAN_SDK/Bin/spirv-val.exe" --target-env vulkan1.3 terrain.mesh.spv
 ```
 
-**V3 裙边片段**（接在 `main()` 的顶点写入之后，示意）：
+**V3b 外扩重叠（已并入上方骨架）**：
 
-```glsl
-// 每个边缘格额外向 -Z 挤出一圈三角形遮裂：以格为单位判断是否贴 tile 边缘，
-// 贴边时把该格的边缘顶点复制一份，高度改为 h - pc.skirt_depth。
-// 裙深取法见 §3.3；占用额外的 max_vertices/max_primitives 预算，需同步调整 layout 常量。
+- 组 `k` 的格域起点 `cx0 = 8k − 1`（**`−1` 就是外扩格**，故格号走 `int`）；
+- `cols/rows = min(cells − 8k, 8) + (k == N−1 ? 1 : 0)` ⇒ 每轴最后一个组多 1 格；
+- 外扩格（`cx < 0 || cy < 0`）高度 −= `overlap_epsilon × 格世界尺寸` ⇒ 藏在邻居表面之下；
+- **无第二套索引逻辑、无绕序翻转**（`(TL,BL,TR)+(TR,BL,BR)` 全局一致）—— 这是相对向下裙边的主要简化；
+- 高度走**原生 16 位**：`buffer_reference_align = 2` + `float(uint(h))` 两级转换（§2.6）。
+
+本骨架已用本机 SDK 实测通过：
+
+```bash
+glslc --target-env=vulkan1.3 -o terrain.mesh.spv terrain.mesh   # 9608 B
+spirv-val --target-env vulkan1.3 terrain.mesh.spv               # 零 error
+# capability: MeshShadingEXT / PhysicalStorageBufferAddresses / Int64 / StorageBuffer16BitAccess
+# OutputVertices 128 / OutputPrimitivesEXT 192（声明上限 ≥ 实产 ≤100/≤162）
+# 对齐: OpLoad %ushort Aligned 2 / OpLoad %TerrainTile Aligned 4 / ArrayStride 2, 32
 ```
 
 ### C++ 侧 push constant 对应结构（104B）
 
 ```cpp
-struct TerrainPushConstants            // std430/标量布局，无需额外填充
+struct TerrainPushConstants            // std430 / 标量布局，104B
 {
     glm::mat4     vp;                  // 64
     uint64_t      addr_heights;        // 8
     uint64_t      addr_tiles;          // 8
-    uint32_t      tile_index;          // 4
-    uint32_t      heights_stride;      // 4
+    uint32_t      tile_index;          // 4（直发期用；ICB 期由 gl_DrawID 取代）
+    uint32_t      heights_stride;      // 4  texel/行
     float         texel_world_size;    // 4
     float         height_scale;        // 4
-    float         skirt_depth;         // 4
-    uint32_t      _pad;                // 4
+    float         overlap_epsilon;     // 4  外扩带下沉量（× 格世界尺寸，默认 1e-3）
+    uint32_t      world_texels;        // 4  世界高度缓冲边长（clamp 用）
 };
 static_assert(sizeof(TerrainPushConstants) == 104);
 ```
@@ -598,10 +748,10 @@ grep -E "maxMesh|meshShader|bufferDeviceAddress|shaderInt64|maxPushConstants|spa
 | 术语 | 含义 |
 |---|---|
 | 页（page） | 高度数据的流式单位，固定 texel 尺寸，落在高度缓冲的一段整数元素偏移上 |
-| tile | 绘制单位：`cells × cells` 个格 + lod；"画在哪、读哪"的唯一权威 |
-| 格（cell） | tile 内一个四边形，对应 mesh 阶段一个线程（4 顶点 + 2 图元） |
-| 组（workgroup） | 64 线程，覆盖 8×8 格 |
+| tile | 绘制单位：`cells × cells` 个自身格（网格另加 1 格外扩带）+ lod；"画在哪、读哪"的唯一权威 |
+| 格（cell） | tile 内一个四边形；`lod` 决定它的 texel 跨度（网格按**顶点槽**发射，不再是 1 线程 1 格） |
+| 组（workgroup） | 64 线程，覆盖 8 格（每轴最后一组 9 格，含外扩带），产 ≤100 顶点 / ≤162 图元 |
 | 裂缝 / T 型缝 | 相邻 LOD 共享边上，细侧折线与粗侧弦的几何偏差 |
-| 裙边（skirt） | 边缘额外下压的一圈三角形，用于遮盖裂缝 |
+| 外扩重叠带 | 每个 tile 向 −X/−Y 各多生成的 1 格网格，与邻居几何重叠以覆盖 LOD 接缝（取代向下裙边） |
 | 高度界金字塔 | 每层 tile 的高度 min/max 树，用于剔除与 LOD 误差度量（**不是** mipmap） |
 | BDA | `VkDeviceAddress` / GLSL `buffer_reference`，shader 直接用 64 位地址寻址缓冲 |

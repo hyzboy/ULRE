@@ -310,6 +310,12 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 
 **待澄清**：`addr_mesh_draw_params` 收敛后是否保留 push 侧兼容字段（现为双源，改动波及 mesh shader 全部 `MeshDrawCommandsRef(pc_root...)` 调用点）。
 
+**与地形方案的交叉（2026-09-28）**：`doc/terrain-implementation-plan-v2.md` §3.1 已定案往**同一张**
+`HGL_ROOT_ADDRESSES_FIELD_LIST` 追加 **4 个字段**（`addr_terrain_heights` / `addr_terrain_tiles` /
+`addr_terrain_frame` + `terrain_tile_index` + `_pad_terrain`，`pc_root` 80B → **112B**），手法是 `PushRootAddresses`
+**末尾追加带默认值的参数**（现有调用点零改动）。建议 `addr_mesh_draw_params` 的去留与它**一起决定** ——
+同一张表在两次改动里各动一次，正是本档 §8 要收敛的"双源"问题。
+
 ---
 
 ### 6.6 阶段 6 — 删 asset 绑定链 ~~（待执行）~~ **已完成**

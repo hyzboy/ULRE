@@ -268,6 +268,13 @@ const mat4 l2w_m = l2w.mats[transform_id];
 
 ## 4. 总结：Mesh Shader 编写纪律
 
+0. **组级固定产量模式（第三种模式，见 §5 地形）**：有些模式的产量与 invocation 数无关，而是**组级常量**
+   （如地形一个组固定产出 `10×10 = 100` 顶点 / `9×9×2 = 162` 图元）。此时
+   `SetMeshOutputsEXT(v, p)` 的 v/p 必须是**编译期常量表达式**（由 `N`、`cells_per_group` 算出，
+   `N = cells_per_group × local_size`），**不得依赖任何运行时数据**（否则又踩 §2 的"不同 invocation 传不同值"）；
+   格/槽位用线性分摊写法：`for (uint c = gl_LocalInvocationIndex; c < cell_count; c += group_size)`，
+   而不是 `每线程固定 4 格 × 64 线程`（后者在 81 格时必然越界）。
+
 1. **索引三件套**：全局数据索引 = `gl_WorkGroupID.x * group_size + gl_LocalInvocationIndex`；输出槽索引 = `gl_LocalInvocationIndex * (每线程输出量)`（per-threadgroup 0..max-1）；图元槽同理。
 2. **SetMeshOutputsEXT 是整组共享**：所有 invocation 必须传**一致的值**（用可被每个 invocation 独立算出的本组有效量 `min(group_size, total - group*size)`），且 ≤ max_vertices/max_primitives。越界 invocation 提前 return（在 SetMeshOutputsEXT 之后）。
 3. **多顶点/多属性 per-thread 处理 = 全直读 SSBO**：绝不依赖 `LoadVertexData()` 的全局变量（Position/ColorIndex/TransformID/Width），那些变量在 mesh 模式不赋值 → NaN。
@@ -278,4 +285,9 @@ const mat4 l2w_m = l2w.mats[transform_id];
 
 - `src/ShaderGen/meshgen/MeshTemplateEmitter.h`：LineQuad 模式（已修复的正确实现，作为模板）
 - `src/ecs/support/line/LineRenderPipeline.cpp`：`MESH_GROUP_SIZE = 64`、`LinePushConstant`（20B）、`groupCountX = ceil(line_count / 64)`
+- **地形 `MeshShaderMode::TerrainGrid`**（`doc/terrain-implementation-plan-v2.md` §4.1、§6.2 触点 3/4）：
+  **组级固定产量**模式的第一个实例（每 workgroup 固定 100 顶点 / 162 图元，与 invocation 数无关）。
+  它与既有模式不兼容的根因正是本档 §2 的 per-threadgroup 语义 —— 现有 `MeshShaderMode` 描述子是
+  "线程数 × 每线程产量"的乘法模型，地形的产量是**组级常量**，所以必须**新增组级接口**而不是靠调 `local_size`
+  去凑 `max_vertices`（凑法在 81/100 这种非 2 的幂产量上必然浪费或越界）。
 - 后续工作：VertexPassthrough 通用模式（`EmitMeshTemplateDocument` 的另一分支）有**同样的线程模型隐患**（`vid = gl_LocalInvocationIndex` 缺 `gl_WorkGroupID`、`SetMeshOutputsEXT` 固定 max 无 per-group 裁剪）——通用 mesh 化时须按 §4 纪律重写。

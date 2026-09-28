@@ -1,5 +1,18 @@
 # GPU-Driven 地形渲染实现方案（MeshShader / BDA / LOD）
 
+> ⚠ **本档已被取代**：v1（2026-09-24）基于已过期的引擎基线（`SCENE_SET`+`BINDLESS_SET` 双集、
+> Camera/Viewport/Shadow 走 UBO 绑定、`pc_root` 72B），且其中「LOD 接缝不需要裙边」的结论**已被推翻**。
+> 实现请以 **`doc/terrain-implementation-handbook.md`**（2026-09-28 重组的实现手册，唯一开工依据）为准；
+> 推导过程在 `doc/terrain-implementation-plan-v2.md`；本档保留作历史与源工程细节索引。
+>
+> **2026-09-28 第二批口径变更（本档正文未逐处重写，读到冲突处一律以 v2 为准）**：
+> ① 不走 **Task Shader**，改 **ComputeShader + MeshShader**；
+> ② 阶段梯 T2 拆成四步（多 tile → LOD → **外扩重叠遮缝** → ICB 化），开发期以稳定性为准、不追性能；
+> ③ **遮缝由「向下挤出裙边」改为「与邻居外扩重叠」**：预算 117/192 → **≤100/≤162**，
+>    并**删掉 `skirt_depth` 与裂缝深度标定**（判据改为：无孔洞 + 平坦区无 z-fighting + 关掉外扩能复现裂缝）；
+> ④ 高度/tile 表地址**改走 `pc_root`（D1-B，5 个新字段：3 地址 + 1 索引 + 1 补齐 ⇒ 80B → 112B）**，不再进全局地址表；
+> ⑤ 对齐与容量约束、以及「高度走 buffer 不是纹理」的理由见 v2 **§2.6**。
+
 > **来源**：把 OpenGL 4.6 地形工程（`D:\AIProgramming\Terrain`，下文称"源工程"）的地形技术
 > 迁入 ULRE 的 Vulkan + MeshShader 管线。**不是逐行翻译**——源工程的数据组织方式（VBO/EBO、
 > CPU 分块、法线图烘焙）在 ULRE 里大部分要换掉，只保留技术原理。
@@ -16,20 +29,76 @@
 
 ## 0. 决策速览
 
+> ⚠ **先读 §0.1**：引擎基线在 2026-09-28 已变（唯一 `Bindless(0)` 集 / 相机走 BDA / `pc_root` 80B /
+> 全局地址表按 8 帧槽分份）。本表与下文凡与 §0.1 冲突处，**以 §0.1 为准**。
+
 | 议题 | 决策 | 依据 |
 |---|---|---|
 | 网格生成 | MeshShader 内由索引生成 XY，Z 取高度场 | 无 VBO/EBO，CPU 只提交 tile 记录 |
 | 顶点数据源 | 无顶点缓冲（`VertexInputMode::None` 同款自持路径） | CharQuad 模式已有先例 |
 | 高度存储 | **BDA storage buffer**（非 texture、非 sparse） | mesh 阶段无法访问 bindless 纹理集；引擎全 BDA |
 | 分块 | 两级：**页**（流式单位）+ **tile**（绘制单位） | 避免 tile 跨页两级间接 |
-| Texture2DArray | 不用 | 层数上限 256；整数组共享一条 mip 链，无法按层流式 |
+| Texture2DArray | 不用 | 规范下限 **256** 层，但**本机 `maxImageArrayLayers = 2048`**（1024 tile 其实放得下）⇒ 层数不是硬理由；硬理由是 **mesh 阶段读不到纹理（E7）**、整数组共享一条 mip 链无法按层流式、以及本方案本就不需要 mip（§2.4） |
 | Sparse texture | **不做**（远期可选） | 引擎零 sparse 支持；tile 表已承担虚拟化 |
 | Mipmap | 高度图**不做 mip**；做 per-tile min/max 金字塔 | mip 破坏 LOD 无缝前提；远景开销在顶点数不在采样 |
 | 参数传递 | 整数域贯穿到**算出缓冲偏移**为止 | 浮点仅用于最终坐标/高度 |
 | 世界坐标精度 | CPU double + tile 局部小浮点 | camera-relative 尚未启用（`Camera.cpp:64-65`） |
 | 绘制路径 | 专用 `TerrainRenderPipeline`（照 `LineRenderPipeline` 四件套） | 不改通用 4-ID 批处理 |
-| 裂缝处理（LOD 接缝） | 2 的幂步长保证**顶点级重合**；边内部 T 型缝用**裙边**消除（形变为可选） | 见 §3.3 |
+| 裂缝处理（LOD 接缝） | 2 的幂步长保证**顶点级重合**；边内部 T 型缝用**外扩重叠**覆盖（2026-09-28 改；原"向下裙边"已弃用） | 见 §3.3 与 v2 §5.2 |
 | 远景降载 | 2 的幂 LOD（步长翻倍 → 顶点数 1/4） | 顶点/图元数才是瓶颈 |
+
+---
+
+## 0.1 基线更新（2026-09-28）：S1/S2/S3 地址与描述符收敛
+
+> 本文档首版写于 2026-09-24（当时基线 = `SCENE_SET`+`BINDLESS_SET` 双集 / Camera·Viewport·Shadow
+> 走 UBO 绑定 / `RootAddresses` 72B）。此后引擎在另一条工作线上完成了**全局地址统一 S1/S2/S3 +
+> Scene 集退场**（`doc/global-addresses-bda-unification-plan.md`、`doc/scene-ubo-bda-migration-handoff.md`），
+> 契约已变。下表是差异清单与本文档的修订口径：**下游各节凡与本表冲突，以本表为准。**
+
+| 契约 | 首版基线（已过期） | 现基线（2026-09-28 实测） | 出处 |
+|---|---|---|---|
+| 描述符集 | `SCENE_SET=0` + `BINDLESS_SET=1` | **唯一集合 `BINDLESS_SET=0`**；Scene 集整体退场（44 文件 +132/−1285） | `e59e65620`、`ShaderLibrary/common/descriptor_macros.glsl` |
+| 相机数据 | Scene 集 Camera UBO 绑定 | **BDA 宏、无绑定**：`#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]` | `86535dbdb`、`ShaderLibrary/ubo/scene_ubo.glsl:149` |
+| viewport / sky / shadow | Scene 集内 UBO 绑定 | 地址进全局地址表，**宏名与成员名不变** ⇒ 读点零改动 | `57cb02db6` / `067ce9e3f` / `24b2b785d` |
+| push descriptor | 有（viewport 等路径） | **整条路径已删**（函数指针 + 设备特性 + 使用标志） | `e59e65620` |
+| `pc_root` / `RootAddresses` | 72B = 8×uint64 + 2×uint32 | **80B = 9×uint64 + 2×uint32**，首字段 `addr_global_addresses`；布局断言**按 X 列表自动推导** | `7290a9207`、`ShaderBufferSources.h:267-278` |
+| 全局地址表 | 64B UBO、Set 0 binding 2 | **SSBO、无绑定无集**：基址 `pc_root.addr_global_addresses`，按 **`HGL_FRAME_SLOT_TOTAL=8` 帧槽**分份（槽步长 128B、16B 对齐） | `7290a9207`/`966fb3d7e`、`inc/hgl/graph/ubo/GlobalAddresses.h` |
+| 地址归口口径 | —（隐含"pc_root 一张表装全部"） | **全局/长期有效 → 全局地址表（按帧槽）；每批/每材质/每字体 → `pc_root`**（同帧内逐批不同，标量表装不下） | `GlobalAddresses.h:18-20`、`RootAddressPush.h:31-43` |
+| 帧槽划分 | — | `HGL_FRAME_SLOT_TOTAL=8`，**主帧槽 `[0,HGL_FRAME_SLOT_MAIN=4)` 与离屏槽 `[4,8)` 不相交**；ring 深度必须 = 槽总数（小于会别名覆写） | `inc/hgl/common/RenderOptions.h:16-33` |
+| 材质声明描述符 | `ubos=[...]` 可声明 | **硬不变量：definition 声明的描述符必须为空**（TOML `ubos` 键、授权规则表、`ubo_requirements` 全删） | `e59e65620` |
+| 新增门 | — | `S.global-addresses-struct-parity`（C++ 表结构 ↔ GLSL `GlobalAddressesRef` 同序同型），门基线 **39 PASS / 0 FAIL** | `243d2d5ff` |
+| 上传/内存 | 逐次 staging 分配 + CPU memcpy | **环形 Staging 池**（双队列各 16MB、256B 切片、>8MB 降级独立缓冲）+ UMA 零拷贝（`TRANSFER_SRC` 锁 `CPUVisible`） | `4170b23a9`/`61fc1ed90`、`doc/async-texture-upload-and-bindless.md` |
+
+### 0.1.1 对本地形方案的直接影响（四条）
+
+1. **地形表地址的落位变了**（原 §3.4 的 A/B 要按新口径重读）：`pc_root` 现在是"1 张表基址 + 本批/每材质地址"，
+   不再是"8 张表地址"。地形两张表可走 **全局地址表**（见 §3.4-A）或 **`RootAddresses`**（见 §3.4-B）。
+2. **相机矩阵不需要任何绑定**：`camera` 宏含 `vp` / `inverse_vp` / `frustum_planes[6]` / `pos` /
+   `use_reversed_z` —— 地形剔除与 reversed-Z 所需字段全在，mesh/task 阶段直接可用。
+3. **在途帧问题有了引擎机制**（原 §2.9 的"引擎不代管"已部分失效）：照 L2W / CameraInfo / shadow 的样，
+   地形的每帧缓冲做成 `HGL_FRAME_SLOT_TOTAL` 深度的 ring 并按帧槽取地址；**深度小于槽总数会别名覆写**。
+4. **三条硬规矩**（S2/S3 用事故换来的）：
+   - 地址必须在 **buffer 物化处**注册（只在"每帧同步函数"里注册 ⇒ 某路径没跑到 ⇒ 地址恒 0 ⇒
+     shader 解引用 0 基址 ⇒ `vkQueueSubmit2 failed with result -4` = **设备丢失**，校验层只报次生错误）；
+   - **C++ 表结构与 GLSL `GlobalAddressesRef` 必须同批改**（S2d 漏一行 ⇒ 材质静默回退默认材质：
+     画面照常有内容、门全绿、0 校验层 —— 教训见 `global-addresses-bda-unification-plan.md` §2.3）；
+   - 每个渲染门**单独 grep `result -4`**（校验层消息数 0 也可能是崩完之后的次生状态）。
+
+### 0.1.2 与 `doc/Terrain Vulkan 1.4.rtf` 的差异与裁决
+
+`doc/Terrain Vulkan 1.4.rtf`（2026-09-24，Task+Mesh / 81 顶点拓扑 / 相机相对）是**更新的设计意图**，
+冲突处按其口径执行；但该文档有两处**与 2026-09-28 的引擎基线冲突**，必须改：
+
+| RTF 写法 | 问题 | 裁决 |
+|---|---|---|
+| `layout(set = 0, binding = 0) uniform CameraData { mat4 relative_vp; ... } u_cam;` | Scene 集已退场、Camera UBO 已删（`86535dbdb`）；且**材质定义声明描述符已违反硬不变量** | 删绑定，改用 `camera.vp` / `camera.pos` 宏（BDA，零绑定） |
+| §0「Push Descriptors + 精简 PC ≤32B」 | push descriptor 路径已整体删除 | 保留"精简 PC"目标，但**不能**用 push descriptor；相机走 `camera` 宏后 PC 里本就不需要 `mat4` |
+| PC 里直接放 `addr_heights` / `addr_tiles`（私有 PC 布局） | `pc_root` 是引擎统一结构（`camera` 宏必需的 `camera_id` + `addr_global_addresses` 都在里面），私有 PC 会丢根入口 | 两选一：**(a) 进全局地址表**（§3.4-A，本档推荐）；**(b) 加进 `RootAddresses`**（§3.4-B） |
+| 9×9 = 81 顶点对应 8×8 格；`max_vertices=128, max_primitives=192`；外扩重叠后最坏 10×10 ⇒ ≤100 顶点 / ≤162 图元 | 与本文档原"每线程 1 格 = 4 顶点"冲突 | **采纳 RTF**：顶点复用把 8×8 格的顶点数 256→81；117 ≤ 256、192 ≤ 256 —— **NV 的 256 下限设备同样成立** |
+| Task Shader 原生级联分发（替代 compute+indirect+count） | 引擎有 stage 级管道（`ShaderStageDef.h:11` 已定义 Task 位，GLSLCompiler 映射 `task`），但 meshgen **没有 task 阶段发射** | 采纳为方向，成本计入 §4-T4：meshgen 需新增 task stage 发射；compute+indirect 作为可回退路径保留 |
+| 高度用原生 `uint16_t[]`（`storageBuffer16BitAccess`） | 与本文档原"uint32 装 16 位"不同 | **采纳 RTF**（省一半带宽）；本机实测 `storageBuffer16BitAccess=true` / `shaderInt16=true`（该路径可走），T1 启动仍应断言 |
+| 法线在 mesh 阶段中心差分 | 本文档原为片元 `dFdx/dFdy` | **采纳 RTF**（低模无刻面感，且省一次法线贴图） |
 
 ---
 
@@ -113,22 +182,37 @@
 | `MeshDrawCommand` | 8B（`geometry_id` + `first_instance`） | `:93-127` | 间接命令面 |
 | `DrawItem4ID` | 16B（transform/geometry/material/texture） | `:148-186` | 4-ID 渲染项 |
 | `GeometryAABB` | 32B（center.xyz+r / extents.xyz） | `:188-198` | 计算着色器视锥剔除用 |
-| **`RootAddresses`** | **72B**（8×uint64 + 2×uint32） | `:206-216`，断言 `:245-264` | push constant 承载的全局表地址 |
+| **`RootAddresses`** | **80B**（9×uint64 + 2×uint32，首字段 `addr_global_addresses`） | `:267-278`，布局断言按 X 列表自动推导 | push constant：**表根入口 + 每批/每材质地址 + `camera_id`** |
 
 全部由 `HGL_*_FIELD_LIST` 宏列表单源生成（CPU 成员 / GLSL 字段名 / GLSL 类型 / 布局断言），
 GLSL 侧由 `MeshShaderHeaderGen.h:29+`（mesh 阶段）与 `MaterialShaderEmitter.cpp:512+`（片元阶段）遍历发射。
 
-### 2.4 关键先例：`RootAddresses` 承载全局数据表
+### 2.4 地址承载的两条既有通路（地形表落位见 §3.4）
 
-`ShaderLibrary/vertex/s1_text_char_quad.glsl:45` 的写法就是模板：
+**(a) 全局地址表 `GlobalAddresses`（S1/S2 后的主通路）** —— SSBO、无绑定无集，
+基址 = `pc_root.addr_global_addresses`，表内每字段一个 64 位地址：
+
+```glsl
+// ShaderLibrary/ubo/scene_ubo.glsl:102-119
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer GlobalAddressesRef
+{
+    /* …8 个全局字段（含 addr_camera_info）… */
+    uint64_t addr_sky; uint64_t addr_viewport; uint64_t addr_shadow;   // 每帧槽字段
+};
+#define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
+#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]
+```
+
+**(b) `pc_root` 直挂（每批 / 每材质 / 每字体）** —— 文本三表就是先例
+（`ShaderLibrary/vertex/s1_text_char_quad.glsl:45`）：
 
 ```glsl
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer TextCharInfoRef { TextCharInfo chars[]; };
 #define sbo_char_info TextCharInfoRef(pc_root.addr_text_char_info)
 ```
 
-文本三表（`addr_text_char_info/style/instance`）正是这样挂进 `RootAddresses` 的
-（`ShaderBufferSources.h:212-214`）→ **地形表照此办理即可，不需要任何描述符/布局改动**。
+**归口口径**（`GlobalAddresses.h:18-20`）：全局 / 长期有效 → (a)；同帧内逐批不同 → (b)。
+地形两张表两条路都合法，选法见 §3.4。
 
 ### 2.5 专用渲染管线的四件套先例
 
@@ -153,7 +237,11 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer TextCharInfoR
 - 双轨分流现状：含 meshlet 的几何按 `meshlet_count` 发射，其余走 `VertexPassthrough`
   （`doc/meshlet-geometry-pipeline-implementation.md` §6.3，`PrimitiveBatchPipeline.cpp` 写命令处）。
 
-### 2.7 限制一：mesh 阶段**不能**采样 bindless 纹理
+### 2.7 限制一：mesh 阶段**不能**采样 bindless 纹理（2026-09-28 复核：仍成立）
+
+> 复核：`VKBindlessTextureManager.cpp:42/48/54`（另有 `:220/226/232`）六个 binding 的 `stageFlags`
+> 仍是 `FRAGMENT|COMPUTE`；集合号已收敛为 `BINDLESS_SET=0`，且 bindless 里**只剩纹理 / Cube / 采样器**
+> （viewport / sky / shadow / camera 已全部走 BDA）。
 
 `src/Vulkan/VKBindlessTextureManager.cpp:42/48/54`：bindless 纹理/Cube/采样器三个 binding 的
 `stageFlags` 都是 `FRAGMENT|COMPUTE`。mesh 阶段访问会违反描述符-阶段一致性
@@ -173,11 +261,15 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer TextCharInfoR
 - 结论：地形**不能**依赖 camera-relative。精度策略 = CPU 侧 `world_position_double` 累加 +
   shader 内 tile 局部小坐标（≤2²⁴ 的整数在 float 中精确）。大世界精度接入列为 T5。
 
-### 2.9 限制三：在途帧资源仍是单份
+### 2.9 在途帧：引擎已有"按帧槽分份"机制（首版结论已过期）
 
-`doc/backlog.md` A1：Camera/Viewport UBO 与 L2W ring 段是**单份 host-visible 内存**，
-per-frame 多份化未做。→ 地形的"compute 写 tile 表 / 间接命令"必须**自己按帧多份化**
-（环形或双缓冲），不能指望引擎兜住写-读竞态。
+- 全局地址表按 `HGL_FRAME_SLOT_TOTAL=8` 切 8 槽；CameraInfo 按「相机序号 × 槽」分份
+  （行号 = `camera_id*8 + 槽`）；shadow ring 一槽一份；L2W ring 深度 = 槽总数（`RenderOptions.h:33`）。
+- **但** Camera / Viewport 仍是**单份 buffer + 内容覆盖写、地址恒定**（见
+  `global-addresses-bda-unification-plan.md` §2.2d 的更正），`backlog.md` A1 的口径要按这条修正理解。
+- 对地形的结论：**tile 表 / 间接命令数组 / count 做成 `HGL_FRAME_SLOT_TOTAL` 深度的 ring 并按帧槽取地址**
+  （照 L2W / CameraInfo 的样）。**ring 深度 < 槽总数会别名**：离屏槽覆写主帧在途数据，
+  症状是"整帧只剩清屏色"（`RenderOptions.h:24-33` 记录的事故）。
 
 ### 2.10 占位现状：`PositionSourceSpec::TerrainHeightmapGrid` 是个空壳
 
@@ -263,8 +355,9 @@ namespace hgl::graph::ssbo
 
 ### 3.3 LOD 接缝（裂缝）的本质与消除手段
 
-> **更正**：本方案早期版本曾断言"2 的幂步长 + 双线性采样即可无缝、不需要裙边"——**该结论错误**，
-> 现按下方结论执行。差别很重要：它决定了 T3 是否必须实现裙边。
+> **更正**：本方案早期版本曾断言"2 的幂步长 + 双线性采样即可无缝、不需要裙边"——**该结论错误**。
+> **再次更正（2026-09-28）**：遮缝手段已定为**外扩重叠**（不是向下裙边），预算与判据全部改变，
+> **以 v2 §4.1/§5.2 为准**；下面这几段只保留"为什么必须有遮缝手段"的论证。
 
 **T 型交点缝是固有几何问题，不能靠采样方式消除。**
 
@@ -277,18 +370,18 @@ namespace hgl::graph::ssbo
 
 | 手段 | 说明 | 代价 | 本方案 |
 |---|---|---|---|
-| **a. 裙边（skirt）** | tile 边缘额外向下挤出一圈三角形遮住缝隙 | 少量额外三角形；需确定深度 | **T3 默认** |
-| b. 顶点形变（geomorph） | 细侧过渡带顶点向粗侧弦插值 | 需 morph 因子与过渡带判定 | T3+ 可选优化 |
-| c. 过渡带缝合 | 粗 tile 外圈改用细步长 | tile 需知邻居 LOD，网格不再均匀 | 不采用 |
+| **a. 外扩重叠（现行方案）** | 每个 tile 的网格向 −X/−Y 各多生成 1 格，与邻居几何重叠 ⇒ 缝被**覆盖** | 顶点 81→100、图元 128→162；**无第二套索引逻辑、不需要深度参数** | **T2.3 采用（v2 §5.2）** |
+| b. 向下裙边（skirt） | tile 边缘额外向下挤出一圈三角形把缝"堵住" | 独立索引逻辑 + 绕序 + 裙深参数 + **需按裂缝深度标定** | **已弃用**（2026-09-28） |
+| c. 顶点形变（geomorph） | 细侧过渡带顶点向粗侧弦插值 | 需 morph 因子与过渡带判定 | 可选优化，不进开发期 |
+| d. 过渡带缝合 | 粗 tile 外圈改用细步长 | tile 需知邻居 LOD，网格不再均匀 | 不采用 |
 
 **双线性采样的真实作用**：把"高度函数"与"网格分辨率"解耦（网格点落在 texel 之间时避免阶梯），
 并让不同 LOD 在任意位置取到同一函数值——这使裂缝**有界且可量化**（是 a/b 的前提）。
 在"2 的幂 + texel 对齐"时它退化为直接取纹素（fraction = 0），因此**它不是消裂手段**。
 
-**裙深怎么定（可量化）**：裂缝深度 = 共享边上 `|粗表面高度 − 细表面高度|` 的最大值。
-两种取法：(1) 保守 `skirt_depth = k·(height_max − height_min)`（k ≈ 0.5~1，用 §3.2 已有的
-高度界字段，零额外数据）；(2) 精确：由父级 tile 的误差度量给出（更紧，但需层级数据）。
-判据：`skirt_depth ≥ 实测最大裂缝深度`（见 T3 与 §5）。
+**~~裙深怎么定~~（已删除）**：外扩重叠的 ε 只需要"避开与邻居表面共面"，**不需要覆盖裂缝深度**
+⇒ 不需要任何裂缝深度测量与标定，也不需要上面那两种取法。判据见 v2 §5.2 三条：
+边界带无孔洞 / 平坦区多帧截图无 z-fighting / **关掉外扩（`flags` 位0）能复现裂缝**。
 
 **对角线约定**：格内固定按 `(TL,BL,TR)+(TR,BL,BR)` 或 `(TL,TR,BR)+(TL,BR,BL)` 之一对角化，
 全局一致（不一致只造成亚 texel 级差异，但保持一致成本为零）。
@@ -296,19 +389,28 @@ namespace hgl::graph::ssbo
 **LOD 级差约束**：网格步长必须为 2 的幂（粗格点坐标 ⊂ 细格点坐标）——主流地形方案的通行约束，
 本方案沿用。它保证顶点级重合，把裂缝压到"可量化的最小"。
 
-### 3.4 数据注入通路（推荐 A，备选 B）
+### 3.4 数据注入通路（新基线上的两条路）
 
-**A（推荐）：扩展 `RootAddresses`。** 与文本三表完全同构：
-`HGL_ROOT_ADDRESSES_FIELD_LIST` 追加 `addr_terrain_pages` / `addr_terrain_tiles`，
-push constant 72B → 88B（规范保证下限 128B，安全）。
-- 收益：单一真源、零描述符改动、mesh 阶段可直接引用（`pc_root.addr_terrain_tiles`）。
-- 成本：全局 push constant 结构变化（两侧均由同一宏列表生成，无手工同步风险）。
-- 必须同时更新 `RootAddressesLayoutValid()`（`ShaderBufferSources.h:245-264`）里
-  硬编码的 `i < 8` 与 `offsets[8]/[9]` 常量。
+前置：`pc_root` 已是"1 张表基址（`addr_global_addresses`）+ 每批/每材质地址 + `camera_id`"；
+`camera` 宏经全局地址表取相机行 ⇒ **地形不需要任何描述符 / 绑定**。
 
-**B（备选）：新增全局行类型**（`GlobalSSBOType` + `GlobalRowTypeTraits` + 材质行里存 uint64 地址）。
-零全局 push constant 改动，但要新增行类型、材质 recipe 接线，且地址要经 `addr_mtl_data_addrs`
-二级解引用，链路更长。仅当"不允许动全局 push constant"时选它。
+**A（推荐）：进全局地址表 `GlobalAddresses`。**
+- 高度页缓冲（静态、长期有效）→ 加进**全局字段段**（`addr_terrain_heights`，一行）。
+- tile 表（每帧重建）→ 加进**每帧槽字段段**（`addr_terrain_tiles`），与 `addr_shadow` 同形
+  （那个就是"每帧槽一份"的现成先例：`ring[i] ↔ 帧槽 i`）。
+- 收益：`pc_root` 不变大（仍 80B）、地址天然按帧槽安全、shader 侧只多两行宏
+  （`#define terrain_heights TerrainHeightsRef(global_addresses.addr_terrain_heights)`）。
+- 成本：动 `GlobalAddresses` ⇒ **C++ 与 GLSL `GlobalAddressesRef` 必须同批改**
+  （门 `S.global-addresses-struct-parity` 会守；记住 S2d 教训：漏一行的症状是**材质静默回退**）。
+
+**B（备选 → 2026-09-28 已定案选 B）：加进 `RootAddresses`（`pc_root`）。** 与文本三表完全同构：
+`HGL_ROOT_ADDRESSES_FIELD_LIST` 追加 **5** 行（`addr_terrain_heights` / `addr_terrain_tiles` / `addr_terrain_frame`
++ `terrain_tile_index` + `_pad_terrain`），`pc_root` 80B → **112B**（规范保证下限 128B，仍安全；尾部 u32 必须成对补齐）。
+> 定案理由与直发期的 per-draw tile 索引有关；**GLSL 侧 `pc_root` 块由生成器按同一 X 列表发射**
+> （`MeshShaderHeaderGen.h:28`、`MaterialShaderEmitter.cpp:510`），**没有手写的 GLSL 块要同步改** —— 见 v2 §3.1/§6.2 触点 8。
+- 收益：地址随命令缓冲自带时序，**不涉及帧槽语义**；适合将来"每 tile 一个基址"的形态。
+- 成本：每批次多推 16B；且要动 `PushRootAddresses` 的位置参数（见 §6-R1）。
+- 布局断言已自动化（按 X 列表推导），首版担心的"手列下标静默过期"已被引擎修掉。
 
 ### 3.5 参数传递的整数纪律
 
@@ -355,7 +457,7 @@ world_xy  = float(texel) * terrain_texel_size                          // 最后
 | 5 | `src/ShaderGen/builder/GenericMaterialBuilder.cpp:429-456` | 模式决策链加 `TerrainGrid` 分支（含 `max_invocations` 与容量钳制，见下） |
 | 6 | `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:1080-1091`、`:1189-1191` | `[mesh_shader] mode` 已知键校验允许 `TerrainGrid` |
 | 7 | `src/ShaderGen/builder/VertexABIBuilder.cpp:266` 附近 | 与 CharQuad 同类的"无外部顶点输入"分支 |
-| 8 | `inc/hgl/graph/ShaderBufferSources.h:206-216`、`:245-264` | `RootAddresses` 加 `addr_terrain_pages` / `addr_terrain_tiles` + 断言更新；`inc/hgl/graph/RootAddressPush.h:28-39` 加参（**先做 §6 风险 R1 的结构体化**） |
+| 8 | 走 A：`inc/hgl/graph/ubo/GlobalAddresses.h` + `ShaderLibrary/ubo/scene_ubo.glsl:102-117`；走 B：`inc/hgl/graph/ShaderBufferSources.h:267-278` + `RootAddressPush.h:31-43` | 加地形两表地址。**A**：C++ 表 + GLSL `GlobalAddressesRef` 同批改（门 `S.global-addresses-struct-parity` 守）；**B**：X 列表加两行 + `PushRootAddresses` 加参（**先做 §6-R1 的结构体化**） |
 
 **容量与分组（Mesh 输出限制）**
 
@@ -445,16 +547,24 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
   极差 + 屏幕投影尺寸）。
 - 构建 **per-tile min/max 高度金字塔**（四叉树）：供 LOD 误差度量与地平线遮挡剔除
   （**注意：这不是高度图的 mipmap**，是高度界金字塔；见 §3.3 与决策表）。
-- 落实 §3.3：`<<lod` 步长（顶点级重合）、对角线约定统一、**裙边**（裂缝兜底）；
-  裙深取 `k·(height_max − height_min)`，k 由自检实测的裂缝深度反推。
+- 落实（**按 v2 §4.1/§5.2 的新口径**）：`<<lod` 步长（顶点级重合）、对角线约定统一、
+  **外扩重叠遮缝**（网格格域 = `8N+1` 格/边，外扩带高度 −`overlap_epsilon × 格世界尺寸`，
+  `flags` 位0 可关闭作对照）。
 - **T3 验证（两条判据，均可自动判定）**：
   1. **顶点级重合**：相邻粗细 tile 共享边上所有粗格点位置，用细网格插值高度与粗网格顶点高度比较，
      差值必须为 0（浮点严格相等或 < 1e-5）；
-  2. **裂缝量化**：沿共享边密集采样 `|粗表面高度 − 细表面高度|` 取最大值 → 断言
-     `skirt_depth ≥ 该最大值`。这条把"看起来没缝"变成可测的数字；
-     边界截图作为辅助证据。
+  2. **遮缝有效性（成对判据）**：边界带无孔洞；平坦区多帧截图一致（无 z-fighting）；
+     **关掉外扩能复现可见裂缝**。只报"开着没缝"不构成证据（无法区分"遮住了"与"本来就没缝"）。
 
-### T4 — GPU-Driven（compute 生成 tile 表 + 间接命令 + count）
+### T4 — GPU-Driven（两条路：~~Task Shader 原生分发~~ / compute 生成间接命令）
+
+> **2026-09-28 定案**：**Task Shader 路线取消**，只走 compute 生成 tile 表 + 间接命令（v2 §4.2/T3）。
+
+> **路 1（`doc/Terrain Vulkan 1.4.rtf` 的方向，采纳）**：Task Shader 每 workgroup 决策一个 tile，
+> `EmitMeshTasksEXT(N,N,1)` 原生派发，剔除失败发 `EmitMeshTasksEXT(0,0,0)` ⇒ CPU 只发一次
+> `vkCmdDrawMeshTasksEXT(tile_count,1,1)`，**不需要 indirect / count / 归零链路**。
+> 引擎侧成本 = meshgen 新增 task stage 发射（`ShaderStageDef.h:11` 已定义 Task 位）。
+> **路 2（可回退，API 已就绪）**：compute 写 tile 表 + 间接命令 + count。
 
 - compute pass 写：tile 表 + `VkDrawMeshTasksIndirectCommandEXT[]` + count；
   count buffer 用 `CreateDrawCountBuffer`（`VKDevice.h:384-391`），
@@ -466,8 +576,8 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
      且"归零 → append → 消费"三个动作的批次顺序必须正确；
   2. tile 表/命令数组的缓冲需 `STORAGE_BUFFER | INDIRECT_BUFFER`（+ tile 表若 BDA 读需
      `SHADER_DEVICE_ADDRESS`）；
-  3. **tile 表与命令数组按帧多份化**（环形 2-3 份），否则本帧 compute 的写入会被上一帧
-     仍在执行的绘制读到（`doc/backlog.md` A1 明确 per-frame 多份化未做）。
+  3. **tile 表与命令数组按 `HGL_FRAME_SLOT_TOTAL`（=8）深度的 ring 分份、按帧槽取地址**
+     （§2.9）。**深度小于槽总数会别名覆写**，症状 = 整帧只剩清屏色。
 - **T4 验证**：渲染结果与 T3 **逐像素一致**（同相机、同 LOD 策略）；
   CPU 侧统计"每帧 CPU 提交耗时/绘制调用数"应降为 O(1)；
   用 `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` 跑一遍 grep `VUID|error`。
@@ -491,11 +601,14 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
 | Mesh 阶段 BDA 读高度 | `TerrainBasic` | 出图高度与 CPU 侧同索引值一致（同索引抽 10 个点比对） |
 | 边缘组紧凑输出 | `TerrainBasic`（非 2 的幂 grid_dim，如 127/100 格） | 无空洞/无越界（validation layer 零 error；网格无破面） |
 | tile 拼接 | `TerrainTiles` | 8×8 tile 拼合无重复/空洞；共享边 texel 原点自检通过 |
-| LOD 接缝 | `TerrainLod` | 共享边粗格点高度差 == 0；**实测裂缝深度 ≤ skirt_depth**；边界截图无突变 |
+| LOD 接缝 | `TerrainLod` | 共享边粗格点高度差 == 0；未遮缝时**预期可见裂缝**（截图存档）；遮缝后按 v2 §5.2 三条判 |
 | LOD 误差度量 | 同上 | 相机拉远后 tile 数下降、三角数下降（统计日志断言） |
 | 间接绘制 / GPU count | `TerrainGpuDriven` | 与 T3 逐像素一致；绘制调用数 O(1) |
 | 剔除 | 同上 | 视野外 tile 不产生 `groupCountX > 0` 的命令 |
-| 回归（不破坏既有路径） | `SimpleMeshTriangle`、`TextDrawTest`、`LineRenderTest`、`LoadGeometry`、`CascadeShadowMap` | 全部照常出图；`PushRootAddresses` 三个调用点（`LineRenderPipeline:762`/`PipelineMaterialRenderer:173`/`TextRenderPipeline:290`）语义不变 |
+| 地址表改动（走 §3.4-A 时） | `ShaderResourceSchemaRegressionGate` | `S.global-addresses-struct-parity` PASS（门基线 39 PASS / 0 FAIL）；材质未被静默回退默认材质 |
+| 设备丢失排查（每次渲染门） | 任意地形 target | 单独 `grep "result -4"` 为空；出现 `addr_*=0` 警告即 fail |
+| 帧槽正确性 | `TerrainGpuDriven` | 连续 ≥8 帧（跨主帧槽与离屏槽）无"整帧清屏色"；tile 表地址随帧槽变化且不回绕到在途槽 |
+| 回归（不破坏既有路径） | `SimpleMeshTriangle`、`TextDrawTest`、`LineRenderTest`、`LoadGeometry`、`CascadeShadowMap` | 全部照常出图；`PushRootAddresses` 现有调用点（`LineRenderPipeline:772` / `PipelineMaterialRenderer:177` / `TextRenderPipeline:300`）语义不变 |
 
 ---
 
@@ -503,21 +616,25 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
 
 | # | 风险 / 问题 | 默认选择 |
 |---|---|---|
-| **R1** | `PushRootAddresses`（`inc/hgl/graph/RootAddressPush.h:28-39`）是 **11 个位置参数**的裸签名，加参数漏改某个调用点会**静默错位**（引擎已踩过同类坑：`ShaderResourceSchemaRegressionGate` 的参数错位） | **先结构体化再扩字段**：`struct RootAddressSet{VkBuffer/uint64 ...;}` + 单参重载，三个调用点迁移完再 T1。若不愿，至少加一个 `static_assert`/编译期校验并逐点核对 |
+| **R1** | `PushRootAddresses`（`inc/hgl/graph/RootAddressPush.h:31-43`）是 **12 个位置参数**的裸签名——S1 把 `addr_global_addresses` 插到了第 4 位，**风险已应验一次**；再加 `addr_terrain_*` 就是第三次动它 | **先结构体化再扩字段**（`struct RootAddressSet{...}` + 单参重载），或**走 §3.4-A 完全不动这个签名**（这是推荐 A 的一条实际理由）。若都不做，至少逐调用点核对 |
 | R2 | `max_invocations` / 容量在不同设备上下限不同 | 复用现有设备钳制路径（`MeshShaderLimits.h` / `GenericMaterialBuilder` 的 CharQuad 分支模式），T1 就做 |
 | R3 | LOD 级差超过 1 时（跳级）边界仍无缝吗 | §3.3 的条件对任意 2 的幂级差成立（子集性质），但**先按相邻级 ±1 实现并在 T3 自检里覆盖跳级用例** |
 | R4 | `uint16` 高度的世界单位换算精度 | 保留"整数高度 + 单一 `height_scale`"（源工程语义），`height_scale` 为 float、在最后一步相乘 |
 | R5 | 页与 tile 边界不对齐导致的跨页采样 | T2-T4 约束为"页内整数子矩形、tile 不跨页"；跨页支持留到 T5 |
 | R6 | 高度界金字塔（T3）的实现位置 | 先 CPU 侧构建（简单、可自检）；T4 后随 tile 表一起进 compute 的候选，但不是必须 |
 | R7 | 是否复用 `PositionSourceSpec::TerrainHeightmapGrid`（`PositionSourceSpec.h:12`）接入通用批处理 | **不复用**（专用管线更直接）。若希望地形统一走 4-ID 批处理，需先讨论（会与 meshlet 双轨分流耦合） |
-| R8 | 碎片/调试：地形材质的片元配色 | T1 先用纯色 + 导数法线，T2 起再讨论高程着色/材质 splatting（那时才需要材质纹理的 mip） |
+| R8 | 碎片/调试：地形材质的片元配色 | T1 先用纯色 + 法线（法线按 RTF 改 mesh 阶段中心差分），T2 起再讨论高程着色/材质 splatting（那时才需要材质纹理的 mip） |
+| R9 | 地址口径选错（每帧变化的表放进"全局字段"段 ⇒ 在途帧被覆写） | 按 §3.4-A 分段落位：静态高度页 → 全局字段段；每帧 tile 表 → 每帧槽字段段（照 `addr_shadow`） |
+| R10 | 地址为 0 被解引用 ⇒ **设备丢失**（`result -4`），校验层只报次生错误、门可能照常 PASS | 地址在 **buffer 物化处**注册 + 取不到即 fail-fast + 打 `addr=0x… 入表` 日志；每个渲染门单独 grep `result -4` |
+| R11 | 走 §3.4-A 改表结构时漏改 GLSL 一行 ⇒ **材质静默回退默认材质**（画面照常有内容、门全绿） | C++ 与 GLSL 同批改（门 `S.global-addresses-struct-parity`）；渲染型门必须含 ATS / CSM 那类 |
 
 ---
 
 ## 7. 回滚策略
 
 - 每阶段结束打 tag：`terrain-t1` / `terrain-t2` …，回滚 = `git reset --hard <tag>`。
-- **不可逆点只有一处**：`RootAddresses` 扩容（全局 push constant 结构变化）。
+- **不可逆点**（按 §3.4 的选路）：走 A ⇒ `GlobalAddresses` 结构变化（C++ + GLSL 同批，门守）；
+  走 B ⇒ `RootAddresses` 扩容（全局 push constant 结构变化）。两者都应在 T1 落地前打 tag。
   在 T1 落地前先打 `pre-terrain-rootaddresses` tag；若 T1 验证失败，回滚该提交即可
   （两侧均由宏列表生成，不存在"改一半"的中间态文件）。
 - 新增文件全部是新路径，不覆盖既有文件；对既有文件的改动集中在 §4-T1 的 8 个触点，
