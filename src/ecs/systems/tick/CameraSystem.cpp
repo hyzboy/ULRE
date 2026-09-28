@@ -8,6 +8,7 @@
 #include<hgl/vk/buffer/StructView.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/buffer/BufferMemory.h>
+#include<hgl/ecs/support/CameraInfoStorage.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -531,19 +532,6 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    graph::GlobalSSBOBufferRegistry* CameraSystem::ResolveGlobalSSBORegistry()
-    {
-        if (!context)
-            return nullptr;
-        auto *rc = context->GetRenderContext();
-        if (!rc)
-            return nullptr;
-        auto *gc = rc->GetGraphicsContext();
-        if (!gc)
-            return nullptr;
-        return gc->GetGlobalSSBOBufferRegistry();
-    }
-
     void CameraSystem::UpdateMatrices(CameraComponent* camera)
     {
         if (!camera || !camera->matrix_dirty)
@@ -644,13 +632,13 @@ namespace hgl::ecs
         if (!camera || !camera->camera_info)
             return;
 
-        auto *registry = ResolveGlobalSSBORegistry();
-        if (!registry)
+        auto *storage = context ? context->GetCameraInfoStorage() : nullptr;
+        if (!storage || !storage->IsReady())
             return;
 
         // 行号 = camera_id * 槽总数 + frame_slot：主帧槽 [0,4) 与离屏 RT 槽带 [4,8) 不相交，
-        // 离屏 prepass 写光源相机不会踩到主帧在途的那一份。行号越界由 registry 报错。
-        registry->WriteCameraRow(camera->camera_id, frame_slot, *camera->camera_info);
+        // 离屏 prepass 写光源相机不会踩到主帧在途的那一份。行号越界由存储报错。
+        storage->WriteCameraRow(camera->camera_id, frame_slot, *camera->camera_info);
     }
 
     void CameraSystem::PublishCameraRows(const uint32_t frame_slot)
@@ -710,9 +698,10 @@ namespace hgl::ecs
         }
         else if (camera->camera_id == 0)
         {
-            if (auto *registry = ResolveGlobalSSBORegistry())
+            // 相机槽是**世界内**资源：从本世界的相机行存储分配（0 号槽留给默认相机）。
+            if (auto *storage = context ? context->GetCameraInfoStorage() : nullptr)
             {
-                camera->camera_id = registry->AcquireCamera();
+                camera->camera_id = storage->AcquireCameraSlot();
             }
         }
     }
