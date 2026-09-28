@@ -66,32 +66,32 @@ RenderItemDescriptor GetRenderItemIndexedFrom(uint64_t addr_table, uint64_t addr
 
 // ── 全局 UBO 便捷解引用宏与函数 ──
 
-#define global_render_items RenderItemBufferRef(global_addresses.addr_global_render_items)
-#define draw_item_ids       DrawItemIDBufferRef(global_addresses.addr_draw_item_ids)
+#define global_render_items RenderItemBufferRef(world_addresses.addr_global_render_items)
+#define draw_item_ids       DrawItemIDBufferRef(world_addresses.addr_draw_item_ids)
 
 // 连号直通解析：以 instance_index 直接索引全局表
 RenderItemDescriptor ResolveRenderItemDirect(uint instance_index)
 {
-    return RenderItemBufferRef(global_addresses.addr_global_render_items).items[instance_index];
+    return RenderItemBufferRef(world_addresses.addr_global_render_items).items[instance_index];
 }
 
 // 间接索引解析：以 draw_id 查二级索引表后索引全局表
 RenderItemDescriptor ResolveRenderItemIndexed(uint draw_id)
 {
-    uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
-    return RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+    uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
+    return RenderItemBufferRef(world_addresses.addr_global_render_items).items[item_id];
 }
 
 // 返回 uvec4 形式
 uvec4 ResolveRenderItemDirectUvec4(uint instance_index)
 {
-    return RenderItemUvec4BufferRef(global_addresses.addr_global_render_items).items[instance_index];
+    return RenderItemUvec4BufferRef(world_addresses.addr_global_render_items).items[instance_index];
 }
 
 uvec4 ResolveRenderItemIndexedUvec4(uint draw_id)
 {
-    uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
-    return RenderItemUvec4BufferRef(global_addresses.addr_global_render_items).items[item_id];
+    uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
+    return RenderItemUvec4BufferRef(world_addresses.addr_global_render_items).items[item_id];
 }
 
 // ── 自动区分直通与二级索引模式 ──
@@ -114,13 +114,13 @@ RenderItemDescriptor ResolveRenderItemAuto(uint first_instance, uint instance_of
     if ((first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u)
     {
         uint draw_id = (first_instance & ~RENDER_ITEM_INDEXED_FLAG) + instance_offset;
-        uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
-        return RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+        uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
+        return RenderItemBufferRef(world_addresses.addr_global_render_items).items[item_id];
     }
     else
     {
         uint item_id = first_instance + instance_offset;
-        return RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+        return RenderItemBufferRef(world_addresses.addr_global_render_items).items[item_id];
     }
 }
 
@@ -129,13 +129,13 @@ uvec4 ResolveRenderItemAutoUvec4(uint first_instance, uint instance_offset)
     if ((first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u)
     {
         uint draw_id = (first_instance & ~RENDER_ITEM_INDEXED_FLAG) + instance_offset;
-        uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
-        return RenderItemUvec4BufferRef(global_addresses.addr_global_render_items).items[item_id];
+        uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
+        return RenderItemUvec4BufferRef(world_addresses.addr_global_render_items).items[item_id];
     }
     else
     {
         uint item_id = first_instance + instance_offset;
-        return RenderItemUvec4BufferRef(global_addresses.addr_global_render_items).items[item_id];
+        return RenderItemUvec4BufferRef(world_addresses.addr_global_render_items).items[item_id];
     }
 }
 
