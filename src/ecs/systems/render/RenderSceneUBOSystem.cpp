@@ -112,7 +112,10 @@ namespace hgl::ecs
         if (!bm)
             return;
 
-        auto *buf = bm->CreateUBO("ViewportInfoUBO", graph::StructView<graph::ViewportInfo>::GetSize());
+        // BDA：viewport 数据自 S2 起经 global_addresses.addr_viewport 解引用（单份 buffer ⇒
+        // 全帧槽同址），不再吃 Scene 集绑定 ⇒ 必须以带 SHADER_DEVICE_ADDRESS usage 的方式创建
+        //（只有 CreateSSBO 带该 usage）。
+        auto *buf = bm->CreateSSBO("ViewportInfoUBO", graph::StructView<graph::ViewportInfo>::GetSize());
         if (!buf)
             return;
 
@@ -130,6 +133,36 @@ namespace hgl::ecs
         }
         viewport_ubo->Data()->Set(w, h);
         viewport_ubo->MarkDirty();
+
+        // 地址进表：**在物化处注册**（地址唯一会变的地方，取不到即 fail-fast）。viewport 是
+        // 单份 buffer（内容按 pass/RT 覆盖写、地址恒定）⇒ 一个地址写满所有帧槽。
+        graph::GraphicsContext *gc = nullptr;
+        if (auto *rc = context->GetRenderContext())
+            gc = rc->GetGraphicsContext();
+        if (!gc)
+            gc = context->GetGraphicsContext();
+
+        auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
+        if (!registry)
+        {
+            GLogError("[SceneUBO] viewport 地址入表失败：GlobalSSBOBufferRegistry 不可用");
+            ReleaseViewportUBO();
+            return;
+        }
+
+        const uint64_t viewport_addr =
+            gc->GetDevice()->GetBufferDeviceAddressAligned16(buf->GetBuffer());
+        if (viewport_addr == 0)
+        {
+            // 取不到地址 = shader 解引用 0 基址（UB）⇒ fail-fast（0 校验层消息抓不到这类崩）
+            GLogError("[SceneUBO] viewport 取不到设备地址（usage / 16B 对齐）");
+            ReleaseViewportUBO();
+            return;
+        }
+
+        registry->SetViewportAddress(viewport_addr);
+        GLogInfo("[SceneUBO] viewport addr=0x%llX 入表（全帧槽）",
+                 (unsigned long long)viewport_addr);
     }
 
     void RenderSceneUBOSystem::ReleaseViewportUBO()
@@ -388,26 +421,18 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        const auto *viewport_ubo = ResolveViewportUBO();
-        const auto *sky_ubo = ResolveSkyUBO();
-        const auto *shadow_ubo = ResolveShadowUBO();
-
-        // 全局地址表已 BDA 化（无绑定无集）：这里只同步表内会变的字段
-        //（含 sky 地址；sky 已不再走 Scene 集绑定）
+        // 全局地址表已 BDA 化（无绑定无集）：这里只同步表内会变的字段。
+        // sky / viewport / shadow 的地址都在表内（viewport 是最后一个退出绑定的）⇒ Set 0 已无
+        // 任何需要推送的绑定；整集与其 layout / push descriptor 路径的删除归 S3。
         SyncGlobalAddressesTable();
 
         auto *global_scene_set = GetGlobalSceneUBOSet(context);
-        if (global_scene_set && global_scene_set->IsValid()
-         && viewport_ubo)
-        {
-            global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingViewport), viewport_ubo);
-        }
-        else if (global_scene_set && global_scene_set->IsValid())
+        if (!(global_scene_set && global_scene_set->IsValid()))
         {
             GLogWarning("[SceneUBO] Scene UBO set not bound: viewport=%p sky=%p shadow=%p",
-                        (const void *)viewport_ubo,
-                        (const void *)sky_ubo,
-                        (const void *)shadow_ubo);
+                        (const void *)ResolveViewportUBO(),
+                        (const void *)ResolveSkyUBO(),
+                        (const void *)ResolveShadowUBO());
         }
     }
 

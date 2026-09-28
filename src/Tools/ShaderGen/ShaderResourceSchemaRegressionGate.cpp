@@ -2691,7 +2691,7 @@ namespace
             "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
             "varyings = [\"emit_world_pos\", \"emit_world_normal\", \"emit_uv0\"]\n"
             "[resources]\n"
-            "ubos = [\"ViewportInfo\"]\n";
+            "";
 
         MaterialDefinitionFileData data;
         const auto parse = ParseMaterialDefinitionFile(
@@ -2709,7 +2709,7 @@ namespace
              || definition.vertex_provider_policy != MaterialVertexProviderPolicy::AllowDerived
              || definition.vertex_node_config.position_mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
-             || definition.ubo_requirements.size() != 1
+             || definition.ubo_requirements.size() != 0
              || definition.texture_configuration_max_count
                     != DefaultMaterialTextureConfigurationCapacity
              || !ResolveMaterialRenderState(

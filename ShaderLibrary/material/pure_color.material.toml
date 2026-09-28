@@ -18,5 +18,4 @@ requirements = ["Position"]
 varyings = ["emit_data_index_id"]
 
 [resources]
-ubos = ["ViewportInfo"]
 material_data = { type = "EmissiveSurface" }

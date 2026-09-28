@@ -18,5 +18,4 @@ requirements = ["Position", "Luminance"]
 varyings = ["emit_data_index_id", "emit_luminance"]
 
 [resources]
-ubos = ["ViewportInfo"]
 material_data = { type = "EmissiveSurface" }

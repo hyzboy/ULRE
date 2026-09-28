@@ -31,8 +31,11 @@ namespace hgl::graph
         uint64_t addr_camera_info = 0;
         uint64_t addr_color_palette = 0;
 
-        // ── 每帧槽字段：地址随帧槽变化（sky / shadow 的 buffer 每帧不同）──
+        // ── 每帧槽字段：地址随帧槽变化（buffer 每帧不同）──
+        // 注：sky 与 viewport 都是**单份 buffer**（viewport 的内容按 pass/RT 覆盖写、地址恒定）
+        //     ⇒ 全帧槽同址；只有 shadow 是真正的「每帧槽一份」（ring[i] ↔ 帧槽 i）。
         uint64_t addr_sky = 0;
+        uint64_t addr_viewport = 0;
         uint64_t addr_shadow = 0;
     };
 

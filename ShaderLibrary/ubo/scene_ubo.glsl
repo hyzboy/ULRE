@@ -6,18 +6,12 @@
 // @ulre provide SkyLight
 // @ulre provide Viewport
 // @ulre end
-// Scene 集（Set 0）全局统一基础 UBO 声明
+// 全局统一基础数据声明（**无绑定无集**）
 //
-// 对应 SceneBinding 枚举（固定 ABI）：
-//   （binding 0 的 CameraInfo UBO 已删，相机数据走 BDA）
-//   binding 0: SkyInfo sky
-//   binding 1: ViewportInfo viewport
-//   （原 binding 2 的 ColorPalette UBO 已删：调色板构造期写入、长期有效，
-//     地址经 global_addresses.addr_color_palette 以 buffer_reference 读取）
-//   （原 GlobalAddressesInfo UBO 已删：表本体改为 SSBO，基址经
-//     pc_root.addr_global_addresses 下发，宏名不变）
-//
-// 由 C++ 全局绑定，一次性声明，未使用的 block 在 SPIR-V 编译期自动剔除。
+// 本文件里的 UBO 声明已全部退场：CameraInfo / ColorPalette / GlobalAddresses 表本体 / sky /
+// shadow / viewport 一律走 BDA —— 地址进 global_addresses 表（表基址经
+// pc_root.addr_global_addresses 下发），按下标解引用。宏名与成员名保持不变
+// ⇒ shader 正文与生成侧发射字符串零改动。
 
 #ifndef HGL_SCENE_UBO_GLSL
 #define HGL_SCENE_UBO_GLSL
@@ -79,13 +73,17 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer SkyI
 
 #define sky SkyInfoRef(global_addresses.addr_sky)
 
-layout(set=SCENE_SET, binding=VIEWPORT_BINDING) uniform ViewportInfo
+// viewport（S2：地址进表 —— 单份 buffer，内容按 pass/RT 覆盖写、地址恒定 ⇒ 全帧槽同址）
+// 退出 Scene 集绑定；宏名与成员名不变 ⇒ `viewport.*` 读点零改动。
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer ViewportInfoRef
 {
     mat4 ortho_matrix;
     uvec2 canvas_resolution;
     uvec2 viewport_resolution;
     vec2 inv_viewport_resolution;
-} viewport;
+};
+
+#define viewport ViewportInfoRef(global_addresses.addr_viewport)
 
 // 调色板（256 项 RGBA8 打包，unpackUnorm4x8 解码）：构造期一次写入、长期有效
 // ⇒ 地址随地址表下发（不进 pc_root —— 后者只承载每 pass / 每帧变化的地址）。
@@ -114,6 +112,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
     // 每帧槽字段：表按 HGL_FRAME_SLOT_TOTAL 多份，pc_root.addr_global_addresses
     // 指向「本帧那一槽」，所以这几个地址总是当前帧的数据。
     uint64_t addr_sky;
+    uint64_t addr_viewport;
     uint64_t addr_shadow;
 };
 
