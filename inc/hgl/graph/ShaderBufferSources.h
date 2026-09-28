@@ -266,6 +266,7 @@ namespace hgl::graph::mtl
     // A3 发射 push_constant block 时遍历名字+类型表——改字段只改这里。
     #define HGL_ROOT_ADDRESSES_FIELD_LIST(M)  \
         M(addr_global_addresses,   "uint64_t", uint64_t)  \
+        M(addr_world_addresses,    "uint64_t", uint64_t)  \
         M(addr_batch_mesh_draw_params, "uint64_t", uint64_t)  \
         M(addr_l2w,                "uint64_t", uint64_t)  \
         M(addr_l2w_index,          "uint64_t", uint64_t)  \
