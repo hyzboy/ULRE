@@ -337,7 +337,7 @@ namespace hgl
             void SetActiveCameraID(uint32_t id) { active_camera_id = id; }
 
             /// 当前相机的 CameraInfo 行号 = camera_id * HGL_FRAME_SLOT_TOTAL + 本帧数据槽。
-            /// 着色器端 `pc_root.camera_id` 收到的就是这个行号（scene_ubo.glsl 的 cameras[] 下标），
+            /// 着色器端 `pc_root.camera_row` 收到的就是这个行号（scene_ubo.glsl 的 cameras[] 下标），
             /// 因此离屏 pass 与主帧各自的相机数据落在不相交的行上。
             uint32_t GetActiveCameraRow() const;
 

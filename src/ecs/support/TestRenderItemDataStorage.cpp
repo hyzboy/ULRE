@@ -205,7 +205,7 @@ int main(int argc, char **argv)
     {
         // 1. Memory layout verification
         static_assert(sizeof(graph::GlobalAddresses) == 88, "GlobalAddresses must be exactly 88 bytes");
-        static_assert(offsetof(graph::GlobalAddresses, addr_mesh_draw_params) == 0);
+        static_assert(offsetof(graph::GlobalAddresses, addr_mesh_draw_params_pool) == 0);
         static_assert(offsetof(graph::GlobalAddresses, addr_pbr_surface) == 8);
         static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 16);
         static_assert(offsetof(graph::GlobalAddresses, addr_transmission_surface) == 24);
@@ -256,7 +256,7 @@ int main(int argc, char **argv)
                 
                 layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer GlobalAddressesRef
                 {
-                    uint64_t addr_mesh_draw_params;
+                    uint64_t addr_mesh_draw_params_pool;
                     uint64_t addr_pbr_surface;
                     uint64_t addr_emissive_surface;
                     uint64_t addr_transmission_surface;
@@ -504,7 +504,7 @@ int main(int argc, char **argv)
                 
                 layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer GlobalAddressesRef
                 {
-                    uint64_t addr_mesh_draw_params;
+                    uint64_t addr_mesh_draw_params_pool;
                     uint64_t addr_pbr_surface;
                     uint64_t addr_emissive_surface;
                     uint64_t addr_transmission_surface;
@@ -756,7 +756,7 @@ int main(int argc, char **argv)
                 
                 layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer GlobalAddressesRef
                 {
-                    uint64_t addr_mesh_draw_params;
+                    uint64_t addr_mesh_draw_params_pool;
                     uint64_t addr_pbr_surface;
                     uint64_t addr_emissive_surface;
                     uint64_t addr_transmission_surface;
@@ -799,7 +799,7 @@ int main(int argc, char **argv)
                     bool visible = (idx % 2 == 0);
                     if (visible)
                     {
-                        uint slot = atomicAdd(VisibleCountBufferRef(global_addresses.addr_mesh_draw_params).count, 1);
+                        uint slot = atomicAdd(VisibleCountBufferRef(global_addresses.addr_mesh_draw_params_pool).count, 1);
                         DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[slot] = idx;
                     }
                 }

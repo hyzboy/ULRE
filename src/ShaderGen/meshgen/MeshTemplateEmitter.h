@@ -263,13 +263,13 @@ namespace hgl::graph::mtl
         fragment += "\nvoid main()\n{\n";
         if (mode == MeshShaderMode::VertexPassthrough || mode == MeshShaderMode::LineQuad)
         {
-            fragment += "    uint geometry_id = MeshDrawCommandsRef(pc_root.addr_mesh_draw_params).cmds[gl_DrawID].geometry_id;\n";
-            fragment += "    draw_params = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params).rows[geometry_id];\n";
-            fragment += "    draw_params.first_instance = MeshDrawCommandsRef(pc_root.addr_mesh_draw_params).cmds[gl_DrawID].first_instance;\n";
+            fragment += "    uint geometry_id = MeshDrawCommandsRef(pc_root.addr_batch_mesh_draw_params).cmds[gl_DrawID].geometry_id;\n";
+            fragment += "    draw_params = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params_pool).rows[geometry_id];\n";
+            fragment += "    draw_params.first_instance = MeshDrawCommandsRef(pc_root.addr_batch_mesh_draw_params).cmds[gl_DrawID].first_instance;\n";
         }
         else
         {
-            fragment += "    draw_params = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[gl_DrawID];\n";
+            fragment += "    draw_params = MeshDrawParamsRef(pc_root.addr_batch_mesh_draw_params).rows[gl_DrawID];\n";
         }
         fragment += "\n";
 

@@ -283,7 +283,7 @@ namespace hgl::ecs
             cmd->ApplyPipelineState(res.pipeline->GetConfig());
 
             // RootAddresses push constant：每字体一次（draw 前）。mesh shader 经
-            // pc_root.addr_mesh_draw_params 解引用参数表 row 0；文本三表地址和
+            // pc_root.addr_batch_mesh_draw_params 解引用参数表 row 0；文本三表地址和
             // mtl_data_addrs 行表均经 pc_root 传入。文本 shader 的 MTL_TEX(0)
             // 从该地址表取得当前字体图集的独立引用行。
             // 相机行号（camera_id * 槽总数 + 本帧槽），着色器用它索引 cameras[]

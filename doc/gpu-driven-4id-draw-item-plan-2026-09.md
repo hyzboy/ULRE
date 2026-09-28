@@ -82,7 +82,7 @@ X-macro `HGL_MESH_DRAW_COMMAND_FIELD_LIST`：`MeshDrawCommand{ geometry_id, firs
 ### 2.6 两个地址载体（BDA 分层现状）
 **① `GlobalAddresses` UBO（Set 0 / binding 4，56B = 7×uint64）** — 启动写一次，仅 RenderItem/DrawItemID 两项每帧刷。
 - C++ 真源 `inc/hgl/graph/ubo/GlobalAddresses.h:14-25`：`addr_mesh_draw_params, addr_pbr_surface, addr_emissive_surface, addr_transmission_surface, addr_global_render_items, addr_draw_item_ids, addr_camera_info`（`static_assert(sizeof == 56)` :25）。
-- GLSL block 名 `GlobalAddressesInfo`：`ShaderLibrary/ubo/scene_ubo.glsl:88-97`（`layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING)`），宏名来源 `inc/hgl/graph/ubo/UBOShaderSources.h:39` + `inc/hgl/common/DescriptorSetTypeDef.h:110`。相机走了 UBO 索引：`#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]`（`scene_ubo.glsl:123`）。
+- GLSL block 名 `GlobalAddressesInfo`：`ShaderLibrary/ubo/scene_ubo.glsl:88-97`（`layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING)`），宏名来源 `inc/hgl/graph/ubo/UBOShaderSources.h:39` + `inc/hgl/common/DescriptorSetTypeDef.h:110`。相机走了 UBO 索引：`#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]`（`scene_ubo.glsl:123`）。
 - 写者：`GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO`（`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:85-121`，写 5 个池基址）+ `UpdateRenderItemAddresses`（`:128`，每帧刷 RenderItem/DrawItemID）。
 - 每帧刷新点：`RenderSceneUBOSystem::ResolveGlobalAddressesUBO`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:152-180`）+ `UpdateUBO`(:387-400)。
 

@@ -750,7 +750,7 @@ namespace hgl::ecs
         line_buffer_.material = material_;
 
         // RootAddresses push constant：Line 单 draw（参数表 row 0，gl_DrawID=0）——
-        // mesh shader 经 pc_root.addr_mesh_draw_params 解引用参数表（A3-1）；
+        // mesh shader 经 pc_root.addr_batch_mesh_draw_params 解引用参数表（A3-1）；
         // l2w 表地址（A3-2：LineQuad 每段 l2w.mats[transform_id] 直查——palette 材质
         // 走 transform_id 流，不经 l2w_index）。l2w 表 = SyncTransformBinding 缓存的
         // transform_data_buffer（地址稳定，与 BindTransform(material_) 同一 buffer）。

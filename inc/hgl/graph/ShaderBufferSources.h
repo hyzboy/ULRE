@@ -266,7 +266,7 @@ namespace hgl::graph::mtl
     // A3 发射 push_constant block 时遍历名字+类型表——改字段只改这里。
     #define HGL_ROOT_ADDRESSES_FIELD_LIST(M)  \
         M(addr_global_addresses,   "uint64_t", uint64_t)  \
-        M(addr_mesh_draw_params,   "uint64_t", uint64_t)  \
+        M(addr_batch_mesh_draw_params, "uint64_t", uint64_t)  \
         M(addr_l2w,                "uint64_t", uint64_t)  \
         M(addr_l2w_index,          "uint64_t", uint64_t)  \
         M(addr_mtl_data_addrs,     "uint64_t", uint64_t)  \
@@ -274,7 +274,7 @@ namespace hgl::graph::mtl
         M(addr_text_char_info,     "uint64_t", uint64_t)  \
         M(addr_text_char_style,    "uint64_t", uint64_t)  \
         M(addr_text_char_instance, "uint64_t", uint64_t)  \
-        M(camera_id,               "uint",     uint32_t)  \
+        M(camera_row,              "uint",     uint32_t)  \
         M(_pad_camera,             "uint",     uint32_t)
 
     struct RootAddresses

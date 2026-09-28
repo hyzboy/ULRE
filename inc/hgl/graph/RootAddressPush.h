@@ -40,7 +40,7 @@ namespace hgl::graph
                                   IGPUBuffer *text_char_info          = nullptr,
                                   IGPUBuffer *text_char_style         = nullptr,
                                   IGPUBuffer *text_char_inst          = nullptr,
-                                  uint32_t    camera_id               = 0)
+                                  uint32_t    camera_row              = 0)
     {
         if (!cmd || !dev || !layout)
             return;
@@ -67,7 +67,7 @@ namespace hgl::graph
         };
 
         ra.addr_global_addresses     = addr_global_addresses;
-        fill(ra.addr_mesh_draw_params,    mesh_draw_params);
+        fill(ra.addr_batch_mesh_draw_params, mesh_draw_params);
         fill(ra.addr_l2w,                 l2w);
         fill(ra.addr_l2w_index,           l2w_index);
         fill(ra.addr_mtl_data_addrs,      mtl_data_addrs);
@@ -75,7 +75,7 @@ namespace hgl::graph
         fill(ra.addr_text_char_info,      text_char_info);
         fill(ra.addr_text_char_style,     text_char_style);
         fill(ra.addr_text_char_instance,  text_char_inst);
-        ra.camera_id    = camera_id;
+        ra.camera_row   = camera_row;
         ra._pad_camera  = 0;
 
         cmd->PushConstants(layout, &ra, sizeof(ra));

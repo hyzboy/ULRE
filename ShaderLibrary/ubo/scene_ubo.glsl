@@ -101,7 +101,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Colo
 // 与 shader 正文零改动。
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer GlobalAddressesRef
 {
-    uint64_t addr_mesh_draw_params;
+    uint64_t addr_mesh_draw_params_pool;   // 池基址；本批那一块在 pc_root.addr_batch_mesh_draw_params
     uint64_t addr_pbr_surface;
     uint64_t addr_emissive_surface;
     uint64_t addr_transmission_surface;
@@ -146,6 +146,6 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Shad
 
 #define shadow ShadowInfoRef(global_addresses.addr_shadow)
 
-#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]
+#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]
 
 #endif // HGL_SCENE_UBO_GLSL

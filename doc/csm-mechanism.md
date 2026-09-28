@@ -90,7 +90,7 @@
 - CameraInfo 行池：64 行 = 8 相机 × 8 槽，行号 = `camera_id * 8 + slot`，序号 0 恒留主相机
   （见 `doc/t3-camera-row-slotting-plan.md`）；相机行发布**按组件**（光源相机属离屏世界）。
 - 相机数据走 **BDA**：`scene_ubo.glsl:123` 的 `camera` 宏 =
-  `CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]`。
+  `CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]`。
 
 ## 6. 开关与诊断（环境变量）
 

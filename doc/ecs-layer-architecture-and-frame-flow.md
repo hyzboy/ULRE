@@ -440,7 +440,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 | 几何参数行（112B `MeshDrawParams`，含全部顶点流 BDA 地址） | **几何创建期**：`Geometry::RegisterMeshDrawParams`（由 `GeometryCreater::Create()` 自动调用） | `GlobalSSBOBufferRegistry` 的 `MeshDrawParams` 池，按 `geometry_id` 索引 |
 | 材质参数行（`PBRSurfaceRow` …） | 作者侧 `GlobalSSBODataAccessor::Write`；地址由 RPCS `MaterializeRecipeRowsForPrimitive` 解析 | `GlobalSSBOBufferRegistry` 的 `ActiveRowPool` |
 | 纹理引用行（`uvec2` handle/layer） | RPCS 材质化（`AcquireMaterialTextureConfiguration` / `WriteMaterialTextureConfiguration`） | `MaterialTextureReferencePool`（按 definition 一池） |
-| CameraInfo / SkyInfo / ViewportInfo UBO | `CameraSystem::CommitCameraUBO`（RenderBufferCommit）+ `ViewUBOCommitSystem`；挂载由 `RenderSceneUBOSystem::ApplyResourceLayoutBindings` | Scene 描述符集（set 0）；**相机在 GLSL 侧经 `CameraInfoBufferRef` + `pc_root.camera_id` 从池读**（`ShaderLibrary/ubo/scene_ubo.glsl:123`） |
+| CameraInfo / SkyInfo / ViewportInfo UBO | `CameraSystem::CommitCameraUBO`（RenderBufferCommit）+ `ViewUBOCommitSystem`；挂载由 `RenderSceneUBOSystem::ApplyResourceLayoutBindings` | Scene 描述符集（set 0）；**相机在 GLSL 侧经 `CameraInfoBufferRef` + `pc_root.camera_row` 从池读**（`ShaderLibrary/ubo/scene_ubo.glsl:123`） |
 | 脏 buffer 的 GPU 传输 + barrier | `RenderBufferUploadSystem::Update`（先同步两个 4-ID storage，再遍历 `device->GetGPUBufferRegistry()`） | `IGPUBuffer::CopyToDevice` + `MemoryBarrier2`（`src/ecs/systems/render/RenderBufferUploadSystem.cpp:46-56,135-148`） |
 | swapchain 图获取 / 提交 | `SwapchainNextImageSystem`（帧首）/ `SwapchainSubmitSystem`（帧尾） | `SwapchainRenderTarget::NextFrame/Submit` |
 

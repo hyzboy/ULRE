@@ -126,7 +126,7 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
     }
 
     global_addresses_global = GlobalAddresses{};
-    global_addresses_global.addr_mesh_draw_params     = GetGPUBase(GlobalSSBOType::MeshDrawParams);
+    global_addresses_global.addr_mesh_draw_params_pool = GetGPUBase(GlobalSSBOType::MeshDrawParams);
     global_addresses_global.addr_pbr_surface          = GetGPUBase(GlobalSSBOType::PBRSurface);
     global_addresses_global.addr_emissive_surface     = GetGPUBase(GlobalSSBOType::EmissiveSurface);
     global_addresses_global.addr_transmission_surface = GetGPUBase(GlobalSSBOType::TransmissionSurface);

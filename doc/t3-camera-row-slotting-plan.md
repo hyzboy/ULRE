@@ -9,11 +9,11 @@
 
 ## 1. 为什么需要行槽化（问题定义）
 
-`CameraInfo` 是**全局 SSBO 行池**，着色器通过 `pc_root.camera_id` 直接索引：
+`CameraInfo` 是**全局 SSBO 行池**，着色器通过 `pc_root.camera_row` 直接索引：
 
 ```glsl
 // ShaderLibrary/ubo/scene_ubo.glsl:123
-#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]
+#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]
 ```
 
 CPU 侧有两条写入者、两条读取者，**跨 pass 同时活跃**：
@@ -114,7 +114,7 @@ bool WriteCameraRow(uint32_t camera_id, uint32_t slot, const CameraInfo &info);
 | `inc/hgl/ecs/core/Context.h` / `src/ecs/core/Context.cpp` | `GetActiveCameraRow()` = `active_camera_id * HGL_FRAME_SLOT_TOTAL + frame_index`；`PrepareRenderPassSetup` 里发布本世界相机；`RenderTo` 里按 `req.camera` 直接发布（光源相机可能属另一个世界，`CollectCameras()` 看不到——这是上一轮实测过的坑） |
 | `src/ecs/systems/tick/CameraSystem.{h,cpp}` | 新增 `PublishCamera(camera, slot)` / `PublishCameraRows(slot)`；删 tick 阶段写（槽此时未确定）；申请逻辑恢复基线语义：主相机 `camera_id = 0`（不申请，行已预激活）、非主相机在 `camera_id == 0` 时申请一次 |
 | 4 个读取点 | `PrimitiveRenderSystem.cpp` / `PrimitiveOverlayRenderSystem.cpp` / `LineRenderPipeline.cpp` / `TextRenderPipeline.cpp` → 传 `GetActiveCameraRow()` |
-| `ShaderLibrary/ubo/scene_ubo.glsl` | **不改**（`pc_root.camera_id` 收到的就是行号） |
+| `ShaderLibrary/ubo/scene_ubo.glsl` | **不改**（`pc_root.camera_row` 收到的就是行号） |
 
 ### 4.4 契约与测试
 

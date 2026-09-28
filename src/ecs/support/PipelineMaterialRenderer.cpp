@@ -105,7 +105,7 @@ namespace hgl::ecs
                                           TransformAssignmentBuffer* transform_buffer,
                                           const MaterialBatch *owner_batch,
                                           graph::RenderContext *render_context,
-                                          uint32_t camera_id)
+                                          uint32_t camera_row)
     {
         // 前置条件检查
         if (!rcb)
@@ -152,7 +152,7 @@ namespace hgl::ecs
         }
 
         // RootAddresses push constant：每 MaterialBatch 渲染前一次（draw 之前）。A3-1：
-        // mesh shader 经 pc_root.addr_mesh_draw_params buffer_reference 解引用参数表行
+        // mesh shader 经 pc_root.addr_batch_mesh_draw_params buffer_reference 解引用参数表行
         //（rows[gl_DrawID]）；L2W/L2WIndex/mtl_data_addrs 地址一并下发（A3-2/3 起 shader
         // 消费——行表 buffer 已带 SHADER_DEVICE_ADDRESS usage，地址可取即填）。
         if (material_is_mesh && owner_batch && owner_batch->device)
@@ -172,10 +172,10 @@ namespace hgl::ecs
             // 全局地址表基址 = 本次 push 的根入口（其余全局地址都在表内，不再逐个 push）
             graph::GraphicsContext *addr_gc =
                 render_context ? render_context->GetGraphicsContext() : nullptr;
-            // 表按帧槽多份：本批次属于哪一帧槽由相机行号决定（行号 = camera_id*槽总数+槽）。
+            // 表按帧槽多份：本批次属于哪一帧槽由相机行号决定（行号 = camera_id * 槽总数 + 槽）。
             const uint64_t addr_global_addresses =
                 addr_gc ? addr_gc->GetGlobalAddressesAddress(
-                              graph::GlobalAddressesSlotFromCameraRow(camera_id)) : 0;
+                              graph::GlobalAddressesSlotFromCameraRow(camera_row)) : 0;
 
             graph::PushRootAddresses(
                 cmd_buf,
@@ -191,7 +191,7 @@ namespace hgl::ecs
                     ? owner_batch->material_data_index_rows_buffer->GetGPUBuffer() : nullptr,
                 owner_batch->texture_reference_base_addr,
                 nullptr, nullptr, nullptr,
-                camera_id);
+                camera_row);
         }
 
         // 批次级描述符覆盖（batch_descriptor_mp）与材质级绑定（BindDescriptorSets(material)）

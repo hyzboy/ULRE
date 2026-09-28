@@ -32,7 +32,7 @@ namespace hgl::graph::mtl
         // gl_DrawID 查表（间接合批的关键：多命令一次 vkCmdDrawMeshTasksIndirectEXT 提交时
         // 每命令各自的参数只能靠 GPU 侧查表；直接绘制 gl_DrawID=0 → row 0）。
         // 行表本体走 BDA（buffer_reference，MeshDrawParamsRef）——表地址由下方
-        // push constant pc_root.addr_mesh_draw_params 携带。
+        // push constant pc_root.addr_batch_mesh_draw_params 携带。
         // 字段顺序与 CPU 侧
         // per-draw 参数行严格一致（24B 头部 + 8×uint64 基址 = 88B）——
         // 字段名/类型遍历 kMeshDrawParamsField*（ShaderBufferSources.h X 列表单一真源，
@@ -51,7 +51,7 @@ namespace hgl::graph::mtl
             ms += ";\n";
         }
         ms += "};\n";
-        // 行表本体走 BDA：地址由 push constant pc_root.addr_mesh_draw_params 携带，
+        // 行表本体走 BDA：地址由 push constant pc_root.addr_batch_mesh_draw_params 携带，
         // shader 经 buffer_reference 解引用（行表 buffer 以 SHADER_DEVICE_ADDRESS usage 创建）。
         // （pc_root block 由 MeshShaderHeaderGen::EmitRootAddressesPushConstant 提前发射——
         //  l2w_ssbo 等模块 include 引用 pc_root，必须先于它们声明。）

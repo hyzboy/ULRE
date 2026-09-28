@@ -7,7 +7,7 @@
 ## 1. 现状（要删什么）
 
 相机数据已全部走 BDA：`ShaderLibrary/ubo/scene_ubo.glsl:123`
-`#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_id]`，
+`#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]`，
 `CameraInfoData`/`CameraInfoBufferRef` 是 `buffer_reference`（不参与任何 binding）。
 但 Scene 集 Set 0 仍**声明并每帧写入** binding 0 的相机 UBO，且没有任何 GLSL 读取它
 （全 ShaderLibrary 无 `binding=0` 的 Scene UBO，`CAMERA_BINDING` 只被定义、从未被使用）。
