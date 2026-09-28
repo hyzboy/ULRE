@@ -2665,6 +2665,138 @@ namespace
         return result;
     }
 
+    /// 去掉 // 行注释与 /* */ 块注释。字段提取必须先剥注释：结构上方的注释里出现过
+    /// pc_root.addr_global_addresses 这类字样，不剥会被当成字段名收进来。
+    static void StripCommentTokens(std::string &text)
+    {
+        std::string out;
+        out.reserve(text.size());
+        for (size_t i = 0; i < text.size();)
+        {
+            if (text[i] == '/' && i + 1 < text.size() && text[i + 1] == '/')
+            {
+                while (i < text.size() && text[i] != '\n') ++i;
+                continue;
+            }
+            if (text[i] == '/' && i + 1 < text.size() && text[i + 1] == '*')
+            {
+                i += 2;
+                while (i + 1 < text.size() && !(text[i] == '*' && text[i + 1] == '/')) ++i;
+                i = (i + 1 < text.size()) ? i + 2 : text.size();
+                continue;
+            }
+            out.push_back(text[i++]);
+        }
+        text.swap(out);
+    }
+
+    /// 取 marker 之后第一个 { ... } 块内的「uint64_t <名字>」字段名（保序）。
+    static std::vector<std::string> ExtractU64Fields(const std::string &raw_text,
+                                                     const char *marker)
+    {
+        std::vector<std::string> fields;
+        std::string text = raw_text;
+        StripCommentTokens(text);
+
+        const size_t anchor = text.find(marker);
+        if (anchor == std::string::npos)
+            return fields;
+
+        const size_t brace = text.find('{', anchor);
+        if (brace == std::string::npos)
+            return fields;
+
+        const size_t close = text.find('}', brace);
+        if (close == std::string::npos)
+            return fields;
+
+        const std::string body = text.substr(brace + 1, close - brace - 1);
+        const char type[] = "uint64_t";
+        const size_t type_len = sizeof(type) - 1;
+
+        for (size_t pos = 0; (pos = body.find(type, pos)) != std::string::npos;)
+        {
+            pos += type_len;
+            while (pos < body.size() && std::isspace(static_cast<unsigned char>(body[pos])))
+                ++pos;
+
+            size_t end = pos;
+            while (end < body.size()
+                && (std::isalnum(static_cast<unsigned char>(body[end])) || body[end] == '_'))
+                ++end;
+
+            if (end > pos)
+                fields.emplace_back(body.substr(pos, end - pos));
+
+            pos = end;
+        }
+        return fields;
+    }
+
+    /// C++ 表结构（GlobalAddresses.h）与 GLSL 侧 GlobalAddressesRef 必须逐字段同序同型。
+    /// 为什么必须门禁：C++ 加了字段而 GLSL 漏加时，材质 shader 编译失败会**静默回退默认材质**
+    /// ——画面照常有内容、其余门全绿、0 校验层消息，只有渲染契约门（ATS D3）才抓得到。
+    static GateResult RunGlobalAddressesStructParityCase()
+    {
+        GateResult result;
+        result.name = "S.global-addresses-struct-parity";
+
+        const std::string cpp_text =
+            ReadFileText(RepoRootPath("inc/hgl/graph/ubo/GlobalAddresses.h"));
+        const std::string glsl_text =
+            ReadFileText(RepoRootPath("ShaderLibrary/ubo/scene_ubo.glsl"));
+
+        if (cpp_text.empty() || glsl_text.empty())
+        {
+            result.diagnostics.emplace_back(
+                "无法读取 GlobalAddresses.h / scene_ubo.glsl（结构对表的两端）");
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        const std::vector<std::string> cpp_fields =
+            ExtractU64Fields(cpp_text, "struct GlobalAddresses");
+        const std::vector<std::string> glsl_fields =
+            ExtractU64Fields(glsl_text, "buffer GlobalAddressesRef");
+
+        if (cpp_fields.empty() || glsl_fields.empty())
+        {
+            result.diagnostics.emplace_back(
+                "GlobalAddresses 字段提取为空（结构标记被改写？）C++="
+                + std::to_string(cpp_fields.size())
+                + " GLSL=" + std::to_string(glsl_fields.size()));
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        if (cpp_fields != glsl_fields)
+        {
+            std::string detail = "GlobalAddresses 字段漂移（C++ "
+                + std::to_string(cpp_fields.size()) + " 项 / GLSL "
+                + std::to_string(glsl_fields.size()) + " 项）：";
+            const size_t count = cpp_fields.size() > glsl_fields.size()
+                               ? cpp_fields.size() : glsl_fields.size();
+            for (size_t i = 0; i < count; ++i)
+            {
+                const std::string lhs =
+                    i < cpp_fields.size() ? cpp_fields[i] : std::string("<缺>");
+                const std::string rhs =
+                    i < glsl_fields.size() ? glsl_fields[i] : std::string("<缺>");
+                if (lhs != rhs)
+                {
+                    detail += "第 " + std::to_string(i) + " 项 C++=" + lhs
+                            + " GLSL=" + rhs;
+                    break;
+                }
+            }
+            detail += "；漏加字段会让材质 shader 静默回退默认材质";
+            result.diagnostics.emplace_back(detail);
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunMaterialDefinitionFileSchemaCase()
     {
         GateResult result;
@@ -4571,6 +4703,7 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
+    if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());
     if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());
     if (run_cache) results.push_back(RunProviderGraphIdentityCase());
     if (run_cache) results.push_back(RunProviderGraphCompositionCase());
