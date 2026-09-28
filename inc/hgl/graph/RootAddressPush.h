@@ -32,6 +32,7 @@ namespace hgl::graph
                                   VulkanDevice *dev,
                                   const VkPipelineLayout layout,
                                   const uint64_t addr_global_addresses,
+                                  const uint64_t addr_world_addresses,
                                   IGPUBuffer *mesh_draw_params,
                                   IGPUBuffer *l2w                     = nullptr,
                                   IGPUBuffer *l2w_index               = nullptr,
@@ -67,6 +68,7 @@ namespace hgl::graph
         };
 
         ra.addr_global_addresses     = addr_global_addresses;
+        ra.addr_world_addresses      = addr_world_addresses;
         fill(ra.addr_batch_mesh_draw_params, mesh_draw_params);
         fill(ra.addr_l2w,                 l2w);
         fill(ra.addr_l2w_index,           l2w_index);
