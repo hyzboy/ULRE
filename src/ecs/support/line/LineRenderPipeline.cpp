@@ -777,6 +777,7 @@ namespace hgl::ecs
             device_,
             material_->GetPipelineLayout(),
             addr_global_addresses,
+            context_ ? context_->GetWorldAddressesAddress(context_->GetFrameIndex()) : 0,
             line_buffer_.mesh_draw_params
                 ? line_buffer_.mesh_draw_params->GetGPUBuffer() : nullptr,
             l2w_gpu,

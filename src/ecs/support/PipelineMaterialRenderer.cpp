@@ -182,6 +182,7 @@ namespace hgl::ecs
                 owner_batch->device,
                 material->GetPipelineLayout(),
                 addr_global_addresses,
+                owner_batch->world_addresses_address,
                 owner_batch->mesh_draw_params_buffer
                     ? owner_batch->mesh_draw_params_buffer->GetGPUBuffer() : nullptr,
                 l2w_gpu,

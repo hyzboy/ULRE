@@ -305,6 +305,7 @@ namespace hgl::ecs
                 frame_device,
                 res.material->GetPipelineLayout(),
                 addr_global_addresses,
+                world ? world->GetWorldAddressesAddress(world->GetFrameIndex()) : 0,
                 res.mesh_draw_params ? res.mesh_draw_params->GetGPUBuffer() : nullptr,
                 nullptr, nullptr,
                 res.material_instance_addresses_buffer
