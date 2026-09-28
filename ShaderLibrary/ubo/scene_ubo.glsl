@@ -105,9 +105,6 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
     uint64_t addr_pbr_surface;
     uint64_t addr_emissive_surface;
     uint64_t addr_transmission_surface;
-    uint64_t addr_global_render_items;
-    uint64_t addr_draw_item_ids;
-    uint64_t addr_camera_info;
     uint64_t addr_color_palette;
     // 每帧槽字段：表按 HGL_FRAME_SLOT_TOTAL 多份，pc_root.addr_global_addresses
     // 指向「本帧那一槽」，所以这几个地址总是当前帧的数据。
@@ -162,6 +159,8 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Shad
 
 #define shadow ShadowInfoRef(global_addresses.addr_shadow)
 
-#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]
+// 相机行：**世界私有**（世界表 WorldAddresses 的 addr_camera_info），行号 = 相机槽 × 帧槽总数 + 帧槽。
+// 为什么不在全局表：相机是每个世界独有的观察者数据（多个世界同帧时全局表只能表达一个）。
+#define camera CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[pc_root.camera_row]
 
 #endif // HGL_SCENE_UBO_GLSL
