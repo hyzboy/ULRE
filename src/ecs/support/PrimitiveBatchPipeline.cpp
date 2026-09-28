@@ -739,6 +739,11 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::FinalizeBatch(MaterialBatch& batch)
     {
+        // 本批次的**世界表**（WorldAddresses）本帧槽地址：相机行表 / 渲染项表 / DrawItemID 表
+        // 都是世界私有地址、都在表内 —— 多世界渲染只换这一个指针。表地址随世界、随帧槽 ⇒ 每批重取。
+        batch.world_addresses_address = world
+            ? world->GetWorldAddressesAddress(world->GetFrameIndex()) : 0;
+
         for (auto *item : batch.items)
         {
             if (auto *inst_item = dynamic_cast<InstancedPrimitiveRenderItem *>(item))
