@@ -1,5 +1,7 @@
 # 场景级全自动阴影管线与 ShadowComponent 解耦设计方案
 
+> **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。
+
 > 文档状态：设计规范 / 演进路线  
 > 核心目标：将阴影管线从“应用层手动编排”转变为“场景级自动化托管”；将阴影属性从“渲染基类平铺”解耦为“独立 ShadowComponent 挂接”。
 
@@ -9,7 +11,7 @@
 
 ### 1. 场景/环境级意图声明（与太阳光同源）
 * 阴影系统本质上是方向光（太阳光）的环境衍生特征。
-* 全局配置（如主光是否开启阴影、级联分割距离、全局最大阴影距离、深度 RT 资源）统一由 **`EnvironmentSystem`**（与 `SkyInfo` 同级）托管。
+* 全局配置（如主光是否开启阴影、级联分割距离、全局最大阴影距离、深度 RT 资源）统一由 **`EnvironmentSystem`**（与 `SkyInfo` 同级）托管。（订正（2026-09-28）：此处的“全局”口径改为**按世界**——Env / sky / shadow 的所有权与地址均随世界（世界私有 `WorldAddresses`），不同世界可各自选阴影技术；仅 viewport 保持全局。见 doc/world-addresses-and-camera-model-plan.md §4。）
 * 离屏 RT 阵列由引擎内部向 `RenderTargetManager` 自动申请与回收，应用层无需在外部维护 `cascade_rts` 句柄数组。
 
 ### 2. 实体级正交解耦（ShadowComponent 挂接）

@@ -4,6 +4,14 @@
 > **文档版本**：v2.0 (2026-09)  
 > **设计定位**：ULRE 渲染管线与 ECS 渲染组件的终极演进总纲。  
 > **核心思想**：彻底摒弃为了 DOD 在 CPU 端无谓堆砌细碎组件（`GeometryComponent`/`MaterialComponent`）的伪 ECS 模式；确立**「显存常驻一级描述符表（16B 4-ID） + 绘制期极简二级索引表（uint32_t）与连号直通优化」**的现代 GPU-Driven 工业级架构。
+>
+> **订正（2026-09-28）**：本文若干事实已过期，按权威口径 `doc/world-addresses-and-camera-model-plan.md` §7 就地订正（本文件内已修订处）：
+> ① `GlobalAddresses` 已不是 `Set 0 / binding 4` 的 56B UBO，而是 **SSBO 表**（`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长、**无绑定无集**、基址经 `pc_root.addr_global_addresses` 下发），首字段 `addr_mesh_draw_params_pool`（`inc/hgl/graph/ubo/GlobalAddresses.h:27-53`）。
+> ② `RootAddresses` push constant 为 **80B**：首字段 `addr_global_addresses`、第二位 `addr_batch_mesh_draw_params`、末位 `camera_row` + `_pad_camera`（`inc/hgl/graph/ShaderBufferSources.h:267-278`）。
+> ③ `MaterialInstanceAddresses` 为 **16B 四字段** `{payload_index, texture_reference_index, shadow_bias_multiplier, shadow_flags}`（`ShaderBufferSources.h:142-198`）。
+> ④ Scene 集（`SCENE_SET` / `GLOBAL_ADDRESSES_BINDING`）与 `VKGlobalSceneUBOSet` **已整体退场**（S3）；描述符集收敛为唯一 Bindless(0)（`inc/hgl/common/DescriptorSetTypeDef.h:9-13`）。
+> ⑤ `scene_ubo.glsl` 的 `camera` 宏已漂到 **`:149`**、字段名 **`camera_row`**（原 `:123` / `camera_id`）。
+> ⑥ 4-ID GPU 运行时解析**未启用**：`uses_render_item_resolve` 全仓无处置 true（`inc/hgl/ecs/core/MaterialBatch.h:71` 只被置 false）。
 
 ---
 
@@ -144,33 +152,39 @@ class Entity
 
 全局基址不放在 `std140` 普通 UBO 里，而是分两个载体（都与 `VK_EXT_descriptor_buffer` 并存）：
 
-**① `GlobalAddressesInfo` UBO —— 全局 SSBO 类型池基址（启动写一次，持久有效）**
+**① `GlobalAddresses` —— 全局 SSBO 表（启动写一次，持久有效；**无绑定无集**）**
 
-`Set 0 / binding 4`（宏 `SCENE_SET` / `GLOBAL_ADDRESSES_BINDING`），56B = 7×`uint64_t`：
+表本体是 **SSBO**，按 `HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长（`kGlobalAddressesSlotStride`）分份，
+基址经 `pc_root.addr_global_addresses` 下发（GLSL 宏 `global_addresses = GlobalAddressesRef(pc_root.addr_global_addresses)`）——
+**没有 set、没有 binding**（Scene 集已于 S3 整体退场）：
 
 ```glsl
-layout(set=SCENE_SET, binding=GLOBAL_ADDRESSES_BINDING) uniform GlobalAddressesInfo
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer GlobalAddressesRef
 {
-    uint64_t addr_mesh_draw_params;      // MeshDrawParams 表基址
-    uint64_t addr_pbr_surface;           // PBRSurfaceRow 行池基址
-    uint64_t addr_emissive_surface;      // EmissiveSurfaceRow 行池基址
-    uint64_t addr_transmission_surface;  // TransmissionSurfaceRow 行池基址
-    uint64_t addr_global_render_items;   // 全局一级图元描述符表基址 (16B 4-ID)
-    uint64_t addr_draw_item_ids;         // 当前帧二级绘制索引表基址 (uint32_t)
-    uint64_t addr_camera_info;           // CameraInfo 基址
-} global_addresses;
+    uint64_t addr_mesh_draw_params_pool;   // MeshDrawParams 池/arena 基址
+    uint64_t addr_pbr_surface;             // PBRSurfaceRow 行池基址
+    uint64_t addr_emissive_surface;        // EmissiveSurfaceRow 行池基址
+    uint64_t addr_transmission_surface;    // TransmissionSurfaceRow 行池基址
+    uint64_t addr_global_render_items;     // 全局一级图元描述符表基址 (16B 4-ID)（待迁出：世界私有）
+    uint64_t addr_draw_item_ids;           // 当前帧二级绘制索引表基址 (uint32_t)（待迁出：世界私有）
+    uint64_t addr_camera_info;             // CameraInfo 基址（待迁出：世界私有）
+    uint64_t addr_color_palette;
+    uint64_t addr_sky;                     // 每帧槽字段
+    uint64_t addr_viewport;
+    uint64_t addr_shadow;
+};
 ```
 
-真源：`inc/hgl/graph/ubo/GlobalAddresses.h`（含 `static_assert(sizeof(GlobalAddresses) == 56)`）与
-`ShaderLibrary/ubo/scene_ubo.glsl:88`；写入者 `GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO`
+真源：`inc/hgl/graph/ubo/GlobalAddresses.h`（`struct GlobalAddresses`、`kGlobalAddressesSlotCount = HGL_FRAME_SLOT_TOTAL`、
+`kGlobalAddressesSlotStride = 128`）与 `ShaderLibrary/ubo/scene_ubo.glsl:102-119`；写入者 `GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO`
 （`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h`），一次性写入、零运行时 CPU 开销。
 
-**② `RootAddresses` push constant（72B）—— 按批次变化的表地址**
+**② `RootAddresses` push constant（80B）—— 按批次变化的表地址**
 
 每 MaterialBatch 在 draw 前由 `graph::PushRootAddresses`（`inc/hgl/graph/RootAddressPush.h`）下发，
-字段真源 `HGL_ROOT_ADDRESSES_FIELD_LIST`（`inc/hgl/graph/ShaderBufferSources.h`）：
-`addr_mesh_draw_params / addr_l2w / addr_l2w_index / addr_mtl_data_addrs / addr_texture_references /
-addr_text_char_info / addr_text_char_style / addr_text_char_instance / camera_id`，GLSL 侧即 `pc_root`。
+字段真源 `HGL_ROOT_ADDRESSES_FIELD_LIST`（`inc/hgl/graph/ShaderBufferSources.h:267-278`）：
+`addr_global_addresses / addr_batch_mesh_draw_params / addr_l2w / addr_l2w_index / addr_mtl_data_addrs /
+addr_texture_references / addr_text_char_info / addr_text_char_style / addr_text_char_instance / camera_row + _pad_camera`，GLSL 侧即 `pc_root`。
 
 任何着色器阶段只需两行代码即可完整解析绘制环境（实现见 `ShaderLibrary/common/RenderItemResolve.glsl`）：
 
@@ -180,7 +194,7 @@ RenderItemDescriptor desc = ResolveRenderItemDirect(gl_InstanceIndex);
 
 // 2. 依据 4-ID 展开资源（全部经 buffer_reference 解引用，无描述符绑定）
 mat4   l2w       = LocalToWorldDataRef(pc_root.addr_l2w).mats[desc.transform_id];
-mat4   mesh_draw = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[desc.geometry_id];
+mat4   mesh_draw = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params_pool).rows[desc.geometry_id];
 // Fragment Shader 中（宏由材质编译器生成，展开即 BDA 解引用）：
 // MTL_ROW(i)  → <RowStruct>(global_addresses.addr_pbr_surface + payload_index(i) * stride)
 // MTL_TEX(i)  → MaterialTextureReferencesRef(pc_root.addr_texture_references + tex_ref_index(i) * row_stride)
@@ -239,6 +253,7 @@ mat4   mesh_draw = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[desc.ge
     - `uint64_t addr_global_render_items;`（一级表基址）
     - `uint64_t addr_draw_item_ids;`（当前帧二级绘制索引表基址）
   - 结构体自 32B 扩充至 48B，保持 8 字节自然对齐，并在 `RenderSceneUBOSystem` 帧阶段自动注入 `storage->GetGPUAddress()`。
+  - （**订正（2026-09-28）**：该阶段当时的载体名/尺寸已被后续 S2–S3 取代 —— 现行 `GlobalAddresses` 是 **SSBO 表**（`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长、无绑定无集），见 §6 ①。）
 - **3.2 编写 GLSL 统一解码头文件 (`RenderItemResolve.glsl`)** 【✅ 已完成】
   - 编写 `ShaderLibrary/common/RenderItemResolve.glsl`，通过 Vulkan GLSL buffer reference（16 字节对齐）定义 `RenderItemBufferRef` 与 `DrawItemIDBufferRef`：
     - 连号直通模式 (Direct Mode): `ResolveRenderItemDirect(uint instance_index)`
@@ -291,7 +306,7 @@ mat4   mesh_draw = MeshDrawParamsRef(pc_root.addr_mesh_draw_params).rows[desc.ge
 
 - **6.1 废弃过渡代码** 【✅ 已完成】
   - 彻底删除 `PrimitiveBatchPipeline` 中合批阶段动态 `EnsureMeshDrawParams` 补录逻辑（包括 `BuildBatches` 与 `WriteMeshDrawCommands` 中的 fallback 补录调用），统一由 `RenderPrimitiveCollectSystem` 及底层 Storage 预分配担保。
-  - 在 `EnsureBatchIndexRows` 与 `WriteBatchIndexRows` 中增加 `uses_render_item_resolve` 保护，开启 4-ID 架构直通的批次跳过每帧缓冲分配与映射。
+  - 在 `EnsureBatchIndexRows` 与 `WriteBatchIndexRows` 中增加 `uses_render_item_resolve` 保护，开启 4-ID 架构直通的批次跳过每帧缓冲分配与映射。（**订正（2026-09-28）**：`uses_render_item_resolve` 全仓无处置 true（`MaterialBatch.h:71` 只被置 false）⇒ 该保护恒不生效，4-ID GPU 运行时解析当前**未启用**。）
   - 升级 `WriteBatchIndexRows`：优先直接通过 `item->GetRenderItemHandle()` 从全局 `RenderItemDataStorage` 查询 4-ID 描述符填充行数据，废弃每帧通过 `MaterialComponent` 动态计算基址与偏移的过渡代码路径。
 - **6.2 全量工程回归与稳定性测试** 【✅ 已完成】
   - 修复 `GizmoUsageExample` 轴材质与纹理索引映射异常。

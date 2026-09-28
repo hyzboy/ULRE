@@ -1,5 +1,10 @@
 # GUI 文本渲染：从 main() 到 vkCmdDrawMeshTasksEXT 全链路
 
+> **订正（2026-09-28）**：相机 / 环境 / 地址表断言已按权威文档 `doc/world-addresses-and-camera-model-plan.md`（§1、§4、§7）就地修订，本文改动项：
+> ① 描述符集**只剩 Bindless(0)**——Scene 集与 `SceneBinding` 已整体退场（不再有 `Scene(0)`/6 个场景 UBO，集号收敛为 0）；
+> ② `RootAddresses` push constant = **80B**（首字段 `addr_global_addresses`），不是 72B；末位字段是 **`camera_row`**（相机行号），不是 `camera_id`；
+> ③ 地址归属：**viewport 保持全局**（`global_addresses.addr_viewport`），sky / shadow / 相机行**随世界**（世界表 `WorldAddresses`，批次 C1/C2）；文本管线只读 `viewport.ortho_matrix`，其读点写法不变。
+
 ## 总体架构
 
 ```
@@ -25,8 +30,8 @@ ECS 层 (ecs/)
         │
 Vulkan 层
   vkCmdBindPipeline + ApplyPipelineState(EDS1/2/3)
-    → vkCmdPushConstants(pc_root: 三表/mesh_draw_params/mtl_data_addrs 地址)
-    → vkCmdBindDescriptorBuffersEXT + vkCmdSetDescriptorBufferOffsetsEXT(Scene(0)/Bindless(1))
+    → vkCmdPushConstants(pc_root: global 表基址 + 三表/mesh_draw_params/mtl_data_addrs/camera_row)
+    → vkCmdBindDescriptorBuffersEXT + vkCmdSetDescriptorBufferOffsetsEXT(Bindless(0)；Scene 集已整体退场)
     → vkCmdDrawMeshTasksEXT
 ```
 
@@ -94,7 +99,7 @@ TextRenderPipeline 为三层 SSBO 各维护一对（buffer + 视图），三张�
 | RenderCollect | TextCollectSystem (`src/ecs/support/text/TextCollectSystem.cpp`) | 收集所有 TextComponent，按 FontSource 分组 |
 | RenderBatch | TextBuildSystem (`src/ecs/support/text/TextBuildSystem.cpp`) | 排版 → 字形图集生成 → SSBO 数据准备 → 三层 SSBO 上传 |
 | RenderBatch | TextSyncSystem (`src/ecs/support/text/TextSyncSystem.cpp`) | 清除变更标记 |
-| RenderDrawSubmit | TextRenderSystem (`src/ecs/support/text/TextRenderSystem.cpp`) | 绑定管线 + pc_root/全局集 → DrawMeshTasks |
+| RenderDrawSubmit | TextRenderSystem (`src/ecs/support/text/TextRenderSystem.cpp`) | 绑定管线 + pc_root/全局集（Bindless）→ DrawMeshTasks |
 
 核心实现集中在 `TextRenderPipeline`（`src/ecs/support/text/TextRenderPipeline.cpp`）。
 
@@ -208,15 +213,14 @@ struct CharInstance {
 - Mesh Shader 模式：`CharQuad`，`max_invocations = 42`
 - `blend = "Transparent"` 启用 alpha 混合（`VK_BLEND_FACTOR_SRC_ALPHA` / `ONE_MINUS_SRC_ALPHA`），使 SDF smoothstep 抗锯齿边缘和阴影/勾边效果正确与背景混合
 
-### 5.2 描述符绑定（BDA 终态：两集 + push constant，无 per-material set）
+### 5.2 描述符绑定（BDA 终态：单集 + push constant，无 per-material set）
 
 | 载体 | 内容 | 绑定时机 |
 |------|------|----------|
-| Set 0 `Scene` | 场景 UBO ×6：Camera / Sky / Viewport / ColorPalette / GlobalAddresses / Shadow（`SceneBinding`，`inc/hgl/common/DescriptorSetTypeDef.h`） | 每 cmd 首绑一次（`GraphicsContext::BindGlobalDescriptorSets` 守卫去重） |
-| Set 1 `Bindless` | 全局纹理数组（`Texture2DArray` + `Sampler` + `TextureCubeArray`） | 同上 |
-| push constant `RootAddresses`（72B） | 文本三表 / mesh_draw_params / L2W / L2WIndex / mtl_data_addrs / texture_references / camera_id 的设备地址 | 每字体一次，draw 前（`graph::PushRootAddresses`） |
+| Set 0 `Bindless` | 全局纹理数组（`Texture2DArray` + `Sampler` + `TextureCubeArray`）——**唯一集合**；原 Set 0 `Scene`（Camera/Sky/Viewport/ColorPalette/GlobalAddresses/Shadow 六个 UBO）与 `SceneBinding` 已随 S3 整体退场（`inc/hgl/common/DescriptorSetTypeDef.h:9-23`） | 每 cmd 首绑一次（`GraphicsContext::BindGlobalDescriptorSets` 守卫去重） |
+| push constant `RootAddresses`（**80B**） | `global_addresses` 表基址（首字段 `addr_global_addresses`）+ 文本三表 / 本批 mesh_draw_params / L2W / L2WIndex / mtl_data_addrs / texture_references 的设备地址 + `camera_row`（相机行号；旧文写的 `camera_id` 是过期字段名） | 每字体一次，draw 前（`graph::PushRootAddresses`） |
 
-- 两个集都用 `VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT` 布局（Scene 集另带 push descriptor 位），经 `vkCmdBindDescriptorBuffersEXT` + `vkCmdSetDescriptorBufferOffsetsEXT` 绑定——**没有 `vkCmdBindDescriptorSets`、没有 per-material 集**。
+- 唯一集合（Bindless）用 `VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT` 布局，经 `vkCmdBindDescriptorBuffersEXT` + `vkCmdSetDescriptorBufferOffsetsEXT` 绑定——**没有 `vkCmdBindDescriptorSets`、没有 per-material 集、也没有 Scene 集**（原“Scene 集另带 push descriptor 位”的限定随该集退场一并作废）。
 - 文本三表、mesh_draw_params、材质行表全部走 `pc_root` 里的设备地址 + `buffer_reference` 解引用（`ShaderLibrary/common/l2w_ssbo.glsl`、`ShaderLibrary/material/text_source_gpu.glsl`），**不存在 b14/b15/b16 这类绑定号**。
 - `TextRenderPipeline::Render()` 的实际序列：`BindPipeline` → `ApplyPipelineState`（EDS）→ `PushRootAddresses` → `BindGlobalDescriptorSets` → `DrawMeshTasks`（`src/ecs/support/text/TextRenderPipeline.cpp:280-315`）。
 

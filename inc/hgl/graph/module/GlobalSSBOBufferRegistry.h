@@ -290,12 +290,18 @@ public:
         return GetBuffer(GlobalSSBOType::MeshDrawParams);
     }
 
-    // ---- CameraInfo 便捷接口 ----
+    // ---- CameraInfo 便捷接口（**归属订正中：将下沉世界级**）----
     //
-    // 行空间由「相机序号 × per-frame 数据槽」静态划分：行号 = camera_id * kCameraInfoSlotCount + slot。
+    // ⚠ 相机是**世界级观察者数据**，不该放在本设备级 registry 的行池里。定稿见
+    //  doc/world-addresses-and-camera-model-plan.md §2：相机存储下沉**世界私有** SSBO
+    //  （16 槽 × HGL_FRAME_SLOT_TOTAL 帧槽，地址进 WorldAddresses 表）；本文件中的
+    //  GlobalSSBOType::CameraInfo 配置项、全局相机号位图与全局 8 相机上限将随之删除。
+    //
+    // 迁移期间仍然有效的现有契约：
+    // 行空间由「相机槽号 × per-frame 数据槽」静态划分：行号 = camera_id * kCameraInfoSlotCount + slot。
     // 该池整块预激活（见 InitializePools 注释），行号不经 Acquire/Release ⇒ 与行池的分配策略解耦
     // （Acquire 优先复用 idle，行号并不连续），且 CommitRow 的行校验恒成立。
-    // 序号 0 恒留给主相机，1..kMaxCameraCount-1 由下面的位图分配。
+    // 0 号槽恒留给本世界默认相机，1..kMaxCameraCount-1 由下面的位图分配。
 
     static constexpr uint32_t kCameraInfoSlotCount = HGL_FRAME_SLOT_TOTAL;
     static constexpr uint32_t kCameraInfoRowCount  = 64u;

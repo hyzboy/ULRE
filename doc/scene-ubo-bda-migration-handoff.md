@@ -1,5 +1,10 @@
 # Scene UBO 彻底 BDA 化 — 交接文档（给新会话）
 
+> **注（2026-09-28）**：本文目标**已达成** —— Scene 集 Set 0 已整体退场（S1–S3），描述符集收敛为
+> 唯一 Bindless(0)，本文的 T1–T6 计划仅作历史记录。**当前权威口径**见
+> `doc/world-addresses-and-camera-model-plan.md`（Global/World 双地址表、相机下沉世界级、Env 随世界）。
+> 与本文相关的未跟踪分析稿 `doc/scene_ubo_bda_migration_ready.md` 同样已被超越。
+
 > 本会话只处理 CSM 相关线（已完成）。本文只收集信息，不动手。
 > 目标：把 Scene 集 Set 0 剩下的 5 个 UBO 绑定全部退场，shader 侧统一经
 > `pc_root`（RootAddresses push constant）+ `buffer_reference` 取数据，**宏名不变**。

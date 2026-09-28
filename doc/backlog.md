@@ -81,8 +81,10 @@
 
 ### A8. ~~CameraInfo 全局 SSBO 化与 PushConstants 索引（多相机同帧并发）~~ **已完成（c7430f92f，2026-09-23）**
 
-- **已落地**：在 `GlobalSSBOBufferRegistry` 中注册 CameraInfo（656B 步长），主相机固定第 0 行，从属相机按需分配；
-  PushConstants `RootAddresses` 末尾加入 `camera_id` 与 `_pad_camera`（72B 自然对齐）；
+- **已落地**：在 `GlobalSSBOBufferRegistry` 中注册 CameraInfo（`sizeof(CameraInfo)` 步长），默认相机固定 0 号行，从属相机按需分配；
+  PushConstants `RootAddresses` 末尾加入相机行号与 `_pad_camera`（**订正（2026-09-28）**：push constant 现为 **80B**，
+  字段名已由 `camera_id` 改为 **`camera_row`**，首字段为 `addr_global_addresses`；相机存储本轮定稿**下沉世界级**
+  （世界私有 16 槽 × 8 帧槽、0 号槽恒为本世界默认相机），见 `doc/world-addresses-and-camera-model-plan.md`）；
   GLSL BDA `CameraInfoBufferRef` 经宏 `#define camera` 透明解引用；
   ECS `CameraComponent` / `CameraSystem` / `Context::RenderTo` 全链路打通多相机隔离与 `camera_id` 下发，彻底解耦多 Pass 相机矩阵踩踏。
 
@@ -607,6 +609,23 @@
   `TestCSMIncrementalPass` 源码契约或单测；`res/`（用户自管）不动。
 
 </details>
+
+## 相机 / 地址表归口（2026-09-28 定稿）
+
+权威口径与执行计划：`doc/world-addresses-and-camera-model-plan.md`。
+
+- **三档地址分层**：`GlobalAddresses` = 跨世界共享资源池（MeshDrawParams 池、PBR/Emissive/Transmission 行池、
+  调色板、**viewport**）；新增 **`WorldAddresses`** = 世界私有（相机行 / 渲染项表 / DrawItemID 表 /
+  sky / shadow / env）；`pc_root` = 每批 / 每材质 / 本字体（新增 `addr_world_addresses`）。
+- **相机下沉世界级**：世界私有 SSBO，**16 槽 × 8 帧槽**，0 号槽恒为本世界默认相机；
+  三级解析（默认相机 → 最小 `EntityID.index` 相机 → `(0,0,0)` 强制常驻 fallback）；
+  光相机随"投影阴影的灯光"创建、镜面未来同理（拥有者负责申请/归还）。
+- **Env 随世界**：profile 生命周期跟随世界；sky / shadow / env 地址按世界发布（现状写全局字段 ⇒
+  多世界同帧只有最后解析的 profile 生效，互踩）。
+- 批次：**C0**（ShadowMap 相机行污染修复，已完成待提交）→ **C1**（双表 + 相机收口）→ **C2**（Env 归世界）
+  → **C3**（灯光/镜子相机通用化）→ **C4**（ComponentData 骨架：CameraComponent 样板 → Transform/Geometry/Material）。
+- 事实订正清单（`RootAddresses` 80B、`GlobalAddresses` 已是 SSBO+8 槽、Scene 集退场、`camera_row` 改名、
+  "光源相机属另一个世界"是错误归因、4-ID 消费开关未启用 …）见该文档 §7。
 
 ## 关联顺序
 

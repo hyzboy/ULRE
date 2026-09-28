@@ -117,8 +117,11 @@ namespace hgl
 
             /// 发布单个相机在**指定帧槽**的 CameraInfo 行（行号 = camera_id * 槽总数 + slot）。
             ///
-            /// 按**组件**发布：离屏 pass 的相机（如阴影光源相机）常属于另一个世界，
-            /// 本世界 CollectCameras() 看不到它，必须由 RenderTo 直接按 req.camera 调用。
+            /// 为什么除了 PublishCameraRows 还需要本接口：阴影光源相机是**系统内建相机**
+            /// （`EnvironmentSystem` 用 make_shared 创建，**不经 Entity/AddComponent 注册**）
+            /// ⇒ 不在 component_registry 里，`CollectCameras()` 看不到它，必须由 RenderTo 按
+            /// `req.camera` 直接调用。（历史注释曾误记为"相机属另一个世界"；CSM 始终是
+            /// "一个世界 + 多个渲染过滤程"，见 doc/world-addresses-and-camera-model-plan.md §7。）
             void PublishCamera(const CameraComponent* camera, uint32_t frame_slot);
 
             /// 发布本世界全部相机（由 ECSContext::PrepareRenderPassSetup 调用）。

@@ -595,9 +595,12 @@ namespace hgl
                 // 本 pass 的 per-frame 数据槽 = 该 RT 的槽带（与主帧槽不相交）
                 SetFrameIndex(render_target ? render_target->GetCurrentFrameIndex() : 0u);
 
-                // 本次 pass 的相机行：**按 req.camera 直接发布**。光源相机常常属于离屏世界，
-                // 本世界 CameraSystem 的 CollectCameras() 看不到它，靠通用发布会漏 ⇒
+                // 本次 pass 的相机行：**按 req.camera 直接发布**。阴影光源相机是**系统内建相机**
+                // （EnvironmentSystem 直接 make_shared，不经 Entity/AddComponent 注册）⇒ 不在
+                // component_registry 里，本世界 CollectCameras() 看不到它，靠通用发布会漏 ⇒
                 // shadow pass 用退化相机渲染（阴影整体消失、receive_shadow 拨动无像素变化）。
+                // （历史注释曾误记为"光源相机属另一个世界"——真因与定稿见
+                //  doc/world-addresses-and-camera-model-plan.md §3/§7。）
                 if (auto cs = GetSystem<CameraSystem>())
                     cs->PublishCamera(req.camera, frame_index);
 
@@ -867,8 +870,8 @@ namespace hgl
 
             // 相机行发布必须在这之后：本帧数据槽（frameIndex）此时才确定
             // （主帧 = acquire 之后拿到的交换链槽；离屏 pass = 该 RT 的槽带）。
-            // 这里只覆盖本世界 CameraSystem 持有的相机；离屏 pass 的相机可能属于另一个世界，
-            // 由 RenderTo 按 req.camera 单独发布（见下）。
+            // 这里只覆盖本世界 CameraSystem 收集得到的相机（= 经 Entity 注册的那些）；系统内建
+            // 相机（阴影光源相机等）不在其中，由 RenderTo 按 req.camera 单独发布（见下）。
             if (auto cs = GetSystem<CameraSystem>())
                 cs->PublishCameraRows(frameIndex);
 

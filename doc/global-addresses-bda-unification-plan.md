@@ -1,16 +1,23 @@
 # 全局地址统一：GlobalAddresses 表接管全局表地址（执行计划）
 
+> **注（2026-09-28）**：本文的 S1–S3 已全部落地（Scene 集整体退场、地址归口 GlobalAddresses）。
+> **后续定稿已改为"两张表"**：新增世界表 `WorldAddresses`（相机行 / 渲染项表 / DrawItemID 表 /
+> sky / shadow / env 随世界；viewport 留全局表），相机存储下沉世界级 —— 见
+> `doc/world-addresses-and-camera-model-plan.md`（含事实订正清单）。本文保留为 S 系列执行记录。
+> 另：本文 §3 写的"门基线 38 PASS"当时正确，现在基线为 **39 PASS**（S2d 新增
+> `S.global-addresses-struct-parity`）。
+
 > 决策（用户，2026-09-27）：**所有表 BDA 全放 GlobalAddresses 表**，pc_root 只保留
 > 「表地址」这类根入口。配套口径：sky 现在"全动态"只是因为要改太阳；正式版不会天天动，
 > 不构成反对理由。shadow 同理。viewport 数据可缩成 `uint16[2]`，其余算得出来。
 
 ## 1. 实测现状（这决定了可行形状）
 
-### pc_root（`RootAddresses`，72B，**每 MaterialBatch push 一次**）8 个地址的归属
+### pc_root（`RootAddresses`，**现 80B**：9×uint64 + 2×uint32，**每 MaterialBatch push 一次**）9 个地址 + 相机行号的归属
 
 | 字段 | 真实归属 | 依据 |
 |---|---|---|
-| `addr_mesh_draw_params` | **每 DrawBatch** | `inc/hgl/ecs/core/MaterialBatch.h:55`、`src/ecs/support/PrimitiveBatchPipeline.cpp:635` |
+| `addr_mesh_draw_params`（**现已改名 `addr_batch_mesh_draw_params`**） | **每 DrawBatch** | `inc/hgl/ecs/core/MaterialBatch.h:55`、`src/ecs/support/PrimitiveBatchPipeline.cpp:635` |
 | `addr_l2w` | 每批（`l2w_buffer` 覆盖）或每世界（`TransformAssignmentBuffer`） | `MaterialBatch.h:76`、`PipelineMaterialRenderer.cpp:160-171` |
 | `addr_l2w_index` | **每 DrawBatch** | `MaterialBatch.h:60` |
 | `addr_mtl_data_addrs` | **每 DrawBatch** | `MaterialBatch.h:65` |

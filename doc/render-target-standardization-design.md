@@ -1,5 +1,7 @@
 # RenderTarget 标准化设计
 
+> **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。
+
 > 目标：把 RenderTarget 从"能用但要背隐式契约"变成"声明式资源 + 统一入口"，
 > 让未来所有需要 RT 的工作（离屏、后处理、阴影图、CubeMap、多视口）走同一套路。
 >

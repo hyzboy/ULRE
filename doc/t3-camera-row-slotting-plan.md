@@ -4,6 +4,12 @@
 > 不再覆写主帧在途的那一份；同时**不改变相机编号语义**、不引入 `CommitRow` 拒绝。
 >
 > 本文只定方案，不含实现。相关前置已提交：`e7525c10d`（per-frame 数据槽 = 当前 RT 的槽）。
+>
+> **订正（2026-09-28）**：本文 §1 表格里"光源相机常属**另一个世界**"是**错误归因**——光相机是
+> `EnvironmentSystem` 直接 `make_shared` 创建、**不经 Entity/AddComponent 注册**，所以 `CollectCameras()`
+> 看不到它；CSM 始终是"**一个世界 + 多个渲染过滤程**"（`EnvironmentSystem.cpp:216/389/421`）。
+> 相机编号 / 存储 / 默认相机的**后续定稿**见 `doc/world-addresses-and-camera-model-plan.md`：
+> 相机存储下沉**世界级**、0 号槽恒为本世界默认相机、世界容量 16 槽、三级解析（默认 → 最小实体号 → 强制 fallback）。
 
 ---
 
@@ -21,7 +27,7 @@ CPU 侧有两条写入者、两条读取者，**跨 pass 同时活跃**：
 | 角色 | 位置 | 写入/读取的相机 |
 |---|---|---|
 | 主帧读取 | `GetActiveCameraID()` ← `Context::active_camera_id` | 主相机（`camera_id == 0`） |
-| 离屏 pass 读取 | `RenderTo` 里 `active_camera_id = req.camera->camera_id` | 光源相机（常属**另一个世界**） |
+| 离屏 pass 读取 | `RenderTo` 里 `active_camera_id = req.camera->camera_id` | 阴影光源相机（**本世界的系统内建相机**，不经 Entity 注册 ⇒ `CollectCameras()` 看不到） |
 | 主帧写入 | `CameraSystem` 发布（本世界全部相机） | 主相机 |
 | 离屏 pass 写入 | 同上 + `RenderTo` 按 `req.camera` 发布 | 光源相机 |
 
@@ -111,7 +117,7 @@ bool WriteCameraRow(uint32_t camera_id, uint32_t slot, const CameraInfo &info);
 
 | 文件 | 改动 |
 |---|---|
-| `inc/hgl/ecs/core/Context.h` / `src/ecs/core/Context.cpp` | `GetActiveCameraRow()` = `active_camera_id * HGL_FRAME_SLOT_TOTAL + frame_index`；`PrepareRenderPassSetup` 里发布本世界相机；`RenderTo` 里按 `req.camera` 直接发布（光源相机可能属另一个世界，`CollectCameras()` 看不到——这是上一轮实测过的坑） |
+| `inc/hgl/ecs/core/Context.h` / `src/ecs/core/Context.cpp` | `GetActiveCameraRow()` = `active_camera_id * HGL_FRAME_SLOT_TOTAL + frame_index`；`PrepareRenderPassSetup` 里发布本世界相机；`RenderTo` 里按 `req.camera` 直接发布（光源相机是系统内建相机、不经 Entity 注册，`CollectCameras()` 看不到——这是上一轮实测到的真因；历史注释曾误记为"属另一个世界"） |
 | `src/ecs/systems/tick/CameraSystem.{h,cpp}` | 新增 `PublishCamera(camera, slot)` / `PublishCameraRows(slot)`；删 tick 阶段写（槽此时未确定）；申请逻辑恢复基线语义：主相机 `camera_id = 0`（不申请，行已预激活）、非主相机在 `camera_id == 0` 时申请一次 |
 | 4 个读取点 | `PrimitiveRenderSystem.cpp` / `PrimitiveOverlayRenderSystem.cpp` / `LineRenderPipeline.cpp` / `TextRenderPipeline.cpp` → 传 `GetActiveCameraRow()` |
 | `ShaderLibrary/ubo/scene_ubo.glsl` | **不改**（`pc_root.camera_row` 收到的就是行号） |

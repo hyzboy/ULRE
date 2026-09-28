@@ -1,5 +1,7 @@
 # 技术分析报告：基于 ShadowMask 的多层次混合阴影架构设计
 
+> **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。
+
 > 文档状态：设计草案 / 预研规划  
 > 适用范围：ULRE 渲染管线深度集成与多源阴影合成  
 > 坐标系规范：右手系 (RH), Z-up, Vulkan NDC 深度 ZO ($z \in [0, 1]$)
@@ -80,7 +82,7 @@ $$\text{ShadowMask}_{\text{final}} = \min(\text{ContactShadow}, \min(\text{Capsu
   * 在 Compute/Pixel 着色器中，以像素位置为起点，计算该点朝向光源方向受到胶囊体的解析立体角遮挡（Analytic Spherical Cone / Capsule Occlusion），直接求出闭式解析柔和软阴影。
 * **引擎架构依赖**：
   * ECS 需支持 `ProxyCollisionComponent` 或专用 `ShadowProxyComponent`。
-  * `TransformSystem` 每帧负责将代理的全局几何数据提交至 Global SSBO。
+  * `TransformSystem` 每帧负责将代理的全局几何数据提交至 Global SSBO。（订正（2026-09-28）：按最新地址分层，**世界私有**的代理/渲染数据应进世界表 `WorldAddresses`；`GlobalAddresses` 只放跨世界共享的资源池（mesh 绘制参数池、材质行池、调色板、viewport）。见 doc/world-addresses-and-camera-model-plan.md §1。）
 
 ### 3.3 光线追踪距离场阴影 (RTDF / Mesh Distance Field Shadows)
 * **定位**：替代中远距离（CSM 2/3）的大范围级联，实现全岛/远景大范围静态物体的低开销、平滑半影软阴影。

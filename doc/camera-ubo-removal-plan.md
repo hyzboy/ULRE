@@ -1,5 +1,10 @@
 # 死绑定 Camera UBO 清理：统计结论与执行方案
 
+> **注（2026-09-28）**：本文的清理已落地（相机数据统一走 BDA）。**相机数据的后续归属定稿**：
+> 相机是**世界级观察者数据**，将从设备级 `GlobalSSBOBufferRegistry` 的行池下沉为**世界私有存储**
+> （16 槽 × 8 帧槽，0 号槽恒为本世界默认相机），地址从全局表迁到世界表 `WorldAddresses` ——
+> 见 `doc/world-addresses-and-camera-model-plan.md`。本文其余结论（删死绑定、删 `CAMERA_BINDING`）不变。
+
 > 结论先行：**`DescriptorSemantic::CameraInfo` 本身可以删**（无按序号消费者），
 > 上一轮“删了就错位/材质编译失败”的表象来自 **陈旧的着色器产物缓存**，不是源码。
 > 本文给出完整删除清单、三个真正的坑与验证顺序。

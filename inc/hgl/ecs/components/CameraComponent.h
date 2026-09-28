@@ -78,7 +78,7 @@ namespace hgl
             graph::Camera* camera_data;             ///< 摄像机数据指针 / Camera data pointer
             graph::CameraInfo* camera_info;         ///< 摄像机信息指针 / Camera info pointer
             const graph::ViewportInfo* viewport_info; ///< 视口信息指针 / Viewport info pointer
-            uint32_t camera_id = 0;                 ///< 全局 SSBO 行号 / Global SSBO row index
+            uint32_t camera_id = 0;                 ///< 相机槽号（世界内；0 = 本世界默认相机） / world-local camera slot (0 = default camera)
 
             // === 标记 / Flags ===
             bool is_main_camera;            ///< 是否为主摄像机 / Is main camera

@@ -433,7 +433,7 @@ PrimitiveBatchPipeline::WriteMeshDrawCommands()
                                             src/ecs/support/PrimitiveBatchPipeline.cpp
   → 每几何一行 MeshDrawCommand{ geometry_id, first_instance }（8B，按 gl_DrawID 索引）
   → 一条 vkCmdDrawMeshTasksIndirectEXT multi-draw
-      └── mesh shader：pc_root.addr_mesh_draw_params + geometry_id 解引用该行
+      └── mesh shader：pc_root.addr_batch_mesh_draw_params + gl_DrawID 解引用该行
           （MeshDrawParamsRef，buffer_reference_align=16），
           顶点/索引/meshlet 地址全部来自行内 BDA
 ```

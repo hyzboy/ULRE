@@ -174,7 +174,7 @@
 
 1. `TransformAssignmentBuffer` 持有 L2W 矩阵表与 L2W 索引表（identity + static + dynamic ring）；
 2. 渲染侧每 MaterialBatch（等同批次）在 draw 前调用 `graph::PushRootAddresses`（`inc/hgl/graph/RootAddressPush.h`），
-   把表设备地址塞进 72B 的 `RootAddresses` push constant：
+   把表设备地址塞进 `RootAddresses` push constant（**现 80B**；文档历史上的 72B/56B 均已过期）：
    - `pc_root.addr_l2w` ← L2W 矩阵表（`Matrix4f` 数组，stride 64B）
    - `pc_root.addr_l2w_index` ← L2W 索引表（`uint32` 数组）
 3. shader 侧声明 `layout(buffer_reference, scalar, buffer_reference_align=16) buffer LocalToWorldDataRef`

@@ -17,13 +17,19 @@ namespace hgl::graph
      * EnvironmentManager - 环境综合信息统一管理器
      *
      * 集中持有所有环境 Profile（数据 + GPU 物化），设备级唯一（GraphicsContext 模块）。
-     * RT/WORLD 不拥有环境数据，只持有 EnvProfileID 引用；未设置即用内置 default。
+     *
+     * ⚠ 归属订正（2026-09-28；决策见 doc/world-addresses-and-camera-model-plan.md §4）：
+     * **Env 随世界** —— profile 的所有权与生命周期最终跟随世界（世界创建时选/建自己的
+     * profile、销毁时归还；内置 default 可共享），且 sky / shadow / env 的**地址发布必须按世界**
+     * （写世界表 `WorldAddresses`）。现状"RT/WORLD 只持 EnvProfileID 引用 + 地址写全局字段"
+     * 在多世界同帧下只有最后解析的那个 profile 生效（互踩）。
      *
      * 分层约定：
      * - 数据层：EnvironmentInfo（纯数据，CPU 侧唯一权威在 Profile::cpu）
      * - 管理层：本类（Profile 注册 / GPU UBO 物化 / 脏标记）
-     * - 选择层：IRenderTarget::GetEnvironmentProfile()（未设置 = kEnvProfileDefault）
-     * - 绑定层：RenderSceneUBOSystem 按 RT 选择解析 GetSkyUBO() 写入 Scene Set
+     * - 选择层：世界的 RT → EnvProfileID（未设置 = kEnvProfileDefault）
+     * - 绑定层：RenderSceneUBOSystem 解析 GetSkyUBO()/GetShadowUBO() 后写地址表
+     *  （世界表落地前为全局表 `GlobalAddresses`；Scene 集已随 S3 整体退场，不再有 binding）
      *
      * GPU 上传统一走设备级 dirty 扫描（RenderBufferUploadSystem），
      * default Profile 在 GraphicsContext 初始化阶段即物化并标脏，

@@ -1,5 +1,10 @@
 # Lit 材质数据流全链路分析
 
+> **订正（2026-09-28）**：相机 / 环境 / 地址表断言已按权威文档 `doc/world-addresses-and-camera-model-plan.md`（§1、§4、§7）就地修订，本文改动项：
+> ① toml `[resources].ubos = [CameraInfo, SkyInfo]` **不再是"场景 UBO 描述符"**——Scene 集已整体退场，camera 经**相机行**（世界级数据，shader 用 `pc_root.camera_row` 索引）、sky 经**地址**（现为 `global_addresses.addr_sky`，批次 C2 后进世界表 `WorldAddresses`）消费；
+> ② `MTL_ROW` 的基址来自 **`GlobalAddresses` SSBO（无绑定无集，`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长）**，经 `pc_root.addr_global_addresses` 下发，不是"Scene 集里的 `GlobalAddressesInfo` UBO"；
+> ③ `RootAddresses` push constant = **80B**（首字段 `addr_global_addresses`，末位 `camera_row` + `_pad_camera`）。
+
 > 分析入口：`example/Basic/SimpleSphere.cpp`（正向）与 `ShaderLibrary/material/lit.material.toml`（反向）。
 > 分析日期：2026-09-13。基于历史分支 `RemoveTexture2DArray`（`git branch -a` 现仅在远端 `hyzgame/RemoveTexture2DArray` 存在，本地分支列表已无此分支）。
 > 符号与 `path:line` 已按当前代码（描述符退役后的 BDA 终态）校正。
@@ -38,7 +43,7 @@
 | `[fragment].ntb_module = "ntb/ntb_tangent_vbo_normalmap.glsl"` | `ntb_module` → **NTBProvider** 槽位；**它的存在直接决定走 PBR 光照路径**（见第三节） |
 | `[vertex].requirements = [Position, UV0, Normal]` | `vertex_semantic_requirements`，与几何顶点格式做能力匹配 |
 | `[vertex].varyings = [emit_data_index_id, emit_world_pos, emit_world_normal, emit_uv0]` | `MaterialVertexVaryingConfig` → 决定 mesh/fragment 两阶段的插值接口 |
-| `[resources].ubos = [CameraInfo, SkyInfo]` | `ubo_requirements` → 场景 UBO 描述符 |
+| `[resources].ubos = [CameraInfo, SkyInfo]` | `ubo_requirements` → **场景数据需求**（不再是描述符集绑定：Scene 集已整体退场）——camera 由相机行 `cameras[pc_root.camera_row]` 提供、sky 由 `SkyInfoRef(global_addresses.addr_sky)` 解引用（C2 后为 `world.addr_sky`） |
 | `[resources].textures`（6 个，normal 带 `channels = 2`） | `texture_declarations` → **逐名**生成 GLSL 纹理引用结构体（见第五节） |
 | `[resources].samplers = [Trilinear, Linear, ShadowMap, ShadowPCF]` | `sampler_names` → 生成 `#define TrilinearSampler <idx>` 之类的 bindless 采样器索引宏（`BuildSamplerMacros`，`src/ShaderGen/compile/MaterialShaderEmitter.cpp:112`） |
 
@@ -91,7 +96,7 @@ GLSL `#include` 的解析：`src/ShaderGen/compile/GLSLCompiler.cpp:278` 把 `Sh
 
 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:197`（`BuildMaterialSSBODeclarations`）在编译期生成两段 GLSL 注入文档：
 
-- `struct PBRSurfaceData {...}` + `layout(buffer_reference, scalar, buffer_reference_align=16) buffer PBRSurfaceRow {...}`（成员表来自 C++ 侧 `ssbo::GetGlobalSSBOStructGLSL(GlobalSSBOType::PBRSurface)`、行名来自 `ssbo::GetGlobalSSBORowName()`，与 `MaterialDataRows.h` 的 32B 布局一一对应；`inc/hgl/graph/ssbo/MaterialSSBOLayout.h:65`/`:41`），以及 `#define MTL_ROW(i) PBRSurfaceRow(global_addresses.addr_pbr_surface + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(32))`——旧式 `...values[(i)].payload_address` 写法已退役，行号字段现为 `payload_index`，基址来自 Scene 集 GlobalAddresses UBO 的 `addr_pbr_surface`（`inc/hgl/graph/ubo/GlobalAddresses.h:17`），行号经 `pc_root` push constant 的 **BDA 地址**解引用；
+- `struct PBRSurfaceData {...}` + `layout(buffer_reference, scalar, buffer_reference_align=16) buffer PBRSurfaceRow {...}`（成员表来自 C++ 侧 `ssbo::GetGlobalSSBOStructGLSL(GlobalSSBOType::PBRSurface)`、行名来自 `ssbo::GetGlobalSSBORowName()`，与 `MaterialDataRows.h` 的 32B 布局一一对应；`inc/hgl/graph/ssbo/MaterialSSBOLayout.h:65`/`:41`），以及 `#define MTL_ROW(i) PBRSurfaceRow(global_addresses.addr_pbr_surface + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(32))`——旧式 `...values[(i)].payload_address` 写法已退役，行号字段现为 `payload_index`，基址来自 **`GlobalAddresses` SSBO（无绑定无集）** 的 `addr_pbr_surface`（`inc/hgl/graph/ubo/GlobalAddresses.h:31`）——该表基址经 `pc_root.addr_global_addresses`（`RootAddresses` 首字段，push constant 共 **80B**）下发，行号经 `pc_root.addr_mtl_data_addrs` 的 **BDA 地址**解引用；
 - `buffer MaterialTextureReferencesRef { uvec2 tex_base_color; uvec2 tex_roughness; uvec2 tex_metallic; uvec2 tex_occlusion; uvec2 tex_opacity_mask; uvec2 tex_normal; }` + `#define MTL_TEX(i)`——**这个结构体的字段是逐名照抄 toml `[resources].textures` 的**。
 
 于是运行时：

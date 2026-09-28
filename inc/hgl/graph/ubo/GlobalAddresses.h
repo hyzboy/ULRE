@@ -15,9 +15,14 @@ namespace hgl::graph
      * 为什么必须多份：绑定时代「每帧换绑定」由命令缓冲自带时序；地址进了共享表之后，
      * 覆盖写会踩到仍在执行的在途帧 —— 按槽分份后每帧只写自己那一槽，回到无竞争。
      *
-     * 地址归口口径：**全局 / 长期有效**的地址进本表（材质私有池、渲染项表、相机行表、
-     * 调色板、天空 / 视口 / 阴影）；**每批 / 每材质 / 本字体**的地址随 pc_root 走
-     *（同一帧内逐批不同，一张标量表装不下，见 RootAddressPush.h）。
+     * 地址归口口径（三档，定稿见 doc/world-addresses-and-camera-model-plan.md）：
+     *   ① **跨世界共享的资源池** → 本表（MeshDrawParams 池、PBR/Emissive/Transmission 行池、
+     *      调色板、viewport）；
+     *   ② **世界私有的观察者 / 状态** → 世界表 `WorldAddresses`（相机行、渲染项表、DrawItemID 表、
+     *      sky / shadow / env）——**不得再放进本表**；
+     *   ③ **每批 / 每材质 / 本字体** → pc_root（同一帧内逐批不同，一张标量表装不下，
+     *      见 RootAddressPush.h）。
+     * 硬规矩：本表内出现世界私有地址 = 回归（配归属契约门）。
      */
     struct GlobalAddresses
     {
@@ -26,14 +31,15 @@ namespace hgl::graph
         uint64_t addr_pbr_surface = 0;
         uint64_t addr_emissive_surface = 0;
         uint64_t addr_transmission_surface = 0;
-        uint64_t addr_global_render_items = 0;
-        uint64_t addr_draw_item_ids = 0;
-        uint64_t addr_camera_info = 0;
+        uint64_t addr_global_render_items = 0;     // 待迁出：RenderItemDataStorage 是世界私有（→ WorldAddresses）
+        uint64_t addr_draw_item_ids = 0;           // 待迁出：DrawItemIDStorage 是世界私有（→ WorldAddresses）
+        uint64_t addr_camera_info = 0;             // 待迁出：相机行随世界（→ WorldAddresses）
         uint64_t addr_color_palette = 0;
 
         // ── 每帧槽字段：地址随帧槽变化（buffer 每帧不同）──
-        // 注：sky 与 viewport 都是**单份 buffer**（viewport 的内容按 pass/RT 覆盖写、地址恒定）
-        //     ⇒ 全帧槽同址；只有 shadow 是真正的「每帧槽一份」（ring[i] ↔ 帧槽 i）。
+        // 注：viewport 是**单份 buffer**（viewport 的内容按 pass/RT 覆盖写、地址恒定）
+        //     ⇒ 全帧槽同址。sky 与 shadow **将迁出本表**（随世界，进 WorldAddresses；
+        //     shadow 仍每帧槽一份）。
         uint64_t addr_sky = 0;
         uint64_t addr_viewport = 0;
         uint64_t addr_shadow = 0;

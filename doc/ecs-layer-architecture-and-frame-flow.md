@@ -4,6 +4,15 @@
 > 范围：`inc/hgl/ecs/` + `src/ecs/` 全部分层（core / components / systems(tick,render) / support），以及 ECS 与渲染层（Graph/Vulkan）的接口面。
 > 与 `doc/simple-sphere-ecs-render-chain.md` 的分工：那篇讲「数据怎么从作者 API 走到 vkCmd」；本篇讲「ECS 层内部由谁、在什么阶段、按什么顺序驱动这些数据」。
 > 全部 path:line 在本基线核实；**符号名是稳定锚点，行号随重构漂移**。本文只描述现状。
+>
+> **订正（2026-09-28）**：相机 / 环境 / 地址表断言已按权威文档 `doc/world-addresses-and-camera-model-plan.md`（§1–§4、§7）就地修订，本文改动项：
+> ① 描述符集**只剩 Bindless(0)**（Scene 集与 `SceneBinding` 已整体退场，「6 个场景 UBO 绑定」作废）；
+> ② `GlobalAddresses` 是 **SSBO**（`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长、无绑定无集、基址经 `pc_root.addr_global_addresses` 下发），不是 Set0/binding4 的 56B UBO；
+> ③ `RootAddresses` push constant = **80B**（首字段 `addr_global_addresses`，末位 `camera_row` + `_pad_camera`），不是 72B / 首字段 `addr_mesh_draw_params`；
+> ④ 相机是**世界级数据**：世界私有 **16 槽 × 8 帧槽**、0 号槽恒为本世界默认相机；「全局 CameraInfo 行池 64 行 + 全局相机号位图 + 全局 8 相机上限」作废，`CameraComponent::camera_id` 已是世界内槽号；
+> ⑤ sky / shadow（及 env）地址**随世界**（世界表 `WorldAddresses`，批次 C1/C2），**viewport 保持全局**；
+> ⑥ 阴影光源相机是 `EnvironmentSystem` 用 `make_shared` 建的**系统内建相机**（不经 Entity/AddComponent 注册 ⇒ `CollectCameras()` 看不到它）；「光源相机属另一个世界」是错误归因，CSM 始终是一个世界 + 多个渲染过滤程；
+> ⑦ `scene_ubo.glsl` 的 `camera` 宏在 **`:149`**、字段名为 **`camera_row`**。
 
 ---
 
@@ -245,7 +254,7 @@ RunRenderPhaseUpdates(RenderCollect)       Context.cpp:727（收集/剔除：Pri
 RunRenderPhaseUpdates(RenderBatch)         Context.cpp:728（建批/写行表与命令表：PrimitiveBuild；Text/Line Build）
 RenderBufferCommit(dt)                     Context.cpp:695-701（ViewUBOCommitSystem：相机/视口/天空 UBO）
 RenderBufferUpload(dt)                     Context.cpp:703-709（同步 4-ID 存储 + 遍历脏 buffer 做 CopyToDevice + barrier）
-RenderFrameSync(dt)                        Context.cpp:711-717（RenderSceneUBOSystem：挂 Scene 集）
+RenderFrameSync(dt)                     Context.cpp:711-717（RenderSceneUBOSystem：Scene 集已退场，无绑定可推——只做 global address 表内会变字段的同步）
 ```
 
 ### 4.3 pass 内：一遍 RenderGraph 循环
@@ -308,7 +317,7 @@ BeginManagedRenderFrame(dt, /*need_swapchain_acquire=*/false, options)   ← 离
 | `PrimitiveComponent` `inc/hgl/ecs/components/PrimitiveComponent.h:50-274` | 「画什么」+ 作者侧资源 + 4-ID 槽位 | `runtime_data_buffer/runtime_draw_range`（:109-110）、`namedMaterialTextureResources`（:117）、`materialDataResource`（:118）、`material_authored_generation`（:123）、`resolvedRuntimePipelineMap`（:130，按 RenderPass 键控）、`render_item_handle` + `render_item_descriptor` | 设置类 API 一律 `++material_authored_generation` + `InvalidateResolvedRuntimePipeline()`；`EnsureRuntimeGeometryBinding` 在首次解析时建运行时几何绑定 |
 | `VisibilityComponent` `inc/hgl/ecs/components/VisibilityComponent.h:15-40` | 可见性开关，**直写共享 storage** | `visible` + `VisibilityDataStorage*` | `SetVisible` 直接更新 storage（`VisibilityDataStorage` `inc/hgl/ecs/support/VisibilityDataStorage.h:19-53`，支持祖先链查询 `IsInvisible`） |
 | `BoundingBoxComponent` `inc/hgl/ecs/components/BoundingBoxComponent.h:26-237` | 剔除用的 AABB（SOA） | `storageHandle`（静态共享 `BoundingBoxDataStorage`）、world AABB + valid | `SetAABB` → `TouchChange`；`LineBoundsUpdateSystem` 写线的世界 AABB（**没有 `BoundingBoxUpdateSystem`，0 命中**） |
-| `CameraComponent` `inc/hgl/ecs/components/CameraComponent.h:32-85` | 相机参数与控制模式 | `control_mode`(ViewModel 等)、`target/distance/yaw/pitch/min_distance/max_distance`、`local_camera_data/local_camera_info` 与裸指针 `camera_data/camera_info/viewport_info`、**`camera_id`（全局 CameraInfo 池行号，:81）**、`is_main_camera`（:84）、`matrix_dirty`（:85） | `CameraSystem` 每帧按模式计算 → `UpdateMatrices` |
+| `CameraComponent` `inc/hgl/ecs/components/CameraComponent.h:32-85` | 相机参数与控制模式 | `control_mode`(ViewModel 等)、`target/distance/yaw/pitch/min_distance/max_distance`、`local_camera_data/local_camera_info` 与裸指针 `camera_data/camera_info/viewport_info`、**`camera_id`（相机槽号，**世界内**；0 = 本世界默认相机，:81）**、`is_main_camera`（:84）、`matrix_dirty`（:85） | `CameraSystem` 每帧按模式计算 → `UpdateMatrices` |
 | `RenderableComponent` `inc/hgl/ecs/components/RenderableComponent.h:18-45` | 可渲染基类（`PrimitiveComponent` 的查询基） | `visible`、`boundingRadius` | 查询基：`GetComponents<RenderableComponent>()` 召回派生 |
 | `InstancedPrimitiveComponent` `inc/hgl/ecs/components/InstancedPrimitiveComponent.h` | 实例化图元（多 4-ID 一次写） | 实例容量 + 多描符读写 | RPCS 主循环走 `SetAllInstances4ID(..., false)` 分支（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:1410-1423`） |
 | `LinesComponent` / `TextComponent` | Line / Text 元素数据 | 局部包围盒等 | 各自 Collect/Build 系统 |
@@ -323,7 +332,7 @@ BeginManagedRenderFrame(dt, /*need_swapchain_acquire=*/false, options)   ← 离
 |---|---|---|---|
 | `InputSystem` `src/ecs/systems/tick/InputSystem.cpp:24` | `TickInput` | — | 采集输入；`EndFrame()` 由 `Context::Tick` 收尾（`src/ecs/core/Context.cpp:310-313`） |
 | `TransformSystem` `src/ecs/systems/tick/TransformSystem.cpp:14` | `TickTransform` | — | `Update`（:29-101）：只遍历 **movable**，按 mask/version 决定 `UpdateIfDirty`；`UpdateStaticDirty`（:102-136）；`SubmitTransformUpdates`（:137-355）：static 脏则整批重算 → `EnsureTransformBuffer`（:356）→ `RefreshHandleOrder`（:414）→ `EnsureCapacity` → 静态段/移动段 ring 分开写 → `MarkDirtyRanges` |
-| `CameraSystem` `src/ecs/systems/tick/CameraSystem.cpp:224` | `TickCamera` | **无显式依赖**（构造里 `// Declare dependencies` 后为空，:226-227；顺序由相位保证） | `CollectCameras`（:397）→ `CollectInput`（:407）→ `ProcessInput`（:463）→ `UpdateBasis`（:473）/`UpdateTransform`（:485）→ `UpdateMatrices`（:525，写 `camera_data`+`camera_info`，清 `matrix_dirty`）；`CommitCameraUBO`（:310-319）**无条件全量写** view 三件套；`BindCameraResources`（:631）维护 `camera_id` 与 CameraInfo 行池行 |
+| `CameraSystem` `src/ecs/systems/tick/CameraSystem.cpp:224` | `TickCamera` | **无显式依赖**（构造里 `// Declare dependencies` 后为空，:226-227；顺序由相位保证） | `CollectCameras`（:397）→ `CollectInput`（:407）→ `ProcessInput`（:463）→ `UpdateBasis`（:473）/`UpdateTransform`（:485）→ `UpdateMatrices`（:525，写 `camera_data`+`camera_info`，清 `matrix_dirty`）；`CommitCameraUBO`（:332-341）**无条件全量写** view 三件套；`BindCameraResources`（:688）绑定相机资源；相机行按**帧槽**发布由 `PublishCameraRows`（:656）/ `PublishCamera`（:642）在 `PrepareRenderPassSetup` / `RenderTo` 中完成（行号 = `camera_id × 帧槽总数 + slot`，0 号槽恒为本世界默认相机） |
 | `VisibilitySystem` `src/ecs/systems/tick/VisibilitySystem.cpp:13` | `TickTransform` | — | 构造 `VisibilityDataStorage`；`Initialize`（:23-51）时把 storage 塞给所有已存在的 `VisibilityComponent` 并同步初值；`Update`（:52）空转（组件直写） |
 | `LineBoundsUpdateSystem` `src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:13` | `TickTransform` | `AddDependency<TransformSystem>()`（:14） | 线的局部包围盒 → 建/更新 `BoundingBoxComponent`（局部 + 世界 AABB） |
 
@@ -418,12 +427,12 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 | 项 | 现状 |
 |---|---|
-| 描述符集 | **只有 2 个**：Scene(0)（6 个 UBO：Camera/Sky/Viewport/ColorPalette/GlobalAddresses/Shadow）与 Bindless(1)（纹理数组 + sampler 数组 + cube 数组）。真源 `inc/hgl/common/DescriptorSetTypeDef.h:12-24`（`enum class SceneBinding`）/:52-64（`enum class DescriptorSetType`） |
+| 描述符集 | **只有 1 个**：**Bindless(0)**（纹理数组 + sampler 数组 + cube 数组）。**Scene 集与 `enum class SceneBinding` 已随 S3 整体退场**——相机 / 调色板 / 全局地址表 / sky / viewport / shadow 全部改走 BDA（地址进 `GlobalAddresses` 表，表基址经 `pc_root.addr_global_addresses`）。真源 `inc/hgl/common/DescriptorSetTypeDef.h:9-23`（集号收敛为 Bindless=0） |
 | per-material / per-object / per-draw 描述符集 | **已退役**：`PerObject/Material/Vertex` 集随 BDA 化删除（`inc/hgl/common/DescriptorSetTypeDef.h:55-60` 注释明示）；`MaterialBind` 之类的绑定动作 0 命中 |
-| 绑定点 | `GraphicsContext::BindGlobalDescriptorSets(cmd, layout)`（`inc/hgl/graph/core/GraphicsContext.h:140`，compute 版 :143），Scene 集数据由 `RenderSceneUBOSystem::ApplyResourceLayoutBindings`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:378-410`）写入，Bindless 由 `BindlessTextureManager` 维护 |
+| 绑定点 | `GraphicsContext::BindGlobalDescriptorSets(cmd, layout)`（`inc/hgl/graph/core/GraphicsContext.h:140`，compute 版 :143）：唯一集合 Bindless 由 `BindlessTextureManager` 维护。`RenderSceneUBOSystem::ApplyResourceLayoutBindings`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:401-410`）**已无绑定可推**，只调 `SyncGlobalAddressesTable()`（:169-194，把每帧会变的渲染项 / 绘制项地址刷进 `GlobalAddresses` 表） |
 | 材质行 / 纹理引用行的载体 | `GlobalSSBOBufferRegistry`（`ActiveRowPool` 行池，`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:88`）+ `MaterialTextureReferencePool`（每 (definition, layout) 一池，`inc/hgl/graph/module/MaterialTextureReferencePool.h:49-128`） |
 | 行寻址 | `payload_index`（→ 全局池行号）/ `texture_reference_index`（→ 纹理引用池行号），经 `pc_root.addr_mtl_data_addrs` 行表 + `pc_root.addr_texture_references` 基址 BDA 解引用（`src/ShaderGen/compile/MaterialShaderEmitter.cpp:291-325`） |
-| 地址载体 | ① `GlobalAddressesInfo` UBO（Set0/binding4，7×uint64=56B，启动写一次，`inc/hgl/graph/ubo/GlobalAddresses.h:14-25`）② `RootAddresses` push constant（72B，每 MaterialBatch 一次，`inc/hgl/graph/RootAddressPush.h:28-64`） |
+| 地址载体 | ① `GlobalAddresses` **SSBO**（**无绑定无集**；按 `HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长分份，基址经 `pc_root.addr_global_addresses` 下发；池基址等长期地址启动写一次，渲染项 / 绘制项两字段每帧同步，`inc/hgl/graph/ubo/GlobalAddresses.h:11-57`）② `RootAddresses` push constant（**80B**，每 MaterialBatch 一次；首字段 `addr_global_addresses`，末位 `camera_row` + `_pad_camera`，`inc/hgl/graph/ShaderBufferSources.h:267-336`、`inc/hgl/graph/RootAddressPush.h:31-75`） |
 | 顶点路径 | mesh shader（`vkCmdDrawMeshTasksIndirectEXT`）是唯一路径；**无 `vkCmdBindVertexBuffers` / `vkCmdBindIndexBuffer` / vertex input state**（全仓 0 命中） |
 
 ---
@@ -440,7 +449,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 | 几何参数行（112B `MeshDrawParams`，含全部顶点流 BDA 地址） | **几何创建期**：`Geometry::RegisterMeshDrawParams`（由 `GeometryCreater::Create()` 自动调用） | `GlobalSSBOBufferRegistry` 的 `MeshDrawParams` 池，按 `geometry_id` 索引 |
 | 材质参数行（`PBRSurfaceRow` …） | 作者侧 `GlobalSSBODataAccessor::Write`；地址由 RPCS `MaterializeRecipeRowsForPrimitive` 解析 | `GlobalSSBOBufferRegistry` 的 `ActiveRowPool` |
 | 纹理引用行（`uvec2` handle/layer） | RPCS 材质化（`AcquireMaterialTextureConfiguration` / `WriteMaterialTextureConfiguration`） | `MaterialTextureReferencePool`（按 definition 一池） |
-| CameraInfo / SkyInfo / ViewportInfo UBO | `CameraSystem::CommitCameraUBO`（RenderBufferCommit）+ `ViewUBOCommitSystem`；挂载由 `RenderSceneUBOSystem::ApplyResourceLayoutBindings` | Scene 描述符集（set 0）；**相机在 GLSL 侧经 `CameraInfoBufferRef` + `pc_root.camera_row` 从池读**（`ShaderLibrary/ubo/scene_ubo.glsl:123`） |
+| CameraInfo / SkyInfo / ViewportInfo | `CameraSystem::CommitCameraUBO`（RenderBufferCommit）+ `ViewUBOCommitSystem`；地址发布由 `RenderSceneUBOSystem`（sky / shadow / viewport 经 `GlobalAddresses` 表字段 `addr_sky` / `addr_shadow` / `addr_viewport`） | **无描述符集**：相机经 `CameraInfoBufferRef(...).cameras[pc_root.camera_row]` 读（`ShaderLibrary/ubo/scene_ubo.glsl:149`），sky / shadow / viewport 经 `global_addresses` 表内地址解引用。相机行与 sky / shadow 地址**随世界**（世界表 `WorldAddresses`，C1/C2 落地；**viewport 保持全局**） |
 | 脏 buffer 的 GPU 传输 + barrier | `RenderBufferUploadSystem::Update`（先同步两个 4-ID storage，再遍历 `device->GetGPUBufferRegistry()`） | `IGPUBuffer::CopyToDevice` + `MemoryBarrier2`（`src/ecs/systems/render/RenderBufferUploadSystem.cpp:46-56,135-148`） |
 | swapchain 图获取 / 提交 | `SwapchainNextImageSystem`（帧首）/ `SwapchainSubmitSystem`（帧尾） | `SwapchainRenderTarget::NextFrame/Submit` |
 
@@ -464,7 +473,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 | 帧边界 / pass 执行日志 | **当前已注释**（`src/ecs/core/RenderGraph.cpp:168,176` 的 Frame Start/End；:104/:108 的 skip/execute pass；`src/ecs/core/Context.cpp:412-418` 的 phase range）。需要时打开对应注释行 |
 | 系统级计时 | **`SystemProfiler` 已删除**（0 命中）。逐系统 `[ECS] Update/Render Begin|End` 日志也已注释（`src/ecs/core/Context.cpp:824-868` 的 `RunSystemUpdate` / `RunRenderSystemsInRange`）——「某系统没跑」改由组开关 + 系统自身日志判断 |
 | 材质/寻址诊断 | `ULRE_ARENA_DEBUG` 环境变量开启 `[ArenaTrace]`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:684/:735/:806`）；`[ArenaDebug]` 首次行表诊断由 `MaterialBatch::debug_blocks_logged` 控制（`inc/hgl/ecs/core/MaterialBatch.h:80`） |
-| 渲染层一次性日志 | `[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u`（`src/ecs/support/PipelineMaterialRenderer.cpp:47-48`）；`[MaterialTextureReferencePool] created …`（`src/SceneGraph/module/MaterialTextureReferencePool.cpp:82-89`）；`[LineStats] total=…`（`src/ecs/systems/render/LineStatsSystem.cpp:34`）；`[SceneUBO] Scene UBO set not bound: …`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:404`） |
+| 渲染层一次性日志 | `[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u`（`src/ecs/support/PipelineMaterialRenderer.cpp:47-48`）；`[MaterialTextureReferencePool] created …`（`src/SceneGraph/module/MaterialTextureReferencePool.cpp:82-89`）；`[LineStats] total=…`（`src/ecs/systems/render/LineStatsSystem.cpp:34`）；`[SceneUBO] viewport addr=0x%llX 入表（全帧槽）`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:146`） |
 
 ---
 
@@ -477,7 +486,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 | `SetLocalPosition/Rotation` + 每帧 `Tick` 自转（:248-258） | 同上（mask 变化） | `TransformSystem::Update` → `SubmitTransformUpdates` | L2W 矩阵写入 movable ring 段 |
 | `AddComponent<PrimitiveComponent>()`（:180）+ `SetPrimitiveAsset/SetMaterialTextureResource/SetMaterialDataResource`（:183-191） | PrimitiveComponent（`material_authored_generation++`） | 反向注册 → 自动安装并打开 **"Primitive" 组** | 组激活 + 系统注册 |
 | `sphere_recipe`（Lit/PBR，:115-119） | 挂在 `PrimitiveAsset` 上 | `RenderPrimitiveCollectSystem` 解析/物化 | `MaterialComponent.program` + `data_index_row` + `material_row_gpu` + `material_texture_row_gpu` |
-| `ecs_context->EnsureCameraSystem()`（:199）+ `CreateEntity<Entity>("MainCamera")`（:202）+ `AddComponent<CameraComponent>`（:203，`ControlMode::ViewModel`、`is_main_camera=true`、`matrix_dirty=true`） | CameraComponent | `CameraSystem` | `camera_id` → 全局 CameraInfo 行池 → Scene 集可读 |
+| `ecs_context->EnsureCameraSystem()`（:199）+ `CreateEntity<Entity>("MainCamera")`（:202）+ `AddComponent<CameraComponent>`（:203，`ControlMode::ViewModel`、`is_main_camera=true`、`matrix_dirty=true`） | CameraComponent | `CameraSystem` | `camera_id`（世界内相机槽号）→ 相机行（行号 = 槽号 × 帧槽总数 + slot）→ shader 经 `pc_root.camera_row` 读 |
 | 球体几何（私有 VAB/IBO，`GeometryCreater::Create` @`src/SceneGraph/geo/GeometryCreater.cpp:194`） | `PrimitiveComponent::runtime_data_buffer`（GeometryDataBuffer） | RPCS `EnsureRuntimeGeometryFromAsset` | `geometry_id`（全局 `MeshDrawParams` 行号）+ 行为 11 个 `addr_*` |
 
 单实体场景下 ECS 的实际执行面：**1 个 Entity、3 个组件**（Transform/Primitive/Material，MaterialComponent 由收集系统自动补建）、**1 个 MaterialBatch、1 个 DrawBatch、1 行 `MeshDrawCommand`、1 行材质地址、1 行纹理引用**——渲染层表现为 `[IndirectMeshDraw] mesh indirect flush engaged: first=0 count=1`。
@@ -540,13 +549,13 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 | 旧说法 | 现状 | 依据 |
 |---|---|---|
-| 「Scene UBO / Bindless 纹理两个集，首次绑一次」 | 表述正确，补充真源与写入者：`enum class SceneBinding`（`DescriptorSetTypeDef.h:12-24`）+ `DescriptorSetType`（:52-64）；Scene 集数据由 `RenderSceneUBOSystem::ApplyResourceLayoutBindings` 写，绑定由 `GraphicsContext::BindGlobalDescriptorSets` 做 | `inc/hgl/common/DescriptorSetTypeDef.h:12-64`；`src/ecs/systems/render/RenderSceneUBOSystem.cpp:378-410`；`inc/hgl/graph/core/GraphicsContext.h:140` |
-| `MaterialSSBOBufferRegistry` 的 `ActiveRowPool` 写材质行 | 现载体 = `GlobalSSBOBufferRegistry`（`pools[GlobalSSBOTypeCount]`）+ `GlobalSSBODataAccessor`；容量来自 `kGlobalSSBOConfigs`（PBRSurface 1024×32B / MeshDrawParams 16384×112B / CameraInfo 64） | `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:31-61,88`；`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:13-20` |
+| 「Scene UBO / Bindless 纹理两个集，首次绑一次」 | **作废（2026-09-28）**：Scene 集与 `enum class SceneBinding` 已整体退场，唯一集合 = **Bindless(0)**（`DescriptorSetTypeDef.h:9-23`）；`RenderSceneUBOSystem::ApplyResourceLayoutBindings` 已无绑定可推，只做 `SyncGlobalAddressesTable()`（`RenderSceneUBOSystem.cpp:401-410`），绑定由 `GraphicsContext::BindGlobalDescriptorSets` 做 | `inc/hgl/common/DescriptorSetTypeDef.h:9-23`；`src/ecs/systems/render/RenderSceneUBOSystem.cpp:169-194,401-410`；`inc/hgl/graph/core/GraphicsContext.h:140` |
+| `MaterialSSBOBufferRegistry` 的 `ActiveRowPool` 写材质行 | 现载体 = `GlobalSSBOBufferRegistry`（`pools[GlobalSSBOTypeCount]`）+ `GlobalSSBODataAccessor`；容量来自 `kGlobalSSBOConfigs`（PBRSurface 1024×32B / MeshDrawParams 16384×112B / CameraInfo 64 行）；**注**：CameraInfo 64 行 = 过渡期的「全局 8 相机 × 8 帧槽」，相机是**世界级数据**，本轮改为**世界私有 16 槽 × 8 帧槽**（该 pool 配置项、全局相机号位图与全局 8 相机上限将删，`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:288-311`，批次 C1） | `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:31-61,88`；`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:13-20` |
 | `MaterialTextureReferencePool`（按 definition 一池，uvec2 handle/layer） | 现为按 **(definition, layout)** 一池，行 0 预留零行，retire 走 `ReleaseDeferred`/`CollectRetired`，常量 `MaterialTextureConfigurationRetireEpochDelay = 3u` | `inc/hgl/graph/module/MaterialTextureReferencePool.h:15,40-47,102-110` |
 | `MaterialSSBODataAccessor::Write` | `GlobalSSBODataAccessor::Write(row)` → `ActiveRowLease::Write` → `ActiveRowView::WriteAs` → `ActiveRowPool::CommitRow`（按行标脏） | `inc/hgl/vk/buffer/ActiveRowLease.h:157-166`；`inc/hgl/vk/buffer/ActiveRowView.h:174-188`；`src/Vulkan/buffer/ActiveRowPool.cpp:191-203` |
 | `payload_address` / `texture_reference_address` | 字段改名 `payload_index` / `texture_reference_index`（行号语义） | `inc/hgl/graph/ShaderBufferSources.h:129-140`；`src/ecs/support/PrimitiveBatchPipeline.cpp:975-994` |
 | `PBRSurfaceRowRef(...)`（凭地址直解引用） | 生成的宏形态为 `MTL_ROW(i) = PBRSurfaceRowRef(global_addresses.addr_pbr_surface + uint64(...values[i].payload_index) * 32)`；纹理侧 `MTL_TEX(i) = MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64(...values[i].texture_reference_index) * 48)` | `src/ShaderGen/compile/MaterialShaderEmitter.cpp:291-297,322-325` |
-| `pc_root` 7 张表 / 56B | **72B / 8×uint64 + 2×uint32**：新增 `addr_texture_references`，`addr_mesh_draw_params` 语义变为「本批 MeshDrawCommand 表」，文本三表齐备 | `inc/hgl/graph/ShaderBufferSources.h:206-264`；`inc/hgl/graph/RootAddressPush.h:28-64` |
+| `pc_root` 7 张表 / 56B / 72B | **80B / 9×uint64 + 2×uint32**：首字段 `addr_global_addresses`，第二位 `addr_batch_mesh_draw_params`（本批 MeshDrawCommand 表），`addr_texture_references` 与文本三表齐备，末位 `camera_row` + `_pad_camera` | `inc/hgl/graph/ShaderBufferSources.h:267-336`；`inc/hgl/graph/RootAddressPush.h:31-75` |
 | `MeshDrawParams` 88B 按 DrawBatch 写行 | 几何参数行 112B（24B 头 + 11×uint64，几何创建期写一次，按 `geometry_id` 索引）+ 命令行 `MeshDrawCommand` 8B（`geometry_id` + `first_instance`，每 DrawBatch 一行，按 `gl_DrawID` 索引）；`MaterialBatch::mesh_draw_params_buffer` 现在装的是后者 | `inc/hgl/graph/ShaderBufferSources.h:16-127`；`src/SceneGraph/VKGeometry.cpp:112-176`；`src/ecs/support/PrimitiveBatchPipeline.cpp:591-730`；`inc/hgl/ecs/core/MaterialBatch.h:55-56` |
 | `camera_ubo_dirty`（相机 UBO 脏标记） | 字段不存在（0 命中）。`CommitCameraUBO` 每个 RT/RenderPass 开始固定全量写入，不依赖脏标记（`CameraComponent` 侧只有 `matrix_dirty`） | `src/ecs/systems/tick/CameraSystem.cpp:310-319`；`inc/hgl/ecs/components/CameraComponent.h:85` |
 | `worldPosition`（RenderItem 上的世界坐标缓存） | 字段不存在（0 命中）。`RenderItem` 只有 `distanceToCamera`（排序用）；世界坐标现取现算（`transform->GetWorldPosition()`） | `inc/hgl/ecs/core/RenderItem.h:40-44`；`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:1431-1432` |

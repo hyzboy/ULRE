@@ -1,5 +1,7 @@
 # CSM 实现复核：Code Review + Tech Review
 
+> **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。
+
 > 复核时间 2026-09-25；范围 = `2026-09-23 08:00 → HEAD(61a196c91)` 分支 `CSM` 上的阴影相关提交。
 > 结论前置：主体设计自洽且契约测试实测全绿；最高优先级问题 = 阴影 pass 从未请求专用 ShadowCaster 程序变体（性能 + attachment feedback loop）。
 > 本文只做复核，未改动任何源码。
@@ -98,7 +100,7 @@ if (world && world->IsCurrentPassShadow())
 - `src/ecs/systems/tick/CameraSystem.cpp:689`：非主相机 `camera->camera_id = registry->AcquireCamera();`
 - `src/ecs/systems/render/EnvironmentSystem.cpp:214`：每次 Enable 都 `make_shared<CameraComponent>("AutoCSMLightCamera")`
 - `EnvironmentSystem.cpp:237`：Disable 只 `light_camera.reset()`，不归还行
-- `ReleaseCamera` 存在（`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:278`）但**全仓零调用者**
+- `ReleaseCamera` 存在（`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:278`）但**全仓零调用者**（订正（2026-09-28）：相机行池“设备级全局”的归属已定稿为**世界私有**——相机存储下沉世界级（世界私有 SSBO，16 槽 × 8 帧槽 = 128 行），0 号槽恒为本世界默认相机，槽的申请/归还由世界内分配器管；设备级全局相机号位图 / 全局 8 相机上限随之删除。见 doc/world-addresses-and-camera-model-plan.md §2；`ReleaseCamera` 接入归还链的状态见本文 §4.5。）
 
 与"容量不预留、超限 fail-fast"的既有约定冲突。修：记住 `light_camera->camera_id` 并在 Disable 时归还；顺带把 `CascadedShadowController` 的裸 `new`/`delete`（`EnvironmentSystem.cpp:184`/`:233`）换成 `unique_ptr`。
 
@@ -120,6 +122,10 @@ if (world && world->IsCurrentPassShadow())
 ### A5【低-中】`ShadowComponent` 四个旋钮有两个完全无消费者
 
 - `receive_shadow`：`ShadowComponent.h:18/37`，`CanReceiveShadow()` 只被 `src/ecs/support/TestCSMIncrementalPass.cpp:1077/1101` 使用
+  （**订正（2026-09-28）**：此断言已过期——D3（2026-09-26）已把 `receive_shadow` / `bias_multiplier` 接通到材质行：
+  per-draw 行已是 16B 四字段 `{payload_index, texture_reference_index, shadow_bias_multiplier, shadow_flags}`
+  （`ShaderBufferSources.h:142-152`），`ATS_SELFCHECK=1` 的 D3 契约（`receive_shadow` 18189 px、
+  `bias_multiplier` 600662 px）即其判据。见 `doc/backlog.md` D3 / `doc/world-addresses-and-camera-model-plan.md`。）
 - `bias_multiplier`：`ShadowComponent.h:19/41`，`RenderableComponent.h:104 GetShadowBiasMultiplier()` **零调用者**
 - `max_cast_distance` 是唯一真正被消费的（`RenderPrimitiveCollectSystem.cpp:1172`/`:1293`）
 
@@ -196,7 +202,7 @@ if (world && world->IsCurrentPassShadow())
 4. **A3** 静态缓存失效钩子（或至少 API + 文档化的适用前提）
 5. **A6** 4 级联合并到单 command buffer / 单次 prepass
 6. **A9 / A8 / A7 的未消费 API** 一并清理（先删遗留再改进）
-7. **A5** `receive_shadow` / `bias_multiplier`：实现或删
+7. **A5** `receive_shadow` / `bias_multiplier`：实现或删 —— **后续（2026-09-26 D3）：已实现并落地**（材质行 16B 四字段 + D3 契约）
 8. 文档同步（见 §4）
 
 每个任务按既有惯例各自验证：改动控制器/矩阵 → `TestCSMIncrementalPass` 全绿（5A/5B-1/5B-2/5C）；改动 shader 的偏移代码 → 7A/7B/7C 全绿；改动渲染路径 → 示例冒烟 + 视觉确认。
@@ -211,6 +217,7 @@ if (world && world->IsCurrentPassShadow())
 - [ ] 同文件补 T2 / T7：包围球拟合的交易、为什么不用 `OffscreenWorld`
 - [ ] `example/Basic/CascadeShadowMap.cpp:886` 窗口标题去掉 "Toroidal Cache"（未实现）
 - [ ] `doc/shadow-component-and-automated-pipeline-design.md:19`：标注 `receive_shadow` / `bias_multiplier` 尚未接通
+  —— **作废（2026-09-26 D3 已接通）**，无需再标注
 
 ---
 

@@ -1,5 +1,7 @@
 # Alpha Test 阴影（ShadowCasterMasked）修复链全记录
 
+> **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。
+
 > 时间：2026-09-26；分支 `CSM`；起因 = csm-review-2026-09-25 的 A1/A1-4（阴影 pass 程序接线），
 > 追至终极根因 = RenderPass::CreatePipeline 的 depth-only 快速路径无条件剥离片元 stage。
 > 本文记录完整因果链、材质渲染管线关键机制、取证方法与经验教训。相关提交见文末清单。
@@ -48,12 +50,14 @@ collect（每 pass，含 4 次 shadow RenderTo + 1 次主帧）
 batch（每 pass 重建）
   ├─ MaterialBatch 合批键 = shader + pipeline（同键合批为一条
   │    vkCmdDrawMeshTasksIndirectEXT multi-draw，gl_InstanceIndex = 行表行号）
-  ├─ WriteBatchIndexRows：行表 SSBO 每行 {payload_index, texture_reference_index}
+  ├─ WriteBatchIndexRows：行表 SSBO 每行 {payload_index, texture_reference_index}（订正（2026-09-28）：行结构已扩为 **16B 四字段** {payload_index, texture_reference_index, shadow_bias_multiplier, shadow_flags}，D3 落地后接收侧阴影旋钮即携带在此行；见 inc/hgl/graph/ShaderBufferSources.h:142-152）
   │    （4-ID desc 优先，MaterialComponent 回退）
   │    └─ batch.texture_reference_base_addr = 纹理配置池基址（每帧从 comp 幂等设置）
   └─ PipelineMaterialRenderer::Render：PushRootAddresses 每 batch 一次
-       （pc_root：addr_mesh_draw_params / addr_l2w / addr_mtl_data_addrs
-         / addr_texture_references / ...）
+       （pc_root（80B）：addr_global_addresses / addr_batch_mesh_draw_params / addr_l2w
+         / addr_l2w_index / addr_mtl_data_addrs / addr_texture_references
+         / addr_text_char_info/style/instance / camera_row + _pad_camera）
+         【订正（2026-09-28）：旧写法首位 addr_mesh_draw_params 已过期——首位现为 addr_global_addresses、第二位 addr_batch_mesh_draw_params、末位 camera_row + _pad_camera，共 9×uint64 + 2×uint32 = 80B；见 inc/hgl/graph/ShaderBufferSources.h:266-276】
 
 GPU 侧寻址（两级）
   MTL_ROW(i) = global_addresses.addr_pbr_surface
@@ -85,7 +89,7 @@ GPU 侧寻址（两级）
 
 | # | 层 | 问题 | 修复 |
 |---|----|------|------|
-| 1 | 模板路由 | masked 程序解析时 `block-order invalid`（注入的 Extension/Resource 块违反 ShaderDocument 单调序）→ Lit 定义整体构建失败 → 首帧 resolve 全失败 → 深度图缺物体 → **静态滚动缓存固化"无影"** | 注入只保留 scene_ubo include（排在 SurfaceInterface 后，SCENE_SET 宏依赖）；pc_root/扩展由 BuildMaterialStageDocument 对所有程序注入 |
+| 1 | 模板路由 | masked 程序解析时 `block-order invalid`（注入的 Extension/Resource 块违反 ShaderDocument 单调序）→ Lit 定义整体构建失败 → 首帧 resolve 全失败 → 深度图缺物体 → **静态滚动缓存固化"无影"** | 注入只保留 scene_ubo include（排在 SurfaceInterface 后，SCENE_SET 宏依赖）；pc_root/扩展由 BuildMaterialStageDocument 对所有程序注入（订正（2026-09-28）：SCENE_SET 已随 Scene 集整体退场，不再是 include 的理由；`camera` 宏仍住在 `ShaderLibrary/ubo/scene_ubo.glsl`（行号已漂到 :149，字段改名 `camera_row`），故该 include 依赖仍在） |
 | 2 | 片元组成 | `si` redefinition——手写 `SurfaceInput si` 初始化与 wiring（BuildGLSLMaterialSurfaceInput 固定输出完整声明）重复 | wiring 优先，仅 fragment_inputs 为 null 时手写兜底 |
 | 3 | alpha 语义 | `EvalMaterialAlpha` 采样的是 **opacity_mask optional 槽**（fallback 1.0），不是 base_color.a | 示例绑 "opacity_mask" 槽；alpha 判定读 .r |
 | 4 | **forward 管线** | **forward alpha test 从未接线**——HGLApplyAlpha 只有 shadow 模板调用；forward_lit.glsl.tmpl 靠 HGLComposeColor(color.a)，PBR 光照输出 alpha 恒 1 | 模板加 `#ifdef HGL_ALPHA_TEST HGLApplyAlpha(EvalAlpha(si, materialDataIndex)) #endif` |
