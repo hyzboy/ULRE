@@ -16,6 +16,7 @@
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
+#include<hgl/ecs/support/CameraInfoStorage.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -64,6 +65,7 @@ namespace hgl
             , transform_storage(std::make_unique<TransformDataStorage>())
             , render_item_storage(std::make_unique<RenderItemDataStorage>())
             , draw_item_id_storage(std::make_unique<DrawItemIDStorage>())
+            , camera_info_storage(std::make_unique<CameraInfoStorage>())
             , active(false)
         {
         }
@@ -81,6 +83,17 @@ namespace hgl
 
             gpu_device = device;
             render_target = target;
+
+            // 世界私有相机行存储（相机 = 世界级观察者数据）：16 槽 × HGL_FRAME_SLOT_TOTAL 帧槽，
+            // 0 号槽恒为本世界默认相机。定稿见 doc/world-addresses-and-camera-model-plan.md §2。
+            if (camera_info_storage && !camera_info_storage->IsReady())
+            {
+                if (!camera_info_storage->Create(device, GetName()))
+                {
+                    LogError("[ECSContext::Initialize] 世界相机行存储（CameraInfoStorage）创建失败");
+                    return false;
+                }
+            }
 
             // Propagate device to RenderBufferUploadSystem if it was registered first
             if (auto upload_system = GetSystem<RenderBufferUploadSystem>())

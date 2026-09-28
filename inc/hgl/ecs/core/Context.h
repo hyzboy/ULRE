@@ -47,6 +47,7 @@ namespace hgl
         class RenderItem;
         class RenderItemDataStorage;
         class DrawItemIDStorage;
+        class CameraInfoStorage;
 
         struct RenderFrameCache
         {
@@ -124,6 +125,10 @@ namespace hgl
             std::unique_ptr<TransformDataStorage> transform_storage;
             std::unique_ptr<RenderItemDataStorage> render_item_storage;
             std::unique_ptr<DrawItemIDStorage> draw_item_id_storage;
+
+            // 世界私有相机行存储：相机是**世界级观察者数据**（16 槽 × 帧槽数，0 号槽=本世界默认相机）
+            // 定稿见 doc/world-addresses-and-camera-model-plan.md §2。
+            std::unique_ptr<CameraInfoStorage> camera_info_storage;
 
             bool active = false;
             bool shutdown_in_progress = false;
@@ -414,6 +419,10 @@ namespace hgl
             /// Get world-level DrawItemIDStorage
             DrawItemIDStorage* GetDrawItemIDStorage() { return draw_item_id_storage.get(); }
             const DrawItemIDStorage* GetDrawItemIDStorage() const { return draw_item_id_storage.get(); }
+
+            /// Get 世界私有相机行存储（相机 = 世界级观察者数据；0 号槽 = 本世界默认相机）
+            CameraInfoStorage* GetCameraInfoStorage() { return camera_info_storage.get(); }
+            const CameraInfoStorage* GetCameraInfoStorage() const { return camera_info_storage.get(); }
 
         public:
 
