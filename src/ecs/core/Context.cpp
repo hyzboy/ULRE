@@ -1436,7 +1436,8 @@ namespace hgl
 
         uint32_t ECSContext::GetActiveCameraRow() const
         {
-            return graph::GlobalSSBOBufferRegistry::CameraRow(active_camera_id, frame_index);
+            // 相机行号 = 相机槽 × 帧槽总数 + 帧槽（世界内算术，见 CameraInfoStorage::CameraRow）
+            return CameraInfoStorage::CameraRow(active_camera_id, frame_index);
         }
 
         void ECSContext::RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp)
