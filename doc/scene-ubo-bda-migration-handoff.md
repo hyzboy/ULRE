@@ -62,7 +62,7 @@ L2W 表已经完成过同样的迁移，是标准样板：
 - 地址下发：`inc/hgl/graph/RootAddressPush.h`（`RootAddresses` = 56B push constant，7 张表地址 + `camera_id`），
   `PushRootAddresses(cmd, dev, layout, ...)` 每 MaterialBatch/每绘制路径 push 一次。
 - 地址来源：`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:120`
-  `ga.addr_camera_info = GetGPUBase(GlobalSSBOType::CameraInfo);`
+  ~~`ga.addr_camera_info = GetGPUBase(GlobalSSBOType::CameraInfo);`~~（C1-3 已删：相机行表迁到世界表 `WorldAddresses`，`GlobalSSBOType::CameraInfo` 行池整项退役）
 - 前提（A1/A2）：表 buffer 必须以 `SHADER_DEVICE_ADDRESS` usage 创建；
   `GetBufferDeviceAddressAligned16` 对非 16B 对齐基址 fail-fast。
 

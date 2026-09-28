@@ -15,12 +15,18 @@
 
 ## 1. 为什么需要行槽化（问题定义）
 
-`CameraInfo` 是**全局 SSBO 行池**，着色器通过 `pc_root.camera_row` 直接索引：
+`CameraInfo` 曾是**全局 SSBO 行池**（C1-3 已下沉世界级，见下），着色器通过 `pc_root.camera_row` 索引：
 
 ```glsl
-// ShaderLibrary/ubo/scene_ubo.glsl:123
+// ShaderLibrary/ubo/scene_ubo.glsl（C1-3 前）
 #define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]
+
+// C1-3 后（相机行表在世界表 WorldAddresses）
+#define camera CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[pc_root.camera_row]
 ```
+
+> 本文写于全局池时代：下文"全局""主相机固定占 0 号行"等表述按
+> `doc/world-addresses-and-camera-model-plan.md` §2/§3 解读（0 号槽 = 本世界默认相机；行号 = 相机槽 × 8 + 帧槽）。
 
 CPU 侧有两条写入者、两条读取者，**跨 pass 同时活跃**：
 

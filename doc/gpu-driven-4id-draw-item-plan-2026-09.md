@@ -92,10 +92,10 @@ X-macro `HGL_MESH_DRAW_COMMAND_FIELD_LIST`：`MeshDrawCommand{ geometry_id, firs
 
 ### 2.6 两个地址载体（BDA 分层现状）
 **① `GlobalAddresses` SSBO 表（**无绑定无集**，`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长）** — 表本体是 SSBO，基址经 `pc_root.addr_global_addresses` 下发；按帧槽分份（每帧只写本帧槽），全局字段启动写一次，仅会变的项每帧刷。
-- C++ 真源 `inc/hgl/graph/ubo/GlobalAddresses.h`：`struct GlobalAddresses`（:27-46）字段 `addr_mesh_draw_params_pool, addr_pbr_surface, addr_emissive_surface, addr_transmission_surface, addr_global_render_items, addr_draw_item_ids, addr_camera_info, addr_color_palette, addr_sky, addr_viewport, addr_shadow`；`kGlobalAddressesSlotCount = HGL_FRAME_SLOT_TOTAL`（:49）、`kGlobalAddressesSlotStride = 128`（:53）、`static_assert(sizeof(GlobalAddresses) <= kGlobalAddressesSlotStride)`（:55）。
-- GLSL block：`layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer GlobalAddressesRef`（`ShaderLibrary/ubo/scene_ubo.glsl:102-119`），宏 `#define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)`（:119）。**Scene 集已整体退场**（`inc/hgl/common/DescriptorSetTypeDef.h:9-13`）⇒ 本表**不再有 set / binding**。相机走了 SSBO 表索引：`#define camera CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]`（`scene_ubo.glsl:149`）。
-- 写者：`GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO`（`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`，写全局字段池基址）+ `UpdateRenderItemAddresses`（每帧刷 RenderItem/DrawItemID）。
-- 每帧刷新点：`RenderSceneUBOSystem::SyncGlobalAddressesTable` / `ResolveGlobalAddressesUBO`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp`）。
+- C++ 真源 `inc/hgl/graph/ubo/GlobalAddresses.h`：`struct GlobalAddresses`（:27-46）字段 `addr_mesh_draw_params_pool, addr_pbr_surface, addr_emissive_surface, addr_transmission_surface, addr_color_palette, addr_sky, addr_viewport, addr_shadow`（C1-3 后为 64B；原来的 `addr_global_render_items, addr_draw_item_ids, addr_camera_info` 三个**世界私有**地址已迁至 `WorldAddresses`）；`kGlobalAddressesSlotCount = HGL_FRAME_SLOT_TOTAL`（:49）、`kGlobalAddressesSlotStride = 128`（:53）、`static_assert(sizeof(GlobalAddresses) <= kGlobalAddressesSlotStride)`（:55）。
+- GLSL block：`layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer GlobalAddressesRef`（`ShaderLibrary/ubo/scene_ubo.glsl:102-119`），宏 `#define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)`（:119）。**Scene 集已整体退场**（`inc/hgl/common/DescriptorSetTypeDef.h:9-13`）⇒ 本表**不再有 set / binding**。相机走了 SSBO 表索引：`#define camera CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[pc_root.camera_row]`（`scene_ubo.glsl`；**C1-3 后相机行表在世界表 `WorldAddresses`**，不再读全局表）。
+- 写者：`GlobalSSBOBufferRegistry::InitializePools`（`InitializeGlobalAddressesTable` 写全局字段池基址）。**C1-3 后 `UpdateRenderItemAddresses` 已删除**（RenderItem/DrawItemID 地址迁入世界表 `WorldAddresses`，由 `ECSContext::SyncWorldAddresses` 每帧写本帧槽）。
+- 每帧刷新点：**C1-3 后 `RenderSceneUBOSystem::SyncGlobalAddressesTable` 已删除**；全局表内只剩 sky / viewport / shadow 三个每帧槽字段（各自由 `SetSkyAddress` / `SetViewportAddress` / `SetShadowAddress` 写入），世界表由 `ECSContext::SetFrameIndex` → `SyncWorldAddresses` 写入。
 
 **② `RootAddresses` push constant（80B）** — 每 MaterialBatch draw 前下发。
 - 真源 `inc/hgl/graph/ShaderBufferSources.h:267-278`，X-macro `HGL_ROOT_ADDRESSES_FIELD_LIST`：
@@ -311,7 +311,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 
 **已落地**：
 - 新表 **已存在**：`GlobalAddresses`（**SSBO 表**，`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长，无绑定无集），C++ 真源 `inc/hgl/graph/ubo/GlobalAddresses.h`，GLSL `GlobalAddressesRef`（`scene_ubo.glsl:102-119`）。
-- **`addr_mesh_draw_params_pool` + 类型池基址（PBR/Emissive/Transmission）+ `addr_camera_info` 已进表**，启动写一次（`GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO`）；`MTL_ROW` 已改读 `global_addresses.addr_<type>_surface`。
+- **`addr_mesh_draw_params_pool` + 类型池基址（PBR/Emissive/Transmission）已进表**，启动写一次（`GlobalSSBOBufferRegistry::InitializePools`）；`MTL_ROW` 已改读 `global_addresses.addr_<type>_surface`。（相机 / 渲染项 / DrawItemID 三个地址 C1-3 后在世界表 `WorldAddresses`）
 - Scene 集布局（`VKGlobalSceneUBOSet` / `SceneBinding`）**已整体退场**（S3）：描述符集收敛为唯一 Bindless(0)（`inc/hgl/common/DescriptorSetTypeDef.h:9-13`），`GlobalAddresses` 表本体不再进任何集，基址经 `pc_root.addr_global_addresses` 下发。
 
 **未完成（本阶段剩余改动点）**：

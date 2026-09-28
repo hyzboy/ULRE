@@ -26,10 +26,12 @@
 **判据一句话**：跨世界共享的**资源** → `GlobalAddresses`；每个世界独有的**观察者 / 状态** → `WorldAddresses`；同帧内**逐批变化**的 → `pc_root`。
 
 - **下发**：`pc_root.addr_world_addresses` = 本帧槽的世界表地址（`world->GetWorldAddressesAddress(frame_slot)`，与 `GraphicsContext::GetGlobalAddressesAddress(frame_slot)` 同款）；多世界渲染只需换这一个指针。
-- **GLSL**：新增 `WorldAddressesRef`（与 `GlobalAddressesRef` 并列，`buffer_reference_align=16`）；宏改为
-  `camera = CameraInfoBufferRef(world.addr_camera_info).cameras[pc_root.camera_row]`、
-  `sky = SkyInfoRef(world.addr_sky)`、`shadow = ShadowInfoRef(world.addr_shadow)`，
+- **GLSL（C1-1/C1-2/C1-3 已落地）**：`WorldAddressesRef`（与 `GlobalAddressesRef` 并列，`buffer_reference_align=16`）已在 `scene_ubo.glsl`；宏为
+  `camera = CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[pc_root.camera_row]`、
+  `global_render_items = RenderItemBufferRef(world_addresses.addr_global_render_items)`、
+  `draw_item_ids = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids)`，
   `viewport = ViewportInfoRef(global_addresses.addr_viewport)`（保持全局）。
+  表内 `addr_sky` / `addr_shadow` / `addr_env` 槽位**已预留、尚未接线**（C2 落地）。
 - **硬规矩**：`GlobalAddresses` 内**不得**出现世界私有地址；`WorldAddresses` 内**不得**出现资源池地址。各配一条契约（parity + 归属）。
 
 ## 2. 相机存储（世界私有）
@@ -37,7 +39,7 @@
 - 世界私有 SSBO；行空间 = `kWorldCameraSlotCap(16) × HGL_FRAME_SLOT_TOTAL(8) = 128 行` × `sizeof(CameraInfo)`。
 - 行号 = `camera_slot × 帧槽总数 + slot`（**世界内**）；shader 侧不变，仍由 `pc_root.camera_row` 索引。
 - **0 号槽 = 本世界默认相机专属**；1..15 由世界内分配器（free list / 位图）分给普通相机、灯光相机、镜子相机、系统内建相机。
-- **拥有者负责归还**：灯光销毁 / 镜面销毁 / `DisableMainLightShadow` 等对称归还（现状 CSM 的 `ReleaseCamera` 对称释放即此规则的单灯特例）。
+- **拥有者负责归还**：灯光销毁 / 镜面销毁 / `DisableMainLightShadow` 等对称归还（现状 CSM 的 `ReleaseCameraSlot` 对称释放即此规则的单灯特例）。
 - 容量 16、超限报错不扩容（既有约定）。
 
 ## 3. 相机解析（渲染必须要一个相机）
@@ -91,3 +93,13 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 | 4-ID GPU 解析已启用 | **未启用**：`uses_render_item_resolve` 全仓无处置 true（`MaterialBatch.h:71` 只被置 false） |
 | 相机行池 = 全局 64 行 + 全局相机号位图 + 全局 8 相机上限 | 本轮改为：**世界私有 16 槽 × 8 帧槽**（§2）；0 号槽恒为世界默认相机 |
 | `EnvironmentManager` 的 sky/shadow 地址是"全局字段" | 本轮后 sky / shadow / env 地址按**世界**发布（§4） |
+
+## 8. 执行进度（每批落地后更新；验证数字为实跑）
+
+| 批次 | 状态 | 落地内容 | 验证 |
+|---|---|---|---|
+| C1-1 | ✅ | `CameraInfoStorage`（世界私有 128 行相机行存储）+ `WorldAddresses.h` + `ECSContext` 持有/创建 + CMake 登记 | purge → ShadowMap 构建 rc=0 → 冒烟 0 VUID |
+| C1-2 | ✅ | 世界表 SSBO（8 槽 × `kWorldAddressesSlotStride`）+ `pc_root.addr_world_addresses` + 三处 push（材质/线/文本批）+ `SetFrameIndex` 内 `SyncWorldAddresses` + 门 `W.world-addresses-struct-parity` | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` 21；`TestRenderItemDataStorage` rc=0；ATS 三契约与基线一致；CSM 对拍 8 轮 `不一致=0`；双世界冒烟 0 VUID |
+| C1-3 | ✅ | 相机行写入改走世界存储（`CameraSystem::PublishCamera` → `CameraInfoStorage::WriteCameraRow`、相机槽申请/归还 → `AcquireCameraSlot`/`ReleaseCameraSlot`）；GLSL `camera`/`global_render_items`/`draw_item_ids` 宏切到世界表；**删**全局表三字段（`addr_camera_info`/`addr_global_render_items`/`addr_draw_item_ids`）、`GlobalSSBOType::CameraInfo` 行池 + 相机号位图 + `AcquireCamera`/`ReleaseCamera`/`CameraRow`/`WriteCameraRow`/`WriteCamera`/`GetCameraInfoGPUBase`/`GetCameraInfoBuffer`/`UpdateRenderItemAddresses`/`RenderSceneUBOSystem::SyncGlobalAddressesTable`；`GlobalAddresses` 88B → **64B** | 同上全套 + `TestRenderItemDataStorage` 的 Test 8 改为断言两张表的新布局（88B→64B / 世界表 24B） |
+| C1-4 | ⬜ | 三级解析 + 0 号槽专属默认相机 + `req.camera` 必须属本世界（fail-fast） | 新增契约 ①②③（§6.6） |
+| C1-5 | ⬜ | 删世界共享相机载体（`camera_info` / `camera_ubo` / `CommitCameraUBO` / 别名兜底）+ `WorkObject::GetCamera/GetCameraInfo` + 28 示例别名 + `GetActiveCameraInfo()` | 门 + 示例冒烟 |

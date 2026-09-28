@@ -6,6 +6,7 @@
 #include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include <hgl/graph/ubo/GlobalAddresses.h>
+#include <hgl/graph/ubo/WorldAddresses.h>
 #include <hgl/ShaderCompilerAPI.h>
 #include <vulkan/vulkan.h>
 #include <hgl/log/Log.h>
@@ -200,40 +201,46 @@ int main(int argc, char **argv)
         }
     }
 
-    // Test 8: Stage 3 Verification - GlobalAddresses UBO Layout & Shader BDA Compilation
-    GLogInfo(u8"--- Testing Stage 3: GlobalAddresses UBO & Shader BDA Resolution ---");
+    // Test 8: Stage 3 Verification - 地址表结构（Global/World）与 shader BDA 编译
+    GLogInfo(u8"--- Testing Stage 3: Address Tables (Global/World) & Shader BDA Resolution ---");
     {
-        // 1. Memory layout verification
-        static_assert(sizeof(graph::GlobalAddresses) == 88, "GlobalAddresses must be exactly 88 bytes");
+        // 1. GlobalAddresses = **跨世界共享资源池**（8×uint64 = 64B）：
+        //    世界私有地址（相机行表 / 渲染项表 / DrawItemID 表）已迁出到 WorldAddresses。
+        static_assert(sizeof(graph::GlobalAddresses) == 64, "GlobalAddresses must be exactly 64 bytes");
         static_assert(offsetof(graph::GlobalAddresses, addr_mesh_draw_params_pool) == 0);
         static_assert(offsetof(graph::GlobalAddresses, addr_pbr_surface) == 8);
         static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 16);
         static_assert(offsetof(graph::GlobalAddresses, addr_transmission_surface) == 24);
-        static_assert(offsetof(graph::GlobalAddresses, addr_global_render_items) == 32);
-        static_assert(offsetof(graph::GlobalAddresses, addr_draw_item_ids) == 40);
-        static_assert(offsetof(graph::GlobalAddresses, addr_camera_info) == 48);
-        static_assert(offsetof(graph::GlobalAddresses, addr_color_palette) == 56);
-        // 每帧槽字段：地址随帧槽变化（sky 单份 buffer ⇒ 写满所有槽）
-        static_assert(offsetof(graph::GlobalAddresses, addr_sky) == 64);
-        // viewport 单份 buffer（地址随表下发）
-        static_assert(offsetof(graph::GlobalAddresses, addr_viewport) == 72);
-        // shadow 按帧槽各一份（ring[i] ↔ 帧槽 i）
-        static_assert(offsetof(graph::GlobalAddresses, addr_shadow) == 80);
+        static_assert(offsetof(graph::GlobalAddresses, addr_color_palette) == 32);
+        // 每帧槽字段：sky / viewport / shadow
+        static_assert(offsetof(graph::GlobalAddresses, addr_sky) == 40);
+        static_assert(offsetof(graph::GlobalAddresses, addr_viewport) == 48);
+        static_assert(offsetof(graph::GlobalAddresses, addr_shadow) == 56);
 
-        graph::GlobalAddresses ga{};
-        if (ga.addr_global_render_items != 0 || ga.addr_draw_item_ids != 0)
+        // 2. WorldAddresses = **世界私有**（相机行表 / 渲染项表 / DrawItemID 表；3×uint64 = 24B）
+        static_assert(sizeof(graph::WorldAddresses) == 24, "WorldAddresses must be exactly 24 bytes");
+        static_assert(offsetof(graph::WorldAddresses, addr_camera_info) == 0);
+        static_assert(offsetof(graph::WorldAddresses, addr_global_render_items) == 8);
+        static_assert(offsetof(graph::WorldAddresses, addr_draw_item_ids) == 16);
+        static_assert(graph::kWorldAddressesSlotStride % 16 == 0,
+                      "WorldAddresses 槽步长必须 16B 对齐");
+
+        graph::WorldAddresses wa{};
+        if (wa.addr_camera_info != 0 || wa.addr_global_render_items != 0 || wa.addr_draw_item_ids != 0)
         {
-            GLogError(u8"Test 8 Failed: Expected 0 initialized addresses in GlobalAddresses");
+            GLogError(u8"Test 8 Failed: Expected 0 initialized addresses in WorldAddresses");
             return 20;
         }
 
-        ga.addr_global_render_items = 0xABCD12340000ULL;
-        ga.addr_draw_item_ids       = 0xDCBA43210000ULL;
+        wa.addr_camera_info         = 0x123456780000ULL;
+        wa.addr_global_render_items = 0xABCD12340000ULL;
+        wa.addr_draw_item_ids       = 0xDCBA43210000ULL;
 
-        if (ga.addr_global_render_items != 0xABCD12340000ULL ||
-            ga.addr_draw_item_ids       != 0xDCBA43210000ULL)
+        if (wa.addr_camera_info         != 0x123456780000ULL ||
+            wa.addr_global_render_items != 0xABCD12340000ULL ||
+            wa.addr_draw_item_ids       != 0xDCBA43210000ULL)
         {
-            GLogError(u8"Test 8 Failed: GlobalAddresses field assignment mismatch");
+            GLogError(u8"Test 8 Failed: WorldAddresses field assignment mismatch");
             return 21;
         }
 
@@ -252,6 +259,7 @@ int main(int argc, char **argv)
                 layout(push_constant) uniform RootAddresses
                 {
                     uint64_t addr_global_addresses;
+                    uint64_t addr_world_addresses;
                 } pc_root;
                 
                 layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer GlobalAddressesRef
@@ -260,12 +268,23 @@ int main(int argc, char **argv)
                     uint64_t addr_pbr_surface;
                     uint64_t addr_emissive_surface;
                     uint64_t addr_transmission_surface;
-                    uint64_t addr_global_render_items;
-                    uint64_t addr_draw_item_ids;
                     uint64_t addr_color_palette;
+                    uint64_t addr_sky;
+                    uint64_t addr_viewport;
+                    uint64_t addr_shadow;
                 };
                 
                 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
+
+                // 世界私有地址表（相机行表 / 渲染项表 / DrawItemID 表）
+                layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer WorldAddressesRef
+                {
+                    uint64_t addr_camera_info;
+                    uint64_t addr_global_render_items;
+                    uint64_t addr_draw_item_ids;
+                };
+
+                #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
 
                 struct RenderItemDescriptor
                 {
@@ -295,8 +314,8 @@ int main(int argc, char **argv)
                 void main()
                 {
                     uint draw_id = gl_GlobalInvocationID.x;
-                    uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
-                    RenderItemDescriptor desc = RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+                    uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
+                    RenderItemDescriptor desc = RenderItemBufferRef(world_addresses.addr_global_render_items).items[item_id];
                     results[draw_id] = uvec4(desc.transform_id, desc.geometry_id, desc.material_id, desc.texture_id);
                 }
             )";
@@ -500,6 +519,7 @@ int main(int argc, char **argv)
                 layout(push_constant) uniform RootAddresses
                 {
                     uint64_t addr_global_addresses;
+                    uint64_t addr_world_addresses;
                 } pc_root;
                 
                 layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer GlobalAddressesRef
@@ -508,12 +528,23 @@ int main(int argc, char **argv)
                     uint64_t addr_pbr_surface;
                     uint64_t addr_emissive_surface;
                     uint64_t addr_transmission_surface;
-                    uint64_t addr_global_render_items;
-                    uint64_t addr_draw_item_ids;
                     uint64_t addr_color_palette;
+                    uint64_t addr_sky;
+                    uint64_t addr_viewport;
+                    uint64_t addr_shadow;
                 };
                 
                 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
+
+                // 世界私有地址表（相机行表 / 渲染项表 / DrawItemID 表）
+                layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer WorldAddressesRef
+                {
+                    uint64_t addr_camera_info;
+                    uint64_t addr_global_render_items;
+                    uint64_t addr_draw_item_ids;
+                };
+
+                #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
 
                 struct RenderItemDescriptor
                 {
@@ -540,13 +571,13 @@ int main(int argc, char **argv)
                     if ((first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u)
                     {
                         uint draw_id = (first_instance & ~RENDER_ITEM_INDEXED_FLAG) + instance_offset;
-                        uint item_id = DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[draw_id];
-                        return RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+                        uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
+                        return RenderItemBufferRef(world_addresses.addr_global_render_items).items[item_id];
                     }
                     else
                     {
                         uint item_id = first_instance + instance_offset;
-                        return RenderItemBufferRef(global_addresses.addr_global_render_items).items[item_id];
+                        return RenderItemBufferRef(world_addresses.addr_global_render_items).items[item_id];
                     }
                 }
 
@@ -752,6 +783,7 @@ int main(int argc, char **argv)
                 layout(push_constant) uniform RootAddresses
                 {
                     uint64_t addr_global_addresses;
+                    uint64_t addr_world_addresses;
                 } pc_root;
                 
                 layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer GlobalAddressesRef
@@ -760,12 +792,23 @@ int main(int argc, char **argv)
                     uint64_t addr_pbr_surface;
                     uint64_t addr_emissive_surface;
                     uint64_t addr_transmission_surface;
-                    uint64_t addr_global_render_items;
-                    uint64_t addr_draw_item_ids;
                     uint64_t addr_color_palette;
+                    uint64_t addr_sky;
+                    uint64_t addr_viewport;
+                    uint64_t addr_shadow;
                 };
                 
                 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
+
+                // 世界私有地址表（相机行表 / 渲染项表 / DrawItemID 表）
+                layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer WorldAddressesRef
+                {
+                    uint64_t addr_camera_info;
+                    uint64_t addr_global_render_items;
+                    uint64_t addr_draw_item_ids;
+                };
+
+                #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
 
                 struct RenderItemDescriptor
                 {
@@ -800,7 +843,7 @@ int main(int argc, char **argv)
                     if (visible)
                     {
                         uint slot = atomicAdd(VisibleCountBufferRef(global_addresses.addr_mesh_draw_params_pool).count, 1);
-                        DrawItemIDBufferRef(global_addresses.addr_draw_item_ids).ids[slot] = idx;
+                        DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[slot] = idx;
                     }
                 }
             )";

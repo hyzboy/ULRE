@@ -87,15 +87,16 @@
 - per-frame 槽空间：**主帧 `[0,4)`、离屏 4..7、上限 8**（`inc/hgl/common/RenderOptions.h` 的 `HGL_FRAME_SLOT_TOTAL`）。
 - **不变量：任何 per-frame ring 深度必须 == 槽空间**（`HGL_L2W_RING_FRAMES` 就等于它）。
   历史上 ring=3 时离屏槽与主帧槽别名 ⇒ prepass 覆写主帧在途 L2W ⇒ 整帧只剩清屏色（间歇）。
-- CameraInfo 行池：**现状**为设备级 64 行 = 8 相机 × 8 槽，行号 = `camera_id * 8 + slot`。
-  **已定稿的后续**（`doc/world-addresses-and-camera-model-plan.md`）：相机存储下沉**世界级**
-  （16 槽 × 8 帧槽），**0 号槽恒为本世界默认相机**，地址改由 `pc_root.addr_world_addresses`
-  → 世界表读取（三级解析：默认相机 → 最小 EntityID 相机 → `(0,0,0)` 强制 fallback）。
+- 相机行池：**已是世界私有**（C1-3 落地）：`CameraInfoStorage` 128 行 = 16 相机槽 × 8 帧槽，
+  行号 = `camera_slot * 8 + slot`，地址在世界表 `WorldAddresses::addr_camera_info`。
+  **尚未落地**（C1-4）：三级解析（默认相机 → 最小 `EntityID` 相机 → `(0,0,0)` 强制 fallback）
+  与"0 号槽专属默认相机"的分配规则。定稿见 `doc/world-addresses-and-camera-model-plan.md`。
 - 相机行发布按 `req.camera` 直发：阴影光源相机是**系统内建相机**（不经 Entity 注册 ⇒
   `CollectCameras()` 看不到），**不是**"属于另一个世界"（历史注释错误归因，已订正）。
-- 相机数据走 **BDA**：`scene_ubo.glsl:149` 的 `camera` 宏 =
-  `CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]`
-  （世界表落地后为 `world.addr_camera_info`）。
+- 相机数据走 **BDA**：`scene_ubo.glsl` 的 `camera` 宏 =
+  `CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[pc_root.camera_row]`
+  （相机行表是**世界私有**；全局表里那两个旧字段 `addr_camera_info` 已随 C1-3 删除）。
+  同一世界表内还带 `addr_global_render_items` / `addr_draw_item_ids`（4-ID 解析用，当前未启用）。
 
 ## 6. 开关与诊断（环境变量）
 

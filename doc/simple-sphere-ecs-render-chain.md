@@ -149,7 +149,7 @@ RenderSubmit             SwapchainSubmitSystem
 
 - 每个可渲染对象在全局一级表占一个 **16B `RenderItemDescriptor` = `{transform_id, geometry_id, material_id, texture_id}`**（`inc/hgl/graph/render/RenderItemDescriptor.h:19-44`，`static_assert(sizeof==16)` :41），由 `PrimitiveComponent::EnsureRenderItemStorageAllocated` / `GetRenderItemHandle` 惰性分配（`src/ecs/components/PrimitiveComponent.cpp:601-620`），`OnAttach` 顺带保证已分配（:686-690）、`OnDetach` 释放（:692-701）
 - 存储 = `RenderItemDataStorage`（CPU 连续数组 + 空闲槽 + 脏范围 + GPU 镜像，`inc/hgl/ecs/support/RenderItemDataStorage.h:29-130`）；二级索引表 = `DrawItemIDStorage`（离散 handle 的当帧线性排布，`inc/hgl/ecs/support/DrawItemIDStorage.h:25-90`）
-- 两者的 GPU 地址经 `RenderSceneUBOSystem::ResolveGlobalAddressesUBO`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:152-181`）写入 `GlobalAddresses` SSBO 表的 `addr_global_render_items` / `addr_draw_item_ids`（写者 `GlobalSSBOBufferRegistry::UpdateRenderItemAddresses`，`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:128-143`，仅在变化时重写）
+- 两者的 GPU 地址经 `RenderSceneUBOSystem`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp`）写入 **世界表 `WorldAddresses` 的 `addr_global_render_items` / `addr_draw_item_ids`**（C1-3 起：写者 `ECSContext::SyncWorldAddresses`，随本帧槽写入；全局表里的同名两字段与 `GlobalSSBOBufferRegistry::UpdateRenderItemAddresses` 均已删除）
 
 ---
 
@@ -185,7 +185,7 @@ RenderFrameSync(dt)     → RunRenderPhaseUpdates(...)         Context.cpp:711-7
    - `WriteBatchIndexRows`（:918-1013）：每实例写 `l2w_index`（`item->transform_index`，:935-940）与 `MaterialInstanceAddresses{payload_index, texture_reference_index}`——优先取 `RenderItemDataStorage` 的 4-ID 描述符（:969-979），未注册则从 `MaterialComponent` 回退并顺便反推批次纹理引用池基址（:981-1005）
 3. **`RenderBufferCommit`**（`ViewUBOCommitSystem::Update`，`src/ecs/systems/render/ViewUBOCommitSystem.cpp:17-36`）：`CameraSystem::CommitCameraUBO`（`src/ecs/systems/tick/CameraSystem.cpp:310-319`，**无条件全量写** view 三件套，不依赖脏标记）+ `RenderSceneUBOSystem::CommitViewportUBO`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:183`）+ `EnvironmentManager::CommitMaterialized`
 4. **`RenderBufferUpload`**（`RenderBufferUploadSystem::Update`，`src/ecs/systems/render/RenderBufferUploadSystem.cpp:20-149`）：先 `RenderItemDataStorage::SyncToGPU` / `DrawItemIDStorage::SyncToGPU`（:47-56），再遍历 `device->GetGPUBufferRegistry()` 对脏 buffer `CopyToDevice`，最后一条 `MemoryBarrier2`（transfer → draw-indirect/vertex/index/VS/FS/CS）
-5. **`RenderFrameSync`**（`RenderSceneUBOSystem::Update`，`RenderSceneUBOSystem.cpp:316`）→ `SyncBindingsForCurrentCommand`（:325）→ `ApplyResourceLayoutBindings`（:401）：**Scene 集已随 S3 整体退场**（`VKGlobalSceneUBOSet` 已删除，全仓 0 命中），此处只调 `SyncGlobalAddressesTable()` 同步 `GlobalAddresses` SSBO 表内会变的字段（sky / viewport / shadow / 4-ID 表地址）；**无描述符集可绑**（本函数名保留，勿再按「Scene 集数据写入者」理解）。`Render(graph::RenderCmdBuffer*, float)` 空实现（:314）。
+5. **`RenderFrameSync`**（`RenderSceneUBOSystem::Update`，`RenderSceneUBOSystem.cpp:316`）→ `SyncBindingsForCurrentCommand`（:325）→ `ApplyResourceLayoutBindings`（:401）：**Scene 集已随 S3 整体退场**（`VKGlobalSceneUBOSet` 已删除，全仓 0 命中），此处**不再同步任何字段**（`SyncGlobalAddressesTable()` 已随 C1-3 删除）：4-ID 表地址迁入**世界表** `WorldAddresses`；sky / shadow 由各自 `SetSkyAddress` / `SetShadowAddress` 按帧槽写入全局表；**无描述符集可绑**（本函数名保留，勿再按「Scene 集数据写入者」理解）。`Render(graph::RenderCmdBuffer*, float)` 空实现（:314）。
 
 ---
 
@@ -223,7 +223,7 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 
 | 载体 | 内容 | 谁写 | 真源 |
 |---|---|---|---|
-| `GlobalAddresses`（**SSBO 表，无绑定无集**） | `HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长：`addr_mesh_draw_params_pool`（**全局几何参数池**，112B 行，按 `geometry_id` 索引）、`addr_pbr_surface`、`addr_emissive_surface`、`addr_transmission_surface`、`addr_global_render_items`、`addr_draw_item_ids`、`addr_camera_info`、`addr_color_palette`、`addr_sky`、`addr_viewport`、`addr_shadow`。全局字段启动写一次；4-ID 两项与 sky/shadow 仅在变化时刷 | `GlobalSSBOBufferRegistry::InitializeGlobalAddressesUBO` / `UpdateRenderItemAddresses`（`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`） | `inc/hgl/graph/ubo/GlobalAddresses.h:27-53`；GLSL `ShaderLibrary/ubo/scene_ubo.glsl:102-119` |
+| `GlobalAddresses`（**SSBO 表，无绑定无集**） | `HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长：`addr_mesh_draw_params_pool`（**全局几何参数池**，112B 行，按 `geometry_id` 索引）、`addr_pbr_surface`、`addr_emissive_surface`、`addr_transmission_surface`、`addr_color_palette`、`addr_sky`、`addr_viewport`、`addr_shadow`（C1-3 后共 8 字段 / 64B；原 `addr_global_render_items`、`addr_draw_item_ids`、`addr_camera_info` 三个世界私有地址已迁至世界表 `WorldAddresses`）。全局字段启动写一次；sky / shadow 按帧槽刷 | `GlobalSSBOBufferRegistry::InitializePools` / `SetSkyAddress` / `SetShadowAddress`（`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`） | `inc/hgl/graph/ubo/GlobalAddresses.h`；GLSL `ShaderLibrary/ubo/scene_ubo.glsl` |
 | `RootAddresses` push constant（`pc_root`） | 9×uint64 + 2×uint32 = **80B**：`addr_global_addresses`（**GlobalAddresses SSBO 表基址**）、`addr_batch_mesh_draw_params`（**本批 `MeshDrawCommand` 表**，8B 行，按 `gl_DrawID` 索引）、`addr_l2w`、`addr_l2w_index`、`addr_mtl_data_addrs`、`addr_texture_references`、`addr_text_char_info/style/instance`、`camera_row` + `_pad_camera` | 每 MaterialBatch 渲染前一次 `graph::PushRootAddresses` | `inc/hgl/graph/ShaderBufferSources.h:267-278`（布局断言 :311-337）；`inc/hgl/graph/RootAddressPush.h`；调用点 `src/ecs/support/PipelineMaterialRenderer.cpp` |
 
 取数表（左列 = 需要什么，右列 = 生成文本 / 源文件）：

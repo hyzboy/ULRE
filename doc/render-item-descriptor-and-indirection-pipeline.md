@@ -165,9 +165,6 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
     uint64_t addr_pbr_surface;             // PBRSurfaceRow 行池基址
     uint64_t addr_emissive_surface;        // EmissiveSurfaceRow 行池基址
     uint64_t addr_transmission_surface;    // TransmissionSurfaceRow 行池基址
-    uint64_t addr_global_render_items;     // 全局一级图元描述符表基址 (16B 4-ID)（待迁出：世界私有）
-    uint64_t addr_draw_item_ids;           // 当前帧二级绘制索引表基址 (uint32_t)（待迁出：世界私有）
-    uint64_t addr_camera_info;             // CameraInfo 基址（待迁出：世界私有）
     uint64_t addr_color_palette;
     uint64_t addr_sky;                     // 每帧槽字段
     uint64_t addr_viewport;
