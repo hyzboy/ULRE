@@ -16,7 +16,6 @@ namespace
         { GlobalSSBOType::PBRSurface,          "PBRSurface",          sizeof(ssbo::PBRSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::EmissiveSurface,     "EmissiveSurface",     sizeof(ssbo::EmissiveSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::TransmissionSurface, "TransmissionSurface", sizeof(ssbo::TransmissionSurfaceRow), 1024u, 1u },
-        { GlobalSSBOType::CameraInfo,          "CameraInfo",          sizeof(CameraInfo), 64u, 0u },
     };
 }
 
@@ -130,9 +129,6 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
     global_addresses_global.addr_pbr_surface          = GetGPUBase(GlobalSSBOType::PBRSurface);
     global_addresses_global.addr_emissive_surface     = GetGPUBase(GlobalSSBOType::EmissiveSurface);
     global_addresses_global.addr_transmission_surface = GetGPUBase(GlobalSSBOType::TransmissionSurface);
-    global_addresses_global.addr_global_render_items  = 0;
-    global_addresses_global.addr_draw_item_ids        = 0;
-    global_addresses_global.addr_camera_info          = GetGPUBase(GlobalSSBOType::CameraInfo);
     global_addresses_global.addr_color_palette        = 0;   // 由 ColorPaletteSystem 注册（UpdateColorPaletteAddress）
 
     // 每帧槽字段（sky / viewport / shadow）在各自 buffer 就绪后由 Set*Address 填；先整表清 0。
@@ -188,19 +184,6 @@ bool GlobalSSBOBufferRegistry::CommitAllSlots()
         any = CommitSlot(slot) || any;
 
     return any;
-}
-
-void GlobalSSBOBufferRegistry::UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids)
-{
-    // 这两个是全局字段（所有帧槽相同）⇒ 改动后整表所有槽一起更新。
-    if (global_addresses_global.addr_global_render_items == addr_render_items
-     && global_addresses_global.addr_draw_item_ids == addr_draw_item_ids)
-        return;
-
-    global_addresses_global.addr_global_render_items = addr_render_items;
-    global_addresses_global.addr_draw_item_ids       = addr_draw_item_ids;
-
-    CommitAllSlots();
 }
 
 void GlobalSSBOBufferRegistry::UpdateColorPaletteAddress(uint64_t addr_color_palette)
@@ -270,18 +253,8 @@ bool GlobalSSBOBufferRegistry::InitializePools()
         }
     }
 
-    // CameraInfo 的行空间由「相机序号 × per-frame 帧槽」静态划分（GlobalSSBOBufferRegistry::CameraRow），
-    // 行号不经 Acquire/Release ⇒ 整块预激活：CommitRow 的行校验恒成立，相机数据不会被静默拒绝写入。
-    // 因此该池的 reserve_rows 必须是 0（预留会让行号从 1 起、与 CameraRow 错位）。
-    if (auto *camera_pool = GetPool(GlobalSSBOType::CameraInfo))
-    {
-        if (!camera_pool->ActivateAllRows())
-        {
-            GLogError("[GlobalSSBOBufferRegistry] CameraInfo 行空间预激活失败");
-            Release();
-            return false;
-        }
-    }
+    // 相机行已下沉世界级（CameraInfoStorage）：本 registry 不再有 CameraInfo 行池，
+    // 因此也不再有"整块预激活"这一步（WorldAddresses 表随世界各自创建，见 ECSContext）。
 
     if (!InitializeGlobalAddressesTable())
     {

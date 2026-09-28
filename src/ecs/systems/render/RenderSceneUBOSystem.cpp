@@ -163,37 +163,9 @@ namespace hgl::ecs
         }
     }
 
-    // 全局地址表（SSBO，经 pc_root.addr_global_addresses 寻址）的每帧同步：
-    // 表里绝大多数字段是长期有效地址（初始化时一次写定），只有渲染项 / 绘制项两个字段
-    // 会随 storage 重建而变 —— 每帧把它们同步进表即可（不再是「每帧写一个 UBO 绑定」）。
-    void RenderSceneUBOSystem::SyncGlobalAddressesTable()
-    {
-        if (!context)
-            return;
-
-        graph::GraphicsContext *gc = nullptr;
-        if (auto *rc = context->GetRenderContext())
-            gc = rc->GetGraphicsContext();
-        if (!gc)
-            gc = context->GetGraphicsContext();
-
-        if (!gc)
-            return;
-
-        auto *registry = gc->GetGlobalSSBOBufferRegistry();
-        if (!registry)
-            return;
-
-        uint64_t render_item_addr = 0;
-        if (auto *storage = context->GetRenderItemStorage())
-            render_item_addr = storage->GetGPUAddress();
-
-        uint64_t draw_item_ids_addr = 0;
-        if (auto *id_storage = context->GetDrawItemIDStorage())
-            draw_item_ids_addr = id_storage->GetGPUAddress();
-
-        registry->UpdateRenderItemAddresses(render_item_addr, draw_item_ids_addr);
-    }
+    // 全局地址表（SSBO，经 pc_root.addr_global_addresses 寻址）里已不再有渲染项 / 绘制项字段：
+    // 它们是**世界私有** buffer 的地址，随世界表（WorldAddresses）下发 —— 见
+    // doc/world-addresses-and-camera-model-plan.md §1 与 ECSContext::SyncWorldAddresses()。
 
     void RenderSceneUBOSystem::CommitViewportUBO()
     {
@@ -405,7 +377,8 @@ namespace hgl::ecs
 
         // 全局地址表已 BDA 化（无绑定无集）：Scene 集已于 S3 整体退场，这里只同步表内会变的字段。
         // sky / viewport / shadow 的地址都在表内，shader 经 global_addresses 解引用 ⇒ 无绑定可推。
-        SyncGlobalAddressesTable();
+        // 渲染项 / DrawItemID 的地址现由**世界表**（WorldAddresses）承载，随
+        // ECSContext::SetFrameIndex 写入本帧槽 ⇒ 全局表内不再有这两个字段，无绑定可推。
     }
 
 }
