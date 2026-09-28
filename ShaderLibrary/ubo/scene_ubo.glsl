@@ -118,6 +118,22 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
 
 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
 
+// 世界地址表（**无绑定无集**）：世界私有 SSBO 的地址表，基址经 pc_root.addr_world_addresses 下发。
+// 为什么独立成表：表内都是**世界私有** buffer（相机行表 / 4-ID 渲染项表 / DrawItemID 表，
+// 后续 C2 迁入 sky / shadow / env）。一个设备上可同时存在多个世界（主世界 + OffscreenWorld），
+// 放进全局表只能表达"最后一个世界"的地址 ⇒ 多世界同帧互踩。
+// 表本体与 GlobalAddresses 同形：HGL_FRAME_SLOT_TOTAL 份 × kWorldAddressesSlotStride，
+// pc_root 指向"本帧那一槽"。
+//（定稿见 doc/world-addresses-and-camera-model-plan.md §1）
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer WorldAddressesRef
+{
+    uint64_t addr_camera_info;          // 相机行表（行号 = 相机槽 × 帧槽总数 + 帧槽）
+    uint64_t addr_global_render_items;  // 4-ID 渲染项表（世界私有）
+    uint64_t addr_draw_item_ids;        // DrawItemID 压缩索引表（世界私有）
+};
+
+#define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
+
 struct ShadowCascadeInfo
 {
     mat4 shadow_vp;
