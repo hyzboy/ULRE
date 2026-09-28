@@ -100,6 +100,5 @@ namespace hgl::ecs
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
         const graph::IGPUBuffer *ResolveShadowUBO();
-        void SyncGlobalAddressesTable();
     };
 }

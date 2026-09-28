@@ -31,9 +31,6 @@ namespace hgl::graph
         uint64_t addr_pbr_surface = 0;
         uint64_t addr_emissive_surface = 0;
         uint64_t addr_transmission_surface = 0;
-        uint64_t addr_global_render_items = 0;     // 待迁出：RenderItemDataStorage 是世界私有（→ WorldAddresses）
-        uint64_t addr_draw_item_ids = 0;           // 待迁出：DrawItemIDStorage 是世界私有（→ WorldAddresses）
-        uint64_t addr_camera_info = 0;             // 待迁出：相机行随世界（→ WorldAddresses）
         uint64_t addr_color_palette = 0;
 
         // ── 每帧槽字段：地址随帧槽变化（buffer 每帧不同）──

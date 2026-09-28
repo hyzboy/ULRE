@@ -148,8 +148,6 @@ public:
     bool CommitSlot(uint32_t frame_slot);
     bool CommitAllSlots();
 
-    void UpdateRenderItemAddresses(uint64_t addr_render_items, uint64_t addr_draw_item_ids);
-
     /// sky / shadow 的地址（每帧槽各一份）：写入本槽后 pc_root 指过来即可用。
     /// 传 0 表示「本槽暂无该表」（着色器侧读到 0 地址即解引用 0 ⇒ 调用方须保证不读）。
     void SetSkyAddress(uint32_t frame_slot, uint64_t addr);
@@ -290,83 +288,10 @@ public:
         return GetBuffer(GlobalSSBOType::MeshDrawParams);
     }
 
-    // ---- CameraInfo 便捷接口（**归属订正中：将下沉世界级**）----
-    //
-    // ⚠ 相机是**世界级观察者数据**，不该放在本设备级 registry 的行池里。定稿见
-    //  doc/world-addresses-and-camera-model-plan.md §2：相机存储下沉**世界私有** SSBO
-    //  （16 槽 × HGL_FRAME_SLOT_TOTAL 帧槽，地址进 WorldAddresses 表）；本文件中的
-    //  GlobalSSBOType::CameraInfo 配置项、全局相机号位图与全局 8 相机上限将随之删除。
-    //
-    // 迁移期间仍然有效的现有契约：
-    // 行空间由「相机槽号 × per-frame 数据槽」静态划分：行号 = camera_id * kCameraInfoSlotCount + slot。
-    // 该池整块预激活（见 InitializePools 注释），行号不经 Acquire/Release ⇒ 与行池的分配策略解耦
-    // （Acquire 优先复用 idle，行号并不连续），且 CommitRow 的行校验恒成立。
-    // 0 号槽恒留给本世界默认相机，1..kMaxCameraCount-1 由下面的位图分配。
-
-    static constexpr uint32_t kCameraInfoSlotCount = HGL_FRAME_SLOT_TOTAL;
-    static constexpr uint32_t kCameraInfoRowCount  = 64u;
-    static constexpr uint32_t kMaxCameraCount      = kCameraInfoRowCount / kCameraInfoSlotCount;
-
-    static_assert(kCameraInfoRowCount % kCameraInfoSlotCount == 0,
-                  "CameraInfo 行池容量必须是帧槽总数的整数倍");
-
-    /// 相机行号（slot = per-frame 数据槽：主帧 [0,4)、离屏 RT 槽带 [4,8)）
-    static constexpr uint32_t CameraRow(uint32_t camera_id, uint32_t slot)
-    {
-        return camera_id * kCameraInfoSlotCount + slot;
-    }
-
-    /// 相机序号占用位图（下标 0 恒为主相机，不参与分配）
-    bool camera_slot_used[kMaxCameraCount] = {};
-
-    /// 分配相机序号：0 恒留给主相机，从 1 起取最小空闲位。耗尽 ⇒ 报错 + InvalidRowID（容量不扩容）。
-    uint32_t AcquireCamera()
-    {
-        for (uint32_t id = 1; id < kMaxCameraCount; id++)
-        {
-            if (!camera_slot_used[id])
-            {
-                camera_slot_used[id] = true;
-                return id;
-            }
-        }
-
-        GLogError("[GlobalSSBOBufferRegistry] 相机数超过上限：上限 %u（CameraInfo 行池 %u 行 / %u 槽）",
-                  kMaxCameraCount, kCameraInfoRowCount, kCameraInfoSlotCount);
-        return ActiveRowPool::InvalidRowID;
-    }
-
-    /// 释放相机序号。序号 0 = 主相机，不可释放。
-    bool ReleaseCamera(uint32_t id)
-    {
-        if (id == 0 || id >= kMaxCameraCount || !camera_slot_used[id])
-        {
-            GLogError("[GlobalSSBOBufferRegistry] ReleaseCamera 拒绝无效序号：%u（1..%u 有效）",
-                      id, kMaxCameraCount - 1u);
-            return false;
-        }
-
-        camera_slot_used[id] = false;
-        return true;
-    }
-
-    /// 写入「某相机某帧槽」的 CameraInfo 行。越界直接报错：行空间是静态划分的，越界即项目 bug。
-    bool WriteCameraRow(uint32_t camera_id, uint32_t slot, const CameraInfo &info)
-    {
-        if (camera_id >= kMaxCameraCount || slot >= kCameraInfoSlotCount)
-        {
-            GLogError("[GlobalSSBOBufferRegistry] WriteCameraRow 越界：camera_id=%u slot=%u（上限 %u x %u）",
-                      camera_id, slot, kMaxCameraCount, kCameraInfoSlotCount);
-            return false;
-        }
-
-        return Write(GlobalSSBOType::CameraInfo, CameraRow(camera_id, slot), &info, sizeof(CameraInfo));
-    }
-
-    bool WriteCamera(uint32_t id, const CameraInfo &info)
-    {
-        return Write(GlobalSSBOType::CameraInfo, id, &info, sizeof(CameraInfo));
-    }
+    // 相机行**已下沉世界级**（`CameraInfoStorage`，16 槽 × HGL_FRAME_SLOT_TOTAL 帧槽，0 号槽=本世界默认相机）：
+    // 本 registry 不再持有 `GlobalSSBOType::CameraInfo` 行池、全局相机号位图与 8 相机上限
+    // （定稿见 doc/world-addresses-and-camera-model-plan.md §2；旧 API AcquireCamera / ReleaseCamera /
+    //  CameraRow / WriteCameraRow / WriteCamera 已随之下线，改由 `CameraInfoStorage` 承担）。
 
     /// 全部行池的 CommitRow 被拒总次数。契约判据：正常运行恒为 0。
     /// 写入被静默拒绝 = 数据根本没到 GPU —— 这类故障不会让画面崩，只会让数据悄悄不对。
@@ -383,16 +308,6 @@ public:
         }
 
         return total;
-    }
-
-    uint64_t GetCameraInfoGPUBase() const
-    {
-        return GetGPUBase(GlobalSSBOType::CameraInfo);
-    }
-
-    DeviceBuffer *GetCameraInfoBuffer() const
-    {
-        return GetBuffer(GlobalSSBOType::CameraInfo);
     }
 };
 

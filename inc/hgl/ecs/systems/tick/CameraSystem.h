@@ -188,7 +188,6 @@ namespace hgl
             CameraComponent* SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras) const;
             void BindCameraResources(CameraComponent* camera, bool is_main = false);
             void EnsureCameraResources();
-            graph::GlobalSSBOBufferRegistry *ResolveGlobalSSBORegistry();
 
             // === 数学辅助函数 / Math helper functions ===
 

@@ -18,9 +18,8 @@ namespace hgl::graph
         PBRSurface,
         EmissiveSurface,
         TransmissionSurface,
-        CameraInfo,
 
-        ENUM_CLASS_RANGE(MeshDrawParams, CameraInfo)
+        ENUM_CLASS_RANGE(MeshDrawParams, TransmissionSurface)
     };
 
     constexpr uint32_t GlobalSSBOTypeCount = static_cast<uint32_t>(GlobalSSBOType::RANGE_SIZE);
