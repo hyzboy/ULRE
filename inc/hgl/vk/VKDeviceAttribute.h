@@ -60,7 +60,6 @@ struct VulkanDevAttr
     PFN_vkCmdSetAlphaToCoverageEnableEXT cmd_set_alpha_to_coverage_enable =nullptr;
 
     // Push Descriptor（Vulkan 1.4 核心 / VK_KHR_push_descriptor）
-    PFN_vkCmdPushDescriptorSet          cmd_push_descriptor_set =nullptr;
 
     // Synchronization2（Vulkan 1.3 核心 / VK_KHR_synchronization2）
     PFN_vkCmdPipelineBarrier2           cmd_pipeline_barrier2 =nullptr;

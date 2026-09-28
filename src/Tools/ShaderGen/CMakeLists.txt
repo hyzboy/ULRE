@@ -52,7 +52,7 @@ if(BUILD_TESTING)
 endif()
 
 # 构建期校验（不止 ctest）：生成物一旦与真源漂移即构建失败。
-# 真源 = inc/hgl/common/DescriptorSetTypeDef.h 的 SceneBinding 枚举 + kDescriptorBindingMacros 规范表。
+# 真源 = inc/hgl/common/DescriptorSetTypeDef.h 的 kDescriptorBindingMacros 规范表（SceneBinding 枚举已随集退场）。
 add_custom_target(descriptor_macros_verify ALL
     COMMAND $<TARGET_FILE:DescriptorMacroGen> --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/common/descriptor_macros.glsl
     DEPENDS DescriptorMacroGen

@@ -248,8 +248,7 @@ SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
                                 VKDeviceSampler.cpp
                                 VKDeviceFramebuffer.cpp
                                 VKBindlessTextureManager.cpp
-                                VKGlobalSceneUBOSet.cpp)
-
+                                VKBindlessTextureManager.cpp)
 SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})
 
 SET(GEOMETRY_VERTEX_DATA_FILES  ${VK_INCLUDE_PATH}/VertexAttribDataAccess.h

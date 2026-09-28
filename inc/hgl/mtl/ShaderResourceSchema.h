@@ -2,7 +2,6 @@
 
 #include<hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/graph/ssbo/GlobalSSBOTypes.h>
-#include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
@@ -51,7 +50,6 @@ namespace hgl::graph::mtl
     {
         switch (semantic)
         {
-        case DescriptorSemantic::SkyInfo:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
             return true;
@@ -82,14 +80,6 @@ namespace hgl::graph::mtl
         return schema.requires_runtime_data_rows;
     }
 
-    inline DescriptorSetType GetExpectedSetType(DescriptorSemantic semantic)
-    {
-        // 唯一真源：DescriptorResourceCatalog（语义→集合映射随目录表维护）
-        const DescriptorResourceCatalogEntry *cat =
-            FindResourceCatalogEntry(semantic);
-        return cat ? cat->set_type : DescriptorSetType::Unknown;
-    }
-
     inline DescriptorSemanticLayer NormalizeSemanticLayer(const SerializedDescriptorEntry &entry)
     {
         if (entry.semantic_layer != DescriptorSemanticLayer::Unknown)
@@ -104,21 +94,12 @@ namespace hgl::graph::mtl
 
     inline const char *GetDefaultDescriptorNameBySemantic(const DescriptorSemantic semantic)
     {
-        // 唯一真源：DescriptorResourceCatalog 的 SBS 行
+        // Scene 集与资源目录整体退场后，唯一内置默认名就是材质私有数据槽；
+        // 其余语义（纹理 / 采样器走 bindless，行表走 BDA）都没有 SBS 默认名。
         if (semantic == DescriptorSemantic::MaterialPrivateData)
             return DefaultMaterialPrivateDataName;
 
-        const DescriptorResourceCatalogEntry *cat =
-            FindResourceCatalogEntry(semantic);
-        return (cat && cat->sbs) ? cat->sbs->name : nullptr;
-    }
-
-    inline const char *GetDefaultStructNameBySemantic(const DescriptorSemantic semantic)
-    {
-        // 唯一真源：DescriptorResourceCatalog 的 SBS 行
-        const DescriptorResourceCatalogEntry *cat =
-            FindResourceCatalogEntry(semantic);
-        return (cat && cat->sbs) ? cat->sbs->struct_name : nullptr;
+        return nullptr;
     }
 
     inline ShaderResourceSchema BuildShaderResourceSchema(const SerializedDescriptorEntry *descriptor_entries,
@@ -155,13 +136,6 @@ namespace hgl::graph::mtl
                 const char *default_name = GetDefaultDescriptorNameBySemantic(req.semantic);
                 if (default_name)
                     req.name = default_name;
-            }
-
-            if (req.struct_name.empty())
-            {
-                const char *default_struct = GetDefaultStructNameBySemantic(req.semantic);
-                if (default_struct)
-                    req.struct_name = default_struct;
             }
 
             if (req.semantic == DescriptorSemantic::MaterialPrivateData)
@@ -306,18 +280,6 @@ namespace hgl::graph::mtl
                 diagnostics.emplace_back(
                     "Descriptor stage visibility is empty (" + context + ").");
                 continue;
-            }
-
-            const DescriptorSetType expected_set = GetExpectedSetType(req.semantic);
-            if (expected_set != DescriptorSetType::Unknown && expected_set != req.set_type)
-            {
-                std::string message = "Descriptor semantic set mismatch: ";
-                message += context;
-                message += ", expected set=";
-                message += GetDescriptorSetTypeName(expected_set);
-                message += ", actual set=";
-                message += GetDescriptorSetTypeName(req.set_type);
-                diagnostics.push_back(std::move(message));
             }
 
             if (req.semantic == DescriptorSemantic::MaterialPrivateData)

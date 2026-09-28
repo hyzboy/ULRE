@@ -6,47 +6,28 @@
 
 namespace hgl::graph
 {
-    /// Scene 集（Set 0）UBO 绑定号。
-    /// 绑定号即 ABI：数值必须显式写死，禁止省略 "=值" 依赖编译器自动续号
-    ///（中间插入新条目会导致后续全部静默重编号，破坏已编译着色器缓存）。
-    enum class SceneBinding : int
-    {
-        /* 相机 / 调色板 / 全局地址表 / sky / shadow 绑定均已删：
-           地址一律走 global_addresses（BDA，无绑定无集）——
-           sky 经 addr_sky（单份 buffer，全帧槽同址）、
-           shadow 经 addr_shadow（按帧槽各一份） */
-        Viewport=0,      ///< 视口 UBO（每 pass / 每 RT ⇒ 唯一留在 Scene 集的绑定）
-
-        ENUM_CLASS_RANGE(Viewport,Viewport)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
-    };
-
-    /// ABI 锚点：以下数值被 ShaderLibrary/common/descriptor_macros.glsl 与运行时绑定表依赖，
-    /// 变更即破坏全部已编译着色器；static_assert 保证插入新条目引发的静默重编号在编译期暴露。
-    static_assert(int(SceneBinding::Viewport)==0,
-                  "Scene UBO binding ABI changed");
-
-    /// ── 兼容别名：既有调用点继续使用 kXxx 常量名，数值真源已上收至上述枚举 ──
-    constexpr const int kSceneBindingViewport        = int(SceneBinding::Viewport);      ///< 视口 UBO
+    /// 注：Set 0（Scene 集）与其绑定枚举 `SceneBinding` 已**整体退场**——相机 / 调色板 /
+    /// 全局地址表 / sky / viewport / shadow 全部改走 BDA（地址进 global_addresses 表，
+    /// 表基址经 pc_root.addr_global_addresses 下发）⇒ 本引擎不再有任何 Scene 集绑定，
+    /// 描述符集只剩 Bindless 一个（集号随之收敛为 0）。
 
     enum class DescriptorSetType:int
     {
         Unknown=-1,        ///<Phase 7 拼写修正：Unknown（枚举值不变，序列化契约不受影响）
 
-        Scene=0,        ///< 全局 UBO 集（只余 viewport），所有材质共用；sky/shadow/调色板/地址表已走 BDA
-        Bindless=1,     ///< 全局 Bindless 纹理数组集合（Set 1），一帧绑一次
-                        ///< （PerObject/Vertex/Material 集已随 BDA 化退场——行表/顶点流/材质行
-                        ///<  均经 pc_root 地址 + buffer_reference 寻址，无 per-material 描述符；
-                        ///<  b3 集号收敛：Bindless 2→1，终态两集 Scene(0)/Bindless(1)）
+        Bindless=0,     ///< 全局 Bindless 纹理数组集合（Set 0），一帧绑一次
+                        ///< （Scene/PerObject/Vertex/Material 集已随 BDA 化全部退场——行表/顶点流/
+                        ///<  材质行经 pc_root 地址 + buffer_reference 寻址，viewport / sky / shadow
+                        ///<  亦走 global_addresses ⇒ 唯一集合就是本集）
 
-        ENUM_CLASS_RANGE(Scene,Bindless)
+        ENUM_CLASS_RANGE(Bindless,Bindless)
     };
 
     constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
 
-    /// 按索引调试名（b3 集号收敛后两集：Scene=0/Bindless=1）
+    /// 按索引调试名（Scene 集退场后唯一集合：Bindless=0）
     constexpr const char *DescriptSetTypeName[]=
     {
-        "Scene",
         "Bindless"
     };
 
@@ -62,7 +43,7 @@ namespace hgl::graph
     /// 宏类别：DescriptorMacroGen 生成器按此决定 #define 的输出形态
     enum class DescriptorMacroKind
     {
-        SetIndex,   ///< #define <name> <集合序号>        如 SCENE_SET 0
+        SetIndex,   ///< #define <name> <集合序号>        如 BINDLESS_SET 0
         SetAlias,   ///< #define <name> <alias_target>    （PerObject 别名宏已随集退场，暂无可选项）
         Binding     ///< #define <name> <绑定号>          如 VERTEX_POSITION_BINDING 4
     };
@@ -90,13 +71,8 @@ namespace hgl::graph
     /// 与 descriptor_macros.glsl 一一对应（该 .glsl 为 DescriptorMacroGen 生成物）。
     constexpr const DescriptorBindingMacroSpec kDescriptorBindingMacros[]=
     {
-        {DescriptorMacroKind::SetIndex,DescriptorSetType::Scene,    "SCENE_SET",                 nullptr,                                   -1,
+        {DescriptorMacroKind::SetIndex,DescriptorSetType::Bindless, "BINDLESS_SET",              nullptr,                                   -1,
             "// ── Descriptor Set 索引 ──",                            true, true},
-
-        {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "VIEWPORT_BINDING",          nullptr,   int(SceneBinding::Viewport),
-            "// ── Scene set（只余 viewport）──",                      true, true},
-
-        {DescriptorMacroKind::SetIndex,DescriptorSetType::Bindless, "BINDLESS_SET",              nullptr,                                   -1, nullptr},
     };
 
     /// 统一发射所有描述符集/绑定宏（由 C++ 单源表 kDescriptorBindingMacros 驱动）

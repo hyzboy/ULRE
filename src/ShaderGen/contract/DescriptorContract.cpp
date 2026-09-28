@@ -179,8 +179,7 @@ namespace hgl::graph::mtl
              || entry.semantic_layer == DescriptorSemanticLayer::Unknown
              || entry.semantic_layer > DescriptorSemanticLayer::Sampler
              || entry.set_type == DescriptorSetType::Unknown
-             || entry.set_type < DescriptorSetType::Scene
-             || entry.set_type > DescriptorSetType::Bindless // Bindless 为最后一个集合类型（Vertex 集已退场）
+             || entry.set_type > DescriptorSetType::Bindless // Bindless 是唯一集合类型（Scene/Vertex 集已退场）
              || entry.ssbo_type < SSBOType::BEGIN_RANGE
              || entry.ssbo_type > SSBOType::END_RANGE
              || entry.array_count == 0
@@ -243,14 +242,6 @@ namespace hgl::graph::mtl
                 if (default_name)
                     req.name = default_name;
             }
-            if (req.struct_name.empty())
-            {
-                const char *default_struct = GetDefaultStructNameBySemantic(
-                    req.semantic);
-                if (default_struct)
-                    req.struct_name = default_struct;
-            }
-
             out_schema.resources.push_back(std::move(req));
         }
         return true;

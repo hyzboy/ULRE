@@ -509,7 +509,8 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     {
         const VkPhysicalDeviceVulkan14Features &dev14 = physical_device->GetFeatures14();
 
-        // Vulkan 1.4 核心：indexTypeUint8 与 pushDescriptor 经 VkPhysicalDeviceVulkan14Features 启用
+        // Vulkan 1.4 核心：indexTypeUint8 经 VkPhysicalDeviceVulkan14Features 启用
+        //（pushDescriptor 已随 Scene 集的 push descriptor 路径删除，不再请求）
         vulkan14_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
         vulkan14_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
 
@@ -518,8 +519,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         {
             vulkan14_features.indexTypeUint8 = dev14.indexTypeUint8;
         }
-
-        vulkan14_features.pushDescriptor = dev14.pushDescriptor;
 
         create_info.pNext=&vulkan14_features;
     }
@@ -562,7 +561,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         desc_buffer_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
         desc_buffer_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
         desc_buffer_features.descriptorBuffer = VK_TRUE;
-        desc_buffer_features.descriptorBufferPushDescriptors = physical_device->GetDescriptorBufferFeatures().descriptorBufferPushDescriptors;
+        // descriptorBufferPushDescriptors 不再请求：push descriptor 路径已随 Scene 集删除。
         create_info.pNext = &desc_buffer_features;
     }
 
@@ -716,15 +715,6 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
         if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetAlphaToCoverageEnableEXT>("vkCmdSetAlphaToCoverageEnableEXT"))
             device_attr->cmd_set_alpha_to_coverage_enable=*fp;
-    }
-
-    // Push Descriptor 函数指针（Vulkan 1.4 core / VK_KHR_push_descriptor）
-    {
-        auto fp = device_attr->GetDeviceProc<PFN_vkCmdPushDescriptorSet>("vkCmdPushDescriptorSet");
-        if(!fp)
-            fp = device_attr->GetDeviceProc<PFN_vkCmdPushDescriptorSet>("vkCmdPushDescriptorSetKHR");
-        if(fp)
-            device_attr->cmd_push_descriptor_set = *fp;
     }
 
     // Synchronization2 函数指针（Vulkan 1.3 core / VK_KHR_synchronization2）

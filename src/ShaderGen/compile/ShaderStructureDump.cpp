@@ -151,14 +151,10 @@ std::string DumpShaderStructure(const ShaderBuildContext &ctx, const char *label
         row.set = set;
         row.binding = binding;
 
-        // Scene 全局集——按帧绑定，无 per-material 分配器（正常，非缺失）
-        // 其余——未解出（异常，值得注意）
-        const std::string set_text = set >= 0
-            ? std::to_string(set)
-            : (res.set_type == DescriptorSetType::Scene ? "global" : "unallocated");
-        const std::string binding_text = binding >= 0
-            ? std::to_string(binding)
-            : (res.set_type == DescriptorSetType::Scene ? "global" : "unallocated");
+        // Scene 全局集已退场 ⇒ 无解出的 set/binding 一律记 "unallocated"
+        //（BDA 化后 per-material 分配器已整体删除，这是正常形态）。
+        const std::string set_text = set >= 0 ? std::to_string(set) : "unallocated";
+        const std::string binding_text = binding >= 0 ? std::to_string(binding) : "unallocated";
 
         row.text = "resource";
         AppendKV(row.text, "semantic", GetDescriptorSemanticName(res.semantic));

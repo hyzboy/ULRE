@@ -39,11 +39,6 @@ namespace hgl::graph::mtl
         std::string &out_glsl,
         const MaterialVertexVaryingConfig &varying_cfg);
 
-    using MeshUboResolver = void (*)(
-        const VertexShaderNodeConfig &node_cfg,
-        const MaterialVertexVaryingConfig &varying_cfg,
-        hgl::OrderedSet<DescriptorSemantic> &out_ubos);
-
     using MeshResourceEmitter = void (*)(
         std::string &out_glsl,
         const VertexShaderNodeConfig &node_cfg,
@@ -70,7 +65,6 @@ namespace hgl::graph::mtl
         const char *name;
         MeshTopologyResolver resolve_topology;
         MeshDefinesEmitter emit_defines;
-        MeshUboResolver resolve_ubos;
         MeshResourceEmitter emit_custom_resources;
         MeshStage1Resolver resolve_stage1_input;
         MeshStage2MappingResolver resolve_stage2_mapping;
@@ -116,33 +110,6 @@ namespace hgl::graph::mtl
         {
             out_glsl += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
         }
-    }
-
-    // ── UBO Resolvers ───────────────────────────────────────────────────
-    // 调色板不再是 UBO/描述符语义（BDA：global_addresses.addr_color_palette），
-    // 故 emit_vertex_color_from_palette 不再产生任何 UBO 需求。
-    inline void ResolveVertexPassthroughUbos(
-        const VertexShaderNodeConfig &node_cfg,
-        const MaterialVertexVaryingConfig &/*varying_cfg*/,
-        hgl::OrderedSet<DescriptorSemantic> &out_ubos)
-    {
-        out_ubos.Add(DescriptorSemantic::ViewportInfo);
-    }
-
-    inline void ResolveLineQuadUbos(
-        const VertexShaderNodeConfig &/*node_cfg*/,
-        const MaterialVertexVaryingConfig &/*varying_cfg*/,
-        hgl::OrderedSet<DescriptorSemantic> &out_ubos)
-    {
-        out_ubos.Add(DescriptorSemantic::ViewportInfo);
-    }
-
-    inline void ResolveCharQuadUbos(
-        const VertexShaderNodeConfig &/*node_cfg*/,
-        const MaterialVertexVaryingConfig &/*varying_cfg*/,
-        hgl::OrderedSet<DescriptorSemantic> &out_ubos)
-    {
-        out_ubos.Add(DescriptorSemantic::ViewportInfo);
     }
 
     // ── Custom Resource Emitters ────────────────────────────────────────
@@ -219,7 +186,6 @@ namespace hgl::graph::mtl
                 "VertexPassthrough",
                 ResolveVertexPassthroughTopology,
                 EmitStandardMeshDefines,
-                ResolveVertexPassthroughUbos,
                 nullptr,
                 ResolveStandardStage1Input,
                 ResolveStandardStage2Mapping,
@@ -231,7 +197,6 @@ namespace hgl::graph::mtl
                 "LineQuad",
                 ResolveLineQuadTopology,
                 EmitStandardMeshDefines,
-                ResolveLineQuadUbos,
                 nullptr,
                 ResolveStandardStage1Input,
                 ResolveStandardStage2Mapping,
@@ -243,7 +208,6 @@ namespace hgl::graph::mtl
                 "CharQuad",
                 ResolveCharQuadTopology,
                 nullptr,
-                ResolveCharQuadUbos,
                 EmitCharQuadCustomResources,
                 nullptr,
                 nullptr,

@@ -180,19 +180,16 @@ namespace hgl::graph::mtl
                       "MeshTemplateEmitter.Defines", desc->name);
         }
 
-        // 4. Header Resources (UBOs 正向声明集合驱动)
+        // 4. Header Resources
+        // scene_ubo.glsl 无条件包含：pc_root 之后的 BDA 地址表声明与
+        // camera/vp/viewport/shadow 宏是所有 stage 的公共语言，不再由 UBO 需求驱动。
         fragment.clear();
-        hgl::OrderedSet<DescriptorSemantic> ubos;
-        if (desc->resolve_ubos)
-            desc->resolve_ubos(node_cfg, varying_cfg, ubos);
-
         EmitMeshShaderHeaderResources(
             fragment,
             node_cfg,
             max_invocations,
             max_vertices,
-            max_primitives,
-            ubos);
+            max_primitives);
         add_block(ShaderDocumentBlockKind::Resource, fragment,
                   "MeshTemplateEmitter.HeaderResources", "MeshShaderHeaderGen");
 

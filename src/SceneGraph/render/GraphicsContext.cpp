@@ -13,7 +13,6 @@
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
-#include <hgl/vk/VKGlobalSceneUBOSet.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
@@ -126,15 +125,8 @@ namespace hgl::graph
 
         material_manager->SetBindlessLayout(bindless_texture_manager_->GetLayout());
 
-        // 全局 Scene UBO 描述符集（P1）：设备级全局，一帧写/绑一次
-        global_scene_ubo_set_ = new GlobalSceneUBOSet();
-        if (!global_scene_ubo_set_)
-            return false;
-
-        if (!global_scene_ubo_set_->Init(device->GetDevice()))
-            return false;
-
-        material_manager->SetSceneLayout(global_scene_ubo_set_->GetLayout());
+        // Scene 集（Set 0）已整体退场（S3）：viewport/sky/shadow 全走 BDA，
+        // 设备级全局集只剩 Bindless 一个（见 SetSceneLayout 的删除）。
 
         // Set graphics context for module manager
         module_manager->SetGraphicsContext(this);
@@ -178,7 +170,6 @@ namespace hgl::graph
         env_manager = nullptr;
 
         SAFE_CLEAR(bindless_texture_manager_)
-        SAFE_CLEAR(global_scene_ubo_set_)
     }
 
     void GraphicsContext::OnResize(const VkExtent2D &extent)
@@ -221,7 +212,6 @@ namespace hgl::graph
                                               VkPipelineLayout layout,
                                               VkPipelineBindPoint bind_point,
                                               VulkanDevice *device,
-                                              GlobalSceneUBOSet *scene_set,
                                               BindlessTextureManager *bindless_mgr)
     {
         auto *attr = device ? device->GetDevAttr() : nullptr;
@@ -231,7 +221,6 @@ namespace hgl::graph
         {
             uint32_t bindless_buffer_index = 0;
             VkDescriptorBufferBindingInfoEXT binding_infos[2]{};
-            VkDescriptorBufferBindingPushDescriptorBufferHandleEXT push_handle{};
             uint32_t buffer_count = 0;
 
             if (bindless_mgr && bindless_mgr->IsValid())
@@ -245,28 +234,9 @@ namespace hgl::graph
                           | VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
             }
 
-            if (scene_set && scene_set->IsValid() && scene_set->NeedsPushDescriptorBuffer())
-            {
-                push_handle.sType  = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_PUSH_DESCRIPTOR_BUFFER_HANDLE_EXT;
-                push_handle.pNext  = nullptr;
-                push_handle.buffer = scene_set->GetPushDescriptorBuffer();
-
-                auto &b = binding_infos[buffer_count++];
-                b.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
-                b.pNext   = &push_handle;
-                b.address = scene_set->GetPushDescriptorBufferAddress();
-                b.usage   = VK_BUFFER_USAGE_PUSH_DESCRIPTORS_DESCRIPTOR_BUFFER_BIT_EXT
-                          | VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
-            }
-
             if (buffer_count > 0)
             {
                 attr->cmd_bind_descriptor_buffers(cmd_buf, buffer_count, binding_infos);
-            }
-
-            if (scene_set && scene_set->IsValid())
-            {
-                scene_set->BindToCmd(cmd_buf, layout, bind_point);
             }
 
             if (bindless_mgr && bindless_mgr->IsValid())
@@ -281,11 +251,6 @@ namespace hgl::graph
         else
         {
             // 传统 DescriptorPool 双轨回退路径 (如 RenderDoc 环境或不支持 DescriptorBuffer 的设备)
-            if (scene_set && scene_set->IsValid())
-            {
-                scene_set->BindToCmd(cmd_buf, layout, bind_point);
-            }
-
             if (bindless_mgr && bindless_mgr->IsValid())
             {
                 bindless_mgr->BindToCmd(cmd_buf,
@@ -298,24 +263,24 @@ namespace hgl::graph
 
     void GraphicsContext::BindGlobalDescriptorSets(RenderCmdBuffer *cmd, VkPipelineLayout layout)
     {
-        if (!cmd || cmd->scene_sets_bound)
+        if (!cmd || cmd->global_sets_bound)
             return;
 
         BindGlobalDescriptorsInternal(*cmd, layout, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                      device, GetGlobalSceneUBOSet(), GetBindlessTextureManager());
+                                      device, GetBindlessTextureManager());
 
-        cmd->scene_sets_bound = true;
+        cmd->global_sets_bound = true;
     }
 
     void GraphicsContext::BindGlobalDescriptorSets(ComputeCmdBuffer *cmd, VkPipelineLayout layout)
     {
-        if (!cmd || cmd->scene_sets_bound)
+        if (!cmd || cmd->global_sets_bound)
             return;
 
         BindGlobalDescriptorsInternal(*cmd, layout, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                      device, GetGlobalSceneUBOSet(), GetBindlessTextureManager());
+                                      device, GetBindlessTextureManager());
 
-        cmd->scene_sets_bound = true;
+        cmd->global_sets_bound = true;
     }
 
 } // namespace hgl::graph

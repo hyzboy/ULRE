@@ -114,8 +114,6 @@ public:
 
     const VkDeviceSize      GetMaxBufferSize()const{return properties13.maxBufferSize;}
 
-    const uint32_t          GetMaxPushDescriptors()const{return properties14.maxPushDescriptors;}
-    const bool              SupportPushDescriptor()const{return features14.pushDescriptor;}
     const bool              SupportSynchronization2()const{return features13.synchronization2;}
     const bool              SupportVulkan14         ()const{return properties.apiVersion >= VK_API_VERSION_1_4;}
     const bool              SupportDescriptorBuffer()const{return support_descriptor_buffer;}

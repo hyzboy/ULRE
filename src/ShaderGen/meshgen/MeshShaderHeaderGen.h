@@ -67,8 +67,7 @@ namespace hgl::graph::mtl
         const VertexShaderNodeConfig &node_cfg,
         uint32_t max_invocations,
         uint32_t max_vertices,
-        uint32_t max_primitives,
-        const hgl::OrderedSet<DescriptorSemantic> &ubos)
+        uint32_t max_primitives)
     {
         ms += "layout(local_size_x = ";
         ms += std::to_string(max_invocations);
@@ -83,10 +82,9 @@ namespace hgl::graph::mtl
         // ── Descriptor macros ──────────────────────────────────────────────
         ms += "#include \"common/descriptor_macros.glsl\"\n";
 
-        if (!ubos.IsEmpty())
-        {
-            ms += "#include \"ubo/scene_ubo.glsl\"\n";
-        }
+        // scene_ubo.glsl：pc_root 之后的 BDA 地址表声明 + camera/vp/viewport/shadow 宏。
+        // 所有 stage 无条件包含——它已不再是「有 UBO 需求才包含」的 UBO 声明块。
+        ms += "#include \"ubo/scene_ubo.glsl\"\n";
 
         const bool needs_l2w = (node_cfg.orientation == OrientationMode::World ||
                                 node_cfg.orientation == OrientationMode::CameraFacingFree ||
@@ -99,25 +97,6 @@ namespace hgl::graph::mtl
         }
 
         ms += "\n";
-    }
-
-    inline void EmitMeshShaderHeaderResources(
-        std::string &ms,
-        const VertexShaderNodeConfig &node_cfg,
-        uint32_t max_invocations,
-        uint32_t max_vertices,
-        uint32_t max_primitives)
-    {
-        hgl::OrderedSet<DescriptorSemantic> ubos;
-        ubos.Add(DescriptorSemantic::ViewportInfo);
-
-        EmitMeshShaderHeaderResources(
-            ms,
-            node_cfg,
-            max_invocations,
-            max_vertices,
-            max_primitives,
-            ubos);
     }
 
     // 生成 mesh shader 头部：版本声明、extension、layout、UBO/SSBO 条件包含。

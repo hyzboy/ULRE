@@ -30,7 +30,6 @@
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
-#include<hgl/vk/VKGlobalSceneUBOSet.h>
 
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/common/RenderOptions.h>

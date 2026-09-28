@@ -1,6 +1,5 @@
 ﻿#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/vk/buffer/StructView.h>
-#include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<cstdlib>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderItemDataStorage.h>
@@ -22,7 +21,6 @@
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
-#include<hgl/vk/VKGlobalSceneUBOSet.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
@@ -74,22 +72,6 @@ namespace hgl::ecs
             return nullptr;
         }
 
-        graph::GlobalSceneUBOSet *GetGlobalSceneUBOSet(hgl::ecs::ECSContext *ctx)
-        {
-            if (!ctx)
-                return nullptr;
-
-            if (auto *rc = ctx->GetRenderContext())
-            {
-                if (auto *gc = rc->GetGraphicsContext())
-                    return gc->GetGlobalSceneUBOSet();
-            }
-
-            if (auto *gc = ctx->GetGraphicsContext())
-                return gc->GetGlobalSceneUBOSet();
-
-            return nullptr;
-        }
     }
 
     RenderSceneUBOSystem::RenderSceneUBOSystem(const std::string& name)
@@ -421,19 +403,9 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        // 全局地址表已 BDA 化（无绑定无集）：这里只同步表内会变的字段。
-        // sky / viewport / shadow 的地址都在表内（viewport 是最后一个退出绑定的）⇒ Set 0 已无
-        // 任何需要推送的绑定；整集与其 layout / push descriptor 路径的删除归 S3。
+        // 全局地址表已 BDA 化（无绑定无集）：Scene 集已于 S3 整体退场，这里只同步表内会变的字段。
+        // sky / viewport / shadow 的地址都在表内，shader 经 global_addresses 解引用 ⇒ 无绑定可推。
         SyncGlobalAddressesTable();
-
-        auto *global_scene_set = GetGlobalSceneUBOSet(context);
-        if (!(global_scene_set && global_scene_set->IsValid()))
-        {
-            GLogWarning("[SceneUBO] Scene UBO set not bound: viewport=%p sky=%p shadow=%p",
-                        (const void *)ResolveViewportUBO(),
-                        (const void *)ResolveSkyUBO(),
-                        (const void *)ResolveShadowUBO());
-        }
     }
 
 }

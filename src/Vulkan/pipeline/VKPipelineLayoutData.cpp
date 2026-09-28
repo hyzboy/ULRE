@@ -2,51 +2,14 @@
 #include<hgl/graph/ShaderBufferSources.h>
 
 namespace hgl::graph{
-namespace
-{
-    static VkDescriptorSetLayout CreateEmptyDescriptorSetLayout(VkDevice device)
-    {
-        VkDescriptorSetLayoutCreateInfo empty_ci{};
-        empty_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-
-        VulkanDevice *vdev = VulkanDevice::FromDevice(device);
-        if (vdev && vdev->IsDescriptorBufferActive())
-            empty_ci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-        else
-            empty_ci.flags = 0;
-
-        empty_ci.bindingCount = 0;
-
-        VkDescriptorSetLayout empty_layout = VK_NULL_HANDLE;
-        if(vkCreateDescriptorSetLayout(device, &empty_ci, nullptr, &empty_layout) != VK_SUCCESS)
-            return VK_NULL_HANDLE;
-
-        return empty_layout;
-    }
-}
-
-// BDA 终态（A6-2b/b3 后）：描述符集只剩 Scene(0)/Bindless(1) 两个设备级全局集，
+// BDA 终态（S3：Scene 集亦退场后）：描述符集只剩 Bindless(0) 一个设备级全局集，
 // 全材质共享同一 pipeline layout——不再 per-material 创建（desc_manager 时代遗留）。
 // 单例由 ShaderProgramManager 惰建缓存；材质只持裸句柄、不拥有。
-VkPipelineLayout VulkanDevice::CreateGlobalPipelineLayout(VkDescriptorSetLayout bindless_layout,
-                                                          VkDescriptorSetLayout scene_layout)
+VkPipelineLayout VulkanDevice::CreateGlobalPipelineLayout(VkDescriptorSetLayout bindless_layout)
 {
     VkDescriptorSetLayout dsl[DESCRIPTOR_SET_TYPE_COUNT]{};
 
-    if(scene_layout != VK_NULL_HANDLE)
-    {
-        dsl[int(DescriptorSetType::Scene)] = scene_layout;
-    }
-    else
-    {
-        // 全局 Scene 集未就绪的占位空 layout（正常 Init 顺序下不出现；
-        // 仅建一次——共享单例路径，随设备生命周期存续）。
-        dsl[int(DescriptorSetType::Scene)] = CreateEmptyDescriptorSetLayout(attr->device);
-        if(dsl[int(DescriptorSetType::Scene)] == VK_NULL_HANDLE)
-            return VK_NULL_HANDLE;
-    }
-
-    // Bindless（Set 1）：layout 由 BindlessTextureManager 提供，GraphicsContext::Init 保证非空。
+    // Bindless（唯一集合）：layout 由 BindlessTextureManager 提供，GraphicsContext::Init 保证非空。
     dsl[int(DescriptorSetType::Bindless)] = bindless_layout;
 
     PipelineLayoutCreateInfo pPipelineLayoutCreateInfo;

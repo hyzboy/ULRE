@@ -298,11 +298,6 @@ namespace hgl::graph::mtl
         // GlobalSSBOType：统一的全局 SSBO 池类型（材质表面字段与 MeshDrawParams 共用）。
         GlobalSSBOType material_private_data = GlobalSSBOType::PBRSurface;
 
-        // Part-B3: UBO 资源能力声明。
-        // 显式列出此材质可使用的标准 UBO（ViewportInfo/SkyInfo/ShadowInfo）。
-        // 2D/3D 都走这条声明链路。
-        std::vector<DescriptorSemantic> ubo_requirements;
-
         // Part-B4: TOML-defined texture-reference declarations.
         // 无纹理材质（PureColor、VertexColor 等）此列表为空。
         // sampler_type 区分 "sampler2D" vs "sampler2DArray" 等 GLSL 采样器变体。
@@ -528,13 +523,6 @@ namespace hgl::graph::mtl
             state.pipeline_config = overrides.pipeline_config;
 
         return state;
-    }
-
-    inline bool HasUBORequirement(const MaterialDefinition &def, DescriptorSemantic s) noexcept
-    {
-        for (const auto &r : def.ubo_requirements)
-            if (r == s) return true;
-        return false;
     }
 
     /**

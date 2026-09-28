@@ -853,42 +853,9 @@ namespace hgl::graph::mtl
                 if (!resources.is_table())
                     return false;
 
-                if (resources.contains("ubos"))
-                {
-                    if (!resources.at("ubos").is_array())
-                        return false;
-                    // 名 ↔ 语义成对（单一真源）：旧实现是两张并行数组 + 手列上界，
-                    // 上界写死 5 而表只有 4 项 ⇒ 越界读 names[4]。改结构化后
-                    // 增删一项只动一处，且不可能再错位。
-                    struct UBOSpec
-                    {
-                        const char *name;
-                        DescriptorSemantic semantic;
-                    };
-
-                    static const UBOSpec ubo_specs[] = {
-                        { "ViewportInfo", DescriptorSemantic::ViewportInfo },
-                    };
-
-                    for (const auto &item : resources.at("ubos").as_array())
-                    {
-                        if (!item.is_string())
-                            return false;
-                        bool found = false;
-                        for (const UBOSpec &spec : ubo_specs)
-                        {
-                            if (item.as_string() == spec.name)
-                            {
-                                out.definition.ubo_requirements.push_back(
-                                    spec.semantic);
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found)
-                            return false;
-                    }
-                }
+                // 注：原 "ubos" 键随 Scene 集（viewport）退场而删除——definition 侧
+                // 不再能声明任何描述符资源（viewport/sky/shadow 走 BDA，纹理/采样器走
+                // bindless）⇒ 该键现在会被 ValidateKnownKeys 直接拒绝。
 
                 if (resources.contains("code_modules"))
                 {
@@ -1178,7 +1145,7 @@ namespace hgl::graph::mtl
             const toml::value &resources = root.at("resources");
             if (!resources.is_table()
              || !ValidateKnownKeys(resources, {
-                    "ubos", "material_data", "samplers", "textures",
+                    "material_data", "samplers", "textures",
                     "texture_configurations", "defines"}))
                 return false;
 

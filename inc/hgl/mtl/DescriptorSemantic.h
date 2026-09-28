@@ -20,16 +20,12 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(Unknown) \
     /* mesh per-draw 参数表（IndirectMeshDraw：所有 mesh 材质必备）*/ \
     HGL_SEMANTIC(MeshDrawParams) \
-    HGL_SEMANTIC(ViewportInfo) \
-    /* CameraInfo 已删（相机数据走 BDA）*/ \
-    HGL_SEMANTIC(SkyInfo) \
     HGL_SEMANTIC(LocalToWorld) \
     HGL_SEMANTIC(LocalToWorldIndex) \
     /* per-instance SSBO 材质私有数据（单一声明）*/ \
     HGL_SEMANTIC(MaterialPrivateData) \
     HGL_SEMANTIC(MaterialTexture) \
-    HGL_SEMANTIC(MaterialSampler) \
-    HGL_SEMANTIC(ShadowInfo)
+    HGL_SEMANTIC(MaterialSampler)
 
     enum class DescriptorSemantic : uint8
     {
@@ -37,7 +33,7 @@ namespace hgl::graph::mtl
         HGL_DESCRIPTOR_SEMANTIC_LIST
 #undef HGL_SEMANTIC
 
-        ENUM_CLASS_RANGE(Unknown,ShadowInfo)
+        ENUM_CLASS_RANGE(Unknown,MaterialSampler)
     };
 
     /// 语义名（诊断/校验消息用）。与枚举同源：新增语义无需改本函数。
@@ -73,11 +69,6 @@ namespace hgl::graph::mtl
         {
             case DescriptorSemantic::MeshDrawParams:
                 return DescriptorSemanticLayer::SSBO;
-
-            case DescriptorSemantic::ViewportInfo:
-            case DescriptorSemantic::SkyInfo:
-            case DescriptorSemantic::ShadowInfo:
-                return DescriptorSemanticLayer::UBO;
 
             case DescriptorSemantic::MaterialTexture:
                 return DescriptorSemanticLayer::Texture;

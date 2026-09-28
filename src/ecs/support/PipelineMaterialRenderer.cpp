@@ -13,7 +13,6 @@
 #include<hgl/graph/ubo/GlobalAddresses.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
-#include<hgl/vk/VKGlobalSceneUBOSet.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/buffer/VertexAttribBuffer.h>
@@ -22,7 +21,6 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/RootAddressPush.h>
 #include<hgl/graph/ShaderBufferSources.h>
-#include<hgl/mtl/DescriptorResourceCatalog.h>
 
 namespace hgl::ecs
 {
@@ -198,7 +196,7 @@ namespace hgl::ecs
 
         // 批次级描述符覆盖（batch_descriptor_mp）与材质级绑定（BindDescriptorSets(material)）
         // 已随 desc_manager/MP 机制整体退役删除（2026-09-08）：Scene/Bindless 由设备级
-        // 全局绑定（VKGlobalSceneUBOSet / VKBindlessTextureManager），材质侧不再绑任何集。
+        // 全局绑定（VKBindlessTextureManager，唯一集合），材质侧不再绑任何集。
 
         // 遍历绘制批次：全部累积命令（BDA 后无 per-draw descriptor/set——BDA 化前
         // 的 per-draw 独立 PerObject MP 池机制已随 7 表全 BDA 退场）

@@ -377,22 +377,8 @@ namespace hgl::graph::mtl
             // 会去找几何的 UV/NTB VAB（几何未提供即报 no resource）。
             plan.descriptors =
                 BuildDescriptorsFromDefinition(plan.vertex_definition);
-            if (plan.depth_purpose)
-            {
-                plan.descriptors.erase(
-                    std::remove_if(
-                        plan.descriptors.begin(),
-                        plan.descriptors.end(),
-                        [&](const SerializedDescriptorEntry &entry)
-                        {
-                            if (entry.semantic == DescriptorSemantic::SkyInfo)
-                                return true;
-                            // Material 集已退场；调色板绑定已 BDA 化（不再是描述符项）
-                            // 其余（L2W/MeshDrawParams/数据槽/UBO）深度变体恒保留
-                            return false;
-                        }),
-                    plan.descriptors.end());
-            }
+            // 注：原「深度变体剔除 SkyInfo 条目」的 remove_if 已删——S3 后 definition 侧
+            // descriptor 恒为空（sky / viewport 走 BDA），剔除无可剔。
             // A6-2b-b1：mesh_draw_params 不再经契约声明——参数行本体走 BDA
             //（buffer_reference，模板恒发 rows[gl_DrawID] 加载点），无描述符无 set；
             // 契约条目（原仅 schema 记录 + PerObject layout binding 空洞）删除。

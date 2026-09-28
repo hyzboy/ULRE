@@ -2841,7 +2841,6 @@ namespace
              || definition.vertex_provider_policy != MaterialVertexProviderPolicy::AllowDerived
              || definition.vertex_node_config.position_mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
-             || definition.ubo_requirements.size() != 0
              || definition.texture_configuration_max_count
                     != DefaultMaterialTextureConfigurationCapacity
              || !ResolveMaterialRenderState(
@@ -3202,8 +3201,6 @@ namespace
              || file_definition->vertex_provider_policy != registry_definition.vertex_provider_policy
              || file_definition->vertex_semantic_requirements.GetCount()
                     != registry_definition.vertex_semantic_requirements.GetCount()
-             || file_definition->ubo_requirements.size()
-                    != registry_definition.ubo_requirements.size()
              || file_definition->material_private_data
                     != registry_definition.material_private_data
              || file_definition->texture_declarations.size()
@@ -3973,7 +3970,7 @@ namespace
         // 描述符——旧注入路径会因此向 mesh 阶段注入 L2W_SET/L2W_BINDING。
         const SerializedDescriptorEntry descriptors[] = {
             {
-                DescriptorSetType::Scene,
+                DescriptorSetType::Bindless,
                 uint32_t(hgl::graph::kMeshFragment),
                 "l2w",
                 "LocalToWorldData",
@@ -4066,25 +4063,25 @@ namespace
         DescriptorContract first_contract{};
         DescriptorContract second_contract{};
         {
-            std::string viewport_name = "viewport";
-            std::string viewport_struct = "ViewportInfo";
+            std::string texture_name = "bindless_texture";
+            std::string texture_struct = "MaterialTextureData";
             std::string material_name = "mtl_private_data";
             std::string material_struct = "PBRSurfaceData";
             SerializedDescriptorEntry entries[] =
             {
                 {
-                    DescriptorSetType::Scene,
+                    DescriptorSetType::Bindless,
                     uint32_t(hgl::graph::kMeshFragment),
-                    viewport_name.c_str(),
-                    viewport_struct.c_str(),
+                    texture_name.c_str(),
+                    texture_struct.c_str(),
                     nullptr,
-                    DescriptorSemantic::ViewportInfo,
+                    DescriptorSemantic::MaterialTexture,
                     SSBOType::UserDefined,
                     GlobalSSBOType::PBRSurface,
-                    DescriptorSemanticLayer::UBO
+                    DescriptorSemanticLayer::Texture
                 },
                 {
-                    DescriptorSetType::Scene,
+                    DescriptorSetType::Bindless,
                     uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
                     material_name.c_str(),
                     material_struct.c_str(),
@@ -4139,7 +4136,7 @@ namespace
             // 直接校验契约条目（原 ConvertDescriptorContractToFixed 往返已删）
             const auto &roundtrip = first_contract;
             if (roundtrip.size() != 2
-             || std::strcmp(roundtrip[0].name, "viewport") != 0
+             || std::strcmp(roundtrip[0].name, "bindless_texture") != 0
              || std::strcmp(
                     roundtrip[1].struct_name, "PBRSurfaceData") != 0)
             {
@@ -4162,8 +4159,8 @@ namespace
         }
 
         if (persistent_layout.resources.size() != 2
-         || persistent_layout.resources[0].name != "viewport"
-         || persistent_layout.resources[0].struct_name != "ViewportInfo"
+         || persistent_layout.resources[0].name != "bindless_texture"
+         || persistent_layout.resources[0].struct_name != "MaterialTextureData"
          || persistent_layout.resources[1].struct_name != "PBRSurfaceData")
         {
             result.diagnostics.emplace_back(
@@ -4661,20 +4658,20 @@ int main(const int argc, char **argv)
     {
         constexpr SerializedDescriptorEntry valid_entries[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "bindless_texture", "MaterialTextureData", nullptr, DescriptorSemantic::MaterialTexture, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::Texture },
+            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-contract-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
         constexpr SerializedDescriptorEntry unknown_semantic[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
 
         constexpr SerializedDescriptorEntry generic_material_type[] =
         {
-            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "EmissiveSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, SSBOType::LocalToWorld, GlobalSSBOType::EmissiveSurface, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "EmissiveSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, SSBOType::LocalToWorld, GlobalSSBOType::EmissiveSurface, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B2.generic-material-type-hard-fail", generic_material_type, 1, false));
 

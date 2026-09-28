@@ -35,8 +35,8 @@ namespace hgl::ecs
      * RenderSceneUBOSystem（原 RenderDescriptorBindingSystem，2026-09-08 改名）
      *
      * BDA 终态后描述符绑定已全部退场，本系统只剩场景 UBO 数据流与资源注册职责：
-     *   1. 持有 viewport UBO（跨 swapchain resize 稳定），RenderFrameSync 阶段把
-     *      camera/sky/viewport buffer 挂进设备级 GlobalSceneUBOSet（一帧一次）；
+     *   1. 持有 viewport UBO（跨 swapchain resize 稳定）；camera / sky / viewport / shadow
+     *      一律经 global_addresses（BDA）寻址，RenderFrameSync 阶段只同步表内地址（无绑定可推）；
      *   2. 材质化注册：纹理 bindless handle / 材质行结构 layout 登记
      *      （RegisterTextureResource / RegisterMaterialStructLayout，被
      *      RenderPrimitiveCollectSystem 消费）。

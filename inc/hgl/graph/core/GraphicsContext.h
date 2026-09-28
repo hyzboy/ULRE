@@ -40,7 +40,6 @@ namespace hgl::graph
     class GlobalSSBOBufferRegistry;
     class EnvironmentManager;
     class BindlessTextureManager;
-    class GlobalSceneUBOSet;
 
     /**
      * GraphicsContext - Vulkan图形资源管理器聚合类
@@ -75,7 +74,6 @@ namespace hgl::graph
         GlobalSSBOBufferRegistry *global_ssbo_registry = nullptr;
         EnvironmentManager *env_manager = nullptr;
         BindlessTextureManager *bindless_texture_manager_ = nullptr;
-        GlobalSceneUBOSet *global_scene_ubo_set_ = nullptr;
 
     public:
         explicit GraphicsContext(VulkanDevice *dev);
@@ -135,13 +133,11 @@ namespace hgl::graph
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
         const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }
 
-        GlobalSceneUBOSet *GetGlobalSceneUBOSet() { return global_scene_ubo_set_; }
-        const GlobalSceneUBOSet *GetGlobalSceneUBOSet() const { return global_scene_ubo_set_; }
 
         /**
          * 全局集绑定（每 cmd 一次）：Scene(0) + Bindless(1) 按共享 pipeline layout 绑定。
          * BDA 终态后全材质共享同一 pipeline layout——同 cmd 内各渲染路径/批次重复调用
-         * 只首绑一次（cmd->scene_sets_bound 守卫，VulkanCmdBuffer::Begin 复位）。
+         * 只首绑一次（cmd->global_sets_bound 守卫，VulkanCmdBuffer::Begin 复位）。
          */
         void BindGlobalDescriptorSets(class RenderCmdBuffer *cmd, VkPipelineLayout layout);
 

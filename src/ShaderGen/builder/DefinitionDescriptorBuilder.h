@@ -14,13 +14,10 @@ namespace hgl::graph::mtl
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const MaterialDefinition &definition)
 {
+    // S3（Scene 集整体退场）后，definition 侧不再有任何描述符声明：
+    // TOML 的 ubos 键已删、viewport 走 BDA、纹理/采样器走 bindless ⇒ 恒为空。
+    (void)definition;
     std::vector<SerializedDescriptorEntry> descriptors;
-    descriptors.reserve(16);
-
-    descriptor_builder_common::AppendDefinitionUBODescriptors(
-        descriptors,
-        definition,
-        uint32_t(hgl::graph::kMeshFragment));
 
     // A6-2a/b1：L2W/L2WIndex/mtl_data_addrs 行表不再经契约声明——l2w_ssbo 由模板侧
     // 无条件注入，l2w_index/ResolveTransformID 无条件发射，FS mtl_data_addrs 门按编译配置

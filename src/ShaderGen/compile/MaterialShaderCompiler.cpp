@@ -154,16 +154,11 @@ static bool ValidateDefinitionCapabilitySubset(
 {
     diagnostics.clear();
 
+    // Scene 集与资源目录整体退场后，definition 侧已无任何被授权的描述符声明
+    //（TOML 的 ubos 键已删、viewport/sky/shadow 走 BDA、纹理/采样器走 bindless）
+    // ⇒ 唯一合法态是「definition 声明的描述符为空」，出现任何一条即为回归。
     for (const auto &req : layout.resources)
     {
-        const DescriptorResourceCatalogEntry *cat =
-            FindResourceCatalogEntry(req.semantic);
-
-        // 授权：只认无条件内置（目录 engine_builtin）；definition 侧规则表已删（见上）。
-        const bool allowed = cat && cat->engine_builtin;
-
-        if (allowed)
-            continue;
 
         std::string message = "Definition capability subset violation: semantic=";
         message += GetDescriptorSemanticName(req.semantic);
