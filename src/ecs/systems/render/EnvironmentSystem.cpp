@@ -1,6 +1,7 @@
 ﻿#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/support/CameraInfoStorage.h>
 #include<hgl/ecs/core/RenderPassRequest.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -236,20 +237,17 @@ namespace hgl::ecs
 
         shadow_controller.reset();
 
-        // A2：光相机经 RenderTo→SetOverrideCamera→BindCameraResources 从
-        // GlobalSSBOBufferRegistry 占了一行 CameraInfo（AcquireCamera）。
-        // Disable 必须对称归还——registry 容量不预留、超限 fail-fast，
-        // 每次 Enable/Disable 泄漏一行迟早把行池顶满。camera_id==0 是
-        // "未分配"哨兵（主相机固定占 0 行），不可误归还。
+        // 光相机占的是**本世界**相机行存储的一个槽（CameraInfoStorage::AcquireCameraSlot，
+        // 经 RenderTo→SetOverrideCamera→BindCameraResources 分配）。Disable 必须对称归还——
+        // 世界槽位上限 16、超限报错不扩容，每次 Enable/Disable 泄漏一槽迟早把槽位顶满。
+        // camera_id==0 是"未分配"哨兵（0 号槽固定留给默认相机），不可误归还。
         if (light_camera && light_camera->camera_id != 0)
         {
-            graph::GraphicsContext *gc = render_context
-                                             ? render_context->GetGraphicsContext()
-                                             : (context ? context->GetGraphicsContext() : nullptr);
-            if (auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr)
+            auto *storage = context ? context->GetCameraInfoStorage() : nullptr;
+            if (storage)
             {
-                if (!registry->ReleaseCamera(light_camera->camera_id))
-                    GLogWarning("[EnvironmentSystem] DisableMainLightShadow: ReleaseCamera(%u) failed (row already freed?)",
+                if (!storage->ReleaseCameraSlot(light_camera->camera_id))
+                    GLogWarning("[EnvironmentSystem] DisableMainLightShadow: ReleaseCameraSlot(%u) failed (row already freed?)",
                                 light_camera->camera_id);
             }
         }
