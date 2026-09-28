@@ -281,12 +281,20 @@ namespace hgl::ecs
 
         auto cameras = CollectCameras();
         CameraComponent* main_cam = SelectMainCamera(cameras);
-        if (main_cam && main_cam->camera_info)
-        {
-            if (this->camera_info)
-                *this->camera_info = *main_cam->camera_info;
-            CommitCameraUBO();
-        }
+        if (!main_cam)
+            return;
+
+        // 覆盖相机（离屏 pass）在 UpdateMatrices 里把它**自己的**数据写进了共享相机载体
+        // （`camera == override_camera` 分支）；而主相机组件通常直接**别名**该载体
+        // （示例里的 `camera->camera_info = const_cast<CameraInfo*>(GetCameraInfo())`）
+        // ⇒ 只把 main_cam->camera_info 再拷一遍是自拷贝，什么也恢复不了。
+        // 后果：主帧的相机行（PublishCameraRows 从 camera->camera_info 取值）会带着离屏相机的数据
+        // —— 症状 = 主画面渲染成离屏相机视角（如 shadow map 的光源相机）、鼠标拖拽无效。
+        // 因此必须**重新解算主相机**，把它的矩阵与派生量重新写进它自己的 info / 共享载体。
+        main_cam->matrix_dirty = true;
+        UpdateMatrices(main_cam);
+
+        CommitCameraUBO();
     }
 
     void CameraSystem::ForceRefreshSelectedCamera()
