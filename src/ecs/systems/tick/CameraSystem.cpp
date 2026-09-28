@@ -634,57 +634,12 @@ namespace hgl::ecs
                     camera->viewport_info,
                     camera->camera_data
                 );
-
-                // 临时诊断（`ULRE_CAMVIEW_DIAG=1`）：记录**解算那一刻**用的 viewport。
-                // 主帧/主相机必须是主 RT 的 viewport（1600x900 之类）；若这里出现离屏 RT 的尺寸
-                // （阴影 RT 1024x1024 等），主帧就会整幅被拉伸一帧（"拉扯"）。
-                static const bool view_diag = (std::getenv("ULRE_CAMVIEW_DIAG") != nullptr);
-                if (view_diag)
-                {
-                    const uint32_t vw = camera->viewport_info ? camera->viewport_info->GetViewportWidth()  : 0u;
-                    const uint32_t vh = camera->viewport_info ? camera->viewport_info->GetViewportHeight() : 0u;
-                    const float aspect = (vh > 0) ? static_cast<float>(vw) / static_cast<float>(vh) : 0.0f;
-
-                    GLogInfo("[CAMVIEW] cam=\"%s\" slot=%u vp=%p %ux%u aspect=%.4f proj00=%.5f override=%d",
-                             camera->GetName().c_str(), camera->camera_id,
-                             static_cast<const void *>(camera->viewport_info), vw, vh, aspect,
-                             camera->camera_info ? camera->camera_info->projection[0][0] : 0.0f,
-                             (override_camera != nullptr) ? 1 : 0);
-                }
             }
         }
 
         // CameraInfo 不再在此写入：本帧数据槽（= 当前 RT 的槽）要等 acquire / 进入离屏 pass
         // 之后才确定，tick 阶段写会落到上一帧的槽、主帧读到上一帧的相机数据。
         // 改由 PublishCameraRows() / PublishCamera() 在 PrepareRenderPassSetup 与 RenderTo 中发布。
-
-        // 临时诊断（`ULRE_CAMVIEW_DIAG=1`）：每次解算后打印该相机的完整"着色器可见状态"
-        // （相机名/槽/是否 override/是否自定义矩阵/fov/投影 proj00/view 平移量）。
-        // 用途：定位"某一帧主画面像是别的相机（光源正交相机）渲的"这类错相机问题——
-        // 若主相机某次解算带 custom_matrices=1，或 view 平移量跳变，这里会直接显示。
-        {
-            static const bool view_diag2 = (std::getenv("ULRE_CAMVIEW_DIAG2") != nullptr);
-            if (view_diag2 && camera->camera_info)
-            {
-                GLogInfo(u8"[CAMSOLVE] cam=\"%s\" slot=%u main=%d override=%d custom=%d fov=%.1f "
-                         u8"proj00=%.5f viewT=(%.3f,%.3f,%.3f) pos=(%.3f,%.3f,%.3f) "
-                         u8"yaw=%.2f pitch=%.2f target=(%.3f,%.3f,%.3f) data_pos=(%.3f,%.3f,%.3f) data_tgt=(%.3f,%.3f,%.3f)",
-                         camera->GetName().c_str(), camera->camera_id,
-                         camera->is_main_camera ? 1 : 0, (camera == override_camera) ? 1 : 0,
-                         camera->custom_matrices ? 1 : 0, camera->fov,
-                         camera->camera_info->projection[0][0],
-                         camera->camera_info->view[3][0], camera->camera_info->view[3][1], camera->camera_info->view[3][2],
-                         camera->position.x, camera->position.y, camera->position.z,
-                         camera->yaw, camera->pitch,
-                         camera->target.x, camera->target.y, camera->target.z,
-                         camera->camera_data ? camera->camera_data->pos.x : 0.0f,
-                         camera->camera_data ? camera->camera_data->pos.y : 0.0f,
-                         camera->camera_data ? camera->camera_data->pos.z : 0.0f,
-                         camera->camera_data ? camera->camera_data->viewDirection.x : 0.0f,
-                         camera->camera_data ? camera->camera_data->viewDirection.y : 0.0f,
-                         camera->camera_data ? camera->camera_data->viewDirection.z : 0.0f);
-            }
-        }
 
         // 若为主相机或处于 pass 覆盖态，同步更新全局 camera_ubo（保证向后兼容）
         if (camera->camera_id == CameraComponent::kDefaultSlot || camera->is_main_camera || camera == override_camera)

@@ -38,8 +38,6 @@
 #include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
-#include<cstdlib>
-#include<cmath>
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
 #include<chrono>
@@ -1468,97 +1466,8 @@ namespace hgl
                                     ? active_camera_id
                                     : CameraInfoStorage::kDefaultCameraSlot;
 
-            // 临时诊断（`CSM_CAMDIAG=1`）：主帧绘制用的相机行，其内容必须就是默认相机的数据。
-            // 症状背景：主帧读到了光源相机的行 ⇒ 主画面渲成光源相机视角（只出现一帧、间歇）。
-            static const bool cam_diag = (std::getenv("CSM_CAMDIAG") != nullptr);
-            if (cam_diag && cam_diag_last_frame != frame_index)
-            {
-                cam_diag_last_frame = frame_index;
-                DiagCheckActiveCameraRow();
-            }
-
+            // 行号 = 相机槽 × 帧槽总数 + 帧槽（世界内算术，见 CameraInfoStorage::CameraRow）
             return CameraInfoStorage::CameraRow(slot, frame_index);
-        }
-
-        void ECSContext::DiagCheckActiveCameraRow() const
-        {
-            if (is_current_pass_shadow)
-                return;   // 阴影 pass 本就用光源相机，跳过
-
-            const uint32_t slot = active_camera_id;
-            if (slot != CameraInfoStorage::kDefaultCameraSlot)
-            {
-                GLogError("[CAMDIAG] 主帧生效相机槽 ≠ 0：slot=%u frame=%u（主帧必须用 0 号槽的默认相机）",
-                          slot, frame_index);
-                return;
-            }
-
-            const auto *storage = GetCameraInfoStorage();
-            const auto *def = GetDefaultCamera();
-            if (!storage || !def || !def->camera_info)
-                return;
-
-            const graph::CameraInfo *row = storage->GetCameraRow(slot, frame_index);
-            if (!row)
-            {
-                GLogError("[CAMDIAG] 主帧相机行读不到：slot=%u frame=%u", slot, frame_index);
-                return;
-            }
-
-            const graph::CameraInfo *expect = def->camera_info;
-            const bool same = (std::memcmp(row, expect, sizeof(graph::CameraInfo)) == 0);
-
-            if (!same)
-            {
-                // 逐字节比对：报出第一个不同的字段，并判断行里到底是"谁"的数据 / 是不是旧帧残留
-                const auto *a = reinterpret_cast<const uint8_t *>(row);
-                const auto *b = reinterpret_cast<const uint8_t *>(expect);
-                size_t diff_off = 0;
-                while (diff_off < sizeof(graph::CameraInfo) && a[diff_off] == b[diff_off])
-                    ++diff_off;
-
-                const auto *fb = fallback_camera ? fallback_camera->camera_info : nullptr;
-                const bool is_fallback = (fb && std::memcmp(row, fb, sizeof(graph::CameraInfo)) == 0);
-                const bool is_prev = (cam_diag_prev_info_valid &&
-                                      std::memcmp(row, &cam_diag_prev_info, sizeof(graph::CameraInfo)) == 0);
-
-                GLogError("[CAMDIAG] 主帧相机行 ≠ 本帧默认相机：frame=%u 首差偏移=%zuB(%.1f 个 float) "
-                          "row(pos=%.3f,%.3f,%.3f proj00=%.5f) default(%s pos=%.3f,%.3f,%.3f proj00=%.5f) "
-                          "%s%s",
-                          frame_index, diff_off, static_cast<double>(diff_off) / 4.0,
-                          row->camera_world_pos.x, row->camera_world_pos.y, row->camera_world_pos.z,
-                          row->projection[0][0],
-                          def->GetName().c_str(),
-                          expect->camera_world_pos.x, expect->camera_world_pos.y, expect->camera_world_pos.z,
-                          expect->projection[0][0],
-                          is_fallback ? "⇐ 内容 = 常驻 fallback 相机" : "",
-                          is_prev ? "⇐ 内容 = **上一帧**默认相机（滞后一帧）" : "");
-            }
-
-            if (cam_diag_verbose)
-            {
-                const uint32_t vw = def->viewport_info ? def->viewport_info->GetViewportWidth()  : 0u;
-                const uint32_t vh = def->viewport_info ? def->viewport_info->GetViewportHeight() : 0u;
-
-                // 本 pass 的 viewport（RenderTargetSystem 的当前 RT）：用来发现"相机用错 viewport 解算"
-                // （投影 aspect 变成离屏 RT 的 ⇒ 主帧整幅被拉伸）
-                const graph::ViewportInfo *cur_vp = nullptr;
-                if (auto rts = GetSystem<RenderTargetSystem>())
-                    if (auto *rt = rts->GetRenderTarget())
-                        cur_vp = rt->GetViewportInfo();
-
-                GLogInfo("[CAMDIAG-TRACE] frame=%u slot=%u rowpos=(%.3f,%.3f,%.3f) proj00=%.5f ok=%d "
-                         "cam_vp=%ux%u pass_vp=%ux%u",
-                         frame_index, slot,
-                         row->camera_world_pos.x, row->camera_world_pos.y, row->camera_world_pos.z,
-                         row->projection[0][0], same ? 1 : 0,
-                         vw, vh,
-                         cur_vp ? cur_vp->GetViewportWidth()  : 0u,
-                         cur_vp ? cur_vp->GetViewportHeight() : 0u);
-            }
-
-            cam_diag_prev_info = *expect;
-            cam_diag_prev_info_valid = true;
         }
 
         CameraComponent* ECSContext::EnsureFallbackCamera()

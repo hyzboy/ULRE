@@ -13,7 +13,6 @@
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/log/Log.h>
 #include<memory>
-#include<cstdlib>
 #include<functional>
 #include<vector>
 #include<map>
@@ -368,19 +367,6 @@ namespace hgl
             /// 着色器端 `pc_root.camera_row` 收到的就是这个行号（scene_ubo.glsl 的 cameras[] 下标），
             /// 因此离屏 pass 与主帧各自的相机数据落在不相交的行上。
             uint32_t GetActiveCameraRow() const;
-
-            /// 临时诊断（`CSM_CAMDIAG=1`）：某帧主帧绘制前比对"生效相机行"与默认相机
-            void DiagCheckActiveCameraRow() const;
-
-        private:
-
-            /// 上一帧做过相机行诊断的帧号 + 上一帧默认相机的整份数据（诊断用，`CSM_CAMDIAG`）
-            mutable uint32_t cam_diag_last_frame = UINT32_MAX;
-            mutable bool cam_diag_prev_info_valid = false;
-            mutable graph::CameraInfo cam_diag_prev_info{};
-            mutable bool cam_diag_verbose = (std::getenv("CSM_CAMDIAG_VERBOSE") != nullptr);
-
-        public:
 
             /// 本世界默认相机（0 号槽的拥有者）；尚未解析出相机 / 相机已销毁时为 nullptr
             CameraComponent* GetDefaultCamera() const { return default_camera.lock().get(); }

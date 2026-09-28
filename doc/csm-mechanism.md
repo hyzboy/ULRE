@@ -106,11 +106,12 @@
   的视图，**该帧整幅画面渲成另一个机位**（实测同一姿态下 `viewT` 从 ~1.2m 跳到 ~13.5m；配合 autowalk 的
   `delta` 突变 ⇒ "隔几秒画面拉扯一次 / 刚出场抖"）。`forward` 与 `camera_data->viewDirection`、shader 的
   `view_line` 同源（`UpdateBasis` 由 yaw/pitch 得出），与 `position` 永远同帧一致；LookAt 模式方向仍来自
-  `target` ⇒ 等价。诊断开关 `ULRE_CAMVIEW_DIAG2=1`（每次解算打印 pos/target/viewT/proj00）。
-- **排除法收益**：本次定位依次排除了 viewport（`ULRE_CAMVIEW_DIAG` 全 16:9）、相机行内容
-  （`CSM_CAMDIAG` 逐字节相等）、离屏槽带（0 命中）、锚定步长（`CSM_BAND` A/B：关锚定反而更抖），
-  最后靠**逐帧转储 + 水平位移互相关**定位到"整幅位移 ±6~25px、符号交替"＝相机视角跳变。修后同一测量
-  **0 跳变**（200 帧）。教训：`camera_row`/viewport 正确**不等于**行内矩阵正确——要直接看矩阵。
+  `target` ⇒ 等价。
+- **定位"某一帧视角不对"的可用手法**（需要时临时加打印，用完即删）：① 在解算处打印
+  `camera_info->view[3]`（平移量）+ `pos/target/forward` —— 同一姿态下 `viewT` 不一致即解算输入错
+  （本次即 1.2m ↔ 13.5m 横跳）；② 外围做逐帧颜色转储 + 亮度剖面**水平互相关**求逐帧位移：正常应
+  ≈0~1px 单向平滑，出现 **±6~25px 符号交替**就是视角跳变（拉扯）。教训：`camera_row` / viewport 正确
+  **不等于**行内矩阵正确——要直接看矩阵。
 
 ## 6. 开关与诊断（环境变量）
 
@@ -119,11 +120,6 @@
 | `CSM_CACHE_DIFF=1` | S5 整级 vs 条带 **深度图对拍**，逐轮打印 `不一致=`（判据：恒 `不一致=0`） |
 | `CSM_AUTOWALK=<m/s>` | 相机自动行走速度（**不是帧数**） |
 | `CSM_CACHE_DIFF_FREEZE` | 冻结对拍基准（配合上一项） |
-| `CSM_FRAMEDUMP=<目录>` | **逐帧转储**主帧颜色（帧内读回窗口，下采样 160x90 的 PPM；`CSM_FRAMEDUMP_FRAMES=<n>` 默认 600）。抓"只出现一帧"的整幅伪影：事后逐帧差分定位异常帧并直接看图。读回会排空队列 ⇒ 帧率下降，仅诊断时开 |
-| `CSM_CAMDIAG=1` | **相机行自检**（`ECSContext::GetActiveCameraRow` 内）：主帧的相机行必须**逐字节等于**本帧默认相机的 `CameraInfo`；不等时打印首个不同字段、并判定行里是不是 fallback 相机 / 上一帧残留（`CSM_CAMDIAG_VERBOSE=1` 每帧打印一行 trace） |
-| `ULRE_CAMVIEW_DIAG=1` | **解算期 viewport 自检**（`CameraSystem::UpdateMatrices`）：打印每次矩阵解算用的 viewport 尺寸/aspect/`proj00`；主相机若用离屏 RT 的 viewport 解算，主帧会整幅被拉伸 |
-| `ULRE_CAMVIEW_DIAG2=1` | **解算期相机状态自检**：每次解算打印 `cam/slot/main/override/custom/fov/proj00/viewT(平移量)/pos/yaw/pitch/target/data_pos/data_viewDir`。用来定位"某一帧视角不对"——同一姿态下 `viewT` 不一致即解算输入错（本次 bug 就是 `target` 慢一拍导致 `viewT` 跳到 13.5m） |
-| `CSM_BAND=a,b,c,d` | 覆盖**横向锚定步长 B**（texel，默认 `{0,16,16,32}`；置 0 = 关闭该级锚定，走每帧整级重建）。A/B 实测（autowalk 6 m/s，200 帧逐帧转储，统计地面区变化像素占比）：`{0,16,16,32}` 中位 **4.86%** / >10% 帧 51；`{0,0,0,0}` 中位 **9.64%** / 95 帧；`{0,2,2,4}` 中位 8.49% / 79 帧 ⇒ **关锚定反而更抖**，锚定步长不是"拉扯"的来源（保持拍板值） |
 | `ATS_SELFCHECK=1` | AlphaTestShadow 自检：D1/D3/D4 契约 + selfcheck 退出码 |
 
 示例契约（AlphaTestShadow）：**D1** 填充率（`bbox=112x58 填充率 57.6%`）、
