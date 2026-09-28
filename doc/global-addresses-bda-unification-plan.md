@@ -53,8 +53,8 @@ mesh_draw_params（与 pc_root **重复**）、color_palette（本会话已 BDA 
 | 步 | 内容 | 判据 |
 |---|---|---|
 | **S1 ✅ 已完成** | `GlobalAddresses` UBO → **SSBO**（`CreateSSBO` + `GetBufferDeviceAddressAligned16` fail-fast），pc_root 增 `addr_global_addresses`（72B→**80B**），GLSL 宏改经 pc_root 读表；Set 0 该 binding / `SBS_GlobalAddresses` / 语义 / 目录行 / 宏表 / 生成物同批清；`RenderSceneUBOSystem` 的 `ResolveGlobalAddressesUBO` 改为 `SyncGlobalAddressesTable`（只同步表内会变的两个字段） | 实测：build rc=0 / 0 errors；门 **38 PASS / 0 FAIL**（golden 无变化——SceneGlobal 行不入 golden）；TestCSMIncrementalPass 21 Passed；TestRenderItemDataStorage rc=0；LineRenderTest 0 校验层消息且 `ColorPaletteSSBO addr=0x308080000`、无 `addr_global_addresses=0` 警告 |
-| **S2 ✅ 已完成** | 地址表按 `HGL_FRAME_SLOT_TOTAL` 多份（每帧只写本槽）；**sky / shadow 的地址进表**并退出 Set 0（S2a/S2b/S2c/S2e）；**viewport 暂留**为 Set 0 唯一绑定（S2d = S4） | 全绿：门 **38 PASS/0 FAIL**；`TestRenderItemDataStorage` 五 Stage；`TestCSMIncrementalPass` 21 Passed；ATS 填充率 57.6% / selfcheck PASS / 0 校验层 / 0 设备丢失；CSM 不一致=0 / 0 校验层 / 0 设备丢失；LineRenderTest、DrawMultiLineText 0 校验层 / 0 设备丢失 |
-| S3 | `SCENE_SET` / `VKGlobalSceneUBOSet` / push descriptor / `descriptor_macros.glsl` 的 SCENE_SET 行整体删除；`scene_ubo.glsl` 的 include 与材质语义列表解耦（宏已全走 BDA） | 门 38→N PASS/0 FAIL；全部示例载入材质 0 errors |
+| **S2 ✅ 已完成** | 地址表按 `HGL_FRAME_SLOT_TOTAL` 多份（每帧只写本槽）；**sky / viewport / shadow 的地址全部进表**（S2a/S2b/S2c/S2d）且三者均已退出 Set 0（S2e + S2d）——**Set 0 现已无任何绑定项** | 全绿：门 **39 PASS/0 FAIL**（含新增 `S.global-addresses-struct-parity`）；`TestRenderItemDataStorage` 五 Stage；`TestCSMIncrementalPass` 21 Passed；ATS 填充率 57.6% / selfcheck PASS / 0 校验层 / 0 设备丢失；CSM 不一致=0 / 0 校验层 / 0 设备丢失；LineRenderTest、DrawMultiLineText 0 校验层 / 0 设备丢失 |
+| S3 | `SCENE_SET` / `VKGlobalSceneUBOSet` / push descriptor / `descriptor_macros.glsl` 的 SCENE_SET 行整体删除（Set 0 已零绑定，删除不再牵动渲染路径）；`scene_ubo.glsl` 的 include 与材质语义列表解耦（宏已全走 BDA） | 门 39 PASS/0 FAIL（用例数需随删除更新）；全部示例载入材质 0 errors |
 | S4 | viewport 收敛（**待用户拍板**）：(a) 地址进 pc_root（每 pass push）或 (b) 缩成 `uint16[2]×2` 进 pc_root 当数据、`ortho_matrix` 在 shader 里算 | 文本/线/常规示例 0 校验层消息；golden 无资源行变化 |
 | S5 | 收尾：陈旧注释（"7 张表/56B"、"Set 0 binding 4"）、门夹具、`doc/` 与技能同步 | 全仓 grep 零残留 |
 
@@ -66,22 +66,23 @@ mesh_draw_params（与 pc_root **重复**）、color_palette（本会话已 BDA 
 - `RootAddresses` 的布局断言已改成**按 X 列表自动推导**（字段 offset == 前面字段大小之和、
   总大小 == 各字段之和）——手列下标会在加字段时静默过期。
 
-## 2.2 S2 实测（sky/shadow 已落地，viewport 待定）
+## 2.2 S2 实测（sky / viewport / shadow 全部落地）
 
 | 子步 | 内容 | 实测 |
 |---|---|---|
 | a | 表切 8 槽（槽步长 128B，`GlobalAddresses` 64→88B，`static_assert` 锁「≤ 槽步长 + 16B 对齐」）；`GraphicsContext::GetGlobalAddressesAddress(帧槽)`；三个 push 站点按 `GlobalAddressesSlotFromCameraRow(camera_row)` 取**本帧槽**表地址（行号 = camera_id×槽总数 + 槽） | build 0 errors；门 **38 PASS/0 FAIL**；`TestRenderItemDataStorage` rc=0；`TestCSMIncrementalPass` 21 Passed；ATS selfcheck PASS 填充率 57.6%；CSM 不一致=0 / 0 校验层 |
 | b | sky 地址进表：`MaterializeSkyUBO` 改 `CreateSSBO`（BDA 前提 = SHADER_DEVICE_ADDRESS usage）；`SyncGlobalAddressesTable` 每帧幂等写 `SetSkyAddress(addr)`（单份 buffer ⇒ 写满全槽）；GLSL `SkyInfoRef` + `#define sky SkyInfoRef(global_addresses.addr_sky)`；停更 sky 绑定 | 同上全绿；SPIR-V 缓存 5 个 stage 含 `addr_sky` ⇒ 新路径确在生效 |
 | c | shadow 地址**按帧槽**进表：ring 改 `CreateSSBO`，`ring[i]` → 第 i 槽（新增 `static_assert(kShadowUboRing == HGL_FRAME_SLOT_TOTAL)`）；GLSL `ShadowInfoRef` + 宏；停更 shadow 绑定 | 同上全绿（ATS selfcheck PASS 57.6%、CommitRow 拒绝 0；CSM 两轮 不一致=0 / 0 校验层） |
+| d | viewport 地址进表（用户拍板：**走 GlobalAddresses**）：viewport UBO 改 `CreateSSBO`，在 `EnsureViewportUBO` **物化处**注册地址（fail-fast + `viewport addr=0x… 入表` 日志）；**地址全帧槽同址**（单份 buffer、内容按 pass/RT 覆盖写、地址恒定）；GLSL `ViewportInfoRef` + `#define viewport …`（宏名 / 成员名不变 ⇒ `viewport.*` 读点零改动）；停更 viewport 绑定；11 个材质 TOML 去 `ubos=["ViewportInfo"]`；门夹具与 4 个 golden 同步（definition 已无 UBO 需求 ⇒ `resource_count` 1→0） | 全绿：门 **38 PASS/0 FAIL**（golden 更新后）；`TestRenderItemDataStorage` 五 Stage；`TestCSMIncrementalPass` 21 Passed；ATS 57.6% / selfcheck PASS（`receive_shadow` 18189 px、`bias×1000` 600662 px，与基线逐位一致）/ 0 校验层 / 0 设备丢失；CSM 不一致=0 / 0 校验层；Line、Text 0 校验层 / 0 设备丢失 |
 | e | 两绑定退出 Set 0：`SceneBinding` 只剩 `Viewport=0`（ABI 断言/别名/宏表同步）、目录删 SkyInfo/ShadowInfo 行、`kBindingCount=1`、两处 layout builder 与 init 日志同步；**并删掉「能力子集授权规则表」**（唯一行 SkyInfo 的 UBO 需求规则随 sky 退出而失效，`CapabilityRulesMatchCatalog` 交叉断言一并删）——只留「无条件内置」授权。同时清**声明侧**：4 个 `*.material.toml` 的 `ubos`、`UBOShaderSources.h` 的 `SBS_SkyInfo/SBS_ShadowInfo`、builder 的 `PushSky/PushShadow/switch` 分支与只服务它的 `BuildDescriptorOptions`；门夹具（`S.material-definition-file-schema` 的 `ubo_requirements.size() == 1` 与内联 TOML）与 `SD.structure-dump-golden-pilot` 的 golden 同步 | build 0 errors；门 **38 PASS/0 FAIL**（用例数不变）；`TestRenderItemDataStorage` 五 Stage 全过；`TestCSMIncrementalPass` 21 Passed；ATS 填充率 57.6% / selfcheck PASS / CommitRow 拒绝 0 / 0 校验层；CSM 不一致=0 / 0 校验层；LineRenderTest、DrawMultiLineText 0 校验层；`DescriptorMacroGen --verify` OK |
 
-发现（写进结论，供 S4 用）：**viewport 与 sky/shadow 性质不同**——它属于每 pass / 每 RT
-（主帧 RT 与离屏 RT 各有自己的 viewport UBO，`RenderSceneUBOSystem::viewport_ubo` 由
-`CommitViewportUBO()` 从 RT 缓存），一帧内同一帧槽会有多个不同地址 ⇒ **塞不进「按帧槽分份」的表**。
-两条收敛路（见 S4 行）；(a) 改动小但需要给三个 push 站点新增每 pass 通道（`PMR` 侧当前拿不到 RT），
-(b) 最彻底但要重写 2D 正交矩阵数学。
+**更正（S2d 实测推翻初判）**：先前判「viewport 属每 pass / 每 RT 各一份 UBO ⇒ 一帧内同槽会有多个
+不同地址 ⇒ 塞不进按帧槽分份的表」，**错**——实测 `RenderSceneUBOSystem::viewport_ubo` 只有**一份**
+buffer（`CommitViewportUBO()` 仅把当前 RT 的 w/h 覆盖写进去）⇒ **地址恒定**，与 sky 同形，直接进表；
+变的只是内容，更新路径原样不动。故不需要 S4 的 (a)/(b) 两条收敛路。教训：判「某数据是每 pass 变化的」
+之前先读它的**持有方式**（单份 buffer + 覆盖写 ≠ 每 pass 一个地址）。
 
-### 2.3 S2 期间定下的两条硬规矩（写进技能 `ulre-ssbo-vertex-input/references/descriptor-binding-retirement.md`）
+### 2.3 S2 期间定下的三条硬规矩（写进技能 `ulre-ssbo-vertex-input/references/descriptor-binding-retirement.md`）
 
 - **表内地址必须在「buffer 物化处」注册，不能只放「每帧同步函数」里**。把 sky 地址只写在
   `SyncGlobalAddressesTable()` 里时，某条路径没跑到 ⇒ 表里 `addr_sky` 恒 0 ⇒ 读 sky 的 shader
@@ -92,6 +93,13 @@ mesh_draw_params（与 pc_root **重复**）、color_palette（本会话已 BDA 
   `ubos = ["ViewportInfo","SkyInfo"]` ⇒ 授权失败 ⇒ 材质编译被拒 ⇒ 深度图全空 / 画面空，
   而**静态 schema 门当时 37/38 全绿**，抓不到。⇒ 判据里必须含**渲染型**门（ATS/CSM），
   且每次都要单独 grep `result -4`（不能只看 `[Validation]` 计数）。
+
+- **C++ 表结构与 GLSL 侧结构必须同改**（顺序 / 数量 / 名字全一致）。S2d 只给 C++ 加了
+  `addr_viewport`、GLSL `GlobalAddressesRef` 漏加 ⇒ 材质 shader 编译失败 ⇒ **静默回退默认材质**：
+  画面照常有内容（639 色、有几何）、ATS 的 D1 深度门 57.6% 照常 PASS、0 校验层消息、CSM 不一致=0，
+  唯一破口是 D3 颜色契约门（开关前后 0 px 变化）⇒ 极易误判成「颜色读回坏了」（我确实先这么判了）。
+  ⇒ 已加门用例 `S.global-addresses-struct-parity`（源级对表，反向验证过会 FAIL）；遇到「渲染契约门
+  莫名 0 px」时先查**材质是否被静默回退**，再怀疑读回通道。
 
 ### 2.4 验证环境纪律（本轮踩到，代价最大）
 
