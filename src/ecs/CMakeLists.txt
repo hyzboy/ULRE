@@ -353,6 +353,13 @@ if(MSVC)
     set_target_properties(TestBoundingVolumeCull PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 诊断探针（T0 量化基线 + T4 旋转提取证据）：只打印数值，不做通过/失败判定
+add_executable(ProbeTransformDiagnostics support/ProbeTransformDiagnostics.cpp)
+target_link_libraries(ProbeTransformDiagnostics PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(ProbeTransformDiagnostics PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage

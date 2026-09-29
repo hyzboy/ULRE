@@ -194,12 +194,19 @@ private:
 
                 // Use pre-computed world matrix for all nodes so child nodes
                 // (e.g. Pawn_Top inside Pawn_Body) get the full composed transform.
-                se.transform->SetLocalPosition(glm::vec3(node.worldMatrix[3]));
-                se.transform->SetLocalRotation(glm::quat_cast(glm::mat3(node.worldMatrix)));
-                se.transform->SetLocalScale(glm::vec3(
-                    glm::length(glm::vec3(node.worldMatrix[0])),
-                    glm::length(glm::vec3(node.worldMatrix[1])),
-                    glm::length(glm::vec3(node.worldMatrix[2]))));
+                //
+                // 世界矩阵 → TRS 必须走 math::DecomposeTransform：旧写法
+                // quat_cast(glm::mat3(worldMatrix)) 在存在非均匀缩放时输入不是正交基
+                // （实测 S=(2,0.5,1)：|q|=1.0768、旋转误差 10.56°、重建误差 0.447），
+                // 明细见 src/ecs/support/ProbeTransformDiagnostics.cpp 的 [T4] 段。
+                math::Vector3f world_pos;
+                math::Quatf    world_rot;
+                math::Vector3f world_scale;
+                math::DecomposeTransform(node.worldMatrix,world_pos,world_rot,world_scale);
+
+                se.transform->SetLocalPosition(world_pos);
+                se.transform->SetLocalRotation(world_rot);
+                se.transform->SetLocalScale(world_scale);
                 se.transform->SetMovable(false);
 
                 se.primitive_comp->SetPrimitiveAsset(&asset);
