@@ -39,7 +39,10 @@
 - 世界私有 SSBO；行空间 = `kWorldCameraSlotCap(16) × HGL_FRAME_SLOT_TOTAL(8) = 128 行` × `sizeof(CameraInfo)`。
 - 行号 = `camera_slot × 帧槽总数 + slot`（**世界内**）；shader 侧不变，仍由 `pc_root.camera_row` 索引。
 - **0 号槽 = 本世界默认相机专属**；1..15 由世界内分配器（free list / 位图）分给普通相机、灯光相机、镜子相机、系统内建相机。
-- **拥有者负责归还**：灯光销毁 / 镜面销毁 / `DisableMainLightShadow` 等对称归还（现状 CSM 的 `ReleaseCameraSlot` 对称释放即此规则的单灯特例）。
+- **槽的拥有者负责归还（C3 落地）**：槽 = 「世界存储里的一行 + 一个拥有者」，两条路径覆盖全部相机：
+  - **实体/作者持有的相机**（`CameraComponent` 在组件注册表里）：`CameraSystem::EnsureCameraSlot()` 认领槽，并把归还挂钩挂到组件上（`CameraComponent::slot_releaser`）——**组件析构即归还**（相机实体反复创建/销毁不会漏空 16 槽）；相机**升格为默认相机**时先交回旧的普通槽（`EnsureCameraSlot(is_default)`）。
+  - **系统内建相机**（灯光 / 镜子：`EnvironmentSystem` 的 `light_camera`、示例自建光相机等，**不在**组件注册表 ⇒ 不会被 `CollectCameras()` 看到）：由拥有者持一个 **`CameraSlotGuard`**（RAII）——构造申请、`Reset()`/析构归还、只可移动不可拷贝；`EnableMainLightShadow` 申请、`DisableMainLightShadow` 归还。申请失败（槽耗尽 / 存储未就绪 / 世界为空）**报错留痕并保持 `kInvalidSlot`**：`BindTo()` 不碰相机 ⇒ 发布时跳过并一次性告警（fail-fast，绝不按越界行号写到别的世界）。申请/归还是对称的一条日志（`[CameraSlotGuard] 相机槽已申请/已归还 owner=… slot=N`）。
+  - **安全网是弱引用，不是「世界销毁时通知」**：`CameraSlotGuard` 与 `slot_releaser` 都只持 `weak_ptr<CameraInfoStorage>`（世界相机行存储随之改为 `shared_ptr`，`ECSContext::GetCameraInfoStorageWeak()`）。世界先销毁（含**从未 Initialize ⇒ `Shutdown` 走早退分支**这一路）时 `lock()` 失败 ⇒ 析构自动 no-op。**禁用**任何 guard/挂钩注册表 —— 实测那条路会留下悬垂指针（`world->UnregisterSlotGuard` 访问已释放内存 ⇒ 段错误）。
 - 容量 16、超限报错不扩容（既有约定）。
 
 ## 3. 相机解析（渲染必须要一个相机）—— **C1-4 已落地**
@@ -150,18 +153,18 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 | C1-5 | ✅ | **删世界共享相机载体**：`CameraSystem::camera_info` / `camera_ubo`(+`camera_ubo_managed` / `EnsureCameraResources` / `Shutdown` 释放块) / `GetCamera` / `GetCameraInfo` / `GetCameraUBO` / `CommitCameraUBO` / `UpdateMatrices` 里"主相机/覆盖相机写共享载体"的兼容分支整删；`WorkObject::GetCamera/GetCameraInfo` 删；**30 个示例文件 64 行别名赋值**（`camera->camera_data = GetCamera(); camera->camera_info = const_cast<...>(GetCameraInfo());`）全删——`CameraComponent` 构造即自指向 `local_camera_data/local_camera_info`，`BindCameraResources` 兜底同一件事；新增 **`ECSContext::GetActiveCameraInfo()`**（pass 覆盖相机优先，否则本世界主相机）供剔除 / gizmo / Line 视锥 / shadow origin 统一取"本 pass 生效相机"；`RenderPrimitiveCollectSystem::cameraInfo` 由"安装期缓存指针"改为**每帧现取**（`SetCameraInfo` 接线全删，`DefaultSystems` / `OffscreenWorld` 不再灌指针）；`ViewUBOCommitSystem` 不再提交相机 | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` **21 Passed**；RIDS rc=0；ATS 三契约与基线逐项一致（D1 112x58/57.6%、D3 18187 & 19109、D4 0、0 VUID）；CSM 对拍 8 轮 `不一致=0`；7 个改过的示例（ShadowMap / RenderToTexture / RenderToTextureColorDepth / SimpleCube / ComputeFrustumCull / RayPicking / GizmoUsageExample）冒烟 0 VUID 且启动日志量与改前一致；全仓 `grep GetCameraInfo()` 只剩 `GetActiveCameraInfo()` |
 | **C1-6** | ✅ | **契约收口**：门加两条**表归属**用例（`S.global-addresses-field-ownership` / `W.world-addresses-field-ownership`，唯一真源 = `kAddressOwnershipTable`：按字段集合比对，多出来的是"未分类字段"、少了的是"漏字段"、出现在另一侧的是"放错表"）；`TestCSMIncrementalPass` 加 **Test 22** 两世界同帧隔离契约（19 条源码契约：四个世界私有存储/地址表均每世界一份、世界表只取本世界存储地址且按帧槽轮转、相机行只走本世界存储 + 校验 `world_owner`、设备级相机行池与全局表世界私有字段禁复活）| 门 **42 PASS / 0 FAIL**（+2）；`TestCSMIncrementalPass` **22 Passed**；**破坏验证**已做：把 `addr_camera_info` 塞进全局表 ⇒ rc=1 且报"放错表"、世界表加未分类字段 ⇒ rc=1 且报"未分类字段"，还原后逐字节一致、门回落 42/0；RIDS rc=0、ATS 三契约与基线一致、CSM 对拍 8 轮 `不一致=0`、7 示例冒烟 0 VUID |
 | **C2** | ✅ | **Env 归世界**（见 §4.1）：`addr_sky` / `addr_shadow` 进世界表（`GlobalAddresses` 64B→**48B**）、`sky`/`shadow` 宏改读 `world_addresses`；选择层收敛到世界（`ECSContext::GetEnvProfileID()`）；发布走 `SyncWorldAddresses` + `GetSkyAddress/GetShadowAddress`；`Release(profile)` + 世界归还自有 profile；删 registry 两个 setter / `ResolveSkyUBO/ResolveShadowUBO` / `GetSkyUBO/GetShadowUBO` | 门 42/0；22 Passed；RIDS rc=0；ATS 与基线一致；CSM 对拍 8 轮 `不一致=0`；**双世界地址实测分离**（`0x304780000` vs `0x309080000`）；9 示例 0 VUID |
+| **C3** | ✅ | **灯光/镜子相机通用化 = 槽的拥有者生命周期**（见 §2）：新增 `CameraSlotGuard`（RAII：申请/归还/失败留痕/只可移动/弱引用安全网，`inc/hgl/ecs/support/CameraSlotGuard.h` + `src/ecs/support/CameraSlotGuard.cpp`，CMake 已登记）；`CameraComponent` 加 `slot_releaser`（析构即归还非 0 槽）+ 析构实现；`CameraSystem::EnsureCameraSlot` 挂挂钩 + **升格默认相机先交回旧槽**；`EnvironmentSystem` 光相机改由 `light_camera_slot` 持有（Enable 申请 / Disable 归还，手工 `Acquire/Release` 对删除）；世界相机行存储改 `shared_ptr` + `GetCameraInfoStorageWeak()`（弱引用安全网，**禁用**注册表/Detach 方案）；`TestCSMIncrementalPass` 加 **Test 23**（分配/复用/耗尽拒绝/组件析构归还挂钩/guard 未就绪不下发/世界先销毁 no-op + 18 条源码契约），Test 10D 契约改为断言 guard 路线 | 门 **42 PASS / 0 FAIL**；`TestCSMIncrementalPass` **23 Passed / 0 Failed**；RIDS rc=0；ATS 三契约与基线**逐项一致**（D1 112x58/57.6%、D3 18187 & 19109、bias 600662、D4 0、**0 VUID**）；运行时实测 `[CameraSlotGuard] 相机槽已申请 owner="AutoCSMLightCamera" slot=1`，探针实测世界存活时 `DisableMainLightShadow()` ⇒ `相机槽已归还 slot=1`（同槽、契约不变）；5 示例（ShadowMap/CascadeShadowMap/RenderToTexture/RenderToTextureColorDepth/SimpleCube）0 VUID/0 设备丢失 |
 
 ### 8.2 待办（按依赖排序）
 
 | 批次 | 目标 | 主要落点 | 判据 |
 |---|---|---|---|
-| **C3** | 灯光 / 镜子相机通用化：每个投影阴影的灯光 → 申请一个相机槽（申请/归还随灯光生命周期），对齐 `doc/shadow-component-and-automated-pipeline-design.md` | `EnvironmentSystem` 现有单灯特例泛化；`CameraInfoStorage` 分配器已是通用槽 | 多灯阴影场景；槽耗尽 fail-fast 契约 |
 | **C4** | ComponentData 骨架：先 `CameraComponent` → `CameraData` + 世界级存储 + 槽访问器，再 Transform / Geometry / Material | 与 C1-5 合并代价小（都是相机存储收口），但回归面变宽 ⇒ 建议 C1-5 先落地 | 门 + 全示例 |
 
 ### 8.3 基线与验证命令（改 CSM / 相机后逐项跑）
 
 ```
-# 基线：门 42 PASS / 0 FAIL（含 S/W 两条 *-field-ownership）；TestCSMIncrementalPass 22 Passed（Test 22 = 两世界隔离）；ATS D1 112x58 57.6% / D3 18187~18189 & 600662 / D4 0 / 0 VUID
+# 基线：门 42 PASS / 0 FAIL（含 S/W 两条 *-field-ownership）；TestCSMIncrementalPass 23 Passed（Test 22 = 两世界隔离、Test 23 = 相机槽拥有者生命周期）；ATS D1 112x58 57.6% / D3 18187~18189 & 600662 / D4 0 / 0 VUID
 cmake --build build --config Debug --target ShadowMap AlphaTestShadow CascadeShadowMap TestCSMIncrementalPass TestRenderItemDataStorage ShaderResourceSchemaRegressionGate
 ./build/out/Windows_64_Debug/ShaderResourceSchemaRegressionGate.exe
 ./build/out/Windows_64_Debug/TestCSMIncrementalPass.exe          # 必须 cwd=仓库根（Test 7C 读 ShaderLibrary/）
@@ -169,8 +172,11 @@ ATS_SELFCHECK=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 CSM_CACHE_DIFF=1 CSM_AUTOWALK=4 ./build/out/Windows_64_Debug/CascadeShadowMap.exe   # 判据：多轮 不一致=0（需 timeout）
 ```
 相机/视口类改动的追加核对：解算处打印 `camera_info->view[3]` + `pos/target/forward`（**同一姿态下 `viewT` 必须一致**，且随位置单调）；必要时逐帧转储颜色 + 亮度剖面位移互相关（判据：0 跳变）。这些打印/转储都是**临时**手段，定位完即删。
+槽相关改动（C3 之后）：跑 `CascadeShadowMap`/`AlphaTestShadow` 看 `[CameraSlotGuard] 相机槽已申请 … slot=N`（每个内建相机一条）；世界存活时 `DisableMainLightShadow()` 应打 `相机槽已归还 … slot=N`（同槽）；槽耗尽/越界/重复归还在 `TestCSMIncrementalPass` Test 23 里是行为契约。
+**已知的预存在问题**（C3 探针暴露，与相机槽无关，未被任何示例走过）：① 同一会话反复 `EnableMainLightShadow` ⇒ `[RenderTargetManager] CSM_Cascade_0: in-flight 槽带越界（起点=8 槽数=1 上限=8）`（RT 的 in-flight 槽带不回收）；② 运行中 `DisableMainLightShadow` ⇒ 2 条 `vkDestroySemaphore(): VkSemaphore[CSM_Cascade_0:Lane] that is currently in use by VkQueue`（级联 RT 的 timeline 车道在队列仍在用时销毁）。
 改头文件/结构大小后先 `purge-stale-deps.sh`；清 `build/cache-hot/shader-cache`；**禁用 `| grep error` 判构建结果**。
+**改了类布局的头之后，purge 不够时清整棵 obj 树**：本轮 C3 给 `EnvironmentSystem` 加成员后 purge 过仍崩在 `EnvironmentSystem::ResolveManager → GraphicsContext::GetEnvironmentManager`（读坏 `render_context`）；`find build -type d -path "*.dir/Debug" -print0 | xargs -0 rm -rf` 后同二进制恢复正常 ⇒ 判定「陈旧 TU」而非逻辑 bug。另：**框架初始化失败的退出码是 127**（不是 bash 的 command not found），日志尾部只有一行真实原因，别把它当脚本错误。
 
 ### 8.4 提交范围（本轮已本地提交，未推送）
 
-`C1-1/C1-2`（23:43–23:52）→ `C1-3`（00:38–00:42）→ `C1-4`（含 9C+ 契约与文档）→ **C1-4a 相机视图修复** `8744f004a`（02:31，含验证数据与文档/技能同步）。分支 `CSM` 领先 `hyzgame/CSM` **24** 个提交。
+`C1-1/C1-2`（23:43–23:52）→ `C1-3`（00:38–00:42）→ `C1-4`（含 9C+ 契约与文档）→ **C1-4a 相机视图修复** `8744f004a`（02:31）→ **删诊断设施** `8c55e5b63` → **C1-5 删世界共享相机载体** `6a2a376a2` → **C1-6 契约收口** `629b63e22` → **C2 Env 归世界** `8b628d8e1`。**C3 已落地但尚未提交**（9 文件改 + 2 新文件：`CameraSlotGuard.h/.cpp`）。

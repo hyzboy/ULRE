@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
+#include<hgl/ecs/support/CameraSlotGuard.h>
 #include<hgl/graph/ubo/SkyInfo.h>
 #include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
@@ -41,6 +42,9 @@ namespace hgl
             std::unique_ptr<graph::CascadedShadowController> shadow_controller;
             graph::RenderTargetHandle cascade_rts[graph::kMaxShadowCascades]{};
             std::shared_ptr<CameraComponent> light_camera;
+
+            /// 光相机占的**本世界**相机槽的 RAII 拥有者（C3）：Enable 申请、Disable/系统销毁归还
+            CameraSlotGuard light_camera_slot;
             bool shadow_enabled = false;
             uint32_t cascade_mask = 0; // bit c == 1 表示屏蔽级联 c
             uint32_t cascade_handles[graph::kMaxShadowCascades] = {};

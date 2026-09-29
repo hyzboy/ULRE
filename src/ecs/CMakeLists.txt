@@ -29,6 +29,7 @@ set(ECS_CORE_FILES
     core/Context.cpp
     support/RenderResource.cpp
     support/CameraInfoStorage.cpp
+    support/CameraSlotGuard.cpp
     core/RenderGraph.cpp
     core/SystemGroup.cpp
     core/DefaultSystems.cpp
@@ -190,6 +191,7 @@ set(ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES
 set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/TransformDataStorage.h
     ${ECS_INCLUDE_PATH}/support/CameraInfoStorage.h
+    ${ECS_INCLUDE_PATH}/support/CameraSlotGuard.h
     ${ECS_INCLUDE_PATH}/support/RenderItemDataStorage.h
     ${ECS_INCLUDE_PATH}/support/DrawItemIDStorage.h
     ${ECS_INCLUDE_PATH}/support/DrawItemCompaction.h

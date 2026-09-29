@@ -750,7 +750,26 @@ namespace hgl::ecs
         if (is_default)
         {
             // 0 号槽 = **本世界默认相机**专属（三级解析的落点，含常驻 fallback）
-            camera->camera_id = CameraComponent::kDefaultSlot;
+            if (camera->camera_id != CameraComponent::kInvalidSlot
+             && camera->camera_id != CameraComponent::kDefaultSlot)
+            {
+                // 从「普通相机槽」升格为默认相机：先把旧槽交回（走它自己的归还挂钩，与
+                // `CameraComponent` 析构同一路径）——否则该槽会永久泄漏（析构时 camera_id 已是 0，
+                // 挂钩跳过归还），反复换主相机迟早把 16 个槽顶满。
+                if (camera->slot_releaser)
+                {
+                    auto releaser = camera->slot_releaser;
+                    camera->slot_releaser = nullptr;    // 先摘挂钩：归还可能重入析构路径
+                    releaser(camera->camera_id);
+                }
+                else if (auto *storage = context ? context->GetCameraInfoStorage() : nullptr)
+                {
+                    storage->ReleaseCameraSlot(camera->camera_id);
+                }
+            }
+
+            camera->camera_id   = CameraComponent::kDefaultSlot;
+            camera->slot_releaser = nullptr;    // 0 号槽不参与分配，也不参与归还
             camera->world_owner = context;
         }
         else if (!camera->HasCameraSlot())
@@ -772,6 +791,16 @@ namespace hgl::ecs
             else
             {
                 camera->world_owner = context;
+
+                // 归还挂钩（C3）：相机销毁即把槽还给本世界存储 —— 相机实体的反复创建/销毁
+                // 否则会把 16 个槽漏空。只持**弱引用**：相机可能比世界活得久（作者/示例持有
+                // shared_ptr），世界先销毁时 lock() 失败 ⇒ 挂钩自动失效，绝不触碰已释放的存储。
+                std::weak_ptr<CameraInfoStorage> weak_storage = context->GetCameraInfoStorageWeak();
+                camera->slot_releaser = [weak_storage](uint32_t slot)
+                {
+                    if (auto storage = weak_storage.lock())
+                        storage->ReleaseCameraSlot(slot);
+                };
             }
         }
     }

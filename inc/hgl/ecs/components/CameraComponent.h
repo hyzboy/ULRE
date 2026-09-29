@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/Component.h>
 #include<hgl/math/Vector.h>
 #include<hgl/graph/camera/Camera.h>
+#include<functional>
 #include<memory>
 #include <hgl/type/UnorderedMap.h>
 #include<utility>
@@ -100,6 +101,15 @@ namespace hgl
 
             uint32_t camera_id = kInvalidSlot;      ///< 相机槽号（世界内；kDefaultSlot = 本世界默认相机，kInvalidSlot = 未分配）
 
+            /// 归还相机槽的回调：`CameraSystem::EnsureCameraSlot` 在认领槽时挂上（捕获本世界存储的
+            /// **弱引用**，`weak_ptr<CameraInfoStorage>`），**组件析构即自动归还** —— 否则相机的
+            /// 反复创建/销毁会把 16 个槽漏空。
+            /// 用回调而不是 ECSContext 指针：组件只做数据 + 生命周期，不该依赖上下文类型；用弱引用
+            /// 而不是裸指针：相机可能比世界活得久（作者/示例持有 shared_ptr），世界先销毁时
+            /// `lock()` 失败 ⇒ 挂钩自动失效，绝不触碰已释放的存储（**不要**回到「世界销毁时统一摘钩」
+            /// 的注册表方案：世界从未 Initialize 时 `Shutdown` 走早退分支，摘不到 ⇒ 悬垂指针/段错误）。
+            std::function<void(uint32_t slot)> slot_releaser;
+
             // === 标记 / Flags ===
             bool is_main_camera;            ///< 是否为主摄像机 / Is main camera
             bool matrix_dirty;              ///< 矩阵脏标记 / Matrix dirty flag
@@ -112,7 +122,7 @@ namespace hgl
         public:
 
             CameraComponent(const std::string& name = "Camera");
-            ~CameraComponent() override = default;
+            ~CameraComponent() override;    ///< 归还相机槽（有挂钩且持非 0 号槽时）
         };
     }//namespace ecs
 }//namespace hgl

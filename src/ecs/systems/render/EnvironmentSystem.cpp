@@ -2,6 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/support/CameraInfoStorage.h>
+#include<hgl/ecs/support/CameraSlotGuard.h>
 #include<hgl/ecs/core/RenderPassRequest.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -213,8 +214,15 @@ namespace hgl::ecs
             shadow_controller->SetCascadeTexture(c, cascade_handles[c], 0);
         }
 
+        // 光相机 = **世界相机存储里的一个槽 + 一个拥有者**（C3 通用机制）：槽由 `light_camera_slot`
+        // 这个 RAII guard 持有 —— Enable 申请、Disable / 本系统销毁时归还，不再手工 Acquire/Release。
+        // 槽耗尽（上限 16、不扩容）时 guard 报错且 invalid ⇒ 相机保持未分配（发布被跳过 + 一次性告警），
+        // 而不是按越界行号写到别的世界去。
         light_camera = std::make_shared<CameraComponent>("AutoCSMLightCamera");
         light_camera->is_main_camera = false;
+
+        light_camera_slot = CameraSlotGuard(context, "AutoCSMLightCamera");
+        light_camera_slot.BindTo(light_camera.get());
 
         // A3：以 Enable 时刻的 revision 为消费基线，避免启用后第一帧立即
         // 多做一次静态级联全量重建。
@@ -236,22 +244,9 @@ namespace hgl::ecs
 
         shadow_controller.reset();
 
-        // 光相机占的是**本世界**相机行存储的一个槽（`CameraInfoStorage::AcquireCameraSlot`，
-        // 经 RenderTo→SetOverrideCamera→BindCameraResources 分配）。Disable 必须对称归还——
-        // 世界槽位上限 16、超限报错不扩容，每次 Enable/Disable 泄漏一槽迟早把槽位顶满。
-        // 未分配哨兵是 `CameraComponent::kInvalidSlot`（**不是 0**：0 = 本世界默认相机专属槽），
-        // 因此这里用 HasCameraSlot() 判定，不会误归还默认相机的槽。
-        if (light_camera && light_camera->HasCameraSlot())
-        {
-            auto *storage = context ? context->GetCameraInfoStorage() : nullptr;
-            if (storage)
-            {
-                if (!storage->ReleaseCameraSlot(light_camera->camera_id))
-                    GLogWarning("[EnvironmentSystem] DisableMainLightShadow: ReleaseCameraSlot(%u) failed (row already freed?)",
-                                light_camera->camera_id);
-            }
-        }
-
+        // 归还光相机占的**本世界**相机槽（C3）：槽由 guard 持有 ⇒ Reset 即对称归还。
+        // 世界槽上限 16、超限报错不扩容：每次 Enable/Disable 泄漏一槽迟早把槽位顶满。
+        light_camera_slot.Reset();
         light_camera.reset();
         shadow_enabled = false;
     }

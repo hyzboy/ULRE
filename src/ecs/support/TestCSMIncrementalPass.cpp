@@ -8,6 +8,8 @@
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
+#include <hgl/ecs/support/CameraInfoStorage.h>
+#include <hgl/ecs/support/CameraSlotGuard.h>
 #include <hgl/graph/render/lighting/CascadedShadowController.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/io/FileInputStream.h>
@@ -1435,11 +1437,12 @@ int main(int argc, char** argv)
                 return 10;
             }
 
-            // 10D: 光相机相机槽归还契约（csm-review A2）
-            // light_camera 经 RenderTo→SetOverrideCamera→BindCameraResources 从**本世界**
-            // 的 CameraInfoStorage（AcquireCameraSlot）占一个相机槽；DisableMainLightShadow
-            // 必须对称 ReleaseCameraSlot——世界槽位上限 16、超限报错不扩容，
-            // 每次 Enable/Disable 泄漏一槽迟早把槽位顶满。这里对源码断言防止归还逻辑被静默删掉。
+            // 10D: 光相机相机槽归还契约（csm-review A2；C3 起归口到 RAII guard）
+            // light_camera 占**本世界** CameraInfoStorage 的一个槽（上限 16、超限报错不扩容，
+            // 每次 Enable/Disable 泄漏一槽迟早把槽位顶满）。C3 之后槽由 `CameraSlotGuard`
+            // （`light_camera_slot`，本系统的成员）持有：Enable 申请、Disable/系统销毁归还 ——
+            // 这里对源码断言"Enable 建 guard + Disable Reset"，防止归还逻辑被静默删掉；
+            // 分配/复用/耗尽与"析构归还"的**行为**契约在 Test 23。
             {
                 static const OSString kEnvSysPath =
                     OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp");
@@ -1456,10 +1459,13 @@ int main(int argc, char** argv)
                     while ((got = env_fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
                         env_src.Strcat(chunk, static_cast<int>(got));
                 }
-                if (!env_src.Contains("ReleaseCameraSlot(light_camera->camera_id)"))
+                if (!env_src.Contains("CameraSlotGuard(context, \"AutoCSMLightCamera\")")
+                 || !env_src.Contains("light_camera_slot.BindTo")
+                 || !env_src.Contains("light_camera_slot.Reset()"))
                 {
-                    GLogError(u8"Test 10D Failed: DisableMainLightShadow must release the light camera's slot "
-                              u8"(ReleaseCameraSlot(light_camera->camera_id) not found; every Enable/Disable leaks a slot otherwise)");
+                    GLogError(u8"Test 10D Failed: EnableMainLightShadow 必须用 CameraSlotGuard 持有光相机槽、"
+                              u8"DisableMainLightShadow 必须 light_camera_slot.Reset() 归还"
+                              u8"（否则每次 Enable/Disable 泄漏一槽）");
                     return 10;
                 }
             }
@@ -3330,7 +3336,7 @@ int main(int argc, char** argv)
         {
             // ① 世界私有存储 = ECSContext 的实例成员（每世界一份）
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "std::unique_ptr<CameraInfoStorage> camera_info_storage",
+              "std::shared_ptr<CameraInfoStorage> camera_info_storage",
               "相机行存储不再是每世界一份（退化成全局 ⇒ 两世界同帧互相覆写）" },
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "std::unique_ptr<RenderItemDataStorage> render_item_storage",
@@ -3406,6 +3412,252 @@ int main(int argc, char** argv)
                  u8"世界表只取本世界存储地址且按帧槽轮转、相机行只走本世界存储且校验 world_owner，"
                  u8"设备级相机行池与全局表世界私有字段均未复活。",
                  static_cast<int>(sizeof(kIsolationContracts) / sizeof(kIsolationContracts[0])));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 23: 相机槽的拥有者生命周期契约（C3）
+    //
+    // 「相机 = 世界相机存储里的一个槽 + 一个拥有者」：槽由拥有者申请、由拥有者归还。
+    // 槽分配是**纯 CPU 记账**（`slot_used[16]`）⇒ 本可执行文件无图形设备也能真跑分配器契约：
+    //   · 1..15 可分配且互不相同；第 16 个申请失败（容量 16、不扩容 = fail-fast）
+    //   · 归还后可**复用**；0 号槽 / 越界槽 / 重复归还一律被拒（0 = 本世界默认相机专属）
+    //   · `CameraComponent` 析构挂钩：持非 0 槽 ⇒ 调用归还；0 号槽 / 未分配 ⇒ 不调用
+    //   · `CameraSlotGuard`：存储未就绪 ⇒ 保持 invalid 且不碰相机（fail-fast，而不是静默发 0 行）；
+    //     世界先销毁 ⇒ guard 析构是 no-op（Detach 路径）
+    // 源码契约部分钉住"谁在归还"，避免回退成手工 Acquire/Release 对或漏挂挂钩。
+    // ─────────────────────────────────────────────────────────────
+    {
+        // (a) 分配器：15 个槽全可分配、互不相同；第 16 个失败
+        CameraInfoStorage storage;
+
+        bool seen[CameraComponent::kSlotCapacity] = {};
+
+        for (uint32_t i = 1; i < CameraComponent::kSlotCapacity; ++i)
+        {
+            const uint32_t slot = storage.AcquireCameraSlot();
+
+            if (slot != i || slot >= CameraComponent::kSlotCapacity)
+            {
+                GLogError(u8"Test 23 Failed: 槽分配异常（第 %u 次申请得到 %u，期望 %u）",
+                          i, slot, i);
+                return 23;
+            }
+
+            if (seen[slot])
+            {
+                GLogError(u8"Test 23 Failed: 槽 %u 被重复分配", slot);
+                return 23;
+            }
+
+            seen[slot] = true;
+        }
+
+        if (storage.AcquireCameraSlot() != CameraComponent::kInvalidSlot)
+        {
+            GLogError(u8"Test 23 Failed: 槽耗尽后仍分配出了槽（容量 %u 应当 fail-fast、不扩容）",
+                      CameraComponent::kSlotCapacity);
+            return 23;
+        }
+
+        if (!storage.IsSlotUsed(1) || storage.IsSlotUsed(CameraComponent::kDefaultSlot))
+        {
+            GLogError(u8"Test 23 Failed: IsSlotUsed 语义错（1 号应占用；0 号槽恒不参与分配）");
+            return 23;
+        }
+
+        // (b) 归还 → 复用；非法归还（0 号槽 / 越界 / 重复）一律被拒
+        if (!storage.ReleaseCameraSlot(8))
+        {
+            GLogError(u8"Test 23 Failed: 归还 8 号槽被拒");
+            return 23;
+        }
+
+        if (storage.AcquireCameraSlot() != 8u)
+        {
+            GLogError(u8"Test 23 Failed: 归还后的槽没有被复用");
+            return 23;
+        }
+
+        if (storage.ReleaseCameraSlot(CameraComponent::kDefaultSlot))
+        {
+            GLogError(u8"Test 23 Failed: 0 号槽（本世界默认相机专属）不该可归还");
+            return 23;
+        }
+
+        if (storage.ReleaseCameraSlot(CameraComponent::kSlotCapacity))
+        {
+            GLogError(u8"Test 23 Failed: 越界槽不该可归还");
+            return 23;
+        }
+
+        if (!storage.ReleaseCameraSlot(8))
+        {
+            GLogError(u8"Test 23 Failed: 首次归还 8 号槽应成功");
+            return 23;
+        }
+
+        if (storage.ReleaseCameraSlot(8))
+        {
+            GLogError(u8"Test 23 Failed: 重复归还同一槽应当被拒（否则槽账目会漂）");
+            return 23;
+        }
+
+        // (c) 组件析构归还挂钩：持非 0 槽 ⇒ 归还；0 号槽 / 未分配 ⇒ 不调用
+        {
+            auto camera = std::make_shared<CameraComponent>("Test23EntityCamera");
+            const uint32_t slot = storage.AcquireCameraSlot();
+
+            if (slot == CameraComponent::kInvalidSlot)
+            {
+                GLogError(u8"Test 23 Failed: 取槽失败，无法验证析构归还");
+                return 23;
+            }
+
+            camera->camera_id = slot;
+            camera->slot_releaser = [&storage](uint32_t s) { storage.ReleaseCameraSlot(s); };
+
+            camera.reset();     // 组件析构 ⇒ 挂钩归还
+
+            if (storage.IsSlotUsed(slot))
+            {
+                GLogError(u8"Test 23 Failed: 相机销毁后槽 %u 未归还"
+                          u8"（相机实体反复创建/销毁会把 16 个槽漏空）", slot);
+                return 23;
+            }
+        }
+
+        {
+            int release_calls = 0;
+
+            {
+                auto default_camera = std::make_shared<CameraComponent>("Test23DefaultCamera");
+                default_camera->camera_id = CameraComponent::kDefaultSlot;
+                default_camera->slot_releaser = [&release_calls](uint32_t) { ++release_calls; };
+
+                auto unassigned_camera = std::make_shared<CameraComponent>("Test23UnassignedCamera");
+                unassigned_camera->camera_id = CameraComponent::kInvalidSlot;
+                unassigned_camera->slot_releaser = [&release_calls](uint32_t) { ++release_calls; };
+            }
+
+            if (release_calls != 0)
+            {
+                GLogError(u8"Test 23 Failed: 0 号槽 / 未分配槽不该走归还回调（会误释放默认相机的槽）");
+                return 23;
+            }
+        }
+
+        // (d) CameraSlotGuard：存储未就绪 ⇒ invalid + 不碰相机；世界先销毁 ⇒ 析构 no-op（弱引用）
+        {
+            ECSContext ctx;     // 默认构造：相机行存储未创建（无设备）
+
+            CameraSlotGuard guard(&ctx, "Test23Guard");
+
+            if (guard.IsValid())
+            {
+                GLogError(u8"Test 23 Failed: 存储未就绪时 guard 不该拿到槽");
+                return 23;
+            }
+
+            CameraComponent camera("Test23GuardCamera");
+
+            if (guard.BindTo(&camera))
+            {
+                GLogError(u8"Test 23 Failed: 未持槽的 guard 不该 BindTo 成功");
+                return 23;
+            }
+
+            if (camera.HasCameraSlot())
+            {
+                GLogError(u8"Test 23 Failed: 未持槽时相机必须保持未分配"
+                          u8"（否则会按越界行号发布到别的世界）");
+                return 23;
+            }
+        }
+
+        {
+            // 世界先销毁、guard 后析构：弱引用 lock 失败 ⇒ 是 no-op（不得崩、不得触碰已释放的存储）。
+            // 这条钉住"安全网来自弱引用"，而不是任何"世界销毁时通知 guard"的注册表
+            // （注册表方案在世界从未 Initialize、Shutdown 走早退分支时会留下悬垂指针）。
+            ECSContext *world = new ECSContext();
+            auto *guard = new CameraSlotGuard(world, "Test23GuardDetach");
+
+            delete world;       // 世界先走
+
+            guard->Reset();     // 存储已死：只能是 no-op
+            delete guard;
+        }
+
+        // (e) 源码契约：谁在归还
+        const SourceContract kSlotContracts[] =
+        {
+            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+              "CameraSlotGuard(context, \"AutoCSMLightCamera\")",
+              "光相机不再用 RAII guard 持有槽（C3：槽随灯光生命周期）" },
+            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+              "light_camera_slot.BindTo",
+              "光相机没被绑到 guard 的槽上" },
+            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+              "light_camera_slot.Reset()",
+              "Disable/销毁时没有归还光相机槽（Enable/Disable 会逐次漏槽）" },
+            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+              "ReleaseCameraSlot(",
+              "光相机又回到了手工 Acquire/Release 路径（应由 CameraSlotGuard 持有）",
+              true },
+            { "CameraSlotGuard.cpp", OS_TEXT("src/ecs/support/CameraSlotGuard.cpp"),
+              "AcquireCameraSlot",
+              "CameraSlotGuard 不再申请槽" },
+            { "CameraSlotGuard.cpp", OS_TEXT("src/ecs/support/CameraSlotGuard.cpp"),
+              "ReleaseCameraSlot",
+              "CameraSlotGuard 不再归还槽" },
+            { "CameraSlotGuard.cpp", OS_TEXT("src/ecs/support/CameraSlotGuard.cpp"),
+              "相机槽耗尽",
+              "槽耗尽时 guard 不再报错（会退化成「某个相机安静地不出图」）" },
+            { "CameraSlotGuard.cpp", OS_TEXT("src/ecs/support/CameraSlotGuard.cpp"),
+              "storage.lock()",
+              "guard 不再用弱引用判活（世界先销毁时会触碰已释放的存储）" },
+            { "CameraSlotGuard.h", OS_TEXT("inc/hgl/ecs/support/CameraSlotGuard.h"),
+              "CameraSlotGuard(const CameraSlotGuard &) = delete;",
+              "guard 可拷贝了（槽唯一，拷贝会双重归还）" },
+            { "CameraSlotGuard.h", OS_TEXT("inc/hgl/ecs/support/CameraSlotGuard.h"),
+              "std::weak_ptr<CameraInfoStorage> storage;",
+              "guard 不再持存储的弱引用（改成裸指针 ⇒ 世界先销毁时悬垂）" },
+            { "CameraSlotGuard.h", OS_TEXT("inc/hgl/ecs/support/CameraSlotGuard.h"),
+              "void Detach();",
+              "guard 又回到「世界销毁时通知」的注册表方案（在从未 Initialize 的世界里是悬垂指针）",
+              true },
+            { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
+              "slot_releaser",
+              "相机认领槽后没有挂归还挂钩（相机实体反复创建会漏空 16 个槽）" },
+            { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
+              "weak_storage.lock()",
+              "相机的归还挂钩不再判活（相机比世界活得久时会写已释放的存储）" },
+            { "CameraComponent.cpp", OS_TEXT("src/ecs/components/CameraComponent.cpp"),
+              "camera_id != kDefaultSlot",
+              "组件析构归还不再排除 0 号槽（会误释放本世界默认相机的槽）" },
+            { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
+              "升格为默认相机",
+              "相机升格为默认相机时不再交回旧槽（旧槽永久泄漏，换主相机迟早顶满 16 槽）" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "GetCameraInfoStorageWeak",
+              "世界不再提供相机行存储的弱引用（槽拥有者只能存裸指针）" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "DetachCameraSlotReleasers",
+              "又出现了「世界销毁时摘挂钩」的注册表方案（世界从未 Initialize 时走不到）",
+              true },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "RegisterSlotGuard",
+              "又出现了 guard 注册表（弱引用才是安全网）",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(23, kSlotContracts,
+                                                       static_cast<uint>(sizeof(kSlotContracts) /
+                                                                         sizeof(kSlotContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 23 Passed: 相机槽拥有者生命周期契约成立（分配/复用/耗尽拒绝 + 组件析构归还挂钩 "
+                 u8"+ guard 未就绪不下发 + 世界先销毁安全 + %d 条源码契约）。",
+                 static_cast<int>(sizeof(kSlotContracts) / sizeof(kSlotContracts[0])));
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

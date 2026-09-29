@@ -134,7 +134,9 @@ namespace hgl
 
             // 世界私有相机行存储：相机是**世界级观察者数据**（16 槽 × 帧槽数，0 号槽=本世界默认相机）
             // 定稿见 doc/world-addresses-and-camera-model-plan.md §2。
-            std::unique_ptr<CameraInfoStorage> camera_info_storage;
+            /// 世界相机行存储（**shared_ptr**：槽拥有者（CameraSlotGuard / 相机组件的归还挂钩）持
+            /// 弱引用 —— 世界先销毁时它们的析构自动变 no-op，不会触碰已释放的存储）
+            std::shared_ptr<CameraInfoStorage> camera_info_storage;
 
             // 世界地址表（WorldAddresses）：世界私有地址的 SSBO 表（HGL_FRAME_SLOT_TOTAL 槽 ×
             // kWorldAddressesSlotStride），基址经 pc_root.addr_world_addresses 下发 ——
@@ -487,6 +489,9 @@ namespace hgl
             /// Get 世界私有相机行存储（相机 = 世界级观察者数据；0 号槽 = 本世界默认相机）
             CameraInfoStorage* GetCameraInfoStorage() { return camera_info_storage.get(); }
             const CameraInfoStorage* GetCameraInfoStorage() const { return camera_info_storage.get(); }
+
+            /// 槽拥有者（CameraSlotGuard / 归还挂钩）用：弱引用 ⇒ 世界先销毁时 lock 失败 = 安全 no-op
+            std::weak_ptr<CameraInfoStorage> GetCameraInfoStorageWeak() const { return camera_info_storage; }
 
             /// 世界地址表基址（**本帧槽**）：写入 pc_root.addr_world_addresses（0 = 尚未创建）
             uint64_t GetWorldAddressesAddress(uint32_t frame_slot) const;

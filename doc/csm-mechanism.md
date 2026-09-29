@@ -132,12 +132,17 @@
 2. 改到**头文件/结构大小**时先 purge：`purge-stale-deps.sh E:/ULRE E:/ULRE/build E:/ULRE/src E:/ULRE/inc E:/ULRE/example -- <headers>`。
 3. 构建 → **禁用 `| grep error` 判结果**（吞错后会跑旧 exe ⇒ 假绿；构建失败时 MSBuild 不重链 exe）。
 4. `ShaderResourceSchemaRegressionGate`：基线 **42 PASS / 0 FAIL**（含两张表各一条 parity + 各一条 `*-field-ownership` 归属用例，见 §6 契约 ④）。
-5. `TestCSMIncrementalPass` = **22 Passed**（Test 22 = 两世界同帧隔离契约）；`TestRenderItemDataStorage` 通过。
+5. `TestCSMIncrementalPass` = **23 Passed**（Test 22 = 两世界同帧隔离契约；Test 23 = 相机槽拥有者生命周期契约 —— 分配/复用/耗尽拒绝 + 组件析构归还挂钩 + `CameraSlotGuard` 未就绪不下发 / 世界先销毁 no-op）；`TestRenderItemDataStorage` 通过。
 6. `ATS_SELFCHECK=1 AlphaTestShadow` → 三契约 + selfcheck PASS + **0 VUID** + 数字与基线一致。
 7. `CSM_CACHE_DIFF=1 CSM_AUTOWALK=4 CascadeShadowMap` → 多轮 **不一致=0**（该项无自动退出，需 timeout）。
 8. **破坏验证**（证明门有牙）：如跳过行池预激活应看到 `D4 FAIL（拒绝 160 次）`、ATS rc=1。
 
 ## 8. 已知问题 / 遗留（都不是本次引入）
+
+0. **反复 Enable / 运行中 Disable 灯影**（C3 探针暴露，任何示例都没走过 ⇒ 属预存在的生命周期缺口）：
+   - 同一会话里 `EnableMainLightShadow` 第二次以上 ⇒ `[RenderTargetManager] CSM_Cascade_0: in-flight 槽带越界（起点=8 槽数=1 上限=8）`（RT 的 in-flight 槽带不回收）⇒ 初始化失败（框架退出码 127）。
+   - 世界存活时 `DisableMainLightShadow` ⇒ 2 条 `vkDestroySemaphore(): VkSemaphore[CSM_Cascade_0:Lane] that is currently in use by VkQueue`（级联 RT 的 timeline 车道在队列仍在用时销毁）。
+   相机槽一侧（C3）在两条路径上都是干净对称的（申请/归还同槽，见 §7 第 5 项与 `doc/world-addresses-and-camera-model-plan.md` §2）。
 
 1. **交换链颜色图帧外读回**（真 VUID `presentable VkImage ... has not been acquired`）：
    读回发生在帧后，而 acquire/present 在渲染阶段内开合 ⇒ 需引擎侧「渲染后 present 前」回读窗口 + 非 acquire 态 fail-fast 护栏。详见 `doc/csm-readback-and-leak-followup.md`。

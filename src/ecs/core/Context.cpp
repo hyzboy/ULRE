@@ -16,6 +16,7 @@
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
+#include<hgl/ecs/support/CameraSlotGuard.h>
 #include<hgl/ecs/support/CameraInfoStorage.h>
 #include<hgl/graph/ubo/WorldAddresses.h>
 #include<hgl/vk/buffer/StructView.h>
@@ -70,7 +71,7 @@ namespace hgl
             , transform_storage(std::make_unique<TransformDataStorage>())
             , render_item_storage(std::make_unique<RenderItemDataStorage>())
             , draw_item_id_storage(std::make_unique<DrawItemIDStorage>())
-            , camera_info_storage(std::make_unique<CameraInfoStorage>())
+            , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
         {
         }
@@ -317,6 +318,11 @@ namespace hgl
                      render_frame_cache.materialBatches.GetCount());
             render_frame_cache.materialBatches.Clear();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
+
+            // 相机槽拥有者的安全网由 **弱引用** 提供：`CameraSlotGuard` 与相机组件的归还挂钩都只持
+            // `weak_ptr<CameraInfoStorage>`，世界先销毁时 lock() 失败 ⇒ 析构自动 no-op，不需要在这里
+            // 逐个 Detach（世界可能从未 Initialize，Shutdown 会走早退分支 —— 那正是悬垂指针的来源）。
+            // 槽本身也不需要逐个归还：`camera_info_storage->Reset()` 会把 slot_used 整表清零。
 
             // Env 随世界（C2）：**本世界创建/拥有的** profile 在这里归还（内置 default 永不归还）。
             // 释放顺序在世界地址表之前——表里还留着它的地址，但表随后即销毁。
