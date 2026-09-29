@@ -3,6 +3,8 @@
 #include<hgl/ecs/core/Component.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformDataStorage.h>
+#include<hgl/ecs/support/TransformID.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtc/matrix_transform.hpp>
@@ -22,12 +24,6 @@ namespace hgl
 {
     namespace ecs
     {
-        enum class Mobility : uint8_t
-        {
-            Static,
-            Movable
-        };
-
         struct ComponentRecord;
 
         /**
@@ -207,6 +203,9 @@ namespace hgl
             void UpdateWorldMatrix();
             void MigrateStorage(Mobility target_mobility);
             TransformDataStorage* GetStorage() const;
+
+            /// 「存储行 + 世界」的薄句柄：数据面的唯一实现（本组件的访问器都委托给它）
+            TransformAccessor GetAccessor() const;
 
             /// D4：运行期写 Static 物体的一次性告警（what = 调用方 setter 名）。
             void WarnStaticRuntimeWrite(const char *what);

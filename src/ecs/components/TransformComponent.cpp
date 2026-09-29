@@ -60,14 +60,14 @@ namespace hgl
 
         glm::vec3 TransformComponent::GetLocalPosition() const
         {
-            return GetStorage()->GetPosition(GetStorageHandle());
+            return GetAccessor().GetLocalPosition();
         }
 
         void TransformComponent::SetLocalPosition(const glm::vec3& pos)
         {
             // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
             WarnStaticRuntimeWrite("SetLocalPosition");
-            GetStorage()->SetPosition(GetStorageHandle(), pos);
+            GetAccessor().SetLocalPosition(pos);
             MarkDirty(ToChangeMask(TransformChange::Position));
 
         #if HGL_TRANSFORM_DEBUG_LOGGING
@@ -89,14 +89,14 @@ namespace hgl
 
         glm::quat TransformComponent::GetLocalRotation() const
         {
-            return GetStorage()->GetRotation(GetStorageHandle());
+            return GetAccessor().GetLocalRotation();
         }
 
         void TransformComponent::SetLocalRotation(const glm::quat& rot)
         {
             // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
             WarnStaticRuntimeWrite("SetLocalRotation");
-            GetStorage()->SetRotation(GetStorageHandle(), rot);
+            GetAccessor().SetLocalRotation(rot);
             MarkDirty(ToChangeMask(TransformChange::Rotation));
 
         #if HGL_TRANSFORM_DEBUG_LOGGING
@@ -119,14 +119,14 @@ namespace hgl
 
         glm::vec3 TransformComponent::GetLocalScale() const
         {
-            return GetStorage()->GetScale(GetStorageHandle());
+            return GetAccessor().GetLocalScale();
         }
 
         void TransformComponent::SetLocalScale(const glm::vec3& scale)
         {
             // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
             WarnStaticRuntimeWrite("SetLocalScale");
-            GetStorage()->SetScale(GetStorageHandle(), scale);
+            GetAccessor().SetLocalScale(scale);
             MarkDirty(ToChangeMask(TransformChange::Scale));
 
         #if HGL_TRANSFORM_DEBUG_LOGGING
@@ -150,146 +150,61 @@ namespace hgl
         {
             // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
             WarnStaticRuntimeWrite("SetLocalTRS");
-            GetStorage()->SetLocalTRS(GetStorageHandle(), pos, rot, scale);
+            GetAccessor().SetLocalTRS(pos, rot, scale);
             MarkDirty(ToChangeMask(TransformChange::LocalTRS));
         }
 
         glm::mat4 TransformComponent::GetWorldMatrix()
         {
-            auto* storage = GetStorage();
-            const auto handle = GetStorageHandle();
-
-            if (storage->IsDirty(handle) || storage->IsTopologyDirty())
-            {
-                storage->UpdateDirtyWorldMatricesFlat();
-            }
-
-            return storage->GetWorldMatrix(handle);
+            return GetAccessor().GetWorldMatrix();
         }
 
         bool TransformComponent::IsDirty() const
         {
-            return GetStorage()->IsDirty(GetStorageHandle());
+            return GetAccessor().IsDirty();
+        }
+
+        TransformAccessor TransformComponent::GetAccessor() const
+        {
+            return TransformAccessor(GetStorage(), GetStorageHandle(), owner_context, owner_id);
         }
 
         glm::vec3 TransformComponent::GetWorldPosition()
         {
-            glm::mat4 worldMatrix = GetWorldMatrix();
-            return glm::vec3(worldMatrix[3]);
+            return GetAccessor().GetWorldPosition();
         }
 
         void TransformComponent::SetWorldPosition(const glm::vec3& pos)
         {
             // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
             WarnStaticRuntimeWrite("SetWorldPosition");
-            auto storage = GetStorage();
-            const auto handle = GetStorageHandle();
-            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
-            if (parent)
-            {
-                auto parentTransform = parent->GetComponent<TransformComponent>();
-                if (parentTransform)
-                {
-                    glm::mat4 parentWorld = parentTransform->GetWorldMatrix();
-                    glm::mat4 parentInverse = glm::inverse(parentWorld);
-                    glm::vec4 localPos = parentInverse * glm::vec4(pos, 1.0f);
-                    storage->SetPosition(handle, glm::vec3(localPos));
-                }
-                else
-                {
-                    storage->SetPosition(handle, pos);
-                }
-            }
-            else
-            {
-                storage->SetPosition(handle, pos);
-            }
+            GetAccessor().SetWorldPosition(pos);
             MarkDirty(ToChangeMask(TransformChange::Position));
         }
 
         glm::quat TransformComponent::GetWorldRotation()
         {
-            auto storage = GetStorage();
-            const auto handle = GetStorageHandle();
-            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
-            if (parent)
-            {
-                auto parentTransform = parent->GetComponent<TransformComponent>();
-                if (parentTransform)
-                {
-                    return parentTransform->GetWorldRotation() * storage->GetRotation(handle);
-                }
-            }
-            return storage->GetRotation(handle);
+            return GetAccessor().GetWorldRotation();
         }
 
         void TransformComponent::SetWorldRotation(const glm::quat& rot)
         {
             // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
             WarnStaticRuntimeWrite("SetWorldRotation");
-            auto storage = GetStorage();
-            const auto handle = GetStorageHandle();
-            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
-            if (parent)
-            {
-                auto parentTransform = parent->GetComponent<TransformComponent>();
-                if (parentTransform)
-                {
-                    glm::quat parentRot = parentTransform->GetWorldRotation();
-                    storage->SetRotation(handle, glm::inverse(parentRot) * rot);
-                }
-                else
-                {
-                    storage->SetRotation(handle, rot);
-                }
-            }
-            else
-            {
-                storage->SetRotation(handle, rot);
-            }
+            GetAccessor().SetWorldRotation(rot);
             MarkDirty(ToChangeMask(TransformChange::Rotation));
         }
 
         glm::vec3 TransformComponent::GetWorldScale()
         {
-            auto storage = GetStorage();
-            const auto handle = GetStorageHandle();
-            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
-            if (parent)
-            {
-                auto parentTransform = parent->GetComponent<TransformComponent>();
-                if (parentTransform)
-                {
-                    return parentTransform->GetWorldScale() * storage->GetScale(handle);
-                }
-            }
-            return storage->GetScale(handle);
+            return GetAccessor().GetWorldScale();
         }
 
         void TransformComponent::SetWorldScale(const glm::vec3& scale)
         {
             // D4：运行期写 Static 物体 → 一次性告警（构造期写入不计）
             WarnStaticRuntimeWrite("SetWorldScale");
-            auto storage = GetStorage();
-            const auto handle = GetStorageHandle();
-            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
-            if (parent)
-            {
-                auto parentTransform = parent->GetComponent<TransformComponent>();
-                if (parentTransform)
-                {
-                    glm::vec3 parentScale = parentTransform->GetWorldScale();
-                    storage->SetScale(handle, scale / parentScale);
-                }
-                else
-                {
-                    storage->SetScale(handle, scale);
-                }
-            }
-            else
-            {
-                storage->SetScale(handle, scale);
-            }
+            GetAccessor().SetWorldScale(scale);
             MarkDirty(ToChangeMask(TransformChange::Scale));
         }
 
@@ -598,14 +513,7 @@ namespace hgl
 
         void TransformComponent::UpdateWorldMatrix()
         {
-            auto* storage = GetStorage();
-            const auto handle = GetStorageHandle();
-
-            if (storage->IsDirty(handle) || storage->IsTopologyDirty())
-            {
-                storage->UpdateDirtyWorldMatricesFlat();   // 子节点的脏传播在平铺求值里完成
-            }
-
+            GetAccessor().UpdateIfDirty();
             AddChangeMask(ToChangeMask(TransformChange::WorldMatrix));
         }
 
@@ -650,7 +558,7 @@ namespace hgl
         void TransformComponent::MarkDirty(uint32_t change_mask)
         {
             TouchChange(change_mask);
-            GetStorage()->SetDirty(GetStorageHandle(), true);
+            GetAccessor().MarkDirty();
 
             // Mark children as dirty
             if (owner_context)
@@ -697,8 +605,7 @@ namespace hgl
                 return;
             }
 
-            auto storage = GetStorage();
-            storage->SetMobility(storageHandle, to_movable ? 1 : 0);
+            GetAccessor().SetMobility(target_mobility);
             mobility = target_mobility;
 
             // If transitioning to static and dirty, compute world matrix once
