@@ -4,6 +4,7 @@
 
 #include <hgl/graph/mesh/LoadStaticMesh.h>
 #include <hgl/graph/mesh/StaticMesh.h>
+#include <hgl/math/Matrix.h>      // TranslateMatrix / ToMatrix / ScaleMatrix（TRS→矩阵组合）
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/io/MiniPack.h>
 #include <hgl/type/StdString.h>
@@ -29,6 +30,9 @@ namespace
 {
 // ---- packed structures (mirror the exporter layout) ------------------------
 
+/// 从局部 TRS 沿层级组合出 local/world 矩阵（两份装载路径共用，定义见文件后半）
+void ComposeNodeMatrices(std::vector<StaticMeshNode> &nodes);
+
 #pragma pack(push, 1)
 // Mirrors exporters::TRS (glm::vec3 + glm::quat + glm::vec3 = 40 bytes)
 // Use plain float arrays to avoid GLM_FORCE_DEFAULT_ALIGNED_GENTYPES padding.
@@ -50,14 +54,13 @@ enum class SceneTableType : uint32_t
     NodeChildIndex = 4,
     RootIndex      = 5,
     TRSTable       = 6,
-    MatrixTable    = 7,
-    BoundsTable    = 8,
-    PrimitiveTable = 9,
-    MaterialTable  = 10,
-    GeometryTable  = 11,
-    StringPool     = 12,
-    GeometryViewTable = 13,
-    GeometryBlob      = 14,
+    BoundsTable    = 7,
+    PrimitiveTable = 8,
+    MaterialTable  = 9,
+    GeometryTable  = 10,
+    StringPool     = 11,
+    GeometryViewTable = 12,
+    GeometryBlob      = 13,
 };
 
 struct ScenePackHeader
@@ -92,9 +95,7 @@ struct PackedNode
 {
     int32_t original_index;
     int32_t name_index;
-    int32_t local_matrix_index;
-    int32_t world_matrix_index;
-    int32_t trs_index;
+    int32_t trs_index;          // 局部 TRS 表下标；<0 = 单位变换（产物不存矩阵）
     int32_t bounds_index;
     int32_t first_primitive;
     int32_t primitive_count;
@@ -190,7 +191,6 @@ static bool TryLoadScene(
     const SceneTableDesc *node_child_td = FindTableDesc(dir, h.dir_count, SceneTableType::NodeChildIndex);
     const SceneTableDesc *root_td = FindTableDesc(dir, h.dir_count, SceneTableType::RootIndex);
     const SceneTableDesc *trs_td = FindTableDesc(dir, h.dir_count, SceneTableType::TRSTable);
-    const SceneTableDesc *matrix_td = FindTableDesc(dir, h.dir_count, SceneTableType::MatrixTable);
     const SceneTableDesc *bounds_td = FindTableDesc(dir, h.dir_count, SceneTableType::BoundsTable);
     const SceneTableDesc *primitive_td = FindTableDesc(dir, h.dir_count, SceneTableType::PrimitiveTable);
     const SceneTableDesc *string_pool_td = FindTableDesc(dir, h.dir_count, SceneTableType::StringPool);
@@ -220,18 +220,6 @@ static bool TryLoadScene(
         uint32_t size = 0;
         if (TryGetTableRange(payload, h.payload_size, name_td, ptr, size))
             names = ParseNameTable(ptr, size);
-    }
-
-    const math::Matrix4f *matrices = nullptr;
-    uint32_t matrix_count = 0;
-    {
-        const uint8_t *ptr = nullptr;
-        uint32_t size = 0;
-        if (TryGetTableRange(payload, h.payload_size, matrix_td, ptr, size))
-        {
-            matrices = reinterpret_cast<const math::Matrix4f *>(ptr);
-            matrix_count = size / static_cast<uint32_t>(sizeof(math::Matrix4f));
-        }
     }
 
     const PackedTRS *trs_arr = nullptr;
@@ -469,12 +457,6 @@ static bool TryLoadScene(
             if (pn[i].name_index >= 0 && pn[i].name_index < static_cast<int32_t>(names.size()))
                 node.name = names[pn[i].name_index];
 
-            if (pn[i].local_matrix_index >= 0 && pn[i].local_matrix_index < static_cast<int32_t>(matrix_count))
-                node.localMatrix = matrices[pn[i].local_matrix_index];
-
-            if (pn[i].world_matrix_index >= 0 && pn[i].world_matrix_index < static_cast<int32_t>(matrix_count))
-                node.worldMatrix = matrices[pn[i].world_matrix_index];
-
             if (pn[i].trs_index >= 0 && pn[i].trs_index < static_cast<int32_t>(trs_count))
             {
                 const PackedTRS &t = trs_arr[pn[i].trs_index];
@@ -520,6 +502,9 @@ static bool TryLoadScene(
         }
     }
 
+    // 产物只存局部 TRS（T5）⇒ local/world 矩阵由 ComposeNodeMatrices 组合得出
+    ComposeNodeMatrices(scene_nodes);
+
     return true;
 }
 // ---- NameTable parser -------------------------------------------------------
@@ -560,15 +545,55 @@ std::vector<std::string> ParseNameTable(const void *raw, uint32_t bytes)
 
 // ---- NodeList parser --------------------------------------------------------
 // Per-node stream (all int32_t):
-//   originalIndex, nameIndex, localMatIndex, worldMatIndex,
-//   trsIndex, boundsIndex,
+//   originalIndex, nameIndex, trsIndex, boundsIndex,
 //   primCount, prims[primCount],
 //   childCount, children[childCount]
+// 局部变换只存 TRS（T5）；无 trsIndex（<0）⇒ 单位变换。
+
+/// 从局部 TRS 沿层级组合出 local/world 矩阵（两份装载路径共用）。
+/// 约定：没有 TRS 行的节点 ⇒ 局部变换是单位矩阵（与导出侧 SceneExportNodes.cpp 一致）。
+void ComposeNodeMatrices(std::vector<StaticMeshNode> &nodes)
+{
+    std::vector<bool>    done(nodes.size(), false);
+    std::vector<int32_t> stack;
+
+    for (int32_t i = 0; i < static_cast<int32_t>(nodes.size()); ++i)
+        if (nodes[i].parentIndex < 0)
+            stack.push_back(i);                           // 根节点（或未挂父的孤立节点）
+
+    // DFS 前序：父节点的 world 先算好，再下传给子（先压根，处理完再压子）
+    while (!stack.empty())
+    {
+        const int32_t idx = stack.back();
+        stack.pop_back();
+
+        if (idx < 0 || idx >= static_cast<int32_t>(nodes.size()) || done[idx])
+            continue;
+
+        StaticMeshNode &n = nodes[idx];
+
+        // 与 hgl::math::Transform::GetMatrix() 同一个组合式（复用引擎已有写法）
+        const Matrix4f local = n.hasTRS
+                             ? (math::TranslateMatrix(n.translation)
+                                * math::ToMatrix(n.rotation)
+                                * math::ScaleMatrix(n.scale))
+                             : Matrix4f(1.0f);
+
+        const int32_t p = n.parentIndex;
+        n.localMatrix = local;
+        n.worldMatrix = (p >= 0 && p < static_cast<int32_t>(nodes.size()))
+                      ? nodes[p].worldMatrix * local
+                      : local;
+        done[idx] = true;
+
+        for (int32_t c : n.children)
+            stack.push_back(c);
+    }
+}
 
 std::vector<StaticMeshNode> ParseNodeList(
     const void *raw, uint32_t bytes,
     const std::vector<std::string>        &names,
-    const math::Matrix4f                  *matrices,   uint32_t matrix_count,
     const PackedTRS                       *trs_arr,    uint32_t trs_count,
     const math::BoundingVolumesData       *bounds_arr, uint32_t bounds_count)
 {
@@ -590,11 +615,9 @@ std::vector<StaticMeshNode> ParseNodeList(
     {
         StaticMeshNode node;
 
-        int32_t originalIndex, nameIndex, localMatIndex, worldMatIndex, trsIndex, boundsIndex;
+        int32_t originalIndex, nameIndex, trsIndex, boundsIndex;
         if (!try_read(originalIndex))  break;
         if (!try_read(nameIndex))      break;
-        if (!try_read(localMatIndex))  break;
-        if (!try_read(worldMatIndex))  break;
         if (!try_read(trsIndex))       break;
         if (!try_read(boundsIndex))    break;
 
@@ -602,15 +625,7 @@ std::vector<StaticMeshNode> ParseNodeList(
         if (nameIndex >= 0 && nameIndex < (int32_t)names.size())
             node.name = names[nameIndex];
 
-        // Local matrix
-        if (localMatIndex >= 0 && localMatIndex < (int32_t)matrix_count)
-            node.localMatrix = matrices[localMatIndex];
-
-        // World matrix
-        if (worldMatIndex >= 0 && worldMatIndex < (int32_t)matrix_count)
-            node.worldMatrix = matrices[worldMatIndex];
-
-        // TRS
+        // TRS（局部变换的唯一来源；无则单位，见 ComposeNodeMatrices）
         if (trsIndex >= 0 && trsIndex < (int32_t)trs_count)
         {
             const PackedTRS &t = trs_arr[trsIndex];
@@ -665,6 +680,8 @@ std::vector<StaticMeshNode> ParseNodeList(
                 nodes[c].parentIndex = i;
         }
     }
+
+    ComposeNodeMatrices(nodes);          // 产物只存 TRS ⇒ local/world 在这里组合
 
     return nodes;
 }
@@ -727,17 +744,6 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
             const int32 idx = mpm->FindFile(AnsiStringView("NameTable"));
             if (idx >= 0)
                 names = ParseNameTable(mpm->Map(idx), mpm->GetFileLength(idx));
-        }
-
-        const Matrix4f *matrices     = nullptr;
-        uint32          matrix_count = 0;
-        {
-            const int32 idx = mpm->FindFile(AnsiStringView("MatrixTable"));
-            if (idx >= 0)
-            {
-                matrices     = reinterpret_cast<const Matrix4f *>(mpm->Map(idx));
-                matrix_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(Matrix4f));
-            }
         }
 
         const PackedTRS *trs_arr  = nullptr;
@@ -815,7 +821,6 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
                 scene_nodes = ParseNodeList(
                     mpm->Map(idx), mpm->GetFileLength(idx),
                     names,
-                    matrices,   matrix_count,
                     trs_arr,    trs_count,
                     bounds_arr, bounds_count);
             }

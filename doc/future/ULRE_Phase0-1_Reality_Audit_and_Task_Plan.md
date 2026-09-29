@@ -29,8 +29,11 @@
 |---|---|---|
 | T0 量化探针 + 实测基线 | **✅ 完成** | 探针 `src/ecs/support/ProbeTransformDiagnostics.cpp`；数字见 §2.1 |
 | T4 消费侧旋转提取修复 | **✅ 代码完成**（资产级视觉验证阻塞） | `SceneTest.cpp` 改 `math::DecomposeTransform`；顺带修 `CMMath` 镜像分支（§1.12） |
-| 回归 | **✅ 全绿** | 门 42 PASS / 0 FAIL；`TestTransformFlatStorage`、`TestRenderItemDataStorage`、`TestCSMIncrementalPass` rc=0 |
-| T1/T2/T3/T5…T11 | 待排期 | 见 §4 |
+| T1 GLTFConvert 死路收敛 | **✅ 完成** | `NodeTransform` 只剩 None/TRS；导入边界统一做配对转换 + 镜像感知分解；见 §4 T1 |
+| T2 负缩放/镜像对拍 | **✅ 完成（发现 3 个真 bug）** | 修前/修后：TRS 非均匀 0.383→1.6e-07；matrix 非均匀 0.500→1.2e-07；**matrix 镜像 1.243→1.9e-07**；见 §1.2 订正与 §4 T2 |
+| T3 方向转换配对验证 | **✅ 完成** | 判据 M' = R·M·R⁻¹；含顶点级世界 AABB 对拍（≤1.2e-07）；见 §4 T3 |
+| 回归 | **✅ 全绿** | 门 42 PASS / 0 FAIL；`TestTransformFlatStorage`、`TestRenderItemDataStorage`、`TestCSMIncrementalPass` rc=0；GLTFConvert CLI/GUI 均构建通过 |
+| T5…T11 | 待排期 | 见 §4 |
 
 ---
 
@@ -55,7 +58,11 @@
 - `src/Tools/GLTFConvert/gltf/import/GLTFImporter.cpp:87` 明确启用 `fastgltf::Options::DecomposeNodeMatrices` —— **解析期**就把 `matrix` 节点分解成 TRS。因此 `ToNodeTransform.cpp:24-28` 的 `matrix` 分支在正常路径上取不到，`NodeTransform::Type::Matrix` 是死路。
 - 自研极分解 = 与库重复实现（与"用 glm 现成函数替代自研打包"的既有口径相反），且手写版本在镜像/剪切/退化矩阵上的行为弱于库。
 
-**结论**：不实现分解器。改成两件事：① **收敛死路**（见 T1）；② **对拍验证**库的分解在 `det<0`/镜像情形下是否正确（见 T2）。
+**结论（已按 T2 实测订正）**：不要照文档那样写 `DecomposeMatrixToTRS`，但**也**不能满足于"库已代劳"——
+实测证明 fastgltf 的 `decomposeTransformMatrix`（`math.hpp:911-948`）**取无符号列模长、没有 det<0 分支**，
+对镜像矩阵的分解是**有损**的（镜像被静默丢弃，且四元数变成非单位值：`|q|=1.1634`、`det(mat3)=+2.414`）。
+所以正确的落法是：**关闭 `DecomposeNodeMatrices`**，在导入边界自己分解——但必须写成"负号只进缩放"的版本
+（文档给的双重翻转写法是错的），并加保真自检。见 §4 T1/T2。
 
 **补充（引擎侧）：不要自研，也不缺函数** —— 引擎已有 `math::DecomposeTransform`
 （`CMMath/inc/hgl/math/Matrix.h:343`、实现 `CMMath/src/Math/Matrix4f.cpp:398`），
@@ -77,7 +84,11 @@
 
 文档建议的"图元保持原生、只根节点乘转换矩阵"会**打破这个配对**（只保留一侧 ⇒ 世界坐标被转两次或零次），并把一次性离线转换推到运行期逐帧计算。
 
-**结论**：不做。改为补一条世界坐标对拍验证（T3），把结论钉在文档里，避免以后有人再来"修"这个不存在的 bug。
+**结论**：配对模型本身正确（不能改成"只根节点乘转换矩阵"），但节点侧的**实现**在本次 T3 被查出是错的：
+`convertInPlaceYUpToZUp` 的 TRS 分支用 `t'=R·t、r'=q·r·q⁻¹、s 原样保留`，而 `R·diag(s)·R⁻¹` 在 R=Rx90 时
+是"y/z 互换"的对角阵而不是原 `s` ⇒ 非均匀缩放 + 旋转的节点偏差 0.383（实测）；
+matrix 分支虽用了 `qMat·m·qInv` 正确共轭，但它拿到的已经是 **fastgltf 分解后的 TRS**（镜像已丢）。
+已在 T1 统一改为"先 `M' = R·M·R⁻¹`、再镜像感知分解"。见 §4 T1/T3。
 
 ### 1.4 Task 0.4「多根节点 + Multi-Primitive 拆分重定向」→ **多根已支持；"拆分"根本不存在**
 
@@ -250,6 +261,24 @@ I2W 记账 + 每行存储等）。这是阶段一/三收益论证的基准数字
 
 ## 4. 重排后的任务清单
 
+### 4.0 已确认的执行顺序（2026-09-29 用户拍板）
+
+**先完成 A（导入链收尾），再进 B（引擎主线）**，理由：输入面（GLTFConvert 产物）先稳定下来，引擎侧改动才有可靠前提。
+
+| 序 | 项 | 状态 |
+|---|---|---|
+| A1 | OBB run-to-run 非确定性 → 确定性 tie-break（让产物逐字节可复现） | ✅ 已完成（2026-09-29）：249 个产物两轮**逐字节一致** |
+| A2 | 单位变换规约（导入边界 eps=1e-6 恒等收敛） | ✅ 已完成（2026-09-29）：检查脚本"残差占行" 120→**0** |
+| A3 | 未启用扩展：`enableExtensions` + 不支持的干净 fail-fast | ✅ 已完成（2026-09-29）：15 个里 14 个转成功（0–3s）、1 个干净拒绝（0s，理由明确） |
+| A4 | 多场景**全部**导出（命名 `sceneN`） | ✅ 已完成（2026-09-29）：`MultipleScenes` → `scene0`/`scene1` 两份产物；单场景命名零变动（`BasicModel.Scene.*`/`AnimatedCube.unnamed.*`） |
+| B1 | T5 `matrixTable` 退役 | ✅ 已完成（2026-09-30）：JSON + pack 双格式 TRS-only；示例装载器改为从 TRS 组合世界矩阵；对拍 max\|Δlocal\|=\|Δworld\|=1.94e-07 |
+| B2 | T6 局部真源唯一化（+ T7 `local_matrices` 去留） | 待 B1 |
+| B3 | T8 `TransformComponent` → `TransformID` | 待 B2 |
+| B4 | T9 其余组件 ID 化 | 待 B3 |
+| C1 | T10 容量与行号冻结（**必须早于 C2**） | 待 B4 |
+| C2 | T11 64B `Entity` + `.ulrescene` 直载 | 待 C1 |
+
+
 > 约定：每个任务独立可编译、可运行、可回归；改结构体/头文件后**必须 purge 陈旧 TU 再构建**（见 §5），不接受"构建 rc=0"作为验证。
 
 ### T0 量化探针（先钉死数字）— ✅ 已完成（2026-09-29）
@@ -268,23 +297,139 @@ I2W 记账 + 每行存储等）。这是阶段一/三收益论证的基准数字
 - **验收**：输出数字回写本文档 §2；探针可重复运行且数值稳定。
 - **为什么先做**：阶段一/三的全部收益都靠这组数字，而不是文档里低估 3 倍的那组。
 
-### T1 GLTFConvert 死路收敛（**子模块内**提交）
+### T1 GLTFConvert 死路收敛（**子模块内**）— ✅ 已完成（2026-09-29，含 fail-fast 收口）
 
-- **目标**：删掉 `DecomposeNodeMatrices` 开启后不可达的矩阵路径，让"局部变换只可能是 TRS"成为编译期/运行期事实。
+- **落地（`src/Tools/GLTFConvert/`，子模块）**：
+  - `math/NodeTransform.{h,cpp}`：**删** `Type::Matrix`、`m` 联合成员、`NodeTransform(const glm::mat4&)`、
+    `setMatrix()`、`isMatrix()`、`toZUpMat4()`、`convertInPlaceYUpToZUp()`；结构只剩 `{ Type type; TRS trs; }`。
+  - `gltf/ToNodeTransform.{h,cpp}`：导入边界统一做三件事 —— ① 原始矩阵（TRS 或 matrix 都先组矩阵）；
+    ② `M' = R·M·R⁻¹` 配对转换；③ **镜像感知分解**（负号只进缩放；单轴 scale=0 用另两轴叉积补齐正交基）
+    + **保真自检：残差 > 1e-4 即失败**（fail-fast，含错误信息里的节点名与残差 + DCC 侧的处置建议）。
+  - `gltf/import/GLTFImportNodes.cpp` → `bool ImportNodes(...)`：任一节点分解失败即中止导入；
+    `GLTFImporter.cpp` 透传失败 → `GLTFConvert_Process` 写 `err_buf` + 打日志 → CLI `return 1`。
+  - `gltf/import/GLTFImporter.cpp`：删 `fastgltf::Options::DecomposeNodeMatrices`（库的分解对镜像有损，见 T2）、
+    删 `RotateNodeLocalTransformsYUpToZUp` 声明与调用（该职责已并入 ToNodeTransform）。
+  - `gltf/import/GLTFOrientationNodes.cpp`：**删除**，并从 `CMakeLists.txt` 的 `GLTF_IMPORT_FILES` 移除。
+  - **进一步收敛（用户评审后）**：`NodeTransform` 的 `Type`（`enum{None,TRS}`）**删除**——它只是
+    `!trs.empty()` 的复制品（同一事实两个真源），且 `isNone()` 零调用者、`isTRS()` 仅 1 处
+    （`export/SceneExportNodes.cpp:32` → 改为 `if (!src.transform.trs.empty())`）。
+    `math/NodeTransform.cpp` 随之**删除**（结构只剩 `{ TRS trs; }` + `rawMat4()`，头文件化），
+    CMake `MATH_FILES` 同步移除。**行为中立性已实测**：删前/删后导出的 `trsTable`/`matrixTable`/
+    `nodes`/`rootNodes`/`primitives`/`geometries` 表 **max|Δ| = 0.000e+00**（逐位一致），
+    检查脚本 PASS 4/4。
+  - **检查脚本收编**：`check/verify_transform_chain.py`（独立可用，只用 Python 标准库 + 一个 GLTFConvert.exe）
+    + `check/README.md`。两种接入方式（均已实测）：
+    ① **自定义目标**（推荐）`cmake --build build --config Debug --target GLTFConvertTransformCheck` → `CHECK RESULT: PASS (3/3)`；
+    ② ctest（`-DGLTF_BUILD_TRANSFORM_CHECK=ON` + `ctest --test-dir build/src/Tools/GLTFConvert -C Debug -R GLTFConvertTransformChain`
+    → `1/1 Passed`）。**注意：根级 `ctest` 在 ULRE 根看不到任何测试**（根未调用 `enable_testing()`，`src/ecs` 的 `add_test` 同样如此，属既有状态）。
+- **残留检查**：`grep -rn "Type::Matrix|isMatrix|setMatrix|toZUpMat4|convertInPlaceYUpToZUp|RotateNodeLocalTransformsYUpToZUp|DecomposeNodeMatrices"`
+  ⇒ **0 命中**（唯一假命中是 `SceneTableType::MatrixTable` 的字面包含）。
+- **构建**：改 `NodeTransform.h`（结构布局）前先清了 `build/src/Tools/GLTFConvert/**/Debug` obj 树；
+  `GLTFConvertCore.dll` + `GLTFConvert.exe`（CLI）+ `GLTFConvertQt.exe`（GUI）三目标 **rc=0 / 0 errors / 0 warning**。
+- **产物一致性（实测，已订正为"数值等价"而非"逐字节一致"）**：见 T2 段末「字节一致性」小节 ——
+  `.mesh`/`.material` 全 IDENTICAL，TRS/矩阵表差 ≤ 9.537e-07（float32 末位），AABB/sphere/obbCenter/obbHalf ≤ 9.5e-07；
+  只有 `*.geometry`（3/5 文件、3~11 字节）与 OBB 轴向量（旋转对称形状的规范自由度）不同。
+- **风险（仍在）**：产物格式被主仓 `example/Geometry/LoadScene/LoadStaticMesh.cpp` 消费 ⇒ 子模块与主仓必须同批验证。
+
+- **原目标**：删掉 `DecomposeNodeMatrices` 开启后不可达的矩阵路径，让"局部变换只可能是 TRS"成为编译期/运行期事实。
 - **文件**：`src/Tools/GLTFConvert/math/NodeTransform.h:36-48`、`math/NodeTransform.cpp:36-48, 110-122, 138-155, 165-172`、`gltf/ToNodeTransform.cpp:3-11, 22-28`。
 - **前置**：`toZUpMat4()` 与 `Type::Matrix` 的全仓引用清点（本次已 grep：`toZUpMat4` 仅有声明+定义、**0 调用者**，可删；`Type::Matrix` 只被自身分支使用）。
 - **验收**：① 子仓构建通过；② 用同一批模型跑转换，导出产物（json + pack）与改前**逐字节一致**（TRS 表、节点表、primitive 表计数与内容不变）；③ GUI/CLI 两条入口都能转。
 - **风险**：与主仓双仓同步（产物格式被 `example/Geometry/LoadScene/LoadStaticMesh.cpp` 消费），必须两仓同批验证。
 
-### T2 负缩放/镜像对拍（把 Task 0.2 从"实现"改成"验证"）
+### T2 负缩放/镜像对拍 — ✅ 已完成（2026-09-29，**查出 3 个真 bug**）
 
-- **目标**：证明 fastgltf 的 `DecomposeNodeMatrices` 在 `det<0`（镜像）/剪切矩阵上给出的 TRS 与原始矩阵等价。
+- **判据**：`M' = R·M_raw·R⁻¹`（唯一正确基准），按元素最大差比对；用例 = 合成 glTF（手写，覆盖
+  TRS 均匀/非均匀、matrix 非均匀、matrix 镜像 det<0、matrix 剪切、TRS 镜像）+ 真实模型 `res/model/BasicModel.glb`。
+- **结果（修的 before/after，全部实测）**：
+
+  | 用例 | 修前 err | 修后 err | 备注 |
+  |---|---|---|---|
+  | TRS 非均匀 + 旋转（S=(2,0.5,1)、绕 X 40°） | **3.830e-01** | 1.598e-07 | `err(TRS分支公式)=3.830e-01` ⇒ 现状输出正好等于那个手写公式 |
+  | matrix 非均匀（det>0） | **5.000e-01** | 1.192e-07 | 同源（先被库分解成 TRS，再走错误代数） |
+  | matrix 镜像（det<0） | **1.243e+00** | 1.904e-07 | 修前 `\|q\|=1.1634`（非单位）、`det(mat3)=+2.414` ⇒ **镜像被静默丢弃** |
+  | TRS 镜像 | 2.384e-07 | 2.384e-07 | TRS 直通本来就是对的 |
+  | matrix 剪切 | 3.492e-01（`\|q\|=1.0131`） | 2.466e-01 + **显式告警** | 剪切无法用 TRS 表示 ⇒ 改为可观测 |
+
+- **三个真因**：
+  1. **TRS 分支的手写代数错**：`t'=R·t、r'=q·r·q⁻¹、s 原样`。`R·diag(s)·R⁻¹` 在 R=Rx90 时是
+     "y/z 互换"的对角阵（`diag(sx,sz,sy)`）而不是原 `s`，所以非均匀缩放 + 旋转的节点被歪掉。
+  2. **fastgltf 的分解对镜像有损**：`math.hpp:911-948` 取无符号列模长、无 det<0 分支 ⇒ 镜像丢失，
+     且对非正交输入产生**非单位四元数**（`|q|=1.1634`）。
+  3. **剪切被静默吞掉**：TRS 结构无法表达剪切，旧路径既不报也不查 ⇒ 现在分解后做保真自检并告警
+     （实测告警输出：`[Import] 警告：node 5 ("matrix_shear") 的局部变换无法用 TRS 精确表示（含剪切或畸形），残差 0.246565`）。
+- **产物一致性**：`BasicModel.glb` 改前/改后（同参数 `--no-images`）导出比对 —— 见下方小节。
+
+#### 字节一致性（`BasicModel.glb`，改前 vs 改后，同参数）
+
+| 文件 | 结果 |
+|---|---|
+| `*.mesh`（5）、`*.material`（1） | **IDENTICAL** |
+| `*.geometry`（5） | 2 个 IDENTICAL；3 个差 3/11/4 字节（0.25%/0.02%/0.06%，文件大小不变） |
+| `*.scene`（MiniPack） | 大小不变（148504 B），582 字节不同（0.39%） |
+| `*.Scene.json` | 15336 → 15918 B（浮点十进制文本长度变化导致，"键集合"与元素数完全一致） |
+
+数值差（JSON 解析后按字段求 max|Δ|）：
+
+| 表 | max\|Δ\| |
+|---|---|
+| `trsTable` / `matrixTable` | **9.537e-07**（float32 末位；现在统一走"矩阵→分解"，旧路径 TRS 直通） |
+| `boundsTable` 的 `aabbMin/Max`、`sphere`、`obbCenter`、`obbHalf` | ≤ 9.5e-07 |
+| `boundsTable` 的 **`obbAxisX/Y/Z`** | 最大 **1.586**（bounds[3] Cone / bounds[5] Cylinder） |
+
+**OBB 轴向量的差异不是回归**：锥/圆柱这类**旋转对称**形状的 OBB 在垂直于对称轴的平面内存在
+**规范自由度**（任取一组正交基都同样贴合），输入发生 float 末位变化就会换一组基 —— 证据是
+对称轴分量逐位相同（如 bounds[3] 的三号分量 `-0.775036` 两版完全一致）、`obbHalf` 差仅 3.6e-07。
+换句话说旧值也不是"唯一正确值"。**结论**：对不含镜像/剪切节点的模型，本次改动只带来
+float 末位差 + OBB 轴的规范差 ⇒ 等价，而非零字节差。
+
+#### 追加实测（2026-09-29）：转换器存在 **run-to-run 非确定性** —— 字节比对不能当回归判据
+
+用**同一个二进制**连跑两次同一模型（`--no-images --no-meshlet BasicModel.glb`），20 个产物文件里
+**7 个不一致**。字段级定位：
+
+| 表 / 字段 | A/A（同二进制两次）max\|Δ\| |
+|---|---|
+| `trsTable` / `matrixTable` / `nodes` / `rootNodes` / `primitives` / `geometries` | **0.000e+00**（逐位稳定） |
+| `boundsTable` 的 `aabbMin/Max`、`sphere`、`obbHalf` | 0（稳定） |
+| `boundsTable` 的 **`obbAxisX/Y/Z`** | 最大 **2.0**（合成三角形）/ **0.382**（Cone、Cylinder） |
+| `boundsTable` 的 `obbCenter` | ~1e-6（float 噪声） |
+
+原因：`math/OBB.cpp` 的 `fromPointsMinVolumeImpl` 是**穷举朝向搜索**（coarse→fine→ultra 步长，
+`#pragma omp critical` 内更新 best）。对**平面 / 旋转对称**形状，大量朝向的体积完全相等（tie），
+赢家取决于哪个线程最后写入 ⇒ 朝向随运行变化；`obbCenter` 的 1e-6 差同样来自"选了另一个等价朝向"。
+顶点数据本身稳定（`ok.geometry` 的 11 字节差异落在内嵌 `BoundingVolumes` 段，偏移 176..226）。
+
+**影响**：① **不能用字节比对做转换器回归** —— 必须按字段比对，且只对变换/结构表要求 0 差；
+② 依赖 OBB **朝向**的上层逻辑（剔除 / 排序 / 实例化）不能在多次运行或构建间假设其稳定，
+但剔除实际依据的 **AABB 是稳定的**。
+
+> ⚠ **本段结论已被 A1 修复推翻（2026-09-29）**：`math/OBB.cpp` 的并行归约改成**严格全序** tie-break 后，
+> 同一二进制连跑两次 **249 个产物逐字节一致**（详见 §7 第 9 条）。上面保留的是修复**前**的历史证据，
+> 用来说明当时为什么不能用字节比对。
+**候选修法（未做，见 §7）**：① tie 时用确定性 tie-break（体积在 eps 内相等 → 取轴分量字典序最小者）；
+② 并行结果先收集成向量、再串行做全序归约；③ 对结果做规范化（对称轴上的朝向按规则选）。
+
+- **验收依据**：检查脚本已收编入库 —— `src/Tools/GLTFConvert/check/verify_transform_chain.py`（+ `check/README.md`）。
+
+- **原目标**：证明 fastgltf 的 `DecomposeNodeMatrices` 在 `det<0`（镜像）/剪切矩阵上给出的 TRS 与原始矩阵等价。
 - **做法**：构造最小 glTF（手写 json，或用现有模型改造）含 `matrix` 且 `det<0`；跑 GLTFConvert；把导出的 `matrixTable` 局部矩阵与用 `TRS::toMat4()`（`math/TRS.h:40-47`）展开的矩阵**逐元素 diff**（阈值 1e-5），并渲染确认左右手性一致。
 - **验收**：diff 全在阈值内 → 文档 Task 0.2 正式判定为"库已覆盖"；若超阈值 → 才引入最小修正（并记录 fastgltf 的具体行为）。
 
-### T3 方向转换配对验证（钉死 Task 0.3 的结论）
+### T3 方向转换配对验证 — ✅ 已完成（2026-09-29）
 
-- **目标**：用一条独立证据链证明"顶点旋转 + 节点相似变换"这一对是等价的 Z-up 转换，而不是双重变换。
+- **判据**：配对 `M'·v' = R·(M·v)`（顶点 `v' = R·v`、节点 `M' = R·M·R⁻¹`），据此做四层检查：
+  - **[A] 节点局部**：导出 TRS 展开 vs `R·M_raw·R⁻¹`；
+  - **[B] 导出内部自洽**：`matrixTable` 的 `localM` vs TRS 展开（同源，应完全一致）；
+  - **[C] 顶点级**：叶子节点的 `boundsTable` AABB vs `worldM·(R·v)` 的 AABB —— 这一条同时证明
+    **顶点恰好被旋转一次**且世界矩阵与顶点同坐标系（若被旋转两次或平方，AABB 会明显不符）；
+  - **[D] 镜像/剪切**：见 T2 表。
+- **结果**：合成 glTF 6 个叶子节点 **[C] 最大差 1.192e-07**；真实模型 `BasicModel.glb` 7 个节点 [A] 全 **≤ 9.537e-07**。
+- **修复前的反证**（同一脚本、旧二进制）：节点 2（TRS 非均匀+旋转）世界 AABB 为
+  `min=(4,-1.286,0) max=(6,0,1.532)`，正确值是 `min=(4,-0.643,0) max=(6,0,0.766)` —— 即**旧路径确实把这类节点放错位置**，
+  而文档 Task 0.6 想验证的"各子构件位置与朝向 100% 准确"在旧路径上不成立。
+
+- **原目标**：用一条独立证据链证明"顶点旋转 + 节点相似变换"这一对是等价的 Z-up 转换，而不是双重变换。
 - **做法**：取一个多级旋转/有深度的模型，跑转换后由引擎侧按 T4 的路径加载，打印每节点世界 TRS，与外部工具（Blender 导出或原始 glTF 数据手工 Z-up 换算）对拍。
 - **验收**：位置误差 <1e-3、朝向误差 <0.1°；结论写回文档（防止未来重开）。
 
@@ -309,12 +454,302 @@ I2W 记账 + 每行存储等）。这是阶段一/三收益论证的基准数字
 - **文件**：`example/Geometry/LoadScene/SceneTest.cpp:197-202`（改用 `node.hasTRS/translation/rotation/scale`）；无 TRS 时走 scale-aware 回退（列模长归一后再取旋转，不要直接 `quat_cast`）。
 - **验收**：① 构造一个**非均匀缩放节点**做对照，改前朝向错、改后正确（截图/数值双证据）；② 原场景渲染与改前逐像素一致（RenderDoc 截帧或帧内读回差分）；③ 5 个代表性示例 0 VUID。
 
+### T4.5 真实资产（Khronos `glTF-Sample-Assets`）验证 — ✅ 已完成（2026-09-29）
+
+用官方样本集 `J:\Khronos\glTF-Sample-Assets\Models`（**144 个模型 / 13,191 个节点**）回答
+"现实资产里是否大量存在没有 transform 的子节点"，并顺带做了真实资产级回归。
+
+**① 变换分布（静态统计，脚本 `%TEMP%\t123\khronos_transform_stats.py`）**
+
+| 节点类别 | 数量 | 占比 |
+|---|---|---|
+| 无任何变换键（`matrix`/`translation`/`rotation`/`scale` 都没有） | 320 | **2.4%** |
+| 显式 TRS 且恒等 | 11 | 0.1% |
+| 显式 TRS 且非恒等 | 12,353 | **93.6%** |
+| `matrix` 定义 | 507 | 3.8% |
+| 「单位/无变换」合计 | 331 | **2.5%** |
+
+- 无变换节点中**含子节点的中间层节点 35 个**、叶子 285 个；85/144 个资产至少有一个。
+- **分部集中**：`RecursiveSkeletons` 84/924 = 9.1%、`CarConcept` 17/101 = 16.8%、
+  `MetalRoughSpheresNoTextures` 18/119 = 15.1%、`ABeautifulGame` 1/49；`BasicModel`/`VirtualCity` 为 0。
+  ⇒ 不能按"平均 2.4%"把它当边缘情况，但也不是主流形态（93.6% 的节点带真实非恒等 TRS）。
+- **`matrix` 定义里：镜像（det<0）13 个**（全部在 `VirtualCity` 一个资产内）、**剪切 0 个、退化 0 个**
+  ⇒ ① 现有 fail-fast（剪切即拒）**不会拒掉任何官方样本**；② 镜像不是虚构场景，`VirtualCity` 就是真实实例。
+
+**② 检查脚本对真实资产的三处假设不成立（已修，`src/Tools/GLTFConvert/check/verify_transform_chain.py`）**
+
+| 症状 | 真实原因 | 修法 |
+|---|---|---|
+| `RecursiveSkeletons` [C] 差 **60.0** | 该节点是**蒙皮网格**（`JOINTS_0/WEIGHTS_0`）：顶点由 skin 矩阵驱动，与节点世界矩阵无关 | `node_positions()` 遇蒙皮属性返回 None（跳过并计入"跳过数"） |
+| `VirtualCity` [A] 差 **6.104e-05** > 1e-5 | 节点平移量级 **751.4** ⇒ float32 分辨率就是 **9.0e-05**，固定绝对容差必假阳性 | 容差改为 `绝对 + 相对·max|量级|`（`--rel-tolerance`，默认 1e-5），错误信息带上 |M|max |
+| `ABeautifulGame` [C] **3.194e-03**、`CarConcept` **2.459e-01** | 顶点被**截断到 4096 点**（该网格 28,901 点）⇒ AABB 缺极值 | 顶点**不采样**：全量读；超上限（4M）直接跳过 |
+| （预防）bounds 被多节点共享 | 同一 `boundsIndex` 被 >1 个节点引用时，"本节点世界 AABB"前提不成立 | 这类节点跳过并单独计数 |
+
+**③ 回归结果：`CHECK RESULT: PASS (9/9)`**（合成 3 + `BasicModel.glb` + 5 个真实资产）
+
+```
+model:BasicModel.glb      节点=7   无变换=0  AABB=5   max[A]=9.54e-07
+model:RecursiveSkeletons  节点=924 无变换=84 AABB=0(跳过84/蒙皮) max[A]=1.91e-06
+model:MetalRoughSpheres.. 节点=119 无变换=18 AABB=98  max[A]=1.79e-07
+model:VirtualCity         节点=234 无变换=0  AABB=105(跳过19) max[A]=1.22e-04  ← |t|≈751 下的 1.3 ULP
+model:ABeautifulGame      节点=49  无变换=1  AABB=33  max[A]=1.19e-07
+model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
+```
+（原 [A]/[D] 数值缺陷回归 —— 非均匀 TRS 3.830e-01→1.598e-07、matrix 镜像 1.243e+00→1.904e-07 —— 在真实资产上
+保持 <2e-06；`|q|-1` 全部 ≤1.1e-07。判据仍是 `M' = R·M_raw·R⁻¹`。）
+
+**④ 真发现：无变换键的节点并没有"零成本"，它照样占 `trsTable` 一行 —— 被 1 ULP 顶掉**
+
+- **实测**：`RecursiveSkeletons` 84/84、`MetalRoughSpheresNoTextures` 18/18、`CarConcept` 17/17、
+  `ABeautifulGame` 1/1 —— **120/120 个无变换节点全部写了独立 trs 行**，其值为"单位变换 + 残差"：
+  `max|t| = 0`（平移精确为 0）、`max|q−1| = 0`（四元数精确为单位）、**`max|s−1| = 1.19e-07`**
+  （= 2⁻²³，float32 机器 epsilon）。
+- **不是删 Type 造成的**：用改动**前**的二进制（`before_chk`）跑同一输入，节点 0 同样有 trs 行、
+  数值逐位相同（`s=(1.0, 0.999999881, 0.999999881)`）⇒ 既有行为。原因与 `Type` 无关：
+  导入边界的共轭 `M' = R·M·R⁻¹` + `DecomposeTransform`（列模长）在单位矩阵上引入 1 ULP 的 scale 偏差，
+  而 `TRS::empty()` 是**精确比较**（`scale == vec3(1)`）⇒ 判不出恒等。
+- **结论**：`Type`（`enum{None,TRS}`）从来不是表达"单位变换"的手段 —— 表达它的是 `empty()`；
+  而现在的 `empty()` 因为比较方式而失效。想让这类节点真正零成本（不占行、引擎侧拿到精确单位矩阵），
+  要在导入边界做**带容差的恒等规约**（见 §7 第 10 条），不是再加一个状态枚举。
+- 检查脚本新增 **[F] 不变式**：源节点无任何变换键 ⇒ 导出不得有 trs 条目**或**该条目必须 ≤ 容差地等于
+  单位矩阵（数值残差），且 `localM` 必须是单位矩阵；同时把"残差占行"的个数打进每行输出（现在会打印
+  `无变换=N(残差占行=N)`），一旦它和"无变换"数相等，就说明规约没发生。
+
+**⑤ 新发现（既有缺陷，与本次改动无关）："required 扩展未启用"的资产**失败方式不干净** —— 挂住或 abort**
+
+**⑤-已修（2026-09-29，A3）："必需扩展"改为**自己预筛**，不再走进那条坏掉的失败路径**
+
+- **改动**：新增 `gltf/import/GLTFExtensions.{h,cpp}`：
+  - `EnabledExtensions()` —— 转换器**启用解析**的扩展集合（fastgltf 在**构造期**接收位掩码：
+    `fastgltf::Parser(Extensions)`，该版本**没有** `enableExtensions` setter）；
+  - `ReadRequiredExtensions()` —— 自己读 `extensionsRequired`（`.gltf` 扫 JSON、`.glb` 定位 JSON chunk），
+    不引第三方 JSON 库；
+  - `CheckRequiredExtensions()` —— 分类：**拒绝**（几何会缺失/错误或根本无法解析）/ **启用但效果未实现**（告警）。
+  - `GLTFImporter.cpp` 在构造 Parser 前先跑预筛：拒绝的先 `return false`（**不碰** fastgltf 的失败路径），
+    未实现效果的逐条打印 `[Import] 警告：源文件要求扩展 X，转换器已启用解析但未实现其效果…`（不静默降级）。
+- **启用集合**（能消费或可安全忽略）：`KHR_materials_{unlit,ior,specular,iridescence,volume,transmission,`
+  `clearcoat,emissive_strength,sheen,anisotropy,dispersion,diffuse_transmission,variants}`、`KHR_texture_transform`、
+  `KHR_lights_punctual`、`KHR_mesh_quantization`、`EXT_texture_webp`、`KHR_texture_basisu`、`MSFT_texture_dds`、
+  `GODOT_single_root`。其中**真实现了效果**的只有 `unlit` / `mesh_quantization` / `variants` / `single_root`。
+- **拒绝集合**（明确报错 + 理由）：`KHR_draco_mesh_compression` / `EXT_meshopt_compression`（无解压 ⇒ 几何错误）、
+  `EXT_mesh_gpu_instancing`（未实现 ⇒ 实例几何整体丢失）、`KHR_accessor_float64`、
+  `KHR_materials_pbrSpecularGlossiness`、`MSFT_packing_*`（打包约定未实现 ⇒ PBR 通道错误）。
+- **验证（此前 15 个"被跳过"的资产）**：**14 个 rc=0**（0–3 秒，含明确告警；`UnlitTest` 0 告警 = 真实现了），
+  **1 个干净拒绝**：`SpecGlossVsMetalRough` → `rc=1 / 0 秒`，信息
+  `源文件要求的扩展无法转换 —— KHR_materials_pbrSpecularGlossiness（已废弃的材质模型，转换器未实现）`。
+  修前这 15 个全是"挂住 >120s 或 abort rc=3、且不打印 `[Error] Conversion failed:`"。
+- **检查脚本同步**：预筛改为镜像同一套清单（`ENABLED_EXT`/`HANDLED_EXT`）——只跳过**会被拒**的资产，
+  "有未实现效果"的照常检查并在结果后打印 ⚠ 行。
+
+**⑥-已修（2026-09-29，A4）：多场景**全部**导出**
+
+- **改动**（`export/ExportPureModel.cpp`）：
+  - 原来只导出**一个**场景（默认场景），现在 `for si in scenes` 逐个导出 `BuildSceneExportData(sm,si,…)`；
+  - **命名**：多场景（`scenes.size()>1`）用 `scene<N>`（用户拍板口径）；单场景沿用源场景名
+    ⇒ 现有产物文件名**零变动**（`BasicModel.Scene.*`、无名场景仍 `AnimatedCube.unnamed.*`）；
+  - **踩坑**：`SanitizeName("")` 会返回 `"unnamed"`（`export/SanitizeName.cpp:21`，函数保证非空），
+    所以判断"是否用 sceneN"必须看**源场景名是否为空**，不能看 SanitizeName 的结果 ——
+    否则多个无名场景会撞成同一个文件名（`MultipleScenes` 就是两个无名场景）；
+  - 图像过滤的 `CollectSceneIndices` 原来只统计默认场景 ⇒ 改为**所有场景的并集**
+    （否则"只被非默认场景引用的贴图"会被漏导出）。
+- **验证**：`MultipleScenes` → `MultipleScenes.scene0.{json,scene}` + `MultipleScenes.scene1.*`，
+  两份**内容各自正确**（scene0 引用 `MultipleScenes.0.geometry`、scene1 引用 `.1.geometry`，各 1 节点）；
+  单场景 `BasicModel`/`AnimatedCube` 命名与修前逐字相同。
+- **检查脚本同步**（`check/verify_transform_chain.py`）：`find_scene_jsons()` 收全部场景产物、
+  `check_exports_of_scene()` **逐场景**校验（按 `scene<N>` 反解源场景序号，用**该场景**的可达性判定），
+  并新增不变式 **"导出场景数 == 源场景数且序号覆盖 0..N-1"**。
+  **反证**（证明判据非空）：人为造出 `unnamed`+`scene1`+`scene9` 混排 ⇒
+  `[场景] 导出场景数 4 ≠ 源场景数 2（导出序号 [0, 1, 1, 9]）` 立即失败。
+
+**⑤-历史（修前证据，保留说明为什么必须预筛）**：
+
+官方样本 142 个资产里有 **14 个**带 `extensionsRequired`（`KHR_texture_transform`、`KHR_materials_unlit`、
+`KHR_lights_punctual`、`KHR_materials_*`、`EXT_texture_webp`、`KHR_animation_pointer` 等；
+典型为 `AnimationPointerUVs` / `UnlitTest` / `DirectionalLight` / `CommercialRefrigerator` / `SheenChair` …）。
+由于 `gltf/import/GLTFImporter.cpp:73` 用的是**裸 `fastgltf::Parser{}`**（没有 `enableExtensions`），
+这些资产在解析阶段就失败：
+
+```
+[GLTFConvert] Loading model: .../AnimationPointerUVs.gltf
+[Import] Parse failed: One or more extensions are required by the glTF but not enabled in the Parser.
+   ← 之后**没有** [Error] Conversion failed 行，进程也不退出
+```
+
+实测失败形态（`--no-images --no-meshlet`，`timeout 120`）：
+
+| 资产 | 耗时 | rc |
+|---|---|---|
+| `AnimationPointerUVs` | 57s（自行结束） | **3**（abort） |
+| `DirectionalLight` | 39s | **3**（abort） |
+| `UnlitTest` | >120s（被外部 kill） | **124** |
+| `CommercialRefrigerator` | >120s（被外部 kill） | **124** |
+
+⇒ 既不是"干净地 rc=1 + 报错"（`core/GLTFConvertCore.cpp:155-161` 的错误路径根本没走到），
+也不是单纯的慢：**解析失败后的返回路径会挂住或 abort**（怀疑在 `ImportFastGLTF` 的局部
+`Parser`/`GltfDataBuffer`/`Expected` 析构上，需调试器确认）。
+**影响**：任何自动化（含本检查脚本）碰到这类资产都会白等超时；且调用方拿不到任何错误文本。
+**已做**：检查脚本现在**先读 `extensionsRequired` 再决定是否转换**，这类资产报 `[SKIP]` 并计入
+"跳过 N"，不再吃 300s 超时（`check/verify_transform_chain.py: required_extensions()`）。
+**建议（未做，待拍板）**：① 在 `GLTFImporter.cpp` 的 Parser 上用 `enableExtensions(...)` 打开转换器
+实际支持的那些（`KHR_materials_*`/`KHR_texture_transform`/`KHR_lights_punctual`/…）；
+② 对 fastgltf 不支持的（如 `KHR_animation_pointer`、`KHR_materials_pbrSpecularGlossiness`）
+先查 `extensionsRequired` 并**干净地** fail-fast 报错，而不是走进坏掉的返回路径。
+
+
+**⑥ 全库扫描：**`check/verify_transform_chain.py` 扫过全部 **142 个官方资产**（逐个转换 + 逐节点对拍）：
+
+| 结果 | 原始 | ⑦ 交错修复后 | ⑧ 四元数归一化后 | **⑨ 多场景修复后** | 说明 |
+|---|---|---|---|---|---|
+| PASS | 117 | 124 | 126 | **127** | 变换链逐节点在容差内 |
+| SKIP | 15 | 15 | 15 | 15 | `extensionsRequired` 非空（见 §⑤），转换器不支持 ⇒ 预筛跳过 |
+| FAIL | 10 | 3 | 1 | **0** | —（142 个资产里可转换的全部通过） |
+
+⇒ **142 个官方资产：127 PASS / 15 SKIP（扩展未启用）/ 0 FAIL**。
+
+- ⑦ 修复（交错读取）⇒ `fail → pass` **7 个**：`AnisotropyStrengthTest`、`BoxInterleaved`、`ClearCoatTest`、
+  `InterpolationTest`、`IridescenceDielectricSpheres`、`IridescenceMetallicSpheres`、`MandarinOrange`。
+- ⑧ 修复（源 `rotation` 归一化）⇒ `fail → pass` **2 个**：`IridescentDishWithOlives`、`TextureEncodingTest`。
+
+失败分解（**修前** 10 个）：
+
+| 资产 | 症状 | 定性 |
+|---|---|---|
+| `AnisotropyStrengthTest`, `BoxInterleaved`, `ClearCoatTest`, `InterpolationTest`, `IridescenceDielectricSpheres`, `IridescenceMetallicSpheres`, `MandarinOrange` | [C] 世界 AABB 差 0.5–4.2 | **同一个真 bug：交错顶点缓冲被当紧凑读**（见 ⑦） |
+| `IridescentDishWithOlives` | `[Import] 错误：node 5 ("Camera001") 的局部变换无法用 TRS 表示…残差 0.000377644 > 0.0001` ⇒ rc=1 拒转 | **分解/共轭链在此节点上有损**（源是 TRS、`det=1`、`|M|max=1.0` ⇒ 不是 float32 量级问题，也不是剪切） |
+| `TextureEncodingTest` | [A] 节点 14 局部变换误差 **3.625e-03**（`|M|max=12`，容差 1.3e-4） | 同上：接近 90° 旋转 + 各向异性缩放（源 S=(12,1,3)）时 TRS 往返有损 |
+| `MultipleScenes` | rc=1，`Failed to export pure model` | 该资产有 **2 个 scene 且都没有名字**，导出阶段失败（几何已写出，scene 打包失败） |
+
+**⑦ 真 bug：交错（interleaved）顶点缓冲被当作紧凑 12 字节读取**
+
+- **行为**：`gltf/import/GLTFImportPrimitives.cpp:62-93` 的 `CopyAccessorToBytes` 用
+  `elemSize*count` **连续**拷贝（起点 = `bufferView.byteOffset + accessor.byteOffset`），
+  **完全没有看 `bufferView.byteStride`**（全仓 `grep byteStride` 在 import 侧 0 命中）。
+  ⇒ 只要 POSITION 落在交错 buffer view 里（`byteStride` = 24/32/36/48），顶点数据就是错的
+  （不只是 bounds：`geo.positions` 本身就错，导出几何与 bounds 同源）。
+- **证据（4/4 复现到 1e-8）**：把同一段 buffer 用"紧凑 12 字节（含 accessor 偏移）"解释，
+  算出的 `worldM·(R·v)` AABB 与导出 bounds **逐轴吻合**；用正确步长则差 0.5–4.2：
+
+  | 资产 | `byteStride` | 正确解释差 | 紧凑12解释差 |
+  |---|---|---|---|
+  | `BoxInterleaved`（acc 偏移 12） | 24 | 5.000e-01 | **1.4e-14** |
+  | `InterpolationTest` | 32 | 4.219e+00 | **1.2e-07** |
+  | `ClearCoatTest` | 48 | 9.400e-01 | **2.4e-07** |
+  | `AnisotropyStrengthTest` | 48 | 6.000e-01 | **1.8e-08** |
+
+- **分布**：官方样本里 **10 个资产有交错 POSITION**，其中 7 个 [C] 失败、2 个因扩展跳过、
+  **1 个"通过"是假通过**（`RecursiveSkeletons`：节点全是蒙皮 ⇒ [C] 全跳过）。
+  132 个紧凑资产里只有 3 个失败（⑧ 的另外三项）。
+- **修复点**：`CopyAccessorToBytes` 需按 `bv.byteStride`（缺省 = `elemSize`）逐元素拷贝到紧凑目标缓冲；
+  **修完必须重跑全库扫描**（预期 7 个 [C] 失败全部转 PASS）。**→ 已于 2026-09-29 修掉，见 ⑦-已修**
+- **注意**：这不是"bounds 算错"，是**顶点数据整体读错** ⇒ 这些资产的几何在引擎里是错的
+  （`BoxInterleaved` 这种标准测试资产都中招，说明此前没人拿交错资产验过导入链）。
+
+**⑦-已修（2026-09-29）：`CopyAccessorToBytes` 现在按 `byteStride` 摘元素**
+
+- **改动**：`gltf/import/GLTFImportPrimitives.cpp` 的 `CopyAccessorToBytes` 改为
+  `stride = bv.byteStride.value_or(elemSize)`——紧凑（`stride == elemSize`）仍整段 `memcpy`，
+  交错时**逐元素**拷进紧凑目标缓冲；越界检查改为 `startByte + (count-1)*stride + elemSize`
+  （原来用 `elemSize*count`，交错时会漏检尾部）。三个 `sources::*` 分支收成一个 `copy_from` lambda。
+  索引 accessor 按 glTF 规范不带 stride ⇒ `value_or` 自然退化为原行为。
+  依据：`fastgltf::BufferView::byteStride` 是 `Optional<size_t>`（`fastgltf/tools.hpp:584` 已有同样用法）；
+  `byteOffset` 原本就是生效的，**只有 stride 被忽略**。
+- **验证（同一套"两种解释对拍"手法，前后正好反转）**：
+
+  | 资产 | 修前 正确步长 / 紧凑12 | 修后 正确步长 / 紧凑12 |
+  |---|---|---|
+  | `BoxInterleaved` | 5.000e-01 / **1.4e-14** | **1.4e-14** / 5.000e-01 |
+  | `InterpolationTest` | 4.219e+00 / **1.2e-07** | **3.0e-08** / 4.219e+00 |
+  | `ClearCoatTest` | 9.400e-01 / **2.4e-07** | **2.4e-07** / 9.400e-01 |
+  | `AnisotropyStrengthTest` | 6.000e-01 / **1.8e-08** | **8.9e-08** / 6.000e-01 |
+
+- **检查套件**：`PASS (12/12)`（7 个原失败资产 + `BasicModel` + `VirtualCity` + 合成 3 例），
+  `max[C]` 从 0.5~4.2 降到 **1.4e-14 ~ 8.8e-07**；构建 `0 error / 0 warning`；行尾/BOM 保持 BOM+CRLF。
+- ⚠ **交错资产的转换产物从此与修前不同**（修前是错的）⇒ 仓库/引擎里若存有这些资产的旧产物，需重新转换。
+
+**⑧ 已修（2026-09-29）：fail-fast 误拒 —— 根因是源 `rotation` 不是单位四元数**
+
+- **症状**：`IridescentDishWithOlives` 被拒（`node 5 ("Camera001")` 残差 3.78e-4 > 1e-4），
+  `TextureEncodingTest` 节点 14 报 [A] 3.625e-03（`|M|max=12`）。两者都**不是**剪切、也不是 float32 量级问题
+  （该节点源是 TRS、`det=1`、`|M|max=1.0`）。
+- **根因**：源 `rotation` 是**非单位四元数** —— `Camera001` 的 `rotation=[x,y,z,w]=[-0.162,0.688,0.162,0.688]`，
+  `|q| = 0.9995879`（小数位截断的产物，偏离单位 4.1e-4）。而 `FastTRSToGlmMat4` 把它直接喂给
+  `glm::mat3_cast`：**对非单位四元数，该公式不是"旋转 × 比例"**（对角项 `1-2(y²+z²)` 与交叉项
+  `2(xy+zw)` 的缩放不一致）⇒ 矩阵带进 ~(1-|q|²) 的**各向异性**：
+  实测 `mat3_cast(源四元数)` 的列模长 `0.99917634 / 0.99991350 / 0.99917634`、
+  **列间最大 |dot| = 3.674e-04**（= 那些"残差"的量级）；归一化后列模长全 1、|dot| = 0。
+  于是矩阵**真的不是 TRS 可表示的** ⇒ 保真自检（正确判据）把它判死 ⇒ 整个资产被误拒。
+- **修复**：`gltf/ToNodeTransform.cpp` 新增 `NormalizedRotation(src)`（`glm::normalize`，全零四元数退化单位），
+  `FastTRSToGlmMat4` 改用它。glTF 规范本就要求 rotation 为单位四元数 ⇒ 归一化是"按文件本意解释"，
+  非单位值属非法输入；真正的畸形矩阵仍会被保真自检拦住（阈值不动）。
+- **验证**：`IridescentDishWithOlives` **rc=0 且检查全过**（[A] 1.84e-07、[C] 1.35e-08）；
+  `TextureEncodingTest` [A] **3.625e-03 → 2.02e-06**（同一根因连带修好）；
+  全库 **124 → 126 PASS（3 → 1 FAIL）**；引擎回归门 42 PASS / 0 FAIL、三测试 rc=0；构建 0 error / 0 warning。
+- **经验（已写进技能）**：残差异常大（>1e-5）但矩阵看起来正常时，**先查源四元数的模长**。
+- **影响面（官方样本实测）**：142 个资产里带 `rotation` 的节点 347 个，其中 `|q|` 偏离 1 超过 1e-6 的 **5 个（1.44%）**，
+  分布在 4 个资产：`IridescentDishWithOlives`（4.12e-04）、`TextureEncodingTest`（1.51e-04）、
+  `BrainStem`（4.39e-06）、`Cameras`（1.53e-06，后两者只是浮点噪声）。⇒ 绝大多数资产不受影响，
+  但"小数位截断的四元数"确实存在于真实资产中，且此前会让**整个资产**转换失败。
+
+**⑨ 已修（2026-09-29）：`MultipleScenes` —— 导出文件命名不一致 + 默认场景被忽略**
+
+修前症状：几何/网格全部写出，但在"打包场景"这一步失败
+（`[Export] pack v2 write fail: Cannot open geometry file for ScenePayloadV2: .../MultipleScenes.geometry`），rc=1。
+
+- **根因 1：同一文件被算出两个名字。** `MakeGeometryFileName(base, idx, total)` 在 `total==1` 时**不带索引**，
+  而两侧传的 `total` 不同：**写出侧** `ExportGeometries.cpp:21` 用 `model->geometry.size()`（全局，=2 ⇒ 写 `.0./.1.`），
+  **场景记录侧** `SceneExportGeometries.cpp:15` 用 `ci.geometries.size()`（本场景，=1 ⇒ 记录 `MultipleScenes.geometry`）
+  ⇒ 打包时按记录名开文件，文件不存在。
+- **根因 1b（同源、更隐蔽，且是运行时 bug）**：`SceneExportPrimitives.cpp` 用默认 `total=-1` 自己又算了一份
+  （**永远带索引**），而这个字段 `pe.geometryFile` **被写进场景包、由引擎在加载时按它打开几何文件**
+  （`SceneExportPack.cpp:226/516` 写入，`LoadStaticMesh.cpp:394/401` 读出并 `base_dir + "/" + name`）。
+  ⇒ **单几何资产**的包内名 `X.0.geometry` 与磁盘 `X.geometry` 不符（实测 `BoxInterleaved`）⇒ **引擎加载必然失败**。
+  属既有缺陷，此前没被发现。
+- **修法（定为"写出侧参数是唯一规范"，并消灭第二处计算）**：
+  ① `BuildGeometries` 新增 `totalGeometryCount` 形参，调用点传 `model.geometry.size()`（与写出侧同源）；
+  ② `BuildPrimitivesExport` **不再计算文件名**（删掉该形参与 `ExportFileNames.h` 依赖），
+  几何文件名在 `SceneExportBuild` 的链接步直接取自几何表 `data.geometries[geoIt->second].file`
+  ⇒ 包内名字与几何表、磁盘三者必然一致（单一真源）；
+  ③ `SceneExportMaterials` 去掉 `ci.materials.size()`（写出侧 `MaterialExporter.cpp:53` 用默认 `-1` ⇒ 永远带索引），
+  两侧一致（材质是同类不一致，只是 `MultipleScenes` 恰好 0 材质没暴露）。
+- **根因 2：导出写死 `sceneIndex=0`（`ExportPureModel.cpp:40` 原注释`// first scene only`）。**
+  glTF 规范要求客户端优先使用 `scene`（默认场景），该资产是 `scene=1` ⇒ 修前导出的是**非默认场景**的内容。
+  修法：`GLTFModel`/`pure::Model` 增加 `default_scene`/`defaultScene`（导入时取 `asset.defaultScene.value_or(0)`），
+  导出用 `SelectDefaultScene()`（越界回落 0）。
+- **检查脚本**：新增**源节点可达性判据** —— 多场景资产里非默认场景的节点本就不导出，
+  现在跳过而非判失败（可达却缺失才报错）。
+- **验证**：`MultipleScenes` **rc=0**，包内引用变为 `MultipleScenes.1.geometry`（= 默认场景 scene 1 的几何，修前是 `.0.`）；
+  `BoxInterleaved` 包内名与磁盘一致（`BoxInterleaved.geometry`）；检查套件 `PASS (12/12)`；全库见 ⑥ 表。
+
+
 ### T5 `matrixTable` 退役（TRS-only 导出）——依赖 T2 + T4
 
 - **目标**：导出侧每节点只留 TRS（identity 用 `trsIndex < 0` 表达），删 `matrixTable` 里的 local/world 双份。
 - **文件**：`src/Tools/GLTFConvert/export/SceneExportNodes.cpp:27-33`、`export/SceneExportData.h:20-22, 53-54`、`export/SceneExportPack.cpp:189-191, 350-352, 457-459, 478-484`、`export/SceneExportJson.cpp:76-78`；主仓 `example/Geometry/LoadScene/LoadStaticMesh.cpp`（`PackedNode`/`NodeList` 解析、`StaticMeshNode::{localMatrix,worldMatrix}`）、`inc/hgl/graph/mesh/StaticMesh.h:22-23`。
 - **注意**：世界变换有真实消费者（`SceneTest.cpp` 的扁平化烘焙）⇒ TRS-only 后世界变换要在加载期自行连乘得到（一次，不逐帧）。
 - **验收**：3 个模型转换+加载正常；pack 体积下降（记录改前后数字）；门 42 PASS / CSM 契约不变。
+
+**实测结论（2026-09-30，已完成；用户拍板"JSON + pack 一起去"）**
+
+- **爆炸半径比预估小**：`matrixTable` 的**引擎运行时消费者 = 0**（`src/` + `inc/` 全仓 grep 命中 0）；
+  产物消费者只有 `example/Geometry/LoadScene/LoadStaticMesh.cpp` 一处（内含**两条**装载路径：
+  SCN2 chunk 路径 + MiniPack 路径 —— 漏改一条就会字段错位）。
+- **产物侧改动**：`SceneExportData.h`（删 `matrixTable` / `localMatrixIndex` / `worldMatrixIndex`）、
+  `SceneExportNodes.cpp`（删矩阵填充）、`SceneExportJson.cpp`（删 `matrixTable` 与节点 `localM`/`worldM` 键）、
+  `SceneExportPack.cpp`（删 `MatrixTable` chunk + 枚举重排、`PackedNode` 去两字段、NodeList 去两 int、
+  删 MiniPack 的 `MatrixTable` 条目）、`SceneExportTransforms`（删 `GetOrAddMatrix`）。
+  **`ComputeWorldMatrices` 保留**：导出内部仍需它算 world AABB，只是不再写进产物。
+- **消费者改动**：`LoadStaticMesh.cpp` 新增 `ComposeNodeMatrices()`（两条路径共用）：
+  `local = TranslateMatrix(t)·ToMatrix(q)·ScaleMatrix(s)`（与 `hgl::math::Transform::GetMatrix()` 同一组合式）、
+  `world = 父world × local`、DFS 前序；**无 trs 行 ⇒ 单位变换**（这条契约被数据对拍实测确认）。
+- **验证（数字）**：
+  - 数据对拍（`vulkan_logo`：旧 pack 的矩阵表 ↔ 新产物 TRS 组合）：`max|Δlocal| = max|Δworld| = 1.94e-07`；
+  - pack 体积：**247,409 → 246,780** B（该资产只有 4 节点；节省 ≈ 2 矩阵/节点 + 8 B/节点）；
+  - 示例 `LoadScene` 真跑：`ABeautifulGame` 棋盘/棋子渲染正确（组合约定错会立刻表现为飞散/错位）；
+  - 检查脚本：[B] 判据随 `matrixTable` 一起删除，[C] 的 worldM 改为脚本自己按父链组合；PASS(8/8)；
+    全库 142 资产 **141 PASS / 1 SKIP / 0 FAIL**；
+  - 引擎回归：门 42/0、四测试 rc=0；构建 0 error / 0 warning；改动文件 BOM+CRLF 合规。
+- **零兼容代价（已拍板接受）**：旧格式产物新装载器读不了 ⇒
+  `res/model/vulkan_logo/*`、`res/ABeautifulGame.StaticMesh/*` 已用新转换器重生成。
 
 ### T6 局部真源唯一化（组件三份副本 → 一份）
 
@@ -402,3 +837,43 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 3. **T8 的隐藏工作量**：删 `TransformComponent` 会连带改"组开关 = 组件计数"机制与 `RenderItem::GetTransform()` 接口，工作量被原文档低估。
 4. **T10/T11 的先后被原文档写反**：原文档把"48B 结构 / SoA 指针数组"当阶段零，把真正的物理前提（容量与行号冻结）漏掉；按现顺序执行会在阶段三发现行号漂移而返工。
 5. Windows 上 `.ulrescene` 的 mmap 语义与 Linux 不同（`CreateFileMapping`，且不能把只读文件页直接当 GPU 可写源）——T11 的设计要按平台重写而非照抄文档里的 `mmap` 示例。
+6. ~~检查脚本是否收编~~ **已收编（2026-09-29）**：`src/Tools/GLTFConvert/check/verify_transform_chain.py`（独立可用）
+   + `check/README.md` + CMake 选项 `GLTF_BUILD_TRANSFORM_CHECK`（默认 OFF → ctest `GLTFConvertTransformChain`）。
+   后续若要做成更独立的工具：把它挪到独立的 check 目录/包，接受 `--exe`、`--models`、`--report`，已具备。
+7. ~~剪切告警还是 fail-fast~~ **已定为 fail-fast（2026-09-29）**：残差 > 1e-4 直接判失败 → `ImportNodes` 返回 false
+   → CLI `return 1` 并打印节点名/残差。**单轴 scale=0 不算失败**（用另两轴叉积补齐正交基，精确重建）；
+   两轴以上退化才失败。
+8. **样本模型只能用 glTF 2.0**：`res/model/color_teapot_spheres.gltf` 是 assimp 导出的 **glTF 1.0**
+   （`asset.version="1.0"`、`buffers` 是对象不是数组），fastgltf 不支持 ⇒ 转换器会长时间卡住/异常退出，
+   检查脚本现在会**先校验版本再转换**并给出明确错误。要把 1.x 资产纳进来就得在转换器入口做版本判定 + 明确报错
+   （目前是 fastgltf 的行为，属既有缺口，与本次改动无关）。
+9. ~~**最小体积 OBB 的 run-to-run 非确定性**~~ → **A1 已修（2026-09-29）**：
+   - **根因**：`math/OBB.cpp` 的四处并行归约（粗搜索的线程局部与 `omp critical`、两次 refine 的同两处）都用
+     `if(vol < bestVol)` —— **只比体积、且是严格小于**。平面/旋转对称形状上大量朝向的体积**完全相等**（tie），
+     赢家于是取决于"哪个线程先进入 `critical`"（到达顺序）⇒ 同一二进制度连跑两次得到不同朝向
+     （实测 `obbAxis*` 最大 Δ=2.0、`obbCenter` ~1e-6，并让 `*.geometry`（内嵌 BoundingVolumes）与 `*.scene`
+     的字节随运行变化）。
+   - **修法**：新增**严格全序**判据 `better(volA,yawA,pitchA,rollA, volB,yawB,pitchB,rollB)`
+     —— 先比体积，体积相等再按 `(yaw,pitch,roll)` 字典序；四处归约（含串行 `#else` 分支，保证 OpenMP ON/OFF 一致）
+     全部改用它。全序下 min 与归约顺序无关 ⇒ 结果与线程数、分块、到达顺序无关。
+   - **验证**：同一二进制连跑两次、3 个模型共 **249 个产物逐字节一致（0 处差异）**（修前 `BasicModel` 20 个文件里 7 个不同）；
+     **AABB 逐位不变（差 0.00e+00）**；OBB 体积相对变化 ≤ **9.2e-07**（只在不同 tie 候选之间换朝向，
+     属旋转对称形状的规范自由度，不是质量退化）。
+   - **影响**：转换器回归**重新可以用字节比对**（同机同二进制）；跨编译器/跨环境仍建议字段级比对。
+10. ~~**单位变换规约（是否做）**~~ → **A2 已修（2026-09-29）**：
+   - **背景**：源文件里"没有变换键"的节点，经共轭 `R·M·R⁻¹` + 分解后留下 **1 ULP** 的 scale 残差
+     （实测 `|s−1| = 1.19e-07 = 2⁻²³`，`t`/`r` 精确为 0），而 `TRS::empty()` 是**精确比较** ⇒ 判不出单位变换。
+   - **修法**：`gltf/ToNodeTransform.cpp` 在分解之后、保真自检**之前**加"恒等规约"——
+     `|t| ≤ 1e-6`、`|s_i−1| ≤ 1e-6`、`|q.xyz| ≤ 1e-6`、`||q.w|−1| ≤ 1e-6` ⇒ 收敛为规范 `TRS{}`
+     （eps=1e-6：远离 1.19e-07 的 ULP 噪声，又远小于真实几何尺度差异）。**不引入状态枚举**
+     （`empty()` 仍是唯一出口）。放在自检前 ⇒ 自检校验的就是最终存下来的值。
+   - **验收**：检查脚本的"残差占行"计数 **120 → 0**（合成 `ok` 1→0、`RecursiveSkeletons` 84→0、
+     `CarConcept` 17→0、`ABeautifulGame` 1→0、`MultipleScenes` 1→0）；[A] 不退化
+     （`BasicModel` 9.54e-07 不变；`MultipleScenes` 的恒等节点 4.77e-07 → **4.44e-16**）；
+     全库 **127 PASS / 15 SKIP / 0 FAIL**；门 42 PASS / 0 FAIL、三测试 rc=0。
+   - **⚠ 更正此前的估计**：原文写"每个无变换节点白占一行 trsTable（`RecursiveSkeletons` 84 行）"**不准确** ——
+     `GetOrAddTRS` 是**按值去重**的，那些"单位 + 同值 ULP 噪声"的行本来就被合并成 **1 行** ⇒
+     `trsTable` 实际只省 **1 行/资产**（`RecursiveSkeletons` 10→9、`CarConcept` 40→39、`ABeautifulGame` 36→35）。
+     **真实收益在节点级**：那些节点不再引用 trs 行（`trsIndex = -1`），且**引擎侧拿到的是精确单位矩阵**
+     （`matrixTable` 的 0 号条目）而不是"几乎单位"的矩阵 —— 这一条对后续 T6（局部真源唯一化）与
+     T10（行号冻结）才有意义。
