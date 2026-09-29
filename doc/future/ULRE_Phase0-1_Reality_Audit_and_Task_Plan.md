@@ -272,7 +272,7 @@ I2W 记账 + 每行存储等）。这是阶段一/三收益论证的基准数字
 | A3 | 未启用扩展：`enableExtensions` + 不支持的干净 fail-fast | ✅ 已完成（2026-09-29）：15 个里 14 个转成功（0–3s）、1 个干净拒绝（0s，理由明确） |
 | A4 | 多场景**全部**导出（命名 `sceneN`） | ✅ 已完成（2026-09-29）：`MultipleScenes` → `scene0`/`scene1` 两份产物；单场景命名零变动（`BasicModel.Scene.*`/`AnimatedCube.unnamed.*`） |
 | B1 | T5 `matrixTable` 退役 | ✅ 已完成（2026-09-30）：JSON + pack 双格式 TRS-only；示例装载器改为从 TRS 组合世界矩阵；对拍 max\|Δlocal\|=\|Δworld\|=1.94e-07 |
-| B2 | T6 局部真源唯一化（+ T7 `local_matrices` 去留） | 待 B1 |
+| B2 | T6 局部真源唯一化（+ T7 `local_matrices` 去留） | ✅ 已完成（2026-09-30）：组件三份副本（TRS/世界矩阵/脏标记）+ `GetLocalMatrix()` 删除，读写直落 storage；`local_matrices` 判定为"求值中间量"保留；死接口清 14 个 |
 | B3 | T8 `TransformComponent` → `TransformID` | 待 B2 |
 | B4 | T9 其余组件 ID 化 | 待 B3 |
 | C1 | T10 容量与行号冻结（**必须早于 C2**） | 待 B4 |
@@ -757,11 +757,45 @@ model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
 - **文件**：`src/ecs/components/TransformComponent.cpp`（`:104`、`:111/114`、`:146/149`、`:182/185`、`:210-213`、`:223-231`、`MigrateStorage :599`、`UpdateWorldMatrix :664-`）+ 头文件。
 - **验收**：`TestTransformFlatStorage`、`TestCSMIncrementalPass`（含 D4 静态写入告警 Test 15 契约）、门；示例 `ClockUse`（static/movable 混合）、`RecursiveCube`（层级）、`ComputeTransformHierarchy` 冒烟。
 
+**实测结论（2026-09-30，已完成）**
+
+- **删掉的副本**：`local_pos/local_rot/local_scale`（局部 TRS 的第二份）、`cachedWorldMatrix`（世界矩阵的第二份）、
+  `matrixDirty`（脏标记的第二份）；`TransformComponent::GetLocalMatrix()` 随之**无调用者 ⇒ 一并删**。
+  现在 `TransformComponent` 只用 `storageHandle` 寻址，读写全部直落 `TransformDataStorage`（含 `IsDirty()`：
+  由 `storage->IsDirty(handle)` 判定）。
+- **顺带修掉的两个隐患**：① `GetWorldRotation/GetWorldScale/SetWorld*` 原来直接用 `storageHandle`（可能还是
+  `INVALID_HANDLE`）⇒ 未分配时读越界，现在统一走 `GetStorageHandle()`（惰性分配）；
+  ② `OnAttach()` 换存储时原来从组件副本抄 TRS，现在**从旧行搬**（组件已经没有副本可抄）。
+- **死代码清理**（同批，全部 0 引用）：匿名命名空间的 `TransformRecord`/`ToArray*`/`ToVec*`/`ToQuat`、
+  `GetLocalMatrix()/SetLocalMatrix()`、`GetAllPositions/Rotations/Scales/WorldMatrices`、
+  `GetLocalMatrices/GetParentIndices/GetHierarchyDepths/GetEvalOrder/GetLevelOffsets`（ValueArray 读取口）、
+  `GetLevelHandles`、`GetLevelOffsetsData`、`GetEvalOrderCount`、`UpdateMovableDirtyMatrices`、
+  `UpdateAllDirtyMatrices`、`MarkTopologyDirty`。
+- **验证**：`TestTransformFlatStorage` / `TestRenderItemDataStorage` / `TestCSMIncrementalPass`（含 Test 15 D4 契约、
+  Test 23 相机槽）**rc=0**；门 **42 PASS / 0 FAIL**；三个示例 `ClockUse`/`RecursiveCube`/`ComputeTransformHierarchy`
+  跑满 10s 不崩（rc=124=被 timeout 杀）；构建 0 error / 0 warning。
+- **坑（写进技能）**：把头里的 `inline bool IsDirty() const` 改成外部定义后，**陈旧 obj** 会报
+  `LNK2005: IsDirty() already defined in <Test>.obj`（老 TU 按 inline 发射了符号）⇒ 先 purge
+  `build/src/ecs/**/*.dir/Debug` 再编，不要怀疑代码。
+
 ### T7 `local_matrices` 缓存去留（与 T6 同批判定）
 
 - **现状消费者只有三处**：`TransformComponent::GetLocalMatrix`（`TransformComponent.cpp:221-226`）、`TransformDataStorage::UpdateAllLocalMatrices/GetLocalMatricesData`（`TransformDataStorage.h:234-251`）、示例 `example/Basic/ComputeTransformHierarchy.cpp:314/360`（把 local 矩阵当 mat4 上传给 compute shader 做层级求值 demo）。
 - **决策**：若 `ComputeTransformHierarchy` 的定位是"未来 GPU 层级求值的探路"，缓存保留（并在注释写明"仅该示例消费"）；若暂不做 GPU 层级求值，缓存与示例一起删（零兼容口径）。
 - **验收**：删除后每行省 64B（T0 探针复测）；示例/测试全绿。
+
+**判定结果（2026-09-30，用户选择"执行 B2"⇒ 按证据保留缓存）**
+
+- `local_matrices` **不是副本，是求值中间量**：`UpdateAllWorldMatricesFlat` / `UpdateDirtyWorldMatricesFlat`
+  都要读 `local_matrices[idx]`（`world = 父world × local`）；删掉就得在每个节点重算 `T*R*S`。
+  它由 TRS 唯一决定、**没有任何写入口**（T6 已删 `SetLocalMatrix` 与两个 `GetLocalMatrix`），
+  已是纯派生数据 ⇒ **保留**，并在头里写明"求值中间量，不是第二真源"。
+- 外部读取口只剩 `GetLocalMatricesData()` / `UpdateAllLocalMatrices()` 两个，消费者**只有**
+  `ComputeTransformHierarchy`（`example/Basic/ComputeTransformHierarchy.cpp`，GPU 层级求值探路）——
+  该示例仍在，且自检有效 ⇒ 一并保留（**这是"示例定位"那一问的现状，未改动**）。
+- **示例的真实自检数字**（比 T7 原本的验收更强）：`ComputeTransformHierarchy` 自报
+  `PASS: 212 nodes across 8 levels verified successfully! max_diff=1.9e-06/1.0e-06/5e-07`
+  （CPU 从 TRS 组合出的世界矩阵 ↔ GPU compute 层级求值）⇒ T6 的"单一真源"在两条独立实现上对得上。
 
 ### T8 `TransformComponent` → `TransformID`（阶段一主体）
 

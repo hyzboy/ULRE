@@ -43,17 +43,13 @@ namespace hgl
             TransformDataStorage::HandleID storageHandle = TransformDataStorage::INVALID_HANDLE;
             TransformDataStorage* bound_storage = nullptr;
 
-            glm::vec3 local_pos{0.0f};
-            glm::quat local_rot{1.0f, 0.0f, 0.0f, 0.0f};
-            glm::vec3 local_scale{1.0f};
+            // 局部 TRS 与世界矩阵的**唯一真源**是 TransformDataStorage（按 handle 寻址）；
+            // 本组件不再持有任何副本（历史上这里的 local_pos/rot/scale 与 cachedWorldMatrix
+            // 是第二、第三份真源，改动只写其中一份就会出现「读到的和写进去的不一致」）。
 
             // Hierarchy (using EntityID instead of shared_ptr)
             EntityID parent_id;
             std::vector<EntityID> child_ids;
-
-            // Cached world transform (for static objects)
-            glm::mat4 cachedWorldMatrix;
-            bool matrixDirty;
 
             // Optimization settings
             Mobility mobility;
@@ -100,7 +96,7 @@ namespace hgl
 
         public:
 
-            // Local transform accessors (using SOA backend)
+            // 局部 TRS 的读写一律直落 SOA 存储（唯一真源）
             glm::vec3 GetLocalPosition() const;
             void SetLocalPosition(const glm::vec3& pos);
 
@@ -115,7 +111,6 @@ namespace hgl
         public:
 
             // World transform accessors
-            glm::mat4 GetLocalMatrix() const;
             glm::mat4 GetWorldMatrix();
 
             glm::vec3 GetWorldPosition();
@@ -172,7 +167,7 @@ namespace hgl
             void SetMovable(bool isMovable);
             bool IsMovable() const { return mobility == Mobility::Movable; }
             bool IsStatic() const { return mobility == Mobility::Static; }
-            bool IsDirty() const { return matrixDirty; }
+            bool IsDirty() const;
 
             // ── D4：静态写入诊断（A′：把"静态写完不动"做成 API 语义）────────────
             /// 组件已被渲染侧消费过（TransformSystem 在静态段同步时置位）。

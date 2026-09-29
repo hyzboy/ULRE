@@ -135,6 +135,8 @@ namespace hgl
             }
 
         public: // Local matrix accessors
+                 // local_matrices 是**求值中间量**（由 TRS 合成，供两个平铺世界求值读），
+                 // 不是可写的第二真源：写入只有 TRS 与求值两条路。
 
             void UpdateLocalMatrix(HandleID id)
             {
@@ -147,32 +149,6 @@ namespace hgl
 
                 local_matrices[id] = transMatrix * rotMatrix * scaleMatrix;
                 local_dirty[id] = 0;
-            }
-
-            glm::mat4 GetLocalMatrix(HandleID id)
-            {
-                if (local_dirty[id])
-                    UpdateLocalMatrix(id);
-                return local_matrices[id];
-            }
-
-            glm::mat4 GetLocalMatrix(HandleID id) const
-            {
-                if (local_dirty[id])
-                {
-                    glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scales[id]);
-                    glm::mat4 rotMatrix = glm::mat4_cast(rotations[id]);
-                    glm::mat4 transMatrix = glm::translate(glm::mat4(1.0f), positions[id]);
-                    return transMatrix * rotMatrix * scaleMatrix;
-                }
-                return local_matrices[id];
-            }
-
-            void SetLocalMatrix(HandleID id, const glm::mat4& mat)
-            {
-                local_matrices[id] = mat;
-                local_dirty[id] = 0;
-                matrixDirty[id] = 1;
             }
 
         public: // World matrix accessors
@@ -237,8 +213,6 @@ namespace hgl
             glm::mat4* GetWorldMatricesData() { return world_matrices.GetData(); }
 
             const HandleID* GetEvalOrderData() const { return eval_order.GetData(); }
-            const uint32_t* GetLevelOffsetsData() const { return level_offsets.GetData(); }
-            int GetEvalOrderCount() const { return eval_order.GetCount(); }
 
             void UpdateAllLocalMatrices()
             {
@@ -250,9 +224,8 @@ namespace hgl
                 }
             }
 
-        public: // Level-by-level topological sort and flat evaluation
+        public: // 拓扑（供示例/probe 读层级；重建由脏标记驱动）
 
-            void MarkTopologyDirty() { topology_dirty = true; }
             bool IsTopologyDirty() const { return topology_dirty; }
 
             /// 重建树深度分层与拓扑执行序列
@@ -365,13 +338,6 @@ namespace hgl
                 return 0;
             }
 
-            const HandleID* GetLevelHandles(uint32_t level) const
-            {
-                if (level < GetLevelCount())
-                    return eval_order.GetData() + level_offsets[level];
-                return nullptr;
-            }
-
             /// 纯平铺数组无递归世界矩阵计算（零指针跳转，对齐未来 ComputeShader）
             void UpdateAllWorldMatricesFlat()
             {
@@ -440,54 +406,9 @@ namespace hgl
                 }
             }
 
-        public: // Batch operations
-
-            void UpdateMovableDirtyMatrices(const std::function<void(HandleID, glm::vec3, glm::quat, glm::vec3)>& callback)
-            {
-                for (int i = 0; i < matrixDirty.GetCount(); ++i)
-                {
-                    if (mobility[i] == 0)
-                        continue;
-
-                    if (matrixDirty[i])
-                    {
-                        callback(static_cast<HandleID>(i), positions[i], rotations[i], scales[i]);
-                        matrixDirty[i] = 0;
-                    }
-                }
-            }
-
-            void UpdateAllDirtyMatrices(const std::function<void(HandleID, glm::vec3, glm::quat, glm::vec3)>& callback)
-            {
-                for (int i = 0; i < matrixDirty.GetCount(); ++i)
-                {
-                    if (matrixDirty[i])
-                    {
-                        callback(static_cast<HandleID>(i), positions[i], rotations[i], scales[i]);
-                        matrixDirty[i] = 0;
-                    }
-                }
-            }
-
-        public: // Batch data accessors
-
-            const std::vector<glm::vec3>& GetAllPositions() const { return positions.GetArray(); }
-            std::vector<glm::vec3>& GetAllPositions() { return positions.GetArray(); }
-
-            const std::vector<glm::quat>& GetAllRotations() const { return rotations.GetArray(); }
-            std::vector<glm::quat>& GetAllRotations() { return rotations.GetArray(); }
-
-            const std::vector<glm::vec3>& GetAllScales() const { return scales.GetArray(); }
-            std::vector<glm::vec3>& GetAllScales() { return scales.GetArray(); }
-
-            const std::vector<glm::mat4>& GetAllWorldMatrices() const { return world_matrices.GetArray(); }
-            std::vector<glm::mat4>& GetAllWorldMatrices() { return world_matrices.GetArray(); }
+        public: // Batch data accessors（只保留有消费者的；0 引用的读取口已删）
 
             const hgl::ValueArray<glm::mat4>& GetLocalMatrices() const { return local_matrices; }
-            const hgl::ValueArray<HandleID>& GetParentIndices() const { return parent_indices; }
-            const hgl::ValueArray<uint16_t>& GetHierarchyDepths() const { return hierarchy_depths; }
-            const hgl::ValueArray<HandleID>& GetEvalOrder() const { return eval_order; }
-            const hgl::ValueArray<uint32_t>& GetLevelOffsets() const { return level_offsets; }
 
         public:
 
