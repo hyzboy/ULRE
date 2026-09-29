@@ -131,8 +131,8 @@
 1. **清陈旧产物缓存**：`rm -rf build/cache-hot/shader-cache`（不清会拿旧产物冒充新结果）。
 2. 改到**头文件/结构大小**时先 purge：`purge-stale-deps.sh E:/ULRE E:/ULRE/build E:/ULRE/src E:/ULRE/inc E:/ULRE/example -- <headers>`。
 3. 构建 → **禁用 `| grep error` 判结果**（吞错后会跑旧 exe ⇒ 假绿；构建失败时 MSBuild 不重链 exe）。
-4. `ShaderResourceSchemaRegressionGate`：基线 **39 PASS / 0 FAIL**（含 `descriptor_macros_verify` 构建期校验）。
-5. `TestCSMIncrementalPass` = **21 Passed**；`TestRenderItemDataStorage` 通过。
+4. `ShaderResourceSchemaRegressionGate`：基线 **42 PASS / 0 FAIL**（含两张表各一条 parity + 各一条 `*-field-ownership` 归属用例，见 §6 契约 ④）。
+5. `TestCSMIncrementalPass` = **22 Passed**（Test 22 = 两世界同帧隔离契约）；`TestRenderItemDataStorage` 通过。
 6. `ATS_SELFCHECK=1 AlphaTestShadow` → 三契约 + selfcheck PASS + **0 VUID** + 数字与基线一致。
 7. `CSM_CACHE_DIFF=1 CSM_AUTOWALK=4 CascadeShadowMap` → 多轮 **不一致=0**（该项无自动退出，需 timeout）。
 8. **破坏验证**（证明门有牙）：如跳过行池预激活应看到 `D4 FAIL（拒绝 160 次）`、ATS rc=1。

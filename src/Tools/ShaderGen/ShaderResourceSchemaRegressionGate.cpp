@@ -2860,6 +2860,161 @@ namespace
         return result;
     }
 
+    /// 「表归属」分类表（**唯一真源**）：每个地址字段必须**恰好**属于一侧 ——
+    /// `WorldAddresses`（世界私有：多世界同帧各写自己的）或 `GlobalAddresses`（设备级全局：跨世界共享的资源池）。
+    /// 新增地址字段必须在此登记，否则门报「未分类字段」（见 §6 契约 ④）。
+    struct AddressOwnershipEntry
+    {
+        const char *field;
+        bool world_owned;
+    };
+
+    static const AddressOwnershipEntry kAddressOwnershipTable[] =
+    {
+        // ── 世界私有（随世界：相机行表 / 4-ID 渲染项表 / DrawItemID 表）──
+        { "addr_camera_info",           true  },
+        { "addr_global_render_items",   true  },
+        { "addr_draw_item_ids",         true  },
+        // ── 设备级全局（跨世界共享的资源池 + 每帧槽字段）──
+        { "addr_mesh_draw_params_pool", false },
+        { "addr_pbr_surface",           false },
+        { "addr_emissive_surface",      false },
+        { "addr_transmission_surface",  false },
+        { "addr_color_palette",         false },
+        { "addr_sky",                   false },
+        { "addr_viewport",              false },
+        { "addr_shadow",                false },
+    };
+
+    /// 「表归属」契约（§6 契约 ④）：`world_side=true` 检查世界表，`false` 检查全局表。
+    ///
+    /// 两条判据（都按**字段集合**比对，与顺序无关；顺序由 parity 用例各管）：
+    /// ① 该侧（C++ 与 GLSL 两端）提取出的字段集合 == 分类表里登记的该侧集合
+    ///    —— 多出来的是「未分类字段」（新字段忘了登记 / 放错表），少了的是「漏字段」；
+    /// ② 该侧字段**不得**出现在另一侧 —— 放错表就是跨世界串数据：世界私有字段（相机行 /
+    ///    渲染项 / DrawItemID）一旦落进设备级表，就退化成"所有世界共用一份"，多世界同帧互相覆写。
+    static GateResult RunAddressOwnershipCase(const bool world_side)
+    {
+        GateResult result;
+        result.name = world_side ? "W.world-addresses-field-ownership"
+                                 : "S.global-addresses-field-ownership";
+
+        const std::string world_cpp =
+            ReadFileText(RepoRootPath("inc/hgl/graph/ubo/WorldAddresses.h"));
+        const std::string global_cpp =
+            ReadFileText(RepoRootPath("inc/hgl/graph/ubo/GlobalAddresses.h"));
+        const std::string glsl =
+            ReadFileText(RepoRootPath("ShaderLibrary/ubo/scene_ubo.glsl"));
+
+        if (world_cpp.empty() || global_cpp.empty() || glsl.empty())
+        {
+            result.diagnostics.emplace_back(
+                "无法读取 WorldAddresses.h / GlobalAddresses.h / scene_ubo.glsl");
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        const std::vector<std::string> world_fields_cpp =
+            ExtractU64Fields(world_cpp, "struct WorldAddresses");
+        const std::vector<std::string> world_fields_glsl =
+            ExtractU64Fields(glsl, "buffer WorldAddressesRef");
+        const std::vector<std::string> global_fields_cpp =
+            ExtractU64Fields(global_cpp, "struct GlobalAddresses");
+        const std::vector<std::string> global_fields_glsl =
+            ExtractU64Fields(glsl, "buffer GlobalAddressesRef");
+
+        const std::vector<std::string> &this_cpp  = world_side ? world_fields_cpp  : global_fields_cpp;
+        const std::vector<std::string> &this_glsl = world_side ? world_fields_glsl : global_fields_glsl;
+        const std::vector<std::string> &other_cpp = world_side ? global_fields_cpp : world_fields_cpp;
+        const std::vector<std::string> &other_glsl= world_side ? global_fields_glsl: world_fields_glsl;
+        const char *this_name  = world_side ? "WorldAddresses" : "GlobalAddresses";
+        const char *other_name = world_side ? "GlobalAddresses" : "WorldAddresses";
+
+        if (this_cpp.empty() || this_glsl.empty())
+        {
+            result.diagnostics.emplace_back(
+                std::string(this_name) + " 字段提取为空（结构标记被改写？）C++="
+                + std::to_string(this_cpp.size()) + " GLSL=" + std::to_string(this_glsl.size()));
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        // 分类表里登记的本侧字段集合
+        std::vector<std::string> expected;
+        for (const AddressOwnershipEntry &entry : kAddressOwnershipTable)
+        {
+            if (entry.world_owned == world_side)
+                expected.emplace_back(entry.field);
+        }
+
+        const auto contains = [](const std::vector<std::string> &list, const std::string &name)
+        {
+            for (const std::string &item : list)
+                if (item == name)
+                    return true;
+            return false;
+        };
+
+        // ① 该侧字段集合必须与登记集合一致
+        for (const std::string &field : this_cpp)
+        {
+            if (!contains(expected, field))
+            {
+                result.diagnostics.emplace_back(
+                    std::string(this_name) + " 出现未分类字段 `" + field
+                    + "`（C++ 侧）：请在 ShaderResourceSchemaRegressionGate 的 kAddressOwnershipTable"
+                      " 里登记它属于世界私有还是设备级全局");
+            }
+        }
+        for (const std::string &field : this_glsl)
+        {
+            if (!contains(expected, field))
+            {
+                result.diagnostics.emplace_back(
+                    std::string(this_name) + " 出现未分类字段 `" + field
+                    + "`（GLSL 侧）：同上，先在 kAddressOwnershipTable 登记");
+            }
+        }
+        for (const std::string &field : expected)
+        {
+            if (!contains(this_cpp, field))
+            {
+                result.diagnostics.emplace_back(
+                    std::string(this_name) + " 缺少登记字段 `" + field
+                    + "`（C++ 侧）：字段被删/改名后请同步 kAddressOwnershipTable");
+            }
+            if (!contains(this_glsl, field))
+            {
+                result.diagnostics.emplace_back(
+                    std::string(this_name) + " 缺少登记字段 `" + field + "`（GLSL 侧）");
+            }
+        }
+
+        // ② 该侧字段不得出现在另一侧
+        for (const std::string &field : other_cpp)
+        {
+            if (contains(expected, field))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("字段 `") + field + "` 出现在 " + other_name
+                    + "（C++ 侧）却在分类表里登记为 " + this_name
+                    + " —— 放错表：世界私有字段进设备级表会让多世界共用一份、同帧互相覆写");
+            }
+        }
+        for (const std::string &field : other_glsl)
+        {
+            if (contains(expected, field))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("字段 `") + field + "` 出现在 " + other_name + "（GLSL 侧）却在分类表里登记为 "
+                    + this_name + " —— 放错表");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunMaterialDefinitionFileSchemaCase()
     {
         GateResult result;
@@ -4765,6 +4920,8 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());
     if (run_interface) results.push_back(RunWorldAddressesStructParityCase());
+    if (run_interface) results.push_back(RunAddressOwnershipCase(false));
+    if (run_interface) results.push_back(RunAddressOwnershipCase(true));
     if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());
     if (run_cache) results.push_back(RunProviderGraphIdentityCase());
     if (run_cache) results.push_back(RunProviderGraphCompositionCase());

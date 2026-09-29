@@ -3310,6 +3310,104 @@ int main(int argc, char** argv)
                  u8"示例落盘为 裸 F32 .raw + CM2D 8bit 灰度 .tga（文件名自带 宽x高/格式）且零自研拷贝残留");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 22: 两个世界同帧互不污染的隔离契约（doc/world-addresses-and-camera-model-plan.md §6 契约 ③）
+    //
+    // 背景：相机行 / 4-ID 渲染项表 / DrawItemID 表都是**世界私有**数据。多世界同帧渲染时
+    // （主世界 + 离屏世界 / 多个 ECSContext 同时出帧），它们必须各自占独立存储与独立地址——
+    // 一旦这些存储退化成设备级单例，两个世界就会共用一份：后写的世界覆盖先写的，症状是
+    // "某个世界渲成另一个世界的相机/渲染项"（间歇、随帧序漂移），而单世界用例全绿。
+    //
+    // 本可执行文件无图形设备（图像级判读在 ATS/CSM 示例的门里），所以这里钉住"隔离机制是否还在"：
+    //   · 四个世界私有存储都是 ECSContext 的**实例成员**（每世界一份），地址表也是每世界一张；
+    //   · 世界表写入端（SyncWorldAddresses）取的是**本世界**存储的地址、按帧槽轮转；
+    //   · 相机行写入只走本世界存储（GetCameraInfoStorage + WriteCameraRow），
+    //     并且**禁止**重新接入设备级注册表（GlobalSSBOBufferRegistry / GlobalSSBOType::CameraInfo）
+    //     或把世界私有地址塞回全局表（GlobalAddresses 里的 addr_camera_info 等）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kIsolationContracts[] =
+        {
+            // ① 世界私有存储 = ECSContext 的实例成员（每世界一份）
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "std::unique_ptr<CameraInfoStorage> camera_info_storage",
+              "相机行存储不再是每世界一份（退化成全局 ⇒ 两世界同帧互相覆写）" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "std::unique_ptr<RenderItemDataStorage> render_item_storage",
+              "4-ID 渲染项表不再是每世界一份" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "std::unique_ptr<DrawItemIDStorage> draw_item_id_storage",
+              "DrawItemID 表不再是每世界一份" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "graph::StructView<graph::WorldAddresses> *world_addresses_table",
+              "世界地址表不再是每世界一张（共表 ⇒ 两世界的地址互相覆盖）" },
+            // ② 世界表写入端：地址只取本世界存储 + 按帧槽轮转
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "addr_camera_info = camera_info_storage->GetGPUBase()",
+              "相机行地址不来自本世界存储（跨世界共用一份 ⇒ 同帧互相覆写）" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "GetRenderItemStorage()",
+              "渲染项表地址不取本世界存储" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "GetDrawItemIDStorage()",
+              "DrawItemID 表地址不取本世界存储" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "frame_index % graph::kWorldAddressesSlotCount",
+              "世界表不再按帧槽轮转（在途帧之间会互踩）" },
+            // ③ 相机行写入路径 = 本世界存储；pass 相机必须属本世界
+            { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
+              "context->GetCameraInfoStorage()",
+              "相机行写入不再走本世界存储" },
+            { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
+              "WriteCameraRow",
+              "相机行写入 API（WriteCameraRow）丢失" },
+            { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
+              "world_owner",
+              "pass 相机不再校验\"属本世界\"（跨世界相机会污染对方世界的相机行）" },
+            // ④ 世界表里必须有这三个世界私有地址（漏了 = 着色器解引用错地址）
+            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
+              "addr_camera_info",
+              "世界表丢了相机行地址" },
+            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
+              "addr_global_render_items",
+              "世界表丢了 4-ID 渲染项表地址" },
+            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
+              "addr_draw_item_ids",
+              "世界表丢了 DrawItemID 表地址" },
+            // ── 禁复活 ──
+            { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
+              "GlobalSSBOBufferRegistry",
+              "相机路径重新接入设备级注册表（相机行必须只来自本世界存储）",
+              true },
+            { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
+              "GlobalSSBOType::CameraInfo",
+              "设备级 CameraInfo 行池已按 C1-3 整删（复活 = 多世界共用一份相机行）",
+              true },
+            { "GlobalAddresses.h", OS_TEXT("inc/hgl/graph/ubo/GlobalAddresses.h"),
+              "addr_camera_info",
+              "世界私有相机行地址出现在设备级全局表（多世界共用一份 ⇒ 同帧互相覆写）",
+              true },
+            { "GlobalAddresses.h", OS_TEXT("inc/hgl/graph/ubo/GlobalAddresses.h"),
+              "addr_global_render_items",
+              "世界私有渲染项表地址出现在设备级全局表",
+              true },
+            { "GlobalAddresses.h", OS_TEXT("inc/hgl/graph/ubo/GlobalAddresses.h"),
+              "addr_draw_item_ids",
+              "世界私有 DrawItemID 表地址出现在设备级全局表",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(22, kIsolationContracts,
+                                                       static_cast<uint>(sizeof(kIsolationContracts) /
+                                                                         sizeof(kIsolationContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 22 Passed: 两世界同帧隔离契约成立（%d 条）：四个世界私有存储/地址表均为每世界一份、"
+                 u8"世界表只取本世界存储地址且按帧槽轮转、相机行只走本世界存储且校验 world_owner，"
+                 u8"设备级相机行池与全局表世界私有字段均未复活。",
+                 static_cast<int>(sizeof(kIsolationContracts) / sizeof(kIsolationContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

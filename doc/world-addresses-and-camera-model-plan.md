@@ -102,7 +102,12 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
    `TestCSMIncrementalPass` 的 9C+ 用例断言 fallback 常驻 / 占 0 号槽 / 不进组件表）；
    ②`req.camera` 必须在本世界相机存储中占槽（跨世界 = fail-fast；**C1-4 已落地**：
    `CameraComponent::world_owner` 在 `CameraSystem::Update` 的覆盖分支比对）；③两个世界同帧互不污染
-   （相机行 / sky / shadow / render items 地址）；④表归属。
+   （相机行 / 4-ID 渲染项 / DrawItemID；**C1-6 已落地**：`TestCSMIncrementalPass` Test 22 共 19 条源码契约
+   钉住"四个世界私有存储/地址表均为每世界一份、世界表只取本世界存储地址 + 按帧槽轮转、相机行只走本世界
+   存储 + 校验 `world_owner`、禁复活设备级相机行池与全局表世界私有字段"；sky / shadow / env 的按世界归属随 C2）；
+   ④表归属（**C1-6 已落地**：门的两条 `S./W.*-field-ownership` 用例，唯一真源 = `kAddressOwnershipTable`
+   —— 按侧比对字段集合：多出 = 未分类字段、缺少 = 漏字段、出现在另一侧 = 放错表；已做破坏验证：
+   把世界私有字段塞进全局表 / 给世界表加未分类字段都让门 rc=1 并报出对应诊断）。
 
 ## 7. 事实订正清单（本轮核对；其它文档按此对齐）
 
@@ -130,12 +135,12 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 | C1-4 | ✅ | 相机模型：三级解析（默认相机 → 显式 `is_main_camera` → 最小 `EntityID` → 常驻 fallback）+ 0 号槽专属默认相机 + `kInvalidSlot` 哨兵（删"0 = 主相机 / 未分配"双关）+ 槽唯一真源上移到 `CameraComponent` + `world_owner` 跨世界 fail-fast + `EnsureCameraSlot()`（发布路径只认领槽，不绑 viewport） | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` **21 Passed**（含新 9C+ 相机模型契约）；`TestRenderItemDataStorage` rc=0；ATS 三契约与基线逐项一致（D1 112x58 / 57.6%、D3 18189 & 600662、D4 0、0 VUID）；CSM 对拍 8 轮 `不一致=0`；双世界 + ShadowMap 冒烟 0 VUID、0 槽耗尽/未认领/跨世界告警 |
 | **C1-4a** | ✅ | **相机视图矩阵修复**（`CameraSystem::UpdateMatrices` 非 custom 分支）：视图一律用 `LookAtMatrix(position, position + forward, world_up)`，**禁用**可能"慢一拍"的 `target`（`position` 被外部直接写时 `target` 落后一帧 ⇒ 方向差 ~30° ⇒ 该帧整幅渲成另一机位；实测同姿态 `viewT` 1.2m ↔ 13.5m 横跳 = "隔几秒拉扯一次/刚出场抖"）。成因与排查法见 `doc/csm-mechanism.md` §5 | `viewT` 序列变为单调平滑；200 帧逐帧转储位移互相关 **0 跳变**；门 40/0；21 Passed；RIDS rc=0；ATS D1 112x58/57.6% 一致（D3 18187 vs 18189，−2px float 末位）；CSM 对拍 8 轮 `不一致=0`；三示例 0 VUID |
 | C1-5 | ✅ | **删世界共享相机载体**：`CameraSystem::camera_info` / `camera_ubo`(+`camera_ubo_managed` / `EnsureCameraResources` / `Shutdown` 释放块) / `GetCamera` / `GetCameraInfo` / `GetCameraUBO` / `CommitCameraUBO` / `UpdateMatrices` 里"主相机/覆盖相机写共享载体"的兼容分支整删；`WorkObject::GetCamera/GetCameraInfo` 删；**30 个示例文件 64 行别名赋值**（`camera->camera_data = GetCamera(); camera->camera_info = const_cast<...>(GetCameraInfo());`）全删——`CameraComponent` 构造即自指向 `local_camera_data/local_camera_info`，`BindCameraResources` 兜底同一件事；新增 **`ECSContext::GetActiveCameraInfo()`**（pass 覆盖相机优先，否则本世界主相机）供剔除 / gizmo / Line 视锥 / shadow origin 统一取"本 pass 生效相机"；`RenderPrimitiveCollectSystem::cameraInfo` 由"安装期缓存指针"改为**每帧现取**（`SetCameraInfo` 接线全删，`DefaultSystems` / `OffscreenWorld` 不再灌指针）；`ViewUBOCommitSystem` 不再提交相机 | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` **21 Passed**；RIDS rc=0；ATS 三契约与基线逐项一致（D1 112x58/57.6%、D3 18187 & 19109、D4 0、0 VUID）；CSM 对拍 8 轮 `不一致=0`；7 个改过的示例（ShadowMap / RenderToTexture / RenderToTextureColorDepth / SimpleCube / ComputeFrustumCull / RayPicking / GizmoUsageExample）冒烟 0 VUID 且启动日志量与改前一致；全仓 `grep GetCameraInfo()` 只剩 `GetActiveCameraInfo()` |
+| **C1-6** | ✅ | **契约收口**：门加两条**表归属**用例（`S.global-addresses-field-ownership` / `W.world-addresses-field-ownership`，唯一真源 = `kAddressOwnershipTable`：按字段集合比对，多出来的是"未分类字段"、少了的是"漏字段"、出现在另一侧的是"放错表"）；`TestCSMIncrementalPass` 加 **Test 22** 两世界同帧隔离契约（19 条源码契约：四个世界私有存储/地址表均每世界一份、世界表只取本世界存储地址且按帧槽轮转、相机行只走本世界存储 + 校验 `world_owner`、设备级相机行池与全局表世界私有字段禁复活）| 门 **42 PASS / 0 FAIL**（+2）；`TestCSMIncrementalPass` **22 Passed**；**破坏验证**已做：把 `addr_camera_info` 塞进全局表 ⇒ rc=1 且报"放错表"、世界表加未分类字段 ⇒ rc=1 且报"未分类字段"，还原后逐字节一致、门回落 42/0；RIDS rc=0、ATS 三契约与基线一致、CSM 对拍 8 轮 `不一致=0`、7 示例冒烟 0 VUID |
 
 ### 8.2 待办（按依赖排序）
 
 | 批次 | 目标 | 主要落点 | 判据 |
 |---|---|---|---|
-| **C1-6** | 契约收口：表归属 + 跨世界 + 渲染必解析出相机 | 门加"归属"契约（`GlobalAddresses` 不得出现世界私有地址、反之亦然）；§6.6 ①②已在 C1-4 落地，补③（两世界同帧互不污染：相机行 / sky / shadow / render items 地址）；`TestCSMIncrementalPass` 补"两世界同帧相机行互不覆写"用例 | 门 ≥ 42 PASS / 0 FAIL；21+ Passed |
 | **C2** | **Env 归世界**：profile 生命周期随世界 + `ResolveSkyUBO/ResolveShadowUBO` 改按世界 + `RenderSceneUBOSystem` / `ViewUBOCommitSystem` / `EnvironmentSystem` 取数点；`WorldAddresses` 的 `addr_sky/addr_shadow/addr_env` 接线（表内槽位已预留） | 世界表写入端 `SyncWorldAddresses`；改 `EnableMainLightShadow` / profile 选择 | 双世界冒烟（两世界不同 sky/shadow profile）0 VUID + 相机/sky/shadow 地址互不串 |
 | **C3** | 灯光 / 镜子相机通用化：每个投影阴影的灯光 → 申请一个相机槽（申请/归还随灯光生命周期），对齐 `doc/shadow-component-and-automated-pipeline-design.md` | `EnvironmentSystem` 现有单灯特例泛化；`CameraInfoStorage` 分配器已是通用槽 | 多灯阴影场景；槽耗尽 fail-fast 契约 |
 | **C4** | ComponentData 骨架：先 `CameraComponent` → `CameraData` + 世界级存储 + 槽访问器，再 Transform / Geometry / Material | 与 C1-5 合并代价小（都是相机存储收口），但回归面变宽 ⇒ 建议 C1-5 先落地 | 门 + 全示例 |
@@ -143,7 +148,7 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 ### 8.3 基线与验证命令（改 CSM / 相机后逐项跑）
 
 ```
-# 基线：门 40 PASS / 0 FAIL；TestCSMIncrementalPass 21 Passed；ATS D1 112x58 57.6% / D3 18187~18189 & 600662 / D4 0 / 0 VUID
+# 基线：门 42 PASS / 0 FAIL（含 S/W 两条 *-field-ownership）；TestCSMIncrementalPass 22 Passed（Test 22 = 两世界隔离）；ATS D1 112x58 57.6% / D3 18187~18189 & 600662 / D4 0 / 0 VUID
 cmake --build build --config Debug --target ShadowMap AlphaTestShadow CascadeShadowMap TestCSMIncrementalPass TestRenderItemDataStorage ShaderResourceSchemaRegressionGate
 ./build/out/Windows_64_Debug/ShaderResourceSchemaRegressionGate.exe
 ./build/out/Windows_64_Debug/TestCSMIncrementalPass.exe          # 必须 cwd=仓库根（Test 7C 读 ShaderLibrary/）
