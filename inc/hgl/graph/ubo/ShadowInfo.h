@@ -67,7 +67,7 @@ namespace hgl::graph
     };
 
     /**
-     * 阴影参数结构（BDA：地址经 global_addresses.addr_shadow 按帧槽下发，无绑定无集）
+     * 阴影参数结构（BDA：地址经**世界表** `world_addresses.addr_shadow` 按帧槽下发，无绑定无集）
      *
      * 对齐标准 std140 布局：
      *   - shadow_vp: 光照空间 View-Projection 矩阵（world -> light clip）

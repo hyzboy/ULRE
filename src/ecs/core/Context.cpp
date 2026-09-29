@@ -35,6 +35,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
+#include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
@@ -87,6 +88,12 @@ namespace hgl
 
             gpu_device = device;
             render_target = target;
+
+            // Env 随世界（C2）：profile 未显式设置时**按需解析本世界 RT 的 env_profile**
+            // （见 GetEnvProfileID）——作者侧可能在世界创建之后才 SetEnvironmentProfile，
+            // 所以这里不缓存快照。sky / shadow 地址按它写本世界地址表。
+            env_profile_explicit = false;
+            env_profile_owned = false;
 
             // 世界私有相机行存储（相机 = 世界级观察者数据）：16 槽 × HGL_FRAME_SLOT_TOTAL 帧槽，
             // 0 号槽恒为本世界默认相机。定稿见 doc/world-addresses-and-camera-model-plan.md §2。
@@ -310,6 +317,17 @@ namespace hgl
                      render_frame_cache.materialBatches.GetCount());
             render_frame_cache.materialBatches.Clear();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
+
+            // Env 随世界（C2）：**本世界创建/拥有的** profile 在这里归还（内置 default 永不归还）。
+            // 释放顺序在世界地址表之前——表里还留着它的地址，但表随后即销毁。
+            if (env_profile_owned)
+            {
+                if (auto *env_manager = ResolveEnvManager())
+                    env_manager->Release(env_profile);
+            }
+            env_profile = graph::kEnvProfileDefault;
+            env_profile_explicit = false;
+            env_profile_owned = false;
 
             // 世界地址表释放（StructView 非拥有 ⇒ buffer 走 BufferManager 归还）
             if (world_addresses_table)
@@ -1408,6 +1426,60 @@ namespace hgl
                  * uint64_t(graph::kWorldAddressesSlotStride);
         }
 
+        graph::EnvProfileID ECSContext::GetEnvProfileID() const
+        {
+            if (env_profile_explicit)
+                return env_profile;
+
+            // 未显式设置 ⇒ 跟随**本世界 RT**（作者侧 SetEnvironmentProfile 可能发生在世界创建之后，
+            // 所以这里每帧解析而不是初始化时取一次）
+            if (render_target)
+                return render_target->GetEnvironmentProfile();
+
+            return graph::kEnvProfileDefault;
+        }
+
+        void ECSContext::SetEnvProfileID(graph::EnvProfileID id, bool take_ownership)
+        {
+            // 换 profile 前先把**旧的、本世界拥有的**那个归还（否则换一次就漏一个 profile）
+            if (env_profile_owned && env_profile != id)
+                if (auto *manager = ResolveEnvManager())
+                    manager->Release(env_profile);
+
+            env_profile = id;
+            env_profile_explicit = true;
+            env_profile_owned = take_ownership;
+
+            // 立刻重算本世界表的 sky / shadow 地址（不等到下一帧）：换 profile 的那一帧就生效
+            SyncWorldAddresses();
+        }
+
+        graph::EnvProfileID ECSContext::CreateEnvProfile(const AnsiString &name,
+                                                         const graph::EnvironmentInfo &init)
+        {
+            auto *manager = ResolveEnvManager();
+            if (!manager)
+                return graph::kEnvProfileInvalid;
+
+            const graph::EnvProfileID id = manager->Create(name, init);
+            if (id == graph::kEnvProfileInvalid)
+                return id;
+
+            SetEnvProfileID(id, true);      // 本世界创建的 ⇒ Shutdown 时归还
+            return id;
+        }
+
+        graph::EnvironmentManager* ECSContext::ResolveEnvManager() const
+        {
+            graph::GraphicsContext *gc = nullptr;
+            if (auto *rc = const_cast<ECSContext *>(this)->GetRenderContext())
+                gc = rc->GetGraphicsContext();
+            if (!gc)
+                gc = const_cast<ECSContext *>(this)->GetGraphicsContext();
+
+            return gc ? gc->GetEnvironmentManager() : nullptr;
+        }
+
         bool ECSContext::SyncWorldAddresses()
         {
             if (!world_addresses_table)
@@ -1434,11 +1506,38 @@ namespace hgl
             if (auto *id_storage = GetDrawItemIDStorage())
                 want.addr_draw_item_ids = id_storage->GetGPUAddress();
 
+            // env（sky / shadow）随世界（C2）：按**本世界生效 profile** 取址写本世界槽。
+            // sky 单份 buffer（全帧槽同址）；shadow 是每帧槽一份的 ring（下标 = 帧槽）⇒ 取本槽那份。
+            // 取不到地址（0）时保留上一份好值——0 地址会让读 sky/shadow 的 shader 解引用 0 基址（UB）。
+            const graph::EnvProfileID active_env_profile = GetEnvProfileID();
+            if (auto *env_manager = ResolveEnvManager())
+            {
+                const uint64_t sky_addr = env_manager->GetSkyAddress(active_env_profile);
+                if (sky_addr != 0)
+                    want.addr_sky = sky_addr;
+
+                const uint64_t shadow_addr = env_manager->GetShadowAddress(active_env_profile, slot);
+                if (shadow_addr != 0)
+                    want.addr_shadow = shadow_addr;
+            }
+
+            const uint64_t old_sky = dst->addr_sky;
+            const uint64_t old_shadow = dst->addr_shadow;
+
             if (std::memcmp(dst, &want, sizeof(graph::WorldAddresses)) == 0)
                 return false;
 
             *dst = want;
             world_addresses_table->Commit();
+
+            // env 地址变化时留一行痕（诊断"两世界同帧各自的 sky/shadow 是否真的分开"）
+            if (old_sky != want.addr_sky || old_shadow != want.addr_shadow)
+                LogInfo("[ECSContext::SyncWorldAddresses] 世界 \"%s\" env 入表：profile=%u "
+                        "sky=0x%llX shadow[%u]=0x%llX",
+                        GetName().c_str(), active_env_profile,
+                        static_cast<unsigned long long>(want.addr_sky), slot,
+                        static_cast<unsigned long long>(want.addr_shadow));
+
             return true;
         }
 

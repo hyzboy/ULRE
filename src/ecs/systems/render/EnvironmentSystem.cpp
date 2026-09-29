@@ -31,11 +31,10 @@ namespace hgl::ecs
 
     graph::EnvProfileID EnvironmentSystem::ResolveProfileID() const
     {
+        // Env 随世界（C2）：profile 由**世界**持有（世界初始化时取本世界 RT 的 env_profile，
+        // 也可由世界显式 SetEnvProfileID / CreateEnvProfile）——不再每次去问 RT。
         if (context)
-        {
-            if (auto *rt = context->GetRenderTarget())
-                return rt->GetEnvironmentProfile();
-        }
+            return context->GetEnvProfileID();
 
         return graph::kEnvProfileDefault;
     }

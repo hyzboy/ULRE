@@ -146,21 +146,20 @@ if (auto *sky = environment_system->EditSkyInfo())
 
 ## 6. 绑定层:每帧解析 + pass 开始固定写入
 
-### 6.1 RenderSceneUBOSystem(`ResolveSkyUBO` / `ResolveShadowUBO` / `SyncGlobalAddressesTable`)
+### 6.1 RenderSceneUBOSystem(`CommitViewportUBO` / `SyncBindingsForCurrentCommand`)
 
-系统本身注册在 `ExecutionPhase::RenderFrameSync`(`src/ecs/systems/render/RenderSceneUBOSystem.cpp:80`),`Update()` 与 `Render()` 都只做 `SyncBindingsForCurrentCommand()`(`:325-333`,调用点 `:316`、`:322`)→ `ApplyResourceLayoutBindings()`。每帧按 world 的 RT 解析:
+系统本身注册在 `ExecutionPhase::RenderFrameSync`(`src/ecs/systems/render/RenderSceneUBOSystem.cpp:80`),`Update()` 与 `Render()` 都只做 `SyncBindingsForCurrentCommand()`（"绑定"已随 Scene 集整体退场 ⇒ 无描述符可推,现为空实现）。**C2 之后 sky / shadow 的地址发布已不在本系统**:
 
 ```
-RT → GetEnvironmentProfile() → manager->GetSkyUBO(id)             → registry->SetSkyAddress(...)     → global_addresses.addr_sky
-RT → GetEnvironmentProfile() → manager->GetShadowUBO(id, frame)   → registry->SetShadowAddress(...)  → global_addresses.addr_shadow
-本系统自持的 viewport buffer                                      → registry->SetViewportAddress(...) → global_addresses.addr_viewport(全帧槽同址)
-camera:CameraSystem 解算（Q 到组件自己的 CameraInfo）→ PublishCamera(Rows) 按 req.camera/主相机写**世界表相机行**     → shader 经 pc_root.camera_row 读
+本系统自持的 viewport buffer                    → registry->SetViewportAddress(...) → global_addresses.addr_viewport(全帧槽同址)
+world(本世界生效 env_profile) → ECSContext::SyncWorldAddresses → 世界表 WorldAddresses.addr_sky / addr_shadow(C2,按帧槽轮转)
+camera:CameraSystem 解算（写组件自己的 CameraInfo）→ PublishCamera(Rows) 按 req.camera/主相机写**世界表相机行** → shader 经 pc_root.camera_row 读
 (Scene 集 / binding 全部退场:以上都是"写表 / 读表",没有描述符可推)
 ```
 
-依据:`RenderSceneUBOSystem.cpp:340-365`(sky 解析)、`:366-400`(shadow 解析)、`:169-194`(`SyncGlobalAddressesTable`:每帧把 RenderItem / DrawItemID 两个地址刷进 `GlobalAddresses` 表)、`:88-148`(`EnsureViewportUBO` → `SetViewportAddress`,调用点 `:145`)、`:401-410`(`ApplyResourceLayoutBindings` 现只调 `SyncGlobalAddressesTable`,无绑定可推)。`GlobalAddresses` 是 **SSBO、无绑定无集**(`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长):池基址等长期字段在 `src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:85-143` 启动时写定,之后只有 `UpdateRenderItemAddresses()`(渲染项 / 绘制项,`:128-143`)与 `SetSkyAddress` / `SetShadowAddress` / `SetViewportAddress` 会改表(本轮之后这三项按世界发布)。
+依据:`EnsureViewportUBO`(`:88-148`)→ `SetViewportAddress`(调用点 `:145`);**sky / shadow 已按 C2 迁出全局表** —— 旧的 `ResolveSkyUBO` / `ResolveShadowUBO`(本系统)与 `SetSkyAddress` / `SetShadowAddress`(registry)已整删:每世界按自己的 profile(`ECSContext::GetEnvProfileID()`,默认取本世界 RT 的 `env_profile`)经 `EnvironmentManager::GetSkyAddress` / `GetShadowAddress` 取址,写**本世界**表槽(见 `doc/world-addresses-and-camera-model-plan.md` §4)。`GlobalAddresses` 是 **SSBO、无绑定无集**(`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长),C2 后只剩 **6 字段 48B**(池基址等长期字段 + `addr_viewport`);`addr_sky` / `addr_shadow` / `addr_camera_info` / `addr_global_render_items` / `addr_draw_item_ids` 一律在世界表里(由归属契约门 `S./W.*-field-ownership` 锁死)。
 
-旧文提到的 `IsSemanticResolvable` 语义解析器已不存在,等价职责就是这组 `Resolve*UBO()` 私有帮手;也不再"自动补注册 EnvironmentSystem"。
+`SyncGlobalAddressesTable` / `ResolveSkyUBO` / `ResolveShadowUBO` / `GetSkyUBO` / `GetShadowUBO` 均已整删,C2 之后 shader 侧 `sky` / `shadow` 宏直接读 `world_addresses`。旧文提到的 `IsSemanticResolvable` 语义解析器同理已不存在。
 
 ### 6.2 ViewUBOCommitSystem(视图三件套契约)
 
@@ -175,7 +174,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 - camera:`CameraSystem::PublishCamera(Rows)`（相机行；世界共享载体与 camera UBO 已于 C1-5 删除）
 - viewport:`RenderSceneUBOSystem::CommitViewportUBO()`
-- sky:每次 `CommitMaterialized` 都写。shadow:仅当前 RT 为交换链时写入 `shadow_ring[acquired_image]`。离屏 pass 不写 shadow 槽。
+- sky / shadow:**数据**在这里写（sky 每次 `CommitMaterialized` 都写；shadow 仅当前 RT 为交换链时写 `shadow_ring[acquired_image]`，离屏 pass 不写 shadow 槽）；**地址**按世界写世界表（C2：`ECSContext::SyncWorldAddresses` → `WorldAddresses.addr_sky` / `addr_shadow`，见 §6.1）
 
 (实现:`src/ecs/systems/render/ViewUBOCommitSystem.cpp:14` 定阶段,`:17-36` 三个调用点)
 

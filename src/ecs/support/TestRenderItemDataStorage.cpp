@@ -204,29 +204,30 @@ int main(int argc, char **argv)
     // Test 8: Stage 3 Verification - 地址表结构（Global/World）与 shader BDA 编译
     GLogInfo(u8"--- Testing Stage 3: Address Tables (Global/World) & Shader BDA Resolution ---");
     {
-        // 1. GlobalAddresses = **跨世界共享资源池**（8×uint64 = 64B）：
+        // 1. GlobalAddresses = **跨世界共享资源池**（6×uint64 = 48B）：
         //    世界私有地址（相机行表 / 渲染项表 / DrawItemID 表）已迁出到 WorldAddresses。
-        static_assert(sizeof(graph::GlobalAddresses) == 64, "GlobalAddresses must be exactly 64 bytes");
+        static_assert(sizeof(graph::GlobalAddresses) == 48, "GlobalAddresses must be exactly 48 bytes");
         static_assert(offsetof(graph::GlobalAddresses, addr_mesh_draw_params_pool) == 0);
         static_assert(offsetof(graph::GlobalAddresses, addr_pbr_surface) == 8);
         static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 16);
         static_assert(offsetof(graph::GlobalAddresses, addr_transmission_surface) == 24);
         static_assert(offsetof(graph::GlobalAddresses, addr_color_palette) == 32);
-        // 每帧槽字段：sky / viewport / shadow
-        static_assert(offsetof(graph::GlobalAddresses, addr_sky) == 40);
-        static_assert(offsetof(graph::GlobalAddresses, addr_viewport) == 48);
-        static_assert(offsetof(graph::GlobalAddresses, addr_shadow) == 56);
+        // 每帧槽字段：viewport（sky / shadow 已随世界迁入 WorldAddresses —— C2）
+        static_assert(offsetof(graph::GlobalAddresses, addr_viewport) == 40);
 
-        // 2. WorldAddresses = **世界私有**（相机行表 / 渲染项表 / DrawItemID 表；3×uint64 = 24B）
-        static_assert(sizeof(graph::WorldAddresses) == 24, "WorldAddresses must be exactly 24 bytes");
+        // 2. WorldAddresses = **世界私有**（相机行表 / 渲染项表 / DrawItemID 表 / 本世界 profile 的 sky+shadow；5×uint64 = 40B）
+        static_assert(sizeof(graph::WorldAddresses) == 40, "WorldAddresses must be exactly 40 bytes");
         static_assert(offsetof(graph::WorldAddresses, addr_camera_info) == 0);
         static_assert(offsetof(graph::WorldAddresses, addr_global_render_items) == 8);
         static_assert(offsetof(graph::WorldAddresses, addr_draw_item_ids) == 16);
+        static_assert(offsetof(graph::WorldAddresses, addr_sky) == 24);
+        static_assert(offsetof(graph::WorldAddresses, addr_shadow) == 32);
         static_assert(graph::kWorldAddressesSlotStride % 16 == 0,
                       "WorldAddresses 槽步长必须 16B 对齐");
 
         graph::WorldAddresses wa{};
-        if (wa.addr_camera_info != 0 || wa.addr_global_render_items != 0 || wa.addr_draw_item_ids != 0)
+        if (wa.addr_camera_info != 0 || wa.addr_global_render_items != 0 || wa.addr_draw_item_ids != 0
+         || wa.addr_sky != 0 || wa.addr_shadow != 0)
         {
             GLogError(u8"Test 8 Failed: Expected 0 initialized addresses in WorldAddresses");
             return 20;
@@ -235,10 +236,14 @@ int main(int argc, char **argv)
         wa.addr_camera_info         = 0x123456780000ULL;
         wa.addr_global_render_items = 0xABCD12340000ULL;
         wa.addr_draw_item_ids       = 0xDCBA43210000ULL;
+        wa.addr_sky                 = 0xA1B2C3D40000ULL;
+        wa.addr_shadow              = 0xB2C3D4E50000ULL;
 
         if (wa.addr_camera_info         != 0x123456780000ULL ||
             wa.addr_global_render_items != 0xABCD12340000ULL ||
-            wa.addr_draw_item_ids       != 0xDCBA43210000ULL)
+            wa.addr_draw_item_ids       != 0xDCBA43210000ULL ||
+            wa.addr_sky                 != 0xA1B2C3D40000ULL ||
+            wa.addr_shadow              != 0xB2C3D4E50000ULL)
         {
             GLogError(u8"Test 8 Failed: WorldAddresses field assignment mismatch");
             return 21;
@@ -269,9 +274,7 @@ int main(int argc, char **argv)
                     uint64_t addr_emissive_surface;
                     uint64_t addr_transmission_surface;
                     uint64_t addr_color_palette;
-                    uint64_t addr_sky;
                     uint64_t addr_viewport;
-                    uint64_t addr_shadow;
                 };
                 
                 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
@@ -282,6 +285,8 @@ int main(int argc, char **argv)
                     uint64_t addr_camera_info;
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
+                    uint64_t addr_sky;
+                    uint64_t addr_shadow;
                 };
 
                 #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
@@ -529,9 +534,7 @@ int main(int argc, char **argv)
                     uint64_t addr_emissive_surface;
                     uint64_t addr_transmission_surface;
                     uint64_t addr_color_palette;
-                    uint64_t addr_sky;
                     uint64_t addr_viewport;
-                    uint64_t addr_shadow;
                 };
                 
                 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
@@ -542,6 +545,8 @@ int main(int argc, char **argv)
                     uint64_t addr_camera_info;
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
+                    uint64_t addr_sky;
+                    uint64_t addr_shadow;
                 };
 
                 #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
@@ -793,9 +798,7 @@ int main(int argc, char **argv)
                     uint64_t addr_emissive_surface;
                     uint64_t addr_transmission_surface;
                     uint64_t addr_color_palette;
-                    uint64_t addr_sky;
                     uint64_t addr_viewport;
-                    uint64_t addr_shadow;
                 };
                 
                 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
@@ -806,6 +809,8 @@ int main(int argc, char **argv)
                     uint64_t addr_camera_info;
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
+                    uint64_t addr_sky;
+                    uint64_t addr_shadow;
                 };
 
                 #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)

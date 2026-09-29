@@ -309,61 +309,6 @@ namespace hgl::ecs
         return viewport_ubo ? viewport_ubo->GetGPUBuffer() : nullptr;
     }
 
-    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveSkyUBO()
-    {
-        if (!context)
-            return nullptr;
-
-        // 环境数据统一归 EnvironmentManager；本 world 的 RT 决定用哪个
-        // Profile（未设置 = default）。不再依赖 EnvironmentSystem 的 UBO。
-        graph::GraphicsContext *graphics_context = nullptr;
-        if (auto *rc = context->GetRenderContext())
-            graphics_context = rc->GetGraphicsContext();
-        if (!graphics_context)
-            graphics_context = context->GetGraphicsContext();
-        if (!graphics_context)
-            return nullptr;
-
-        auto *env_manager = graphics_context->GetEnvironmentManager();
-        if (!env_manager)
-            return nullptr;
-
-        graph::EnvProfileID profile_id = graph::kEnvProfileDefault;
-        if (auto *rt = context->GetRenderTarget())
-            profile_id = rt->GetEnvironmentProfile();
-
-        return env_manager->GetSkyUBO(profile_id);
-    }
-
-    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveShadowUBO()
-    {
-        if (!context)
-            return nullptr;
-
-        graph::GraphicsContext *graphics_context = nullptr;
-        if (auto *rc = context->GetRenderContext())
-            graphics_context = rc->GetGraphicsContext();
-        if (!graphics_context)
-            graphics_context = context->GetGraphicsContext();
-        if (!graphics_context)
-            return nullptr;
-
-        auto *env_manager = graphics_context->GetEnvironmentManager();
-        if (!env_manager)
-            return nullptr;
-
-        graph::EnvProfileID profile_id = graph::kEnvProfileDefault;
-        uint32_t frame_index = 0;
-        if (auto *rt = context->GetRenderTarget())
-        {
-            profile_id = rt->GetEnvironmentProfile();
-            if (rt->IsSwapchain())
-                frame_index = rt->GetCurrentFrameIndex();
-        }
-
-        return env_manager->GetShadowUBO(profile_id, frame_index);
-    }
-
     // 全局 Scene UBO 描述符集更新：一帧写一次（sky=0/viewport=1/shadow=2）。
     // 全局地址表已 BDA 化（表本体 SSBO，基址经 pc_root）——不在本集内。
     // viewport 为所有材质必需；sky/shadow 为可选（布局已带 PARTIALLY_BOUND 位，

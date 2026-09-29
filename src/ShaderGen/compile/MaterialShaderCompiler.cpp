@@ -143,7 +143,7 @@ static bool HasDescriptorSemantic(
 // ── 能力子集授权：**只认无条件内置**（目录 engine_builtin）──────────────────
 // 原「能力规则表」（definition 侧条件授权谓词 + 目录交叉覆盖 static_assert）已整体
 // 删除：表内唯一行 SkyInfo 的 UBO 需求规则随 sky 退出 Scene 集绑定而失效——
-// sky 不再是描述符声明资源（shader 经 global_addresses.addr_sky 解引用），
+// sky 不再是描述符声明资源（shader 经**世界表** world_addresses.addr_sky 解引用，C2 起随世界），
 // definition 侧不可能再出现该 slot。其余语义（Unknown、MaterialTexture/Sampler
 // 等 bindless 通道）本就没有 definition 侧授权 ⇒ 无需表格。
 

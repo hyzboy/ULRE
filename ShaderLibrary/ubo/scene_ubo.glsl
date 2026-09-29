@@ -71,7 +71,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer SkyI
     uvec4 env_tex;
 };
 
-#define sky SkyInfoRef(global_addresses.addr_sky)
+#define sky SkyInfoRef(world_addresses.addr_sky)
 
 // viewport（S2：地址进表 —— 单份 buffer，内容按 pass/RT 覆盖写、地址恒定 ⇒ 全帧槽同址）
 // 退出 Scene 集绑定；宏名与成员名不变 ⇒ `viewport.*` 读点零改动。
@@ -107,26 +107,26 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
     uint64_t addr_transmission_surface;
     uint64_t addr_color_palette;
     // 每帧槽字段：表按 HGL_FRAME_SLOT_TOTAL 多份，pc_root.addr_global_addresses
-    // 指向「本帧那一槽」，所以这几个地址总是当前帧的数据。
-    uint64_t addr_sky;
+    // 指向「本帧那一槽」，所以这个地址总是当前帧的数据。
     uint64_t addr_viewport;
-    uint64_t addr_shadow;
 };
 
 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
 
 // 世界地址表（**无绑定无集**）：世界私有 SSBO 的地址表，基址经 pc_root.addr_world_addresses 下发。
-// 为什么独立成表：表内都是**世界私有** buffer（相机行表 / 4-ID 渲染项表 / DrawItemID 表，
-// 后续 C2 迁入 sky / shadow / env）。一个设备上可同时存在多个世界（主世界 + OffscreenWorld），
+// 为什么独立成表：表内都是**世界私有** buffer（相机行表 / 4-ID 渲染项表 / DrawItemID 表 /
+// 本世界 profile 的 sky + shadow）。一个设备上可同时存在多个世界（主世界 + OffscreenWorld），
 // 放进全局表只能表达"最后一个世界"的地址 ⇒ 多世界同帧互踩。
 // 表本体与 GlobalAddresses 同形：HGL_FRAME_SLOT_TOTAL 份 × kWorldAddressesSlotStride，
 // pc_root 指向"本帧那一槽"。
-//（定稿见 doc/world-addresses-and-camera-model-plan.md §1）
+//（定稿见 doc/world-addresses-and-camera-model-plan.md §1/§4）
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer WorldAddressesRef
 {
     uint64_t addr_camera_info;          // 相机行表（行号 = 相机槽 × 帧槽总数 + 帧槽）
     uint64_t addr_global_render_items;  // 4-ID 渲染项表（世界私有）
     uint64_t addr_draw_item_ids;        // DrawItemID 压缩索引表（世界私有）
+    uint64_t addr_sky;                  // 本世界 profile 的 SkyInfo（单份 ⇒ 全帧槽同址）
+    uint64_t addr_shadow;               // 本世界 profile 的 ShadowInfo（每帧槽一份 ring）
 };
 
 #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
@@ -157,7 +157,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Shad
     ShadowCascadeInfo cascades[4];
 };
 
-#define shadow ShadowInfoRef(global_addresses.addr_shadow)
+#define shadow ShadowInfoRef(world_addresses.addr_shadow)
 
 // 相机行：**世界私有**（世界表 WorldAddresses 的 addr_camera_info），行号 = 相机槽 × 帧槽总数 + 帧槽。
 // 为什么不在全局表：相机是每个世界独有的观察者数据（多个世界同帧时全局表只能表达一个）。

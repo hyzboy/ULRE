@@ -44,7 +44,7 @@ namespace hgl::graph
         buf_name += profile->name;
 
         // 必须用 CreateSSBO：只有它带 SHADER_DEVICE_ADDRESS usage（BDA 取址前提），
-        // sky 数据自 S2 起经 global_addresses.addr_sky 解引用，不再吃 Scene 集绑定。
+        // sky 数据经**世界表** world_addresses.addr_sky 解引用（C2 起随世界），不吃 Scene 集绑定。
         auto *buf = buffer_manager->CreateSSBO(buf_name,
                                                StructView<SkyInfo>::GetSize());
         if (!buf)
@@ -68,25 +68,12 @@ namespace hgl::graph
         profile->sky_ubo->Update(profile->cpu.sky);    // 拷贝数据 + 置脏
         profile->sky_ubo->Commit();                    // 标脏交 L2
 
-        // sky 地址进表：**在 buffer 物化处注册**（这是地址唯一会变的地方）。
-        // 不能只靠每帧 SyncGlobalAddressesTable：那条路依赖世界/渲染上下文就绪，
-        // 漏跑一次 ⇒ 表里 addr_sky 恒 0 ⇒ 读 sky 的 shader 解引用 0 地址 ⇒ 设备丢失。
-        // sky 是单份 buffer ⇒ 一个地址写满所有帧槽。
-        auto *registry = gc->GetGlobalSSBOBufferRegistry();
-        if (!registry)
+        // 地址不在这里入表：sky / shadow 是**世界私有**字段（世界表 WorldAddresses），
+        // 每世界按自己的 profile 取址（`GetSkyAddress`）并由 ECSContext::SyncWorldAddresses 写本世界槽。
+        // 但仍在物化处做一次取址 fail-fast：取不到地址 = shader 解引用 0 基址（UB），
+        // 而 0 校验层消息抓不到这类崩。
+        if (gc->GetDevice()->GetBufferDeviceAddressAligned16(buf->GetBuffer()) == 0)
         {
-            GLogError("[EnvironmentManager] sky 地址入表失败：GlobalSSBOBufferRegistry 不可用");
-            buffer_manager->Release(buf);
-            delete profile->sky_ubo;
-            profile->sky_ubo = nullptr;
-            return false;
-        }
-
-        const uint64_t sky_addr =
-            gc->GetDevice()->GetBufferDeviceAddressAligned16(buf->GetBuffer());
-        if (sky_addr == 0)
-        {
-            // 取不到地址 = shader 解引用 0 基址（UB）⇒ fail-fast（0 校验层消息抓不到这类崩）
             GLogError("[EnvironmentManager] sky 取不到设备地址（usage / 16B 对齐）：%s",
                       profile->name.c_str());
             buffer_manager->Release(buf);
@@ -94,10 +81,6 @@ namespace hgl::graph
             profile->sky_ubo = nullptr;
             return false;
         }
-
-        registry->SetSkyAddress(sky_addr);
-        GLogInfo("[EnvironmentManager] sky addr=0x%llX 入表（全帧槽）",
-                 (unsigned long long)sky_addr);
 
         return true;
     }
@@ -152,7 +135,7 @@ namespace hgl::graph
             buf_name += AnsiString::numberOf(i);
 
             // 必须用 CreateSSBO：只有它带 SHADER_DEVICE_ADDRESS usage（BDA 取址前提）；
-            // shadow 数据自 S2 起经 global_addresses.addr_shadow 解引用，不再吃 Scene 集绑定。
+            // shadow 数据经**世界表** world_addresses.addr_shadow 解引用（C2 起随世界），不吃 Scene 集绑定。
             auto *buf = buffer_manager->CreateSSBO(buf_name,
                                                    StructView<ShadowInfo>::GetSize());
             if (!buf)
@@ -178,21 +161,14 @@ namespace hgl::graph
             profile->shadow_ring[i]->Update(profile->cpu.shadow);
             profile->shadow_ring[i]->Commit();
 
-            // 地址进表：ring[i] 属于帧槽 i ⇒ 只写第 i 槽（每帧只读本槽 ⇒ 天然无竞争）。
-            if (auto *registry = gc->GetGlobalSSBOBufferRegistry())
+            // 地址不在这里入表（随世界 → 世界表 addr_shadow，按 profile 取址）；物化处做一次
+            // 取址 fail-fast：0 地址 = shader 解引用 0 基址（UB）。
+            if (gc->GetDevice()->GetBufferDeviceAddressAligned16(buf->GetBuffer()) == 0)
             {
-                const uint64_t addr =
-                    gc->GetDevice()->GetBufferDeviceAddressAligned16(buf->GetBuffer());
-
-                if (addr == 0)
-                {
-                    GLogError("[EnvironmentManager] shadow ring 取不到设备地址: %s slot=%u",
-                              profile->name.c_str(), i);
-                    ReleaseShadowRing(profile);
-                    return false;
-                }
-
-                registry->SetShadowAddress(i, addr);
+                GLogError("[EnvironmentManager] shadow ring 取不到设备地址: %s slot=%u",
+                          profile->name.c_str(), i);
+                ReleaseShadowRing(profile);
+                return false;
             }
         }
         return true;
@@ -336,38 +312,93 @@ namespace hgl::graph
         }
     }
 
-    const IGPUBuffer *EnvironmentManager::GetSkyUBO(EnvProfileID id)
+    uint64_t EnvironmentManager::GetSkyAddress(EnvProfileID id)
     {
         EnsureDefault();
 
         Profile *p = FindProfile(id);
         if (!p)
-            p = FindProfile(kEnvProfileDefault);
-        if (!p)
-            return nullptr;
+            p = FindProfile(kEnvProfileDefault);      // 无效句柄回退 default（与 Get 同语义）
+        if (!p || !MaterializeSkyUBO(p) || !p->sky_ubo)
+            return 0;
 
-        if (!MaterializeSkyUBO(p))
-            return nullptr;
+        auto *gc = GetGraphicsContext();
+        auto *device = gc ? gc->GetDevice() : nullptr;
+        if (!device)
+            return 0;
 
-        return p->sky_ubo->GetGPUBuffer();
+        const uint64_t addr = device->GetBufferDeviceAddressAligned16(p->sky_ubo->GetBuffer()->GetBuffer());
+        if (addr == 0)
+        {
+            // 0 地址 = 读 sky 的 shader 解引用 0 基址（UB）⇒ 调用方必须保证不写进表
+            GLogError("[EnvironmentManager] GetSkyAddress 取不到设备地址: %s", p->name.c_str());
+        }
+        return addr;
     }
 
-    const IGPUBuffer *EnvironmentManager::GetShadowUBO(EnvProfileID id, uint32_t frame_index)
+    uint64_t EnvironmentManager::GetShadowAddress(EnvProfileID id, uint32_t frame_slot)
     {
         EnsureDefault();
 
         Profile *p = FindProfile(id);
         if (!p)
             p = FindProfile(kEnvProfileDefault);
-        if (!p)
-            return nullptr;
+        if (!p || !MaterializeShadowUBO(p))
+            return 0;
 
-        if (!MaterializeShadowUBO(p))
-            return nullptr;
+        if (frame_slot >= kShadowUboRing)
+            frame_slot %= kShadowUboRing;
 
-        if (frame_index >= kShadowUboRing)
-            frame_index %= kShadowUboRing;
+        auto *ring = p->shadow_ring[frame_slot];
+        if (!ring)
+            return 0;
 
-        return p->shadow_ring[frame_index] ? p->shadow_ring[frame_index]->GetGPUBuffer() : nullptr;
+        auto *gc = GetGraphicsContext();
+        auto *device = gc ? gc->GetDevice() : nullptr;
+        if (!device)
+            return 0;
+
+        const uint64_t addr = device->GetBufferDeviceAddressAligned16(ring->GetBuffer()->GetBuffer());
+        if (addr == 0)
+        {
+            GLogError("[EnvironmentManager] GetShadowAddress 取不到设备地址: %s slot=%u",
+                      p->name.c_str(), frame_slot);
+        }
+        return addr;
+    }
+
+    void EnvironmentManager::Release(EnvProfileID id)
+    {
+        // 内置 default 可共享（任何世界都能用它），**不随任何世界销毁**；无效句柄 no-op。
+        if (id == kEnvProfileInvalid || id == kEnvProfileDefault)
+            return;
+
+        for (auto it = profiles.begin(); it != profiles.end(); ++it)
+        {
+            Profile *p = *it;
+            if (!p || p->id != id)
+                continue;
+
+            ReleaseShadowRing(p);
+
+            if (p->sky_ubo)
+            {
+                auto *buf = p->sky_ubo->GetBuffer();
+                delete p->sky_ubo;
+                p->sky_ubo = nullptr;
+
+                auto *gc = GetGraphicsContext();
+                auto *buffer_manager = gc ? gc->GetBufferManager() : nullptr;
+                if (buffer_manager && buf)
+                    buffer_manager->Release(buf);
+            }
+
+            GLogInfo(u8"[EnvironmentManager] Release profile: %s (id=%u)",
+                     p->name.c_str(), p->id);
+
+            delete p;
+            profiles.erase(it);
+            return;
+        }
     }
 }//namespace hgl::graph

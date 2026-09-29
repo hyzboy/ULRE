@@ -19,17 +19,17 @@ namespace hgl::graph
      * 集中持有所有环境 Profile（数据 + GPU 物化），设备级唯一（GraphicsContext 模块）。
      *
      * ⚠ 归属订正（2026-09-28；决策见 doc/world-addresses-and-camera-model-plan.md §4）：
-     * **Env 随世界** —— profile 的所有权与生命周期最终跟随世界（世界创建时选/建自己的
-     * profile、销毁时归还；内置 default 可共享），且 sky / shadow / env 的**地址发布必须按世界**
-     * （写世界表 `WorldAddresses`）。现状"RT/WORLD 只持 EnvProfileID 引用 + 地址写全局字段"
-     * 在多世界同帧下只有最后解析的那个 profile 生效（互踩）。
+     * **Env 随世界** —— profile 的所有权与生命周期跟随世界（世界创建时选/建自己的
+     * profile、销毁时 `Release()` 归还；内置 default 可共享），sky / shadow 的**地址发布按世界**
+     * （写世界表 `WorldAddresses` 的 `addr_sky` / `addr_shadow`，由 `ECSContext::SyncWorldAddresses`
+     * 每帧写本世界槽）。C2 之前地址走全局字段 ⇒ 多世界同帧只有最后解析的那个 profile 生效（互踩）。
      *
      * 分层约定：
      * - 数据层：EnvironmentInfo（纯数据，CPU 侧唯一权威在 Profile::cpu）
-     * - 管理层：本类（Profile 注册 / GPU UBO 物化 / 脏标记）
-     * - 选择层：世界的 RT → EnvProfileID（未设置 = kEnvProfileDefault）
-     * - 绑定层：RenderSceneUBOSystem 解析 GetSkyUBO()/GetShadowUBO() 后写地址表
-     *  （世界表落地前为全局表 `GlobalAddresses`；Scene 集已随 S3 整体退场，不再有 binding）
+     * - 管理层：本类（Profile 注册 / GPU UBO 物化 / 脏标记 / **按 profile 取设备地址**）
+     * - 选择层：**世界**（`ECSContext::GetEnvProfileID()`；世界初始化时取本世界 RT 的 env_profile）
+     * - 绑定层：**世界表**（`WorldAddresses::addr_sky` / `addr_shadow`；Scene 集已随 S3 整体退场，
+     *   world/sky/shadow 全部经 pc_root 下的表 + BDA 解引用，无 binding 可推）
      *
      * GPU 上传统一走设备级 dirty 扫描（RenderBufferUploadSystem），
      * default Profile 在 GraphicsContext 初始化阶段即物化并标脏，
@@ -87,12 +87,17 @@ namespace hgl::graph
         /// 等交换链 acquire 之后由 CommitMaterialized 写入本帧槽。
         void MarkDirty(EnvProfileID id);
 
-        /// sky 段 GPU buffer（绑定层用；懒物化，default 保证已就绪）
-        const IGPUBuffer *GetSkyUBO(EnvProfileID id);
+        /// 世界表用：本 profile 的 sky 段**设备地址**（懒物化）。取不到返回 0 并报错 ——
+        /// 0 地址会让读 sky 的 shader 解引用 0 基址（UB）⇒ 调用方必须保证不把 0 写进表。
+        uint64_t GetSkyAddress(EnvProfileID id);
 
-        /// shadow 段 GPU buffer（绑定层用）。frame_index 必须是本帧 acquired image，
-        /// 与 CommitMaterialized 写入的槽一致；离屏 pass 没有在途交换链槽，传 0。
-        const IGPUBuffer *GetShadowUBO(EnvProfileID id, uint32_t frame_index = 0);
+        /// 世界表用：本 profile 的 shadow 段第 `frame_slot` 份 ring 的设备地址（懒物化）。
+        uint64_t GetShadowAddress(EnvProfileID id, uint32_t frame_slot);
+
+        /// 归还 profile：释放它的 GPU 物化（sky + shadow ring）并从注册表移除。
+        /// **世界销毁时归还自己创建/拥有的 profile**；`kEnvProfileDefault` 与无效句柄是 no-op
+        /// （内置 default 可共享）。归还后再用该 id 会回退 default（`GetSkyAddress` 语义同 `Get`）。
+        void Release(EnvProfileID id);
 
         /// ViewUBOCommitSystem 专用：pass 开始固定写入。
         /// commit_shadow 仅在当前 RT 是交换链（acquire 已完成、该图像槽空闲）时为 true。

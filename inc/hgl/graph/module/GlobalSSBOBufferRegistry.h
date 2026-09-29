@@ -99,9 +99,7 @@ private:
 
     struct GlobalAddressesSlot
     {
-        uint64_t sky = 0;
         uint64_t viewport = 0;
-        uint64_t shadow = 0;
     };
     GlobalAddressesSlot global_addresses_slots[kGlobalAddressesSlotCount];
 
@@ -144,18 +142,13 @@ public:
     /// 槽号取模 —— 调用方直接送 Context::GetFrameIndex() 或 CameraRow % 槽总数。
     uint64_t GetGlobalAddressesAddress(uint32_t frame_slot) const;
 
-    /// 按「全局字段 + 该槽的 sky/viewport/shadow 地址」组合并写入某帧槽（无变化则跳过）。
+    /// 按「全局字段 + 该槽的 viewport 地址」组合并写入某帧槽（无变化则跳过）。
+    /// 注：sky / shadow 已按 C2 随世界（写 `WorldAddresses`）⇒ 不再是本表的字段。
     bool CommitSlot(uint32_t frame_slot);
     bool CommitAllSlots();
 
-    /// sky / shadow 的地址（每帧槽各一份）：写入本槽后 pc_root 指过来即可用。
-    /// 传 0 表示「本槽暂无该表」（着色器侧读到 0 地址即解引用 0 ⇒ 调用方须保证不读）。
-    void SetSkyAddress(uint32_t frame_slot, uint64_t addr);
-    /// sky 是单份 buffer（与帧槽无关）⇒ 一个地址写满所有帧槽。
-    void SetSkyAddress(uint64_t addr);
-    /// viewport 同理是单份 buffer（内容按 pass/RT 覆盖写、地址恒定）⇒ 一个地址写满所有帧槽。
+    /// viewport 是单份 buffer（内容按 pass/RT 覆盖写、地址恒定）⇒ 一个地址写满所有帧槽。
     void SetViewportAddress(uint64_t addr);
-    void SetShadowAddress(uint32_t frame_slot, uint64_t addr);
 
     /// 调色板地址（BDA）：内容长期有效，地址只在 buffer 重建时才变（当前实现不重建）。
     void UpdateColorPaletteAddress(uint64_t addr_color_palette);

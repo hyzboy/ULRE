@@ -2871,19 +2871,19 @@ namespace
 
     static const AddressOwnershipEntry kAddressOwnershipTable[] =
     {
-        // ── 世界私有（随世界：相机行表 / 4-ID 渲染项表 / DrawItemID 表）──
+        // ── 世界私有（随世界：相机行表 / 4-ID 渲染项表 / DrawItemID 表 / 本世界 profile 的 sky+shadow）──
         { "addr_camera_info",           true  },
         { "addr_global_render_items",   true  },
         { "addr_draw_item_ids",         true  },
+        { "addr_sky",                   true  },
+        { "addr_shadow",                true  },
         // ── 设备级全局（跨世界共享的资源池 + 每帧槽字段）──
         { "addr_mesh_draw_params_pool", false },
         { "addr_pbr_surface",           false },
         { "addr_emissive_surface",      false },
         { "addr_transmission_surface",  false },
         { "addr_color_palette",         false },
-        { "addr_sky",                   false },
         { "addr_viewport",              false },
-        { "addr_shadow",                false },
     };
 
     /// 「表归属」契约（§6 契约 ④）：`world_side=true` 检查世界表，`false` 检查全局表。

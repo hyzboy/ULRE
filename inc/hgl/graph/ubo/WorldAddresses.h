@@ -27,8 +27,8 @@ namespace hgl::graph
         uint64_t addr_camera_info = 0;          // 相机行表（世界私有；行号 = 相机槽 × 帧槽总数 + 帧槽）
         uint64_t addr_global_render_items = 0;  // 4-ID 渲染项表（世界私有 RenderItemDataStorage）
         uint64_t addr_draw_item_ids = 0;        // DrawItemID 压缩索引表（世界私有 DrawItemIDStorage）
-
-        // C2（Env 归世界）将迁入：addr_sky / addr_shadow / addr_env（随世界 profile 物化）。
+        uint64_t addr_sky = 0;                  // 本世界 profile 的 SkyInfo（单份 buffer ⇒ 全帧槽同址）
+        uint64_t addr_shadow = 0;               // 本世界 profile 的 ShadowInfo（每帧槽一份，下标 = 帧槽）
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽）。

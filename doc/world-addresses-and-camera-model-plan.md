@@ -74,10 +74,23 @@ CPU 侧消费者（剔除 / gizmo / Line 视锥 / shadow origin）统一通过"�
 
 ## 4. 环境（Env / Sky / Shadow 随世界；viewport 全局）
 
-- `sky` / `shadow` / `env` 三项地址写进**世界表**；shadow 每槽一份 ring（沿用 `kShadowUboRing = 8`）。
+- `sky` / `shadow` 地址写进**世界表**（`addr_sky` / `addr_shadow`）；shadow 每槽一份 ring（沿用 `kShadowUboRing = 8`）。
 - **profile 的所有权与生命周期跟随世界**：世界创建时选/建自己的 profile、销毁时归还；内置 default 可共享。
-  现状是设备级配置仓库 + "世界/RT 只持有 `EnvProfileID`"（`EnvironmentManager.h:20`、`OffscreenWorld.h:59`、`RenderTargetDesc.h:82`），**地址发布却走全局字段** ⇒ 多世界同帧只有最后解析的那个 profile 生效。本轮落点就是把地址与选择按世界走。
+  现状是设备级配置仓库 + "世界/RT 只持有 `EnvProfileID`"（`EnvironmentManager.h`、`OffscreenWorld.h:59`、`RenderTargetDesc.h:82`），**地址发布却走全局字段** ⇒ 多世界同帧只有最后解析的那个 profile 生效。本轮落点就是把地址与选择按世界走。
 - 收益：不同世界可用不同阴影技术（室内/室外）成为一等支持；消除跨世界互踩。
+
+### 4.1 C2 已落地（2026-09-29）
+
+| 面 | 落地 |
+|---|---|
+| 表 | `WorldAddresses` 增 `addr_sky` / `addr_shadow`（5 字段 40B）；`GlobalAddresses` 删这两项（8 字段 64B → **6 字段 48B**）；`scene_ubo.glsl` 的 `sky` / `shadow` 宏改读 `world_addresses`；归属分类表（门 `kAddressOwnershipTable`）两项移入世界侧；三份夹具 + `static_assert/offsetof` 同步 |
+| 选择层 | `ECSContext::GetEnvProfileID()`：**显式覆盖优先**（`SetEnvProfileID` / `CreateEnvProfile`），否则**按需解析本世界 RT 的 `env_profile`**（作者侧 `SetEnvironmentProfile` 可能发生在世界创建之后 ⇒ 不能只取一次快照）；`EnvironmentSystem::ResolveProfileID()` 改问世界 |
+| 发布 | `ECSContext::SyncWorldAddresses()` 按本世界 profile 取址写本世界槽：`EnvironmentManager::GetSkyAddress(profile)`（sky 单份 ⇒ 全帧槽同址）+ `GetShadowAddress(profile, 帧槽)`（ring 下标 = 帧槽）；取不到（0）时保留上一份好值（0 地址 = shader 解引用 0 基址 UB） |
+| 生命周期 | `EnvironmentManager::Release(id)`（释放 sky + shadow ring 并从注册表移除；`default` / 无效句柄 no-op）；世界 `Shutdown` 归还**自己创建**的 profile；`SetEnvProfileID` 换 profile 时先归还旧的（不泄漏） |
+| 删除（零兼容） | `GlobalSSBOBufferRegistry` 的 sky/shadow 槽 + `SetSkyAddress`/`SetShadowAddress`；`RenderSceneUBOSystem::ResolveSkyUBO`/`ResolveShadowUBO`（死代码）；`EnvironmentManager::GetSkyUBO`/`GetShadowUBO`；`Materialize*UBO` 里的地址注册（改为物化处只做取址 fail-fast） |
+| `addr_env` | **暂不落**：当前不存在"env"（非 sky/shadow）的 GPU buffer 与着色器消费者，加一个恒 0 字段就是死槽；等真有 env UBO 再入表（归属表同一处登记）。 |
+
+验证（实测）：双世界 `RenderToTextureColorDepth` —— 主世界 `profile=1 sky=0x304780000`、离屏世界 `profile=2 sky=0x309080000`（**地址不同 = 各自生效**，C2 之前全局表只能表达一个）；门 42/0、`TestCSMIncrementalPass` 22 Passed、RIDS rc=0、ATS 三契约与基线一致、CSM 对拍 8 轮 `不一致=0`、9 个示例（含 4 个 sky 示例）0 VUID。
 
 ## 5. 执行批次（每批自身可编译 + 门绿）
 
@@ -136,12 +149,12 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 | **C1-4a** | ✅ | **相机视图矩阵修复**（`CameraSystem::UpdateMatrices` 非 custom 分支）：视图一律用 `LookAtMatrix(position, position + forward, world_up)`，**禁用**可能"慢一拍"的 `target`（`position` 被外部直接写时 `target` 落后一帧 ⇒ 方向差 ~30° ⇒ 该帧整幅渲成另一机位；实测同姿态 `viewT` 1.2m ↔ 13.5m 横跳 = "隔几秒拉扯一次/刚出场抖"）。成因与排查法见 `doc/csm-mechanism.md` §5 | `viewT` 序列变为单调平滑；200 帧逐帧转储位移互相关 **0 跳变**；门 40/0；21 Passed；RIDS rc=0；ATS D1 112x58/57.6% 一致（D3 18187 vs 18189，−2px float 末位）；CSM 对拍 8 轮 `不一致=0`；三示例 0 VUID |
 | C1-5 | ✅ | **删世界共享相机载体**：`CameraSystem::camera_info` / `camera_ubo`(+`camera_ubo_managed` / `EnsureCameraResources` / `Shutdown` 释放块) / `GetCamera` / `GetCameraInfo` / `GetCameraUBO` / `CommitCameraUBO` / `UpdateMatrices` 里"主相机/覆盖相机写共享载体"的兼容分支整删；`WorkObject::GetCamera/GetCameraInfo` 删；**30 个示例文件 64 行别名赋值**（`camera->camera_data = GetCamera(); camera->camera_info = const_cast<...>(GetCameraInfo());`）全删——`CameraComponent` 构造即自指向 `local_camera_data/local_camera_info`，`BindCameraResources` 兜底同一件事；新增 **`ECSContext::GetActiveCameraInfo()`**（pass 覆盖相机优先，否则本世界主相机）供剔除 / gizmo / Line 视锥 / shadow origin 统一取"本 pass 生效相机"；`RenderPrimitiveCollectSystem::cameraInfo` 由"安装期缓存指针"改为**每帧现取**（`SetCameraInfo` 接线全删，`DefaultSystems` / `OffscreenWorld` 不再灌指针）；`ViewUBOCommitSystem` 不再提交相机 | 门 **40 PASS / 0 FAIL**；`TestCSMIncrementalPass` **21 Passed**；RIDS rc=0；ATS 三契约与基线逐项一致（D1 112x58/57.6%、D3 18187 & 19109、D4 0、0 VUID）；CSM 对拍 8 轮 `不一致=0`；7 个改过的示例（ShadowMap / RenderToTexture / RenderToTextureColorDepth / SimpleCube / ComputeFrustumCull / RayPicking / GizmoUsageExample）冒烟 0 VUID 且启动日志量与改前一致；全仓 `grep GetCameraInfo()` 只剩 `GetActiveCameraInfo()` |
 | **C1-6** | ✅ | **契约收口**：门加两条**表归属**用例（`S.global-addresses-field-ownership` / `W.world-addresses-field-ownership`，唯一真源 = `kAddressOwnershipTable`：按字段集合比对，多出来的是"未分类字段"、少了的是"漏字段"、出现在另一侧的是"放错表"）；`TestCSMIncrementalPass` 加 **Test 22** 两世界同帧隔离契约（19 条源码契约：四个世界私有存储/地址表均每世界一份、世界表只取本世界存储地址且按帧槽轮转、相机行只走本世界存储 + 校验 `world_owner`、设备级相机行池与全局表世界私有字段禁复活）| 门 **42 PASS / 0 FAIL**（+2）；`TestCSMIncrementalPass` **22 Passed**；**破坏验证**已做：把 `addr_camera_info` 塞进全局表 ⇒ rc=1 且报"放错表"、世界表加未分类字段 ⇒ rc=1 且报"未分类字段"，还原后逐字节一致、门回落 42/0；RIDS rc=0、ATS 三契约与基线一致、CSM 对拍 8 轮 `不一致=0`、7 示例冒烟 0 VUID |
+| **C2** | ✅ | **Env 归世界**（见 §4.1）：`addr_sky` / `addr_shadow` 进世界表（`GlobalAddresses` 64B→**48B**）、`sky`/`shadow` 宏改读 `world_addresses`；选择层收敛到世界（`ECSContext::GetEnvProfileID()`）；发布走 `SyncWorldAddresses` + `GetSkyAddress/GetShadowAddress`；`Release(profile)` + 世界归还自有 profile；删 registry 两个 setter / `ResolveSkyUBO/ResolveShadowUBO` / `GetSkyUBO/GetShadowUBO` | 门 42/0；22 Passed；RIDS rc=0；ATS 与基线一致；CSM 对拍 8 轮 `不一致=0`；**双世界地址实测分离**（`0x304780000` vs `0x309080000`）；9 示例 0 VUID |
 
 ### 8.2 待办（按依赖排序）
 
 | 批次 | 目标 | 主要落点 | 判据 |
 |---|---|---|---|
-| **C2** | **Env 归世界**：profile 生命周期随世界 + `ResolveSkyUBO/ResolveShadowUBO` 改按世界 + `RenderSceneUBOSystem` / `ViewUBOCommitSystem` / `EnvironmentSystem` 取数点；`WorldAddresses` 的 `addr_sky/addr_shadow/addr_env` 接线（表内槽位已预留） | 世界表写入端 `SyncWorldAddresses`；改 `EnableMainLightShadow` / profile 选择 | 双世界冒烟（两世界不同 sky/shadow profile）0 VUID + 相机/sky/shadow 地址互不串 |
 | **C3** | 灯光 / 镜子相机通用化：每个投影阴影的灯光 → 申请一个相机槽（申请/归还随灯光生命周期），对齐 `doc/shadow-component-and-automated-pipeline-design.md` | `EnvironmentSystem` 现有单灯特例泛化；`CameraInfoStorage` 分配器已是通用槽 | 多灯阴影场景；槽耗尽 fail-fast 契约 |
 | **C4** | ComponentData 骨架：先 `CameraComponent` → `CameraData` + 世界级存储 + 槽访问器，再 Transform / Geometry / Material | 与 C1-5 合并代价小（都是相机存储收口），但回归面变宽 ⇒ 建议 C1-5 先落地 | 门 + 全示例 |
 

@@ -98,7 +98,5 @@ namespace hgl::ecs
         void SyncBindingsForCurrentCommand();
         void ApplyResourceLayoutBindings();
         const graph::IGPUBuffer *ResolveViewportUBO() const;
-        const graph::IGPUBuffer *ResolveSkyUBO();
-        const graph::IGPUBuffer *ResolveShadowUBO();
     };
 }

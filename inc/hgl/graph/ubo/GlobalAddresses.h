@@ -34,12 +34,10 @@ namespace hgl::graph
         uint64_t addr_color_palette = 0;
 
         // ── 每帧槽字段：地址随帧槽变化（buffer 每帧不同）──
-        // 注：viewport 是**单份 buffer**（viewport 的内容按 pass/RT 覆盖写、地址恒定）
-        //     ⇒ 全帧槽同址。sky 与 shadow **将迁出本表**（随世界，进 WorldAddresses；
-        //     shadow 仍每帧槽一份）。
-        uint64_t addr_sky = 0;
+        // 注：viewport 是**单份 buffer**（内容按 pass/RT 覆盖写、地址恒定）⇒ 全帧槽同址。
+        // sky / shadow 已按 C2 迁出本表（随世界，进 WorldAddresses：每世界指向自己的 profile）
+        // ⇒ **本表不得再出现世界私有地址**（归属契约门 S.global-addresses-field-ownership）。
         uint64_t addr_viewport = 0;
-        uint64_t addr_shadow = 0;
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽，见文件头）。

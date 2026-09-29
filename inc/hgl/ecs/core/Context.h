@@ -11,6 +11,8 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
+#include<hgl/graph/ubo/EnvironmentInfo.h>
+#include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/log/Log.h>
 #include<memory>
 #include<functional>
@@ -165,6 +167,13 @@ namespace hgl
 
             /// 当前渲染 Pass 的活跃相机**槽号**（世界内；用于 pc_root.camera_row 的行号算术）
             uint32_t active_camera_id = CameraComponent::kDefaultSlot;
+
+            /// 本世界的环境 profile（**Env 随世界**，C2）：显式覆盖（`SetEnvProfileID` /
+            /// `CreateEnvProfile`）优先；未显式设置时**按需解析本世界 RT 的 env_profile**
+            /// （作者侧在 `SetEnvironmentProfile`，可能发生在世界创建之后 ⇒ 不能只在 Initialize 取一次）。
+            graph::EnvProfileID env_profile = graph::kEnvProfileDefault;
+            bool env_profile_explicit = false;   ///< true ⇒ 用 `env_profile`；false ⇒ 跟随本世界 RT
+            bool env_profile_owned = false;      ///< true ⇒ Shutdown 时 `Release()` 归还（本世界创建）
 
             /// 本世界默认相机 = 0 号槽的拥有者（三级解析 `CameraSystem::SelectMainCamera()` 的落点）。
             /// 用 weak_ptr 持有：相机可能是实体组件（注册表持有 shared_ptr），实体销毁后必须**自动失效**
@@ -373,6 +382,18 @@ namespace hgl
             /// 剔除 / gizmo / Line 视锥 / shadow origin 统一读这里，不要各自缓存指针。
             const graph::CameraInfo* GetActiveCameraInfo();
 
+            /// 本世界**生效**的 env profile：显式设置优先，否则取本世界 RT 的 env_profile，再退回
+            /// 内置 default。世界表里的 `addr_sky` / `addr_shadow` 按它解析。
+            graph::EnvProfileID GetEnvProfileID() const;
+
+            /// 选本世界的 env profile；`take_ownership=true` 表示"本世界创建的"（Shutdown 时归还）。
+            void SetEnvProfileID(graph::EnvProfileID id, bool take_ownership = false);
+
+            /// 建一个**本世界拥有**的 env profile 并立刻选用（Shutdown 时自动 `Release`）。
+            /// 返回 `kEnvProfileInvalid` 表示管理不可用 / 创建失败。
+            graph::EnvProfileID CreateEnvProfile(const AnsiString &name,
+                                                 const graph::EnvironmentInfo &init = {});
+
             /// 本世界默认相机（0 号槽的拥有者）；尚未解析出相机 / 相机已销毁时为 nullptr
             CameraComponent* GetDefaultCamera() const { return default_camera.lock().get(); }
             void SetDefaultCamera(const std::shared_ptr<CameraComponent>& camera) { default_camera = camera; }
@@ -473,6 +494,9 @@ namespace hgl
             /// 把本世界的 world 私有地址（相机行表 / 渲染项表 / DrawItemID 表）同步进**当前帧槽**的世界表。
             /// 槽 = 当前 RT 的帧槽（主帧 [0,4) / 离屏 [4,8)），由 SetFrameIndex 触发。
             bool SyncWorldAddresses();
+
+            /// 本世界的 EnvironmentManager（经 RenderContext/GraphicsContext 解析；不可用时 nullptr）
+            hgl::graph::EnvironmentManager *ResolveEnvManager() const;
 
         public:
 
