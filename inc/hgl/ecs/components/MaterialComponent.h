@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/Component.h>
 #include<hgl/graph/module/MaterialTextureReferencePool.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/ecs/support/MaterialVariantTable.h>
 
 namespace hgl::graph
 {
@@ -15,8 +16,12 @@ namespace hgl::ecs
     {
     public:
 
-        // Runtime shared program, resolved by ECS.
-        hgl::graph::ShaderProgram *program = nullptr;
+        // ── A3：前向/阴影程序槽 ⇒ 变体 ID ──
+        // program 本体不再挂在组件上（同键实体各持一份指针无法共享/收敛）；组件只持
+        // **变体 ID**，program 与 recipe 去 `support/MaterialVariantTable.h` 的表里按
+        // **静态键**取（表由所属世界持有，见 `ECSContext::GetMaterialVariantTable()`）。
+        // 前向槽 = ForwardColor purpose 的变体：
+        MaterialVariantID forward_variant = INVALID_MATERIAL_VARIANT_ID;
 
         // Runtime row indices, materialized independently for this primitive.
         // They must not be sourced from a shared recipe/spec cache entry.
@@ -42,18 +47,17 @@ namespace hgl::ecs
         bool runtime_dirty = true;
         bool valid = false;
         uint64_t recipe_hash = 0;
-        uint64_t program_build_context_hash = 0;
 
-        // ── ShadowCaster 程序槽（阴影 pass 专用，与上面的 forward 槽完全独立）──
+        // ── ShadowCaster 变体槽（阴影 pass 专用，与 forward 槽完全独立）──
         // 同一物体每帧先在阴影 pass 采深度、再在主帧做着色，两个 pass 的程序
-        // purpose 不同。若共用一个 program 单槽，purpose 每帧 Forward↔Shadow
-        // 乒乓会让 InvalidateRecipeRuntime 反复 retire 纹理配置、
-        // MaterializeRecipeRows 的无行早退把 valid 打成 false，从而禁用
-        // P1-1 全干净帧快路径（每帧每物体两次完整物化链）。
-        // ShadowCaster 模板无 material/sky descriptors，不需要物化行与纹理
-        // 配置，只持 program 与 CreatePipeline 消费的 normalized recipe。
-        hgl::graph::ShaderProgram *shadow_program = nullptr;
-        uint64_t shadow_program_build_context_hash = 0;
+        // purpose 不同（ForwardColor vs ShadowDepth）⇒ 静态键不同，表里天然是两条
+        // 记录，不会乒乓驱逐。若共用一个槽，purpose 每帧 Forward↔Shadow 乒乓会让
+        // InvalidateRecipeRuntime 反复 retire 纹理配置、MaterializeRecipeRows 的无行
+        // 早退把 valid 打成 false，从而禁用 P1-1 全干净帧快路径（每帧每物体两次完整
+        // 物化链）。
+        // ShadowCaster 模板无 material/sky descriptors，不需要物化行与纹理配置，
+        // 只持 program 与 CreatePipeline 消费的 normalized recipe。
+        MaterialVariantID shadow_variant = INVALID_MATERIAL_VARIANT_ID;
         uint32_t shadow_tracked_material_data_generation = 0;
         graph::mtl::MaterialRecipe shadow_cached_normalized_recipe{};
 
@@ -69,6 +73,8 @@ namespace hgl::ecs
         // P3: Tracks the last observed MaterialData::GetAuthoredGeneration()（材质数据层）。
         // When this matches the data layer's current generation, all cached material
         // data is valid and ResolveMaterialProgramForPrimitive can skip entirely.
+        // 注：本字段与 shadow_tracked_material_data_generation 都是**每实体**跟踪副本，
+        // A3 保留原样；A4 随两个程序槽一起收敛（届时并入变体记录/数据层）。
         uint32_t tracked_material_data_generation = 0;
 
         // Epoch of the last materialization pass in which this primitive's
@@ -77,13 +83,14 @@ namespace hgl::ecs
         // re-materialized before rendering.
         uint64_t last_materialize_epoch = 0;
 
-        // ── D9：阴影 pass 跳过路径的重试收敛状态 ──
-        // 阴影 pass 需要该 caster 但本帧画不了（masked 行未就绪 / 程序解析失败 /
-        // 几何或管线失败）时递增；该 caster 成功产出本帧 render item（shadow_program
-        // 非空）时清零。用途：① 首次跳过告警一次（不再静默，也不逐帧刷屏）；
-        // ② 收敛上限——连续跳过超过阈值后把静态级联失效从"每帧"降频为周期性，
-        // 否则持续失败会退化成"每帧 bump → 静态级联每帧全量重画"且全程无日志。
-        uint32_t shadow_retry_frames = 0;
+        // ── D9：阴影 pass 跳过路径的重试收敛状态（A3 已随阴影槽迁入变体记录）──
+        // 计数语义 = **该阴影变体记录**的 retry_frames（见
+        // `MaterialVariantRecord::retry_frames`）：首次跳过告警一次；连续超过
+        // kShadowRetryFullBumpFrames 后把静态级联失效从"每帧"降频为周期性；该 caster
+        // 成功产出本帧 render item 时复位。组件不再持该计数。
+        // ⚠ A4 会把重试/降频状态移到**每实例侧**（共享记录不得承载每实例状态）：
+        //   同键的健康兄弟每帧复位，会持续清零失败者的计数，可能掩盖 D9 的 masked
+        //   失败告警/降频——只影响诊断，不影响渲染；A4 随每实例侧一并解决。
 
     public:
 

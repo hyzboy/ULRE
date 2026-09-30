@@ -82,8 +82,7 @@ namespace hgl::ecs
         cached_effective_recipe = {};
         cached_effective_recipe_hash = 0;
         tracked_material_data_generation = 0;
-        shadow_program = nullptr;
-        shadow_program_build_context_hash = 0;
+        shadow_variant = INVALID_MATERIAL_VARIANT_ID;
         shadow_tracked_material_data_generation = 0;
         shadow_cached_normalized_recipe = {};
         ClearMaterializationRows();
@@ -92,7 +91,7 @@ namespace hgl::ecs
     void MaterialComponent::OnDetach()
     {
         RetireTextureConfiguration(*this);
-        program = nullptr;
+        forward_variant = INVALID_MATERIAL_VARIANT_ID;
         program_dirty = true;
         runtime_dirty = true;
         valid = false;
@@ -101,9 +100,9 @@ namespace hgl::ecs
         cached_effective_recipe = {};
         cached_effective_recipe_hash = 0;
         tracked_material_data_generation = 0;
-        // shadow_program 归 ShaderProgramManager 缓存所有，这里只清引用。
-        shadow_program = nullptr;
-        shadow_program_build_context_hash = 0;
+        // 变体记录归世界变体表所有；这里只把本组件的两个槽退登记（program 本体由
+        // ShaderProgramManager 缓存持有，记录里的引用不因此失效）。
+        shadow_variant = INVALID_MATERIAL_VARIANT_ID;
         shadow_tracked_material_data_generation = 0;
         shadow_cached_normalized_recipe = {};
         ClearMaterializationRows();

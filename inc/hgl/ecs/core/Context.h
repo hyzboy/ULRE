@@ -12,6 +12,7 @@
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/support/BoundingBoxAccessor.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
+#include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/EntityManager.h>
@@ -146,6 +147,12 @@ namespace hgl
 
             std::unique_ptr<RenderItemDataStorage> render_item_storage;
             std::unique_ptr<DrawItemIDStorage> draw_item_id_storage;
+
+            // A3 材质变体表（v2 §9.3）：按**静态键**去重的 program/recipe 运行期记录。
+            // program 归本世界 GraphicsContext 的 ShaderProgramManager 缓存所有 ⇒ 表随世界
+            // 存亡，不会跨 GraphicsContext 混用悬垂 program。访问范式同 visibility_storage /
+            // draw_item_id_storage。
+            std::unique_ptr<MaterialVariantTable> material_variant_table;
 
             // 世界私有相机行存储：相机是**世界级观察者数据**（16 槽 × 帧槽数，0 号槽=本世界默认相机）
             // 定稿见 doc/world-addresses-and-camera-model-plan.md §2。
@@ -554,6 +561,10 @@ namespace hgl
             /// Get world-level DrawItemIDStorage
             DrawItemIDStorage* GetDrawItemIDStorage() { return draw_item_id_storage.get(); }
             const DrawItemIDStorage* GetDrawItemIDStorage() const { return draw_item_id_storage.get(); }
+
+            /// A3 材质变体表（材质运行期 program/recipe 按静态键去重；见 support/MaterialVariantTable.h）
+            MaterialVariantTable* GetMaterialVariantTable() { return material_variant_table.get(); }
+            const MaterialVariantTable* GetMaterialVariantTable() const { return material_variant_table.get(); }
 
             /// Get 世界私有相机行存储（相机 = 世界级观察者数据；0 号槽 = 本世界默认相机）
             CameraInfoStorage* GetCameraInfoStorage() { return camera_info_storage.get(); }

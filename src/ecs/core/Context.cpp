@@ -73,6 +73,7 @@ namespace hgl
             , visibility_storage(std::make_unique<VisibilityDataStorage>())
             , render_item_storage(std::make_unique<RenderItemDataStorage>())
             , draw_item_id_storage(std::make_unique<DrawItemIDStorage>())
+            , material_variant_table(std::make_unique<MaterialVariantTable>())
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
         {

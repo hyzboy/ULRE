@@ -42,8 +42,19 @@ namespace hgl::ecs
 
     hgl::graph::ShaderProgram* PrimitiveRenderItem::GetShaderProgram() const
     {
-        if (materialComp && materialComp->program)
-            return materialComp->program;
+        // A3：program 已从 MaterialComponent 迁到世界的材质变体表；语义与改前一致——
+        // 取**前向**变体（ForwardColor purpose）的 program，解析未就绪时退回
+        // PrimitiveComponent（非 recipe 图元恒 nullptr）。
+        if (materialComp && context)
+        {
+            const MaterialVariantTable *variant_table = context->GetMaterialVariantTable();
+            const MaterialVariantRecord *record = variant_table
+                ? variant_table->Get(materialComp->forward_variant)
+                : nullptr;
+
+            if (record && record->program)
+                return record->program;
+        }
 
         return primitiveComp ? primitiveComp->GetShaderProgram() : nullptr;
     }

@@ -187,6 +187,7 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/DrawItemIDStorage.h
     ${ECS_INCLUDE_PATH}/support/DrawItemCompaction.h
     ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
+    ${ECS_INCLUDE_PATH}/support/MaterialVariantTable.h
     ${ECS_INCLUDE_PATH}/support/RenderStrategyTable.h
     ${ECS_INCLUDE_PATH}/support/RenderStrategyParity.h
     ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
@@ -202,6 +203,7 @@ set(ECS_SUPPORT_FILES
     support/DrawItemIDStorage.cpp
     support/DrawItemCompaction.cpp
     support/VisibilityDataStorage.cpp
+    support/MaterialVariantTable.cpp
     support/RenderStrategyParity.cpp
     support/TransformAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
@@ -352,6 +354,13 @@ if(MSVC)
     set_target_properties(TestRenderStrategyTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# A3 材质变体表（静态键去重 + 预算制 fail-fast）
+add_executable(TestMaterialVariantTable support/TestMaterialVariantTable.cpp)
+target_link_libraries(TestMaterialVariantTable PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestMaterialVariantTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 add_executable(TestComponentMask support/TestComponentMask.cpp)
 target_link_libraries(TestComponentMask PRIVATE ${ULRE})
 if(MSVC)
@@ -405,4 +414,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestBoundingVolumeCull
         PROPERTIES LABELS "ecs;cull")
+
+    add_test(
+        NAME TestMaterialVariantTable
+        COMMAND TestMaterialVariantTable)
+    set_tests_properties(
+        TestMaterialVariantTable
+        PROPERTIES LABELS "ecs;material_variant")
 endif()

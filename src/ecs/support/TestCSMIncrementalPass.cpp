@@ -1796,9 +1796,13 @@ int main(int argc, char** argv)
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "kShadowRetryBumpPeriod) == 0",
               "bump 降频公式没了（超上限后仍每帧 bump）" },
+            // A3：重试计数随阴影程序槽迁入材质变体记录（MaterialComponent 只持变体 ID）
+            { "MaterialVariantTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialVariantTable.h"),
+              "uint32_t retry_frames = 0;",
+              "变体记录的跳过重试计数没了（无法区分首帧收敛与持续失败）" },
             { "MaterialComponent.h", OS_TEXT("inc/hgl/ecs/components/MaterialComponent.h"),
-              "uint32_t shadow_retry_frames = 0;",
-              "per-primitive 重试计数没了（无法区分首帧收敛与持续失败）" },
+              "shadow_retry_frames",
+              "per-primitive 重试计数又回到组件上（应归变体记录）", true },
             // ── 禁复活：逐帧刷屏的旧告警 ──
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "Shadow pass geometry failed for ",
