@@ -56,11 +56,6 @@ set(ECS_SYS_02_TickTransform_TransformSystem_FILES
     systems/tick/TransformSystem.cpp
 )
 
-set(ECS_SYS_03_TickTransform_BoundingBoxComponent_FILES
-    ${ECS_INCLUDE_PATH}/components/BoundingBoxComponent.h
-    components/BoundingBoxComponent.cpp
-)
-
 set(ECS_SYS_04_TickTransform_VisibilitySystem_FILES
     ${ECS_INCLUDE_PATH}/systems/tick/VisibilitySystem.h
     systems/tick/VisibilitySystem.cpp
@@ -198,6 +193,7 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/DrawItemCompaction.h
     ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
     ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
+    ${ECS_INCLUDE_PATH}/support/BoundingBoxAccessor.h
     ${ECS_INCLUDE_PATH}/support/PipelineMaterialRenderer.h
     ${ECS_INCLUDE_PATH}/support/TransformAssignmentBuffer.h
     ${ECS_INCLUDE_PATH}/support/RenderPipelineBase.h
@@ -257,7 +253,6 @@ set(ECS_SOURCE
     ${ECS_SYS_00_RenderSystemCore_FILES}
     ${ECS_SYS_01_TickInput_InputSystem_FILES}
     ${ECS_SYS_02_TickTransform_TransformSystem_FILES}
-    ${ECS_SYS_03_TickTransform_BoundingBoxComponent_FILES}
     ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES}
     ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
     ${ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES}
@@ -293,7 +288,6 @@ source_group("ECS\\Core" FILES ${ECS_CORE_FILES})
 source_group("ECS\\Systems\\00 RenderSystemCore" FILES ${ECS_SYS_00_RenderSystemCore_FILES})
 source_group("ECS\\Systems\\01 TickInput_InputSystem" FILES ${ECS_SYS_01_TickInput_InputSystem_FILES})
 source_group("ECS\\Systems\\02 TickTransform_TransformSystem" FILES ${ECS_SYS_02_TickTransform_TransformSystem_FILES})
-source_group("ECS\\Systems\\03 TickTransform_BoundingBoxComponent" FILES ${ECS_SYS_03_TickTransform_BoundingBoxComponent_FILES})
 source_group("ECS\\Systems\\04 TickTransform_VisibilitySystem" FILES ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES})
 source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickCamera_CameraSystem_FILES})
 source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainAcquireSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES})
@@ -346,6 +340,13 @@ add_executable(TestCSMIncrementalPass support/TestCSMIncrementalPass.cpp)
 target_link_libraries(TestCSMIncrementalPass PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestCSMIncrementalPass PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
+# 包围盒 SoA 存储 + 值类型句柄（组件 → BoundingBoxDataStorage/BoundingBoxAccessor 改造）
+add_executable(TestBoundingBoxStorage support/TestBoundingBoxStorage.cpp)
+target_link_libraries(TestBoundingBoxStorage PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestBoundingBoxStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
 add_executable(TestBoundingVolumeCull support/TestBoundingVolumeCull.cpp)

@@ -1001,7 +1001,24 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 
 0. **前置检查（强制）**：删组件类前，逐条对照 `git show HEAD:<被删文件>` 里的每个 `ctx->` / `owner_context->` / `storage->` 调用，把"对世界的副作用"全部搬走（T8 血泪：Mobility 换边 / 子表维护 / 销毁回收）。
 0.5 **泛化地基（v2 约束 §1/§2，趁只有 Transform 一个消费者时做最省）**：① 类型 → (scope, arena, 行宽) **静态表**；② 句柄 **revision 校验**（泛化现有 `versions`，释放/重分配时 bump；句柄仍 24 B）；③ **CPU 权威 / GPU 派生视图**的存储布局（版本号增量同步，单写者）。
+   - **状态：✅ ①②已落地（2026-09-30，commit `034f7486d`）**
+     - `inc/hgl/ecs/support/ComponentTypeTable.h`（新）：`ComponentType`(5 类) + `ComponentScope`(Global/World，静态) + 静态表；**表与枚举同序由 `static_assert` 强制，漏登记表项 = 编译错误**（该检查当场抓到"漏 `None=0` 占位"的疏漏）。其余四类的 scope/行宽标注为待定稿（现记 World 作保守默认）。
+     - 存储新增 `generations`（行账目第 19 条 ⇒ 探针现报 **279 B/行**）；**世代编码：0 = 死/未分配，正奇数 = 活；复用须 +2 保持奇数（ABA 免疫）**。
+     - `TransformAccessor` 建柄时捕获世代（用掉原 4 B 填充 ⇒ **仍 24 B**）；`IsValid()` = 存世 + id 有效 + **世代非零且与行一致** ⇒ 释放后旧柄与"死行上的新柄"都无效。
+     - **Test 10「句柄失效契约」**：活柄有效 / 释放即失效 / 死行新柄也失效 / 空柄写入被忽略；**反证已做**（抽掉 `Deallocate` 的世代归零 ⇒ Test 10 精确报"行释放后旧句柄仍报有效（悬垂写入窗口）"、`rc=12`）。
+     - 验证：build 0 error/0 warning；三测试 rc=0；门 rc=0；四个示例 0 真 error 行；探针"各数组元素数 == 行数：是"。
+     - ⚠ 过程记录：改存储**成员布局**后必须清 `build/**/*.dir/Debug` 再编——陈旧 obj 会造成 TU ABI 错位（本次表现是 `TestCSMIncrementalPass` 段错误 rc=139，清 obj 后消失；用"临时退回旧 `IsValid`"的受控二分排除了悬垂解引用假设）。
+     - ⏳ ③ CPU 权威/GPU 派生的**存储布局**尚未动（它跟各组件 ID 化一起做）。
 1. `BoundingBoxComponent` → `BoundingBoxDataStorage` 连续化（评审 R5：剔除是热路径；当前 `src/ecs/support/PrimitiveBatchPipeline.cpp:176`、`src/ecs/support/line/LineRenderPipeline.cpp:454`、`src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:37` 全是逐实体 OOP）⇒ `PrimitiveCullSystem` 改连续数组批处理。
+   - **状态：✅ 已完成（2026-10-01）**
+     - **存储**：`inc/hgl/ecs/support/BoundingBoxDataStorage.h` 重写为世界私有 SoA 行存储（并行 `hgl::ValueArray`）：`local_min/local_max/world_min/world_max`(各 `glm::vec3`) + `world_valid`(uint8) + `owners`(EntityID) + `generations`(uint32) + `entity_rows` 反查表 ⇒ **每行 77 B**（旧的 `std::vector<vec3>` 实现是 64 B，但**没有世代/owner 反查**，且句柄走 free list 复用 ⇒ ABA 隐患）。
+     - **句柄**：新增 `BoundingBoxAccessor`（值类型，`static_assert(sizeof==24)`），建柄捕获世代、`IsValid()` 三重判据 ⇒ 与 Transform 完全同范式。
+     - **世界接入**：`Context.h/.cpp` 加 `bounding_box_storage` 与 `GetBoundingBoxByEntity/GetOrCreateBoundingBox/DestroyBoundingBox`；`DestroyEntity` 追加行回收（T8 教训：销毁必回收行）。
+     - **删组件**：`BoundingBoxComponent.{h,cpp}` 已 `git rm`（含它的**全局静态共享存储** `sharedStorage` —— 违反 v2 §1 世界私有/单一真源）；`GetSerializationType()`（零调用者）与 `IsDirty/ClearDirty/dirtyFlags`（零消费者）一并删除。全仓 `grep BoundingBoxComponent inc src example` = **0**。
+     - **调用点**：`PrimitiveBatchPipeline` 两个函数签名改为传数据（`const math::AABB&` / `const glm::vec3& ×2`），`LineRenderPipeline`、`LineBoundsUpdateSystem` 改 accessor；无兼容层。
+     - **⚠ 行布局硬教训**：行内**不得**存 `math::AABB` —— 本仓全局 `GLM_FORCE_DEFAULT_ALIGNED_GENTYPES` 下 `sizeof(glm::vec3)=16` 且 AABB 自带 352 B 派生缓存（6 face center + 6 plane）⇒ 实测每行 **717 B**（比旧实现大 10 倍）；改存 min/max 后 **77 B（≈9.3× 缩减）**。另：不要为"让 `ValueArray<重型类型>` 能实例化"而给第三方类型打全局 `operator==` 补丁（ODR 风险）——改行布局即可消除该需求。
+     - **验证**：清除整棵 obj 树重编；build 0 error（仅 4 条既有 `src/InlineGeometry` C4715）；`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0；Test 4 实测每行 77 B / 7 条平行数组。
+     - **反证（含防假绿）**：抽掉 `Deallocate` 的 `generations[id] = 0;` ⇒ 清该目标 `.dir` 重编（obj mtime 00:18:57 晚于头 00:18:34）⇒ `rc=1`、文案"释放后世代未归 0（行未失效）"；恢复后重编全绿。**第一次反证曾是假绿**（MSBuild 未重编该 TU，跑的旧二进制全 Passed）——本仓头文件依赖跟踪不可靠，见 §9 教训。
 2. `VisibilityComponent`（最接近纯数据）。
 3. `PrimitiveComponent` / `RenderableComponent`（配 GeometryDescriptor/Accessor）。
 4. `CameraComponent`（注意深层虚继承）。

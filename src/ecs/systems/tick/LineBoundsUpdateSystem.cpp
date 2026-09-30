@@ -1,7 +1,7 @@
 ﻿#include<hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/LinesComponent.h>
-#include<hgl/ecs/components/BoundingBoxComponent.h>
+#include<hgl/ecs/support/BoundingBoxAccessor.h>
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 
@@ -34,27 +34,23 @@ namespace hgl::ecs
             if (!owner)
                 continue;
 
-            auto bbox = owner->GetComponent<BoundingBoxComponent>();
-            if (!bbox)
-            {
-                bbox = owner->AddComponent<BoundingBoxComponent>();
-            }
+            const BoundingBoxAccessor bbox = world->GetOrCreateBoundingBox(owner->GetEntityID());
 
-            if (!bbox)
+            if (!bbox.IsValid())
                 continue;
 
             const auto& local_bounds = line_comp->GetLocalBounds();
-            bbox->SetAABB(local_bounds);
+            bbox.SetLocalBounds(local_bounds);
 
             const TransformAccessor transform = world->GetTransformByEntity(owner->GetEntityID());
             if (transform.IsValid())
             {
                 const auto world_aabb = local_bounds.Transformed(transform.GetWorldMatrix());
-                bbox->SetWorldAABB(world_aabb);
+                bbox.SetWorldBounds(world_aabb);
             }
             else
             {
-                bbox->SetWorldAABB(local_bounds);
+                bbox.SetWorldBounds(local_bounds);
             }
         }
     }

@@ -26,7 +26,6 @@ namespace hgl::ecs
     class TransformSystem;
     class RenderItem;
     class PrimitiveRenderItem;
-    class BoundingBoxComponent;
 
     class PrimitiveBatchPipeline
     {
@@ -53,8 +52,8 @@ namespace hgl::ecs
     private:
         void PerformFrustumCulling();
 
-        bool TestFrustumWithWorldAABB(RenderItem* item, const BoundingBoxComponent* bbox);
-        bool TestFrustumWithLocalAABB(RenderItem* item, const BoundingBoxComponent* bbox);
+        bool TestFrustumWithWorldAABB(RenderItem* item, const math::AABB& world_aabb);
+        bool TestFrustumWithLocalAABB(RenderItem* item, const glm::vec3& local_center, const glm::vec3& local_extents);
         bool TestFrustumWithBoundingSphere(RenderItem* item);
 
         void SortByDistance();

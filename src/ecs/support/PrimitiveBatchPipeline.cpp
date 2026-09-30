@@ -9,7 +9,7 @@
 #include<cstdio>
 #include<cstring>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/components/BoundingBoxComponent.h>
+#include<hgl/ecs/support/BoundingBoxAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/ShadowComponent.h>
@@ -173,13 +173,14 @@ namespace hgl::ecs
             if (!entity)
                 continue;
 
-            auto bbox = entity->GetComponent<BoundingBoxComponent>();
-            if (bbox)
+            const BoundingBoxAccessor bbox = world->GetBoundingBoxByEntity(entity->GetEntityID());
+
+            if (bbox.IsValid())
             {
-                if (bbox->HasWorldAABB())
-                    item->isVisible = TestFrustumWithWorldAABB(item, bbox.get());
+                if (bbox.HasWorldBounds())
+                    item->isVisible = TestFrustumWithWorldAABB(item, bbox.GetWorldBounds());
                 else
-                    item->isVisible = TestFrustumWithLocalAABB(item, bbox.get());
+                    item->isVisible = TestFrustumWithLocalAABB(item, bbox.GetCenter(), bbox.GetExtents());
             }
             else
             {
@@ -188,19 +189,14 @@ namespace hgl::ecs
         }
     }
 
-    bool PrimitiveBatchPipeline::TestFrustumWithWorldAABB(RenderItem* item, const BoundingBoxComponent* bbox)
+    bool PrimitiveBatchPipeline::TestFrustumWithWorldAABB(RenderItem* item, const math::AABB& world_aabb)
     {
-        const auto& world_aabb = bbox->GetWorldAABB();
-
         //worldAABB 已包含实体缩放，可直接用 P/N 顶点法做精确判定
         return frustum.BoxIn(world_aabb) != math::Frustum::Scope::OUTSIDE;
     }
 
-    bool PrimitiveBatchPipeline::TestFrustumWithLocalAABB(RenderItem* item, const BoundingBoxComponent* bbox)
+    bool PrimitiveBatchPipeline::TestFrustumWithLocalAABB(RenderItem* item, const glm::vec3& local_center, const glm::vec3& local_extents)
     {
-        const glm::vec3 local_center = bbox->GetCenter();
-        const glm::vec3 local_extents = bbox->GetExtents();
-
         const glm::mat4 worldMat = item->GetWorldMatrix();
         const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
 

@@ -69,6 +69,7 @@ namespace hgl
             : Object(name)
             , entity_manager(std::make_unique<EntityManager>(1000))
             , transform_storage(std::make_unique<TransformDataStorage>())
+            , bounding_box_storage(std::make_unique<BoundingBoxDataStorage>())
             , render_item_storage(std::make_unique<RenderItemDataStorage>())
             , draw_item_id_storage(std::make_unique<DrawItemIDStorage>())
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
@@ -1805,6 +1806,44 @@ namespace hgl
         TransformAccessor ECSContext::GetTransform(TransformID id)
         {
             return TransformAccessor(GetTransformStorage(),id,this);
+        }
+
+        BoundingBoxAccessor ECSContext::GetBoundingBoxByEntity(EntityID owner) const
+        {
+            auto *storage = bounding_box_storage.get();
+
+            if (!storage)
+                return BoundingBoxAccessor();
+
+            // const 成员里仍要交出可变 storage 句柄（行数据由世界拥有；句柄只做定位）
+            return BoundingBoxAccessor(storage,storage->FindByOwner(owner),const_cast<ECSContext *>(this));
+        }
+
+        BoundingBoxAccessor ECSContext::GetOrCreateBoundingBox(EntityID owner)
+        {
+            auto *storage = bounding_box_storage.get();
+
+            if (!storage)
+                return BoundingBoxAccessor();
+
+            auto id = storage->FindByOwner(owner);
+
+            if (id == BoundingBoxDataStorage::INVALID_HANDLE)
+            {
+                id = storage->Allocate();
+                storage->SetOwner(id,owner);
+            }
+
+            return BoundingBoxAccessor(storage,id,this);
+        }
+
+        void ECSContext::DestroyBoundingBox(BoundingBoxDataStorage::HandleID id)
+        {
+            if (id == BoundingBoxDataStorage::INVALID_HANDLE)
+                return;
+
+            if (auto *storage = bounding_box_storage.get())
+                storage->Deallocate(id);
         }
 
         void ECSContext::GetSystemsByElementType(const std::string& element_type, std::vector<std::shared_ptr<System>>& out_systems) const

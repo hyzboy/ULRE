@@ -10,6 +10,7 @@
 #include<hgl/ecs/core/ScenePipelineMode.h>
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/support/BoundingBoxAccessor.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
@@ -130,6 +131,11 @@ namespace hgl
             std::vector<TransformID> static_transforms;
             std::vector<TransformID> movable_transforms;
             std::unique_ptr<TransformDataStorage> transform_storage;
+
+            // 世界私有包围盒行存储（原组件已删除；连续 SoA + 值类型句柄，与 transform_storage 同范式）。
+            // 声明在 transform_storage 之后 ⇒ 先于它析构；两者互不引用，无"析构时用已销毁对象"问题。
+            std::unique_ptr<BoundingBoxDataStorage> bounding_box_storage;
+
             std::unique_ptr<RenderItemDataStorage> render_item_storage;
             std::unique_ptr<DrawItemIDStorage> draw_item_id_storage;
 
@@ -469,6 +475,19 @@ namespace hgl
             TransformID CreateTransform(EntityID owner, Mobility mobility);
             void        DestroyTransform(TransformID id);
 
+            /// 实体 → 包围盒访问器（无则返回无效句柄）
+            BoundingBoxAccessor GetBoundingBoxByEntity(EntityID owner) const;
+
+            /// 实体 → 包围盒访问器（无则分配存储行 + 登记 owner）
+            BoundingBoxAccessor GetOrCreateBoundingBox(EntityID owner);
+
+            /// 销毁一行包围盒（按句柄；行属于世界，不挂在实体上）
+            void DestroyBoundingBox(BoundingBoxDataStorage::HandleID id);
+
+            /// Get world-level BoundingBoxDataStorage
+            BoundingBoxDataStorage* GetBoundingBoxStorage() { return bounding_box_storage.get(); }
+            const BoundingBoxDataStorage* GetBoundingBoxStorage() const { return bounding_box_storage.get(); }
+
             /// 实体 → 变换行（无变换时返回 INVALID_TRANSFORM_ID）
             TransformID GetTransformID(EntityID owner) const;
 
@@ -560,6 +579,16 @@ namespace hgl
 
                 if (IsValidTransformID(transform))
                     DestroyTransform(transform);
+
+                // 与变换行同理回收包围盒行：行属于世界（不挂在实体上），实体没了没人回收的话，
+                // 残行会留在 entity_rows 反查表里，让同索引的新实体"继承"旧的包围盒。
+                if (bounding_box_storage)
+                {
+                    const BoundingBoxDataStorage::HandleID bbox = bounding_box_storage->FindByOwner(id);
+
+                    if (bbox != BoundingBoxDataStorage::INVALID_HANDLE)
+                        DestroyBoundingBox(bbox);
+                }
 
                 if (entity_manager)
                     entity_manager->DestroyEntity(id);

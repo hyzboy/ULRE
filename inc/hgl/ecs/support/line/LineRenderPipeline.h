@@ -23,7 +23,6 @@ namespace hgl
     namespace ecs
     {
         class LinesComponent;
-        class BoundingBoxComponent;
     }
 }
 

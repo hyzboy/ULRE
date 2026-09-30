@@ -1,7 +1,7 @@
 ﻿#include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/LinesComponent.h>
-#include <hgl/ecs/components/BoundingBoxComponent.h>
+#include <hgl/ecs/support/BoundingBoxAccessor.h>
 #include <hgl/ecs/components/VisibilityComponent.h>
 #include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
@@ -451,19 +451,18 @@ namespace hgl::ecs
             // Frustum cull
             if (frustum_valid)
             {
-                if (auto bbox = owner->GetComponent<BoundingBoxComponent>())
+                const BoundingBoxAccessor bbox = context_->GetBoundingBoxByEntity(owner->GetEntityID());
+
+                if (bbox.IsValid() && bbox.HasWorldBounds())
                 {
-                    if (bbox->HasWorldAABB())
+                    const auto aabb    = bbox.GetWorldBounds();
+                    const glm::vec3 c  = aabb.GetCenter();
+                    const glm::vec3 e  = aabb.GetExtent();
+                    if (frustum.SphereIn(c, glm::length(e)) ==
+                        hgl::math::Frustum::Scope::OUTSIDE)
                     {
-                        const auto& aabb   = bbox->GetWorldAABB();
-                        const glm::vec3 c  = aabb.GetCenter();
-                        const glm::vec3 e  = aabb.GetExtent();
-                        if (frustum.SphereIn(c, glm::length(e)) ==
-                            hgl::math::Frustum::Scope::OUTSIDE)
-                        {
-                            ++stats_.culled_by_frustum;
-                            continue;
-                        }
+                        ++stats_.culled_by_frustum;
+                        continue;
                     }
                 }
             }

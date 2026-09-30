@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ComponentTypeTable.h —— 组件类型 → (scope, arena, GPU 行宽) 的**静态表**。
  *
  * 设计依据：doc/future/ULRE_FINAL_TARGET_v2_设计约束.md
