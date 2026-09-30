@@ -26,15 +26,26 @@ namespace hgl
         {
             TransformDataStorage *storage = nullptr;
             TransformID           id      = INVALID_TRANSFORM_ID;
+            uint32_t              generation = 0;       ///< 建柄时捕获的行世代（revision）：释放/重分配后旧柄自动失效
             ECSContext           *context = nullptr;   ///< 用于解析 owner 实体（可为空：纯数据操作不需要）
 
         public:
 
             TransformAccessor() = default;
-            TransformAccessor(TransformDataStorage *s,TransformID i,ECSContext *c=nullptr)
-                : storage(s),id(i),context(c) {}
 
-            bool IsValid() const { return storage && id != INVALID_TRANSFORM_ID; }
+            /// 建柄时**捕获行世代**：这是"句柄失效"的全部机制（v2 §2）。
+            /// 世代编码：**0 = 死/未分配；正奇数 = 活**。释放（Deallocate）会把它归 0 ⇒ 旧柄与"死行上的新柄"都无效；
+            /// 将来行复用时 +2 保持奇数 ⇒ ABA 免疫。
+            TransformAccessor(TransformDataStorage *s,TransformID i,ECSContext *c=nullptr)
+                : storage(s),id(i),generation(s ? s->GetGeneration(i) : 0),context(c) {}
+
+            bool IsValid() const
+            {
+                return storage
+                    && id != INVALID_TRANSFORM_ID
+                    && generation != 0                                  // 0 = 死/未分配：死行上的新柄也无效
+                    && generation == storage->GetGeneration(id);        // 世代不符 = 该行已换过主人
+            }
 
             TransformID           GetID() const         { return id; }
             TransformDataStorage *GetStorage() const    { return storage; }

@@ -79,6 +79,7 @@ namespace hgl
             hgl::ValueArray<EntityID>       owners;             // 所属实体（accessor 解析 owner / 告警里的实体名）
             hgl::ValueArray<uint32_t>       change_masks;       // 变更位掩码（TouchChange 累积）
             hgl::ValueArray<uint64_t>       versions;           // 变更计数（渲染侧比对"是否已上传"）
+            hgl::ValueArray<uint32_t>       generations;        // 行世代：释放/重分配时 +1 ⇒ 旧句柄读时失效（v2 §2 句柄 revision 校验）
             hgl::ValueArray<uint8_t>        write_armed;        // D4：该行已被渲染侧消费过
             hgl::ValueArray<uint8_t>        write_warned;       // D4：已就"运行期写静态"告警过一次
 
@@ -107,6 +108,7 @@ namespace hgl
                 owners.Add(EntityID());
                 change_masks.Add(0);
                 versions.Add(0);
+                generations.Add(1);         // 新行从 1 起（正奇数 = 活；0 = 死/未分配）
                 write_armed.Add(0);
                 write_warned.Add(0);
                 children.emplace_back();
@@ -121,6 +123,12 @@ namespace hgl
             {
                 if (id >= static_cast<HandleID>(positions.GetCount()))
                     return;
+
+                // 失效机制（v2 §2）：释放即换代 ⇒ 任何持有旧世代的行句柄立刻作废。
+                // 世代编码约定：**0 = 死/未分配；正奇数 = 活**。
+                // 将来 T10 引入行复用时：复用必须在既有世代上 **+2 保持奇数**（ABA 免疫，直到 2^31 次复用）。
+                if (id < static_cast<HandleID>(generations.GetCount()))
+                    generations[id] = 0;
 
                 // Mark as unused but keep slot to preserve stable indices
                 parent_indices[id] = INVALID_HANDLE;
@@ -312,6 +320,15 @@ namespace hgl
                 return versions[id];
             }
 
+            /// 行世代（句柄失效检测）。越界或从未分配返回 0 —— 默认构造的句柄世代也是 0 ⇒ 不会误判为有效。
+            uint32_t GetGeneration(HandleID id) const
+            {
+                if (id >= static_cast<HandleID>(generations.GetCount()))
+                    return 0;
+
+                return generations[id];
+            }
+
             bool IsWriteArmed(HandleID id) const
             {
                 return (id < static_cast<HandleID>(write_armed.GetCount())) && write_armed[id] != 0;
@@ -344,7 +361,7 @@ namespace hgl
                 uint32_t    count;   ///< 元素数（不变量：恒等于 GetCount()）
             };
 
-            static constexpr uint32_t PER_ROW_FIELD_COUNT = 18;
+            static constexpr uint32_t PER_ROW_FIELD_COUNT = 19;
 
             using PerRowFieldTable = std::array<PerRowField,PER_ROW_FIELD_COUNT>;
 
@@ -367,6 +384,7 @@ namespace hgl
                     { "owners",       static_cast<uint32_t>(sizeof(EntityID)),         static_cast<uint32_t>(owners.GetCount()) },
                     { "change_masks", static_cast<uint32_t>(sizeof(uint32_t)),         static_cast<uint32_t>(change_masks.GetCount()) },
                     { "versions",     static_cast<uint32_t>(sizeof(uint64_t)),         static_cast<uint32_t>(versions.GetCount()) },
+                    { "generation",   static_cast<uint32_t>(sizeof(uint32_t)),         static_cast<uint32_t>(generations.GetCount()) },
                     { "write_armed",  static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(write_armed.GetCount()) },
                     { "write_warned", static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(write_warned.GetCount()) },
                     { "children",     static_cast<uint32_t>(sizeof(std::vector<HandleID>)), static_cast<uint32_t>(children.size()) },
@@ -735,6 +753,7 @@ namespace hgl
                 owners.Clear();
                 change_masks.Clear();
                 versions.Clear();
+                generations.Clear();
                 write_armed.Clear();
                 write_warned.Clear();
                 children.clear();

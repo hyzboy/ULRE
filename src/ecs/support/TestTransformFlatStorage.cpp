@@ -2,12 +2,45 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/support/TransformAccessor.h>
+#include <hgl/ecs/support/ComponentTypeTable.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 using namespace hgl;
 using namespace hgl::ecs;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 编译期校验：组件类型表（v2 约束 §1，自动 scale —— 新增类型时这里会立刻报错）
+//   · 每类都必须有非空 arena 名（漏登记 ⇒ 编译失败）
+//   · 有 GPU 行的类型，行宽必须是 16 的倍数（GPU 最小对齐）
+//   · Transform 的 GPU 行宽 = mat4 = 64 B（L2W 派生视图）
+// ─────────────────────────────────────────────────────────────────────────────
+namespace
+{
+    constexpr bool CheckComponentTypeTableEntries()
+    {
+        for (uint32_t i = 0; i < COMPONENT_TYPE_COUNT; ++i)
+        {
+            const ComponentTypeInfo &info = kComponentTypeTable[i];
+
+            if (info.type == ComponentType::None)      // 占位项：无 arena、无行宽
+                continue;
+
+            if (!info.arena_name || info.arena_name[0] == '\0')
+                return false;
+
+            if (info.gpu_row_bytes != 0 && (info.gpu_row_bytes % 16) != 0)
+                return false;
+        }
+
+        return true;
+    }
+}
+
+static_assert(CheckComponentTypeTableEntries(), "组件类型表项不完整（缺 arena 名，或 GPU 行宽未按 16 字节对齐）");
+static_assert(GetComponentGPURowBytes(ComponentType::Transform) == 64, "Transform 的 GPU 行宽应为 mat4 = 64 B");
+static_assert(GetComponentScope(ComponentType::Transform) == ComponentScope::World, "Transform 是世界私有数据");
 
 int main(int argc, char** argv)
 {
@@ -283,6 +316,67 @@ int main(int argc, char** argv)
                  static_cast<uint32_t>(TransformDataStorage::PER_ROW_FIELD_COUNT),
                  storage->PerRowBytes(),
                  storage->DerivedRowBytes());
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 10: 句柄失效契约（v2 约束 §2 —— revision/世代校验）
+    //   · 活行的句柄有效
+    //   · 行释放后，**旧句柄立刻失效**（悬垂写入窗口为零）
+    //   · **死行上的新句柄也必须无效**（世代 0 = 死）
+    //   · 空句柄的写入被忽略，且不得影响存储
+    // ─────────────────────────────────────────────────────────────
+    {
+        auto *storage = context.GetTransformStorage();
+        if (!storage)
+        {
+            GLogError(u8"Test 10 Failed: 无变换存储");
+            return 12;
+        }
+
+        auto ent_live = context.CreateEntity<Entity>("HandleLiveProbe");
+        const TransformID id_live = context.CreateTransform(ent_live->GetEntityID(), Mobility::Static);
+        auto live = context.GetTransform(id_live);
+
+        if (!live.IsValid())
+        {
+            GLogError(u8"Test 10 Failed: 活行的句柄无效");
+            return 12;
+        }
+
+        const EntityID live_entity_id = ent_live->GetEntityID();
+        context.DestroyEntity(live_entity_id);          // 释放该行 ⇒ 世代归 0
+
+        if (live.IsValid())
+        {
+            GLogError(u8"Test 10 Failed: 行释放后旧句柄仍报有效（悬垂写入窗口）");
+            return 12;
+        }
+
+        live.SetLocalPosition(glm::vec3(9.0f, 9.0f, 9.0f));     // 空句柄写入必须被忽略
+
+        if (storage->GetPosition(id_live) != glm::vec3(0.0f))
+        {
+            GLogError(u8"Test 10 Failed: 空句柄的写入影响了存储");
+            return 12;
+        }
+
+        // 死行上的**新**句柄同样必须无效（否则"拿到已释放行"这条路会静默生效）
+        if (context.GetTransform(id_live).IsValid())
+        {
+            GLogError(u8"Test 10 Failed: 死行上的新句柄被判定为有效（世代 0 未生效）");
+            return 12;
+        }
+
+        auto ent_new = context.CreateEntity<Entity>("HandleNewProbe");
+        const TransformID id_new = context.CreateTransform(ent_new->GetEntityID(), Mobility::Static);
+
+        if (!context.GetTransform(id_new).IsValid())
+        {
+            GLogError(u8"Test 10 Failed: 新行的句柄无效");
+            return 12;
+        }
+
+        GLogInfo(u8"Test 10 Passed: 句柄失效契约（活柄有效 / 释放即失效 / 死行新柄也失效 / 空柄写入被忽略）。");
     }
 
     GLogInfo(u8"=== All TransformDataStorage tests passed successfully! ===");
