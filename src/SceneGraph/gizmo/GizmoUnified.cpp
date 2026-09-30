@@ -19,7 +19,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/VisibilityComponent.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
@@ -58,7 +58,7 @@ struct GizmoECS
 {
     hgl::ecs::ECSContext* world = nullptr;
     hgl::ecs::Entity* root = nullptr;
-    std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
+    hgl::ecs::TransformAccessor root_transform;
     float fixed_pixel_diameter = GIZMO_FIXED_PIXEL_DIAMETER;
 
     std::vector<hgl::ecs::EntityID> asset_visual_entity_ids;
@@ -157,36 +157,36 @@ static void NormalizeScaleByPolicy(glm::vec3 &scale, bool allow_negative_scale)
 
 static void ApplyScalePolicyToTargetIfNeeded(GizmoECS *gizmo)
 {
-    if (!gizmo || !gizmo->root_transform)
+    if (!gizmo || !gizmo->root_transform.IsValid())
         return;
 
     bool updated = false;
 
     if (gizmo->target_entity)
     {
-        auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
-        if (target_transform)
+        auto target_transform = gizmo->world->GetTransformByEntity(gizmo->target_entity->GetEntityID());
+        if (target_transform.IsValid())
         {
-            glm::vec3 scale = target_transform->GetLocalScale();
+            glm::vec3 scale = target_transform.GetLocalScale();
             const glm::vec3 original_scale = scale;
             NormalizeScaleByPolicy(scale, gizmo->allow_negative_scale);
 
             if (glm::length(scale - original_scale) > 1e-6f)
             {
-                target_transform->SetLocalScale(scale);
+                target_transform.SetLocalScale(scale);
                 updated = true;
             }
         }
     }
     else
     {
-        glm::vec3 scale = gizmo->root_transform->GetLocalScale();
+        glm::vec3 scale = gizmo->root_transform.GetLocalScale();
         const glm::vec3 original_scale = scale;
         NormalizeScaleByPolicy(scale, gizmo->allow_negative_scale);
 
         if (glm::length(scale - original_scale) > 1e-6f)
         {
-            gizmo->root_transform->SetLocalScale(scale);
+            gizmo->root_transform.SetLocalScale(scale);
             updated = true;
         }
     }
@@ -212,9 +212,10 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         return nullptr;
     }
 
-    gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
-    gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
-    gizmo->root_transform->SetMovable(true);
+    world->CreateTransform(gizmo->root->GetEntityID(), hgl::ecs::Mobility::Movable);
+    gizmo->root_transform = world->GetTransformByEntity(gizmo->root->GetEntityID());
+    gizmo->root_transform.SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
+    gizmo->root_transform.SetMobility(hgl::ecs::Mobility::Movable);
 
     // Create three child entities for each Gizmo mode.
 
@@ -228,13 +229,14 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
             return nullptr;
         }
 
-        auto move_transform = gizmo->move_mode.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
-        move_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
-        move_transform->SetParent(gizmo->root->GetEntityID());
-        move_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
+        world->CreateTransform(gizmo->move_mode.entity->GetEntityID(), hgl::ecs::Mobility::Movable);
+        auto move_transform = world->GetTransformByEntity(gizmo->move_mode.entity->GetEntityID());
+        move_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
+        move_transform.SetParent(world->GetTransformID(gizmo->root->GetEntityID()));
+        move_transform.SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                                       GIZMO_ARROW_LENGTH * 2.0f,
                                                       0.01f);
-        move_transform->SetFixedPixelSizingEnabled(true);
+        move_transform.SetFixedPixelSizingEnabled(true);
 
         gizmo->move_mode.BuildVisual(gizmo->world, gizmo->move_mode.entity,
                                      gizmo->asset_visual_entity_ids);
@@ -250,13 +252,14 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
             return nullptr;
         }
 
-        auto rotate_transform = gizmo->rotate_mode.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
-        rotate_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
-        rotate_transform->SetParent(gizmo->root->GetEntityID());
-        rotate_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
+        world->CreateTransform(gizmo->rotate_mode.entity->GetEntityID(), hgl::ecs::Mobility::Movable);
+        auto rotate_transform = world->GetTransformByEntity(gizmo->rotate_mode.entity->GetEntityID());
+        rotate_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
+        rotate_transform.SetParent(world->GetTransformID(gizmo->root->GetEntityID()));
+        rotate_transform.SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                                         GIZMO_ARROW_LENGTH * 2.0f,
                                                         0.01f);
-        rotate_transform->SetFixedPixelSizingEnabled(true);
+        rotate_transform.SetFixedPixelSizingEnabled(true);
 
         gizmo->rotate_mode.BuildVisual(gizmo->world, gizmo->rotate_mode.entity,
                                        gizmo->asset_visual_entity_ids);
@@ -272,13 +275,14 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
             return nullptr;
         }
 
-        auto scale_transform = gizmo->scale_mode.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
-        scale_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
-        scale_transform->SetParent(gizmo->root->GetEntityID());
-        scale_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
+        world->CreateTransform(gizmo->scale_mode.entity->GetEntityID(), hgl::ecs::Mobility::Movable);
+        auto scale_transform = world->GetTransformByEntity(gizmo->scale_mode.entity->GetEntityID());
+        scale_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
+        scale_transform.SetParent(world->GetTransformID(gizmo->root->GetEntityID()));
+        scale_transform.SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                                        GIZMO_ARROW_LENGTH * 2.0f,
                                                        0.01f);
-        scale_transform->SetFixedPixelSizingEnabled(true);
+        scale_transform.SetFixedPixelSizingEnabled(true);
 
         gizmo->scale_mode.BuildVisual(gizmo->world, gizmo->scale_mode.entity,
                                        gizmo->asset_visual_entity_ids);
@@ -385,15 +389,15 @@ bool BindTransformGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_en
 
     gizmo->target_entity = target_entity;
 
-    if(!target_entity || !gizmo->root_transform)
+    if(!target_entity || !gizmo->root_transform.IsValid())
         return true;
 
-    auto target_transform = target_entity->GetComponent<hgl::ecs::TransformComponent>();
-    if(!target_transform)
+    auto target_transform = gizmo->world->GetTransformByEntity(target_entity->GetEntityID());
+    if(!target_transform.IsValid())
         return false;
 
-    gizmo->root_transform->SetLocalTRS(target_transform->GetLocalPosition(),
-                                       target_transform->GetLocalRotation(),
+    gizmo->root_transform.SetLocalTRS(target_transform.GetLocalPosition(),
+                                       target_transform.GetLocalRotation(),
                                        math::Vector3f(1.0f));
 
     return true;

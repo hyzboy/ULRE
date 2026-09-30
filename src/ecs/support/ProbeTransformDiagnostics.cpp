@@ -4,8 +4,8 @@
  * 对应 doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md 的 T0 / T4：
  *
  *   [T0] 量化基线
- *        结构尺寸（Component / TransformComponent / Entity / TransformDataStorage）、
- *        TransformDataStorage 每行字节，以及 N 个 [实体 + TransformComponent] 的
+ *        结构尺寸（Component / TransformAccessor / Entity / TransformDataStorage）、
+ *        TransformDataStorage 每行字节，以及 N 个 [实体 + 变换行] 的
  *        堆净增块数/字节（CRT 堆快照的**有符号**逐类别差值）——用来替换文档里
  *        "48B 的 TRS 膨胀至 120~160 字节" 那组估算。
  *
@@ -36,7 +36,7 @@
 #include<hgl/ecs/support/TransformDataStorage.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 
 #ifdef _MSC_VER
 #include<crtdbg.h>
@@ -96,7 +96,7 @@ static void SectionSizes()
 
     printf("sizeof(hgl::ecs::EntityID)            = %zu B\n",sizeof(EntityID));
     printf("sizeof(hgl::ecs::Component)           = %zu B\n",sizeof(Component));
-    printf("sizeof(hgl::ecs::TransformComponent)  = %zu B\n",sizeof(TransformComponent));
+    printf("sizeof(hgl::ecs::TransformAccessor)   = %zu B\n",sizeof(TransformAccessor));
     printf("sizeof(hgl::ecs::Entity)              = %zu B\n",sizeof(Entity));
     printf("sizeof(hgl::ecs::TransformDataStorage)= %zu B\n",sizeof(TransformDataStorage));
 
@@ -133,7 +133,7 @@ static void SectionSizes()
 // ─────────────────────────────────────────────────────────────────────────────
 static void SectionAllocation()
 {
-    PrintSeparator("[T0] 堆分配实测：ECSContext + N 个 [Entity + TransformComponent(Static)]");
+    PrintSeparator("[T0] 堆分配实测：ECSContext + N 个 [Entity + Transform(Static)]");
 
 #ifdef _MSC_VER
     struct Result
@@ -156,8 +156,8 @@ static void SectionAllocation()
         for(int i=0;i<8;++i)
         {
             auto *e=context.CreateEntity<Entity>("Warmup");
-            auto  t=e->AddComponent<TransformComponent>(Mobility::Static);
-            t->SetLocalPosition(glm::vec3(0.0f));
+            auto  t=context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            t.SetLocalPosition(glm::vec3(0.0f));
         }
 
         _CrtMemState before {},after {};
@@ -166,8 +166,8 @@ static void SectionAllocation()
         for(uint32_t i=0;i<n;++i)
         {
             auto *e=context.CreateEntity<Entity>("T");
-            auto  t=e->AddComponent<TransformComponent>(Mobility::Static);
-            t->SetLocalPosition(glm::vec3(static_cast<float>(i),0.0f,0.0f));
+            auto  t=context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            t.SetLocalPosition(glm::vec3(static_cast<float>(i),0.0f,0.0f));
             entities.push_back(e);
         }
 

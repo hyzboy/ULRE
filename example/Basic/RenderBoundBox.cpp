@@ -3,7 +3,7 @@
 //
 // 本范例展示了：
 // 1. 使用ECS架构创建多个实体
-// 2. 使用TransformComponent管理空间变换
+// 2. 使用TransformAccessor管理空间变换
 // 3. 使用PrimitiveComponent管理渲染图元
 // 4. 使用AABB生成包围盒实体
 // 5. CameraSystem配置为ViewModel控制模式
@@ -27,7 +27,7 @@
 // ECS headers
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -108,7 +108,7 @@ private:
         PrimitiveAsset asset;
 
         Entity *entity = nullptr;
-        std::shared_ptr<TransformComponent> transform;
+        hgl::ecs::TransformAccessor transform;
         std::shared_ptr<PrimitiveComponent> primitive_comp;
         int color_index = 0;
 
@@ -121,7 +121,7 @@ private:
     struct BoundingBoxMesh
     {
         Entity *entity = nullptr;
-        std::shared_ptr<TransformComponent> transform;
+        hgl::ecs::TransformAccessor transform;
         std::shared_ptr<PrimitiveComponent> primitive_comp;
     };
 
@@ -539,13 +539,13 @@ private:
 
         {
             floor_mesh->entity = ecs_context->CreateEntity<Entity>("Floor");
-            floor_mesh->transform = floor_mesh->entity->AddComponent<TransformComponent>(Mobility::Static);
+            floor_mesh->transform = ecs_context->GetTransform(ecs_context->CreateTransform(floor_mesh->entity->GetEntityID(), Mobility::Static));
             floor_mesh->primitive_comp = floor_mesh->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-            floor_mesh->transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            floor_mesh->transform->SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-            floor_mesh->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            floor_mesh->transform->SetMovable(false);
+            floor_mesh->transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            floor_mesh->transform.SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+            floor_mesh->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            floor_mesh->transform.SetMobility(Mobility::Static);
 
             floor_mesh->primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_struct{};
@@ -566,17 +566,17 @@ private:
                 continue;
 
             rm->entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
-            rm->transform = rm->entity->AddComponent<TransformComponent>(Mobility::Static);
+            rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), Mobility::Static));
             rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
             glm::vec3 pos = glm::rotate(rotation, glm::vec3(6.5f, 0.0f, 0.0f));
 
-            rm->transform->SetLocalPosition(pos);
-            rm->transform->SetLocalRotation(rotation);
-            rm->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            rm->transform->SetMovable(false);
+            rm->transform.SetLocalPosition(pos);
+            rm->transform.SetLocalRotation(rotation);
+            rm->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            rm->transform.SetMobility(Mobility::Static);
 
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
@@ -608,18 +608,18 @@ private:
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_context->CreateEntity<Entity>("BBox_" + std::to_string(i));
-            bbox->transform = bbox->entity->AddComponent<TransformComponent>(Mobility::Static);
+            bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), Mobility::Static));
             bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-            bbox->transform->SetParent(rm->entity->GetEntityID());
+            bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));
 
             const auto &center = local_aabb.GetCenter();
             const auto &size = local_aabb.GetLength();
 
-            bbox->transform->SetLocalPosition(glm::vec3(center.x, center.y, center.z));
-            bbox->transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            bbox->transform->SetLocalScale(glm::vec3(size.x, size.y, size.z));
-            bbox->transform->SetMovable(false);
+            bbox->transform.SetLocalPosition(glm::vec3(center.x, center.y, center.z));
+            bbox->transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            bbox->transform.SetLocalScale(glm::vec3(size.x, size.y, size.z));
+            bbox->transform.SetMobility(Mobility::Static);
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource bbox_struct{};

@@ -32,7 +32,7 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/ScenePipelineMode.h>
-#include <hgl/ecs/components/TransformComponent.h>
+#include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/ecs/components/CameraComponent.h>
@@ -153,7 +153,7 @@ private:
     Geometry *ground_geometry = nullptr;
     PrimitiveAsset ground_primitive{};
     Entity *ground_entity = nullptr;
-    std::shared_ptr<TransformComponent> ground_transform;
+    hgl::ecs::TransformAccessor ground_transform;
     std::shared_ptr<PrimitiveComponent> ground_prim;
 
     Geometry *alpha_geometry = nullptr;
@@ -171,7 +171,7 @@ private:
     // ── 动态物体（Movable）动画追踪 ──
     struct MovableTrack
     {
-        std::shared_ptr<TransformComponent> transform;
+        hgl::ecs::TransformAccessor transform;
         glm::vec3 base_pos{0.0f};
         glm::vec3 spin_axis{0.0f, 0.0f, 1.0f};
         float spin_speed = 1.0f;
@@ -1097,9 +1097,9 @@ private:
 
         // 1. 创建地面实体（Static，超大范围，网格随相机平铺对齐）
         ground_entity = ecs_context->CreateEntity<Entity>("InfiniteGround");
-        ground_transform = ground_entity->AddComponent<TransformComponent>(Mobility::Static);
-        ground_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        ground_transform->SetLocalScale(glm::vec3(kGroundExtent, kGroundExtent, 1.0f));
+        ground_transform = ecs_context->GetTransform(ecs_context->CreateTransform(ground_entity->GetEntityID(), Mobility::Static));
+        ground_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        ground_transform.SetLocalScale(glm::vec3(kGroundExtent, kGroundExtent, 1.0f));
 
         ground_prim = ground_entity->AddComponent<PrimitiveComponent>();
         ground_prim->SetPrimitiveAsset(&ground_primitive);
@@ -1162,16 +1162,16 @@ private:
             AnsiString name = (is_movable ? "Movable_" : "Static_") + AnsiString::numberOf(i);
             Entity *e = ecs_context->CreateEntity<Entity>(name.c_str());
 
-            auto tf = e->AddComponent<TransformComponent>(mobility);
-            tf->SetLocalPosition(pos);
-            tf->SetLocalScale(scale);
+            auto tf = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), mobility));
+            tf.SetLocalPosition(pos);
+            tf.SetLocalScale(scale);
 
             // 静态物体生成固定朝向，动态物体记录初始动画轨迹
             const float rx = Hash01(i, 7, 1061u) * 6.283f;
             const float ry = Hash01(i, 8, 1171u) * 6.283f;
             const float rz = Hash01(i, 9, 1283u) * 6.283f;
             const glm::quat initial_rot = glm::quat(glm::vec3(rx * 0.1f, ry * 0.1f, rz));
-            tf->SetLocalRotation(initial_rot);
+            tf.SetLocalRotation(initial_rot);
 
             if (is_movable)
             {
@@ -1223,11 +1223,11 @@ private:
                 Entity *e = ecs_context->CreateEntity<Entity>(
                     (AnsiString("AlphaCube_") + AnsiString::numberOf(i)).c_str());
 
-                auto tf = e->AddComponent<TransformComponent>(Mobility::Static);
-                tf->SetLocalPosition(alpha_positions[i]);
+                auto tf = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
+                tf.SetLocalPosition(alpha_positions[i]);
                 const float s = (i == 0) ? 3.0f : 2.4f;
-                tf->SetLocalScale(glm::vec3(s));
-                tf->SetLocalRotation(glm::quat(glm::vec3(0.0f, 0.4f + 0.2f * i, 0.0f)));
+                tf.SetLocalScale(glm::vec3(s));
+                tf.SetLocalRotation(glm::quat(glm::vec3(0.0f, 0.4f + 0.2f * i, 0.0f)));
 
                 auto prim = e->AddComponent<PrimitiveComponent>();
                 prim->SetPrimitiveAsset(&alpha_primitive);
@@ -1281,7 +1281,7 @@ private:
         for (uint32_t i = 0; i < kMovableCount; ++i)
         {
             auto &track = movable_tracks[i];
-            if (!track.transform)
+            if (!track.transform.IsValid())
                 continue;
 
             glm::vec3 pos = track.base_pos;
@@ -1297,12 +1297,12 @@ private:
             }
 
             const glm::quat spin = glm::angleAxis(t * track.spin_speed, track.spin_axis);
-            track.transform->SetLocalPosition(pos);
-            track.transform->SetLocalRotation(spin);
+            track.transform.SetLocalPosition(pos);
+            track.transform.SetLocalRotation(spin);
         }
 
         // 无限平铺地表：地面中心网格吸附（Grid Snapping）至主相机 XY
-        if (ground_transform && main_camera)
+        if (ground_transform.IsValid() && main_camera)
         {
             constexpr float kSnapGrid = 10.0f;
             const float gx = std::floor(main_camera->position.x / kSnapGrid) * kSnapGrid;
@@ -1316,8 +1316,8 @@ private:
             // 全量重建」，也接受 D4 那条一次性"运行期写入 Static transform"告警
             //（每组件只报一次）。
             const glm::vec3 snapped(gx, gy, 0.0f);
-            if (snapped != ground_transform->GetLocalPosition())
-                ground_transform->SetLocalPosition(snapped);
+            if (snapped != ground_transform.GetLocalPosition())
+                ground_transform.SetLocalPosition(snapped);
         }
     }
 

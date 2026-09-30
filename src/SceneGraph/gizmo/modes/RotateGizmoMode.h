@@ -10,7 +10,6 @@ class ECSContext;
 class Entity;
 struct EntityID;
 class InputSystem;
-class TransformComponent;
 } // namespace hgl::ecs
 
 namespace hgl::graph
@@ -29,7 +28,7 @@ public:
     std::vector<GizmoVisualPrimitive>                    primitives;
 
     // Extra transform handle for the white view-facing ring.
-    std::shared_ptr<hgl::ecs::TransformComponent>        aux_transform;
+    hgl::ecs::TransformAccessor                        aux_transform;
 
     // ─── Hover state ──────────────────────────────────────────────────────
     int hovered_index = -1;
@@ -47,7 +46,7 @@ public:
 
     // ─── Per-frame update ─────────────────────────────────────────────────
     void UpdateHover(const GizmoFrameInput &input,
-                     const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform);
+                     const hgl::ecs::TransformAccessor &root_transform);
 
     // ─── Drag lifecycle ───────────────────────────────────────────────────
     bool TryBeginDrag(const GizmoFrameInput &input,
@@ -56,7 +55,7 @@ public:
                       bool root_visible);
 
     void ApplyDrag(const GizmoFrameInput &input,
-                   const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform);
+                   const hgl::ecs::TransformAccessor &root_transform);
 
     void EndDrag();
     void RecoverIfOrphaned(bool left_down);

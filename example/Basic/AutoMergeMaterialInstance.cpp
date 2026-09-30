@@ -26,7 +26,7 @@
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 
 using namespace hgl;
@@ -150,9 +150,9 @@ private:
             // 创建实体
             triangles[i].entity = ecs_world->CreateEntity<Entity>("ColoredTriangle_" + std::to_string(i));
 
-            // === 步骤3: 添加TransformComponent ===
+            // === 步骤3: 添加变换（Transform） ===
             // 每个三角形有不同的旋转角度
-            auto transform = triangles[i].entity->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(triangles[i].entity->GetEntityID(), Mobility::Static));
 
             // 计算旋转角度
             double rad = deg2rad(TRI_ROTATE_ANGLE * i);
@@ -160,12 +160,12 @@ private:
             // 使用四元数设置旋转（绕Z轴）
             glm::quat rotation = glm::angleAxis((float)rad, glm::vec3(0.0f, 0.0f, 1.0f));
 
-            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            transform->SetLocalRotation(rotation);
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalRotation(rotation);
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
             // 设置为静态对象
-            transform->SetMovable(false);
+            transform.SetMobility(Mobility::Static);
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] rotation angle: " << (TRI_ROTATE_ANGLE * i) << " degrees" << std::endl;
 

@@ -13,6 +13,12 @@
 
 namespace hgl
 {
+    namespace graph
+    {
+        struct CameraInfo;
+        class ViewportInfo;
+    }
+
     namespace ecs
     {
         /**
@@ -54,7 +60,21 @@ namespace hgl
             /// 子节点表（与行一一对应；CPU 侧层级查询用）
             std::vector<std::vector<HandleID>> children;
 
-            // ── 变换元数据（T8：原先在 TransformComponent 里，现搬进存储 ⇒ 单一真源）──
+            /// 表现层状态：fixed-pixel 尺寸控制（gizmo 等"屏幕上恒定大小"的对象）。
+            /// CPU 侧、不参与世界矩阵求值 ⇒ 用普通结构数组（不是 GPU 数据）。
+            struct FixedPixelState
+            {
+                bool  enabled = false;
+                float diameter = 160.0f;
+                float reference_world_diameter = 1.0f;
+                float min_scale = 0.01f;
+                const hgl::graph::CameraInfo   *camera_info = nullptr;
+                const hgl::graph::ViewportInfo *viewport_info = nullptr;
+            };
+
+            std::vector<FixedPixelState> fixed_pixel;
+
+            // ── 变换元数据（T8：真源在存储侧，单一真源）──
             hgl::ValueArray<EntityID>       owners;             // 所属实体（accessor 解析 owner / 告警里的实体名）
             hgl::ValueArray<uint32_t>       change_masks;       // 变更位掩码（TouchChange 累积）
             hgl::ValueArray<uint64_t>       versions;           // 变更计数（渲染侧比对"是否已上传"）
@@ -89,6 +109,7 @@ namespace hgl
                 write_armed.Add(0);
                 write_warned.Add(0);
                 children.emplace_back();
+                fixed_pixel.emplace_back();
 
                 topology_dirty = true;
                 return id;
@@ -122,6 +143,9 @@ namespace hgl
 
                 if (id < static_cast<HandleID>(children.size()))
                     children[id].clear();
+
+                if (id < static_cast<HandleID>(fixed_pixel.size()))
+                    fixed_pixel[id] = FixedPixelState();
 
                 topology_dirty = true;
             }
@@ -307,6 +331,24 @@ namespace hgl
             {
                 if (id < static_cast<HandleID>(write_warned.GetCount()))
                     write_warned[id] = 1;
+            }
+
+        public: // 表现层状态：fixed-pixel 尺寸控制（真源在存储）
+
+            FixedPixelState GetFixedPixel(HandleID id) const
+            {
+                if (id >= static_cast<HandleID>(fixed_pixel.size()))
+                    return FixedPixelState();
+
+                return fixed_pixel[id];
+            }
+
+            void SetFixedPixel(HandleID id,const FixedPixelState &state)
+            {
+                if (id >= static_cast<HandleID>(fixed_pixel.size()))
+                    return;
+
+                fixed_pixel[id] = state;
             }
 
         public: // 子节点（CPU 侧层级查询；GPU 侧走 parent_indices + eval_order，与此无关）
@@ -623,6 +665,7 @@ namespace hgl
                 write_armed.Clear();
                 write_warned.Clear();
                 children.clear();
+                fixed_pixel.clear();
                 entity_rows.clear();
                 topology_dirty = true;
             }

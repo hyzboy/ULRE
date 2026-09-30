@@ -14,7 +14,7 @@
 // ECS headers
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -79,13 +79,13 @@ private:
             return false;
 
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Axis");
-        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-        transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        transform->SetMovable(false);
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform.SetMobility(hgl::ecs::Mobility::Static);
 
         axis_recipe.recipe_name = "SimplestAxis.VertexColor";
         axis_recipe.mtl_def_id = "VertexColor";

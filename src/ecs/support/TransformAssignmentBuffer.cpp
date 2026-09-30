@@ -9,7 +9,7 @@
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<limits>

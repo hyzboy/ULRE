@@ -28,7 +28,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -562,10 +562,10 @@ private:
         /// 本地空间顶点（相对网格原点）。逐帧用它算旋转后的真实最低点。
         std::vector<glm::vec3> verts;
 
-        /// 主世界里的 TransformComponent（由 ECSContext 持有，裸指针即可）。
+        /// 主世界里的变换（由 ECSContext 持有，值类型薄句柄）。
         /// 注意 shadow map 由**主世界自己**渲染（见 RenderShadowMap），
         /// 所以只需要这一份 —— 不再有"离屏世界那份也要同步"的问题。
-        TransformComponent * tf = nullptr;
+        hgl::ecs::TransformAccessor tf;
     };
 
     std::vector<MeshAnim> mesh_anim;
@@ -902,13 +902,13 @@ private:
         if (include_receiver)
         {
             auto *entity = world->CreateEntity<Entity>("ShadowReceiverPlane");
-            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = world->GetTransform(world->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto prim_comp = entity->AddComponent<PrimitiveComponent>();
 
-            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(kReceiverPlaneScale, kReceiverPlaneScale, 1.0f));
-            transform->SetMovable(false);
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform.SetLocalScale(glm::vec3(kReceiverPlaneScale, kReceiverPlaneScale, 1.0f));
+            transform.SetMobility(Mobility::Static);
 
             prim_comp->SetPrimitiveAsset(&scene.plane_asset);
             ApplyMeshMaterial(prim_comp.get(), /*is_receiver_plane=*/true);
@@ -926,19 +926,19 @@ private:
         for (size_t i = 0; i < count; ++i)
         {
             auto *entity = world->CreateEntity<Entity>("Mesh_" + std::to_string(i));
-            auto transform = entity->AddComponent<TransformComponent>(Mobility::Movable);
+            auto transform = world->GetTransform(world->CreateTransform(entity->GetEntityID(), Mobility::Movable));
             auto prim_comp = entity->AddComponent<PrimitiveComponent>();
 
             glm::vec3 pos = RingPosition(i, count);
             pos.z += scene.mesh_lift[i];
 
-            transform->SetLocalPosition(pos);
-            transform->SetLocalRotation(RingRotation(i, count));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform.SetLocalPosition(pos);
+            transform.SetLocalRotation(RingRotation(i, count));
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
             // 记下 Transform，供逐帧自转写入
             if (i < mesh_anim.size())
-                mesh_anim[i].tf = transform.get();
+                mesh_anim[i].tf = transform;
 
             prim_comp->SetPrimitiveAsset(&scene.mesh_assets[i]);
             ApplyMeshMaterial(prim_comp.get());
@@ -1106,8 +1106,8 @@ private:
 
     /// 初始化环上网格的逐帧动画参数（自转轴 / 角速度 / 本地顶点 / 静止落地位移）。
     ///
-    /// **必须在 PopulateScene 之前调用**：PopulateScene 会把两个世界的
-    /// TransformComponent* 回填进 mesh_anim。
+    /// **必须在 PopulateScene 之前调用**：PopulateScene 会把变换句柄
+    /// （TransformAccessor）回填进 mesh_anim。
     bool InitMeshAnimation()
     {
         const size_t count = scene.meshes.size();
@@ -1222,10 +1222,10 @@ private:
             glm::vec3 pos = anim.ring_pos;
             pos.z += lift;
 
-            if (anim.tf)
+            if (anim.tf.IsValid())
             {
-                anim.tf->SetLocalPosition(pos);
-                anim.tf->SetLocalRotation(rot);
+                anim.tf.SetLocalPosition(pos);
+                anim.tf.SetLocalRotation(rot);
             }
         }
 

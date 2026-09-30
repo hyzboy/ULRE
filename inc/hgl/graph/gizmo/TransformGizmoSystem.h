@@ -2,6 +2,7 @@
 
 #include"GizmoTypes.h"
 #include<hgl/ecs/core/System.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<memory>
 
 namespace hgl
@@ -9,7 +10,6 @@ namespace hgl
     namespace ecs
     {
         class Entity;
-        class TransformComponent;
     }
 }
 
@@ -41,7 +41,7 @@ public:
     void Update(float deltaTime) override;
 
     bool SetTargetEntity(hgl::ecs::Entity *entity);
-    bool SetTargetTransform(const std::shared_ptr<hgl::ecs::TransformComponent> &transform);
+    bool SetTargetTransform(const hgl::ecs::TransformAccessor &transform);
     hgl::ecs::Entity *GetTargetEntity() const { return target_entity; }
 
     void SetModeSwitchEnabled(bool enabled) { mode_switch_enabled = enabled; }

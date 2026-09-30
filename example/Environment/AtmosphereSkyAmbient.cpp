@@ -17,7 +17,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -249,13 +249,13 @@ private:
     {
         // 天空球（固定原点）
         auto* sky_entity = ecs_context->CreateEntity<Entity>("SkySphere");
-        auto sky_transform = sky_entity->AddComponent<TransformComponent>(Mobility::Static);
+        auto sky_transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), Mobility::Static));
         auto sky_prim = sky_entity->AddComponent<PrimitiveComponent>();
 
-        sky_transform->SetLocalPosition(glm::vec3(0.0f));
-        sky_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        sky_transform->SetLocalScale(glm::vec3(1.0f));
-        sky_transform->SetMovable(false);
+        sky_transform.SetLocalPosition(glm::vec3(0.0f));
+        sky_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        sky_transform.SetLocalScale(glm::vec3(1.0f));
+        sky_transform.SetMobility(Mobility::Static);
 
         sky_prim->SetPrimitiveAsset(&sky_asset);
         sky_prim->SetVisible(true);
@@ -269,7 +269,7 @@ private:
             auto* rm = mesh_ptr.get();
 
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
-            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(count));
@@ -278,10 +278,10 @@ private:
             glm::quat rotation = glm::angleAxis(-angle, glm::vec3(0.0f, 1.0f, 0.0f));
             glm::vec3 pos = glm::vec3(4.5f * glm::cos(angle), 1.0f, 4.5f * glm::sin(angle));
 
-            transform->SetLocalPosition(pos);
-            transform->SetLocalRotation(rotation);
-            transform->SetLocalScale(glm::vec3(1.0f));
-            transform->SetMovable(false);
+            transform.SetLocalPosition(pos);
+            transform.SetLocalRotation(rotation);
+            transform.SetLocalScale(glm::vec3(1.0f));
+            transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&rm->asset);
             primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);

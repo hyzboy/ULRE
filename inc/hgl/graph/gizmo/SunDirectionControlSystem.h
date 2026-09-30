@@ -2,6 +2,7 @@
 
 #include"GizmoTypes.h"
 #include<hgl/ecs/core/System.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<memory>
 
 namespace hgl
@@ -9,7 +10,6 @@ namespace hgl
     namespace ecs
     {
         class Entity;
-        class TransformComponent;
         class EnvironmentSystem;
     }
 }
@@ -21,7 +21,7 @@ class SunDirectionControlSystem : public hgl::ecs::System
 private:
     GizmoECS *gizmo = nullptr;
     hgl::ecs::Entity *proxy_entity = nullptr;
-    std::shared_ptr<hgl::ecs::TransformComponent> proxy_transform;
+    hgl::ecs::TransformAccessor proxy_transform;
     hgl::ecs::EnvironmentSystem *environment_system = nullptr;
 
     math::Vector3f gizmo_position = math::Vector3f(0.0f);

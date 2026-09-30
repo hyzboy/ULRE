@@ -273,7 +273,7 @@ I2W 记账 + 每行存储等）。这是阶段一/三收益论证的基准数字
 | A4 | 多场景**全部**导出（命名 `sceneN`） | ✅ 已完成（2026-09-29）：`MultipleScenes` → `scene0`/`scene1` 两份产物；单场景命名零变动（`BasicModel.Scene.*`/`AnimatedCube.unnamed.*`） |
 | B1 | T5 `matrixTable` 退役 | ✅ 已完成（2026-09-30）：JSON + pack 双格式 TRS-only；示例装载器改为从 TRS 组合世界矩阵；对拍 max\|Δlocal\|=\|Δworld\|=1.94e-07 |
 | B2 | T6 局部真源唯一化（+ T7 `local_matrices` 去留） | ✅ 已完成（2026-09-30）：组件三份副本（TRS/世界矩阵/脏标记）+ `GetLocalMatrix()` 删除，读写直落 storage；`local_matrices` 判定为"求值中间量"保留；死接口清 14 个 |
-| B3 | T8 `TransformComponent` → `TransformID` | 待 B2 |
+| B3 | T8 `TransformComponent` → `TransformID` | **已完成**（见 §T8 状态块） |
 | B4 | T9 其余组件 ID 化 | 待 B3 |
 | C1 | T10 容量与行号冻结（**必须早于 C2**） | 待 B4 |
 | C2 | T11 64B `Entity` + `.ulrescene` 直载 | 待 C1 |
@@ -803,6 +803,21 @@ model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
 - **顺序**：① 引入 `TransformID`（= 现有 `HandleID` 语义）+ 带世界上下文的 `TransformAccessor`；② 组件瘦身为"只有 id"（去掉三份副本、`cachedWorldMatrix`、`child_ids` 容器）；③ 示例批量改调用点；④ 删 `inc/hgl/ecs/components/TransformComponent.h` + `src/ecs/components/TransformComponent.cpp`。
 - **隐藏工作量（必须预先评估）**：**组开关 = 组件计数**（`Context::RegisterComponentInstance` 自动装组/开开关，见技能 `ulre-ecs-layer` 不变量）⇒ 删掉组件类会连带改系统组的激活条件；`RenderItem::GetTransform()` 返回 `shared_ptr<TransformComponent>`（`inc/hgl/ecs/core/RenderItem.h:51`）也要一起换成 ID。
 - **验收**：每步 build + 四个测试 + 门 + 5 个代表性示例 0 VUID；`grep -rn TransformComponent src inc example` 最终**零命中**（用户会逐文件复查是否删干净）。
+- **状态：✅ 已完成（T8-1..T8-5，本地未提交）**
+  - `TransformID`（`inc/hgl/ecs/support/TransformID.h`）= **世界内**变换行号（非全局 ID；`Mobility`、`TransformChange`/`ToChangeMask` 一并搬到这里）；
+  - `TransformAccessor`（`inc/hgl/ecs/support/TransformAccessor.{h,cpp}`）= 值类型薄句柄（storage + 行号 + context），**全 const**（句柄语义：const 指手柄不能换座，指向的行仍可变）、零副本；局部 TRS 直落存储、world 由父链组合；`fixed-pixel` 状态入存储、算法在访问器；
+  - `TransformComponent.{h,cpp}` 已 `git rm`；`grep -rn TransformComponent src inc example` **零命中**（仅 doc 保留历史记录）；`RenderItem::GetTransform()` 返回访问器；`Context` 的变换列表改 `TransformID` 向量 + 实体级 API（`CreateTransform/GetTransform/GetTransformByEntity/GetTransformID/DestroyTransform`）；
+  - 组开关：**有变换出现即自动装 `TransformSystem`**（`Context::RegisterTransform`），不再依赖"组件计数"；
+  - **搬迁中发现并修掉一个真 bug**：访问器 setter 原先只写存储、不累积 `change_masks`，而 `TransformSystem::ShouldUpdateTransform` 以掩码为硬判据 ⇒ 只经访问器写入的行（连同子孙）**永不上传 GPU**；现由 `TransformAccessor::MarkLocalChanged` 统一记账（版本 +1、掩码累积、逐行 bump 子孙 WorldMatrix）；
+  - 验证：全仓 Debug 构建 **0 真错误**（唯一错误是 `doc/backlog.md:109` 已登记的 TexConvCore 存量 LNK1104）；`TestTransformFlatStorage` / `TestRenderItemDataStorage` / `TestCSMIncrementalPass` **rc=0**；门 **42 PASS / 0 FAIL**；Test 15 = **13 源码契约 + 6 行为检查**（新增"经访问器写入必累积变更掩码"的契约与行为检查，专门防上面那个 bug 复活）；示例 ClockUse / RecursiveCube / ComputeTransformHierarchy / GizmoUsageExample / BasicLitSunDirection / IBLEnvironment / LoadScene / RayPicking 等 **0 error 行**；
+  - **未验证项（诚实标注）**：**动效的视觉确认未完成**——引擎在窗口隐藏/最小化时整帧跳过（`src/Work/WorkManager.cpp:93` `if(!has_window || win->IsVisible())`），把窗口前置需要用户同意（本次已超时未获同意）；而截图工具能截隐藏窗口 ⇒ 曾把"隐藏窗口的静止帧"误判成"画面冻结"。需要一次前台可见的 `RecursiveCube`/`ClockUse` 目视确认（掩码修复的直接观感是"物体真的会动"）。
+  - **用户实测发现的真回归（已修）**：`RecursiveCube` 里 92 个实例全画在原点且不动。根因是组件退役时**丢了三条"对世界的副作用"**：
+    ① `SetMobility` 不再通知世界把该行在静态/可动列表之间换边（`Context::MigrateTransform`）⇒ 该类行停在旧通道，渲染侧的实例→行索引映射取不到它 ⇒ 取默认行（单位矩阵）⇒ 全在原点且永不更新；
+    ② `SetParent` 不再维护存储**子表**（HEAD 的组件在 `SetParent` 里做 `AddChild/RemoveChild`）⇒ 子孙标脏/版本 bump 的遍历失效；
+    ③ 实体销毁不释放变换行（HEAD 由组件 `OnDetach` → `UnregisterTransform` + 摘父表 + 释放）⇒ 残行留在列表里把索引映射整体串位。
+    修在 `TransformAccessor::{SetMobility,SetParent}` 与 `ECSContext::DestroyEntity`（现在会先 `DestroyTransform(GetTransformID(id))`）。
+  - **防复活**：新增 `TestTransformFlatStorage` **Test 8「变换行生命周期契约」**（Mobility 换边 / SetParent 子表 / 销毁注销），并做了反证——临时抽掉 `context->MigrateTransform(...)` ⇒ Test 8 精确报"该行未进可动列表（渲染侧取不到它的行 ⇒ 实例画在原点）"、`rc=10`。顺带修好该测试**从未 `logger::InitLogger`**：此前它的失败信息全不可见（静默通过/静默失败），现已能打印。
+  - 数值迹象：`RecursiveCube` 修前 `LocalToWorld required=122`（结构冻结），修后 `required=962`（递归结构正常增长）。
 
 ### T9 其余组件 ID 化（Geometry / Material / Visibility / Camera / Light）
 

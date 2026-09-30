@@ -1,7 +1,7 @@
 ﻿#include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 
 namespace hgl::ecs
 {
@@ -51,11 +51,15 @@ namespace hgl::ecs
         Entity* entity = context->GetEntity(entity_id);
         while (entity)
         {
-            auto transform = entity->GetComponent<TransformComponent>();
-            if (!transform)
+            const TransformAccessor transform = context->GetTransformByEntity(entity->GetEntityID());
+            if (!transform.IsValid())
                 break;
 
-            EntityID parent_id = transform->GetParentID();
+            const TransformID parent_transform = transform.GetParent();
+            if (!IsValidTransformID(parent_transform))
+                break;
+
+            const EntityID parent_id = context->GetTransformStorage()->GetOwner(parent_transform);
             if (!parent_id.IsValid())
                 break;
 

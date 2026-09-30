@@ -2,7 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/LinesComponent.h>
 #include<hgl/ecs/components/BoundingBoxComponent.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 
 namespace hgl::ecs
@@ -46,10 +46,10 @@ namespace hgl::ecs
             const auto& local_bounds = line_comp->GetLocalBounds();
             bbox->SetAABB(local_bounds);
 
-            auto transform = owner->GetComponent<TransformComponent>();
-            if (transform)
+            const TransformAccessor transform = world->GetTransformByEntity(owner->GetEntityID());
+            if (transform.IsValid())
             {
-                const auto world_aabb = local_bounds.Transformed(transform->GetWorldMatrix());
+                const auto world_aabb = local_bounds.Transformed(transform.GetWorldMatrix());
                 bbox->SetWorldAABB(world_aabb);
             }
             else

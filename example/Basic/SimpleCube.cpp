@@ -3,7 +3,7 @@
 //
 // 本范例展示了：
 // 1. 使用ECS架构创建立方体实体
-// 2. 使用TransformComponent管理空间变换
+// 2. 使用TransformAccessor管理空间变换
 // 3. 使用PrimitiveComponent管理渲染图元
 // 4. CameraSystem配置为ViewModel控制模式
 
@@ -24,7 +24,7 @@
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -134,11 +134,11 @@ private:
 
         cube_entity = ecs_context->CreateEntity<Entity>("CubeEntity");
 
-        auto transform = cube_entity->AddComponent<TransformComponent>(Mobility::Static);
-        transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        transform->SetMovable(false);
+        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube_entity->GetEntityID(), Mobility::Static));
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform.SetMobility(Mobility::Static);
 
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_recipe.recipe_name = "SimpleCube.DebugNormalColor";

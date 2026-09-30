@@ -3,7 +3,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/LinesComponent.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/support/line/LineRenderPipeline.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/core/Entity.h>
@@ -30,7 +30,7 @@ class WireShapeTestApp:public WorkObject
 {
     struct AnimatedLineGroup
     {
-        TransformComponent *transform = nullptr;
+        hgl::ecs::TransformAccessor transform;
         glm::vec3 base_position{0.0f, 0.0f, 0.0f};
         glm::vec3 base_scale{1.0f, 1.0f, 1.0f};
         float rotate_speed = 0.0f;
@@ -138,19 +138,19 @@ public:
         {
             auto entity = ecs->CreateEntity<Entity>(name);
             if(!entity)
-                return (TransformComponent *)nullptr;
+                return hgl::ecs::TransformAccessor{};
 
-            TransformComponent *transform_ptr = nullptr;
+            hgl::ecs::TransformAccessor transform_ptr;
 
             if(with_transform)
             {
-                auto tc = entity->AddComponent<TransformComponent>(Mobility::Movable);
-                if(tc)
+                auto tc = ecs->GetTransform(ecs->CreateTransform(entity->GetEntityID(), Mobility::Movable));
+                if(tc.IsValid())
                 {
-                    tc->SetLocalPosition(position);
-                    tc->SetLocalRotation(rotation);
-                    tc->SetLocalScale(scale);
-                    transform_ptr = tc.get();
+                    tc.SetLocalPosition(position);
+                    tc.SetLocalRotation(rotation);
+                    tc.SetLocalScale(scale);
+                    transform_ptr = tc;
                 }
             }
 
@@ -186,14 +186,14 @@ public:
         lines_comp->SetWidth(1);
         build_flower_pattern(lines_comp.get(), 1.8f, -0.2f, 0, 5, 280);
 
-        // CN: 无 TransformComponent（走 L2W[0] Identity）
-        // EN: No TransformComponent (uses L2W[0] identity)
+        // CN: 无 Transform（走 L2W[0] Identity）
+        // EN: No Transform (uses L2W[0] identity)
         create_fancy_group("Fancy_NoTransform_Width2", 2, false,
                            glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f),
                            1.6f, -1.4f, 1, 6);
 
-        // CN: 有 TransformComponent（走对应 L2W 索引），可明显看到整体平移/旋转/缩放
-        // EN: With TransformComponent (uses resolved L2W index), visibly translated/rotated/scaled
+        // CN: 有 Transform（走对应 L2W 索引），可明显看到整体平移/旋转/缩放
+        // EN: With Transform (uses resolved L2W index), visibly translated/rotated/scaled
         auto transform_group_a = create_fancy_group("Fancy_WithTransform_Width4", 4, true,
                            glm::vec3(4.0f, 1.5f, 0.0f), glm::quat(0.9238795f, 0.0f, 0.0f, 0.3826834f), glm::vec3(1.35f, 1.35f, 1.0f),
                            1.6f, -1.4f, 3, 6);
@@ -202,7 +202,7 @@ public:
                            glm::vec3(-4.2f, -1.4f, 0.0f), glm::quat(0.8660254f, 0.0f, 0.0f, -0.5f), glm::vec3(0.85f, 1.6f, 1.0f),
                            1.5f, 1.3f, 5, 7);
 
-        if(transform_group_a)
+        if(transform_group_a.IsValid())
         {
             animated_groups.push_back(AnimatedLineGroup{
                 transform_group_a,
@@ -215,7 +215,7 @@ public:
             });
         }
 
-        if(transform_group_b)
+        if(transform_group_b.IsValid())
         {
             animated_groups.push_back(AnimatedLineGroup{
                 transform_group_b,
@@ -270,31 +270,31 @@ public:
 
         for(auto &group : animated_groups)
         {
-            if(!group.transform)
+            if(!group.transform.IsValid())
                 continue;
 
             const float t = animation_time + group.phase;
             const float angle = t * group.rotate_speed;
             const glm::quat rot_z = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
-            group.transform->SetLocalRotation(rot_z);
+            group.transform.SetLocalRotation(rot_z);
 
             const float pulse = 1.0f + 0.25f * std::sin(t * group.pulse_speed);
-            group.transform->SetLocalScale(glm::vec3(group.base_scale.x * pulse,
+            group.transform.SetLocalScale(glm::vec3(group.base_scale.x * pulse,
                                                      group.base_scale.y * (1.0f + 0.18f * std::cos(t * group.pulse_speed * 0.7f)),
                                                      group.base_scale.z));
 
             const glm::vec3 pos = group.base_position + glm::vec3(std::cos(t * 0.8f) * group.orbit_radius,
                                                                    std::sin(t * 1.1f) * group.orbit_radius * 0.6f,
                                                                    0.0f);
-            group.transform->SetLocalPosition(pos);
+            group.transform.SetLocalPosition(pos);
         }
 
         ++animation_tick;
         if ((animation_tick % 60u) == 1u)
         {
-            if (!animated_groups.empty() && animated_groups.front().transform)
+            if (!animated_groups.empty() && animated_groups.front().transform.IsValid())
             {
-                const glm::vec3 p = animated_groups.front().transform->GetLocalPosition();
+                const glm::vec3 p = animated_groups.front().transform.GetLocalPosition();
             LogInfo("[LineRenderTest] Tick: raw_dt=%.6f used_dt=%.6f anim_time=%.3f group0_local_pos=(%.3f, %.3f, %.3f)",
                 raw_dt,
                         dt,

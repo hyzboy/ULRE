@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <hgl/ecs/support/TransformAccessor.h>
 #include "../GizmoInternal.h"  // 引入 GizmoShape
 
 // 用于 `GizmoVisualPrimitive` 的 ECS 类型的前向声明。
@@ -9,7 +10,6 @@
 namespace hgl::ecs
 {
     class PrimitiveComponent;
-    class TransformComponent;
     class AssetInstanceComponent;
     class Entity;
 } // namespace hgl::ecs
@@ -21,7 +21,7 @@ namespace hgl::graph
     struct GizmoVisualPrimitive
     {
         std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive;
-        std::shared_ptr<hgl::ecs::TransformComponent>  transform;
+        hgl::ecs::TransformAccessor                  transform;
         GizmoShape        shape         = GizmoShape::Sphere;
         GizmoColor        base_color    = GizmoColor::White;
         GizmoColor        applied_color = GizmoColor::White;

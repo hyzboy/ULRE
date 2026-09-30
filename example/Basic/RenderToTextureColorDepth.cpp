@@ -22,7 +22,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -311,13 +311,13 @@ public:
 
         auto *world = offscreen->GetWorld();
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
-        auto transform = sphere_entity->AddComponent<TransformComponent>(Mobility::Static);
+        auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
         auto prim_comp = sphere_entity->AddComponent<PrimitiveComponent>();
 
-        transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform->SetLocalScale(glm::vec3(kSphereRadius, kSphereRadius, kSphereRadius));
-        transform->SetMovable(false);
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(kSphereRadius, kSphereRadius, kSphereRadius));
+        transform.SetMobility(Mobility::Static);
 
         prim_comp->SetPrimitiveAsset(&sphere_asset);
         prim_comp->SetMaterialTextureResource("base_color", sphere_base_tex, sphere_sampler);
@@ -398,7 +398,7 @@ struct DisplayCube
     Texture2D *texture = nullptr;
 
     Entity *entity = nullptr;
-    std::shared_ptr<TransformComponent> transform;
+    hgl::ecs::TransformAccessor transform;
 };
 
 class RenderToTextureColorDepthApp final: public WorkObject
@@ -533,13 +533,13 @@ private:
             return LogStageFail("App::CreateDisplayCube", "create cube primitive asset failed");
 
         cube.entity = ecs_context->CreateEntity<Entity>(cube.name);
-        cube.transform = cube.entity->AddComponent<TransformComponent>(Mobility::Static);
+        cube.transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube.entity->GetEntityID(), Mobility::Static));
         auto prim_comp = cube.entity->AddComponent<PrimitiveComponent>();
 
-        cube.transform->SetLocalPosition(glm::vec3(cube.x_offset, 0.0f, 0.0f));
-        cube.transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        cube.transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        cube.transform->SetMovable(true);
+        cube.transform.SetLocalPosition(glm::vec3(cube.x_offset, 0.0f, 0.0f));
+        cube.transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        cube.transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        cube.transform.SetMobility(Mobility::Movable);
 
         prim_comp->SetPrimitiveAsset(&cube.asset);
         // 唯一区别：绑定的离屏纹理不同（颜色 / 深度）
@@ -662,8 +662,8 @@ public:
 
         for (DisplayCube &cube : cubes)
         {
-            if (cube.transform)
-                cube.transform->SetLocalRotation(rot_z * rot_x);
+            if (cube.transform.IsValid())
+                cube.transform.SetLocalRotation(rot_z * rot_x);
         }
 
         WorkObject::Tick(delta_time);

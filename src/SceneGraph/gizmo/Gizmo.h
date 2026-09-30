@@ -17,7 +17,6 @@ namespace hgl
         class Entity;
         class InputSystem;
         class CameraSystem;
-        class TransformComponent;
         class EnvironmentSystem;
     }
 }

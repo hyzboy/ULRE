@@ -10,14 +10,34 @@ namespace hgl
         /**
          * 物体的移动性（静态缓存/每帧 ring 的分流依据）。
          *
-         * 位置从 `TransformComponent.h` 移到这里：T8 起变换不再必须由组件承载，
-         * 但所有变换 API（accessor / 存储 / 系统）都要用到这个枚举。
+         * T8 起变换不再必须由组件承载，但所有变换 API（accessor / 存储 / 系统）都要用到它。
          */
         enum class Mobility : uint8_t
         {
             Static,
             Movable
         };
+
+        /**
+         * 变换行的变更位（哪些字段变了）。
+         *
+         * 用于"只重传变了的行"：`TransformSystem` 拿它拼出更新掩码与已上传版本比对。
+         */
+        enum class TransformChange : uint32_t
+        {
+            Position = 1u << 0,
+            Rotation = 1u << 1,
+            Scale = 1u << 2,
+            Parent = 1u << 3,
+            WorldMatrix = 1u << 4,
+            Mobility = 1u << 5,
+            LocalTRS = Position | Rotation | Scale,
+        };
+
+        inline constexpr uint32_t ToChangeMask(TransformChange change)
+        {
+            return static_cast<uint32_t>(change);
+        }
 
         /**
          * 变换的**世界内**标识。

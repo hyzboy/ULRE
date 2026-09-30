@@ -19,7 +19,7 @@ namespace hgl
          * 所有读写直落 `TransformDataStorage`（局部 TRS 唯一的真源），
          * 世界矩阵是派生量、由平铺求值算出（见 `UpdateDirtyWorldMatricesFlat`）。
          *
-         * 这是 T8（`TransformComponent` → `TransformID`）的调用面：
+         * 这是 T8（变换 `TransformID` 化）的调用面：
          * 调用点从「拿组件 shared_ptr」改成「拿 accessor 值」，语义不变。
          */
         class TransformAccessor
@@ -49,38 +49,38 @@ namespace hgl
         public: // 局部 TRS（读写直落存储）
 
             glm::vec3 GetLocalPosition() const;
-            void      SetLocalPosition(const glm::vec3 &pos);
+            void      SetLocalPosition(const glm::vec3 &pos) const;
 
             glm::quat GetLocalRotation() const;
-            void      SetLocalRotation(const glm::quat &rot);
+            void      SetLocalRotation(const glm::quat &rot) const;
 
             glm::vec3 GetLocalScale() const;
-            void      SetLocalScale(const glm::vec3 &scale);
+            void      SetLocalScale(const glm::vec3 &scale) const;
 
-            void      SetLocalTRS(const glm::vec3 &pos,const glm::quat &rot,const glm::vec3 &scale);
+            void      SetLocalTRS(const glm::vec3 &pos,const glm::quat &rot,const glm::vec3 &scale) const;
 
         public: // 世界变换（派生：局部 TRS + 父链组合）
 
             /// 需要时按脏标记做一次平铺求值（不逐帧全量重算）
-            glm::mat4 GetWorldMatrix();
+            glm::mat4 GetWorldMatrix() const;
 
-            glm::vec3 GetWorldPosition();
-            void      SetWorldPosition(const glm::vec3 &pos);
+            glm::vec3 GetWorldPosition() const;
+            void      SetWorldPosition(const glm::vec3 &pos) const;
 
-            glm::quat GetWorldRotation();
-            void      SetWorldRotation(const glm::quat &rot);
+            glm::quat GetWorldRotation() const;
+            void      SetWorldRotation(const glm::quat &rot) const;
 
-            glm::vec3 GetWorldScale();
-            void      SetWorldScale(const glm::vec3 &scale);
+            glm::vec3 GetWorldScale() const;
+            void      SetWorldScale(const glm::vec3 &scale) const;
 
         public: // 层级（父链真源在存储的 parent_indices / children）
 
             TransformID GetParent() const;
-            void        SetParent(TransformID parent);
+            void        SetParent(TransformID parent) const;
 
             const std::vector<TransformID> &GetChildren() const;
-            void AddChild(TransformID child);
-            void RemoveChild(TransformID child);
+            void AddChild(TransformID child) const;
+            void RemoveChild(TransformID child) const;
 
             /// 实体 → 本世界变换行（无变换时返回无效 accessor）
             static TransformAccessor FromOwner(TransformDataStorage *storage,EntityID owner,ECSContext *context=nullptr);
@@ -88,26 +88,47 @@ namespace hgl
         public: // 元数据（owner / 变更版本 / D4 标记 —— 真源在存储）
 
             uint32_t GetChangeMask() const;
-            void     ClearChangeMask();
-            void     TouchChange(uint32_t mask);      ///< 版本 +1 且累积位掩码
-            void     AddChangeMask(uint32_t mask);
+            void     ClearChangeMask() const;
+            void     TouchChange(uint32_t mask) const;      ///< 版本 +1 且累积位掩码
+            void     AddChangeMask(uint32_t mask) const;    ///< 仅累积位掩码（不改版本）
             uint64_t GetVersion() const;
 
             bool IsWriteArmed() const;                ///< D4：本行已被渲染侧消费过
-            void ArmWriteWarning();
+            void ArmWriteWarning() const;
             bool HasWarnedWrite() const;
-            void SetWriteWarned();
+            void SetWriteWarned() const;
+
+        public: // 表现层：fixed-pixel 尺寸控制（状态真源在存储，算法在这里）
+
+            void SetFixedPixelSizingEnabled(bool enabled) const;
+            bool IsFixedPixelSizingEnabled() const;
+            void SetFixedPixelSizingParameters(float pixel_diameter,float reference_world_diameter,float min_scale=0.01f) const;
+            void SetFixedPixelSizingContext(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info) const;
+
+            float ComputeWorldUnitsPerPixel(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info) const;
+            float ComputeFixedPixelUniformScale(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info,float pixel_diameter,float reference_world_diameter) const;
+            bool  ApplyFixedPixelUniformScale(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info,float pixel_diameter,float reference_world_diameter,float min_scale=0.01f) const;
 
         public: // 移动性 / 脏标记
 
             Mobility GetMobility() const;
-            void     SetMobility(Mobility m);
+            void     SetMobility(Mobility m) const;
             bool     IsMovable() const { return GetMobility() == Mobility::Movable; }
             bool     IsStatic() const  { return GetMobility() == Mobility::Static; }
 
             bool IsDirty() const;
-            void MarkDirty();
-            void UpdateIfDirty();
+            void MarkDirty() const;
+            void UpdateIfDirty() const;
+
+        private: // 内部：变更记账（掩码累积 + 子级版本 bump）与 D4「运行期写静态」告警
+
+            /// 写入本行后记账：版本 +1、累积位掩码、标脏，并逐行 bump 子/孙的 WorldMatrix。
+            /// （平铺求值只算矩阵；"哪些行重传 GPU"由版本号比对决定 ⇒ 只标脏不 bump，
+            ///   子节点的 L2W 行不会重传。）
+            void MarkLocalChanged(uint32_t change_mask) const;
+
+            /// D4：运行期写 Static 物体的一次性告警（每行只报一次）。
+            void WarnStaticRuntimeWrite(const char *what) const;
         };
     }//namespace ecs
 }//namespace hgl

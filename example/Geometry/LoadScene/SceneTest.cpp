@@ -16,7 +16,7 @@
 // ECS headers
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -85,7 +85,7 @@ private:
     struct SceneEntity
     {
         hgl::ecs::Entity *entity = nullptr;
-        std::shared_ptr<hgl::ecs::TransformComponent> transform;
+        hgl::ecs::TransformAccessor transform;
         std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive_comp;
     };
 
@@ -189,7 +189,7 @@ private:
 
                 SceneEntity se;
                 se.entity       = ecs_context->CreateEntity<hgl::ecs::Entity>("SceneNode_" + std::to_string(entity_idx++));
-                se.transform    = se.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+                se.transform    = ecs_context->GetTransform(ecs_context->CreateTransform(se.entity->GetEntityID(), hgl::ecs::Mobility::Movable));
                 se.primitive_comp = se.entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
                 // Use pre-computed world matrix for all nodes so child nodes
@@ -204,10 +204,10 @@ private:
                 math::Vector3f world_scale;
                 math::DecomposeTransform(node.worldMatrix,world_pos,world_rot,world_scale);
 
-                se.transform->SetLocalPosition(world_pos);
-                se.transform->SetLocalRotation(world_rot);
-                se.transform->SetLocalScale(world_scale);
-                se.transform->SetMovable(false);
+                se.transform.SetLocalPosition(world_pos);
+                se.transform.SetLocalRotation(world_rot);
+                se.transform.SetLocalScale(world_scale);
+                se.transform.SetMobility(hgl::ecs::Mobility::Static);
 
                 se.primitive_comp->SetPrimitiveAsset(&asset);
                 hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource scene_struct{};

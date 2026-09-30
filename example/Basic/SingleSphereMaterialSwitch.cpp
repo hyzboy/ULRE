@@ -28,7 +28,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -68,7 +68,7 @@ private:
     Entity *sphere_entity = nullptr;
 
     CameraComponent *camera_component = nullptr;
-    TransformComponent *sphere_transform = nullptr;
+    hgl::ecs::TransformAccessor sphere_transform;
     PrimitiveComponent *sphere_primitive_component = nullptr;
 
     using MaterialDataAccessor =
@@ -315,17 +315,17 @@ private:
         if (!sphere_entity)
             return LogFail("InitECSScene", "create sphere entity failed");
 
-        auto transform = sphere_entity->AddComponent<TransformComponent>(Mobility::Movable);
+        auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Movable));
         auto primitive_component = sphere_entity->AddComponent<PrimitiveComponent>();
-        if (!transform || !primitive_component)
+        if (!transform.IsValid() || !primitive_component)
             return LogFail("InitECSScene", "create sphere components failed");
 
-        sphere_transform = transform.get();
+        sphere_transform = transform;
         sphere_primitive_component = primitive_component.get();
 
-        sphere_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        sphere_transform->SetLocalScale(glm::vec3(1.6f, 1.6f, 1.6f));
-        sphere_transform->SetMovable(true);
+        sphere_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        sphere_transform.SetLocalScale(glm::vec3(1.6f, 1.6f, 1.6f));
+        sphere_transform.SetMobility(Mobility::Movable);
 
         sphere_primitive_component->SetVisible(true);
 
@@ -401,10 +401,10 @@ public:
     {
         elapsed_time += delta_time;
 
-        if (sphere_transform)
+        if (sphere_transform.IsValid())
         {
             const float angle = static_cast<float>(elapsed_time) * 0.35f;
-            sphere_transform->SetLocalRotation(glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f)));
+            sphere_transform.SetLocalRotation(glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f)));
         }
 
         if (camera_component)

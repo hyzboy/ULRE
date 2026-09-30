@@ -4,7 +4,7 @@
 #include"GizmoResource.h"
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/graph/CameraInfo.h>
@@ -87,9 +87,9 @@ bool TransformGizmoSystem::EnsureGizmo()
     math::Vector3f create_pos = initial_position;
     if (target_entity)
     {
-        auto target_transform = target_entity->GetComponent<hgl::ecs::TransformComponent>();
-        if (target_transform)
-            create_pos = target_transform->GetLocalPosition();
+        auto target_transform = context->GetTransformByEntity(target_entity->GetEntityID());
+        if (target_transform.IsValid())
+            create_pos = target_transform.GetLocalPosition();
     }
 
     gizmo = CreateDefaultTransformGizmo(context, "Gizmo", create_pos, default_mode);
@@ -118,12 +118,12 @@ bool TransformGizmoSystem::SetTargetEntity(hgl::ecs::Entity *entity)
     return BindTransformGizmoTargetEntity(gizmo, target_entity);
 }
 
-bool TransformGizmoSystem::SetTargetTransform(const std::shared_ptr<hgl::ecs::TransformComponent> &transform)
+bool TransformGizmoSystem::SetTargetTransform(const hgl::ecs::TransformAccessor &transform)
 {
-    if (!transform)
+    if (!transform.IsValid())
         return SetTargetEntity(nullptr);
 
-    return SetTargetEntity(transform->GetOwner());
+    return SetTargetEntity(transform.GetOwner());
 }
 
 void TransformGizmoSystem::SetChangedCallback(GizmoChangedCallback callback)

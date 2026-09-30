@@ -10,7 +10,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -111,13 +111,13 @@ private:
             return false;
 
         auto* entity = ecs_context->CreateEntity<Entity>("SkyCubeSphere");
-        auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
         auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
-        transform->SetLocalPosition(glm::vec3(0.0f));
-        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform->SetLocalScale(glm::vec3(1.0f));
-        transform->SetMovable(false);
+        transform.SetLocalPosition(glm::vec3(0.0f));
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(1.0f));
+        transform.SetMobility(Mobility::Static);
 
         primitive_comp->SetPrimitiveAsset(&sky_asset);
         primitive_comp->SetMaterialTextureResource("sky_cube", sky_cube_texture, sampler);

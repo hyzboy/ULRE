@@ -18,8 +18,6 @@ namespace hgl
 {
     namespace ecs
     {
-        class TransformComponent;
-
         /**
          * CameraComponent - 纯数据组件
          * Pure data component for camera in ECS architecture

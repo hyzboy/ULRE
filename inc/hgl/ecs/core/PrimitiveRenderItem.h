@@ -17,7 +17,6 @@ namespace hgl::ecs
     // Forward declarations
     class Entity;
     class ECSContext;
-    class TransformComponent;
     class PrimitiveComponent;
     class MaterialComponent;
 

@@ -30,7 +30,7 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/ScenePipelineMode.h>
-#include <hgl/ecs/components/TransformComponent.h>
+#include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/ecs/components/CameraComponent.h>
@@ -133,7 +133,7 @@ private:
 
     Geometry *ground_geometry = nullptr;
     PrimitiveAsset ground_primitive{};
-    std::shared_ptr<TransformComponent> ground_transform;
+    hgl::ecs::TransformAccessor ground_transform;
 
     Geometry *cube_geometry = nullptr;
     PrimitiveAsset cube_primitive{};
@@ -587,8 +587,8 @@ public:
         // 地面：不投射阴影（规范化声明，防自遮挡）
         {
             Entity *e = ecs_context->CreateEntity<Entity>("Ground");
-            ground_transform = e->AddComponent<TransformComponent>(Mobility::Static);
-            ground_transform->SetLocalScale(glm::vec3(40.0f));
+            ground_transform = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
+            ground_transform.SetLocalScale(glm::vec3(40.0f));
 
             auto shadow = e->AddComponent<ShadowComponent>();
             shadow->SetCastShadow(false);
@@ -621,9 +621,9 @@ public:
             Entity *e = ecs_context->CreateEntity<Entity>(names[i]);
 
             // Movable：进 CSM 0 动态层（每帧全量重绘），验证不受静态缓存影响
-            auto tf = e->AddComponent<TransformComponent>(Mobility::Movable);
-            tf->SetLocalPosition(glm::vec3(i == 0 ? -1.6f : 1.6f, 0.0f, 2.6f));
-            tf->SetLocalScale(glm::vec3(2.0f));
+            auto tf = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Movable));
+            tf.SetLocalPosition(glm::vec3(i == 0 ? -1.6f : 1.6f, 0.0f, 2.6f));
+            tf.SetLocalScale(glm::vec3(2.0f));
 
             auto prim = e->AddComponent<PrimitiveComponent>();
             prim->SetPrimitiveAsset(&cube_primitive);

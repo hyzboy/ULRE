@@ -17,7 +17,7 @@
 // ECS headers
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -87,13 +87,13 @@ private:
             return false;
 
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
-        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-        transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        transform->SetLocalRotation(rotation);
-        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        transform->SetMovable(false);
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(rotation);
+        transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform.SetMobility(hgl::ecs::Mobility::Static);
 
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource named_struct{};

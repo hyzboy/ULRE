@@ -17,7 +17,7 @@
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/InstancedPrimitiveRenderItem.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/CameraInfo.h>

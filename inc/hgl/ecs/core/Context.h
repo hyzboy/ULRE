@@ -10,7 +10,6 @@
 #include<hgl/ecs/core/ScenePipelineMode.h>
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
@@ -553,8 +552,15 @@ namespace hgl
             }
 
             /// Destroy entity by ID
+            /// —— 同时释放它的变换行：行属于世界（不挂在实体上），实体没了没人回收的话
+            ///    残行会留在静态/可动列表里，把渲染侧的实例→行索引映射整体串位。
             void DestroyEntity(EntityID id)
             {
+                const TransformID transform = GetTransformID(id);
+
+                if (IsValidTransformID(transform))
+                    DestroyTransform(transform);
+
                 if (entity_manager)
                     entity_manager->DestroyEntity(id);
             }

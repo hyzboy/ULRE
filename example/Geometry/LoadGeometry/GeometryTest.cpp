@@ -17,7 +17,7 @@
 // ECS headers
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -104,7 +104,7 @@ private:
         uint32_t color_index = 0;
 
         hgl::ecs::Entity *entity = nullptr;
-        std::shared_ptr<hgl::ecs::TransformComponent> transform;
+        hgl::ecs::TransformAccessor transform;
         std::shared_ptr<hgl::ecs::PrimitiveComponent> primitive_comp;
 
     public:
@@ -118,7 +118,7 @@ private:
     struct BoundingBoxMesh
     {
         hgl::ecs::Entity *entity = nullptr;
-        std::shared_ptr<hgl::ecs::TransformComponent> transform;
+        hgl::ecs::TransformAccessor transform;
         std::shared_ptr<hgl::ecs::PrimitiveComponent> primitive_comp;
     };
 
@@ -276,18 +276,18 @@ private:
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
-            bbox->transform = bbox->entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+            bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
             bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-            bbox->transform->SetParent(rm->entity->GetEntityID());
+            bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));
 
             const auto &center = local_aabb.GetCenter();
             const auto &size = local_aabb.GetLength();
 
-            bbox->transform->SetLocalPosition(glm::vec3(center.x, center.y, center.z));
-            bbox->transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            bbox->transform->SetLocalScale(glm::vec3(size.x, size.y, size.z));
-            bbox->transform->SetMovable(false);
+            bbox->transform.SetLocalPosition(glm::vec3(center.x, center.y, center.z));
+            bbox->transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            bbox->transform.SetLocalScale(glm::vec3(size.x, size.y, size.z));
+            bbox->transform.SetMobility(hgl::ecs::Mobility::Static);
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource bbox_struct{};
@@ -316,17 +316,17 @@ private:
                 continue;
 
             rm->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
-            rm->transform = rm->entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+            rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
             rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
             const float angle = glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));
             const glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
             const glm::vec3 pos = glm::rotate(rotation, glm::vec3(0.25f, 0.0f, 0.0f));
 
-            rm->transform->SetLocalPosition(pos);
-            rm->transform->SetLocalRotation(rotation);
-            rm->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            rm->transform->SetMovable(false);
+            rm->transform.SetLocalPosition(pos);
+            rm->transform.SetLocalRotation(rotation);
+            rm->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            rm->transform.SetMobility(hgl::ecs::Mobility::Static);
 
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};

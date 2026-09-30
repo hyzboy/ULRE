@@ -46,13 +46,13 @@ namespace hgl::ecs
         uint32_t skipped_by_mask = 0;
         uint32_t skipped_by_version = 0;
 
-        const uint32_t update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Position) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Rotation) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Scale) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Parent) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
+        const uint32_t update_mask = ToChangeMask(TransformChange::LocalTRS) |
+                                     ToChangeMask(TransformChange::Position) |
+                                     ToChangeMask(TransformChange::Rotation) |
+                                     ToChangeMask(TransformChange::Scale) |
+                                     ToChangeMask(TransformChange::Parent) |
+                                     ToChangeMask(TransformChange::WorldMatrix) |
+                                     ToChangeMask(TransformChange::Mobility);
 
         for (const TransformID id : movable_transforms)
         {
@@ -113,13 +113,13 @@ namespace hgl::ecs
         }
 
         const auto& static_transforms = world->GetStaticTransforms();
-        const uint32_t update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Position) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Rotation) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Scale) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Parent) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
-                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
+        const uint32_t update_mask = ToChangeMask(TransformChange::LocalTRS) |
+                                     ToChangeMask(TransformChange::Position) |
+                                     ToChangeMask(TransformChange::Rotation) |
+                                     ToChangeMask(TransformChange::Scale) |
+                                     ToChangeMask(TransformChange::Parent) |
+                                     ToChangeMask(TransformChange::WorldMatrix) |
+                                     ToChangeMask(TransformChange::Mobility);
 
         for (const TransformID id : static_transforms)
         {
@@ -142,13 +142,13 @@ namespace hgl::ecs
         {
             const auto& static_transforms = world->GetStaticTransforms();
 
-            const uint32_t update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
-                                         TransformComponent::ToChangeMask(TransformComponent::TransformChange::Position) |
-                                         TransformComponent::ToChangeMask(TransformComponent::TransformChange::Rotation) |
-                                         TransformComponent::ToChangeMask(TransformComponent::TransformChange::Scale) |
-                                         TransformComponent::ToChangeMask(TransformComponent::TransformChange::Parent) |
-                                         TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
-                                         TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
+            const uint32_t update_mask = ToChangeMask(TransformChange::LocalTRS) |
+                                         ToChangeMask(TransformChange::Position) |
+                                         ToChangeMask(TransformChange::Rotation) |
+                                         ToChangeMask(TransformChange::Scale) |
+                                         ToChangeMask(TransformChange::Parent) |
+                                         ToChangeMask(TransformChange::WorldMatrix) |
+                                         ToChangeMask(TransformChange::Mobility);
 
             bool has_dirty_static = false;
 
@@ -459,7 +459,7 @@ namespace hgl::ecs
         if (storage->IsDirty(id) || storage->IsTopologyDirty())
             storage->UpdateDirtyWorldMatricesFlat();
 
-        storage->AddChangeMask(id,TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix));
+        storage->AddChangeMask(id,ToChangeMask(TransformChange::WorldMatrix));
     }
 
     bool TransformSystem::ShouldUpdateTransform(const TransformID id,uint32_t update_mask)

@@ -26,7 +26,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
@@ -108,7 +108,7 @@ private:
 
     // 100 entities, one per sphere
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};
-    std::shared_ptr<TransformComponent> sphere_transforms[GRID_SIZE][GRID_SIZE]{};
+    hgl::ecs::TransformAccessor sphere_transforms[GRID_SIZE][GRID_SIZE]{};
 
     double elapsed_time = 0.0;
 
@@ -470,12 +470,12 @@ private:
                 Entity *e = ecs_world->CreateEntity<Entity>(name);
                 sphere_entities[row][col] = e;
 
-                auto transform = e->AddComponent<TransformComponent>(Mobility::Movable);
+                auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(e->GetEntityID(), Mobility::Movable));
                 sphere_transforms[row][col] = transform;
-                transform->SetLocalPosition(glm::vec3(x, y, 0.0f));
-                transform->SetLocalRotation(MakeRandomRotation(row, col));
-                transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-                transform->SetMovable(true);
+                transform.SetLocalPosition(glm::vec3(x, y, 0.0f));
+                transform.SetLocalRotation(MakeRandomRotation(row, col));
+                transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+                transform.SetMobility(Mobility::Movable);
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitiveAsset(&base_primitives[col]);
@@ -599,7 +599,7 @@ public:
             for (uint col = 0; col < GRID_SIZE; ++col)
             {
                 auto &transform = sphere_transforms[row][col];
-                if (!transform)
+                if (!transform.IsValid())
                     continue;
 
                 // Keep per-cell phase/speed differences to make highlights easier to observe.
@@ -608,7 +608,7 @@ public:
                 const float angle = phase + t * speed;
 
                 const glm::quat spin = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
-                transform->SetLocalRotation(spin * MakeRandomRotation(row, col));
+                transform.SetLocalRotation(spin * MakeRandomRotation(row, col));
             }
         }
 

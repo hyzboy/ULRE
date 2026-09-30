@@ -21,7 +21,7 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -417,13 +417,13 @@ private:
         if(floor_mesh)
         {
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
-            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
-            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            transform->SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
             primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);
@@ -455,17 +455,17 @@ private:
             mesh_name += std::to_string((source == MeshBufferSource::VDM) ? vdm_seq++ : private_seq++);
 
             auto* entity = ecs_context->CreateEntity<Entity>(mesh_name);
-            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
             float angle = glm::radians(360.0f * static_cast<float>(ring_slot) / static_cast<float>(ring_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
             glm::vec3 pos = glm::rotate(rotation, glm::vec3(6.5f, 0.0f, 0.0f));
 
-            transform->SetLocalPosition(pos);
-            transform->SetLocalRotation(rotation);
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
+            transform.SetLocalPosition(pos);
+            transform.SetLocalRotation(rotation);
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&rm->asset);
             primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);

@@ -3,7 +3,7 @@
 //
 // 本范例展示了：
 // 1. 创建ECS World和Entity
-// 2. 使用TransformComponent管理空间变换
+// 2. 使用TransformAccessor管理空间变换
 // 3. 使用PrimitiveComponent管理渲染图元
 // 4. ECS与传统渲染系统的集成
 
@@ -16,7 +16,7 @@
  // 引入ECS相关头文件
  #include<hgl/ecs/core/Context.h>
  #include<hgl/ecs/core/Entity.h>
- #include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
  #include<hgl/ecs/components/PrimitiveComponent.h>
  #include<hgl/object/ObjectTracker.h>
 
@@ -121,17 +121,17 @@ private:
         triangle_entity = ecs_world->CreateEntity<Entity>("TriangleEntity");
         entity_id = HGL_TRACK_ALLOCATION("TriangleEntity", hgl::core::ObjectTypeTag::RenderSystem);
 
-        // === 步骤3: 添加TransformComponent ===
-        // TransformComponent管理空间变换（位置、旋转、缩放）
+        // === 步骤3: 添加变换（Transform） ===
+        // TransformAccessor管理空间变换（位置、旋转、缩放）
         // 内部使用SOA（Structure of Arrays）存储以提高缓存性能
         HGL_TRACK_ALLOCATION("TriangleTransform", hgl::core::ObjectTypeTag::FrameResource);
-        auto transform = triangle_entity->AddComponent<TransformComponent>(Mobility::Static);
-        transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(triangle_entity->GetEntityID(), Mobility::Static));
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
         // 设置为静态对象 - 系统会缓存世界矩阵，提高性能
-        transform->SetMovable(false);
+        transform.SetMobility(Mobility::Static);
 
         // === 步骤4: 添加ECS PrimitiveComponent ===
         // 新的ECS PrimitiveComponent用于管理渲染图元

@@ -2,7 +2,7 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/ScenePipelineMode.h>
-#include <hgl/ecs/components/TransformComponent.h>
+#include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Test 3: Mobility Enum & TransformComponent contract
+    // Test 3: Mobility Enum & transform-row contract
     // ─────────────────────────────────────────────────────────────
     {
         if (static_cast<int>(Mobility::Static) != 0)
@@ -139,17 +139,21 @@ int main(int argc, char** argv)
             return 3;
         }
 
-        TransformComponent comp(Mobility::Static);
-        if (comp.GetMobility() != Mobility::Static)
+        // T8 起变换不再是组件：Mobility 落在世界级变换行上，经 accessor 读写
+        TransformDataStorage mobi_storage;
+        TransformAccessor mobi(&mobi_storage, mobi_storage.Allocate());
+
+        mobi.SetMobility(Mobility::Static);
+        if (mobi.GetMobility() != Mobility::Static)
         {
-            GLogError(u8"Test 3 Failed: TransformComponent failed to set Mobility::Static");
+            GLogError(u8"Test 3 Failed: 变换行未能设置 Mobility::Static");
             return 3;
         }
 
-        comp.SetMobility(Mobility::Movable);
-        if (comp.GetMobility() != Mobility::Movable)
+        mobi.SetMobility(Mobility::Movable);
+        if (mobi.GetMobility() != Mobility::Movable)
         {
-            GLogError(u8"Test 3 Failed: TransformComponent failed to set Mobility::Movable");
+            GLogError(u8"Test 3 Failed: 变换行未能设置 Mobility::Movable");
             return 3;
         }
         GLogInfo(u8"Test 3 Passed: Mobility contracts verified.");
@@ -1297,8 +1301,8 @@ int main(int argc, char** argv)
                 const uint64_t revision_base = ctx.GetStaticSceneRevision();
 
                 auto e_static = ctx.CreateEntity<Entity>("TestStaticMover");
-                auto tf_static = e_static->AddComponent<TransformComponent>(Mobility::Static);
-                tf_static->SetLocalPosition(math::Vector3f(5.0f, 6.0f, 7.0f));
+                auto tf_static = ctx.GetTransform(ctx.CreateTransform(e_static->GetEntityID(), Mobility::Static));
+                tf_static.SetLocalPosition(math::Vector3f(5.0f, 6.0f, 7.0f));
 
                 // 检出：提交后 revision 必须前移（移动静态物体必须打破静态缓存）
                 tf_sys->SubmitTransformUpdates();
@@ -1485,19 +1489,24 @@ int main(int argc, char** argv)
                 return 15;
             }
 
-            // (a) 搭建期（组件刚建、尚未被渲染侧消费）：不 arm、不告警
+            // (a) 搭建期（变换行刚建、尚未被渲染侧消费）：不 arm、不告警
             auto e_static = ctx.CreateEntity<Entity>("TestStaticLateWriter");
-            auto tf_static = e_static ? e_static->AddComponent<TransformComponent>(Mobility::Static)
-                                      : nullptr;
-            if (!tf_static)
+            if (!e_static)
             {
-                GLogError(u8"Test 15 Failed: 无法创建 Static TransformComponent");
+                GLogError(u8"Test 15 Failed: 无法创建静态写入测试实体");
                 return 15;
             }
 
-            tf_static->SetLocalPosition(math::Vector3f(1.0f, 2.0f, 3.0f));
+            auto tf_static = ctx.GetTransform(ctx.CreateTransform(e_static->GetEntityID(), Mobility::Static));
+            if (!tf_static.IsValid())
+            {
+                GLogError(u8"Test 15 Failed: 无法创建 Static 变换行");
+                return 15;
+            }
 
-            if (tf_static->IsStaticRuntimeWriteArmed() || tf_static->HasWarnedStaticRuntimeWrite())
+            tf_static.SetLocalPosition(math::Vector3f(1.0f, 2.0f, 3.0f));
+
+            if (tf_static.IsWriteArmed() || tf_static.HasWarnedWrite())
             {
                 GLogError(u8"Test 15 Failed: 搭建期写入静态 transform 不得告警"
                           u8"（否则每个示例的场景搭建都会刷出误报）");
@@ -1506,7 +1515,7 @@ int main(int argc, char** argv)
 
             // (b) 被渲染侧消费（首次静态段上传）之后必须 arm
             tf_sys->SubmitTransformUpdates();
-            if (!tf_static->IsStaticRuntimeWriteArmed())
+            if (!tf_static.IsWriteArmed())
             {
                 GLogError(u8"Test 15 Failed: 静态 transform 被渲染侧消费后未 arm 运行期写入告警"
                           u8"（D4 的留痕语义整体失效，运行期写静态又变静默）");
@@ -1514,52 +1523,70 @@ int main(int argc, char** argv)
             }
 
             // (c) arm 之后再写 ⇒ 必须告警一次（且写入语义不变：值真的写进去）
-            tf_static->SetLocalPosition(math::Vector3f(4.0f, 5.0f, 6.0f));
-            if (!tf_static->HasWarnedStaticRuntimeWrite())
+            tf_static.SetLocalPosition(math::Vector3f(4.0f, 5.0f, 6.0f));
+            if (!tf_static.HasWarnedWrite())
             {
                 GLogError(u8"Test 15 Failed: 运行期写入 Static transform 未告警"
                           u8"（静默整段重写静态矩阵 + 全部静态级联失效）");
                 return 15;
             }
-            tf_static->SetLocalPosition(math::Vector3f(4.0f, 5.0f, 6.0f));
-            if (!tf_static->IsDirty())
+            tf_static.SetLocalPosition(math::Vector3f(4.0f, 5.0f, 6.0f));
+            if (!tf_static.IsDirty())
             {
                 GLogError(u8"Test 15 Failed: 告警不得改变写入语义（值必须照旧写进去 + 标脏）");
                 return 15;
             }
 
+            // (c2) 经访问器写入必须累积变更位掩码——`ShouldUpdateTransform` 要求掩码非零，
+            //      只标脏不累积 ⇒ 矩阵算对了但该行（连同子孙）永远不上传 GPU。
+            if ((tf_static.GetChangeMask() & ToChangeMask(TransformChange::Position)) == 0)
+            {
+                GLogError(u8"Test 15 Failed: 经访问器写入未累积变更位掩码（该行不会重传 GPU）");
+                return 15;
+            }
+
             // (d) Movable 完全不受影响（永不 arm / 永不告警）
             auto e_movable = ctx.CreateEntity<Entity>("TestMovableWriter");
-            auto tf_movable = e_movable ? e_movable->AddComponent<TransformComponent>(Mobility::Movable)
-                                        : nullptr;
-            if (!tf_movable)
+            if (!e_movable)
             {
-                GLogError(u8"Test 15 Failed: 无法创建 Movable TransformComponent");
+                GLogError(u8"Test 15 Failed: 无法创建 Movable 写入测试实体");
+                return 15;
+            }
+
+            auto tf_movable = ctx.GetTransform(ctx.CreateTransform(e_movable->GetEntityID(), Mobility::Movable));
+            if (!tf_movable.IsValid())
+            {
+                GLogError(u8"Test 15 Failed: 无法创建 Movable 变换行");
                 return 15;
             }
 
             tf_sys->SubmitTransformUpdates();
-            tf_movable->SetLocalPosition(math::Vector3f(7.0f, 8.0f, 9.0f));
-            if (tf_movable->IsStaticRuntimeWriteArmed() || tf_movable->HasWarnedStaticRuntimeWrite())
+            tf_movable.SetLocalPosition(math::Vector3f(7.0f, 8.0f, 9.0f));
+            if (tf_movable.IsWriteArmed() || tf_movable.HasWarnedWrite())
             {
-                GLogError(u8"Test 15 Failed: Movable 组件被静态写入告警波及（会误报每帧移动的对象）");
+                GLogError(u8"Test 15 Failed: Movable 变换行被静态写入告警波及（会误报每帧移动的对象）");
                 return 15;
             }
 
             // (e) SetMobility(Movable) 是"会动"的正解：迁移后写入不再算静态写入
             auto e_migrate = ctx.CreateEntity<Entity>("TestStaticMigratedWriter");
-            auto tf_migrate = e_migrate ? e_migrate->AddComponent<TransformComponent>(Mobility::Static)
-                                        : nullptr;
-            if (!tf_migrate)
+            if (!e_migrate)
             {
-                GLogError(u8"Test 15 Failed: 无法创建待迁移 TransformComponent");
+                GLogError(u8"Test 15 Failed: 无法创建待迁移测试实体");
+                return 15;
+            }
+
+            auto tf_migrate = ctx.GetTransform(ctx.CreateTransform(e_migrate->GetEntityID(), Mobility::Static));
+            if (!tf_migrate.IsValid())
+            {
+                GLogError(u8"Test 15 Failed: 无法创建待迁移变换行");
                 return 15;
             }
 
             tf_sys->SubmitTransformUpdates();          // 先 arm（模拟已进场景）
-            tf_migrate->SetMobility(Mobility::Movable); // 正解：迁到 movable 通道
-            tf_migrate->SetLocalPosition(math::Vector3f(13.0f, 14.0f, 15.0f));
-            if (tf_migrate->HasWarnedStaticRuntimeWrite())
+            tf_migrate.SetMobility(Mobility::Movable); // 正解：迁到 movable 通道
+            tf_migrate.SetLocalPosition(math::Vector3f(13.0f, 14.0f, 15.0f));
+            if (tf_migrate.HasWarnedWrite())
             {
                 GLogError(u8"Test 15 Failed: 迁移到 Movable 后的写入仍被判为静态写入"
                           u8"（正解路径会被误报，开发者会被自己的告警劝退）");
@@ -1911,34 +1938,40 @@ int main(int argc, char** argv)
         {
             static const SourceContract kStaticWriteContracts[] =
             {
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
-                  "void TransformComponent::WarnStaticRuntimeWrite(const char *what)",
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
+                  "void TransformAccessor::WarnStaticRuntimeWrite(const char *what) const",
                   "D4 一次性告警的实现被删——运行期写静态又变成静默生效" },
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
-                  "if (!IsStatic() || !accessor.IsWriteArmed() || accessor.HasWarnedWrite())",
-                  "告警守卫被改：要么搭建期误报，要么每帧刷屏（一次性语义失效；armed/warned 标记自 T8 起在存储行里）" },
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
+                  "if (!IsValid() || !IsStatic() || !IsWriteArmed() || HasWarnedWrite())",
+                  "告警守卫被改：要么搭建期误报，要么每帧刷屏（一次性语义失效；armed/warned 标记在存储行里）" },
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
+                  "storage->TouchChange(id,change_mask);",
+                  "访问器写入不再累积变更位掩码 ⇒ TransformSystem::ShouldUpdateTransform 的掩码判据让该行（连同子孙）永不上传 GPU" },
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
+                  "MarkLocalChanged(ToChangeMask(TransformChange::Position));",
+                  "本地位置写入不再累积掩码（最常见的每帧写路径会静默停更）" },
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
                   "WarnStaticRuntimeWrite(\"SetLocalPosition\");",
                   "本地位置写入不再留痕（最常见的每帧写路径）" },
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
                   "WarnStaticRuntimeWrite(\"SetLocalRotation\");",
                   "本地旋转写入不再留痕" },
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
                   "WarnStaticRuntimeWrite(\"SetLocalScale\");",
                   "本地缩放写入不再留痕" },
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
                   "WarnStaticRuntimeWrite(\"SetLocalTRS\");",
                   "TRS 复合写入不再留痕（批量搭建/动画常用路径）" },
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
                   "WarnStaticRuntimeWrite(\"SetWorldPosition\");",
                   "世界位置写入不再留痕" },
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
                   "WarnStaticRuntimeWrite(\"SetWorldRotation\");",
                   "世界旋转写入不再留痕" },
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
                   "WarnStaticRuntimeWrite(\"SetWorldScale\");",
                   "世界缩放写入不再留痕" },
-                { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
+                { "TransformAccessor.cpp", OS_TEXT("src/ecs/support/TransformAccessor.cpp"),
                   "WarnStaticRuntimeWrite(\"SetParent\");",
                   "改父级不再留痕（同样会让全部静态级联失效）" },
                 { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
@@ -1951,9 +1984,9 @@ int main(int argc, char** argv)
                 return failed;
 
             GLogInfo(u8"Test 15 Passed: static runtime-write contract holds "
-                     u8"(%d source checks + 5 behavioral checks) -- 搭建期不告警、渲染侧消费后"
-                     u8"运行期写入每组件告警一次、Movable 与已迁移对象不受影响、八条写入路径"
-                     u8"全部留痕。",
+                     u8"(%d source checks + 6 behavioral checks) -- 搭建期不告警、渲染侧消费后"
+                     u8"运行期写入每行告警一次、写入门经访问器必累积变更掩码、Movable 与"
+                     u8"已迁移对象不受影响、八条写入路径全部留痕。",
                      static_cast<int>(sizeof(kStaticWriteContracts) / sizeof(kStaticWriteContracts[0])));
         }
 

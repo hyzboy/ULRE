@@ -60,7 +60,7 @@ void RotateGizmoMode::BuildVisual(hgl::ecs::ECSContext *world,
 void RotateGizmoMode::DestroyVisual()
 {
     primitives.clear();
-    aux_transform.reset();
+    aux_transform = hgl::ecs::TransformAccessor{};
     entity = nullptr;
     hovered_index = -1;
     drag = GizmoDragState{};

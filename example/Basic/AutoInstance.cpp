@@ -3,7 +3,7 @@
 //
 // 本范例展示了：
 // 1. 使用ECS架构创建多个实体
-// 2. 使用TransformComponent管理不同的空间变换
+// 2. 使用TransformAccessor管理不同的空间变换
 // 3. 使用PrimitiveComponent共享同一个渲染图元
 // 4. RenderCollector自动合并相同材质和管线的对象进行Instance渲染
 // 5. ECS与渲染系统的集成
@@ -17,7 +17,7 @@
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 
 using namespace hgl;
@@ -126,9 +126,9 @@ private:
             // 创建实体
             auto entity = ecs_world->CreateEntity<Entity>("Triangle_" + std::to_string(i));
 
-            // === 步骤3: 添加TransformComponent ===
+            // === 步骤3: 添加变换（Transform） ===
             // 每个三角形有不同的旋转变换
-            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(entity->GetEntityID(), Mobility::Static));
 
             // 计算旋转角度
             rad = deg2rad((360.0/double(TRIANGLE_NUMBER))*i);
@@ -137,13 +137,13 @@ private:
             // 注意：glm::angleAxis参数是(角度, 轴向量)
             glm::quat rotation = glm::angleAxis((float)rad, glm::vec3(0.0f, 0.0f, 1.0f));
 
-            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            transform->SetLocalRotation(rotation);
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalRotation(rotation);
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
             // 设置为静态对象 - 因为三角形不会移动
             // 这样系统会缓存世界矩阵，提高性能
-            transform->SetMovable(false);
+            transform.SetMobility(Mobility::Static);
 
             // === 步骤4: 添加PrimitiveComponent ===
             // 所有实体共享同一个Primitive

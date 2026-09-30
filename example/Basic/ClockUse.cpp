@@ -28,7 +28,7 @@
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 
@@ -94,7 +94,7 @@ private:
     struct HandData
     {
         Entity* entity;
-        TransformComponent* transform;
+        hgl::ecs::TransformAccessor transform;
         float length_scale;  // 指针长度倍数
     };
 
@@ -207,8 +207,8 @@ private:
             // 创建刻度实体
             ticks[i].entity = ecs_world->CreateEntity<Entity>((AnsiString("ClockTick_") + AnsiString::numberOf((uint)i)).c_str());
 
-            // 添加TransformComponent - 静态变换
-            auto transform = ticks[i].entity->AddComponent<TransformComponent>(Mobility::Static);
+            // 添加变换 - 静态变换
+            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(ticks[i].entity->GetEntityID(), Mobility::Static));
 
             // 计算刻度角度（360 / 12 = 30度）
             float tick_angle = deg2rad(30.0f * i);
@@ -221,12 +221,12 @@ private:
             float to_center_angle = -std::atan2(-x, -y);
             glm::quat rotation = glm::angleAxis(to_center_angle, glm::vec3(0.0f, 0.0f, 1.0f));
 
-            transform->SetLocalPosition(glm::vec3(x, y, 0.0f));
-            transform->SetLocalRotation(rotation);
-            transform->SetLocalScale(glm::vec3(0.8f, 0.15f, 1.0f));  // 缩小刻度尺寸
+            transform.SetLocalPosition(glm::vec3(x, y, 0.0f));
+            transform.SetLocalRotation(rotation);
+            transform.SetLocalScale(glm::vec3(0.8f, 0.15f, 1.0f));  // 缩小刻度尺寸
 
             // 关键：设置为静态对象，不需要每帧更新
-            transform->SetMovable(false);
+            transform.SetMobility(Mobility::Static);
 
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -249,15 +249,15 @@ private:
             // 创建指针实体
             hands[i].entity = ecs_world->CreateEntity<Entity>(hand_names[i]);
 
-            // 添加TransformComponent - 动态变换
-            hands[i].transform = hands[i].entity->AddComponent<TransformComponent>(Mobility::Movable).get();
+            // 添加变换 - 动态变换
+            hands[i].transform = ecs_world->GetTransform(ecs_world->CreateTransform(hands[i].entity->GetEntityID(), Mobility::Movable));
 
-            hands[i].transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            hands[i].transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));  // 单位四元数
-            hands[i].transform->SetLocalScale(glm::vec3(hand_scales[i], hand_scales[i], 1.0f));
+            hands[i].transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            hands[i].transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));  // 单位四元数
+            hands[i].transform.SetLocalScale(glm::vec3(hand_scales[i], hand_scales[i], 1.0f));
 
             // 关键：设置为可移动对象，每帧更新
-            hands[i].transform->SetMovable(true);
+            hands[i].transform.SetMobility(Mobility::Movable);
 
             hands[i].length_scale = hand_scales[i];
 
@@ -330,22 +330,22 @@ public:
         // 时针：12小时 = 360度，每小时30度 + 分钟贡献（正值，但需要上下颠倒）
         float hour_angle = deg2rad((hour * 30.0f) + (minute * 0.5f)) + glm::pi<float>();
         glm::quat hour_rotation = glm::angleAxis(hour_angle, glm::vec3(0.0f, 0.0f, 1.0f));
-        hands[Hour].transform->SetLocalRotation(hour_rotation);
+        hands[Hour].transform.SetLocalRotation(hour_rotation);
 
         // 分针：60分钟 = 360度，每分钟6度 + 秒钟贡献（正值，但需要上下颠倒）
         float minute_angle = deg2rad((minute * 6.0f) + (second * 0.1f)) + glm::pi<float>();
         glm::quat minute_rotation = glm::angleAxis(minute_angle, glm::vec3(0.0f, 0.0f, 1.0f));
-        hands[Minute].transform->SetLocalRotation(minute_rotation);
+        hands[Minute].transform.SetLocalRotation(minute_rotation);
 
         // 秒针：60秒 = 360度，每秒6度（无毫秒平滑）
         float second_angle = deg2rad(second * 6.0f);
         glm::quat second_rotation = glm::angleAxis(second_angle, glm::vec3(0.0f, 0.0f, 1.0f));
-        hands[Second].transform->SetLocalRotation(second_rotation);
+        hands[Second].transform.SetLocalRotation(second_rotation);
 
         // === 标记指针为脏，等待系统更新 ===
         for (uint i = 0; i < 3; i++)
         {
-            hands[i].transform->MarkDirty();
+            hands[i].transform.MarkDirty();
         }
 
         // === 让TransformSystem更新所有movable transform ===

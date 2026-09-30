@@ -24,14 +24,14 @@ static void ApplyAssetFixedPixelSizingParameters(GizmoECS *gizmo)
         if (!entity)
             return;
 
-        auto t = entity->GetComponent<hgl::ecs::TransformComponent>();
-        if (!t)
+        auto t = gizmo->world->GetTransformByEntity(entity->GetEntityID());
+        if (!t.IsValid())
             return;
 
-        t->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
+        t.SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                          reference_world_diameter,
                                          min_scale);
-        t->SetFixedPixelSizingEnabled(true);
+        t.SetFixedPixelSizingEnabled(true);
     };
 
     apply_to_entity(gizmo->move_mode.entity, kReferenceWorldDiameter, kMinScale);
@@ -69,10 +69,10 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
 
 static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
 {
-    if (!gizmo || !gizmo->root_transform)
+    if (!gizmo || !gizmo->root_transform.IsValid())
         return;
 
-    const glm::quat root_rot = gizmo->root_transform->GetLocalRotation();
+    const glm::quat root_rot = gizmo->root_transform.GetLocalRotation();
     const glm::quat inv_root_rot = glm::inverse(root_rot);
     const glm::quat identity(1.0f, 0.0f, 0.0f, 0.0f);
 
@@ -81,9 +81,9 @@ static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
         if (!entity)
             return;
 
-        auto t = entity->GetComponent<hgl::ecs::TransformComponent>();
-        if (t)
-            t->SetLocalRotation(q);
+        auto t = gizmo->world->GetTransformByEntity(entity->GetEntityID());
+        if (t.IsValid())
+            t.SetLocalRotation(q);
     };
 
     const bool move_local = IsMoveMode(gizmo->current_mode) && IsLocalMode(gizmo->current_mode);
@@ -109,9 +109,9 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
         if (!entity)
             return;
 
-        auto t = entity->GetComponent<hgl::ecs::TransformComponent>();
-        if (t && t->IsFixedPixelSizingEnabled())
-            t->SetFixedPixelSizingContext(camera_info, viewport_info);
+        auto t = gizmo->world->GetTransformByEntity(entity->GetEntityID());
+        if (t.IsValid() && t.IsFixedPixelSizingEnabled())
+            t.SetFixedPixelSizingContext(camera_info, viewport_info);
     };
 
     apply_ctx(gizmo->move_mode.entity);
@@ -121,10 +121,10 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
 
 static int GetScalePlaneNormalAxisFromEntry(const GizmoVisualPrimitive &entry)
 {
-    if (!entry.transform || entry.shape != GizmoShape::Square)
+    if (!entry.transform.IsValid() || entry.shape != GizmoShape::Square)
         return -1;
 
-    const math::Vector3f lp = entry.transform->GetLocalPosition();
+    const math::Vector3f lp = entry.transform.GetLocalPosition();
     const float ax = std::fabs(lp.x);
     const float ay = std::fabs(lp.y);
     const float az = std::fabs(lp.z);

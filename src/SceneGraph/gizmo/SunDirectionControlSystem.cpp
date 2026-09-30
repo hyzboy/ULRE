@@ -4,7 +4,7 @@
 #include"GizmoResource.h"
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -47,19 +47,20 @@ bool SunDirectionControlSystem::EnsureProxyEntity()
     if (!context)
         return false;
 
-    if (proxy_entity && proxy_transform)
+    if (proxy_entity && proxy_transform.IsValid())
         return true;
 
     proxy_entity = context->CreateEntity<hgl::ecs::Entity>("SunDirectionGizmoProxy");
     if (!proxy_entity)
         return false;
 
-    proxy_transform = proxy_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
-    if (!proxy_transform)
+    context->CreateTransform(proxy_entity->GetEntityID(), hgl::ecs::Mobility::Movable);
+    proxy_transform = context->GetTransformByEntity(proxy_entity->GetEntityID());
+    if (!proxy_transform.IsValid())
         return false;
 
-    proxy_transform->SetMovable(true);
-    proxy_transform->SetLocalTRS(glm::vec3(gizmo_position),
+    proxy_transform.SetMobility(hgl::ecs::Mobility::Movable);
+    proxy_transform.SetLocalTRS(glm::vec3(gizmo_position),
                                  glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
                                  glm::vec3(1.0f));
     return true;
@@ -70,7 +71,7 @@ bool SunDirectionControlSystem::EnsureGizmo()
     if (gizmo)
         return true;
 
-    if (!context || !proxy_transform)
+    if (!context || !proxy_transform.IsValid())
         return false;
 
     gizmo = CreateDefaultTransformGizmo(context, "SunDirectionGizmo", gizmo_position, GizmoMode::RotateWorld);
@@ -111,8 +112,8 @@ void SunDirectionControlSystem::Initialize()
                                          sky->sun_direction.y,
                                          sky->sun_direction.z);
 
-            proxy_transform->SetLocalPosition(glm::vec3(gizmo_position));
-            proxy_transform->SetLocalRotation(hgl::math::DirectionToRotation(sun_dir));
+            proxy_transform.SetLocalPosition(glm::vec3(gizmo_position));
+            proxy_transform.SetLocalRotation(hgl::math::DirectionToRotation(sun_dir));
         }
     }
 }
@@ -130,7 +131,7 @@ void SunDirectionControlSystem::Shutdown()
         context->DestroyEntity(proxy_entity->GetEntityID());
     }
 
-    proxy_transform.reset();
+    proxy_transform = hgl::ecs::TransformAccessor{};
     proxy_entity = nullptr;
 
     if (resource_registered)
@@ -210,19 +211,19 @@ void SunDirectionControlSystem::Update(float)
         auto *sky = environment_system->EditSkyInfo();
         if (sky)
         {
-            if (proxy_transform)
-                proxy_transform->SetLocalPosition(glm::vec3(gizmo_position));
+            if (proxy_transform.IsValid())
+                proxy_transform.SetLocalPosition(glm::vec3(gizmo_position));
 
             math::Vector3f dir(0.0f, 0.0f, 1.0f);
             if (auto *gizmo_root = GetGizmoRootEntity(gizmo))
             {
-                auto gizmo_root_transform = gizmo_root->GetComponent<hgl::ecs::TransformComponent>();
-                if (gizmo_root_transform)
+                auto gizmo_root_transform = context->GetTransformByEntity(gizmo_root->GetEntityID());
+                if (gizmo_root_transform.IsValid())
                 {
-                    dir = hgl::math::RotationToDirection(gizmo_root_transform->GetLocalRotation());
+                    dir = hgl::math::RotationToDirection(gizmo_root_transform.GetLocalRotation());
 
-                    if (proxy_transform)
-                        proxy_transform->SetLocalRotation(gizmo_root_transform->GetLocalRotation());
+                    if (proxy_transform.IsValid())
+                        proxy_transform.SetLocalRotation(gizmo_root_transform.GetLocalRotation());
                 }
             }
 

@@ -3,7 +3,7 @@
 #include <hgl/ecs/components/LinesComponent.h>
 #include <hgl/ecs/components/BoundingBoxComponent.h>
 #include <hgl/ecs/components/VisibilityComponent.h>
-#include <hgl/ecs/components/TransformComponent.h>
+#include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
@@ -556,17 +556,18 @@ namespace hgl::ecs
             if (transform_system)
             {
                 Entity* owner = comp ? comp->GetOwner() : nullptr;
-                auto transform = owner ? owner->GetComponent<TransformComponent>() : nullptr;
-                if (transform)
+                const TransformAccessor transform = owner ? context_->GetTransformByEntity(owner->GetEntityID())
+                                                          : TransformAccessor{};
+                if (transform.IsValid())
                 {
                     ++transform_owner_components;
 
-                    const auto handle = transform->GetStorageHandle();
+                    const TransformDataStorage::HandleID handle = transform.GetID();
                     uint32_t group_index = 0;
                     if (handle != TransformDataStorage::INVALID_HANDLE
-                        && transform_system->TryGetTransformGroupIndex(handle, transform->IsMovable(), group_index))
+                        && transform_system->TryGetTransformGroupIndex(handle, transform.IsMovable(), group_index))
                     {
-                        const uint32_t resolved = transform->IsMovable() ? (dynamic_base + group_index)
+                        const uint32_t resolved = transform.IsMovable() ? (dynamic_base + group_index)
                                                                           : (group_index + 1u);
 
                         constexpr uint32_t kMaxTransformID = std::numeric_limits<uint32_t>::max();

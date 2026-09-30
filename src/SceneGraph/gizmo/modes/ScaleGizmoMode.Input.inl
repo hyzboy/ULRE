@@ -3,7 +3,7 @@
 // from GizmoUnified.AssetVisual.inl and GizmoUnified.AssetChannels.inl are in scope.
 
 void ScaleGizmoMode::UpdateHover(const GizmoFrameInput &input,
-                                  const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform)
+                                  const hgl::ecs::TransformAccessor &root_transform)
 {
     const int best_index = PickBestAssetVisualIndex(primitives, root_transform, input);
     hovered_index = best_index;
@@ -100,15 +100,15 @@ bool ScaleGizmoMode::TryBeginDrag(const GizmoFrameInput &input,
 
 void ScaleGizmoMode::ApplyDrag(const GizmoFrameInput &input,
                                 bool allow_negative_scale,
-                                const std::shared_ptr<hgl::ecs::TransformComponent> &target_transform,
-                                const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform,
+                                const hgl::ecs::TransformAccessor &target_transform,
+                                const hgl::ecs::TransformAccessor &root_transform,
                                 math::Vector3f &cur_effective_scale)
 {
     const math::Vector2i &mouse = input.mouse_coord;
     const CameraInfo    *cam   = input.camera_info;
     const ViewportInfo  *vp    = input.viewport_info;
     const bool has_view_context = (cam && vp);
-    if (!root_transform || !drag.active)
+    if (!root_transform.IsValid() || !drag.active)
         return;
 
     constexpr float kScaleSensitivity = 0.01f;
@@ -181,15 +181,15 @@ void ScaleGizmoMode::ApplyDrag(const GizmoFrameInput &input,
 
     NormalizeScaleByPolicy(s, allow_negative_scale);
 
-    if (target_transform)
+    if (target_transform.IsValid())
     {
         cur_effective_scale = s;
         if (!has_view_context)
-            root_transform->SetLocalScale(s);
+            root_transform.SetLocalScale(s);
     }
     else
     {
-        root_transform->SetLocalScale(s);
+        root_transform.SetLocalScale(s);
     }
 }
 

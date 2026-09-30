@@ -10,7 +10,6 @@ class ECSContext;
 class Entity;
 struct EntityID;
 class InputSystem;
-class TransformComponent;
 } // namespace hgl::ecs
 
 namespace hgl::graph
@@ -45,7 +44,7 @@ public:
 
     // ─── Per-frame update ─────────────────────────────────────────────────
     void UpdateHover(const GizmoFrameInput &input,
-                     const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform);
+                     const hgl::ecs::TransformAccessor &root_transform);
 
     // ─── Drag lifecycle ───────────────────────────────────────────────────
     bool TryBeginDrag(const GizmoFrameInput &input,
@@ -56,8 +55,8 @@ public:
     // Apply current drag delta. Scale needs cur_effective_scale for CommitTransformChanges.
     void ApplyDrag(const GizmoFrameInput &input,
                    bool allow_negative_scale,
-                   const std::shared_ptr<hgl::ecs::TransformComponent> &target_transform,
-                   const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform,
+                   const hgl::ecs::TransformAccessor &target_transform,
+                   const hgl::ecs::TransformAccessor &root_transform,
                    hgl::math::Vector3f &cur_effective_scale);
 
     // Release mouse capture and reset all drag state.

@@ -24,7 +24,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/MaterialBatch.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -203,12 +203,12 @@ private:
         {
             auto *e = ecs_context->CreateEntity<Entity>(("Cube_" + AnsiString::numberOf(i)).c_str());
 
-            auto transform = e->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
             const float x = (static_cast<float>(i) - static_cast<float>(TOTAL_CUBES - 1) * 0.5f) * 2.2f;
-            transform->SetLocalPosition(glm::vec3(x, 0.0f, 0.0f));
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(0.9f));
-            transform->SetMovable(false);
+            transform.SetLocalPosition(glm::vec3(x, 0.0f, 0.0f));
+            transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform.SetLocalScale(glm::vec3(0.9f));
+            transform.SetMobility(Mobility::Static);
 
             auto prim = e->AddComponent<PrimitiveComponent>();
             prim->SetPrimitiveAsset(&cube_asset);

@@ -4,7 +4,7 @@
 // 本范例展示了：
 // 1. 使用 CreateSphere 创建球体几何体（私有顶点缓冲——每几何独立 VAB/IBO）
 // 2. 使用 Lit(PBR) 材质绘制球体（材质数据行 PBRSurfaceRow + 纹理）
-// 3. 使用TransformComponent管理空间变换
+// 3. 使用TransformAccessor管理空间变换
 // 4. 使用PrimitiveComponent管理渲染图元
 // 5. CameraSystem配置为ViewModel控制模式
 
@@ -25,7 +25,7 @@
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -79,7 +79,7 @@ private:
     Texture2D * roughness_texture = nullptr;
     Sampler *   sampler           = nullptr;
 
-    TransformComponent * sphere_transform = nullptr;
+    hgl::ecs::TransformAccessor sphere_transform;
 
     double elapsed_time = 0.0;
 
@@ -170,12 +170,12 @@ private:
 
         sphere_entity = ecs_context->CreateEntity<Entity>("SphereEntity");
 
-        auto transform = sphere_entity->AddComponent<TransformComponent>(Mobility::Movable);
-        transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        transform->SetMovable(true);
-        sphere_transform = transform.get();
+        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sphere_entity->GetEntityID(), Mobility::Movable));
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform.SetMobility(Mobility::Movable);
+        sphere_transform = transform;
 
         auto primitive_comp = sphere_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -247,8 +247,8 @@ public:
     {
         elapsed_time += delta_time;
 
-        if(sphere_transform)
-            sphere_transform->SetLocalRotation(glm::angleAxis(
+        if(sphere_transform.IsValid())
+            sphere_transform.SetLocalRotation(glm::angleAxis(
                 static_cast<float>(elapsed_time) * SPHERE_ROTATE_SPEED,
                 glm::vec3(0.0f, 1.0f, 0.0f)));
 

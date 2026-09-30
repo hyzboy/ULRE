@@ -17,7 +17,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -63,7 +63,7 @@ private:
     Geometry *geometry = nullptr;
     struct CubeNode
     {
-        TransformComponent *transform = nullptr;
+        hgl::ecs::TransformAccessor transform;
         glm::vec3 axis{0.0f, 1.0f, 0.0f};
         float max_angle_deg = 0.0f;
         float angle_deg = 0.0f;
@@ -180,13 +180,13 @@ private:
             return nullptr;
 
         auto *entity = ecs_context->CreateEntity<Entity>(name);
-        auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
         if (parent_id.IsValid())
-            transform->SetParent(parent_id);
-        transform->SetLocalPosition(local_pos);
-        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform->SetLocalScale(glm::vec3(scale, scale, scale));
-        transform->SetMovable(animate);
+            transform.SetParent(ecs_context->GetTransformID(parent_id));
+        transform.SetLocalPosition(local_pos);
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(scale, scale, scale));
+        transform.SetMobility(animate ? Mobility::Movable : Mobility::Static);
 
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetPrimitiveAsset(&cube_asset);
@@ -201,7 +201,7 @@ private:
         if (animate)
         {
             CubeNode node;
-            node.transform = transform.get();
+            node.transform = transform;
             RandomizeNode(node);
             nodes.push_back(node);
         }
@@ -317,7 +317,7 @@ public:
 
         for (auto &node : nodes)
         {
-            if (!node.transform)
+            if (!node.transform.IsValid())
                 continue;
 
             node.angle_deg += node.dir * node.speed_deg * static_cast<float>(delta_time);
@@ -333,7 +333,7 @@ public:
             }
 
             const float angle_rad = glm::radians(node.angle_deg);
-            node.transform->SetLocalRotation(glm::angleAxis(angle_rad, node.axis));
+            node.transform.SetLocalRotation(glm::angleAxis(angle_rad, node.axis));
         }
 
         WorkObject::Tick(delta_time);

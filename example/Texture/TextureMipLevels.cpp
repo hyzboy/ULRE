@@ -33,7 +33,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 
 #include<glm/glm.hpp>
@@ -297,11 +297,11 @@ private:
         {
             row_entities[row] = ecs_world->CreateEntity<Entity>("MipLevelRow_" + std::to_string(row));
 
-            auto transform = row_entities[row]->AddComponent<TransformComponent>(Mobility::Static);
-            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
+            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(row_entities[row]->GetEntityID(), Mobility::Static));
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform.SetMobility(Mobility::Static);
 
             auto primitive = row_entities[row]->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive->SetPrimitiveAsset(&ruler_asset[row]);

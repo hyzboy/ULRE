@@ -4,7 +4,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/RenderableComponent.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 
 namespace hgl::ecs
 {

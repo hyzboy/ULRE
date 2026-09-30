@@ -3,7 +3,7 @@
 // from GizmoUnified.AssetVisual.inl and GizmoUnified.AssetChannels.inl are in scope.
 
 void MoveGizmoMode::UpdateHover(const GizmoFrameInput &input,
-                                 const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform)
+                                 const hgl::ecs::TransformAccessor &root_transform)
 {
     const int best_index = PickBestAssetVisualIndex(primitives, root_transform, input);
     hovered_index = best_index;
@@ -103,12 +103,12 @@ bool MoveGizmoMode::TryBeginDrag(const GizmoFrameInput &input,
 }
 
 void MoveGizmoMode::ApplyDrag(const GizmoFrameInput &input,
-                               const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform)
+                               const hgl::ecs::TransformAccessor &root_transform)
 {
     const math::Vector2i &mouse = input.mouse_coord;
     const CameraInfo    *cam   = input.camera_info;
     const ViewportInfo  *vp    = input.viewport_info;
-    if (!root_transform || !drag.active)
+    if (!root_transform.IsValid() || !drag.active)
         return;
 
     constexpr float kMoveSensitivity = 0.01f;
@@ -154,7 +154,7 @@ void MoveGizmoMode::ApplyDrag(const GizmoFrameInput &input,
                 }
             }
 
-            const float wupp = root_transform->ComputeWorldUnitsPerPixel(cam, vp);
+            const float wupp = root_transform.ComputeWorldUnitsPerPixel(cam, vp);
             delta_world *= (wupp > 0.0f) ? wupp : kMoveSensitivity;
         }
         else
@@ -162,7 +162,7 @@ void MoveGizmoMode::ApplyDrag(const GizmoFrameInput &input,
             delta_world *= kMoveSensitivity;
         }
 
-        root_transform->SetLocalPosition(drag.start_position + move_axis * delta_world);
+        root_transform.SetLocalPosition(drag.start_position + move_axis * delta_world);
         return;
     }
 
@@ -196,7 +196,7 @@ void MoveGizmoMode::ApplyDrag(const GizmoFrameInput &input,
             {
                 const float a = (md.x * dv.y - md.y * dv.x) / det;
                 const float b = (du.x * md.y - du.y * md.x) / det;
-                root_transform->SetLocalPosition(drag.start_position
+                root_transform.SetLocalPosition(drag.start_position
                                                  + u_world * (a * ref_len)
                                                  + v_world * (b * ref_len));
             }
@@ -229,7 +229,7 @@ screen_plane_drag:
 
         const float dx = static_cast<float>(mouse.x - drag.start_mouse.x);
         const float dy = static_cast<float>(mouse.y - drag.start_mouse.y);
-        root_transform->SetLocalPosition(drag.start_position
+        root_transform.SetLocalPosition(drag.start_position
                                          + drag_right * (dx *  kMoveSensitivity)
                                          + drag_up    * (dy * -kMoveSensitivity));
     }

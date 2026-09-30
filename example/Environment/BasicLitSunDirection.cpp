@@ -14,7 +14,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -362,13 +362,13 @@ private:
         {
         #ifdef DRAW_SKY_SPHERE
             sky_entity = ecs_context->CreateEntity<Entity>("SkySphere");
-            auto transform = sky_entity->AddComponent<TransformComponent>(Mobility::Movable);
+            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), Mobility::Movable));
             auto primitive_comp = sky_entity->AddComponent<PrimitiveComponent>();
 
-            transform->SetLocalPosition(glm::vec3(0.0f));
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f));
-            transform->SetMovable(false);
+            transform.SetLocalPosition(glm::vec3(0.0f));
+            transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform.SetLocalScale(glm::vec3(1.0f));
+            transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&sky_asset);
             primitive_comp->SetVisible(true);
@@ -377,13 +377,13 @@ private:
 
         {
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
-            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
-            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            transform->SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
             primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);
@@ -406,17 +406,17 @@ private:
                 continue;
 
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
-            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
+            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
             glm::vec3 pos = glm::rotate(rotation, glm::vec3(6.5f, 0.0f, 0.0f));
 
-            transform->SetLocalPosition(pos);
-            transform->SetLocalRotation(rotation);
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
+            transform.SetLocalPosition(pos);
+            transform.SetLocalRotation(rotation);
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&rm->asset);
             primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);

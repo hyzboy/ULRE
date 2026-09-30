@@ -54,8 +54,6 @@ set(ECS_SYS_01_TickInput_InputSystem_FILES
 set(ECS_SYS_02_TickTransform_TransformSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/tick/TransformSystem.h
     systems/tick/TransformSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/TransformComponent.h
-    components/TransformComponent.cpp
 )
 
 set(ECS_SYS_03_TickTransform_BoundingBoxComponent_FILES

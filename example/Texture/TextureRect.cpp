@@ -12,7 +12,7 @@
 // ECS headers
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 
 #include<glm/glm.hpp>
@@ -119,13 +119,13 @@ private:
             return false;
 
         rect_entity = ecs_world->CreateEntity<Entity>("TextureRect");
-        auto rect_transform = rect_entity->AddComponent<TransformComponent>(Mobility::Static);
+        auto rect_transform = ecs_world->GetTransform(ecs_world->CreateTransform(rect_entity->GetEntityID(), Mobility::Static));
         auto rect_primitive = rect_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-        rect_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        rect_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        rect_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        rect_transform->SetMovable(false);
+        rect_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        rect_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        rect_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        rect_transform.SetMobility(Mobility::Static);
 
         rect_primitive->SetPrimitiveAsset(&rect_asset);
         if (!rect_primitive->SetMaterialTextureResource(

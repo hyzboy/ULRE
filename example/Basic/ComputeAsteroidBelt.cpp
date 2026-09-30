@@ -34,7 +34,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/core/MaterialBatch.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
@@ -586,10 +586,10 @@ private:
         // 1. 创建主星实体 (大球，居中，半径 35.0)
         planet_asset = PrimitiveAsset(planet_geometry, &planet_recipe, PrimitiveType::Triangles);
         planet_entity = ecs_context->CreateEntity<Entity>("PlanetSphere");
-        auto planet_transform = planet_entity->AddComponent<TransformComponent>(Mobility::Static);
-        planet_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        planet_transform->SetLocalScale(glm::vec3(PLANET_RADIUS));
-        planet_transform->SetMovable(false);
+        auto planet_transform = ecs_context->GetTransform(ecs_context->CreateTransform(planet_entity->GetEntityID(), Mobility::Static));
+        planet_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        planet_transform.SetLocalScale(glm::vec3(PLANET_RADIUS));
+        planet_transform.SetMobility(Mobility::Static);
 
         auto planet_prim = planet_entity->AddComponent<PrimitiveComponent>();
         planet_prim->SetPrimitiveAsset(&planet_asset);
@@ -607,10 +607,10 @@ private:
             auto *e = ecs_context->CreateEntity<Entity>(name.c_str());
             asteroid_entities[i] = e;
 
-            auto transform = e->AddComponent<TransformComponent>(Mobility::Static);
-            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f));
-            transform->SetMovable(false);
+            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalScale(glm::vec3(1.0f));
+            transform.SetMobility(Mobility::Static);
 
             auto prim = e->AddComponent<InstancedPrimitiveComponent>();
             prim->SetPrimitiveAsset(&asteroid_assets[i]);

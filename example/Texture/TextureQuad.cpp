@@ -11,7 +11,7 @@
 // ECS headers
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 
 #include<glm/glm.hpp>
@@ -124,13 +124,13 @@ private:
             return false;
 
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
-        auto quad_transform = quad_entity->AddComponent<TransformComponent>(Mobility::Static);
+        auto quad_transform = ecs_world->GetTransform(ecs_world->CreateTransform(quad_entity->GetEntityID(), Mobility::Static));
         auto quad_primitive = quad_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-        quad_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        quad_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        quad_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        quad_transform->SetMovable(false);
+        quad_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        quad_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        quad_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        quad_transform.SetMobility(Mobility::Static);
 
         quad_primitive->SetPrimitiveAsset(&quad_asset);
         if (!quad_primitive->SetMaterialTextureResource(

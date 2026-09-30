@@ -4,7 +4,7 @@
 //
 // 本范例展示了：
 // 1. 使用ECS架构创建场景对象（平面网格和射线）
-// 2. 使用TransformComponent管理空间变换
+// 2. 使用TransformAccessor管理空间变换
 // 3. 使用PrimitiveComponent管理渲染图元
 // 4. 动态更新顶点数据以显示实时射线
 // 5. 使用新的 ECS Camera 系统替代旧的 CameraControl
@@ -32,7 +32,7 @@
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -212,11 +212,11 @@ private:
         {
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
 
-            // 添加TransformComponent
-            auto transform = plane_grid_entity->AddComponent<TransformComponent>(Mobility::Static);
-            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            // 添加变换（Transform）
+            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(plane_grid_entity->GetEntityID(), Mobility::Static));
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -232,11 +232,11 @@ private:
             ray_line_entity = ecs_world->CreateEntity<Entity>("RayLine");
             prim_line_vab = geom_line ? geom_line->GetVAB(VAN::Position) : nullptr;
 
-            // 添加TransformComponent
-            auto transform = ray_line_entity->AddComponent<TransformComponent>(Mobility::Static);//线段虽然会动，但我们改的是VAB不是Transform
-            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            // 添加变换（Transform）
+            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(ray_line_entity->GetEntityID(), Mobility::Static));//线段虽然会动，但我们改的是VAB不是Transform
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();

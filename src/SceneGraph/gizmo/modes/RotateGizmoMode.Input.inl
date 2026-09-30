@@ -3,7 +3,7 @@
 // from GizmoUnified.AssetVisual.inl and GizmoUnified.AssetChannels.inl are in scope.
 
 void RotateGizmoMode::UpdateHover(const GizmoFrameInput &input,
-                                   const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform)
+                                   const hgl::ecs::TransformAccessor &root_transform)
 {
     const int best_index = PickBestAssetVisualIndex(primitives, root_transform, input);
     hovered_index = best_index;
@@ -99,12 +99,12 @@ bool RotateGizmoMode::TryBeginDrag(const GizmoFrameInput &input,
 }
 
 void RotateGizmoMode::ApplyDrag(const GizmoFrameInput &input,
-                                 const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform)
+                                 const hgl::ecs::TransformAccessor &root_transform)
 {
     const math::Vector2i &mouse = input.mouse_coord;
     const CameraInfo    *cam   = input.camera_info;
     const ViewportInfo  *vp    = input.viewport_info;
-    if (!root_transform || !drag.active)
+    if (!root_transform.IsValid() || !drag.active)
         return;
 
     constexpr float kRotateSensitivity = 0.005f;
@@ -192,7 +192,7 @@ void RotateGizmoMode::ApplyDrag(const GizmoFrameInput &input,
         }
 
         const glm::quat dq = glm::angleAxis(signed_angle, glm::normalize(axis));
-        root_transform->SetLocalRotation(glm::normalize(dq * drag.start_rotation));
+        root_transform.SetLocalRotation(glm::normalize(dq * drag.start_rotation));
         return;
     }
 
@@ -201,7 +201,7 @@ void RotateGizmoMode::ApplyDrag(const GizmoFrameInput &input,
     {
         const glm::quat yaw   = glm::angleAxis(-dx * kRotateSensitivity, math::AxisVector::Y);
         const glm::quat pitch = glm::angleAxis(-dy * kRotateSensitivity, camera_right);
-        root_transform->SetLocalRotation(glm::normalize(yaw * pitch * drag.start_rotation));
+        root_transform.SetLocalRotation(glm::normalize(yaw * pitch * drag.start_rotation));
     }
     else
     {
@@ -209,7 +209,7 @@ void RotateGizmoMode::ApplyDrag(const GizmoFrameInput &input,
         const glm::vec3 local_y = drag.start_rotation * camera_up;
         const glm::quat yaw_local   = glm::angleAxis(-dx * kRotateSensitivity, local_y);
         const glm::quat pitch_local = glm::angleAxis(-dy * kRotateSensitivity, local_x);
-        root_transform->SetLocalRotation(glm::normalize(yaw_local * pitch_local * drag.start_rotation));
+        root_transform.SetLocalRotation(glm::normalize(yaw_local * pitch_local * drag.start_rotation));
     }
 }
 

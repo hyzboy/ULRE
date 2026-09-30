@@ -22,7 +22,7 @@
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -309,13 +309,13 @@ public:
 
         auto *world = offscreen->GetWorld();
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
-        auto transform = sphere_entity->AddComponent<TransformComponent>(Mobility::Static);
+        auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
         auto prim_comp = sphere_entity->AddComponent<PrimitiveComponent>();
 
-        transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        transform->SetMovable(false);
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform.SetMobility(Mobility::Static);
 
         prim_comp->SetPrimitiveAsset(&sphere_asset);
         prim_comp->SetMaterialTextureResource("base_color", sphere_base_tex, sphere_sampler);
@@ -386,7 +386,7 @@ private:
     Texture2D *normal_tex = nullptr;
     Texture2D *roughness_tex = nullptr;
 
-    std::shared_ptr<TransformComponent> cube_transform;
+    hgl::ecs::TransformAccessor cube_transform;
     float cube_theta = 0.0f;
 
 private:
@@ -500,13 +500,13 @@ private:
             return LogStageFail("RenderToTextureApp::CreateCube", "create cube primitive asset failed");
 
         cube_entity = ecs_context->CreateEntity<Entity>("RTTCube");
-        cube_transform = cube_entity->AddComponent<TransformComponent>(Mobility::Static);
+        cube_transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube_entity->GetEntityID(), Mobility::Static));
         auto cube_prim_comp = cube_entity->AddComponent<PrimitiveComponent>();
 
-        cube_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        cube_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        cube_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        cube_transform->SetMovable(true);
+        cube_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        cube_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        cube_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        cube_transform.SetMobility(Mobility::Movable);
 
         cube_prim_comp->SetPrimitiveAsset(&cube_asset);
         cube_prim_comp->SetMaterialTextureResource("base_color", base_tex, cube_sampler);
@@ -603,14 +603,14 @@ public:
     {
         // 逻辑更新写在 Tick（渲染前）——TransformSystem 在渲染帧内提交变换，
         // Tick 里改与本回调内改同帧等价，且不占用命令缓冲录制时间
-        if (cube_transform)
+        if (cube_transform.IsValid())
         {
             cube_theta += static_cast<float>(delta_time) * 0.8f;
             cube_theta = fmodf(cube_theta, 2.0f * std::numbers::pi_v<float>);
 
             const glm::quat rot_z = glm::angleAxis(cube_theta, glm::vec3(0.0f, 0.0f, 1.0f));
             const glm::quat rot_x = glm::angleAxis(cube_theta * 0.5f, glm::vec3(1.0f, 0.0f, 0.0f));
-            cube_transform->SetLocalRotation(rot_z * rot_x);
+            cube_transform.SetLocalRotation(rot_z * rot_x);
         }
 
         WorkObject::Tick(delta_time);

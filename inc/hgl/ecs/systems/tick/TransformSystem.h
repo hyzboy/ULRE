@@ -3,7 +3,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformID.h>
 #include<vector>
 #include<memory>
 #include <hgl/type/UnorderedMap.h>
@@ -16,7 +16,7 @@ namespace hgl::ecs
     /**
      * TransformSystem
      *
-     * Centralized update for TransformComponent.
+     * Centralized update for the world's transform rows.
         * - Updates dirty movable transforms per tick
         * - Static transforms are updated only on explicit call
      */

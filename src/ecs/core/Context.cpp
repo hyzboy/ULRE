@@ -376,7 +376,7 @@ namespace hgl
             }
 
             // 原每帧全实体 × 全组件的 OnUpdate 虚分发已删除——其唯一有效实现
-            // （TransformComponent 的 fixed_pixel 等像素缩放）由 gizmo 的
+            // （fixed_pixel 等像素缩放）由 gizmo 的
             // TransformGizmoSystem 在 TickPostCamera 相位经
             // SetFixedPixelSizingContext 即时重算（本就是主通道）。
             // 逻辑更新归 tick 系统，不归组件。
@@ -1784,7 +1784,15 @@ namespace hgl
             UnregisterTransform(id);
 
             if (auto *storage = GetTransformStorage())
+            {
+                // 先从父的子表里摘掉自己（父链与子表真源都在存储），再释放本行
+                const TransformID parent = storage->GetParent(id);
+
+                if (IsValidTransformID(parent))
+                    storage->RemoveChild(parent,id);
+
                 storage->Deallocate(id);
+            }
         }
 
         TransformID ECSContext::GetTransformID(EntityID owner) const

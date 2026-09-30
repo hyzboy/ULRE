@@ -4,7 +4,7 @@
 #include <hgl/ecs/core/MaterialBatch.h>
 #include <hgl/ecs/support/PipelineMaterialRenderer.h>
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
-#include <hgl/ecs/components/TransformComponent.h>
+#include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/support/TransformDataStorage.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/log/Log.h>

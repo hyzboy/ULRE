@@ -10,7 +10,6 @@ class ECSContext;
 class Entity;
 struct EntityID;
 class InputSystem;
-class TransformComponent;
 } // namespace hgl::ecs
 
 namespace hgl::graph
@@ -48,7 +47,7 @@ public:
     // ─── Per-frame update ─────────────────────────────────────────────────
     // Compute hover pick, update hovered_index + drag.pick, apply visual highlight.
     void UpdateHover(const GizmoFrameInput &input,
-                     const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform);
+                     const hgl::ecs::TransformAccessor &root_transform);
 
     // ─── Drag lifecycle ───────────────────────────────────────────────────
     // Attempt to begin a drag from the current hover state.
@@ -60,7 +59,7 @@ public:
 
     // Apply current drag delta, writing the new position into root_transform.
     void ApplyDrag(const GizmoFrameInput &input,
-                   const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform);
+                   const hgl::ecs::TransformAccessor &root_transform);
 
     // Release mouse capture and reset all drag state.
     void EndDrag();

@@ -11,7 +11,6 @@
 
 namespace hgl::ecs
 {
-    class TransformComponent;
 
     /**
     * Base renderable component interface
