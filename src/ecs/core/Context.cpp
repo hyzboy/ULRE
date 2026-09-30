@@ -3,7 +3,6 @@
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/ecs/core/DefaultSystems.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -70,11 +69,14 @@ namespace hgl
             , entity_manager(std::make_unique<EntityManager>(1000))
             , transform_storage(std::make_unique<TransformDataStorage>())
             , bounding_box_storage(std::make_unique<BoundingBoxDataStorage>())
+            , visibility_storage(std::make_unique<VisibilityDataStorage>())
             , render_item_storage(std::make_unique<RenderItemDataStorage>())
             , draw_item_id_storage(std::make_unique<DrawItemIDStorage>())
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
         {
+            // 可见性存储需要拿到本世界指针：祖先链上溯要回查实体与变换行
+            visibility_storage->SetContext(this);
         }
 
         ECSContext::~ECSContext()
@@ -133,21 +135,6 @@ namespace hgl
                 if (transform_system)
                 {
                     transform_system->SetWorld(this);
-                }
-            }
-
-            // Ensure VisibilitySystem is registered
-            {
-                auto visibility_system = GetSystem<VisibilitySystem>();
-                if (!visibility_system)
-                {
-                    visibility_system = RegisterTickSystem<VisibilitySystem>();
-                }
-
-                if (visibility_system)
-                {
-                    visibility_system->SetWorld(this);
-                    // VulkanDevice will be set later when available
                 }
             }
 

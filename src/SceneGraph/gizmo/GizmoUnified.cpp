@@ -21,7 +21,6 @@
 
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/VisibilityComponent.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -65,7 +64,7 @@ struct GizmoECS
 
     GizmoMode current_mode = GizmoMode::MoveWorld;
     bool allow_negative_scale = true;
-    bool root_visible = true;
+    bool root_visible = true;       // gizmo 根可见性（本地门控：资产绑定与拾取判断用；世界侧真值另存 VisibilityDataStorage）
 
     hgl::ecs::Entity* target_entity = nullptr;
     GizmoChangedCallback on_changed;
@@ -363,16 +362,11 @@ void SetTransformGizmoVisible(GizmoECS *gizmo, bool visible)
     if (!gizmo || !gizmo->root)
         return;
 
-    gizmo->root_visible = visible;
+    gizmo->root_visible = visible;      // 本地门控标志（.inl 与各 Mode 的 Input 消费；见 GizmoECS::root_visible 注释）
 
-    auto vis_comp = gizmo->root->GetComponent<hgl::ecs::VisibilityComponent>();
-    if (!vis_comp)
-    {
-        vis_comp = gizmo->root->AddComponent<hgl::ecs::VisibilityComponent>();
-    }
-
-    if (vis_comp)
-        vis_comp->SetVisible(visible);
+    // 可见性真值在世界存储（原 VisibilityComponent 已删除）：gizmo 根实体直接写世界
+    if (gizmo->world)
+        gizmo->world->SetEntityVisible(gizmo->root->GetEntityID(), visible);
 
     SyncGizmoAssetModeBindings(gizmo);
 }

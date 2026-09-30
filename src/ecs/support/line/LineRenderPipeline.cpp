@@ -2,7 +2,6 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/LinesComponent.h>
 #include <hgl/ecs/support/BoundingBoxAccessor.h>
-#include <hgl/ecs/components/VisibilityComponent.h>
 #include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
@@ -438,14 +437,11 @@ namespace hgl::ecs
             Entity* owner = comp->GetOwner();
             if (!owner) continue;
 
-            // VisibilityComponent check
-            if (auto vis = owner->GetComponent<VisibilityComponent>())
+            // 可见性检查：真值在世界存储（祖先不可见 ⇒ 后代不可见）
+            if (!context_->IsEntityVisible(owner->GetEntityID()))
             {
-                if (!vis->IsVisible())
-                {
-                    ++stats_.culled_by_visibility;
-                    continue;
-                }
+                ++stats_.culled_by_visibility;
+                continue;
             }
 
             // Frustum cull

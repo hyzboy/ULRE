@@ -11,6 +11,7 @@
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/support/BoundingBoxAccessor.h>
+#include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
@@ -135,6 +136,11 @@ namespace hgl
             // 世界私有包围盒行存储（原组件已删除；连续 SoA + 值类型句柄，与 transform_storage 同范式）。
             // 声明在 transform_storage 之后 ⇒ 先于它析构；两者互不引用，无"析构时用已销毁对象"问题。
             std::unique_ptr<BoundingBoxDataStorage> bounding_box_storage;
+
+            // 世界私有可见性数据（原 VisibilityComponent + VisibilitySystem 已删除，2026-10-01）。
+            // 可见性是 **CPU 域**状态（不在 v2 §3 的 5 类 GPU 可见组件里）⇒ 无需行 arena / SSBO，
+            // 只保留"不可见实体集合"这一份真值；查询时按变换父链上溯（祖先不可见 ⇒ 后代不可见）。
+            std::unique_ptr<VisibilityDataStorage> visibility_storage;
 
             std::unique_ptr<RenderItemDataStorage> render_item_storage;
             std::unique_ptr<DrawItemIDStorage> draw_item_id_storage;
@@ -488,6 +494,28 @@ namespace hgl
             BoundingBoxDataStorage* GetBoundingBoxStorage() { return bounding_box_storage.get(); }
             const BoundingBoxDataStorage* GetBoundingBoxStorage() const { return bounding_box_storage.get(); }
 
+            /// 世界级可见性存储（渲染热路径做 O(1) 查询；不可见集合 + 祖先链语义）
+            VisibilityDataStorage* GetVisibilityStorage() { return visibility_storage.get(); }
+            const VisibilityDataStorage* GetVisibilityStorage() const { return visibility_storage.get(); }
+
+            /// 设置实体可见性 —— **唯一真值落在这里**（不再有组件内的第二份 bool）
+            void SetEntityVisible(EntityID id, bool visible)
+            {
+                if (!visibility_storage)
+                    return;
+
+                if (visible)
+                    visibility_storage->SetVisible(id);
+                else
+                    visibility_storage->SetInvisible(id);
+            }
+
+            /// 实体是否可见：O(1) 直查不可见集合 + 祖先链上溯（祖先不可见 ⇒ 后代不可见）
+            bool IsEntityVisible(EntityID id) const
+            {
+                return visibility_storage ? !visibility_storage->IsInvisible(id) : true;
+            }
+
             /// 实体 → 变换行（无变换时返回 INVALID_TRANSFORM_ID）
             TransformID GetTransformID(EntityID owner) const;
 
@@ -589,6 +617,11 @@ namespace hgl
                     if (bbox != BoundingBoxDataStorage::INVALID_HANDLE)
                         DestroyBoundingBox(bbox);
                 }
+
+                // 可见性同理：不可见集合按实体 ID 记录，实体没了必须摘掉，
+                // 否则同索引的新实体会"继承"旧的不可见状态（T8 同类副作用）。
+                if (visibility_storage)
+                    visibility_storage->SetVisible(id);
 
                 if (entity_manager)
                     entity_manager->DestroyEntity(id);

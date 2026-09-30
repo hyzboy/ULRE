@@ -991,7 +991,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 
 | 项 | 落点 | 验收 |
 |---|---|---|
-| 提交本批 | 提交说明见用户侧文件（首行：T8 收官…） | 本地提交（推送由用户决定） |
+| 提交本批 | —— | ✅ **已由用户本地提交（2026-09-30）**；此后 T9-0.5（commit `034f7486d`）与 T9-1（bbox 连续化，16 文件）也已提交 |
 | **前台复验 `RecursiveCube`**（窗口隐藏时引擎整帧跳过，我无法前置窗口） | `RecursiveCube.exe` | 92 个实例散开且各自转动；顺带扫 `RayPicking`/`GizmoUsageExample` |
 | ~~修探针"每行字节"统计~~ **✅ 已完成（2026-09-30）** | `TransformDataStorage::GetPerRowFields/PerRowBytes/FindPerRowCountMismatch` + `ProbeTransformDiagnostics.cpp` | 探针改由**存储自列**（18 条平行数组，新增字段只改存储一处）；Debug 实测 **275 B/行**（`children` 32 + `fixed_pixel` 32 单列）；`TestTransformFlatStorage` **Test 9** 钉住不变量"每条平行数组元素数 == 行数"（检查前先结算拓扑，否则 `eval_order` 会误报） |
 
@@ -1020,7 +1020,17 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
      - **验证**：清除整棵 obj 树重编；build 0 error（仅 4 条既有 `src/InlineGeometry` C4715）；`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0；Test 4 实测每行 77 B / 7 条平行数组。
      - **反证（含防假绿）**：抽掉 `Deallocate` 的 `generations[id] = 0;` ⇒ 清该目标 `.dir` 重编（obj mtime 00:18:57 晚于头 00:18:34）⇒ `rc=1`、文案"释放后世代未归 0（行未失效）"；恢复后重编全绿。**第一次反证曾是假绿**（MSBuild 未重编该 TU，跑的旧二进制全 Passed）——本仓头文件依赖跟踪不可靠，见 §9 教训。
 2. `VisibilityComponent`（最接近纯数据）。
+   - **状态：✅ 已完成（2026-10-01）**
+     - **真值唯一化**：`VisibilityDataStorage` 收编为**世界私有**成员（`ECSContext::visibility_storage`，构造体里 `SetContext(this)`）；删掉组件里的第二份 `bool visible`（原来组件与存储双写 ⇒ 违反 v2 §1 单一真源）。
+     - **删组件 + 删接线系统**：`VisibilityComponent.{h,cpp}` 与 `VisibilitySystem.{h,cpp}` 已 `git rm`（该系统唯一职责就是"把存储指针注入组件"）；同时删掉 `Context.cpp` 里的自动注册块与 CMake 组。全仓 `grep VisibilityComponent|VisibilitySystem inc src example` **仅剩注释**，零代码引用。
+     - **API**：`GetVisibilityStorage()` / `SetEntityVisible(id,bool)` / `IsEntityVisible(id)`（O(1) 直查不可见集合 + 变换父链上溯）；`DestroyEntity` 追加可见性回收（T8 同类副作用）。
+     - **调用点**：`RenderPrimitiveCollectSystem` 不再经 `GetSystem<VisibilitySystem>()->GetStorage()` 取存储，改为直取世界存储；`LineRenderPipeline` 改 `context_->IsEntityVisible()`（**行为统一**：此前查组件的"直接"标志，现与 Primitive 路径一致地走祖先继承）；`GizmoUnified` 改 `world->SetEntityVisible(root,...)`。
+     - **保留项**：`GizmoECS::root_visible` 保留 —— 它是 gizmo 的**本地门控标志**，被 `GizmoUnified.AssetCore.inl:47-49`、`AssetUpdate.inl:86` 与 `modes/{Move,Rotate,Scale}GizmoMode.Input.inl:52` 读取（与"世界可见性真值"是两个用途）。
+     - **测试**：新增 `src/ecs/support/TestVisibilityStorage.cpp` + CMake target（3 项：默认可见 / 祖先不可见⇒后代不可见且后代非"直接"不可见 / 销毁回收）。**反证**：抽掉 `DestroyEntity` 里的回收 ⇒ `rc=12`、文案"实体销毁后不可见标记未回收（同索引新实体会继承旧状态）"（obj mtime 00:45:09 > 头 00:44:49）。
+     - **验证**：清除整棵 obj 树重编；build 0 error（非 C4715 警告 0）；`TestVisibilityStorage`/`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0；`GizmoUsageExample`/`LineRenderTest`/`RecursiveCube` 各 8 秒 0 真 error 行且按时被 taskkill。
+     - **⚠ 教训**：判定"某字段无读者"必须**扫整个目录、含 `.inl` 分片**（本仓 gizmo 把实现放在 `GizmoUnified.AssetCore.inl` / `AssetUpdate.inl` / `modes/*.Input.inl`）——只 grep `.cpp` + 头文件会误判为死字段，删掉即 C2039。
 3. `PrimitiveComponent` / `RenderableComponent`（配 GeometryDescriptor/Accessor）。
+   - **★ 追加靶子（2026-10-01 侦察发现）**：现在"可见性"语义有**三份真值** —— ① 实体级 `VisibilityDataStorage`（读侧 `RenderPrimitiveCollectSystem.cpp:1348/:1458`、`LineRenderPipeline.cpp:441`）；② `RenderableComponent::visible`（`PrimitiveComponent` 继承；读侧同文件 `:1344/:1446/:1448`、`PrimitiveComponent.cpp`、`GizmoUnified.AssetVisual.inl`、示例）；③ `LinesComponent::visible`（读侧 `LineRenderPipeline.cpp:431`）。渲染剔除实际是 **① OR ②** / **③ OR ①**。本项要**收敛成一份真值**：实体级 `visible` 作为唯一可见性真值，组件侧只保留"能力/可渲染性"语义（如 `CanRender()`、几何有效性），同义字段删除或改名，不留双写。另需确认**阴影收集链**是否也应查可见性（当前未见）。
 4. `CameraComponent`（注意深层虚继承）。
 5. `MaterialComponent` **分两层**（评审 R4）：数据层 `MaterialID → SSBO 行` ID 化；状态层（recipe、`shadow_retry_frames`、解析失败降级）留 MaterialManager 或专属 System，不进纯数据表。
 
@@ -1079,4 +1089,23 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 
 ### 9.7 固定验证集（口径重申，脚本见 §5）
 
-build **0 error** → 门 **42 PASS / 0 FAIL** → 三测试 **rc=0** → 示例抽跑 **0 真 error 行** → 行尾/BOM 逐文件保持 → 删类型类任务 `grep` **零残留**。
+build **0 error** → 门 **42 PASS / 0 FAIL** → 三测试 **rc=0** → 示例抽跑 **0 真 error 行** → 行尾/BOM 逐文件保持 → 删类型类任务 `grep` 零残留。
+
+### 9.8 Visibility 演示示例（DEMO）—— 2026-10-01 追加
+
+**动机**：实体级可见性（`VisibilityDataStorage`）目前唯一的消费者是两条渲染收集路径、引擎侧唯一写入者是 gizmo 内部的显示开关 ⇒ **太隐蔽，看不出这机制在干什么**。用一个能肉眼看出效果的演示把它的用途显式化。
+
+**目标**：新建一个 Visibility 功能演示示例 —— **10×10 个球，按时间 + 某种规律开关可见性，形成动画**（功能演示，能看出效果即可）。
+
+**落点**：新建 `example/Basic/VisibilityDemo.cpp`；在 `example/Basic/CMakeLists.txt` 里按既有惯例注册 `CreateProject(VisibilityDemo VisibilityDemo.cpp)`（必要时动顶层 `example/CMakeLists.txt`）。
+参照 `example/Basic/PBRSpheres.cpp`（它本身就是 10×10 球体：`Sphere_M<col><row>` + `CreateSphere` + `PrimitiveComponent` + `CreateTransform`）的搭建方式，只保留"球 + 光 + 相机"最少必要部分。
+
+**实现要点（硬要求）**
+- **可见性开关一律走实体级新 API**：`world->SetEntityVisible(entity_id, bool)`（或 `IsEntityVisible` 查询）。**不要**用组件级 `PrimitiveComponent/RenderableComponent::SetVisible` —— 那是第二份真值，正是 §9.1-3 要收敛掉的。
+- 规律自己选一个看得出效果的：棋盘滚动 `((col + row + (int)(t*speed)) & 1)`、按到中心的距离做**涟漪/波浪**相位、或按行/列扫描。100 个实体逐帧 O(1) 写入，代价可忽略。
+- 演示里顺带打印**逐帧可见球数**（便于无窗口环境下做机器判据，不能只靠肉眼）。
+
+**验收**
+1. 构建 0 error（清 obj 重编口径同 §9）;
+2. 前台跑起来能看出"球按规律成片亮灭/滚动"（**动效必须由用户前台确认** —— 引擎在窗口隐藏时整帧跳过，我这边只能给 build 0 error + 示例跑满 8 秒 0 真 error + 开关计数日志）;
+3. 演示同时作为"实体级可见性有真实可见用途"的证据（不再只是 gizmo 的内部开关）。

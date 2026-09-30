@@ -12,7 +12,7 @@ namespace hgl::ecs
      * VisibilityDataStorage - Fast lookup for invisible entities with hierarchical support
      *
      * Maintains a set of invisible entity IDs for O(1) query during rendering.
-     * Updated directly by VisibilityComponent when visibility changes.
+     * **唯一真值**：由世界通过 `ECSContext::SetEntityVisible` 写入（原 VisibilityComponent 已删除，2026-10-01）。
      *
      * Supports hierarchical visibility: if an ancestor is invisible, all descendants are invisible.
      */

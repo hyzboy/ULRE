@@ -9,7 +9,6 @@
 #include<hgl/ecs/support/TransformAccessor.h>
 #include <cstdlib>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/graph/CameraInfo.h>
@@ -1308,13 +1307,8 @@ namespace hgl::ecs
         cache.cameraInfo = cameraInfo;
         cache.BeginFrame();
 
-        // Get visibility storage for fast O(1) lookup
-        VisibilityDataStorage* visibility_storage = nullptr;
-        auto vis_system = world->GetSystem<VisibilitySystem>();
-        if (vis_system)
-        {
-            visibility_storage = vis_system->GetStorage();
-        }
+        // Get visibility storage for fast O(1) lookup（世界私有存储；原 VisibilitySystem 已删除）
+        VisibilityDataStorage* visibility_storage = world->GetVisibilityStorage();
 
         const int active_mobility_filter = world ? world->GetActiveMobilityFilter() : -1;
 
