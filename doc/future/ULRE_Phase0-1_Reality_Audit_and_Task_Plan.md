@@ -997,7 +997,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 
 ### 9.1 T9 其余组件 ID 化（阶段二主线）
 
-顺序：**前置检查 → 纯数据先行 → 带状态机最后**
+顺序：**前置检查 → 纯数据先行 → 带状态机最后**（2026-10-01 改版为 **stage A 组成形 → stage B 存储形**，见下方改版说明）
 
 0. **前置检查（强制）**：删组件类前，逐条对照 `git show HEAD:<被删文件>` 里的每个 `ctx->` / `owner_context->` / `storage->` 调用，把"对世界的副作用"全部搬走（T8 血泪：Mobility 换边 / 子表维护 / 销毁回收）。
 0.5 **泛化地基（v2 约束 §1/§2，趁只有 Transform 一个消费者时做最省）**：① 类型 → (scope, arena, 行宽) **静态表**；② 句柄 **revision 校验**（泛化现有 `versions`，释放/重分配时 bump；句柄仍 24 B）；③ **CPU 权威 / GPU 派生视图**的存储布局（版本号增量同步，单写者）。
@@ -1029,12 +1029,25 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
      - **测试**：新增 `src/ecs/support/TestVisibilityStorage.cpp` + CMake target（3 项：默认可见 / 祖先不可见⇒后代不可见且后代非"直接"不可见 / 销毁回收）。**反证**：抽掉 `DestroyEntity` 里的回收 ⇒ `rc=12`、文案"实体销毁后不可见标记未回收（同索引新实体会继承旧状态）"（obj mtime 00:45:09 > 头 00:44:49）。
      - **验证**：清除整棵 obj 树重编；build 0 error（非 C4715 警告 0）；`TestVisibilityStorage`/`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0；`GizmoUsageExample`/`LineRenderTest`/`RecursiveCube` 各 8 秒 0 真 error 行且按时被 taskkill。
      - **⚠ 教训**：判定"某字段无读者"必须**扫整个目录、含 `.inl` 分片**（本仓 gizmo 把实现放在 `GizmoUnified.AssetCore.inl` / `AssetUpdate.inl` / `modes/*.Input.inl`）——只 grep `.cpp` + 头文件会误判为死字段，删掉即 C2039。
-3. `PrimitiveComponent` / `RenderableComponent`（配 GeometryDescriptor/Accessor）。
+> **顺序改版（用户拍板 2026-10-01）**：原来"逐个组件直接 ID 化"改为 **stage A（组成形）→ stage B（存储形）** 两阶段，
+> 设计细节见 `doc/future/ULRE_FINAL_TARGET_v2_设计约束.md` **§9**（五条护栏 P1–P5、材质三层共享语义与 CoW、中间态纪律）。
+> 理由：T8 的代价证明"责任迁移"与"存储搬迁"必须分开——混在一起时，"对世界的副作用"丢失会伪装成渲染 bug。
+> **硬纪律（写进每一步验收）**：① 每步独立可运行（build 0 error → 固定验证集 → 示例抽跑）；
+> ② 每步**同批删掉被取代的旧代码**，`grep` 零残留为验收项（不许"新的有了旧的还在"）；③ **禁止 if 特例/新旧并存分支**，语义收敛一律走判定表；
+> ④ 做不到"一步内新旧都跑得通" ⇒ 说明该步太大，继续切分（而不是加兼容分支）；⑤ 行为等价的重排以**同输入同结果**（T5 口径）验收。
+- **stage A 步骤（每步一批，独立可运行）**：
+  A0 **地基（纯新增、零行为变化）**：类型表 scope 定稿（`Geometry`/`Texture`/`MaterialData` ⇒ Global；`Transform`/`MaterialRuntime` ⇒ World）+ `implies` 规则表（如 `MaterialRuntime ⇒ MaterialData`）+ **Entity 组件类型位掩码**（单一写者 = 挂载/卸载；顺手把 §9.5 的"组启停双写者"收敛为"仅 gather"）+ 不变量测试。
+  A1 **策略判定表**（`组件集合 → pass/收集器需求`）：先**只读不驱动**，与现有判据**对拍同值**；此后每步把旧 if 链改读表并删掉对应段落。
+  A2 **材质 Data 层**：新增 `MaterialData`（资源级；按 (definition, 参数指纹) 去重）；把 `PrimitiveComponent` 的 5 项 authoring 状态（`hasMaterialRecipeOverride`/`materialRecipeOverride`/`namedMaterialTextureResources`/`materialDataResource`/`material_authored_generation`）搬进去 ⇒ **搬完即删旧字段**。
+  A3 **材质 Variant 层**：新增 `MaterialVariant`（解析结果缓存）；**键只放"静态且取值有界"的维度** —— `PassType`（**仓里已含 `ForwardDither`/`ForwardA2C`，dither 直接复用既有维度，不新造 feature**）、`MaterialRecipe::compile_defines`（**必须归一化+哈希成有界键**：去序、去重、trim——现在是 `vector<string>` 无界）、quality、未来的材质 LOD 档；**每帧动态的东西一律不许进键**（见 A4 的选择器）。把 `MaterialComponent` 的 `shadow_program`/`shadow_program_build_context_hash`/`shadow_tracked_material_authored_generation`/`shadow_retry_frames` 收敛成"变体表里的一项"（先 N=2，行为不变）。
+  A4 **材质 Runtime 层（共享行 + 每实例选择器 + 持久差异才 CoW）**：`MaterialRuntime` 支持**多实体引用同一行**（interned）；行里带**每实例选择器**（当前 pass / LOD 档 / 是否 dither 等**每帧可变、基数小**的状态 ⇒ 零解析成本地切，**禁止每帧改共享行、禁止每帧 CoW**）；**只有持久差异**（改了参数/纹理覆盖/自有 SSBO 行）才 CoW 出自有行；共享/独占行数可观测；释放走 refcount，**行号复用按 §2 世代约定 `+2 保持奇数`** ⇒ **删 `MaterialComponent`**。（三层是 **1:N:N 扇出**，不是恒等链：同 Data 可出多变体、同变体可对多运行时——详见 v2 §9.3）
+  A5 **Primitive 拆分**：`Geometry`（引用资源行 + draw range + 变体索引）/ `MaterialBinding`（→Data/Variant/Runtime）/ `ShadowProxy`（现 `ShadowComponent` 正名）/ LOD 钩子；同时删两处 OOP 缓存（`cached_shadow_component`、`PrimitiveComponent.cpp:643` 的 `bound_render_item_storage`）⇒ **删 `PrimitiveComponent`/`RenderableComponent`/`InstancedPrimitiveComponent`**。
    - **★ 追加靶子（2026-10-01 侦察发现）**：现在"可见性"语义有**三份真值** —— ① 实体级 `VisibilityDataStorage`（读侧 `RenderPrimitiveCollectSystem.cpp:1348/:1458`、`LineRenderPipeline.cpp:441`）；② `RenderableComponent::visible`（`PrimitiveComponent` 继承；读侧同文件 `:1344/:1446/:1448`、`PrimitiveComponent.cpp`、`GizmoUnified.AssetVisual.inl`、示例）；③ `LinesComponent::visible`（读侧 `LineRenderPipeline.cpp:431`）。渲染剔除实际是 **① OR ②** / **③ OR ①**。本项要**收敛成一份真值**：实体级 `visible` 作为唯一可见性真值，组件侧只保留"能力/可渲染性"语义（如 `CanRender()`、几何有效性），同义字段删除或改名，不留双写。另需确认**阴影收集链**是否也应查可见性（当前未见）。
-4. `CameraComponent`（注意深层虚继承）。
-5. `MaterialComponent` **分两层**（评审 R4）：数据层 `MaterialID → SSBO 行` ID 化；状态层（recipe、`shadow_retry_frames`、解析失败降级）留 MaterialManager 或专属 System，不进纯数据表。
+  A6 **`CameraComponent`**（独立；注意深层虚继承）。
+  A7 **stage A 收口**：全仓 `grep` 零残留（doc 除外）+ 策略判定表成为唯一判据（旧 if 链零残留）+ 记录"stage B 仍欠什么"（行/ID/`EntityGPU`/预算/T10-T11）。
+- **stage B（存储形）**：按 (scope, 类型) 行 arena + 访问器 + `EntityGPU` 128B + 预算冻结（T10/T11）；**纯机械替换 + 对拍同值**。
 
-- 验收：每个组件独立一批（API 变更 + 全部调用点同批，否则中间态不可编译）；每批跑 §5 固定验证集。
+- 验收（本阶段统一口径，取代原来的"每组件一批"）：见上方**硬纪律**五条；每批跑 §5 固定验证集与 §9.7 口径。
 
 ### 9.2 T10 容量与行号冻结（T11 的强前置）
 
