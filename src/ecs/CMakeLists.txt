@@ -185,6 +185,8 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/DrawItemIDStorage.h
     ${ECS_INCLUDE_PATH}/support/DrawItemCompaction.h
     ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
+    ${ECS_INCLUDE_PATH}/support/RenderStrategyTable.h
+    ${ECS_INCLUDE_PATH}/support/RenderStrategyParity.h
     ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
     ${ECS_INCLUDE_PATH}/support/BoundingBoxAccessor.h
     ${ECS_INCLUDE_PATH}/support/PipelineMaterialRenderer.h
@@ -198,6 +200,7 @@ set(ECS_SUPPORT_FILES
     support/DrawItemIDStorage.cpp
     support/DrawItemCompaction.cpp
     support/VisibilityDataStorage.cpp
+    support/RenderStrategyParity.cpp
     support/TransformAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
     support/PrimitiveBatchPipeline.cpp
@@ -341,6 +344,12 @@ if(MSVC)
 endif()
 
 # 可见性真值（世界私有存储；原 VisibilityComponent/VisibilitySystem 已删除）
+add_executable(TestRenderStrategyTable support/TestRenderStrategyTable.cpp)
+target_link_libraries(TestRenderStrategyTable PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestRenderStrategyTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 add_executable(TestComponentMask support/TestComponentMask.cpp)
 target_link_libraries(TestComponentMask PRIVATE ${ULRE})
 if(MSVC)

@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 #include<hgl/ecs/support/RenderItemDataStorage.h>
+#include<hgl/ecs/support/RenderStrategyParity.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/DrawItemCompaction.h>
 #include<hgl/ecs/support/BoundingVolumeCull.h>
@@ -1013,6 +1014,22 @@ namespace hgl::ecs
                         {
                             if (auto renderable = prim_item->GetRenderable())
                             {
+#if ULRE_STRATEGY_PARITY_ENABLED
+                                // A1 对拍：阴影接收能力（表 ShadowReceiver vs 现有 CanReceiveShadow）
+                                {
+                                    Entity *parity_entity = item->GetEntity();
+
+                                    StrategyFacts parity_facts;
+                                    parity_facts.receive_shadow = renderable->CanReceiveShadow();
+
+                                    const uint32_t parity_mask = parity_entity ? parity_entity->GetComponentMask() : 0u;
+
+                                    ParityCheckShadowReceiver(
+                                        HasRenderNeed(EvaluateRenderNeed(parity_mask,parity_facts.ToMask()),RenderNeed::ShadowReceiver),
+                                        renderable->CanReceiveShadow(),
+                                        "PrimitiveBatchPipeline");
+                                }
+#endif
                                 if (!renderable->CanReceiveShadow())
                                     row_ptr[i].shadow_flags |=
                                         graph::mtl::kMaterialShadowFlagNoReceive;

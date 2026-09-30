@@ -1,4 +1,5 @@
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/support/RenderStrategyParity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
@@ -1341,6 +1342,69 @@ namespace hgl::ecs
             if (!primitiveComp)
                 continue;
 
+#if ULRE_STRATEGY_PARITY_ENABLED
+            // ── A1 策略判定对拍（只读不驱动；Release 下整块编掉）────────────
+            // 镜像基准（逐条取自本循环现有判据）：
+            //   :1344 可见/可渲染 | :1348 实体级不可见 | :1351 owner | :1381 材质来源
+            //   :1362-1379 阴影 pass 分支（CanCastShadow + 距离裁剪）
+            // 注：mobility 过滤是世界级过滤器，本表不建模（两侧一致排除）。
+            {
+                const EntityID parity_entity_id = primitiveComp->GetOwnerID();
+                Entity *parity_owner = primitiveComp->GetOwner();
+
+                const bool parity_shadow_pass = (world && world->IsCurrentPassShadow());
+
+                bool parity_in_shadow_range = true;
+
+                if (parity_shadow_pass)
+                {
+                    const float parity_max_dist = primitiveComp->GetShadowMaxDistance();
+
+                    if (parity_max_dist > 0.0f && world->HasShadowOrigin())
+                    {
+                        const TransformAccessor parity_transform = world->GetTransformByEntity(parity_entity_id);
+
+                        if (parity_transform.IsValid())
+                        {
+                            const glm::vec3 parity_diff = parity_transform.GetWorldPosition() - world->GetShadowOrigin();
+                            parity_in_shadow_range = glm::dot(parity_diff,parity_diff) <= parity_max_dist * parity_max_dist;
+                        }
+                    }
+                }
+
+                StrategyFacts parity_facts;
+                parity_facts.component_visible   = primitiveComp->IsVisible();
+                parity_facts.entity_visible      = !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id));
+                parity_facts.has_owner           = (parity_owner != nullptr);
+                parity_facts.renderable          = primitiveComp->CanRender();
+                parity_facts.has_material_source = primitiveComp->HasAnyMaterialRecipeSource();
+                parity_facts.cast_shadow         = primitiveComp->CanCastShadow();
+                parity_facts.receive_shadow      = primitiveComp->CanReceiveShadow();
+                parity_facts.shadow_pass         = parity_shadow_pass;
+                parity_facts.in_shadow_range     = parity_in_shadow_range;
+
+                const uint32_t parity_mask  = parity_owner ? parity_owner->GetComponentMask() : 0u;
+                const uint32_t parity_needs = EvaluateRenderNeed(parity_mask,parity_facts.ToMask());
+
+                const bool parity_existing =
+                       primitiveComp->IsVisible()
+                    && primitiveComp->CanRender()
+                    && !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id))
+                    && (parity_owner != nullptr)
+                    && primitiveComp->HasAnyMaterialRecipeSource()
+                    && (!parity_shadow_pass
+                        || (primitiveComp->CanCastShadow() && parity_in_shadow_range));
+
+                ParityCheckCollect(HasRenderNeed(parity_needs,RenderNeed::CollectForCurrentPass),
+                                   parity_existing,
+                                   "RenderPrimitiveCollectSystem");
+
+                ParityCheckShadowCaster(HasRenderNeed(parity_needs,RenderNeed::ShadowCaster),
+                                        primitiveComp->CanCastShadow(),
+                                        "RenderPrimitiveCollectSystem");
+            }
+#endif
+
             if (!primitiveComp->IsVisible() || !primitiveComp->CanRender())
                 continue;
 
@@ -1442,6 +1506,69 @@ namespace hgl::ecs
         {
             if (!primitiveComp)
                 continue;
+
+#if ULRE_STRATEGY_PARITY_ENABLED
+            // ── A1 策略判定对拍（只读不驱动；Release 下整块编掉）────────────
+            // 镜像基准（逐条取自本循环现有判据）：
+            //   :1344 可见/可渲染 | :1348 实体级不可见 | :1351 owner | :1381 材质来源
+            //   :1362-1379 阴影 pass 分支（CanCastShadow + 距离裁剪）
+            // 注：mobility 过滤是世界级过滤器，本表不建模（两侧一致排除）。
+            {
+                const EntityID parity_entity_id = primitiveComp->GetOwnerID();
+                Entity *parity_owner = primitiveComp->GetOwner();
+
+                const bool parity_shadow_pass = (world && world->IsCurrentPassShadow());
+
+                bool parity_in_shadow_range = true;
+
+                if (parity_shadow_pass)
+                {
+                    const float parity_max_dist = primitiveComp->GetShadowMaxDistance();
+
+                    if (parity_max_dist > 0.0f && world->HasShadowOrigin())
+                    {
+                        const TransformAccessor parity_transform = world->GetTransformByEntity(parity_entity_id);
+
+                        if (parity_transform.IsValid())
+                        {
+                            const glm::vec3 parity_diff = parity_transform.GetWorldPosition() - world->GetShadowOrigin();
+                            parity_in_shadow_range = glm::dot(parity_diff,parity_diff) <= parity_max_dist * parity_max_dist;
+                        }
+                    }
+                }
+
+                StrategyFacts parity_facts;
+                parity_facts.component_visible   = primitiveComp->IsVisible();
+                parity_facts.entity_visible      = !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id));
+                parity_facts.has_owner           = (parity_owner != nullptr);
+                parity_facts.renderable          = primitiveComp->CanRender();
+                parity_facts.has_material_source = primitiveComp->HasAnyMaterialRecipeSource();
+                parity_facts.cast_shadow         = primitiveComp->CanCastShadow();
+                parity_facts.receive_shadow      = primitiveComp->CanReceiveShadow();
+                parity_facts.shadow_pass         = parity_shadow_pass;
+                parity_facts.in_shadow_range     = parity_in_shadow_range;
+
+                const uint32_t parity_mask  = parity_owner ? parity_owner->GetComponentMask() : 0u;
+                const uint32_t parity_needs = EvaluateRenderNeed(parity_mask,parity_facts.ToMask());
+
+                const bool parity_existing =
+                       primitiveComp->IsVisible()
+                    && primitiveComp->CanRender()
+                    && !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id))
+                    && (parity_owner != nullptr)
+                    && primitiveComp->HasAnyMaterialRecipeSource()
+                    && (!parity_shadow_pass
+                        || (primitiveComp->CanCastShadow() && parity_in_shadow_range));
+
+                ParityCheckCollect(HasRenderNeed(parity_needs,RenderNeed::CollectForCurrentPass),
+                                   parity_existing,
+                                   "RenderPrimitiveCollectSystem");
+
+                ParityCheckShadowCaster(HasRenderNeed(parity_needs,RenderNeed::ShadowCaster),
+                                        primitiveComp->CanCastShadow(),
+                                        "RenderPrimitiveCollectSystem");
+            }
+#endif
 
             if (!primitiveComp->IsVisible() || !primitiveComp->CanRender())
             {

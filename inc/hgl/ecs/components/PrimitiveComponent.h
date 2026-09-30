@@ -280,4 +280,7 @@ namespace hgl::ecs
         void OnAttach() override;
         void OnDetach() override;
     };
+
+    /// 槽位映射（**暂定**：`PrimitiveComponent` 同时承载几何与材质来源，A5 拆分后由真正的 `Geometry` 组件接管）
+    template<> struct ComponentTypeOf<PrimitiveComponent> { static constexpr ComponentType value = ComponentType::Geometry; };
 }//namespace hgl::ecs

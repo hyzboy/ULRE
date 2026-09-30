@@ -101,4 +101,7 @@ namespace hgl::ecs
         void OnAttach() override;
         void OnDetach() override;
     };
+
+    /// 槽位映射：`MaterialComponent` 就是材质**运行期**层（构造名亦为 "MaterialRuntime"）
+    template<> struct ComponentTypeOf<MaterialComponent> { static constexpr ComponentType value = ComponentType::MaterialRuntime; };
 }//namespace hgl::ecs
