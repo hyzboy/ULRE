@@ -983,6 +983,9 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 
 > 口径：每项给"目标 / 落点 / 验收"。**顺序硬约束：T10 必须早于 T11**。T9 与 T10 彼此不阻塞，
 > 但都改 `Context.h` / 存储层 ⇒ 建议串行做，避免同文件双写。
+>
+> **设计总纲以 `doc/future/ULRE_FINAL_TARGET_v2_设计约束.md` 为准**（2026-09-30 定稿，逐条标注
+> 已覆盖/需新增/待细化，含三条不可动摇规则：单一真源、预算制、CPU 权威 + GPU 派生视图）。
 
 ### 9.0 收尾（本批 84 文件，未提交）
 
@@ -997,6 +1000,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 顺序：**前置检查 → 纯数据先行 → 带状态机最后**
 
 0. **前置检查（强制）**：删组件类前，逐条对照 `git show HEAD:<被删文件>` 里的每个 `ctx->` / `owner_context->` / `storage->` 调用，把"对世界的副作用"全部搬走（T8 血泪：Mobility 换边 / 子表维护 / 销毁回收）。
+0.5 **泛化地基（v2 约束 §1/§2，趁只有 Transform 一个消费者时做最省）**：① 类型 → (scope, arena, 行宽) **静态表**；② 句柄 **revision 校验**（泛化现有 `versions`，释放/重分配时 bump；句柄仍 24 B）；③ **CPU 权威 / GPU 派生视图**的存储布局（版本号增量同步，单写者）。
 1. `BoundingBoxComponent` → `BoundingBoxDataStorage` 连续化（评审 R5：剔除是热路径；当前 `src/ecs/support/PrimitiveBatchPipeline.cpp:176`、`src/ecs/support/line/LineRenderPipeline.cpp:454`、`src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:37` 全是逐实体 OOP）⇒ `PrimitiveCullSystem` 改连续数组批处理。
 2. `VisibilityComponent`（最接近纯数据）。
 3. `PrimitiveComponent` / `RenderableComponent`（配 GeometryDescriptor/Accessor）。
@@ -1007,21 +1011,31 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 
 ### 9.2 T10 容量与行号冻结（T11 的强前置）
 
-1. `TransformDataStorage::Initialize(max_statics, max_dynamics)` 预分配 + 分区 `[0, static_count)`；`Allocate()` 超限 **fail-fast**（与"材质行 arena 1024 上限不扩容"同一口径）。
+1. `TransformDataStorage::Initialize(max_statics, max_dynamics)` 预分配 + 分区 `[0, static_count)`；`Allocate()` 超限 **fail-fast**（与"材质行 arena 1024 上限不扩容"同一口径）。**v2 约束下更准确的说法**：**按 (scope, 类型) 各自的 arena 声明式预算** + 预分配；超限给**一次性明确告警**（"预算没调够 ⇒ 行号已移动 ⇒ 固化 ID/存档失效"）；**不引入 Editor/Release 分支**（Editor 例外永远开着）。
 2. 去掉 `TransformAssignmentBuffer` 的 `"L2W recreated"` 路径（`src/ecs/support/TransformAssignmentBuffer.cpp:511`）。
 3. **行字节瘦身**：`fixed_pixel`（32 B/行）与 `children`（24–32 B/行，绝大多数为空）改**稀疏侧表**（fixed-pixel 只有 gizmo 行需要；子表用 CSR：`child_offset/child_count` + 共享 child pool）⇒ 每行从 ≈267 B 回到 ≈211 B（只留 owners/change_masks/versions/两标志）。
 4. 探针与 3 同步复核行字节（口径一致后再冻结）。
 
 - 验收：现有示例在固定容量下正常；构造超限场景验证 fail-fast 报错明确；日志不再出现 L2W 重建。
 
-### 9.3 T11 64B `Entity` + `.ulrescene` 直载（阶段三）——**已延后（用户拍板 2026-09-30）**
+### 9.3 T11 `EntityGPU`（128 B）+ `.ulrescene` 直载（阶段三）——**已延后（用户拍板 2026-09-30）**
 
 > **顺序变更**：场景直载推迟到**全部 Component ID 化 + 访问器完成**、以及**子场景树的快速插入/展开**等问题解决之后再谈。
 > 也就是说 T9 之后先做子场景树（插入/展开/局部重排）相关的设计，T11 顺位往后；本节的实现要点先原样保留备查。
 
-`Entity.h` 重写为 `alignas(64)` 键值表（16 B 元数据 + 48 B 属性区）、`SceneHeader` 对齐 + StringPool 外置、离线 Cooker、Windows 侧用 `CreateFileMapping`/一次性 `fread`（**不可** alias 文件页进可写 GPU 缓冲，静态段仍要拷一次）、DMA 一次推 GPU。
+`inc/hgl/ecs/core/Entity.h` 重写为 GPU 派生视图 **`EntityGPU`：`flags(4) + type[16](16) + row[16](64) + work_flags(4) = 88 B` ⇒ `alignas(64)` ⇒ 128 B**（16 槽 × (类型 1 B + 行号 4 B)；**`persistent_id` 已删**；旧文档"64 B Entity"作废）；CPU 侧权威为 `EntityRecord`。`SceneHeader` 对齐 + StringPool 外置、离线 Cooker、Windows 侧用 `CreateFileMapping`/一次性 `fread`（**不可** alias 文件页进可写 GPU 缓冲，静态段仍要拷一次）、DMA 一次推 GPU。
 
 - 验收：离线导出工具 + 直载器；场景还原时间与显存直推链路（度量并记录）。
+
+### 9.3b T12 两级展开 + 动画 bank（v2 约束 §4/§5）
+
+1. **离线压平**（Editor/GLTFConvert 产物）：模型内每个 node 的 TRS 预组合成"**相对模型根**"并连续排列 ⇒ 运行时 `World(模型实例) × node_相对` = 永远 2 级；**动画同样压平**，动画剪辑也必须预组合到模型根相对；骨骼动画走独立 skin palette 通道。验收：压平前后世界矩阵**对拍同值**（T5 口径）。
+2. **动画 bank**（海量 NPC）：离线把基础动画烘成 `node_count × TRS(48 B)` 的**只读段**（例：30 fps × 2 s × 20 node ≈ 57 KB/动作）；行支持"**引用段**（零拷贝，海量背景 NPC）/ **自有行**（主角、被逻辑改的对象）"两种模式；更新率分档；海量 NPC 可在 compute 里直接从 bank 算 L2W（不落 TRS）。
+3. 近期**不做 HLOD/prefab**（留钩子）。
+
+### 9.3c 视口列表（RenderList = 视口）——阴影与多视口同一套
+
+每条视口 = **相机行 + 视口矩形/裁剪 + 收集过滤器（layer / caster 标记）+ 输出目标**；主视图 / 阴影视图 / 分屏 / 离屏 RT 共用。阴影侧配 `ShadowProxyComponent`（"它产生什么阴影"、代理下多子 entity 还是一个）。顺带覆盖 backlog A3（跨 RT pass 链）/ A7（离屏 RT in-flight 槽）的需求。
 
 ### 9.4 文档口径修订（跟任务同步做）
 
