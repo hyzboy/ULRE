@@ -313,6 +313,7 @@ public:
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
         auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
         auto prim_comp = sphere_entity->AddComponent<PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -320,12 +321,12 @@ public:
         transform.SetMobility(Mobility::Static);
 
         prim_comp->SetPrimitiveAsset(&sphere_asset);
-        prim_comp->SetMaterialTextureResource("base_color", sphere_base_tex, sphere_sampler);
-        prim_comp->SetMaterialTextureResource("normal", sphere_normal_tex, sphere_sampler);
-        prim_comp->SetMaterialTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
+        material_data_comp->SetTextureResource("base_color", sphere_base_tex, sphere_sampler);
+        material_data_comp->SetTextureResource("normal", sphere_normal_tex, sphere_sampler);
+        material_data_comp->SetTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
-        prim_comp->SetMaterialDataResource(sphere_struct);
+        material_data_comp->SetDataResource(sphere_struct);
         prim_comp->SetVisible(true);
 
         sphere_primitive_comp = prim_comp;
@@ -535,6 +536,7 @@ private:
         cube.entity = ecs_context->CreateEntity<Entity>(cube.name);
         cube.transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube.entity->GetEntityID(), Mobility::Static));
         auto prim_comp = cube.entity->AddComponent<PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = cube.entity->GetContext()->GetOrCreateMaterialData(cube.entity->GetEntityID());
 
         cube.transform.SetLocalPosition(glm::vec3(cube.x_offset, 0.0f, 0.0f));
         cube.transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -543,10 +545,10 @@ private:
 
         prim_comp->SetPrimitiveAsset(&cube.asset);
         // 唯一区别：绑定的离屏纹理不同（颜色 / 深度）
-        prim_comp->SetMaterialTextureResource("base_color", cube.texture, cube.sampler);
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
+        material_data_comp->SetTextureResource("base_color", cube.texture, cube.sampler);
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube.accessor.GetGlobalSSBOBinding();
-        prim_comp->SetMaterialDataResource(cube_struct);
+        material_data_comp->SetDataResource(cube_struct);
         prim_comp->SetVisible(true);
 
         LogTextureInfo(cube.tag, cube.texture);

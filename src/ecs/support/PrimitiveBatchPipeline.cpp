@@ -48,6 +48,23 @@ namespace hgl::ecs
 {
     namespace
     {
+        /// 材质来源判据（A2 之前挂在 PrimitiveComponent 上，随授权状态迁入数据层）：
+        /// 数据层有配方覆盖，或 asset 里有默认配方。只读查询，不创建组件。
+        bool HasAnyMaterialSource(const PrimitiveComponent *primitive_comp)
+        {
+            if (!primitive_comp)
+                return false;
+
+            Entity *owner = primitive_comp->GetOwner();
+            ECSContext *context = owner ? owner->GetContext() : nullptr;
+            const MaterialData *material_data = context
+                ? context->GetMaterialData(owner->GetEntityID())
+                : nullptr;
+
+            return (material_data && material_data->HasRecipeOverride())
+                || (primitive_comp->GetAssetMaterialRecipe() != nullptr);
+        }
+
         bool BatchRequiresIndirectCommands(const MaterialBatch &batch)
         {
             // BDA 后顶点数据经行内地址寻址——所有 DrawBatch（含私有 VBO）都进
@@ -1125,7 +1142,7 @@ namespace hgl::ecs
 
             if (!shader_prog || !pipeline)
             {
-                if (prim_comp && prim_comp->HasAnyMaterialRecipeSource())
+                if (HasAnyMaterialSource(prim_comp.get()))
                 {
                     LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. shader_prog=%s render_pass=%p",
                                shader_prog ? shader_prog->GetName().c_str() : "<null>",

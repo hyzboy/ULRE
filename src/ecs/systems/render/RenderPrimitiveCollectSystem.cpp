@@ -46,6 +46,47 @@ namespace hgl::ecs
             return owner->GetName().c_str();
         }
 
+        /// A2 过渡查询：本 primitive 所属实体的**材质数据层**组件（无实体/无世界时 nullptr）。
+        MaterialData *FindMaterialDataOf(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        {
+            Entity *owner = primitive_comp ? primitive_comp->GetOwner() : nullptr;
+            ECSContext *context = owner ? owner->GetContext() : nullptr;
+
+            return context ? context->GetMaterialData(owner->GetEntityID()) : nullptr;
+        }
+
+        /// A2 过渡查询：材质数据层组件（无则创建）。
+        /// 语义等价于 A2 之前"材质授权状态恒挂在 PrimitiveComponent 上"——
+        /// 渲染侧需要读出授权状态时，数据层必须存在。
+        MaterialData *EnsureMaterialDataOf(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        {
+            Entity *owner = primitive_comp ? primitive_comp->GetOwner() : nullptr;
+            ECSContext *context = owner ? owner->GetContext() : nullptr;
+
+            return context ? context->GetOrCreateMaterialData(owner->GetEntityID()) : nullptr;
+        }
+
+        /// 材质来源判据（A2 之前挂在 PrimitiveComponent 上，随授权状态一并迁入数据层）：
+        /// 数据层有配方覆盖，或 asset 里有默认配方。
+        bool HasAnyMaterialSource(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        {
+            if (!primitive_comp)
+                return false;
+
+            const MaterialData *material_data = FindMaterialDataOf(primitive_comp);
+
+            return (material_data && material_data->HasRecipeOverride())
+                || (primitive_comp->GetAssetMaterialRecipe() != nullptr);
+        }
+
+        /// 材质授权代数（A2 之前挂在 PrimitiveComponent 上，随授权状态一并迁入数据层）。
+        uint32_t MaterialAuthoredGenerationOf(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        {
+            MaterialData *material_data = EnsureMaterialDataOf(primitive_comp);
+
+            return material_data ? material_data->GetAuthoredGeneration() : 0;
+        }
+
         // D9：阴影 pass 跳过路径的收敛参数。
         // 持续跳过（行未就绪/解析失败等）时原本每帧 bump 静态级联 revision →
         // 每帧全量重画且无任何日志。前 kShadowRetryFullBumpFrames 帧保持每帧 bump
@@ -98,13 +139,22 @@ namespace hgl::ecs
         }
 
         bool BuildResolvedRecipe(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                          const graph::ShaderProgram *material_program,
-                                          graph::mtl::MaterialRecipe &out_recipe)
+                                 const graph::ShaderProgram *material_program,
+                                 graph::mtl::MaterialRecipe &out_recipe)
         {
             if (!primitive_comp)
                 return false;
 
-            return primitive_comp->BuildResolvedAuthoringMaterialRecipe(out_recipe, material_program);
+            MaterialData *material_data = EnsureMaterialDataOf(primitive_comp);
+
+            if (!material_data)
+                return false;
+
+            // asset 里的默认配方是基底，数据层里的配方覆盖是覆盖源（A5 拆分
+            // Geometry 后改由数据层自己持引用，这里不再由调用方传）。
+            return material_data->BuildResolvedRecipe(out_recipe,
+                                                      material_program,
+                                                      primitive_comp->GetAssetMaterialRecipe());
         }
 
         // program 解析（forward 与 ShadowCaster 双槽）共用的构建上下文输入：
@@ -333,15 +383,17 @@ namespace hgl::ecs
 
             const char *owner_name =
                 GetPrimitiveOwnerName(primitive_comp);
+            const MaterialData *material_data =
+                EnsureMaterialDataOf(primitive_comp);
 
             for (const auto &binding : active_recipe.textures)
             {
                 if (binding.resource_id.empty())
                     continue;
 
-                const auto *resource =
-                    primitive_comp->GetMaterialTextureResource(
-                        binding.texture_name);
+                const auto *resource = material_data
+                    ? material_data->GetTextureResource(binding.texture_name)
+                    : nullptr;
                 if (!resource
                  || !resource->texture
                  || !resource->sampler
@@ -480,8 +532,8 @@ namespace hgl::ecs
 
         if (material_comp->shadow_program
          && material_comp->shadow_program_build_context_hash == build_context_hash
-         && material_comp->shadow_tracked_material_authored_generation
-                == primitive_comp->GetMaterialAuthoredGeneration())
+         && material_comp->shadow_tracked_material_data_generation
+                == MaterialAuthoredGenerationOf(primitive_comp))
             return true;
 
         graph::mtl::MaterialRecipe effective_recipe{};
@@ -534,13 +586,13 @@ namespace hgl::ecs
             return false;
         }
 
-        // effective_recipe 出自 BuildResolvedAuthoringMaterialRecipe（组件边界
+        // effective_recipe 出自 MaterialData::BuildResolvedRecipe（数据层边界
         // 已 NormalizeRecipe），直接作 normalized recipe 供 CreatePipeline 用。
         material_comp->shadow_program = resolved_program;
         material_comp->shadow_program_build_context_hash = build_context_hash;
         material_comp->shadow_cached_normalized_recipe = effective_recipe;
-        material_comp->shadow_tracked_material_authored_generation =
-            primitive_comp->GetMaterialAuthoredGeneration();
+        material_comp->shadow_tracked_material_data_generation =
+            MaterialAuthoredGenerationOf(primitive_comp);
         return true;
     }
 
@@ -570,8 +622,8 @@ namespace hgl::ecs
         // P3: Fast-path — if nothing has changed since last resolve, skip all work.
         if (!material_comp->program_dirty
             && material_comp->program
-            && material_comp->tracked_material_authored_generation
-                == primitive_comp->GetMaterialAuthoredGeneration())
+            && material_comp->tracked_material_data_generation
+                == MaterialAuthoredGenerationOf(primitive_comp))
             return true;
 
         graph::mtl::MaterialRecipe effective_recipe{};
@@ -627,6 +679,12 @@ namespace hgl::ecs
         {
             material_comp->program_dirty = true;
             InvalidateRecipeRuntime(material_comp, false);
+
+            // 管线由 (program 身份, 规范化 recipe) 共同决定：配方内容变化后，
+            // 即便 program 身份不变（例如仅 double_sided/cull 变化）也必须重建
+            // 管线。原失效点在组件级配方设置里，A2 随
+            // 配方覆盖迁到数据层后，改由这里在"配方内容确实变了"时触发。
+            primitive_comp->InvalidateResolvedRuntimePipeline();
         }
 
         if (!material_comp->program_dirty
@@ -636,15 +694,15 @@ namespace hgl::ecs
             // content (e.g. an author swapped a texture or data object but kept
             // the same resource id). Refresh the effective recipe as well, so
             // an instance-only data_index change reaches BDA materialization.
-            if (material_comp->tracked_material_authored_generation
-                != primitive_comp->GetMaterialAuthoredGeneration())
+            if (material_comp->tracked_material_data_generation
+                != MaterialAuthoredGenerationOf(primitive_comp))
             {
                 material_comp->cached_effective_recipe = effective_recipe;
                 material_comp->cached_effective_recipe_hash =
                     graph::mtl::HashMaterialRecipe(effective_recipe);
                 material_comp->runtime_dirty = true;
-                material_comp->tracked_material_authored_generation =
-                    primitive_comp->GetMaterialAuthoredGeneration();
+                material_comp->tracked_material_data_generation =
+                    MaterialAuthoredGenerationOf(primitive_comp);
             }
             return true;
         }
@@ -751,7 +809,7 @@ namespace hgl::ecs
         material_comp->program_build_context_hash =
             build_context_hash;
 
-        // effective_recipe 出自 BuildResolvedAuthoringMaterialRecipe（组件边界
+        // effective_recipe 出自 MaterialData::BuildResolvedRecipe（数据层边界
         // 已 NormalizeRecipe），直接缓存供 CreatePipeline 使用，无需再规范化。
         material_comp->cached_normalized_recipe = effective_recipe;
 
@@ -761,7 +819,7 @@ namespace hgl::ecs
         material_comp->cached_effective_recipe_hash =
             graph::mtl::HashMaterialRecipe(material_binding_recipe);
 
-        material_comp->tracked_material_authored_generation = primitive_comp->GetMaterialAuthoredGeneration();
+        material_comp->tracked_material_data_generation = MaterialAuthoredGenerationOf(primitive_comp);
 
         return true;
     }
@@ -1086,9 +1144,11 @@ namespace hgl::ecs
 
                     if (handle == 0)
                     {
-                        const auto *authoring =
-                            primitive_comp->GetMaterialTextureResource(
-                                declaration.name);
+                        const MaterialData *material_data =
+                            EnsureMaterialDataOf(primitive_comp);
+                        const auto *authoring = material_data
+                            ? material_data->GetTextureResource(declaration.name)
+                            : nullptr;
                         if (authoring
                          && authoring->texture)
                         {
@@ -1377,7 +1437,7 @@ namespace hgl::ecs
                 parity_facts.entity_visible      = !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id));
                 parity_facts.has_owner           = (parity_owner != nullptr);
                 parity_facts.renderable          = primitiveComp->CanRender();
-                parity_facts.has_material_source = primitiveComp->HasAnyMaterialRecipeSource();
+                parity_facts.has_material_source = HasAnyMaterialSource(primitiveComp);
                 parity_facts.cast_shadow         = primitiveComp->CanCastShadow();
                 parity_facts.receive_shadow      = primitiveComp->CanReceiveShadow();
                 parity_facts.shadow_pass         = parity_shadow_pass;
@@ -1391,7 +1451,7 @@ namespace hgl::ecs
                     && primitiveComp->CanRender()
                     && !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id))
                     && (parity_owner != nullptr)
-                    && primitiveComp->HasAnyMaterialRecipeSource()
+                    && HasAnyMaterialSource(primitiveComp)
                     && (!parity_shadow_pass
                         || (primitiveComp->CanCastShadow() && parity_in_shadow_range));
 
@@ -1442,7 +1502,7 @@ namespace hgl::ecs
                 }
             }
 
-            if (!primitiveComp->HasAnyMaterialRecipeSource())
+            if (!HasAnyMaterialSource(primitiveComp))
                 continue;
 
             auto material_comp = entity->GetComponent<MaterialComponent>();
@@ -1464,8 +1524,8 @@ namespace hgl::ecs
             const bool fast_path_holds =
                    !material_comp->program_dirty
                 && material_comp->program
-                && material_comp->tracked_material_authored_generation
-                   == primitiveComp->GetMaterialAuthoredGeneration()
+                && material_comp->tracked_material_data_generation
+                   == MaterialAuthoredGenerationOf(primitiveComp)
                 && material_comp->cached_effective_recipe_hash != 0;
 
             const bool epoch_stale =
@@ -1542,7 +1602,7 @@ namespace hgl::ecs
                 parity_facts.entity_visible      = !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id));
                 parity_facts.has_owner           = (parity_owner != nullptr);
                 parity_facts.renderable          = primitiveComp->CanRender();
-                parity_facts.has_material_source = primitiveComp->HasAnyMaterialRecipeSource();
+                parity_facts.has_material_source = HasAnyMaterialSource(primitiveComp);
                 parity_facts.cast_shadow         = primitiveComp->CanCastShadow();
                 parity_facts.receive_shadow      = primitiveComp->CanReceiveShadow();
                 parity_facts.shadow_pass         = parity_shadow_pass;
@@ -1556,7 +1616,7 @@ namespace hgl::ecs
                     && primitiveComp->CanRender()
                     && !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id))
                     && (parity_owner != nullptr)
-                    && primitiveComp->HasAnyMaterialRecipeSource()
+                    && HasAnyMaterialSource(primitiveComp)
                     && (!parity_shadow_pass
                         || (primitiveComp->CanCastShadow() && parity_in_shadow_range));
 
@@ -1627,7 +1687,7 @@ namespace hgl::ecs
                 }
             }
 
-            if (!primitiveComp->HasAnyMaterialRecipeSource())
+            if (!HasAnyMaterialSource(primitiveComp))
             {
                 GLogWarning("[RenderPrimitiveCollectSystem] Skip primitive without recipe: %s",
                             primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");

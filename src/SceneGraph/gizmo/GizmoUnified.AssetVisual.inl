@@ -85,7 +85,13 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     prim_comp->SetPrimitiveAsset(asset);
     graph::mtl::MaterialRecipe visual_recipe = *recipe;
     visual_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
-    prim_comp->SetMaterialRecipe(visual_recipe);
+    hgl::ecs::ECSContext *material_world = entity->GetContext();
+    hgl::ecs::MaterialData *material_data = material_world
+        ? material_world->GetOrCreateMaterialData(entity->GetEntityID())
+        : nullptr;
+    if (!material_data)
+        return false;
+    material_data->SetRecipe(visual_recipe);
     prim_comp->SetVisible(false);
 
     GizmoVisualPrimitive item;
@@ -136,9 +142,17 @@ static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor 
     if (!recipe)
         return;
 
+    hgl::ecs::Entity *owner = entry.primitive->GetOwner();
+    hgl::ecs::ECSContext *material_world = owner ? owner->GetContext() : nullptr;
+    hgl::ecs::MaterialData *material_data = material_world
+        ? material_world->GetOrCreateMaterialData(owner->GetEntityID())
+        : nullptr;
+    if (!material_data)
+        return;
+
     graph::mtl::MaterialRecipe visual_recipe = *recipe;
     visual_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
-    entry.primitive->SetMaterialRecipe(visual_recipe);
+    material_data->SetRecipe(visual_recipe);
     entry.applied_color = color;
 }
 

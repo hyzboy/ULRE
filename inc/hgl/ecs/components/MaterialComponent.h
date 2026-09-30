@@ -54,7 +54,7 @@ namespace hgl::ecs
         // 配置，只持 program 与 CreatePipeline 消费的 normalized recipe。
         hgl::graph::ShaderProgram *shadow_program = nullptr;
         uint64_t shadow_program_build_context_hash = 0;
-        uint32_t shadow_tracked_material_authored_generation = 0;
+        uint32_t shadow_tracked_material_data_generation = 0;
         graph::mtl::MaterialRecipe shadow_cached_normalized_recipe{};
 
         // Cached normalized recipe — avoids redundant NormalizeRecipe in CreatePipeline.
@@ -66,10 +66,10 @@ namespace hgl::ecs
         graph::mtl::MaterialRecipe cached_effective_recipe{};
         uint64_t cached_effective_recipe_hash = 0;
 
-        // P3: Tracks the last observed PrimitiveComponent::material_authored_generation.
-        // When this matches the primitive's current generation, all cached material
+        // P3: Tracks the last observed MaterialData::GetAuthoredGeneration()（材质数据层）。
+        // When this matches the data layer's current generation, all cached material
         // data is valid and ResolveMaterialProgramForPrimitive can skip entirely.
-        uint32_t tracked_material_authored_generation = 0;
+        uint32_t tracked_material_data_generation = 0;
 
         // Epoch of the last materialization pass in which this primitive's
         // rows were written. A mismatch with the system's current epoch means

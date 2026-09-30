@@ -50,57 +50,6 @@ namespace hgl::ecs
      */
     class PrimitiveComponent : public RenderableComponent
     {
-    public:
-        enum class MaterialTextureResourceKind : uint8_t
-        {
-            Texture2D = 0,
-            Texture2DArray
-        };
-
-        struct MaterialTextureAuthoringResource
-        {
-            std::string resource_id;
-            hgl::graph::Texture *texture = nullptr;
-            hgl::graph::Sampler *sampler = nullptr;
-            MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D;
-            uint32_t array_layer = 0;
-            bool required = false;
-        };
-
-        struct MaterialDataAuthoringResource
-            : hgl::graph::GlobalSSBOBinding
-        {
-            hgl::graph::DeviceBuffer *buffer = nullptr;
-            uint32_t element_capacity = 0;
-            uint32_t byte_stride = 0;
-            bool authored = false;
-
-            MaterialDataAuthoringResource() = default;
-            MaterialDataAuthoringResource(
-                const MaterialDataAuthoringResource &) = default;
-            MaterialDataAuthoringResource(
-                const hgl::graph::GlobalSSBOBinding &binding) noexcept
-                : hgl::graph::GlobalSSBOBinding(binding)
-            {
-            }
-
-            MaterialDataAuthoringResource &operator=(
-                const MaterialDataAuthoringResource &) = default;
-
-            MaterialDataAuthoringResource &operator=(
-                const hgl::graph::GlobalSSBOBinding &binding) noexcept
-            {
-                hgl::graph::GlobalSSBOBinding::operator=(binding);
-                return *this;
-            }
-
-            hgl::graph::GlobalSSBOBinding
-                GetGlobalSSBOBinding() const noexcept
-            {
-                return {ssbo_type, ssbo_id, data_index};
-            }
-        };
-
     private:
 
         const hgl::graph::PrimitiveAsset* primitiveAsset = nullptr;  // Asset-level geometry+recipe pairing (not owned)
@@ -110,17 +59,6 @@ namespace hgl::ecs
         hgl::graph::GeometryDataBuffer *runtime_data_buffer = nullptr;
         hgl::graph::GeometryDrawRange *runtime_draw_range = nullptr;
         hgl::graph::Geometry *runtime_geometry = nullptr;        hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
-        bool hasMaterialRecipeOverride = false;
-        hgl::graph::mtl::MaterialRecipe materialRecipeOverride;
-        hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>
-            namedMaterialTextureResources;
-        MaterialDataAuthoringResource materialDataResource{};
-
-        // Monotonic counter incremented every time authored material resources change
-        // (textures, SSBOs, recipe). Compared against MaterialComponent to skip
-        // BuildResolvedRecipe when nothing has changed.
-        uint32_t material_authored_generation = 0;
-
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
         // 每个 RenderPass（≈每个 RenderTarget）各自持有解析出的管线——同一世界
@@ -142,7 +80,6 @@ namespace hgl::ecs
         };
 
         hgl::UnorderedMap<hgl::graph::RenderPass *, ResolvedRuntimePipeline> resolvedRuntimePipelineMap;
-        void InvalidateResolvedRuntimePipeline();
 
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
         TransformPolicySpec transformPolicySpec;           // Unified transform policy ingress
@@ -215,33 +152,15 @@ namespace hgl::ecs
         void SetPositionSourceSpec(PositionSourceSpec spec) { positionSourceSpec = spec; }
         PositionSourceSpec GetPositionSourceSpec() const { return positionSourceSpec; }
 
-        // Authoring entry: asset recipe is the default source, component recipe is the override source.
-        // Runtime resolve/materialize is handled by ECS in later phases.
-        void SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe);
-        const hgl::graph::mtl::MaterialRecipe *GetMaterialRecipeOverride() const;
+        // Asset 里的默认配方——材质解析链的**基底来源**。作者把材质授权搬到
+        // 数据层（MaterialData）之后，本访问器仍是 asset 归属的数据，由调用方
+        // 作为 `MaterialData::BuildResolvedRecipe` 的 asset_default_recipe 传入。
+        // A5 拆分 Geometry 时随 asset 一并迁移。
         const hgl::graph::mtl::MaterialRecipe *GetAssetMaterialRecipe() const;
-        bool BuildResolvedAuthoringMaterialRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,
-                                                  const hgl::graph::ShaderProgram *material_program = nullptr) const;
-        bool HasMaterialRecipeOverride() const { return GetMaterialRecipeOverride() != nullptr; }
-        bool HasAnyMaterialRecipeSource() const { return GetMaterialRecipeOverride() != nullptr || GetAssetMaterialRecipe() != nullptr; }
-        bool SetMaterialTextureResource(const std::string &name,
-                                        hgl::graph::Texture *texture,
-                                        hgl::graph::Sampler *sampler,
-                                        MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
-                                        const std::string &resource_id = std::string(),
-                                        uint32_t array_layer = 0,
-                                        bool required = false);
-        bool SetMaterialTextureArrayLayer(const std::string &name, uint32_t array_layer);
-        const MaterialTextureAuthoringResource *GetMaterialTextureResource(const std::string &name) const;
-        void SetMaterialDataResource(
-            const MaterialDataAuthoringResource &resource);
-        const MaterialDataAuthoringResource *GetMaterialDataResource() const;
-        void ClearMaterialDataResource();
-        void ClearMaterialAuthoringResources();
 
-        // Generation counter for authored material resources.
-        // Compared against MaterialComponent to detect changes.
-        uint32_t GetMaterialAuthoredGeneration() const { return material_authored_generation; }
+        // 材质授权内容变化（数据层代数前进 / 配方内容变化）时调用：
+        // 已解析的运行期管线不再可信（管线由 program 身份 + 规范化 recipe 共同决定）。
+        void InvalidateResolvedRuntimePipeline();
 
         // ShaderProgram access (returns override if set, otherwise descriptor-bound material)
         hgl::graph::ShaderProgram* GetShaderProgram() const;
@@ -281,6 +200,7 @@ namespace hgl::ecs
         void OnDetach() override;
     };
 
-    /// 槽位映射（**暂定**：`PrimitiveComponent` 同时承载几何与材质来源，A5 拆分后由真正的 `Geometry` 组件接管）
+    /// 槽位映射（**暂定**：`PrimitiveComponent` 承载几何来源，A5 拆分后由真正的 `Geometry` 组件接管；
+    /// 材质授权数据已在 A2 迁至 `MaterialData`）
     template<> struct ComponentTypeOf<PrimitiveComponent> { static constexpr ComponentType value = ComponentType::Geometry; };
 }//namespace hgl::ecs

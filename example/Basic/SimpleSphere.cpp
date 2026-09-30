@@ -178,17 +178,18 @@ private:
         sphere_transform = transform;
 
         auto primitive_comp = sphere_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
 
         sphere_asset = PrimitiveAsset(sphere_geometry, &sphere_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&sphere_asset);
 
-        primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);
-        primitive_comp->SetMaterialTextureResource("normal", normal_texture, sampler);
-        primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
+        material_data_comp->SetTextureResource("base_color", base_texture, sampler);
+        material_data_comp->SetTextureResource("normal", normal_texture, sampler);
+        material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);
 
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
-        primitive_comp->SetMaterialDataResource(sphere_struct);
+        material_data_comp->SetDataResource(sphere_struct);
         primitive_comp->SetVisible(true);
 
         return true;

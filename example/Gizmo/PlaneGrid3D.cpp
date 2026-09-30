@@ -89,6 +89,7 @@ private:
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(rotation);
@@ -96,9 +97,9 @@ private:
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource named_struct{};
         named_struct = material_ssbo_binding;
-        prim_comp->SetMaterialDataResource(named_struct);
+        material_data_comp->SetDataResource(named_struct);
         prim_comp->SetVisible(true);
 
         return true;

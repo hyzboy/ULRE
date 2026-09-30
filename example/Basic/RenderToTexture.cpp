@@ -122,11 +122,21 @@ private:
 
         if (sphere_primitive_comp)
         {
+            hgl::ecs::Entity *diag_owner = sphere_primitive_comp->GetOwner();
+            hgl::ecs::ECSContext *diag_world = diag_owner ? diag_owner->GetContext() : nullptr;
+            const hgl::ecs::MaterialData *material_data_comp = diag_world
+                ? diag_world->GetMaterialData(diag_owner->GetEntityID())
+                : nullptr;
+            const bool has_recipe_override =
+                material_data_comp && material_data_comp->HasRecipeOverride();
+            const bool has_recipe_source =
+                has_recipe_override || sphere_primitive_comp->GetAssetMaterialRecipe() != nullptr;
+
             std::printf("[RenderToTextureDiag][%s] primitive visible=%d hasRecipeSource=%d hasRecipeOverride=%d primitiveAsset=%p\n",
                         stage ? stage : "<null>",
                         sphere_primitive_comp->IsVisible() ? 1 : 0,
-                        sphere_primitive_comp->HasAnyMaterialRecipeSource() ? 1 : 0,
-                        sphere_primitive_comp->HasMaterialRecipeOverride() ? 1 : 0,
+                        has_recipe_source ? 1 : 0,
+                        has_recipe_override ? 1 : 0,
                         (void *)sphere_primitive_comp->GetPrimitiveAsset());
         }
 
@@ -311,6 +321,7 @@ public:
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
         auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
         auto prim_comp = sphere_entity->AddComponent<PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -318,12 +329,12 @@ public:
         transform.SetMobility(Mobility::Static);
 
         prim_comp->SetPrimitiveAsset(&sphere_asset);
-        prim_comp->SetMaterialTextureResource("base_color", sphere_base_tex, sphere_sampler);
-        prim_comp->SetMaterialTextureResource("normal", sphere_normal_tex, sphere_sampler);
-        prim_comp->SetMaterialTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
+        material_data_comp->SetTextureResource("base_color", sphere_base_tex, sphere_sampler);
+        material_data_comp->SetTextureResource("normal", sphere_normal_tex, sphere_sampler);
+        material_data_comp->SetTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
-        prim_comp->SetMaterialDataResource(sphere_struct);
+        material_data_comp->SetDataResource(sphere_struct);
         prim_comp->SetVisible(true);
 
         sphere_primitive_comp = prim_comp;
@@ -502,6 +513,7 @@ private:
         cube_entity = ecs_context->CreateEntity<Entity>("RTTCube");
         cube_transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube_entity->GetEntityID(), Mobility::Static));
         auto cube_prim_comp = cube_entity->AddComponent<PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity->GetEntityID());
 
         cube_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         cube_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -509,12 +521,12 @@ private:
         cube_transform.SetMobility(Mobility::Movable);
 
         cube_prim_comp->SetPrimitiveAsset(&cube_asset);
-        cube_prim_comp->SetMaterialTextureResource("base_color", base_tex, cube_sampler);
-        cube_prim_comp->SetMaterialTextureResource("normal", normal_tex, cube_sampler);
-        cube_prim_comp->SetMaterialTextureResource("roughness", roughness_tex, cube_sampler);
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
+        material_data_comp->SetTextureResource("base_color", base_tex, cube_sampler);
+        material_data_comp->SetTextureResource("normal", normal_tex, cube_sampler);
+        material_data_comp->SetTextureResource("roughness", roughness_tex, cube_sampler);
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_material_data_ssbo_accessor.GetGlobalSSBOBinding();
-        cube_prim_comp->SetMaterialDataResource(cube_struct);
+        material_data_comp->SetDataResource(cube_struct);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");
         return true;

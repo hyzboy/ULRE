@@ -70,6 +70,7 @@ private:
     CameraComponent *camera_component = nullptr;
     hgl::ecs::TransformAccessor sphere_transform;
     PrimitiveComponent *sphere_primitive_component = nullptr;
+    hgl::ecs::MaterialData *sphere_material_data = nullptr;
 
     using MaterialDataAccessor =
         graph::GlobalSSBODataAccessor;
@@ -216,7 +217,7 @@ private:
 
     bool ApplyMaterialMode(const bool far_mode)
     {
-        if (use_far_material == far_mode && sphere_primitive_component && sphere_primitive_component->HasMaterialRecipeOverride())
+        if (use_far_material == far_mode && sphere_material_data && sphere_material_data->HasRecipeOverride())
             return true;
 
         use_far_material = far_mode;
@@ -231,15 +232,15 @@ private:
         if (!material_data_ssbo_accessor)
             return false;
 
-        sphere_primitive_component->SetMaterialRecipe(use_far_material ? far_recipe : near_recipe);
+        sphere_material_data->SetRecipe(use_far_material ? far_recipe : near_recipe);
 
         if (use_far_material)
         {
-            if (!sphere_primitive_component->SetMaterialTextureResource(
+            if (!sphere_material_data->SetTextureResource(
                     "base_color",
                     far_base_color_texture,
                     sampler)
-             || !sphere_primitive_component->SetMaterialTextureResource(
+             || !sphere_material_data->SetTextureResource(
                     "normal",
                     far_normal_texture,
                     sampler))
@@ -247,24 +248,24 @@ private:
         }
         else
         {
-            if (!sphere_primitive_component->SetMaterialTextureResource(
+            if (!sphere_material_data->SetTextureResource(
                     "base_color",
                     near_base_color_array,
                     sampler,
-                    PrimitiveComponent::MaterialTextureResourceKind::
+                    MaterialData::MaterialTextureResourceKind::
                         Texture2DArray)
-             || !sphere_primitive_component->SetMaterialTextureResource(
+             || !sphere_material_data->SetTextureResource(
                     "normal",
                     near_normal_array,
                     sampler,
-                    PrimitiveComponent::MaterialTextureResourceKind::
+                    MaterialData::MaterialTextureResourceKind::
                         Texture2DArray))
                 return false;
         }
 
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
-        sphere_primitive_component->SetMaterialDataResource(sphere_struct);
+        sphere_material_data->SetDataResource(sphere_struct);
         return true;
     }
 
@@ -322,6 +323,7 @@ private:
 
         sphere_transform = transform;
         sphere_primitive_component = primitive_component.get();
+        sphere_material_data = ecs_world->GetOrCreateMaterialData(sphere_entity->GetEntityID());
 
         sphere_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         sphere_transform.SetLocalScale(glm::vec3(1.6f, 1.6f, 1.6f));

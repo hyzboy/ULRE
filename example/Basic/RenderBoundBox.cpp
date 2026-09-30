@@ -541,6 +541,7 @@ private:
             floor_mesh->entity = ecs_context->CreateEntity<Entity>("Floor");
             floor_mesh->transform = ecs_context->GetTransform(ecs_context->CreateTransform(floor_mesh->entity->GetEntityID(), Mobility::Static));
             floor_mesh->primitive_comp = floor_mesh->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = floor_mesh->entity->GetContext()->GetOrCreateMaterialData(floor_mesh->entity->GetEntityID());
 
             floor_mesh->transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             floor_mesh->transform.SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
@@ -548,10 +549,10 @@ private:
             floor_mesh->transform.SetMobility(Mobility::Static);
 
             floor_mesh->primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
             floor_struct =
                 solid.material_data_ssbo_accessors[floor_mesh->color_index].GetGlobalSSBOBinding();
-            floor_mesh->primitive_comp->SetMaterialDataResource(floor_struct);
+            material_data_comp->SetDataResource(floor_struct);
             floor_mesh->primitive_comp->SetVisible(true);
         }
 
@@ -568,6 +569,7 @@ private:
             rm->entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), Mobility::Static));
             rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContext()->GetOrCreateMaterialData(rm->entity->GetEntityID());
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -579,10 +581,10 @@ private:
             rm->transform.SetMobility(Mobility::Static);
 
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
                 solid.material_data_ssbo_accessors[rm->color_index].GetGlobalSSBOBinding();
-            rm->primitive_comp->SetMaterialDataResource(mesh_struct);
+            material_data_comp->SetDataResource(mesh_struct);
             rm->primitive_comp->SetVisible(true);
 
             ++index;
@@ -610,6 +612,7 @@ private:
             bbox->entity = ecs_context->CreateEntity<Entity>("BBox_" + std::to_string(i));
             bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), Mobility::Static));
             bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContext()->GetOrCreateMaterialData(bbox->entity->GetEntityID());
 
             bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));
 
@@ -622,9 +625,9 @@ private:
             bbox->transform.SetMobility(Mobility::Static);
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource bbox_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct = wire.material_data_ssbo_accessors[5].GetGlobalSSBOBinding();
-            bbox->primitive_comp->SetMaterialDataResource(bbox_struct);
+            material_data_comp->SetDataResource(bbox_struct);
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));

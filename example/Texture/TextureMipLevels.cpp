@@ -304,6 +304,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             auto primitive = row_entities[row]->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = row_entities[row]->GetContext()->GetOrCreateMaterialData(row_entities[row]->GetEntityID());
             primitive->SetPrimitiveAsset(&ruler_asset[row]);
 
             row_primitives[row] = primitive;
@@ -311,7 +312,7 @@ private:
             if (row == 0)
             {
                 // A 行：普通 Texture2D（会被引擎包成单层 2D_ARRAY，layer=0）
-                if (!primitive->SetMaterialTextureResource(
+                if (!material_data_comp->SetTextureResource(
                         "base_color",
                         mip_level_texture_2d,
                         sampler))
@@ -320,11 +321,11 @@ private:
             else
             {
                 // B/C 行：真数组，1 层，layer=0
-                if (!primitive->SetMaterialTextureResource(
+                if (!material_data_comp->SetTextureResource(
                         "base_color",
                         (row == 1) ? (Texture *)mip_level_array_rgba8 : (Texture *)mip_level_array_bc7,
                         sampler,
-                        PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray,
+                        MaterialData::MaterialTextureResourceKind::Texture2DArray,
                         "",
                         0))
                     return false;

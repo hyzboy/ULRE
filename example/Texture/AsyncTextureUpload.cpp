@@ -79,7 +79,7 @@ public:
     {
         if (tex && quad_primitive && sampler)
         {
-            quad_primitive->SetMaterialTextureResource("base_color", tex, sampler);
+            quad_material_data->SetTextureResource("base_color", tex, sampler);
             switched_texture = true;
             GLogInfo(u8"[AsyncTextureUpload] Dynamically switched Quad texture to loaded high priority lena.Tex2D!");
         }
@@ -88,6 +88,7 @@ private:
     ECSContext *        ecs_world           = nullptr;
     Entity *            quad_entity         = nullptr;
     PrimitiveComponent *quad_primitive      = nullptr;
+    hgl::ecs::MaterialData *quad_material_data = nullptr;
 
     Texture2D *         placeholder_tex     = nullptr;
     Sampler *           sampler             = nullptr;
@@ -176,6 +177,7 @@ private:
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
         auto quad_transform = ecs_world->GetTransform(ecs_world->CreateTransform(quad_entity->GetEntityID(), Mobility::Static));
         quad_primitive = quad_entity->AddComponent<PrimitiveComponent>().get();
+        quad_material_data = ecs_world->GetOrCreateMaterialData(quad_entity->GetEntityID());
 
         quad_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         quad_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -183,7 +185,7 @@ private:
         quad_transform.SetMobility(Mobility::Static);
 
         quad_primitive->SetPrimitiveAsset(&quad_asset);
-        if (!quad_primitive->SetMaterialTextureResource(
+        if (!quad_material_data->SetTextureResource(
                 "base_color",
                 placeholder_tex,
                 sampler))
@@ -333,7 +335,7 @@ public:
                     auto *task = queue->FindTask(high_task_id);
                     if (task && task->target_texture && quad_primitive)
                     {
-                        quad_primitive->SetMaterialTextureResource("base_color", task->target_texture, sampler);
+                        quad_material_data->SetTextureResource("base_color", task->target_texture, sampler);
                         switched_texture = true;
                         GLogInfo(u8"[AsyncTextureUpload] Switched Quad texture to high priority lena.Tex2D!");
                     }

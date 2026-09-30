@@ -103,6 +103,7 @@ public:
             auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
             auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -110,10 +111,10 @@ public:
             transform.SetMobility(hgl::ecs::Mobility::Static);
 
             prim_comp->SetPrimitiveAsset(&wall_meshes[i]);
-            prim_comp->SetMaterialTextureResource("base_color", base_color_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource wall_struct{};
+            material_data_comp->SetTextureResource("base_color", base_color_texture, sampler);
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource wall_struct{};
             wall_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
-            prim_comp->SetMaterialDataResource(wall_struct);
+            material_data_comp->SetDataResource(wall_struct);
             prim_comp->SetVisible(true);
         }
 

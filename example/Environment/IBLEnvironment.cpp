@@ -463,6 +463,7 @@ private:
             sky_entity = ecs_context->CreateEntity<Entity>("SkySphere");
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), Mobility::Movable));
             auto primitive_comp = sky_entity->AddComponent<PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = sky_entity->GetContext()->GetOrCreateMaterialData(sky_entity->GetEntityID());
 
             transform.SetLocalPosition(glm::vec3(0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -470,7 +471,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&sky_asset);
-            primitive_comp->SetMaterialTextureResource("sky_cube", sky_cube_texture, sampler);
+            material_data_comp->SetTextureResource("sky_cube", sky_cube_texture, sampler);
             primitive_comp->SetVisible(true);
         }
     #endif//DRAW_SKY_SPHERE
@@ -479,6 +480,7 @@ private:
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
@@ -486,12 +488,12 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
-            primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);
-            primitive_comp->SetMaterialTextureResource("normal", normal_texture, sampler);
-            primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_struct{};
+            material_data_comp->SetTextureResource("base_color", base_texture, sampler);
+            material_data_comp->SetTextureResource("normal", normal_texture, sampler);
+            material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
             floor_struct = mesh_rows[0].GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(floor_struct);
+            material_data_comp->SetDataResource(floor_struct);
             primitive_comp->SetVisible(true);
         }
 
@@ -512,6 +514,7 @@ private:
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -523,9 +526,9 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&rm->asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct = mesh_rows[row_index].GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(mesh_struct);
+            material_data_comp->SetDataResource(mesh_struct);
             primitive_comp->SetVisible(true);
 
             ++index;

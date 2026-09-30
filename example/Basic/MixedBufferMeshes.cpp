@@ -419,6 +419,7 @@ private:
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
@@ -426,12 +427,12 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
-            primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);
-            primitive_comp->SetMaterialTextureResource("normal", normal_texture, sampler);
-            primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource floor_authoring{};
+            material_data_comp->SetTextureResource("base_color", base_texture, sampler);
+            material_data_comp->SetTextureResource("normal", normal_texture, sampler);
+            material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_authoring{};
             floor_authoring = material_data_ssbo_accessor.GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(floor_authoring);
+            material_data_comp->SetDataResource(floor_authoring);
             primitive_comp->SetVisible(true);
         }
 
@@ -457,6 +458,7 @@ private:
             auto* entity = ecs_context->CreateEntity<Entity>(mesh_name);
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
             float angle = glm::radians(360.0f * static_cast<float>(ring_slot) / static_cast<float>(ring_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -468,12 +470,12 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->SetPrimitiveAsset(&rm->asset);
-            primitive_comp->SetMaterialTextureResource("base_color", base_texture, sampler);
-            primitive_comp->SetMaterialTextureResource("normal", normal_texture, sampler);
-            primitive_comp->SetMaterialTextureResource("roughness", roughness_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_authoring{};
+            material_data_comp->SetTextureResource("base_color", base_texture, sampler);
+            material_data_comp->SetTextureResource("normal", normal_texture, sampler);
+            material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_authoring{};
             mesh_authoring = material_data_ssbo_accessor.GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(mesh_authoring);
+            material_data_comp->SetDataResource(mesh_authoring);
             primitive_comp->SetVisible(true);
 
             ++ring_slot;

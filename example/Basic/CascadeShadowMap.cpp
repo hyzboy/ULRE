@@ -1102,12 +1102,13 @@ private:
         ground_transform.SetLocalScale(glm::vec3(kGroundExtent, kGroundExtent, 1.0f));
 
         ground_prim = ground_entity->AddComponent<PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity->GetEntityID());
         ground_prim->SetPrimitiveAsset(&ground_primitive);
-        ground_prim->SetMaterialTextureResource("base_color", base_color_texture, pbr_sampler,
-            PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0); // Concrete_Plain
-        ground_prim->SetMaterialTextureResource("normal", normal_texture, pbr_sampler,
-            PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0);
-        ground_prim->SetMaterialDataResource(ground_accessor.GetGlobalSSBOBinding());
+        material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
+            MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0); // Concrete_Plain
+        material_data_comp->SetTextureResource("normal", normal_texture, pbr_sampler,
+            MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
+        material_data_comp->SetDataResource(ground_accessor.GetGlobalSSBOBinding());
         ground_prim->SetVisible(true);
 
         auto ground_shadow = ground_entity->AddComponent<ShadowComponent>();
@@ -1194,12 +1195,13 @@ private:
             }
 
             auto prim = e->AddComponent<PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
-            prim->SetMaterialTextureResource("base_color", base_color_texture, pbr_sampler,
-                PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", tex_idx);
-            prim->SetMaterialTextureResource("normal", normal_texture, pbr_sampler,
-                PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", tex_idx);
-            prim->SetMaterialDataResource(material_accessors[mat_idx].GetGlobalSSBOBinding());
+            material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
+                MaterialData::MaterialTextureResourceKind::Texture2DArray, "", tex_idx);
+            material_data_comp->SetTextureResource("normal", normal_texture, pbr_sampler,
+                MaterialData::MaterialTextureResourceKind::Texture2DArray, "", tex_idx);
+            material_data_comp->SetDataResource(material_accessors[mat_idx].GetGlobalSSBOBinding());
             prim->SetVisible(true);
         }
 
@@ -1230,14 +1232,15 @@ private:
                 tf.SetLocalRotation(glm::quat(glm::vec3(0.0f, 0.4f + 0.2f * i, 0.0f)));
 
                 auto prim = e->AddComponent<PrimitiveComponent>();
+                hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
                 prim->SetPrimitiveAsset(&alpha_primitive);
                 // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked
                 // 的 EvalAlpha（采样 .r，0 = 镂空）——影子应呈同图案棋盘孔。
-                prim->SetMaterialTextureResource("base_color", alpha_base_texture, pbr_sampler,
-                    PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0);
-                prim->SetMaterialTextureResource("opacity_mask", alpha_base_texture, pbr_sampler,
-                    PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0);
-                prim->SetMaterialDataResource(material_accessors[0].GetGlobalSSBOBinding());
+                material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,
+                    MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
+                material_data_comp->SetTextureResource("opacity_mask", alpha_base_texture, pbr_sampler,
+                    MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
+                material_data_comp->SetDataResource(material_accessors[0].GetGlobalSSBOBinding());
                 prim->SetVisible(true);
             }
         }

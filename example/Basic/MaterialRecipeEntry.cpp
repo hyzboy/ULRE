@@ -146,6 +146,7 @@ private:
         transform.SetMobility(Mobility::Static);
 
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity->GetEntityID());
         cube_recipe.recipe_name = "Phase2.MaterialRecipeEntry.Cube";
         cube_recipe.mtl_def_id = "DebugNormalColor";
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
@@ -154,9 +155,9 @@ private:
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource named_struct{};
         named_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
-        primitive_comp->SetMaterialDataResource(named_struct);
+        material_data_comp->SetDataResource(named_struct);
         primitive_comp->SetVisible(true);
 
         return true;

@@ -84,7 +84,7 @@
  *          │                                       （只画环上网格，**不画地面**）
  *          └────────────► Texture2D*（SHADER_READ_ONLY_OPTIMAL）
  *                              │
- *   [主世界] 地面实体 ── SetMaterialTextureResource("shadow_map", ...) ──┘
+ *   [主世界] 地面实体 ── SetTextureResource("shadow_map", ...) ──┘
  *            ShadowReceiver 材质源： uv0 → 世界XY → 投影到光源空间 → 深度比较 → 乘 albedo
  *
  * 为了只动"ShaderLibrary + 示例"两层（不改引擎 ABI），光源方向是这样传进 shader 的：
@@ -524,7 +524,7 @@ private:
     graph::mtl::MaterialRecipe scene_recipe{};
 
     using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
-    using MaterialBinding      = hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource;
+    using MaterialBinding      = hgl::ecs::MaterialData::MaterialDataAuthoringResource;
 
     MaterialDataAccessor material_data_ssbo_accessor{};
     graph::ssbo::PBRSurfaceRow scene_material_data{};
@@ -879,13 +879,21 @@ private:
         if (!prim)
             return;
 
-        prim->SetMaterialTextureResource("base_color", base_texture, scene_sampler);
+        hgl::ecs::Entity *owner = prim->GetOwner();
+        hgl::ecs::ECSContext *material_world = owner ? owner->GetContext() : nullptr;
+        hgl::ecs::MaterialData *material_data_comp = material_world
+            ? material_world->GetOrCreateMaterialData(owner->GetEntityID())
+            : nullptr;
+        if (!material_data_comp)
+            return;
+
+        material_data_comp->SetTextureResource("base_color", base_texture, scene_sampler);
         if (!is_receiver_plane)
         {
-            prim->SetMaterialTextureResource("normal", normal_texture, scene_sampler);
-            prim->SetMaterialTextureResource("roughness", roughness_texture, scene_sampler);
+            material_data_comp->SetTextureResource("normal", normal_texture, scene_sampler);
+            material_data_comp->SetTextureResource("roughness", roughness_texture, scene_sampler);
         }
-        prim->SetMaterialDataResource(scene_material_binding);
+        material_data_comp->SetDataResource(scene_material_binding);
         prim->SetVisible(true);
     }
 

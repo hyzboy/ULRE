@@ -7,7 +7,7 @@
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/ecs/components/MaterialData.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -16,90 +16,6 @@
 
 namespace hgl::ecs
 {
-    namespace
-    {
-        void ResetMaterialRecipe(hgl::graph::mtl::MaterialRecipe &recipe)
-        {
-            recipe.recipe_name.clear();
-            recipe.mtl_def_id.clear();
-            recipe.vertex_node_config = hgl::graph::mtl::MakeDefault3DNodeConfig();
-            recipe.render_state_overrides.has_double_sided = true;
-            recipe.render_state_overrides.double_sided = false;
-            recipe.render_state_overrides.has_alpha_test = true;
-            recipe.render_state_overrides.alpha_test = false;
-            recipe.render_state_overrides.has_alpha_cutoff = true;
-            recipe.render_state_overrides.alpha_cutoff = 0.5f;
-            recipe.render_state_overrides.has_dither = true;
-            recipe.render_state_overrides.dither = false;
-            recipe.render_state_overrides.has_pipeline_config = true;
-            recipe.render_state_overrides.pipeline_config = hgl::graph::mtl::MaterialPipelineConfig{};
-            recipe.textures.clear();
-            recipe.material_ssbo_binding = {};
-        }
-
-        void ResetMaterialDataAuthoringResource(
-            PrimitiveComponent::MaterialDataAuthoringResource &resource)
-        {
-            resource.ssbo_type = hgl::graph::GlobalSSBOType::PBRSurface;
-            resource.ssbo_id = 0;
-            resource.buffer = nullptr;
-            resource.element_capacity = 0;
-            resource.byte_stride = 0;
-            resource.data_index = uint32_t(-1);
-            resource.authored = false;
-        }
-
-        bool ResolveTextureAuthoringDefinition(
-            const PrimitiveComponent &component,
-            hgl::graph::mtl::MaterialDefinition &out_definition)
-        {
-            const hgl::graph::mtl::MaterialRecipe *recipe =
-                component.GetMaterialRecipeOverride();
-            if (!recipe)
-                recipe = component.GetAssetMaterialRecipe();
-
-            return recipe
-                && !recipe->mtl_def_id.empty()
-                && hgl::graph::mtl::TryGetMaterialDefinitionByID(
-                    recipe->mtl_def_id,
-                    out_definition);
-        }
-
-        bool UpsertMaterialTextureAuthoringResource(
-            hgl::UnorderedMap<hgl::AnsiString,
-                PrimitiveComponent::MaterialTextureAuthoringResource> &resources,
-            const std::string &name,
-            const PrimitiveComponent::MaterialTextureAuthoringResource &resource)
-        {
-            const hgl::AnsiString key(name.c_str());
-            if (resources.GetValuePointer(key))
-                return resources.Change(key, resource);
-            return resources.Add(key, resource);
-        }
-
-        bool AppendTextureBinding(
-            hgl::graph::mtl::MaterialRecipe &recipe,
-            const std::string &name,
-            const PrimitiveComponent::MaterialTextureAuthoringResource &resource)
-        {
-            if (!resource.texture || !resource.sampler)
-                return true;
-
-            const std::string resource_id = resource.resource_id.empty()
-                ? BuildTextureResourceId(resource.texture)
-                : resource.resource_id;
-            if (resource_id.empty())
-                return false;
-
-            return hgl::graph::mtl::UpsertRecipeTextureBinding(
-                recipe,
-                name,
-                resource_id,
-                resource.required,
-                resource.array_layer);
-        }
-    }
-
     bool PrimitiveComponent::EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material)
     {
         if (!primitiveAsset || !material)
@@ -218,23 +134,16 @@ namespace hgl::ecs
             SetBoundingRadius(0.0f);
         }
 
-        ++material_authored_generation;
-    }
-
-    void PrimitiveComponent::SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe)
-    {
-        InvalidateResolvedRuntimePipeline();
-        materialRecipeOverride = recipe;
-        hasMaterialRecipeOverride = true;
-        ++material_authored_generation;
-    }
-
-    const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetMaterialRecipeOverride() const
-    {
-        if (hasMaterialRecipeOverride)
-            return &materialRecipeOverride;
-
-        return nullptr;
+        // asset 默认配方是材质解析的基底来源：换 asset ⇒ 让本实体材质数据层的
+        // 授权代数前进，渲染侧的重解析快路径据此失配（原先由组件级 generation
+        // 承担的失效点，A2 随授权状态一并迁入 MaterialData）。
+        Entity *owner = GetOwner();
+        ECSContext *context = owner ? owner->GetContext() : nullptr;
+        MaterialData *material_data = context
+            ? context->GetMaterialData(owner->GetEntityID())
+            : nullptr;
+        if (material_data)
+            material_data->BumpAuthoredGeneration();
     }
 
     const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetAssetMaterialRecipe() const
@@ -249,316 +158,6 @@ namespace hgl::ecs
             return variant->material_recipe;
 
         return primitiveAsset->GetMaterialRecipe();
-    }
-
-    bool PrimitiveComponent::BuildResolvedAuthoringMaterialRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,
-                                                                  const hgl::graph::ShaderProgram *material_program) const
-    {
-        (void)material_program;
-
-        const auto *asset_recipe = GetAssetMaterialRecipe();
-        const auto *override_recipe = GetMaterialRecipeOverride();
-
-        if (asset_recipe)
-            out_recipe = *asset_recipe;
-        else
-        if (override_recipe)
-            out_recipe = *override_recipe;
-        else
-            return false;
-
-        if (asset_recipe && override_recipe)
-            out_recipe = *override_recipe;
-
-        hgl::graph::mtl::MaterialDefinition definition{};
-        const bool has_definition =
-            !out_recipe.mtl_def_id.empty()
-         && hgl::graph::mtl::TryGetMaterialDefinitionByID(
-                out_recipe.mtl_def_id,
-                definition);
-
-        for (const auto &[named_key, resource] : namedMaterialTextureResources)
-        {
-            const std::string name = named_key.c_str();
-            if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
-                return false;
-
-            const int declaration_index = has_definition
-                ? hgl::graph::mtl::FindMaterialTextureDeclaration(
-                    definition,
-                    name)
-                : -1;
-            if (!has_definition || declaration_index < 0)
-                return false;
-
-            if (declaration_index >= 0)
-            {
-                const auto &declaration =
-                    definition.texture_declarations[
-                        static_cast<size_t>(declaration_index)];
-                const bool declaration_uses_array =
-                    hgl::graph::mtl::IsMaterialTextureArraySampler(
-                        declaration.sampler_type);
-                const bool authoring_uses_array =
-                    resource.kind
-                    == MaterialTextureResourceKind::Texture2DArray;
-                if ((!declaration_uses_array && authoring_uses_array)
-                 || (!authoring_uses_array && resource.array_layer != 0))
-                    return false;
-            }
-        }
-
-        if (has_definition)
-        {
-            for (const auto &declaration : definition.texture_declarations)
-            {
-                const hgl::AnsiString key(declaration.name.c_str());
-                const auto *resource =
-                    namedMaterialTextureResources.GetValuePointer(key);
-                if (resource
-                 && !AppendTextureBinding(
-                        out_recipe,
-                        declaration.name,
-                        *resource))
-                    return false;
-
-                bool has_recipe_binding = false;
-                for (const auto &binding : out_recipe.textures)
-                {
-                    if (binding.texture_name == declaration.name)
-                    {
-                        has_recipe_binding = true;
-                        if (!hgl::graph::mtl::IsMaterialTextureArraySampler(
-                                declaration.sampler_type)
-                         && binding.array_layer != 0)
-                            return false;
-                        break;
-                    }
-                }
-                if (!has_recipe_binding
-                 && !hgl::graph::mtl::UpsertRecipeTextureBinding(
-                        out_recipe,
-                        declaration.name,
-                        std::string(),
-                        declaration.required))
-                    return false;
-            }
-        }
-
-        const MaterialDataAuthoringResource &resource =
-            materialDataResource;
-        if (resource.authored)
-        {
-            hgl::graph::GlobalSSBOBinding material_ssbo_binding =
-                resource.GetGlobalSSBOBinding();
-            material_ssbo_binding.ssbo_type =
-                hgl::graph::mtl::ResolveRecipeSSBOType(
-                    out_recipe,
-                    material_ssbo_binding.ssbo_type);
-
-            if (!material_ssbo_binding.IsValid())
-                return false;
-
-            out_recipe.material_ssbo_binding = material_ssbo_binding;
-        }
-
-        // 组件边界规范化：写回 mtl_def_id 权威值与解析后的渲染状态，
-        // 下游（acquire / 管线创建）不再重复。
-        hgl::graph::mtl::NormalizeRecipe(out_recipe);
-        return true;
-    }
-
-    bool PrimitiveComponent::SetMaterialTextureResource(
-        const std::string &name,
-        hgl::graph::Texture *texture,
-        hgl::graph::Sampler *sampler,
-        MaterialTextureResourceKind kind,
-        const std::string &resource_id,
-        const uint32_t array_layer,
-        const bool required)
-    {
-        if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
-        {
-            GLogError(
-                "[PrimitiveComponent] Texture authoring rejected invalid name=%s",
-                name.c_str());
-            return false;
-        }
-        if (!texture || !sampler)
-        {
-            GLogError(
-                "[PrimitiveComponent] Texture authoring rejected null resource name=%s",
-                name.c_str());
-            return false;
-        }
-
-        hgl::graph::mtl::MaterialDefinition definition{};
-        if (!ResolveTextureAuthoringDefinition(*this, definition))
-        {
-            GLogError(
-                "[PrimitiveComponent] Texture authoring rejected unresolved material definition texture=%s",
-                name.c_str());
-            return false;
-        }
-
-        const int declaration_index =
-            hgl::graph::mtl::FindMaterialTextureDeclaration(
-                definition,
-                name);
-        if (declaration_index < 0)
-        {
-            GLogError(
-                "[PrimitiveComponent] Texture authoring rejected undeclared texture=%s definition=%s",
-                name.c_str(),
-                definition.definition_id.c_str());
-            return false;
-        }
-        const auto &declaration =
-            definition.texture_declarations[
-                static_cast<size_t>(declaration_index)];
-        const bool declaration_uses_array =
-            hgl::graph::mtl::IsMaterialTextureArraySampler(
-                declaration.sampler_type);
-        const bool authoring_uses_array =
-            kind == MaterialTextureResourceKind::Texture2DArray;
-        if ((!declaration_uses_array && authoring_uses_array)
-         || (!authoring_uses_array && array_layer != 0))
-        {
-            GLogError(
-                "[PrimitiveComponent] Texture authoring rejected incompatible texture type/layer texture=%s layer=%u",
-                name.c_str(),
-                array_layer);
-            return false;
-        }
-
-        MaterialTextureAuthoringResource resource{};
-        resource.resource_id =
-            resource_id.empty() ? BuildTextureResourceId(texture) : resource_id;
-        resource.texture = texture;
-        resource.sampler = sampler;
-        resource.kind = kind;
-        resource.array_layer = array_layer;
-        resource.required = required;
-        if (!UpsertMaterialTextureAuthoringResource(
-                namedMaterialTextureResources,
-                name,
-                resource))
-            return false;
-        ++material_authored_generation;
-        return true;
-    }
-
-    bool PrimitiveComponent::SetMaterialTextureArrayLayer(
-        const std::string &name,
-        const uint32_t array_layer)
-    {
-        if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
-        {
-            GLogError(
-                "[PrimitiveComponent] Texture layer rejected invalid name=%s",
-                name.c_str());
-            return false;
-        }
-
-        hgl::graph::mtl::MaterialDefinition definition{};
-        if (!ResolveTextureAuthoringDefinition(*this, definition))
-        {
-            GLogError(
-                "[PrimitiveComponent] Texture layer rejected unresolved material definition texture=%s",
-                name.c_str());
-            return false;
-        }
-        const int declaration_index =
-            hgl::graph::mtl::FindMaterialTextureDeclaration(
-                definition,
-                name);
-        if (declaration_index < 0
-         || !hgl::graph::mtl::IsMaterialTextureArraySampler(
-                definition.texture_declarations[
-                    static_cast<size_t>(declaration_index)].sampler_type))
-        {
-            GLogError(
-                "[PrimitiveComponent] Texture layer rejected non-array or undeclared texture=%s definition=%s",
-                name.c_str(),
-                definition.definition_id.c_str());
-            return false;
-        }
-
-        const hgl::AnsiString key(name.c_str());
-        if (auto *entry = namedMaterialTextureResources.GetValuePointer(key))
-        {
-            entry->array_layer = array_layer;
-            ++material_authored_generation;
-            return true;
-        }
-        GLogError(
-            "[PrimitiveComponent] Texture layer rejected missing resource texture=%s",
-            name.c_str());
-        return false;
-    }
-
-    const PrimitiveComponent::MaterialTextureAuthoringResource *
-        PrimitiveComponent::GetMaterialTextureResource(
-            const std::string &name) const
-    {
-        if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
-            return nullptr;
-
-        const hgl::AnsiString key(name.c_str());
-        if (const auto *entry = namedMaterialTextureResources.GetValuePointer(key))
-        {
-            if (entry->texture && entry->sampler)
-                return entry;
-        }
-        return nullptr;
-    }
-
-    void PrimitiveComponent::SetMaterialDataResource(
-        const MaterialDataAuthoringResource &resource)
-    {
-        if (resource.ssbo_id == 0)
-        {
-            ClearMaterialDataResource();
-            return;
-        }
-
-        if (!resource.GetGlobalSSBOBinding().IsValid())
-        {
-            GLogError(
-                "[PrimitiveComponent] Material data resource rejected missing active row ID type=%s ssbo_id=%u data_index=%u",
-                hgl::graph::GetGlobalSSBOTypeName(
-                    resource.ssbo_type),
-                resource.ssbo_id,
-                resource.data_index);
-            return;
-        }
-
-        materialDataResource = resource;
-        materialDataResource.authored = true;
-        ++material_authored_generation;
-    }
-
-    const PrimitiveComponent::MaterialDataAuthoringResource *
-        PrimitiveComponent::GetMaterialDataResource() const
-    {
-        return materialDataResource.authored
-            ? &materialDataResource : nullptr;
-    }
-
-    void PrimitiveComponent::ClearMaterialDataResource()
-    {
-        if (!materialDataResource.authored)
-            return;
-
-        ResetMaterialDataAuthoringResource(materialDataResource);
-        ++material_authored_generation;
-    }
-
-    void PrimitiveComponent::ClearMaterialAuthoringResources()
-    {
-        namedMaterialTextureResources.Clear();
-        ResetMaterialDataAuthoringResource(materialDataResource);
-        ++material_authored_generation;
     }
 
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()
@@ -743,11 +342,8 @@ namespace hgl::ecs
         primitiveVariantIndex = 0;
         ClearRuntimeGeometryBinding();
         overridePipeline = nullptr;
-        ResetMaterialRecipe(materialRecipeOverride);
-        hasMaterialRecipeOverride = false;
-        ClearMaterialAuthoringResources();
         resolvedRuntimePipelineMap.Clear();
         render_item_descriptor = {};
-        ++material_authored_generation;
+        // 材质授权状态已迁至 MaterialData（由它自己的 OnDetach 清理）。
     }
 }//namespace hgl::ecs

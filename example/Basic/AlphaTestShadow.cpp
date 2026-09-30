@@ -595,10 +595,11 @@ public:
             ground_shadow = shadow;   // D3 契约：运行期拨 receive_shadow / bias_multiplier
 
             auto prim = e->AddComponent<PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->SetPrimitiveAsset(&ground_primitive);
-            prim->SetMaterialTextureResource("base_color", white_texture, pbr_sampler,
-                PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0);
-            prim->SetMaterialDataResource(material_accessor.GetGlobalSSBOBinding());
+            material_data_comp->SetTextureResource("base_color", white_texture, pbr_sampler,
+                MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
+            material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
             prim->SetVisible(true);
         }
 
@@ -626,15 +627,16 @@ public:
             tf.SetLocalScale(glm::vec3(2.0f));
 
             auto prim = e->AddComponent<PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->SetPrimitiveAsset(&cube_primitive);
-            prim->SetMaterialTextureResource("base_color", alpha_base_texture, pbr_sampler,
-                PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0);
+            material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,
+                MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
             if (bind_opacity[i])
             {
-                prim->SetMaterialTextureResource("opacity_mask", alpha_base_texture, pbr_sampler,
-                    PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray, "", 0);
+                material_data_comp->SetTextureResource("opacity_mask", alpha_base_texture, pbr_sampler,
+                    MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
             }
-            prim->SetMaterialDataResource(material_accessor.GetGlobalSSBOBinding());
+            material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
             prim->SetVisible(true);
         }
 

@@ -172,10 +172,11 @@ private:
             // === 步骤4: 添加PrimitiveComponent ===
             // 每个实体共享同一 PrimitiveAsset，颜色来自不同结构体行
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = triangles[i].entity->GetContext()->GetOrCreateMaterialData(triangles[i].entity->GetEntityID());
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource tri_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource tri_struct{};
             tri_struct = triangle_data_accessors[i].GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(tri_struct);
+            material_data_comp->SetDataResource(tri_struct);
             primitive_comp->SetVisible(true);
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] setup complete" << std::endl;

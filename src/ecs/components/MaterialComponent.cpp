@@ -81,10 +81,10 @@ namespace hgl::ecs
         recipe_hash = 0;
         cached_effective_recipe = {};
         cached_effective_recipe_hash = 0;
-        tracked_material_authored_generation = 0;
+        tracked_material_data_generation = 0;
         shadow_program = nullptr;
         shadow_program_build_context_hash = 0;
-        shadow_tracked_material_authored_generation = 0;
+        shadow_tracked_material_data_generation = 0;
         shadow_cached_normalized_recipe = {};
         ClearMaterializationRows();
     }
@@ -100,11 +100,11 @@ namespace hgl::ecs
         cached_normalized_recipe = {};
         cached_effective_recipe = {};
         cached_effective_recipe_hash = 0;
-        tracked_material_authored_generation = 0;
+        tracked_material_data_generation = 0;
         // shadow_program 归 ShaderProgramManager 缓存所有，这里只清引用。
         shadow_program = nullptr;
         shadow_program_build_context_hash = 0;
-        shadow_tracked_material_authored_generation = 0;
+        shadow_tracked_material_data_generation = 0;
         shadow_cached_normalized_recipe = {};
         ClearMaterializationRows();
     }

@@ -278,6 +278,7 @@ private:
             bbox->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
             bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
             bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContext()->GetOrCreateMaterialData(bbox->entity->GetEntityID());
 
             bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));
 
@@ -290,10 +291,10 @@ private:
             bbox->transform.SetMobility(hgl::ecs::Mobility::Static);
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource bbox_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct =
                 wire.material_data_ssbo_accessors[i % COLOR_COUNT].GetGlobalSSBOBinding();
-            bbox->primitive_comp->SetMaterialDataResource(bbox_struct);
+            material_data_comp->SetDataResource(bbox_struct);
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));
@@ -318,6 +319,7 @@ private:
             rm->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
             rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
             rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContext()->GetOrCreateMaterialData(rm->entity->GetEntityID());
 
             const float angle = glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));
             const glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -329,10 +331,10 @@ private:
             rm->transform.SetMobility(hgl::ecs::Mobility::Static);
 
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
                 solid.material_data_ssbo_accessors[rm->color_index].GetGlobalSSBOBinding();
-            rm->primitive_comp->SetMaterialDataResource(mesh_struct);
+            material_data_comp->SetDataResource(mesh_struct);
             rm->primitive_comp->SetVisible(true);
         }
 

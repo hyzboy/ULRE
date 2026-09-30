@@ -180,6 +180,7 @@ private:
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
         transform.SetLocalPosition(pos);
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -187,9 +188,9 @@ private:
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
         prim_comp->SetPrimitiveAsset(mesh_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource mesh_struct{};
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
         mesh_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
-        prim_comp->SetMaterialDataResource(mesh_struct);
+        material_data_comp->SetDataResource(mesh_struct);
         prim_comp->SetVisible(true);
 
         return true;

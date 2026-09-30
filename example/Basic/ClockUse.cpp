@@ -230,10 +230,11 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = ticks[i].entity->GetContext()->GetOrCreateMaterialData(ticks[i].entity->GetEntityID());
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource tick_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource tick_struct{};
             tick_struct = tick_data_ssbo_accessor.GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(tick_struct);
+            material_data_comp->SetDataResource(tick_struct);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created static tick at angle %f degrees", 30.0f * i);
@@ -263,10 +264,11 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = hands[i].entity->GetContext()->GetOrCreateMaterialData(hands[i].entity->GetEntityID());
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource hand_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource hand_struct{};
             hand_struct = hand_data_ssbo_accessors[i].GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(hand_struct);
+            material_data_comp->SetDataResource(hand_struct);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created movable hand [%u] (%s)", i, hand_names[i]);

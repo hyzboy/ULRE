@@ -13,7 +13,7 @@
  *
  * 与现有判据的对应（对拍基准，2026-10-01 侦察）：
  *   · `CollectForCurrentPass` ⇔ `RenderPrimitiveCollectSystem.cpp:1344-1350`（可见/可渲染/实体可见/owner）
- *     + `:1383`（`HasAnyMaterialRecipeSource`）+ `:1362-1379`（阴影 pass 下的 `CanCastShadow` 与距离裁剪）
+ *     + `:1383`（`HasAnyMaterialSource`）+ `:1362-1379`（阴影 pass 下的 `CanCastShadow` 与距离裁剪）
  *   · `ShadowCaster`   ⇔ 同上 `:1364/:1486` 的 `CanCastShadow`
  *   · `ShadowReceiver` ⇔ `PrimitiveBatchPipeline.cpp:1016` 的 `CanReceiveShadow`
  */
@@ -63,7 +63,7 @@ namespace hgl
             EntityVisible     = 1u << 1,   ///< 实体级可见（含祖先继承，已算完）
             HasOwner          = 1u << 2,   ///< 有 owner 实体
             Renderable        = 1u << 3,   ///< 具备可渲染资源（现 = `primitiveAsset != nullptr`）
-            HasMaterialSource = 1u << 4,   ///< 有材质来源（现 = `HasAnyMaterialRecipeSource`）
+            HasMaterialSource = 1u << 4,   ///< 有材质来源（现 = `HasAnyMaterialSource`：数据层配方覆盖 或 asset 默认配方）
             CastShadow        = 1u << 5,   ///< 允许投射（现 = `CanCastShadow`，含缺省约定）
             ReceiveShadow     = 1u << 6,   ///< 允许接收（现 = `CanReceiveShadow`，含缺省约定）
             ShadowPass        = 1u << 7,   ///< 当前 pass 是阴影 pass（世界态）

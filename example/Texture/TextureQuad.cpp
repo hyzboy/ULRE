@@ -126,6 +126,7 @@ private:
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
         auto quad_transform = ecs_world->GetTransform(ecs_world->CreateTransform(quad_entity->GetEntityID(), Mobility::Static));
         auto quad_primitive = quad_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = quad_entity->GetContext()->GetOrCreateMaterialData(quad_entity->GetEntityID());
 
         quad_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         quad_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -133,7 +134,7 @@ private:
         quad_transform.SetMobility(Mobility::Static);
 
         quad_primitive->SetPrimitiveAsset(&quad_asset);
-        if (!quad_primitive->SetMaterialTextureResource(
+        if (!material_data_comp->SetTextureResource(
                 "base_color",
                 texture,
                 sampler))

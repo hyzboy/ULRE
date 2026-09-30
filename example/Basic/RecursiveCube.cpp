@@ -189,12 +189,13 @@ private:
         transform.SetMobility(animate ? Mobility::Movable : Mobility::Static);
 
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor.GetSSBOId() != 0)
         {
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
             cube_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(cube_struct);
+            material_data_comp->SetDataResource(cube_struct);
         }
         primitive_comp->SetVisible(true);
 

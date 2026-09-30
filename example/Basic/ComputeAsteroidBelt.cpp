@@ -592,10 +592,11 @@ private:
         planet_transform.SetMobility(Mobility::Static);
 
         auto planet_prim = planet_entity->AddComponent<PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = planet_entity->GetContext()->GetOrCreateMaterialData(planet_entity->GetEntityID());
         planet_prim->SetPrimitiveAsset(&planet_asset);
-        PrimitiveComponent::MaterialDataAuthoringResource p_res{};
+        MaterialData::MaterialDataAuthoringResource p_res{};
         p_res = planet_mtl_accessor.GetGlobalSSBOBinding();
-        planet_prim->SetMaterialDataResource(p_res);
+        material_data_comp->SetDataResource(p_res);
         planet_prim->SetVisible(true);
 
         // 2. 创建 10 个陨星批次代表实体（每个代表 100,000 颗同几何体的陨星）
@@ -613,10 +614,11 @@ private:
             transform.SetMobility(Mobility::Static);
 
             auto prim = e->AddComponent<InstancedPrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->SetPrimitiveAsset(&asteroid_assets[i]);
-            PrimitiveComponent::MaterialDataAuthoringResource a_res{};
+            MaterialData::MaterialDataAuthoringResource a_res{};
             a_res = asteroid_mtl_accessors[i].GetGlobalSSBOBinding();
-            prim->SetMaterialDataResource(a_res);
+            material_data_comp->SetDataResource(a_res);
             prim->SetInstanceCount(INSTANCES_PER_GEOM);
             prim->SetMaxInstances(INSTANCES_PER_GEOM);
             prim->AllocateContiguousInstances(INSTANCES_PER_GEOM);

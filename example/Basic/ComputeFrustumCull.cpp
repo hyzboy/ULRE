@@ -368,10 +368,11 @@ private:
             transform.SetMobility(Mobility::Static);
 
             auto prim = e->AddComponent<InstancedPrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->SetPrimitiveAsset(&cube_asset);
-            PrimitiveComponent::MaterialDataAuthoringResource named_struct{};
+            MaterialData::MaterialDataAuthoringResource named_struct{};
             named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
-            prim->SetMaterialDataResource(named_struct);
+            material_data_comp->SetDataResource(named_struct);
             prim->SetInstanceCount(1);
             prim->SetMaxInstances(1);
             prim->AllocateContiguousInstances(1);

@@ -9,6 +9,7 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
+#include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/RenderPipelineBase.h>
@@ -1822,6 +1823,39 @@ namespace hgl
             }
 
             return BoundingBoxAccessor(storage,id,this);
+        }
+
+        MaterialData* ECSContext::GetMaterialData(EntityID owner)
+        {
+            Entity *entity = GetEntity(owner);
+
+            return entity
+                ? entity->GetComponent<MaterialData>().get()
+                : nullptr;
+        }
+
+        const MaterialData* ECSContext::GetMaterialData(EntityID owner) const
+        {
+            const Entity *entity = GetEntity(owner);
+
+            return entity
+                ? entity->GetComponent<MaterialData>().get()
+                : nullptr;
+        }
+
+        MaterialData* ECSContext::GetOrCreateMaterialData(EntityID owner)
+        {
+            Entity *entity = GetEntity(owner);
+
+            if (!entity)
+                return nullptr;
+
+            auto material_data = entity->GetComponent<MaterialData>();
+
+            if (!material_data)
+                material_data = entity->AddComponent<MaterialData>();
+
+            return material_data.get();
         }
 
         void ECSContext::DestroyBoundingBox(BoundingBoxDataStorage::HandleID id)

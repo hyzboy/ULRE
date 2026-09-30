@@ -13,6 +13,7 @@
 #include<hgl/ecs/support/BoundingBoxAccessor.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/graph/module/EnvironmentManager.h>
@@ -57,6 +58,7 @@ namespace hgl
         class RenderItemDataStorage;
         class DrawItemIDStorage;
         class CameraInfoStorage;
+        class MaterialData;
 
         struct RenderFrameCache
         {
@@ -480,6 +482,16 @@ namespace hgl
             /// 建/销毁一个变换（entity 级 API 的基础：分配存储行 + 登记 owner/移动性）
             TransformID CreateTransform(EntityID owner, Mobility mobility);
             void        DestroyTransform(TransformID id);
+
+            /// 实体 → 材质数据层组件 `MaterialData`（无则 nullptr）。
+            /// **stage B 会换成值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
+            /// 届时不再返回裸指针。
+            MaterialData* GetMaterialData(EntityID owner);
+            const MaterialData* GetMaterialData(EntityID owner) const;
+
+            /// 实体 → 材质数据层组件（无则 AddComponent 创建）。
+            /// 与 GetOrCreateBoundingBox 同风格：渲染/作者侧需要"一定有数据层"时用。
+            MaterialData* GetOrCreateMaterialData(EntityID owner);
 
             /// 实体 → 包围盒访问器（无则返回无效句柄）
             BoundingBoxAccessor GetBoundingBoxByEntity(EntityID owner) const;

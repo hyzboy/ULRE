@@ -191,6 +191,7 @@ private:
                 se.entity       = ecs_context->CreateEntity<hgl::ecs::Entity>("SceneNode_" + std::to_string(entity_idx++));
                 se.transform    = ecs_context->GetTransform(ecs_context->CreateTransform(se.entity->GetEntityID(), hgl::ecs::Mobility::Movable));
                 se.primitive_comp = se.entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+                hgl::ecs::MaterialData *material_data_comp = se.entity->GetContext()->GetOrCreateMaterialData(se.entity->GetEntityID());
 
                 // Use pre-computed world matrix for all nodes so child nodes
                 // (e.g. Pawn_Top inside Pawn_Body) get the full composed transform.
@@ -210,10 +211,10 @@ private:
                 se.transform.SetMobility(hgl::ecs::Mobility::Static);
 
                 se.primitive_comp->SetPrimitiveAsset(&asset);
-                hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource scene_struct{};
+                hgl::ecs::MaterialData::MaterialDataAuthoringResource scene_struct{};
                 scene_struct =
                     solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetGlobalSSBOBinding();
-                se.primitive_comp->SetMaterialDataResource(scene_struct);
+                material_data_comp->SetDataResource(scene_struct);
                 se.primitive_comp->SetVisible(true);
 
                 scene_entities_.push_back(std::move(se));

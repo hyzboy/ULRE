@@ -189,10 +189,11 @@ private:
         plane_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = plane_entity->GetContext()->GetOrCreateMaterialData(plane_entity->GetEntityID());
         plane_primitive_comp->SetPrimitiveAsset(&grid_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource plane_struct{};
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
         plane_struct = grid_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
-        plane_primitive_comp->SetMaterialDataResource(plane_struct);
+        material_data_comp->SetDataResource(plane_struct);
         plane_primitive_comp->SetVisible(true);
 
         cube_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Cube");
@@ -203,10 +204,11 @@ private:
         cube_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(3.0f));
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        hgl::ecs::MaterialData *cube_material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity->GetEntityID());
         cube_primitive_comp->SetPrimitiveAsset(&cube_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource cube_struct{};
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
-        cube_primitive_comp->SetMaterialDataResource(cube_struct);
+        cube_material_data_comp->SetDataResource(cube_struct);
         cube_primitive_comp->SetVisible(true);
 
         return true;

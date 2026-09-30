@@ -168,6 +168,7 @@ private:
             render_obj[i].entity = ecs_world->CreateEntity<Entity>("TextureRect");
             auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(render_obj[i].entity->GetEntityID(), Mobility::Static));
             auto primitive = render_obj[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = render_obj[i].entity->GetContext()->GetOrCreateMaterialData(render_obj[i].entity->GetEntityID());
 
             transform.SetLocalPosition(glm::vec3(offset.x, offset.y, offset.z));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -175,11 +176,11 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive->SetPrimitiveAsset(&rect_asset);
-            if (!primitive->SetMaterialTextureResource(
+            if (!material_data_comp->SetTextureResource(
                     "base_color",
                     texture,
                     sampler,
-                    PrimitiveComponent::MaterialTextureResourceKind::
+                    MaterialData::MaterialTextureResourceKind::
                         Texture2DArray,
                     "",
                     i))

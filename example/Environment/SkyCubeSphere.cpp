@@ -113,6 +113,7 @@ private:
         auto* entity = ecs_context->CreateEntity<Entity>("SkyCubeSphere");
         auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
         auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+        hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
         transform.SetLocalPosition(glm::vec3(0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -120,7 +121,7 @@ private:
         transform.SetMobility(Mobility::Static);
 
         primitive_comp->SetPrimitiveAsset(&sky_asset);
-        primitive_comp->SetMaterialTextureResource("sky_cube", sky_cube_texture, sampler);
+        material_data_comp->SetTextureResource("sky_cube", sky_cube_texture, sampler);
         primitive_comp->SetVisible(true);
 
         return true;

@@ -220,10 +220,11 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = plane_grid_entity->GetContext()->GetOrCreateMaterialData(plane_grid_entity->GetEntityID());
             primitive_comp->SetPrimitiveAsset(&plane_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource plane_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
             plane_struct = plane_material_data_accessor.GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(plane_struct);
+            material_data_comp->SetDataResource(plane_struct);
             primitive_comp->SetVisible(true);
         }
 
@@ -240,10 +241,11 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            hgl::ecs::MaterialData *material_data_comp = ray_line_entity->GetContext()->GetOrCreateMaterialData(ray_line_entity->GetEntityID());
             primitive_comp->SetPrimitiveAsset(&line_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource line_struct{};
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource line_struct{};
             line_struct = line_material_data_accessor.GetGlobalSSBOBinding();
-            primitive_comp->SetMaterialDataResource(line_struct);
+            material_data_comp->SetDataResource(line_struct);
             primitive_comp->SetVisible(true);
         }
 

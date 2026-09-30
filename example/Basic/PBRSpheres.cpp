@@ -478,27 +478,28 @@ private:
                 transform.SetMobility(Mobility::Movable);
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
+                hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
                 prim_comp->SetPrimitiveAsset(&base_primitives[col]);
-                if (!prim_comp->SetMaterialTextureResource(
+                if (!material_data_comp->SetTextureResource(
                         "base_color",
                         base_color_texture,
                         sampler,
-                        PrimitiveComponent::MaterialTextureResourceKind::
+                        MaterialData::MaterialTextureResourceKind::
                             Texture2DArray,
                         "",
                         row)
-                 || !prim_comp->SetMaterialTextureResource(
+                 || !material_data_comp->SetTextureResource(
                         "normal",
                         normal_texture,
                         sampler,
-                        PrimitiveComponent::MaterialTextureResourceKind::
+                        MaterialData::MaterialTextureResourceKind::
                             Texture2DArray,
                         "",
                         row))
                     return false;
-                hgl::ecs::PrimitiveComponent::MaterialDataAuthoringResource sphere_struct{};
+                hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
                 sphere_struct = sphere_slot_accessors[row][col].GetGlobalSSBOBinding();
-                prim_comp->SetMaterialDataResource(sphere_struct);
+                material_data_comp->SetDataResource(sphere_struct);
                 prim_comp->SetVisible(true);
             }
         }
