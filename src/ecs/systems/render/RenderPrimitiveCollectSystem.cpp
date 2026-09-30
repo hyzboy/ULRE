@@ -4,7 +4,7 @@
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
-#include<hgl/ecs/components/MaterialComponent.h>
+#include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/InstancedPrimitiveRenderItem.h>
@@ -88,13 +88,19 @@ namespace hgl::ecs
             return material_data ? material_data->GetAuthoredGeneration() : 0;
         }
 
-        // ── A3：材质变体表的取用入口 ──
-        // 表归世界所有（见 MaterialVariantTable.h 的"归属"）；program 本体在表记录里
-        // （按静态键去重），组件只持变体 ID。本文件所有 program 取用都经这里——不再有
-        // "组件上还有第二份 program 指针"的形态。
+        // ── A3/A4：材质变体表 + 材质运行期表的取用入口 ──
+        // 变体表归世界所有（见 MaterialVariantTable.h 的"归属"）；program 本体在表记录里
+        // （按静态键去重），运行期表只持**变体 ID** 与共享绑定。本文件所有 program 取用都
+        // 经"运行期共享行 → 变体 ID → 变体记录"这条唯一链——不再有"组件上还有第二份
+        // program 指针/绑定状态"的形态（原材质运行期组件已删）。
         MaterialVariantTable *GetVariantTable(ECSContext *world)
         {
             return world ? world->GetMaterialVariantTable() : nullptr;
+        }
+
+        MaterialRuntimeTable *GetRuntimeTable(ECSContext *world)
+        {
+            return world ? world->GetMaterialRuntimeTable() : nullptr;
         }
 
         MaterialVariantRecord *GetVariantRecordMutable(MaterialVariantTable *table,
@@ -104,20 +110,20 @@ namespace hgl::ecs
         }
 
         graph::ShaderProgram *GetForwardProgram(MaterialVariantTable *table,
-                                                const MaterialComponent &material_comp)
+                                                const MaterialRuntimeRow *row)
         {
-            const MaterialVariantRecord *record = table
-                ? table->Get(material_comp.forward_variant)
+            const MaterialVariantRecord *record = (table && row)
+                ? table->Get(row->forward_variant)
                 : nullptr;
 
             return record ? record->program : nullptr;
         }
 
         graph::ShaderProgram *GetShadowProgram(MaterialVariantTable *table,
-                                               const MaterialComponent &material_comp)
+                                               const MaterialRuntimeRow *row)
         {
-            const MaterialVariantRecord *record = table
-                ? table->Get(material_comp.shadow_variant)
+            const MaterialVariantRecord *record = (table && row)
+                ? table->Get(row->shadow_variant)
                 : nullptr;
 
             return record ? record->program : nullptr;
@@ -125,11 +131,11 @@ namespace hgl::ecs
 
         /// 当前 pass 的 program（阴影 pass = ShadowDepth 变体，主帧 = 前向变体）。
         graph::ShaderProgram *GetCurrentPassProgram(MaterialVariantTable *table,
-                                                    const MaterialComponent &material_comp,
+                                                    const MaterialRuntimeRow *row,
                                                     const bool shadow_pass)
         {
-            return shadow_pass ? GetShadowProgram(table, material_comp)
-                               : GetForwardProgram(table, material_comp);
+            return shadow_pass ? GetShadowProgram(table, row)
+                               : GetForwardProgram(table, row);
         }
 
         /// 退掉某条变体记录的 program 引用（记录仍是同键实体共享；program 本体归
@@ -139,6 +145,71 @@ namespace hgl::ecs
         {
             if (MaterialVariantRecord *record = GetVariantRecordMutable(table, id))
                 record->program = nullptr;
+        }
+
+        /// 前向槽的 program purpose。A4 起阴影 pass 也要用它还原**同一行键**
+        /// （运行期共享行的 program 身份维度恒取前向 purpose，两个 pass 落在同一行上）。
+        graph::mtl::ShaderProgramPurpose GetEffectiveForwardPurpose(PrimitiveComponent &primitive_comp)
+        {
+            switch (primitive_comp.GetPrimitiveVariantPurpose())
+            {
+            case graph::PrimitiveVariantPurpose::DepthOnly:
+                return graph::mtl::ShaderProgramPurpose::DepthOnly;
+            case graph::PrimitiveVariantPurpose::ShadowCaster:
+                return graph::mtl::ShaderProgramPurpose::ShadowDepth;
+            default:
+                return graph::mtl::ShaderProgramPurpose::ForwardColor;
+            }
+        }
+
+        /// 运行期行键的"自有材质 SSBO 行"维度（无有效绑定记 0）。
+        /// ⚠ 必须入键：`HashMaterialRecipe` 不含 `material_ssbo_binding.data_index`
+        /// （inc/hgl/mtl/MaterialRecipe.h:641-648），只按配方去重会让"同配方、不同
+        /// 数据行"的实体共用一行（PBRSpheres 每球一行数据 ⇒ 整体串味）。
+        uint32_t ResolveRowDataIndex(const graph::mtl::MaterialRecipe &recipe)
+        {
+            return recipe.material_ssbo_binding.IsValid()
+                ? recipe.material_ssbo_binding.data_index
+                : 0u;
+        }
+
+        // ── A4：共享行的取/换（intern + refcount）──
+        // 把 slot 的行引用换成 `key` 对应的**共享行**：
+        //   · 同键（新行号 == 旧行号）⇒ 抵消这次 Intern 的引用，引用数不变；
+        //   · 换行 ⇒ 先释放旧行（归零则回收并退休其 GPU 绑定），再挂新行。
+        MaterialRuntimeRowID AssignSlotRow(MaterialRuntimeTable *runtime_table,
+                                           MaterialRuntimeSlot &slot,
+                                           const MaterialRuntimeKey &key)
+        {
+            if (!runtime_table)
+                return INVALID_MATERIAL_RUNTIME_ROW_ID;
+
+            const MaterialRuntimeRowID id = runtime_table->Intern(key);
+
+            if (id == INVALID_MATERIAL_RUNTIME_ROW_ID)
+                return INVALID_MATERIAL_RUNTIME_ROW_ID;
+
+            if (slot.row == id)
+            {
+                runtime_table->Release(id);
+                return id;
+            }
+
+            if (slot.row != INVALID_MATERIAL_RUNTIME_ROW_ID)
+                runtime_table->Release(slot.row);
+
+            slot.row = id;
+            return id;
+        }
+
+        /// 释放 slot 持有的行引用（行归零 ⇒ 回收 + 退休 GPU 绑定）。
+        void ReleaseSlotRow(MaterialRuntimeTable *runtime_table, MaterialRuntimeSlot &slot)
+        {
+            if (!runtime_table || slot.row == INVALID_MATERIAL_RUNTIME_ROW_ID)
+                return;
+
+            runtime_table->Release(slot.row);
+            slot.row = INVALID_MATERIAL_RUNTIME_ROW_ID;
         }
 
         // D9：阴影 pass 跳过路径的收敛参数。
@@ -152,14 +223,15 @@ namespace hgl::ecs
 
         bool EnsureRuntimeGeometryFromAsset(ECSContext *world,
                                             const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                            const std::shared_ptr<MaterialComponent> &material_comp)
+                                            const MaterialRuntimeSlot &slot,
+                                            const MaterialRuntimeRow *row)
         {
-            if (!world || !primitive_comp || !material_comp)
+            if (!world || !primitive_comp || !row)
             {
-                GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset precondition failed world=%p primitive=%p material_comp=%p",
+                GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset precondition failed world=%p primitive=%p row=%p",
                           world,
                           primitive_comp.get(),
-                          material_comp.get());
+                          static_cast<const void *>(row));
                 return false;
             }
 
@@ -172,16 +244,17 @@ namespace hgl::ecs
             // program 尚为空，退回 shadow 槽保证绑定可建；哨兵始终以 forward
             // program 为准，避免两个槽的程序指针交替触发几何缓冲销毁重建。
             MaterialVariantTable *variant_table = GetVariantTable(world);
-            auto *material = GetForwardProgram(variant_table, *material_comp);
+            const MaterialRuntimeRow *forward_row = row;
+            auto *material = GetForwardProgram(variant_table, forward_row);
             if (!material)
-                material = GetShadowProgram(variant_table, *material_comp);
+                material = GetShadowProgram(variant_table, forward_row);
             if (!material)
             {
                 GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed: material program null owner=%s valid=%d program_dirty=%d runtime_dirty=%d",
                           GetPrimitiveOwnerName(primitive_comp),
-                          material_comp->valid ? 1 : 0,
-                          material_comp->program_dirty ? 1 : 0,
-                          material_comp->runtime_dirty ? 1 : 0);
+                          slot.valid ? 1 : 0,
+                          slot.program_dirty ? 1 : 0,
+                          slot.runtime_dirty ? 1 : 0);
                 return false;
             }
             return primitive_comp->EnsureRuntimeGeometryBinding(material);
@@ -490,50 +563,54 @@ namespace hgl::ecs
             return true;
         }
 
-        void InvalidateRecipeRuntime(MaterialVariantTable *variant_table,
-                                     const std::shared_ptr<MaterialComponent> &material_comp,
+        // A4：材质运行期失效。两种形态（都只动**本实例**的 slot 标志）：
+        //   · reset_row_in_place = false（**行键要变**：配方 / 自有 SSBO 行变了）⇒ 释放本
+        //     实例对旧共享行的引用（行归零 ⇒ 回收 + 退休其纹理配置池行）；下次解析会
+        //     登记新键的行。旧行若仍被同键邻居引用则原样保留（它们没变，不该被牵连）。
+        //   · reset_row_in_place = true（**行键不变**：program 对象换了 / 物化失败）⇒ 就地
+        //     清掉共享行上的物化绑定并退休纹理配置 —— program 身份不在行键里，同键共享者
+        //     取到的是同一个 program 对象，本帧同样会重跑整链，因此就地重置不会让邻居
+        //     拿到半份状态。配方缓存**不动**（与旧 ClearMaterializationRows 同口径）。
+        void InvalidateRecipeRuntime(ECSContext *world,
+                                     MaterialRuntimeSlot &slot,
+                                     const bool reset_row_in_place,
                                      const bool clear_program)
         {
-            if (!material_comp)
-                return;
+            MaterialVariantTable *variant_table = GetVariantTable(world);
+            MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
 
-            if (material_comp->material_texture_configuration.IsValid())
+            MaterialRuntimeRow *row = runtime_table
+                ? runtime_table->GetMutable(slot.row)
+                : nullptr;
+            const MaterialVariantID forward_variant = row
+                ? row->forward_variant
+                : INVALID_MATERIAL_VARIANT_ID;
+
+            if (row && reset_row_in_place)
             {
-                auto *graphics_context = material_comp->GetOwner()
-                    && material_comp->GetOwner()->GetContext()
-                    ? material_comp->GetOwner()->GetContext()
-                        ->GetGraphicsContext()
-                    : nullptr;
-                auto *registry = graphics_context
-                    ? graphics_context->GetSSBOBufferRegistry()
-                    : nullptr;
-                if (registry)
-                {
-                    const uint64_t retire_epoch =
-                        static_cast<uint64_t>(
-                            material_comp->GetOwner()->GetContext()
-                                ->GetRenderSubmissionSerial())
-                        + graph::MaterialTextureConfigurationRetireEpochDelay;
-                    if (registry->IsMaterialTextureConfigurationValid(
-                            material_comp->material_texture_configuration))
-                    {
-                        registry->RetireMaterialTextureConfiguration(
-                            material_comp->material_texture_configuration,
-                            retire_epoch);
-                    }
-                }
+                runtime_table->RetireRowTextureConfiguration(*row);
+                row->data_index_row = uint32_t(-1);
+                row->material_row_cpu = nullptr;
+                row->material_row_gpu = 0;
+                row->material_texture_row_cpu = nullptr;
+                row->material_texture_row_gpu = 0;
+                row->material_texture_zero_row_gpu = 0;
+                row->material_texture_configuration_hash = 0;
+            }
+            else
+            {
+                ReleaseSlotRow(runtime_table, slot);
             }
 
-            material_comp->ClearMaterializationRows();
-            material_comp->runtime_dirty = true;
-            material_comp->valid = false;
+            slot.runtime_dirty = true;
+            slot.valid = false;
 
             if (clear_program)
             {
                 // A3：退掉该键变体记录的 program 引用（同键实体共享该记录，它们下帧
                 // 会从 ShaderProgramManager 缓存重新拿到同一 program）。
-                ClearVariantProgram(variant_table, material_comp->forward_variant);
-                material_comp->program_dirty = true;
+                ClearVariantProgram(variant_table, forward_variant);
+                slot.program_dirty = true;
             }
         }
     }
@@ -558,10 +635,12 @@ namespace hgl::ecs
     // Forward↔Shadow 乒乓会让 InvalidateRecipeRuntime 反复 retire 纹理配置，
     // 并禁用 P1-1 全干净帧快路径。
     bool RenderPrimitiveCollectSystem::ResolveShadowCasterProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                                                  const std::shared_ptr<MaterialComponent> &material_comp)
+                                                                  MaterialRuntimeSlot &slot)
     {
-        if (!world || !primitive_comp || !material_comp)
+        if (!world || !primitive_comp)
             return false;
+
+        MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
 
         graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
         const graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
@@ -591,16 +670,20 @@ namespace hgl::ecs
         // A3 快路径：上次登记的阴影变体键两维都未变、program 已就绪、材质授权代
         // 未推进 ⇒ 本帧无事可做。旧实现先 Intern 再查记录（键一变自然落到新记录），
         // 这里改为先比键、键不变才认这条记录——省掉一次无谓的 recipe 构造。
+        // A4：阴影变体 ID 挂在**运行期共享行**上（无行 ⇒ 无变体 ID ⇒ 走完整路径）。
         MaterialVariantTable *variant_table = GetVariantTable(world);
         if (variant_table)
         {
-            const MaterialVariantRecord *prev =
-                variant_table->Get(material_comp->shadow_variant);
+            const MaterialRuntimeRow *prev_row = runtime_table
+                ? runtime_table->Get(slot.row)
+                : nullptr;
+            const MaterialVariantRecord *prev = variant_table->Get(
+                prev_row ? prev_row->shadow_variant : INVALID_MATERIAL_VARIANT_ID);
 
             if (prev
              && prev->key.program_build_context == build_context_hash
              && prev->program
-             && material_comp->shadow_tracked_material_data_generation
+             && slot.shadow_tracked_material_data_generation
                     == MaterialAuthoredGenerationOf(primitive_comp))
                 return true;
         }
@@ -609,10 +692,10 @@ namespace hgl::ecs
         // 先于 Intern 取得：阴影 effective recipe 与 forward 那条链**同源**（都是
         // BuildResolvedRecipe(primitive_comp, nullptr, …)），这里照常构造一次取哈希。
         // 时序取舍（Intern 从"recipe 之前"下移到"recipe 之后、acquire 之前"）：
-        //   · 模板选择 / AcquireShaderProgram 失败仍在 Intern 之后 ⇒ D9 的
-        //     retry_frames 归属（首帧告警 + 超上限降频）**不变**；
+        //   · 模板选择 / AcquireShaderProgram 失败仍在 Intern 之后 ⇒ D9 的失败归属
+        //     （首帧告警 + 超上限降频）**不变**（计数本体 A4 起在每实例 slot）；
         //   · 只有 BuildResolvedRecipe 自身失败这一窄路径由"已登记"变为"未登记"：
-        //     AdvanceShadowRetry 无记录可记账 ⇒ 不 bump（与 graphics 缺失同类，
+        //     AdvanceShadowRetry 无变体键可记账 ⇒ 不 bump（与 graphics 缺失同类，
         //     该失败本身逐帧有独立告警）。代价换来"不同材质不再共用一条记录"。
         graph::mtl::MaterialRecipe effective_recipe{};
         if (!BuildResolvedRecipe(primitive_comp, nullptr, effective_recipe))
@@ -624,10 +707,27 @@ namespace hgl::ecs
 
         const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(effective_recipe);
 
+        // A4：先把**运行期共享行**挂好——键里的 program 身份取**前向** purpose，
+        // 于是"阴影 pass 先于主帧"（首帧 prepass / 只有阴影帧的条带重画）也会落在与
+        // forward 链**同一行**上，不会一物两行。阴影槽的共享绑定
+        // （shadow_variant / shadow_cached_normalized_recipe）随行存放。
+        if (runtime_table)
+        {
+            const uint64_t forward_build_context =
+                graph::mtl::HashMaterialProgramBuildContext(
+                    primitive_type,
+                    geometry_vertex_format,
+                    graphics->GetPhysicalDeviceProfile(),
+                    GetEffectiveForwardPurpose(*primitive_comp));
+
+            AssignSlotRow(runtime_table, slot,
+                          MaterialRuntimeKey{forward_build_context, recipe_hash,
+                                             ResolveRowDataIndex(effective_recipe)});
+        }
+
         const MaterialVariantID shadow_variant = variant_table
             ? variant_table->Intern(MaterialVariantKey{build_context_hash, recipe_hash})
             : INVALID_MATERIAL_VARIANT_ID;
-        material_comp->shadow_variant = shadow_variant;
 
         if (shadow_variant == INVALID_MATERIAL_VARIANT_ID)
         {
@@ -638,12 +738,16 @@ namespace hgl::ecs
             return false;
         }
 
+        // Intern 可能让 records 扩容搬家 ⇒ 重新取行/记录，不复用上面的指针。
+        if (MaterialRuntimeRow *row = runtime_table ? runtime_table->GetMutable(slot.row) : nullptr)
+            row->shadow_variant = shadow_variant;
+
         // 同键记录可能已被同材质/同上下文的其它实体解析过 ⇒ program 已就绪即复用。
         // 此处**不写** program（program 只在解析成功那一刻写一次，不能每帧写共享记录）。
         MaterialVariantRecord *shadow_record = variant_table->GetMutable(shadow_variant);
         if (shadow_record
          && shadow_record->program
-         && material_comp->shadow_tracked_material_data_generation
+         && slot.shadow_tracked_material_data_generation
                 == MaterialAuthoredGenerationOf(primitive_comp))
             return true;
 
@@ -694,49 +798,53 @@ namespace hgl::ecs
         // A3：解析成功 ⇒ 落 program 到该变体记录（同键实体共享；这是记录 program
         // 的唯一写入点之一，只在解析路径发生）。
         shadow_record->program = resolved_program;
-        material_comp->shadow_cached_normalized_recipe = effective_recipe;
-        material_comp->shadow_tracked_material_data_generation =
+        if (MaterialRuntimeRow *row = runtime_table ? runtime_table->GetMutable(slot.row) : nullptr)
+            row->shadow_cached_normalized_recipe = effective_recipe;
+        slot.shadow_tracked_material_data_generation =
             MaterialAuthoredGenerationOf(primitive_comp);
         return true;
     }
 
     bool RenderPrimitiveCollectSystem::ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                                                          const std::shared_ptr<MaterialComponent> &material_comp)
+                                                                          MaterialRuntimeSlot &slot)
     {
-        if (!world || !primitive_comp || !material_comp)
+        if (!world || !primitive_comp)
             return false;
 
         // A1：阴影 pass 一律走专用 ShadowCaster 程序槽；下方解析链只服务
         // forward pass，不感知当前 pass。
         if (world->IsCurrentPassShadow())
-            return ResolveShadowCasterProgram(primitive_comp, material_comp);
+            return ResolveShadowCasterProgram(primitive_comp, slot);
 
-        return ResolveForwardProgram(primitive_comp, material_comp);
+        return ResolveForwardProgram(primitive_comp, slot);
     }
 
     // Forward 槽解析（主帧着色程序）。阴影 pass 中 masked caster 的行物化
     // 也会借道此处（见主循环 A1-4 分支）——纹理行是 per-primitive 共享
     // 状态，与 program 无关。
     bool RenderPrimitiveCollectSystem::ResolveForwardProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                                             const std::shared_ptr<MaterialComponent> &material_comp)
+                                                             MaterialRuntimeSlot &slot)
     {
-        if (!world || !primitive_comp || !material_comp)
+        if (!world || !primitive_comp)
             return false;
 
         MaterialVariantTable *variant_table = GetVariantTable(world);
-        if (!variant_table)
+        MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
+        if (!variant_table || !runtime_table)
             return false;
 
-        // A3：本组件的 forward 变体记录视图（解析/比对/取用都以此为准）。
+        // A3/A4：本实例的 forward 变体记录视图（变体 ID 挂在**运行期共享行**上，
+        // 解析/比对/取用都以此为准）。
         // 注意：该指针在下一次 Intern 之前有效——下面写 program 前会重新取记录。
-        const MaterialVariantRecord *forward_record =
-            variant_table->Get(material_comp->forward_variant);
+        MaterialRuntimeRow *row = runtime_table->GetMutable(slot.row);
+        const MaterialVariantRecord *forward_record = variant_table->Get(
+            row ? row->forward_variant : INVALID_MATERIAL_VARIANT_ID);
 
         // P3: Fast-path — if nothing has changed since last resolve, skip all work.
-        if (!material_comp->program_dirty
+        if (!slot.program_dirty
             && forward_record
             && forward_record->program
-            && material_comp->tracked_material_data_generation
+            && slot.tracked_material_data_generation
                 == MaterialAuthoredGenerationOf(primitive_comp))
             return true;
 
@@ -765,21 +873,8 @@ namespace hgl::ecs
 
         // 渲染变体 purpose 必须先于脏检查解析——若 Forward↔Shadow 切换而
         // recipe/geometry/profile 不变，哈希不含 purpose 会复用错误的 program
-        graph::mtl::ShaderProgramPurpose effective_purpose =
-            graph::mtl::ShaderProgramPurpose::ForwardColor;
-        switch (primitive_comp->GetPrimitiveVariantPurpose())
-        {
-        case graph::PrimitiveVariantPurpose::DepthOnly:
-            effective_purpose =
-                graph::mtl::ShaderProgramPurpose::DepthOnly;
-            break;
-        case graph::PrimitiveVariantPurpose::ShadowCaster:
-            effective_purpose =
-                graph::mtl::ShaderProgramPurpose::ShadowDepth;
-            break;
-        default:
-            break;
-        }
+        const graph::mtl::ShaderProgramPurpose effective_purpose =
+            GetEffectiveForwardPurpose(*primitive_comp);
 
         const uint64_t build_context_hash =
             graph::mtl::HashMaterialProgramBuildContext(
@@ -787,12 +882,18 @@ namespace hgl::ecs
                 geometry_vertex_format,
                 graphics->GetPhysicalDeviceProfile(),
                 effective_purpose);
-        if (material_comp->recipe_hash != recipe_hash
-         || !forward_record
-         || forward_record->key.program_build_context != build_context_hash)
+
+        // A4：行键 = (program 身份, 配方身份, **自有材质数据行**)。任一维变了 ⇒ 旧共享行
+        // 不再代表本实例的授权态：释放本实例对旧行的引用（行归零则回收并退休其纹理配置
+        // 池行；仍被同键邻居引用的旧行原样保留，不该被牵连）。
+        if (!row
+         || row->key.recipe_hash != recipe_hash
+         || row->key.program_build_context != build_context_hash
+         || row->key.data_index_row != ResolveRowDataIndex(effective_recipe))
         {
-            material_comp->program_dirty = true;
-            InvalidateRecipeRuntime(variant_table, material_comp, false);
+            slot.program_dirty = true;
+            InvalidateRecipeRuntime(world, slot, false, false);
+            row = nullptr;
 
             // 管线由 (program 身份, 规范化 recipe) 共同决定：配方内容变化后，
             // 即便 program 身份不变（例如仅 double_sided/cull 变化）也必须重建
@@ -801,7 +902,7 @@ namespace hgl::ecs
             primitive_comp->InvalidateResolvedRuntimePipeline();
         }
 
-        if (!material_comp->program_dirty
+        if (!slot.program_dirty
          && forward_record
          && forward_record->program)
         {
@@ -809,14 +910,18 @@ namespace hgl::ecs
             // content (e.g. an author swapped a texture or data object but kept
             // the same resource id). Refresh the effective recipe as well, so
             // an instance-only data_index change reaches BDA materialization.
-            if (material_comp->tracked_material_data_generation
+            if (slot.tracked_material_data_generation
                 != MaterialAuthoredGenerationOf(primitive_comp))
             {
-                material_comp->cached_effective_recipe = effective_recipe;
-                material_comp->cached_effective_recipe_hash =
-                    graph::mtl::HashMaterialRecipe(effective_recipe);
-                material_comp->runtime_dirty = true;
-                material_comp->tracked_material_data_generation =
+                // 行键没变 ⇒ 同一份授权态的载体；内容相同，写回是幂等的。
+                if (MaterialRuntimeRow *refresh = runtime_table->GetMutable(slot.row))
+                {
+                    refresh->cached_effective_recipe = effective_recipe;
+                    refresh->cached_effective_recipe_hash =
+                        graph::mtl::HashMaterialRecipe(effective_recipe);
+                }
+                slot.runtime_dirty = true;
+                slot.tracked_material_data_generation =
                     MaterialAuthoredGenerationOf(primitive_comp);
             }
             return true;
@@ -879,10 +984,17 @@ namespace hgl::ecs
             return false;
         }
 
+        // A4：program 对象变了（旧记录里的 program 与新解析的不是同一个）⇒ 就地把本行的
+        // 物化绑定作废并退休纹理配置。program 身份**不在行键里**，但同键共享者取到的是
+        // 同一个 program 对象（缓存按请求去重）⇒ 它们本帧同样会重跑整链，就地重置不会
+        // 让邻居拿到半份状态。
         const bool program_changed =
             !(forward_record && forward_record->program == resolved_program);
         if (program_changed)
-            InvalidateRecipeRuntime(variant_table, material_comp, false);
+        {
+            InvalidateRecipeRuntime(world, slot, true, false);
+            row = nullptr;
+        }
 
         if (auto rdbs = world->GetSystem<RenderSceneUBOSystem>())
         {
@@ -906,8 +1018,6 @@ namespace hgl::ecs
         // 落不同记录**，否则后解析者的 program 会覆盖先解析者（键少一维的 bug）。
         // recipe_hash 取自本次解析所用的 effective recipe（见上方
         // HashMaterialRecipe(effective_recipe) 那处比对）。
-        // 注意：Intern 可能让 records 扩容搬家 ⇒ 重新取记录，不复用上面的
-        // forward_record 指针。
         const MaterialVariantID forward_variant =
             variant_table->Intern(MaterialVariantKey{build_context_hash, recipe_hash});
         if (forward_variant == INVALID_MATERIAL_VARIANT_ID)
@@ -918,7 +1028,29 @@ namespace hgl::ecs
                         (unsigned long long)recipe_hash);
             return false;
         }
-        material_comp->forward_variant = forward_variant;
+
+        // A4：登记/复用**运行期共享行**（intern + refcount；同键多实体共用一行）。
+        // 键 = (program 身份, 配方身份, 自有材质数据行)；`AssignSlotRow` 负责换行时的
+        // 旧行释放（归零回收 + 退休 GPU 绑定）与"同键复用抵消这次引用"。
+        // 注意：Intern 可能让行/记录两个容器扩容搬家 ⇒ 之后一律重新取指针。
+        const MaterialRuntimeKey runtime_key{
+            build_context_hash,
+            recipe_hash,
+            ResolveRowDataIndex(material_binding_recipe)};
+
+        const MaterialRuntimeRowID row_id = AssignSlotRow(runtime_table, slot, runtime_key);
+        if (row_id == INVALID_MATERIAL_RUNTIME_ROW_ID)
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] runtime row unavailable/full for %s build_context=%llu recipe=%llu data_index=%u",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        (unsigned long long)runtime_key.program_build_context,
+                        (unsigned long long)runtime_key.recipe_hash,
+                        runtime_key.data_index_row);
+            return false;
+        }
+
+        row = runtime_table->GetMutable(row_id);
+        row->forward_variant = forward_variant;
         if (MaterialVariantRecord *forward_written = variant_table->GetMutable(forward_variant))
             forward_written->program = resolved_program;
 
@@ -939,29 +1071,34 @@ namespace hgl::ecs
                 material_binding_recipe.textures.size(),
                 planned_data);
         }
-        material_comp->program_dirty = false;
-        material_comp->MarkProgramResolved();
-        material_comp->recipe_hash = recipe_hash;
+        slot.program_dirty = false;
+        slot.valid = false;                     // 等价于原 MarkProgramResolved()
+        row->recipe_hash = recipe_hash;
 
         // effective_recipe 出自 MaterialData::BuildResolvedRecipe（数据层边界
         // 已 NormalizeRecipe），直接缓存供 CreatePipeline 使用，无需再规范化。
-        material_comp->cached_normalized_recipe = effective_recipe;
+        row->cached_normalized_recipe = effective_recipe;
 
         // P3: Cache effective recipe (with program-resolved SSBO types) for
         // direct resource preparation and BDA materialization.
-        material_comp->cached_effective_recipe = material_binding_recipe;
-        material_comp->cached_effective_recipe_hash =
+        row->cached_effective_recipe = material_binding_recipe;
+        row->cached_effective_recipe_hash =
             graph::mtl::HashMaterialRecipe(material_binding_recipe);
 
-        material_comp->tracked_material_data_generation = MaterialAuthoredGenerationOf(primitive_comp);
+        slot.tracked_material_data_generation = MaterialAuthoredGenerationOf(primitive_comp);
 
         return true;
     }
 
     bool RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                                                          const std::shared_ptr<MaterialComponent> &material_comp)
+                                                                          MaterialRuntimeSlot &slot)
     {
-        if (!world || !primitive_comp || !material_comp)
+        if (!world || !primitive_comp)
+            return false;
+
+        const MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
+        const MaterialRuntimeRow *row = runtime_table ? runtime_table->Get(slot.row) : nullptr;
+        if (!row)
             return false;
 
         // A1：阴影 pass 用 ShadowCaster 槽的 program/recipe。管线按 render_pass
@@ -969,7 +1106,7 @@ namespace hgl::ecs
         // 驱逐。
         const bool shadow_pass = world->IsCurrentPassShadow();
         graph::ShaderProgram *program = GetCurrentPassProgram(
-            GetVariantTable(world), *material_comp, shadow_pass);
+            GetVariantTable(world), row, shadow_pass);
         if (!program)
             return false;
 
@@ -993,13 +1130,13 @@ namespace hgl::ecs
         // recipe；forward 保持 effective/normalized 复用逻辑。
         graph::mtl::MaterialRecipe effective_recipe =
             shadow_pass
-                ? material_comp->shadow_cached_normalized_recipe
-                : material_comp->cached_effective_recipe;
+                ? row->shadow_cached_normalized_recipe
+                : row->cached_effective_recipe;
 
         if (!shadow_pass
-         && material_comp->recipe_hash
-                == material_comp->cached_effective_recipe_hash)
-            effective_recipe = material_comp->cached_normalized_recipe;
+         && row->recipe_hash
+                == row->cached_effective_recipe_hash)
+            effective_recipe = row->cached_normalized_recipe;
 
         graph::Pipeline *resolved_pipeline = render_pass->CreatePipeline(program,
                                                                          effective_recipe);
@@ -1016,31 +1153,38 @@ namespace hgl::ecs
     }
 
     bool RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                                                         const std::shared_ptr<MaterialComponent> &material_comp)
+                                                                         MaterialRuntimeSlot &slot)
     {
-        if (!world || !primitive_comp || !material_comp)
+        if (!world || !primitive_comp)
+            return false;
+
+        // A4：物化写的是**共享行**（同键多实体共用一份绑定）；每实例标志仍写 slot。
+        MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
+        MaterialRuntimeRow *row = runtime_table ? runtime_table->GetMutable(slot.row) : nullptr;
+
+        if (!row)
             return false;
 
         graph::ShaderProgram *material_program =
-            GetForwardProgram(GetVariantTable(world), *material_comp);
+            GetForwardProgram(GetVariantTable(world), row);
 
         if (!material_program
          || !graph::mtl::MaterialRequiresRecipeRuntimeRows(
                 material_program->GetShaderResourceSchema()))
         {
-            material_comp->data_index_row = 0;
-            material_comp->runtime_dirty = false;
-            material_comp->valid = false;
+            row->data_index_row = 0;
+            slot.runtime_dirty = false;
+            slot.valid = false;
             return true;
         }
 
         // Consume the normalized, program-resolved recipe directly. It is
         // the source for both texture references and BDA material rows.
         const graph::mtl::MaterialRecipe &effective_recipe =
-            material_comp->cached_effective_recipe;
+            row->cached_effective_recipe;
         const graph::mtl::MaterialRecipe &material_binding_recipe =
-            material_comp->cached_effective_recipe;
-        if (material_comp->cached_effective_recipe_hash == 0)
+            row->cached_effective_recipe;
+        if (row->cached_effective_recipe_hash == 0)
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Materialize failed: effective material recipe is not cached for %s",
@@ -1106,8 +1250,8 @@ namespace hgl::ecs
                              1u);
                 }
 
-                material_comp->material_row_cpu = nullptr;
-                material_comp->material_row_gpu     = 0;
+                row->material_row_cpu = nullptr;
+                row->material_row_gpu     = 0;
 
                 auto *graphics_context = world->GetGraphicsContext();
                 auto *material_domain = graphics_context
@@ -1163,16 +1307,16 @@ namespace hgl::ecs
 
                 const uint64_t row_offset =
                     uint64_t(asset_binding.data_index) * material_buffer.row_bytes;
-                material_comp->material_row_cpu = material_buffer.cpu_base
+                row->material_row_cpu = material_buffer.cpu_base
                     ? static_cast<uint8_t *>(material_buffer.cpu_base) + row_offset
                     : nullptr;
-                material_comp->material_row_gpu = material_buffer.gpu_base + row_offset;
+                row->material_row_gpu = material_buffer.gpu_base + row_offset;
 
                 if (!arena_trace_done)
                 {
                     GLogInfo(
                         "[ArenaTrace] translated: gpu=0x%llx (base=%llu row_bytes=%u domain=material)",
-                        (unsigned long long)material_comp->material_row_gpu,
+                        (unsigned long long)row->material_row_gpu,
                         (unsigned long long)material_buffer.gpu_base,
                         material_buffer.row_bytes);
                 }
@@ -1180,7 +1324,7 @@ namespace hgl::ecs
         }
 
         // data_index（行号）仍按 data_index VALUE 发布——行表/行尾镜像共用。
-        material_comp->data_index_row =
+        row->data_index_row =
             entity_data_index != uint32_t(-1) ? entity_data_index : 0u;
 
         auto *texture_graphics_context = world->GetGraphicsContext();
@@ -1339,7 +1483,7 @@ namespace hgl::ecs
                     texture_definition,
                     texture_layout);
             const auto old_allocation =
-                material_comp->material_texture_configuration;
+                row->material_texture_configuration;
             const bool old_allocation_live =
                 old_allocation.IsValid()
              && texture_registry->IsMaterialTextureConfigurationValid(
@@ -1350,7 +1494,7 @@ namespace hgl::ecs
              && old_allocation.reference_count
                     == texture_layout.reference_count
              && old_allocation.row_stride == texture_layout.row_stride
-             && material_comp->material_texture_configuration_hash
+             && row->material_texture_configuration_hash
                     == reference_configuration_hash;
 
             graph::MaterialTextureConfigurationAllocation new_allocation =
@@ -1391,24 +1535,24 @@ namespace hgl::ecs
                     old_allocation,
                     retire_epoch);
 
-            material_comp->material_texture_configuration = new_allocation;
-            material_comp->material_texture_row_cpu =
+            row->material_texture_configuration = new_allocation;
+            row->material_texture_row_cpu =
                 new_allocation.cpu_row;
-            material_comp->material_texture_row_gpu =
+            row->material_texture_row_gpu =
                 new_allocation.gpu_row;
-            material_comp->material_texture_zero_row_gpu =
+            row->material_texture_zero_row_gpu =
                 texture_registry->
                     GetMaterialTextureConfigurationZeroRowAddress(
                         texture_definition,
                         texture_layout);
-            if (material_comp->material_texture_zero_row_gpu == 0)
+            if (row->material_texture_zero_row_gpu == 0)
             {
                 GLogError(
                     "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration zero row unavailable owner=%s",
                     GetPrimitiveOwnerName(primitive_comp));
                 return false;
             }
-            material_comp->material_texture_configuration_hash =
+            row->material_texture_configuration_hash =
                 reference_configuration_hash;
 
             //if (getenv("ULRE_ARENA_DEBUG"))
@@ -1441,40 +1585,42 @@ namespace hgl::ecs
         {
             if (texture_registry
              && texture_registry->IsMaterialTextureConfigurationValid(
-                    material_comp->material_texture_configuration))
+                    row->material_texture_configuration))
                 texture_registry->RetireMaterialTextureConfiguration(
-                    material_comp->material_texture_configuration,
+                    row->material_texture_configuration,
                     retire_epoch);
-            material_comp->material_texture_configuration = {};
-            material_comp->material_texture_row_cpu = nullptr;
-            material_comp->material_texture_row_gpu = 0;
-            material_comp->material_texture_zero_row_gpu = 0;
+            row->material_texture_configuration = {};
+            row->material_texture_row_cpu = nullptr;
+            row->material_texture_row_gpu = 0;
+            row->material_texture_zero_row_gpu = 0;
         }
 
-        material_comp->runtime_dirty = false;
-        material_comp->valid = false;
-        material_comp->last_materialize_epoch = materialize_epoch;
+        slot.runtime_dirty = false;
+        slot.valid = false;
+        slot.last_materialize_epoch = materialize_epoch;
         return true;
     }
 
     // D9：阴影 pass 跳过/失败路径的统一收敛入口（见头文件注释）。
     bool RenderPrimitiveCollectSystem::AdvanceShadowRetry(
-        const std::shared_ptr<MaterialComponent> &material_comp,
+        MaterialRuntimeSlot &slot,
         const char *reason,
         const std::shared_ptr<PrimitiveComponent> &primitive_comp)
     {
-        if (!material_comp)
+        // A4：计数归**每实例 slot**（该实例在阴影 pass 上的连续跳过帧数）。
+        // A3 曾把它记在共享变体记录上——同键的健康兄弟每帧复位，会持续清零失败者的
+        // 计数，掩盖 D9 的 masked 失败告警/降频（只影响诊断，不影响渲染）；迁到每实例
+        // 侧后各实例独立收敛。
+        //
+        // 归属判定与 A3 同口径：只有"该实例已经挂上共享行、且阴影变体已登记"才算有
+        // 可记账的位置（解析还没走到算键的地方，例如 graphics 缺失时——那类失败本身
+        // 已逐帧有独立告警，见 ResolveShadowCasterProgram）。
+        const MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
+        const MaterialRuntimeRow *row = runtime_table ? runtime_table->Get(slot.row) : nullptr;
+        if (!row || row->shadow_variant == INVALID_MATERIAL_VARIANT_ID)
             return false;
 
-        // A3：计数归**阴影变体记录**（该变体键上的连续跳过帧数）。变体未登记（解析
-        // 还没走到算键的地方，例如 graphics 缺失）时没有可记账的记录——此路径不 bump
-        // （该失败本身已逐帧有独立告警，见 ResolveShadowCasterProgram）。
-        MaterialVariantRecord *retry_record =
-            GetVariantRecordMutable(GetVariantTable(world), material_comp->shadow_variant);
-        if (!retry_record)
-            return false;
-
-        const uint32_t retries = ++retry_record->retry_frames;
+        const uint32_t retries = ++slot.shadow_retry_frames;
         const char *const name = GetPrimitiveOwnerName(primitive_comp);
 
         if (retries == 1)
@@ -1519,6 +1665,9 @@ namespace hgl::ecs
 
         std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
         world->GetComponents<PrimitiveComponent>(primitives);
+
+        // A4：材质运行期表（世界私有）——共享行 = 可共享的材质绑定；slot = 每实例状态。
+        MaterialRuntimeTable *runtime_table = world->GetMaterialRuntimeTable();
 
         // P1-1: Global frame-level materialize gating.
         //
@@ -1649,12 +1798,16 @@ namespace hgl::ecs
             if (!HasAnyMaterialSource(primitiveComp))
                 continue;
 
-            auto material_comp = entity->GetComponent<MaterialComponent>();
-            if (!material_comp)
-                material_comp = entity->AddComponent<MaterialComponent>();
+            // A4：材质运行期状态 = **每实例 slot**（世界表里按实体稀疏存放）+
+            // **共享行**（绑定）。这里取/建 slot，再经行取 program 与缓存哈希。
+            MaterialRuntimeSlot &material_slot =
+                world->GetOrCreateMaterialRuntimeSlot(entity->GetEntityID());
+            const MaterialRuntimeRow *material_row = runtime_table
+                ? runtime_table->Get(material_slot.row)
+                : nullptr;
 
             const graph::ShaderProgram *forward_program =
-                GetForwardProgram(GetVariantTable(world), *material_comp);
+                GetForwardProgram(GetVariantTable(world), material_row);
 
             const bool runtime_rows =
                 forward_program
@@ -1669,15 +1822,16 @@ namespace hgl::ecs
                 runtime_rows || !forward_program;
 
             const bool fast_path_holds =
-                   !material_comp->program_dirty
+                   !material_slot.program_dirty
                 && forward_program
-                && material_comp->tracked_material_data_generation
+                && material_slot.tracked_material_data_generation
                    == MaterialAuthoredGenerationOf(primitiveComp)
-                && material_comp->cached_effective_recipe_hash != 0;
+                && material_row
+                && material_row->cached_effective_recipe_hash != 0;
 
             const bool epoch_stale =
                 runtime_rows
-             && material_comp->last_materialize_epoch != materialize_epoch;
+             && material_slot.last_materialize_epoch != materialize_epoch;
 
             // valid==true only survives a fully successful resolve+prepare+
             // materialize+geometry+pipeline chain, so a Failed material keeps
@@ -1690,8 +1844,8 @@ namespace hgl::ecs
             // — forcing it into needs_work makes the next frame re-run the full
             // chain so the flag gets consumed.
             const bool needs_work =
-                !fast_path_holds || epoch_stale || !material_comp->valid
-             || material_comp->runtime_dirty;
+                !fast_path_holds || epoch_stale || !material_slot.valid
+             || material_slot.runtime_dirty;
 
             any_material_work |= needs_work;
             any_possible_runtime_rows_visible |= possible_runtime_rows;
@@ -1834,6 +1988,9 @@ namespace hgl::ecs
                 }
             }
 
+            // A4：本实例的材质运行期 slot（有材质来源时才有；供后面的 4-ID 同步与 D9 复位用）
+            MaterialRuntimeSlot *material_slot_ptr = nullptr;
+
             if (!HasAnyMaterialSource(primitiveComp))
             {
                 GLogWarning("[RenderPrimitiveCollectSystem] Skip primitive without recipe: %s",
@@ -1841,12 +1998,12 @@ namespace hgl::ecs
             }
             else
             {
-                auto material_comp = entity->GetComponent<MaterialComponent>();
-                if (!material_comp)
-                    material_comp = entity->AddComponent<MaterialComponent>();
+                // A4：本实例的材质运行期 **slot**（世界表按实体稀疏存放；与预扫描同一份）。
+                MaterialRuntimeSlot &material_slot =
+                    world->GetOrCreateMaterialRuntimeSlot(entity->GetEntityID());
+                material_slot_ptr = &material_slot;
 
-                if (!ResolveMaterialProgramForPrimitive(
-                            primitiveComp, material_comp))
+                if (!ResolveMaterialProgramForPrimitive(primitiveComp, material_slot))
                 {
                     if (world->IsCurrentPassShadow())
                     {
@@ -1855,14 +2012,19 @@ namespace hgl::ecs
                         // forward 槽语义，由阴影失败触发会把 forward 链整链
                         // 拖垮（持续失败时每帧 retire+重建）。清槽后下个阴影
                         // 帧快路径自然失配并重试。
-                        ClearVariantProgram(GetVariantTable(world),
-                                            material_comp->shadow_variant);
+                        if (const MaterialRuntimeRow *row = runtime_table
+                                ? runtime_table->Get(material_slot.row)
+                                : nullptr)
+                        {
+                            ClearVariantProgram(GetVariantTable(world),
+                                                row->shadow_variant);
+                        }
                         // 固化防御：本帧深度图缺了这个 caster，静态级联若全量
                         // 重绘过就会把"无它"的内容缓存住。借 A3 revision 链让
                         // EnvironmentSystem 下帧失效重画，直至 resolve 成功。
                         // D9：告警与降频都经统一收敛入口——阴影 pass 只在此处
                         // 输出一条（每 episode），不再外面逐帧刷屏。
-                        if (AdvanceShadowRetry(material_comp,
+                        if (AdvanceShadowRetry(material_slot,
                                                "shadow caster program resolve failed",
                                                primitiveComp))
                             world->BumpStaticSceneRevision();
@@ -1872,8 +2034,9 @@ namespace hgl::ecs
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] ResolveMaterialProgramForPrimitive failed for %s",
                             GetPrimitiveOwnerName(primitiveComp));
-                        InvalidateRecipeRuntime(GetVariantTable(world), material_comp, true);
-                        material_comp->MarkFailed();
+                        // A4：行键不变（解析没走到算键处）⇒ 就地把本行物化绑定作废 + 退 program。
+                        InvalidateRecipeRuntime(world, material_slot, true, true);
+                        material_slot.valid = false;        // 等价于 MarkFailed()
                     }
                 }
                 else if (world->IsCurrentPassShadow())
@@ -1883,29 +2046,32 @@ namespace hgl::ecs
                     //
                     // A1-4：masked caster（ShadowCasterMasked 模板）的片元要
                     // 采样 opacity mask → 需要纹理引用行。行由 **主帧 forward
-                    // 链** 物化并持有（行内容 per-primitive，与 program 无关，
+                    // 链** 物化并持有（行内容随授权态、与 program 无关，
                     // shadow program 共读）。这里**绝不**在阴影帧代为物化：
                     // 阴影帧与主帧两条物化链会互相 retire/重分配纹理配置行，
                     // 深度图采样引用的池行随即漂移 → opacity 槽失效 → 影子
                     // 退化为实心。行未就绪（valid==false，如首帧 prepass 早于
                     // 任何主帧物化）时跳过本帧该 caster，并 bump static_scene_
                     // revision 触发静态级联下帧重画，直至行就绪（收敛）。
+                    const MaterialRuntimeRow *shadow_row = runtime_table
+                        ? runtime_table->Get(material_slot.row)
+                        : nullptr;
                     const graph::ShaderProgram *shadow_pass_program =
-                        GetShadowProgram(GetVariantTable(world), *material_comp);
+                        GetShadowProgram(GetVariantTable(world), shadow_row);
 
                     const bool shadow_needs_rows =
                         shadow_pass_program
                      && graph::mtl::MaterialRequiresRecipeRuntimeRows(
                             shadow_pass_program->GetShaderResourceSchema());
 
-                    if (shadow_needs_rows && !material_comp->valid)
+                    if (shadow_needs_rows && !material_slot.valid)
                     {
                         // D9：本路径原本完全静默（只 bump+continue）。原因经统一收敛
                         // 入口记录：首次跳过告警一次；连续超过 kShadowRetryFullBumpFrames
                         // 帧后报错并把 bump 降频——否则"每帧 bump → 静态级联每帧全量
                         // 重画"会持续到场景结束且无任何日志。
                         if (AdvanceShadowRetry(
-                                material_comp,
+                                material_slot,
                                 "masked caster runtime rows not ready (forward chain has not materialized them)",
                                 primitiveComp))
                             world->BumpStaticSceneRevision();
@@ -1913,30 +2079,32 @@ namespace hgl::ecs
                     }
 
                     if (!EnsureRuntimeGeometryFromAsset(
-                            world, primitiveComp, material_comp))
+                            world, primitiveComp, material_slot, shadow_row))
                     {
-                        ClearVariantProgram(GetVariantTable(world),
-                                            material_comp->shadow_variant);
+                        if (shadow_row)
+                            ClearVariantProgram(GetVariantTable(world),
+                                                shadow_row->shadow_variant);
                         // D9：告警与 bump 都经统一收敛入口（不再逐帧刷屏）
-                        if (AdvanceShadowRetry(material_comp,
+                        if (AdvanceShadowRetry(material_slot,
                                                "shadow pass geometry failed",
                                                primitiveComp))
                             world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                     else if (!ResolveRuntimePipelineForPrimitive(
-                                 primitiveComp, material_comp))
+                                 primitiveComp, material_slot))
                     {
-                        ClearVariantProgram(GetVariantTable(world),
-                                            material_comp->shadow_variant);
+                        if (shadow_row)
+                            ClearVariantProgram(GetVariantTable(world),
+                                                shadow_row->shadow_variant);
                         // D9：同上
-                        if (AdvanceShadowRetry(material_comp,
+                        if (AdvanceShadowRetry(material_slot,
                                                "shadow pass pipeline failed",
                                                primitiveComp))
                             world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                 }
                 else if (!any_material_work
-                         && material_comp->last_materialize_epoch == materialize_epoch)
+                         && material_slot.last_materialize_epoch == materialize_epoch)
                 {
                     // P1-1: all-clean frame — no primitive requires
                     // materialization work, this primitive's full chain
@@ -1950,28 +2118,34 @@ namespace hgl::ecs
                     // full chain.
                     const bool chain_ok =
                         ResolveMaterialProgramForPrimitive(
-                            primitiveComp, material_comp)
+                            primitiveComp, material_slot)
                      && EnsureRuntimeGeometryFromAsset(
-                            world, primitiveComp, material_comp)
+                            world, primitiveComp, material_slot,
+                            runtime_table ? runtime_table->Get(material_slot.row) : nullptr)
                      && ResolveRuntimePipelineForPrimitive(
-                            primitiveComp, material_comp);
+                            primitiveComp, material_slot);
                     if (chain_ok)
-                        material_comp->MarkValid();
+                        material_slot.valid = true;     // 等价于 MarkValid()
                     else
-                        material_comp->MarkFailed();
+                        material_slot.valid = false;    // 等价于 MarkFailed()
                 }
                 else
                 {
+                    const MaterialRuntimeRow *forward_row = runtime_table
+                        ? runtime_table->Get(material_slot.row)
+                        : nullptr;
                     graph::ShaderProgram *forward_program =
-                        GetForwardProgram(GetVariantTable(world), *material_comp);
+                        GetForwardProgram(GetVariantTable(world), forward_row);
 
-                    material_comp->MarkResourcesPending();
+                    material_slot.valid = false;        // 等价于 MarkResourcesPending()
                     const bool resources_ready =
                         PrepareActivePlanResources(
                             world,
                             primitiveComp,
                             forward_program,
-                            material_comp->cached_effective_recipe);
+                            forward_row
+                                ? forward_row->cached_effective_recipe
+                                : graph::mtl::MaterialRecipe{});
                     if (!resources_ready)
                     {
                         GLogWarning(
@@ -1981,12 +2155,11 @@ namespace hgl::ecs
                                 ? forward_program->
                                     GetName().c_str()
                                 : "<null>");
-                        InvalidateRecipeRuntime(
-                            GetVariantTable(world), material_comp, false);
-                        material_comp->MarkFailed();
+                        InvalidateRecipeRuntime(world, material_slot, true, false);
+                        material_slot.valid = false;
                     }
                     else if (!MaterializeRecipeRowsForPrimitive(
-                                primitiveComp, material_comp))
+                                primitiveComp, material_slot))
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] MaterializeRecipeRowsForPrimitive failed for %s program=%s",
@@ -1995,38 +2168,42 @@ namespace hgl::ecs
                                 ? forward_program->
                                     GetName().c_str()
                                 : "<null>");
-                        InvalidateRecipeRuntime(
-                            GetVariantTable(world), material_comp, false);
-                        material_comp->MarkFailed();
+                        InvalidateRecipeRuntime(world, material_slot, true, false);
+                        material_slot.valid = false;
                     }
                     else if (!EnsureRuntimeGeometryFromAsset(
-                                world, primitiveComp, material_comp))
+                                world, primitiveComp, material_slot,
+                                runtime_table ? runtime_table->Get(material_slot.row) : nullptr))
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed for %s",
                             GetPrimitiveOwnerName(primitiveComp));
-                        material_comp->MarkFailed();
+                        material_slot.valid = false;
                     }
                     else if (!ResolveRuntimePipelineForPrimitive(
-                                primitiveComp, material_comp))
+                                primitiveComp, material_slot))
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] ResolveRuntimePipelineForPrimitive failed for %s",
                             GetPrimitiveOwnerName(primitiveComp));
-                        material_comp->MarkFailed();
+                        material_slot.valid = false;
                     }
                     else
                     {
-                        material_comp->MarkValid();
+                        material_slot.valid = true;     // 等价于 MarkValid()
                         GLogVerbose(
                             "[DeferredResource] owner=%s valid=%d",
                             GetPrimitiveOwnerName(primitiveComp),
-                            material_comp->valid ? 1 : 0);
+                            material_slot.valid ? 1 : 0);
                     }
                 }
             }
 
-            auto material_for_item = entity->GetComponent<MaterialComponent>();
+
+            // A4：解析/物化可能刚换过行 ⇒ 重新按**行号**取指针（不复用上面任何行指针）。
+            const MaterialRuntimeRow *material_for_item = (runtime_table && material_slot_ptr)
+                ? runtime_table->Get(material_slot_ptr->row)
+                : nullptr;
 
             // ── 同步 4-ID 描述符至 PrimitiveComponent 与 RenderItemDataStorage ──
             const uint32_t transform_id = transform.GetID();
@@ -2059,6 +2236,11 @@ namespace hgl::ecs
             const uint32_t texture_id = (material_for_item && material_for_item->material_texture_configuration.IsValid())
                 ? material_for_item->material_texture_configuration.row_index : 0;
 
+            // A4：RenderItem 只持**行号**（绑定状态在世界表里；行由本实体 slot 持引用，
+            // collect → batch 之间不会失效）。
+            const MaterialRuntimeRowID material_row_id =
+                material_for_item ? material_slot_ptr->row : INVALID_MATERIAL_RUNTIME_ROW_ID;
+
             std::unique_ptr<PrimitiveRenderItem> item;
 
             if (auto instancedComp = std::dynamic_pointer_cast<InstancedPrimitiveComponent>(primitiveComp))
@@ -2073,13 +2255,13 @@ namespace hgl::ecs
                 }
 
                 item = std::make_unique<InstancedPrimitiveRenderItem>(
-                    entity_id, transform, instancedComp, material_for_item, world);
+                    entity_id, transform, instancedComp, material_row_id, world);
             }
             else
             {
                 primitiveComp->Set4ID(transform_id, geometry_id, material_id, texture_id);
                 item = std::make_unique<PrimitiveRenderItem>(
-                    entity_id, transform, primitiveComp, material_for_item, world);
+                    entity_id, transform, primitiveComp, material_row_id, world);
             }
 
             const glm::vec3 worldPos = transform.GetWorldPosition();
@@ -2087,18 +2269,21 @@ namespace hgl::ecs
 
             item->UpdateWorldMatrix();
 
-            // D9：阴影 pass 的 caster 本帧成功产出 item（该变体记录的 program 非空）
-            // ⇒ 影子链已恢复正常，复位该变体记录的重试计数（下次失败重新告警 + 回到
-            // 每帧 bump）。
-            if (material_for_item && world && world->IsCurrentPassShadow())
+            // D9：阴影 pass 的 caster 本帧成功产出 item（该实例的阴影变体已就绪）
+            // ⇒ 影子链已恢复正常，复位**该实例**的重试计数（A4 起计数归每实例 slot：
+            // 同键的健康兄弟不再每帧清零失败者的计数，D9 的告警/降频对每个实例独立）。
+            if (material_slot_ptr && world->IsCurrentPassShadow())
             {
-                if (MaterialVariantRecord *shadow_record = GetVariantRecordMutable(
-                        GetVariantTable(world), material_for_item->shadow_variant))
-                {
-                    if (shadow_record->program)
-                        shadow_record->retry_frames = 0;
-                }
+                const MaterialVariantTable *variant_table = GetVariantTable(world);
+                const MaterialVariantRecord *shadow_record = variant_table
+                    ? variant_table->Get(material_for_item ? material_for_item->shadow_variant
+                                                           : INVALID_MATERIAL_VARIANT_ID)
+                    : nullptr;
+
+                if (shadow_record && shadow_record->program)
+                    material_slot_ptr->shadow_retry_frames = 0;
             }
+
 
             cache.renderItems.push_back(std::move(item));
             cache.renderableCount++;
@@ -2112,14 +2297,23 @@ namespace hgl::ecs
         //   程序 resolve 失败跳过）；
         //   完全相同 ⇒ 差异在光栅化侧（写侧平移矩阵、scissor、清除矩形、深度值）。
         // 校验和 = Σ entity_id（与顺序无关）。
+        // A4：同时报材质运行期表的**行计数**（共享行 interned / CoW 自有行 / 每实例 slot）
+        // —— 共享行数与独占行数就是这两项，探针与单测共用同一组 getter。
         static const bool s6_collect_log = (std::getenv("CSM_PASS_LOG") != nullptr);
         if (s6_collect_log && world && world->IsCurrentPassShadow())
         {
+            const MaterialRuntimeTable *runtime_stats = GetRuntimeTable(world);
+
             GLogInfo("[S6-COLLECT] shadow pass mobility=%d items=%zu idsum=0x%llx "
-                     "skipped(invisible=%zu no_owner=%zu no_transform=%zu)",
+                     "skipped(invisible=%zu no_owner=%zu no_transform=%zu) "
+                     "material_runtime(rows=%u shared=%u owned=%u slots=%u)",
                      active_mobility_filter, added,
                      static_cast<unsigned long long>(shadow_pass_idsum),
-                     skipped_invisible, skipped_no_owner, skipped_no_transform);
+                     skipped_invisible, skipped_no_owner, skipped_no_transform,
+                     runtime_stats ? runtime_stats->GetCount() : 0u,
+                     runtime_stats ? runtime_stats->GetSharedRowCount() : 0u,
+                     runtime_stats ? runtime_stats->GetOwnedRowCount() : 0u,
+                     runtime_stats ? runtime_stats->GetSlotCount() : 0u);
         }
     }
 }//namespace hgl::ecs

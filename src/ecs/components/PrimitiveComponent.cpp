@@ -204,7 +204,8 @@ namespace hgl::ecs
 
     hgl::graph::ShaderProgram* PrimitiveComponent::GetShaderProgram() const
     {
-        // Recipe runtime resolves program via MaterialComponent; non-recipe items have no program.
+        // Recipe runtime resolves the program via the world's material variant table
+        // (material runtime row); non-recipe items have no program.
         return nullptr;
     }
 

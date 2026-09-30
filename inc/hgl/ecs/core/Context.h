@@ -13,6 +13,7 @@
 #include<hgl/ecs/support/BoundingBoxAccessor.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
+#include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/EntityManager.h>
@@ -153,6 +154,14 @@ namespace hgl
             // 存亡，不会跨 GraphicsContext 混用悬垂 program。访问范式同 visibility_storage /
             // draw_item_id_storage。
             std::unique_ptr<MaterialVariantTable> material_variant_table;
+
+            // A4 材质运行期表（v2 §9.3）：**共享行**（同授权态多实体 interned 到同一行：
+            // 变体 ID / 材质 SSBO 行与地址 / 纹理引用行与 hash / 已解析配方缓存）
+            // + **每实例小记录 slot**（当前 pass/LOD/dither 选择器、D9 重试与降频计数、
+            // 每实体授权代跟踪副本、脏标志）。行归零经 refcount 回收，回收时退休该行的
+            // 纹理配置池行（GPU 绑定随行存亡）。访问范式同 visibility_storage /
+            // material_variant_table。原材质运行期组件已在本步删除（不留兼容层）。
+            std::unique_ptr<MaterialRuntimeTable> material_runtime_table;
 
             // 世界私有相机行存储：相机是**世界级观察者数据**（16 槽 × 帧槽数，0 号槽=本世界默认相机）
             // 定稿见 doc/world-addresses-and-camera-model-plan.md §2。
@@ -566,6 +575,24 @@ namespace hgl
             MaterialVariantTable* GetMaterialVariantTable() { return material_variant_table.get(); }
             const MaterialVariantTable* GetMaterialVariantTable() const { return material_variant_table.get(); }
 
+            /// A4 材质运行期表（共享行 interned + CoW + refcount + 世代；见 support/MaterialRuntimeTable.h）
+            MaterialRuntimeTable* GetMaterialRuntimeTable() { return material_runtime_table.get(); }
+            const MaterialRuntimeTable* GetMaterialRuntimeTable() const { return material_runtime_table.get(); }
+
+            /// 实体 → 材质运行期 slot（无则创建）。命名向 `GetOrCreateMaterialData` 看齐。
+            /// ⚠ stage B 会换成**值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
+            /// 届时不再返回引用。
+            MaterialRuntimeSlot& GetOrCreateMaterialRuntimeSlot(EntityID owner)
+            {
+                return material_runtime_table->GetOrCreateSlot(owner);
+            }
+
+            /// 实体 → 材质运行期 slot（无则 nullptr）
+            MaterialRuntimeSlot* GetMaterialRuntimeSlot(EntityID owner)
+            {
+                return material_runtime_table->GetSlot(owner);
+            }
+
             /// Get 世界私有相机行存储（相机 = 世界级观察者数据；0 号槽 = 本世界默认相机）
             CameraInfoStorage* GetCameraInfoStorage() { return camera_info_storage.get(); }
             const CameraInfoStorage* GetCameraInfoStorage() const { return camera_info_storage.get(); }
@@ -645,6 +672,11 @@ namespace hgl
                 // 否则同索引的新实体会"继承"旧的不可见状态（T8 同类副作用）。
                 if (visibility_storage)
                     visibility_storage->SetVisible(id);
+
+                // 材质运行期 slot 同理：slot 持共享行的引用计数，实体没了必须释放
+                // （否则共享行永远不归零 ⇒ 纹理配置池行泄漏、行表只增不减）。
+                if (material_runtime_table)
+                    material_runtime_table->DestroySlot(id);
 
                 if (entity_manager)
                     entity_manager->DestroyEntity(id);

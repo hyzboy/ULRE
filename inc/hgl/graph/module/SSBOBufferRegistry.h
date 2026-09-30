@@ -94,7 +94,8 @@ public:
 
     /**
      * Defers row reuse until the caller's completed GPU epoch reaches
-     * retire_epoch. Phase 4 wires this to MaterialComponent lifecycle.
+     * retire_epoch. Phase 4 wires this to the material-runtime row lifecycle
+     * (support/MaterialRuntimeTable.h).
      */
     bool RetireMaterialTextureConfiguration(
         const MaterialTextureConfigurationAllocation &allocation,

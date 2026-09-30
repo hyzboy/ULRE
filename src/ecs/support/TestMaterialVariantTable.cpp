@@ -20,7 +20,8 @@ namespace
  *   · 表是**按静态键去重**的：同键两次 Intern ⇒ 同 ID 且计数不增；
  *   · 键是**两维**的（build context + recipe 身份）：同 build context 下**不同材质**
  *     必须得到不同 ID / 两条记录——否则后解析者的 program 覆盖先解析者（键粒度回归钉）；
- *   · 记录可读写，retry_frames 归属记录（同键共享、异键互不影响）；
+ *   · 记录可读写（program 归属记录：同键共享、异键互不影响）——A4 起**不再**在记录上
+ *     承载重试计数/生命周期位等每实例状态（已迁 `MaterialRuntimeSlot`）；
  *   · 预算制：超容量上限 fail-fast（返回 INVALID）且**只告警一次**，不静默扩容。
  */
 int main(int argc, char **argv)
@@ -94,7 +95,7 @@ int main(int argc, char **argv)
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Test 3: 记录可读写（program / retry_frames / pending / failed）
+    // Test 3: 记录可读写（program；A4 起记录只承载 program 身份这一项可共享状态）
     //   注意：记录是**同键共享**的，写入必须能经 Get 读回。
     // ─────────────────────────────────────────────────────────────
     {
@@ -106,16 +107,10 @@ int main(int argc, char **argv)
         }
 
         mut->program = FakeProgram(0x1234);
-        mut->retry_frames = 7;
-        mut->pending = true;
-        mut->failed = true;
 
         const MaterialVariantRecord *ro = table.Get(id_111);
         if (!ro
-         || ro->program != FakeProgram(0x1234)
-         || ro->retry_frames != 7
-         || !ro->pending
-         || !ro->failed)
+         || ro->program != FakeProgram(0x1234))
         {
             GLogError(u8"Test 3 Failed: 记录写入未按原值读回");
             return 12;
@@ -133,7 +128,7 @@ int main(int argc, char **argv)
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Test 4: retry_frames 归属记录（异键互不影响；同键共享同一份）
+    // Test 4: program 归属记录（异键互不影响；同键共享同一份）
     // ─────────────────────────────────────────────────────────────
     {
         MaterialVariantRecord *other = table.GetMutable(id_222);
@@ -143,31 +138,29 @@ int main(int argc, char **argv)
             return 13;
         }
 
-        other->retry_frames = 3;
+        other->program = FakeProgram(0x2222);
 
-        if (other->retry_frames != 3)
+        if (other->program != FakeProgram(0x2222))
         {
-            GLogError(u8"Test 4 Failed: 记录自身的 retry_frames 读回异常（%u）", other->retry_frames);
+            GLogError(u8"Test 4 Failed: 记录自身的 program 读回异常");
             return 13;
         }
 
-        if (table.Get(id_111)->retry_frames != 7)
+        if (table.Get(id_111)->program != FakeProgram(0x1234))
         {
-            GLogError(u8"Test 4 Failed: 异键 retry_frames 互相污染（111 的计数被改成 %u）",
-                      table.Get(id_111)->retry_frames);
+            GLogError(u8"Test 4 Failed: 异键 program 互相污染（111 的 program 被改写成别人的）");
             return 13;
         }
 
-        // 同键再 Intern 拿到的仍是同一条记录 ⇒ retry_frames 是"该变体"共享的
+        // 同键再 Intern 拿到的仍是同一条记录 ⇒ program 是"该变体"共享的
         const MaterialVariantID again = table.Intern(MaterialVariantKey{111});
-        if (again != id_111 || table.Get(again)->retry_frames != 7)
+        if (again != id_111 || table.Get(again)->program != FakeProgram(0x1234))
         {
-            GLogError(u8"Test 4 Failed: 同键再 Intern 未复用同一条 retry_frames（id=%u frames=%u）",
-                      again, table.Get(again) ? table.Get(again)->retry_frames : 0u);
+            GLogError(u8"Test 4 Failed: 同键再 Intern 未复用同一条记录的 program（id=%u）", again);
             return 13;
         }
 
-        GLogInfo(u8"Test 4 Passed: retry_frames 归属记录（111→7，222→3，互不影响）。");
+        GLogInfo(u8"Test 4 Passed: program 归属记录（111→原值，222→异值，互不影响）。");
     }
 
     // ─────────────────────────────────────────────────────────────

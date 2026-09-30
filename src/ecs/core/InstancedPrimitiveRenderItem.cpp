@@ -6,9 +6,9 @@ namespace hgl::ecs
         EntityID ent_id,
         const TransformAccessor &trans,
         std::shared_ptr<InstancedPrimitiveComponent> prim,
-        std::shared_ptr<MaterialComponent> mat,
+        MaterialRuntimeRowID mat_row,
         ECSContext *ctx)
-        : PrimitiveRenderItem(ent_id, trans, prim, mat, ctx)
+        : PrimitiveRenderItem(ent_id, trans, prim, mat_row, ctx)
         , instancedComp(prim)
     {
     }

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/RenderItem.h>
+#include<hgl/ecs/support/MaterialRuntimeTable.h>
 
 namespace hgl
 {
@@ -18,7 +19,6 @@ namespace hgl::ecs
     class Entity;
     class ECSContext;
     class PrimitiveComponent;
-    class MaterialComponent;
 
     /**
      * PrimitiveRenderItem - specialized RenderItem for PrimitiveComponent
@@ -31,7 +31,12 @@ namespace hgl::ecs
         ECSContext* context = nullptr;
         TransformAccessor transform;          ///< 变换薄句柄（存储行 + 世界；零副本）
         std::shared_ptr<PrimitiveComponent> primitiveComp;
-        std::shared_ptr<MaterialComponent> materialComp;
+
+        /// A4：材质运行期**共享行**号（材质绑定状态的唯一载体；原材质运行期组件已删除）。
+        /// 行归所属世界的 `MaterialRuntimeTable` 所有，由该图元所属实体的 slot 持引用
+        /// （collect → batch 之间不会失效）。
+        MaterialRuntimeRowID material_runtime_row = INVALID_MATERIAL_RUNTIME_ROW_ID;
+
         glm::mat4 worldMatrix;
 
     public:
@@ -39,7 +44,7 @@ namespace hgl::ecs
             EntityID ent_id,
             const TransformAccessor &trans,
             std::shared_ptr<PrimitiveComponent> prim,
-            std::shared_ptr<MaterialComponent> mat = nullptr,
+            MaterialRuntimeRowID mat_row = INVALID_MATERIAL_RUNTIME_ROW_ID,
             ECSContext* ctx = nullptr);
 
         virtual ~PrimitiveRenderItem() = default;
@@ -53,7 +58,12 @@ namespace hgl::ecs
 
         // PrimitiveComponent-specific accessors
         std::shared_ptr<PrimitiveComponent> GetPrimitiveComponent() const { return primitiveComp; }
-        std::shared_ptr<MaterialComponent> GetMaterialComponent() const { return materialComp; }
+
+        /// A4：材质运行期共享行号（绑定状态的载体是世界的 `MaterialRuntimeTable`）
+        MaterialRuntimeRowID GetMaterialRuntimeRowID() const { return material_runtime_row; }
+
+        /// A4：材质运行期共享行（按行号去世界表取；行无效/已回收 ⇒ nullptr）
+        const MaterialRuntimeRow *GetMaterialRuntimeRow() const;
 
         // ShaderProgram batching interface
         hgl::graph::ShaderProgram* GetShaderProgram() const override;

@@ -15,7 +15,6 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/ShadowComponent.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
-#include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/InstancedPrimitiveRenderItem.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -790,15 +789,16 @@ namespace hgl::ecs
 
             if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(item))
             {
-                if (auto mat_comp = prim_item->GetMaterialComponent())
+                // A4：材质运行期绑定在世界的**共享行**上（RenderItem 只持行号）。
+                if (const MaterialRuntimeRow *mat_row = prim_item->GetMaterialRuntimeRow())
                 {
-                    if (mat_comp->material_texture_zero_row_gpu)
-                        batch.texture_reference_base_addr = mat_comp->material_texture_zero_row_gpu;
-                    else if (mat_comp->material_texture_row_gpu)
+                    if (mat_row->material_texture_zero_row_gpu)
+                        batch.texture_reference_base_addr = mat_row->material_texture_zero_row_gpu;
+                    else if (mat_row->material_texture_row_gpu)
                         batch.texture_reference_base_addr =
-                            mat_comp->material_texture_row_gpu -
-                            uint64_t(mat_comp->material_texture_configuration.row_index) *
-                            uint64_t(mat_comp->material_texture_configuration.row_stride);
+                            mat_row->material_texture_row_gpu -
+                            uint64_t(mat_row->material_texture_configuration.row_index) *
+                            uint64_t(mat_row->material_texture_configuration.row_stride);
                 }
             }
         }
@@ -976,7 +976,7 @@ namespace hgl::ecs
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
 
             // 行表写入 payload/texture-reference 两个索引。
-            // 优先从 RenderItemDataStorage 依据 4-ID 架构获取；若未注册则从 MaterialComponent 回退。
+            // 优先从 RenderItemDataStorage 依据 4-ID 架构获取；若未注册则从材质运行期**共享行**回退。
             if (mi_gpu)
             {
                 auto *row_ptr = static_cast<graph::mtl::MaterialInstanceAddresses *>(
@@ -1008,17 +1008,17 @@ namespace hgl::ecs
                         if (!resolved)
                         {
                             auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
-                            auto material_comp = primitive_item
-                                ? primitive_item->GetMaterialComponent()
+                            const MaterialRuntimeRow *material_row = primitive_item
+                                ? primitive_item->GetMaterialRuntimeRow()
                                 : nullptr;
-                            if (material_comp)
+                            if (material_row)
                             {
                                 row_ptr[i].payload_index =
-                                    material_comp->data_index_row != uint32_t(-1)
-                                        ? material_comp->data_index_row : 0u;
+                                    material_row->data_index_row != uint32_t(-1)
+                                        ? material_row->data_index_row : 0u;
 
                                 row_ptr[i].texture_reference_index =
-                                    material_comp->material_texture_configuration.row_index;
+                                    material_row->material_texture_configuration.row_index;
                             }
                         }
 
@@ -1071,20 +1071,20 @@ namespace hgl::ecs
                         // 同步偶然走过 fallback 才幸免）。
                         {
                             auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
-                            auto material_comp = primitive_item
-                                ? primitive_item->GetMaterialComponent()
+                            const MaterialRuntimeRow *material_row = primitive_item
+                                ? primitive_item->GetMaterialRuntimeRow()
                                 : nullptr;
-                            if (material_comp
+                            if (material_row
                              && batch.texture_reference_base_addr == 0)
                             {
-                                if (material_comp->material_texture_zero_row_gpu)
+                                if (material_row->material_texture_zero_row_gpu)
                                     batch.texture_reference_base_addr =
-                                        material_comp->material_texture_zero_row_gpu;
-                                else if (material_comp->material_texture_row_gpu)
+                                        material_row->material_texture_zero_row_gpu;
+                                else if (material_row->material_texture_row_gpu)
                                     batch.texture_reference_base_addr =
-                                        material_comp->material_texture_row_gpu -
-                                        uint64_t(material_comp->material_texture_configuration.row_index) *
-                                        uint64_t(material_comp->material_texture_configuration.row_stride);
+                                        material_row->material_texture_row_gpu -
+                                        uint64_t(material_row->material_texture_configuration.row_index) *
+                                        uint64_t(material_row->material_texture_configuration.row_stride);
                             }
                         }
                     }
@@ -1123,15 +1123,15 @@ namespace hgl::ecs
             auto* pipeline = item->GetPipeline(current_render_pass);
             auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
             auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
-            const std::shared_ptr<MaterialComponent> material_comp = prim_item ? prim_item->GetMaterialComponent() : nullptr;
+            const MaterialRuntimeRow *material_row = prim_item ? prim_item->GetMaterialRuntimeRow() : nullptr;
 
             if (prim_item)
             {
                 const bool needs_recipe_rows = shader_prog
                     && graph::mtl::MaterialRequiresRecipeRuntimeRows(shader_prog->GetShaderResourceSchema());
                 const bool missing_rows = needs_recipe_rows
-                                       && (!material_comp
-                                        || material_comp->data_index_row == uint32_t(-1));
+                                       && (!material_row
+                                        || material_row->data_index_row == uint32_t(-1));
                 if (missing_rows)
                 {
                     LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved recipe rows. shader_prog=%s",

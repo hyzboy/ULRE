@@ -2,7 +2,6 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 
@@ -13,13 +12,13 @@ namespace hgl::ecs
         EntityID ent_id,
         const TransformAccessor &trans,
         std::shared_ptr<PrimitiveComponent> prim,
-        std::shared_ptr<MaterialComponent> mat,
+        MaterialRuntimeRowID mat_row,
         ECSContext* ctx)
         : entity_id(ent_id)
         , context(ctx)
         , transform(trans)
         , primitiveComp(prim)
-        , materialComp(mat)
+        , material_runtime_row(mat_row)
         , worldMatrix(1.0f)
     {
         if (transform.IsValid())
@@ -40,16 +39,29 @@ namespace hgl::ecs
         return std::static_pointer_cast<RenderableComponent>(primitiveComp);
     }
 
+    const MaterialRuntimeRow *PrimitiveRenderItem::GetMaterialRuntimeRow() const
+    {
+        if (!context || material_runtime_row == INVALID_MATERIAL_RUNTIME_ROW_ID)
+            return nullptr;
+
+        const MaterialRuntimeTable *runtime_table = context->GetMaterialRuntimeTable();
+
+        return runtime_table ? runtime_table->Get(material_runtime_row) : nullptr;
+    }
+
     hgl::graph::ShaderProgram* PrimitiveRenderItem::GetShaderProgram() const
     {
-        // A3：program 已从 MaterialComponent 迁到世界的材质变体表；语义与改前一致——
+        // A3：program 在世界的材质变体表里（按变体 ID 取）；变体 ID 自 A4 起挂在
+        // **材质运行期共享行**上（原材质运行期组件已删）。语义与改前一致——
         // 取**前向**变体（ForwardColor purpose）的 program，解析未就绪时退回
         // PrimitiveComponent（非 recipe 图元恒 nullptr）。
-        if (materialComp && context)
+        const MaterialRuntimeRow *row = GetMaterialRuntimeRow();
+
+        if (row && context)
         {
             const MaterialVariantTable *variant_table = context->GetMaterialVariantTable();
             const MaterialVariantRecord *record = variant_table
-                ? variant_table->Get(materialComp->forward_variant)
+                ? variant_table->Get(row->forward_variant)
                 : nullptr;
 
             if (record && record->program)

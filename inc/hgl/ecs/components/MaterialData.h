@@ -27,7 +27,8 @@ namespace hgl::ecs
      *
      * 职责：承载作者授权的材质参数（配方覆盖 / 具名纹理资源 / 材质数据行资源），
      * 资源级、按指纹去重。**不含**运行期解析结果（MaterialVariant）与每实例绑定
-     * （MaterialRuntime）——那两层分别由解析流程与 MaterialComponent 承担。
+     * （MaterialRuntime）——那两层分别由解析流程与**材质运行期共享行/每实例 slot**
+     * （support/MaterialRuntimeTable.h）承担。
      *
      * 解析出口只有一个：`BuildResolvedRecipe`。asset 里的默认配方是**基底**，
      * 本组件的配方覆盖是**覆盖源**；参数按声明逐条校验后产出规范化结果。
@@ -99,7 +100,8 @@ namespace hgl::ecs
         MaterialDataAuthoringResource data_resource{};
 
         // 单调计数器：每次授权状态变化 +1（纹理 / 数据行 / 配方 / 上游来源）。
-        // MaterialComponent 的跟踪副本与之比对，相等即跳过整条解析链。
+        // 每实例 slot 的跟踪副本（MaterialRuntimeSlot::tracked_material_data_generation）
+        // 与之比对，相等即跳过整条解析链。
         uint32_t authored_generation = 0;
 
     public:

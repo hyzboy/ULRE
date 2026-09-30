@@ -116,8 +116,6 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     components/InstancedPrimitiveComponent.cpp
     ${ECS_INCLUDE_PATH}/components/MaterialData.h
     components/MaterialData.cpp
-    ${ECS_INCLUDE_PATH}/components/MaterialComponent.h
-    components/MaterialComponent.cpp
     ${ECS_INCLUDE_PATH}/components/ShadowComponent.h
     components/ShadowComponent.cpp
     ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
@@ -188,6 +186,7 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/DrawItemCompaction.h
     ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
     ${ECS_INCLUDE_PATH}/support/MaterialVariantTable.h
+    ${ECS_INCLUDE_PATH}/support/MaterialRuntimeTable.h
     ${ECS_INCLUDE_PATH}/support/RenderStrategyTable.h
     ${ECS_INCLUDE_PATH}/support/RenderStrategyParity.h
     ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
@@ -204,6 +203,7 @@ set(ECS_SUPPORT_FILES
     support/DrawItemCompaction.cpp
     support/VisibilityDataStorage.cpp
     support/MaterialVariantTable.cpp
+    support/MaterialRuntimeTable.cpp
     support/RenderStrategyParity.cpp
     support/TransformAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
@@ -361,6 +361,13 @@ if(MSVC)
     set_target_properties(TestMaterialVariantTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# A4 材质运行期表（共享行 interned + CoW + refcount + 世代 + 每实例 slot）
+add_executable(TestMaterialRuntimeTable support/TestMaterialRuntimeTable.cpp)
+target_link_libraries(TestMaterialRuntimeTable PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestMaterialRuntimeTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 add_executable(TestComponentMask support/TestComponentMask.cpp)
 target_link_libraries(TestComponentMask PRIVATE ${ULRE})
 if(MSVC)
@@ -421,4 +428,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestMaterialVariantTable
         PROPERTIES LABELS "ecs;material_variant")
+
+    add_test(
+        NAME TestMaterialRuntimeTable
+        COMMAND TestMaterialRuntimeTable)
+    set_tests_properties(
+        TestMaterialRuntimeTable
+        PROPERTIES LABELS "ecs;material_runtime")
 endif()

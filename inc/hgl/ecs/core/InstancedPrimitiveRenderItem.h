@@ -20,7 +20,7 @@ namespace hgl::ecs
             EntityID ent_id,
             const TransformAccessor &trans,
             std::shared_ptr<InstancedPrimitiveComponent> prim,
-            std::shared_ptr<MaterialComponent> mat = nullptr,
+            MaterialRuntimeRowID mat_row = INVALID_MATERIAL_RUNTIME_ROW_ID,
             ECSContext *ctx = nullptr);
 
         ~InstancedPrimitiveRenderItem() override = default;

@@ -1,8 +1,10 @@
 ﻿/**
  * MaterialVariantTable.h —— **材质变体表**（v2 §9.3 A3）
  *
- * 用途：把 `MaterialComponent` 里**前向/阴影两个硬编码 program 槽**收敛成
- *       「一张按**静态键**去重的表 + 每实体两个变体 ID」：
+ * 用途：把材质运行期层里**前向/阴影两个硬编码 program 槽**收敛成
+ *       「一张按**静态键**去重的表 + 每实体两个变体 ID」（原"材质运行期组件"
+ *       已按 v2 §9.3 A4 删除：可共享的绑定状态归 `MaterialRuntimeTable.h` 的共享行，
+ *       每实例状态归该表的每实例 slot）：
  *         · 变体记录按**静态键**去重——同键的实体共享同一条记录（program 由
  *           `ShaderProgramManager` 缓存持有并 refcount，记录只持引用）；
  *         · 组件只持 ID，解析/比对/失效/取用全部走表，没有第二份 program 真值。
@@ -26,8 +28,9 @@
  *          digest 才是 program 真身份），但它只能在 `AcquireShaderProgram` 成功
  *          之后经 `ShaderProgram::GetProgramKey()` 拿到（键在
  *          `src/SceneGraph/module/ShaderProgramManager.cpp` 内部构造，acquire 前
- *          不暴露）；而阴影侧登记变体**必须早于 acquire**（失败也要有 retry_frames
- *          归属，见下"阴影侧时序"），故本步取 recipe 哈希。
+ *          不暴露）；而阴影侧登记变体**必须早于 acquire**（失败也要有可记账的归属：
+ *          D9 的重试/降频计数 A4 起在每实例 slot 上，但"该记到哪条变体键"要在
+ *          acquire 之前定下来，见下"阴影侧时序"），故本步取 recipe 哈希。
  *          recipe 哈希只会**多分裂**（两条 recipe 恰好生成同一 program ⇒ 两条记录
  *          指向同一个 program 指针），**不会少分裂**；少分裂才是 bug。
  *   · **绝不能入键**（不决定 program 身份，且每帧/每实例变化）：**LOD 档选择**、
@@ -40,10 +43,11 @@
  *     （去序 / 去重 / trim——它当前是 `std::vector<std::string>`，本身无界，
  *     直接入键等于把无界集合塞进键），且仍不得放每帧维度。
  *
- * 阴影侧时序（A3 沿用、A4 需遵守）：阴影变体登记（`Intern`）必须发生在
- *   `AcquireShaderProgram` **之前**——模板选择 / 编译失败时也要有可记账的
- *   retry_frames 归属（D9）。因此键的第二维必须能在 acquire 之前算出 ⇒ 用 recipe
- *   哈希，而不是 acquire 之后才有的 `ShaderProgramKey`。
+ * 阴影侧时序（A3 沿用、A4 遵守）：阴影变体登记（`Intern`）必须发生在
+ *   `AcquireShaderProgram` **之前**——模板选择 / 编译失败时也要能在确定的变体键上
+ *   记账（D9 的重试/降频计数本体在每实例 slot，但失败发生在哪条键上要当场知道）。
+ *   因此键的第二维必须能在 acquire 之前算出 ⇒ 用 recipe 哈希，而不是 acquire 之后
+ *   才有的 `ShaderProgramKey`。
  *
  * 归属：表由 `ECSContext` 持有（与 `VisibilityDataStorage` / `RenderItemDataStorage`
  *       等世界私有存储同一访问范式，见 `Context.h::GetMaterialVariantTable()`）。
@@ -117,22 +121,16 @@ namespace hgl::ecs
     /// 变体记录：同键的实体**共享**同一条记录。
     ///   · `program` 只在解析路径写（解析成功后落表；解析失败只清该键的引用），
     ///     **不得**在渲染热路径每帧无条件写——那会污染同键的其它实体。
-    ///   · `retry_frames` 是 D9 的跳过收敛计数，语义 = **该变体**的连续跳过帧数
-    ///     （原先是 MaterialComponent 上的每实体一份，A3 随槽位一起收敛到记录）。
-    ///     它只能由解析/跳过判定路径写，成功产出 render item 时复位。
-    ///     ⚠ **A4 会把重试/降频状态移到每实例侧**（共享记录不得承载每实例状态）：
-    ///     同键的健康兄弟每帧复位，会持续清零失败者的计数，可能掩盖 D9 的 masked
-    ///     失败告警/降频——**只影响诊断，不影响渲染**，A4 随每实例侧一并解决。
+    ///   · 记录里**只有 program 身份**这一项可共享状态（连同键本身）。
+    ///     D9 的跳过重试/降频计数与生命周期位（原共享记录上的那三项字段）都是
+    ///     **每实例**语义，A4 已整体迁到 `MaterialRuntimeTable.h` 的每实例 slot
+    ///     （重试/降频计数 + program/runtime 脏标志 + valid 位）：
+    ///     同键的健康兄弟每帧复位计数，会持续清零失败者的计数，掩盖 D9 的 masked
+    ///     失败告警/降频——共享记录不得承载每实例状态。
     struct MaterialVariantRecord
     {
         MaterialVariantKey key{};
         hgl::graph::ShaderProgram *program = nullptr;
-        uint32_t retry_frames = 0;
-
-        /// 保留给 A4/A5 的生命周期位；**本步不写**——它们是"每实体/每帧"语义，
-        /// 写进共享记录会跨实体污染（见文件头"键的规矩"的"绝不能入键"一节）。
-        bool pending = false;
-        bool failed = false;
     };
 
     class MaterialVariantTable

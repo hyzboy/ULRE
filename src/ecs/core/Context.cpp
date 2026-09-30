@@ -8,7 +8,6 @@
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
@@ -74,11 +73,16 @@ namespace hgl
             , render_item_storage(std::make_unique<RenderItemDataStorage>())
             , draw_item_id_storage(std::make_unique<DrawItemIDStorage>())
             , material_variant_table(std::make_unique<MaterialVariantTable>())
+            , material_runtime_table(std::make_unique<MaterialRuntimeTable>())
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
         {
             // 可见性存储需要拿到本世界指针：祖先链上溯要回查实体与变换行
             visibility_storage->SetContext(this);
+
+            // 材质运行期表需要拿到本世界指针：共享行回收时退休其纹理配置池行
+            // （GPU 侧绑定随行存亡）；单测里没有世界，钩子自动 no-op。
+            material_runtime_table->SetContext(this);
         }
 
         ECSContext::~ECSContext()
