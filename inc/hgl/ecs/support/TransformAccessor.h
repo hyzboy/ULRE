@@ -27,22 +27,23 @@ namespace hgl
             TransformDataStorage *storage = nullptr;
             TransformID           id      = INVALID_TRANSFORM_ID;
             ECSContext           *context = nullptr;   ///< 用于解析 owner 实体（可为空：纯数据操作不需要）
-            EntityID              owner;               ///< 所属实体（可为空）
 
         public:
 
             TransformAccessor() = default;
-            TransformAccessor(TransformDataStorage *s,TransformID i,ECSContext *c=nullptr,EntityID o=EntityID())
-                : storage(s),id(i),context(c),owner(o) {}
+            TransformAccessor(TransformDataStorage *s,TransformID i,ECSContext *c=nullptr)
+                : storage(s),id(i),context(c) {}
 
             bool IsValid() const { return storage && id != INVALID_TRANSFORM_ID; }
 
             TransformID           GetID() const         { return id; }
             TransformDataStorage *GetStorage() const    { return storage; }
             ECSContext           *GetContext() const    { return context; }
-            EntityID              GetOwnerID() const    { return owner; }
 
-            /// 解析 owner 实体（context 为空或实体已销毁时返回 nullptr）
+            /// 所属实体（真源在存储的 owners 行；不再由组件持有）
+            EntityID GetOwnerID() const;
+
+            /// 解析 owner 实体（context 为空、无 owner 或实体已销毁时返回 nullptr）
             Entity *GetOwner() const;
 
         public: // 局部 TRS（读写直落存储）
@@ -72,10 +73,30 @@ namespace hgl
             glm::vec3 GetWorldScale();
             void      SetWorldScale(const glm::vec3 &scale);
 
-        public: // 层级（父链真源在存储的 parent_indices）
+        public: // 层级（父链真源在存储的 parent_indices / children）
 
             TransformID GetParent() const;
             void        SetParent(TransformID parent);
+
+            const std::vector<TransformID> &GetChildren() const;
+            void AddChild(TransformID child);
+            void RemoveChild(TransformID child);
+
+            /// 实体 → 本世界变换行（无变换时返回无效 accessor）
+            static TransformAccessor FromOwner(TransformDataStorage *storage,EntityID owner,ECSContext *context=nullptr);
+
+        public: // 元数据（owner / 变更版本 / D4 标记 —— 真源在存储）
+
+            uint32_t GetChangeMask() const;
+            void     ClearChangeMask();
+            void     TouchChange(uint32_t mask);      ///< 版本 +1 且累积位掩码
+            void     AddChangeMask(uint32_t mask);
+            uint64_t GetVersion() const;
+
+            bool IsWriteArmed() const;                ///< D4：本行已被渲染侧消费过
+            void ArmWriteWarning();
+            bool HasWarnedWrite() const;
+            void SetWriteWarned();
 
         public: // 移动性 / 脏标记
 

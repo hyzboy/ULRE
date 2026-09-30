@@ -66,8 +66,9 @@ namespace hgl::ecs
 
     private:
 
-        bool ShouldUpdateTransform(const std::shared_ptr<TransformComponent>& comp, uint32_t update_mask);
-        void MarkTransformSeen(const std::shared_ptr<TransformComponent>& comp);
+        bool ShouldUpdateTransform(const TransformID id, uint32_t update_mask);
+        void MarkTransformSeen(const TransformID id);
+        void UpdateTransformRow(const TransformID id);
     };
 }//namespace hgl::ecs
 

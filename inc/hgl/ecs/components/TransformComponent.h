@@ -39,27 +39,19 @@ namespace hgl
             TransformDataStorage::HandleID storageHandle = TransformDataStorage::INVALID_HANDLE;
             TransformDataStorage* bound_storage = nullptr;
 
-            // 局部 TRS 与世界矩阵的**唯一真源**是 TransformDataStorage（按 handle 寻址）；
-            // 本组件不再持有任何副本（历史上这里的 local_pos/rot/scale 与 cachedWorldMatrix
-            // 是第二、第三份真源，改动只写其中一份就会出现「读到的和写进去的不一致」）。
+            // 局部 TRS、世界矩阵、层级、变更版本、D4 标记的**唯一真源**都是 TransformDataStorage；
+            // 本组件不再持有任何副本（历史上 local_pos/rot/scale、cachedWorldMatrix、matrixDirty、
+            // child_ids、static_runtime_write_* 都曾在这里，改动只写一份就会出现读写不一致）。
+            // 本组件剩下的自有数据：parent_id（对外是 EntityID 形式的父实体）与 fixed-pixel 参数。
 
-            // Hierarchy (using EntityID instead of shared_ptr)
+            // Hierarchy: 父实体（EntityID 对外口径；存储里是 TransformID）
             EntityID parent_id;
-            std::vector<EntityID> child_ids;
 
             // Optimization settings
             Mobility mobility;
 
             // ── D4：静态写入语义化 ─────────────────────────────────────────────
-            // "静态物体写一次就不动"是本引擎的硬约定（静态段写一次用很久；静态级联
-            // 阴影缓存的正确性前提就是"静态物体不动"）。违反约定的**运行期**写入会
-            // 整段重写静态矩阵并使全部静态级联缓存失效（当帧 4 级全量重绘），
-            // 因此必须留下痕迹而不是静默生效。
-            //   armed  —— 由 TransformSystem 在该组件已被渲染侧消费过后置位；
-            //             场景搭建期（首次 SubmitTransformUpdates 之前）写入不告警。
-            //   warned —— 每组件只报一次，避免每帧刷屏。
-            bool static_runtime_write_armed;
-            bool static_runtime_write_warned;
+            // （标记本身存在存储的 write_armed/write_warned 行里；这里只是转发 API）
 
             // Fixed pixel-size mode (for gizmo/facing-quad-like controls)
             bool fixed_pixel_sizing_enabled;
@@ -150,7 +142,6 @@ namespace hgl
 
             void AddChild(EntityID child);
             void RemoveChild(EntityID child);
-            const std::vector<EntityID>& GetChildren() const { return child_ids; }
 
             // Helper function to get child entities as pointers
             void GetChildEntities(std::vector<Entity*>& out) const;
@@ -165,14 +156,18 @@ namespace hgl
             bool IsStatic() const { return mobility == Mobility::Static; }
             bool IsDirty() const;
 
+            /// 变更计数 / 变更位掩码：与其它变换状态一样，真源在存储（隐藏基类同名函数）
+            uint64_t GetVersion() const;
+            uint32_t GetChangeMask() const;
+
             // ── D4：静态写入诊断（A′：把"静态写完不动"做成 API 语义）────────────
-            /// 组件已被渲染侧消费过（TransformSystem 在静态段同步时置位）。
+            /// 该变换已被渲染侧消费过（TransformSystem 在静态段同步时置位）。
             /// 置位之后对 Static 物体的任何写入都算"运行期写"，代价是整段静态矩阵
             /// 重写 + 全部静态级联缓存失效；会动的对象应当在创建期迁到 Movable。
-            void ArmStaticRuntimeWriteWarning() { static_runtime_write_armed = true; }
-            bool IsStaticRuntimeWriteArmed() const { return static_runtime_write_armed; }
+            void ArmStaticRuntimeWriteWarning();
+            bool IsStaticRuntimeWriteArmed() const;
             /// 已经就"运行期写静态"报过一次（每组件一次，不刷屏）
-            bool HasWarnedStaticRuntimeWrite() const { return static_runtime_write_warned; }
+            bool HasWarnedStaticRuntimeWrite() const;
 
         public:
 
@@ -203,6 +198,9 @@ namespace hgl
             void UpdateWorldMatrix();
             void MigrateStorage(Mobility target_mobility);
             TransformDataStorage* GetStorage() const;
+
+            /// 把整棵子树的"世界矩阵变了"记到存储（孩子/孙子的 L2W 行都要重传）
+            void MarkDescendantsDirty();
 
             /// 「存储行 + 世界」的薄句柄：数据面的唯一实现（本组件的访问器都委托给它）
             TransformAccessor GetAccessor() const;

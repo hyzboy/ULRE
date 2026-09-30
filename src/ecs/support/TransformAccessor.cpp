@@ -21,10 +21,80 @@ namespace hgl
 
         Entity *TransformAccessor::GetOwner() const
         {
-            if (!context || !owner.IsValid())
+            if (!context)
+                return nullptr;
+
+            const EntityID owner = GetOwnerID();
+
+            if (!owner.IsValid())
                 return nullptr;
 
             return context->GetEntity(owner);
+        }
+
+        EntityID TransformAccessor::GetOwnerID() const
+        {
+            return IsValid() ? storage->GetOwner(id) : EntityID();
+        }
+
+        TransformAccessor TransformAccessor::FromOwner(TransformDataStorage *storage,EntityID owner,ECSContext *context)
+        {
+            if (!storage)
+                return TransformAccessor();
+
+            return TransformAccessor(storage,storage->FindByOwner(owner),context);
+        }
+
+        // ── 元数据（变更版本 / D4 标记）──────────────────────────────────────
+
+        uint32_t TransformAccessor::GetChangeMask() const
+        {
+            return IsValid() ? storage->GetChangeMask(id) : 0;
+        }
+
+        void TransformAccessor::ClearChangeMask()
+        {
+            if (IsValid())
+                storage->ClearChangeMask(id);
+        }
+
+        void TransformAccessor::TouchChange(uint32_t mask)
+        {
+            if (IsValid())
+                storage->TouchChange(id,mask);
+        }
+
+        void TransformAccessor::AddChangeMask(uint32_t mask)
+        {
+            if (IsValid())
+                storage->AddChangeMask(id,mask);
+        }
+
+        uint64_t TransformAccessor::GetVersion() const
+        {
+            return IsValid() ? storage->GetVersion(id) : 0;
+        }
+
+        bool TransformAccessor::IsWriteArmed() const
+        {
+            return IsValid() && storage->IsWriteArmed(id);
+        }
+
+        void TransformAccessor::ArmWriteWarning()
+        {
+            if (IsValid())
+                storage->ArmWrite(id);
+        }
+
+        bool TransformAccessor::HasWarnedWrite() const
+        {
+            return IsValid() && storage->HasWarnedWrite(id);
+        }
+
+        void TransformAccessor::SetWriteWarned()
+        {
+            if (IsValid())
+                storage->SetWriteWarned(id);
         }
 
         // ── 局部 TRS：读写直落存储（唯一真源）────────────────────────────────
@@ -81,6 +151,25 @@ namespace hgl
                 return;
 
             storage->SetParent(id,(parent == id) ? INVALID_TRANSFORM_ID : parent);   // 自我成环直接拒
+        }
+
+        const std::vector<TransformID> &TransformAccessor::GetChildren() const
+        {
+            static const std::vector<TransformID> kEmpty;
+
+            return IsValid() ? storage->GetChildren(id) : kEmpty;
+        }
+
+        void TransformAccessor::AddChild(TransformID child)
+        {
+            if (IsValid())
+                storage->AddChild(id,child);
+        }
+
+        void TransformAccessor::RemoveChild(TransformID child)
+        {
+            if (IsValid())
+                storage->RemoveChild(id,child);
         }
 
         // ── 世界变换：派生量（局部 TRS + 父链组合）────────────────────────────

@@ -1699,14 +1699,12 @@ namespace hgl
             vec->push_back(comp);
         }
 
-        void ECSContext::RegisterTransformComponent(const std::shared_ptr<TransformComponent>& comp, bool isMovable)
+        void ECSContext::RegisterTransform(TransformID id,bool isMovable)
         {
-            if (!comp)
+            if (!IsValidTransformID(id))
                 return;
 
-            // Auto-ensure TransformSystem when any TransformComponent appears.
-            // This guarantees transform update/upload path without requiring apps to
-            // manually register the system.
+            // 有变换出现即自动装上 TransformSystem（避免样例手动注册）
             {
                 auto transform_system = GetSystem<TransformSystem>();
                 if (!transform_system)
@@ -1719,93 +1717,87 @@ namespace hgl
                 }
             }
 
-            if (isMovable)
-            {
-                movable_transforms.push_back(comp);
-            }
-            else
-            {
-                static_transforms.push_back(comp);
-            }
+            auto &list = isMovable ? movable_transforms : static_transforms;
+
+            if (std::find(list.begin(),list.end(),id) == list.end())
+                list.push_back(id);
         }
 
-        void ECSContext::MigrateTransformComponent(TransformComponent* comp_ptr, bool toMovable)
+        void ECSContext::MigrateTransform(TransformID id,bool toMovable)
         {
-            if (!comp_ptr)
+            if (!IsValidTransformID(id))
                 return;
 
-            auto remove_from_list = [comp_ptr](std::vector<std::weak_ptr<TransformComponent>>& list)
+            auto remove_from_list = [id](std::vector<TransformID>& list)
             {
-                list.erase(std::remove_if(list.begin(), list.end(),
-                    [comp_ptr](const std::weak_ptr<TransformComponent>& w)
-                    {
-                        auto sp = w.lock();
-                        return !sp || sp.get() == comp_ptr;
-                    }), list.end());
+                list.erase(std::remove(list.begin(),list.end(),id),list.end());
             };
 
-            // Remove from current list
-            if (toMovable)
-            {
-                remove_from_list(static_transforms);
-            }
-            else
-            {
-                remove_from_list(movable_transforms);
-            }
+            remove_from_list(static_transforms);
+            remove_from_list(movable_transforms);
 
-            // Add to new list
-            std::shared_ptr<TransformComponent> comp_shared;
+            auto &target = toMovable ? movable_transforms : static_transforms;
 
-            if (auto owner = comp_ptr->GetOwner())
-            {
-                comp_shared = owner->GetComponent<TransformComponent>();
-            }
+            if (std::find(target.begin(),target.end(),id) == target.end())
+                target.push_back(id);
 
-            if (!comp_shared)
-                return;
-
-            auto add_unique = [&comp_ptr](std::vector<std::weak_ptr<TransformComponent>>& list,
-                                          const std::shared_ptr<TransformComponent>& comp)
-            {
-                for (const auto& weak_comp : list)
-                {
-                    if (auto existing = weak_comp.lock())
-                    {
-                        if (existing.get() == comp_ptr)
-                            return;
-                    }
-                }
-                list.push_back(comp);
-            };
-
-            if (toMovable)
-                add_unique(movable_transforms, comp_shared);
-            else
-                add_unique(static_transforms, comp_shared);
+            if (auto *storage = GetTransformStorage())
+                storage->SetMobility(id,toMovable ? 1 : 0);
         }
 
-        void ECSContext::UnregisterTransformComponent(TransformComponent* comp_ptr)
+        void ECSContext::UnregisterTransform(TransformID id)
         {
-            if (!comp_ptr)
+            if (!IsValidTransformID(id))
                 return;
 
-            auto remove_from_list = [comp_ptr](std::vector<std::weak_ptr<TransformComponent>>& list)
+            auto remove_from_list = [id](std::vector<TransformID>& list)
             {
-                list.erase(std::remove_if(list.begin(), list.end(),
-                    [comp_ptr](const std::weak_ptr<TransformComponent>& w)
-                    {
-                        auto sp = w.lock();
-                        return !sp || sp.get() == comp_ptr;
-                    }), list.end());
+                list.erase(std::remove(list.begin(),list.end(),id),list.end());
             };
 
             remove_from_list(static_transforms);
             remove_from_list(movable_transforms);
         }
 
+        TransformID ECSContext::CreateTransform(EntityID owner,Mobility mobility)
+        {
+            auto *storage = GetTransformStorage();
 
+            if (!storage)
+                return INVALID_TRANSFORM_ID;
 
+            const TransformID id = storage->Allocate();
+
+            storage->SetOwner(id,owner);
+            storage->SetMobility(id,(mobility == Mobility::Movable) ? 1 : 0);
+
+            RegisterTransform(id,mobility == Mobility::Movable);
+
+            return id;
+        }
+
+        void ECSContext::DestroyTransform(TransformID id)
+        {
+            if (!IsValidTransformID(id))
+                return;
+
+            UnregisterTransform(id);
+
+            if (auto *storage = GetTransformStorage())
+                storage->Deallocate(id);
+        }
+
+        TransformID ECSContext::GetTransformID(EntityID owner) const
+        {
+            const auto *storage = GetTransformStorage();
+
+            return storage ? storage->FindByOwner(owner) : INVALID_TRANSFORM_ID;
+        }
+
+        TransformAccessor ECSContext::GetTransform(TransformID id)
+        {
+            return TransformAccessor(GetTransformStorage(),id,this);
+        }
 
         void ECSContext::GetSystemsByElementType(const std::string& element_type, std::vector<std::shared_ptr<System>>& out_systems) const
         {

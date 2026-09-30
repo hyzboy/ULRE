@@ -54,35 +54,35 @@ namespace hgl::ecs
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
 
-        for (const auto& weak_comp : movable_transforms)
+        for (const TransformID id : movable_transforms)
         {
-            if (auto comp = weak_comp.lock())
+            if (!storage)
+                break;
+
+            ++total_movable;
+
+            const bool row_dirty = storage->IsDirty(id);
+            if (row_dirty)
+                ++dirty_movable;
+
+            const bool allow_by_mask = (storage->GetChangeMask(id) & update_mask) != 0;
+
+            if (ShouldUpdateTransform(id, update_mask))
             {
-                Entity* owner = comp->GetOwner();
-                (void)owner;
-
-                ++total_movable;
-                if (comp->IsDirty())
-                    ++dirty_movable;
-
-                bool allow_by_mask = (comp->GetChangeMask() & update_mask) != 0;
-                if (ShouldUpdateTransform(comp, update_mask))
+                UpdateTransformRow(id);
+                MarkTransformSeen(id);
+                ++updated_movable;
+            }
+            else
+            {
+                if (row_dirty)
                 {
-                    comp->UpdateIfDirty();
-                    MarkTransformSeen(comp);
-                    ++updated_movable;
+                    if (!allow_by_mask)
+                        ++skipped_by_mask;
+                    else
+                        ++skipped_by_version;
                 }
-                else
-                {
-                    if (comp->IsDirty())
-                    {
-                        if (!allow_by_mask)
-                            ++skipped_by_mask;
-                        else
-                            ++skipped_by_version;
-                    }
-                    MarkTransformSeen(comp);
-                }
+                MarkTransformSeen(id);
             }
         }
 
@@ -121,16 +121,14 @@ namespace hgl::ecs
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
 
-        for (const auto& weak_comp : static_transforms)
+        for (const TransformID id : static_transforms)
         {
-            if (auto comp = weak_comp.lock())
+            if (ShouldUpdateTransform(id, update_mask))
             {
-                if (ShouldUpdateTransform(comp, update_mask))
-                {
-                    comp->UpdateIfDirty();
-                }
-                MarkTransformSeen(comp);
+                UpdateTransformRow(id);
             }
+
+            MarkTransformSeen(id);
         }
 
         static_dirty = true;
@@ -154,15 +152,12 @@ namespace hgl::ecs
 
             bool has_dirty_static = false;
 
-            for (const auto& weak_comp : static_transforms)
+            for (const TransformID id : static_transforms)
             {
-                if (auto comp = weak_comp.lock())
+                if (ShouldUpdateTransform(id, update_mask))
                 {
-                    if (ShouldUpdateTransform(comp, update_mask))
-                    {
-                        has_dirty_static = true;
-                        break;
-                    }
+                    has_dirty_static = true;
+                    break;
                 }
             }
 
@@ -170,17 +165,17 @@ namespace hgl::ecs
             {
                 UpdateStaticDirty();
 
-                // D4：静态物体被判脏 ⇒ 它已被渲染侧识别（在静态列表里并被消费）。
+                // D4：静态物体被判脏 ⇒ 它已被渲染侧消费（在静态列表里并被消费）。
                 // 从"下一次"写入起算**运行期写**：本次（搭建/首次）写入不该告警，
                 // 之后再写就会整段重写静态矩阵 + 让全部静态级联缓存失效，故此时 arm，
-                // 由组件侧一次性告警（WarnStaticRuntimeWrite）。
+                // 由写入方一次性告警（WarnStaticRuntimeWrite / 存储行标记）。
                 // 这个位置有两个刻意选择：①在下面的 transform_buffer 早退**之前**，
                 // 无图形设备的路径（单元测试）同样成立；②只在真有静态变更时做
                 // （O(N) 只在罕见事件上付，稳态每帧仍是早退）。
-                for (const auto& weak_comp : static_transforms)
+                if (auto *storage = world->GetTransformStorage())
                 {
-                    if (auto comp = weak_comp.lock())
-                        comp->ArmStaticRuntimeWriteWarning();
+                    for (const TransformID id : static_transforms)
+                        storage->ArmWrite(id);
                 }
 
                 // A3：静态场景 revision 递增。静态级联阴影滚动缓存的正确性前提
@@ -238,21 +233,16 @@ namespace hgl::ecs
             }
             else
             {
-                for (const auto& weak_comp : static_transforms)
+                for (const TransformID handle : static_transforms)
                 {
-                    auto comp = weak_comp.lock();
-                    if (!comp)
-                        continue;
-
-                    const auto handle = comp->GetStorageHandle();
-                    if (handle == TransformDataStorage::INVALID_HANDLE)
+                    if (!IsValidTransformID(handle))
                         continue;
 
                     const uint32_t *idx = static_index_map.GetValuePointer(handle);
                     if (!idx)
                         continue;
 
-                    const uint64_t version = comp->GetVersion();
+                    const uint64_t version = storage->GetVersion(handle);
                     const uint64_t *last_uploaded = last_uploaded_version.GetValuePointer(handle);
                     if (!last_uploaded || *last_uploaded != version)
                     {
@@ -269,21 +259,16 @@ namespace hgl::ecs
             }
             else
             {
-                for (const auto& weak_comp : movable_transforms)
+                for (const TransformID handle : movable_transforms)
                 {
-                    auto comp = weak_comp.lock();
-                    if (!comp)
-                        continue;
-
-                    const auto handle = comp->GetStorageHandle();
-                    if (handle == TransformDataStorage::INVALID_HANDLE)
+                    if (!IsValidTransformID(handle))
                         continue;
 
                     const uint32_t *idx = dynamic_index_map.GetValuePointer(handle);
                     if (!idx)
                         continue;
 
-                    const uint64_t version = comp->GetVersion();
+                    const uint64_t version = storage->GetVersion(handle);
                     const uint64_t *last_uploaded = last_uploaded_version.GetValuePointer(handle);
                     if (!last_uploaded || *last_uploaded != version)
                     {
@@ -295,32 +280,23 @@ namespace hgl::ecs
 
             if (static_dirty)
             {
-                const auto& static_transforms_for_version = world->GetStaticTransforms();
-                for (const auto& weak_comp : static_transforms_for_version)
+                for (const TransformID handle : world->GetStaticTransforms())
                 {
-                    auto comp = weak_comp.lock();
-                    if (!comp)
+                    if (!IsValidTransformID(handle))
                         continue;
 
-                    const auto handle = comp->GetStorageHandle();
-                    if (handle == TransformDataStorage::INVALID_HANDLE)
-                        continue;
-                    last_uploaded_version[handle] = comp->GetVersion();
+                    last_uploaded_version[handle] = storage->GetVersion(handle);
                 }
             }
 
             if (dynamic_force_full)
             {
-                const auto& movable_transforms_for_version = world->GetMovableTransforms();
-                for (const auto& weak_comp : movable_transforms_for_version)
+                for (const TransformID handle : world->GetMovableTransforms())
                 {
-                    auto comp = weak_comp.lock();
-                    if (!comp)
+                    if (!IsValidTransformID(handle))
                         continue;
-                    const auto handle = comp->GetStorageHandle();
-                    if (handle == TransformDataStorage::INVALID_HANDLE)
-                        continue;
-                    last_uploaded_version[handle] = comp->GetVersion();
+
+                    last_uploaded_version[handle] = storage->GetVersion(handle);
                 }
             }
 
@@ -451,62 +427,69 @@ namespace hgl::ecs
         static_handles.reserve(static_transforms.size());
         dynamic_handles.reserve(movable_transforms.size());
 
-        for (const auto& weak_comp : static_transforms)
+        for (const TransformID handle : static_transforms)
         {
-            if (auto comp = weak_comp.lock())
-            {
-                const auto handle = comp->GetStorageHandle();
-                if (handle == TransformDataStorage::INVALID_HANDLE)
-                    continue;
-                const uint32_t index = static_cast<uint32_t>(static_handles.size());
-                static_handles.push_back(handle);
-                static_index_map[handle] = index;
-            }
+            if (!IsValidTransformID(handle))
+                continue;
+
+            const uint32_t index = static_cast<uint32_t>(static_handles.size());
+            static_handles.push_back(handle);
+            static_index_map[handle] = index;
         }
 
-        for (const auto& weak_comp : movable_transforms)
+        for (const TransformID handle : movable_transforms)
         {
-            if (auto comp = weak_comp.lock())
-            {
-                const auto handle = comp->GetStorageHandle();
-                if (handle == TransformDataStorage::INVALID_HANDLE)
-                    continue;
-                const uint32_t index = static_cast<uint32_t>(dynamic_handles.size());
-                dynamic_handles.push_back(handle);
-                dynamic_index_map[handle] = index;
-            }
+            if (!IsValidTransformID(handle))
+                continue;
+
+            const uint32_t index = static_cast<uint32_t>(dynamic_handles.size());
+            dynamic_handles.push_back(handle);
+            dynamic_index_map[handle] = index;
         }
     }
 
-    bool TransformSystem::ShouldUpdateTransform(const std::shared_ptr<TransformComponent>& comp, uint32_t update_mask)
+    void TransformSystem::UpdateTransformRow(const TransformID id)
     {
-        if (!comp || !comp->IsDirty())
+        auto *storage = world ? world->GetTransformStorage() : nullptr;
+
+        if (!storage || !IsValidTransformID(id))
+            return;
+
+        // 与旧组件路径同义：脏就做一次平铺求值，并记一次 WorldMatrix 变更
+        if (storage->IsDirty(id) || storage->IsTopologyDirty())
+            storage->UpdateDirtyWorldMatricesFlat();
+
+        storage->AddChangeMask(id,TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix));
+    }
+
+    bool TransformSystem::ShouldUpdateTransform(const TransformID id,uint32_t update_mask)
+    {
+        auto *storage = world ? world->GetTransformStorage() : nullptr;
+
+        if (!storage || !IsValidTransformID(id))
             return false;
 
-        if ((comp->GetChangeMask() & update_mask) == 0)
+        if (!storage->IsDirty(id))
             return false;
 
-        const auto handle = comp->GetStorageHandle();
-        if (handle == TransformDataStorage::INVALID_HANDLE)
-            return true;
+        if ((storage->GetChangeMask(id) & update_mask) == 0)
+            return false;
 
-        const uint64_t version = comp->GetVersion();
-        const uint64_t *last_version = last_seen_version.GetValuePointer(handle);
+        const uint64_t version = storage->GetVersion(id);
+        const uint64_t *last_version = last_seen_version.GetValuePointer(id);
         if (last_version && *last_version == version)
             return false;
 
         return true;
     }
 
-    void TransformSystem::MarkTransformSeen(const std::shared_ptr<TransformComponent>& comp)
+    void TransformSystem::MarkTransformSeen(const TransformID id)
     {
-        if (!comp)
+        auto *storage = world ? world->GetTransformStorage() : nullptr;
+
+        if (!storage || !IsValidTransformID(id))
             return;
 
-        const auto handle = comp->GetStorageHandle();
-        if (handle == TransformDataStorage::INVALID_HANDLE)
-            return;
-
-        last_seen_version[handle] = comp->GetVersion();
+        last_seen_version[id] = storage->GetVersion(id);
     }
 }//namespace hgl::ecs

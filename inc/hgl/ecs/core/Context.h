@@ -8,6 +8,8 @@
 #include<hgl/ecs/core/RenderPassRequest.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/ecs/core/ScenePipelineMode.h>
+#include<hgl/ecs/support/TransformID.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
@@ -125,9 +127,9 @@ namespace hgl
 
             std::vector<ComponentQueryBase> component_query_bases;
 
-            // TransformComponent 分离列表与 World 变换存储
-            std::vector<std::weak_ptr<TransformComponent>> static_transforms;
-            std::vector<std::weak_ptr<TransformComponent>> movable_transforms;
+            // 变换（T8：按 TransformID 记录，不再持组件指针；组件只是过渡期外壳）
+            std::vector<TransformID> static_transforms;
+            std::vector<TransformID> movable_transforms;
             std::unique_ptr<TransformDataStorage> transform_storage;
             std::unique_ptr<RenderItemDataStorage> render_item_storage;
             std::unique_ptr<DrawItemIDStorage> draw_item_id_storage;
@@ -459,20 +461,23 @@ namespace hgl
             /// 反注册组件实例（由 Entity::RemoveComponent 调用）
             void UnregisterComponentInstance(size_t type_hash, Component* comp_ptr);
 
-            /// Register a transform component (called by TransformComponent::OnAttach)
-            void RegisterTransformComponent(const std::shared_ptr<TransformComponent>& comp, bool isMovable);
+            /// 登记/迁移/注销一个变换（按 TransformID；由作者 API 与过渡期的组件外壳调用）
+            void RegisterTransform(TransformID id, bool isMovable);
+            void MigrateTransform(TransformID id, bool toMovable);
+            void UnregisterTransform(TransformID id);
 
-            /// Migrate transform between static and movable lists
-            void MigrateTransformComponent(TransformComponent* comp_ptr, bool toMovable);
+            /// 建/销毁一个变换（entity 级 API 的基础：分配存储行 + 登记 owner/移动性）
+            TransformID CreateTransform(EntityID owner, Mobility mobility);
+            void        DestroyTransform(TransformID id);
 
-            /// Unregister a transform component (called by TransformComponent::OnDetach)
-            void UnregisterTransformComponent(TransformComponent* comp_ptr);
+            /// 实体 → 变换行（无变换时返回 INVALID_TRANSFORM_ID）
+            TransformID GetTransformID(EntityID owner) const;
 
-            /// Get static transforms for offline baking
-            const std::vector<std::weak_ptr<TransformComponent>>& GetStaticTransforms() const { return static_transforms; }
+            /// 变换访问器（薄句柄；读写直落本世界的存储）
+            TransformAccessor GetTransform(TransformID id);
 
-            /// Get movable transforms for runtime updates
-            const std::vector<std::weak_ptr<TransformComponent>>& GetMovableTransforms() const { return movable_transforms; }
+            const std::vector<TransformID>& GetStaticTransforms() const { return static_transforms; }
+            const std::vector<TransformID>& GetMovableTransforms() const { return movable_transforms; }
 
             /// Get world-level TransformDataStorage
             TransformDataStorage* GetTransformStorage() { return transform_storage.get(); }

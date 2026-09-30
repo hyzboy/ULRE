@@ -15,8 +15,6 @@ namespace hgl
             , storageHandle(TransformDataStorage::INVALID_HANDLE)
             , bound_storage(nullptr)
             , mobility(initial_mobility)
-            , static_runtime_write_armed(false)
-            , static_runtime_write_warned(false)
             , fixed_pixel_sizing_enabled(false)
             , fixed_pixel_diameter(160.0f)
             , fixed_pixel_reference_world_diameter(1.0f)
@@ -54,6 +52,7 @@ namespace hgl
             {
                 bound_storage = storage;
                 storageHandle = storage->Allocate();      // 新行默认就是单位 TRS，无需再写一遍
+                storage->SetOwner(storageHandle, owner_id);   // 实体→行 的反向索引（accessor 靠它找变换）
                 storage->SetMobility(storageHandle, IsMovable() ? 1 : 0);
             }
         }
@@ -166,7 +165,32 @@ namespace hgl
 
         TransformAccessor TransformComponent::GetAccessor() const
         {
-            return TransformAccessor(GetStorage(), GetStorageHandle(), owner_context, owner_id);
+            return TransformAccessor(GetStorage(), GetStorageHandle(), owner_context);
+        }
+
+        uint64_t TransformComponent::GetVersion() const
+        {
+            return GetAccessor().GetVersion();
+        }
+
+        uint32_t TransformComponent::GetChangeMask() const
+        {
+            return GetAccessor().GetChangeMask();
+        }
+
+        void TransformComponent::ArmStaticRuntimeWriteWarning()
+        {
+            GetAccessor().ArmWriteWarning();
+        }
+
+        bool TransformComponent::IsStaticRuntimeWriteArmed() const
+        {
+            return GetAccessor().IsWriteArmed();
+        }
+
+        bool TransformComponent::HasWarnedStaticRuntimeWrite() const
+        {
+            return GetAccessor().HasWarnedWrite();
         }
 
         glm::vec3 TransformComponent::GetWorldPosition()
@@ -322,41 +346,33 @@ namespace hgl
         void TransformComponent::SetParent(EntityID parent)
         {
             WarnStaticRuntimeWrite("SetParent");
-            // Remove from old parent
-            if (parent_id.IsValid() && owner_context)
+
+            auto *storage = GetStorage();
+            const auto self = GetStorageHandle();
+
+            // 从旧父的子表里摘掉自己（父链与子表真源都在存储）
+            if (parent_id.IsValid())
             {
-                Entity* oldParentEntity = owner_context->GetEntity(parent_id);
-                if (oldParentEntity)
-                {
-                    auto oldParentTransform = oldParentEntity->GetComponent<TransformComponent>();
-                    if (oldParentTransform)
-                    {
-                        oldParentTransform->RemoveChild(owner_id);
-                    }
-                }
+                const TransformID old_parent = storage->FindByOwner(parent_id);
+
+                if (IsValidTransformID(old_parent))
+                    storage->RemoveChild(old_parent, self);
             }
 
-            // Set new parent
             parent_id = parent;
-            TransformDataStorage::HandleID parent_storage_handle = TransformDataStorage::INVALID_HANDLE;
-            if (parent.IsValid() && owner_context)
+
+            // 接上新父
+            TransformID parent_tid = INVALID_TRANSFORM_ID;
+
+            if (parent.IsValid())
             {
-                Entity* parentEntity = owner_context->GetEntity(parent);
-                if (parentEntity)
-                {
-                    auto parentTransform = parentEntity->GetComponent<TransformComponent>();
-                    if (parentTransform)
-                    {
-                        parentTransform->AddChild(owner_id);
-                        parent_storage_handle = parentTransform->GetStorageHandle();
-                    }
-                }
+                parent_tid = storage->FindByOwner(parent);
+
+                if (IsValidTransformID(parent_tid))
+                    storage->AddChild(parent_tid, self);
             }
 
-            if (auto* storage = GetStorage())
-            {
-                storage->SetParent(GetStorageHandle(), parent_storage_handle);
-            }
+            storage->SetParent(self, parent_tid);
 
             MarkDirty(ToChangeMask(TransformChange::Parent) | ToChangeMask(TransformChange::WorldMatrix));
         }
@@ -373,12 +389,11 @@ namespace hgl
             if (!child.IsValid())
                 return;
 
-            // Check if already a child
-            auto it = std::find(child_ids.begin(), child_ids.end(), child);
-            if (it == child_ids.end())
-            {
-                child_ids.push_back(child);
-            }
+            auto *storage = GetStorage();
+            const TransformID child_tid = storage->FindByOwner(child);
+
+            if (IsValidTransformID(child_tid))
+                storage->AddChild(GetStorageHandle(), child_tid);
         }
 
         void TransformComponent::RemoveChild(EntityID child)
@@ -386,22 +401,30 @@ namespace hgl
             if (!child.IsValid())
                 return;
 
-            auto it = std::find(child_ids.begin(), child_ids.end(), child);
-            if (it != child_ids.end())
-            {
-                child_ids.erase(it);
-            }
+            auto *storage = GetStorage();
+            const TransformID child_tid = storage->FindByOwner(child);
+
+            if (IsValidTransformID(child_tid))
+                storage->RemoveChild(GetStorageHandle(), child_tid);
         }
 
         void TransformComponent::GetChildEntities(std::vector<Entity*>& out) const
         {
             out.clear();
+
             if (!owner_context)
                 return;
 
-            for (const EntityID& child_id : child_ids)
+            auto *storage = GetStorage();
+
+            for (const TransformID child : storage->GetChildren(GetStorageHandle()))
             {
-                Entity* entity = owner_context->GetEntity(child_id);
+                const EntityID child_owner = storage->GetOwner(child);
+
+                if (!child_owner.IsValid())
+                    continue;
+
+                Entity* entity = owner_context->GetEntity(child_owner);
                 if (entity)
                     out.push_back(entity);
             }
@@ -447,16 +470,17 @@ namespace hgl
                         storageHandle = target_storage->Allocate();
                         target_storage->SetLocalTRS(storageHandle, pos, rot, scale);
                     }
+                    target_storage->SetOwner(storageHandle, owner_id);
                     target_storage->SetMobility(storageHandle, IsMovable() ? 1 : 0);
 
                     if (parent_id.IsValid())
                     {
-                        if (Entity* parent_entity = owner_context->GetEntity(parent_id))
+                        const TransformID parent_tid = target_storage->FindByOwner(parent_id);
+
+                        if (IsValidTransformID(parent_tid))
                         {
-                            if (auto parent_tc = parent_entity->GetComponent<TransformComponent>())
-                            {
-                                target_storage->SetParent(storageHandle, parent_tc->GetStorageHandle());
-                            }
+                            target_storage->SetParent(storageHandle, parent_tid);
+                            target_storage->AddChild(parent_tid, storageHandle);
                         }
                     }
                 }
@@ -469,7 +493,7 @@ namespace hgl
             {
                 if (auto ctx = owner->GetContext())
                 {
-                    ctx->RegisterTransformComponent(std::static_pointer_cast<TransformComponent>(shared_from_this()), IsMovable());
+                    ctx->RegisterTransform(storageHandle, IsMovable());
                 }
             }
         }
@@ -481,40 +505,31 @@ namespace hgl
             {
                 if (auto ctx = owner->GetContext())
                 {
-                    ctx->UnregisterTransformComponent(this);
+                    ctx->UnregisterTransform(storageHandle);
                 }
+            }
+
+            // 先从父的子表里摘掉自己（存储是真源），再释放本行
+            if (bound_storage && storageHandle != TransformDataStorage::INVALID_HANDLE && parent_id.IsValid())
+            {
+                const TransformID parent_tid = bound_storage->FindByOwner(parent_id);
+
+                if (IsValidTransformID(parent_tid))
+                    bound_storage->RemoveChild(parent_tid, storageHandle);
             }
 
             if (bound_storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
             {
-                bound_storage->Deallocate(storageHandle);
+                bound_storage->Deallocate(storageHandle);      // 行内的子表/owner 反向索引一并清掉
                 storageHandle = TransformDataStorage::INVALID_HANDLE;
                 bound_storage = nullptr;
             }
-
-            // Remove from parent
-            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
-            if (parent)
-            {
-                auto parentTransform = parent->GetComponent<TransformComponent>();
-                if (parentTransform)
-                {
-                    Entity* owner_entity = owner_context ? owner_context->GetEntity(owner_id) : nullptr;
-                    if (owner_entity)
-                    {
-                        parentTransform->RemoveChild(owner_entity->GetEntityID());
-                    }
-                }
-            }
-
-            // Clear children
-            child_ids.clear();
         }
 
         void TransformComponent::UpdateWorldMatrix()
         {
             GetAccessor().UpdateIfDirty();
-            AddChangeMask(ToChangeMask(TransformChange::WorldMatrix));
+            GetAccessor().AddChangeMask(ToChangeMask(TransformChange::WorldMatrix));
         }
 
         void TransformComponent::UpdateIfDirty()
@@ -531,10 +546,12 @@ namespace hgl
         // 每组件只报一次：真正的误用是"每帧写"，一次性告警足以暴露，不该刷屏。
         void TransformComponent::WarnStaticRuntimeWrite(const char *what)
         {
-            if (!IsStatic() || !static_runtime_write_armed || static_runtime_write_warned)
+            auto accessor = GetAccessor();
+
+            if (!IsStatic() || !accessor.IsWriteArmed() || accessor.HasWarnedWrite())
                 return;
 
-            static_runtime_write_warned = true;
+            accessor.SetWriteWarned();
 
             const char *entity_name = "<no-owner>";
             if (Entity *owner = GetOwner())
@@ -557,24 +574,34 @@ namespace hgl
 
         void TransformComponent::MarkDirty(uint32_t change_mask)
         {
-            TouchChange(change_mask);
+            GetAccessor().TouchChange(change_mask);
             GetAccessor().MarkDirty();
 
-            // Mark children as dirty
-            if (owner_context)
+            MarkDescendantsDirty();
+        }
+
+        // 孩子/孙子的世界矩阵都变了 ⇒ 逐行记一次"WorldMatrix 变更"。
+        // 存储的平铺求值只负责算出新矩阵，"哪些行要重传上 GPU"是由**版本号比对**决定的，
+        // 所以这里必须逐行 bump（只标脏不 bump 版本 ⇒ 子节点的 L2W 行不会重传）。
+        void TransformComponent::MarkDescendantsDirty()
+        {
+            auto *storage = GetStorage();
+
+            std::vector<TransformID> stack(GetAccessor().GetChildren());
+
+            while (!stack.empty())
             {
-                for (const EntityID& child_id : child_ids)
-                {
-                    Entity* child = owner_context->GetEntity(child_id);
-                    if (child)
-                    {
-                        auto childTransform = child->GetComponent<TransformComponent>();
-                        if (childTransform)
-                        {
-                            childTransform->MarkDirty();
-                        }
-                    }
-                }
+                const TransformID id = stack.back();
+                stack.pop_back();
+
+                if (!IsValidTransformID(id) || id >= static_cast<TransformID>(storage->GetCount()))
+                    continue;
+
+                storage->SetDirty(id, true);
+                storage->TouchChange(id, ToChangeMask(TransformChange::WorldMatrix));
+
+                for (const TransformID child : storage->GetChildren(id))
+                    stack.push_back(child);
             }
         }
 
@@ -619,7 +646,7 @@ namespace hgl
             {
                 if (auto ctx = owner->GetContext())
                 {
-                    ctx->MigrateTransformComponent(this, to_movable);
+                    ctx->MigrateTransform(storageHandle, to_movable);
                 }
             }
         }

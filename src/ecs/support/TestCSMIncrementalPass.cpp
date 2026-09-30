@@ -1915,8 +1915,8 @@ int main(int argc, char** argv)
                   "void TransformComponent::WarnStaticRuntimeWrite(const char *what)",
                   "D4 一次性告警的实现被删——运行期写静态又变成静默生效" },
                 { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
-                  "if (!IsStatic() || !static_runtime_write_armed || static_runtime_write_warned)",
-                  "告警守卫被改：要么搭建期误报，要么每帧刷屏（一次性语义失效）" },
+                  "if (!IsStatic() || !accessor.IsWriteArmed() || accessor.HasWarnedWrite())",
+                  "告警守卫被改：要么搭建期误报，要么每帧刷屏（一次性语义失效；armed/warned 标记自 T8 起在存储行里）" },
                 { "TransformComponent.cpp", OS_TEXT("src/ecs/components/TransformComponent.cpp"),
                   "WarnStaticRuntimeWrite(\"SetLocalPosition\");",
                   "本地位置写入不再留痕（最常见的每帧写路径）" },
@@ -1942,8 +1942,8 @@ int main(int argc, char** argv)
                   "WarnStaticRuntimeWrite(\"SetParent\");",
                   "改父级不再留痕（同样会让全部静态级联失效）" },
                 { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
-                  "comp->ArmStaticRuntimeWriteWarning();",
-                  "渲染侧不再 arm：搭建期与运行期无法区分（告警永不触发或永远误报）" },
+                  "storage->ArmWrite(id);",
+                  "渲染侧不再 arm：搭建期与运行期无法区分（告警永不触发或永远误报；arm 自 T8 起写存储行的 write_armed）" },
             };
 
             if (const int failed = verify_source_contracts(15, kStaticWriteContracts,

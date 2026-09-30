@@ -4,9 +4,12 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <hgl/type/ValueArray.h>
+#include <hgl/ecs/core/EntityHandle.h>
 #include <functional>
 #include <cstdint>
 #include <cstring>
+#include <unordered_map>
+#include <vector>
 
 namespace hgl
 {
@@ -48,6 +51,19 @@ namespace hgl
             hgl::ValueArray<uint8_t>        matrixDirty;        // 1 byte each (世界矩阵是否脏)
             hgl::ValueArray<uint8_t>        mobility;           // 1 byte each (0=static, 1=movable)
 
+            /// 子节点表（与行一一对应；CPU 侧层级查询用）
+            std::vector<std::vector<HandleID>> children;
+
+            // ── 变换元数据（T8：原先在 TransformComponent 里，现搬进存储 ⇒ 单一真源）──
+            hgl::ValueArray<EntityID>       owners;             // 所属实体（accessor 解析 owner / 告警里的实体名）
+            hgl::ValueArray<uint32_t>       change_masks;       // 变更位掩码（TouchChange 累积）
+            hgl::ValueArray<uint64_t>       versions;           // 变更计数（渲染侧比对"是否已上传"）
+            hgl::ValueArray<uint8_t>        write_armed;        // D4：该行已被渲染侧消费过
+            hgl::ValueArray<uint8_t>        write_warned;       // D4：已就"运行期写静态"告警过一次
+
+            /// 实体 → 变换行（反向索引）。T8 起"某实体有没有变换"不再靠组件查询。
+            std::unordered_map<EntityID,HandleID> entity_rows;
+
         public:
 
             /// Allocate space for a new transform
@@ -66,6 +82,14 @@ namespace hgl
                 local_dirty.Add(1);
                 matrixDirty.Add(1);
                 mobility.Add(1);  // Default to movable
+
+                owners.Add(EntityID());
+                change_masks.Add(0);
+                versions.Add(0);
+                write_armed.Add(0);
+                write_warned.Add(0);
+                children.emplace_back();
+
                 topology_dirty = true;
                 return id;
             }
@@ -80,6 +104,25 @@ namespace hgl
                 parent_indices[id] = INVALID_HANDLE;
                 matrixDirty[id] = 0;
                 local_dirty[id] = 0;
+
+                if (id < static_cast<HandleID>(owners.GetCount()))
+                {
+                    const EntityID owner = owners[id];
+
+                    if (owner.IsValid())
+                    {
+                        const auto it = entity_rows.find(owner);
+
+                        if (it != entity_rows.end() && it->second == id)
+                            entity_rows.erase(it);
+                    }
+
+                    owners[id] = EntityID();
+                }
+
+                if (id < static_cast<HandleID>(children.size()))
+                    children[id].clear();
+
                 topology_dirty = true;
             }
 
@@ -162,6 +205,151 @@ namespace hgl
             {
                 world_matrices[id] = matrix;
                 matrixDirty[id] = 0;
+            }
+
+        public: // 元数据（owner / 变更版本 / D4 标记）—— T8 起是唯一真源
+
+            EntityID GetOwner(HandleID id) const
+            {
+                if (id >= static_cast<HandleID>(owners.GetCount()))
+                    return EntityID();
+
+                return owners[id];
+            }
+
+            void SetOwner(HandleID id,EntityID owner)
+            {
+                if (id >= static_cast<HandleID>(owners.GetCount()))
+                    return;
+
+                const EntityID old = owners[id];
+
+                if (old.IsValid() && old != owner)
+                {
+                    const auto it = entity_rows.find(old);
+
+                    if (it != entity_rows.end() && it->second == id)
+                        entity_rows.erase(it);
+                }
+
+                owners[id] = owner;
+
+                if (owner.IsValid())
+                    entity_rows[owner] = id;
+            }
+
+            /// 实体 → 变换行（无效/无变换时返回 INVALID_HANDLE）
+            HandleID FindByOwner(EntityID owner) const
+            {
+                if (!owner.IsValid())
+                    return INVALID_HANDLE;
+
+                const auto it = entity_rows.find(owner);
+
+                return (it != entity_rows.end()) ? it->second : INVALID_HANDLE;
+            }
+
+            uint32_t GetChangeMask(HandleID id) const
+            {
+                if (id >= static_cast<HandleID>(change_masks.GetCount()))
+                    return 0;
+
+                return change_masks[id];
+            }
+
+            void ClearChangeMask(HandleID id)
+            {
+                if (id < static_cast<HandleID>(change_masks.GetCount()))
+                    change_masks[id] = 0;
+            }
+
+            /// 记一次变更：版本 +1 且累积位掩码（与 Component::TouchChange 同语义）
+            void TouchChange(HandleID id,uint32_t mask)
+            {
+                if (id >= static_cast<HandleID>(versions.GetCount()))
+                    return;
+
+                ++versions[id];
+                change_masks[id] |= mask;
+            }
+
+            void AddChangeMask(HandleID id,uint32_t mask)
+            {
+                if (id < static_cast<HandleID>(change_masks.GetCount()))
+                    change_masks[id] |= mask;
+            }
+
+            uint64_t GetVersion(HandleID id) const
+            {
+                if (id >= static_cast<HandleID>(versions.GetCount()))
+                    return 0;
+
+                return versions[id];
+            }
+
+            bool IsWriteArmed(HandleID id) const
+            {
+                return (id < static_cast<HandleID>(write_armed.GetCount())) && write_armed[id] != 0;
+            }
+
+            void ArmWrite(HandleID id)
+            {
+                if (id < static_cast<HandleID>(write_armed.GetCount()))
+                    write_armed[id] = 1;
+            }
+
+            bool HasWarnedWrite(HandleID id) const
+            {
+                return (id < static_cast<HandleID>(write_warned.GetCount())) && write_warned[id] != 0;
+            }
+
+            void SetWriteWarned(HandleID id)
+            {
+                if (id < static_cast<HandleID>(write_warned.GetCount()))
+                    write_warned[id] = 1;
+            }
+
+        public: // 子节点（CPU 侧层级查询；GPU 侧走 parent_indices + eval_order，与此无关）
+
+            const std::vector<HandleID> &GetChildren(HandleID id) const
+            {
+                static const std::vector<HandleID> kEmpty;
+
+                if (id >= static_cast<HandleID>(children.size()))
+                    return kEmpty;
+
+                return children[id];
+            }
+
+            void AddChild(HandleID id,HandleID child)
+            {
+                if (id >= static_cast<HandleID>(children.size()) || child == id)
+                    return;
+
+                auto &list = children[id];
+
+                for (const HandleID c : list)
+                    if (c == child)
+                        return;
+
+                list.push_back(child);
+            }
+
+            void RemoveChild(HandleID id,HandleID child)
+            {
+                if (id >= static_cast<HandleID>(children.size()))
+                    return;
+
+                auto &list = children[id];
+
+                for (auto it = list.begin(); it != list.end(); ++it)
+                {
+                    if (*it == child)
+                    {
+                        list.erase(it);
+                        return;
+                    }
+                }
             }
 
         public: // Parent relationship
@@ -429,6 +617,13 @@ namespace hgl
                 local_dirty.Clear();
                 matrixDirty.Clear();
                 mobility.Clear();
+                owners.Clear();
+                change_masks.Clear();
+                versions.Clear();
+                write_armed.Clear();
+                write_warned.Clear();
+                children.clear();
+                entity_rows.clear();
                 topology_dirty = true;
             }
         };
