@@ -926,3 +926,126 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
      **真实收益在节点级**：那些节点不再引用 trs 行（`trsIndex = -1`），且**引擎侧拿到的是精确单位矩阵**
      （`matrixTable` 的 0 号条目）而不是"几乎单位"的矩阵 —— 这一条对后续 T6（局部真源唯一化）与
      T10（行号冻结）才有意义。
+
+---
+
+## 8. 外部架构评审整合（2026-09-30）
+
+> 来源：`doc/future/ULRE_Architecture_Technical_Review_20260930.md`（另一工具生成，代码基线 `b941570` = **删组件之前**）。
+> 本节把它逐条对照**当前**状态判定：已解决 / 仍成立（采纳）/ 不成立（给依据），并把数字重测于本批之后。
+
+### 8.1 判定表
+
+| # | 评审意见 | 现状（本仓实测） | 处置 |
+|---|---------|-----------------|------|
+| R1 | `TransformComponent` 过渡期外壳的双轨风险（老路径建的实体 `entity_rows` 无 owner ⇒ `GetTransformByEntity` 无效） | 组件已 `git rm`，`grep -rn TransformComponent src inc example` **零命中**，双轨不存在。但**该类风险真的发生过**，且比评审列的更宽——见 8.3 | ✅ 已解决；其"类"已扩写为 T9 的强制前置检查 |
+| R2 | `Allocate()` 动态扩容 ⇒ 行号漂移 = Phase 3 最大前置阻塞 | 成立：`TransformAssignmentBuffer::EnsureCapacity` + `"L2W recreated"`（`src/ecs/support/TransformAssignmentBuffer.cpp:163`、`:511`）确实重建 GPU buffer | ✅ 采纳 → T10 具体化（8.2） |
+| R3 | 347 处引用 / 75 文件，迁移体量大；建议脚本生成清单分批改 | 引用面已归零（本批 84 文件迁完：示例 42 + gizmo 17 + 引擎侧）；**但"脚本批量替换"实测有害**——同名成员（`transform`）、带前缀表达式（`gizmo->root_transform`）、inline→外部定义的 const 变化会反复生成新错误，最终必须"逐文件读→改→编译" | ✅ 已解决（方法上否掉脚本建议） |
+| R4 | `MaterialComponent` 不是纯数据（recipe/重试/降级）⇒ 不能按纯数据表迁移 | 成立：`inc/hgl/ecs/components/MaterialComponent.h` 含 `recipe_hash`、`cached_normalized_recipe`、`shadow_cached_normalized_recipe` 等运行期状态 | ✅ 采纳 → T9 的 Material 分两层（8.2） |
+| R5 | `BoundingBoxComponent` 仍 OOP，视锥剔除无法向量化 | 成立：`src/ecs/support/PrimitiveBatchPipeline.cpp:176`、`src/ecs/support/line/LineRenderPipeline.cpp:454`、`src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:37` 均逐实体 `GetComponent<BoundingBoxComponent>()` | ✅ 采纳并**前置**：BoundingBox 连续化排在其余组件 ID 化之前（热路径） |
+| R6 | 层级求值"版本号漏传"风险 ⇒ 建议封装统一入口 | **已落地**：`TransformAccessor::MarkLocalChanged` 就是该统一入口（版本 +1 + 掩码累积 + 逐行 bump 子孙 `WorldMatrix`），并有 Test 15（13 源码契约 + 6 行为）与 Test 8 护栏 | ✅ 已解决（与建议同向） |
+| R7 | `Context.h` 691 行过重 ⇒ 拆 Public/Impl | 事实成立（689 行、30+ include） | ⏸ **延后**：T11（64B Entity）会重写该文件的实体/组件部分，先拆必返工 |
+| R8 | `eval_order` 构建是 O(n²) ⇒ 改 Kahn | 部分成立：实现是"节点 × 层深"，实测 `ComputeTransformHierarchy` 场景 **212 节点 / 8 层**（自检 `max_diff ≤ 1.9e-06`）⇒ 现值 O(8n)，非瓶颈 | ⏸ 延后（低优先、非阻塞）；若改，Kahn 顺带得到天然环检测 |
+| — | 评审"偏差表"7 条（Accessor 24 B vs 文档"4 B 零成本"目标、禁全局 storage、不引 48 B TRS SSBO、ActiveRowLease 禁动、`M'=R·M·R⁻¹`、fastgltf 分解关闭、动静物理分区待 T10） | 逐条与实仓一致（`sizeof(TransformAccessor)` 探针实测 **24 B**） | ✅ 保留；"文档 4 B 口径需修订"应写进 Phase 3 文档 |
+
+### 8.2 采纳项落点
+
+- **T10（容量与行号冻结）**
+  - `TransformDataStorage::Initialize(max_statics, max_dynamics)` 预分配；`Allocate()` 超容量 **fail-fast**（与"材质行 arena 1024 行不扩容、超限=项目 bug"同一口径）；
+  - `TransformAssignmentBuffer` 去掉 `"L2W recreated"` 路径（`TransformAssignmentBuffer.cpp:511`）；
+  - **行字节瘦身（评审未见，本批引入）**：`fixed_pixel`（`FixedPixelState` **32 B/行**）与 `children`（`std::vector`，MSVC x64 Release 24 B / Debug 32 B，且绝大多数为空）被做成了**每行数组** ⇒ 每行 189 B → **约 267 B（Release 口径；Debug 约 275 B）**（+41%），与 Phase 3 的 48 B TRS + 64 B L2W 目标背道而驰。建议两者改**稀疏侧表**：fixed-pixel 只有 gizmo 行需要；子表用 CSR（`child_offset/child_count` + 共享 child pool）。这是 T10 该顺手做掉的。
+- **T9（其余组件 ID 化）**
+  - **先做 BoundingBox 连续化**（`BoundingBoxDataStorage` 已有头文件，补齐实现；`PrimitiveCullSystem` 改连续数组批处理）；
+  - **MaterialComponent 分两层**：数据层（MaterialID → SSBO 行）ID 化；状态层（recipe/重试/降级）留在 MaterialManager / 专属 System，不入纯数据表；
+  - 其余（Primitive / Renderable / Visibility / Camera）按 T9 既定顺序。
+
+### 8.3 T9 前的强制前置检查（本批血的教训）
+
+删一个组件类时，必须把它**全部"对世界的副作用"**搬走，而不只是数据面。做法：逐条对照
+`git show HEAD:<被删文件>` 里的每个 `ctx->` / `owner_context->` / `storage->` 调用。本批漏过并已修的：
+1. `SetMobility` 通知世界把该行在静态/可动列表间换边（`Context::MigrateTransform`）—— 漏掉 ⇒ 行停在旧通道，渲染侧实例→行索引取不到它 ⇒ 取默认行（单位矩阵）⇒ **92 个实例全画在原点且不动**（用户实测 `RecursiveCube`）；
+2. `SetParent` 维护存储子表（存储的 `SetParent` 只写 `parent_indices`）—— 漏掉 ⇒ 子孙标脏/版本 bump 的遍历失效；
+3. 实体销毁回收变换行（原组件 `OnDetach`）—— 漏掉 ⇒ 残行留在列表里把索引映射整体串位。
+
+### 8.4 数字重测（本批之后，`ProbeTransformDiagnostics`）
+
+| 指标 | 评审（删组件前） | 现在 | 说明 |
+|------|----------------|------|------|
+| 单 transform 实体边际内存 | 939.9 B / 9 次分配 | **678.5 B / 7 次分配** | T6/T7/T8 的直接收益：−261 B、−2 次 |
+| `sizeof(TransformComponent)` | 336 B | **不存在**（组件已删） | — |
+| `sizeof(TransformDataStorage)` | 488 B | **832 B** | 世界级元数据（owners/versions/masks/children/fixed_pixel）的一次性开销 |
+| 每行字节 | 189 B | **275 B（Debug 实测）**；探针已改为**由存储自列** 18 条平行数组（`TransformDataStorage::GetPerRowFields`）⇒ 不再手工维护字段清单 | 其中 `children` 32 + `fixed_pixel` 32 是 T8 新增；Release 口径 ≈ 267 B（`std::vector` 24）；见 8.2 的瘦身建议 |
+| `sizeof(TransformAccessor)` | 24 B | 24 B | 与评审一致（文档"4 B 零成本"口径需修订） |
+
+---
+
+## 9. 接下来的工作总清单（2026-09-30 整理）
+
+> 口径：每项给"目标 / 落点 / 验收"。**顺序硬约束：T10 必须早于 T11**。T9 与 T10 彼此不阻塞，
+> 但都改 `Context.h` / 存储层 ⇒ 建议串行做，避免同文件双写。
+
+### 9.0 收尾（本批 84 文件，未提交）
+
+| 项 | 落点 | 验收 |
+|---|---|---|
+| 提交本批 | 提交说明见用户侧文件（首行：T8 收官…） | 本地提交（推送由用户决定） |
+| **前台复验 `RecursiveCube`**（窗口隐藏时引擎整帧跳过，我无法前置窗口） | `RecursiveCube.exe` | 92 个实例散开且各自转动；顺带扫 `RayPicking`/`GizmoUsageExample` |
+| ~~修探针"每行字节"统计~~ **✅ 已完成（2026-09-30）** | `TransformDataStorage::GetPerRowFields/PerRowBytes/FindPerRowCountMismatch` + `ProbeTransformDiagnostics.cpp` | 探针改由**存储自列**（18 条平行数组，新增字段只改存储一处）；Debug 实测 **275 B/行**（`children` 32 + `fixed_pixel` 32 单列）；`TestTransformFlatStorage` **Test 9** 钉住不变量"每条平行数组元素数 == 行数"（检查前先结算拓扑，否则 `eval_order` 会误报） |
+
+### 9.1 T9 其余组件 ID 化（阶段二主线）
+
+顺序：**前置检查 → 纯数据先行 → 带状态机最后**
+
+0. **前置检查（强制）**：删组件类前，逐条对照 `git show HEAD:<被删文件>` 里的每个 `ctx->` / `owner_context->` / `storage->` 调用，把"对世界的副作用"全部搬走（T8 血泪：Mobility 换边 / 子表维护 / 销毁回收）。
+1. `BoundingBoxComponent` → `BoundingBoxDataStorage` 连续化（评审 R5：剔除是热路径；当前 `src/ecs/support/PrimitiveBatchPipeline.cpp:176`、`src/ecs/support/line/LineRenderPipeline.cpp:454`、`src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:37` 全是逐实体 OOP）⇒ `PrimitiveCullSystem` 改连续数组批处理。
+2. `VisibilityComponent`（最接近纯数据）。
+3. `PrimitiveComponent` / `RenderableComponent`（配 GeometryDescriptor/Accessor）。
+4. `CameraComponent`（注意深层虚继承）。
+5. `MaterialComponent` **分两层**（评审 R4）：数据层 `MaterialID → SSBO 行` ID 化；状态层（recipe、`shadow_retry_frames`、解析失败降级）留 MaterialManager 或专属 System，不进纯数据表。
+
+- 验收：每个组件独立一批（API 变更 + 全部调用点同批，否则中间态不可编译）；每批跑 §5 固定验证集。
+
+### 9.2 T10 容量与行号冻结（T11 的强前置）
+
+1. `TransformDataStorage::Initialize(max_statics, max_dynamics)` 预分配 + 分区 `[0, static_count)`；`Allocate()` 超限 **fail-fast**（与"材质行 arena 1024 上限不扩容"同一口径）。
+2. 去掉 `TransformAssignmentBuffer` 的 `"L2W recreated"` 路径（`src/ecs/support/TransformAssignmentBuffer.cpp:511`）。
+3. **行字节瘦身**：`fixed_pixel`（32 B/行）与 `children`（24–32 B/行，绝大多数为空）改**稀疏侧表**（fixed-pixel 只有 gizmo 行需要；子表用 CSR：`child_offset/child_count` + 共享 child pool）⇒ 每行从 ≈267 B 回到 ≈211 B（只留 owners/change_masks/versions/两标志）。
+4. 探针与 3 同步复核行字节（口径一致后再冻结）。
+
+- 验收：现有示例在固定容量下正常；构造超限场景验证 fail-fast 报错明确；日志不再出现 L2W 重建。
+
+### 9.3 T11 64B `Entity` + `.ulrescene` 直载（阶段三）——**已延后（用户拍板 2026-09-30）**
+
+> **顺序变更**：场景直载推迟到**全部 Component ID 化 + 访问器完成**、以及**子场景树的快速插入/展开**等问题解决之后再谈。
+> 也就是说 T9 之后先做子场景树（插入/展开/局部重排）相关的设计，T11 顺位往后；本节的实现要点先原样保留备查。
+
+`Entity.h` 重写为 `alignas(64)` 键值表（16 B 元数据 + 48 B 属性区）、`SceneHeader` 对齐 + StringPool 外置、离线 Cooker、Windows 侧用 `CreateFileMapping`/一次性 `fread`（**不可** alias 文件页进可写 GPU 缓冲，静态段仍要拷一次）、DMA 一次推 GPU。
+
+- 验收：离线导出工具 + 直载器；场景还原时间与显存直推链路（度量并记录）。
+
+### 9.4 文档口径修订（跟任务同步做）
+
+- Accessor 目标"4 B 零成本" ⇒ **24 B**（携带世界上下文是多世界安全的必要代价）；Phase 3 内存预算按实测口径改写。
+- Phase 2 文档里"`MaterialAccessor` 假设材质是纯数据" ⇒ 按 9.1-5 的分层重写。
+- `doc/backlog.md` C.2 的十篇待更新文档，**再加 T8 影响的**：`ecs-layer-architecture-and-frame-flow`、`ecs/transform-data-management`（变换真源/组件退役）、`simple-sphere-ecs-render-chain`、`gpu-driven-4id`。
+
+### 9.5 待拍板 / 延后
+
+| 项 | 状态 |
+|---|---|
+| `ComputeTransformHierarchy` 示例定位（GPU 层级求值探路 vs 死代码）—— 决定 `local_matrices`/SoA 平行数组去留 | **待拍板**（§7.2） |
+| `Context.h`（689 行 / 30+ include）拆 Public/Impl | 延后到 T11 之后（否则返工） |
+| `eval_order` 构建改 Kahn | 延后（实测 212 节点 / 8 层，非瓶颈） |
+| 组启停双写者（组件挂卸计数 vs scene gather 全量） | T9 会正面撞上（删组件类即删掉计数路径）⇒ 一并收敛为"仅 gather" |
+| `DetachAllComponents(bool)` 参数无效 | 顺手（与 9.3 的销毁路径一起） |
+
+### 9.6 仓库既有 backlog（触发条件型，非本线）
+
+- **A 线**：A1 GPU 提交原语（semaphore 链 / per-frame 资源多份化）、A3 RenderGraph 跨 RT pass 链（`Pass::renderTarget` 死字段）、A6 cubemap/CSM/MSAA、A7 离屏 RT in-flight 槽。
+- **C 线**：**TexConvCore 链接 `out\Windows_64_Release\TexImage.lib`** —— ✅ **已修（2026-09-30）**。根因是**设计使然**而非笔误（`src/Tools/TexConv/CMakeLists.txt:179-196`：`TexImage.dll` 恒按 Release 构建，Debug 宿主必须链它的 import lib；`image/CMakeLists.txt:25` 也写了"Debug 构建前需先完成一次 Release 构建"），而本树从未做过 Release 构建 ⇒ 每次全量 Debug 必吃一条 LNK1104。处置：① 在 `texconv_link_teximage()` 加 **configure 期明确警告**（缺库时打印路径/原因/修复命令，已受控验证"缺则打印、在则静默"）；② 实跑一次 `--config Release --target TexImage`（rc=0），此后**全量 Debug 构建 EXIT=0（编译错误 0、链接/工具错误 0）**，`TexConv.exe`/`TexConvCore.dll` 正常产出。
+- **D 线**：D5/D6 已完成；**D7 = 性能账目 → EnvironmentSystem 拆分 → 4 级联合并**（大组按序）。
+- **B 线**：RenderContext 类移除、FreeCameraMode 空实现且为默认值、LineStatsSystem 默认注册、WorkManager 序列空架子、示例干净退出时 LEAK + 间歇 CRT abort（判据看日志内容，**不看退出码**）。
+
+### 9.7 固定验证集（口径重申，脚本见 §5）
+
+build **0 error** → 门 **42 PASS / 0 FAIL** → 三测试 **rc=0** → 示例抽跑 **0 真 error 行** → 行尾/BOM 逐文件保持 → 删类型类任务 `grep` **零残留**。

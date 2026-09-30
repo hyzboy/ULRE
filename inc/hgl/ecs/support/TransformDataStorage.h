@@ -6,6 +6,7 @@
 #include <hgl/type/ValueArray.h>
 #include <hgl/ecs/core/EntityHandle.h>
 #include <functional>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <unordered_map>
@@ -331,6 +332,78 @@ namespace hgl
             {
                 if (id < static_cast<HandleID>(write_warned.GetCount()))
                     write_warned[id] = 1;
+            }
+
+        public: // 每行字节账目（探针 / 测试共用；**新增每行数组时只改这一处**）
+
+            /// 一条平行数组的账目
+            struct PerRowField
+            {
+                const char *name;
+                uint32_t    bytes;   ///< 该数组每行占的字节（= 元素大小）
+                uint32_t    count;   ///< 元素数（不变量：恒等于 GetCount()）
+            };
+
+            static constexpr uint32_t PER_ROW_FIELD_COUNT = 18;
+
+            using PerRowFieldTable = std::array<PerRowField,PER_ROW_FIELD_COUNT>;
+
+            /// 逐条列出每行数组。**新增/删除每行数组时同步改这里**，探针与测试都跟着走。
+            /// 不含 `level_offsets`（每 Level 一条，不是每行）与 `entity_rows`（哈希表，堆开销由分配统计覆盖）。
+            PerRowFieldTable GetPerRowFields() const
+            {
+                return { {
+                    { "local_mat4",   static_cast<uint32_t>(sizeof(glm::mat4)),        static_cast<uint32_t>(local_matrices.GetCount()) },
+                    { "parent",       static_cast<uint32_t>(sizeof(HandleID)),         static_cast<uint32_t>(parent_indices.GetCount()) },
+                    { "world_mat4",   static_cast<uint32_t>(sizeof(glm::mat4)),        static_cast<uint32_t>(world_matrices.GetCount()) },
+                    { "depth",        static_cast<uint32_t>(sizeof(uint16_t)),         static_cast<uint32_t>(hierarchy_depths.GetCount()) },
+                    { "eval_order",   static_cast<uint32_t>(sizeof(HandleID)),         static_cast<uint32_t>(eval_order.GetCount()) },
+                    { "positions",    static_cast<uint32_t>(sizeof(glm::vec3)),        static_cast<uint32_t>(positions.GetCount()) },
+                    { "rotations",    static_cast<uint32_t>(sizeof(glm::quat)),        static_cast<uint32_t>(rotations.GetCount()) },
+                    { "scales",       static_cast<uint32_t>(sizeof(glm::vec3)),        static_cast<uint32_t>(scales.GetCount()) },
+                    { "local_dirty",  static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(local_dirty.GetCount()) },
+                    { "matrix_dirty", static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(matrixDirty.GetCount()) },
+                    { "mobility",     static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(mobility.GetCount()) },
+                    { "owners",       static_cast<uint32_t>(sizeof(EntityID)),         static_cast<uint32_t>(owners.GetCount()) },
+                    { "change_masks", static_cast<uint32_t>(sizeof(uint32_t)),         static_cast<uint32_t>(change_masks.GetCount()) },
+                    { "versions",     static_cast<uint32_t>(sizeof(uint64_t)),         static_cast<uint32_t>(versions.GetCount()) },
+                    { "write_armed",  static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(write_armed.GetCount()) },
+                    { "write_warned", static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(write_warned.GetCount()) },
+                    { "children",     static_cast<uint32_t>(sizeof(std::vector<HandleID>)), static_cast<uint32_t>(children.size()) },
+                    { "fixed_pixel",  static_cast<uint32_t>(sizeof(FixedPixelState)),  static_cast<uint32_t>(fixed_pixel.size()) },
+                } };
+            }
+
+            /// 每行字节合计（各平行数组元素大小之和）
+            uint32_t PerRowBytes() const
+            {
+                uint32_t total = 0;
+
+                for (const PerRowField &f : GetPerRowFields())
+                    total += f.bytes;
+
+                return total;
+            }
+
+            /// 其中"派生/缓存"部分（local_mat4 + world_mat4）—— 报告里单列，便于讨论去留
+            uint32_t DerivedRowBytes() const
+            {
+                return static_cast<uint32_t>(sizeof(glm::mat4) * 2);
+            }
+
+            /// 不变量检查：每个每行数组的元素数都必须等于行数。
+            /// 返回第一个不匹配的字段名（全一致返回 nullptr）——漏在 Allocate/Deallocate 里同步的数组会在这里现形。
+            /// 注意：`eval_order` / `hierarchy_depths` 由 `RebuildTopologyOrder()` 按需重建，
+            ///       检查前应先求值一次（`UpdateDirtyWorldMatricesFlat()`），否则会在"拓扑未结算"时误报。
+            const char *FindPerRowCountMismatch() const
+            {
+                const uint32_t rows = static_cast<uint32_t>(GetCount());
+
+                for (const PerRowField &f : GetPerRowFields())
+                    if (f.count != rows)
+                        return f.name;
+
+                return nullptr;
             }
 
         public: // 表现层状态：fixed-pixel 尺寸控制（真源在存储）

@@ -251,6 +251,40 @@ int main(int argc, char** argv)
         GLogInfo(u8"Test 8 Passed: 变换行生命周期契约（Mobility 换边 / SetParent 子表 / 销毁注销 / 摘父表）。");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 9: 每行数组同步不变量 + 行字节账目
+    //   · 每行数组的账目由存储自列（`GetPerRowFields`），探针只是打印它
+    //   · 不变量：**每个每行数组的元素数必须等于行数** —— 新增数组时漏在
+    //     Allocate/Deallocate 里同步（如 T8 加 fixed_pixel/children 时）会在这里现形
+    // ─────────────────────────────────────────────────────────────
+    {
+        auto *storage = context.GetTransformStorage();
+        if (!storage)
+        {
+            GLogError(u8"Test 9 Failed: 无变换存储");
+            return 11;
+        }
+
+        const uint32_t rows = static_cast<uint32_t>(storage->GetCount());
+
+        // eval_order / hierarchy_depths 由 RebuildTopologyOrder 按需重建 ⇒ 先把拓扑结算一次，
+        // 再验"每条平行数组都是一行一条"（结算后这条不变量必须严格成立）。
+        storage->UpdateDirtyWorldMatricesFlat();
+
+        if (const char *mismatch = storage->FindPerRowCountMismatch())
+        {
+            GLogError(u8"Test 9 Failed: 每行数组 '%s' 的元素数与行数（%u）不一致"
+                      u8"——漏在 Allocate/Deallocate 里同步", mismatch, rows);
+            return 11;
+        }
+
+        GLogInfo(u8"Test 9 Passed: 每行数组同步（%u 行 × %u 条平行数组 = 每行 %u B，其中派生/缓存 %u B）。",
+                 rows,
+                 static_cast<uint32_t>(TransformDataStorage::PER_ROW_FIELD_COUNT),
+                 storage->PerRowBytes(),
+                 storage->DerivedRowBytes());
+    }
+
     GLogInfo(u8"=== All TransformDataStorage tests passed successfully! ===");
     return 0;
 }

@@ -106,9 +106,12 @@
 
 ## C 线：构建与文档
 
-1. **TexConvCore 存量问题**：链接引用 `out\Windows_64_Release\TexImage.lib`，
-   clean Debug 树后必失败——工具链配置问题，一次修复永久消音
-   （本系列工作期间全量构建的 EXIT=1 全部源于它）。
+1. **~~TexConvCore 存量问题~~ ✅ 已修（2026-09-30）**：链接引用 `out\Windows_64_Release\TexImage.lib`，
+   clean Debug 树后必失败——**根因是设计使然**：`TexImage.dll` 恒按 Release 构建（ImageMagick 上游不支持
+   MSVC Debug 语义），Debug 宿主必须链它的 import lib（`src/Tools/TexConv/CMakeLists.txt:179-196`）。
+   处置：`texconv_link_teximage()` 加 configure 期明确警告（缺库时给出路径/原因/修复命令，
+   已受控验证"缺则打印、在则静默"）+ 本树实跑一次 `--config Release --target TexImage`。
+   结果：**全量 Debug 构建 EXIT=0**（编译错误 0、链接/工具错误 0），TexConv.exe/TexConvCore.dll 正常产出。
 2. **doc 十篇待更新**（逐篇清单见维护记忆）：
    - 命名类 5 篇：`GetMaterialSSBOBinding→GetGlobalSSBOBinding` 等
      （simple-sphere-material-shadergen-overview、

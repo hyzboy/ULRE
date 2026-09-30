@@ -100,32 +100,28 @@ static void SectionSizes()
     printf("sizeof(hgl::ecs::Entity)              = %zu B\n",sizeof(Entity));
     printf("sizeof(hgl::ecs::TransformDataStorage)= %zu B\n",sizeof(TransformDataStorage));
 
-    const size_t per_row_positions        =sizeof(glm::vec3);
-    const size_t per_row_rotations        =sizeof(glm::quat);
-    const size_t per_row_scales           =sizeof(glm::vec3);
-    const size_t per_row_local_matrices   =sizeof(glm::mat4);
-    const size_t per_row_parent_indices   =sizeof(uint32_t);
-    const size_t per_row_world_matrices   =sizeof(glm::mat4);
-    const size_t per_row_hierarchy_depths =sizeof(uint16_t);
-    const size_t per_row_eval_order       =sizeof(uint32_t);
-    const size_t per_row_local_dirty      =sizeof(uint8_t);
-    const size_t per_row_matrix_dirty     =sizeof(uint8_t);
-    const size_t per_row_mobility         =sizeof(uint8_t);
+    // 每行字节账目：由**存储自己**列出（TransformDataStorage::GetPerRowFields），
+    // 探针不再手工维护字段清单 —— 新增每行数组只需改存储里那一处，探针与测试自动跟上。
+    TransformDataStorage probe_storage;      // 只为取账目，不 Allocate（零成本）
 
-    const size_t per_row=per_row_positions+per_row_rotations+per_row_scales
-                        +per_row_local_matrices+per_row_parent_indices
-                        +per_row_world_matrices+per_row_hierarchy_depths
-                        +per_row_eval_order+per_row_local_dirty
-                        +per_row_matrix_dirty+per_row_mobility;
+    // 让"各数组元素数 == 行数"这条不变量检查有实义（0 行时恒真）：分配两行并结算一次拓扑
+    probe_storage.Allocate();
+    probe_storage.Allocate();
+    probe_storage.UpdateDirtyWorldMatricesFlat();
 
-    printf("\nTransformDataStorage 每行字节（各平行数组元素之和，不含 level_offsets）：\n");
-    printf("  positions %zu | rotations %zu | scales %zu | local_mat4 %zu | parent %zu\n",
-           per_row_positions,per_row_rotations,per_row_scales,per_row_local_matrices,per_row_parent_indices);
-    printf("  world_mat4 %zu | depth %zu | eval_order %zu | local_dirty %zu | matrix_dirty %zu | mobility %zu\n",
-           per_row_world_matrices,per_row_hierarchy_depths,per_row_eval_order,
-           per_row_local_dirty,per_row_matrix_dirty,per_row_mobility);
-    printf("  => 每行合计 %zu B（其中 local_mat4 + world_mat4 = %zu B 是可讨论的派生/缓存部分）\n",
-           per_row,per_row_local_matrices+per_row_world_matrices);
+    const uint32_t per_row    = probe_storage.PerRowBytes();
+    const uint32_t per_row_derived = probe_storage.DerivedRowBytes();
+
+    printf("\nTransformDataStorage 每行字节（存储自列 %u 条平行数组，不含 level_offsets / entity_rows）：\n",
+           TransformDataStorage::PER_ROW_FIELD_COUNT);
+
+    for (const auto &f : probe_storage.GetPerRowFields())
+        printf("  %-13s %3u B/行\n", f.name, f.bytes);
+
+    printf("  => 每行合计 %u B（其中 local_mat4 + world_mat4 = %u B 是可讨论的派生/缓存部分）\n",
+           per_row, per_row_derived);
+    printf("  => 新增每行字段后重跑本探针即可；各数组元素数 == 行数：%s\n",
+           probe_storage.FindPerRowCountMismatch() ? "否 ✗（漏在 Allocate/Deallocate 里同步）" : "是");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
