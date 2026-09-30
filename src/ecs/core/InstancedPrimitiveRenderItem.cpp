@@ -4,7 +4,7 @@ namespace hgl::ecs
 {
     InstancedPrimitiveRenderItem::InstancedPrimitiveRenderItem(
         EntityID ent_id,
-        std::shared_ptr<TransformComponent> trans,
+        const TransformAccessor &trans,
         std::shared_ptr<InstancedPrimitiveComponent> prim,
         std::shared_ptr<MaterialComponent> mat,
         ECSContext *ctx)

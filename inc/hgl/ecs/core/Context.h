@@ -479,7 +479,13 @@ namespace hgl
             const std::vector<TransformID>& GetStaticTransforms() const { return static_transforms; }
             const std::vector<TransformID>& GetMovableTransforms() const { return movable_transforms; }
 
-            /// Get world-level TransformDataStorage
+            /// 实体 → 变换访问器（无变换时返回无效 accessor）
+        TransformAccessor GetTransformByEntity(EntityID owner)
+        {
+            return GetTransform(GetTransformID(owner));
+        }
+
+        /// Get world-level TransformDataStorage
             TransformDataStorage* GetTransformStorage() { return transform_storage.get(); }
             const TransformDataStorage* GetTransformStorage() const { return transform_storage.get(); }
 

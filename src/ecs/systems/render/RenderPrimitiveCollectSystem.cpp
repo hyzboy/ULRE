@@ -1360,8 +1360,8 @@ namespace hgl::ecs
 
             if (active_mobility_filter >= 0)
             {
-                auto transform = entity->GetComponent<TransformComponent>();
-                if (!transform || static_cast<int>(transform->GetMobility()) != active_mobility_filter)
+                TransformAccessor transform = world->GetTransformByEntity(entity->GetEntityID());
+                if (!transform.IsValid() || static_cast<int>(transform.GetMobility()) != active_mobility_filter)
                     continue;
             }
 
@@ -1373,10 +1373,10 @@ namespace hgl::ecs
                 const float max_dist = primitiveComp->GetShadowMaxDistance();
                 if (max_dist > 0.0f && world->HasShadowOrigin())
                 {
-                    auto transform = entity->GetComponent<TransformComponent>();
-                    if (transform)
+                    TransformAccessor transform = world->GetTransformByEntity(entity->GetEntityID());
+                    if (transform.IsValid())
                     {
-                        const glm::vec3 world_pos = transform->GetWorldPosition();
+                        const glm::vec3 world_pos = transform.GetWorldPosition();
                         const glm::vec3 diff = world_pos - world->GetShadowOrigin();
                         if (glm::dot(diff, diff) > max_dist * max_dist)
                             continue;
@@ -1474,14 +1474,15 @@ namespace hgl::ecs
                 continue;
             }
 
-            auto transform = entity->GetComponent<TransformComponent>();
-            if (!transform)
+            TransformAccessor transform = world->GetTransformByEntity(entity->GetEntityID());
+
+            if (!transform.IsValid())
             {
                 ++skipped_no_transform;
                 continue;
             }
 
-            if (active_mobility_filter >= 0 && static_cast<int>(transform->GetMobility()) != active_mobility_filter)
+            if (active_mobility_filter >= 0 && static_cast<int>(transform.GetMobility()) != active_mobility_filter)
             {
                 continue;
             }
@@ -1496,7 +1497,7 @@ namespace hgl::ecs
                 const float max_dist = primitiveComp->GetShadowMaxDistance();
                 if (max_dist > 0.0f && world->HasShadowOrigin())
                 {
-                    const glm::vec3 world_pos = transform->GetWorldPosition();
+                    const glm::vec3 world_pos = transform.GetWorldPosition();
                     const glm::vec3 diff = world_pos - world->GetShadowOrigin();
                     if (glm::dot(diff, diff) > max_dist * max_dist)
                     {
@@ -1691,7 +1692,7 @@ namespace hgl::ecs
             auto material_for_item = entity->GetComponent<MaterialComponent>();
 
             // ── 同步 4-ID 描述符至 PrimitiveComponent 与 RenderItemDataStorage ──
-            const uint32_t transform_id = transform->GetStorageHandle();
+            const uint32_t transform_id = transform.GetID();
             uint32_t geometry_id = 0;
             const auto *geom_buf = primitiveComp->GetRuntimeGeometryDataBuffer();
             if (geom_buf)
@@ -1744,7 +1745,7 @@ namespace hgl::ecs
                     entity_id, transform, primitiveComp, material_for_item, world);
             }
 
-            const glm::vec3 worldPos = transform->GetWorldPosition();
+            const glm::vec3 worldPos = transform.GetWorldPosition();
             item->distanceToCamera = glm::length(worldPos - camera_pos);
 
             item->UpdateWorldMatrix();

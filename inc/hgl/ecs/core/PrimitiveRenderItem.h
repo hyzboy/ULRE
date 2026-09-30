@@ -30,7 +30,7 @@ namespace hgl::ecs
     private:
         EntityID entity_id;
         ECSContext* context = nullptr;
-        std::shared_ptr<TransformComponent> transform;
+        TransformAccessor transform;          ///< 变换薄句柄（存储行 + 世界；零副本）
         std::shared_ptr<PrimitiveComponent> primitiveComp;
         std::shared_ptr<MaterialComponent> materialComp;
         glm::mat4 worldMatrix;
@@ -38,7 +38,7 @@ namespace hgl::ecs
     public:
         PrimitiveRenderItem(
             EntityID ent_id,
-            std::shared_ptr<TransformComponent> trans,
+            const TransformAccessor &trans,
             std::shared_ptr<PrimitiveComponent> prim,
             std::shared_ptr<MaterialComponent> mat = nullptr,
             ECSContext* ctx = nullptr);
@@ -48,7 +48,7 @@ namespace hgl::ecs
         // Implement abstract interface
         EntityID GetEntityID() const override { return entity_id; }
         Entity* GetEntity() const override;
-        std::shared_ptr<TransformComponent> GetTransform() const override { return transform; }
+        TransformAccessor GetTransform() const override { return transform; }
         std::shared_ptr<RenderableComponent> GetRenderable() const override;
         glm::mat4 GetWorldMatrix() const override { return worldMatrix; }
 

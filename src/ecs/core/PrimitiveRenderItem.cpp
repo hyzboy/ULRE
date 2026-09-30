@@ -11,7 +11,7 @@ namespace hgl::ecs
     // PrimitiveRenderItem implementation
     PrimitiveRenderItem::PrimitiveRenderItem(
         EntityID ent_id,
-        std::shared_ptr<TransformComponent> trans,
+        const TransformAccessor &trans,
         std::shared_ptr<PrimitiveComponent> prim,
         std::shared_ptr<MaterialComponent> mat,
         ECSContext* ctx)
@@ -22,9 +22,9 @@ namespace hgl::ecs
         , materialComp(mat)
         , worldMatrix(1.0f)
     {
-        if (transform)
+        if (transform.IsValid())
         {
-            worldMatrix = transform->GetWorldMatrix();
+            worldMatrix = transform.GetWorldMatrix();
         }
     }
 
@@ -80,9 +80,9 @@ namespace hgl::ecs
 
     void PrimitiveRenderItem::UpdateWorldMatrix()
     {
-        if (transform)
+        if (transform.IsValid())
         {
-            worldMatrix = transform->GetWorldMatrix();
+            worldMatrix = transform.GetWorldMatrix();
         }
     }
 }//namespace hgl::ecs

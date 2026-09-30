@@ -3,7 +3,7 @@
 #include<hgl/ecs/core/EntityHandle.h>
 #include<hgl/ecs/support/PositionSourceSpec.h>
 #include<hgl/ecs/support/TransformPolicySpec.h>
-#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/graph/render/RenderItemDescriptor.h>
 #include<memory>
 
@@ -48,7 +48,8 @@ namespace hgl::ecs
         // Abstract interface - returns EntityID and entity pointer
         virtual EntityID GetEntityID() const = 0;
         virtual Entity* GetEntity() const = 0;
-        virtual std::shared_ptr<TransformComponent> GetTransform() const = 0;
+        /// 变换（薄句柄：存储行 + 世界）——T8 起不再返回组件
+        virtual TransformAccessor GetTransform() const = 0;
         virtual std::shared_ptr<RenderableComponent> GetRenderable() const = 0;
         virtual glm::mat4 GetWorldMatrix() const = 0;
 

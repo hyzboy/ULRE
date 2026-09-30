@@ -220,7 +220,7 @@ namespace hgl::ecs
             return false;
 
         auto transform = item->GetTransform();
-        if (!transform)
+        if (!transform.IsValid())
             return false;
 
         const float boundingRadius = primitiveComp->GetBoundingRadius();
@@ -228,7 +228,7 @@ namespace hgl::ecs
         if (boundingRadius <= 0.0f)
             return true;
 
-        const glm::vec3 worldPos = transform->GetWorldPosition();
+        const glm::vec3 worldPos = transform.GetWorldPosition();
 
         //GetBoundingRadius() 由几何体本地 AABB 求得，不含实体缩放，这里补上世界缩放
         const float worldRadius = ToWorldBoundingRadius(boundingRadius, item->GetWorldMatrix());
@@ -273,10 +273,10 @@ namespace hgl::ecs
                 continue;
 
             auto transform = item->GetTransform();
-            if (!transform)
+            if (!transform.IsValid())
                 continue;
 
-            const auto handle = transform->GetStorageHandle();
+            const auto handle = transform.GetID();
             if (handle == TransformDataStorage::INVALID_HANDLE)
             {
                 item->transform_index = 0;
@@ -285,7 +285,7 @@ namespace hgl::ecs
 
             uint32_t group_index = 0;
             if (transform_system &&
-                transform_system->TryGetTransformGroupIndex(handle, transform->IsMovable(), group_index))
+                transform_system->TryGetTransformGroupIndex(handle, transform.IsMovable(), group_index))
             {
                 const PositionSourceSpec position_source_spec = item->GetPositionSourceSpec();
                 const TransformPolicySpec transform_policy_spec = item->GetTransformPolicySpec();
@@ -308,7 +308,7 @@ namespace hgl::ecs
                         {
                             // R08 ingress-only stage: keep transform index behavior unchanged.
                         }
-                        item->transform_index = transform->IsMovable() ? (dynamic_base + group_index) : (group_index + 1);
+                        item->transform_index = transform.IsMovable() ? (dynamic_base + group_index) : (group_index + 1);
                         break;
                     }
                     break;
@@ -812,7 +812,7 @@ namespace hgl::ecs
                 continue;
 
             auto transform = item->GetTransform();
-            if (transform && !transform->IsMovable())
+            if (transform.IsValid() && !transform.IsMovable())
                 static_items.push_back(item);
             else
                 movable_items.push_back(item);
