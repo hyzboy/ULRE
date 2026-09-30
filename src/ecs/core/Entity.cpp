@@ -34,7 +34,7 @@ namespace hgl
                 context->MarkSceneStructureDirty();
         }
 
-        void Entity::ReplaceComponent(size_t type_hash, const std::shared_ptr<Component>& component, const std::type_index& component_type)
+        void Entity::ReplaceComponent(size_t type_hash, const std::shared_ptr<Component>& component, const std::type_index& component_type, ComponentType slot)
         {
             if (!component)
                 return;
@@ -49,9 +49,22 @@ namespace hgl
             components[type_hash] = component;
             component->SetOwner(id, context);
             component->SetOwnerEntity(this);
+            component->SetComponentSlot(slot);      // 槽位随挂载写入（单一写者）
+            component_mask = ComponentMaskAdd(component_mask,slot);
             RegisterToContext(type_hash, component);
             component->OnAttach();
             MarkSceneDirty();
+        }
+
+        bool Entity::VerifyComponentMaskAgainstComponents() const
+        {
+            uint32_t expected = 0;
+
+            for (const auto& pair : components)
+                if (pair.second)
+                    expected = ComponentMaskAdd(expected,pair.second->GetComponentSlot());
+
+            return expected == component_mask;
         }
 
         void Entity::GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const
@@ -91,6 +104,7 @@ namespace hgl
                 pair.second->OnDetach();
             }
             components.Clear();
+            component_mask = 0;                     // 全卸 ⇒ 掩码归零
             MarkSceneDirty();
         }
     }//namespace ecs

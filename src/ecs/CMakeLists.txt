@@ -341,6 +341,12 @@ if(MSVC)
 endif()
 
 # 可见性真值（世界私有存储；原 VisibilityComponent/VisibilitySystem 已删除）
+add_executable(TestComponentMask support/TestComponentMask.cpp)
+target_link_libraries(TestComponentMask PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestComponentMask PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 add_executable(TestVisibilityStorage support/TestVisibilityStorage.cpp)
 target_link_libraries(TestVisibilityStorage PRIVATE ${ULRE})
 if(MSVC)

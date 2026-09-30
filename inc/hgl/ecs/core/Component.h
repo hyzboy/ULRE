@@ -4,6 +4,7 @@
 #include<memory>
 #include<cstdint>
 #include<hgl/ecs/core/EntityHandle.h>
+#include<hgl/ecs/support/ComponentTypeTable.h>
 
 namespace hgl
 {
@@ -18,6 +19,8 @@ namespace hgl
          */
         class Component : public std::enable_shared_from_this<Component>
         {
+            friend class Entity;     ///< 只有 Entity 的挂载/卸载路径可以写槽位（单一写者）
+
         protected:
 
             std::string componentName;
@@ -26,6 +29,14 @@ namespace hgl
             Entity* owner_entity = nullptr;
             uint64_t version = 0;
             uint32_t change_mask = 0;
+
+        private:
+
+            /// 该组件占用的 Entity 槽位（无槽位 = None）。由 `Entity::ReplaceComponent` 写入（单一写者）。
+            ComponentType component_slot = ComponentType::None;
+
+            /// 槽位写入（私有：只有 friend Entity 的挂载路径能调）
+            void SetComponentSlot(ComponentType slot) { component_slot = slot; }
 
         public:
 
@@ -51,6 +62,9 @@ namespace hgl
             uint64_t GetVersion() const { return version; }
 
             uint32_t GetChangeMask() const { return change_mask; }
+
+            /// 该组件占用的 Entity 槽位（无槽位 = None）。只读；写入由 Entity 挂载路径负责。
+            ComponentType GetComponentSlot() const { return component_slot; }
 
             void ClearAllChanges() { change_mask = 0; }
 

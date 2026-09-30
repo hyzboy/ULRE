@@ -67,11 +67,11 @@ namespace hgl
         {
             // 表按枚举值下标索引 ⇒ None=0 必须占位（无 arena/无行宽）
             { ComponentType::None,            ComponentScope::World, "",                     0, "" },
-            { ComponentType::Transform,       ComponentScope::World, "ECS:Transform",       64, "TransformDataStorage" },
-            { ComponentType::Geometry,        ComponentScope::World, "ECS:Geometry",         0, "(未 ID 化)" },
-            { ComponentType::MaterialData,    ComponentScope::World, "ECS:MaterialData",     0, "(未 ID 化)" },
-            { ComponentType::MaterialRuntime, ComponentScope::World, "ECS:MaterialRuntime",  0, "(未 ID 化)" },
-            { ComponentType::Texture,         ComponentScope::World, "ECS:Texture",          0, "(未 ID 化)" },
+            { ComponentType::Transform,       ComponentScope::World,  "ECS:Transform",       64, "TransformDataStorage" },
+            { ComponentType::Geometry,        ComponentScope::Global, "ECS:Geometry",         0, "(待 ID 化)" },
+            { ComponentType::MaterialData,    ComponentScope::Global, "ECS:MaterialData",     0, "(待 ID 化)" },
+            { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "(待 ID 化)" },
+            { ComponentType::Texture,         ComponentScope::Global, "ECS:Texture",          0, "(待 ID 化)" },
         };
 
         namespace detail
@@ -99,7 +99,7 @@ namespace hgl
 
         inline constexpr bool IsValidComponentType(const ComponentType type)
         {
-            return GetComponentTypeInfo(type) != nullptr;
+            return (GetComponentTypeInfo(type) != nullptr) && (type != ComponentType::None);
         }
 
         /// 该类型的 GPU 行宽（预算与 SSBO 布局用）
@@ -116,5 +116,127 @@ namespace hgl
 
             return info ? info->scope : ComponentScope::World;
         }
+
+        // ─────────────────────────────────────────────────────────────
+        // 位掩码：一个 uint32_t 表达"实体有哪些组件槽位"（stage A 地基；stage B 的 EntityGPU::type[16] 前身）
+        // ─────────────────────────────────────────────────────────────
+
+        /// 槽位对应的位；`None`/越界一律返回 0 ⇒ 永远不占位，`HasComponentType(None)` 恒假
+        inline constexpr uint32_t ComponentTypeBit(const ComponentType type)
+        {
+            if (!IsValidComponentType(type))
+                return 0;
+
+            return 1u << static_cast<uint32_t>(type);
+        }
+
+        inline constexpr bool ComponentMaskHas(const uint32_t mask, const ComponentType type)
+        {
+            const uint32_t bit = ComponentTypeBit(type);
+
+            return bit != 0 && (mask & bit) != 0;
+        }
+
+        inline constexpr uint32_t ComponentMaskAdd(const uint32_t mask, const ComponentType type)
+        {
+            return mask | ComponentTypeBit(type);
+        }
+
+        inline constexpr uint32_t ComponentMaskRemove(const uint32_t mask, const ComponentType type)
+        {
+            return mask & ~ComponentTypeBit(type);
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // implies（蕴含）规则：某类型出现 ⇒ 必然同时具备哪些槽位
+        //   · 例：`MaterialRuntime ⇒ MaterialData`（运行期数据必以数据层为源）
+        //   · 表只写**直接**蕴含；传递闭包由 GetImpliedComponentMask 在编译期算完并自检
+        // ─────────────────────────────────────────────────────────────
+
+        inline constexpr uint32_t kComponentTypeImplies[COMPONENT_TYPE_COUNT] =
+        {
+            /* None            */ 0,
+            /* Transform       */ 0,
+            /* Geometry        */ 0,
+            /* MaterialData    */ 0,
+            /* MaterialRuntime */ ComponentTypeBit(ComponentType::MaterialData),
+            /* Texture         */ 0,
+        };
+
+        /// 该类型的**完整蕴含掩码**（含自身位）；编译期展开传递闭包
+        constexpr uint32_t GetImpliedComponentMask(const ComponentType type)
+        {
+            const uint32_t self = ComponentTypeBit(type);
+
+            if (self == 0)
+                return 0;
+
+            uint32_t mask = self;
+
+            // 反复迭代到不动点。类型种类是个位数，代价可忽略。
+            for (uint32_t round = 0; round <= COMPONENT_TYPE_COUNT; ++round)
+            {
+                const uint32_t before = mask;
+
+                for (uint32_t i = 0; i < COMPONENT_TYPE_COUNT; ++i)
+                    if (mask & (1u << i))
+                        mask |= kComponentTypeImplies[i];
+
+                if (mask == before)
+                    break;
+            }
+
+            return mask;
+        }
+
+        namespace detail
+        {
+            /// 自检（自动 scale：遍历全表，新增类型自动纳入）：
+            ///   ① 蕴含掩码含自身位；② 闭包幂等（每个成员的闭包都被原闭包包含 ⇒ 已闭包）
+            constexpr bool CheckComponentTypeImplies()
+            {
+                for (uint32_t i = 0; i < COMPONENT_TYPE_COUNT; ++i)
+                {
+                    const ComponentType type = static_cast<ComponentType>(i);
+
+                    if (type == ComponentType::None)
+                        continue;
+
+                    const uint32_t mask = GetImpliedComponentMask(type);
+
+                    if ((mask & ComponentTypeBit(type)) == 0)
+                        return false;
+
+                    for (uint32_t j = 0; j < COMPONENT_TYPE_COUNT; ++j)
+                    {
+                        if ((mask & (1u << j)) == 0)
+                            continue;
+
+                        if ((GetImpliedComponentMask(static_cast<ComponentType>(j)) & ~mask) != 0)
+                            return false;
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        static_assert(detail::CheckComponentTypeImplies(),
+                      "组件类型 implies 规则不自洽：必须自反（含自身位）且传递闭包幂等（检查是否成环或漏项）");
+
+        // ─────────────────────────────────────────────────────────────
+        // 类型 → 槽位（编译期映射）
+        //   特化写在各自的组件头里（"类型知道自己占哪个槽"），这样 Entity::AddComponent<T> 编译期即可拿到槽位；
+        //   没有特化的类型 ⇒ `None`（不占 Entity 槽位，仍是合法的普通组件，如 Camera/Lines 等 CPU 域组件）。
+        // ─────────────────────────────────────────────────────────────
+
+        template<typename T>
+        struct ComponentTypeOf
+        {
+            static constexpr ComponentType value = ComponentType::None;
+        };
+
+        template<typename T>
+        inline constexpr ComponentType ComponentTypeOf_v = ComponentTypeOf<T>::value;
     }//namespace ecs
 }//namespace hgl
