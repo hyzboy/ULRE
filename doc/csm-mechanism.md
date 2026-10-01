@@ -129,7 +129,7 @@
 ## 7. 验证流程（改 CSM 后必须逐项跑）
 
 1. **清陈旧产物缓存**：`rm -rf build/cache-hot/shader-cache`（不清会拿旧产物冒充新结果）。
-2. 改到**头文件/结构大小**时先 purge：`purge-stale-deps.sh E:/ULRE E:/ULRE/build E:/ULRE/src E:/ULRE/inc E:/ULRE/example -- <headers>`。
+2. 改到**头文件/结构大小**时先 purge：`purge-stale-deps.sh D:/ULRE D:/ULRE/build D:/ULRE/src D:/ULRE/inc D:/ULRE/example -- <headers>`。
 3. 构建 → **禁用 `| grep error` 判结果**（吞错后会跑旧 exe ⇒ 假绿；构建失败时 MSBuild 不重链 exe）。
 4. `ShaderResourceSchemaRegressionGate`：基线 **42 PASS / 0 FAIL**（含两张表各一条 parity + 各一条 `*-field-ownership` 归属用例，见 §6 契约 ④）。
 5. `TestCSMIncrementalPass` = **23 Passed**（Test 22 = 两世界同帧隔离契约；Test 23 = 相机槽拥有者生命周期契约 —— 分配/复用/耗尽拒绝 + 组件析构归还挂钩 + `CameraSlotGuard` 未就绪不下发 / 世界先销毁 no-op）；`TestRenderItemDataStorage` 通过。

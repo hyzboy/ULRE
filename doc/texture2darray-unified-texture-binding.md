@@ -299,7 +299,7 @@ material_output.ao =
 ## 9. 验证命令速查
 
 ```bash
-cd E:/ULRE
+cd D:/ULRE
 
 # 1) 全量重烤 + 生成物检查
 STORE="$LOCALAPPDATA/Temp/ulre_cook" && rm -rf "$STORE"
