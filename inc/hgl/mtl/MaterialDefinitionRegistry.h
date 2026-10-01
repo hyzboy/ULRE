@@ -119,10 +119,31 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 
+/**
+ * 回退（错误）材质的**定义 ID**：由 `kFallbackMaterialRules`（MaterialRecipe.h）唯一
+ * 决定 —— 数据驱动表，不是散落的字面量。无参重载 = 非错误回退
+ * （`MaterialErrorKind::None`），返回值仍是 `builtin/pure_color`。
+ */
+inline const char *GetFallbackMaterialDefinitionID(const MaterialErrorKind kind)
+{
+    return GetFallbackMaterialRule(kind).definition_id;
+}
+
 inline const char *GetFallbackMaterialDefinitionID()
 {
-    return "builtin/pure_color";
+    return GetFallbackMaterialDefinitionID(MaterialErrorKind::None);
 }
+
+/**
+ * 合成**回退（错误）材质**配方（A7b）：
+ *   定义 ID 与根颜色都取自 `kFallbackMaterialRules`（表驱动），随后走既有的
+ *   `NormalizeRecipe`（同一套定义默认值与渲染状态规范化）—— 因此回退配方与普通
+ *   配方在下游**没有任何分支差异**，不需要兼容层。
+ *
+ * @param kind `MaterialErrorKind::None` 时返回 false（调用方按“非材质错误”处理）。
+ */
+bool BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe,
+                                 const MaterialErrorKind kind);
 
 /**
  * Normalize a MaterialRecipe in-place:

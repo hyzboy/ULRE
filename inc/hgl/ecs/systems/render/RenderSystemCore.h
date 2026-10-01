@@ -32,7 +32,7 @@ class ECSContext;
  * 使用流程示例：
  * @code
  *   auto world = std::make_shared<ECSContext>("main_world");
- *   world->InitializeGraphics(gpu_device, render_target);
+ *   world->Initialize(gpu_device, render_target);
  *
  *   auto core = std::make_unique<RenderSystemCore>(world.get());
  *   core->Initialize();

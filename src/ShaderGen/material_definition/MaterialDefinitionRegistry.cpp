@@ -241,19 +241,53 @@ mtl::ShaderBuildContext *CreateMaterialFromDefinition(
     return BuildGenericMaterial(profile, request, definition, document_capture);
 }
 
+bool BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe,
+                                 const MaterialErrorKind kind)
+{
+    if (kind == MaterialErrorKind::None)
+        return false;
+
+    const FallbackMaterialRule &rule = GetFallbackMaterialRule(kind);
+
+    // 回退配方**从零合成**：不继承调用方残留字段 —— 调用点常是“构建失败后改走回退”，
+    // 残留会让回退材质带上半份旧状态（旧纹理绑定 / 旧 SSBO 行）。
+    out_recipe = MaterialRecipe{};
+    out_recipe.recipe_name = rule.marker_name;
+    out_recipe.mtl_def_id  = rule.definition_id;
+    out_recipe.fallback_error_kind = kind;
+    for (uint32_t i = 0; i < 4; ++i)
+        out_recipe.fallback_marker_color[i] = rule.marker_color[i];
+
+    // 与普通配方**同一条**规范化路径（定义默认值 + 解析后的渲染状态）。
+    NormalizeRecipe(out_recipe);
+    return true;
+}
+
 void NormalizeRecipe(MaterialRecipe &recipe)
 {
     // Canonicalization is intentionally strict: empty or unknown material IDs are
     // not tolerated as a legacy compatibility branch. They resolve to the single
     // file-backed fallback material so every runtime program key remains stable and
     // traceable to a concrete material definition.
+    //
+    // A7b：**材质错误**分类（数据驱动：ClassifyMaterialErrorKind + kFallbackMaterialRules）：
+    //   · 空 ID   = 无材质来源          ⇒ MissingMaterialSource
+    //   · 未知 ID = 定义 ID 不可解析     ⇒ UnknownMaterialDefinition
+    // 两者都落到保底材质，并把**错误种类与根颜色**记在配方上（根颜色用于标注错误种类）。
+    MaterialErrorKind error_kind = MaterialErrorKind::None;
+
     if (recipe.mtl_def_id.empty())
-        recipe.mtl_def_id = GetFallbackMaterialDefinitionID();
+        error_kind = MaterialErrorKind::MissingMaterialSource;
 
     MaterialDefinition definition{};
     if (!TryGetMaterialDefinitionByID(recipe.mtl_def_id, definition))
     {
-        recipe.mtl_def_id = GetFallbackMaterialDefinitionID();
+        if (error_kind == MaterialErrorKind::None)
+            error_kind = MaterialErrorKind::UnknownMaterialDefinition;
+
+        if (!BuildFallbackMaterialRecipe(recipe, error_kind))
+            return;
+
         if (!TryGetMaterialDefinitionByID(recipe.mtl_def_id, definition))
             return;
     }

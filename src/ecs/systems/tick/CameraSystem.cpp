@@ -308,7 +308,7 @@ namespace hgl::ecs
         }
 
         // pass 级相机覆盖（RenderTo(request.camera) 期间）：只处理覆盖相机，
-        // 强制重算——独立解算覆盖相机矩阵并写入其独立的全局 SSBO 槽位（同时同步 UBO 兼容旧接口）
+        // 强制重算——独立解算覆盖相机矩阵并写入其独立的全局 SSBO 行（A6 起不再有 UBO 第二写入路径）
         if (override_camera)
         {
             // 契约（doc/world-addresses-and-camera-model-plan.md §6.6②）：pass 相机必须属于**被渲染的世界**。

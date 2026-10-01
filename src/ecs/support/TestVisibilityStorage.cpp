@@ -9,7 +9,7 @@ using namespace hgl;
 using namespace hgl::ecs;
 
 /**
- * 可见性真值契约（原 VisibilityComponent / VisibilitySystem 已删除，2026-10-01）
+ * 可见性真值契约（可见性是实体级唯一真值；组件级副本与其系统已删除）
  *
  *   1) 真值唯一：只有世界私有的 VisibilityDataStorage，默认可见；
  *   2) 祖先继承：祖先不可见 ⇒ 后代不可见（后代自身并非"直接"不可见）；

@@ -16,6 +16,7 @@ namespace hgl
             uint32_t g_collect_logged = 0;
             uint32_t g_caster_logged = 0;
             uint32_t g_receiver_logged = 0;
+            uint32_t g_fallback_logged = 0;
 
             constexpr uint32_t kMaxDetailPerKind = 5;
             constexpr uint64_t kSummaryInterval = 300;      ///< 每 N 次 collect 检查打印一次汇总
@@ -31,13 +32,15 @@ namespace hgl
             if (!force && g_stats.collect_checks % kSummaryInterval != 0)
                 return;
 
-            GLogInfo(u8"[策略判定对拍] collect=%llu/不一致=%llu  caster=%llu/不一致=%llu  receiver=%llu/不一致=%llu",
+            GLogInfo(u8"[策略判定对拍] collect=%llu/不一致=%llu  caster=%llu/不一致=%llu  receiver=%llu/不一致=%llu  fallback=%llu/不一致=%llu",
                      (unsigned long long)g_stats.collect_checks,
                      (unsigned long long)g_stats.collect_mismatch,
                      (unsigned long long)g_stats.caster_checks,
                      (unsigned long long)g_stats.caster_mismatch,
                      (unsigned long long)g_stats.receiver_checks,
-                     (unsigned long long)g_stats.receiver_mismatch);
+                     (unsigned long long)g_stats.receiver_mismatch,
+                     (unsigned long long)g_stats.fallback_checks,
+                     (unsigned long long)g_stats.fallback_mismatch);
         }
 
         void ParityCheckCollect(bool table_verdict,bool existing_verdict,const char *context)
@@ -52,7 +55,7 @@ namespace hgl
                 {
                     ++g_collect_logged;
 
-                    GLogError(u8"[策略判定对拍] 收集判定不一致：表=%d 现有=%d（%s）",
+                    GLogError(u8"[策略判定对拍] 收集判定不一致：表=%d 旧链=%d（%s）",
                               table_verdict ? 1 : 0,
                               existing_verdict ? 1 : 0,
                               context ? context : "?");
@@ -74,7 +77,27 @@ namespace hgl
                 {
                     ++g_caster_logged;
 
-                    GLogError(u8"[策略判定对拍] 阴影 caster 判定不一致：表=%d 现有=%d（%s）",
+                    GLogError(u8"[策略判定对拍] 阴影 caster 判定不一致：表=%d 旧链=%d（%s）",
+                              table_verdict ? 1 : 0,
+                              existing_verdict ? 1 : 0,
+                              context ? context : "?");
+                }
+            }
+        }
+
+        void ParityCheckFallbackMaterial(bool table_verdict,bool existing_verdict,const char *context)
+        {
+            ++g_stats.fallback_checks;
+
+            if (table_verdict != existing_verdict)
+            {
+                ++g_stats.fallback_mismatch;
+
+                if (g_fallback_logged < kMaxDetailPerKind)
+                {
+                    ++g_fallback_logged;
+
+                    GLogError(u8"[策略判定对拍] 回退材质判定不一致：表=%d 参考=%d（%s）",
                               table_verdict ? 1 : 0,
                               existing_verdict ? 1 : 0,
                               context ? context : "?");
@@ -94,7 +117,7 @@ namespace hgl
                 {
                     ++g_receiver_logged;
 
-                    GLogError(u8"[策略判定对拍] 阴影接收判定不一致：表=%d 现有=%d（%s）",
+                    GLogError(u8"[策略判定对拍] 阴影接收判定不一致：表=%d 旧链=%d（%s）",
                               table_verdict ? 1 : 0,
                               existing_verdict ? 1 : 0,
                               context ? context : "?");

@@ -24,6 +24,7 @@
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 
 #include<hgl/graph/ssbo/MaterialSSBOLayout.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/util/hash/FNV1a.h>
@@ -258,6 +259,133 @@ namespace hgl::ecs
             return req.global_ssbo_type;
         }
 
+        // ── A7b：材质缺失 ⇒ 回退（错误）材质 ────────────────────────────
+        // 用户定稿语义：「有几何但无材质来源」**不是剔除条件**，而是**材质错误** ——
+        // 必须用保底材质渲染出来，并由**根颜色**标注错误种类。
+
+        /// 回退（错误）材质的**种类判定**：判据同样来自策略表
+        /// （`RenderNeed::FallbackMaterial` = 几何槽位 + 禁 `HasMaterialSource` 事实），
+        /// 种类再经 mtl 侧分类表（`ClassifyMaterialErrorKind`）给出 —— 两级都是数据驱动表。
+        /// 事实只作输入，不是判据本身。
+        graph::mtl::MaterialErrorKind ResolveFallbackMaterialErrorKind(Entity *owner)
+        {
+            StrategyFacts facts;
+            facts.has_material_source = HasAnyMaterialSource(owner);
+            // 其余事实保持缺省（真）：FallbackMaterial 规则不引用它们（只会让别的需求位
+            // 多出），本函数只读 FallbackMaterial 位 ⇒ 与全量事实求值结果一致。
+            const uint32_t needs = EvaluateRenderNeed(
+                owner ? owner->GetComponentMask() : 0u, facts.ToMask());
+
+            if (!HasRenderNeed(needs, RenderNeed::FallbackMaterial))
+                return graph::mtl::MaterialErrorKind::None;
+
+            return graph::mtl::ClassifyMaterialErrorKind(facts.has_material_source);
+        }
+
+        /// 回退（错误）材质的**根颜色宿主**：按 (注册表, 错误种类) 缓存行号。
+        /// 种类是有界枚举 ⇒ 行数有界（每种错误一行），不会随实体/帧增长。
+        struct FallbackMarkerRows
+        {
+            graph::GlobalSSBOBufferRegistry *registry = nullptr;
+            uint32_t row[graph::mtl::MATERIAL_ERROR_KIND_COUNT];
+
+            FallbackMarkerRows()
+            {
+                for (uint32_t i = 0; i < graph::mtl::MATERIAL_ERROR_KIND_COUNT; ++i)
+                    row[i] = graph::ActiveRowPool::InvalidRowID;
+            }
+        };
+
+        FallbackMarkerRows g_fallback_marker_rows;
+
+        /// 取（或首次创建）某错误种类的根颜色行。行**不归还**：它必须活到本世界最后
+        /// 一帧回退材质消失为止（与示例长期持有 accessor 同义）。缓存按注册表指针 +
+        /// `IsActive` 双重校验 ⇒ 图形上下文重建（新注册表/新池）时会重新申请，绝不会
+        /// 读到别人的行。
+        uint32_t AcquireFallbackMarkerRow(graph::GlobalSSBOBufferRegistry *registry,
+                                          const graph::mtl::MaterialErrorKind kind)
+        {
+            const uint32_t index = static_cast<uint32_t>(kind);
+
+            if (!registry || index >= graph::mtl::MATERIAL_ERROR_KIND_COUNT)
+                return graph::ActiveRowPool::InvalidRowID;
+
+            if (g_fallback_marker_rows.registry != registry)
+            {
+                g_fallback_marker_rows = FallbackMarkerRows{};
+                g_fallback_marker_rows.registry = registry;
+            }
+
+            const graph::GlobalSSBOType type = graph::GlobalSSBOType::EmissiveSurface;
+
+            if (registry->IsActive(type, g_fallback_marker_rows.row[index]))
+                return g_fallback_marker_rows.row[index];
+
+            const uint32_t row = registry->Acquire(type);
+            if (row == graph::ActiveRowPool::InvalidRowID)
+                return graph::ActiveRowPool::InvalidRowID;
+
+            graph::ssbo::EmissiveSurfaceRow marker{};
+            const graph::mtl::FallbackMaterialRule &rule =
+                graph::mtl::GetFallbackMaterialRule(kind);
+            marker.color = Color4f(rule.marker_color[0], rule.marker_color[1],
+                                   rule.marker_color[2], rule.marker_color[3]);
+
+            if (!registry->Write(type, row, marker))
+            {
+                registry->ReleaseID(type, row);
+                return graph::ActiveRowPool::InvalidRowID;
+            }
+
+            g_fallback_marker_rows.row[index] = row;
+            return row;
+        }
+
+        /// 把**根颜色**挂到回退配方上：经**已有机制**（材质数据行 EmissiveSurface.color →
+        /// `recipe.material_ssbo_binding`）下发 —— 与 `builtin/pure_color` 完全同一条路径，
+        /// 不新建并行机制。无图形设备（单元测试路径）时回退配方依然成立，只是颜色不下发；
+        /// **绝不因此剔除图元**。
+        bool AttachFallbackMarkerColor(Entity *primitive_comp,
+                                       graph::mtl::MaterialRecipe &out_recipe)
+        {
+            if (out_recipe.fallback_error_kind == graph::mtl::MaterialErrorKind::None)
+                return true;
+
+            ECSContext *context = primitive_comp ? primitive_comp->GetContext() : nullptr;
+            graph::GraphicsContext *graphics = context ? context->GetGraphicsContext() : nullptr;
+
+            if (!graphics)
+            {
+                auto *render_context = context ? context->GetRenderContext() : nullptr;
+                graphics = render_context ? render_context->GetGraphicsContext() : nullptr;
+            }
+
+            auto *registry = graphics ? graphics->GetGlobalSSBOBufferRegistry() : nullptr;
+            const uint32_t row = AcquireFallbackMarkerRow(registry,
+                                                          out_recipe.fallback_error_kind);
+
+            if (row == graph::ActiveRowPool::InvalidRowID)
+            {
+                GLogWarning(u8"[MaterialFallback] marker row unavailable (no graphics device or pool not ready); fallback material %s keeps rendering without marker color: %s",
+                            out_recipe.mtl_def_id.c_str(), GetOwnerName(primitive_comp));
+                return true;
+            }
+
+            const graph::GlobalSSBOType type = graph::GlobalSSBOType::EmissiveSurface;
+
+            graph::GlobalSSBOBinding binding{};
+            binding.ssbo_type  = type;
+            binding.ssbo_id    = registry->GetPool(type)
+                ? registry->GetPool(type)->GetSSBOId() : 0u;
+            binding.data_index = row;
+
+            out_recipe.material_ssbo_binding = binding;
+            return true;
+        }
+
+        // A7b：回退（错误）材质配方合成次数（诊断；Update 每帧开头清零）。
+        uint32_t g_fallback_recipe_builds = 0;
+
         bool BuildResolvedRecipe(Entity *primitive_comp,
                                  const graph::ShaderProgram *material_program,
                                  graph::mtl::MaterialRecipe &out_recipe)
@@ -274,9 +402,39 @@ namespace hgl::ecs
             // GeometryData 组件；A5a 起由几何组件持有 asset）。
             const GeometryData *geometry = FindGeometryOf(primitive_comp);
 
-            return material_data->BuildResolvedRecipe(out_recipe,
-                                                      material_program,
-                                                      geometry ? geometry->GetAssetMaterialRecipe() : nullptr);
+            if (material_data->BuildResolvedRecipe(out_recipe,
+                                                   material_program,
+                                                   geometry ? geometry->GetAssetMaterialRecipe() : nullptr))
+                return AttachFallbackMarkerColor(primitive_comp, out_recipe);
+
+            // ── A7b：材质错误（用户定稿）**不是剔除条件** ──────────────────────
+            // 「有几何但无材质来源」由策略表表达为 `RenderNeed::FallbackMaterial`
+            // （几何槽位 + 禁 HasMaterialSource），种类由 mtl 侧分类表给出。这里按表结论
+            // 合成**回退（错误）材质**，照常产出渲染项（根颜色标注错误种类）。
+            // 有材质来源却构建失败（纹理名非法等）⇒ 种类为 None ⇒ 保持既有失败语义，
+            // 回退不掩盖真错误。
+            const graph::mtl::MaterialErrorKind fallback_kind =
+                ResolveFallbackMaterialErrorKind(primitive_comp);
+
+            if (fallback_kind == graph::mtl::MaterialErrorKind::None)
+                return false;
+
+            if (!graph::mtl::BuildFallbackMaterialRecipe(out_recipe, fallback_kind))
+                return false;
+
+            ++g_fallback_recipe_builds;
+
+            const graph::mtl::FallbackMaterialRule &rule =
+                graph::mtl::GetFallbackMaterialRule(fallback_kind);
+
+            GLogWarning(u8"[MaterialFallback] material error (%s) => fallback material %s color=(%.2f,%.2f,%.2f,%.2f) owner=%s",
+                        rule.marker_name,
+                        out_recipe.mtl_def_id.c_str(),
+                        rule.marker_color[0], rule.marker_color[1],
+                        rule.marker_color[2], rule.marker_color[3],
+                        GetOwnerName(primitive_comp));
+
+            return AttachFallbackMarkerColor(primitive_comp, out_recipe);
         }
 
         // program 解析（forward 与 ShadowCaster 双槽）共用的构建上下文输入：
@@ -608,6 +766,65 @@ namespace hgl::ecs
                 ClearVariantProgram(variant_table, forward_variant);
                 slot.program_dirty = true;
             }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // A7a：收集判定的**唯一判据** = `RenderStrategyTable`（v2 §9.2 P2）。
+        //
+        // 事实（fact）由组件 / 世界回答，表只做"槽位 × 事实 ⇒ 需求"的组合：
+        //   · 语义 predicate（CanRender / HasAnyMaterialSource / CanCastShadow /
+        //     CanReceiveShadow / 实体级可见性）是**输入**，不是判据本身；
+        //   · 世界态（当前是否阴影 pass / 是否落在阴影距离裁剪内）同样是输入。
+        // 旧的手写 if 链已降为 `RenderStrategyParity` 的**参考实现**（Debug 每帧
+        // 同输入对拍、不一致 GLogError；Release 整块编空），见两个收集循环里的
+        // 反向守卫——"表驱动 = 旧链结果"因此可被实测证伪，而不是靠声明。
+        // ─────────────────────────────────────────────────────────────
+        struct CollectStrategy
+        {
+            uint32_t      needs           = 0;      ///< 表结论（需求位掩码）
+            StrategyFacts facts;                    ///< 事实（诊断归因复用，不重复求值）
+            bool          in_shadow_range = true;   ///< 阴影距离裁剪事实（参考实现复用）
+        };
+
+        /// 实体 + 世界 ⇒ 收集策略（表是唯一判据）
+        CollectStrategy EvaluateCollectStrategy(ECSContext *world,const GeometryData *geometry_comp)
+        {
+            CollectStrategy out;
+
+            const Entity *owner = geometry_comp->GetOwner();
+
+            out.facts.entity_visible      = world->IsEntityVisible(geometry_comp->GetOwnerID());
+            out.facts.has_owner           = (owner != nullptr);
+            out.facts.renderable          = CanRender(owner);
+            out.facts.has_material_source = HasAnyMaterialSource(owner);
+            out.facts.cast_shadow         = CanCastShadow(owner);
+            out.facts.receive_shadow      = CanReceiveShadow(owner);
+            out.facts.shadow_pass         = world->IsCurrentPassShadow();
+
+            if (out.facts.shadow_pass)
+            {
+                const float max_dist = GetShadowMaxDistance(owner);
+
+                if (max_dist > 0.0f && world->HasShadowOrigin())
+                {
+                    const TransformAccessor transform =
+                        world->GetTransformByEntity(geometry_comp->GetOwnerID());
+
+                    if (transform.IsValid())
+                    {
+                        const glm::vec3 diff =
+                            transform.GetWorldPosition() - world->GetShadowOrigin();
+
+                        out.in_shadow_range = glm::dot(diff,diff) <= max_dist * max_dist;
+                    }
+                }
+            }
+
+            out.facts.in_shadow_range = out.in_shadow_range;
+            out.needs = EvaluateRenderNeed(owner ? owner->GetComponentMask() : 0u,
+                                           out.facts.ToMask());
+
+            return out;
         }
     }
 
@@ -1652,6 +1869,10 @@ namespace hgl::ecs
         cache.cameraInfo = cameraInfo;
         cache.BeginFrame();
 
+        // A7b：本 pass 回退（错误）材质配方合成次数（诊断；默认 0 ⇒ 不打印任何东西，
+        // 基线日志逐字不变）。
+        g_fallback_recipe_builds = 0;
+
         const int active_mobility_filter = world ? world->GetActiveMobilityFilter() : -1;
 
         std::vector<std::shared_ptr<GeometryData>> primitives;
@@ -1686,79 +1907,45 @@ namespace hgl::ecs
             if (!geometryComp)
                 continue;
 
+            // A7a：收集判定 = 策略表（唯一判据）；事实由组件 / 世界回答。mobility 过滤是
+            // 世界级过滤器（表不建模），仍在本循环里单独生效。
+            const CollectStrategy strategy = EvaluateCollectStrategy(world,geometryComp.get());
+
 #if ULRE_STRATEGY_PARITY_ENABLED
-            // ── A1 策略判定对拍（只读不驱动；Release 下整块编掉）────────────
-            // 镜像基准（逐条取自本循环现有判据）：
-            //   :1344 可见/可渲染 | :1348 实体级不可见 | :1351 owner | :1381 材质来源
-            //   :1362-1379 阴影 pass 分支（CanCastShadow + 距离裁剪）
-            // 注：mobility 过滤是世界级过滤器，本表不建模（两侧一致排除）。
+            // ── 反向守卫：参考实现 = 手写 if 链（Release 下整块编空）───────────
+            // 只有"表结论 = 参考实现结果"被每帧同输入实测过，表才算真接管了判据。
+            // A7b：参考实现**已按新语义**去掉“有材质来源”这一条 —— 该条被用户拍板从
+            // “收集判据”改为“材质错误（走回退材质）”，故它不再参与收集对拍，而是由下面
+            // 独立的 ParityCheckFallbackMaterial 逐帧对拍。这不是静默放水：把无来源改回
+            // 剔除、或把回退规则写歪，都会在那条守卫上立刻报不一致。
             {
-                const EntityID parity_entity_id = geometryComp->GetOwnerID();
-                Entity *parity_owner = geometryComp->GetOwner();
-
-                const bool parity_shadow_pass = (world && world->IsCurrentPassShadow());
-
-                bool parity_in_shadow_range = true;
-
-                if (parity_shadow_pass)
-                {
-                    const float parity_max_dist = GetShadowMaxDistance(geometryComp->GetOwner());
-
-                    if (parity_max_dist > 0.0f && world->HasShadowOrigin())
-                    {
-                        const TransformAccessor parity_transform = world->GetTransformByEntity(parity_entity_id);
-
-                        if (parity_transform.IsValid())
-                        {
-                            const glm::vec3 parity_diff = parity_transform.GetWorldPosition() - world->GetShadowOrigin();
-                            parity_in_shadow_range = glm::dot(parity_diff,parity_diff) <= parity_max_dist * parity_max_dist;
-                        }
-                    }
-                }
-
-                StrategyFacts parity_facts;
-                parity_facts.entity_visible      = world->IsEntityVisible(parity_entity_id);
-                parity_facts.has_owner           = (parity_owner != nullptr);
-                parity_facts.renderable          = CanRender(geometryComp->GetOwner());
-                parity_facts.has_material_source = HasAnyMaterialSource(geometryComp->GetOwner());
-                parity_facts.cast_shadow         = CanCastShadow(geometryComp->GetOwner());
-                parity_facts.receive_shadow      = CanReceiveShadow(geometryComp->GetOwner());
-                parity_facts.shadow_pass         = parity_shadow_pass;
-                parity_facts.in_shadow_range     = parity_in_shadow_range;
-
-                const uint32_t parity_mask  = parity_owner ? parity_owner->GetComponentMask() : 0u;
-                const uint32_t parity_needs = EvaluateRenderNeed(parity_mask,parity_facts.ToMask());
-
-                const bool parity_existing =
-                       world->IsEntityVisible(parity_entity_id)
+                const bool legacy_collect =
+                       world->IsEntityVisible(geometryComp->GetOwnerID())
                     && CanRender(geometryComp->GetOwner())
-                    && (parity_owner != nullptr)
-                    && HasAnyMaterialSource(geometryComp->GetOwner())
-                    && (!parity_shadow_pass
-                        || (CanCastShadow(geometryComp->GetOwner()) && parity_in_shadow_range));
+                    && (geometryComp->GetOwner() != nullptr)
+                    && (!strategy.facts.shadow_pass
+                        || (CanCastShadow(geometryComp->GetOwner()) && strategy.in_shadow_range));
 
-                ParityCheckCollect(HasRenderNeed(parity_needs,RenderNeed::CollectForCurrentPass),
-                                   parity_existing,
-                                   "RenderPrimitiveCollectSystem");
+                ParityCheckCollect(HasRenderNeed(strategy.needs,RenderNeed::CollectForCurrentPass),
+                                   legacy_collect,
+                                   "RenderPrimitiveCollectSystem#prescan");
 
-                ParityCheckShadowCaster(HasRenderNeed(parity_needs,RenderNeed::ShadowCaster),
+                ParityCheckShadowCaster(HasRenderNeed(strategy.needs,RenderNeed::ShadowCaster),
                                         CanCastShadow(geometryComp->GetOwner()),
-                                        "RenderPrimitiveCollectSystem");
+                                        "RenderPrimitiveCollectSystem#prescan");
+
+                // A7b 新语义守卫：表说“材质缺失 ⇒ 回退材质” ⟺ 事实“无任何材质来源”。
+                ParityCheckFallbackMaterial(HasRenderNeed(strategy.needs,RenderNeed::FallbackMaterial),
+                                            !HasAnyMaterialSource(geometryComp->GetOwner()),
+                                            "RenderPrimitiveCollectSystem#prescan");
             }
 #endif
 
-            if (!CanRender(geometryComp->GetOwner()))
+            if (!HasRenderNeed(strategy.needs,RenderNeed::CollectForCurrentPass))
                 continue;
 
-            const EntityID entity_id = geometryComp->GetOwnerID();
-
-            // 可见性真值只在实体级（组件级 visible 已删）
-            if (!world->IsEntityVisible(entity_id))
-                continue;
-
+            // 实体级可见性与 owner 已由表的 CollectForCurrentPass 要求 ⇒ 不再单独判据
             Entity* entity = geometryComp->GetOwner();
-            if (!entity)
-                continue;
 
             if (active_mobility_filter >= 0)
             {
@@ -1767,27 +1954,8 @@ namespace hgl::ecs
                     continue;
             }
 
-            if (world && world->IsCurrentPassShadow())
-            {
-                if (!CanCastShadow(geometryComp->GetOwner()))
-                    continue;
-
-                const float max_dist = GetShadowMaxDistance(geometryComp->GetOwner());
-                if (max_dist > 0.0f && world->HasShadowOrigin())
-                {
-                    TransformAccessor transform = world->GetTransformByEntity(entity->GetEntityID());
-                    if (transform.IsValid())
-                    {
-                        const glm::vec3 world_pos = transform.GetWorldPosition();
-                        const glm::vec3 diff = world_pos - world->GetShadowOrigin();
-                        if (glm::dot(diff, diff) > max_dist * max_dist)
-                            continue;
-                    }
-                }
-            }
-
-            if (!HasAnyMaterialSource(geometryComp->GetOwner()))
-                continue;
+            // 阴影 pass 的 caster 能力（CanCastShadow）与距离裁剪（in_shadow_range）已由表的
+            // CollectForCurrentPass 条件要求表达 ⇒ 这里不再重复判据。
 
             // A4：材质运行期状态 = **每实例 slot**（世界表里按实体稀疏存放）+
             // **共享行**（绑定）。这里取/建 slot，再经行取 program 与缓存哈希。
@@ -1859,87 +2027,61 @@ namespace hgl::ecs
             if (!geometryComp)
                 continue;
 
+            // A7a：收集判定 = 策略表（唯一判据）；事实由组件 / 世界回答。
+            const CollectStrategy strategy = EvaluateCollectStrategy(world,geometryComp.get());
+
 #if ULRE_STRATEGY_PARITY_ENABLED
-            // ── A1 策略判定对拍（只读不驱动；Release 下整块编掉）────────────
-            // 镜像基准（逐条取自本循环现有判据）：
-            //   :1344 可见/可渲染 | :1348 实体级不可见 | :1351 owner | :1381 材质来源
-            //   :1362-1379 阴影 pass 分支（CanCastShadow + 距离裁剪）
-            // 注：mobility 过滤是世界级过滤器，本表不建模（两侧一致排除）。
+            // ── 反向守卫：参考实现 = 手写 if 链（Release 下整块编空）───────────
+            // 只有"表结论 = 参考实现结果"被每帧同输入实测过，表才算真接管了判据。
+            // A7b：参考实现**已按新语义**去掉“有材质来源”这一条 —— 该条被用户拍板从
+            // “收集判据”改为“材质错误（走回退材质）”，故它不再参与收集对拍，而是由下面
+            // 独立的 ParityCheckFallbackMaterial 逐帧对拍。这不是静默放水：把无来源改回
+            // 剔除、或把回退规则写歪，都会在那条守卫上立刻报不一致。
             {
-                const EntityID parity_entity_id = geometryComp->GetOwnerID();
-                Entity *parity_owner = geometryComp->GetOwner();
-
-                const bool parity_shadow_pass = (world && world->IsCurrentPassShadow());
-
-                bool parity_in_shadow_range = true;
-
-                if (parity_shadow_pass)
-                {
-                    const float parity_max_dist = GetShadowMaxDistance(geometryComp->GetOwner());
-
-                    if (parity_max_dist > 0.0f && world->HasShadowOrigin())
-                    {
-                        const TransformAccessor parity_transform = world->GetTransformByEntity(parity_entity_id);
-
-                        if (parity_transform.IsValid())
-                        {
-                            const glm::vec3 parity_diff = parity_transform.GetWorldPosition() - world->GetShadowOrigin();
-                            parity_in_shadow_range = glm::dot(parity_diff,parity_diff) <= parity_max_dist * parity_max_dist;
-                        }
-                    }
-                }
-
-                StrategyFacts parity_facts;
-                parity_facts.entity_visible      = world->IsEntityVisible(parity_entity_id);
-                parity_facts.has_owner           = (parity_owner != nullptr);
-                parity_facts.renderable          = CanRender(geometryComp->GetOwner());
-                parity_facts.has_material_source = HasAnyMaterialSource(geometryComp->GetOwner());
-                parity_facts.cast_shadow         = CanCastShadow(geometryComp->GetOwner());
-                parity_facts.receive_shadow      = CanReceiveShadow(geometryComp->GetOwner());
-                parity_facts.shadow_pass         = parity_shadow_pass;
-                parity_facts.in_shadow_range     = parity_in_shadow_range;
-
-                const uint32_t parity_mask  = parity_owner ? parity_owner->GetComponentMask() : 0u;
-                const uint32_t parity_needs = EvaluateRenderNeed(parity_mask,parity_facts.ToMask());
-
-                const bool parity_existing =
-                       world->IsEntityVisible(parity_entity_id)
+                const bool legacy_collect =
+                       world->IsEntityVisible(geometryComp->GetOwnerID())
                     && CanRender(geometryComp->GetOwner())
-                    && (parity_owner != nullptr)
-                    && HasAnyMaterialSource(geometryComp->GetOwner())
-                    && (!parity_shadow_pass
-                        || (CanCastShadow(geometryComp->GetOwner()) && parity_in_shadow_range));
+                    && (geometryComp->GetOwner() != nullptr)
+                    && (!strategy.facts.shadow_pass
+                        || (CanCastShadow(geometryComp->GetOwner()) && strategy.in_shadow_range));
 
-                ParityCheckCollect(HasRenderNeed(parity_needs,RenderNeed::CollectForCurrentPass),
-                                   parity_existing,
-                                   "RenderPrimitiveCollectSystem");
+                ParityCheckCollect(HasRenderNeed(strategy.needs,RenderNeed::CollectForCurrentPass),
+                                   legacy_collect,
+                                   "RenderPrimitiveCollectSystem#collect");
 
-                ParityCheckShadowCaster(HasRenderNeed(parity_needs,RenderNeed::ShadowCaster),
+                ParityCheckShadowCaster(HasRenderNeed(strategy.needs,RenderNeed::ShadowCaster),
                                         CanCastShadow(geometryComp->GetOwner()),
-                                        "RenderPrimitiveCollectSystem");
+                                        "RenderPrimitiveCollectSystem#collect");
+
+                // A7b 新语义守卫：表说“材质缺失 ⇒ 回退材质” ⟺ 事实“无任何材质来源”。
+                ParityCheckFallbackMaterial(HasRenderNeed(strategy.needs,RenderNeed::FallbackMaterial),
+                                            !HasAnyMaterialSource(geometryComp->GetOwner()),
+                                            "RenderPrimitiveCollectSystem#collect");
             }
 #endif
 
-            if (!CanRender(geometryComp->GetOwner()))
+            if (!HasRenderNeed(strategy.needs,RenderNeed::CollectForCurrentPass))
             {
+                // 判定已由表给出；下面只是 S6 探针的**归因**（不参与判定），口径与旧计数器
+                // 一致：不可渲染者旧实现不计也不报，其后依次归因不可见 / 无 owner。
+                // A7b：「无材质来源」**不再进这条分支** —— 它已不是剔除条件，而是材质错误
+                // （走回退材质照常产出渲染项），对应的跳过计数与那条“无配方即跳过”的
+                // 告警随之删除（禁复活由 Test 26 的禁复活 needle 钉住）。
+                if (strategy.facts.renderable)
+                {
+                    if (!strategy.facts.entity_visible)
+                        ++skipped_invisible;
+                    else if (!strategy.facts.has_owner)
+                        ++skipped_no_owner;
+                }
+
                 continue;
             }
 
             EntityID entity_id = geometryComp->GetOwnerID();
 
-            // 可见性真值只在实体级（组件级 visible 已删）：O(1) 直查 + 祖先链
-            if (!world->IsEntityVisible(entity_id))
-            {
-                ++skipped_invisible;
-                continue;
-            }
-
+            // 实体级可见性与 owner 已由表的 CollectForCurrentPass 要求 ⇒ 不再单独判据
             Entity* entity = geometryComp->GetOwner();
-            if (!entity)
-            {
-                ++skipped_no_owner;
-                continue;
-            }
 
             TransformAccessor transform = world->GetTransformByEntity(entity->GetEntityID());
 
@@ -1954,34 +2096,13 @@ namespace hgl::ecs
                 continue;
             }
 
-            if (world && world->IsCurrentPassShadow())
-            {
-                if (!CanCastShadow(geometryComp->GetOwner()))
-                {
-                    continue;
-                }
+            // 阴影 pass 的 caster 能力与距离裁剪已由表的 CollectForCurrentPass 条件要求表达
+            // ⇒ 这里不再重复判据（原两条 continue 随之删除）。
 
-                const float max_dist = GetShadowMaxDistance(geometryComp->GetOwner());
-                if (max_dist > 0.0f && world->HasShadowOrigin())
-                {
-                    const glm::vec3 world_pos = transform.GetWorldPosition();
-                    const glm::vec3 diff = world_pos - world->GetShadowOrigin();
-                    if (glm::dot(diff, diff) > max_dist * max_dist)
-                    {
-                        continue;
-                    }
-                }
-            }
-
-            // A4：本实例的材质运行期 slot（有材质来源时才有；供后面的 4-ID 同步与 D9 复位用）
+            // A4：本实例的材质运行期 slot（**有材质来源**已由表的 CollectForCurrentPass 蕴含
+            // ⇒ 不再需要"有 / 无来源"双分支；保留一层作用域标出块边界，与预扫描同一份 slot）。
             MaterialRuntimeSlot *material_slot_ptr = nullptr;
 
-            if (!HasAnyMaterialSource(geometryComp->GetOwner()))
-            {
-                GLogWarning("[RenderPrimitiveCollectSystem] Skip primitive without recipe: %s",
-                            geometryComp->GetOwner() ? geometryComp->GetOwner()->GetName().c_str() : "<no-owner>");
-            }
-            else
             {
                 // A4：本实例的材质运行期 **slot**（世界表按实体稀疏存放；与预扫描同一份）。
                 MaterialRuntimeSlot &material_slot =
@@ -2296,6 +2417,12 @@ namespace hgl::ecs
         // 校验和 = Σ entity_id（与顺序无关）。
         // A4：同时报材质运行期表的**行计数**（共享行 interned / CoW 自有行 / 每实例 slot）
         // —— 共享行数与独占行数就是这两项，探针与单测共用同一组 getter。
+        if (g_fallback_recipe_builds > 0)
+        {
+            GLogWarning(u8"[MaterialFallback] shadow_pass=%d fallback material recipes built this pass: %u",
+                        world->IsCurrentPassShadow() ? 1 : 0, g_fallback_recipe_builds);
+        }
+
         static const bool s6_collect_log = (std::getenv("CSM_PASS_LOG") != nullptr);
         if (s6_collect_log && world && world->IsCurrentPassShadow())
         {

@@ -1029,21 +1029,25 @@ namespace hgl::ecs
                             {
                                 // A5b：阴影接收/倍率经实体级自由函数取（原可渲染组件
                                 // 的便利方法随该类删除，缺省约定唯一出处见 ShadowProxy.h）。
+                                // A7a：接收判定由策略表给出（RenderNeed::ShadowReceiver 是唯一
+                                // 判据）。receive_shadow 事实仍由实体级自由函数提供——缺省约定
+                                // 的唯一出处见 ShadowProxy.h。
+                                StrategyFacts strategy_facts;
+                                strategy_facts.receive_shadow = CanReceiveShadow(prim_entity);
+
+                                const uint32_t strategy_needs =
+                                    EvaluateRenderNeed(prim_entity->GetComponentMask(),
+                                                       strategy_facts.ToMask());
+
 #if ULRE_STRATEGY_PARITY_ENABLED
-                                // A1 对拍：阴影接收能力（表 ShadowReceiver vs 现有 CanReceiveShadow）
-                                {
-                                    StrategyFacts parity_facts;
-                                    parity_facts.receive_shadow = CanReceiveShadow(prim_entity);
-
-                                    const uint32_t parity_mask = prim_entity->GetComponentMask();
-
-                                    ParityCheckShadowReceiver(
-                                        HasRenderNeed(EvaluateRenderNeed(parity_mask,parity_facts.ToMask()),RenderNeed::ShadowReceiver),
-                                        CanReceiveShadow(prim_entity),
-                                        "PrimitiveBatchPipeline");
-                                }
+                                // 反向守卫：参考实现 = 旧判据（Release 下整块编空）
+                                ParityCheckShadowReceiver(
+                                    HasRenderNeed(strategy_needs,RenderNeed::ShadowReceiver),
+                                    CanReceiveShadow(prim_entity),
+                                    "PrimitiveBatchPipeline");
 #endif
-                                if (!CanReceiveShadow(prim_entity))
+
+                                if (!HasRenderNeed(strategy_needs,RenderNeed::ShadowReceiver))
                                     row_ptr[i].shadow_flags |=
                                         graph::mtl::kMaterialShadowFlagNoReceive;
 
@@ -1137,12 +1141,12 @@ namespace hgl::ecs
 
             if (!shader_prog || !pipeline)
             {
-                if (HasAnyMaterialSource(item->GetEntity()))
-                {
-                    LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. shader_prog=%s render_pass=%p",
-                               shader_prog ? shader_prog->GetName().c_str() : "<null>",
-                               current_render_pass);
-                }
+                // A7b：「有无材质来源」不再用于**静默**这条失败告警 —— 无材质来源的图元
+                // 现在会走回退（错误）材质进入批次，其管线解析失败同样必须留痕，不能因为
+                // 它“本来没有材质”就无声跳过（这正是被用户拍板取消的那条旧语义）。
+                LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. shader_prog=%s render_pass=%p",
+                           shader_prog ? shader_prog->GetName().c_str() : "<null>",
+                           current_render_pass);
                 continue;
             }
 

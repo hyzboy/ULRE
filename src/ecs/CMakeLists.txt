@@ -346,7 +346,7 @@ if(MSVC)
     set_target_properties(TestBoundingBoxStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
-# 可见性真值（世界私有存储；原 VisibilityComponent/VisibilitySystem 已删除）
+# 渲染策略判定表（A1；A7a 起为收集/阴影能力的**唯一判据**）
 add_executable(TestRenderStrategyTable support/TestRenderStrategyTable.cpp)
 target_link_libraries(TestRenderStrategyTable PRIVATE ${ULRE})
 if(MSVC)

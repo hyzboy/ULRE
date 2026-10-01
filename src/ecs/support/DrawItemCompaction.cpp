@@ -134,12 +134,12 @@ namespace hgl::ecs
 
         if (out_stats)
         {
-            // 传统每帧上传: 每图元 12 字节 (4B L2W + 8B MtlAddr)
-            const uint32_t full_legacy_bytes = count * 12;
+            // 整帧重传基线: 每图元 12 字节 (4B L2W + 8B MtlAddr)
+            const uint32_t full_frame_bytes = count * 12;
             // 新架构上传: 直通项 0 字节，索引项 4 字节
             const uint32_t new_uploaded_bytes = out_stats->indexed_items * sizeof(uint32_t);
-            out_stats->bytes_saved_over_full = (full_legacy_bytes >= new_uploaded_bytes)
-                ? (full_legacy_bytes - new_uploaded_bytes) : 0;
+            out_stats->bytes_saved_over_full = (full_frame_bytes >= new_uploaded_bytes)
+                ? (full_frame_bytes - new_uploaded_bytes) : 0;
         }
     }
 }

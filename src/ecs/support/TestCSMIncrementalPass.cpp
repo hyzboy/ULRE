@@ -4012,6 +4012,220 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kA5bContracts) / sizeof(kA5bContracts[0])));
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 25: A7a 契约（策略表是唯一判据 / 系统组名一致 / 已删类型零残留）
+    //
+    // 背景：A7a 把 RenderStrategyTable 从"只读不驱动"翻为"唯一判据"——收集 / 剔除 /
+    // 阴影投射与接收都由表查结果决定，旧 if 链降为 Debug 下的对拍参考实现。本可执行
+    // 文件无图形设备，故钉住三件事（源码级契约）：
+    //   ① 驱动侧确实读表（CollectForCurrentPass / ShadowReceiver）且对拍装置仍在被调；
+    //   ② 驱动侧**不得**再出现手写判据（禁复活：改回 if 链必须让本用例失败）；
+    //   ③ 组件声明的系统组名与渲染图注册的安装器 / 管线同名（`system_group_component_counts`
+    //      的键只可能是这三个组名，改名即两侧同时失败），且已删类型名零残留。
+    //
+    // 反证：把驱动侧改回 `if (!CanRender(...)) continue;`，或把 `GetSystemGroupName`
+    // 的返回值改掉 ⇒ 本用例必须失败。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kA7aContracts[] =
+        {
+            // ① 表在驱动
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "EvaluateCollectStrategy(",
+              "收集判定不再经策略表求值器（表不是唯一判据）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "RenderNeed::CollectForCurrentPass",
+              "收集判定不再查 CollectForCurrentPass 需求位" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "ParityCheckCollect(",
+              "对拍装置不再被收集循环调用（反向守卫空转）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "legacy_collect",
+              "旧 if 链参考实现不见了（对拍变成同义反复，报 0 不一致也毫无意义）" },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "RenderNeed::ShadowReceiver",
+              "接收判定不再查 ShadowReceiver 需求位" },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "ParityCheckShadowReceiver(",
+              "接收侧对拍装置不再被调用（反向守卫空转）" },
+            { "RenderStrategyParity.h", OS_TEXT("inc/hgl/ecs/support/RenderStrategyParity.h"),
+              "ULRE_STRATEGY_PARITY_ENABLED",
+              "对拍装置的 Debug 开关缺失（反向守卫在 Debug 下也不会编译进去）" },
+            // ② 禁复活：驱动侧手写判据
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "if (!CanRender(",
+              "驱动侧又出现手写可渲染判据（表不再是唯一判据）", true },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "if (!world->IsEntityVisible(",
+              "驱动侧又出现手写可见性判据（表不再是唯一判据）", true },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "if (!CanCastShadow(",
+              "驱动侧又出现手写阴影 caster 判据（表不再是唯一判据）", true },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "if (!HasAnyMaterialSource(",
+              "驱动侧又出现手写材质来源判据（表不再是唯一判据）", true },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "if (!CanReceiveShadow(",
+              "接收侧又出现手写判据（表不再是唯一判据）", true },
+            // ③ 系统组名 ↔ 安装器 / 管线（system_group_component_counts 的键域）
+            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
+              "GetSystemGroupName() const override { return \"Primitive\"; }",
+              "图元组名不再声明（system_group_component_counts 的键会与安装器脱节）" },
+            { "LinesComponent.h", OS_TEXT("inc/hgl/ecs/components/LinesComponent.h"),
+              "GetSystemGroupName() const override { return \"Line\"; }",
+              "线条组名不再声明（同上）" },
+            { "TextComponent.h", OS_TEXT("inc/hgl/ecs/components/TextComponent.h"),
+              "GetSystemGroupName() const override { return \"Text\"; }",
+              "文本组名不再声明（同上）" },
+            { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
+              "RegisterGroupInstaller(\"Primitive\"",
+              "Primitive 系统组安装器缺失（组计数会被置位但无人响应）" },
+            { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
+              "RegisterGroupInstaller(\"Line\"",
+              "Line 系统组安装器缺失（同上）" },
+            { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
+              "RegisterGroupInstaller(\"Text\"",
+              "Text 系统组安装器缺失（同上）" },
+            { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
+              "RegisterRenderPipeline(\"Primitive\"",
+              "Primitive 渲染管线注册缺失（组被启用后拿不到管线）" },
+            { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
+              "RegisterRenderPipeline(\"Line\"",
+              "Line 渲染管线注册缺失（同上）" },
+            { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
+              "RegisterRenderPipeline(\"Text\"",
+              "Text 渲染管线注册缺失（同上）" },
+            // ③ 已删类型名零残留（禁复活）
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "VisibilityComponent",
+              "已删的可见性组件名又出现在世界头文件（残留 / 复活）", true },
+            { "VisibilityDataStorage.h", OS_TEXT("inc/hgl/ecs/support/VisibilityDataStorage.h"),
+              "VisibilityComponent",
+              "已删的可见性组件名又出现在可见性存储头（残留 / 复活）", true },
+            { "GizmoUnified.cpp", OS_TEXT("src/SceneGraph/gizmo/GizmoUnified.cpp"),
+              "VisibilityComponent",
+              "已删的可见性组件名又出现在 gizmo（残留 / 复活）", true },
+            { "ecs/CMakeLists.txt", OS_TEXT("src/ecs/CMakeLists.txt"),
+              "VisibilitySystem",
+              "已删的可见性系统名又出现在构建脚本（残留 / 复活）", true },
+            { "RenderSystemCore.h", OS_TEXT("inc/hgl/ecs/systems/render/RenderSystemCore.h"),
+              "InitializeGraphics",
+              "使用示例又引用已删除的两步初始化 API（InitializeGraphics）", true },
+        };
+
+        if (const int failed = verify_source_contracts(25, kA7aContracts,
+                                                       static_cast<uint>(sizeof(kA7aContracts) /
+                                                                         sizeof(kA7aContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 25 Passed: A7a 契约成立（策略表为唯一判据 + 驱动侧无手写判据 + "
+                 u8"对拍参考实现在位 + 系统组名与安装器/管线同名 + 已删类型零残留；"
+                 u8"共 %d 条契约）。",
+                 static_cast<int>(sizeof(kA7aContracts) / sizeof(kA7aContracts[0])));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 26: A7b 契约（无材质来源 ⇒ 回退材质，不再是剔除条件）
+    //
+    // 背景：用户拍板 ——「有几何但无材质来源」在终态**不是剔除条件**，而是**材质错误**：
+    // 必须走已有的保底（回退）材质渲染出来，并由**根颜色标注错误种类**。A7b 把这条语义
+    // 落成：① 策略表新增 `RenderNeed::FallbackMaterial`（几何槽 + 禁 HasMaterialSource
+    // 事实），`CollectForCurrentPass` 去掉材质来源硬要求；② 收集侧按表结论合成回退配方
+    // （种类 + 根颜色来自 mtl 侧数据驱动规则表）；③ 根颜色经**已有机制**（材质数据行
+    // EmissiveSurface.color）下发；④ 反向守卫按新语义改（新增独立回退守卫）。
+    //
+    // 本可执行文件无图形设备，故这里全是**源码级契约**（运行期契约见 TestRenderStrategyTable
+    // 的规则表/分类表用例）。
+    //
+    // 反证：把回退路由改回“剔除 + 告警”，或把材质来源重新写成收集判据 ⇒ 本用例必须失败。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kA7bContracts[] =
+        {
+            // ① 策略表：回退需求位 + 收集去掉材质来源硬要求（数据驱动，不是特例 if）
+            { "RenderStrategyTable.h", OS_TEXT("inc/hgl/ecs/support/RenderStrategyTable.h"),
+              "FallbackMaterial = 1u << 5",
+              "策略表没有回退（错误）材质需求位（材质缺失无处表达）" },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "kFallbackMaterialRules",
+              "回退（错误）材质规则表缺失（定义 ID / 根颜色退化成散落字面量）" },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "UnknownMaterialDefinition",
+              "回退规则表没有错误种类维（只剩单一颜色，无法按颜色标注错误种类）" },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "ClassifyMaterialErrorKind",
+              "错误种类分类表缺失（事实 ⇒ 种类不再是数据驱动）" },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "fallback_marker_color",
+              "配方不再承载回退根颜色（错误种类颜色无处下发）" },
+
+            // ② 收集侧：按表结论走回退材质（判据 = 表，不是手写 if）
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "ResolveFallbackMaterialErrorKind(",
+              "回退路由不再经策略表求值器（回退判定脱离唯一判据）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "RenderNeed::FallbackMaterial",
+              "收集侧不再查 FallbackMaterial 需求位（表不再是唯一判据）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "BuildFallbackMaterialRecipe(",
+              "回退（错误）材质配方合成入口缺失（无材质来源图元拿不到回退材质）" },
+
+            // ③ 根颜色经**已有机制**下发（材质数据行），不是并行机制
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "AcquireFallbackMarkerRow(",
+              "根颜色行宿主缺失（根颜色无法按错误种类下发）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "AttachFallbackMarkerColor(",
+              "根颜色不再挂到回退配方上（颜色标注错误种类断链）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "EmissiveSurfaceRow",
+              "根颜色不再经材质数据行（EmissiveSurface）下发（改走未验证的新机制）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "material_ssbo_binding = binding",
+              "回退配方没有材质 SSBO 绑定（着色器读不到根颜色）" },
+
+            // ④ 反向守卫按新语义改（新语义守卫在位，不是静默放水）
+            { "RenderStrategyParity.h", OS_TEXT("inc/hgl/ecs/support/RenderStrategyParity.h"),
+              "ParityCheckFallbackMaterial(",
+              "回退材质对拍函数缺失（新语义无人对拍）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "ParityCheckFallbackMaterial(",
+              "回退材质对拍不再被收集循环调用（反向守卫空转）" },
+            { "RenderStrategyParity.cpp", OS_TEXT("src/ecs/support/RenderStrategyParity.cpp"),
+              "fallback_mismatch",
+              "回退对拍不计不一致数（‘不一致 0 行’变成无意义的常量）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "!HasAnyMaterialSource(geometryComp->GetOwner()),",
+              "回退守卫的参考实现不再是“事实求反”（对拍可能退化成恒真）" },
+
+            // ⑤ 回退规则表对每个错误种类都有定义 ID（收集侧拿到的必须有定义可查）
+            { "MaterialDefinitionRegistry.h", OS_TEXT("inc/hgl/mtl/MaterialDefinitionRegistry.h"),
+              "BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe",
+              "回退配方合成 API 缺失（回退材质无权威出处）" },
+            { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp"),
+              "MaterialErrorKind::UnknownMaterialDefinition",
+              "定义 ID 不可解析不再被分类（该类错误丢失种类与颜色）" },
+
+            // ⑥ 禁复活：无材质来源又变回“跳过 + 告警”，或材质来源又成收集判据
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "Skip primitive without recipe",
+              "无材质来源又变回“跳过 + 告警”（用户语义：必须走回退材质渲染出来）", true },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "&& HasAnyMaterialSource(",
+              "材质来源又成了收集链上的手写判据（应只作回退判定/诊断的事实输入）", true },
+        };
+
+        if (const int failed = verify_source_contracts(26, kA7bContracts,
+                                                       static_cast<uint>(sizeof(kA7bContracts) /
+                                                                         sizeof(kA7bContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 26 Passed: A7b 契约成立（无材质来源 ⇒ 回退材质 + 根颜色标注错误种类、"
+                 u8"策略表表达该语义、收集侧只读表、颜色经既有材质数据行下发、新语义反守卫在位、" 
+                 u8"旧“跳过+告警”与手写材质来源判据禁复活；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kA7bContracts) / sizeof(kA7bContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

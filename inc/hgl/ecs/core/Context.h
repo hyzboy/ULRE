@@ -144,7 +144,7 @@ namespace hgl
             // 声明在 transform_storage 之后 ⇒ 先于它析构；两者互不引用，无"析构时用已销毁对象"问题。
             std::unique_ptr<BoundingBoxDataStorage> bounding_box_storage;
 
-            // 世界私有可见性数据（原 VisibilityComponent + VisibilitySystem 已删除，2026-10-01）。
+            // 世界私有可见性数据（A5a 起：可见性收敛为实体级唯一真值，组件级副本已删除）。
             // 可见性是 **CPU 域**状态（不在 v2 §3 的 5 类 GPU 可见组件里）⇒ 无需行 arena / SSBO，
             // 只保留"不可见实体集合"这一份真值；查询时按变换父链上溯（祖先不可见 ⇒ 后代不可见）。
             std::unique_ptr<VisibilityDataStorage> visibility_storage;
@@ -163,7 +163,7 @@ namespace hgl
             // + **每实例小记录 slot**（当前 pass/LOD/dither 选择器、D9 重试与降频计数、
             // 每实体授权代跟踪副本、脏标志）。行归零经 refcount 回收，回收时退休该行的
             // 纹理配置池行（GPU 绑定随行存亡）。访问范式同 visibility_storage /
-            // material_variant_table。原材质运行期组件已在本步删除（不留兼容层）。
+            // material_variant_table。原材质运行期组件已在本步一并删除，无旧读法残留。
             std::unique_ptr<MaterialRuntimeTable> material_runtime_table;
 
             // 世界私有**相机表**：相机是**世界级资源**（16 槽 × 帧槽数，0 号槽恒为本世界默认相机）。
@@ -317,7 +317,7 @@ namespace hgl
         public:
 
             /// 初始化世界（W3 合并：GPU 设备/渲染目标绑定 + 系统注册与初始化，
-            /// 顺序敏感消除——旧 InitializeGraphics/Initialize 两步调用的兼容残留）
+            /// 顺序敏感消除——W3 起只有这一个初始化入口，不存在两步调用）
             /// @param device GPU 设备
             /// @param target 渲染目标
             /// @return 成功返回 true

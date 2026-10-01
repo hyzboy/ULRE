@@ -5,17 +5,25 @@
  *       输入 = 组件集合（A0 的位掩码）+ 组件/世界提供的事实；输出 = 需求位。
  *
  * 设计要点：
- *   · **只读不驱动**（stage A 的第一步）：本表先与现有判据**对拍同值**（`RenderStrategyParity.h`），
- *     不改变任何渲染行为；此后每步把旧 if 链改读表并删掉对应段落（中间态纪律 §9.4）。
+ *   · **唯一判据**（A7a 起）：收集 / 剔除 / 阴影投射 / 接收全部由**表查结果**决定，驱动侧不再
+ *     有任何手写判据。语义 predicate（可渲染 / 有材质来源 / 可投射 / 可接收 / 实体级可见性）
+ *     是表的**输入**而不是判据本身 —— 表不重新判定它们，因此不存在第二套真值。
+ *   · 旧的手写 if 链降为 `RenderStrategyParity.h` 的**参考实现**（反向守卫）：Debug 下每帧
+ *     同输入与表对拍、不一致即 `GLogError`；Release（NDEBUG）整块编空。"表驱动 = 旧链结果"
+ *     因此是可被实测证伪的命题，而不是声明。
  *   · 表是**数据驱动**的：新增需求只加一行 `kRenderNeedRules`；新增事实只加一个位。
  *     规则引用未知事实位、或引用未知槽位，都会在下面的 static_assert 里被抓住（自动 scale）。
  *   · 表说的不是"用哪个具体 PassType"——那由材质 recipe / 变体键决定（见 v2 §9.3）。
  *
- * 与现有判据的对应（对拍基准，2026-10-01 侦察；A5a 后可见性只剩实体级一份）：
- *   · `CollectForCurrentPass` ⇔ `RenderPrimitiveCollectSystem.cpp` 收集循环（实体可见/可渲染/owner）
- *     + `:1383`（`HasAnyMaterialSource`）+ `:1362-1379`（阴影 pass 下的 `CanCastShadow` 与距离裁剪）
- *   · `ShadowCaster`   ⇔ 同上 `:1364/:1486` 的 `CanCastShadow`
- *   · `ShadowReceiver` ⇔ `PrimitiveBatchPipeline.cpp:1016` 的 `CanReceiveShadow`
+ * 语义镜像（A1 定下、A7a 保持；按语义命名而非行号引用，行号会漂）：
+ *   · `CollectForCurrentPass` ⇔ `RenderPrimitiveCollectSystem.cpp` 收集循环的
+ *     实体可见 / 可渲染 / owner（+ 阴影 pass 下的 `CanCastShadow` 与距离裁剪，
+ *     作为 `ShadowPass` 触发时的条件要求）。**A7b：材质来源不是收集判据** ——
+ *     「有几何但无材质来源」是**材质错误**，由 `FallbackMaterial` 需求位表达
+ *     （走保底材质渲染出来 + 根颜色标注错误种类），不是剔除条件。
+ *   · `FallbackMaterial` ⇔「有几何、无材质来源 ⇒ 取保底（错误）材质」
+ *   · `ShadowCaster`   ⇔ 同一处的 `CanCastShadow`（能力位）
+ *   · `ShadowReceiver` ⇔ `PrimitiveBatchPipeline.cpp` 的 `CanReceiveShadow`（能力位）
  */
 #pragma once
 
@@ -45,9 +53,14 @@ namespace hgl
 
             /// 需要材质运行期数据（由组件集合蕴含推出，见 implies）
             NeedsMaterialRuntime = 1u << 4,
+
+            /// **材质错误需走回退（保底）材质**：有几何而**无**材质来源时置位。
+            /// A7b：「无材质来源」不是剔除条件，而是必须用保底材质（+ 根颜色标注错误
+            /// 种类）渲染出来的材质错误 —— 该需求位就是这条语义的**唯一判据**。
+            FallbackMaterial = 1u << 5,
         };
 
-        inline constexpr uint32_t RENDER_NEED_COUNT = 5;
+        inline constexpr uint32_t RENDER_NEED_COUNT = 6;
 
         // ─────────────────────────────────────────────────────────────
         // 事实（求值输入）
@@ -64,7 +77,9 @@ namespace hgl
             EntityVisible     = 1u << 0,
             HasOwner          = 1u << 1,   ///< 有 owner 实体
             Renderable        = 1u << 2,   ///< 具备可渲染资源（现 = `GeometryData::GetPrimitiveAsset() != nullptr`）
-            HasMaterialSource = 1u << 3,   ///< 有材质来源（现 = `HasAnyMaterialSource`：数据层配方覆盖 或 asset 默认配方）
+            /// 有材质来源（现 = `HasAnyMaterialSource`：数据层配方覆盖 或 asset 默认配方）。
+            /// A7b：**不再是收集判据**，只作 `FallbackMaterial` 的输入 / 诊断上报。
+            HasMaterialSource = 1u << 3,
             CastShadow        = 1u << 4,   ///< 允许投射（现 = `CanCastShadow`，含缺省约定）
             ReceiveShadow     = 1u << 5,   ///< 允许接收（现 = `CanReceiveShadow`，含缺省约定）
             ShadowPass        = 1u << 6,   ///< 当前 pass 是阴影 pass（世界态）
@@ -122,19 +137,30 @@ namespace hgl
 
         inline constexpr RenderNeedRule kRenderNeedRules[kRenderNeedRules_Count] =
         {
-            // 进当前 pass 的收集：可见（**实体级唯一真值**）、有 owner、有可渲染资源与
-            // 材质来源；**若当前是阴影 pass**，再要求允许投射且在距离裁剪内
+            // 进当前 pass 的收集：可见（**实体级唯一真值**）、有 owner、有可渲染资源；
+            // **若当前是阴影 pass**，再要求允许投射且在距离裁剪内
             // （逐条镜像 `RenderPrimitiveCollectSystem.cpp` 的两个收集循环）
+            //
+            // A7b：**材质来源不再是收集判据**（用户定稿）——「有几何但无材质来源」是
+            // 材质错误而非剔除条件，由紧随其后的 FallbackMaterial 规则表达。
             { RenderNeed::CollectForCurrentPass,
               ComponentTypeBit(ComponentType::Geometry),
               static_cast<uint32_t>(StrategyFact::EntityVisible)
             | static_cast<uint32_t>(StrategyFact::HasOwner)
-            | static_cast<uint32_t>(StrategyFact::Renderable)
-            | static_cast<uint32_t>(StrategyFact::HasMaterialSource),
+            | static_cast<uint32_t>(StrategyFact::Renderable),
               0,
               static_cast<uint32_t>(StrategyFact::ShadowPass),
               static_cast<uint32_t>(StrategyFact::CastShadow)
             | static_cast<uint32_t>(StrategyFact::InShadowRange) },
+
+            // 「材质缺失 ⇒ 取保底（错误）材质」：用 **forbidden_facts 表达“缺失”**，
+            // 于是它仍是表可查的需求位而不是特例 if。种类与根颜色由 mtl 侧
+            // `kMaterialErrorClassifyRules` / `kFallbackMaterialRules` 给出（数据驱动）。
+            { RenderNeed::FallbackMaterial,
+              ComponentTypeBit(ComponentType::Geometry),
+              0,
+              static_cast<uint32_t>(StrategyFact::HasMaterialSource),
+              0, 0 },
 
             // 阴影 caster 是**能力位**：只要允许投射即可（是否真的进当前 pass 由上面那条决定）
             { RenderNeed::ShadowCaster,

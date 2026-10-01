@@ -364,7 +364,7 @@ void SetTransformGizmoVisible(GizmoECS *gizmo, bool visible)
 
     gizmo->root_visible = visible;      // 本地门控标志（.inl 与各 Mode 的 Input 消费；见 GizmoECS::root_visible 注释）
 
-    // 可见性真值在世界存储（原 VisibilityComponent 已删除）：gizmo 根实体直接写世界
+    // 可见性真值在世界存储（实体级唯一真值）：gizmo 根实体直接写世界
     if (gizmo->world)
         gizmo->world->SetEntityVisible(gizmo->root->GetEntityID(), visible);
 

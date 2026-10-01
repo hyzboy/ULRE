@@ -491,6 +491,141 @@ namespace hgl::graph::mtl
     // 调用 mtl::NormalizeRecipe() 后，definition 的默认资源与渲染状态会被合入此结构。
     // ─────────────────────────────────────────────────────────────────────────────
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是材质 runtime 的上游输入。
+    // ─────────────────────────────────────────────────────────────
+    // 回退（错误）材质规则表（A7b）
+    //
+    // 语义（用户定稿）：「有几何但无材质来源」**不是剔除条件**，而是**材质错误** ——
+    // 必须用保底材质渲染出来，并由**根颜色**标注错误种类。
+    //
+    // 本表是回退材质的唯一判据（数据驱动、有界枚举）：
+    //   kind → 保底材质定义 ID（注册目录里的文件材质）+ 根颜色（RGBA）+ 稳定名。
+    // 根颜色经 `MaterialRecipe::fallback_marker_color` 落到材质数据行
+    // （`EmissiveSurface.color`）——与 `builtin/pure_color` 完全同一条下发路径，
+    // 不新建并行机制。新增错误种类 = 加一行；下面的 static_assert 自动纳入检查。
+    //
+    // TODO(未来·保底外观升级为棋盘格 + 传入标记色)：当前保底材质是**纯色**
+    //   `builtin/pure_color`（颜色只有材质数据行 `EmissiveSurface.color` 一维）；
+    //   `builtin/checkerboard_2d|3d` 是普通文件材质、棋盘格颜色写死灰度、且**不在
+    //   回退链上**。未来要做的（需专门一轮，已评估）：
+    //     ① 让 `checkerboard_2d_source.glsl` / `checkerboard_3d_source.glsl` 同样读
+    //        EmissiveSurface 标记色作为棋盘格两色基色；
+    //     ② **2D/3D 必须区分**：2D 走 UV、3D 走面空间/三平面（沿用两者现有采样差异），
+    //        因此标记色要分别落到两套着色器，不能共用一套；
+    //     ③ 同步两个 ShaderGen 门的期望值：F 断言回退定义 ID == `builtin/pure_color`
+    //        （SchemaGate:3534）、E 把 material TOML 文件数钉死为 15（:3360-3367）
+    //        —— 换外观必然要动这两处。
+    //   触发前提（用户 2026-10-01 实测）：**跑遍全部示例均正常触发 0 次**，现有示例
+    //   不存在"有几何、无材质来源"的实体 ⇒ 该错误路径目前只有契约测试覆盖，
+    //   无肉眼可验场景；故先留注释与计划，不做外观改造。
+    // ─────────────────────────────────────────────────────────────
+    enum class MaterialErrorKind : uint32_t
+    {
+        None = 0,                   ///< 无错误：正常配方（根颜色不参与着色）
+        MissingMaterialSource,      ///< 有几何，但**无任何材质来源**（数据层配方与 asset 默认配方皆无）
+        UnknownMaterialDefinition,  ///< 有材质来源，但其材质定义 ID 无法解析（落到同一保底材质）
+        Count,
+    };
+
+    inline constexpr uint32_t MATERIAL_ERROR_KIND_COUNT =
+        static_cast<uint32_t>(MaterialErrorKind::Count);
+
+    struct FallbackMaterialRule
+    {
+        MaterialErrorKind kind;
+        const char       *definition_id;    ///< 保底材质定义 ID（文件材质；必须是 ShaderLibrary/material 里存在的）
+        float             marker_color[4];  ///< 根颜色：标注错误种类
+        const char       *marker_name;      ///< 稳定名（日志 / 契约用）
+    };
+
+    inline constexpr FallbackMaterialRule kFallbackMaterialRules[MATERIAL_ERROR_KIND_COUNT] =
+    {
+        // 非错误回退：既有保底材质。`GetFallbackMaterialDefinitionID()` 的返回值
+        // 就是这一条（门 F.fallback-dimension-neutral 钉住 builtin/pure_color）。
+        { MaterialErrorKind::None,
+          "builtin/pure_color",
+          { 1.0f, 1.0f, 1.0f, 1.0f },
+          "none" },
+
+        // 有几何、无材质来源：洋红（最不易与真实材质混淆的“缺材质”色）
+        { MaterialErrorKind::MissingMaterialSource,
+          "builtin/pure_color",
+          { 1.0f, 0.0f, 1.0f, 1.0f },
+          "missing_material_source" },
+
+        // 材质定义 ID 不可解析：橙色
+        { MaterialErrorKind::UnknownMaterialDefinition,
+          "builtin/pure_color",
+          { 1.0f, 0.5f, 0.0f, 1.0f },
+          "unknown_material_definition" },
+    };
+
+    namespace detail
+    {
+        /// 规则表自检：① 每个 kind 恰好一条规则且与枚举**同序** ② 定义 ID / 名字非空
+        /// ③ 根颜色四通道都在 [0,1]（越界值会写进 SSBO 行，属坏数据）
+        constexpr bool CheckFallbackMaterialRules()
+        {
+            for (uint32_t i = 0; i < MATERIAL_ERROR_KIND_COUNT; ++i)
+            {
+                const FallbackMaterialRule &rule = kFallbackMaterialRules[i];
+
+                if (static_cast<uint32_t>(rule.kind) != i)
+                    return false;
+
+                if (!rule.definition_id || rule.definition_id[0] == '\0')
+                    return false;
+
+                if (!rule.marker_name || rule.marker_name[0] == '\0')
+                    return false;
+
+                for (uint32_t c = 0; c < 4; ++c)
+                    if (!(rule.marker_color[c] >= 0.0f
+                       && rule.marker_color[c] <= 1.0f))
+                        return false;
+            }
+
+            return true;
+        }
+    }
+
+    static_assert(detail::CheckFallbackMaterialRules(),
+                  "回退（错误）材质规则表不自洽：kind 与枚举不同序/缺规则、定义 ID 或名字为空、根颜色越界");
+
+    inline const FallbackMaterialRule &GetFallbackMaterialRule(
+        const MaterialErrorKind kind) noexcept
+    {
+        const uint32_t index = static_cast<uint32_t>(kind);
+
+        return index < MATERIAL_ERROR_KIND_COUNT
+            ? kFallbackMaterialRules[index]
+            : kFallbackMaterialRules[0];
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 错误种类分类表（**事实 ⇒ 种类**）：同样数据驱动、无特例 if。
+    // 未命中任何一行 = None（非材质错误 ⇒ 调用方保持既有失败语义）。
+    // ─────────────────────────────────────────────────────────────
+    struct MaterialErrorClassifyRule
+    {
+        bool              has_material_source;
+        MaterialErrorKind kind;
+    };
+
+    inline constexpr MaterialErrorClassifyRule kMaterialErrorClassifyRules[] =
+    {
+        { false, MaterialErrorKind::MissingMaterialSource },
+    };
+
+    inline constexpr MaterialErrorKind ClassifyMaterialErrorKind(
+        const bool has_material_source) noexcept
+    {
+        for (const MaterialErrorClassifyRule &rule : kMaterialErrorClassifyRules)
+            if (rule.has_material_source == has_material_source)
+                return rule.kind;
+
+        return MaterialErrorKind::None;
+    }
+
     struct MaterialRecipe
     {
         std::string recipe_name;               // 配方名称（人类可读）
@@ -501,6 +636,13 @@ namespace hgl::graph::mtl
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         GlobalSSBOBinding material_ssbo_binding; // 可选的唯一材质数据运行时绑定
+
+        // A7b：本配方是否是**回退（错误）材质** —— 种类与根颜色同属配方身份。
+        // `None` = 正常配方；非 None 由 `kFallbackMaterialRules`（本文件）唯一决定
+        // 定义 ID 与根颜色。根颜色经材质数据行（EmissiveSurface.color）下发到
+        // 着色器，与 builtin/pure_color 完全同一条路径。
+        MaterialErrorKind fallback_error_kind = MaterialErrorKind::None;
+        float             fallback_marker_color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
     };
 
     inline ResolvedMaterialRenderState ResolveMaterialRenderState(
@@ -646,6 +788,13 @@ namespace hgl::graph::mtl
             h << recipe.material_ssbo_binding.ssbo_type
               << recipe.material_ssbo_binding.ssbo_id;
         }
+
+        // A7b：回退（错误）材质的种类与根颜色属于配方身份 —— 多个错误种类可能落到
+        // **同一个**保底定义（builtin/pure_color），只按定义 ID 去重会让两种错误的
+        // 运行时行互认（颜色串味）。data_index 不在本哈希内（见上），故种类必须显式入哈希。
+        h << static_cast<uint32_t>(recipe.fallback_error_kind);
+        for (uint32_t i = 0; i < 4; ++i)
+            h << recipe.fallback_marker_color[i];
 
         return h;
     }
