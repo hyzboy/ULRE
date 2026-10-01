@@ -116,6 +116,8 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     components/InstancedPrimitiveComponent.cpp
     ${ECS_INCLUDE_PATH}/components/MaterialData.h
     components/MaterialData.cpp
+    ${ECS_INCLUDE_PATH}/components/Geometry.h
+    components/Geometry.cpp
     ${ECS_INCLUDE_PATH}/components/ShadowComponent.h
     components/ShadowComponent.cpp
     ${ECS_INCLUDE_PATH}/components/RenderableComponent.h

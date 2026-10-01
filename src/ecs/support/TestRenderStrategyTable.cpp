@@ -16,7 +16,6 @@ namespace
     StrategyFacts AllGoodFacts()
     {
         StrategyFacts f;
-        f.component_visible   = true;
         f.entity_visible      = true;
         f.has_owner           = true;
         f.renderable          = true;
@@ -135,16 +134,13 @@ int main(int argc, char** argv)
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Test 3: 可见性/资源/材质来源等事实逐条生效
+    // Test 3: 可见性（实体级唯一真值）/资源/材质来源等事实逐条生效
     // ─────────────────────────────────────────────────────────────
     {
         const char *what = nullptr;
 
-        StrategyFacts f1 = AllGoodFacts(); f1.component_visible = false;
-        if (Collect(kGeoSlot,f1)) { what = "组件级不可见"; }
-
         StrategyFacts f2 = AllGoodFacts(); f2.entity_visible = false;
-        if (!what && Collect(kGeoSlot,f2)) { what = "实体级不可见（含祖先继承）"; }
+        if (Collect(kGeoSlot,f2)) { what = "实体级不可见（含祖先继承）"; }
 
         StrategyFacts f3 = AllGoodFacts(); f3.renderable = false;
         if (!what && Collect(kGeoSlot,f3)) { what = "无渲染资源"; }

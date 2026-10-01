@@ -11,6 +11,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -96,8 +97,8 @@ private:
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
-        prim_comp->SetPrimitiveAsset(&sky_asset);
-        prim_comp->SetVisible(true);
+        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometry(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;
     }

@@ -12,6 +12,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/BoundingBoxAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/ShadowComponent.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
@@ -59,9 +60,12 @@ namespace hgl::ecs
             const MaterialData *material_data = context
                 ? context->GetMaterialData(owner->GetEntityID())
                 : nullptr;
+            const Geometry *geometry = context
+                ? context->GetGeometry(owner->GetEntityID())
+                : nullptr;
 
             return (material_data && material_data->HasRecipeOverride())
-                || (primitive_comp->GetAssetMaterialRecipe() != nullptr);
+                || (geometry && geometry->GetAssetMaterialRecipe() != nullptr);
         }
 
         bool BatchRequiresIndirectCommands(const MaterialBatch &batch)
@@ -236,7 +240,15 @@ namespace hgl::ecs
         if (!transform.IsValid())
             return false;
 
-        const float boundingRadius = primitiveComp->GetBoundingRadius();
+        // A5a：包围球半径随几何状态迁入 Geometry 组件（实体级查询，不在组件内缓存）
+        const Geometry *geometry = nullptr;
+        if (Entity *owner = primitiveComp->GetOwner())
+        {
+            if (ECSContext *context = owner->GetContext())
+                geometry = context->GetGeometry(owner->GetEntityID());
+        }
+
+        const float boundingRadius = geometry ? geometry->GetBoundingRadius() : 0.0f;
 
         if (boundingRadius <= 0.0f)
             return true;
@@ -443,8 +455,17 @@ namespace hgl::ecs
             if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(first_item))
             {
                 auto prim_comp = prim_item->GetPrimitiveComponent();
-                if (prim_comp && prim_comp->GetPrimitiveAsset())
-                    geometry = prim_comp->GetPrimitiveAsset()->GetGeometry();
+                const Geometry *geometry_comp = nullptr;
+                if (prim_comp)
+                {
+                    if (Entity *owner = prim_comp->GetOwner())
+                    {
+                        if (ECSContext *context = owner->GetContext())
+                            geometry_comp = context->GetGeometry(owner->GetEntityID());
+                    }
+                }
+                if (geometry_comp && geometry_comp->GetPrimitiveAsset())
+                    geometry = geometry_comp->GetPrimitiveAsset()->GetGeometry();
             }
 
             if (data_buffer && geometry && data_buffer->geometry_id == 0)

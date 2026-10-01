@@ -19,6 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -64,7 +65,7 @@ private:
 
     struct MeshEntry
     {
-        Geometry* geometry = nullptr;
+        graph::Geometry* geometry = nullptr;
         PrimitiveAsset asset{};
 
         ~MeshEntry() { delete geometry; }
@@ -77,7 +78,7 @@ private:
 
     MaterialDataAccessor material_data_ssbo_accessor{};
 
-    Geometry* prim_sky_sphere = nullptr;
+    graph::Geometry* prim_sky_sphere = nullptr;
     PrimitiveAsset sky_asset{};
 
     Texture2D* base_texture = nullptr;
@@ -153,7 +154,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto create_geometry = [&](const GeometryVertexFormat& gvf, auto&& creator) -> Geometry*
+        auto create_geometry = [&](const GeometryVertexFormat& gvf, auto&& creator) -> graph::Geometry*
         {
             auto pc = std::make_unique<GeometryCreater>(GetDevice(), gvf);
             if (!pc)
@@ -257,8 +258,8 @@ private:
         sky_transform.SetLocalScale(glm::vec3(1.0f));
         sky_transform.SetMobility(Mobility::Static);
 
-        sky_prim->SetPrimitiveAsset(&sky_asset);
-        sky_prim->SetVisible(true);
+        sky_prim->GetOwner()->GetContext()->GetOrCreateGeometry(sky_prim->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         // 物体群（环绕分布——法线方向各不相同 → sky ambient 方向采样差异可见）
         const size_t count = meshes.size();
@@ -284,7 +285,7 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f));
             transform.SetMobility(Mobility::Static);
 
-            primitive_comp->SetPrimitiveAsset(&rm->asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             material_data_comp->SetTextureResource("base_color", base_texture, sampler);
             material_data_comp->SetTextureResource("normal", normal_texture, sampler);
             material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);
@@ -292,7 +293,7 @@ private:
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(mesh_struct);
-            primitive_comp->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
             ++index;
         }

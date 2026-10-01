@@ -26,6 +26,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -62,7 +63,7 @@ private:
     using MaterialDataAccessor =
         graph::GlobalSSBODataAccessor;
 
-    Geometry *            geometry = nullptr;
+    graph::Geometry *            geometry = nullptr;
     MaterialDataAccessor mtl_data_ssbo_accessor{};
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
@@ -149,11 +150,11 @@ private:
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
-        primitive_comp->SetPrimitiveAsset(&cube_asset);
+        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource named_struct{};
         named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(named_struct);
-        primitive_comp->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;
     }

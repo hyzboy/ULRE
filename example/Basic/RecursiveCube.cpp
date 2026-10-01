@@ -19,6 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -60,7 +61,7 @@ private:
     PrimitiveAsset             cube_asset{};
     MaterialDataAccessor mtl_data_ssbo_accessor{};
 
-    Geometry *geometry = nullptr;
+    graph::Geometry *geometry = nullptr;
     struct CubeNode
     {
         hgl::ecs::TransformAccessor transform;
@@ -190,14 +191,14 @@ private:
 
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
-        primitive_comp->SetPrimitiveAsset(&cube_asset);
+        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor.GetSSBOId() != 0)
         {
             hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
             cube_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(cube_struct);
         }
-        primitive_comp->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         if (animate)
         {

@@ -15,68 +15,33 @@ namespace hgl::ecs
     /**
     * Base renderable component interface
     * Derived classes should implement specific rendering needs
+    *
+    * A5a：可见性真值收敛到**实体级**（`ECSContext::IsEntityVisible`）——本类不再持
+    * 字段（组件级那第二份真值已删）；包围球半径随几何派生状态迁入 `Geometry`。
     */
     class RenderableComponent : public Component
     {
-    protected:
-
-        bool visible;
-        float boundingRadius; // Simple bounding sphere for frustum culling
-
-        // 弱引用缓存：同 Entity 上的 ShadowComponent（若有）
-        ShadowComponent* cached_shadow_component = nullptr;
-
     public:
 
         explicit RenderableComponent(const std::string& name = "Renderable")
             : Component(name)
-            , visible(true)
-            , boundingRadius(1.0f)
-            , cached_shadow_component(nullptr)
         {
         }
 
         virtual ~RenderableComponent() = default;
 
-        void OnAttach() override
-        {
-            Component::OnAttach();
-            if (auto *e = GetOwner())
-            {
-                if (auto shadow = e->GetComponent<ShadowComponent>())
-                {
-                    cached_shadow_component = shadow.get();
-                }
-            }
-        }
-
-        void OnDetach() override
-        {
-            cached_shadow_component = nullptr;
-            Component::OnDetach();
-        }
-
-        bool IsVisible() const { return visible; }
-        void SetVisible(bool v) { visible = v; }
-
-        float GetBoundingRadius() const { return boundingRadius; }
-        void SetBoundingRadius(float radius) { boundingRadius = radius; }
-
         // ── 阴影关联与缺省约定 ──
-
-        void SetCachedShadowComponent(ShadowComponent *sc) { cached_shadow_component = sc; }
+        // 每次都按需经 owner 查 ShadowComponent，**不缓存指针**：缓存副本会与实体上
+        // 组件的实际挂卸脱节，就变成第二份真值（原组件内的阴影指针缓存已删）。
 
         ShadowComponent *GetShadowComponent() const
         {
-            if (!cached_shadow_component)
+            if (auto *e = GetOwner())
             {
-                if (auto *e = GetOwner())
-                {
-                    if (auto shadow = e->GetComponent<ShadowComponent>())
-                        const_cast<RenderableComponent*>(this)->cached_shadow_component = shadow.get();
-                }
+                if (auto shadow = e->GetComponent<ShadowComponent>())
+                    return shadow.get();
             }
-            return cached_shadow_component;
+            return nullptr;
         }
 
         /// 缺省约定：未挂载 ShadowComponent 默认投射阴影；挂载则遵循组件配置
@@ -107,5 +72,3 @@ namespace hgl::ecs
         }
     };
 }//namespace hgl::ecs
-
-

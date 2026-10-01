@@ -36,6 +36,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/components/CameraComponent.h>
@@ -302,14 +303,14 @@ class ComputeAsteroidBeltApp : public WorkObject
     VertexDataManager        *mesh_vdm = nullptr;
 
     // 主星 (Planet)
-    Geometry                 *planet_geometry = nullptr;
+    graph::Geometry                 *planet_geometry = nullptr;
     GlobalSSBODataAccessor  planet_mtl_accessor{};
     MaterialRecipe            planet_recipe{};
     PrimitiveAsset            planet_asset{};
     Entity                   *planet_entity   = nullptr;
 
     // 10 种内建几何体
-    Geometry                 *builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
+    graph::Geometry                 *builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
     uint32_t                  geometry_ids[GEOMETRY_VARIANT_COUNT]{};
     uint32_t                  mesh_group_counts[GEOMETRY_VARIANT_COUNT]{};
     GeometryAABB              cpu_geometry_aabbs[GEOMETRY_VARIANT_COUNT]{};
@@ -377,7 +378,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](auto &&creator) -> Geometry *
+        auto create_geometry = [this](auto &&creator) -> graph::Geometry *
         {
             GeometryCreater pc(mesh_vdm);
             return creator(&pc);
@@ -593,11 +594,11 @@ private:
 
         auto planet_prim = planet_entity->AddComponent<PrimitiveComponent>();
         hgl::ecs::MaterialData *material_data_comp = planet_entity->GetContext()->GetOrCreateMaterialData(planet_entity->GetEntityID());
-        planet_prim->SetPrimitiveAsset(&planet_asset);
+        planet_prim->GetOwner()->GetContext()->GetOrCreateGeometry(planet_prim->GetOwnerID())->SetPrimitiveAsset(&planet_asset);
         MaterialData::MaterialDataAuthoringResource p_res{};
         p_res = planet_mtl_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(p_res);
-        planet_prim->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         // 2. 创建 10 个陨星批次代表实体（每个代表 100,000 颗同几何体的陨星）
         for (uint32_t i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
@@ -615,7 +616,7 @@ private:
 
             auto prim = e->AddComponent<InstancedPrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-            prim->SetPrimitiveAsset(&asteroid_assets[i]);
+            prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&asteroid_assets[i]);
             MaterialData::MaterialDataAuthoringResource a_res{};
             a_res = asteroid_mtl_accessors[i].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(a_res);
@@ -629,7 +630,7 @@ private:
             prim->SetMaterialDataRowsBuffer(material_data_rows_buffer);
             prim->SetIndirectMeshTaskBuffer(indirect_cmds_buffer);
             prim->SetGPUDriven(true);
-            prim->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
         return true;

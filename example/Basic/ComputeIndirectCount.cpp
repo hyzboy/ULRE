@@ -26,6 +26,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -130,7 +131,7 @@ private:
     ECSContext *ecs_context = nullptr;
     Entity     *camera_entity = nullptr;
 
-    Geometry             *geometry = nullptr;
+    graph::Geometry             *geometry = nullptr;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
     GlobalSSBODataAccessor   mtl_data_ssbo_accessor{};
@@ -212,11 +213,11 @@ private:
 
             auto prim = e->AddComponent<PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-            prim->SetPrimitiveAsset(&cube_asset);
+            prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
             MaterialData::MaterialDataAuthoringResource named_struct{};
             named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(named_struct);
-            prim->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
         return true;

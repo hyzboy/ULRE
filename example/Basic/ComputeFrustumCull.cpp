@@ -30,6 +30,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -224,7 +225,7 @@ void main() {
 
 class ComputeFrustumCullApp : public WorkObject
 {
-    Geometry                 *geometry = nullptr;
+    graph::Geometry                 *geometry = nullptr;
     GlobalSSBODataAccessor  mtl_data_ssbo_accessor{};
     MaterialRecipe            cube_recipe{};
     PrimitiveAsset            cube_asset{};
@@ -369,7 +370,7 @@ private:
 
             auto prim = e->AddComponent<InstancedPrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-            prim->SetPrimitiveAsset(&cube_asset);
+            prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
             MaterialData::MaterialDataAuthoringResource named_struct{};
             named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(named_struct);
@@ -384,7 +385,7 @@ private:
             prim->SetIndirectMeshTaskBuffer(indirect_cmds_buffer);
             prim->SetIndirectCountBuffer(count_buffer, 0);
             prim->SetGPUDriven(true);
-            prim->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
         return true;

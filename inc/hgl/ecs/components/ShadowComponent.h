@@ -23,9 +23,6 @@ namespace hgl::ecs
         explicit ShadowComponent(const std::string &name = "Shadow");
         ~ShadowComponent() override = default;
 
-        void OnAttach() override;
-        void OnDetach() override;
-
         // ── 投射控制 (Caster) ──
         bool CanCastShadow() const { return cast_shadow; }
         void SetCastShadow(bool enable) { cast_shadow = enable; }

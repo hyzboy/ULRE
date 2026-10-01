@@ -19,6 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -271,7 +272,7 @@ private:
                 continue;
 
             hgl::math::AABB local_aabb;
-            if(!rm->primitive_comp->GetLocalAABB(local_aabb))
+            if(!rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(rm->primitive_comp->GetOwnerID())->GetLocalAABB(local_aabb))
                 continue;
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
@@ -290,12 +291,12 @@ private:
             bbox->transform.SetLocalScale(glm::vec3(size.x, size.y, size.z));
             bbox->transform.SetMobility(hgl::ecs::Mobility::Static);
 
-            bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
+            bbox->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct =
                 wire.material_data_ssbo_accessors[i % COLOR_COUNT].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(bbox_struct);
-            bbox->primitive_comp->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
             bounding_boxes.push_back(std::move(bbox));
         }
@@ -330,12 +331,12 @@ private:
             rm->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             rm->transform.SetMobility(hgl::ecs::Mobility::Static);
 
-            rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
+            rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
                 solid.material_data_ssbo_accessors[rm->color_index].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(mesh_struct);
-            rm->primitive_comp->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
         return true;

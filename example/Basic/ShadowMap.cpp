@@ -30,6 +30,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -352,8 +353,8 @@ namespace
     /// 注意必须在**几何体**上取 VAB 并直接 Map 原始字节：
     ///   * GeometryCreater 在 Create() 返回后已经被 Clear()，拿不到 VAB；
     ///   * VAB::Map(0, count) 给的是**整块缓冲**的首地址，要自己加上
-    ///     Geometry::GetVertexOffset() 才是本几何体的第一个顶点。
-    std::vector<glm::vec3> ExtractLocalPositions(Geometry *geom)
+    ///     graph::Geometry::GetVertexOffset() 才是本几何体的第一个顶点。
+    std::vector<glm::vec3> ExtractLocalPositions(graph::Geometry *geom)
     {
         std::vector<glm::vec3> out;
         if (!geom)
@@ -390,7 +391,7 @@ namespace
     ///
     /// inline_geometry 的各创建函数都会用 CreateWithAABB() 写入各自的包围盒，
     /// 因此直接取 AABB 的 min.z 取反即可；包围盒为空时返回 0（保持原位）。
-    float GroundLift(const Geometry *geom)
+    float GroundLift(const graph::Geometry *geom)
     {
         if (!geom)
             return 0.0f;
@@ -404,14 +405,14 @@ namespace
     }
 }
 
-/// 场景资产：接收面 + 环上网格。离屏世界与主世界**共用同一批 Geometry**，
-/// 只是各自建一份 PrimitiveAsset（asset 本身不持有 Geometry 所有权）。
+/// 场景资产：接收面 + 环上网格。离屏世界与主世界**共用同一批 graph::Geometry**，
+/// 只是各自建一份 PrimitiveAsset（asset 本身不持有 graph::Geometry 所有权）。
 class ShadowScene
 {
 public:
 
-    Geometry *                  receiver_plane = nullptr;   ///< 放大的 PlaneSquare（阴影接收面）
-    std::vector<Geometry *>     meshes;                     ///< 环上的标准网格
+    graph::Geometry *                  receiver_plane = nullptr;   ///< 放大的 PlaneSquare（阴影接收面）
+    std::vector<graph::Geometry *>     meshes;                     ///< 环上的标准网格
     std::vector<float>          mesh_lift;                  ///< 各网格落到地面所需的抬升量
 
     /// 接收面与网格全员使用统一的标准 Lit 材质
@@ -682,7 +683,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto create_geometry = [this](auto &&creator) -> Geometry *
+        auto create_geometry = [this](auto &&creator) -> graph::Geometry *
         {
             auto pc = std::make_unique<GeometryCreater>(scene_vdm);
             if (!pc)
@@ -707,7 +708,7 @@ private:
                      kReceiverPlaneScale);
         }
 
-        auto add_mesh = [&](const char *name, Geometry *geom) -> bool
+        auto add_mesh = [&](const char *name, graph::Geometry *geom) -> bool
         {
             if (!geom)
             {
@@ -894,7 +895,7 @@ private:
             material_data_comp->SetTextureResource("roughness", roughness_texture, scene_sampler);
         }
         material_data_comp->SetDataResource(scene_material_binding);
-        prim->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
     }
 
     /// 把场景铺进主世界（接收面 + 环上网格）。
@@ -918,7 +919,7 @@ private:
             transform.SetLocalScale(glm::vec3(kReceiverPlaneScale, kReceiverPlaneScale, 1.0f));
             transform.SetMobility(Mobility::Static);
 
-            prim_comp->SetPrimitiveAsset(&scene.plane_asset);
+            prim_comp->GetOwner()->GetContext()->GetOrCreateGeometry(prim_comp->GetOwnerID())->SetPrimitiveAsset(&scene.plane_asset);
             ApplyMeshMaterial(prim_comp.get(), /*is_receiver_plane=*/true);
             receiver_prim = prim_comp.get();
         }
@@ -948,7 +949,7 @@ private:
             if (i < mesh_anim.size())
                 mesh_anim[i].tf = transform;
 
-            prim_comp->SetPrimitiveAsset(&scene.mesh_assets[i]);
+            prim_comp->GetOwner()->GetContext()->GetOrCreateGeometry(prim_comp->GetOwnerID())->SetPrimitiveAsset(&scene.mesh_assets[i]);
             ApplyMeshMaterial(prim_comp.get());
         }
 
@@ -1092,8 +1093,6 @@ private:
         if (!rt || !ecs_context)
             return LogStageFail("ShadowMapApp::RenderShadowMap", "depth target / ecs context missing");
 
-        // if (receiver_prim)
-        //     receiver_prim->SetVisible(false);
 
         ecs::RenderPassRequest req;
         req.target           = rt;
@@ -1103,8 +1102,6 @@ private:
 
         const bool ok = ecs_context->RenderTo(req);
 
-        // if (receiver_prim)
-        //     receiver_prim->SetVisible(true);
 
         if (!ok)
             return LogStageFail("ShadowMapApp::RenderShadowMap", "ECSContext::RenderTo failed");

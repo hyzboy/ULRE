@@ -11,8 +11,8 @@
  *     规则引用未知事实位、或引用未知槽位，都会在下面的 static_assert 里被抓住（自动 scale）。
  *   · 表说的不是"用哪个具体 PassType"——那由材质 recipe / 变体键决定（见 v2 §9.3）。
  *
- * 与现有判据的对应（对拍基准，2026-10-01 侦察）：
- *   · `CollectForCurrentPass` ⇔ `RenderPrimitiveCollectSystem.cpp:1344-1350`（可见/可渲染/实体可见/owner）
+ * 与现有判据的对应（对拍基准，2026-10-01 侦察；A5a 后可见性只剩实体级一份）：
+ *   · `CollectForCurrentPass` ⇔ `RenderPrimitiveCollectSystem.cpp` 收集循环（实体可见/可渲染/owner）
  *     + `:1383`（`HasAnyMaterialSource`）+ `:1362-1379`（阴影 pass 下的 `CanCastShadow` 与距离裁剪）
  *   · `ShadowCaster`   ⇔ 同上 `:1364/:1486` 的 `CanCastShadow`
  *   · `ShadowReceiver` ⇔ `PrimitiveBatchPipeline.cpp:1016` 的 `CanReceiveShadow`
@@ -59,25 +59,25 @@ namespace hgl
         {
             None = 0,
 
-            ComponentVisible  = 1u << 0,   ///< 组件层可见（现 = `PrimitiveComponent::IsVisible`）
-            EntityVisible     = 1u << 1,   ///< 实体级可见（含祖先继承，已算完）
-            HasOwner          = 1u << 2,   ///< 有 owner 实体
-            Renderable        = 1u << 3,   ///< 具备可渲染资源（现 = `primitiveAsset != nullptr`）
-            HasMaterialSource = 1u << 4,   ///< 有材质来源（现 = `HasAnyMaterialSource`：数据层配方覆盖 或 asset 默认配方）
-            CastShadow        = 1u << 5,   ///< 允许投射（现 = `CanCastShadow`，含缺省约定）
-            ReceiveShadow     = 1u << 6,   ///< 允许接收（现 = `CanReceiveShadow`，含缺省约定）
-            ShadowPass        = 1u << 7,   ///< 当前 pass 是阴影 pass（世界态）
-            InShadowRange     = 1u << 8,   ///< 在阴影距离裁剪内（世界态）
+            /// 实体级可见（A5a：**唯一可见性真值** —— 组件级 `visible` 已删，
+            /// 读法 = `ECSContext::IsEntityVisible`，含祖先继承，已算完）
+            EntityVisible     = 1u << 0,
+            HasOwner          = 1u << 1,   ///< 有 owner 实体
+            Renderable        = 1u << 2,   ///< 具备可渲染资源（现 = `Geometry::GetPrimitiveAsset() != nullptr`）
+            HasMaterialSource = 1u << 3,   ///< 有材质来源（现 = `HasAnyMaterialSource`：数据层配方覆盖 或 asset 默认配方）
+            CastShadow        = 1u << 4,   ///< 允许投射（现 = `CanCastShadow`，含缺省约定）
+            ReceiveShadow     = 1u << 5,   ///< 允许接收（现 = `CanReceiveShadow`，含缺省约定）
+            ShadowPass        = 1u << 6,   ///< 当前 pass 是阴影 pass（世界态）
+            InShadowRange     = 1u << 7,   ///< 在阴影距离裁剪内（世界态）
 
-            Count             = 9,
+            Count             = 8,
         };
 
-        inline constexpr uint32_t STRATEGY_FACT_COUNT = 9;
+        inline constexpr uint32_t STRATEGY_FACT_COUNT = 8;
 
         /// 事实集合（调用侧填；`ToMask()` 后本表只做位运算）
         struct StrategyFacts
         {
-            bool component_visible   = true;
             bool entity_visible      = true;
             bool has_owner           = true;
             bool renderable          = true;
@@ -91,7 +91,6 @@ namespace hgl
             {
                 uint32_t mask = 0;
 
-                if (component_visible)   mask |= static_cast<uint32_t>(StrategyFact::ComponentVisible);
                 if (entity_visible)      mask |= static_cast<uint32_t>(StrategyFact::EntityVisible);
                 if (has_owner)           mask |= static_cast<uint32_t>(StrategyFact::HasOwner);
                 if (renderable)          mask |= static_cast<uint32_t>(StrategyFact::Renderable);
@@ -123,13 +122,12 @@ namespace hgl
 
         inline constexpr RenderNeedRule kRenderNeedRules[kRenderNeedRules_Count] =
         {
-            // 进当前 pass 的收集：看得见、有 owner、有可渲染资源与材质来源；
-            // **若当前是阴影 pass**，再要求允许投射且在距离裁剪内
-            // （逐条镜像 `RenderPrimitiveCollectSystem.cpp:1344-1383` × `:1362-1379`）
+            // 进当前 pass 的收集：可见（**实体级唯一真值**）、有 owner、有可渲染资源与
+            // 材质来源；**若当前是阴影 pass**，再要求允许投射且在距离裁剪内
+            // （逐条镜像 `RenderPrimitiveCollectSystem.cpp` 的两个收集循环）
             { RenderNeed::CollectForCurrentPass,
               ComponentTypeBit(ComponentType::Geometry),
-              static_cast<uint32_t>(StrategyFact::ComponentVisible)
-            | static_cast<uint32_t>(StrategyFact::EntityVisible)
+              static_cast<uint32_t>(StrategyFact::EntityVisible)
             | static_cast<uint32_t>(StrategyFact::HasOwner)
             | static_cast<uint32_t>(StrategyFact::Renderable)
             | static_cast<uint32_t>(StrategyFact::HasMaterialSource),

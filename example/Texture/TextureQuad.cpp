@@ -13,6 +13,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -133,13 +134,13 @@ private:
         quad_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         quad_transform.SetMobility(Mobility::Static);
 
-        quad_primitive->SetPrimitiveAsset(&quad_asset);
+        quad_primitive->GetOwner()->GetContext()->GetOrCreateGeometry(quad_primitive->GetOwnerID())->SetPrimitiveAsset(&quad_asset);
         if (!material_data_comp->SetTextureResource(
                 "base_color",
                 texture,
                 sampler))
             return false;
-        quad_primitive->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;
     }

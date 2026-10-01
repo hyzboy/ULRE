@@ -14,6 +14,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -128,13 +129,13 @@ private:
         rect_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         rect_transform.SetMobility(Mobility::Static);
 
-        rect_primitive->SetPrimitiveAsset(&rect_asset);
+        rect_primitive->GetOwner()->GetContext()->GetOrCreateGeometry(rect_primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset);
         if (!material_data_comp->SetTextureResource(
                 "base_color",
                 texture,
                 sampler))
             return false;
-        rect_primitive->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;
     }

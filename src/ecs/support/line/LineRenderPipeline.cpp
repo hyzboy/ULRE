@@ -428,7 +428,7 @@ namespace hgl::ecs
             if (!comp) continue;
             ++stats_.total_components;
 
-            if (!comp->visible || comp->lines.empty())
+            if (comp->lines.empty())
             {
                 ++stats_.culled_by_visibility;
                 continue;
@@ -437,7 +437,7 @@ namespace hgl::ecs
             Entity* owner = comp->GetOwner();
             if (!owner) continue;
 
-            // 可见性检查：真值在世界存储（祖先不可见 ⇒ 后代不可见）
+            // 可见性检查：真值只在实体级（原组件级 visible 已删；祖先不可见 ⇒ 后代不可见）
             if (!context_->IsEntityVisible(owner->GetEntityID()))
             {
                 ++stats_.culled_by_visibility;

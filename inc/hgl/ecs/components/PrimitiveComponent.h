@@ -3,9 +3,7 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/support/PositionSourceSpec.h>
 #include<hgl/ecs/support/TransformPolicySpec.h>
-#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/ShaderProgramKey.h>
-#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/render/RenderItemDescriptor.h>
 #include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
@@ -14,22 +12,11 @@
 // Forward declarations to avoid heavy includes
 namespace hgl
 {
-    namespace math
-    {
-        class AABB;
-    }
-
     namespace graph
     {
-        class DeviceBuffer;
-        struct GeometryDataBuffer;
-        struct GeometryDrawRange;
-        class Geometry;
         class ShaderProgram;
         class Pipeline;
         class RenderPass;
-        class Sampler;
-        class Texture;
     }
 }
 
@@ -40,25 +27,17 @@ namespace hgl::ecs
     /**
      * PrimitiveComponent - Renderable component for static mesh rendering
      *
-     * Manages a single PrimitiveAsset (geometry + recipe) for rendering.
-     * Derived from RenderableComponent to provide rendering capabilities.
-     *
-     * Features:
-     * - Holds reference to hgl::graph::PrimitiveAsset
-     * - Provides access to ShaderProgram, Pipeline, and AABB data
-     * - Compatible with RenderCollector for batched rendering
+     * A5a 起**几何/资产侧状态**（`PrimitiveAsset` / 变体选择 / 运行期几何绑定 /
+     * 包围球半径）住在同实体的 `Geometry` 组件里（`ECSContext::GetGeometry` /
+     * `GetOrCreateGeometry`）；本组件只保留**渲染侧**：按 RenderPass 解析的管线缓存、
+     * 可选管线覆盖、位置/变换策略与 render_item 4-ID。挂载时确保 `Geometry` 存在。
+     * A5b 会继续拆出 ShadowProxy / MaterialBinding / LOD 钩子并删除本类。
      */
     class PrimitiveComponent : public RenderableComponent
     {
     private:
 
-        const hgl::graph::PrimitiveAsset* primitiveAsset = nullptr;  // Asset-level geometry+recipe pairing (not owned)
-        uint32_t primitiveVariantIndex = 0;
-        hgl::graph::PrimitiveVariantPurpose primitiveVariantPurpose =
-            hgl::graph::PrimitiveVariantPurpose::Surface;
-        hgl::graph::GeometryDataBuffer *runtime_data_buffer = nullptr;
-        hgl::graph::GeometryDrawRange *runtime_draw_range = nullptr;
-        hgl::graph::Geometry *runtime_geometry = nullptr;        hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
+        hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
         // 每个 RenderPass（≈每个 RenderTarget）各自持有解析出的管线——同一世界
@@ -87,7 +66,6 @@ namespace hgl::ecs
     protected:
         // RenderItem 4-ID descriptor handle and storage binding
         graph::RenderItemHandle render_item_handle = graph::INVALID_RENDER_ITEM_HANDLE;
-        RenderItemDataStorage *bound_render_item_storage = nullptr;
         graph::RenderItemDescriptor render_item_descriptor{};
 
         virtual void EnsureRenderItemStorageAllocated();
@@ -109,29 +87,6 @@ namespace hgl::ecs
         // Primitive management
         const char* GetSystemGroupName() const override { return "Primitive"; }
 
-        void SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset);
-        const hgl::graph::PrimitiveAsset *GetPrimitiveAsset() const { return primitiveAsset; }
-        void ClearPrimitiveAsset() { SetPrimitiveAsset(nullptr); }
-        void SetPrimitiveVariantIndex(const uint32_t index) { primitiveVariantIndex = index; }
-        uint32_t GetPrimitiveVariantIndex() const { return primitiveVariantIndex; }
-        void SetPrimitiveVariantPurpose(
-            const hgl::graph::PrimitiveVariantPurpose purpose)
-        {
-            if (primitiveVariantPurpose == purpose)
-                return;
-            primitiveVariantPurpose = purpose;
-            InvalidateResolvedRuntimePipeline();
-        }
-        hgl::graph::PrimitiveVariantPurpose GetPrimitiveVariantPurpose()
-            const
-        {
-            return primitiveVariantPurpose;
-        }
-        bool EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material);
-        void ClearRuntimeGeometryBinding();
-        const hgl::graph::GeometryDataBuffer *GetRuntimeGeometryDataBuffer() const;
-        const hgl::graph::GeometryDrawRange *GetRuntimeGeometryDrawRange() const;
-
         void SetOverridePipeline(hgl::graph::Pipeline* p) { overridePipeline = p; }
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
         void ClearOverridePipeline() { overridePipeline = nullptr; }
@@ -152,12 +107,6 @@ namespace hgl::ecs
         void SetPositionSourceSpec(PositionSourceSpec spec) { positionSourceSpec = spec; }
         PositionSourceSpec GetPositionSourceSpec() const { return positionSourceSpec; }
 
-        // Asset 里的默认配方——材质解析链的**基底来源**。作者把材质授权搬到
-        // 数据层（MaterialData）之后，本访问器仍是 asset 归属的数据，由调用方
-        // 作为 `MaterialData::BuildResolvedRecipe` 的 asset_default_recipe 传入。
-        // A5 拆分 Geometry 时随 asset 一并迁移。
-        const hgl::graph::mtl::MaterialRecipe *GetAssetMaterialRecipe() const;
-
         // 材质授权内容变化（数据层代数前进 / 配方内容变化）时调用：
         // 已解析的运行期管线不再可信（管线由 program 身份 + 规范化 recipe 共同决定）。
         void InvalidateResolvedRuntimePipeline();
@@ -167,9 +116,6 @@ namespace hgl::ecs
 
         // Pipeline access: override → runtime resolved (per render pass)
         hgl::graph::Pipeline* GetPipelineForRenderPass(hgl::graph::RenderPass *render_pass) const;
-
-        // Bounding volume
-        bool GetLocalAABB(hgl::math::AABB& outAABB) const;
 
         // Rendering capability check
         bool CanRender() const;
@@ -199,8 +145,4 @@ namespace hgl::ecs
         void OnAttach() override;
         void OnDetach() override;
     };
-
-    /// 槽位映射（**暂定**：`PrimitiveComponent` 承载几何来源，A5 拆分后由真正的 `Geometry` 组件接管；
-    /// 材质授权数据已在 A2 迁至 `MaterialData`）
-    template<> struct ComponentTypeOf<PrimitiveComponent> { static constexpr ComponentType value = ComponentType::Geometry; };
 }//namespace hgl::ecs

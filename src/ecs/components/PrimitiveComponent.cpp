@@ -1,165 +1,12 @@
 ﻿#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderItemDataStorage.h>
-#include<hgl/ecs/support/RenderResource.h>
-#include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/mesh/GeometryDataBuffer.h>
-#include<hgl/graph/mesh/GeometryDrawRange.h>
-#include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/ecs/components/MaterialData.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKTexture.h>
-#include<hgl/vk/pipeline/VKPipeline.h>
-#include<hgl/math/geometry/BoundingVolumes.h>
-#include<hgl/log/Log.h>
 
 namespace hgl::ecs
 {
-    bool PrimitiveComponent::EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material)
-    {
-        if (!primitiveAsset || !material)
-        {
-            GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: primitiveAsset=%p material=%p",
-                      primitiveAsset,
-                      material);
-            return false;
-        }
-
-        auto *geometry = primitiveAsset->GetGeometry();
-        if (!geometry)
-        {
-            GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: geometry null asset=%p material=%s",
-                      primitiveAsset,
-                      material->GetName().c_str());
-            return false;
-        }
-
-        if (!runtime_draw_range)
-            runtime_draw_range = new hgl::graph::GeometryDrawRange();
-
-        if (!runtime_draw_range)
-        {
-            GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: alloc GeometryDrawRange failed material=%s",
-                      material->GetName().c_str());
-            return false;
-        }
-
-        // SSBO 顶点方案无 VIL：GeometryDataBuffer 的内容与布局只由 geometry
-        // 决定，program 按语义索引读同一缓冲，与缓冲构建无关。哨兵只看
-        // geometry 身份——若按 program 指针比较，Forward↔Shadow 双槽交替或
-        // program 重解析都会让几何缓冲每帧销毁重建（顶点数据整段重传）。
-        const bool needs_rebuild =
-            (!runtime_data_buffer)
-         || (runtime_geometry != geometry);
-
-        if (needs_rebuild)
-        {
-            // 顶点输入统一为 SSBO：无 VIL attribute 布局，顶点数据槽位
-            // 直接按 Geometry 语义列表填充（GeometryDataBuffer::Update）
-            const uint32_t input_count = geometry->GetGeometryVertexFormat().GetCount();
-
-            if (geometry->GetVABCount() < input_count)
-            {
-                GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: geometry VAB count(%u) < semantic count(%u), material=%s",
-                          geometry->GetVABCount(),
-                          input_count,
-                          material->GetName().c_str());
-                return false;
-            }
-
-            SAFE_CLEAR(runtime_data_buffer);
-
-            runtime_data_buffer = new hgl::graph::GeometryDataBuffer(input_count,
-                                                                     geometry->GetIBO(),
-                                                                     geometry->GetVDM());
-            if (!runtime_data_buffer)
-            {
-                GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: alloc GeometryDataBuffer failed material=%s attr_count=%u",
-                          material->GetName().c_str(),
-                          input_count);
-                return false;
-            }
-
-            runtime_geometry = geometry;
-        }
-
-        if (!runtime_data_buffer->Update(geometry))
-        {
-            GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: GeometryDataBuffer::Update failed material=%s",
-                      material->GetName().c_str());
-            return false;
-        }
-
-        runtime_draw_range->Set(geometry);
-        return true;
-    }
-
-    void PrimitiveComponent::ClearRuntimeGeometryBinding()
-    {
-        SAFE_CLEAR(runtime_data_buffer);
-        SAFE_CLEAR(runtime_draw_range);
-        runtime_geometry = nullptr;
-    }
-
-    const hgl::graph::GeometryDataBuffer *PrimitiveComponent::GetRuntimeGeometryDataBuffer() const
-    {
-        return runtime_data_buffer;
-    }
-
-    const hgl::graph::GeometryDrawRange *PrimitiveComponent::GetRuntimeGeometryDrawRange() const
-    {
-        return runtime_draw_range;
-    }
-
-    void PrimitiveComponent::SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset)
-    {
-        if (primitiveAsset != asset)
-        {
-            InvalidateResolvedRuntimePipeline();
-            ClearRuntimeGeometryBinding();
-        }
-
-        primitiveAsset = asset;
-
-        if (primitiveAsset && primitiveAsset->GetGeometry())
-        {
-            const auto &bv = primitiveAsset->GetGeometry()->GetBoundingVolumes();
-            auto extents = bv.aabb.GetLength();
-            float radius = math::Length(extents) * 0.5f;
-            SetBoundingRadius(radius);
-        }
-        else
-        {
-            SetBoundingRadius(0.0f);
-        }
-
-        // asset 默认配方是材质解析的基底来源：换 asset ⇒ 让本实体材质数据层的
-        // 授权代数前进，渲染侧的重解析快路径据此失配（原先由组件级 generation
-        // 承担的失效点，A2 随授权状态一并迁入 MaterialData）。
-        Entity *owner = GetOwner();
-        ECSContext *context = owner ? owner->GetContext() : nullptr;
-        MaterialData *material_data = context
-            ? context->GetMaterialData(owner->GetEntityID())
-            : nullptr;
-        if (material_data)
-            material_data->BumpAuthoredGeneration();
-    }
-
-    const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetAssetMaterialRecipe() const
-    {
-        if (!primitiveAsset)
-            return nullptr;
-
-        if (const auto *variant =
-                primitiveAsset->FindVariantByPurpose(
-                    primitiveVariantPurpose,
-                    primitiveVariantIndex))
-            return variant->material_recipe;
-
-        return primitiveAsset->GetMaterialRecipe();
-    }
-
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()
     {
         resolvedRuntimePipelineMap.Clear();
@@ -221,30 +68,31 @@ namespace hgl::ecs
         return entry ? entry->pipeline : nullptr;
     }
 
-    bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const
-    {
-        if (!primitiveAsset || !primitiveAsset->GetGeometry())
-            return false;
-
-        const auto &bv = primitiveAsset->GetGeometry()->GetBoundingVolumes();
-        outAABB = bv.aabb;
-        return true;
-    }
-
     bool PrimitiveComponent::CanRender() const
     {
-        return primitiveAsset != nullptr && IsVisible();
+        // A5a：只表示"拥有可渲染资产"——可见性真值已收敛到实体级
+        // （ECSContext::IsEntityVisible），不再混进本判据（原先这里 `&& IsVisible()`
+        // 与收集链的可见性判定是同一件事的重复）。几何状态住在同实体的 Geometry 组件。
+        if (auto *owner = GetOwner())
+        {
+            if (auto geometry = owner->GetComponent<Geometry>())
+                return geometry->GetPrimitiveAsset() != nullptr;
+        }
+
+        return false;
     }
 
     void PrimitiveComponent::EnsureRenderItemStorageAllocated()
     {
-        if (!bound_render_item_storage && owner_context)
+        // A5a：不再在组件内缓存世界存储指针（原组件内的世界存储指针缓存已删）——
+        // 每次经 owner 的 ECSContext 现取。
+        RenderItemDataStorage *storage = owner_context
+            ? owner_context->GetRenderItemStorage()
+            : nullptr;
+
+        if (storage && render_item_handle == graph::INVALID_RENDER_ITEM_HANDLE)
         {
-            bound_render_item_storage = owner_context->GetRenderItemStorage();
-        }
-        if (bound_render_item_storage && render_item_handle == graph::INVALID_RENDER_ITEM_HANDLE)
-        {
-            render_item_handle = bound_render_item_storage->Allocate(render_item_descriptor);
+            render_item_handle = storage->Allocate(render_item_descriptor);
         }
     }
 
@@ -259,9 +107,13 @@ namespace hgl::ecs
 
     const graph::RenderItemDescriptor &PrimitiveComponent::GetRenderItemDescriptor() const
     {
-        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+        RenderItemDataStorage *storage = owner_context
+            ? owner_context->GetRenderItemStorage()
+            : nullptr;
+
+        if (storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
         {
-            if (const auto *desc = bound_render_item_storage->Get(render_item_handle))
+            if (const auto *desc = storage->Get(render_item_handle))
                 return *desc;
         }
         return render_item_descriptor;
@@ -271,9 +123,14 @@ namespace hgl::ecs
     {
         render_item_descriptor.transform_id = transform_id;
         EnsureRenderItemStorageAllocated();
-        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+
+        RenderItemDataStorage *storage = owner_context
+            ? owner_context->GetRenderItemStorage()
+            : nullptr;
+
+        if (storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
         {
-            bound_render_item_storage->SetTransformID(render_item_handle, transform_id);
+            storage->SetTransformID(render_item_handle, transform_id);
         }
     }
 
@@ -281,9 +138,14 @@ namespace hgl::ecs
     {
         render_item_descriptor.geometry_id = geometry_id;
         EnsureRenderItemStorageAllocated();
-        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+
+        RenderItemDataStorage *storage = owner_context
+            ? owner_context->GetRenderItemStorage()
+            : nullptr;
+
+        if (storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
         {
-            bound_render_item_storage->SetGeometryID(render_item_handle, geometry_id);
+            storage->SetGeometryID(render_item_handle, geometry_id);
         }
     }
 
@@ -291,9 +153,14 @@ namespace hgl::ecs
     {
         render_item_descriptor.material_id = material_id;
         EnsureRenderItemStorageAllocated();
-        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+
+        RenderItemDataStorage *storage = owner_context
+            ? owner_context->GetRenderItemStorage()
+            : nullptr;
+
+        if (storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
         {
-            bound_render_item_storage->SetMaterialID(render_item_handle, material_id);
+            storage->SetMaterialID(render_item_handle, material_id);
         }
     }
 
@@ -301,9 +168,14 @@ namespace hgl::ecs
     {
         render_item_descriptor.texture_id = texture_id;
         EnsureRenderItemStorageAllocated();
-        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+
+        RenderItemDataStorage *storage = owner_context
+            ? owner_context->GetRenderItemStorage()
+            : nullptr;
+
+        if (storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
         {
-            bound_render_item_storage->SetTextureID(render_item_handle, texture_id);
+            storage->SetTextureID(render_item_handle, texture_id);
         }
     }
 
@@ -314,9 +186,14 @@ namespace hgl::ecs
         render_item_descriptor.material_id = material_id;
         render_item_descriptor.texture_id = texture_id;
         EnsureRenderItemStorageAllocated();
-        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+
+        RenderItemDataStorage *storage = owner_context
+            ? owner_context->GetRenderItemStorage()
+            : nullptr;
+
+        if (storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
         {
-            bound_render_item_storage->Set4ID(render_item_handle, transform_id, geometry_id, material_id, texture_id);
+            storage->Set4ID(render_item_handle, transform_id, geometry_id, material_id, texture_id);
         }
     }
 
@@ -324,6 +201,15 @@ namespace hgl::ecs
     void PrimitiveComponent::OnAttach()
     {
         RenderableComponent::OnAttach();
+
+        // A5a：几何/资产侧状态住在同实体的 `Geometry` 组件里 ⇒ 挂载本组件即确保它存在，
+        // 让实体始终具备 Geometry 槽位（A5b 删本组件后由作者直接持有 Geometry）。
+        if (auto *owner = GetOwner())
+        {
+            if (!owner->GetComponent<Geometry>())
+                owner->AddComponent<Geometry>();
+        }
+
         EnsureRenderItemStorageAllocated();
     }
 
@@ -331,20 +217,22 @@ namespace hgl::ecs
     {
         RenderableComponent::OnDetach();
 
-        if (bound_render_item_storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
+        RenderItemDataStorage *storage = owner_context
+            ? owner_context->GetRenderItemStorage()
+            : nullptr;
+
+        if (storage && render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
         {
-            bound_render_item_storage->Release(render_item_handle);
-            render_item_handle = graph::INVALID_RENDER_ITEM_HANDLE;
-            bound_render_item_storage = nullptr;
+            storage->Release(render_item_handle);
         }
 
+        render_item_handle = graph::INVALID_RENDER_ITEM_HANDLE;
+
         // Don't delete resources here; they are managed externally.
-        primitiveAsset = nullptr;
-        primitiveVariantIndex = 0;
-        ClearRuntimeGeometryBinding();
         overridePipeline = nullptr;
         resolvedRuntimePipelineMap.Clear();
         render_item_descriptor = {};
+        // 几何/资产侧状态已迁至 Geometry（由它自己的 OnDetach 清理）。
         // 材质授权状态已迁至 MaterialData（由它自己的 OnDetach 清理）。
     }
 }//namespace hgl::ecs

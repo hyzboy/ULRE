@@ -18,6 +18,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -210,12 +211,12 @@ private:
                 se.transform.SetLocalScale(world_scale);
                 se.transform.SetMobility(hgl::ecs::Mobility::Static);
 
-                se.primitive_comp->SetPrimitiveAsset(&asset);
+                se.primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(se.primitive_comp->GetOwnerID())->SetPrimitiveAsset(&asset);
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource scene_struct{};
                 scene_struct =
                     solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetGlobalSSBOBinding();
                 material_data_comp->SetDataResource(scene_struct);
-                se.primitive_comp->SetVisible(true);
+                // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
                 scene_entities_.push_back(std::move(se));
             }

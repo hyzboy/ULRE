@@ -2,6 +2,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 
@@ -78,12 +79,17 @@ namespace hgl::ecs
 
     const hgl::graph::GeometryDataBuffer *PrimitiveRenderItem::GetGeometryDataBuffer() const
     {
-        return primitiveComp ? primitiveComp->GetRuntimeGeometryDataBuffer() : nullptr;
+        // A5a：运行期几何绑定住在实体的 Geometry 组件（经世界查询，不在组件内缓存）
+        const Geometry *geometry = context ? context->GetGeometry(entity_id) : nullptr;
+
+        return geometry ? geometry->GetRuntimeGeometryDataBuffer() : nullptr;
     }
 
     const hgl::graph::GeometryDrawRange *PrimitiveRenderItem::GetGeometryDrawRange() const
     {
-        return primitiveComp ? primitiveComp->GetRuntimeGeometryDrawRange() : nullptr;
+        const Geometry *geometry = context ? context->GetGeometry(entity_id) : nullptr;
+
+        return geometry ? geometry->GetRuntimeGeometryDrawRange() : nullptr;
     }
 
     TransformPolicySpec PrimitiveRenderItem::GetTransformPolicySpec() const

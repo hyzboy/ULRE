@@ -24,7 +24,6 @@ namespace hgl::ecs
         {
             Geometry = 1u << 0,
             Style = 1u << 1,
-            Visibility = 1u << 2,
         };
 
         enum class LineStyle : uint8_t
@@ -45,7 +44,6 @@ namespace hgl::ecs
         std::vector<LineSegment> lines;      ///< CN: 线段列表 EN: Line segments
         uint8_t width = 1;                   ///< CN: 线宽(1-16) EN: Line width (1-16)
         LineStyle style = LineStyle::Solid;  ///< CN: 线条风格 EN: Line style
-        bool visible = true;                 ///< CN: 是否可见 EN: Visibility
         bool dirty = true;                   ///< CN: 是否需要同步 EN: Need sync to renderer
 
     private:
@@ -121,16 +119,6 @@ namespace hgl::ecs
         }
 
         LineStyle GetStyle() const { return style; }
-
-        void SetVisible(bool value)
-        {
-            if (visible != value)
-            {
-                visible = value;
-                dirty = true;
-                TouchChange(static_cast<uint32_t>(LineChange::Visibility));
-            }
-        }
 
         bool HasValidLocalBounds() const { return local_bounds_valid; }
 

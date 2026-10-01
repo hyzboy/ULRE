@@ -19,6 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -62,7 +63,7 @@ private:
     ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
 
     // 传统渲染资源（共享）
-    Geometry *          geom_triangle       =nullptr;
+    graph::Geometry *          geom_triangle       =nullptr;
     graph::mtl::MaterialRecipe triangle_recipe{};
     PrimitiveAsset             triangle_asset{};
 
@@ -149,8 +150,8 @@ private:
             // 所有实体共享同一个Primitive
             // RenderCollector会检测到这一点并自动使用Instance渲染
             auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitiveAsset(&triangle_asset);
-            primitive_comp->SetVisible(true);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
             // 保存实体引用
             triangle_entities.push_back(entity);

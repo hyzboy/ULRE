@@ -34,6 +34,7 @@
 #include <hgl/ecs/core/ScenePipelineMode.h>
 #include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
+#include <hgl/ecs/components/Geometry.h>
 #include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
@@ -114,7 +115,7 @@ namespace
         return static_cast<float>(HashU32(a, b, salt) & 0x00FFFFFFu) / static_cast<float>(0x00FFFFFFu);
     }
 
-    float GroundLift(const Geometry *geom)
+    float GroundLift(const graph::Geometry *geom)
     {
         if (!geom)
             return 0.0f;
@@ -147,16 +148,16 @@ private:
     Texture2DArray *alpha_base_texture = nullptr; // A1-4: alpha test 物体专用（1 层 RGBA8 棋盘）
     Sampler *pbr_sampler = nullptr;
 
-    Geometry *builtin_geometries[kBuiltinGeomCount]{};
+    graph::Geometry *builtin_geometries[kBuiltinGeomCount]{};
     PrimitiveAsset builtin_primitives[kBuiltinGeomCount]{};
 
-    Geometry *ground_geometry = nullptr;
+    graph::Geometry *ground_geometry = nullptr;
     PrimitiveAsset ground_primitive{};
     Entity *ground_entity = nullptr;
     hgl::ecs::TransformAccessor ground_transform;
     std::shared_ptr<PrimitiveComponent> ground_prim;
 
-    Geometry *alpha_geometry = nullptr;
+    graph::Geometry *alpha_geometry = nullptr;
     PrimitiveAsset alpha_primitive{};
 
     graph::mtl::MaterialRecipe lit_recipe{};
@@ -960,7 +961,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geom = [this](auto &&creator) -> Geometry *
+        auto create_geom = [this](auto &&creator) -> graph::Geometry *
         {
             auto pc = std::make_unique<GeometryCreater>(vdm);
             return pc ? creator(pc.get()) : nullptr;
@@ -1103,13 +1104,13 @@ private:
 
         ground_prim = ground_entity->AddComponent<PrimitiveComponent>();
         hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity->GetEntityID());
-        ground_prim->SetPrimitiveAsset(&ground_primitive);
+        ground_prim->GetOwner()->GetContext()->GetOrCreateGeometry(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
         material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
             MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0); // Concrete_Plain
         material_data_comp->SetTextureResource("normal", normal_texture, pbr_sampler,
             MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
         material_data_comp->SetDataResource(ground_accessor.GetGlobalSSBOBinding());
-        ground_prim->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         auto ground_shadow = ground_entity->AddComponent<ShadowComponent>();
         ground_shadow->SetCastShadow(false); // 规范化声明：地面不投射阴影，防止自遮挡
@@ -1196,13 +1197,13 @@ private:
 
             auto prim = e->AddComponent<PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-            prim->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
+            prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
             material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
                 MaterialData::MaterialTextureResourceKind::Texture2DArray, "", tex_idx);
             material_data_comp->SetTextureResource("normal", normal_texture, pbr_sampler,
                 MaterialData::MaterialTextureResourceKind::Texture2DArray, "", tex_idx);
             material_data_comp->SetDataResource(material_accessors[mat_idx].GetGlobalSSBOBinding());
-            prim->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
         // ── A1-4：alpha test 物体（Static，近景，验证 ShadowCasterMasked 的
@@ -1233,7 +1234,7 @@ private:
 
                 auto prim = e->AddComponent<PrimitiveComponent>();
                 hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-                prim->SetPrimitiveAsset(&alpha_primitive);
+                prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&alpha_primitive);
                 // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked
                 // 的 EvalAlpha（采样 .r，0 = 镂空）——影子应呈同图案棋盘孔。
                 material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,
@@ -1241,7 +1242,7 @@ private:
                 material_data_comp->SetTextureResource("opacity_mask", alpha_base_texture, pbr_sampler,
                     MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
                 material_data_comp->SetDataResource(material_accessors[0].GetGlobalSSBOBinding());
-                prim->SetVisible(true);
+                // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
             }
         }
 

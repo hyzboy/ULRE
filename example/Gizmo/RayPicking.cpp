@@ -34,6 +34,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -84,7 +85,7 @@ private:
     Entity* ray_line_entity = nullptr;
 
     // 传统渲染资源
-    Geometry *          geom_plane_grid     =nullptr;
+    graph::Geometry *          geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_recipe{};
     PrimitiveAsset             plane_asset{};
     using MaterialDataAccessor =
@@ -92,7 +93,7 @@ private:
     MaterialDataAccessor plane_material_data_accessor{};
     MaterialDataAccessor line_material_data_accessor{};
 
-    Geometry *          geom_line           =nullptr;
+    graph::Geometry *          geom_line           =nullptr;
     graph::mtl::MaterialRecipe line_recipe{};
     PrimitiveAsset             line_asset{};
     VAB *               prim_line_vab       =nullptr;
@@ -221,11 +222,11 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = plane_grid_entity->GetContext()->GetOrCreateMaterialData(plane_grid_entity->GetEntityID());
-            primitive_comp->SetPrimitiveAsset(&plane_asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
             plane_struct = plane_material_data_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(plane_struct);
-            primitive_comp->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
         // === 步骤3: 创建射线线段实体 ===
@@ -242,11 +243,11 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = ray_line_entity->GetContext()->GetOrCreateMaterialData(ray_line_entity->GetEntityID());
-            primitive_comp->SetPrimitiveAsset(&line_asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&line_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource line_struct{};
             line_struct = line_material_data_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(line_struct);
-            primitive_comp->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
         return true;

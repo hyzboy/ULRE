@@ -28,6 +28,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -99,7 +100,7 @@ private:
     Sampler *           sampler = nullptr;
 
     VertexDataManager * mesh_vdm = nullptr;
-    Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
+    graph::Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
     PrimitiveAsset      base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
@@ -322,7 +323,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](auto &&creator) -> Geometry *
+        auto create_geometry = [this](auto &&creator) -> graph::Geometry *
         {
             auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
             if (!pc)
@@ -478,7 +479,7 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-                prim_comp->SetPrimitiveAsset(&base_primitives[col]);
+                prim_comp->GetOwner()->GetContext()->GetOrCreateGeometry(prim_comp->GetOwnerID())->SetPrimitiveAsset(&base_primitives[col]);
                 if (!material_data_comp->SetTextureResource(
                         "base_color",
                         base_color_texture,
@@ -499,7 +500,7 @@ private:
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
                 sphere_struct = sphere_slot_accessors[row][col].GetGlobalSSBOBinding();
                 material_data_comp->SetDataResource(sphere_struct);
-                prim_comp->SetVisible(true);
+                // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
             }
         }
 

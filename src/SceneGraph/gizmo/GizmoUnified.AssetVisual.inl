@@ -82,7 +82,8 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     if (!prim_comp)
         return false;
 
-    prim_comp->SetPrimitiveAsset(asset);
+    // A5a：几何/资产侧状态住在实体的 Geometry 组件（经世界访问器取用/创建）
+    entity->GetContext()->GetOrCreateGeometry(entity->GetEntityID())->SetPrimitiveAsset(asset);
     graph::mtl::MaterialRecipe visual_recipe = *recipe;
     visual_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
     hgl::ecs::ECSContext *material_world = entity->GetContext();
@@ -92,7 +93,10 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     if (!material_data)
         return false;
     material_data->SetRecipe(visual_recipe);
-    prim_comp->SetVisible(false);
+
+    // A5a：可见性真值在实体级（组件级 SetVisible 已删）——子图元初始不可见，
+    // 由 SyncGizmoAssetModeBindings 按当前模式置可见。
+    material_world->SetEntityVisible(entity->GetEntityID(), false);
 
     GizmoVisualPrimitive item;
     item.primitive = prim_comp;
@@ -126,11 +130,9 @@ static bool MakeAndAttachPrimitive(std::vector<GizmoVisualPrimitive> &primitives
 
 static void SetPrimitivesVisible(std::vector<GizmoVisualPrimitive> &primitives, bool visible)
 {
+    // A5a：可见性真值只在实体级（见 AssetCore.inl 的 SetPrimitiveEntityVisible）
     for (auto &entry : primitives)
-    {
-        if (entry.primitive)
-            entry.primitive->SetVisible(visible);
-    }
+        SetPrimitiveEntityVisible(entry, visible);
 }
 
 static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor color)
@@ -251,7 +253,13 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoVisualPrimitive> &ite
     for (size_t i = 0; i < items.size(); ++i)
     {
         auto &entry = items[i];
-        if (!entry.transform.IsValid() || !entry.primitive || !entry.primitive->IsVisible())
+        if (!entry.transform.IsValid() || !entry.primitive)
+            continue;
+
+        // A5a：可见性真值只在实体级（组件级 IsVisible 已删）
+        hgl::ecs::Entity *entry_owner = entry.primitive->GetOwner();
+        hgl::ecs::ECSContext *entry_world = entry_owner ? entry_owner->GetContext() : nullptr;
+        if (entry_world && !entry_world->IsEntityVisible(entry_owner->GetEntityID()))
             continue;
 
         entry.transform.UpdateIfDirty();

@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
@@ -67,6 +68,16 @@ namespace hgl::ecs
             return context ? context->GetOrCreateMaterialData(owner->GetEntityID()) : nullptr;
         }
 
+        /// A5a 查询：本 primitive 所属实体的**几何资产组件**（无实体/无世界/未挂载时 nullptr）。
+        /// 几何/资产侧状态已迁出 PrimitiveComponent（见 components/Geometry.h）。
+        Geometry *FindGeometryOf(const PrimitiveComponent *primitive_comp)
+        {
+            Entity *owner = primitive_comp ? primitive_comp->GetOwner() : nullptr;
+            ECSContext *context = owner ? owner->GetContext() : nullptr;
+
+            return context ? context->GetGeometry(owner->GetEntityID()) : nullptr;
+        }
+
         /// 材质来源判据（A2 之前挂在 PrimitiveComponent 上，随授权状态一并迁入数据层）：
         /// 数据层有配方覆盖，或 asset 里有默认配方。
         bool HasAnyMaterialSource(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
@@ -75,9 +86,10 @@ namespace hgl::ecs
                 return false;
 
             const MaterialData *material_data = FindMaterialDataOf(primitive_comp);
+            const Geometry *geometry = FindGeometryOf(primitive_comp.get());
 
             return (material_data && material_data->HasRecipeOverride())
-                || (primitive_comp->GetAssetMaterialRecipe() != nullptr);
+                || (geometry && geometry->GetAssetMaterialRecipe() != nullptr);
         }
 
         /// 材质授权代数（A2 之前挂在 PrimitiveComponent 上，随授权状态一并迁入数据层）。
@@ -151,7 +163,10 @@ namespace hgl::ecs
         /// （运行期共享行的 program 身份维度恒取前向 purpose，两个 pass 落在同一行上）。
         graph::mtl::ShaderProgramPurpose GetEffectiveForwardPurpose(PrimitiveComponent &primitive_comp)
         {
-            switch (primitive_comp.GetPrimitiveVariantPurpose())
+            const Geometry *geometry = FindGeometryOf(&primitive_comp);
+
+            switch (geometry ? geometry->GetPrimitiveVariantPurpose()
+                             : graph::PrimitiveVariantPurpose::Surface)
             {
             case graph::PrimitiveVariantPurpose::DepthOnly:
                 return graph::mtl::ShaderProgramPurpose::DepthOnly;
@@ -235,7 +250,8 @@ namespace hgl::ecs
                 return false;
             }
 
-            const auto *asset = primitive_comp->GetPrimitiveAsset();
+            Geometry *geometry = FindGeometryOf(primitive_comp.get());
+            const auto *asset = geometry ? geometry->GetPrimitiveAsset() : nullptr;
             if (!asset)
                 return true;
 
@@ -257,7 +273,7 @@ namespace hgl::ecs
                           slot.runtime_dirty ? 1 : 0);
                 return false;
             }
-            return primitive_comp->EnsureRuntimeGeometryBinding(material);
+            return geometry->EnsureRuntimeGeometryBinding(material);
         }
 
         inline graph::GlobalSSBOType ResolveMaterialSSBORequirementType(
@@ -278,11 +294,13 @@ namespace hgl::ecs
             if (!material_data)
                 return false;
 
-            // asset 里的默认配方是基底，数据层里的配方覆盖是覆盖源（A5 拆分
-            // Geometry 后改由数据层自己持引用，这里不再由调用方传）。
+            // asset 里的默认配方是基底，数据层里的配方覆盖是覆盖源（配方来源 = 实体的
+            // Geometry 组件；A5a 起由几何组件持有 asset）。
+            const Geometry *geometry = FindGeometryOf(primitive_comp.get());
+
             return material_data->BuildResolvedRecipe(out_recipe,
                                                       material_program,
-                                                      primitive_comp->GetAssetMaterialRecipe());
+                                                      geometry ? geometry->GetAssetMaterialRecipe() : nullptr);
         }
 
         // program 解析（forward 与 ShadowCaster 双槽）共用的构建上下文输入：
@@ -294,7 +312,9 @@ namespace hgl::ecs
         {
             out_primitive_type = graph::PrimitiveType::Triangles;
             out_geometry_vertex_format = nullptr;
-            if (const auto *asset = primitive_comp->GetPrimitiveAsset())
+
+            const Geometry *geometry = FindGeometryOf(primitive_comp.get());
+            if (const auto *asset = geometry ? geometry->GetPrimitiveAsset() : nullptr)
             {
                 if (auto *asset_geometry = asset->GetGeometry())
                     out_geometry_vertex_format =
@@ -1658,9 +1678,6 @@ namespace hgl::ecs
         cache.cameraInfo = cameraInfo;
         cache.BeginFrame();
 
-        // Get visibility storage for fast O(1) lookup（世界私有存储；原 VisibilitySystem 已删除）
-        VisibilityDataStorage* visibility_storage = world->GetVisibilityStorage();
-
         const int active_mobility_filter = world ? world->GetActiveMobilityFilter() : -1;
 
         std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
@@ -1726,8 +1743,7 @@ namespace hgl::ecs
                 }
 
                 StrategyFacts parity_facts;
-                parity_facts.component_visible   = primitiveComp->IsVisible();
-                parity_facts.entity_visible      = !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id));
+                parity_facts.entity_visible      = world->IsEntityVisible(parity_entity_id);
                 parity_facts.has_owner           = (parity_owner != nullptr);
                 parity_facts.renderable          = primitiveComp->CanRender();
                 parity_facts.has_material_source = HasAnyMaterialSource(primitiveComp);
@@ -1740,9 +1756,8 @@ namespace hgl::ecs
                 const uint32_t parity_needs = EvaluateRenderNeed(parity_mask,parity_facts.ToMask());
 
                 const bool parity_existing =
-                       primitiveComp->IsVisible()
+                       world->IsEntityVisible(parity_entity_id)
                     && primitiveComp->CanRender()
-                    && !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id))
                     && (parity_owner != nullptr)
                     && HasAnyMaterialSource(primitiveComp)
                     && (!parity_shadow_pass
@@ -1758,11 +1773,13 @@ namespace hgl::ecs
             }
 #endif
 
-            if (!primitiveComp->IsVisible() || !primitiveComp->CanRender())
+            if (!primitiveComp->CanRender())
                 continue;
 
             const EntityID entity_id = primitiveComp->GetOwnerID();
-            if (visibility_storage && visibility_storage->IsInvisible(entity_id))
+
+            // 可见性真值只在实体级（组件级 visible 已删）
+            if (!world->IsEntityVisible(entity_id))
                 continue;
 
             Entity* entity = primitiveComp->GetOwner();
@@ -1899,8 +1916,7 @@ namespace hgl::ecs
                 }
 
                 StrategyFacts parity_facts;
-                parity_facts.component_visible   = primitiveComp->IsVisible();
-                parity_facts.entity_visible      = !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id));
+                parity_facts.entity_visible      = world->IsEntityVisible(parity_entity_id);
                 parity_facts.has_owner           = (parity_owner != nullptr);
                 parity_facts.renderable          = primitiveComp->CanRender();
                 parity_facts.has_material_source = HasAnyMaterialSource(primitiveComp);
@@ -1913,9 +1929,8 @@ namespace hgl::ecs
                 const uint32_t parity_needs = EvaluateRenderNeed(parity_mask,parity_facts.ToMask());
 
                 const bool parity_existing =
-                       primitiveComp->IsVisible()
+                       world->IsEntityVisible(parity_entity_id)
                     && primitiveComp->CanRender()
-                    && !(visibility_storage && visibility_storage->IsInvisible(parity_entity_id))
                     && (parity_owner != nullptr)
                     && HasAnyMaterialSource(primitiveComp)
                     && (!parity_shadow_pass
@@ -1931,19 +1946,15 @@ namespace hgl::ecs
             }
 #endif
 
-            if (!primitiveComp->IsVisible() || !primitiveComp->CanRender())
+            if (!primitiveComp->CanRender())
             {
-                if (!primitiveComp->IsVisible())
-                {
-                    ++skipped_invisible;
-                }
                 continue;
             }
 
             EntityID entity_id = primitiveComp->GetOwnerID();
 
-            // Fast O(1) lookup from VisibilityDataStorage
-            if (visibility_storage && visibility_storage->IsInvisible(entity_id))
+            // 可见性真值只在实体级（组件级 visible 已删）：O(1) 直查 + 祖先链
+            if (!world->IsEntityVisible(entity_id))
             {
                 ++skipped_invisible;
                 continue;
@@ -2208,14 +2219,15 @@ namespace hgl::ecs
             // ── 同步 4-ID 描述符至 PrimitiveComponent 与 RenderItemDataStorage ──
             const uint32_t transform_id = transform.GetID();
             uint32_t geometry_id = 0;
-            const auto *geom_buf = primitiveComp->GetRuntimeGeometryDataBuffer();
+            Geometry *geometry_comp = FindGeometryOf(primitiveComp.get());
+            const auto *geom_buf = geometry_comp ? geometry_comp->GetRuntimeGeometryDataBuffer() : nullptr;
             if (geom_buf)
             {
                 geometry_id = geom_buf->geometry_id;
             }
-            if (geometry_id == 0 && primitiveComp->GetPrimitiveAsset())
+            if (geometry_id == 0 && geometry_comp && geometry_comp->GetPrimitiveAsset())
             {
-                if (auto *geom = primitiveComp->GetPrimitiveAsset()->GetGeometry())
+                if (auto *geom = geometry_comp->GetPrimitiveAsset()->GetGeometry())
                 {
                     auto *gc = world ? world->GetGraphicsContext() : nullptr;
                     auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;

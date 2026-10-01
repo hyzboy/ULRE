@@ -35,6 +35,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -305,7 +306,7 @@ private:
 
             auto primitive = row_entities[row]->AddComponent<hgl::ecs::PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = row_entities[row]->GetContext()->GetOrCreateMaterialData(row_entities[row]->GetEntityID());
-            primitive->SetPrimitiveAsset(&ruler_asset[row]);
+            primitive->GetOwner()->GetContext()->GetOrCreateGeometry(primitive->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
 
             row_primitives[row] = primitive;
 
@@ -331,7 +332,7 @@ private:
                     return false;
             }
 
-            primitive->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
         GLogInfo("[MipTest] rows=3 : A=2D(RGBA8,9级) B=2DArray(RGBA8,9级) C=2DArray(BC7,7级)；"
@@ -390,7 +391,7 @@ private:
                 return;
 
             if (row_primitives[row])
-                row_primitives[row]->SetPrimitiveAsset(&ruler_asset[row]);
+                row_primitives[row]->GetOwner()->GetContext()->GetOrCreateGeometry(row_primitives[row]->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
         }
 
         ruler_viewport_width  = vw;

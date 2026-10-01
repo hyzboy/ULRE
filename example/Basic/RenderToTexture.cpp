@@ -24,6 +24,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
@@ -89,7 +90,7 @@ private:
     RenderContext *render_context = nullptr;
     graph::EnvProfileID offscreen_env_profile = graph::kEnvProfileDefault;
 
-    Geometry *geometry = nullptr;
+    graph::Geometry *geometry = nullptr;
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
     using MaterialDataAccessor =
@@ -130,14 +131,14 @@ private:
             const bool has_recipe_override =
                 material_data_comp && material_data_comp->HasRecipeOverride();
             const bool has_recipe_source =
-                has_recipe_override || sphere_primitive_comp->GetAssetMaterialRecipe() != nullptr;
+                has_recipe_override || sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(sphere_primitive_comp->GetOwnerID())->GetAssetMaterialRecipe() != nullptr;
 
             std::printf("[RenderToTextureDiag][%s] primitive visible=%d hasRecipeSource=%d hasRecipeOverride=%d primitiveAsset=%p\n",
                         stage ? stage : "<null>",
-                        sphere_primitive_comp->IsVisible() ? 1 : 0,
+                        sphere_primitive_comp->GetOwner()->GetContext()->IsEntityVisible(sphere_primitive_comp->GetOwnerID()) ? 1 : 0,
                         has_recipe_source ? 1 : 0,
                         has_recipe_override ? 1 : 0,
-                        (void *)sphere_primitive_comp->GetPrimitiveAsset());
+                        (void *)sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(sphere_primitive_comp->GetOwnerID())->GetPrimitiveAsset());
         }
 
     }
@@ -328,14 +329,14 @@ public:
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(Mobility::Static);
 
-        prim_comp->SetPrimitiveAsset(&sphere_asset);
+        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometry(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
         material_data_comp->SetTextureResource("base_color", sphere_base_tex, sphere_sampler);
         material_data_comp->SetTextureResource("normal", sphere_normal_tex, sphere_sampler);
         material_data_comp->SetTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(sphere_struct);
-        prim_comp->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         sphere_primitive_comp = prim_comp;
 
@@ -494,7 +495,7 @@ private:
         cci.tex_coord = true;
         cci.ntb = NTBType::Normal;
 
-        Geometry *cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
+        graph::Geometry *cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
         if (!cube_geometry)
             return LogStageFail("RenderToTextureApp::CreateCube", "CreateCube geometry failed");
 
@@ -520,14 +521,14 @@ private:
         cube_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         cube_transform.SetMobility(Mobility::Movable);
 
-        cube_prim_comp->SetPrimitiveAsset(&cube_asset);
+        cube_prim_comp->GetOwner()->GetContext()->GetOrCreateGeometry(cube_prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         material_data_comp->SetTextureResource("base_color", base_tex, cube_sampler);
         material_data_comp->SetTextureResource("normal", normal_tex, cube_sampler);
         material_data_comp->SetTextureResource("roughness", roughness_tex, cube_sampler);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_material_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(cube_struct);
-        cube_prim_comp->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         LogStage("RenderToTextureApp::CreateCube", "success");
         return true;
     }

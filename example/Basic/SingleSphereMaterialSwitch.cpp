@@ -30,6 +30,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -88,7 +89,7 @@ private:
     Sampler *sampler = nullptr;
 
     VertexDataManager *mesh_vdm = nullptr;
-    Geometry *sphere_geometry = nullptr;
+    graph::Geometry *sphere_geometry = nullptr;
     PrimitiveAsset sphere_asset{};
 
     bool use_far_material = false;
@@ -329,12 +330,12 @@ private:
         sphere_transform.SetLocalScale(glm::vec3(1.6f, 1.6f, 1.6f));
         sphere_transform.SetMobility(Mobility::Movable);
 
-        sphere_primitive_component->SetVisible(true);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         if (!ApplyMaterialMode(false))
             return false;
 
-        sphere_primitive_component->SetPrimitiveAsset(&sphere_asset);
+        sphere_primitive_component->GetOwner()->GetContext()->GetOrCreateGeometry(sphere_primitive_component->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
 
         return true;
     }

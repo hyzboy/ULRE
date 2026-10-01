@@ -3702,6 +3702,62 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kSlotContracts) / sizeof(kSlotContracts[0])));
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 24: A5a 源码契约（几何状态只存于 Geometry / 可见性只读实体级）
+    //
+    // 背景：A5a 把几何/资产侧状态搬出 PrimitiveComponent（进 Geometry 组件）、删掉
+    // 两处 OOP 缓存、并把"可见性三真值"收敛为实体级唯一真值。本可执行文件无图形
+    // 设备，所以钉住"判据链是否还在"：几何字段只允许出现在新组件里、两个组件头不得
+    // 再声明组件级可见性、收集系统不得再读组件级可见性、组件内不得再缓存世界指针。
+    //
+    // 反证：往 `RenderableComponent.h` 重新加回一行组件级可见性字段 ⇒ 本用例必须失败
+    // （契约只看源码文本，不需要图形设备）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kA5aContracts[] =
+        {
+            { "RenderableComponent.h", OS_TEXT("inc/hgl/ecs/components/RenderableComponent.h"),
+              "visible",
+              "组件级可见性字段复活（可见性真值只允许实体级 ECSContext::IsEntityVisible）",
+              true },
+            { "LinesComponent.h", OS_TEXT("inc/hgl/ecs/components/LinesComponent.h"),
+              "visible",
+              "线条组件又带组件级可见性（第二真值，渲染剔除会重新变成 组件级 OR 实体级）",
+              true },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "->IsVisible()",
+              "收集链又读组件级可见性（应改走 world->IsEntityVisible）",
+              true },
+            { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
+              "primitiveAsset",
+              "几何资产字段又留在 PrimitiveComponent（应只存在于 Geometry 组件）",
+              true },
+            { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
+              "bound_render_item_" "storage",
+              "组件内又缓存世界渲染项存储指针（应每次经 owner 的 ECSContext 现取）",
+              true },
+            { "RenderableComponent.h", OS_TEXT("inc/hgl/ecs/components/RenderableComponent.h"),
+              "cached_shadow_" "component",
+              "阴影组件指针缓存复活（应每次经 owner 按需解析）",
+              true },
+            { "Geometry.h", OS_TEXT("inc/hgl/ecs/components/Geometry.h"),
+              "primitiveAsset",
+              "Geometry 组件不再持有几何资产（几何状态丢失）" },
+            { "Geometry.h", OS_TEXT("inc/hgl/ecs/components/Geometry.h"),
+              "ComponentTypeOf<Geometry>",
+              "Geometry 不再声明自己的组件槽位（实体掩码丢失 Geometry 位）" },
+        };
+
+        if (const int failed = verify_source_contracts(24, kA5aContracts,
+                                                       static_cast<uint>(sizeof(kA5aContracts) /
+                                                                         sizeof(kA5aContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 24 Passed: A5a 源码契约成立（几何状态只存于 Geometry、两处 OOP 缓存不复存在、"
+                 u8"可见性只读实体级；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kA5aContracts) / sizeof(kA5aContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

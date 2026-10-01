@@ -29,6 +29,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/Geometry.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -104,7 +105,7 @@ private:
 
     struct MeshEntry
     {
-        Geometry *geometry = nullptr;
+        graph::Geometry *geometry = nullptr;
         PrimitiveAsset asset;
 
         Entity *entity = nullptr;
@@ -138,7 +139,7 @@ private:
     std::vector<std::unique_ptr<MeshEntry>> render_mesh;
     std::vector<std::unique_ptr<BoundingBoxMesh>> bounding_boxes;
 
-    Geometry *bbox_geometry = nullptr;
+    graph::Geometry *bbox_geometry = nullptr;
     PrimitiveAsset bbox_asset;
 
     Entity *camera_entity = nullptr;
@@ -214,7 +215,7 @@ private:
         return mesh_vdm != nullptr;
     }
 
-    MeshEntry *CreateMeshEntry(Geometry *geometry,const int color)
+    MeshEntry *CreateMeshEntry(graph::Geometry *geometry,const int color)
     {
         if(!geometry)
             return nullptr;
@@ -235,7 +236,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](const char *label, auto &&creator) -> Geometry *
+        auto create_geometry = [this](const char *label, auto &&creator) -> graph::Geometry *
         {
             GLogInfo("[RenderBoundBox] CreateGeometry START: %s", label);
 
@@ -246,7 +247,7 @@ private:
                 return nullptr;
             }
 
-            Geometry *geom = creator(pc.get());
+            graph::Geometry *geom = creator(pc.get());
             if (!geom)
             {
                 GLogError("[RenderBoundBox] CreateGeometry FAIL: returned null (%s)", label);
@@ -548,12 +549,12 @@ private:
             floor_mesh->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             floor_mesh->transform.SetMobility(Mobility::Static);
 
-            floor_mesh->primitive_comp->SetPrimitiveAsset(&floor_mesh->asset);
+            floor_mesh->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(floor_mesh->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
             floor_struct =
                 solid.material_data_ssbo_accessors[floor_mesh->color_index].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(floor_struct);
-            floor_mesh->primitive_comp->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
         const size_t total = render_mesh.size();
@@ -580,12 +581,12 @@ private:
             rm->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             rm->transform.SetMobility(Mobility::Static);
 
-            rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
+            rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
                 solid.material_data_ssbo_accessors[rm->color_index].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(mesh_struct);
-            rm->primitive_comp->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
             ++index;
         }
@@ -605,7 +606,7 @@ private:
                 continue;
 
             hgl::math::AABB local_aabb;
-            if(!rm->primitive_comp->GetLocalAABB(local_aabb))
+            if(!rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(rm->primitive_comp->GetOwnerID())->GetLocalAABB(local_aabb))
                 continue;
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
@@ -624,11 +625,11 @@ private:
             bbox->transform.SetLocalScale(glm::vec3(size.x, size.y, size.z));
             bbox->transform.SetMobility(Mobility::Static);
 
-            bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
+            bbox->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct = wire.material_data_ssbo_accessors[5].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(bbox_struct);
-            bbox->primitive_comp->SetVisible(true);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
             bounding_boxes.push_back(std::move(bbox));
         }

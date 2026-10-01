@@ -39,6 +39,20 @@ static void ApplyAssetFixedPixelSizingParameters(GizmoECS *gizmo)
     apply_to_entity(gizmo->scale_mode.entity, kReferenceWorldDiameter, kMinScale);
 }
 
+/// A5a：可见性真值只在实体级。组件级 `SetVisible` 已删 ⇒ 统一经 owner 的世界 API
+/// 写实体可见性（`root_visible` 仍是 gizmo 本地门控标志，保留不动）。
+static void SetPrimitiveEntityVisible(const GizmoVisualPrimitive &entry, bool visible)
+{
+    if (!entry.primitive)
+        return;
+
+    hgl::ecs::Entity *owner = entry.primitive->GetOwner();
+    hgl::ecs::ECSContext *world = owner ? owner->GetContext() : nullptr;
+
+    if (owner && world)
+        world->SetEntityVisible(owner->GetEntityID(), visible);
+}
+
 static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
 {
     if (!gizmo)
@@ -49,22 +63,13 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
     const bool scale_active = gizmo->root_visible && IsScaleMode(gizmo->current_mode);
 
     for (auto &entry : gizmo->move_mode.primitives)
-    {
-        if (entry.primitive)
-            entry.primitive->SetVisible(move_active);
-    }
+        SetPrimitiveEntityVisible(entry, move_active);
 
     for (auto &entry : gizmo->rotate_mode.primitives)
-    {
-        if (entry.primitive)
-            entry.primitive->SetVisible(rotate_active);
-    }
+        SetPrimitiveEntityVisible(entry, rotate_active);
 
     for (auto &entry : gizmo->scale_mode.primitives)
-    {
-        if (entry.primitive)
-            entry.primitive->SetVisible(scale_active);
-    }
+        SetPrimitiveEntityVisible(entry, scale_active);
 }
 
 static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
