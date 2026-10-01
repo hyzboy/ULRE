@@ -30,7 +30,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -89,7 +89,7 @@ private:
     Sampler *sampler = nullptr;
 
     VertexDataManager *mesh_vdm = nullptr;
-    graph::Geometry *sphere_geometry = nullptr;
+    Geometry *sphere_geometry = nullptr;
     PrimitiveAsset sphere_asset{};
 
     bool use_far_material = false;
@@ -335,7 +335,7 @@ private:
         if (!ApplyMaterialMode(false))
             return false;
 
-        sphere_primitive_component->GetOwner()->GetContext()->GetOrCreateGeometry(sphere_primitive_component->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
+        sphere_primitive_component->GetOwner()->GetContext()->GetOrCreateGeometryData(sphere_primitive_component->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
 
         return true;
     }

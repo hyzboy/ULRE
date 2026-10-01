@@ -19,7 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -272,7 +272,7 @@ private:
                 continue;
 
             hgl::math::AABB local_aabb;
-            if(!rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(rm->primitive_comp->GetOwnerID())->GetLocalAABB(local_aabb))
+            if(!rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->GetLocalAABB(local_aabb))
                 continue;
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
@@ -291,7 +291,7 @@ private:
             bbox->transform.SetLocalScale(glm::vec3(size.x, size.y, size.z));
             bbox->transform.SetMobility(hgl::ecs::Mobility::Static);
 
-            bbox->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
+            bbox->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct =
                 wire.material_data_ssbo_accessors[i % COLOR_COUNT].GetGlobalSSBOBinding();
@@ -331,7 +331,7 @@ private:
             rm->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             rm->transform.SetMobility(hgl::ecs::Mobility::Static);
 
-            rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
+            rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
                 solid.material_data_ssbo_accessors[rm->color_index].GetGlobalSSBOBinding();

@@ -18,7 +18,7 @@
  #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
  #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
  #include<hgl/object/ObjectTracker.h>
 
 using namespace hgl;
@@ -69,7 +69,7 @@ private:
     uint64_t entity_id          =0;          // 对象追踪ID
 
     // 传统渲染资源
-    graph::Geometry *          geom_triangle       =nullptr;
+    Geometry *          geom_triangle       =nullptr;
     graph::mtl::MaterialRecipe triangle_recipe{};
     PrimitiveAsset             triangle_asset{};
 
@@ -144,7 +144,7 @@ private:
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
-        ecs_primitive->GetOwner()->GetContext()->GetOrCreateGeometry(ecs_primitive->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
+        ecs_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(ecs_primitive->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

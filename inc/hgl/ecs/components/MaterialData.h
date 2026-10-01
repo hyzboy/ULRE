@@ -32,7 +32,7 @@ namespace hgl::ecs
      *
      * 解析出口只有一个：`BuildResolvedRecipe`。asset 里的默认配方是**基底**，
      * 本组件的配方覆盖是**覆盖源**；参数按声明逐条校验后产出规范化结果。
-     * 本步（A2）由调用方把 asset 默认配方作为参数传入；A5 拆分 Geometry 后
+     * 本步（A2）由调用方把 asset 默认配方作为参数传入；A5 拆分 GeometryData 后
      * 改由数据层自己持引用。
      */
     class MaterialData : public Component

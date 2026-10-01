@@ -9,7 +9,7 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/RenderPipelineBase.h>
@@ -1864,35 +1864,35 @@ namespace hgl
             return material_data.get();
         }
 
-        Geometry* ECSContext::GetGeometry(EntityID owner)
+        GeometryData* ECSContext::GetGeometryData(EntityID owner)
         {
             Entity *entity = GetEntity(owner);
 
             return entity
-                ? entity->GetComponent<Geometry>().get()
+                ? entity->GetComponent<GeometryData>().get()
                 : nullptr;
         }
 
-        const Geometry* ECSContext::GetGeometry(EntityID owner) const
+        const GeometryData* ECSContext::GetGeometryData(EntityID owner) const
         {
             const Entity *entity = GetEntity(owner);
 
             return entity
-                ? entity->GetComponent<Geometry>().get()
+                ? entity->GetComponent<GeometryData>().get()
                 : nullptr;
         }
 
-        Geometry* ECSContext::GetOrCreateGeometry(EntityID owner)
+        GeometryData* ECSContext::GetOrCreateGeometryData(EntityID owner)
         {
             Entity *entity = GetEntity(owner);
 
             if (!entity)
                 return nullptr;
 
-            auto geometry = entity->GetComponent<Geometry>();
+            auto geometry = entity->GetComponent<GeometryData>();
 
             if (!geometry)
-                geometry = entity->AddComponent<Geometry>();
+                geometry = entity->AddComponent<GeometryData>();
 
             return geometry.get();
         }

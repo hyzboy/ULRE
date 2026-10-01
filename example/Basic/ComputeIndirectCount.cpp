@@ -26,7 +26,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -131,7 +131,7 @@ private:
     ECSContext *ecs_context = nullptr;
     Entity     *camera_entity = nullptr;
 
-    graph::Geometry             *geometry = nullptr;
+    Geometry             *geometry = nullptr;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
     GlobalSSBODataAccessor   mtl_data_ssbo_accessor{};
@@ -213,7 +213,7 @@ private:
 
             auto prim = e->AddComponent<PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-            prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
+            prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
             MaterialData::MaterialDataAuthoringResource named_struct{};
             named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(named_struct);

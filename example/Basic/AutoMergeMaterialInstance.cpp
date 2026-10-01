@@ -5,7 +5,7 @@
 // 本范例展示了：
 // 1. 使用ECS架构创建多个实体
 // 2. 每个实体使用不同的结构体行（不同颜色）
-// 3. 所有实体共享同一个graph::Geometry（顶点数据）
+// 3. 所有实体共享同一个Geometry（顶点数据）
 // 4. RenderCollector自动合并相同Material的不同结构体行进行批量渲染
 // 5. 示例通过多个材质数据访问器保留不同的 EmissiveSurface 行
 
@@ -28,7 +28,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -67,7 +67,7 @@ private:
     ECSContext* ecs_world = nullptr;   // 由默认 ECSContext 统一维护
 
     // 传统渲染资源
-    graph::Geometry* geometry = nullptr;
+    Geometry* geometry = nullptr;
     graph::mtl::MaterialRecipe triangle_recipe{};
     PrimitiveAsset triangle_asset{};
 
@@ -174,7 +174,7 @@ private:
             // 每个实体共享同一 PrimitiveAsset，颜色来自不同结构体行
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = triangles[i].entity->GetContext()->GetOrCreateMaterialData(triangles[i].entity->GetEntityID());
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource tri_struct{};
             tri_struct = triangle_data_accessors[i].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(tri_struct);

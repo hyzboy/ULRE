@@ -16,7 +16,7 @@
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
-#include <hgl/ecs/components/Geometry.h>
+#include <hgl/ecs/components/GeometryData.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -185,7 +185,7 @@ private:
         quad_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         quad_transform.SetMobility(Mobility::Static);
 
-        quad_primitive->GetOwner()->GetContext()->GetOrCreateGeometry(quad_primitive->GetOwnerID())->SetPrimitiveAsset(&quad_asset);
+        quad_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(quad_primitive->GetOwnerID())->SetPrimitiveAsset(&quad_asset);
         if (!quad_material_data->SetTextureResource(
                 "base_color",
                 placeholder_tex,

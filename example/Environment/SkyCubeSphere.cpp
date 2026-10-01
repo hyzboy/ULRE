@@ -12,7 +12,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -49,7 +49,7 @@ private:
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
-    graph::Geometry* sky_geometry = nullptr;
+    Geometry* sky_geometry = nullptr;
     graph::mtl::MaterialRecipe sky_recipe{};
     PrimitiveAsset             sky_asset{};
 
@@ -121,7 +121,7 @@ private:
         transform.SetLocalScale(glm::vec3(1.0f));
         transform.SetMobility(Mobility::Static);
 
-        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
+        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
         material_data_comp->SetTextureResource("sky_cube", sky_cube_texture, sampler);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

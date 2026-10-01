@@ -24,7 +24,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
@@ -90,7 +90,7 @@ private:
     RenderContext *render_context = nullptr;
     graph::EnvProfileID offscreen_env_profile = graph::kEnvProfileDefault;
 
-    graph::Geometry *geometry = nullptr;
+    Geometry *geometry = nullptr;
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
     using MaterialDataAccessor =
@@ -131,14 +131,14 @@ private:
             const bool has_recipe_override =
                 material_data_comp && material_data_comp->HasRecipeOverride();
             const bool has_recipe_source =
-                has_recipe_override || sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(sphere_primitive_comp->GetOwnerID())->GetAssetMaterialRecipe() != nullptr;
+                has_recipe_override || sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(sphere_primitive_comp->GetOwnerID())->GetAssetMaterialRecipe() != nullptr;
 
             std::printf("[RenderToTextureDiag][%s] primitive visible=%d hasRecipeSource=%d hasRecipeOverride=%d primitiveAsset=%p\n",
                         stage ? stage : "<null>",
                         sphere_primitive_comp->GetOwner()->GetContext()->IsEntityVisible(sphere_primitive_comp->GetOwnerID()) ? 1 : 0,
                         has_recipe_source ? 1 : 0,
                         has_recipe_override ? 1 : 0,
-                        (void *)sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(sphere_primitive_comp->GetOwnerID())->GetPrimitiveAsset());
+                        (void *)sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(sphere_primitive_comp->GetOwnerID())->GetPrimitiveAsset());
         }
 
     }
@@ -329,7 +329,7 @@ public:
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(Mobility::Static);
 
-        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometry(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
+        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
         material_data_comp->SetTextureResource("base_color", sphere_base_tex, sphere_sampler);
         material_data_comp->SetTextureResource("normal", sphere_normal_tex, sphere_sampler);
         material_data_comp->SetTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
@@ -495,7 +495,7 @@ private:
         cci.tex_coord = true;
         cci.ntb = NTBType::Normal;
 
-        graph::Geometry *cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
+        Geometry *cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
         if (!cube_geometry)
             return LogStageFail("RenderToTextureApp::CreateCube", "CreateCube geometry failed");
 
@@ -521,7 +521,7 @@ private:
         cube_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         cube_transform.SetMobility(Mobility::Movable);
 
-        cube_prim_comp->GetOwner()->GetContext()->GetOrCreateGeometry(cube_prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
+        cube_prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(cube_prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         material_data_comp->SetTextureResource("base_color", base_tex, cube_sampler);
         material_data_comp->SetTextureResource("normal", normal_tex, cube_sampler);
         material_data_comp->SetTextureResource("roughness", roughness_tex, cube_sampler);

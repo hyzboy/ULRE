@@ -18,7 +18,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -81,7 +81,7 @@ private:
 
     struct MeshEntry
     {
-        graph::Geometry* geometry = nullptr;
+        Geometry* geometry = nullptr;
         PrimitiveAsset asset{};
 
         ~MeshEntry()
@@ -96,7 +96,7 @@ private:
 #ifdef DRAW_SKY_SPHERE
     Entity* sky_entity = nullptr;
     std::shared_ptr<EnvironmentSystem> environment_system;
-    graph::Geometry* sky_geometry = nullptr;
+    Geometry* sky_geometry = nullptr;
     graph::mtl::MaterialRecipe sky_recipe{};
     PrimitiveAsset             sky_asset{};
 #endif//DRAW_SKY_SPHERE
@@ -306,7 +306,7 @@ private:
         return true;
     }
 
-    MeshEntry* CreateMeshEntry(graph::Geometry* geometry)
+    MeshEntry* CreateMeshEntry(Geometry* geometry)
     {
         if (!geometry)
             return nullptr;
@@ -331,7 +331,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](auto&& creator) -> graph::Geometry*
+        auto create_geometry = [this](auto&& creator) -> Geometry*
         {
             auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
             if (!pc)
@@ -471,7 +471,7 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f));
             transform.SetMobility(Mobility::Static);
 
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
             material_data_comp->SetTextureResource("sky_cube", sky_cube_texture, sampler);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -488,7 +488,7 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform.SetMobility(Mobility::Static);
 
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
             material_data_comp->SetTextureResource("base_color", base_texture, sampler);
             material_data_comp->SetTextureResource("normal", normal_texture, sampler);
             material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);
@@ -526,7 +526,7 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform.SetMobility(Mobility::Static);
 
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct = mesh_rows[row_index].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(mesh_struct);

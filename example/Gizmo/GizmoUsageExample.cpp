@@ -25,7 +25,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
@@ -191,7 +191,7 @@ private:
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         hgl::ecs::MaterialData *material_data_comp = plane_entity->GetContext()->GetOrCreateMaterialData(plane_entity->GetEntityID());
-        plane_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(plane_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&grid_asset);
+        plane_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(plane_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&grid_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
         plane_struct = grid_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(plane_struct);
@@ -206,7 +206,7 @@ private:
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         hgl::ecs::MaterialData *cube_material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity->GetEntityID());
-        cube_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(cube_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
+        cube_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(cube_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
         cube_material_data_comp->SetDataResource(cube_struct);

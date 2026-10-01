@@ -19,7 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -61,7 +61,7 @@ private:
     PrimitiveAsset             cube_asset{};
     MaterialDataAccessor mtl_data_ssbo_accessor{};
 
-    graph::Geometry *geometry = nullptr;
+    Geometry *geometry = nullptr;
     struct CubeNode
     {
         hgl::ecs::TransformAccessor transform;
@@ -191,7 +191,7 @@ private:
 
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
-        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
+        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor.GetSSBOId() != 0)
         {
             hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};

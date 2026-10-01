@@ -34,7 +34,7 @@
 #include <hgl/ecs/core/ScenePipelineMode.h>
 #include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
-#include <hgl/ecs/components/Geometry.h>
+#include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
@@ -115,7 +115,7 @@ namespace
         return static_cast<float>(HashU32(a, b, salt) & 0x00FFFFFFu) / static_cast<float>(0x00FFFFFFu);
     }
 
-    float GroundLift(const graph::Geometry *geom)
+    float GroundLift(const Geometry *geom)
     {
         if (!geom)
             return 0.0f;
@@ -148,16 +148,16 @@ private:
     Texture2DArray *alpha_base_texture = nullptr; // A1-4: alpha test 物体专用（1 层 RGBA8 棋盘）
     Sampler *pbr_sampler = nullptr;
 
-    graph::Geometry *builtin_geometries[kBuiltinGeomCount]{};
+    Geometry *builtin_geometries[kBuiltinGeomCount]{};
     PrimitiveAsset builtin_primitives[kBuiltinGeomCount]{};
 
-    graph::Geometry *ground_geometry = nullptr;
+    Geometry *ground_geometry = nullptr;
     PrimitiveAsset ground_primitive{};
     Entity *ground_entity = nullptr;
     hgl::ecs::TransformAccessor ground_transform;
     std::shared_ptr<PrimitiveComponent> ground_prim;
 
-    graph::Geometry *alpha_geometry = nullptr;
+    Geometry *alpha_geometry = nullptr;
     PrimitiveAsset alpha_primitive{};
 
     graph::mtl::MaterialRecipe lit_recipe{};
@@ -961,7 +961,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geom = [this](auto &&creator) -> graph::Geometry *
+        auto create_geom = [this](auto &&creator) -> Geometry *
         {
             auto pc = std::make_unique<GeometryCreater>(vdm);
             return pc ? creator(pc.get()) : nullptr;
@@ -1104,7 +1104,7 @@ private:
 
         ground_prim = ground_entity->AddComponent<PrimitiveComponent>();
         hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity->GetEntityID());
-        ground_prim->GetOwner()->GetContext()->GetOrCreateGeometry(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
+        ground_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
         material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
             MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0); // Concrete_Plain
         material_data_comp->SetTextureResource("normal", normal_texture, pbr_sampler,
@@ -1197,7 +1197,7 @@ private:
 
             auto prim = e->AddComponent<PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-            prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
+            prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
             material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
                 MaterialData::MaterialTextureResourceKind::Texture2DArray, "", tex_idx);
             material_data_comp->SetTextureResource("normal", normal_texture, pbr_sampler,
@@ -1234,7 +1234,7 @@ private:
 
                 auto prim = e->AddComponent<PrimitiveComponent>();
                 hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-                prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&alpha_primitive);
+                prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&alpha_primitive);
                 // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked
                 // 的 EvalAlpha（采样 .r，0 = 镂空）——影子应呈同图案棋盘孔。
                 material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,

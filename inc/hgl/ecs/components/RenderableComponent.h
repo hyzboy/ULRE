@@ -17,7 +17,7 @@ namespace hgl::ecs
     * Derived classes should implement specific rendering needs
     *
     * A5a：可见性真值收敛到**实体级**（`ECSContext::IsEntityVisible`）——本类不再持
-    * 字段（组件级那第二份真值已删）；包围球半径随几何派生状态迁入 `Geometry`。
+    * 字段（组件级那第二份真值已删）；包围球半径随几何派生状态迁入 `GeometryData`。
     */
     class RenderableComponent : public Component
     {

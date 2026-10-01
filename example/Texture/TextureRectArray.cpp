@@ -16,7 +16,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -176,7 +176,7 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform.SetMobility(Mobility::Static);
 
-            primitive->GetOwner()->GetContext()->GetOrCreateGeometry(primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset);
+            primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset);
             if (!material_data_comp->SetTextureResource(
                     "base_color",
                     texture,

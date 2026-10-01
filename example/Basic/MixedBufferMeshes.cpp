@@ -1,6 +1,6 @@
 ﻿// MixedBufferMeshes — BasicLitMeshes 的变体：
-// 前半（7 个）graph::Geometry 用共享 VertexDataManager（VDM）大缓冲池创建（同 BasicLitMeshes），
-// 后半（7 个）graph::Geometry 用每几何独立的私有缓冲创建（同 RenderToTexture/MaterialRecipeEntry），
+// 前半（7 个）Geometry 用共享 VertexDataManager（VDM）大缓冲池创建（同 BasicLitMeshes），
+// 后半（7 个）Geometry 用每几何独立的私有缓冲创建（同 RenderToTexture/MaterialRecipeEntry），
 // 两批使用完全同一套材质（同一 MaterialRecipe / 同一材质 SSBO 行 / 同一组纹理）。
 // 用途：验证 ECS 渲染在同一材质 batch 内混绘 VDM 池几何与私有缓冲几何。
 
@@ -23,7 +23,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -70,7 +70,7 @@ private:
 
     struct MeshEntry
     {
-        graph::Geometry* geometry = nullptr;
+        Geometry* geometry = nullptr;
         PrimitiveAsset asset{};
 
         ~MeshEntry()
@@ -175,7 +175,7 @@ private:
         return true;
     }
 
-    MeshEntry* CreateMeshEntry(graph::Geometry* geometry)
+    MeshEntry* CreateMeshEntry(Geometry* geometry)
     {
         if (!geometry)
             return nullptr;
@@ -206,7 +206,7 @@ private:
         // 混绘——本示例的验证主题）。
         auto create_mesh = [this](MeshBufferSource source, auto&& generator) -> MeshEntry*
         {
-            graph::Geometry* geometry = nullptr;
+            Geometry* geometry = nullptr;
 
             if (source == MeshBufferSource::VDM)
             {
@@ -427,7 +427,7 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform.SetMobility(Mobility::Static);
 
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
             material_data_comp->SetTextureResource("base_color", base_texture, sampler);
             material_data_comp->SetTextureResource("normal", normal_texture, sampler);
             material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);
@@ -470,7 +470,7 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform.SetMobility(Mobility::Static);
 
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             material_data_comp->SetTextureResource("base_color", base_texture, sampler);
             material_data_comp->SetTextureResource("normal", normal_texture, sampler);
             material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);

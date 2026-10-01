@@ -30,7 +30,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 
 using namespace hgl;
@@ -74,7 +74,7 @@ private:
     ECSContext* ecs_world = nullptr;
 
     // 传统渲染资源
-    graph::Geometry* geometry = nullptr;
+    Geometry* geometry = nullptr;
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
     using MaterialDataAccessor =
@@ -232,7 +232,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = ticks[i].entity->GetContext()->GetOrCreateMaterialData(ticks[i].entity->GetEntityID());
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource tick_struct{};
             tick_struct = tick_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(tick_struct);
@@ -266,7 +266,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = hands[i].entity->GetContext()->GetOrCreateMaterialData(hands[i].entity->GetEntityID());
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource hand_struct{};
             hand_struct = hand_data_ssbo_accessors[i].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(hand_struct);

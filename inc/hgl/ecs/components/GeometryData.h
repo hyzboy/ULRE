@@ -26,7 +26,7 @@ namespace hgl
 namespace hgl::ecs
 {
     /**
-     * Geometry —— 几何**资产侧**数据层（v2 §9.1-3 / A5a）。
+     * GeometryData —— 几何**资产侧**数据层（v2 §9.1-3 / A5a）。
      *
      * 职责：承载"这块可渲染物用什么几何、选哪个变体、运行期解析出的几何绑定"，
      * 即原 `PrimitiveComponent` 的几何/资产侧状态。资源引用（`PrimitiveAsset`）**非拥有**，
@@ -36,9 +36,9 @@ namespace hgl::ecs
      * （A5b 处理）。变体/asset 变化会经 `InvalidateOwnerRuntimePipeline()` 让同实体的
      * `PrimitiveComponent` 作废它按 RenderPass 解析出的管线缓存。
      *
-     * 世界访问器：`ECSContext::GetGeometry(EntityID)` / `GetOrCreateGeometry(EntityID)`。
+     * 世界访问器：`ECSContext::GetGeometryData(EntityID)` / `GetOrCreateGeometryData(EntityID)`。
      */
-    class Geometry : public Component
+    class GeometryData : public Component
     {
     private:
 
@@ -59,12 +59,12 @@ namespace hgl::ecs
 
     public:
 
-        explicit Geometry(const std::string& name = "Geometry")
+        explicit GeometryData(const std::string& name = "GeometryData")
             : Component(name)
         {
         }
 
-        ~Geometry() override = default;
+        ~GeometryData() override = default;
 
     public:
 
@@ -99,6 +99,6 @@ namespace hgl::ecs
         void OnDetach() override;
     };
 
-    /// 槽位映射：`Geometry` 承载几何来源（v2 §3 的 GPU 可见组件之一；scope Global）
-    template<> struct ComponentTypeOf<Geometry> { static constexpr ComponentType value = ComponentType::Geometry; };
+    /// 槽位映射：`GeometryData` 承载几何来源（v2 §3 的 GPU 可见组件之一；scope Global）
+    template<> struct ComponentTypeOf<GeometryData> { static constexpr ComponentType value = ComponentType::Geometry; };
 }//namespace hgl::ecs

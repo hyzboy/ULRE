@@ -19,7 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -97,7 +97,7 @@ private:
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
-        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometry(prim_comp->GetOwnerID())->SetPrimitiveAsset(&plane_grid_asset);
+        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource named_struct{};
         named_struct = material_ssbo_binding;
         material_data_comp->SetDataResource(named_struct);

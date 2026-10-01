@@ -29,7 +29,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -105,7 +105,7 @@ private:
 
     struct MeshEntry
     {
-        graph::Geometry *geometry = nullptr;
+        Geometry *geometry = nullptr;
         PrimitiveAsset asset;
 
         Entity *entity = nullptr;
@@ -139,7 +139,7 @@ private:
     std::vector<std::unique_ptr<MeshEntry>> render_mesh;
     std::vector<std::unique_ptr<BoundingBoxMesh>> bounding_boxes;
 
-    graph::Geometry *bbox_geometry = nullptr;
+    Geometry *bbox_geometry = nullptr;
     PrimitiveAsset bbox_asset;
 
     Entity *camera_entity = nullptr;
@@ -215,7 +215,7 @@ private:
         return mesh_vdm != nullptr;
     }
 
-    MeshEntry *CreateMeshEntry(graph::Geometry *geometry,const int color)
+    MeshEntry *CreateMeshEntry(Geometry *geometry,const int color)
     {
         if(!geometry)
             return nullptr;
@@ -236,7 +236,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](const char *label, auto &&creator) -> graph::Geometry *
+        auto create_geometry = [this](const char *label, auto &&creator) -> Geometry *
         {
             GLogInfo("[RenderBoundBox] CreateGeometry START: %s", label);
 
@@ -247,7 +247,7 @@ private:
                 return nullptr;
             }
 
-            graph::Geometry *geom = creator(pc.get());
+            Geometry *geom = creator(pc.get());
             if (!geom)
             {
                 GLogError("[RenderBoundBox] CreateGeometry FAIL: returned null (%s)", label);
@@ -549,7 +549,7 @@ private:
             floor_mesh->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             floor_mesh->transform.SetMobility(Mobility::Static);
 
-            floor_mesh->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(floor_mesh->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
+            floor_mesh->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(floor_mesh->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
             floor_struct =
                 solid.material_data_ssbo_accessors[floor_mesh->color_index].GetGlobalSSBOBinding();
@@ -581,7 +581,7 @@ private:
             rm->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             rm->transform.SetMobility(Mobility::Static);
 
-            rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
+            rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
                 solid.material_data_ssbo_accessors[rm->color_index].GetGlobalSSBOBinding();
@@ -606,7 +606,7 @@ private:
                 continue;
 
             hgl::math::AABB local_aabb;
-            if(!rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(rm->primitive_comp->GetOwnerID())->GetLocalAABB(local_aabb))
+            if(!rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->GetLocalAABB(local_aabb))
                 continue;
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
@@ -625,7 +625,7 @@ private:
             bbox->transform.SetLocalScale(glm::vec3(size.x, size.y, size.z));
             bbox->transform.SetMobility(Mobility::Static);
 
-            bbox->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
+            bbox->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct = wire.material_data_ssbo_accessors[5].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(bbox_struct);

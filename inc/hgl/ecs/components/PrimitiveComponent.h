@@ -28,9 +28,9 @@ namespace hgl::ecs
      * PrimitiveComponent - Renderable component for static mesh rendering
      *
      * A5a 起**几何/资产侧状态**（`PrimitiveAsset` / 变体选择 / 运行期几何绑定 /
-     * 包围球半径）住在同实体的 `Geometry` 组件里（`ECSContext::GetGeometry` /
-     * `GetOrCreateGeometry`）；本组件只保留**渲染侧**：按 RenderPass 解析的管线缓存、
-     * 可选管线覆盖、位置/变换策略与 render_item 4-ID。挂载时确保 `Geometry` 存在。
+     * 包围球半径）住在同实体的 `GeometryData` 组件里（`ECSContext::GetGeometryData` /
+     * `GetOrCreateGeometryData`）；本组件只保留**渲染侧**：按 RenderPass 解析的管线缓存、
+     * 可选管线覆盖、位置/变换策略与 render_item 4-ID。挂载时确保 `GeometryData` 存在。
      * A5b 会继续拆出 ShadowProxy / MaterialBinding / LOD 钩子并删除本类。
      */
     class PrimitiveComponent : public RenderableComponent

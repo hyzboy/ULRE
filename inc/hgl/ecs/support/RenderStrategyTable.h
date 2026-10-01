@@ -63,7 +63,7 @@ namespace hgl
             /// 读法 = `ECSContext::IsEntityVisible`，含祖先继承，已算完）
             EntityVisible     = 1u << 0,
             HasOwner          = 1u << 1,   ///< 有 owner 实体
-            Renderable        = 1u << 2,   ///< 具备可渲染资源（现 = `Geometry::GetPrimitiveAsset() != nullptr`）
+            Renderable        = 1u << 2,   ///< 具备可渲染资源（现 = `GeometryData::GetPrimitiveAsset() != nullptr`）
             HasMaterialSource = 1u << 3,   ///< 有材质来源（现 = `HasAnyMaterialSource`：数据层配方覆盖 或 asset 默认配方）
             CastShadow        = 1u << 4,   ///< 允许投射（现 = `CanCastShadow`，含缺省约定）
             ReceiveShadow     = 1u << 5,   ///< 允许接收（现 = `CanReceiveShadow`，含缺省约定）

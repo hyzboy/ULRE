@@ -3,7 +3,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
@@ -69,13 +69,13 @@ namespace hgl::ecs
         }
 
         /// A5a 查询：本 primitive 所属实体的**几何资产组件**（无实体/无世界/未挂载时 nullptr）。
-        /// 几何/资产侧状态已迁出 PrimitiveComponent（见 components/Geometry.h）。
-        Geometry *FindGeometryOf(const PrimitiveComponent *primitive_comp)
+        /// 几何/资产侧状态已迁出 PrimitiveComponent（见 components/GeometryData.h）。
+        GeometryData *FindGeometryOf(const PrimitiveComponent *primitive_comp)
         {
             Entity *owner = primitive_comp ? primitive_comp->GetOwner() : nullptr;
             ECSContext *context = owner ? owner->GetContext() : nullptr;
 
-            return context ? context->GetGeometry(owner->GetEntityID()) : nullptr;
+            return context ? context->GetGeometryData(owner->GetEntityID()) : nullptr;
         }
 
         /// 材质来源判据（A2 之前挂在 PrimitiveComponent 上，随授权状态一并迁入数据层）：
@@ -86,7 +86,7 @@ namespace hgl::ecs
                 return false;
 
             const MaterialData *material_data = FindMaterialDataOf(primitive_comp);
-            const Geometry *geometry = FindGeometryOf(primitive_comp.get());
+            const GeometryData *geometry = FindGeometryOf(primitive_comp.get());
 
             return (material_data && material_data->HasRecipeOverride())
                 || (geometry && geometry->GetAssetMaterialRecipe() != nullptr);
@@ -163,7 +163,7 @@ namespace hgl::ecs
         /// （运行期共享行的 program 身份维度恒取前向 purpose，两个 pass 落在同一行上）。
         graph::mtl::ShaderProgramPurpose GetEffectiveForwardPurpose(PrimitiveComponent &primitive_comp)
         {
-            const Geometry *geometry = FindGeometryOf(&primitive_comp);
+            const GeometryData *geometry = FindGeometryOf(&primitive_comp);
 
             switch (geometry ? geometry->GetPrimitiveVariantPurpose()
                              : graph::PrimitiveVariantPurpose::Surface)
@@ -250,7 +250,7 @@ namespace hgl::ecs
                 return false;
             }
 
-            Geometry *geometry = FindGeometryOf(primitive_comp.get());
+            GeometryData *geometry = FindGeometryOf(primitive_comp.get());
             const auto *asset = geometry ? geometry->GetPrimitiveAsset() : nullptr;
             if (!asset)
                 return true;
@@ -295,8 +295,8 @@ namespace hgl::ecs
                 return false;
 
             // asset 里的默认配方是基底，数据层里的配方覆盖是覆盖源（配方来源 = 实体的
-            // Geometry 组件；A5a 起由几何组件持有 asset）。
-            const Geometry *geometry = FindGeometryOf(primitive_comp.get());
+            // GeometryData 组件；A5a 起由几何组件持有 asset）。
+            const GeometryData *geometry = FindGeometryOf(primitive_comp.get());
 
             return material_data->BuildResolvedRecipe(out_recipe,
                                                       material_program,
@@ -313,7 +313,7 @@ namespace hgl::ecs
             out_primitive_type = graph::PrimitiveType::Triangles;
             out_geometry_vertex_format = nullptr;
 
-            const Geometry *geometry = FindGeometryOf(primitive_comp.get());
+            const GeometryData *geometry = FindGeometryOf(primitive_comp.get());
             if (const auto *asset = geometry ? geometry->GetPrimitiveAsset() : nullptr)
             {
                 if (auto *asset_geometry = asset->GetGeometry())
@@ -2219,7 +2219,7 @@ namespace hgl::ecs
             // ── 同步 4-ID 描述符至 PrimitiveComponent 与 RenderItemDataStorage ──
             const uint32_t transform_id = transform.GetID();
             uint32_t geometry_id = 0;
-            Geometry *geometry_comp = FindGeometryOf(primitiveComp.get());
+            GeometryData *geometry_comp = FindGeometryOf(primitiveComp.get());
             const auto *geom_buf = geometry_comp ? geometry_comp->GetRuntimeGeometryDataBuffer() : nullptr;
             if (geom_buf)
             {

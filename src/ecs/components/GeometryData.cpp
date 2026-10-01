@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/components/Geometry.h>
+﻿#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/Entity.h>
@@ -16,7 +16,7 @@
 
 namespace hgl::ecs
 {
-    void Geometry::InvalidateOwnerRuntimePipeline()
+    void GeometryData::InvalidateOwnerRuntimePipeline()
     {
         // 几何/变体变化只让**同实体的**渲染侧管线缓存失效：管线缓存仍归
         // PrimitiveComponent（A5b 处理），本组件不持有它。
@@ -37,11 +37,11 @@ namespace hgl::ecs
         }
     }
 
-    bool Geometry::EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material)
+    bool GeometryData::EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material)
     {
         if (!primitiveAsset || !material)
         {
-            GLogError("[Geometry] EnsureRuntimeGeometryBinding failed: primitiveAsset=%p material=%p",
+            GLogError("[GeometryData] EnsureRuntimeGeometryBinding failed: primitiveAsset=%p material=%p",
                       primitiveAsset,
                       material);
             return false;
@@ -50,7 +50,7 @@ namespace hgl::ecs
         auto *geometry = primitiveAsset->GetGeometry();
         if (!geometry)
         {
-            GLogError("[Geometry] EnsureRuntimeGeometryBinding failed: geometry null asset=%p material=%s",
+            GLogError("[GeometryData] EnsureRuntimeGeometryBinding failed: geometry null asset=%p material=%s",
                       primitiveAsset,
                       material->GetName().c_str());
             return false;
@@ -61,7 +61,7 @@ namespace hgl::ecs
 
         if (!runtime_draw_range)
         {
-            GLogError("[Geometry] EnsureRuntimeGeometryBinding failed: alloc GeometryDrawRange failed material=%s",
+            GLogError("[GeometryData] EnsureRuntimeGeometryBinding failed: alloc GeometryDrawRange failed material=%s",
                       material->GetName().c_str());
             return false;
         }
@@ -82,7 +82,7 @@ namespace hgl::ecs
 
             if (geometry->GetVABCount() < input_count)
             {
-                GLogError("[Geometry] EnsureRuntimeGeometryBinding failed: geometry VAB count(%u) < semantic count(%u), material=%s",
+                GLogError("[GeometryData] EnsureRuntimeGeometryBinding failed: geometry VAB count(%u) < semantic count(%u), material=%s",
                           geometry->GetVABCount(),
                           input_count,
                           material->GetName().c_str());
@@ -96,7 +96,7 @@ namespace hgl::ecs
                                                                      geometry->GetVDM());
             if (!runtime_data_buffer)
             {
-                GLogError("[Geometry] EnsureRuntimeGeometryBinding failed: alloc GeometryDataBuffer failed material=%s attr_count=%u",
+                GLogError("[GeometryData] EnsureRuntimeGeometryBinding failed: alloc GeometryDataBuffer failed material=%s attr_count=%u",
                           material->GetName().c_str(),
                           input_count);
                 return false;
@@ -107,7 +107,7 @@ namespace hgl::ecs
 
         if (!runtime_data_buffer->Update(geometry))
         {
-            GLogError("[Geometry] EnsureRuntimeGeometryBinding failed: GeometryDataBuffer::Update failed material=%s",
+            GLogError("[GeometryData] EnsureRuntimeGeometryBinding failed: GeometryDataBuffer::Update failed material=%s",
                       material->GetName().c_str());
             return false;
         }
@@ -116,14 +116,14 @@ namespace hgl::ecs
         return true;
     }
 
-    void Geometry::ClearRuntimeGeometryBinding()
+    void GeometryData::ClearRuntimeGeometryBinding()
     {
         SAFE_CLEAR(runtime_data_buffer);
         SAFE_CLEAR(runtime_draw_range);
         runtime_geometry = nullptr;
     }
 
-    void Geometry::SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset)
+    void GeometryData::SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset)
     {
         if (primitiveAsset != asset)
         {
@@ -156,7 +156,7 @@ namespace hgl::ecs
             material_data->BumpAuthoredGeneration();
     }
 
-    void Geometry::SetPrimitiveVariantPurpose(const hgl::graph::PrimitiveVariantPurpose purpose)
+    void GeometryData::SetPrimitiveVariantPurpose(const hgl::graph::PrimitiveVariantPurpose purpose)
     {
         if (primitiveVariantPurpose == purpose)
             return;
@@ -165,7 +165,7 @@ namespace hgl::ecs
         InvalidateOwnerRuntimePipeline();
     }
 
-    const hgl::graph::mtl::MaterialRecipe *Geometry::GetAssetMaterialRecipe() const
+    const hgl::graph::mtl::MaterialRecipe *GeometryData::GetAssetMaterialRecipe() const
     {
         if (!primitiveAsset)
             return nullptr;
@@ -179,7 +179,7 @@ namespace hgl::ecs
         return primitiveAsset->GetMaterialRecipe();
     }
 
-    bool Geometry::GetLocalAABB(hgl::math::AABB& outAABB) const
+    bool GeometryData::GetLocalAABB(hgl::math::AABB& outAABB) const
     {
         if (!primitiveAsset || !primitiveAsset->GetGeometry())
             return false;
@@ -189,7 +189,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void Geometry::OnDetach()
+    void GeometryData::OnDetach()
     {
         Component::OnDetach();
 

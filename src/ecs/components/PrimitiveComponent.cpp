@@ -1,5 +1,5 @@
 ﻿#include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderItemDataStorage.h>
@@ -72,10 +72,10 @@ namespace hgl::ecs
     {
         // A5a：只表示"拥有可渲染资产"——可见性真值已收敛到实体级
         // （ECSContext::IsEntityVisible），不再混进本判据（原先这里 `&& IsVisible()`
-        // 与收集链的可见性判定是同一件事的重复）。几何状态住在同实体的 Geometry 组件。
+        // 与收集链的可见性判定是同一件事的重复）。几何状态住在同实体的 GeometryData 组件。
         if (auto *owner = GetOwner())
         {
-            if (auto geometry = owner->GetComponent<Geometry>())
+            if (auto geometry = owner->GetComponent<GeometryData>())
                 return geometry->GetPrimitiveAsset() != nullptr;
         }
 
@@ -202,12 +202,12 @@ namespace hgl::ecs
     {
         RenderableComponent::OnAttach();
 
-        // A5a：几何/资产侧状态住在同实体的 `Geometry` 组件里 ⇒ 挂载本组件即确保它存在，
-        // 让实体始终具备 Geometry 槽位（A5b 删本组件后由作者直接持有 Geometry）。
+        // A5a：几何/资产侧状态住在同实体的 `GeometryData` 组件里 ⇒ 挂载本组件即确保它存在，
+        // 让实体始终具备 GeometryData 槽位（A5b 删本组件后由作者直接持有 GeometryData）。
         if (auto *owner = GetOwner())
         {
-            if (!owner->GetComponent<Geometry>())
-                owner->AddComponent<Geometry>();
+            if (!owner->GetComponent<GeometryData>())
+                owner->AddComponent<GeometryData>();
         }
 
         EnsureRenderItemStorageAllocated();
@@ -232,7 +232,7 @@ namespace hgl::ecs
         overridePipeline = nullptr;
         resolvedRuntimePipelineMap.Clear();
         render_item_descriptor = {};
-        // 几何/资产侧状态已迁至 Geometry（由它自己的 OnDetach 清理）。
+        // 几何/资产侧状态已迁至 GeometryData（由它自己的 OnDetach 清理）。
         // 材质授权状态已迁至 MaterialData（由它自己的 OnDetach 清理）。
     }
 }//namespace hgl::ecs

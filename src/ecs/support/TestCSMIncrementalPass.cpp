@@ -3703,9 +3703,9 @@ int main(int argc, char** argv)
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Test 24: A5a 源码契约（几何状态只存于 Geometry / 可见性只读实体级）
+    // Test 24: A5a 源码契约（几何状态只存于 GeometryData / 可见性只读实体级）
     //
-    // 背景：A5a 把几何/资产侧状态搬出 PrimitiveComponent（进 Geometry 组件）、删掉
+    // 背景：A5a 把几何/资产侧状态搬出 PrimitiveComponent（进 GeometryData 组件）、删掉
     // 两处 OOP 缓存、并把"可见性三真值"收敛为实体级唯一真值。本可执行文件无图形
     // 设备，所以钉住"判据链是否还在"：几何字段只允许出现在新组件里、两个组件头不得
     // 再声明组件级可见性、收集系统不得再读组件级可见性、组件内不得再缓存世界指针。
@@ -3730,7 +3730,7 @@ int main(int argc, char** argv)
               true },
             { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
               "primitiveAsset",
-              "几何资产字段又留在 PrimitiveComponent（应只存在于 Geometry 组件）",
+              "几何资产字段又留在 PrimitiveComponent（应只存在于 GeometryData 组件）",
               true },
             { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
               "bound_render_item_" "storage",
@@ -3740,12 +3740,12 @@ int main(int argc, char** argv)
               "cached_shadow_" "component",
               "阴影组件指针缓存复活（应每次经 owner 按需解析）",
               true },
-            { "Geometry.h", OS_TEXT("inc/hgl/ecs/components/Geometry.h"),
+            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
               "primitiveAsset",
-              "Geometry 组件不再持有几何资产（几何状态丢失）" },
-            { "Geometry.h", OS_TEXT("inc/hgl/ecs/components/Geometry.h"),
-              "ComponentTypeOf<Geometry>",
-              "Geometry 不再声明自己的组件槽位（实体掩码丢失 Geometry 位）" },
+              "GeometryData 组件不再持有几何资产（几何状态丢失）" },
+            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
+              "ComponentTypeOf<GeometryData>",
+              "GeometryData 不再声明自己的组件槽位（实体掩码丢失 Geometry 位）" },
         };
 
         if (const int failed = verify_source_contracts(24, kA5aContracts,
@@ -3753,7 +3753,7 @@ int main(int argc, char** argv)
                                                                          sizeof(kA5aContracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 24 Passed: A5a 源码契约成立（几何状态只存于 Geometry、两处 OOP 缓存不复存在、"
+        GLogInfo(u8"Test 24 Passed: A5a 源码契约成立（几何状态只存于 GeometryData、两处 OOP 缓存不复存在、"
                  u8"可见性只读实体级；共 %d 条契约）。",
                  static_cast<int>(sizeof(kA5aContracts) / sizeof(kA5aContracts[0])));
     }

@@ -82,8 +82,8 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     if (!prim_comp)
         return false;
 
-    // A5a：几何/资产侧状态住在实体的 Geometry 组件（经世界访问器取用/创建）
-    entity->GetContext()->GetOrCreateGeometry(entity->GetEntityID())->SetPrimitiveAsset(asset);
+    // A5a：几何/资产侧状态住在实体的 GeometryData 组件（经世界访问器取用/创建）
+    entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID())->SetPrimitiveAsset(asset);
     graph::mtl::MaterialRecipe visual_recipe = *recipe;
     visual_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
     hgl::ecs::ECSContext *material_world = entity->GetContext();

@@ -34,7 +34,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -70,7 +70,7 @@ private:
     using MaterialDataAccessor =
         graph::GlobalSSBODataAccessor;
 
-    graph::Geometry *            geometry = nullptr;
+    Geometry *            geometry = nullptr;
     MaterialDataAccessor material_data_ssbo_accessor{};
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
@@ -155,7 +155,7 @@ private:
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
-        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
+        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource named_struct{};
         named_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(named_struct);

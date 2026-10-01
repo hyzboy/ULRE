@@ -35,7 +35,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -306,7 +306,7 @@ private:
 
             auto primitive = row_entities[row]->AddComponent<hgl::ecs::PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = row_entities[row]->GetContext()->GetOrCreateMaterialData(row_entities[row]->GetEntityID());
-            primitive->GetOwner()->GetContext()->GetOrCreateGeometry(primitive->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
+            primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
 
             row_primitives[row] = primitive;
 
@@ -391,7 +391,7 @@ private:
                 return;
 
             if (row_primitives[row])
-                row_primitives[row]->GetOwner()->GetContext()->GetOrCreateGeometry(row_primitives[row]->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
+                row_primitives[row]->GetOwner()->GetContext()->GetOrCreateGeometryData(row_primitives[row]->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
         }
 
         ruler_viewport_width  = vw;

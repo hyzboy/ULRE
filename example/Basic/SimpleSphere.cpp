@@ -27,7 +27,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/Geometry.h>
+#include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -72,7 +72,7 @@ private:
     graph::mtl::MaterialRecipe sphere_recipe{};
     MaterialDataAccessor       material_data_ssbo_accessor{};
 
-    graph::Geometry *          sphere_geometry = nullptr;
+    Geometry *          sphere_geometry = nullptr;
     PrimitiveAsset      sphere_asset{};
 
     Texture2D * base_texture      = nullptr;
@@ -182,7 +182,7 @@ private:
         hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
 
         sphere_asset = PrimitiveAsset(sphere_geometry, &sphere_recipe, PrimitiveType::Triangles);
-        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometry(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
+        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
 
         material_data_comp->SetTextureResource("base_color", base_texture, sampler);
         material_data_comp->SetTextureResource("normal", normal_texture, sampler);

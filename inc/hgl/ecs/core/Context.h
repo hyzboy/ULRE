@@ -61,7 +61,7 @@ namespace hgl
         class DrawItemIDStorage;
         class CameraInfoStorage;
         class MaterialData;
-        class Geometry;
+        class GeometryData;
 
         struct RenderFrameCache
         {
@@ -510,15 +510,15 @@ namespace hgl
             /// 与 GetOrCreateBoundingBox 同风格：渲染/作者侧需要"一定有数据层"时用。
             MaterialData* GetOrCreateMaterialData(EntityID owner);
 
-            /// 实体 → 几何**资产侧**组件 `Geometry`（无则 nullptr）。
+            /// 实体 → 几何**资产侧**组件 `GeometryData`（无则 nullptr）。
             /// **stage B 会换成值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
             /// 届时不再返回裸指针。
-            Geometry* GetGeometry(EntityID owner);
-            const Geometry* GetGeometry(EntityID owner) const;
+            GeometryData* GetGeometryData(EntityID owner);
+            const GeometryData* GetGeometryData(EntityID owner) const;
 
             /// 实体 → 几何资产组件（无则 AddComponent 创建）。
             /// 与 GetOrCreateMaterialData 同风格：渲染/作者侧需要"一定有几何组件"时用。
-            Geometry* GetOrCreateGeometry(EntityID owner);
+            GeometryData* GetOrCreateGeometryData(EntityID owner);
 
             /// 实体 → 包围盒访问器（无则返回无效句柄）
             BoundingBoxAccessor GetBoundingBoxByEntity(EntityID owner) const;

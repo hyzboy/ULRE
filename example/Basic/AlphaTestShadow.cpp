@@ -32,7 +32,7 @@
 #include <hgl/ecs/core/ScenePipelineMode.h>
 #include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/components/PrimitiveComponent.h>
-#include <hgl/ecs/components/Geometry.h>
+#include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/ShadowComponent.h>
 #include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
@@ -132,11 +132,11 @@ private:
     Texture2DArray *white_texture = nullptr; // 地面用：纯白，影子落点清晰可读
     Sampler *pbr_sampler = nullptr;
 
-    graph::Geometry *ground_geometry = nullptr;
+    Geometry *ground_geometry = nullptr;
     PrimitiveAsset ground_primitive{};
     hgl::ecs::TransformAccessor ground_transform;
 
-    graph::Geometry *cube_geometry = nullptr;
+    Geometry *cube_geometry = nullptr;
     PrimitiveAsset cube_primitive{};
 
     graph::mtl::MaterialRecipe alpha_recipe{};
@@ -597,7 +597,7 @@ public:
 
             auto prim = e->AddComponent<PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-            prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
+            prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
             material_data_comp->SetTextureResource("base_color", white_texture, pbr_sampler,
                 MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
             material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
@@ -629,7 +629,7 @@ public:
 
             auto prim = e->AddComponent<PrimitiveComponent>();
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
-            prim->GetOwner()->GetContext()->GetOrCreateGeometry(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
+            prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
             material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,
                 MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
             if (bind_opacity[i])
