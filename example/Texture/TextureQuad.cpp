@@ -60,7 +60,7 @@ constexpr uint16_t index_data[INDEX_COUNT]=
     0, 2, 3,
 };
 
-class TestApp:public WorkObject
+class TextureQuadApp:public WorkObject
 {
 private:
 
@@ -158,9 +158,9 @@ public:
 
         return(true);
     }
-};//class TestApp:public WorkObject
+};//class TextureQuadApp:public WorkObject
 
 int os_main(int argc,os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Draw a quad with texture"),argc,argv,256,256);
+    return RunFramework<TextureQuadApp>(OS_TEXT("Draw a quad with texture"),argc,argv,256,256);
 }

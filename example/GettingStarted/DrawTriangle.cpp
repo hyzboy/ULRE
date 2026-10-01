@@ -1,0 +1,173 @@
+﻿// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
+// This example demonstrates managing and drawing a gradient colored triangle using the new ECS architecture
+//
+// 本范例展示了：
+// 1. 创建ECS World和Entity
+// 2. 使用TransformAccessor管理空间变换
+// 3. 使用 GeometryData 管理渲染图元
+// 4. ECS与传统渲染系统的集成
+
+#include<hgl/framework/WorkManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
+
+ // 引入ECS相关头文件
+ #include<hgl/ecs/core/Context.h>
+ #include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/support/TransformAccessor.h>
+ #include<hgl/ecs/components/GeometryData.h>
+ #include<hgl/object/ObjectTracker.h>
+
+using namespace hgl;
+using namespace hgl::graph;
+using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateDrawTriangleGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V2I},
+            {VertexSemantic::Color,    VF_V4F},
+        };
+        return gvf;
+    }
+}
+
+constexpr uint32_t VERTEX_COUNT=3;
+
+static float position_data_float[VERTEX_COUNT][2]=
+{
+    {0.5,   0.25},
+    {0.75,  0.75},
+    {0.25,  0.75}
+};
+
+static int16 position_data[VERTEX_COUNT][2]={};   // int16 与 VF_V2I（R16G16_SINT）匹配——s1_position_vec2i 按 int16 打包解码
+
+constexpr float color_data[VERTEX_COUNT][4]=
+{
+    {1.0f,0.0f,0.0f,1.0f},
+    {0.0f,1.0f,0.0f,1.0f},
+    {0.0f,0.0f,1.0f,1.0f}
+};
+
+constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I;
+
+constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4F;
+
+class DrawTriangleApp:public WorkObject
+{
+private:
+
+    // ECS组件
+    ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
+    Entity* triangle_entity     =nullptr;
+    uint64_t entity_id          =0;          // 对象追踪ID
+
+    // 传统渲染资源
+    Geometry *          geom_triangle       =nullptr;
+    graph::mtl::MaterialRecipe triangle_recipe{};
+    PrimitiveAsset             triangle_asset{};
+
+private:
+
+    bool CreateRenderObject()
+    {
+        const auto ext=GetExtent();
+
+        for(uint i=0;i<VERTEX_COUNT;i++)
+        {
+            position_data[i][0]=(int16)(position_data_float[i][0]*ext->width);
+            position_data[i][1]=(int16)(position_data_float[i][1]*ext->height);
+        }
+
+        auto* device = GetDevice();
+        auto* buffer_manager = GetManager<BufferManager>();
+        auto* geometry_manager = GetManager<GeometryManager>();
+        if (!device || !buffer_manager || !geometry_manager)
+            return false;
+
+        GeometryCreater pc(device, CreateDrawTriangleGeometryVertexFormat(), buffer_manager);
+        // 非索引几何：无 IBO（gl_VertexIndex 直通——s1_index 不再查表）
+        if (!pc.Init("Triangle", VERTEX_COUNT))
+            return false;
+        if (!pc.WriteVAB(VAN::Position, POSITION_DATA_FORMAT, position_data) ||
+            !pc.WriteVAB(VAN::Color, COLOR_DATA_FORMAT, color_data))
+            return false;
+
+        geom_triangle = pc.Create();
+        if (!geom_triangle)
+            return false;
+        geometry_manager->Add(geom_triangle);
+
+        return true;
+    }
+
+    bool InitECS()
+    {
+        HGL_CAPTURE_SCOPE();  // 记录此函数调用的栈信息
+
+        // === 步骤1: 创建ECS世界 ===
+        // World是ECS架构的顶层容器，管理所有Entity和System
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
+
+        // === 步骤2: 创建Entity ===
+        // Entity是游戏对象的容器，本身不包含数据，只是Component的集合
+        triangle_entity = ecs_world->CreateEntity<Entity>("TriangleEntity");
+        entity_id = HGL_TRACK_ALLOCATION("TriangleEntity", hgl::core::ObjectTypeTag::RenderSystem);
+
+        // === 步骤3: 添加变换（Transform） ===
+        // TransformAccessor管理空间变换（位置、旋转、缩放）
+        // 内部使用SOA（Structure of Arrays）存储以提高缓存性能
+        HGL_TRACK_ALLOCATION("TriangleTransform", hgl::core::ObjectTypeTag::FrameResource);
+        auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(triangle_entity->GetEntityID(), Mobility::Static));
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+
+        // 设置为静态对象 - 系统会缓存世界矩阵，提高性能
+        transform.SetMobility(Mobility::Static);
+
+        // === 步骤4: 建几何资产组件 GeometryData ===
+        // 几何/资产侧状态由 GeometryData 承载
+        // 注意：需要明确使用 hgl::ecs 命名空间
+        HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
+        auto ecs_primitive = triangle_entity->GetContext()->GetOrCreateGeometryData(triangle_entity->GetEntityID());
+        triangle_recipe.recipe_name = "DrawTriangle.VertexColor";
+        triangle_recipe.mtl_def_id = "VertexColor";
+        triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);
+        triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
+        triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
+        ecs_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(ecs_primitive->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+
+        return true;
+    }
+
+public:
+
+    bool Init() override
+    {
+        HGL_CAPTURE_SCOPE();  // 记录应用初始化的调用栈
+
+        if(!CreateRenderObject())
+            return(false);
+
+        if(!InitECS())
+            return(false);
+
+        // 初始化时已设置默认 ECSContext
+
+         return(true);
+     }
+ };//class DrawTriangleApp:public WorkObject
+
+int os_main(int argc,os_char **argv)
+{
+    return RunFramework<DrawTriangleApp>(OS_TEXT("Draw Triangle"),argc,argv);
+}

@@ -37,7 +37,7 @@ namespace
     }
 }
 
-class TestApp:public WorkObject
+class AtmosphereSkySunGizmoApp:public WorkObject
 {
 private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
@@ -185,5 +185,5 @@ public:
 
 int os_main(int argc,os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("AtmosphereSkySunGizmo"),argc,argv,1280,720);
+    return RunFramework<AtmosphereSkySunGizmoApp>(OS_TEXT("AtmosphereSkySunGizmo"),argc,argv,1280,720);
 }

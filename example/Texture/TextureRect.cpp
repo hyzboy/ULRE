@@ -55,7 +55,7 @@ constexpr float tex_coord_data[12]=
     1,1
 };
 
-class TestApp:public WorkObject
+class TextureRectApp:public WorkObject
 {
 private:
 
@@ -153,9 +153,9 @@ public:
 
         return(true);
     }
-};//class TestApp:public WorkObject
+};//class TextureRectApp:public WorkObject
 
 int os_main(int argc,os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),argc,argv,256,256);
+    return RunFramework<TextureRectApp>(OS_TEXT("Draw a rectangle with texture"),argc,argv,256,256);
 }

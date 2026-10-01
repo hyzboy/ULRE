@@ -1,0 +1,186 @@
+﻿// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
+// This example demonstrates drawing multiple triangles using ECS architecture with automatic instancing
+//
+// 本范例展示了：
+// 1. 使用ECS架构创建多个实体
+// 2. 使用TransformAccessor管理不同的空间变换
+// 3. 共享同一个几何资产（GeometryData）渲染图元
+// 4. RenderCollector自动合并相同材质和管线的对象进行Instance渲染
+// 5. ECS与渲染系统的集成
+
+#include<hgl/framework/WorkManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
+
+// 引入ECS相关头文件
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/components/GeometryData.h>
+
+using namespace hgl;
+using namespace hgl::graph;
+using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateAutoInstanceGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V2F},
+            {VertexSemantic::Color,    VF_V4F},
+        };
+        return gvf;
+    }
+}
+
+constexpr uint32_t VERTEX_COUNT=3;
+
+constexpr uint32_t TRIANGLE_NUMBER=12;
+
+constexpr float position_data[VERTEX_COUNT*2]=
+{
+     0.0,  0.0,
+    -0.1,  0.9,
+     0.1,  0.9
+};
+
+constexpr float color_data[VERTEX_COUNT][4]=
+{
+    {1.0f,0.0f,0.0f,1.0f},
+    {0.0f,1.0f,0.0f,1.0f},
+    {0.0f,0.0f,1.0f,1.0f}
+};
+
+class AutoInstanceApp:public WorkObject
+{
+private:
+
+    // ECS组件
+    ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
+
+    // 传统渲染资源（共享）
+    Geometry *          geom_triangle       =nullptr;
+    graph::mtl::MaterialRecipe triangle_recipe{};
+    PrimitiveAsset             triangle_asset{};
+
+    // 存储所有创建的实体
+    std::vector<Entity*> triangle_entities;
+
+private:
+
+    bool InitMaterial()
+    {
+        if (!geom_triangle)
+            return false;
+
+        triangle_recipe.recipe_name = "AutoInstance.VertexColor";
+        triangle_recipe.mtl_def_id = "VertexColor";
+        triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
+        triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
+        triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
+
+        return true;
+    }
+
+    bool CreateRenderObject()
+    {
+        auto* device = GetDevice();
+        auto* buffer_manager = GetManager<BufferManager>();
+        auto* geometry_manager = GetManager<GeometryManager>();
+        if (!device || !buffer_manager || !geometry_manager)
+            return false;
+
+        GeometryCreater pc(device, CreateAutoInstanceGeometryVertexFormat(), buffer_manager);
+        pc.Init("Triangle", VERTEX_COUNT);   // 非索引几何：无 IBO（gl_VertexIndex 直通）
+        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
+            !pc.WriteVAB(VAN::Color, VF_V4F, color_data))
+            return false;
+
+        geom_triangle = pc.Create();
+        if (!geom_triangle)
+            return false;
+        geometry_manager->Add(geom_triangle);
+
+        return true;
+    }
+
+    bool InitECS()
+    {
+        // === 步骤1: 获取ECS世界 ===
+        // ECSContext由框架维护，通过GetECSContext()获取
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
+
+        // === 步骤2: 创建多个三角形实体 ===
+        // 每个实体都有自己的Transform，但共享同一个Primitive
+        // RenderCollector会自动识别并进行Instance渲染
+
+        double rad;
+
+        for(uint i=0;i<TRIANGLE_NUMBER;i++)
+        {
+            // 创建实体
+            auto entity = ecs_world->CreateEntity<Entity>("Triangle_" + std::to_string(i));
+
+            // === 步骤3: 添加变换（Transform） ===
+            // 每个三角形有不同的旋转变换
+            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(entity->GetEntityID(), Mobility::Static));
+
+            // 计算旋转角度
+            rad = deg2rad((360.0/double(TRIANGLE_NUMBER))*i);
+
+            // 使用四元数设置旋转（绕Z轴）
+            // 注意：glm::angleAxis参数是(角度, 轴向量)
+            glm::quat rotation = glm::angleAxis((float)rad, glm::vec3(0.0f, 0.0f, 1.0f));
+
+            transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform.SetLocalRotation(rotation);
+            transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+
+            // 设置为静态对象 - 因为三角形不会移动
+            // 这样系统会缓存世界矩阵，提高性能
+            transform.SetMobility(Mobility::Static);
+
+            // === 步骤4: 建几何资产组件 GeometryData ===
+            // 所有实体共享同一个Primitive
+            // RenderCollector会检测到这一点并自动使用Instance渲染
+            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+
+            // 保存实体引用
+            triangle_entities.push_back(entity);
+        }
+
+        return true;
+    }
+
+public:
+    bool Init() override
+    {
+        SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
+
+        if(!CreateRenderObject())
+            return(false);
+
+        if(!InitMaterial())
+            return(false);
+
+        if(!InitECS())
+            return(false);
+
+        // 已在框架层设置默认 ECSContext
+        // RenderCollector会自动收集所有图元实体（GeometryData）并进行批处理
+
+        return(true);
+    }
+};//class AutoInstanceApp:public WorkObject
+
+int os_main(int argc,os_char **argv)
+{
+    return RunFramework<AutoInstanceApp>(OS_TEXT("AutoInstance"),argc,argv,1024,1024);
+}

@@ -609,5 +609,5 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<IBLEnvironmentApp>(OS_TEXT("IBL Environment ECS"), argc, argv, 1280, 720);
+    return RunFramework<IBLEnvironmentApp>(OS_TEXT("IBL Environment"), argc, argv, 1280, 720);
 }

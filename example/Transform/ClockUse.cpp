@@ -1,0 +1,370 @@
+﻿// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
+// 刻度是静态的三角形（Static Transform），指针是动态更新的三角形（Movable Transform）
+// This example demonstrates a clock using ECS architecture with Static/Movable Transform separation
+//
+// 本范例展示了：
+// 1. 使用ECS架构创建时钟刻度和指针实体
+// 2. 刻度三角形使用Static Transform（离线计算，不需要每帧更新）
+// 3. 指针使用Movable Transform（每帧更新旋转角度）
+// 4. TransformSystem自动管理Static和Movable transform的更新
+// 5. ECS中static/movable数据完全分离，提高缓存效率
+
+#include<hgl/framework/WorkManager.h>
+#include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/color/Color.h>
+#include<hgl/time/Time.h>
+#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/log/Log.h>
+#include<ctime>
+#include<cmath>
+#include<cstring>
+
+// 引入ECS相关头文件
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/components/GeometryData.h>
+#include<hgl/ecs/systems/tick/TransformSystem.h>
+
+using namespace hgl;
+using namespace hgl::graph;
+using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateClockGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V2F},
+        };
+        return gvf;
+    }
+}
+
+constexpr uint32_t VERTEX_COUNT = 3;
+
+// 三角形顶点数据（基底在原点，尖端指向上方，占满窗口大小）
+constexpr float position_data[VERTEX_COUNT * 2] =
+{
+    -0.05, 0.0,
+     0.05, 0.0,
+     0.0,  0.85
+};
+
+// 刻度数量
+constexpr uint TICK_COUNT = 12;
+
+// 刻度的半径位置（距离中心的距离）
+constexpr float TICK_RADIUS = 0.75f;
+
+//#define USE_MATERIAL_FILE   true        //是否使用材质文件
+
+class ClockApp : public WorkObject
+{
+private:
+
+    // ECS组件
+    ECSContext* ecs_world = nullptr;
+
+    // 传统渲染资源
+    Geometry* geometry = nullptr;
+    graph::mtl::MaterialRecipe clock_recipe{};
+    PrimitiveAsset clock_asset{};
+    using MaterialDataAccessor =
+        graph::GlobalSSBODataAccessor;
+
+    MaterialDataAccessor tick_data_ssbo_accessor{};
+    MaterialDataAccessor hand_data_ssbo_accessors[3]{};
+
+    // 刻度数据
+    struct TickData
+    {
+        Entity* entity;
+    };
+
+    TickData ticks[TICK_COUNT];
+
+    // 指针数据
+    struct HandData
+    {
+        Entity* entity;
+        hgl::ecs::TransformAccessor transform;
+        float length_scale;  // 指针长度倍数
+    };
+
+    enum HandType { Hour, Minute, Second };
+    HandData hands[3];  // 0=hour, 1=minute, 2=second
+
+private:
+    bool InitMaterial()
+    {
+        if (!geometry
+         || !tick_data_ssbo_accessor)
+            return false;
+
+        clock_recipe.recipe_name = "Clock.PureColor";
+        clock_recipe.mtl_def_id = "builtin/pure_color";
+        clock_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
+        clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
+        if (!(clock_recipe.material_ssbo_binding = tick_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+            return false;
+        clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
+
+        return true;
+    }
+
+    bool InitGeometry()
+    {
+        auto* device = GetDevice();
+        auto* buffer_manager = GetManager<BufferManager>();
+        auto* geometry_manager = GetManager<GeometryManager>();
+        if (!device || !buffer_manager || !geometry_manager)
+            return false;
+
+        GeometryCreater pc(device, CreateClockGeometryVertexFormat(), buffer_manager);
+        pc.Init("TriangleForClock", VERTEX_COUNT);   // 非索引几何：无 IBO（gl_VertexIndex 直通）
+        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
+            return false;
+
+        geometry = pc.Create();
+
+        if (!geometry)
+        {
+            GLogError(u8"[ClockApp::InitGeometry] Failed to create geometry!");
+            return false;
+        }
+
+        GLogInfo(u8"[ClockApp::InitGeometry] Created geometry");
+
+        geometry_manager->Add(geometry);
+
+        return true;
+    }
+
+    bool InitMISSBO()
+    {
+        if (!ecs_world)
+            ecs_world = GetECSContext();
+        if (!ecs_world)
+            return false;
+
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
+        if (!domain_manager)
+            return false;
+
+        tick_data_ssbo_accessor =
+            domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
+        if (!tick_data_ssbo_accessor)
+            return false;
+
+        graph::ssbo::EmissiveSurfaceRow tick_material_data{};
+        tick_material_data.color = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
+        if (!tick_data_ssbo_accessor.Write(tick_material_data))
+            return false;
+
+        Color4f hand_colors[3] = {
+            Color4f(1.0f, 0.0f, 0.0f, 1.0f),
+            Color4f(0.0f, 1.0f, 0.0f, 1.0f),
+            Color4f(0.0f, 0.0f, 1.0f, 1.0f)
+        };
+        for (uint i = 0; i < 3; ++i)
+        {
+            hand_data_ssbo_accessors[i] =
+                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
+            if (!hand_data_ssbo_accessors[i])
+                return false;
+
+            graph::ssbo::EmissiveSurfaceRow hand_material_data{};
+            hand_material_data.color = hand_colors[i];
+            if (!hand_data_ssbo_accessors[i].Write(hand_material_data))
+                return false;
+        }
+
+        return true;
+    }
+
+    bool InitECS()
+    {
+        // === 获取ECS世界 ===
+        ecs_world = GetECSContext();
+        if (!ecs_world)
+        {
+            GLogError(u8"[ClockApp::InitECS] Failed to get ECS context!");
+            return false;
+        }
+
+        GLogInfo(u8"[ClockApp::InitECS] Got ECS context");
+
+        // === 创建12个刻度（Static Transform） ===
+        for (uint i = 0; i < TICK_COUNT; i++)
+        {
+            // 创建刻度实体
+            ticks[i].entity = ecs_world->CreateEntity<Entity>((AnsiString("ClockTick_") + AnsiString::numberOf((uint)i)).c_str());
+
+            // 添加变换 - 静态变换
+            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(ticks[i].entity->GetEntityID(), Mobility::Static));
+
+            // 计算刻度角度（360 / 12 = 30度）
+            float tick_angle = deg2rad(30.0f * i);
+
+            // 计算刻度在圆周上的位置
+            float x = TICK_RADIUS * sin(tick_angle);
+            float y = TICK_RADIUS * cos(tick_angle);
+
+            // 让刻度指向圆心（局部+Y指向圆心方向，取反角度）
+            float to_center_angle = -std::atan2(-x, -y);
+            glm::quat rotation = glm::angleAxis(to_center_angle, glm::vec3(0.0f, 0.0f, 1.0f));
+
+            transform.SetLocalPosition(glm::vec3(x, y, 0.0f));
+            transform.SetLocalRotation(rotation);
+            transform.SetLocalScale(glm::vec3(0.8f, 0.15f, 1.0f));  // 缩小刻度尺寸
+
+            // 关键：设置为静态对象，不需要每帧更新
+            transform.SetMobility(Mobility::Static);
+
+            // 建几何资产组件 GeometryData
+            auto primitive_comp = ticks[i].entity->GetContext()->GetOrCreateGeometryData(ticks[i].entity->GetEntityID());
+            hgl::ecs::MaterialData *material_data_comp = ticks[i].entity->GetContext()->GetOrCreateMaterialData(ticks[i].entity->GetEntityID());
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource tick_struct{};
+            tick_struct = tick_data_ssbo_accessor.GetGlobalSSBOBinding();
+            material_data_comp->SetDataResource(tick_struct);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+
+            GLogInfo(u8"[ClockApp::InitECS] Created static tick at angle %f degrees", 30.0f * i);
+        }
+
+        // === 创建3个指针（Movable Transform） ===
+        // 指针长度倍数：时针最短，分针中等，秒针最长
+        float hand_scales[3] = { 0.5f, 0.7f, 0.9f };
+        const char* hand_names[3] = { "HourHand", "MinuteHand", "SecondHand" };
+
+        for (uint i = 0; i < 3; i++)
+        {
+            // 创建指针实体
+            hands[i].entity = ecs_world->CreateEntity<Entity>(hand_names[i]);
+
+            // 添加变换 - 动态变换
+            hands[i].transform = ecs_world->GetTransform(ecs_world->CreateTransform(hands[i].entity->GetEntityID(), Mobility::Movable));
+
+            hands[i].transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            hands[i].transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));  // 单位四元数
+            hands[i].transform.SetLocalScale(glm::vec3(hand_scales[i], hand_scales[i], 1.0f));
+
+            // 关键：设置为可移动对象，每帧更新
+            hands[i].transform.SetMobility(Mobility::Movable);
+
+            hands[i].length_scale = hand_scales[i];
+
+            // 建几何资产组件 GeometryData
+            auto primitive_comp = hands[i].entity->GetContext()->GetOrCreateGeometryData(hands[i].entity->GetEntityID());
+            hgl::ecs::MaterialData *material_data_comp = hands[i].entity->GetContext()->GetOrCreateMaterialData(hands[i].entity->GetEntityID());
+            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource hand_struct{};
+            hand_struct = hand_data_ssbo_accessors[i].GetGlobalSSBOBinding();
+            material_data_comp->SetDataResource(hand_struct);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+
+            GLogInfo(u8"[ClockApp::InitECS] Created movable hand [%u] (%s)", i, hand_names[i]);
+        }
+
+        GLogInfo(u8"[ClockApp::InitECS] === ECS Setup Complete ===");
+        GLogInfo(u8"[ClockApp::InitECS] Created %u static ticks (offline baked)", (uint)TICK_COUNT);
+        GLogInfo(u8"[ClockApp::InitECS] Created 3 movable hands (updated every frame)");
+
+        return true;
+    }
+
+public:
+    bool Init() override
+    {
+        SetClearColor(Color4f(0.1f, 0.1f, 0.1f, 1.0f));
+
+        GLogInfo(u8"[ClockApp::Init] === Initializing Clock Application ===");
+
+        if (!InitGeometry())
+        {
+        GLogError(u8"[ClockApp::Init] InitGeometry failed!");
+            return false;
+        }
+
+        if (!InitMISSBO())
+        {
+        GLogError(u8"[ClockApp::Init] InitMISSBO failed!");
+            return false;
+        }
+
+        if (!InitMaterial())
+        {
+        GLogError(u8"[ClockApp::Init] InitMaterial failed!");
+            return false;
+        }
+
+        if (!InitECS())
+        {
+        GLogError(u8"[ClockApp::Init] InitECS failed!");
+            return false;
+        }
+
+        GLogInfo(u8"[ClockApp::Init] === Initialization Complete ===");
+
+        return true;
+    }
+
+    void Tick(double delta_time) override
+    {
+        // === 获取当前时间 ===
+        time_t now = time(nullptr);
+        struct tm* time_info = localtime(&now);
+
+        int hour   = time_info->tm_hour % 12;
+        int minute = time_info->tm_min;
+        int second = time_info->tm_sec;
+
+        // === 更新指针的旋转角度 ===
+
+        // 时针：12小时 = 360度，每小时30度 + 分钟贡献（正值，但需要上下颠倒）
+        float hour_angle = deg2rad((hour * 30.0f) + (minute * 0.5f)) + glm::pi<float>();
+        glm::quat hour_rotation = glm::angleAxis(hour_angle, glm::vec3(0.0f, 0.0f, 1.0f));
+        hands[Hour].transform.SetLocalRotation(hour_rotation);
+
+        // 分针：60分钟 = 360度，每分钟6度 + 秒钟贡献（正值，但需要上下颠倒）
+        float minute_angle = deg2rad((minute * 6.0f) + (second * 0.1f)) + glm::pi<float>();
+        glm::quat minute_rotation = glm::angleAxis(minute_angle, glm::vec3(0.0f, 0.0f, 1.0f));
+        hands[Minute].transform.SetLocalRotation(minute_rotation);
+
+        // 秒针：60秒 = 360度，每秒6度（无毫秒平滑）
+        float second_angle = deg2rad(second * 6.0f);
+        glm::quat second_rotation = glm::angleAxis(second_angle, glm::vec3(0.0f, 0.0f, 1.0f));
+        hands[Second].transform.SetLocalRotation(second_rotation);
+
+        // === 标记指针为脏，等待系统更新 ===
+        for (uint i = 0; i < 3; i++)
+        {
+            hands[i].transform.MarkDirty();
+        }
+
+        // === 让TransformSystem更新所有movable transform ===
+        if (auto transform_system = ecs_world->GetSystem<TransformSystem>())
+        {
+            transform_system->Update(delta_time);
+        }
+
+        WorkObject::Tick(delta_time);
+    }
+
+    ~ClockApp()
+    {
+    }
+};//class ClockApp:public WorkObject
+
+int os_main(int argc, os_char** argv)
+{
+    return RunFramework<ClockApp>(OS_TEXT("Clock (Static and Movable Transform Separation)"), argc, argv, 1024, 1024);
+}

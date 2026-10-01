@@ -72,7 +72,7 @@ namespace
     void OnHighUploadFinished(TextureUploadTask *task, void *user_data);
 }
 
-class TestApp : public WorkObject
+class AsyncTextureUploadApp : public WorkObject
 {
 public:
     void OnHighTextureReady(Texture *tex)
@@ -369,7 +369,7 @@ namespace
 
         if (user_data)
         {
-            TestApp *app = static_cast<TestApp *>(user_data);
+            AsyncTextureUploadApp *app = static_cast<AsyncTextureUploadApp *>(user_data);
             app->OnHighTextureReady(task->target_texture);
         }
     }
@@ -377,5 +377,5 @@ namespace
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Async Texture Upload Test"), argc, argv, 512, 512);
+    return RunFramework<AsyncTextureUploadApp>(OS_TEXT("Async Texture Upload Test"), argc, argv, 512, 512);
 }

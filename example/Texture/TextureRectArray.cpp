@@ -69,7 +69,7 @@ constexpr float tex_coord_data[12]=
     1,1
 };
 
-class TestApp:public WorkObject
+class TextureRectArrayApp:public WorkObject
 {
 private:
 
@@ -192,7 +192,7 @@ private:
     }
 
 public:
-    TestApp() = default;
+    TextureRectArrayApp() = default;
     bool Init() override
     {
         if(!InitTexture())
@@ -209,9 +209,9 @@ public:
 
         return(true);
     }
-};//class TestApp:public WorkObject
+};//class TextureRectArrayApp:public WorkObject
 
 int os_main(int argc,os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Draw many rectangle with texture"),argc,argv,256*TexCount,256);
+    return RunFramework<TextureRectArrayApp>(OS_TEXT("Draw many rectangle with texture"),argc,argv,256*TexCount,256);
 }

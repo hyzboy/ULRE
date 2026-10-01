@@ -1,0 +1,324 @@
+﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/LinesComponent.h>
+#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/support/line/LineRenderPipeline.h>
+#include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/color/Color.h>
+#include<hgl/math/Random.h>
+#include<cmath>
+#include<algorithm>
+#include<memory>
+#include<vector>
+
+using namespace hgl;
+using namespace hgl::graph;
+using namespace hgl::ecs;
+
+// CN: 随机调色板索引，范围 = COLOR 枚举全部颜色
+// EN: Random palette index, range = full COLOR enum
+static uint8_t RandomPaletteIndex(uint8_t color_offset = 0)
+{
+    const int color_range = int(hgl::COLOR::RANGE_SIZE);
+    return uint8_t((color_offset + hgl::math::RandomInt(0, color_range - 1)) % color_range);
+}
+
+class LineRenderApp:public WorkObject
+{
+    struct AnimatedLineGroup
+    {
+        hgl::ecs::TransformAccessor transform;
+        glm::vec3 base_position{0.0f, 0.0f, 0.0f};
+        glm::vec3 base_scale{1.0f, 1.0f, 1.0f};
+        float rotate_speed = 0.0f;
+        float pulse_speed = 0.0f;
+        float phase = 0.0f;
+        float orbit_radius = 0.0f;
+    };
+
+    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::Entity *camera_entity = nullptr;
+    hgl::ecs::Entity *lines_entity = nullptr;
+    std::vector<AnimatedLineGroup> animated_groups;
+    float animation_time = 0.0f;
+    uint32_t animation_tick = 0;
+
+public:
+
+    using WorkObject::WorkObject;
+
+    ~LineRenderApp() override
+    {
+    }
+
+    bool Init() override
+    {
+        auto *ecs = GetECSContext();
+        if (!ecs)
+            return false;
+
+        ecs_world = ecs;
+
+        // CN: 创建存储线条的 Entity
+        // EN: Create entity to hold lines
+        lines_entity = ecs->CreateEntity<Entity>("DebugLines");
+        if (!lines_entity)
+        {
+            LogError("LineRenderApp::Init: Failed to create lines entity\n");
+            return false;
+        }
+
+        // CN: 添加 LinesComponent
+        // EN: Add LinesComponent
+        auto lines_comp = lines_entity->AddComponent<LinesComponent>();
+        if (!lines_comp)
+        {
+            LogError("LineRenderApp::Init: Failed to add LinesComponent\n");
+            return false;
+        }
+
+        // CN: 构造花哨线条图案（玫瑰曲线 + 辐条 + 连接线）
+        // EN: Build fancy line patterns (rose curve + spokes + links)
+        auto build_flower_pattern = [](LinesComponent *comp,
+                                       float radius,
+                                       float z,
+                                       uint8_t color_offset,
+                                       int petals,
+                                       int segments)
+        {
+            if(!comp || petals <= 0 || segments < 8)
+                return;
+
+            const float pi = 3.14159265358979323846f;
+
+            math::Vector3f prev_pos;
+            bool has_prev = false;
+
+            for(int i = 0; i <= segments; ++i)
+            {
+                float t = (2.0f * pi) * (float(i) / float(segments));
+                float rose = std::cos(float(petals) * t) * radius;
+
+                math::Vector3f pos(std::cos(t) * rose,
+                                   std::sin(t) * rose,
+                                   z);
+
+                if(has_prev)
+                    comp->AddLine(prev_pos, pos, RandomPaletteIndex(color_offset));
+
+                prev_pos = pos;
+                has_prev = true;
+            }
+
+            const int spokes = petals * 4;
+            for(int i = 0; i < spokes; ++i)
+            {
+                float t = (2.0f * pi) * (float(i) / float(spokes));
+                math::Vector3f from(0.0f, 0.0f, z);
+                math::Vector3f to(std::cos(t) * radius,
+                                  std::sin(t) * radius,
+                                  z);
+                comp->AddLine(from, to, RandomPaletteIndex(color_offset));
+            }
+        };
+
+        auto create_fancy_group = [&](const std::string &name,
+                                      uint8_t width,
+                                      bool with_transform,
+                                      const glm::vec3 &position,
+                                      const glm::quat &rotation,
+                                      const glm::vec3 &scale,
+                                      float radius,
+                                      float z,
+                                      uint8_t color_offset,
+                                      int petals)
+        {
+            auto entity = ecs->CreateEntity<Entity>(name);
+            if(!entity)
+                return hgl::ecs::TransformAccessor{};
+
+            hgl::ecs::TransformAccessor transform_ptr;
+
+            if(with_transform)
+            {
+                auto tc = ecs->GetTransform(ecs->CreateTransform(entity->GetEntityID(), Mobility::Movable));
+                if(tc.IsValid())
+                {
+                    tc.SetLocalPosition(position);
+                    tc.SetLocalRotation(rotation);
+                    tc.SetLocalScale(scale);
+                    transform_ptr = tc;
+                }
+            }
+
+            auto comp = entity->AddComponent<LinesComponent>();
+            if(!comp)
+                return transform_ptr;
+
+            comp->SetWidth(width);
+
+            build_flower_pattern(comp.get(), radius, z, color_offset, petals, 320);
+            build_flower_pattern(comp.get(), radius * 0.45f, z + 0.08f, RandomPaletteIndex(color_offset), petals + 2, 240);
+
+            const float pi = 3.14159265358979323846f;
+            for(int i = 0; i < 20; ++i)
+            {
+                float t0 = (2.0f * pi) * (float(i) / 20.0f);
+                float t1 = t0 + pi / 2.0f;
+
+                math::Vector3f a(std::cos(t0) * radius * 0.75f,
+                                 std::sin(t0) * radius * 0.75f,
+                                 z - 0.12f);
+
+                math::Vector3f b(std::cos(t1) * radius * 0.75f,
+                                 std::sin(t1) * radius * 0.75f,
+                                 z + 0.12f);
+
+                comp->AddLine(a, b, RandomPaletteIndex(color_offset));
+            }
+
+            return transform_ptr;
+        };
+
+        lines_comp->SetWidth(1);
+        build_flower_pattern(lines_comp.get(), 1.8f, -0.2f, 0, 5, 280);
+
+        // CN: 无 Transform（走 L2W[0] Identity）
+        // EN: No Transform (uses L2W[0] identity)
+        create_fancy_group("Fancy_NoTransform_Width2", 2, false,
+                           glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f),
+                           1.6f, -1.4f, 1, 6);
+
+        // CN: 有 Transform（走对应 L2W 索引），可明显看到整体平移/旋转/缩放
+        // EN: With Transform (uses resolved L2W index), visibly translated/rotated/scaled
+        auto transform_group_a = create_fancy_group("Fancy_WithTransform_Width4", 4, true,
+                           glm::vec3(4.0f, 1.5f, 0.0f), glm::quat(0.9238795f, 0.0f, 0.0f, 0.3826834f), glm::vec3(1.35f, 1.35f, 1.0f),
+                           1.6f, -1.4f, 3, 6);
+
+        auto transform_group_b = create_fancy_group("Fancy_WithTransform_Width8", 8, true,
+                           glm::vec3(-4.2f, -1.4f, 0.0f), glm::quat(0.8660254f, 0.0f, 0.0f, -0.5f), glm::vec3(0.85f, 1.6f, 1.0f),
+                           1.5f, 1.3f, 5, 7);
+
+        if(transform_group_a.IsValid())
+        {
+            animated_groups.push_back(AnimatedLineGroup{
+                transform_group_a,
+                glm::vec3(4.0f, 1.5f, 0.0f),
+                glm::vec3(1.35f, 1.35f, 1.0f),
+                1.2f,
+                2.1f,
+                0.0f,
+                0.55f
+            });
+        }
+
+        if(transform_group_b.IsValid())
+        {
+            animated_groups.push_back(AnimatedLineGroup{
+                transform_group_b,
+                glm::vec3(-4.2f, -1.4f, 0.0f),
+                glm::vec3(0.85f, 1.6f, 1.0f),
+                -0.9f,
+                1.7f,
+                1.4f,
+                0.8f
+            });
+        }
+
+        // CN: 设置相机
+        // EN: Setup camera
+        if (ecs_world)
+        {
+            auto camera_system = ecs_world->EnsureCameraSystem();
+
+            camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+            auto camera = camera_entity->AddComponent<CameraComponent>();
+
+            camera->control_mode = CameraComponent::ControlMode::ViewModel;
+            camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+            camera->distance = 16.0f;
+            camera->yaw = 45.0f;
+            camera->pitch = -20.0f;
+            camera->is_main_camera = true;
+            camera->matrix_dirty = true;
+        }
+
+        return true;
+    }
+
+    void Tick(double delta_time) override
+    {
+        const float raw_dt = static_cast<float>(delta_time);
+        float dt = raw_dt;
+
+        if (!std::isfinite(dt) || dt <= 0.0f)
+        {
+            dt = 1.0f / 60.0f;
+        }
+        else
+        {
+            // Keep demo animation visually stable:
+            // - clamp huge first-frame spikes
+            // - avoid near-zero dt causing imperceptible motion
+            dt = std::clamp(dt, 1.0f / 240.0f, 1.0f / 20.0f);
+        }
+
+        animation_time += dt;
+
+        for(auto &group : animated_groups)
+        {
+            if(!group.transform.IsValid())
+                continue;
+
+            const float t = animation_time + group.phase;
+            const float angle = t * group.rotate_speed;
+            const glm::quat rot_z = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
+            group.transform.SetLocalRotation(rot_z);
+
+            const float pulse = 1.0f + 0.25f * std::sin(t * group.pulse_speed);
+            group.transform.SetLocalScale(glm::vec3(group.base_scale.x * pulse,
+                                                     group.base_scale.y * (1.0f + 0.18f * std::cos(t * group.pulse_speed * 0.7f)),
+                                                     group.base_scale.z));
+
+            const glm::vec3 pos = group.base_position + glm::vec3(std::cos(t * 0.8f) * group.orbit_radius,
+                                                                   std::sin(t * 1.1f) * group.orbit_radius * 0.6f,
+                                                                   0.0f);
+            group.transform.SetLocalPosition(pos);
+        }
+
+        ++animation_tick;
+        if ((animation_tick % 60u) == 1u)
+        {
+            if (!animated_groups.empty() && animated_groups.front().transform.IsValid())
+            {
+                const glm::vec3 p = animated_groups.front().transform.GetLocalPosition();
+            LogInfo("[LineRender] Tick: raw_dt=%.6f used_dt=%.6f anim_time=%.3f group0_local_pos=(%.3f, %.3f, %.3f)",
+                raw_dt,
+                        dt,
+                        animation_time,
+                        p.x,
+                        p.y,
+                        p.z);
+            }
+            else
+            {
+            LogInfo("[LineRender] Tick: raw_dt=%.6f used_dt=%.6f anim_time=%.3f groups=%u",
+                raw_dt,
+                        dt,
+                        animation_time,
+                        static_cast<uint32_t>(animated_groups.size()));
+            }
+        }
+
+        WorkObject::Tick(delta_time);
+    }
+};
+
+int os_main(int argc,os_char **argv)
+{
+    return RunFramework<LineRenderApp>(OS_TEXT("Line Render"),argc,argv,1280,720);
+}
+

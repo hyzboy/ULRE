@@ -1,638 +1,416 @@
-﻿#include<hgl/io/FileInputStream.h>
-#include<hgl/type/String.h>
-#include<hgl/type/Smart.h>
-#include<hgl/type/ValueArray.h>
-#include<hgl/log/Log.h>
-#include<hgl/math/Sum.h>
-#include<hgl/graph/geo/VKGeometry.h>
-#include<hgl/vk/VKPrimitiveType.h>
-#include<hgl/math/geometry/BoundingVolumes.h>
-#include<hgl/graph/geo/VKGeometryData.h>
+#include<hgl/framework/WorkManager.h>
+#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/vk/VKDevice.h>
-#include<hgl/vk/buffer/DeviceBuffer.h>
-#include<hgl/io/MiniPack.h>
-#include<hgl/io/MemoryInputStream.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/color/Color.h>
+#include<cstring>
+#include<hgl/math/geometry/AABB.h>
+#include<hgl/type/StdString.h>
 
-DEFINE_LOGGER_MODULE(LoadGeometry)
+// ECS headers
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/components/GeometryData.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 
-namespace hgl::graph{
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
+#include<glm/gtx/quaternion.hpp>
+
+#include<memory>
+#include<string>
+#include<vector>
+
+using namespace hgl;
+using namespace hgl::graph;
+
 namespace
 {
-#pragma pack(push,1)
-    struct GeometryHeader
+    GeometryVertexFormat CreateStandardGeometryVertexFormat(VkFormat normal_format = VF_V2UN8)
     {
-        uint16_t version;        // 1
-        uint8_t  primitiveType;  // PrimitiveType as uint8_t
-        uint32_t vertexCount;    // Number of vertices
-        uint8_t  indexStride;    // 0 if no indices, otherwise 1,2,4
-        uint32_t indexCount;     // Number of indices (0 if no indices)
-        uint8_t  attributeCount; // Number of attributes
-        uint8_t  texCoordCount;  // Number of TEXCOORD sets (attributes with names starting with "TEXCOORD")
-    };
-#pragma pack(pop)
-
-    struct FileAttribute
-    {
-        char name[VERTEX_ATTRIB_NAME_MAX_LENGTH];
-        VkFormat format;
-        int32 entry_index;
-        uint32 entry_size;
-        VertexSemantic semantic;
-
-        bool operator==(const FileAttribute &rhs) const
-        {
-            return entry_index == rhs.entry_index && format == rhs.format && semantic == rhs.semantic;
-        }
-    };
-
-    static VertexSemantic ParseSemanticFromName(const char *name)
-    {
-        if(!name || !*name)
-            return VertexSemantic::Unknown;
-
-        if(hgl::stricmp(name, "POSITION") == 0)
-            return VertexSemantic::Position;
-        if(hgl::stricmp(name, "NORMAL") == 0)
-            return VertexSemantic::Normal;
-        if(hgl::stricmp(name, "TANGENT") == 0)
-            return VertexSemantic::Tangent;
-        if(hgl::stricmp(name, "BITANGENT") == 0)
-            return VertexSemantic::Bitangent;
-        if(hgl::stricmp(name, "COLOR", 5) == 0)
-            return VertexSemantic::Color;
-        if(hgl::stricmp(name, "TEXCOORD", 8) == 0)
-            return VertexSemantic::TexCoord;
-
-        return VertexSemantic::Unknown;
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2HF},   // UV RG16F（half×2——4B/顶点）
+            {VertexSemantic::Normal,   normal_format}, // 默认 VF_V2UN8，支持 VF_V2HF
+        };
+        return gvf;
     }
 
-    // Read and validate GeometryHeader from MiniPack
-    bool ReadGeometryHeader(hgl::io::minipack::MiniPackReader *mpr, GeometryHeader &header, const OSString &filename)
+    GeometryVertexFormat CreatePureColorGeometryVertexFormat()
     {
-        const int32 header_index = mpr->FindFile(AnsiStringView("GeometryHeader"));
-        if(header_index < 0)
-        {
-            MLogError(LoadGeometry,OS_TEXT("GeometryHeader not found in file ") + filename);
-            return false;
-        }
-
-        if(mpr->GetFileLength(header_index) != sizeof(GeometryHeader))
-        {
-            MLogError(LoadGeometry,OS_TEXT("GeometryHeader size mismatch in file ") + filename);
-            return false;
-        }
-
-        if(mpr->ReadFile(header_index, &header, 0, sizeof(header)) != sizeof(header))
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot read GeometryHeader from file ") + filename);
-            return false;
-        }
-
-        if(header.version!=1)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Unsupported version in file ") + filename);
-            return false;
-        }
-
-        if(header.primitiveType>static_cast<uint8_t>(PrimitiveType::Fan))
-        {
-            MLogError(LoadGeometry,OS_TEXT("Unsupported primitive type ")+OSString::numberOf(header.primitiveType)+OS_TEXT(" in file ") + filename);
-            return false;
-        }
-
-        return true;
-    }
-
-    // Read and convert BoundingVolumes from MiniPack
-    bool ReadBoundingVolumes(hgl::io::minipack::MiniPackReader *mpr, ::hgl::math::BoundingVolumes &bounds, const OSString &filename)
-    {
-        const int32 bounds_index = mpr->FindFile(AnsiStringView("BoundingVolumes"));
-        if(bounds_index < 0)
-        {
-            MLogError(LoadGeometry,OS_TEXT("BoundingVolumes not found in file ") + filename);
-            return false;
-        }
-
-        if(mpr->GetFileLength(bounds_index) != sizeof(::hgl::math::BoundingVolumesData))
-        {
-            MLogError(LoadGeometry,OS_TEXT("BoundingVolumes size mismatch in file ") + filename);
-            return false;
-        }
-
-        math::BoundingVolumesData pb{};
-        if(mpr->ReadFile(bounds_index, &pb, 0, sizeof(math::BoundingVolumesData)) != sizeof(math::BoundingVolumesData))
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot read BoundingVolumes from file ") + filename);
-            return false;
-        }
-
-        pb.To(&bounds);
-        return true;
-    }
-
-    // Parse AttributeMeta block and extract attribute metadata
-    bool ParseAttributeMeta(hgl::io::minipack::MiniPackReader *mpr,
-                            const GeometryHeader &header,
-                            const OSString &filename,
-                            ValueArray<FileAttribute> &file_attributes)
-    {
-        file_attributes.Resize(0);
-        if(header.attributeCount == 0)
-            return true;
-
-        const int32 attrmeta_index = mpr->FindFile(AnsiStringView("AttributeMeta"));
-        if(attrmeta_index < 0)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta not found in file ") + filename);
-            return false;
-        }
-
-        const uint32 attrmeta_size = mpr->GetFileLength(attrmeta_index);
-        if(attrmeta_size < header.attributeCount*2)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta too small in file ") + filename);
-            return false;
-        }
-
-        AutoDeleteArray<uint8_t> attrmeta(attrmeta_size);
-        if(mpr->ReadFile(attrmeta_index, attrmeta.data(), 0, attrmeta_size) != attrmeta_size)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot read AttributeMeta from file ") + filename);
-            return false;
-        }
-
-        const uint8_t *meta = attrmeta.data();
-        const uint8_t *meta_end = meta + attrmeta_size;
-
-        // formats
-        if(static_cast<size_t>(meta_end - meta) < header.attributeCount)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta missing formats in file ") + filename);
-            return false;
-        }
-        const uint8_t *attribute_format = meta;
-        meta += header.attributeCount;
-
-        // name lengths
-        if(static_cast<size_t>(meta_end - meta) < header.attributeCount)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta missing name lengths in file ") + filename);
-            return false;
-        }
-        const uint8_t *attribute_name_length = meta;
-        meta += header.attributeCount;
-
-        // names block
-        uint total_name_length = 0;
-        math::sum(&total_name_length, attribute_name_length, header.attributeCount);
-        total_name_length += header.attributeCount; // trailing zeros
-
-        if(static_cast<size_t>(meta_end - meta) < total_name_length)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta names section too small in file ") + filename);
-            return false;
-        }
-        const char *name_ptr = reinterpret_cast<const char *>(meta);
-
-        for(uint8_t i = 0; i < header.attributeCount; ++i)
-        {
-            FileAttribute attr{};
-            attr.format = static_cast<VkFormat>(attribute_format[i]);
-
-            const uint8_t name_len = attribute_name_length[i];
-            const uint8_t copy_len = name_len < (VERTEX_ATTRIB_NAME_MAX_LENGTH - 1) ? name_len : (VERTEX_ATTRIB_NAME_MAX_LENGTH - 1);
-            memcpy(attr.name, name_ptr, copy_len);
-            attr.name[copy_len] = '\0';
-
-            attr.semantic = ParseSemanticFromName(attr.name);
-            attr.entry_index = mpr->FindFile(AnsiStringView(attr.name, name_len));
-            if(attr.entry_index >= 0)
-                attr.entry_size = mpr->GetFileLength(attr.entry_index);
-
-            file_attributes.Add(attr);
-            name_ptr += name_len + 1;
-        }
-
-        return true;
-    }
-
-    // Read attributes/VBOs by semantic mapping, with automatic format fallback conversion
-    bool ReadAttributesVBO(hgl::io::minipack::MiniPackReader *mpr,
-                           GeometryData *geo_data,
-                           const GeometryVertexFormat &geometry_vertex_format,
-                           const GeometryHeader &header,
-                           const ValueArray<FileAttribute> &file_attributes,
-                           const OSString &filename)
-    {
-        const uint32_t gvf_attr_count = geometry_vertex_format.GetCount();
-        if(gvf_attr_count == 0)
-        {
-            MLogError(LoadGeometry,OS_TEXT("GeometryVertexFormat has no attributes for file ") + filename);
-            return false;
-        }
-
-        for(uint32_t vab_index = 0; vab_index < gvf_attr_count; ++vab_index)
-        {
-            const GeometryVertexAttributeFormat *geometry_attribute = geometry_vertex_format.Get(vab_index);
-            if(!geometry_attribute)
-            {
-                MLogError(LoadGeometry,OS_TEXT("Invalid GeometryVertexFormat attribute index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
-                return false;
-            }
-
-            // Find matching file attribute by semantic
-            const FileAttribute *src_attr = nullptr;
-            for(int i = 0; i < file_attributes.GetCount(); ++i)
-            {
-                if(file_attributes[i].semantic == geometry_attribute->semantic)
-                {
-                    src_attr = &file_attributes[i];
-                    break;
-                }
-            }
-
-            if(!src_attr || src_attr->entry_index < 0)
-            {
-                MLogError(LoadGeometry,OS_TEXT("Required vertex semantic ")
-                    + ToOSString(GetVertexSemanticName(geometry_attribute->semantic))
-                    + OS_TEXT(" not found in file ") + filename);
-                return false;
-            }
-
-            VAB *vab = geo_data->GetVAB(vab_index);
-            if(!vab)
-            {
-                MLogError(LoadGeometry,OS_TEXT("Cannot get VAB for attribute index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
-                return false;
-            }
-
-            void *vab_ptr = vab->Map(0, header.vertexCount);
-            if(!vab_ptr)
-            {
-                MLogError(LoadGeometry,OS_TEXT("Cannot map VAB for attribute index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
-                return false;
-            }
-
-            const size_t target_stride = GetStrideByFormat(geometry_attribute->format);
-            const size_t target_size = size_t(header.vertexCount) * target_stride;
-
-            if(geometry_attribute->format == src_attr->format)
-            {
-                // Exact format match: read directly into VAB
-                if(mpr->ReadFile(src_attr->entry_index, vab_ptr, 0, static_cast<uint32>(target_size)) != target_size)
-                {
-                    MLogError(LoadGeometry,OS_TEXT("Cannot read attribute data for ") + ToOSString(src_attr->name) + OS_TEXT(" from file ") + filename);
-                    vab->Unmap();
-                    return false;
-                }
-            }
-            else if(geometry_attribute->semantic == VertexSemantic::Normal)
-            {
-                // Normal conversion: float3 (VK_FORMAT_R32G32B32_SFLOAT) -> V2UN8 (VK_FORMAT_R8G8_UNORM) or V2HF (VK_FORMAT_R16G16_SFLOAT)
-                if(src_attr->format == VK_FORMAT_R32G32B32_SFLOAT)
-                {
-                    const size_t src_size = size_t(header.vertexCount) * sizeof(float) * 3;
-                    AutoDeleteArray<float> src_normals(header.vertexCount * 3);
-                    if(mpr->ReadFile(src_attr->entry_index, src_normals.data(), 0, static_cast<uint32>(src_size)) != src_size)
-                    {
-                        MLogError(LoadGeometry,OS_TEXT("Cannot read source float3 normals from file ") + filename);
-                        vab->Unmap();
-                        return false;
-                    }
-
-                    if(geometry_attribute->format == VK_FORMAT_R8G8_UNORM)
-                    {
-                        // Octahedral encoding + uint8 quantization (2B/vert)
-                        EncodeNormalsToRG8(src_normals.data(), header.vertexCount, reinterpret_cast<uint8_t*>(vab_ptr));
-                    }
-                    else if(geometry_attribute->format == VK_FORMAT_R16G16_SFLOAT)
-                    {
-                        // Octahedral encoding + half2 conversion (4B/vert)
-                        uint16_t *dst = reinterpret_cast<uint16_t*>(vab_ptr);
-                        for(uint32_t vi = 0; vi < header.vertexCount; ++vi)
-                        {
-                            const float *n = src_normals.data() + vi * 3;
-                            float p, q;
-                            EncodeOctahedralNormal(n[0], n[1], n[2], p, q);
-                            dst[vi * 2 + 0] = FloatToHalf(p);
-                            dst[vi * 2 + 1] = FloatToHalf(q);
-                        }
-                    }
-                    else
-                    {
-                        MLogError(LoadGeometry,OS_TEXT("Unsupported normal target format mismatch at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
-                        vab->Unmap();
-                        return false;
-                    }
-                }
-                else
-                {
-                    MLogError(LoadGeometry,OS_TEXT("Incompatible normal source format at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
-                    vab->Unmap();
-                    return false;
-                }
-            }
-            else if(geometry_attribute->semantic == VertexSemantic::TexCoord)
-            {
-                // UV conversion: float2 (VK_FORMAT_R32G32_SFLOAT) -> V2HF (VK_FORMAT_R16G16_SFLOAT)
-                if(src_attr->format == VK_FORMAT_R32G32_SFLOAT && geometry_attribute->format == VK_FORMAT_R16G16_SFLOAT)
-                {
-                    const size_t src_size = size_t(header.vertexCount) * sizeof(float) * 2;
-                    AutoDeleteArray<float> src_uvs(header.vertexCount * 2);
-                    if(mpr->ReadFile(src_attr->entry_index, src_uvs.data(), 0, static_cast<uint32>(src_size)) != src_size)
-                    {
-                        MLogError(LoadGeometry,OS_TEXT("Cannot read source float2 UVs from file ") + filename);
-                        vab->Unmap();
-                        return false;
-                    }
-
-                    uint16_t *dst = reinterpret_cast<uint16_t*>(vab_ptr);
-                    for(uint32_t vi = 0; vi < header.vertexCount; ++vi)
-                    {
-                        dst[vi * 2 + 0] = FloatToHalf(src_uvs[vi * 2 + 0]);
-                        dst[vi * 2 + 1] = FloatToHalf(src_uvs[vi * 2 + 1]);
-                    }
-                }
-                else
-                {
-                    MLogError(LoadGeometry,OS_TEXT("Incompatible UV source/target format at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
-                    vab->Unmap();
-                    return false;
-                }
-            }
-            else
-            {
-                MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
-                vab->Unmap();
-                return false;
-            }
-
-            vab->Unmap();
-        }
-
-        return true;
-    }
-
-    // Read indices into IBO (uniform uint32 indices)
-    bool ReadIndicesData(hgl::io::minipack::MiniPackReader *mpr,
-                         GeometryData *geo_data,
-                         const GeometryHeader &header,
-                         const OSString &filename)
-    {
-        if(header.indexStride!=1 && header.indexStride!=2 && header.indexStride!=4)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Unsupported index stride ")+OSString::numberOf(header.indexStride)+OS_TEXT(" in file ") + filename);
-            return false;
-        }
-
-        IndexBuffer *ibo=geo_data->InitIBO(header.indexCount,IndexType::U32,"LoadGeometry:IBO");
-        if(!ibo)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot create IBO for file ") + filename);
-            return false;
-        }
-
-        const size_t index_size = static_cast<size_t>(header.indexCount) * header.indexStride;
-
-        const int32 indices_index = mpr->FindFile(AnsiStringView("indices"));
-        if(indices_index < 0)
-        {
-            MLogError(LoadGeometry,OS_TEXT("indices entry not found in file ") + filename);
-            return false;
-        }
-
-        if(mpr->GetFileLength(indices_index) != index_size)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Index data size mismatch in file ") + filename);
-            return false;
-        }
-
-        AutoDeleteArray<uint8_t> raw(index_size);
-        if(mpr->ReadFile(indices_index, raw.data(), 0, static_cast<uint32>(index_size)) != index_size)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot read index data from file ") + filename);
-            return false;
-        }
-
-        // stride 1/2/4 -> uint32 统一展开（引擎废弃 U8/U16 索引）
-        AutoDeleteArray<uint32_t> idx(header.indexCount);
-        if(header.indexStride==4)
-        {
-            memcpy(idx.data(), raw.data(), index_size);
-        }
-        else if(header.indexStride==2)
-        {
-            const uint16_t *src16 = reinterpret_cast<const uint16_t*>(raw.data());
-            for(uint32_t i=0;i<header.indexCount;++i)
-                idx[i] = static_cast<uint32_t>(src16[i]);
-        }
-        else
-        {
-            for(uint32_t i=0;i<header.indexCount;++i)
-                idx[i] = static_cast<uint32_t>(raw[i]);
-        }
-
-        if(!ibo->Write(idx.data(), header.indexCount))
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot write index data for file ") + filename);
-            return false;
-        }
-
-        return true;
-    }
-
-    // Orchestrate reading attributes and indices into GeometryData
-    bool ReadGeometryData(hgl::io::minipack::MiniPackReader *mpr,
-                          GeometryData *geo_data,
-                          const GeometryVertexFormat &geometry_vertex_format,
-                          const GeometryHeader &header,
-                          const OSString &filename)
-    {
-        if(!geo_data)
-        {
-            MLogError(LoadGeometry,OS_TEXT("GeometryData is null for file ") + filename);
-            return false;
-        }
-
-        if(header.attributeCount>0)
-        {
-            ValueArray<FileAttribute> file_attributes;
-            if(!ParseAttributeMeta(mpr, header, filename, file_attributes))
-                return false;
-
-            if(!ReadAttributesVBO(mpr, geo_data, geometry_vertex_format, header, file_attributes, filename))
-                return false;
-        }
-
-        if(header.indexCount>0)
-        {
-            if(!ReadIndicesData(mpr, geo_data, header, filename))
-                return false;
-        }
-
-        return true;
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+        };
+        return gvf;
     }
 }
 
-static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,hgl::io::minipack::MiniPackReader *mpr,const OSString &debug_name)
-{
-    // 1) Read GeometryHeader
-    GeometryHeader header{};
-    if(!ReadGeometryHeader(mpr, header, debug_name))
-        return nullptr;
-
-    // 2) Read BoundingVolumes
-    math::BoundingVolumes bounding_volumes;
-
-    if(!ReadBoundingVolumes(mpr, bounding_volumes, debug_name))
-        return nullptr;
-
-    // 3) Create GeometryData and VABs
-    GeometryData *geo_data=CreateGeometryData(device,geometry_vertex_format,header.vertexCount);
-
-    if(!geo_data)
-    {
-        MLogError(LoadGeometry,OS_TEXT("Cannot create GeometryData for source ") + debug_name);
-        return(nullptr);
-    }
-
-    if(!geo_data->CreateAllVAB())
-    {
-        MLogError(LoadGeometry,OS_TEXT("Cannot create VAB for source ") + debug_name);
-        delete geo_data;
-        return(nullptr);
-    }
-
-    // 4) Read attributes and indices into GeometryData
-    if(!ReadGeometryData(mpr, geo_data, geometry_vertex_format, header, debug_name))
-    {
-        delete geo_data;
-        return nullptr;
-    }
-
-    const U8String geo_name=ToU8String(debug_name);
-
-    Geometry *geometry = new Geometry((char *)geo_name.c_str(),geo_data);
-
-    if(!geometry)
-    {
-        MLogError(LoadGeometry,OS_TEXT("Cannot create Geometry object for source ") + debug_name);
-        delete geo_data;
-        return(nullptr);
-    }
-
-    geometry->SetBoundingVolumes(bounding_volumes);
-
-    // 5) Read Meshlet data if present
-    const int32 meshlets_idx = mpr->FindFile(AnsiStringView("meshlets"));
-    const int32 meshlet_vertices_idx = mpr->FindFile(AnsiStringView("meshlet_vertices"));
-    const int32 meshlet_triangles_idx = mpr->FindFile(AnsiStringView("meshlet_triangles"));
-
-    if (meshlets_idx >= 0 && meshlet_vertices_idx >= 0 && meshlet_triangles_idx >= 0)
-    {
-        const uint32 meshlets_bytes = mpr->GetFileLength(meshlets_idx);
-        const uint32 meshlet_vertices_bytes = mpr->GetFileLength(meshlet_vertices_idx);
-        const uint32 meshlet_triangles_bytes = mpr->GetFileLength(meshlet_triangles_idx);
-
-        if (meshlets_bytes > 0 && (meshlets_bytes % sizeof(MeshletDescriptor) == 0))
-        {
-            const uint32 meshlet_count = meshlets_bytes / static_cast<uint32>(sizeof(MeshletDescriptor));
-
-            AutoDeleteArray<uint8_t> raw_desc(meshlets_bytes);
-            AutoDeleteArray<uint8_t> raw_verts(meshlet_vertices_bytes);
-            AutoDeleteArray<uint8_t> raw_tris(meshlet_triangles_bytes);
-
-            if (mpr->ReadFile(meshlets_idx, raw_desc.data(), 0, meshlets_bytes) == meshlets_bytes
-             && mpr->ReadFile(meshlet_vertices_idx, raw_verts.data(), 0, meshlet_vertices_bytes) == meshlet_vertices_bytes
-             && mpr->ReadFile(meshlet_triangles_idx, raw_tris.data(), 0, meshlet_triangles_bytes) == meshlet_triangles_bytes)
-            {
-                DeviceBuffer *mb = device->CreateSSBO(meshlets_bytes, raw_desc.data());
-                DeviceBuffer *mvb = device->CreateSSBO(meshlet_vertices_bytes, raw_verts.data());
-                DeviceBuffer *mtb = device->CreateSSBO(meshlet_triangles_bytes, raw_tris.data());
-                DeviceBuffer *mbb = nullptr;
-
-                const int32 meshlet_bounds_idx = mpr->FindFile(AnsiStringView("meshlet_bounds"));
-                if (meshlet_bounds_idx >= 0)
-                {
-                    const uint32 bounds_bytes = mpr->GetFileLength(meshlet_bounds_idx);
-                    if (bounds_bytes > 0 && bounds_bytes == meshlet_count * sizeof(MeshletBounds))
-                    {
-                        AutoDeleteArray<uint8_t> raw_bounds(bounds_bytes);
-                        if (mpr->ReadFile(meshlet_bounds_idx, raw_bounds.data(), 0, bounds_bytes) == bounds_bytes)
-                        {
-                            mbb = device->CreateSSBO(bounds_bytes, raw_bounds.data());
-                        }
-                    }
-                }
-
-                if (mb && mvb && mtb)
-                {
-                    geometry->SetMeshlets(meshlet_count, mb, mvb, mtb, mbb);
-                    MLogInfo(LoadGeometry, OS_TEXT("Loaded %u meshlets for ") + debug_name);
-                }
-                else
-                {
-                    SAFE_CLEAR(mb);
-                    SAFE_CLEAR(mvb);
-                    SAFE_CLEAR(mtb);
-                    SAFE_CLEAR(mbb);
-                }
-            }
-        }
-    }
-
-    return geometry;
-}
-
-Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,const OSString &filename)
-{
-    using namespace hgl::io::minipack;
-
-    MiniPackReader *mpr = GetMiniPackReader(filename);
-
-    if(!mpr)
-    {
-        MLogError(LoadGeometry,OS_TEXT("Cannot open minipack file ") + filename + OS_TEXT(" for reading."));
-        return(nullptr);
-    }
-
-    Geometry *geometry = LoadGeometryFromReader(device,geometry_vertex_format,mpr,filename);
-
-    delete mpr;
-    return geometry;
-}
-
-Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,const void *bytes,const uint32 size,const OSString &debug_name)
-{
-    using namespace hgl::io;
-    using namespace hgl::io::minipack;
-
-    if(!bytes || size == 0)
-    {
-        MLogError(LoadGeometry,OS_TEXT("LoadGeometryFromMiniPackBytes: empty source for ") + debug_name);
-        return nullptr;
-    }
-
-    MemoryInputStream *mis = new MemoryInputStream;
-    if(!mis->Link(bytes,size))
-    {
-        delete mis;
-        MLogError(LoadGeometry,OS_TEXT("LoadGeometryFromMiniPackBytes: cannot link memory stream for ") + debug_name);
-        return nullptr;
-    }
-
-    MiniPackReader *mpr = GetMiniPackReader(static_cast<InputStream *>(mis));
-    if(!mpr)
-    {
-        delete mis;
-        MLogError(LoadGeometry,OS_TEXT("LoadGeometryFromMiniPackBytes: cannot parse minipack from memory for ") + debug_name);
-        return nullptr;
-    }
-
-    Geometry *geometry = LoadGeometryFromReader(device,geometry_vertex_format,mpr,debug_name);
-
-    delete mpr;
-    return geometry;
-}
+namespace hgl::graph{
+Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,const OSString &filename);
 }//namespace hgl::graph
+
+constexpr const COLOR TestColor[] =
+{
+    COLOR::Red,
+    COLOR::MozillaCharcoal,
+    COLOR::MozillaSand,
+
+    COLOR::BlenderAxisRed,
+    COLOR::BlenderAxisGreen,
+    COLOR::BlenderAxisBlue,
+
+    COLOR::BananaYellow,
+    COLOR::CherryBlossomPink,
+
+    COLOR::SkyBlue,
+};
+
+constexpr const size_t COLOR_COUNT = sizeof(TestColor) / sizeof(COLOR);
+
+class LoadGeometryApp:public WorkObject
+{
+private:
+
+    hgl::ecs::ECSContext *ecs_context = nullptr;
+    hgl::ecs::Entity *camera_entity = nullptr;
+
+    struct MaterialData
+    {
+        using MaterialDataAccessor =
+            graph::GlobalSSBODataAccessor;
+
+        GeometryVertexFormat geometry_vertex_format;
+        MaterialDataAccessor material_data_ssbo_accessors[COLOR_COUNT]{};
+    };
+
+    MaterialData solid;
+    MaterialData wire;
+    graph::mtl::MaterialRecipe solid_recipe{};
+    graph::mtl::MaterialRecipe wire_recipe{};
+
+    struct MeshEntry
+    {
+        Geometry *geometry;
+        PrimitiveAsset asset;
+        uint32_t color_index = 0;
+
+        hgl::ecs::Entity *entity = nullptr;
+        hgl::ecs::TransformAccessor transform;
+        hgl::ecs::GeometryData *primitive_comp = nullptr;
+
+    public:
+
+        ~MeshEntry()
+        {
+            delete geometry;
+        }
+    };
+
+    struct BoundingBoxMesh
+    {
+        hgl::ecs::Entity *entity = nullptr;
+        hgl::ecs::TransformAccessor transform;
+        hgl::ecs::GeometryData *primitive_comp = nullptr;
+    };
+
+    std::vector<std::unique_ptr<MeshEntry>> render_mesh;
+    std::vector<std::unique_ptr<BoundingBoxMesh>> bounding_boxes;
+
+    Geometry *bbox_geometry = nullptr;
+    PrimitiveAsset bbox_asset;
+
+private:
+
+    bool InitMaterialRuntimeData(MaterialData *md,
+                                 const GeometryVertexFormat &gvf)
+    {
+        if (!md)
+            return false;
+
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
+        if (!domain_manager)
+            return false;
+
+        md->geometry_vertex_format = gvf;
+        if (md->geometry_vertex_format.GetCount() == 0)
+            return false;
+
+        const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
+        for (uint32_t i = 0; i < color_count; ++i)
+        {
+            md->material_data_ssbo_accessors[i] =
+                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
+            if (!md->material_data_ssbo_accessors[i])
+                return false;
+
+            graph::ssbo::EmissiveSurfaceRow material_data{};
+            material_data.color = GetColor4f(TestColor[i], 1.0f);
+            if (!md->material_data_ssbo_accessors[i].Write(material_data))
+                return false;
+        }
+
+        return true;
+    }
+
+    void InitMaterialRecipes()
+    {
+        solid_recipe.recipe_name = "LoadGeometry.DebugNormalColor";
+        solid_recipe.mtl_def_id = "DebugNormalColor";
+        solid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+
+        wire_recipe.recipe_name = "LoadGeometry.Wire";
+        wire_recipe.mtl_def_id = "builtin/pure_color";
+        wire_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+    }
+
+    bool InitSolidMDP()
+    {
+        if (!InitMaterialRuntimeData(
+                &solid,
+                CreateStandardGeometryVertexFormat(VF_V2UN8)))
+            return false;
+
+        return (solid_recipe.material_ssbo_binding = solid.material_data_ssbo_accessors[0].GetGlobalSSBOBinding()).IsValid();
+    }
+
+    bool InitWireMDP()
+    {
+        if (!InitMaterialRuntimeData(
+                &wire,
+                CreatePureColorGeometryVertexFormat()))
+            return false;
+
+        return (wire_recipe.material_ssbo_binding = wire.material_data_ssbo_accessors[0].GetGlobalSSBOBinding()).IsValid();
+    }
+
+    bool CreateBoundingBoxMesh()
+    {
+        using namespace inline_geometry;
+
+        auto* device = GetDevice();
+        auto* geometry_manager = GetManager<GeometryManager>();
+        if (!device || !geometry_manager)
+            return false;
+
+        auto pc = std::make_unique<GeometryCreater>(device, CreatePureColorGeometryVertexFormat());
+
+        inline_geometry::BoundingBoxCreateInfo bbci;
+
+        bbox_geometry = CreateBoundingBox(pc.get(),&bbci);
+        if(!bbox_geometry)
+            return false;
+
+        geometry_manager->Add(bbox_geometry);
+        bbox_asset = PrimitiveAsset(bbox_geometry, &wire_recipe, PrimitiveType::Lines);
+        return bbox_asset.IsValid();
+    }
+
+    MeshEntry *CreateMeshEntry(Geometry *geometry,const int color)
+    {
+        if(!geometry)
+            return(nullptr);
+
+        auto rm = std::make_unique<MeshEntry>();
+        rm->geometry = geometry;
+        rm->asset = PrimitiveAsset(geometry, &solid_recipe, PrimitiveType::Triangles);
+        if (!rm->asset.IsValid())
+            return nullptr;
+        rm->color_index = static_cast<uint32_t>(color);
+
+        MeshEntry *result = rm.get();
+        render_mesh.push_back(std::move(rm));
+        return result;
+    }
+
+    bool CreateGeometryMesh()
+    {
+        int count=0;
+        const GeometryVertexFormat &geometry_vertex_format = solid.geometry_vertex_format;
+
+//        for(int i=0;i< COLOR_COUNT;i++)
+        {
+            OSString fn = OSString(OS_TEXT("res/model/vulkan_logo/scene.StaticMesh/scene.geometry"));
+
+            Geometry *geo = LoadGeometry(GetDevice(),geometry_vertex_format,fn);
+
+            if(!geo)
+                return(false);
+
+            MeshEntry *rm=CreateMeshEntry(geo,0);
+
+            if(!rm)
+            {
+                delete geo;
+                return(false);
+            }
+
+            ++count;
+        }
+
+        return(count>0);
+    }
+
+    bool InitBoundingBoxScene()
+    {
+        if(!bbox_asset.IsValid())
+            return false;
+
+        for(size_t i = 0; i < render_mesh.size(); ++i)
+        {
+            auto *rm = render_mesh[i].get();
+            if(!rm || !rm->entity || !rm->primitive_comp)
+                continue;
+
+            hgl::math::AABB local_aabb;
+            if(!rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->GetLocalAABB(local_aabb))
+                continue;
+
+            auto bbox = std::make_unique<BoundingBoxMesh>();
+            bbox->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
+            bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
+            bbox->primitive_comp = bbox->entity->GetContext()->GetOrCreateGeometryData(bbox->entity->GetEntityID());
+            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContext()->GetOrCreateMaterialData(bbox->entity->GetEntityID());
+
+            bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));
+
+            const auto &center = local_aabb.GetCenter();
+            const auto &size = local_aabb.GetLength();
+
+            bbox->transform.SetLocalPosition(glm::vec3(center.x, center.y, center.z));
+            bbox->transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            bbox->transform.SetLocalScale(glm::vec3(size.x, size.y, size.z));
+            bbox->transform.SetMobility(hgl::ecs::Mobility::Static);
+
+            bbox->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource bbox_struct{};
+            bbox_struct =
+                wire.material_data_ssbo_accessors[i % COLOR_COUNT].GetGlobalSSBOBinding();
+            material_data_comp->SetDataResource(bbox_struct);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+
+            bounding_boxes.push_back(std::move(bbox));
+        }
+
+        return true;
+    }
+
+    bool InitScene()
+    {
+        if(!ecs_context)
+            return false;
+
+        const size_t mesh_count = render_mesh.empty() ? 1 : render_mesh.size();
+
+        for(size_t i = 0; i < render_mesh.size(); ++i)
+        {
+            auto *rm = render_mesh[i].get();
+            if(!rm || !rm->asset.IsValid())
+                continue;
+
+            rm->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
+            rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
+            rm->primitive_comp = rm->entity->GetContext()->GetOrCreateGeometryData(rm->entity->GetEntityID());
+            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContext()->GetOrCreateMaterialData(rm->entity->GetEntityID());
+
+            const float angle = glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));
+            const glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
+            const glm::vec3 pos = glm::rotate(rotation, glm::vec3(0.25f, 0.0f, 0.0f));
+
+            rm->transform.SetLocalPosition(pos);
+            rm->transform.SetLocalRotation(rotation);
+            rm->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            rm->transform.SetMobility(hgl::ecs::Mobility::Static);
+
+            rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
+            hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
+            mesh_struct =
+                solid.material_data_ssbo_accessors[rm->color_index].GetGlobalSSBOBinding();
+            material_data_comp->SetDataResource(mesh_struct);
+            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+        }
+
+        return true;
+    }
+
+    bool InitCamera()
+    {
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
+            return false;
+
+        camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+
+        camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance = 8.0f;
+        camera->yaw = 45.0f;
+        camera->pitch = -20.0f;
+        camera->is_main_camera = true;
+        camera->matrix_dirty = true;
+
+        camera->viewport_info = GetViewportInfo();
+
+        return true;
+    }
+
+    bool InitECS()
+    {
+        ecs_context = GetECSContext();
+
+        if(!ecs_context)
+            return false;
+
+        if(!InitScene())
+            return false;
+
+        if(!InitBoundingBoxScene())
+            return false;
+
+        if(!InitCamera())
+            return false;
+
+        return true;
+    }
+
+public:
+    ~LoadGeometryApp()
+    {
+        delete bbox_geometry;
+    }
+
+    bool Init() override
+    {
+        InitMaterialRecipes();
+
+        if(!InitSolidMDP())
+            return(false);
+
+        if(!InitWireMDP())
+            return(false);
+
+        if(!CreateGeometryMesh())
+            return(false);
+
+        if(!CreateBoundingBoxMesh())
+            return(false);
+
+        if(!InitECS())
+            return(false);
+
+        return(true);
+    }
+};//class LoadGeometryApp
+
+int os_main(int argc,os_char **argv)
+{
+    return RunFramework<LoadGeometryApp>(OS_TEXT("Load Geometry"),argc,argv,1280,720);
+}

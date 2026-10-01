@@ -1,10 +1,15 @@
-﻿#include<hgl/framework/WorkManager.h>
+﻿// SimplestAxis
+// 直接从0,0,0向三个方向画一条直线，用于确认坐标轴方向
+
+#include<hgl/framework/WorkManager.h>
+#include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<memory>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
+
+#include<hgl/color/Color.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -13,46 +18,38 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
 
 namespace
 {
-    GeometryVertexFormat CreateSkyMinimalGeometryVertexFormat()
+    GeometryVertexFormat CreateVertexColor3DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::Color,    VF_V4F},
         };
         return gvf;
     }
 }
 
-class AtmosphereSkyMinimalApp:public WorkObject
+class SimplestAxisApp:public WorkObject
 {
 private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
-    hgl::ecs::Entity *sky_entity = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    Geometry *          prim_sky_sphere     =nullptr;
-    graph::mtl::MaterialRecipe sky_recipe{};
-    PrimitiveAsset             sky_asset{};
+    Geometry *          geom_axis           =nullptr;
+    graph::mtl::MaterialRecipe axis_recipe{};
+    PrimitiveAsset             axis_asset{};
 
 private:
-
-    bool InitRecipe()
-    {
-        if (!prim_sky_sphere)
-            return false;
-        sky_recipe.recipe_name = "AtmosphereSkyMinimal.Sky";
-        sky_recipe.mtl_def_id = "SkyMinimal";
-        sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyConfig();
-        sky_asset = PrimitiveAsset(prim_sky_sphere, &sky_recipe, PrimitiveType::Triangles);
-        return true;
-    }
 
     bool CreateRenderObject()
     {
@@ -65,38 +62,36 @@ private:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            CreateSkyMinimalGeometryVertexFormat());
+            CreateVertexColor3DGeometryVertexFormat());
 
-        struct HexSphereCreateInfo hsci;
+        inline_geometry::AxisCreateInfo aci;
 
-        hsci.subdivisions=3;
-        hsci.radius=256;
+        geom_axis=CreateAxis(pc.get(),&aci);
+        if (geom_axis)
+            geometry_manager->Add(geom_axis);
 
-        prim_sky_sphere=CreateHexSphere(pc.get(),&hsci);
-        if (prim_sky_sphere)
-            geometry_manager->Add(prim_sky_sphere);
-
-        return prim_sky_sphere;
+        return geom_axis;
     }
 
-    bool InitECSScene()
+    bool InitScene()
     {
         if(!ecs_context)
             return false;
 
-        if(!prim_sky_sphere)
-            return false;
-
-        sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkySphere");
-        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-        auto prim_comp = sky_entity->GetContext()->GetOrCreateGeometryData(sky_entity->GetEntityID());
+        auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Axis");
+        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
+        auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
-        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
+        axis_recipe.recipe_name = "SimplestAxis.VertexColor";
+        axis_recipe.mtl_def_id = "VertexColor";
+        axis_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        axis_asset = PrimitiveAsset(geom_axis, &axis_recipe, PrimitiveType::Lines);
+        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&axis_asset);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;
@@ -111,10 +106,10 @@ private:
         auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
 
         camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
-        camera->target = math::Vector3f(10,10,10);
-        camera->distance = 1.0f;
-        camera->yaw = 0.0f;
-        camera->pitch = 0.0f;
+        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance = 48.0f;
+        camera->yaw = 45.0f;
+        camera->pitch = -20.0f;
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
@@ -126,19 +121,11 @@ private:
     bool InitECS()
     {
         ecs_context = GetECSContext();
+
         if(!ecs_context)
             return false;
 
-        auto environment_system = ecs_context->GetSystem<hgl::ecs::EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<hgl::ecs::EnvironmentSystem>();
-
-        if (environment_system)
-        {
-            environment_system->EditSkyInfo();
-                    }
-
-        if(!InitECSScene())
+        if(!InitScene())
             return false;
 
         if(!InitCamera())
@@ -148,12 +135,14 @@ private:
     }
 
 public:
+    ~SimplestAxisApp()
+    {
+        SAFE_CLEAR(geom_axis);
+    }
+
     bool Init() override
     {
         if(!CreateRenderObject())
-            return(false);
-
-        if(!InitRecipe())
             return(false);
 
         if(!InitECS())
@@ -161,9 +150,9 @@ public:
 
         return(true);
     }
-};//class AtmosphereSkyMinimalApp:public CameraAppFramework
+};//class SimplestAxisApp:public CameraAppFramework
 
 int os_main(int argc,os_char **argv)
 {
-    return RunFramework<AtmosphereSkyMinimalApp>(OS_TEXT("SimplestAtmosphere"),argc,argv,1280,720);
+    return RunFramework<SimplestAxisApp>(OS_TEXT("SimplestAxis"),argc,argv,1280,720);
 }

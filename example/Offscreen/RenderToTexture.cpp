@@ -1,0 +1,635 @@
+﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKRenderTargetSingle.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/module/OffscreenWorld.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/SamplerManager.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
+
+#include<hgl/graph/module/EnvironmentManager.h>
+#include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/color/Color.h>
+#include<hgl/log/Log.h>
+#include<hgl/mtl/MaterialRecipe.h>
+
+#include<hgl/graph/ssbo/LitMaterialData.h>
+
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/components/GeometryData.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/RenderTargetSystem.h>
+#include<hgl/ecs/systems/render/RenderSystemCore.h>
+#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
+#include<hgl/ecs/systems/tick/InputSystem.h>
+
+#include <memory>
+#include <cstring>
+#include <numbers>
+
+using namespace hgl;
+using namespace hgl::graph;
+using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateStandardGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal,   VF_V3F},
+        };
+        return gvf;
+    }
+
+    void LogTextureInfo(const char *tag, Texture2D *tex)
+    {
+        if (!tex)
+        {
+            GLogInfo("[RenderToTexture] %s tex=null", tag);
+            return;
+        }
+
+        GLogInfo("[RenderToTexture] %s tex=%p image=%p view=%p layout=%u",
+                tag,
+                (void *)tex,
+                (void *)tex->GetImage(),
+                (void *)tex->GetVulkanImageView(),
+                (uint32_t)tex->GetImageLayout());
+    }
+
+    bool LogStageFail(const char *stage, const char *reason)
+    {
+        GLogError("[RenderToTexture][%s] %s", stage, reason);
+        return false;
+    }
+
+    void LogStage(const char *stage, const char *message)
+    {
+        GLogInfo("[RenderToTexture][%s] %s", stage, message);
+    }
+}
+
+class OffscreenPass
+{
+private:
+    std::unique_ptr<graph::OffscreenWorld> offscreen;
+
+    RenderContext *render_context = nullptr;
+    graph::EnvProfileID offscreen_env_profile = graph::kEnvProfileDefault;
+
+    Geometry *geometry = nullptr;
+    PrimitiveAsset sphere_asset;
+    graph::mtl::MaterialRecipe sphere_recipe{};
+    using MaterialDataAccessor =
+        graph::GlobalSSBODataAccessor;
+
+    MaterialDataAccessor material_data_ssbo_accessor{};
+    graph::ssbo::PBRSurfaceRow sphere_material_data{};
+    Sampler *sphere_sampler = nullptr;
+    Texture2D *sphere_base_tex = nullptr;
+    Texture2D *sphere_normal_tex = nullptr;
+    Texture2D *sphere_roughness_tex = nullptr;
+    Entity *sphere_entity = nullptr;
+    hgl::ecs::GeometryData *sphere_primitive_comp = nullptr;
+
+    void DumpOffscreenState(const char *stage)
+    {
+        auto *world = offscreen ? offscreen->GetWorld() : nullptr;
+        if (!world)
+        {
+            std::printf("[RenderToTextureDiag][%s] world=null\n", stage ? stage : "<null>");
+            return;
+        }
+
+        auto &cache = world->GetRenderFrameCache();
+        std::printf("[RenderToTextureDiag][%s] renderableCount=%u renderItems=%zu materialBatches=%u\n",
+                    stage ? stage : "<null>",
+                    cache.renderableCount,
+                    cache.renderItems.size(),
+                    cache.materialBatches.GetCount());
+
+        if (sphere_primitive_comp)
+        {
+            hgl::ecs::Entity *diag_owner = sphere_primitive_comp->GetOwner();
+            hgl::ecs::ECSContext *diag_world = diag_owner ? diag_owner->GetContext() : nullptr;
+            const hgl::ecs::MaterialData *material_data_comp = diag_world
+                ? diag_world->GetMaterialData(diag_owner->GetEntityID())
+                : nullptr;
+            const bool has_recipe_override =
+                material_data_comp && material_data_comp->HasRecipeOverride();
+            const bool has_recipe_source =
+                has_recipe_override || sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(sphere_primitive_comp->GetOwnerID())->GetAssetMaterialRecipe() != nullptr;
+
+            std::printf("[RenderToTextureDiag][%s] primitive visible=%d hasRecipeSource=%d hasRecipeOverride=%d primitiveAsset=%p\n",
+                        stage ? stage : "<null>",
+                        sphere_primitive_comp->GetOwner()->GetContext()->IsEntityVisible(sphere_primitive_comp->GetOwnerID()) ? 1 : 0,
+                        has_recipe_source ? 1 : 0,
+                        has_recipe_override ? 1 : 0,
+                        (void *)sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(sphere_primitive_comp->GetOwnerID())->GetPrimitiveAsset());
+        }
+
+    }
+
+
+    bool InitMaterialDataSSBO(ECSContext *world)
+    {
+        GLogInfo("[RenderToTexture][OffscreenPass::InitMaterialDataSSBO] begin world=%p",
+                 (void *)world);
+        if (!world)
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "invalid input pointers");
+
+        auto *gc = world->GetGraphicsContext();
+        if (!gc && render_context)
+            gc = render_context->GetGraphicsContext();
+
+        if (!gc)
+        {
+            GLogError("[RenderToTexture][OffscreenPass::InitMaterialDataSSBO] world_gc=%p render_context=%p rc_gc=%p",
+                      (void *)(world ? world->GetGraphicsContext() : nullptr),
+                      (void *)render_context,
+                      (void *)(render_context ? render_context->GetGraphicsContext() : nullptr));
+        }
+        if (!gc)
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "graphics context is null");
+
+        auto *domain_manager = gc->GetGlobalSSBOBufferRegistry();
+        if (!domain_manager)
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "resource domain manager is null");
+
+        material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
+        if (!material_data_ssbo_accessor)
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "CreateSSBO failed");
+
+        const graph::ssbo::PBRSurfaceRow material_data = sphere_material_data;
+        if (!material_data_ssbo_accessor.Write(material_data))
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "write material data failed");
+
+        LogStage("OffscreenPass::InitMaterialDataSSBO", "success");
+        return true;
+    }
+public:
+    ~OffscreenPass()
+    {
+        GraphicsContext *gc = render_context ? render_context->GetGraphicsContext() : nullptr;
+        if (!gc)
+        {
+            if (auto *w = offscreen ? offscreen->GetWorld() : nullptr)
+                gc = w->GetGraphicsContext();
+        }
+
+        if (gc)
+        {
+            if (geometry)
+            {
+                if (auto *gm = gc->GetGeometryManager())
+                    gm->Release(geometry);
+            }
+
+            if (sphere_sampler)
+            {
+                if (auto *sm = gc->GetSamplerManager())
+                    sm->Release(sphere_sampler);
+                sphere_sampler = nullptr;
+            }
+        }
+
+        geometry = nullptr;
+    }
+
+    Texture2D *GetColorTexture() const
+    {
+        return offscreen ? offscreen->GetColorTexture(0) : nullptr;
+    }
+
+    bool Init(WorkObject *owner, const uint32_t width, const uint32_t height)
+    {
+        GLogInfo("[RenderToTexture][OffscreenPass::Init] begin owner=%p size=%ux%u",
+                 (void *)owner, width, height);
+
+        // 离屏世界：一行描述 + 一次 Create，RT / ECSContext / 渲染系统全部就位
+        graph::OffscreenWorldDesc desc;
+        desc.width  = width;
+        desc.height = height;
+        desc.name   = "RenderToTexture_Offscreen";
+        desc.resource_prefix = "RenderToTexture:OffscreenRT";
+
+        // 清屏色声明在 desc 里，成为 RT 上的权威值。
+        // RTT 内容会被主场景 Lit 材质再乘一次光照（kd*NdotL/π ≈ 0.16），
+        // 离屏用亮天蓝补偿，避免贴到立方体上整体发黑。
+        desc.clear_color = GetColor4f(COLOR::LightSkyBlue, 1.0f);
+
+        offscreen = graph::OffscreenWorld::Create(owner->GetGraphicsContext(),
+                                                  owner->GetECSContext(),
+                                                  desc);
+        if (!offscreen)
+            return LogStageFail("OffscreenPass::Init", "OffscreenWorld::Create failed");
+
+        // RTT 内容会被主场景 Lit 材质再乘一次光照（kd*NdotL/π ≈ 0.16），
+        // 离屏用高太阳强度 profile 补偿，避免贴到立方体上整体发黑。
+        if (auto *gc = owner->GetGraphicsContext())
+        {
+            if (auto *env_manager = gc->GetEnvironmentManager())
+            {
+                graph::EnvironmentInfo info{};
+                info.sky.SetTime(8, 30, 0);
+                info.sky.sun_intensity = 4.0f;
+
+                offscreen_env_profile = env_manager->Create("RenderToTexture.OffscreenBright", info);
+                if (offscreen->GetRenderTarget())
+                    offscreen->GetRenderTarget()->SetEnvironmentProfile(offscreen_env_profile);
+            }
+        }
+
+        LogTextureInfo("offscreen_rt_color0_init", offscreen->GetColorTexture(0));
+        render_context = owner->GetRenderContext();
+        GLogInfo("[RenderToTexture][OffscreenPass::Init] success world=%p rt=%p",
+                 (void *)offscreen->GetWorld(), (void *)offscreen->GetRenderTarget());
+        return true;
+    }
+
+    bool BuildSphere(WorkObject *owner)
+    {
+        GLogInfo("[RenderToTexture][OffscreenPass::BuildSphere] begin owner=%p world=%p rt=%p",
+                 (void *)owner,
+                 (void *)(offscreen ? offscreen->GetWorld() : nullptr),
+                 (void *)(offscreen ? offscreen->GetRenderTarget() : nullptr));
+        if (!owner || !offscreen || !offscreen->IsValid())
+            return LogStageFail("OffscreenPass::BuildSphere", "owner/offscreen world missing");
+
+        GraphicsContext *gc = owner->GetGraphicsContext();
+        if (!gc)
+            return LogStageFail("OffscreenPass::BuildSphere", "graphics context is null");
+
+        auto *gm = owner->GetManager<GeometryManager>();
+        auto *sm = owner->GetManager<SamplerManager>();
+        auto *tm = owner->GetManager<TextureManager>();
+        auto *device = gc->GetDevice();
+        if (!gm || !sm || !tm || !device)
+            return LogStageFail("OffscreenPass::BuildSphere", "required managers/device missing");
+
+        // 离屏球用 Lit 材质：消费天光/太阳方向，让 RT 纹理内容有光照
+        sphere_material_data.base_color = GetColor4f(COLOR::SkyBlue, 1.0f);
+        sphere_material_data.metallic = 0.08f;
+        sphere_material_data.roughness = 0.92f;
+        sphere_material_data.normal_scale = 0.35f;
+
+        sphere_sampler = sm->CreateSampler();
+        if (!sphere_sampler)
+            return LogStageFail("OffscreenPass::BuildSphere", "CreateSampler failed");
+
+        sphere_base_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
+        sphere_normal_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
+        sphere_roughness_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
+        if (!sphere_base_tex || !sphere_normal_tex || !sphere_roughness_tex)
+            return LogStageFail("OffscreenPass::BuildSphere", "load brickwall textures failed");
+
+        if (!InitMaterialDataSSBO(offscreen->GetWorld()))
+            return LogStageFail("OffscreenPass::BuildSphere", "InitMaterialDataSSBO failed");
+
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            CreateStandardGeometryVertexFormat());
+        geometry = inline_geometry::CreateSphere(pc.get(), 64);
+        if (!geometry)
+            return LogStageFail("OffscreenPass::BuildSphere", "CreateSphere geometry failed");
+
+        gm->Add(geometry);
+
+        sphere_recipe.recipe_name = "RenderToTexture.OffscreenSphere";
+        sphere_recipe.mtl_def_id = "Lit";
+        sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+            return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
+
+        sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
+        if (!sphere_asset.IsValid())
+            return LogStageFail("OffscreenPass::BuildSphere", "create offscreen primitive asset failed");
+
+        auto *world = offscreen->GetWorld();
+        sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
+        auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
+        auto prim_comp = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity->GetEntityID());
+        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
+
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform.SetMobility(Mobility::Static);
+
+        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
+        material_data_comp->SetTextureResource("base_color", sphere_base_tex, sphere_sampler);
+        material_data_comp->SetTextureResource("normal", sphere_normal_tex, sphere_sampler);
+        material_data_comp->SetTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
+        sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
+        material_data_comp->SetDataResource(sphere_struct);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+
+        sphere_primitive_comp = prim_comp;
+
+        Entity *camera_entity = world->CreateEntity<Entity>("OffscreenCamera");
+        auto camera = camera_entity->AddComponent<CameraComponent>();
+        camera->control_mode = CameraComponent::ControlMode::ViewModel;
+        camera->target = math::Vector3f(0, 0, 0);
+        camera->distance = 6.0f;
+        camera->yaw = 45.0f;
+        camera->pitch = -20.0f;
+        camera->is_main_camera = true;
+        camera->matrix_dirty = true;
+
+        auto camera_system = offscreen->GetCameraSystem();
+        camera->viewport_info = camera_system ? camera_system->GetViewportInfo() : nullptr;
+
+        LogStage("OffscreenPass::BuildSphere", "success");
+        return true;
+    }
+
+    bool RenderOnce()
+    {
+        LogStage("OffscreenPass::RenderOnce", "begin");
+        DumpOffscreenState("pre-renderonce");
+
+        // 清屏色已声明在 OffscreenWorldDesc::clear_color（见 Init），此处无需再传。
+        // 内部走 ECSContext::RenderTo()，与主窗口路径共用同一套帧驱动。
+        if (!offscreen)
+            return LogStageFail("OffscreenPass::RenderOnce", "offscreen world is null");
+
+        offscreen->Render();
+
+        DumpOffscreenState("post-renderonce");
+        LogStage("OffscreenPass::RenderOnce", "success");
+        return true;
+    }
+};
+
+class RenderToTextureApp final: public WorkObject
+{
+private:
+    OffscreenPass *offscreen = nullptr;
+
+    ECSContext *ecs_context = nullptr;
+    Entity *camera_entity = nullptr;
+    Entity *cube_entity = nullptr;
+
+    PrimitiveAsset cube_asset;
+    graph::mtl::MaterialRecipe cube_recipe{};
+    using MaterialDataAccessor =
+        graph::GlobalSSBODataAccessor;
+
+    MaterialDataAccessor cube_material_data_ssbo_accessor{};
+    Sampler *cube_sampler = nullptr;
+    graph::ssbo::PBRSurfaceRow cube_material_data{};
+
+    Texture2D *base_tex = nullptr;
+    Texture2D *fallback_albedo = nullptr;
+    Texture2D *normal_tex = nullptr;
+    Texture2D *roughness_tex = nullptr;
+
+    hgl::ecs::TransformAccessor cube_transform;
+    float cube_theta = 0.0f;
+
+private:
+    bool SetupMainCamera()
+    {
+        LogStage("RenderToTextureApp::SetupMainCamera", "begin");
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
+            return LogStageFail("RenderToTextureApp::SetupMainCamera", "ECS context/camera system unavailable");
+
+        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
+        auto camera = camera_entity->AddComponent<CameraComponent>();
+
+        camera->control_mode = CameraComponent::ControlMode::ViewModel;
+        camera->target = math::Vector3f(0, 0, 0);
+        camera->distance = 5.0f;
+        camera->yaw = 45.0f;
+        camera->pitch = -20.0f;
+        camera->is_main_camera = true;
+        camera->matrix_dirty = true;
+
+        camera->viewport_info = GetViewportInfo();
+        LogStage("RenderToTextureApp::SetupMainCamera", "success");
+        return true;
+    }
+
+    bool CreateOffscreenRT()
+    {
+        LogStage("RenderToTextureApp::CreateOffscreenRT", "begin");
+        offscreen = new OffscreenPass();
+        if (!offscreen)
+            return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "new OffscreenPass failed");
+
+        if (!offscreen->Init(this, 512, 512))
+            return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "OffscreenPass::Init failed");
+
+        if (!offscreen->BuildSphere(this))
+            return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "OffscreenPass::BuildSphere failed");
+
+        // This sample's offscreen content is static. Render once at startup to
+        // avoid cross-pass write/read jitter on the same texture each frame.
+        if (!offscreen->RenderOnce())
+            return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "OffscreenPass::RenderOnce failed");
+
+        LogStage("RenderToTextureApp::CreateOffscreenRT", "success");
+        return true;
+    }
+
+    bool CreateCube()
+    {
+        LogStage("RenderToTextureApp::CreateCube", "begin");
+        auto *gc = GetGraphicsContext();
+        if (!gc)
+            return LogStageFail("RenderToTextureApp::CreateCube", "graphics context is null");
+
+        auto *sm = GetManager<SamplerManager>();
+        auto *tm = GetManager<TextureManager>();
+        auto *gm = GetManager<GeometryManager>();
+        auto *device = gc->GetDevice();
+        if (!sm || !tm || !gm || !device)
+            return LogStageFail("RenderToTextureApp::CreateCube", "required managers/device missing");
+
+        cube_sampler = sm->CreateSampler();
+        if (!cube_sampler)
+            return LogStageFail("RenderToTextureApp::CreateCube", "CreateSampler failed");
+
+        base_tex = offscreen ? offscreen->GetColorTexture() : nullptr;
+        if (!base_tex)
+        {
+            LogStage("RenderToTextureApp::CreateCube", "offscreen texture unavailable, loading fallback albedo");
+            fallback_albedo = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
+            base_tex = fallback_albedo;
+        }
+
+        normal_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
+        roughness_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
+
+        if (!base_tex || !normal_tex || !roughness_tex)
+            return LogStageFail("RenderToTextureApp::CreateCube", "required textures missing");
+
+        LogTextureInfo("onscreen_bind_basecolor", base_tex);
+
+        cube_material_data.base_color = Color4f(1.0f);
+        cube_material_data.metallic = 0.08f;
+        cube_material_data.roughness = 0.92f;
+        cube_material_data.normal_scale = 0.35f;
+
+        if (!InitMaterialDataSSBO())
+            return LogStageFail("RenderToTextureApp::CreateCube", "InitMaterialDataSSBO failed");
+
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            CreateStandardGeometryVertexFormat());
+        inline_geometry::CubeCreateInfo cci{};
+        cci.tex_coord = true;
+        cci.ntb = NTBType::Normal;
+
+        Geometry *cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
+        if (!cube_geometry)
+            return LogStageFail("RenderToTextureApp::CreateCube", "CreateCube geometry failed");
+
+        gm->Add(cube_geometry);
+
+        cube_recipe.recipe_name = "RenderToTexture.Cube";
+        cube_recipe.mtl_def_id = "Lit";
+        cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        if (!(cube_recipe.material_ssbo_binding = cube_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+            return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
+
+        cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
+        if (!cube_asset.IsValid())
+            return LogStageFail("RenderToTextureApp::CreateCube", "create cube primitive asset failed");
+
+        cube_entity = ecs_context->CreateEntity<Entity>("RTTCube");
+        cube_transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube_entity->GetEntityID(), Mobility::Static));
+        auto cube_prim_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity->GetEntityID());
+        hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity->GetEntityID());
+
+        cube_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        cube_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        cube_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        cube_transform.SetMobility(Mobility::Movable);
+
+        cube_prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(cube_prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
+        material_data_comp->SetTextureResource("base_color", base_tex, cube_sampler);
+        material_data_comp->SetTextureResource("normal", normal_tex, cube_sampler);
+        material_data_comp->SetTextureResource("roughness", roughness_tex, cube_sampler);
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
+        cube_struct = cube_material_data_ssbo_accessor.GetGlobalSSBOBinding();
+        material_data_comp->SetDataResource(cube_struct);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+        LogStage("RenderToTextureApp::CreateCube", "success");
+        return true;
+    }
+    bool InitMaterialDataSSBO()
+    {
+        GLogInfo("[RenderToTexture][RenderToTextureApp::InitMaterialDataSSBO] begin ecs=%p",
+                 (void *)ecs_context);
+        if (!ecs_context)
+            return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "invalid input pointers");
+
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
+        if (!domain_manager)
+            return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "resource domain manager is null");
+
+        cube_material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
+        if (!cube_material_data_ssbo_accessor)
+            return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "CreateSSBO failed");
+
+        const graph::ssbo::PBRSurfaceRow material_data = cube_material_data;
+        if (!cube_material_data_ssbo_accessor.Write(material_data))
+            return LogStageFail("RenderToTextureApp::InitMaterialDataSSBO", "write material data failed");
+
+        LogStage("RenderToTextureApp::InitMaterialDataSSBO", "success");
+        return true;
+    }
+public:
+    ~RenderToTextureApp() override
+    {
+        SAFE_CLEAR(offscreen)
+
+        if (auto *gc = GetGraphicsContext())
+        {
+            if (cube_sampler)
+            {
+                if (auto *sm = gc->GetManager<SamplerManager>())
+                    sm->Release(cube_sampler);
+            }
+        }
+
+        cube_sampler = nullptr;
+        base_tex = nullptr;
+        fallback_albedo = nullptr;
+        normal_tex = nullptr;
+        roughness_tex = nullptr;
+    }
+
+    bool Init() override
+    {
+        LogStage("RenderToTextureApp::Init", "begin");
+        ecs_context = GetECSContext();
+        if (!ecs_context)
+            return LogStageFail("RenderToTextureApp::Init", "ECS context is null");
+
+        ecs_context->SetResourceNamePrefix("RenderToTexture:MainScene");
+
+        auto environment_system = ecs_context->GetSystem<EnvironmentSystem>();
+        if (!environment_system)
+            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+
+        if (environment_system)
+        {
+            // 默认 10:00 太阳仰角 60°，本例相机平视立方体侧面（与太阳点积≈0），
+            // 只剩天顶环境光会显得整体偏暗。改 8:30（仰角 37.5°）让侧面吃到直射光。
+            if (auto *sky = environment_system->EditSkyInfo())
+            {
+                sky->SetTime(8, 30, 0);
+                environment_system->MarkSkyDirty();
+            }
+        }
+
+        if (!CreateOffscreenRT())
+            return LogStageFail("RenderToTextureApp::Init", "CreateOffscreenRT failed");
+
+        if (!CreateCube())
+            return LogStageFail("RenderToTextureApp::Init", "CreateCube failed");
+
+        if (!SetupMainCamera())
+            return LogStageFail("RenderToTextureApp::Init", "SetupMainCamera failed");
+
+        LogStage("RenderToTextureApp::Init", "success");
+        return true;
+    }
+
+    void Tick(double delta_time) override
+    {
+        // 逻辑更新写在 Tick（渲染前）——TransformSystem 在渲染帧内提交变换，
+        // Tick 里改与本回调内改同帧等价，且不占用命令缓冲录制时间
+        if (cube_transform.IsValid())
+        {
+            cube_theta += static_cast<float>(delta_time) * 0.8f;
+            cube_theta = fmodf(cube_theta, 2.0f * std::numbers::pi_v<float>);
+
+            const glm::quat rot_z = glm::angleAxis(cube_theta, glm::vec3(0.0f, 0.0f, 1.0f));
+            const glm::quat rot_x = glm::angleAxis(cube_theta * 0.5f, glm::vec3(1.0f, 0.0f, 0.0f));
+            cube_transform.SetLocalRotation(rot_z * rot_x);
+        }
+
+        WorkObject::Tick(delta_time);
+    }
+};
+
+int os_main(int argc, os_char **argv)
+{
+    return RunFramework<RenderToTextureApp>(OS_TEXT("Render To Texture"), argc, argv, 1280, 720);
+}

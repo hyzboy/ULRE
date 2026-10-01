@@ -3,24 +3,21 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/graph/ssbo/LitMaterialData.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
-#include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/graph/ssbo/LitMaterialData.h>
-
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
-
-#include<hgl/graph/gizmo/SunDirectionControlSystem.h>
+#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -28,6 +25,7 @@
 
 #include<vector>
 #include<memory>
+#include<cstring>
 #include<string>
 
 using namespace hgl;
@@ -36,14 +34,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    GeometryVertexFormat CreateSkyMinimalGeometryVertexFormat()
-    {
-        GeometryVertexFormat gvf{
-            {VertexSemantic::Position, VF_V3F},
-        };
-        return gvf;
-    }
-
     GeometryVertexFormat CreateStandardGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -55,10 +45,7 @@ namespace
     }
 }
 
-#define DRAW_SKY_SPHERE
-#define DRAW_GIZMO
-
-class BasicLitSunDirectionApp : public WorkObject
+class FullPrecisionLitMeshesApp : public WorkObject
 {
 private:
 
@@ -75,18 +62,6 @@ private:
 
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
-
-#ifdef DRAW_SKY_SPHERE
-    Entity* sky_entity = nullptr;
-    std::shared_ptr<EnvironmentSystem> environment_system;
-    Geometry* sky_geometry = nullptr;
-    graph::mtl::MaterialRecipe sky_recipe{};
-    PrimitiveAsset             sky_asset{};
-#endif//DRAW_SKY_SPHERE
-
-#ifdef DRAW_GIZMO
-    std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
-#endif//DRAW_GIZMO
 
     using MaterialDataAccessor =
         graph::GlobalSSBODataAccessor;
@@ -106,84 +81,17 @@ private:
 
 private:
 
-    bool InitEnvironmentControl()
-    {
-        if (!ecs_context)
-            return false;
-
-    #ifdef DRAW_SKY_SPHERE
-        environment_system = ecs_context->GetSystem<EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
-
-        if (!environment_system)
-            return false;
-
-        if (auto* sky = environment_system->EditSkyInfo())
-        {
-            sky->sun_direction = math::Vector4f(0.2f, 0.7f, 0.68f, 0.0f);
-        }
-        environment_system->MarkSkyDirty();
-            #endif//DRAW_SKY_SPHERE
-
-    #ifdef DRAW_GIZMO
-        sun_gizmo_system = ecs_context->GetSystem<SunDirectionControlSystem>();
-        if (!sun_gizmo_system)
-            sun_gizmo_system = ecs_context->RegisterTickSystem<SunDirectionControlSystem>();
-
-        if (!sun_gizmo_system)
-            return false;
-
-        sun_gizmo_system->SetEnvironmentSystem(environment_system.get());
-        sun_gizmo_system->SetGizmoPosition(math::Vector3f(0.0f, 0.0f, 0.0f));
-    #endif//DRAW_GIZMO
-
-        return true;
-    }
-
-#ifdef DRAW_SKY_SPHERE
-    bool InitSkySphereResource()
-    {
-        if (!ecs_context)
-            return false;
-
-        auto* geometry_manager = GetManager<GeometryManager>();
-        auto* device = GetDevice();
-        if (!geometry_manager || !device)
-            return false;
-
-        using namespace inline_geometry;
-
-        auto pc = std::make_unique<GeometryCreater>(
-            device,
-            CreateSkyMinimalGeometryVertexFormat());
-        if (!pc)
-            return false;
-
-        HexSphereCreateInfo hsci;
-        hsci.subdivisions = 3;
-        hsci.radius = 256.0f;
-
-        sky_geometry = CreateHexSphere(pc.get(), &hsci);
-        if (!sky_geometry)
-            return false;
-
-        geometry_manager->Add(sky_geometry);
-
-        sky_recipe.recipe_name = "BasicLitSunDirection.Sky";
-        sky_recipe.mtl_def_id = "SkyMinimal";
-        sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyConfig();
-        sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
-
-        return true;
-    }
-#endif//DRAW_SKY_SPHERE
-
     bool InitMaterial()
     {
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
-        if (!texture_manager || !sampler_manager)
+        if (!texture_manager || !sampler_manager
+         || !material_data_ssbo_accessor)
+            return false;
+        mesh_recipe.recipe_name = "06c.FullPrecisionLit.Lit";
+        mesh_recipe.mtl_def_id = "Lit";
+        mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -202,20 +110,22 @@ private:
         if (!sampler)
             return false;
 
-        // Bindless registration is deferred until ECS systems are ready.
+        // Bindless registration is deferred to InitScene() after ECS systems are ready.
 
-        graph::ssbo::PBRSurfaceRow material_data{};
-        material_data.base_color = Color4f(1.0f);
-        material_data.metallic = 0.08f;
-        material_data.roughness = 0.92f;
-        material_data.normal_scale = 0.35f;
-        mesh_recipe.recipe_name = "BasicLitSunDirection.Lit";
-        mesh_recipe.mtl_def_id = "Lit";
-        mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        return true;
+    }
 
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
+    bool InitMaterialDataSSBO()
+    {
+        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
+
+        graph::ssbo::PBRSurfaceRow material_data{};
+        material_data.base_color  = Color4f(1.0f);
+        material_data.metallic    = 0.08f;
+        material_data.roughness   = 0.92f;
+        material_data.normal_scale = 0.35f;
 
         material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
         if (!material_data_ssbo_accessor)
@@ -224,7 +134,7 @@ private:
         if (!material_data_ssbo_accessor.Write(material_data))
             return false;
 
-        return (mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid();
+        return true;
     }
 
     bool InitVDM()
@@ -302,14 +212,38 @@ private:
         }
 
         {
-            CubeCreateInfo cci;
-            cci.segments_x = 2;
-            cci.segments_y = 2;
-            cci.segments_z = 2;
+            auto geom = create_geometry([](GeometryCreater* pc)
+            {
+                return CreateDome(pc, 64);
+            });
+            if (!geom || !CreateMeshEntry(geom))
+                return false;
+        }
+
+        {
+            ConeCreateInfo cci;
+            cci.radius = 1;
+            cci.halfExtend = 1;
+            cci.numberSlices = 64;
+            cci.numberStacks = 4;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateCube(pc, &cci);
+                return CreateCone(pc, &cci);
+            });
+            if (!geom || !CreateMeshEntry(geom))
+                return false;
+        }
+
+        {
+            CylinderCreateInfo cci;
+            cci.halfExtend = 1.25f;
+            cci.numberSlices = 16;
+            cci.radius = 1.25f;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateCylinder(pc, &cci);
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
@@ -325,6 +259,85 @@ private:
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
                 return CreateTorus(pc, &tci);
+            });
+            if (!geom || !CreateMeshEntry(geom))
+                return false;
+        }
+
+        {
+            HollowCylinderCreateInfo hcci;
+            hcci.halfExtend = 1.25f;
+            hcci.innerRadius = 0.8f;
+            hcci.outerRadius = 1.25f;
+            hcci.numberSlices = 64;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateHollowCylinder(pc, &hcci);
+            });
+            if (!geom || !CreateMeshEntry(geom))
+                return false;
+        }
+
+        {
+            HexSphereCreateInfo hsci;
+            hsci.subdivisions = 3;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateHexSphere(pc, &hsci);
+            });
+            if (!geom || !CreateMeshEntry(geom))
+                return false;
+        }
+
+        {
+            CapsuleCreateInfo cci;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateCapsule(pc, &cci);
+            });
+            if (!geom || !CreateMeshEntry(geom))
+                return false;
+        }
+
+        {
+            TaperedCapsuleCreateInfo tcci;
+            tcci.topRadius = 0.1f;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateTaperedCapsule(pc, &tcci);
+            });
+            if (!geom || !CreateMeshEntry(geom))
+                return false;
+        }
+
+        {
+            CubeCreateInfo cci;
+            cci.segments_x = 2;
+            cci.segments_y = 2;
+            cci.segments_z = 2;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateCube(pc, &cci);
+            });
+            if (!geom || !CreateMeshEntry(geom))
+                return false;
+        }
+
+        {
+            FrustumCreateInfo fci;
+            fci.bottom_radius = 1.0f;
+            fci.top_radius = 0.5f;
+            fci.height = 2.0f;
+            fci.numberSlices = 32;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateFrustum(pc, &fci);
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
@@ -347,34 +360,30 @@ private:
                 return false;
         }
 
+        {
+            PipeElbowCreateInfo peci;
+            peci.inner_radius = 0.3f;
+            peci.outer_radius = 0.5f;
+            peci.bend_angle = 90.0f;
+            peci.bend_radius = 1.0f;
+            peci.pipe_segments = 16;
+            peci.bend_segments = 16;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreatePipeElbow(pc, &peci);
+            });
+            if (!geom || !CreateMeshEntry(geom))
+                return false;
+        }
+
         return true;
     }
 
     bool InitSceneEntities()
     {
-        if (!ecs_context || !floor_mesh )
+        if (!ecs_context || !floor_mesh)
             return false;
-
-    #ifdef DRAW_SKY_SPHERE
-        if (!sky_geometry)
-            return false;
-    #endif//
-        {
-        #ifdef DRAW_SKY_SPHERE
-            sky_entity = ecs_context->CreateEntity<Entity>("SkySphere");
-            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), Mobility::Movable));
-            auto primitive_comp = sky_entity->GetContext()->GetOrCreateGeometryData(sky_entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = sky_entity->GetContext()->GetOrCreateMaterialData(sky_entity->GetEntityID());
-
-            transform.SetLocalPosition(glm::vec3(0.0f));
-            transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform.SetLocalScale(glm::vec3(1.0f));
-            transform.SetMobility(Mobility::Static);
-
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
-            // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
-        #endif//DRAW_SKY_SPHERE
-        }
 
         {
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
@@ -442,14 +451,6 @@ private:
         if (!ecs_context)
             return false;
 
-        if (!InitEnvironmentControl())
-            return false;
-
-    #ifdef DRAW_SKY_SPHERE
-        if (!InitSkySphereResource())
-            return false;
-    #endif//DRAW_SKY_SPHERE
-
         if (!InitVDM())
             return false;
 
@@ -469,7 +470,7 @@ private:
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;
         camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
-        camera->distance = 16.0f;
+        camera->distance = 14.0f;
         camera->yaw = 45.0f;
         camera->pitch = -20.0f;
         camera->is_main_camera = true;
@@ -481,14 +482,17 @@ private:
     }
 
 public:
-    ~BasicLitSunDirectionApp()
+    ~FullPrecisionLitMeshesApp()
     {
         SAFE_CLEAR(mesh_vdm)
     }
 
     bool Init() override
     {
-        SetClearColor(Color4f(0.10f, 0.12f, 0.16f, 1.0f));
+        SetClearColor(Color4f(0.18f, 0.18f, 0.20f, 1.0f));
+
+        if (!InitMaterialDataSSBO())
+            return false;
 
         if (!InitMaterial())
             return false;
@@ -505,5 +509,5 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<BasicLitSunDirectionApp>(OS_TEXT("Standard Sun Direction"), argc, argv, 1280, 720);
+    return RunFramework<FullPrecisionLitMeshesApp>(OS_TEXT("Standard Meshes (Full Precision Vertex Format)"), argc, argv, 1280, 720);
 }

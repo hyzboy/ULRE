@@ -174,5 +174,5 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<SkyCubeSphereApp>(OS_TEXT("SkyCube Sphere ECS"), argc, argv, 1280, 720);
+    return RunFramework<SkyCubeSphereApp>(OS_TEXT("SkyCube Sphere"), argc, argv, 1280, 720);
 }

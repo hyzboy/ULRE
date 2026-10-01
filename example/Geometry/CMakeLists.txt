@@ -18,7 +18,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../src/SceneGraph/Vulkan)    
 #CreateProject(WallsFromPolyline                 WallsFromPolyline.cpp)
 #CreateProject(WallsFromPolyline_Texture        WallsFromPolyline_Texture.cpp)
 
-CreateProject(LineRenderTest                    LineRenderTest.cpp)
+# Shared/：暂存尚未迁入引擎库的几何加载 TU（LoadGeometry.cpp / LoadStaticMesh.cpp），
+#          由 LoadGeometry、LoadScene 两个 target 共用同一份源码（此前两份拷贝完全重复）。
+# 线渲染几何
+CreateProject(MixedBufferMeshes                  MixedBufferMeshes.cpp)
+CreateProject(LineRender                        LineRender.cpp)
 
 add_subdirectory(LoadGeometry)
 add_subdirectory(LoadScene)

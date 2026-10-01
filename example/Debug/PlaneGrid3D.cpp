@@ -1,0 +1,235 @@
+﻿// PlaneGrid3D
+
+#include<hgl/framework/WorkManager.h>
+#include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/graph/ShaderBufferSources.h>
+
+#include<hgl/color/Color.h>
+
+// ECS headers
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/components/GeometryData.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
+#include<memory>
+#include<cstring>
+
+using namespace hgl;
+using namespace hgl::graph;
+
+class PlaneGrid3DApp:public WorkObject
+{
+private:
+
+    hgl::ecs::ECSContext *ecs_context = nullptr;
+    hgl::ecs::Entity *camera_entity = nullptr;
+    using MaterialDataAccessor =
+        graph::GlobalSSBODataAccessor;
+    MaterialDataAccessor material_data_accessors[3]{};
+
+    Geometry *         geom_plane_grid     =nullptr;
+    graph::mtl::MaterialRecipe plane_grid_recipe{};
+    PrimitiveAsset             plane_grid_asset{};
+
+    bool CreateRenderObject()
+    {
+        auto* device = GetDevice();
+        auto* geometry_manager = GetManager<GeometryManager>();
+        if (!device || !geometry_manager)
+            return false;
+
+        using namespace inline_geometry;
+
+        struct PlaneGridCreateInfo pgci;
+
+        pgci.grid_size.Set(32,32);
+        pgci.sub_count.Set(8,8);
+
+        pgci.lum=180;
+        pgci.sub_lum=255;
+
+        GeometryVertexFormat plane_grid_gvf{
+            {VertexSemantic::Position,  VF_V2F},
+            {VertexSemantic::Luminance, VF_V1UN8},
+        };
+
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            plane_grid_gvf);
+
+        geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
+        if (geom_plane_grid)
+            geometry_manager->Add(geom_plane_grid);
+
+        return geom_plane_grid;
+    }
+
+    bool Add(
+        const char *name,
+        const graph::GlobalSSBOBinding &material_ssbo_binding,
+        const glm::quat &rotation)
+    {
+        if (!material_ssbo_binding.IsValid())
+            return false;
+
+        auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
+        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
+        auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
+        hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
+
+        transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform.SetLocalRotation(rotation);
+        transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform.SetMobility(hgl::ecs::Mobility::Static);
+
+        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&plane_grid_asset);
+        hgl::ecs::MaterialData::MaterialDataAuthoringResource named_struct{};
+        named_struct = material_ssbo_binding;
+        material_data_comp->SetDataResource(named_struct);
+        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+
+        return true;
+    }
+
+    bool InitScene()
+    {
+        if(!ecs_context)
+            return false;
+
+        plane_grid_recipe.recipe_name = "PlaneGrid3D.VertexLuminance";
+        plane_grid_recipe.mtl_def_id = "VertexLuminance";
+        plane_grid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        plane_grid_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;
+        plane_grid_recipe.vertex_node_config.position_mapping = graph::mtl::PositionMappingMode::LiftXY_XY0;
+        plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
+        plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
+        plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
+        if (!(plane_grid_recipe.material_ssbo_binding = material_data_accessors[0].GetGlobalSSBOBinding()).IsValid())
+            return false;
+        plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
+
+        if(!Add(
+                "PlaneXY",
+                material_data_accessors[0].GetGlobalSSBOBinding(),
+                glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
+            return false;
+
+        const float rot90 = glm::radians(90.0f);
+        if(!Add(
+                "PlaneYZ",
+                material_data_accessors[1].GetGlobalSSBOBinding(),
+                glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
+            return false;
+        if(!Add(
+                "PlaneXZ",
+                material_data_accessors[2].GetGlobalSSBOBinding(),
+                glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
+            return false;
+
+        return true;
+    }
+
+    bool InitMISSBO()
+    {
+        if (!ecs_context)
+            return false;
+
+        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
+        if (!domain_manager)
+            return false;
+
+        Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
+        for (uint32_t i = 0; i < 3; ++i)
+        {
+            material_data_accessors[i] =
+                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
+            if (!material_data_accessors[i])
+                return false;
+
+            graph::ssbo::EmissiveSurfaceRow row{};
+            row.color = grid_color;
+            if (!material_data_accessors[i].Write(row))
+                return false;
+
+            grid_color = GetColor4f(COLOR(int(COLOR::BlenderAxisRed) + int(i) + 1), 1.0f);
+        }
+
+        return true;
+    }
+
+    bool InitCamera()
+    {
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
+            return false;
+
+        camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+
+        camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance = 48.0f;
+        camera->yaw = 45.0f;
+        camera->pitch = -20.0f;
+        camera->is_main_camera = true;
+        camera->matrix_dirty = true;
+
+        camera->viewport_info = GetViewportInfo();
+
+        return true;
+    }
+
+    bool InitECS()
+    {
+        ecs_context = GetECSContext();
+
+        if(!ecs_context)
+            return false;
+
+        if(!InitMISSBO())
+            return false;
+
+        if(!InitScene())
+            return false;
+
+        if(!InitCamera())
+            return false;
+
+        return true;
+    }
+
+public:
+    ~PlaneGrid3DApp()
+    {
+        SAFE_CLEAR(geom_plane_grid);
+    }
+
+    bool Init() override
+    {
+        if(!CreateRenderObject())
+            return(false);
+
+        if(!InitECS())
+            return(false);
+
+        return(true);
+    }
+};//class PlaneGrid3DApp:public CameraAppFramework
+
+int os_main(int argc,os_char **argv)
+{
+    return RunFramework<PlaneGrid3DApp>(OS_TEXT("PlaneGrid3D"),argc,argv,1280,720);
+}
