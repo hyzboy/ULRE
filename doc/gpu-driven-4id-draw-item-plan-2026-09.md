@@ -157,7 +157,7 @@ addr_text_char_style, addr_text_char_instance, camera_row, _pad_camera
 | 登记点 | `RenderPrimitiveCollectSystem.cpp:1418/1426` `primitiveComp->Set4ID(transform_id, geometry_id, material_id, texture_id)` | — |
 | GLSL 解析 | `ResolveRenderItemDirect`(:73) / `ResolveRenderItemIndexed`(:79) / `ResolveRenderItemAuto`(:112) / `RENDER_ITEM_INDEXED_FLAG`(:99) / `global_render_items`·`draw_item_ids` 宏(:69-70) | `ShaderLibrary/common/RenderItemResolve.glsl`（142 行） |
 | 包围盒（CS 剔除用） | `GeometryAABB`（32B：center.xyz+r、extents.xyz） | `inc/hgl/graph/ShaderBufferSources.h:188-198` |
-| 端到端示例 | `ComputeFrustumCull.cpp`（CS 剔除 + 无锁紧凑 + 间接命令）、`ComputeAsteroidBelt.cpp`（10 万实例） | `example/Basic/` |
+| 端到端示例 | `ComputeFrustumCull.cpp`（CS 剔除 + 无锁紧凑 + 间接命令）、`ComputeAsteroidBelt.cpp`（10 万实例） | `example/ApiValidation/` |
 
 ---
 
@@ -295,9 +295,9 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 - 池与显存镜像：`RenderItemDataStorage`（`inc/hgl/ecs/support/RenderItemDataStorage.h:29-129`），连号块分配 `AllocateContiguous`(:69)、增量脏范围 `MarkRangeDirty`(:108)/`GetDirtyRange`(:111)、`SyncToGPU`(:120)；二级索引 `DrawItemIDStorage`；连号折叠 `DrawItemCompaction.h`。
 - GLSL 解析统一入口 `ShaderLibrary/common/RenderItemResolve.glsl`（直通 / 二级索引 / 自动三分支）。
 - 组件与登记：`PrimitiveComponent::Set4ID`（`PrimitiveComponent.h:257`）+ `RenderPrimitiveCollectSystem.cpp:1418/1426`；实例化路径 `InstancedPrimitiveComponent`。
-- CS 写路径已打通（`example/Basic/ComputeFrustumCull.cpp`：候选 4-ID → `GeometryAABB` 视锥剔除 → `atomicAdd` 紧凑写入 Visible 4-ID → 间接命令）。
+- CS 写路径已打通（`example/ApiValidation/ComputeFrustumCull.cpp`：候选 4-ID → `GeometryAABB` 视锥剔除 → `atomicAdd` 紧凑写入 Visible 4-ID → 间接命令）。
 
-**涉及文件**：`inc/hgl/graph/render/RenderItemDescriptor.h`、`inc/hgl/graph/ShaderBufferSources.h`（`DrawItem4ID`/`GeometryAABB`）、`inc/hgl/ecs/support/RenderItemDataStorage.h/.cpp`、`inc/hgl/ecs/support/DrawItemIDStorage.h`、`inc/hgl/ecs/support/DrawItemCompaction.h`、`inc/hgl/ecs/components/PrimitiveComponent.h/.cpp`、`inc/hgl/ecs/components/InstancedPrimitiveComponent.h/.cpp`、`src/ecs/support/PrimitiveBatchPipeline.cpp`、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`、`ShaderLibrary/common/RenderItemResolve.glsl`、`example/Basic/ComputeFrustumCull.cpp`、`example/Basic/ComputeAsteroidBelt.cpp`。
+**涉及文件**：`inc/hgl/graph/render/RenderItemDescriptor.h`、`inc/hgl/graph/ShaderBufferSources.h`（`DrawItem4ID`/`GeometryAABB`）、`inc/hgl/ecs/support/RenderItemDataStorage.h/.cpp`、`inc/hgl/ecs/support/DrawItemIDStorage.h`、`inc/hgl/ecs/support/DrawItemCompaction.h`、`inc/hgl/ecs/components/PrimitiveComponent.h/.cpp`、`inc/hgl/ecs/components/InstancedPrimitiveComponent.h/.cpp`、`src/ecs/support/PrimitiveBatchPipeline.cpp`、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`、`ShaderLibrary/common/RenderItemResolve.glsl`、`example/ApiValidation/ComputeFrustumCull.cpp`、`example/ApiValidation/ComputeAsteroidBelt.cpp`。
 
 **验收（已达成）**：编译 + 全部示例；命令面只引用 ID（`MeshDrawCommand` 8B）；4-ID 直通行表写入由 `RenderItemDescriptor` 直接解析。提交 `31436ece7`、`e8e45baeb`、`9a98eec2d`、`226a592ea`、`cc97be792`、`a306d9c35`。
 
@@ -362,7 +362,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 
 ### 7.3 已完成（2026-09-19~21 4-ID / 实例化）
 - `RenderItemDescriptor` / `RenderItemDataStorage` / `DrawItemIDStorage` / `DrawItemCompaction` 全链落地（§6.4）。
-- 百万级实例示例 `example/Basic/ComputeAsteroidBelt.cpp`（`TOTAL_ASTEROIDS = GEOMETRY_VARIANT_COUNT(10) × INSTANCES_PER_GEOM(100000) = 1,000,000`，`ComputeAsteroidBelt.cpp:66-68`）、CS 剔除示例 `example/Basic/ComputeFrustumCull.cpp`。
+- 百万级实例示例 `example/ApiValidation/ComputeAsteroidBelt.cpp`（`TOTAL_ASTEROIDS = GEOMETRY_VARIANT_COUNT(10) × INSTANCES_PER_GEOM(100000) = 1,000,000`，`ComputeAsteroidBelt.cpp:66-68`）、CS 剔除示例 `example/ApiValidation/ComputeFrustumCull.cpp`。
 
 ### 7.4 开放待办（独立，不阻塞）
 1. ~~**sampler 运行时创建未接入**——filter/wrap/swizzle/compare 的 TOML 配置只到「解析 + 布局 hash + 契约传递」~~——**已完成（2026-09-23）**：`ShaderLibrary/sampler.toml` → `SamplerPresetLibrary::Load`（`SamplerPreset.cpp:85`）→ `BindlessTextureManager::RegisterSamplers`（`VKBindlessTextureManager.cpp:330`）按序 `vkCreateSampler` 写 binding=1，入口 `GraphicsContext.cpp:96-118`；`max_lod`/`compare_op`/`anisotropy` 等字段齐备。**仅剩**：per-材质 `MaterialTextureSamplingOptions` 覆盖（`MaterialRecipe.h:107/203`）只参与 layout hash，尚未驱动运行时创建。
@@ -438,9 +438,9 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 | ring | `inc/hgl/vk/buffer/RingLayout.h` | `RingLayout`(:15-47)、`HGL_L2W_RING_FRAMES` |
 | sampler 运行时 | `ShaderLibrary/sampler.toml`、`inc/hgl/mtl/SamplerPreset.h`、`src/ShaderGen/glsl_module/SamplerPreset.cpp`、`src/SceneGraph/render/GraphicsContext.cpp`、`src/Vulkan/VKBindlessTextureManager.cpp` | `SamplerPresetLibrary`(:29)、`Load`(:85)、`GetCreateInfo`(:77)、注册入口(:96-118)、`RegisterSamplers`(:330)、`RebuildSampler`(:373) |
 | 文本数据 | `src/ecs/support/text/TextRenderPipeline.cpp` | `MaterialInstanceAddresses` 单行表(:528-560)、`PushRootAddresses`(:290) |
-| 示例 | `example/Basic/PBRSpheres.cpp` | `InitMaterialDataSSBO`(:272)、`GetAccessor<PBRSurfaceRow>`(:286)、`SetMaterialDataResource`(:501)、`SetMaterialTextureResource(..., Texture2DArray, "", row)`(:482/490) |
-| 示例 | `example/Basic/ComputeFrustumCull.cpp` / `ComputeAsteroidBelt.cpp` | 4-ID CS 剔除 + 紧凑(:92-155/254)、`DrawItem4ID` 候选表、`MeshDrawCommand` 表(:476-488 / :779-791) |
-| 示例 | `example/Basic/AutoMergeMaterialInstance.cpp` / `BasicLitMeshes.cpp` | 同型材质 accessor + 单一材质数据资源 |
+| 示例 | `example/Material/PBRSpheres.cpp` | `InitMaterialDataSSBO`(:272)、`GetAccessor<PBRSurfaceRow>`(:286)、`SetMaterialDataResource`(:501)、`SetMaterialTextureResource(..., Texture2DArray, "", row)`(:482/490) |
+| 示例 | `example/ApiValidation/ComputeFrustumCull.cpp` / `ComputeAsteroidBelt.cpp` | 4-ID CS 剔除 + 紧凑(:92-155/254)、`DrawItem4ID` 候选表、`MeshDrawCommand` 表(:476-488 / :779-791) |
+| 示例 | `example/Instancing/AutoMergeMaterialInstance.cpp` / `BasicLitMeshes.cpp` | 同型材质 accessor + 单一材质数据资源 |
 
 ---
 

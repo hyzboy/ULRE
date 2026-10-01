@@ -18,7 +18,7 @@ CSM 主线（约 30 个提交，其中 20 个只动 CSM 相关文件）：
 |------|------|
 | `2987e5bfa` | ShadowInfo 环形结构扩展（cascades / cache_origin / cache_offset / cache_valid_rect） |
 | `6c7b6344a` | `CascadedShadowController` 首版 + `pcf_shadow.glsl` 环形寻址 |
-| `4cfc57501` / `3e1bf254b` | 示例 `example/Basic/CascadeShadowMap.cpp` + 文档 |
+| `4cfc57501` / `3e1bf254b` | 示例 `example/Shadow/CascadeShadowMap.cpp` + 文档 |
 | `a6c5ce3ae` | 两处几何根因：`light_forward` 二次取反；`zfar` 缺接收端余量 |
 | `f09d2d8f9` | `IRenderTarget` 自持视口（离屏 RT 不再篡改主视口） |
 | `b0b850109` | `ShadowInfo` 被在途帧覆写 → 分槽 `kShadowUboRing` |
@@ -144,8 +144,8 @@ if (world && world->IsCurrentPassShadow())
 
 ### A7【低】命名/文档与实现漂移
 
-- `.ai/skills/SKILL_CASCADED_SHADOW_CSM.md:335/387/442` 写示例 `bias_world = -1.15f`，实际 `example/Basic/CascadeShadowMap.cpp:78` 是 `-0.20f`（`61a196c91` 只同步了 normal offset 0.10f）
-- 示例窗口标题 `example/Basic/CascadeShadowMap.cpp:886` 仍为 "CSM Rolling Toroidal Cache & Mobility Stream"，而环形寻址未启用（SKILL §4 自己承认；`cache_offset`/`scroll_offset`/`cache_valid_rect` 恒为 `(0,0,0,0)` / `(0,0,W,H)`）
+- `.ai/skills/SKILL_CASCADED_SHADOW_CSM.md:335/387/442` 写示例 `bias_world = -1.15f`，实际 `example/Shadow/CascadeShadowMap.cpp:78` 是 `-0.20f`（`61a196c91` 只同步了 normal offset 0.10f）
+- 示例窗口标题 `example/Shadow/CascadeShadowMap.cpp:886` 仍为 "CSM Rolling Toroidal Cache & Mobility Stream"，而环形寻址未启用（SKILL §4 自己承认；`cache_offset`/`scroll_offset`/`cache_valid_rect` 恒为 `(0,0,0,0)` / `(0,0,W,H)`）
 - 未消费 API：`CascadeUpdateResult::texel_shift_x/y`（只写不读）、`ShadowDirtyRect[4]` 池（永远只放一个全图矩形）、`GetCascadeRenderTarget()`、`InvalidateStaticCache()`
 
 ### A8【低】`RenderMainLightShadowPass` 的 scissor 增量分支是死代码
@@ -211,11 +211,11 @@ if (world && world->IsCurrentPassShadow())
 
 ## 4. 文档同步清单
 
-- [ ] `.ai/skills/SKILL_CASCADED_SHADOW_CSM.md:335/387/442`：示例 `bias_world` → `-0.20f`（`example/Basic/CascadeShadowMap.cpp:78`）
+- [ ] `.ai/skills/SKILL_CASCADED_SHADOW_CSM.md:335/387/442`：示例 `bias_world` → `-0.20f`（`example/Shadow/CascadeShadowMap.cpp:78`）
 - [ ] 同文件 §4：明确环形寻址未启用（`cache_offset` 恒 0）与 `fract` 的副作用（A4）
 - [ ] 同文件补：`ShadowCaster/DepthOnly` 变体未被启用（A1）与静态缓存失效链缺失（A3）两个已知缺口
 - [ ] 同文件补 T2 / T7：包围球拟合的交易、为什么不用 `OffscreenWorld`
-- [ ] `example/Basic/CascadeShadowMap.cpp:886` 窗口标题去掉 "Toroidal Cache"（未实现）
+- [ ] `example/Shadow/CascadeShadowMap.cpp:886` 窗口标题去掉 "Toroidal Cache"（未实现）
 - [ ] `doc/shadow-component-and-automated-pipeline-design.md:19`：标注 `receive_shadow` / `bias_multiplier` 尚未接通
   —— **作废（2026-09-26 D3 已接通）**，无需再标注
 

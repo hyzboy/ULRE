@@ -18,8 +18,8 @@
 | `inc/hgl/graph/ubo/ShadowInfo.h` | `kMaxShadowCascades=4`、`ShadowCascadeInfo`（176B）、`ShadowInfo`（832B）、`ShadowCascadeCacheState`（CPU 侧，不上传） |
 | `ShaderLibrary/shadow/pcf_shadow.glsl` | `EvalCascadePCF`、`EvalCascadeShadowAt`、`EvalCascadeChain`、`EvalPCFShadow`（选级 + 动静合并） |
 | `src/ShaderGen/template/FragmentTemplateComposer.cpp` | 发射 `HGL_SHADOW_PCF_POISSON_TAPS` 宏（仅当模板含 ShadowProvider 槽） |
-| `example/Basic/CascadeShadowMap.cpp` | 参考用法：4 张 D32F 离屏 RT、`light_camera` 覆写矩阵、F1 之外只有 `[`/`]` 调 bias |
-| `example/Basic/AlphaTestShadow.cpp` | alpha test 镂空阴影最小用例（masked vs fallback-opaque 对照）+ `DumpCascadeDepth` 级联深度读回报证工具 |
+| `example/Shadow/CascadeShadowMap.cpp` | 参考用法：4 张 D32F 离屏 RT、`light_camera` 覆写矩阵、F1 之外只有 `[`/`]` 调 bias |
+| `example/Shadow/AlphaTestShadow.cpp` | alpha test 镂空阴影最小用例（masked vs fallback-opaque 对照）+ `DumpCascadeDepth` 级联深度读回报证工具 |
 | `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md` | ShadowCasterMasked 修复链全记录（7 层因果、两级寻址、取证方法） |
 | `src/ecs/support/TestCSMIncrementalPass.cpp` | 契约测试（Test 1-4 渲染选项、Test 5A 重绘预算、Test 5B 矩阵恒定性+覆盖率、Test 5C 旋转恒定性、Test 6A-D 逐级联 bias） |
 | `doc/shadow-ubo-inflight-overwrite.md` | 拖拽时阴影逐帧左右/远近跳：单份 ShadowInfo 被在途帧覆写，以及分槽修复 |

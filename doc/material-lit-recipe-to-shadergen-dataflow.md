@@ -5,7 +5,7 @@
 > ② `MTL_ROW` 的基址来自 **`GlobalAddresses` SSBO（无绑定无集，`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长）**，经 `pc_root.addr_global_addresses` 下发，不是"Scene 集里的 `GlobalAddressesInfo` UBO"；
 > ③ `RootAddresses` push constant = **80B**（首字段 `addr_global_addresses`，末位 `camera_row` + `_pad_camera`）。
 
-> 分析入口：`example/Basic/SimpleSphere.cpp`（正向）与 `ShaderLibrary/material/lit.material.toml`（反向）。
+> 分析入口：`example/GettingStarted/SimpleSphere.cpp`（正向）与 `ShaderLibrary/material/lit.material.toml`（反向）。
 > 分析日期：2026-09-13。基于历史分支 `RemoveTexture2DArray`（`git branch -a` 现仅在远端 `hyzgame/RemoveTexture2DArray` 存在，本地分支列表已无此分支）。
 > 符号与 `path:line` 已按当前代码（描述符退役后的 BDA 终态）校正。
 
@@ -21,7 +21,7 @@
 
 ## 一、正向：SimpleSphere.cpp → Recipe
 
-`example/Basic/SimpleSphere.cpp` 的 `InitMaterial()`（第 107 行）只做了三件事：
+`example/GettingStarted/SimpleSphere.cpp` 的 `InitMaterial()`（第 107 行）只做了三件事：
 
 1. `sphere_recipe.mtl_def_id = "Lit"`（第 116 行）——声明"我要 Lit 光照"；
 2. `material_ssbo_binding = accessor.GetGlobalSSBOBinding()`——全局 SSBO Arena 里一行 `PBRSurfaceRow`（base_color/metallic/roughness/normal_scale/fresnel，32B，定义在 `inc/hgl/graph/ssbo/MaterialDataRows.h:20`）的句柄，类型为 `GlobalSSBOBinding{ssbo_type, ssbo_id, data_index}`（`inc/hgl/graph/ssbo/GlobalSSBOTypes.h:64`；取法 `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:67`）；

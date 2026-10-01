@@ -177,7 +177,7 @@ MiniPack 是自研的多条目紧凑归档格式。几何文件采用双轨兼�
 
 ## 5. 运行时自适应加载与转码 (`LoadGeometry.cpp`)
 
-源码位于 `example/Geometry/LoadGeometry/LoadGeometry.cpp` 与 `example/Geometry/LoadScene/LoadGeometry.cpp`。
+源码位于 `example/Geometry/Shared/LoadGeometry.cpp`（一份源码，由 LoadGeometry 与 LoadScene 两个 target 共用）。
 
 ### 5.1 语义映射（Semantic-based Lookup）
 彻底废弃依赖流索引位置的脆弱遍历，解析 `AttributeMeta` 建立语义索引表：

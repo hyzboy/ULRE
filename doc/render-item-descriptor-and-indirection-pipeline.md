@@ -306,8 +306,8 @@ mat4   mesh_draw = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params_pool
   - 在 `EnsureBatchIndexRows` 与 `WriteBatchIndexRows` 中增加 `uses_render_item_resolve` 保护，开启 4-ID 架构直通的批次跳过每帧缓冲分配与映射。（**订正（2026-09-28）**：`uses_render_item_resolve` 全仓无处置 true（`MaterialBatch.h:71` 只被置 false）⇒ 该保护恒不生效，4-ID GPU 运行时解析当前**未启用**。）
   - 升级 `WriteBatchIndexRows`：优先直接通过 `item->GetRenderItemHandle()` 从全局 `RenderItemDataStorage` 查询 4-ID 描述符填充行数据，废弃每帧通过 `MaterialComponent` 动态计算基址与偏移的过渡代码路径。
 - **6.2 全量工程回归与稳定性测试** 【✅ 已完成】
-  - 修复 `GizmoUsageExample` 轴材质与纹理索引映射异常。
+  - 修复 `GizmoUsage` 轴材质与纹理索引映射异常。
   - 修复 `ComputeFrustumCull` GPU-Driven 间接剔除渲染管道，接入统一 `InstancedPrimitiveComponent` 与间接缓冲区绑定机制。
-  - 编译并执行全量回归用例（`TestRenderItemDataStorage`、`PBRSpheres`、`BasicLitMeshes`、`TextureQuad`、`SkyCubeSphere`、`SingleSphereMaterialSwitch`、`ComputeAsteroidBelt`、`ComputeFrustumCull`、`GizmoUsageExample`、`PlaneGrid3D`、`DrawTriangle`、`SimpleCube`、`SimpleSphere` 等）。
+  - 编译并执行全量回归用例（`TestRenderItemDataStorage`、`PBRSpheres`、`BasicLitMeshes`、`TextureQuad`、`SkyCubeSphere`、`SingleSphereMaterialSwitch`、`ComputeAsteroidBelt`、`ComputeFrustumCull`、`GizmoUsage`、`PlaneGrid3D`、`DrawTriangle`、`SimpleCube`、`SimpleSphere` 等）。
   - Release 与 Debug 双配置全量通过，所有单元测试组 100% 通过，零编译告警与运行时错误。
 

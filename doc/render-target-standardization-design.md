@@ -5,7 +5,7 @@
 > 目标：把 RenderTarget 从"能用但要背隐式契约"变成"声明式资源 + 统一入口"，
 > 让未来所有需要 RT 的工作（离屏、后处理、阴影图、CubeMap、多视口）走同一套路。
 >
-> 分析入口：`example/Basic/RenderToTexture.cpp`
+> 分析入口：`example/Offscreen/RenderToTexture.cpp`
 > 现状普查范围：`example/`、`inc/`、`src/`（不含 `build/`）
 
 ## 实施进度
@@ -16,7 +16,7 @@
 | B 描述子与工厂 | **已完成** | 见下方"阶段 B"各项，均带 [x] |
 | C OffscreenWorld 入引擎 | **已完成** | 见下方"阶段 C"各项，均带 [x] |
 | D resize 与 RenderGraph 集成 | **部分完成** | resize 与 GUI 清理已完成；RenderGraph 跨 RT pass 链拆分见下方说明 |
-| E depth-only（shadow map） | **已完成** | 见下方"阶段 E"，`example/Basic/ShadowMap.cpp` 落地验证 |
+| E depth-only（shadow map） | **已完成** | 见下方"阶段 E"，`example/Shadow/ShadowMap.cpp` 落地验证 |
 
 **本文档主体计划至此全部落地**。阶段 E 之后的后续修复（2026-09-21，
 不再回写正文，详见 git log）：depth-only 管线剥离 fragment stage
@@ -56,7 +56,7 @@ wo->GetECSContext()->Render(static_cast<float>(delta_time),
 它在 `BeginRenderPass`（动态渲染 pass 已开）之后、ECS 系统绘制之前执行——
 合同是"current_render_cmd 有效，只准录制绘制命令"；改场景状态（transform/材质动画等）
 属于 `Tick`（TransformSystem 在该回调之后才提交变换，两处改同帧等价，Tick 语义正确）。
-范本：`example/Basic/SimpleMeshTriangle.cpp`。（旧名 `Render` 保留为 deprecated 别名；
+范本：`example/ApiValidation/SimpleMeshTriangle.cpp`。（旧名 `Render` 保留为 deprecated 别名；
 本文档早期版本误写为"BeginRenderPass 之前执行"，已修正。）
 
 `WorkObject` 提供的能力全部是转发：`GetECSContext` / `GetRenderContext` / `GetGraphicsContext`
@@ -266,8 +266,8 @@ bool ECSContext::RenderTo(IRenderTarget *rt, const Color4f &clear, float dt = 0.
 内部复用 `BeginManagedRenderFrame(…, need_swapchain_acquire=false, &RenderPassOptions)` + `RenderDrawOnly`
 + `EndManagedRenderFrame`，字段含 `target / camera / clear_color / use_target_clear / load_depth /
 use_scissor / scissor / clear_scissor_depth / mobility_filter / cull_mode`；`RenderPassOptions` 在
-`inc/hgl/vk/VKCommandBuffer.h:116`。实际使用者：`example/Basic/ShadowMap.cpp:1097`、
-`example/Basic/CascadeShadowMap.cpp:683,704`。剩余缺口是 `RenderGraph::Pass::renderTarget`
+`inc/hgl/vk/VKCommandBuffer.h:116`。实际使用者：`example/Shadow/ShadowMap.cpp:1097`、
+`example/Shadow/CascadeShadowMap.cpp:683,704`。剩余缺口是 `RenderGraph::Pass::renderTarget`
 跨 RT pass 链（执行器目前只输出 `LogWarning`，见 `src/ecs/core/RenderGraph.cpp:110-118`）。
 
 **pass 级剔除模式（`CullMode`）**：`RenderPassRequest::cull_mode` / `RenderPassOptions::cull_mode`
@@ -393,7 +393,7 @@ offscreen->Resize(1024, 1024);                  // 阶段 D 后可用
 
 - [x] 8. 新增 `OffscreenWorld`（引擎内），`OffscreenWorldRuntime` 下线。
 - [x] 9. 新增 `ECSContext::RenderTo(rt, clear, dt)`，删除 `RenderOnce` 手写十步。
-- [x] 10. 改写 `example/Basic/RenderToTexture.cpp`，作为新 API 的样板。
+- [x] 10. 改写 `example/Offscreen/RenderToTexture.cpp`，作为新 API 的样板。
 - [ ] 11. `clear_color` 在 `WorkObject` / `RenderSystemCore` 上的重复存储保留为便捷入口
         （Delegate 而非删除），避免破坏既有示例；权威值已在 RT 上。
 
@@ -414,7 +414,7 @@ offscreen->Resize(1024, 1024);                  // 阶段 D 后可用
   为主世界 RT（`RestoreMainRenderContext()`）。
 - `example/common/OffscreenWorldRuntime.h` 已删除（连同空的 `example/common/` 目录），
   其能力全部由引擎 `OffscreenWorld` 承担。
-- `example/Basic/RenderToTexture.cpp` 改用引擎 `OffscreenWorld`。
+- `example/Offscreen/RenderToTexture.cpp` 改用引擎 `OffscreenWorld`。
 
 验证：10 个 TU 的 `/Zs` 语法检查全部通过（含新建的 `OffscreenWorld.cpp`，
 该文件复用同 target 的编译选项构造命令行）。
@@ -544,7 +544,7 @@ offscreen->Resize(1024, 1024);                  // 阶段 D 后可用
 
 ### 验证用例
 
-新增 `example/Basic/ShadowMap.cpp`：离屏世界 `depth_only = true` + `PF_D32F`，
+新增 `example/Shadow/ShadowMap.cpp`：离屏世界 `depth_only = true` + `PF_D32F`，
 以光源视角渲染球体到 depth-only RT，主世界的立方体直接以该深度纹理作 albedo 采样显示。
 日志逐项打印 `color_count` / `has_depth` / 深度纹理指针 / 格式 / 布局 / 尺寸，
 并显式判定布局是否为 `SHADER_READ_ONLY_OPTIMAL`（可采样）。
@@ -594,7 +594,7 @@ MSBuild 的增量构建**可能漏编部分源文件**（实测漏编 `VKSwapcha
 - 全仓只有 1 个 RT 创建入口、1 个权威 getter。
 - `OffscreenWorld` 支持 resize，且 resize 后主场景纹理引用自动更新。
 - 对象追踪器在 `RunFramework` 退出时报告 0 RT 泄漏。
-- `example/Basic/RenderToTexture.cpp` 可作为文档级样板直接引用。
+- `example/Offscreen/RenderToTexture.cpp` 可作为文档级样板直接引用。
 
 ---
 

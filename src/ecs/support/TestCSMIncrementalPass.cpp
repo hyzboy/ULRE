@@ -2694,7 +2694,7 @@ int main(int argc, char** argv)
             return Vector2f(0.5f + 0.5f * clip.x, 0.5f + 0.5f * clip.y);
         };
 
-        // 与 example/Basic/CascadeShadowMap.cpp 同配置（B={0,16,16,32}、anchor=16m 用默认）
+        // 与 example/Shadow/CascadeShadowMap.cpp 同配置（B={0,16,16,32}、anchor=16m 用默认）
         const auto make_cfg = [](float map_size)
         {
             CascadedShadowConfig cfg;
@@ -3295,8 +3295,8 @@ int main(int argc, char** argv)
             return 21;
         }
 
-        if (!load_src(OS_TEXT("example/Basic/AlphaTestShadow.cpp"), ats)
-         || !load_src(OS_TEXT("example/Basic/CascadeShadowMap.cpp"), csm))
+        if (!load_src(OS_TEXT("example/Shadow/AlphaTestShadow.cpp"), ats)
+         || !load_src(OS_TEXT("example/Shadow/CascadeShadowMap.cpp"), csm))
         {
             GLogError(u8"Test 21 Failed: 无法读示例源（需从仓库根运行）");
             return 21;

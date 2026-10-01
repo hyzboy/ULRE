@@ -212,7 +212,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 - 一个设备、N 个 profile、任意 RT 绑任意 profile、随时切换(下一帧生效);
 - 不设置即有合理默认(default,10:00 太阳,初始化即就绪);
 - 运行时动态编辑(太阳时间/方向/强度/天空色):`EditSkyInfo → MarkSkyDirty`,当帧生效;
-- 离屏 RT 用不同天光(示例:`example/Basic/RenderToTexture.cpp:233-241`,`sun_intensity = 4.0f`、profile 名 `"RenderToTexture.OffscreenBright"`,补偿贴图二次着色的能量损耗,主屏保持 default);
+- 离屏 RT 用不同天光(示例:`example/Offscreen/RenderToTexture.cpp:233-241`,`sun_intensity = 4.0f`、profile 名 `"RenderToTexture.OffscreenBright"`,补偿贴图二次着色的能量损耗,主屏保持 default);
 - 多 world(主/离屏)各按自己选中的 profile 取 sky 数据(未设置即 default);**订正(2026-09-28)**:现状 sky / shadow 地址写在**全局表**字段里,两个 world 选不同 profile 时后解析者覆盖前者 ⇒ 地址改为**按世界**发布(C2)后互不干扰。
 
 ## 9. 未来加新信息怎么做(扩展指南)
@@ -280,7 +280,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 - `RenderBeginFrame`:0 命中(已换成 `RenderPreBeginFrame`)。
 - `AtmosphereSky`:作为符号 0 命中;实际是示例文件名前缀(`example/Environment/AtmosphereSky{Minimal,Ambient,SunGizmo}.cpp`)。
 - `bound_buffers_`:0 命中(见 11.1)。
-- §8 「`RenderToTexture` 离屏 RT 用 OffscreenBright profile」:已核实为 `example/Basic/RenderToTexture.cpp:233-241`(profile 名 `"RenderToTexture.OffscreenBright"`,非 `"OffscreenBright"`);同目录 `RenderToTextureColorDepth.cpp` 用 `"RTTColorDepth.n"` 命名,未逐一核对。
+- §8 「`RenderToTexture` 离屏 RT 用 OffscreenBright profile」:已核实为 `example/Offscreen/RenderToTexture.cpp:233-241`(profile 名 `"RenderToTexture.OffscreenBright"`,非 `"OffscreenBright"`);同目录 `RenderToTextureColorDepth.cpp` 用 `"RTTColorDepth.n"` 命名,未逐一核对。
 - §10 `SetClearColor` 早于 `BeginRendering` 的时序坑:属历史经验条目,未逐行核实,保留原文。
 
 ### 11.3 2026-09-28 订正:相机 / 环境 / 地址表(权威文档对齐)

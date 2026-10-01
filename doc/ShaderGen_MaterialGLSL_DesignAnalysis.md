@@ -1,7 +1,7 @@
 # ShaderGen 材质 GLSL 生成器设计分析
 
 > 本文分析 ULRE 引擎的材质 GLSL 生成器（`src/ShaderGen` 为主），从示例程序
-> `example/Basic/PBRSpheres.cpp` 入口出发，沿调用链覆盖
+> `example/Material/PBRSpheres.cpp` 入口出发，沿调用链覆盖
 > `inc/hgl/mtl`、`inc/hgl/graph/ssbo`、`src/ShaderGen`、`ShaderLibrary` 四个目录，
 > 说明其分层架构、完整工作链与核心设计原理。
 >
@@ -54,12 +54,12 @@
 
 ## 二、完整工作链（从示例入口逐步追踪）
 
-### 第 1 步：示例作者装配材质（example/Basic/PBRSpheres.cpp）
+### 第 1 步：示例作者装配材质（example/Material/PBRSpheres.cpp）
 
 `InitMaterialDataSSBO()` 为每个 PBR 材质实例从
 `GlobalSSBOBufferRegistry` 获取 `GlobalSSBODataAccessor`
 （`GetManager<GlobalSSBOBufferRegistry>()->GetAccessor<ssbo::PBRSurfaceRow>()`，
-`example/Basic/PBRSpheres.cpp:277`/`:286`），
+`example/Material/PBRSpheres.cpp:277`/`:286`），
 写入材质字段并取得 `GlobalSSBOBinding{ssbo_type, ssbo_id, data_index}`
 （`GlobalSSBODataAccessor::GetGlobalSSBOBinding()`，
 `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:67`）。

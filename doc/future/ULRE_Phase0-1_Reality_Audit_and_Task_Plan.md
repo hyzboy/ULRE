@@ -10,6 +10,32 @@
 
 ---
 
+## example 目录新分类（2026-10-01，提交 `78248e3f5`「Example整理并重命名(无实质改动)」）
+
+**后续任务书/复核命令必须用新路径与新目标名**：
+
+| 新目录 | 程序（现行目标名） |
+|---|---|
+| `GettingStarted/` | DrawTriangle、SimpleCube、SimpleSphere |
+| `Material/` | BasicLitMeshes、**FullPrecisionLitMeshes**（新）、MaterialRecipeEntry、PBRSpheres、SingleSphereMaterialSwitch |
+| `Instancing/` | AutoInstance、AutoMergeMaterialInstance |
+| `Transform/` | ClockUse、RecursiveCube |
+| `Geometry/` | **LineRender**（原 `LineRenderTest`）、MixedBufferMeshes、`LoadGeometry/`、`LoadScene/`（原 `SceneTest`）、`Shared/`（GeometryLoader/LoadStaticMesh）、**`_Obsolete/`**（ExtrudedPolygonTest、WallsFromPolyline —— 已归入废弃） |
+| `Texture/` | AsyncTextureUpload、**TextureFormat**（新）、TextureMipLevels、TextureQuad、TextureRect、TextureRectArray |
+| `Offscreen/` | RenderToTexture、RenderToTextureColorDepth |
+| `Shadow/` | AlphaTestShadow、CascadeShadowMap、ShadowMap |
+| `Environment/` | AtmosphereSkyAmbient/Minimal/SunGizmo、BasicLitSunDirection、IBLEnvironment、SkyCubeSphere |
+| `Text/`（原 `GUI/`） | DrawMultiLineText、MultiFontSource、SDFTextEffects、**TextDraw**（原 `TextDrawTest`）、TextVertical |
+| `Interaction/` | **GizmoUsage**（原 `GizmoUsageExample`）、RayPicking |
+| `Debug/`（原 `Gizmo/`） | PlaneGrid3D、RenderBoundBox、SimplestAxis |
+| `ApiValidation/` | ComputeAsteroidBelt、**ComputeDispatch**（新）、ComputeFrustumCull、ComputeIndirectCount、**ComputeTransformHierarchy**（新）、SimpleMeshTriangle |
+
+- 目标声明走宏（`example/*/CMakeLists.txt` 的 `cm_example_project(<name> ...)` ⇒ 内部 `add_executable(${name} ... ${VULKAN_APP_FRAMEWORK})`）：**用 `grep add_executable` 查不到示例目标名是正常的**。
+- **已消失的目标**：`GizmoUsageExample`、`LineRenderTest`、`SceneTest`、`GeometryTest`（最后者的内容并入 `LoadGeometry`）。
+- `Basic/`、`GUI/`、`Gizmo/` 三个旧目录已不存在；顶层 `example/CMakeLists.txt` 的 `add_subdirectory` 顺序为 GettingStarted → Material → Instancing → Transform → Geometry → Texture → Offscreen → Shadow → Environment → Text → Interaction → Debug → ApiValidation。
+
+---
+
 ## 0. 结论摘要
 
 两篇文档共列 13 个 Task（0.1–0.6、1.1–1.5、Task 2–4）。逐条核对结果：
@@ -28,7 +54,7 @@
 | 任务 | 状态 | 证据 |
 |---|---|---|
 | T0 量化探针 + 实测基线 | **✅ 完成** | 探针 `src/ecs/support/ProbeTransformDiagnostics.cpp`；数字见 §2.1 |
-| T4 消费侧旋转提取修复 | **✅ 代码完成**（资产级视觉验证阻塞） | `SceneTest.cpp` 改 `math::DecomposeTransform`；顺带修 `CMMath` 镜像分支（§1.12） |
+| T4 消费侧旋转提取修复 | **✅ 代码完成**（资产级视觉验证阻塞） | `LoadScene.cpp` 改 `math::DecomposeTransform`；顺带修 `CMMath` 镜像分支（§1.12） |
 | T1 GLTFConvert 死路收敛 | **✅ 完成** | `NodeTransform` 只剩 None/TRS；导入边界统一做配对转换 + 镜像感知分解；见 §4 T1 |
 | T2 负缩放/镜像对拍 | **✅ 完成（发现 3 个真 bug）** | 修前/修后：TRS 非均匀 0.383→1.6e-07；matrix 非均匀 0.500→1.2e-07；**matrix 镜像 1.243→1.9e-07**；见 §1.2 订正与 §4 T2 |
 | T3 方向转换配对验证 | **✅ 完成** | 判据 M' = R·M·R⁻¹；含顶点级世界 AABB 对拍（≤1.2e-07）；见 §4 T3 |
@@ -47,7 +73,7 @@
 |---|---|---|
 | 导入侧 | `src/Tools/GLTFConvert/gltf/ToNodeTransform.cpp:17` | `glm::quat(src.rotation.w(), src.rotation.x(), src.rotation.y(), src.rotation.z())` — 正确 |
 | 导出侧 | `src/Tools/GLTFConvert/export/SceneExportPack.cpp:157-160` | 注释明写 `glm::quat memory order: x,y,z,w`，按 `[x,y,z,w]` 落盘 |
-| 引擎读取侧 | `example/Geometry/LoadScene/LoadStaticMesh.cpp:483` / `:619` | `math::Quatf(t.rotation[3], t.rotation[0], t.rotation[1], t.rotation[2])` = `(w,x,y,z)`，与落盘一致 |
+| 引擎读取侧 | `example/Geometry/Shared/LoadStaticMesh.cpp:483` / `:619` | `math::Quatf(t.rotation[3], t.rotation[0], t.rotation[1], t.rotation[2])` = `(w,x,y,z)`，与落盘一致 |
 
 文档点名要改的 `src/Tools/GLTFConvert/math/TRS.cpp` **全文只有 3 行**（`// fastgltf specific functionality removed; TRS now purely math/GLM based.`），里面没有任何构造逻辑可"纠正"。
 
@@ -117,8 +143,8 @@ if (src.transform.isTRS()) ne.trsIndex = GetOrAddTRS(outData.trsTable, src.trans
 
 TRS 表**已经导出**（48B 语义），但引擎消费侧没用它：
 
-- `example/Geometry/LoadScene/LoadStaticMesh.cpp:478-485` 与 `:614-621` 已经把 `hasTRS/translation/rotation/scale` 解析出来了；
-- `example/Geometry/LoadScene/SceneTest.cpp:197-202` 却忽略 `hasTRS`，改用世界矩阵反推：
+- `example/Geometry/Shared/LoadStaticMesh.cpp:478-485` 与 `:614-621` 已经把 `hasTRS/translation/rotation/scale` 解析出来了；
+- `example/Geometry/LoadScene/LoadScene.cpp:197-202` 却忽略 `hasTRS`，改用世界矩阵反推：
 
 ```cpp
 se.transform->SetLocalPosition(glm::vec3(node.worldMatrix[3]));
@@ -193,7 +219,7 @@ se.transform->SetLocalScale(glm::vec3(glm::length(worldMatrix[0]), ...));
 - **修正**：`std::fabs(outScale.x/y/z) > epsilon`（一行条件）。修后 `|q|=1.000000`、
   重建误差 **5.96046e-08**。
 - **影响面**：只有镜像/负缩放输入受影响（此前是垃圾值），非镜像路径逐位不变；
-  仓库内使用者：`CMMath/src/Transform/Transform.cpp:134`、`example/Geometry/LoadScene/SceneTest.cpp`（本次 T4）。
+  仓库内使用者：`CMMath/src/Transform/Transform.cpp:134`、`example/Geometry/LoadScene/LoadScene.cpp`（本次 T4）。
 - **提交口径**：`CMMath` 是 **submodule（独立仓库）**，本改动需在 `CMMath` 仓单独提交，
   主仓只更新 submodule 指针。
 
@@ -253,7 +279,7 @@ I2W 记账 + 每行存储等）。这是阶段一/三收益论证的基准数字
 | D1 | GPU 侧是否引入 48B `TransformTRS` SSBO | **不上** | 无消费者；多一张并行表 = 多一处结构漂移（门 `S./W.*-struct-parity` 兜的就是这族问题） |
 | D2 | L2W 是否 `mat4` → `Matrix4x3f`（每行省 16B） | **不改** | 触及 `l2w_ssbo.glsl` + 门的两条 parity 用例 + `TestRenderItemDataStorage.cpp` 三份内嵌 GLSL 夹具 + 6 处 CPU 写者；每行 16B 的收益不抵风险 |
 | D3 | `TransformAccessor` 是否用全局 `g_CurrentTransformStorage` | **禁止** | 世界私有不变量；句柄必须带世界上下文 |
-| D4 | `matrixTable` 是否退役（TRS-only 导出） | **做，但排在 T2 对拍之后** | 每节点现导 2×64B 与 48B TRS 重复；但世界矩阵有真实使用者（`SceneTest.cpp:197-202`），退役前必须先解决消费侧 |
+| D4 | `matrixTable` 是否退役（TRS-only 导出） | **做，但排在 T2 对拍之后** | 每节点现导 2×64B 与 48B TRS 重复；但世界矩阵有真实使用者（`LoadScene.cpp:197-202`），退役前必须先解决消费侧 |
 | D5 | 引擎示例是否改吃导出 TRS | **做（优先）** | 顺带消灭 `quat_cast(mat3(scaled))` 的真 bug |
 | D6 | `TransformComponent` 的"成员 + storage"三份局部副本是否收敛 | **做** | 双写 = 双真源，是"数据二次搬运"论断的真实落点 |
 
@@ -329,13 +355,13 @@ I2W 记账 + 每行存储等）。这是阶段一/三收益论证的基准数字
 - **产物一致性（实测，已订正为"数值等价"而非"逐字节一致"）**：见 T2 段末「字节一致性」小节 ——
   `.mesh`/`.material` 全 IDENTICAL，TRS/矩阵表差 ≤ 9.537e-07（float32 末位），AABB/sphere/obbCenter/obbHalf ≤ 9.5e-07；
   只有 `*.geometry`（3/5 文件、3~11 字节）与 OBB 轴向量（旋转对称形状的规范自由度）不同。
-- **风险（仍在）**：产物格式被主仓 `example/Geometry/LoadScene/LoadStaticMesh.cpp` 消费 ⇒ 子模块与主仓必须同批验证。
+- **风险（仍在）**：产物格式被主仓 `example/Geometry/Shared/LoadStaticMesh.cpp` 消费 ⇒ 子模块与主仓必须同批验证。
 
 - **原目标**：删掉 `DecomposeNodeMatrices` 开启后不可达的矩阵路径，让"局部变换只可能是 TRS"成为编译期/运行期事实。
 - **文件**：`src/Tools/GLTFConvert/math/NodeTransform.h:36-48`、`math/NodeTransform.cpp:36-48, 110-122, 138-155, 165-172`、`gltf/ToNodeTransform.cpp:3-11, 22-28`。
 - **前置**：`toZUpMat4()` 与 `Type::Matrix` 的全仓引用清点（本次已 grep：`toZUpMat4` 仅有声明+定义、**0 调用者**，可删；`Type::Matrix` 只被自身分支使用）。
 - **验收**：① 子仓构建通过；② 用同一批模型跑转换，导出产物（json + pack）与改前**逐字节一致**（TRS 表、节点表、primitive 表计数与内容不变）；③ GUI/CLI 两条入口都能转。
-- **风险**：与主仓双仓同步（产物格式被 `example/Geometry/LoadScene/LoadStaticMesh.cpp` 消费），必须两仓同批验证。
+- **风险**：与主仓双仓同步（产物格式被 `example/Geometry/Shared/LoadStaticMesh.cpp` 消费），必须两仓同批验证。
 
 ### T2 负缩放/镜像对拍 — ✅ 已完成（2026-09-29，**查出 3 个真 bug**）
 
@@ -435,7 +461,7 @@ float 末位差 + OBB 轴的规范差 ⇒ 等价，而非零字节差。
 
 ### T4 引擎消费侧改吃 TRS — ✅ 已完成（2026-09-29，代码修复；资产级视觉验证待资产）
 
-- **落地**：`example/Geometry/LoadScene/SceneTest.cpp:195-208` 的三行改为
+- **落地**：`example/Geometry/LoadScene/LoadScene.cpp:195-208` 的三行改为
   `math::DecomposeTransform(node.worldMatrix, world_pos, world_rot, world_scale)`
   （用既有引擎函数，不自研分解）；顺带修正 `CMMath` 的镜像分支（见 §1.12）。
 - **验收（数值，无需资产）**：`ProbeTransformDiagnostics` 的 [T4] 段—
@@ -444,14 +470,14 @@ float 末位差 + OBB 轴的规范差 ⇒ 等价，而非零字节差。
   镜像 S=(-2,0.5,1)：`DecomposeTransform` 修前 `|q|=0.881518`/重建误差 2.42296，
   修后 `|q|=1.000000`/重建误差 **5.96046e-08**。
 - **回归**：门 42 PASS / 0 FAIL；`TestTransformFlatStorage`、`TestRenderItemDataStorage`、
-  `TestCSMIncrementalPass` 三者 rc=0；`LoadScene`（含 SceneTest.cpp）编译链接通过。
+  `TestCSMIncrementalPass` 三者 rc=0；`LoadScene`（含 LoadScene.cpp）编译链接通过。
 - **未完成（阻塞）**：**资产级视觉验证**——`res/ABeautifulGame.StaticMesh/` 在本检出为空，
   示例加载路径 `res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene` 不存在
   （探针的「资产备注」段会打印这一事实）。两条补法：① 用 GLTFConvert 由 `res/model/*.glb`
-  生成该 `.scene`（会写入 `res` 子模块）；② 给 SceneTest 加命令行/环境变量指定场景路径。
+  生成该 `.scene`（会写入 `res` 子模块）；② 给 LoadScene 加命令行/环境变量指定场景路径。
 
 - **目标**：消灭 `quat_cast(mat3(scaledMatrix))` 这一真缺陷，并停止在消费侧反推。
-- **文件**：`example/Geometry/LoadScene/SceneTest.cpp:197-202`（改用 `node.hasTRS/translation/rotation/scale`）；无 TRS 时走 scale-aware 回退（列模长归一后再取旋转，不要直接 `quat_cast`）。
+- **文件**：`example/Geometry/LoadScene/LoadScene.cpp:197-202`（改用 `node.hasTRS/translation/rotation/scale`）；无 TRS 时走 scale-aware 回退（列模长归一后再取旋转，不要直接 `quat_cast`）。
 - **验收**：① 构造一个**非均匀缩放节点**做对照，改前朝向错、改后正确（截图/数值双证据）；② 原场景渲染与改前逐像素一致（RenderDoc 截帧或帧内读回差分）；③ 5 个代表性示例 0 VUID。
 
 ### T4.5 真实资产（Khronos `glTF-Sample-Assets`）验证 — ✅ 已完成（2026-09-29）
@@ -724,14 +750,14 @@ model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
 ### T5 `matrixTable` 退役（TRS-only 导出）——依赖 T2 + T4
 
 - **目标**：导出侧每节点只留 TRS（identity 用 `trsIndex < 0` 表达），删 `matrixTable` 里的 local/world 双份。
-- **文件**：`src/Tools/GLTFConvert/export/SceneExportNodes.cpp:27-33`、`export/SceneExportData.h:20-22, 53-54`、`export/SceneExportPack.cpp:189-191, 350-352, 457-459, 478-484`、`export/SceneExportJson.cpp:76-78`；主仓 `example/Geometry/LoadScene/LoadStaticMesh.cpp`（`PackedNode`/`NodeList` 解析、`StaticMeshNode::{localMatrix,worldMatrix}`）、`inc/hgl/graph/mesh/StaticMesh.h:22-23`。
-- **注意**：世界变换有真实消费者（`SceneTest.cpp` 的扁平化烘焙）⇒ TRS-only 后世界变换要在加载期自行连乘得到（一次，不逐帧）。
+- **文件**：`src/Tools/GLTFConvert/export/SceneExportNodes.cpp:27-33`、`export/SceneExportData.h:20-22, 53-54`、`export/SceneExportPack.cpp:189-191, 350-352, 457-459, 478-484`、`export/SceneExportJson.cpp:76-78`；主仓 `example/Geometry/Shared/LoadStaticMesh.cpp`（`PackedNode`/`NodeList` 解析、`StaticMeshNode::{localMatrix,worldMatrix}`）、`inc/hgl/graph/mesh/StaticMesh.h:22-23`。
+- **注意**：世界变换有真实消费者（`LoadScene.cpp` 的扁平化烘焙）⇒ TRS-only 后世界变换要在加载期自行连乘得到（一次，不逐帧）。
 - **验收**：3 个模型转换+加载正常；pack 体积下降（记录改前后数字）；门 42 PASS / CSM 契约不变。
 
 **实测结论（2026-09-30，已完成；用户拍板"JSON + pack 一起去"）**
 
 - **爆炸半径比预估小**：`matrixTable` 的**引擎运行时消费者 = 0**（`src/` + `inc/` 全仓 grep 命中 0）；
-  产物消费者只有 `example/Geometry/LoadScene/LoadStaticMesh.cpp` 一处（内含**两条**装载路径：
+  产物消费者只有 `example/Geometry/Shared/LoadStaticMesh.cpp` 一处（内含**两条**装载路径：
   SCN2 chunk 路径 + MiniPack 路径 —— 漏改一条就会字段错位）。
 - **产物侧改动**：`SceneExportData.h`（删 `matrixTable` / `localMatrixIndex` / `worldMatrixIndex`）、
   `SceneExportNodes.cpp`（删矩阵填充）、`SceneExportJson.cpp`（删 `matrixTable` 与节点 `localM`/`worldM` 键）、
@@ -780,7 +806,7 @@ model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
 
 ### T7 `local_matrices` 缓存去留（与 T6 同批判定）
 
-- **现状消费者只有三处**：`TransformComponent::GetLocalMatrix`（`TransformComponent.cpp:221-226`）、`TransformDataStorage::UpdateAllLocalMatrices/GetLocalMatricesData`（`TransformDataStorage.h:234-251`）、示例 `example/Basic/ComputeTransformHierarchy.cpp:314/360`（把 local 矩阵当 mat4 上传给 compute shader 做层级求值 demo）。
+- **现状消费者只有三处**：`TransformComponent::GetLocalMatrix`（`TransformComponent.cpp:221-226`）、`TransformDataStorage::UpdateAllLocalMatrices/GetLocalMatricesData`（`TransformDataStorage.h:234-251`）、示例 `example/ApiValidation/ComputeTransformHierarchy.cpp:314/360`（把 local 矩阵当 mat4 上传给 compute shader 做层级求值 demo）。
 - **决策**：若 `ComputeTransformHierarchy` 的定位是"未来 GPU 层级求值的探路"，缓存保留（并在注释写明"仅该示例消费"）；若暂不做 GPU 层级求值，缓存与示例一起删（零兼容口径）。
 - **验收**：删除后每行省 64B（T0 探针复测）；示例/测试全绿。
 
@@ -791,7 +817,7 @@ model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
   它由 TRS 唯一决定、**没有任何写入口**（T6 已删 `SetLocalMatrix` 与两个 `GetLocalMatrix`），
   已是纯派生数据 ⇒ **保留**，并在头里写明"求值中间量，不是第二真源"。
 - 外部读取口只剩 `GetLocalMatricesData()` / `UpdateAllLocalMatrices()` 两个，消费者**只有**
-  `ComputeTransformHierarchy`（`example/Basic/ComputeTransformHierarchy.cpp`，GPU 层级求值探路）——
+  `ComputeTransformHierarchy`（`example/ApiValidation/ComputeTransformHierarchy.cpp`，GPU 层级求值探路）——
   该示例仍在，且自检有效 ⇒ 一并保留（**这是"示例定位"那一问的现状，未改动**）。
 - **示例的真实自检数字**（比 T7 原本的验收更强）：`ComputeTransformHierarchy` 自报
   `PASS: 212 nodes across 8 levels verified successfully! max_diff=1.9e-06/1.0e-06/5e-07`
@@ -809,7 +835,7 @@ model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
   - `TransformComponent.{h,cpp}` 已 `git rm`；`grep -rn TransformComponent src inc example` **零命中**（仅 doc 保留历史记录）；`RenderItem::GetTransform()` 返回访问器；`Context` 的变换列表改 `TransformID` 向量 + 实体级 API（`CreateTransform/GetTransform/GetTransformByEntity/GetTransformID/DestroyTransform`）；
   - 组开关：**有变换出现即自动装 `TransformSystem`**（`Context::RegisterTransform`），不再依赖"组件计数"；
   - **搬迁中发现并修掉一个真 bug**：访问器 setter 原先只写存储、不累积 `change_masks`，而 `TransformSystem::ShouldUpdateTransform` 以掩码为硬判据 ⇒ 只经访问器写入的行（连同子孙）**永不上传 GPU**；现由 `TransformAccessor::MarkLocalChanged` 统一记账（版本 +1、掩码累积、逐行 bump 子孙 WorldMatrix）；
-  - 验证：全仓 Debug 构建 **0 真错误**（唯一错误是 `doc/backlog.md:109` 已登记的 TexConvCore 存量 LNK1104）；`TestTransformFlatStorage` / `TestRenderItemDataStorage` / `TestCSMIncrementalPass` **rc=0**；门 **42 PASS / 0 FAIL**；Test 15 = **13 源码契约 + 6 行为检查**（新增"经访问器写入必累积变更掩码"的契约与行为检查，专门防上面那个 bug 复活）；示例 ClockUse / RecursiveCube / ComputeTransformHierarchy / GizmoUsageExample / BasicLitSunDirection / IBLEnvironment / LoadScene / RayPicking 等 **0 error 行**；
+  - 验证：全仓 Debug 构建 **0 真错误**（唯一错误是 `doc/backlog.md:109` 已登记的 TexConvCore 存量 LNK1104）；`TestTransformFlatStorage` / `TestRenderItemDataStorage` / `TestCSMIncrementalPass` **rc=0**；门 **42 PASS / 0 FAIL**；Test 15 = **13 源码契约 + 6 行为检查**（新增"经访问器写入必累积变更掩码"的契约与行为检查，专门防上面那个 bug 复活）；示例 ClockUse / RecursiveCube / ComputeTransformHierarchy / GizmoUsage / BasicLitSunDirection / IBLEnvironment / LoadScene / RayPicking 等 **0 error 行**；
   - **未验证项（诚实标注）**：**动效的视觉确认未完成**——引擎在窗口隐藏/最小化时整帧跳过（`src/Work/WorkManager.cpp:93` `if(!has_window || win->IsVisible())`），把窗口前置需要用户同意（本次已超时未获同意）；而截图工具能截隐藏窗口 ⇒ 曾把"隐藏窗口的静止帧"误判成"画面冻结"。需要一次前台可见的 `RecursiveCube`/`ClockUse` 目视确认（掩码修复的直接观感是"物体真的会动"）。
   - **用户实测发现的真回归（已修）**：`RecursiveCube` 里 92 个实例全画在原点且不动。根因是组件退役时**丢了三条"对世界的副作用"**：
     ① `SetMobility` 不再通知世界把该行在静态/可动列表之间换边（`Context::MigrateTransform`）⇒ 该类行停在旧通道，渲染侧的实例→行索引映射取不到它 ⇒ 取默认行（单位矩阵）⇒ 全在原点且永不更新；
@@ -992,7 +1018,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 | 项 | 落点 | 验收 |
 |---|---|---|
 | 提交本批 | —— | ✅ **已由用户本地提交（2026-09-30）**；此后 T9-0.5（commit `034f7486d`）与 T9-1（bbox 连续化，16 文件）也已提交 |
-| **前台复验 `RecursiveCube`**（窗口隐藏时引擎整帧跳过，我无法前置窗口） | `RecursiveCube.exe` | 92 个实例散开且各自转动；顺带扫 `RayPicking`/`GizmoUsageExample` |
+| **前台复验 `RecursiveCube`**（窗口隐藏时引擎整帧跳过，我无法前置窗口） | `RecursiveCube.exe` | 92 个实例散开且各自转动；顺带扫 `RayPicking`/`GizmoUsage` |
 | ~~修探针"每行字节"统计~~ **✅ 已完成（2026-09-30）** | `TransformDataStorage::GetPerRowFields/PerRowBytes/FindPerRowCountMismatch` + `ProbeTransformDiagnostics.cpp` | 探针改由**存储自列**（18 条平行数组，新增字段只改存储一处）；Debug 实测 **275 B/行**（`children` 32 + `fixed_pixel` 32 单列）；`TestTransformFlatStorage` **Test 9** 钉住不变量"每条平行数组元素数 == 行数"（检查前先结算拓扑，否则 `eval_order` 会误报） |
 
 ### 9.1 T9 其余组件 ID 化（阶段二主线）
@@ -1027,7 +1053,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
      - **调用点**：`RenderPrimitiveCollectSystem` 不再经 `GetSystem<VisibilitySystem>()->GetStorage()` 取存储，改为直取世界存储；`LineRenderPipeline` 改 `context_->IsEntityVisible()`（**行为统一**：此前查组件的"直接"标志，现与 Primitive 路径一致地走祖先继承）；`GizmoUnified` 改 `world->SetEntityVisible(root,...)`。
      - **保留项**：`GizmoECS::root_visible` 保留 —— 它是 gizmo 的**本地门控标志**，被 `GizmoUnified.AssetCore.inl:47-49`、`AssetUpdate.inl:86` 与 `modes/{Move,Rotate,Scale}GizmoMode.Input.inl:52` 读取（与"世界可见性真值"是两个用途）。
      - **测试**：新增 `src/ecs/support/TestVisibilityStorage.cpp` + CMake target（3 项：默认可见 / 祖先不可见⇒后代不可见且后代非"直接"不可见 / 销毁回收）。**反证**：抽掉 `DestroyEntity` 里的回收 ⇒ `rc=12`、文案"实体销毁后不可见标记未回收（同索引新实体会继承旧状态）"（obj mtime 00:45:09 > 头 00:44:49）。
-     - **验证**：清除整棵 obj 树重编；build 0 error（非 C4715 警告 0）；`TestVisibilityStorage`/`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0；`GizmoUsageExample`/`LineRenderTest`/`RecursiveCube` 各 8 秒 0 真 error 行且按时被 taskkill。
+     - **验证**：清除整棵 obj 树重编；build 0 error（非 C4715 警告 0）；`TestVisibilityStorage`/`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0；`GizmoUsage`/`LineRender`/`RecursiveCube` 各 8 秒 0 真 error 行且按时被 taskkill。
      - **⚠ 教训**：判定"某字段无读者"必须**扫整个目录、含 `.inl` 分片**（本仓 gizmo 把实现放在 `GizmoUnified.AssetCore.inl` / `AssetUpdate.inl` / `modes/*.Input.inl`）——只 grep `.cpp` + 头文件会误判为死字段，删掉即 C2039。
 > **顺序改版（用户拍板 2026-10-01）**：原来"逐个组件直接 ID 化"改为 **stage A（组成形）→ stage B（存储形）** 两阶段，
 > 设计细节见 `doc/future/ULRE_FINAL_TARGET_v2_设计约束.md` **§9**（五条护栏 P1–P5、材质三层共享语义与 CoW、中间态纪律）。
@@ -1038,7 +1064,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 - **stage A 步骤（每步一批，独立可运行）**：
   A0 **地基（纯新增、零行为变化）** — ✅ **已完成（2026-10-01）**：类型表 scope 定稿（`Geometry`/`Texture`/`MaterialData` ⇒ Global；`Transform`/`MaterialRuntime` ⇒ World）+ `implies` 规则表（`MaterialRuntime ⇒ MaterialData`；表只写直接蕴含，**传递闭包编译期展开**) + **Entity 组件槽位位掩码** + `ComponentTypeOf<T>` 编译期映射 + `Component` 槽位字段（private，**仅 `Entity` 可写**，`friend class Entity`）。
     - 落点：`ComponentTypeTable.h`（定稿 + 位掩码/`ComponentMaskHas|Add|Remove`/`GetImpliedComponentMask`/`ComponentTypeOf`，含**自动 scale 的 static_assert**：种类 ≤ 16 槽位、≤ 32 位、表与枚举同序、implies 自反且闭包幂等）；`Component.h`（`component_slot` 只读 getter）；`Entity.h/.cpp`（`component_mask` + `GetComponentMask/HasComponentType/VerifyComponentMaskAgainstComponents`；**单一写者**：`ReplaceComponent` 置位、`RemoveComponent` 清位、`DetachAllComponents` 归零）；新测试 `TestComponentMask.cpp`（3 项：挂载置位 / 无槽位组件不占位 / 掩码与实际组件逐一对照；多槽位独立 + 移除只清自己 + 全卸归零；`None` 不占位）。
-    - 验证：清 obj 重编；build 0 error（非 C4715 警告 0）；`TestComponentMask`/`TestVisibilityStorage`/`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0；`RecursiveCube`/`GizmoUsageExample` 各 8 秒 0 真 error。
+    - 验证：清 obj 重编；build 0 error（非 C4715 警告 0）；`TestComponentMask`/`TestVisibilityStorage`/`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0；`RecursiveCube`/`GizmoUsage` 各 8 秒 0 真 error。
     - **反证**：抽掉 `ReplaceComponent` 的掩码置位 ⇒ 清 `ULRE.ECS.dir` + 测试 `.dir` 重编（obj mtime 01:33:31 > 源 01:33:25）⇒ `rc=10`、文案"挂载几何槽位后掩码不对（实际 0x0）"；恢复后重编全绿。
     - **⚠ 计划修订**：原 A0 里"顺手收敛 §9.5 组启停双写者"**移出本步** —— 侦察发现组计数（`Context.cpp:1614/:1642` 的 `system_group_component_counts`）是**活路径**（随组件挂卸自动 `EnsureSystemGroupSystems` / `SetElementTypeSystemsEnabled`），收敛它会改变行为、与"零行为变化"冲突；按 §9.5 原意，该收敛随 **A5 删组件类** 时一并做（删类即删掉计数路径）。
   A1 **策略判定表**（`组件集合 → pass/收集器需求`）— ✅ **已完成（2026-10-01）**：新增 `RenderStrategyTable.h`（`RenderNeed` 需求位 + `StrategyFacts` 事实 + **数据驱动规则表** `kRenderNeedRules`；表引用未知事实/槽位、需求位重复、条件要求冲突都会**编译失败**；空槽位 ⇒ 零需求也由 static_assert 钉住）+ `RenderStrategyParity.h/.cpp`（**对拍装置**：Release 下编为空）。
@@ -1052,7 +1078,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
     - 世界级访问器（终态形状，注释标注 stage B 换值句柄）：`ECSContext::GetMaterialData(EntityID)` / const 重载 / `GetOrCreateMaterialData(EntityID)`。
     - `MaterialComponent` 的跟踪副本改名（`tracked_material_data_generation` / `shadow_tracked_material_data_generation`），指向新真源。
     - 迁移面：引擎侧 `RenderPrimitiveCollectSystem`（8 处，含 `BuildResolvedRecipe` 改由调用方传 asset 默认配方）+ `PrimitiveBatchPipeline` + `GizmoUnified.AssetVisual.inl` + **37 个示例**（逐文件编译驱动，禁正则批替）。
-    - **独立复核（我方清 obj 重编）**：build 0 error、非 C4715 警告 0；7 个测试 rc=0；门 rc=0；`SimpleSphere`/`PBRSpheres`/`CascadeShadowMap`/`RenderToTexture`/`GizmoUsageExample` 各 8 秒 0 真 error，且 **A1 对拍仍 0 不一致**（PBRSpheres collect=81600、CSM collect=176700、Gizmo collect=23100）；旧模式 grep 全仓 0（唯一命中是 `src/Tools/TexConv/CUBEMAP_SKY_MATERIAL_NOTES.md` 里一句过期文档）；diff 规模小（例：SimpleSphere 6/5、PBRSpheres 7/6）⇒ 无行尾/BOM 翻转。
+    - **独立复核（我方清 obj 重编）**：build 0 error、非 C4715 警告 0；7 个测试 rc=0；门 rc=0；`SimpleSphere`/`PBRSpheres`/`CascadeShadowMap`/`RenderToTexture`/`GizmoUsage` 各 8 秒 0 真 error，且 **A1 对拍仍 0 不一致**（PBRSpheres collect=81600、CSM collect=176700、Gizmo collect=23100）；旧模式 grep 全仓 0（唯一命中是 `src/Tools/TexConv/CUBEMAP_SKY_MATERIAL_NOTES.md` 里一句过期文档）；diff 规模小（例：SimpleSphere 6/5、PBRSpheres 7/6）⇒ 无行尾/BOM 翻转。
     - **额外补验（子代理无法编译的两个目标）**：`example/Geometry/ExtrudedPolygonTest.cpp`、`WallsFromPolyline.cpp` 在 `example/Geometry/CMakeLists.txt` 里被注释（第 19 行 `WallsFromPolyline_Texture.cpp` 因**文件不存在**而被注释，整行启用会导致 CMake configure 失败）⇒ 临时只启用这两个目标**实测编译 rc=0、0 error、exe 产出**，随后把 CMakeLists 原样还原（0 diff）。
     - **⚠ 已知语义变化（需在 A3/A5 收口）**：① 纹理授权的"依材质定义声明校验（kind/array_layer/一致性）"从**授权期推迟到解析期**（`SetTextureResource` 只做结构校验：名字合法 + 纹理/采样器非空；声明一致性校验在 `BuildResolvedRecipe` 里，happy path 行为不变）；② `SetMaterialRecipe` 的**立即**管线失效改为渲染侧发现 `recipe_hash` 失配时失效（更精确、时机晚一帧）；③ `SetPrimitiveAsset` 的代数 bump 改为经 owner→Context 查 `MaterialData`（组件→组件的过渡查询，**A5 拆 Geometry 时应改为显式关系或去掉**）。
   A3 **材质 Variant 层** — ✅ **已完成（2026-10-01，含一次键粒度 bug 修复）**：`inc/hgl/ecs/support/MaterialVariantTable.h/.cpp`（表由 `ECSContext` 持有 + `GetMaterialVariantTable()`；容量 4096、超限 fail-fast 且**只告警一次**）+ `MaterialComponent` 的两个 program 槽换成**变体 ID**（`forward_variant` / `shadow_variant`），旧字段（`program`/`program_build_context_hash`/`shadow_program`/`shadow_program_build_context_hash`/`shadow_retry_frames`）**同批删净**（grep 残留 0）；`retry_frames` 随变体记录（D9 阈值/告警/降频判定逐字保持）。
@@ -1075,7 +1101,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
       - **删两处 OOP 缓存**：`RenderableComponent::cached_shadow_component`（改为每次经 owner 查 `ShadowComponent`，缺省约定逐条保持）、`PrimitiveComponent::bound_render_item_storage`（改按需取世界存储）；残留 grep **0**。
       - **可见性三真值收敛**：删 `RenderableComponent::visible`(+`IsVisible/SetVisible`) 与 `LinesComponent::visible`(+`SetVisible`+`LineChange::Visibility`)；`CanRender()` 改为"拥有可渲染资产"（不再含可见性）；两个收集循环的可见性判据改读 `world->IsEntityVisible`；`LineRenderPipeline` 删 `!comp->visible` 分支；gizmo 改走实体级（`root_visible` 本地门控保留）；**41 个示例删掉 61 处等义 `SetVisible(true)`**（每处留 `[A5a]` 原因注释）。
       - **A1 表取舍（我复核认可）**：删掉 `ComponentVisible` 事实（保留它会成为读同一真值的第二真名，违反单一真源的初衷，且该事实本就是 `CanRender()` 内含可见性的重复判定）；`CollectForCurrentPass` 只要求 `EntityVisible`；**对拍镜像仍真读 `world->IsEntityVisible`（未空转）**，9 个示例实测 `不一致=0`。
-      - **实测证据（我方清 obj 重编）**：build 0 error、非 C4715 警告 0；`TestCSMIncrementalPass`（含新增 **Test 24**：A5a 源码契约 8 条）等 **9 个测试 rc=0**；门 rc=0；`PBRSpheres`/`CascadeShadowMap`/`GizmoUsageExample` 各 8 秒 0 真 error 且对拍 0 不一致；`CSM_PASS_LOG=1` 探针与 A4 基线逐字一致（`rows=61 shared=61 owned=0 slots=105`）。
+      - **实测证据（我方清 obj 重编）**：build 0 error、非 C4715 警告 0；`TestCSMIncrementalPass`（含新增 **Test 24**：A5a 源码契约 8 条）等 **9 个测试 rc=0**；门 rc=0；`PBRSpheres`/`CascadeShadowMap`/`GizmoUsage` 各 8 秒 0 真 error 且对拍 0 不一致；`CSM_PASS_LOG=1` 探针与 A4 基线逐字一致（`rows=61 shared=61 owned=0 slots=105`）。
       - **反证**：在 `RenderableComponent.h` 里临时复活组件级 `visible` 字段 ⇒ 清 obj 重编（obj mtime 07:30:48 > 头 07:30:34）⇒ `rc=24`"Test 24 Failed: 组件级可见性字段复活（可见性真值只允许实体级 `ECSContext::IsEntityVisible`）"；恢复后重编全绿。（子代理过程里还亲历一次"只改头未清 obj ⇒ MSBuild 没重编 ⇒ rc=139 段错误"的假红，坐实清 obj 是硬要求。）
       - **⚠ 待拍板：类名冲突** → ✅ **已拍板并完成（2026-10-01）**：改名为 **`hgl::ecs::GeometryData`**（与 `MaterialData` 命名一致）；文件 `git mv` 保历史（`GeometryData.h/.cpp`）、类名/槽位特化/*世界访问器*（`GetGeometryData`/`GetOrCreateGeometryData`）全套改名，**槽位枚举名 `ComponentType::Geometry` 不变**；27 个示例里那 67 行 `graph::Geometry` 显式限定**恢复为裸 `Geometry`**。复核：旧名 grep 全仓 **0**（`\becs::Geometry\b|GetOrCreateGeometry\b|components/Geometry.h`），示例里 `graph::Geometry` 文件数 **0**；9 测试 rc=0、门 rc=0、`PBRSpheres` 8 秒对拍 0 不一致；无旧名别名/转发。剩余 `\bGeometry\b` 命中均为合法同名物（`hgl::graph::Geometry` 前向声明、槽位枚举、`LineChange::Geometry`、GLTFConvert 的 `pure::Geometry`、`example/Geometry` 目录名、`Magick::Geometry`）。
       - **迁移面比任务书估计大得多**（记录在案）：任务书估"示例 `SetVisible` ~10 处"，实测 61 处；且几何/资产侧方法随状态一并迁出 ⇒ 41 个示例的 **68 处 `SetPrimitiveAsset`（+5 处几何只读查询）**同批改写为 `owner->GetContext()->GetOrCreateGeometry(owner->GetEntityID())->X(...)`（写法长、但就是世界级访问器语义，**不是转发层**——子代理明确不建议加 `PrimitiveComponent` 转发以满足旧调用点，我认同）。
@@ -1085,7 +1111,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
       - **新 `inc/hgl/ecs/support/PrimitiveState.h/.cpp`**（自由函数，不新造组件）：`CanRender(const Entity*)`、`HasAnyMaterialSource(const Entity*)` + 阴影缺省五件套 `GetShadowProxy/CanCastShadow/GetShadowMaxDistance/CanReceiveShadow/GetShadowBiasMultiplier` ⇒ **"未挂载 ⇒ 可投射/可接收/距离 0/倍率 1.0"的缺省约定收敛到唯一一处**（`ShadowProxy.h:52-62` + `ShadowProxy.cpp:14-52`），不再有第二份拷贝。
       - **字段归位（12 项，逐条给依据）**：每实例状态 → `MaterialRuntimeSlot`（管线解析结果 `runtime_pipeline_pass/runtime_pipeline`、`render_item_handle`、实例数三件套、L2W/L2WIndex/MeshDrawParams/MaterialDataRows 缓冲、Indirect 缓冲与 offset、`is_gpu_driven/is_indirect`）；**共享行未承载任何每实例状态**（授权态仍只在 `MaterialData`/`GeometryData`/共享行）；`resolvedRuntimePipelineMap` 收窄为"只记当前 pass 的解析结果"（**不存 program 指针**——地址复用会误判）；`render_item_descriptor` 不再缓存（直写世界 `RenderItemDataStorage`，避免第二份真值）；`overridePipeline`、`positionSourceSpec`、`transformPolicySpec` **删除**（前者路径改走 `GetPipelineForRenderPass`/`RenderPass::CreatePipeline`；后两者删除前已无活跃引用）。
       - **A5a 隐式不变量解除**：`OnAttach` 自动补 `GeometryData` 随类删除消失 ⇒ 41 个示例改为**作者显式建库**（`CreateEntity → GetOrCreateGeometryData → SetPrimitiveAsset →（需要时）GetOrCreateMaterialData`，共 62 处 `GetOrCreateGeometryData`）。
-      - **实测证据（我方清 obj 重编）**：build **rc=0 / 0 error / 4 条既有 C4715**；**10 个测试 rc=0**（含本步新增 `TestBoundingVolumeCull` —— 首个覆盖包围体剔除数学的测试）+ 门 rc=0；`PBRSpheres`/`CascadeShadowMap`/`GizmoUsageExample`/`AutoMergeMaterialInstance` 各 8 秒 **0 真 error + 对拍不一致行数 0**；`CSM_PASS_LOG=1` 探针唯一值组 `rows=19/60/61 shared=同 rows owned=0 slots=20/104/105` **与 A5a 基线逐条一致**（存储语义未漂移）；三类 grep **0**、`ShadowComponent` **0**、`ShadowProxy` 65 处、已删头文件 0。
+      - **实测证据（我方清 obj 重编）**：build **rc=0 / 0 error / 4 条既有 C4715**；**10 个测试 rc=0**（含本步新增 `TestBoundingVolumeCull` —— 首个覆盖包围体剔除数学的测试）+ 门 rc=0；`PBRSpheres`/`CascadeShadowMap`/`GizmoUsage`/`AutoMergeMaterialInstance` 各 8 秒 **0 真 error + 对拍不一致行数 0**；`CSM_PASS_LOG=1` 探针唯一值组 `rows=19/60/61 shared=同 rows owned=0 slots=20/104/105` **与 A5a 基线逐条一致**（存储语义未漂移）；三类 grep **0**、`ShadowComponent` **0**、`ShadowProxy` 65 处、已删头文件 0。
       - **反证**：把 `ShadowProxy.cpp:33` 未挂载缺省 `CanCastShadow` 由 true 改 false ⇒ 清 obj 重编（obj 09:39:38 > 源 09:39:33）⇒ `rc=8`"Test 8B Failed: entity without ShadowProxy must default CanCastShadow to true"；恢复后全绿。
       - **申报项**：① `positionSourceSpec`/`transformPolicySpec` 直接删除（A5b 前已无活跃引用，仓内 grep 无残留）——若将来需要这两个策略需另行显式传入；② `overridePipeline` 删除后管线覆盖统一走 `GetPipelineForRenderPass`；③ 51 个 exe 全部编译通过，但**只对 4 个示例做了窗口 8 秒实跑**（其余按编译+测试覆盖）；④ 行尾/BOM 逐文件 80 条审计保真（6 个 LF-only 文件保持 LF，新增两文件 BOM+CRLF，`git mv` 两文件原形态保留）。
       **A5 整体状态：✅ 完成**（A5a + 重命名 + A5b）。
@@ -1159,7 +1185,7 @@ build **0 error** → 门 **42 PASS / 0 FAIL** → 三测试 **rc=0** → 示例
 **目标**：新建一个 Visibility 功能演示示例 —— **10×10 个球，按时间 + 某种规律开关可见性，形成动画**（功能演示，能看出效果即可）。
 
 **落点**：新建 `example/Basic/VisibilityDemo.cpp`；在 `example/Basic/CMakeLists.txt` 里按既有惯例注册 `CreateProject(VisibilityDemo VisibilityDemo.cpp)`（必要时动顶层 `example/CMakeLists.txt`）。
-参照 `example/Basic/PBRSpheres.cpp`（它本身就是 10×10 球体：`Sphere_M<col><row>` + `CreateSphere` + `PrimitiveComponent` + `CreateTransform`）的搭建方式，只保留"球 + 光 + 相机"最少必要部分。
+参照 `example/Material/PBRSpheres.cpp`（它本身就是 10×10 球体：`Sphere_M<col><row>` + `CreateSphere` + `PrimitiveComponent` + `CreateTransform`）的搭建方式，只保留"球 + 光 + 相机"最少必要部分。
 
 **实现要点（硬要求）**
 - **可见性开关一律走实体级新 API**：`world->SetEntityVisible(entity_id, bool)`（或 `IsEntityVisible` 查询）。**不要**用组件级 `PrimitiveComponent/RenderableComponent::SetVisible` —— 那是第二份真值，正是 §9.1-3 要收敛掉的。

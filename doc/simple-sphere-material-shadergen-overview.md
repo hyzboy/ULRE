@@ -5,7 +5,7 @@
 分析入口：
 
 ```text
-example/Basic/SimpleSphere.cpp
+example/GettingStarted/SimpleSphere.cpp
 ```
 
 关联范围：
@@ -65,7 +65,7 @@ MaterialShaderCompiler
 
 | 层 | 位置 | 职责 |
 | --- | --- | --- |
-| 运行时使用层 | `example/Basic/SimpleSphere.cpp`、ECS、SceneGraph | 创建几何、材质实例、纹理和运行时资源绑定 |
+| 运行时使用层 | `example/GettingStarted/SimpleSphere.cpp`、ECS、SceneGraph | 创建几何、材质实例、纹理和运行时资源绑定 |
 | 公共合同层 | `inc/hgl/mtl` | 定义 Recipe、材质定义、Shader 模块、模板和资源 ABI |
 | Shader 生成实现层 | `src/ShaderGen` | 解析、解析依赖、选择模板、生成 GLSL、编译和缓存 |
 | 声明与实现资源层 | `ShaderLibrary` | `.material.toml` 材质定义和可组合 GLSL 模块 |

@@ -24,7 +24,7 @@
 | 9 | Basic | FacingMeshBillboardZ | Z 轴面向摄像机 | basic_05e.png |
 | 10 | Basic | SimpleCube | 简单立方体 | basic_06.png |
 | 11 | Basic | BasicLitMeshes | 基础光照网格 | basic_06b.png |
-| 12 | Basic | TextureBlinnPhongMeshes | BlinnPhong 纹理网格 | basic_06c.png |
+| 12 | Basic | FullPrecisionLitMeshes | 全精度顶点格式光照网格（原 TextureBlinnPhongMeshes） | basic_06c.png |
 | 13 | Basic | PBRSpheres | PBR 球体 | basic_06d.png |
 | 14 | Basic | RenderBoundBox | 包围盒渲染 | basic_07.png |
 | 15 | Basic | RecursiveCube | 递归立方体 | basic_09.png |
@@ -35,12 +35,12 @@
 | 20 | Gizmo | SimplestAxis | 坐标轴 Gizmo | gizmo_01.png |
 | 21 | Gizmo | PlaneGrid3D | 3D 平面网格 | gizmo_02.png |
 | 22 | Gizmo | RayPicking | 射线拾取 | gizmo_03.png |
-| 23 | Gizmo | GizmoUsageExample | Gizmo 使用示例 | gizmo_05.png |
-| 24 | GUI | TextDrawTest | ECS 文本绘制 | gui_04.png |
+| 23 | Gizmo | GizmoUsage | Gizmo 使用示例 | gizmo_05.png |
+| 24 | GUI | TextDraw | ECS 文本绘制 | gui_04.png |
 | 25 | GUI | DrawMultiLineText | 多行文本 | gui_05.png |
 | 26 | Geometry | ExtrudedPolygonTest | 挤出多边形 | geo_01.png |
 | 27 | Geometry | WallsFromPolyline | 多段线墙体 | geo_03.png |
-| 28 | Geometry | LineRenderTest | 线渲染 | geo_04.png |
+| 28 | Geometry | LineRender | 线渲染 | geo_04.png |
 | 29 | Geometry | LoadGeometry | 加载几何体 | geo_05.png |
 | 30 | Geometry | LoadScene | 加载场景 | geo_06.png |
 | 31 | Environment | AtmosphereSkyMinimal | 大气天空（最小） | env_01.png |

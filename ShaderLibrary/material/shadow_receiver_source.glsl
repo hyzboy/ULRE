@@ -12,7 +12,7 @@
 // @ulre uses bindless_textures
 // @ulre uses scene_ubo
 // @ulre end
-// 阴影接收材质源 —— example/Basic/ShadowMap.cpp 的地面（receiver）专用。
+// 阴影接收材质源 —— example/Shadow/ShadowMap.cpp 的地面（receiver）专用。
 //
 // 与 material/pbr_surface_source.glsl 的唯一区别：贴图颜色写进 baseColor 之后，
 // 再乘一个由 shadow map 求出的"遮挡遮罩"，于是地面就显示出环上网格投下的影子。
@@ -63,7 +63,7 @@
 // 但能让本模块单独可读、不依赖被拼进来的顺序。
 #include "ubo/scene_ubo.glsl"
 
-// ── 与 example/Basic/ShadowMap.cpp 对齐的光源相机参数 ──────────────────
+// ── 与 example/Shadow/ShadowMap.cpp 对齐的光源相机参数 ──────────────────
 // 改这里任何一个都必须同步改 ShadowMap.cpp 里同名的 kLight* / kReceiver* 常量。
 
 /// 光源相机到原点的距离（ShadowMap.cpp: kLightDistance）

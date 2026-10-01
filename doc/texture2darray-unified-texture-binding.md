@@ -83,10 +83,10 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 
 | 示例（材质定义） | 绑定纹理类型 | bindless 句柄 | 行数据（节选） | 程序 id |
 |---|---|---|---|---|
-| `example/Basic/PBRSpheres.cpp`（Lit） | 2 × `Texture2DArray`（各 **10 层**） | 1, 2 | base_color `desc=1 layer=0..9`；normal `desc=2 layer=0..9` | `program-4558440414288230968` |
-| `example/Basic/SingleSphereMaterialSwitch.cpp` 近模式（Lit） | 2 × `Texture2DArray`（各 **1 层**） | 1, 2 | base_color `desc=1 layer=0` | `program-4558440414288230968`（同一个） |
+| `example/Material/PBRSpheres.cpp`（Lit） | 2 × `Texture2DArray`（各 **10 层**） | 1, 2 | base_color `desc=1 layer=0..9`；normal `desc=2 layer=0..9` | `program-4558440414288230968` |
+| `example/Material/SingleSphereMaterialSwitch.cpp` 近模式（Lit） | 2 × `Texture2DArray`（各 **1 层**） | 1, 2 | base_color `desc=1 layer=0` | `program-4558440414288230968`（同一个） |
 | 同上 **远模式**（同一 Lit 定义，同一槽名） | 2 × **普通 `Texture2D`** | 未实测（见下注） | 未实测 | 预计同上（程序 key 不含纹理身份） |
-| `example/Basic/SimpleSphere.cpp`（Lit，全程普通 2D） | 3 × `Texture2D` | 1, 2, 3 | base_color `desc=1 layer=0`、roughness `desc=2 layer=0`、normal `desc=3 layer=0` | `program-2855613769289964008`（与 array 示例不同；两者顶点格式实测不同，程序 key 含 `vertex_input_hash` → 推断由此导致） |
+| `example/GettingStarted/SimpleSphere.cpp`（Lit，全程普通 2D） | 3 × `Texture2D` | 1, 2, 3 | base_color `desc=1 layer=0`、roughness `desc=2 layer=0`、normal `desc=3 layer=0` | `program-2855613769289964008`（与 array 示例不同；两者顶点格式实测不同，程序 key 含 `vertex_input_hash` → 推断由此导致） |
 | `example/Texture/TextureRectArray.cpp`（UnlitTexture） | 1 × `Texture2DArray`（**4 层**） | 1 | base_color `desc=1 layer=0..3` | 另一份（另一材质定义） |
 
 自洽校验（真实日志）：
@@ -103,11 +103,11 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 
 - 行地址步进 `0x305f80030 → 0x305f80060` = **0x30 = 48B**，与 `references=6 × uvec2` 对齐 16B 一致。
 - TextureRectArray 行步进 `0x304400010 → 0x304400020` = **0x10 = 16B**（1 × uvec2 = 8B 向上对齐 16B）。
-- SimpleSphere 的程序 id 与 array 示例不同**与纹理类型无关**：两者顶点格式实测不同（`VF_V2HF/VF_V2UN8` vs `VF_V2F/VF_V3F`，`example/Basic/SimpleSphere.cpp:46-54` vs `SingleSphereMaterialSwitch.cpp` 的 gvf），而 `ShaderProgramKey` 含 `vertex_input_hash` → 推断差异来自顶点输入；纹理种类不在 key 中（§2④ 直接可证）。
+- SimpleSphere 的程序 id 与 array 示例不同**与纹理类型无关**：两者顶点格式实测不同（`VF_V2HF/VF_V2UN8` vs `VF_V2F/VF_V3F`，`example/GettingStarted/SimpleSphere.cpp:46-54` vs `SingleSphereMaterialSwitch.cpp` 的 gvf），而 `ShaderProgramKey` 含 `vertex_input_hash` → 推断差异来自顶点输入；纹理种类不在 key 中（§2④ 直接可证）。
 
 > **远模式未实测的说明**：远/近切换由相机距离驱动（`Tick:421-433`）。本次尝试用后台按键注入（PostMessage PageDown）触发，驱动返回 `delivery_failed / effect=unverifiable`，日志中 bindless 句柄数仍为 2 → **未能切到远模式**，故上表该行不填观测值。代码层判据：两个 recipe 只差 `recipe_name` 与材质数据行（`:177-187`），且 `ShaderProgramKey` 不含纹理身份（`inc/hgl/mtl/ShaderProgramKey.h:13-21`），故程序必然复用；句柄按纹理对象首次注册分配（`src/Vulkan/VKBindlessTextureManager.cpp:132-143`），远模式纹理注册后应取 3、4。自行滚轮 / PageDown 拉远一次即可在日志中复核。
 
-`example/Basic/SingleSphereMaterialSwitch.cpp` 是"同一 Lit 下两种都绑"的专用验证例：远模式 `LoadTexture2D` 两张普通 2D（`:125-126`）+ 缺省 kind 绑定（`:238-244`）；近模式建 **1 层** array 后逐层装入并以 `kind = Texture2DArray` 绑定（`:130-148`、`:250-261`）；两个 recipe 只差 `recipe_name` 与材质数据行（`:177-187`）；切换由相机距离驱动（`Tick` `:421-433`，`PageUp/PageDown`、`Equals/Minus`、滚轮绑定见 `src/ecs/systems/tick/CameraInputMapping.cpp:25-29`）。
+`example/Material/SingleSphereMaterialSwitch.cpp` 是"同一 Lit 下两种都绑"的专用验证例：远模式 `LoadTexture2D` 两张普通 2D（`:125-126`）+ 缺省 kind 绑定（`:238-244`）；近模式建 **1 层** array 后逐层装入并以 `kind = Texture2DArray` 绑定（`:130-148`、`:250-261`）；两个 recipe 只差 `recipe_name` 与材质数据行（`:177-187`）；切换由相机距离驱动（`Tick` `:421-433`，`PageUp/PageDown`、`Equals/Minus`、滚轮绑定见 `src/ecs/systems/tick/CameraInputMapping.cpp:25-29`）。
 
 ---
 

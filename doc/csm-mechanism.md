@@ -15,7 +15,7 @@
 - ECS 门面：`inc/hgl/ecs/systems/render/EnvironmentSystem.h`（实现 `.cpp` 同目录）
 - 数据契约：`inc/hgl/graph/ubo/ShadowInfo.h`（`kMaxShadowCascades = 4`）
 - GLSL：`ShaderLibrary/shadow/pcf_shadow.glsl`（选级 `EvalCascadeChain`）、`ShaderLibrary/ubo/scene_ubo.glsl`（`ShadowInfo`）
-- 示例：`example/Basic/CascadeShadowMap.cpp`（诊断/契约最全）、`example/Basic/AlphaTestShadow.cpp`（D1/D3/D4 契约）
+- 示例：`example/Shadow/CascadeShadowMap.cpp`（诊断/契约最全）、`example/Shadow/AlphaTestShadow.cpp`（D1/D3/D4 契约）
 - 测试：`TestCSMIncrementalPass`（21 项）、`TestRenderItemDataStorage`
 
 ## 2. ECS 侧接口（谁调什么）
@@ -70,7 +70,7 @@
 ### 静态/动态分离（用户已裁定，勿翻案）
 
 - 世界按 `Mobility` 分类：`Static` 物体进静态级联缓存，`Movable` 走动态。
-- `example/Basic/CascadeShadowMap.cpp` 的 `InfiniteGround` 保持 **Static**，按**相机网格吸附**；
+- `example/Shadow/CascadeShadowMap.cpp` 的 `InfiniteGround` 保持 **Static**，按**相机网格吸附**；
   跨格时**接受整级静态级联重建**并打一次性告警（这是明确拍板的行为，不是缺陷）。
 - 手动整体失效用 `InvalidateMainLightStaticShadowCache()`。
 

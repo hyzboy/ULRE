@@ -129,7 +129,7 @@
 > 来源：`doc/csm-review-2026-09-25.md`（A5/A6/A7-A10/T 系列剩余）+
 > `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`（masked 链深挖
 > 新卡）。快赢组（A9/A7/T10/T2/T7 + demote feature）已完成不再列。
-> 深度图读回报证工具见 `example/Basic/AlphaTestShadow.cpp` 的 DumpCascadeDepth。
+> 深度图读回报证工具见 `example/Shadow/AlphaTestShadow.cpp` 的 DumpCascadeDepth。
 
 ### ~~D1. 深度镂空判读升级为自动契约~~ ✅ 已完成（2026-09-26）
 
@@ -285,7 +285,7 @@
   - **误报门**：`ATS_SELFCHECK=1` 正常场景告警 **0 条**；`CascadeShadowMap` 冒烟告警
     **0 条**、缓存统计与基线一致 ⇒ 现有引擎/示例代码没有运行期写静态的调用点。
 - **未采用（明确记录）**：B′ 同值短路、C′ 写静态自动迁移到 Movable。
-- **已知调用点裁决（2026-09-26 用户）**：`example/Basic/CascadeShadowMap.cpp:684-693` 的
+- **已知调用点裁决（2026-09-26 用户）**：`example/Shadow/CascadeShadowMap.cpp:684-693` 的
   `InfiniteGround`（Static，按相机做网格吸附）**保持 Static**——吸附有同值守卫、跨格
   才写一次，接受「每跨格 1 次整级静态级联重建 + 首跨 1 条一次性告警」。该调用点同时
   解释了冒烟日志里那 2 次（长跑 16 次）`invalidating static cascade` 的来源：不是回归，
@@ -577,7 +577,7 @@
 <details><summary>原始录入（2026-09-26 留置时）</summary>
 
 
-- **现状**：`example/Basic/AlphaTestShadow.cpp` 自带两套一次性取证工具，形态都是
+- **现状**：`example/Shadow/AlphaTestShadow.cpp` 自带两套一次性取证工具，形态都是
   「RT 附件 → staging buffer → CPU → **手写 BMP**」，且各自重复实现了一遍
   immediate submit / 首尾 barrier / 布局还原 / staging 生命周期：
   - `DumpCascadeDepth(rt, name, DepthFillStats*)`（`:167-322`）：D32 深度附件（DEPTH

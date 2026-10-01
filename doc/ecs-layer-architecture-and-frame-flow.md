@@ -1,6 +1,6 @@
 # ULRE ECS 层架构与帧流程详解（技术文档）
 
-> 基线：**2026-09-24，分支 `CSM`**——描述符机制退役后的 BDA 终态：执行相位表、系统/系统组模型、4-ID 图元描述符与全局 SSBO 行池。trace 载体 = `example/Basic/SimpleSphere.cpp`（单球体 + `Lit` 材质，一个 Primitive 实体 + 一个 Camera 实体）。
+> 基线：**2026-09-24，分支 `CSM`**——描述符机制退役后的 BDA 终态：执行相位表、系统/系统组模型、4-ID 图元描述符与全局 SSBO 行池。trace 载体 = `example/GettingStarted/SimpleSphere.cpp`（单球体 + `Lit` 材质，一个 Primitive 实体 + 一个 Camera 实体）。
 > 范围：`inc/hgl/ecs/` + `src/ecs/` 全部分层（core / components / systems(tick,render) / support），以及 ECS 与渲染层（Graph/Vulkan）的接口面。
 > 与 `doc/simple-sphere-ecs-render-chain.md` 的分工：那篇讲「数据怎么从作者 API 走到 vkCmd」；本篇讲「ECS 层内部由谁、在什么阶段、按什么顺序驱动这些数据」。
 > 全部 path:line 在本基线核实；**符号名是稳定锚点，行号随重构漂移**。本文只描述现状。
@@ -302,7 +302,7 @@ BeginManagedRenderFrame(dt, /*need_swapchain_acquire=*/false, options)   ← 离
 
 `RenderPassRequest` 字段（`inc/hgl/ecs/core/RenderPassRequest.h:31-64`）：`target` / `clear` / `use_target_clear` / `delta_time` / `camera` / `load_depth` / `use_scissor` + `scissor` / `clear_scissor_depth` / `mobility_filter`。
 `RenderPassOptions`（`inc/hgl/vk/VKCommandBuffer.h:116-125`）：`load_color` / `load_depth` / `depth_old_layout` / `use_scissor` + `scissor` / `clear_scissor_depth` / `clear_depth_value`（Reversed-Z 默认 0.0f）。
-实际调用者：`example/Basic/ShadowMap.cpp:1097`、`example/Basic/CascadeShadowMap.cpp:683,704`（`RenderTo(const RenderPassRequest&)`）；`src/SceneGraph/module/OffscreenWorld.cpp:149` 走的是三参重载 `RenderTo(graph::IRenderTarget*, Color4f, float)`（`src/ecs/core/Context.cpp:549`）。
+实际调用者：`example/Shadow/ShadowMap.cpp:1097`、`example/Shadow/CascadeShadowMap.cpp:683,704`（`RenderTo(const RenderPassRequest&)`）；`src/SceneGraph/module/OffscreenWorld.cpp:149` 走的是三参重载 `RenderTo(graph::IRenderTarget*, Color4f, float)`（`src/ecs/core/Context.cpp:549`）。
 
 `RenderDrawOnly`（`src/ecs/core/Context.cpp:425-443`）本身不含相位逻辑，它只是 `RecordPreparedRenderPhaseRange(RenderCollect, RenderStat, dt, true, ...)`。
 
@@ -479,7 +479,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 ## 11. SimpleSphere 的 ECS 映射
 
-| 示例代码（`example/Basic/SimpleSphere.cpp`） | ECS 对象 | 驱动者 | 产出 |
+| 示例代码（`example/GettingStarted/SimpleSphere.cpp`） | ECS 对象 | 驱动者 | 产出 |
 |---|---|---|---|
 | `CreateEntity<Entity>("SphereEntity")`（:171） | Entity + EntityID | `Context::CreateEntity`（`inc/hgl/ecs/core/Context.h:369`） | EntityManager 表项 |
 | `AddComponent<TransformComponent>(Mobility::Movable)`（:173）+ `SetMovable(true)`（:177） | TransformComponent | `RegisterComponentInstance`（建 TransformComponent 时另走 `RegisterTransformComponent` 进 movable 列表） | movable_transforms 一项 |

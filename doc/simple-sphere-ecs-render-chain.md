@@ -1,7 +1,7 @@
 # SimpleSphere 到 vkCmd 的完整渲染链与数据流（技术文档）
 
 > 基线：**2026-09-24，分支 `CSM`**——描述符机制退役后的 **BDA 终态**：4-ID 全局图元描述符池 + 全局 SSBO 行池 + `pc_root`/`buffer_reference` 寻址，mesh shader（`vkCmdDrawMeshTasksIndirectEXT`）是唯一顶点路径。
-> 入口示例：`example/Basic/SimpleSphere.cpp`（264 行；私有缓冲几何 + `Lit` PBR 材质 + 单球体 ECS 实体 + `ViewModel` 相机）。
+> 入口示例：`example/GettingStarted/SimpleSphere.cpp`（264 行；私有缓冲几何 + `Lit` PBR 材质 + 单球体 ECS 实体 + `ViewModel` 相机）。
 > 目的：以单个最小示例为剖面，记录「作者侧 API → 每帧 CPU 物化 → 一条 vkCmd 提交 → shader BDA 取数」的完整链路与行号证据。全部 path:line 在本基线核实；**符号名是稳定锚点，行号随重构漂移**，引用时按 `file:line` + 符号名双锚。
 > 本文只描述现状，不含改造建议。
 >
@@ -35,12 +35,12 @@
 ## 2. 入口 → 帧循环
 
 ```
-os_main                                         example/Basic/SimpleSphere.cpp:261
+os_main                                         example/GettingStarted/SimpleSphere.cpp:261
 └ RunFramework<SimpleSphereApp>(...)             inc/hgl/framework/WorkManager.h:66
   └ AppFramework::Init → RegisterDefaultEcsSystems   src/Work/AppFramework.cpp:251
   └ WorkManager::Run 帧循环                       src/Work/WorkManager.cpp:74
     ├ RunFrame → Tick(wo)                        src/Work/WorkManager.cpp:66 / :14
-    │   └ WorkObject::Tick（球体自转）             example/Basic/SimpleSphere.cpp:248-258
+    │   └ WorkObject::Tick（球体自转）             example/GettingStarted/SimpleSphere.cpp:248-258
     └ Render(wo)                                 src/Work/WorkManager.cpp:34
       └ ECSContext::Render(dt, pre_render)       src/ecs/core/Context.cpp:598
         ├ 只在 scene_structure_dirty 时 GatherSceneStats（结构稳定则零开销）
@@ -104,7 +104,7 @@ RenderSubmit             SwapchainSubmitSystem
 
 ### 3.1 材质参数行 → 全局行池租约（行号就是身份）
 
-- 申请：`GetManager<GlobalSSBOBufferRegistry>()->GetAccessor<graph::ssbo::PBRSurfaceRow>()`（`example/Basic/SimpleSphere.cpp:90-96`，`GetAccessor` 模板见 `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:202-208`）
+- 申请：`GetManager<GlobalSSBOBufferRegistry>()->GetAccessor<graph::ssbo::PBRSurfaceRow>()`（`example/GettingStarted/SimpleSphere.cpp:90-96`，`GetAccessor` 模板见 `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:202-208`）
 - 行结构真源：`graph::ssbo::PBRSurfaceRow` = `Color4f base_color + metallic/roughness/normal_scale/fresnel`，**32B**（`inc/hgl/graph/ssbo/MaterialDataRows.h:20-27`，`static_assert(sizeof(PBRSurfaceRow)==32)` 见 :43）
 - 池在创建期按 `GlobalSSBOType` 枚举遍历建好：`ActiveRowPool pools[GlobalSSBOTypeCount]`（`GlobalSSBOBufferRegistry.h:88`），容量来自表驱动配置 `kGlobalSSBOConfigs`（`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:13-20`）：
   - `MeshDrawParams` 16384 行 × 112B、`PBRSurface` **1024 行 × 32B**、`EmissiveSurface` 1024 × 16B、`TransmissionSurface` 1024 × 16B、`CameraInfo` 64 行（**订正：相机行池本轮定稿下沉世界私有（16 槽 × 8 帧槽，0 号槽 = 世界默认相机），见 plan §2 / §5 C1**）；**每种池都 `reserve_rows = 1`（行 0 预留零行，不参与分配）**
@@ -298,7 +298,7 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 
 | 旧说法 | 现状 | 依据 |
 |---|---|---|
-| `MaterialSSBOBufferRegistry` / `MaterialSSBODataAccessor` / `GetMaterialDataAccessor` / `GetMaterialSSBOBinding` / `IsMaterialDataIDActive` / `material_row_pools` / `DefaultMaterialDataElementCapacity` | 统一为 `GlobalSSBOBufferRegistry` + `GlobalSSBODataAccessor` + `ActiveRowPool pools[GlobalSSBOTypeCount]`；容量来自 `kGlobalSSBOConfigs` 表（PBRSurface 1024×32B / MeshDrawParams 16384×112B / CameraInfo 64；**订正：相机行池本轮定稿下沉世界私有（16 槽 × 8 帧槽），见 plan §2**）；行号活跃判定是 `IsActive(ssbo_type, id)`，绑定是 `GetGlobalSSBOBinding()`。旧名全仓 0 命中 | `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:31-61,88,147-168,220`；`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:13-20,169`；`example/Basic/SimpleSphere.cpp:90-96,118,190` |
+| `MaterialSSBOBufferRegistry` / `MaterialSSBODataAccessor` / `GetMaterialDataAccessor` / `GetMaterialSSBOBinding` / `IsMaterialDataIDActive` / `material_row_pools` / `DefaultMaterialDataElementCapacity` | 统一为 `GlobalSSBOBufferRegistry` + `GlobalSSBODataAccessor` + `ActiveRowPool pools[GlobalSSBOTypeCount]`；容量来自 `kGlobalSSBOConfigs` 表（PBRSurface 1024×32B / MeshDrawParams 16384×112B / CameraInfo 64；**订正：相机行池本轮定稿下沉世界私有（16 槽 × 8 帧槽），见 plan §2**）；行号活跃判定是 `IsActive(ssbo_type, id)`，绑定是 `GetGlobalSSBOBinding()`。旧名全仓 0 命中 | `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:31-61,88,147-168,220`；`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:13-20,169`；`example/GettingStarted/SimpleSphere.cpp:90-96,118,190` |
 | 材质 SSBO 类型枚举 `MaterialSSBOType` | 并入 `graph::GlobalSSBOType`（MeshDrawParams / PBRSurface / EmissiveSurface / TransmissionSurface / CameraInfo） | `inc/hgl/graph/ssbo/SSBOTypes.h:14-25`（注释明写“原 mtl::MaterialSSBOType 已并入本枚举”） |
 | 材质行 `data_index` 兼作地址 | `data_index` 是**行号**（`material_id`）；地址由 `material_row_gpu = gpu_base + data_index*row_bytes` 现场算出。返回结构体字段名从 `row_id` 变为 `data_index` | `GlobalSSBOBufferRegistry.h:57-60`；`RenderPrimitiveCollectSystem.cpp:801,815` |
 | `MaterialInstanceAddresses{payload_address, texture_reference_address}` | 字段改名 `{payload_index, texture_reference_index}`（**本轮再订正为 16B 四字段**：追加 `shadow_bias_multiplier` / `shadow_flags`），语义为「指向全局池/纹理引用池的行号」而非地址 | `inc/hgl/graph/ShaderBufferSources.h:142-198`（**16B**，断言 :181-198）；写者 `src/ecs/support/PrimitiveBatchPipeline.cpp`；读者 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:291-297,322-325` |
@@ -310,7 +310,7 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 | 相位用数字（9/10/11/12/13/14/16）指代 | 数字标签已废弃，一律用 `ExecutionPhase` 枚举名。0-based 序：0 TickInput,1 TickTransform,2 TickCamera,3 TickPostCamera,4 RenderSwapchainNextImage,5 RenderPreBeginFrame,6 RenderCollect,7 RenderBatch,8 RenderBufferCommit,9 RenderBufferUpload,10 RenderFrameSync,11 RenderDrawSubmit,12 RenderDebug,13 RenderStat,14 RenderSubmit | `inc/hgl/ecs/core/System.h:24-48` |
 | `RenderFrameUBOSyncSystem`（`RenderFrameSync` 相位上） | 该类型 0 命中。`RenderFrameSync` 相位上只有 `RenderSceneUBOSystem`（原 `RenderDescriptorBindingSystem`，2026-09-08 改名） | `src/ecs/systems/render/RenderSceneUBOSystem.cpp:99`；`inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h:35-43` |
 | `CreateDefaultLinearGraph`（`use_adaptive_render_graph==false` 的线性图） | 已删除，建图只有 `CreateAdaptiveRenderGraph`；`use_adaptive_render_graph` / `SetAdaptiveRenderGraphEnabled` / `CreateDefaultLinearGraph` 全仓 0 命中。图缓存键是 `SceneStats::GetHash()`，只在 `scene_structure_dirty` 时重算 | `inc/hgl/ecs/core/RenderGraph.h:100-145`；`src/ecs/core/RenderGraph.cpp:217-262`；`src/ecs/core/Context.cpp:598-618` |
-| `RenderTo` 尚未成文/离屏 pass 靠 `RenderContext` 副本 | `RenderTo(const RenderPassRequest&)`（`inc/hgl/ecs/core/RenderPassRequest.h`）是离屏/子 pass 一等入口：内部复用 `BeginManagedRenderFrame(…, need_swapchain_acquire=false, &RenderPassOptions)` + `RenderDrawOnly` + `EndManagedRenderFrame`；支持 `camera`（pass 级相机覆盖）、`clear/use_target_clear`、`load_depth`、`use_scissor/scissor`、`clear_scissor_depth`、`mobility_filter`，并同步 `RenderTargetSystem` 的 RT、两侧 `WaitFence` 保护共享 Camera UBO/L2W ring。实际使用者：`example/Basic/ShadowMap.cpp:1097`、`example/Basic/CascadeShadowMap.cpp:683,704`（均为 `RenderTo(const RenderPassRequest&)`）；另外 `src/SceneGraph/module/OffscreenWorld.cpp:149` 用的是旧的三参重载 `RenderTo(graph::IRenderTarget*, Color4f, float)`（`src/ecs/core/Context.cpp:549`），不经 `RenderPassRequest` | `src/ecs/core/Context.cpp:445-557`；`inc/hgl/ecs/core/Context.h:236-249` |
+| `RenderTo` 尚未成文/离屏 pass 靠 `RenderContext` 副本 | `RenderTo(const RenderPassRequest&)`（`inc/hgl/ecs/core/RenderPassRequest.h`）是离屏/子 pass 一等入口：内部复用 `BeginManagedRenderFrame(…, need_swapchain_acquire=false, &RenderPassOptions)` + `RenderDrawOnly` + `EndManagedRenderFrame`；支持 `camera`（pass 级相机覆盖）、`clear/use_target_clear`、`load_depth`、`use_scissor/scissor`、`clear_scissor_depth`、`mobility_filter`，并同步 `RenderTargetSystem` 的 RT、两侧 `WaitFence` 保护共享 Camera UBO/L2W ring。实际使用者：`example/Shadow/ShadowMap.cpp:1097`、`example/Shadow/CascadeShadowMap.cpp:683,704`（均为 `RenderTo(const RenderPassRequest&)`）；另外 `src/SceneGraph/module/OffscreenWorld.cpp:149` 用的是旧的三参重载 `RenderTo(graph::IRenderTarget*, Color4f, float)`（`src/ecs/core/Context.cpp:549`），不经 `RenderPassRequest` | `src/ecs/core/Context.cpp:445-557`；`inc/hgl/ecs/core/Context.h:236-249` |
 | pass 内 `renderTarget` 字段可切 RT | `RenderGraph::Pass::renderTarget` **尚未生效**：`ExecuteRenderGraphPasses` 不读它，非当前 RT 只打警告，因为 cmd buffer 由帧初始 RT 持有、跨 RT 切换同步未实现 | `inc/hgl/ecs/core/RenderGraph.h:38-48`；`src/ecs/core/RenderGraph.cpp:110-118` |
 | `MAX_FRAMES_IN_FLIGHT`(3) 与 retire 延迟「恰好相等、零余量」 | 渲染层已无该常量（全仓 0 命中）。帧同步槽位归 RT 自持，retire 延迟为 `MaterialTextureConfigurationRetireEpochDelay = 3u` | `inc/hgl/graph/module/MaterialTextureReferencePool.h:15` |
 | Plan 里未出现的新机制：4-ID 一级表 + 二级索引 + 连号折叠 / IndirectMeshDraw 命令表 / GPU-Driven 覆盖 | 已落地：`RenderItemDescriptor`(16B) + `RenderItemDataStorage` + `DrawItemIDStorage` + `CompactRenderItemHandles` 连号折叠；`MaterialBatch::gpu_driven_override` / `uses_render_item_resolve` / `icb_count_buffer` 支持 100% GPU-Driven 批次（跳过 CPU 侧 ICB 与行表生成）；**订正（2026-09-28）：`uses_render_item_resolve` 全仓无处置 true ⇒ 4-ID GPU 运行时解析当前未启用** | `inc/hgl/graph/render/RenderItemDescriptor.h:19-44`；`inc/hgl/ecs/support/DrawItemCompaction.h:15-70`；`inc/hgl/ecs/core/MaterialBatch.h:53,69-76`；`src/ecs/support/PrimitiveBatchPipeline.cpp:920,646,1010` |

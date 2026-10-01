@@ -3,7 +3,7 @@
 ## 第 4 项：`[LEAK]` 报告为什么「间歇不可观察」
 
 **根因（已定位）**：`CSM_AUTOWALK` 是**行走速度(m/s)**，不是帧数——见
-`example/Basic/CascadeShadowMap.cpp:1077/1081`。示例没有帧上限、也没有自动退出开关，
+`example/Shadow/CascadeShadowMap.cpp:1077/1081`。示例没有帧上限、也没有自动退出开关，
 headless 跑只会一直循环 ⇒ 常以 `timeout` 杀掉（rc=124），退出期泄漏报告**根本没机会打印**。
 「间歇性 133 条 + exit 3」是因为只有手动关窗口那条路径才会走到退出期报告。
 
@@ -46,7 +46,7 @@ VkBuffer 归零；归零即本条结案（报告可信），未归零的那部�
 
 ## 第 1 项：交换链颜色图帧外读回（真 VUID）—— ✅ 已完成（2026-09-27）
 
-**现状（改造前）**：`example/Basic/AlphaTestShadow.cpp:309-311` 的 `graph::ReadbackColorTarget(main_rt, ...)`
+**现状（改造前）**：`example/Shadow/AlphaTestShadow.cpp:309-311` 的 `graph::ReadbackColorTarget(main_rt, ...)`
 读的是交换链颜色图（真实布局 `PRESENT_SRC_KHR`，见 `:296-300` 注释）；引擎侧
 `src/Vulkan/VKTextureReadback.cpp:51-53` 把 `PRESENT_SRC_KHR` 当「渲染刚写过」处理，
 于是在 **acquire 窗口之外**对该图做布局转换并提交 ⇒

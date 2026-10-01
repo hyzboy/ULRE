@@ -201,7 +201,7 @@ class TransformAccessor {
 | T1 | GLTF 死路收敛（子模块） | `GLTFConvert/math/NodeTransform.*` |
 | T2 | 负缩放/镜像 3 个 bug 修复 | `CMMath/Matrix4f.cpp`（submodule） |
 | T3 | 方向转换配对验证 | `NodeTransform.cpp` M'=R·M·R⁻¹ |
-| T4 | 消费侧旋转提取修复 | `SceneTest.cpp` 改 math::DecomposeTransform |
+| T4 | 消费侧旋转提取修复 | `LoadScene.cpp` 改 math::DecomposeTransform |
 | B1 | matrixTable 退役 + 示例改吃 TRS | `LoadStaticMesh.cpp` |
 | B2 | 局部真源唯一化 | `TransformComponent.cpp`（14 个死接口清除） |
 | B3.1 | TransformID/Accessor 新增 | `TransformID.h` / `TransformAccessor.h/.cpp` |

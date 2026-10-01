@@ -31,7 +31,7 @@ mesh shader 的线程组织与 VS 完全不同，正是这种差异导致了问�
 
 ### 2.1 现象
 
-第一次实现 LineQuad 模式后，运行 LineRenderTest **直接驱动崩溃**（不是 validation 错误，是 GPU 挂起/驱动崩溃）。用 Vulkan Configurator 的 Crash Diagnostic Layer（CDL）抓取的 dump 显示：
+第一次实现 LineQuad 模式后，运行 LineRender **直接驱动崩溃**（不是 validation 错误，是 GPU 挂起/驱动崩溃）。用 Vulkan Configurator 的 Crash Diagnostic Layer（CDL）抓取的 dump 显示：
 
 ```
 CommandBuffer: Swapchain_RenderCmdBuffer_0

@@ -7,7 +7,7 @@ provider_policy = "GeometryOnly"
 # 数据行），只把 material_source_module 换成会采样 shadow map 的实现，
 # 并额外声明一个 shadow_map 纹理槽。
 #
-# 用法（example/Basic/ShadowMap.cpp）：
+# 用法（example/Shadow/ShadowMap.cpp）：
 #   recipe.mtl_def_id = "ShadowReceiver"
 #   SetMaterialTextureResource("base_color", brickwall_albedo, sampler)
 #   SetMaterialTextureResource("shadow_map", depth_pass->GetDepthTexture(), sampler)

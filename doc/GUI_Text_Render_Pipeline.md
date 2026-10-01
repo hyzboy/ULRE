@@ -8,7 +8,7 @@
 ## 总体架构
 
 ```
-应用层 (example/GUI/)
+应用层 (example/Text/)
   os_main() → RunFramework<TestApp>() → WorkManager::Run()
         │
 框架层 (framework/)
@@ -69,7 +69,7 @@ TextRenderPipeline 为三层 SSBO 各维护一对（buffer + 视图），三张�
 
 ## 一、程序启动与初始化
 
-入口在 `example/GUI/TextDrawTest.cpp` 的 `os_main()`，通过 `RunFramework<TestApp>()` 模板函数启动。`AppFramework`（`inc/hgl/framework/AppFramework.h`）负责创建窗口、Vulkan 实例/设备、GraphicsContext 和 ECSContext（含系统注册）。
+入口在 `example/Text/TextDraw.cpp` 的 `os_main()`，通过 `RunFramework<TestApp>()` 模板函数启动。`AppFramework`（`inc/hgl/framework/AppFramework.h`）负责创建窗口、Vulkan 实例/设备、GraphicsContext 和 ECSContext（含系统注册）。
 
 `TestApp::InitTextRenderable()` 创建 ECS 实体并添加 `TextComponent`：
 - 从文件加载文本（如 `res/text/道德经.txt`）
@@ -353,8 +353,8 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 
 | 功能 | 文件路径 |
 |------|---------|
-| 示例入口 | `example/GUI/TextDrawTest.cpp` |
-| SDF 特效演示范例 | `example/GUI/SDFTextEffects.cpp` |
+| 示例入口 | `example/Text/TextDraw.cpp` |
+| SDF 特效演示范例 | `example/Text/SDFTextEffects.cpp` |
 | 框架主循环 | `src/Work/WorkManager.cpp` |
 | ECS 渲染调度 | `src/ecs/core/Context.cpp` |
 | RenderGraph | `src/ecs/core/RenderGraph.cpp` |

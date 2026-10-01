@@ -111,7 +111,7 @@ namespace hgl
         /// **不要在此修改场景状态**（transform/材质等）——那属于 Tick
         ///（TransformSystem 在本回调之后才提交变换，Tick 里改与本回调里改
         /// 效果同帧等价；放 Tick 语义正确且不占用录制时间）。
-        /// 范本：example/Basic/SimpleMeshTriangle.cpp
+        /// 范本：example/ApiValidation/SimpleMeshTriangle.cpp
         virtual void OnRenderPass(double delta_time) {}
 
         /// [[deprecated]] 旧名。语义同 OnRenderPass——历史上名字误导了大量

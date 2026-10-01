@@ -2,7 +2,7 @@
 
 > **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。
 
-> 2026-09 结案。示例 `example/Basic/CascadeShadowMap.cpp` 拖拽视角时，阴影会一帧偏左、一帧偏右，贴合距离也一帧近、一帧远。静止后稳定。RenderDoc 连续截帧永远正常；把帧率降到约 1fps 时非常明显。
+> 2026-09 结案。示例 `example/Shadow/CascadeShadowMap.cpp` 拖拽视角时，阴影会一帧偏左、一帧偏右，贴合距离也一帧近、一帧远。静止后稳定。RenderDoc 连续截帧永远正常；把帧率降到约 1fps 时非常明显。
 
 ## 1. 症状签名
 

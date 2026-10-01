@@ -146,7 +146,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer TextCharInfoR
 - `Device::CreateDrawCountBuffer(...)`：`INDIRECT|STORAGE|TRANSFER_DST|SHADER_DEVICE_ADDRESS`
   （`inc/hgl/vk/VKDevice.h:384-391`）。
 - `MaterialBatch::icb_count_buffer` 挂上即走 Indirect Count Multi-Draw；
-  端到端示例 `example/Basic/ComputeIndirectCount.cpp`（`GPUIndirectCountHookSystem` 在
+  端到端示例 `example/ApiValidation/ComputeIndirectCount.cpp`（`GPUIndirectCountHookSystem` 在
   `RenderFrameSync` 阶段挂 count buffer）。
 - 多命令一次提交：`PipelineMaterialRenderer.cpp:52-65`（`DrawMeshTasksIndirectCount`，
   `gl_DrawID` 索引 `MeshDrawParams` 行，命令序 = 行序）。
@@ -458,7 +458,7 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
 
 - compute pass 写：tile 表 + `VkDrawMeshTasksIndirectCommandEXT[]` + count；
   count buffer 用 `CreateDrawCountBuffer`（`VKDevice.h:384-391`），
-  挂 `MaterialBatch::icb_count_buffer`（照 `example/Basic/ComputeIndirectCount.cpp`）。
+  挂 `MaterialBatch::icb_count_buffer`（照 `example/ApiValidation/ComputeIndirectCount.cpp`）。
 - 命令数 = tile 数；`groupCountX = ceil(cells/8)²`，`groupCountY/Z = 1`。
   如果将来一个 tile 内需要多级分辨率，才需要 `groupCountY`。
 - **三条硬约束**（§2.9 已确认引擎不代管）：
@@ -495,7 +495,7 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
 | LOD 误差度量 | 同上 | 相机拉远后 tile 数下降、三角数下降（统计日志断言） |
 | 间接绘制 / GPU count | `TerrainGpuDriven` | 与 T3 逐像素一致；绘制调用数 O(1) |
 | 剔除 | 同上 | 视野外 tile 不产生 `groupCountX > 0` 的命令 |
-| 回归（不破坏既有路径） | `SimpleMeshTriangle`、`TextDrawTest`、`LineRenderTest`、`LoadGeometry`、`CascadeShadowMap` | 全部照常出图；`PushRootAddresses` 三个调用点（`LineRenderPipeline:762`/`PipelineMaterialRenderer:173`/`TextRenderPipeline:290`）语义不变 |
+| 回归（不破坏既有路径） | `SimpleMeshTriangle`、`TextDraw`、`LineRender`、`LoadGeometry`、`CascadeShadowMap` | 全部照常出图；`PushRootAddresses` 三个调用点（`LineRenderPipeline:762`/`PipelineMaterialRenderer:173`/`TextRenderPipeline:290`）语义不变 |
 
 ---
 
@@ -536,10 +536,10 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
 | 根地址 push | `inc/hgl/graph/RootAddressPush.h` |
 | 全局 SSBO 池 | `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h`、`inc/hgl/graph/ssbo/SSBOTypes.h` |
 | 专用管线参照 | `inc/hgl/ecs/support/line/*.h`、`src/ecs/support/line/*.cpp`、`src/ecs/core/DefaultSystems.cpp:136` |
-| 间接绘制 / GPU count 参照 | `example/Basic/ComputeIndirectCount.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp:52-65` |
+| 间接绘制 / GPU count 参照 | `example/ApiValidation/ComputeIndirectCount.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp:52-65` |
 | 导数法线 NTB 模块 | `ShaderLibrary/ntb/ntb_derivative_normalmap.glsl` |
 | 材质 TOML 自持模式参照 | `ShaderLibrary/material/text_2d_gpu.material.toml` |
-| 剔除基础设施 | `example/Basic/ComputeFrustumCull.cpp`、`src/ecs/support/TestBoundingVolumeCull.cpp` |
+| 剔除基础设施 | `example/ApiValidation/ComputeFrustumCull.cpp`、`src/ecs/support/TestBoundingVolumeCull.cpp` |
 | 帧资源在途现状 | `doc/backlog.md` A1 |
 
 ## 附录 B：术语
