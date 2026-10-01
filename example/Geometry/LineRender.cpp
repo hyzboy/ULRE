@@ -1,7 +1,7 @@
 ﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/components/LinesComponent.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/support/line/LineRenderPipeline.h>
@@ -235,9 +235,10 @@ public:
             auto camera_system = ecs_world->EnsureCameraSystem();
 
             camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
-            auto camera = camera_entity->AddComponent<CameraComponent>();
+            // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+            auto *camera = ecs_world->GetOrCreateCamera(camera_entity);
 
-            camera->control_mode = CameraComponent::ControlMode::ViewModel;
+            camera->control_mode = CameraControlMode::ViewModel;
             camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
             camera->distance = 16.0f;
             camera->yaw = 45.0f;

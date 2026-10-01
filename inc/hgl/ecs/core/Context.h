@@ -450,6 +450,27 @@ namespace hgl
             /// 相机在本世界相机表里的槽号（含 0 号槽）；不属于本世界 / 未认领 ⇒ `kInvalidSlot`
             uint32_t GetCameraSlot(const CameraComponent* camera) const;
 
+            /// **实体 → 挂在它上面的相机**（无则 nullptr）——相机是**世界级资源**，实体只是宿主。
+            /// 与 `GetMaterialData` / `GetGeometryData` 同族：**取相机一律走世界**，不走
+            /// `Entity::GetComponent<...>`（组件级读法会成为第二个相机读取入口 ⇒ 双真值）。
+            /// 与 `GetTransformByEntity` / `GetBoundingBoxByEntity` 同族命名；**不要**写成 `GetCamera(EntityID)`
+            /// 重载——与 `GetCamera(uint32_t slot)` 会构成「相似转换」歧义（实测 error C2666）。
+            /// 两种句柄类型是**不同的句柄**（不是兼容层）：
+            ///   · `EntityID` 版给只持有 ID 的引擎内部代码（内部先解析一次 `GetEntity`）；
+            ///   · `Entity*` 版给**手里已有实体**的作者/系统代码 ⇒ **省掉那次多余往返**。
+            const CameraComponent* GetCameraByEntity(EntityID owner) const;
+            CameraComponent* GetCameraByEntity(EntityID owner);
+            const CameraComponent* GetCameraByEntity(const Entity* owner) const;
+            CameraComponent* GetCameraByEntity(Entity* owner);
+
+            /// **实体 → 相机**（无则创建；相机组件挂在实体上，实体只是它的宿主）。
+            /// 作者侧建相机的**唯一入口**（A7c 起示例不再直接 `AddComponent<CameraComponent>`）：
+            /// 与 `GetOrCreateMaterialData` / `GetOrCreateGeometryData` 同风格。
+            /// stage B 会把相机改成世界侧行存储 + 值类型句柄，届时本入口随之变形。
+            /// `Entity*` 版同上（创建必须能改实体 ⇒ 无 `const Entity*` 版）。
+            CameraComponent* GetOrCreateCamera(EntityID owner, const std::string& name = "Camera");
+            CameraComponent* GetOrCreateCamera(Entity* owner, const std::string& name = "Camera");
+
             /// **幂等**认领槽：`is_default=true` ⇒ 占 0 号槽（原持普通槽则先交回；常驻 fallback 自动让位）；
             /// 否则申请 1..15 的一个槽（槽耗尽 / 行池未就绪 ⇒ 报错并保持未认领 ⇒ 发布跳过 + 一次性告警）。
             bool EnsureCameraSlot(CameraComponent* camera, bool is_default = false);
@@ -531,20 +552,26 @@ namespace hgl
             /// 届时不再返回裸指针。
             MaterialData* GetMaterialData(EntityID owner);
             const MaterialData* GetMaterialData(EntityID owner) const;
+            MaterialData* GetMaterialData(Entity* owner);
+            const MaterialData* GetMaterialData(const Entity* owner) const;
 
             /// 实体 → 材质数据层组件（无则 AddComponent 创建）。
             /// 与 GetOrCreateBoundingBox 同风格：渲染/作者侧需要"一定有数据层"时用。
             MaterialData* GetOrCreateMaterialData(EntityID owner);
+            MaterialData* GetOrCreateMaterialData(Entity* owner);
 
             /// 实体 → 几何**资产侧**组件 `GeometryData`（无则 nullptr）。
             /// **stage B 会换成值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
             /// 届时不再返回裸指针。
             GeometryData* GetGeometryData(EntityID owner);
             const GeometryData* GetGeometryData(EntityID owner) const;
+            GeometryData* GetGeometryData(Entity* owner);
+            const GeometryData* GetGeometryData(const Entity* owner) const;
 
             /// 实体 → 几何资产组件（无则 AddComponent 创建）。
             /// 与 GetOrCreateMaterialData 同风格：渲染/作者侧需要"一定有几何组件"时用。
             GeometryData* GetOrCreateGeometryData(EntityID owner);
+            GeometryData* GetOrCreateGeometryData(Entity* owner);
 
             /// 实体 → 阴影属性组件 ShadowProxy（无则 nullptr）。
             /// A5b：阴影组件正名为 ShadowProxy，并成为**唯一**阴影组件；
@@ -552,6 +579,8 @@ namespace hgl
             /// components/ShadowProxy.h 的自由函数（唯一出处）。
             ShadowProxy* GetShadowProxy(EntityID owner);
             const ShadowProxy* GetShadowProxy(EntityID owner) const;
+            ShadowProxy* GetShadowProxy(Entity* owner);
+            const ShadowProxy* GetShadowProxy(const Entity* owner) const;
 
             /// 让某实体已解析的运行期管线缓存失效（几何/变体变化时调用）。
             /// A5b：管线缓存不再挂在渲染组件上，改由每实例 slot 承载 ⇒ 本入口清 slot 字段。
@@ -635,10 +664,21 @@ namespace hgl
                 return material_runtime_table->GetOrCreateSlot(owner);
             }
 
+            /// 指针版（作者/引擎手里已有实体）
+            MaterialRuntimeSlot& GetOrCreateMaterialRuntimeSlot(Entity *owner)
+            {
+                return material_runtime_table->GetOrCreateSlot(owner->GetEntityID());
+            }
+
             /// 实体 → 材质运行期 slot（无则 nullptr）
             MaterialRuntimeSlot* GetMaterialRuntimeSlot(EntityID owner)
             {
                 return material_runtime_table->GetSlot(owner);
+            }
+
+            MaterialRuntimeSlot* GetMaterialRuntimeSlot(Entity *owner)
+            {
+                return material_runtime_table->GetSlot(owner->GetEntityID());
             }
 
             /// Get 世界私有相机行存储（相机 = 世界级观察者数据；0 号槽 = 本世界默认相机）

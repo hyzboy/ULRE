@@ -30,7 +30,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
@@ -579,8 +579,9 @@ private:
     /// 相机数据一律落在**组件自己的** CameraInfo（每个 pass 各写自己的行），
     /// 所以 shadow pass 只要在 RenderTo 时把光源相机作为 pass 相机传进去即可
     /// （`RenderTo(req.camera)` 会按它发布相机行），不需要 toggling is_main_camera。
-    std::shared_ptr<CameraComponent> main_camera;
-    std::shared_ptr<CameraComponent> light_camera;
+    /// 光源相机的**宿主实体**：相机 = 世界级资源，实体只是宿主 ——
+    /// 取相机一律走 `ECSContext::GetCameraByEntity(EntityID)`，不直取组件。
+    EntityID light_camera_id = EntityID::Invalid();
 
     hgl::ecs::GeometryData *receiver_prim = nullptr;
 
@@ -882,7 +883,7 @@ private:
         hgl::ecs::Entity *owner = prim->GetOwner();
         hgl::ecs::ECSContext *material_world = owner ? owner->GetContext() : nullptr;
         hgl::ecs::MaterialData *material_data_comp = material_world
-            ? material_world->GetOrCreateMaterialData(owner->GetEntityID())
+            ? material_world->GetOrCreateMaterialData(owner)
             : nullptr;
         if (!material_data_comp)
             return;
@@ -911,7 +912,7 @@ private:
         {
             auto *entity = world->CreateEntity<Entity>("ShadowReceiverPlane");
             auto transform = world->GetTransform(world->CreateTransform(entity->GetEntityID(), Mobility::Static));
-            auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
+            auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -935,7 +936,7 @@ private:
         {
             auto *entity = world->CreateEntity<Entity>("Mesh_" + std::to_string(i));
             auto transform = world->GetTransform(world->CreateTransform(entity->GetEntityID(), Mobility::Movable));
-            auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
+            auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
 
             glm::vec3 pos = RingPosition(i, count);
             pos.z += scene.mesh_lift[i];
@@ -1022,6 +1023,8 @@ private:
     /// 代入 yaw = azimuth + 180° 得 forward = (-cosθ·cos(az), -cosθ·sin(az), -sinθ) = -to_sun ✓
     void PlaceLightCamera(const float azimuth_deg)
     {
+        auto *light_camera = ecs_context ? ecs_context->GetCameraByEntity(light_camera_id) : nullptr;
+
         if (!light_camera)
             return;
 
@@ -1061,12 +1064,13 @@ private:
             return LogStageFail("ShadowMapApp::CreateLightCamera", "camera system unavailable");
 
         auto *entity = world->CreateEntity<Entity>("LightCamera");
-        auto camera = entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = world->GetOrCreateCamera(entity);
 
-        camera->control_mode   = CameraComponent::ControlMode::ViewModel;
+        camera->control_mode   = CameraControlMode::ViewModel;
         camera->is_main_camera = false;
 
-        light_camera = camera;
+        light_camera_id = entity->GetEntityID();
 
         PlaceLightCamera(kLightStartAzimuthDeg);
 
@@ -1095,7 +1099,7 @@ private:
 
         ecs::RenderPassRequest req;
         req.target           = rt;
-        req.camera           = light_camera.get();
+        req.camera           = ecs_context->GetCameraByEntity(light_camera_id);
         req.use_target_clear = true;
         req.cull_mode        = ecs::CullMode::Front; // 阴影贴图渲染模型背面（显式声明，无隐式推断）
 
@@ -1173,6 +1177,8 @@ private:
     /// 是 RenderTo(req.camera) 在里面解算的。
     void SyncSunDirectionFromLightCamera()
     {
+        auto *light_camera = ecs_context ? ecs_context->GetCameraByEntity(light_camera_id) : nullptr;
+
         if (!light_camera || !environment_system || !sky_info)
             return;
 
@@ -1249,6 +1255,8 @@ private:
     /// 将光源空间 View-Projection 矩阵及阴影控制参数同步至全局 ShadowInfo UBO
     void SyncShadowInfo()
     {
+        auto *light_camera = ecs_context ? ecs_context->GetCameraByEntity(light_camera_id) : nullptr;
+
         if (!light_camera || !environment_system)
             return;
 
@@ -1281,9 +1289,10 @@ private:
             return LogStageFail("ShadowMapApp::SetupMainCamera", "camera system is null");
 
         main_camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        auto camera = main_camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(main_camera_entity);
 
-        camera->control_mode = CameraComponent::ControlMode::ViewModel;
+        camera->control_mode = CameraControlMode::ViewModel;
         camera->target = math::Vector3f(0, 0, 0);
         camera->distance = kMainDistance;
         camera->yaw = kMainYaw;
@@ -1292,8 +1301,6 @@ private:
         camera->matrix_dirty = true;
 
         camera->viewport_info = GetViewportInfo();
-
-        main_camera = camera;
 
         return true;
     }

@@ -223,7 +223,7 @@ namespace hgl::ecs
         // A5a：包围球半径随几何状态迁入 GeometryData 组件（实体级查询，不在组件内缓存）
         const GeometryData *geometry = nullptr;
         if (ECSContext *context = owner->GetContext())
-            geometry = context->GetGeometryData(owner->GetEntityID());
+            geometry = context->GetGeometryData(owner);
 
         const float boundingRadius = geometry ? geometry->GetBoundingRadius() : 0.0f;
 
@@ -435,7 +435,7 @@ namespace hgl::ecs
                 if (Entity *owner = first_item->GetEntity())
                 {
                     if (ECSContext *context = owner->GetContext())
-                        geometry_comp = context->GetGeometryData(owner->GetEntityID());
+                        geometry_comp = context->GetGeometryData(owner);
                 }
                 if (geometry_comp && geometry_comp->GetPrimitiveAsset())
                     geometry = geometry_comp->GetPrimitiveAsset()->GetGeometry();

@@ -35,7 +35,7 @@
 #include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/ShadowProxy.h>
-#include <hgl/ecs/components/CameraComponent.h>
+#include <hgl/ecs/components/CameraControlMode.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderSystemCore.h>
@@ -134,8 +134,8 @@ private:
     ECSContext *ecs_context = nullptr;
 
     Entity *main_camera_entity = nullptr;
-    std::shared_ptr<CameraComponent> main_camera;
-    std::shared_ptr<CameraComponent> light_camera;
+    /// 主相机是**世界级资源**（实体 `main_camera_entity` 只是宿主）——
+    /// 取相机一律走 `ECSContext::GetCameraByEntity(EntityID)`，不直取组件。
     std::shared_ptr<CameraSystem> camera_system;
 
     std::shared_ptr<EnvironmentSystem> environment_system;
@@ -1101,8 +1101,8 @@ private:
         ground_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         ground_transform.SetLocalScale(glm::vec3(kGroundExtent, kGroundExtent, 1.0f));
 
-        ground_prim = ground_entity->GetContext()->GetOrCreateGeometryData(ground_entity->GetEntityID());
-        hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity->GetEntityID());
+        ground_prim = ground_entity->GetContext()->GetOrCreateGeometryData(ground_entity);
+        hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity);
         ground_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
         material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
             MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0); // Concrete_Plain
@@ -1194,8 +1194,8 @@ private:
                 track.hover_speed = 1.2f + Hash01(i, 19, 2309u) * 1.5f;
             }
 
-            auto prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
+            auto prim = e->GetContext()->GetOrCreateGeometryData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
             material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
                 MaterialData::MaterialTextureResourceKind::Texture2DArray, "", tex_idx);
@@ -1231,8 +1231,8 @@ private:
                 tf.SetLocalScale(glm::vec3(s));
                 tf.SetLocalRotation(glm::quat(glm::vec3(0.0f, 0.4f + 0.2f * i, 0.0f)));
 
-                auto prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
-                hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
+                auto prim = e->GetContext()->GetOrCreateGeometryData(e);
+                hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
                 prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&alpha_primitive);
                 // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked
                 // 的 EvalAlpha（采样 .r，0 = 镂空）——影子应呈同图案棋盘孔。
@@ -1258,9 +1258,10 @@ private:
             return false;
 
         main_camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        main_camera = main_camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *main_camera = ecs_context->GetOrCreateCamera(main_camera_entity);
         main_camera->is_main_camera = true;
-        main_camera->control_mode = CameraComponent::ControlMode::FirstPerson;
+        main_camera->control_mode = CameraControlMode::FirstPerson;
         main_camera->position = math::Vector3f(0.0f, -28.0f, 10.0f);
         main_camera->target = math::Vector3f(0.0f, 0.0f, 3.0f);
         main_camera->world_up = math::Vector3f(0.0f, 0.0f, 1.0f);
@@ -1305,6 +1306,8 @@ private:
         }
 
         // 无限平铺地表：地面中心网格吸附（Grid Snapping）至主相机 XY
+        auto *main_camera = main_camera_entity ? ecs_context->GetCameraByEntity(main_camera_entity) : nullptr;
+
         if (ground_transform.IsValid() && main_camera)
         {
             constexpr float kSnapGrid = 10.0f;
@@ -1583,6 +1586,8 @@ public:
 
         // ── 诊断/冒烟辅助：相机自动前进 + "整级 vs 条带"对拍 ──
         // 对拍进行中（state != 0）冻结相机：A/B 两帧的静态内容与布局矩阵必须一致。
+        auto *main_camera = main_camera_entity ? ecs_context->GetCameraByEntity(main_camera_entity) : nullptr;
+
         if (cache_diff.autowalk > 0.0f && main_camera && cache_diff.state == 0 && !cache_diff.pending)
             main_camera->position.x += cache_diff.autowalk * static_cast<float>(delta);
 

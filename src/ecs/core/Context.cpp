@@ -1,4 +1,6 @@
 ﻿#include<hgl/ecs/core/Context.h>
+
+#include<utility>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/ecs/core/DefaultSystems.h>
@@ -1613,6 +1615,73 @@ namespace hgl
             return camera_info_storage->FindSlot(camera);
         }
 
+        namespace
+        {
+            // 世界级「实体 → 组件」访问器的**核心**：调用方手里已有实体（`Entity*`）时走这里，
+            // 不再做 `GetEntity(EntityID)` 那次多余往返 —— `EntityID` 版只负责解析一次后转调。
+            // 两种句柄是**不同的句柄，不是兼容层**：ID 版给只持有 ID 的引擎内部代码，
+            // 指针版给持有实体的作者/系统代码。
+            template<typename T>
+            inline T *ComponentOfEntity(Entity *entity)
+            {
+                return entity ? entity->GetComponent<T>().get() : nullptr;
+            }
+
+            template<typename T>
+            inline const T *ComponentOfEntity(const Entity *entity)
+            {
+                return entity ? entity->GetComponent<T>().get() : nullptr;
+            }
+
+            template<typename T, typename... Args>
+            inline T *GetOrAddComponentOfEntity(Entity *entity, Args&&... args)
+            {
+                if (!entity)
+                    return nullptr;
+
+                auto component = entity->GetComponent<T>();
+
+                if (!component)
+                    component = entity->AddComponent<T>(std::forward<Args>(args)...);
+
+                return component.get();
+            }
+        }
+
+        // 实体 → 相机（世界级读取口；与 GetMaterialData / GetGeometryData 同族）。
+        // 相机是**世界级资源**（槽账目在 camera_info_storage），实体只是宿主：
+        // 示例/系统取相机一律走这里，不走 Entity::GetComponent<CameraComponent>
+        // （那会形成第二个读取入口 ⇒ 组件级旧读法 vs 世界级访问器成双真值）。
+        const CameraComponent* ECSContext::GetCameraByEntity(const EntityID owner) const
+        {
+            return ComponentOfEntity<CameraComponent>(GetEntity(owner));
+        }
+
+        CameraComponent* ECSContext::GetCameraByEntity(const EntityID owner)
+        {
+            return ComponentOfEntity<CameraComponent>(GetEntity(owner));
+        }
+
+        const CameraComponent* ECSContext::GetCameraByEntity(const Entity *owner) const
+        {
+            return ComponentOfEntity<CameraComponent>(owner);
+        }
+
+        CameraComponent* ECSContext::GetCameraByEntity(Entity *owner)
+        {
+            return ComponentOfEntity<CameraComponent>(owner);
+        }
+
+        CameraComponent* ECSContext::GetOrCreateCamera(const EntityID owner, const std::string& name)
+        {
+            return GetOrAddComponentOfEntity<CameraComponent>(GetEntity(owner), name);
+        }
+
+        CameraComponent* ECSContext::GetOrCreateCamera(Entity *owner, const std::string& name)
+        {
+            return GetOrAddComponentOfEntity<CameraComponent>(owner, name);
+        }
+
         bool ECSContext::ReleaseCameraSlot(const CameraComponent* camera)
         {
             if (!camera_info_storage)
@@ -1930,86 +1999,82 @@ namespace hgl
 
         MaterialData* ECSContext::GetMaterialData(EntityID owner)
         {
-            Entity *entity = GetEntity(owner);
-
-            return entity
-                ? entity->GetComponent<MaterialData>().get()
-                : nullptr;
+            return ComponentOfEntity<MaterialData>(GetEntity(owner));
         }
 
         const MaterialData* ECSContext::GetMaterialData(EntityID owner) const
         {
-            const Entity *entity = GetEntity(owner);
+            return ComponentOfEntity<MaterialData>(GetEntity(owner));
+        }
 
-            return entity
-                ? entity->GetComponent<MaterialData>().get()
-                : nullptr;
+        MaterialData* ECSContext::GetMaterialData(Entity *owner)
+        {
+            return ComponentOfEntity<MaterialData>(owner);
+        }
+
+        const MaterialData* ECSContext::GetMaterialData(const Entity *owner) const
+        {
+            return ComponentOfEntity<MaterialData>(owner);
         }
 
         MaterialData* ECSContext::GetOrCreateMaterialData(EntityID owner)
         {
-            Entity *entity = GetEntity(owner);
+            return GetOrAddComponentOfEntity<MaterialData>(GetEntity(owner));
+        }
 
-            if (!entity)
-                return nullptr;
-
-            auto material_data = entity->GetComponent<MaterialData>();
-
-            if (!material_data)
-                material_data = entity->AddComponent<MaterialData>();
-
-            return material_data.get();
+        MaterialData* ECSContext::GetOrCreateMaterialData(Entity *owner)
+        {
+            return GetOrAddComponentOfEntity<MaterialData>(owner);
         }
 
         GeometryData* ECSContext::GetGeometryData(EntityID owner)
         {
-            Entity *entity = GetEntity(owner);
-
-            return entity
-                ? entity->GetComponent<GeometryData>().get()
-                : nullptr;
+            return ComponentOfEntity<GeometryData>(GetEntity(owner));
         }
 
         const GeometryData* ECSContext::GetGeometryData(EntityID owner) const
         {
-            const Entity *entity = GetEntity(owner);
+            return ComponentOfEntity<GeometryData>(GetEntity(owner));
+        }
 
-            return entity
-                ? entity->GetComponent<GeometryData>().get()
-                : nullptr;
+        GeometryData* ECSContext::GetGeometryData(Entity *owner)
+        {
+            return ComponentOfEntity<GeometryData>(owner);
+        }
+
+        const GeometryData* ECSContext::GetGeometryData(const Entity *owner) const
+        {
+            return ComponentOfEntity<GeometryData>(owner);
         }
 
         GeometryData* ECSContext::GetOrCreateGeometryData(EntityID owner)
         {
-            Entity *entity = GetEntity(owner);
+            return GetOrAddComponentOfEntity<GeometryData>(GetEntity(owner));
+        }
 
-            if (!entity)
-                return nullptr;
-
-            auto geometry = entity->GetComponent<GeometryData>();
-
-            if (!geometry)
-                geometry = entity->AddComponent<GeometryData>();
-
-            return geometry.get();
+        GeometryData* ECSContext::GetOrCreateGeometryData(Entity *owner)
+        {
+            return GetOrAddComponentOfEntity<GeometryData>(owner);
         }
 
         ShadowProxy* ECSContext::GetShadowProxy(EntityID owner)
         {
-            Entity *entity = GetEntity(owner);
-
-            return entity
-                ? entity->GetComponent<ShadowProxy>().get()
-                : nullptr;
+            return ComponentOfEntity<ShadowProxy>(GetEntity(owner));
         }
 
         const ShadowProxy* ECSContext::GetShadowProxy(EntityID owner) const
         {
-            const Entity *entity = GetEntity(owner);
+            return ComponentOfEntity<ShadowProxy>(GetEntity(owner));
+        }
 
-            return entity
-                ? entity->GetComponent<ShadowProxy>().get()
-                : nullptr;
+        ShadowProxy* ECSContext::GetShadowProxy(Entity *owner)
+        {
+            return ComponentOfEntity<ShadowProxy>(owner);
+        }
+
+        const ShadowProxy* ECSContext::GetShadowProxy(const Entity *owner) const
+        {
+            return ComponentOfEntity<ShadowProxy>(owner);
         }
 
         void ECSContext::InvalidateEntityRuntimePipeline(EntityID owner)

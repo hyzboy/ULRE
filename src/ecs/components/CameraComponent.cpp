@@ -16,7 +16,7 @@ namespace hgl::ecs
         , forward(1.0f, 0.0f, 0.0f)
         , right(0.0f, 1.0f, 0.0f)
         , up(0.0f, 0.0f, 1.0f)
-        , control_mode(ControlMode::Free)
+        , control_mode(CameraControlMode::Free)
         , distance(10.0f)
         , min_distance(1.0f)
         , max_distance(100.0f)

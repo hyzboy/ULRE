@@ -167,8 +167,8 @@ private:
 
             render_obj[i].entity = ecs_world->CreateEntity<Entity>("TextureRect");
             auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(render_obj[i].entity->GetEntityID(), Mobility::Static));
-            auto primitive = render_obj[i].entity->GetContext()->GetOrCreateGeometryData(render_obj[i].entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = render_obj[i].entity->GetContext()->GetOrCreateMaterialData(render_obj[i].entity->GetEntityID());
+            auto primitive = render_obj[i].entity->GetContext()->GetOrCreateGeometryData(render_obj[i].entity);
+            hgl::ecs::MaterialData *material_data_comp = render_obj[i].entity->GetContext()->GetOrCreateMaterialData(render_obj[i].entity);
 
             transform.SetLocalPosition(glm::vec3(offset.x, offset.y, offset.z));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));

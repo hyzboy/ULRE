@@ -303,8 +303,8 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform.SetMobility(Mobility::Static);
 
-            auto primitive = row_entities[row]->GetContext()->GetOrCreateGeometryData(row_entities[row]->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = row_entities[row]->GetContext()->GetOrCreateMaterialData(row_entities[row]->GetEntityID());
+            auto primitive = row_entities[row]->GetContext()->GetOrCreateGeometryData(row_entities[row]);
+            hgl::ecs::MaterialData *material_data_comp = row_entities[row]->GetContext()->GetOrCreateMaterialData(row_entities[row]);
             primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
 
             row_primitives[row] = primitive;

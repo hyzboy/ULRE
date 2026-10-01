@@ -23,7 +23,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 
@@ -418,8 +418,8 @@ private:
         {
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
-            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
+            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity);
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
@@ -457,8 +457,8 @@ private:
 
             auto* entity = ecs_context->CreateEntity<Entity>(mesh_name);
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
-            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
+            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity);
 
             float angle = glm::radians(360.0f * static_cast<float>(ring_slot) / static_cast<float>(ring_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -505,9 +505,10 @@ private:
             return false;
 
         camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
-        camera->control_mode = CameraComponent::ControlMode::ViewModel;
+        camera->control_mode = CameraControlMode::ViewModel;
         camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance = 14.0f;
         camera->yaw = 45.0f;

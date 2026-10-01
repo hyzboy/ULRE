@@ -19,7 +19,7 @@ namespace hgl::ecs
         if (!context)
             return false;
 
-        const GeometryData *geometry = context->GetGeometryData(entity->GetEntityID());
+        const GeometryData *geometry = context->GetGeometryData(entity);
 
         return geometry && geometry->GetPrimitiveAsset() != nullptr;
     }
@@ -33,9 +33,9 @@ namespace hgl::ecs
         if (!context)
             return false;
 
-        const EntityID id = entity->GetEntityID();
-        const MaterialData *material_data = context->GetMaterialData(id);
-        const GeometryData *geometry = context->GetGeometryData(id);
+        // A7d\uff1a\u624b\u91cc\u5df2\u6709\u5b9e\u4f53 \u21d2 \u8d70 `Entity*` \u91cd\u8f7d\uff08\u4e0d\u505a\u300c\u6307\u9488 \u2192 ID \u2192 \u518d\u89e3\u6790\u56de\u6307\u9488\u300d\u7684\u5f80\u8fd4\uff09
+        const MaterialData *material_data = context->GetMaterialData(entity);
+        const GeometryData *geometry = context->GetGeometryData(entity);
 
         return (material_data && material_data->HasRecipeOverride())
             || (geometry && geometry->GetAssetMaterialRecipe() != nullptr);

@@ -120,8 +120,8 @@ private:
 
         rect_entity = ecs_world->CreateEntity<Entity>("TextureRect");
         auto rect_transform = ecs_world->GetTransform(ecs_world->CreateTransform(rect_entity->GetEntityID(), Mobility::Static));
-        auto rect_primitive = rect_entity->GetContext()->GetOrCreateGeometryData(rect_entity->GetEntityID());
-        hgl::ecs::MaterialData *material_data_comp = rect_entity->GetContext()->GetOrCreateMaterialData(rect_entity->GetEntityID());
+        auto rect_primitive = rect_entity->GetContext()->GetOrCreateGeometryData(rect_entity);
+        hgl::ecs::MaterialData *material_data_comp = rect_entity->GetContext()->GetOrCreateMaterialData(rect_entity);
 
         rect_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         rect_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));

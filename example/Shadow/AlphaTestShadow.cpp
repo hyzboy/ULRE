@@ -33,7 +33,7 @@
 #include <hgl/ecs/support/TransformAccessor.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/ShadowProxy.h>
-#include <hgl/ecs/components/CameraComponent.h>
+#include <hgl/ecs/components/CameraControlMode.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 
@@ -123,7 +123,6 @@ class AlphaTestShadowApp final : public WorkObject
 {
 private:
     ECSContext *ecs_context = nullptr;
-    std::shared_ptr<CameraComponent> main_camera;
     std::shared_ptr<EnvironmentSystem> environment_system;
 
     VertexDataManager *vdm = nullptr;
@@ -594,8 +593,8 @@ public:
             shadow->SetCastShadow(false);
             ground_shadow = shadow;   // D3 契约：运行期拨 receive_shadow / bias_multiplier
 
-            auto prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
+            auto prim = e->GetContext()->GetOrCreateGeometryData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
             material_data_comp->SetTextureResource("base_color", white_texture, pbr_sampler,
                 MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
@@ -626,8 +625,8 @@ public:
             tf.SetLocalPosition(glm::vec3(i == 0 ? -1.6f : 1.6f, 0.0f, 2.6f));
             tf.SetLocalScale(glm::vec3(2.0f));
 
-            auto prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
+            auto prim = e->GetContext()->GetOrCreateGeometryData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
             material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,
                 MaterialData::MaterialTextureResourceKind::Texture2DArray, "", 0);
@@ -649,9 +648,10 @@ public:
             return false;
 
         auto camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        main_camera = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *main_camera = ecs_context->GetOrCreateCamera(camera_entity);
         main_camera->is_main_camera = true;
-        main_camera->control_mode = CameraComponent::ControlMode::LookAt;
+        main_camera->control_mode = CameraControlMode::LookAt;
         main_camera->position = math::Vector3f(0.0f, -7.5f, 5.5f);
         main_camera->target = math::Vector3f(0.0f, 0.0f, 1.2f);
         main_camera->world_up = math::Vector3f(0.0f, 0.0f, 1.0f);

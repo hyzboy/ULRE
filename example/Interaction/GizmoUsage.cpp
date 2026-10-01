@@ -25,7 +25,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
@@ -188,8 +188,8 @@ private:
         auto plane_transform = ecs_context->GetTransform(ecs_context->CreateTransform(plane_entity->GetEntityID(), hgl::ecs::Mobility::Static));
         plane_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
-        auto plane_primitive_comp = plane_entity->GetContext()->GetOrCreateGeometryData(plane_entity->GetEntityID());
-        hgl::ecs::MaterialData *material_data_comp = plane_entity->GetContext()->GetOrCreateMaterialData(plane_entity->GetEntityID());
+        auto plane_primitive_comp = plane_entity->GetContext()->GetOrCreateGeometryData(plane_entity);
+        hgl::ecs::MaterialData *material_data_comp = plane_entity->GetContext()->GetOrCreateMaterialData(plane_entity);
         plane_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(plane_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&grid_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
         plane_struct = grid_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
@@ -203,8 +203,8 @@ private:
         auto cube_transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube_entity->GetEntityID(), hgl::ecs::Mobility::Movable));
         cube_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(3.0f));
 
-        auto cube_primitive_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity->GetEntityID());
-        hgl::ecs::MaterialData *cube_material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity->GetEntityID());
+        auto cube_primitive_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity);
+        hgl::ecs::MaterialData *cube_material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity);
         cube_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(cube_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
@@ -232,9 +232,10 @@ private:
             return false;
 
         camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
-        camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+        camera->control_mode = hgl::ecs::CameraControlMode::ViewModel;
         camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance = 48.0f;
         camera->yaw = 45.0f;

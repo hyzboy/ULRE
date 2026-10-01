@@ -27,7 +27,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 
@@ -177,8 +177,8 @@ private:
         transform.SetMobility(Mobility::Movable);
         sphere_transform = transform;
 
-        auto primitive_comp = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity->GetEntityID());
-        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
+        auto primitive_comp = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity);
+        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity);
 
         sphere_asset = PrimitiveAsset(sphere_geometry, &sphere_recipe, PrimitiveType::Triangles);
         primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
@@ -201,9 +201,10 @@ private:
             return false;
 
         camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
-        camera->control_mode = CameraComponent::ControlMode::ViewModel;
+        camera->control_mode = CameraControlMode::ViewModel;
         camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance = 4.0f;
         camera->yaw = 45.0f;

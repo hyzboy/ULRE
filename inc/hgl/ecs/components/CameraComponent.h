@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/Component.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/math/Vector.h>
 #include<hgl/graph/camera/Camera.h>
 
@@ -36,17 +37,6 @@ namespace hgl::ecs
     {
     public:
 
-        /// 控制模式枚举 / Control mode enum
-        enum class ControlMode
-        {
-            FirstPerson,    ///< 第一人称模式 (WASD移动 + 鼠标旋转)
-            ViewModel,      ///< 视图模型模式 (左键旋转 + 滚轮缩放 + 右键平移)
-            LookAt,         ///< 观察模式 (中键平移 + 滚轮距离)
-            Free            ///< 自由模式
-        };
-
-    public:
-
         // === 基础摄像机数据 / Basic camera data ===
         math::Vector3f position;        ///< 摄像机位置 / Camera position
         math::Vector3f target;          ///< 目标点 / Target point
@@ -67,7 +57,7 @@ namespace hgl::ecs
         math::Vector3f up;              ///< 上向向量 / Up vector
 
         // === 控制参数 / Control parameters ===
-        ControlMode control_mode;       ///< 控制模式 / Control mode
+        CameraControlMode control_mode; ///< 控制模式（`CameraControlMode`：A7c 提升到命名空间级）
 
         float distance;                 ///< 距离目标的距离 (ViewModel/LookAt模式) / Distance to target
         float min_distance;             ///< 最小距离 / Minimum distance

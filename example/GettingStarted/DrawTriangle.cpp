@@ -137,7 +137,7 @@ private:
         // 几何/资产侧状态由 GeometryData 承载
         // 注意：需要明确使用 hgl::ecs 命名空间
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
-        auto ecs_primitive = triangle_entity->GetContext()->GetOrCreateGeometryData(triangle_entity->GetEntityID());
+        auto ecs_primitive = triangle_entity->GetContext()->GetOrCreateGeometryData(triangle_entity);
         triangle_recipe.recipe_name = "DrawTriangle.VertexColor";
         triangle_recipe.mtl_def_id = "VertexColor";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);

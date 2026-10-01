@@ -30,7 +30,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -67,7 +67,6 @@ private:
     Entity *camera_entity = nullptr;
     Entity *sphere_entity = nullptr;
 
-    CameraComponent *camera_component = nullptr;
     hgl::ecs::TransformAccessor sphere_transform;
     hgl::ecs::GeometryData *sphere_primitive_component = nullptr;
     hgl::ecs::MaterialData *sphere_material_data = nullptr;
@@ -317,13 +316,13 @@ private:
             return LogFail("InitECSScene", "create sphere entity failed");
 
         auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Movable));
-        auto primitive_component = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity->GetEntityID());
+        auto primitive_component = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity);
         if (!transform.IsValid() || !primitive_component)
             return LogFail("InitECSScene", "create sphere components failed");
 
         sphere_transform = transform;
         sphere_primitive_component = primitive_component;
-        sphere_material_data = ecs_world->GetOrCreateMaterialData(sphere_entity->GetEntityID());
+        sphere_material_data = ecs_world->GetOrCreateMaterialData(sphere_entity);
 
         sphere_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         sphere_transform.SetLocalScale(glm::vec3(1.6f, 1.6f, 1.6f));
@@ -348,22 +347,22 @@ private:
         if (!camera_entity)
             return LogFail("InitCamera", "create camera entity failed");
 
-        auto camera = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_world->GetOrCreateCamera(camera_entity);
         if (!camera)
             return LogFail("InitCamera", "create camera component failed");
 
-        camera_component = camera.get();
-        camera_component->control_mode = CameraComponent::ControlMode::ViewModel;
-        camera_component->target = math::Vector3f(0.0f, 0.0f, 0.0f);
-        camera_component->distance = 8.0f;
-        camera_component->min_distance = 2.0f;
-        camera_component->max_distance = 20.0f;
-        camera_component->yaw = 20.0f;
-        camera_component->pitch = -20.0f;
-        camera_component->is_main_camera = true;
-        camera_component->matrix_dirty = true;
+        camera->control_mode = CameraControlMode::ViewModel;
+        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance = 8.0f;
+        camera->min_distance = 2.0f;
+        camera->max_distance = 20.0f;
+        camera->yaw = 20.0f;
+        camera->pitch = -20.0f;
+        camera->is_main_camera = true;
+        camera->matrix_dirty = true;
 
-        camera_component->viewport_info = GetViewportInfo();
+        camera->viewport_info = GetViewportInfo();
 
         return true;
     }
@@ -408,6 +407,8 @@ public:
             const float angle = static_cast<float>(elapsed_time) * 0.35f;
             sphere_transform.SetLocalRotation(glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f)));
         }
+
+        auto *camera_component = camera_entity ? ecs_world->GetCameraByEntity(camera_entity) : nullptr;
 
         if (camera_component)
         {

@@ -79,12 +79,12 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
         return false;
 
     // A5a：几何/资产侧状态住在实体的 GeometryData 组件（经世界访问器取用/创建）
-    entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID())->SetPrimitiveAsset(asset);
+    entity->GetContext()->GetOrCreateGeometryData(entity)->SetPrimitiveAsset(asset);
     graph::mtl::MaterialRecipe visual_recipe = *recipe;
     visual_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
     hgl::ecs::ECSContext *material_world = entity->GetContext();
     hgl::ecs::MaterialData *material_data = material_world
-        ? material_world->GetOrCreateMaterialData(entity->GetEntityID())
+        ? material_world->GetOrCreateMaterialData(entity)
         : nullptr;
     if (!material_data)
         return false;
@@ -143,7 +143,7 @@ static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor 
     hgl::ecs::Entity *owner = entry.primitive;
     hgl::ecs::ECSContext *material_world = owner ? owner->GetContext() : nullptr;
     hgl::ecs::MaterialData *material_data = material_world
-        ? material_world->GetOrCreateMaterialData(owner->GetEntityID())
+        ? material_world->GetOrCreateMaterialData(owner)
         : nullptr;
     if (!material_data)
         return;

@@ -19,7 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 
@@ -250,7 +250,7 @@ private:
         // 天空球（固定原点）
         auto* sky_entity = ecs_context->CreateEntity<Entity>("SkySphere");
         auto sky_transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), Mobility::Static));
-        auto sky_prim = sky_entity->GetContext()->GetOrCreateGeometryData(sky_entity->GetEntityID());
+        auto sky_prim = sky_entity->GetContext()->GetOrCreateGeometryData(sky_entity);
 
         sky_transform.SetLocalPosition(glm::vec3(0.0f));
         sky_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -270,8 +270,8 @@ private:
 
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
-            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
+            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity);
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(count));
             // 水平环绕（xz 平面圆上 5 点）+ 高度 1.0——位置互不重叠；
@@ -332,9 +332,10 @@ private:
             return false;
 
         camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
-        camera->control_mode = CameraComponent::ControlMode::ViewModel;
+        camera->control_mode = CameraControlMode::ViewModel;
         camera->target = math::Vector3f(0.0f);
         camera->distance = 10.0f;   // 在天空球（半径 256）内——看到物体 + 天空背景
         camera->yaw = 30.0f;

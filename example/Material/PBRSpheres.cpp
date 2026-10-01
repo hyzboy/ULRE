@@ -28,7 +28,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -476,8 +476,8 @@ private:
                 transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
                 transform.SetMobility(Mobility::Movable);
 
-                auto prim_comp = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
-                hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
+                auto prim_comp = e->GetContext()->GetOrCreateGeometryData(e);
+                hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
                 prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&base_primitives[col]);
                 if (!material_data_comp->SetTextureResource(
                         "base_color",
@@ -530,10 +530,11 @@ private:
         }
 
         camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_world->GetOrCreateCamera(camera_entity);
 
         // 俯视整个 10×10 局部 -- 拉远足够看到所有球
-        camera->control_mode   = CameraComponent::ControlMode::ViewModel;
+        camera->control_mode   = CameraControlMode::ViewModel;
         camera->target         = math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance       = 40.0f;
         camera->yaw            = 0.0f;

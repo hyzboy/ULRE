@@ -229,8 +229,8 @@ private:
             transform.SetMobility(Mobility::Static);
 
             // 建几何资产组件 GeometryData
-            auto primitive_comp = ticks[i].entity->GetContext()->GetOrCreateGeometryData(ticks[i].entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = ticks[i].entity->GetContext()->GetOrCreateMaterialData(ticks[i].entity->GetEntityID());
+            auto primitive_comp = ticks[i].entity->GetContext()->GetOrCreateGeometryData(ticks[i].entity);
+            hgl::ecs::MaterialData *material_data_comp = ticks[i].entity->GetContext()->GetOrCreateMaterialData(ticks[i].entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource tick_struct{};
             tick_struct = tick_data_ssbo_accessor.GetGlobalSSBOBinding();
@@ -263,8 +263,8 @@ private:
             hands[i].length_scale = hand_scales[i];
 
             // 建几何资产组件 GeometryData
-            auto primitive_comp = hands[i].entity->GetContext()->GetOrCreateGeometryData(hands[i].entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = hands[i].entity->GetContext()->GetOrCreateMaterialData(hands[i].entity->GetEntityID());
+            auto primitive_comp = hands[i].entity->GetContext()->GetOrCreateGeometryData(hands[i].entity);
+            hgl::ecs::MaterialData *material_data_comp = hands[i].entity->GetContext()->GetOrCreateMaterialData(hands[i].entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource hand_struct{};
             hand_struct = hand_data_ssbo_accessors[i].GetGlobalSSBOBinding();

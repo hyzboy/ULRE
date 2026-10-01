@@ -34,7 +34,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 
@@ -219,8 +219,8 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
             // 建几何资产组件 GeometryData
-            auto primitive_comp = plane_grid_entity->GetContext()->GetOrCreateGeometryData(plane_grid_entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = plane_grid_entity->GetContext()->GetOrCreateMaterialData(plane_grid_entity->GetEntityID());
+            auto primitive_comp = plane_grid_entity->GetContext()->GetOrCreateGeometryData(plane_grid_entity);
+            hgl::ecs::MaterialData *material_data_comp = plane_grid_entity->GetContext()->GetOrCreateMaterialData(plane_grid_entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
             plane_struct = plane_material_data_accessor.GetGlobalSSBOBinding();
@@ -240,8 +240,8 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
             // 建几何资产组件 GeometryData
-            auto primitive_comp = ray_line_entity->GetContext()->GetOrCreateGeometryData(ray_line_entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = ray_line_entity->GetContext()->GetOrCreateMaterialData(ray_line_entity->GetEntityID());
+            auto primitive_comp = ray_line_entity->GetContext()->GetOrCreateGeometryData(ray_line_entity);
+            hgl::ecs::MaterialData *material_data_comp = ray_line_entity->GetContext()->GetOrCreateMaterialData(ray_line_entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&line_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource line_struct{};
             line_struct = line_material_data_accessor.GetGlobalSSBOBinding();
@@ -257,13 +257,14 @@ private:
         // === 使用新的 ECS Camera 系统 ===
         // Create camera entity and component
         auto camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
-        auto camera_component = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera_component = ecs_world->GetOrCreateCamera(camera_entity);
 
         // 设置纯数据 / Set pure data
         camera_component->position = math::Vector3f(32, 32, 32);
         camera_component->target = math::Vector3f(0, 0, 0);
         camera_component->world_up = math::Vector3f(0, 0, 1);
-        camera_component->control_mode = CameraComponent::ControlMode::ViewModel;
+        camera_component->control_mode = CameraControlMode::ViewModel;
         camera_component->fov = 45.0f;
         camera_component->near_plane = 0.1f;
         camera_component->far_plane = 1000.0f;

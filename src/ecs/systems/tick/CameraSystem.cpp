@@ -17,9 +17,9 @@ namespace hgl::ecs
         class FirstPersonCameraMode final : public CameraModeProcessor
         {
         public:
-            CameraComponent::ControlMode GetMode() const override
+            CameraControlMode GetMode() const override
             {
-                return CameraComponent::ControlMode::FirstPerson;
+                return CameraControlMode::FirstPerson;
             }
 
             void ProcessInput(CameraComponent* camera, const CameraInputState& input_state, float deltaTime) override
@@ -79,9 +79,9 @@ namespace hgl::ecs
         class ViewModelCameraMode final : public CameraModeProcessor
         {
         public:
-            CameraComponent::ControlMode GetMode() const override
+            CameraControlMode GetMode() const override
             {
-                return CameraComponent::ControlMode::ViewModel;
+                return CameraControlMode::ViewModel;
             }
 
             void ProcessInput(CameraComponent* camera, const CameraInputState& input_state, float /*deltaTime*/) override
@@ -142,9 +142,9 @@ namespace hgl::ecs
         class LookAtCameraMode final : public CameraModeProcessor
         {
         public:
-            CameraComponent::ControlMode GetMode() const override
+            CameraControlMode GetMode() const override
             {
-                return CameraComponent::ControlMode::LookAt;
+                return CameraControlMode::LookAt;
             }
 
             void ProcessInput(CameraComponent* camera, const CameraInputState& input_state, float /*deltaTime*/) override
@@ -194,9 +194,9 @@ namespace hgl::ecs
         class FreeCameraMode final : public CameraModeProcessor
         {
         public:
-            CameraComponent::ControlMode GetMode() const override
+            CameraControlMode GetMode() const override
             {
-                return CameraComponent::ControlMode::Free;
+                return CameraControlMode::Free;
             }
 
             void ProcessInput(CameraComponent* /*camera*/, const CameraInputState& /*input_state*/, float /*deltaTime*/) override
@@ -479,17 +479,17 @@ namespace hgl::ecs
         processor->UpdateTransform(camera);
     }
 
-    CameraModeProcessor* CameraSystem::GetModeProcessor(CameraComponent::ControlMode mode) const
+    CameraModeProcessor* CameraSystem::GetModeProcessor(CameraControlMode mode) const
     {
         switch (mode)
         {
-            case CameraComponent::ControlMode::FirstPerson:
+            case CameraControlMode::FirstPerson:
                 return first_person_mode.get();
-            case CameraComponent::ControlMode::ViewModel:
+            case CameraControlMode::ViewModel:
                 return view_model_mode.get();
-            case CameraComponent::ControlMode::LookAt:
+            case CameraControlMode::LookAt:
                 return look_at_mode.get();
-            case CameraComponent::ControlMode::Free:
+            case CameraControlMode::Free:
                 return free_mode.get();
         }
 

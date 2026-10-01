@@ -143,7 +143,7 @@ namespace hgl::ecs
         Entity *owner = GetOwner();
         ECSContext *context = owner ? owner->GetContext() : nullptr;
         MaterialData *material_data = context
-            ? context->GetMaterialData(owner->GetEntityID())
+            ? context->GetMaterialData(owner)
             : nullptr;
         if (material_data)
             material_data->BumpAuthoredGeneration();

@@ -19,7 +19,26 @@
 #include <hgl/log/Logger.h>
 
 #include <cmath>
+
+// 源码计数助手（Test 28）：verify_source_contracts 只能判「有没有」，判不了「有几条」——
+// 而「指针版是否又走了一次 GetEntity」这种不变量必须按**条数**钉（同一段直通体 const/非 const 各一条）。
+static uint32_t CountSubstring(const std::string &src, const std::string &needle)
+{
+    if (needle.empty())
+        return 0;
+
+    uint32_t n = 0;
+
+    for (size_t pos = src.find(needle); pos != std::string::npos; pos = src.find(needle, pos + needle.size()))
+        ++n;
+
+    return n;
+}
 #include <numbers>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <string>
 
 using namespace hgl;
 using namespace hgl::ecs;
@@ -4224,6 +4243,308 @@ int main(int argc, char** argv)
                  u8"策略表表达该语义、收集侧只读表、颜色经既有材质数据行下发、新语义反守卫在位、" 
                  u8"旧“跳过+告警”与手写材质来源判据禁复活；共 %d 条契约）。",
                  static_cast<int>(sizeof(kA7bContracts) / sizeof(kA7bContracts[0])));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 27: A7c —— 示例侧相机作者流程迁到**世界级访问器**（组件类型名零出现）
+    //
+    // A6 把相机拨正为「世界级资源」（16 槽 × 帧槽、0 号槽恒为默认相机）并给出世界级
+    // 访问器；但示例侧仍然「新建时 AddComponent<CameraComponent>、读回时
+    // entity->GetComponent<CameraComponent>()」——组件级读法 = **第二套相机读取入口**
+    // （双真值）。A7c 收敛为唯一入口：示例一律经世界访问器
+    //   创建/取回：`ECSContext::GetOrCreateCamera(EntityID)` / `GetCameraByEntity(EntityID)`；
+    //   控制模式枚举也由组件嵌套提升为命名空间级 `CameraControlMode`（否则调用点
+    //   必须提到组件类型名）。
+    //
+    // 本测试钉两件事（前者防引擎回退，后者是**验收口径**本身）：
+    //   (a) 源码契约：枚举单一真源、旧嵌套名禁复活、世界级入口在位、示例侧在用；
+    //   (b) **目录扫描**：`example/` 下任何文件都不再出现 `CameraComponent`
+    //       ——验收 grep 的可执行化（grep -rn 'CameraComponent' example/ == 0）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kA7cContracts[] =
+        {
+            // ① 控制模式枚举：命名空间级单一真源（组件侧不再定义嵌套枚举）
+            { "CameraControlMode.h", OS_TEXT("inc/hgl/ecs/components/CameraControlMode.h"),
+              "enum class CameraControlMode",
+              "相机控制模式枚举不再是命名空间级（调用点被迫引用组件类型名）" },
+            { "CameraControlMode.h", OS_TEXT("inc/hgl/ecs/components/CameraControlMode.h"),
+              "ViewModel",
+              "控制模式枚举缺 ViewModel（示例作者无法表达视图模型模式）" },
+            { "CameraComponent.h", OS_TEXT("inc/hgl/ecs/components/CameraComponent.h"),
+              "CameraControlMode control_mode;",
+              "相机参数不再用命名空间级控制模式枚举" },
+            { "CameraComponent.h", OS_TEXT("inc/hgl/ecs/components/CameraComponent.h"),
+              "enum class ControlMode",
+              "组件嵌套控制模式枚举复活（同一身份出现第二个名字）", true },
+
+            // ② 世界级相机入口在位（实体 → 相机 / 无则创建）
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "GetOrCreateCamera(EntityID owner",
+              "作者侧建相机的世界级入口缺失（只能退回 AddComponent<CameraComponent>）" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "GetCameraByEntity(EntityID owner) const;",
+              "实体 → 相机的世界级读取口缺失（会退回 entity->GetComponent<...>）" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "CameraComponent* ECSContext::GetOrCreateCamera(const EntityID owner",
+              "世界级建相机的实现缺失" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "CameraComponent* ECSContext::GetCameraByEntity(const EntityID owner)",
+              "世界级「实体 → 相机」读取实现缺失" },
+
+            // ③ 旧嵌套名禁复活（引擎侧也不得再写 CameraComponent::ControlMode）
+            { "CameraSystem.h", OS_TEXT("inc/hgl/ecs/systems/tick/CameraSystem.h"),
+              "CameraComponent::ControlMode",
+              "旧嵌套枚举名在 CameraSystem.h 复活", true },
+            { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
+              "CameraComponent::ControlMode",
+              "旧嵌套枚举名在 CameraSystem.cpp 复活", true },
+
+            // ④ 示例侧真的在用世界级访问器（不是只把类型名藏起来）
+            { "SimpleCube.cpp", OS_TEXT("example/GettingStarted/SimpleCube.cpp"),
+              "ecs_context->GetOrCreateCamera(",
+              "示例建相机未走世界级访问器" },
+            { "ShadowMap.cpp", OS_TEXT("example/Shadow/ShadowMap.cpp"),
+              "GetCameraByEntity(light_camera_id)",
+              "示例读相机未走世界级访问器（光源相机按宿主实体取回）" },
+            { "AlphaTestShadow.cpp", OS_TEXT("example/Shadow/AlphaTestShadow.cpp"),
+              "CameraControlMode::LookAt",
+              "示例不再用命名空间级控制模式枚举（作者流程没跟上）" },
+        };
+
+        if (const int failed = verify_source_contracts(27, kA7cContracts,
+                                                       static_cast<uint>(sizeof(kA7cContracts) /
+                                                                         sizeof(kA7cContracts[0]))))
+            return failed;
+
+        // (b) 目录扫描 = 验收 grep 的可执行化：example/ 下**任何文件**都不得出现组件类型名。
+        //     阈值扫描文件数，防止「工作目录不是仓库根 ⇒ 一个文件都没扫到 ⇒ 假绿」。
+        namespace fs = std::filesystem;
+
+        uint32_t scanned = 0;
+        uint32_t hits    = 0;
+        std::string first_hit;
+
+        std::error_code ec;
+        for (const fs::directory_entry &entry : fs::recursive_directory_iterator(OS_TEXT("example"), ec))
+        {
+            if (!entry.is_regular_file(ec))
+                continue;
+
+            ++scanned;
+
+            std::ifstream in(entry.path(), std::ios::binary);
+
+            if (!in)
+            {
+                GLogError(u8"Test 27 Failed: cannot open %s (run from repo root)",
+                          entry.path().string().c_str());
+                return 27;
+            }
+
+            const std::string src((std::istreambuf_iterator<char>(in)),
+                                   std::istreambuf_iterator<char>());
+
+            if (src.find("CameraComponent") != std::string::npos)
+            {
+                if (hits == 0)
+                    first_hit = entry.path().string();
+
+                ++hits;
+            }
+        }
+
+        if (ec)
+        {
+            GLogError(u8"Test 27 Failed: example/ 目录遍历出错：%s", ec.message().c_str());
+            return 27;
+        }
+
+        if (hits != 0)
+        {
+            GLogError(u8"Test 27 Failed: example/ 下仍有 %u 个文件提到组件类型名（首个：%s）"
+                      u8"——示例的相机作者流程必须只经世界级访问器（A7c 验收：命中 0）",
+                      hits, first_hit.c_str());
+            return 27;
+        }
+
+        if (scanned < 60)
+        {
+            GLogError(u8"Test 27 Failed: example/ 只扫描到 %u 个文件（工作目录不是仓库根？"
+                      u8"零命中不能建立在「什么都没扫到」之上）", scanned);
+            return 27;
+        }
+
+        GLogInfo(u8"Test 27 Passed: A7c 契约成立（%d 条源码契约 + example/ 目录扫描 %u 个文件、"
+                 u8"组件类型名命中 0）——示例的相机作者流程只经世界级访问器"
+                 u8"（GetOrCreateCamera / GetCameraByEntity(EntityID)），控制模式枚举为命名空间级单一真源。",
+                 static_cast<int>(sizeof(kA7cContracts) / sizeof(kA7cContracts[0])), scanned);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 28: A7c-2 —— 世界级访问器「双句柄」契约（`EntityID` 版 / `Entity*` 版同一落点）
+    //
+    // 动机：世界级访问器的 `EntityID` 版实现是 `GetEntity(owner)` 后再取组件；而调用方
+    // **手里往往已经有 `Entity*`**（全仓曾有 171 处写成 `xxx->GetEntityID()` 传进去）⇒
+    // 多一次「指针 → ID → 再查回指针」的往返。修法：实现体抽成接收 `Entity*` 的**核心**，
+    // `EntityID` 版只解析一次后转调；`Entity*` 版**直通核心、不得再查一次 `GetEntity()`**。
+    //
+    // 本用例钉两件事：
+    //   (a) 行为：两种句柄取到**同一个**组件（ID 版跳过解析 ⇒ 立刻红）；无效 ID / nullptr
+    //       一律 nullptr（不得返回垃圾）；
+    //   (b) 源码：核心函数在位、且指针版是**直通**（把 `GetEntity()` 塞回指针版 ⇒ 针脚失败）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        ECSContext world("Test28DualHandleWorld");
+
+        Entity *entity = world.CreateEntity<Entity>("Test28Entity");
+
+        if (!entity)
+        {
+            GLogError(u8"Test 28 Failed: 实体创建失败（无法验证双句柄契约）");
+            return 28;
+        }
+
+        const EntityID id = entity->GetEntityID();
+
+        // (a-1) 尚未挂载 ⇒ 两种句柄都必须 nullptr（ID 版跳过解析就会返回垃圾）
+        if (world.GetGeometryData(id) != nullptr || world.GetGeometryData(entity) != nullptr)
+        {
+            GLogError(u8"Test 28 Failed: 未挂载组件时 GetGeometryData 必须 nullptr（ID 版必须真解析）");
+            return 28;
+        }
+
+        // (a-2) 创建后两种句柄必须同址
+        ecs::GeometryData *geo_by_id  = world.GetOrCreateGeometryData(id);
+        ecs::GeometryData *geo_by_ptr = world.GetOrCreateGeometryData(entity);
+
+        if (!geo_by_id || geo_by_id != geo_by_ptr
+         || world.GetGeometryData(id) != geo_by_id
+         || world.GetGeometryData(entity) != geo_by_id)
+        {
+            GLogError(u8"Test 28 Failed: GetGeometryData 的 EntityID 版与 Entity* 版不是同一落点");
+            return 28;
+        }
+
+        MaterialData *mat_by_id  = world.GetOrCreateMaterialData(id);
+        MaterialData *mat_by_ptr = world.GetOrCreateMaterialData(entity);
+
+        if (!mat_by_id || mat_by_id != mat_by_ptr
+         || world.GetMaterialData(id) != mat_by_id
+         || world.GetMaterialData(entity) != mat_by_id)
+        {
+            GLogError(u8"Test 28 Failed: GetMaterialData 的 EntityID 版与 Entity* 版不是同一落点");
+            return 28;
+        }
+
+        CameraComponent *cam_by_id  = world.GetOrCreateCamera(id, "Test28Camera");
+        CameraComponent *cam_by_ptr = world.GetOrCreateCamera(entity, "Test28Camera");
+
+        if (!cam_by_id || cam_by_id != cam_by_ptr
+         || world.GetCameraByEntity(id) != cam_by_id
+         || world.GetCameraByEntity(entity) != cam_by_id)
+        {
+            GLogError(u8"Test 28 Failed: 相机访问器的 EntityID 版与 Entity* 版不是同一落点");
+            return 28;
+        }
+
+        // 幂等：再取一次不得换落点
+        if (world.GetOrCreateCamera(entity, "Test28Camera") != cam_by_id
+         || world.GetOrCreateGeometryData(entity) != geo_by_id)
+        {
+            GLogError(u8"Test 28 Failed: GetOrCreate* 不幂等（第二次调用换了落点）");
+            return 28;
+        }
+
+        // (a-3) 无效句柄一律 nullptr（不得把 ID 当指针用 / 不得返回垃圾）
+        if (world.GetGeometryData(EntityID::Invalid()) != nullptr
+         || world.GetGeometryData(static_cast<Entity *>(nullptr)) != nullptr
+         || world.GetMaterialData(static_cast<const Entity *>(nullptr)) != nullptr
+         || world.GetCameraByEntity(static_cast<Entity *>(nullptr)) != nullptr
+         || world.GetOrCreateCamera(static_cast<Entity *>(nullptr), "X") != nullptr
+         || world.GetOrCreateGeometryData(static_cast<Entity *>(nullptr)) != nullptr)
+        {
+            GLogError(u8"Test 28 Failed: 无效句柄（无效 ID / nullptr 实体）必须返回 nullptr");
+            return 28;
+        }
+
+        // (b) 源码契约：核心函数在位（存在性）
+        const SourceContract kA7c2Contracts[] =
+        {
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "T *ComponentOfEntity(Entity *entity)",
+              "世界级访问器的核心（接收 Entity*）缺失 —— 指针版只能各自重写一遍取组件逻辑" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "GetOrAddComponentOfEntity(Entity *entity, Args&&... args)",
+              "「无则创建」的核心（接收 Entity*）缺失" },
+
+            // 键式访问器（slot 一族）：指针版只免掉调用方的 ->GetEntityID()
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "MaterialRuntimeSlot& GetOrCreateMaterialRuntimeSlot(Entity *owner)",
+              "材质运行期 slot 缺 Entity* 重载" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "MaterialRuntimeSlot* GetMaterialRuntimeSlot(Entity *owner)",
+              "材质运行期 slot 取用缺 Entity* 重载" },
+        };
+
+        if (const int failed = verify_source_contracts(28, kA7c2Contracts,
+                                                       static_cast<uint>(sizeof(kA7c2Contracts) /
+                                                                         sizeof(kA7c2Contracts[0]))))
+            return failed;
+
+        // (c) **计数式**直通契约：同一段直通体 const / 非 const 各一条 ⇒ 必须精确到条数
+        //     （「有没有」判不了退化：把 GetEntity 塞回 2 条里的一条，Contains 仍为真）。
+        {
+            std::ifstream in(OS_TEXT("src/ecs/core/Context.cpp"), std::ios::binary);
+
+            if (!in)
+            {
+                GLogError(u8"Test 28 Failed: cannot open src/ecs/core/Context.cpp (run from repo root)");
+                return 28;
+            }
+
+            const std::string src((std::istreambuf_iterator<char>(in)),
+                                  std::istreambuf_iterator<char>());
+
+            struct CountExpect
+            {
+                const char *needle;
+                uint32_t    count;
+                const char *why;
+            };
+
+            const CountExpect kDirect[] =
+            {
+                // 指针版**直通**（const + 非 const 两条）
+                { "return ComponentOfEntity<GeometryData>(owner);",         2, "GeometryData 指针版必须直通核心（不得再解析 ID）" },
+                { "return ComponentOfEntity<MaterialData>(owner);",         2, "MaterialData 指针版必须直通核心" },
+                { "return ComponentOfEntity<ShadowProxy>(owner);",          2, "ShadowProxy 指针版必须直通核心" },
+                { "return ComponentOfEntity<CameraComponent>(owner);",      2, "相机指针版必须直通核心" },
+
+                // 指针版「无则创建」**直通**（各一条：创建必须能改实体）
+                { "return GetOrAddComponentOfEntity<GeometryData>(owner);", 1, "GeometryData「无则创建」指针版必须直通核心" },
+                { "return GetOrAddComponentOfEntity<MaterialData>(owner);", 1, "MaterialData「无则创建」指针版必须直通核心" },
+                { "return GetOrAddComponentOfEntity<CameraComponent>(owner, name);", 1, "相机「无则创建」指针版必须直通核心" },
+
+                // ID 版**每个重载解析一次**：少了 = 有人跳过解析（返回垃圾/nullptr）
+                { "GetEntity(owner)",                                      11, "EntityID 版必须每个重载各解析一次 GetEntity" },
+            };
+
+            for (const CountExpect &c : kDirect)
+            {
+                if (const uint32_t n = CountSubstring(src, c.needle); n != c.count)
+                {
+                    GLogError(u8"Test 28 Failed: %s —— ‘%s’ 出现 %u 次（期望 %u）",
+                              c.why, c.needle, n, c.count);
+                    return 28;
+                }
+            }
+        }
+
+        GLogInfo(u8"Test 28 Passed: A7c-2 双句柄契约成立（%d 条存在性契约 + 8 条**计数式**直通契约"
+                 u8"（指针版直通核心、ID 版每个重载各解析一次 GetEntity）+ 行为：EntityID 版与 "
+                 u8"Entity* 版同落点、GetOrCreate* 幂等、无效句柄一律 nullptr）。",
+                 static_cast<int>(sizeof(kA7c2Contracts) / sizeof(kA7c2Contracts[0])));
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

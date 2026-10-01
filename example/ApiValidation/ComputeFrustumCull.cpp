@@ -30,7 +30,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include<hgl/vk/VKDevice.h>
@@ -366,8 +366,8 @@ private:
             transform.SetLocalScale(glm::vec3(CUBE_SCALE));
             transform.SetMobility(Mobility::Static);
 
-            auto *prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
+            auto *prim = e->GetContext()->GetOrCreateGeometryData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
             MaterialData::MaterialDataAuthoringResource named_struct{};
             named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
@@ -396,9 +396,10 @@ private:
             return false;
 
         camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
-        camera->control_mode  = CameraComponent::ControlMode::ViewModel;
+        camera->control_mode  = CameraControlMode::ViewModel;
         camera->target        = math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance      = 18.0f;
         camera->yaw           = 0.0f;
@@ -629,7 +630,8 @@ public:
         camera_angle += static_cast<float>(delta_time) * 15.0f;
         if (camera_entity)
         {
-            auto camera = camera_entity->GetComponent<CameraComponent>();
+            // 世界级读取：相机属于世界（实体只是宿主），不再直取组件
+            auto *camera = ecs_context->GetCameraByEntity(camera_entity);
             if (camera)
             {
                 camera->yaw = camera_angle;

@@ -37,7 +37,7 @@
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include<hgl/vk/VKDevice.h>
@@ -590,8 +590,8 @@ private:
         planet_transform.SetLocalScale(glm::vec3(PLANET_RADIUS));
         planet_transform.SetMobility(Mobility::Static);
 
-        auto planet_prim = planet_entity->GetContext()->GetOrCreateGeometryData(planet_entity->GetEntityID());
-        hgl::ecs::MaterialData *material_data_comp = planet_entity->GetContext()->GetOrCreateMaterialData(planet_entity->GetEntityID());
+        auto planet_prim = planet_entity->GetContext()->GetOrCreateGeometryData(planet_entity);
+        hgl::ecs::MaterialData *material_data_comp = planet_entity->GetContext()->GetOrCreateMaterialData(planet_entity);
         planet_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(planet_prim->GetOwnerID())->SetPrimitiveAsset(&planet_asset);
         MaterialData::MaterialDataAuthoringResource p_res{};
         p_res = planet_mtl_accessor.GetGlobalSSBOBinding();
@@ -612,8 +612,8 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f));
             transform.SetMobility(Mobility::Static);
 
-            auto *prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
+            auto *prim = e->GetContext()->GetOrCreateGeometryData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&asteroid_assets[i]);
             MaterialData::MaterialDataAuthoringResource a_res{};
             a_res = asteroid_mtl_accessors[i].GetGlobalSSBOBinding();
@@ -641,10 +641,11 @@ private:
             return false;
 
         camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
         // 广角鸟瞰宏伟土星环系统
-        camera->control_mode     = CameraComponent::ControlMode::ViewModel;
+        camera->control_mode     = CameraControlMode::ViewModel;
         camera->target           = math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance         = 340.0f;
         camera->min_distance     = 45.0f;    // 刚好在行星表面(半径35)之外
@@ -974,7 +975,8 @@ public:
         // 动态摄像机缓慢环绕漫游（与鼠标交互增量融合）
         if (camera_entity)
         {
-            auto camera = camera_entity->GetComponent<CameraComponent>();
+            // 世界级读取：相机属于世界（实体只是宿主），不再直取组件
+            auto *camera = ecs_context->GetCameraByEntity(camera_entity);
             if (camera)
             {
                 camera->yaw += static_cast<float>(delta_time) * 3.0f;

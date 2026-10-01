@@ -50,7 +50,7 @@ namespace hgl::ecs
         {
             ECSContext *context = entity ? entity->GetContext() : nullptr;
 
-            return context ? context->GetMaterialData(entity->GetEntityID()) : nullptr;
+            return context ? context->GetMaterialData(entity) : nullptr;
         }
 
         /// 材质数据层组件（无则创建）。渲染侧需要读出授权状态时，数据层必须存在。
@@ -58,7 +58,7 @@ namespace hgl::ecs
         {
             ECSContext *context = entity ? entity->GetContext() : nullptr;
 
-            return context ? context->GetOrCreateMaterialData(entity->GetEntityID()) : nullptr;
+            return context ? context->GetOrCreateMaterialData(entity) : nullptr;
         }
 
         /// A5a 查询：实体的**几何资产组件**（无实体/无世界/未挂载时 nullptr）。
@@ -66,7 +66,7 @@ namespace hgl::ecs
         {
             ECSContext *context = entity ? entity->GetContext() : nullptr;
 
-            return context ? context->GetGeometryData(entity->GetEntityID()) : nullptr;
+            return context ? context->GetGeometryData(entity) : nullptr;
         }
 
         /// 材质授权代数（A2 之前挂在图元组件上，随授权状态一并迁入数据层）。
@@ -1960,7 +1960,7 @@ namespace hgl::ecs
             // A4：材质运行期状态 = **每实例 slot**（世界表里按实体稀疏存放）+
             // **共享行**（绑定）。这里取/建 slot，再经行取 program 与缓存哈希。
             MaterialRuntimeSlot &material_slot =
-                world->GetOrCreateMaterialRuntimeSlot(entity->GetEntityID());
+                world->GetOrCreateMaterialRuntimeSlot(entity);
             const MaterialRuntimeRow *material_row = runtime_table
                 ? runtime_table->Get(material_slot.row)
                 : nullptr;
@@ -2106,7 +2106,7 @@ namespace hgl::ecs
             {
                 // A4：本实例的材质运行期 **slot**（世界表按实体稀疏存放；与预扫描同一份）。
                 MaterialRuntimeSlot &material_slot =
-                    world->GetOrCreateMaterialRuntimeSlot(entity->GetEntityID());
+                    world->GetOrCreateMaterialRuntimeSlot(entity);
                 material_slot_ptr = &material_slot;
 
                 if (!ResolveMaterialProgramForPrimitive(geometryComp->GetOwner(), material_slot))

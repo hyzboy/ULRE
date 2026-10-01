@@ -66,7 +66,7 @@ namespace hgl
         {
         public:
             virtual ~CameraModeProcessor() = default;
-            virtual CameraComponent::ControlMode GetMode() const = 0;
+            virtual CameraControlMode GetMode() const = 0;
             virtual void ProcessInput(CameraComponent* camera, const CameraInputState& input_state, float deltaTime) = 0;
             virtual void UpdateTransform(CameraComponent* camera) = 0;
         };
@@ -180,7 +180,7 @@ namespace hgl
 
             /// 上传到GPU / Upload to GPU
 
-            CameraModeProcessor* GetModeProcessor(CameraComponent::ControlMode mode) const;
+            CameraModeProcessor* GetModeProcessor(CameraControlMode mode) const;
 
             /// 三级解析出本 pass 要用的相机（`doc/world-addresses-and-camera-model-plan.md` §3）：
             /// ① 0 号槽的默认相机（含常驻 fallback）→ ② 显式 `is_main_camera` → ③ 最小 `EntityID` 的相机

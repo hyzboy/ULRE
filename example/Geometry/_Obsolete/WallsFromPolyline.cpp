@@ -19,7 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 
@@ -78,9 +78,10 @@ public:
             return false;
 
         camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
-        camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+        camera->control_mode = hgl::ecs::CameraControlMode::ViewModel;
         camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance = 14.0f;
         camera->yaw = 45.0f;
@@ -102,8 +103,8 @@ public:
         {
             auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-            auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
+            auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity);
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));

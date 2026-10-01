@@ -24,7 +24,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -312,8 +312,8 @@ public:
         auto *world = offscreen->GetWorld();
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
         auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
-        auto prim_comp = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity->GetEntityID());
-        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
+        auto prim_comp = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity);
+        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity);
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -332,8 +332,9 @@ public:
         sphere_primitive_comp = prim_comp;
 
         Entity *camera_entity = world->CreateEntity<Entity>("OffscreenCamera");
-        auto camera = camera_entity->AddComponent<CameraComponent>();
-        camera->control_mode = CameraComponent::ControlMode::ViewModel;
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = world->GetOrCreateCamera(camera_entity);
+        camera->control_mode = CameraControlMode::ViewModel;
         camera->target = math::Vector3f(0, 0, 0);
         camera->distance = kCameraDistance;
         camera->yaw = 45.0f;
@@ -426,9 +427,10 @@ private:
             return LogStageFail("App::SetupMainCamera", "ECS context/camera system unavailable");
 
         camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
-        camera->control_mode = CameraComponent::ControlMode::ViewModel;
+        camera->control_mode = CameraControlMode::ViewModel;
         camera->target = math::Vector3f(0, 0, 0);
         camera->distance = 6.5f;        // 比 RenderToTexture 稍远，让两个立方体都进画面
         camera->yaw = 45.0f;
@@ -535,8 +537,8 @@ private:
 
         cube.entity = ecs_context->CreateEntity<Entity>(cube.name);
         cube.transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube.entity->GetEntityID(), Mobility::Static));
-        auto prim_comp = cube.entity->GetContext()->GetOrCreateGeometryData(cube.entity->GetEntityID());
-        hgl::ecs::MaterialData *material_data_comp = cube.entity->GetContext()->GetOrCreateMaterialData(cube.entity->GetEntityID());
+        auto prim_comp = cube.entity->GetContext()->GetOrCreateGeometryData(cube.entity);
+        hgl::ecs::MaterialData *material_data_comp = cube.entity->GetContext()->GetOrCreateMaterialData(cube.entity);
 
         cube.transform.SetLocalPosition(glm::vec3(cube.x_offset, 0.0f, 0.0f));
         cube.transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));

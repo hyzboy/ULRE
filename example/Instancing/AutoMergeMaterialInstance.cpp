@@ -171,8 +171,8 @@ private:
 
             // === 步骤4: 建几何资产组件 GeometryData ===
             // 每个实体共享同一 PrimitiveAsset，颜色来自不同结构体行
-            auto primitive_comp = triangles[i].entity->GetContext()->GetOrCreateGeometryData(triangles[i].entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = triangles[i].entity->GetContext()->GetOrCreateMaterialData(triangles[i].entity->GetEntityID());
+            auto primitive_comp = triangles[i].entity->GetContext()->GetOrCreateGeometryData(triangles[i].entity);
+            hgl::ecs::MaterialData *material_data_comp = triangles[i].entity->GetContext()->GetOrCreateMaterialData(triangles[i].entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource tri_struct{};
             tri_struct = triangle_data_accessors[i].GetGlobalSSBOBinding();

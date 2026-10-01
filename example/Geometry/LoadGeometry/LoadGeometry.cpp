@@ -19,7 +19,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include<glm/glm.hpp>
@@ -277,8 +277,8 @@ private:
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
             bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-            bbox->primitive_comp = bbox->entity->GetContext()->GetOrCreateGeometryData(bbox->entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContext()->GetOrCreateMaterialData(bbox->entity->GetEntityID());
+            bbox->primitive_comp = bbox->entity->GetContext()->GetOrCreateGeometryData(bbox->entity);
+            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContext()->GetOrCreateMaterialData(bbox->entity);
 
             bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));
 
@@ -318,8 +318,8 @@ private:
 
             rm->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
             rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-            rm->primitive_comp = rm->entity->GetContext()->GetOrCreateGeometryData(rm->entity->GetEntityID());
-            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContext()->GetOrCreateMaterialData(rm->entity->GetEntityID());
+            rm->primitive_comp = rm->entity->GetContext()->GetOrCreateGeometryData(rm->entity);
+            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContext()->GetOrCreateMaterialData(rm->entity);
 
             const float angle = glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));
             const glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -347,9 +347,10 @@ private:
             return false;
 
         camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
-        auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+        // 相机 = **世界级资源**：经世界访问器创建/取回（实体只是宿主），不直取组件
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
-        camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+        camera->control_mode = hgl::ecs::CameraControlMode::ViewModel;
         camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance = 8.0f;
         camera->yaw = 45.0f;
