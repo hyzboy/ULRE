@@ -1142,11 +1142,27 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
       - **⚠ 未验证项（子代理自报，我认可）**：**没有任何示例存在"有几何、无材质来源"的实体**（12 个示例 `MaterialFallback` 出现 0 次）⇒ 验收停在三级契约（策略表需求位 / 回退配方与规则表颜色两两不同 / 源码落点与禁复活），**"屏幕上真的渲成洋红"未实测**；根颜色行的真实设备下发亦仅到代码路径层面。⇒ **下一步要补一个故意不配材质的场景来两端钉死**。
       - **构建教训（实测，值得留档）**：本仓 C++ 模块扫描下**只改头文件时 `cmake --build` 不一定重编依赖 TU**（该子代理首个负控因此假绿，`touch` 对应 .cpp 后才失败）⇒ **结论一律以清 obj 全量重编为准**。
       - **未做**：`example/` 相机作者侧迁移（A6 遗留）与 stage B 欠账清单 ⇒ 归 A7c。
+  - **A7c（示例相机迁移 + stage B 欠账清单）— ✅ 已完成并通过我方独立复核（2026-10-01）**：
+    - **J1 示例相机迁移**：`example/` 里 `CameraComponent` **113 行/33 文件 → 0 行/0 文件**（改走世界级访问器；作者自建相机实体的示例保留实体挂载但读取统一走世界级）；改动规模 **62 项 / +798 −332**（绝大多数为 `example/**`）。
+    - **J2 stage B 欠账清单**：新建 `doc/future/stage_B_debt_list.md`（BOM+CRLF，16.7 KB）：① stage B 目标项（按 (scope,类型) 行 arena + 访问器、`EntityGPU` 128B、`.ulrescene` 直载、T10 容量/行号冻结、T11）逐条给"现状 vs 差距"并引用 A0–A7 已落地件；② A0–A7 遗留特殊项（`CameraComponent` 终态去向、`MaterialRuntimeSlot` 每实例字段、`component_mask → EntityGPU::type[16]`、`system_group_component_counts`、A5b 删掉的 `positionSourceSpec`/`transformPolicySpec`/`overridePipeline` 是否以新形式回归）；③ 只写实测已知、推测定标"待定"。
+    - **实测证据（我方清 obj 重编 19 目标）**：build **rc=0 / 0 error / 4 条既有 C4715**；**10 个测试 rc=0**；门 **rc=0**；`PBRSpheres`/`CascadeShadowMap`/`GizmoUsage`/`LineRender`/`RayPicking` 各 8 秒 **0 真 error + 对拍不一致行 0**。
+    - **该子代理汇报质量警告**：其 `files_changed` 写成目录而非文件、自认"最后一轮 JSON 修正轮未重跑"、负控无 rc/文案 ⇒ 只采信其**代码地面真值**（上方 grep 与我的实跑），**不采信其叙述**。
+    - **⚠ 漏做**：A7c 执行期间用户追加的"世界级访问器去掉多余 `Entity` 往返 / 两种重载都支持"未落地（`Context.cpp` 里 `GetEntity(owner)` 仍 11 处；`Context.h` 指针版重载仅 2）⇒ **归 A7d**。
+  - **A7d（访问器双格式 API）— ✅ 已完成并通过我方独立复核（2026-10-01）**：为整套世界级访问器加了 **13 个指针版重载**（`GetCameraByEntity` / `GetOrCreateCamera` / `GetMaterialData` / `GetOrCreateMaterialData` / `GetGeometryData` / `GetOrCreateGeometryData` / `GetShadowProxy` / `GetOrCreateMaterialRuntimeSlot` / `GetMaterialRuntimeSlot` 等，`Context.h:463-679`），实现体抽成匿名命名空间的 `ComponentOfEntity<T>(const Entity*)` / `GetOrAddComponentOfEntity<T,Args...>`（`Context.cpp:1618-1648`）；**ID 版只解一次 `GetEntity(owner)` 后转调（11 处，每重载恰好一次），指针版体内 `GetEntity(` = 0**。**调用点迁移 132 → 0**（改前 130 处内联 `Accessor(xxx->GetEntityID())` + 2 处经局部 id 中转；引擎侧 12 + 示例侧 118）。**未迁移者仅真持 ID 处**（`PrimitiveRenderItem.cpp:89/96` 成员 `entity_id`、`PrimitiveState.cpp` 的 `EntityID owner` 形参族）。**顺带核实（我上一条的开放项）**：示例不显式取相机是因为它们用 **`GetOrCreateCamera`（36 处）/ `GetCameraByEntity`（11 处）** 拿回 `CameraComponent*` 后**直接写字段**（`control_mode/target/distance/yaw/pitch/fov/near_plane/far_plane` 共 195 处、33 文件）——**相机配置没有丢**。
+    - **实测证据（我方清 obj 重编 17 目标）**：build **rc=0 / 0 error / 4 条既有 C4715**；**10 个测试 rc=0**；门 **rc=0**；`PBRSpheres`/`CascadeShadowMap`/`GizmoUsage`/`LineRender`/`RayPicking`/`SimpleCube` 各 8 秒 **0 真 error + 对拍不一致行 0**；**内联传 ID 的旧写法全仓 = 0**；`Context.cpp` 的 `GetEntity(owner)` = 11（全在 ID 版）；示例 `GetOrCreateCamera`=36 / `GetCameraByEntity`=11。
+    - **反证两条** ✓：① 指针版偷偷再查一次 ID ⇒ `TestCSMIncrementalPass` **rc=28**（"GeometryData 指针版必须直通核心（不得再解析 ID）—— 'return ComponentOfEntity<GeometryData>(owner);' 出现 1 次（期望 2）"）；② ID 版跳过解析 ⇒ **rc=28**（"EntityID 版与 Entity* 版不是同一落点"）；均 sha256 逐字节还原后全绿。
+    - **该子代理诚实申报**：① 工作树同时含 A7c（42 个示例文件）与 A7d，git 无法分离 ⇒ 同批提交；② `*ByEntity` 一族（`GetTransformByEntity`/`GetBoundingBoxByEntity`/`GetOrCreateBoundingBox`/`GetTransformID`/`InvalidateEntityRuntimePipeline`/`SetEntityVisible`）**本质无往返**（直接 `FindByOwner(EntityID)` 寻址存储）⇒ **未加指针版**（若要求 API 形状完全对称需另开一批）；③ 两个 slot 重载**不判空指针**（与既有 ID 版同款）且 Test 28 未覆盖其空指针路径与行为等价（只有源码契约）。
+    - **杂散产物已清**：示例运行留下的 `cascade_depth_*.raw/.tga` 原本落在**仓库根目录**，已由我方删除（避免被 `git add -A` 带入提交）。
+  **stage A（组成形）到此全部完成**：A0 类型表/位掩码 → A1 策略判定表 → A2 `MaterialData` → A3 `MaterialVariantTable` → A4 `MaterialRuntimeTable` → A5（`GeometryData` + 删三组件类 + `ShadowProxy` + `PrimitiveState` + 可见性收敛）→ A6 相机世界级拨正 → A7a 零残留 + 表成唯一判据 → A7b 材质错误走回退材质 → A7c 示例相机迁移 + stage B 欠账清单 → A7d 访问器双格式 API。**下一步：stage B（存储形）**，或先做"未来计划"里的棋盘格外观 + 材质错误场景。
 - **未来计划（2026-10-01 用户拍板，现阶段只留注释不做）**：把保底/错误材质的**外观升级为棋盘格 + 颜色传入**，并**区分 2D/3D**：
   - 现状：保底材质 = 纯色 `builtin/pure_color`（颜色只有材质数据行 `EmissiveSurface.color` 一维，经 `unlit_source.glsl` 读取）；`builtin/checkerboard_2d|3d` 是普通文件材质、棋盘格颜色**写死灰度**、**不在回退链上**。
   - 要做的：① `checkerboard_2d_source.glsl`/`checkerboard_3d_source.glsl` 同样读 EmissiveSurface 标记色作为两色基色；② **2D 走 UV、3D 走面空间/三平面**（沿用两者既有采样差异）⇒ 标记色分别落到两套着色器，不能共用；③ 同步两个 ShaderGen 门期望值：F 断言回退定义 ID == `builtin/pure_color`（SchemaGate:3534）、E 把 material TOML 文件数钉死 15（:3360-3367）。
   - 已留代码注释：`inc/hgl/mtl/MaterialRecipe.h:505-518`（`kFallbackMaterialRules` 表头 TODO）。
   - **触发前提（用户实测）**：**跑遍全部示例均正常、该错误路径触发 0 次** ⇒ 现有示例不存在"有几何、无材质来源"的实体；该路径目前只有契约测试覆盖、**无可肉眼验证的场景**。若将来要肉眼验证，需专门造一个"故意不配材质"的示例/场景。
+  - **补充（2026-10-01 用户追加，仍在"待做"清单里）**：
+    - ④ **把 `checkerboard_2d`/`checkerboard_3d` 正式接到回退链上**，并让保底材质**支持复杂特性**（不止"标记色"一维：纹理/参数/变体维度按需扩展），且 **2D/3D 两套着色器各自独立**。
+    - ⑤ **补齐各种材质错误的场景**（测试/示例）：为每一种 `MaterialErrorKind`（以及未来新增的种类）提供可复现、可肉眼验证的场景，把"错误材质"从当前的"只有契约测试"提升到"有场景可看、可回归"。现今该错误路径在现有示例中 **0 次触发**（用户实测跑遍全部示例）——将来要肉眼验证必须专门造场景。
+    - 与 ①–③ 的关系：④ 是 ① 的扩展（先接链、再支撑复杂特性），⑤ 是④的配套验收手段；实施顺序建议 ① → ⑤(最小场景) → ④(复杂特性) → ⑤(全种类覆盖)。
 - **stage B（存储形）**：按 (scope, 类型) 行 arena + 访问器 + `EntityGPU` 128B + 预算冻结（T10/T11）；**纯机械替换 + 对拍同值**。
 
 - 验收（本阶段统一口径，取代原来的"每组件一批"）：见上方**硬纪律**五条；每批跑 §5 固定验证集与 §9.7 口径。
@@ -1224,3 +1240,53 @@ build **0 error** → 门 **42 PASS / 0 FAIL** → 三测试 **rc=0** → 示例
 1. 构建 0 error（清 obj 重编口径同 §9）;
 2. 前台跑起来能看出"球按规律成片亮灭/滚动"（**动效必须由用户前台确认** —— 引擎在窗口隐藏时整帧跳过，我这边只能给 build 0 error + 示例跑满 8 秒 0 真 error + 开关计数日志）;
 3. 演示同时作为"实体级可见性有真实可见用途"的证据（不再只是 gizmo 的内部开关）。
+
+
+### 9.9 A7d 世界级访问器「双句柄」API（`EntityID` 版 / `Entity*` 版）—— 2026-10-01 追加
+
+**动机**：A6/A7c 之后，世界级访问器的 `EntityID` 版实现是「`Entity *entity = GetEntity(owner);` 再取组件」，
+而调用方**手里往往已经有 `Entity*`** —— 全仓 HEAD 上有 **130** 处写成 `xxx->GetEntityID()` 再把 ID 传进去
+（引擎侧 12 / 示例侧 118），另有 `HasAnyMaterialSource(const Entity*)` 里 2 处经局部 `id` 中转
+⇒ 多一次「指针 → ID → 再解析回指针」的往返。用户拍板：**两种句柄都支持**（不同句柄类型，**不是兼容层**）。
+
+**改动**
+- `inc/hgl/ecs/core/Context.h`：9 个访问器各补 `Entity*` / `const Entity*` 重载，共 **13** 个指针版重载
+  （相机 3：`GetCameraByEntity`×2 + `GetOrCreateCamera`；材质 2；几何 2；阴影 2；运行期 slot 2
+  —— 同族的 `GetMaterialRuntimeSlot(Entity*)` 一并补齐）。`const Entity*` 只给只读查询
+  （相机/材质/几何/阴影）；「无则创建」不给 const 版（创建必须能改实体）。
+- `src/ecs/core/Context.cpp`：实现体抽为匿名命名空间里的**核心** `ComponentOfEntity<T>(Entity*)`
+  与 `GetOrAddComponentOfEntity<T>(Entity*, Args&&...)`；`EntityID` 版只解析**一次** `GetEntity(owner)`
+  后转调（成本不退化）；指针版**直通**核心、不再查 `GetEntity()`。
+- 调用点迁移：HEAD 的 **130** 处内联 `->GetEntityID()` + `HasAnyMaterialSource` 的 2 处 ⇒ 现 **0**
+  （引擎侧 14 / 示例侧 118）；只持有 `EntityID` 的地方（`PrimitiveRenderItem::entity_id`、
+  `PrimitiveState` 里 `EnsureRenderItemHandle(world, EntityID)` 一族）**保持 ID 版**。
+- 不变量未动：三级相机解析（默认 → 最小 EntityID → `(0,0,0)` 常驻 fallback）、可见性、材质回退、
+  `component_mask` 单一写者、策略表为唯一判据。
+- **未纳入**（属「同族命名」而非「同一毛病」）：`GetTransformByEntity` / `GetBoundingBoxByEntity` /
+  `GetOrCreateBoundingBox` / `InvalidateEntityRuntimePipeline` / `SetEntityVisible` 一族直接按
+  `EntityID` 寻址存储（`FindByOwner(EntityID)`），实现里**根本没有** `GetEntity()` 往返 ⇒ 加指针版无可省成本。
+
+**顺带核实（A7c 后示例相机仍会配置参数）**：`example/` 中 `GetCamera(` / `GetDefaultCamera(` /
+`GetCameraSlot(` / `SetCameraSlot(` **均 0 命中**（与用户实测一致）；实际 API =
+`ECSContext::GetOrCreateCamera(...)`（**36** 处，如 `example/GettingStarted/SimpleCube.cpp:168`）与
+`ECSContext::GetCameraByEntity(...)`（**11** 处，含 1 处注释，如 `example/Shadow/CascadeShadowMap.cpp:1309`）；
+相机参数仍在设置（`control_mode/target/distance/yaw/pitch/fov/near_plane/far_plane` 共 **195** 处字段写入、
+**33** 个文件，如 `example/Shadow/CascadeShadowMap.cpp:1264-1272`）。
+
+**验证（清 obj 后一次性全量重编 63 目标 = 10 测试 + 门 + 49 示例；rc/数字均实测）**
+- build rc=0、error=**0**、warning 仅 **4** 条既有 `C4715`（`src/InlineGeometry/{Arch,HollowGear,SolidGear,Teardrop}.cpp`）
+- 10 测试全 rc=0 + 门 rc=0（**42 PASS / 0 FAIL**）；`TestCSMIncrementalPass` 新增 **Test 28**：
+  行为（两种句柄同落点 / `GetOrCreate*` 幂等 / 无效句柄 nullptr）+ 4 条存在性契约 +
+  **8 条计数式直通契约**（指针版直通各 2/2/2/2 与 1/1/1/1；「`GetEntity(owner)` 出现 11 次」）
+- 窗口示例 `PBRSpheres / CascadeShadowMap / GizmoUsage / LineRender / RayPicking / RenderToTexture /
+  SimpleCube` 各 8 秒：真 error 行 **0**、`策略判定对拍` **不一致=0**（PBRSpheres `collect=87900/0`、
+  CSM `170400/0`、Gizmo `23100/0`）
+- 数字：访问器实现里 `GetEntity()` 调用 改前 **8**（HEAD，仅材质/几何/阴影存在）→ 改后 **11**
+  （全部在 `EntityID` 版、每个重载恰好 1 次）；指针版重载 **13** 个、其中含 `GetEntity()` 的 **0** 个
+- 反证：① 让指针版偷偷再走一次 `GetEntity()` ⇒ `TestCSMIncrementalPass` **rc=28**
+  （“GeometryData 指针版必须直通核心（不得再解析 ID）—— 出现 1 次（期望 2）”）；
+  ② 让 `EntityID` 版跳过解析 ⇒ **rc=28**（“GetGeometryData 的 EntityID 版与 Entity* 版不是同一落点”）；
+  两处均 sha256 **逐字节还原**后全绿（rc=0）
+- 行尾/BOM：改动 57 文件中 3 个 LF-only 文件保持 LF（`inc/hgl/ecs/core/Context.h`、
+  `src/ecs/support/PrimitiveBatchPipeline.cpp`、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`），
+  其余保持各自 BOM+CRLF，无 `MIXED`、逐文件 BOM 与 HEAD 一致
