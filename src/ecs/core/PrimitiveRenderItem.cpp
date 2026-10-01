@@ -1,9 +1,9 @@
 ﻿#include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/RenderableComponent.h>
+#include<hgl/ecs/support/PrimitiveState.h>
+#include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 
 namespace hgl::ecs
@@ -12,13 +12,11 @@ namespace hgl::ecs
     PrimitiveRenderItem::PrimitiveRenderItem(
         EntityID ent_id,
         const TransformAccessor &trans,
-        std::shared_ptr<PrimitiveComponent> prim,
         MaterialRuntimeRowID mat_row,
         ECSContext* ctx)
         : entity_id(ent_id)
         , context(ctx)
         , transform(trans)
-        , primitiveComp(prim)
         , material_runtime_row(mat_row)
         , worldMatrix(1.0f)
     {
@@ -35,9 +33,11 @@ namespace hgl::ecs
         return context->GetEntity(entity_id);
     }
 
-    std::shared_ptr<RenderableComponent> PrimitiveRenderItem::GetRenderable() const
+    const MaterialRuntimeSlot *PrimitiveRenderItem::GetRuntimeSlot() const
     {
-        return std::static_pointer_cast<RenderableComponent>(primitiveComp);
+        const MaterialRuntimeTable *runtime_table = context ? context->GetMaterialRuntimeTable() : nullptr;
+
+        return runtime_table ? runtime_table->GetSlot(entity_id) : nullptr;
     }
 
     const MaterialRuntimeRow *PrimitiveRenderItem::GetMaterialRuntimeRow() const
@@ -53,9 +53,8 @@ namespace hgl::ecs
     hgl::graph::ShaderProgram* PrimitiveRenderItem::GetShaderProgram() const
     {
         // A3：program 在世界的材质变体表里（按变体 ID 取）；变体 ID 自 A4 起挂在
-        // **材质运行期共享行**上（原材质运行期组件已删）。语义与改前一致——
-        // 取**前向**变体（ForwardColor purpose）的 program，解析未就绪时退回
-        // PrimitiveComponent（非 recipe 图元恒 nullptr）。
+        // **材质运行期共享行**上。语义与改前一致——取**前向**变体（ForwardColor purpose）
+        // 的 program。A5b：原图元组件 GetShaderProgram 恒返回 nullptr 的回退已删。
         const MaterialRuntimeRow *row = GetMaterialRuntimeRow();
 
         if (row && context)
@@ -69,12 +68,19 @@ namespace hgl::ecs
                 return record->program;
         }
 
-        return primitiveComp ? primitiveComp->GetShaderProgram() : nullptr;
+        return nullptr;
     }
 
     hgl::graph::Pipeline* PrimitiveRenderItem::GetPipeline(hgl::graph::RenderPass* render_pass) const
     {
-        return primitiveComp ? primitiveComp->GetPipelineForRenderPass(render_pass) : nullptr;
+        // A5b：运行期管线归每实例 slot（collect 阶段按当前 pass 解析并落 slot；
+        // 管线按 RenderPass 维度键控——不同 RT 格式各自匹配的管线）。
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+
+        if (!slot || slot->runtime_pipeline_pass != render_pass)
+            return nullptr;
+
+        return slot->runtime_pipeline;
     }
 
     const hgl::graph::GeometryDataBuffer *PrimitiveRenderItem::GetGeometryDataBuffer() const
@@ -92,19 +98,12 @@ namespace hgl::ecs
         return geometry ? geometry->GetRuntimeGeometryDrawRange() : nullptr;
     }
 
-    TransformPolicySpec PrimitiveRenderItem::GetTransformPolicySpec() const
-    {
-        return primitiveComp ? primitiveComp->GetTransformPolicySpec() : TransformPolicySpec{};
-    }
-
-    PositionSourceSpec PrimitiveRenderItem::GetPositionSourceSpec() const
-    {
-        return primitiveComp ? primitiveComp->GetPositionSourceSpec() : PositionSourceSpec::MeshVertex;
-    }
-
     graph::RenderItemHandle PrimitiveRenderItem::GetRenderItemHandle() const
     {
-        return primitiveComp ? primitiveComp->GetRenderItemHandle() : graph::INVALID_RENDER_ITEM_HANDLE;
+        // A5b：4-ID 句柄归每实例 slot（经世界访问器取；未分配 ⇒ INVALID）
+        return context
+            ? hgl::ecs::GetRenderItemHandle(*context, entity_id)
+            : graph::INVALID_RENDER_ITEM_HANDLE;
     }
 
     void PrimitiveRenderItem::UpdateWorldMatrix()

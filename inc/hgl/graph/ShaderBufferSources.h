@@ -130,7 +130,7 @@ namespace hgl::graph::mtl
     // texture_reference_index 指向每材质 MaterialTextureReferencePool 的行号。
     //
     // 后两个字段是**接收侧阴影参数**（D3）：阴影接收是逐图元的着色决策
-    // （ShadowComponent::receive_shadow / bias_multiplier），不是材质业务数据，
+    // （ShadowProxy::receive_shadow / bias_multiplier），不是材质业务数据，
     // 也不是逐批次共享量，故携带在本行——FS 已按 dataIndex（= 本表行号）寻址。
     //
     // 零值即引擎默认，任何零初始化的行（文本/线条/示例自建行）行为与 D3 之前一致：

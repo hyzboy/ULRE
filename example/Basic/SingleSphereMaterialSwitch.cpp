@@ -29,7 +29,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -70,7 +69,7 @@ private:
 
     CameraComponent *camera_component = nullptr;
     hgl::ecs::TransformAccessor sphere_transform;
-    PrimitiveComponent *sphere_primitive_component = nullptr;
+    hgl::ecs::GeometryData *sphere_primitive_component = nullptr;
     hgl::ecs::MaterialData *sphere_material_data = nullptr;
 
     using MaterialDataAccessor =
@@ -318,12 +317,12 @@ private:
             return LogFail("InitECSScene", "create sphere entity failed");
 
         auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Movable));
-        auto primitive_component = sphere_entity->AddComponent<PrimitiveComponent>();
+        auto primitive_component = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity->GetEntityID());
         if (!transform.IsValid() || !primitive_component)
             return LogFail("InitECSScene", "create sphere components failed");
 
         sphere_transform = transform;
-        sphere_primitive_component = primitive_component.get();
+        sphere_primitive_component = primitive_component;
         sphere_material_data = ecs_world->GetOrCreateMaterialData(sphere_entity->GetEntityID());
 
         sphere_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

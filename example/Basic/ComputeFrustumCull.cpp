@@ -29,9 +29,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
@@ -368,23 +366,24 @@ private:
             transform.SetLocalScale(glm::vec3(CUBE_SCALE));
             transform.SetMobility(Mobility::Static);
 
-            auto prim = e->AddComponent<InstancedPrimitiveComponent>();
+            auto *prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
             MaterialData::MaterialDataAuthoringResource named_struct{};
             named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(named_struct);
-            prim->SetInstanceCount(1);
-            prim->SetMaxInstances(1);
-            prim->AllocateContiguousInstances(1);
-            prim->SetInstance4ID(0, i, geometry->GetGeometryID(), mtl_data_ssbo_accessor.GetRowID(), 0);
-            prim->SetL2WBuffer(world_matrices_buffer);
-            prim->SetL2WIndexBuffer(visible_l2w_indices_buffer);
-            prim->SetMeshDrawParamsBuffer(mesh_draw_params_buffer);
-            prim->SetMaterialDataRowsBuffer(material_data_rows_buffer);
-            prim->SetIndirectMeshTaskBuffer(indirect_cmds_buffer);
-            prim->SetIndirectCountBuffer(count_buffer, 0);
-            prim->SetGPUDriven(true);
+            const auto entity_id = e->GetEntityID();
+            hgl::ecs::SetInstanceCount(*ecs_context, entity_id, 1);
+            hgl::ecs::SetMaxInstances(*ecs_context, entity_id, 1);
+            hgl::ecs::AllocateContiguousInstances(*ecs_context, entity_id, 1);
+            hgl::ecs::SetInstance4ID(*ecs_context, entity_id, 0, i, geometry->GetGeometryID(), mtl_data_ssbo_accessor.GetRowID(), 0);
+            hgl::ecs::SetL2WBuffer(*ecs_context, entity_id, world_matrices_buffer);
+            hgl::ecs::SetL2WIndexBuffer(*ecs_context, entity_id, visible_l2w_indices_buffer);
+            hgl::ecs::SetMeshDrawParamsBuffer(*ecs_context, entity_id, mesh_draw_params_buffer);
+            hgl::ecs::SetMaterialDataRowsBuffer(*ecs_context, entity_id, material_data_rows_buffer);
+            hgl::ecs::SetIndirectMeshTaskBuffer(*ecs_context, entity_id, indirect_cmds_buffer);
+            hgl::ecs::SetIndirectCountBuffer(*ecs_context, entity_id, count_buffer, 0);
+            hgl::ecs::SetGPUDriven(*ecs_context, entity_id, true);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 

@@ -25,7 +25,6 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -211,7 +210,7 @@ private:
             transform.SetLocalScale(glm::vec3(0.9f));
             transform.SetMobility(Mobility::Static);
 
-            auto prim = e->AddComponent<PrimitiveComponent>();
+            auto prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
             MaterialData::MaterialDataAuthoringResource named_struct{};

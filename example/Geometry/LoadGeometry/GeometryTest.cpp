@@ -18,7 +18,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -106,7 +105,7 @@ private:
 
         hgl::ecs::Entity *entity = nullptr;
         hgl::ecs::TransformAccessor transform;
-        std::shared_ptr<hgl::ecs::PrimitiveComponent> primitive_comp;
+        hgl::ecs::GeometryData *primitive_comp = nullptr;
 
     public:
 
@@ -120,7 +119,7 @@ private:
     {
         hgl::ecs::Entity *entity = nullptr;
         hgl::ecs::TransformAccessor transform;
-        std::shared_ptr<hgl::ecs::PrimitiveComponent> primitive_comp;
+        hgl::ecs::GeometryData *primitive_comp = nullptr;
     };
 
     std::vector<std::unique_ptr<MeshEntry>> render_mesh;
@@ -278,7 +277,7 @@ private:
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
             bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-            bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            bbox->primitive_comp = bbox->entity->GetContext()->GetOrCreateGeometryData(bbox->entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContext()->GetOrCreateMaterialData(bbox->entity->GetEntityID());
 
             bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));
@@ -319,7 +318,7 @@ private:
 
             rm->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
             rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-            rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            rm->primitive_comp = rm->entity->GetContext()->GetOrCreateGeometryData(rm->entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContext()->GetOrCreateMaterialData(rm->entity->GetEntityID());
 
             const float angle = glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));

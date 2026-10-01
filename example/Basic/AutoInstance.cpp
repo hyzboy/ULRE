@@ -4,7 +4,7 @@
 // 本范例展示了：
 // 1. 使用ECS架构创建多个实体
 // 2. 使用TransformAccessor管理不同的空间变换
-// 3. 使用PrimitiveComponent共享同一个渲染图元
+// 3. 共享同一个几何资产（GeometryData）渲染图元
 // 4. RenderCollector自动合并相同材质和管线的对象进行Instance渲染
 // 5. ECS与渲染系统的集成
 
@@ -18,7 +18,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 
 using namespace hgl;
@@ -146,10 +145,10 @@ private:
             // 这样系统会缓存世界矩阵，提高性能
             transform.SetMobility(Mobility::Static);
 
-            // === 步骤4: 添加PrimitiveComponent ===
+            // === 步骤4: 建几何资产组件 GeometryData ===
             // 所有实体共享同一个Primitive
             // RenderCollector会检测到这一点并自动使用Instance渲染
-            auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
@@ -175,7 +174,7 @@ public:
             return(false);
 
         // 已在框架层设置默认 ECSContext
-        // RenderCollector会自动收集所有PrimitiveComponent并进行批处理
+        // RenderCollector会自动收集所有图元实体（GeometryData）并进行批处理
 
         return(true);
     }

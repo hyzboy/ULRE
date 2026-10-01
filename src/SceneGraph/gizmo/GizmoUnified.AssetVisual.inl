@@ -78,10 +78,6 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     if (!recipe)
         return false;
 
-    auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-    if (!prim_comp)
-        return false;
-
     // A5a：几何/资产侧状态住在实体的 GeometryData 组件（经世界访问器取用/创建）
     entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID())->SetPrimitiveAsset(asset);
     graph::mtl::MaterialRecipe visual_recipe = *recipe;
@@ -99,7 +95,7 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     material_world->SetEntityVisible(entity->GetEntityID(), false);
 
     GizmoVisualPrimitive item;
-    item.primitive = prim_comp;
+    item.primitive = entity;
     item.transform = entity->GetContext()->GetTransformByEntity(entity->GetEntityID());
     item.shape = shape;
     item.base_color = color;
@@ -144,7 +140,7 @@ static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor 
     if (!recipe)
         return;
 
-    hgl::ecs::Entity *owner = entry.primitive->GetOwner();
+    hgl::ecs::Entity *owner = entry.primitive;
     hgl::ecs::ECSContext *material_world = owner ? owner->GetContext() : nullptr;
     hgl::ecs::MaterialData *material_data = material_world
         ? material_world->GetOrCreateMaterialData(owner->GetEntityID())
@@ -257,7 +253,7 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoVisualPrimitive> &ite
             continue;
 
         // A5a：可见性真值只在实体级（组件级 IsVisible 已删）
-        hgl::ecs::Entity *entry_owner = entry.primitive->GetOwner();
+        hgl::ecs::Entity *entry_owner = entry.primitive;
         hgl::ecs::ECSContext *entry_world = entry_owner ? entry_owner->GetContext() : nullptr;
         if (entry_world && !entry_world->IsEntityVisible(entry_owner->GetEntityID()))
             continue;

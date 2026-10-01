@@ -14,6 +14,7 @@
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
+#include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/EntityManager.h>
@@ -62,6 +63,7 @@ namespace hgl
         class CameraInfoStorage;
         class MaterialData;
         class GeometryData;
+        class ShadowProxy;
 
         struct RenderFrameCache
         {
@@ -520,6 +522,17 @@ namespace hgl
             /// 与 GetOrCreateMaterialData 同风格：渲染/作者侧需要"一定有几何组件"时用。
             GeometryData* GetOrCreateGeometryData(EntityID owner);
 
+            /// 实体 → 阴影属性组件 ShadowProxy（无则 nullptr）。
+            /// A5b：阴影组件正名为 ShadowProxy，并成为**唯一**阴影组件；
+            /// 未挂载时的缺省约定（可投射/可接收/距离 0/倍率 1.0）见
+            /// components/ShadowProxy.h 的自由函数（唯一出处）。
+            ShadowProxy* GetShadowProxy(EntityID owner);
+            const ShadowProxy* GetShadowProxy(EntityID owner) const;
+
+            /// 让某实体已解析的运行期管线缓存失效（几何/变体变化时调用）。
+            /// A5b：管线缓存不再挂在渲染组件上，改由每实例 slot 承载 ⇒ 本入口清 slot 字段。
+            void InvalidateEntityRuntimePipeline(EntityID owner);
+
             /// 实体 → 包围盒访问器（无则返回无效句柄）
             BoundingBoxAccessor GetBoundingBoxByEntity(EntityID owner) const;
 
@@ -686,6 +699,9 @@ namespace hgl
 
                 // 材质运行期 slot 同理：slot 持共享行的引用计数，实体没了必须释放
                 // （否则共享行永远不归零 ⇒ 纹理配置池行泄漏、行表只增不减）。
+                // A5b：render_item 句柄与多实例连续槽位也归 slot ⇒ 先释放再销毁 slot。
+                ReleaseRenderItemHandle(*this,id);
+
                 if (material_runtime_table)
                     material_runtime_table->DestroySlot(id);
 

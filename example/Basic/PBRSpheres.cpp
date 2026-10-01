@@ -27,7 +27,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
@@ -477,7 +476,7 @@ private:
                 transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
                 transform.SetMobility(Mobility::Movable);
 
-                auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
+                auto prim_comp = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
                 hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
                 prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&base_primitives[col]);
                 if (!material_data_comp->SetTextureResource(

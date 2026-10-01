@@ -18,7 +18,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -189,7 +188,7 @@ private:
         transform.SetLocalScale(glm::vec3(scale, scale, scale));
         transform.SetMobility(animate ? Mobility::Movable : Mobility::Static);
 
-        auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
         primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor.GetSSBOId() != 0)

@@ -4,7 +4,7 @@
 // 本范例展示了：
 // 1. 使用ECS架构创建多个实体
 // 2. 使用TransformAccessor管理空间变换
-// 3. 使用PrimitiveComponent管理渲染图元
+// 3. 使用 GeometryData 管理渲染图元
 // 4. 使用AABB生成包围盒实体
 // 5. CameraSystem配置为ViewModel控制模式
 
@@ -28,7 +28,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -110,7 +109,7 @@ private:
 
         Entity *entity = nullptr;
         hgl::ecs::TransformAccessor transform;
-        std::shared_ptr<PrimitiveComponent> primitive_comp;
+        hgl::ecs::GeometryData *primitive_comp = nullptr;
         int color_index = 0;
 
         ~MeshEntry()
@@ -123,7 +122,7 @@ private:
     {
         Entity *entity = nullptr;
         hgl::ecs::TransformAccessor transform;
-        std::shared_ptr<PrimitiveComponent> primitive_comp;
+        hgl::ecs::GeometryData *primitive_comp = nullptr;
     };
 
     ECSContext *  ecs_context      = nullptr;
@@ -541,7 +540,7 @@ private:
         {
             floor_mesh->entity = ecs_context->CreateEntity<Entity>("Floor");
             floor_mesh->transform = ecs_context->GetTransform(ecs_context->CreateTransform(floor_mesh->entity->GetEntityID(), Mobility::Static));
-            floor_mesh->primitive_comp = floor_mesh->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            floor_mesh->primitive_comp = floor_mesh->entity->GetContext()->GetOrCreateGeometryData(floor_mesh->entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = floor_mesh->entity->GetContext()->GetOrCreateMaterialData(floor_mesh->entity->GetEntityID());
 
             floor_mesh->transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -569,7 +568,7 @@ private:
 
             rm->entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), Mobility::Static));
-            rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            rm->primitive_comp = rm->entity->GetContext()->GetOrCreateGeometryData(rm->entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContext()->GetOrCreateMaterialData(rm->entity->GetEntityID());
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
@@ -612,7 +611,7 @@ private:
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_context->CreateEntity<Entity>("BBox_" + std::to_string(i));
             bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), Mobility::Static));
-            bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            bbox->primitive_comp = bbox->entity->GetContext()->GetOrCreateGeometryData(bbox->entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContext()->GetOrCreateMaterialData(bbox->entity->GetEntityID());
 
             bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));

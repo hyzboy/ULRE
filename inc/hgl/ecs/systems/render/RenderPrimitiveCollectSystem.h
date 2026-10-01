@@ -14,7 +14,7 @@ namespace hgl
 namespace hgl::ecs
 {
     class ECSContext;
-    class PrimitiveComponent;
+    class Entity;
 
     /**
      * RenderPrimitiveCollectSystem
@@ -41,13 +41,13 @@ namespace hgl::ecs
         // re-materialized — their rows were rebuilt while they were skipped.
         uint64_t materialize_epoch = 0;
 
-        bool ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+        bool ResolveMaterialProgramForPrimitive(Entity *primitive_comp,
                                                 MaterialRuntimeSlot &slot);
-        bool ResolveForwardProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+        bool ResolveForwardProgram(Entity *primitive_comp,
                                    MaterialRuntimeSlot &slot);
-        bool ResolveShadowCasterProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+        bool ResolveShadowCasterProgram(Entity *primitive_comp,
                                         MaterialRuntimeSlot &slot);
-        bool ResolveRuntimePipelineForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+        bool ResolveRuntimePipelineForPrimitive(Entity *primitive_comp,
                                                 MaterialRuntimeSlot &slot);
 
         // D9：阴影 pass 跳过/失败路径的统一收敛入口。
@@ -58,8 +58,8 @@ namespace hgl::ecs
         // 重画）。
         bool AdvanceShadowRetry(MaterialRuntimeSlot &slot,
                                 const char *reason,
-                                const std::shared_ptr<PrimitiveComponent> &primitive_comp);
-        bool MaterializeRecipeRowsForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                Entity *primitive_comp);
+        bool MaterializeRecipeRowsForPrimitive(Entity *primitive_comp,
                                                MaterialRuntimeSlot &slot);
 
     public:

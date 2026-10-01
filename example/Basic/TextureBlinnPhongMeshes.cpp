@@ -14,7 +14,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -389,7 +388,7 @@ private:
         {
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
-            auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -419,7 +418,7 @@ private:
 
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
-            auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));

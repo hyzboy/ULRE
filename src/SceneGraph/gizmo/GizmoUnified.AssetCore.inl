@@ -46,7 +46,7 @@ static void SetPrimitiveEntityVisible(const GizmoVisualPrimitive &entry, bool vi
     if (!entry.primitive)
         return;
 
-    hgl::ecs::Entity *owner = entry.primitive->GetOwner();
+    hgl::ecs::Entity *owner = entry.primitive;
     hgl::ecs::ECSContext *world = owner ? owner->GetContext() : nullptr;
 
     if (owner && world)

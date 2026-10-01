@@ -4,7 +4,7 @@
 // 本范例展示了：
 // 1. 使用ECS架构创建立方体实体
 // 2. 使用TransformAccessor管理空间变换
-// 3. 使用PrimitiveComponent管理渲染图元
+// 3. 使用 GeometryData 管理渲染图元
 // 4. CameraSystem配置为ViewModel控制模式
 
 #include<hgl/framework/WorkManager.h>
@@ -25,7 +25,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -141,7 +140,7 @@ private:
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(Mobility::Static);
 
-        auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        auto primitive_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity->GetEntityID());
         cube_recipe.recipe_name = "SimpleCube.DebugNormalColor";
         cube_recipe.mtl_def_id = "DebugNormalColor";

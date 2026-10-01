@@ -34,7 +34,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 
 #include<glm/glm.hpp>
@@ -129,7 +128,7 @@ private:
     PrimitiveAsset              ruler_asset[3]{};
 
     Entity *            row_entities[3]{};
-    std::shared_ptr<PrimitiveComponent> row_primitives[3]{};
+    hgl::ecs::GeometryData *row_primitives[3]{};
 
     uint32_t            ruler_viewport_width  = 0;      ///< 当前级数尺是按这个尺寸建的（0 = 还没建）
     uint32_t            ruler_viewport_height = 0;
@@ -304,7 +303,7 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform.SetMobility(Mobility::Static);
 
-            auto primitive = row_entities[row]->AddComponent<hgl::ecs::PrimitiveComponent>();
+            auto primitive = row_entities[row]->GetContext()->GetOrCreateGeometryData(row_entities[row]->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = row_entities[row]->GetContext()->GetOrCreateMaterialData(row_entities[row]->GetEntityID());
             primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
 

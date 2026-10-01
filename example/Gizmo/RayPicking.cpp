@@ -5,7 +5,7 @@
 // 本范例展示了：
 // 1. 使用ECS架构创建场景对象（平面网格和射线）
 // 2. 使用TransformAccessor管理空间变换
-// 3. 使用PrimitiveComponent管理渲染图元
+// 3. 使用 GeometryData 管理渲染图元
 // 4. 动态更新顶点数据以显示实时射线
 // 5. 使用新的 ECS Camera 系统替代旧的 CameraControl
 
@@ -33,7 +33,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -219,8 +218,8 @@ private:
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
-            // 添加PrimitiveComponent
-            auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            // 建几何资产组件 GeometryData
+            auto primitive_comp = plane_grid_entity->GetContext()->GetOrCreateGeometryData(plane_grid_entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = plane_grid_entity->GetContext()->GetOrCreateMaterialData(plane_grid_entity->GetEntityID());
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
@@ -240,8 +239,8 @@ private:
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
-            // 添加PrimitiveComponent
-            auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            // 建几何资产组件 GeometryData
+            auto primitive_comp = ray_line_entity->GetContext()->GetOrCreateGeometryData(ray_line_entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = ray_line_entity->GetContext()->GetOrCreateMaterialData(ray_line_entity->GetEntityID());
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&line_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource line_struct{};

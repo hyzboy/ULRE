@@ -45,11 +45,23 @@
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/core/EntityHandle.h>
 #include<hgl/graph/module/MaterialTextureReferencePool.h>
+#include<hgl/graph/render/RenderItemDescriptor.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/type/UnorderedMap.h>
 #include<cstdint>
 #include<vector>
 #include<unordered_map>
+
+namespace hgl
+{
+    namespace graph
+    {
+        class RenderPass;
+        class Pipeline;
+        class DeviceBuffer;
+        class IndirectMeshTaskBuffer;
+    }
+}
 
 namespace hgl::ecs
 {
@@ -172,6 +184,35 @@ namespace hgl::ecs
         bool     runtime_dirty = true;  ///< 绑定/资源需重新准备与物化
         bool     valid = false;         ///< 整条链（解析+准备+物化+几何+管线）成功过
         uint64_t last_materialize_epoch = 0;    ///< 上次物化所在的物化世代
+
+        // ── A5b：渲染侧每实例绑定（原图元渲染组件的残余状态）──
+        // 判据：与授权态无关、每实体一份的可变绑定 —— 一律归 slot，绝不进共享行（A4 约定）。
+
+        /// render_item 4-ID 槽位句柄（世界 RenderItemDataStorage；按需分配，实体销毁时释放）
+        graph::RenderItemHandle render_item_handle = graph::INVALID_RENDER_ITEM_HANDLE;
+
+        /// 最近一次 collect 解析出的运行期管线（按 RenderPass 维度；batch 紧随其后消费同一 pass）。
+        /// 复用交给 RenderPass::CreatePipeline 内部（按 shader 内容 hash 键控，见 D2）——
+        /// 本 slot 只记"当前 pass 的解析结果"，不另存 program 指针身份（指针身份会因地址复用误判）。
+        graph::RenderPass *runtime_pipeline_pass = nullptr;
+        graph::Pipeline   *runtime_pipeline      = nullptr;
+
+        // ── A5b：多实例（连续连号槽位）绑定（原图元多实例组件状态）──
+        uint32_t instance_count              = 0;   ///< 活动实例数
+        uint32_t max_instances               = 0;   ///< 实例容量
+        uint32_t allocated_instance_capacity = 0;   ///< 已分配连续槽位数（>1 ⇒ 句柄为区间基址）
+
+        graph::DeviceBuffer *l2w_buffer                = nullptr;  ///< L2W 矩阵 SSBO（BDA: l2w.mats[]）
+        graph::DeviceBuffer *l2w_index_buffer          = nullptr;  ///< L2W 索引表 SSBO（BDA: ResolveTransformID）
+        graph::DeviceBuffer *mesh_draw_params_buffer   = nullptr;  ///< MeshDrawCommand SSBO（BDA: cmds[gl_DrawID]）
+        graph::DeviceBuffer *material_data_rows_buffer = nullptr;  ///< MaterialInstanceAddresses SSBO（BDA: values[]）
+
+        graph::IndirectMeshTaskBuffer *indirect_cmds_buffer = nullptr;  ///< GPU 间接绘制命令缓冲
+        graph::DeviceBuffer *indirect_count_buffer          = nullptr;  ///< 动态绘制计数缓冲（可选）
+        uint64_t indirect_count_offset = 0;    ///< 计数缓冲内偏移（字节；VkDeviceSize == uint64_t）
+
+        bool is_gpu_driven = false;    ///< true ⇒ 绕过 CPU ICB / 索引表重建
+        bool is_indirect    = false;   ///< true ⇒ 用间接命令
     };
 
     class MaterialRuntimeTable

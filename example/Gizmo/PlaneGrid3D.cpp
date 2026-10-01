@@ -18,7 +18,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -89,7 +88,7 @@ private:
 
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-        auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity->GetEntityID());
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

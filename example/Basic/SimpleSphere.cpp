@@ -5,7 +5,7 @@
 // 1. 使用 CreateSphere 创建球体几何体（私有顶点缓冲——每几何独立 VAB/IBO）
 // 2. 使用 Lit(PBR) 材质绘制球体（材质数据行 PBRSurfaceRow + 纹理）
 // 3. 使用TransformAccessor管理空间变换
-// 4. 使用PrimitiveComponent管理渲染图元
+// 4. 使用 GeometryData 管理渲染图元
 // 5. CameraSystem配置为ViewModel控制模式
 
 #include<hgl/framework/WorkManager.h>
@@ -26,7 +26,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -178,7 +177,7 @@ private:
         transform.SetMobility(Mobility::Movable);
         sphere_transform = transform;
 
-        auto primitive_comp = sphere_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        auto primitive_comp = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
 
         sphere_asset = PrimitiveAsset(sphere_geometry, &sphere_recipe, PrimitiveType::Triangles);

@@ -29,12 +29,15 @@ namespace hgl::ecs
      * GeometryData —— 几何**资产侧**数据层（v2 §9.1-3 / A5a）。
      *
      * 职责：承载"这块可渲染物用什么几何、选哪个变体、运行期解析出的几何绑定"，
-     * 即原 `PrimitiveComponent` 的几何/资产侧状态。资源引用（`PrimitiveAsset`）**非拥有**，
+     * 即原图元渲染组件的几何/资产侧状态。资源引用（`PrimitiveAsset`）**非拥有**，
      * asset 生命周期由作者/资源管理器决定。
      *
-     * 渲染侧依赖（管线缓存 / render_item 4-ID）**不在本组件**——仍留在 `PrimitiveComponent`
-     * （A5b 处理）。变体/asset 变化会经 `InvalidateOwnerRuntimePipeline()` 让同实体的
-     * `PrimitiveComponent` 作废它按 RenderPass 解析出的管线缓存。
+     * 渲染侧依赖（管线缓存 / render_item 4-ID / 多实例绑定）**不在本组件**——A5b 删除渲染组件后
+     * 归世界 `MaterialRuntimeTable` 的每实例 slot（见 support/PrimitiveState.h）。变体/asset 变化
+     * 会经 `InvalidateOwnerRuntimePipeline()` 作废同实体 slot 上按 RenderPass 解析出的管线缓存。
+     *
+     * A5b：渲染组件删除后，本组件是"该实体是一个 Primitive 渲染元素"的**唯一标记** ⇒ 声明
+     * 系统组名 "Primitive"（渲染图据此为该世界启用图元 pass；与 LinesComponent 声明 "Line" 同构）。
      *
      * 世界访问器：`ECSContext::GetGeometryData(EntityID)` / `GetOrCreateGeometryData(EntityID)`。
      */
@@ -51,10 +54,10 @@ namespace hgl::ecs
         hgl::graph::Geometry *runtime_geometry = nullptr;
 
         /// 由本地 AABB 求得的包围球半径（不含实体缩放；渲染侧视锥剔除用）。
-        /// 原挂在 `RenderableComponent::boundingRadius`，唯一写者就是 `SetPrimitiveAsset` ⇒ 随几何状态迁来。
+        /// 原挂在可渲染组件的 boundingRadius，唯一写者就是 `SetPrimitiveAsset` ⇒ 随几何状态迁来。
         float bounding_radius = 0.0f;
 
-        /// 几何/变体变化 ⇒ 同实体 `PrimitiveComponent` 的按-pass 管线缓存不再可信
+        /// 几何/变体变化 ⇒ 同实体 slot 上按-pass 解析出的运行期管线不再可信（A5b：管线缓存归 slot）
         void InvalidateOwnerRuntimePipeline();
 
     public:
@@ -65,6 +68,12 @@ namespace hgl::ecs
         }
 
         ~GeometryData() override = default;
+
+    public:
+
+        /// 系统组名：本组件是"本实体是 Primitive 渲染元素"的唯一标记（A5b）。
+        /// 渲染图按此启用图元 pass；见 Component::GetSystemGroupName 的组机制。
+        const char* GetSystemGroupName() const override { return "Primitive"; }
 
     public:
 

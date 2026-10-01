@@ -1,65 +1,74 @@
 #include <hgl/ecs/core/InstancedPrimitiveRenderItem.h>
+#include <hgl/ecs/support/MaterialRuntimeTable.h>
 
 namespace hgl::ecs
 {
     InstancedPrimitiveRenderItem::InstancedPrimitiveRenderItem(
         EntityID ent_id,
         const TransformAccessor &trans,
-        std::shared_ptr<InstancedPrimitiveComponent> prim,
         MaterialRuntimeRowID mat_row,
         ECSContext *ctx)
-        : PrimitiveRenderItem(ent_id, trans, prim, mat_row, ctx)
-        , instancedComp(prim)
+        : PrimitiveRenderItem(ent_id, trans, mat_row, ctx)
     {
     }
 
     uint32_t InstancedPrimitiveRenderItem::GetInstanceCount() const
     {
-        return instancedComp ? instancedComp->GetInstanceCount() : 0;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->instance_count : 0;
     }
 
     hgl::graph::DeviceBuffer *InstancedPrimitiveRenderItem::GetL2WBuffer() const
     {
-        return instancedComp ? instancedComp->GetL2WBuffer() : nullptr;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->l2w_buffer : nullptr;
     }
 
     hgl::graph::DeviceBuffer *InstancedPrimitiveRenderItem::GetL2WIndexBuffer() const
     {
-        return instancedComp ? instancedComp->GetL2WIndexBuffer() : nullptr;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->l2w_index_buffer : nullptr;
     }
 
     hgl::graph::DeviceBuffer *InstancedPrimitiveRenderItem::GetMeshDrawParamsBuffer() const
     {
-        return instancedComp ? instancedComp->GetMeshDrawParamsBuffer() : nullptr;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->mesh_draw_params_buffer : nullptr;
     }
 
     hgl::graph::DeviceBuffer *InstancedPrimitiveRenderItem::GetMaterialDataRowsBuffer() const
     {
-        return instancedComp ? instancedComp->GetMaterialDataRowsBuffer() : nullptr;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->material_data_rows_buffer : nullptr;
     }
 
     hgl::graph::IndirectMeshTaskBuffer *InstancedPrimitiveRenderItem::GetIndirectMeshTaskBuffer() const
     {
-        return instancedComp ? instancedComp->GetIndirectMeshTaskBuffer() : nullptr;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->indirect_cmds_buffer : nullptr;
     }
 
     hgl::graph::DeviceBuffer *InstancedPrimitiveRenderItem::GetIndirectCountBuffer() const
     {
-        return instancedComp ? instancedComp->GetIndirectCountBuffer() : nullptr;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->indirect_count_buffer : nullptr;
     }
 
-    VkDeviceSize InstancedPrimitiveRenderItem::GetIndirectCountOffset() const
+    uint64_t InstancedPrimitiveRenderItem::GetIndirectCountOffset() const
     {
-        return instancedComp ? instancedComp->GetIndirectCountOffset() : 0;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->indirect_count_offset : 0;
     }
 
     bool InstancedPrimitiveRenderItem::IsGPUDriven() const
     {
-        return instancedComp ? instancedComp->IsGPUDriven() : false;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->is_gpu_driven : false;
     }
 
     bool InstancedPrimitiveRenderItem::IsIndirect() const
     {
-        return instancedComp ? instancedComp->IsIndirect() : false;
+        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
+        return slot ? slot->is_indirect : false;
     }
 }//namespace hgl::ecs

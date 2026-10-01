@@ -23,7 +23,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -103,7 +102,7 @@ private:
     Texture2D *sphere_normal_tex = nullptr;
     Texture2D *sphere_roughness_tex = nullptr;
     Entity *sphere_entity = nullptr;
-    std::shared_ptr<PrimitiveComponent> sphere_primitive_comp;
+    hgl::ecs::GeometryData *sphere_primitive_comp = nullptr;
 
     void DumpOffscreenState(const char *stage)
     {
@@ -321,7 +320,7 @@ public:
         auto *world = offscreen->GetWorld();
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
         auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
-        auto prim_comp = sphere_entity->AddComponent<PrimitiveComponent>();
+        auto prim_comp = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -513,7 +512,7 @@ private:
 
         cube_entity = ecs_context->CreateEntity<Entity>("RTTCube");
         cube_transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube_entity->GetEntityID(), Mobility::Static));
-        auto cube_prim_comp = cube_entity->AddComponent<PrimitiveComponent>();
+        auto cube_prim_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity->GetEntityID());
 
         cube_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

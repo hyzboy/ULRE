@@ -110,17 +110,12 @@ set(ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES
 set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
     systems/render/RenderPrimitiveCollectSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/PrimitiveComponent.h
-    components/PrimitiveComponent.cpp
-    ${ECS_INCLUDE_PATH}/components/InstancedPrimitiveComponent.h
-    components/InstancedPrimitiveComponent.cpp
     ${ECS_INCLUDE_PATH}/components/MaterialData.h
     components/MaterialData.cpp
     ${ECS_INCLUDE_PATH}/components/GeometryData.h
     components/GeometryData.cpp
-    ${ECS_INCLUDE_PATH}/components/ShadowComponent.h
-    components/ShadowComponent.cpp
-    ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
+    ${ECS_INCLUDE_PATH}/components/ShadowProxy.h
+    components/ShadowProxy.cpp
 )
 
 set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
@@ -189,6 +184,7 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
     ${ECS_INCLUDE_PATH}/support/MaterialVariantTable.h
     ${ECS_INCLUDE_PATH}/support/MaterialRuntimeTable.h
+    ${ECS_INCLUDE_PATH}/support/PrimitiveState.h
     ${ECS_INCLUDE_PATH}/support/RenderStrategyTable.h
     ${ECS_INCLUDE_PATH}/support/RenderStrategyParity.h
     ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
@@ -206,6 +202,7 @@ set(ECS_SUPPORT_FILES
     support/VisibilityDataStorage.cpp
     support/MaterialVariantTable.cpp
     support/MaterialRuntimeTable.cpp
+    support/PrimitiveState.cpp
     support/RenderStrategyParity.cpp
     support/TransformAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp

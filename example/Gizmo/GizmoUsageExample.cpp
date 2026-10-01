@@ -24,7 +24,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -189,7 +188,7 @@ private:
         auto plane_transform = ecs_context->GetTransform(ecs_context->CreateTransform(plane_entity->GetEntityID(), hgl::ecs::Mobility::Static));
         plane_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
-        auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        auto plane_primitive_comp = plane_entity->GetContext()->GetOrCreateGeometryData(plane_entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = plane_entity->GetContext()->GetOrCreateMaterialData(plane_entity->GetEntityID());
         plane_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(plane_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&grid_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
@@ -204,7 +203,7 @@ private:
         auto cube_transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube_entity->GetEntityID(), hgl::ecs::Mobility::Movable));
         cube_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(3.0f));
 
-        auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        auto cube_primitive_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity->GetEntityID());
         hgl::ecs::MaterialData *cube_material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity->GetEntityID());
         cube_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(cube_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};

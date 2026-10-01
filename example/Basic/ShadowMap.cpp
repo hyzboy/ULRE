@@ -29,7 +29,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -583,7 +582,7 @@ private:
     std::shared_ptr<CameraComponent> main_camera;
     std::shared_ptr<CameraComponent> light_camera;
 
-    PrimitiveComponent *receiver_prim = nullptr;
+    hgl::ecs::GeometryData *receiver_prim = nullptr;
 
     /// 主世界的环境系统与它的 SkyInfo 数据。sun_direction 从这里写进去。
     std::shared_ptr<EnvironmentSystem> environment_system;
@@ -875,7 +874,7 @@ private:
 
     /// 给实体挂标准 Lit 材质（砖墙 base_color/normal/roughness + PBR 参数）。
     /// 地面（is_receiver_plane）只挂 base_color，避免 20x 平铺糊掉法线；网格挂全套贴图。
-    void ApplyMeshMaterial(PrimitiveComponent *prim, bool is_receiver_plane = false)
+    void ApplyMeshMaterial(hgl::ecs::GeometryData *prim, bool is_receiver_plane = false)
     {
         if (!prim)
             return;
@@ -912,7 +911,7 @@ private:
         {
             auto *entity = world->CreateEntity<Entity>("ShadowReceiverPlane");
             auto transform = world->GetTransform(world->CreateTransform(entity->GetEntityID(), Mobility::Static));
-            auto prim_comp = entity->AddComponent<PrimitiveComponent>();
+            auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -920,8 +919,8 @@ private:
             transform.SetMobility(Mobility::Static);
 
             prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&scene.plane_asset);
-            ApplyMeshMaterial(prim_comp.get(), /*is_receiver_plane=*/true);
-            receiver_prim = prim_comp.get();
+            ApplyMeshMaterial(prim_comp, /*is_receiver_plane=*/true);
+            receiver_prim = prim_comp;
         }
 
         // ── 环上网格：与蓝本相同的排布，额外按 AABB 抬到地面之上 ──
@@ -936,7 +935,7 @@ private:
         {
             auto *entity = world->CreateEntity<Entity>("Mesh_" + std::to_string(i));
             auto transform = world->GetTransform(world->CreateTransform(entity->GetEntityID(), Mobility::Movable));
-            auto prim_comp = entity->AddComponent<PrimitiveComponent>();
+            auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
 
             glm::vec3 pos = RingPosition(i, count);
             pos.z += scene.mesh_lift[i];
@@ -950,7 +949,7 @@ private:
                 mesh_anim[i].tf = transform;
 
             prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&scene.mesh_assets[i]);
-            ApplyMeshMaterial(prim_comp.get());
+            ApplyMeshMaterial(prim_comp);
         }
 
         GLogInfo("[ShadowMap][%s] populated %zu meshes + receiver(%d)",

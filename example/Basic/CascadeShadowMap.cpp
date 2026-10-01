@@ -33,9 +33,8 @@
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/ScenePipelineMode.h>
 #include <hgl/ecs/support/TransformAccessor.h>
-#include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/GeometryData.h>
-#include <hgl/ecs/components/ShadowComponent.h>
+#include <hgl/ecs/components/ShadowProxy.h>
 #include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -155,7 +154,7 @@ private:
     PrimitiveAsset ground_primitive{};
     Entity *ground_entity = nullptr;
     hgl::ecs::TransformAccessor ground_transform;
-    std::shared_ptr<PrimitiveComponent> ground_prim;
+    hgl::ecs::GeometryData *ground_prim = nullptr;
 
     Geometry *alpha_geometry = nullptr;
     PrimitiveAsset alpha_primitive{};
@@ -1102,7 +1101,7 @@ private:
         ground_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         ground_transform.SetLocalScale(glm::vec3(kGroundExtent, kGroundExtent, 1.0f));
 
-        ground_prim = ground_entity->AddComponent<PrimitiveComponent>();
+        ground_prim = ground_entity->GetContext()->GetOrCreateGeometryData(ground_entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity->GetEntityID());
         ground_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
         material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
@@ -1112,7 +1111,7 @@ private:
         material_data_comp->SetDataResource(ground_accessor.GetGlobalSSBOBinding());
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
-        auto ground_shadow = ground_entity->AddComponent<ShadowComponent>();
+        auto ground_shadow = ground_entity->AddComponent<ShadowProxy>();
         ground_shadow->SetCastShadow(false); // 规范化声明：地面不投射阴影，防止自遮挡
 
         // 2. 随机分布 100 个几何体覆盖 200m 纵深
@@ -1195,7 +1194,7 @@ private:
                 track.hover_speed = 1.2f + Hash01(i, 19, 2309u) * 1.5f;
             }
 
-            auto prim = e->AddComponent<PrimitiveComponent>();
+            auto prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
             material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
@@ -1232,7 +1231,7 @@ private:
                 tf.SetLocalScale(glm::vec3(s));
                 tf.SetLocalRotation(glm::quat(glm::vec3(0.0f, 0.4f + 0.2f * i, 0.0f)));
 
-                auto prim = e->AddComponent<PrimitiveComponent>();
+                auto prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
                 hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
                 prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&alpha_primitive);
                 // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked

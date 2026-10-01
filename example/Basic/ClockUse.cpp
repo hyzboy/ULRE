@@ -29,7 +29,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 
@@ -229,8 +228,8 @@ private:
             // 关键：设置为静态对象，不需要每帧更新
             transform.SetMobility(Mobility::Static);
 
-            // 添加PrimitiveComponent
-            auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            // 建几何资产组件 GeometryData
+            auto primitive_comp = ticks[i].entity->GetContext()->GetOrCreateGeometryData(ticks[i].entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = ticks[i].entity->GetContext()->GetOrCreateMaterialData(ticks[i].entity->GetEntityID());
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource tick_struct{};
@@ -263,8 +262,8 @@ private:
 
             hands[i].length_scale = hand_scales[i];
 
-            // 添加PrimitiveComponent
-            auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            // 建几何资产组件 GeometryData
+            auto primitive_comp = hands[i].entity->GetContext()->GetOrCreateGeometryData(hands[i].entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = hands[i].entity->GetContext()->GetOrCreateMaterialData(hands[i].entity->GetEntityID());
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource hand_struct{};

@@ -27,7 +27,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 
 using namespace hgl;
@@ -170,9 +169,9 @@ private:
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] rotation angle: " << (TRI_ROTATE_ANGLE * i) << " degrees" << std::endl;
 
-            // === 步骤4: 添加PrimitiveComponent ===
+            // === 步骤4: 建几何资产组件 GeometryData ===
             // 每个实体共享同一 PrimitiveAsset，颜色来自不同结构体行
-            auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            auto primitive_comp = triangles[i].entity->GetContext()->GetOrCreateGeometryData(triangles[i].entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = triangles[i].entity->GetContext()->GetOrCreateMaterialData(triangles[i].entity->GetEntityID());
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource tri_struct{};

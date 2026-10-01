@@ -700,7 +700,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     const mtl::MaterialDefinitionBuildRequest &request)
 {
     // Ensure recipe defaults are filled in before lookup, in case the caller skipped normalization.
-    // This call is idempotent; PrimitiveComponent-initiated paths will have already normalized.
+    // This call is idempotent; primitive render paths will have already normalized.
     mtl::MaterialRecipe normalized_recipe = request.recipe;
     mtl::NormalizeRecipe(normalized_recipe);
 

@@ -4,7 +4,7 @@
 // 本范例展示了：
 // 1. 创建ECS World和Entity
 // 2. 使用TransformAccessor管理空间变换
-// 3. 使用PrimitiveComponent管理渲染图元
+// 3. 使用 GeometryData 管理渲染图元
 // 4. ECS与传统渲染系统的集成
 
 #include<hgl/framework/WorkManager.h>
@@ -17,8 +17,7 @@
  #include<hgl/ecs/core/Context.h>
  #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
- #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/GeometryData.h>
+ #include<hgl/ecs/components/GeometryData.h>
  #include<hgl/object/ObjectTracker.h>
 
 using namespace hgl;
@@ -134,11 +133,11 @@ private:
         // 设置为静态对象 - 系统会缓存世界矩阵，提高性能
         transform.SetMobility(Mobility::Static);
 
-        // === 步骤4: 添加ECS PrimitiveComponent ===
-        // 新的ECS PrimitiveComponent用于管理渲染图元
-        // 注意：需要明确使用hgl::ecs命名空间，因为有两个PrimitiveComponent
+        // === 步骤4: 建几何资产组件 GeometryData ===
+        // 几何/资产侧状态由 GeometryData 承载
+        // 注意：需要明确使用 hgl::ecs 命名空间
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
-        auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        auto ecs_primitive = triangle_entity->GetContext()->GetOrCreateGeometryData(triangle_entity->GetEntityID());
         triangle_recipe.recipe_name = "DrawTriangle.VertexColor";
         triangle_recipe.mtl_def_id = "VertexColor";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);

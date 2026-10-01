@@ -3,8 +3,9 @@
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/ScenePipelineMode.h>
 #include <hgl/ecs/support/TransformAccessor.h>
-#include <hgl/ecs/components/PrimitiveComponent.h>
-#include <hgl/ecs/components/ShadowComponent.h>
+#include <hgl/ecs/components/GeometryData.h>
+#include <hgl/ecs/components/ShadowProxy.h>
+#include <hgl/ecs/support/PrimitiveState.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -1082,57 +1083,55 @@ int main(int argc, char** argv)
         }
 
         // ─────────────────────────────────────────────────────────────
-        // Test 8: ShadowComponent, Default Convention & Caster Culling Contracts
+        // Test 8: ShadowProxy, Default Convention & Caster Culling Contracts
         // ─────────────────────────────────────────────────────────────
         {
-            // 8A: 独立 ShadowComponent 默认值
-            ShadowComponent sc;
+            // 8A: 独立 ShadowProxy 默认值
+            ShadowProxy sc;
             if (!sc.CanCastShadow() || sc.GetMaxDistance() != 0.0f || !sc.CanReceiveShadow() || sc.GetBiasMultiplier() != 1.0f)
             {
-                GLogError(u8"Test 8A Failed: ShadowComponent default values incorrect");
+                GLogError(u8"Test 8A Failed: ShadowProxy default values incorrect");
                 return 8;
             }
 
-            // 8B: 实体未挂载 ShadowComponent 时，Renderable/Primitive 缺省回退约定（默认投射且接收）
-            Entity e1("TestEntity_NoShadowComp");
-            auto prim1 = e1.AddComponent<PrimitiveComponent>();
-            if (!prim1->CanCastShadow())
+            // 8B: 实体未挂载 ShadowProxy 时，缺省回退约定（默认投射且接收）——经实体级自由函数读
+            Entity e1("TestEntity_NoShadowProxy");
+            if (!CanCastShadow(&e1))
             {
-                GLogError(u8"Test 8B Failed: PrimitiveComponent without ShadowComponent must default CanCastShadow to true");
+                GLogError(u8"Test 8B Failed: entity without ShadowProxy must default CanCastShadow to true");
                 return 8;
             }
-            if (prim1->GetShadowMaxDistance() != 0.0f)
+            if (GetShadowMaxDistance(&e1) != 0.0f)
             {
-                GLogError(u8"Test 8B Failed: PrimitiveComponent without ShadowComponent must default max distance to 0.0f");
+                GLogError(u8"Test 8B Failed: entity without ShadowProxy must default max distance to 0.0f");
                 return 8;
             }
-            if (!prim1->CanReceiveShadow())
+            if (!CanReceiveShadow(&e1))
             {
-                GLogError(u8"Test 8B Failed: PrimitiveComponent without ShadowComponent must default CanReceiveShadow to true");
+                GLogError(u8"Test 8B Failed: entity without ShadowProxy must default CanReceiveShadow to true");
                 return 8;
             }
 
-            // 8C: 显式挂载 ShadowComponent 特异化控制
-            Entity e2("TestEntity_WithShadowComp");
-            auto prim2 = e2.AddComponent<PrimitiveComponent>();
-            auto shadow2 = e2.AddComponent<ShadowComponent>();
+            // 8C: 显式挂载 ShadowProxy 特异化控制
+            Entity e2("TestEntity_WithShadowProxy");
+            auto shadow2 = e2.AddComponent<ShadowProxy>();
             shadow2->SetCastShadow(false);
             shadow2->SetMaxDistance(45.0f);
             shadow2->SetReceiveShadow(false);
 
-            if (prim2->CanCastShadow() != false)
+            if (CanCastShadow(&e2) != false)
             {
-                GLogError(u8"Test 8C Failed: PrimitiveComponent must reflect attached ShadowComponent cast_shadow=false");
+                GLogError(u8"Test 8C Failed: entity must reflect attached ShadowProxy cast_shadow=false");
                 return 8;
             }
-            if (prim2->GetShadowMaxDistance() != 45.0f)
+            if (GetShadowMaxDistance(&e2) != 45.0f)
             {
-                GLogError(u8"Test 8C Failed: PrimitiveComponent must reflect attached ShadowComponent max_distance=45.0f");
+                GLogError(u8"Test 8C Failed: entity must reflect attached ShadowProxy max_distance=45.0f");
                 return 8;
             }
-            if (prim2->CanReceiveShadow() != false)
+            if (CanReceiveShadow(&e2) != false)
             {
-                GLogError(u8"Test 8C Failed: PrimitiveComponent must reflect attached ShadowComponent receive_shadow=false");
+                GLogError(u8"Test 8C Failed: entity must reflect attached ShadowProxy receive_shadow=false");
                 return 8;
             }
 
@@ -1156,7 +1155,7 @@ int main(int argc, char** argv)
                 return 8;
             }
 
-            GLogInfo(u8"Test 8 Passed: ShadowComponent, Default Convention & Caster Culling Contracts verified.");
+            GLogInfo(u8"Test 8 Passed: ShadowProxy, Default Convention & Caster Culling Contracts verified.");
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -1745,17 +1744,10 @@ int main(int argc, char** argv)
             { "VKShaderModule.cpp", OS_TEXT("src/Vulkan/VKShaderModule.cpp"),
               "AppendBytes(spv_data,spv_size)",
               "内容 hash 不再覆盖 SPIRV 全部字节（截断/漏算会撞键）" },
-            { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
-              "mtl::ShaderProgramKey program_key;",
-              "已解析管线条目不再携带 program 结构化身份（退回指针身份）" },
             // ── 禁复活 ──
             { "VKPipelineResolver.cpp", OS_TEXT("src/Vulkan/pipeline/VKPipelineResolver.cpp"),
               "(uint64_t)(uintptr_t)stages[i].module",
               "shader stage 的 module 身份又变回句柄值（D2 已修：句柄值可被复用）",
-              true },
-            { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
-              "resolvedRuntimePipelineProgramMap",
-              "pipeline/program 两张平行 map 又回来了（同一职责两套实现，手工同步易漂移）",
               true },
         };
 
@@ -1833,13 +1825,13 @@ int main(int argc, char** argv)
     // ─────────────────────────────────────────────────────────────
     // Test 14: 接收侧阴影旋钮落地契约（D3）
     //
-    // 背景：ShadowComponent 的 receive_shadow / bias_multiplier 长期**零消费者**
+    // 背景：阴影组件的 receive_shadow / bias_multiplier 长期**零消费者**
     //（文档写着已生效、实际没人读）。D3 把两者接到 per-draw 行表
     //（MaterialInstanceAddresses —— FS 早已按 dataIndex 寻址同一行）。
     // 本测试钉住这条链的四段：
     //   ① 行结构是 X 列表单源（CPU struct / 布局断言 / GLSL 发射同源，无手写漂移面）；
     //   ② 发射端遍历该列表，不手写字段；
-    //   ③ 批处理写入端从 RenderableComponent 取真值（逐图元）；
+    //   ③ 批处理写入端从实体级自由函数取真值（逐图元）；
     //   ④ 片元端真的读该行，并据 receive 早退、据 bias_multiplier 缩放偏差。
     // 任一段被"简化"掉，旋钮就重新变回死旋钮——这正是本测试存在的理由。
     // ─────────────────────────────────────────────────────────────
@@ -1877,15 +1869,15 @@ int main(int argc, char** argv)
               "uint payload_index",
               "GLSL 行结构退回手写字段发射——加字段必然漏改一侧", true },
 
-            // ③ 逐图元写入（真值来自 RenderableComponent）
+            // ③ 逐图元写入（真值来自实体级阴影自由函数）
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
-              "renderable->CanReceiveShadow()",
-              "批处理写入端不再读 ShadowComponent 的接收开关（receive_shadow 又成死旋钮）" },
+              "CanReceiveShadow(",
+              "批处理写入端不再读阴影组件的接收开关（receive_shadow 又成死旋钮）" },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "row_ptr[i].shadow_flags",
               "接收开关没有写进 per-draw 行（着色端读到的永远是默认值）" },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
-              "GetShadowBiasMultiplier()",
+              "GetShadowBiasMultiplier(",
               "批处理写入端不再读局部偏差倍率（bias_multiplier 又成死旋钮）" },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "row_ptr[i].shadow_bias_multiplier = bias_multiplier;",
@@ -1929,7 +1921,7 @@ int main(int argc, char** argv)
 
         GLogInfo(u8"Test 14 Passed: shadow receive-side knob contract holds (%d checks) -- "
                  u8"receive_shadow/bias_multiplier carried by the per-draw row from "
-                 u8"RenderableComponent to the fragment-side shadow factor.",
+                 u8"the entity-level shadow free functions to the fragment-side shadow factor.",
                  static_cast<int>(sizeof(kShadowKnobContracts) / sizeof(kShadowKnobContracts[0])));
     }
 
@@ -3703,59 +3695,70 @@ int main(int argc, char** argv)
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Test 24: A5a 源码契约（几何状态只存于 GeometryData / 可见性只读实体级）
+    // Test 24: A5b 源码契约（三类渲染组件已删除 / 状态归位 / 阴影代理正名）
     //
-    // 背景：A5a 把几何/资产侧状态搬出 PrimitiveComponent（进 GeometryData 组件）、删掉
-    // 两处 OOP 缓存、并把"可见性三真值"收敛为实体级唯一真值。本可执行文件无图形
-    // 设备，所以钉住"判据链是否还在"：几何字段只允许出现在新组件里、两个组件头不得
-    // 再声明组件级可见性、收集系统不得再读组件级可见性、组件内不得再缓存世界指针。
+    // 背景：A5b 删除图元/可渲染/多实例三类渲染组件，把每实例状态归世界每实例 slot、
+    // 能力判定做成实体级自由函数、阴影组件正名为 ShadowProxy。本可执行文件无图形设备，
+    // 故钉住"判据链是否还在 + 组件是否真的没了"：
+    //   · GeometryData 是图元唯一标记（声明 Primitive 系统组、持几何资产与槽位）；
+    //   · 图元枚举按 GeometryData、不再读组件级可见性；
+    //   · slot 承载每实例 render_item 句柄与多实例状态；
+    //   · 能力判定/阴影缺省共自由函数存在（PrimitiveState.h / ShadowProxy.h）。
     //
-    // 反证：往 `RenderableComponent.h` 重新加回一行组件级可见性字段 ⇒ 本用例必须失败
-    // （契约只看源码文本，不需要图形设备）。
+    // 反证：给任意图元渲染路径复活组件级可见性字段（或让 GeometryData 丢掉系统组名）
+    // ⇒ 本用例必须失败（契约只看源码文本，不需要图形设备）。
     // ─────────────────────────────────────────────────────────────
     {
-        const SourceContract kA5aContracts[] =
+        const SourceContract kA5bContracts[] =
         {
-            { "RenderableComponent.h", OS_TEXT("inc/hgl/ecs/components/RenderableComponent.h"),
-              "visible",
-              "组件级可见性字段复活（可见性真值只允许实体级 ECSContext::IsEntityVisible）",
-              true },
-            { "LinesComponent.h", OS_TEXT("inc/hgl/ecs/components/LinesComponent.h"),
-              "visible",
-              "线条组件又带组件级可见性（第二真值，渲染剔除会重新变成 组件级 OR 实体级）",
-              true },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
-              "->IsVisible()",
-              "收集链又读组件级可见性（应改走 world->IsEntityVisible）",
-              true },
-            { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
-              "primitiveAsset",
-              "几何资产字段又留在 PrimitiveComponent（应只存在于 GeometryData 组件）",
-              true },
-            { "PrimitiveComponent.h", OS_TEXT("inc/hgl/ecs/components/PrimitiveComponent.h"),
-              "bound_render_item_" "storage",
-              "组件内又缓存世界渲染项存储指针（应每次经 owner 的 ECSContext 现取）",
-              true },
-            { "RenderableComponent.h", OS_TEXT("inc/hgl/ecs/components/RenderableComponent.h"),
-              "cached_shadow_" "component",
-              "阴影组件指针缓存复活（应每次经 owner 按需解析）",
-              true },
             { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
               "primitiveAsset",
               "GeometryData 组件不再持有几何资产（几何状态丢失）" },
             { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
               "ComponentTypeOf<GeometryData>",
               "GeometryData 不再声明自己的组件槽位（实体掩码丢失 Geometry 位）" },
+            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
+              "\"Primitive\"",
+              "GeometryData 不再声明 Primitive 系统组名（渲染图不会启用图元 pass）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "GetComponents<GeometryData>",
+              "图元枚举不再按 GeometryData（渲染组件删除后无枚举源）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "->IsVisible()",
+              "收集链又读组件级可见性（应改走 world->IsEntityVisible）",
+              true },
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "render_item_handle",
+              "每实例 slot 不再承载 render_item 句柄（4-ID 无主）" },
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "allocated_instance_capacity",
+              "每实例 slot 不再承载多实例连续槽位状态（多实例绑定无主）" },
+            { "PrimitiveState.h", OS_TEXT("inc/hgl/ecs/support/PrimitiveState.h"),
+              "bool CanRender(",
+              "CanRender 的自由函数缺失（能力判定无出处）" },
+            { "PrimitiveState.h", OS_TEXT("inc/hgl/ecs/support/PrimitiveState.h"),
+              "bool HasAnyMaterialSource(",
+              "HasAnyMaterialSource 的自由函数缺失（材质来源判据无出处）" },
+            { "ShadowProxy.h", OS_TEXT("inc/hgl/ecs/components/ShadowProxy.h"),
+              "class ShadowProxy",
+              "阴影代理未正名（ShadowProxy 缺失）" },
+            { "ShadowProxy.h", OS_TEXT("inc/hgl/ecs/components/ShadowProxy.h"),
+              "float GetShadowMaxDistance(const Entity *owner)",
+              "阴影缺省约定不再是自由函数（缺省第二出处风险）" },
+            { "LinesComponent.h", OS_TEXT("inc/hgl/ecs/components/LinesComponent.h"),
+              "visible",
+              "线条组件又带组件级可见性（第二真值，渲染剔除会重新变成 组件级 OR 实体级）",
+              true },
         };
 
-        if (const int failed = verify_source_contracts(24, kA5aContracts,
-                                                       static_cast<uint>(sizeof(kA5aContracts) /
-                                                                         sizeof(kA5aContracts[0]))))
+        if (const int failed = verify_source_contracts(24, kA5bContracts,
+                                                       static_cast<uint>(sizeof(kA5bContracts) /
+                                                                         sizeof(kA5bContracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 24 Passed: A5a 源码契约成立（几何状态只存于 GeometryData、两处 OOP 缓存不复存在、"
-                 u8"可见性只读实体级；共 %d 条契约）。",
-                 static_cast<int>(sizeof(kA5aContracts) / sizeof(kA5aContracts[0])));
+        GLogInfo(u8"Test 24 Passed: A5b 源码契约成立（三类渲染组件已删除、状态归每实例 slot、"
+                 u8"能力判定与阴影缺省为自由函数、GeometryData 是图元唯一标记；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kA5bContracts) / sizeof(kA5bContracts[0])));
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

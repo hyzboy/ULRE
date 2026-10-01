@@ -12,7 +12,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 
 #include<glm/glm.hpp>
@@ -126,7 +125,7 @@ private:
 
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
         auto quad_transform = ecs_world->GetTransform(ecs_world->CreateTransform(quad_entity->GetEntityID(), Mobility::Static));
-        auto quad_primitive = quad_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        auto quad_primitive = quad_entity->GetContext()->GetOrCreateGeometryData(quad_entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = quad_entity->GetContext()->GetOrCreateMaterialData(quad_entity->GetEntityID());
 
         quad_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

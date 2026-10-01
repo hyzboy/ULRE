@@ -68,7 +68,7 @@ namespace
 
         auto *device = ctx->GetGPUDevice();
 
-        // Collect system stays: gathers PrimitiveComponents into RenderFrameCache
+        // Collect system stays: gathers primitive entities (GeometryData) into RenderFrameCache
         auto render_collect_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveCollectSystem>(ctx);
         if (render_collect_system)
         {

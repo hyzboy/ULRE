@@ -31,9 +31,8 @@
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/ScenePipelineMode.h>
 #include <hgl/ecs/support/TransformAccessor.h>
-#include <hgl/ecs/components/PrimitiveComponent.h>
 #include <hgl/ecs/components/GeometryData.h>
-#include <hgl/ecs/components/ShadowComponent.h>
+#include <hgl/ecs/components/ShadowProxy.h>
 #include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -160,7 +159,7 @@ private:
     bool contract_ok = false;     // c0 契约结果（selfcheck 退出码依据）
 
     // ── D3 契约状态 ──
-    std::shared_ptr<ShadowComponent> ground_shadow;   // 地面（接收面）的阴影组件
+    std::shared_ptr<ShadowProxy> ground_shadow;   // 地面（接收面）的阴影组件
     std::vector<uint8_t> d3_lum[3];                   // A/B/C 三帧亮度图
     int  d3_frame = 0;                                // 深度判读之后的相对帧号
     bool d3_done = false;
@@ -591,11 +590,11 @@ public:
             ground_transform = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
             ground_transform.SetLocalScale(glm::vec3(40.0f));
 
-            auto shadow = e->AddComponent<ShadowComponent>();
+            auto shadow = e->AddComponent<ShadowProxy>();
             shadow->SetCastShadow(false);
             ground_shadow = shadow;   // D3 契约：运行期拨 receive_shadow / bias_multiplier
 
-            auto prim = e->AddComponent<PrimitiveComponent>();
+            auto prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
             material_data_comp->SetTextureResource("base_color", white_texture, pbr_sampler,
@@ -627,7 +626,7 @@ public:
             tf.SetLocalPosition(glm::vec3(i == 0 ? -1.6f : 1.6f, 0.0f, 2.6f));
             tf.SetLocalScale(glm::vec3(2.0f));
 
-            auto prim = e->AddComponent<PrimitiveComponent>();
+            auto prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
             material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,
@@ -763,7 +762,7 @@ public:
         // 三帧各读回一次颜色，**逐像素**与基准帧比较。相机与场景静止，除被改动的
         // 旋钮外逐帧一致（对照组 ATS_D3_NOKNOB=1 实测逐像素相同）→ 差值只能来自
         // 该旋钮；判据用"是否变红"而非亮度，理由见文件头常量处的注释。
-        //   A（基准）  ：地面 ShadowComponent 默认值（接收 + 倍率 1.0）
+        //   A（基准）  ：地面 ShadowProxy 默认值（接收 + 倍率 1.0）
         //   B（不接收）：SetReceiveShadow(false) → 地面上的影子应整体消失
         //                （影子区域大面积由"灰蓝"变回"红地面"）
         //   C（倍率无关）：SetReceiveShadow(true) + SetBiasMultiplier(1000×) →

@@ -11,11 +11,9 @@
 #include<cstring>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/BoundingBoxAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/RenderableComponent.h>
-#include<hgl/ecs/components/ShadowComponent.h>
-#include<hgl/ecs/components/InstancedPrimitiveComponent.h>
+#include<hgl/ecs/components/ShadowProxy.h>
+#include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/InstancedPrimitiveRenderItem.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -48,25 +46,7 @@ namespace hgl::ecs
 {
     namespace
     {
-        /// 材质来源判据（A2 之前挂在 PrimitiveComponent 上，随授权状态迁入数据层）：
-        /// 数据层有配方覆盖，或 asset 里有默认配方。只读查询，不创建组件。
-        bool HasAnyMaterialSource(const PrimitiveComponent *primitive_comp)
-        {
-            if (!primitive_comp)
-                return false;
-
-            Entity *owner = primitive_comp->GetOwner();
-            ECSContext *context = owner ? owner->GetContext() : nullptr;
-            const MaterialData *material_data = context
-                ? context->GetMaterialData(owner->GetEntityID())
-                : nullptr;
-            const GeometryData *geometry = context
-                ? context->GetGeometryData(owner->GetEntityID())
-                : nullptr;
-
-            return (material_data && material_data->HasRecipeOverride())
-                || (geometry && geometry->GetAssetMaterialRecipe() != nullptr);
-        }
+        // 材质来源判据已收敛为实体级自由函数 HasAnyMaterialSource(Entity*)（support/PrimitiveState.h）。
 
         bool BatchRequiresIndirectCommands(const MaterialBatch &batch)
         {
@@ -232,8 +212,8 @@ namespace hgl::ecs
         auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
         if (!prim_item)
             return true;  // No bounding sphere data for this item type — keep visible
-        auto primitiveComp = prim_item->GetPrimitiveComponent();
-        if (!primitiveComp)
+        Entity *owner = item->GetEntity();
+        if (!owner)
             return false;
 
         auto transform = item->GetTransform();
@@ -242,11 +222,8 @@ namespace hgl::ecs
 
         // A5a：包围球半径随几何状态迁入 GeometryData 组件（实体级查询，不在组件内缓存）
         const GeometryData *geometry = nullptr;
-        if (Entity *owner = primitiveComp->GetOwner())
-        {
-            if (ECSContext *context = owner->GetContext())
-                geometry = context->GetGeometryData(owner->GetEntityID());
-        }
+        if (ECSContext *context = owner->GetContext())
+            geometry = context->GetGeometryData(owner->GetEntityID());
 
         const float boundingRadius = geometry ? geometry->GetBoundingRadius() : 0.0f;
 
@@ -454,15 +431,11 @@ namespace hgl::ecs
             const graph::Geometry *geometry = nullptr;
             if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(first_item))
             {
-                auto prim_comp = prim_item->GetPrimitiveComponent();
                 const GeometryData *geometry_comp = nullptr;
-                if (prim_comp)
+                if (Entity *owner = first_item->GetEntity())
                 {
-                    if (Entity *owner = prim_comp->GetOwner())
-                    {
-                        if (ECSContext *context = owner->GetContext())
-                            geometry_comp = context->GetGeometryData(owner->GetEntityID());
-                    }
+                    if (ECSContext *context = owner->GetContext())
+                        geometry_comp = context->GetGeometryData(owner->GetEntityID());
                 }
                 if (geometry_comp && geometry_comp->GetPrimitiveAsset())
                     geometry = geometry_comp->GetPrimitiveAsset()->GetGeometry();
@@ -1044,36 +1017,38 @@ namespace hgl::ecs
                         }
 
                         // ── D3：接收侧阴影参数（逐图元）───────────────────────
-                        // ShadowComponent 未挂载时保持行的零值 = 引擎默认
+                        // ShadowProxy 未挂载时保持行的零值 = 引擎默认
                         //（正常接收 + 倍率 1.0），与 D3 之前的行逐字节一致。
                         // 该行每帧在 FinalizeBatch 重写，故运行期 SetReceiveShadow /
                         // SetBiasMultiplier 下一帧即生效。
                         if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(item))
                         {
-                            if (auto renderable = prim_item->GetRenderable())
+                            Entity *prim_entity = item->GetEntity();
+
+                            if (prim_entity)
                             {
+                                // A5b：阴影接收/倍率经实体级自由函数取（原可渲染组件
+                                // 的便利方法随该类删除，缺省约定唯一出处见 ShadowProxy.h）。
 #if ULRE_STRATEGY_PARITY_ENABLED
                                 // A1 对拍：阴影接收能力（表 ShadowReceiver vs 现有 CanReceiveShadow）
                                 {
-                                    Entity *parity_entity = item->GetEntity();
-
                                     StrategyFacts parity_facts;
-                                    parity_facts.receive_shadow = renderable->CanReceiveShadow();
+                                    parity_facts.receive_shadow = CanReceiveShadow(prim_entity);
 
-                                    const uint32_t parity_mask = parity_entity ? parity_entity->GetComponentMask() : 0u;
+                                    const uint32_t parity_mask = prim_entity->GetComponentMask();
 
                                     ParityCheckShadowReceiver(
                                         HasRenderNeed(EvaluateRenderNeed(parity_mask,parity_facts.ToMask()),RenderNeed::ShadowReceiver),
-                                        renderable->CanReceiveShadow(),
+                                        CanReceiveShadow(prim_entity),
                                         "PrimitiveBatchPipeline");
                                 }
 #endif
-                                if (!renderable->CanReceiveShadow())
+                                if (!CanReceiveShadow(prim_entity))
                                     row_ptr[i].shadow_flags |=
                                         graph::mtl::kMaterialShadowFlagNoReceive;
 
                                 const float bias_multiplier =
-                                    renderable->GetShadowBiasMultiplier();
+                                    GetShadowBiasMultiplier(prim_entity);
 
                                 // 非法倍率（<=0 / NaN / inf）按"不调节"处理：
                                 // 行里留 0，着色侧视 0 为引擎默认 1.0。
@@ -1143,7 +1118,6 @@ namespace hgl::ecs
             auto* shader_prog = item->GetShaderProgram();
             auto* pipeline = item->GetPipeline(current_render_pass);
             auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
-            auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
             const MaterialRuntimeRow *material_row = prim_item ? prim_item->GetMaterialRuntimeRow() : nullptr;
 
             if (prim_item)
@@ -1163,7 +1137,7 @@ namespace hgl::ecs
 
             if (!shader_prog || !pipeline)
             {
-                if (HasAnyMaterialSource(prim_comp.get()))
+                if (HasAnyMaterialSource(item->GetEntity()))
                 {
                     LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. shader_prog=%s render_pass=%p",
                                shader_prog ? shader_prog->GetName().c_str() : "<null>",

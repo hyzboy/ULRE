@@ -10,7 +10,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -90,7 +89,7 @@ private:
 
         sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkySphere");
         auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-        auto prim_comp = sky_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        auto prim_comp = sky_entity->GetContext()->GetOrCreateGeometryData(sky_entity->GetEntityID());
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));

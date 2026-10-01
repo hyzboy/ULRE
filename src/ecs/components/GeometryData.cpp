@@ -1,5 +1,4 @@
 ﻿#include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
@@ -18,23 +17,17 @@ namespace hgl::ecs
 {
     void GeometryData::InvalidateOwnerRuntimePipeline()
     {
-        // 几何/变体变化只让**同实体的**渲染侧管线缓存失效：管线缓存仍归
-        // PrimitiveComponent（A5b 处理），本组件不持有它。
-        // 遍历而非 `GetComponent<PrimitiveComponent>()`：实例化组件
-        // （InstancedPrimitiveComponent）在实体表里登记在自己的类型键下，
-        // 按基类键查不到。
+        // 几何/变体变化只让**同实体**的运行期管线缓存失效：A5b 起管线缓存归
+        // 世界的每实例 slot（经 Context::InvalidateEntityRuntimePipeline）。
         Entity *owner = GetOwner();
         if (!owner)
             return;
 
-        std::vector<std::shared_ptr<Component>> components;
-        owner->GetAllComponents(components);
+        ECSContext *context = owner->GetContext();
+        if (!context)
+            return;
 
-        for (auto &component : components)
-        {
-            if (auto *primitive = dynamic_cast<PrimitiveComponent *>(component.get()))
-                primitive->InvalidateResolvedRuntimePipeline();
-        }
+        context->InvalidateEntityRuntimePipeline(owner->GetEntityID());
     }
 
     bool GeometryData::EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material)

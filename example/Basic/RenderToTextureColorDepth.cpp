@@ -23,7 +23,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -128,7 +127,7 @@ private:
     Texture2D *sphere_normal_tex = nullptr;
     Texture2D *sphere_roughness_tex = nullptr;
     Entity *sphere_entity = nullptr;
-    std::shared_ptr<PrimitiveComponent> sphere_primitive_comp;
+    hgl::ecs::GeometryData *sphere_primitive_comp = nullptr;
 
     /// 离屏相机距目标的距离，决定 near/far 收紧范围
     static constexpr float kCameraDistance = 6.0f;
@@ -313,7 +312,7 @@ public:
         auto *world = offscreen->GetWorld();
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
         auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
-        auto prim_comp = sphere_entity->AddComponent<PrimitiveComponent>();
+        auto prim_comp = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity->GetEntityID());
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -536,7 +535,7 @@ private:
 
         cube.entity = ecs_context->CreateEntity<Entity>(cube.name);
         cube.transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube.entity->GetEntityID(), Mobility::Static));
-        auto prim_comp = cube.entity->AddComponent<PrimitiveComponent>();
+        auto prim_comp = cube.entity->GetContext()->GetOrCreateGeometryData(cube.entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = cube.entity->GetContext()->GetOrCreateMaterialData(cube.entity->GetEntityID());
 
         cube.transform.SetLocalPosition(glm::vec3(cube.x_offset, 0.0f, 0.0f));

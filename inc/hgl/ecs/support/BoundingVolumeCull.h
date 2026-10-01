@@ -3,7 +3,7 @@
 /**
  * 视锥剔除时使用的包围体尺寸换算辅助函数。
  *
- * 背景：PrimitiveComponent 的包围半径、BoundingBoxDataStorage 的本地包围盒，
+ * 背景：GeometryData 的包围半径、BoundingBoxDataStorage 的本地包围盒，
  * 都是在“几何体本地空间”中量算出来的，本身**不含**实体 Transform 的缩放。
  * 直接拿去测视锥会对被放大过的实体严重低估——例如 500 倍缩放的地面，
  * 半径仍按 0.707 参与判定，中心一旦落到视锥外就会被整块剔除。

@@ -15,7 +15,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 
 #include<glm/glm.hpp>
@@ -168,7 +167,7 @@ private:
 
             render_obj[i].entity = ecs_world->CreateEntity<Entity>("TextureRect");
             auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(render_obj[i].entity->GetEntityID(), Mobility::Static));
-            auto primitive = render_obj[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+            auto primitive = render_obj[i].entity->GetContext()->GetOrCreateGeometryData(render_obj[i].entity->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = render_obj[i].entity->GetContext()->GetOrCreateMaterialData(render_obj[i].entity->GetEntityID());
 
             transform.SetLocalPosition(glm::vec3(offset.x, offset.y, offset.z));

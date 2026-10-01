@@ -3,8 +3,8 @@
 #include <hgl/ecs/support/DrawItemCompaction.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
-#include <hgl/ecs/components/PrimitiveComponent.h>
-#include <hgl/ecs/components/InstancedPrimitiveComponent.h>
+#include <hgl/ecs/components/GeometryData.h>
+#include <hgl/ecs/support/PrimitiveState.h>
 #include <hgl/graph/ubo/GlobalAddresses.h>
 #include <hgl/graph/ubo/WorldAddresses.h>
 #include <hgl/ShaderCompilerAPI.h>
@@ -138,8 +138,8 @@ int main(int argc, char **argv)
         return 13;
     }
 
-    // Test 7: Stage 2 Integration - PrimitiveComponent & ECSContext
-    GLogInfo(u8"--- Testing Stage 2: PrimitiveComponent & ECSContext 4-ID Integration ---");
+    // Test 7: Stage 2 Integration - 实体级 render_item 4-ID（A5b：句柄归每实例 slot）
+    GLogInfo(u8"--- Testing Stage 2: Primitive Entity 4-ID Integration ---");
     {
         ECSContext context("TestContext");
         auto *world_storage = context.GetRenderItemStorage();
@@ -150,23 +150,19 @@ int main(int argc, char **argv)
         }
 
         auto entity = context.CreateEntity("TestRenderableEntity");
-        auto prim_comp = entity->AddComponent<PrimitiveComponent>();
+        const EntityID entity_id = entity->GetEntityID();
 
-        auto handle = prim_comp->GetRenderItemHandle();
+        // A5b：render_item 句柄不再由组件挂载分配，改由世界访问器按需分配（存每实例 slot）
+        auto handle = EnsureRenderItemHandle(context, entity_id);
         if (handle == INVALID_RENDER_ITEM_HANDLE)
         {
-            GLogError(u8"Test 7 Failed: Expected valid RenderItemHandle after AddComponent");
+            GLogError(u8"Test 7 Failed: Expected valid RenderItemHandle after EnsureRenderItemHandle");
             return 15;
         }
 
-        prim_comp->Set4ID(111, 222, 333, 444);
-
-        if (prim_comp->GetTransformID() != 111 ||
-            prim_comp->GetGeometryID()  != 222 ||
-            prim_comp->GetMaterialID()  != 333 ||
-            prim_comp->GetTextureID()   != 444)
+        if (!SetRenderItem4ID(context, entity_id, 111, 222, 333, 444))
         {
-            GLogError(u8"Test 7 Failed: Component 4-ID getters mismatch");
+            GLogError(u8"Test 7 Failed: SetRenderItem4ID returned false");
             return 16;
         }
 
@@ -177,23 +173,23 @@ int main(int argc, char **argv)
             storage_desc->material_id  != 333 ||
             storage_desc->texture_id   != 444)
         {
-            GLogError(u8"Test 7 Failed: Storage 4-ID mismatch from component update");
+            GLogError(u8"Test 7 Failed: Storage 4-ID mismatch from SetRenderItem4ID");
             return 17;
         }
 
-        // Test component detachment releases the slot
+        // 实体销毁必须释放它的 render_item 槽位
         const uint32_t active_before = world_storage->GetActiveCount();
-        entity->RemoveComponent<PrimitiveComponent>();
+        context.DestroyEntity(entity_id);
 
         if (world_storage->GetActiveCount() != active_before - 1)
         {
-            GLogError(u8"Test 7 Failed: Active count did not decrement on RemoveComponent");
+            GLogError(u8"Test 7 Failed: Active count did not decrement on DestroyEntity");
             return 18;
         }
 
-        // Verify slot reuse by adding another primitive component
-        auto prim_comp2 = entity->AddComponent<PrimitiveComponent>();
-        auto handle2 = prim_comp2->GetRenderItemHandle();
+        // 槽位复用：新实体分配应复用刚释放的句柄
+        auto entity2 = context.CreateEntity("TestRenderableEntity2");
+        auto handle2 = EnsureRenderItemHandle(context, entity2->GetEntityID());
         if (handle2 != handle)
         {
             GLogError(u8"Test 7 Failed: Expected reused handle %u, got %u", handle, handle2);
@@ -623,31 +619,31 @@ int main(int argc, char **argv)
         }
     }
 
-    // Test 11: Stage 5 Verification - InstancedPrimitiveComponent CPU-driven Instancing & Contiguous 4-ID
-    GLogInfo(u8"--- Testing Stage 5: InstancedPrimitiveComponent Contiguous Allocation ---");
+    // Test 11: Stage 5 Verification - 多实例连续槽位与 4-ID（A5b：状态归每实例 slot）
+    GLogInfo(u8"--- Testing Stage 5: Instanced Contiguous Allocation (entity slot) ---");
     {
         ECSContext ctx("TestContextStage5");
         auto *entity = ctx.CreateEntity<Entity>("TestInstancedEntity");
-        auto inst_comp = entity->AddComponent<InstancedPrimitiveComponent>();
+        const EntityID entity_id = entity->GetEntityID();
 
         constexpr uint32_t kInstanceCount = 100;
-        inst_comp->SetInstanceCount(kInstanceCount);
-        inst_comp->SetMaxInstances(kInstanceCount);
+        SetInstanceCount(ctx, entity_id, kInstanceCount);
+        SetMaxInstances(ctx, entity_id, kInstanceCount);
 
-        if (!inst_comp->AllocateContiguousInstances(kInstanceCount))
+        if (!AllocateContiguousInstances(ctx, entity_id, kInstanceCount))
         {
             GLogError(u8"Test 11 Failed: AllocateContiguousInstances returned false");
             return 45;
         }
 
-        if (inst_comp->GetAllocatedInstanceCapacity() != kInstanceCount)
+        if (GetAllocatedInstanceCapacity(ctx, entity_id) != kInstanceCount)
         {
             GLogError(u8"Test 11 Failed: Expected capacity %u, got %u",
-                      kInstanceCount, inst_comp->GetAllocatedInstanceCapacity());
+                      kInstanceCount, GetAllocatedInstanceCapacity(ctx, entity_id));
             return 46;
         }
 
-        const auto base_handle = inst_comp->GetRenderItemHandle();
+        const auto base_handle = GetRenderItemHandle(ctx, entity_id);
         if (base_handle == graph::INVALID_RENDER_ITEM_HANDLE)
         {
             GLogError(u8"Test 11 Failed: Base render item handle is invalid");
@@ -660,7 +656,7 @@ int main(int argc, char **argv)
         constexpr uint32_t kMaterialID      = 7;
         constexpr uint32_t kTextureID       = 3;
 
-        if (!inst_comp->SetAllInstances4ID(kBaseTransformID, kGeometryID, kMaterialID, kTextureID, true))
+        if (!SetAllInstances4ID(ctx, entity_id, kBaseTransformID, kGeometryID, kMaterialID, kTextureID, true))
         {
             GLogError(u8"Test 11 Failed: SetAllInstances4ID returned false");
             return 48;
@@ -669,7 +665,7 @@ int main(int argc, char **argv)
         auto *world_storage = ctx.GetRenderItemStorage();
         for (uint32_t i = 0; i < kInstanceCount; ++i)
         {
-            const auto handle = inst_comp->GetInstanceHandle(i);
+            const auto handle = GetInstanceHandle(ctx, entity_id, i);
             if (handle != base_handle + i)
             {
                 GLogError(u8"Test 11 Failed: Instance handle non-contiguous at %u", i);
@@ -688,7 +684,7 @@ int main(int argc, char **argv)
         }
 
         // Test custom instance override
-        inst_comp->SetInstance4ID(42, 9999, 30, 8, 4);
+        SetInstance4ID(ctx, entity_id, 42, 9999, 30, 8, 4);
         const auto *desc42 = world_storage->Get(base_handle + 42);
         if (!desc42 || desc42->transform_id != 9999 || desc42->geometry_id != 30 ||
             desc42->material_id != 8 || desc42->texture_id != 4)
@@ -701,7 +697,7 @@ int main(int argc, char **argv)
         hgl::ValueArray<RenderItemHandle> handles;
         handles.Reserve(kInstanceCount);
         for (uint32_t i = 0; i < kInstanceCount; ++i)
-            handles.Add(inst_comp->GetInstanceHandle(i));
+            handles.Add(GetInstanceHandle(ctx, entity_id, i));
 
         DrawItemIDStorage test_id_storage;
         hgl::ValueArray<CompactedDrawRange> ranges;
@@ -732,8 +728,8 @@ int main(int argc, char **argv)
         }
 
         // Releasing instances
-        inst_comp->ReleaseInstances();
-        if (inst_comp->GetAllocatedInstanceCapacity() != 0)
+        ReleaseInstances(ctx, entity_id);
+        if (GetAllocatedInstanceCapacity(ctx, entity_id) != 0)
         {
             GLogError(u8"Test 11 Failed: Allocated capacity must be 0 after ReleaseInstances");
             return 56;

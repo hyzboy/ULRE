@@ -11,7 +11,6 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>

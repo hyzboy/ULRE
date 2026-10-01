@@ -2,9 +2,9 @@
 #include<hgl/ecs/support/RenderStrategyParity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/InstancedPrimitiveComponent.h>
+#include<hgl/ecs/components/ShadowProxy.h>
+#include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
@@ -36,66 +36,42 @@ namespace hgl::ecs
 {
     namespace
     {
-        const char *GetPrimitiveOwnerName(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        const char *GetOwnerName(const Entity *entity)
         {
-            if (!primitive_comp)
-                return "<null-primitive>";
+            if (!entity)
+                return "<null-entity>";
 
-            auto *owner = primitive_comp->GetOwner();
-            if (!owner)
-                return "<no-owner>";
-
-            return owner->GetName().c_str();
+            return entity->GetName().c_str();
         }
 
-        /// A2 过渡查询：本 primitive 所属实体的**材质数据层**组件（无实体/无世界时 nullptr）。
-        MaterialData *FindMaterialDataOf(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        /// A2/A5b 查询：实体的**材质数据层**组件（无实体/无世界时 nullptr）。
+        MaterialData *FindMaterialDataOf(Entity *entity)
         {
-            Entity *owner = primitive_comp ? primitive_comp->GetOwner() : nullptr;
-            ECSContext *context = owner ? owner->GetContext() : nullptr;
+            ECSContext *context = entity ? entity->GetContext() : nullptr;
 
-            return context ? context->GetMaterialData(owner->GetEntityID()) : nullptr;
+            return context ? context->GetMaterialData(entity->GetEntityID()) : nullptr;
         }
 
-        /// A2 过渡查询：材质数据层组件（无则创建）。
-        /// 语义等价于 A2 之前"材质授权状态恒挂在 PrimitiveComponent 上"——
-        /// 渲染侧需要读出授权状态时，数据层必须存在。
-        MaterialData *EnsureMaterialDataOf(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        /// 材质数据层组件（无则创建）。渲染侧需要读出授权状态时，数据层必须存在。
+        MaterialData *EnsureMaterialDataOf(Entity *entity)
         {
-            Entity *owner = primitive_comp ? primitive_comp->GetOwner() : nullptr;
-            ECSContext *context = owner ? owner->GetContext() : nullptr;
+            ECSContext *context = entity ? entity->GetContext() : nullptr;
 
-            return context ? context->GetOrCreateMaterialData(owner->GetEntityID()) : nullptr;
+            return context ? context->GetOrCreateMaterialData(entity->GetEntityID()) : nullptr;
         }
 
-        /// A5a 查询：本 primitive 所属实体的**几何资产组件**（无实体/无世界/未挂载时 nullptr）。
-        /// 几何/资产侧状态已迁出 PrimitiveComponent（见 components/GeometryData.h）。
-        GeometryData *FindGeometryOf(const PrimitiveComponent *primitive_comp)
+        /// A5a 查询：实体的**几何资产组件**（无实体/无世界/未挂载时 nullptr）。
+        GeometryData *FindGeometryOf(Entity *entity)
         {
-            Entity *owner = primitive_comp ? primitive_comp->GetOwner() : nullptr;
-            ECSContext *context = owner ? owner->GetContext() : nullptr;
+            ECSContext *context = entity ? entity->GetContext() : nullptr;
 
-            return context ? context->GetGeometryData(owner->GetEntityID()) : nullptr;
+            return context ? context->GetGeometryData(entity->GetEntityID()) : nullptr;
         }
 
-        /// 材质来源判据（A2 之前挂在 PrimitiveComponent 上，随授权状态一并迁入数据层）：
-        /// 数据层有配方覆盖，或 asset 里有默认配方。
-        bool HasAnyMaterialSource(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        /// 材质授权代数（A2 之前挂在图元组件上，随授权状态一并迁入数据层）。
+        uint32_t MaterialAuthoredGenerationOf(Entity *entity)
         {
-            if (!primitive_comp)
-                return false;
-
-            const MaterialData *material_data = FindMaterialDataOf(primitive_comp);
-            const GeometryData *geometry = FindGeometryOf(primitive_comp.get());
-
-            return (material_data && material_data->HasRecipeOverride())
-                || (geometry && geometry->GetAssetMaterialRecipe() != nullptr);
-        }
-
-        /// 材质授权代数（A2 之前挂在 PrimitiveComponent 上，随授权状态一并迁入数据层）。
-        uint32_t MaterialAuthoredGenerationOf(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
-        {
-            MaterialData *material_data = EnsureMaterialDataOf(primitive_comp);
+            MaterialData *material_data = EnsureMaterialDataOf(entity);
 
             return material_data ? material_data->GetAuthoredGeneration() : 0;
         }
@@ -161,9 +137,9 @@ namespace hgl::ecs
 
         /// 前向槽的 program purpose。A4 起阴影 pass 也要用它还原**同一行键**
         /// （运行期共享行的 program 身份维度恒取前向 purpose，两个 pass 落在同一行上）。
-        graph::mtl::ShaderProgramPurpose GetEffectiveForwardPurpose(PrimitiveComponent &primitive_comp)
+        graph::mtl::ShaderProgramPurpose GetEffectiveForwardPurpose(Entity *primitive_comp)
         {
-            const GeometryData *geometry = FindGeometryOf(&primitive_comp);
+            const GeometryData *geometry = FindGeometryOf(primitive_comp);
 
             switch (geometry ? geometry->GetPrimitiveVariantPurpose()
                              : graph::PrimitiveVariantPurpose::Surface)
@@ -237,7 +213,7 @@ namespace hgl::ecs
 
 
         bool EnsureRuntimeGeometryFromAsset(ECSContext *world,
-                                            const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                            Entity *primitive_comp,
                                             const MaterialRuntimeSlot &slot,
                                             const MaterialRuntimeRow *row)
         {
@@ -245,12 +221,12 @@ namespace hgl::ecs
             {
                 GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset precondition failed world=%p primitive=%p row=%p",
                           world,
-                          primitive_comp.get(),
+                          primitive_comp,
                           static_cast<const void *>(row));
                 return false;
             }
 
-            GeometryData *geometry = FindGeometryOf(primitive_comp.get());
+            GeometryData *geometry = FindGeometryOf(primitive_comp);
             const auto *asset = geometry ? geometry->GetPrimitiveAsset() : nullptr;
             if (!asset)
                 return true;
@@ -267,7 +243,7 @@ namespace hgl::ecs
             if (!material)
             {
                 GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed: material program null owner=%s valid=%d program_dirty=%d runtime_dirty=%d",
-                          GetPrimitiveOwnerName(primitive_comp),
+                          GetOwnerName(primitive_comp),
                           slot.valid ? 1 : 0,
                           slot.program_dirty ? 1 : 0,
                           slot.runtime_dirty ? 1 : 0);
@@ -282,7 +258,7 @@ namespace hgl::ecs
             return req.global_ssbo_type;
         }
 
-        bool BuildResolvedRecipe(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+        bool BuildResolvedRecipe(Entity *primitive_comp,
                                  const graph::ShaderProgram *material_program,
                                  graph::mtl::MaterialRecipe &out_recipe)
         {
@@ -296,7 +272,7 @@ namespace hgl::ecs
 
             // asset 里的默认配方是基底，数据层里的配方覆盖是覆盖源（配方来源 = 实体的
             // GeometryData 组件；A5a 起由几何组件持有 asset）。
-            const GeometryData *geometry = FindGeometryOf(primitive_comp.get());
+            const GeometryData *geometry = FindGeometryOf(primitive_comp);
 
             return material_data->BuildResolvedRecipe(out_recipe,
                                                       material_program,
@@ -306,14 +282,14 @@ namespace hgl::ecs
         // program 解析（forward 与 ShadowCaster 双槽）共用的构建上下文输入：
         // primitive 类型与顶点格式来自 asset（无 asset 时 Triangles + 空格式）。
         void GetPrimitiveProgramBuildInputs(
-            const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+            Entity *primitive_comp,
             graph::PrimitiveType &out_primitive_type,
             const graph::GeometryVertexFormat *&out_geometry_vertex_format)
         {
             out_primitive_type = graph::PrimitiveType::Triangles;
             out_geometry_vertex_format = nullptr;
 
-            const GeometryData *geometry = FindGeometryOf(primitive_comp.get());
+            const GeometryData *geometry = FindGeometryOf(primitive_comp);
             if (const auto *asset = geometry ? geometry->GetPrimitiveAsset() : nullptr)
             {
                 if (auto *asset_geometry = asset->GetGeometry())
@@ -501,7 +477,7 @@ namespace hgl::ecs
 
         bool PrepareActivePlanResources(
             ECSContext *world,
-            const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+            Entity *primitive_comp,
             graph::ShaderProgram *material_program,
             const graph::mtl::MaterialRecipe &active_recipe)
         {
@@ -514,7 +490,7 @@ namespace hgl::ecs
                     active_recipe,
                     material_program,
                     definition,
-                    GetPrimitiveOwnerName(primitive_comp)))
+                    GetOwnerName(primitive_comp)))
                 return false;
 
             auto rdbs = world->GetSystem<RenderSceneUBOSystem>();
@@ -530,7 +506,7 @@ namespace hgl::ecs
                 return false;
 
             const char *owner_name =
-                GetPrimitiveOwnerName(primitive_comp);
+                GetOwnerName(primitive_comp);
             const MaterialData *material_data =
                 EnsureMaterialDataOf(primitive_comp);
 
@@ -654,7 +630,7 @@ namespace hgl::ecs
     // recipe；物化行、纹理配置等 forward 槽状态一概不动——否则 purpose 每帧
     // Forward↔Shadow 乒乓会让 InvalidateRecipeRuntime 反复 retire 纹理配置，
     // 并禁用 P1-1 全干净帧快路径。
-    bool RenderPrimitiveCollectSystem::ResolveShadowCasterProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+    bool RenderPrimitiveCollectSystem::ResolveShadowCasterProgram(Entity *primitive_comp,
                                                                   MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -672,7 +648,7 @@ namespace hgl::ecs
         if (!ResolveGraphicsAndMaterialManager(world, graphics, material_manager))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ShadowCaster resolve failed: graphics/material manager null for %s",
-                        GetPrimitiveOwnerName(primitive_comp));
+                        GetOwnerName(primitive_comp));
             return false;
         }
 
@@ -721,7 +697,7 @@ namespace hgl::ecs
         if (!BuildResolvedRecipe(primitive_comp, nullptr, effective_recipe))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ShadowCaster BuildResolvedRecipe failed for %s",
-                        GetPrimitiveOwnerName(primitive_comp));
+                        GetOwnerName(primitive_comp));
             return false;
         }
 
@@ -738,7 +714,7 @@ namespace hgl::ecs
                     primitive_type,
                     geometry_vertex_format,
                     graphics->GetPhysicalDeviceProfile(),
-                    GetEffectiveForwardPurpose(*primitive_comp));
+                    GetEffectiveForwardPurpose(primitive_comp));
 
             AssignSlotRow(runtime_table, slot,
                           MaterialRuntimeKey{forward_build_context, recipe_hash,
@@ -752,7 +728,7 @@ namespace hgl::ecs
         if (shadow_variant == INVALID_MATERIAL_VARIANT_ID)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ShadowCaster variant unavailable/full for %s build_context=%llu recipe=%llu",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         (unsigned long long)build_context_hash,
                         (unsigned long long)recipe_hash);
             return false;
@@ -807,7 +783,7 @@ namespace hgl::ecs
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] ShadowCaster AcquireShaderProgram failed for %s recipe=%s mtl_def_id=%s",
-                GetPrimitiveOwnerName(primitive_comp),
+                GetOwnerName(primitive_comp),
                 effective_recipe.recipe_name.c_str(),
                 effective_recipe.mtl_def_id.c_str());
             return false;
@@ -825,7 +801,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderPrimitiveCollectSystem::ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+    bool RenderPrimitiveCollectSystem::ResolveMaterialProgramForPrimitive(Entity *primitive_comp,
                                                                           MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -842,7 +818,7 @@ namespace hgl::ecs
     // Forward 槽解析（主帧着色程序）。阴影 pass 中 masked caster 的行物化
     // 也会借道此处（见主循环 A1-4 分支）——纹理行是 per-primitive 共享
     // 状态，与 program 无关。
-    bool RenderPrimitiveCollectSystem::ResolveForwardProgram(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+    bool RenderPrimitiveCollectSystem::ResolveForwardProgram(Entity *primitive_comp,
                                                              MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -872,7 +848,7 @@ namespace hgl::ecs
         if (!BuildResolvedRecipe(primitive_comp, nullptr, effective_recipe))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] BuildResolvedRecipe failed for %s",
-                        GetPrimitiveOwnerName(primitive_comp));
+                        GetOwnerName(primitive_comp));
             return false;
         }
 
@@ -882,7 +858,7 @@ namespace hgl::ecs
         if (!ResolveGraphicsAndMaterialManager(world, graphics, material_manager))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: graphics/material manager null for %s",
-                        GetPrimitiveOwnerName(primitive_comp));
+                        GetOwnerName(primitive_comp));
             return false;
         }
 
@@ -894,7 +870,7 @@ namespace hgl::ecs
         // 渲染变体 purpose 必须先于脏检查解析——若 Forward↔Shadow 切换而
         // recipe/geometry/profile 不变，哈希不含 purpose 会复用错误的 program
         const graph::mtl::ShaderProgramPurpose effective_purpose =
-            GetEffectiveForwardPurpose(*primitive_comp);
+            GetEffectiveForwardPurpose(primitive_comp);
 
         const uint64_t build_context_hash =
             graph::mtl::HashMaterialProgramBuildContext(
@@ -919,7 +895,7 @@ namespace hgl::ecs
             // 即便 program 身份不变（例如仅 double_sided/cull 变化）也必须重建
             // 管线。原失效点在组件级配方设置里，A2 随
             // 配方覆盖迁到数据层后，改由这里在"配方内容确实变了"时触发。
-            primitive_comp->InvalidateResolvedRuntimePipeline();
+            world->InvalidateEntityRuntimePipeline(primitive_comp->GetEntityID());
         }
 
         if (!slot.program_dirty
@@ -981,7 +957,7 @@ namespace hgl::ecs
         if (!resolved_program)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] AcquireShaderProgram failed for %s recipe=%s mtl_def_id=%s",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str(),
                         effective_recipe.mtl_def_id.c_str());
             return false;
@@ -996,11 +972,11 @@ namespace hgl::ecs
                 material_binding_recipe,
                 resolved_program,
                 template_definition,
-                GetPrimitiveOwnerName(primitive_comp)))
+                GetOwnerName(primitive_comp)))
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Direct material recipe validation failed for %s",
-                GetPrimitiveOwnerName(primitive_comp));
+                GetOwnerName(primitive_comp));
             return false;
         }
 
@@ -1043,7 +1019,7 @@ namespace hgl::ecs
         if (forward_variant == INVALID_MATERIAL_VARIANT_ID)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] forward variant unavailable/full for %s build_context=%llu recipe=%llu",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         (unsigned long long)build_context_hash,
                         (unsigned long long)recipe_hash);
             return false;
@@ -1062,7 +1038,7 @@ namespace hgl::ecs
         if (row_id == INVALID_MATERIAL_RUNTIME_ROW_ID)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] runtime row unavailable/full for %s build_context=%llu recipe=%llu data_index=%u",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         (unsigned long long)runtime_key.program_build_context,
                         (unsigned long long)runtime_key.recipe_hash,
                         runtime_key.data_index_row);
@@ -1084,7 +1060,7 @@ namespace hgl::ecs
                     ? 1u : 0u;
             GLogVerbose(
                 "[DeferredResource] owner=%s program=%s planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu",
-                GetPrimitiveOwnerName(primitive_comp),
+                GetOwnerName(primitive_comp),
                 resolved_program->GetName().c_str(),
                 planned_textures,
                 planned_data,
@@ -1110,7 +1086,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+    bool RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive(Entity *primitive_comp,
                                                                           MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1121,17 +1097,14 @@ namespace hgl::ecs
         if (!row)
             return false;
 
-        // A1：阴影 pass 用 ShadowCaster 槽的 program/recipe。管线按 render_pass
-        // 键控缓存在 PrimitiveComponent 上，两槽各自对应不同 RenderPass，互不
-        // 驱逐。
+        // A1：阴影 pass 用 ShadowCaster 槽的 program/recipe。运行期管线按 render_pass
+        // 键控缓存在**每实例 slot** 上（A5b：渲染组件已删），两槽各自对应不同
+        // RenderPass，互不驱逐。
         const bool shadow_pass = world->IsCurrentPassShadow();
         graph::ShaderProgram *program = GetCurrentPassProgram(
             GetVariantTable(world), row, shadow_pass);
         if (!program)
             return false;
-
-        if (primitive_comp->GetOverridePipeline())
-            return true;
 
         // 当前渲染目标唯一权威：world->GetRenderTarget()（RenderContext 副本已删除；
         // RenderTo 切 RT 时会同步本世界的 render_target 指针）
@@ -1143,8 +1116,8 @@ namespace hgl::ecs
         // 每个 RenderPass 各自有解析好的管线（跨 RT 不互相驱逐）；
         // 复用校验含 program 身份——shader 更新（新 program 对象）时重建，
         // 防止旧 program 的 pipeline 被无限复用（masked 阴影失效根因）。
-        if (primitive_comp->HasResolvedRuntimePipeline(render_pass, program))
-            return true;
+        // A5b：不在组件/slot 上另做 program 身份缓存（D2：指针身份会因对象地址复用误判）——
+        // 管线复用交给 RenderPass::CreatePipeline 内部（按 shader 内容 hash 键控）。
 
         // ShadowCaster 无绑定 recipe，直接用解析槽里缓存的 normalized
         // recipe；forward 保持 effective/normalized 复用逻辑。
@@ -1163,16 +1136,17 @@ namespace hgl::ecs
         if (!resolved_pipeline)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipeline failed: CreatePipeline failed for %s material=%s",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         program->GetName().c_str());
             return false;
         }
 
-        primitive_comp->SetResolvedRuntimePipeline(render_pass, resolved_pipeline, program);
+        slot.runtime_pipeline_pass = render_pass;
+        slot.runtime_pipeline      = resolved_pipeline;
         return true;
     }
 
-    bool RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+    bool RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive(Entity *primitive_comp,
                                                                          MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1208,7 +1182,7 @@ namespace hgl::ecs
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Materialize failed: effective material recipe is not cached for %s",
-                GetPrimitiveOwnerName(primitive_comp));
+                GetOwnerName(primitive_comp));
             return false;
         }
 
@@ -1231,7 +1205,7 @@ namespace hgl::ecs
                     != ResolveMaterialSSBORequirementType(req))
             {
                 GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s type=%s",
-                            GetPrimitiveOwnerName(primitive_comp),
+                            GetOwnerName(primitive_comp),
                             req.name.empty() ? "<unnamed>" : req.name.c_str(),
                             graph::GetGlobalSSBOTypeName(
                                 ResolveMaterialSSBORequirementType(req)));
@@ -1243,7 +1217,7 @@ namespace hgl::ecs
         if (!rdbs)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: RenderSceneUBOSystem missing for %s",
-                        GetPrimitiveOwnerName(primitive_comp));
+                        GetOwnerName(primitive_comp));
             return false;
         }
 
@@ -1285,7 +1259,7 @@ namespace hgl::ecs
                 {
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer missing for %s type=%s ssbo_id=%u",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         graph::GetGlobalSSBOTypeName(
                             asset_binding.ssbo_type),
                         asset_binding.ssbo_id);
@@ -1297,7 +1271,7 @@ namespace hgl::ecs
                 {
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: inactive material row ID for %s type=%s ssbo_id=%u data_index=%u",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         graph::GetGlobalSSBOTypeName(
                             asset_binding.ssbo_type),
                         asset_binding.ssbo_id,
@@ -1313,7 +1287,7 @@ namespace hgl::ecs
                 {
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer invalid for %s type=%s buffer_type=%s ssbo_id=%u data_index=%u capacity=%u row_bytes=%u",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         graph::GetGlobalSSBOTypeName(
                             asset_binding.ssbo_type),
                         graph::GetGlobalSSBOTypeName(
@@ -1374,7 +1348,7 @@ namespace hgl::ecs
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Materialize failed: texture definition lookup/layout failed for %s definition=%s",
-                GetPrimitiveOwnerName(primitive_comp),
+                GetOwnerName(primitive_comp),
                 effective_recipe.mtl_def_id.empty()
                     ? "<empty>" : effective_recipe.mtl_def_id.c_str());
             return false;
@@ -1417,7 +1391,7 @@ namespace hgl::ecs
                     {
                         GLogError(
                             "[RenderPrimitiveCollectSystem] Required texture binding missing: owner=%s texture=%s",
-                            GetPrimitiveOwnerName(primitive_comp),
+                            GetOwnerName(primitive_comp),
                             declaration.name.c_str());
                         return false;
                     }
@@ -1430,7 +1404,7 @@ namespace hgl::ecs
                 {
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Non-array texture received array layer: owner=%s texture=%s layer=%u",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         declaration.name.c_str(),
                         recipe_binding->array_layer);
                     return false;
@@ -1466,7 +1440,7 @@ namespace hgl::ecs
                 {
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Required texture handle missing: owner=%s texture=%s resource=%s",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         declaration.name.c_str(),
                         recipe_binding->resource_id.empty()
                             ? "<direct/empty>"
@@ -1494,7 +1468,7 @@ namespace hgl::ecs
             {
                 GLogError(
                     "[RenderPrimitiveCollectSystem] Materialize failed: SSBO registry missing for texture references owner=%s",
-                    GetPrimitiveOwnerName(primitive_comp));
+                    GetOwnerName(primitive_comp));
                 return false;
             }
 
@@ -1528,7 +1502,7 @@ namespace hgl::ecs
                 {
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration capacity exhausted owner=%s definition=%s",
-                        GetPrimitiveOwnerName(primitive_comp),
+                        GetOwnerName(primitive_comp),
                         effective_recipe.mtl_def_id.c_str());
                     return false;
                 }
@@ -1546,7 +1520,7 @@ namespace hgl::ecs
                         retire_epoch);
                 GLogError(
                     "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration write failed owner=%s",
-                    GetPrimitiveOwnerName(primitive_comp));
+                    GetOwnerName(primitive_comp));
                 return false;
             }
 
@@ -1569,7 +1543,7 @@ namespace hgl::ecs
             {
                 GLogError(
                     "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration zero row unavailable owner=%s",
-                    GetPrimitiveOwnerName(primitive_comp));
+                    GetOwnerName(primitive_comp));
                 return false;
             }
             row->material_texture_configuration_hash =
@@ -1579,7 +1553,7 @@ namespace hgl::ecs
             //{
             //    GLogInfo(
             //        "[MaterialTextureReferences] owner=%s definition=%s row=%u references=%u gpu=0x%llx",
-            //        GetPrimitiveOwnerName(primitive_comp),
+            //        GetOwnerName(primitive_comp),
             //        texture_definition.definition_id.c_str(),
             //        new_allocation.row_index,
             //        texture_layout.reference_count,
@@ -1625,7 +1599,7 @@ namespace hgl::ecs
     bool RenderPrimitiveCollectSystem::AdvanceShadowRetry(
         MaterialRuntimeSlot &slot,
         const char *reason,
-        const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        Entity *primitive_comp)
     {
         // A4：计数归**每实例 slot**（该实例在阴影 pass 上的连续跳过帧数）。
         // A3 曾把它记在共享变体记录上——同键的健康兄弟每帧复位，会持续清零失败者的
@@ -1641,7 +1615,7 @@ namespace hgl::ecs
             return false;
 
         const uint32_t retries = ++slot.shadow_retry_frames;
-        const char *const name = GetPrimitiveOwnerName(primitive_comp);
+        const char *const name = GetOwnerName(primitive_comp);
 
         if (retries == 1)
         {
@@ -1680,8 +1654,8 @@ namespace hgl::ecs
 
         const int active_mobility_filter = world ? world->GetActiveMobilityFilter() : -1;
 
-        std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
-        world->GetComponents<PrimitiveComponent>(primitives);
+        std::vector<std::shared_ptr<GeometryData>> primitives;
+        world->GetComponents<GeometryData>(primitives);
 
         // A4：材质运行期表（世界私有）——共享行 = 可共享的材质绑定；slot = 每实例状态。
         MaterialRuntimeTable *runtime_table = world->GetMaterialRuntimeTable();
@@ -1707,9 +1681,9 @@ namespace hgl::ecs
         bool any_material_work = false;
         bool any_possible_runtime_rows_visible = false;
 
-        for (const auto& primitiveComp : primitives)
+        for (const auto& geometryComp : primitives)
         {
-            if (!primitiveComp)
+            if (!geometryComp)
                 continue;
 
 #if ULRE_STRATEGY_PARITY_ENABLED
@@ -1719,8 +1693,8 @@ namespace hgl::ecs
             //   :1362-1379 阴影 pass 分支（CanCastShadow + 距离裁剪）
             // 注：mobility 过滤是世界级过滤器，本表不建模（两侧一致排除）。
             {
-                const EntityID parity_entity_id = primitiveComp->GetOwnerID();
-                Entity *parity_owner = primitiveComp->GetOwner();
+                const EntityID parity_entity_id = geometryComp->GetOwnerID();
+                Entity *parity_owner = geometryComp->GetOwner();
 
                 const bool parity_shadow_pass = (world && world->IsCurrentPassShadow());
 
@@ -1728,7 +1702,7 @@ namespace hgl::ecs
 
                 if (parity_shadow_pass)
                 {
-                    const float parity_max_dist = primitiveComp->GetShadowMaxDistance();
+                    const float parity_max_dist = GetShadowMaxDistance(geometryComp->GetOwner());
 
                     if (parity_max_dist > 0.0f && world->HasShadowOrigin())
                     {
@@ -1745,10 +1719,10 @@ namespace hgl::ecs
                 StrategyFacts parity_facts;
                 parity_facts.entity_visible      = world->IsEntityVisible(parity_entity_id);
                 parity_facts.has_owner           = (parity_owner != nullptr);
-                parity_facts.renderable          = primitiveComp->CanRender();
-                parity_facts.has_material_source = HasAnyMaterialSource(primitiveComp);
-                parity_facts.cast_shadow         = primitiveComp->CanCastShadow();
-                parity_facts.receive_shadow      = primitiveComp->CanReceiveShadow();
+                parity_facts.renderable          = CanRender(geometryComp->GetOwner());
+                parity_facts.has_material_source = HasAnyMaterialSource(geometryComp->GetOwner());
+                parity_facts.cast_shadow         = CanCastShadow(geometryComp->GetOwner());
+                parity_facts.receive_shadow      = CanReceiveShadow(geometryComp->GetOwner());
                 parity_facts.shadow_pass         = parity_shadow_pass;
                 parity_facts.in_shadow_range     = parity_in_shadow_range;
 
@@ -1757,32 +1731,32 @@ namespace hgl::ecs
 
                 const bool parity_existing =
                        world->IsEntityVisible(parity_entity_id)
-                    && primitiveComp->CanRender()
+                    && CanRender(geometryComp->GetOwner())
                     && (parity_owner != nullptr)
-                    && HasAnyMaterialSource(primitiveComp)
+                    && HasAnyMaterialSource(geometryComp->GetOwner())
                     && (!parity_shadow_pass
-                        || (primitiveComp->CanCastShadow() && parity_in_shadow_range));
+                        || (CanCastShadow(geometryComp->GetOwner()) && parity_in_shadow_range));
 
                 ParityCheckCollect(HasRenderNeed(parity_needs,RenderNeed::CollectForCurrentPass),
                                    parity_existing,
                                    "RenderPrimitiveCollectSystem");
 
                 ParityCheckShadowCaster(HasRenderNeed(parity_needs,RenderNeed::ShadowCaster),
-                                        primitiveComp->CanCastShadow(),
+                                        CanCastShadow(geometryComp->GetOwner()),
                                         "RenderPrimitiveCollectSystem");
             }
 #endif
 
-            if (!primitiveComp->CanRender())
+            if (!CanRender(geometryComp->GetOwner()))
                 continue;
 
-            const EntityID entity_id = primitiveComp->GetOwnerID();
+            const EntityID entity_id = geometryComp->GetOwnerID();
 
             // 可见性真值只在实体级（组件级 visible 已删）
             if (!world->IsEntityVisible(entity_id))
                 continue;
 
-            Entity* entity = primitiveComp->GetOwner();
+            Entity* entity = geometryComp->GetOwner();
             if (!entity)
                 continue;
 
@@ -1795,10 +1769,10 @@ namespace hgl::ecs
 
             if (world && world->IsCurrentPassShadow())
             {
-                if (!primitiveComp->CanCastShadow())
+                if (!CanCastShadow(geometryComp->GetOwner()))
                     continue;
 
-                const float max_dist = primitiveComp->GetShadowMaxDistance();
+                const float max_dist = GetShadowMaxDistance(geometryComp->GetOwner());
                 if (max_dist > 0.0f && world->HasShadowOrigin())
                 {
                     TransformAccessor transform = world->GetTransformByEntity(entity->GetEntityID());
@@ -1812,7 +1786,7 @@ namespace hgl::ecs
                 }
             }
 
-            if (!HasAnyMaterialSource(primitiveComp))
+            if (!HasAnyMaterialSource(geometryComp->GetOwner()))
                 continue;
 
             // A4：材质运行期状态 = **每实例 slot**（世界表里按实体稀疏存放）+
@@ -1842,7 +1816,7 @@ namespace hgl::ecs
                    !material_slot.program_dirty
                 && forward_program
                 && material_slot.tracked_material_data_generation
-                   == MaterialAuthoredGenerationOf(primitiveComp)
+                   == MaterialAuthoredGenerationOf(geometryComp->GetOwner())
                 && material_row
                 && material_row->cached_effective_recipe_hash != 0;
 
@@ -1880,9 +1854,9 @@ namespace hgl::ecs
 
         const glm::vec3 camera_pos = glm::vec3(cameraInfo->pos);
 
-        for (const auto& primitiveComp : primitives)
+        for (const auto& geometryComp : primitives)
         {
-            if (!primitiveComp)
+            if (!geometryComp)
                 continue;
 
 #if ULRE_STRATEGY_PARITY_ENABLED
@@ -1892,8 +1866,8 @@ namespace hgl::ecs
             //   :1362-1379 阴影 pass 分支（CanCastShadow + 距离裁剪）
             // 注：mobility 过滤是世界级过滤器，本表不建模（两侧一致排除）。
             {
-                const EntityID parity_entity_id = primitiveComp->GetOwnerID();
-                Entity *parity_owner = primitiveComp->GetOwner();
+                const EntityID parity_entity_id = geometryComp->GetOwnerID();
+                Entity *parity_owner = geometryComp->GetOwner();
 
                 const bool parity_shadow_pass = (world && world->IsCurrentPassShadow());
 
@@ -1901,7 +1875,7 @@ namespace hgl::ecs
 
                 if (parity_shadow_pass)
                 {
-                    const float parity_max_dist = primitiveComp->GetShadowMaxDistance();
+                    const float parity_max_dist = GetShadowMaxDistance(geometryComp->GetOwner());
 
                     if (parity_max_dist > 0.0f && world->HasShadowOrigin())
                     {
@@ -1918,10 +1892,10 @@ namespace hgl::ecs
                 StrategyFacts parity_facts;
                 parity_facts.entity_visible      = world->IsEntityVisible(parity_entity_id);
                 parity_facts.has_owner           = (parity_owner != nullptr);
-                parity_facts.renderable          = primitiveComp->CanRender();
-                parity_facts.has_material_source = HasAnyMaterialSource(primitiveComp);
-                parity_facts.cast_shadow         = primitiveComp->CanCastShadow();
-                parity_facts.receive_shadow      = primitiveComp->CanReceiveShadow();
+                parity_facts.renderable          = CanRender(geometryComp->GetOwner());
+                parity_facts.has_material_source = HasAnyMaterialSource(geometryComp->GetOwner());
+                parity_facts.cast_shadow         = CanCastShadow(geometryComp->GetOwner());
+                parity_facts.receive_shadow      = CanReceiveShadow(geometryComp->GetOwner());
                 parity_facts.shadow_pass         = parity_shadow_pass;
                 parity_facts.in_shadow_range     = parity_in_shadow_range;
 
@@ -1930,28 +1904,28 @@ namespace hgl::ecs
 
                 const bool parity_existing =
                        world->IsEntityVisible(parity_entity_id)
-                    && primitiveComp->CanRender()
+                    && CanRender(geometryComp->GetOwner())
                     && (parity_owner != nullptr)
-                    && HasAnyMaterialSource(primitiveComp)
+                    && HasAnyMaterialSource(geometryComp->GetOwner())
                     && (!parity_shadow_pass
-                        || (primitiveComp->CanCastShadow() && parity_in_shadow_range));
+                        || (CanCastShadow(geometryComp->GetOwner()) && parity_in_shadow_range));
 
                 ParityCheckCollect(HasRenderNeed(parity_needs,RenderNeed::CollectForCurrentPass),
                                    parity_existing,
                                    "RenderPrimitiveCollectSystem");
 
                 ParityCheckShadowCaster(HasRenderNeed(parity_needs,RenderNeed::ShadowCaster),
-                                        primitiveComp->CanCastShadow(),
+                                        CanCastShadow(geometryComp->GetOwner()),
                                         "RenderPrimitiveCollectSystem");
             }
 #endif
 
-            if (!primitiveComp->CanRender())
+            if (!CanRender(geometryComp->GetOwner()))
             {
                 continue;
             }
 
-            EntityID entity_id = primitiveComp->GetOwnerID();
+            EntityID entity_id = geometryComp->GetOwnerID();
 
             // 可见性真值只在实体级（组件级 visible 已删）：O(1) 直查 + 祖先链
             if (!world->IsEntityVisible(entity_id))
@@ -1960,7 +1934,7 @@ namespace hgl::ecs
                 continue;
             }
 
-            Entity* entity = primitiveComp->GetOwner();
+            Entity* entity = geometryComp->GetOwner();
             if (!entity)
             {
                 ++skipped_no_owner;
@@ -1982,12 +1956,12 @@ namespace hgl::ecs
 
             if (world && world->IsCurrentPassShadow())
             {
-                if (!primitiveComp->CanCastShadow())
+                if (!CanCastShadow(geometryComp->GetOwner()))
                 {
                     continue;
                 }
 
-                const float max_dist = primitiveComp->GetShadowMaxDistance();
+                const float max_dist = GetShadowMaxDistance(geometryComp->GetOwner());
                 if (max_dist > 0.0f && world->HasShadowOrigin())
                 {
                     const glm::vec3 world_pos = transform.GetWorldPosition();
@@ -2002,10 +1976,10 @@ namespace hgl::ecs
             // A4：本实例的材质运行期 slot（有材质来源时才有；供后面的 4-ID 同步与 D9 复位用）
             MaterialRuntimeSlot *material_slot_ptr = nullptr;
 
-            if (!HasAnyMaterialSource(primitiveComp))
+            if (!HasAnyMaterialSource(geometryComp->GetOwner()))
             {
                 GLogWarning("[RenderPrimitiveCollectSystem] Skip primitive without recipe: %s",
-                            primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
+                            geometryComp->GetOwner() ? geometryComp->GetOwner()->GetName().c_str() : "<no-owner>");
             }
             else
             {
@@ -2014,7 +1988,7 @@ namespace hgl::ecs
                     world->GetOrCreateMaterialRuntimeSlot(entity->GetEntityID());
                 material_slot_ptr = &material_slot;
 
-                if (!ResolveMaterialProgramForPrimitive(primitiveComp, material_slot))
+                if (!ResolveMaterialProgramForPrimitive(geometryComp->GetOwner(), material_slot))
                 {
                     if (world->IsCurrentPassShadow())
                     {
@@ -2037,14 +2011,14 @@ namespace hgl::ecs
                         // 输出一条（每 episode），不再外面逐帧刷屏。
                         if (AdvanceShadowRetry(material_slot,
                                                "shadow caster program resolve failed",
-                                               primitiveComp))
+                                               geometryComp->GetOwner()))
                             world->BumpStaticSceneRevision();
                     }
                     else
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] ResolveMaterialProgramForPrimitive failed for %s",
-                            GetPrimitiveOwnerName(primitiveComp));
+                            GetOwnerName(geometryComp->GetOwner()));
                         // A4：行键不变（解析没走到算键处）⇒ 就地把本行物化绑定作废 + 退 program。
                         InvalidateRecipeRuntime(world, material_slot, true, true);
                         material_slot.valid = false;        // 等价于 MarkFailed()
@@ -2084,13 +2058,13 @@ namespace hgl::ecs
                         if (AdvanceShadowRetry(
                                 material_slot,
                                 "masked caster runtime rows not ready (forward chain has not materialized them)",
-                                primitiveComp))
+                                geometryComp->GetOwner()))
                             world->BumpStaticSceneRevision();
                         continue; // 本帧深度图不含它；下帧行就绪后重画
                     }
 
                     if (!EnsureRuntimeGeometryFromAsset(
-                            world, primitiveComp, material_slot, shadow_row))
+                            world, geometryComp->GetOwner(), material_slot, shadow_row))
                     {
                         if (shadow_row)
                             ClearVariantProgram(GetVariantTable(world),
@@ -2098,11 +2072,11 @@ namespace hgl::ecs
                         // D9：告警与 bump 都经统一收敛入口（不再逐帧刷屏）
                         if (AdvanceShadowRetry(material_slot,
                                                "shadow pass geometry failed",
-                                               primitiveComp))
+                                               geometryComp->GetOwner()))
                             world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                     else if (!ResolveRuntimePipelineForPrimitive(
-                                 primitiveComp, material_slot))
+                                 geometryComp->GetOwner(), material_slot))
                     {
                         if (shadow_row)
                             ClearVariantProgram(GetVariantTable(world),
@@ -2110,7 +2084,7 @@ namespace hgl::ecs
                         // D9：同上
                         if (AdvanceShadowRetry(material_slot,
                                                "shadow pass pipeline failed",
-                                               primitiveComp))
+                                               geometryComp->GetOwner()))
                             world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                 }
@@ -2129,12 +2103,12 @@ namespace hgl::ecs
                     // full chain.
                     const bool chain_ok =
                         ResolveMaterialProgramForPrimitive(
-                            primitiveComp, material_slot)
+                            geometryComp->GetOwner(), material_slot)
                      && EnsureRuntimeGeometryFromAsset(
-                            world, primitiveComp, material_slot,
+                            world, geometryComp->GetOwner(), material_slot,
                             runtime_table ? runtime_table->Get(material_slot.row) : nullptr)
                      && ResolveRuntimePipelineForPrimitive(
-                            primitiveComp, material_slot);
+                            geometryComp->GetOwner(), material_slot);
                     if (chain_ok)
                         material_slot.valid = true;     // 等价于 MarkValid()
                     else
@@ -2152,7 +2126,7 @@ namespace hgl::ecs
                     const bool resources_ready =
                         PrepareActivePlanResources(
                             world,
-                            primitiveComp,
+                            geometryComp->GetOwner(),
                             forward_program,
                             forward_row
                                 ? forward_row->cached_effective_recipe
@@ -2161,7 +2135,7 @@ namespace hgl::ecs
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] Material resources failed for %s program=%s",
-                            GetPrimitiveOwnerName(primitiveComp),
+                            GetOwnerName(geometryComp->GetOwner()),
                             forward_program
                                 ? forward_program->
                                     GetName().c_str()
@@ -2170,11 +2144,11 @@ namespace hgl::ecs
                         material_slot.valid = false;
                     }
                     else if (!MaterializeRecipeRowsForPrimitive(
-                                primitiveComp, material_slot))
+                                geometryComp->GetOwner(), material_slot))
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] MaterializeRecipeRowsForPrimitive failed for %s program=%s",
-                            GetPrimitiveOwnerName(primitiveComp),
+                            GetOwnerName(geometryComp->GetOwner()),
                             forward_program
                                 ? forward_program->
                                     GetName().c_str()
@@ -2183,20 +2157,20 @@ namespace hgl::ecs
                         material_slot.valid = false;
                     }
                     else if (!EnsureRuntimeGeometryFromAsset(
-                                world, primitiveComp, material_slot,
+                                world, geometryComp->GetOwner(), material_slot,
                                 runtime_table ? runtime_table->Get(material_slot.row) : nullptr))
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed for %s",
-                            GetPrimitiveOwnerName(primitiveComp));
+                            GetOwnerName(geometryComp->GetOwner()));
                         material_slot.valid = false;
                     }
                     else if (!ResolveRuntimePipelineForPrimitive(
-                                primitiveComp, material_slot))
+                                geometryComp->GetOwner(), material_slot))
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] ResolveRuntimePipelineForPrimitive failed for %s",
-                            GetPrimitiveOwnerName(primitiveComp));
+                            GetOwnerName(geometryComp->GetOwner()));
                         material_slot.valid = false;
                     }
                     else
@@ -2204,7 +2178,7 @@ namespace hgl::ecs
                         material_slot.valid = true;     // 等价于 MarkValid()
                         GLogVerbose(
                             "[DeferredResource] owner=%s valid=%d",
-                            GetPrimitiveOwnerName(primitiveComp),
+                            GetOwnerName(geometryComp->GetOwner()),
                             material_slot.valid ? 1 : 0);
                     }
                 }
@@ -2216,10 +2190,10 @@ namespace hgl::ecs
                 ? runtime_table->Get(material_slot_ptr->row)
                 : nullptr;
 
-            // ── 同步 4-ID 描述符至 PrimitiveComponent 与 RenderItemDataStorage ──
+            // ── 同步 4-ID 描述符至 RenderItemDataStorage（句柄存每实例 slot）──
             const uint32_t transform_id = transform.GetID();
             uint32_t geometry_id = 0;
-            GeometryData *geometry_comp = FindGeometryOf(primitiveComp.get());
+            GeometryData *geometry_comp = geometryComp.get();
             const auto *geom_buf = geometry_comp ? geometry_comp->GetRuntimeGeometryDataBuffer() : nullptr;
             if (geom_buf)
             {
@@ -2255,25 +2229,36 @@ namespace hgl::ecs
 
             std::unique_ptr<PrimitiveRenderItem> item;
 
-            if (auto instancedComp = std::dynamic_pointer_cast<InstancedPrimitiveComponent>(primitiveComp))
-            {
-                if (instancedComp->GetAllocatedInstanceCapacity() > 1)
-                {
-                    instancedComp->SetAllInstances4ID(transform_id, geometry_id, material_id, texture_id, false);
-                }
-                else
-                {
-                    primitiveComp->Set4ID(transform_id, geometry_id, material_id, texture_id);
-                }
+            // A5b：多实例与否按**每实例 slot** 判定（原图元多实例组件已删）：
+            // 分配过连续槽位 / GPU 驱动 / 间接 = 多实例绑定。
+            const MaterialRuntimeSlot *render_slot = runtime_table
+                ? runtime_table->GetSlot(entity_id)
+                : nullptr;
+            const bool is_instanced = render_slot
+                && (render_slot->allocated_instance_capacity > 0
+                 || render_slot->is_gpu_driven
+                 || render_slot->is_indirect);
 
-                item = std::make_unique<InstancedPrimitiveRenderItem>(
-                    entity_id, transform, instancedComp, material_row_id, world);
+            if (is_instanced && render_slot->allocated_instance_capacity > 1)
+            {
+                SetAllInstances4ID(*world, entity_id, transform_id, geometry_id,
+                                   material_id, texture_id, false);
             }
             else
             {
-                primitiveComp->Set4ID(transform_id, geometry_id, material_id, texture_id);
+                SetRenderItem4ID(*world, entity_id, transform_id, geometry_id,
+                                 material_id, texture_id);
+            }
+
+            if (is_instanced)
+            {
+                item = std::make_unique<InstancedPrimitiveRenderItem>(
+                    entity_id, transform, material_row_id, world);
+            }
+            else
+            {
                 item = std::make_unique<PrimitiveRenderItem>(
-                    entity_id, transform, primitiveComp, material_row_id, world);
+                    entity_id, transform, material_row_id, world);
             }
 
             const glm::vec3 worldPos = transform.GetWorldPosition();

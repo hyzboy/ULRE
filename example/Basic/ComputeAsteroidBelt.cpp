@@ -35,9 +35,7 @@
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/InstancedPrimitiveComponent.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -592,7 +590,7 @@ private:
         planet_transform.SetLocalScale(glm::vec3(PLANET_RADIUS));
         planet_transform.SetMobility(Mobility::Static);
 
-        auto planet_prim = planet_entity->AddComponent<PrimitiveComponent>();
+        auto planet_prim = planet_entity->GetContext()->GetOrCreateGeometryData(planet_entity->GetEntityID());
         hgl::ecs::MaterialData *material_data_comp = planet_entity->GetContext()->GetOrCreateMaterialData(planet_entity->GetEntityID());
         planet_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(planet_prim->GetOwnerID())->SetPrimitiveAsset(&planet_asset);
         MaterialData::MaterialDataAuthoringResource p_res{};
@@ -614,22 +612,23 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f));
             transform.SetMobility(Mobility::Static);
 
-            auto prim = e->AddComponent<InstancedPrimitiveComponent>();
+            auto *prim = e->GetContext()->GetOrCreateGeometryData(e->GetEntityID());
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e->GetEntityID());
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&asteroid_assets[i]);
             MaterialData::MaterialDataAuthoringResource a_res{};
             a_res = asteroid_mtl_accessors[i].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(a_res);
-            prim->SetInstanceCount(INSTANCES_PER_GEOM);
-            prim->SetMaxInstances(INSTANCES_PER_GEOM);
-            prim->AllocateContiguousInstances(INSTANCES_PER_GEOM);
-            prim->SetAllInstances4ID(i * INSTANCES_PER_GEOM, geometry_ids[i], mineral_payload_indices[i], 0, true);
-            prim->SetL2WBuffer(world_matrices_buffer);
-            prim->SetL2WIndexBuffer(l2w_index_buffer);
-            prim->SetMeshDrawParamsBuffer(mesh_draw_params_buffer);
-            prim->SetMaterialDataRowsBuffer(material_data_rows_buffer);
-            prim->SetIndirectMeshTaskBuffer(indirect_cmds_buffer);
-            prim->SetGPUDriven(true);
+            const auto entity_id = e->GetEntityID();
+            hgl::ecs::SetInstanceCount(*ecs_context, entity_id, INSTANCES_PER_GEOM);
+            hgl::ecs::SetMaxInstances(*ecs_context, entity_id, INSTANCES_PER_GEOM);
+            hgl::ecs::AllocateContiguousInstances(*ecs_context, entity_id, INSTANCES_PER_GEOM);
+            hgl::ecs::SetAllInstances4ID(*ecs_context, entity_id, i * INSTANCES_PER_GEOM, geometry_ids[i], mineral_payload_indices[i], 0, true);
+            hgl::ecs::SetL2WBuffer(*ecs_context, entity_id, world_matrices_buffer);
+            hgl::ecs::SetL2WIndexBuffer(*ecs_context, entity_id, l2w_index_buffer);
+            hgl::ecs::SetMeshDrawParamsBuffer(*ecs_context, entity_id, mesh_draw_params_buffer);
+            hgl::ecs::SetMaterialDataRowsBuffer(*ecs_context, entity_id, material_data_rows_buffer);
+            hgl::ecs::SetIndirectMeshTaskBuffer(*ecs_context, entity_id, indirect_cmds_buffer);
+            hgl::ecs::SetGPUDriven(*ecs_context, entity_id, true);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 

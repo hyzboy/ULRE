@@ -17,7 +17,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -87,7 +86,7 @@ private:
     {
         hgl::ecs::Entity *entity = nullptr;
         hgl::ecs::TransformAccessor transform;
-        std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive_comp;
+        hgl::ecs::GeometryData *primitive_comp = nullptr;
     };
 
     std::vector<PrimitiveAsset>    scene_assets_;
@@ -191,7 +190,7 @@ private:
                 SceneEntity se;
                 se.entity       = ecs_context->CreateEntity<hgl::ecs::Entity>("SceneNode_" + std::to_string(entity_idx++));
                 se.transform    = ecs_context->GetTransform(ecs_context->CreateTransform(se.entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-                se.primitive_comp = se.entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+                se.primitive_comp = se.entity->GetContext()->GetOrCreateGeometryData(se.entity->GetEntityID());
                 hgl::ecs::MaterialData *material_data_comp = se.entity->GetContext()->GetOrCreateMaterialData(se.entity->GetEntityID());
 
                 // Use pre-computed world matrix for all nodes so child nodes

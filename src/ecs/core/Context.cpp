@@ -6,10 +6,10 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
-#include<hgl/ecs/components/RenderableComponent.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/ShadowProxy.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/components/GeometryData.h>
+#include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/RenderPipelineBase.h>
@@ -129,7 +129,8 @@ namespace hgl
             if (auto upload_system = GetSystem<RenderBufferUploadSystem>())
                 upload_system->SetDevice(gpu_device);
 
-            RegisterComponentQueryBase<PrimitiveComponent>();
+            // A5b：渲染组件删除后，图元枚举改按 GeometryData（精确类型）——
+            // 不再需要基类查询注册（原图元组件的基类查询注册已随该类删除）。
 
             // Ensure TransformSystem is registered and bound to this world
             {
@@ -1895,6 +1896,36 @@ namespace hgl
                 geometry = entity->AddComponent<GeometryData>();
 
             return geometry.get();
+        }
+
+        ShadowProxy* ECSContext::GetShadowProxy(EntityID owner)
+        {
+            Entity *entity = GetEntity(owner);
+
+            return entity
+                ? entity->GetComponent<ShadowProxy>().get()
+                : nullptr;
+        }
+
+        const ShadowProxy* ECSContext::GetShadowProxy(EntityID owner) const
+        {
+            const Entity *entity = GetEntity(owner);
+
+            return entity
+                ? entity->GetComponent<ShadowProxy>().get()
+                : nullptr;
+        }
+
+        void ECSContext::InvalidateEntityRuntimePipeline(EntityID owner)
+        {
+            if (!material_runtime_table)
+                return;
+
+            if (MaterialRuntimeSlot *slot = material_runtime_table->GetSlot(owner))
+            {
+                slot->runtime_pipeline_pass = nullptr;
+                slot->runtime_pipeline      = nullptr;
+            }
         }
 
         void ECSContext::DestroyBoundingBox(BoundingBoxDataStorage::HandleID id)

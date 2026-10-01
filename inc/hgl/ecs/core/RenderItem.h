@@ -27,9 +27,6 @@ namespace hgl
 
 namespace hgl::ecs
 {
-    // Forward declarations
-    class RenderableComponent;
-
     /**
      * Base RenderItem class - abstract interface for rendering
      * Similar to hgl::graph::DrawNode in the old system
@@ -50,7 +47,6 @@ namespace hgl::ecs
         virtual Entity* GetEntity() const = 0;
         /// 变换（薄句柄：存储行 + 世界）——T8 起不再返回组件
         virtual TransformAccessor GetTransform() const = 0;
-        virtual std::shared_ptr<RenderableComponent> GetRenderable() const = 0;
         virtual glm::mat4 GetWorldMatrix() const = 0;
 
         // For material batching support

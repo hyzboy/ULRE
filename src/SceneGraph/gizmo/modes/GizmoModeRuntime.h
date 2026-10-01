@@ -9,7 +9,6 @@
 // 完整类型仅在实例化位置需要（`GizmoUnified.cpp`）。
 namespace hgl::ecs
 {
-    class PrimitiveComponent;
     class AssetInstanceComponent;
     class Entity;
 } // namespace hgl::ecs
@@ -20,7 +19,7 @@ namespace hgl::graph
     // （原为 `GizmoECS::AssetVisualPrimitive` — 已提取以便各 Mode 类可以拥有自己的列表。）
     struct GizmoVisualPrimitive
     {
-        std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive;
+        hgl::ecs::Entity*                            primitive    = nullptr;
         hgl::ecs::TransformAccessor                  transform;
         GizmoShape        shape         = GizmoShape::Sphere;
         GizmoColor        base_color    = GizmoColor::White;

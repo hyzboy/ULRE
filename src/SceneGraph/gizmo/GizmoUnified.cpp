@@ -20,7 +20,6 @@
 #include<hgl/ecs/core/Entity.h>
 
 #include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
