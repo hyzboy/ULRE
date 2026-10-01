@@ -101,8 +101,8 @@ namespace hgl
             bool warned_publish_without_slot = false;
 
             /// pass 级相机覆盖（RenderTo(request.camera) 期间非空）：
-            /// Update 只处理该相机并强制重算——共享 camera_data/camera_info
-            /// 反映它而非主相机；pass 结束由 RenderTo 恢复
+            /// Update 只处理该相机并强制重算（它的世界相机槽也从这条路径认领）；
+            /// pass 结束由 RenderTo → `RestoreMainCamera()` 恢复主相机
             CameraComponent* override_camera = nullptr;
 
         public:
@@ -112,7 +112,8 @@ namespace hgl
 
             void Update(float deltaTime) override;
 
-            /// 发布单个相机在**指定帧槽**的 CameraInfo 行（行号 = camera_id * 槽总数 + slot）。
+            /// 发布单个相机在**指定帧槽**的 CameraInfo 行（行号 = 槽号 × 帧槽总数 + 帧槽，
+            /// 槽号问世界：`ECSContext::GetCameraSlot(camera)`）。
             ///
             /// 为什么除了 PublishCameraRows 还需要本接口：阴影光源相机是**系统内建相机**
             /// （`EnvironmentSystem` 用 make_shared 创建，**不经 Entity/AddComponent 注册**）
@@ -145,14 +146,14 @@ namespace hgl
 
             const graph::ViewportInfo* GetViewportInfo() const { return viewport_info; }
 
-            /// 获取当前场景中激活的主相机组件
+            /// 获取当前场景中激活的主相机组件（= 三级解析结果，同时认领 0 号槽）
             CameraComponent *GetMainCameraComponent();
 
             /// 本 pass 生效相机：pass 覆盖相机（RenderTo(req.camera) 期间）优先，否则本世界主相机。
             /// 相机数据一律以**组件自己的** CameraInfo 为准（世界共享载体已退役）。
             CameraComponent* GetActiveCameraComponent();
 
-            /// 本 pass 生效相机的 CameraInfo（= 组件的 local_camera_info；无相机时为 nullptr）
+            /// 本 pass 生效相机的 CameraInfo（= 组件自己的 camera_info；无相机时为 nullptr）
             const graph::CameraInfo* GetActiveCameraInfo();
 
         private:
@@ -189,14 +190,11 @@ namespace hgl
             /// 让某相机认领 0 号槽（= 本世界默认相机），并记进世界（下一帧解析的第 ① 级）
             CameraComponent* ClaimDefaultCamera(const std::shared_ptr<CameraComponent>& camera);
 
-            /// 绑槽 / 绑数据载体与 viewport（**只在本帧 tick / pass 覆盖上下文调用**）。
-            /// `is_default` = 本 pass 的默认相机（拿 0 号槽）；
-            /// 其它相机（灯光 / 镜子 / 系统内建）从世界存储按需分配 1..15 槽。
+            /// 绑本相机的 viewport + **认领世界相机槽**（`ECSContext::EnsureCameraSlot`，
+            /// **只在本帧 tick / pass 覆盖上下文调用**）。
+            /// `is_default` = 本 pass 的默认相机（占 0 号槽）；
+            /// 其它相机（灯光 / 镜子 / 系统内建）从世界相机表按需分配 1..15 槽。
             void BindCameraResources(CameraComponent* camera, bool is_default = false);
-
-            /// 只认领 **世界相机槽**（不含 viewport / 数据载体绑定）——发布路径
-            /// （`PublishCameraRows`，离屏 pass 的设置阶段也会走）专用：那里绑 viewport 会污染主帧投影。
-            void EnsureCameraSlot(CameraComponent* camera, bool is_default = false);
 
             // === 数学辅助函数 / Math helper functions ===
 

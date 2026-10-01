@@ -52,7 +52,7 @@ namespace hgl::graph
     static_assert(kGlobalAddressesSlotStride % 16 == 0,
                   "槽步长必须 16B 对齐（buffer_reference_align=16 的取址要求）");
 
-    /// 相机行号 → 帧槽号：行号 = camera_id * 槽总数 + 槽（GlobalSSBOBufferRegistry::CameraRow）。
+    /// 相机行号 → 帧槽号：行号 = 槽号 * 槽总数 + 帧槽（CameraInfoStorage::CameraRow）。
     /// push pc_root 时用它把「本批次所属帧槽」翻成表地址。
     inline constexpr uint32_t GlobalAddressesSlotFromCameraRow(const uint32_t camera_row)
     {

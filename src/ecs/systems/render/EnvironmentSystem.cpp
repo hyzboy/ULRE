@@ -214,15 +214,15 @@ namespace hgl::ecs
             shadow_controller->SetCascadeTexture(c, cascade_handles[c], 0);
         }
 
-        // 光相机 = **世界相机存储里的一个槽 + 一个拥有者**（C3 通用机制）：槽由 `light_camera_slot`
-        // 这个 RAII guard 持有 —— Enable 申请、Disable / 本系统销毁时归还，不再手工 Acquire/Release。
-        // 槽耗尽（上限 16、不扩容）时 guard 报错且 invalid ⇒ 相机保持未分配（发布被跳过 + 一次性告警），
+        // 光相机 = **世界相机表里的一个槽 + 一个宿主**（槽账目的唯一真源 = `CameraInfoStorage`）：
+        // 槽由 `light_camera_slot` 这个 RAII guard 持有 —— 构造（Enable）申请、Disable / 本系统
+        // 销毁时 Reset 归还，不需要第二套记账、也不用手工 Acquire/Release。
+        // 槽耗尽（上限 16、不扩容）时 guard 报错且 invalid ⇒ 相机保持无槽（发布被跳过 + 一次性告警），
         // 而不是按越界行号写到别的世界去。
         light_camera = std::make_shared<CameraComponent>("AutoCSMLightCamera");
         light_camera->is_main_camera = false;
 
-        light_camera_slot = CameraSlotGuard(context, "AutoCSMLightCamera");
-        light_camera_slot.BindTo(light_camera.get());
+        light_camera_slot = CameraSlotGuard(context, light_camera, "AutoCSMLightCamera");
 
         // A3：以 Enable 时刻的 revision 为消费基线，避免启用后第一帧立即
         // 多做一次静态级联全量重建。
@@ -244,7 +244,7 @@ namespace hgl::ecs
 
         shadow_controller.reset();
 
-        // 归还光相机占的**本世界**相机槽（C3）：槽由 guard 持有 ⇒ Reset 即对称归还。
+        // 归还光相机占的**本世界**相机槽：槽由 guard 持有 ⇒ Reset 即对称归还（账目里那一条随之清空）。
         // 世界槽上限 16、超限报错不扩容：每次 Enable/Disable 泄漏一槽迟早把槽位顶满。
         light_camera_slot.Reset();
         light_camera.reset();

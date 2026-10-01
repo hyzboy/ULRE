@@ -166,10 +166,11 @@ namespace hgl
             // material_variant_table。原材质运行期组件已在本步删除（不留兼容层）。
             std::unique_ptr<MaterialRuntimeTable> material_runtime_table;
 
-            // 世界私有相机行存储：相机是**世界级观察者数据**（16 槽 × 帧槽数，0 号槽=本世界默认相机）
-            // 定稿见 doc/world-addresses-and-camera-model-plan.md §2。
-            /// 世界相机行存储（**shared_ptr**：槽拥有者（CameraSlotGuard / 相机组件的归还挂钩）持
-            /// 弱引用 —— 世界先销毁时它们的析构自动变 no-op，不会触碰已释放的存储）
+            // 世界私有**相机表**：相机是**世界级资源**（16 槽 × 帧槽数，0 号槽恒为本世界默认相机）。
+            // 行空间 + **槽账目（槽 → 宿主相机）** 都在这里，是"相机属于哪个世界 / 哪个槽"的唯一真源；
+            // 定稿见 doc/world-addresses-and-camera-model-plan.md §2（A6 起组件不再自持槽号）。
+            /// 相机表（**shared_ptr**：行池的持有者是世界；CameraSlotGuard 只持弱引用 ——
+            /// 世界先销毁时它的析构自动变 no-op，不会触碰已释放的行池）
             std::shared_ptr<CameraInfoStorage> camera_info_storage;
 
             // 世界地址表（WorldAddresses）：世界私有地址的 SSBO 表（HGL_FRAME_SLOT_TOTAL 槽 ×
@@ -211,11 +212,11 @@ namespace hgl
             bool env_profile_explicit = false;   ///< true ⇒ 用 `env_profile`；false ⇒ 跟随本世界 RT
             bool env_profile_owned = false;      ///< true ⇒ Shutdown 时 `Release()` 归还（本世界创建）
 
-            /// 本世界默认相机 = 0 号槽的拥有者（三级解析 `CameraSystem::SelectMainCamera()` 的落点）。
-            /// 用 weak_ptr 持有：相机可能是实体组件（注册表持有 shared_ptr），实体销毁后必须**自动失效**
-            /// （否则地址复用会让新相机"继承"默认相机身份）。常驻 fallback 相机由 `fallback_camera` 持有，
-            /// 它**不进 component_registry**（`CollectCameras()` 看不到它）。
-            std::weak_ptr<CameraComponent> default_camera;
+            /// 常驻 fallback 相机（三级解析第 ④ 级的产物）：世界内一个相机组件都没有时，渲染仍必须
+            /// 有一个相机。它由世界直接持有，且**不进 component_registry**（`CollectCameras()` 看不到它）。
+            /// 注意：它**占没占 0 号槽由相机表说了算**（`camera_info_storage` 的槽账目）。
+            /// （本世界默认相机 = 0 号槽的宿主，**不再**另存一份 weak_ptr：真值只有一份，相机销毁后
+            ///  弱引用自动失效，不会让地址复用者"继承"默认相机身份。）
             std::shared_ptr<CameraComponent> fallback_camera;
 
             // ---- A1 车道等待列表（per-frame，见 RenderOptions.h 的车道说明）----
@@ -404,11 +405,11 @@ namespace hgl
             hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return current_render_cmd; }
             void SetCurrentRenderCmd(hgl::graph::RenderCmdBuffer* cmd) { current_render_cmd = cmd; }
 
-            /// 获取与设置当前活跃相机 SSBO 行号（用于 PushConstants 索引多相机）
+            /// 本 pass 活跃相机的**槽号**（世界内；PushConstants 的 `camera_row` 由它算出行号）。
+            /// 只由本世界的 pass 设置路径（`RenderTo`）写 —— 不做公开 setter，避免出现第二个写者。
             uint32_t GetActiveCameraID() const { return active_camera_id; }
-            void SetActiveCameraID(uint32_t id) { active_camera_id = id; }
 
-            /// 当前相机的 CameraInfo 行号 = camera_id * HGL_FRAME_SLOT_TOTAL + 本帧数据槽。
+            /// 当前相机的 CameraInfo 行号 = 槽号 * HGL_FRAME_SLOT_TOTAL + 本帧数据槽。
             /// 着色器端 `pc_root.camera_row` 收到的就是这个行号（scene_ubo.glsl 的 cameras[] 下标），
             /// 因此离屏 pass 与主帧各自的相机数据落在不相交的行上。
             uint32_t GetActiveCameraRow() const;
@@ -430,12 +431,35 @@ namespace hgl
             graph::EnvProfileID CreateEnvProfile(const AnsiString &name,
                                                  const graph::EnvironmentInfo &init = {});
 
-            /// 本世界默认相机（0 号槽的拥有者）；尚未解析出相机 / 相机已销毁时为 nullptr
-            CameraComponent* GetDefaultCamera() const { return default_camera.lock().get(); }
-            void SetDefaultCamera(const std::shared_ptr<CameraComponent>& camera) { default_camera = camera; }
+            // ===== 相机（**世界级资源**：16 槽 × 帧槽，0 号槽恒为本世界默认相机）=====
+            //
+            // 「相机属于哪个世界 / 哪个槽」的**唯一真源 = 本世界的相机表**（`camera_info_storage`：
+            // 行空间 + 槽账目「槽 → 宿主相机」）。组件侧**不再**持有槽号 / 归还挂钩；需要槽号一律走
+            // 下面这组访问器。三级解析（0 号槽的默认相机 → 显式 `is_main_camera` → 最小 `EntityID`
+            // → `(0,0,0)` 常驻 fallback）见 `CameraSystem::SelectMainCamera`，落点即"谁是 0 号槽的宿主"。
+
+            /// 槽的宿主相机（0 号槽 = 本世界默认相机）；槽空闲 / 宿主已销毁 ⇒ nullptr
+            CameraComponent* GetCamera(uint32_t slot) const;
+
+            /// 本世界默认相机 = **0 号槽的宿主**；尚未解析出相机 / 相机已销毁时为 nullptr
+            CameraComponent* GetDefaultCamera() const;
+
+            /// 让某相机成为本世界默认相机（占 0 号槽）。0 号槽唯一 ⇒ 原宿主自动让位（无需显式释放）。
+            bool SetDefaultCamera(const std::shared_ptr<CameraComponent>& camera);
+
+            /// 相机在本世界相机表里的槽号（含 0 号槽）；不属于本世界 / 未认领 ⇒ `kInvalidSlot`
+            uint32_t GetCameraSlot(const CameraComponent* camera) const;
+
+            /// **幂等**认领槽：`is_default=true` ⇒ 占 0 号槽（原持普通槽则先交回；常驻 fallback 自动让位）；
+            /// 否则申请 1..15 的一个槽（槽耗尽 / 行池未就绪 ⇒ 报错并保持未认领 ⇒ 发布跳过 + 一次性告警）。
+            bool EnsureCameraSlot(CameraComponent* camera, bool is_default = false);
+
+            /// 归还相机占的槽（供拥有者显式归还：系统内建相机随系统状态开关）。
+            /// 实体相机**不需要**调用：槽按宿主弱引用计占用期，相机销毁即空出。
+            bool ReleaseCameraSlot(const CameraComponent* camera);
 
             /// 惰性创建**常驻** fallback 相机（位置 `(0,0,0)`、占 0 号槽）——
-            /// 三级解析的第 ③ 级：世界内一个相机组件都没有时，渲染仍必须有一个相机。
+            /// 三级解析的第 ④ 级：世界内一个相机组件都没有时，渲染仍必须有一个相机。
             /// 创建后一直存在（不按需销毁），且不是 Entity 组件（不进 component_registry）。
             CameraComponent* EnsureFallbackCamera();
 

@@ -286,7 +286,7 @@ namespace hgl::ecs
     const graph::CameraInfo* CameraSystem::GetActiveCameraInfo()
     {
         CameraComponent* camera = GetActiveCameraComponent();
-        return camera ? camera->camera_info : nullptr;
+        return camera ? &camera->camera_info : nullptr;
     }
 
     void CameraSystem::Update(float deltaTime)
@@ -501,63 +501,38 @@ namespace hgl::ecs
         if (!camera || !camera->matrix_dirty)
             return;
 
-        // 更新camera_data
-        if (camera->camera_data)
-        {
-            camera->camera_data->pos = camera->position;
-            camera->camera_data->viewDirection = camera->forward;
-            camera->camera_data->world_up = camera->world_up;
-            camera->camera_data->fovY = camera->fov;
-            camera->camera_data->znear = camera->near_plane;
-            camera->camera_data->zfar = camera->far_plane;
+        // 更新本相机的解算输入：`CameraComponent::camera_data` 是本相机**自己的**权威数据
+        // （A6 起不再有"可指向世界共享载体"的裸指针 ⇒ 没有可缺失的指针、也没有第二份真值）
+        camera->camera_data.pos = camera->position;
+        camera->camera_data.viewDirection = camera->forward;
+        camera->camera_data.world_up = camera->world_up;
+        camera->camera_data.fovY = camera->fov;
+        camera->camera_data.znear = camera->near_plane;
+        camera->camera_data.zfar = camera->far_plane;
 
-            // Camera-Relative Rendering: 同步 double 精度世界坐标
-            camera->camera_data->world_position_double = math::Vector3d(
-                static_cast<double>(camera->position.x),
-                static_cast<double>(camera->position.y),
-                static_cast<double>(camera->position.z));
-        }
+        // Camera-Relative Rendering: 同步 double 精度世界坐标
+        camera->camera_data.world_position_double = math::Vector3d(
+            static_cast<double>(camera->position.x),
+            static_cast<double>(camera->position.y),
+            static_cast<double>(camera->position.z));
 
         // 更新camera_info
-        if (camera->camera_info)
         {
             if (camera->custom_matrices)
             {
-                camera->camera_info->view               = camera->custom_view;
-                camera->camera_info->projection         = camera->custom_projection;
+                camera->camera_info.view               = camera->custom_view;
+                camera->camera_info.projection         = camera->custom_projection;
 
                 // 派生量与非矩阵字段一律委托给与主相机路径同一份实现，禁止在本分支
                 // 另写一份：view_line / camera_world_pos 是阴影级联选级的输入
                 // （ShaderLibrary/shadow/pcf_shadow.glsl EvalPCFShadow），
                 // camera_facing_* 是 billboard 的输入（orient_camera_facing.glsl），
                 // 两条路径曾各自实现而漂移。
-                graph::RefreshCameraInfoDerived(camera->camera_info);
+                graph::RefreshCameraInfoDerived(&camera->camera_info);
 
-                if (camera->camera_data)
-                {
-                    // camera_data 已在本函数开头上方由组件字段同步，是权威源
-                    // （含 use_reversed_z 引擎约定与 double 精度世界坐标）
-                    graph::RefreshCameraInfoCamera(camera->camera_info, camera->camera_data);
-                }
-                else
-                {
-                    // camera_data 缺失（组件异常）：用组件字段临时构造源数据
-                    graph::Camera fallback;
-
-                    fallback.pos               = camera->position;
-                    fallback.viewDirection     = camera->forward;
-                    fallback.world_up          = camera->world_up;
-                    fallback.znear             = camera->near_plane;
-                    fallback.zfar              = camera->far_plane;
-                    fallback.world_position_double = math::Vector3d(
-                        static_cast<double>(camera->position.x),
-                        static_cast<double>(camera->position.y),
-                        static_cast<double>(camera->position.z));
-
-                    graph::RefreshCameraInfoCamera(camera->camera_info, &fallback);
-                }
+                graph::RefreshCameraInfoCamera(&camera->camera_info, &camera->camera_data);
             }
-            else if (camera->viewport_info && camera->camera_data)
+            else if (camera->viewport_info)
             {
                 // 视图矩阵一律由**组件权威前向 `forward`** 构造，**不要用 `target`**：
                 // `target` 由 UpdateTransform 维护；当 position 被外部直接写（示例的 autowalk
@@ -567,7 +542,7 @@ namespace hgl::ecs
                 // "回到几秒前的位置/另一个机位"）。
                 // `forward` 与 `camera_data->viewDirection`、shader 的 view_line 同源（UpdateBasis 由
                 // yaw/pitch 得出），与 position 永远同帧一致；LookAt 模式的方向仍来自 target ⇒ 等价。
-                camera->camera_info->view = math::LookAtMatrix(
+                camera->camera_info.view = math::LookAtMatrix(
                     camera->position,
                     camera->position + camera->forward,
                     camera->world_up
@@ -575,9 +550,9 @@ namespace hgl::ecs
 
                 // 调用RefreshCameraInfo更新所有矩阵
                 graph::RefreshCameraInfo(
-                    camera->camera_info,
+                    &camera->camera_info,
                     camera->viewport_info,
-                    camera->camera_data
+                    &camera->camera_data
                 );
             }
         }
@@ -592,19 +567,22 @@ namespace hgl::ecs
 
     void CameraSystem::PublishCamera(const CameraComponent *camera,const uint32_t frame_slot)
     {
-        if (!camera || !camera->camera_info)
+        if (!camera)
             return;
+
+        // 槽号问**世界**（相机槽是世界资源，组件不再自持槽号）
+        const uint32_t camera_slot = context ? context->GetCameraSlot(camera) : CameraComponent::kInvalidSlot;
 
         // 槽未认领（未分配 / 槽耗尽）：**不发布**——按未分配哨兵算出的行号会越界（甚至落进别的世界）。
         // 不静默：一次性告警（每帧刷屏没意义，判据是"这个相机根本没进 GPU"）。
-        if (!camera->HasCameraSlot())
+        if (!CameraInfoStorage::IsValidSlot(camera_slot))
         {
             if (!warned_publish_without_slot)
             {
                 warned_publish_without_slot = true;
-                GLogError("[CameraSystem] PublishCamera 跳过未认领相机槽的相机 \"%s\"（camera_id=%u）："
-                          "本世界相机槽上限 %u，检查是否有相机未归还 / 存储未就绪",
-                          camera->GetName().c_str(), camera->camera_id, CameraComponent::kSlotCapacity);
+                GLogError("[CameraSystem] PublishCamera 跳过未认领相机槽的相机 \"%s\"："
+                          "本世界相机槽上限 %u，检查是否有相机未归还 / 行池未就绪",
+                          camera->GetName().c_str(), CameraInfoStorage::kSlotCapacity);
             }
             return;
         }
@@ -615,7 +593,7 @@ namespace hgl::ecs
 
         // 行号 = 相机槽 * 帧槽总数 + frame_slot：主帧槽 [0,4) 与离屏 RT 槽带 [4,8) 不相交，
         // 离屏 prepass 写光源相机不会踩到主帧在途的那一份。行号越界由存储报错。
-        storage->WriteCameraRow(camera->camera_id, frame_slot, *camera->camera_info);
+        storage->WriteCameraRow(camera_slot, frame_slot, camera->camera_info);
     }
 
     void CameraSystem::PublishCameraRows(const uint32_t frame_slot)
@@ -628,13 +606,13 @@ namespace hgl::ecs
         // 不做这一步的后果：相机的槽是"未分配"⇒ 发布被跳过 ⇒ 主帧读到的 0 号行是空的。
         CameraComponent *default_camera = SelectMainCamera(cameras);
 
-        // 只认领**槽**（不碰 viewport/数据载体 —— 本函数也会在离屏 pass 的设置阶段被调用，
-        // 那时 camera->viewport_info 会被绑成离屏 RT 的 viewport，污染主帧投影）。
+        // 只认领**槽**（不碰 viewport —— 本函数也会在离屏 pass 的设置阶段被调用，
+        // 那时 viewport_info 是离屏 RT 的，绑上去会污染主帧投影）。
         for (auto &camera : cameras)
-            EnsureCameraSlot(camera.get(), camera.get() == default_camera);
+            context->EnsureCameraSlot(camera.get(), camera.get() == default_camera);
 
         if (default_camera)
-            EnsureCameraSlot(default_camera, true);
+            context->EnsureCameraSlot(default_camera, true);
 
         for (auto &camera : cameras)
             PublishCamera(camera.get(), frame_slot);
@@ -698,17 +676,12 @@ namespace hgl::ecs
 
     CameraComponent* CameraSystem::ClaimDefaultCamera(const std::shared_ptr<CameraComponent>& camera)
     {
-        // 选中的相机**认领 0 号槽**（= 本世界默认相机）：下一帧三级解析的第 ① 级就是它，
+        // 选中的相机**成为 0 号槽的宿主**（= 本世界默认相机）：下一帧三级解析的第 ① 级就是它，
         // 相机集合的顺序变化 / 新增相机都不会把主相机换掉。
+        // 0 号槽唯一 ⇒ 原宿主（含常驻 fallback）自动让位，不需要在这里显式清谁的槽
+        // （历史写法要手工把 fallback 的槽号抹成"未分配"——那正是"两份槽真值"的产物）。
         if (camera && context)
-        {
-            // 0 号槽是**唯一**的：常驻 fallback 一旦不再担任默认相机，必须交回 0 号槽——
-            // 否则两个相机都写着"槽 0"，谁被发布谁赢，行为会随帧序漂移。
-            if (auto *fallback = context->GetFallbackCamera(); fallback && fallback != camera.get())
-                fallback->camera_id = CameraComponent::kInvalidSlot;
-
             context->SetDefaultCamera(camera);
-        }
 
         return camera.get();
     }
@@ -727,82 +700,15 @@ namespace hgl::ecs
         if (!viewport_info && camera->viewport_info)
             viewport_info = camera->viewport_info;
 
-        if (!camera->camera_data)
-            camera->camera_data = &camera->local_camera_data;
-        if (!camera->camera_info)
-            camera->camera_info = &camera->local_camera_info;
-
         // ⚠ viewport 绑定只能在**本帧的 tick/覆盖上下文**里做（Update）：`viewport_info` 是"当前 RT 的
         // viewport"，离屏 pass 的设置阶段它是**离屏 RT** 的。若在发布路径（PublishCameraRows，离屏 pass
         // 也会走）里绑，主相机会拿到离屏 RT 的 viewport ⇒ 主帧投影/级联尺寸全错
-        // （实测症状：ATS 的 D1 bbox 112x58 → 146x77，D3 受影像素 18189 → 30766）。
+        // （实测症状：ATS 的 D1 bbox 112x58 → 146x77、D3 受影像素 18189 → 30766）。
         if (viewport_info && !camera->viewport_info)
             camera->viewport_info = viewport_info;
 
-        EnsureCameraSlot(camera, is_default);
-    }
-
-    void CameraSystem::EnsureCameraSlot(CameraComponent* camera, bool is_default)
-    {
-        if (!camera)
-            return;
-
-        if (is_default)
-        {
-            // 0 号槽 = **本世界默认相机**专属（三级解析的落点，含常驻 fallback）
-            if (camera->camera_id != CameraComponent::kInvalidSlot
-             && camera->camera_id != CameraComponent::kDefaultSlot)
-            {
-                // 从「普通相机槽」升格为默认相机：先把旧槽交回（走它自己的归还挂钩，与
-                // `CameraComponent` 析构同一路径）——否则该槽会永久泄漏（析构时 camera_id 已是 0，
-                // 挂钩跳过归还），反复换主相机迟早把 16 个槽顶满。
-                if (camera->slot_releaser)
-                {
-                    auto releaser = camera->slot_releaser;
-                    camera->slot_releaser = nullptr;    // 先摘挂钩：归还可能重入析构路径
-                    releaser(camera->camera_id);
-                }
-                else if (auto *storage = context ? context->GetCameraInfoStorage() : nullptr)
-                {
-                    storage->ReleaseCameraSlot(camera->camera_id);
-                }
-            }
-
-            camera->camera_id   = CameraComponent::kDefaultSlot;
-            camera->slot_releaser = nullptr;    // 0 号槽不参与分配，也不参与归还
-            camera->world_owner = context;
-        }
-        else if (!camera->HasCameraSlot())
-        {
-            // 相机槽是**世界内**资源：1..15 由本世界的相机存储分配（灯光相机 / 镜子相机 / 系统内建相机…）。
-            // 未分配哨兵是 `kInvalidSlot`（不是 0——0 是合法槽号"默认相机"），因此这里的判定无二义。
-            auto *storage = context ? context->GetCameraInfoStorage() : nullptr;
-            if (!storage || !storage->IsReady())
-                return;   // 存储未就绪：保持未分配，发布时跳过并一次性告警
-
-            camera->camera_id = storage->AcquireCameraSlot();
-
-            if (!camera->HasCameraSlot())
-            {
-                GLogError("[CameraSystem] 世界相机槽耗尽（上限 %u）：相机 \"%s\" 未拿到槽，"
-                          "本帧不会发布它的相机行——检查是否有相机未归还",
-                          CameraComponent::kSlotCapacity, camera->GetName().c_str());
-            }
-            else
-            {
-                camera->world_owner = context;
-
-                // 归还挂钩（C3）：相机销毁即把槽还给本世界存储 —— 相机实体的反复创建/销毁
-                // 否则会把 16 个槽漏空。只持**弱引用**：相机可能比世界活得久（作者/示例持有
-                // shared_ptr），世界先销毁时 lock() 失败 ⇒ 挂钩自动失效，绝不触碰已释放的存储。
-                std::weak_ptr<CameraInfoStorage> weak_storage = context->GetCameraInfoStorageWeak();
-                camera->slot_releaser = [weak_storage](uint32_t slot)
-                {
-                    if (auto storage = weak_storage.lock())
-                        storage->ReleaseCameraSlot(slot);
-                };
-            }
-        }
+        // 相机槽是**世界**资源（16 槽 × 帧槽、0 号槽恒为默认相机）：认领/升格一律走世界访问器
+        context->EnsureCameraSlot(camera, is_default);
     }
 
     void CameraSystem::MarkAllCameraMatricesDirty()

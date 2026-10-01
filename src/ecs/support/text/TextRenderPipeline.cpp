@@ -286,7 +286,7 @@ namespace hgl::ecs
             // pc_root.addr_batch_mesh_draw_params 解引用参数表 row 0；文本三表地址和
             // mtl_data_addrs 行表均经 pc_root 传入。文本 shader 的 MTL_TEX(0)
             // 从该地址表取得当前字体图集的独立引用行。
-            // 相机行号（camera_id * 槽总数 + 本帧槽），着色器用它索引 cameras[]
+            // 相机行号（槽号 * 槽总数 + 本帧槽），着色器用它索引 cameras[]
             const uint32_t active_cam_row = world ? world->GetActiveCameraRow() : 0;
 
             // 全局地址表基址 = 本次 push 的根入口（render_context 在本函数后段才赋值，

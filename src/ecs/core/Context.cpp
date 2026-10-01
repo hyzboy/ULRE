@@ -315,10 +315,10 @@ namespace hgl
             render_frame_cache.materialBatches.Clear();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
 
-            // 相机槽拥有者的安全网由 **弱引用** 提供：`CameraSlotGuard` 与相机组件的归还挂钩都只持
+            // 相机槽拥有者的安全网由 **弱引用** 提供：`CameraSlotGuard` 只持
             // `weak_ptr<CameraInfoStorage>`，世界先销毁时 lock() 失败 ⇒ 析构自动 no-op，不需要在这里
             // 逐个 Detach（世界可能从未 Initialize，Shutdown 会走早退分支 —— 那正是悬垂指针的来源）。
-            // 槽本身也不需要逐个归还：`camera_info_storage->Reset()` 会把 slot_used 整表清零。
+            // 槽本身也不需要逐个归还：`camera_info_storage->Reset()` 会把槽账目整表清空。
 
             // Env 随世界（C2）：**本世界创建/拥有的** profile 在这里归还（内置 default 永不归还）。
             // 释放顺序在世界地址表之前——表里还留着它的地址，但表随后即销毁。
@@ -350,9 +350,9 @@ namespace hgl
 
             world_addresses_addr = 0;
 
-            // 常驻 fallback 相机随世界销毁（不是 Entity 组件 ⇒ 不走 entity_manager->Clear()）
+            // 常驻 fallback 相机随世界销毁（不是 Entity 组件 ⇒ 不走 entity_manager->Clear()）；
+            // 它若正占着 0 号槽，槽账目已随相机表一起销毁 —— 不再有第二份 default_camera 要清。
             fallback_camera = nullptr;
-            default_camera.reset();
 
             shutdown_in_progress = false;
         }
@@ -616,12 +616,16 @@ namespace hgl
                 camera_system->SetOverrideCamera(req.camera);
                 camera_system->Update(req.delta_time);
 
-                // 覆盖相机的槽在 Update → BindCameraResources 里认领；万一没认领到（存储未就绪 /
-                // 槽耗尽 / 相机属于别的世界被拒）就退回 0 号槽，别把非法槽号一路带到行号算术里。
+                // 覆盖相机的槽在 Update → BindCameraResources → EnsureCameraSlot 里认领；万一没认领到
+                // （行池未就绪 / 槽耗尽 / 相机属于别的世界被拒）就退回 0 号槽，
+                // 别把非法槽号一路带到行号算术里。槽号一律问世界（组件不再自持槽号）。
                 const bool camera_in_this_world = (req.camera->world_owner == nullptr)
                                                || (req.camera->world_owner == this);
-                active_camera_id = (camera_in_this_world && CameraInfoStorage::IsValidSlot(req.camera->camera_id))
-                                     ? req.camera->camera_id
+                const uint32_t override_camera_slot = camera_in_this_world
+                                                        ? GetCameraSlot(req.camera)
+                                                        : CameraInfoStorage::INVALID_SLOT;
+                active_camera_id = CameraInfoStorage::IsValidSlot(override_camera_slot)
+                                     ? override_camera_slot
                                      : CameraInfoStorage::kDefaultCameraSlot;
             }
             else
@@ -685,7 +689,7 @@ namespace hgl
                 {
                     LogError("[ECSContext::RenderTo] 离屏 pass 的相机行落在主帧槽带：frame_index=%u "
                              "camera=\"%s\" slot=%u（主帧在途的相机行会被这个 pass 覆写）",
-                             frame_index, req.camera->GetName().c_str(), req.camera->camera_id);
+                             frame_index, req.camera->GetName().c_str(), GetCameraSlot(req.camera));
                 }
 
                 if (auto cs = GetSystem<CameraSystem>())
@@ -1577,29 +1581,121 @@ namespace hgl
             return camera_system ? camera_system->GetActiveCameraInfo() : nullptr;
         }
 
+        // ==== 相机（世界级资源：16 槽 × 帧槽，0 号槽恒为本世界默认相机）====
+        // 「相机属于哪个世界 / 哪个槽」的唯一真源 = camera_info_storage 的槽账目（槽 → 宿主弱引用）。
+
+        CameraComponent* ECSContext::GetCamera(const uint32_t slot) const
+        {
+            return camera_info_storage ? camera_info_storage->GetSlotOwner(slot) : nullptr;
+        }
+
+        CameraComponent* ECSContext::GetDefaultCamera() const
+        {
+            // 默认相机 = **0 号槽的宿主**（没有第二份 weak_ptr 记账：相机销毁 ⇒ 弱引用失效 ⇒
+            // 这里自然返回 nullptr，下一次三级解析重新指名）。
+            return GetCamera(CameraInfoStorage::kDefaultCameraSlot);
+        }
+
+        bool ECSContext::SetDefaultCamera(const std::shared_ptr<CameraComponent>& camera)
+        {
+            if (!camera_info_storage)
+                return false;
+
+            // 0 号槽唯一：改绑即顶替原宿主（常驻 fallback 被实体相机顶替时**不需要**额外动作）。
+            return camera_info_storage->BindCameraSlot(CameraInfoStorage::kDefaultCameraSlot, camera);
+        }
+
+        uint32_t ECSContext::GetCameraSlot(const CameraComponent* camera) const
+        {
+            if (!camera || !camera_info_storage)
+                return CameraComponent::kInvalidSlot;
+
+            return camera_info_storage->FindSlot(camera);
+        }
+
+        bool ECSContext::ReleaseCameraSlot(const CameraComponent* camera)
+        {
+            if (!camera_info_storage)
+                return false;
+
+            return camera_info_storage->ReleaseCameraSlot(camera);
+        }
+
+        bool ECSContext::EnsureCameraSlot(CameraComponent* camera, const bool is_default)
+        {
+            if (!camera || !camera_info_storage)
+                return false;
+
+            // 槽的宿主必须是 shared_ptr 持有者（槽账目 = 宿主弱引用）：实体组件（注册表）/ 作者 /
+            // 系统（CameraSlotGuard）都满足；栈上或裸 new 的相机拿不到槽 ⇒ fail-fast 留痕
+            // （宁可它不出图，也不能按越界行号写到别的世界去）。
+            auto owner = std::static_pointer_cast<CameraComponent>(camera->weak_from_this().lock());
+            if (!owner)
+            {
+                GLogError("[ECSContext] 相机 \"%s\" 没有 shared_ptr 宿主，无法认领相机槽"
+                          "（槽账目按宿主弱引用计占用期）", camera->GetName().c_str());
+                return false;
+            }
+
+            if (is_default)
+            {
+                // 0 号槽 = 本世界默认相机专属（三级解析的落点，含常驻 fallback）。
+                // 「升格为默认相机」时若它原持**普通槽**，先把旧槽交回（否则那个槽会一直挂在这个
+                // 相机名下、迟早把 16 个槽顶满）；0 号槽唯一 ⇒ 改绑即让原宿主（含常驻 fallback）让位。
+                const uint32_t old_slot = camera_info_storage->FindSlot(camera);
+                if (old_slot != CameraInfoStorage::INVALID_SLOT
+                 && old_slot != CameraInfoStorage::kDefaultCameraSlot)
+                    camera_info_storage->ReleaseCameraSlot(old_slot);
+
+                if (!SetDefaultCamera(owner))
+                    return false;
+
+                camera->world_owner = this;
+                return true;
+            }
+
+            if (camera_info_storage->FindSlot(camera) != CameraInfoStorage::INVALID_SLOT)
+                return true;    // 已认领（幂等）
+
+            if (!camera_info_storage->IsReady())
+                return false;   // 行池未就绪：保持未认领 ⇒ 发布时跳过并一次性告警（fail-fast）
+
+            const uint32_t slot = camera_info_storage->AcquireCameraSlot(owner);
+
+            if (slot == CameraInfoStorage::INVALID_SLOT)
+            {
+                GLogError("[ECSContext] 世界相机槽耗尽（上限 %u）：相机 \"%s\" 未拿到槽，"
+                          "本帧不会发布它的相机行——检查是否有相机未归还",
+                          CameraInfoStorage::kSlotCapacity, camera->GetName().c_str());
+                return false;
+            }
+
+            camera->world_owner = this;
+            return true;
+        }
+
         CameraComponent* ECSContext::EnsureFallbackCamera()
         {
             // 已存在 ⇒ 重新回到"默认相机"位置（可能被实体相机顶替过一轮，现在世界又没相机了）：
-            // 重新认领 0 号槽 + 重新成为本世界默认相机。
+            // 重新成为 0 号槽的宿主。
             if (fallback_camera)
             {
-                fallback_camera->camera_id = CameraComponent::kDefaultSlot;
-                default_camera = fallback_camera;
+                SetDefaultCamera(fallback_camera);
                 return fallback_camera.get();
             }
 
-            // 三级解析第 ③ 级：世界内没有任何相机组件，但渲染**必须**有一个相机 ⇒ 在 (0,0,0) 强制生成。
+            // 三级解析第 ④ 级：世界内没有任何相机组件，但渲染**必须**有一个相机 ⇒ 在 (0,0,0) 强制生成。
             // 常驻（创建后一直活着）、占 0 号槽、**不进 component_registry**（CollectCameras() 看不到它，
             // 因此不会参与"最小 EntityID.index"的选主，也不会被当作实体相机的重复项）。
             auto camera = std::make_shared<CameraComponent>("WorldFallbackCamera");
             camera->position       = math::Vector3f(0.0f, 0.0f, 0.0f);
             camera->target         = math::Vector3f(0.0f, 0.0f, 1.0f);
-            camera->camera_id      = CameraComponent::kDefaultSlot;
             camera->is_main_camera = false;
             camera->matrix_dirty   = true;
+            camera->world_owner    = this;
 
             fallback_camera = camera;
-            default_camera  = camera;
+            SetDefaultCamera(camera);
 
             GLogInfo("[ECS] %s: 世界内没有相机 ⇒ 在 (0,0,0) 生成常驻 fallback 相机（占 0 号槽）",
                      GetName().c_str());

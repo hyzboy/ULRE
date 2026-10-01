@@ -1,15 +1,25 @@
 #include<hgl/ecs/support/CameraSlotGuard.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/CameraInfoStorage.h>
+#include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::ecs
 {
-    CameraSlotGuard::CameraSlotGuard(ECSContext *world, const AnsiString &owner)
+    CameraSlotGuard::CameraSlotGuard(ECSContext *world,
+                                     const std::shared_ptr<CameraComponent> &camera,
+                                     const AnsiString &owner)
     {
         if (!world)
         {
             GLogError("[CameraSlotGuard] 申请相机槽失败：世界为空（owner=\"%s\"）", owner.c_str());
+            return;
+        }
+
+        if (!camera)
+        {
+            GLogError("[CameraSlotGuard] 申请相机槽失败：宿主相机为空（owner=\"%s\"）——槽的宿主必须由 shared_ptr 持有",
+                      owner.c_str());
             return;
         }
 
@@ -21,24 +31,27 @@ namespace hgl::ecs
         auto shared = storage.lock();
         if (!shared || !shared->IsReady())
         {
-            GLogError("[CameraSlotGuard] 申请相机槽失败：本世界相机行存储未就绪（owner=\"%s\"）"
-                      "——该相机保持未分配，不会被发布",
+            GLogError("[CameraSlotGuard] 申请相机槽失败：本世界相机行池未就绪（owner=\"%s\"）"
+                      "——该相机保持无槽，不会被发布",
                       owner.c_str());
             storage.reset();
             return;
         }
 
-        slot = shared->AcquireCameraSlot();
+        slot = shared->AcquireCameraSlot(camera);
 
-        if (slot == CameraComponent::kInvalidSlot)
+        if (slot == CameraInfoStorage::INVALID_SLOT)
         {
             // 容量 16、不扩容（fail-fast）：必须留痕，否则表现为"某个相机安静地不出图"
             GLogError("[CameraSlotGuard] 相机槽耗尽：owner=\"%s\" 未拿到槽（本世界上限 %u 槽）"
                       "——检查是否有相机 / guard 未归还",
-                      owner.c_str(), CameraComponent::kSlotCapacity);
+                      owner.c_str(), CameraInfoStorage::kSlotCapacity);
         }
         else
         {
+            // 槽账目里这一条就是"本世界 + 该相机"的绑定；相机侧只记"哪个世界"
+            camera->world_owner = world_identity;
+
             GLogInfo("[CameraSlotGuard] 相机槽已申请：owner=\"%s\" slot=%u", owner.c_str(), slot);
         }
     }
@@ -57,7 +70,7 @@ namespace hgl::ecs
         other.storage        = {};
         other.world_identity = nullptr;
         other.owner_name     = {};
-        other.slot           = CameraComponent::kInvalidSlot;
+        other.slot           = CameraInfoStorage::INVALID_SLOT;
     }
 
     CameraSlotGuard &CameraSlotGuard::operator=(CameraSlotGuard && other) noexcept
@@ -75,16 +88,16 @@ namespace hgl::ecs
         other.storage        = {};
         other.world_identity = nullptr;
         other.owner_name     = {};
-        other.slot           = CameraComponent::kInvalidSlot;
+        other.slot           = CameraInfoStorage::INVALID_SLOT;
 
         return *this;
     }
 
     void CameraSlotGuard::Reset()
     {
-        if (slot != CameraComponent::kInvalidSlot)
+        if (slot != CameraInfoStorage::INVALID_SLOT)
         {
-            // 存储可能随世界一起没了（lock 失败）⇒ 静默跳过：槽账目随存储一起销毁
+            // 行池可能随世界一起没了（lock 失败）⇒ 静默跳过：槽账目随行池一起销毁
             if (auto shared = storage.lock())
             {
                 if (shared->ReleaseCameraSlot(slot))
@@ -95,7 +108,7 @@ namespace hgl::ecs
                 }
                 else
                 {
-                    GLogWarning("[CameraSlotGuard] Reset: ReleaseCameraSlot(%u) 被拒（槽已归还过？）", slot);
+                    GLogWarning("[CameraSlotGuard] Reset: ReleaseCameraSlot(%u) 被拒（宿主已死 / 槽已归还过？）", slot);
                 }
             }
         }
@@ -103,19 +116,6 @@ namespace hgl::ecs
         storage        = {};
         world_identity = nullptr;
         owner_name     = {};
-        slot           = CameraComponent::kInvalidSlot;
-    }
-
-    bool CameraSlotGuard::BindTo(CameraComponent *camera) const
-    {
-        if (!camera)
-            return false;
-
-        if (slot == CameraComponent::kInvalidSlot)
-            return false;       // 未持槽 ⇒ 相机保持未分配（发布时跳过 + 一次性告警）
-
-        camera->camera_id   = slot;
-        camera->world_owner = world_identity;
-        return true;
+        slot           = CameraInfoStorage::INVALID_SLOT;
     }
 }//namespace hgl::ecs

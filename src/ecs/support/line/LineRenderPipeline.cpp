@@ -754,7 +754,7 @@ namespace hgl::ecs
         if (bound_transform_data_buffer_)
             l2w_gpu = bound_transform_data_buffer_->GetGPUBuffer();
 
-        // 相机行号（camera_id * 槽总数 + 本帧槽）：着色器用它索引 cameras[]，
+        // 相机行号（槽号 * 槽总数 + 本帧槽）：着色器用它索引 cameras[]，
         // 离屏 pass 与主帧各自的相机数据落在不相交的行上。
         const uint32_t active_cam_row = context_ ? context_->GetActiveCameraRow() : 0;
 

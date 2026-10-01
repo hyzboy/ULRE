@@ -42,9 +42,6 @@ namespace hgl::ecs
             return false;
         }
 
-        for (uint32_t i = 0; i < kSlotCapacity; ++i)
-            slot_used[i] = false;
-
         return true;
     }
 
@@ -52,18 +49,27 @@ namespace hgl::ecs
     {
         pool.Reset();
 
+        // 槽账目随行池一起清空：世界的相机全部失去槽（下次三级解析重新认领）。
         for (uint32_t i = 0; i < kSlotCapacity; ++i)
-            slot_used[i] = false;
+            slot_owners[i].reset();
     }
 
-    uint32_t CameraInfoStorage::AcquireCameraSlot()
+    uint32_t CameraInfoStorage::AcquireCameraSlot(const std::shared_ptr<CameraComponent> &owner)
     {
+        if (!owner)
+        {
+            GLogError("[CameraInfoStorage] AcquireCameraSlot 拒绝空宿主：槽的宿主必须由 shared_ptr 持有"
+                      "（槽占用期 = 宿主生命期）");
+            return INVALID_SLOT;
+        }
+
         // 0 号槽恒留给本世界默认相机（含强制 fallback 相机），不参与分配。
+        // 「宿主已死（expired）」= 空闲槽 ⇒ 自然复用，无需任何归还挂钩。
         for (uint32_t slot = kDefaultCameraSlot + 1u; slot < kSlotCapacity; ++slot)
         {
-            if (!slot_used[slot])
+            if (slot_owners[slot].expired())
             {
-                slot_used[slot] = true;
+                slot_owners[slot] = owner;
                 return slot;
             }
         }
@@ -73,22 +79,81 @@ namespace hgl::ecs
         return INVALID_SLOT;
     }
 
+    bool CameraInfoStorage::BindCameraSlot(const uint32_t slot, const std::shared_ptr<CameraComponent> &owner)
+    {
+        if (!IsValidSlot(slot) || !owner)
+        {
+            GLogError("[CameraInfoStorage] BindCameraSlot 拒绝：slot=%u owner=%p（0..%u 有效，宿主不得为空）",
+                      slot, static_cast<const void *>(owner.get()), kSlotCapacity - 1u);
+            return false;
+        }
+
+        // 0 号槽唯一：指派即顶替原宿主（默认相机换人 = 一行赋值，不需要任何显式释放）。
+        slot_owners[slot] = owner;
+        return true;
+    }
+
     bool CameraInfoStorage::ReleaseCameraSlot(const uint32_t slot)
     {
-        if (slot == kDefaultCameraSlot || slot >= kSlotCapacity || !slot_used[slot])
+        if (slot == kDefaultCameraSlot || slot >= kSlotCapacity)
         {
             GLogError("[CameraInfoStorage] ReleaseCameraSlot 拒绝无效槽：%u（1..%u 有效；0 号槽=默认相机）",
                       slot, kSlotCapacity - 1u);
             return false;
         }
 
-        slot_used[slot] = false;
+        if (slot_owners[slot].expired())
+            return false;   // 宿主已死 / 从未分配：槽早已空出，重复归还不改变账目
+
+        slot_owners[slot].reset();
         return true;
+    }
+
+    bool CameraInfoStorage::ReleaseCameraSlot(const CameraComponent *camera)
+    {
+        if (!camera)
+            return false;
+
+        const uint32_t slot = FindSlot(camera);
+        if (slot == INVALID_SLOT)
+            return false;
+
+        return ReleaseCameraSlot(slot);
+    }
+
+    CameraComponent *CameraInfoStorage::GetSlotOwner(const uint32_t slot) const
+    {
+        if (!IsValidSlot(slot))
+            return nullptr;
+
+        return slot_owners[slot].lock().get();
+    }
+
+    std::shared_ptr<CameraComponent> CameraInfoStorage::GetSlotOwnerShared(const uint32_t slot) const
+    {
+        if (!IsValidSlot(slot))
+            return {};
+
+        return slot_owners[slot].lock();
+    }
+
+    uint32_t CameraInfoStorage::FindSlot(const CameraComponent *camera) const
+    {
+        if (!camera)
+            return INVALID_SLOT;
+
+        for (uint32_t slot = 0; slot < kSlotCapacity; ++slot)
+        {
+            if (slot_owners[slot].lock().get() == camera)
+                return slot;
+        }
+
+        return INVALID_SLOT;
     }
 
     bool CameraInfoStorage::IsSlotUsed(const uint32_t slot) const
     {
-        return slot < kSlotCapacity && slot_used[slot];
+        return IsValidSlot(slot) && !slot_owners[slot].expired();
     }
 
     bool CameraInfoStorage::WriteCameraRow(const uint32_t camera_slot,
