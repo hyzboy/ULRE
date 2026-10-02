@@ -4719,6 +4719,15 @@ int main(int argc, char** argv)
               "geom_data_buffer", "DrawBatch 又持每实体 CPU 几何副本", true },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "geom_draw_range", "DrawBatch 又持每实体 CPU draw range", true },
+
+            // ④ GPU-Driven 批次的**逐项成簇**判据（禁复发）
+            // 2026-10-02 实测事故：B3-iii 重写聚簇循环时漏掉这条判据 ⇒ GPU-Driven 批（绘制指令/
+            // L2W 索引槽/mesh 命令行都由表逐项给出）被合并成多实例簇 ⇒ 整簇共用一个首实例 ⇒
+            // 屏幕上 64 个立方体只剩 1 个（对数（visible 计数）仍全绿，只有像素能看出）。
+            // 该行（16 空格缩进）在文件中唯一。
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "                if (batch.gpu_driven_override)",
+              "GPU-Driven 批的逐项成簇判据丢失（多实例簇会让整簇共用首实例，只剩 1 个实例可见）" },
         };
 
         if (const int failed = verify_source_contracts(30, kB3iiiContracts,

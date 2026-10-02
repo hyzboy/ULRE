@@ -440,10 +440,18 @@ namespace hgl::ecs
 
             // 同簇判据 = **行键相等**（B3-iii：旧实现按两份每实体 CPU 副本逐字段比较，
             // 含 VAB 列表与 ibo；同 asset ⇒ 同一行 ⇒ 必然同键，判定等价且不再需要那两份副本）。
+            //
+            // ⚠ GPU-Driven 批次例外（**必须每项自成簇**）：这类批次的绘制指令、L2W 索引槽、
+            // mesh 命令行都由 GPU/示例侧的表逐项给出（第 i 项 ↔ 第 i 行/第 i 槽一一对应），
+            // 合并成多实例簇会让整簇共用一个首实例 ⇒ 屏幕上只剩 1 个实例的变换
+            // （2026-10-02 实测：ComputeFrustumCull 64 个立方体只显示 1 个）。
             size_t cluster_end = i;
             while (cluster_end + 1 < count)
             {
                 RenderItem *next_item = batch.items[cluster_end + 1];
+
+                if (batch.gpu_driven_override)
+                    break;
 
                 if (!next_item || !(next_item->draw_key == draw_key))
                     break;

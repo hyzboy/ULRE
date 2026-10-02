@@ -452,6 +452,37 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 ⇒ 改造前须先确认该几何的 `SetBoundingVolumes` 路径。另外该示例的候选用变体下标 `geom_id` 索引自建表，
 改造时需一并换成引擎行号。
 
+**B3-iii 缺陷修正（2026-10-02，用户当场发现）—— GPU-Driven 批次被合并成多实例簇 ⇒ 屏幕上只剩 1 个实例**
+
+一、现象与定位（全部实测）
+
+- **现象（用户报告）**：运行 `ComputeFrustumCull` 只显示 **1 个立方体**（中心区全无）。截图确认后逐级二分：
+  ① 把示例文件回退到 B3 尾巴之前 ⇒ **仍然只有 1 个**（排除 B3 尾巴）；
+  ② 把 B3-iii 的 12 个引擎文件回退到 `758fb8b51` ⇒ **整片立方体恢复** ⇒ **B3-iii 引入**。
+- **根因**：重写聚簇循环时**漏掉旧实现里的 `batch.gpu_driven_override ||` 判据**。该判据的语义是
+  **GPU-Driven 批次必须每项自成簇**：这类批次的绘制指令 / L2W 索引槽 / mesh 命令行都由表**逐项**给出
+  （第 i 项 ↔ 第 i 行/第 i 槽一一对应）；合并成多实例簇后整簇共用首实例 ⇒ 只剩 1 个实例的变换。
+  旧代码：`if (batch.gpu_driven_override || *data_buffer != *next_data_buf || *draw_range != *next_draw_range) break;`
+
+二、修法与验证
+
+- **修法**：在聚簇循环恢复 `if (batch.gpu_driven_override) break;`（+ 注释说明为何必须逐项成簇）；
+  并给 Test 30 加**契约 ④**（用 16 空格缩进那行作单行 needle —— 实测该行在文件内唯一 ⇒ 不受行尾影响）。
+- **反证**：去掉该判据 ⇒ Test 30 **rc=30**（"GPU-Driven 批的逐项成簇判据丢失…"）；
+  逐字节还原（sha256 `de6d5031…`）⇒ rc=0。
+- **修复后验证（清 obj 全量重编）**：build rc=0 / 0 error、门 42 PASS / 0 FAIL、10 测试 rc=0；
+  `ComputeFrustumCull` PASS=8 / FAIL=0 且**截图恢复整片立方体**；
+  PBRSpheres / ComputeAsteroidBelt / AutoMergeMaterialInstance / CascadeShadowMap **四示例截图均正常**。
+
+三、⚠ 教训（本批最重要的一条）
+
+这次事故的**数字面全绿**：示例自身的每帧双面对拍 0 FAIL、`策略判定对拍` 不一致 0、`Skip primitive item`
+计数与基线一致、build/门/测试全过 —— **只有像素能看出问题**（同类"数字全绿但画面错"在本轮出现两次：
+另一次是构建产物不纯伪装成 8.5× 性能回归）。
+⇒ **规则：凡改动批 / 绘制 / 实例化 / 存储布局语义，验收必须加一步"看屏幕"**（Windows 上直接
+`computer_use capture` 截目标窗口，或 RenderDoc 截帧）；日志与计数只能证明"没崩、数量对"，
+证明不了"画出来是对的"。
+
 **B3 剩余分批**（原判据不变）
 
 | 批 | 内容 | 判据 |
@@ -514,5 +545,6 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 | 2026-10-02 | **B3-i 完成**：`GlobalSSBOType::GeometryAABB` + 池（`ActivateAllRows` 静态行空间、`reserve 0`）+ `GlobalAddresses::addr_geometry_aabb`（48→56 B，步长不变）+ GLSL 同步 + 两条自动扩展覆盖性断言；build rc=0/0 error、门 42 PASS/0 FAIL、10 测试 rc=0、4 示例对拍 0（探针 `rows=16384 AABB 32 B/行`）；反证两处（容量不等 ⇒ 运行期不变量红；缺 name case ⇒ 编译期断言红）；**实测修掉 `ActivateAllRows` 与 `reserve_rows` 的机制冲突**。 |
 | 2026-10-02 | **B3-ii 完成**：`MeshDrawParams` 112→**128 B**（拆 `total_vertices` + 补 `data_*`，X-macro 单源 + 三处 GLSL 读侧 + 三处写侧）；AABB 行收敛为唯一写入口 `RefreshGeometryAABBRow()`（实测修掉"Create 先于 SetBoundingVolumes"的顺序坑，PBRSpheres 10/21 行真值、半径 1.7321 与 CPU 同式逐位一致）；`bounding_radius` 改按需反算；门 42/0、10 测试 + Test 29（25 条契约含 6 条禁复活）、四示例 0 error/对拍 0；反证：抽掉刷新 ⇒ 真值 10→0。 |
 | 2026-10-02 | **B3-iii 侦察（未动手）**：规模订正 —— 三指针是**批排序/聚簇主键**（`RenderItem::Compare` + `DrawBatch::Set` 的 4 个建批点 + 采集侧 4ID 填充/列武装 3 处），删它们等于改实例化合并判定；方向 = 行派生 POD 键（ICB 组数逐位等价）；待拍板：同 asset 的每实体 draw range 差异是否退出判定；本轮试改已还原，树保持 B3-ii 已验证状态。 |
+| 2026-10-02 | **B3-iii 缺陷修正**：漏掉 `batch.gpu_driven_override` 逐项成簇判据 ⇒ GPU-Driven 批被合并成多实例簇、屏幕上只剩 1 个实例（界面上可见的错）；修复 + Test 30 契约 ④（去掉判据必 rc=30、逐字节还原必绿）+ 截图复核；教训：**改批/绘制语义必须看像素，数字全绿证明不了画得对**。 |
 | 2026-10-02 | **B3 尾巴完成**：`ComputeFrustumCull` 自建 AABB 表退役、改读引擎 `GeometryAABB` 池（一号双表的二号表被 GPU 真正消费）；每帧双面对拍 PASS=8/FAIL=0、反证（地址 +32B ⇒ 7 FAIL、GPU visible 36→28）逐字节还原；遗留 `ComputeAsteroidBelt` 同类表（池行真值未验证）。 |
 | 2026-10-02 | **B3-iii 完成**：批排序/聚簇/ICB/命令四处改读**行派生 POD 键**（`RenderItem::MeshDrawKey`），删 `GeometryData` 三指针 + 逐帧武装函数（12 文件）；build rc=0/0 error、门 42/0、10 测试 + Test 30（18 条契约/6 禁复活）、示例帧代理与基线一致；**过程教训：构建失败留下的半新半旧二进制伪装成 8.5× 性能回归**（A/B 两侧必须全新构建）。 |
