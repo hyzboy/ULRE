@@ -638,6 +638,29 @@ namespace hgl
                 return visibility_storage ? !visibility_storage->IsInvisible(id) : true;
             }
 
+            // ── 变换名单的**结构性遍历**（唯一正确方式）─────────────────────────
+            //   名单里存在**空洞**：销毁 / Mobility 换边会留下 `INVALID_TRANSFORM_ID`
+            //   （见下方 movable_transforms 注释：「空洞记 INVALID_TRANSFORM_ID，注册优先复用空洞」）。
+            //   裸遍历 `GetMovableTransforms()/GetStaticTransforms()` 会把空洞当成有效 id 传下去，
+            //   以 (uint32)-1 索引行存储的平行数组 ⇒ 越界崩溃（2026-10-02 实测）。因此：
+            //   **新增消费者一律用这两个入口**（内部自动跳洞，调用方不可能漏）。
+
+            template<typename Fn>
+            void ForEachMovableTransform(Fn &&fn) const
+            {
+                for (const TransformID id : movable_transforms)
+                    if (IsValidTransformID(id))
+                        fn(id);
+            }
+
+            template<typename Fn>
+            void ForEachStaticTransform(Fn &&fn) const
+            {
+                for (const TransformID id : static_transforms)
+                    if (IsValidTransformID(id))
+                        fn(id);
+            }
+
             /// 实体 → 变换行（无变换时返回 INVALID_TRANSFORM_ID）
             TransformID GetTransformID(EntityID owner) const;
 

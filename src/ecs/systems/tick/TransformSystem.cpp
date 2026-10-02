@@ -39,7 +39,6 @@ namespace hgl::ecs
             storage->UpdateDirtyWorldMatricesFlat();
         }
 
-        const auto& movable_transforms = world->GetMovableTransforms();
         uint32_t total_movable = 0;
         uint32_t dirty_movable = 0;
         uint32_t updated_movable = 0;
@@ -54,11 +53,11 @@ namespace hgl::ecs
                                      ToChangeMask(TransformChange::WorldMatrix) |
                                      ToChangeMask(TransformChange::Mobility);
 
-        for (const TransformID id : movable_transforms)
+        // 结构性遍历（内部跳空洞）：禁裸遍历 `movable_transforms` —— 空洞会让
+        // IsDirty / GetChangeMask 以 (uint32)-1 索引平行数组（2026-10-02 实测崩溃）。
+        if (storage)
+            world->ForEachMovableTransform([&](TransformID id)
         {
-            if (!storage)
-                break;
-
             ++total_movable;
 
             const bool row_dirty = storage->IsDirty(id);
@@ -84,7 +83,7 @@ namespace hgl::ecs
                 }
                 MarkTransformSeen(id);
             }
-        }
+        });
 
     #if HGL_TRANSFORM_DEBUG_LOGGING
         static uint32_t s_update_log_tick = 0;
@@ -112,7 +111,6 @@ namespace hgl::ecs
             storage->UpdateDirtyWorldMatricesFlat();
         }
 
-        const auto& static_transforms = world->GetStaticTransforms();
         const uint32_t update_mask = ToChangeMask(TransformChange::LocalTRS) |
                                      ToChangeMask(TransformChange::Position) |
                                      ToChangeMask(TransformChange::Rotation) |
@@ -121,7 +119,8 @@ namespace hgl::ecs
                                      ToChangeMask(TransformChange::WorldMatrix) |
                                      ToChangeMask(TransformChange::Mobility);
 
-        for (const TransformID id : static_transforms)
+        // 同上：结构性遍历（内部跳空洞）
+        world->ForEachStaticTransform([&](TransformID id)
         {
             if (ShouldUpdateTransform(id, update_mask))
             {
@@ -129,7 +128,7 @@ namespace hgl::ecs
             }
 
             MarkTransformSeen(id);
-        }
+        });
 
         static_dirty = true;
     }
@@ -152,14 +151,13 @@ namespace hgl::ecs
 
             bool has_dirty_static = false;
 
-            for (const TransformID id : static_transforms)
+            // 结构性遍历（内部跳空洞）——裸遍历会把空洞（INVALID_TRANSFORM_ID）
+            // 交给 ShouldUpdateTransform ⇒ 以 (uint32)-1 索引行存储平行数组。
+            world->ForEachStaticTransform([&](TransformID id)
             {
-                if (ShouldUpdateTransform(id, update_mask))
-                {
+                if (!has_dirty_static && ShouldUpdateTransform(id, update_mask))
                     has_dirty_static = true;
-                    break;
-                }
-            }
+            });
 
             if (has_dirty_static)
             {
@@ -174,8 +172,10 @@ namespace hgl::ecs
                 // （O(N) 只在罕见事件上付，稳态每帧仍是早退）。
                 if (auto *storage = world->GetTransformStorage())
                 {
-                    for (const TransformID id : static_transforms)
+                    world->ForEachStaticTransform([&](TransformID id)
+                    {
                         storage->ArmWrite(id);
+                    });
                 }
 
                 // A3：静态场景 revision 递增。静态级联阴影滚动缓存的正确性前提

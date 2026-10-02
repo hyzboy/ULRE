@@ -739,6 +739,85 @@ int main(int argc, char** argv)
         GLogInfo(u8"Test 14 Passed: B2 稀疏侧表契约（fixed-pixel 按行隔离/释放即摘除；子表 CSR 增删查与快照一致）。");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 15: 名单空洞安全契约（2026-10-02，结构性修复）
+    //
+    // 背景：变换名单里存在**空洞**（销毁 / Mobility 换边留下 `INVALID_TRANSFORM_ID`，见 Context.h）。
+    // 拿空洞去查询行存储 = 以 (uint32)-1 索引平行数组 ⇒ 越界崩溃。实测栈：
+    //   TransformSystem::Update → TransformDataStorage::IsDirty(4294967295)
+    //   → ValueArray<unsigned char>::operator[](-1) → std::vector OOB。
+    // 本用例钉住两层：① 行存储入口对无效句柄安全返回（不崩）；
+    //                ② `ECSContext::ForEach*Transform` 结构性遍历自动跳洞、计数 = 活槽数。
+    // ─────────────────────────────────────────────────────────────
+    {
+        auto *hole_storage = context.GetTransformStorage();
+
+        if (!hole_storage)
+        {
+            GLogError(u8"Test 15 Failed: 无变换存储");
+            return 17;
+        }
+
+        // ① 行存储入口：无效句柄不得越界（曾崩在这里）
+        if (hole_storage->IsDirty(TransformDataStorage::INVALID_HANDLE))
+        {
+            GLogError(u8"Test 15 Failed: IsDirty(INVALID_HANDLE) 返回 true（应视为不脏并不崩）");
+            return 17;
+        }
+
+        // 制造空洞：movable 变换随实体销毁 ⇒ 名单留下 INVALID_TRANSFORM_ID
+        auto *hole_ent = context.CreateEntity<Entity>("HoleProbe");
+        const TransformID hole_id = context.CreateTransform(hole_ent->GetEntityID(), Mobility::Movable);
+
+        if (!IsValidTransformID(hole_id))
+        {
+            GLogError(u8"Test 15 Failed: 创建 movable 变换失败（段预算用尽？用例前提不成立）");
+            return 17;
+        }
+
+        context.DestroyEntity(hole_ent->GetEntityID());
+
+        bool has_hole = false;
+        for (const TransformID id : context.GetMovableTransforms())
+            if (!IsValidTransformID(id))
+                has_hole = true;
+
+        if (!has_hole)
+        {
+            GLogError(u8"Test 15 Failed: 销毁 movable 实体后名单未留空洞（前提变化，用例需更新）");
+            return 17;
+        }
+
+        // ② 结构性遍历：必须跳过空洞
+        uint32_t iterated = 0;
+        uint32_t invalid_seen = 0;
+
+        context.ForEachMovableTransform([&](TransformID id)
+        {
+            ++iterated;
+
+            if (!IsValidTransformID(id))
+                ++invalid_seen;
+        });
+
+        if (invalid_seen != 0)
+        {
+            GLogError(u8"Test 15 Failed: ForEachMovableTransform 把空洞传给了回调（%u 次）", invalid_seen);
+            return 17;
+        }
+
+        if (iterated != context.GetLiveTransformCount(true))
+        {
+            GLogError(u8"Test 15 Failed: ForEach 计数 %u ≠ 活槽数 %u",
+                      iterated, context.GetLiveTransformCount(true));
+            return 17;
+        }
+
+        GLogInfo(u8"Test 15 Passed: 名单空洞安全契约成立（IsDirty(INVALID_HANDLE) 安全返回 false 不崩；"
+                 u8"ForEachMovableTransform 跳过空洞且计数 %u == 活槽数 %u）。",
+                 iterated, context.GetLiveTransformCount(true));
+    }
+
     GLogInfo(u8"=== All TransformDataStorage tests passed successfully! ===");
     return 0;
 }

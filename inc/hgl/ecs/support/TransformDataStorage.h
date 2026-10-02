@@ -636,6 +636,24 @@ namespace hgl
 
             bool IsDirty(HandleID id) const
             {
+                // 越界 / 空洞（INVALID_HANDLE）⇒ 视为不脏 + **一次性报错**。
+                // 名单里的空洞是设计（Context.h：空洞记 INVALID_TRANSFORM_ID，注册优先复用）；
+                // 但拿空洞查询行存储 = 调用方漏了跳洞 ⇒ 以 (uint32)-1 索引平行数组会直接越界。
+                // 2026-10-02 实测崩溃栈：TransformSystem::Update → IsDirty(4294967295) →
+                // ValueArray<unsigned char>::operator[](-1) → std::vector OOB。
+                if (id >= static_cast<HandleID>(matrixDirty.GetCount()))
+                {
+                    static bool s_warned_invalid = false;
+                    if (!s_warned_invalid)
+                    {
+                        s_warned_invalid = true;
+                        GLogError("[TransformDataStorage] IsDirty 收到无效句柄 id=%u（空洞 INVALID_HANDLE=%u / 越界 rows=%u）"
+                                  "—— 名单遍历必须走 ECSContext::ForEach*Transform（内部跳洞），不要裸遍历名单",
+                                  id, static_cast<uint32_t>(INVALID_HANDLE), static_cast<uint32_t>(matrixDirty.GetCount()));
+                    }
+                    return false;
+                }
+
                 return matrixDirty[id] != 0;
             }
 
