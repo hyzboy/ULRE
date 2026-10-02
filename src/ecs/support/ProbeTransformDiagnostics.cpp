@@ -35,6 +35,7 @@
 #include<hgl/math/Matrix.h>
 #include<hgl/ecs/support/TransformDataStorage.h>
 #include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/components/GeometryData.h>   // [T0b] AddComponent<GeometryData> 需完整类型
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/EntityGPU.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -218,6 +219,57 @@ static void SectionAllocation()
 
         printf("\n  边际成本（n=10000 相对 n=1000，扣除固定开销）：%.1f B/实体, %.3f 块/实体\n",
                db/dn,dk/dn);
+    }
+
+    // ── [T0b] T2-c 的量化基准 ────────────────────────────────────────────────
+    // [T0] 只建 Transform ⇒ **量不到组件对象本身的成本**。这里同 n、同流程，只多挂一个
+    // GeometryData ⇒ 与 [T0] 同 n 的差值 = 每个组件对象的真实开销（= T2-c 要消灭的目标）。
+    {
+        const uint32_t n=10000;
+
+        ECSContext context;
+
+        for(int i=0;i<8;++i)                        // 预热（同 [T0]，排除一次性惰性分配）
+        {
+            auto *e=context.CreateEntity<Entity>("WarmupG");
+            context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            e->AddComponent<GeometryData>();
+        }
+
+        _CrtMemState before {},after {};
+        _CrtMemCheckpoint(&before);
+
+        for(uint32_t i=0;i<n;++i)
+        {
+            auto *e=context.CreateEntity<Entity>("TG");
+            context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            e->AddComponent<GeometryData>();
+        }
+
+        _CrtMemCheckpoint(&after);
+
+        long long nb=0,nbytes=0;
+
+        for(int i=0;i<_MAX_BLOCKS;++i)
+        {
+            nb     += (long long)after.lCounts[i]-(long long)before.lCounts[i];
+            nbytes += (long long)after.lSizes[i] -(long long)before.lSizes[i];
+        }
+
+        double base_b=0.0,base_k=0.0;
+
+        if(!results.empty())
+        {
+            base_b=(double)results.back().bytes /(double)results.back().n;
+            base_k=(double)results.back().blocks/(double)results.back().n;
+        }
+
+        printf("[T0b] [Entity + Transform + GeometryData] n=%u => %7.1f B/实体, %6.3f 块/实体\n"
+               "        ├ 对照 [T0] 同 n：%7.1f B/实体, %6.3f 块/实体\n"
+               "        └ 差（= 每个 GeometryData 组件的成本，T2-c 的靶子）：%+7.1f B, %+6.3f 块\n",
+               n,(double)nbytes/(double)n,(double)nb/(double)n,
+               base_b,base_k,
+               (double)nbytes/(double)n-base_b,(double)nb/(double)n-base_k);
     }
 #else
     printf("  (跳过：需要 MSVC Debug CRT 的 _CrtMemCheckpoint)\n");

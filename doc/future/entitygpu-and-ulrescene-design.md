@@ -236,6 +236,47 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 
 ## 9.5 T2 完成记录
 
+### T2-c 主体 —— 开工清单（下一批的入口，2026-10-02 定稿）
+
+> **状态**：全部前置条件已就绪（类型号、判据工具、边界拍板、改动面已量化），**尚未动代码**。
+
+**目标（判据）**：探针 `[T0b]` 与 `[T0]` 的差值 —— 从 **`+195.4 B / +3.000 块`** 压到 **`≤ +40 B / +1 块`**；
+外加：固定验证集全绿 + 像素 + 反证（破坏→必红→sha256 逐字节还原→必绿）。
+
+**形态**：实体槽 = **按类型句柄**（`uint32` 行号/裸指针，对齐 `EntityGPU.row[16]` 的未来形态）；
+Mesh 侧组件（`GeometryData` / `MaterialData` / **`ShadowProxy`**）住**类型化对象池**（块式，1 块/64 个，与 T2-a 同手法）；
+**池即活跃集**（系统的遍历源，0 额外分配）；拆掉 `Component` 基类的**名字字符串 + 虚表**（这才是 ≤40 B 的主要项）。
+
+**改动面（已实测，非估算）**：
+
+| 项 | 规模 | 备注 |
+|---|---|---|
+| `Component` 基类设施的真实调用点 | `GetName()` 1 / `OnDetach()` 3 / `OnAttach()` 1 / `GetSystemGroup()` 3 / `GetComponentSlot()` 1 | 原始 grep 的 44/9/11 混进了 `Object`/`RenderPipelineBase`/`GraphModule` 的**同名**方法 ⇒ 别按那个数估工作量 |
+| `GetComponents<T>` | **7 处** | `LineRenderPipeline.cpp:424`（Lines）、`LineBoundsUpdateSystem.cpp:23`（Lines）、`TextRenderPipeline.cpp:220`（Text）、`RenderPrimitiveCollectSystem.cpp:1878`（**GeometryData = Mesh 主路径**）、`CameraSystem.cpp:389/720`（**CameraComponent**）、+1 处测试 |
+| 组件创建入口 | 37 处 `AddComponent<>` / `make_shared<组件>` | 创建口必须同批改（否则新旧两套） |
+| 5 个组件 + `Entity` + `Context` | — | 实体槽、池/活跃集、注册路径 |
+
+**必须一并处理的三条硬约束**：
+
+1. **相机必须仍可被取成 `shared_ptr`**：`CameraSystem` 两处用 `GetComponents<CameraComponent>`，且世界相机槽拥有者是
+   `weak_ptr<CameraComponent>` ⇒ 池化后需给出「非拥有 `shared_ptr`（no-op deleter）」或让相机走独立所有者
+   —— **不许用 `if(相机)` 特判**（它是世界级，不是特例，见 B7/P-6 ② 与用户 2026-10-02「相机只在 CPU 端」）。
+2. **`GetSystemGroup()` 的运行时读取有 3 处**（`Context.cpp:1791`/`1816`、`RenderGraph.cpp:203`）⇒ 它是**类型属性**，
+   搬去类型表/类型静态之前，先确认 `Lines`/`Text` 已有类型号（✅ 前置① 已做）。
+3. **拆壳 = 全 5 个组件同批**（基类是共同的）⇒ 不能按类型拆子批（拆开就是新旧两套并存）。
+
+**坑（本会话已栽过，别再栽）**：
+内联 `python3 -c`/heredoc 写 C 源码的 `\n` 转义会变成**真换行**（`error C2001`）、写 `b"中文"` 会 **SyntaxError**、
+从 `cut` 截断的输出里抄锚文本必然失配、`cmake | grep -c` 拿到的是 `grep` 的返回码不是构建码
+⇒ **一律用 `write_file` 落 `.py`/`.sh` 再跑**（技能 `crlf-safe-editing` 有完整四条硬规则）。
+
+**第一条命令建议**：
+```bash
+cd /d/ULRE && git log --oneline -3 && python3 -c "print(open('inc/hgl/ecs/core/Entity.h','rb').read().count(b'\r\n'))"
+# 再跑探针拿当前基线（务必先确认 [T0b] 差值 = +195.4 B / +3.000 块 没漂）
+build/out/Windows_64_Debug/ProbeTransformDiagnostics.exe 2>&1 | grep -aE "^  \[T0b\]|靶子"
+```
+
 ### T2-c 前置核实（2026-10-02）—— 「内联」写法被数据否决 ⚠
 
 动手前实测三件事，结论推翻设计稿 v1 的 T2-c 写法：
