@@ -14,6 +14,8 @@
 //    - 6 平面硬件视锥体剔除（Vulkan RH_ZO 语义投影半径包围盒）
 //    - 无锁原子紧凑分类与 Indirect Commands 生成
 // 6. 100% GPU-Driven 渲染管线挂载：通过 MaterialBatch::gpu_driven_override 零 CPU 负荷
+// 7. 几何 AABB **不再自建**：剔除直接读引擎 `GeometryAABB` 全局池（行号 = `geometry_id`，
+//    与 `MeshDrawParams` 一号双表），与 ComputeFrustumCull 同一范式（A3 / 欠账 §2.7）
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -99,13 +101,19 @@ namespace
     struct SimulationAddressTable
     {
         uint64_t orbit_params;
-        uint64_t geometry_aabbs;
+        uint64_t geometry_aabbs;      // A3：**引擎** GeometryAABB 全局池基址（不再是示例自建表）
         uint64_t world_matrices;
         uint64_t l2w_indices;
         uint64_t counts;
+
+        /// A3：变体 → **引擎 geometry_id**（= MeshDrawParams / GeometryAABB 行号，一号双表）。
+        /// 示例内部仍按"变体"打包（counts/l2w 用 idx / INSTANCES_PER_GEOM），但 AABB 一律从
+        /// 引擎池取 ⇒ 需要这张映射把变体翻成引擎行号。scalar layout 下 uint[10] 紧跟两个 u64，无填充。
+        uint32_t geometry_ids[GEOMETRY_VARIANT_COUNT];
     };
 
-    static_assert(sizeof(SimulationAddressTable) == 40, "SimulationAddressTable 布局必须与 GLSL buffer_reference 块一致");
+    static_assert(sizeof(SimulationAddressTable) == 80,
+                  "SimulationAddressTable 布局必须与 GLSL buffer_reference 块一致（A3：+10×4B 变体→geometry_id）");
 
     struct FinalizePushConstants
     {
@@ -162,6 +170,8 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer SimAddressTab
     uint64_t world_matrices;
     uint64_t l2w_indices;
     uint64_t counts;
+    // A3：变体 → 引擎 geometry_id（与 C++ SimulationAddressTable 尾部 10×4B 一一对应）
+    uint     geometry_ids[10];
 };
 
 layout(buffer_reference, std430, buffer_reference_align=16) buffer OrbitParamsRef   { AsteroidOrbitParam params[]; };
@@ -223,8 +233,11 @@ void main() {
     world_matrices.mats[idx] = l2w;
 
     // 4. 6 平面视锥体剔除 (Vulkan RH_ZO 语义)
+    //    A3：AABB 不再来自示例自建表 —— 变体号先翻成**引擎 geometry_id**，再索引引擎 GeometryAABB 池
+    //    （与 ComputeFrustumCull 同范式；引擎对"本地 AABB 缺失"的几何写的是「始终可见」哨兵，
+    //     故模型加载来的几何不会被错误剔除）。
     uint geom_id = idx / 100000;
-    GeometryAABB aabb = geometry_aabbs.boxes[geom_id];
+    GeometryAABB aabb = geometry_aabbs.boxes[table.geometry_ids[geom_id]];
     vec3 world_center = (l2w * vec4(aabb.center.xyz, 1.0)).xyz;
     mat3 m = mat3(l2w);
     vec3 extents = aabb.extents.xyz;
@@ -311,7 +324,7 @@ class ComputeAsteroidBeltApp : public WorkObject
     Geometry                 *builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
     uint32_t                  geometry_ids[GEOMETRY_VARIANT_COUNT]{};
     uint32_t                  mesh_group_counts[GEOMETRY_VARIANT_COUNT]{};
-    GeometryAABB              cpu_geometry_aabbs[GEOMETRY_VARIANT_COUNT]{};
+    // A3：不再自建几何 AABB 表（改读引擎 GeometryAABB 全局池，见 SimulationAddressTable::geometry_ids）
     PrimitiveAsset            asteroid_assets[GEOMETRY_VARIANT_COUNT]{};
 
     // 陨星材质（使用 EmissiveSurface 彩色太空矿石表）
@@ -327,7 +340,7 @@ class ComputeAsteroidBeltApp : public WorkObject
 
     // GPU Compute 资源
     DeviceBuffer             *orbit_params_buffer       = nullptr; // 48 MB
-    DeviceBuffer             *geometry_aabbs_buffer     = nullptr; // 320 B
+    // A3：geometry_aabbs_buffer 已删（改用引擎 GeometryAABB 全局池）
     DeviceBuffer             *world_matrices_buffer     = nullptr; // 64 MB (Storage | BDA)
     DeviceBuffer             *l2w_index_buffer          = nullptr; // 4 MB (Storage | BDA)
     DeviceBuffer             *draw_count_buffer         = nullptr; // 44 B
@@ -475,19 +488,7 @@ private:
 
         planet_geometry->EnsureMeshDrawParams(pool, dev);
 
-        // 设置每种几何体的包围盒与 meshlet 分组
-        const glm::vec4 default_extents[GEOMETRY_VARIANT_COUNT] = {
-            glm::vec4(1.0f, 1.0f, 1.0f, 0.0f), // Sphere
-            glm::vec4(1.0f, 1.0f, 0.6f, 0.0f), // Dome
-            glm::vec4(1.0f, 1.0f, 1.0f, 0.0f), // Cone
-            glm::vec4(1.0f, 1.0f, 1.0f, 0.0f), // Cylinder
-            glm::vec4(1.3f, 1.3f, 0.4f, 0.0f), // Torus
-            glm::vec4(1.0f, 1.0f, 1.0f, 0.0f), // HollowCylinder
-            glm::vec4(1.0f, 1.0f, 1.0f, 0.0f), // HexSphere
-            glm::vec4(1.0f, 1.0f, 2.0f, 0.0f), // Capsule
-            glm::vec4(1.0f, 1.0f, 2.0f, 0.0f), // TaperedCapsule
-            glm::vec4(0.5f, 0.5f, 0.5f, 0.0f), // Cube
-        };
+        // 只设置 meshlet 分组；包围盒**不再自建**（A3：改读引擎 GeometryAABB 池，行号 = 引擎 geometry_id）
 
         for (uint32_t i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
@@ -504,16 +505,6 @@ private:
                 builtin_geometries[i]->GetIndexCount() > 0 ? builtin_geometries[i]->GetIndexCount()
                                                            : builtin_geometries[i]->GetVertexCount());
             mesh_group_counts[i] = CalcMeshGroupCount(false, total_verts);
-
-            cpu_geometry_aabbs[i].center[0] = 0.0f;
-            cpu_geometry_aabbs[i].center[1] = 0.0f;
-            cpu_geometry_aabbs[i].center[2] = 0.0f;
-            cpu_geometry_aabbs[i].center[3] = 0.0f;
-
-            cpu_geometry_aabbs[i].extents[0] = default_extents[i].x;
-            cpu_geometry_aabbs[i].extents[1] = default_extents[i].y;
-            cpu_geometry_aabbs[i].extents[2] = default_extents[i].z;
-            cpu_geometry_aabbs[i].extents[3] = 0.0f;
         }
 
         return true;
@@ -727,16 +718,6 @@ private:
         );
         delete[] orbit_params;
 
-        // 2. 包围盒表 (320 B)
-        geometry_aabbs_buffer = dev->CreateBuffer(
-            "Asteroids.GeometryAABBs",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            sizeof(GeometryAABB) * GEOMETRY_VARIANT_COUNT,
-            sizeof(GeometryAABB) * GEOMETRY_VARIANT_COUNT,
-            cpu_geometry_aabbs,
-            BufferAllocPolicy::CPUVisible
-        );
-
         // 3. 世界矩阵表 (64 MB，必须具备 SHADER_DEVICE_ADDRESS 以供 Mesh Shader BDA 寻址)
         world_matrices_buffer = dev->CreateBuffer(
             "Asteroids.WorldMatrices",
@@ -838,10 +819,17 @@ private:
         // Sim 侧 5 张表地址写一次（pc 放不下 5 个地址）；Finalize 侧 2 个地址直接进 pc。
         SimulationAddressTable sim_address_table{};
         sim_address_table.orbit_params    = dev->GetBufferDeviceAddressAligned16(orbit_params_buffer  ->GetBuffer());
-        sim_address_table.geometry_aabbs  = dev->GetBufferDeviceAddressAligned16(geometry_aabbs_buffer->GetBuffer());
+        // A3：包围盒表改用**引擎** GeometryAABB 全局池（与 GlobalAddresses::addr_geometry_aabb 同源；
+        //     行号 = 引擎 geometry_id，一号双表）。示例不再自建 AABB 表/buffer。
+        auto *ssbo_registry = GetManager<GlobalSSBOBufferRegistry>();
+        sim_address_table.geometry_aabbs  = ssbo_registry ? ssbo_registry->GetGPUBase(GlobalSSBOType::GeometryAABB) : 0;
         sim_address_table.world_matrices  = dev->GetBufferDeviceAddressAligned16(world_matrices_buffer->GetBuffer());
         sim_address_table.l2w_indices     = dev->GetBufferDeviceAddressAligned16(l2w_index_buffer     ->GetBuffer());
         sim_address_table.counts          = dev->GetBufferDeviceAddressAligned16(draw_count_buffer    ->GetBuffer());
+
+        // A3：变体 → 引擎 geometry_id（GLSL 用它索引引擎 AABB 池）
+        for (uint32_t i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
+            sim_address_table.geometry_ids[i] = geometry_ids[i];
 
         if (sim_address_table.orbit_params == 0 || sim_address_table.geometry_aabbs == 0 ||
             sim_address_table.world_matrices == 0 || sim_address_table.l2w_indices == 0 ||
@@ -921,7 +909,6 @@ public:
         {
             if (compute_cmd)              delete compute_cmd;
             if (orbit_params_buffer)      delete orbit_params_buffer;
-            if (geometry_aabbs_buffer)    delete geometry_aabbs_buffer;
             if (world_matrices_buffer)    delete world_matrices_buffer;
             if (l2w_index_buffer)         delete l2w_index_buffer;
             if (draw_count_buffer)        delete draw_count_buffer;

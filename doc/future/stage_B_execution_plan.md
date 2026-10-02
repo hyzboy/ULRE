@@ -642,6 +642,47 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 用它做的两次二分（"HEAD 正常 / 我的版本必挂"）因此**双双无效**。⇒ 铁律重申：**改结构大小或公共头，
 必须清 obj 全量重编之后再下任何结论**；二分两侧都必须基于全量重编的产物。
 
+**A3 完成记录（2026-10-02）—— ✅ §2.7 收口：`ComputeAsteroidBelt` 不再自建几何 AABB 表，改读引擎 `GeometryAABB` 池**
+
+一、前置验证（先解欠账里留的阻塞点，再动代码）
+
+欠账原文的顾虑：「`planet_geometry` 来自**模型加载**，引擎池里这一行是否有真值未验证；若加载路径不设
+`SetBoundingVolumes`，剔除会按退化 AABB 走」。**实测结论：不会退化** ——
+`Geometry::RefreshGeometryAABBRow()`（`src/SceneGraph/VKGeometry.cpp:112-142`）在本地 AABB 无效时写的是
+**「始终可见」哨兵**（`aabb.center[3] = kAlwaysVisibleRadius`，注释原话「缺数据不得导致被剔除」），
+而唯一写入者是 `WriteGeometryAABB`（`VKGeometry.cpp:139`，每个几何建行时写一次）。
+⇒ 引擎池对内置几何与加载模型**都安全**（真值或缺数据 ⇒ 保守可见），可以放心改。
+
+二、改法（保留示例内部"变体"打包，只换 AABB 源）
+
+示例内部仍按"变体"打包（`counts.geom_visible[]` / `l2w_indices` 用 `idx / INSTANCES_PER_GEOM`），
+但 AABB 一律改从引擎池取 ⇒ 需要一张 **GPU 可见的「变体 → 引擎 `geometry_id`」映射**：
+
+- `SimulationAddressTable` 尾部加 `uint32_t geometry_ids[GEOMETRY_VARIANT_COUNT]`，尺寸断言 **40 → 80**；
+  GLSL 侧 `SimAddressTableRef` 同步加 `uint geometry_ids[10]`（`scalar` layout 下 u64×5 + uint[10] 无填充）。
+- GLSL 剔除：`geometry_aabbs.boxes[table.geometry_ids[geom_id]]`（先把变体翻成引擎行号）。
+- 地址表 `geometry_aabbs` 改填**引擎池基址**：`GetGPUBase(GlobalSSBOType::GeometryAABB)`
+  （与 `GlobalAddresses::addr_geometry_aabb` 同源，与 `ComputeFrustumCull` 同一范式）。
+- **删除**：`cpu_geometry_aabbs[10]` 与其填充、`default_extents[10]`（自建包围盒的 CPU 源）、
+  自建 buffer `Asteroids.GeometryAABBs`(320 B) 的创建/释放/声明、头部注释里的能力项改为新形态。
+  零残留（`grep cpu_geometry_aabbs|geometry_aabbs_buffer|default_extents` 仅剩一条说明注释）。
+
+三、验证
+
+- **BUILD_RC=0 / error C=0 / warning C=0**；
+- 运行（55s）：真 error **0**；引擎池写入有真值证据 —— `GeometryAABB 行写入 id=1 radius=1.7321
+  center=(0,0,0) extents=(1,1,1)`（球体）；一号双表就位行 `rows=16384（AABB 32 B/行）`；
+- **像素（改的是剔除判据 = 绘制行为面，必做）**：主星（**模型加载**几何，AABB 走引擎池）+ 1,000,000
+  陨星环完整绘出，环带致密无缺块、主星未被误剔 ⇒ 剔除用的 AABB 有效（若读成零/垃圾值，会出现整环消失或
+  该剔不剔的可见异常）。
+
+四、过程中的两个疏忽（都靠"打印命中数"抓到，不留隐患）
+
+1. 地址表所在函数是 `CreateComputeResources`，`pool` 是**另一个函数**（几何初始化）的局部变量 ⇒
+   在该函数内改取 `GetManager<GlobalSSBOBufferRegistry>()`（与 `ComputeFrustumCull` 同写法）。
+2. 一处 heredoc 替换**忘了做行尾转换**（文件 CRLF，直接拿 `\n` 匹配）⇒ 命中 0、静默不改；
+   靠脚本里 `print("命中", count)` 当场发现。
+
 **A2 完成记录（2026-10-02）—— ✅ §2.4 / P-4 执行完毕：组计数从「字符串键」收敛为「枚举 + O(1) 数组」**
 
 一、范围与判据（P-4 原话：「收成『类型位掩码 → 组』的编译期映射，删掉运行期字符串哈希查找」）

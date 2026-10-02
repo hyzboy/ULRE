@@ -265,7 +265,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 
 ---
 
-### 2.7 示例侧仍有自建几何 AABB 表（2026-10-02 记录）
+### 2.7 示例侧仍有自建几何 AABB 表（2026-10-02 记录）—— ✅ **已闭合（A3，2026-10-02）**
 
 `example/ApiValidation/ComputeAsteroidBelt.cpp`：`cpu_geometry_aabbs[GEOMETRY_VARIANT_COUNT]`（10 个变体，
 extents 来自 `default_extents[]`）+ 自建 `geometry_aabbs_buffer` + 地址表 `geometry_aabbs` 字段 +
