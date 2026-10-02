@@ -34,7 +34,7 @@
 | 行存储 | 只有 Transform 一类（`TransformDataStorage`，`hgl::ValueArray` **自增长、无上限**、无分区、无预分配） | `Initialize(...)` 不存在；行号会随增长漂移 |
 | GPU 行面 | `TransformAssignmentBuffer` 按需扩容并**重建** L2W/L2WIndex SSBO（`src/ecs/support/TransformAssignmentBuffer.cpp:163` `EnsureCapacity`、`:511` `L2W recreated`） | 行号/地址在运行期会变 ⇒ 与"预烘焙 ID / 后续场景直载"的物理前提冲突 |
 | 值句柄 | 已是值句柄：`TransformAccessor` / `BoundingBoxAccessor`（24 B，世代校验） | `MaterialData` / `GeometryData` / `ShadowProxy` / `Camera` / `MaterialRuntimeSlot` 仍返回**裸指针**（`inc/hgl/ecs/core/Context.h:461-472`、`:553-583`、`:662-682`） |
-| 组件载体 | `ComponentTypeOf<T>` 特化只有两处（`GeometryData`、`MaterialData`） | `MaterialRuntime` / `Texture` **无组件载体**（类型表已就位，无消费者） |
+| 组件载体 | `ComponentTypeOf<T>` 特化：`GeometryData`（B3）、`MaterialData`（B4）、**`CameraComponent`（B7）** | **B6/B7 后全部类型有定论**：`MaterialRuntime` 的载体 = 每实例 `MaterialRuntimeSlot`（B5，行宽冻结 88 B）；`Texture` **无组件载体**——纹理授权在 `MaterialData` 的具名纹理资源里，其载体形态属"材质定义级行空间"，**与欠账 §2.9 同批处理**（勿补实体级组件） |
 | `EntityGPU` | **零实现**（仅 `Entity.h:29`、`ComponentTypeTable.h:121` 两条注释） | 见 B8（延后） |
 | **行空间的第二类**（新发现：**行宽由材质定义决定**） | 已有：`MaterialTextureReferencePool` = 每 `(definition, layout)` 一份的**字节行池**（行 = `uvec2[reference_count]`，**元数随材质变、行距运行时才知道、无 C++ 结构体**，行 0 预留零行、延迟回收）；每实例 slot 已持 `pool_key + row_index` | **不属于 `(scope, type)` 坐标** —— 行空间的键是**材质定义**。用户 2026-10-02 决议：**先不动，放到计划末期处理**（详见 `stage_B_debt_list.md` §2.9，含与组件行空间的形状对照表 + 末期清单）。**同批处理**（用户补充定性）：纹理引用 ⊂ `MaterialPrivateData`（今天与 surface 池分开放），故 **surface 三池 + 纹理配置池 + `ComponentType::Texture` 的类型号去留** 三项一起收，不各自开条 |
 | `.ulrescene` | 全仓 **0 命中** | 见 B8（延后） |

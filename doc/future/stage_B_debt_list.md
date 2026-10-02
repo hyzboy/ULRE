@@ -86,17 +86,32 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 - 相机槽：`kSlotCapacity = 16` + `static_assert`（`inc/hgl/ecs/support/CameraInfoStorage.h:48`、`:54`），
   行空间 `kRowCount = 16 × HGL_FRAME_SLOT_TOTAL`（`:50`）。
 
-**差距（T10 第 1–4 条，逐条对照 `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1158-1164`）**
-1. **行号仍会漂移（最硬的一条未做）**：`TransformAssignmentBuffer::EnsureCapacity(...)`
-   （`src/ecs/support/TransformAssignmentBuffer.cpp:163`）与随后的 `"[TransformAssignmentBuffer] L2W recreated"`
-   （`:511`）**都还在**；`doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1161` 明写要删掉该路径。
-   同页 `:179` 也把"当前 `TransformDataStorage` 用 `hgl::ValueArray` 自增长、无分区无上限"记为**固定容量不成立**。
-2. **没有声明式预算/预分配 API**：`grep -n 'Initialize' inc/hgl/ecs/support/TransformDataStorage.h` **零命中**
-   ⇒ 文档里的 `Initialize(max_statics, max_dynamics)` 形态尚未存在。
-3. **行字节瘦身（`fixed_pixel` / `children` 改稀疏侧表）未做**；文档写的「每行 ≈267 B → ≈211 B」
-   （`doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1159` 附近）是**文档口径**，
-   本轮**未实测**当前每行字节 —— **未实测**。
-4. 探针复核：`src/ecs/support/ProbeTransformDiagnostics.cpp`（CMake 目标 `ProbeTransformDiagnostics`）在，本轮**未运行**。
+**差距（T10 第 1–4 条，逐条对照 `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1158-1164`）—— ✅ 四条全部收口（2026-10-02）**
+
+1. ~~行号仍会漂移~~ ⇒ **已消除**：`TransformAssignmentBuffer` 的 `EnsureCapacity(...)` / `"[TransformAssignmentBuffer] L2W recreated"`
+   / `StatTransform` 现在**全仓 0 命中**（本批实测 grep；该文件的"按需扩容 + 重建"整块已删，L2W 行数改由预算算式**一次性**建）。
+   行号 = **稳定槽位的函数**（静态 `1+slot`、动态 `1+max_static+frame×max_dynamic+slot`）；Mobility 换边 = 换段
+   （旧行号作废 + 一次性告警），**不静默平移全体**。判据不是"看起来没重建"，而是**运行日志里重建类日志 0 次**。
+2. ~~没有声明式预算/预分配 API~~ ⇒ **已存在**：`inc/hgl/ecs/support/TransformDataStorage.h:39-41`
+   （`kDefaultMaxStaticRows` / `kDefaultMaxDynamicRows = 4096`，P-2 拍板）、`:105-121`（构造即按默认预算预分配）、
+   `:150-152`（`GetStaticRowBudget()` / `GetRowBudget()`）；超限 **fail-fast 不扩容**。
+3. ~~行字节瘦身未做~~ ⇒ **已做并实测（B2）**：**279 → 223 B/行**（19 条平行数组；`Test 9` 与探针两处独立测量一致，
+   其中 `local_mat4 + world_mat4` = 128 B）。
+4. ~~探针未运行~~ ⇒ **已运行**：B2 出每行字节、B5-b 出 `sizeof(MaterialRuntimeSlot) = 88 B`。
+
+**统一预算口径（stage B 后；全部"声明式容量 + 超限 fail-fast + 不扩容"）**
+
+| 行空间 | 容量 | 依据 | 行号冻结 |
+|---|---|---|---|
+| Transform（静态 / 动态） | 4096 / 4096 | `TransformDataStorage.h:39-41`（P-2） | ✅ 稳定槽位（下标即槽位、空洞复用） |
+| MeshDrawParams | 16384（reserve 1） | `GlobalSSBOBufferRegistry.cpp:15` | ✅ 行号唯一来源 |
+| GeometryAABB | 16384（reserve 0；与主表同 ID 索引，从不 Acquire） | 同上 `:24`（一号双表，有断言） | ✅ 跟主表 |
+| 材质 surface 三池（PBR / Emissive / Transmission） | 1024（reserve 1） | 同上 `:16-18` | ✅ 池行号即内容身份 |
+| MaterialData（材质**组件行**） | 1024（reserve 1） | 同上 `:29` | ✅ 句柄语义（组件分离不归还行） |
+| MaterialRuntime（每实例 slot） | 4096 fail-fast | `MaterialRuntimeTable.h:41/223` | ✅ 行号即身份（B5） |
+| MaterialVariant | 4096 fail-fast | `MaterialVariantTable.h:59/141` | ✅ |
+| 相机（槽 × 帧槽） | 16 × `HGL_FRAME_SLOT_TOTAL` | `CameraInfoStorage.h:48-54`（`static_assert`） | ✅ 槽 0 专属默认相机 |
+| 纹理引用配置（**按定义变长**） | 1024 / 定义 | `MaterialRecipe.h:68` | ⏳ 见 §2.9（末期同批） |
 
 ### 1.6 T11（`EntityGPU` 128 B）与 `.ulrescene`
 
@@ -140,23 +155,37 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 - ② 每实例选择器 `pass_selector` / `lod_selector` / `dither_enabled`（`:169-171`）；
 - ③ D9 重试/降频 `shadow_retry_frames`（A4 从共享变体记录迁来，`:176`）+ 授权代跟踪副本（`:180-181`）
   + 生命周期/脏标志（`:184-187`）；
-- ④ **A5b 从已删渲染组件迁来的每实例绑定**：`render_item_handle`、`runtime_pipeline_pass` / `runtime_pipeline`、
-  多实例 `instance_count` / `max_instances` / `allocated_instance_capacity`、
-  4 个 `graph::DeviceBuffer*`（L2W / L2W 索引 / MeshDrawCommand / MaterialInstanceAddresses）、
-  间接绘制 `IndirectMeshTaskBuffer*` + `indirect_count_buffer` + offset、`is_gpu_driven` / `is_indirect`（`:190-215` 一带）。
+- ④ **A5b 从已删渲染组件迁来的每实例绑定**（指针已出清，形态见下）：`render_item_handle`、
+  多实例 `instance_count` / `max_instances` / `allocated_instance_capacity`、`is_gpu_driven` / `is_indirect`。
 
-**待定**：④ 里的**指针/句柄字段**在「行 arena + 值类型句柄」模型下**不能照搬**（行内不得放重型/指针类型，
-参见 T8 的 `math::AABB` 352 B 教训）。要么改成**资源池行号**，要么留在世界侧旁表。**当前没有定稿**。
+**✅ 已闭合（B5-a + B5-b，2026-10-02）—— ④ 里的指针/句柄字段按「行 arena + 值类型句柄」全部出清，无"待定"残留**：
+
+- **6 个缓冲字段 → 世界级句柄表行号**（`inc/hgl/ecs/support/MaterialRuntimeBufferTable.h`）：`l2w` / `l2w_index` /
+  `mesh_draw_params` / `material_data_rows` / `indirect_cmds` / `indirect_count` 一律以 `*_handle`（`uint32_t`）表示；
+  表按公共基类 `graph::BufferOwner*` 收/取，**同一指针 interned（同一句柄）+ 引用计数**，**句柄 0 = 无缓冲**；
+  setter 统一「先 `Release` 本处旧句柄、再 `Register` 新值」（反复调用不堆计数、不误回收共享缓冲）；
+  `DestroySlot` 按引用释放全部 6 个（`GetBufferHandles()` 交出清单）。示例调用点零改动（签名不变）。
+- **`runtime_pipeline_pass` / `runtime_pipeline`（每 pass 解析产物）→ 世界侧旁表**
+  （`inc/hgl/ecs/support/MaterialRuntimePipelineTable.h`：`Set(id, pass)` / `Get(id, pass)`，
+  **pass 不匹配即未命中**——与旧 slot 字段语义逐字一致；失效与销毁两条路径都摘除）。
+- **出清后 slot 全 POD、行宽冻结 88 B**：`static_assert(sizeof(MaterialRuntimeSlot) == 88)` +
+  `ProbeTransformDiagnostics` 同源打印（编译期与运行期两处值一致）。
+- **契约**：Test 37（24 条，含 6 条"指针禁回 slot"）/ Test 38（12 条，含 2 条字段禁回 + pass 比对语义 + 行宽断言）。
+  反证分别 rc=37 / rc=38，逐字节还原后必绿。
+- 剩下的②每实例选择器（`pass_selector` / `lod_selector` / `dither_enabled`）与③状态字段
+  （重试/降频、授权代跟踪、生命周期/脏标志）**本来就该留在行内**（全 POD）⇒ 不属本项，无需搬。
 
 ### 2.3 `Entity::component_mask` → `EntityGPU::type[16]` 的对应关系
 
 - 现状：`component_mask` 是 `uint32_t` **位掩码**（`Entity.h:30`），位 = `1u << (uint32_t)ComponentType`
   （`ComponentTypeTable.h:124-131`），`None` 返回 0 位 ⇒ 永不占位。
 - 定稿形状：`EntityGPU::type[16]` = **16 个槽位 × (类型 1 B + 行号 4 B)**（`doc/future/ULRE_FINAL_TARGET_v2_设计约束.md:67`）。
-- **映射关系未实现、也未定稿（待定）**：位掩码表达"有哪些类型"（≤ 5 位），`type[16]` 表达
-  "第 n 号槽是什么类型 + 落在哪一行"。**16 个槽位 ≠ 6 个类型种类**（`COMPONENT_TYPE_COUNT = 6`，`ComponentTypeTable.h:39`）；
-  槽位到底是"每实体最多 16 个组件实例"还是"类型固定位次"，实仓**没有任何代码可依据** ⇒ **待定**。
-  若 `type[16]` 意为"类型种类可达 16"，则 `ComponentType` 需要扩容。
+- **✅ 已定稿（P-3 拍板，2026-10-02，用户：选 A）**：**槽位 = `ComponentType` 值 ⇒ 每类型最多一行**，
+  与 `Entity::component_mask`（位掩码）**1:1 对应**；"每实体最多 16 个组件实例（任意类型）"的 B 方案**已被否决**
+  ⇒ `ComponentType` **不需要扩容**、`component_mask` 的表示也不换。
+- **只剩实现（B8）**：按此语义落地 `EntityGPU::type[16]`（类型 1 B/槽）+ `row[16]`（行号 4 B/槽）；
+  类型值**只能追加**（B7 已按此把 `Camera` 追加在 `Texture` 之后）——类型值被位掩码与 `type[16]` 槽消费，
+  插队会让既有类型全体平移。类型表 `kComponentTypeTable` 已同步到 stage B 真值（B6/B7）。
 
 ### 2.4 `system_group_component_counts`（按组**字符串**计数，键域 3 个）
 
