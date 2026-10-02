@@ -189,9 +189,14 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 
 ---
 
-### 2.6 B3 批处理键的旧形态：几何运行时三指针 + 每实体 CPU draw range
+### 2.6 ✅ 已消除（B3-iii，2026-10-02）：批处理键的旧形态 = 几何运行时三指针 + 每实体 CPU draw range
 
-**现状（2026-10-02 侦察，实测）**：`GeometryData` 仍持每实体 `new` 出来的
+**已消除（2026-10-02，B3-iii 落地并验证）**：下面这段是**变更前**的形态，保留作"为什么必须重构"的记录。
+现状 = 排序/聚簇/ICB/命令四处一律读 `RenderItem::MeshDrawKey`（`MeshDrawParams` 行的 CPU 镜像 POD），
+采集期从行填入；`GeometryData` 的三指针与逐帧武装函数整组删除。详见
+`stage_B_execution_plan.md` 的「B3-iii 完成记录」（含等价性论证、验证数字与过程教训）。
+
+**变更前形态（记录用）**：`GeometryData` 曾持每实体 `new` 出来的
 `GeometryDataBuffer*` / `GeometryDrawRange*` / `Geometry*`，而这三者正是**批处理的主键**：
 
 - `RenderItem::Compare`（`src/ecs/core/RenderItem.cpp:8-52`）= 批排序主键，按 `*GeometryDataBuffer <=>`
@@ -206,10 +211,11 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 （`geometry_id` + `vertex_base`/`index_base`/`vertex_count`/`index_count`/`is_indexed`，即 `MeshDrawParams` 行的 CPU 镜像），
 三指针与其每实体 CPU 副本整组删除。ICB 组数由 `is_indexed ? index_count : vertex_count` 得到（与现状逐位等价）。
 
-**待拍板（用户）**：改行键后，**同 asset 的每实体 `GeometryDrawRange` 差异不再参与判定**（同几何 ⇒ 同一行 ⇒ 必然同键）。
-对纯几何路径等价；唯一例外是文本/线段路径（见下条），但其批不参与该排序（单批）⇒ 实际影响为零。
+**已拍板（2026-10-02，用户）：按建议改** —— 排序/聚簇键改行派生 POD 键；**同 asset 的每实体 `GeometryDrawRange`
+差异不再参与判定**（同几何 ⇒ 同一行 ⇒ 必然同键）。对纯几何路径等价（旧实现下两份副本内容也相同）；
+文本/线段的批不参与该排序（单批）⇒ 实际影响为零。
 
-**关联欠账（独立，不属 B3-iii）**：**文本 / 线段路径"每批改写同一个几何的行"** ——
+**关联欠账（独立，仍开放；用户定性 = "动态 GEOMETRY"，明确"以后再说"）**：**文本 / 线段路径"每批改写同一个几何的行"** ——
 `src/ecs/support/text/TextRenderPipeline.cpp:907`（`vertex_count = 字符数`）与
 `src/ecs/support/line/LineRenderPipeline.cpp:655`（`vertex_count = 线段数 × 2`）都是**共享行被每批覆盖写**。
 若同一几何被两个批引用且绘制量不同，行会被后写者覆盖（谁最后写谁赢）——现有示例未触发。
