@@ -189,6 +189,34 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 
 ---
 
+### 2.6 B3 批处理键的旧形态：几何运行时三指针 + 每实体 CPU draw range
+
+**现状（2026-10-02 侦察，实测）**：`GeometryData` 仍持每实体 `new` 出来的
+`GeometryDataBuffer*` / `GeometryDrawRange*` / `Geometry*`，而这三者正是**批处理的主键**：
+
+- `RenderItem::Compare`（`src/ecs/core/RenderItem.cpp:8-52`）= 批排序主键，按 `*GeometryDataBuffer <=>`
+  （内容比较 geometry_id/vdm/vab/ibo）与 `*GeometryDrawRange <=>`（vertex_offset/first_index/counts）排序；
+  `DrawBatch::Set(...)`（`inc/hgl/ecs/support/PipelineMaterialRenderer.h:62-79`）再由 `data_buffer->geometry_id` 定 `geometry_id`；
+  建批点 4 处：`src/ecs/support/PrimitiveBatchPipeline.cpp:491/552/570/588`。
+- 采集侧每帧经 `EnsureRuntimeGeometryFromAsset()`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:216-254`，
+  调用点 `:2187` / `:2228` / `:2280`）按材质程序"武装"几何缓冲；4ID 的 `geometry_id` 走三级回退
+  （`geom_buf->geometry_id` → asset→Geometry→`EnsureMeshDrawParams`）。
+
+**终态方向**（与"把 GPU 可用部分抽成固定 ID 结构"一致）：排序/聚簇/ICB 一律读**行派生 POD 键**
+（`geometry_id` + `vertex_base`/`index_base`/`vertex_count`/`index_count`/`is_indexed`，即 `MeshDrawParams` 行的 CPU 镜像），
+三指针与其每实体 CPU 副本整组删除。ICB 组数由 `is_indexed ? index_count : vertex_count` 得到（与现状逐位等价）。
+
+**待拍板（用户）**：改行键后，**同 asset 的每实体 `GeometryDrawRange` 差异不再参与判定**（同几何 ⇒ 同一行 ⇒ 必然同键）。
+对纯几何路径等价；唯一例外是文本/线段路径（见下条），但其批不参与该排序（单批）⇒ 实际影响为零。
+
+**关联欠账（独立，不属 B3-iii）**：**文本 / 线段路径"每批改写同一个几何的行"** ——
+`src/ecs/support/text/TextRenderPipeline.cpp:907`（`vertex_count = 字符数`）与
+`src/ecs/support/line/LineRenderPipeline.cpp:655`（`vertex_count = 线段数 × 2`）都是**共享行被每批覆盖写**。
+若同一几何被两个批引用且绘制量不同，行会被后写者覆盖（谁最后写谁赢）——现有示例未触发。
+收敛方向：行 = 每几何一份不可变（绘制量差异进每 draw item 的数据，而不是行）。
+
+---
+
 ## 3. stage B 的验收口径（沿用 stage A 硬纪律）
 
 `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1058-1062` 与 `:1156`：
@@ -213,7 +241,9 @@ GPU 侧 48 B TRS SSBO（D1）；L2W 改 `Matrix4x3f`（D2）；全局 `g_Current
 
 ## 5. 本轮未实测项（白纸黑字）
 
-- 当前 `TransformDataStorage` **每行字节数**（文档写 ≈267 B / 目标 ≈211 B）—— 未实测，未跑 `ProbeTransformDiagnostics`。
+- ~~当前 `TransformDataStorage` **每行字节数**（文档写 ≈267 B / 目标 ≈211 B）~~ —— **已实测（2026-10-02，B2）**：
+  **279 → 223 B/行**（19 条平行数组；`Test 9` 与 `ProbeTransformDiagnostics` 两处一致；其中 `local_mat4 + world_mat4` = 128 B）。
+  行空间冻结与稳定槽位见 `stage_B_execution_plan.md` 的 B1 / B1b（static 4096 + dynamic 4096、下标即槽位、空洞复用）。
 - `EntityGPU` 128 B 的 GPU 侧实机布局/对齐 —— 无实现，只有文档形状。
 - `.ulrescene` 直载链路 —— 无实现，未实测。
 - 相机参数进 arena 的具体方案 —— 仅列为"待定分叉"，未做设计。
