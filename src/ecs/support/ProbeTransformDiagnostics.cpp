@@ -284,6 +284,25 @@ static void SectionAllocation()
         printf("  组件全卸后行归零=%s、实体销毁后 Active 清零=%s\n",
                detach_cleared?"是":"否",dead_cleared?"是":"否");
         printf("  注：[T0]/[T0b] 的 10000 实体场景超 4096 容量 ⇒ 上方那条超容量报错是预期 fail-fast。\n");
+
+        // T3c-2a：脏行上传计划（CPU 侧语义：无脏 ⇒ 0 行；改一行 ⇒ 恰好 1 行）
+        std::vector<uint32_t> plan;
+        EntityGPUTable &mut_table=context.GetEntityGPUTable();
+
+        mut_table.ClearDirty();
+        mut_table.CollectDirtyRows(plan);
+        const size_t plan_clean=plan.size();
+
+        context.SetEntityVisible(entities[1]->GetEntityID(),false);
+        mut_table.CollectDirtyRows(plan);
+        const size_t plan_one=plan.size();
+        const bool plan_one_ok=(plan_one==1 && !plan.empty() && plan[0]==entities[1]->GetEntityID().index);
+
+        mut_table.ClearDirty();
+        mut_table.CollectDirtyRows(plan);
+
+        printf("  脏行计划：无脏=%zu 行（期望 0）、改 1 个实体可见性=%zu 行（期望 1，且正是该实体槽=%s）、清脏后=%zu 行（期望 0）\n",
+               plan_clean,plan_one,plan_one_ok?"是":"否",plan.size());
     }
 
     if(results.size()==2)

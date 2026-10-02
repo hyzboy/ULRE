@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/EntityGPU.h>
 #include<hgl/log/Log.h>
+#include<algorithm>
 #include<cstdint>
 #include<vector>
 
@@ -38,7 +39,17 @@ namespace hgl
         private:
 
             std::vector<EntityGPU> rows;        ///< 按 `EntityID.index` 直索引（槽位表）
+            std::vector<uint8_t>   row_dirty;   ///< 行脏位（1 B/行；上传后清）
             bool                   overflow_reported = false;
+
+            void MarkDirty(uint32_t index)
+            {
+                if (row_dirty.size() < rows.size())
+                    row_dirty.resize(rows.size(), 0);
+
+                if (index < row_dirty.size())
+                    row_dirty[index] = 1;
+            }
 
         private:
 
@@ -63,7 +74,10 @@ namespace hgl
             void Ensure()
             {
                 if (rows.empty())
+                {
                     rows.resize(kCapacity);
+                    row_dirty.assign(kCapacity, 0);
+                }
             }
 
             const EntityGPU *Row(uint32_t index) const
@@ -105,6 +119,7 @@ namespace hgl
                 }
 
                 row->flags |= uint32_t(EntityGPUFlags::Active);
+                MarkDirty(id.index);
             }
 
             /// 实体销毁：清 `Active`（其余字段保持原文，供诊断；消费者先判 Active）
@@ -113,7 +128,10 @@ namespace hgl
                 EntityGPU *row = Row(id);
 
                 if (row)
+                {
                     row->flags &= ~uint32_t(EntityGPUFlags::Active);
+                    MarkDirty(id.index);
+                }
             }
 
             /// 可见性（与 `ECSContext::IsEntityVisible` 同源；唯一真值仍在 VisibilityDataStorage）
@@ -128,6 +146,8 @@ namespace hgl
                     row->flags |= uint32_t(EntityGPUFlags::Visible);
                 else
                     row->flags &= ~uint32_t(EntityGPUFlags::Visible);
+
+                MarkDirty(id.index);
             }
 
             /// 按实体的**按类型行号表**刷新 `type[]/row[]`（组件挂卸后的唯一同步点）
@@ -148,6 +168,8 @@ namespace hgl
                     row->type[t] = handle ? uint8_t(t) : 0;
                     row->row [t] = handle;
                 }
+
+                MarkDirty(entity->GetEntityID().index);
             }
 
             /// `row[Transform]` = **L2W 行号**（P-1）；由变换上传路径下发（0 = 尚无行）
@@ -160,12 +182,46 @@ namespace hgl
 
                 row->row[uint32_t(ComponentType::Transform)] = l2w_row;
                 row->type[uint32_t(ComponentType::Transform)] = l2w_row ? uint8_t(ComponentType::Transform) : 0;
+
+                MarkDirty(id.index);
             }
 
             void Clear()
             {
                 for (EntityGPU &row : rows)
                     row = EntityGPU{};
+
+                if (!row_dirty.empty())
+                    std::fill(row_dirty.begin(), row_dirty.end(), 0);
+            }
+
+        public: // ── 上传计划（T3c-2）：把**脏行**交出去，不整表 512 KB 传 ──
+
+            /// 收集脏行下标（不改状态）；`out` 会被清空后填充
+            void CollectDirtyRows(std::vector<uint32_t> &out) const
+            {
+                out.clear();
+
+                for (uint32_t i = 0; i < row_dirty.size(); ++i)
+                    if (row_dirty[i])
+                        out.push_back(i);
+            }
+
+            /// 上传完成后清脏（唯一入口：世界的上传路径）
+            void ClearDirty()
+            {
+                if (!row_dirty.empty())
+                    std::fill(row_dirty.begin(), row_dirty.end(), 0);
+            }
+
+            uint32_t GetDirtyCount() const
+            {
+                uint32_t n = 0;
+
+                for (uint8_t d : row_dirty)
+                    n += d ? 1u : 0u;
+
+                return n;
             }
 
         public: // ── 自检（探针 / 测试用）：与实体行号表逐字段对拍 ──

@@ -218,6 +218,14 @@ namespace hgl
             graph::DeviceBuffer *world_addresses_buffer = nullptr;
             uint64_t world_addresses_addr = 0;
 
+            // ── T3c：实体行表（`EntityGPU`）的 **GPU 侧**（世界私有 SSBO）──
+            //   CPU 权威 = `entity_gpu_table`（T3b）；这里只是它的设备镜像：
+            //   BDA 基址经 `WorldAddresses.addr_entity_gpu` 下发（T3c-2 起按**脏行**上传，
+            //   不再整表 512 KB 传）。三者与地址表同范式（`CreateSSBO` → `StructView` → 设备地址）。
+            graph::StructView<EntityGPU> *entity_gpu_view = nullptr;
+            graph::DeviceBuffer *entity_gpu_buffer = nullptr;
+            uint64_t entity_gpu_table_addr = 0;
+
             bool active = false;
             bool shutdown_in_progress = false;
 
@@ -403,6 +411,14 @@ namespace hgl
             /// 创建世界地址表（SSBO：HGL_FRAME_SLOT_TOTAL 槽 × kWorldAddressesSlotStride + 持久 BDA）。
             /// 世界 In,itialize 时调用；失败 = fail-fast（地址缺失会让 shader 解引用 0 = UB）。
             bool InitializeWorldAddressesTable();
+
+            /// T3c-2：把实体行表的**脏行**上传到设备镜像（`SyncWorldAddresses` 内调用）
+            void UploadEntityGPUDirtyRows();
+
+            /// **实体行表**（世界私有 SSBO：`EntityGPUTable::kCapacity × 128 B`）建表 + 取设备地址。
+            /// 地址缺失 = 消费者解引用 0 基址 = UB ⇒ fail-fast（与地址表同款判据）。
+            /// 建表时机：与地址表同批（同一个 BDA 前提 + 同一个"世界 GPU 表"生命周期）。
+            bool InitializeEntityGPUTable();
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }

@@ -346,9 +346,20 @@ namespace hgl
                 if (auto *gc = GetGraphicsContext())
                 {
                     if (auto *bm = gc->GetBufferManager())
+                    {
                         bm->Release(world_addresses_buffer);
+
+                        // T3c：实体行表随世界释放（`StructView` 是裸指针、生命周期随 buffer，与地址表同办）
+                        if (entity_gpu_buffer)
+                            bm->Release(entity_gpu_buffer);
+                    }
                 }
+
                 world_addresses_buffer = nullptr;
+
+                entity_gpu_buffer = nullptr;
+                entity_gpu_view = nullptr;
+                entity_gpu_table_addr = 0;
             }
 
             world_addresses_addr = 0;
@@ -1429,7 +1440,109 @@ namespace hgl
 
             world_addresses_table->Commit();
 
+            // T3c：实体行表与地址表**同批**建（同一个 BDA 前提；地址要写进本表 ⇒ 必须先有）
+            if (!InitializeEntityGPUTable())
+                return false;
+
             SyncWorldAddresses();
+            return true;
+        }
+
+        /// T3c-2：把实体行表里**脏了的那几行**写进设备镜像（不整表 512 KB 传）。
+        /// 判据：`entity_gpu_table.GetDirtyCount() == 0` ⇒ **一行都不传**（零成本）。
+        void ECSContext::UploadEntityGPUDirtyRows()
+        {
+            if (!entity_gpu_view || !entity_gpu_buffer)
+                return;
+
+            if (entity_gpu_table.GetDirtyCount() == 0)
+                return;
+
+            static thread_local std::vector<uint32_t> dirty_rows;
+
+            entity_gpu_table.CollectDirtyRows(dirty_rows);
+
+            auto *dst = reinterpret_cast<EntityGPU *>(entity_gpu_view->Data());
+            if (!dst)
+                return;
+
+            for (const uint32_t index : dirty_rows)
+            {
+                const EntityGPU *src = entity_gpu_table.Row(index);
+
+                if (src)
+                    dst[index] = *src;
+            }
+
+            entity_gpu_view->Commit();
+            entity_gpu_table.ClearDirty();
+        }
+
+        bool ECSContext::InitializeEntityGPUTable()
+        {
+            if (entity_gpu_buffer)
+                return true;
+
+            auto *gc = GetGraphicsContext();
+            if (!gc)
+            {
+                LogError("[ECSContext::InitializeEntityGPUTable] graphics context is null");
+                return false;
+            }
+
+            auto *bm = gc->GetBufferManager();
+            if (!bm)
+            {
+                LogError("[ECSContext::InitializeEntityGPUTable] buffer manager is null");
+                return false;
+            }
+
+            char name_buf[192];
+            std::snprintf(name_buf, sizeof(name_buf), "World:%s:EntityGPUTable", GetName().c_str());
+
+            // 整表一份（**不按帧槽切**）：行内容按实体槽位索引，与 entity_gpu_table（T3b）逐行对应。
+            // 上传策略（脏行 or 整表 / 单份 or 帧槽多份）见设计稿 P-4：T3c-2/T3c-3 用实测定。
+            entity_gpu_buffer = bm->CreateSSBO(
+                name_buf,
+                VkDeviceSize(EntityGPUTable::kCapacity) * VkDeviceSize(sizeof(EntityGPU)));
+            if (!entity_gpu_buffer)
+            {
+                LogError("[ECSContext::InitializeEntityGPUTable] CreateSSBO failed");
+                return false;
+            }
+
+            entity_gpu_buffer->SetUpdateClass(graph::BufferUpdateClass::Default);
+
+            entity_gpu_view = graph::StructView<EntityGPU>::Create(entity_gpu_buffer, false);
+            if (!entity_gpu_view)
+            {
+                LogError("[ECSContext::InitializeEntityGPUTable] StructView create failed");
+                return false;
+            }
+
+            entity_gpu_table_addr = gpu_device
+                ? gpu_device->GetBufferDeviceAddressAligned16(entity_gpu_buffer->GetBuffer())
+                : 0;
+            if (entity_gpu_table_addr == 0)
+            {
+                LogError("[ECSContext::InitializeEntityGPUTable] 实体行表取不到设备地址"
+                          "（16B 对齐 / SHADER_DEVICE_ADDRESS usage 检查）");
+                return false;
+            }
+
+            // 整表清零：未激活的槽 `flags.Active == 0`，消费者据此跳过（T3b 的槽位语义）。
+            if (auto *rows = reinterpret_cast<EntityGPU *>(entity_gpu_view->Data()))
+                for (uint32_t i = 0; i < EntityGPUTable::kCapacity; ++i)
+                    rows[i] = EntityGPU{};
+
+            entity_gpu_view->Commit();
+
+            LogInfo("[ECSContext] 实体行表就绪：%s  %u 行 × %zu B = %zu KB，设备地址=0x%llX"
+                    "（消费者：GPU 剔除读实体行；地址经 WorldAddresses.addr_entity_gpu 下发）",
+                    GetName().c_str(), EntityGPUTable::kCapacity, sizeof(EntityGPU),
+                    size_t(EntityGPUTable::kCapacity) * sizeof(EntityGPU) / 1024,
+                    (unsigned long long)entity_gpu_table_addr);
+
             return true;
         }
 
@@ -1522,6 +1635,11 @@ namespace hgl
 
             if (auto *id_storage = GetDrawItemIDStorage())
                 want.addr_draw_item_ids = id_storage->GetGPUAddress();
+
+            // T3c：实体行表（世界私有；消费者 = GPU 剔除读实体行）。未建表 ⇒ 保持 0（消费者判 0 跳过）。
+            want.addr_entity_gpu = entity_gpu_table_addr;
+
+            UploadEntityGPUDirtyRows();
 
             // env（sky / shadow）随世界（C2）：按**本世界生效 profile** 取址写本世界槽。
             // sky 单份 buffer（全帧槽同址）；shadow 是每帧槽一份的 ring（下标 = 帧槽）⇒ 取本槽那份。
