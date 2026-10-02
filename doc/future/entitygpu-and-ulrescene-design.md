@@ -266,6 +266,19 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 **相机例外不变**：`CameraComponent` 需保持 `shared_ptr`（相机槽拥有者 `weak_ptr<CameraComponent>`）；
 用户 2026-10-02 追加定案：**相机只在 CPU 端出现、不进 `EntityGPU`**（一个场景不会同时用一堆相机，CPU 算得过来）。
 
+**T2-c 定界（用户 2026-10-02）—— 「存储统一 ≠ 渲染/收集统一」**：
+
+- `LinesComponent`：**全场景收集、最后一次绘制** —— `LineCollectSystem` → `LineRenderPipeline::RunCollect()`
+  用 `context_->GetComponents<LinesComponent>(all)` 遍历**整个场景**收进 `collected_`，再由 `LineRenderSystem`
+  一次 draw；**不共享** Mesh 的批/实例化逻辑。
+- `TextComponent`：**2D 专用**，未来 2D 单开一套管理 ⇒ **现在不得为它做任何特化/深度绑定**，保持最小耦合
+  （将来整条搬走时越少牵连越好）。
+- ⇒ T2-c **只统一存储**（实体槽句柄 + 类型化对象池 + 池即活跃集），**不碰**这两条路径的收集与绘制语义；
+  它们的收集调用点只从「`shared_ptr` 列表」改成「按类型的活跃集视图（裸指针）」。
+- **跨切面警告**：`GetComponents<T>(std::vector<std::shared_ptr<T>>&)` 这个**带 `shared_ptr` 的收集 API 形态**
+  是当年 `shared_ptr` 留在组件上的原因之一；T2-c 改组件存储 ⇒ 必须**同批**更换它的全部调用点
+  （`LineRenderPipeline.cpp`、`LineBoundsUpdateSystem.cpp`、`TextRenderPipeline` 对应处），否则就是新旧两套并存。
+
 **① 已落地（2026-10-02）—— `Lines` / `Text` / `ShadowProxy` 登记 CPU-only 类型号**：
 
 - 枚举追加 3 项（只能追加：类型值被位掩码与 `EntityGPU.type[16]` 消费）；
@@ -275,8 +288,10 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 - **Test 41**（13 条契约）：四件套 + 决策钉子；**行宽列（第 4 列）被编码进 needle** ⇒ 任何"把这三种升级成
   GPU 行"的改动都会让用例变红；并钉住「文本 / 线段 = 动态 GEOMETRY，以后再说」的定界**未翻案**。
 - 实测：门 **42 PASS / 0 FAIL**、`TestCSMIncrementalPass` + `TestComponentMask` rc=0。
-- 为什么必须先做这步：**实体侧「按类型句柄」要求每个组件都有类型号** —— 这三个组件原本没有
-  （`ComponentTypeOf` 无特化 ⇒ 都落 `None`），而这件事**不能按类型拆子批**（实体存储形态是一个整体，拆开就是新旧两套并存）。
+- 为什么做这步：这三种类型此前**没有类型号**（`ComponentTypeOf` 无特化 ⇒ 都落 `None`），而类型号是
+  (scope,type) 台账、实体侧掩码与将来「按类型句柄」的共同前提 ⇒ **先登记号（CPU-only）**；
+  **是否进实体侧池另说** —— 按上面的定界，Mesh 侧（`GeometryData`/`MaterialData`/`ShadowProxy`）进池，
+  `Lines`/`Text` 只提供"按类型的活跃集视图"给各自的收集路径。
 
 ### T2-b（2026-10-02）—— 每实体哈希表 ⇒ 小数组 + 线性扫描 ✅
 
