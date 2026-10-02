@@ -4759,8 +4759,11 @@ int main(int argc, char** argv)
               "hgl::graph::GlobalSSBOBinding", "材质组件的 GPU 面不再是「类型 + 行号」" },
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "bool authored = false;", "材质数据行资源的「已授权」标记缺失" },
+            // B4-iii-a：行号复位语义已搬到「组件行结构默认值 + ClearMaterialRow 写默认行」
+            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
+              "uint32 surface_data_index = uint32(-1);", "组件行缺「未设」哨兵默认值（会残留旧行号）" },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "resource.data_index = uint32_t(-1);", "数据行重置不再复位行号（残留旧行）" },
+              "const hgl::graph::ssbo::MaterialDataRow cleared{};", "清空路径不再复位组件行（残留旧引用）" },
 
             // ② 禁复活：每实体死指针与派生数
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
@@ -4781,6 +4784,117 @@ int main(int argc, char** argv)
         GLogInfo(u8"Test 31 Passed: B4-i 契约成立（MaterialData 的 GPU 面 = GlobalSSBOBinding 类型+行号 + authored；"
                  u8"禁复活：per-entity buffer / element_capacity / byte_stride；共 %d 条契约）。",
                  static_cast<int>(sizeof(kB4Contracts) / sizeof(kB4Contracts[0])));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 32: B4-iii-a 契约（材质数据 = 设备级 (Global, MaterialData) 组件行）
+    //
+    // 背景（B4 拍板「路 B」：用户原话「MaterialData 的数据本就是跨世界的」）：
+    // 材质数据组件的 GPU 面住在**设备级**行 arena 里，行内只放「引用哪一行内容 + 授权标记」；
+    // 组件只持行号（`material_row_id`）⇒ 不存在「组件副本 vs 行」双真值。
+    // 行 0 = 哨兵（无材质数据）；`BuildResolvedRecipe` 的绑定真源 = 该行（不再读组件副本）。
+    //
+    // 反证：删掉行写入 / 恢复组件副本 ⇒ 本用例必失败。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kB4iiiContracts[] =
+        {
+            // ① 类型与行结构
+            { "SSBOTypes.h", OS_TEXT("inc/hgl/graph/ssbo/SSBOTypes.h"),
+              "ENUM_CLASS_RANGE(MeshDrawParams, MaterialData)",
+              "GlobalSSBOType 未登记 MaterialData（设备级组件行类型缺失）" },
+            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
+              "struct MaterialDataRow", "材质数据组件行结构缺失" },
+            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
+              "kMaterialDataFlagAuthoredDataResource", "组件行的「已授权数据行」位缺失" },
+
+            // ② 池与读口
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "GlobalSSBOType::MaterialData,        \"MaterialData\"",
+              "registry 未给 MaterialData 配池（设备级行 arena 缺池）" },
+            { "GlobalSSBOBufferRegistry.h", OS_TEXT("inc/hgl/graph/module/GlobalSSBOBufferRegistry.h"),
+              "const ssbo::MaterialDataRow *GetMaterialDataRow", "registry 缺组件行读口" },
+
+            // ③ 组件侧：只持行号 + 走行读写 + 归还
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "uint32_t material_row_id = 0;", "组件不再持设备级行号" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "registry->Acquire(hgl::graph::GlobalSSBOType::MaterialData)",
+              "组件不再从设备级池取行" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "registry->GetMaterialDataRow(material_row_id)",
+              "解析路径不再读行（回到读组件副本）" },
+            // 句柄语义 = 非租约：**析构不归还行**（行回收属 arena 策略）。
+            // 禁复活：在 OnDetach 里碰设备级池 ⇒ 会在 GraphicsContext::Shutdown 期间写坏池状态
+            //（2026-10-02 实测：进程崩在 ~GlobalSSBOBufferRegistry，且丢失未 flush 日志）。
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "registry->ReleaseID(hgl::graph::GlobalSSBOType::MaterialData",
+              "析构期又去归还设备级行（句柄语义：析构不归还行）", true },
+
+            // ④ 禁复活：每实体副本与其读取口
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "data_resource", "材质组件又持每实体数据行副本（双真值）", true },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "GetDataResource", "材质组件又暴露每实体副本读取口", true },
+        };
+
+        if (const int failed = verify_source_contracts(32, kB4iiiContracts,
+                                                       static_cast<uint>(sizeof(kB4iiiContracts) /
+                                                                         sizeof(kB4iiiContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 32 Passed: B4-iii-a 契约成立（材质数据 = 设备级 (Global, MaterialData) 组件行："
+                 u8"类型/行结构/池/读口/组件只持行号/分离归还；禁复活每实体副本与其读取口；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kB4iiiContracts) / sizeof(kB4iiiContracts[0])));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 33: 名单空洞安全契约（源码侧；运行期在 TestTransformFlatStorage 的 Test 15）
+    //
+    // 背景（2026-10-02 实测崩溃）：`TransformSystem::Update` 的两条循环裸遍历变换名单，
+    // 空洞（`INVALID_TRANSFORM_ID`）被当成有效句柄 ⇒ `IsDirty(4294967295)` 越界。
+    // 结构性修法：名单只经 `ECSContext::ForEach*Transform`（内部跳洞）遍历；行存储入口对
+    // 无效句柄安全返回 + 一次性报错。
+    //
+    // 反证：去掉任一处结构性入口或恢复 id 形式裸遍历 ⇒ 本用例必失败。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kHoleContracts[] =
+        {
+            // ① 结构性入口在位
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "void ForEachMovableTransform(Fn &&fn) const",
+              "缺 movable 名单的结构性遍历入口" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "void ForEachStaticTransform(Fn &&fn) const",
+              "缺 static 名单的结构性遍历入口" },
+            { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
+              "world->ForEachMovableTransform(",
+              "Update 未走结构性遍历（裸遍历会让空洞越界）" },
+            { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
+              "world->ForEachStaticTransform(",
+              "静态侧未走结构性遍历（裸遍历会让空洞越界）" },
+            { "TransformDataStorage.h", OS_TEXT("inc/hgl/ecs/support/TransformDataStorage.h"),
+              "IsDirty 收到无效句柄",
+              "行存储入口又失去无效句柄守卫（越界崩溃会回归）" },
+
+            // ② 禁复发：id 形式裸遍历（不带跳洞）不得再出现
+            { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
+              "for (const TransformID id : movable_transforms)",
+              "又出现 id 形式裸遍历 movable 名单（空洞会越界）", true },
+            { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
+              "for (const TransformID id : static_transforms)",
+              "又出现 id 形式裸遍历 static 名单（空洞会越界）", true },
+        };
+
+        if (const int failed = verify_source_contracts(33, kHoleContracts,
+                                                       static_cast<uint>(sizeof(kHoleContracts) /
+                                                                         sizeof(kHoleContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 33 Passed: 名单空洞安全契约成立（结构性遍历入口在位、id 形式裸遍历 0 残留、"
+                 u8"行存储入口守卫在位；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kHoleContracts) / sizeof(kHoleContracts[0])));
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

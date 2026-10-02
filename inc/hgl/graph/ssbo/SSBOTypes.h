@@ -22,8 +22,9 @@ namespace hgl::graph
         EmissiveSurface,
         TransmissionSurface,
         GeometryAABB,           // 几何本地 AABB（32 B），与 MeshDrawParams 同 ID 索引的平行表
+        MaterialData,           // 材质数据**组件行**（16 B）：组件在设备级的家（引用哪一行内容 + 授权标记）
 
-        ENUM_CLASS_RANGE(MeshDrawParams, GeometryAABB)
+        ENUM_CLASS_RANGE(MeshDrawParams, MaterialData)
     };
 
     constexpr uint32_t GlobalSSBOTypeCount = static_cast<uint32_t>(GlobalSSBOType::RANGE_SIZE);

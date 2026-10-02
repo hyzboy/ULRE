@@ -22,6 +22,11 @@ namespace
         // 预留行会让首批 512 号相对 start 偏移导致 fail（实测：reserve=1 时只激活 513 行）。
         // 行 0 的「始终可见」哨兵由写入侧显式写（B3-ii），不靠预留。
         { GlobalSSBOType::GeometryAABB,        "GeometryAABB",        sizeof(mtl::GeometryAABB),  16384u, 0u },
+        // B4-iii-a：材质数据**组件行**（组件在设备级的家）。与上面三个「内容行」池分工不同：
+        // 内容行 = 被引用的资源行（shader 按 MTL_ROW 读）；本池 = 组件行（我引用哪一行内容 + 授权标记）。
+        // 容量与材质内容池同口径 1024；reserve_rows = 1 ⇒ 行 0 恒为「无材质数据」哨兵
+        // （组件侧 material_row_id == 0 即无）。
+        { GlobalSSBOType::MaterialData,        "MaterialData",        sizeof(ssbo::MaterialDataRow), 1024u, 1u },
     };
 
     /// 配置表覆盖性（遍历全枚举，不手列清单）：聚合数组缺一项**不会编译报错**（值初始化），
@@ -362,6 +367,16 @@ const mtl::MeshDrawParams *GlobalSSBOBufferRegistry::GetMeshDrawParamsRow(const 
         return nullptr;
 
     return static_cast<const mtl::MeshDrawParams *>(pool->RowCPU(geometry_id));
+}
+
+const ssbo::MaterialDataRow *GlobalSSBOBufferRegistry::GetMaterialDataRow(const uint32_t row_id) const
+{
+    const auto *pool = GetPool(GlobalSSBOType::MaterialData);
+
+    if (!pool || row_id == 0 || row_id >= pool->GetRowCapacity())
+        return nullptr;
+
+    return static_cast<const ssbo::MaterialDataRow *>(pool->RowCPU(row_id));
 }
 
 const mtl::GeometryAABB *GlobalSSBOBufferRegistry::GetGeometryAABB(const uint32_t id) const

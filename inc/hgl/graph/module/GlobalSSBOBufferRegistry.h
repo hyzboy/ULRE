@@ -259,6 +259,11 @@ public:
     /// 读一行 GeometryAABB（CPU 侧；未初始化或越界返回 nullptr）
     const mtl::GeometryAABB *GetGeometryAABB(uint32_t id) const;
 
+    /// 读一行 MaterialData **组件行**（CPU 侧；越界 / 行 0 / 未分配返回 nullptr）。
+    /// B4-iii-a：材质数据组件的绑定**真源就是这一行** —— `MaterialData::BuildResolvedRecipe`
+    /// 从这里取「引用哪一行内容」，组件不再持每实体副本。
+    const ssbo::MaterialDataRow *GetMaterialDataRow(uint32_t row_id) const;
+
     /// 读一行 MeshDrawParams（CPU 侧，行号 = geometry_id）。
     /// B3-iii：CPU 侧组 ICB / 批聚簇键一律改读这一行（"CPU 也以这套数据跑"），
     /// 不再依赖每实体那份 `GeometryDataBuffer` / `GeometryDrawRange` CPU 副本。

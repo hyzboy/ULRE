@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/Component.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
@@ -13,6 +14,7 @@ namespace hgl
 {
     namespace graph
     {
+        class GlobalSSBOBufferRegistry;
         class Sampler;
         class ShaderProgram;
         class Texture;
@@ -97,7 +99,10 @@ namespace hgl::ecs
         hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>
             named_texture_resources;
 
-        MaterialDataAuthoringResource data_resource{};
+        // B4-iii-a：材质数据在**设备级**的家的行号（`GlobalSSBOType::MaterialData` 池）。
+        // 0 = 尚未分配 / 哨兵（= 旧的「无授权数据行」）；行的内容见 graph::ssbo::MaterialDataRow。
+        // 归属设备级、跨世界共享：材质数据是资源级对象，行号必须全局可解析（B4 拍板「路 B」）。
+        uint32_t material_row_id = 0;
 
         // 单调计数器：每次授权状态变化 +1（纹理 / 数据行 / 配方 / 上游来源）。
         // 每实例 slot 的跟踪副本（MaterialRuntimeSlot::tracked_material_data_generation）
@@ -133,8 +138,12 @@ namespace hgl::ecs
         const MaterialTextureAuthoringResource *GetTextureResource(const std::string &name) const;
 
         // ── 材质数据行资源 ──
+        /// 授权 / 清空材质数据行（真源写在 (Global, MaterialData) 组件行里；本组件只持行号）。
+        /// `resource.ssbo_id == 0` ⇒ 清空（行保留）；其余情况要求 binding 有效（无效即报错拒绝）。
         void SetDataResource(const MaterialDataAuthoringResource &resource);
-        const MaterialDataAuthoringResource *GetDataResource() const;
+
+        /// 本组件的设备级组件行行号（0 = 无材质数据）
+        uint32_t GetMaterialRowID() const { return material_row_id; }
 
         /// 清空全部授权资源（纹理 + 数据行；配方覆盖不在其内）
         void ClearAuthoredResources();
@@ -154,6 +163,19 @@ namespace hgl::ecs
     public:
 
         void OnDetach() override;
+
+    private:
+
+        /// 取本组件所在世界的设备级注册表（无 owner / 无世界 / 无设备 ⇒ nullptr）
+        hgl::graph::GlobalSSBOBufferRegistry *GetRegistry() const;
+        /// 按需分配组件行（首次授权时）；失败即报错返回 false（不静默）
+        bool EnsureMaterialRow();
+        /// 读本组件的组件行（未分配返回 nullptr）
+        const hgl::graph::ssbo::MaterialDataRow *GetMaterialRow() const;
+        /// 写本组件的组件行
+        bool WriteMaterialRow(const hgl::graph::ssbo::MaterialDataRow &row);
+        /// 清空组件行内容（保留行号）
+        void ClearMaterialRow();
     };
 
     /// 槽位映射：`MaterialData` = 材质**数据层**（资源级、跨世界共享）

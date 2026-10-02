@@ -27,6 +27,7 @@ namespace hgl::graph
         case GlobalSSBOType::EmissiveSurface:      return "EmissiveSurface";
         case GlobalSSBOType::TransmissionSurface:  return "TransmissionSurface";
         case GlobalSSBOType::GeometryAABB:         return "GeometryAABB";
+        case GlobalSSBOType::MaterialData:         return "MaterialData";
         default:                                   return kUnknownGlobalSSBOTypeName;
         }
     }

@@ -1,5 +1,8 @@
 ﻿#include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/support/RenderResource.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/log/Log.h>
 
@@ -24,15 +27,6 @@ namespace hgl::ecs
             recipe.render_state_overrides.pipeline_config = hgl::graph::mtl::MaterialPipelineConfig{};
             recipe.textures.clear();
             recipe.material_ssbo_binding = {};
-        }
-
-        void ResetDataAuthoringResource(
-            MaterialData::MaterialDataAuthoringResource &resource)
-        {
-            resource.ssbo_type = hgl::graph::GlobalSSBOType::PBRSurface;
-            resource.ssbo_id = 0;
-            resource.data_index = uint32_t(-1);
-            resource.authored = false;
         }
 
         bool UpsertTextureAuthoringResource(
@@ -157,14 +151,91 @@ namespace hgl::ecs
         return nullptr;
     }
 
+    // ── B4-iii-a：材质数据在设备级的家 = (Global, MaterialData) 组件行 ──────────
+    //   真源只有一处：**行**。组件只持行号 ⇒ 不存在「组件副本 vs 行」双真值。
+    //   行归属设备级（材质数据是资源级、跨世界共享）—— 与 P-1 及 B4 拍板「路 B」一致。
+
+    hgl::graph::GlobalSSBOBufferRegistry *MaterialData::GetRegistry() const
+    {
+        const Entity *owner = GetOwner();
+        ECSContext *world = owner ? owner->GetContext() : nullptr;
+        hgl::graph::GraphicsContext *gc = world ? world->GetGraphicsContext() : nullptr;
+
+        return gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
+    }
+
+    bool MaterialData::EnsureMaterialRow()
+    {
+        if (material_row_id != 0)
+            return true;
+
+        auto *registry = GetRegistry();
+
+        if (!registry)
+        {
+            GLogError("[MaterialData] 无设备/注册表：无法分配 (Global, MaterialData) 组件行 owner_id=%llu",
+                      GetOwnerID().index);
+            return false;
+        }
+
+        const uint32_t row = registry->Acquire(hgl::graph::GlobalSSBOType::MaterialData);
+
+        if (row == 0 || row == hgl::graph::ActiveRowPool::InvalidRowID)
+        {
+            GLogError("[MaterialData] (Global, MaterialData) 行池分配失败（预算用尽？）owner_id=%llu",
+                      GetOwnerID().index);
+            return false;
+        }
+
+        material_row_id = row;
+
+        // 一次性证据（B3 同款「就位」留痕）：设备级行 arena 真的被用上
+        static bool s_logged = false;
+        if (!s_logged)
+        {
+            s_logged = true;
+            GLogInfo("[MaterialData] (Global, MaterialData) 组件行就位：row=%u（设备级、跨世界共享；行 0 = 无材质数据哨兵）",
+                     row);
+        }
+
+        return true;
+    }
+
+    const hgl::graph::ssbo::MaterialDataRow *MaterialData::GetMaterialRow() const
+    {
+        if (material_row_id == 0)
+            return nullptr;
+
+        auto *registry = GetRegistry();
+
+        return registry ? registry->GetMaterialDataRow(material_row_id) : nullptr;
+    }
+
+    bool MaterialData::WriteMaterialRow(const hgl::graph::ssbo::MaterialDataRow &row)
+    {
+        auto *registry = GetRegistry();
+
+        return registry
+            && registry->Write(hgl::graph::GlobalSSBOType::MaterialData, material_row_id, row);
+    }
+
+    void MaterialData::ClearMaterialRow()
+    {
+        const hgl::graph::ssbo::MaterialDataRow cleared{};
+
+        if (!WriteMaterialRow(cleared))
+            GLogError("[MaterialData] 清空 (Global, MaterialData) 行失败 row=%u", material_row_id);
+    }
+
     void MaterialData::SetDataResource(
         const MaterialDataAuthoringResource &resource)
     {
         if (resource.ssbo_id == 0)
         {
-            if (data_resource.authored)
+            // 清空路径：行保留（行号不还），只把内容复位 ⇒ 下游按「无数据行」走。
+            if (material_row_id != 0)
             {
-                ResetDataAuthoringResource(data_resource);
+                ClearMaterialRow();
                 ++authored_generation;
             }
             return;
@@ -181,22 +252,34 @@ namespace hgl::ecs
             return;
         }
 
-        data_resource = resource;
-        data_resource.authored = true;
-        ++authored_generation;
-    }
+        if (!EnsureMaterialRow())
+            return;
 
-    const MaterialData::MaterialDataAuthoringResource *
-        MaterialData::GetDataResource() const
-    {
-        return data_resource.authored
-            ? &data_resource : nullptr;
+        const hgl::graph::GlobalSSBOBinding binding = resource.GetGlobalSSBOBinding();
+
+        hgl::graph::ssbo::MaterialDataRow row{};
+        row.surface_type       = static_cast<uint32>(binding.ssbo_type);
+        row.surface_ssbo_id    = binding.ssbo_id;
+        row.surface_data_index = binding.data_index;
+        row.authored_flags     = hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource;
+
+        if (!WriteMaterialRow(row))
+        {
+            GLogError("[MaterialData] 写 (Global, MaterialData) 行失败 row=%u ssbo_id=%u data_index=%u",
+                      material_row_id, binding.ssbo_id, binding.data_index);
+            return;
+        }
+
+        ++authored_generation;
     }
 
     void MaterialData::ClearAuthoredResources()
     {
         named_texture_resources.Clear();
-        ResetDataAuthoringResource(data_resource);
+
+        if (material_row_id != 0)
+            ClearMaterialRow();
+
         ++authored_generation;
     }
 
@@ -294,11 +377,16 @@ namespace hgl::ecs
             }
         }
 
-        const MaterialDataAuthoringResource &resource = data_resource;
-        if (resource.authored)
+        // B4-iii-a：绑定真源 = 设备级组件行（不再读组件里的每实体副本）
+        const hgl::graph::ssbo::MaterialDataRow *material_row = GetMaterialRow();
+
+        if (material_row
+         && (material_row->authored_flags & hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource))
         {
-            hgl::graph::GlobalSSBOBinding material_ssbo_binding =
-                resource.GetGlobalSSBOBinding();
+            hgl::graph::GlobalSSBOBinding material_ssbo_binding{
+                static_cast<hgl::graph::GlobalSSBOType>(material_row->surface_type),
+                material_row->surface_ssbo_id,
+                material_row->surface_data_index };
             material_ssbo_binding.ssbo_type =
                 hgl::graph::mtl::ResolveRecipeSSBOType(
                     out_recipe,
@@ -323,6 +411,14 @@ namespace hgl::ecs
         ResetRecipe(recipe_override);
         has_recipe_override = false;
         ClearAuthoredResources();
+
+        // B4-iii-a：**不在析构期归还设备级行**——方案对句柄的定稿是「句柄语义（不是租约）：
+        // 长生命周期、**析构不归还行**」；行回收属 arena 自身策略。
+        // 实测教训（2026-10-02）：在 OnDetach 里经 GetRegistry() 调 ReleaseID，会在
+        // `~GlobalSSBOBufferRegistry → ~ActiveRowPool → ~ActiveIDManager`（GraphicsContext::Shutdown）
+        // 期间写坏池状态 ⇒ 堆破坏/双重释放 ⇒ 进程崩在关闭流程，且**丢失未 flush 的日志**
+        //（看起来像"初始化就挂"，实为关闭期崩）。
+        material_row_id = 0;
 
         ++authored_generation;
     }

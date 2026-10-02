@@ -620,6 +620,39 @@ static_assert(sizeof(MaterialDataRow) == 24);
 **B4-iii-b** `MaterialDataAccessor`（24 B：行号 + generation）替换 4 个裸指针重载 + 迁移全部调用点 + 契约/反证。
 
 ### B4-旧标题（保留供索引）—— MaterialData 句柄化（同 B3 范式）
+**B4-iii-a 完成记录（2026-10-02）—— ✅ 材质数据落设备级 (Global, MaterialData) 组件行 arena**
+
+一、改动（8 文件）：`SSBOTypes.h` 加类型 `MaterialData`；`MaterialDataRows.h` 加 `MaterialDataRow`（16 B：
+surface_type / surface_ssbo_id / surface_data_index / authored_flags）+ 授权位常量 + static_assert；
+`GlobalSSBOTypes.h` 名字表补齐（全枚举覆盖断言强制）；registry 配池（16 B×1024、`reserve_rows=1`
+⇒ 行 0 = 「无材质数据」哨兵）+ 读口 `GetMaterialDataRow`；`MaterialData.h/.cpp`：`data_resource` →
+`material_row_id`，写入口改写行、`BuildResolvedRecipe` 改读行，**析构不归还行**（定稿：句柄语义非租约），
+删 `GetDataResource`（0 消费者）；测试 Test 31/32。
+
+二、验证：清 obj 全量重编 RC1=RC2=0 / ERR=0；门 42 PASS/0 FAIL；10 测试 rc=0；示例 PBRSpheres 对拍=290、
+CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部正常且 `组件行就位=1`；
+反证：破坏组件取行 ⇒ Test 32 rc=32，逐字节还原 ⇒ 0；像素复核 PBRSpheres / IBLEnvironment 正常。
+
+三、⚠ 复盘（本批最大的教训）：**混合 ABI 会伪造"我的改动必挂"**
+`GlobalSSBOTypeCount` 6→7 改变了 `GlobalSSBOBufferRegistry::pools[GlobalSSBOTypeCount]` 的大小，而我只做
+**增量构建** ⇒ 库/exe 成员偏移不一致 ⇒ 跨 TU 写越界 ⇒ 堆破坏。症状极具误导性：示例 rc=127、日志停在
+初始化早期（其实是关闭期崩、丢失未 flush 输出）；cdb 断在 **0xC0000374**，命中点是
+`GraphicsContext::Initialize → GeometryManager 构造` 里一次**普通分配**（堆破坏总在之后的分配才被检出）。
+用它做的两次二分（"HEAD 正常 / 我的版本必挂"）因此**双双无效**。⇒ 铁律重申：**改结构大小或公共头，
+必须清 obj 全量重编之后再下任何结论**；二分两侧都必须基于全量重编的产物。
+
+**名单空洞安全（2026-10-02，用户实测崩溃驱动）—— ✅ 结构性修复**
+
+- 崩溃栈（用户）：`TransformSystem::Update → TransformDataStorage::IsDirty(4294967295) → ValueArray::operator[](-1)`；
+- 根因：名单空洞是设计（`Context.h`：「空洞记 INVALID_TRANSFORM_ID，注册优先复用空洞」）⇒ 遍历必须跳洞；
+  `TransformSystem` 有**四处漏跳**（Update 的 movable/static 两条 + `SubmitTransformUpdates` 的
+  `ShouldUpdateTransform(id)` 与 `ArmWrite(id)`）；`IsDirty` 还是唯一没做越界检查的行存储入口；
+- 三层防护：① `IsDirty` 补越界/空洞守卫（返回 false + 一次性报错，不再越界）；② `ECSContext::ForEach*Transform`
+  结构性遍历（内部跳洞，标注为唯一正确方式）+ `TransformSystem` 四处改走它；③ Test 15（运行期：空洞跳过后
+  计数 == 活槽）+ Test 33（源码：结构性入口在位、`id` 形式裸遍历禁复发、入口守卫在位）；
+- 验证：清 obj 全量重编；门 42/0；10 测试 rc=0；**用户崩的 PlaneGrid3D / IBLEnvironment rc=124 正常**、
+  PBRSpheres 对拍=282；反证：恢复一处裸遍历 ⇒ Test 33 **rc=33**，逐字节还原 ⇒ 0；像素复核正常。
+
 ### B5 —— MaterialRuntime 句柄化（含 **P-5** 的每实例指针字段归位；行宽定稿）
 ### B6 —— Texture（**当前无组件载体**：若仍无载体则本批不做，只在类型表里登记"已就位、无消费者"）
 ### B7 —— 相机终态收口（按 **P-6** 拍板执行；含 `CameraComponent` 的终态去向）
@@ -675,6 +708,8 @@ static_assert(sizeof(MaterialDataRow) == 24);
 | 2026-10-02 | **B3-iii 缺陷修正**：漏掉 `batch.gpu_driven_override` 逐项成簇判据 ⇒ GPU-Driven 批被合并成多实例簇、屏幕上只剩 1 个实例（界面上可见的错）；修复 + Test 30 契约 ④（去掉判据必 rc=30、逐字节还原必绿）+ 截图复核；教训：**改批/绘制语义必须看像素，数字全绿证明不了画得对**。 |
 | 2026-10-02 | **B4-i 完成**：`MaterialData` 组件删 `buffer`/`element_capacity`/`byte_stride` 三个每实体死字段（外部读者 0、示例赋值 0 处，真源在 `SSBOBufferRegistry` 反算）⇒ GPU 面 = 类型 + 行号；零调用点改动、build rc=0、Test 31（7 契约）+ 反证（加回字段 ⇒ rc=31）。 |
 | 2026-10-02 | **B4-ii 取消 + B4-iii-a 定稿**：材质行 CPU 读口**无消费者**（`GetDataResource` 0 处、`GlobalSSBODataAccessor` 本就只有写口）⇒ 不加投机 API；定稿 (Global, MaterialData) 组件行 arena（设备级、24 B/行：内容行引用 + generation + authored_flags），组件只留 authoring 输入 + `material_row_id`。 |
+| 2026-10-02 | **B4-iii-a 完成**：材质数据落设备级 (Global, MaterialData) 组件行 arena（16 B/行、行 0 哨兵、组件只持行号、析构不归还行）；含 **混合 ABI 假象复盘**（改 `GlobalSSBOTypeCount` 后未清 obj ⇒ 堆破坏 ⇒ 两次二分无效）。 |
+| 2026-10-02 | **名单空洞安全（结构性）**：用户实测 `IsDirty(0xFFFFFFFF)` 越界崩溃 ⇒ `ForEach*Transform` 结构性遍历 + 存储入口守卫 + Test 15/33；四处漏跳遍历全收；反证 rc=33；PlaneGrid3D / IBLEnvironment 复跑正常。 |
 | 2026-10-02 | **B4 侦察 + 分批定稿**：材质行池**已就位**（PBR/Emissive/Transmission 各 1024 行、设备级）；组件 GPU 面已是「类型 + 行号」（`GlobalSSBOBinding`），但 `buffer`/`element_capacity`/`byte_stride` 是**死字段**（外部读者 0、示例赋值 0 处，容量/步长真源在 `SSBOBufferRegistry::RegisterBuffer` 反算）；访问器仍 4 个裸指针重载。分批：B4-i 删死字段 / B4-ii 材质行 CPU 读口 + revision / B4-iii 访问器句柄化（路 A 组件槽 vs **路 B arena**，待拍板）。 |
 | 2026-10-02 | **B3 尾巴完成**：`ComputeFrustumCull` 自建 AABB 表退役、改读引擎 `GeometryAABB` 池（一号双表的二号表被 GPU 真正消费）；每帧双面对拍 PASS=8/FAIL=0、反证（地址 +32B ⇒ 7 FAIL、GPU visible 36→28）逐字节还原；遗留 `ComputeAsteroidBelt` 同类表（池行真值未验证）。 |
 | 2026-10-02 | **B3-iii 完成**：批排序/聚簇/ICB/命令四处改读**行派生 POD 键**（`RenderItem::MeshDrawKey`），删 `GeometryData` 三指针 + 逐帧武装函数（12 文件）；build rc=0/0 error、门 42/0、10 测试 + Test 30（18 条契约/6 禁复活）、示例帧代理与基线一致；**过程教训：构建失败留下的半新半旧二进制伪装成 8.5× 性能回归**（A/B 两侧必须全新构建）。 |
