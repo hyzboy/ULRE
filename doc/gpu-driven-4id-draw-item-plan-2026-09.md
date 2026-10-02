@@ -1,7 +1,7 @@
 # 材质数据全局池化 + 4-ID Draw Item 大计划（技术文档）
 
 > 基线：**2026-09-23**（HEAD `d07b85526`）——2026-09-11 纹理引用重构 + 2026-09-18 Meshlet 双轨调度 + 2026-09-19～23 全局池化/4-ID/Global 改名收口。
-> 状态：数据面（阶段 1、2、3、4、6）**已全部落地并改名收口**；阶段 5（地址载体分层）**部分落地**——全局地址表已在（现为 **SSBO 表**，非 UBO；见下方订正①）且类型池基址已挪入；`addr_mesh_draw_params` 已一拆为二（表内 `addr_mesh_draw_params_pool` / 批内 `addr_batch_mesh_draw_params`，见订正②），原「UBO 与 push 双源并存」状态已随 Scene 集退场消失（详见 §6.5 订正）。
+> 状态：数据面（阶段 1、2、3、4、6）**已全部落地并改名收口**；阶段 5（地址载体分层）**已落地（2026-10-02 实测核对）**——全局地址表已在（现为 **SSBO 表**，非 UBO；见下方订正①）且类型池基址已挪入；`addr_mesh_draw_params` 已一拆为二（表内 `addr_mesh_draw_params_pool` / 批内 `addr_batch_mesh_draw_params`，见订正②），原「UBO 与 push 双源并存」状态已随 Scene 集退场消失（详见 §6.5 订正）。
 > 目的：子会话拿到本文即可拆任务，无需重新 grep——结构、数据流、改动点、行号均以本基线核实。行号随改动漂移，**以符号定位为准**。
 >
 > **订正（2026-09-28）**：本文若干事实已过期，按权威口径 `doc/world-addresses-and-camera-model-plan.md` §7 就地订正（本文件内已修订处）：
@@ -218,7 +218,7 @@ addr_text_char_style, addr_text_char_instance, camera_row, _pad_camera
 ```
 阶段 1（类型池化）✅ ──┐
                        ├──→ 阶段 3（双地址 → 双 index）✅ ──┐
-阶段 2（MeshDrawParams 池化）✅ ─┘                            ├──→ 阶段 4（4-ID）✅ ──→ 阶段 5（UBO 分层）◐部分 ──→ 阶段 6（删链）✅
+阶段 2（MeshDrawParams 池化）✅ ─┘                            ├──→ 阶段 4（4-ID）✅ ──→ 阶段 5（UBO 分层）✅ ──→ 阶段 6（删链）✅
 （3 依赖 1（payload index）、纹理 index 部分独立；4 依赖 1-3；5 依赖 4；6 依赖 1-5）
 ```
 ✅ = 已落地并改名收口；◐ = 部分落地（见 §6.5）。
@@ -305,7 +305,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 
 ---
 
-### 6.5 阶段 5 — UBO 分层 ◐ **部分落地（此项仍未完成）**
+### 6.5 阶段 5 — UBO 分层 ✅ **已收口（2026-10-02 实测核对：原「未完成」三条均已不成立）**
 
 **目标**：类型池基址 + MeshDrawParams 基址挪入全局 UBO（一次写永久）；`mtl_data_addrs`/纹理引用池/`L2W` 基址保持 push constants。
 
@@ -314,10 +314,10 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 - **`addr_mesh_draw_params_pool` + 类型池基址（PBR/Emissive/Transmission）已进表**，启动写一次（`GlobalSSBOBufferRegistry::InitializePools`）；`MTL_ROW` 已改读 `global_addresses.addr_<type>_surface`。（相机 / 渲染项 / DrawItemID 三个地址 C1-3 后在世界表 `WorldAddresses`）
 - Scene 集布局（`VKGlobalSceneUBOSet` / `SceneBinding`）**已整体退场**（S3）：描述符集收敛为唯一 Bindless(0)（`inc/hgl/common/DescriptorSetTypeDef.h:9-13`），`GlobalAddresses` 表本体不再进任何集，基址经 `pc_root.addr_global_addresses` 下发。
 
-**未完成（本阶段剩余改动点）**：
-- ~~[ ] `RootAddresses` 去掉挪走字段（`addr_mesh_draw_params`）~~ —— **订正（2026-09-28）**：该字段已更名为 `addr_batch_mesh_draw_params`（语义 = **本批 `MeshDrawCommand` 表**，不再是全局池基址；全局池基址改为表内 `global_addresses.addr_mesh_draw_params_pool`，`ShaderBufferSources.h:267-278`）；三渲染路径 push 的正是本批命令表，故原「UBO 与 push constant 两处并存的双源」状态已不存在，无需再收敛。
-- ~~[ ] 三渲染路径 push 调用更新~~ —— 未完成（同上）。
-- ~~[ ] GLSL 发射：`pc_root` 减字段~~ —— 未完成（同上）。
+**（2026-10-02 核对：逐条实测结论如下 —— 三条均不成立，本阶段已收口）**
+- ✅ **`RootAddresses` 已无挪走的字段**：`pc_root` 由 X-list 单源生成（`HGL_ROOT_ADDRESSES_FIELD_LIST`，`inc/hgl/graph/ShaderBufferSources.h:275` 一带），里面只有本批用的 `addr_batch_mesh_draw_params`；永久池基址在表内 —— `GlobalAddresses::addr_mesh_draw_params_pool`（`inc/hgl/graph/ubo/GlobalAddresses.h:30`）、`addr_pbr_surface`（`:32`），GLSL 镜像 `ShaderLibrary/ubo/scene_ubo.glsl:104` 且注释自带分工说明（「池基址；本批那一块在 pc_root.addr_batch_mesh_draw_params」）。
+- ✅ **三渲染路径的 push 调用取的都是批内字段**：`addr_batch_mesh_draw_params`（`RootAddresses` 内），永久池地址不再进 push ⇒ 「双源并存」不存在（§4 订正②已记）。
+- ✅ **GLSL 侧 `pc_root` 已无永久池字段**：发射器按同一 X-list 出字段，`scene_ubo.glsl` 里`addr_mesh_draw_params_pool` 只在 `GlobalAddressesRef` 块（`:104`）、`pc_root` 只有 `addr_batch_mesh_draw_params`。
 - `L2W` / 纹理引用池基址是否进 UBO：**仍按决策清单留在 push constant**（§8）。
 
 **涉及文件**：`inc/hgl/graph/ShaderBufferSources.h`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`inc/hgl/graph/RootAddressPush.h`、`src/Vulkan/pipeline/VKPipelineLayoutData.cpp`、`src/ShaderGen/meshgen/MeshTemplateEmitter.h`、`src/ShaderGen/meshgen/MeshShaderHeaderGen.h`、`src/ShaderGen/compile/MaterialShaderEmitter.cpp`、三渲染器 push 调用。（`src/Vulkan/VKGlobalSceneUBOSet.cpp` 已随 S3 删除。）
@@ -368,7 +368,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 1. ~~**sampler 运行时创建未接入**——filter/wrap/swizzle/compare 的 TOML 配置只到「解析 + 布局 hash + 契约传递」~~——**已完成（2026-09-23）**：`ShaderLibrary/sampler.toml` → `SamplerPresetLibrary::Load`（`SamplerPreset.cpp:85`）→ `BindlessTextureManager::RegisterSamplers`（`VKBindlessTextureManager.cpp:330`）按序 `vkCreateSampler` 写 binding=1，入口 `GraphicsContext.cpp:96-118`；`max_lod`/`compare_op`/`anisotropy` 等字段齐备。**仅剩**：per-材质 `MaterialTextureSamplingOptions` 覆盖（`MaterialRecipe.h:107/203`）只参与 layout hash，尚未驱动运行时创建。
 2. ~~**屏蔽示例恢复**~~——**已完成**：`LoadGeometry`/`LoadScene` 已在 `example/Geometry/CMakeLists.txt:23-24` 恢复。
 3. ~~**阶段 5 收口**（§6.5）：`addr_mesh_draw_params` 双源收敛~~ —— **订正（2026-09-28）**：该待办已作废（字段改名、双源不再存在，见 §6.5）。
-4. ~~MeshDrawParams 88B→112B 注释残留~~——**未做**：`ShaderBufferSources.h:10/63` 注释仍写 88B（纯注释，随下次改动修）。
+4. ~~MeshDrawParams 88B→112B 注释残留~~ —— **✅ 已修（2026-10-02 实测核对）**：`inc/hgl/graph/ShaderBufferSources.h` 内 `88B` **0 命中**，注释现为「头部 9×4B + 4B 对齐填充 + 11×uint64 设备地址尾 = **128B**」（`ShaderBufferSources.h:10`）与「几何体的 **112B** 顶点流参数」（`:95`）。
 
 ---
 
