@@ -275,6 +275,11 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
   （将来整条搬走时越少牵连越好）。
 - ⇒ T2-c **只统一存储**（实体槽句柄 + 类型化对象池 + 池即活跃集），**不碰**这两条路径的收集与绘制语义；
   它们的收集调用点只从「`shared_ptr` 列表」改成「按类型的活跃集视图（裸指针）」。
+- **`ShadowProxy` 拍板（用户 2026-10-02）**：算 **Mesh 侧** ⇒ **进实体侧对象池**（与 `GeometryData`/`MaterialData` 同办）。
+- **收集 API 替换形态（本轮定）**：`GetComponents<T>(ValueArray<T*>&)` —— 池的**活跃集视图、裸指针**。
+  理由：保留 `shared_ptr` 就得给每个组件补一个控制块（每组件白搭一次分配），T2-c 的收益会被吃掉一部分；
+  代价是调用点同批改（`LineRenderPipeline.cpp` / `LineBoundsUpdateSystem.cpp` / `TextRenderPipeline` 对应处）。
+  语义不变：仍是"遍历该类型当前全部实例"（Lines 仍是全场景收集 + 末次绘制）。
 - **跨切面警告**：`GetComponents<T>(std::vector<std::shared_ptr<T>>&)` 这个**带 `shared_ptr` 的收集 API 形态**
   是当年 `shared_ptr` 留在组件上的原因之一；T2-c 改组件存储 ⇒ 必须**同批**更换它的全部调用点
   （`LineRenderPipeline.cpp`、`LineBoundsUpdateSystem.cpp`、`TextRenderPipeline` 对应处），否则就是新旧两套并存。
