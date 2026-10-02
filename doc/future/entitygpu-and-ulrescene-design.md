@@ -182,7 +182,7 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 | 期 | 内容 | 判据（可自动判定） | 回滚 |
 |---|---|---|---|
 | **T1** | `EntityGPU` **结构定义**（**纯 C++ struct** + `static_assert(sizeof==128)` / `alignof==64` + 逐字段 `offsetof` + `flags` 位表）—— GLSL 镜像**不随本期**（无读者 ⇒ 与派生表一起等 T3） | 编译期断言过；探针打印 `sizeof`/`alignof`/四个 `offsetof` 与断言一致；**不接线、无字段读写者**（结构本体 + 断言是"零成本定稿"，不算投机 API） | tag `b8-t1` |
-| **T2-a** | 实体分配改块式（`EntityManager` 的 `unique_ptr<Entity>` ⇒ 块池/`std::deque` 式稳定存储，**地址必须稳定**，全仓持有 `Entity*`） | 探针 `块/实体` 从 **5.781** 降到目标（T2-a 后 ≤ ~4.8）；`Entity*` 稳定（地址不变）由对拍验证；`sizeof(Entity)` 不变 | tag `b8-t2a` |
+| **T2-a** ✅ | 实体分配改块式（`EntityManager` 的 `unique_ptr<Entity>` ⇒ **块池**，块 = 64 实体，块内地址稳定；构造改就地 placement-new、析构改显式调 `~Entity()`） | ✅ **已完成（2026-10-02）**：`块/实体` 5.818 → **4.834**（边际 5.781 → **4.797**）、`B/实体` 持平（实体对象仍在堆上，只压块数）、`sizeof(Entity)` 168 B 不变；4 个实体生命周期测试 rc=0；PBRSpheres 0 真 error + **像素正常**；探针内置**地址稳定性守卫**（每 64 个边界复核第 0 个 `Entity*`，mismatch 期望 0） | tag `b8-t2a` |
 | **T2-b** | `Entity` 的每实体 `UnorderedMap` ⇒ 按 `ComponentType` 的固定槽数组（7 槽，`COMPONENT_TYPE_COUNT`） | 探针 `块/实体` 再降；`GetComponent/HasComponent/RemoveComponent/DetachAllComponents` 语义对拍逐项等价 | tag `b8-t2b` |
 | **T2-c** | 剩余堆组件（`GeometryData`/`MaterialData`/`LinesComponent`/`TextComponent`/`ShadowProxy`）⇒ 内联薄记录（行号/句柄）；**`CameraComponent` 保持 `shared_ptr`**（§4 理由） | 探针 `块/实体` 目标 ≤ 2 且 `B/实体` 明显下降；访问器返回值语义对拍；固定验证集全绿 | tag `b8-t2c` |
 | **T3** | `EntityGPU` **派生表**（世界私有 + `addr_entity_gpu` + 写入路径 + 脏集合上传） | **前置 = 出现第一个真消费者**（届时随消费者同批做）；本期仅登记设计与"五处连带面"清单 | tag `b8-t3` |
@@ -233,6 +233,29 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 | **P-B8-7** | `.ulrescene` 版本策略 | ① **显式 version + 未知即拒绝** ② 兼容旧版读取 | **①** | 零兼容纪律；②会引入兼容分支 |
 
 ---
+
+## 9.5 T2 完成记录
+
+### T2-a（2026-10-02）—— 实体分配改块池 ✅
+
+- **改法**：`EntityManager::EntitySlot` 的 `std::unique_ptr<Entity>` ⇒ **裸指针（不拥有）** +
+  新增块池 `std::vector<std::unique_ptr<std::byte[]>> blocks`（块 = `64` 个实体，`kEntityBlockSize`）；
+  `CreateEntity<T>` 由「`Context` 里 `make_unique` + `std::move`」改为**块内就地 `placement new`**
+  （上移为头内模板，**签名与 ~140 个调用点零改动**；`static_assert(T == Entity)` —— 实测全仓无 Entity 子类）；
+  `DestroyEntity` / `Clear` 改为**显式调 `~Entity()`**（块池不拥有对象），`Clear` 顺带 `blocks.clear()`。
+  槽复用 + `generation` + `free_indices` + `ExpandSlots` 的扩容策略**逐字保留**（本批只换分配形态）。
+- **实测（探针 [T0]，`[Entity + Transform(Static)]`）**：
+  | 指标 | T2-a 前 | T2-a 后 |
+  |---|---|---|
+  | 块/实体（n=10000） | 5.818 | **4.834** |
+  | 边际 块/实体 | 5.781 | **4.797** |
+  | B/实体 | 313.5 | 313.4（持平） |
+  | `sizeof(Entity)` | 168 B | 168 B |
+- **剩余块数说明**：4.8 块/实体 ⇒ 大头不在实体分配（每实体 `UnorderedMap` 的桶 + 注册/侧表）⇒ 正是 **T2-b** 的靶子。
+- **验证**：4 个实体生命周期测试（`TestCSMIncrementalPass` / `TestComponentMask` / `TestTransformFlatStorage` /
+  `TestRenderItemDataStorage`）全 rc=0；`PBRSpheres` 0 真 error + **像素正常**（10×10 内建几何完整）。
+- **守卫**：探针新增「地址稳定性」检查 —— 建实体的循环里**每 64 个边界**复核第 0 个 `Entity*` 是否仍由 ID 解析回同一地址
+  （块池扩容若移动对象，全仓 `Entity*` 立即悬垂）。这是本批唯一的结构性不变量。
 
 ## 10. 变更记录
 

@@ -154,6 +154,7 @@ static void SectionAllocation()
 
         std::vector<Entity *> entities;
         entities.reserve(n);                 // 预留在 checkpoint 之前，避免污染统计
+        uint32_t addr_mismatch = 0;    // T2-a：块池扩容不得移动已发出的 Entity*
 
         // 预热：触发引擎侧一次性惰性分配（不计入统计）
         for(int i=0;i<8;++i)
@@ -172,6 +173,13 @@ static void SectionAllocation()
             auto  t=context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
             t.SetLocalPosition(glm::vec3(static_cast<float>(i),0.0f,0.0f));
             entities.push_back(e);
+
+            // T2-a 不变量：块池扩容不得移动已发出的 Entity*（每 64 个边界复核第 0 个）
+            if(i==0 || (i%64)==0)
+            {
+                if(context.GetEntity(entities[0]->GetEntityID())!=entities[0])
+                    ++addr_mismatch;
+            }
         }
 
         _CrtMemCheckpoint(&after);
@@ -197,6 +205,9 @@ static void SectionAllocation()
         printf("  n=%-6u 净增块=%-7lld 净增字节=%-10lld => %7.1f B/实体, %6.3f 块/实体\n",
                n,net_blocks,net_bytes,
                (double)net_bytes/(double)n,(double)net_blocks/(double)n);
+
+        printf("  T2-a 地址稳定性：每 64 个边界复核 Entity* 地址，mismatch=%u（期望 0）\n",addr_mismatch);
+
     }
 
     if(results.size()==2)

@@ -790,14 +790,13 @@ namespace hgl
                 if (!entity_manager)
                     return nullptr;
 
-                auto instance = std::make_unique<T>(std::forward<Args>(args)...);
-                EntityID id = entity_manager->CreateEntity(std::move(instance));
-                Entity* entity = entity_manager->GetEntity(id);
+                // T2-a：实体由 EntityManager 在**块池**中就地构造（不再逐实体 make_unique）
+                T* entity = entity_manager->CreateEntity<T>(std::forward<Args>(args)...);
                 if (!entity)
                     return nullptr;
 
                 entity->SetContext(this);
-                return static_cast<T*>(entity);
+                return entity;
             }
 
             /// Get entity by ID

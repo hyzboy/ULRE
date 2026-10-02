@@ -16,51 +16,16 @@ namespace hgl::ecs
         Clear();
     }
 
-    EntityID EntityManager::CreateEntity(std::unique_ptr<Entity> entity)
+    Entity *EntityManager::BlockEntityAt(uint32_t index)
     {
-        if (!entity)
-            entity = std::make_unique<Entity>("Entity");
+        const uint32_t block_index = index / kEntityBlockSize;
 
-        uint32_t index;
-        uint16_t generation = 0;
-
-        if (!free_indices.empty())
+        while (blocks.size() <= block_index)
         {
-            index = free_indices.back();
-            free_indices.pop_back();
-            generation = slots[index].generation;
-        }
-        else
-        {
-            index = next_index;
-
-            if (index >= slots.size())
-            {
-                if (index >= max_entities)
-                {
-                    ExpandSlots(max_entities * 2);
-                }
-                slots.resize(index + 1);
-            }
-
-            next_index++;
+            blocks.push_back(std::make_unique<std::byte[]>(sizeof(Entity) * kEntityBlockSize));
         }
 
-        EntityID id(index, generation);
-        EntitySlot& slot = slots[index];
-        slot.entity = std::move(entity);
-        slot.entity->SetID(id);
-        slot.alive = true;
-        slot.generation = generation;
-
-    #if ULRE_ECS_DEBUG_API
-        LogDebug("[EntityManager] CreateEntity name='%s' id=(%u,%u)",
-             slot.entity ? slot.entity->GetName().c_str() : "<null>",
-             id.index,
-             id.generation);
-    #endif
-
-        return id;
+        return reinterpret_cast<Entity *>(blocks[block_index].get()) + (index % kEntityBlockSize);
     }
 
     void EntityManager::DestroyEntity(EntityID id)
@@ -83,8 +48,9 @@ namespace hgl::ecs
         if (slot.entity)
         {
             slot.entity->DetachAllComponents(true);
+            slot.entity->~Entity();      // 块池：显式析构；存储留待该槽复用（行/地址语义不变）
+            slot.entity = nullptr;
         }
-        slot.entity.reset();
         slot.alive = false;
         slot.generation++;
 
@@ -96,7 +62,7 @@ namespace hgl::ecs
         if (!IsValidID(id))
             return nullptr;
 
-        return slots[id.index].entity.get();
+        return slots[id.index].entity;
     }
 
     const Entity* EntityManager::GetEntity(EntityID id) const
@@ -104,7 +70,7 @@ namespace hgl::ecs
         if (!IsValidID(id))
             return nullptr;
 
-        return slots[id.index].entity.get();
+        return slots[id.index].entity;
     }
 
     bool EntityManager::IsValidID(EntityID id) const
@@ -124,7 +90,7 @@ namespace hgl::ecs
         {
             if (slot.alive && slot.entity)
             {
-                out_entities.push_back(slot.entity.get());
+                out_entities.push_back(slot.entity);
             }
         }
     }
@@ -137,7 +103,7 @@ namespace hgl::ecs
         {
             if (slot.alive && slot.entity)
             {
-                out_entities.push_back(slot.entity.get());
+                out_entities.push_back(slot.entity);
             }
         }
     }
@@ -155,13 +121,15 @@ namespace hgl::ecs
             if (slot.entity)
             {
                 slot.entity->DetachAllComponents(true);
+                slot.entity->~Entity();      // 块池：显式析构
                 ++detach_count;
             }
-            slot.entity.reset();
+            slot.entity = nullptr;
             slot.alive = false;
         }
         slots.clear();
         free_indices.clear();
+        blocks.clear();          ///< 块池一并释放（下次 CreateEntity 重新按需建块）
         next_index = 0;
 
     #if ULRE_ECS_DEBUG_API
