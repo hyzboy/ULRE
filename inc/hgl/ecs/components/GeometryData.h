@@ -53,10 +53,6 @@ namespace hgl::ecs
         hgl::graph::GeometryDrawRange *runtime_draw_range = nullptr;
         hgl::graph::Geometry *runtime_geometry = nullptr;
 
-        /// 由本地 AABB 求得的包围球半径（不含实体缩放；渲染侧视锥剔除用）。
-        /// 原挂在可渲染组件的 boundingRadius，唯一写者就是 `SetPrimitiveAsset` ⇒ 随几何状态迁来。
-        float bounding_radius = 0.0f;
-
         /// 几何/变体变化 ⇒ 同实体 slot 上按-pass 解析出的运行期管线不再可信（A5b：管线缓存归 slot）
         void InvalidateOwnerRuntimePipeline();
 
@@ -101,7 +97,11 @@ namespace hgl::ecs
 
         // 本地包围盒 / 包围球半径（几何派生量）
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;
-        float GetBoundingRadius() const { return bounding_radius; }
+
+        /// 包围球半径（本地 AABB 的**半对角线长**；不含实体缩放；渲染侧视锥剔除用）。
+        /// B3-ii：**不缓存第二份** —— 与 `GeometryAABB` 行同源同式（都取自 asset 几何的本地 AABB），
+        /// 按需反算即可，消掉「两处各算一份、改一处会漂」的风险。
+        float GetBoundingRadius() const;
 
     public:
 

@@ -904,9 +904,12 @@ namespace hgl::ecs
                         row->vertex_base     = 0;
                         row->first_instance  = 0;
 
-                        // GPU path: total_vertices = character count (CharQuad reads this)
-                        row->is_indexed      = 0;
-                        row->total_vertices  = resources->last_draw_char_count;
+                        // GPU path: vertex_count = character count (CharQuad reads this)
+                        row->is_indexed         = 0;
+                        row->vertex_count       = resources->last_draw_char_count;
+                        row->index_count        = 0;
+                        row->data_vertex_count  = resources->last_draw_char_count;
+                        row->data_index_count   = 0;
 
                         // 顶点/索引基址：text 不消费 Vertex 集（字符数据走 b14/15/16），
                         // 填 Null 行地址（64B 零填充，安全缺省）

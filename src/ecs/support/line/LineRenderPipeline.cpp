@@ -655,8 +655,11 @@ namespace hgl::ecs
                 graph::mtl::MeshDrawParams row{};
                 row.index_base      = 0;
                 row.vertex_base     = 0;
-                row.is_indexed      = 0;
-                row.total_vertices  = total_line_count_ * 2u;
+                row.is_indexed         = 0;
+                row.vertex_count       = total_line_count_ * 2u;   // 绘制顶点数 = 线段数 × 2
+                row.index_count        = 0;
+                row.data_vertex_count  = static_cast<uint32_t>(line_buffer_.geometry->GetVertexCount());
+                row.data_index_count   = static_cast<uint32_t>(line_buffer_.geometry->GetIndexCount());
                 row.first_instance  = 0;
 
                 if (auto *rdm = gc_l->GetSSBOBufferRegistry())

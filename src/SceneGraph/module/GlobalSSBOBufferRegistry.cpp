@@ -273,6 +273,17 @@ bool GlobalSSBOBufferRegistry::InitializePools()
         return false;
     }
 
+    // 行 0 哨兵：radius < 0 = 始终可见（缺 AABB 数据不得导致物体被静默剔除）
+    mtl::GeometryAABB sentinel{};
+    sentinel.center[3] = kAlwaysVisibleRadius;
+
+    if (!WriteGeometryAABB(0u,sentinel))
+    {
+        GLogError("[GlobalSSBOBufferRegistry] GeometryAABB 行 0 哨兵写入失败（一号双表未就位）");
+        Release();
+        return false;
+    }
+
     GLogInfo("[GlobalSSBOBufferRegistry] 一号双表就位：GeometryAABB 与 MeshDrawParams 同 ID 索引 rows=%u（AABB %u B/行）aabb_bda=0x%llx",
              aabb_pool->GetRowCapacity(),
              aabb_pool->GetRowBytes(),
@@ -312,6 +323,45 @@ bool GlobalSSBOBufferRegistry::TryGetRowBuffer(
     }
 
     return false;
+}
+
+bool GlobalSSBOBufferRegistry::WriteGeometryAABB(const uint32_t id,const mtl::GeometryAABB &aabb)
+{
+    auto *pool = GetPool(GlobalSSBOType::GeometryAABB);
+
+    if (!pool || !pool->IsReady() || id >= pool->GetRowCapacity() || !pool->IsActive(id))
+    {
+        GLogError("[GlobalSSBOBufferRegistry] WriteGeometryAABB 拒绝：id=%u capacity=%u active=%d"
+                  "（一号双表要求行号来自 MeshDrawParams 池）",
+                  id,
+                  pool ? pool->GetRowCapacity() : 0u,
+                  (pool && pool->IsActive(id)) ? 1 : 0);
+        return false;
+    }
+
+    auto *row = static_cast<mtl::GeometryAABB *>(pool->RowCPU(id));
+    if (!row)
+        return false;
+
+    *row = aabb;
+
+    // 每次行写入留痕（几何创建期各一次，量级 = 场景几何数）：一号双表的**运行期证据**
+    GLogInfo("[GlobalSSBOBufferRegistry] GeometryAABB 行写入 id=%u radius=%.4f center=(%.3f,%.3f,%.3f) extents=(%.3f,%.3f,%.3f)",
+             id, aabb.center[3],
+             aabb.center[0], aabb.center[1], aabb.center[2],
+             aabb.extents[0], aabb.extents[1], aabb.extents[2]);
+
+    return pool->CommitRow(id);
+}
+
+const mtl::GeometryAABB *GlobalSSBOBufferRegistry::GetGeometryAABB(const uint32_t id) const
+{
+    const auto *pool = GetPool(GlobalSSBOType::GeometryAABB);
+
+    if (!pool || id >= pool->GetRowCapacity())
+        return nullptr;
+
+    return static_cast<const mtl::GeometryAABB *>(pool->RowCPU(id));
 }
 
 } // namespace hgl::graph

@@ -1,7 +1,7 @@
     const uint line_id = gl_WorkGroupID.x * {{group_size}}u + gl_LocalInvocationIndex;
     const uint vid = gl_LocalInvocationIndex * 4u;
 
-    const uint total_lines = draw_params.total_vertices >> 1u;
+    const uint total_lines = draw_params.vertex_count >> 1u;   // 线段路径：vertex_count = 线段数 × 2
     const uint lines_this_group = min({{group_size}}u, total_lines - gl_WorkGroupID.x * {{group_size}}u);
     SetMeshOutputsEXT(lines_this_group * 4u, lines_this_group * 2u);
 

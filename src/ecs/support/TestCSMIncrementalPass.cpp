@@ -4547,6 +4547,115 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kA7c2Contracts) / sizeof(kA7c2Contracts[0])));
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 29: B3-i / B3-ii 契约（Geometry 的 GPU 可用部分是「ID + 平行表」，不是 CPU 指针）
+    //
+    // 背景：用户 2026-10-02 拍板 —— 目标不是把 GeometryData 变纯数据，而是把**其中 GPU 能直接
+    // 寻址的部分抽成固定 ID 结构**（与 4-ID 方案同源）：`GeometryAABB` 独立成一个 SSBO 表，与
+    // `MeshDrawParams` **同 ID 索引**（一号双表），纯 AABB 剔除只读它；`total_vertices` 拆成
+    // `index_count`/`vertex_count` 并补 `data_*` 上 GPU。
+    //
+    // 本用例是**源码级契约**（本可执行文件无图形设备）；运行期证据在示例日志里（三行）：
+    //   ① `一号双表就位：… rows=16384（AABB 32 B/行）aabb_bda=0x…`
+    //   ② 每个几何创建期一行 `GeometryAABB 行写入 id=… radius=…`（成对写入的留痕）
+    //   ③ 行 0 哨兵 radius < 0（始终可见）
+    //
+    // 反证：抽掉成对写入 / 哨兵改 0 / AABB 池 reserve_rows 回到 1 / 复活 total_vertices 或
+    // 组件内第二份半径 ⇒ 本用例必失败。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kB3Contracts[] =
+        {
+            // ① 类型与池
+            { "SSBOTypes.h", OS_TEXT("inc/hgl/graph/ssbo/SSBOTypes.h"),
+              "GeometryAABB,           // 几何本地 AABB（32 B），与 MeshDrawParams 同 ID 索引的平行表",
+              "GeometryAABB 不在 GlobalSSBOType 里（AABB 无处成表，只能塞回 MeshDrawParams 行）" },
+            { "GlobalSSBOTypes.h", OS_TEXT("inc/hgl/graph/ssbo/GlobalSSBOTypes.h"),
+              "kUnknownGlobalSSBOTypeName",
+              "类型名哨兵缺失（漏 case 静默返回 Unknown，覆盖性断言失去判据）" },
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "sizeof(mtl::GeometryAABB)",
+              "AABB 池配置缺失（32 B/行、与主表同容量）" },
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "aabb_pool->ActivateAllRows()",
+              "AABB 池不再走「静态行空间」路径（行号脱离 MeshDrawParams 池 ⇒ 一号双表失效）" },
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "一号双表不变量失败",
+              "容量/行空间一致性不变量缺失（同号取到别人家 AABB 会静默错剔除）" },
+
+            // ② 地址：只多一个 BDA（C++ 与 GLSL 两端同字段）
+            { "GlobalAddresses.h", OS_TEXT("inc/hgl/graph/ubo/GlobalAddresses.h"),
+              "addr_geometry_aabb",
+              "全局地址表没有 AABB 池基址（shader 无法寻址 AABB 表）" },
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "addr_geometry_aabb",
+              "GLSL 侧 GlobalAddressesRef 缺字段（C++ 加了 GLSL 漏加 ⇒ 解引用错地址）" },
+
+            // ③ 成对写入 + 哨兵
+            { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/VKGeometry.cpp"),
+              "mesh_draw_params_pool->WriteGeometryAABB(geometry_id,aabb)",
+              "AABB 行的唯一写入口被绕过（写入点散落 ⇒ 短路路径/来源变化会漏写）" },
+            { "VKGeometry.h", OS_TEXT("inc/hgl/graph/geo/VKGeometry.h"),
+              "RefreshGeometryAABBRow();",
+              "SetBoundingVolumes 不再刷新 AABB 行（Create() 先于 SetBoundingVolumes ⇒ 行停在哨兵）" },
+            { "GlobalSSBOBufferRegistry.h", OS_TEXT("inc/hgl/graph/module/GlobalSSBOBufferRegistry.h"),
+              "kAlwaysVisibleRadius = -1.0f",
+              "「始终可见」哨兵不是负半径（radius=0 会被判不相交 ⇒ 缺数据导致物体静默消失）" },
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "sentinel.center[3] = kAlwaysVisibleRadius",
+              "行 0 哨兵未写入（缺 AABB 的图元可能被割掉）" },
+            { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/VKGeometry.cpp"),
+              "写 GeometryAABB 行失败",
+              "AABB 写入失败不再留痕（半写的一号双表会静默）" },
+
+            // ④ 行拆分：index_count / vertex_count + data_* 上 GPU
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "M(index_count,            \"uint\",     uint32_t)",
+              "MeshDrawParams 行没有独立的 index_count（绘制元素数仍与 vertex_count 混装）" },
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "M(data_vertex_count,      \"uint\",     uint32_t)",
+              "data_vertex_count 未上 GPU（容量信息缺失，CPU 组 ICB 那套数据不完整）" },
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "sizeof(MeshDrawParams) == 128",
+              "行宽断言不是 128 B（9×4B 头 + 4B 填充 + 11×uint64）" },
+            { "vertex_passthrough.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/vertex_passthrough.glsl.tmpl"),
+              "draw_params.is_indexed != 0u",
+              "非索引/索引路径不再按 is_indexed 择一取元素数（读数退化）" },
+            { "char_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/char_quad.glsl.tmpl"),
+              "draw_params.vertex_count",
+              "char_quad 未改读 vertex_count（文本路径行字段错位）" },
+            { "line_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/line_quad.glsl.tmpl"),
+              "draw_params.vertex_count >> 1u",
+              "line_quad 未改读 vertex_count（线段路径行字段错位）" },
+            { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/VKGeometry.cpp"),
+              "params.data_index_count",
+              "几何侧未填 data_*（容量字段恒 0 ⇒ 下游拿不到缓冲区容量）" },
+
+            // ⑤ 禁复活
+            { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
+              "M(total_vertices,", "total_vertices 复活（绘制元素数又混装成一个字段）", true },
+            { "vertex_passthrough.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/vertex_passthrough.glsl.tmpl"),
+              "draw_params.total_vertices", "vertex_passthrough 又读混装字段", true },
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "sizeof(mtl::GeometryAABB),  16384u, 1u",
+              "AABB 池又预留行（ActivateAllRows 前提被破坏 ⇒ 实测只激活 513 行）", true },
+            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
+              "bounding_radius", "几何组件又缓存第二份半径（与 AABB 行各算一份会漂）", true },
+            { "GeometryData.cpp", OS_TEXT("src/ecs/components/GeometryData.cpp"),
+              "bounding_radius", "几何组件又缓存第二份半径（与 AABB 行各算一份会漂）", true },
+        };
+
+        if (const int failed = verify_source_contracts(29, kB3Contracts,
+                                                       static_cast<uint>(sizeof(kB3Contracts) /
+                                                                         sizeof(kB3Contracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 29 Passed: B3 契约成立（AABB 独立池与 MeshDrawParams 同 ID 索引、地址两端同字段、"
+                 u8"成对写入 + 负半径哨兵、行拆 index_count/vertex_count + data_* 上 GPU；"
+                 u8"禁复活：total_vertices / AABB 预留行 / 组件内第二份半径；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kB3Contracts) / sizeof(kB3Contracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

@@ -1,7 +1,7 @@
     const uint char_idx = gl_WorkGroupID.x * {{group_size}}u + gl_LocalInvocationIndex;
     const uint base_vid = gl_LocalInvocationIndex * 4u;
 
-    const uint total_chars = draw_params.total_vertices;
+    const uint total_chars = draw_params.vertex_count;   // 文本路径：vertex_count = 字符数
     const uint chars_this_group = min({{group_size}}u, total_chars - gl_WorkGroupID.x * {{group_size}}u);
     SetMeshOutputsEXT(chars_this_group * 4u, chars_this_group * 2u);
 

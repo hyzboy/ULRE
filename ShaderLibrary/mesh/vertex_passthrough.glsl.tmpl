@@ -1,4 +1,7 @@
-    const uint total_vertices = draw_params.total_vertices;
+    // 元素数：索引路径取 index_count、非索引路径取 vertex_count（旧 total_vertices 把两者混装）
+    const uint total_vertices = (draw_params.is_indexed != 0u)
+        ? draw_params.index_count
+        : draw_params.vertex_count;
     const uint max_group_verts = {{max_vertices}}u;
     const uint group_base_vertex = gl_WorkGroupID.x * max_group_verts;
     const uint raw_verts = (group_base_vertex < total_vertices)

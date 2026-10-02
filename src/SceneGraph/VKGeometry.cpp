@@ -109,6 +109,38 @@ VertexDataManager *Geometry::GetVDM()const
     return geometry_data->GetVDM();
 }
 
+void Geometry::RefreshGeometryAABBRow()
+{
+    if (!mesh_draw_params_pool || geometry_id == 0)
+        return;
+
+    const auto &src = bounding_volumes.aabb;
+    mtl::GeometryAABB aabb{};
+
+    if (src.IsValid())
+    {
+        const auto center = src.GetCenter();
+        const auto extent = src.GetExtent();
+
+        aabb.center[0]  = center.x;
+        aabb.center[1]  = center.y;
+        aabb.center[2]  = center.z;
+        aabb.center[3]  = src.GetDiagonal() * 0.5f;   // 外接球半径：与 CPU 侧同式（半对角线长）
+        aabb.extents[0] = extent.x;
+        aabb.extents[1] = extent.y;
+        aabb.extents[2] = extent.z;
+    }
+    else
+    {
+        // 无有效本地 AABB ⇒ 「始终可见」哨兵（缺数据不得导致被剔除）
+        aabb.center[3] = GlobalSSBOBufferRegistry::kAlwaysVisibleRadius;
+    }
+
+    if (!mesh_draw_params_pool->WriteGeometryAABB(geometry_id,aabb))
+        GLogError("[Geometry] 写 GeometryAABB 行失败：geometry_id=%u（一号双表要求与 MeshDrawParams 成对）",
+                  geometry_id);
+}
+
 bool Geometry::RegisterMeshDrawParams(GlobalSSBOBufferRegistry *pool, VulkanDevice *dev)
 {
     if (!pool || !dev || !geometry_data)
@@ -120,7 +152,12 @@ bool Geometry::RegisterMeshDrawParams(GlobalSSBOBufferRegistry *pool, VulkanDevi
     params.index_base = static_cast<uint32_t>(GetFirstIndex());
     params.vertex_base = static_cast<uint32_t>(GetVertexOffset());
     params.is_indexed = (GetIBO() && GetIndexCount() > 0) ? 1u : 0u;
-    params.total_vertices = GetIndexCount() > 0 ? GetIndexCount() : static_cast<uint32_t>(GetVertexCount());
+    // 绘制元素数不再混装进一个字段：下游按 is_indexed 在 index_count / vertex_count 之间择一
+    // （B3-ii；旧 total_vertices 有索引时存的是 index_count，GPU 侧无法自辨）。
+    params.index_count       = static_cast<uint32_t>(GetIndexCount());
+    params.vertex_count      = static_cast<uint32_t>(GetVertexCount());
+    params.data_index_count  = static_cast<uint32_t>(GetIndexCount());
+    params.data_vertex_count = static_cast<uint32_t>(GetVertexCount());
     params.char_height = 0.0f;
     params.first_instance = 0;
 
@@ -167,12 +204,22 @@ bool Geometry::RegisterMeshDrawParams(GlobalSSBOBufferRegistry *pool, VulkanDevi
     if (geometry_id == 0)
     {
         geometry_id = pool->Acquire(params);
-        return geometry_id != 0;
+
+        if (geometry_id == 0)
+            return false;
     }
     else
     {
-        return pool->Write(geometry_id, params);
+        if (!pool->Write(geometry_id, params))
+            return false;
     }
+
+    // ── 一号双表：AABB 行与 MeshDrawParams 行同 ID 索引，经唯一写入口刷新 ──
+    // （本函数只负责"行已就位"；AABB 的**来源变化**由 SetBoundingVolumes 再刷一次 ——
+    //   实测：CreateWithAABB 是"先 Create() 后 SetBoundingVolumes"，只写一次会停在哨兵。）
+    RefreshGeometryAABBRow();
+
+    return true;
 }
 
 }//namespace hgl::graph

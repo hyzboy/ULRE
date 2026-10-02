@@ -245,6 +245,20 @@ public:
 
     bool TryGetRowBuffer(uint32_t ssbo_id, GlobalRowBufferInfo &out_info) const;
 
+    // ---- GeometryAABB 平行表（**一号双表**：与 MeshDrawParams 同 ID 索引）----
+    //   行号唯一来源 = MeshDrawParams 池（本池不发号，整块 ActivateAllRows 静态划分）；
+    //   写入必须与 MeshDrawParams 行**同批成对**（见 Geometry::RegisterMeshDrawParams）。
+
+    /// 行 0 的「始终可见」哨兵半径：radius < 0 ⇒ 剔除侧不得剔除。
+    /// 与 A7b 同款安全侧哲学：数据缺失只能表现为「多画一点」，绝不能表现为「物体消失」。
+    static constexpr float kAlwaysVisibleRadius = -1.0f;
+
+    /// 写一行 GeometryAABB（id 必须来自 MeshDrawParams 池；越界/行未激活返回 false）
+    bool WriteGeometryAABB(uint32_t id,const mtl::GeometryAABB &aabb);
+
+    /// 读一行 GeometryAABB（CPU 侧；未初始化或越界返回 nullptr）
+    const mtl::GeometryAABB *GetGeometryAABB(uint32_t id) const;
+
     // ---- MeshDrawParams 便捷接口（平滑过渡 GlobalSSBOBufferRegistry） ----
 
     uint32_t Acquire(const mtl::MeshDrawParams &params)

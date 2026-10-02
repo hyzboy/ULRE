@@ -126,17 +126,6 @@ namespace hgl::ecs
 
         primitiveAsset = asset;
 
-        if (primitiveAsset && primitiveAsset->GetGeometry())
-        {
-            const auto &bv = primitiveAsset->GetGeometry()->GetBoundingVolumes();
-            auto extents = bv.aabb.GetLength();
-            bounding_radius = math::Length(extents) * 0.5f;
-        }
-        else
-        {
-            bounding_radius = 0.0f;
-        }
-
         // asset 默认配方是材质解析的基底来源：换 asset ⇒ 让本实体材质数据层的
         // 授权代数前进，渲染侧的重解析快路径据此失配（原先由组件级 generation
         // 承担的失效点，A2 随授权状态一并迁入 MaterialData）。
@@ -182,6 +171,15 @@ namespace hgl::ecs
         return true;
     }
 
+    float GeometryData::GetBoundingRadius() const
+    {
+        if (!primitiveAsset || !primitiveAsset->GetGeometry())
+            return 0.0f;
+
+        // 与 GeometryAABB 行的写入同式：本地 AABB 的半对角线长
+        return primitiveAsset->GetGeometry()->GetBoundingVolumes().aabb.GetDiagonal() * 0.5f;
+    }
+
     void GeometryData::OnDetach()
     {
         Component::OnDetach();
@@ -190,6 +188,5 @@ namespace hgl::ecs
         primitiveAsset = nullptr;
         primitiveVariantIndex = 0;
         ClearRuntimeGeometryBinding();
-        bounding_radius = 0.0f;
     }
 }//namespace hgl::ecs
