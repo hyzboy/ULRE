@@ -13,7 +13,12 @@ namespace hgl::graph
         return type >= GlobalSSBOType::BEGIN_RANGE && type <= GlobalSSBOType::END_RANGE;
     }
 
-    inline const char *GetGlobalSSBOTypeName(const GlobalSSBOType type) noexcept
+    /// 未覆盖类型的名字哨兵（`GetGlobalSSBOTypeName` 的 default 出口）。
+    /// 单独命名是为了让下面的 constexpr 覆盖性断言能**按指针**判定「这个类型没被覆盖」——
+    /// switch + default 漏 case 编译期不报，只会在这里静默显形。
+    inline constexpr const char *kUnknownGlobalSSBOTypeName = "UnknownGlobalSSBO";
+
+    inline constexpr const char *GetGlobalSSBOTypeName(const GlobalSSBOType type) noexcept
     {
         switch (type)
         {
@@ -21,11 +26,26 @@ namespace hgl::graph
         case GlobalSSBOType::PBRSurface:           return "PBRSurface";
         case GlobalSSBOType::EmissiveSurface:      return "EmissiveSurface";
         case GlobalSSBOType::TransmissionSurface:  return "TransmissionSurface";
-        default:                                   return "UnknownGlobalSSBO";
+        case GlobalSSBOType::GeometryAABB:         return "GeometryAABB";
+        default:                                   return kUnknownGlobalSSBOTypeName;
         }
     }
 
-    inline uint32_t GetGlobalSSBOTypeStructVersion(const GlobalSSBOType type) noexcept
+    /// 类型名表必须覆盖**全部**枚举项（遍历全枚举，不手列清单 ⇒ 新增类型时自动被要求补 case）。
+    constexpr bool GlobalSSBOTypeNameTableComplete() noexcept
+    {
+        for (uint32_t i = 0; i < GlobalSSBOTypeCount; ++i)
+        {
+            if (GetGlobalSSBOTypeName(static_cast<GlobalSSBOType>(i)) == kUnknownGlobalSSBOTypeName)
+                return false;
+        }
+
+        return true;
+    }
+    static_assert(GlobalSSBOTypeNameTableComplete(),
+        "GetGlobalSSBOTypeName 必须覆盖 GlobalSSBOType 的全部枚举项（漏 case 会静默返回 Unknown）");
+
+    inline constexpr uint32_t GetGlobalSSBOTypeStructVersion(const GlobalSSBOType type) noexcept
     {
         switch (type)
         {
@@ -40,7 +60,7 @@ namespace hgl::graph
         return 0;
     }
 
-    inline uint32_t GetGlobalSSBOTypeStructStride(const GlobalSSBOType type) noexcept
+    inline constexpr uint32_t GetGlobalSSBOTypeStructStride(const GlobalSSBOType type) noexcept
     {
         switch (type)
         {
@@ -53,6 +73,26 @@ namespace hgl::graph
 
         return 0;
     }
+
+    /// 材质字段行类型（version != 0）必须给出非零 stride —— 同样遍历全枚举自动判定。
+    /// stride 表是**材质字段行**专用的：MeshDrawParams / GeometryAABB 等非材质类型本就不在此表内，
+    /// 返回 0 表「无需校验」（`RenderSceneUBOSystem::RegisterMaterialStructLayout` 的判据也是 `> 0`）。
+    /// 故判据取「version != 0 ⇒ stride != 0」，而不是「所有类型都必须有 stride」。
+    constexpr bool GlobalSSBOTypeStrideTableComplete() noexcept
+    {
+        for (uint32_t i = 0; i < GlobalSSBOTypeCount; ++i)
+        {
+            const auto type = static_cast<GlobalSSBOType>(i);
+
+            if (GetGlobalSSBOTypeStructVersion(type) != 0
+             && GetGlobalSSBOTypeStructStride(type) == 0)
+                return false;
+        }
+
+        return true;
+    }
+    static_assert(GlobalSSBOTypeStrideTableComplete(),
+        "材质字段行类型（version != 0）必须补 GetGlobalSSBOTypeStructStride 的 case");
 
     /**
      * Identifies one live global-data row in a shared global SSBO.

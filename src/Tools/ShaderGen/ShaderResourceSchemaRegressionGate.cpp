@@ -2879,6 +2879,7 @@ namespace
         { "addr_shadow",                true  },
         // ── 设备级全局（跨世界共享的资源池 + 每帧槽字段）──
         { "addr_mesh_draw_params_pool", false },
+        { "addr_geometry_aabb",         false },   // B3-i：GeometryAABB 池（设备级全局；与 MeshDrawParams 同 ID 索引）
         { "addr_pbr_surface",           false },
         { "addr_emissive_surface",      false },
         { "addr_transmission_surface",  false },

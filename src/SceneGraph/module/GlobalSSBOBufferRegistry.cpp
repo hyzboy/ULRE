@@ -16,7 +16,33 @@ namespace
         { GlobalSSBOType::PBRSurface,          "PBRSurface",          sizeof(ssbo::PBRSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::EmissiveSurface,     "EmissiveSurface",     sizeof(ssbo::EmissiveSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::TransmissionSurface, "TransmissionSurface", sizeof(ssbo::TransmissionSurfaceRow), 1024u, 1u },
+        // 与 MeshDrawParams **同 ID 索引**的平行表（一号双表）：容量必须与主表一致（InitializePools 有断言），
+        // 行号唯一来源 = MeshDrawParams 池 ⇒ 本池从不 Acquire，只被静态写入。
+        // reserve_rows 必须为 **0**：ActivateAllRows 的前提就是「调用时行号空间为空」，
+        // 预留行会让首批 512 号相对 start 偏移导致 fail（实测：reserve=1 时只激活 513 行）。
+        // 行 0 的「始终可见」哨兵由写入侧显式写（B3-ii），不靠预留。
+        { GlobalSSBOType::GeometryAABB,        "GeometryAABB",        sizeof(mtl::GeometryAABB),  16384u, 0u },
     };
+
+    /// 配置表覆盖性（遍历全枚举，不手列清单）：聚合数组缺一项**不会编译报错**（值初始化），
+    /// 会以 row_bytes=0 建池失败 —— 那是运行期才显形，所以在这里编译期先钉死。
+    constexpr bool GlobalSSBOConfigTableValid() noexcept
+    {
+        for (uint32_t i = 0; i < GlobalSSBOTypeCount; ++i)
+        {
+            const GlobalSSBOConfig &config = kGlobalSSBOConfigs[i];
+
+            if (config.name == nullptr
+             || config.row_bytes == 0
+             || config.default_capacity == 0
+             || static_cast<uint32_t>(config.type) != i)   // 表序必须 = 枚举序（GetPool(type) 按下标直取）
+                return false;
+        }
+
+        return true;
+    }
+    static_assert(GlobalSSBOConfigTableValid(),
+        "kGlobalSSBOConfigs 必须逐项覆盖 GlobalSSBOType（表序 = 枚举序、row_bytes/capacity 非零）");
 }
 
 GRAPH_MODULE_CONSTRUCT(GlobalSSBOBufferRegistry)
@@ -126,6 +152,7 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
 
     global_addresses_global = GlobalAddresses{};
     global_addresses_global.addr_mesh_draw_params_pool = GetGPUBase(GlobalSSBOType::MeshDrawParams);
+    global_addresses_global.addr_geometry_aabb         = GetGPUBase(GlobalSSBOType::GeometryAABB);
     global_addresses_global.addr_pbr_surface          = GetGPUBase(GlobalSSBOType::PBRSurface);
     global_addresses_global.addr_emissive_surface     = GetGPUBase(GlobalSSBOType::EmissiveSurface);
     global_addresses_global.addr_transmission_surface = GetGPUBase(GlobalSSBOType::TransmissionSurface);
@@ -223,8 +250,33 @@ bool GlobalSSBOBufferRegistry::InitializePools()
         }
     }
 
-    // 相机行已下沉世界级（CameraInfoStorage）：本 registry 不再有 CameraInfo 行池，
-    // 因此也不再有"整块预激活"这一步（WorldAddresses 表随世界各自创建，见 ECSContext）。
+    // 相机行已下沉世界级（CameraInfoStorage）：本 registry 不再有 CameraInfo 行池
+    //（WorldAddresses 表随世界各自创建，见 ECSContext）。
+
+    // ── 一号双表（B3-i）：GeometryAABB 与 MeshDrawParams 同 ID 索引 ──
+    // 同构是**结构保证**，不是两个池碰巧一致：AABB 池从不发号（Acquire），只把 [0, capacity)
+    // 整块置 Active，行号唯一来源 = MeshDrawParams 池 ⇒ 用 geometry_id 取两表必然同一行。
+    auto *mdp_pool  = GetPool(GlobalSSBOType::MeshDrawParams);
+    auto *aabb_pool = GetPool(GlobalSSBOType::GeometryAABB);
+
+    if (!mdp_pool || !aabb_pool
+     || !aabb_pool->ActivateAllRows()
+     || mdp_pool->GetRowCapacity() != aabb_pool->GetRowCapacity()
+     || aabb_pool->GetActiveCount() != aabb_pool->GetRowCapacity())
+    {
+        // 容量/行空间不一致 = 同号取到别人家的 AABB（GPU 剔除静默错剔除，画面上什么都看不出来）⇒ fail-fast
+        GLogError("[GlobalSSBOBufferRegistry] 一号双表不变量失败：MeshDrawParams rows=%u AABB rows=%u active=%u",
+                  mdp_pool  ? mdp_pool->GetRowCapacity()  : 0u,
+                  aabb_pool ? aabb_pool->GetRowCapacity() : 0u,
+                  aabb_pool ? aabb_pool->GetActiveCount() : 0u);
+        Release();
+        return false;
+    }
+
+    GLogInfo("[GlobalSSBOBufferRegistry] 一号双表就位：GeometryAABB 与 MeshDrawParams 同 ID 索引 rows=%u（AABB %u B/行）aabb_bda=0x%llx",
+             aabb_pool->GetRowCapacity(),
+             aabb_pool->GetRowBytes(),
+             static_cast<unsigned long long>(aabb_pool->GetGPUBase()));
 
     if (!InitializeGlobalAddressesTable())
     {

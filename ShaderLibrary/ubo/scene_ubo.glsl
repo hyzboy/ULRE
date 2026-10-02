@@ -102,6 +102,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Colo
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer GlobalAddressesRef
 {
     uint64_t addr_mesh_draw_params_pool;   // 池基址；本批那一块在 pc_root.addr_batch_mesh_draw_params
+    uint64_t addr_geometry_aabb;           // GeometryAABB 池基址（与 MeshDrawParams 同 ID 索引：行号 = geometry_id）
     uint64_t addr_pbr_surface;
     uint64_t addr_emissive_surface;
     uint64_t addr_transmission_surface;

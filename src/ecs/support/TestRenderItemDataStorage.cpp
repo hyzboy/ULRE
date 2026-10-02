@@ -200,16 +200,19 @@ int main(int argc, char **argv)
     // Test 8: Stage 3 Verification - 地址表结构（Global/World）与 shader BDA 编译
     GLogInfo(u8"--- Testing Stage 3: Address Tables (Global/World) & Shader BDA Resolution ---");
     {
-        // 1. GlobalAddresses = **跨世界共享资源池**（6×uint64 = 48B）：
+        // 1. GlobalAddresses = **跨世界共享资源池**（7×uint64 = 56B）：
         //    世界私有地址（相机行表 / 渲染项表 / DrawItemID 表）已迁出到 WorldAddresses。
-        static_assert(sizeof(graph::GlobalAddresses) == 48, "GlobalAddresses must be exactly 48 bytes");
+        //    B3-i：新增 `addr_geometry_aabb`（GeometryAABB 池基址，与 MeshDrawParams **同 ID 索引**：
+        //    行号 = geometry_id，即"一号双表"）。
+        static_assert(sizeof(graph::GlobalAddresses) == 56, "GlobalAddresses must be exactly 56 bytes");
         static_assert(offsetof(graph::GlobalAddresses, addr_mesh_draw_params_pool) == 0);
-        static_assert(offsetof(graph::GlobalAddresses, addr_pbr_surface) == 8);
-        static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 16);
-        static_assert(offsetof(graph::GlobalAddresses, addr_transmission_surface) == 24);
-        static_assert(offsetof(graph::GlobalAddresses, addr_color_palette) == 32);
+        static_assert(offsetof(graph::GlobalAddresses, addr_geometry_aabb) == 8);
+        static_assert(offsetof(graph::GlobalAddresses, addr_pbr_surface) == 16);
+        static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 24);
+        static_assert(offsetof(graph::GlobalAddresses, addr_transmission_surface) == 32);
+        static_assert(offsetof(graph::GlobalAddresses, addr_color_palette) == 40);
         // 每帧槽字段：viewport（sky / shadow 已随世界迁入 WorldAddresses —— C2）
-        static_assert(offsetof(graph::GlobalAddresses, addr_viewport) == 40);
+        static_assert(offsetof(graph::GlobalAddresses, addr_viewport) == 48);
 
         // 2. WorldAddresses = **世界私有**（相机行表 / 渲染项表 / DrawItemID 表 / 本世界 profile 的 sky+shadow；5×uint64 = 40B）
         static_assert(sizeof(graph::WorldAddresses) == 40, "WorldAddresses must be exactly 40 bytes");

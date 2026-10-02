@@ -11,6 +11,9 @@ namespace hgl::graph
      * （MeshDrawParams + 材质表面字段；原 mtl::MaterialSSBOType 已并入本枚举）。
      * 每个类型在 GPU 侧拥有唯一持久 BDA，地址登记进全局地址表（GlobalAddresses SSBO，
      * 经 pc_root.addr_global_addresses 寻址——原 Set 0 的 GlobalAddressesInfo UBO 已退役）。
+     *
+     * `GeometryAABB` 是唯一**不自发行号**的类型：它与 `MeshDrawParams` **同 ID 索引**（一号双表），
+     * 行号唯一来源 = MeshDrawParams 池，本池只把 [0, capacity) 静态置 Active（B3 定稿）。
      */
     enum class GlobalSSBOType : uint8_t
     {
@@ -18,8 +21,9 @@ namespace hgl::graph
         PBRSurface,
         EmissiveSurface,
         TransmissionSurface,
+        GeometryAABB,           // 几何本地 AABB（32 B），与 MeshDrawParams 同 ID 索引的平行表
 
-        ENUM_CLASS_RANGE(MeshDrawParams, TransmissionSurface)
+        ENUM_CLASS_RANGE(MeshDrawParams, GeometryAABB)
     };
 
     constexpr uint32_t GlobalSSBOTypeCount = static_cast<uint32_t>(GlobalSSBOType::RANGE_SIZE);

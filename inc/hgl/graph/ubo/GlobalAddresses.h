@@ -28,6 +28,7 @@ namespace hgl::graph
     {
         // ── 全局字段：对所有帧槽相同（池基址 / 长期有效数据的地址）──
         uint64_t addr_mesh_draw_params_pool = 0;   // MeshDrawParams 池/arena 基址（本批那一块见 pc_root.addr_batch_mesh_draw_params）
+        uint64_t addr_geometry_aabb = 0;           // GeometryAABB 池基址（**与 MeshDrawParams 同 ID 索引**：行号 = geometry_id）
         uint64_t addr_pbr_surface = 0;
         uint64_t addr_emissive_surface = 0;
         uint64_t addr_transmission_surface = 0;
