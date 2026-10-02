@@ -83,21 +83,6 @@ namespace hgl::ecs
         return slot->runtime_pipeline;
     }
 
-    const hgl::graph::GeometryDataBuffer *PrimitiveRenderItem::GetGeometryDataBuffer() const
-    {
-        // A5a：运行期几何绑定住在实体的 GeometryData 组件（经世界查询，不在组件内缓存）
-        const GeometryData *geometry = context ? context->GetGeometryData(entity_id) : nullptr;
-
-        return geometry ? geometry->GetRuntimeGeometryDataBuffer() : nullptr;
-    }
-
-    const hgl::graph::GeometryDrawRange *PrimitiveRenderItem::GetGeometryDrawRange() const
-    {
-        const GeometryData *geometry = context ? context->GetGeometryData(entity_id) : nullptr;
-
-        return geometry ? geometry->GetRuntimeGeometryDrawRange() : nullptr;
-    }
-
     graph::RenderItemHandle PrimitiveRenderItem::GetRenderItemHandle() const
     {
         // A5b：4-ID 句柄归每实例 slot（经世界访问器取；未分配 ⇒ INVALID）

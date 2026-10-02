@@ -213,44 +213,39 @@ namespace hgl::ecs
         constexpr uint32_t kShadowRetryBumpPeriod     = 60;
 
 
-        bool EnsureRuntimeGeometryFromAsset(ECSContext *world,
-                                            Entity *primitive_comp,
-                                            const MaterialRuntimeSlot &slot,
-                                            const MaterialRuntimeRow *row)
+        /// B3-iii：几何"就绪"的判据从"每帧武装每实体 CPU 几何副本"收敛为**行就位**
+        /// （`geometry_id != 0`，即 `MeshDrawParams` 行已由几何创建期写入）。
+        /// 无 asset / 无几何 ⇒ true（没有几何要渲染，与旧实现同语义）；行缺失则就地补一次再复读。
+        bool EnsureGeometryRowReady(ECSContext *world,Entity *owner)
         {
-            if (!world || !primitive_comp || !row)
-            {
-                GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset precondition failed world=%p primitive=%p row=%p",
-                          world,
-                          primitive_comp,
-                          static_cast<const void *>(row));
-                return false;
-            }
-
-            GeometryData *geometry = FindGeometryOf(primitive_comp);
-            const auto *asset = geometry ? geometry->GetPrimitiveAsset() : nullptr;
-            if (!asset)
+            GeometryData *geometry = FindGeometryOf(owner);
+            if (!geometry)
                 return true;
 
-            // SSBO 顶点方案无 VIL，GeometryDataBuffer 的内容只由 geometry 决定，
-            // program 参数仅作绑定哨兵。阴影 pass 先于主帧首解析时 forward
-            // program 尚为空，退回 shadow 槽保证绑定可建；哨兵始终以 forward
-            // program 为准，避免两个槽的程序指针交替触发几何缓冲销毁重建。
-            MaterialVariantTable *variant_table = GetVariantTable(world);
-            const MaterialRuntimeRow *forward_row = row;
-            auto *material = GetForwardProgram(variant_table, forward_row);
-            if (!material)
-                material = GetShadowProgram(variant_table, forward_row);
-            if (!material)
+            const auto *asset = geometry->GetPrimitiveAsset();
+            if (!asset || !asset->GetGeometry())
+                return true;
+
+            if (geometry->GetGeometryID() != 0)
+                return true;
+
+            auto *gc = world ? world->GetGraphicsContext() : nullptr;
+            auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
+            auto *dev = world ? world->GetGPUDevice() : nullptr;
+
+            if (!pool || !dev)
+                return false;
+
+            const_cast<graph::Geometry *>(asset->GetGeometry())->EnsureMeshDrawParams(pool,dev);
+
+            if (geometry->GetGeometryID() == 0)
             {
-                GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed: material program null owner=%s valid=%d program_dirty=%d runtime_dirty=%d",
-                          GetOwnerName(primitive_comp),
-                          slot.valid ? 1 : 0,
-                          slot.program_dirty ? 1 : 0,
-                          slot.runtime_dirty ? 1 : 0);
+                GLogError("[RenderPrimitiveCollectSystem] 几何行未就位：owner=%s",
+                          GetOwnerName(owner));
                 return false;
             }
-            return geometry->EnsureRuntimeGeometryBinding(material);
+
+            return true;
         }
 
         inline graph::GlobalSSBOType ResolveMaterialSSBORequirementType(
@@ -2184,8 +2179,7 @@ namespace hgl::ecs
                         continue; // 本帧深度图不含它；下帧行就绪后重画
                     }
 
-                    if (!EnsureRuntimeGeometryFromAsset(
-                            world, geometryComp->GetOwner(), material_slot, shadow_row))
+                    if (!EnsureGeometryRowReady(world, geometryComp->GetOwner()))
                     {
                         if (shadow_row)
                             ClearVariantProgram(GetVariantTable(world),
@@ -2225,9 +2219,7 @@ namespace hgl::ecs
                     const bool chain_ok =
                         ResolveMaterialProgramForPrimitive(
                             geometryComp->GetOwner(), material_slot)
-                     && EnsureRuntimeGeometryFromAsset(
-                            world, geometryComp->GetOwner(), material_slot,
-                            runtime_table ? runtime_table->Get(material_slot.row) : nullptr)
+                     && EnsureGeometryRowReady(world, geometryComp->GetOwner())
                      && ResolveRuntimePipelineForPrimitive(
                             geometryComp->GetOwner(), material_slot);
                     if (chain_ok)
@@ -2277,12 +2269,10 @@ namespace hgl::ecs
                         InvalidateRecipeRuntime(world, material_slot, true, false);
                         material_slot.valid = false;
                     }
-                    else if (!EnsureRuntimeGeometryFromAsset(
-                                world, geometryComp->GetOwner(), material_slot,
-                                runtime_table ? runtime_table->Get(material_slot.row) : nullptr))
+                    else if (!EnsureGeometryRowReady(world, geometryComp->GetOwner()))
                     {
                         GLogWarning(
-                            "[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed for %s",
+                            "[RenderPrimitiveCollectSystem] EnsureGeometryRowReady failed for %s",
                             GetOwnerName(geometryComp->GetOwner()));
                         material_slot.valid = false;
                     }
@@ -2312,32 +2302,10 @@ namespace hgl::ecs
                 : nullptr;
 
             // ── 同步 4-ID 描述符至 RenderItemDataStorage（句柄存每实例 slot）──
+            // B3-iii：geometry_id 直读几何行号（不再经每实体 CPU 几何副本的镜像字段与三级回退）
             const uint32_t transform_id = transform.GetID();
-            uint32_t geometry_id = 0;
             GeometryData *geometry_comp = geometryComp.get();
-            const auto *geom_buf = geometry_comp ? geometry_comp->GetRuntimeGeometryDataBuffer() : nullptr;
-            if (geom_buf)
-            {
-                geometry_id = geom_buf->geometry_id;
-            }
-            if (geometry_id == 0 && geometry_comp && geometry_comp->GetPrimitiveAsset())
-            {
-                if (auto *geom = geometry_comp->GetPrimitiveAsset()->GetGeometry())
-                {
-                    auto *gc = world ? world->GetGraphicsContext() : nullptr;
-                    auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-                    auto *dev = world ? world->GetGPUDevice() : nullptr;
-                    if (pool && dev)
-                    {
-                        const_cast<graph::Geometry *>(geom)->EnsureMeshDrawParams(pool, dev);
-                    }
-                    geometry_id = geom->GetGeometryID();
-                    if (geom_buf)
-                    {
-                        const_cast<graph::GeometryDataBuffer *>(geom_buf)->geometry_id = geometry_id;
-                    }
-                }
-            }
+            const uint32_t geometry_id = geometry_comp ? geometry_comp->GetGeometryID() : 0u;
             const uint32_t material_id = (material_for_item && material_for_item->data_index_row != uint32_t(-1))
                 ? material_for_item->data_index_row : 0;
             const uint32_t texture_id = (material_for_item && material_for_item->material_texture_configuration.IsValid())
@@ -2386,6 +2354,26 @@ namespace hgl::ecs
             item->distanceToCamera = glm::length(worldPos - camera_pos);
 
             item->UpdateWorldMatrix();
+
+            // ── B3-iii：填"行派生键"（批排序 / 聚簇 / ICB 的唯一判据）──
+            // 行号 = geometry_id；其余字段从**行**读（同 asset ⇒ 同一行）。行缺失 ⇒ 键保持 0 ⇒ 本项不进批。
+            if (geometry_id != 0)
+            {
+                auto *gc_key = world ? world->GetGraphicsContext() : nullptr;
+                auto *pool_key = gc_key ? gc_key->GetGlobalSSBOBufferRegistry() : nullptr;
+                const auto *params_row = pool_key ? pool_key->GetMeshDrawParamsRow(geometry_id) : nullptr;
+
+                if (params_row)
+                {
+                    RenderItem::MeshDrawKey &key = item->draw_key;
+                    key.geometry_id  = geometry_id;
+                    key.vertex_base  = params_row->vertex_base;
+                    key.index_base   = params_row->index_base;
+                    key.vertex_count = params_row->vertex_count;
+                    key.index_count  = params_row->index_count;
+                    key.is_indexed   = params_row->is_indexed;
+                }
+            }
 
             // D9：阴影 pass 的 caster 本帧成功产出 item（该实例的阴影变体已就绪）
             // ⇒ 影子链已恢复正常，复位**该实例**的重试计数（A4 起计数归每实例 slot：

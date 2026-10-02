@@ -1,39 +1,23 @@
 ﻿#include<hgl/ecs/core/RenderItem.h>
-#include<hgl/graph/mesh/GeometryDataBuffer.h>
-#include<hgl/graph/mesh/GeometryDrawRange.h>
 
 namespace hgl::ecs
 {
-    // RenderItem base class implementation
+    // B3-iii：排序键 = **行派生 POD 键**（同键 ⇒ 同簇 ⇒ 实例化合并）。
+    // 旧实现按 `*GeometryDataBuffer <=>`（geometry_id / vdm / VAB 列表 / ibo）+ `*GeometryDrawRange <=>`
+    // 逐字段内容比较 —— 那两份每实体 CPU 副本已删除：行就是它们的真相，且同 asset 必然同键。
     int RenderItem::Compare(const RenderItem& other) const
     {
-        // Compare by geometry binding first (for batching).
-        // Must use content comparison (operator<=>) NOT pointer comparison:
-        // EnsureRuntimeGeometryBinding allocates a new GeometryDataBuffer per component,
-        // so same-geometry items have different pointers but identical content.
-        // Pointer-based sort would scatter same-geometry items → no instancing merge.
-        auto *data_1 = GetGeometryDataBuffer();
-        auto *data_2 = other.GetGeometryDataBuffer();
-        if (data_1 && data_2)
-        {
-            if (auto cmp = *data_1 <=> *data_2; cmp != 0)
-                return cmp < 0 ? -1 : 1;
-        }
-        else if (data_1 != data_2)
-        {
-            return data_1 ? 1 : -1;
-        }
+        const MeshDrawKey &a = draw_key;
+        const MeshDrawKey &b = other.draw_key;
 
-        auto *range_1 = GetGeometryDrawRange();
-        auto *range_2 = other.GetGeometryDrawRange();
-        if (range_1 && range_2)
-        {
-            if (auto cmp = *range_1 <=> *range_2; cmp < 0) return -1;
-            if (auto cmp = *range_1 <=> *range_2; cmp > 0) return 1;
-        }
+        if (a.geometry_id  != b.geometry_id)  return a.geometry_id  < b.geometry_id  ? -1 : 1;
+        if (a.vertex_base  != b.vertex_base)  return a.vertex_base  < b.vertex_base  ? -1 : 1;
+        if (a.index_base   != b.index_base)   return a.index_base   < b.index_base   ? -1 : 1;
+        if (a.vertex_count != b.vertex_count) return a.vertex_count < b.vertex_count ? -1 : 1;
+        if (a.index_count  != b.index_count)  return a.index_count  < b.index_count  ? -1 : 1;
+        if (a.is_indexed   != b.is_indexed)   return a.is_indexed   < b.is_indexed   ? -1 : 1;
 
-        // For identical geometry, sort by render_item_handle ascending to maximize
-        // contiguous run-length compaction opportunities.
+        // 同键：按 render_item_handle 升序，最大化连号折叠机会
         const auto h1 = GetRenderItemHandle();
         const auto h2 = other.GetRenderItemHandle();
         if (h1 != graph::INVALID_RENDER_ITEM_HANDLE &&
@@ -43,11 +27,17 @@ namespace hgl::ecs
             if (h1 > h2) return 1;
         }
 
-        // Then compare by distance to camera
+        // 再按到相机距离
         float diff = other.distanceToCamera - distanceToCamera;
         if (diff > 0.0f) return 1;
         if (diff < 0.0f) return -1;
 
         return 0;
     }
+}//namespace hgl::ecs
+#include<hgl/graph/mesh/GeometryDataBuffer.h>
+#include<hgl/graph/mesh/GeometryDrawRange.h>
+
+namespace hgl::ecs
+{
 }//namespace hgl::ecs

@@ -55,8 +55,8 @@ namespace hgl::ecs
             // 凡含几何项的 batch 都需要 ICB（mesh 为唯一顶点路径，恒走间接）。
             for (auto *item : batch.items)
             {
-                const auto *data_buffer = item ? item->GetGeometryDataBuffer() : nullptr;
-                if (data_buffer)
+                // B3-iii：判据从"有每实体 CPU 几何副本"改为"行键有几何"（等价：副本只在有几何时存在）
+                if (item && item->draw_key.HasGeometry())
                     return true;
             }
 
@@ -414,10 +414,12 @@ namespace hgl::ecs
         while (i < count)
         {
             RenderItem *first_item = batch.items[i];
-            const graph::GeometryDataBuffer *data_buffer = first_item ? first_item->GetGeometryDataBuffer() : nullptr;
-            const graph::GeometryDrawRange *draw_range = first_item ? first_item->GetGeometryDrawRange() : nullptr;
+            const RenderItem::MeshDrawKey draw_key = first_item
+                ? first_item->draw_key
+                : RenderItem::MeshDrawKey{};
 
-            if (!data_buffer || !draw_range)
+            // B3-iii：无行键 = 无几何（旧判据是"两份 CPU 副本都在"）⇒ 不进批
+            if (!draw_key.HasGeometry())
             {
                 ++i;
                 continue;
@@ -436,25 +438,16 @@ namespace hgl::ecs
                     geometry = geometry_comp->GetPrimitiveAsset()->GetGeometry();
             }
 
-            if (data_buffer && geometry && data_buffer->geometry_id == 0)
-                const_cast<graph::GeometryDataBuffer *>(data_buffer)->geometry_id = geometry->GetGeometryID();
-
+            // 同簇判据 = **行键相等**（B3-iii：旧实现按两份每实体 CPU 副本逐字段比较，
+            // 含 VAB 列表与 ibo；同 asset ⇒ 同一行 ⇒ 必然同键，判定等价且不再需要那两份副本）。
             size_t cluster_end = i;
             while (cluster_end + 1 < count)
             {
                 RenderItem *next_item = batch.items[cluster_end + 1];
-                const graph::GeometryDataBuffer *next_data_buf = next_item ? next_item->GetGeometryDataBuffer() : nullptr;
-                const graph::GeometryDrawRange *next_draw_range = next_item ? next_item->GetGeometryDrawRange() : nullptr;
 
-                if (!next_data_buf || !next_draw_range)
+                if (!next_item || !(next_item->draw_key == draw_key))
                     break;
 
-                if (batch.gpu_driven_override ||
-                    *data_buffer != *next_data_buf ||
-                    *draw_range != *next_draw_range)
-                {
-                    break;
-                }
                 ++cluster_end;
             }
 
@@ -488,7 +481,7 @@ namespace hgl::ecs
                             DrawBatch db{};
                             db.first_instance = range.first_instance;
                             db.instance_count = range.instance_count;
-                            db.Set(data_buffer, draw_range, geometry);
+                            db.Set(draw_key, geometry);
                             batch.draw_batches.push_back(db);
 
                             last_compaction_stats.total_input_items     += inst_count;
@@ -549,7 +542,7 @@ namespace hgl::ecs
                         DrawBatch db{};
                         db.first_instance = range.first_instance;
                         db.instance_count = range.instance_count;
-                        db.Set(data_buffer, draw_range, geometry);
+                        db.Set(draw_key, geometry);
                         batch.draw_batches.push_back(db);
                     }
                 }
@@ -567,7 +560,7 @@ namespace hgl::ecs
                     }
                     if (db.instance_count == 0)
                         db.instance_count = 1;
-                    db.Set(data_buffer, draw_range, geometry);
+                    db.Set(draw_key, geometry);
                     batch.draw_batches.push_back(db);
                 }
             }
@@ -585,7 +578,7 @@ namespace hgl::ecs
                 }
                 if (db.instance_count == 0)
                     db.instance_count = 1;
-                db.Set(data_buffer, draw_range, geometry);
+                db.Set(draw_key, geometry);
                 batch.draw_batches.push_back(db);
             }
 
@@ -677,18 +670,9 @@ namespace hgl::ecs
                 for (uint32_t i = 0; i < count; ++i)
                 {
                     DrawBatch &db = batch.draw_batches[i];
-                    uint32_t geom_id = db.geometry_id;
-                    if (geom_id == 0 && db.geom_data_buffer)
-                        geom_id = db.geom_data_buffer->geometry_id;
-                    if (geom_id == 0 && db.geometry)
-                    {
-                        geom_id = db.geometry->GetGeometryID();
-                        db.geometry_id = geom_id;
-                        if (db.geom_data_buffer)
-                            const_cast<graph::GeometryDataBuffer *>(db.geom_data_buffer)->geometry_id = geom_id;
-                    }
 
-                    cmds[i].geometry_id = geom_id;
+                    // B3-iii：几何行号直接来自批的行键（旧实现三级回退 + 往每实体副本里回写镜像）
+                    cmds[i].geometry_id = db.draw_key.geometry_id;
                     cmds[i].first_instance = db.first_instance;
                 }
 
@@ -711,13 +695,12 @@ namespace hgl::ecs
                     const DrawBatch &db = batch.draw_batches[i];
                     // BDA：全部 DrawBatch（含私有 VBO，地址经 db.geometry 直取填行）都写
                     // mesh 间接命令——命令序 = DrawBatch 序 = 参数行序 1:1
-                    if (!db.geom_data_buffer || !db.geom_draw_range)
+                    if (!db.draw_key.HasGeometry())
                         continue;
 
-                    const auto *range = db.geom_draw_range;
-                    const uint32_t total_vertices = static_cast<uint32_t>(
-                        range->index_count > 0 ? range->index_count
-                                               : range->vertex_count);
+
+                    // B3-iii：绘制元素数取自行键（= 行里 is_indexed ? index_count : vertex_count，逐位等价）
+                    const uint32_t total_vertices = db.draw_key.DrawElementCount();
 
                     if (db.geometry && db.geometry->HasMeshlets())
                     {

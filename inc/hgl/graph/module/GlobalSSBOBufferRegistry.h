@@ -259,6 +259,11 @@ public:
     /// 读一行 GeometryAABB（CPU 侧；未初始化或越界返回 nullptr）
     const mtl::GeometryAABB *GetGeometryAABB(uint32_t id) const;
 
+    /// 读一行 MeshDrawParams（CPU 侧，行号 = geometry_id）。
+    /// B3-iii：CPU 侧组 ICB / 批聚簇键一律改读这一行（"CPU 也以这套数据跑"），
+    /// 不再依赖每实体那份 `GeometryDataBuffer` / `GeometryDrawRange` CPU 副本。
+    const mtl::MeshDrawParams *GetMeshDrawParamsRow(uint32_t geometry_id) const;
+
     // ---- MeshDrawParams 便捷接口（平滑过渡 GlobalSSBOBufferRegistry） ----
 
     uint32_t Acquire(const mtl::MeshDrawParams &params)

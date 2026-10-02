@@ -12,8 +12,8 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
+#include <hgl/ecs/core/RenderItem.h>
 #include<hgl/mtl/MeshShaderLimits.h>
-#include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/geo/VKGeometry.h>
 
 namespace hgl
@@ -25,7 +25,6 @@ namespace hgl
         class Pipeline;
         class RenderCmdBuffer;
         class VABList;
-        struct GeometryDrawRange;
     }
 
     namespace ecs
@@ -59,23 +58,15 @@ namespace hgl::ecs
                 uint32_t                instance_count = 0;     ///<此批次包含的实例数量
                 uint32_t                geometry_id = 0;
 
-        const   graph::GeometryDataBuffer *    geom_data_buffer = nullptr;   ///<几何数据缓冲
-        const   graph::GeometryDrawRange *     geom_draw_range = nullptr;    ///<绘制范围（顶点/索引偏移和数量）
-        const   graph::Geometry *              geometry = nullptr;           ///<几何体（BDA 地址直取——行内填 addr_*）
+        RenderItem::MeshDrawKey                draw_key;                     ///<行派生键（B3-iii：排序/聚簇/ICB 唯一判据）
+        const   graph::Geometry *              geometry = nullptr;           ///<几何体（asset 层；BDA 地址直取——行内填 addr_*）
 
-        void Set(const graph::GeometryDataBuffer *data_buffer,
-                 const graph::GeometryDrawRange *draw_range,
+        void Set(const RenderItem::MeshDrawKey &key,
                  const graph::Geometry *geom = nullptr)
         {
-            geom_data_buffer = data_buffer;
-            geom_draw_range = draw_range;
+            draw_key = key;
             geometry = geom;
-            if (data_buffer && data_buffer->geometry_id != 0)
-                geometry_id = data_buffer->geometry_id;
-            else if (geom)
-                geometry_id = geom->GetGeometryID();
-            else
-                geometry_id = 0;
+            geometry_id = key.geometry_id;
         }
     };//struct DrawBatch
 

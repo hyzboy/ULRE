@@ -49,9 +49,6 @@ namespace hgl::ecs
         uint32_t primitiveVariantIndex = 0;
         hgl::graph::PrimitiveVariantPurpose primitiveVariantPurpose =
             hgl::graph::PrimitiveVariantPurpose::Surface;
-        hgl::graph::GeometryDataBuffer *runtime_data_buffer = nullptr;
-        hgl::graph::GeometryDrawRange *runtime_draw_range = nullptr;
-        hgl::graph::Geometry *runtime_geometry = nullptr;
 
         /// 几何/变体变化 ⇒ 同实体 slot 上按-pass 解析出的运行期管线不再可信（A5b：管线缓存归 slot）
         void InvalidateOwnerRuntimePipeline();
@@ -84,11 +81,11 @@ namespace hgl::ecs
         void SetPrimitiveVariantPurpose(const hgl::graph::PrimitiveVariantPurpose purpose);
         hgl::graph::PrimitiveVariantPurpose GetPrimitiveVariantPurpose() const { return primitiveVariantPurpose; }
 
-        // ── 运行期几何绑定（渲染侧解析产物）──
-        bool EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material);
-        void ClearRuntimeGeometryBinding();
-        const hgl::graph::GeometryDataBuffer *GetRuntimeGeometryDataBuffer() const { return runtime_data_buffer; }
-        const hgl::graph::GeometryDrawRange *GetRuntimeGeometryDrawRange() const { return runtime_draw_range; }
+        // ── 几何行号（GPU 可用形态；B3-iii 取代原先的三个运行期指针）──
+        /// 几何在设备级 `MeshDrawParams` 池里的行号（= 4-ID 的 `geometry_id`）；0 = 无几何。
+        /// **按需从 asset 的几何反算**（几何是行的宿主，行号由它在创建期取得）——
+        /// 本组件不缓存第二份，也就不会出现"几何换了行号、组件里还是旧的"这种漂移。
+        uint32_t GetGeometryID() const;
 
         // Asset 里的默认配方——材质解析链的**基底来源**。作者把材质授权搬到数据层
         // （MaterialData）之后，本访问器仍是 asset 归属的数据，由调用方作为

@@ -354,6 +354,16 @@ bool GlobalSSBOBufferRegistry::WriteGeometryAABB(const uint32_t id,const mtl::Ge
     return pool->CommitRow(id);
 }
 
+const mtl::MeshDrawParams *GlobalSSBOBufferRegistry::GetMeshDrawParamsRow(const uint32_t geometry_id) const
+{
+    const auto *pool = GetPool(GlobalSSBOType::MeshDrawParams);
+
+    if (!pool || geometry_id == 0 || geometry_id >= pool->GetRowCapacity())
+        return nullptr;
+
+    return static_cast<const mtl::MeshDrawParams *>(pool->RowCPU(geometry_id));
+}
+
 const mtl::GeometryAABB *GlobalSSBOBufferRegistry::GetGeometryAABB(const uint32_t id) const
 {
     const auto *pool = GetPool(GlobalSSBOType::GeometryAABB);

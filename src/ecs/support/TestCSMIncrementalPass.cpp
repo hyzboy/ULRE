@@ -4656,6 +4656,82 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kB3Contracts) / sizeof(kB3Contracts[0])));
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 30: B3-iii 契约（几何的渲染数据 = 行派生 POD 键，不再是每实体 CPU 副本）
+    //
+    // 背景：用户 2026-10-02 拍板 —— 批排序 / 聚簇 / ICB 一律读 `MeshDrawParams` 行的 CPU 镜像
+    // POD（`RenderItem::MeshDrawKey`，采集期从行填入）；`GeometryData` 里那三个每实体指针
+    // （`GeometryDataBuffer*` / `GeometryDrawRange*` / `Geometry*`）与"每帧武装"函数整组删除。
+    // （文本 / 线段属"动态 GEOMETRY"，用户明确"以后再说"。）
+    //
+    // 反证：复活任一副本/武装函数，或让排序/ICB 绕过行键 ⇒ 本用例必失败。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kB3iiiContracts[] =
+        {
+            // ① 行键形态（排序 / 聚簇 / ICB / 命令四处都读它）
+            { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/RenderItem.h"),
+              "struct MeshDrawKey",
+              "行派生键缺失（排序/聚簇/ICB 无处读行数据）" },
+            { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/RenderItem.h"),
+              "MeshDrawKey draw_key;",
+              "RenderItem 不再持行键（批处理又得回每实体 CPU 副本）" },
+            { "RenderItem.cpp", OS_TEXT("src/ecs/core/RenderItem.cpp"),
+              "const MeshDrawKey &a = draw_key;",
+              "Compare 不再按行键排序" },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "next_item->draw_key == draw_key",
+              "聚簇不再按行键相等断簇" },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "db.draw_key.DrawElementCount()",
+              "ICB 组数不再取自行键（回到每实体 CPU draw range）" },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "cmds[i].geometry_id = db.draw_key.geometry_id;",
+              "命令几何行号不再直取行键（回到三级回退 + 镜像回写）" },
+            { "PipelineMaterialRenderer.h", OS_TEXT("inc/hgl/ecs/support/PipelineMaterialRenderer.h"),
+              "RenderItem::MeshDrawKey                draw_key;",
+              "DrawBatch 不再持行键" },
+
+            // ② 采集期填键 + 行号直读 + 行读取口
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "GetMeshDrawParamsRow(geometry_id)",
+              "采集期不再从行填键（键恒 0 ⇒ 什么都不进批）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "EnsureGeometryRowReady(",
+              "几何就绪判据不再是「行就位」（回到每帧武装 CPU 副本）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "geometry_comp->GetGeometryID()",
+              "4ID 的 geometry_id 不再直读几何行号（回到镜像字段 + 三级回退）" },
+            { "GlobalSSBOBufferRegistry.h", OS_TEXT("inc/hgl/graph/module/GlobalSSBOBufferRegistry.h"),
+              "GetMeshDrawParamsRow",
+              "registry 缺行读取口（CPU 侧组 ICB / 聚簇键无处读行）" },
+
+            // ③ 禁复活：每实体 CPU 几何副本与武装函数
+            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
+              "runtime_data_buffer", "几何组件又持运行期 CPU 缓冲副本", true },
+            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
+              "EnsureRuntimeGeometryBinding", "几何组件又提供「每帧武装」入口", true },
+            { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/RenderItem.h"),
+              "GetGeometryDataBuffer", "RenderItem 又暴露每实体 CPU 几何副本", true },
+            { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/RenderItem.h"),
+              "GetGeometryDrawRange", "RenderItem 又暴露每实体 CPU draw range", true },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "geom_data_buffer", "DrawBatch 又持每实体 CPU 几何副本", true },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "geom_draw_range", "DrawBatch 又持每实体 CPU draw range", true },
+        };
+
+        if (const int failed = verify_source_contracts(30, kB3iiiContracts,
+                                                       static_cast<uint>(sizeof(kB3iiiContracts) /
+                                                                         sizeof(kB3iiiContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 30 Passed: B3-iii 契约成立（批排序/聚簇/ICB/命令四处读行派生 POD 键、"
+                 u8"采集期从行填键 + 行号直读 + 几何就绪 = 行就位；"
+                 u8"禁复活：每实体 CPU 几何副本 / 逐帧武装函数 / RenderItem 暴露副本；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kB3iiiContracts) / sizeof(kB3iiiContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }
