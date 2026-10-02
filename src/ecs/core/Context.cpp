@@ -78,6 +78,7 @@ namespace hgl
             , material_variant_table(std::make_unique<MaterialVariantTable>())
             , material_runtime_table(std::make_unique<MaterialRuntimeTable>())
             , material_authoring_side_table(std::make_unique<MaterialAuthoringSideTable>())
+            , material_runtime_buffer_table(std::make_unique<MaterialRuntimeBufferTable>())
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
         {

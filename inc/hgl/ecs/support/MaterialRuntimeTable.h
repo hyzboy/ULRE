@@ -202,14 +202,29 @@ namespace hgl::ecs
         uint32_t max_instances               = 0;   ///< 实例容量
         uint32_t allocated_instance_capacity = 0;   ///< 已分配连续槽位数（>1 ⇒ 句柄为区间基址）
 
-        graph::DeviceBuffer *l2w_buffer                = nullptr;  ///< L2W 矩阵 SSBO（BDA: l2w.mats[]）
-        graph::DeviceBuffer *l2w_index_buffer          = nullptr;  ///< L2W 索引表 SSBO（BDA: ResolveTransformID）
-        graph::DeviceBuffer *mesh_draw_params_buffer   = nullptr;  ///< MeshDrawCommand SSBO（BDA: cmds[gl_DrawID]）
-        graph::DeviceBuffer *material_data_rows_buffer = nullptr;  ///< MaterialInstanceAddresses SSBO（BDA: values[]）
+        // ── B5-a（P-5）：缓冲区**只存句柄**（世界级 `MaterialRuntimeBufferTable` 的行号；
+        //    0 = 无缓冲）。行内不放指针 —— 这是本 slot 将来升格为定长行 arena 一行的前提。
+        //    取指针：`world.GetMaterialRuntimeBufferTable().Resolve<T>(handle)`。
+        uint32_t l2w_buffer_handle                = 0;  ///< L2W 矩阵 SSBO（BDA: l2w.mats[]）
+        uint32_t l2w_index_buffer_handle          = 0;  ///< L2W 索引表 SSBO（BDA: ResolveTransformID）
+        uint32_t mesh_draw_params_buffer_handle   = 0;  ///< MeshDrawCommand SSBO（BDA: cmds[gl_DrawID]）
+        uint32_t material_data_rows_buffer_handle = 0;  ///< MaterialInstanceAddresses SSBO（BDA: values[]）
 
-        graph::IndirectMeshTaskBuffer *indirect_cmds_buffer = nullptr;  ///< GPU 间接绘制命令缓冲
-        graph::DeviceBuffer *indirect_count_buffer          = nullptr;  ///< 动态绘制计数缓冲（可选）
-        uint64_t indirect_count_offset = 0;    ///< 计数缓冲内偏移（字节；VkDeviceSize == uint64_t）
+        uint32_t indirect_cmds_buffer_handle  = 0;      ///< GPU 间接绘制命令缓冲
+        uint32_t indirect_count_buffer_handle = 0;      ///< 动态绘制计数缓冲（可选）
+        uint64_t indirect_count_offset        = 0;      ///< 计数缓冲内偏移（字节；VkDeviceSize == uint64_t）
+
+        /// 本 slot 登记的全部缓冲区句柄（`DestroySlot` 按引用释放；见 B5-a）
+        uint32_t GetBufferHandles(uint32_t (&out)[6]) const noexcept
+        {
+            out[0] = l2w_buffer_handle;
+            out[1] = l2w_index_buffer_handle;
+            out[2] = mesh_draw_params_buffer_handle;
+            out[3] = material_data_rows_buffer_handle;
+            out[4] = indirect_cmds_buffer_handle;
+            out[5] = indirect_count_buffer_handle;
+            return 6;
+        }
 
         bool is_gpu_driven = false;    ///< true ⇒ 绕过 CPU ICB / 索引表重建
         bool is_indirect    = false;   ///< true ⇒ 用间接命令

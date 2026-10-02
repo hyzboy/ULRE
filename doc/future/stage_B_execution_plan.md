@@ -641,6 +641,49 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 用它做的两次二分（"HEAD 正常 / 我的版本必挂"）因此**双双无效**。⇒ 铁律重申：**改结构大小或公共头，
 必须清 obj 全量重编之后再下任何结论**；二分两侧都必须基于全量重编的产物。
 
+**B5-a 完成记录（2026-10-02）—— ✅ 每实例缓冲区 = 世界级句柄表行号（P-5 前半）**
+
+一、改动（8 文件：1 新建头 + 6 引擎/实现 + 1 契约）
+
+- **新建** `inc/hgl/ecs/support/MaterialRuntimeBufferTable.h`：设备缓冲**句柄表**（世界级）——
+  `Register(BufferOwner*)→句柄`（**同一指针 interned ⇒ 同一句柄**，且**带引用计数**）、
+  `Resolve<T>(handle)`、`Release(handle)`（按引用递减、归零才回收）；句柄 0 = 「无缓冲」哨兵，
+  `Register(nullptr)` 返回 0。以 `BufferOwner*` 为键 ⇒ `DeviceBuffer` 与 `IndirectMeshTaskBuffer`
+  （同基类）共用一张表。
+- `MaterialRuntimeTable.h`：`MaterialRuntimeSlot` 的 6 个缓冲区指针
+  （`l2w_buffer` / `l2w_index_buffer` / `mesh_draw_params_buffer` / `material_data_rows_buffer` /
+  `indirect_cmds_buffer` / `indirect_count_buffer`）→ **`uint32_t *_handle`**；新增
+  `GetBufferHandles(uint32_t(&)[6])`（销毁时交出清单）；`indirect_count_offset` 本就是偏移，保留。
+- `PrimitiveState.cpp`：6 个 setter 统一走 `SwapBufferHandle` = **先 `Release` 本 slot 旧句柄、
+  再 `Register` 新的**（反复调用不堆引用计数、也不误回收共享缓冲）；**示例调用点零改动**（签名不变）。
+- `InstancedPrimitiveRenderItem.cpp`：6 个 getter 改 `ResolveSlotBuffer<T>(context, handle)` 经世界表解析。
+- `MaterialRuntimeTable.cpp`：`DestroySlot` 按引用释放该 slot 的 6 个句柄。
+- `Context.h/.cpp`：世界级持有 `unique_ptr<MaterialRuntimeBufferTable>` + 取用口 + 构造初始化。
+- `TestCSMIncrementalPass.cpp`：**Test 37（24 条契约）**，含 6 条「缓冲指针禁回 slot」+ setter
+  直塞指针禁复活 + interned/引用计数两类防呆。
+
+二、B5 拆批说明（**B5-b 待做**）
+
+`MaterialRuntimeSlot` 里还剩两个指针：`runtime_pipeline_pass`（`RenderPass*`）与
+`runtime_pipeline`（`Pipeline*`）——它们是**每 pass 的解析产物**（P-5 清单未列）。按
+`ulre-ssbo-row-plumbing` 已定规则「每实体/每 pass 的解析产物不入行，落世界侧旁表、键 = 已冻结的行号」，
+**B5-b** = 把它们移进旁表 + 给 slot 的行宽做 `static_assert` 冻结（那才是 B5 标题里的"行宽定稿"）。
+
+三、验证（清整棵 Debug obj 树 591 目录后全量重编；rc 与数字均为实测）
+
+- 三类编译错依次收敛：① 新表未 include；② `ECSContext` 只有前置声明（`Resolve` 需要完整类型）；
+  ③ `BufferOwner` 只有前置声明 ⇒ MSVC 报 "Types pointed to are unrelated"（**跨层按基类指针收发必须在
+  .cpp 里包含完整定义头**）。最终 **BUILD_RC=0 / error C=LNK=MSB = 0/0/0**。
+- 门 **42 PASS / 0 FAIL**；**11 个测试 rc=0**（Test 37 实测跑到并通过）；`ProbeTransformDiagnostics` rc=0；
+- 示例 **7 个**（PBRSpheres / AutoMergeMaterialInstance / CascadeShadowMap / AlphaTestShadow /
+  IBLEnvironment / **ComputeFrustumCull** / **ComputeAsteroidBelt**）各 8 秒：真 error 0、
+  `策略判定对拍` 不一致 0（280/36/555/17/83/188/0 条一致行）；
+- **像素**：`ComputeFrustumCull` 整片青色立方体（GPU-Driven 批逐项成簇）正常；
+  `ComputeAsteroidBelt` **100 万实例**土星环 + 太阳 + 视锥剔除阴影盘正常 ⇒
+  `setter → 句柄表（interned + 引用计数）→ getter 解析 → 批管线` 链路端到端工作；
+- **反证**：把 `graph::DeviceBuffer *l2w_buffer` 搬回 slot ⇒ `Test 37 Failed: L2W 缓冲指针又回到 slot
+  （行内不放指针）`（rc=37）；逐字节还原（sha256 核对 OK）⇒ 重跑 rc=0 / Passed。
+
 **B4-iii-b 完成记录（2026-10-02）—— ✅ 重类型落世界级旁表（键 = 材质行行号），组件只持行号**
 
 一、改动（12 文件：1 新建头 + 5 引擎 + 6 示例）

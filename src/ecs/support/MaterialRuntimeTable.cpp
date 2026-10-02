@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/support/MaterialRuntimeTable.h>
+#include<hgl/ecs/support/MaterialRuntimeBufferTable.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
@@ -296,6 +297,18 @@ namespace hgl::ecs
 
         // slot 持有的行引用随 slot 一起释放（行归零则回收并退休 GPU 绑定）
         Release(it->second.row);
+
+        // B5-a：slot 上的缓冲区句柄按引用释放（共享缓冲只减自己的引用，归零才回收）
+        if (context)
+        {
+            MaterialRuntimeBufferTable &buffers = context->GetMaterialRuntimeBufferTable();
+
+            uint32_t handles[6] = {};
+            it->second.GetBufferHandles(handles);
+
+            for (const uint32_t handle : handles)
+                buffers.Release(handle);
+        }
 
         slots.erase(it);
         return true;

@@ -15,6 +15,7 @@
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/MaterialAuthoringSideTable.h>
+#include<hgl/ecs/support/MaterialRuntimeBufferTable.h>
 #include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
@@ -180,6 +181,10 @@ namespace hgl
             /// B4-iii-b：材质**重类型授权数据**旁表（配方覆盖 / 具名纹理资源），
             /// 按材质组件行行号索引；设备级行里只留 POD（授权位 + revision）。
             std::unique_ptr<MaterialAuthoringSideTable> material_authoring_side_table;
+
+            /// B5-a：设备缓冲**句柄表**（`MaterialRuntimeSlot` 里的缓冲区只存句柄，
+            /// 指针本体在这里；见 support/MaterialRuntimeBufferTable.h）。
+            std::unique_ptr<MaterialRuntimeBufferTable> material_runtime_buffer_table;
 
             // 世界私有**相机表**：相机是**世界级资源**（16 槽 × 帧槽数，0 号槽恒为本世界默认相机）。
             // 行空间 + **槽账目（槽 → 宿主相机）** 都在这里，是"相机属于哪个世界 / 哪个槽"的唯一真源；
@@ -709,6 +714,9 @@ namespace hgl
             const MaterialVariantTable* GetMaterialVariantTable() const { return material_variant_table.get(); }
 
             /// A4 材质运行期表（共享行 interned + CoW + refcount + 世代；见 support/MaterialRuntimeTable.h）
+            MaterialRuntimeBufferTable& GetMaterialRuntimeBufferTable() { return *material_runtime_buffer_table; }
+            const MaterialRuntimeBufferTable& GetMaterialRuntimeBufferTable() const { return *material_runtime_buffer_table; }
+
             MaterialAuthoringSideTable* GetMaterialAuthoringTable() { return material_authoring_side_table.get(); }
             const MaterialAuthoringSideTable* GetMaterialAuthoringTable() const { return material_authoring_side_table.get(); }
 
