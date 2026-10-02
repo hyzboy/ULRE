@@ -279,6 +279,18 @@ GLSL `GeometryAABB/GeometryAABBsRef` + 候选用**变体下标** `geom_id` 索�
 否则剔除会按退化 AABB 走。内置的 10 个几何走 inline geometry（`CreateWithAABB`）应已就位。
 
 ### 2.8 先存在的红：ATS `D3 receive_shadow` 契约的"变红"方向恒为 0 px（2026-10-02 记录）
+**✅ 已闭合（A3，2026-10-02）—— 障碍实测排除，示例已改读引擎池**：
+- **不会退化**：`Geometry::RefreshGeometryAABBRow()`（`src/SceneGraph/VKGeometry.cpp:112-142`）对本地 AABB
+  无效的几何写的是**「始终可见」哨兵**（`kAlwaysVisibleRadius`，原文「缺数据不得导致被剔除」）⇒
+  模型加载来的几何要么有真值、要么保守可见，改读引擎池**没有退化剔除风险**。
+- **改法**：`SimulationAddressTable` 尾部加 `uint32_t geometry_ids[GEOMETRY_VARIANT_COUNT]`（尺寸断言 40→80），
+  GLSL `SimAddressTableRef` 同步加 `uint geometry_ids[10]`（scalar layout 无填充）；GLSL 剔除改
+  `geometry_aabbs.boxes[table.geometry_ids[geom_id]]`；地址表 `geometry_aabbs` 填**引擎池基址**
+  （`GetGPUBase(GlobalSSBOType::GeometryAABB)`，与 `ComputeFrustumCull` 同范式）。**删除**：
+  `cpu_geometry_aabbs[10]` + 填充 + `default_extents[10]` + 自建 buffer（320 B）的创建/释放/声明 ⇒ `grep` 零残留。
+- **验证**：BUILD_RC=0 / error C=0 / warning C=0；运行 55s 真 error 0，引擎池写入真值可见
+  （`GeometryAABB 行写入 id=1 radius=1.7321 extents=(1,1,1)`）；**像素**：模型加载的主星未被误剔 +
+  1,000,000 陨星环完整致密（若 AABB 读成零/垃圾值会出现整环消失或该剔不剔）。
 
 **现象**：`ATS_SELFCHECK=1 AlphaTestShadow` 退出码 1，唯一失败项是
 
