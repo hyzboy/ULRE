@@ -117,7 +117,7 @@ namespace hgl
             ///
             /// 为什么除了 PublishCameraRows 还需要本接口：阴影光源相机是**系统内建相机**
             /// （`EnvironmentSystem` 用 make_shared 创建，**不经 Entity/AddComponent 注册**）
-            /// ⇒ 不在 component_registry 里，`CollectCameras()` 看不到它，必须由 RenderTo 按
+            /// ⇒ 不是实体组件，`CollectCameras()` 看不到它，必须由 RenderTo 按
             /// `req.camera` 直接调用。（历史注释曾误记为"相机属另一个世界"；CSM 始终是
             /// "一个世界 + 多个渲染过滤程"，见 doc/world-addresses-and-camera-model-plan.md §7。）
             void PublishCamera(const CameraComponent* camera, uint32_t frame_slot);
@@ -159,7 +159,7 @@ namespace hgl
         private:
 
             /// 收集所有摄像机组件 / Collect all camera components
-            std::vector<std::shared_ptr<CameraComponent>> CollectCameras();
+            std::vector<CameraComponent *> CollectCameras();      ///< T2-c：池活跃集视图（裸指针）
 
             /// 收集输入状态 / Collect input state
             void CollectInput();
@@ -185,10 +185,10 @@ namespace hgl
             /// 三级解析出本 pass 要用的相机（`doc/world-addresses-and-camera-model-plan.md` §3）：
             /// ① 0 号槽的默认相机（含常驻 fallback）→ ② 显式 `is_main_camera` → ③ 最小 `EntityID` 的相机
             /// → ④ 都没有则生成常驻 fallback（`(0,0,0)`、占 0 号槽）。**渲染必有一个相机**。
-            CameraComponent* SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras);
+            CameraComponent* SelectMainCamera(const std::vector<CameraComponent *> &cameras);
 
             /// 让某相机认领 0 号槽（= 本世界默认相机），并记进世界（下一帧解析的第 ① 级）
-            CameraComponent* ClaimDefaultCamera(const std::shared_ptr<CameraComponent>& camera);
+            CameraComponent* ClaimDefaultCamera(CameraComponent *camera);
 
             /// 绑本相机的 viewport + **认领世界相机槽**（`ECSContext::EnsureCameraSlot`，
             /// **只在本帧 tick / pass 覆盖上下文调用**）。

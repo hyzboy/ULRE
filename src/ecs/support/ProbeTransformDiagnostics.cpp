@@ -4,7 +4,7 @@
  * 对应 doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md 的 T0 / T4：
  *
  *   [T0] 量化基线
- *        结构尺寸（Component / TransformAccessor / Entity / TransformDataStorage）、
+ *        结构尺寸（ComponentRow / GeometryData / TransformAccessor / Entity / TransformDataStorage）、
  *        TransformDataStorage 每行字节，以及 N 个 [实体 + 变换行] 的
  *        堆净增块数/字节（CRT 堆快照的**有符号**逐类别差值）——用来替换文档里
  *        "48B 的 TRS 膨胀至 120~160 字节" 那组估算。
@@ -36,6 +36,7 @@
 #include<hgl/ecs/support/TransformDataStorage.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/GeometryData.h>   // [T0b] AddComponent<GeometryData> 需完整类型
+#include<hgl/ecs/components/ShadowProxy.h>    // [T2-c] 行尺寸对照（壳拆掉后每组件只剩载荷）
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/EntityGPU.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -91,13 +92,20 @@ namespace
 
 // ─────────────────────────────────────────────────────────────────────────────
 // [T0] 结构尺寸
+//
+// T2-c 后：`sizeof(Component)`（104 B）不再是量 —— 组件本体住世界的**类型化对象池**，
+// 实体只持 `component_rows[ComponentType]`（1 基行号）。每组件成本 = 池行字节（摊薄）+ 0 次分配。
 // ─────────────────────────────────────────────────────────────────────────────
 static void SectionSizes()
 {
     PrintSeparator("[T0] 结构尺寸");
 
     printf("sizeof(hgl::ecs::EntityID)            = %zu B\n",sizeof(EntityID));
-    printf("sizeof(hgl::ecs::Component)           = %zu B\n",sizeof(Component));
+    // T2-c：`Component` 基类已整删（104 B 中 95% 是名字字符串 + 虚表 + 控制块相关的壳）
+    // ⇒ 这里对照打印"行头"与两个小载荷组件的行尺寸（[T0b] 的差值才是 T2-c 的验收判据）。
+    printf("sizeof(hgl::ecs::ComponentRow)        = %zu B (T2-c 行头：宿主元数据，无 vptr/无名字)\n",sizeof(ComponentRow));
+    printf("sizeof(hgl::ecs::GeometryData)        = %zu B (行载荷)\n",sizeof(GeometryData));
+    printf("sizeof(hgl::ecs::ShadowProxy)         = %zu B (行载荷)\n",sizeof(ShadowProxy));
     printf("sizeof(hgl::ecs::TransformAccessor)   = %zu B\n",sizeof(TransformAccessor));
     printf("sizeof(hgl::ecs::Entity)              = %zu B\n",sizeof(Entity));
     printf("sizeof(hgl::ecs::TransformDataStorage)= %zu B\n",sizeof(TransformDataStorage));

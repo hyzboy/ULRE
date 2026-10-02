@@ -47,7 +47,7 @@ namespace hgl::ecs
     #endif
         if (slot.entity)
         {
-            slot.entity->DetachAllComponents(true);
+            slot.entity->DetachAllComponents();
             slot.entity->~Entity();      // 块池：显式析构；存储留待该槽复用（行/地址语义不变）
             slot.entity = nullptr;
         }
@@ -120,7 +120,7 @@ namespace hgl::ecs
         {
             if (slot.entity)
             {
-                slot.entity->DetachAllComponents(true);
+                slot.entity->DetachAllComponents();
                 slot.entity->~Entity();      // 块池：显式析构
                 ++detach_count;
             }

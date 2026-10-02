@@ -107,7 +107,7 @@ namespace hgl::ecs
         LineBuffer line_buffer_;
 
         // ------- Per-frame collect state -------
-        std::vector<std::shared_ptr<LinesComponent>> collected_;
+        std::vector<LinesComponent *> collected_;   ///< 本帧收集（池活跃集视图的裸指针；不跨帧缓存对象）
         LineCollectStats stats_;
         uint32_t total_line_count_ = 0;
         TransformAssignmentBuffer* bound_transform_buffer_ = nullptr;

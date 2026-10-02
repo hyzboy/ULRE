@@ -1,13 +1,10 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/Object.h>
-#include<hgl/ecs/core/Component.h>
+#include<hgl/ecs/core/ComponentRow.h>
 #include<hgl/ecs/core/EntityHandle.h>
 #include<hgl/ecs/support/ComponentTypeTable.h>
-#include<memory>
-#include<vector>
-#include<typeinfo>
-#include<typeindex>
+#include<cstdint>
 
 namespace hgl
 {
@@ -18,6 +15,14 @@ namespace hgl
         /**
          * Entity - represents game objects with components
          * Entities are containers for components
+         *
+         * T2-c：**实体槽 = 按类型行号**。组件本体住世界的**类型化对象池**，实体只持
+         * `component_rows[ComponentType]`（1 基行号，0 = 无）——与 stage B `EntityGPU::row[16]` 同形
+         * （CPU 侧按当前类型数定尺寸）。实体侧因此**零堆分配**（旧形态每挂一个组件都要长一个
+         * `vector<ComponentEntry>`），也再没有 `typeid(T).hash_code()` 查表与 `shared_ptr` 控制块。
+         *
+         * ⚠ 组件的生命周期归**世界**（类型化池）⇒ `AddComponent<T>` 要求实体已挂在世界上
+         * （`ECSContext::CreateEntity` 建的实体都满足；栈上裸建的 `Entity` 不能挂组件）。
          */
         class Entity : public Object
         {
@@ -25,38 +30,18 @@ namespace hgl
 
             EntityID id;
 
-            /// 组件槽位位掩码（v2 §3 的 5 类）；**单一写者 = 组件挂载/卸载路径**（`ReplaceComponent` 置位、
-            /// `RemoveComponent`/`DetachAllComponents` 清位）。它就是 stage B `EntityGPU::type[16]` 的前身。
+            /// 组件槽位位掩码（v2 §3 的 5 类）；**单一写者 = 组件挂载/卸载路径**。
+            /// T2-c 起它是 `component_rows` 的**缓存视图**（`row != 0` ⇔ 该位为 1），供 O(1) 策略判定；
+            /// 两者一致由 `VerifyComponentMaskAgainstComponents` 对拍。
+            /// 它就是 stage B `EntityGPU::type[16]` 的前身。
             uint32_t component_mask = 0;
 
-            // Use hash_code instead of string for faster lookups
-            /// 组件条目（T2-b：「每实体哈希表」⇒ **小数组 + 线性扫描**）。
-            /// 依据：实测每实体组件数 ≤4（Transform 已无组件对象、相机在世界级），线性扫描比哈希更快，
-            /// 且省掉哈希表每次插入的**桶数组 + 节点**两次分配（探针「块/实体」的主要残余来源）。
-            /// 为什么不做「按 `ComponentType` 的固定 7 槽数组」：`Lines`/`Text`/`ShadowProxy` **没有类型号**
-            /// （`ComponentTypeOf<T>` 无特化 ⇒ 都落到 `None`），补类型号会与「文本/线条属动态 GEOMETRY，以后再说」
-            /// 的定案冲突并污染 (scope,type) 台账；相机还必须保持 `shared_ptr`（相机槽拥有者是
-            /// `weak_ptr<CameraComponent>`）⇒ 索引键仍用 `typeid(T).hash_code()`，语义与旧版逐字一致。
-            struct ComponentEntry
-            {
-                std::size_t                type_hash = 0;
-                std::shared_ptr<Component> component;
-            };
+            /// **按类型的组件行号表**（T2-c）：下标 = `ComponentType` 值，值 = 该类型在世界类型化池里的
+            /// 行号（**1 基**；0 = 无）。这是"本实体有哪些组件、各自在哪一行"的**唯一真源** ——
+            /// 掩码只是它的缓存视图。
+            uint32_t component_rows[COMPONENT_TYPE_COUNT] = {};
 
-            std::vector<ComponentEntry> components;
-
-            /// 线性查找（组件数 ≤4；返回内存地址，生命周期同 `components`）
-            ComponentEntry       *FindComponentEntry(std::size_t type_hash);
-            const ComponentEntry *FindComponentEntry(std::size_t type_hash) const;
-
-            /// 按 type_hash 摘除条目（不存在则 no-op）
-            void EraseComponentEntry(std::size_t type_hash);
             ECSContext *context = nullptr;   ///< 所属的 ECSContext，不拥有
-
-            void RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp);
-            void UnregisterFromContext(size_t type_hash, Component* comp_ptr);
-            void ReplaceComponent(size_t type_hash, const std::shared_ptr<Component>& component, const std::type_index& component_type, ComponentType slot);
-            void MarkSceneDirty() const;
 
         public:
 
@@ -74,7 +59,7 @@ namespace hgl
             /// 是否挂了某槽位的组件（O(1)，不查组件表）
             bool HasComponentType(ComponentType type) const { return ComponentMaskHas(component_mask,type); }
 
-            /// 调试/测试用：把掩码与"该实体实际挂载的组件"逐一对照，返回是否一致
+            /// 调试/测试用：把掩码与行号表逐一对照，返回是否一致（单一真源 = `component_rows`）
             bool VerifyComponentMaskAgainstComponents() const;
 
             /// Set entity ID (called by EntityManager)
@@ -84,60 +69,39 @@ namespace hgl
 
             ECSContext *GetContext() const { return context; }
 
-        public:
+            /// 场景结构（实体/组件增删）变更通知 —— 挂载/卸载路径的唯一副作用，渲染图据此重 gather
+            void MarkSceneDirty() const;
 
-            /// Add component to entity
-            template<typename T, typename... Args>
-            std::shared_ptr<T> AddComponent(Args&&... args)
+        public: // ── 组件行号表（唯一真源；写者是世界的挂载/卸载路径）──
+
+            /// 该类型组件的行号（0 = 没有）
+            uint32_t GetComponentRow(ComponentType type) const
             {
-                auto component = std::make_shared<T>(std::forward<Args>(args)...);
-                ReplaceComponent(typeid(T).hash_code(), component, std::type_index(typeid(T)), ComponentTypeOf<T>::value);
-                return component;
+                const uint32_t index = static_cast<uint32_t>(type);
+
+                return index < COMPONENT_TYPE_COUNT ? component_rows[index] : 0u;
             }
 
-            /// Get component by type
-            template<typename T>
-            std::shared_ptr<T> GetComponent() const
-            {
-                const ComponentEntry *entry = FindComponentEntry(typeid(T).hash_code());
-                if (entry && entry->component)
-                    return std::static_pointer_cast<T>(entry->component);
-                return nullptr;
-            }
+            /// 写行号（**唯一写者 = 世界的挂载/卸载路径**；掩码同步维护），返回旧行号
+            uint32_t SetComponentRow(ComponentType type, uint32_t row);
 
-            /// Check if entity has component
-            template<typename T>
-            bool HasComponent() const
-            {
-                const ComponentEntry *entry = FindComponentEntry(typeid(T).hash_code());
-                return entry && entry->component != nullptr;
-            }
+        public: // ── 组件挂载/卸载（实现在 Context.h —— 需要完整的 ECSContext）──
 
-            /// Remove component by type
-            template<typename T>
-            void RemoveComponent()
-            {
-                const size_t type_hash = typeid(T).hash_code();
-                ComponentEntry *entry = FindComponentEntry(type_hash);
-                if (!entry || !entry->component)
-                    return;
+            /// 挂载组件（已有同类型 ⇒ 先卸旧行再挂新行，语义与旧 `ReplaceComponent` 逐字一致）。
+            /// 返回池内行地址（**裸指针、地址稳定**：池块不移动对象，与 `Entity*` 同纪律）。
+            template<typename T, typename... Args> T    *AddComponent(Args &&...args);
 
-                UnregisterFromContext(type_hash, entry->component.get());
-                entry->component->OnDetach();
-                EraseComponentEntry(type_hash);
-                component_mask = ComponentMaskRemove(component_mask,ComponentTypeOf<T>::value);   // 掩码：唯一移除路径
-                MarkSceneDirty();
-            }
+            /// 取组件（无 ⇒ nullptr）
+            template<typename T>                    T    *GetComponent() const;
 
-        public:
+            /// 是否挂了该类型组件（只看行号表，O(1)）
+            template<typename T>                    bool  HasComponent() const;
 
-            /// Get all components (for serialization)
-            void GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const;
+            /// 卸载该类型组件（无 ⇒ no-op）
+            template<typename T>                    void  RemoveComponent();
 
-            /// Detach all components from this entity
-            void DetachAllComponents(bool notify_systems = true);
+            /// 卸载本实体的全部组件（实体销毁 / 清空路径）
+            void DetachAllComponents();
         };
     }//namespace ecs
 }//namespace hgl
-
-

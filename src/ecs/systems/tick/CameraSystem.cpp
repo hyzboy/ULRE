@@ -341,9 +341,9 @@ namespace hgl::ecs
         // 它同样要绑槽 / 解算 / 发布，否则主帧没有合法相机数据。
         std::vector<CameraComponent *> render_cameras;
         render_cameras.reserve(cameras.size() + 1u);
-        for (auto& camera_comp : cameras)
+        for (CameraComponent *camera_comp : cameras)
             if (camera_comp)
-                render_cameras.push_back(camera_comp.get());
+                render_cameras.push_back(camera_comp);
         if (main_camera && std::find(render_cameras.begin(), render_cameras.end(), main_camera) == render_cameras.end())
             render_cameras.push_back(main_camera);
 
@@ -381,14 +381,17 @@ namespace hgl::ecs
             first_update_pending = false;
     }
 
-    std::vector<std::shared_ptr<CameraComponent>> CameraSystem::CollectCameras()
+    std::vector<CameraComponent *> CameraSystem::CollectCameras()
     {
-        std::vector<std::shared_ptr<CameraComponent>> result;
+        // T2-c：组件收集 = **池的活跃集视图**（裸指针；生命期 = 池行生命期）。
+        // 收集路径不再经过 shared_ptr 注册表（旧的 `vector<shared_ptr<CameraComponent>>` 形态是
+        // `shared_ptr` 钉在组件上的原因之一）。相机 ≤16/世界 ⇒ 这一份拷贝无意义开销。
+        ValueArray<CameraComponent *> cameras;
+
         if (context)
-        {
-            context->GetComponents<CameraComponent>(result);
-        }
-        return result;
+            context->GetComponents<CameraComponent>(cameras);
+
+        return std::vector<CameraComponent *>(cameras.begin(), cameras.end());
     }
 
     void CameraSystem::CollectInput()
@@ -608,23 +611,23 @@ namespace hgl::ecs
 
         // 只认领**槽**（不碰 viewport —— 本函数也会在离屏 pass 的设置阶段被调用，
         // 那时 viewport_info 是离屏 RT 的，绑上去会污染主帧投影）。
-        for (auto &camera : cameras)
-            context->EnsureCameraSlot(camera.get(), camera.get() == default_camera);
+        for (CameraComponent *camera : cameras)
+            context->EnsureCameraSlot(camera, camera == default_camera);
 
         if (default_camera)
             context->EnsureCameraSlot(default_camera, true);
 
-        for (auto &camera : cameras)
-            PublishCamera(camera.get(), frame_slot);
+        for (CameraComponent *camera : cameras)
+            PublishCamera(camera, frame_slot);
 
         // 默认相机（0 号槽）可能不在组件表里（常驻 fallback 相机 / 系统内建相机）⇒ 单独补发，
         // 否则主帧读到的 0 号行是空的（着色器把整个场景算成退化相机）。
         if (default_camera)
         {
             const bool in_registry = std::any_of(cameras.begin(), cameras.end(),
-                [default_camera](const std::shared_ptr<CameraComponent>& camera)
+                [default_camera](CameraComponent *camera)
                 {
-                    return camera.get() == default_camera;
+                    return camera == default_camera;
                 });
 
             if (!in_registry)
@@ -633,7 +636,7 @@ namespace hgl::ecs
     }
 
 
-    CameraComponent* CameraSystem::SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras)
+    CameraComponent* CameraSystem::SelectMainCamera(const std::vector<CameraComponent *> &cameras)
     {
         // 三级解析（doc/world-addresses-and-camera-model-plan.md §3）：渲染**必须**有一个相机。
         if (!context)
@@ -642,23 +645,23 @@ namespace hgl::ecs
         // ① 0 号槽的默认相机仍在 ⇒ 沿用：跨帧稳定，不因集合顺序/新增相机而抖动换相机。
         if (auto *def = context->GetDefaultCamera())
         {
-            for (const auto &camera : cameras)
+            for (CameraComponent *camera : cameras)
             {
-                if (camera.get() == def)
+                if (camera == def)
                     return def;
             }
         }
 
         // ② 显式指定的主相机（示例搭建期 `camera->is_main_camera = true`）
-        for (const auto& camera : cameras)
+        for (CameraComponent *camera : cameras)
         {
             if (camera && camera->is_main_camera)
                 return ClaimDefaultCamera(camera);
         }
 
         // ③ 已加载实体中 **EntityID 最小**的相机（同实体多相机按组件注册顺序 ⇒ 集合序即可）
-        std::shared_ptr<CameraComponent> best;
-        for (const auto& camera : cameras)
+        CameraComponent *best = nullptr;
+        for (CameraComponent *camera : cameras)
         {
             if (!camera)
                 continue;
@@ -674,16 +677,30 @@ namespace hgl::ecs
         return context->EnsureFallbackCamera();
     }
 
-    CameraComponent* CameraSystem::ClaimDefaultCamera(const std::shared_ptr<CameraComponent>& camera)
+    CameraComponent* CameraSystem::ClaimDefaultCamera(CameraComponent *camera)
     {
         // 选中的相机**成为 0 号槽的宿主**（= 本世界默认相机）：下一帧三级解析的第 ① 级就是它，
         // 相机集合的顺序变化 / 新增相机都不会把主相机换掉。
         // 0 号槽唯一 ⇒ 原宿主（含常驻 fallback）自动让位，不需要在这里显式清谁的槽
         // （历史写法要手工把 fallback 的槽号抹成"未分配"——那正是"两份槽真值"的产物）。
+        // T2-c：槽账目按**宿主弱引用**计占用期 ⇒ 认领时必须交出同一控制块的 shared_ptr。
+        // 相机的宿主就是它所在类型化池行内的那一份（实体相机）或世界/系统持有的那一份
+        // ⇒ 用 `weak_from_this().lock()` 取回，**不新建控制块**（新建 = 立即失效的错误宿主）。
         if (camera && context)
-            context->SetDefaultCamera(camera);
+        {
+            auto owner = camera->weak_from_this().lock();
 
-        return camera.get();
+            if (!owner)
+            {
+                GLogError("[CameraSystem] 相机 \"%s\" 没有 shared_ptr 宿主，无法成为默认相机"
+                          "（槽账目按宿主弱引用计占用期）", camera->GetName().c_str());
+                return nullptr;
+            }
+
+            context->SetDefaultCamera(owner);
+        }
+
+        return camera;
     }
 
     CameraComponent* CameraSystem::GetMainCameraComponent()
@@ -716,10 +733,10 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        std::vector<std::shared_ptr<CameraComponent>> cameras;
+        ValueArray<CameraComponent *> cameras;
         context->GetComponents<CameraComponent>(cameras);
 
-        for (const auto& camera : cameras)
+        for (CameraComponent *camera : cameras)
         {
             if (camera)
                 camera->matrix_dirty = true;

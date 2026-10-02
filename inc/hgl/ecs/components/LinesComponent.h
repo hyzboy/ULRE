@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/Component.h>
+#include<hgl/ecs/core/ComponentRow.h>
 #include<hgl/math/Vector.h>
 #include<hgl/math/geometry/AABB.h>
 #include<hgl/color/Color4f.h>
@@ -17,7 +17,7 @@ namespace hgl::ecs
      * CN: 每个LinesComponent代表一个物体的所有线条，这些线条共享同一个宽度值。
      * EN: Each LinesComponent represents all lines of an entity, sharing a single width value.
      */
-    struct LinesComponent : public Component
+    struct LinesComponent : public ComponentRow
     {
     public:
         enum class LineChange : uint32_t
@@ -54,10 +54,20 @@ namespace hgl::ecs
     public:
 
         LinesComponent() = default;
-        virtual ~LinesComponent() = default;
 
-        /// 系统组：线条（A2：枚举；线条组件尚无类型号，故组归属由组件自己声明）
-        SystemGroupID GetSystemGroup() const override { return SystemGroupID::Line; }
+        /// 非虚（T2-c：组件行里没有 vptr）；对象住**类型化对象池**，析构由池显式调用
+        ~LinesComponent() = default;
+
+        // 系统组（`Line`）由**类型表**声明（`kComponentTypeTable[ComponentType::Lines].group`）：
+        // T2-c 起组归属是类型属性，不再由组件对象上的虚函数声明（虚表已随基类删除）。
+
+        // ── 变更计数 / 变更位 ──
+        // T2-c：原 `Component` 基类的 `version` / `change_mask` 实测只有线条与文本在用
+        // ⇒ 搬进真正用它的类型（别的组件行不必再背这 12 B；语义与基类逐字一致）。
+        uint64_t version = 0;
+        uint32_t change_mask = 0;
+
+        void TouchChange(uint32_t mask) { ++version; change_mask |= mask; }
 
         /**
          * CN: 添加一条线段
@@ -161,6 +171,10 @@ namespace hgl::ecs
          * EN: Mark as synced
          */
         void MarkSynced() { dirty = false; }
+
+        // ── 变更查询（原基类接口；收集路径读它决定是否重传）──
+        uint32_t GetChangeMask() const { return change_mask; }
+        void ClearAllChanges() { change_mask = 0; }
     };
 
     /// T2-c：登记类型号（**CPU-only**：无 GPU 行、不写 `EntityGPU.row[]`）。

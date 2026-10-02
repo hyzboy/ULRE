@@ -1,8 +1,10 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/Component.h>
+#include<hgl/ecs/core/ComponentRow.h>
+#include<hgl/ecs/support/ComponentPool.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/math/Vector.h>
+#include<string>
 #include<hgl/graph/camera/Camera.h>
 
 namespace hgl::graph
@@ -33,7 +35,8 @@ namespace hgl::ecs
      *
      * 所有字段都是public，不包含逻辑方法
      */
-    class CameraComponent : public Component
+    class CameraComponent : public ComponentRow,
+                            public std::enable_shared_from_this<CameraComponent>
     {
     public:
 
@@ -98,6 +101,13 @@ namespace hgl::ecs
         /// 槽本身由世界的相机表持有（`CameraInfoStorage::slot_owners`），本字段只是"哪个世界"的显式标记。
         const void* world_owner = nullptr;
 
+        // === 名字（T2-c）===
+        /// 原 `Component` 基类的名字字符串已删（它给每个组件 +32 B，只喂调试日志）；
+        /// 相机**不是**逐实体对象（世界级、≤16/世界）⇒ 保留一个名字供日志/测试辨识。
+        std::string camera_name;
+
+        const std::string& GetName() const { return camera_name; }
+
         // === 标记 / Flags ===
         bool is_main_camera;            ///< 是否为主摄像机 / Is main camera
         bool matrix_dirty;              ///< 矩阵脏标记 / Matrix dirty flag
@@ -117,4 +127,9 @@ namespace hgl::ecs
     /// 槽位映射：`CameraComponent` = 相机（世界私有；P-6 ② ⇒ 参数留组件、不新开 (World, Camera) arena；
     /// 世界级相机行空间是 `CameraSystem::Publish` 出来的派生视图）
     template<> struct ComponentTypeOf<CameraComponent> { static constexpr ComponentType value = ComponentType::Camera; };
+
+    /// T2-c：相机的存储形态 = **行内持 `shared_ptr`** 的类型化池（与其它组件的裸行池只差所有权）——
+    /// 世界相机槽的账目按"宿主弱引用"计占用期，而认领槽的路径取 `camera->weak_from_this()`
+    /// ⇒ 宿主必须由 shared_ptr 长期持有（同一控制块）。相机数量 ≤16/世界，与逐实体开销无关。
+    template<> struct ComponentStorageTraits<CameraComponent> { using PoolType = SharedComponentPool<CameraComponent>; };
 }//namespace hgl::ecs

@@ -262,7 +262,7 @@ namespace hgl
                 render_systems.Clear();
                 tick_system_order.clear();
                 render_system_order.clear();
-                component_registry.Clear();
+                ClearComponentPools();
                 systems_by_element_type.clear();
                 tick_dependencies.Clear();
                 render_dependencies.Clear();
@@ -307,7 +307,7 @@ namespace hgl
                 entity_manager->Clear();
             }
 
-            component_registry.Clear();
+            ClearComponentPools();
             ResetComponentDrivenGroups();
             static_transforms.clear();
             movable_transforms.clear();
@@ -681,7 +681,7 @@ namespace hgl
 
                 // 本次 pass 的相机行：**按 req.camera 直接发布**。阴影光源相机是**系统内建相机**
                 // （EnvironmentSystem 直接 make_shared，不经 Entity/AddComponent 注册）⇒ 不在
-                // component_registry 里，本世界 CollectCameras() 看不到它，靠通用发布会漏 ⇒
+                // 实体组件存储里，本世界 CollectCameras() 看不到它，靠通用发布会漏 ⇒
                 // shadow pass 用退化相机渲染（阴影整体消失、receive_shadow 拨动无像素变化）。
                 // （历史注释曾误记为"光源相机属另一个世界"——真因与定稿见
                 //  doc/world-addresses-and-camera-model-plan.md §3/§7。）
@@ -1633,13 +1633,13 @@ namespace hgl
             template<typename T>
             inline T *ComponentOfEntity(Entity *entity)
             {
-                return entity ? entity->GetComponent<T>().get() : nullptr;
+                return entity ? entity->GetComponent<T>() : nullptr;
             }
 
             template<typename T>
             inline const T *ComponentOfEntity(const Entity *entity)
             {
-                return entity ? entity->GetComponent<T>().get() : nullptr;
+                return entity ? entity->GetComponent<T>() : nullptr;
             }
 
             template<typename T, typename... Args>
@@ -1648,12 +1648,12 @@ namespace hgl
                 if (!entity)
                     return nullptr;
 
-                auto component = entity->GetComponent<T>();
+                T *component = entity->GetComponent<T>();
 
                 if (!component)
                     component = entity->AddComponent<T>(std::forward<Args>(args)...);
 
-                return component.get();
+                return component;
             }
         }
 
@@ -1763,7 +1763,7 @@ namespace hgl
             }
 
             // 三级解析第 ④ 级：世界内没有任何相机组件，但渲染**必须**有一个相机 ⇒ 在 (0,0,0) 强制生成。
-            // 常驻（创建后一直活着）、占 0 号槽、**不进 component_registry**（CollectCameras() 看不到它，
+            // 常驻（创建后一直活着）、占 0 号槽、**不是实体组件**（CollectCameras() 看不到它，
             // 因此不会参与"最小 EntityID.index"的选主，也不会被当作实体相机的重复项）。
             auto camera = std::make_shared<CameraComponent>("WorldFallbackCamera");
             camera->position       = math::Vector3f(0.0f, 0.0f, 0.0f);
@@ -1781,82 +1781,62 @@ namespace hgl
             return fallback_camera.get();
         }
 
-        void ECSContext::RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp)
+        // ── T2-c：组件行 → 系统组计数（组归属是**类型属性**，取自类型表）──
+        void ECSContext::OnComponentRowAdded(const ComponentType type)
         {
-            if(!comp)
+            const SystemGroupID group = GetComponentGroup(type);
+
+            if (group == SystemGroupID::None)
                 return;
 
-            RegisterComponentInstanceInternal(type_hash, comp);
+            ++system_group_component_counts[static_cast<uint32_t>(group)];
 
-            const SystemGroupID group = comp->GetSystemGroup();
-            if (group != SystemGroupID::None)
-            {
-                ++system_group_component_counts[static_cast<uint32_t>(group)];
-
-                EnsureSystemGroupSystems(this, group, GetRenderTarget());
-                SetSystemGroupEnabled(group, true);
-            }
-
-            for (const auto& entry : component_query_bases)
-            {
-                if (entry.key == type_hash)
-                    continue;
-
-                if (entry.matches && entry.matches(comp.get()))
-                    RegisterComponentInstanceInternal(entry.key, comp);
-            }
+            EnsureSystemGroupSystems(this, group, GetRenderTarget());
+            SetSystemGroupEnabled(group, true);
         }
 
-        void ECSContext::UnregisterComponentInstance(size_t type_hash, Component* comp_ptr)
+        void ECSContext::OnComponentRowRemoved(const ComponentType type)
         {
-            (void)type_hash;
-            if (!comp_ptr)
+            const SystemGroupID group = GetComponentGroup(type);
+
+            if (group == SystemGroupID::None)
                 return;
 
-            const SystemGroupID group = comp_ptr->GetSystemGroup();
-            if (group != SystemGroupID::None)
-            {
-                uint32_t &count = system_group_component_counts[static_cast<uint32_t>(group)];
+            uint32_t &count = system_group_component_counts[static_cast<uint32_t>(group)];
 
-                if (count > 0)
-                    --count;
+            if (count > 0)
+                --count;
 
-                if (count == 0)
-                    SetSystemGroupEnabled(group, false);
-            }
-
-            for (auto& pair : component_registry)
-            {
-                auto& vec = pair.second;
-                vec.erase(std::remove_if(vec.begin(), vec.end(), [comp_ptr](const std::weak_ptr<Component>& w){
-                    auto sp = w.lock();
-                    return !sp || sp.get()==comp_ptr;
-                }), vec.end());
-            }
+            if (count == 0)
+                SetSystemGroupEnabled(group, false);
         }
 
-        void ECSContext::RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp)
+        void ECSContext::ClearComponentPools()
         {
-            if (!comp)
+            // 显式析构全部行（卸载钩子 + ~T），再把池整个丢掉（块随池析构释放）。
+            // 实体销毁路径通常已经把行销干净了，这里是世界级收尾与"从未关联实体"的兜底。
+            for (auto &pool : component_pools)
+                if (pool)
+                    pool->Clear();
+
+            component_pools.clear();
+
+            for (auto &slot : component_pool_slots)
+                slot = nullptr;
+        }
+
+        void ECSContext::DestroyComponent(const ComponentType type, const uint32_t row)
+        {
+            if (row == 0 || !IsValidComponentType(type))
                 return;
 
-            auto* vec = component_registry.GetValuePointer(type_hash);
-            if (!vec)
-            {
-                component_registry.Add(type_hash, std::vector<std::weak_ptr<Component>>{});
-                vec = component_registry.GetValuePointer(type_hash);
-            }
+            ComponentPoolBase *pool = component_pool_slots[static_cast<uint32_t>(type)];
 
-            for (const auto& weak_comp : *vec)
-            {
-                if (auto existing = weak_comp.lock())
-                {
-                    if (existing.get() == comp.get())
-                        return;
-                }
-            }
+            if (!pool)
+                return;     // 该类型从未建过池 ⇒ 不可能有活行
 
-            vec->push_back(comp);
+            pool->DestroyRow(row);
+            OnComponentRowRemoved(type);
         }
 
         uint32_t ECSContext::GetTransformSegmentBudget(const bool movable) const

@@ -9,6 +9,8 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/ecs/core/ScenePipelineMode.h>
 #include<hgl/ecs/support/ComponentTypeTable.h>
+#include<hgl/ecs/support/ComponentPool.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/support/BoundingBoxAccessor.h>
@@ -131,16 +133,17 @@ namespace hgl
             DependencyMap tick_dependencies;
             DependencyMap render_dependencies;
 
-            // 组件注册表：按类型hash存储弱引用，便于系统快速查询
-            hgl::UnorderedMap<size_t, std::vector<std::weak_ptr<Component>>> component_registry;
-
-            struct ComponentQueryBase
-            {
-                size_t key = 0;
-                std::function<bool(Component*)> matches;
-            };
-
-            std::vector<ComponentQueryBase> component_query_bases;
+            // ── T2-c：组件存储 = 世界私有的**类型化对象池**（按 ComponentType 索引）──
+            //
+            // 池**惰性创建**（首次挂载该类型时经 `EnsureTypedPool<T>()`，形态由
+            // `ComponentStorageTraits<T>` 决定：裸行池 / 行内持 shared_ptr 的共享行池）；
+            // `component_pools` 只是持有者，一切查询走 `component_pool_slots[type]`。
+            //
+            // 「池即活跃集」：`GetComponents<T>` 直接读池的活跃集视图（裸指针）。旧形态是
+            // 「按类型 hash 的 weak_ptr 注册表」——每挂一个组件 push 一个 weak_ptr、每类型一次向量增长，
+            // 而且它把 `shared_ptr<Component>` 钉在组件上（T2-c 拆掉的两样东西之一）。
+            std::vector<std::unique_ptr<ComponentPoolBase>> component_pools;
+            ComponentPoolBase *component_pool_slots[COMPONENT_TYPE_COUNT] = {};
 
             // 变换（T8：按 TransformID 记录，不再持组件指针；组件只是过渡期外壳）
             //
@@ -242,7 +245,7 @@ namespace hgl
             bool env_profile_owned = false;      ///< true ⇒ Shutdown 时 `Release()` 归还（本世界创建）
 
             /// 常驻 fallback 相机（三级解析第 ④ 级的产物）：世界内一个相机组件都没有时，渲染仍必须
-            /// 有一个相机。它由世界直接持有，且**不进 component_registry**（`CollectCameras()` 看不到它）。
+            /// 有一个相机。它由世界直接持有，且**不是实体组件**（`CollectCameras()` 看不到它）。
             /// 注意：它**占没占 0 号槽由相机表说了算**（`camera_info_storage` 的槽账目）。
             /// （本世界默认相机 = 0 号槽的宿主，**不再**另存一份 weak_ptr：真值只有一份，相机销毁后
             ///  弱引用自动失效，不会让地址复用者"继承"默认相机身份。）
@@ -304,7 +307,13 @@ namespace hgl
             void RunRenderPhaseUpdates(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
-            void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
+            /// 释放全部组件行并丢弃池（世界 Shutdown / Clear）
+            void ClearComponentPools();
+
+            /// 组件行增/删 ⇒ 系统组计数（A2/P-4 的挂卸驱动路径；组归属取自类型表）
+            void OnComponentRowAdded(ComponentType type);
+            void OnComponentRowRemoved(ComponentType type);
+
             bool EnsureRenderCoreInitialized();
             void ExecuteScenePrePassWorkflow(float deltaTime);
             bool BeginManagedRenderFrame(float deltaTime, bool need_swapchain_acquire = true, const graph::RenderPassOptions *options = nullptr);
@@ -510,7 +519,7 @@ namespace hgl
 
             /// 惰性创建**常驻** fallback 相机（位置 `(0,0,0)`、占 0 号槽）——
             /// 三级解析的第 ④ 级：世界内一个相机组件都没有时，渲染仍必须有一个相机。
-            /// 创建后一直存在（不按需销毁），且不是 Entity 组件（不进 component_registry）。
+            /// 创建后一直存在（不按需销毁），且不是 Entity 组件（不是实体组件）。
             CameraComponent* EnsureFallbackCamera();
 
             bool IsFallbackCamera(const CameraComponent* camera) const
@@ -561,11 +570,13 @@ namespace hgl
             void SetResourceNamePrefix(const std::string& prefix) { resource_name_prefix = prefix; }
             const std::string& GetResourceNamePrefix() const { return resource_name_prefix; }
 
-            /// 注册组件实例（由 Entity::AddComponent 调用）
-            void RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp);
+            // ── T2-c：组件挂载 / 卸载 / 收集（世界侧唯一入口；实体只持行号）──
+            //   `GetTypedPool` / `EnsureTypedPool` / `CreateComponent` / `GetComponentByRow` /
+            //   `GetComponents` 的定义在本类内下方（`RenderFrameCache` 访问器之后的区块，
+            //   声明与定义同处）；`DestroyComponent` 实现在 Context.cpp。
 
-            /// 反注册组件实例（由 Entity::RemoveComponent 调用）
-            void UnregisterComponentInstance(size_t type_hash, Component* comp_ptr);
+            /// 销组件行（运行期按类型索引；实体销毁与 `RemoveComponent<T>` 走它）
+            void DestroyComponent(ComponentType type, uint32_t row);
 
             /// 登记/迁移/注销一个变换（按 TransformID；由作者 API 与过渡期的组件外壳调用）
             void RegisterTransform(TransformID id, bool isMovable);
@@ -927,60 +938,137 @@ namespace hgl
             /// Check if world is active
             bool IsActive() const { return active; }
 
-            /// 获取指定类型的组件列表（自动清理已失效的弱引用）
+            /// 该类型的池（**只查不建** ⇒ 读路径无副作用）；类型无载体 / 未创建 ⇒ nullptr
             template<typename T>
-            void GetComponents(std::vector<std::shared_ptr<T>>& out) const
+            typename ComponentStorageTraits<T>::PoolType *GetTypedPool() const
             {
-                out.clear();
-                const size_t key = typeid(T).hash_code();
-                auto *list = component_registry.GetValuePointer(key);
-                if (!list)
+                constexpr ComponentType type = ComponentTypeOf<T>::value;
+
+                if (type == ComponentType::None)
+                    return nullptr;
+
+                return static_cast<typename ComponentStorageTraits<T>::PoolType *>(
+                           component_pool_slots[static_cast<uint32_t>(type)]);
+            }
+
+            /// 该类型的池（不存在则按 `ComponentStorageTraits<T>` 建）；
+            /// `ComponentTypeOf<T> == None`（无类型号）⇒ **编译期拒绝**（实体槽 = 按类型行号）
+            template<typename T>
+            typename ComponentStorageTraits<T>::PoolType *EnsureTypedPool()
+            {
+                constexpr ComponentType type = ComponentTypeOf<T>::value;
+
+                static_assert(type != ComponentType::None,
+                              "组件必须有类型号（T2-c：实体槽 = 按类型行号）—— 请在组件头里特化 ComponentTypeOf<T>");
+
+                const uint32_t index = static_cast<uint32_t>(type);
+
+                if (!component_pool_slots[index])
+                {
+                    auto pool = std::make_unique<typename ComponentStorageTraits<T>::PoolType>();
+
+                    component_pool_slots[index] = pool.get();
+                    component_pools.push_back(std::move(pool));
+                }
+
+                return static_cast<typename ComponentStorageTraits<T>::PoolType *>(component_pool_slots[index]);
+            }
+
+            /// 挂载组件（返回池内行地址；已有同类型 ⇒ 先卸旧行，语义与旧 `ReplaceComponent` 一致）
+            template<typename T, typename... Args>
+            T *CreateComponent(Entity *owner, Args &&...args)
+            {
+                if (!owner)
+                    return nullptr;
+
+                constexpr ComponentType type = ComponentTypeOf<T>::value;
+
+                auto *pool = EnsureTypedPool<T>();
+
+                // 替换语义：旧行先销（卸载钩子 + 析构），再挂新行 —— 与原 `ReplaceComponent` 同序
+                const uint32_t old_row = owner->SetComponentRow(type, 0);
+
+                if (old_row)
+                {
+                    pool->DestroyRow(old_row);
+                    OnComponentRowRemoved(type);
+                }
+
+                const uint32_t row = pool->Create(owner, std::forward<Args>(args)...);
+
+                owner->SetComponentRow(type, row);
+                OnComponentRowAdded(type);
+                owner->MarkSceneDirty();
+
+                return pool->Row(row);
+            }
+
+            /// 取某行的组件（行号 0 / 无池 / 已释放 ⇒ nullptr）
+            template<typename T>
+            T *GetComponentByRow(const uint32_t row) const
+            {
+                auto *pool = GetTypedPool<T>();
+
+                return pool ? pool->Row(row) : nullptr;
+            }
+
+            /// 该类型的**活跃集视图**（池即活跃集；裸指针，生命期 = 池行生命期，不跨帧缓存对象）
+            template<typename T>
+            void GetComponents(ValueArray<T*> &out) const
+            {
+                out.Clear();
+
+                auto *pool = GetTypedPool<T>();
+
+                if (!pool)
                     return;
 
-                for(auto &weak_comp : *list)
-                {
-                    if(auto comp = weak_comp.lock())
-                    {
-                        out.push_back(std::static_pointer_cast<T>(comp));
-                    }
-                }
-            }
+                const uint32_t count = pool->GetActiveCount();
 
-            /// Register a base type for component queries (supports derived components automatically).
-            template<typename T>
-            void RegisterComponentQueryBase()
-            {
-                const size_t key = typeid(T).hash_code();
+                out.Reserve(int(count));
 
-                for (const auto& entry : component_query_bases)
-                {
-                    if (entry.key == key)
-                        return;
-                }
-
-                ComponentQueryBase entry;
-                entry.key = key;
-                entry.matches = [](Component* comp) { return dynamic_cast<T*>(comp) != nullptr; };
-                component_query_bases.push_back(entry);
-
-                if (!component_registry.GetValuePointer(key))
-                {
-                    component_registry.Add(key, std::vector<std::weak_ptr<Component>>{});
-                }
-
-                // Backfill existing components into the new base list.
-                for (const auto& pair : component_registry)
-                {
-                    for (const auto& weak_comp : pair.second)
-                    {
-                        if (auto comp = weak_comp.lock())
-                        {
-                            if (entry.matches(comp.get()))
-                                RegisterComponentInstanceInternal(key, comp);
-                        }
-                    }
-                }
+                for (uint32_t i = 0; i < count; ++i)
+                    out.Add(pool->GetActiveRow(i));
             }
         };
+
+        // ── Entity 组件挂载/卸载（T2-c：实现在这里 —— 模板体需要完整的 ECSContext）──
+
+        template<typename T, typename... Args>
+        T *Entity::AddComponent(Args &&...args)
+        {
+            return context ? context->CreateComponent<T>(this, std::forward<Args>(args)...) : nullptr;
+        }
+
+        template<typename T>
+        T *Entity::GetComponent() const
+        {
+            return context ? context->GetComponentByRow<T>(GetComponentRow(ComponentTypeOf<T>::value)) : nullptr;
+        }
+
+        template<typename T>
+        bool Entity::HasComponent() const
+        {
+            return GetComponentRow(ComponentTypeOf<T>::value) != 0;
+        }
+
+        template<typename T>
+        void Entity::RemoveComponent()
+        {
+            constexpr ComponentType type = ComponentTypeOf<T>::value;
+
+            static_assert(type != ComponentType::None,
+                          "组件必须有类型号（T2-c：实体槽 = 按类型行号）");
+
+            const uint32_t row = SetComponentRow(type, 0);
+
+            if (!row)
+                return;
+
+            if (context)
+                context->DestroyComponent(type, row);
+
+            MarkSceneDirty();
+        }
     }//namespace ecs
 }//namespace hgl

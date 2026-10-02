@@ -1132,23 +1132,31 @@ int main(int argc, char** argv)
             }
 
             // 8C: 显式挂载 ShadowProxy 特异化控制
-            Entity e2("TestEntity_WithShadowProxy");
-            auto shadow2 = e2.AddComponent<ShadowProxy>();
+            // T2-c：组件本体住**世界的类型化对象池**（实体只持行号）⇒ 实体必须由世界创建
+            //（栈上裸建的 `Entity` 没有宿主世界，挂载返回 nullptr）。
+            ECSContext shadow_world("TestShadowProxyWorld");
+            Entity *e2 = shadow_world.CreateEntity<Entity>("TestEntity_WithShadowProxy");
+            ShadowProxy *shadow2 = e2 ? e2->AddComponent<ShadowProxy>() : nullptr;
+            if (!shadow2)
+            {
+                GLogError(u8"Test 8C Failed: 世界内实体挂载 ShadowProxy 失败（池未建立 / 实体无世界）");
+                return 8;
+            }
             shadow2->SetCastShadow(false);
             shadow2->SetMaxDistance(45.0f);
             shadow2->SetReceiveShadow(false);
 
-            if (CanCastShadow(&e2) != false)
+            if (CanCastShadow(e2) != false)
             {
                 GLogError(u8"Test 8C Failed: entity must reflect attached ShadowProxy cast_shadow=false");
                 return 8;
             }
-            if (GetShadowMaxDistance(&e2) != 45.0f)
+            if (GetShadowMaxDistance(e2) != 45.0f)
             {
                 GLogError(u8"Test 8C Failed: entity must reflect attached ShadowProxy max_distance=45.0f");
                 return 8;
             }
-            if (CanReceiveShadow(&e2) != false)
+            if (CanReceiveShadow(e2) != false)
             {
                 GLogError(u8"Test 8C Failed: entity must reflect attached ShadowProxy receive_shadow=false");
                 return 8;
@@ -1218,12 +1226,13 @@ int main(int argc, char** argv)
             }
 
             auto e_cam = ctx.CreateEntity<Entity>("TestMainCamera");
-            auto cam_comp = e_cam->AddComponent<CameraComponent>();
+            // T2-c：实体相机住世界相机行（行内持 shared_ptr —— 世界相机槽账目按宿主弱引用计占用期）
+            CameraComponent *cam_comp = e_cam->AddComponent<CameraComponent>();
             cam_comp->is_main_camera = true;
             cam_comp->position = math::Vector3f(12.0f, 34.0f, 56.0f);
 
             auto *resolved_main_cam = cam_sys->GetMainCameraComponent();
-            if (resolved_main_cam != cam_comp.get())
+            if (resolved_main_cam != cam_comp)
             {
                 GLogError(u8"Test 9C Failed: GetMainCameraComponent must resolve the camera marked is_main_camera");
                 return 9;
@@ -1290,13 +1299,13 @@ int main(int argc, char** argv)
                     return 9;
                 }
 
-                // 常驻 fallback **不进**组件表：否则它会参与"最小 EntityID 的相机"选主
-                std::vector<std::shared_ptr<CameraComponent>> registered;
+                // 常驻 fallback **不进**组件存储：否则它会参与"最小 EntityID 的相机"选主
+                ValueArray<CameraComponent *> registered;
                 empty_world.GetComponents<CameraComponent>(registered);
-                if (!registered.empty())
+                if (registered.GetCount() != 0)
                 {
-                    GLogError(u8"Test 9C+ Failed: fallback camera must not be registered as a component (found %zu)",
-                              registered.size());
+                    GLogError(u8"Test 9C+ Failed: fallback camera must not be registered as a component (found %d)",
+                              registered.GetCount());
                     return 9;
                 }
 
@@ -3987,9 +3996,9 @@ int main(int argc, char** argv)
             { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
               "ComponentTypeOf<GeometryData>",
               "GeometryData 不再声明自己的组件槽位（实体掩码丢失 Geometry 位）" },
-            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
-              "\"Primitive\"",
-              "GeometryData 不再声明 Primitive 系统组名（渲染图不会启用图元 pass）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "SystemGroupID::Primitive },",
+              "图元组不再由类型表声明（渲染图不会启用图元 pass）——T2-c：组归属是类型属性" },
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "GetComponents<GeometryData>",
               "图元枚举不再按 GeometryData（渲染组件删除后无枚举源）" },
@@ -4086,16 +4095,19 @@ int main(int argc, char** argv)
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "if (!CanReceiveShadow(",
               "接收侧又出现手写判据（表不再是唯一判据）", true },
-            // ③ 系统组名 ↔ 安装器 / 管线（system_group_component_counts 的键域）
-            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
-              "SystemGroupID GetSystemGroup() const override { return SystemGroupID::Primitive; }",
-              "图元组不再声明（组件挂卸的组开关会与安装器脱节）" },
-            { "LinesComponent.h", OS_TEXT("inc/hgl/ecs/components/LinesComponent.h"),
-              "SystemGroupID GetSystemGroup() const override { return SystemGroupID::Line; }",
-              "线条组不再声明（同上）" },
-            { "TextComponent.h", OS_TEXT("inc/hgl/ecs/components/TextComponent.h"),
-              "SystemGroupID GetSystemGroup() const override { return SystemGroupID::Text; }",
-              "文本组不再声明（同上）" },
+            // ③ 系统组归属 = **类型属性**（T2-c：组件虚表已拆掉，组归属搬进类型表）
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "SystemGroupID  group;",
+              "类型表不再携带系统组列（T2-c 起组归属是类型属性）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "\"GeometryData\",        SystemGroupID::Primitive },",
+              "图元组不再由类型表声明（组件挂卸的组开关会与安装器脱节）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "\"LinesComponent\",      SystemGroupID::Line },",
+              "线条组不再由类型表声明（同上）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "\"TextComponent\",       SystemGroupID::Text },",
+              "文本组不再由类型表声明（同上）" },
             { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
               "hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Primitive)], InstallPrimitiveGroup",
               "Primitive 系统组安装器缺失 / 未取自组名表（组计数会被置位但无人响应）" },
@@ -4121,9 +4133,12 @@ int main(int argc, char** argv)
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
               "constexpr const char *kSystemGroupNames[kSystemGroupCount]",
               "组名表缺失（系统侧 SetRenderElementType 的字符串失去唯一对照源）" },
-            { "Component.h", OS_TEXT("inc/hgl/ecs/core/Component.h"),
-              "virtual SystemGroupID GetSystemGroup() const",
-              "组件侧组声明虚函数缺失（组驱动断链）" },
+            { "ComponentRow.h", OS_TEXT("inc/hgl/ecs/core/ComponentRow.h"),
+              "Entity *owner",
+              "组件行头不再持有宿主实体（行内宿主元数据无出处）" },
+            { "ComponentRow.h", OS_TEXT("inc/hgl/ecs/core/ComponentRow.h"),
+              "SystemGroupID GetSystemGroup()",
+              "组件侧又声明系统组（T2-c 已把组归属搬去类型表：组件对象不得再背 vtable）", true },
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "uint32_t system_group_component_counts[kSystemGroupCount]",
               "组计数退回按字符串键控的容器（O(1) 数组缺失）" },
@@ -4134,7 +4149,7 @@ int main(int argc, char** argv)
               "++system_group_component_counts[static_cast<uint32_t>(group)]",
               "注册路径不再走枚举计数（热路径改回字符串）" },
             // 禁复活：字符串形态（含注释——needle 是全文本匹配）
-            { "Component.h", OS_TEXT("inc/hgl/ecs/core/Component.h"),
+            { "ComponentRow.h", OS_TEXT("inc/hgl/ecs/core/ComponentRow.h"),
               "GetSystemGroupName", "组件侧组名虚函数（字符串形态）禁复活", true },
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "GetSystemGroupName", "世界头又出现字符串组名读取（禁复活）", true },
@@ -5325,16 +5340,16 @@ int main(int argc, char** argv)
         {
             // ① 后四列校准到 stage B 真值（逐行钉住整行）
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
-              "{ ComponentType::Geometry,        ComponentScope::Global, \"ECS:Geometry\",         0, \"GeometryData\" },",
+              "{ ComponentType::Geometry,        ComponentScope::Global, \"ECS:Geometry\",         0, \"GeometryData\",        SystemGroupID::Primitive },",
               "Geometry 的承载类型未校准（B3 已 ID 化 ⇒ 应为 GeometryData）" },
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
-              "{ ComponentType::MaterialData,    ComponentScope::Global, \"ECS:MaterialData\",    16, \"MaterialData\" },",
+              "{ ComponentType::MaterialData,    ComponentScope::Global, \"ECS:MaterialData\",    16, \"MaterialData\",        SystemGroupID::None },",
               "MaterialData 的承载类型/行宽未校准（B4 ⇒ MaterialData 组件行 16 B）" },
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
-              "{ ComponentType::MaterialRuntime, ComponentScope::World,  \"ECS:MaterialRuntime\",  0, \"MaterialRuntimeSlot\" },",
+              "{ ComponentType::MaterialRuntime, ComponentScope::World,  \"ECS:MaterialRuntime\",  0, \"MaterialRuntimeSlot\", SystemGroupID::None },",
               "MaterialRuntime 的承载类型未校准（B5 ⇒ MaterialRuntimeSlot）" },
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
-              "{ ComponentType::Texture,         ComponentScope::Global, \"ECS:Texture\",          0, \"\" },",
+              "{ ComponentType::Texture,         ComponentScope::Global, \"ECS:Texture\",          0, \"\",                    SystemGroupID::None },",
               "Texture 的登记行变了（B6 判据 = 无组件载体、仅登记）" },
             // ② 禁复活：`(待 ID 化)` 占位与你表头旧注释
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
@@ -5384,7 +5399,7 @@ int main(int argc, char** argv)
               "Camera 未进组件类型枚举（相机仍无类型号）" },
             // ② 类型表行（World 作用域；无自己的 GPU 行 ⇒ 0；承载类型 = CameraComponent）
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
-              "{ ComponentType::Camera,          ComponentScope::World,  \"ECS:Camera\",           0, \"CameraComponent\" },",
+              "{ ComponentType::Camera,          ComponentScope::World,  \"ECS:Camera\",           0, \"CameraComponent\",     SystemGroupID::None },",
               "Camera 的类型表行缺失/被改动（scope/承载类型/行宽口径）" },
             // ③ implies 表与枚举对齐（漏填会被静默零初始化）
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
@@ -5443,13 +5458,13 @@ int main(int argc, char** argv)
 
             // ② 类型表行：World 作用域、**行宽 0**、承载类型 = 组件类名
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
-              "{ ComponentType::Lines,           ComponentScope::World,  \"ECS:Lines\",            0, \"LinesComponent\" },",
+              "{ ComponentType::Lines,           ComponentScope::World,  \"ECS:Lines\",            0, \"LinesComponent\",      SystemGroupID::Line },",
               "Lines 的类型表行缺失/被改动（CPU-only ⇒ 行宽列必须为 0）" },
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
-              "{ ComponentType::Text,            ComponentScope::World,  \"ECS:Text\",             0, \"TextComponent\" },",
+              "{ ComponentType::Text,            ComponentScope::World,  \"ECS:Text\",             0, \"TextComponent\",       SystemGroupID::Text },",
               "Text 的类型表行缺失/被改动（CPU-only ⇒ 行宽列必须为 0）" },
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
-              "{ ComponentType::ShadowProxy,     ComponentScope::World,  \"ECS:ShadowProxy\",      0, \"ShadowProxy\" },",
+              "{ ComponentType::ShadowProxy,     ComponentScope::World,  \"ECS:ShadowProxy\",      0, \"ShadowProxy\",         SystemGroupID::None },",
               "ShadowProxy 的类型表行缺失/被改动（CPU-only ⇒ 行宽列必须为 0）" },
 
             // ③ implies 表与枚举对齐（漏填会被静默零初始化）

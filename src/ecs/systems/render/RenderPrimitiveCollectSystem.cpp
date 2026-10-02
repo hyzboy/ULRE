@@ -1874,7 +1874,8 @@ namespace hgl::ecs
 
         const int active_mobility_filter = world ? world->GetActiveMobilityFilter() : -1;
 
-        std::vector<std::shared_ptr<GeometryData>> primitives;
+        // T2-c：图元枚举源 = **GeometryData 类型化池的活跃集视图**（裸指针；池即活跃集）
+        ValueArray<GeometryData *> primitives;
         world->GetComponents<GeometryData>(primitives);
 
         // A4：材质运行期表（世界私有）——共享行 = 可共享的材质绑定；slot = 每实例状态。
@@ -1901,14 +1902,14 @@ namespace hgl::ecs
         bool any_material_work = false;
         bool any_possible_runtime_rows_visible = false;
 
-        for (const auto& geometryComp : primitives)
+        for (GeometryData *geometryComp : primitives)
         {
             if (!geometryComp)
                 continue;
 
             // A7a：收集判定 = 策略表（唯一判据）；事实由组件 / 世界回答。mobility 过滤是
             // 世界级过滤器（表不建模），仍在本循环里单独生效。
-            const CollectStrategy strategy = EvaluateCollectStrategy(world,geometryComp.get());
+            const CollectStrategy strategy = EvaluateCollectStrategy(world,geometryComp);
 
 #if ULRE_STRATEGY_PARITY_ENABLED
             // ── 反向守卫：参考实现 = 手写 if 链（Release 下整块编空）───────────
@@ -2021,13 +2022,13 @@ namespace hgl::ecs
 
         const glm::vec3 camera_pos = glm::vec3(cameraInfo->pos);
 
-        for (const auto& geometryComp : primitives)
+        for (GeometryData *geometryComp : primitives)
         {
             if (!geometryComp)
                 continue;
 
             // A7a：收集判定 = 策略表（唯一判据）；事实由组件 / 世界回答。
-            const CollectStrategy strategy = EvaluateCollectStrategy(world,geometryComp.get());
+            const CollectStrategy strategy = EvaluateCollectStrategy(world,geometryComp);
 
 #if ULRE_STRATEGY_PARITY_ENABLED
             // ── 反向守卫：参考实现 = 手写 if 链（Release 下整块编空）───────────
@@ -2308,7 +2309,7 @@ namespace hgl::ecs
             // ── 同步 4-ID 描述符至 RenderItemDataStorage（句柄存每实例 slot）──
             // B3-iii：geometry_id 直读几何行号（不再经每实体 CPU 几何副本的镜像字段与三级回退）
             const uint32_t transform_id = transform.GetID();
-            GeometryData *geometry_comp = geometryComp.get();
+            GeometryData *geometry_comp = geometryComp;
             const uint32_t geometry_id = geometry_comp ? geometry_comp->GetGeometryID() : 0u;
             const uint32_t material_id = (material_for_item && material_for_item->data_index_row != uint32_t(-1))
                 ? material_for_item->data_index_row : 0;

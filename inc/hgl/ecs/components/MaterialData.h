@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/Component.h>
+#include<hgl/ecs/core/ComponentRow.h>
 #include<hgl/ecs/support/MaterialAuthoringSideTable.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
@@ -37,7 +37,7 @@ namespace hgl::ecs
      * 本步（A2）由调用方把 asset 默认配方作为参数传入；A5 拆分 GeometryData 后
      * 改由数据层自己持引用。
      */
-    class MaterialData : public Component
+    class MaterialData : public ComponentRow
     {
     public:
         struct MaterialDataAuthoringResource
@@ -93,12 +93,10 @@ namespace hgl::ecs
 
     public:
 
-        explicit MaterialData(const std::string &name = "MaterialData")
-            : Component(name)
-        {
-        }
+        MaterialData() = default;
 
-        ~MaterialData() override = default;
+        /// 非虚（T2-c：组件行里没有 vptr）；对象住**类型化对象池**，析构由池显式调用
+        ~MaterialData() = default;
 
     public:
 
@@ -151,7 +149,7 @@ namespace hgl::ecs
 
     public:
 
-        void OnDetach() override;
+        void OnDetach();          ///< 卸载钩子（非虚：由类型化池在析构前调用）
 
     private:
 

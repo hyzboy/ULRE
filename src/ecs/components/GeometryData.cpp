@@ -98,8 +98,6 @@ namespace hgl::ecs
 
     void GeometryData::OnDetach()
     {
-        Component::OnDetach();
-
         // 不删几何资源：它们归资源管理器所有。
         primitiveAsset = nullptr;
         primitiveVariantIndex = 0;

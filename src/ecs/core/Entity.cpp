@@ -13,19 +13,7 @@ namespace hgl
 
         Entity::~Entity()
         {
-            DetachAllComponents(false);
-        }
-
-        void Entity::RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp)
-        {
-            if(context && comp)
-                context->RegisterComponentInstance(type_hash, comp);
-        }
-
-        void Entity::UnregisterFromContext(size_t type_hash, Component* comp_ptr)
-        {
-            if(context)
-                context->UnregisterComponentInstance(type_hash, comp_ptr);
+            DetachAllComponents();
         }
 
         void Entity::MarkSceneDirty() const
@@ -34,113 +22,53 @@ namespace hgl
                 context->MarkSceneStructureDirty();
         }
 
-        void Entity::ReplaceComponent(size_t type_hash, const std::shared_ptr<Component>& component, const std::type_index& component_type, ComponentType slot)
+        uint32_t Entity::SetComponentRow(ComponentType type, uint32_t row)
         {
-            if (!component)
-                return;
+            const uint32_t index = static_cast<uint32_t>(type);
 
-            ComponentEntry *existing = FindComponentEntry(type_hash);
-            if (existing && existing->component)
-            {
-                UnregisterFromContext(type_hash, existing->component.get());
-                existing->component->OnDetach();
-            }
+            if (index == 0 || index >= COMPONENT_TYPE_COUNT)
+                return 0;       // None / 越界：不占槽位（`HasComponentType(None)` 恒假）
 
-            if (existing)
-                existing->component = component;
+            const uint32_t old = component_rows[index];
+
+            component_rows[index] = row;
+
+            if (row)
+                component_mask |= ComponentTypeBit(type);
             else
-                components.push_back(ComponentEntry{type_hash, component});
-            component->SetOwner(id, context);
-            component->SetOwnerEntity(this);
-            component->SetComponentSlot(slot);      // 槽位随挂载写入（单一写者）
-            component_mask = ComponentMaskAdd(component_mask,slot);
-            RegisterToContext(type_hash, component);
-            component->OnAttach();
-            MarkSceneDirty();
+                component_mask &= ~ComponentTypeBit(type);
+
+            return old;
         }
 
         bool Entity::VerifyComponentMaskAgainstComponents() const
         {
             uint32_t expected = 0;
 
-            for (const auto& entry : components)
-                if (entry.component)
-                    expected = ComponentMaskAdd(expected,entry.component->GetComponentSlot());
+            for (uint32_t i = 1; i < COMPONENT_TYPE_COUNT; ++i)
+                if (component_rows[i])
+                    expected |= (1u << i);
 
             return expected == component_mask;
         }
 
-        void Entity::GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const
+        void Entity::DetachAllComponents()
         {
-            out.clear();
-            out.reserve(components.size());
-            for (const auto& entry : components)
+            for (uint32_t i = 1; i < COMPONENT_TYPE_COUNT; ++i)
             {
-                out.push_back(entry.component);
-            }
-        }
+                const uint32_t row = component_rows[i];
 
-
-        Entity::ComponentEntry *Entity::FindComponentEntry(std::size_t type_hash)
-        {
-            for (auto& entry : components)
-                if (entry.type_hash == type_hash)
-                    return &entry;
-
-            return nullptr;
-        }
-
-        const Entity::ComponentEntry *Entity::FindComponentEntry(std::size_t type_hash) const
-        {
-            for (const auto& entry : components)
-                if (entry.type_hash == type_hash)
-                    return &entry;
-
-            return nullptr;
-        }
-
-        void Entity::EraseComponentEntry(std::size_t type_hash)
-        {
-            for (auto it = components.begin(); it != components.end(); ++it)
-            {
-                if (it->type_hash == type_hash)
-                {
-                    *it = components.back();        // 顺序无关 ⇒ 尾替（O(1)，不留空洞）
-                    components.pop_back();
-                    return;
-                }
-            }
-        }
-
-        void Entity::DetachAllComponents(bool notify_systems)
-        {
-#if ULRE_ECS_DEBUG_API
-             GLogDebug("[Entity] DetachAllComponents entity='%s' id=(%u,%u) component_count=%zu notify=%d",
-                     GetName().c_str(),
-                     id.index,
-                     id.generation,
-                     components.size(),
-                     notify_systems ? 1 : 0);
-#endif
-
-            for (auto& entry : components)
-            {
-                if (!entry.component)
+                if (!row)
                     continue;
 
-#if ULRE_ECS_DEBUG_API
-                GLogDebug("[Entity] Detach component entity='%s' comp='%s'",
-                          GetName().c_str(),
-                          entry.component->GetName().c_str());
-#endif
+                component_rows[i] = 0;
 
-                UnregisterFromContext(entry.type_hash, entry.component.get());
-                entry.component->OnDetach();
+                if (context)
+                    context->DestroyComponent(static_cast<ComponentType>(i), row);
             }
-            components.clear();
-            component_mask = 0;                     // 全卸 ⇒ 掩码归零
+
+            component_mask = 0;
             MarkSceneDirty();
         }
     }//namespace ecs
 }//namespace hgl
-

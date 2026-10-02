@@ -10,23 +10,26 @@ using namespace hgl::ecs;
 namespace hgl::ecs
 {
     // ── 测试用假组件（占不同槽位；特化写在"类型自己"这一侧）────────────────
-    class MaskProbeGeoA : public Component
+    // T2-c：组件住世界的类型化对象池，行头是 `ComponentRow`（宿主元数据），不再有 `Component` 基类。
+    class MaskProbeGeoA : public ComponentRow
     {
     public:
-        MaskProbeGeoA() : Component("MaskProbeGeoA") {}
+        MaskProbeGeoA() = default;
     };
 
-    class MaskProbeTexA : public Component
+    class MaskProbeTexA : public ComponentRow
     {
     public:
-        MaskProbeTexA() : Component("MaskProbeTexA") {}
+        MaskProbeTexA() = default;
     };
 
-    /// 故意不特化 ⇒ 不占槽位（None）——CPU 域组件就应该是这种
-    class MaskProbeNoSlot : public Component
+    /// 故意不特化 ⇒ **没有类型号**（None）。
+    /// T2-c 起这种类型**不能挂到实体上**：实体槽 = 按类型行号，没有号就没有槽 ⇒
+    /// `entity->AddComponent<MaskProbeNoSlot>()` 是**编译期错误**（不再是运行期静默不占位）。
+    class MaskProbeNoSlot : public ComponentRow
     {
     public:
-        MaskProbeNoSlot() : Component("MaskProbeNoSlot") {}
+        MaskProbeNoSlot() = default;
     };
 
     template<> struct ComponentTypeOf<MaskProbeGeoA> { static constexpr ComponentType value = ComponentType::Geometry; };
@@ -35,7 +38,7 @@ namespace hgl::ecs
 
 // 编译期自检：类型 → 槽位映射、位运算、implies（表与闭包的自检已在 ComponentTypeTable.h 里）
 static_assert(ComponentTypeOf<MaskProbeGeoA>::value == ComponentType::Geometry, "槽位映射错误");
-static_assert(ComponentTypeOf<MaskProbeNoSlot>::value == ComponentType::None, "未特化的类型应无槽位");
+static_assert(ComponentTypeOf<MaskProbeNoSlot>::value == ComponentType::None, "未特化的类型应无类型号");
 static_assert(ComponentTypeBit(ComponentType::None) == 0u, "None 不得占位");
 static_assert(ComponentMaskHas(ComponentTypeBit(ComponentType::Geometry), ComponentType::Geometry), "位查询错误");
 static_assert(!ComponentMaskHas(ComponentTypeBit(ComponentType::Geometry), ComponentType::Texture), "位串了");
@@ -46,13 +49,15 @@ static_assert(GetImpliedComponentMask(ComponentType::Transform) == ComponentType
               "Transform 无蕴含，闭包应只有自身位");
 
 /**
- * A0 地基：Entity 组件槽位位掩码（v2 §9.2 P3）
+ * A0 地基 + T2-c：Entity 组件槽位
  *
- *   · 掩码是"实体有哪些槽位"的唯一表示，**单一写者 = 挂载/卸载路径**；
- *   · 与"实体实际挂载的组件"必须始终一致（`VerifyComponentMaskAgainstComponents` 对拍）；
- *   · 无槽位组件（未特化 ComponentTypeOf）不得影响掩码。
+ *   · **唯一真源 = `component_rows[ComponentType]`**（T2-c：按类型行号，0 = 无）；
+ *   · 掩码 `component_mask` 是它的**缓存视图**（`row != 0` ⇔ 该位为 1），单一写者 = 挂载/卸载路径；
+ *   · 两者一致由 `VerifyComponentMaskAgainstComponents` 对拍（掩码写坏了必被抓住）；
+ *   · **没有类型号的类型不能挂**（未特化 `ComponentTypeOf` ⇒ `None`）—— 这是**编译期**判据
+ *     （`EnsureTypedPool<T>` 的 static_assert），不再是运行期"静默不占位"。
  *
- * 反证：抽掉 `Entity::ReplaceComponent` 里的 `component_mask = ComponentMaskAdd(...)` ⇒ Test 1/2 必须失败。
+ * 反证：抽掉 `Entity::SetComponentRow` 里的 `component_mask |= ComponentTypeBit(type)` ⇒ Test 1/2 必须失败。
  */
 int main(int argc, char** argv)
 {
@@ -103,16 +108,21 @@ int main(int argc, char** argv)
             return 10;
         }
 
-        // 无槽位组件不得影响掩码
-        entity->AddComponent<MaskProbeNoSlot>();
-
-        if (entity->GetComponentMask() != ComponentTypeBit(ComponentType::Geometry))
+        // T2-c：无类型号的类型**挂不上去**（编译期被 `EnsureTypedPool<T>` 的 static_assert 拦住）
+        // ⇒ 掩码不可能被它污染。运行期判据 = 该类型在类型表/特化里确实是 None。
+        if (ComponentTypeOf<MaskProbeNoSlot>::value != ComponentType::None)
         {
-            GLogError(u8"Test 1 Failed: 无槽位组件影响了掩码（实际 0x%x）", entity->GetComponentMask());
+            GLogError(u8"Test 1 Failed: 未特化的组件类型应无类型号");
             return 10;
         }
 
-        GLogInfo(u8"Test 1 Passed: 挂载置位 / 无槽位组件不占位 / 掩码与实际组件一致。");
+        if (!entity->VerifyComponentMaskAgainstComponents())
+        {
+            GLogError(u8"Test 1 Failed: 掩码与行号表不一致（挂载后）");
+            return 10;
+        }
+
+        GLogInfo(u8"Test 1 Passed: 挂载置位 / 无类型号组件编译期被拒 / 掩码与行号表一致。");
     }
 
     // ─────────────────────────────────────────────────────────────

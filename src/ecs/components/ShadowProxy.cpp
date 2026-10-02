@@ -2,21 +2,12 @@
 
 namespace hgl::ecs
 {
-    ShadowProxy::ShadowProxy(const std::string &name)
-        : Component(name)
-        , cast_shadow(true)
-        , max_cast_distance(0.0f)
-        , receive_shadow(true)
-        , bias_multiplier(1.0f)
-    {
-    }
-
     ShadowProxy *GetShadowProxy(Entity *owner)
     {
         if (!owner)
             return nullptr;
 
-        return owner->GetComponent<ShadowProxy>().get();
+        return owner->GetComponent<ShadowProxy>();
     }
 
     const ShadowProxy *GetShadowProxy(const Entity *owner)
@@ -24,7 +15,7 @@ namespace hgl::ecs
         if (!owner)
             return nullptr;
 
-        return owner->GetComponent<ShadowProxy>().get();
+        return owner->GetComponent<ShadowProxy>();
     }
 
     bool CanCastShadow(const Entity *owner)

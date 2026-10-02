@@ -86,7 +86,7 @@ namespace hgl
             hgl::UnorderedMap<graph::FontSource*, RenderResources> resources_by_font;
 
             uint32_t prepared_frame_index = std::numeric_limits<uint32_t>::max();
-            std::vector<std::shared_ptr<TextComponent>> frame_texts;
+            ValueArray<TextComponent *> frame_texts;    ///< T2-c：池活跃集视图（裸指针）
             std::unordered_map<graph::FontSource*, BatchInput> frame_inputs;
             graph::GraphicsContext* frame_graphics_context = nullptr;
             graph::ShaderProgramManager* frame_material_manager = nullptr;
@@ -119,14 +119,14 @@ namespace hgl
                                        graph::VulkanDevice*& device,
                                        graph::IRenderTarget*& render_target);
 
-            void BuildInputs(std::vector<std::shared_ptr<TextComponent>>& texts,
+            void BuildInputs(ValueArray<TextComponent *> &texts,
                              std::unordered_map<graph::FontSource*, BatchInput>& inputs);
 
             void ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
                                graph::RenderPass* render_pass,
                                graph::VulkanDevice* device);
 
-            void ClearChanges(const std::vector<std::shared_ptr<TextComponent>>& texts);
+            void ClearChanges(const ValueArray<TextComponent *> &texts);
         };
     }
 }

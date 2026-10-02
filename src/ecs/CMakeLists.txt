@@ -4,7 +4,7 @@ option(ULRE_ECS_DEBUG_API "Enable ECS debug API surface" OFF)
 
 set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/Object.h
-    ${ECS_INCLUDE_PATH}/core/Component.h
+    ${ECS_INCLUDE_PATH}/core/ComponentRow.h
     ${ECS_INCLUDE_PATH}/core/Entity.h
     ${ECS_INCLUDE_PATH}/core/EntityHandle.h
     ${ECS_INCLUDE_PATH}/core/EntityManager.h
@@ -22,7 +22,7 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/InstancedPrimitiveRenderItem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
     core/Object.cpp
-    core/Component.cpp
+    core/ComponentRow.cpp
     core/Entity.cpp
     core/EntityManager.cpp
     core/System.cpp
@@ -175,6 +175,7 @@ set(ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES
 set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/TransformDataStorage.h
     ${ECS_INCLUDE_PATH}/support/TransformID.h
+    ${ECS_INCLUDE_PATH}/support/ComponentPool.h
     ${ECS_INCLUDE_PATH}/support/TransformAccessor.h
     ${ECS_INCLUDE_PATH}/support/CameraInfoStorage.h
     ${ECS_INCLUDE_PATH}/support/CameraSlotGuard.h

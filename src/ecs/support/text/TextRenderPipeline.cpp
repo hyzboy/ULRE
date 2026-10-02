@@ -214,7 +214,7 @@ namespace hgl::ecs
         if (prepared_frame_index == frame_index)
             return true;
 
-        frame_texts.clear();
+        frame_texts.Clear();
         frame_inputs.clear();
 
         world->GetComponents<TextComponent>(frame_texts);
@@ -623,10 +623,10 @@ namespace hgl::ecs
         return true;
     }
 
-    void TextRenderPipeline::BuildInputs(std::vector<std::shared_ptr<TextComponent>>& texts,
+    void TextRenderPipeline::BuildInputs(ValueArray<TextComponent *> &texts,
                                          std::unordered_map<graph::FontSource*, BatchInput>& inputs)
     {
-        for (const auto& text_comp : texts)
+        for (TextComponent *text_comp : texts)
         {
             if (!text_comp || text_comp->GetText().IsEmpty())
                 continue;
@@ -642,7 +642,7 @@ namespace hgl::ecs
             }
 
             auto& input = inputs[font_source];
-            input.texts.push_back(text_comp.get());
+            input.texts.push_back(text_comp);
             input.total_chars += text_comp->GetText().Length();
 
             // 去重收集 CharStyle，分配 style_id
@@ -936,9 +936,9 @@ namespace hgl::ecs
         }
     }
 
-    void TextRenderPipeline::ClearChanges(const std::vector<std::shared_ptr<TextComponent>>& texts)
+    void TextRenderPipeline::ClearChanges(const ValueArray<TextComponent *> &texts)
     {
-        for (const auto& text_comp : texts)
+        for (TextComponent *text_comp : texts)
         {
             if (text_comp)
                 text_comp->ClearAllChanges();

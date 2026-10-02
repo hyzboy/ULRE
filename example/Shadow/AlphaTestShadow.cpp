@@ -158,7 +158,9 @@ private:
     bool contract_ok = false;     // c0 契约结果（selfcheck 退出码依据）
 
     // ── D3 契约状态 ──
-    std::shared_ptr<ShadowProxy> ground_shadow;   // 地面（接收面）的阴影组件
+    // T2-c：组件住世界的类型化对象池（实体只持行号）⇒ 这里持**行内裸指针**（池行地址稳定，
+    // 与全仓持 `Entity*` 同纪律；行的生存期 ⊂ 实体生存期）。
+    ShadowProxy *ground_shadow = nullptr;             // 地面（接收面）的阴影组件
     std::vector<uint8_t> d3_lum[3];                   // A/B/C 三帧亮度图
     int  d3_frame = 0;                                // 深度判读之后的相对帧号
     bool d3_done = false;

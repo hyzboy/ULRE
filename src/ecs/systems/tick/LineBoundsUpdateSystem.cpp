@@ -19,7 +19,7 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        std::vector<std::shared_ptr<LinesComponent>> line_components;
+        ValueArray<LinesComponent *> line_components;      // T2-c：池活跃集视图（裸指针）
         world->GetComponents<LinesComponent>(line_components);
 
         for (const auto& line_comp : line_components)

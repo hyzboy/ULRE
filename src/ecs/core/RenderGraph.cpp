@@ -193,14 +193,15 @@ namespace hgl
                 if (!entity)
                     continue;
 
-                std::vector<std::shared_ptr<Component>> components;
-                entity->GetAllComponents(components);
-                for (const auto& component : components)
+                // T2-c：不再有"实体 → 组件对象列表"（组件住世界的类型化池，实体只持行号）
+                // ⇒ 组活跃度直接由「行号表 × 类型表」推导：组归属是**类型属性**，不在组件对象上。
+                for (uint32_t type = 1; type < COMPONENT_TYPE_COUNT; ++type)
                 {
-                    if (!component)
+                    if (!entity->GetComponentRow(static_cast<ComponentType>(type)))
                         continue;
 
-                    const SystemGroupID group = component->GetSystemGroup();
+                    const SystemGroupID group = GetComponentGroup(static_cast<ComponentType>(type));
+
                     if (group != SystemGroupID::None)
                     {
                         // stats 仍存组名（注册表/管线按名键控）；名字取自唯一一份组名表
@@ -271,7 +272,8 @@ namespace hgl
             }
 
             // Fully data-driven:
-            // - Components declare their group via Component::GetSystemGroup()（A2：枚举）
+            // - 组件类型声明它驱动哪个组（`kComponentTypeTable[].group`；T2-c 起组归属是**类型属性**，
+            //   组件对象上不再有虚表）
             // - Systems declare their group via System::SetRenderElementType()
             // - RenderGraph builds passes from the name mapping at runtime
 

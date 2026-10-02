@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/Component.h>
+#include<hgl/ecs/core/ComponentRow.h>
 #include<hgl/ecs/support/ComponentTypeTable.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -36,12 +36,13 @@ namespace hgl::ecs
      * 归世界 `MaterialRuntimeTable` 的每实例 slot（见 support/PrimitiveState.h）。变体/asset 变化
      * 会经 `InvalidateOwnerRuntimePipeline()` 作废同实体 slot 上按 RenderPass 解析出的管线缓存。
      *
-     * A5b：渲染组件删除后，本组件是"该实体是一个 Primitive 渲染元素"的**唯一标记** ⇒ 声明
-     * 系统组名 "Primitive"（渲染图据此为该世界启用图元 pass；与 LinesComponent 声明 "Line" 同构）。
+     * A5b：渲染组件删除后，本组件是"该实体是一个 Primitive 渲染元素"的**唯一标记** ⇒
+     * **类型表**声明系统组 `Primitive`（渲染图据此为该世界启用图元 pass；与 LinesComponent 的 `Line` 同构）。
+     * T2-c：组归属是**类型属性**（`kComponentTypeTable[].group`），不再由组件对象上的虚函数声明。
      *
      * 世界访问器：`ECSContext::GetGeometryData(EntityID)` / `GetOrCreateGeometryData(EntityID)`。
      */
-    class GeometryData : public Component
+    class GeometryData : public ComponentRow
     {
     private:
 
@@ -55,18 +56,10 @@ namespace hgl::ecs
 
     public:
 
-        explicit GeometryData(const std::string& name = "GeometryData")
-            : Component(name)
-        {
-        }
+        GeometryData() = default;
 
-        ~GeometryData() override = default;
-
-    public:
-
-        /// 系统组：本组件是"本实体是 Primitive 渲染元素"的**唯一标记**（A5b）。
-        /// 渲染图按此启用图元 pass（A2 起走枚举，不再是比较字符串）。
-        SystemGroupID GetSystemGroup() const override { return SystemGroupID::Primitive; }
+        /// 非虚（T2-c：组件行里没有 vptr）；对象住**类型化对象池**，析构由池显式调用
+        ~GeometryData() = default;
 
     public:
 
@@ -102,7 +95,7 @@ namespace hgl::ecs
 
     public:
 
-        void OnDetach() override;
+        void OnDetach();          ///< 卸载钩子（非虚：由类型化池在析构前调用）
     };
 
     /// 槽位映射：`GeometryData` 承载几何来源（v2 §3 的 GPU 可见组件之一；scope Global）

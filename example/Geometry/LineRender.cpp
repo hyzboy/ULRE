@@ -160,8 +160,8 @@ public:
 
             comp->SetWidth(width);
 
-            build_flower_pattern(comp.get(), radius, z, color_offset, petals, 320);
-            build_flower_pattern(comp.get(), radius * 0.45f, z + 0.08f, RandomPaletteIndex(color_offset), petals + 2, 240);
+            build_flower_pattern(comp, radius, z, color_offset, petals, 320);
+            build_flower_pattern(comp, radius * 0.45f, z + 0.08f, RandomPaletteIndex(color_offset), petals + 2, 240);
 
             const float pi = 3.14159265358979323846f;
             for(int i = 0; i < 20; ++i)
@@ -184,7 +184,7 @@ public:
         };
 
         lines_comp->SetWidth(1);
-        build_flower_pattern(lines_comp.get(), 1.8f, -0.2f, 0, 5, 280);
+        build_flower_pattern(lines_comp, 1.8f, -0.2f, 0, 5, 280);
 
         // CN: 无 Transform（走 L2W[0] Identity）
         // EN: No Transform (uses L2W[0] identity)

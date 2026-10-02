@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/Component.h>
+#include<hgl/ecs/core/ComponentRow.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/type/String.h>
 #include<cstdint>
@@ -22,7 +22,7 @@ namespace hgl::ecs
      * Stores text content and layout/style data for ECS-driven text rendering.
     * Runtime rendering resources are managed separately by TextRenderPipeline.
      */
-    class TextComponent : public Component
+    class TextComponent : public ComponentRow
     {
     public:
 
@@ -46,15 +46,28 @@ namespace hgl::ecs
 
     public:
 
-        explicit TextComponent(const std::string& name = "Text")
-            : Component(name)
-        {
-        }
+        TextComponent() = default;
 
-        ~TextComponent() override = default;
+        /// 非虚（T2-c：组件行里没有 vptr）；对象住**类型化对象池**，析构由池显式调用
+        ~TextComponent() = default;
 
-        /// 系统组：文本（A2：枚举；文本组件尚无类型号，故组归属由组件自己声明）
-        SystemGroupID GetSystemGroup() const override { return SystemGroupID::Text; }
+        // 系统组（`Text`）由**类型表**声明（`kComponentTypeTable[ComponentType::Text].group`）：
+        // T2-c 起组归属是类型属性，不再由组件对象上的虚函数声明（虚表已随基类删除）。
+
+        // ── 变更计数 / 变更位 ──
+        // T2-c：原 `Component` 基类的 `version` / `change_mask` 实测只有线条与文本在用
+        // ⇒ 搬进真正用它的类型；文本是 2D 专用（未来 2D 单开一套管理），这里保持最小耦合。
+        uint64_t version = 0;
+        uint32_t change_mask = 0;
+
+        void TouchChange(uint32_t mask) { ++version; change_mask |= mask; }
+
+    public:
+
+        uint32_t GetChangeMask() const { return change_mask; }
+        void ClearAllChanges() { change_mask = 0; }
+
+    public:
 
     public:
 

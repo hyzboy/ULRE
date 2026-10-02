@@ -339,6 +339,45 @@ build/out/Windows_64_Debug/ProbeTransformDiagnostics.exe 2>&1 | grep -aE "^  \[T
   **是否进实体侧池另说** —— 按上面的定界，Mesh 侧（`GeometryData`/`MaterialData`/`ShadowProxy`）进池，
   `Lines`/`Text` 只提供"按类型的活跃集视图"给各自的收集路径。
 
+### T2-c 主体（2026-10-03）—— 组件改「类型化对象池 + 实体按类型行号」✅
+
+> 判据达成：探针 `[T0b] − [T0]` 从 **`+195.4 B / +3.000 块`** 压到 **`+33.8 B / +0.015 块`**
+> （目标 `≤ +40 B / ≤ +1 块`）。
+
+**落成形态（= 设计稿 §9.5「T2-c 定形」的实做）**
+
+| 项 | 旧 | 新 |
+|---|---|---|
+| 组件基类 | `Component` **104 B**（名字 `std::string` + 虚表 + `enable_shared_from_this` + 槽位/version/change_mask） | **整删**。`ComponentRow` = **8 B**（只存宿主 `Entity*`；世界经 `owner->GetContext()` 取） |
+| 组件本体 | `make_shared<组件>`（对象 + 控制块 = 3.000 块/组件） | **类型化对象池** `ComponentPool<T>`（块式 64 行、就地 placement-new、**行 1 基**哨兵、池即活跃集 + O(1) 摘除） |
+| 实体侧 | `vector<ComponentEntry>{hash, shared_ptr}`（每挂一个组件长一次堆） | **`component_rows[COMPONENT_TYPE_COUNT]`**（**按类型行号**，0 = 无）——对齐 `EntityGPU.row[16]` 的未来形态；掩码降为它的**缓存视图** |
+| 取组件 | `shared_ptr<T> GetComponent<T>()`（`typeid().hash_code()` 查表） | **`T* GetComponent<T>()`**（池行裸指针，地址稳定：池块不移动对象，与 `Entity*` 同纪律） |
+| 收集 API | `GetComponents<T>(vector<shared_ptr<T>>&)`（world 的 `weak_ptr<Component>` 注册表） | **`GetComponents<T>(ValueArray<T*>&)`** = 池的**活跃集视图**；`component_registry` / `ComponentQueryBase` / `RegisterComponentQueryBase` / `GetAllComponents` **全删** |
+| 系统组 | `virtual SystemGroupID GetSystemGroup()`（每组件一个 vtable） | **类型属性**：`kComponentTypeTable[].group` + `GetComponentGroup(type)`（组件对象上再无 vptr；卸载钩子由池 `if constexpr (requires…)` 编译期派发） |
+| 相机 | 与其它组件同办（`shared_ptr` 由实体槽持有） | **独立所有者**：`SharedComponentPool<CameraComponent>`（行内持 `shared_ptr`，与裸行池**只差所有权**）——世界相机槽账目是 `weak_ptr<CameraComponent>`，认领路径要 `weak_from_this()` **同一控制块**；无 `if(相机)` 特判，池形态由 `ComponentStorageTraits<T>` 编译期决定 |
+| 尺寸 | `sizeof(Component)`=104 / `sizeof(GeometryData)`=120 | `sizeof(ComponentRow)`=8 / `sizeof(GeometryData)`=**24**（行头 8 + 载荷 16） |
+
+**其它实测数字**：`[T0]` `209.5 → 201.5 B/实体`；带一个组件 `5.834 → 1.850 块/实体`；`sizeof(Entity)` `112 → 120 B`
+（旧 `vector<ComponentEntry>` 24 B → 行号表 40 B，换来实体侧**零分配**）。
+
+**语义边界（不随存储统一而变）**：`LinesComponent` 仍是**全场景收集 + 末次一次绘制**、`TextComponent` 仍是
+**2D 专用**（不得为它特化）；两者只把"收集源"从 `shared_ptr` 列表换成活跃集裸指针。
+
+**新增纪律**：① **组件必须有类型号**——`ComponentTypeOf<T> == None` 时 `AddComponent<T>` 是**编译期错误**
+（`EnsureTypedPool<T>` 的 `static_assert`），不再是"运行期静默不占位"；② 组件行**不跨帧缓存**裸指针语义同 `Entity*`
+（行的生存期 ⊂ 宿主实体的生存期，`~Entity` 先销掉自己全部组件行）；③ 池**只查不建**于读路径（`GetTypedPool` 是 const 查询）。
+
+**验证**：门 **42 PASS / 0 FAIL**；10 个测试目标 rc=0（含 `TestCSMIncrementalPass` 全部源码契约，
+其中 A7a 的组归属契约已从"组件虚函数"改钉"类型表 `SystemGroupID group` 列"）；
+像素三路正常（`PBRSpheres` 10×10 内建几何 / `LineRender` 线段 / `TextDraw` 全文）；
+CSM 阴影 `CascadeShadowMap` 阴影投射/接收正常（ShadowProxy 池路径）；探针如上；
+**反证**：抽掉 `Entity::SetComponentRow` 的掩码位维护 ⇒ `TestComponentMask` rc=10（Test 1 Failed），
+逐字节还原 ⇒ rc=0。
+
+**本批踩到并已记录的坑**：改公共头（`ComponentRow.h` / `Entity.h` / `Context.h`）后**增量构建不会重编所有 include 者**
+——实测探针 TU 的 obj 比头文件旧，仍打印旧 `sizeof(ComponentRow)=16 B` 与旧的 `+41.8 B` 判据；
+**清整棵 Debug obj 树重编**后数字才正确 ⇒ 这类批次的数字必须在"清 obj 全量重编"之后才可信（详见技能 `crlf-safe-editing`）。
+
 ### T2-b（2026-10-02）—— 每实体哈希表 ⇒ 小数组 + 线性扫描 ✅
 
 - **⚠ 设计稿 v1 的写法不可行（记录在此，避免后人照做）**：原文写「按 `ComponentType` 的固定 7 槽数组」——

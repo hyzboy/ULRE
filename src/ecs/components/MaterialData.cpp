@@ -493,8 +493,6 @@ namespace hgl::ecs
 
     void MaterialData::OnDetach()
     {
-        Component::OnDetach();
-
         // B4-iii-b：重类型授权数据（配方覆盖 / 具名纹理资源）随组件分离而**摘除**
         //（键 = 行号；行本身不归还——句柄语义，行回收属 arena 自身策略）。
         if (material_row_id != 0)

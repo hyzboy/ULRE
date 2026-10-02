@@ -56,6 +56,25 @@ namespace hgl
             World,          ///< 世界私有（实例级：变换 / 运行期状态）
         };
 
+        /**
+         * 系统组标识（键域 = 组件驱动路径的三个组；T2-c 起它是**类型属性**）。
+         *
+         * 历史：组件用 `virtual SystemGroupID GetSystemGroup()` 自己声明组名 ⇒ 每个组件对象带一个
+         * vtable。T2-c 拆掉虚表 ⇒ 组归属入类型表（`ComponentTypeInfo::group`）：同一个信息只有一个名字，
+         * 且与"组件类型"这个静态属性天然同源。
+         */
+        enum class SystemGroupID : uint8_t
+        {
+            None = 0,
+            Primitive,      ///< 图元（渲染元素标记 = `GeometryData`，A5b）
+            Line,           ///< 线条
+            Text,           ///< 文本
+
+            Count
+        };
+
+        constexpr uint32_t kSystemGroupCount = static_cast<uint32_t>(SystemGroupID::Count);
+
         struct ComponentTypeInfo
         {
             ComponentType  type;
@@ -63,6 +82,7 @@ namespace hgl
             const char    *arena_name;      ///< 该 (scope, 类型) 的 arena / SSBO 名（注册与日志用）
             uint32_t       gpu_row_bytes;   ///< GPU 行宽（定长、GPU 最小对齐）；0 = 暂无 GPU 行
             const char    *cpu_type_name;   ///< C++ 侧承载类型名（调试用）
+            SystemGroupID  group;           ///< 组件挂载驱动哪个系统组（`None` = 不驱动）
         };
 
         /**
@@ -77,17 +97,17 @@ namespace hgl
          */
         inline constexpr ComponentTypeInfo kComponentTypeTable[COMPONENT_TYPE_COUNT] =
         {
-            // 表按枚举值下标索引 ⇒ None=0 必须占位（无 arena/无行宽）
-            { ComponentType::None,            ComponentScope::World, "",                     0, "" },
-            { ComponentType::Transform,       ComponentScope::World,  "ECS:Transform",       64, "TransformDataStorage" },
-            { ComponentType::Geometry,        ComponentScope::Global, "ECS:Geometry",         0, "GeometryData" },        ///< B3：ID 化完成（几何数据落 MeshDrawParams / GeometryAABB 行）
-            { ComponentType::MaterialData,    ComponentScope::Global, "ECS:MaterialData",    16, "MaterialData" },        ///< B4：组件行 16 B（(Global, MaterialData) arena，行内只放 POD）
-            { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "MaterialRuntimeSlot" }, ///< B5：slot 全 POD、行宽冻结 88 B（CPU 侧行 ⇒ gpu_row_bytes 记 0）
-            { ComponentType::Texture,         ComponentScope::Global, "ECS:Texture",          0, "" },                   ///< B6：**无组件载体**（纹理授权在 MaterialData 的具名纹理资源里，零消费者，仅登记）；载体形态 = 材质私有数据一族（按定义变长的行空间）⇒ 与欠账 §2.9 同批处理，**勿补实体级组件**
-            { ComponentType::Camera,          ComponentScope::World,  "ECS:Camera",           0, "CameraComponent" },     ///< B7：相机（P-6 ②：**不新开 arena**，参数留组件；世界相机表 = 派生视图 ⇒ 本类型无自己的 GPU 行）
-            { ComponentType::Lines,           ComponentScope::World,  "ECS:Lines",            0, "LinesComponent" },      ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
-            { ComponentType::Text,            ComponentScope::World,  "ECS:Text",             0, "TextComponent" },       ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
-            { ComponentType::ShadowProxy,     ComponentScope::World,  "ECS:ShadowProxy",      0, "ShadowProxy" },         ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
+            // 表按枚举值下标索引 ⇒ None=0 必须占位（无 arena/无行宽/不驱动系统组）
+            { ComponentType::None,            ComponentScope::World,  "",                     0, "",                    SystemGroupID::None },
+            { ComponentType::Transform,       ComponentScope::World,  "ECS:Transform",       64, "TransformDataStorage", SystemGroupID::None },
+            { ComponentType::Geometry,        ComponentScope::Global, "ECS:Geometry",         0, "GeometryData",        SystemGroupID::Primitive },   ///< B3：ID 化完成（几何数据落 MeshDrawParams / GeometryAABB 行）。A5b：本组件是"该实体是一个 Primitive 渲染元素"的**唯一标记** ⇒ 驱动图元组；T2-c 起组归属由**类型表**声明（组件虚函数已删）
+            { ComponentType::MaterialData,    ComponentScope::Global, "ECS:MaterialData",    16, "MaterialData",        SystemGroupID::None },        ///< B4：组件行 16 B（(Global, MaterialData) arena，行内只放 POD）
+            { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "MaterialRuntimeSlot", SystemGroupID::None },        ///< B5：slot 全 POD、行宽冻结 88 B（CPU 侧行 ⇒ gpu_row_bytes 记 0）
+            { ComponentType::Texture,         ComponentScope::Global, "ECS:Texture",          0, "",                    SystemGroupID::None },        ///< B6：**无组件载体**（纹理授权在 MaterialData 的具名纹理资源里，零消费者，仅登记）；载体形态 = 材质私有数据一族（按定义变长的行空间）⇒ 与欠账 §2.9 同批处理，**勿补实体级组件**
+            { ComponentType::Camera,          ComponentScope::World,  "ECS:Camera",           0, "CameraComponent",     SystemGroupID::None },        ///< B7：相机（P-6 ②：**不新开 arena**，参数留组件；世界相机表 = 派生视图 ⇒ 本类型无自己的 GPU 行）；T2-c：相机行内持 `shared_ptr`（槽账目按宿主弱引用计占用期，见 `SharedComponentPool`）
+            { ComponentType::Lines,           ComponentScope::World,  "ECS:Lines",            0, "LinesComponent",      SystemGroupID::Line },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）——全场景收集 + 末次一次绘制，收集语义不随存储统一而变
+            { ComponentType::Text,            ComponentScope::World,  "ECS:Text",             0, "TextComponent",       SystemGroupID::Text },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）——2D 专用，未来 2D 单开一套管理 ⇒ 现在不得特化
+            { ComponentType::ShadowProxy,     ComponentScope::World,  "ECS:ShadowProxy",      0, "ShadowProxy",         SystemGroupID::None },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
         };
 
         namespace detail
@@ -246,8 +266,10 @@ namespace hgl
 
         // ─────────────────────────────────────────────────────────────
         // 类型 → 槽位（编译期映射）
-        //   特化写在各自的组件头里（"类型知道自己占哪个槽"），这样 Entity::AddComponent<T> 编译期即可拿到槽位；
-        //   没有特化的类型 ⇒ `None`（不占 Entity 槽位，仍是合法的普通组件，如 Camera/Lines 等 CPU 域组件）。
+        //   特化写在各自的组件头里（"类型知道自己占哪个槽"），这样 `Entity::AddComponent<T>`
+        //   编译期即可拿到槽位；**没有特化的类型不占槽位**（`None`）⇒ T2-c 起
+        //   `AddComponent<T>` 对 `None` 类型是**编译期错误**（组件必须有类型号：实体侧按类型存行号，
+        //   槽 = 实体句柄表的下标）。历史上相机/线条/文本都没有号，这正是 T2-c 前置① 补上的原因。
         // ─────────────────────────────────────────────────────────────
 
         template<typename T>
@@ -259,33 +281,24 @@ namespace hgl
         template<typename T>
         inline constexpr ComponentType ComponentTypeOf_v = ComponentTypeOf<T>::value;
 
+        /// 该类型挂载时驱动哪个系统组（类型属性；`None` = 不驱动）
+        inline constexpr SystemGroupID GetComponentGroup(const ComponentType type)
+        {
+            const auto *info = GetComponentTypeInfo(type);
+
+            return info ? info->group : SystemGroupID::None;
+        }
+
         // ──────────────────────────────────────────────────────
-        // 系统组（P-4 拍板 2026-10-02）：把「组件挂卸 ⇒ 装/启系统组」从**按组名字符串**
-        // 收敛为**枚举 + O(1) 数组** —— 热路径不再有字符串哈希查找。
+        // 系统组（P-4 拍板 2026-10-02；T2-c 起 = **类型属性**，见 `ComponentTypeInfo::group`）
         //
-        // 历史形态：组件侧用一个返回**字符串**的虚函数声明组名 + 世界侧用「字符串 → 计数」容器计数。
-        // 键域实测只有三个编译期常量
-        //（"Primitive" / "Line" / "Text"）⇒ 改成枚举。
+        // 「组件挂卸 ⇒ 装/启系统组」从**按组名字符串**收敛为**枚举 + O(1) 数组**（热路径无字符串哈希）；
+        // T2-c 拆掉组件虚表后，组归属也离开了组件对象（`virtual GetSystemGroup()` 已删）⇒ 它是
+        // **类型**的属性，住在 `kComponentTypeTable[].group`（同一个信息只有一个名字）。
         //
         // ⚠ 系统侧（`System::SetRenderElementType("…")`，14 个系统）仍是字符串声明 —— 那是
         //   **一次性注册路径**（组定义 / 安装器 / 管线），不在本映射范围；两侧同名由 Test 25 契约钉住。
-        // ⚠ 为什么不是 `ComponentType → 组` 的表：**线条 / 文本组件还没有类型号**
-        //  （用户 2026-09-30 拍板「文本 / 线条属于动态 GEOMETRY，以后再说」）⇒ 组归属仍由
-        //   **组件自己声明**（返回枚举）；等它们拿到类型号，再并入类型表。
         // ──────────────────────────────────────────────────────
-
-        /// 系统组标识（键域 = 组件驱动路径的三个组）
-        enum class SystemGroupID : uint8_t
-        {
-            None = 0,
-            Primitive,      ///< 图元（渲染元素标记 = `GeometryData`，A5b）
-            Line,           ///< 线条
-            Text,           ///< 文本
-
-            Count
-        };
-
-        constexpr uint32_t kSystemGroupCount = static_cast<uint32_t>(SystemGroupID::Count);
 
         /// 组名（**唯一一份字符串**）：只用于桥接仍按名键控的一次性路径（组注册表 / 安装器 / 管线）
         constexpr const char *kSystemGroupNames[kSystemGroupCount] =

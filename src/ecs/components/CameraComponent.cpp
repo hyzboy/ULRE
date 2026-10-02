@@ -3,7 +3,7 @@
 namespace hgl::ecs
 {
     CameraComponent::CameraComponent(const std::string& name)
-        : Component(name)
+        : camera_name(name)
         , position(0.0f, 0.0f, 5.0f)
         , target(0.0f, 0.0f, 0.0f)
         , world_up(0.0f, 0.0f, 1.0f)

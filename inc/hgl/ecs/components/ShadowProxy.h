@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/Component.h>
+#include<hgl/ecs/core/ComponentRow.h>
 #include<hgl/ecs/core/Entity.h>
 #include<string>
 
@@ -16,7 +16,7 @@ namespace hgl::ecs
      * CanReceiveShadow / GetShadowBiasMultiplier）：原可渲染组件的便利方法随该类
      * 删除后，约定不再有第二份拷贝（本类自身只承载显式配置）。
      */
-    class ShadowProxy : public Component
+    class ShadowProxy : public ComponentRow
     {
     private:
 
@@ -27,8 +27,10 @@ namespace hgl::ecs
 
     public:
 
-        explicit ShadowProxy(const std::string &name = "ShadowProxy");
-        ~ShadowProxy() override = default;
+        ShadowProxy() = default;
+
+        /// 非虚（T2-c：组件行里没有 vptr）；对象住**类型化对象池**，析构由池显式调用
+        ~ShadowProxy() = default;
 
         // ── 投射控制 (Caster) ──
         bool CanCastShadow() const { return cast_shadow; }

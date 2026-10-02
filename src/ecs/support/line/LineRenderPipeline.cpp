@@ -420,7 +420,8 @@ namespace hgl::ecs
             }
         }
 
-        std::vector<std::shared_ptr<LinesComponent>> all;
+        // T2-c：收集 = 池的活跃集视图（裸指针）。语义不变：仍是**全场景收集 + 末次一次绘制**。
+        ValueArray<LinesComponent *> all;
         context_->GetComponents<LinesComponent>(all);
 
         for (const auto& comp : all)
