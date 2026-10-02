@@ -68,7 +68,7 @@ namespace hgl::ecs
     {
         recipe_override = recipe;
         has_recipe_override = true;
-        ++authored_generation;
+        TouchAuthoredRow(hgl::graph::ssbo::kMaterialDataFlagAuthoredRecipe, 0);
     }
 
     const hgl::graph::mtl::MaterialRecipe *MaterialData::GetRecipeOverride() const
@@ -109,7 +109,7 @@ namespace hgl::ecs
             return false;
         }
 
-        ++authored_generation;
+        TouchAuthoredRow(hgl::graph::ssbo::kMaterialDataFlagAuthoredTexture, 0);
         return true;
     }
 
@@ -236,7 +236,7 @@ namespace hgl::ecs
             if (material_row_id != 0)
             {
                 ClearMaterialRow();
-                ++authored_generation;
+                TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource);
             }
             return;
         }
@@ -261,7 +261,9 @@ namespace hgl::ecs
         row.surface_type       = static_cast<uint32>(binding.ssbo_type);
         row.surface_ssbo_id    = binding.ssbo_id;
         row.surface_data_index = binding.data_index;
-        row.authored_flags     = hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource;
+        row.authored_flags     = hgl::graph::ssbo::PackMaterialDataAuthoredFlags(
+            hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource,
+            ++authored_generation);
 
         if (!WriteMaterialRow(row))
         {
@@ -269,8 +271,6 @@ namespace hgl::ecs
                       material_row_id, binding.ssbo_id, binding.data_index);
             return;
         }
-
-        ++authored_generation;
     }
 
     void MaterialData::ClearAuthoredResources()
@@ -280,7 +280,43 @@ namespace hgl::ecs
         if (material_row_id != 0)
             ClearMaterialRow();
 
+        TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagMask);
+    }
+
+    // B4-ii：授权变更唯一入口（见 .h 注释）。行内 revision 与授权位**只在这里落笔**。
+    void MaterialData::TouchAuthoredRow(const uint32_t set_flags, const uint32_t clear_flags)
+    {
         ++authored_generation;
+
+        if (material_row_id == 0 && !EnsureMaterialRow())
+            return;                     // 无设备/预算用尽：代数已前进，行内副本留待下次
+
+        auto *registry = GetRegistry();
+
+        if (!registry)
+            return;
+
+        const auto *current = registry->GetMaterialDataRow(material_row_id);
+
+        hgl::graph::ssbo::MaterialDataRow row =
+            current ? *current : hgl::graph::ssbo::MaterialDataRow{};
+
+        const uint32_t flags = (hgl::graph::ssbo::GetMaterialDataRowFlags(row) | set_flags)
+                             & ~clear_flags & hgl::graph::ssbo::kMaterialDataFlagMask;
+
+        row.authored_flags = hgl::graph::ssbo::PackMaterialDataAuthoredFlags(
+            flags, authored_generation);
+
+        if (!registry->Write(hgl::graph::GlobalSSBOType::MaterialData, material_row_id, row))
+            GLogError("[MaterialData] 写组件行（授权位 0x%X + revision %u）失败 row=%u",
+                      flags, authored_generation, material_row_id);
+    }
+
+    uint32_t MaterialData::GetAuthoredRowRevision() const
+    {
+        const auto *row = GetMaterialRow();
+
+        return row ? hgl::graph::ssbo::GetMaterialDataRowRevision(*row) : authored_generation;
     }
 
     bool MaterialData::BuildResolvedRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,

@@ -257,6 +257,20 @@ public:
     bool WriteGeometryAABB(uint32_t id,const mtl::GeometryAABB &aabb);
 
     /// 读一行 GeometryAABB（CPU 侧；未初始化或越界返回 nullptr）
+    /// 泛型类型化行读口：越界 / 池未建 / **行宽与 T 不符** ⇒ nullptr（不越界、不跨池强转）。
+    /// 与既有三个专用读口同语义：**不做 IsActive 校验**（行池预分配；「未授权」由行 0 哨兵
+    /// 与 `authored_flags` 表达，读取未激活行得到的是该行初值/残留，不会崩）。
+    template<typename T>
+    const T *GetTypedRow(GlobalSSBOType type, uint32_t row_id) const
+    {
+        const ActiveRowPool *pool = GetPool(type);
+
+        if (!pool || row_id >= pool->GetRowCapacity() || pool->GetRowBytes() != sizeof(T))
+            return nullptr;
+
+        return static_cast<const T *>(pool->RowCPU(row_id));
+    }
+
     const mtl::GeometryAABB *GetGeometryAABB(uint32_t id) const;
 
     /// 读一行 MaterialData **组件行**（CPU 侧；越界 / 行 0 / 未分配返回 nullptr）。

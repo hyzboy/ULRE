@@ -361,32 +361,24 @@ bool GlobalSSBOBufferRegistry::WriteGeometryAABB(const uint32_t id,const mtl::Ge
 
 const mtl::MeshDrawParams *GlobalSSBOBufferRegistry::GetMeshDrawParamsRow(const uint32_t geometry_id) const
 {
-    const auto *pool = GetPool(GlobalSSBOType::MeshDrawParams);
-
-    if (!pool || geometry_id == 0 || geometry_id >= pool->GetRowCapacity())
-        return nullptr;
-
-    return static_cast<const mtl::MeshDrawParams *>(pool->RowCPU(geometry_id));
+    // B4-ii：三个专用读口=泛型口薄包装（行 0 是「无」哨兵 ⇒ 专用口显式挡掉，泛型口只挡越界）
+    return geometry_id == 0
+        ? nullptr
+        : GetTypedRow<mtl::MeshDrawParams>(GlobalSSBOType::MeshDrawParams, geometry_id);
 }
 
 const ssbo::MaterialDataRow *GlobalSSBOBufferRegistry::GetMaterialDataRow(const uint32_t row_id) const
 {
-    const auto *pool = GetPool(GlobalSSBOType::MaterialData);
-
-    if (!pool || row_id == 0 || row_id >= pool->GetRowCapacity())
-        return nullptr;
-
-    return static_cast<const ssbo::MaterialDataRow *>(pool->RowCPU(row_id));
+    // 行 0 = 「无材质数据」哨兵
+    return row_id == 0
+        ? nullptr
+        : GetTypedRow<ssbo::MaterialDataRow>(GlobalSSBOType::MaterialData, row_id);
 }
 
 const mtl::GeometryAABB *GlobalSSBOBufferRegistry::GetGeometryAABB(const uint32_t id) const
 {
-    const auto *pool = GetPool(GlobalSSBOType::GeometryAABB);
-
-    if (!pool || id >= pool->GetRowCapacity())
-        return nullptr;
-
-    return static_cast<const mtl::GeometryAABB *>(pool->RowCPU(id));
+    // GeometryAABB 池行 0 是「始终可见」负半径哨兵 ⇒ 不挡 0
+    return GetTypedRow<mtl::GeometryAABB>(GlobalSSBOType::GeometryAABB, id);
 }
 
 } // namespace hgl::graph

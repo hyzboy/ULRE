@@ -60,8 +60,47 @@ namespace hgl::graph::ssbo
     static_assert(sizeof(MaterialDataRow) % 16 == 0);
     static_assert(sizeof(MaterialDataRow) == 16);
 
-    /// `MaterialDataRow::authored_flags`：已授权材质数据行（= 旧 `MaterialDataAuthoringResource::authored`）
-    inline constexpr uint32 kMaterialDataFlagAuthoredDataResource = 1u << 0;
+    /// ── 「材质行号」口径（B4-ii 钉死；改这里之前先读）────────────────────────────
+    /// ① **组件行** = `MaterialDataRow`：行号 = `ecs::MaterialData::GetMaterialRowID()`，
+    ///    池 = `GlobalSSBOType::MaterialData`（设备级、跨世界共享），**行 0 = 「无材质数据」哨兵**；
+    /// ② **内容行** = `PBRSurfaceRow` / `EmissiveSurfaceRow` / `TransmissionSurfaceRow`：
+    ///    由组件行三元组定位 `{surface_type, surface_ssbo_id, surface_data_index}`
+    ///    （`surface_data_index == uint32(-1)` ⇒ 无内容；行号只在 `surface_type` 对应的池内有效）。
+    /// 读行一律走 `GlobalSSBOBufferRegistry::GetTypedRow<T>(type, row_id)`（越界/行宽不符 ⇒ nullptr），
+    /// **不要**把别的池的行指针强转成 T。
+
+    /// `MaterialDataRow::authored_flags`：低 8 位 = **授权位**，高 24 位 = **行内 revision**（授权代数）。
+    /// revision 让「只读行」的消费者也能检测变更（原先只能读组件副本）。
+    inline constexpr uint32 kMaterialDataFlagAuthoredDataResource = 1u << 0;   ///< 已授权材质数据行（= 旧 authored）
+    inline constexpr uint32 kMaterialDataFlagAuthoredRecipe       = 1u << 1;   ///< 有配方覆盖
+    inline constexpr uint32 kMaterialDataFlagAuthoredTexture      = 1u << 2;   ///< 有具名纹理资源
+
+    inline constexpr uint32 kMaterialDataFlagBits      = 8u;
+    inline constexpr uint32 kMaterialDataFlagMask      = (1u << kMaterialDataFlagBits) - 1u;
+    inline constexpr uint32 kMaterialDataRevisionShift = kMaterialDataFlagBits;
+    inline constexpr uint32 kMaterialDataRevisionMask  = 0xFFFFFFFFu >> kMaterialDataFlagBits;
+
+    /// 打包「授权位 + 行内 revision」（位段不重叠，均由 static_assert 兜住）
+    inline constexpr uint32 PackMaterialDataAuthoredFlags(uint32 flags, uint32 revision) noexcept
+    {
+        return (flags & kMaterialDataFlagMask)
+             | ((revision & kMaterialDataRevisionMask) << kMaterialDataRevisionShift);
+    }
+
+    /// 取行内 revision（= `ecs::MaterialData::GetAuthoredGeneration()` 的行内镜像）
+    inline constexpr uint32 GetMaterialDataRowRevision(const MaterialDataRow &row) noexcept
+    {
+        return (row.authored_flags >> kMaterialDataRevisionShift) & kMaterialDataRevisionMask;
+    }
+
+    /// 取行内授权位
+    inline constexpr uint32 GetMaterialDataRowFlags(const MaterialDataRow &row) noexcept
+    {
+        return row.authored_flags & kMaterialDataFlagMask;
+    }
+
+    static_assert(kMaterialDataFlagMask < (1u << kMaterialDataRevisionShift),
+                  "授权位与行内 revision 的位段不得重叠");
 
     static_assert(sizeof(PBRSurfaceRow)                %16==0);
     static_assert(sizeof(EmissiveSurfaceRow)           %16==0);

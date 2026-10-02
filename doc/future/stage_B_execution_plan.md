@@ -641,6 +641,51 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 用它做的两次二分（"HEAD 正常 / 我的版本必挂"）因此**双双无效**。⇒ 铁律重申：**改结构大小或公共头，
 必须清 obj 全量重编之后再下任何结论**；二分两侧都必须基于全量重编的产物。
 
+**B4-ii 完成记录（2026-10-02）—— ✅ 材质行 CPU 读口 + 行内 revision（状态真源 = 行）**
+
+一、改动（7 文件）
+
+- `inc/hgl/graph/ssbo/MaterialDataRows.h`：`authored_flags` 拆位段——**低 8 位 = 授权位**（新增
+  `kMaterialDataFlagAuthoredRecipe` / `kMaterialDataFlagAuthoredTexture`），**高 24 位 = 行内 revision**；
+  新增 `PackMaterialDataAuthoredFlags` / `GetMaterialDataRowRevision` / `GetMaterialDataRowFlags`
+  与「位段不得重叠」的编译期断言。**行宽仍 16 B（不扩行、不动 ABI）**。同处钉死「材质行号」口径：
+  组件行 = `GetMaterialRowID()`（池 `GlobalSSBOType::MaterialData`，行 0 哨兵）；内容行 = 组件行三元组
+  `{surface_type, surface_ssbo_id, surface_data_index}`（`data_index == uint32(-1)` = 无内容）。
+- `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h` + `src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`：
+  新增泛型类型化读口 `GetTypedRow<T>(GlobalSSBOType, uint32_t row_id)`（越界 / 池未建 / **行宽与 T 不符**
+  ⇒ nullptr）；三个专用读口（`GetMaterialDataRow` / `GetMeshDrawParamsRow` / `GetGeometryAABB`）
+  改为它的薄包装，各自保留「行 0 哨兵」语义。
+- `inc/hgl/ecs/components/MaterialData.h/.cpp`：新增 **授权变更唯一入口**
+  `TouchAuthoredRow(set_flags, clear_flags)`（代数 +1 → 把「置位 ∧ 清位 + 新 revision」写进组件行）；
+  5 个授权点（SetRecipe / SetTextureResource / SetDataResource 两分支 / ClearAuthoredResources）全部改走它，
+  `++authored_generation` 只剩 helper 与 `OnDetach`（分离时无行可写，只前进代数）。新增
+  `GetAuthoredRowRevision()`（读行内 revision，无行 ⇒ 退回组件计数器，两者此时同为 0，不存在双真值）。
+- `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`：`MaterialAuthoredGenerationOf()` 改读**行内 revision**。
+- `src/ecs/support/TestCSMIncrementalPass.cpp`：新增 **Test 35（18 条契约）**，含「半改状态」防呆
+  （三个专用读口都必须委托泛型口）与 1 条禁复活（消费者不得退回读组件计数器）。
+
+二、**两处偏离计划原文**（有据，非偷工）
+
+1. 计划写的 `GetMaterialRow<T>(id)` **未建**：全仓 grep 证实「内容行」在 CPU 侧 **0 读者**（收集系统是写者），
+   按 `ulre-ssbo-row-plumbing` 的规矩「新增读口前先数消费者，0 消费者 = 投机 API」落成
+   「泛型读口 + 三个既有专用读口委托 + 真消费者（变更检测）改读行」；将来内容行出现读者时
+   直接 `GetTypedRow<PBRSurfaceRow>(...)` 即可，无需新 API。
+2. 读口**不做 `IsActive` 校验**（计划写「越界/未激活 ⇒ nullptr」）：现有三个专用读口本就不查 `IsActive`
+   （行池预分配，未激活行读到初值/残留、不崩）；加校验会**静默改变现有消费者行为**，
+   故保留原语义并在头文件写明理由；「未授权」由行 0 哨兵与 `authored_flags` 表达。
+
+三、验证（清 obj 后全量重编；rc 与数字均为实测）
+
+- `purge-stale-deps.sh`（3 个头）purge TUs=52 / objs=45 ⇒ 重编 **error C/LNK/MSB = 0/0/0**；
+- 门 **42 PASS / 0 FAIL**；**11 个测试 rc=0**（含 `TestCSMIncrementalPass` 的 Test 35 实测跑到并通过）；
+- 示例 PBRSpheres / AutoMergeMaterialInstance / CascadeShadowMap 各 8 秒：真 error 行 0、`策略判定对拍` 不一致 0
+  （282/36/560 条一致行）、`[MaterialData] (Global, MaterialData) 组件行就位：row=1` 留痕在位；
+- **像素**：PBRSpheres 10×10 各几何各材质 + 高光/反射正常；AutoMergeMaterialInstance 16 个材质实例各自着色正常
+  （= 材质授权/解析链完好，变更检测未被改坏）；
+- **反证**：把消费者退回 `GetAuthoredGeneration()` ⇒ `Test 35 Failed: 变更检测又读组件副本（状态真源被拆成两份）
+  -- 'material_data->GetAuthoredRowRevision()' not found`（rc=35）；逐字节还原（sha256 `52540c47…` 核对 OK）
+  ⇒ 重跑 Passed / 全绿。
+
 **名单空洞安全（2026-10-02，用户实测崩溃驱动）—— ✅ 结构性修复**
 
 - 崩溃栈（用户）：`TransformSystem::Update → TransformDataStorage::IsDirty(4294967295) → ValueArray::operator[](-1)`；

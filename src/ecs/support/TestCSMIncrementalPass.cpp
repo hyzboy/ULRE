@@ -4934,6 +4934,94 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kElementCountContracts) / sizeof(kElementCountContracts[0])));
     }
 
+    // ──────────────────────────────────────────────────────
+    // Test 35: B4-ii 契约（材质行 CPU 读口 + 行内 revision）
+    //
+    // 背景（2026-10-02，B4 拍板「路 B」后的第二批）：材质数据的**状态真源是行**——
+    // ① 组件行 `MaterialDataRow` 内嵌 revision（高位 24 位），授权位仍在低 8 位；
+    // ② 授权变更只有唯一入口 `MaterialData::TouchAuthoredRow`（五个授权点全走它，
+    //    不再各自 `++authored_generation`）；
+    // ③ registry 提供泛型类型化读口 `GetTypedRow<T>(type, row_id)`，三个专用读口改为它的薄包装；
+    // ④ 消费者（每实例 slot 的变更检测）改读**行内 revision**，不读组件副本。
+    //
+    // 反证：拿掉任一环（读口 / 打包 / 唯一入口 / 消费者读行）⇒ 本用例必失败。
+    // ──────────────────────────────────────────────────────
+    {
+        const SourceContract kB4iiContracts[] =
+        {
+            // ① 行内 revision 位段 + 打包/取值口 + 位段不重叠
+            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
+              "kMaterialDataRevisionShift",
+              "组件行缺行内 revision 位段（只读行的消费者无法检测变更）" },
+            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
+              "PackMaterialDataAuthoredFlags",
+              "缺「授权位 + revision」打包口（revision 会与 flag 位串位）" },
+            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
+              "GetMaterialDataRowRevision",
+              "缺行内 revision 取值口" },
+            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
+              "static_assert(kMaterialDataFlagMask < (1u << kMaterialDataRevisionShift)",
+              "位段重叠的编译期约束缺失（授权位与 revision 会互相污染）" },
+            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
+              "static_assert(sizeof(MaterialDataRow) == 16)",
+              "组件行不再固定 16B（行内 revision 被实现成扩行宽）" },
+            // ② 泛型类型化读口在位 + 三个专用读口全委托（防「只改一个」的半改状态）
+            { "GlobalSSBOBufferRegistry.h", OS_TEXT("inc/hgl/graph/module/GlobalSSBOBufferRegistry.h"),
+              "const T *GetTypedRow(GlobalSSBOType type, uint32_t row_id) const",
+              "缺泛型类型化行读口（读行又得裸 RowCPU + 强转）" },
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "GetTypedRow<ssbo::MaterialDataRow>(GlobalSSBOType::MaterialData, row_id)",
+              "材质组件行读口未走泛型口（半改状态）" },
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "GetTypedRow<mtl::MeshDrawParams>(GlobalSSBOType::MeshDrawParams, geometry_id)",
+              "MeshDrawParams 读口未走泛型口（半改状态）" },
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "GetTypedRow<mtl::GeometryAABB>(GlobalSSBOType::GeometryAABB, id)",
+              "GeometryAABB 读口未走泛型口（半改状态）" },
+            // ③ 授权变更唯一入口 + 四个授权点都走它 + 写行带 revision
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "void MaterialData::TouchAuthoredRow(const uint32_t set_flags, const uint32_t clear_flags)",
+              "缺授权变更唯一入口（行内 revision 与组件代数列会不同步）" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "TouchAuthoredRow(hgl::graph::ssbo::kMaterialDataFlagAuthoredRecipe, 0);",
+              "SetRecipe 未走唯一入口" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "TouchAuthoredRow(hgl::graph::ssbo::kMaterialDataFlagAuthoredTexture, 0);",
+              "SetTextureResource 未走唯一入口" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource);",
+              "SetDataResource 清空分支未走唯一入口" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagMask);",
+              "ClearAuthoredResources 未走唯一入口" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "hgl::graph::ssbo::PackMaterialDataAuthoredFlags(",
+              "SetDataResource 写行未带行内 revision（行内副本会停在 0）" },
+            // ④ 消费者读行不读组件副本
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "uint32_t GetAuthoredRowRevision() const;",
+              "组件缺「读行内 revision」口" },
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "material_data->GetAuthoredRowRevision()",
+              "变更检测又读组件副本（状态真源被拆成两份）" },
+            // ⑤ 禁复活：消费者不得退回读组件计数器
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "material_data->GetAuthoredGeneration()",
+              "变更检测退回读组件副本（B4-ii 被回退）", true },
+        };
+
+        if (const int failed = verify_source_contracts(35, kB4iiContracts,
+                                                       static_cast<uint>(sizeof(kB4iiContracts) /
+                                                                         sizeof(kB4iiContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 35 Passed: B4-ii 契约成立（组件行内嵌 revision、授权变更唯一入口、"
+                 u8"泛型类型化读口 + 三个专用读口全委托、消费者读行内 revision 不读组件副本；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kB4iiContracts) / sizeof(kB4iiContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

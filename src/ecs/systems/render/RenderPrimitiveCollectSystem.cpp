@@ -74,7 +74,9 @@ namespace hgl::ecs
         {
             MaterialData *material_data = EnsureMaterialDataOf(entity);
 
-            return material_data ? material_data->GetAuthoredGeneration() : 0;
+            // B4-ii：**读行**（设备级组件行的行内 revision）而不是读组件副本——
+            // 状态真源是行；组件只持行号。无行时退回组件计数器（两者同为 0，无双真值）。
+            return material_data ? material_data->GetAuthoredRowRevision() : 0;
         }
 
         // ── A3/A4：材质变体表 + 材质运行期表的取用入口 ──

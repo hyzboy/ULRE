@@ -148,7 +148,14 @@ namespace hgl::ecs
         /// 清空全部授权资源（纹理 + 数据行；配方覆盖不在其内）
         void ClearAuthoredResources();
 
+        /// 组件侧授权代数（每次授权状态变化 +1）。**行内 revision 与之同源**（见
+        /// `GetAuthoredRowRevision`）——只读行的消费者应当读行，不要读组件副本。
         uint32_t GetAuthoredGeneration() const { return authored_generation; }
+
+        /// B4-ii：设备级组件行里的**行内 revision**（= 上面的代数在行内的镜像）。
+        /// 消费者（每实例 slot 的变更检测）用这个 ⇒ 状态真源是**行**，不是组件副本。
+        /// 无行（组件从未授权 ⇒ 行号 0）⇒ 退回组件计数器（两者此时同为 0，不存在双真值）。
+        uint32_t GetAuthoredRowRevision() const;
 
         /// 上游来源（asset 默认配方 / 变体切换）变化时前进授权代数：
         /// 只动代数，不改本组件持有的授权数据——下游据此让解析结果失效。
@@ -172,6 +179,11 @@ namespace hgl::ecs
         bool EnsureMaterialRow();
         /// 读本组件的组件行（未分配返回 nullptr）
         const hgl::graph::ssbo::MaterialDataRow *GetMaterialRow() const;
+        /// B4-ii：授权变更**唯一入口**——组件计数器 +1，并（有行时）把
+        /// 「(flags 置位 ∧ clear_flags 清位) + 新 revision」写进组件行。
+        /// 所有授权入口（SetRecipe / SetTextureResource / SetDataResource / ClearAuthoredResources）
+        /// 都必须走它，不得自己 `++authored_generation`（否则行内 revision 与代数列不同步）。
+        void TouchAuthoredRow(uint32_t set_flags, uint32_t clear_flags);
         /// 写本组件的组件行
         bool WriteMaterialRow(const hgl::graph::ssbo::MaterialDataRow &row);
         /// 清空组件行内容（保留行号）
