@@ -176,6 +176,7 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/TransformDataStorage.h
     ${ECS_INCLUDE_PATH}/support/TransformID.h
     ${ECS_INCLUDE_PATH}/support/ComponentPool.h
+    ${ECS_INCLUDE_PATH}/support/EntityGPUTable.h
     ${ECS_INCLUDE_PATH}/support/TransformAccessor.h
     ${ECS_INCLUDE_PATH}/support/CameraInfoStorage.h
     ${ECS_INCLUDE_PATH}/support/CameraSlotGuard.h

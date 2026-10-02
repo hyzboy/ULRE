@@ -10,6 +10,7 @@
 #include<hgl/ecs/core/ScenePipelineMode.h>
 #include<hgl/ecs/support/ComponentTypeTable.h>
 #include<hgl/ecs/support/ComponentPool.h>
+#include<hgl/ecs/support/EntityGPUTable.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -97,6 +98,11 @@ namespace hgl
 
         private:
             OBJECT_LOGGER
+
+            // ── T3b：实体行表（`EntityGPU` 的 GPU 派生视图；世界私有）──
+            //   **必须声明在 `entity_manager` 之前**：成员按声明逆序析构 ⇒ 表比实体活得久
+            //   （`~Entity` 会回写本表的 `Active` 位；表先死就会写到已释放内存）。
+            EntityGPUTable entity_gpu_table;
 
             std::unique_ptr<EntityManager> entity_manager;
 
@@ -650,6 +656,16 @@ namespace hgl
             VisibilityDataStorage* GetVisibilityStorage() { return visibility_storage.get(); }
             const VisibilityDataStorage* GetVisibilityStorage() const { return visibility_storage.get(); }
 
+            // ── T3b：实体行表（`EntityGPU`）访问器与两条写入钩子 ──
+            EntityGPUTable&       GetEntityGPUTable()       { return entity_gpu_table; }
+            const EntityGPUTable& GetEntityGPUTable() const { return entity_gpu_table; }
+
+            /// 实体销毁路径：清 `Active`（由 `~Entity` 调用 —— 实体生死是**单一入口**）
+            void DeactivateEntityRow(EntityID id) { entity_gpu_table.Deactivate(id); }
+
+            /// 组件卸载 / 全卸后重刷 `type[]/row[]`（由 `Entity` 的卸载路径调用）
+            void RefreshEntityRow(Entity *entity) { entity_gpu_table.Refresh(entity); }
+
             /// 设置实体可见性 —— **唯一真值落在这里**（不再有组件内的第二份 bool）
             void SetEntityVisible(EntityID id, bool visible)
             {
@@ -660,6 +676,9 @@ namespace hgl
                     visibility_storage->SetVisible(id);
                 else
                     visibility_storage->SetInvisible(id);
+
+                // T3b：镜像到实体行（唯一真值仍是 VisibilityDataStorage；本表是派生视图）
+                entity_gpu_table.SetVisible(id, visible);
             }
 
             /// 实体是否可见：O(1) 直查不可见集合 + 祖先链上溯（祖先不可见 ⇒ 后代不可见）
@@ -807,6 +826,10 @@ namespace hgl
                     return nullptr;
 
                 entity->SetContext(this);
+
+                // T3b：实体行表置 `Active`（`type[]/row[]` 随组件挂卸由 `Refresh` 同步）
+                entity_gpu_table.Activate(entity->GetEntityID());
+
                 return entity;
             }
 
@@ -998,6 +1021,7 @@ namespace hgl
 
                 owner->SetComponentRow(type, row);
                 OnComponentRowAdded(type);
+                entity_gpu_table.Refresh(owner);        // T3b：实体行表随挂载同步
                 owner->MarkSceneDirty();
 
                 return pool->Row(row);
@@ -1066,7 +1090,10 @@ namespace hgl
                 return;
 
             if (context)
+            {
                 context->DestroyComponent(type, row);
+                context->RefreshEntityRow(this);        // T3b：实体行表随卸载同步
+            }
 
             MarkSceneDirty();
         }

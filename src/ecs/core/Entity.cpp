@@ -14,6 +14,12 @@ namespace hgl
         Entity::~Entity()
         {
             DetachAllComponents();
+
+            // T3b：实体行表清 `Active`（实体已死；其余字段保留供诊断）——
+            // 实体生死是**单一入口**：所有销毁路径（DestroyEntity / Clear / 世界 Shutdown）
+            // 都会走到显式 `~Entity()`（T2-a 块池的约定）。
+            if (context)
+                context->DeactivateEntityRow(id);
         }
 
         void Entity::MarkSceneDirty() const
@@ -68,6 +74,10 @@ namespace hgl
             }
 
             component_mask = 0;
+
+            if (context)
+                context->RefreshEntityRow(this);        // T3b：实体行表随全卸同步
+
             MarkSceneDirty();
         }
     }//namespace ecs

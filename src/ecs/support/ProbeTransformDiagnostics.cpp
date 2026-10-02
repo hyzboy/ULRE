@@ -36,7 +36,8 @@
 #include<hgl/ecs/support/TransformDataStorage.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/GeometryData.h>   // [T0b] AddComponent<GeometryData> 需完整类型
-#include<hgl/ecs/components/ShadowProxy.h>    // [T2-c] 行尺寸对照（壳拆掉后每组件只剩载荷）
+#include<hgl/ecs/components/ShadowProxy.h>
+#include<hgl/ecs/support/EntityGPUTable.h>  // [T0c] T3b 实体行表自检    // [T2-c] 行尺寸对照（壳拆掉后每组件只剩载荷）
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/EntityGPU.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -217,6 +218,72 @@ static void SectionAllocation()
 
         printf("  T2-a 地址稳定性：每 64 个边界复核 Entity* 地址，mismatch=%u（期望 0）\n",addr_mismatch);
 
+    }
+
+    // ── [T0c] T3b：实体行表（EntityGPUTable）与实体按类型行号表对拍 ──
+    //   [T0]/[T0b] 用 10000 实体量堆开销，已超实体行表容量（4096）⇒ 上方那条
+    //   EntityGPUTable 超容量报错是**预期的 fail-fast**；本段用 n=512 验证表本身。
+    {
+        const uint32_t n=512;
+
+        ECSContext context;
+
+        std::vector<Entity *> entities;
+        entities.reserve(n);
+
+        for(uint32_t i=0;i<n;++i)
+        {
+            auto *e=context.CreateEntity<Entity>("T3bProbe");
+
+            context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            e->AddComponent<GeometryData>();
+            entities.push_back(e);
+        }
+
+        const EntityGPUTable &table=context.GetEntityGPUTable();
+
+        uint32_t active=0;
+        uint32_t first_bad=UINT32_MAX;
+        uint32_t bad_type=UINT32_MAX;
+        uint32_t bad_row=UINT32_MAX;
+
+        for(uint32_t i=0;i<n;++i)
+        {
+            const EntityGPU *row=table.Row(entities[i]->GetEntityID());
+
+            if(!row){ first_bad=i; break; }
+
+            if(EntityGPUTable::IsActive(*row))
+                ++active;
+
+            if(!table.VerifyAgainst(entities[i],&bad_type,&bad_row)){ first_bad=i; break; }
+        }
+
+        // 组件全卸 ⇒ 行号表归零、实体行同步归零（卸载路径）
+        entities[0]->DetachAllComponents();
+        const EntityGPU *detached_row=table.Row(entities[0]->GetEntityID());
+        const bool detach_cleared=detached_row
+                                  && detached_row->row[uint32_t(ComponentType::Geometry)]==0
+                                  && detached_row->type[uint32_t(ComponentType::Geometry)]==0;
+
+        // 实体销毁 ⇒ Active 清零（生死路径）
+        const EntityID dead=entities[n-1]->GetEntityID();
+        context.DestroyEntity(dead);
+        const EntityGPU *dead_row=table.Row(dead);
+        const bool dead_cleared=dead_row && !EntityGPUTable::IsActive(*dead_row);
+
+        printf("\n================ [T0c] 实体行表（T3b）================\n");
+        printf("  行尺寸=%zu B（期望 128，alignas(64)）、容量=%u、整表=%zu KB\n",
+               sizeof(EntityGPU),EntityGPUTable::kCapacity,
+               size_t(EntityGPUTable::kCapacity)*sizeof(EntityGPU)/1024);
+        printf("  n=%u 槽在用=%u（期望 %u）\n",n,active,n);
+        if(first_bad==UINT32_MAX)
+            printf("  逐字段对拍（type[]/row[] vs Entity::component_rows[]）：全部一致\n");
+        else
+            printf("  逐字段对拍：不一致（首个不符 idx=%u type=%u row=%u）\n",first_bad,bad_type,bad_row);
+        printf("  组件全卸后行归零=%s、实体销毁后 Active 清零=%s\n",
+               detach_cleared?"是":"否",dead_cleared?"是":"否");
+        printf("  注：[T0]/[T0b] 的 10000 实体场景超 4096 容量 ⇒ 上方那条超容量报错是预期 fail-fast。\n");
     }
 
     if(results.size()==2)
