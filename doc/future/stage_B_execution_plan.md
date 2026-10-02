@@ -200,7 +200,7 @@ T10 原表述是"`Allocate()` 动态扩容 ⇒ 行号漂移"，实测真因更�
   诊断 `行释放后 fixed-pixel 条目未摘除（稀疏表泄漏）`；`sha256` 逐字节还原（`8e4c9a20…`）后重编 ⇒ **rc=0**。
 - `sizeof(TransformDataStorage)`：888 → 1016 B（存储对象每世界一个；行字节才是关键指标）。
 
-### B3 —— Geometry 的 GPU 可用部分 ID 化（(scope,type) arena 第一次真实落地）—— ⏳ 设计定稿（2026-10-02 拍板），待开工
+### B3 —— Geometry 的 GPU 可用部分 ID 化（(scope,type) arena 第一次真实落地）—— ▶ 进行中（B3-i 已完成并验证；B3-ii / B3-iii 待做）
 
 **语义订正（2026-10-02 拍板，修正本方案第一版的理解）**：目标**不是**"把 `GeometryData` 变成纯数据"，
 而是**把其中 GPU 能直接寻址的部分抽成固定 ID 结构**，喂未来 GPUDriven/GPUScene —— 与
@@ -270,14 +270,54 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 ⇒ 加 **constexpr 全枚举覆盖性断言**（for 遍历 + `RANGE_SIZE` 判定，不手列）。
 反例好消息：`kGlobalSSBOConfigs[GlobalSSBOTypeCount]`（`GlobalSSBOBufferRegistry.cpp:13-20`）是定长数组 ⇒ 少一项**编译期报错**。
 
-**B3 分批**
+**B3-i 完成记录（2026-10-02）—— ✅ 已落地并验证**
+
+改动面（5 文件）：
+
+| 文件 | 改动 |
+|---|---|
+| `inc/hgl/graph/ssbo/SSBOTypes.h` | 枚举加 `GeometryAABB`（`ENUM_CLASS_RANGE` 尾项随之改）+ 类型注释写明"唯一不自发行号的类型" |
+| `inc/hgl/graph/ssbo/GlobalSSBOTypes.h` | name 表补 case；`GetGlobalSSBOTypeName`/`StructVersion`/`StructStride` 三个表函数改 **`constexpr`**（否则覆盖性断言无法在编译期求值）；新增哨兵 `kUnknownGlobalSSBOTypeName` + **两条自动扩展断言**：名字表覆盖全枚举、`version != 0 ⇒ stride != 0` |
+| `inc/hgl/graph/ubo/GlobalAddresses.h` | 加 `addr_geometry_aabb`（6 字段 48 B → 7 字段 **56 B**，槽步长 128 B 不变） |
+| `ShaderLibrary/ubo/scene_ubo.glsl` | `GlobalAddressesRef` 同位置同字段（两门两端对表） |
+| `src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp` | 配置表加 `GeometryAABB`（32 B / 16384 / **reserve 0**）+ 配置表覆盖性 `static_assert`（表序=枚举序、row_bytes/capacity 非零）；`InitializePools` 里 `ActivateAllRows()` 静态行空间 + **一号双表不变量 fail-fast**（两池容量一致、AABB 全行 Active）+ 探针日志；地址表写入 AABB 基址 |
+
+**机制发现（实测，已修）**：`ActiveRowPool::ActivateAllRows()` 的前提是**行号空间为空**（其源码注释与行号连续断言都写明），
+而 `reserve_rows = 1` 会让池先占 1 行 ⇒ 首批 512 号相对 `start` 整体偏移 ⇒ 只激活 **513** 行就 fail。
+⇒ **AABB 池必须 `reserve_rows = 0`**；行 0 的"始终可见"哨兵改由写入侧显式写（B3-ii），不靠预留。
+这是本批新加的不变量**当场抓到的真问题**（不是事后发现）。
+
+**既有契约按新真值同步（两处，都不是放宽）**：
+① `src/ecs/support/TestRenderItemDataStorage.cpp` 的 `static_assert(sizeof(GlobalAddresses) == 48)` 与逐字段偏移断言 → 改 56 B +
+新字段 assert（偏移整体 +8）——正是它先把这次结构变化挡在编译期；
+② 门 `kAddressOwnershipTable`（`ShaderResourceSchemaRegressionGate.cpp:2881` 附近）登记 `addr_geometry_aabb`（设备级全局），
+否则"未分类字段"报红（门 §6 契约④）。
+
+**验证（rc/数字均实测）**：build **rc=0 / 0 error**（`-j 1` 串行；见下方环境坑）；
+门 **42 PASS / 0 FAIL**（含 `S.global-addresses-struct-parity`、`S.global-addresses-field-ownership` 两门都认了新字段）；
+10 测试全 rc=0；4 示例（`PBRSpheres`/`CascadeShadowMap`/`GizmoUsage`/`LineRender`）各 8 秒：真 error 行 0、
+`策略判定对拍` 不一致 **0**，且探针实测非空有牙：
+`一号双表就位：GeometryAABB 与 MeshDrawParams 同 ID 索引 rows=16384（AABB 32 B/行）aabb_bda=0xffffb802023c0000`。
+
+**反证（两处，均逐字节还原后转绿）**：
+① 运行时——把 AABB 池容量改成 8192（与主表不等）⇒ 不变量必红：
+`一号双表不变量失败：MeshDrawParams rows=16384 AABB rows=8192 active=8192` + fail-fast（APP_RC=127）；
+`GlobalSSBOBufferRegistry.cpp` sha256 `d106936f4cd1c4de…` 还原。
+② 编译期——去掉 `GetGlobalSSBOTypeName` 的 `GeometryAABB` case ⇒ `static_assert`（C2338）
+`GetGlobalSSBOTypeName 必须覆盖 GlobalSSBOType 的全部枚举项`；`GlobalSSBOTypes.h` sha256 `8d985899f27c9dd9…` 还原。
+
+**环境坑（留档，非代码问题）**：`vcpkg z-applocal` 的并发拷贝竞态本批表现为**单个目标持续失败**
+（`BidirectionalMapStressTest_06_BatchOperations.vcxproj`，`-j 2/-j 4` 均复现，手动跑同条命令 rc=0）
+⇒ `-j 1` 串行构建即 **rc=0 / 0 error**。判据仍以"构建 rc=0 且 C/LNK 错误为 0"为准。
+
+**B3 剩余分批**（原判据不变）
 
 | 批 | 内容 | 判据 |
 |---|---|---|
-| **B3-i 池与地址** | 枚举 / config / `ActivateAllRows` 静态行空间 / stride 覆盖性断言 / `GlobalAddresses` + GLSL 同步 | build 0 error、门 42 PASS、探针打印两池容量一致与 BDA |
-| **B3-ii 行定稿** | 128 B 拆 `total_vertices` + 补 `data_*`；AABB **成对写入** + 负半径哨兵；`bounding_radius` 改从 AABB 行反算 | 探针行宽 128/32、X-macro 单源同步、断言齐 |
-| **B3-iii ECS 读 ID 化** | 采集系统改读 ID（`RenderPrimitiveCollectSystem.cpp:2318` 现经 `runtime_data_buffer->geometry_id` 绕道取 ID）；**删 `runtime_*` 三指针**（消费点仅 5 处：`GeometryData.h:92-95`、`PrimitiveRenderItem.cpp:91/98`、`RenderPrimitiveCollectSystem.cpp:253/2318`） | 10 测试 + 门 + 示例绿、策略判定对拍不一致 0 |
+| **B3-ii 行定稿** | `MeshDrawParams` 112 → 128 B（拆 `total_vertices` + 补 `data_index_count`/`data_vertex_count`）；AABB 行**成对写入**（`RegisterMeshDrawParams` 内）+ 行 0 负半径哨兵；`bounding_radius` 改从 AABB 行反算 | 探针行宽 128/32、X-macro 单源同步、断言齐 |
+| **B3-iii ECS 读 ID 化** | 采集系统改读 ID（`RenderPrimitiveCollectSystem.cpp:2318` 现经 `runtime_data_buffer->geometry_id` 绕道取 ID）；**删 `runtime_*` 三指针**（消费点 5 处：`GeometryData.h:92-95`、`PrimitiveRenderItem.cpp:91/98`、`RenderPrimitiveCollectSystem.cpp:253/2318`） | 10 测试 + 门 + 示例绿、对拍不一致 0 |
 | 尾巴（可选） | 示例 `ComputeFrustumCull` 自建 AABB 表退役、改读引擎池（引擎级 GPU 剔除） | 剔除数一致 + 同图对比 |
+
 
 ### B4 —— MaterialData 句柄化（同 B3 范式）
 ### B5 —— MaterialRuntime 句柄化（含 **P-5** 的每实例指针字段归位；行宽定稿）
@@ -329,3 +369,4 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 | 2026-10-02 | **B2 完成**：行字节 **279 → 223 B/行**（children→CSR 8 B/行、fixed_pixel→稀疏 map）；全量 rc=0、10 测试 + 门全绿、6 示例 0 异常/对拍 0、反证 rc=16；新增 Test 14；删零调用者 `TransformAccessor::GetChildren()`。 |
 | 2026-10-02 | **B3 设计第一版（已作废，见下条）**：侦察发现 `GeometryData`/`MaterialData` **都不是纯数据**（4 指针 / 重类型+指针），且全仓**无 asset 注册表**（示例自持栈 asset）⇒ 曾拟"行内只放 POD、资源引用走行号、运行期产物复用 slot 缓存、重类型落旁表"+ B3 拆 B3a 机制 / B3b 迁移 + 惰性指针→行号映射。**用户订正语义后作废**（不是"变纯数据"，是"把 GPU 可用部分抽成固定 ID 结构"）。 |
 | 2026-10-02 | **B3 定稿（用户拍板）**：Geometry 的 GPU 可用部分 ID 化 —— 先不扩 8ID、`data_*` 上 GPU、`GeometryAABB` 独立池与 MeshDrawParams **同 ID 索引**（`ActivateAllRows` 结构保证 + 成对写入 + 负半径哨兵）；行 112→128 B；`GlobalAddresses` 加 `addr_geometry_aabb`（步长不变）；**范围订正**：不需要 arena 宿主/值句柄/173 调用点迁移。 |
+| 2026-10-02 | **B3-i 完成**：`GlobalSSBOType::GeometryAABB` + 池（`ActivateAllRows` 静态行空间、`reserve 0`）+ `GlobalAddresses::addr_geometry_aabb`（48→56 B，步长不变）+ GLSL 同步 + 两条自动扩展覆盖性断言；build rc=0/0 error、门 42 PASS/0 FAIL、10 测试 rc=0、4 示例对拍 0（探针 `rows=16384 AABB 32 B/行`）；反证两处（容量不等 ⇒ 运行期不变量红；缺 name case ⇒ 编译期断言红）；**实测修掉 `ActivateAllRows` 与 `reserve_rows` 的机制冲突**。 |
