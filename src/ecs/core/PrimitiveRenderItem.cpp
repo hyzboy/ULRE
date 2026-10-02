@@ -73,14 +73,11 @@ namespace hgl::ecs
 
     hgl::graph::Pipeline* PrimitiveRenderItem::GetPipeline(hgl::graph::RenderPass* render_pass) const
     {
-        // A5b：运行期管线归每实例 slot（collect 阶段按当前 pass 解析并落 slot；
-        // 管线按 RenderPass 维度键控——不同 RT 格式各自匹配的管线）。
-        const MaterialRuntimeSlot *slot = GetRuntimeSlot();
-
-        if (!slot || slot->runtime_pipeline_pass != render_pass)
-            return nullptr;
-
-        return slot->runtime_pipeline;
+        // A5b：运行期管线归每实例（collect 阶段按当前 pass 解析）；
+        // B5-b 起落世界级旁表（键 = 本实体），读时比对 pass —— 语义与旧 slot 字段逐字一致。
+        return context
+            ? context->GetMaterialRuntimePipelineTable().Get(entity_id, render_pass)
+            : nullptr;
     }
 
     graph::RenderItemHandle PrimitiveRenderItem::GetRenderItemHandle() const

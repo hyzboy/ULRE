@@ -79,6 +79,7 @@ namespace hgl
             , material_runtime_table(std::make_unique<MaterialRuntimeTable>())
             , material_authoring_side_table(std::make_unique<MaterialAuthoringSideTable>())
             , material_runtime_buffer_table(std::make_unique<MaterialRuntimeBufferTable>())
+            , material_runtime_pipeline_table(std::make_unique<MaterialRuntimePipelineTable>())
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
         {
@@ -2215,14 +2216,8 @@ namespace hgl
 
         void ECSContext::InvalidateEntityRuntimePipeline(EntityID owner)
         {
-            if (!material_runtime_table)
-                return;
-
-            if (MaterialRuntimeSlot *slot = material_runtime_table->GetSlot(owner))
-            {
-                slot->runtime_pipeline_pass = nullptr;
-                slot->runtime_pipeline      = nullptr;
-            }
+            // B5-b：管线缓存已迁到世界级旁表（slot 里不放指针）
+            material_runtime_pipeline_table->Clear(owner);
         }
 
         void ECSContext::DestroyBoundingBox(BoundingBoxDataStorage::HandleID id)

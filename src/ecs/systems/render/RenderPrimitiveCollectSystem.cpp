@@ -1355,8 +1355,10 @@ namespace hgl::ecs
             return false;
         }
 
-        slot.runtime_pipeline_pass = render_pass;
-        slot.runtime_pipeline      = resolved_pipeline;
+        // B5-b：管线缓存落世界级旁表（键 = 本实体；slot 里不放指针 ⇒ 行宽才能冻结）
+        world->GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),
+                                                     render_pass,
+                                                     resolved_pipeline);
         return true;
     }
 

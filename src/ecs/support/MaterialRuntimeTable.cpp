@@ -310,6 +310,10 @@ namespace hgl::ecs
                 buffers.Release(handle);
         }
 
+        // B5-b：该实例的每 pass 管线缓存也要摘除（与 slot 同生命周期）
+        if (context)
+            context->GetMaterialRuntimePipelineTable().Clear(owner);
+
         slots.erase(it);
         return true;
     }

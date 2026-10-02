@@ -641,6 +641,39 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 用它做的两次二分（"HEAD 正常 / 我的版本必挂"）因此**双双无效**。⇒ 铁律重申：**改结构大小或公共头，
 必须清 obj 全量重编之后再下任何结论**；二分两侧都必须基于全量重编的产物。
 
+**B5-b 完成记录（2026-10-02）—— ✅ 每 pass 管线缓存落世界侧旁表 + slot 行宽冻结 88 B（B5 收口）**
+
+一、改动（9 文件：1 新建头 + 7 引擎/实现 + 1 契约）
+
+- **新建** `inc/hgl/ecs/support/MaterialRuntimePipelineTable.h`（世界级）：每实例 × 每 pass 的
+  运行期管线缓存 —— `Set(id, pass, pipeline)` / `Get(id, pass)`（**pass 不匹配 ⇒ 未命中**，
+  与旧 slot 字段语义逐字一致）/ `Clear(id)` / `GetLiveEntryCount()`。
+- `MaterialRuntimeTable.h`：删 slot 的最后两个指针（`runtime_pipeline_pass` = `RenderPass*`、
+  `runtime_pipeline` = `Pipeline*`）⇒ **slot 变全 POD、无任何指针**；追加
+  **`static_assert(sizeof(MaterialRuntimeSlot) == 88, ...)`**（行宽冻结）+ 字段/占位逐项注释。
+- `RenderPrimitiveCollectSystem.cpp`（写）/ `PrimitiveRenderItem.cpp`（读，按 pass）/ `Context.cpp`
+  （`InvalidateEntityRuntimePipeline`）/ `MaterialRuntimeTable.cpp`（`DestroySlot`）四处改走旁表。
+- `ProbeTransformDiagnostics.cpp`：打印 `sizeof(MaterialRuntimeSlot)` —— 与断言同源的运行时观测口。
+
+二、**B5 整体收口（P-5 全项完成）**
+
+| P-5 项 | 落点 |
+|---|---|
+| L2W / L2WIndex / MeshDrawCommand / MaterialInstanceAddresses / Indirect 任务缓冲 + offset | B5-a：6 指针 → `*_handle`，世界级 `MaterialRuntimeBufferTable`（interned + 引用计数） |
+| 每 pass 解析产物（`RenderPass*` / `Pipeline*`，P-5 未列但同属"行内不放指针"） | B5-b：落世界级 `MaterialRuntimePipelineTable`（键 = 实例，按 pass 比对） |
+| **行宽定稿** | slot 全 POD ⇒ `static_assert(sizeof == 88)` 冻结（探针实测同值） |
+
+三、验证（清整棵 Debug obj 树 591 目录后全量重编；rc 与数字均为实测）
+
+- **BUILD_RC=0 / error C=LNK=MSB = 0/0/0**（手算 88 B 一次命中 `static_assert`）；
+- 门 **42 PASS / 0 FAIL**；**11 个测试 rc=0**（Test 38 实测跑到并通过；Test 37 保持绿）；
+  探针 rc=0 且 **`sizeof(MaterialRuntimeSlot) = 88 B`** 与断言值一致；
+- 示例 **7 个**各 8 秒：真 error 0、`策略判定对拍` 不一致 0（286/36/561/17/84/188/0 条一致行）；
+- **像素**：`CascadeShadowMap`（多 pass 阴影场景：多几何 + 棋盘纹理 + 地面投影齐全 ⇒
+  按 pass 键控的管线缓存语义无误）；`ComputeFrustumCull`（整片青色立方体，GPU-Driven 照旧）；
+- **反证**：把 `graph::RenderPass *runtime_pipeline_pass` 搬回 slot ⇒ `Test 38 Failed: RenderPass 指针
+  又回到 slot（行内不放指针）`（rc=38）；逐字节还原（sha256 核对 OK）⇒ 重跑 rc=0 / Passed。
+
 **B5-a 完成记录（2026-10-02）—— ✅ 每实例缓冲区 = 世界级句柄表行号（P-5 前半）**
 
 一、改动（8 文件：1 新建头 + 6 引擎/实现 + 1 契约）

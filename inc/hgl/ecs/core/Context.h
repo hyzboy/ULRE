@@ -16,6 +16,7 @@
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/MaterialAuthoringSideTable.h>
 #include<hgl/ecs/support/MaterialRuntimeBufferTable.h>
+#include<hgl/ecs/support/MaterialRuntimePipelineTable.h>
 #include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
@@ -185,6 +186,10 @@ namespace hgl
             /// B5-a：设备缓冲**句柄表**（`MaterialRuntimeSlot` 里的缓冲区只存句柄，
             /// 指针本体在这里；见 support/MaterialRuntimeBufferTable.h）。
             std::unique_ptr<MaterialRuntimeBufferTable> material_runtime_buffer_table;
+
+            /// B5-b：每实例 × 每 pass 的**运行期管线缓存**（slot 里不放指针 ⇒ 落这里；
+            /// 见 support/MaterialRuntimePipelineTable.h）。
+            std::unique_ptr<MaterialRuntimePipelineTable> material_runtime_pipeline_table;
 
             // 世界私有**相机表**：相机是**世界级资源**（16 槽 × 帧槽数，0 号槽恒为本世界默认相机）。
             // 行空间 + **槽账目（槽 → 宿主相机）** 都在这里，是"相机属于哪个世界 / 哪个槽"的唯一真源；
@@ -714,6 +719,10 @@ namespace hgl
             const MaterialVariantTable* GetMaterialVariantTable() const { return material_variant_table.get(); }
 
             /// A4 材质运行期表（共享行 interned + CoW + refcount + 世代；见 support/MaterialRuntimeTable.h）
+            /// B5-b 运行期管线旁表（键 = 实体；按 pass 比对）
+            MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() { return *material_runtime_pipeline_table; }
+            const MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() const { return *material_runtime_pipeline_table; }
+
             MaterialRuntimeBufferTable& GetMaterialRuntimeBufferTable() { return *material_runtime_buffer_table; }
             const MaterialRuntimeBufferTable& GetMaterialRuntimeBufferTable() const { return *material_runtime_buffer_table; }
 

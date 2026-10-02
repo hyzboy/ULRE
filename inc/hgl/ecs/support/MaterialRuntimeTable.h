@@ -193,9 +193,8 @@ namespace hgl::ecs
 
         /// 最近一次 collect 解析出的运行期管线（按 RenderPass 维度；batch 紧随其后消费同一 pass）。
         /// 复用交给 RenderPass::CreatePipeline 内部（按 shader 内容 hash 键控，见 D2）——
-        /// 本 slot 只记"当前 pass 的解析结果"，不另存 program 指针身份（指针身份会因地址复用误判）。
-        graph::RenderPass *runtime_pipeline_pass = nullptr;
-        graph::Pipeline   *runtime_pipeline      = nullptr;
+        /// **B5-b 起不入 slot**（行内不放指针）：落世界级 `MaterialRuntimePipelineTable`
+        ///（键 = 本实体；读时比对 pass，语义与旧字段逐字一致）。
 
         // ── A5b：多实例（连续连号槽位）绑定（原图元多实例组件状态）──
         uint32_t instance_count              = 0;   ///< 活动实例数
@@ -229,6 +228,15 @@ namespace hgl::ecs
         bool is_gpu_driven = false;    ///< true ⇒ 绕过 CPU ICB / 索引表重建
         bool is_indirect    = false;   ///< true ⇒ 用间接命令
     };
+
+    /// **行宽定稿**（B5-b）：`MaterialRuntimeSlot` 全字段均为 POD、**无任何指针** ⇒
+    /// 宽度是平台稳定的定值，这就是它将来升格为 (World, MaterialRuntime) 行 arena 一行的前提
+    ///（行宽一变，所有按行索引的并行表/地址都要跟着动 ⇒ 用断言钉死，改动必须显式）。
+    /// 字段与占位：row 4 | 2×u8 + bool +pad 4 | shadow_retry 4 | 2×tracked 4 | 3×bool +pad 4 |
+    /// last_materialize_epoch 8 | render_item_handle 8 | 实例三字段 12 +pad 4 | 6×句柄 24 |
+    /// indirect_count_offset 8 | 2×bool +pad ⇒ **x64/MSVC 实测 88 B**（探针 `ProbeTransformDiagnostics` 同源打印）。
+    static_assert(sizeof(MaterialRuntimeSlot) == 88,
+                  "MaterialRuntimeSlot 行宽已冻结（B5-b）：改字段必须同步改断言并回写计划文档");
 
     class MaterialRuntimeTable
     {

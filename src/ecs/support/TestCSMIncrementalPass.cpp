@@ -5197,6 +5197,77 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kB5aContracts) / sizeof(kB5aContracts[0])));
     }
 
+    // ──────────────────────────────────────────────────────
+    // Test 38: B5-b 契约（每 pass 管线缓存落世界侧旁表 + slot 行宽冻结）
+    //
+    // 背景：`MaterialRuntimeSlot` 里最后两个指针（`runtime_pipeline_pass` / `runtime_pipeline`）是
+    // **每 pass 的解析产物** ⇒ 按「每 pass 解析产物不入行，落世界侧旁表（键 = 该实例）」的规则
+    // 移进 `MaterialRuntimePipelineTable`；slot 因此变成**全 POD**（无指针）⇒ 行宽可冻结（= B5 标题
+    // 里的「行宽定稿」，用 `static_assert(sizeof == 88)` 钉死；探针同源打印）。
+    //
+    // 反证：把任一指针搬回 slot，或让读/写绕过旁表 ⇒ 本用例必失败。
+    // ──────────────────────────────────────────────────────
+    {
+        const SourceContract kB5bContracts[] =
+        {
+            // ① 旁表在位 + 按 pass 比对（语义与旧字段逐字一致）
+            { "MaterialRuntimePipelineTable.h",
+              OS_TEXT("inc/hgl/ecs/support/MaterialRuntimePipelineTable.h"),
+              "class MaterialRuntimePipelineTable",
+              "运行期管线旁表缺失（每 pass 解析产物无处安放）" },
+            { "MaterialRuntimePipelineTable.h",
+              OS_TEXT("inc/hgl/ecs/support/MaterialRuntimePipelineTable.h"),
+              "if (it == entries.end() || it->second.pass != pass)",
+              "旁表丢了「pass 不匹配即未命中」语义（管线会跨 pass 串味）" },
+            // ② 世界级持有 + 取用口
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "std::unique_ptr<MaterialRuntimePipelineTable> material_runtime_pipeline_table;",
+              "旁表不再由世界持有" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable()",
+              "世界缺管线旁表取用口" },
+            // ③ slot 变全 POD：两个指针禁复活 + 行宽冻结断言在位
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "graph::RenderPass *runtime_pipeline_pass",
+              "RenderPass 指针又回到 slot（行内不放指针）", true },
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "graph::Pipeline   *runtime_pipeline",
+              "Pipeline 指针又回到 slot（行内不放指针）", true },
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "static_assert(sizeof(MaterialRuntimeSlot) == 88,",
+              "slot 行宽冻结断言缺失（行宽可被无意改掉，所有按行索引的表都会错位）" },
+            // ④ 写：collect 解析后落旁表
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "world->GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),",
+              "管线解析结果未落旁表（读侧会永远未命中）" },
+            // ⑤ 读：查旁表（按 pass）
+            { "PrimitiveRenderItem.cpp", OS_TEXT("src/ecs/core/PrimitiveRenderItem.cpp"),
+              "context->GetMaterialRuntimePipelineTable().Get(entity_id, render_pass)",
+              "管线读取未走旁表" },
+            // ⑥ 清理：失效路径 + 销毁路径都摘除
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "material_runtime_pipeline_table->Clear(owner);",
+              "InvalidateEntityRuntimePipeline 未清旁表条目" },
+            { "MaterialRuntimeTable.cpp", OS_TEXT("src/ecs/support/MaterialRuntimeTable.cpp"),
+              "context->GetMaterialRuntimePipelineTable().Clear(owner);",
+              "DestroySlot 未清该实例的管线缓存（跨生命周期串味）" },
+            // ⑦ 探针同源打印行宽（与断言值对齐的观测口）
+            { "ProbeTransformDiagnostics.cpp", OS_TEXT("src/ecs/support/ProbeTransformDiagnostics.cpp"),
+              "sizeof(hgl::ecs::MaterialRuntimeSlot)",
+              "探针未打印 slot 行宽（断言值没有运行时观测口）" },
+        };
+
+        if (const int failed = verify_source_contracts(38, kB5bContracts,
+                                                       static_cast<uint>(sizeof(kB5bContracts) /
+                                                                         sizeof(kB5bContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 38 Passed: B5-b 契约成立（每 pass 管线缓存落世界侧旁表、按 pass 比对、"
+                 u8"slot 无指针且行宽冻结 88B、写/读/失效/销毁四处都走旁表；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kB5bContracts) / sizeof(kB5bContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }
