@@ -359,6 +359,30 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 - `data_*` 字段已写好但**暂无消费者**（按你"CPU 先跑完 ICB 生成、再转 GPU 生成"的路线，属预留）。
 - 读 AABB 行的 **GPU 剔除 pass 尚未接**（尾巴项：`ComputeFrustumCull` 改读引擎池）。
 
+**B3-iii 侦察结论（2026-10-02，未动手 —— 规模订正 + 待拍板一点）**
+
+上一版本方案把 B3-iii 记成"ECS 读 ID 化 + 删三指针（5 个消费点）"。实测**远不止**：那三个指针是
+**批处理的主键**，删它们等于改批排序 / 聚簇语义：
+
+| 耦合点 | 现状（实测） | 改写方向 |
+|---|---|---|
+| `RenderItem::Compare`（`src/ecs/core/RenderItem.cpp:8-52`） | **批排序主键** = `*GeometryDataBuffer <=> *…`（内容比较：geometry_id / vdm / vab / ibo）+ `*GeometryDrawRange <=>`（vertex_offset / first_index / counts）。注释明写"必须内容比较：指针比较会打散同几何项 ⇒ 失去实例化合并" | 改比较**行派生 POD 键**（`geometry_id` + `vertex_base`/`index_base`/`vertex_count`/`index_count`/`is_indexed`） |
+| `DrawBatch::geom_data_buffer` / `geom_draw_range` + `Set(...)`（`PipelineMaterialRenderer.h:62-79`） | 每批持两个 CPU 对象指针；`Set()` 再由 `data_buffer->geometry_id` 定 `geometry_id` | 换成 POD `MeshDrawKey`；**4 个建批点**（`PrimitiveBatchPipeline.cpp:491/552/570/588`）改传键 |
+| `BatchRequiresIndirectCommands`（`PrimitiveBatchPipeline.cpp:56-63`） | "任一 item 有 `data_buffer` ⇒ 需要 ICB" | "任一 item 的键有 `geometry_id`" |
+| 聚簇循环（`PrimitiveBatchPipeline.cpp:408-470`） | 按 `*data_buffer != *next` / `*draw_range != *next` 断簇，并顺手修 `data_buffer->geometry_id` | 按键相等断簇（POD 比较） |
+| ICB 组数（`PrimitiveBatchPipeline.cpp:714-728`） | `range->index_count > 0 ? index_count : vertex_count` | 键的 `DrawElementCount()`（= 行里 `is_indexed ? index_count : vertex_count`，**逐位等价**） |
+| 4-ID 填充 + 列武装（`RenderPrimitiveCollectSystem.cpp:216-254` / `:2314-2341`） | `EnsureRuntimeGeometryFromAsset()` 每帧按程序解析几何缓冲；4ID 的 `geometry_id` 经 `geom_buf->geometry_id` 取（带三级回退） | 采集期**从行填 `item->draw_key`**；`geometry_id` 直读 `GeometryData::GetGeometryID()`；删该武装函数与其 **3 个调用点**（`:2187` / `:2228` / `:2280`） |
+
+**需要拍板的一点**：排序/聚簇键改"行派生 POD 键"后，**每实体 `GeometryDrawRange` 的差异不再参与判定**
+（同 asset ⇒ 同几何 ⇒ 同一行 ⇒ 必然同键）。对纯几何路径**等价**（现状同 asset 的两个 CPU 副本内容也相同）；
+唯一例外是**文本 / 线段**那两条"每批重写同一个几何的行"的路径（`TextRenderPipeline.cpp:907` /
+`LineRenderPipeline.cpp:655`）——它们的批不参与这条排序（单批），故实际影响为零，
+但"共享行被每批改写"本身就是历史遗留，正是你那句"CPU 也以这套数据跑完 ICB 生成"要收敛的对象。
+**建议**：按上表改（行键 = 唯一判据），并把"文本/线段每批改写共享行"记成独立欠账（不属 B3-iii）。
+
+**为什么本批停在"侦察"**：该批会改**实例化合并的判定**（行为可见），按"先证前提再改"的规矩，
+此规模与语义需你点头后再动手；当前树保持 B3-ii 已验证状态（本轮试改的 6 个文件已 `git checkout` 还原）。
+
 **B3 剩余分批**（原判据不变）
 
 | 批 | 内容 | 判据 |
@@ -420,3 +444,4 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 | 2026-10-02 | **B3 定稿（用户拍板）**：Geometry 的 GPU 可用部分 ID 化 —— 先不扩 8ID、`data_*` 上 GPU、`GeometryAABB` 独立池与 MeshDrawParams **同 ID 索引**（`ActivateAllRows` 结构保证 + 成对写入 + 负半径哨兵）；行 112→128 B；`GlobalAddresses` 加 `addr_geometry_aabb`（步长不变）；**范围订正**：不需要 arena 宿主/值句柄/173 调用点迁移。 |
 | 2026-10-02 | **B3-i 完成**：`GlobalSSBOType::GeometryAABB` + 池（`ActivateAllRows` 静态行空间、`reserve 0`）+ `GlobalAddresses::addr_geometry_aabb`（48→56 B，步长不变）+ GLSL 同步 + 两条自动扩展覆盖性断言；build rc=0/0 error、门 42 PASS/0 FAIL、10 测试 rc=0、4 示例对拍 0（探针 `rows=16384 AABB 32 B/行`）；反证两处（容量不等 ⇒ 运行期不变量红；缺 name case ⇒ 编译期断言红）；**实测修掉 `ActivateAllRows` 与 `reserve_rows` 的机制冲突**。 |
 | 2026-10-02 | **B3-ii 完成**：`MeshDrawParams` 112→**128 B**（拆 `total_vertices` + 补 `data_*`，X-macro 单源 + 三处 GLSL 读侧 + 三处写侧）；AABB 行收敛为唯一写入口 `RefreshGeometryAABBRow()`（实测修掉"Create 先于 SetBoundingVolumes"的顺序坑，PBRSpheres 10/21 行真值、半径 1.7321 与 CPU 同式逐位一致）；`bounding_radius` 改按需反算；门 42/0、10 测试 + Test 29（25 条契约含 6 条禁复活）、四示例 0 error/对拍 0；反证：抽掉刷新 ⇒ 真值 10→0。 |
+| 2026-10-02 | **B3-iii 侦察（未动手）**：规模订正 —— 三指针是**批排序/聚簇主键**（`RenderItem::Compare` + `DrawBatch::Set` 的 4 个建批点 + 采集侧 4ID 填充/列武装 3 处），删它们等于改实例化合并判定；方向 = 行派生 POD 键（ICB 组数逐位等价）；待拍板：同 asset 的每实体 draw range 差异是否退出判定；本轮试改已还原，树保持 B3-ii 已验证状态。 |
