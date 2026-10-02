@@ -183,7 +183,7 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 |---|---|---|---|
 | **T1** | `EntityGPU` **结构定义**（**纯 C++ struct** + `static_assert(sizeof==128)` / `alignof==64` + 逐字段 `offsetof` + `flags` 位表）—— GLSL 镜像**不随本期**（无读者 ⇒ 与派生表一起等 T3） | 编译期断言过；探针打印 `sizeof`/`alignof`/四个 `offsetof` 与断言一致；**不接线、无字段读写者**（结构本体 + 断言是"零成本定稿"，不算投机 API） | tag `b8-t1` |
 | **T2-a** ✅ | 实体分配改块式（`EntityManager` 的 `unique_ptr<Entity>` ⇒ **块池**，块 = 64 实体，块内地址稳定；构造改就地 placement-new、析构改显式调 `~Entity()`） | ✅ **已完成（2026-10-02）**：`块/实体` 5.818 → **4.834**（边际 5.781 → **4.797**）、`B/实体` 持平（实体对象仍在堆上，只压块数）、`sizeof(Entity)` 168 B 不变；4 个实体生命周期测试 rc=0；PBRSpheres 0 真 error + **像素正常**；探针内置**地址稳定性守卫**（每 64 个边界复核第 0 个 `Entity*`，mismatch 期望 0） | tag `b8-t2a` |
-| **T2-b** | `Entity` 的每实体 `UnorderedMap` ⇒ 按 `ComponentType` 的固定槽数组（7 槽，`COMPONENT_TYPE_COUNT`） | 探针 `块/实体` 再降；`GetComponent/HasComponent/RemoveComponent/DetachAllComponents` 语义对拍逐项等价 | tag `b8-t2b` |
+| **T2-b** ✅ | `Entity` 的每实体 `UnorderedMap` ⇒ **小数组 + 线性扫描**（键仍是 `typeid(T).hash_code()`） | ✅ **已完成（2026-10-02）**：`块/实体` 4.834 → **2.834**、`B/实体` 313.4 → **209.5**（−33%）、`sizeof(Entity)` 168 → **112 B**；5 个测试 rc=0；PBRSpheres 像素正常 | tag `b8-t2b` |
 | **T2-c** | 剩余堆组件（`GeometryData`/`MaterialData`/`LinesComponent`/`TextComponent`/`ShadowProxy`）⇒ 内联薄记录（行号/句柄）；**`CameraComponent` 保持 `shared_ptr`**（§4 理由） | 探针 `块/实体` 目标 ≤ 2 且 `B/实体` 明显下降；访问器返回值语义对拍；固定验证集全绿 | tag `b8-t2c` |
 | **T3** | `EntityGPU` **派生表**（世界私有 + `addr_entity_gpu` + 写入路径 + 脏集合上传） | **前置 = 出现第一个真消费者**（届时随消费者同批做）；本期仅登记设计与"五处连带面"清单 | tag `b8-t3` |
 | **T4** | `.ulrescene` 直载 | **前置 = (b) 完成**；判据见 §5.2 | tag `b8-t4` |
@@ -235,6 +235,29 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 ---
 
 ## 9.5 T2 完成记录
+
+### T2-b（2026-10-02）—— 每实体哈希表 ⇒ 小数组 + 线性扫描 ✅
+
+- **⚠ 设计稿 v1 的写法不可行（记录在此，避免后人照做）**：原文写「按 `ComponentType` 的固定 7 槽数组」——
+  实测**不成立**：`LinesComponent` / `TextComponent` / `ShadowProxy` **没有类型号**（`ComponentTypeOf<T>` 无特化
+  ⇒ 都落到 `ComponentType::None` ⇒ 全挤槽 0 冲突），而给它们补类型号会与「文本/线条属动态 GEOMETRY，以后再说」
+  的定案冲突、并污染 (scope,type) 台账；同时 `CameraComponent` 必须保持 `shared_ptr`（相机槽拥有者是
+  `weak_ptr<CameraComponent>`）。⇒ 索引键**仍用 `typeid(T).hash_code()`**（语义与旧版逐字一致）。
+- **落成形态**：`std::vector<ComponentEntry>`（`{ std::size_t type_hash; std::shared_ptr<Component> component; }`）
+  + 三个私有助手（`FindComponentEntry` ×2 / `EraseComponentEntry`，删条目用**尾替 + pop_back**，顺序无关 ⇒ O(1) 不留空洞）。
+  组件数实测 ≤4 ⇒ 线性扫描比哈希更快，且省掉哈希表**每次插入的桶数组 + 节点**两次分配。
+- **实测（探针 [T0]，`[Entity + Transform(Static)]`）**：
+  | 指标 | T2-a 后 | T2-b 后 |
+  |---|---|---|
+  | 块/实体（n=10000） | 4.834 | **2.834** |
+  | 边际 块/实体 | 4.797 | **2.797** |
+  | B/实体 | 313.4 | **209.5**（−33%） |
+  | `sizeof(Entity)` | 168 B | **112 B** |
+- **验证**：5 个测试 rc=0（`TestCSMIncrementalPass` / `TestComponentMask` / `TestTransformFlatStorage` /
+  `TestRenderItemDataStorage` / `TestVisibilityStorage`）；`PBRSpheres` 0 真 error + **像素与 T2-a 一致**；
+  地址稳定性守卫仍 `mismatch=0`。
+- **剩余 2.8 块/实体**：实体对象 1 块（每 64 个共享）+ 组件对象各 1 块（`make_shared` 自身）+ 注册/侧表 ⇒ 下一刀是 **T2-c**
+  （剩余堆组件 `GeometryData`/`MaterialData`/`LinesComponent`/`TextComponent`/`ShadowProxy` ⇒ 内联薄记录）。
 
 ### T2-a（2026-10-02）—— 实体分配改块池 ✅
 

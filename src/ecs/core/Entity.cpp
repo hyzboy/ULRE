@@ -39,14 +39,17 @@ namespace hgl
             if (!component)
                 return;
 
-            auto *existing = components.GetValuePointer(type_hash);
-            if (existing && *existing)
+            ComponentEntry *existing = FindComponentEntry(type_hash);
+            if (existing && existing->component)
             {
-                UnregisterFromContext(type_hash, existing->get());
-                (*existing)->OnDetach();
+                UnregisterFromContext(type_hash, existing->component.get());
+                existing->component->OnDetach();
             }
 
-            components[type_hash] = component;
+            if (existing)
+                existing->component = component;
+            else
+                components.push_back(ComponentEntry{type_hash, component});
             component->SetOwner(id, context);
             component->SetOwnerEntity(this);
             component->SetComponentSlot(slot);      // 槽位随挂载写入（单一写者）
@@ -60,9 +63,9 @@ namespace hgl
         {
             uint32_t expected = 0;
 
-            for (const auto& pair : components)
-                if (pair.second)
-                    expected = ComponentMaskAdd(expected,pair.second->GetComponentSlot());
+            for (const auto& entry : components)
+                if (entry.component)
+                    expected = ComponentMaskAdd(expected,entry.component->GetComponentSlot());
 
             return expected == component_mask;
         }
@@ -70,13 +73,44 @@ namespace hgl
         void Entity::GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const
         {
             out.clear();
-            out.reserve(static_cast<size_t>(components.GetCount()));
-            for (const auto& pair : components)
+            out.reserve(components.size());
+            for (const auto& entry : components)
             {
-                out.push_back(pair.second);
+                out.push_back(entry.component);
             }
         }
 
+
+        Entity::ComponentEntry *Entity::FindComponentEntry(std::size_t type_hash)
+        {
+            for (auto& entry : components)
+                if (entry.type_hash == type_hash)
+                    return &entry;
+
+            return nullptr;
+        }
+
+        const Entity::ComponentEntry *Entity::FindComponentEntry(std::size_t type_hash) const
+        {
+            for (const auto& entry : components)
+                if (entry.type_hash == type_hash)
+                    return &entry;
+
+            return nullptr;
+        }
+
+        void Entity::EraseComponentEntry(std::size_t type_hash)
+        {
+            for (auto it = components.begin(); it != components.end(); ++it)
+            {
+                if (it->type_hash == type_hash)
+                {
+                    *it = components.back();        // 顺序无关 ⇒ 尾替（O(1)，不留空洞）
+                    components.pop_back();
+                    return;
+                }
+            }
+        }
 
         void Entity::DetachAllComponents(bool notify_systems)
         {
@@ -85,25 +119,25 @@ namespace hgl
                      GetName().c_str(),
                      id.index,
                      id.generation,
-                     static_cast<size_t>(components.GetCount()),
+                     components.size(),
                      notify_systems ? 1 : 0);
 #endif
 
-            for (auto& pair : components)
+            for (auto& entry : components)
             {
-                if (!pair.second)
+                if (!entry.component)
                     continue;
 
 #if ULRE_ECS_DEBUG_API
                 GLogDebug("[Entity] Detach component entity='%s' comp='%s'",
                           GetName().c_str(),
-                          pair.second->GetName().c_str());
+                          entry.component->GetName().c_str());
 #endif
 
-                UnregisterFromContext(pair.first, pair.second.get());
-                pair.second->OnDetach();
+                UnregisterFromContext(entry.type_hash, entry.component.get());
+                entry.component->OnDetach();
             }
-            components.Clear();
+            components.clear();
             component_mask = 0;                     // 全卸 ⇒ 掩码归零
             MarkSceneDirty();
         }

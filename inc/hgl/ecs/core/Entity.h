@@ -5,7 +5,7 @@
 #include<hgl/ecs/core/EntityHandle.h>
 #include<hgl/ecs/support/ComponentTypeTable.h>
 #include<memory>
-#include <hgl/type/UnorderedMap.h>
+#include<vector>
 #include<typeinfo>
 #include<typeindex>
 
@@ -30,7 +30,27 @@ namespace hgl
             uint32_t component_mask = 0;
 
             // Use hash_code instead of string for faster lookups
-            hgl::UnorderedMap<std::size_t, std::shared_ptr<Component>> components;
+            /// 组件条目（T2-b：「每实体哈希表」⇒ **小数组 + 线性扫描**）。
+            /// 依据：实测每实体组件数 ≤4（Transform 已无组件对象、相机在世界级），线性扫描比哈希更快，
+            /// 且省掉哈希表每次插入的**桶数组 + 节点**两次分配（探针「块/实体」的主要残余来源）。
+            /// 为什么不做「按 `ComponentType` 的固定 7 槽数组」：`Lines`/`Text`/`ShadowProxy` **没有类型号**
+            /// （`ComponentTypeOf<T>` 无特化 ⇒ 都落到 `None`），补类型号会与「文本/线条属动态 GEOMETRY，以后再说」
+            /// 的定案冲突并污染 (scope,type) 台账；相机还必须保持 `shared_ptr`（相机槽拥有者是
+            /// `weak_ptr<CameraComponent>`）⇒ 索引键仍用 `typeid(T).hash_code()`，语义与旧版逐字一致。
+            struct ComponentEntry
+            {
+                std::size_t                type_hash = 0;
+                std::shared_ptr<Component> component;
+            };
+
+            std::vector<ComponentEntry> components;
+
+            /// 线性查找（组件数 ≤4；返回内存地址，生命周期同 `components`）
+            ComponentEntry       *FindComponentEntry(std::size_t type_hash);
+            const ComponentEntry *FindComponentEntry(std::size_t type_hash) const;
+
+            /// 按 type_hash 摘除条目（不存在则 no-op）
+            void EraseComponentEntry(std::size_t type_hash);
             ECSContext *context = nullptr;   ///< 所属的 ECSContext，不拥有
 
             void RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp);
@@ -79,9 +99,9 @@ namespace hgl
             template<typename T>
             std::shared_ptr<T> GetComponent() const
             {
-                auto *component = components.GetValuePointer(typeid(T).hash_code());
-                if (component)
-                    return std::static_pointer_cast<T>(*component);
+                const ComponentEntry *entry = FindComponentEntry(typeid(T).hash_code());
+                if (entry && entry->component)
+                    return std::static_pointer_cast<T>(entry->component);
                 return nullptr;
             }
 
@@ -89,7 +109,8 @@ namespace hgl
             template<typename T>
             bool HasComponent() const
             {
-                return components.ContainsKey(typeid(T).hash_code());
+                const ComponentEntry *entry = FindComponentEntry(typeid(T).hash_code());
+                return entry && entry->component != nullptr;
             }
 
             /// Remove component by type
@@ -97,13 +118,13 @@ namespace hgl
             void RemoveComponent()
             {
                 const size_t type_hash = typeid(T).hash_code();
-                auto *component = components.GetValuePointer(type_hash);
-                if (!component)
+                ComponentEntry *entry = FindComponentEntry(type_hash);
+                if (!entry || !entry->component)
                     return;
 
-                UnregisterFromContext(type_hash, component->get());
-                (*component)->OnDetach();
-                components.DeleteByKey(type_hash);
+                UnregisterFromContext(type_hash, entry->component.get());
+                entry->component->OnDetach();
+                EraseComponentEntry(type_hash);
                 component_mask = ComponentMaskRemove(component_mask,ComponentTypeOf<T>::value);   // 掩码：唯一移除路径
                 MarkSceneDirty();
             }
