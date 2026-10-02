@@ -1,7 +1,8 @@
 // ComputeFrustumCull (Step 3)
 //
 // 验证内容：
-// 1. 平铺 AABB 与 4-ID 输入：DrawItem4ID 候选表、WorldMatrices (L2W) 表、GeometryAABB 包围盒表
+// 1. 平铺 4-ID 输入：DrawItem4ID 候选表、WorldMatrices (L2W) 表；
+//    几何 AABB **不再自建**：直接读引擎的 GeometryAABB 全局池（B3 一号双表，行号 = geometry_id）
 // 2. Compute Shader Frustum Culling：读取 6 个视锥平面（Vulkan RH_ZO 语义），执行投影半径包围盒剔除
 // 3. GPU Compaction 紧凑化输出：通过 atomicAdd(draw_count, 1) 无锁紧凑写入 Visible 4-ID Buffer 并生成 Indirect Commands
 // 4. 管线内存屏障：
@@ -68,7 +69,9 @@ namespace
     static_assert(sizeof(CullPushConstants) == 112, "CullPushConstants 布局必须与 GLSL push_constant block 一致");
 
     // 7 张表地址的表（写一次）：compute 侧只有 push constant + BDA，无描述符集；
-    // 高 128B push constant 放不下 7 个地址，因此地址本身放在一张小表里，pc 只下发表的地址。
+    // 高 128B push constant 放不下 7 个地址，因此地址本身放在一张小表里，pc 只下发表的地址；
+    // 其中 geometry_aabbs 填的是**引擎池基址**（`GlobalSSBOBufferRegistry::GetGPUBase(GeometryAABB)`，
+    // 与 `GlobalAddresses::addr_geometry_aabb` 同源），示例不再自建 AABB 表。
     struct CullAddressTable
     {
         uint64_t candidates;
@@ -95,6 +98,7 @@ struct DrawItem4ID {
     uint texture_id;
 };
 
+// 与 hgl::mtl::GeometryAABB 一一对应（std430，32B）；本表 = 引擎 GeometryAABB 全局池
 struct GeometryAABB {
     vec4 center;
     vec4 extents;
@@ -234,7 +238,7 @@ class ComputeFrustumCullApp : public WorkObject
     // GPU Compute 资源（全部经 BDA 寻址：地址在 CullAddressTable 里，pc 只下发表地址）
     DeviceBuffer           *candidate_buffer          = nullptr; // 候选 4-ID 表
     DeviceBuffer           *world_matrices_buffer     = nullptr; // L2W 表
-    DeviceBuffer           *geometry_aabbs_buffer     = nullptr; // 几何 AABB 表
+    // （几何 AABB 表已退役：改用引擎 GeometryAABB 全局池，按 geometry_id 索引）
     DeviceBuffer           *visible_buffer            = nullptr; // 紧凑输出 4-ID
     DeviceBuffer           *count_buffer              = nullptr; // draw count
     IndirectMeshTaskBuffer *indirect_cmds_buffer      = nullptr; // 间接绘制命令（Storage | Indirect）
@@ -252,7 +256,8 @@ class ComputeFrustumCullApp : public WorkObject
     // CPU 侧镜像（用于每帧比对真值）
     DrawItem4ID  cpu_candidates[TOTAL_CUBES];
     glm::mat4    cpu_world_matrices[TOTAL_CUBES];
-    GeometryAABB cpu_geometry_aabbs[TOTAL_CUBES];
+    uint32_t                 cube_geometry_id = 0;   // = MeshDrawParams 行号 = GeometryAABB 行号（一号双表）
+    GlobalSSBOBufferRegistry *ssbo_registry  = nullptr; // 引擎池入口（AABB 表 = 引擎的，不自建）
 
     float    camera_angle     = 0.0f;
     uint64_t tick_frame_count = 0;
@@ -280,11 +285,32 @@ private:
             return false;
 
         auto *gc = GetGraphicsContext();
-        auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-        if (pool && device)
-            geometry->EnsureMeshDrawParams(pool, device);
+        ssbo_registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
+        if (ssbo_registry && device)
+            geometry->EnsureMeshDrawParams(ssbo_registry, device);
 
         geometry_manager->Add(geometry);
+
+        // B3 尾巴：候选的 geometry_id = MeshDrawParams 行号 = GeometryAABB 行号（一号双表），
+        // 因此剔除 Compute Shader 直接按 item.geometry_id 索引**引擎的** AABB 池。
+        cube_geometry_id = geometry->GetGeometryID();
+        if (cube_geometry_id == 0)
+        {
+            GLogError(u8"[ComputeFrustumCull] 立方体几何未拿到 MeshDrawParams 行号（geometry_id==0）");
+            return false;
+        }
+
+        const auto *aabb_row = ssbo_registry ? ssbo_registry->GetGeometryAABB(cube_geometry_id) : nullptr;
+        if (!aabb_row)
+        {
+            GLogError(u8"[ComputeFrustumCull] 引擎 GeometryAABB 池缺少 geometry_id=%u 的行", cube_geometry_id);
+            return false;
+        }
+
+        GLogInfo(u8"[ComputeFrustumCull] 引擎 GeometryAABB 行就位：geometry_id=%u center=(%.4f,%.4f,%.4f) r=%.4f extents=(%.4f,%.4f,%.4f)",
+                 cube_geometry_id,
+                 aabb_row->center[0],aabb_row->center[1],aabb_row->center[2],aabb_row->center[3],
+                 aabb_row->extents[0],aabb_row->extents[1],aabb_row->extents[2]);
         return true;
     }
 
@@ -315,7 +341,7 @@ private:
 
             // CPU 侧镜像初始化
             cpu_candidates[i].transform_id = i;
-            cpu_candidates[i].geometry_id  = 0;
+            cpu_candidates[i].geometry_id  = cube_geometry_id;   // 行号（AABB 从引擎池按此索引取）
             cpu_candidates[i].material_id  = 0;
             cpu_candidates[i].texture_id   = 0;
 
@@ -323,16 +349,6 @@ private:
             glm::mat4 s = glm::scale(glm::mat4(1.0f), glm::vec3(CUBE_SCALE));
             cpu_world_matrices[i] = t * s;
 
-            // 立方体局部 AABB：中心 (0,0,0)，半长宽高 0.5
-            cpu_geometry_aabbs[i].center[0] = 0.0f;
-            cpu_geometry_aabbs[i].center[1] = 0.0f;
-            cpu_geometry_aabbs[i].center[2] = 0.0f;
-            cpu_geometry_aabbs[i].center[3] = 0.0f;
-
-            cpu_geometry_aabbs[i].extents[0] = 0.5f;
-            cpu_geometry_aabbs[i].extents[1] = 0.5f;
-            cpu_geometry_aabbs[i].extents[2] = 0.5f;
-            cpu_geometry_aabbs[i].extents[3] = 0.0f;
         }
     }
 
@@ -433,15 +449,6 @@ private:
             BufferAllocPolicy::CPUVisible
         );
 
-        geometry_aabbs_buffer = dev->CreateBuffer(
-            "ComputeFrustumCull.AABBsBuf",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            sizeof(GeometryAABB) * TOTAL_CUBES,
-            sizeof(GeometryAABB) * TOTAL_CUBES,
-            cpu_geometry_aabbs,
-            BufferAllocPolicy::CPUVisible
-        );
-
         // 2. 创建 VisibleBuffer (紧凑输出 4-ID)
         visible_buffer = dev->CreateBuffer(
             "ComputeFrustumCull.VisibleBuf",
@@ -507,7 +514,7 @@ private:
             BufferAllocPolicy::CPUVisible
         );
 
-        if (!candidate_buffer || !world_matrices_buffer || !geometry_aabbs_buffer ||
+        if (!candidate_buffer || !world_matrices_buffer ||
             !visible_buffer || !count_buffer || !indirect_cmds_buffer ||
             !visible_l2w_indices_buffer || !mesh_draw_params_buffer || !material_data_rows_buffer)
         {
@@ -519,7 +526,7 @@ private:
         CullAddressTable address_table{};
         address_table.candidates          = dev->GetBufferDeviceAddressAligned16(candidate_buffer          ->GetBuffer());
         address_table.world_matrices      = dev->GetBufferDeviceAddressAligned16(world_matrices_buffer     ->GetBuffer());
-        address_table.geometry_aabbs      = dev->GetBufferDeviceAddressAligned16(geometry_aabbs_buffer     ->GetBuffer());
+        address_table.geometry_aabbs      = ssbo_registry ? ssbo_registry->GetGPUBase(GlobalSSBOType::GeometryAABB) : 0;  // 引擎池基址
         address_table.visible_items       = dev->GetBufferDeviceAddressAligned16(visible_buffer            ->GetBuffer());
         address_table.draw_count          = dev->GetBufferDeviceAddressAligned16(count_buffer              ->GetBuffer());
         address_table.indirect_commands   = dev->GetBufferDeviceAddressAligned16(indirect_cmds_buffer      ->GetBuffer());
@@ -585,7 +592,7 @@ public:
             if (compute_cmd)                delete compute_cmd;
             if (candidate_buffer)           delete candidate_buffer;
             if (world_matrices_buffer)      delete world_matrices_buffer;
-            if (geometry_aabbs_buffer)      delete geometry_aabbs_buffer;
+            // （原自建 AABB 表已退役：表 = 引擎 GeometryAABB 池，不归示例释放）
             if (visible_buffer)             delete visible_buffer;
             if (count_buffer)               delete count_buffer;
             if (indirect_cmds_buffer)       delete indirect_cmds_buffer;
@@ -726,14 +733,24 @@ public:
 
         for (uint32_t i = 0; i < TOTAL_CUBES; ++i)
         {
-            glm::vec3 world_center = glm::vec3(cpu_world_matrices[i] * glm::vec4(cpu_geometry_aabbs[i].center[0],
-                                                                                 cpu_geometry_aabbs[i].center[1],
-                                                                                 cpu_geometry_aabbs[i].center[2],
+            // B3 尾巴：CPU 真值读**与 GPU 同一个源**（引擎 GeometryAABB 池行），
+            // 因此这里的对拍校验的是剔除数学，而不是表的一致性。
+            const auto *aabb_row = ssbo_registry ? ssbo_registry->GetGeometryAABB(cpu_candidates[i].geometry_id) : nullptr;
+            if (!aabb_row)
+            {
+                GLogError(u8"[ComputeFrustumCull] CPU 真值取引擎 AABB 行失败：geometry_id=%u",
+                          cpu_candidates[i].geometry_id);
+                return;
+            }
+
+            glm::vec3 world_center = glm::vec3(cpu_world_matrices[i] * glm::vec4(aabb_row->center[0],
+                                                                                 aabb_row->center[1],
+                                                                                 aabb_row->center[2],
                                                                                  1.0f));
             glm::mat3 m = glm::mat3(cpu_world_matrices[i]);
-            glm::vec3 ext(cpu_geometry_aabbs[i].extents[0],
-                          cpu_geometry_aabbs[i].extents[1],
-                          cpu_geometry_aabbs[i].extents[2]);
+            glm::vec3 ext(aabb_row->extents[0],
+                          aabb_row->extents[1],
+                          aabb_row->extents[2]);
 
             bool visible = true;
             for (int p = 0; p < 6; ++p)

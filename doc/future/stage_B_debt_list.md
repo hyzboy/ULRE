@@ -223,6 +223,19 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 
 ---
 
+### 2.7 示例侧仍有自建几何 AABB 表（2026-10-02 记录）
+
+`example/ApiValidation/ComputeAsteroidBelt.cpp`：`cpu_geometry_aabbs[GEOMETRY_VARIANT_COUNT]`（10 个变体，
+extents 来自 `default_extents[]`）+ 自建 `geometry_aabbs_buffer` + 地址表 `geometry_aabbs` 字段 +
+GLSL `GeometryAABB/GeometryAABBsRef` + 候选用**变体下标** `geom_id` 索引该表。
+
+**同类欠账已在 `ComputeFrustumCull` 消除**（见 `stage_B_execution_plan.md` 的「B3 尾巴」；该示例改为读引擎
+`GeometryAABB` 池、候选 `geometry_id` = 引擎行号、CPU 真值同源）。
+
+**改造障碍（先验证再动手）**：该示例的 `planet_geometry` 来自**模型加载**，引擎池里这一行是否有真值未验证
+（可能是"未设"哨兵 `center.w < 0`）；若模型路径不设 `SetBoundingVolumes`，需先让加载路径写入包围体，
+否则剔除会按退化 AABB 走。内置的 10 个几何走 inline geometry（`CreateWithAABB`）应已就位。
+
 ## 3. stage B 的验收口径（沿用 stage A 硬纪律）
 
 `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1058-1062` 与 `:1156`：

@@ -422,6 +422,36 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 **文本 / 线段 = 动态 GEOMETRY**：这两条路径仍是"每批改写同一个几何的行"（`TextRenderPipeline.cpp:907` / `LineRenderPipeline.cpp:655`），
 行被当每批计数器用（谁最后写谁赢）。收敛方向 = 行每几何一份不可变、绘制量差异进每 draw item 的数据；本批不动。
 
+**B3 尾巴（2026-10-02）—— ✅ `ComputeFrustumCull` 改读引擎 `GeometryAABB` 池（自建 AABB 表退役，二号表被 GPU 真正消费）**
+
+一、改动（单文件 `example/ApiValidation/ComputeFrustumCull.cpp`，13 处）
+
+- **删**：成员 `cpu_geometry_aabbs[64]`、成员 `geometry_aabbs_buffer`、其 `CreateBuffer` 调用、空指针检查项、清理分支、以及"把自己缓冲地址填进地址表"那行 ⇒ 示例不再自建 AABB 表；
+- **改**：地址表 `geometry_aabbs` = `registry->GetGPUBase(GlobalSSBOType::GeometryAABB)`
+  （与 `GlobalAddresses::addr_geometry_aabb` 同源）；候选 `geometry_id` = `geometry->GetGeometryID()`
+  （MeshDrawParams 行号 = GeometryAABB 行号，一号双表）；**CPU 真值也从 `registry->GetGeometryAABB(id)` 取行**
+  ⇒ 与 GPU 同源，配对校验的是剔除数学而非表的一致性；
+- **加**：创建期校验该行存在并打印实测值（缺行即 fail-fast，不静默）。
+
+二、验证（实测数字）
+
+- 引擎行实测：`geometry_id=1 center=(0,0,0) r=0.8660 extents=(0.5,0.5,0.5)`（r = |(0.5,0.5,0.5)|）
+  —— 与示例原先硬编码的 ±0.5 **逐位一致**；
+- 示例自带每帧双面对拍（GPU 读回 visible 数 vs CPU 真值）：**PASS=8 / FAIL=0**（8 秒窗口）；
+- **指纹等价**：可见数序列与基线仅 2/8 帧差 1 个元素；而**同一新二进制连跑两次**同样在基线之外互差（45/44）
+  ⇒ 判定为运行间抖动（时间驱动相机 + 帧时差），非本次改动；
+- **反证（证明 CS 真按 `item.geometry_id` 读引擎池）**：把地址临时 `+32B`（指向下一行 = 未初始化行）⇒
+  `MISMATCH: Frame 1, GPU visible=28, CPU visible=36`、**7 FAIL / 1 PASS**（GPU 结果随该地址变化）；
+  逐字节还原（sha256 相同）后回到 **PASS=8 / FAIL=0**；
+- 构建 rc=0 / 0 error；仅示例文件改动、**引擎字节未动** ⇒ 门 42/0 与 10 测试沿用同一份引擎字节上一轮的结果。
+
+三、遗留（已记入欠账清单 §2.7）
+
+`example/ApiValidation/ComputeAsteroidBelt.cpp` 有同类自建 AABB 表（`cpu_geometry_aabbs[10]` + 10 个变体
+`default_extents`），本批未动。障碍：其 `planet_geometry` 来自模型加载，**池行是否有真值未验证**（可能是"未设"哨兵）
+⇒ 改造前须先确认该几何的 `SetBoundingVolumes` 路径。另外该示例的候选用变体下标 `geom_id` 索引自建表，
+改造时需一并换成引擎行号。
+
 **B3 剩余分批**（原判据不变）
 
 | 批 | 内容 | 判据 |
@@ -484,4 +514,5 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 | 2026-10-02 | **B3-i 完成**：`GlobalSSBOType::GeometryAABB` + 池（`ActivateAllRows` 静态行空间、`reserve 0`）+ `GlobalAddresses::addr_geometry_aabb`（48→56 B，步长不变）+ GLSL 同步 + 两条自动扩展覆盖性断言；build rc=0/0 error、门 42 PASS/0 FAIL、10 测试 rc=0、4 示例对拍 0（探针 `rows=16384 AABB 32 B/行`）；反证两处（容量不等 ⇒ 运行期不变量红；缺 name case ⇒ 编译期断言红）；**实测修掉 `ActivateAllRows` 与 `reserve_rows` 的机制冲突**。 |
 | 2026-10-02 | **B3-ii 完成**：`MeshDrawParams` 112→**128 B**（拆 `total_vertices` + 补 `data_*`，X-macro 单源 + 三处 GLSL 读侧 + 三处写侧）；AABB 行收敛为唯一写入口 `RefreshGeometryAABBRow()`（实测修掉"Create 先于 SetBoundingVolumes"的顺序坑，PBRSpheres 10/21 行真值、半径 1.7321 与 CPU 同式逐位一致）；`bounding_radius` 改按需反算；门 42/0、10 测试 + Test 29（25 条契约含 6 条禁复活）、四示例 0 error/对拍 0；反证：抽掉刷新 ⇒ 真值 10→0。 |
 | 2026-10-02 | **B3-iii 侦察（未动手）**：规模订正 —— 三指针是**批排序/聚簇主键**（`RenderItem::Compare` + `DrawBatch::Set` 的 4 个建批点 + 采集侧 4ID 填充/列武装 3 处），删它们等于改实例化合并判定；方向 = 行派生 POD 键（ICB 组数逐位等价）；待拍板：同 asset 的每实体 draw range 差异是否退出判定；本轮试改已还原，树保持 B3-ii 已验证状态。 |
+| 2026-10-02 | **B3 尾巴完成**：`ComputeFrustumCull` 自建 AABB 表退役、改读引擎 `GeometryAABB` 池（一号双表的二号表被 GPU 真正消费）；每帧双面对拍 PASS=8/FAIL=0、反证（地址 +32B ⇒ 7 FAIL、GPU visible 36→28）逐字节还原；遗留 `ComputeAsteroidBelt` 同类表（池行真值未验证）。 |
 | 2026-10-02 | **B3-iii 完成**：批排序/聚簇/ICB/命令四处改读**行派生 POD 键**（`RenderItem::MeshDrawKey`），删 `GeometryData` 三指针 + 逐帧武装函数（12 文件）；build rc=0/0 error、门 42/0、10 测试 + Test 30（18 条契约/6 禁复活）、示例帧代理与基线一致；**过程教训：构建失败留下的半新半旧二进制伪装成 8.5× 性能回归**（A/B 两侧必须全新构建）。 |
