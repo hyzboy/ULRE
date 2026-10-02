@@ -60,4 +60,7 @@ namespace hgl::ecs
     bool CanReceiveShadow(const Entity *owner);
     /// 缺省：未挂载 ShadowProxy ⇒ 倍率 1.0f
     float GetShadowBiasMultiplier(const Entity *owner);
+
+    /// T2-c：登记类型号（**CPU-only**：无 GPU 行、不写 `EntityGPU.row[]`）。
+    template<> struct ComponentTypeOf<ShadowProxy> { static constexpr ComponentType value = ComponentType::ShadowProxy; };
 }//namespace hgl::ecs

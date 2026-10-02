@@ -5414,6 +5414,82 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kB7Contracts) / sizeof(kB7Contracts[0])));
     }
 
+    // ──────────────────────────────────────────────
+    // Test 41: T2-c 前置契约（`Lines` / `Text` / `ShadowProxy` 补 **CPU-only 类型号**）
+    //
+    // 背景：T2-b 之后的实体侧「按类型句柄」要求每个组件都有类型号，而这三个组件
+    // 原本没有（`ComponentTypeOf<T>` 无特化 ⇒ 都落 `None`）。T2-c 给它们**登记类型号**，
+    // 但保持 **CPU-only**：`gpu_row_bytes = 0`、不建行空间、不写 `EntityGPU.row[]`
+    // —— 与用户 2026-09-30「文本/线条属动态 GEOMETRY，以后再说」的定界一致。
+    //
+    // **CPU-only 是被编码进 needle 的**：行宽列（第 4 列）就是 needle 的一部分，
+    // 任何"升级成 GPU 行"的改动都会让本用例变红。
+    //
+    // 反证：删枚举项/表行/implies/特化，或把行宽改成非 0 ⇒ 本用例必失败。
+    // ──────────────────────────────────────────────
+    {
+        const SourceContract kT2cPreludeContracts[] =
+        {
+            // ① 枚举项（追加在 Camera 之后；类型值被位掩码 / EntityGPU 槽消费 ⇒ 只能追加）
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "            Lines,              ///< 线条（**CPU-only 类型号**",
+              "Lines 未进组件类型枚举（按类型句柄覆盖不到它）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "            Text,               ///< 文本（同上：CPU-only 类型号）",
+              "Text 未进组件类型枚举" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "            ShadowProxy,        ///< 阴影代理（同上：CPU-only 类型号）",
+              "ShadowProxy 未进组件类型枚举" },
+
+            // ② 类型表行：World 作用域、**行宽 0**、承载类型 = 组件类名
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "{ ComponentType::Lines,           ComponentScope::World,  \"ECS:Lines\",            0, \"LinesComponent\" },",
+              "Lines 的类型表行缺失/被改动（CPU-only ⇒ 行宽列必须为 0）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "{ ComponentType::Text,            ComponentScope::World,  \"ECS:Text\",             0, \"TextComponent\" },",
+              "Text 的类型表行缺失/被改动（CPU-only ⇒ 行宽列必须为 0）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "{ ComponentType::ShadowProxy,     ComponentScope::World,  \"ECS:ShadowProxy\",      0, \"ShadowProxy\" },",
+              "ShadowProxy 的类型表行缺失/被改动（CPU-only ⇒ 行宽列必须为 0）" },
+
+            // ③ implies 表与枚举对齐（漏填会被静默零初始化）
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "/* Lines           */ 0,",
+              "implies 表未与枚举对齐（Lines 漏填会静默零初始化）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "/* Text            */ 0,",
+              "implies 表未与枚举对齐（Text 漏填）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "/* ShadowProxy     */ 0,",
+              "implies 表未与枚举对齐（ShadowProxy 漏填）" },
+
+            // ④ 组件侧槽位映射（与 GeometryData / MaterialData / Camera 同范式）
+            { "LinesComponent.h", OS_TEXT("inc/hgl/ecs/components/LinesComponent.h"),
+              "template<> struct ComponentTypeOf<LinesComponent> { static constexpr ComponentType value = ComponentType::Lines; };",
+              "LinesComponent 未声明槽位映射（实体掩码里没有线条位）" },
+            { "TextComponent.h", OS_TEXT("inc/hgl/ecs/components/TextComponent.h"),
+              "template<> struct ComponentTypeOf<TextComponent> { static constexpr ComponentType value = ComponentType::Text; };",
+              "TextComponent 未声明槽位映射" },
+            { "ShadowProxy.h", OS_TEXT("inc/hgl/ecs/components/ShadowProxy.h"),
+              "template<> struct ComponentTypeOf<ShadowProxy> { static constexpr ComponentType value = ComponentType::ShadowProxy; };",
+              "ShadowProxy 未声明槽位映射" },
+
+            // ⑤ 决策钉住：本批只登记类型号，**不改**「文本/线条属动态 GEOMETRY，以后再说」的定界
+            { "stage_B_execution_plan.md", OS_TEXT("doc/future/stage_B_execution_plan.md"),
+              "**文本 / 线段 = 动态 GEOMETRY**",
+              "「文本 / 线段 = 动态 GEOMETRY，以后再说」的定界被删除/改写（决策不可悄悄翻案）" },
+        };
+
+        if (const int failed = verify_source_contracts(41, kT2cPreludeContracts,
+                                                       static_cast<uint>(sizeof(kT2cPreludeContracts) /
+                                                                         sizeof(kT2cPreludeContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 41 Passed: T2-c 前置契约成立（Lines/Text/ShadowProxy 已登记 **CPU-only** 类型号："
+                 u8"枚举/表行/implies/槽位映射四件套对齐，行宽列编码为 0；定界未翻案；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kT2cPreludeContracts) / sizeof(kT2cPreludeContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

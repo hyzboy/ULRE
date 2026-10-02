@@ -162,4 +162,7 @@ namespace hgl::ecs
          */
         void MarkSynced() { dirty = false; }
     };
+
+    /// T2-c：登记类型号（**CPU-only**：无 GPU 行、不写 `EntityGPU.row[]`）。
+    template<> struct ComponentTypeOf<LinesComponent> { static constexpr ComponentType value = ComponentType::Lines; };
 }

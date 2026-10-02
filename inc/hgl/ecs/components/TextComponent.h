@@ -104,5 +104,8 @@ namespace hgl::ecs
             TouchChange(static_cast<uint32_t>(TextChange::Font));
         }
     };//class TextComponent
+
+    /// T2-c：登记类型号（**CPU-only**：无 GPU 行、不写 `EntityGPU.row[]`）。
+    template<> struct ComponentTypeOf<TextComponent> { static constexpr ComponentType value = ComponentType::Text; };
 }//namespace hgl::ecs
 

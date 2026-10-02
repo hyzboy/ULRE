@@ -37,6 +37,11 @@ namespace hgl
             Camera,             ///< 相机（**世界私有**：CPU 权威数据在 `CameraComponent` 自己身上，
                                 ///<  世界那张「16 槽 × 帧槽」相机表是 `CameraSystem::Publish` 出来的**派生视图**）
 
+            Lines,              ///< 线条（**CPU-only 类型号**：T2-c 起实体侧有号，但 gpu_row_bytes = 0、
+                                ///<  不建行空间、不写 `EntityGPU.row[]`；与「文本/线条属动态 GEOMETRY，
+                                ///<  以后再说」的定界一致 —— 只登记类型号，不做 GPU 建模）
+            Text,               ///< 文本（同上：CPU-only 类型号）
+            ShadowProxy,        ///< 阴影代理（同上：CPU-only 类型号）
             End,
         };
 
@@ -80,6 +85,9 @@ namespace hgl
             { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "MaterialRuntimeSlot" }, ///< B5：slot 全 POD、行宽冻结 88 B（CPU 侧行 ⇒ gpu_row_bytes 记 0）
             { ComponentType::Texture,         ComponentScope::Global, "ECS:Texture",          0, "" },                   ///< B6：**无组件载体**（纹理授权在 MaterialData 的具名纹理资源里，零消费者，仅登记）；载体形态 = 材质私有数据一族（按定义变长的行空间）⇒ 与欠账 §2.9 同批处理，**勿补实体级组件**
             { ComponentType::Camera,          ComponentScope::World,  "ECS:Camera",           0, "CameraComponent" },     ///< B7：相机（P-6 ②：**不新开 arena**，参数留组件；世界相机表 = 派生视图 ⇒ 本类型无自己的 GPU 行）
+            { ComponentType::Lines,           ComponentScope::World,  "ECS:Lines",            0, "LinesComponent" },      ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
+            { ComponentType::Text,            ComponentScope::World,  "ECS:Text",             0, "TextComponent" },       ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
+            { ComponentType::ShadowProxy,     ComponentScope::World,  "ECS:ShadowProxy",      0, "ShadowProxy" },         ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
         };
 
         namespace detail
@@ -170,6 +178,9 @@ namespace hgl
             /* MaterialRuntime */ ComponentTypeBit(ComponentType::MaterialData),
             /* Texture         */ 0,
             /* Camera          */ 0,
+            /* Lines           */ 0,
+            /* Text            */ 0,
+            /* ShadowProxy     */ 0,
         };
 
         /// 该类型的**完整蕴含掩码**（含自身位）；编译期展开传递闭包

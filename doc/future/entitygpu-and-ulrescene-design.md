@@ -184,7 +184,7 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 | **T1** | `EntityGPU` **结构定义**（**纯 C++ struct** + `static_assert(sizeof==128)` / `alignof==64` + 逐字段 `offsetof` + `flags` 位表）—— GLSL 镜像**不随本期**（无读者 ⇒ 与派生表一起等 T3） | 编译期断言过；探针打印 `sizeof`/`alignof`/四个 `offsetof` 与断言一致；**不接线、无字段读写者**（结构本体 + 断言是"零成本定稿"，不算投机 API） | tag `b8-t1` |
 | **T2-a** ✅ | 实体分配改块式（`EntityManager` 的 `unique_ptr<Entity>` ⇒ **块池**，块 = 64 实体，块内地址稳定；构造改就地 placement-new、析构改显式调 `~Entity()`） | ✅ **已完成（2026-10-02）**：`块/实体` 5.818 → **4.834**（边际 5.781 → **4.797**）、`B/实体` 持平（实体对象仍在堆上，只压块数）、`sizeof(Entity)` 168 B 不变；4 个实体生命周期测试 rc=0；PBRSpheres 0 真 error + **像素正常**；探针内置**地址稳定性守卫**（每 64 个边界复核第 0 个 `Entity*`，mismatch 期望 0） | tag `b8-t2a` |
 | **T2-b** ✅ | `Entity` 的每实体 `UnorderedMap` ⇒ **小数组 + 线性扫描**（键仍是 `typeid(T).hash_code()`） | ✅ **已完成（2026-10-02）**：`块/实体` 4.834 → **2.834**、`B/实体` 313.4 → **209.5**（−33%）、`sizeof(Entity)` 168 → **112 B**；5 个测试 rc=0；PBRSpheres 像素正常 | tag `b8-t2b` |
-| **T2-c** | 剩余堆组件（`GeometryData`/`MaterialData`/`LinesComponent`/`TextComponent`/`ShadowProxy`）⇒ 内联薄记录（行号/句柄）；**`CameraComponent` 保持 `shared_ptr`**（§4 理由） | 探针 `块/实体` 目标 ≤ 2 且 `B/实体` 明显下降；访问器返回值语义对拍；固定验证集全绿 | tag `b8-t2c` |
+| **T2-c** ⚠ | 剩余 5 个堆组件（`GeometryData`/`MaterialData`/`LinesComponent`/`TextComponent`/`ShadowProxy`）⇒ ~~内联薄记录~~ **改为「拆 `Component` 基类 + 类型化行空间/对象池，实体槽只存行号/指针」** | 见「T2-c 前置核实」：内联写法**已被实测否决**（`GeometryData` 120 B 中 104 B 是 `Component` 基类）；判据 = **[T0b] 与 [T0] 的差值**（每个组件对象的开销） | tag `b8-t2c` |
 | **T3** | `EntityGPU` **派生表**（世界私有 + `addr_entity_gpu` + 写入路径 + 脏集合上传） | **前置 = 出现第一个真消费者**（届时随消费者同批做）；本期仅登记设计与"五处连带面"清单 | tag `b8-t3` |
 | **T4** | `.ulrescene` 直载 | **前置 = (b) 完成**；判据见 §5.2 | tag `b8-t4` |
 
@@ -235,6 +235,48 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 ---
 
 ## 9.5 T2 完成记录
+
+### T2-c 前置核实（2026-10-02）—— 「内联」写法被数据否决 ⚠
+
+动手前实测三件事，结论推翻设计稿 v1 的 T2-c 写法：
+
+1. **`GeometryData` 实测 = 120 B，其中 104 B 是 `Component` 基类**（名字/vtable/槽位），真正载荷只有
+   `const PrimitiveAsset*`(8 B) + `uint32_t`(4 B) = **12 B**。⇒ 把组件「内联进 `Entity`」会给**每个实体**
+   （含无几何的）**+120 B**，探针 `B/实体` 直接劣化 ⇒ **不采用**。
+2. **成本在基类，不在分配**：`make_shared` 是 1 块（对象 + 控制块合并），而 `Component` 基类带着
+   `std::string name` + 多个虚函数 ⇒ 收益只能来自**拆掉基类**（类型化数据行 + 实体存行号/指针），而非内联。
+**实测（2026-10-02，探针 [T0b] − [T0]，同 n=10000 同流程，只多挂一个 `GeometryData`）**：
+
+| | B/实体 | 块/实体 |
+|---|---|---|
+| `[T0]` `[Entity + Transform]` | 209.5 | 2.834 |
+| **差 = 每个 `GeometryData` 组件的真实开销** | **+195.4 B** | **+3.000 块** |
+
+⇒ **载荷 12 B、壳 183 B（95%）**，且**每个组件 3 次分配**（不是 1 次 `make_shared`）——多出来的应是
+实体侧 `vector<ComponentEntry>` 增长 + 组件向 `Context` 的注册。**这就是 T2-c 的靶子，也是验收判据**
+（目标：差值压到「1 块/64 个」的摊薄量级）。
+
+3. **探针原本量不到 T2-c**：`[T0]` 只建 `Transform`（无任何其他组件）⇒ 新增 **[T0b]
+   `[Entity + Transform + GeometryData]`**（同 n、同流程，只多挂一个 `GeometryData`），
+   打印「与 [T0] 同 n 的差值 = 每个组件对象的真实开销」作为 T2-c 的量化判据。
+
+⇒ **T2-c 定形（待拍板）**：组件本体从「`Component` 派生类 + `make_shared`」改为**类型化行空间/对象池**
+（块式，1 块/64 个，与 T2-a 同手法），实体槽只存行号或裸指针；随之处理 `Component` 基类的既有使用者
+（`GetName()` 调试日志、`OnDetach()`、`GetComponentSlot()`、`GetSystemGroup()`）。
+**相机例外不变**：`CameraComponent` 需保持 `shared_ptr`（相机槽拥有者 `weak_ptr<CameraComponent>`）；
+用户 2026-10-02 追加定案：**相机只在 CPU 端出现、不进 `EntityGPU`**（一个场景不会同时用一堆相机，CPU 算得过来）。
+
+**① 已落地（2026-10-02）—— `Lines` / `Text` / `ShadowProxy` 登记 CPU-only 类型号**：
+
+- 枚举追加 3 项（只能追加：类型值被位掩码与 `EntityGPU.type[16]` 消费）；
+- 类型表 3 行：`ComponentScope::World`、**`gpu_row_bytes = 0`**、承载类型 = `LinesComponent` / `TextComponent` / `ShadowProxy`；
+- `kComponentTypeImplies` 3 条（对齐枚举，漏填会静默零初始化）；
+- 3 个组件头的 `ComponentTypeOf<T>` 特化（与 `GeometryData` / `MaterialData` / `Camera` 同范式）；
+- **Test 41**（13 条契约）：四件套 + 决策钉子；**行宽列（第 4 列）被编码进 needle** ⇒ 任何"把这三种升级成
+  GPU 行"的改动都会让用例变红；并钉住「文本 / 线段 = 动态 GEOMETRY，以后再说」的定界**未翻案**。
+- 实测：门 **42 PASS / 0 FAIL**、`TestCSMIncrementalPass` + `TestComponentMask` rc=0。
+- 为什么必须先做这步：**实体侧「按类型句柄」要求每个组件都有类型号** —— 这三个组件原本没有
+  （`ComponentTypeOf` 无特化 ⇒ 都落 `None`），而这件事**不能按类型拆子批**（实体存储形态是一个整体，拆开就是新旧两套并存）。
 
 ### T2-b（2026-10-02）—— 每实体哈希表 ⇒ 小数组 + 线性扫描 ✅
 
