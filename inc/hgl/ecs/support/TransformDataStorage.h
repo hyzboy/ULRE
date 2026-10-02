@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <hgl/type/ValueArray.h>
 #include <hgl/ecs/core/EntityHandle.h>
+#include <hgl/log/Log.h>
 #include <functional>
 #include <array>
 #include <cstdint>
@@ -35,6 +36,10 @@ namespace hgl
             using HandleID = uint32_t;
             static constexpr HandleID INVALID_HANDLE = UINT32_MAX;
 
+            /// 声明式行预算默认值（T10/B1a；P-2 拍板 2026-10-02：static 4096 + dynamic 4096）
+            static constexpr uint32_t kDefaultMaxStaticRows  = 4096;
+            static constexpr uint32_t kDefaultMaxDynamicRows = 4096;
+
         private:
 
             // ── 核心三元组数据（对应未来 GPU Storage Buffer）──
@@ -59,7 +64,12 @@ namespace hgl
             hgl::ValueArray<uint8_t>        mobility;           // 1 byte each (0=static, 1=movable)
 
             /// 子节点表（与行一一对应；CPU 侧层级查询用）
-            std::vector<std::vector<HandleID>> children;
+            /// 子节点表（CSR：每行的子节点 = `child_pool[child_offset[id] .. + child_count[id])`）
+            /// B2：旧实现 `std::vector<std::vector<HandleID>>` 每行固定 32 B 且绝大多数为空 ⇒
+            /// 改成"每行 8 B（offset+count）+ 只在真有子节点时增长"的共享池。
+            hgl::ValueArray<uint32_t>       child_offset;
+            hgl::ValueArray<uint32_t>       child_count;
+            std::vector<HandleID>           child_pool;
 
             /// 表现层状态：fixed-pixel 尺寸控制（gizmo 等"屏幕上恒定大小"的对象）。
             /// CPU 侧、不参与世界矩阵求值 ⇒ 用普通结构数组（不是 GPU 数据）。
@@ -73,7 +83,9 @@ namespace hgl
                 const hgl::graph::ViewportInfo *viewport_info = nullptr;
             };
 
-            std::vector<FixedPixelState> fixed_pixel;
+            /// 表现层状态（fixed-pixel 缩放）改**稀疏侧表**：只有被 gizmo 配置过的行才占位
+            /// （旧实现 32 B/行 × 全表 ⇒ 全场景为一个 gizmo 付账）。
+            std::unordered_map<HandleID,FixedPixelState> fixed_pixel_map;
 
             // ── 变换元数据（T8：真源在存储侧，单一真源）──
             hgl::ValueArray<EntityID>       owners;             // 所属实体（accessor 解析 owner / 告警里的实体名）
@@ -86,11 +98,80 @@ namespace hgl
             /// 实体 → 变换行（反向索引）。T8 起"某实体有没有变换"不再靠组件查询。
             std::unordered_map<EntityID,HandleID> entity_rows;
 
+            // ── 声明式行预算（T10/B1a）──
+            // 正式形态只有"声明容量 + 预分配"：`Initialize` 一次性预留容量，
+            // `Allocate` 超过预算即**拒绝分配**并**一次性明确告警**——不静默扩容
+            // （与材质行 arena "上限不扩容"同一口径）。
+            uint32_t  max_static_rows     = kDefaultMaxStaticRows;
+            uint32_t  max_dynamic_rows    = kDefaultMaxDynamicRows;
+            uint32_t  row_overflow_count  = 0;      ///< 超预算分配次数（可观测；契约用）
+            bool      row_overflow_warned = false;  ///< 一次性告警闩
+
         public:
 
+            /// 构造即按默认预算初始化（P-2 拍板 2026-10-02：static 4096 + dynamic 4096）。
+            /// 需要别的预算的世界在创建后显式再调一次 `Initialize(...)`。
+            TransformDataStorage() { Initialize(); }
+
+            /// 声明式预算 + 预分配。行号仍 = 追加序（本步**不改行号含义**，只把容量钉死）。
+            /// 目前只有 Transform 一类行存储 ⇒ 预算就是这一个世界的 (static, dynamic) 两份。
+            void Initialize(const uint32_t static_rows  = kDefaultMaxStaticRows,
+                            const uint32_t dynamic_rows = kDefaultMaxDynamicRows)
+            {
+                max_static_rows     = static_rows;
+                max_dynamic_rows    = dynamic_rows;
+                row_overflow_count  = 0;
+                row_overflow_warned = false;
+
+                const int budget = static_cast<int>(GetRowBudget());
+
+                positions.Reserve(budget);
+                rotations.Reserve(budget);
+                scales.Reserve(budget);
+                local_matrices.Reserve(budget);
+                parent_indices.Reserve(budget);
+                world_matrices.Reserve(budget);
+                hierarchy_depths.Reserve(budget);
+                eval_order.Reserve(budget);
+                local_dirty.Reserve(budget);
+                matrixDirty.Reserve(budget);
+                mobility.Reserve(budget);
+                owners.Reserve(budget);
+                change_masks.Reserve(budget);
+                versions.Reserve(budget);
+                generations.Reserve(budget);
+                write_armed.Reserve(budget);
+                write_warned.Reserve(budget);
+                child_offset.Reserve(budget);
+                child_count.Reserve(budget);
+                child_pool.reserve(static_cast<size_t>(budget));
+            }
+
+            uint32_t GetStaticRowBudget()  const { return max_static_rows; }
+            uint32_t GetDynamicRowBudget() const { return max_dynamic_rows; }
+            uint32_t GetRowBudget()        const { return max_static_rows + max_dynamic_rows; }
+            uint32_t GetRowOverflowCount() const { return row_overflow_count; }
+            bool     HasWarnedRowOverflow() const { return row_overflow_warned; }
+
             /// Allocate space for a new transform
+            /// 预算超限 ⇒ **拒绝分配**（返回 INVALID_HANDLE）并一次性明确告警；不扩容。
             HandleID Allocate()
             {
+                if (static_cast<uint32_t>(positions.GetCount()) >= GetRowBudget())
+                {
+                    ++row_overflow_count;
+
+                    if (!row_overflow_warned)
+                    {
+                        row_overflow_warned = true;
+                        GLogError("[TransformDataStorage] 变换行预算超限：budget=%u（static=%u + dynamic=%u）"
+                                  " —— 预算没调够，本行**拒绝分配**（不扩容；固化 ID/存档会失效）。",
+                                  GetRowBudget(), max_static_rows, max_dynamic_rows);
+                    }
+
+                    return INVALID_HANDLE;
+                }
+
                 HandleID id = static_cast<HandleID>(positions.GetCount());
                 positions.Add(glm::vec3(0.0f));
                 rotations.Add(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -111,8 +192,8 @@ namespace hgl
                 generations.Add(1);         // 新行从 1 起（正奇数 = 活；0 = 死/未分配）
                 write_armed.Add(0);
                 write_warned.Add(0);
-                children.emplace_back();
-                fixed_pixel.emplace_back();
+                child_offset.Add(0);
+                child_count.Add(0);
 
                 topology_dirty = true;
                 return id;
@@ -150,11 +231,12 @@ namespace hgl
                     owners[id] = EntityID();
                 }
 
-                if (id < static_cast<HandleID>(children.size()))
-                    children[id].clear();
+                // 子表：本行 span 作废（池里那几格成为垃圾，不回收——子表只在装配期增长）
+                if (id < static_cast<HandleID>(child_count.GetCount()))
+                    child_count[id] = 0;
 
-                if (id < static_cast<HandleID>(fixed_pixel.size()))
-                    fixed_pixel[id] = FixedPixelState();
+                // 表现层状态是稀疏侧表 ⇒ 释放即摘除条目
+                fixed_pixel_map.erase(id);
 
                 topology_dirty = true;
             }
@@ -387,8 +469,8 @@ namespace hgl
                     { "generation",   static_cast<uint32_t>(sizeof(uint32_t)),         static_cast<uint32_t>(generations.GetCount()) },
                     { "write_armed",  static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(write_armed.GetCount()) },
                     { "write_warned", static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(write_warned.GetCount()) },
-                    { "children",     static_cast<uint32_t>(sizeof(std::vector<HandleID>)), static_cast<uint32_t>(children.size()) },
-                    { "fixed_pixel",  static_cast<uint32_t>(sizeof(FixedPixelState)),  static_cast<uint32_t>(fixed_pixel.size()) },
+                    { "child_offset", static_cast<uint32_t>(sizeof(uint32_t)),         static_cast<uint32_t>(child_offset.GetCount()) },
+                    { "child_count",  static_cast<uint32_t>(sizeof(uint32_t)),         static_cast<uint32_t>(child_count.GetCount()) },
                 } };
             }
 
@@ -428,60 +510,108 @@ namespace hgl
 
             FixedPixelState GetFixedPixel(HandleID id) const
             {
-                if (id >= static_cast<HandleID>(fixed_pixel.size()))
-                    return FixedPixelState();
+                const auto it = fixed_pixel_map.find(id);
 
-                return fixed_pixel[id];
+                return (it != fixed_pixel_map.end()) ? it->second : FixedPixelState();
             }
 
             void SetFixedPixel(HandleID id,const FixedPixelState &state)
             {
-                if (id >= static_cast<HandleID>(fixed_pixel.size()))
+                if (id >= static_cast<HandleID>(GetCount()))
                     return;
 
-                fixed_pixel[id] = state;
+                fixed_pixel_map[id] = state;
             }
 
         public: // 子节点（CPU 侧层级查询；GPU 侧走 parent_indices + eval_order，与此无关）
+                 // B2：CSR —— 每行只占 `child_offset` + `child_count` 共 8 B（旧实现 32 B/行）。
 
-            const std::vector<HandleID> &GetChildren(HandleID id) const
+            uint32_t GetChildCount(HandleID id) const
             {
-                static const std::vector<HandleID> kEmpty;
+                if (id >= static_cast<HandleID>(child_count.GetCount()))
+                    return 0;
 
-                if (id >= static_cast<HandleID>(children.size()))
-                    return kEmpty;
+                return child_count[id];
+            }
 
-                return children[id];
+            HandleID GetChild(HandleID id,uint32_t index) const
+            {
+                if (index >= GetChildCount(id))
+                    return INVALID_HANDLE;
+
+                return child_pool[child_offset[id] + index];
+            }
+
+            bool HasChild(HandleID id,HandleID child) const
+            {
+                const uint32_t count = GetChildCount(id);
+
+                if (count == 0)
+                    return false;
+
+                const uint32_t offset = child_offset[id];
+
+                for (uint32_t i = 0; i < count; ++i)
+                    if (child_pool[offset + i] == child)
+                        return true;
+
+                return false;
+            }
+
+            /// 拷出某行的子节点快照（不返回引用 ⇒ 池重排后不会悬垂）
+            void CopyChildren(HandleID id,std::vector<HandleID> &out) const
+            {
+                out.clear();
+
+                const uint32_t count = GetChildCount(id);
+
+                if (count == 0)
+                    return;
+
+                const uint32_t offset = child_offset[id];
+                out.assign(child_pool.begin() + offset,child_pool.begin() + offset + count);
             }
 
             void AddChild(HandleID id,HandleID child)
             {
-                if (id >= static_cast<HandleID>(children.size()) || child == id)
+                if (id >= static_cast<HandleID>(child_count.GetCount()) || child == id)
                     return;
 
-                auto &list = children[id];
+                if (HasChild(id,child))
+                    return;
 
-                for (const HandleID c : list)
-                    if (c == child)
-                        return;
+                const uint32_t offset = child_offset[id];
+                const uint32_t count  = child_count[id];
 
-                list.push_back(child);
+                // 本行 span 恰好贴着池尾 ⇒ 直接续写（装配期常见路径，零浪费）；
+                // 否则把本行重指到池尾（旧 span 成为垃圾，不回收——子表只在装配期增长）。
+                if (count == 0 || (offset + count) != static_cast<uint32_t>(child_pool.size()))
+                    child_offset[id] = static_cast<uint32_t>(child_pool.size());
+
+                child_pool.push_back(child);
+                child_count[id] = count + 1;
             }
 
             void RemoveChild(HandleID id,HandleID child)
             {
-                if (id >= static_cast<HandleID>(children.size()))
+                const uint32_t count = GetChildCount(id);
+
+                if (count == 0)
                     return;
 
-                auto &list = children[id];
+                const uint32_t offset = child_offset[id];
 
-                for (auto it = list.begin(); it != list.end(); ++it)
+                for (uint32_t i = 0; i < count; ++i)
                 {
-                    if (*it == child)
-                    {
-                        list.erase(it);
-                        return;
-                    }
+                    if (child_pool[offset + i] != child)
+                        continue;
+
+                    // 行内前移，保持区间连续（span 仍为 [offset, offset + count - 1)）
+                    for (uint32_t j = i; j + 1 < count; ++j)
+                        child_pool[offset + j] = child_pool[offset + j + 1];
+
+                    child_count[id] = count - 1;
+                    return;
                 }
             }
 
@@ -756,8 +886,10 @@ namespace hgl
                 generations.Clear();
                 write_armed.Clear();
                 write_warned.Clear();
-                children.clear();
-                fixed_pixel.clear();
+                child_offset.Clear();
+                child_count.Clear();
+                child_pool.clear();
+                fixed_pixel_map.clear();
                 entity_rows.clear();
                 topology_dirty = true;
             }

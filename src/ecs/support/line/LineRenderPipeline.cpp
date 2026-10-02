@@ -511,7 +511,7 @@ namespace hgl::ecs
 
             static_count = transform_system->GetStaticCount();
             dynamic_count = transform_system->GetDynamicCount();
-            dynamic_base = transform_system->GetDynamicBaseIndex(static_count, dynamic_count);
+            dynamic_base = transform_system->GetDynamicBaseIndex();   // B1b：预算决定
         }
 
         // P2：单 Line buffer（删 4 slot 分组）——first pass 只算总数
@@ -558,12 +558,13 @@ namespace hgl::ecs
                     ++transform_owner_components;
 
                     const TransformDataStorage::HandleID handle = transform.GetID();
-                    uint32_t group_index = 0;
+                    uint32_t slot = 0;
                     if (handle != TransformDataStorage::INVALID_HANDLE
-                        && transform_system->TryGetTransformGroupIndex(handle, transform.IsMovable(), group_index))
+                        && transform_system->TryGetTransformSlot(handle, transform.IsMovable(), slot))
                     {
-                        const uint32_t resolved = transform.IsMovable() ? (dynamic_base + group_index)
-                                                                          : (group_index + 1u);
+                        // B1b：L2W 行号 = 静态 `1 + slot` / 动态 `预算基址 + slot`
+                        const uint32_t resolved = transform.IsMovable() ? (dynamic_base + slot)
+                                                                          : (slot + 1u);
 
                         constexpr uint32_t kMaxTransformID = std::numeric_limits<uint32_t>::max();
                         transform_id = resolved > kMaxTransformID
@@ -840,7 +841,7 @@ namespace hgl::ecs
 
         const uint32_t static_count = transform_system->GetStaticCount();
         const uint32_t dynamic_count = transform_system->GetDynamicCount();
-        transform_buffer->EnsureCapacity(static_count, dynamic_count, graph::BufferAllocPolicy::Auto);
+        transform_buffer->EnsureBudget(static_count, dynamic_count);
 
         auto *gpu = transform_data_buffer->GetGPUBuffer();
         LinePeriodicLog(s_line_log_ticks[9], "[LineRenderPipeline] SyncTransformBinding snapshot: tab=0x%llX dbuf=0x%llX vk=0x%llX gpu=0x%llX size=%llu dirty=%d static=%u dynamic=%u",

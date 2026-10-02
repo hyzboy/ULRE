@@ -136,8 +136,18 @@ namespace hgl
             std::vector<ComponentQueryBase> component_query_bases;
 
             // 变换（T8：按 TransformID 记录，不再持组件指针；组件只是过渡期外壳）
+            //
+            // Stage B / B1b：这两个数组是**槽位表** —— 下标 = 稳定槽位，L2W 行号由它算出
+            // （`静态: 1 + slot` / `动态: 1 + 预算static + frame × 预算dynamic + slot`），
+            // **不再随名单顺序漂移**；空洞记 `INVALID_TRANSFORM_ID`，注册优先复用空洞。
+            // 段容量 = 变换存储声明的预算（超限 = 一次性明确告警 + 拒绝，不扩容）。
             std::vector<TransformID> static_transforms;
             std::vector<TransformID> movable_transforms;
+            std::vector<uint32_t>    static_free_slots;     ///< 空闲静态槽（后进先出；复用即得回稳定行号）
+            std::vector<uint32_t>    movable_free_slots;    ///< 空闲动态槽
+            bool                     transform_slot_overflow_warned = false;    ///< 段预算用尽：一次性告警闩
+            bool                     transform_row_move_warned      = false;    ///< Mobility 换边（行号移动）：一次性告警闩
+            uint32_t                 transform_row_move_count       = 0;        ///< 换边次数（可观测）
             std::unique_ptr<TransformDataStorage> transform_storage;
 
             // 世界私有包围盒行存储（原组件已删除；连续 SoA + 值类型句柄，与 transform_storage 同范式）。
@@ -543,6 +553,13 @@ namespace hgl
             void MigrateTransform(TransformID id, bool toMovable);
             void UnregisterTransform(TransformID id);
 
+            /// 槽位分配（B1b）：段预算内取一个**稳定槽位**（优先复用空洞）；预算用尽返回 INVALID_TRANSFORM_SLOT
+            uint32_t AcquireTransformSlot(bool movable);
+            /// 归还槽位：置空洞 + 入空闲表（不整体平移，别的物体行号不受影响）
+            void ReleaseTransformSlot(bool movable, uint32_t slot);
+            /// 该段的声明式预算（真源 = 变换存储）
+            uint32_t GetTransformSegmentBudget(bool movable) const;
+
             /// 建/销毁一个变换（entity 级 API 的基础：分配存储行 + 登记 owner/移动性）
             TransformID CreateTransform(EntityID owner, Mobility mobility);
             void        DestroyTransform(TransformID id);
@@ -629,6 +646,17 @@ namespace hgl
 
             const std::vector<TransformID>& GetStaticTransforms() const { return static_transforms; }
             const std::vector<TransformID>& GetMovableTransforms() const { return movable_transforms; }
+
+            /// 变换的**稳定槽位**（B1b）：命中返回 true 并写 `out_slot`。
+            /// 槽位是 L2W 行号的唯一来源（静态 `1+slot`、动态 `1+预算static + frame×预算dynamic + slot`），
+            /// 一旦分配就不再随名单顺序变动（空洞复用，不整体平移）。
+            bool TryGetTransformSlot(TransformID id, bool movable, uint32_t &out_slot) const;
+
+            /// 该段**活着的**变换数（≠ 槽位表长度：表里有空洞）
+            uint32_t GetLiveTransformCount(bool movable) const;
+
+            /// Mobility 换边计数（每次换段 = 旧行号作废 ⇒ 计数增；可观测/契约用）
+            uint32_t GetTransformRowMoveCount() const { return transform_row_move_count; }
 
             /// 实体 → 变换访问器（无变换时返回无效 accessor）
         TransformAccessor GetTransformByEntity(EntityID owner)

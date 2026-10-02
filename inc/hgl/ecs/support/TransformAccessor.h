@@ -89,7 +89,6 @@ namespace hgl
             TransformID GetParent() const;
             void        SetParent(TransformID parent) const;
 
-            const std::vector<TransformID> &GetChildren() const;
             void AddChild(TransformID child) const;
             void RemoveChild(TransformID child) const;
 

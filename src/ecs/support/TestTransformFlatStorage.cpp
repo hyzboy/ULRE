@@ -6,6 +6,10 @@
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <fstream>
+#include <string>
+#include <cstring>
+#include <iterator>
 
 using namespace hgl;
 using namespace hgl::ecs;
@@ -234,7 +238,7 @@ int main(int argc, char** argv)
 
         context.GetTransform(id_c).SetParent(id_p);
 
-        if (!contains(storage->GetChildren(id_p), id_c))
+        if (!storage->HasChild(id_p, id_c))
         {
             GLogError(u8"Test 8 Failed: SetParent 未登记子表（子级不会被标脏/重传）");
             return 10;
@@ -242,7 +246,7 @@ int main(int argc, char** argv)
 
         context.GetTransform(id_c).SetParent(INVALID_TRANSFORM_ID);
 
-        if (contains(storage->GetChildren(id_p), id_c))
+        if (storage->HasChild(id_p, id_c))
         {
             GLogError(u8"Test 8 Failed: 解除父子关系后子表仍留着子行");
             return 10;
@@ -266,7 +270,7 @@ int main(int argc, char** argv)
 
         context.GetTransform(id_c2).SetParent(id_p2);
 
-        if (!contains(storage->GetChildren(id_p2), id_c2))
+        if (!storage->HasChild(id_p2, id_c2))
         {
             GLogError(u8"Test 8 Failed: 第二次 SetParent 未登记子表");
             return 10;
@@ -275,7 +279,7 @@ int main(int argc, char** argv)
         const EntityID child2_entity_id = ent_c2->GetEntityID();
         context.DestroyEntity(child2_entity_id);
 
-        if (contains(storage->GetChildren(id_p2), id_c2))
+        if (storage->HasChild(id_p2, id_c2))
         {
             GLogError(u8"Test 8 Failed: 销毁子行后父的子表仍留残条目");
             return 10;
@@ -377,6 +381,362 @@ int main(int argc, char** argv)
         }
 
         GLogInfo(u8"Test 10 Passed: 句柄失效契约（活柄有效 / 释放即失效 / 死行新柄也失效 / 空柄写入被忽略）。");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 11: 声明式行预算契约（T10/B1a）
+    //   · `Initialize(static, dynamic)` 声明预算；**预算内分配行号仍是追加序**（本步不改行号含义）
+    //   · 超预算 ⇒ **拒绝分配**（INVALID_HANDLE）+ 行数不变（**不扩容**）
+    //   · 超预算只告警一次（告警闩），并留下可观测计数
+    //   · 默认预算 = (4096, 4096)（P-2 拍板 2026-10-02）
+    // ─────────────────────────────────────────────────────────────
+    {
+        TransformDataStorage budget_storage;      // 独立实例：不污染主世界存储
+
+        if (budget_storage.GetStaticRowBudget()  != TransformDataStorage::kDefaultMaxStaticRows ||
+            budget_storage.GetDynamicRowBudget() != TransformDataStorage::kDefaultMaxDynamicRows ||
+            budget_storage.GetRowBudget()        != (TransformDataStorage::kDefaultMaxStaticRows +
+                                                     TransformDataStorage::kDefaultMaxDynamicRows))
+        {
+            GLogError(u8"Test 11 Failed: 默认行预算不是 (static %u + dynamic %u)（实测 %u + %u）",
+                      TransformDataStorage::kDefaultMaxStaticRows,
+                      TransformDataStorage::kDefaultMaxDynamicRows,
+                      budget_storage.GetStaticRowBudget(),
+                      budget_storage.GetDynamicRowBudget());
+            return 13;
+        }
+
+        budget_storage.Initialize(2,2);           // 4 行预算
+
+        for (uint32_t i = 0; i < 4; ++i)
+        {
+            const TransformDataStorage::HandleID id = budget_storage.Allocate();
+
+            if (id != i)
+            {
+                GLogError(u8"Test 11 Failed: 预算内分配的行号不是追加序（%u != %u）", id, i);
+                return 13;
+            }
+        }
+
+        const TransformDataStorage::HandleID over = budget_storage.Allocate();   // 第 5 次 ⇒ 超预算
+
+        if (over != TransformDataStorage::INVALID_HANDLE ||
+            budget_storage.GetCount() != 4 ||
+            budget_storage.GetRowOverflowCount() != 1 ||
+            !budget_storage.HasWarnedRowOverflow())
+        {
+            GLogError(u8"Test 11 Failed: 超预算未拒绝分配（id=%u rows=%d overflow=%u warned=%d）"
+                      u8"—— 预算制要求「拒绝 + 一次性告警 + 不扩容」",
+                      over,
+                      budget_storage.GetCount(),
+                      budget_storage.GetRowOverflowCount(),
+                      budget_storage.HasWarnedRowOverflow() ? 1 : 0);
+            return 13;
+        }
+
+        budget_storage.Allocate();                // 再来一次：计数增、行数不变
+
+        if (budget_storage.GetRowOverflowCount() != 2 || budget_storage.GetCount() != 4)
+        {
+            GLogError(u8"Test 11 Failed: 二次超预算仍在扩容（rows=%d overflow=%u）",
+                      budget_storage.GetCount(),
+                      budget_storage.GetRowOverflowCount());
+            return 13;
+        }
+
+        GLogInfo(u8"Test 11 Passed: 声明式行预算契约（默认 4096+4096 / 预算内为追加序 / 超限拒绝分配不扩容 + 一次性告警闩）。");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 12: B1a 禁复活源码契约（数据驱动扩容/重建路径不得回仓）
+    //   背景：`StatTransform` 按需扩容 + `EnsureTransformIndexRowsCapacity` 重建 +
+    //   `"L2W recreated"` 日志 = T10 要消灭的"运行期行号/地址移动"。删掉之后
+    //   只要有人把任一环写回来，本测试立刻红（而不是靠肉眼看日志）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        auto read_source = [](const char *path, std::string &out) -> bool
+        {
+            std::ifstream in(path, std::ios::binary);
+
+            if (!in)
+                return false;
+
+            out.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            return true;
+        };
+
+        struct SourceNeedle
+        {
+            const char *path;
+            const char *needle;
+            uint32_t    count;
+            const char *why;
+        };
+
+        const SourceNeedle kNeedles[] =
+        {
+            // L2W 一侧：动态扩容/重建路径**必须零残留**
+            { "src/ecs/support/TransformAssignmentBuffer.cpp", "StatTransform",                   0, "L2W 按需扩容的旧入口复活（T10：预算期一次性分配）" },
+            { "src/ecs/support/TransformAssignmentBuffer.cpp", "EnsureTransformIndexRowsCapacity",0, "index 行表按需重建复活" },
+            { "src/ecs/support/TransformAssignmentBuffer.cpp", "L2W recreated",                    0, "运行期重建 L2W 的日志/路径复活（行号/地址会移动）" },
+            { "src/ecs/support/TransformAssignmentBuffer.cpp", "transform_policy",                 0, "按策略重建 buffer 的旧字段复活" },
+            { "src/ecs/support/TransformAssignmentBuffer.cpp", "power_to_2",                       0, "按需取 2 次幂容量的旧写法复活（容量应来自预算）" },
+            { "inc/hgl/ecs/support/TransformAssignmentBuffer.h", "EnsureCapacity",                 0, "旧入口名复活（每帧入口应为 EnsureBudget）" },
+
+            // 预算期一次性分配与预算字段必须在位
+            { "src/ecs/support/TransformAssignmentBuffer.cpp", "AllocateBudgetBuffers",            2, "预算期一次性分配入口缺失（声明 + 定义各一次）" },
+            { "src/ecs/support/TransformAssignmentBuffer.cpp", "EnsureBudget",                     2, "每帧预算入口缺失（定义 + 注释各一次）" },
+            { "inc/hgl/ecs/support/TransformAssignmentBuffer.h", "max_static_rows",               2, "预算字段缺失（容量不再由预算决定）" },
+
+            // 存储侧：声明式预算与"拒绝分配"必须在位
+            { "inc/hgl/ecs/support/TransformDataStorage.h", "kDefaultMaxStaticRows",               3, "默认预算常量缺失（P-2 拍板 static 4096 + dynamic 4096）" },
+            { "inc/hgl/ecs/support/TransformDataStorage.h", "GetRowBudget",                        4, "行预算访问器缺失（访问器 + Initialize + Assemble 校验 + 告警参数）" },
+            { "inc/hgl/ecs/support/TransformDataStorage.h", "row_overflow_warned",                 5, "超限一次性告警闩缺失（字段 + Initialize 复位 + 判定 + 置位 + 访问器）" },
+
+            // 调用点：必须走预算入口
+            { "src/ecs/systems/tick/TransformSystem.cpp",     "EnsureBudget(",                     1, "每帧入口未走预算 API" },
+            { "src/ecs/support/line/LineRenderPipeline.cpp",  "EnsureBudget(",                     1, "Line 侧每帧入口未走预算 API" },
+
+            // B1b：L2W 行号必须来自**稳定槽位**（禁复活"名单排名"语义）
+            { "src/ecs/systems/tick/TransformSystem.cpp", "TryGetTransformGroupIndex", 0, "\"名单排名\"式索引查询复活（行号必须来自稳定槽位）" },
+            { "inc/hgl/ecs/systems/tick/TransformSystem.h", "TryGetTransformGroupIndex", 0, "同上（声明）" },
+            { "src/ecs/systems/tick/TransformSystem.cpp", "static_index_map",          0, "排名映射复活（应为 static_slot_map）" },
+            { "src/ecs/systems/tick/TransformSystem.cpp", "dynamic_index_map",         0, "同上（动态段）" },
+            { "inc/hgl/ecs/core/Context.h",               "TryGetTransformSlot",       1, "稳定槽位查询缺失" },
+            { "src/ecs/systems/tick/TransformSystem.cpp", "static_slot_map",           4, "槽位映射缺失（每帧派生自世界槽位表）" },
+            { "src/ecs/support/TransformAccessor.cpp",    "MigrateTransform",          1, "换边未通知世界（只改 mobility 字节 ⇒ 实例拿默认行、全画在原点）" },
+        };
+
+        for (const SourceNeedle &n : kNeedles)
+        {
+            std::string src;
+
+            if (!read_source(n.path, src))
+            {
+                GLogError(u8"Test 12 Failed: cannot open %s (run from repo root)", n.path);
+                return 14;
+            }
+
+            size_t pos = 0;
+            uint32_t hit = 0;
+
+            while ((pos = src.find(n.needle, pos)) != std::string::npos)
+            {
+                ++hit;
+                pos += std::strlen(n.needle);
+            }
+
+            if (hit != n.count)
+            {
+                GLogError(u8"Test 12 Failed: %s 里 '%s' 出现 %u 次（期望 %u）—— %s",
+                          n.path, n.needle, hit, n.count, n.why);
+                return 14;
+            }
+        }
+
+        GLogInfo(u8"Test 12 Passed: B1a 禁复活契约成立（L2W 动态扩容/重建路径 0 残留、预算期一次性分配与声明式预算在位、两个每帧入口均走 EnsureBudget；共 %u 条）。",
+                 static_cast<uint32_t>(sizeof(kNeedles) / sizeof(kNeedles[0])));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 13: 稳定槽位契约（B1b / T10：行号不再随名单顺序漂移）
+    //   · 槽位一经分配即稳定 —— **销毁中间一个物体不影响其它物体的槽位**（改前 erase 会整体平移）
+    //   · 空洞优先复用 ⇒ 新物体拿回被释放的槽位（= 拿回旧行号）
+    //   · Mobility 换边 = 换段（旧槽位归还 + 新段新槽位）+ 移动计数增
+    //   · 段预算用尽 ⇒ 拒绝：`CreateTransform` 返 INVALID_TRANSFORM_ID、活槽数不变
+    // ─────────────────────────────────────────────────────────────
+    {
+        auto *storage = context.GetTransformStorage();
+
+        if (!storage)
+        {
+            GLogError(u8"Test 13 Failed: 无变换存储");
+            return 15;
+        }
+
+        auto ent_a = context.CreateEntity<Entity>("SlotA");
+        auto ent_b = context.CreateEntity<Entity>("SlotB");
+        auto ent_c = context.CreateEntity<Entity>("SlotC");
+
+        const TransformID id_a = context.CreateTransform(ent_a->GetEntityID(), Mobility::Static);
+        const TransformID id_b = context.CreateTransform(ent_b->GetEntityID(), Mobility::Static);
+        const TransformID id_c = context.CreateTransform(ent_c->GetEntityID(), Mobility::Static);
+
+        uint32_t slot_a = 0;
+        uint32_t slot_b = 0;
+        uint32_t slot_c = 0;
+
+        if (!IsValidTransformID(id_a) || !IsValidTransformID(id_b) || !IsValidTransformID(id_c) ||
+            !context.TryGetTransformSlot(id_a,false,slot_a) ||
+            !context.TryGetTransformSlot(id_b,false,slot_b) ||
+            !context.TryGetTransformSlot(id_c,false,slot_c))
+        {
+            GLogError(u8"Test 13 Failed: 三个静态变换的槽位分配/查询失败");
+            return 15;
+        }
+
+        if (slot_a == slot_b || slot_b == slot_c || slot_a == slot_c)
+        {
+            GLogError(u8"Test 13 Failed: 槽位重复（%u / %u / %u）", slot_a, slot_b, slot_c);
+            return 15;
+        }
+
+        // 销毁中间那个 ⇒ 其它两个的槽位必须**一格不动**（这就是 T10 的"行号冻结"判据）
+        context.DestroyEntity(ent_b->GetEntityID());
+
+        uint32_t slot_a_after = 0;
+        uint32_t slot_c_after = 0;
+
+        if (!context.TryGetTransformSlot(id_a,false,slot_a_after) || slot_a_after != slot_a ||
+            !context.TryGetTransformSlot(id_c,false,slot_c_after) || slot_c_after != slot_c)
+        {
+            GLogError(u8"Test 13 Failed: 销毁中间物体后其它物体槽位漂移（A %u→%u / C %u→%u）"
+                      u8"—— 行号必须由稳定槽位决定，不得按名单顺序重排",
+                      slot_a, slot_a_after, slot_c, slot_c_after);
+            return 15;
+        }
+
+        // 新物体复用空洞 ⇒ 拿回被释放的槽位
+        auto ent_d = context.CreateEntity<Entity>("SlotD");
+        const TransformID id_d = context.CreateTransform(ent_d->GetEntityID(), Mobility::Static);
+        uint32_t slot_d = 0;
+
+        if (!IsValidTransformID(id_d) || !context.TryGetTransformSlot(id_d,false,slot_d) || slot_d != slot_b)
+        {
+            GLogError(u8"Test 13 Failed: 新物体未复用被释放的槽位（期望 %u，实际 %u）", slot_b, slot_d);
+            return 15;
+        }
+
+        // Mobility 换边 ⇒ 换段（旧段查询失败 + 新段拿到槽位）+ 计数增
+        const uint32_t move_before = context.GetTransformRowMoveCount();
+        context.MigrateTransform(id_a,true);
+
+        uint32_t slot_a_movable = 0;
+        uint32_t slot_a_static_dummy = 0;
+
+        if (context.TryGetTransformSlot(id_a,false,slot_a_static_dummy) ||
+            !context.TryGetTransformSlot(id_a,true,slot_a_movable) ||
+            context.GetTransformRowMoveCount() != move_before + 1)
+        {
+            GLogError(u8"Test 13 Failed: Mobility 换边未换段（static 命中=%d movable 命中=%d 计数 %u→%u）",
+                      context.TryGetTransformSlot(id_a,false,slot_a_static_dummy) ? 1 : 0,
+                      context.TryGetTransformSlot(id_a,true,slot_a_movable) ? 1 : 0,
+                      move_before, context.GetTransformRowMoveCount());
+            return 15;
+        }
+
+        // 段预算用尽 ⇒ 拒绝（不扩容；返回 INVALID_TRANSFORM_ID，活槽数不变）
+        storage->Initialize(2,2);
+
+        auto ent_over = context.CreateEntity<Entity>("SlotOverBudget");
+        const uint32_t live_before = context.GetLiveTransformCount(false);
+        const TransformID id_over = context.CreateTransform(ent_over->GetEntityID(), Mobility::Static);
+
+        if (IsValidTransformID(id_over) || context.GetLiveTransformCount(false) != live_before)
+        {
+            GLogError(u8"Test 13 Failed: 段预算用尽仍在分配（id 有效=%d 活槽 %u→%u）",
+                      IsValidTransformID(id_over) ? 1 : 0, live_before, context.GetLiveTransformCount(false));
+            return 15;
+        }
+
+        storage->Initialize(TransformDataStorage::kDefaultMaxStaticRows,
+                            TransformDataStorage::kDefaultMaxDynamicRows);
+
+        GLogInfo(u8"Test 13 Passed: 稳定槽位契约（销毁不影响他者槽位 / 空洞复用 / 换边换段并计数 / 段预算用尽拒绝分配）。");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 14: B2 稀疏侧表契约
+    //   · fixed-pixel 状态是真源在存储（旧实现 32 B/行 × 全表 ⇒ 改稀疏 map）
+    //   · 只有被配置过的行才有状态：**未配置的行必须读到默认（关闭）**，不得串味
+    //   · 子表 CSR：`GetChildCount/GetChild/HasChild/CopyChildren` 与 Add/Remove 一致
+    // ─────────────────────────────────────────────────────────────
+    {
+        auto *storage = context.GetTransformStorage();
+
+        if (!storage)
+        {
+            GLogError(u8"Test 14 Failed: 无变换存储");
+            return 16;
+        }
+
+        auto ent_fp = context.CreateEntity<Entity>("FixedPixelProbe");
+        auto ent_plain = context.CreateEntity<Entity>("PlainProbe");
+
+        const TransformID fp_id = context.CreateTransform(ent_fp->GetEntityID(), Mobility::Static);
+        const TransformID plain_id = context.CreateTransform(ent_plain->GetEntityID(), Mobility::Static);
+
+        auto fp = context.GetTransform(fp_id);
+        auto plain = context.GetTransform(plain_id);
+
+        if (fp.IsFixedPixelSizingEnabled() || plain.IsFixedPixelSizingEnabled())
+        {
+            GLogError(u8"Test 14 Failed: 未配置的行不得报 fixed-pixel 已启用（稀疏表串味）");
+            return 16;
+        }
+
+        fp.SetFixedPixelSizingParameters(320.0f,2.0f,0.05f);
+        fp.SetFixedPixelSizingEnabled(true);
+
+        if (!fp.IsFixedPixelSizingEnabled())
+        {
+            GLogError(u8"Test 14 Failed: 配置后 fixed-pixel 未启用（稀疏侧表写入丢失）");
+            return 16;
+        }
+
+        if (plain.IsFixedPixelSizingEnabled())
+        {
+            GLogError(u8"Test 14 Failed: 另一行的 fixed-pixel 被相邻行污染");
+            return 16;
+        }
+
+        // 子表 CSR 往返：Add → 读回 → 查找 → Remove
+        const TransformID csr_child_a = context.CreateTransform(context.CreateEntity<Entity>("CsrChildA")->GetEntityID(), Mobility::Static);
+        const TransformID csr_child_b = context.CreateTransform(context.CreateEntity<Entity>("CsrChildB")->GetEntityID(), Mobility::Static);
+
+        storage->AddChild(fp_id,csr_child_a);
+        storage->AddChild(fp_id,csr_child_b);
+        storage->AddChild(fp_id,csr_child_a);          // 重复登记必须幂等
+
+        if (storage->GetChildCount(fp_id) != 2 ||
+            storage->GetChild(fp_id,0) != csr_child_a ||
+            storage->GetChild(fp_id,1) != csr_child_b ||
+            !storage->HasChild(fp_id,csr_child_a) ||
+            storage->HasChild(fp_id,csr_child_b + 999u))
+        {
+            GLogError(u8"Test 14 Failed: 子表 CSR 读写不一致（count=%u）", storage->GetChildCount(fp_id));
+            return 16;
+        }
+
+        std::vector<TransformDataStorage::HandleID> snapshot;
+        storage->CopyChildren(fp_id,snapshot);
+
+        if (snapshot.size() != 2 || snapshot[0] != csr_child_a || snapshot[1] != csr_child_b)
+        {
+            GLogError(u8"Test 14 Failed: CopyChildren 快照与 CSR 区间不一致");
+            return 16;
+        }
+
+        storage->RemoveChild(fp_id,csr_child_a);
+
+        if (storage->GetChildCount(fp_id) != 1 || storage->HasChild(fp_id,csr_child_a) ||
+            storage->GetChild(fp_id,0) != csr_child_b)
+        {
+            GLogError(u8"Test 14 Failed: RemoveChild 后行内区间未保持连续");
+            return 16;
+        }
+
+        // 释放行 ⇒ 稀疏表条目必须摘除
+        context.DestroyEntity(ent_fp->GetEntityID());
+
+        if (storage->GetFixedPixel(fp_id).enabled)
+        {
+            GLogError(u8"Test 14 Failed: 行释放后 fixed-pixel 条目未摘除（稀疏表泄漏）");
+            return 16;
+        }
+
+        GLogInfo(u8"Test 14 Passed: B2 稀疏侧表契约（fixed-pixel 按行隔离/释放即摘除；子表 CSR 增删查与快照一致）。");
     }
 
     GLogInfo(u8"=== All TransformDataStorage tests passed successfully! ===");

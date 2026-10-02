@@ -85,7 +85,8 @@ namespace hgl
             storage->SetDirty(id,true);
 
             // 子/孙的世界矩阵都变了 ⇒ 逐行 bump 版本 + 记 WorldMatrix 变更
-            std::vector<TransformID> stack(storage->GetChildren(id));
+            std::vector<TransformID> stack;
+            storage->CopyChildren(id,stack);
 
             while (!stack.empty())
             {
@@ -98,7 +99,8 @@ namespace hgl
                 storage->SetDirty(child,true);
                 storage->TouchChange(child,ToChangeMask(TransformChange::WorldMatrix));
 
-                const std::vector<TransformID> &grand = storage->GetChildren(child);
+                std::vector<TransformID> grand;
+                storage->CopyChildren(child,grand);
                 stack.insert(stack.end(),grand.begin(),grand.end());
             }
         }
@@ -240,13 +242,6 @@ namespace hgl
             storage->SetParent(id,new_parent);
 
             MarkLocalChanged(ToChangeMask(TransformChange::Parent) | ToChangeMask(TransformChange::WorldMatrix));
-        }
-
-        const std::vector<TransformID> &TransformAccessor::GetChildren() const
-        {
-            static const std::vector<TransformID> kEmpty;
-
-            return IsValid() ? storage->GetChildren(id) : kEmpty;
         }
 
         void TransformAccessor::AddChild(TransformID child) const

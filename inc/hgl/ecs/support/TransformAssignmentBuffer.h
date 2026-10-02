@@ -47,40 +47,45 @@ namespace hgl::ecs
         uint32_t MaxTransformCount;             ///<单个SSBO最大支持的变换数量
         graph::BufferManager* buffer_manager;   ///<BufferManager用于创建缓冲区
 
+        // ── 声明式行预算（T10/B1a）──
+        // 容量在**启动期一次性**按预算建好，此后**不再重建**（行号/基址因此固定）；
+        // 超预算只做**一次性明确告警**，不扩容 —— 与材质行 arena「上限不扩容」同口径。
+        uint32_t max_static_rows;               ///<静态段行预算（P-2 拍板：4096）
+        uint32_t max_dynamic_rows;              ///<动态段行预算（P-2 拍板：4096）
+        bool     budget_warned = false;         ///<超预算一次性告警闩
+
     private:    // LocalToWorld矩阵数据
-        uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
+        uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵行数（由预算算出的固定值）
         graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(SSBO)
-        graph::BufferAllocPolicy transform_policy;     ///<Transform buffer allocation policy
 
         graph::RingLayout ring_layout;   ///<静态段 + 动态段×帧数 的环形行布局算术（不持有 buffer）
 
-        void StatTransform(const size_t required_count,graph::BufferAllocPolicy policy);
-        bool EnsureTransformIndexRowsCapacity(const uint32_t required_count);
-        bool WriteTransformIndexRows(const uint32_t static_count, const uint32_t dynamic_count);
-
-    private:    // 分发数据
-        uint32_t transform_index_rows_max_count; ///<TransformID行表容量（uint32 行）
-        graph::DeviceBuffer* transform_index_rows_buffer; ///<TransformID行表SSBO
+        /// 按预算**一次性**建立 L2W SSBO（只在首次调用时创建，永不重建）
+        bool AllocateBudgetBuffers();
 
     private:
         void Clear();
 
     public:
         TransformAssignmentBuffer(graph::BufferManager* bm,
-                                  uint32_t ring_frames = HGL_L2W_RING_FRAMES);
+                                  uint32_t ring_frames,
+                                  uint32_t max_static_rows,
+                                  uint32_t max_dynamic_rows);
         ~TransformAssignmentBuffer() { Clear(); }
 
         graph::DeviceBuffer* GetTransformDataBuffer() const { return transform_buffer; }
-        graph::DeviceBuffer* GetTransformIndexRowsBuffer() const { return transform_index_rows_buffer; }
 
-        void EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy);
-        uint32_t GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const;
+        /// 每帧入口：只做「预算内校验」，**不扩容、不重建**（容量在首次调用时按预算一次性建好）。
+        /// 注：旧全局 index 行表已删（B1b-2）——`addr_l2w_index` 由 per-batch 行表供给。
+        void EnsureBudget(const uint32_t static_count,const uint32_t dynamic_count);
+        /// 动态段基址（B1b：由**预算**决定，不再随"当前名单长度"漂移；与 buffer 固定容量同源）
+        uint32_t GetDynamicBaseIndex() const;
 
         void WriteStaticDirtyIndices(const TransformDataStorage& storage,
                          const std::vector<TransformDataStorage::HandleID>& handles,
                          const std::vector<uint32_t>& dirty_indices);
+        /// `handles` = 该段的**槽位表**（下标即槽位，含空洞）⇒ `dirty_indices` 里是槽位
         void WriteDynamicDirtyIndices(const TransformDataStorage& storage,
-                          const uint32_t static_count,
                           const std::vector<TransformDataStorage::HandleID>& handles,
                           const std::vector<uint32_t>& dirty_indices);
 

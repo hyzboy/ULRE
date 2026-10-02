@@ -143,13 +143,15 @@ namespace hgl::ecs
     }
 
     TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm,
-                                                         uint32_t ring_frames)
-        : buffer_manager(bm)
+                                                         const uint32_t ring_frames,
+                                                         const uint32_t max_static_rows,
+                                                         const uint32_t max_dynamic_rows)
+        : MaxTransformCount(0)
+        , buffer_manager(bm)
+        , max_static_rows(max_static_rows)
+        , max_dynamic_rows(max_dynamic_rows)
         , transform_buffer_max_count(0)
         , transform_buffer(nullptr)
-        , transform_policy(graph::BufferAllocPolicy::Auto)
-        , transform_index_rows_max_count(0)
-        , transform_index_rows_buffer(nullptr)
         , ring_layout(ring_frames ? ring_frames : HGL_L2W_RING_FRAMES)
     {
         if (buffer_manager)
@@ -160,29 +162,40 @@ namespace hgl::ecs
         }
     }
 
-    void TransformAssignmentBuffer::EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy)
+    void TransformAssignmentBuffer::EnsureBudget(const uint32_t static_count,const uint32_t dynamic_count)
     {
-        const uint32_t total_count = ring_layout.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
-        StatTransform(total_count, policy);
-        WriteTransformIndexRows(static_count, dynamic_count);
+        if (!AllocateBudgetBuffers())
+            return;
+
+        if (static_count > max_static_rows || dynamic_count > max_dynamic_rows)
+        {
+            if (!budget_warned)
+            {
+                budget_warned = true;
+                GLogError("[TransformAssignmentBuffer] 变换预算超限：static=%u/%u dynamic=%u/%u"
+                          " —— 预算没调够（行号已移动、固化 ID/存档失效）；本帧**不扩容**，超出部分不写入 L2W。",
+                          static_count, max_static_rows, dynamic_count, max_dynamic_rows);
+            }
+        }
+
+        // 索引行表已整块删除（B1b-2：全局 `ECS:LocalToWorldIndex` 只写不读；
+        // per-batch 行表由 PrimitiveBatchPipeline 直接按槽位写 `item->transform_index`）。
 
         if (ShouldEmitPeriodicLog())
         {
-            const uint32_t ring_base = ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
-            GLogInfo("[TransformAssignmentBuffer] EnsureCapacity: static=%u dynamic=%u total=%u ring_base=%u frame=%u policy=%d",
-                     static_count,
-                     dynamic_count,
-                     total_count,
-                     ring_base,
-                     ring_layout.GetFrameIndex(),
-                     static_cast<int>(policy));
-            LogDeviceBufferSnapshot("[TransformAssignmentBuffer] EnsureCapacity snapshot", transform_buffer);
+            GLogInfo("[TransformAssignmentBuffer] budget: static=%u/%u dynamic=%u/%u rows=%u ring_base=%u frame=%u",
+                     static_count, max_static_rows, dynamic_count, max_dynamic_rows,
+                     transform_buffer_max_count,
+                     ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count),
+                     ring_layout.GetFrameIndex());
+            LogDeviceBufferSnapshot("[TransformAssignmentBuffer] EnsureBudget snapshot", transform_buffer);
         }
     }
 
-    uint32_t TransformAssignmentBuffer::GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const
+    uint32_t TransformAssignmentBuffer::GetDynamicBaseIndex() const
     {
-        return ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
+        // B1b：动态段基址 = 静态段**预算** + 帧号 × 动态段**预算**（与固定容量同源 ⇒ 行号不再漂移）
+        return ring_layout.GetBaseIndex(max_static_rows + kFirstObjectL2WSlot, max_dynamic_rows);
     }
 
 
@@ -251,6 +264,11 @@ namespace hgl::ecs
             for (uint32_t i = 0; i < count; ++i)
             {
                 const auto handle = handles[first + i];
+
+                // 槽位表含空洞（B1b：下标 = 槽位）⇒ 空洞行不写（无人引用，保持上次内容）
+                if (handle == TransformDataStorage::INVALID_HANDLE)
+                    continue;
+
                 const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
                 dst[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
             }
@@ -283,7 +301,6 @@ namespace hgl::ecs
     }
 
     void TransformAssignmentBuffer::WriteDynamicDirtyIndices(const TransformDataStorage& storage,
-                                                             const uint32_t static_count,
                                                              const std::vector<TransformDataStorage::HandleID>& handles,
                                                              const std::vector<uint32_t>& dirty_indices)
     {
@@ -294,10 +311,10 @@ namespace hgl::ecs
         if (!tbuf)
             return;
 
-        const uint32_t dynamic_count = static_cast<uint32_t>(handles.size());
-        const uint32_t base_index = ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
+        const uint32_t slot_count = static_cast<uint32_t>(handles.size());
+        const uint32_t base_index = GetDynamicBaseIndex();
 
-        const auto merged_ranges = BuildMergedRangesFromIndices(dirty_indices, dynamic_count);
+        const auto merged_ranges = BuildMergedRangesFromIndices(dirty_indices, slot_count);
         if (merged_ranges.empty())
             return;
 
@@ -322,11 +339,11 @@ namespace hgl::ecs
         math::Matrix4f *mapped = static_cast<math::Matrix4f *>(tbuf->Map(span_offset_bytes, span_size_bytes));
         if (!mapped)
         {
-            GLogWarning("[TransformAssignmentBuffer] Dynamic L2W map failed: map_offset=%llu map_size=%llu static_count=%u dynamic_count=%u dirty_indices=%u frame=%u",
+            GLogWarning("[TransformAssignmentBuffer] Dynamic L2W map failed: map_offset=%llu map_size=%llu slots=%u base=%u dirty_indices=%u frame=%u",
                         static_cast<unsigned long long>(span_offset_bytes),
                         static_cast<unsigned long long>(span_size_bytes),
-                        static_count,
-                        dynamic_count,
+                        slot_count,
+                        base_index,
                         static_cast<uint32_t>(dirty_indices.size()),
                         ring_layout.GetFrameIndex());
             return;
@@ -349,6 +366,11 @@ namespace hgl::ecs
             for (uint32_t i = 0; i < count; ++i)
             {
                 const auto handle = handles[first + i];
+
+                // 槽位表含空洞 ⇒ 空洞行不写
+                if (handle == TransformDataStorage::INVALID_HANDLE)
+                    continue;
+
                 const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
                 dst[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
             }
@@ -369,7 +391,7 @@ namespace hgl::ecs
             for (const auto &range : merged_ranges)
             {
                 const uint32_t first = static_cast<uint32_t>(range.first);
-                if (first < handles.size())
+                if (first < handles.size() && handles[first] != TransformDataStorage::INVALID_HANDLE)
                 {
                     const auto sample_handle = handles[first];
                     const glm::mat4 sample_world = storage.GetWorldMatrix(sample_handle);
@@ -381,9 +403,9 @@ namespace hgl::ecs
             }
 
         #if HGL_TRANSFORM_DEBUG_LOGGING
-            GLogInfo("[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d sample_handle=%u sample_pos=(%.3f, %.3f, %.3f)",
-                      static_count,
+            GLogInfo("[TransformAssignmentBuffer] Dynamic L2W flush: base=%u slots=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d sample_handle=%u sample_pos=(%.3f, %.3f, %.3f)",
                       base_index,
+                      slot_count,
                       static_cast<uint32_t>(flush_ranges.size()),
                       static_cast<uint32_t>(dirty_indices.size()),
                       static_cast<unsigned long long>(total_written_bytes),
@@ -412,194 +434,66 @@ namespace hgl::ecs
         {
             if (transform_buffer)
                 buffer_manager->Release(transform_buffer);
-            if (transform_index_rows_buffer)
-                buffer_manager->Release(transform_index_rows_buffer);
         }
         else
         {
             SAFE_CLEAR(transform_buffer);
-            SAFE_CLEAR(transform_index_rows_buffer);
         }
 
         transform_buffer = nullptr;
-        transform_index_rows_buffer = nullptr;
 
         transform_buffer_max_count = 0;
-        transform_index_rows_max_count = 0;
     }
 
-    void TransformAssignmentBuffer::StatTransform(const size_t required_count,graph::BufferAllocPolicy policy)
+    bool TransformAssignmentBuffer::AllocateBudgetBuffers()
     {
-        bool recreated = false;
+        if (transform_buffer)
+            return true;
 
-        // 检查是否需要重新分配缓冲
-        if (!transform_buffer)
+        if (!buffer_manager)
         {
-            transform_buffer_max_count = hgl::power_to_2(required_count);
-            recreated = true;
-        }
-        else if (required_count > transform_buffer_max_count)
-        {
-            transform_buffer_max_count = hgl::power_to_2(required_count);
-            if (buffer_manager)
-            {
-                buffer_manager->Release(transform_buffer);
-                transform_buffer = nullptr;
-            }
-            else
-            {
-                SAFE_CLEAR(transform_buffer);
-            }
-
-            recreated = true;
+            GLogError("[TransformAssignmentBuffer] 预算分配失败：buffer_manager 为空（static=%u dynamic=%u）",
+                      max_static_rows, max_dynamic_rows);
+            return false;
         }
 
-        // Recreate if policy changed
-        if (transform_buffer && transform_policy != policy)
-        {
-            if (buffer_manager)
-            {
-                buffer_manager->Release(transform_buffer);
-                transform_buffer = nullptr;
-            }
-            else
-            {
-                SAFE_CLEAR(transform_buffer);
-            }
+        uint32_t row_count = ring_layout.GetTotalCount(max_static_rows + kFirstObjectL2WSlot, max_dynamic_rows);
 
-            recreated = true;
+        if (MaxTransformCount && row_count > MaxTransformCount)
+        {
+            GLogError("[TransformAssignmentBuffer] 声明预算超过设备 SSBO 上限：需要 %u 行 > 设备上限 %u 行"
+                      " —— 按设备上限截断（请调小预算），不静默扩容。",
+                      row_count, MaxTransformCount);
+            row_count = MaxTransformCount;
         }
 
-        transform_policy = policy;
-
-        // 创建或重用 Transform SSBO
-        if (!transform_buffer && buffer_manager)
-        {
-            transform_buffer = buffer_manager->CreateSSBO("ECS:LocalToWorld",
-                                                          sizeof(math::Matrix4f) * transform_buffer_max_count,
-                                                          nullptr,
-                                                          graph::SharingMode::Exclusive);
-
-            recreated = true;
-        }
-
-        if (recreated)
-        {
-            if (!WriteIdentityToL2WSlot0(transform_buffer))
-            {
-                GLogError("[TransformAssignmentBuffer] failed to initialize identity matrix at L2W slot 0");
-            }
-        }
+        transform_buffer_max_count = row_count;
+        transform_buffer = buffer_manager->CreateSSBO("ECS:LocalToWorld",
+                                                      sizeof(math::Matrix4f) * transform_buffer_max_count,
+                                                      nullptr,
+                                                      graph::SharingMode::Exclusive);
 
         if (!transform_buffer)
         {
-            GLogError("[TransformAssignmentBuffer] StatTransform failed: required=%u capacity=%u policy=%d (transform buffer is null)",
-                      static_cast<uint32_t>(required_count),
-                      transform_buffer_max_count,
-                      static_cast<int>(policy));
-            return;
-        }
-
-        if (recreated)
-        {
-            GLogInfo("[TransformAssignmentBuffer] LocalToWorld buffer ready: required=%u capacity=%u bytes=%llu policy=%d",
-                     static_cast<uint32_t>(required_count),
-                     transform_buffer_max_count,
-                     static_cast<unsigned long long>(transform_buffer->GetSize()),
-                     static_cast<int>(policy));
-
-            LogDeviceBufferSnapshot("[TransformAssignmentBuffer] L2W recreated", transform_buffer);
-        }
-        else if (ShouldEmitPeriodicLog())
-        {
-            GLogInfo("[TransformAssignmentBuffer] StatTransform reuse: required=%u capacity=%u policy=%d frame=%u",
-                     static_cast<uint32_t>(required_count),
-                     transform_buffer_max_count,
-                     static_cast<int>(policy),
-                     ring_layout.GetFrameIndex());
-        }
-    }
-
-
-
-
-
-
-
-    bool TransformAssignmentBuffer::EnsureTransformIndexRowsCapacity(const uint32_t required_count)
-    {
-        bool recreated = false;
-
-        if (!transform_index_rows_buffer)
-        {
-            transform_index_rows_max_count = hgl::power_to_2(required_count);
-            recreated = true;
-        }
-        else if (transform_index_rows_max_count < required_count)
-        {
-            transform_index_rows_max_count = hgl::power_to_2(required_count);
-            if (buffer_manager)
-            {
-                buffer_manager->Release(transform_index_rows_buffer);
-                transform_index_rows_buffer = nullptr;
-            }
-            else
-            {
-                SAFE_CLEAR(transform_index_rows_buffer);
-            }
-            recreated = true;
-        }
-
-        if (!transform_index_rows_buffer && buffer_manager)
-        {
-            transform_index_rows_buffer = buffer_manager->CreateSSBO("ECS:LocalToWorldIndex",
-                                                                     sizeof(uint32_t) * transform_index_rows_max_count,
-                                                                     nullptr,
-                                                                     graph::SharingMode::Exclusive);
-            recreated = true;
-        }
-
-        if (recreated && transform_index_rows_buffer)
-        {
-            auto *gpu = transform_index_rows_buffer->GetGPUBuffer();
-            GLogInfo("[TransformAssignmentBuffer] LocalToWorldIndex buffer ready: required=%u capacity=%u bytes=%llu gpu=0x%llX",
-                     required_count,
-                     transform_index_rows_max_count,
-                     static_cast<unsigned long long>(gpu ? gpu->GetSize() : 0ULL),
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)));
-        }
-
-        return transform_index_rows_buffer != nullptr;
-    }
-
-    bool TransformAssignmentBuffer::WriteTransformIndexRows(const uint32_t static_count, const uint32_t dynamic_count)
-    {
-        const uint32_t required_count = static_count + dynamic_count + 1; // slot 0 保留 identity
-        if (!EnsureTransformIndexRowsCapacity(required_count))
+            GLogError("[TransformAssignmentBuffer] 预算期分配失败：L2W rows=%u（static=%u + dynamic=%u）",
+                      row_count, max_static_rows, max_dynamic_rows);
             return false;
+        }
 
-        auto *gpu = transform_index_rows_buffer ? transform_index_rows_buffer->GetGPUBuffer() : nullptr;
-        if (!gpu)
-            return false;
+        if (!WriteIdentityToL2WSlot0(transform_buffer))
+        {
+            GLogError("[TransformAssignmentBuffer] failed to initialize identity matrix at L2W slot 0");
+        }
 
-        std::vector<uint32_t> rows(required_count, 0);
-        rows[0] = 0;
-
-        for (uint32_t i = 0; i < static_count; ++i)
-            rows[1 + i] = 1 + i;
-
-        const uint32_t dynamic_base = ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
-        for (uint32_t i = 0; i < dynamic_count; ++i)
-            rows[1 + static_count + i] = dynamic_base + i;
-
-        const VkDeviceSize byte_size = static_cast<VkDeviceSize>(rows.size()) * sizeof(uint32_t);
-        if (!gpu->Write(rows.data(), 0, byte_size))
-            return false;
-
-        graph::IGPUBuffer::DirtyRange dirty{0, byte_size};
-        transform_index_rows_buffer->FlushRanges(&dirty, 1);
+        GLogInfo("[TransformAssignmentBuffer] 预算期一次性分配完成：L2W rows=%u（static=%u + dynamic=%u）bytes=%llu",
+                 transform_buffer_max_count,
+                 max_static_rows,
+                 max_dynamic_rows,
+                 static_cast<unsigned long long>(transform_buffer->GetSize()));
         return true;
     }
+
+
 
     void TransformAssignmentBuffer::SetFrameIndex(const uint32_t index)
     {

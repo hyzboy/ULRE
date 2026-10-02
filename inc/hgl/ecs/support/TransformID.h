@@ -51,6 +51,9 @@ namespace hgl
 
         inline constexpr TransformID INVALID_TRANSFORM_ID = TransformDataStorage::INVALID_HANDLE;
 
+        /// 无效**槽位**（B1b：槽位是稳定行号的来源；注意 `0` 是合法槽位，不是"未分配"哨兵）
+        inline constexpr uint32_t INVALID_TRANSFORM_SLOT = 0xFFFFFFFFu;
+
         inline constexpr bool IsValidTransformID(const TransformID &id)
         {
             return id != INVALID_TRANSFORM_ID;

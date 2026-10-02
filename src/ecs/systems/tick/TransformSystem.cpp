@@ -214,7 +214,7 @@ namespace hgl::ecs
         // Even when transform values are unchanged, current frame segment must be populated.
         const bool dynamic_force_full = (dynamic_count > 0);
 
-        transform_buffer->EnsureCapacity(static_count, dynamic_count, graph::BufferAllocPolicy::Auto);
+        transform_buffer->EnsureBudget(static_count, dynamic_count);
 
         if (storage)
         {
@@ -228,8 +228,14 @@ namespace hgl::ecs
 
             if (static_dirty)
             {
-                for (uint32_t i = 0; i < static_count; ++i)
-                    dirty_static_indices.push_back(i);
+                // 槽位表（含空洞）⇒ 只把**活着的槽位**记为脏（空洞无人引用）
+                const auto &static_slots = world->GetStaticTransforms();
+
+                for (uint32_t slot = 0; slot < static_cast<uint32_t>(static_slots.size()); ++slot)
+                {
+                    if (IsValidTransformID(static_slots[slot]))
+                        dirty_static_indices.push_back(slot);
+                }
             }
             else
             {
@@ -238,7 +244,7 @@ namespace hgl::ecs
                     if (!IsValidTransformID(handle))
                         continue;
 
-                    const uint32_t *idx = static_index_map.GetValuePointer(handle);
+                    const uint32_t *idx = static_slot_map.GetValuePointer(handle);
                     if (!idx)
                         continue;
 
@@ -254,8 +260,14 @@ namespace hgl::ecs
 
             if (dynamic_force_full)
             {
-                for (uint32_t i = 0; i < dynamic_count; ++i)
-                    dirty_dynamic_indices.push_back(i);
+                // 动态段每帧全量写本帧 ring 切片 ⇒ 活着的槽位全部记脏
+                const auto &movable_slots = world->GetMovableTransforms();
+
+                for (uint32_t slot = 0; slot < static_cast<uint32_t>(movable_slots.size()); ++slot)
+                {
+                    if (IsValidTransformID(movable_slots[slot]))
+                        dirty_dynamic_indices.push_back(slot);
+                }
             }
             else
             {
@@ -264,7 +276,7 @@ namespace hgl::ecs
                     if (!IsValidTransformID(handle))
                         continue;
 
-                    const uint32_t *idx = dynamic_index_map.GetValuePointer(handle);
+                    const uint32_t *idx = dynamic_slot_map.GetValuePointer(handle);
                     if (!idx)
                         continue;
 
@@ -304,14 +316,14 @@ namespace hgl::ecs
             {
                 std::sort(dirty_static_indices.begin(), dirty_static_indices.end());
                 dirty_static_indices.erase(std::unique(dirty_static_indices.begin(), dirty_static_indices.end()), dirty_static_indices.end());
-                transform_buffer->WriteStaticDirtyIndices(*storage, static_handles, dirty_static_indices);
+                transform_buffer->WriteStaticDirtyIndices(*storage, world->GetStaticTransforms(), dirty_static_indices);
             }
 
             if (!dirty_dynamic_indices.empty())
             {
                 std::sort(dirty_dynamic_indices.begin(), dirty_dynamic_indices.end());
                 dirty_dynamic_indices.erase(std::unique(dirty_dynamic_indices.begin(), dirty_dynamic_indices.end()), dirty_dynamic_indices.end());
-                transform_buffer->WriteDynamicDirtyIndices(*storage, static_count, dynamic_handles, dirty_dynamic_indices);
+                transform_buffer->WriteDynamicDirtyIndices(*storage, world->GetMovableTransforms(), dirty_dynamic_indices);
             }
 
             static_dirty = false;
@@ -325,7 +337,7 @@ namespace hgl::ecs
         ++s_submit_log_tick;
         if ((s_submit_log_tick % 60u) == 1u)
         {
-            uint32_t dynamic_base = transform_buffer ? transform_buffer->GetDynamicBaseIndex(static_count, dynamic_count) : 0u;
+            uint32_t dynamic_base = transform_buffer ? transform_buffer->GetDynamicBaseIndex() : 0u;
 
             if (storage && dynamic_count > 0 && !dynamic_handles.empty())
             {
@@ -377,37 +389,45 @@ namespace hgl::ecs
         if (render_target)
             ring_frames = render_target->GetFrameCount();
 
+        // 行预算的唯一真源是世界的变换存储（T10/B1a：声明式预算 + 预分配）。
+        const TransformDataStorage *storage = world->GetTransformStorage();
+
+        const uint32_t max_static_rows  = storage ? storage->GetStaticRowBudget()  : TransformDataStorage::kDefaultMaxStaticRows;
+        const uint32_t max_dynamic_rows = storage ? storage->GetDynamicRowBudget() : TransformDataStorage::kDefaultMaxDynamicRows;
+
         transform_buffer = new TransformAssignmentBuffer(buffer_manager,
-                                                         ring_frames);
+                                                         ring_frames,
+                                                         max_static_rows,
+                                                         max_dynamic_rows);
         static_dirty = true;
     }
 
-    uint32_t TransformSystem::GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const
+    uint32_t TransformSystem::GetDynamicBaseIndex() const
     {
         if (!transform_buffer)
-            return static_count;
+            return 0;
 
-        return transform_buffer->GetDynamicBaseIndex(static_count, dynamic_count);
+        return transform_buffer->GetDynamicBaseIndex();
     }
 
-    bool TransformSystem::TryGetTransformGroupIndex(TransformDataStorage::HandleID handle, bool movable, uint32_t& out_index) const
+    bool TransformSystem::TryGetTransformSlot(TransformDataStorage::HandleID handle, bool movable, uint32_t& out_slot) const
     {
         if (handle == TransformDataStorage::INVALID_HANDLE)
             return false;
 
         if (movable)
         {
-            const uint32_t *index = dynamic_index_map.GetValuePointer(handle);
+            const uint32_t *index = dynamic_slot_map.GetValuePointer(handle);
             if (!index)
                 return false;
-            out_index = *index;
+            out_slot = *index;
             return true;
         }
 
-        const uint32_t *index = static_index_map.GetValuePointer(handle);
+        const uint32_t *index = static_slot_map.GetValuePointer(handle);
         if (!index)
             return false;
-        out_index = *index;
+        out_slot = *index;
         return true;
     }
 
@@ -415,36 +435,41 @@ namespace hgl::ecs
     {
         static_handles.clear();
         dynamic_handles.clear();
-        static_index_map.Clear();
-        dynamic_index_map.Clear();
+        static_slot_map.Clear();
+        dynamic_slot_map.Clear();
 
         if (!world)
             return;
 
-        const auto& static_transforms = world->GetStaticTransforms();
-        const auto& movable_transforms = world->GetMovableTransforms();
+        // B1b：世界的两个数组**就是槽位表**（下标 = 槽位，空洞 = INVALID）。
+        // 这里只派生出"活着的 handle 列表"与 handle→槽位映射；槽位值跨帧稳定，
+        // 不再像改前那样把"名单排名"当行号（那时删/加一个物体就会整体平移）。
+        const auto& static_slots = world->GetStaticTransforms();
+        const auto& movable_slots = world->GetMovableTransforms();
 
-        static_handles.reserve(static_transforms.size());
-        dynamic_handles.reserve(movable_transforms.size());
+        static_handles.reserve(static_slots.size());
+        dynamic_handles.reserve(movable_slots.size());
 
-        for (const TransformID handle : static_transforms)
+        for (uint32_t slot = 0; slot < static_cast<uint32_t>(static_slots.size()); ++slot)
         {
+            const TransformID handle = static_slots[slot];
+
             if (!IsValidTransformID(handle))
                 continue;
 
-            const uint32_t index = static_cast<uint32_t>(static_handles.size());
             static_handles.push_back(handle);
-            static_index_map[handle] = index;
+            static_slot_map[handle] = slot;
         }
 
-        for (const TransformID handle : movable_transforms)
+        for (uint32_t slot = 0; slot < static_cast<uint32_t>(movable_slots.size()); ++slot)
         {
+            const TransformID handle = movable_slots[slot];
+
             if (!IsValidTransformID(handle))
                 continue;
 
-            const uint32_t index = static_cast<uint32_t>(dynamic_handles.size());
             dynamic_handles.push_back(handle);
-            dynamic_index_map[handle] = index;
+            dynamic_slot_map[handle] = slot;
         }
     }
 

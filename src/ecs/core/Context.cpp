@@ -1860,6 +1860,88 @@ namespace hgl
             vec->push_back(comp);
         }
 
+        uint32_t ECSContext::GetTransformSegmentBudget(const bool movable) const
+        {
+            const auto *storage = GetTransformStorage();
+
+            if (!storage)
+                return 0;
+
+            return movable ? storage->GetDynamicRowBudget() : storage->GetStaticRowBudget();
+        }
+
+        // ── 稳定槽位（B1b）──
+        // 槽位表的下标**就是槽位**：L2W 行号 = 静态 `1+slot` / 动态 `1+预算static + frame×预算dynamic + slot`。
+        // 注销只把该格置空洞并入空闲表 ⇒ **别的物体行号不受影响**（改前是 erase 整体平移）。
+        uint32_t ECSContext::AcquireTransformSlot(const bool movable)
+        {
+            auto &free_slots = movable ? movable_free_slots : static_free_slots;
+            auto &list       = movable ? movable_transforms  : static_transforms;
+
+            if (!free_slots.empty())
+            {
+                const uint32_t slot = free_slots.back();
+                free_slots.pop_back();
+                return slot;                            // 复用空洞：新物体拿回被释放的行号
+            }
+
+            const uint32_t budget = GetTransformSegmentBudget(movable);
+
+            if (budget != 0 && static_cast<uint32_t>(list.size()) >= budget)
+                return INVALID_TRANSFORM_SLOT;          // 段预算用尽：拒绝，不扩容
+
+            list.push_back(INVALID_TRANSFORM_ID);
+            return static_cast<uint32_t>(list.size() - 1);
+        }
+
+        void ECSContext::ReleaseTransformSlot(const bool movable,const uint32_t slot)
+        {
+            auto &list       = movable ? movable_transforms : static_transforms;
+            auto &free_slots = movable ? movable_free_slots  : static_free_slots;
+
+            if (slot >= static_cast<uint32_t>(list.size()))
+                return;
+
+            if (!IsValidTransformID(list[slot]))        // 已是空洞 ⇒ 不重复入表
+                return;
+
+            list[slot] = INVALID_TRANSFORM_ID;
+            free_slots.push_back(slot);
+        }
+
+        bool ECSContext::TryGetTransformSlot(TransformID id,bool movable,uint32_t &out_slot) const
+        {
+            if (!IsValidTransformID(id))
+                return false;
+
+            const auto &list = movable ? movable_transforms : static_transforms;
+
+            for (uint32_t slot = 0; slot < static_cast<uint32_t>(list.size()); ++slot)
+            {
+                if (list[slot] == id)
+                {
+                    out_slot = slot;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        uint32_t ECSContext::GetLiveTransformCount(const bool movable) const
+        {
+            const auto &list = movable ? movable_transforms : static_transforms;
+            uint32_t live = 0;
+
+            for (const TransformID id : list)
+            {
+                if (IsValidTransformID(id))
+                    ++live;
+            }
+
+            return live;
+        }
+
         void ECSContext::RegisterTransform(TransformID id,bool isMovable)
         {
             if (!IsValidTransformID(id))
@@ -1878,10 +1960,34 @@ namespace hgl
                 }
             }
 
-            auto &list = isMovable ? movable_transforms : static_transforms;
+            uint32_t existing_slot = 0;
 
-            if (std::find(list.begin(),list.end(),id) == list.end())
-                list.push_back(id);
+            if (TryGetTransformSlot(id,isMovable,existing_slot))
+                return;                                     // 幂等：重复登记不改行号
+
+            // 换段（移动性变了）时先归还旧段槽位，避免同一变换占两段
+            uint32_t other_slot = 0;
+
+            if (TryGetTransformSlot(id,!isMovable,other_slot))
+                ReleaseTransformSlot(!isMovable,other_slot);
+
+            const uint32_t slot = AcquireTransformSlot(isMovable);
+
+            if (slot == INVALID_TRANSFORM_SLOT)
+            {
+                if (!transform_slot_overflow_warned)
+                {
+                    transform_slot_overflow_warned = true;
+                    GLogError("[ECSContext] %s变换槽预算用尽（budget=%u）—— 该变换**没有 L2W 行**"
+                              "（拒绝，不扩容；请调大预算后重载）。",
+                              isMovable ? "动态" : "静态",
+                              GetTransformSegmentBudget(isMovable));
+                }
+
+                return;
+            }
+
+            (isMovable ? movable_transforms : static_transforms)[slot] = id;
         }
 
         void ECSContext::MigrateTransform(TransformID id,bool toMovable)
@@ -1889,18 +1995,42 @@ namespace hgl
             if (!IsValidTransformID(id))
                 return;
 
-            auto remove_from_list = [id](std::vector<TransformID>& list)
+            uint32_t old_slot = 0;
+
+            if (!TryGetTransformSlot(id,!toMovable,old_slot))
+                return;                                     // 不在旧段 ⇒ 无需迁移
+
+            ReleaseTransformSlot(!toMovable,old_slot);
+
+            const uint32_t slot = AcquireTransformSlot(toMovable);
+
+            if (slot == INVALID_TRANSFORM_SLOT)
             {
-                list.erase(std::remove(list.begin(),list.end(),id),list.end());
-            };
+                if (!transform_slot_overflow_warned)
+                {
+                    transform_slot_overflow_warned = true;
+                    GLogError("[ECSContext] %s变换槽预算用尽（budget=%u）—— Mobility 换边被拒绝，"
+                              "该变换留在原段（不扩容）。",
+                              toMovable ? "动态" : "静态",
+                              GetTransformSegmentBudget(toMovable));
+                }
 
-            remove_from_list(static_transforms);
-            remove_from_list(movable_transforms);
+                (toMovable ? movable_transforms : static_transforms)[old_slot] = id;   // 换边失败 ⇒ 复位
+                return;
+            }
 
-            auto &target = toMovable ? movable_transforms : static_transforms;
+            (toMovable ? movable_transforms : static_transforms)[slot] = id;
 
-            if (std::find(target.begin(),target.end(),id) == target.end())
-                target.push_back(id);
+            ++transform_row_move_count;
+
+            // 行号随段移动 ⇒ 旧 L2W 行作废（这正是 §9.2 说的"行号已移动"情形；改前是全体静默平移，更糟）
+            if (!transform_row_move_warned)
+            {
+                transform_row_move_warned = true;
+                GLogWarning("[ECSContext] Mobility 换边 ⇒ L2W 行号移动（transform=%u 旧槽=%u → 新段槽=%u）；"
+                            "固化 ID / 预烘焙数据需重新取号。",
+                            id, old_slot, slot);
+            }
 
             if (auto *storage = GetTransformStorage())
                 storage->SetMobility(id,toMovable ? 1 : 0);
@@ -1911,13 +2041,13 @@ namespace hgl
             if (!IsValidTransformID(id))
                 return;
 
-            auto remove_from_list = [id](std::vector<TransformID>& list)
-            {
-                list.erase(std::remove(list.begin(),list.end(),id),list.end());
-            };
+            uint32_t slot = 0;
 
-            remove_from_list(static_transforms);
-            remove_from_list(movable_transforms);
+            if (TryGetTransformSlot(id,false,slot))
+                ReleaseTransformSlot(false,slot);
+
+            if (TryGetTransformSlot(id,true,slot))
+                ReleaseTransformSlot(true,slot);
         }
 
         TransformID ECSContext::CreateTransform(EntityID owner,Mobility mobility)
@@ -1928,6 +2058,10 @@ namespace hgl
                 return INVALID_TRANSFORM_ID;
 
             const TransformID id = storage->Allocate();
+
+            // 预算超限：存储侧已做一次性明确告警并拒绝分配（不扩容）⇒ 这里不再造半个变换。
+            if (!IsValidTransformID(id))
+                return INVALID_TRANSFORM_ID;
 
             storage->SetOwner(id,owner);
             storage->SetMobility(id,(mobility == Mobility::Movable) ? 1 : 0);

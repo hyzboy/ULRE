@@ -32,8 +32,9 @@ namespace hgl::ecs
         bool static_dirty = true;
         std::vector<TransformDataStorage::HandleID> static_handles;
         std::vector<TransformDataStorage::HandleID> dynamic_handles;
-        hgl::UnorderedMap<TransformDataStorage::HandleID, uint32_t> static_index_map;
-        hgl::UnorderedMap<TransformDataStorage::HandleID, uint32_t> dynamic_index_map;
+        // handle → **槽位**（B1b：不是名单排名；每帧由世界的槽位表派生，值本身稳定）
+        hgl::UnorderedMap<TransformDataStorage::HandleID, uint32_t> static_slot_map;
+        hgl::UnorderedMap<TransformDataStorage::HandleID, uint32_t> dynamic_slot_map;
         hgl::UnorderedMap<TransformDataStorage::HandleID, uint64_t> last_seen_version;
         hgl::UnorderedMap<TransformDataStorage::HandleID, uint64_t> last_uploaded_version;
         // W5 帧级 once：同帧多次调用（RenderGraph pass 循环 + Line 管线）
@@ -58,10 +59,13 @@ namespace hgl::ecs
         void SubmitTransformUpdates();
 
         void EnsureTransformBuffer();
-        uint32_t GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const;
+        /// 动态段基址（B1b：预算决定，与槽位表无关）
+        uint32_t GetDynamicBaseIndex() const;
         uint32_t GetStaticCount() const { return static_cast<uint32_t>(static_handles.size()); }
         uint32_t GetDynamicCount() const { return static_cast<uint32_t>(dynamic_handles.size()); }
-        bool TryGetTransformGroupIndex(TransformDataStorage::HandleID handle, bool movable, uint32_t& out_index) const;
+        /// 变换的**稳定槽位**（B1b）：`out_slot` = 段内槽位
+        /// L2W 行号 = 静态 `1 + slot` / 动态 `GetDynamicBaseIndex() + slot`
+        bool TryGetTransformSlot(TransformDataStorage::HandleID handle, bool movable, uint32_t& out_slot) const;
         void RefreshHandleOrder();
 
     private:

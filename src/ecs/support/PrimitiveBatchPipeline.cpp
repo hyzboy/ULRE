@@ -257,16 +257,10 @@ namespace hgl::ecs
             return;
 
         auto& cache = world->GetRenderFrameCache();
-        uint32_t static_count = 0;
-        uint32_t dynamic_count = 0;
         uint32_t dynamic_base = 0;
 
         if (transform_system)
-        {
-            static_count = transform_system->GetStaticCount();
-            dynamic_count = transform_system->GetDynamicCount();
-            dynamic_base = transform_system->GetDynamicBaseIndex(static_count, dynamic_count);
-        }
+            dynamic_base = transform_system->GetDynamicBaseIndex();   // B1b：预算决定，与名单长度无关
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -285,9 +279,9 @@ namespace hgl::ecs
                 continue;
             }
 
-            uint32_t group_index = 0;
+            uint32_t slot = 0;
             if (transform_system &&
-                transform_system->TryGetTransformGroupIndex(handle, transform.IsMovable(), group_index))
+                transform_system->TryGetTransformSlot(handle, transform.IsMovable(), slot))
             {
                 const PositionSourceSpec position_source_spec = item->GetPositionSourceSpec();
                 const TransformPolicySpec transform_policy_spec = item->GetTransformPolicySpec();
@@ -310,7 +304,8 @@ namespace hgl::ecs
                         {
                             // R08 ingress-only stage: keep transform index behavior unchanged.
                         }
-                        item->transform_index = transform.IsMovable() ? (dynamic_base + group_index) : (group_index + 1);
+                        // B1b：L2W 行号 = 静态 `1 + slot` / 动态 `预算基址 + slot`（slot 跨帧稳定）
+                        item->transform_index = transform.IsMovable() ? (dynamic_base + slot) : (slot + 1);
                         break;
                     }
                     break;
