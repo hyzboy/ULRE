@@ -4,6 +4,8 @@
 > 相机是**世界级观察者数据**，将从设备级 `GlobalSSBOBufferRegistry` 的行池下沉为**世界私有存储**
 > （16 槽 × 8 帧槽，0 号槽恒为本世界默认相机），地址从全局表迁到世界表 `WorldAddresses` ——
 > 见 `doc/world-addresses-and-camera-model-plan.md`。本文其余结论（删死绑定、删 `CAMERA_BINDING`）不变。
+>
+> ⚠️ **2026-10-02 核实**：本文点名的 `DescriptorResourceCatalog.h` / `FindResourceCatalogEntry` / `SceneBindingsFullyCovered` / `CAMERA_BINDING` **已全部 0 命中**（描述符机制整体退役，Scene 集已删）——文中步骤只作历史读，现状以 `doc/world-addresses-and-camera-model-plan.md` 为准。
 
 > 结论先行：**`DescriptorSemantic::CameraInfo` 本身可以删**（无按序号消费者），
 > 上一轮“删了就错位/材质编译失败”的表象来自 **陈旧的着色器产物缓存**，不是源码。

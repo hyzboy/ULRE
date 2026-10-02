@@ -226,7 +226,7 @@ UV `VK_FORMAT_R16G16_SFLOAT` → `vertex/s1_uv_rg16f.glsl`、位置按
 
 所有推导结果都收敛为带 tag 的契约结构（CanonicalShaderContract.cpp）：现役只剩
 `OutputContract`（OUT1，src/ShaderGen/contract/CanonicalShaderContract.cpp:12）——
-`ResolvedModuleGraph`（RMG1）在当前代码树 0 命中（留待确认，见文末）；
+`ResolvedModuleGraph`（RMG1）在当前代码树 0 命中；**2026-10-02 核实：类与契约已删，但哈希字段仍在**——现役载体 = `SceneRenderTemplateResolver` 的 `module_names[]`（`inc/hgl/mtl/SceneRenderTemplateResolver.h:12`）+ `ShaderBuildContext::SetResolvedModules/GetResolvedModules`（`inc/hgl/mtl/ShaderBuildContext.h:83-88`），图哈希落在 `ShaderArtifactContract::resolved_module_graph_hash`（`ShaderArtifactContract.h:75`）；错误码 `RenderTemplate.h:123 ModuleGraphInvalid` 仍在；
 `ShaderInterfaceContract`（SFI1）聚合体已退役（src/ShaderGen/contract/MaterialStageInterface.cpp:20：
 "原经 ShaderInterfaceContract 聚合体校验的往返已删，规则逐条保留"）。
 流程统一为 **Validate → CanonicalSort（与插入顺序无关）→ 序列化 →
@@ -365,5 +365,5 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 
 | 位置 | 符号 | 核实结果 |
 |---|---|---|
-| 原理 4 | `ResolvedModuleGraph`（RMG1） | 全仓 0 命中；现役契约 tag 只剩 `OutputContract`（OUT1）。替代载体未确认 |
-| 原理 4 / 四 | `GetCanonicalShaderCodeModuleContentHash` | 全仓 0 命中；现役模块身份为 FNV1a(name)，是否有等价的「模块内容哈希」入口待确认 |
+| 原理 4 | `ResolvedModuleGraph`（RMG1） | 全仓 0 命中；现役契约 tag 只剩 `OutputContract`（OUT1）。**2026-10-02 已确认载体**：模块名列表 `SceneRenderTemplateResolver::module_names[]` + `ShaderBuildContext::SetResolvedModules`，图哈希字段 `ShaderArtifactContract::resolved_module_graph_hash` |
+| 原理 4 / 四 | `GetCanonicalShaderCodeModuleContentHash` | 全仓 0 命中（2026-10-02 复查仍无）。**模块身份现走 `ShaderCodeModuleRegistry` / `ShaderCodeModuleMetadata`（`inc/hgl/mtl/`），仓里没有「模块内容哈希」入口**；缓存失效由 `resolved_module_graph_hash` + provider 图哈希承担 |

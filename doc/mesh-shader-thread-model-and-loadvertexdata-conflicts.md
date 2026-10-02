@@ -256,7 +256,7 @@ const mat4 l2w_m = l2w.mats[transform_id];
 
 **（c）SSBO 声明来自 include 的 s1_* 模块**
 
-`sbo_vertex_position` / `sbo_vertex_color` / `sbo_vertex_transform_id` / `sbo_vertex_size` / `l2w` 的声明由材质 requirements 驱动的 `resolved_input_glsl` include（MaterialDefinitionRegistry）提供，mesh shader 直接引用即可（声明在前、main 在后）。`pc_vertex_index` push constant 声明在 mesh 模式下由 `MeshTemplateEmitter` 补齐（s1_index 被跳过）。
+`sbo_vertex_position` / `sbo_vertex_color` / `sbo_vertex_transform_id` / `sbo_vertex_size` / `l2w` 的声明由材质 requirements 驱动的**顶点输入 GLSL 文档**提供（`MaterialDefinitionRegistry::vertex_input_glsl`，`inc/hgl/mtl/MaterialDefinitionRegistry.h:69`；由 `MeshTemplateComposer` 的 resolved input document 注入、`GenericMaterialBuilder` 写进生成物——旧名 `resolved_input_glsl` 已 0 命中），mesh shader 直接引用即可（声明在前、main 在后）。`pc_vertex_index` push constant 声明在 mesh 模式下由 `MeshTemplateEmitter` 补齐（s1_index 被跳过）。
 
 ### 3.5 调试方法
 

@@ -1,4 +1,4 @@
-> **注（2026-09-28）**：本文的 T1–T6 计划已由 S1–S3 实际落地（Scene 集整体退场），现状口径见 doc/world-addresses-and-camera-model-plan.md；本文保留为分析记录。
+> **注（2026-09-28）**：本文的 T1–T6 计划已由 S1–S3 实际落地（Scene 集整体退场），现状口径见 doc/world-addresses-and-camera-model-plan.md；本文保留为分析记录。⚠️ **2026-10-02 核实**：文中引用的 `DescriptorResourceCatalog.h`（`SceneBindingsFullyCovered` 位图断言）与技能 `references/descriptor-binding-retirement.md` 所述描述符机制**均已整体退役**（前者全仓 0 命中），本文只作分析记录读，勿照步骤执行。。
 
 ## 先说结论
 
