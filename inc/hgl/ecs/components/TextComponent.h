@@ -53,7 +53,8 @@ namespace hgl::ecs
 
         ~TextComponent() override = default;
 
-        const char* GetSystemGroupName() const override { return "Text"; }
+        /// 系统组：文本（A2：枚举；文本组件尚无类型号，故组归属由组件自己声明）
+        SystemGroupID GetSystemGroup() const override { return SystemGroupID::Text; }
 
     public:
 

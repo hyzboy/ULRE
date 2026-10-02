@@ -8,6 +8,7 @@
 #include<hgl/ecs/core/RenderPassRequest.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/ecs/core/ScenePipelineMode.h>
+#include<hgl/ecs/support/ComponentTypeTable.h>
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/support/BoundingBoxAccessor.h>
@@ -101,12 +102,15 @@ namespace hgl
             hgl::UnorderedMap<size_t, std::shared_ptr<System>> tick_systems;
             hgl::UnorderedMap<size_t, std::shared_ptr<System>> render_systems;
 
-            // 按render element type存储系统（用于运行时按名称查找和启用/禁用）
+            // 按 render element type 存储系统（**一次性注册路径**仍按名键控：组定义/安装器/管线）
             std::map<std::string, std::vector<std::shared_ptr<System>>> systems_by_element_type;
 
-            // Component-driven system-group activity tracking
-            std::unordered_map<std::string, uint32_t> system_group_component_counts;
-            std::set<std::string> installed_system_groups;
+            // Component-driven system-group activity tracking（A2：枚举 + O(1) 数组，热路径无字符串）
+            uint32_t system_group_component_counts[kSystemGroupCount] = {};
+            bool     installed_system_groups[kSystemGroupCount] = {};
+
+            /// 每组的系统快照（供启用/禁用走 O(1) 数组；系统注册时置空、下次启用重建）
+            std::vector<std::shared_ptr<System>> group_systems[kSystemGroupCount];
 
             struct OrderedSystem
             {
@@ -905,14 +909,17 @@ namespace hgl
             /// Get all registered render element type names
             void GetAllRenderElementTypes(std::vector<std::string>& out_element_types) const;
 
-            /// Set enabled state for all systems of a given render element type
-            void SetElementTypeSystemsEnabled(const std::string& element_type, bool enabled);
+            /// 启用/禁用某个系统组的全部系统（A2：按枚举 O(1)，不查字符串）
+            void SetSystemGroupEnabled(SystemGroupID group, bool enabled);
 
-            /// Check whether the system group installer has already run for this context
-            bool IsSystemGroupInstalled(const std::string& group_name) const;
+            /// 该组的安装器是否已在本世界跑过（A2：枚举）
+            bool IsSystemGroupInstalled(SystemGroupID group) const;
 
-            /// Mark a system group as installed in this context (idempotent)
-            void MarkSystemGroupInstalled(const std::string& group_name);
+            /// 标记该组已安装（幂等）；**同时快照该组的系统**（供上面的 O(1) 启用路径）
+            void MarkSystemGroupInstalled(SystemGroupID group);
+
+            /// 重置组件驱动的组状态（计数 / 已安装 / 快照）—— 世界 Shutdown 用
+            void ResetComponentDrivenGroups();
 
         public:
             RenderFrameCache& GetRenderFrameCache() { return render_frame_cache; }

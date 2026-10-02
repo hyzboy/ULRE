@@ -266,8 +266,7 @@ namespace hgl
                 systems_by_element_type.clear();
                 tick_dependencies.Clear();
                 render_dependencies.Clear();
-                system_group_component_counts.clear();
-                installed_system_groups.clear();
+                ResetComponentDrivenGroups();
                 static_transforms.clear();
                 movable_transforms.clear();
 
@@ -309,8 +308,7 @@ namespace hgl
             }
 
             component_registry.Clear();
-            system_group_component_counts.clear();
-            installed_system_groups.clear();
+            ResetComponentDrivenGroups();
             static_transforms.clear();
             movable_transforms.clear();
 
@@ -1277,6 +1275,14 @@ namespace hgl
             if (!element_type.empty())
             {
                 auto& systems_list = systems_by_element_type[element_type];
+
+                // A2：本组系统变了 ⇒ 置空快照，下次启用/禁用重建（避免漏启用后加入的系统）
+                {
+                    const SystemGroupID changed_group = SystemGroupFromName(element_type.c_str());
+
+                    if (changed_group != SystemGroupID::None)
+                        group_systems[static_cast<uint32_t>(changed_group)].clear();
+                }
                 // Remove if already exists (in case of update)
                 for (auto it = systems_list.begin(); it != systems_list.end(); ++it)
                 {
@@ -1782,16 +1788,13 @@ namespace hgl
 
             RegisterComponentInstanceInternal(type_hash, comp);
 
-            const char* group_name = comp->GetSystemGroupName();
-            if (group_name && group_name[0] != '\0')
+            const SystemGroupID group = comp->GetSystemGroup();
+            if (group != SystemGroupID::None)
             {
-                const std::string group(group_name);
-
-                auto& count = system_group_component_counts[group];
-                ++count;
+                ++system_group_component_counts[static_cast<uint32_t>(group)];
 
                 EnsureSystemGroupSystems(this, group, GetRenderTarget());
-                SetElementTypeSystemsEnabled(group, true);
+                SetSystemGroupEnabled(group, true);
             }
 
             for (const auto& entry : component_query_bases)
@@ -1810,23 +1813,16 @@ namespace hgl
             if (!comp_ptr)
                 return;
 
-            const char* group_name = comp_ptr->GetSystemGroupName();
-            if (group_name && group_name[0] != '\0')
+            const SystemGroupID group = comp_ptr->GetSystemGroup();
+            if (group != SystemGroupID::None)
             {
-                const std::string group(group_name);
+                uint32_t &count = system_group_component_counts[static_cast<uint32_t>(group)];
 
-                auto it = system_group_component_counts.find(group);
-                if (it != system_group_component_counts.end())
-                {
-                    if (it->second > 0)
-                        --(it->second);
+                if (count > 0)
+                    --count;
 
-                    if (it->second == 0)
-                    {
-                        SetElementTypeSystemsEnabled(group, false);
-                    }
-
-                }
+                if (count == 0)
+                    SetSystemGroupEnabled(group, false);
             }
 
             for (auto& pair : component_registry)
@@ -2250,35 +2246,67 @@ namespace hgl
             }
         }
 
-        void ECSContext::SetElementTypeSystemsEnabled(const std::string& element_type, bool enabled)
+        void ECSContext::SetSystemGroupEnabled(SystemGroupID group, bool enabled)
         {
-            auto it = systems_by_element_type.find(element_type);
-            if (it != systems_by_element_type.end())
+            if (group == SystemGroupID::None)
+                return;
+
+            const uint32_t index = static_cast<uint32_t>(group);
+
+            // 快路径：安装时（或首次启用时）已快照过本组的系统 —— O(1)，不碰字符串
+            if (!group_systems[index].empty())
             {
-                for (auto& system : it->second)
-                {
+                for (auto& system : group_systems[index])
                     if (system)
-                    {
                         system->SetEnabled(enabled);
-                    }
+
+                return;
+            }
+
+            // 兜底：本组系统尚未快照 ⇒ 按名取一次，**建快照后**再启用（之后都走上面的快路径）。
+            // 系统注册进本组时会把快照置空（见 RegisterSystem），故不会有漏启用的新系统。
+            auto it = systems_by_element_type.find(kSystemGroupNames[index]);
+            if (it == systems_by_element_type.end())
+                return;
+
+            auto& snapshot = group_systems[index];
+            snapshot.clear();
+            snapshot.reserve(it->second.size());
+
+            for (auto& system : it->second)
+            {
+                if (system)
+                {
+                    snapshot.push_back(system);
+                    system->SetEnabled(enabled);
                 }
             }
         }
 
-        bool ECSContext::IsSystemGroupInstalled(const std::string& group_name) const
+        bool ECSContext::IsSystemGroupInstalled(SystemGroupID group) const
         {
-            if (group_name.empty())
+            if (group == SystemGroupID::None)
                 return false;
 
-            return installed_system_groups.find(group_name) != installed_system_groups.end();
+            return installed_system_groups[static_cast<uint32_t>(group)];
         }
 
-        void ECSContext::MarkSystemGroupInstalled(const std::string& group_name)
+        void ECSContext::MarkSystemGroupInstalled(SystemGroupID group)
         {
-            if (group_name.empty())
+            if (group == SystemGroupID::None)
                 return;
 
-            installed_system_groups.insert(group_name);
+            installed_system_groups[static_cast<uint32_t>(group)] = true;
+        }
+
+        void ECSContext::ResetComponentDrivenGroups()
+        {
+            for (uint32_t g = 0; g < kSystemGroupCount; ++g)
+            {
+                system_group_component_counts[g] = 0;
+                installed_system_groups[g] = false;
+                group_systems[g].clear();
+            }
         }
     }//namespace ecs
 }//namespace hgl

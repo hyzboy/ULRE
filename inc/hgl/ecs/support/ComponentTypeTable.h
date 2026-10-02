@@ -247,5 +247,70 @@ namespace hgl
 
         template<typename T>
         inline constexpr ComponentType ComponentTypeOf_v = ComponentTypeOf<T>::value;
+
+        // ──────────────────────────────────────────────────────
+        // 系统组（P-4 拍板 2026-10-02）：把「组件挂卸 ⇒ 装/启系统组」从**按组名字符串**
+        // 收敛为**枚举 + O(1) 数组** —— 热路径不再有字符串哈希查找。
+        //
+        // 历史形态：组件侧用一个返回**字符串**的虚函数声明组名 + 世界侧用「字符串 → 计数」容器计数。
+        // 键域实测只有三个编译期常量
+        //（"Primitive" / "Line" / "Text"）⇒ 改成枚举。
+        //
+        // ⚠ 系统侧（`System::SetRenderElementType("…")`，14 个系统）仍是字符串声明 —— 那是
+        //   **一次性注册路径**（组定义 / 安装器 / 管线），不在本映射范围；两侧同名由 Test 25 契约钉住。
+        // ⚠ 为什么不是 `ComponentType → 组` 的表：**线条 / 文本组件还没有类型号**
+        //  （用户 2026-09-30 拍板「文本 / 线条属于动态 GEOMETRY，以后再说」）⇒ 组归属仍由
+        //   **组件自己声明**（返回枚举）；等它们拿到类型号，再并入类型表。
+        // ──────────────────────────────────────────────────────
+
+        /// 系统组标识（键域 = 组件驱动路径的三个组）
+        enum class SystemGroupID : uint8_t
+        {
+            None = 0,
+            Primitive,      ///< 图元（渲染元素标记 = `GeometryData`，A5b）
+            Line,           ///< 线条
+            Text,           ///< 文本
+
+            Count
+        };
+
+        constexpr uint32_t kSystemGroupCount = static_cast<uint32_t>(SystemGroupID::Count);
+
+        /// 组名（**唯一一份字符串**）：只用于桥接仍按名键控的一次性路径（组注册表 / 安装器 / 管线）
+        constexpr const char *kSystemGroupNames[kSystemGroupCount] =
+        {
+            "",             // None
+            "Primitive",
+            "Line",
+            "Text",
+        };
+
+        constexpr bool SystemGroupNameEquals(const char *a, const char *b) noexcept
+        {
+            if (!a || !b)
+                return false;
+
+            for (uint32_t i = 0;; ++i)
+            {
+                if (a[i] != b[i])
+                    return false;
+
+                if (a[i] == '\0')
+                    return true;
+            }
+        }
+
+        /// 组名 → `SystemGroupID`（严格：只认 `kSystemGroupNames`；未知返回 `None`）
+        constexpr SystemGroupID SystemGroupFromName(const char *name) noexcept
+        {
+            for (uint32_t g = 0; g < kSystemGroupCount; ++g)
+                if (SystemGroupNameEquals(name, kSystemGroupNames[g]))
+                    return static_cast<SystemGroupID>(g);
+
+            return SystemGroupID::None;
+        }
+
+        static_assert(kSystemGroupCount == 4,
+                      "系统组增删必须同步 kSystemGroupNames 与系统侧的 SetRenderElementType 字面量");
     }//namespace ecs
 }//namespace hgl

@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include<hgl/ecs/support/ComponentTypeTable.h>
 
 namespace hgl
 {
@@ -24,7 +25,8 @@ namespace hgl
         };
 
         void EnsureCoreEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt = nullptr);
-        bool EnsureSystemGroupSystems(ECSContext *ctx, const std::string& group_name, graph::IRenderTarget *default_rt = nullptr);
+        /// 安装某系统组的全部系统（A2：按枚举，组名只在内部桥接一次性路径）
+        bool EnsureSystemGroupSystems(ECSContext *ctx, SystemGroupID group, graph::IRenderTarget *default_rt = nullptr);
 
         DefaultEcsSystems RegisterDefaultEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt);
     }

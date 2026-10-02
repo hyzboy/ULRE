@@ -56,7 +56,8 @@ namespace hgl::ecs
         LinesComponent() = default;
         virtual ~LinesComponent() = default;
 
-        const char* GetSystemGroupName() const override { return "Line"; }
+        /// 系统组：线条（A2：枚举；线条组件尚无类型号，故组归属由组件自己声明）
+        SystemGroupID GetSystemGroup() const override { return SystemGroupID::Line; }
 
         /**
          * CN: 添加一条线段

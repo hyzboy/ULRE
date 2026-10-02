@@ -148,9 +148,10 @@ namespace
             return;
 
         auto& registry = hgl::ecs::SystemGroupRegistry::Get();
-        registry.RegisterGroupInstaller("Primitive", InstallPrimitiveGroup);
-        registry.RegisterGroupInstaller("Text", InstallTextGroup);
-        registry.RegisterGroupInstaller("Line", InstallLineGroup);
+        // A2：组名统一取自 kSystemGroupNames（唯一一份字符串），不再就地写字面量
+        registry.RegisterGroupInstaller(hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Primitive)], InstallPrimitiveGroup);
+        registry.RegisterGroupInstaller(hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Text)],      InstallTextGroup);
+        registry.RegisterGroupInstaller(hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Line)],      InstallLineGroup);
 
         registered = true;
     }
@@ -202,22 +203,23 @@ namespace hgl::ecs
         }
     }
 
-    bool EnsureSystemGroupSystems(ECSContext *ctx, const std::string& group_name, graph::IRenderTarget *default_rt)
+    bool EnsureSystemGroupSystems(ECSContext *ctx, SystemGroupID group, graph::IRenderTarget *default_rt)
     {
-        if (!ctx || group_name.empty())
+        if (!ctx || group == SystemGroupID::None)
             return false;
 
         EnsureCoreEcsSystems(ctx, default_rt);
 
-        if (ctx->IsSystemGroupInstalled(group_name))
+        if (ctx->IsSystemGroupInstalled(group))
             return true;
 
         auto& registry = SystemGroupRegistry::Get();
-        const bool installed = registry.EnsureGroupSystems(group_name, ctx, default_rt);
+        const bool installed = registry.EnsureGroupSystems(
+            kSystemGroupNames[static_cast<uint32_t>(group)], ctx, default_rt);
         if (!installed)
             return false;
 
-        ctx->MarkSystemGroupInstalled(group_name);
+        ctx->MarkSystemGroupInstalled(group);
         return true;
     }
 
@@ -228,9 +230,9 @@ namespace hgl::ecs
             return systems;
 
         EnsureCoreEcsSystems(ctx, default_rt);
-        EnsureSystemGroupSystems(ctx, "Primitive", default_rt);
-        EnsureSystemGroupSystems(ctx, "Text", default_rt);
-        EnsureSystemGroupSystems(ctx, "Line", default_rt);
+        EnsureSystemGroupSystems(ctx, SystemGroupID::Primitive, default_rt);
+        EnsureSystemGroupSystems(ctx, SystemGroupID::Text, default_rt);
+        EnsureSystemGroupSystems(ctx, SystemGroupID::Line, default_rt);
 
         // Prime group metadata once so graph construction never rescans
         hgl::ecs::EnsureSystemGroupsRegistered(ctx);

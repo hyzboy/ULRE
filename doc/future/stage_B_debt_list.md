@@ -187,7 +187,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
   类型值**只能追加**（B7 已按此把 `Camera` 追加在 `Texture` 之后）——类型值被位掩码与 `type[16]` 槽消费，
   插队会让既有类型全体平移。类型表 `kComponentTypeTable` 已同步到 stage B 真值（B6/B7）。
 
-### 2.4 `system_group_component_counts`（按组**字符串**计数，键域 3 个）
+### 2.4 `system_group_component_counts`（按组**字符串**计数，键域 3 个）—— ✅ **已闭合（A2，2026-10-02）**
 
 - 声明：`std::unordered_map<std::string, uint32_t> system_group_component_counts`
   （`inc/hgl/ecs/core/Context.h:105`）。
@@ -200,9 +200,18 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
   `"Text"`（`inc/hgl/ecs/components/TextComponent.h:56`）；契约钉在
   `src/ecs/support/TestCSMIncrementalPass.cpp:4071-4082`（A7a Test 25）。
 - **为什么 stage B 关注它**：它在**运行期按字符串**做哈希查找，并驱动"随组件挂卸自动装/启系统"。
-  stage B 把组件换成"类型 → 行"后，组开关应从**类型 ID / 位掩码**推导（O(1)，无字符串）。**待定**是否保留字符串形态
-  （当前 3 个键都是编译期常量字符串，可改成枚举）。
+  stage B 把组件换成"类型 → 行"后，组开关应从**类型 ID / 位掩码**推导（O(1)，无字符串）。
 - **注意（A0 教训）**：这是**活逻辑**，不是冗余计数；不能在"零行为变化"的批次里顺手删。
+
+**✅ 已闭合（A2，2026-10-02；P-4 拍板执行）**：热路径（组件挂卸 ⇒ 装/启组）已收敛为
+**`enum class SystemGroupID` + `kSystemGroupNames[]`（全仓唯一一份组名）+ O(1) 数组**
+（计数 `system_group_component_counts[kSystemGroupCount]`、已安装 `bool[]`、每组系统快照 `group_systems[]`）；
+组件侧字符串虚函数**删除**，改 `virtual SystemGroupID GetSystemGroup()`；渲染图的组启用路径经
+`SystemGroupFromName()` 严格转换，未知组名留痕告警。**未建 `ComponentType → 组` 的表**——线条 / 文本组件
+还没有类型号（用户 2026-09-30 拍板"文本/线条属于动态 GEOMETRY，以后再说"）⇒ 等它们拿到类型号再并入类型表；
+系统声明侧（14 个 `SetRenderElementType("…")`）仍字符串（一次性注册路径），两侧同名由 Test 25 契约钉住。
+**验证**：门 42/0、10 测试 rc=0、8 示例 0 真 error / 0 对拍不一致 / 0 未知组名、**三组各自像素确认**
+（TextDraw / PBRSpheres / LineRender）、反证 rc≠0 ↔ 还原必绿。详见 `stage_B_execution_plan.md` 的 A2 完成记录。
 
 ### 2.5 A5b 删掉的 `positionSourceSpec` / `transformPolicySpec` / `overridePipeline`
 

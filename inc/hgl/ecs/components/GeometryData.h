@@ -64,9 +64,9 @@ namespace hgl::ecs
 
     public:
 
-        /// 系统组名：本组件是"本实体是 Primitive 渲染元素"的唯一标记（A5b）。
-        /// 渲染图按此启用图元 pass；见 Component::GetSystemGroupName 的组机制。
-        const char* GetSystemGroupName() const override { return "Primitive"; }
+        /// 系统组：本组件是"本实体是 Primitive 渲染元素"的**唯一标记**（A5b）。
+        /// 渲染图按此启用图元 pass（A2 起走枚举，不再是比较字符串）。
+        SystemGroupID GetSystemGroup() const override { return SystemGroupID::Primitive; }
 
     public:
 

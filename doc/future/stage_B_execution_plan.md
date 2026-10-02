@@ -642,6 +642,58 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 用它做的两次二分（"HEAD 正常 / 我的版本必挂"）因此**双双无效**。⇒ 铁律重申：**改结构大小或公共头，
 必须清 obj 全量重编之后再下任何结论**；二分两侧都必须基于全量重编的产物。
 
+**A2 完成记录（2026-10-02）—— ✅ §2.4 / P-4 执行完毕：组计数从「字符串键」收敛为「枚举 + O(1) 数组」**
+
+一、范围与判据（P-4 原话：「收成『类型位掩码 → 组』的编译期映射，删掉运行期字符串哈希查找」）
+
+- **动的是热路径**：组件挂卸 ⇒ 装/启系统组。历史实现每挂一个组件就做一次
+  `unordered_map<std::string, uint32_t>` 哈希查找 + 字符串比较。
+- **不动的是系统声明侧**（14 个系统的 `SetRenderElementType("…")`）——那是**一次性注册路径**
+  （组定义 / 安装器 / 管线），不在本映射范围。两侧同名由 Test 25 的新契约钉住。
+- ⚠ **为什么没建 `ComponentType → 组` 的表**（P-4 字面提到"类型位掩码 → 组"）：**线条 / 文本组件
+  还没有类型号**（用户 2026-09-30 拍板「文本 / 线条属于动态 GEOMETRY，以后再说」）⇒ 组归属暂时只能由
+  **组件自己声明**（返回枚举）。等它们拿到类型号，再并入类型表。这条已写进 `ComponentTypeTable.h` 注释。
+
+二、改动（11 文件）
+
+| 落点 | 内容 |
+|---|---|
+| `inc/hgl/ecs/support/ComponentTypeTable.h` | 新增 `enum class SystemGroupID{None,Primitive,Line,Text,Count}` + `kSystemGroupNames[]`（**全仓唯一一份组名**）+ `SystemGroupFromName()`（严格，未知 ⇒ `None`）+ `static_assert(kSystemGroupCount == 4)` |
+| `inc/hgl/ecs/core/Component.h` | `virtual const char *GetSystemGroupName()` **删除** ⇒ `virtual SystemGroupID GetSystemGroup()` |
+| `GeometryData.h` / `LinesComponent.h` / `TextComponent.h` | 改成返回枚举（`Primitive` / `Line` / `Text`）；**字符串字面量从组件头消失** |
+| `inc/hgl/ecs/core/Context.h` | 计数 → `uint32_t system_group_component_counts[kSystemGroupCount]`；已安装 → `bool[]`；新增**每组系统快照** `group_systems[kSystemGroupCount]`；三个 API 改枚举 + 新增 `ResetComponentDrivenGroups()` |
+| `src/ecs/core/Context.cpp` | 注册/注销两条路径改枚举驱动（O(1) 计数，无字符串）；`SetSystemGroupEnabled` 快路径走快照、兜底按名取一次并建快照；`RegisterSystem` 时置空该组快照（**保证后加入的系统不会漏启用**）；两处 Shutdown 清状态合并为 `ResetComponentDrivenGroups()` |
+| `inc/hgl/ecs/core/DefaultSystems.h` + `.cpp` | `EnsureSystemGroupSystems(ctx, SystemGroupID, rt)`；三个安装器注册与默认装配不再就地写字面量，改取 `kSystemGroupNames[...]` |
+| `src/ecs/core/RenderGraph.cpp` | 场景 stats 从组件取**枚举**再映射组名；组启用路径经 `SystemGroupFromName()` 严格转换，**未知组名留痕告警**（不再静默不启用） |
+| `src/ecs/support/TestCSMIncrementalPass.cpp` | Test 25：3 条组件契约改钉枚举形态、3 条安装器契约改钉"名取自组名表"，**新增 15 条 A2 契约**（枚举/组名表/虚函数/计数数组/启用函数/注册路径 + 7 条**禁复活**：字符串虚函数、字符串键容器、3 处字符串字面量） |
+
+三、验证（purge 168 TU ⇒ 全量重编）
+
+- **BUILD_RC=0 / error C=0 / error LNK=0 / error MSB=0**；
+- 门 **42 PASS / 0 FAIL**；**10 测试 rc=0**（含 Test 25 Passed）；
+- **8 示例**（PBRSpheres / CascadeShadowMap / AlphaTestShadow / ShadowMap / **LineRender** / **TextDraw** /
+  **DrawMultiLineText** / ComputeFrustumCull）各 8s：真 error 0、`策略判定对拍` 不一致 0、**「未知系统组名」告警 0**；
+- **运行期组驱动证据**（日志）：TextDraw ⇒ `active group: Text`；LineRender ⇒ `active group: Line`；
+  PBRSpheres ⇒ `active group: Primitive`；
+- **像素（行为面，本批必做）**：TextDraw 整页中文 SDF 文本正常绘出 ✓；PBRSpheres 10×10 内建几何
+  （albedo+normal）完整绘出 ✓；LineRender 彩色线簇正常绘出 ✓ —— **三个组各自像素确认**（若组映射错，
+  对应组的系统不会被启用 ⇒ 对应画面直接空白/缺失）。
+- **反证**：把枚举底层类型改成 `uint16_t`（纯 ASCII 破坏点，源码型契约 ⇒ 免重编）⇒
+  `Test 25 Failed: 系统组枚举缺失（组件挂卸又会退回按字符串比较）`；逐字节还原（sha256 OK）⇒ 重跑
+  `Test 25 Passed`。
+
+四、过程中修掉的三个真因（都是编译/构建抓出来的，记下来免得重犯）
+
+1. **撞名**：新枚举原名 `SystemGroup` ✗ —— `hgl::ecs::SystemGroup` 已是既有的**组定义结构体**
+   （`inc/hgl/ecs/core/SystemGroup.h:28`）⇒ 改名 **`SystemGroupID`**（与 `TransformID`/`EntityID` 同风格）。
+   **教训：新增公共类型前先 `grep` 同名**（这次是编译器救回来的）。
+2. **作用域**：`RegisterBuiltinSystemGroupInstallers` 在**匿名命名空间**里（同行用了限定名
+   `hgl::ecs::SystemGroupRegistry::Get()` 就是线索）⇒ 三行改用 `hgl::ecs::` 限定名，Test 25 的 needle 同步。
+3. **残留旧字段用法**：成员改数组后，`installed_system_groups.clear();` 两处仍在（现已是 `bool[]`）⇒
+   由 `ResetComponentDrivenGroups()` 覆盖后删除。
+
+（另：内联 python 的 `b"...中文..."` 字节字面量坑本轮又中一次 ⇒ 一律 `str + .encode()`，见 `crlf-safe-editing`。）
+
 **B7 完成记录（2026-10-02）—— ✅ 相机终态收口：Camera 入类型枚举/表（P-6 ②：不新开 arena）**
 
 一、先读计划把语义钉死（避免按字面误解"参数并入"）

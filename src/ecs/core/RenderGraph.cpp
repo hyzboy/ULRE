@@ -200,10 +200,12 @@ namespace hgl
                     if (!component)
                         continue;
 
-                    const char* group_name = component->GetSystemGroupName();
-                    if (group_name && *group_name)
+                    const SystemGroupID group = component->GetSystemGroup();
+                    if (group != SystemGroupID::None)
                     {
-                        stats.active_render_groups.emplace(group_name);
+                        // stats 仍存组名（注册表/管线按名键控）；名字取自唯一一份组名表
+                        stats.active_render_groups.emplace(
+                            kSystemGroupNames[static_cast<uint32_t>(group)]);
                     }
                 }
             }
@@ -236,7 +238,19 @@ namespace hgl
 
                 if (context)
                 {
-                    context->SetElementTypeSystemsEnabled(group.name, enabled);
+                    const SystemGroupID group_id = SystemGroupFromName(group.name.c_str());
+
+                    if (group_id != SystemGroupID::None)
+                    {
+                        context->SetSystemGroupEnabled(group_id, enabled);
+                    }
+                    else
+                    {
+                        MLogWarning(RenderGraph,
+                            "[RenderGraph] 未知系统组名 '%s'（未在 kSystemGroupNames 里）⇒ 本组不启用；"
+                            "系统侧 SetRenderElementType 与组名表必须同名",
+                            group.name.c_str());
+                    }
                 }
 
                 if (!enabled)
@@ -257,7 +271,7 @@ namespace hgl
             }
 
             // Fully data-driven:
-            // - Components declare their group via Component::GetSystemGroupName()
+            // - Components declare their group via Component::GetSystemGroup()（A2：枚举）
             // - Systems declare their group via System::SetRenderElementType()
             // - RenderGraph builds passes from the name mapping at runtime
 

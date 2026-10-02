@@ -51,9 +51,9 @@ namespace hgl
             /// Called when component is detached from an entity
             virtual void OnDetach() {}
 
-            /// Return system group name this component belongs to.
-            /// Default: nullptr (component does not require auto system-group activation)
-            virtual const char *GetSystemGroupName() const { return nullptr; }
+            /// 本组件所属的**系统组**（P-4：枚举驱动，热路径无字符串）。
+            /// 默认 `None` = 本组件不触发「随组件挂卸自动装/启系统组」。
+            virtual SystemGroupID GetSystemGroup() const { return SystemGroupID::None; }
 
         public:
 

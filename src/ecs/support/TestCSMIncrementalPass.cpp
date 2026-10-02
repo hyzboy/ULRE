@@ -4039,11 +4039,11 @@ int main(int argc, char** argv)
     // 文件无图形设备，故钉住三件事（源码级契约）：
     //   ① 驱动侧确实读表（CollectForCurrentPass / ShadowReceiver）且对拍装置仍在被调；
     //   ② 驱动侧**不得**再出现手写判据（禁复活：改回 if 链必须让本用例失败）；
-    //   ③ 组件声明的系统组名与渲染图注册的安装器 / 管线同名（`system_group_component_counts`
-    //      的键只可能是这三个组名，改名即两侧同时失败），且已删类型名零残留。
+    //   ③ 组件声明的系统组与渲染图注册的安装器 / 管线同名（A2 起为**枚举**：组名只有
+    //      `kSystemGroupNames` 一份；两侧同名，改名即同时失败），且已删类型名零残留。
     //
-    // 反证：把驱动侧改回 `if (!CanRender(...)) continue;`，或把 `GetSystemGroupName`
-    // 的返回值改掉 ⇒ 本用例必须失败。
+    // 反证：把驱动侧改回 `if (!CanRender(...)) continue;`，或把组声明改回字符串形态
+    //（`GetSystemGroup` 的返回枚举 / 组名表）⇒ 本用例必须失败。
     // ─────────────────────────────────────────────────────────────
     {
         const SourceContract kA7aContracts[] =
@@ -4088,23 +4088,23 @@ int main(int argc, char** argv)
               "接收侧又出现手写判据（表不再是唯一判据）", true },
             // ③ 系统组名 ↔ 安装器 / 管线（system_group_component_counts 的键域）
             { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
-              "GetSystemGroupName() const override { return \"Primitive\"; }",
-              "图元组名不再声明（system_group_component_counts 的键会与安装器脱节）" },
+              "SystemGroupID GetSystemGroup() const override { return SystemGroupID::Primitive; }",
+              "图元组不再声明（组件挂卸的组开关会与安装器脱节）" },
             { "LinesComponent.h", OS_TEXT("inc/hgl/ecs/components/LinesComponent.h"),
-              "GetSystemGroupName() const override { return \"Line\"; }",
-              "线条组名不再声明（同上）" },
+              "SystemGroupID GetSystemGroup() const override { return SystemGroupID::Line; }",
+              "线条组不再声明（同上）" },
             { "TextComponent.h", OS_TEXT("inc/hgl/ecs/components/TextComponent.h"),
-              "GetSystemGroupName() const override { return \"Text\"; }",
-              "文本组名不再声明（同上）" },
+              "SystemGroupID GetSystemGroup() const override { return SystemGroupID::Text; }",
+              "文本组不再声明（同上）" },
             { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
-              "RegisterGroupInstaller(\"Primitive\"",
-              "Primitive 系统组安装器缺失（组计数会被置位但无人响应）" },
+              "hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Primitive)], InstallPrimitiveGroup",
+              "Primitive 系统组安装器缺失 / 未取自组名表（组计数会被置位但无人响应）" },
             { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
-              "RegisterGroupInstaller(\"Line\"",
-              "Line 系统组安装器缺失（同上）" },
+              "hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Text)],      InstallTextGroup",
+              "Text 系统组安装器缺失 / 未取自组名表（同上）" },
             { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
-              "RegisterGroupInstaller(\"Text\"",
-              "Text 系统组安装器缺失（同上）" },
+              "hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Line)],      InstallLineGroup",
+              "Line 系统组安装器缺失 / 未取自组名表（同上）" },
             { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
               "RegisterRenderPipeline(\"Primitive\"",
               "Primitive 渲染管线注册缺失（组被启用后拿不到管线）" },
@@ -4114,6 +4114,46 @@ int main(int argc, char** argv)
             { "DefaultSystems.cpp", OS_TEXT("src/ecs/core/DefaultSystems.cpp"),
               "RegisterRenderPipeline(\"Text\"",
               "Text 渲染管线注册缺失（同上）" },
+            // ④ A2 契约：系统组走枚举（热路径无字符串）；组名表是唯一一份名字
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "enum class SystemGroupID : uint8_t",
+              "系统组枚举缺失（组件挂卸又会退回按字符串比较）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "constexpr const char *kSystemGroupNames[kSystemGroupCount]",
+              "组名表缺失（系统侧 SetRenderElementType 的字符串失去唯一对照源）" },
+            { "Component.h", OS_TEXT("inc/hgl/ecs/core/Component.h"),
+              "virtual SystemGroupID GetSystemGroup() const",
+              "组件侧组声明虚函数缺失（组驱动断链）" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "uint32_t system_group_component_counts[kSystemGroupCount]",
+              "组计数退回按字符串键控的容器（O(1) 数组缺失）" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "void ECSContext::SetSystemGroupEnabled(SystemGroupID group, bool enabled)",
+              "启用/禁用改回按名查找（热路径又重新字符串哈希）" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "++system_group_component_counts[static_cast<uint32_t>(group)]",
+              "注册路径不再走枚举计数（热路径改回字符串）" },
+            // 禁复活：字符串形态（含注释——needle 是全文本匹配）
+            { "Component.h", OS_TEXT("inc/hgl/ecs/core/Component.h"),
+              "GetSystemGroupName", "组件侧组名虚函数（字符串形态）禁复活", true },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "GetSystemGroupName", "世界头又出现字符串组名读取（禁复活）", true },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "GetSystemGroupName", "世界实现又读字符串组名（热路径字符串化）禁复活", true },
+            { "RenderGraph.cpp", OS_TEXT("src/ecs/core/RenderGraph.cpp"),
+              "GetSystemGroupName", "渲染图又读字符串组名（同上）禁复活", true },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "GetSystemGroupName", "组名虚函数（字符串形态）在类型表注释里复活", true },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "std::unordered_map<std::string, uint32_t> system_group_component_counts",
+              "组计数退回字符串键容器（禁复活）", true },
+            { "GeometryData.h", OS_TEXT("inc/hgl/ecs/components/GeometryData.h"),
+              "return \"Primitive\";", "图元组名退回字符串字面量（禁复活）", true },
+            { "LinesComponent.h", OS_TEXT("inc/hgl/ecs/components/LinesComponent.h"),
+              "return \"Line\";", "线条组名退回字符串字面量（禁复活）", true },
+            { "TextComponent.h", OS_TEXT("inc/hgl/ecs/components/TextComponent.h"),
+              "return \"Text\";", "文本组名退回字符串字面量（禁复活）", true },
+
             // ③ 已删类型名零残留（禁复活）
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "VisibilityComponent",
