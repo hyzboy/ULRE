@@ -710,6 +710,16 @@ namespace hgl
             //   以 (uint32)-1 索引行存储的平行数组 ⇒ 越界崩溃（2026-10-02 实测）。因此：
             //   **新增消费者一律用这两个入口**（内部自动跳洞，调用方不可能漏）。
 
+            /// 结构性遍历：世界的**存活实体**（内部跳空槽、零分配）。
+            /// 与 `ForEachMovableTransform/ForEachStaticTransform` **同族**：系统一律走世界的口子，
+            /// 不直接摸 `entity_manager`（它是私有成员，且消费者不该关心名册的内部形态）。
+            template<typename Fn>
+            void ForEachAliveEntity(Fn &&fn) const
+            {
+                if (entity_manager)
+                    entity_manager->ForEachAliveEntity(std::forward<Fn>(fn));
+            }
+
             template<typename Fn>
             void ForEachMovableTransform(Fn &&fn) const
             {

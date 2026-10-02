@@ -26,6 +26,43 @@ namespace hgl::ecs
     }
 
 
+    /// T3c-2b（B1）：世界实体行表的 `row[Transform]` —— 生产者（变换侧）写自己的产物
+    void TransformSystem::WriteEntityTransformRows()
+    {
+        if (!world)
+            return;
+
+        const uint32_t dynamic_base = GetDynamicBaseIndex();
+
+        world->ForEachAliveEntity([&](Entity *entity)
+        {
+            if (!entity)
+                return;
+
+            const EntityID owner = entity->GetEntityID();
+            const TransformID transform_id = world->GetTransformID(owner);
+
+            if (!IsValidTransformID(transform_id))
+            {
+                world->GetEntityGPUTable().SetTransformRow(owner, 0);
+                return;
+            }
+
+            const TransformAccessor transform = world->GetTransformByEntity(owner);
+            const bool movable = transform.IsMovable();
+            uint32_t slot = 0;
+
+            if (!world->TryGetTransformSlot(transform_id, movable, slot))
+            {
+                world->GetEntityGPUTable().SetTransformRow(owner, 0);
+                return;
+            }
+
+            // B1b：L2W 行号 = 静态 `1 + slot` / 动态 `基址(环布局) + slot`
+            world->GetEntityGPUTable().SetTransformRow(owner, movable ? (dynamic_base + slot) : (slot + 1));
+        });
+    }
+
     void TransformSystem::Update(float deltaTime)
     {
         (void)deltaTime;
@@ -325,6 +362,9 @@ namespace hgl::ecs
                 dirty_dynamic_indices.erase(std::unique(dirty_dynamic_indices.begin(), dirty_dynamic_indices.end()), dirty_dynamic_indices.end());
                 transform_buffer->WriteDynamicDirtyIndices(*storage, world->GetMovableTransforms(), dirty_dynamic_indices);
             }
+
+            // T3c-2b（B1）：L2W 行号下发（值变才标脏 ⇒ 本函数被同帧多次调用时幂等）
+            WriteEntityTransformRows();
 
             static_dirty = false;
         }

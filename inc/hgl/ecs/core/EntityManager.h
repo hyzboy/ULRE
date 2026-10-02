@@ -104,6 +104,18 @@ namespace hgl::ecs
         /// Check if ID is valid and points to alive entity
         bool IsValidID(EntityID id) const;
 
+        /// **结构性遍历**：只访问存活实体（跳空槽），不分配、不裸遍历 `slots`。
+        /// 与 `ECSContext::ForEachMovableTransform/ForEachStaticTransform` 同族 ——
+        /// 新增消费者一律用它（`GetAllEntityPointers` 每条实体指针要一个 vector 元素，
+        /// 每帧调用 = 每帧一次堆分配，与「取消逐帧分配」的方向相反）。
+        template<typename Fn>
+        void ForEachAliveEntity(Fn &&fn) const
+        {
+            for (const EntitySlot &slot : slots)
+                if (slot.alive && slot.entity)
+                    fn(slot.entity);
+        }
+
         /// Get all alive entity pointers
         void GetAllEntityPointers(std::vector<Entity*>& out_entities);
         void GetAllEntityPointers(std::vector<const Entity*>& out_entities) const;

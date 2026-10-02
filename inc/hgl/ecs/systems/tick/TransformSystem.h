@@ -55,6 +55,12 @@ namespace hgl::ecs
         bool IsUpdateMovableEnabled() const { return updateMovable; }
 
         void Update(float deltaTime) override;
+
+        /// T3c-2b（B1）：把每个在用实体的 **L2W 行号**写进**世界实体行表**（`row[Transform]`）。
+        /// 写者归**变换侧**：算式 `静态 1+slot / 动态 GetDynamicBaseIndex()+slot` 的输入
+        /// （环布局 + 两个段预算）都是本系统的私有状态，世界拿不到也不该拿。
+        /// 世界只负责"按脏行上传"（值变才标脏 ⇒ 同帧多次调用幂等）。
+        void WriteEntityTransformRows();
         void UpdateStaticDirty();
         void SubmitTransformUpdates();
 

@@ -303,6 +303,10 @@ static void SectionAllocation()
 
         printf("  脏行计划：无脏=%zu 行（期望 0）、改 1 个实体可见性=%zu 行（期望 1，且正是该实体槽=%s）、清脏后=%zu 行（期望 0）\n",
                plan_clean,plan_one,plan_one_ok?"是":"否",plan.size());
+
+        // T3c-2b（B1）：`row[Transform]` 的写者是**变换侧**（`TransformSystem::WriteEntityTransformRows`）。
+        // 本探针是**裸世界**（无系统、无设备 ⇒ 无环布局）⇒ 这里**没有写者**，行号保持 0 属**预期**；
+        // 该判据改到**真世界**验（示例：可动实体行号非 0 且随帧槽变化），不在裸世界做假绿。
     }
 
     if(results.size()==2)

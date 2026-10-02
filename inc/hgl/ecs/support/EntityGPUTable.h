@@ -180,8 +180,16 @@ namespace hgl
                 if (!row)
                     return;
 
-                row->row[uint32_t(ComponentType::Transform)] = l2w_row;
-                row->type[uint32_t(ComponentType::Transform)] = l2w_row ? uint8_t(ComponentType::Transform) : 0;
+                const uint32_t slot_index = uint32_t(ComponentType::Transform);
+                const uint8_t  type       = l2w_row ? uint8_t(ComponentType::Transform) : 0;
+
+                // 值变才标脏：L2W 行号对**静态**实体是常量（每次刷新都标脏 = 每帧整批重传，
+                // 脏行上传的意义会被吃掉）；可动实体的行号随帧槽变 ⇒ 自然每帧一行。
+                if (row->row[slot_index] == l2w_row && row->type[slot_index] == type)
+                    return;
+
+                row->row[slot_index]  = l2w_row;
+                row->type[slot_index] = type;
 
                 MarkDirty(id.index);
             }

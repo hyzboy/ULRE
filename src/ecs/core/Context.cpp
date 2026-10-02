@@ -1639,6 +1639,9 @@ namespace hgl
             // T3c：实体行表（世界私有；消费者 = GPU 剔除读实体行）。未建表 ⇒ 保持 0（消费者判 0 跳过）。
             want.addr_entity_gpu = entity_gpu_table_addr;
 
+            // T3c-2b（B1）：L2W 行号由**变换侧**写入实体行表（生产者写自己的产物）；
+            // 世界这里只负责把**脏行**上传设备镜像。
+
             UploadEntityGPUDirtyRows();
 
             // env（sky / shadow）随世界（C2）：按**本世界生效 profile** 取址写本世界槽。
