@@ -653,6 +653,24 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 - 验证：清 obj 全量重编；门 42/0；10 测试 rc=0；**用户崩的 PlaneGrid3D / IBLEnvironment rc=124 正常**、
   PBRSpheres 对拍=282；反证：恢复一处裸遍历 ⇒ Test 33 **rc=33**，逐字节还原 ⇒ 0；像素复核正常。
 
+**元素数语义修正（2026-10-02，用户 RenderDoc + 像素实测驱动）—— ✅ 盒线框只画出 4 条直线（少 3 倍）**
+
+- **现象（用户）**：`RenderBoundBox` / `LoadGeometry` 的包围盒线框画出来是 **4 条直线的 rectangle**，而正确是
+  **12 条直线的空心 Cube**；每条线 2 三角形 6 顶点 ⇒ 应有 **72** 顶点输出，实测只有 **24**（= 4 条线）。
+- **根因**：`ShaderLibrary/mesh/line_quad.glsl.tmpl` 里 `total_lines = draw_params.vertex_count >> 1u`。
+  B3-ii 把旧 `MeshDrawParams::total_vertices`（**索引路径下存的是索引数**）拆成 `index_count`/`vertex_count`，
+  而这条路径仍按旧语义直读 `vertex_count` ⇒ 对「8 顶点 / 24 索引」的盒几何：`8>>1 = 4` 条线（正确 `24>>1 = 12`）。
+  `char_quad` 同理（索引几何会少画），一并改为按**元素数**取（与 `vertex_passthrough` 同口径）。
+- **修法**：两个 mesh 着色器统一 `total_elements = is_indexed ? index_count : vertex_count`。
+- **契约**：新增 **Test 34**（三处着色器一律按 `is_indexed` 择 `index_count`/`vertex_count`；
+  禁复活 needle = 旧的 `vertex_count >> 1u` 与 `total_chars = draw_params.vertex_count`）；
+  并把 **Test 29 里那条"line_quad 必须直读 vertex_count"的契约删掉** —— 它在 B3-ii 时把**错的口径**写成了契约，
+  与 Test 34 的禁复活相冲突（教训：契约会把错误假设一起固化，改口径时必须同批更正契约）。
+- **验证**：清 shader 缓存 + 重编；门 42 PASS/0 FAIL；10 测试 rc=0（含 Test 29 更正 + Test 34）；
+  **像素复核**：`RenderBoundBox` 画满 12 条线的空心 Cube ✓、`LoadGeometry` 盒线框 ✓、
+  `TextDraw`（char_quad 消费者）整页文本正常 ✓、`LineRender`（line_quad 消费者）彩色线段场正常 ✓；
+  其余示例 rc=124/err=0；反证：把 line_quad 改回直读 `vertex_count` ⇒ **Test 34 rc=34**，逐字节还原 ⇒ 0。
+
 ### B5 —— MaterialRuntime 句柄化（含 **P-5** 的每实例指针字段归位；行宽定稿）
 ### B6 —— Texture（**当前无组件载体**：若仍无载体则本批不做，只在类型表里登记"已就位、无消费者"）
 ### B7 —— 相机终态收口（按 **P-6** 拍板执行；含 `CameraComponent` 的终态去向）
@@ -710,6 +728,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 | 2026-10-02 | **B4-ii 取消 + B4-iii-a 定稿**：材质行 CPU 读口**无消费者**（`GetDataResource` 0 处、`GlobalSSBODataAccessor` 本就只有写口）⇒ 不加投机 API；定稿 (Global, MaterialData) 组件行 arena（设备级、24 B/行：内容行引用 + generation + authored_flags），组件只留 authoring 输入 + `material_row_id`。 |
 | 2026-10-02 | **B4-iii-a 完成**：材质数据落设备级 (Global, MaterialData) 组件行 arena（16 B/行、行 0 哨兵、组件只持行号、析构不归还行）；含 **混合 ABI 假象复盘**（改 `GlobalSSBOTypeCount` 后未清 obj ⇒ 堆破坏 ⇒ 两次二分无效）。 |
 | 2026-10-02 | **名单空洞安全（结构性）**：用户实测 `IsDirty(0xFFFFFFFF)` 越界崩溃 ⇒ `ForEach*Transform` 结构性遍历 + 存储入口守卫 + Test 15/33；四处漏跳遍历全收；反证 rc=33；PlaneGrid3D / IBLEnvironment 复跑正常。 |
+| 2026-10-02 | **元素数语义修正**：`line_quad`/`char_quad` 直读 `vertex_count` ⇒ 盒线框只画 4/12 条线（24 vs 72 顶点）；改为按 `is_indexed` 择 `index_count`/`vertex_count`；Test 34 钉口径 + **更正 Test 29 里被固化的错口径**；像素复核 RenderBoundBox/LoadGeometry/TextDraw/LineRender；反证 rc=34。 |
 | 2026-10-02 | **B4 侦察 + 分批定稿**：材质行池**已就位**（PBR/Emissive/Transmission 各 1024 行、设备级）；组件 GPU 面已是「类型 + 行号」（`GlobalSSBOBinding`），但 `buffer`/`element_capacity`/`byte_stride` 是**死字段**（外部读者 0、示例赋值 0 处，容量/步长真源在 `SSBOBufferRegistry::RegisterBuffer` 反算）；访问器仍 4 个裸指针重载。分批：B4-i 删死字段 / B4-ii 材质行 CPU 读口 + revision / B4-iii 访问器句柄化（路 A 组件槽 vs **路 B arena**，待拍板）。 |
 | 2026-10-02 | **B3 尾巴完成**：`ComputeFrustumCull` 自建 AABB 表退役、改读引擎 `GeometryAABB` 池（一号双表的二号表被 GPU 真正消费）；每帧双面对拍 PASS=8/FAIL=0、反证（地址 +32B ⇒ 7 FAIL、GPU visible 36→28）逐字节还原；遗留 `ComputeAsteroidBelt` 同类表（池行真值未验证）。 |
 | 2026-10-02 | **B3-iii 完成**：批排序/聚簇/ICB/命令四处改读**行派生 POD 键**（`RenderItem::MeshDrawKey`），删 `GeometryData` 三指针 + 逐帧武装函数（12 文件）；build rc=0/0 error、门 42/0、10 测试 + Test 30（18 条契约/6 禁复活）、示例帧代理与基线一致；**过程教训：构建失败留下的半新半旧二进制伪装成 8.5× 性能回归**（A/B 两侧必须全新构建）。 |

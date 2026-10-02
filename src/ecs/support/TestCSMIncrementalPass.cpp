@@ -4621,12 +4621,8 @@ int main(int argc, char** argv)
             { "vertex_passthrough.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/vertex_passthrough.glsl.tmpl"),
               "draw_params.is_indexed != 0u",
               "非索引/索引路径不再按 is_indexed 择一取元素数（读数退化）" },
-            { "char_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/char_quad.glsl.tmpl"),
-              "draw_params.vertex_count",
-              "char_quad 未改读 vertex_count（文本路径行字段错位）" },
-            { "line_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/line_quad.glsl.tmpl"),
-              "draw_params.vertex_count >> 1u",
-              "line_quad 未改读 vertex_count（线段路径行字段错位）" },
+            // 注：text/line 的「元素数口径」已整体移交 Test 34（含禁复活）——本用例只管行宽/data_* 面。
+
             { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/VKGeometry.cpp"),
               "params.data_index_count",
               "几何侧未填 data_*（容量字段恒 0 ⇒ 下游拿不到缓冲区容量）" },
@@ -4895,6 +4891,47 @@ int main(int argc, char** argv)
         GLogInfo(u8"Test 33 Passed: 名单空洞安全契约成立（结构性遍历入口在位、id 形式裸遍历 0 残留、"
                  u8"行存储入口守卫在位；共 %d 条契约）。",
                  static_cast<int>(sizeof(kHoleContracts) / sizeof(kHoleContracts[0])));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 34: 元素数语义契约（B3-ii 拆字段后的消费侧口径）
+    //
+    // 背景（2026-10-02 实测）：B3-ii 把 MeshDrawParams 的旧 `total_vertices`（索引路径下存的是**索引数**）
+    // 拆成 `index_count` / `vertex_count`。text/line 两个 mesh 着色器仍按旧语义读 `vertex_count` ⇒
+    // 对"8 顶点 / 24 索引"的盒线框几何（12 条线）算成 4 条线（少 3 倍）：屏幕上只画出 4 条直线的
+    // rectangle、顶点输出 24 而非 72。修法：两者都按**元素数**取（索引路径取 index_count），
+    // 与 `vertex_passthrough` 同口径。
+    //
+    // 反证：把任一着色器改回读 `vertex_count` 直取 ⇒ 本用例必失败（禁复发）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kElementCountContracts[] =
+        {
+            { "line_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/line_quad.glsl.tmpl"),
+              "const uint total_elements = (draw_params.is_indexed != 0u)",
+              "线段着色器未按元素数（索引路径取 index_count）取数" },
+            { "line_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/line_quad.glsl.tmpl"),
+              "draw_params.vertex_count >> 1u",
+              "线段着色器又直接读 vertex_count 算线数（少 3 倍：只画 4 条线）", true },
+            { "char_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/char_quad.glsl.tmpl"),
+              "const uint total_elements = (draw_params.is_indexed != 0u)",
+              "文本着色器未按元素数取数" },
+            { "char_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/char_quad.glsl.tmpl"),
+              "const uint total_chars = draw_params.vertex_count;",
+              "文本着色器又直接读 vertex_count（索引几何会少画）", true },
+            { "vertex_passthrough.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/vertex_passthrough.glsl.tmpl"),
+              "const uint total_vertices = (draw_params.is_indexed != 0u)",
+              "顶点直通着色器不再按元素数取数（基准口径丢失）" },
+        };
+
+        if (const int failed = verify_source_contracts(34, kElementCountContracts,
+                                                       static_cast<uint>(sizeof(kElementCountContracts) /
+                                                                         sizeof(kElementCountContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 34 Passed: 元素数语义契约成立（text/line/vertex_passthrough 三个 mesh 着色器"
+                 u8"一律按 is_indexed 择 index_count/vertex_count，禁回退到旧 vertex_count 直取；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kElementCountContracts) / sizeof(kElementCountContracts[0])));
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

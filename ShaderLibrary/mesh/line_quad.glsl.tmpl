@@ -1,7 +1,14 @@
     const uint line_id = gl_WorkGroupID.x * {{group_size}}u + gl_LocalInvocationIndex;
     const uint vid = gl_LocalInvocationIndex * 4u;
 
-    const uint total_lines = draw_params.vertex_count >> 1u;   // 线段路径：vertex_count = 线段数 × 2
+    // 元素数：索引路径取 index_count、非索引路径取 vertex_count —— 与 vertex_passthrough 同口径。
+    // 【坑，2026-10-02 实测】这里原先直接读 vertex_count>>1：对"8 顶点 / 24 索引"的盒线框几何
+    // （12 条线）会算成 4 条线（少 3 倍）⇒ 屏幕上只画出 4 条直线的 rectangle、顶点输出 24 而非 72
+    // （B3-ii 把旧 total_vertices 拆成 index_count/vertex_count 后，本处仍按旧语义读 vertex_count）。
+    const uint total_elements = (draw_params.is_indexed != 0u)
+        ? draw_params.index_count
+        : draw_params.vertex_count;
+    const uint total_lines = total_elements >> 1u;   // 线段路径：每个元素 2 个端点
     const uint lines_this_group = min({{group_size}}u, total_lines - gl_WorkGroupID.x * {{group_size}}u);
     SetMeshOutputsEXT(lines_this_group * 4u, lines_this_group * 2u);
 

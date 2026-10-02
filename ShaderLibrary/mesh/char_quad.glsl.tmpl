@@ -1,7 +1,11 @@
     const uint char_idx = gl_WorkGroupID.x * {{group_size}}u + gl_LocalInvocationIndex;
     const uint base_vid = gl_LocalInvocationIndex * 4u;
 
-    const uint total_chars = draw_params.vertex_count;   // 文本路径：vertex_count = 字符数
+    // 元素数：索引路径取 index_count、非索引路径取 vertex_count（与 vertex_passthrough 同口径）
+    const uint total_elements = (draw_params.is_indexed != 0u)
+        ? draw_params.index_count
+        : draw_params.vertex_count;
+    const uint total_chars = total_elements;   // 文本路径：每字符一个元素
     const uint chars_this_group = min({{group_size}}u, total_chars - gl_WorkGroupID.x * {{group_size}}u);
     SetMeshOutputsEXT(chars_this_group * 4u, chars_this_group * 2u);
 
