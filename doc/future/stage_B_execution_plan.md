@@ -36,7 +36,7 @@
 | 值句柄 | 已是值句柄：`TransformAccessor` / `BoundingBoxAccessor`（24 B，世代校验） | `MaterialData` / `GeometryData` / `ShadowProxy` / `Camera` / `MaterialRuntimeSlot` 仍返回**裸指针**（`inc/hgl/ecs/core/Context.h:461-472`、`:553-583`、`:662-682`） |
 | 组件载体 | `ComponentTypeOf<T>` 特化只有两处（`GeometryData`、`MaterialData`） | `MaterialRuntime` / `Texture` **无组件载体**（类型表已就位，无消费者） |
 | `EntityGPU` | **零实现**（仅 `Entity.h:29`、`ComponentTypeTable.h:121` 两条注释） | 见 B8（延后） |
-| **行空间的第二类**（新发现：**行宽由材质定义决定**） | 已有：`MaterialTextureReferencePool` = 每 `(definition, layout)` 一份的**字节行池**（行 = `uvec2[reference_count]`，**元数随材质变、行距运行时才知道、无 C++ 结构体**，行 0 预留零行、延迟回收）；每实例 slot 已持 `pool_key + row_index` | **不属于 `(scope, type)` 坐标** —— 行空间的键是**材质定义**。用户 2026-10-02 决议：**先不动，放到计划末期处理**（详见 `stage_B_debt_list.md` §2.9，含与组件行空间的形状对照表 + 末期清单） |
+| **行空间的第二类**（新发现：**行宽由材质定义决定**） | 已有：`MaterialTextureReferencePool` = 每 `(definition, layout)` 一份的**字节行池**（行 = `uvec2[reference_count]`，**元数随材质变、行距运行时才知道、无 C++ 结构体**，行 0 预留零行、延迟回收）；每实例 slot 已持 `pool_key + row_index` | **不属于 `(scope, type)` 坐标** —— 行空间的键是**材质定义**。用户 2026-10-02 决议：**先不动，放到计划末期处理**（详见 `stage_B_debt_list.md` §2.9，含与组件行空间的形状对照表 + 末期清单）。**同批处理**（用户补充定性）：纹理引用 ⊂ `MaterialPrivateData`（今天与 surface 池分开放），故 **surface 三池 + 纹理配置池 + `ComponentType::Texture` 的类型号去留** 三项一起收，不各自开条 |
 | `.ulrescene` | 全仓 **0 命中** | 见 B8（延后） |
 | 行字节账目 | 由存储**自列**（`TransformDataStorage::GetPerRowFields`，19 条平行数组） | **B0 已实测闭合**：**每行 279 B**（其中派生缓存 `local_mat4+world_mat4` = 128 B）；279 − 64（`children` 32 + `fixed_pixel` 32）= 215 → 再扣 T8 元数据 26 B = 189 ⇒ 历史 189 B（T0 前）与 279 B（T8 后）两口径完全吻合 |
 | 已有预算先例 | `MaterialRuntimeTable` / `MaterialVariantTable` 4096 行上限 fail-fast；`CameraInfoStorage` 16 槽 × 帧槽 | Transform 一侧**没有**任何上限声明 |

@@ -275,6 +275,16 @@ GLSL `GeometryAABB/GeometryAABBsRef` + 候选用**变体下标** `geom_id` 索�
 MaterialRuntime 88 B 都是编译期冻结的），但**纹理引用每个材质要的数量不一样** ⇒ 它的数据形态与其它
 组件不同，**既不属于 Global 也不属于 World**，而是**每种材质独有**。决议：**先不动它，放到计划末期处理**。
 
+**用户 2026-10-02 补充定性（本条的范围由此定死）**：**纹理引用应当算 `MaterialPrivateData` 的一部分**——
+今天「材质私有数据（surface 池）」与「纹理引用（配置池）」是**同一个职责被分开放了两处**。
+决议：以下三项**统一标记为「与 §2.9 同批处理」**，不再各自开条、也不在任何一批里顺手做：
+
+| 项 | 今天在哪 | 末期归口 |
+|---|---|---|
+| **材质私有数据**（surface） | `GlobalSSBOType` 里三条**手工登记**的池（`PBRSurface` / `EmissiveSurface` / `TransmissionSurface`，`GlobalSSBOBufferRegistry.cpp:16-18`）+ `GlobalAddresses` 三条独立地址字段 + `MaterialShaderEmitter.cpp:278-280` 每定义一个 `case`（⇒「新增一种材质」要动四处） | 统一收成「**材质定义级行空间**」一族 |
+| **纹理引用** | `MaterialTextureReferencePool`（每 `(definition, layout)` 一份、**按定义变长的字节行**、无 C++ 结构体）+ 每实例 slot 的 `pool_key + row_index` | **同上**（它本来就是 `MaterialPrivateData` 的一部分，只是被分开了） |
+| **`ComponentType::Texture`** | 类型号已登记、**无组件载体**、零消费者（B6） | **不建实体级组件**——它的载体形态只可能出现在上述族里 ⇒ 与 §2.9 同批决定（连同「要不要保留这个类型号」一起拍） |
+
 **实测（本条不是推测，仓库里已经有这一类）**：
 
 - `inc/hgl/graph/module/MaterialTextureReferencePool.h` 的文件头自述就写着：
