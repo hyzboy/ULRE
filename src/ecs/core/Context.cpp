@@ -77,6 +77,7 @@ namespace hgl
             , draw_item_id_storage(std::make_unique<DrawItemIDStorage>())
             , material_variant_table(std::make_unique<MaterialVariantTable>())
             , material_runtime_table(std::make_unique<MaterialRuntimeTable>())
+            , material_authoring_side_table(std::make_unique<MaterialAuthoringSideTable>())
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
         {

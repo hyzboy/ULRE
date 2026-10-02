@@ -325,7 +325,7 @@ private:
                         "base_color",
                         (row == 1) ? (Texture *)mip_level_array_rgba8 : (Texture *)mip_level_array_bc7,
                         sampler,
-                        MaterialData::MaterialTextureResourceKind::Texture2DArray,
+                        hgl::ecs::MaterialTextureResourceKind::Texture2DArray,
                         "",
                         0))
                     return false;

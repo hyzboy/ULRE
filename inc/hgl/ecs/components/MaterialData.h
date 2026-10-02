@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/Component.h>
+#include<hgl/ecs/support/MaterialAuthoringSideTable.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -39,22 +40,6 @@ namespace hgl::ecs
     class MaterialData : public Component
     {
     public:
-        enum class MaterialTextureResourceKind : uint8_t
-        {
-            Texture2D = 0,
-            Texture2DArray
-        };
-
-        struct MaterialTextureAuthoringResource
-        {
-            std::string resource_id;
-            hgl::graph::Texture *texture = nullptr;
-            hgl::graph::Sampler *sampler = nullptr;
-            MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D;
-            uint32_t array_layer = 0;
-            bool required = false;
-        };
-
         struct MaterialDataAuthoringResource
             : hgl::graph::GlobalSSBOBinding
         {
@@ -92,13 +77,10 @@ namespace hgl::ecs
 
     private:
 
-        // 配方覆盖（authoring）：有则整体覆盖 asset 默认配方。
-        bool has_recipe_override = false;
-        hgl::graph::mtl::MaterialRecipe recipe_override;
-
-        hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>
-            named_texture_resources;
-
+        // B4-iii-b：**组件不再持任何重类型**——配方覆盖 / 具名纹理资源都落在世界级旁表
+        // （`MaterialAuthoringSideTable`，键 = 本组件的材质行行号）。行内只有 POD
+        //（授权位 + revision），组件只持行号。⇒ 不存在「组件副本 vs 旁表」双真值。
+        //
         // B4-iii-a：材质数据在**设备级**的家的行号（`GlobalSSBOType::MaterialData` 池）。
         // 0 = 尚未分配 / 哨兵（= 旧的「无授权数据行」）；行的内容见 graph::ssbo::MaterialDataRow。
         // 归属设备级、跨世界共享：材质数据是资源级对象，行号必须全局可解析（B4 拍板「路 B」）。
@@ -175,6 +157,10 @@ namespace hgl::ecs
 
         /// 取本组件所在世界的设备级注册表（无 owner / 无世界 / 无设备 ⇒ nullptr）
         hgl::graph::GlobalSSBOBufferRegistry *GetRegistry() const;
+        /// B4-iii-b：取本组件所在世界的材质授权旁表（无 owner / 无世界 ⇒ nullptr）
+        hgl::ecs::MaterialAuthoringSideTable *GetAuthoringTable() const;
+        /// B4-iii-b：取（必要时建）本组件行对应的旁表条目；行不可用 ⇒ nullptr（已报错）
+        MaterialAuthoringSideTable::Entry *GetOrCreateAuthoringEntry();
         /// 按需分配组件行（首次授权时）；失败即报错返回 false（不静默）
         bool EnsureMaterialRow();
         /// 读本组件的组件行（未分配返回 nullptr）

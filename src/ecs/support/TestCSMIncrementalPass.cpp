@@ -5022,6 +5022,84 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kB4iiContracts) / sizeof(kB4iiContracts[0])));
     }
 
+    // ──────────────────────────────────────────────────────
+    // Test 36: B4-iii-b 契约（重类型落世界级旁表，组件只持行号）
+    //
+    // 背景：设备级组件行只能放 POD；配方覆盖（`mtl::MaterialRecipe`）与具名纹理资源
+    // （`UnorderedMap<AnsiString,…>`）是重类型 ⇒ 落**世界级旁表** `MaterialAuthoringSideTable`
+    // （`ECSContext` 持有），**键 = 材质组件行行号**；组件侧成员整组删除，只留 `material_row_id`。
+    // 纹理资源类型/枚举随之从组件移到 `hgl::ecs` 域（限定名调用点已全量迁移）。
+    //
+    // 反证：把任一重类型成员搬回组件，或让读写绕过旁表 ⇒ 本用例必失败。
+    // ──────────────────────────────────────────────────────
+    {
+        const SourceContract kB4iiibContracts[] =
+        {
+            // ① 旁表在位、以行号为键
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialAuthoringSideTable.h"),
+              "class MaterialAuthoringSideTable",
+              "重类型旁表缺失（配方覆盖/具名纹理资源无处安放）" },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialAuthoringSideTable.h"),
+              "Entry *GetOrCreate(uint32_t row_id);",
+              "旁表不再以「行号」为键" },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialAuthoringSideTable.h"),
+              "hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>",
+              "旁表条目不持具名纹理资源（重类型又要有第二个家）" },
+            // ② 世界级归属（ECSContext 持有 + 取用口）
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "std::unique_ptr<MaterialAuthoringSideTable> material_authoring_side_table;",
+              "旁表不再由世界持有" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "MaterialAuthoringSideTable* GetMaterialAuthoringTable()",
+              "世界缺旁表取用口" },
+            // ③ 组件只持行号：重类型成员禁复活
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "uint32_t material_row_id = 0;",
+              "组件不再持材质行号（身份丢失）" },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "bool has_recipe_override = false;",
+              "配方覆盖布尔又回到组件（重类型搬回组件的先兆）", true },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "hgl::graph::mtl::MaterialRecipe recipe_override;",
+              "配方覆盖结构又回到组件（设备级行只能放 POD）", true },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>",
+              "具名纹理资源映射又回到组件（重类型搬回组件）", true },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "enum class MaterialTextureResourceKind",
+              "选择器枚举又回到组件（应与其他重类型同域在 hgl::ecs）", true },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialAuthoringSideTable.h"),
+              "enum class MaterialTextureResourceKind : uint8_t",
+              "选择器枚举未随重类型移到 hgl::ecs 域" },
+            // ④ 组件实现走旁表（含分离摘除）
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "MaterialData::GetAuthoringTable() const",
+              "组件缺旁表取用口" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "return table->GetOrCreate(material_row_id);",
+              "授权写入未以行号为键落旁表" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "table->Remove(material_row_id);",
+              "组件分离未摘除旁表条目（跨生命周期串味 + 泄漏）" },
+            // ⑤ 禁复活：旧「组件成员直接读写」形态
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "        recipe_override = recipe;",
+              "配方又写进组件成员（绕开旁表）", true },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "        named_texture_resources.Clear();",
+              "具名纹理资源又在组件成员上清空（绕开旁表）", true },
+        };
+
+        if (const int failed = verify_source_contracts(36, kB4iiibContracts,
+                                                       static_cast<uint>(sizeof(kB4iiibContracts) /
+                                                                         sizeof(kB4iiibContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 36 Passed: B4-iii-b 契约成立（重类型落世界级旁表、键 = 材质行行号、"
+                 u8"组件只持行号（三个重类型成员 + 嵌套枚举禁复活）、分离摘除旁表条目；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kB4iiibContracts) / sizeof(kB4iiibContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

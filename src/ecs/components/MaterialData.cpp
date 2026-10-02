@@ -10,30 +10,11 @@ namespace hgl::ecs
 {
     namespace
     {
-        void ResetRecipe(hgl::graph::mtl::MaterialRecipe &recipe)
-        {
-            recipe.recipe_name.clear();
-            recipe.mtl_def_id.clear();
-            recipe.vertex_node_config = hgl::graph::mtl::MakeDefault3DNodeConfig();
-            recipe.render_state_overrides.has_double_sided = true;
-            recipe.render_state_overrides.double_sided = false;
-            recipe.render_state_overrides.has_alpha_test = true;
-            recipe.render_state_overrides.alpha_test = false;
-            recipe.render_state_overrides.has_alpha_cutoff = true;
-            recipe.render_state_overrides.alpha_cutoff = 0.5f;
-            recipe.render_state_overrides.has_dither = true;
-            recipe.render_state_overrides.dither = false;
-            recipe.render_state_overrides.has_pipeline_config = true;
-            recipe.render_state_overrides.pipeline_config = hgl::graph::mtl::MaterialPipelineConfig{};
-            recipe.textures.clear();
-            recipe.material_ssbo_binding = {};
-        }
-
         bool UpsertTextureAuthoringResource(
             hgl::UnorderedMap<hgl::AnsiString,
-                MaterialData::MaterialTextureAuthoringResource> &resources,
+                MaterialTextureAuthoringResource> &resources,
             const std::string &name,
-            const MaterialData::MaterialTextureAuthoringResource &resource)
+            const MaterialTextureAuthoringResource &resource)
         {
             const hgl::AnsiString key(name.c_str());
             if (resources.GetValuePointer(key))
@@ -44,7 +25,7 @@ namespace hgl::ecs
         bool AppendTextureBinding(
             hgl::graph::mtl::MaterialRecipe &recipe,
             const std::string &name,
-            const MaterialData::MaterialTextureAuthoringResource &resource)
+            const MaterialTextureAuthoringResource &resource)
         {
             if (!resource.texture || !resource.sampler)
                 return true;
@@ -66,17 +47,29 @@ namespace hgl::ecs
 
     void MaterialData::SetRecipe(const hgl::graph::mtl::MaterialRecipe &recipe)
     {
-        recipe_override = recipe;
-        has_recipe_override = true;
+        // B4-iii-b：配方是重类型 ⇒ 落**世界级旁表**（键 = 本组件的材质行行号）；
+        // 行内只留授权位 + revision。行不可用即报错返回，不造半个对象。
+        MaterialAuthoringSideTable::Entry *entry = GetOrCreateAuthoringEntry();
+
+        if (!entry)
+            return;
+
+        entry->recipe_override = recipe;
+        entry->has_recipe_override = true;
+
         TouchAuthoredRow(hgl::graph::ssbo::kMaterialDataFlagAuthoredRecipe, 0);
     }
 
     const hgl::graph::mtl::MaterialRecipe *MaterialData::GetRecipeOverride() const
     {
-        if (has_recipe_override)
-            return &recipe_override;
+        const MaterialAuthoringSideTable *table = GetAuthoringTable();
 
-        return nullptr;
+        if (!table)
+            return nullptr;
+
+        const MaterialAuthoringSideTable::Entry *entry = table->Find(material_row_id);
+
+        return (entry && entry->has_recipe_override) ? &entry->recipe_override : nullptr;
     }
 
     bool MaterialData::SetTextureResource(
@@ -98,8 +91,13 @@ namespace hgl::ecs
             return false;
         }
 
+        MaterialAuthoringSideTable::Entry *entry = GetOrCreateAuthoringEntry();
+
+        if (!entry)
+            return false;
+
         if (!UpsertTextureAuthoringResource(
-                named_texture_resources,
+                entry->named_texture_resources,
                 name,
                 resource))
         {
@@ -135,15 +133,25 @@ namespace hgl::ecs
         return SetTextureResource(name, resource);
     }
 
-    const MaterialData::MaterialTextureAuthoringResource *
+    const MaterialTextureAuthoringResource *
         MaterialData::GetTextureResource(
             const std::string &name) const
     {
         if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
             return nullptr;
 
+        const MaterialAuthoringSideTable *table = GetAuthoringTable();
+
+        if (!table)
+            return nullptr;
+
+        const MaterialAuthoringSideTable::Entry *side = table->Find(material_row_id);
+
+        if (!side)
+            return nullptr;
+
         const hgl::AnsiString key(name.c_str());
-        if (const auto *entry = named_texture_resources.GetValuePointer(key))
+        if (const auto *entry = side->named_texture_resources.GetValuePointer(key))
         {
             if (entry->texture && entry->sampler)
                 return entry;
@@ -275,12 +283,42 @@ namespace hgl::ecs
 
     void MaterialData::ClearAuthoredResources()
     {
-        named_texture_resources.Clear();
+        if (MaterialAuthoringSideTable *table = GetAuthoringTable())
+        {
+            if (MaterialAuthoringSideTable::Entry *entry = table->Find(material_row_id))
+                entry->named_texture_resources.Clear();
+        }
 
         if (material_row_id != 0)
             ClearMaterialRow();
 
         TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagMask);
+    }
+
+    // ── B4-iii-b：世界级旁表取用（键 = 材质行行号）──────────────────────────
+    MaterialAuthoringSideTable *MaterialData::GetAuthoringTable() const
+    {
+        const Entity *owner = GetOwner();
+        ECSContext *world = owner ? owner->GetContext() : nullptr;
+
+        return world ? world->GetMaterialAuthoringTable() : nullptr;
+    }
+
+    MaterialAuthoringSideTable::Entry *MaterialData::GetOrCreateAuthoringEntry()
+    {
+        MaterialAuthoringSideTable *table = GetAuthoringTable();
+
+        if (!table)
+        {
+            GLogError("[MaterialData] 无世界/无授权旁表：重类型授权数据无处安放 owner_id=%llu",
+                      GetOwnerID().index);
+            return nullptr;
+        }
+
+        if (!EnsureMaterialRow())      // 行 = 旁表的键；行不可用即失败（已报错）
+            return nullptr;
+
+        return table->GetOrCreate(material_row_id);
     }
 
     // B4-ii：授权变更唯一入口（见 .h 注释）。行内 revision 与授权位**只在这里落笔**。
@@ -344,6 +382,19 @@ namespace hgl::ecs
          && hgl::graph::mtl::TryGetMaterialDefinitionByID(
                 out_recipe.mtl_def_id,
                 definition);
+
+        // B4-iii-b：具名纹理资源住在**世界级旁表**（键 = 材质行行号）——解析路径读旁表，
+        // 组件已无副本。无旁表/无条目 ⇒ 空表（语义 = 没有任何具名纹理授权）。
+        static const hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>
+            kEmptyNamedTextures;
+
+        const MaterialAuthoringSideTable *authoring_table = GetAuthoringTable();
+        const MaterialAuthoringSideTable::Entry *authoring_entry =
+            authoring_table ? authoring_table->Find(material_row_id) : nullptr;
+
+        const auto &named_texture_resources = authoring_entry
+            ? authoring_entry->named_texture_resources
+            : kEmptyNamedTextures;
 
         for (const auto &[named_key, resource] : named_texture_resources)
         {
@@ -444,9 +495,13 @@ namespace hgl::ecs
     {
         Component::OnDetach();
 
-        ResetRecipe(recipe_override);
-        has_recipe_override = false;
-        ClearAuthoredResources();
+        // B4-iii-b：重类型授权数据（配方覆盖 / 具名纹理资源）随组件分离而**摘除**
+        //（键 = 行号；行本身不归还——句柄语义，行回收属 arena 自身策略）。
+        if (material_row_id != 0)
+        {
+            if (MaterialAuthoringSideTable *table = GetAuthoringTable())
+                table->Remove(material_row_id);
+        }
 
         // B4-iii-a：**不在析构期归还设备级行**——方案对句柄的定稿是「句柄语义（不是租约）：
         // 长生命周期、**析构不归还行**」；行回收属 arena 自身策略。

@@ -251,13 +251,13 @@ private:
                     "base_color",
                     near_base_color_array,
                     sampler,
-                    MaterialData::MaterialTextureResourceKind::
+                    hgl::ecs::MaterialTextureResourceKind::
                         Texture2DArray)
              || !sphere_material_data->SetTextureResource(
                     "normal",
                     near_normal_array,
                     sampler,
-                    MaterialData::MaterialTextureResourceKind::
+                    hgl::ecs::MaterialTextureResourceKind::
                         Texture2DArray))
                 return false;
         }

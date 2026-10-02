@@ -14,6 +14,7 @@
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
+#include<hgl/ecs/support/MaterialAuthoringSideTable.h>
 #include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
@@ -175,6 +176,10 @@ namespace hgl
             // 纹理配置池行（GPU 绑定随行存亡）。访问范式同 visibility_storage /
             // material_variant_table。原材质运行期组件已在本步一并删除，无旧读法残留。
             std::unique_ptr<MaterialRuntimeTable> material_runtime_table;
+
+            /// B4-iii-b：材质**重类型授权数据**旁表（配方覆盖 / 具名纹理资源），
+            /// 按材质组件行行号索引；设备级行里只留 POD（授权位 + revision）。
+            std::unique_ptr<MaterialAuthoringSideTable> material_authoring_side_table;
 
             // 世界私有**相机表**：相机是**世界级资源**（16 槽 × 帧槽数，0 号槽恒为本世界默认相机）。
             // 行空间 + **槽账目（槽 → 宿主相机）** 都在这里，是"相机属于哪个世界 / 哪个槽"的唯一真源；
@@ -704,6 +709,9 @@ namespace hgl
             const MaterialVariantTable* GetMaterialVariantTable() const { return material_variant_table.get(); }
 
             /// A4 材质运行期表（共享行 interned + CoW + refcount + 世代；见 support/MaterialRuntimeTable.h）
+            MaterialAuthoringSideTable* GetMaterialAuthoringTable() { return material_authoring_side_table.get(); }
+            const MaterialAuthoringSideTable* GetMaterialAuthoringTable() const { return material_authoring_side_table.get(); }
+
             MaterialRuntimeTable* GetMaterialRuntimeTable() { return material_runtime_table.get(); }
             const MaterialRuntimeTable* GetMaterialRuntimeTable() const { return material_runtime_table.get(); }
 

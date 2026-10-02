@@ -483,7 +483,7 @@ private:
                         "base_color",
                         base_color_texture,
                         sampler,
-                        MaterialData::MaterialTextureResourceKind::
+                        hgl::ecs::MaterialTextureResourceKind::
                             Texture2DArray,
                         "",
                         row)
@@ -491,7 +491,7 @@ private:
                         "normal",
                         normal_texture,
                         sampler,
-                        MaterialData::MaterialTextureResourceKind::
+                        hgl::ecs::MaterialTextureResourceKind::
                             Texture2DArray,
                         "",
                         row))

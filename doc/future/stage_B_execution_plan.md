@@ -641,6 +641,41 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 用它做的两次二分（"HEAD 正常 / 我的版本必挂"）因此**双双无效**。⇒ 铁律重申：**改结构大小或公共头，
 必须清 obj 全量重编之后再下任何结论**；二分两侧都必须基于全量重编的产物。
 
+**B4-iii-b 完成记录（2026-10-02）—— ✅ 重类型落世界级旁表（键 = 材质行行号），组件只持行号**
+
+一、改动（12 文件：1 新建头 + 5 引擎 + 6 示例）
+
+- **新建** `inc/hgl/ecs/support/MaterialAuthoringSideTable.h`：`MaterialAuthoringSideTable`
+  （条目 = `{has_recipe_override, mtl::MaterialRecipe recipe_override,
+  UnorderedMap<AnsiString, MaterialTextureAuthoringResource> named_texture_resources}`，
+  **键 = 材质组件行行号**；`GetOrCreate/Find/Remove/GetLiveEntryCount` inline；行 0 哨兵拒绝并报错）。
+  同时把 `MaterialTextureAuthoringResource` 与选择器枚举 `MaterialTextureResourceKind` 从组件
+  **移到 `hgl::ecs` 域**（不加别名——零兼容；限定名调用点 6 个示例 15 处已全量迁移）。
+- `inc/hgl/ecs/core/Context.h` + `src/ecs/core/Context.cpp`：世界级持有
+  `unique_ptr<MaterialAuthoringSideTable> material_authoring_side_table`（与 Variant/Runtime 表同域）
+  + 构造初始化 + 两个取用口。
+- `inc/hgl/ecs/components/MaterialData.h/.cpp`：删 3 个重类型成员（`has_recipe_override` /
+  `recipe_override` / `named_texture_resources`）+ 删嵌套结构/枚举；读写全部改走旁表
+  （`GetAuthoringTable()` + `GetOrCreateAuthoringEntry()`，后者内部 `EnsureMaterialRow()`
+  ⇒ **行号即身份**；`BuildResolvedRecipe` 的两处遍历/按名查表改为绑定旁表条目）；
+  `OnDetach` 摘除旁表条目（**行不归还**，句柄语义）；删掉已成死函数的 `ResetRecipe`。
+- `src/ecs/support/TestCSMIncrementalPass.cpp`：新增 **Test 36（16 条契约）**，含 5 条禁复活
+  （三个重类型成员 + 嵌套枚举不得回到组件、旧「组件成员直读」形态）+ 分离摘除。
+
+二、验证（清整棵 Debug obj 树 376 目录后全量重编；rc 与数字均为实测）
+
+- 首轮构建 **10 个 `error C`** = 漏改一处消费者（`BuildResolvedRecipe` 遍历 `named_texture_resources`
+  做授权校验 + 按名查表）⇒ 修法用「绑定到旁表条目的局部引用」（循环体零重排）；重编
+  **RC=0 / error C=0 / error LNK=0 / error MSB=0**（4 条既有 C4715 未重编故不出现）。
+- 门 **42 PASS / 0 FAIL**；**11 个测试 rc=0**（Test 36 实测跑到并通过）；`ProbeTransformDiagnostics` rc=0；
+- 示例 PBRSpheres / AutoMergeMaterialInstance / CascadeShadowMap / **AlphaTestShadow** 各 8 秒：
+  真 error 0、`策略判定对拍` 不一致 0（270/32/460/14 条一致行）、`组件行就位` 留痕在位；
+- **像素**：`AlphaTestShadow` 两个棋盘纹理立方体 + 镂空阴影/实心阴影对比正常
+  （棋盘纹理走的正是**具名纹理资源**这一路 = 本批改动面）；`IBLEnvironment` 天空球 + 球面环境反射正常
+  （`sky_cube` / `base_color` / `normal` / `roughness` 四个具名纹理全在用）；
+- **反证**：把 `bool has_recipe_override` 搬回组件 ⇒ `Test 36 Failed: 配方覆盖布尔又回到组件
+  （重类型搬回组件的先兆）`（rc=36）；逐字节还原（sha256 核对 OK）⇒ 重跑 Passed / 全绿。
+
 **B4-ii 完成记录（2026-10-02）—— ✅ 材质行 CPU 读口 + 行内 revision（状态真源 = 行）**
 
 一、改动（7 文件）

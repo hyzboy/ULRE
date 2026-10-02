@@ -180,7 +180,7 @@ private:
                     "base_color",
                     texture,
                     sampler,
-                    MaterialData::MaterialTextureResourceKind::
+                    hgl::ecs::MaterialTextureResourceKind::
                         Texture2DArray,
                     "",
                     i))
