@@ -215,18 +215,19 @@ int main(int argc, char **argv)
         static_assert(offsetof(graph::GlobalAddresses, addr_viewport) == 48);
 
         // 2. WorldAddresses = **世界私有**（相机行表 / 渲染项表 / DrawItemID 表 / 本世界 profile 的 sky+shadow；5×uint64 = 40B）
-        static_assert(sizeof(graph::WorldAddresses) == 40, "WorldAddresses must be exactly 40 bytes");
+        static_assert(sizeof(graph::WorldAddresses) == 48, "WorldAddresses must be exactly 48 bytes");
         static_assert(offsetof(graph::WorldAddresses, addr_camera_info) == 0);
         static_assert(offsetof(graph::WorldAddresses, addr_global_render_items) == 8);
         static_assert(offsetof(graph::WorldAddresses, addr_draw_item_ids) == 16);
         static_assert(offsetof(graph::WorldAddresses, addr_sky) == 24);
         static_assert(offsetof(graph::WorldAddresses, addr_shadow) == 32);
+        static_assert(offsetof(graph::WorldAddresses, addr_entity_gpu) == 40);
         static_assert(graph::kWorldAddressesSlotStride % 16 == 0,
                       "WorldAddresses 槽步长必须 16B 对齐");
 
         graph::WorldAddresses wa{};
         if (wa.addr_camera_info != 0 || wa.addr_global_render_items != 0 || wa.addr_draw_item_ids != 0
-         || wa.addr_sky != 0 || wa.addr_shadow != 0)
+         || wa.addr_sky != 0 || wa.addr_shadow != 0 || wa.addr_entity_gpu != 0)
         {
             GLogError(u8"Test 8 Failed: Expected 0 initialized addresses in WorldAddresses");
             return 20;
@@ -237,12 +238,14 @@ int main(int argc, char **argv)
         wa.addr_draw_item_ids       = 0xDCBA43210000ULL;
         wa.addr_sky                 = 0xA1B2C3D40000ULL;
         wa.addr_shadow              = 0xB2C3D4E50000ULL;
+        wa.addr_entity_gpu          = 0xC3D4E5F60000ULL;
 
         if (wa.addr_camera_info         != 0x123456780000ULL ||
             wa.addr_global_render_items != 0xABCD12340000ULL ||
             wa.addr_draw_item_ids       != 0xDCBA43210000ULL ||
             wa.addr_sky                 != 0xA1B2C3D40000ULL ||
-            wa.addr_shadow              != 0xB2C3D4E50000ULL)
+            wa.addr_shadow              != 0xB2C3D4E50000ULL ||
+            wa.addr_entity_gpu          != 0xC3D4E5F60000ULL)
         {
             GLogError(u8"Test 8 Failed: WorldAddresses field assignment mismatch");
             return 21;
@@ -286,6 +289,7 @@ int main(int argc, char **argv)
                     uint64_t addr_draw_item_ids;
                     uint64_t addr_sky;
                     uint64_t addr_shadow;
+                    uint64_t addr_entity_gpu;
                 };
 
                 #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
@@ -546,6 +550,7 @@ int main(int argc, char **argv)
                     uint64_t addr_draw_item_ids;
                     uint64_t addr_sky;
                     uint64_t addr_shadow;
+                    uint64_t addr_entity_gpu;
                 };
 
                 #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
@@ -810,6 +815,7 @@ int main(int argc, char **argv)
                     uint64_t addr_draw_item_ids;
                     uint64_t addr_sky;
                     uint64_t addr_shadow;
+                    uint64_t addr_entity_gpu;
                 };
 
                 #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)

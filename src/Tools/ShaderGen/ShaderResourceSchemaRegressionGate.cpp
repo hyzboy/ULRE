@@ -2877,6 +2877,7 @@ namespace
         { "addr_draw_item_ids",         true  },
         { "addr_sky",                   true  },
         { "addr_shadow",                true  },
+        { "addr_entity_gpu",           true  },   // T3：实体行表（世界私有；实体属世界 ⇒ 设备级会重演"跨世界同行冲突"）
         // ── 设备级全局（跨世界共享的资源池 + 每帧槽字段）──
         { "addr_mesh_draw_params_pool", false },
         { "addr_geometry_aabb",         false },   // B3-i：GeometryAABB 池（设备级全局；与 MeshDrawParams 同 ID 索引）

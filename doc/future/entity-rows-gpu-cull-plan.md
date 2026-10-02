@@ -1,0 +1,186 @@
+﻿# 实体行驱动 GPU 剔除（T3 消费者先行）—— 设计 + 拍板点 + 任务分解
+
+> 版次：v1（2026-10-03）。**本稿只做设计与拍板，不含代码改动。**
+> 起因：用户拍板「**先把消费者定下来并同批做**」——`EntityGPU` 派生表（设计稿 T3）不再单独建，
+> 而是与它的第一个真消费者「**剔除 shader 读实体行决定画谁**」一起落地。
+> 关联真源：`doc/future/entitygpu-and-ulrescene-design.md`（B8 设计稿：T1 已落结构体 / T3 派生表 /
+> P-B8-2 落位 = 世界私有 / P-B8-6 容量 4096）、`doc/future/ULRE_FINAL_TARGET_v2_设计约束.md` §1/§3、
+> `doc/world-addresses-and-camera-model-plan.md` §2（地址三档）、`doc/gpu-driven-4id-draw-item-plan-2026-09.md`。
+
+---
+
+## 0. 现状实测（本次核对，非估算）
+
+### 0.1 `EntityGPU` 是死结构：全仓零读者零写者
+
+```
+grep -rn 'EntityGPU' inc/ src/ example/ ShaderLibrary/ src/Tools/
+```
+只命中：`inc/hgl/ecs/core/EntityGPU.h`（T1 的结构体 + 断言）、若干**注释**（`Entity.h` / `ComponentTypeTable.h` /
+`MaterialAuthoringSideTable.h`）、探针的 sizeof/offsetof 打印、测试里的枚举追加注释。
+⇒ 设计稿「0 消费者 = 投机 API」的前提**成立**，所以本稿的价值在于：**先把消费者定形，再让表随它落地**。
+
+### 0.2 现有 GPU-Driven 通路（消费者要复用/替换的就是它）
+
+**引擎侧（已就位）**：批次可被标为「GPU-Driven 托管」，托管后**跳过 CPU 侧 ICB 与行表生成**、改用 GPU 写的计数：
+
+| 落点 | 事实 |
+|---|---|
+| `inc/hgl/ecs/core/MaterialBatch.h:71` | `bool gpu_driven_override`（**跳过 CPU 侧 ICB 和行表生成**） |
+| `MaterialBatch.h:53-54` | `icb_count_buffer` + `icb_count_buffer_offset`（**GPU-Driven 动态计数**，可选） |
+| `inc/hgl/ecs/core/InstancedPrimitiveRenderItem.h:32` | `bool IsGPUDriven() const`（逐项声明自己是托管的） |
+| `src/ecs/support/PrimitiveBatchPipeline.cpp:744-765` | 任一项 `IsGPUDriven()` ⇒ 该批 `gpu_driven_override = true`，并把 `icb_count_buffer` 挂上 |
+| 同上 `:350/453/475/604/657/795/842/927` | 托管批在行表生成 / 4-ID 写入 / 命令表等**八处**被跳过 |
+
+**示例侧原型（`example/ApiValidation/ComputeFrustumCull.cpp`，829 行）** —— 它已经把「GPU 剔除」的
+数据面与着色器跑通了，但**候选表仍是 CPU 建的**：
+
+- `:94-99` `DrawItem4ID { transform_id, geometry_id, material_id, texture_id }`（4-ID 项）
+- `:88-185` 内联 GLSL：`local_size_x=64`；pc = `vec4 frustum_planes[6] + uint candidate_count + uint mesh_group_count_x + uint64 addr_table`（`sizeof == 112` 有断言）
+- `:121-138` **7 张表**（BDA 两级寻址，无描述符集）：candidates / world_matrices / geometry_aabbs /
+  visible_items / draw_count / indirect_commands / visible_l2w_indices
+- `:140-184` 主体：`candidates.items[g_idx]` → 读 `world_matrices.mats[item.transform_id]` 与
+  `geometry_aabbs.boxes[item.geometry_id]` → 6 平面投影半径剔除（`r = dot(extents, abs(n*mat3(l2w)))`）→
+  `atomicAdd(draw_count)` 紧凑输出 + `DrawMeshTasksIndirectCommand(mesh_group_count_x,1,1)` + `visible_l2w_indices`
+- `:196-226` `GPUIndirectCountHookSystem`：把 compute 写的 `count_buffer` 挂到批次的 `icb_count_buffer`
+
+⇒ **替换点唯一**：`candidates[]` 这一份「CPU 逐帧建的候选 4-ID 表」换成 **`EntityGPU` 实体行**
+（实体自己说"我有哪些组件、各自在哪一行"），剔除 shader 从实体行**自己组装** draw item。
+
+### 0.3 关键事实：`Transform` 的行号不是 `component_rows[Transform]` 能直接给的
+
+`Transform` 没有组件对象（T2-c 后也没有池行）：它的 GPU 侧行号是 **L2W 行**，由「稳定槽位 + 段预算 + 帧槽」
+算出（`静态: 1 + slot` / `动态: 1 + 预算static + frame × 预算dynamic + slot`，见 `ulre-ecs-layer` 记的 B1b 口径），
+现有 CPU 侧算法在 `PrimitiveBatchPipeline` / `LineRenderPipeline` 里用
+`TransformAccessor::GetID()` + `TransformSystem::TryGetTransformSlot()` 复现。
+⇒ 实体行里的 `row[Transform]` 存哪个量，是本稿 **P-1**。
+
+---
+
+## 1. 目标与非目标
+
+**目标**：让世界里的实体行（`EntityGPU`）成为 GPU 剔除的**唯一枚举源**：
+
+1. 剔除计算**不再需要 CPU 建候选表**（无逐帧 per-item CPU 写）；
+2. 剔除判定与 draw item 组装**都读实体行**：`type[CT]/row[CT]` → 几何行 / 材质行 /（L2W 行）；
+3. 结果经**既有** `icb_count_buffer` + 间接命令机制喂给绘制（不新开绘制通路）；
+4. 判据可实测：**GPU 计数 == CPU 参考剔除计数**（同帧同相机对拍），且像素与现状一致。
+
+**非目标**：
+
+- 不做 GPU-Driven 的**批次合并/排序**（批次仍由 CPU 收集产出，B3-iii 的「逐项自成簇」纪律不变）；
+- 不做 `.ulrescene` 直载（设计稿 T4，前置 (b) 仍未满足）；
+- 不改 Lines/Text 的收集与绘制语义（T2-c 定界不变）；
+- 不做 material 定义级行空间（欠账 §2.9）。
+
+---
+
+## 2. 数据面：`EntityGPU` 世界私有表
+
+### 2.1 布局与索引（沿用 T1 已冻结的结构体，不改形状）
+
+`EntityGPU` = 128 B（`flags(4) + type[16](16) + row[16](64) + work_flags(4)` + 40 B 填充，`alignas(64)`）。
+
+**索引方式（P-2）**：建议 **按 `EntityID.index` 直接索引**（表 = 槽位表）：
+`addr = base + index * 128`；`flags & Active` 判在用。理由：
+① 实体槽位本来就稳定（T2-a 块池 + `generation`），增删实体**不重排**；
+② shader 端一次位运算即可定位，不需要 CPU 维护「紧凑活跃集」；
+③ 与 `TransformDataStorage`、`MaterialRuntimeTable` 的"槽位表 + 空洞"口径同族。
+
+### 2.2 每个槽填什么
+
+| 槽 | 来源（CPU 权威） | 备注 |
+|---|---|---|
+| `flags.Active` | 实体在槽在用 | 实体销毁 ⇒ 清位（该行的其余字段不清理，靠 Active 判） |
+| `flags.Visible` | `ECSContext::IsEntityVisible(entity)` | 与 CPU 同源（含祖先链上溯的结论） |
+| `type[CT]` / `row[CT]` | `Entity::GetComponentMask()` / `GetComponentRow(CT)` | **已有**（T2-c：实体侧就是按类型行号表）⇒ 写路径是"抄一份"，不是新算 |
+| `row[Transform]` | L2W 行号（**见 P-1**） | 唯一需要额外计算的槽 |
+| `work_flags` | 留 0 | 等消费者定义（不造没人读的位） |
+
+### 2.3 归属与下发（设计稿 P-B8-2 已拍：世界私有）
+
+- 落位：**`WorldAddresses` 加一字段 `addr_entity_gpu`**（随 `pc_root.addr_world_addresses` 下发）。
+- 连带面**五处**（改地址表的固定动作，漏一处就红，见技能 `ulre-ecs-layer`）：
+  ① `inc/hgl/graph/ubo/WorldAddresses.h`（C++ 真源 struct）
+  ② `ShaderLibrary/ubo/scene_ubo.glsl`（`buffer WorldAddressesRef` 镜像）
+  ③ 门的两条 parity 用例（`W.world-addresses-struct-parity` / `W.world-addresses-field-ownership`）
+  ④ `src/ecs/support/TestRenderItemDataStorage.cpp` 的**三份内嵌 GLSL 夹具** + 逐字段 `static_assert`
+  ⑤ `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` 的 `kAddressOwnershipTable`（登记"世界私有"）
+
+### 2.4 容量与失败模式
+
+- 容量 **4096**（设计稿 P-B8-6 已拍，与 Transform static 同口径）；超限 = **fail-fast**（项目 bug，不扩容）。
+- 实体表一旦冻结即存档语义（行号/槽位不得重排）。
+
+---
+
+## 3. 消费面：剔除计算（消费者）
+
+### 3.1 输入（全部 BDA，无描述符集）
+
+| 输入 | 来源 |
+|---|---|
+| `EntityGPU[]` | **新增**（本稿的主角；地址经世界地址表） |
+| `GeometryAABB[]` | 引擎 `GlobalSSBOType::GeometryAABB` 池基址（示例原型已用 `GetGPUBase(GeometryAABB)`） |
+| L2W `mats[]` | 现有变换矩阵表（`TransformAssignmentBuffer` / 静态段 + 动态 ring；`row[Transform]` 即索引） |
+| 视锥 6 平面 | 相机行（`CameraInfo`）已在世界表 ⇒ shader 可直接解出 6 平面，**不必 CPU 传**（P-3） |
+| 材质/纹理 id | `MaterialRuntimeTable` / 每实例 slot（4-ID 的后两位；**P-5**） |
+
+### 3.2 输出（复用既有机制）
+
+`visible_items[]`（紧凑 4-ID）+ `draw_count` + `DrawMeshTasksIndirectCommand[]` + `visible_l2w_indices[]`
+—— **与示例原型逐字段同形**，只把"输入候选"换成实体行。计数缓冲直接接到批次的 `icb_count_buffer`
+（`MaterialBatch.h:53`）⇒ 绘制侧**零改动**。
+
+### 3.3 主体逻辑（按实体行组装，取代 CPU 候选表）
+
+```
+for each entity slot i where (entity.flags & Active) && (entity.flags & Visible):
+    geoid = entity.row[Geometry];         if (!geoid) continue;      // 无几何 ⇒ 不是绘制项
+    trid  = entity.row[Transform];        if (!trid)  continue;      // 无变换行 ⇒ 无法放置
+    l2w   = mats[trid];  aabb = boxes[geoid];
+    <6 平面投影半径剔除，与示例原型同一算式>
+    if (visible): slot = atomicAdd(draw_count); visible_items[slot] = {trid, geoid, mat, tex};
+                  indirect_commands[slot] = {mesh_group_count_x,1,1}; visible_l2w_indices[slot] = trid;
+```
+
+---
+
+## 4. 拍板点
+
+| # | 议题 | 选项 | **推荐** | 影响 |
+|---|---|---|---|---|
+| **P-1** | `row[Transform]` 存什么 | ① **L2W 行号**（GPU 侧直接可用） ② `TransformDataStorage` 句柄（CPU 语义） | **①** | ②shader 还要再换算一次（且换算式含帧槽 ⇒ shader 得知道 mobility/预算）；①与现有 `MeshDrawParams.addr_transform_id` 同源 |
+| **P-2** | 表索引 | ① **按 `EntityID.index` 直索引（槽位表 + Active 位）** ② 紧凑活跃集（CPU 维护） | **①** | ②给 CPU 增加一份需同步的映射，且增删要重排 |
+| **P-3** | 视锥平面来源 | ① **shader 从相机行现解** ② CPU 每帧传 push constant | **①** | ②每帧多一次 CPU 计算与上传；①与"相机行已在世界表"的既有分层一致 |
+| **P-4** | 表的**帧槽**语义 | ① 与相机行同款「世界私有 × 帧槽」多份 ② 单份 + 脏集合一次性写 | **待实测后定** | 剔除在**提交前**读表：若 GPU 侧读到的是"下一帧写完的同一份"，就会用错帧的行 ⇒ 需要按帧轮转或多份；相机行当年正是为此做成 16 槽 × 8 帧槽 |
+| **P-5** | 材质/纹理 id 的来源 | ① 复用 `MaterialRuntimeTable`（每实例 slot） ② 暂用 0（先只验证几何/变换剔除） | **①**，若改动过大则退 ② | 决定这个特性一次落地多少 |
+| **P-6** | 消费者落位 | ① **引擎侧**（世界驱动系统 + `ShaderLibrary` 里的 cull 计算着色器） ② 示例侧（照抄 `ComputeFrustumCull`） | **①** | ②等于把"引擎能力"留在示例里，用户明确反对（示例只做装配） |
+
+---
+
+## 5. 任务分解（每项：内容 / 判据 / 回滚点）
+
+| 任务 | 内容 | 判据（可自动判定） | tag |
+|---|---|---|---|
+| **T3a** | `WorldAddresses` 加 `addr_entity_gpu`（**五处连带面**全做） | 门 **42 PASS / 0 FAIL**（含两条 parity/ownership 用例）；`static_assert` 逐字段对齐 | `b8-t3a` |
+| **T3b** | 世界侧实体表存储：容量 4096、按 `index` 索引、`Active/Visible` + type/row 抄写（**挂卸/可见性/行变更三处写入**） | 探针：建 N 实体 ⇒ 表内 `Active` 位数 == N、`row[Geometry]` 与 `Entity::GetComponentRow(Geometry)` 逐字节相等；`Entity` 销毁 ⇒ 位清零 | `b8-t3b` |
+| **T3c** | 每帧下发（`addr_entity_gpu` 写世界地址表 + （P-4 定的）多份/脏集合上传） | 探针/测试：`SetFrameIndex` 前后表地址与内容一致；跨帧读到的行属于本帧 | `b8-t3c` |
+| **T3d** | 剔除计算着色器（引擎侧，`ShaderLibrary/`）：实体表 → visible/count/indirect | 门编译过；对拍：**GPU count == CPU 参考剔除计数**（同帧同相机，示例内双面打印） | `b8-t3d` |
+| **T3e** | 世界侧驱动系统（dispatch + barrier/fence + 把 count buffer 交给批次） | 示例跑满帧、无 VUID、无 error；`策略判定对拍` 不一致 0 | `b8-t3e` |
+| **T3f** | 示例装配 + **像素验收** | 像素与现状一致（同相机同场景）；剔除计数对拍不一致 0；GPU-Driven 批**逐项自成簇**纪律不破 | `b8-t3f` |
+
+> 排序理由：T3a/T3b 与 P-4/P-5 无关（纯地址 + 纯 CPU 侧抄写），可立即开工；
+> T3c 依赖 P-4，T3d/T3e 依赖 P-5。**每项自身可编译 + 判据绿**才进下一项。
+
+---
+
+## 6. 风险
+
+| # | 风险 | 默认 |
+|---|---|---|
+| R1 | 表是**每帧可变**（可见性/行迁移）而剔除在提交前读 ⇒ 读到别的帧的行 | 按帧槽多份（P-4）；先实测单份是否真的会错帧 |
+| R2 | `row[Transform]`（L2W 行）随 mobility/帧槽变化而变 ⇒ 写路径必须与 `SubmitTransformUpdates` 同帧同源 | 复用现有 `TryGetTransformSlot` 算法，不另造一份换算 |
+| R3 | 4096 槽 × 128 B = 512 KB/世界；多世界 = 线性叠加 | 已拍不扩容；超限 fail-fast |
+| R4 | 剔除结果与 CPU 收集的批次划分不一致（批次仍 CPU 收集）⇒ 可能"GPU 说可见但批次里没这项" | 首版把消费者限制在**同一批**（批内实体行驱动），批次划分保持 CPU 权威 |
+| R5 | 改地址表漏一处连带面 ⇒ 门红/示例编译失败 | 五处清单逐条打勾（技能 `ulre-ecs-layer` 已列） |
