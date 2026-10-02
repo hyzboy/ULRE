@@ -5324,6 +5324,56 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kB6Contracts) / sizeof(kB6Contracts[0])));
     }
 
+    // ──────────────────────────────────────────────────────
+    // Test 40: B7 契约（相机终态：Camera 入类型枚举/表；P-6 ② 定稿不可悄悄翻案）
+    //
+    // 背景：欠账 §2.1「相机不在 `ComponentType` 枚举里 ⇒ 没有 (scope, type) arena」。
+    // P-6 拍板 **②：不新开 (World, Camera) arena，参数并入既有世界相机行空间** ⇒
+    // 相机数据**留在 `CameraComponent` 自己身上**（CPU 权威），世界那张「16 槽 × 帧槽」表
+    // 是 `CameraSystem::Publish` 出来的**派生视图**；B7 的动作 = 把 `Camera` 补进类型枚举/表
+    //（+ implies 表对齐 + 组件槽位映射），并在计划文档里钉住这条决策。
+    //
+    // 反证：删掉枚举项/表行/特化，或把决策文案改掉 ⇒ 本用例必失败。
+    // ──────────────────────────────────────────────────────
+    {
+        const SourceContract kB7Contracts[] =
+        {
+            // ① 枚举项（追加在 Texture 之后；类型值会被位掩码 / EntityGPU 槽消费 ⇒ 只能追加）
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "Camera,             ///< 相机（**世界私有**",
+              "Camera 未进组件类型枚举（相机仍无类型号）" },
+            // ② 类型表行（World 作用域；无自己的 GPU 行 ⇒ 0；承载类型 = CameraComponent）
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "{ ComponentType::Camera,          ComponentScope::World,  \"ECS:Camera\",           0, \"CameraComponent\" },",
+              "Camera 的类型表行缺失/被改动（scope/承载类型/行宽口径）" },
+            // ③ implies 表与枚举对齐（漏填会被静默零初始化）
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "/* Camera          */ 0,",
+              "implies 表未与枚举对齐（新增类型漏填会静默零初始化）" },
+            // ④ 组件侧槽位映射（与 GeometryData / MaterialData 同范式）
+            { "CameraComponent.h", OS_TEXT("inc/hgl/ecs/components/CameraComponent.h"),
+              "template<> struct ComponentTypeOf<CameraComponent> { static constexpr ComponentType value = ComponentType::Camera; };",
+              "CameraComponent 未声明槽位映射（实体掩码里没有相机位）" },
+            // ⑤ 模型钉住：组件是 CPU 权威、世界表是派生视图（P-6 ② 的语义）
+            { "CameraComponent.h", OS_TEXT("inc/hgl/ecs/components/CameraComponent.h"),
+              "世界级相机行空间是 `CameraSystem::Publish` 出来的派生视图",
+              "相机数据归属的说明丢失（组件 = CPU 权威、世界表 = 派生视图）" },
+            // ⑥ 决策钉住：P-6 ② 写在计划文档里（禁止悄悄翻案回 ①）
+            { "stage_B_execution_plan.md", OS_TEXT("doc/future/stage_B_execution_plan.md"),
+              "**P-6 相机终态** —— ✅ **已拍板（2026-10-02，用户）：不新开 (World,Camera) arena**",
+              "P-6 相机终态的拍板文案被改动/删除（决策不可悄悄翻案）" },
+        };
+
+        if (const int failed = verify_source_contracts(40, kB7Contracts,
+                                                       static_cast<uint>(sizeof(kB7Contracts) /
+                                                                         sizeof(kB7Contracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 40 Passed: B7 契约成立（Camera 入类型枚举/表/implies/槽位映射四件套对齐；"
+                 u8"P-6 ②「不新开 arena、参数留组件、世界表为派生视图」已钉住；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kB7Contracts) / sizeof(kB7Contracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

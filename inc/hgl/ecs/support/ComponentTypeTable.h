@@ -32,6 +32,8 @@ namespace hgl
             MaterialData,       ///< 材质数据（配方/参数，资源级）
             MaterialRuntime,    ///< 材质运行期数据（渲染侧创建/销毁）
             Texture,            ///< 贴图引用
+            Camera,             ///< 相机（**世界私有**：CPU 权威数据在 `CameraComponent` 自己身上，
+                                ///<  世界那张「16 槽 × 帧槽」相机表是 `CameraSystem::Publish` 出来的**派生视图**）
 
             End,
         };
@@ -75,6 +77,7 @@ namespace hgl
             { ComponentType::MaterialData,    ComponentScope::Global, "ECS:MaterialData",    16, "MaterialData" },        ///< B4：组件行 16 B（(Global, MaterialData) arena，行内只放 POD）
             { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "MaterialRuntimeSlot" }, ///< B5：slot 全 POD、行宽冻结 88 B（CPU 侧行 ⇒ gpu_row_bytes 记 0）
             { ComponentType::Texture,         ComponentScope::Global, "ECS:Texture",          0, "" },                   ///< B6：**无组件载体**（纹理授权在 MaterialData 的具名纹理资源里，零消费者，仅登记）
+            { ComponentType::Camera,          ComponentScope::World,  "ECS:Camera",           0, "CameraComponent" },     ///< B7：相机（P-6 ②：**不新开 arena**，参数留组件；世界相机表 = 派生视图 ⇒ 本类型无自己的 GPU 行）
         };
 
         namespace detail
@@ -164,6 +167,7 @@ namespace hgl
             /* MaterialData    */ 0,
             /* MaterialRuntime */ ComponentTypeBit(ComponentType::MaterialData),
             /* Texture         */ 0,
+            /* Camera          */ 0,
         };
 
         /// 该类型的**完整蕴含掩码**（含自身位）；编译期展开传递闭包

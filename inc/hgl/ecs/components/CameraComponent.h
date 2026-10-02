@@ -114,4 +114,7 @@ namespace hgl::ecs
         // 不需要析构：相机不持有任何需要归还的世界资源
         // （槽是世界的、按宿主弱引用计占用期；相机销毁 ⇒ 槽自动空出）。
     };
+    /// 槽位映射：`CameraComponent` = 相机（世界私有；P-6 ② ⇒ 参数留组件、不新开 (World, Camera) arena；
+    /// 世界级相机行空间是 `CameraSystem::Publish` 出来的派生视图）
+    template<> struct ComponentTypeOf<CameraComponent> { static constexpr ComponentType value = ComponentType::Camera; };
 }//namespace hgl::ecs

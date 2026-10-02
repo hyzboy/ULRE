@@ -119,11 +119,15 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
   `:471-472`（`GetOrCreateCamera`：ID 版 + `Entity*` 版）、`:476`（`EnsureCameraSlot`）、`:480`（`ReleaseCameraSlot`）、
   `:485`（`EnsureFallbackCamera`）、`:492`（`GetFallbackCamera`）。
 
-**差距 / 待定**
-- **相机不在 `ComponentType` 枚举里**（`ComponentTypeTable.h:26-37` 六项无 Camera）⇒ 相机没有 (scope, type) arena，
-  也没有 GPU 行；它的 19 个参数字段仍是 OOP 组件字段。
-- **待定**：stage B 相机是 ① 进 `(World, Camera)` 行 arena + 值类型句柄，还是 ② 参数并入现有世界相机行空间。
-  当前实现**两头都在**（世界表管槽/行，组件管参数）——这是 stage B 必须一次收口的分叉，**尚无定稿**。
+**差距 / 待定 —— ✅ 已定稿（B7，2026-10-02；用户拍板 P-6）**
+- ~~相机不在 `ComponentType` 枚举里~~ ⇒ **B7 已补**：`ComponentType::Camera` + 类型表行
+  `{World, "ECS:Camera", 0, "CameraComponent"}` + `kComponentTypeImplies` 对齐 + `ComponentTypeOf<CameraComponent>`
+  槽位映射（`gpu_row_bytes` 记 0 = 该类型**没有自己的 GPU 行**）。
+- ~~**待定**：① 进 `(World, Camera)` 行 arena + 值类型句柄，还是 ② 参数并入现有世界相机行空间~~
+  ⇒ **定稿 ②（P-6）**：**不新开 arena，参数留组件**。即**现状就是终态**——组件持 **CPU 权威参数**
+  （`graph::Camera camera_data` / `graph::CameraInfo camera_info`，文件头 `CameraComponent.h:14-38` 已定稿），
+  **世界相机表是 `CameraSystem::Publish` 出来的派生视图**（槽账目 + 宿主弱引用）。19 个参数字段
+  **保持 OOP 组件字段形态**，不再要求行化（要求行化的是被否决的 ① 路线的代价）。
 - 两条**非实体**相机路径要一起改：`EnvironmentSystem` 的 `AutoCSMLightCamera`（系统内建，`make_shared` 创建，
   不进 `component_registry`）与常驻 fallback（`Context.h:478`/`:485`），槽宿主走 `CameraSlotGuard`
   （`inc/hgl/ecs/support/CameraSlotGuard.h`）。
@@ -236,6 +240,35 @@ GLSL `GeometryAABB/GeometryAABBsRef` + 候选用**变体下标** `geom_id` 索�
 （可能是"未设"哨兵 `center.w < 0`）；若模型路径不设 `SetBoundingVolumes`，需先让加载路径写入包围体，
 否则剔除会按退化 AABB 走。内置的 10 个几何走 inline geometry（`CreateWithAABB`）应已就位。
 
+### 2.8 先存在的红：ATS `D3 receive_shadow` 契约的"变红"方向恒为 0 px（2026-10-02 记录）
+
+**现象**：`ATS_SELFCHECK=1 AlphaTestShadow` 退出码 1，唯一失败项是
+
+```
+[D3-CONTRACT] receive_shadow FAIL: 关掉后 受影→未受影(变红) 0 px / 未受影→受影 0 px
+              （同帧外观变化共 10473 px；期望变红 >= 3000 且反向 <= 变红/4）
+```
+
+同帧 `bias_multiplier PASS`（外观变化 593213 px）、`[D1-CONTRACT] c0 PASS`（填充率 57.6%）、
+`[D4-CONTRACT] 行池写入 PASS`（CommitRow 拒绝 0）⇒ **不是读回失败，是"变红"这个方向没被触发**。
+
+**归因（实测 A/B，2026-10-02）**：把 B7 的两处改动（`ComponentTypeTable.h` / `CameraComponent.h`）按
+`git show HEAD:<file>` 整体覆盖回 `0f4d54a32`（B6）内容后（`grep -c "ComponentType::Camera"` = 0 确认回退到位），
+**逐字节相同**地复现同一条失败（数字完全一致：0 px / 10473 px）⇒ **与本会话 B3–B7 各批无关，先存在**。
+`ulre-ecs-layer` 技能记过这类症状的根因类别：「shadow pass 用**退化相机**渲染 ⇒ `receive_shadow` 拨动
+0 px 变化，但 `bias_multiplier` 仍改外观」（历史修法 = `RenderTo` 按 `req.camera` 发布相机行）
+⇒ 该方向仍有漏，或另有来源，需要专门定位。
+
+**附带观察（未归因）**：同一条比较的"外观变化 px"从技能/计划里记的基线 `18187~18189 px` 漂到
+`10473 px`（`bias` 侧 `600662 → 593213` 基本未动）⇒ 中间某个提交改动了 `receive_shadow` 的生效幅度，
+**未定位到具体提交**（需按批回退转储对比或 `git bisect`）。
+
+**处置**：**不在存储形批次里顺手修**（同技能里"预存在的 CSM 生命周期缺口"那条纪律）。
+待 B 线收口后单开一批：先按技能配方打印「pass 相机 / 相机行内容 / 受影像素方向」，再谈改法；
+修完补进验收集（`ATS_SELFCHECK=1` 必须 rc=0 才算绿）。
+
+---
+
 ## 3. stage B 的验收口径（沿用 stage A 硬纪律）
 
 `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1058-1062` 与 `:1156`：
@@ -265,4 +298,7 @@ GPU 侧 48 B TRS SSBO（D1）；L2W 改 `Matrix4x3f`（D2）；全局 `g_Current
   行空间冻结与稳定槽位见 `stage_B_execution_plan.md` 的 B1 / B1b（static 4096 + dynamic 4096、下标即槽位、空洞复用）。
 - `EntityGPU` 128 B 的 GPU 侧实机布局/对齐 —— 无实现，只有文档形状。
 - `.ulrescene` 直载链路 —— 无实现，未实测。
-- 相机参数进 arena 的具体方案 —— 仅列为"待定分叉"，未做设计。
+- ~~相机参数进 arena 的具体方案 —— 仅列为"待定分叉"，未做设计。~~ ⇒ **✅ 已定稿（B7 / P-6 ②）**：
+  **不新开 arena，参数留组件**（组件 = CPU 权威，世界相机表 = 派生视图）。
+- **ATS `D3 receive_shadow`「变红」契约仍红（先存在，见 §2.8）** —— B 线各批验收时该项**记为已知红**，
+  不得当作本批引入；B 线收口后单开一批处理。

@@ -641,6 +641,59 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 用它做的两次二分（"HEAD 正常 / 我的版本必挂"）因此**双双无效**。⇒ 铁律重申：**改结构大小或公共头，
 必须清 obj 全量重编之后再下任何结论**；二分两侧都必须基于全量重编的产物。
 
+**B7 完成记录（2026-10-02）—— ✅ 相机终态收口：Camera 入类型枚举/表（P-6 ②：不新开 arena）**
+
+一、先读计划把语义钉死（避免按字面误解"参数并入"）
+
+`doc/world-addresses-and-camera-model-plan.md`（§2）定稿：**组件里的 `graph::Camera camera_data` /
+`graph::CameraInfo camera_info` 是 CPU 权威真源**，世界那张「16 槽 × 帧槽」相机表是
+`CameraSystem::Publish` 出来的**派生视图**。⇒ P-6 拍板的 ②（不新开 `(World, Camera)` arena、
+参数并入既有世界相机行空间）意味着**现状就是终态**：参数留在组件、世界表继续当派生视图。
+所以 B7 是**零存储实现**，实活 = 补欠账 §2.1 的头号缺口——**相机没有类型号**。
+
+二、改动（3 文件：2 头 + 1 契约 + 2 文档）
+
+- `inc/hgl/ecs/support/ComponentTypeTable.h`
+  · 枚举**追加** `Camera`（注释写明：世界私有、CPU 权威在组件、世界表是派生视图）。**只能追加**——
+    类型值会被实体位掩码与 `EntityGPU::type[16]` 槽消费，插队会让既有类型全体平移。
+  · `kComponentTypeTable` 补行 `{ World, "ECS:Camera", 0, "CameraComponent" }`（**0 = 该类型没有自己的 GPU 行**）。
+  · `kComponentTypeImplies` **显式**补 `/* Camera */ 0`：漏填会被**静默零初始化**，必须与枚举写全对齐。
+- `inc/hgl/ecs/components/CameraComponent.h`：补 `ComponentTypeOf<CameraComponent>` 槽位映射
+  （与 `GeometryData` / `MaterialData` 同范式）+ 归属注释（组件 = CPU 权威、世界表 = 派生视图）。
+- `src/ecs/support/TestCSMIncrementalPass.cpp`：**Test 40（6 条契约）**——枚举项 / 类型表行 / implies 对齐 /
+  槽位映射四件套 + 「组件 = CPU 权威、世界表 = 派生视图」的模型句 + **把 P-6 拍板原文钉进契约**
+  （决策不可悄悄翻案）。
+
+三、加类型号前的风险核实（两处，均排除）
+
+- **有没有"按类型必填"的规则表**（新类型会让它缺项）⇒ 无：`RenderStrategyTable::EvaluateRenderNeed`
+  是**通用遍历**，新类型只是多一个**没人要求**的位，既有实体的需求判定不变。
+- **有没有按 `COMPONENT_TYPE_COUNT` 定尺寸的成员数组**（会变 ABI）⇒ 无：消费者只有 `constexpr` 表
+  （主表 + implies 表 + 完整性断言）。故本批 purge 而非清整棵 obj 树。
+
+四、验证（purge TUs=14 / objs=13 ⇒ 全量目标重编）
+
+- **BUILD_RC=0 / error C=0 / error LNK=0 / error MSB=0**；
+- 门 **42 PASS / 0 FAIL**；**10 个测试 rc=0**（含 `TestCSMIncrementalPass` 跑到 Test 40）；
+- 探针 rc=0，`sizeof(MaterialRuntimeSlot) = 88 B` 未变；
+- **6 示例**（PBRSpheres / CascadeShadowMap / AlphaTestShadow / ShadowMap / RenderToTexture / ComputeFrustumCull）
+  各 8s：真 error 0、`策略判定对拍` **不一致 0**；
+- **相机专属验收**：`CSM_CACHE_DIFF=1 CSM_AUTOWALK=4 CascadeShadowMap` 多轮 `不一致=0` ✓。
+- **反证**：Camera 表行的 arena 名改成 `"ECS:CameraX"` ⇒ `Test 40 Failed: Camera 的类型表行缺失/被改动`
+  （**rc=40**）；逐字节还原（sha256 OK）⇒ 重跑 rc=0 / Passed。
+
+五、⚠️ 本轮**撞到一条先存在的红，不是本批引入**（详见 `stage_B_debt_list.md` §2.8）
+
+`ATS_SELFCHECK=1 AlphaTestShadow` **rc=1**：唯一失败项是
+`[D3-CONTRACT] receive_shadow FAIL: 变红 0 px（同帧外观变化共 10473 px；期望变红 >= 3000）`，
+而同帧 `bias_multiplier PASS`（593213 px）、`D1 PASS`（填充率 57.6%）、`D4 PASS`（拒绝 0）。
+
+**归因（A/B 实测）**：按 `git show HEAD:<file>` 把 B7 的两处改动整体覆盖回 `0f4d54a32`（B6）
+（`grep -c "ComponentType::Camera"` = 0 确认回退到位）⇒ **逐字节相同**地复现同一条失败
+⇒ **与本会话 B3–B7 各批无关**。技能 `ulre-ecs-layer` 记过该类症状的根因类别（shadow pass 用退化相机
+⇒ `receive_shadow` 拨 0 px、`bias` 仍改外观），但本批**不顺手修**（同「预存在的 CSM 生命周期缺口」纪律）：
+留待 B 线收口后单开一批。**验收口径据此记为：本批绿 = 门/测试/示例全绿 + 反证成立；ATS D3 该项属已知红。**
+
 **B6 完成记录（2026-10-02）—— ✅ 零实现：Texture 无组件载体，只登记 + 类型表校准**
 
 一、B6 判据核实（实测）
