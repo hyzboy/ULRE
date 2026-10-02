@@ -4741,6 +4741,48 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kB3iiiContracts) / sizeof(kB3iiiContracts[0])));
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 31: B4-i 契约（`MaterialData` 组件 GPU 面只剩「类型 + 行号」）
+    //
+    // 背景：B4-i 删除 `MaterialDataAuthoringResource` 的 `DeviceBuffer *buffer` /
+    // `element_capacity` / `byte_stride` —— 实测三者**外部读者 0、示例赋值 0 处**，
+    // 容量/步长的真源在 `SSBOBufferRegistry::RegisterBuffer`（字节数 ÷ 容量反算 stride）。
+    // 与 B3-iii「删几何三指针」同构：GPU 面只留 `GlobalSSBOBinding{ssbo_type, ssbo_id, data_index}`。
+    //
+    // 反证：把任一字段加回组件头 ⇒ 本用例必失败（禁复活）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kB4Contracts[] =
+        {
+            // ① 仍在：类型 + 行号（三者缺一即 "GPU 面" 塌掉）
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "hgl::graph::GlobalSSBOBinding", "材质组件的 GPU 面不再是「类型 + 行号」" },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "bool authored = false;", "材质数据行资源的「已授权」标记缺失" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "resource.data_index = uint32_t(-1);", "数据行重置不再复位行号（残留旧行）" },
+
+            // ② 禁复活：每实体死指针与派生数
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "element_capacity", "材质组件又持每实体元素容量（真源在 SSBOBufferRegistry）", true },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "byte_stride", "材质组件又持每实体字节步长（真源在 SSBOBufferRegistry）", true },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "DeviceBuffer", "材质组件又挂 DeviceBuffer（每实体缓冲指针）", true },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "resource.buffer", "材质组件重置又在写每实体缓冲指针", true },
+        };
+
+        if (const int failed = verify_source_contracts(31, kB4Contracts,
+                                                       static_cast<uint>(sizeof(kB4Contracts) /
+                                                                         sizeof(kB4Contracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 31 Passed: B4-i 契约成立（MaterialData 的 GPU 面 = GlobalSSBOBinding 类型+行号 + authored；"
+                 u8"禁复活：per-entity buffer / element_capacity / byte_stride；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kB4Contracts) / sizeof(kB4Contracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

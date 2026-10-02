@@ -522,7 +522,47 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
     `Entity` 槽里存 arena 行号（与 B8 的 `EntityGPU::row[16]` 对齐）。
   - **推荐**：B4-i / B4-ii 先做（无争议、机械、可独立验证）；B4-iii **走路 B**，但**分两步**：先建 arena + 行内 POD + 旁表（组件退化为"持有行号的薄壳"），再把调用点迁到句柄。
 
-**拍板点（用户）**：B4-iii 走 **A** 还是 **B**（推荐 B，分两步；A 会留下二次迁移）。
+**B4-i 完成记录（2026-10-02）—— ✅ `MaterialData` 组件 GPU 面收敛为「类型 + 行号」（删三个每实体死字段）**
+
+一、改动（2 文件）
+
+- `inc/hgl/ecs/components/MaterialData.h`：`MaterialDataAuthoringResource` 删
+  `DeviceBuffer *buffer` / `element_capacity` / `byte_stride`，只留基类 `GlobalSSBOBinding`
+  （`ssbo_type` + `ssbo_id` + `data_index` = 类型 + 行号）+ `authored`；同时删已无用的
+  `class DeviceBuffer;` 前置声明。
+- `src/ecs/components/MaterialData.cpp`：`ResetDataAuthoringResource` 去掉对应三行复位。
+
+**取证（为什么是死字段）**：① 三字段**外部读者 0**（唯一出现是 `ResetDataAuthoringResource` 的复位；
+`SetDataResource` 只整体赋值、不读它们；`GetDataResource` 外部消费者 0 处）；
+② 示例侧赋值 **0 处**（全部写法 = `named_struct = accessor.GetGlobalSSBOBinding(); SetDataResource(named_struct);`）；
+③ 容量/步长的权威真源另有其人：`SSBOBufferRegistry::RegisterBuffer(…, element_capacity)` 用
+「字节数 ÷ 容量」反算 stride（`src/SceneGraph/module/SSBOBufferRegistry.cpp:280-299`）。
+⇒ 与 B3-iii「删几何三指针」同构：GPU 只按 **ID** 寻址，容量/步长由池配置反查。
+
+二、验证（清 obj 全量重编）
+
+- build rc=0 / 0 error（**零调用点改动** —— 编译通过本身即印证"死字段"）；
+- `TestCSMIncrementalPass` 新增 **Test 31**（B4-i 契约 7 条：3 条"仍在" + 4 条禁复活）；rc=0；
+- **反证**：把 `element_capacity` 加回组件头 ⇒ Test 31 **rc=31**（"材质组件又持每实体元素容量（真源在
+  SSBOBufferRegistry）"）；逐字节还原（sha256 `7404a06b…`）⇒ rc=0；
+- 契约首轮**抓到我自己**：注释里写了已删字段名 ⇒ 按"零残留"判红；改注释为不出现标识符后过
+  （这条值得记住：禁复活 needle = 全名零残留，注释里提到也算残留）。
+
+三、遗留（B4 后续）
+
+- **B4-ii**：registry 加材质行 CPU 读口（`GetMaterialRow<T>(id)`，与 `GetMeshDrawParamsRow` /
+  `GetGeometryAABB` 同形）+ 行内 revision，让渲染/解析路径读**行**而不是读组件里的副本。
+- **B4-iii**：访问器句柄化（`GetMaterialData` 4 个裸指针重载 → 24 B 值句柄，与 `BoundingBoxAccessor` 同构）；
+  两条路见 B4-0 表 —— **路 A**（组件槽句柄）vs **路 B**（新建 (Global, MaterialData) 行 arena，
+  重类型落旁表），推荐 **路 B 分两步**。**待用户拍板**。
+
+**拍板点（用户）** —— ✅ **已拍板（2026-10-02，用户）：选路 B**。
+**用户理由（原话）**：「MaterialData 的数据本就是跨世界的」⇒ 材质数据是**资源级、跨世界共享**的，
+行 arena 落**设备级**（由 `GraphicsContext` 拥有）才是它的自然归属，行号全局可解析；与 P-1
+（Global 类型行 arena 归设备级）同一条规则。⇒ B4-iii 按路 B **分两步**推进：
+**B4-iii-a** 建 (Global, MaterialData) 行 arena（行内 POD：`GlobalSSBOBinding` + generation + authored；
+重类型 `recipe_override` / `named_texture_resources` 落旁表按行号索引，组件退化为持有行号的薄壳）；
+**B4-iii-b** `MaterialDataAccessor`（24 B：行号 + generation）替换 4 个裸指针重载 + 迁移全部调用点 + 契约/反证。
 
 ### B4-旧标题（保留供索引）—— MaterialData 句柄化（同 B3 范式）
 ### B5 —— MaterialRuntime 句柄化（含 **P-5** 的每实例指针字段归位；行宽定稿）
@@ -578,6 +618,7 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 | 2026-10-02 | **B3-ii 完成**：`MeshDrawParams` 112→**128 B**（拆 `total_vertices` + 补 `data_*`，X-macro 单源 + 三处 GLSL 读侧 + 三处写侧）；AABB 行收敛为唯一写入口 `RefreshGeometryAABBRow()`（实测修掉"Create 先于 SetBoundingVolumes"的顺序坑，PBRSpheres 10/21 行真值、半径 1.7321 与 CPU 同式逐位一致）；`bounding_radius` 改按需反算；门 42/0、10 测试 + Test 29（25 条契约含 6 条禁复活）、四示例 0 error/对拍 0；反证：抽掉刷新 ⇒ 真值 10→0。 |
 | 2026-10-02 | **B3-iii 侦察（未动手）**：规模订正 —— 三指针是**批排序/聚簇主键**（`RenderItem::Compare` + `DrawBatch::Set` 的 4 个建批点 + 采集侧 4ID 填充/列武装 3 处），删它们等于改实例化合并判定；方向 = 行派生 POD 键（ICB 组数逐位等价）；待拍板：同 asset 的每实体 draw range 差异是否退出判定；本轮试改已还原，树保持 B3-ii 已验证状态。 |
 | 2026-10-02 | **B3-iii 缺陷修正**：漏掉 `batch.gpu_driven_override` 逐项成簇判据 ⇒ GPU-Driven 批被合并成多实例簇、屏幕上只剩 1 个实例（界面上可见的错）；修复 + Test 30 契约 ④（去掉判据必 rc=30、逐字节还原必绿）+ 截图复核；教训：**改批/绘制语义必须看像素，数字全绿证明不了画得对**。 |
+| 2026-10-02 | **B4-i 完成**：`MaterialData` 组件删 `buffer`/`element_capacity`/`byte_stride` 三个每实体死字段（外部读者 0、示例赋值 0 处，真源在 `SSBOBufferRegistry` 反算）⇒ GPU 面 = 类型 + 行号；零调用点改动、build rc=0、Test 31（7 契约）+ 反证（加回字段 ⇒ rc=31）。 |
 | 2026-10-02 | **B4 侦察 + 分批定稿**：材质行池**已就位**（PBR/Emissive/Transmission 各 1024 行、设备级）；组件 GPU 面已是「类型 + 行号」（`GlobalSSBOBinding`），但 `buffer`/`element_capacity`/`byte_stride` 是**死字段**（外部读者 0、示例赋值 0 处，容量/步长真源在 `SSBOBufferRegistry::RegisterBuffer` 反算）；访问器仍 4 个裸指针重载。分批：B4-i 删死字段 / B4-ii 材质行 CPU 读口 + revision / B4-iii 访问器句柄化（路 A 组件槽 vs **路 B arena**，待拍板）。 |
 | 2026-10-02 | **B3 尾巴完成**：`ComputeFrustumCull` 自建 AABB 表退役、改读引擎 `GeometryAABB` 池（一号双表的二号表被 GPU 真正消费）；每帧双面对拍 PASS=8/FAIL=0、反证（地址 +32B ⇒ 7 FAIL、GPU visible 36→28）逐字节还原；遗留 `ComputeAsteroidBelt` 同类表（池行真值未验证）。 |
 | 2026-10-02 | **B3-iii 完成**：批排序/聚簇/ICB/命令四处改读**行派生 POD 键**（`RenderItem::MeshDrawKey`），删 `GeometryData` 三指针 + 逐帧武装函数（12 文件）；build rc=0/0 error、门 42/0、10 测试 + Test 30（18 条契约/6 禁复活）、示例帧代理与基线一致；**过程教训：构建失败留下的半新半旧二进制伪装成 8.5× 性能回归**（A/B 两侧必须全新构建）。 |

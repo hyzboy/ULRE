@@ -31,9 +31,6 @@ namespace hgl::ecs
         {
             resource.ssbo_type = hgl::graph::GlobalSSBOType::PBRSurface;
             resource.ssbo_id = 0;
-            resource.buffer = nullptr;
-            resource.element_capacity = 0;
-            resource.byte_stride = 0;
             resource.data_index = uint32_t(-1);
             resource.authored = false;
         }

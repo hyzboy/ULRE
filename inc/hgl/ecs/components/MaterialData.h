@@ -13,7 +13,6 @@ namespace hgl
 {
     namespace graph
     {
-        class DeviceBuffer;
         class Sampler;
         class ShaderProgram;
         class Texture;
@@ -57,9 +56,10 @@ namespace hgl::ecs
         struct MaterialDataAuthoringResource
             : hgl::graph::GlobalSSBOBinding
         {
-            hgl::graph::DeviceBuffer *buffer = nullptr;
-            uint32_t element_capacity = 0;
-            uint32_t byte_stride = 0;
+            // B4-i：GPU 面只剩**类型 + 行号**（基类 `GlobalSSBOBinding`）——原先还挂着每实体的
+            // 缓冲指针 + 元素容量 + 字节步长三个**死字段**（实测外部读者 0、示例赋值 0 处；容量与
+            // 步长的真源在 `SSBOBufferRegistry::RegisterBuffer`，由字节数 ÷ 容量反算步长）
+            // ⇒ 与 B3-iii「删几何三指针」同构，整组删除；名字不再出现，契约按「零残留」判。
             bool authored = false;
 
             MaterialDataAuthoringResource() = default;
