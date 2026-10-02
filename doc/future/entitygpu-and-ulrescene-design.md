@@ -114,13 +114,29 @@ shader 侧当前走 `pc_root` + 批内表，不读实体表。
 
 ## 4. `EntityGPU` 的另一半：**取消逐 new**（有独立价值，建议先做）
 
-**现状（实测）**：`Entity` 每实体一份 `hgl::UnorderedMap<std::size_t, std::shared_ptr<Component>>`（`inc/hgl/ecs/core/Entity.h`），
-`AddComponent` 逐组件 `make_shared`；`EntityManager::CreateEntity(std::unique_ptr<Entity>)` 逐实体堆分配。
-探针基线（`ProbeTransformDiagnostics`，**实测**）：单 `[Entity + TransformComponent]` = **935.3 B / 9.000 次分配**。
+**现状（2026-10-02 重新实测；设计稿 v1 引用的是旧技能记录，已推翻）**：
 
-**目标形态**：`EntityRecord` 平坦数组（按 `EntityID` 索引）+ 组件**不再各持一个 CPU 对象**。
-有利条件：组件的数据真源**已经搬到行/存储**（Transform = `TransformDataStorage` 句柄、`GeometryData` = 行号、
-`MaterialData` 的行内只放 POD、重类型在旁表、`MaterialRuntime` = slot）⇒ 今天组件对象多半只是**薄壳**。
+```
+ProbeTransformDiagnostics 的 [T0] 堆分配段（[Entity + Transform(Static)]）：
+  n=1000   336.2 B/实体,  6.155 块/实体
+  n=10000  313.5 B/实体,  5.818 块/实体
+  边际     310.9 B/实体,  5.781 块/实体
+sizeof(Entity) = 168 B / sizeof(Component) = 104 B
+```
+
+- v1 写的「935.3 B / 9.000 次分配（`[Entity + TransformComponent]`）」是**旧值**：`TransformComponent`
+  **已随 T6/T7 整删**（`grep -rn TransformComponent inc/ src/ example/` 全 0 命中）⇒ 基线必须按上表。
+- 剩余的逐 new 来源（实测定位）：① `EntityManager::EntitySlot{ std::unique_ptr<Entity> }`（逐实体堆分配）
+  ② `Entity` 每实体一份 `UnorderedMap` ③ 仍然存在的组件对象 + 其 `shared_ptr` 控制块 —— **只剩
+  `GeometryData / MaterialData / LinesComponent / TextComponent / ShadowProxy`**（`inc/hgl/ecs/components/` 实测清单）。
+- **`CameraComponent` 不在取消之列**：相机是**世界级**且相机槽的拥有者是 `weak_ptr<CameraComponent>`
+  （`CameraInfoStorage::slot_owners`）⇒ 必须保持 `shared_ptr` 托管；相机数量极少（每世界 1 fallback +
+  每个投影阴影灯 1），不构成逐实体开销。
+
+**目标形态**：把逐实体/逐组件的堆分配换成**块式/池式存储**（地址稳定 ⇒ 全仓持有的 `Entity*` 不作废），
+组件对象尽量内联为「行号/句柄」薄记录。有利条件：组件的数据真源**已经搬到行/存储**
+（Transform = `TransformDataStorage` 句柄（组件对象已删）、`GeometryData` = 行号、`MaterialData` 行内只放 POD /
+重类型在旁表、`MaterialRuntime` = slot）⇒ 剩余组件对象多半只是**薄壳**，可内联。
 
 **判据（可自动判定）**
 
@@ -166,7 +182,9 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 | 期 | 内容 | 判据（可自动判定） | 回滚 |
 |---|---|---|---|
 | **T1** | `EntityGPU` **结构定义**（**纯 C++ struct** + `static_assert(sizeof==128)` / `alignof==64` + 逐字段 `offsetof` + `flags` 位表）—— GLSL 镜像**不随本期**（无读者 ⇒ 与派生表一起等 T3） | 编译期断言过；探针打印 `sizeof`/`alignof`/四个 `offsetof` 与断言一致；**不接线、无字段读写者**（结构本体 + 断言是"零成本定稿"，不算投机 API） | tag `b8-t1` |
-| **T2** | **取消逐 new**（§4，按类型切批：Transform → Geometry → MaterialData → MaterialRuntime） | 探针分配次数与每实体字节达标；掩码/访问器语义对拍逐项等价；固定验证集全绿 | tag `b8-t2-<type>` |
+| **T2-a** | 实体分配改块式（`EntityManager` 的 `unique_ptr<Entity>` ⇒ 块池/`std::deque` 式稳定存储，**地址必须稳定**，全仓持有 `Entity*`） | 探针 `块/实体` 从 **5.781** 降到目标（T2-a 后 ≤ ~4.8）；`Entity*` 稳定（地址不变）由对拍验证；`sizeof(Entity)` 不变 | tag `b8-t2a` |
+| **T2-b** | `Entity` 的每实体 `UnorderedMap` ⇒ 按 `ComponentType` 的固定槽数组（7 槽，`COMPONENT_TYPE_COUNT`） | 探针 `块/实体` 再降；`GetComponent/HasComponent/RemoveComponent/DetachAllComponents` 语义对拍逐项等价 | tag `b8-t2b` |
+| **T2-c** | 剩余堆组件（`GeometryData`/`MaterialData`/`LinesComponent`/`TextComponent`/`ShadowProxy`）⇒ 内联薄记录（行号/句柄）；**`CameraComponent` 保持 `shared_ptr`**（§4 理由） | 探针 `块/实体` 目标 ≤ 2 且 `B/实体` 明显下降；访问器返回值语义对拍；固定验证集全绿 | tag `b8-t2c` |
 | **T3** | `EntityGPU` **派生表**（世界私有 + `addr_entity_gpu` + 写入路径 + 脏集合上传） | **前置 = 出现第一个真消费者**（届时随消费者同批做）；本期仅登记设计与"五处连带面"清单 | tag `b8-t3` |
 | **T4** | `.ulrescene` 直载 | **前置 = (b) 完成**；判据见 §5.2 | tag `b8-t4` |
 
