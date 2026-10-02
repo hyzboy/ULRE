@@ -492,7 +492,39 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 | 尾巴（可选） | 示例 `ComputeFrustumCull` 自建 AABB 表退役、改读引擎池（引擎级 GPU 剔除） | 剔除数一致 + 同图对比 |
 
 
-### B4 —— MaterialData 句柄化（同 B3 范式）
+### B4 —— MaterialData 句柄化（同 B3 范式）—— 侦察记录 + 分批定稿（2026-10-02）
+
+#### B4-0 现状（实测，本机）
+
+| 项 | 现状 | 差距 |
+|---|---|---|
+| 组件 | `inc/hgl/ecs/components/MaterialData.h`（161 行）：`has_recipe_override` + `recipe_override`（重类型）、`named_texture_resources`（`UnorderedMap<AnsiString,…>` 重类型 + `Texture*`/`Sampler*`）、`data_resource`、`authored_generation`（单调计数器） | GPU 面仍挂**每实体指针 + 派生数** |
+| GPU 面 | `data_resource` 的基类 `GlobalSSBOBinding{ssbo_type, ssbo_id, data_index}`（`GlobalSSBOTypes.h:101-113`）**已经是「类型 + 行号」** ✓ | 派生类又加了 `DeviceBuffer *buffer` / `element_capacity` / `byte_stride`（`MaterialData.h:60-63`） |
+| **死字段取证** | `buffer` / `element_capacity` / `byte_stride`：**外部读者 0**（唯一出现是 `MaterialData.cpp:34-36` 清零；`SetDataResource` 只整体赋值、不读它们；`GetDataResource` 外部消费者 **0 处**）；**示例侧赋值 0 处**（全部写法是 `named_struct = accessor.GetGlobalSSBOBinding(); SetDataResource(named_struct);`） | 容量/步长的权威真源另有其人：`SSBOBufferRegistry::RegisterBuffer(…, element_capacity)` 用「字节数 ÷ 容量」反算 stride（`src/SceneGraph/module/SSBOBufferRegistry.cpp:280-299`） |
+| 材质行池 | **已存在且设备级**（`GlobalSSBOBufferRegistry` 配置表）：`PBRSurface` 32 B/行、`EmissiveSurface` 16 B/行、`TransmissionSurface` 16 B/行，各 **1024 行**、`reserve_rows = 1`（首个 `Acquire` = 1，行 0 = 哨兵） | registry 只有 GPU 行池，**没有 CPU 侧读口**（B3 已给 MeshDrawParams / GeometryAABB 补过，材质侧还没有） |
+| 访问器 | `ECSContext::GetMaterialData` / `GetOrCreateMaterialData` **4 个重载返回裸指针**（`Context.h:461-472`、`:553-583`）；`Context.h` 注释已写明「stage B 会换成值类型句柄（与 TransformAccessor / BoundingBoxAccessor 同构）」 | 24 B 值句柄先例已在：`BoundingBoxAccessor`（`{row, generation}` + `IsValid()`，`inc/hgl/ecs/support/BoundingBoxAccessor.h:23-30`） |
+| API 消费者规模 | `SetTextureResource` **72**、`SetDataResource` **47**、`SetRecipe` 3、`HasRecipeOverride` 3、`BuildResolvedRecipe` 1、`GetAuthoredGeneration` 1、`BumpAuthoredGeneration` 1、`GetTextureResource` 2；`GetDataResource` / `ClearAuthoredResources` / `GetRecipeOverride` **0** | 句柄化会触及全部 `GetMaterialData*` 调用点 |
+| 渲染期读者 | `PrimitiveState.cpp:27-40`（`HasAnyMaterialSource`：裸指针 + `HasRecipeOverride()`）、解析链 `BuildResolvedRecipe`（1 处）、`GeometryData.cpp:43` | 「顺指针取组件」的路径要改成「句柄 → 行」 |
+| 相邻层（**不属本批**） | `MaterialRuntimeRow` / `MaterialRuntimeSlot`（`support/MaterialRuntimeTable.h`：`l2w_buffer`/`l2w_index_buffer`/`mesh_draw_params_buffer`/`material_data_rows_buffer`/`indirect_*` 指针 + `refcount`/`generation` + 每实例字段）⇒ **B5**（P-5 已拍板指针归位） | — |
+
+#### B4-1 分批草案
+
+- **B4-i（死字段删除；无调用点 churn，可立即做）**：`MaterialDataAuthoringResource` 删 `buffer` / `element_capacity` / `byte_stride`
+  ⇒ 组件侧 GPU 面只剩 `GlobalSSBOBinding`（类型 + 行号）+ `authored` ✓ 与 B3-iii「删三指针」同构。
+  验收：全仓 grep 零残留 + 门/测试/示例全绿 + 反证（把字段加回去 ⇒ 契约红）。
+- **B4-ii（材质行 CPU 读口 + 行内 revision）**：registry 加 `GetMaterialRow<T>(id)`（与 `GetMeshDrawParamsRow` / `GetGeometryAABB` 同形：
+  读缓存、越界/未激活返回 `nullptr`），让渲染与解析路径读**行**而不是读组件里的副本；同批把「材质行号」的口径钉死（当前 = `ssbo_id` + `data_index`，行 0 = 哨兵）。
+- **B4-iii（访问器句柄化；两条路，**需拍板**）**：
+  - **路 A（组件槽句柄）**：不新建 arena；句柄 = `{组件槽号, generation}`（Entity 已有 `component_mask` / 组件槽），把 4 个裸指针重载改成
+    `MaterialDataAccessor`（24 B）⇒ 立刻消灭裸指针，改动集中在 `Context` + 少量调用点。代价：句柄指向的是"组件槽"而不是 v2 §1 的 arena 行 ⇒ B8 时还要再迁一次。
+  - **路 B（字面执行 v2 §1，推荐）**：新建 **(Global, MaterialData) 行 arena**（设备级，P-1 已拍板 Global 归设备级）：
+    行内只放 POD（`GlobalSSBOBinding` + `generation` + 少量标量），`recipe_override` / `named_texture_resources`（重类型）落**旁表按行号索引**；
+    `Entity` 槽里存 arena 行号（与 B8 的 `EntityGPU::row[16]` 对齐）。
+  - **推荐**：B4-i / B4-ii 先做（无争议、机械、可独立验证）；B4-iii **走路 B**，但**分两步**：先建 arena + 行内 POD + 旁表（组件退化为"持有行号的薄壳"），再把调用点迁到句柄。
+
+**拍板点（用户）**：B4-iii 走 **A** 还是 **B**（推荐 B，分两步；A 会留下二次迁移）。
+
+### B4-旧标题（保留供索引）—— MaterialData 句柄化（同 B3 范式）
 ### B5 —— MaterialRuntime 句柄化（含 **P-5** 的每实例指针字段归位；行宽定稿）
 ### B6 —— Texture（**当前无组件载体**：若仍无载体则本批不做，只在类型表里登记"已就位、无消费者"）
 ### B7 —— 相机终态收口（按 **P-6** 拍板执行；含 `CameraComponent` 的终态去向）
@@ -546,5 +578,6 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 | 2026-10-02 | **B3-ii 完成**：`MeshDrawParams` 112→**128 B**（拆 `total_vertices` + 补 `data_*`，X-macro 单源 + 三处 GLSL 读侧 + 三处写侧）；AABB 行收敛为唯一写入口 `RefreshGeometryAABBRow()`（实测修掉"Create 先于 SetBoundingVolumes"的顺序坑，PBRSpheres 10/21 行真值、半径 1.7321 与 CPU 同式逐位一致）；`bounding_radius` 改按需反算；门 42/0、10 测试 + Test 29（25 条契约含 6 条禁复活）、四示例 0 error/对拍 0；反证：抽掉刷新 ⇒ 真值 10→0。 |
 | 2026-10-02 | **B3-iii 侦察（未动手）**：规模订正 —— 三指针是**批排序/聚簇主键**（`RenderItem::Compare` + `DrawBatch::Set` 的 4 个建批点 + 采集侧 4ID 填充/列武装 3 处），删它们等于改实例化合并判定；方向 = 行派生 POD 键（ICB 组数逐位等价）；待拍板：同 asset 的每实体 draw range 差异是否退出判定；本轮试改已还原，树保持 B3-ii 已验证状态。 |
 | 2026-10-02 | **B3-iii 缺陷修正**：漏掉 `batch.gpu_driven_override` 逐项成簇判据 ⇒ GPU-Driven 批被合并成多实例簇、屏幕上只剩 1 个实例（界面上可见的错）；修复 + Test 30 契约 ④（去掉判据必 rc=30、逐字节还原必绿）+ 截图复核；教训：**改批/绘制语义必须看像素，数字全绿证明不了画得对**。 |
+| 2026-10-02 | **B4 侦察 + 分批定稿**：材质行池**已就位**（PBR/Emissive/Transmission 各 1024 行、设备级）；组件 GPU 面已是「类型 + 行号」（`GlobalSSBOBinding`），但 `buffer`/`element_capacity`/`byte_stride` 是**死字段**（外部读者 0、示例赋值 0 处，容量/步长真源在 `SSBOBufferRegistry::RegisterBuffer` 反算）；访问器仍 4 个裸指针重载。分批：B4-i 删死字段 / B4-ii 材质行 CPU 读口 + revision / B4-iii 访问器句柄化（路 A 组件槽 vs **路 B arena**，待拍板）。 |
 | 2026-10-02 | **B3 尾巴完成**：`ComputeFrustumCull` 自建 AABB 表退役、改读引擎 `GeometryAABB` 池（一号双表的二号表被 GPU 真正消费）；每帧双面对拍 PASS=8/FAIL=0、反证（地址 +32B ⇒ 7 FAIL、GPU visible 36→28）逐字节还原；遗留 `ComputeAsteroidBelt` 同类表（池行真值未验证）。 |
 | 2026-10-02 | **B3-iii 完成**：批排序/聚簇/ICB/命令四处改读**行派生 POD 键**（`RenderItem::MeshDrawKey`），删 `GeometryData` 三指针 + 逐帧武装函数（12 文件）；build rc=0/0 error、门 42/0、10 测试 + Test 30（18 条契约/6 禁复活）、示例帧代理与基线一致；**过程教训：构建失败留下的半新半旧二进制伪装成 8.5× 性能回归**（A/B 两侧必须全新构建）。 |
