@@ -59,19 +59,22 @@ namespace hgl
         /**
          * 静态表本体。**新增组件类型时只改这里**。
          *
-         * ⚠ 后四类的 `scope` 待各自 ID 化时定稿：现记 `World`（世界私有）作**保守默认**；
-         *   按资源语义 `Geometry / Texture / MaterialData` 很可能应改 `Global`。
-         *   行宽同理 —— 定稿时与 GLSL 侧结构一并核对（并过 S.global-addresses-struct-parity 门）。
+         * scope/行宽已随各类型 ID 化**定稿**（B3 Geometry / B4 MaterialData / B5 MaterialRuntime / B6 Texture）：
+         *   **Global** = 跨世界共享的资源级（`Geometry` / `MaterialData` / `Texture`）；
+         *   **World** = 世界私有的实例级（`Transform` / `MaterialRuntime`）。
+         * `gpu_row_bytes` 只记**已有定长 GPU 行**者（Geometry 的数据在 MeshDrawParams / GeometryAABB 行、
+         * `MaterialRuntimeSlot` 是 CPU 侧行 ⇒ 记 0）；改行宽须与 GLSL 侧结构一并核对
+         *（并过 S.global-addresses-struct-parity 门）。
          */
         inline constexpr ComponentTypeInfo kComponentTypeTable[COMPONENT_TYPE_COUNT] =
         {
             // 表按枚举值下标索引 ⇒ None=0 必须占位（无 arena/无行宽）
             { ComponentType::None,            ComponentScope::World, "",                     0, "" },
             { ComponentType::Transform,       ComponentScope::World,  "ECS:Transform",       64, "TransformDataStorage" },
-            { ComponentType::Geometry,        ComponentScope::Global, "ECS:Geometry",         0, "(待 ID 化)" },
-            { ComponentType::MaterialData,    ComponentScope::Global, "ECS:MaterialData",     0, "(待 ID 化)" },
-            { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "(待 ID 化)" },
-            { ComponentType::Texture,         ComponentScope::Global, "ECS:Texture",          0, "(待 ID 化)" },
+            { ComponentType::Geometry,        ComponentScope::Global, "ECS:Geometry",         0, "GeometryData" },        ///< B3：ID 化完成（几何数据落 MeshDrawParams / GeometryAABB 行）
+            { ComponentType::MaterialData,    ComponentScope::Global, "ECS:MaterialData",    16, "MaterialData" },        ///< B4：组件行 16 B（(Global, MaterialData) arena，行内只放 POD）
+            { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "MaterialRuntimeSlot" }, ///< B5：slot 全 POD、行宽冻结 88 B（CPU 侧行 ⇒ gpu_row_bytes 记 0）
+            { ComponentType::Texture,         ComponentScope::Global, "ECS:Texture",          0, "" },                   ///< B6：**无组件载体**（纹理授权在 MaterialData 的具名纹理资源里，零消费者，仅登记）
         };
 
         namespace detail

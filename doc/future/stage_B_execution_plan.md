@@ -641,6 +641,44 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 用它做的两次二分（"HEAD 正常 / 我的版本必挂"）因此**双双无效**。⇒ 铁律重申：**改结构大小或公共头，
 必须清 obj 全量重编之后再下任何结论**；二分两侧都必须基于全量重编的产物。
 
+**B6 完成记录（2026-10-02）—— ✅ 零实现：Texture 无组件载体，只登记 + 类型表校准**
+
+一、B6 判据核实（实测）
+
+- **确无组件载体**：`inc/hgl/ecs/components/` 只有 `CameraComponent` / `GeometryData` / `LinesComponent` /
+  `MaterialData` / `ShadowProxy` / `TextComponent`（无 Texture 组件）；全仓唯一 `TextureData` 在 vk 层
+  （`VKTextureCreateInfo.h`，是创建信息结构、不是 ECS 组件）。组件的纹理授权数据住在 `MaterialData`
+  的**具名纹理资源**里（B4-iii-b 已落世界级旁表）⇒ 与计划预期一致，**本批不需要任何存储实现**。
+- 类型表里 `ComponentType::Texture` **早已登记**（`ComponentScope::Global`、arena 名 `"ECS:Texture"`）
+  ⇒ 本批该做的就是"登记 + 校准"。
+
+二、改动（3 文件：1 头 + 1 契约 + 1 文档）
+
+- `inc/hgl/ecs/support/ComponentTypeTable.h`：把后四列的过时占位 `"(待 ID 化)"` 换成 **stage B 后的真实承载类型**——
+  `Geometry` → `"GeometryData"`（B3）；`MaterialData` → `"MaterialData"` **并按实测把 `gpu_row_bytes` 0 → 16**
+  （B4 的 (Global, MaterialData) 组件行）；`MaterialRuntime` → `"MaterialRuntimeSlot"`（B5；注释写明**行宽冻结 88 B**、
+  因是 CPU 侧行故 `gpu_row_bytes` 记 0）；`Texture` → `cpu_type_name` 留空 + 注释**无组件载体**（B6）。
+  表头那段"后四类 scope 待 ID 化定稿、现记 World 保守默认"的**过时注释**改为"scope/行宽已随各类型 ID 化定稿"
+  （Global = Geometry / MaterialData / Texture；World = Transform / MaterialRuntime）。
+- `src/ecs/support/TestCSMIncrementalPass.cpp`：**Test 39（9 条契约）**——四行整行钉住（数值 + 名字）、
+  2 条禁复活（`(待 ID 化)` 占位、旧表头注释）、完整性断言在位，以及 **B6 判据的负向钉子**：
+  `MaterialData.h` / `TextComponent.h` 不得声明 `ComponentType::Texture`（把"Texture 无消费者"固化）。
+
+三、验证（constexpr 表数据 + 仅字符串/一个数值改动 ⇒ **无结构布局变化**，故 purge 而不清整棵 obj）
+
+- `purge-stale-deps.sh`（1 头）TUs=8 / objs=6 ⇒ **BUILD_RC=0 / error C=0 / error LNK=0**；
+- 门 **42 PASS / 0 FAIL**；`TestCSMIncrementalPass`（含 Test 39，实测跑到）/ `TestComponentMask` /
+  `TestTransformFlatStorage`（其 `GetComponentGPURowBytes(Transform) == 64` 断言未受影响）/ `TestRenderStrategyTable`
+  **全部 rc=0**；探针 rc=0 且 `sizeof(MaterialRuntimeSlot) = 88 B`；
+- 示例 `PBRSpheres` 8 秒：真 error 0、`策略判定对拍` 不一致 0；
+- **为何本批不做像素**：不动批/绘制/实例化/存储布局语义——改的是**类型表数据**（字符串 + 一个未被渲染路径消费的
+  行宽值），唯一消费者是 `TestTransformFlatStorage` 的断言，故验收口径 = 门 + 测试 + 示例数字面。
+- **反证**：把 Geometry 行的承载类型改成 `"BogusType"` ⇒ `Test 39 Failed: Geometry 的承载类型未校准
+  （B3 已 ID 化 ⇒ 应为 GeometryData）`（rc=39）；逐字节还原（sha256 核对 OK）⇒ 重跑 rc=0 / Passed。
+  ⚠️ **踩坑留档**：第一次反证用"把新文本换回中文旧文本 `"(待 ID 化)"`"作破坏点——内联 Python 的 **bytes 字面量
+  不能含中文**（`SyntaxError`），**破坏没发生**却照样跑出 rc=0；换成**纯 ASCII 破坏点**（`"GeometryData"` →
+  `"BogusType"`）才真红。⇒ 反证/破坏点一律用 ASCII 模式；该坑已回写 `crlf-safe-editing` 技能。
+
 **B5-b 完成记录（2026-10-02）—— ✅ 每 pass 管线缓存落世界侧旁表 + slot 行宽冻结 88 B（B5 收口）**
 
 一、改动（9 文件：1 新建头 + 7 引擎/实现 + 1 契约）

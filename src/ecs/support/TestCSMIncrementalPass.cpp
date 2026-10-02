@@ -5268,6 +5268,62 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kB5bContracts) / sizeof(kB5bContracts[0])));
     }
 
+    // ──────────────────────────────────────────────────────
+    // Test 39: B6 契约（Texture 无组件载体 → 只登记；类型表校准到 stage B 真值）
+    //
+    // 背景：B6 的判据就是「**Texture 没有组件载体**」——组件的纹理授权数据住在
+    // `MaterialData` 的具名纹理资源里（B4-iii-b 已落世界级旁表），故本批**零实现**：
+    // ① 类型表 `ComponentType::Texture` 已登记（`ComponentScope::Global` / `"ECS:Texture"`）、
+    //    `cpu_type_name` 留空并注明无载体；
+    // ② 同表后四列的 `"(待 ID 化)"` 占位已随 B3/B4/B5 换成真实承载类型（B6 的校准动作）；
+    // ③ 表头「后四类 scope 待定」的旧注释禁复活。
+    //
+    // 反证：把任一行的 cpu_type_name 改回 `"(待 ID 化)"`，或让某个组件声明 Texture 槽 ⇒ 必失败。
+    // ──────────────────────────────────────────────────────
+    {
+        const SourceContract kB6Contracts[] =
+        {
+            // ① 后四列校准到 stage B 真值（逐行钉住整行）
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "{ ComponentType::Geometry,        ComponentScope::Global, \"ECS:Geometry\",         0, \"GeometryData\" },",
+              "Geometry 的承载类型未校准（B3 已 ID 化 ⇒ 应为 GeometryData）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "{ ComponentType::MaterialData,    ComponentScope::Global, \"ECS:MaterialData\",    16, \"MaterialData\" },",
+              "MaterialData 的承载类型/行宽未校准（B4 ⇒ MaterialData 组件行 16 B）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "{ ComponentType::MaterialRuntime, ComponentScope::World,  \"ECS:MaterialRuntime\",  0, \"MaterialRuntimeSlot\" },",
+              "MaterialRuntime 的承载类型未校准（B5 ⇒ MaterialRuntimeSlot）" },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "{ ComponentType::Texture,         ComponentScope::Global, \"ECS:Texture\",          0, \"\" },",
+              "Texture 的登记行变了（B6 判据 = 无组件载体、仅登记）" },
+            // ② 禁复活：`(待 ID 化)` 占位与你表头旧注释
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "(待 ID 化)", "类型表又出现 `(待 ID 化)` 占位（stage B 已 ID 化完成）", true },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "待各自 ID 化时定稿", "表头旧注释（后四类 scope 保守默认 World）禁复活", true },
+            // ③ 表完整性断言仍在（漏类型 = 编译期红，不是运行期才发现）
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/ComponentTypeTable.h"),
+              "static_assert(detail::CheckComponentTypeTable()",
+              "组件类型表与枚举的同序完整性断言缺失" },
+            // ④ B6 的判据：**没有组件声明 Texture 槽**（Texture 无载体 ⇒ 无消费者）
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "ComponentType::Texture",
+              "MaterialData 抢占了 Texture 槽（纹理授权应留在具名纹理资源里，Texture 类型仅登记）", true },
+            { "TextComponent.h", OS_TEXT("inc/hgl/ecs/components/TextComponent.h"),
+              "ComponentType::Texture",
+              "TextComponent 抢占了 Texture 槽（B6 判据：Texture 无组件载体）", true },
+        };
+
+        if (const int failed = verify_source_contracts(39, kB6Contracts,
+                                                       static_cast<uint>(sizeof(kB6Contracts) /
+                                                                         sizeof(kB6Contracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 39 Passed: B6 契约成立（Texture 无组件载体、仅登记；类型表后四列已校准到 "
+                 u8"B3/B4/B5 真值；`(待 ID 化)` 占位与旧表头注释禁复活；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kB6Contracts) / sizeof(kB6Contracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }
