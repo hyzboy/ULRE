@@ -36,6 +36,7 @@
 #include<hgl/ecs/support/TransformDataStorage.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/EntityGPU.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 
 #ifdef _MSC_VER
@@ -100,6 +101,11 @@ static void SectionSizes()
     printf("sizeof(hgl::ecs::Entity)              = %zu B\n",sizeof(Entity));
     printf("sizeof(hgl::ecs::TransformDataStorage)= %zu B\n",sizeof(TransformDataStorage));
     printf("sizeof(MaterialRuntimeSlot)           = %zu B (B5-b 行宽冻结：static_assert 88)\n",sizeof(hgl::ecs::MaterialRuntimeSlot));
+    printf("sizeof(hgl::ecs::EntityGPU)           = %zu B (T1 定稿：88 B 载荷 + 40 B 填充，alignas(64))\n",sizeof(hgl::ecs::EntityGPU));
+    printf("alignof(hgl::ecs::EntityGPU)          = %zu B\n",alignof(hgl::ecs::EntityGPU));
+    printf("  offsetof: flags=%zu type=%zu row=%zu work_flags=%zu (期望 0/4/20/84)\n",
+           offsetof(hgl::ecs::EntityGPU,flags),offsetof(hgl::ecs::EntityGPU,type),
+           offsetof(hgl::ecs::EntityGPU,row),offsetof(hgl::ecs::EntityGPU,work_flags));
 
     // 每行字节账目：由**存储自己**列出（TransformDataStorage::GetPerRowFields），
     // 探针不再手工维护字段清单 —— 新增每行数组只需改存储里那一处，探针与测试自动跟上。
