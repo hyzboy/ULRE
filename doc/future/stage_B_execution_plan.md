@@ -200,7 +200,7 @@ T10 原表述是"`Allocate()` 动态扩容 ⇒ 行号漂移"，实测真因更�
   诊断 `行释放后 fixed-pixel 条目未摘除（稀疏表泄漏）`；`sha256` 逐字节还原（`8e4c9a20…`）后重编 ⇒ **rc=0**。
 - `sizeof(TransformDataStorage)`：888 → 1016 B（存储对象每世界一个；行字节才是关键指标）。
 
-### B3 —— Geometry 的 GPU 可用部分 ID 化（(scope,type) arena 第一次真实落地）—— ▶ 进行中（B3-i 已完成并验证；B3-ii / B3-iii 待做）
+### B3 —— Geometry 的 GPU 可用部分 ID 化（(scope,type) arena 第一次真实落地）—— ▶ 进行中（B3-i / B3-ii 已完成并验证；B3-iii 待做）
 
 **语义订正（2026-10-02 拍板，修正本方案第一版的理解）**：目标**不是**"把 `GeometryData` 变成纯数据"，
 而是**把其中 GPU 能直接寻址的部分抽成固定 ID 结构**，喂未来 GPUDriven/GPUScene —— 与
@@ -310,6 +310,55 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 （`BidirectionalMapStressTest_06_BatchOperations.vcxproj`，`-j 2/-j 4` 均复现，手动跑同条命令 rc=0）
 ⇒ `-j 1` 串行构建即 **rc=0 / 0 error**。判据仍以"构建 rc=0 且 C/LNK 错误为 0"为准。
 
+**B3-ii 完成记录（2026-10-02）—— ✅ 已落地并验证**
+
+一、行宽与字段（`MeshDrawParams` 112 → **128 B**）
+
+| 层 | 改动 |
+|---|---|
+| X-macro 单源（`ShaderBufferSources.h:15-40`） | `total_vertices` 拆成 **`index_count` / `vertex_count`**，并补 **`data_index_count` / `data_vertex_count`**（用户拍板"data_* 上 GPU"）⇒ 头部 9×4B + 4B 对齐填充 + 11×uint64 = 128 B |
+| 布局断言 | 头部计数 6→9、基址首偏移 24→40、`sizeof == 128`（三处漂移任一即编译失败） |
+| GLSL 读侧（3 个 tmpl） | `char_quad` / `line_quad` 改读 `draw_params.vertex_count`；`vertex_passthrough` 改为**按 `is_indexed` 择一**：`(is_indexed != 0u) ? index_count : vertex_count` —— 与旧 `total_vertices` 的取值**逐位等价**，但 GPU 侧自辨 |
+| 写侧（3 处） | 几何（`VKGeometry.cpp`）填 4 个计数；线段（`LineRenderPipeline.cpp`）`vertex_count = 线段数×2` + data_*；文本（`TextRenderPipeline.cpp`）`vertex_count = 字符数` + data_* |
+
+二、AABB 行写入（真正的坑：**顺序**）
+
+- 初版把 AABB 行写在 `RegisterMeshDrawParams` 里，实测**全部写成哨兵**（`radius=-1`）。
+  真因：`GeometryCreater::CreateWithAABB` 是"**先 `Create()` 后 `SetBoundingVolumes`**"⇒ 行在包围体到位前就写完，
+  而 `EnsureMeshDrawParams` 的 `geometry_id != 0` 短路让后续调用不会补写。
+- 修法：AABB 行收敛为**唯一写入口** `Geometry::RefreshGeometryAABBRow()`，由
+  ① `RegisterMeshDrawParams`（创建期）与 ② `SetBoundingVolumes`（来源变化）共同调用。
+  ⇒ 实测每个几何写两行（创建期哨兵 + 真值），PBRSpheres **10/21 行为真值 AABB**，
+  且 id=1 半径实测 **1.7321** 与 CPU 侧旧公式 `|(2,2,2)|×0.5` **逐位一致**（"同源同式"得证）。
+- 行 0 哨兵（`radius = -1` = 始终可见）在 `InitializePools` 写入；`GeometryAABB` 池 `reserve_rows = 0`
+  （B3-i 实测：`ActivateAllRows` 要求行号空间为空）。
+
+三、`bounding_radius` 反算（消第二份数据源）
+
+`GeometryData` 删掉缓存成员，改 `float GetBoundingRadius() const`（按需从 asset 几何的本地 AABB 反算，
+与 AABB 行写入同式）。全仓 `bounding_radius` 残留 **0**。
+
+四、验证（rc / 数字均实测）
+
+- build **rc=0 / 0 error**（`-j 4` 若撞 applocal 竞态则 `-j 1` 收口）；
+- 门 **42 PASS / 0 FAIL**；10 测试全 rc=0，新增 **Test 29**（B3 契约 25 条，含 6 条禁复活：
+  `M(total_vertices,` / `draw_params.total_vertices` / AABB 池 `reserve 1` / 组件内两份 `bounding_radius`）；
+- 示例（覆盖三条着色路径）`PBRSpheres` / `CascadeShadowMap`（网格）、`TextDraw`（文本）、`LineRender`（线段）：
+  各 8 秒 0 真 error、策略判定对拍不一致 **0**；探针实测 `一号双表就位… rows=16384（AABB 32 B/行）` +
+  `GeometryAABB 行写入`（网格示例 10 行真值 / 文本与线段示例 0 真值 ⇒ 全为"始终可见"哨兵）。
+
+五、反证（均逐字节还原后转绿）
+
+- 抽掉 `SetBoundingVolumes` 里的 `RefreshGeometryAABBRow()` ⇒ 真值 AABB 行数 **10 → 0**（全哨兵）；
+  `VKGeometry.h` sha256 `ac8a46b3124f7e63…` 还原。
+
+六、已知缺口（不粉饰，非本批引入）
+
+- **文本 / 线段几何没有包围体** ⇒ 其 AABB 行是"始终可见"哨兵（CPU 侧同样 radius=0 ⇒ 从不剔除）——
+  这是既有的 authoring 缺口，不是本批回归；要 GPU 剔除真生效需给这两类几何补包围体。
+- `data_*` 字段已写好但**暂无消费者**（按你"CPU 先跑完 ICB 生成、再转 GPU 生成"的路线，属预留）。
+- 读 AABB 行的 **GPU 剔除 pass 尚未接**（尾巴项：`ComputeFrustumCull` 改读引擎池）。
+
 **B3 剩余分批**（原判据不变）
 
 | 批 | 内容 | 判据 |
@@ -370,3 +419,4 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 | 2026-10-02 | **B3 设计第一版（已作废，见下条）**：侦察发现 `GeometryData`/`MaterialData` **都不是纯数据**（4 指针 / 重类型+指针），且全仓**无 asset 注册表**（示例自持栈 asset）⇒ 曾拟"行内只放 POD、资源引用走行号、运行期产物复用 slot 缓存、重类型落旁表"+ B3 拆 B3a 机制 / B3b 迁移 + 惰性指针→行号映射。**用户订正语义后作废**（不是"变纯数据"，是"把 GPU 可用部分抽成固定 ID 结构"）。 |
 | 2026-10-02 | **B3 定稿（用户拍板）**：Geometry 的 GPU 可用部分 ID 化 —— 先不扩 8ID、`data_*` 上 GPU、`GeometryAABB` 独立池与 MeshDrawParams **同 ID 索引**（`ActivateAllRows` 结构保证 + 成对写入 + 负半径哨兵）；行 112→128 B；`GlobalAddresses` 加 `addr_geometry_aabb`（步长不变）；**范围订正**：不需要 arena 宿主/值句柄/173 调用点迁移。 |
 | 2026-10-02 | **B3-i 完成**：`GlobalSSBOType::GeometryAABB` + 池（`ActivateAllRows` 静态行空间、`reserve 0`）+ `GlobalAddresses::addr_geometry_aabb`（48→56 B，步长不变）+ GLSL 同步 + 两条自动扩展覆盖性断言；build rc=0/0 error、门 42 PASS/0 FAIL、10 测试 rc=0、4 示例对拍 0（探针 `rows=16384 AABB 32 B/行`）；反证两处（容量不等 ⇒ 运行期不变量红；缺 name case ⇒ 编译期断言红）；**实测修掉 `ActivateAllRows` 与 `reserve_rows` 的机制冲突**。 |
+| 2026-10-02 | **B3-ii 完成**：`MeshDrawParams` 112→**128 B**（拆 `total_vertices` + 补 `data_*`，X-macro 单源 + 三处 GLSL 读侧 + 三处写侧）；AABB 行收敛为唯一写入口 `RefreshGeometryAABBRow()`（实测修掉"Create 先于 SetBoundingVolumes"的顺序坑，PBRSpheres 10/21 行真值、半径 1.7321 与 CPU 同式逐位一致）；`bounding_radius` 改按需反算；门 42/0、10 测试 + Test 29（25 条契约含 6 条禁复活）、四示例 0 error/对拍 0；反证：抽掉刷新 ⇒ 真值 10→0。 |
