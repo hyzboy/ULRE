@@ -269,6 +269,58 @@ GLSL `GeometryAABB/GeometryAABBsRef` + 候选用**变体下标** `geom_id` 索�
 
 ---
 
+### 2.9 【新发现·结构性】行空间有两类——组件行是"按类型定宽"，材质纹理引用是"按定义变长"
+
+**用户 2026-10-02 点出**：设想的组件数据段是定长（这点确实成立：Transform 64 B / MaterialData 16 B /
+MaterialRuntime 88 B 都是编译期冻结的），但**纹理引用每个材质要的数量不一样** ⇒ 它的数据形态与其它
+组件不同，**既不属于 Global 也不属于 World**，而是**每种材质独有**。决议：**先不动它，放到计划末期处理**。
+
+**实测（本条不是推测，仓库里已经有这一类）**：
+
+- `inc/hgl/graph/module/MaterialTextureReferencePool.h` 的文件头自述就写着：
+  「`MaterialTextureReferencePool` —— **每个 `(definition, layout)` 一份的字节行池**。行 = 「该材质的纹理引用列表」
+  （`uvec2[reference_count]`，**元数随材质变化、行距运行时才知道**）——**没有 C++ 结构体**，故内部换装通用件：
+  `ActiveRowPool`（Buffer + 行号空间，物理行 = max+1，**行 0 预留为零行**）+ `ActiveRowView`（按字节访问）
+  + 延迟回收（`ReleaseDeferred` / `CollectRecyclable`，retire epoch）」。
+- 行宽与元数**由材质定义算出**：`inc/hgl/mtl/MaterialRecipe.h:466-468`（`reference_count` / `row_stride`，
+  layout hash 含「Texture keys + declaration order + sampler/policy」`:209`）；容量 `DefaultMaterialTextureConfigurationCapacity = 1024u`
+  （`:68`，注释「Live rows; pool row zero is reserved」`:`213`）。
+- 每实例 slot **已经持有这条行的句柄**：`MaterialRuntimeTable.h:139-145`
+  （`MaterialTextureConfigurationAllocation{ pool_key, row_index, reference_count, row_stride, allocation_generation, … }`
+  + `material_texture_row_cpu/gpu` + `material_texture_zero_row_gpu` + `material_texture_configuration_hash`）。
+- 内容 = `MaterialTextureReference{ descriptor_index /*= bindless 句柄*/, array_layer }`（8 B，`static_assert`）
+  的数组，按定义里声明的槽位序索引，整块哈希进材质内容键（`RenderPrimitiveCollectSystem.cpp:1583-1589 / 1667-1669 / 1675-1678`）。
+
+**两类行空间的形状差异（末期要统一的就是这张表）**
+
+| | 组件行空间（stage A/B 模型） | 材质纹理引用行空间（本类） |
+|---|---|---|
+| 行空间的键 | `(scope, type)` | **`(definition, layout)`** —— 材质定义 |
+| 行宽 | **编译期固定**（`static_assert(sizeof(Row) == N)`） | **运行时才知道**（`row_stride`，16 B 对齐） |
+| CPU 侧类型 | 有 C++ 结构体、类型化读口 | **没有结构体**，按字节访问（`ActiveRowView`） |
+| 归属 | Global = 设备级 / World = 世界级 | 设备级图侧池（`hgl::graph::module`），**但不是 Global 坐标** |
+| 行 0 | 哨兵（无/零） | 预留**零行**（另有 `zero_row_gpu` 便于"无绑定"读） |
+| 回收 | 行不归还（句柄语义） | **延迟回收**（retire epoch `= 3`） |
+| 定位键落点 | `EntityGPU::row[type]`（B8 规划） | 每实例 runtime slot 的 `pool_key + row_index` |
+
+**同类近亲（末期一起收）**：材质**私有数据**池 `PBRSurface` / `EmissiveSurface` / `TransmissionSurface`
+也是"按定义定形"的行空间，但今天走的是**手工登记**范式——`GlobalSSBOBufferRegistry.cpp:16-18` 固定行宽 + 固定 1024 行、
+`GlobalAddresses` 里三条独立地址字段、`MaterialShaderEmitter.cpp:278-280` 一个定义一个 `case` 映射
+⇒ 「加一种材质」今天要动**枚举 + 注册表 + UBO 地址 + ShaderGen 发射器**四处。
+
+**末期处理清单（现在不做，只留位置）**
+
+1. 把「行空间的键」这一维显式写进模型：`(scope, type)` **或** `(definition, layout)`，而不是把后者当特例；
+   与 B8 的 `EntityGPU::row[16]` 一并考虑（那个数组装的是"类型槽 → 行号"，装不下"定义级行号"）。
+2. 统一访问器形态：编译期定宽（结构体 + 类型化读口）与运行时变长（字节行 + `ActiveRowView`）**两种行都要能取**。
+3. 把材质私有数据池从"手工登记四处"收进同一机制（否则"新增一种材质"永远是四处改动）。
+4. 与 P-5 的纪律对齐：行/表内不放指针（`MaterialTextureConfigurationAllocation` 里 `cpu_row` 是池内视图指针，
+   属池自身管理，可接受；但**跨模块**引用的指针仍应句柄化）。
+
+**当前动作：无**（用户 2026-10-02 决议：**不动它**）。B 线各批不因此改范围。
+
+---
+
 ## 3. stage B 的验收口径（沿用 stage A 硬纪律）
 
 `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1058-1062` 与 `:1156`：
