@@ -263,6 +263,17 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
    数组长度宏 `kEntityGPUSlotCount` ↔ `ENTITY_GPU_SLOT_COUNT` ⇒ 归一到同一符号再比较，
    否则两端恒不相等（假红）。
 
+5. **门里既有的 `ExtractU64Fields` 不能照抄到 `EntityGPU` 上**：它先 `StripCommentTokens(text)`，
+   再用**花括号配对**取块（`text.find('}', brace)`）+ 按 `"uint64_t"` 令牌扫描后续标识符 ——
+   这套只对"成员都是 `= 0`"的结构成立（`WorldAddresses`）。
+   `EntityGPU` 是 `uint8_t type[16] = {}`（初始化式里含 `}`）+ `row [16]`（含空格）⇒ 配对被**提前截断**；
+   实测两种自写取块（花括号配对版 / 索引式逐行版，后者用 `(char)10` 无转义）在
+   **标记确实能找到**（`cpp_marker_at=2451` / `glsl_marker_at=2002`，文件 4030 / 2627 字节，CRLF）的
+   前提下**都产出 0 字段**（`C++=0 GLSL=0`）。
+   ⇒ 重做时的正确顺序：**先加一行诊断**（打印取块后扫描到的前 3 行原文与首个 `find` 结果），
+   拿到那一个数据再按"先归一去掉落 `= {...}` / `= 0` 初始化式、再定位 `};` 边界"的路子写；
+   **不要**继续在逐行判定的细节上试探（本轮在此烧掉两轮）。
+
 > 重做 T3d-1 时这四件**同一批次**做完（新 GLSL + 模块计数 + 门用例 + 提取器），
 > 判据 **门 43 PASS / 0 FAIL** 才提交 —— 避免中途留下红树。
 
