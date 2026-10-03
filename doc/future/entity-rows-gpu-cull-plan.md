@@ -277,12 +277,26 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 > 重做 T3d-1 时这四件**同一批次**做完（新 GLSL + 模块计数 + 门用例 + 提取器），
 > 判据 **门 43 PASS / 0 FAIL** 才提交 —— 避免中途留下红树。
 
+6. **`uint8_t` 数组在 glslang 可用**（2026-10-03 T3d-1 落地时实测，Vulkan SDK 1.4.363 glslangValidator）：
+   前提是 `#extension GL_EXT_shader_explicit_arithmetic_types_int8 : enable`（缺它 = `syntax error,
+   unexpected IDENTIFIER`）。`s1_luminance.glsl` 的旧注"glslang 不支持 uint8_t 数组"只对
+   **无该扩展**的路径成立 —— 带扩展即可直写 `uint8_t type[16]`，不必 uint 打包绕行。
+7. **scalar layout 的 GLSL 结构不会隐式补 alignas 填充**：C++ `alignas(64)` 的 128 B 行在
+   GLSL 侧必须把 40 B 填充**写成显式成员**（`uint8_t _pad[40]`），否则 `rows[]` 的 ArrayStride
+   = 88（载荷和）⇒ 第 2 行起错位。对拍方法：`glslangValidator -V -g` 编探针，
+   `spirv-dis` 读 `OpMemberDecorate` 偏移 + `OpDecorate %_runtimearr_… ArrayStride`，
+   与头文件 `offsetof` 断言族逐字节核。
+8. **逐行取块器（§7.6 第 3 条路子）实测一次通过**：命中 `struct <marker>` 行进块、`{`/`}`
+   行首判进出、每行去 `=…` 初始化式 → 拆 `type name[dim]` → 类型/长度归一。数组长度写宏名时
+   值从同文件 `#define` 现读（门内不复制数字）；GLSL 侧 `#include` 探针须
+   `#extension GL_GOOGLE_include_directive : enable` + `-I ShaderLibrary`。
+
 
 ---
 
 ## 8. 进度与交接（2026-10-03 收口；**新会话从这一节开始**）
 
-### 8.1 已完成并提交（仅本地，领先上游 44，未推送）
+### 8.1 已完成并提交（仅本地，领先上游 47，未推送）
 
 | 任务 | 提交 | 判据（已跑过） |
 |---|---|---|
@@ -294,24 +308,30 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 | T3c-3：表**按帧槽切份**（8 × 512 KB = 4 MB）+ 撤临时自检 | `4b4d071cd` | 门 42/0；就绪日志「512 KB／份 × 8 份」 |
 | T3c-3 收尾：静态段机理判据 + 示例动静对照 + P-4 实测定案 | `af550ff49` | 探针 首写脏 1 / 同值重下发脏 **0** / 值变脏 1；像素目视一致 |
 | T3d-1 落点与约定（纯文档） | `56cb90c32` / `fbab027bc` / `7ca4e6c64` | §7 落点定稿 + §7.6 五条实现约定 |
+| **T3d-1（结构对）**：GLSL 镜像 + 门对拍用例 | `d66f54fe9` | 门 **43 PASS / 0 FAIL**；`E.entity-gpu-struct-parity` 绿；glslang 实测偏移 0/4/20/84 + `_pad`@88 ⇒ **ArrayStride 128**；探针 `[T0c]` 全绿；PBRSpheres `[ERROR]`=0 |
 
-### 8.2 未完成：T3d（**代码零改动**，设计已定）
+### 8.2 未完成：T3d-2 起（**T3d-1 已落地**）
 
-- 现状：T3d-1 两次试做**均已回滚** ⇒ 门保持基线 **42 PASS / 0 FAIL**，工作区除既有 `res` 外干净。
-- 失败点已收窄到**一个待测数据**：自写取块器扫描到的**第一行原文**（诊断已证明：文件读到、标记能找到
-  —— `cpp_marker_at=2451` / `glsl_marker_at=2002`，4030 / 2627 字节，CRLF）。
+- 落地件（同批次四件，提交 `d66f54fe9`）：
+  ① `ShaderLibrary/ecs/entity_gpu.glsl`（`@ulre` Utility 模块；`EntityGPUData` 逐字段镜像
+  `EntityGPU.h` + **显式 `_pad[40]`**，`EntityGPURef(rows[])` 经 `world_addresses.addr_entity_gpu`
+  直索引；宏 `entity_gpu_rows`）；
+  ② 门模块总数 69→**70**（三处同步）；
+  ③ 门新用例 `E.entity-gpu-struct-parity`（逐行取块 + 类型/长度归一 + 步长 ==128 对拍；
+  宏值从同文件 `#define` 现读、门内不复制数字）；
+  ④ 取块器按 §7.6 第 3/5 条（`ExtractStructFieldsLineWise`，不用花括号配对）——
+  §8.2 旧述"失败点收窄到一个待测数据"已消解：**逐行式路子实测一次通过**，未再试探。
+- 新实测约定（追加到 §7.6）：**`uint8_t` 数组在 glslang 可用**，前提是
+  `#extension GL_EXT_shader_explicit_arithmetic_types_int8 : enable`（缺它 = 语法错误；
+  `s1_luminance.glsl` 的"不支持 uint8_t 数组"旧注只对无扩展路径成立）；scalar layout 下
+  GLSL 结构**不会**隐式补 alignas 填充 ⇒ 128 B 步长必须 `_pad` 写死（SPIR-V 对拍坐实）。
 
-### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6）
+### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6；**T3d-1 已落地**，见 §8.1/§8.2）
 
-1. **一个诊断周期**：在门用例里加临时打印 —— 取块后**前 3 行原文** + 首个 `find` 结果；跑门（约 1–2 分钟）；
-2. **同批次落四件**（避免中途红树）：
-   ① 新增 `ShaderLibrary/ecs/entity_gpu.glsl`（**必须**带 `@ulre begin/name/kind Utility/priority 0/end`）；
-   ② 门里 shader 模块总数 **69 → 70**（三处，见 §7.6 第 2 条）；
-   ③ 门新增用例 `E.entity-gpu-struct-parity`（`EntityGPU.h` ↔ GLSL `EntityGPURef` 逐字段同序同型）；
-   ④ 取块器按 §7.6 第 3/5 条写（**逐行/归一化**，不用花括号配对）；
-3. **判据**：门 **43 PASS / 0 FAIL** 才提交（42 基线 + 新用例）；
-4. 之后：**T3d-2** GPU count == CPU 参考剔除计数（示例内双面打印，不一致 0）⇒ **T3e** 驱动系统
-   （dispatch + barrier/fence + count buffer 交给批次，示例无 VUID/无 error）⇒ **T3f** 示例装配 + 像素验收。
+1. **T3d-2**：CPU 参考剔除（同一套规则）+ 示例内双面打印 ⇒ 判据 **GPU count == CPU 参考计数**，
+   不一致 0（§7.5 第 4 步）；
+2. 之后：**T3e** 驱动系统（dispatch + barrier/fence + count buffer 交给批次，示例无 VUID/无
+   error）⇒ **T3f** 示例装配 + 像素验收。
 
 ### 8.4 已知的既有待查项（与本线无关但影响未来 GPU 剔除正确性）
 
