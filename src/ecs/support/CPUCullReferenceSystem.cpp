@@ -3,6 +3,7 @@
 #include <hgl/ecs/core/EntityGPU.h>
 #include <hgl/ecs/support/EntityGPUTable.h>
 #include <hgl/ecs/support/TransformDataStorage.h>
+#include <hgl/ecs/support/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/core/GraphicsContext.h>
@@ -49,20 +50,47 @@ namespace hgl::ecs
         const auto& entity_table = context_->GetEntityGPUTable();
         const uint32_t entity_count = entity_table.kCapacity;
 
-        // 获取变换存储（从 ECSContext 获取）
-        TransformDataStorage* transform_storage = context_->GetTransformStorage();
-        if (!transform_storage) return;
+        // 获取 TransformSystem 和 TransformAssignmentBuffer
+        auto transform_system = context_->GetSystem<TransformSystem>();
+        if (!transform_system) return;
+
+        auto* transform_buffer = transform_system->GetTransformBuffer();
+        if (!transform_buffer) return;
+
+        // 获取 L2W buffer 的 CPU 侧映射
+        auto* l2w_device_buffer = transform_buffer->GetTransformDataBuffer();
+        if (!l2w_device_buffer) return;
+
+        // Map L2W buffer 读取矩阵数据
+        const uint32_t l2w_buffer_size = l2w_device_buffer->GetSize();
+        void* mapped_data = l2w_device_buffer->Map(0, l2w_buffer_size);
+        if (!mapped_data) return;
+
+        const glm::mat4* l2w_matrices = static_cast<const glm::mat4*>(mapped_data);
+        const uint32_t l2w_matrix_count = l2w_buffer_size / sizeof(glm::mat4);
 
         // 获取相机信息
         const auto& cache = context_->GetRenderFrameCache();
         const graph::CameraInfo* camera_info = cache.cameraInfo;
-        if (!camera_info) return;
+        if (!camera_info)
+        {
+            l2w_device_buffer->Unmap();
+            return;
+        }
 
         // 获取全局 SSBO 注册表（用于访问 GeometryAABB）
         auto* gc = context_->GetGraphicsContext();
-        if (!gc) return;
+        if (!gc)
+        {
+            l2w_device_buffer->Unmap();
+            return;
+        }
         auto* global_registry = gc->GetGlobalSSBOBufferRegistry();
-        if (!global_registry) return;
+        if (!global_registry)
+        {
+            l2w_device_buffer->Unmap();
+            return;
+        }
 
         // 遍历所有实体
         for (uint32_t i = 0; i < entity_count; ++i)
@@ -76,14 +104,17 @@ namespace hgl::ecs
             // 跳过不可见实体
             if (!EntityGPUTable::IsVisible(*row)) continue;
 
-            // 获取 Transform 和 Geometry 行号
-            const uint32_t transform_id = row->row[static_cast<uint32_t>(ComponentType::Transform)];
+            // 获取 L2W 行号和 Geometry 行号
+            const uint32_t l2w_row = row->row[static_cast<uint32_t>(ComponentType::Transform)];
             const uint32_t geometry_id = row->row[static_cast<uint32_t>(ComponentType::Geometry)];
 
-            if (transform_id == 0 || geometry_id == 0) continue;
+            if (l2w_row == 0 || geometry_id == 0) continue;
 
-            // 获取世界矩阵
-            const glm::mat4 world_matrix = transform_storage->GetWorldMatrix(transform_id);
+            // 边界检查：L2W 行号必须在 buffer 范围内
+            if (l2w_row >= l2w_matrix_count) continue;
+
+            // 从 L2W buffer 读取世界矩阵
+            const glm::mat4 world_matrix = l2w_matrices[l2w_row];
 
             // 获取 GeometryAABB（从全局池）
             const graph::mtl::GeometryAABB* aabb = global_registry->GetGeometryAABB(geometry_id);
@@ -129,6 +160,9 @@ namespace hgl::ecs
                 cpu_visible_indices_.push_back(i);
             }
         }
+
+        // Unmap L2W buffer
+        l2w_device_buffer->Unmap();
     }
 
     void CPUCullReferenceSystem::ReadGPUVisibleIndices()
