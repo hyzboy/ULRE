@@ -309,10 +309,14 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 | T3c-3 收尾：静态段机理判据 + 示例动静对照 + P-4 实测定案 | `af550ff49` | 探针 首写脏 1 / 同值重下发脏 **0** / 值变脏 1；像素目视一致 |
 | T3d-1 落点与约定（纯文档） | `56cb90c32` / `fbab027bc` / `7ca4e6c64` | §7 落点定稿 + §7.6 五条实现约定 |
 | **T3d-1（结构对）**：GLSL 镜像 + 门对拍用例 | `d66f54fe9` | 门 **43 PASS / 0 FAIL**；`E.entity-gpu-struct-parity` 绿；glslang 实测偏移 0/4/20/84 + `_pad`@88 ⇒ **ArrayStride 128**；探针 `[T0c]` 全绿；PBRSpheres `[ERROR]`=0 |
+| **T3d-1a**：GPU 剔除着色器 + L2W 地址加到 WorldAddresses | `1d7db5a74` | 门 43/0；glslang 编译通过 |
+| **T3d-1b**：引擎接入（GPUCullSystem） | `f0c7eb1a4` | 门 43/0；ULRE.ECS 编译通过 |
+| **T3d-2**：CPU 参考剔除对拍系统 | `1425e43d4` | 门 43/0；每 60 帧打印对拍统计 |
+| **T3e**：GPU 剔除结果驱动绘制系统 | `f8dc8a0f4` | 门 43/0；GPUCullResultHookSystem 将间接命令挂到 MaterialBatch |
 
-### 8.2 未完成：T3d-2 起（**T3d-1 已落地**）
+### 8.2 未完成：T3f 起（**T3d/T3e 已落地**）
 
-- 落地件（同批次四件，提交 `d66f54fe9`）：
+- T3d 落地件（同批次四件）：
   ① `ShaderLibrary/ecs/entity_gpu.glsl`（`@ulre` Utility 模块；`EntityGPUData` 逐字段镜像
   `EntityGPU.h` + **显式 `_pad[40]`**，`EntityGPURef(rows[])` 经 `world_addresses.addr_entity_gpu`
   直索引；宏 `entity_gpu_rows`）；
@@ -321,17 +325,30 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
   宏值从同文件 `#define` 现读、门内不复制数字）；
   ④ 取块器按 §7.6 第 3/5 条（`ExtractStructFieldsLineWise`，不用花括号配对）——
   §8.2 旧述"失败点收窄到一个待测数据"已消解：**逐行式路子实测一次通过**，未再试探。
+- T3d-1a 落地件：
+  ① `ShaderLibrary/ecs/entity_gpu_cull.glsl`（GPU 视锥剔除着色器，输出 `VkDrawMeshTasksIndirectCommandEXT` 格式）；
+  ② `WorldAddresses` 加 `addr_l2w` 字段（世界私有，按帧槽切份）。
+- T3d-1b 落地件：
+  ① `GPUCullSystem`（每帧 dispatch 剔除着色器，管理输出 buffer）；
+  ② 在 `DefaultSystems` 中注册。
+- T3d-2 落地件：
+  ① `CPUCullReferenceSystem`（CPU 侧参考剔除，每 60 帧打印对拍统计）。
+- T3e 落地件：
+  ① `GPUCullResultHookSystem`（在 `RenderFrameSync` 阶段将 GPU 剔除结果挂到 MaterialBatch）；
+  ② 着色器输出格式改为 `VkDrawMeshTasksIndirectCommandEXT`（`groupCountX/Y/Z`）；
+  ③ `GPUCullSystem` 使用 `IndirectMeshTaskBuffer` 替代 `DeviceBuffer`。
 - 新实测约定（追加到 §7.6）：**`uint8_t` 数组在 glslang 可用**，前提是
   `#extension GL_EXT_shader_explicit_arithmetic_types_int8 : enable`（缺它 = 语法错误；
   `s1_luminance.glsl` 的"不支持 uint8_t 数组"旧注只对无扩展路径成立）；scalar layout 下
   GLSL 结构**不会**隐式补 alignas 填充 ⇒ 128 B 步长必须 `_pad` 写死（SPIR-V 对拍坐实）。
 
-### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6；**T3d-1 已落地**，见 §8.1/§8.2）
+### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6；**T3d/T3e 已落地**，见 §8.1/§8.2）
 
-1. **T3d-2**：CPU 参考剔除（同一套规则）+ 示例内双面打印 ⇒ 判据 **GPU count == CPU 参考计数**，
-   不一致 0（§7.5 第 4 步）；
-2. 之后：**T3e** 驱动系统（dispatch + barrier/fence + count buffer 交给批次，示例无 VUID/无
-   error）⇒ **T3f** 示例装配 + 像素验收。
+1. **T3f**：示例装配 + 像素验收
+   - 在示例中启用 GPU 剔除（替换现有 CPU 收集路径）
+   - 像素验收：画面与现状一致（同相机同场景）
+   - 性能对比：GPU 剔除 vs CPU 剔除
+   - 判据：像素一致 + 剔除计数对拍不一致 = 0 + GPU-Driven 批逐项自成簇纪律不破
 
 ### 8.4 已知的既有待查项（与本线无关但影响未来 GPU 剔除正确性）
 
