@@ -30,6 +30,7 @@ namespace hgl::graph
         uint64_t addr_sky = 0;                  // 本世界 profile 的 SkyInfo（单份 buffer ⇒ 全帧槽同址）
         uint64_t addr_shadow = 0;               // 本世界 profile 的 ShadowInfo（每帧槽一份，下标 = 帧槽）
         uint64_t addr_entity_gpu = 0;           // 实体行表 EntityGPU（世界私有；T3：GPU 剔除的枚举源，按 EntityID.index 索引）
+        uint64_t addr_l2w = 0;                  // L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份，每帧槽一份）
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽）。

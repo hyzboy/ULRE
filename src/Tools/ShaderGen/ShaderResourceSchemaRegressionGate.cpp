@@ -3160,6 +3160,7 @@ namespace
         { "addr_sky",                   true  },
         { "addr_shadow",                true  },
         { "addr_entity_gpu",           true  },   // T3：实体行表（世界私有；实体属世界 ⇒ 设备级会重演"跨世界同行冲突"）
+        { "addr_l2w",                  true  },   // T3d：L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份）
         // ── 设备级全局（跨世界共享的资源池 + 每帧槽字段）──
         { "addr_mesh_draw_params_pool", false },
         { "addr_geometry_aabb",         false },   // B3-i：GeometryAABB 池（设备级全局；与 MeshDrawParams 同 ID 索引）
@@ -4078,14 +4079,14 @@ namespace
         else
         {
             // Consolidated scene Set 0 UBOs into single scene_ubo.glsl; added RenderItemResolve.glsl, shadow_receiver_source.glsl, pcf_shadow.glsl.
-            if (file_count != 70)
-                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
+            if (file_count != 71)
+                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 70;
+            const int expected_count = 71;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
