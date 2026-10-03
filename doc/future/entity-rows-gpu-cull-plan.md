@@ -184,3 +184,54 @@ for each entity slot i where (entity.flags & Active) && (entity.flags & Visible)
 | R3 | 4096 槽 × 128 B = 512 KB/世界；多世界 = 线性叠加 | 已拍不扩容；超限 fail-fast |
 | R4 | 剔除结果与 CPU 收集的批次划分不一致（批次仍 CPU 收集）⇒ 可能"GPU 说可见但批次里没这项" | 首版把消费者限制在**同一批**（批内实体行驱动），批次划分保持 CPU 权威 |
 | R5 | 改地址表漏一处连带面 ⇒ 门红/示例编译失败 | 五处清单逐条打勾（技能 `ulre-ecs-layer` 已列） |
+
+---
+
+## 7. T3d-1 落点（**已定稿，勿再重复侦察**）
+
+### 7.1 引擎着色器落点（P-6 = ① 引擎侧）
+- 引擎着色器库 = 仓库根 **`ShaderLibrary/`**（`2d/ common/ vertex/ shadow/ material/ ubo/` + `sampler.toml`）；
+  生成器 = `src/ShaderGen/`（`glsl_module/`），编译器 = `src/Tools/GLSLCompiler`，门 = `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp`。
+- 新的剔除着色器落 **`ShaderLibrary/<新主题目录>/…glsl`**（引擎资产），**不**照抄示例内联 GLSL。
+
+### 7.2 着色器如何拿到实体表（**零 schema 改动**）
+`ShaderLibrary/ubo/scene_ubo.glsl:124-134` 已有：
+```glsl
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer WorldAddressesRef
+{
+    uint64_t addr_camera_info;          // 相机行表（行号 = 相机槽 × 帧槽总数 + 帧槽）
+    uint64_t addr_global_render_items;  // 4-ID 渲染项表（世界私有）
+    uint64_t addr_draw_item_ids;        // DrawItemID 压缩索引表（世界私有）
+    uint64_t addr_sky;                  // 世界 profile 的 SkyInfo（单份 ⇒ 全帧槽同址）
+    uint64_t addr_shadow;               // 世界 profile 的 ShadowInfo（每帧槽一份 ring）
+    uint64_t addr_entity_gpu;           // 实体行表 EntityGPU（世界私有；GPU 剔除的枚举源）
+};
+#define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
+```
+- ⇒ 着色器直接 `world_addresses.addr_entity_gpu` 即得**本帧那一槽**的实体表地址（`pc_root` 本就指向本帧槽）；
+- C++ 端同序同型：`inc/hgl/graph/ubo/WorldAddresses.h`（`addr_entity_gpu` 偏移 40）；槽常量
+  `kWorldAddressesSlotCount = HGL_FRAME_SLOT_TOTAL`、`kWorldAddressesSlotStride = 128`（两份 `static_assert` 兜底）。
+
+### 7.3 门的约束（写新结构前必读）
+| 用例 | 位置 | 要求 |
+|---|---|---|
+| `W.world-addresses-struct-parity` | 门 `:2805` | 读 `WorldAddresses.h` 与 `scene_ubo.glsl`，`struct WorldAddresses` vs `buffer WorldAddressesRef` **逐字段同序同型**；漏加 = 静默回退默认材质 / 解引用错地址 |
+| `S.global-addresses-struct-parity` | 门 `:2742` | 全局地址同款比对（跨世界池 vs 世界私有是**两张表**，别混） |
+| 归属表 | 门 `:2880` | `{ "addr_entity_gpu", true }`：实体行表**世界私有** ⇒ **不得**提升到设备级表（否则重演"跨世界同行冲突"） |
+
+描述符纪律：`ShaderLibrary/common/descriptor_macros.glsl` 是**生成物**（`DescriptorMacroGen --emit`，`BINDLESS_SET 0`），
+新着色器 `#include` 它即可，**不新增 set/binding**（push constant + BDA 两级寻址，照 `example/ApiValidation/ComputeFrustumCull.cpp:120-228`）。
+
+### 7.4 唯一尚未存在的结构对（T3d-1 必须先补）
+- C++ 端已有：`inc/hgl/ecs/core/EntityGPU.h`（128 B 行：`flags` + `type[16]` + `row[16]`）；
+- GLSL 端**尚无** `buffer EntityGPURef` ⇒ 必须新增，**两端逐字段同序同型**，并在门里**有对拍用例覆盖**
+  （否则门绿也证明不了它没漂 —— 这就是"S.global-addresses-struct-parity 兜底"那条坑的同族）。
+
+### 7.5 实施清单（按序，每步有判据）
+1. **GLSL `EntityGPURef` 结构对**（与 `EntityGPU.h` 逐字段对齐）+ 门覆盖 ⇒ 判据 **门 42 PASS / 0 FAIL**；
+2. **剔除着色器**（`ShaderLibrary/<cull 主题>/`）：读本帧实体表 + 相机行（解 6 平面，RH_ZO）+ 几何 AABB 池
+   （`GlobalSSBOBufferRegistry::GetGPUBase(GeometryAABB)`）⇒ 写 `visible[]/count/indirect` ⇒ 判据 门编译过 + 42 PASS；
+3. **宿主侧引擎管道/模块登记**（从世界取址，**不手填地址**）⇒ 判据 示例编译链接、跑起来无 VUID/无 error；
+4. **（T3d-2）** CPU 参考剔除（同一套规则）+ 示例内双面打印 ⇒ 判据 **GPU count == CPU 参考计数**，不一致 0。
+
+> 本文到此为止的落点信息**已足以直接开写**：不需要再侦察着色器库位置、地址通路、门的约束或缺失结构。
