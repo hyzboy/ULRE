@@ -39,11 +39,21 @@ namespace hgl::ecs
         void SetEnabled(bool enabled);
         bool IsEnabled() const { return enabled_; }
 
-        /// **第二个 opt-in（默认关）**：允许 `GPUCullResultHookSystem` 把剔除
-        /// 输出接管到批次的间接绘制（`gpu_driven_override` + ICB/count 替换）。
-        /// 与 `SetEnabled` 分离的原因：对拍只需要 dispatch 结果正确；接管绘制
-        /// 还要求 per-batch 行表（l2w_index / mesh_draw_params / material rows）
-        /// 与剔除输出同序 —— 那是 T3f 的设计题，不能绑在开关里一起做。
+        /// **第二个 opt-in（默认关，T3f-1 形态 A）**：把 GPU 幸存集**回灌**
+        /// `RenderItem::isVisible`（dispatch 后读回 visible_indices，按实体 index
+        /// 对齐逐项覆盖）。下游 batch 构建 / 行表 / ICB **全部走既有 CPU 路径**
+        /// ⇒ 无新数据契约、无 GPU 序与 CPU 行表的对齐问题。
+        /// 接线前提（已核实的执行序）：本系统在 `RenderCollect` 内排在
+        /// `PrimitiveCullSystem`（CPU 剔除写 isVisible）**之后**、`PrimitiveBuildSystem`
+        /// （`RenderBatch` 消费 isVisible）之前 ⇒ 回灌的是本帧最终判据。
+        /// CPU 的 `PerformFrustumCulling` 仍跑：它写的 isVisible 被本回灌覆盖，
+        /// 但 CPU 参考对拍（CPUCullReferenceSystem）口径不变。
+        void SetApplyVisibleSetEnabled(bool enabled);
+        bool IsApplyVisibleSetEnabled() const { return apply_visible_set_; }
+
+        /// **第三个 opt-in（默认关，T3f-2 形态 B 预留）**：`GPUCullResultHookSystem`
+        /// 直连接管批次间接绘制（`gpu_driven_override` + ICB/count 替换）。
+        /// 开启前必须先解决：per-batch 行表与剔除输出**同序**（atomicAdd 序不定）。
         void SetDrawOverrideEnabled(bool enabled);
         bool IsDrawOverrideEnabled() const { return override_draw_; }
 
@@ -69,6 +79,9 @@ namespace hgl::ecs
         // 每帧 dispatch
         void DispatchCullShader();
 
+        /// 形态 A 回灌（T3f-1）：GPU 幸存实体 index 集覆盖 `RenderItem::isVisible`
+        void ApplyVisibleSetToRenderItems(uint32_t visible_count);
+
         // 延迟初始化（在第一次 Update 时执行）
         bool EnsureInitialized();
 
@@ -78,6 +91,7 @@ namespace hgl::ecs
         bool initialized_ = false;
         bool enabled_ = false;        ///< opt-in 开关：默认关（dispatch + 对拍）
         bool override_draw_ = false;  ///< opt-in 开关：默认关（接管批次间接绘制）
+        bool apply_visible_set_ = false; ///< opt-in 开关：默认关（形态 A：回灌 isVisible）
 
         // Compute pipeline
         graph::ShaderProgram* shader_program_ = nullptr;

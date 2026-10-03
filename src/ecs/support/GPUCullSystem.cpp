@@ -1,7 +1,11 @@
 #include <hgl/ecs/support/GPUCullSystem.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/EntityGPU.h>
+#include <hgl/ecs/core/RenderItem.h>
+#include <hgl/ecs/support/EntityGPUTable.h>
+#include <hgl/ecs/support/primitive/PrimitiveCullSystem.h>
 #include <hgl/ecs/components/GeometryData.h>
+#include <vector>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
@@ -53,6 +57,10 @@ namespace hgl::ecs
         : System("GPUCullSystem")
     {
         SetExecutionPhase(ExecutionPhase::RenderCollect);
+
+        // 回灌 `isVisible` 必须晚于 CPU 剔除（本系统是其后的**最终判据**，形态 A/T3f-1）、
+        // 早于 `PrimitiveBuildSystem`（不同 phase：RenderCollect < RenderBatch ⇒ 天然满足）。
+        AddDependency<PrimitiveCullSystem>();
     }
 
     GPUCullSystem::~GPUCullSystem()
@@ -221,6 +229,100 @@ namespace hgl::ecs
                  override_draw_ ? u8"ENABLED" : u8"disabled");
     }
 
+    void GPUCullSystem::SetApplyVisibleSetEnabled(bool enabled)
+    {
+        if (apply_visible_set_ == enabled)
+            return;
+
+        apply_visible_set_ = enabled;
+        GLogInfo(u8"[GPUCullSystem] isVisible write-back (form A) %s (opt-in)",
+                 apply_visible_set_ ? u8"ENABLED" : u8"disabled");
+    }
+
+    void GPUCullSystem::ApplyVisibleSetToRenderItems(uint32_t visible_count)
+    {
+        if (!context_)
+            return;
+
+        auto& cache = context_->GetRenderFrameCache();
+        if (cache.renderItems.empty())
+            return;
+
+        // 读回 GPU 幸存实体 index（紧凑表，长度 = visible_count ≤ kMaxVisibleEntities）
+        static std::vector<uint32_t> s_survivors;
+        s_survivors.clear();
+        if (visible_count > 0 && visible_indices_buffer_)
+        {
+            const VkDeviceSize bytes = sizeof(uint32_t) * visible_count;
+            void* mapped = visible_indices_buffer_->Map(0, bytes);
+            if (mapped)
+            {
+                const uint32_t* src = static_cast<const uint32_t*>(mapped);
+                s_survivors.assign(src, src + visible_count);
+                visible_indices_buffer_->Unmap();
+            }
+        }
+
+        // 首帧护栏：实体行表的脏行上传与 dispatch 同帧发生，表在**首个 dispatch**
+        // 时可能还没写齐 ⇒ GPU 会报 `survivors=0`，直接回灌 = 一帧黑屏（实测第一帧
+        // off=100）。判据不可信时**本帧不动 isVisible**（保留 CPU 剔除结果）：
+        // CPU 与 GPU 同式 ⇒ 最多是"这一帧按 CPU 判据画"，不会画错也不会画空。
+        if (visible_count == 0)
+        {
+            bool any_entity_item = false;
+            for (auto& itemPtr : cache.renderItems)
+            {
+                if (itemPtr && itemPtr->GetEntity())
+                {
+                    any_entity_item = true;
+                    break;
+                }
+            }
+            if (any_entity_item)
+            {
+                GLogDebug(u8"[GPUCullSystem] write-back skipped: survivors=0 但存在实体项"
+                          u8"（判据不可信帧，本帧保留 CPU isVisible）");
+                return;
+            }
+        }
+
+        // 幸存集 → 覆盖位图（按 EntityID.index；越界 index 忽略）
+        std::vector<uint8_t> keep(EntityGPUTable::kCapacity, 0);
+        for (uint32_t idx : s_survivors)
+        {
+            if (idx < keep.size())
+                keep[idx] = 1;
+        }
+
+        // 回灌：item 的 owner 实体在幸存集 ⇒ visible。无 owner 实体的 item（非实体驱动）
+        // 不接管（保留 CPU 剔除结果）——本管线只负责实体行驱动的那部分。
+        uint32_t applied_on = 0, applied_off = 0, skipped_no_entity = 0;
+        for (auto& itemPtr : cache.renderItems)
+        {
+            RenderItem* item = itemPtr.get();
+            if (!item)
+                continue;
+
+            Entity* owner = item->GetEntity();
+            if (!owner)
+            {
+                ++skipped_no_entity;
+                continue;
+            }
+
+            const uint32_t idx = owner->GetEntityID().index;
+            const bool vis = (idx < keep.size()) && keep[idx] != 0;
+            if (vis)
+                ++applied_on;
+            else
+                ++applied_off;
+            item->isVisible = vis;
+        }
+
+        GLogDebug(u8"[GPUCullSystem] write-back: survivors=%u on=%u off=%u no_entity=%u",
+                  visible_count, applied_on, applied_off, skipped_no_entity);
+    }
+
     void GPUCullSystem::Update(float delta_time)
     {
         // opt-in 门（默认关）：未显式启用就不 dispatch，避免默认全局接管把示例画空。
@@ -304,6 +406,10 @@ namespace hgl::ecs
         // 读取可见计数并记录日志
         const uint32_t visible_count = GetGPUVisibleCount();
         GLogDebug(u8"[GPUCullSystem] Dispatched: entities=%u, visible=%u", entity_count, visible_count);
+
+        // 形态 A（T3f-1）：把幸存集回灌 isVisible，下游 batch/行表/ICB 全走既有 CPU 路径。
+        if (apply_visible_set_)
+            ApplyVisibleSetToRenderItems(visible_count);
     }
 
     uint32_t GPUCullSystem::GetGPUVisibleCount() const

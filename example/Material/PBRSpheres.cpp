@@ -592,11 +592,15 @@ public:
         if (!InitCamera())
             return false;
 
-        // B8/T3f：显式 opt-in 启用 GPU 剔除**对拍**（dispatch + CPU/GPU 计数比对）。
-        // 只开这一档，不开 SetDrawOverrideEnabled ⇒ 绘制仍走 CPU 收集路径，
-        // 画面与本开关无关（接管绘制需要 per-batch 行表与剔除输出同序，是 T3f 后续题）。
+        // B8/T3f-1：显式 opt-in 启用 GPU 剔除管线（形态 A）。
+        // SetEnabled = dispatch + CPU/GPU 计数对拍；SetApplyVisibleSetEnabled =
+        // 把 GPU 幸存集回灌 RenderItem::isVisible，绘制侧由此走 GPU 判据。
+        // 不开 SetDrawOverrideEnabled（形态 B 直连接管 ICB/行表，待序对齐设计后做）。
         if (auto gpu_cull = ecs_world->GetSystem<GPUCullSystem>())
+        {
             gpu_cull->SetEnabled(true);
+            gpu_cull->SetApplyVisibleSetEnabled(true);
+        }
 
         return true;
     }
