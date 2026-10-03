@@ -296,7 +296,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 
 ## 8. 进度与交接（2026-10-03 收口；**新会话从这一节开始**）
 
-### 8.1 已完成并提交（仅本地，领先上游 47，未推送）
+### 8.1 已完成并提交（仅本地，领先上游 7，未推送）
 
 | 任务 | 提交 | 判据（已跑过） |
 |---|---|---|
@@ -313,8 +313,9 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 | **T3d-1b**：引擎接入（GPUCullSystem） | `f0c7eb1a4` | 门 43/0；ULRE.ECS 编译通过 |
 | **T3d-2**：CPU 参考剔除对拍系统 | `1425e43d4` | **判据达成（经 `5ec033ea8` 返工后）**：PBRSpheres 对拍 CPU=100 GPU=100 match=100 mismatch=0 |
 | **T3e**：GPU 剔除结果驱动绘制系统 | `f8dc8a0f4` → **返工 `5ec033ea8`** | 首版无条件接管 ⇒ 全示例画空；返工 = 双重 opt-in + 接线四处断点（详见 §8.2b）；判据：门 43/0、[ERROR]=0、VUID=0 |
+| **T3f-1（形态 A）**：GPU 幸存集回灌 `RenderItem::isVisible` | `220da961d`（主体）+ `ea73a0bad`（注释）+ `4b4990d84`（验收通路） | **像素验收达成**：GPU 剔除 vs CPU 基线帧 8 **逐字节全等**（3,686,400 B sha256 一致）；对拍 mismatch=0；门 43/0；详见 §8.2c |
 
-### 8.2 未完成：T3f（**T3d 全达成；T3e 已返工为 opt-in**）
+### 8.2 未完成：T3f-2 形态 B（**T3d 全达成；T3e 已返工为 opt-in；T3f-1 形态 A 已落地且像素全等**）
 
 - T3d 落地件（同批次四件）：
   ① `ShaderLibrary/ecs/entity_gpu.glsl`（`@ulre` Utility 模块；`EntityGPUData` 逐字段镜像
@@ -371,18 +372,59 @@ T3e 首版（`f8dc8a0f4`）把 `GPUCullResultHookSystem` 做成**无条件**把�
 `[ERROR]=0`、`VUID=0`、策略判定对拍不一致=0；门 **43 PASS / 0 FAIL**；探针 `[T0c]` 全绿；
 其余示例不受影响（管线默认关）。
 
-### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6/§8.2b；**T3d 全达成，T3e 已返工**）
+### 8.2c T3f-1 落地记录（2026-10-04，提交 `220da961d` / `ea73a0bad` / `4b4990d84`）—— **接管绘制的落法被推翻重定：回灌 `isVisible`，不碰 ICB**
 
-1. **T3f**：绘制接管 + 像素验收（当前唯一未成事项）
-   - **设计题（先答再写）**：一个 MaterialBatch 只对应**一种几何**（批按 shader/pipeline 合），
-     而实体行表的可见实体跨多种几何 ⇒ 要么 ① 每批各自持一份剔除输出（着色器按 batch 过滤，
-     即 `row[Geometry] == batch_geometry_id` 才计入该批）、要么 ② 单张全局可见表 + 逐批
-     indirect range/count 偏移。R4 口径 = 首版把消费者限制在**同一批**内。
+设计题（§8.3 旧稿）的答案与预想**不同**，两条被否的路线都是实际侦察结果：
+
+1. **「ICB 归零式」被否**：幸存 item 经簇合并进**同一条** ICB 命令 ⇒ 归一条杀一片，
+   归零粒度与剔除粒度不同阶。
+2. **「直连 GPU 序接管」被否**（形态 B 的原设想）：`atomicAdd` 紧凑序**每帧不定**，
+   而批行表（l2w_index / mesh_draw_params / material rows）是**固定 CPU 序** ⇒
+   两者对齐需要新数据契约 + 改动批消费侧，风险面覆盖所有 GPU-Driven 示例。
+3. **落定 = 回灌**：`GPUCullSystem::ApplyVisibleSetToRenderItems` 把 GPU 幸存实体
+   index 表（Map 读回）展开成覆盖位图，逐项写 `RenderItem::isVisible`。
+   **下游 batch 构建 / 行表 / ICB / 材质解析一行未动** ⇒ 无新契约、无序对齐问题、
+   GPU-Driven 逐项自成簇纪律天然不破。代价：CPU 的 `PerformFrustumCulling` 仍跑
+   （其结果被回灌**覆盖**，不是被替代）⇒ 本形态**不省 CPU 剔除**，省的是"判据归 GPU"
+   这一步；真省提交是形态 B 的目标。
+
+**执行序靠依赖钉死，不靠插入顺序碰运气**：构造函数里
+`AddDependency<PrimitiveCullSystem>()` ⇒ 回灌恒晚于 CPU 剔除（本帧**最终**判据）、
+恒早于 `PrimitiveBuildSystem`（跨 phase：`RenderCollect` < `RenderBatch`，天然满足）。
+
+**首帧护栏（实测踩出）**：实体行表脏行上传与首次 dispatch **同帧** ⇒ 首帧
+`survivors=0`，直接回灌 = **一帧黑屏**（实测首帧 `off=100`）。护栏：计数为 0 且
+存在实体驱动 item ⇒ **本帧不动 isVisible**（CPU/GPU 同式 ⇒ 最坏按 CPU 判据画一帧，
+不画错不画空）。
+
+**opt-in 三档（默认全关，逐示例显式开）**：
+`SetEnabled`（dispatch + 对拍）→ `SetApplyVisibleSetEnabled`（形态 A 回灌）→
+`SetDrawOverrideEnabled`（形态 B 直连，**仍无人开**，留作占位）。
+
+**像素验收通路**（示例内环境自门控，沿用 `AlphaTestShadow` 先例）：
+`PBR_DUMP=<tag>` = t 冻结（几何逐帧确定）+ 第 8 帧装一次性
+`SwapchainRenderTarget::SetInFrameReadbackHook`（帧内窗口 = 提交后、present 前；
+帧外读 presentable image 会触发真 VUID）→ 落 A2B10G10R10 **原始 packed 字节**
+（零转换，保住 10bit）→ `std::exit`；`PBR_DISABLE_CULL=1` = 基线对照组。
+结果：**两次运行 3,686,400 B sha256 逐字节全等**（`changed_pixels=0/921600`）。
+
+### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6/§8.2b/§8.2c；**T3d/T3e/T3f-1 全达成**）
+
+1. **T3f-2**：形态 B——真 GPU-Driven 绘制接管（当前唯一未成事项，收益 = 省 CPU 提交）
+   - **设计题（先答再写）**：`atomicAdd` 紧凑序**每帧不定** ⇒ 若剔除输出直接驱动
+     per-batch 行表，行表必须按 GPU 序 gather（新契约）。两条候选：
+     ① 每批各持一份剔除输出（着色器按 `row[Geometry] == batch_geometry_id` 过滤）；
+     ② 单张全局可见表 + 逐批 indirect range/count 偏移。
+   - 一个 MaterialBatch 只对应**一种几何**（批按 shader/pipeline 合），而可见实体跨多种
+     几何 ⇒ R4 口径 = 首版把消费者限制在**同一批**内。
    - 打开 `SetDrawOverrideEnabled` 的前提：剔除输出的**绘制参数与 CPU 收集的行表同源**
-     （per-batch l2w_index / mesh_draw_params / material rows 的顺序必须与剔除输出一致，
+     （per-batch l2w_index / mesh_draw_params / material rows 的顺序与剔除输出一致，
      否则画错材质/错几何）。
-   - 判据：像素与现状一致（同相机同场景）；剔除计数对拍不一致 0；
-     GPU-Driven 批**逐项自成簇**纪律不破；`SetDrawOverrideEnabled` 仍是逐示例 opt-in。
+   - 判据：像素与形态 A 一致（同一 `PBR_DUMP` 通路，对照组 = 现在的 GPU 输出）；
+     CPU 收集路径在接管时被**跳过**（否则 = 双份账）；剔除计数对拍不一致 0；
+     GPU-Driven 批**逐项自成簇**纪律不破；仍是逐示例 opt-in。
+2. **性能对比**（T3f-2 之后才有意义）：GPU 剔除 vs CPU 剔除（本形态 A 不省 CPU，
+   对比数据会误导，先不做）。
 
 ### 8.4 已知的既有待查项（与本线无关但影响未来 GPU 剔除正确性）
 
