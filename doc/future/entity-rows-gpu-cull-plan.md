@@ -311,10 +311,10 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 | **T3d-1（结构对）**：GLSL 镜像 + 门对拍用例 | `d66f54fe9` | 门 **43 PASS / 0 FAIL**；`E.entity-gpu-struct-parity` 绿；glslang 实测偏移 0/4/20/84 + `_pad`@88 ⇒ **ArrayStride 128**；探针 `[T0c]` 全绿；PBRSpheres `[ERROR]`=0 |
 | **T3d-1a**：GPU 剔除着色器 + L2W 地址加到 WorldAddresses | `1d7db5a74` | 门 43/0；glslang 编译通过 |
 | **T3d-1b**：引擎接入（GPUCullSystem） | `f0c7eb1a4` | 门 43/0；ULRE.ECS 编译通过 |
-| **T3d-2**：CPU 参考剔除对拍系统 | `1425e43d4` | 门 43/0；每 60 帧打印对拍统计 |
-| **T3e**：GPU 剔除结果驱动绘制系统 | `f8dc8a0f4` | 门 43/0；GPUCullResultHookSystem 将间接命令挂到 MaterialBatch |
+| **T3d-2**：CPU 参考剔除对拍系统 | `1425e43d4` | **判据达成（经 `5ec033ea8` 返工后）**：PBRSpheres 对拍 CPU=100 GPU=100 match=100 mismatch=0 |
+| **T3e**：GPU 剔除结果驱动绘制系统 | `f8dc8a0f4` → **返工 `5ec033ea8`** | 首版无条件接管 ⇒ 全示例画空；返工 = 双重 opt-in + 接线四处断点（详见 §8.2b）；判据：门 43/0、[ERROR]=0、VUID=0 |
 
-### 8.2 未完成：T3f 起（**T3d/T3e 已落地**）
+### 8.2 未完成：T3f（**T3d 全达成；T3e 已返工为 opt-in**）
 
 - T3d 落地件（同批次四件）：
   ① `ShaderLibrary/ecs/entity_gpu.glsl`（`@ulre` Utility 模块；`EntityGPUData` 逐字段镜像
@@ -342,13 +342,47 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
   `s1_luminance.glsl` 的"不支持 uint8_t 数组"旧注只对无扩展路径成立）；scalar layout 下
   GLSL 结构**不会**隐式补 alignas 填充 ⇒ 128 B 步长必须 `_pad` 写死（SPIR-V 对拍坐实）。
 
-### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6；**T3d/T3e 已落地**，见 §8.1/§8.2）
+### 8.2b T3e 返工记录（2026-10-03，提交 `5ec033ea8`）—— **默认全局接管 = 画面全黑回归**
 
-1. **T3f**：示例装配 + 像素验收
-   - 在示例中启用 GPU 剔除（替换现有 CPU 收集路径）
-   - 像素验收：画面与现状一致（同相机同场景）
-   - 性能对比：GPU 剔除 vs CPU 剔除
-   - 判据：像素一致 + 剔除计数对拍不一致 = 0 + GPU-Driven 批逐项自成簇纪律不破
+T3e 首版（`f8dc8a0f4`）把 `GPUCullResultHookSystem` 做成**无条件**把所有示例的批次
+改挂到 GPU 剔除的 ICB/count buffer 上；而当时剔除管线本身还没跑通（`count` 恒 0）
+⇒ `vkCmdDrawMeshTasksIndirectCountEXT(drawCount=0)` ⇒ **所有示例画面全空**
+（用户用 RenderDoc 截帧定位）。返工要点：
+
+1. **双重 opt-in（默认全关）**：`GPUCullSystem::SetEnabled`（dispatch + 对拍）与
+   `SetDrawOverrideEnabled`（接管绘制）分离 —— 对拍只需要 dispatch 正确；接管绘制还要求
+   per-batch 行表（l2w_index / mesh_draw_params / material rows）与剔除输出**同序**，
+   那是 T3f 的设计题，不能绑在一个开关里。示例（PBRSpheres）只开 `SetEnabled`。
+2. **`#version` 必须在 GLSL 文件第 1 行**：引擎 GLSLCompiler 插件按首行判断是否注入
+   版本头；`@ulre` 注释块把 `#version` 挤到第 16 行 ⇒ 注入后出现第二个 `#version`
+   ⇒ `'#version' : must occur first in shader`，且失败只表现为 `pipeline is null`。
+3. **剔除着色器的 4 处静默断点**（修完 GPU count 才从 0 变 100）：
+   ① `addr_l2w` **只有字段没有写者**（`SyncWorldAddresses` 没接）⇒ shader 解引用 0 基址；
+   ② camera 行号写死 0 ⇒ 读到别的相机的视锥，须与 `pc_root.camera_row` 同式（`GetActiveCameraRow()`）；
+   ③ push constant 字段顺序须与 GLSL `layout(push_constant)` **逐字段同序同型**（u64 前置）；
+   ④ `row[Transform]` 槽号 = `ComponentType::Transform` = **1**，不是 0（`None = 0`）。
+4. **`EntityGPUTable::Activate` 必须同时置 `Visible`**：派生表若不镜像
+   `VisibilityDataStorage` 的默认可见态，就出现「真值可见 / 行表不可见」漂移 ⇒ 全剔空。
+5. **`shaderInt8` 设备特性要显式启用**：`storageBuffer8BitAccess` 只管存储层，
+   `uint8_t` 着色器算术声明 SPIR-V `Int8` capability ⇒ 缺 feature 时
+   `vkCreateShaderModule` 报 `VUID-...-pCode-08740`（`VKDeviceCreater` 已接）。
+
+判据现状：**PBRSpheres 剔除计数对拍 `CPU=100 GPU=100 match=100 mismatch=0`**（= **T3d-2 达成**）；
+`[ERROR]=0`、`VUID=0`、策略判定对拍不一致=0；门 **43 PASS / 0 FAIL**；探针 `[T0c]` 全绿；
+其余示例不受影响（管线默认关）。
+
+### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6/§8.2b；**T3d 全达成，T3e 已返工**）
+
+1. **T3f**：绘制接管 + 像素验收（当前唯一未成事项）
+   - **设计题（先答再写）**：一个 MaterialBatch 只对应**一种几何**（批按 shader/pipeline 合），
+     而实体行表的可见实体跨多种几何 ⇒ 要么 ① 每批各自持一份剔除输出（着色器按 batch 过滤，
+     即 `row[Geometry] == batch_geometry_id` 才计入该批）、要么 ② 单张全局可见表 + 逐批
+     indirect range/count 偏移。R4 口径 = 首版把消费者限制在**同一批**内。
+   - 打开 `SetDrawOverrideEnabled` 的前提：剔除输出的**绘制参数与 CPU 收集的行表同源**
+     （per-batch l2w_index / mesh_draw_params / material rows 的顺序必须与剔除输出一致，
+     否则画错材质/错几何）。
+   - 判据：像素与现状一致（同相机同场景）；剔除计数对拍不一致 0；
+     GPU-Driven 批**逐项自成簇**纪律不破；`SetDrawOverrideEnabled` 仍是逐示例 opt-in。
 
 ### 8.4 已知的既有待查项（与本线无关但影响未来 GPU 剔除正确性）
 
