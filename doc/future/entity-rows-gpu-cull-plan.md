@@ -235,3 +235,34 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 4. **（T3d-2）** CPU 参考剔除（同一套规则）+ 示例内双面打印 ⇒ 判据 **GPU count == CPU 参考计数**，不一致 0。
 
 > 本文到此为止的落点信息**已足以直接开写**：不需要再侦察着色器库位置、地址通路、门的约束或缺失结构。
+### 7.6 实现时踩到的引擎约定（2026-10-03 实测——T3d-1 首次尝试，改动已回滚，约定留存）
+
+1. **新增 GLSL 必须带 `@ulre` 元数据块**（文件头，缺则门三条用例同时红）：
+   ```
+   // @ulre begin
+   // @ulre name <name>
+   // @ulre kind Utility        ← 库文件主流写法（44 个文件）
+   // @ulre priority 0
+   // @ulre end
+   ```
+   缺失时门只报笼统的 "provider registry directory scan reported parse errors" /
+   "LoadDirectory reported 1 errors"，**不指出是文件头缺块**：
+   受影响用例 = `H1.provider-resource-manifest` / `I.glsl-code-module-file-parse` / `MI.module-invariants`。
+
+2. **门里钉了 shader 模块总数**（`src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp`）：
+   `if (file_count != 69)`、诊断串 `"LoadDirectory expected 69 file modules, got "`、
+   `const int expected_count = 69;` ⇒ **每新增一个 shader 模块，这三处必须同步 +1**，
+   否则 `I.glsl-code-module-file-parse` 报 `expected 69 file modules, got 70`。
+
+3. **C++ 结构取块不能用花括号配对**：成员初始化式（`= {}` / `= 0`）里也含 `}` 与 `=`，
+   `find('}')` 会把块尾**提前**截断 —— 实测表现是"标记找得到、字段数 0"（`C++=0 GLSL=0`）。
+   正确做法 = **逐行**判定：跳过以 `{` 开头行、遇以 `}` 开头行终止；每行去 `//` 注释、去空白、
+   去 `=...` 初始化式、去结尾 `;`，最后才拆 `type name[array]`。
+
+4. **结构对拍提取器必须做类型/长度归一**：C++ `uint32_t`/`uint8_t` ↔ GLSL `uint`/`uint8`；
+   数组长度宏 `kEntityGPUSlotCount` ↔ `ENTITY_GPU_SLOT_COUNT` ⇒ 归一到同一符号再比较，
+   否则两端恒不相等（假红）。
+
+> 重做 T3d-1 时这四件**同一批次**做完（新 GLSL + 模块计数 + 门用例 + 提取器），
+> 判据 **门 43 PASS / 0 FAIL** 才提交 —— 避免中途留下红树。
+
