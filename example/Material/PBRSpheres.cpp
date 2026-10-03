@@ -32,6 +32,10 @@
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/support/GPUCullSystem.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKTextureReadback.h>
+#include<cstdio>
+#include<cstdlib>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -89,6 +93,9 @@ private:
 
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
+
+    std::string   dump_tag;               ///< PBR_DUMP=<tag>：像素验收模式（t 冻结 + 帧 8 回读）
+    uint32_t      dump_frame = 0;
 
     using MaterialDataAccessor =
         graph::GlobalSSBODataAccessor;
@@ -593,13 +600,22 @@ public:
             return false;
 
         // B8/T3f-1：显式 opt-in 启用 GPU 剔除管线（形态 A）。
-        // SetEnabled = dispatch + CPU/GPU 计数对拍；SetApplyVisibleSetEnabled =
-        // 把 GPU 幸存集回灌 RenderItem::isVisible，绘制侧由此走 GPU 判据。
-        // 不开 SetDrawOverrideEnabled（形态 B 直连接管 ICB/行表，待序对齐设计后做）。
-        if (auto gpu_cull = ecs_world->GetSystem<GPUCullSystem>())
+        // PBR_DISABLE_CULL=1 ⇒ 不开任何开关 = **CPU 判据基线**（像素验收对照组）。
+        if (!getenv("PBR_DISABLE_CULL"))
         {
-            gpu_cull->SetEnabled(true);
-            gpu_cull->SetApplyVisibleSetEnabled(true);
+            if (auto gpu_cull = ecs_world->GetSystem<GPUCullSystem>())
+            {
+                gpu_cull->SetEnabled(true);
+                gpu_cull->SetApplyVisibleSetEnabled(true);
+            }
+        }
+
+        // PBR_DUMP=<tag>：像素验收 dump —— 帧 8（剔除已热、场景静止）装一次性帧内
+        // 回读钩子，落原始字节（A2B10G10R10 packed，与 AlphaTestShadow 同口径），
+        // 落完 std::exit。t 冻结为 0 ⇒ 两次运行的几何逐帧确定。
+        if (const char *tag = getenv("PBR_DUMP"))
+        {
+            dump_tag = tag;
         }
 
         return true;
@@ -607,7 +623,10 @@ public:
 
     void Tick(double delta_time) override
     {
-        elapsed_time += delta_time;
+        // dump 模式：时间冻结 ⇒ 两次运行（GPU 剔除 vs CPU 基线）的几何逐帧确定，
+        // 像素差只可能来自剔除判据本身。
+        if (dump_tag.empty())
+            elapsed_time += delta_time;
 
         const float t = static_cast<float>(elapsed_time);
 
@@ -630,6 +649,48 @@ public:
         }
 
         WorkObject::Tick(delta_time);
+
+        // PBR_DUMP 模式：第 8 帧装一次性帧内回读钩子（钩子在本帧提交后、present 前
+        // 执行 ⇒ 读到本帧画面），落原始 packed 字节后 std::exit（同 AlphaTestShadow
+        // 自检先例：跳过框架析构，验收路径可接受）。
+        if (!dump_tag.empty() && ++dump_frame == 8)
+        {
+            auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
+                ecs_world ? ecs_world->GetRenderTarget() : nullptr);
+            if (!rt)
+            {
+                printf("[PBRDUMP] no swapchain RT\n");
+                std::exit(2);
+            }
+
+            std::string tag = dump_tag;
+            graph::IRenderTarget *rt_ptr = rt;
+            rt->SetInFrameReadbackHook([tag, rt_ptr]()
+            {
+                std::vector<uint8_t> pixels;
+                graph::TextureReadbackInfo info;
+                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
+                {
+                    printf("[PBRDUMP] readback failed\n");
+                    std::exit(2);
+                }
+
+                char name[256];
+                snprintf(name, sizeof(name), "pbrdump_%s_%ux%u_%s.raw",
+                         tag.c_str(), info.width, info.height,
+                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
+                FILE *fp = fopen(name, "wb");
+                if (!fp)
+                {
+                    printf("[PBRDUMP] open %s failed\n", name);
+                    std::exit(2);
+                }
+                fwrite(pixels.data(), 1, pixels.size(), fp);
+                fclose(fp);
+                printf("[PBRDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
+                std::exit(0);
+            });
+        }
     }
 };
 
