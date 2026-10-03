@@ -40,11 +40,13 @@
 #include "../../ShaderGen/meshgen/MeshTemplateEmitter.h"   // EmitMeshTemplateDocument / MeshShaderMode
 
 #include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <iterator>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -2860,6 +2862,286 @@ namespace
         return result;
     }
 
+    /// 逐行式结构字段取块器（E.entity-gpu-struct-parity 用；**不能**沿用
+    /// ExtractU64Fields 的花括号配对路子 —— §7.6 实测：`EntityGPU` 成员初始化式
+    /// `= {}` 里含 `}`，`text.find('}')` 把块尾**提前**截断、恒产出 0 字段）。
+    /// 规则：命中 "struct <marker>" 行进入块体；跳过以 `{` 开头的行；遇以 `}`
+    /// 开头的行终止。每行去 `=...` 初始化式、去结尾 `;`、去 type 与 `[` 间空格，
+    /// 再拆 `type name` / `type name[dim]`（dim 可为宏名）。注释已由
+    /// StripCommentTokens 剥掉 —— 与 ExtractU64Fields 同一前置，防注释字样混入。
+    struct StructFieldEntry
+    {
+        std::string type;   // 归一后的类型（uint32_t→uint，uint8_t→uint8）
+        std::string name;
+        std::string dim;    // 数组长度原文（归一后）；标量字段为空
+    };
+
+    /// 类型/长度归一（§7.6 第 4 条）：两端写法不同但语义同一的符号折到同一口径，
+    /// 否则恒不相等（假红）。
+    static void NormalizeStructField(StructFieldEntry &field)
+    {
+        if (field.type == "uint32_t") field.type = "uint";
+        if (field.type == "uint8_t")  field.type = "uint8";
+        if (field.dim == "kEntityGPUSlotCount") field.dim = "ENTITY_GPU_SLOT_COUNT";
+    }
+
+    static std::vector<StructFieldEntry> ExtractStructFieldsLineWise(
+        const std::string &raw_text,
+        const char *marker)
+    {
+        std::vector<StructFieldEntry> fields;
+        std::string text = raw_text;
+        StripCommentTokens(text);
+
+        bool in_block = false;
+        std::istringstream stream(text);
+        std::string line;
+        while (std::getline(stream, line))
+        {
+            // 行首/行尾空白（含 CRLF 残留的 \r）
+            const size_t lhs = line.find_first_not_of(" \t\r");
+            if (lhs == std::string::npos)
+                continue;
+            const size_t rhs = line.find_last_not_of(" \t\r");
+            line = line.substr(lhs, rhs - lhs + 1);
+
+            if (!in_block)
+            {
+                // 块头 = 以 struct 开头、含 marker、且块体 `{` 另起一行的声明行。
+                if (line.rfind("struct ", 0) == 0
+                 && line.find(marker) != std::string::npos
+                 && line.find('{') == std::string::npos)
+                    in_block = true;
+                continue;
+            }
+
+            if (line[0] == '}')
+                break;
+            if (line[0] == '{')
+                continue;
+
+            // 去初始化式（`= 0` / `= {}` —— 这正是花括号配对版被截断的源头）
+            const size_t eq = line.find('=');
+            if (eq != std::string::npos)
+                line = line.substr(0, eq);
+            // 去结尾 `;`（先剥回绕的空白）
+            const size_t semi = line.find_last_not_of(" \t\r");
+            if (semi == std::string::npos)
+                continue;
+            line = line.substr(0, semi + 1);
+            if (!line.empty() && line.back() == ';')
+                line.pop_back();
+            // `row [16]` → `row[16]`：类型与名字、名字与 `[` 之间的空白统一拆掉
+            for (std::string::size_type at = line.find(" [");
+                 at != std::string::npos; at = line.find(" [", at))
+                line.erase(at, 1);
+
+            std::istringstream parts(line);
+            StructFieldEntry field;
+            std::string rest;
+            if (!(parts >> field.type) || !(parts >> rest))
+                continue;
+            const size_t bracket = rest.find('[');
+            if (bracket == std::string::npos)
+            {
+                field.name = rest;
+            }
+            else
+            {
+                field.name = rest.substr(0, bracket);
+                const size_t close = rest.find(']');
+                field.dim = (close == std::string::npos)
+                    ? rest.substr(bracket + 1)
+                    : rest.substr(bracket + 1, close - bracket - 1);
+            }
+            // 标识符防御：只收名字合法的字段（挡住漏网的非成员行）
+            if (field.name.empty()
+             || !(std::isalpha(static_cast<unsigned char>(field.name[0]))
+                  || field.name[0] == '_'))
+                continue;
+            NormalizeStructField(field);
+            fields.push_back(field);
+        }
+        return fields;
+    }
+
+    /// 收集文本里的 `#define <名字> <十进制值>`（注释已由 StripCommentTokens 剥掉）——
+    /// 结构字段数组长度写的是宏名时，**值从定义处现读**，门内不复制任何数字（单一真源：
+    /// 改 #define 即改判定；读不出值 = fail-fast，与容量契约同纪律）。
+    static std::vector<std::pair<std::string, size_t>> CollectDefineConstants(
+        const std::string &comment_stripped_text)
+    {
+        std::vector<std::pair<std::string, size_t>> defines;
+        std::istringstream stream(comment_stripped_text);
+        std::string line;
+        while (std::getline(stream, line))
+        {
+            std::istringstream parts(line);
+            std::string hash, name, value;
+            if (!(parts >> hash >> name >> value) || hash != "#define")
+                continue;
+            try
+            {
+                defines.emplace_back(name, std::stoull(value));
+            }
+            catch (...)
+            {
+                // 非十进制值的宏与结构长度无关，跳过（长度用到它时仍会 fail-fast）
+            }
+        }
+        return defines;
+    }
+
+    /// 字段的存储尺寸（本结构词汇表内）：uint=4 / uint8=1；数组 = 元素 × 长度。
+    /// dim 为字面量直接用；为宏名则查 defines（CollectDefineConstants 产出）。
+    static bool StructFieldStorageSize(const StructFieldEntry &field,
+                                       const std::vector<std::pair<std::string, size_t>> &defines,
+                                       size_t &out_bytes)
+    {
+        out_bytes = (field.type == "uint8") ? 1u : 4u;
+        if (field.dim.empty())
+            return true;
+        try
+        {
+            out_bytes *= std::stoull(field.dim);
+            return true;
+        }
+        catch (...)
+        {
+        }
+        for (const auto &entry : defines)
+        {
+            if (entry.first == field.dim)
+            {
+                out_bytes *= entry.second;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// C++ EntityGPU（inc/hgl/ecs/core/EntityGPU.h）与 GLSL 侧 EntityGPUData
+    /// （ShaderLibrary/ecs/entity_gpu.glsl）必须逐字段同序同型同长度（§7.4 / §8.3-③）。
+    /// 为什么必须门禁：这是 128 B 行的 GPU 镜像 —— 漂移 = 剔除着色器按错步长解引用
+    /// 实体行（W.world-addresses-struct-parity 同族的静默错位坑）。
+    /// 两端唯一容许的形状差 = GLSL 行尾**显式**填充 `_pad`（scalar layout 下 GLSL
+    /// 不会隐式补 alignas 的 40 B，不写死则数组步长 = 88 而非 128）：比对时要求
+    /// C++ 字段列表是 GLSL 字段列表的前缀，余量全部由 `_pad*` 承担，且 GLSL 侧
+    /// 总存储尺寸必须 == 128（sizeof(EntityGPU) 的头文件断言同值，此处对拍）。
+    static GateResult RunEntityGPUStructParityCase()
+    {
+        GateResult result;
+        result.name = "E.entity-gpu-struct-parity";
+
+        const std::string cpp_text =
+            ReadFileText(RepoRootPath("inc/hgl/ecs/core/EntityGPU.h"));
+        const std::string glsl_text =
+            ReadFileText(RepoRootPath("ShaderLibrary/ecs/entity_gpu.glsl"));
+
+        if (cpp_text.empty() || glsl_text.empty())
+        {
+            result.diagnostics.emplace_back(
+                "无法读取 EntityGPU.h / entity_gpu.glsl（结构对表的两端）");
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        const std::vector<StructFieldEntry> cpp_fields =
+            ExtractStructFieldsLineWise(cpp_text, "EntityGPU");
+        const std::vector<StructFieldEntry> glsl_fields =
+            ExtractStructFieldsLineWise(glsl_text, "EntityGPUData");
+
+        const auto fmt = [](const std::vector<StructFieldEntry> &fields) -> std::string
+        {
+            std::string out;
+            for (const StructFieldEntry &f : fields)
+            {
+                if (!out.empty()) out += ", ";
+                out += f.type + " " + f.name;
+                if (!f.dim.empty()) out += "[" + f.dim + "]";
+            }
+            return out;
+        };
+
+        if (cpp_fields.empty() || glsl_fields.empty())
+        {
+            result.diagnostics.emplace_back(
+                std::string("EntityGPU 字段提取为空（结构标记被改写？）取块器 = 逐行式，")
+                + "C++= " + fmt(cpp_fields) + " | GLSL= " + fmt(glsl_fields));
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        // C++ 字段必须是 GLSL 字段的前缀（同序同型同长度逐字段比对）
+        const size_t common = cpp_fields.size() < glsl_fields.size()
+                            ? cpp_fields.size() : glsl_fields.size();
+        for (size_t i = 0; i < common; ++i)
+        {
+            if (cpp_fields[i].type != glsl_fields[i].type
+             || cpp_fields[i].name != glsl_fields[i].name
+             || cpp_fields[i].dim  != glsl_fields[i].dim)
+            {
+                result.diagnostics.emplace_back(
+                    "EntityGPU 字段漂移：第 " + std::to_string(i) + " 项 C++="
+                    + cpp_fields[i].type + " " + cpp_fields[i].name
+                    + (cpp_fields[i].dim.empty() ? "" : "[" + cpp_fields[i].dim + "]")
+                    + " GLSL=" + glsl_fields[i].type + " " + glsl_fields[i].name
+                    + (glsl_fields[i].dim.empty() ? "" : "[" + glsl_fields[i].dim + "]")
+                    + "；两端必须同序同型同长度");
+                result.passed = false;
+                return result;
+            }
+        }
+        if (cpp_fields.size() != glsl_fields.size())
+        {
+            // 余量必须全是显式填充 `_pad*`，否则 = 一端多出真实字段
+            const std::vector<StructFieldEntry> &extra
+                = cpp_fields.size() > glsl_fields.size() ? cpp_fields : glsl_fields;
+            for (size_t i = common; i < extra.size(); ++i)
+            {
+                if (extra[i].name.rfind("_pad", 0) != 0)
+                {
+                    result.diagnostics.emplace_back(
+                        "EntityGPU 字段数不一致且余量不是显式填充：多余项 "
+                        + extra[i].type + " " + extra[i].name
+                        + "（C++= " + fmt(cpp_fields) + " | GLSL= " + fmt(glsl_fields)
+                        + "）；GLSL 只容许行尾 _pad* 承担 alignas(64) 的 40 B 填充");
+                    result.passed = false;
+                    return result;
+                }
+            }
+        }
+
+        // GLSL 总存储尺寸必须恰为 128 B（数组步长契约：88 载荷 + 显式 _pad）
+        std::string glsl_stripped = glsl_text;
+        StripCommentTokens(glsl_stripped);
+        const auto glsl_defines = CollectDefineConstants(glsl_stripped);
+        size_t glsl_bytes = 0;
+        for (const StructFieldEntry &f : glsl_fields)
+        {
+            size_t bytes = 0;
+            if (!StructFieldStorageSize(f, glsl_defines, bytes))
+            {
+                result.diagnostics.emplace_back(
+                    "EntityGPU GLSL 字段 " + f.name + " 的数组长度不是可求值常数："
+                    + f.dim);
+                result.passed = false;
+                return result;
+            }
+            glsl_bytes += bytes;
+        }
+        if (glsl_bytes != 128)
+        {
+            result.diagnostics.emplace_back(
+                "EntityGPUData 的 GLSL 总存储 = " + std::to_string(glsl_bytes)
+                + " B，必须 == 128 B（sizeof(EntityGPU)；scalar layout 无隐式填充，"
+                "差值必须由行尾 _pad 显式写死）");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     /// 「表归属」分类表（**唯一真源**）：每个地址字段必须**恰好**属于一侧 ——
     /// `WorldAddresses`（世界私有：多世界同帧各写自己的）或 `GlobalAddresses`（设备级全局：跨世界共享的资源池）。
     /// 新增地址字段必须在此登记，否则门报「未分类字段」（见 §6 契约 ④）。
@@ -3796,14 +4078,14 @@ namespace
         else
         {
             // Consolidated scene Set 0 UBOs into single scene_ubo.glsl; added RenderItemResolve.glsl, shadow_receiver_source.glsl, pcf_shadow.glsl.
-            if (file_count != 69)
-                result.diagnostics.emplace_back("LoadDirectory expected 69 file modules, got "
+            if (file_count != 70)
+                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 69;
+            const int expected_count = 70;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -4922,6 +5204,7 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());
     if (run_interface) results.push_back(RunWorldAddressesStructParityCase());
+    if (run_interface) results.push_back(RunEntityGPUStructParityCase());
     if (run_interface) results.push_back(RunAddressOwnershipCase(false));
     if (run_interface) results.push_back(RunAddressOwnershipCase(true));
     if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());
