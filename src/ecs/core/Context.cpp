@@ -1450,7 +1450,7 @@ namespace hgl
 
         /// T3c-2：把实体行表里**脏了的那几行**写进设备镜像（不整表 512 KB 传）。
         /// 判据：`entity_gpu_table.GetDirtyCount() == 0` ⇒ **一行都不传**（零成本）。
-        void ECSContext::UploadEntityGPUDirtyRows()
+        void ECSContext::UploadEntityGPUDirtyRows(const uint32_t frame_slot)
         {
             if (!entity_gpu_view || !entity_gpu_buffer)
                 return;
@@ -1462,17 +1462,29 @@ namespace hgl
 
             entity_gpu_table.CollectDirtyRows(dirty_rows);
 
-            auto *dst = reinterpret_cast<EntityGPU *>(entity_gpu_view->Data());
-            if (!dst)
+            auto *base = reinterpret_cast<EntityGPU *>(entity_gpu_view->Data());
+            if (!base)
                 return;
 
-            for (const uint32_t index : dirty_rows)
-            {
-                const EntityGPU *src = entity_gpu_table.Row(index);
+            constexpr uint32_t kCopies = uint32_t(graph::kWorldAddressesSlotCount);
 
-                if (src)
-                    dst[index] = *src;
+            // 写进**每一份**：某行在第 N 帧变脏，第 N+1..N+k 帧用的是别的份（帧槽轮转）——
+            // 只写本帧那份会让其余份留着旧值。脏行数通常只有几十行（可动实体），
+            // 8 份 × 128 B × 脏行数 ≪ 整表 4 MB，故不做逐份脏位（复杂度换不到东西）。
+            for (uint32_t copy = 0; copy < kCopies; ++copy)
+            {
+                EntityGPU *dst = base + size_t(copy) * EntityGPUTable::kCapacity;
+
+                for (const uint32_t index : dirty_rows)
+                {
+                    const EntityGPU *src = entity_gpu_table.Row(index);
+
+                    if (src)
+                        dst[index] = *src;
+                }
             }
+
+            (void)frame_slot;
 
             entity_gpu_view->Commit();
             entity_gpu_table.ClearDirty();
@@ -1504,7 +1516,8 @@ namespace hgl
             // 上传策略（脏行 or 整表 / 单份 or 帧槽多份）见设计稿 P-4：T3c-2/T3c-3 用实测定。
             entity_gpu_buffer = bm->CreateSSBO(
                 name_buf,
-                VkDeviceSize(EntityGPUTable::kCapacity) * VkDeviceSize(sizeof(EntityGPU)));
+                VkDeviceSize(graph::kWorldAddressesSlotCount)
+                    * VkDeviceSize(EntityGPUTable::kCapacity) * VkDeviceSize(sizeof(EntityGPU)));
             if (!entity_gpu_buffer)
             {
                 LogError("[ECSContext::InitializeEntityGPUTable] CreateSSBO failed");
@@ -1537,10 +1550,14 @@ namespace hgl
 
             entity_gpu_view->Commit();
 
-            LogInfo("[ECSContext] 实体行表就绪：%s  %u 行 × %zu B = %zu KB，设备地址=0x%llX"
-                    "（消费者：GPU 剔除读实体行；地址经 WorldAddresses.addr_entity_gpu 下发）",
+            LogInfo("[ECSContext] 实体行表就绪：%s  %u 行 × %zu B = %zu KB／份 × %u 份（帧槽）= %zu KB，"
+                    "帧槽 0 基址=0x%llX（消费者：GPU 剔除读实体行；每帧地址=基址+帧槽×每份字节，"
+                    "经 WorldAddresses.addr_entity_gpu 下发）",
                     GetName().c_str(), EntityGPUTable::kCapacity, sizeof(EntityGPU),
                     size_t(EntityGPUTable::kCapacity) * sizeof(EntityGPU) / 1024,
+                    uint32_t(graph::kWorldAddressesSlotCount),
+                    size_t(graph::kWorldAddressesSlotCount) * EntityGPUTable::kCapacity
+                        * sizeof(EntityGPU) / 1024,
                     (unsigned long long)entity_gpu_table_addr);
 
             return true;
@@ -1637,12 +1654,18 @@ namespace hgl
                 want.addr_draw_item_ids = id_storage->GetGPUAddress();
 
             // T3c：实体行表（世界私有；消费者 = GPU 剔除读实体行）。未建表 ⇒ 保持 0（消费者判 0 跳过）。
-            want.addr_entity_gpu = entity_gpu_table_addr;
+            // **按帧槽偏移**（T3c-3 实测：可动实体的 `row[Transform]` 随帧槽变，3 个行号轮转
+            // ⇒ 单份表会被本帧写入覆盖上一帧正在被读的内容 = 跨帧别名）。份数 = 帧槽空间，
+            // 不与变换侧环深度对齐（那个 3 是待查的既有条件，不是本表的依据）。
+            want.addr_entity_gpu = entity_gpu_table_addr
+                + static_cast<uint64_t>(slot)
+                * static_cast<uint64_t>(EntityGPUTable::kCapacity)
+                * static_cast<uint64_t>(sizeof(EntityGPU));
 
             // T3c-2b（B1）：L2W 行号由**变换侧**写入实体行表（生产者写自己的产物）；
             // 世界这里只负责把**脏行**上传设备镜像。
 
-            UploadEntityGPUDirtyRows();
+            UploadEntityGPUDirtyRows(slot);
 
             // env（sky / shadow）随世界（C2）：按**本世界生效 profile** 取址写本世界槽。
             // sky 单份 buffer（全帧槽同址）；shadow 是每帧槽一份的 ring（下标 = 帧槽）⇒ 取本槽那份。

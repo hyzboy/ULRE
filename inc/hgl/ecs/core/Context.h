@@ -412,8 +412,9 @@ namespace hgl
             /// 世界 In,itialize 时调用；失败 = fail-fast（地址缺失会让 shader 解引用 0 = UB）。
             bool InitializeWorldAddressesTable();
 
-            /// T3c-2：把实体行表的**脏行**上传到设备镜像（`SyncWorldAddresses` 内调用）
-            void UploadEntityGPUDirtyRows();
+            /// T3c-2：把实体行表的**脏行**上传到设备镜像（`SyncWorldAddresses` 内调用）。
+            /// `frame_slot` = 本帧槽（T3c-3 起表按帧槽切份，每份一份世界私有 SSBO 区段）。
+            void UploadEntityGPUDirtyRows(uint32_t frame_slot);
 
             /// **实体行表**（世界私有 SSBO：`EntityGPUTable::kCapacity × 128 B`）建表 + 取设备地址。
             /// 地址缺失 = 消费者解引用 0 基址 = UB ⇒ fail-fast（与地址表同款判据）。

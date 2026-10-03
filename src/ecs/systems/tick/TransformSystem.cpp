@@ -59,7 +59,9 @@ namespace hgl::ecs
             }
 
             // B1b：L2W 行号 = 静态 `1 + slot` / 动态 `基址(环布局) + slot`
-            world->GetEntityGPUTable().SetTransformRow(owner, movable ? (dynamic_base + slot) : (slot + 1));
+            const uint32_t row = movable ? (dynamic_base + slot) : (slot + 1);
+
+            world->GetEntityGPUTable().SetTransformRow(owner, row);
         });
     }
 
