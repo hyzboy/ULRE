@@ -469,12 +469,17 @@ private:
                 Entity *e = ecs_world->CreateEntity<Entity>(name);
                 sphere_entities[row][col] = e;
 
-                auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(e->GetEntityID(), Mobility::Movable));
+                // T3c-3 对照：**(0,0) 那个球是静态实体**（其余全可动）。静态实体的 L2W 行号
+                // 是常量（`1 + slot`）⇒ 写者每帧重下发也不产生脏行（零重传）；可动实体则随帧槽轮转。
+                // 本行只作**行为对照**（位置/画面与其余球一致）；机理判据在探针里（纯数据）。
+                const Mobility mobility = (row == 0 && col == 0) ? Mobility::Static : Mobility::Movable;
+
+                auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(e->GetEntityID(), mobility));
                 sphere_transforms[row][col] = transform;
                 transform.SetLocalPosition(glm::vec3(x, y, 0.0f));
                 transform.SetLocalRotation(MakeRandomRotation(row, col));
                 transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-                transform.SetMobility(Mobility::Movable);
+                transform.SetMobility(mobility);
 
                 auto prim_comp = e->GetContext()->GetOrCreateGeometryData(e);
                 hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);

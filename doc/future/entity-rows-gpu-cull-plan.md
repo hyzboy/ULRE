@@ -153,7 +153,7 @@ for each entity slot i where (entity.flags & Active) && (entity.flags & Visible)
 | **P-1** | `row[Transform]` 存什么 | ① **L2W 行号**（GPU 侧直接可用） ② `TransformDataStorage` 句柄（CPU 语义） | **①** | ②shader 还要再换算一次（且换算式含帧槽 ⇒ shader 得知道 mobility/预算）；①与现有 `MeshDrawParams.addr_transform_id` 同源 |
 | **P-2** | 表索引 | ① **按 `EntityID.index` 直索引（槽位表 + Active 位）** ② 紧凑活跃集（CPU 维护） | **①** | ②给 CPU 增加一份需同步的映射，且增删要重排 |
 | **P-3** | 视锥平面来源 | ① **shader 从相机行现解** ② CPU 每帧传 push constant | **①** | ②每帧多一次 CPU 计算与上传；①与"相机行已在世界表"的既有分层一致 |
-| **P-4** | 表的**帧槽**语义 | ① 与相机行同款「世界私有 × 帧槽」多份 ② 单份 + 脏集合一次性写 | **待实测后定** | 剔除在**提交前**读表：若 GPU 侧读到的是"下一帧写完的同一份"，就会用错帧的行 ⇒ 需要按帧轮转或多份；相机行当年正是为此做成 16 槽 × 8 帧槽 |
+| **P-4** | 表的**帧槽**语义 | ① 与相机行同款「世界私有 × 帧槽」多份 ② 单份 + 脏集合一次性写 | **已实测定案：选 ①**（份数 = `kWorldAddressesSlotCount` = 8 ⇒ 8 × 512 KB = **4 MB**，世界私有） | 剔除在**提交前**读表：若 GPU 侧读到的是"下一帧写完的同一份"，就会用错帧的行 ⇒ 需要按帧轮转或多份；相机行当年正是为此做成 16 槽 × 8 帧槽。<br>**T3c-3 实测（真世界 PBRSpheres，钉住一个可动实体）**：`row[Transform]` = `4097 → 8193 → 12289 → …`，**步长恒 4096 行（= 动态段预算）、周期 3 帧**。⇒ 行号**随帧槽变化** ⇒ **单份 = 跨帧别名**（帧 N 的行号被帧 N+1 的写入覆盖，GPU 读到的是别帧的 L2W 段 ⇒ 取错变换矩阵）；与相机行同款多份是正解。⚠ **不跟随**变换侧的环深度 3：那是**待查的既有条件**（若主帧只用槽 0..2 则 3 合理；若主帧会用到 3..7，则变换缓冲自身在部分槽上就是别名的），实体表不该去跟随一个可疑值 |
 | **P-5** | 材质/纹理 id 的来源 | ① 复用 `MaterialRuntimeTable`（每实例 slot） ② 暂用 0（先只验证几何/变换剔除） | **①**，若改动过大则退 ② | 决定这个特性一次落地多少 |
 | **P-6** | 消费者落位 | ① **引擎侧**（世界驱动系统 + `ShaderLibrary` 里的 cull 计算着色器） ② 示例侧（照抄 `ComputeFrustumCull`） | **①** | ②等于把"引擎能力"留在示例里，用户明确反对（示例只做装配） |
 
@@ -165,7 +165,7 @@ for each entity slot i where (entity.flags & Active) && (entity.flags & Visible)
 |---|---|---|---|
 | **T3a** | `WorldAddresses` 加 `addr_entity_gpu`（**五处连带面**全做） | 门 **42 PASS / 0 FAIL**（含两条 parity/ownership 用例）；`static_assert` 逐字段对齐 | `b8-t3a` |
 | **T3b** | 世界侧实体表存储：容量 4096、按 `index` 索引、`Active/Visible` + type/row 抄写（**挂卸/可见性/行变更三处写入**） | 探针：建 N 实体 ⇒ 表内 `Active` 位数 == N、`row[Geometry]` 与 `Entity::GetComponentRow(Geometry)` 逐字节相等；`Entity` 销毁 ⇒ 位清零 | `b8-t3b` |
-| **T3c** | 每帧下发（`addr_entity_gpu` 写世界地址表 + （P-4 定的）多份/脏集合上传） | 探针/测试：`SetFrameIndex` 前后表地址与内容一致；跨帧读到的行属于本帧 | `b8-t3c` |
+| **T3c** ✅ | 每帧下发：`addr_entity_gpu` 写世界地址表（**按帧槽偏移** = 基址 + 帧槽 × 每份字节）+ **脏行上传**（`UploadEntityGPUDirtyRows(frame_slot)`，脏行写进每一份；`GetDirtyCount()==0` 即一行不传） | 已达成：① 地址非 0 且 16B 对齐（真世界日志实证）；② 脏行计划三条（无脏 0 / 改 1 行恰好 1 行且槽号正确 / 清脏后 0）；③ 静态段机理（首写脏 1 / 同值重下发脏 **0** / 值变后脏 1）；④ 表切 8 份（4 MB）；⑤ 跨帧行号的帧槽相关性已实测坐实（见 P-4） | `b8-t3c` |
 | **T3d** | 剔除计算着色器（引擎侧，`ShaderLibrary/`）：实体表 → visible/count/indirect | 门编译过；对拍：**GPU count == CPU 参考剔除计数**（同帧同相机，示例内双面打印） | `b8-t3d` |
 | **T3e** | 世界侧驱动系统（dispatch + barrier/fence + 把 count buffer 交给批次） | 示例跑满帧、无 VUID、无 error；`策略判定对拍` 不一致 0 | `b8-t3e` |
 | **T3f** | 示例装配 + **像素验收** | 像素与现状一致（同相机同场景）；剔除计数对拍不一致 0；GPU-Driven 批**逐项自成簇**纪律不破 | `b8-t3f` |
@@ -179,7 +179,7 @@ for each entity slot i where (entity.flags & Active) && (entity.flags & Visible)
 
 | # | 风险 | 默认 |
 |---|---|---|
-| R1 | 表是**每帧可变**（可见性/行迁移）而剔除在提交前读 ⇒ 读到别的帧的行 | 按帧槽多份（P-4）；先实测单份是否真的会错帧 |
+| R1 | 表是**每帧可变**（可见性/行迁移）而剔除在提交前读 ⇒ 读到别的帧的行 | **实测坐实**（T3c-3：可动实体的 `row[Transform]` 周期 3、步长 4096 随帧槽轮转）⇒ 已按**帧槽多份**收口（8 份 × 512 KB = 4 MB） |
 | R2 | `row[Transform]`（L2W 行）随 mobility/帧槽变化而变 ⇒ 写路径必须与 `SubmitTransformUpdates` 同帧同源 | 复用现有 `TryGetTransformSlot` 算法，不另造一份换算 |
 | R3 | 4096 槽 × 128 B = 512 KB/世界；多世界 = 线性叠加 | 已拍不扩容；超限 fail-fast |
 | R4 | 剔除结果与 CPU 收集的批次划分不一致（批次仍 CPU 收集）⇒ 可能"GPU 说可见但批次里没这项" | 首版把消费者限制在**同一批**（批内实体行驱动），批次划分保持 CPU 权威 |
