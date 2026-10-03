@@ -26,6 +26,7 @@
 #include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
 #include <hgl/ecs/support/GPUCullSystem.h>
+#include <hgl/ecs/support/CPUCullReferenceSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -101,6 +102,13 @@ namespace
         if (gpu_cull_system)
         {
             gpu_cull_system->Initialize(ctx);
+        }
+
+        // CPU cull reference system for parity testing (T3d-2)
+        auto cpu_cull_system = EnsureRenderSystem<hgl::ecs::CPUCullReferenceSystem>(ctx);
+        if (cpu_cull_system)
+        {
+            cpu_cull_system->Initialize(ctx);
         }
 
         return true;

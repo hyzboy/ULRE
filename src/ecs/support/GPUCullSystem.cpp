@@ -233,7 +233,15 @@ namespace hgl::ecs
             compute_queue->WaitLastSubmitFence();
         }
 
-        // 读取可见计数（调试用）
+        // 读取可见计数并记录日志
+        const uint32_t visible_count = GetGPUVisibleCount();
+        GLogDebug(u8"[GPUCullSystem] Dispatched: entities=%u, visible=%u", entity_count, visible_count);
+    }
+
+    uint32_t GPUCullSystem::GetGPUVisibleCount() const
+    {
+        if (!draw_count_buffer_) return 0;
+
         uint32_t visible_count = 0;
         void* mapped = draw_count_buffer_->Map(0, sizeof(uint32_t));
         if (mapped)
@@ -241,6 +249,6 @@ namespace hgl::ecs
             visible_count = *(uint32_t*)mapped;
             draw_count_buffer_->Unmap();
         }
-        GLogDebug(u8"[GPUCullSystem] Dispatched: entities=%u, visible=%u", entity_count, visible_count);
+        return visible_count;
     }
 }

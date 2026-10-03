@@ -41,6 +41,9 @@ namespace hgl::ecs
         uint64_t GetIndirectCommandsAddress() const { return indirect_commands_addr_; }
         uint64_t GetDrawCountAddress() const { return draw_count_addr_; }
 
+        // 获取 GPU 剔除的可见实体数量（从 draw_count buffer 读取）
+        uint32_t GetGPUVisibleCount() const;
+
     private:
         // 创建 compute pipeline
         bool CreateComputePipeline();
