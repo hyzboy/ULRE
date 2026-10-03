@@ -28,6 +28,14 @@ namespace hgl::ecs
         if (!gpu_cull)
             return;
 
+        // opt-in 门（默认关）：未显式允许**接管绘制** ⇒ 完全不碰批次。
+        // 本 hook 会把被接管批次的 CPU 侧 ICB/行表生成整段跳过（gpu_driven_override），
+        // 无条件接管 = 所有示例的间接计数被换成一个还没跑通的 count buffer ⇒
+        // 画面全空（RenderDoc 实测 vkCmdDrawMeshTasksIndirectCountEXT drawCount=0）。
+        // 与 dispatch 开关分离：接管还要求 per-batch 行表与剔除输出同序（T3f）。
+        if (!gpu_cull->IsDrawOverrideEnabled())
+            return;
+
         // 获取 GPU 剔除结果的 buffer
         auto* indirect_commands_buffer = gpu_cull->GetIndirectCommandsBuffer();
         auto* draw_count_buffer = gpu_cull->GetDrawCountBuffer();

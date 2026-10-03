@@ -1665,6 +1665,32 @@ namespace hgl
             // T3c-2b（B1）：L2W 行号由**变换侧**写入实体行表（生产者写自己的产物）；
             // 世界这里只负责把**脏行**上传设备镜像。
 
+            // T3d：L2W 矩阵池基址入表（消费者 = GPU 剔除按 `row[Transform]` 行号直索引）。
+            // **整块一个地址**（全帧槽同址）：行号本身已含帧槽段基址（B1b：静态 `1+slot` /
+            // 动态 `环基址+slot`）⇒ 不需要像实体表那样按帧槽切份、也不需要帧槽偏移。
+            // 取不到（变换缓冲未建 / 系统未注册）⇒ 保留上一份好值：0 基址会让 shader
+            // 解引用 = UB（与 sky/shadow 同纪律）。
+            {
+                uint64_t l2w_addr = 0;
+                if (auto ts = GetSystem<TransformSystem>())
+                {
+                    if (auto *tb = ts->GetTransformBuffer())
+                    {
+                        if (auto *l2w_buf = tb->GetTransformDataBuffer())
+                        {
+                            if (auto *l2w_gpu = l2w_buf->GetGPUBuffer())
+                            {
+                                l2w_addr = gpu_device
+                                    ? gpu_device->GetBufferDeviceAddressAligned16(
+                                          l2w_gpu->GetVkDeviceBuffer())
+                                    : 0;
+                            }
+                        }
+                    }
+                }
+                want.addr_l2w = (l2w_addr != 0) ? l2w_addr : dst->addr_l2w;
+            }
+
             UploadEntityGPUDirtyRows(slot);
 
             // env（sky / shadow）随世界（C2）：按**本世界生效 profile** 取址写本世界槽。

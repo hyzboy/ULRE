@@ -30,7 +30,14 @@ namespace hgl::ecs
 
     void CPUCullReferenceSystem::Update(float delta_time)
     {
-        if (!context_) return;
+        if (!context_)
+            return;
+
+        // opt-in 门：GPU 剔除管线未启用 ⇒ 对拍没有对照物，整段跳过
+        // （本系统的 Update 会 Map 整块 L2W SSBO，白跑一次全量遍历）。
+        auto gpu_cull = context_->GetSystem<GPUCullSystem>();
+        if (!gpu_cull || !gpu_cull->IsEnabled())
+            return;
 
         // 1. 执行 CPU 剔除
         PerformCPUCulling();

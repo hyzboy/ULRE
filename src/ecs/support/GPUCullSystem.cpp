@@ -16,18 +16,21 @@ namespace hgl::ecs
 {
     namespace
     {
-        // Push constants 结构（必须与 GLSL 侧一致）
+        // Push constants 结构（必须与 GLSL 侧 entity_gpu_cull.glsl 的
+        // layout(push_constant) **逐字段同序同型**：u64 全部前置（8B 对齐自然成链），
+        // u32 收尾。布局漂移 = shader 读错字段 = 静默剔错，门抓不到（push constant
+        // 不经描述符 schema）。
         struct CullPushConstants
         {
             uint64_t addr_world_addresses;
             uint64_t addr_global_addresses;
-            uint32_t entity_count;
-            uint32_t max_visible_count;
             uint64_t visible_indices_addr;
             uint64_t indirect_commands_addr;
-            uint32_t vertex_count_per_entity;
-            uint32_t first_vertex_per_entity;
             uint64_t draw_count_addr;
+            uint32_t entity_count;
+            uint32_t max_visible_count;
+            uint32_t camera_row;          // ECSContext::GetActiveCameraRow()
+            uint32_t mesh_group_count_x;  // 间接命令 X 组数（绘制接管=T3f 时按几何给）
         };
 
         static_assert(sizeof(CullPushConstants) == 56, "CullPushConstants layout mismatch");
@@ -61,10 +64,35 @@ namespace hgl::ecs
     }
     bool GPUCullSystem::Initialize(ECSContext* context)
     {
-        if (!context) return false;
+        GLogInfo(u8"[GPUCullSystem] Initialize started (deferred)");
+        
+        if (!context) 
+        {
+            GLogError(u8"[GPUCullSystem] Initialize failed: context is null");
+            return false;
+        }
         context_ = context;
+        
+        // 延迟初始化：设备可能还没准备好，等到第一次 Update 时再初始化
+        GLogInfo(u8"[GPUCullSystem] Initialize registered, will init on first Update");
+        return true;
+    }
+
+    bool GPUCullSystem::EnsureInitialized()
+    {
+        if (initialized_)
+            return true;
+            
+        if (!context_)
+            return false;
+            
         device_ = context_->GetGPUDevice();
-        if (!device_) return false;
+        if (!device_) 
+        {
+            return false;  // 设备还没准备好，继续等待
+        }
+
+        GLogInfo(u8"[GPUCullSystem] Deferred initialization started");
 
         if (!CreateComputePipeline())
         {
@@ -78,6 +106,7 @@ namespace hgl::ecs
             return false;
         }
 
+        initialized_ = true;
         GLogInfo(u8"[GPUCullSystem] Initialized: max_visible=%u, work_group=%u",
                  kMaxVisibleEntities, kWorkGroupSize);
         return true;
@@ -86,14 +115,28 @@ namespace hgl::ecs
     bool GPUCullSystem::CreateComputePipeline()
     {
         auto* gc = context_->GetGraphicsContext();
-        if (!gc) return false;
+        if (!gc) 
+        {
+            GLogError(u8"[GPUCullSystem] CreateComputePipeline: GetGraphicsContext returned null");
+            return false;
+        }
 
         auto* shader_manager = gc->GetMaterialManager();
-        if (!shader_manager) return false;
+        if (!shader_manager) 
+        {
+            GLogError(u8"[GPUCullSystem] CreateComputePipeline: GetMaterialManager returned null");
+            return false;
+        }
 
         // 加载着色器源码
         AnsiString shader_source = LoadShaderSource("D:/ULRE/ShaderLibrary/ecs/entity_gpu_cull.glsl");
-        if (shader_source.IsEmpty()) return false;
+        if (shader_source.IsEmpty()) 
+        {
+            GLogError(u8"[GPUCullSystem] CreateComputePipeline: Failed to load shader source");
+            return false;
+        }
+        
+        GLogInfo(u8"[GPUCullSystem] Shader source loaded, size=%d", shader_source.Length());
 
         // 创建 compute pipeline
         compute_pipeline_ = shader_manager->CreateComputePipeline(
@@ -104,10 +147,11 @@ namespace hgl::ecs
 
         if (!compute_pipeline_)
         {
-            GLogError(u8"[GPUCullSystem] CreateComputePipeline failed");
+            GLogError(u8"[GPUCullSystem] CreateComputePipeline failed (pipeline is null)");
             return false;
         }
 
+        GLogInfo(u8"[GPUCullSystem] Compute pipeline created successfully");
         return true;
     }
 
@@ -157,8 +201,36 @@ namespace hgl::ecs
         return true;
     }
 
+    void GPUCullSystem::SetEnabled(bool enabled)
+    {
+        if (enabled_ == enabled)
+            return;
+
+        enabled_ = enabled;
+        GLogInfo(u8"[GPUCullSystem] GPU cull dispatch %s (opt-in)",
+                 enabled_ ? u8"ENABLED" : u8"disabled");
+    }
+
+    void GPUCullSystem::SetDrawOverrideEnabled(bool enabled)
+    {
+        if (override_draw_ == enabled)
+            return;
+
+        override_draw_ = enabled;
+        GLogInfo(u8"[GPUCullSystem] batch draw override %s (opt-in)",
+                 override_draw_ ? u8"ENABLED" : u8"disabled");
+    }
+
     void GPUCullSystem::Update(float delta_time)
     {
+        // opt-in 门（默认关）：未显式启用就不 dispatch，避免默认全局接管把示例画空。
+        if (!enabled_)
+            return;
+
+        // 延迟初始化：第一次 Update 时执行
+        if (!EnsureInitialized())
+            return;
+            
         if (!context_ || !device_ || !compute_pipeline_) return;
 
         // 获取实体表（返回引用）
@@ -187,13 +259,13 @@ namespace hgl::ecs
         CullPushConstants pc{};
         pc.addr_world_addresses = world_addr;
         pc.addr_global_addresses = global_addr;
-        pc.entity_count = entity_count;
-        pc.max_visible_count = kMaxVisibleEntities;
         pc.visible_indices_addr = visible_indices_addr_;
         pc.indirect_commands_addr = indirect_commands_addr_;
-        pc.vertex_count_per_entity = 36;  // 立方体顶点数（示例值，实际应从 GeometryData 获取）
-        pc.first_vertex_per_entity = 0;
         pc.draw_count_addr = draw_count_addr_;
+        pc.entity_count = entity_count;
+        pc.max_visible_count = kMaxVisibleEntities;
+        pc.camera_row = context_->GetActiveCameraRow();   // 与材质侧 pc_root.camera_row 同式
+        pc.mesh_group_count_x = 0;  // 绘制接管（T3f）前只出计数不出绘制
 
         // Dispatch compute shader
         auto* cmd = device_->CreateComputeCommandBuffer("GPUCullSystem.Cmd");

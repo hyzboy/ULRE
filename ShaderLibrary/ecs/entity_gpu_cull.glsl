@@ -1,17 +1,19 @@
+#version 460
 // @ulre begin
 // @ulre name entity_gpu_cull
 // @ulre kind Utility
 // @ulre priority 0
 // @ulre end
-
 // GPU 视锥剔除着色器（T3d-1a）
 // 输入：entity_gpu 表（世界私有，按 EntityID.index 索引）
 //       L2W 矩阵池（世界私有，按帧槽切份）
 //       相机信息（世界私有）
 //       几何 AABB 池（全局）
 // 输出：可见实体索引表 + 间接绘制命令表
-
-#version 460
+//
+// ⚠ `#version` 必须在**第 1 行**：引擎 GLSLCompiler 插件按"第 1 行是否 #version"
+// 决定是否注入版本头，`@ulre` 注释块把它挤下去 ⇒ 注入后出现第二个 #version ⇒
+// `'#version' : must occur first in shader`。
 #extension GL_EXT_buffer_reference : enable
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_ARB_gpu_shader_int64 : enable
@@ -27,13 +29,13 @@ layout(push_constant) uniform PushConstants
 {
     uint64_t addr_world_addresses;  // 世界地址表基址
     uint64_t addr_global_addresses; // 全局地址表基址
-    uint entity_count;              // 实体总数
-    uint max_visible_count;         // 最大可见实体数
     uint64_t visible_indices_addr;  // 可见实体索引表地址
     uint64_t indirect_commands_addr;// 间接绘制命令表地址
-    uint vertex_count_per_entity;   // 每个实体的顶点数
-    uint first_vertex_per_entity;   // 每个实体的首个顶点索引
     uint64_t draw_count_addr;       // 可见计数地址
+    uint entity_count;              // 实体总数
+    uint max_visible_count;         // 最大可见实体数
+    uint camera_row;                // 本 pass 活跃相机行号（与 pc_root.camera_row 同式）
+    uint mesh_group_count_x;        // 每条间接命令的 X 组数（绘制接管=T3f 时按几何给）
 } pc;
 
 // 世界地址表（通过 push constant 访问，覆盖 scene_ubo.glsl 里的定义）
@@ -42,8 +44,9 @@ layout(push_constant) uniform PushConstants
 #undef camera
 #define world_addresses WorldAddressesRef(pc.addr_world_addresses)
 #define global_addresses GlobalAddressesRef(pc.addr_global_addresses)
-// camera 宏：相机行号固定为 0（默认相机），帧槽由 world_addresses 基址决定
-#define camera CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[0u]
+// camera 宏：与材质侧 `pc_root.camera_row` 同口径（行号 = 相机槽 × 帧槽总数 + 帧槽，
+// 由 CPU `ECSContext::GetActiveCameraRow()` 算好下发）。写死 0 会读到别的相机的视锥。
+#define camera CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[pc.camera_row]
 
 // L2W 矩阵池（世界级访问，按帧槽切份）
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer LocalToWorldDataRef
@@ -104,9 +107,9 @@ void main()
     if ((entity.flags & 2u) == 0u)  // Visible 位
         return;
 
-    // 获取几何 ID 和变换 ID
+    // 获取几何 ID 和变换 ID（ComponentType：None=0, Transform=1, Geometry=2）
     uint geometry_id = entity.row[2u];  // Geometry 组件行号
-    uint transform_id = entity.row[0u]; // Transform 组件行号
+    uint transform_id = entity.row[1u]; // Transform 组件行号（槽 1，不是 0！0=None）
 
     if (geometry_id == 0u || transform_id == 0u)
         return;
@@ -168,14 +171,12 @@ void main()
     visible_indices.indices[visible_index] = entity_index;
 
     // 写入间接绘制命令（VkDrawMeshTasksIndirectCommandEXT 格式）
-    // groupCountX = 顶点数 / 组大小（假设组大小为 64）
-    // groupCountY = 实例数（1）
-    // groupCountZ = 1
+    // X = 组数（CPU 按几何给；剔除计数验证阶段 0 = 只出计数不出绘制）
+    // Y = 实例数（本管线每可见实体一条命令 ⇒ 1）；Z = 1（引擎约定）
     DrawIndirectCommandsRef indirect_commands = DrawIndirectCommandsRef(pc.indirect_commands_addr);
-    uint group_count_x = (pc.vertex_count_per_entity + 63u) / 64u;  // 假设 mesh shader 组大小为 64
     indirect_commands.commands[visible_index] = DrawMeshTasksIndirectCommand(
-        group_count_x,
-        1u,  // groupCountY = 实例数
-        1u   // groupCountZ
+        pc.mesh_group_count_x,
+        1u,
+        1u
     );
 }

@@ -103,6 +103,8 @@ namespace
         if (gpu_cull_system)
         {
             gpu_cull_system->Initialize(ctx);
+            // 开关由示例显式 opt-in（引擎默认不启用）：dispatch/对拍 = SetEnabled，
+            // 接管批次 = SetDrawOverrideEnabled；两个都不开 ⇒ 管线完全不触达渲染路径。
         }
 
         // CPU cull reference system for parity testing (T3d-2)

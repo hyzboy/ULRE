@@ -33,6 +33,20 @@ namespace hgl::ecs
         // 初始化：创建 compute pipeline 和输出 buffer
         bool Initialize(ECSContext* context);
 
+        /// **opt-in 开关（默认关）**：dispatch 剔除着色器 + 供 CPU 对拍读取。
+        /// 本管线仍在 T3f 验收阶段，未逐示例验证过像素正确性 ⇒ 不得默认全局
+        /// 接管批次（否则 `count=0` 会把所有示例画空）。
+        void SetEnabled(bool enabled);
+        bool IsEnabled() const { return enabled_; }
+
+        /// **第二个 opt-in（默认关）**：允许 `GPUCullResultHookSystem` 把剔除
+        /// 输出接管到批次的间接绘制（`gpu_driven_override` + ICB/count 替换）。
+        /// 与 `SetEnabled` 分离的原因：对拍只需要 dispatch 结果正确；接管绘制
+        /// 还要求 per-batch 行表（l2w_index / mesh_draw_params / material rows）
+        /// 与剔除输出同序 —— 那是 T3f 的设计题，不能绑在开关里一起做。
+        void SetDrawOverrideEnabled(bool enabled);
+        bool IsDrawOverrideEnabled() const { return override_draw_; }
+
         // 获取输出 buffer（供 MaterialBatch 使用）
         graph::DeviceBuffer* GetVisibleIndicesBuffer() const { return visible_indices_buffer_; }
         graph::IndirectMeshTaskBuffer* GetIndirectCommandsBuffer() const { return indirect_commands_buffer_; }
@@ -55,9 +69,15 @@ namespace hgl::ecs
         // 每帧 dispatch
         void DispatchCullShader();
 
+        // 延迟初始化（在第一次 Update 时执行）
+        bool EnsureInitialized();
+
     private:
         ECSContext* context_ = nullptr;
         graph::VulkanDevice* device_ = nullptr;
+        bool initialized_ = false;
+        bool enabled_ = false;        ///< opt-in 开关：默认关（dispatch + 对拍）
+        bool override_draw_ = false;  ///< opt-in 开关：默认关（接管批次间接绘制）
 
         // Compute pipeline
         graph::ShaderProgram* shader_program_ = nullptr;

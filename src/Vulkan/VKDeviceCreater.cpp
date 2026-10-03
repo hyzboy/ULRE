@@ -455,6 +455,12 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 
         // VK_KHR_8bit_storage：SSBO 顶点输入支持 uint8 数据（Vulkan12Features 字段）
         vk12_features.storageBuffer8BitAccess                 = dev12.storageBuffer8BitAccess;
+
+        // shaderInt8：存储层（8BitAccess）≠ 着色器算术层。EntityGPU 行的 GLSL 镜像
+        // `uint8_t type[] / _pad[]`（entity_gpu.glsl，经 int8 显式算术扩展）在 SPIR-V
+        // 里声明 Int8 capability——本 feature 不开 ⇒ vkCreateShaderModule 报
+        // VUID-VkShaderModuleCreateInfo-pCode-08740（RenderDoc/校验层实测踩到）。
+        vk12_features.shaderInt8                              = dev12.shaderInt8;
         vk12_features.uniformAndStorageBuffer8BitAccess       = dev12.uniformAndStorageBuffer8BitAccess;
 
         // buffer device address：材质数据 Arena 的 shader 侧寻址依赖

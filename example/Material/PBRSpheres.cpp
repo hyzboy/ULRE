@@ -31,6 +31,7 @@
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/support/GPUCullSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -590,6 +591,12 @@ public:
 
         if (!InitCamera())
             return false;
+
+        // B8/T3f：显式 opt-in 启用 GPU 剔除**对拍**（dispatch + CPU/GPU 计数比对）。
+        // 只开这一档，不开 SetDrawOverrideEnabled ⇒ 绘制仍走 CPU 收集路径，
+        // 画面与本开关无关（接管绘制需要 per-batch 行表与剔除输出同序，是 T3f 后续题）。
+        if (auto gpu_cull = ecs_world->GetSystem<GPUCullSystem>())
+            gpu_cull->SetEnabled(true);
 
         return true;
     }

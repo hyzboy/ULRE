@@ -105,7 +105,11 @@ namespace hgl
 
         public: // ── 写入路径（唯一写者 = 世界；三处：实体生死 / 组件挂卸 / 可见性）──
 
-            /// 实体建立：置 `Active`（`type[]/row[]` 由 `Refresh` 填）
+            /// 实体建立：置 `Active` + `Visible`（`type[]/row[]` 由 `Refresh` 填）。
+            /// Visible 默认置位是**与真值同源**的要求：`VisibilityDataStorage` 的默认态
+            /// 是可见（`IsEntityVisible` 不在不可见集合 ⇒ true），派生行表若不在建立时
+            /// 镜像这个默认值，就出现「真值可见、行表不可见」的漂移（GPU 剔除读行表 ⇒
+            /// 全剔空）。之后只有 `SetEntityVisible` 会改它，两条路径闭环。
             void Activate(EntityID id)
             {
                 Ensure();
@@ -118,7 +122,8 @@ namespace hgl
                     return;
                 }
 
-                row->flags |= uint32_t(EntityGPUFlags::Active);
+                row->flags |= uint32_t(EntityGPUFlags::Active)
+                            | uint32_t(EntityGPUFlags::Visible);
                 MarkDirty(id.index);
             }
 
