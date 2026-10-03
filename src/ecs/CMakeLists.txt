@@ -209,6 +209,7 @@ set(ECS_SUPPORT_FILES
     support/TransformAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
     support/PrimitiveBatchPipeline.cpp
+    support/GPUCullSystem.cpp
     support/text/TextRenderPipeline.cpp
 )
 

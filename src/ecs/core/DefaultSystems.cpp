@@ -25,6 +25,7 @@
 #include <hgl/ecs/support/primitive/PrimitiveBuildSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
+#include <hgl/ecs/support/GPUCullSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -94,6 +95,13 @@ namespace
         ctx->RegisterRenderSystem<hgl::ecs::PrimitiveBuildSystem>();
         ctx->RegisterRenderSystem<hgl::ecs::PrimitiveRenderSystem>();
         ctx->RegisterRenderSystem<hgl::ecs::PrimitiveOverlayRenderSystem>();
+
+        // GPU cull system for entity-based frustum culling (T3d-1b)
+        auto gpu_cull_system = EnsureRenderSystem<hgl::ecs::GPUCullSystem>(ctx);
+        if (gpu_cull_system)
+        {
+            gpu_cull_system->Initialize(ctx);
+        }
 
         return true;
     }
