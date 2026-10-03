@@ -27,6 +27,7 @@
 #include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
 #include <hgl/ecs/support/GPUCullSystem.h>
 #include <hgl/ecs/support/CPUCullReferenceSystem.h>
+#include <hgl/ecs/support/GPUCullResultHookSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -109,6 +110,13 @@ namespace
         if (cpu_cull_system)
         {
             cpu_cull_system->Initialize(ctx);
+        }
+
+        // GPU cull result hook system - hook GPU cull results to MaterialBatch (T3e)
+        auto gpu_cull_hook = EnsureRenderSystem<hgl::ecs::GPUCullResultHookSystem>(ctx);
+        if (gpu_cull_hook)
+        {
+            gpu_cull_hook->SetContext(ctx);
         }
 
         return true;

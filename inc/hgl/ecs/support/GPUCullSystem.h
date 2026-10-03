@@ -2,6 +2,7 @@
 #include <hgl/ecs/core/System.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
+#include <hgl/vk/buffer/IndirectCommandBuffer.h>
 #include <hgl/vk/pipeline/VKComputePipeline.h>
 #include <hgl/vk/VKShaderProgram.h>
 #include <hgl/ecs/core/Context.h>
@@ -19,7 +20,7 @@ namespace hgl::ecs
      * 设计：
      * - 执行阶段：RenderCollect（在 RunCulling 之后）
      * - 输入：EntityGPU 表（世界私有）、L2W 矩阵池、GeometryAABB 池
-     * - 输出：可见实体索引表、间接绘制命令表、可见计数
+     * - 输出：可见实体索引表、间接绘制命令表（VkDrawMeshTasksIndirectCommandEXT 格式）、可见计数
      */
     class GPUCullSystem : public System
     {
@@ -32,9 +33,9 @@ namespace hgl::ecs
         // 初始化：创建 compute pipeline 和输出 buffer
         bool Initialize(ECSContext* context);
 
-        // 获取输出 buffer 地址（供 MaterialBatch 使用）
+        // 获取输出 buffer（供 MaterialBatch 使用）
         graph::DeviceBuffer* GetVisibleIndicesBuffer() const { return visible_indices_buffer_; }
-        graph::DeviceBuffer* GetIndirectCommandsBuffer() const { return indirect_commands_buffer_; }
+        graph::IndirectMeshTaskBuffer* GetIndirectCommandsBuffer() const { return indirect_commands_buffer_; }
         graph::DeviceBuffer* GetDrawCountBuffer() const { return draw_count_buffer_; }
 
         uint64_t GetVisibleIndicesAddress() const { return visible_indices_addr_; }
@@ -64,7 +65,7 @@ namespace hgl::ecs
 
         // 输出 buffer
         graph::DeviceBuffer* visible_indices_buffer_ = nullptr;
-        graph::DeviceBuffer* indirect_commands_buffer_ = nullptr;
+        graph::IndirectMeshTaskBuffer* indirect_commands_buffer_ = nullptr;  // 改为 IndirectMeshTaskBuffer
         graph::DeviceBuffer* draw_count_buffer_ = nullptr;
 
         // 设备地址（BDA）

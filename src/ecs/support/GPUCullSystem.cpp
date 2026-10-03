@@ -59,7 +59,6 @@ namespace hgl::ecs
         if (draw_count_buffer_) delete draw_count_buffer_;
         // compute_pipeline_ 和 shader_program_ 由 MaterialManager 管理，不手动删除
     }
-
     bool GPUCullSystem::Initialize(ECSContext* context)
     {
         if (!context) return false;
@@ -129,16 +128,13 @@ namespace hgl::ecs
         if (!visible_indices_buffer_) return false;
         visible_indices_addr_ = device_->GetBufferDeviceAddressAligned16(visible_indices_buffer_->GetBuffer());
 
-        // 间接绘制命令表（VkDrawMeshTasksIndirectCommandEXT * kMaxVisibleEntities）
+        // 间接绘制命令表（IndirectMeshTaskBuffer）
         // VkDrawMeshTasksIndirectCommandEXT = { groupCountX, groupCountY, groupCountZ }
-        indirect_commands_buffer_ = device_->CreateBuffer(
-            "GPUCullSystem.IndirectCommands",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            kMaxVisibleEntities * sizeof(uint32_t) * 3,
-            kMaxVisibleEntities * sizeof(uint32_t) * 3,
-            nullptr,
+        indirect_commands_buffer_ = device_->CreateIndirectMeshTaskBuffer(
+            kMaxVisibleEntities,
             graph::BufferAllocPolicy::Auto,
-            graph::SharingMode::Exclusive
+            "GPUCullSystem.IndirectCommands",
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         );
         if (!indirect_commands_buffer_) return false;
         indirect_commands_addr_ = device_->GetBufferDeviceAddressAligned16(indirect_commands_buffer_->GetBuffer());

@@ -71,18 +71,18 @@ layout(buffer_reference, scalar, buffer_reference_align=4) buffer VisibleEntityI
     uint indices[];
 };
 
-// 输出：间接绘制命令
-struct DrawIndirectCommand
+// 输出：间接绘制命令（VkDrawMeshTasksIndirectCommandEXT 格式）
+// 引擎约定：groupCountX = 组数（顶点数/组大小），groupCountY = 实例数，groupCountZ = 1
+struct DrawMeshTasksIndirectCommand
 {
-    uint vertexCount;
-    uint instanceCount;
-    uint firstVertex;
-    uint firstInstance;
+    uint groupCountX;
+    uint groupCountY;
+    uint groupCountZ;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer DrawIndirectCommandsRef
 {
-    DrawIndirectCommand commands[];
+    DrawMeshTasksIndirectCommand commands[];
 };
 
 layout(local_size_x = 64) in;
@@ -167,12 +167,15 @@ void main()
     VisibleEntityIndicesRef visible_indices = VisibleEntityIndicesRef(pc.visible_indices_addr);
     visible_indices.indices[visible_index] = entity_index;
 
-    // 写入间接绘制命令
+    // 写入间接绘制命令（VkDrawMeshTasksIndirectCommandEXT 格式）
+    // groupCountX = 顶点数 / 组大小（假设组大小为 64）
+    // groupCountY = 实例数（1）
+    // groupCountZ = 1
     DrawIndirectCommandsRef indirect_commands = DrawIndirectCommandsRef(pc.indirect_commands_addr);
-    indirect_commands.commands[visible_index] = DrawIndirectCommand(
-        pc.vertex_count_per_entity,
-        1u,  // instanceCount
-        pc.first_vertex_per_entity,
-        visible_index  // firstInstance = 可见索引
+    uint group_count_x = (pc.vertex_count_per_entity + 63u) / 64u;  // 假设 mesh shader 组大小为 64
+    indirect_commands.commands[visible_index] = DrawMeshTasksIndirectCommand(
+        group_count_x,
+        1u,  // groupCountY = 实例数
+        1u   // groupCountZ
     );
 }
