@@ -318,6 +318,9 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 | **T3f-2（形态 B）**：gather 输出直连接管绘制（含删除 GPUCullResultHookSystem） | `f2ed4fcd6` | 离屏对照（visible=14/100 真剔 86）像素 **三方逐字节全等**（CPU=A=B）；[T3f2] ENGAGED 正向判据；门 **44 PASS**（新用例 E.mesh-draw-params-head-parity，抓力实测）；详见 §8.2e |
 | **T3g**：派发异步化 + 资源生命周期一次化（修句柄泄漏/stall；**形态 A 退役**） | 本批 | Release `gpu_dispatch` 1114→**~150us/帧（-86%）**；泄漏判据 `tracked_objects` 960 帧**恒 165**（旧实现随帧上涨）；VUID=0（交接沿排空修掉 vkFreeMemory-00677）；门 44/0；像素 CPU==形态B；详见 §8.2f |
 | **T3h**：阴影接收事实的 GPU 通路（欠账①清；guard 阴影前提删除） | 本批 | 值链三段 **100/100**（非默认实体注入实测：idx=23 NoReceive、idx=74 bias=2.0）；门 44/0；ENGAGED reject=0；像素 CPU==B 全等；详见 §8.2g |
+| **T3i**：③ 多批/混材质（单次派发 + 批标签/切片/每批计数；▸§8.6） | `6b6baa39f` | 多批实测 `ENGAGED batches=2/2 items=100 arena_rows=104`、`Σcount=100=global overflow=0 值链 100/100`、Parity 100/100/0、VUID=0、像素三方逐字节全等 |
+| 测试床示例：`CoverageVariants`（同 def 两覆盖变体）/ `AlphaModes`（4 行 alpha 方式 × 7 档比例） | `4c0fd9c40` / `9a5505246` | 前者 2 批、后者 4 批；均带 `CV_*` / `AM_*` opt-in 与像素 dump |
+| alpha 呈现链三修：dither 覆盖判定被 `#ifdef HGL_ALPHA_TEST` 吃掉 → 修守卫；曲面 alpha 写进输出（`HGL_ALPHA_OUTPUT`，blend/A2C 由此生效）；有效 alpha = `base_color.a × opacity_mask.r` | `6d3b2c95a` / `d7fb7b524` / `9dca1071e`（+`bc2a80ae0`/`2c9c7b81d` 示例侧） | 门 44/0；四排形态量化可分（空洞 0 / 0.14+中间调 28% / 0.73 / 0.66）；梯子实测 ≈ 理论；像素三方全等（混合排偶发顺序差异，见 §8.7 B1） |
 
 ### 8.2 落地件清单（T3d/T3e/T3f-1/T3f-2 全部达成；各节 = §8.2b/§8.2c/§8.2d/§8.2e）
 
@@ -588,7 +591,7 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
    ① ~~ShadowProxy GPU 行~~ **已完成（T3h，见 §8.2g）**；
    ② **meshlet 几何**（X 组数 = GetMeshletCount 分支）—— 池行补 meshlet_count 字段
       或另源，与 CPU 同口径后才放开；
-   ③ **多批/混合材质场景**（R4 单批前提）—— **设计中（§8.5：共享竞技场 + 按批切片）**；
+   ③ ~~多批/混合材质场景~~ **已完成（T3i `6b6baa39f`，见 §8.6；测试床 CoverageVariants/AlphaModes）**；
    ④ **实例化/多实例 item**（gather 每实体一命令 Y=1 不适配）。
 3. **架构决策（2026-10-04 拍板）**：
    - **DGC 不在本线计划内**：开发机实测无 `VK_EXT_device_generated_commands`
@@ -612,7 +615,7 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
 - **变换侧 L2W 环深度 = 3，而帧槽空间 = 8**（`HGL_FRAME_SLOT_TOTAL`）：若主帧只用槽 0..2 则 3 合理；
   若主帧会用到 3..7，则**变换缓冲自身在部分槽上就是别名的**。实体表已按**帧槽空间**切份（不复用这个 3）。
 
-### 8.5 ③ 多批/混材质设计（T3i，待拍板后实施）
+### 8.5 ③ 多批/混材质设计（T3i —— **已实施，定稿与落地见 §8.6**；本节保留拍板前的方案推演）
 
 **现状缺口**：guard 的"恰好一个含几何批（R4）"前提把形态 B 锁死在单批场景——
 真实场景几乎必然多批 ⇒ 不解决则形态 B 在真场景一律 reject，CPU 渲染路径也永远删不掉。
@@ -796,3 +799,37 @@ cull 派发（RenderFrameSync，本帧）
 - ③ **多批/混材质** —— 本节点完成（无 DGC 依赖：切片 + 批标签 + 每批计数即"无 DGC 的 GPU 驱动多批"）。
 - ② meshlet（补 GPU 可读 meshlet_count 源）、④ 实例化（per-item instance_count 源）仍待办；
   DGC 按拍板**不处理**（开发机无支持；形态 B 不需要任何扩展，只依赖 mesh shader）。
+
+---
+
+## §8.7 未完成清单（2026-10-05 整理；**新会话照此接手**）
+
+### A. 本线（GPU 剔除）欠账
+
+| # | 内容 | 现状 / 落点 | 接手判据 |
+|---|------|-------------|----------|
+| **A1** | **② meshlet 几何**（X 组数走 CPU `GetMeshletCount()` 分支） | guard 仍把这类批挡在接管外（池行 `addr_meshlets != 0` ⇒ 该批不接管）。需给 GPU 一个**可读的 meshlet_count 源**（池行加字段或另表） | 与 CPU 同口径后放开；门 44/0；该批接管且像素三方全等 |
+| **A2** | **④ 实例化/多实例 item**（gather 每实体一命令 `Y=1` 不适配） | guard 挡 `InstancedPrimitiveRenderItem`；需 **per-item instance_count 源**（gather 时把 Y 写成实例数） | 同上 |
+| **A3** | **部分接管路径从未被真实触发** | 实测全是 `batches=x/x`（1/1、2/2、4/4）⇒ `IsGPUCullFullTakeoverActive()` 的"部分接管"分支（CPU-driven 批仍需 CPU 剔除）只在代码层存在 | 造"含 ②/④ 批 + 普通批"的示例 ⇒ 期望 `batches=k/n`（k<n）、未接管批走 CPU 账、`Σcount < 全局幸存`、像素三方全等 |
+| **A4** | **容量边界未验**：`kMaxBatches=256`、竞技场 `kMaxVisibleEntities=4096`、切片 4 行对齐与 overflow 槽 | 现有示例 1~4 批 / 28~100 项 ⇒ 从未逼近上限；超限路径（guard 前置检查 + 着色器 overflow 计数）没被触发过 | 刻意超限场景 ⇒ 期望"**不接管**（回 CPU 账）+ 告警一次"，`overflow==0`（溢出判据不得为红） |
+| **A5** | **L2W 环深度 = 3 vs 帧槽空间 = 8**（§8.4） | 与本线无关但影响未来正确性；未查 | 确认主帧是否只用槽 0..2；若会用 3..7 ⇒ 变换缓冲自身在部分槽上别名 |
+| **A6** | **CPU 渲染路径的去留** | 按 2026-10-04 拍板：等 ②③④ 覆盖真实场景后再删或按 RELEASE 宏屏蔽（取回校验常驻） | — |
+
+### B. 本次会话（alpha 呈现链）带出的新欠账
+
+| # | 内容 | 现状 | 建议 |
+|---|------|------|------|
+| **B1** | **混合排的绘制顺序自由度** | `alpha_blend` 真生效后混合排结果与**绘制顺序**相关（引擎无透明排序）；GPU 接管的行序 = atomicAdd 幸存序 ⇒ 与 CPU 账可不同 ⇒ **像素全等判据对混合排不保证**（实测：多次复跑中偶发一次差异，且只可能落在混合排；序无关的 opaque/alpha_test/dither 恒可用于硬判据） | 要硬判据：让接管路径的混合批沿用 CPU 序，或给混合批加固定排序键 |
+| **B2** | **unlit / 其它材质源的 alpha 语义未统一** | 只有 Lit 源改成 `alpha = base_color.a × opacity_mask.r`；unlit/sky 的 alpha 仍来自各自源模块（`forward_flat` 的 `lighting.alpha`） | 若要同一"比例 × 图案"语义 ⇒ 逐个材质源改对应 alpha 求值 |
+| **B3** | **`alpha_to_coverage` 无示例/判据** | 输出 alpha 已修好（`HGL_ALPHA_OUTPUT` 一并覆盖 A2C），但全仓无 A2C 使用点 ⇒ 行为未验（含本机 MSAA 采样数下的表现） | 加一档/一示例；判据 = 覆盖率随 alpha 变化 |
+| **B4** | **dither 阈值是位置哈希（白噪声）** | `ShaderLibrary/common/alpha_compositor.glsl:HGLDitherThreshold` = `fract(sin(dot(pixel,...))*43758.5453)` | 想要**有序抖动点阵** ⇒ 换 Bayer 4×4（一处改动） |
+| **B5** | **引擎 API 缺口**：`ChangeTexture2DArray(tex, const void*, …)` **只有声明没有实现**（LNK2019；raw 版 `ChangeTexture2D` 有实现） | 谁想用数组的 raw 上传就会链接失败（本次已踩） | 补实现，或删声明避免误用 |
+
+### C. 文档/测试床现状（本次会话后）
+
+- 测试床两个：`example/Material/CoverageVariants`（同 def 两覆盖变体 ⇒ 2 批）、
+  `example/Material/AlphaModes`（4 行 alpha 方式 × 7 档比例 ⇒ 4 批）；
+  env 门控 `CV_*` / `AM_*`（`*_CULL` / `*_FORM_B` / `*_FRAMES` / `*_DUMP` / 相机覆盖），默认全关。
+- 判据口径：门 44 PASS / 0 FAIL；`ENGAGED batches=x/y`（正向）；台架 Parity + `Σcount` + `overflow` + 值链；
+  像素三方（CPU 账 / 仅 dispatch / 接管）逐字节全等（**混合排见 B1**）。
+- 本节若与 §8.3/§8.6 冲突，以本节（最新）为准。
