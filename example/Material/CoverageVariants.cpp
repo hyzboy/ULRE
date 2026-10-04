@@ -14,6 +14,11 @@
 //   CV_CULL=1     启用 GPU 剔除管线（dispatch + 台架对拍；绘制仍走 CPU 账）
 //   CV_FORM_B=1   启用 + gather 输出接管绘制（形态 B）
 //   CV_FRAMES=N   跑 N 帧后退出（CI / 性能对照）
+//   CV_STRESS=N   A4 容量台架：N 个「同 def(Lit) + 仅 alpha_cutoff 不同」的配方
+//                 ⇒ 生成的片元 GLSL 只差 `#define HGL_ALPHA_CUTOFF <v>` ⇒ N 个 program
+//                 ⇒ N 个批 ⇒ 用来撞守卫的 kMaxBatches(256)：期望只接管前 256 个、
+//                 多出来的批打**一次**告警并回 CPU 账；Σcount < global 属正常，overflow 必须为 0。
+//                 （N 个实体各占一行材质行 ⇒ N ≤ 512）
 //   CV_DUMP=<tag> 帧 8 帧内回读落原始字节后退出（像素判据）
 //   CV_YAW/CV_PITCH/CV_DIST/CV_TX/CV_TY/CV_TZ  相机覆盖
 
@@ -91,6 +96,16 @@ private:
     graph::mtl::MaterialRecipe opaque_recipe{};
     graph::mtl::MaterialRecipe dither_recipe{};
 
+    // ── A4 容量台架（CV_STRESS=N）──
+    static constexpr uint  STRESS_MAX         = 512;
+    static constexpr float STRESS_CUTOFF_STEP = 0.001f;
+
+    graph::mtl::MaterialRecipe stress_recipe[STRESS_MAX]{};
+    PrimitiveAsset             stress_asset[STRESS_MAX]{};
+    MaterialDataAccessor       stress_rows[STRESS_MAX]{};
+    bool stress_enabled = false;
+    uint stress_count   = 0;
+
     // 一份几何 + 两个 PrimitiveAsset（同一几何、两个配方变体）
     Geometry *      sphere_geometry = nullptr;
     PrimitiveAsset  opaque_asset{};
@@ -152,6 +167,37 @@ private:
         dither_recipe.render_state_overrides.has_dither = true;
         dither_recipe.render_state_overrides.dither     = true;
 
+        // ── A4：N 个「仅 alpha_cutoff 不同」的配方 ──
+        // 唯一差异是阈值字面量（composer 落成 `#define HGL_ALPHA_CUTOFF <v>`）⇒ 片元 digest 不同
+        // ⇒ program 不同 ⇒ 批不同。用于撞 kMaxBatches(256)。
+        if (const char * v = getenv("CV_STRESS"))
+        {
+            stress_count = uint(atoi(v));
+            if (stress_count < 2)              stress_count = 2;
+            if (stress_count > STRESS_MAX)     stress_count = STRESS_MAX;
+            stress_enabled = true;
+
+            char rname[64];
+
+            for (uint i = 0; i < stress_count; ++i)
+            {
+                graph::mtl::MaterialRecipe & r = stress_recipe[i];
+                r = opaque_recipe;
+
+                snprintf(rname, sizeof(rname), "CoverageVariants.StressCutoff%u", i);
+                r.recipe_name = rname;
+
+                r.render_state_overrides.has_alpha_test   = true;
+                r.render_state_overrides.alpha_test       = true;
+                r.render_state_overrides.has_alpha_cutoff = true;
+                r.render_state_overrides.alpha_cutoff     = STRESS_CUTOFF_STEP * float(i + 1);
+            }
+
+            printf("[A4] CV_STRESS=%u：%u 个同 def、仅 alpha_cutoff 不同的配方"
+                   "（期望 %u 个 program/批；守卫只接管前 256 个，其余回 CPU 账）\n",
+                   stress_count, stress_count, stress_count);
+        }
+
         return true;
     }
 
@@ -180,6 +226,23 @@ private:
                 if (!surface_rows[row][col].Write(material_data))
                     return false;
             }
+        }
+
+        // A4：台架实体各占一行（cutoff 不同 ⇒ 颜色/粗糙度统一，便于逐像素对照）
+        for (uint i = 0; i < stress_count; ++i)
+        {
+            stress_rows[i] = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
+            if (!stress_rows[i])
+                return false;
+
+            graph::ssbo::PBRSurfaceRow stress_data{};
+            stress_data.base_color   = Color4f(0.72f, 0.72f, 0.72f, 1.0f);
+            stress_data.normal_scale = 0.35f;
+            stress_data.metallic     = 0.10f;
+            stress_data.roughness    = 0.45f;
+
+            if (!stress_rows[i].Write(stress_data))
+                return false;
         }
 
         return true;
@@ -221,6 +284,59 @@ private:
 
         opaque_asset = PrimitiveAsset(sphere_geometry, &opaque_recipe, PrimitiveType::Triangles);
         dither_asset = PrimitiveAsset(sphere_geometry, &dither_recipe, PrimitiveType::Triangles);
+
+        // ── A4 台架：N 个实体、每个一份配方（⇒ N 个批）──
+        if (stress_enabled)
+        {
+            // 排成方阵（边长 = ceil(sqrt(N))，间距收紧）⇒ 相机默认取景能全覆盖
+            uint side = 1;
+            while (side * side < stress_count)
+                ++side;
+
+            const float step  = ITEM_SPACING * 0.55f;
+            const float off   = float(side - 1) * 0.5f * step;
+
+            for (uint i = 0; i < stress_count; ++i)
+            {
+                stress_asset[i] = PrimitiveAsset(sphere_geometry, &stress_recipe[i], PrimitiveType::Triangles);
+
+                char name[64];
+                snprintf(name, sizeof(name), "StressSphere_Cutoff%u", i);
+
+                Entity * e = ecs_world->CreateEntity<Entity>(name);
+
+                const float y = float(i % side) * step - off;
+                const float z = float(i / side) * step - off;
+
+                auto transform = ecs_world->GetTransform(
+                    ecs_world->CreateTransform(e->GetEntityID(), Mobility::Static));
+                transform.SetLocalPosition(glm::vec3(0.0f, y, z));
+                transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+                transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+                transform.SetMobility(Mobility::Static);
+
+                auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);
+                hgl::ecs::MaterialData * material_data = e->GetContext()->GetOrCreateMaterialData(e);
+
+                geometry_data->GetOwner()->GetContext()->GetOrCreateGeometryData(
+                    geometry_data->GetOwnerID())->SetPrimitiveAsset(&stress_asset[i]);
+
+                if (!material_data->SetTextureResource("base_color", base_texture, sampler)
+                 || !material_data->SetTextureResource("normal", normal_texture, sampler)
+                 || !material_data->SetTextureResource("opacity_mask", mask_texture, sampler))
+                    return false;
+
+                hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
+                row_resource = stress_rows[i].GetGlobalSSBOBinding();
+                material_data->SetDataResource(row_resource);
+            }
+
+            printf("[A4] 台架就绪：%u 实体 / %u 配方（方阵 %ux%u）⇒ 期望 batches=%u，"
+                   "守卫接管上限 256\n",
+                   stress_count, stress_count, side, side, stress_count);
+            fflush(stdout);
+            return true;
+        }
 
         const float offset_x = (GRID_COLS - 1) * ITEM_SPACING * 0.5f;
 
@@ -296,6 +412,9 @@ private:
         camera->pitch        = -16.0f;
 
         // 取景覆盖（dump 模式也走这里 ⇒ 两次运行的像素可比）
+        if (stress_enabled)   // 方阵展开后拉远取景（可用 CV_DIST 覆盖）
+            camera->distance = 14.0f;
+
         if (const char * v = getenv("CV_YAW"))   camera->yaw         = (float)atof(v);
         if (const char * v = getenv("CV_PITCH")) camera->pitch       = (float)atof(v);
         if (const char * v = getenv("CV_DIST"))  camera->distance    = (float)atof(v);
