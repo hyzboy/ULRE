@@ -588,8 +588,7 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
    ① ~~ShadowProxy GPU 行~~ **已完成（T3h，见 §8.2g）**；
    ② **meshlet 几何**（X 组数 = GetMeshletCount 分支）—— 池行补 meshlet_count 字段
       或另源，与 CPU 同口径后才放开；
-   ③ **多批/混合材质场景**（R4 单批前提）—— 每批各持一份 gather 输出（着色器按池
-      geometry_id 过滤幸存）或逐批 range/count，消费侧契约已核（§8.3 旧案存档）；
+   ③ **多批/混合材质场景**（R4 单批前提）—— **设计中（§8.5：共享竞技场 + 按批切片）**；
    ④ **实例化/多实例 item**（gather 每实体一命令 Y=1 不适配）。
 3. **架构决策（2026-10-04 拍板）**：
    - **DGC 不在本线计划内**：开发机实测无 `VK_EXT_device_generated_commands`
@@ -612,3 +611,65 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
 
 - **变换侧 L2W 环深度 = 3，而帧槽空间 = 8**（`HGL_FRAME_SLOT_TOTAL`）：若主帧只用槽 0..2 则 3 合理；
   若主帧会用到 3..7，则**变换缓冲自身在部分槽上就是别名的**。实体表已按**帧槽空间**切份（不复用这个 3）。
+
+### 8.5 ③ 多批/混材质设计（T3i，待拍板后实施）
+
+**现状缺口**：guard 的"恰好一个含几何批（R4）"前提把形态 B 锁死在单批场景——
+真实场景几乎必然多批 ⇒ 不解决则形态 B 在真场景一律 reject，CPU 渲染路径也永远删不掉。
+
+**侦察结论（关键结构事实，实施前不必重查）**：
+- 批 = `ShaderProgramPipelineKey`（`cache.materialBatches` 的 map 键；shadow 批与主帧批**共用**该 map）；
+- 每批自带：`icb_mesh_tasks`（multi-draw ICB）、`icb_count_buffer(+offset)`、`mesh_draw_params_buffer`
+  （per-draw 行：`{geometry_id, first_instance}`）、`l2w_index_buffer`、`material_data_index_rows_buffer`；
+- mesh 侧消费链（发射器生成，`MeshTemplateEmitter`）：`cmds[gl_DrawID].geometry_id/first_instance`
+  → `#define gl_InstanceIndex (draw_params.first_instance + gl_WorkGroupID.y)`
+  → `ResolveTransformID(gl_InstanceIndex)` 查 `addr_l2w_index`；`MTL_ROW(dataIndex)` 查 `addr_mtl_data_addrs`；
+- 批内 draw = 一次 `DrawMeshTasksIndirectCount(icb, first*sizeof(cmd), countBuf, countOff, maxCount)`
+  （`PipelineMaterialRenderer::ProcIndirectRender`）；**段偏移支持现成** ⇒ 多批只需给每批不同的
+  `first`/`countBuf+off`/`maxCount`；
+- 接管 hook 现在把批的五个指针整体指向系统单套表（`ApplyGPUCullOverrideHook`）。
+
+**设计：共享竞技场 + 按批切片（材质/mesh 着色器零改动）**
+1. **竞技场**：系统仍持 4 张表（icb 12B/行、cmds 8B/行、l2w 4B/行、mtl 16B/行），容量仍
+   `kMaxVisibleEntities`——因为**每项只属一批**，全场景 item 总数 ≤ 4096 ⇒ 一块地够全部批分摊；
+2. **切片**：批 b 得行区间 `[base_b, base_b + cap_b)`，`base_b` = 前序批 item 数累计、`cap_b` =
+   本批 item 数（`base` 顺序 = CPU 遍历 `cache.materialBatches` 的稳定顺序，须与写 `batch_index`
+   同一顺序）；
+3. **批身份上 GPU**：`EntityGPU._pad` 再划 4B 放 `batch_index`（@96，`_pad` 32→28；沿用 T3h
+   先例，零新表零新地址）；写者 = 批装配（与批行表同判据点）；消费 = 剔除着色器分流；
+4. **每批输入**：`BatchInfo[]`（`{u32 row_base, u32 capacity}`，CPU 每帧写，RO）+ `BatchCounters[]`
+   （N×u32，GPU 原子加；`FillBuffer` 一次清全部，照 T3g 批内 barrier 纪律）；
+   两个地址 + `batch_count` 进 cull push constant（现 88B → ~108B，仍在 128B 保底内）；
+5. **着色器分流**：`b = entity.batch_index`；`b >= batch_count || batch_index 无效` ⇒ 跳过；
+   `slot = atomicAdd(counter[b], 1)`；`slot >= cap_b` ⇒ 溢出（跳过 + 计数上报，见决策 3）；
+   行号 `r = base_b + slot`，四张表写 `r`；
+6. **绘制接线**：每批的 `first` = `base_b`（命令序号）、`maxCount` = `cap_b`、
+   `countBuf/off` = 共享计数器 `+ b*4` ⇒ **GPU 计数直接当每批绘制数**（形态 B 的既有机制）；
+7. **push 地址切片偏移**：批 b 的 `addr_batch_mesh_draw_params/addr_l2w_index/addr_mtl_data_addrs`
+   各加 `base_b × 行字节` ⇒ 着色器里 `gl_DrawID`/`gl_InstanceIndex` 语义**不变**（切片内 0 起），
+   故**材质与 mesh 发射器零改动**。
+
+**一致性（本设计的关键约束，必须写进实现注释）**
+- 既有语义：cull 读的上传内容**滞后一帧**（脏行上传在主帧 cmd，提交在 cull 之后）⇒ 因此
+  **批划分也必须滞后一帧**：`BatchInfo` 用**上一帧**布局（`batch_index` 亦然，它在滞后表里）；
+- 接管前提加一条：**本帧批布局 == cull 所用（上一帧）布局**（比较有序的 `(pipeline_key,
+  item_count)` 列表）；不等 ⇒ 本帧不接管（CPU 账），本帧布局记为下一帧 cull 用 —— 
+  牺牲布局变化那一帧，换"切片与行内容恒定同源"；
+- 好处：**无需移动任何系统相位**（cull 仍在 RenderCollect，hook 仍在 FinalizeBatches）。
+
+**判据**
+- 多批测试场景：`PBRSpheres` 加 env 门控的第二材质变体（管线键不同 ⇒ 第二批），默认关；
+- 台架扩展：竞技场行归属校验——批 b 的 `[base_b, base_b+count_b)` 行内实体的 `batch_index`
+  必须 == b（CPU 侧可查）⇒ 把"分流正确"钉在值链上，而不是只看像素；
+- 既有判据全保留：门 44/0、Parity、值链三段、像素 CPU==B、VUID=0、reject=0。
+
+**改动面（文件级）**：`EntityGPU.h`（+batch_index）、`entity_gpu.glsl`（镜像）、`EntityGPUTable.h`
+（写者）、批装配点（写 batch_index）、`entity_gpu_cull.glsl`（分流）、`GPUCullSystem.h/.cpp`
+（BatchInfo/Counters/切片接线/布局稳态）、`PrimitiveBatchPipeline.cpp`（guard 多批 + 布局比较）、
+`MaterialBatch.h` + `PipelineMaterialRenderer.cpp`（切片 first/maxCount/地址偏移）、
+`CPUCullReferenceSystem.cpp`（归属校验）、`PBRSpheres.cpp`（第二变体）。
+
+**待拍板**
+1. `batch_index` 住 `EntityGPU._pad`（推荐，零新表）还是新建每实体批表？
+2. 布局变化那一帧退回 CPU 账（推荐：简单且判据干净）还是强行同帧重建切片？
+3. 溢出策略：`slot >= cap_b` ⇒ 跳过 + 计数器上报（推荐：可见且不崩）还是 fail-fast 报错？
