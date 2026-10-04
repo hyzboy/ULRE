@@ -20,7 +20,8 @@
 //
 // alpha 真值来源 = `opacity_mask`（pbr_surface_source.glsl 的 EvalMaterialAlpha =
 // tex_opacity_mask.r；base_color.a 不参与）⇒ 每列绑该档位的常量 alpha 层；
-// base_color 留空（回退 1.0）⇒ 立方体是**亮实心**，画面差异全部来自 alpha 行为。
+// 颜色侧仍绑一张单通道 gradient 当 base_color（BC4 只有 R 通道 ⇒ 采样得 (r,0,0,1) ⇒ 红调渐变）
+// ⇒ 每格都能看到纹理，而**列之间只差 alpha**。
 //
 // 顺带是本引擎"批从哪来"的实测点：Opaque 与 AlphaBlend 的 recipe 只差 pipeline 配置
 //（alpha_blend 在 EDS 下是**动态状态**，见 VKCommandBufferRender.cpp 的
@@ -105,6 +106,9 @@ namespace
     constexpr uint  ALPHA_MASK_SIZE      = 4;
     constexpr uint  ALPHA_MASK_LAYERS    = ALPHA_STEPS;
 
+    // 颜色侧纹理（所有格共用一张；单通道 BC4 ⇒ 采样 (r,0,0,1)）
+    constexpr const os_char * BASE_COLOR_TEXTURE_NAME = OS_TEXT("0.Tex2D");
+
     const char * MODE_NAME[MODE_ROWS] = { "Opaque", "AlphaBlend", "AlphaTest", "AlphaDither" };
 
     // AlphaTest 用的**固定**阈值（与 dither 的逐像素阈值形成对照：硬边 vs 噪点）
@@ -134,6 +138,7 @@ private:
 
     Texture2DArray * alpha_mask_texture = nullptr;   ///< 7 层常量 alpha（一列一档）
     DeviceBuffer *   alpha_mask_upload  = nullptr;   ///< 上传用 TRANSFER_SRC（持有至退出）
+    Texture2D *      base_color_texture = nullptr;   ///< 颜色侧：单通道 gradient（BC4 ⇒ 红调）
     Sampler *        sampler = nullptr;
 
     hgl::ecs::TransformAccessor item_transforms[MODE_ROWS][ALPHA_STEPS]{};
@@ -153,6 +158,15 @@ private:
 
         if (!texture_manager || !sampler_manager)
             return false;
+
+        base_color_texture = texture_manager->LoadTexture2D(
+            filesystem::JoinPathWithFilename(OS_TEXT("res/image/gradient"), BASE_COLOR_TEXTURE_NAME),
+            true);
+        if (!base_color_texture)
+        {
+            printf("[ERROR] InitTextures: failed to load base_color gradient\n");
+            return false;
+        }
 
         // 7 层常量 alpha：第 i 层填 round(AlphaAt(i) * 255)（RGBA8，r = alpha 真值）
         alpha_mask_texture = texture_manager->CreateTexture2DArray(
@@ -242,7 +256,7 @@ private:
                 if (!surface_rows[row][col])
                     return false;
 
-                // 基础色 = 白：立方体颜色不来自纹理（base_color 留空 ⇒ 回退 1.0）
+                // 基础色 = 白：立方体颜色完全来自 base_color 的单通道 gradient（红调）
                 graph::ssbo::PBRSurfaceRow material_data{};
                 material_data.base_color   = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
                 material_data.metallic     = 0.0f;
@@ -334,9 +348,10 @@ private:
                 geometry_data->GetOwner()->GetContext()->GetOrCreateGeometryData(
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(&mode_asset[row]);
 
-                // 本列档位的常量 alpha 层当 opacity_mask（**alpha 真值来源**；base_color 留空
-                // ⇒ 采样回退 1.0 ⇒ 亮实心立方体，画面差异全部来自 alpha 行为）。
-                if (!material_data->SetTextureResource(
+                // 颜色侧：单通道 gradient（BC4 ⇒ 红调渐变，肉眼可辨纹理）。
+                // alpha 侧：本列档位的常量 alpha 层（**alpha 真值来源**）。
+                if (!material_data->SetTextureResource("base_color", base_color_texture, sampler)
+                 || !material_data->SetTextureResource(
                         "opacity_mask",
                         alpha_mask_texture,
                         sampler,
@@ -353,7 +368,8 @@ private:
 
         printf("[AlphaModes] %u CUBE = %u 列（alpha 档位 100%% → 10%%，步长 -15%%）× %u 行"
                "（自上而下 %s / %s / %s / %s）\n"
-               "            alpha 真值 = opacity_mask（7 层常量 alpha 纹理的对应层），base_color 留空\n"
+               "            alpha 真值 = opacity_mask（7 层常量 alpha 纹理的对应层）；"
+               "颜色 = base_color 的单通道 gradient\n"
                "            预期：AlphaBlend 逐级变透；AlphaTest(阈值 %.2f) 只保 100/85/70/55%%、"
                "后三档整块消失；\n"
                "                  AlphaDither 存活比例 ≈ alpha ⇒ 空洞 ≈ 0/15/30/45/60/75/90%%\n"
