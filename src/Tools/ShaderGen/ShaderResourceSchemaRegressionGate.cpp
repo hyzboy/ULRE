@@ -1824,33 +1824,27 @@ namespace
                 const auto opaque = build(
                     ShaderProgramPurpose::ForwardColor,
                     false,
-                    false,
                     false);
                 const auto transparent = build(
                     ShaderProgramPurpose::ForwardColor,
-                    false,
                     false,
                     false);
                 const auto depth = build(
                     ShaderProgramPurpose::DepthOnly,
                     false,
-                    false,
                     false);
                 const auto shadow = build(
                     ShaderProgramPurpose::ShadowDepth,
-                    false,
                     false,
                     false);
                 const auto masked_depth = build(
                     ShaderProgramPurpose::DepthOnly,
                     true,
-                    false,
                     false);
                 const auto dither_shadow = build(
                     ShaderProgramPurpose::ShadowDepth,
                     false,
-                    true,
-                    false);
+                    true);
 
                 if (!opaque || !opaque->HasProgramLink()) result.diagnostics.emplace_back("opaque failed");
                 if (!transparent || !transparent->HasProgramLink()) result.diagnostics.emplace_back("transparent failed");
