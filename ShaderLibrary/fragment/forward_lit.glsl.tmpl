@@ -24,9 +24,9 @@ void main()
     const LightingInput lighting = BuildForwardLightingInput(surface, si, materialDataIndex);
     const vec4 finalColor = EvalLighting(lighting);
 #if defined(HGL_ALPHA_OUTPUT)
-    // 曲面 alpha 写进输出：`alpha_blend` 的 SRC_ALPHA 与 `alpha_to_coverage` 的覆盖率
-    // 都取**输出 alpha**。此前恒写 HGLComposeColor(finalColor)（alpha = 光照 alpha = 1）
-    // ⇒ 两者空转（blend 等价不透明、A2C 覆盖率恒 1）。覆盖判定（discard）已在上方执行。
+    // 曲面 alpha 写进输出：`alpha_blend` 的 SRC_ALPHA 取**输出 alpha**。
+    // 此前恒写 HGLComposeColor(finalColor)（alpha = 光照 alpha = 1）⇒ blend 空转
+    //（等价不透明）。覆盖判定（discard）已在上方执行。
     WriteMaterialOutput(vec4(finalColor.rgb, EvalAlpha(si, materialDataIndex)));
 #else
     WriteMaterialOutput(HGLComposeColor(finalColor));

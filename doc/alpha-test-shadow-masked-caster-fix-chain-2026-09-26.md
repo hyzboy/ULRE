@@ -12,7 +12,7 @@
 
 **ShadowCasterMasked 片元（含 discard）写得再对也从未生效过——
 `RenderPass::CreatePipeline` 的 depth-only 快速路径（shadow map 等零颜色附件）
-无条件剥离片元 stage，豁免条件只有 alpha_blend / alpha_to_coverage，
+无条件剥离片元 stage，豁免条件只有 alpha_blend（A2C 特性已于 2026-10-05 按拍板整体删除），
 漏了 alpha_test。** 片元被剥后深度图由纯 mesh stage 光栅化，镂空材质退化为
 实心；A1-4 以来所有片元侧/数据链修复均被这层屏蔽，表现为"修一层露出下一层"。
 

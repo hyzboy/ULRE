@@ -57,7 +57,6 @@ struct VulkanDevAttr
     PFN_vkCmdSetColorBlendEquationEXT   cmd_set_color_blend_equation =nullptr;
     PFN_vkCmdSetColorWriteMaskEXT       cmd_set_color_write_mask =nullptr;
     PFN_vkCmdSetPolygonModeEXT          cmd_set_polygon_mode =nullptr;
-    PFN_vkCmdSetAlphaToCoverageEnableEXT cmd_set_alpha_to_coverage_enable =nullptr;
 
     // Push Descriptor（Vulkan 1.4 核心 / VK_KHR_push_descriptor）
 

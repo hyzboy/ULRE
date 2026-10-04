@@ -11,7 +11,6 @@ namespace hgl::graph
         ForwardMasked,
         ForwardTransparent,
         ForwardDither,
-        ForwardA2C,
         ShadowOpaque,
         ShadowMasked,
         EarlyZSolid,
@@ -29,7 +28,6 @@ namespace hgl::graph
         case PassType::ForwardMasked:      return "ForwardMasked";
         case PassType::ForwardTransparent: return "ForwardTransparent";
         case PassType::ForwardDither:      return "ForwardDither";
-        case PassType::ForwardA2C:         return "ForwardA2C";
         case PassType::ShadowOpaque:       return "ShadowOpaque";
         case PassType::ShadowMasked:       return "ShadowMasked";
         case PassType::EarlyZSolid:        return "EarlyZSolid";

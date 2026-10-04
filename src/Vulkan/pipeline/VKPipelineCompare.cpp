@@ -84,9 +84,6 @@ namespace hgl::graph
 //        if(mem_compare(a->pSampleMask,b->pSampleMask,))     //未支持sample mask，所以暂无法比较
 //            return(false);
 
-        if(a->alphaToCoverageEnable!=b->alphaToCoverageEnable)
-            return(false);
-
         if(a->alphaToOneEnable!=b->alphaToOneEnable)
             return(false);
 

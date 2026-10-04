@@ -275,7 +275,7 @@ namespace hgl::graph
         VkPipelineMultisampleStateCreateInfo multisample{};
         multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        multisample.alphaToCoverageEnable = VK_FALSE;       // 动态（EDS3）
+        multisample.alphaToCoverageEnable = VK_FALSE;       // 本引擎不支持 A2C（恒 FALSE）
 
         VkPipelineDepthStencilStateCreateInfo depth_stencil{};
         depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -320,7 +320,6 @@ namespace hgl::graph
             VK_DYNAMIC_STATE_BLEND_CONSTANTS,   // 1.0 核心（非 EDS2 引入，无 EXT 名）
             VK_DYNAMIC_STATE_POLYGON_MODE_EXT,
             VK_DYNAMIC_STATE_LINE_WIDTH,
-            VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT,
         };
 
         VkPipelineDynamicStateCreateInfo dynamic_state{};

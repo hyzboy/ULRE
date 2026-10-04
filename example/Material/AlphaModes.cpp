@@ -17,7 +17,7 @@
 //
 // 引擎侧前提（2026-10-05 落地）：AlphaBlend 只有在**曲面 alpha 写进片元输出**时才生效
 //（blend 因子 SRC_ALPHA 取输出 alpha）。前向片元模板此前恒写光照 alpha（= 1）⇒ blend 空转；
-// 现由 `#define HGL_ALPHA_OUTPUT`（composer 在 alpha_blend / alpha_to_coverage 时注入）
+// 现由 `#define HGL_ALPHA_OUTPUT`（composer 在 alpha_blend 时注入）
 // 分支改写成 `WriteMaterialOutput(vec4(rgb, EvalAlpha(...)))`。
 //
 // 布局：横向 7 列 = alpha 档位 100% → 10%（步长 −15%）；

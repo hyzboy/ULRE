@@ -201,7 +201,7 @@ MaterialData ──1:N──▶ MaterialVariant ──1:N──▶ MaterialRunti
 
 | 维度 | 典型例子 | 放哪里 | 为什么 |
 |---|---|---|---|
-| **静态**（决定 program/PSO） | `PassType`（仓里已含 `ForwardDither`/`ForwardA2C`/`Shadow*`/`EarlyZ*`）、`MaterialRecipe::compile_defines`（**必须归一化+哈希成有界键**：去序、去重、trim）、quality、未来的**材质 LOD 档** | **变体键** | 只有"需要换管线"的差异才配进键；**取值必须能有界枚举**，否则是设计错误（一次性告警/fail-fast） |
+| **静态**（决定 program/PSO） | `PassType`（仓里已含 `ForwardDither`/`Shadow*`/`EarlyZ*`）、`MaterialRecipe::compile_defines`（**必须归一化+哈希成有界键**：去序、去重、trim）、quality、未来的**材质 LOD 档** | **变体键** | 只有"需要换管线"的差异才配进键；**取值必须能有界枚举**，否则是设计错误（一次性告警/fail-fast） |
 | **每帧动态、基数小** | 某棵树要不要 Dither、当前 LOD 档、遮挡/半透裁决结果 | **每实例选择器**（runtime 行里的一个索引/标志位）+ 必要时动态状态 | **禁止进变体键**（每帧变化的键 ⇒ 变体爆炸）；**也禁止每帧 CoW**（行抖动） |
 | **每实例持久** | 参数覆盖、纹理覆盖、自有 SSBO 行 | **runtime 自有行（CoW）** | 只有"改了就是改了"的差异才分裂行；释放走 refcount；行号复用按 §2 世代约定 `+2 保持奇数` |
 

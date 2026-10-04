@@ -93,19 +93,8 @@ namespace hgl::graph::mtl
             ResolveMaterialRenderState(definition, recipe);
         const bool alpha_test = state.alpha_test;
         const bool dither = state.dither;
-        const bool alpha_to_coverage =
-            state.pipeline_config.alpha_to_coverage;
 
-        if (alpha_to_coverage
-         && purpose == ShaderProgramPurpose::ForwardColor)
-        {
-            out_contract.mode = MaterialCoverageMode::AlphaToCoverage;
-        }
-        else if (alpha_to_coverage)
-        {
-            out_contract.mode = MaterialCoverageMode::Dither;
-        }
-        else if (alpha_test && dither)
+        if (alpha_test && dither)
         {
             out_contract.mode =
                 MaterialCoverageMode::AlphaTestDither;

@@ -67,14 +67,13 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     // depth-only 渲染通道（零颜色附件，如 shadow map）：不透明材质直接去掉片元
     // 着色阶段——深度写入不依赖 FS，整段 lit 着色计算全部省去（FS 的 outColor
     // 在此通道也无处写入，VVL 会报 fragment-output 未使用写告警）。带 alpha 混
-    // 合/A2C 的材质保留 FS：其 discard/覆盖行为依赖片元着色器。片元含 discard
+    // 合的材质保留 FS：其 blend/discard 行为依赖片元着色器。片元含 discard
     // （alpha test / dither，recipe 语义判定）的材质同理——剥掉后镂空材质在深度图
     // 退化为实心（ShadowCasterMasked 曾踩）。
     ShaderStageCreateInfoList depth_only_stage_list;
 
     if(color_formats.GetCount()==0
      &&!config.alpha_blend
-     &&!config.alpha_to_coverage
      &&!keep_fragment_shader)
     {
         for(const VkPipelineShaderStageCreateInfo &sci:ssci_list)

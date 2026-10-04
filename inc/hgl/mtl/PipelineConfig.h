@@ -19,7 +19,6 @@ namespace hgl::graph::mtl
         bool depth_write = true;                                    // 深度写入
         VkCompareOp depth_compare_op = VK_COMPARE_OP_GREATER_OR_EQUAL;  // 深度比较（引擎 Vulkan RH_ZO 默认）
         bool alpha_blend = false;                                   // 颜色混合
-        bool alpha_to_coverage = false;                             // Alpha-to-coverage 多采样覆盖
         VkBlendFactor blend_src = VK_BLEND_FACTOR_SRC_ALPHA;        // 混合源因子
         VkBlendFactor blend_dst = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;  // 混合目标因子
         float line_width = 1.0f;                                    // 线宽（启用动态线宽时由命令缓冲覆盖）
@@ -36,7 +35,6 @@ namespace hgl::graph::mtl
             && lhs.depth_write == rhs.depth_write
             && lhs.depth_compare_op == rhs.depth_compare_op
             && lhs.alpha_blend == rhs.alpha_blend
-            && lhs.alpha_to_coverage == rhs.alpha_to_coverage
             && lhs.blend_src == rhs.blend_src
             && lhs.blend_dst == rhs.blend_dst
             && lhs.line_width == rhs.line_width
@@ -147,7 +145,6 @@ namespace hgl::graph::mtl
           << config.depth_write
           << config.depth_compare_op
           << config.alpha_blend
-          << config.alpha_to_coverage
           << config.blend_src
           << config.blend_dst
           << config.line_width

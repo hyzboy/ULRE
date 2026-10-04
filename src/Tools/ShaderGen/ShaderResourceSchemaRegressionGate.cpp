@@ -1766,8 +1766,7 @@ namespace
                 const auto build = [&](
                     const ShaderProgramPurpose purpose,
                     const bool alpha_test,
-                    const bool dither,
-                    const bool alpha_to_coverage)
+                    const bool dither)
                 {
                     MaterialDefinition selected = lit;
                     MaterialDefinitionBuildRequest request{};
@@ -1777,8 +1776,6 @@ namespace
                     request.recipe.render_state_overrides.has_dither = true;
                     request.recipe.render_state_overrides.dither = dither;
                     request.recipe.render_state_overrides.has_pipeline_config = true;
-                    request.recipe.render_state_overrides.pipeline_config.alpha_to_coverage =
-                        alpha_to_coverage;
                     request.geometry_vertex_format = &geometry;
                     request.defer_finalize = true;
                     request.shader_program_purpose = purpose;
@@ -1786,7 +1783,7 @@ namespace
                         purpose == ShaderProgramPurpose::DepthOnly
                      || purpose == ShaderProgramPurpose::ShadowDepth;
                     const bool masked =
-                        alpha_test || dither || alpha_to_coverage;
+                        alpha_test || dither;
                     const RenderTemplateID template_id = depth_purpose
                         ? (masked ? RenderTemplateID::ShadowCasterMasked
                                   : RenderTemplateID::ShadowCasterOpaque)
@@ -1854,11 +1851,6 @@ namespace
                     false,
                     true,
                     false);
-                const auto a2c_depth = build(
-                    ShaderProgramPurpose::DepthOnly,
-                    false,
-                    false,
-                    true);
 
                 if (!opaque || !opaque->HasProgramLink()) result.diagnostics.emplace_back("opaque failed");
                 if (!transparent || !transparent->HasProgramLink()) result.diagnostics.emplace_back("transparent failed");
@@ -1866,24 +1858,22 @@ namespace
                 if (!shadow || !shadow->HasProgramLink()) result.diagnostics.emplace_back("shadow failed");
                 if (!masked_depth || !masked_depth->HasProgramLink()) result.diagnostics.emplace_back("masked_depth failed");
                 if (!dither_shadow || !dither_shadow->HasProgramLink()) result.diagnostics.emplace_back("dither_shadow failed");
-                if (!a2c_depth || !a2c_depth->HasProgramLink()) result.diagnostics.emplace_back("a2c_depth failed");
 
                 if (!opaque || !transparent || !depth || !shadow
-                 || !masked_depth || !dither_shadow || !a2c_depth
+                 || !masked_depth || !dither_shadow
                  || !opaque->HasProgramLink()
                  || !transparent->HasProgramLink()
                  || !depth->HasProgramLink()
                  || !shadow->HasProgramLink()
                  || !masked_depth->HasProgramLink()
-                 || !dither_shadow->HasProgramLink()
-                 || !a2c_depth->HasProgramLink())
+                 || !dither_shadow->HasProgramLink())
                 {
                     result.diagnostics.emplace_back(
                         "production output contract builds failed");
                 }
                 else
                 {
-                    // 安全取 stage GLSL：depth/shadow/a2c 变体本无 Fragment stage，
+                    // 安全取 stage GLSL：depth/shadow 变体本无 Fragment stage，
                     // GetStageShader 可能返回悬挂指针——先 has_fragment() 守卫 + 空指针检查，
                     // 并用值拷贝避免悬挂引用。
                     const auto safe_fs = [](const ShaderBuildContext *ctx) -> std::string
@@ -1907,9 +1897,8 @@ namespace
                     const std::string masked_depth_fs = safe_fs(masked_depth.get());
                     const std::string masked_depth_ms = safe_ms(masked_depth.get());
                     const std::string dither_shadow_fs = safe_fs(dither_shadow.get());
-                    const std::string a2c_depth_fs = safe_fs(a2c_depth.get());
                     // 结构化断言：opaque 必有 Fragment（强检查）；
-                    // depth/masked/dither/a2c 变体仅当 has_fragment() 时检查内容，
+                    // depth/masked/dither 变体仅当 has_fragment() 时检查内容，
                     // 否则跳过对应子项（避免解引用悬挂指针 + 假阳性）。
                     const auto has = [](const ShaderBuildContext *ctx, ShaderStage s)
                     { return ctx && (ctx->GetShaderStage() & uint32_t(s)); };
@@ -1952,11 +1941,6 @@ namespace
                     if (has(dither_shadow.get(), ShaderStage::Fragment)
                      && (lacks(dither_shadow_fs, "#define HGL_ALPHA_DITHER 1")
                       || contains(dither_shadow_fs, "EvalLighting(")))
-                        mismatch = true;
-                    // a2c_depth：期望含 ALPHA_DITHER + EvalAlpha
-                    if (has(a2c_depth.get(), ShaderStage::Fragment)
-                     && (lacks(a2c_depth_fs, "#define HGL_ALPHA_DITHER 1")
-                      || lacks(a2c_depth_fs, "EvalAlpha(")))
                         mismatch = true;
 
                     if (mismatch)
@@ -3918,7 +3902,6 @@ namespace
                 continue;
             }
             if (render_state.alpha_test || render_state.dither
-             || render_state.pipeline_config.alpha_to_coverage
              || render_state.pipeline_config.alpha_blend)
             {
                 result.diagnostics.emplace_back(

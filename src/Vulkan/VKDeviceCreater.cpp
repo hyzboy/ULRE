@@ -292,9 +292,9 @@ namespace
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
             {
                 const auto *f = static_cast<const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *>(curr);
-                GLogError(u8"    [%u] ExtendedDynamicState3FeaturesEXT (sType=%d): colorBlend=%d, equation=%d, writeMask=%d, polygonMode=%d, a2c=%d",
+                GLogError(u8"    [%u] ExtendedDynamicState3FeaturesEXT (sType=%d): colorBlend=%d, equation=%d, writeMask=%d, polygonMode=%d",
                           node_index, int(hdr->sType), int(f->extendedDynamicState3ColorBlendEnable), int(f->extendedDynamicState3ColorBlendEquation),
-                          int(f->extendedDynamicState3ColorWriteMask), int(f->extendedDynamicState3PolygonMode), int(f->extendedDynamicState3AlphaToCoverageEnable));
+                          int(f->extendedDynamicState3ColorWriteMask), int(f->extendedDynamicState3PolygonMode));
                 break;
             }
             default:
@@ -544,7 +544,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 
     // EDS 1/3 特性：pipeline 只保留 shader 部分——材质渲染状态全部动态（vkCmdSet* 应用），
     // 必用路径无条件启用。EDS1 管 CULL_MODE/DEPTH_*（VkPhysicalDeviceExtendedDynamicStateFeaturesEXT）；
-    // COLOR_BLEND_*/POLYGON_MODE/ALPHA_TO_COVERAGE 均属 EDS3
+    // COLOR_BLEND_*/POLYGON_MODE 均属 EDS3
     //（VkPhysicalDeviceExtendedDynamicState3FeaturesEXT——SDK 1.4 头里 EDS2 结构无这些成员）
     {
         eds1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
@@ -558,7 +558,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         eds3.extendedDynamicState3ColorBlendEquation  = VK_TRUE;   // COLOR_BLEND_EQUATION
         eds3.extendedDynamicState3ColorWriteMask      = VK_TRUE;   // COLOR_WRITE_MASK
         eds3.extendedDynamicState3PolygonMode         = VK_TRUE;   // POLYGON_MODE
-        eds3.extendedDynamicState3AlphaToCoverageEnable = VK_TRUE; // ALPHA_TO_COVERAGE_ENABLE
         create_info.pNext = &eds3;
     }
 
@@ -719,8 +718,6 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetPolygonModeEXT>("vkCmdSetPolygonModeEXT"))
             device_attr->cmd_set_polygon_mode=*fp;
 
-        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetAlphaToCoverageEnableEXT>("vkCmdSetAlphaToCoverageEnableEXT"))
-            device_attr->cmd_set_alpha_to_coverage_enable=*fp;
     }
 
     // Synchronization2 函数指针（Vulkan 1.3 core / VK_KHR_synchronization2）

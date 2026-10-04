@@ -316,7 +316,6 @@ namespace
         {VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT,"rasterization_samples_ext"},
         {VK_DYNAMIC_STATE_SAMPLE_MASK_EXT,"sample_mask_ext"},
 
-        {VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT,"alpha_to_coverage_enable_ext"},
         {VK_DYNAMIC_STATE_ALPHA_TO_ONE_ENABLE_EXT,"alpha_to_one_enable_ext"},
 
         {VK_DYNAMIC_STATE_LOGIC_OP_ENABLE_EXT,"logic_op_enable_ext"},

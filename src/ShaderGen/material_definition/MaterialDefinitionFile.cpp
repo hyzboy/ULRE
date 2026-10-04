@@ -220,8 +220,6 @@ namespace hgl::graph::mtl
             bool &depth_test = definition.default_render_state.pipeline_config.depth_test;
             bool &depth_write = definition.default_render_state.pipeline_config.depth_write;
             bool &alpha_blend = definition.default_render_state.pipeline_config.alpha_blend;
-            bool &alpha_to_coverage =
-                definition.default_render_state.pipeline_config.alpha_to_coverage;
             bool &dynamic_line_width =
                 definition.default_render_state.pipeline_config.dynamic_line_width;
             bool &overlay = definition.default_render_state.pipeline_config.overlay;
@@ -231,9 +229,6 @@ namespace hgl::graph::mtl
             if (pipeline.contains("depth_write") && !ReadBool(pipeline, "depth_write", depth_write))
                 return false;
             if (pipeline.contains("alpha_blend") && !ReadBool(pipeline, "alpha_blend", alpha_blend))
-                return false;
-            if (pipeline.contains("alpha_to_coverage")
-             && !ReadBool(pipeline, "alpha_to_coverage", alpha_to_coverage))
                 return false;
             if (pipeline.contains("dynamic_line_width")
              && !ReadBool(pipeline, "dynamic_line_width", dynamic_line_width))
@@ -1170,7 +1165,7 @@ namespace hgl::graph::mtl
             if (rs.contains("pipeline")
              && !ValidateKnownKeys(rs.at("pipeline"), {
                     "cull_mode", "depth_compare_op", "blend_src", "blend_dst",
-                    "depth_test", "depth_write", "alpha_blend", "alpha_to_coverage",
+                    "depth_test", "depth_write", "alpha_blend",
                     "dynamic_line_width", "overlay", "wireframe", "line_width"}))
                 return false;
         }

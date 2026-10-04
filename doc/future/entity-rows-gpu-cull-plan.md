@@ -320,7 +320,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 | **T3h**：阴影接收事实的 GPU 通路（欠账①清；guard 阴影前提删除） | 本批 | 值链三段 **100/100**（非默认实体注入实测：idx=23 NoReceive、idx=74 bias=2.0）；门 44/0；ENGAGED reject=0；像素 CPU==B 全等；详见 §8.2g |
 | **T3i**：③ 多批/混材质（单次派发 + 批标签/切片/每批计数；▸§8.6） | `6b6baa39f` | 多批实测 `ENGAGED batches=2/2 items=100 arena_rows=104`、`Σcount=100=global overflow=0 值链 100/100`、Parity 100/100/0、VUID=0、像素三方逐字节全等 |
 | 测试床示例：`CoverageVariants`（同 def 两覆盖变体）/ `AlphaModes`（4 行 alpha 方式 × 7 档比例） | `4c0fd9c40` / `9a5505246` | 前者 2 批、后者 4 批；均带 `CV_*` / `AM_*` opt-in 与像素 dump |
-| alpha 呈现链三修：dither 覆盖判定被 `#ifdef HGL_ALPHA_TEST` 吃掉 → 修守卫；曲面 alpha 写进输出（`HGL_ALPHA_OUTPUT`，blend/A2C 由此生效）；有效 alpha = `base_color.a × opacity_mask.r` | `6d3b2c95a` / `d7fb7b524` / `9dca1071e`（+`bc2a80ae0`/`2c9c7b81d` 示例侧） | 门 44/0；四排形态量化可分（空洞 0 / 0.14+中间调 28% / 0.73 / 0.66）；梯子实测 ≈ 理论；像素三方全等（混合排偶发顺序差异，见 §8.7 B1） |
+| alpha 呈现链三修：dither 覆盖判定被 `#ifdef HGL_ALPHA_TEST` 吃掉 → 修守卫；曲面 alpha 写进输出（`HGL_ALPHA_OUTPUT`，仅 `alpha_blend` 用；A2C 特性已整体删除）；有效 alpha = `base_color.a × opacity_mask.r` | `6d3b2c95a` / `d7fb7b524` / `9dca1071e`（+`bc2a80ae0`/`2c9c7b81d` 示例侧） | 门 44/0；四排形态量化可分（空洞 0 / 0.14+中间调 28% / 0.73 / 0.66）；梯子实测 ≈ 理论；像素三方全等（混合排偶发顺序差异，见 §8.7 B1） |
 
 ### 8.2 落地件清单（T3d/T3e/T3f-1/T3f-2 全部达成；各节 = §8.2b/§8.2c/§8.2d/§8.2e）
 
@@ -821,7 +821,7 @@ cull 派发（RenderFrameSync，本帧）
 |---|------|------|------|
 | **B1** | **混合排的绘制顺序自由度** | `alpha_blend` 真生效后混合排结果与**绘制顺序**相关（引擎无透明排序）；GPU 接管的行序 = atomicAdd 幸存序 ⇒ 与 CPU 账可不同 ⇒ **像素全等判据对混合排不保证**（实测：多次复跑中偶发一次差异，且只可能落在混合排；序无关的 opaque/alpha_test/dither 恒可用于硬判据） | 要硬判据：让接管路径的混合批沿用 CPU 序，或给混合批加固定排序键 |
 | **B2** | **unlit / 其它材质源的 alpha 语义未统一** | 只有 Lit 源改成 `alpha = base_color.a × opacity_mask.r`；unlit/sky 的 alpha 仍来自各自源模块（`forward_flat` 的 `lighting.alpha`） | 若要同一"比例 × 图案"语义 ⇒ 逐个材质源改对应 alpha 求值 |
-| **B3** | **`alpha_to_coverage` 无示例/判据** | 输出 alpha 已修好（`HGL_ALPHA_OUTPUT` 一并覆盖 A2C），但全仓无 A2C 使用点 ⇒ 行为未验（含本机 MSAA 采样数下的表现） | 加一档/一示例；判据 = 覆盖率随 alpha 变化 |
+| ~~**B3**~~ | ~~`alpha_to_coverage`~~ **已按拍板整体删除（2026-10-05）** | 该特性**永不支持** ⇒ 清掉全部残留：`MaterialPipelineConfig.alpha_to_coverage`、TOML 键、`MaterialCoverageMode::AlphaToCoverage`、`BlendMode/PassType` 的 A2C 枚举项、Vulkan 侧（EDS3 的 `extendedDynamicState3AlphaToCoverageEnable` 启用 + `vkCmdSetAlphaToCoverageEnableEXT` proc/命令录制 + 动态状态表项 + 名字表项）、门与文档 | 全仓 grep 零残留（`alpha_to_coverage`/`alphaToCoverage`/`AlphaToCoverage`/`ALPHA_TO_COVERAGE`/`ForwardA2C`，`backup/` 与第三方目录除外） |
 | **B4** | **dither 阈值是位置哈希（白噪声）** | `ShaderLibrary/common/alpha_compositor.glsl:HGLDitherThreshold` = `fract(sin(dot(pixel,...))*43758.5453)` | 想要**有序抖动点阵** ⇒ 换 Bayer 4×4（一处改动） |
 | **B5** | **引擎 API 缺口**：`ChangeTexture2DArray(tex, const void*, …)` **只有声明没有实现**（LNK2019；raw 版 `ChangeTexture2D` 有实现） | 谁想用数组的 raw 上传就会链接失败（本次已踩） | 补实现，或删声明避免误用 |
 

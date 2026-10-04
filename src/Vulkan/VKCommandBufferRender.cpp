@@ -436,8 +436,6 @@ void RenderCmdBuffer::ApplyPipelineState(const mtl::MaterialPipelineConfig &conf
 
     vkCmdSetLineWidth(cmd_buf, config.line_width);
 
-    if(dev_attr->cmd_set_alpha_to_coverage_enable)
-        dev_attr->cmd_set_alpha_to_coverage_enable(cmd_buf, config.alpha_to_coverage ? VK_TRUE : VK_FALSE);
 }
 
 void RenderCmdBuffer::DrawMeshTasks(const uint32_t group_count_x,const uint32_t group_count_y,const uint32_t group_count_z)

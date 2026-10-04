@@ -10,8 +10,7 @@ namespace hgl::graph
         Masked,
         Transparent,
         Dither,
-        AlphaToCoverage,
 
-        ENUM_CLASS_RANGE(Opaque, AlphaToCoverage)
+        ENUM_CLASS_RANGE(Opaque, Dither)
     };
 }

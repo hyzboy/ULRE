@@ -14,8 +14,7 @@ namespace hgl::graph::mtl
         None = 0,
         AlphaTest,
         Dither,
-        AlphaTestDither,
-        AlphaToCoverage
+        AlphaTestDither
     };
 
     struct MaterialCoverageContract

@@ -54,7 +54,7 @@ scene module roots，再把 MaterialDefinition 提供的 material provider capab
 - 环境/天光：常量环境光、SH、EnvMap、IBL、大气和后续 GI；
 - 表面输入：纯色、顶点色、纹理材质、RG8 与 RGBA16F x2 NTB；
 - 几何：静态 Mesh、骨骼动画、Billboard、LineQuad、CharQuad；
-- Pass：Opaque、Masked、Blend、Dither、A2C、ShadowCaster、Sky、Decal；
+- Pass：Opaque、Masked、Blend、Dither、ShadowCaster、Sky、Decal；
 - 后处理：SSAO、DOF 等独立全屏固定管线。
 
 不在范围内：
@@ -95,7 +95,7 @@ LightingModel: Unlit, BlinnPhong, FakePBR, PBR
 AmbientProfile: None, Constant, SH, EnvMap, IBL, GIProbe
 NTBEncoding: None, RG8, RGBA16F2
 SkinningMode: Static, MatrixPalette
-AlphaMode: Opaque, Masked, Blend, Dither, A2C
+AlphaMode: Opaque, Masked, Blend, Dither
 GeometryProfile: Mesh, SkinnedMesh, Billboard, LineQuad, CharQuad, Fullscreen
 ```
 

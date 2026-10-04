@@ -99,7 +99,7 @@
    剔除不需要的描述符（Phase 1 `ResolvePurposeAndCoverage`，src/ShaderGen/builder/GenericMaterialBuilder.cpp:117-238），
    这就是"深度 pass 不采样纹理"的来源。
 3. **契约推导**（全部是无副作用的纯函数，产出可哈希结构）：
-   - `MaterialCoverageContract`：alpha_test/dither/A2C 与所需 varyings/纹理槽
+   - `MaterialCoverageContract`：alpha_test/dither 与所需 varyings/纹理槽
      （MaterialCoverageContract.cpp）；
    - `MaterialStageInterface`：varying 配置 → `InterStageSemanticContractEntry[]`
      （mesh stage 输出与 FS 输入的公共语言，MaterialStageInterface.cpp）；
