@@ -650,8 +650,15 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
    故**材质与 mesh 发射器零改动**。
 
 **一致性（本设计的关键约束，必须写进实现注释）**
-- 既有语义：cull 读的上传内容**滞后一帧**（脏行上传在主帧 cmd，提交在 cull 之后）⇒ 因此
-  **批划分也必须滞后一帧**：`BatchInfo` 用**上一帧**布局（`batch_index` 亦然，它在滞后表里）；
+- 事实分三类（查实现所得，勿凭直觉推广）：
+  ① **实体行表 / 4-ID 表** = CPU **直写 host-visible 镜像**（`StructView::Data()`，非
+  `vkCmdCopyBuffer`），刷新点在**帧起点**（`SetFrameIndex → SyncWorldAddresses →
+  UploadEntityGPUDirtyRows`）⇒ cull 读到**本帧**值；
+  ② **L2W** 走 staged → `RenderBufferUpload`（`vkCmdCopyBuffer`，在主帧 cmd 里、提交于
+  cull 之后）⇒ cull 读到**上一帧**矩阵（既有语义：运动物体剔除滞后 1 帧）；
+  ③ 新增的 `batch_index` 由**批装配**（RenderBatch，**晚于** cull 的提交）写 ⇒ cull 读到的是
+  **上一帧**值；
+- ⇒ 为让「批划分」与「batch_index」同源，`BatchInfo` / 切片基址也必须取**上一帧**布局；
 - 接管前提加一条：**本帧批布局 == cull 所用（上一帧）布局**（比较有序的 `(pipeline_key,
   item_count)` 列表）；不等 ⇒ 本帧不接管（CPU 账），本帧布局记为下一帧 cull 用 —— 
   牺牲布局变化那一帧，换"切片与行内容恒定同源"；
