@@ -37,6 +37,10 @@
 // env（全部默认关 ⇒ 基线 = 纯 CPU 账、无剔除）：
 //   AM_CULL=1     启用 GPU 剔除管线（dispatch + 台架对拍；绘制仍走 CPU 账）
 //   AM_FORM_B=1   启用 + gather 输出接管绘制（形态 B）
+//   AM_PARTIAL=1  A3 台架：把 Opaque 行最后一格改成**独立 program + 实例化项**
+//                 （billboard 顶点节点 ⇒ 独立批；AllocateContiguousInstances(…,1) ⇒
+//                  InstancedPrimitiveRenderItem ⇒ ④ 类项）⇒ 该批不可接管、其余 27 项接管
+//                 ⇒ 期望 ENGAGED batches=1/2（部分接管路径首次被真实触发）
 //   AM_FRAMES=N   跑 N 帧后退出（CI / 性能对照）
 //   AM_DUMP=<tag> 帧 8 帧内回读落原始字节后退出（像素判据）
 //   AM_YAW/AM_PITCH/AM_DIST/AM_TX/AM_TY/AM_TZ  相机覆盖
@@ -132,6 +136,11 @@ private:
     graph::mtl::MaterialRecipe alpha_test_recipe{};
     graph::mtl::MaterialRecipe dither_recipe{};
 
+    // A3（AM_PARTIAL=1）：独立 program 的"不可接管批"配方（Lit + billboard 顶点节点）
+    graph::mtl::MaterialRecipe partial_recipe{};
+    PrimitiveAsset partial_asset{};
+    bool partial_enabled = false;
+
     // 一份几何（CUBE）+ 三个 PrimitiveAsset（同一几何、三种 alpha 方式）
     Geometry *      cube_geometry = nullptr;
     PrimitiveAsset  mode_asset[MODE_ROWS]{};
@@ -197,6 +206,21 @@ private:
         dither_recipe.recipe_name = "AlphaModes.LitAlphaDither";
         dither_recipe.render_state_overrides.has_dither = true;
         dither_recipe.render_state_overrides.dither     = true;
+
+        // A3（AM_PARTIAL=1）：Lit + **不同顶点节点**（billboard）⇒ 不同 shader program
+        // ⇒ 独立批；该批的实体再被标成实例化项 ⇒ 该批命中 guard 的 ④ 拒绝条件。
+        partial_enabled = (getenv("AM_PARTIAL") != nullptr);
+
+        if (partial_enabled)
+        {
+            partial_recipe = opaque_recipe;
+            partial_recipe.recipe_name = "AlphaModes.LitOpaqueBillboard";
+            partial_recipe.vertex_node_config.orientation = mtl::OrientationMode::CameraFacingFree;
+
+            printf("[A3] AM_PARTIAL=1：Opaque 行最后一格改走第二套配方（Lit + billboard 顶点节点）"
+                   "并标为实例化项 ⇒ 该批**不可接管**（④ 类项），其余 27 项仍接管"
+                   "⇒ 期望 ENGAGED batches=1/2\n");
+        }
 
         return true;
     }
@@ -266,6 +290,9 @@ private:
         alpha_test_recipe.material_ssbo_binding = opaque_recipe.material_ssbo_binding;
         dither_recipe.material_ssbo_binding     = opaque_recipe.material_ssbo_binding;
 
+        if (partial_enabled)
+            partial_recipe.material_ssbo_binding = opaque_recipe.material_ssbo_binding;
+
         if (!CreateCubeGeometry())
             return false;
 
@@ -273,6 +300,9 @@ private:
         mode_asset[1] = PrimitiveAsset(cube_geometry, &blend_recipe,      PrimitiveType::Triangles);
         mode_asset[2] = PrimitiveAsset(cube_geometry, &alpha_test_recipe, PrimitiveType::Triangles);
         mode_asset[3] = PrimitiveAsset(cube_geometry, &dither_recipe,     PrimitiveType::Triangles);
+
+        if (partial_enabled)
+            partial_asset = PrimitiveAsset(cube_geometry, &partial_recipe, PrimitiveType::Triangles);
 
         const float offset_y = (ALPHA_STEPS - 1) * ITEM_SPACING * 0.5f;
 
@@ -304,8 +334,13 @@ private:
                 auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);
                 hgl::ecs::MaterialData * material_data = e->GetContext()->GetOrCreateMaterialData(e);
 
+                // A3：Opaque 行最后一格 = 不可接管批的样本（独立 program + 实例化项）
+                const bool as_partial =
+                    partial_enabled && (row == 0) && (col == ALPHA_STEPS - 1);
+
                 geometry_data->GetOwner()->GetContext()->GetOrCreateGeometryData(
-                    geometry_data->GetOwnerID())->SetPrimitiveAsset(&mode_asset[row]);
+                    geometry_data->GetOwnerID())->SetPrimitiveAsset(
+                        as_partial ? &partial_asset : &mode_asset[row]);
 
                 // 同一张单通道 gradient 同时当 base_color（可见图案）与 opacity_mask
                 //（逐像素 alpha 图案）⇒ 有效 alpha = 本列比例 × 纹理采样
@@ -316,6 +351,20 @@ private:
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
                 row_resource = surface_rows[row][col].GetGlobalSSBOBinding();
                 material_data->SetDataResource(row_resource);
+
+                if (as_partial)
+                {
+                    // capacity = 1 ⇒ 仍是"单实例"（CPU 账照常画），但项类型变
+                    // InstancedPrimitiveRenderItem ⇒ 该批命中 ④ 拒绝条件（gather Y=1 不适配）。
+                    // 注意：SetInstanceCount/SetMaxInstances(1) 本身**不分配**（只有 >1 才分配）
+                    // ⇒ 必须显式 AllocateContiguousInstances(…, 1) 才会置 capacity。
+                    if (!hgl::ecs::AllocateContiguousInstances(*ecs_world, e->GetEntityID(), 1))
+                    {
+                        printf("[ERROR] A3: AllocateContiguousInstances failed\n");
+                        return false;
+                    }
+                    hgl::ecs::SetInstanceCount(*ecs_world, e->GetEntityID(), 1);
+                }
             }
         }
 
