@@ -27,7 +27,6 @@
 #include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
 #include <hgl/ecs/support/GPUCullSystem.h>
 #include <hgl/ecs/support/CPUCullReferenceSystem.h>
-#include <hgl/ecs/support/GPUCullResultHookSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -116,12 +115,10 @@ namespace
             cpu_cull_system->Initialize(ctx);
         }
 
-        // GPU cull result hook system - hook GPU cull results to MaterialBatch (T3e)
-        auto gpu_cull_hook = EnsureRenderSystem<hgl::ecs::GPUCullResultHookSystem>(ctx);
-        if (gpu_cull_hook)
-        {
-            gpu_cull_hook->SetContext(ctx);
-        }
+        // T3f-2：GPU 剔除结果接管绘制改由 `PrimitiveBatchPipeline::TryApplyGPUCullOverride`
+        // （FinalizeBatches 开头、批建成之后逐帧 guard）+ `GPUCullSystem::ApplyGPUCullOverrideHook`
+        // 承担——原 `GPUCullResultHookSystem`（RenderFrameSync 阶段"挂第一个批、清其余批"）
+        // 的接线方式与批生命周期不匹配（跨帧批对象、items 清零丢绘制），随本批删除。
 
         return true;
     }

@@ -179,7 +179,6 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/EntityGPUTable.h
     ${ECS_INCLUDE_PATH}/support/GPUCullSystem.h
     ${ECS_INCLUDE_PATH}/support/CPUCullReferenceSystem.h
-    ${ECS_INCLUDE_PATH}/support/GPUCullResultHookSystem.h
     ${ECS_INCLUDE_PATH}/support/TransformAccessor.h
     ${ECS_INCLUDE_PATH}/support/CameraInfoStorage.h
     ${ECS_INCLUDE_PATH}/support/CameraSlotGuard.h
@@ -214,7 +213,6 @@ set(ECS_SUPPORT_FILES
     support/PrimitiveBatchPipeline.cpp
     support/GPUCullSystem.cpp
     support/CPUCullReferenceSystem.cpp
-    support/GPUCullResultHookSystem.cpp
     support/text/TextRenderPipeline.cpp
 )
 

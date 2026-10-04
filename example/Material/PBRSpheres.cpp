@@ -552,6 +552,22 @@ private:
         camera->distance       = 40.0f;
         camera->yaw            = 0.0f;
         camera->pitch          = -25.0f;
+
+        // dump 模式的相机覆盖（必须在 InitCamera 生效：env 在这里读，Init() 只存 tag）。
+        // PBR_PITCH / PBR_YAW（度）⇒ 离屏对照，部分球出视锥，验证 gather 对应不是巧合。
+        if (getenv("PBR_DUMP"))
+        {
+            if (const char *v = getenv("PBR_PITCH"))
+                camera->pitch = (float)atof(v);
+            if (const char *v = getenv("PBR_YAW"))
+                camera->yaw = (float)atof(v);
+            if (const char *v = getenv("PBR_DIST"))
+                camera->distance = (float)atof(v);
+            if (const char *v = getenv("PBR_TX"))
+                camera->target.x = (float)atof(v);
+            if (const char *v = getenv("PBR_TZ"))
+                camera->target.z = (float)atof(v);
+        }
         camera->is_main_camera = true;
         camera->matrix_dirty   = true;
 
@@ -601,12 +617,17 @@ public:
 
         // B8/T3f-1：显式 opt-in 启用 GPU 剔除管线（形态 A）。
         // PBR_DISABLE_CULL=1 ⇒ 不开任何开关 = **CPU 判据基线**（像素验收对照组）。
+        // PBR_FORM_B=1 ⇒ 第三档 opt-in：gather 输出接管绘制（形态 B；单场景口径，
+        //   与形态 A 回灌互斥——接管后批行表 = gather 表，不再回灌 isVisible）。
         if (!getenv("PBR_DISABLE_CULL"))
         {
             if (auto gpu_cull = ecs_world->GetSystem<GPUCullSystem>())
             {
                 gpu_cull->SetEnabled(true);
-                gpu_cull->SetApplyVisibleSetEnabled(true);
+                if (getenv("PBR_FORM_B"))
+                    gpu_cull->SetDrawOverrideEnabled(true);
+                else
+                    gpu_cull->SetApplyVisibleSetEnabled(true);
             }
         }
 

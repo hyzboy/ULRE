@@ -51,9 +51,10 @@ namespace hgl::ecs
         void SetApplyVisibleSetEnabled(bool enabled);
         bool IsApplyVisibleSetEnabled() const { return apply_visible_set_; }
 
-        /// **第三个 opt-in（默认关，T3f-2 形态 B 预留）**：`GPUCullResultHookSystem`
-        /// 直连接管批次间接绘制（`gpu_driven_override` + ICB/count 替换）。
-        /// 开启前必须先解决：per-batch 行表与剔除输出**同序**（atomicAdd 序不定）。
+        /// **第三个 opt-in（默认关，T3f-2 形态 B）**：允许 gather 输出接管绘制。
+        /// 实际接管由 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 逐帧 guard 判定
+        /// （前提清单见该函数注释）；本开关只是总闸 + `enable_gather` dispatch 参数。
+        /// （原 `GPUCullResultHookSystem` 的跨帧接线方式与批生命周期不匹配，已删除。）
         void SetDrawOverrideEnabled(bool enabled);
         bool IsDrawOverrideEnabled() const { return override_draw_; }
 
@@ -66,8 +67,34 @@ namespace hgl::ecs
         uint64_t GetIndirectCommandsAddress() const { return indirect_commands_addr_; }
         uint64_t GetDrawCountAddress() const { return draw_count_addr_; }
 
+        // 形态 B（T3f-2）gather 输出四表（icb 复用上面的 indirect_commands_buffer_）
+        graph::DeviceBuffer* GetL2WOutBuffer() const { return l2w_out_buffer_; }
+        graph::DeviceBuffer* GetCmdsOutBuffer() const { return cmds_out_buffer_; }
+        graph::DeviceBuffer* GetMtlOutBuffer() const { return mtl_out_buffer_; }
+
+        /// gather 输出表容量（行数/元素数 = kMaxVisibleEntities）：guard 校验批容量用
+        static constexpr uint32_t GetGatherCapacity() { return kMaxVisibleEntities; }
+
         // 获取 GPU 剔除的可见实体数量（从 draw_count buffer 读取）
         uint32_t GetGPUVisibleCount() const;
+
+        /// **形态 B（T3f-2）接管 hook**：本帧 build 之前由 `PrimitiveBatchPipeline::
+        /// RunBatching()` 调用（批对象已被 `MaterialBatch::Clear()` 复位成"自有 buffer +
+        /// override=false"状态）。前提校验全部通过 ⇒ 释放批自有行表、四张 gather 表 +
+        /// icb + count 指向剔除输出、置 `gpu_driven_override`（既有契约：跳 sort/ensure/
+        /// write、每项自成 DrawBatch 给 maxDrawCount 记账）。
+        /// 前提（§8.3，一条不满足 ⇒ 本帧不接管 + 一次性报错，绝不让批指向错数据）：
+        /// opt-in 开 && 主帧 pass && **恰好一个含几何批**（R4 单批口径）&& 批内全
+        /// PrimitiveRenderItem（禁实例化/多实例）&& 全 mesh 批 && 批容量 ≤ gather 容量
+        /// && 全 item 有 owner 实体（禁 VDM 等无实体项——4-ID 表只覆盖实体）&&
+        /// 每实体池行存在 && 非 meshlet（池行 addr_meshlets==0）&& 非 lines &&
+        /// 阴影全默认（CanReceiveShadow && bias==1.0 ⇒ gather 写 0 与 CPU 行逐字节一致）。
+        /// @return true = 本帧该批由 GPU gather 输出接管绘制。
+        bool ApplyGPUCullOverrideHook(MaterialBatch *batch);
+
+        /// guard 的**本帧有效**判定：collect 的 CPU 剔除跳不跳全看它（接管与 CPU 账
+        /// 必须按同一帧的 guard 结果二选一，否则 = 双份账/漏帧）。
+        bool IsOverrideActiveThisFrame() const { return override_active_frame_ == override_eval_frame_; }
 
     private:
         // 创建 compute pipeline
@@ -98,14 +125,33 @@ namespace hgl::ecs
         graph::ComputePipeline* compute_pipeline_ = nullptr;
 
         // 输出 buffer
-        graph::DeviceBuffer* visible_indices_buffer_ = nullptr;
-        graph::IndirectMeshTaskBuffer* indirect_commands_buffer_ = nullptr;  // 改为 IndirectMeshTaskBuffer
-        graph::DeviceBuffer* draw_count_buffer_ = nullptr;
+        graph::DeviceBuffer *visible_indices_buffer_ = nullptr;
+        graph::IndirectMeshTaskBuffer *indirect_commands_buffer_ = nullptr;  // 改为 IndirectMeshTaskBuffer
+        graph::DeviceBuffer *draw_count_buffer_ = nullptr;
+
+        // 形态 B（T3f-2）gather 输出（容量 = kMaxVisibleEntities；被接管批直接指向它们）
+        graph::DeviceBuffer *l2w_out_buffer_ = nullptr;
+        graph::DeviceBuffer *cmds_out_buffer_ = nullptr;
+        graph::DeviceBuffer *mtl_out_buffer_ = nullptr;
+
+        /// guard 记账（ApplyGPUCullOverrideHook 每帧 build 时评估；collect 的
+        /// "CPU 剔除跳不跳" 读本帧结果 ⇒ 两本账恒二选一）：
+        /// `override_eval_frame_` = 最近一次评估帧号，`override_active_frame_` =
+        /// 最近一次**通过**的帧号；两者相等 ⇔ 本帧正在接管。
+        uint64_t override_eval_frame_ = 0;
+        uint64_t override_active_frame_ = 0;
+
+        /// 单批前提的一次性报错门（前提不满足 = 场景装配与管线口径冲突，
+        /// fail-fast 报一次，不静默退回 CPU 账假装一切正常）
+        bool override_reject_reported_ = false;
 
         // 设备地址（BDA）
         uint64_t visible_indices_addr_ = 0;
         uint64_t indirect_commands_addr_ = 0;
         uint64_t draw_count_addr_ = 0;
+        uint64_t l2w_out_addr_ = 0;    // 形态 B gather 三表地址（push constant 下发用）
+        uint64_t cmds_out_addr_ = 0;
+        uint64_t mtl_out_addr_ = 0;
 
         // 容量
         static constexpr uint32_t kMaxVisibleEntities = 4096;

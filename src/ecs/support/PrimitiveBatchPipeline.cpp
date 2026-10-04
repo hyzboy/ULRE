@@ -14,6 +14,7 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/ShadowProxy.h>
 #include<hgl/ecs/support/PrimitiveState.h>
+#include<hgl/ecs/support/GPUCullSystem.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/InstancedPrimitiveRenderItem.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -124,6 +125,17 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::RunCulling()
     {
+        // T3f-2（形态 B，判据 2）：上一帧 guard 判定接管 ⇒ 本帧**跳过 CPU 剔除**。
+        // 时序口径：guard 在 `FinalizeBatches()`（RenderBatch，批建成*之后*）评估，
+        // 批成员资格在 `BuildMaterialBatches` 按 isVisible 过滤 ⇒ "跳不跳"只能取
+        // **上一帧**的结果；稳态下批 = 全项（新 item 默认 isVisible=true），
+        // 幸存数 ≤ 批容量 ⇒ DrawBatch 记账的 maxDrawCount 是**真上界**，不会截绘制。
+        // 交接帧（上帧接管、本帧前提破了）：批全项但不接管 = 一帧过画（屏内观感
+        // 无损、guard 已报错），下一帧 cull 恢复。shadow pass 同样跳（caster 全进
+        // 阴影图 = 多画不出错，首版口径，见设计稿 §8.3）。
+        if (world && IsGPUCullOverrideActive())
+            return;
+
         PerformFrustumCulling();
     }
 
@@ -1156,12 +1168,158 @@ namespace hgl::ecs
         }
     }
 
+    void PrimitiveBatchPipeline::TryApplyGPUCullOverride()
+    {
+        auto& cache = world->GetRenderFrameCache();
+
+        // 每帧先复位（评估失败/从未评估 ⇒ 恒不接管；collect 读本记账）
+        ++gpu_cull_override_eval_frame_;
+
+        auto gpu_cull = world->GetSystem<GPUCullSystem>();
+        if (!gpu_cull || !gpu_cull->IsEnabled() || !gpu_cull->IsDrawOverrideEnabled())
+            return;
+
+        // 只在主帧 pass 接管（shadow 批共用 materialBatches 表 ⇒ 必须显式挡）
+        if (world->IsCurrentPassShadow())
+            return;
+
+        // 恰好一个含几何的批（R4 单批口径）
+        MaterialBatch *target = nullptr;
+        uint32_t geometry_batches = 0;
+
+        for (auto& pair : cache.materialBatches)
+        {
+            MaterialBatch *b = pair.second.get();
+            if (!b || b->items.empty() || !BatchRequiresIndirectCommands(*b))
+                continue;
+
+            ++geometry_batches;
+            target = b;
+        }
+
+        auto reject = [this](const char *why)
+        {
+            static bool s_reported = false;
+            if (!s_reported)
+            {
+                s_reported = true;
+                GLogError("[T3f2] GPU cull draw override 前提不满足：%s ⇒ 本场景不接管"
+                          "（绘制走 CPU 账；管线本身仍在 dispatch/对拍）", why);
+            }
+        };
+
+        if (geometry_batches != 1)
+        {
+            reject(geometry_batches == 0 ? "无含几何批" : "多批（单批口径未满足）");
+            return;
+        }
+
+        if (!ProgramHasMeshStage(target->key.shader_program))
+        {
+            reject("批无 mesh stage");
+            return;
+        }
+
+        if (target->key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines)
+        {
+            reject("批是 lines（X 组数公式不同源）");
+            return;
+        }
+
+        if (target->items.size() > GPUCullSystem::GetGatherCapacity())
+        {
+            reject("批容量超 gather 表（kMaxVisibleEntities）");
+            return;
+        }
+
+        auto *gc = world->GetGraphicsContext();
+        auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
+        const EntityRenderIDTable &rid_table = world->GetEntityRenderIDTable();
+
+        for (auto *item : target->items)
+        {
+            if (!item || dynamic_cast<InstancedPrimitiveRenderItem *>(item))
+            {
+                reject("含实例化/多实例项（gather 每实体一命令 Y=1）");
+                return;
+            }
+
+            Entity *owner = item->GetEntity();
+            if (!owner)
+            {
+                reject("含无 owner 实体项（4-ID 表只覆盖实体）");
+                return;
+            }
+
+            const graph::RenderItemDescriptor *ids =
+                rid_table.Row(owner->GetEntityID().index);
+
+            if (!ids || ids->geometry_id == 0)
+            {
+                reject("实体 4-ID 行缺失");
+                return;
+            }
+
+            const auto *params = pool ? pool->GetMeshDrawParamsRow(ids->geometry_id) : nullptr;
+
+            if (!params)
+            {
+                reject("MeshDrawParams 池行缺失");
+                return;
+            }
+
+            if (params->addr_meshlets != 0)
+            {
+                reject("meshlet 几何（X 组数与 CPU GetMeshletCount 分支不同源）");
+                return;
+            }
+
+            // 阴影两位：全默认才可接管（gather 写 0/0 = 引擎默认语义）
+            if (!CanReceiveShadow(owner) || GetShadowBiasMultiplier(owner) != 1.0f)
+            {
+                reject("实体有非默认阴影参数（ShadowProxy GPU 行未接线）");
+                return;
+            }
+        }
+
+        // 稳态判据护栏（与形态 A 首帧护栏同源，§8.2c）：实体表脏行上传与首次
+        // dispatch 同帧 ⇒ 首帧 `survivors=0`；此时接管 = 一帧黑屏。dispatch 是
+        // 同步提交（WaitLastSubmitFence）⇒ 这里读到的是**本帧**结果，可信帧恒 >0
+        //（场景确有可见实体时）。判据不可信 ⇒ 本帧不接管，CPU 账继续。
+        if (gpu_cull->GetGPUVisibleCount() == 0 && !target->items.empty())
+            return;
+
+        // 全部前提通过 ⇒ 接管
+        if (gpu_cull->ApplyGPUCullOverrideHook(target))
+        {
+            gpu_cull_override_frame_ = gpu_cull_override_eval_frame_;
+
+            // 正向判据日志（一次性）：像素对照必须证明"绘制真走 gather 表"，
+            // 静默退回 CPU 账也会像素全等 ⇒ 没有本日志就不能宣称接管成立。
+            static bool s_engaged_logged = false;
+            if (!s_engaged_logged)
+            {
+                s_engaged_logged = true;
+                GLogInfo("[T3f2] GPU cull draw override ENGAGED: batch items=%u survivors=%u"
+                         "（行表/icb/count 已指向 gather 输出；CPU 剔除自本帧起跳过）",
+                         (uint32_t)target->items.size(),
+                         gpu_cull->GetGPUVisibleCount());
+            }
+        }
+    }
+
     void PrimitiveBatchPipeline::FinalizeBatches()
     {
         if (!world)
             return;
 
         auto& cache = world->GetRenderFrameCache();
+
+        // T3f-2（形态 B）：接管判定先于任何 FinalizeBatch —— hook 成功 ⇒ 批带上
+        // `gpu_driven_override`，后续 sort/ensure/build/write 走既有 GPU-Driven 跳过契约；
+        // 失败 ⇒ hook 内部把批复位回 CPU 模式（幂等，防上一帧接管残留把本帧带进
+        // "CPU 路径被跳、指针却指着 GPU 表"的坏帧）。
+        TryApplyGPUCullOverride();
 
         for (auto& pair : cache.materialBatches)
         {

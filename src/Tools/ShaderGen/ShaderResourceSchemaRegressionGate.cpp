@@ -3142,6 +3142,172 @@ namespace
         return result;
     }
 
+    /// X 列表（`HGL_MESH_DRAW_PARAMS_FIELD_LIST`，ShaderBufferSources.h）前 9 个头部
+    /// 字段与剔除着色器里的**头部镜像**（`MeshDrawParamsHeadData`，entity_gpu_cull.glsl）
+    /// 必须逐字段同序同型（E.entity-gpu-struct-parity 同族手法；§7.6 取块器复用）。
+    /// 为什么必须门禁（T3f-2 形态 B）：镜像是 gather 里 `groupCountX` 的**唯一读源**
+    /// ——X 列表头部漂移（改名/调序/插字段）而镜像没跟 ⇒ CS 按错偏移读 is_indexed/
+    /// index_count/vertex_count ⇒ 组数算错 = 静默画错/画漏，实机与现有门都抓不到。
+    /// 镜像只承诺头部前 9 项（尾部 11×uint64 地址不进镜像 ⇒ 不做全表前缀断言），
+    /// 但**步长必须 ==128**（池行 sizeof 契约；`_pad` 承担余量，与 entity_gpu 同纪律）。
+    static GateResult RunMeshDrawParamsHeadParityCase()
+    {
+        GateResult result;
+        result.name = "E.mesh-draw-params-head-parity";
+
+        const std::string cpu_text =
+            ReadFileText(RepoRootPath("inc/hgl/graph/ShaderBufferSources.h"));
+        const std::string glsl_text =
+            ReadFileText(RepoRootPath("ShaderLibrary/ecs/entity_gpu_cull.glsl"));
+
+        if (cpu_text.empty() || glsl_text.empty())
+        {
+            result.diagnostics.emplace_back(
+                "无法读取 ShaderBufferSources.h / entity_gpu_cull.glsl（头部对表的两端）");
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        // 端 1：X 列表前 9 项 `M(name, "glsl_type", cpu_type)`（宏定义体按行取）。
+        const size_t xl = cpu_text.find("#define HGL_MESH_DRAW_PARAMS_FIELD_LIST(M)");
+        if (xl == std::string::npos)
+        {
+            result.diagnostics.emplace_back(
+                "X 列表宏 `HGL_MESH_DRAW_PARAMS_FIELD_LIST` 未找到（改名?）");
+            result.passed = false;
+            return result;
+        }
+
+        std::vector<StructFieldEntry> x_fields;
+        {
+            std::istringstream stream(cpu_text.substr(xl));
+            std::string line;
+            while (std::getline(stream, line))
+            {
+                // X 列表体每行 = `M(name, "type", cpu_type) \`；首个不以 M( 开头的
+                // 非续行即列表结束（`#undef` 前）
+                const size_t m = line.find("M(");
+                if (m == std::string::npos)
+                {
+                    if (!x_fields.empty())
+                        break;
+                    continue;
+                }
+
+                // name
+                const size_t n0 = m + 2;
+                const size_t n1 = line.find(',', n0);
+                // "glsl_type"
+                const size_t q0 = line.find('"', n1);
+                const size_t q1 = line.find('"', q0 + 1);
+                if (n1 == std::string::npos || q0 == std::string::npos
+                 || q1 == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "X 列表行解析失败: " + line);
+                    break;
+                }
+
+                StructFieldEntry f;
+                f.name = line.substr(n0, n1 - n0);
+                // 去名字前后空白
+                const size_t ns = f.name.find_first_not_of(" \t\r");
+                const size_t ne = f.name.find_last_not_of(" \t\r");
+                f.name = (ns == std::string::npos) ? "" : f.name.substr(ns, ne - ns + 1);
+                f.type = line.substr(q0 + 1, q1 - q0 - 1);   // GLSL 类型原文
+                f.dim.clear();
+                NormalizeStructField(f);
+                x_fields.push_back(f);
+            }
+        }
+
+        if (x_fields.size() < 9)
+        {
+            result.diagnostics.emplace_back(
+                "X 列表头部取项异常（前 9 项要求，实取 " + std::to_string(x_fields.size()) + "）");
+            result.passed = false;
+            return result;
+        }
+        x_fields.resize(9);   // 镜像只承诺头部 9 项
+
+        // 端 2：GLSL `MeshDrawParamsHeadData`（逐行取块器；_pad 是余量承担者）。
+        const std::vector<StructFieldEntry> glsl_fields_all =
+            ExtractStructFieldsLineWise(glsl_text, "MeshDrawParamsHeadData");
+
+        std::vector<StructFieldEntry> glsl_head;
+        for (const StructFieldEntry &f : glsl_fields_all)
+        {
+            if (f.name.rfind("_pad", 0) == 0)
+                continue;
+            glsl_head.push_back(f);
+        }
+
+        if (glsl_head.empty())
+        {
+            result.diagnostics.emplace_back(
+                "MeshDrawParamsHeadData 字段提取为空（结构标记被改写？取块器 = 逐行式）");
+            result.passed = false;
+            return result;
+        }
+
+        // 逐字段同序同型（X 列表的 dim 恒空：头部 9 项全是标量）
+        const size_t common = glsl_head.size() < x_fields.size()
+                            ? glsl_head.size() : x_fields.size();
+        for (size_t i = 0; i < common; ++i)
+        {
+            if (x_fields[i].type != glsl_head[i].type
+             || x_fields[i].name != glsl_head[i].name)
+            {
+                result.diagnostics.emplace_back(
+                    "MeshDrawParams 头部漂移：第 " + std::to_string(i) + " 项 X列表="
+                    + x_fields[i].type + " " + x_fields[i].name + " / GLSL 镜像="
+                    + glsl_head[i].type + " " + glsl_head[i].name
+                    + "；gather 的 groupCountX 读源失效（画错组数=静默回归）");
+                result.passed = false;
+                return result;
+            }
+        }
+        if (glsl_head.size() != x_fields.size())
+        {
+            result.diagnostics.emplace_back(
+                "头部项数不一致（余量必须全由 _pad 承担）：X 前 9 / 镜像非 pad 项 "
+                + std::to_string(glsl_head.size()));
+            result.passed = false;
+            return result;
+        }
+
+        // 步长契约：载荷 + _pad == 128（池行 sizeof；scalar layout 无隐式填充）
+        std::string glsl_stripped = glsl_text;
+        StripCommentTokens(glsl_stripped);
+        const auto glsl_defines = CollectDefineConstants(glsl_stripped);
+
+        size_t glsl_bytes = 0;
+        for (const StructFieldEntry &f : glsl_fields_all)
+        {
+            size_t bytes = 0;
+            if (!StructFieldStorageSize(f, glsl_defines, bytes))
+            {
+                result.diagnostics.emplace_back(
+                    "MeshDrawParamsHeadData 字段 " + f.name + " 的长度不可求值：" + f.dim);
+                result.passed = false;
+                return result;
+            }
+            glsl_bytes += bytes;
+        }
+
+        // CPU 端对照：X 列表头部 9 项 = 4B×8 + float×1 = 36 B（sizeof 断言在头文件里，
+        // 门里核对镜像总尺寸 == 池行 128 即可；36+92=128 是本用例的算术前提）
+        if (glsl_bytes != 128)
+        {
+            result.diagnostics.emplace_back(
+                "MeshDrawParamsHeadData 的 GLSL 总存储 = " + std::to_string(glsl_bytes)
+                + " B，必须 == 128 B（池行 sizeof；差值必须由行尾 _pad 显式写死）");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     /// 「表归属」分类表（**唯一真源**）：每个地址字段必须**恰好**属于一侧 ——
     /// `WorldAddresses`（世界私有：多世界同帧各写自己的）或 `GlobalAddresses`（设备级全局：跨世界共享的资源池）。
     /// 新增地址字段必须在此登记，否则门报「未分类字段」（见 §6 契约 ④）。
@@ -5207,6 +5373,7 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());
     if (run_interface) results.push_back(RunWorldAddressesStructParityCase());
     if (run_interface) results.push_back(RunEntityGPUStructParityCase());
+    if (run_interface) results.push_back(RunMeshDrawParamsHeadParityCase());
     if (run_interface) results.push_back(RunAddressOwnershipCase(false));
     if (run_interface) results.push_back(RunAddressOwnershipCase(true));
     if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());

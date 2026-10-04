@@ -1,4 +1,5 @@
 #include <hgl/ecs/support/GPUCullSystem.h>
+#include <hgl/ecs/core/MaterialBatch.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/EntityGPU.h>
 #include <hgl/ecs/core/RenderItem.h>
@@ -7,7 +8,9 @@
 #include <hgl/ecs/components/GeometryData.h>
 #include <vector>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
+#include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKDevice.h>
@@ -30,14 +33,18 @@ namespace hgl::ecs
             uint64_t addr_global_addresses;
             uint64_t visible_indices_addr;
             uint64_t indirect_commands_addr;
+            uint64_t l2w_out_addr;
+            uint64_t cmds_out_addr;
+            uint64_t mtl_out_addr;
             uint64_t draw_count_addr;
             uint32_t entity_count;
             uint32_t max_visible_count;
             uint32_t camera_row;          // ECSContext::GetActiveCameraRow()
-            uint32_t mesh_group_count_x;  // 间接命令 X 组数（绘制接管=T3f 时按几何给）
+            uint32_t mesh_group_size;     // kMeshVertexPassthroughMaxVertices（CPU 单源下发）
+            uint32_t enable_gather;       // 0 = 只出计数；非 0 = 写 gather 四表（形态 B opt-in）
         };
 
-        static_assert(sizeof(CullPushConstants) == 56, "CullPushConstants layout mismatch");
+        static_assert(sizeof(CullPushConstants) == 88, "CullPushConstants layout mismatch");
 
         AnsiString LoadShaderSource(const char* path)
         {
@@ -68,6 +75,9 @@ namespace hgl::ecs
         if (visible_indices_buffer_) delete visible_indices_buffer_;
         if (indirect_commands_buffer_) delete indirect_commands_buffer_;
         if (draw_count_buffer_) delete draw_count_buffer_;
+        if (l2w_out_buffer_) delete l2w_out_buffer_;
+        if (cmds_out_buffer_) delete cmds_out_buffer_;
+        if (mtl_out_buffer_) delete mtl_out_buffer_;
         // compute_pipeline_ 和 shader_program_ 由 MaterialManager 管理，不手动删除
     }
     bool GPUCullSystem::Initialize(ECSContext* context)
@@ -204,8 +214,40 @@ namespace hgl::ecs
         if (!draw_count_buffer_) return false;
         draw_count_addr_ = device_->GetBufferDeviceAddressAligned16(draw_count_buffer_->GetBuffer());
 
-        GLogInfo(u8"[GPUCullSystem] Output buffers created: visible_indices=%p, indirect_commands=%p, draw_count=%p",
-                 (void*)visible_indices_addr_, (void*)indirect_commands_addr_, (void*)draw_count_addr_);
+        // ── 形态 B（T3f-2）gather 输出三表（容量 = kMaxVisibleEntities；icb 复用上面）──
+        // 行距契约（与着色器镜像逐字段一致，§8.2d 的"读真源零复制"口径）：
+        //   l2w_out  = uint32 × 4 B/行；cmds_out = MeshDrawCommand 8 B/行；
+        //   mtl_out  = MaterialInstanceAddresses 16 B/行。
+        // usage：STORAGE（CS 写）+ INDIRECT（icb/count 已有；三张行表被 mesh shader
+        // 经 BDA 解引用 ⇒ SHADER_DEVICE_ADDRESS 必带，与 §7.6 设备地址纪律一致）。
+        const VkDeviceSize l2w_bytes  = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
+        const VkDeviceSize cmds_bytes = VkDeviceSize(kMaxVisibleEntities) * 8;    // MeshDrawCommand
+        const VkDeviceSize mtl_bytes  = VkDeviceSize(kMaxVisibleEntities) * 16;   // MaterialInstanceAddresses
+
+        const VkBufferUsageFlags gather_usage =
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
+        l2w_out_buffer_ = device_->CreateBuffer(
+            "GPUCullSystem.L2WOut", gather_usage, l2w_bytes, l2w_bytes, nullptr,
+            graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
+        if (!l2w_out_buffer_) return false;
+        l2w_out_addr_ = device_->GetBufferDeviceAddressAligned16(l2w_out_buffer_->GetBuffer());
+
+        cmds_out_buffer_ = device_->CreateBuffer(
+            "GPUCullSystem.CmdsOut", gather_usage, cmds_bytes, cmds_bytes, nullptr,
+            graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
+        if (!cmds_out_buffer_) return false;
+        cmds_out_addr_ = device_->GetBufferDeviceAddressAligned16(cmds_out_buffer_->GetBuffer());
+
+        mtl_out_buffer_ = device_->CreateBuffer(
+            "GPUCullSystem.MtlOut", gather_usage, mtl_bytes, mtl_bytes, nullptr,
+            graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
+        if (!mtl_out_buffer_) return false;
+        mtl_out_addr_ = device_->GetBufferDeviceAddressAligned16(mtl_out_buffer_->GetBuffer());
+
+        GLogInfo(u8"[GPUCullSystem] Output buffers created: visible_indices=%p, indirect_commands=%p, draw_count=%p, gather_l2w=%p cmds=%p mtl=%p",
+                 (void*)visible_indices_addr_, (void*)indirect_commands_addr_, (void*)draw_count_addr_,
+                 (void*)l2w_out_addr_, (void*)cmds_out_addr_, (void*)mtl_out_addr_);
         return true;
     }
 
@@ -363,11 +405,17 @@ namespace hgl::ecs
         pc.addr_global_addresses = global_addr;
         pc.visible_indices_addr = visible_indices_addr_;
         pc.indirect_commands_addr = indirect_commands_addr_;
+        pc.l2w_out_addr = l2w_out_addr_;
+        pc.cmds_out_addr = cmds_out_addr_;
+        pc.mtl_out_addr = mtl_out_addr_;
         pc.draw_count_addr = draw_count_addr_;
         pc.entity_count = entity_count;
         pc.max_visible_count = kMaxVisibleEntities;
         pc.camera_row = context_->GetActiveCameraRow();   // 与材质侧 pc_root.camera_row 同式
-        pc.mesh_group_count_x = 0;  // 绘制接管（T3f）前只出计数不出绘制
+        pc.mesh_group_size = graph::mtl::kMeshVertexPassthroughMaxVertices;  // 单源下发（不在 GLSL 硬编码）
+        // 形态 B：gather 开关恒等于 opt-in（表内容由 CPU guard 决定批是否消费；
+        // 未接管帧写出的 gather 表 = 无人读的富余写，代价一次 gather 写）。
+        pc.enable_gather = override_draw_ ? 1u : 0u;
 
         // Dispatch compute shader
         auto* cmd = device_->CreateComputeCommandBuffer("GPUCullSystem.Cmd");
@@ -410,6 +458,74 @@ namespace hgl::ecs
         // 形态 A（T3f-1）：把幸存集回灌 isVisible，下游 batch/行表/ICB 全走既有 CPU 路径。
         if (apply_visible_set_)
             ApplyVisibleSetToRenderItems(visible_count);
+    }
+
+    bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch)
+    {
+        // 调用前提（guard 已在 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 核完）：
+        // opt-in 开 / gather 输出与批行表**同容量契约** / 单批 / 全默认阴影 / 非 meshlet。
+        // 本函数只做"指向 + 置标志"，不再重复校验 ⇒ 校验与接线分离，口径唯一。
+        if (!batch || !indirect_commands_buffer_ || !draw_count_buffer_
+         || !l2w_out_buffer_ || !cmds_out_buffer_ || !mtl_out_buffer_)
+            return false;
+
+        // icb 容量必须容得下最坏情况（全部可见）：批容量 > 表行数 ⇒ 越界 = 项目 bug，
+        // 但宁可在这里再判一次（guard 已判 items 数；这里判**表**行数，口径不同源则拒）
+        if (batch->items.size() > kMaxVisibleEntities)
+            return false;
+
+        // 交接帧（CPU→GPU）：批可能已持有上一帧 CPU 路径分配的**自有** buffer
+        // （own_* 仍为 true 时 `MaterialBatch::Clear()` 保留指针）⇒ 覆盖前必须释放，
+        // 否则每交接一次漏一套 ICB/行表（稳态接管帧 own=false、指针=GPU 表，无此问题）。
+        // 释放口径与 ~MaterialBatch / ReleaseICB 逐字一致。
+        if (batch->own_icb_mesh_tasks && batch->icb_mesh_tasks)
+        {
+            delete batch->icb_mesh_tasks;
+            batch->icb_mesh_tasks = nullptr;
+        }
+        if (batch->own_mesh_draw_params && batch->mesh_draw_params_buffer)
+        {
+            if (batch->buffer_manager)
+                batch->buffer_manager->Release(batch->mesh_draw_params_buffer);
+            else
+                delete batch->mesh_draw_params_buffer;
+            batch->mesh_draw_params_buffer = nullptr;
+        }
+        if (batch->own_l2w_index && batch->l2w_index_buffer)
+        {
+            if (batch->buffer_manager)
+                batch->buffer_manager->Release(batch->l2w_index_buffer);
+            else
+                delete batch->l2w_index_buffer;
+            batch->l2w_index_buffer = nullptr;
+        }
+        if (batch->own_material_data_rows && batch->material_data_index_rows_buffer)
+        {
+            if (batch->buffer_manager)
+                batch->buffer_manager->Release(batch->material_data_index_rows_buffer);
+            else
+                delete batch->material_data_index_rows_buffer;
+            batch->material_data_index_rows_buffer = nullptr;
+        }
+
+        // 指向剔除输出（own_* 全 false ⇒ 批析构/复位绝不 delete 这些 buffer）。
+        batch->gpu_driven_override            = true;
+        batch->own_icb_mesh_tasks             = false;
+        batch->own_mesh_draw_params           = false;
+        batch->own_l2w_index                  = false;
+        batch->own_material_data_rows         = false;
+
+        batch->icb_mesh_tasks                 = indirect_commands_buffer_;
+        batch->icb_count_buffer               = draw_count_buffer_;
+        batch->icb_count_buffer_offset        = 0;
+        batch->mesh_draw_params_buffer        = cmds_out_buffer_;
+        batch->mesh_draw_params_capacity      = kMaxVisibleEntities;
+        batch->l2w_index_buffer               = l2w_out_buffer_;
+        batch->l2w_index_capacity             = kMaxVisibleEntities;
+        batch->material_data_index_rows_buffer = mtl_out_buffer_;
+        batch->material_data_index_rows_capacity = kMaxVisibleEntities;
+
+        return true;
     }
 
     uint32_t GPUCullSystem::GetGPUVisibleCount() const
