@@ -810,7 +810,7 @@ cull 派发（RenderFrameSync，本帧）
 |---|------|-------------|----------|
 | **A1** | **② meshlet 几何**（X 组数走 CPU `GetMeshletCount()` 分支） | guard 仍把这类批挡在接管外（池行 `addr_meshlets != 0` ⇒ 该批不接管）。需给 GPU 一个**可读的 meshlet_count 源**（池行加字段或另表） | 与 CPU 同口径后放开；门 44/0；该批接管且像素三方全等 |
 | **A2** | **④ 实例化/多实例 item**（gather 每实体一命令 `Y=1` 不适配） | guard 挡 `InstancedPrimitiveRenderItem`；需 **per-item instance_count 源**（gather 时把 Y 写成实例数） | 同上 |
-| **A3** | **部分接管路径从未被真实触发** | 实测全是 `batches=x/x`（1/1、2/2、4/4）⇒ `IsGPUCullFullTakeoverActive()` 的"部分接管"分支（CPU-driven 批仍需 CPU 剔除）只在代码层存在 | 造"含 ②/④ 批 + 普通批"的示例 ⇒ 期望 `batches=k/n`（k<n）、未接管批走 CPU 账、`Σcount < 全局幸存`、像素三方全等 |
+| ~~**A3**~~ | ~~**部分接管路径从未被真实触发**~~ **已完成（`c96cac8cd`，AlphaModes `AM_PARTIAL=1`）** | 台架 = Opaque 行最后一格改"同 def + billboard 顶点节点"（⇒ 独立批）+ `AllocateContiguousInstances(…,1)`（⇒ `InstancedPrimitiveRenderItem`，④ 类项）。实测：reject 日志（④ 理由）+ `ENGAGED batches=4/5 items=27` + `Parity 28/28/0` + `Σcount=27 < global=28 overflow=0 值链=27/27`（台架判据本就 Σ≤global，未误报）+ 未接管批确实被 CPU 账画出（Opaque 行 7 块）+ 像素三方逐字节全等 + 默认关时仍 4/4 | 已达成 |
 | **A4** | **容量边界未验**：`kMaxBatches=256`、竞技场 `kMaxVisibleEntities=4096`、切片 4 行对齐与 overflow 槽 | 现有示例 1~4 批 / 28~100 项 ⇒ 从未逼近上限；超限路径（guard 前置检查 + 着色器 overflow 计数）没被触发过 | 刻意超限场景 ⇒ 期望"**不接管**（回 CPU 账）+ 告警一次"，`overflow==0`（溢出判据不得为红） |
 | **A5** | **L2W 环深度 = 3 vs 帧槽空间 = 8**（§8.4） | 与本线无关但影响未来正确性；未查 | 确认主帧是否只用槽 0..2；若会用 3..7 ⇒ 变换缓冲自身在部分槽上别名 |
 | **A6** | **CPU 渲染路径的去留** | 按 2026-10-04 拍板：等 ②③④ 覆盖真实场景后再删或按 RELEASE 宏屏蔽（取回校验常驻） | — |
