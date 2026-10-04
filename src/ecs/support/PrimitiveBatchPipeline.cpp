@@ -1326,9 +1326,6 @@ namespace hgl::ecs
                 why = "批是 lines（X 组数公式不同源）";
             else if (next_index >= GPUCullSystem::kMaxBatches)
                 why = "接管批数超 kMaxBatches(256)";
-            else if (((row_cursor + uint32_t(b->items.size()) + 3u) & ~3u)
-                     > GPUCullSystem::GetGatherCapacity())
-                why = "批次累计项数超共享竞技场（kMaxVisibleEntities）";
             else
             {
                 for (auto *item : b->items)

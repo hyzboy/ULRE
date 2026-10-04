@@ -91,9 +91,6 @@ namespace hgl::ecs
             return true;
         }
 
-        /// gather 输出表容量（行数/元素数 = kMaxVisibleEntities）：guard 校验批容量用
-        static constexpr uint32_t GetGatherCapacity() { return kMaxVisibleEntities; }
-
         // ── T3i（③ 多批/混材质）：批标签 / 分区 / 每批计数 ──────────────────
         // 三者均**按帧槽分份且 CPU 只写当前份**：否则本帧直写会与上一帧仍在飞行的
         // cull 竞争（同队列提交序只覆盖"新提交批次读旧批次写"，不覆盖 CPU 直写）。
