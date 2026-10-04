@@ -409,6 +409,9 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 ### 7.4 批处理阶段：PrimitiveBatchPipeline
 
+> ⚠ **T3i 之后本节已有增量、且行号属旧修订**：多批/混材质 ⇒ "批标签 + 共享行竞技场切片 + 每批 GPU 计数"、
+> 逐批 guard（可接管前提）与 CPU 账/GPU 接管的双路分流，现状见 `doc/render-flow-cull-sort-drawcall.md` §2.3/§4。
+
 | 步骤 | 函数（`src/ecs/support/PrimitiveBatchPipeline.cpp`） | 内容 |
 |---|---|---|
 | 剔除 | `RunCulling → PerformFrustumCulling` `:120/:153-186` | 视锥测试（`TestFrustumWithWorldAABB` `:187` / `LocalAABB` `:197` / `BoundingSphere` `:209`），置 `item->isVisible` |
@@ -420,6 +423,9 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 `MaterialBatch`（`inc/hgl/ecs/core/MaterialBatch.h:40-94`）是「一个 shader program 的全部待绘项」：`key`（shader+pipeline）、`items`（`RenderItem*`）、`draw_batches`/`draw_batches_count`、**`mesh_draw_params_buffer`（现装 `MeshDrawCommand` 表，每 DrawBatch 一行 8B）+ `mesh_draw_params_capacity`**、`icb_mesh_tasks`（mesh 间接命令）、`icb_count_buffer`/`icb_count_buffer_offset`（GPU 计数，可选）、`l2w_index_buffer`、`material_data_index_rows_buffer`、`texture_reference_base_addr`、`gpu_driven_override`/`uses_render_item_resolve`/`own_*` 所有权位、`transform_buffer`（非拥有，来自 TransformSystem）、`renderer`（`PipelineMaterialRenderer`）。
 
 ### 7.5 提交阶段：从帧缓存到 vkCmd
+
+> ⚠ **T3i 之后的提交分两路**（未接管批走 CPU 账 `DrawMeshTasksIndirect`；接管批按切片走
+> `DrawMeshTasksIndirectCount` + GPU 计数缓冲），现状见 `doc/render-flow-cull-sort-drawcall.md` §5。
 
 `PrimitiveRenderSystem::OnRender`（`src/ecs/support/primitive/PrimitiveRenderSystem.cpp:39-94`）：从 `cache.materialBatches` 收集非空批 → 按 `MaterialBatch::key` 排序（:60-65）→ 跳过 `pipeline->GetOverlay()` 的批（:72-73，交给 Overlay 系统）→ 逐个 `renderer->Render(cmdBuffer, draw_batches, count, transform_buffer, batch, context->GetRenderContext(), context->GetActiveCameraID())`（:86-92）。批次内动作见配套文档 `doc/simple-sphere-ecs-render-chain.md` §5。
 
