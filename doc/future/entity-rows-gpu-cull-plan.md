@@ -771,6 +771,14 @@ cull 派发（RenderFrameSync，本帧）
 
 ### 判据
 
+- **多批测试床 = `example/Material/CoverageVariants`**（2026-10-04 新增）：一种 MaterialRecipe 的
+  两个**覆盖变体**——Opaque（coverage None）与 DitherMask（`render_state_overrides.dither=true`
+  ⇒ 生成 GLSL 带 `#define HGL_ALPHA_DITHER`）⇒ **不同 shader program ⇒ 2 个批**；同一几何、
+  同一 mtl_def、同一纹理，差别只在覆盖模式（与"只改渲染状态"成不了批形成对照——EDS 后 Pipeline
+  只留 shader 部分）。env：`CV_CULL=1`（dispatch+对拍）/ `CV_FORM_B=1`（接管）/ `CV_FRAMES=N` /
+  `CV_DUMP=<tag>` / `CV_YAW|CV_PITCH|CV_DIST|CV_TX|CV_TY|CV_TZ`（取景）。
+  实测：`ENGAGED batches=2/2 items=20 arena_rows=24`、Parity 20/20/0、
+  `Σcount=20=global overflow=0 值链=20/20 bad=0`、三方像素（CPU 账 / 仅 dispatch / 接管）逐字节全等、VUID=0。
 - **正向**：`[T3i] GPU cull draw override ENGAGED: batches=x/y items=N arena_rows=M`（一次性）——
   静默退回 CPU 账也会像素全等 ⇒ 没有本日志不能宣称接管成立。
 - **台架（值链 + 两本账）**：`Σ counters[b] == 全局幸存计数`；`overflow == 0`（硬判据）；
