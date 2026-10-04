@@ -39,30 +39,43 @@ namespace hgl::ecs
         //——per-draw 段偏移经 mesh_draw_params 参数表查表（rows[gl_DrawID]）
         if (cur_owner_batch && cur_owner_batch->icb_mesh_tasks)
         {
+            // T3i（③ 多批）：GPU 托管批的段偏移/段长 = **本批切片**（CPU 侧不再写 ICB
+            // 与行表 ⇒ `first_indirect_draw_index`/`indirect_draw_count` 只是 items 计数，
+            // 不是段位置）。段偏移 = `gpu_row_base × 12B`（ICB 是共享竞技场）；
+            // maxDrawCount = 切片容量，实际条数由本批 GPU 计数给出。
+            const int32_t  first = cur_owner_batch->gpu_driven_override
+                                 ? static_cast<int32_t>(cur_owner_batch->gpu_row_base)
+                                 : first_indirect_draw_index;
+            const uint32_t max_count = cur_owner_batch->gpu_driven_override
+                                 ? cur_owner_batch->gpu_capacity
+                                 : indirect_draw_count;
+
             static bool s_logged_once = false;
             if (!s_logged_once)
             {
                 s_logged_once = true;
-                GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u",
-                         first_indirect_draw_index, indirect_draw_count);
+                GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u"
+                         u8"（gpu_driven=%d row_base=%u capacity=%u）",
+                         first, max_count,
+                         cur_owner_batch->gpu_driven_override ? 1 : 0,
+                         cur_owner_batch->gpu_row_base, cur_owner_batch->gpu_capacity);
             }
+
             if (cur_owner_batch->icb_count_buffer)
             {
                 cmd_buf->DrawMeshTasksIndirectCount(
                     cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
-                    static_cast<VkDeviceSize>(first_indirect_draw_index)
-                        * sizeof(VkDrawMeshTasksIndirectCommandEXT),
+                    static_cast<VkDeviceSize>(first) * sizeof(VkDrawMeshTasksIndirectCommandEXT),
                     cur_owner_batch->icb_count_buffer->GetBuffer(),
                     cur_owner_batch->icb_count_buffer_offset,
-                    indirect_draw_count);
+                    max_count);
             }
             else
             {
                 cmd_buf->DrawMeshTasksIndirect(
                     cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
-                    static_cast<VkDeviceSize>(first_indirect_draw_index)
-                        * sizeof(VkDrawMeshTasksIndirectCommandEXT),
-                    indirect_draw_count);
+                    static_cast<VkDeviceSize>(first) * sizeof(VkDrawMeshTasksIndirectCommandEXT),
+                    max_count);
             }
         }
 
@@ -192,7 +205,13 @@ namespace hgl::ecs
                     ? owner_batch->material_data_index_rows_buffer->GetGPUBuffer() : nullptr,
                 owner_batch->texture_reference_base_addr,
                 nullptr, nullptr, nullptr,
-                camera_row);
+                camera_row,
+                // T3i（③ 多批）：本批切片起点 ⇒ 三表 push 地址各加 `row_base × 行字节`
+                //（cmds 8B / l2w_index 4B / mtl 16B；row_base % 4 == 0 ⇒ 三者皆 16B 对齐，
+                //  与 shader 侧 buffer_reference_align 声明相符）。非托管批 row_base=0。
+                VkDeviceSize(owner_batch->gpu_row_base) * 8u,
+                VkDeviceSize(owner_batch->gpu_row_base) * 4u,
+                VkDeviceSize(owner_batch->gpu_row_base) * 16u);
         }
 
         // 批次级描述符覆盖（batch_descriptor_mp）与材质级绑定（BindDescriptorSets(material)）

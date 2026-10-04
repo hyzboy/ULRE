@@ -1,6 +1,7 @@
 #pragma once
 #include <hgl/ecs/core/System.h>
 #include <hgl/ecs/core/Context.h>
+#include <hgl/common/RenderOptions.h>
 #include <hgl/math/Matrix.h>
 #include <hgl/math/Vector.h>
 
@@ -82,6 +83,17 @@ namespace hgl::ecs
         // GPU 幸存**顺序表**（= visible_indices 原文：slot k ↔ gather 行表第 k 行）⇒
         // 值链判据用它把「实体 index → 其 gather mtl 行」对齐（位图丢序，这里保序）。
         uint32_t gpu_visible_order_[kMaxVisible] = {};
+
+        // T3i（③ 多批）：值链走查需要「竞技场行 → 实体」的**精确**映射——多批
+        // atomicAdd 交错下"第 k 行 = 第 k 个幸存者"不再成立（保序表在多批下作废）。
+        // 映射走 **L2W 行号反查**：L2W 行空间 = 实体数 × 帧槽（每个 (实体, 帧槽)
+        // 一行），上限 = kMaxVisible × HGL_FRAME_SLOT_TOTAL。
+        // ⚠ 行号可能来自**未挂载 Transform 的实体**（row[1] 为哨兵值）⇒ 填表/查表
+        // 都必须先做界内判定（曾经的越界写 = 崩溃根因）。
+        static constexpr uint32_t kL2WRowCapacity = kMaxVisible * HGL_FRAME_SLOT_TOTAL;
+
+        uint32_t l2w_row_to_entity_[kL2WRowCapacity] = {};
+        const Entity* alive_owner_[kMaxVisible] = {};   ///< index → 实体指针（采样窗口重建）
 
         uint32_t cpu_count_ = 0;
         uint32_t gpu_count_ = 0;

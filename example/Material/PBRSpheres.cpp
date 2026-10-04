@@ -106,6 +106,14 @@ private:
         graph::GlobalSSBODataAccessor;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
+
+    // T3i（③ 多批/混材质）判据（PBR_MULTIBATCH=1）：网格后半（col >= GRID_SIZE/2）
+    // 走**第二套配方**——同 mtl_def + 不同顶点节点（billboard 朝向）⇒ 不同 vertex
+    // program ⇒ 两个 MaterialBatch ⇒ 走"单次 cull 派发 + 批标签/切片"的多批路径。
+    //（改 pipeline 配置不成批：EDS 后 Pipeline 只留 shader 部分，见 InitMaterial 注释。）
+    graph::mtl::MaterialRecipe sphere_recipe_b{};
+    PrimitiveAsset base_primitives_b[GRID_SIZE]{};
+    bool multibatch_enabled = false;
     MaterialDataAccessor sphere_slot_accessors[GRID_SIZE][GRID_SIZE]{};
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
@@ -164,6 +172,26 @@ private:
         sphere_recipe.recipe_name = "PBRSpheres.Lit";
         sphere_recipe.mtl_def_id = "Lit";
         sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+
+        // T3i：第二套配方（同 def ⇒ 同 shader program；不同 pipeline 配置 ⇒ 第二个批）
+        multibatch_enabled = (getenv("PBR_MULTIBATCH") != nullptr);
+
+        if (multibatch_enabled)
+        {
+            // ⚠ 批键 = {ShaderProgram*, Pipeline*}。两条弯路（实测过）：
+            //  1) 只改 pipeline 配置（cull/blend）**不成批**——EDS 之后 Pipeline 只保留
+            //     shader 部分，材质渲染状态在绘制时动态应用（PipelineMaterialRenderer::Render）；
+            //  2) 换 mtl_def（如 UnlitTexture）**解析失败**（本示例资源集只喂 Lit 所需
+            //     纹理/数据行）⇒ 那些实体没有渲染项，不是"第二个批"。
+            // ⇒ 用**同 def + 不同顶点节点配置**（billboard 朝向 ⇒ 不同 vertex program，
+            //   资源/材质行路径完全一致）拿到真正的第二个批。
+            sphere_recipe_b.recipe_name = "PBRSpheres.LitBillboard";
+            sphere_recipe_b.mtl_def_id   = "Lit";
+            sphere_recipe_b.vertex_node_config.orientation = mtl::OrientationMode::CameraFacingFree;
+
+            printf("[T3i] PBR_MULTIBATCH=1：网格后半走第二套配方"
+                   "（Lit + 顶点节点=Billboard ⇒ 不同 shader program）⇒ 期望 2 个批\n");
+        }
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler) {
@@ -442,6 +470,10 @@ private:
                 return false;
             }
             base_primitives[i] = PrimitiveAsset(builtin_geometries[i], &sphere_recipe, PrimitiveType::Triangles);
+
+            // T3i：第二套 primitive（同几何、第二配方）
+            if (multibatch_enabled)
+                base_primitives_b[i] = PrimitiveAsset(builtin_geometries[i], &sphere_recipe_b, PrimitiveType::Triangles);
         }
 
         return true;
@@ -460,6 +492,10 @@ private:
 
         if (!(sphere_recipe.material_ssbo_binding = sphere_slot_accessors[0][0].GetGlobalSSBOBinding()).IsValid())
             return false;
+
+        // T3i：第二配方共用同一 material SSBO 绑定（数据行差异由 per-entity 4-ID 表承载）
+        if (multibatch_enabled)
+            sphere_recipe_b.material_ssbo_binding = sphere_recipe.material_ssbo_binding;
 
         if (!CreateBasePrimitives())
             return false;
@@ -512,7 +548,11 @@ private:
 
                 auto prim_comp = e->GetContext()->GetOrCreateGeometryData(e);
                 hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
-                prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&base_primitives[col]);
+                // T3i（PBR_MULTIBATCH=1）：后半网格用第二配方 ⇒ 第二个批
+                const bool use_recipe_b = multibatch_enabled && (col >= GRID_SIZE / 2);
+
+                prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(
+                    use_recipe_b ? &base_primitives_b[col] : &base_primitives[col]);
                 if (!material_data_comp->SetTextureResource(
                         "base_color",
                         base_color_texture,

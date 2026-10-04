@@ -629,7 +629,21 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
   `first`/`countBuf+off`/`maxCount`；
 - 接管 hook 现在把批的五个指针整体指向系统单套表（`ApplyGPUCullOverrideHook`）。
 
-**设计：共享竞技场 + 按批切片（材质/mesh 着色器零改动）**
+**设计定稿（2026-10-04 拍板：1A + 2β + 3A）—— 共享竞技场 + 按批切片**
+
+⚠ 两处"落地形式"修正（查实现所得，架构不变）：
+1. **批标签不进实体行**：实体行是 **8 份镜像 + 帧起点才刷新**（`SetFrameIndex →
+   SyncWorldAddresses → UploadEntityGPUDirtyRows`）⇒ 帧内（批装配）写入要等**下一帧**起点
+   才进镜像；而 `BatchInfo` 是 CPU 直写的新值 ⇒ 两者不同源 = 正是本设计要消灭的错配。
+   ⇒ 标签走**系统自有的 per-entity u32 数组** `batch_tag`（CPU 批装配时直写当前帧槽、
+   cull 直读，地址经 push constant 下发）。**不动 `EntityGPU._pad`**。
+   原理性区分（记牢）：**内容类**值（阴影 receive/bias）滞后一帧无害；**结构类**值
+   （批归属）必须与**本帧绘制**同源，滞后 = 切片错位。
+2. **新增缓冲按帧槽分份、只写当前份**：否则本帧 CPU 直写与**上一帧仍在飞行的 cull**
+   竞争（同队列提交序只保证"新提交批次读到旧批次写"，不覆盖"CPU 直写 vs 在飞 GPU 读"）。
+   与引擎 UBO/实体表分份同理由。
+
+**（下述原始设计条目按此两条修正后生效）**
 1. **竞技场**：系统仍持 4 张表（icb 12B/行、cmds 8B/行、l2w 4B/行、mtl 16B/行），容量仍
    `kMaxVisibleEntities`——因为**每项只属一批**，全场景 item 总数 ≤ 4096 ⇒ 一块地够全部批分摊；
 2. **切片**：批 b 得行区间 `[base_b, base_b + cap_b)`，`base_b` = 前序批 item 数累计、`cap_b` =
@@ -637,9 +651,12 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
    同一顺序）；
 3. **批身份上 GPU**：`EntityGPU._pad` 再划 4B 放 `batch_index`（@96，`_pad` 32→28；沿用 T3h
    先例，零新表零新地址）；写者 = 批装配（与批行表同判据点）；消费 = 剔除着色器分流；
-4. **每批输入**：`BatchInfo[]`（`{u32 row_base, u32 capacity}`，CPU 每帧写，RO）+ `BatchCounters[]`
-   （N×u32，GPU 原子加；`FillBuffer` 一次清全部，照 T3g 批内 barrier 纪律）；
-   两个地址 + `batch_count` 进 cull push constant（现 88B → ~108B，仍在 128B 保底内）；
+4. **每批输入 + 批标签**：`BatchTag[帧槽][4096]` u32（`0xFFFFFFFF` = 不属任何批 ⇒ 跳过；
+   见修正 1）+ `BatchInfo[]`（`{u32 row_base, u32 capacity}`）+ `BatchCounters[]`（含末位
+   overflow 槽；`FillBuffer` 在 cull cmd 内清全部，照 T3g 批内 barrier 纪律）；
+   三个地址 + `batch_count` 进 cull push constant（现 88B → ~116B，仍在 128B 保底内）；
+   **按批粒度接管**：未接管的批其实体标签留无效 ⇒ cull 不为其写行、CPU 路径照旧绘制
+   （单次派发即得按批粒度，无需每批一次 dispatch）；
 5. **着色器分流**：`b = entity.batch_index`；`b >= batch_count || batch_index 无效` ⇒ 跳过；
    `slot = atomicAdd(counter[b], 1)`；`slot >= cap_b` ⇒ 溢出（跳过 + 计数上报，见决策 3）；
    行号 `r = base_b + slot`，四张表写 `r`；
@@ -676,7 +693,92 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
 `MaterialBatch.h` + `PipelineMaterialRenderer.cpp`（切片 first/maxCount/地址偏移）、
 `CPUCullReferenceSystem.cpp`（归属校验）、`PBRSpheres.cpp`（第二变体）。
 
-**待拍板**
+**待拍板**（→ 已于 §8.6 拍板并落地：1A 改走系统自有标签数组 / 2β 相位后移 / 3A 跳过+计数）
 1. `batch_index` 住 `EntityGPU._pad`（推荐，零新表）还是新建每实体批表？
 2. 布局变化那一帧退回 CPU 账（推荐：简单且判据干净）还是强行同帧重建切片？
 3. 溢出策略：`slot >= cap_b` ⇒ 跳过 + 计数器上报（推荐：可见且不崩）还是 fail-fast 报错？
+
+---
+
+## §8.6 T3i 落地：③ 多批/混材质 GPU 剔除（定稿 1A + 2β + 3A）
+
+**状态**：实现完成（2026-10-04）。批定义 = `ShaderProgramPipelineKey`（`{ShaderProgram*, Pipeline*}`，
+只比两个指针；材质**实例**不改变批号）。
+
+### 定稿（用户拍板 1A + 2β + 3A，含两处落地修正）
+
+| # | 拍板项 | 定稿 | 落地修正（查实现后） |
+|---|--------|------|----------------------|
+| 1A | 批归属标签 | 单次 cull 派发 + 每实体批标签 | **不进 `EntityGPU._pad`**：实体行有 8 份帧槽镜像且帧起点才刷新 ⇒ 帧内写入滞后一帧，与 `BatchInfo`（CPU 直写）不同源。改走系统自有 `batch_tag[帧槽][4096]`（CPU 批装配直写当前槽、cull 直读，地址经 push constant 下发） |
+| 2β | cull 相位 | `RenderCollect` → `RenderFrameSync` | 使**标签 / 切片 / 绘制**三者本帧同源，无"布局稳态"前提；把隐式注册顺序依赖变成显式 `AddDependency`。**不解决** L2W 一帧滞后（内容类值滞后无害） |
+| 3A | 切片溢出 | `slot >= capacity` ⇒ 跳过 + `overflow` 计数 | 台架把 `overflow != 0` 当**硬判据**（非零即红）+ guard 前置容量检查（超限不接管） |
+
+### 原理分界
+
+- **结构类值**（批归属/切片/计数）必须与本帧绘制**同源** ⇒ 帧槽分份 + 相位后移；
+- **内容类值**（阴影 bias/receive、材质两位）滞后一帧无害 ⇒ 沿用实体行通道（T3h）。
+
+### 数据通路
+
+```
+批装配（RenderBatch = 系统相位 RenderBatch）
+  ├─ guard：逐批评估前提 ⇒ 分配批号 b、切片 [row_base, row_base+capacity)
+  │     · 写 batch_tag[帧槽][entity_index] = b（整表先填 0xFFFFFFFF = 不属任何批）
+  │     · SetBatchLayout(b, row_base, capacity) → EndBatchLayout(batch_count) 落设备
+  ├─（未接管批：标签留无效 ⇒ cull 不写行、CPU 路径照旧绘制；按批粒度）
+  ↓
+cull 派发（RenderFrameSync，本帧）
+  ├─ 幸存（6 平面 AABB）→ 全局可见表 + 全局计数（对拍口径不变）
+  └─ enable_gather：读 batch_tag → binfo → atomicAdd(counter[b]) → slot
+        · slot < capacity：row = row_base + slot
+              · icb[row]      = {X = ceil(池行元素数 / mesh_group_size), Y=1, Z=1}
+              · l2w[row]      = EntityGPU.row[Transform]
+              · cmds[row]     = {geometry_id, first_instance = **slot**（切片内序号）}
+              · mtl[row]      = 材质两位 + 阴影两位（逐字节照抄，T3h 口径）
+        · slot >= capacity：跳过 + atomicAdd(counter[batch_count])（overflow 槽）
+  ↓
+主帧绘制（RenderDrawSubmit）
+  └─ 每批：DrawMeshTasksIndirectCount(icb, first = row_base*12B,
+                                      countBuf = counter[b] 偏移, maxCount = capacity)
+      push 三表地址各加 row_base × 行字节（cmds 8B / l2w 4B / mtl 16B）
+```
+
+### 实现映射
+
+| 文件 | 改动 |
+|------|------|
+| `inc/hgl/ecs/support/GPUCullSystem.h` | 相位注释（RenderFrameSync/2β）；`kMaxBatches=256`、`kInvalidBatchTag`；`BeginBatchTagWrite/SetBatchLayout/EndBatchLayout`、`GetBatchCounterByteOffset/MapCurrentBatchCounters`、台架视图 `GetBatchCount/GetBatchLayout` |
+| `src/ecs/support/GPUCullSystem.cpp` | 相位改 `RenderFrameSync`；三缓冲创建（标签/分区/计数，**按帧槽分份**，`counter` 带 `TRANSFER_DST`）；PC 加三地址 + `batch_count`（112B）；`FillBuffer` 在 cull cmd 内清本帧槽计数 + `TRANSFER→COMPUTE` barrier；hook 签名 + 切片接线（`icb_count_buffer` = 本批计数槽、`gpu_row_base/gpu_capacity`） |
+| `ShaderLibrary/ecs/entity_gpu_cull.glsl` | PC 镜像三地址 + `batch_count`；`BatchTagRef/BatchInfoRef/BatchCountersRef`；gather 段改"标签 → 切片 → atomicAdd → 越界计数"；`cmds.first_instance` = 切片内序号 |
+| `src/ecs/support/PrimitiveBatchPipeline.cpp` | guard 重写：**逐批**评估 + 批号分配 + 标签直写 + 切片装配（起点 4 行对齐）；`row_cursor` 容量前置检查；全量/部分接管分别记账；`RunCulling` 仅在**全量**接管时跳过 CPU 剔除 |
+| `inc/hgl/ecs/support/PrimitiveBatchPipeline.h` | `IsGPUCullFullTakeoverActive()` + `gpu_cull_full_frame_`（按批粒度接管下，部分接管时 CPU-driven 批仍需 CPU 剔除，否则退化成"全项提交"） |
+| `inc/hgl/ecs/core/MaterialBatch.h(.cpp)` | `gpu_row_base / gpu_capacity`（切片；`Clear()` 复位） |
+| `inc/hgl/graph/RootAddressPush.h` | push 末尾追加三个字节偏移（追加式 ⇒ 既有位置调用不受影响） |
+| `src/ecs/support/PipelineMaterialRenderer.cpp` | 绘制段偏移/段长 = 切片（`first = row_base`、`maxCount = capacity`）；push 三表地址加 `row_base × 行字节` |
+| `src/ecs/support/CPUCullReferenceSystem.cpp` | 相位随 cull 迁 `RenderFrameSync` + `AddDependency<GPUCullSystem>()`；`CheckShadowFacts` 改**逐批切片走查**（行→实体走 l2w 行号反查，多批交错下保序表作废）+ 两本账交叉核对 + overflow 硬判据 |
+| `example/Material/PBRSpheres.cpp` | `PBR_MULTIBATCH=1`：网格后半走第二套配方（同 def / cull off）⇒ 期望 2 个批 |
+
+### 契约要点（实现中被抓住的硬约束）
+
+1. **帧槽分份**：标签/分区/计数三者按帧槽分份、CPU 只写**当前份**——否则本帧直写会与上一帧仍在飞行的
+   cull 竞争（同队列提交序只覆盖"新提交读旧写"，不覆盖 CPU 直写）。
+2. **切片起点 4 行对齐**：绘制侧 push 地址加 `row_base × 行字节` 后仍须满足引用声明的 16B 对齐
+   （cmds 8B/行、l2w 4B/行、mtl 16B/行）⇒ `row_base % 4 == 0` 是同时满足三者的唯一条件（每批至多浪费 3 行）。
+3. **`cmds.first_instance` = 切片内序号**（不是竞技场行号）：mesh 侧 `gl_InstanceIndex = first_instance + wg.y`，
+   而 push 的 `addr_l2w/addr_mtl` 已带切片偏移 ⇒ 切片内 0 起，材质/mesh 发射器**零改动**。
+4. **按批粒度接管**：一批前提不满足只影响该批（标签留无效）；但只有**全量**接管才跳过 CPU 剔除。
+5. **竞技场是共享的**：全场景接管项数 ≤ `kMaxVisibleEntities(4096)`；批内切片容量 = 该批 item 数。
+
+### 判据
+
+- **正向**：`[T3i] GPU cull draw override ENGAGED: batches=x/y items=N arena_rows=M`（一次性）——
+  静默退回 CPU 账也会像素全等 ⇒ 没有本日志不能宣称接管成立。
+- **台架（值链 + 两本账）**：`Σ counters[b] == 全局幸存计数`；`overflow == 0`（硬判据）；
+  逐批行 → 实体（l2w 行号反查）→ 三段阴影值链逐字节相等。
+- **既有判据保留**：门 44 PASS / 0 FAIL、Parity、像素 CPU==形态 B 全等、VUID=0、reject=0。
+
+### 欠账更新（§8.5 清单）
+
+- ③ **多批/混材质** —— 本节点完成（无 DGC 依赖：切片 + 批标签 + 每批计数即"无 DGC 的 GPU 驱动多批"）。
+- ② meshlet（补 GPU 可读 meshlet_count 源）、④ 实例化（per-item instance_count 源）仍待办；
+  DGC 按拍板**不处理**（开发机无支持；形态 B 不需要任何扩展，只依赖 mesh shader）。

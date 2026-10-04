@@ -72,18 +72,25 @@ namespace hgl::ecs
         ///   纹理基址/材质池按批单值 push）&& 全 mesh 批 && 非 lines &&
         ///   全 PrimitiveRenderItem（禁实例化/多实例——gather 每幸存实体一命令 Y=1）&&
         ///   批容量 ≤ gather 容量 && 全 item 有 owner 实体（4-ID 表只覆盖实体）&&
-        ///   每实体 4-ID 行在 && 池行在 && 非 meshlet（池行 addr_meshlets==0 ⇒ X 组数
-        ///   公式与 CPU `GetMeshletCount()` 分支不同源，挡在接管外）&&
-        ///   阴影全默认（`CanReceiveShadow && bias==1.0` ⇒ gather 写 0/1.0 语义与 CPU 一致）。
+        ///   T3i：**逐批独立评估**（按批粒度接管）——每批要求 mesh stage / 非 lines /
+        ///   非实例化项 / 每实体 4-ID 行在 && 池行在 && 非 meshlet（池行 addr_meshlets==0
+        ///   ⇒ X 组数公式与 CPU `GetMeshletCount()` 分支不同源，挡在接管外）；不满足的批
+        ///   只是**该批**不接管（标签留无效 ⇒ cull 不写行、CPU 账照旧）。
         void TryApplyGPUCullOverride();
 
-        /// 本帧是否正在接管（`TryApplyGPUCullOverride` 记账；collect 的 CPU 剔除跳不跳
-        /// 读它 ⇒ 两本账恒二选一，杜绝双份账/漏帧）
+        /// 本帧是否有任一含几何批正在接管（`TryApplyGPUCullOverride` 记账）。
+        /// T3i 起接管是**按批粒度**的 ⇒ 此判据只表示"至少一批走 GPU 账"。
         bool IsGPUCullOverrideActive() const { return gpu_cull_override_frame_ == gpu_cull_override_eval_frame_; }
+
+        /// 本帧是否**全量**接管（全部含几何批都走 GPU 账）——只有全量才允许跳过
+        /// CPU 剔除：部分接管时 CPU-driven 批仍需 CPU 剔除，否则它们会退化成
+        /// "全项提交"（CPU 剔除是它们的唯一剔除来源）。
+        bool IsGPUCullFullTakeoverActive() const { return gpu_cull_full_frame_ == gpu_cull_override_eval_frame_; }
 
         /// guard 帧号记账（0 = 从未评估 ⇒ 恒"不接管"）：见 `IsGPUCullOverrideActive`
         uint64_t gpu_cull_override_eval_frame_ = 0;
         uint64_t gpu_cull_override_frame_ = 0;
+        uint64_t gpu_cull_full_frame_ = 0;
 
         graph::BufferManager* GetBufferManager() const;
         graph::ObjectNameBuilder BuildICBNames() const;

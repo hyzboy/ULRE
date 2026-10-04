@@ -21,7 +21,10 @@ namespace hgl::ecs
      * - 将 draw_count buffer 挂到 MaterialBatch.icb_count_buffer
      * 
      * 设计：
-     * - 执行阶段：RenderCollect（在 RunCulling 之后）
+     * - 执行阶段：**RenderFrameSync**（T3i/2β 起：必须晚于 RenderBatch 的批装配——
+     *   批标签/分区是本帧产物，cull 必须与本帧分区、本帧绘制三者同源；此前在
+     *   RenderCollect 会读到上一帧的批归属 ⇒ 切片错位。钉在 RenderSceneUBOSystem
+     *   之后（依赖见 DefaultSystems 注册））
      * - 输入：EntityGPU 表（世界私有）、L2W 矩阵池、GeometryAABB 池
      * - 输出：可见实体索引表、间接绘制命令表（VkDrawMeshTasksIndirectCommandEXT 格式）、可见计数
      */
@@ -72,8 +75,53 @@ namespace hgl::ecs
         graph::DeviceBuffer* GetCmdsOutBuffer() const { return cmds_out_buffer_; }
         graph::DeviceBuffer* GetMtlOutBuffer() const { return mtl_out_buffer_; }
 
+        // ── T3i（③ 多批）：台架/对拍用只读视图 ────────────────────────────────
+        // 本帧接管批数（0 = 无接管批 ⇒ cull 只为对拍出计数）。分区在 guard 装配、
+        // 本帧消费（同帧同源）；台架在 cull 之后读，两处都在本帧内。
+        uint32_t GetBatchCount() const { return batch_count_; }
+
+        /// 本帧第 index 批的竞技场切片。越界 ⇒ false（调用方不得假定容量）。
+        bool GetBatchLayout(uint32_t index, uint32_t &row_base, uint32_t &capacity) const
+        {
+            if (index >= batch_count_ || index >= kMaxBatches)
+                return false;
+
+            row_base = batch_info_staging_[index].row_base;
+            capacity = batch_info_staging_[index].capacity;
+            return true;
+        }
+
         /// gather 输出表容量（行数/元素数 = kMaxVisibleEntities）：guard 校验批容量用
         static constexpr uint32_t GetGatherCapacity() { return kMaxVisibleEntities; }
+
+        // ── T3i（③ 多批/混材质）：批标签 / 分区 / 每批计数 ──────────────────
+        // 三者均**按帧槽分份且 CPU 只写当前份**：否则本帧直写会与上一帧仍在飞行的
+        // cull 竞争（同队列提交序只覆盖"新提交批次读旧批次写"，不覆盖 CPU 直写）。
+        static constexpr uint32_t kMaxBatches      = 256;           ///< 批数上限（超限 fail-fast）
+        static constexpr uint32_t kInvalidBatchTag = 0xFFFFFFFFu;   ///< 不属任何批 ⇒ cull 跳过
+
+        /// 批装配期写标签：返回**当前帧槽**标签数组的 CPU 映射（进入时整表清成
+        /// `kInvalidBatchTag`）。用法：`tag = BeginBatchTagWrite(); tag[entity_index] = b;`
+        /// 收尾必须调 `EndBatchLayout(batch_count)`（unmap + 落分区表）。
+        uint32_t *BeginBatchTagWrite();
+
+        /// 写一条批分区（CPU 侧暂存，`EndBatchLayout` 时落设备）
+        void SetBatchLayout(uint32_t batch_index, uint32_t row_base, uint32_t capacity);
+
+        /// 收尾：unmap 标签 + 把分区表（batch_count 条）写入当前帧槽 + 记 batch_count
+        void EndBatchLayout(uint32_t batch_count);
+
+        /// 每批计数缓冲（含末位 overflow 槽）：绘制侧把它当 `icb_count_buffer` 用
+        graph::DeviceBuffer *GetBatchCounterBuffer() const { return batch_counter_buffer_; }
+        /// 批 b 的计数在缓冲内的字节偏移（当前帧槽 + 批号；绘制侧 = icb_count_buffer_offset）
+        uint32_t GetBatchCounterByteOffset(uint32_t batch_index) const;
+        /// overflow 计数（末位槽）的字节偏移
+        uint32_t GetOverflowCounterByteOffset() const;
+
+        /// 台架读回：映射当前帧槽的计数数组（**调用前须 SyncForParityReadback**）。
+        /// 返回指针含 `kMaxBatches + 1` 项，末项 = overflow 计数。
+        uint32_t *MapCurrentBatchCounters();
+        void      UnmapCurrentBatchCounters();
 
         /// 读回可见计数（**仅限对拍台架**，T3g）：生产路径零 CPU 同步 ⇒ 本函数
         /// **不等 GPU**，读到的可能是上一已定帧的值。调用方（CPUCullReferenceSystem）
@@ -100,14 +148,18 @@ namespace hgl::ecs
         /// override=false"状态）。前提校验全部通过 ⇒ 释放批自有行表、四张 gather 表 +
         /// icb + count 指向剔除输出、置 `gpu_driven_override`（既有契约：跳 sort/ensure/
         /// write、每项自成 DrawBatch 给 maxDrawCount 记账）。
-        /// 前提（§8.3，一条不满足 ⇒ 本帧不接管 + 一次性报错，绝不让批指向错数据）：
-        /// opt-in 开 && 主帧 pass && **恰好一个含几何批**（R4 单批口径）&& 批内全
+        /// T3i：hook 逐批调用（`TryApplyGPUCullOverride` 遍历含几何批），未接管的批
+        /// 标签留无效 ⇒ cull 不为其写行、CPU 路径照旧绘制（**按批粒度**）。
+        /// 前提（§8.3/§8.5，一条不满足 ⇒ **该批**不接管 + 一次性报错，绝不让批指向错数据）：
+        /// opt-in 开 && 主帧 pass && 批内全
         /// PrimitiveRenderItem（禁实例化/多实例）&& 全 mesh 批 && 批容量 ≤ gather 容量
         /// && 全 item 有 owner 实体（禁 VDM 等无实体项——4-ID 表只覆盖实体）&&
         /// 每实体池行存在 && 非 meshlet（池行 addr_meshlets==0）&& 非 lines &&
         /// 阴影全默认（CanReceiveShadow && bias==1.0 ⇒ gather 写 0 与 CPU 行逐字节一致）。
+        /// T3i：逐批调用（`batch_index` = 该批在**本帧分区表**中的槽号，由 guard 装配时
+        /// 分配并写入标签/分区；`row_base`/`capacity` 从分区表取，口径唯一）。
         /// @return true = 本帧该批由 GPU gather 输出接管绘制。
-        bool ApplyGPUCullOverrideHook(MaterialBatch *batch);
+        bool ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index);
 
         /// guard 的**本帧有效**判定：collect 的 CPU 剔除跳不跳全看它（接管与 CPU 账
         /// 必须按同一帧的 guard 结果二选一，否则 = 双份账/漏帧）。
@@ -145,6 +197,21 @@ namespace hgl::ecs
         graph::DeviceBuffer *visible_indices_buffer_ = nullptr;
         graph::IndirectMeshTaskBuffer *indirect_commands_buffer_ = nullptr;  // 改为 IndirectMeshTaskBuffer
         graph::DeviceBuffer *draw_count_buffer_ = nullptr;
+
+        // ── T3i：批标签 / 分区 / 计数（按帧槽分份；CPU 只写当前份）──
+        graph::DeviceBuffer *batch_tag_buffer_ = nullptr;      // kSlots × 4096 × u32
+        graph::DeviceBuffer *batch_info_buffer_ = nullptr;     // kSlots × kMaxBatches × 8 B
+        graph::DeviceBuffer *batch_counter_buffer_ = nullptr;  // kSlots × (kMaxBatches+1) × u32
+        uint64_t batch_tag_addr_ = 0;
+        uint64_t batch_info_addr_ = 0;
+        uint64_t batch_counter_addr_ = 0;
+
+        struct BatchInfoRow { uint32_t row_base; uint32_t capacity; };
+        BatchInfoRow batch_info_staging_[256] = {};   ///< 与 kMaxBatches 同宽（CPU 暂存）
+        uint32_t batch_count_ = 0;                    ///< 本帧批数（0 = 无批 ⇒ cull 只为对拍出计数）
+        uint32_t *batch_tag_cpu_ = nullptr;           ///< 当前帧槽标签数组的映射
+        uint32_t  batch_tag_cpu_slot_ = UINT32_MAX;   ///< 映射对应的帧槽（换槽重映射）
+        uint32_t *batch_counter_cpu_ = nullptr;       ///< 台架读回时的映射
 
         // 形态 B（T3f-2）gather 输出（容量 = kMaxVisibleEntities；被接管批直接指向它们）
         graph::DeviceBuffer *l2w_out_buffer_ = nullptr;

@@ -41,7 +41,13 @@ namespace hgl::graph
                                   IGPUBuffer *text_char_info          = nullptr,
                                   IGPUBuffer *text_char_style         = nullptr,
                                   IGPUBuffer *text_char_inst          = nullptr,
-                                  uint32_t    camera_row              = 0)
+                                  uint32_t    camera_row              = 0,
+                                  // T3i（③ 多批）：共享竞技场切片偏移（字节）。追加在末尾
+                                  // ⇒ 既有位置参数调用不受影响。调用方负责保证偏移后
+                                  // 地址仍满足各引用声明的对齐（row_base % 4 == 0）。
+                                  VkDeviceSize mesh_draw_params_offset = 0,
+                                  VkDeviceSize l2w_index_offset        = 0,
+                                  VkDeviceSize mtl_data_addrs_offset   = 0)
     {
         if (!cmd || !dev || !layout)
             return;
@@ -61,18 +67,18 @@ namespace hgl::graph
 
         mtl::RootAddresses ra{};
 
-        const auto fill = [&](uint64_t &slot, IGPUBuffer *gpu)
+        const auto fill = [&](uint64_t &slot, IGPUBuffer *gpu, VkDeviceSize offset = 0)
         {
             if (gpu)
-                slot = dev->GetBufferDeviceAddressAligned16(gpu->GetVkDeviceBuffer());
+                slot = dev->GetBufferDeviceAddressAligned16(gpu->GetVkDeviceBuffer()) + offset;
         };
 
         ra.addr_global_addresses     = addr_global_addresses;
         ra.addr_world_addresses      = addr_world_addresses;
-        fill(ra.addr_batch_mesh_draw_params, mesh_draw_params);
+        fill(ra.addr_batch_mesh_draw_params, mesh_draw_params, mesh_draw_params_offset);
         fill(ra.addr_l2w,                 l2w);
-        fill(ra.addr_l2w_index,           l2w_index);
-        fill(ra.addr_mtl_data_addrs,      mtl_data_addrs);
+        fill(ra.addr_l2w_index,           l2w_index,          l2w_index_offset);
+        fill(ra.addr_mtl_data_addrs,      mtl_data_addrs,     mtl_data_addrs_offset);
         ra.addr_texture_references = addr_texture_references;
         fill(ra.addr_text_char_info,      text_char_info);
         fill(ra.addr_text_char_style,     text_char_style);

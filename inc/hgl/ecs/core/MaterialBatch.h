@@ -69,6 +69,13 @@ namespace hgl::ecs
 
         // GPU-Driven 渲染管线覆盖支持
         bool                                     gpu_driven_override               = false;    ///<该批次是否为 GPU-Driven 托管（跳过 CPU 侧 ICB 和行表生成）
+
+        // T3i（③ 多批）：本批在剔除输出**共享竞技场**里的行切片（gather 输出四表共用
+        // 一套 arena，按批分摊）。语义：行 r 的 arena 索引 = gpu_row_base + r。
+        // 着色器按此写；绘制侧把 cmds/l2w/mtl 的 push 地址各加 `gpu_row_base × 行字节`
+        // ⇒ 着色器内 `gl_DrawID`/`gl_InstanceIndex` 语义不变（切片内 0 起）。
+        uint32_t                                 gpu_row_base                      = 0;        ///<切片起点（arena 行号）
+        uint32_t                                 gpu_capacity                      = 0;        ///<切片容量（= 本批 item 数；绘制 maxDrawCount）
         bool                                     uses_render_item_resolve          = false;    ///<是否在 Shader 中通过 WorldAddresses::addr_global_render_items 进行 4-ID 运行时解析
         bool                                     own_icb_mesh_tasks                = true;     ///<是否拥有 icb_mesh_tasks
         bool                                     own_mesh_draw_params              = true;     ///<是否拥有 mesh_draw_params_buffer

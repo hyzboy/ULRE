@@ -191,7 +191,7 @@ namespace hgl::ecs
         // 交接帧（上帧接管、本帧前提破了）：批全项但不接管 = 一帧过画（屏内观感
         // 无损、guard 已报错），下一帧 cull 恢复。shadow pass 同样跳（caster 全进
         // 阴影图 = 多画不出错，首版口径，见设计稿 §8.3）。
-        if (world && IsGPUCullOverrideActive())
+        if (world && IsGPUCullFullTakeoverActive())   // T3i：只有全量接管才跳过 CPU 剔除
             return;
 
         const uint64_t t0 = GetUptimeUs();
@@ -1255,127 +1255,185 @@ namespace hgl::ecs
         if (world->IsCurrentPassShadow())
             return;
 
-        // 恰好一个含几何的批（R4 单批口径）
-        MaterialBatch *target = nullptr;
-        uint32_t geometry_batches = 0;
+        // ── T3i（③ 多批）：逐批评估 + 共享竞技场切片装配 ──────────────────────
+        // 迭代顺序 = `cache.materialBatches` 的 map 键序（确定性）⇒ 批号帧间稳定；
+        // 未接管的批**标签留无效** ⇒ cull 不为其写行、CPU 路径照旧绘制（按批粒度：
+        // 一批不满足前提不牵连其余批）——单次派发 + 标签设计白拿的粒度。
+        auto *gc = world->GetGraphicsContext();
+        auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
+        const EntityRenderIDTable &rid_table = world->GetEntityRenderIDTable();
 
-        for (auto& pair : cache.materialBatches)
-        {
-            MaterialBatch *b = pair.second.get();
-            if (!b || b->items.empty() || !BatchRequiresIndirectCommands(*b))
-                continue;
-
-            ++geometry_batches;
-            target = b;
-        }
-
-        auto reject = [this](const char *why)
+        auto reject = [](const char *why, const char *batch_name)
         {
             static bool s_reported = false;
             if (!s_reported)
             {
                 s_reported = true;
-                GLogError("[T3f2] GPU cull draw override 前提不满足：%s ⇒ 本场景不接管"
-                          "（绘制走 CPU 账；管线本身仍在 dispatch/对拍）", why);
+                GLogError("[T3i] GPU cull draw override 该批前提不满足：%s（批=%s）"
+                          "⇒ 该批不接管（绘制走 CPU 账；不影响其余批）",
+                          why, batch_name ? batch_name : "<null>");
             }
         };
 
-        if (geometry_batches != 1)
+        MaterialBatch *pending[GPUCullSystem::kMaxBatches];
+        uint32_t pending_index[GPUCullSystem::kMaxBatches];
+        uint32_t pending_count = 0;
+
+        uint32_t next_index = 0;
+        uint32_t row_cursor = 0;
+        uint32_t total_items = 0;
+        uint32_t geometry_batches = 0;
+        uint32_t *tags = nullptr;
+
+        for (auto& pair : cache.materialBatches)
         {
-            reject(geometry_batches == 0 ? "无含几何批" : "多批（单批口径未满足）");
+            MaterialBatch *b = pair.second.get();
+
+            if (!b || b->items.empty() || !BatchRequiresIndirectCommands(*b))
+                continue;
+
+            ++geometry_batches;
+
+            const char *batch_name = b->key.shader_program
+                ? b->key.shader_program->GetName().c_str() : "<null>";
+
+            // 逐批前提（一条不满足 ⇒ **仅该批**不接管）
+            const char *why = nullptr;
+
+            if (!ProgramHasMeshStage(b->key.shader_program))
+                why = "批无 mesh stage";
+            else if (b->key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines)
+                why = "批是 lines（X 组数公式不同源）";
+            else if (next_index >= GPUCullSystem::kMaxBatches)
+                why = "接管批数超 kMaxBatches(256)";
+            else if (((row_cursor + uint32_t(b->items.size()) + 3u) & ~3u)
+                     > GPUCullSystem::GetGatherCapacity())
+                why = "批次累计项数超共享竞技场（kMaxVisibleEntities）";
+            else
+            {
+                for (auto *item : b->items)
+                {
+                    if (!item || dynamic_cast<InstancedPrimitiveRenderItem *>(item))
+                    {
+                        why = "含实例化/多实例项（gather 每实体一命令 Y=1 不适配）";
+                        break;
+                    }
+
+                    Entity *owner = item->GetEntity();
+                    if (!owner)
+                    {
+                        why = "含无 owner 实体项（4-ID 表只覆盖实体）";
+                        break;
+                    }
+
+                    const graph::RenderItemDescriptor *ids =
+                        rid_table.Row(owner->GetEntityID().index);
+
+                    if (!ids || ids->geometry_id == 0)
+                    {
+                        why = "实体 4-ID 行缺失";
+                        break;
+                    }
+
+                    const auto *params =
+                        pool ? pool->GetMeshDrawParamsRow(ids->geometry_id) : nullptr;
+
+                    if (!params)
+                    {
+                        why = "MeshDrawParams 池行缺失";
+                        break;
+                    }
+
+                    if (params->addr_meshlets != 0)
+                    {
+                        why = "meshlet 几何（X 组数与 CPU GetMeshletCount 分支不同源）";
+                        break;
+                    }
+                }
+            }
+
+            if (why)
+            {
+                reject(why, batch_name);
+                continue;
+            }
+
+            // 首个可接管批时取标签数组（进入即整表无效初值）
+            if (!tags)
+            {
+                tags = gpu_cull->BeginBatchTagWrite();
+                if (!tags)
+                    return;          // 拿不到映射 = 设备问题 ⇒ 整帧不接管
+            }
+
+            const uint32_t index = next_index++;
+            const uint32_t capacity = uint32_t(b->items.size());
+
+            gpu_cull->SetBatchLayout(index, row_cursor, capacity);
+
+            for (auto *item : b->items)
+            {
+                Entity *owner = item->GetEntity();
+                tags[owner->GetEntityID().index] = index;   // 结构类值：本帧装配、本帧消费
+            }
+
+            pending[pending_count] = b;
+            pending_index[pending_count] = index;
+            ++pending_count;
+
+            // T3i：切片起点按 **4 行对齐** —— 绘制侧把 push 地址加 `row_base × 行字节`
+            // 后仍须满足各引用声明的 16B 对齐（cmds 8B/行、l2w 4B/行、mtl 16B/行）
+            // ⇒ row_base % 4 == 0 是唯一同时满足三者的条件（每批至多浪费 3 行）。
+            row_cursor = (row_cursor + capacity + 3u) & ~3u;
+            total_items += capacity;
+        }
+
+        if (pending_count == 0)
+        {
+            if (tags)
+                gpu_cull->EndBatchLayout(0);   // 无接管批 ⇒ batch_count=0（cull 只出计数）
             return;
         }
 
-        if (!ProgramHasMeshStage(target->key.shader_program))
-        {
-            reject("批无 mesh stage");
-            return;
-        }
-
-        if (target->key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines)
-        {
-            reject("批是 lines（X 组数公式不同源）");
-            return;
-        }
-
-        if (target->items.size() > GPUCullSystem::GetGatherCapacity())
-        {
-            reject("批容量超 gather 表（kMaxVisibleEntities）");
-            return;
-        }
-
-        auto *gc = world->GetGraphicsContext();
-        auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-        const EntityRenderIDTable &rid_table = world->GetEntityRenderIDTable();
-
-        for (auto *item : target->items)
-        {
-            if (!item || dynamic_cast<InstancedPrimitiveRenderItem *>(item))
-            {
-                reject("含实例化/多实例项（gather 每实体一命令 Y=1）");
-                return;
-            }
-
-            Entity *owner = item->GetEntity();
-            if (!owner)
-            {
-                reject("含无 owner 实体项（4-ID 表只覆盖实体）");
-                return;
-            }
-
-            const graph::RenderItemDescriptor *ids =
-                rid_table.Row(owner->GetEntityID().index);
-
-            if (!ids || ids->geometry_id == 0)
-            {
-                reject("实体 4-ID 行缺失");
-                return;
-            }
-
-            const auto *params = pool ? pool->GetMeshDrawParamsRow(ids->geometry_id) : nullptr;
-
-            if (!params)
-            {
-                reject("MeshDrawParams 池行缺失");
-                return;
-            }
-
-            if (params->addr_meshlets != 0)
-            {
-                reject("meshlet 几何（X 组数与 CPU GetMeshletCount 分支不同源）");
-                return;
-            }
-
-            // 阴影两位：T3h 起 GPU 通路已接线（collect 上事实位、gather 照抄），
-            // 非默认实体（不接收 / 自定义 bias）也能接管——本条 guard 退役。
-        }
-
-        // 派发定帧护栏（T3g，纯 CPU 判据）：dispatch 未攒满 2 帧 ⇒ 表还没被任何
-        // 一次派发看过 ⇒ 本帧不接管，CPU 账继续。旧版在此 `GetGPUVisibleCount()==0`
-        // 判据 = 每帧 Map+fence 同步点，已随形态 A 一起退役（§8.2f；`SetEnabled`
-        // 关 ⇒ 计数归零 ⇒ 场景切换/重开不会拿旧计数放行首帧误接管）。
+        // 派发定帧护栏（T3g 纯 CPU 判据）：未攒满 2 帧 ⇒ 本帧不接管（表还没被任何
+        // 一次派发看过；`SetEnabled(false)` 归零 ⇒ 场景切换/重开不会拿旧计数放行）。
         if (!gpu_cull->IsDispatchSettled())
+        {
+            gpu_cull->EndBatchLayout(0);
+            return;
+        }
+
+        // 分区/标签落设备（batch_count = 接管批数）
+        gpu_cull->EndBatchLayout(pending_count);
+
+        uint32_t engaged = 0;
+
+        for (uint32_t i = 0; i < pending_count; ++i)
+        {
+            if (gpu_cull->ApplyGPUCullOverrideHook(pending[i], pending_index[i]))
+                ++engaged;
+        }
+
+        if (engaged == 0)
             return;
 
-        // 全部前提通过 ⇒ 接管
-        if (gpu_cull->ApplyGPUCullOverrideHook(target))
-        {
-            gpu_cull_override_frame_ = gpu_cull_override_eval_frame_;
+        // 记账：任一批接管 ⇒ 本帧"接管中"；**全部**含几何批接管 ⇒ "全量接管"。
+        // 只有全量才允许跳过 CPU 剔除（RunCulling 读上一帧结果）：部分接管时
+        // CPU-driven 批仍需 CPU 剔除，否则它们会退化成"全项提交"。
+        gpu_cull_override_frame_ = gpu_cull_override_eval_frame_;
 
-            // 正向判据日志（一次性）：像素对照必须证明"绘制真走 gather 表"，
-            // 静默退回 CPU 账也会像素全等 ⇒ 没有本日志就不能宣称接管成立。
-            // survivors 读数走台架同步点（**仅此一次** fence，接管瞬间；稳态派发
-            // 路径仍然零同步）⇒ 日志里的数是本帧真值，不是滞后一帧的 Map 残影。
-            static bool s_engaged_logged = false;
-            if (!s_engaged_logged)
-            {
-                s_engaged_logged = true;
-                gpu_cull->SyncForParityReadback();
-                GLogInfo("[T3f2] GPU cull draw override ENGAGED: batch items=%u survivors=%u"
-                         "（行表/icb/count 已指向 gather 输出；CPU 剔除自本帧起跳过）",
-                         (uint32_t)target->items.size(),
-                         gpu_cull->GetGPUVisibleCount());
-            }
+        if (engaged == geometry_batches)
+            gpu_cull_full_frame_ = gpu_cull_override_eval_frame_;
+
+        // 正向判据日志（一次性）：证明"绘制真走 gather 表"，静默退回 CPU 账也会
+        // 像素全等 ⇒ 没有本日志就不能宣称接管成立。逐批计数由台架在 cull 之后读。
+        static bool s_engaged_logged = false;
+        if (!s_engaged_logged)
+        {
+            s_engaged_logged = true;
+            GLogInfo("[T3i] GPU cull draw override ENGAGED: batches=%u/%u items=%u"
+                     " arena_rows=%u（逐批切片；未接管批走 CPU 账）",
+                     engaged, geometry_batches, total_items, row_cursor);
         }
     }
 

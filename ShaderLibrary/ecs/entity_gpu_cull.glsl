@@ -43,11 +43,15 @@ layout(push_constant) uniform PushConstants
     uint64_t cmds_out_addr;          // per-batch mesh 参数表（MeshDrawCommand 8B/行）
     uint64_t mtl_out_addr;           // per-batch 材质行表（MaterialInstanceAddresses 16B/行）
     uint64_t draw_count_addr;        // 幸存计数
+    uint64_t batch_tag_addr;         // T3i：批标签数组（当前帧槽；0xFFFFFFFF = 不属任何接管批）
+    uint64_t batch_info_addr;        // T3i：批分区表（{row_base, capacity} × batch_count）
+    uint64_t batch_counter_addr;     // T3i：每批计数（[b] = 本批幸存数；[batch_count] = overflow）
     uint   entity_count;             // 实体总数
     uint   max_visible_count;        // 幸存表容量上限
     uint   camera_row;               // 本 pass 活跃相机行号（与 pc_root.camera_row 同式）
     uint   mesh_group_size;          // mesh 组顶点上限（CPU 下发 kMeshVertexPassthroughMaxVertices）
     uint   enable_gather;            // 0 = 只出计数（对拍/形态 A）；非 0 = 写 gather 四表（形态 B）
+    uint   batch_count;              // T3i：本帧批数（0 = 无接管批 ⇒ 只为对拍出计数）
 } pc;
 
 // 世界地址表（通过 push constant 访问，覆盖 scene_ubo.glsl 里的定义）
@@ -174,6 +178,29 @@ layout(buffer_reference, scalar, buffer_reference_align=4) buffer MtlRowsOutRef
     MtlRow values[];
 };
 
+// ── T3i（③ 多批）输入：批标签 / 分区 / 每批计数 ─────────────────────────
+// 三者由 CPU 按帧槽分份（只写当前份）；cull 在 RenderFrameSync ⇒ 读到的恒是本帧产物。
+layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer BatchTagRef
+{
+    uint tags[];      // [entity_index] = 批号；0xFFFFFFFF = 不属任何接管批（跳过）
+};
+
+struct BatchInfoRow
+{
+    uint row_base;    // 本批切片在共享竞技场里的起始行
+    uint capacity;    // 切片容量（= 本批 item 数；绘制侧 maxDrawCount）
+};
+
+layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer BatchInfoRef
+{
+    BatchInfoRow rows[];
+};
+
+layout(buffer_reference, scalar, buffer_reference_align=4) buffer BatchCountersRef
+{
+    uint counters[];  // [b] = 本批幸存数（= 绘制计数）；[batch_count] = overflow 计数
+};
+
 layout(local_size_x = 64) in;
 
 void main()
@@ -278,35 +305,49 @@ void main()
     if (pc.enable_gather == 0u)
         return;
 
-    // ── 形态 B（T3f-2）：按幸存 slot gather 四张 per-batch 行表 ──────────────
-    // 契约（§8.3 清单；全部读真源、零复制）：
-    //  · l2w_index[s] = EntityGPU.row[Transform]（L2W 行号，与 CPU 行表写值同语义）
-    //  · cmds[s]      = { geometry_id(池), first_instance = s }
-    //                   ⇒ mesh 侧 gl_InstanceIndex = s + wg.y → values[s] 全链 1:1
-    //  · icb[s]       = { X = ceil(池行元素数 / mesh_group_size), Y = 1, Z = 1 }
-    //                   （CPU CalcMeshGroupCount 同式；meshlet 分支由 CPU guard 排除）
-    //  · mtl[s]       = { material_id, texture_id, entity.shadow_bias_multiplier,
-    //                     entity.shadow_receive==0 ? kNoReceive : 0 }
-    //                    （T3h：材质两位读实体 4-ID 表、阴影两位读实体行事实位——
-    //                    全部**逐字节照抄 CPU 归一后的值**（collect 上行时已按
-    //                    FinalizeBatch D3 同式归一：bias<=0 ⇒ 0 ⇒ 着色侧视 0 为
-    //                    默认 1.0；receive ⇒ flags 0 / 不接收 ⇒ kMaterialShadowFlag
-    //                    NoReceive=1）。CPU guard 的阴影前提已随之删除。）
+    // ── T3i（③ 多批）：批标签 → 本批切片 → 写四表 ──────────────────────────
+    // 标签 = CPU 批装配直写（当前帧槽；cull 在 RenderFrameSync ⇒ 本帧产物）。
+    // 无效/越界 = 不属任何接管批 ⇒ **不写行**（该实体由 CPU 路径绘制），
+    // 但仍计入全局幸存（对拍口径不变）。
+    const uint batch = BatchTagRef(pc.batch_tag_addr).tags[entity_index];
+
+    if (batch == 0xFFFFFFFFu || batch >= pc.batch_count)
+        return;
+
+    const BatchInfoRow binfo = BatchInfoRef(pc.batch_info_addr).rows[batch];
+
+    const uint slot = atomicAdd(BatchCountersRef(pc.batch_counter_addr).counters[batch], 1u);
+
+    if (slot >= binfo.capacity)
+    {
+        // 3A：溢出 = 批归属与容量不同源（布局错配/越界）⇒ 跳过 + 计入 overflow 槽；
+        // 台架把该计数当**硬判据**（非零即红）。
+        atomicAdd(BatchCountersRef(pc.batch_counter_addr).counters[pc.batch_count], 1u);
+        return;
+    }
+
+    // 契约（§8.5；全部读真源、零复制）：
+    //  · 行号 = 本批切片起点 + 切片内序号 ⇒ 每批 draw 只读自己的幸存者
+    //  · cmds 的 first_instance = **切片内序号**（mesh 侧 gl_InstanceIndex =
+    //    first_instance + wg.y；绘制侧 push 地址已带 row_base 偏移 ⇒ 切片内 0 起）
+    //  · mtl 两位 = 实体行事实位逐字节照抄（T3h 口径不变）
+    const uint row = binfo.row_base + slot;
+
     const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
     const uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
     const uint group_count_x = (element_count + pc.mesh_group_size - 1u) / pc.mesh_group_size;
 
-    DrawIndirectCommandsRef(pc.indirect_commands_addr).commands[visible_index] =
+    DrawIndirectCommandsRef(pc.indirect_commands_addr).commands[row] =
         DrawMeshTasksIndirectCommand(group_count_x, 1u, 1u);
 
-    L2WIndexOutRef(pc.l2w_out_addr).values[visible_index] = transform_id;
+    L2WIndexOutRef(pc.l2w_out_addr).values[row] = transform_id;
 
-    BatchCmdsOutRef(pc.cmds_out_addr).cmds[visible_index] =
-        BatchCmdRow(geometry_id, visible_index);
+    BatchCmdsOutRef(pc.cmds_out_addr).cmds[row] =
+        BatchCmdRow(geometry_id, slot);
 
-    MtlRowsOutRef(pc.mtl_out_addr).values[visible_index] =
+    MtlRowsOutRef(pc.mtl_out_addr).values[row] =
         MtlRow(render_ids.material_id,
                render_ids.texture_id,
                entity.shadow_bias_multiplier,
-               entity.shadow_receive == 0u ? 1u : 0u);   // 1 = kMaterialShadowFlagNoReceive
+               entity.shadow_receive == 0u ? 1u : 0u);
 }

@@ -20,7 +20,11 @@ namespace hgl::ecs
     CPUCullReferenceSystem::CPUCullReferenceSystem()
         : System("CPUCullReferenceSystem")
     {
-        SetExecutionPhase(ExecutionPhase::RenderCollect);
+        // T3i（1A + 2β）：cull 相位迁到 RenderFrameSync（本帧批装配之后、绘制之前）
+        // ⇒ 台架必须同相位且**显式排在 cull 之后**（旧版靠 RenderCollect 同相位 +
+        // 注册顺序的隐式依赖）。对拍关系不变：读的仍是"本帧 cull 提交 + Sync 后的真值"。
+        SetExecutionPhase(ExecutionPhase::RenderFrameSync);
+        AddDependency<GPUCullSystem>();
     }
 
     bool CPUCullReferenceSystem::Initialize(ECSContext* context)
@@ -77,100 +81,183 @@ namespace hgl::ecs
 
     void CPUCullReferenceSystem::CheckShadowFacts()
     {
-        // 前提（都在采样窗口后成立）：台架已 SyncForParityReadback ⇒ gather 输出
-        // = 本帧真值。值链 = CPU 访问器(真值) == EntityGPU 行(collect 归一上行)
-        // == gather mtl 行(GPU 照抄) ⇒ 三段逐字节相等才算接线成立。
+        // T3i（③ 多批）：幸存行**不再**是"从 0 连续"——每批写自己的切片。本判据因此
+        // 改为**逐批切片走查**，并顺带做两本账的交叉核对：
+        //   · overflow 计数 == 0（3A 硬判据：切片溢出即红）
+        //   · Σ counters[b] ≤ 全局幸存（全量接管时相等；部分接管时 <，属预期）
+        //   · 行 → 实体映射走 **l2w 行号反查**（多批 atomicAdd 交错下保序表作废）
         auto gpu_cull = context_->GetSystem<GPUCullSystem>();
-        auto* mtl_buf = gpu_cull->GetMtlOutBuffer();
-        if (!mtl_buf || gpu_count_ == 0)
+        if (!gpu_cull)
             return;
 
+        const uint32_t batch_count = gpu_cull->GetBatchCount();
+
+        if (batch_count == 0 || gpu_count_ == 0)
+            return;
+
+        auto* mtl_buf = gpu_cull->GetMtlOutBuffer();
+        auto* l2w_buf = gpu_cull->GetL2WOutBuffer();
+
+        if (!mtl_buf || !l2w_buf)
+            return;
+
+        const uint32_t *counters = gpu_cull->MapCurrentBatchCounters();
+        if (!counters)
+            return;
+
+        const uint32_t overflow = counters[GPUCullSystem::kMaxBatches];
+        uint32_t sum = 0;
+
+        for (uint32_t b = 0; b < batch_count; ++b)
+            sum += counters[b];
+
+        // 实体真值 + l2w 行号 → entity index 反查表（存活遍历一次；ForEachAliveEntity
+        // 只给存活实体 ⇒ 天然无悬垂句柄问题）
+        //
+        // ⚠ 反查表在**成员数组**里（不是栈），且填表/查表都先判界：`row[1]` 对未挂载
+        // Transform 的实体是哨兵值 ⇒ 直接当索引写就是越界崩溃。
         const auto& entity_table = context_->GetEntityGPUTable();
 
-        const uint32_t read_count = (gpu_count_ < kMaxVisible) ? gpu_count_ : kMaxVisible;
+        for (uint32_t i = 0; i < kMaxVisible; ++i)
+            alive_owner_[i] = nullptr;
 
-        const auto* mtl_rows = static_cast<const graph::mtl::MaterialInstanceAddresses *>(
-            mtl_buf->Map(0, static_cast<VkDeviceSize>(read_count)
-                                * sizeof(graph::mtl::MaterialInstanceAddresses)));
-        if (!mtl_rows)
-            return;
+        for (uint32_t i = 0; i < kL2WRowCapacity; ++i)
+            l2w_row_to_entity_[i] = UINT32_MAX;
 
-        // index → owner 指针表（采样窗口一次，容量同实体表）：**不**用裸 EntityID
-        // 造 index-only 句柄——generation 不真 ⇒ IsValidID 判悬垂会失真；
-        // ForEachAliveEntity 只给存活实体，天然安全。
-        const Entity *owners[kMaxVisible] = {};
-        context_->ForEachAliveEntity([&owners](const Entity *e)
+        context_->ForEachAliveEntity([this, &entity_table](const Entity *e)
         {
             const uint32_t idx = e->GetEntityID().index;
-            if (idx < kMaxVisible)
-                owners[idx] = e;
+            if (idx >= kMaxVisible)
+                return;
+
+            alive_owner_[idx] = e;
+
+            if (const EntityGPU *row = entity_table.Row(idx))
+            {
+                const uint32_t l2w_row = row->row[1u];   // row[1] = L2W 行（Transform）
+
+                if (l2w_row < kL2WRowCapacity)
+                    l2w_row_to_entity_[l2w_row] = idx;
+            }
         });
 
-        uint32_t checked = 0, bad = 0;
-        uint32_t nondefault_seen = 0;   // 判据强度：非默认实体真进链才算"测到了"
-        for (uint32_t k = 0; k < read_count; ++k)
-        {
-            const uint32_t entity_index = gpu_visible_order_[k];
+        uint32_t checked = 0, bad = 0, nondefault_seen = 0, rows_read = 0;
 
-            const EntityGPU *row = entity_table.Row(entity_index);
-            if (!row)
+        for (uint32_t b = 0; b < batch_count; ++b)
+        {
+            uint32_t row_base = 0, capacity = 0;
+
+            if (!gpu_cull->GetBatchLayout(b, row_base, capacity))
                 continue;
 
-            // 段一：CPU 真值（行字节归一式 = 唯一出处，与 collect/FinalizeBatch 同函数）
-            const Entity *owner = owners[entity_index];
-            const float bias_for_row =
-                NormalizeShadowBiasToRow(GetShadowBiasMultiplier(owner));
-            const uint32_t flags_for_row = CanReceiveShadow(owner) ? 0u
-                : uint32_t(graph::mtl::kMaterialShadowFlagNoReceive);
+            const uint32_t n = (counters[b] < capacity) ? counters[b] : capacity;
 
-            // 真非默认 = 与缺省约定（receive、bias 1.0）不同；未挂载实体 accessor
-            // 恒返回缺省 ⇒ 不混进本日志。bias 归一为 0（显式非法值）与 CPU 同字节
-            // 处理，也算显式配置差异，如实列出。
-            const bool nondefault = (flags_for_row != 0u) || (bias_for_row != 1.0f);
-            if (nondefault)
+            if (n == 0)
+                continue;
+
+            const auto *mtl_rows = static_cast<const graph::mtl::MaterialInstanceAddresses *>(
+                mtl_buf->Map(VkDeviceSize(row_base) * sizeof(graph::mtl::MaterialInstanceAddresses),
+                             VkDeviceSize(n) * sizeof(graph::mtl::MaterialInstanceAddresses)));
+            const uint32_t *l2w_rows = static_cast<const uint32_t *>(
+                l2w_buf->Map(VkDeviceSize(row_base) * sizeof(uint32_t),
+                             VkDeviceSize(n) * sizeof(uint32_t)));
+
+            if (!mtl_rows || !l2w_rows)
             {
-                if (nondefault_seen < 8)
-                    GLogInfo(u8"[CPUCullReferenceSystem] shadow non-default: idx=%u"
-                             u8" bias=%.3f flags=%u（三段字节=%.3f/%.3f/%.3f"
-                             u8" %u/%u/%u）",
-                             entity_index, bias_for_row, flags_for_row,
-                             bias_for_row, row->shadow_bias_multiplier,
-                             mtl_rows[k].shadow_bias_multiplier,
-                             flags_for_row, row->shadow_receive,
-                             mtl_rows[k].shadow_flags);
-                ++nondefault_seen;
+                if (mtl_rows) mtl_buf->Unmap();
+                if (l2w_rows) l2w_buf->Unmap();
+                continue;
             }
 
-            // 段二（实体行）+ 段三（gather 行）：逐字节比
-            if (row->shadow_bias_multiplier != bias_for_row
-             || (row->shadow_receive == 0u ? graph::mtl::kMaterialShadowFlagNoReceive : 0u)
-             != flags_for_row
-             || mtl_rows[k].shadow_bias_multiplier != bias_for_row
-             || mtl_rows[k].shadow_flags != flags_for_row)
+            for (uint32_t r = 0; r < n; ++r)
             {
-                if (bad < 5)
-                    GLogWarning(u8"[CPUCullReferenceSystem] shadow facts chain broken:"
-                                u8" idx=%u bias(accessor/row/gather)=%.3f/%.3f/%.3f"
-                                u8" flags(receive-bit/row/gather)=%u/%u/%u",
-                                entity_index,
-                                bias_for_row, row->shadow_bias_multiplier,
-                                mtl_rows[k].shadow_bias_multiplier,
-                                flags_for_row,
-                                row->shadow_receive == 0u ? 1u : 0u,
-                                mtl_rows[k].shadow_flags);
-                ++bad;
+                // 段零：行 → 实体（l2w 行号反查；查不到 = 行内容与实体表不同源 ⇒ 红）
+                const uint32_t l2w_row = l2w_rows[r];
+                const uint32_t entity_index = (l2w_row < kL2WRowCapacity)
+                                            ? l2w_row_to_entity_[l2w_row] : UINT32_MAX;
+
+                if (entity_index == UINT32_MAX)
+                {
+                    if (bad < 5)
+                        GLogWarning(u8"[CPUCullReferenceSystem] slice row→entity 反查失败："
+                                    u8"batch=%u r=%u l2w_row=%u", b, r, l2w_row);
+                    ++bad;
+                    continue;
+                }
+
+                const EntityGPU *row = entity_table.Row(entity_index);
+
+                if (!row)
+                {
+                    ++bad;
+                    continue;
+                }
+
+                // 段一：CPU 真值（行字节归一式 = 唯一出处，与 collect/FinalizeBatch 同函数）
+                const Entity *owner = alive_owner_[entity_index];
+                const float bias_for_row = NormalizeShadowBiasToRow(GetShadowBiasMultiplier(owner));
+                const uint32_t flags_for_row = CanReceiveShadow(owner) ? 0u
+                    : uint32_t(graph::mtl::kMaterialShadowFlagNoReceive);
+
+                const bool nondefault = (flags_for_row != 0u) || (bias_for_row != 1.0f);
+
+                if (nondefault)
+                {
+                    if (nondefault_seen < 8)
+                        GLogInfo(u8"[CPUCullReferenceSystem] shadow non-default: batch=%u"
+                                 u8" idx=%u bias=%.3f flags=%u（三段字节=%.3f/%.3f/%.3f %u/%u/%u）",
+                                 b, entity_index, bias_for_row, flags_for_row,
+                                 bias_for_row, row->shadow_bias_multiplier,
+                                 mtl_rows[r].shadow_bias_multiplier,
+                                 flags_for_row, row->shadow_receive, mtl_rows[r].shadow_flags);
+                    ++nondefault_seen;
+                }
+
+                // 段二（实体行）+ 段三（gather 行）：逐字节比
+                if (row->shadow_bias_multiplier != bias_for_row
+                 || (row->shadow_receive == 0u ? graph::mtl::kMaterialShadowFlagNoReceive : 0u)
+                 != flags_for_row
+                 || mtl_rows[r].shadow_bias_multiplier != bias_for_row
+                 || mtl_rows[r].shadow_flags != flags_for_row)
+                {
+                    if (bad < 5)
+                        GLogWarning(u8"[CPUCullReferenceSystem] shadow facts chain broken:"
+                                    u8" batch=%u r=%u idx=%u bias(accessor/row/gather)=%.3f/%.3f/%.3f"
+                                    u8" flags(receive-bit/row/gather)=%u/%u/%u",
+                                    b, r, entity_index,
+                                    bias_for_row, row->shadow_bias_multiplier,
+                                    mtl_rows[r].shadow_bias_multiplier,
+                                    flags_for_row,
+                                    row->shadow_receive == 0u ? 1u : 0u,
+                                    mtl_rows[r].shadow_flags);
+                    ++bad;
+                }
+
+                ++checked;
             }
-            ++checked;
+
+            mtl_buf->Unmap();
+            l2w_buf->Unmap();
+
+            rows_read += n;
         }
 
-        mtl_buf->Unmap();
+        gpu_cull->UnmapCurrentBatchCounters();
 
-        // checked>0 且 bad=0 ⇒ 值链对每个幸存实体成立（非默认实体由测试挂载点
-        // 注入，其存在性在示例日志自证；形态 A 已退役 ⇒ 只有接管帧有 gather 行，
-        // 本判据天然只在形态 B 采样窗口跑）。
-        if (bad == 0)
-            GLogInfo(u8"[CPUCullReferenceSystem] Shadow facts value-chain: %u/%u 实体三段一致",
-                     checked, checked);
+        // 硬判据（3A：非零即红）+ 两本账交叉核对
+        // （Σ ≤ 全局幸存恒成立：全局表记**所有**幸存者，切片只记被接管批的）
+        if (overflow != 0)
+            GLogError(u8"[T3i] 切片溢出！overflow=%u（批归属与切片容量不同源 = 布局错配）",
+                      overflow);
+
+        if (sum > gpu_count_)
+            GLogError(u8"[T3i] 两本账越界：Σbatch_counts=%u > 全局幸存=%u"
+                      u8"（标签/分区与 gather 输出不同源）", sum, gpu_count_);
+
+        GLogInfo(u8"[T3i] batch slices: batches=%u rows=%u Σcount=%u global=%u overflow=%u"
+                 u8" 值链=%u/%u bad=%u nondefault=%u",
+                 batch_count, rows_read, sum, gpu_count_, overflow,
+                 checked, checked, bad, nondefault_seen);
     }
 
     void CPUCullReferenceSystem::PerformCPUCulling()

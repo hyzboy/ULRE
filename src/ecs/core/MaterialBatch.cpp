@@ -73,6 +73,8 @@ namespace hgl::ecs
 
         l2w_buffer = nullptr;
         gpu_driven_override = false;
+        gpu_row_base = 0;      // T3i：切片随 override 作废（下帧重新装配）
+        gpu_capacity = 0;
         uses_render_item_resolve = false;
         own_icb_mesh_tasks = true;
         own_mesh_draw_params = true;

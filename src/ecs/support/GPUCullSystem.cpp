@@ -2,6 +2,7 @@
 #include <hgl/ecs/core/MaterialBatch.h>
 #include <hgl/ecs/core/Entity.h>
 #include <cstdlib>
+#include <cstring>
 #include <hgl/ecs/core/EntityGPU.h>
 #include <hgl/ecs/support/EntityGPUTable.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -71,14 +72,20 @@ namespace hgl::ecs
             uint64_t cmds_out_addr;
             uint64_t mtl_out_addr;
             uint64_t draw_count_addr;
+            uint64_t batch_tag_addr;      // T3i：批标签数组（当前帧槽；0xFFFFFFFF = 无批）
+            uint64_t batch_info_addr;     // T3i：批分区表（{row_base, capacity} × batch_count）
+            uint64_t batch_counter_addr;  // T3i：每批计数（末位 = overflow 计数）
             uint32_t entity_count;
             uint32_t max_visible_count;
             uint32_t camera_row;          // ECSContext::GetActiveCameraRow()
             uint32_t mesh_group_size;     // kMeshVertexPassthroughMaxVertices（CPU 单源下发）
             uint32_t enable_gather;       // 0 = 只出计数；非 0 = 写 gather 四表（形态 B opt-in）
+            uint32_t batch_count;         // T3i：本帧批数（0 = 无接管批）
         };
 
-        static_assert(sizeof(CullPushConstants) == 88, "CullPushConstants layout mismatch");
+        static_assert(sizeof(CullPushConstants) == 112, "CullPushConstants layout mismatch");
+        static_assert(offsetof(CullPushConstants, batch_tag_addr) == 64, "T3i pc 段偏移");
+        static_assert(offsetof(CullPushConstants, batch_count) == 108, "T3i pc 段偏移");
 
         // 引擎合规文件读取（先例：ShaderCodeModuleRegistry::LoadFileContent ——
         // 同一读法与缓冲口径），路径由 ShaderLibrary 单源解析（禁绝对路径）。
@@ -110,7 +117,11 @@ namespace hgl::ecs
     GPUCullSystem::GPUCullSystem()
         : System("GPUCullSystem")
     {
-        SetExecutionPhase(ExecutionPhase::RenderCollect);
+        // T3i/2β：**必须晚于 RenderBatch 的批装配**——批标签/分区是本帧产物，
+        // cull 要与本帧分区、本帧绘制三者同源（在 RenderCollect 会读到上一帧批归属
+        // ⇒ 切片错位）。RenderFrameSync 位于"render pass 外、上传之后、绘制之前"，
+        // 且本提交仍早于主帧 cmd 提交 ⇒ 同队列 submission-order 保证绘制可见其写出。
+        SetExecutionPhase(ExecutionPhase::RenderFrameSync);
     }
 
     GPUCullSystem::~GPUCullSystem()
@@ -127,6 +138,9 @@ namespace hgl::ecs
         if (l2w_out_buffer_) delete l2w_out_buffer_;
         if (cmds_out_buffer_) delete cmds_out_buffer_;
         if (mtl_out_buffer_) delete mtl_out_buffer_;
+        if (batch_tag_buffer_) delete batch_tag_buffer_;
+        if (batch_info_buffer_) delete batch_info_buffer_;
+        if (batch_counter_buffer_) delete batch_counter_buffer_;
         // compute_pipeline_ 和 shader_program_ 由 MaterialManager 管理，不手动删除
     }
     bool GPUCullSystem::Initialize(ECSContext* context)
@@ -305,10 +319,161 @@ namespace hgl::ecs
         if (!mtl_out_buffer_) return false;
         mtl_out_addr_ = device_->GetBufferDeviceAddressAligned16(mtl_out_buffer_->GetBuffer());
 
+        // ── T3i（③ 多批）：批标签 / 分区 / 每批计数（按帧槽分份；CPU 只写当前份）──
+        // tag = kSlots × 4096 × u32；info = kSlots × kMaxBatches × 8 B；
+        // counter = kSlots × (kMaxBatches + 1) × u32（末位 = overflow 计数）。
+        // usage：STORAGE（CS 读写）+ SHADER_DEVICE_ADDRESS（BDA 下发）；counter 另带
+        // TRANSFER_DST（cull cmd 内 FillBuffer 清零，VUID-vkCmdFillBuffer-dstBuffer-00031）。
+        const VkDeviceSize tag_slot_bytes     = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
+        const VkDeviceSize info_slot_bytes    = VkDeviceSize(kMaxBatches) * sizeof(BatchInfoRow);
+        const VkDeviceSize counter_slot_bytes = VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t);
+        const VkDeviceSize batch_slots        = VkDeviceSize(HGL_FRAME_SLOT_TOTAL);
+
+        const VkBufferUsageFlags batch_usage =
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
+        batch_tag_buffer_ = device_->CreateBuffer(
+            "GPUCullSystem.BatchTag", batch_usage,
+            tag_slot_bytes * batch_slots, tag_slot_bytes * batch_slots, nullptr,
+            graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
+        if (!batch_tag_buffer_) return false;
+        batch_tag_addr_ = device_->GetBufferDeviceAddressAligned16(batch_tag_buffer_->GetBuffer());
+
+        batch_info_buffer_ = device_->CreateBuffer(
+            "GPUCullSystem.BatchInfo", batch_usage,
+            info_slot_bytes * batch_slots, info_slot_bytes * batch_slots, nullptr,
+            graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
+        if (!batch_info_buffer_) return false;
+        batch_info_addr_ = device_->GetBufferDeviceAddressAligned16(batch_info_buffer_->GetBuffer());
+
+        // ⚠ 必带 INDIRECT_BUFFER：本缓冲当 `vkCmdDrawMeshTasksIndirectCountEXT` 的
+        // countBuffer 用（VUID-vkCmdDrawMeshTasksIndirectCountEXT-countBuffer-02715）；
+        // 另需 TRANSFER_DST 供 cull cmd 内 FillBuffer 清零。
+        batch_counter_buffer_ = device_->CreateBuffer(
+            "GPUCullSystem.BatchCounter",
+            batch_usage | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            counter_slot_bytes * batch_slots, counter_slot_bytes * batch_slots, nullptr,
+            graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
+        if (!batch_counter_buffer_) return false;
+        batch_counter_addr_ = device_->GetBufferDeviceAddressAligned16(batch_counter_buffer_->GetBuffer());
+
+        GLogInfo(u8"[GPUCullSystem] T3i batch buffers ready: tag=%p info=%p counter=%p（slots=%u, max_batches=%u）",
+                 (void*)batch_tag_addr_, (void*)batch_info_addr_, (void*)batch_counter_addr_,
+                 uint32_t(HGL_FRAME_SLOT_TOTAL), kMaxBatches);
+
         GLogInfo(u8"[GPUCullSystem] Output buffers created: visible_indices=%p, indirect_commands=%p, draw_count=%p, gather_l2w=%p cmds=%p mtl=%p",
                  (void*)visible_indices_addr_, (void*)indirect_commands_addr_, (void*)draw_count_addr_,
                  (void*)l2w_out_addr_, (void*)cmds_out_addr_, (void*)mtl_out_addr_);
         return true;
+    }
+
+    // ── T3i（③ 多批）批标签 / 分区 / 计数 ─────────────────────────────
+
+    uint32_t *GPUCullSystem::BeginBatchTagWrite()
+    {
+        if (!batch_tag_buffer_ || !context_)
+            return nullptr;
+
+        const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
+        const VkDeviceSize slot_bytes = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
+
+        uint32_t *p = static_cast<uint32_t *>(
+            batch_tag_buffer_->Map(VkDeviceSize(slot) * slot_bytes, slot_bytes));
+        if (!p)
+            return nullptr;
+
+        batch_tag_cpu_ = p;
+        batch_tag_cpu_slot_ = slot;
+
+        // 整表打"无批"初值：本帧未上标签的实体（未接管批 / 未进批）一律被 cull 跳过。
+        for (uint32_t i = 0; i < kMaxVisibleEntities; ++i)
+            p[i] = kInvalidBatchTag;
+
+        return p;
+    }
+
+    void GPUCullSystem::SetBatchLayout(uint32_t batch_index, uint32_t row_base, uint32_t capacity)
+    {
+        if (batch_index >= kMaxBatches)
+        {
+            GLogError(u8"[GPUCullSystem] 批号越界：%u ≥ kMaxBatches(%u)（超限 = 项目 bug，fail-fast）",
+                      batch_index, kMaxBatches);
+            return;
+        }
+
+        batch_info_staging_[batch_index].row_base = row_base;
+        batch_info_staging_[batch_index].capacity = capacity;
+    }
+
+    void GPUCullSystem::EndBatchLayout(uint32_t batch_count)
+    {
+        if (batch_count > kMaxBatches)
+        {
+            GLogError(u8"[GPUCullSystem] 批数越界：%u > kMaxBatches(%u) ⇒ 钳到上限（超限 = 项目 bug）",
+                      batch_count, kMaxBatches);
+            batch_count = kMaxBatches;
+        }
+
+        batch_count_ = batch_count;
+
+        // 1) 标签 unmap（Map 期内已直写；host-visible ⇒ unmap 后对后续提交可见）
+        if (batch_tag_cpu_ && batch_tag_buffer_)
+        {
+            batch_tag_buffer_->Unmap();
+            batch_tag_cpu_ = nullptr;
+            batch_tag_cpu_slot_ = UINT32_MAX;
+        }
+
+        // 2) 分区表落**当前帧槽**那一份
+        if (batch_info_buffer_ && context_ && batch_count > 0)
+        {
+            const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
+            const VkDeviceSize slot_bytes = VkDeviceSize(kMaxBatches) * sizeof(BatchInfoRow);
+
+            void *dst = batch_info_buffer_->Map(VkDeviceSize(slot) * slot_bytes, slot_bytes);
+            if (dst)
+            {
+                std::memcpy(dst, batch_info_staging_,
+                            size_t(batch_count) * sizeof(BatchInfoRow));
+                batch_info_buffer_->Unmap();
+            }
+        }
+    }
+
+    uint32_t GPUCullSystem::GetBatchCounterByteOffset(uint32_t batch_index) const
+    {
+        const uint32_t slot = context_ ? (context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL) : 0u;
+        const VkDeviceSize slot_bytes = VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t);
+
+        return uint32_t(VkDeviceSize(slot) * slot_bytes + VkDeviceSize(batch_index) * sizeof(uint32_t));
+    }
+
+    uint32_t GPUCullSystem::GetOverflowCounterByteOffset() const
+    {
+        return GetBatchCounterByteOffset(kMaxBatches);
+    }
+
+    uint32_t *GPUCullSystem::MapCurrentBatchCounters()
+    {
+        if (!batch_counter_buffer_ || !context_)
+            return nullptr;
+
+        const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
+        const VkDeviceSize slot_bytes = VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t);
+
+        batch_counter_cpu_ = static_cast<uint32_t *>(
+            batch_counter_buffer_->Map(VkDeviceSize(slot) * slot_bytes, slot_bytes));
+
+        return batch_counter_cpu_;
+    }
+
+    void GPUCullSystem::UnmapCurrentBatchCounters()
+    {
+        if (batch_counter_cpu_ && batch_counter_buffer_)
+        {
+            batch_counter_buffer_->Unmap();
+            batch_counter_cpu_ = nullptr;
+        }
     }
 
     void GPUCullSystem::SetEnabled(bool enabled)
@@ -324,6 +489,7 @@ namespace hgl::ecs
         {
             dispatch_count_ = 0;
             override_reject_reported_ = false;
+            batch_count_ = 0;      // T3i：批分区随之作废（重开重新装配）
         }
 
         GLogInfo(u8"[GPUCullSystem] GPU cull dispatch %s (opt-in)",
@@ -450,6 +616,16 @@ namespace hgl::ecs
         // 未接管帧写出的 gather 表 = 无人读的富余写，代价一次 gather 写）。
         pc.enable_gather = override_draw_ ? 1u : 0u;
 
+        // T3i：批标签 / 分区 / 计数（**当前帧槽**的份；与实体表同槽口径）
+        const uint32_t batch_slot = frame_slot % HGL_FRAME_SLOT_TOTAL;
+        pc.batch_tag_addr     = batch_tag_addr_ + VkDeviceSize(batch_slot)
+                                * VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
+        pc.batch_info_addr    = batch_info_addr_ + VkDeviceSize(batch_slot)
+                                * VkDeviceSize(kMaxBatches) * sizeof(BatchInfoRow);
+        pc.batch_counter_addr = batch_counter_addr_ + VkDeviceSize(batch_slot)
+                                * VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t);
+        pc.batch_count        = batch_count_;
+
         cmd->Begin();
 
         // ── 计数 GPU 侧清零（T3g：旧版 CPU `Write(&zero)` 是同步上传，去掉）──
@@ -459,6 +635,17 @@ namespace hgl::ecs
         // 必须显式 TRANSFER→COMPUTE barrier，否则 RAW 冒险 = 计数可能被清零覆盖。
         cmd->FillBuffer(draw_count_buffer_->GetBuffer(), 0, sizeof(uint32_t), 0);
         cmd->BufferMemoryBarrier2(draw_count_buffer_->GetBuffer(),
+                                  VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                                  VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                                  VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
+
+        // T3i：每批计数（含 overflow 末位槽）同 cmd 内清零——同一 FillBuffer 纪律
+        // （TRANSFER→COMPUTE barrier，批内无隐式序）。只清**本帧槽**那一份。
+        cmd->FillBuffer(batch_counter_buffer_->GetBuffer(),
+                        VkDeviceSize(batch_slot) * VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t),
+                        VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t), 0);
+        cmd->BufferMemoryBarrier2(batch_counter_buffer_->GetBuffer(),
                                   VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                   VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
                                   VK_ACCESS_2_TRANSFER_WRITE_BIT,
@@ -497,18 +684,23 @@ namespace hgl::ecs
             s_dispatch_perf.Add("gpu_dispatch", GetUptimeUs() - t_dispatch0, device_);
     }
 
-    bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch)
+    bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index)
     {
         // 调用前提（guard 已在 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 核完）：
-        // opt-in 开 / gather 输出与批行表**同容量契约** / 单批 / 全默认阴影 / 非 meshlet。
+        // opt-in 开 / gather 输出与批行表**同容量契约** / 非 meshlet / 全 mesh / …
         // 本函数只做"指向 + 置标志"，不再重复校验 ⇒ 校验与接线分离，口径唯一。
-        if (!batch || !indirect_commands_buffer_ || !draw_count_buffer_
-         || !l2w_out_buffer_ || !cmds_out_buffer_ || !mtl_out_buffer_)
+        // T3i：逐批调用；本批在共享竞技场里的切片从**本帧分区表**取（与标签写值同源）。
+        if (!batch || !indirect_commands_buffer_ || !l2w_out_buffer_
+         || !cmds_out_buffer_ || !mtl_out_buffer_ || !batch_counter_buffer_)
             return false;
 
-        // icb 容量必须容得下最坏情况（全部可见）：批容量 > 表行数 ⇒ 越界 = 项目 bug，
-        // 但宁可在这里再判一次（guard 已判 items 数；这里判**表**行数，口径不同源则拒）
-        if (batch->items.size() > kMaxVisibleEntities)
+        if (batch_index >= kMaxBatches || batch_count_ == 0)
+            return false;
+
+        const BatchInfoRow &info = batch_info_staging_[batch_index];
+
+        // 切片容量必须容得下本批全部 item（写行最坏情况 = 全可见）：不等 ⇒ 口径冲突
+        if (batch->items.size() > info.capacity)
             return false;
 
         // 交接帧（CPU→GPU）：批可能已持有上一帧 CPU 路径分配的**自有** buffer
@@ -567,15 +759,21 @@ namespace hgl::ecs
         batch->own_l2w_index                  = false;
         batch->own_material_data_rows         = false;
 
+        // T3i：切片信息（绘制侧的 maxDrawCount / 地址偏移全从这里取）
+        batch->gpu_row_base                   = info.row_base;
+        batch->gpu_capacity                   = info.capacity;
+
         batch->icb_mesh_tasks                 = indirect_commands_buffer_;
-        batch->icb_count_buffer               = draw_count_buffer_;
-        batch->icb_count_buffer_offset        = 0;
+        // 计数 = **本批**的 GPU 原子计数（末位 overflow 槽不在此列；maxDrawCount 取
+        // 切片容量，实际条数由该计数给出 ⇒ GPU-Driven 动态计数口径不变）
+        batch->icb_count_buffer               = batch_counter_buffer_;
+        batch->icb_count_buffer_offset        = GetBatchCounterByteOffset(batch_index);
         batch->mesh_draw_params_buffer        = cmds_out_buffer_;
-        batch->mesh_draw_params_capacity      = kMaxVisibleEntities;
+        batch->mesh_draw_params_capacity      = info.capacity;
         batch->l2w_index_buffer               = l2w_out_buffer_;
-        batch->l2w_index_capacity             = kMaxVisibleEntities;
+        batch->l2w_index_capacity             = info.capacity;
         batch->material_data_index_rows_buffer = mtl_out_buffer_;
-        batch->material_data_index_rows_capacity = kMaxVisibleEntities;
+        batch->material_data_index_rows_capacity = info.capacity;
 
         return true;
     }
