@@ -44,6 +44,9 @@ namespace hgl::graph::mtl
         mtl::ShaderProgramPurpose purpose =
             mtl::ShaderProgramPurpose::ForwardColor;
         bool depth_purpose = false;
+
+        // 曲面 alpha 写进片元输出（alpha_blend / alpha_to_coverage 需要；见 ComposeInput）
+        bool alpha_to_output = false;
         RenderTemplateRequest render_template_request_storage;
         const RenderTemplateRequest *render_template_request = nullptr;
         ResolvedRenderTemplate resolved_render_template;

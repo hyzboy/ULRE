@@ -24,6 +24,11 @@ namespace hgl::graph::mtl
             bool alpha_test = false;
             float alpha_cutoff = 0.5f;
             bool dither = false;
+
+            /// 曲面 alpha 是否写进片元输出（发射 `#define HGL_ALPHA_OUTPUT 1`）。
+            /// 前提：`alpha_blend` 的混合因子（SRC_ALPHA）与 `alpha_to_coverage` 的覆盖率
+            /// 都取**输出 alpha**——前向模板此前写的是光照 alpha（恒 1）⇒ 两者都空转。
+            bool alpha_to_output = false;
             const hgl::ValueArray<InterStageSemanticContractEntry>
                 *fragment_inputs = nullptr;
             const OutputContract *output_contract = nullptr;

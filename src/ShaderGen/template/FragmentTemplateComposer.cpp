@@ -417,6 +417,8 @@ namespace hgl::graph::mtl
             }
             if (input.dither)
                 defines += "#define HGL_ALPHA_DITHER 1\n";
+            if (input.alpha_to_output)
+                defines += "#define HGL_ALPHA_OUTPUT 1\n";
             return true;
         }
 

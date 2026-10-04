@@ -1,19 +1,19 @@
-﻿// 该范例用**单通道**（BC4）gradient 纹理贴 CUBE，并把**同一份内容**用三种 alpha 呈现方式显示：
-//   · Opaque     —— 完全忽略 alpha（实心）
-//   · AlphaBlend —— 标准 alpha 混合（blend_src=SRC_ALPHA / blend_dst=ONE_MINUS_SRC_ALPHA）
-//   · Dither     —— HGL_ALPHA_DITHER：按 alpha 与位置阈值 discard 的**顺序无关半透明**
+﻿// 该范例用**单通道**（BC4）gradient 纹理贴 CUBE，并把**同一份内容**用四种 alpha 呈现方式显示：
+//   · Opaque      —— 完全忽略 alpha（实心）
+//   · AlphaBlend  —— 标准 alpha 混合（blend_src=SRC_ALPHA / blend_dst=ONE_MINUS_SRC_ALPHA）：
+//                    平滑透色，不做丢弃
+//   · AlphaTest   —— 固定阈值（alpha_cutoff）硬边丢弃：alpha < 阈值 ⇒ discard（边缘是硬的）
+//   · AlphaDither —— HGL_ALPHA_DITHER：按 alpha 与**逐像素**位置阈值 discard
+//                    （用 dither 模拟 alpha_blend，顺序无关、留在不透明 pass）
+// 三者对比：AlphaBlend 连续透色 / AlphaTest 硬边镂空 / AlphaDither 噪点镂空。
 //
-// ⚠ 现状（2026-10-05 实测）：**AlphaBlend 这一排在引擎当前实现下看不出透明**——
-//   前向片元模板输出的是**光照结果的 alpha（恒为 1）**（见
-//   ShaderLibrary/fragment/forward_lit.glsl.tmpl 的 WriteMaterialOutput(HGLComposeColor(finalColor))
-//   与其中的注释），材质源的曲面 alpha 只用于**覆盖判定（discard）**、没有写进输出 alpha
-//   ⇒ blend 因子 SRC_ALPHA=1 ⇒ 与不透明等价。要让 alpha_blend 真正生效，需把
-//   EvalAlpha(...) 写进输出（`WriteMaterialOutput(vec4(rgb, EvalAlpha(...)))`，由 composer
-//   按 alpha_blend 注入 define）——属引擎侧改动，本示例先如实呈现该缺口。
-//   对照：Dither 走 discard，不依赖输出 alpha ⇒ 192 帧起就规规矩矩地镂空。
+// 引擎侧前提（2026-10-05 落地）：AlphaBlend 只有在**曲面 alpha 写进片元输出**时才生效
+//（blend 因子 SRC_ALPHA 取输出 alpha）。前向片元模板此前恒写光照 alpha（= 1）⇒ blend 空转；
+// 现由 `#define HGL_ALPHA_OUTPUT`（composer 在 alpha_blend / alpha_to_coverage 时注入）
+// 分支改写成 `WriteMaterialOutput(vec4(rgb, EvalAlpha(...)))`。
 //
 // 布局：横向 6 列 = 6 张 gradient（取自 res/image/gradient 的 23 张单通道纹理，均匀取样）；
-//       纵向 3 行 = 三种方式（上 Opaque / 中 AlphaBlend / 下 Dither）。
+//       纵向 4 行 = 四种方式（自上而下 Opaque / AlphaBlend / AlphaTest / AlphaDither）。
 //
 // 同一张单通道 gradient 同时绑 **base_color**（肉眼可见的渐变图案）与 **opacity_mask**
 //（alpha 真值来源：pbr_surface_source.glsl 的 EvalMaterialAlpha = tex_opacity_mask.r；
@@ -30,7 +30,7 @@
 //   AM_FORM_B=1   启用 + gather 输出接管绘制（形态 B）
 //   AM_FRAMES=N   跑 N 帧后退出（CI / 性能对照）
 //   AM_DUMP=<tag> 帧 8 帧内回读落原始字节后退出（像素判据）
-//   AM_YAW/CV_PITCH/...  相机覆盖：AM_YAW / AM_PITCH / AM_DIST / AM_TX / AM_TY / AM_TZ
+//   AM_YAW/AM_PITCH/AM_DIST/AM_TX/AM_TY/AM_TZ  相机覆盖
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -84,7 +84,7 @@ namespace
     }
 
     constexpr uint GRADIENT_COLUMNS = 6;      // 横向：6 张 gradient 纹理
-    constexpr uint MODE_ROWS        = 3;      // 纵向：Opaque / AlphaBlend / Dither
+    constexpr uint MODE_ROWS        = 4;      // 纵向：Opaque / AlphaBlend / AlphaTest / AlphaDither
     constexpr uint ITEM_COUNT       = GRADIENT_COLUMNS * MODE_ROWS;
 
     constexpr float ITEM_SPACING = 3.2f;
@@ -101,7 +101,10 @@ namespace
         OS_TEXT("10.Tex2D"), OS_TEXT("14.Tex2D"), OS_TEXT("18.Tex2D")
     };
 
-    const char * MODE_NAME[MODE_ROWS] = { "Opaque", "AlphaBlend", "Dither" };
+    const char * MODE_NAME[MODE_ROWS] = { "Opaque", "AlphaBlend", "AlphaTest", "AlphaDither" };
+
+    // AlphaTest 用的**固定**阈值（与 dither 的逐像素阈值形成对照：硬边 vs 噪点）
+    constexpr float ALPHA_TEST_CUTOFF = 0.5f;
 }
 
 class AlphaModesApp : public WorkObject
@@ -113,9 +116,10 @@ private:
 
     using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
 
-    // 一份基础配方 + 两种变体（第三种 = 基础配方本身）
+    // 一份基础配方 + 三种变体（第一种 = 基础配方本身）
     graph::mtl::MaterialRecipe opaque_recipe{};
     graph::mtl::MaterialRecipe blend_recipe{};
+    graph::mtl::MaterialRecipe alpha_test_recipe{};
     graph::mtl::MaterialRecipe dither_recipe{};
 
     // 一份几何（CUBE）+ 三个 PrimitiveAsset（同一几何、三种 alpha 方式）
@@ -174,9 +178,17 @@ private:
         blend_recipe.recipe_name = "AlphaModes.LitAlphaBlend";
         blend_recipe.render_state_overrides.pipeline_config = mtl::MakeAlpha3DConfig();
 
-        // 变体三：dither 覆盖（进生成的 GLSL ⇒ 不同 shader program）
+        // 变体三：alpha test（固定阈值硬边丢弃；同样进生成的 GLSL）
+        alpha_test_recipe = opaque_recipe;
+        alpha_test_recipe.recipe_name = "AlphaModes.LitAlphaTest";
+        alpha_test_recipe.render_state_overrides.has_alpha_test = true;
+        alpha_test_recipe.render_state_overrides.alpha_test     = true;
+        alpha_test_recipe.render_state_overrides.has_alpha_cutoff = true;
+        alpha_test_recipe.render_state_overrides.alpha_cutoff     = ALPHA_TEST_CUTOFF;
+
+        // 变体四：dither 覆盖（逐像素阈值，用 dither 模拟 alpha_blend）
         dither_recipe = opaque_recipe;
-        dither_recipe.recipe_name = "AlphaModes.LitDitherMask";
+        dither_recipe.recipe_name = "AlphaModes.LitAlphaDither";
         dither_recipe.render_state_overrides.has_dither = true;
         dither_recipe.render_state_overrides.dither     = true;
 
@@ -244,15 +256,17 @@ private:
         if (!(opaque_recipe.material_ssbo_binding = surface_rows[0][0].GetGlobalSSBOBinding()).IsValid())
             return false;
 
-        blend_recipe.material_ssbo_binding  = opaque_recipe.material_ssbo_binding;
-        dither_recipe.material_ssbo_binding = opaque_recipe.material_ssbo_binding;
+        blend_recipe.material_ssbo_binding      = opaque_recipe.material_ssbo_binding;
+        alpha_test_recipe.material_ssbo_binding = opaque_recipe.material_ssbo_binding;
+        dither_recipe.material_ssbo_binding     = opaque_recipe.material_ssbo_binding;
 
         if (!CreateCubeGeometry())
             return false;
 
-        mode_asset[0] = PrimitiveAsset(cube_geometry, &opaque_recipe, PrimitiveType::Triangles);
-        mode_asset[1] = PrimitiveAsset(cube_geometry, &blend_recipe,  PrimitiveType::Triangles);
-        mode_asset[2] = PrimitiveAsset(cube_geometry, &dither_recipe, PrimitiveType::Triangles);
+        mode_asset[0] = PrimitiveAsset(cube_geometry, &opaque_recipe,     PrimitiveType::Triangles);
+        mode_asset[1] = PrimitiveAsset(cube_geometry, &blend_recipe,      PrimitiveType::Triangles);
+        mode_asset[2] = PrimitiveAsset(cube_geometry, &alpha_test_recipe, PrimitiveType::Triangles);
+        mode_asset[3] = PrimitiveAsset(cube_geometry, &dither_recipe,     PrimitiveType::Triangles);
 
         const float offset_y = (GRADIENT_COLUMNS - 1) * ITEM_SPACING * 0.5f;
 
@@ -267,7 +281,8 @@ private:
 
                 // ⚠ 世界 Z 轴向上（相机 forward.z=sin(pitch)、yaw 绕 Z）：横向摆 Y、纵向摆 Z
                 const float y = col * ITEM_SPACING - offset_y;
-                const float z = float(MODE_ROWS - 1 - row) * ROW_SPACING - ROW_SPACING;
+                const float z = float(MODE_ROWS - 1 - row) * ROW_SPACING
+                              - float(MODE_ROWS - 1) * 0.5f * ROW_SPACING;
 
                 auto transform = ecs_world->GetTransform(
                     ecs_world->CreateTransform(e->GetEntityID(), Mobility::Static));
@@ -297,12 +312,14 @@ private:
         }
 
         printf("[AlphaModes] %u CUBE = %u 列（res/image/gradient 单通道 BC4 取样）× %u 行"
-               "（上 %s / 中 %s / 下 %s）\n"
-               "            单通道纹理只绑 opacity_mask（Lit 的 alpha 只出自 opacity_mask）\n"
-               "            批预期：Opaque 与 AlphaBlend 只差 pipeline 配置（alpha_blend 是动态状态）\n"
-               "                    ⇒ 同批；Dither 改生成 GLSL ⇒ 不同 shader program ⇒ 单独一批\n",
+               "（自上而下 %s / %s / %s / %s）\n"
+               "            纹理同时绑 base_color + opacity_mask（Lit 的 alpha 只出自 opacity_mask）\n"
+               "            批预期：Opaque / AlphaBlend 只差 pipeline 配置（alpha_blend 是动态状态）\n"
+               "                    ⇒ 同批；AlphaTest / AlphaDither 改生成 GLSL ⇒ 各自不同 program\n"
+               "            （AlphaTest 固定阈值 %.2f；AlphaDither 逐像素阈值）\n",
                ITEM_COUNT, GRADIENT_COLUMNS, MODE_ROWS,
-               MODE_NAME[0], MODE_NAME[1], MODE_NAME[2]);
+               MODE_NAME[0], MODE_NAME[1], MODE_NAME[2], MODE_NAME[3],
+               double(ALPHA_TEST_CUTOFF));
         fflush(stdout);
 
         return true;
@@ -319,7 +336,7 @@ private:
 
         camera->control_mode = CameraControlMode::ViewModel;
         camera->target       = math::Vector3f(0.0f, 0.0f, 0.0f);
-        camera->distance     = 17.0f;
+        camera->distance     = 22.0f;
         camera->yaw          = 0.0f;
         camera->pitch        = -8.0f;
 

@@ -145,6 +145,17 @@ namespace hgl::graph::mtl
                     plan.purpose,
                     plan.coverage))
                 return false;
+
+            // 曲面 alpha 是否写进输出：alpha_blend 的 SRC_ALPHA 与 alpha_to_coverage 的
+            // 覆盖率都取输出 alpha（不写进输出 ⇒ 两者空转；见 ComposeInput 注释）。
+            {
+                const ResolvedMaterialRenderState render_state =
+                    ResolveMaterialRenderState(definition, request.recipe);
+
+                plan.alpha_to_output =
+                    render_state.pipeline_config.alpha_blend
+                 || render_state.pipeline_config.alpha_to_coverage;
+            }
             {
                 plan.render_template_request_storage = resolved_request;
                 plan.render_template_request = &plan.render_template_request_storage;
@@ -537,6 +548,7 @@ namespace hgl::graph::mtl
                 plan.coverage.mode == MaterialCoverageMode::Dither
              || plan.coverage.mode
                     == MaterialCoverageMode::AlphaTestDither;
+            compose_input.alpha_to_output = plan.alpha_to_output;
             compose_input.fragment_inputs = &plan.stage_interface;
             compose_input.output_contract = &plan.output_contract;
             compose_input.coverage_contract = &plan.coverage;
