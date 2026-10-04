@@ -37,8 +37,8 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/log/Log.h>
+#include<hgl/time/Time.h>
 #include<algorithm>
-#include<chrono>
 #include<cstdint>
 #include<string>
 #include<unordered_map>
@@ -123,8 +123,66 @@ namespace hgl::ecs
         return true;
     }
 
+    namespace
+    {
+        // PBR_PERF=1 计时代（三处独立累计，函数内 static ⇒ 零头文件改动）：
+        //   cull  = PerformFrustumCulling 的 CPU 时间（形态 B 接管帧 = 0）
+        //   batch = RunBatching 的 CPU 时间（形态 B guard+接管帧仍要建批，含差异）
+        // 每 240 帧打印均值一次（稳态口径；启动杂项不进均值窗口）。
+        struct PerfTimer
+        {
+            const bool      on;
+            uint64_t        total_us = 0;
+            uint32_t        frames = 0;
+
+            PerfTimer(const char *name) : on(getenv("PBR_PERF") != nullptr), name_(name) {}
+
+            bool Active() const { return on; }
+
+            void Add(uint64_t us)
+            {
+                total_us += us;
+                ++frames;
+                if (frames % 240 == 0)
+                {
+                    GLogInfo("[PBR-PERF] %s: frames=%u avg=%.1f us/frame (total=%.1f ms)",
+                             name_, frames, double(total_us) / frames, double(total_us) / 1000.0);
+                    total_us = 0;
+                    frames = 0;
+                }
+            }
+
+        private:
+            const char *name_;
+        };
+
+        // 计时用引擎时间源（CMCore `hgl/time/Time.h` 的单调 uptime，禁 std::chrono）
+        inline uint64_t DeltaUs(uint64_t t0_us)
+        {
+            return GetUptimeUs() - t0_us;
+        }
+
+        /// RAII 段（多点 return 的函数用它，出口统一累计）
+        struct PerfSpan
+        {
+            PerfTimer  *timer;
+            bool        on;
+            uint64_t    t0;
+
+            explicit PerfSpan(PerfTimer &t) : timer(&t), on(t.Active()), t0(on ? GetUptimeUs() : 0) {}
+
+            ~PerfSpan()
+            {
+                if (on)
+                    timer->Add(DeltaUs(t0));
+            }
+        };
+    }
+
     void PrimitiveBatchPipeline::RunCulling()
     {
+        static PerfTimer s_cull_timer("cpu_cull");
+
         // T3f-2（形态 B，判据 2）：上一帧 guard 判定接管 ⇒ 本帧**跳过 CPU 剔除**。
         // 时序口径：guard 在 `FinalizeBatches()`（RenderBatch，批建成*之后*）评估，
         // 批成员资格在 `BuildMaterialBatches` 按 isVisible 过滤 ⇒ "跳不跳"只能取
@@ -136,7 +194,21 @@ namespace hgl::ecs
         if (world && IsGPUCullOverrideActive())
             return;
 
+        const uint64_t t0 = GetUptimeUs();
         PerformFrustumCulling();
+        if (s_cull_timer.Active())
+            s_cull_timer.Add(DeltaUs(t0));
+    }
+
+    void PrimitiveBatchPipeline::RunBatching()
+    {
+        static PerfTimer s_batch_timer("batching");
+
+        const uint64_t t0 = GetUptimeUs();
+        BuildMaterialBatches();
+        FinalizeBatches();
+        if (s_batch_timer.Active())
+            s_batch_timer.Add(DeltaUs(t0));
     }
 
     void PrimitiveBatchPipeline::RunSorting()
@@ -159,12 +231,6 @@ namespace hgl::ecs
         }
 
         AssignTransformIndices(transform_system);
-    }
-
-    void PrimitiveBatchPipeline::RunBatching()
-    {
-        BuildMaterialBatches();
-        FinalizeBatches();
     }
 
     void PrimitiveBatchPipeline::PerformFrustumCulling()
@@ -1170,6 +1236,9 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::TryApplyGPUCullOverride()
     {
+        static PerfTimer s_guard_timer("guard_hook");
+        const PerfSpan guard_span(s_guard_timer);   // RAII：多点 return 出口统一累计
+
         auto& cache = world->GetRenderFrameCache();
 
         // 每帧先复位（评估失败/从未评估 ⇒ 恒不接管；collect 读本记账）
@@ -1282,11 +1351,11 @@ namespace hgl::ecs
             }
         }
 
-        // 稳态判据护栏（与形态 A 首帧护栏同源，§8.2c）：实体表脏行上传与首次
-        // dispatch 同帧 ⇒ 首帧 `survivors=0`；此时接管 = 一帧黑屏。dispatch 是
-        // 同步提交（WaitLastSubmitFence）⇒ 这里读到的是**本帧**结果，可信帧恒 >0
-        //（场景确有可见实体时）。判据不可信 ⇒ 本帧不接管，CPU 账继续。
-        if (gpu_cull->GetGPUVisibleCount() == 0 && !target->items.empty())
+        // 派发定帧护栏（T3g，纯 CPU 判据）：dispatch 未攒满 2 帧 ⇒ 表还没被任何
+        // 一次派发看过 ⇒ 本帧不接管，CPU 账继续。旧版在此 `GetGPUVisibleCount()==0`
+        // 判据 = 每帧 Map+fence 同步点，已随形态 A 一起退役（§8.2f；`SetEnabled`
+        // 关 ⇒ 计数归零 ⇒ 场景切换/重开不会拿旧计数放行首帧误接管）。
+        if (!gpu_cull->IsDispatchSettled())
             return;
 
         // 全部前提通过 ⇒ 接管
@@ -1296,10 +1365,13 @@ namespace hgl::ecs
 
             // 正向判据日志（一次性）：像素对照必须证明"绘制真走 gather 表"，
             // 静默退回 CPU 账也会像素全等 ⇒ 没有本日志就不能宣称接管成立。
+            // survivors 读数走台架同步点（**仅此一次** fence，接管瞬间；稳态派发
+            // 路径仍然零同步）⇒ 日志里的数是本帧真值，不是滞后一帧的 Map 残影。
             static bool s_engaged_logged = false;
             if (!s_engaged_logged)
             {
                 s_engaged_logged = true;
+                gpu_cull->SyncForParityReadback();
                 GLogInfo("[T3f2] GPU cull draw override ENGAGED: batch items=%u survivors=%u"
                          "（行表/icb/count 已指向 gather 输出；CPU 剔除自本帧起跳过）",
                          (uint32_t)target->items.size(),

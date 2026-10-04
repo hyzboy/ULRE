@@ -1,26 +1,60 @@
 #include <hgl/ecs/support/GPUCullSystem.h>
 #include <hgl/ecs/core/MaterialBatch.h>
 #include <hgl/ecs/core/Entity.h>
+#include <cstdlib>
 #include <hgl/ecs/core/EntityGPU.h>
-#include <hgl/ecs/core/RenderItem.h>
 #include <hgl/ecs/support/EntityGPUTable.h>
-#include <hgl/ecs/support/primitive/PrimitiveCullSystem.h>
-#include <hgl/ecs/components/GeometryData.h>
-#include <vector>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/mtl/MeshShaderLimits.h>
+#include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/buffer/BufferPolicy.h>
+#include <hgl/io/FileInputStream.h>
+#include <hgl/type/Smart.h>
 #include <hgl/log/Log.h>
-#include <fstream>
-#include <sstream>
+#include <hgl/time/Time.h>
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        // PBR_PERF=1 计时代（临时插桩，与 PrimitiveBatchPipeline.cpp 同口径）：
+        //   gpu_dispatch = 派发录制的 CPU 侧成本（T3g 起 = record+submit，不再含
+        //                  fence 等待与 Map 读回——那两项就是旧数据 1.1ms 的元凶）
+        // 计时用引擎时间源（CMCore hgl/time/Time.h 的单调 uptime，禁 std::chrono）。
+        struct CullPerfTimer
+        {
+            const bool on;
+            uint64_t   total_us = 0;
+            uint32_t   frames = 0;
+
+            CullPerfTimer() : on(getenv("PBR_PERF") != nullptr) {}
+
+            void Add(const char *name, uint64_t us, graph::VulkanDevice *device)
+            {
+                if (!on)
+                    return;
+
+                total_us += us;
+                ++frames;
+                if (frames % 240 == 0)
+                {
+                    // 泄漏判据（T3g）：稳态派发路径不再产生任何 Vk 对象 ⇒ 跟踪表
+                    // 计数应在启动期建完之后**恒定**；随帧上涨 = 又有每帧 new 混进来。
+                    const size_t tracked =
+                        device ? (size_t)device->GetTrackedObjectCount() : 0;
+                    GLogInfo("[PBR-PERF] %s: frames=%u avg=%.1f us/frame tracked_objects=%zu",
+                             name, frames, double(total_us) / frames, tracked);
+                    total_us = 0;
+                    frames = 0;
+                }
+            }
+        };
+    }
     namespace
     {
         // Push constants 结构（必须与 GLSL 侧 entity_gpu_cull.glsl 的
@@ -46,17 +80,30 @@ namespace hgl::ecs
 
         static_assert(sizeof(CullPushConstants) == 88, "CullPushConstants layout mismatch");
 
-        AnsiString LoadShaderSource(const char* path)
+        // 引擎合规文件读取（先例：ShaderCodeModuleRegistry::LoadFileContent ——
+        // 同一读法与缓冲口径），路径由 ShaderLibrary 单源解析（禁绝对路径）。
+        AnsiString LoadShaderSource(const std::string &path)
         {
-            std::ifstream file(path);
-            if (!file.is_open())
+            hgl::io::OpenFileInputStream opener(hgl::ToOSString(path.c_str()));
+            if (!opener)
             {
-                GLogError(u8"[GPUCullSystem] Failed to open shader: %s", path);
+                GLogError(u8"[GPUCullSystem] Failed to open shader: %s", path.c_str());
                 return AnsiString();
             }
-            std::stringstream ss;
-            ss << file.rdbuf();
-            return AnsiString(ss.str().c_str());
+
+            const int64 size = opener->GetSize();
+            if (size <= 0)
+                return AnsiString();
+
+            hgl::AutoDeleteArray<char> buffer(size_t(size) + 1);
+            if (!buffer)
+                return AnsiString();
+
+            if (opener->Read(static_cast<void *>(buffer.data()), size) != size)
+                return AnsiString();
+
+            buffer[size_t(size)] = 0;
+            return AnsiString(buffer.data(), int(size));
         }
     }
 
@@ -64,14 +111,16 @@ namespace hgl::ecs
         : System("GPUCullSystem")
     {
         SetExecutionPhase(ExecutionPhase::RenderCollect);
-
-        // 回灌 `isVisible` 必须晚于 CPU 剔除（本系统是其后的**最终判据**，形态 A/T3f-1）、
-        // 早于 `PrimitiveBuildSystem`（不同 phase：RenderCollect < RenderBatch ⇒ 天然满足）。
-        AddDependency<PrimitiveCullSystem>();
     }
 
     GPUCullSystem::~GPUCullSystem()
     {
+        // 派发资源显式释放（T3g 泄漏修复的另一半：与 CreateDispatchResources 一次
+        // new 对应；fence/cmd 的最终归属由 DeviceQueue/DeviceBuffer 析构链处理）
+        SAFE_CLEAR(cull_queue_);
+        for (graph::ComputeCmdBuffer *&cmd : cull_cmds_)
+            SAFE_CLEAR(cmd);
+
         if (visible_indices_buffer_) delete visible_indices_buffer_;
         if (indirect_commands_buffer_) delete indirect_commands_buffer_;
         if (draw_count_buffer_) delete draw_count_buffer_;
@@ -124,6 +173,12 @@ namespace hgl::ecs
             return false;
         }
 
+        if (!CreateDispatchResources())
+        {
+            GLogError(u8"[GPUCullSystem] Failed to create dispatch resources");
+            return false;
+        }
+
         initialized_ = true;
         GLogInfo(u8"[GPUCullSystem] Initialized: max_visible=%u, work_group=%u",
                  kMaxVisibleEntities, kWorkGroupSize);
@@ -146,14 +201,17 @@ namespace hgl::ecs
             return false;
         }
 
-        // 加载着色器源码
-        AnsiString shader_source = LoadShaderSource("D:/ULRE/ShaderLibrary/ecs/entity_gpu_cull.glsl");
-        if (shader_source.IsEmpty()) 
+        // 加载着色器源码（ShaderLibrary 单源路径，禁绝对路径）
+        const std::string shader_path =
+            graph::mtl::GetShaderLibraryPath() + "/ecs/entity_gpu_cull.glsl";
+        AnsiString shader_source = LoadShaderSource(shader_path);
+        if (shader_source.IsEmpty())
         {
-            GLogError(u8"[GPUCullSystem] CreateComputePipeline: Failed to load shader source");
+            GLogError(u8"[GPUCullSystem] CreateComputePipeline: Failed to load shader source: %s",
+                      shader_path.c_str());
             return false;
         }
-        
+
         GLogInfo(u8"[GPUCullSystem] Shader source loaded, size=%d", shader_source.Length());
 
         // 创建 compute pipeline
@@ -202,9 +260,11 @@ namespace hgl::ecs
         indirect_commands_addr_ = device_->GetBufferDeviceAddressAligned16(indirect_commands_buffer_->GetBuffer());
 
         // 可见计数（uint32_t）
+        // ⚠ usage 必带 TRANSFER_DST：T3g 起计数清零走 `vkCmdFillBuffer`
+        //（VUID-vkCmdFillBuffer-dstBuffer-00031：dst 必须建缓冲时就带该位）
         draw_count_buffer_ = device_->CreateBuffer(
             "GPUCullSystem.DrawCount",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             sizeof(uint32_t),
             sizeof(uint32_t),
             nullptr,
@@ -257,6 +317,15 @@ namespace hgl::ecs
             return;
 
         enabled_ = enabled;
+
+        // T3g 防坑 3：关 ⇒ 派发计数归零。场景切换/暂停再开时必须重新攒满
+        // 2 帧才允许接管，旧计数不得放行首帧误接管（表可能已换新内容）。
+        if (!enabled_)
+        {
+            dispatch_count_ = 0;
+            override_reject_reported_ = false;
+        }
+
         GLogInfo(u8"[GPUCullSystem] GPU cull dispatch %s (opt-in)",
                  enabled_ ? u8"ENABLED" : u8"disabled");
     }
@@ -271,98 +340,59 @@ namespace hgl::ecs
                  override_draw_ ? u8"ENABLED" : u8"disabled");
     }
 
-    void GPUCullSystem::SetApplyVisibleSetEnabled(bool enabled)
+    bool GPUCullSystem::SyncForParityReadback()
     {
-        if (apply_visible_set_ == enabled)
-            return;
+        // 对拍台架同步点（T3g）：Map 读回**之前**必须等本帧 dispatch 完成——
+        // Host Coherent ≠ 已执行（FIFO 只保证序，不保证到）。台架每 60 帧采样一次
+        // ⇒ 这个 fence 成本只在采样帧付出；生产路径（Update / guard）绝不调它。
+        if (!cull_queue_)
+            return false;
 
-        apply_visible_set_ = enabled;
-        GLogInfo(u8"[GPUCullSystem] isVisible write-back (form A) %s (opt-in)",
-                 apply_visible_set_ ? u8"ENABLED" : u8"disabled");
+        return cull_queue_->WaitLastSubmitFence();
     }
 
-    void GPUCullSystem::ApplyVisibleSetToRenderItems(uint32_t visible_count)
+    void GPUCullSystem::DrainForHandover()
     {
-        if (!context_)
-            return;
+        // CPU→GPU 交接沿：排空整条 graphics 队列（含上一帧主帧 cmd）。
+        // cull_queue_ 包的就是 attr->graphics_queue（与主帧同一条，VKDeviceCreater
+        // 单队列族）⇒ WaitQueue 覆盖主帧引用，这正是释放批自有 buffer 的前提。
+        if (cull_queue_)
+            cull_queue_->WaitQueue();
+    }
 
-        auto& cache = context_->GetRenderFrameCache();
-        if (cache.renderItems.empty())
-            return;
+    bool GPUCullSystem::CreateDispatchResources()
+    {
+        if (cull_queue_)
+            return true;
 
-        // 读回 GPU 幸存实体 index（紧凑表，长度 = visible_count ≤ kMaxVisibleEntities）
-        static std::vector<uint32_t> s_survivors;
-        s_survivors.clear();
-        if (visible_count > 0 && visible_indices_buffer_)
+        // 队列一份：fence 环深度 = 帧槽数（Submit 自动轮转；本帧只可能重录
+        // ≥8 帧前用过的 cmd，那时其 fence 早已轮空）——照 SwapchainModule 样板。
+        cull_queue_ = device_->CreateQueue("GPUCullSystem:Queue",
+                                           uint32_t(HGL_FRAME_SLOT_TOTAL), false);
+        if (!cull_queue_)
         {
-            const VkDeviceSize bytes = sizeof(uint32_t) * visible_count;
-            void* mapped = visible_indices_buffer_->Map(0, bytes);
-            if (mapped)
+            GLogError(u8"[GPUCullSystem] CreateDispatchResources: CreateQueue failed");
+            return false;
+        }
+
+        // 命令缓冲环：一次性分配 HGL_FRAME_SLOT_TOTAL 个，按帧槽取用、每帧重录。
+        // 复用合法性（防坑 2 查实）：引擎 graphics pool 带
+        // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT（VKDeviceCreater.cpp:146），
+        // 非在飞 cmd 可直接 Begin()；同槽重录隔 8 帧 ≥ 在飞深度 ⇒ 必已执行完。
+        for (uint32_t i = 0; i < HGL_FRAME_SLOT_TOTAL; ++i)
+        {
+            const AnsiString name = AnsiString("GPUCullSystem.Cmd[") + AnsiString::numberOf(i) + "]";
+            cull_cmds_[i] = device_->CreateComputeCommandBuffer(name);
+            if (!cull_cmds_[i])
             {
-                const uint32_t* src = static_cast<const uint32_t*>(mapped);
-                s_survivors.assign(src, src + visible_count);
-                visible_indices_buffer_->Unmap();
+                GLogError(u8"[GPUCullSystem] CreateDispatchResources: cmd ring[%u] failed", i);
+                return false;
             }
         }
 
-        // 首帧护栏：实体行表的脏行上传与 dispatch 同帧发生，表在**首个 dispatch**
-        // 时可能还没写齐 ⇒ GPU 会报 `survivors=0`，直接回灌 = 一帧黑屏（实测第一帧
-        // off=100）。判据不可信时**本帧不动 isVisible**（保留 CPU 剔除结果）：
-        // CPU 与 GPU 同式 ⇒ 最多是"这一帧按 CPU 判据画"，不会画错也不会画空。
-        if (visible_count == 0)
-        {
-            bool any_entity_item = false;
-            for (auto& itemPtr : cache.renderItems)
-            {
-                if (itemPtr && itemPtr->GetEntity())
-                {
-                    any_entity_item = true;
-                    break;
-                }
-            }
-            if (any_entity_item)
-            {
-                GLogDebug(u8"[GPUCullSystem] write-back skipped: survivors=0 但存在实体项"
-                          u8"（判据不可信帧，本帧保留 CPU isVisible）");
-                return;
-            }
-        }
-
-        // 幸存集 → 覆盖位图（按 EntityID.index；越界 index 忽略）
-        std::vector<uint8_t> keep(EntityGPUTable::kCapacity, 0);
-        for (uint32_t idx : s_survivors)
-        {
-            if (idx < keep.size())
-                keep[idx] = 1;
-        }
-
-        // 回灌：item 的 owner 实体在幸存集 ⇒ visible。无 owner 实体的 item（非实体驱动）
-        // 不接管（保留 CPU 剔除结果）——本管线只负责实体行驱动的那部分。
-        uint32_t applied_on = 0, applied_off = 0, skipped_no_entity = 0;
-        for (auto& itemPtr : cache.renderItems)
-        {
-            RenderItem* item = itemPtr.get();
-            if (!item)
-                continue;
-
-            Entity* owner = item->GetEntity();
-            if (!owner)
-            {
-                ++skipped_no_entity;
-                continue;
-            }
-
-            const uint32_t idx = owner->GetEntityID().index;
-            const bool vis = (idx < keep.size()) && keep[idx] != 0;
-            if (vis)
-                ++applied_on;
-            else
-                ++applied_off;
-            item->isVisible = vis;
-        }
-
-        GLogDebug(u8"[GPUCullSystem] write-back: survivors=%u on=%u off=%u no_entity=%u",
-                  visible_count, applied_on, applied_off, skipped_no_entity);
+        GLogInfo(u8"[GPUCullSystem] Dispatch resources created: queue + %u-slot cmd ring",
+                 uint32_t(HGL_FRAME_SLOT_TOTAL));
+        return true;
     }
 
     void GPUCullSystem::Update(float delta_time)
@@ -374,7 +404,7 @@ namespace hgl::ecs
         // 延迟初始化：第一次 Update 时执行
         if (!EnsureInitialized())
             return;
-            
+
         if (!context_ || !device_ || !compute_pipeline_) return;
 
         // 获取实体表（返回引用）
@@ -395,9 +425,12 @@ namespace hgl::ecs
         uint64_t global_addr = global_registry->GetGlobalAddressesAddress(frame_slot);
         if (global_addr == 0) return;
 
-        // 重置可见计数
-        uint32_t zero = 0;
-        draw_count_buffer_->Write(&zero, sizeof(uint32_t));
+        static CullPerfTimer s_dispatch_perf;
+        const uint64_t t_dispatch0 = s_dispatch_perf.on ? GetUptimeUs() : 0;
+
+        // 命令缓冲按帧槽取用（T3g：环一次建好，这里只重录——旧版每帧 Create 是泄漏）
+        graph::ComputeCmdBuffer *cmd = cull_cmds_[frame_slot % HGL_FRAME_SLOT_TOTAL];
+        if (!cmd) return;
 
         // 准备 push constants
         CullPushConstants pc{};
@@ -417,18 +450,30 @@ namespace hgl::ecs
         // 未接管帧写出的 gather 表 = 无人读的富余写，代价一次 gather 写）。
         pc.enable_gather = override_draw_ ? 1u : 0u;
 
-        // Dispatch compute shader
-        auto* cmd = device_->CreateComputeCommandBuffer("GPUCullSystem.Cmd");
-        if (!cmd) return;
-
         cmd->Begin();
+
+        // ── 计数 GPU 侧清零（T3g：旧版 CPU `Write(&zero)` 是同步上传，去掉）──
+        // ⚠ 防坑 1：FillBuffer 属 TRANSFER 阶段（`vkCmdFillBuffer` size=4/offset=0
+        // 满足 4B 对齐规范）；同一 cmd 内紧随其后的 compute 原子自增是 SHADER 读写
+        // ——**批内无隐式序**（跨批才有 submission-order 保证，Vulkan 同步章）⇒
+        // 必须显式 TRANSFER→COMPUTE barrier，否则 RAW 冒险 = 计数可能被清零覆盖。
+        cmd->FillBuffer(draw_count_buffer_->GetBuffer(), 0, sizeof(uint32_t), 0);
+        cmd->BufferMemoryBarrier2(draw_count_buffer_->GetBuffer(),
+                                  VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                                  VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                                  VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
+
         cmd->BindPipeline(compute_pipeline_);
         cmd->PushConstants(compute_pipeline_->GetPipelineLayout(), &pc, sizeof(pc));
 
         uint32_t group_count = (entity_count + kWorkGroupSize - 1) / kWorkGroupSize;
         cmd->Dispatch(group_count, 1, 1);
 
-        // 内存屏障：compute 写入 -> indirect 读取
+        // 批内保守屏障：compute 写 → 本 cmd 之后的 indirect 消费可见性
+        // （跨 cmd 的 [本 cull 提交 → 主帧绘制提交] 序由**同队列 submission order**
+        // 保证——CreateQueue 包的就是 attr->graphics_queue，与主帧同一条 VkQueue；
+        // 本提交发生在主帧录制/提交之前 ⇒ 后一批全部可见前一批的写出）。
         VkMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
         barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
@@ -443,21 +488,13 @@ namespace hgl::ecs
 
         cmd->End();
 
-        // 提交到计算队列
-        auto* compute_queue = device_->CreateQueue("GPUCullSystem.Queue");
-        if (compute_queue)
-        {
-            compute_queue->Submit(cmd, nullptr, 0, nullptr, 0);
-            compute_queue->WaitLastSubmitFence();
-        }
+        // 提交即返回（T3g：删 WaitLastSubmitFence——旧版每帧同步等待 = 流水线自杀；
+        // 生产路径不需要 CPU 侧知道结果，接管 guard 用 dispatch_count_ 纯 CPU 判据）
+        cull_queue_->Submit(cmd, nullptr, 0, nullptr, 0);
+        ++dispatch_count_;
 
-        // 读取可见计数并记录日志
-        const uint32_t visible_count = GetGPUVisibleCount();
-        GLogDebug(u8"[GPUCullSystem] Dispatched: entities=%u, visible=%u", entity_count, visible_count);
-
-        // 形态 A（T3f-1）：把幸存集回灌 isVisible，下游 batch/行表/ICB 全走既有 CPU 路径。
-        if (apply_visible_set_)
-            ApplyVisibleSetToRenderItems(visible_count);
+        if (s_dispatch_perf.on)
+            s_dispatch_perf.Add("gpu_dispatch", GetUptimeUs() - t_dispatch0, device_);
     }
 
     bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch)
@@ -477,6 +514,21 @@ namespace hgl::ecs
         // 交接帧（CPU→GPU）：批可能已持有上一帧 CPU 路径分配的**自有** buffer
         // （own_* 仍为 true 时 `MaterialBatch::Clear()` 保留指针）⇒ 覆盖前必须释放，
         // 否则每交接一次漏一套 ICB/行表（稳态接管帧 own=false、指针=GPU 表，无此问题）。
+        //
+        // ⚠ 释放前必须排空队列（T3g 实测踩 VUID-vkFreeMemory-memory-00677）：
+        // 自有 ICB/行表可能仍被**上一帧主帧 cmd** 引用——自家 fence 只覆盖自家
+        // 提交（同队列各批"按序开始、可乱序完成"，Vulkan 同步章），等自家提交
+        // 不够 ⇒ vkQueueWaitIdle 全排空。只在这次交接**真有自有 buffer 要释放**
+        // 时付出（稳态 own=false ⇒ 零成本；每个 CPU↔GPU 沿一次性）。
+        const bool has_owned_to_release =
+            (batch->own_icb_mesh_tasks && batch->icb_mesh_tasks)
+         || (batch->own_mesh_draw_params && batch->mesh_draw_params_buffer)
+         || (batch->own_l2w_index && batch->l2w_index_buffer)
+         || (batch->own_material_data_rows && batch->material_data_index_rows_buffer);
+
+        if (has_owned_to_release)
+            DrainForHandover();
+
         // 释放口径与 ~MaterialBatch / ReleaseICB 逐字一致。
         if (batch->own_icb_mesh_tasks && batch->icb_mesh_tasks)
         {

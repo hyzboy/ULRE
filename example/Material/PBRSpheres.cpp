@@ -34,8 +34,9 @@
 #include<hgl/ecs/support/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
-#include<cstdio>
-#include<cstdlib>
+#include <cstdio>
+#include <cstdlib>
+#include <hgl/time/Time.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -96,6 +97,9 @@ private:
 
     std::string   dump_tag;               ///< PBR_DUMP=<tag>：像素验收模式（t 冻结 + 帧 8 回读）
     uint32_t      dump_frame = 0;
+    uint32_t      perf_frames = 0;        ///< PBR_FRAMES=N：定帧退出；0 = 未启用
+    uint32_t      perf_frame_seen = 0;    ///< 已计帧数（240 帧一窗打印）
+    double        perf_total_us = 0.0;    ///< Tick 全帧 CPU 时间累计（每 240 帧一窗打印）
 
     using MaterialDataAccessor =
         graph::GlobalSSBODataAccessor;
@@ -553,9 +557,9 @@ private:
         camera->yaw            = 0.0f;
         camera->pitch          = -25.0f;
 
-        // dump 模式的相机覆盖（必须在 InitCamera 生效：env 在这里读，Init() 只存 tag）。
-        // PBR_PITCH / PBR_YAW（度）⇒ 离屏对照，部分球出视锥，验证 gather 对应不是巧合。
-        if (getenv("PBR_DUMP"))
+        // dump/性能对照模式的相机覆盖（不依赖 PBR_DUMP ⇒ 性能对比也能跑离屏剔除场景）
+        if (getenv("PBR_DUMP") || getenv("PBR_PITCH") || getenv("PBR_YAW")
+         || getenv("PBR_DIST") || getenv("PBR_TX") || getenv("PBR_TZ"))
         {
             if (const char *v = getenv("PBR_PITCH"))
                 camera->pitch = (float)atof(v);
@@ -615,10 +619,11 @@ public:
         if (!InitCamera())
             return false;
 
-        // B8/T3f-1：显式 opt-in 启用 GPU 剔除管线（形态 A）。
+        // B8/T3f-1：显式 opt-in 启用 GPU 剔除管线。
         // PBR_DISABLE_CULL=1 ⇒ 不开任何开关 = **CPU 判据基线**（像素验收对照组）。
-        // PBR_FORM_B=1 ⇒ 第三档 opt-in：gather 输出接管绘制（形态 B；单场景口径，
-        //   与形态 A 回灌互斥——接管后批行表 = gather 表，不再回灌 isVisible）。
+        // PBR_FORM_B=1 ⇒ 第二档 opt-in：gather 输出接管绘制（形态 B，唯一接管形态——
+        //   形态 A 回灌已随 T3g 退役：每帧 CPU Map 读回 = 生产路径同步点，§8.2f）。
+        //   不开 B ⇒ 只 dispatch + 对拍（绘制仍走 CPU 账）。
         if (!getenv("PBR_DISABLE_CULL"))
         {
             if (auto gpu_cull = ecs_world->GetSystem<GPUCullSystem>())
@@ -626,8 +631,6 @@ public:
                 gpu_cull->SetEnabled(true);
                 if (getenv("PBR_FORM_B"))
                     gpu_cull->SetDrawOverrideEnabled(true);
-                else
-                    gpu_cull->SetApplyVisibleSetEnabled(true);
             }
         }
 
@@ -639,11 +642,20 @@ public:
             dump_tag = tag;
         }
 
+        // PBR_FRAMES=N：性能对照定帧退出（配 PBR_PERF=1；Tick 全帧计时打印）。
+        if (const char *v = getenv("PBR_FRAMES"))
+            perf_frames = (uint32_t)atoi(v);
+
         return true;
     }
 
     void Tick(double delta_time) override
     {
+        // PBR_PERF=1：Tick 全帧 CPU 时间（record/present 同步框架内的线程占用；
+        // 与 cull/batch/dispatch 分计时互补，给出端到端口径。引擎时间源，禁 chrono）
+        const bool perf_on = perf_frames > 0;
+        const uint64 perf_t0 = hgl::GetUptimeUs();
+
         // dump 模式：时间冻结 ⇒ 两次运行（GPU 剔除 vs CPU 基线）的几何逐帧确定，
         // 像素差只可能来自剔除判据本身。
         if (dump_tag.empty())
@@ -711,6 +723,28 @@ public:
                 printf("[PBRDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
                 std::exit(0);
             });
+        }
+
+        // PBR_PERF：Tick 全帧 CPU 时间累计，240 帧一窗打印；PBR_FRAMES 到数即退。
+        if (perf_on)
+        {
+            perf_total_us += double(hgl::GetUptimeUs() - perf_t0);
+            ++perf_frame_seen;
+
+            if (perf_frame_seen % 240 == 0)
+            {
+                printf("[PBR-PERF] tick: window=240 avg=%.1f us/frame\n",
+                       perf_total_us / 240.0);
+                fflush(stdout);
+                perf_total_us = 0.0;
+            }
+
+            if (perf_frame_seen >= perf_frames)
+            {
+                printf("[PBR-PERF] done frames=%u\n", perf_frame_seen);
+                fflush(stdout);
+                std::exit(0);
+            }
         }
     }
 };

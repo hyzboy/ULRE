@@ -9,8 +9,8 @@
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/log/Log.h>
-#include <set>
-#include <algorithm>
+#include <cstring>
+#include <cstdlib>
 
 namespace hgl::ecs
 {
@@ -30,28 +30,48 @@ namespace hgl::ecs
 
     void CPUCullReferenceSystem::Update(float delta_time)
     {
+        // 测量模式（PBR_PERF=1）：本台架 = CPU 参考剔除全量遍历 + 同步读回 GPU
+        // 计数 + 位图比对 ⇒ 本身就是毫秒级 CPU 活。测量运行关掉它，A/B 差值才
+        // 不被同一份常数成本稀释；判据跑批不受影响。
+        static const bool s_measure_mode = getenv("PBR_PERF") != nullptr;
+        if (s_measure_mode)
+            return;
+
         if (!context_)
             return;
 
         // opt-in 门：GPU 剔除管线未启用 ⇒ 对拍没有对照物，整段跳过
-        // （本系统的 Update 会 Map 整块 L2W SSBO，白跑一次全量遍历）。
+        // （本系统的采样会 Map 整块 L2W SSBO，白跑一次全量遍历）。
         auto gpu_cull = context_->GetSystem<GPUCullSystem>();
         if (!gpu_cull || !gpu_cull->IsEnabled())
             return;
 
-        // 1. 执行 CPU 剔除
+        // 未定帧不采样（T3g）：派发攒满 2 帧前读回的是空表/旧表，
+        // 对拍会把首帧假象报成 mismatch。
+        if (!gpu_cull->IsDispatchSettled())
+            return;
+
+        // T3g 台架节奏：**每 60 帧一个采样窗口**（旧版每帧全量跑 + 内部再降频
+        // 打印）。异步化后读回真值需要 fence（SyncForParityReadback）⇒ 每帧跑 =
+        // 每帧 stall，与"生产路径零同步"矛盾 ⇒ fence + 全量遍历的成本只在采样帧
+        // 付出。窗口内三步恒**成套执行**（算 CPU 账 → 同步读 GPU → 位图比对）。
+        if (++frame_counter_ % 60 != 0)
+            return;
+
+        // 1. 执行 CPU 剔除（产 cpu 位图）
         PerformCPUCulling();
 
-        // 2. 读取 GPU 结果
+        // 2. 同步读回 GPU 结果（等本帧 dispatch 完成 → 产 gpu 位图）
         ReadGPUVisibleIndices();
 
-        // 3. 对比并打印统计
+        // 3. 位图对拍 + 打印统计
         CompareResults();
     }
 
     void CPUCullReferenceSystem::PerformCPUCulling()
     {
-        cpu_visible_indices_.clear();
+        std::memset(cpu_visible_map_, 0, sizeof(cpu_visible_map_));
+        cpu_count_ = 0;
 
         // 获取实体表
         const auto& entity_table = context_->GetEntityGPUTable();
@@ -140,7 +160,7 @@ namespace hgl::ecs
             const glm::vec4 local_center(aabb->center[0], aabb->center[1], aabb->center[2], 1.0f);
             const glm::vec3 world_center = glm::vec3(world_matrix * local_center);
 
-            // 计算变换后的 extents（简化：取最大缩放）
+            // 计算变换后的 extents（简化：取最大缩放 = 与 GLSL 逐字同式）
             const float scale_x = glm::length(glm::vec3(world_matrix[0]));
             const float scale_y = glm::length(glm::vec3(world_matrix[1]));
             const float scale_z = glm::length(glm::vec3(world_matrix[2]));
@@ -171,9 +191,10 @@ namespace hgl::ecs
                 }
             }
 
-            if (visible)
+            if (visible && i < kMaxVisible)
             {
-                cpu_visible_indices_.push_back(i);
+                cpu_visible_map_[i] = 1;
+                ++cpu_count_;
             }
         }
 
@@ -183,11 +204,18 @@ namespace hgl::ecs
 
     void CPUCullReferenceSystem::ReadGPUVisibleIndices()
     {
-        gpu_visible_indices_.clear();
+        std::memset(gpu_visible_map_, 0, sizeof(gpu_visible_map_));
+        gpu_count_ = 0;
 
         // 从 GPUCullSystem 获取 GPU 结果
         auto gpu_cull_system = context_->GetSystem<GPUCullSystem>();
         if (!gpu_cull_system) return;
+
+        // T3g 同步点（**只在采样窗口付出**）：派发是异步提交 ⇒ 不等就 Map 读回
+        // 的可能是上一已定帧的残影。Host Coherent ≠ 已执行（FIFO 只保证序，
+        // 不保证到）⇒ 先等本帧 dispatch 的 fence，再读。
+        if (!gpu_cull_system->SyncForParityReadback())
+            return;
 
         const uint32_t gpu_count = gpu_cull_system->GetGPUVisibleCount();
         if (gpu_count == 0) return;
@@ -196,11 +224,21 @@ namespace hgl::ecs
         auto* buffer = gpu_cull_system->GetVisibleIndicesBuffer();
         if (!buffer) return;
 
-        void* mapped = buffer->Map(0, gpu_count * sizeof(uint32_t));
+        const uint32_t read_count = (gpu_count < kMaxVisible) ? gpu_count : kMaxVisible;
+
+        void* mapped = buffer->Map(0, read_count * sizeof(uint32_t));
         if (mapped)
         {
             const uint32_t* indices = static_cast<const uint32_t*>(mapped);
-            gpu_visible_indices_.assign(indices, indices + gpu_count);
+            for (uint32_t k = 0; k < read_count; ++k)
+            {
+                const uint32_t idx = indices[k];
+                if (idx < kMaxVisible && gpu_visible_map_[idx] == 0)
+                {
+                    gpu_visible_map_[idx] = 1;
+                    ++gpu_count_;
+                }
+            }
             buffer->Unmap();
         }
     }
@@ -208,66 +246,64 @@ namespace hgl::ecs
     void CPUCullReferenceSystem::CompareResults()
     {
         last_parity_stats_ = ParityStats{};
-        last_parity_stats_.cpu_count = static_cast<uint32_t>(cpu_visible_indices_.size());
-        last_parity_stats_.gpu_count = static_cast<uint32_t>(gpu_visible_indices_.size());
+        last_parity_stats_.cpu_count = cpu_count_;
+        last_parity_stats_.gpu_count = gpu_count_;
 
-        // 使用集合对比（不关心顺序）
-        std::set<uint32_t> cpu_set(cpu_visible_indices_.begin(), cpu_visible_indices_.end());
-        std::set<uint32_t> gpu_set(gpu_visible_indices_.begin(), gpu_visible_indices_.end());
+        // 位图对拍（逐槽）：集合相等 ⇔ 两侧每一位一致；不一致槽数 = mismatch。
+        // match = 两侧同时为 1 的槽数。旧 std::set 路子是给"atomicAdd 顺序不定"
+        // 买的单，位图把顺序问题消掉（且零动态分配，替代 <set>/<algorithm>）。
+        uint32_t mismatch = 0, both = 0;
+        uint32_t cpu_only_shown = 0, gpu_only_shown = 0;
 
-        // 计算交集
-        std::set<uint32_t> intersection;
-        std::set_intersection(
-            cpu_set.begin(), cpu_set.end(),
-            gpu_set.begin(), gpu_set.end(),
-            std::inserter(intersection, intersection.begin())
-        );
-
-        last_parity_stats_.match_count = static_cast<uint32_t>(intersection.size());
-        last_parity_stats_.mismatch_count = (last_parity_stats_.cpu_count + last_parity_stats_.gpu_count)
-                                           - 2 * last_parity_stats_.match_count;
-
-        // 每 60 帧打印一次统计
-        static uint32_t frame_counter = 0;
-        if (++frame_counter % 60 == 0)
+        for (uint32_t i = 0; i < kMaxVisible; ++i)
         {
-            GLogInfo(u8"[CPUCullReferenceSystem] Parity: CPU=%u, GPU=%u, match=%u, mismatch=%u",
-                     last_parity_stats_.cpu_count,
-                     last_parity_stats_.gpu_count,
-                     last_parity_stats_.match_count,
-                     last_parity_stats_.mismatch_count);
+            const uint8_t c = cpu_visible_map_[i];
+            const uint8_t g = gpu_visible_map_[i];
 
-            if (last_parity_stats_.mismatch_count > 0)
+            if (c == g)
             {
-                // 打印前 5 个不匹配的实体
-                std::vector<uint32_t> cpu_only, gpu_only;
-                std::set_difference(cpu_set.begin(), cpu_set.end(),
-                                   gpu_set.begin(), gpu_set.end(),
-                                   std::back_inserter(cpu_only));
-                std::set_difference(gpu_set.begin(), gpu_set.end(),
-                                   cpu_set.begin(), cpu_set.end(),
-                                   std::back_inserter(gpu_only));
+                if (c)
+                    ++both;
+                continue;
+            }
 
-                GLogWarning(u8"[CPUCullReferenceSystem] First 5 CPU-only: %u,%u,%u,%u,%u",
-                           cpu_only.size() > 0 ? cpu_only[0] : 0,
-                           cpu_only.size() > 1 ? cpu_only[1] : 0,
-                           cpu_only.size() > 2 ? cpu_only[2] : 0,
-                           cpu_only.size() > 3 ? cpu_only[3] : 0,
-                           cpu_only.size() > 4 ? cpu_only[4] : 0);
-
-                GLogWarning(u8"[CPUCullReferenceSystem] First 5 GPU-only: %u,%u,%u,%u,%u",
-                           gpu_only.size() > 0 ? gpu_only[0] : 0,
-                           gpu_only.size() > 1 ? gpu_only[1] : 0,
-                           gpu_only.size() > 2 ? gpu_only[2] : 0,
-                           gpu_only.size() > 3 ? gpu_only[3] : 0,
-                           gpu_only.size() > 4 ? gpu_only[4] : 0);
+            ++mismatch;
+            if (c)
+            {
+                if (cpu_only_shown < 5)
+                {
+                    if (cpu_only_shown == 0)
+                        GLogWarning(u8"[CPUCullReferenceSystem] CPU-only indices:");
+                    GLogWarning(u8"  idx=%u", i);
+                    ++cpu_only_shown;
+                }
+            }
+            else
+            {
+                if (gpu_only_shown < 5)
+                {
+                    if (gpu_only_shown == 0)
+                        GLogWarning(u8"[CPUCullReferenceSystem] GPU-only indices:");
+                    GLogWarning(u8"  idx=%u", i);
+                    ++gpu_only_shown;
+                }
             }
         }
+
+        last_parity_stats_.match_count = both;
+        last_parity_stats_.mismatch_count = mismatch;
+
+        GLogInfo(u8"[CPUCullReferenceSystem] Parity: CPU=%u, GPU=%u, match=%u, mismatch=%u",
+                 last_parity_stats_.cpu_count,
+                 last_parity_stats_.gpu_count,
+                 last_parity_stats_.match_count,
+                 last_parity_stats_.mismatch_count);
     }
 
     uint32_t CPUCullReferenceSystem::GetGPUVisibleCount() const
     {
-        auto gpu_cull_system = context_->GetSystem<GPUCullSystem>();
-        return gpu_cull_system ? gpu_cull_system->GetGPUVisibleCount() : 0;
+        // 台架读数 = 最近一次采样窗口的同步读回结果，**不**现读 GPU
+        //（现读者须自行先 SyncForParityReadback；旧版这里直接 Map 异步表 = 残影）。
+        return gpu_count_;
     }
 }

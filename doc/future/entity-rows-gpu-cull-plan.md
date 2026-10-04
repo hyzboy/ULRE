@@ -316,6 +316,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 | **T3f-1（形态 A）**：GPU 幸存集回灌 `RenderItem::isVisible` | `220da961d`（主体）+ `ea73a0bad`（注释）+ `4b4990d84`（验收通路） | **像素验收达成**：GPU 剔除 vs CPU 基线帧 8 **逐字节全等**（3,686,400 B sha256 一致）；对拍 mismatch=0；门 43/0；详见 §8.2c |
 | **T3d-3a（方案 A）**：实体 4-ID 表——剔除改读池口径 geometry_id | `9e0aa0ad1` | **判据修正**：旧 mismatch=0 系两端读同一错下标的假绿；修后 Parity 100/100/0 + 像素逐字节全等（hash 不变）+ Test 断言 48→64 纳入构建；详见 §8.2d |
 | **T3f-2（形态 B）**：gather 输出直连接管绘制（含删除 GPUCullResultHookSystem） | `f2ed4fcd6` | 离屏对照（visible=14/100 真剔 86）像素 **三方逐字节全等**（CPU=A=B）；[T3f2] ENGAGED 正向判据；门 **44 PASS**（新用例 E.mesh-draw-params-head-parity，抓力实测）；详见 §8.2e |
+| **T3g**：派发异步化 + 资源生命周期一次化（修句柄泄漏/stall；**形态 A 退役**） | 本批 | Release `gpu_dispatch` 1114→**~150us/帧（-86%）**；泄漏判据 `tracked_objects` 960 帧**恒 165**（旧实现随帧上涨）；VUID=0（交接沿排空修掉 vkFreeMemory-00677）；门 44/0；像素 CPU==形态B；详见 §8.2f |
 
 ### 8.2 落地件清单（T3d/T3e/T3f-1/T3f-2 全部达成；各节 = §8.2b/§8.2c/§8.2d/§8.2e）
 
@@ -480,11 +481,64 @@ CPU 基线 == 形态 A == 形态 B **3,686,400 B 逐字节全等**（三方同 s
 100/100/0；[ERROR]=0 VUID=0 reject=0；策略对拍 0；门 44/0；探针绿。
 三档语义再分家：形态 A=回灌 isVisible（CPU 建表）；形态 B=gather 直连（跳 CPU 剔除）。
 
-### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6/§8.2b–§8.2e；**T3d/T3e/T3f 全达成**）
+### 8.2f T3g 重构记录（2026-10-04）—— **派发异步化 + 资源一次化；形态 A 退役**
 
-1. **性能对比**（形态 B 后才有意义）：同场景 GPU 剔除（`PBR_FORM_B=1`）vs CPU 基线
-   （`PBR_DISABLE_CULL=1`）的 CPU 时间/绘制提交数对比 —— 形态 B 才真省 CPU（剔 86/100
-   的场景 CPU 剔除整段跳过）。数据出来再决定这条线的收益表述。
+性能对比（§8.3 第 1 条）测出的第一批数据同时暴露了派发路径的三个致命实现问题
+（用户评审点名，全部核实成立）：每帧 `CreateComputeCommandBuffer`/`CreateQueue`
+= **句柄泄漏**（引擎纪律是初始化一次 + `SAFE_CLEAR`，先例 `SwapchainModule.cpp:259-268`
+/`TextureManager.cpp:29-30`）；每帧 `WaitLastSubmitFence` = **CPU-GPU 流水线自杀**
+（旧数据 gpu_dispatch ≈1.1ms 的大头是 fence 等待与每帧资源创建，不是 GPU 剔除本身）；
+加上台架每帧 Map 读回。另按用户合规清单：`<chrono>/<fstream>/<sstream>/<vector>/<set>`
+换引擎设施（`hgl/time/Time.h::GetUptimeUs`、`io::OpenFileInputStream`），着色器
+绝对路径改 `graph::mtl::GetShaderLibraryPath()` 单源。
+
+重构四件：
+1. **资源一次化**：`CreateDispatchResources()` 建一份队列（fence 环深 = 帧槽数）
+   + 8 槽 cmd 环（`frame_index % HGL_FRAME_SLOT_TOTAL` 取用，同槽重录隔 8 帧 ≥
+   在飞深度 ⇒ 必已执行完，与 swapchain per-image cmd 同假设；pool 带
+   `RESET_COMMAND_BUFFER_BIT` 已查实 `VKDeviceCreater.cpp:146`）；析构显式释放。
+2. **计数清零进 cmd**：`FillBuffer(draw_count,0,4,0)` 替代 CPU `Write`。
+   ⚠ 两个连带的坑（评审点名，都写进注释）：① **批内无隐式序**——`vkCmdFillBuffer`
+   属 TRANSFER，紧随的 compute 原子读写必须显式 TRANSFER→COMPUTE barrier（同队列
+   submission-order 只救**跨批**，不救批内）；② `draw_count_buffer_` 的 usage
+   **必须补 `TRANSFER_DST`**（VUID-vkCmdFillBuffer-dstBuffer-00031，建缓冲时定死）。
+3. **提交即返回**（删每帧 fence）。正确性依据：cull 与主帧**同一条 VkQueue**
+   （`CreateQueue` 包 `attr->graphics_queue`）⇒ 同队列 submission order 规范条款
+   （§6.4 "execute in order … all previously submitted batches have occurred"）
+   保证 [本帧 cull → 主帧 draw] 的可见性，**不需要**跨队列原语。
+   派生判据：`guard` 的"派发已定帧"改纯 CPU `dispatch_count_ >= 2`（场景切换/
+   `SetEnabled(false)` ⇒ 计数归零，重开必须重新攒满——防坑 3），稳态生产路径零同步。
+4. **形态 A 整体退役**（评审第 3 条"倒退设计"的直接结论）：`SetApplyVisibleSetEnabled`
+   /`ApplyVisibleSetToRenderItems`/每帧 Map 读回全删——回灌的存在理由就是 CPU 读
+   GPU 结果，与异步化不相容；其验证价值由对拍台架覆盖。对拍台架改**每 60 帧一个
+   采样窗口**且窗口内先 `SyncForParityReadback()`（fence 成本只在采样帧付出），
+   比对用**定长位图**（2×4096 B，替代 std::set/algorithm）。
+
+**新踩坑（异步化引出，实测 VUID-vkFreeMemory-memory-00677）**：CPU→GPU 交接沿
+guard 要 `delete` 批自有 ICB/行表，而它们仍被**上一帧主帧 cmd** 引用——自家 fence
+只覆盖自家提交（各批"按序开始、可乱序完成"）⇒ 等自家不够；修法 =
+`DrainForHandover()`（`WaitQueue` = vkQueueWaitIdle，同一条 graphics 队列 ⇒
+覆盖主帧引用），且只在这次交接**真有自有 buffer 要释放**时付出，稳态零成本。
+
+判据实据（Release，离屏场景）：`gpu_dispatch` **1114→~150us/帧（-86%）**；
+**`tracked_objects` 960 帧恒 165**（泄漏的直接观测面，旧实现随帧上涨）；
+VUID=0；像素 CPU 基线 == 形态 B **逐字节全等**（离屏真剔场景）；Parity 100/100/0；
+门 **44/0**；探针/测试/默认关示例全绿。
+
+**收益的正确表述（别再写错）**：100 球规模 GPU 路径（record+submit ~150us）仍贵于
+CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的收益是**规模无关性**：
+派发成本不随实体数增长，CPU 剔除 O(n) 线性（7us/100 ⇒ 万级实体 ≈ 0.7ms+），
+盈亏平衡在数千实体；且接管的前提价值（提交数与剔除数解耦、gather 数据面就绪）
+已验证。**形态 B = 唯一接管形态**；两档 opt-in（`SetEnabled` / `SetDrawOverrideEnabled`）
+默认关纪律不变。
+
+### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6/§8.2b–§8.2f；**T3d/T3e/T3f/T3g 全达成**）
+
+1. ~~性能对比~~ **已完成（T3g，结论见 §8.2f"收益的正确表述"）**：
+   `gpu_dispatch` 异步化后 ~150us/帧（旧实现 1.1ms 里大头是每帧 fence + 每帧
+   CreateQueue/CreateCmd 泄漏，不是 GPU 剔除）；小场景（100 实体）GPU 路径仍贵于
+   CPU 剔除（7us）——收益在规模无关性（派发成本不随实体数增长），盈亏平衡数千实体。
+   ~~形态 A 的去留~~ **已裁决（T3g）**：整体退役，形态 B = 唯一接管形态。
 2. **放开接管范围的既有欠账**（形态 B 首版 guard 挡在外的，按欠账逐个补）：
    ① **ShadowProxy GPU 行**（阴影非默认实体）—— CPU-only 组件（T2-c 判据），要接管
       需给实体 4-ID 表/新表补 shadow 两位的 GPU 通路；
@@ -493,8 +547,6 @@ CPU 基线 == 形态 A == 形态 B **3,686,400 B 逐字节全等**（三方同 s
    ③ **多批/混合材质场景**（R4 单批前提）—— 每批各持一份 gather 输出（着色器按池
       geometry_id 过滤幸存）或逐批 range/count，消费侧契约已核（§8.3 旧案存档）；
    ④ **实例化/多实例 item**（gather 每实体一命令 Y=1 不适配）。
-3. **形态 A 的去留**：B 验证通过后 A（回灌）只剩"批不满足接管前提时的对照/回退"价值，
-   性能对比数据出来后可考虑砍掉 A 的写回路径（用户零兼容偏好：不留双形态）。
 
 ### 8.4 已知的既有待查项（与本线无关但影响未来 GPU 剔除正确性）
 
