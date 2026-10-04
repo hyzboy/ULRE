@@ -779,6 +779,12 @@ cull 派发（RenderFrameSync，本帧）
   `CV_DUMP=<tag>` / `CV_YAW|CV_PITCH|CV_DIST|CV_TX|CV_TY|CV_TZ`（取景）。
   实测：`ENGAGED batches=2/2 items=20 arena_rows=24`、Parity 20/20/0、
   `Σcount=20=global overflow=0 值链=20/20 bad=0`、三方像素（CPU 账 / 仅 dispatch / 接管）逐字节全等、VUID=0。
+- **第二个测试床 = `example/Material/AlphaModes`**（2026-10-04 新增）：同一份内容用三种 alpha 呈现方式
+  （Opaque / **AlphaBlend** / Dither）贴同一 CUBE、alpha 取自 `res/image/gradient` 的单通道 BC4 纹理。
+  它把"批从哪来"又钉了一遍：**3 个 recipe 只出 2 个批**——Opaque 与 AlphaBlend 只差 `pipeline_config`
+  （`alpha_blend` 在 EDS 下走 `cmd_set_color_blend_enable` **动态状态**）⇒ 同 program 同 pipeline ⇒ **同批**；
+  Dither 改生成 GLSL ⇒ 不同 program ⇒ 单独一批。实测 `ENGAGED batches=2/2 items=18 arena_rows=20`、
+  Parity 18/18/0、`Σcount=18=global overflow=0 值链=18/18`、三方像素逐字节全等、VUID=0。
 - **正向**：`[T3i] GPU cull draw override ENGAGED: batches=x/y items=N arena_rows=M`（一次性）——
   静默退回 CPU 账也会像素全等 ⇒ 没有本日志不能宣称接管成立。
 - **台架（值链 + 两本账）**：`Σ counters[b] == 全局幸存计数`；`overflow == 0`（硬判据）；
