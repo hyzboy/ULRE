@@ -3,12 +3,21 @@
 //   · AlphaBlend —— 标准 alpha 混合（blend_src=SRC_ALPHA / blend_dst=ONE_MINUS_SRC_ALPHA）
 //   · Dither     —— HGL_ALPHA_DITHER：按 alpha 与位置阈值 discard 的**顺序无关半透明**
 //
+// ⚠ 现状（2026-10-05 实测）：**AlphaBlend 这一排在引擎当前实现下看不出透明**——
+//   前向片元模板输出的是**光照结果的 alpha（恒为 1）**（见
+//   ShaderLibrary/fragment/forward_lit.glsl.tmpl 的 WriteMaterialOutput(HGLComposeColor(finalColor))
+//   与其中的注释），材质源的曲面 alpha 只用于**覆盖判定（discard）**、没有写进输出 alpha
+//   ⇒ blend 因子 SRC_ALPHA=1 ⇒ 与不透明等价。要让 alpha_blend 真正生效，需把
+//   EvalAlpha(...) 写进输出（`WriteMaterialOutput(vec4(rgb, EvalAlpha(...)))`，由 composer
+//   按 alpha_blend 注入 define）——属引擎侧改动，本示例先如实呈现该缺口。
+//   对照：Dither 走 discard，不依赖输出 alpha ⇒ 192 帧起就规规矩矩地镂空。
+//
 // 布局：横向 6 列 = 6 张 gradient（取自 res/image/gradient 的 23 张单通道纹理，均匀取样）；
 //       纵向 3 行 = 三种方式（上 Opaque / 中 AlphaBlend / 下 Dither）。
 //
-// 单通道 gradient **只绑 opacity_mask**：Lit 的 alpha 真值**只出自 opacity_mask**
-//（pbr_surface_source.glsl 的 EvalMaterialAlpha = tex_opacity_mask.r；base_color.a 不参与），
-// base_color 留空 ⇒ 采样回退 1.0 ⇒ 立方体是亮实心，三种方式的差别只落在 alpha 行为上。
+// 同一张单通道 gradient 同时绑 **base_color**（肉眼可见的渐变图案）与 **opacity_mask**
+//（alpha 真值来源：pbr_surface_source.glsl 的 EvalMaterialAlpha = tex_opacity_mask.r；
+//  base_color.a 不参与）。BC4 只有 R 通道 ⇒ 采样得 (r,0,0,1) ⇒ 立方体呈红调渐变。
 //
 // 顺带是本引擎"批从哪来"的实测点：Opaque 与 AlphaBlend 的 recipe 只差 pipeline 配置
 //（alpha_blend 在 EDS 下是**动态状态**，见 VKCommandBufferRender.cpp 的
@@ -274,11 +283,11 @@ private:
                 geometry_data->GetOwner()->GetContext()->GetOrCreateGeometryData(
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(&mode_asset[row]);
 
-                // 单通道 gradient 只当 **opacity_mask**（alpha 真值来源）：base_color 留空 ⇒
-                // 采样回退 1.0 ⇒ 立方体是**亮实心**，三种方式的差别只体现在 alpha 行为上
-                //（纹理内容 = 明暗渐变的 alpha 分布）。若同时绑 base_color，图案噪声会与
-                // alpha 效果混在一起，反而看不清三种方式的差别。
-                if (!material_data->SetTextureResource("opacity_mask", gradient_texture[col], sampler))
+                // 同一张单通道 gradient 同时当 base_color（**肉眼可见的渐变图案**）与
+                // opacity_mask（**alpha 真值来源**）——与 AlphaTestShadow 的 CubeA/CubeB
+                // 同款作者写法。BC4 只有 R 通道 ⇒ 采样得 (r,0,0,1) ⇒ 立方体呈红调渐变。
+                if (!material_data->SetTextureResource("base_color", gradient_texture[col], sampler)
+                 || !material_data->SetTextureResource("opacity_mask", gradient_texture[col], sampler))
                     return false;
 
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};

@@ -1766,31 +1766,36 @@ namespace hgl::ecs
             row->material_texture_configuration_hash =
                 reference_configuration_hash;
 
-            //if (getenv("ULRE_ARENA_DEBUG"))
-            //{
-            //    GLogInfo(
-            //        "[MaterialTextureReferences] owner=%s definition=%s row=%u references=%u gpu=0x%llx",
-            //        GetOwnerName(primitive_comp),
-            //        texture_definition.definition_id.c_str(),
-            //        new_allocation.row_index,
-            //        texture_layout.reference_count,
-            //        static_cast<unsigned long long>(
-            //            new_allocation.gpu_row));
-            //    for (size_t i = 0;
-            //         i < texture_definition.texture_declarations.size();
-            //         ++i)
-            //    {
-            //        const auto &declaration =
-            //            texture_definition.texture_declarations[i];
-            //        const auto &reference =
-            //            references[static_cast<int>(i)];
-            //        GLogInfo(
-            //            "[MaterialTextureReferences] texture=%s descriptor=%u layer=%u",
-            //            declaration.name.c_str(),
-            //            reference.descriptor_index,
-            //            reference.array_layer);
-            //    }
-            //}
+            // 纹理引用行落盘诊断（ULRE_ARENA_DEBUG）：逐语义打印**绑到行里的描述符索引**。
+            // 「纹理不生效」的第一现场就是这里的 descriptor_index==0 ⇒ 着色器侧
+            // SampleOptional 走 fallback（1.0）⇒ alpha 恒 1 ⇒ dither/blend 全看不出。
+            if (getenv("ULRE_ARENA_DEBUG"))
+            {
+                GLogInfo(
+                    "[MaterialTextureReferences] owner=%s definition=%s row=%u references=%u gpu=0x%llx",
+                    GetOwnerName(primitive_comp),
+                    texture_definition.definition_id.c_str(),
+                    new_allocation.row_index,
+                    texture_layout.reference_count,
+                    static_cast<unsigned long long>(
+                        new_allocation.gpu_row));
+
+                for (size_t i = 0;
+                     i < texture_definition.texture_declarations.size();
+                     ++i)
+                {
+                    const auto &declaration =
+                        texture_definition.texture_declarations[i];
+                    const auto &reference =
+                        references[static_cast<int>(i)];
+
+                    GLogInfo(
+                        "[MaterialTextureReferences] texture=%s descriptor=%u layer=%u",
+                        declaration.name.c_str(),
+                        reference.descriptor_index,
+                        reference.array_layer);
+                }
+            }
         }
         else
         {

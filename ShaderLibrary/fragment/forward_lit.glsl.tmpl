@@ -12,10 +12,13 @@ void main()
 {
 {{surface_input_wiring}}
     const SurfaceOutput surface = EvalSurface(si, materialDataIndex);
-#ifdef HGL_ALPHA_TEST
-    // alpha test 材质：按材质源的 alpha 槽丢弃片元（与 ShadowCasterMasked 的
+#if defined(HGL_ALPHA_TEST) || defined(HGL_ALPHA_DITHER)
+    // 覆盖（coverage）材质：按材质源的 alpha 槽丢弃片元（与 ShadowCasterMasked 的
     // EvalAlpha 同语义——opacity_mask 未绑定时 SampleOptional 保底 1.0）。
     // 光照输出的 alpha 恒为 1，不能用作覆盖判定。
+    // ⚠ 守卫必须同时覆盖 HGL_ALPHA_DITHER：dither 由本节 HGLApplyAlpha 内部
+    // （alpha_compositor.glsl 的 HGL_ALPHA_DITHER 分支）实现，只判 HGL_ALPHA_TEST
+    // 会把 dither 材质的覆盖判定整个编译掉 ⇒ dither 静默失效（cutoff/blend 同理看 alpha）。
     HGLApplyAlpha(EvalAlpha(si, materialDataIndex));
 #endif
     const LightingInput lighting = BuildForwardLightingInput(surface, si, materialDataIndex);

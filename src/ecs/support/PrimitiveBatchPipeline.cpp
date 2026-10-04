@@ -861,6 +861,26 @@ namespace hgl::ecs
             }
         }
 
+        // 批级纹理引用基址诊断（ULRE_ARENA_DEBUG）：「纹理不生效」的第一现场——
+        // base==0 ⇒ push 出去的 addr_texture_references 是 0 ⇒ 着色器 MTL_TEX 解引用
+        // 地址 0 ⇒ tex_handle=0 ⇒ SampleOptional 走 fallback 1.0（alpha 恒 1，
+        // dither/blend 全部看不出效果）。
+        if (getenv("ULRE_ARENA_DEBUG"))
+        {
+            static uint32_t s_texture_base_reported = 0;
+
+            if (s_texture_base_reported < 12)
+            {
+                ++s_texture_base_reported;
+
+                GLogInfo("[BatchTextureRef] batch_items=%u base=0x%llx mat_rows=%p l2w=%p",
+                         uint32_t(batch.items.size()),
+                         static_cast<unsigned long long>(batch.texture_reference_base_addr),
+                         static_cast<void *>(batch.material_data_index_rows_buffer),
+                         static_cast<void *>(batch.l2w_index_buffer));
+            }
+        }
+
         SortBatchItems(batch);
         EnsureBatchIndexRows(batch);
         EnsureMeshDrawParams(batch);
