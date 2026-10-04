@@ -314,8 +314,9 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 | **T3d-2**：CPU 参考剔除对拍系统 | `1425e43d4` | **判据达成（经 `5ec033ea8` 返工后）**：PBRSpheres 对拍 CPU=100 GPU=100 match=100 mismatch=0 |
 | **T3e**：GPU 剔除结果驱动绘制系统 | `f8dc8a0f4` → **返工 `5ec033ea8`** | 首版无条件接管 ⇒ 全示例画空；返工 = 双重 opt-in + 接线四处断点（详见 §8.2b）；判据：门 43/0、[ERROR]=0、VUID=0 |
 | **T3f-1（形态 A）**：GPU 幸存集回灌 `RenderItem::isVisible` | `220da961d`（主体）+ `ea73a0bad`（注释）+ `4b4990d84`（验收通路） | **像素验收达成**：GPU 剔除 vs CPU 基线帧 8 **逐字节全等**（3,686,400 B sha256 一致）；对拍 mismatch=0；门 43/0；详见 §8.2c |
+| **T3d-3a（方案 A）**：实体 4-ID 表——剔除改读池口径 geometry_id | `9e0aa0ad1` | **判据修正**：旧 mismatch=0 系两端读同一错下标的假绿；修后 Parity 100/100/0 + 像素逐字节全等（hash 不变）+ Test 断言 48→64 纳入构建；详见 §8.2d |
 
-### 8.2 未完成：T3f-2 形态 B（**T3d 全达成；T3e 已返工为 opt-in；T3f-1 形态 A 已落地且像素全等**）
+### 8.2 未完成：T3f-2 形态 B（**T3d 全达成含 T3d-3a 判据修正；T3e 已返工为 opt-in；T3f-1 形态 A 已落地且像素全等**）
 
 - T3d 落地件（同批次四件）：
   ① `ShaderLibrary/ecs/entity_gpu.glsl`（`@ulre` Utility 模块；`EntityGPUData` 逐字段镜像
@@ -408,13 +409,66 @@ T3e 首版（`f8dc8a0f4`）把 `GPUCullResultHookSystem` 做成**无条件**把�
 （零转换，保住 10bit）→ `std::exit`；`PBR_DISABLE_CULL=1` = 基线对照组。
 结果：**两次运行 3,686,400 B sha256 逐字节全等**（`changed_pixels=0/921600`）。
 
-### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6/§8.2b/§8.2c；**T3d/T3e/T3f-1 全达成**）
+### 8.2d T3d-3a 判据修正（2026-10-04，提交 `9e0aa0ad1`，方案 A）—— **剔除读错池：旧 mismatch=0 是两端同源的假绿**
+
+形态 B 侦察（子代理契约清单）揪出比接管更根本的错：剔除拿 `EntityGPU.row[Geometry]`
+（= `Entity::component_rows[Geometry]`，**组件池行号**，每实体一行）当 AABB /
+MeshDrawParams 全局池的 **asset geometry_id**（每 asset 一行，"一号双表"）用。
+PBRSpheres 实测规模：组件行 1..100 vs 池 id 1..10 ⇒ 越界/错借他人 AABB ⇒
+**剔除判据从根上是错的**；GPU 与 CPU 参考读同一个错下标 ⇒ 错得同源 ⇒
+旧 `mismatch=0` 与像素全等都成立但**不证明剔除正确**（假绿）。
+
+修法（拍板 A：新表，不改 128B 冻结设计、不动 handle 分配器）：
+- **EntityRenderIDTable**（世界私有、容量同 4096、按 `EntityID.index` 直索引）：
+  行型复用 `graph::RenderItemDescriptor`（16 B uvec4，4-ID 终态的既有形状 ⇒
+  不造同类结构）；GLSL 复用 `RenderItemResolve.glsl` 的 struct/`RenderItemBufferRef`
+  ⇒ 门模块计数 71 不变。脏行上传、帧槽切份（8 份）、生死钩（`DeactivateEntityRow`
+  同入口清两表）与实体行表逐字同纪律。
+- **写者 = collect 现算点**：挂在「几何行成立 ⇒ 本项进批」的同一判据块内
+  （`RenderPrimitiveCollectSystem.cpp` draw_key 填充处），四元组与喂给
+  `SetRenderItem4ID` 的值**逐字同源** ⇒ 无第二口径；表内只留"真会画"的实体。
+- `WorldAddresses.addr_entity_render_ids`（偏移 56；表 48→**64 B**，步长 128 不变）。
+- **顺带纠史**：`TestRenderItemDataStorage` 的 `sizeof(WorldAddresses)==48` 断言在
+  加 `addr_l2w`（T3d-1a）时就该红——它没红是因为该 target 不在本线构建里。
+  本次改 64 并纳入验证（test 编译+全绿 = 断言真的在跑）。
+
+新踩两条坑（都进注释/§7.6 口径）：
+1. **include 顺序 = 宏展开时机**：`RenderItemResolve.glsl` 的**函数体**引用
+   `world_addresses` 宏 ⇒ include 必须在 cull 文件的 pc 宏覆盖**之后**；写前面 =
+   宏仍指未声明的 `pc_root` ⇒ `'pc_root': undeclared` ⇒ pipeline null ⇒ GPU 恒 0。
+2. **改 `Context.h` 成员布局 ⇒ 全量 purge**：部分 purge（只清 ECS/示例目录）时
+   首帧段错误（`SwapchainRenderTarget` 崩在旧布局 TU 上）——记忆里的布局错位坑
+   重演；`find build -type d -path "*.dir/Debug" | xargs -0 rm -rf` 全清后一次通过。
+
+判据（修后）：Parity CPU=100 GPU=100 mismatch=0（两端读**正确**池 id）；
+`PBR_DUMP` GPU 剔除 vs CPU 基线**逐字节全等**（hash 与 T3f-1 相同 ⇒ 真值路径
+未动）；[ERROR]=0、VUID=0；门 43/0；探针绿；`TestRenderItemDataStorage` 绿；
+默认关路径示例正常。
+
+### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6/§8.2b/§8.2c/§8.2d；**T3d 全达成含 T3d-3a 判据修正；T3e 返工完成；T3f-1 形态 A 达成**）
 
 1. **T3f-2**：形态 B——真 GPU-Driven 绘制接管（当前唯一未成事项，收益 = 省 CPU 提交）
    - **设计题（先答再写）**：`atomicAdd` 紧凑序**每帧不定** ⇒ 若剔除输出直接驱动
      per-batch 行表，行表必须按 GPU 序 gather（新契约）。两条候选：
-     ① 每批各持一份剔除输出（着色器按 `row[Geometry] == batch_geometry_id` 过滤）；
+     ① 每批各持一份剔除输出（着色器按**池 geometry_id** 过滤——比较源 = 实体 4-ID 表
+     `render_ids.geometry_id`，T3d-3a 后才有正确口径；旧写法 `row[Geometry]` 是组件行号，
+     与批的 draw_key.geometry_id **不同口径**，别再照 §8.2d 前的文本抄）；
      ② 单张全局可见表 + 逐批 indirect range/count 偏移。
+   - **消费侧契约清单（子代理侦察产出，形态 B 的逐表 slot→值公式，已核对）**：
+     icb[s]={X=CalcMeshGroupCount(池行 is_indexed?index_count:vertex_count；meshlet 取
+     GetMeshletCount)、Y=1、Z=1}；mesh cmds[s]={geometry_id=池 id、first_instance=s}
+     （消费点 MeshTemplateEmitter.h:266-268 ⇒ gl_InstanceIndex=s+wg.y，
+     `#define gl_InstanceIndex (draw_params.first_instance + gl_WorkGroupID.y)` =
+     MeshShaderHeaderGen.h:123）；l2w_index[s]=`EntityGPU.row[1]`（L2W 行号）；
+     material_data_index_rows[s]=`{payload_index,texture_reference_index,
+     shadow_bias_multiplier,shadow_flags}`（值源=实体 4-ID 表 material_id/texture_id ⇒
+     **gap #1/#2 已由 T3d-3a 拆掉**）；pc_root 整批一次 push（addr_batch_mesh_draw_params=
+     cmds 基址）。count：`icb_count_buffer` 直接被 `DrawMeshTasksIndirectCount` 读；
+     **maxDrawCount=CPU 项数封顶**（PipelineMaterialRenderer.cpp:88-97）⇒ 幸存数>项数会截。
+   - 仍存的两个真卡点（先答再动）：**批=单材质前提**（addr_texture_references 与
+     MTL_ROW 池按批单值 push；混合材质场景 ⇒ 首版限单批，R4 口径）；
+     **4-ID indexed/flag 路径消费侧无接线**（RenderItemResolve 的 flag 分流只存在于
+     库函数，无发射器 include ⇒ 形态 B 走 per-batch 行表路线，不依赖它）。
    - 一个 MaterialBatch 只对应**一种几何**（批按 shader/pipeline 合），而可见实体跨多种
      几何 ⇒ R4 口径 = 首版把消费者限制在**同一批**内。
    - 打开 `SetDrawOverrideEnabled` 的前提：剔除输出的**绘制参数与 CPU 收集的行表同源**
