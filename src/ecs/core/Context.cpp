@@ -352,6 +352,10 @@ namespace hgl
                         // T3c：实体行表随世界释放（`StructView` 是裸指针、生命周期随 buffer，与地址表同办）
                         if (entity_gpu_buffer)
                             bm->Release(entity_gpu_buffer);
+
+                        // T3d-3a：实体 4-ID 表随世界释放（同一纪律）
+                        if (entity_render_id_buffer)
+                            bm->Release(entity_render_id_buffer);
                     }
                 }
 
@@ -360,6 +364,10 @@ namespace hgl
                 entity_gpu_buffer = nullptr;
                 entity_gpu_view = nullptr;
                 entity_gpu_table_addr = 0;
+
+                entity_render_id_buffer = nullptr;
+                entity_render_id_view = nullptr;
+                entity_render_id_table_addr = 0;
             }
 
             world_addresses_addr = 0;
@@ -1444,6 +1452,10 @@ namespace hgl
             if (!InitializeEntityGPUTable())
                 return false;
 
+            // T3d-3a：实体 4-ID 表与前两表同批（同一 BDA 前提、同一生命周期）
+            if (!InitializeEntityRenderIDTable())
+                return false;
+
             SyncWorldAddresses();
             return true;
         }
@@ -1488,6 +1500,126 @@ namespace hgl
 
             entity_gpu_view->Commit();
             entity_gpu_table.ClearDirty();
+        }
+
+        /// T3d-3a：实体 4-ID 表脏行上传。骨架与 `UploadEntityGPUDirtyRows` 同构：
+        /// 零脏零成本 + 脏行写进**每一帧槽份**（`transform_id` 对可动实体随帧槽变 ⇒
+        /// 单份会被本帧写覆盖上一帧在读的内容 = 跨帧别名，与实体行表 T3c-3 同判据）。
+        void ECSContext::UploadEntityRenderIDDirtyRows()
+        {
+            if (!entity_render_id_view || !entity_render_id_buffer)
+                return;
+
+            if (entity_render_id_table.GetDirtyCount() == 0)
+                return;
+
+            static thread_local std::vector<uint32_t> dirty_rows;
+
+            entity_render_id_table.CollectDirtyRows(dirty_rows);
+
+            auto *base = reinterpret_cast<graph::RenderItemDescriptor *>(
+                entity_render_id_view->Data());
+            if (!base)
+                return;
+
+            constexpr uint32_t kCopies = uint32_t(graph::kWorldAddressesSlotCount);
+
+            for (uint32_t copy = 0; copy < kCopies; ++copy)
+            {
+                graph::RenderItemDescriptor *dst =
+                    base + size_t(copy) * EntityRenderIDTable::kCapacity;
+
+                for (const uint32_t index : dirty_rows)
+                {
+                    const graph::RenderItemDescriptor *src =
+                        entity_render_id_table.Row(index);
+
+                    if (src)
+                        dst[index] = *src;
+                }
+            }
+
+            entity_render_id_view->Commit();
+            entity_render_id_table.ClearDirty();
+        }
+
+        /// T3d-3a：建实体 4-ID 表的设备镜像（与 `InitializeEntityGPUTable` 逐字同构；
+        /// 行 16 B ⇒ 8 份 × 4096 行 × 16 B = 512 KB）。地址缺失 = 消费者解引用 0 基址 ⇒ fail-fast。
+        bool ECSContext::InitializeEntityRenderIDTable()
+        {
+            if (entity_render_id_buffer)
+                return true;
+
+            auto *gc = GetGraphicsContext();
+            if (!gc)
+            {
+                LogError("[ECSContext::InitializeEntityRenderIDTable] graphics context is null");
+                return false;
+            }
+
+            auto *bm = gc->GetBufferManager();
+            if (!bm)
+            {
+                LogError("[ECSContext::InitializeEntityRenderIDTable] buffer manager is null");
+                return false;
+            }
+
+            char name_buf[192];
+            std::snprintf(name_buf, sizeof(name_buf), "World:%s:EntityRenderIDTable", GetName().c_str());
+
+            entity_render_id_buffer = bm->CreateSSBO(
+                name_buf,
+                VkDeviceSize(graph::kWorldAddressesSlotCount)
+                    * VkDeviceSize(EntityRenderIDTable::kCapacity)
+                    * VkDeviceSize(sizeof(graph::RenderItemDescriptor)));
+            if (!entity_render_id_buffer)
+            {
+                LogError("[ECSContext::InitializeEntityRenderIDTable] CreateSSBO failed");
+                return false;
+            }
+
+            entity_render_id_buffer->SetUpdateClass(graph::BufferUpdateClass::Default);
+
+            entity_render_id_view = graph::StructView<graph::RenderItemDescriptor>::Create(
+                entity_render_id_buffer, false);
+            if (!entity_render_id_view)
+            {
+                LogError("[ECSContext::InitializeEntityRenderIDTable] StructView create failed");
+                return false;
+            }
+
+            entity_render_id_table_addr = gpu_device
+                ? gpu_device->GetBufferDeviceAddressAligned16(entity_render_id_buffer->GetBuffer())
+                : 0;
+            if (entity_render_id_table_addr == 0)
+            {
+                LogError("[ECSContext::InitializeEntityRenderIDTable] 实体 4-ID 表取不到设备地址"
+                          "（16B 对齐 / SHADER_DEVICE_ADDRESS usage 检查）");
+                return false;
+            }
+
+            // 整表清零：未上行 = 全 0 ⇒ 消费者按 `geometry_id == 0` 判无（行 0 哨兵惯例）
+            if (auto *rows = reinterpret_cast<graph::RenderItemDescriptor *>(
+                    entity_render_id_view->Data()))
+            {
+                for (uint32_t i = 0; i < EntityRenderIDTable::kCapacity * graph::kWorldAddressesSlotCount; ++i)
+                    rows[i] = graph::RenderItemDescriptor{};
+            }
+
+            entity_render_id_view->Commit();
+
+            LogInfo("[ECSContext] 实体 4-ID 表就绪：%s  %u 行 × %zu B = %zu KB／份 × %u 份（帧槽）= %zu KB，"
+                    "帧槽 0 基址=0x%llX（消费者：GPU 剔除 / CPU 参考对拍 / 形态 B gather；"
+                    "每帧地址=基址+帧槽×每份字节，经 WorldAddresses.addr_entity_render_ids 下发）",
+                    GetName().c_str(), EntityRenderIDTable::kCapacity,
+                    sizeof(graph::RenderItemDescriptor),
+                    size_t(EntityRenderIDTable::kCapacity) * sizeof(graph::RenderItemDescriptor) / 1024,
+                    uint32_t(graph::kWorldAddressesSlotCount),
+                    size_t(graph::kWorldAddressesSlotCount) * EntityRenderIDTable::kCapacity
+                        * sizeof(graph::RenderItemDescriptor) / 1024,
+                    (unsigned long long)entity_render_id_table_addr);
+
+            return true;
         }
 
         bool ECSContext::InitializeEntityGPUTable()
@@ -1662,6 +1794,14 @@ namespace hgl
                 * static_cast<uint64_t>(EntityGPUTable::kCapacity)
                 * static_cast<uint64_t>(sizeof(EntityGPU));
 
+            // T3d-3a：实体 4-ID 表（世界私有；消费者 = GPU 剔除取池口径 geometry_id /
+            // material / texture 行）。按帧槽偏移（与实体行表同纪律：可动实体 transform_id 随帧槽变）。
+            // 未建表 ⇒ 保持 0（消费者判 0 跳过；0 基址解引用纪律见 §8.2b①）。
+            want.addr_entity_render_ids = entity_render_id_table_addr
+                + static_cast<uint64_t>(slot)
+                * static_cast<uint64_t>(EntityRenderIDTable::kCapacity)
+                * static_cast<uint64_t>(sizeof(graph::RenderItemDescriptor));
+
             // T3c-2b（B1）：L2W 行号由**变换侧**写入实体行表（生产者写自己的产物）；
             // 世界这里只负责把**脏行**上传设备镜像。
 
@@ -1692,6 +1832,7 @@ namespace hgl
             }
 
             UploadEntityGPUDirtyRows(slot);
+            UploadEntityRenderIDDirtyRows();
 
             // env（sky / shadow）随世界（C2）：按**本世界生效 profile** 取址写本世界槽。
             // sky 单份 buffer（全帧槽同址）；shadow 是每帧槽一份的 ring（下标 = 帧槽）⇒ 取本槽那份。

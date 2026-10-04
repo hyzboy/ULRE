@@ -11,6 +11,7 @@
 #include<hgl/ecs/support/ComponentTypeTable.h>
 #include<hgl/ecs/support/ComponentPool.h>
 #include<hgl/ecs/support/EntityGPUTable.h>
+#include<hgl/ecs/support/EntityRenderIDTable.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -103,6 +104,10 @@ namespace hgl
             //   **必须声明在 `entity_manager` 之前**：成员按声明逆序析构 ⇒ 表比实体活得久
             //   （`~Entity` 会回写本表的 `Active` 位；表先死就会写到已释放内存）。
             EntityGPUTable entity_gpu_table;
+
+            /// T3d-3a：实体 4-ID 表（世界私有；与 `entity_gpu_table` 同批声明 ⇒ 同一条析构逆序纪律，
+            /// `~Entity` 经 `DeactivateEntityRow` 同时清两表，两表都必须比 `entity_manager` 活得久）
+            EntityRenderIDTable entity_render_id_table;
 
             std::unique_ptr<EntityManager> entity_manager;
 
@@ -225,6 +230,11 @@ namespace hgl
             graph::StructView<EntityGPU> *entity_gpu_view = nullptr;
             graph::DeviceBuffer *entity_gpu_buffer = nullptr;
             uint64_t entity_gpu_table_addr = 0;
+
+            // T3d-3a：实体 4-ID 表的设备镜像（骨架与上面三件套逐字同构）
+            graph::StructView<graph::RenderItemDescriptor> *entity_render_id_view = nullptr;
+            graph::DeviceBuffer *entity_render_id_buffer = nullptr;
+            uint64_t entity_render_id_table_addr = 0;
 
             bool active = false;
             bool shutdown_in_progress = false;
@@ -416,10 +426,16 @@ namespace hgl
             /// `frame_slot` = 本帧槽（T3c-3 起表按帧槽切份，每份一份世界私有 SSBO 区段）。
             void UploadEntityGPUDirtyRows(uint32_t frame_slot);
 
+            /// T3d-3a：实体 4-ID 表脏行上传（与上面同批调用；同一条「值变才标脏」纪律）
+            void UploadEntityRenderIDDirtyRows();
+
             /// **实体行表**（世界私有 SSBO：`EntityGPUTable::kCapacity × 128 B`）建表 + 取设备地址。
             /// 地址缺失 = 消费者解引用 0 基址 = UB ⇒ fail-fast（与地址表同款判据）。
             /// 建表时机：与地址表同批（同一个 BDA 前提 + 同一个"世界 GPU 表"生命周期）。
             bool InitializeEntityGPUTable();
+
+            /// T3d-3a：实体 4-ID 表建表（与上面同批、同判据）
+            bool InitializeEntityRenderIDTable();
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
@@ -678,7 +694,17 @@ namespace hgl
             const EntityGPUTable& GetEntityGPUTable() const { return entity_gpu_table; }
 
             /// 实体销毁路径：清 `Active`（由 `~Entity` 调用 —— 实体生死是**单一入口**）
-            void DeactivateEntityRow(EntityID id) { entity_gpu_table.Deactivate(id); }
+            /// T3d-3a：同入口清实体 4-ID 表行（两表的生死口径必须一致：消费者先判
+            /// `EntityGPU.Active`、4-ID 行同时归零 ⇒ 不会出现"行表已死、id 还在"的残值）
+            void DeactivateEntityRow(EntityID id)
+            {
+                entity_gpu_table.Deactivate(id);
+                entity_render_id_table.Clear(id);
+            }
+
+            /// T3d-3a：实体 4-ID 表访问器（写者 = collect；消费者 = GPU 剔除 / CPU 参考对拍 / 形态 B）
+            EntityRenderIDTable&       GetEntityRenderIDTable()       { return entity_render_id_table; }
+            const EntityRenderIDTable& GetEntityRenderIDTable() const { return entity_render_id_table; }
 
             /// 组件卸载 / 全卸后重刷 `type[]/row[]`（由 `Entity` 的卸载路径调用）
             void RefreshEntityRow(Entity *entity) { entity_gpu_table.Refresh(entity); }

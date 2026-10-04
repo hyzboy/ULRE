@@ -2344,6 +2344,13 @@ namespace hgl::ecs
                                  material_id, texture_id);
             }
 
+            // T3d-3a：同式写**实体 4-ID 表**（世界私有、按 EntityID.index 直索引）——
+            // 上面两分支喂的是 handle 空间（`addr_global_render_items`），本表喂的是
+            // **实体空间**（GPU 剔除按 index 枚举源直接取池口径 geometry_id / material /
+            // texture）。四元组与上面**逐字同源** ⇒ 无第二口径。
+            // 挂在下面 B3-iii「几何行成立 ⇒ 本项进批」的同一判据块内（行缺失 ⇒ 键 0 ⇒
+            // 不进批 ⇒ 4-ID 也不上行；表内只留"真会画"的实体 ⇒ 剔除/接管口径与批一致）。
+
             if (is_instanced)
             {
                 item = std::make_unique<InstancedPrimitiveRenderItem>(
@@ -2377,6 +2384,15 @@ namespace hgl::ecs
                     key.vertex_count = params_row->vertex_count;
                     key.index_count  = params_row->index_count;
                     key.is_indexed   = params_row->is_indexed;
+
+                    // T3d-3a：实体 4-ID 表随"本项进批"同一判据上行（四元组与上面
+                    // SetRenderItem4ID 逐字同源 ⇒ 无第二口径；消费者 = GPU 剔除 / CPU 对拍 / 形态 B）
+                    graph::RenderItemDescriptor render_ids{};
+                    render_ids.transform_id = transform_id;
+                    render_ids.geometry_id  = geometry_id;
+                    render_ids.material_id  = material_id;
+                    render_ids.texture_id   = texture_id;
+                    world->GetEntityRenderIDTable().SetRenderIDs(entity_id, render_ids);
                 }
             }
 

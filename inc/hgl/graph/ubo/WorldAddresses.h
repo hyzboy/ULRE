@@ -31,6 +31,10 @@ namespace hgl::graph
         uint64_t addr_shadow = 0;               // 本世界 profile 的 ShadowInfo（每帧槽一份，下标 = 帧槽）
         uint64_t addr_entity_gpu = 0;           // 实体行表 EntityGPU（世界私有；T3：GPU 剔除的枚举源，按 EntityID.index 索引）
         uint64_t addr_l2w = 0;                  // L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份，每帧槽一份）
+        uint64_t addr_entity_render_ids = 0;    // 实体 4-ID 表（世界私有 EntityRenderIDTable，按 EntityID.index 直索引，
+                                                // 行 = graph::RenderItemDescriptor 16 B；T3d-3a：GPU 消费者取**池口径** id 的唯一通路
+                                                // —— `EntityGPU.row[Geometry]` 是组件池行号，与 AABB / MeshDrawParams 全局池的
+                                                // asset geometry_id **不同口径**，剔除与 gather 必须读本表）
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽）。

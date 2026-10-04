@@ -48,6 +48,16 @@ layout(push_constant) uniform PushConstants
 // 由 CPU `ECSContext::GetActiveCameraRow()` 算好下发）。写死 0 会读到别的相机的视锥。
 #define camera CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[pc.camera_row]
 
+// 实体 4-ID 表的行镜像（T3d-3a）：**复用** RenderItemResolve.glsl 的 `RenderItemDescriptor`
+// struct + `RenderItemBufferRef`（16 B uvec4 形状的唯一真源，不另造同类结构/镜像）。
+// ⚠ include 位置 = 宏展开时机：该模块的**函数体**引用 `world_addresses` 宏 ⇒ 必须
+// include 在上面的 pc 覆盖**之后**（否则宏还指向未声明的 pc_root ⇒ 'pc_root': undeclared，
+// 症状 = compute pipeline is null + GPU count 恒 0）。
+#include "common/RenderItemResolve.glsl"
+
+// 行数组本体（与世界 RenderItemBufferRef 同结构、不同索引空间：这里按 EntityID.index）
+#define entity_render_ids RenderItemBufferRef(world_addresses.addr_entity_render_ids).items
+
 // L2W 矩阵池（世界级访问，按帧槽切份）
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer LocalToWorldDataRef
 {
@@ -107,11 +117,32 @@ void main()
     if ((entity.flags & 2u) == 0u)  // Visible 位
         return;
 
-    // 获取几何 ID 和变换 ID（ComponentType：None=0, Transform=1, Geometry=2）
-    uint geometry_id = entity.row[2u];  // Geometry 组件行号
-    uint transform_id = entity.row[1u]; // Transform 组件行号（槽 1，不是 0！0=None）
+    // 读取实体 4-ID 行（T3d-3a：**池口径**的唯一来源）
+    //
+    // ⚠ 为什么不能像早期版本那样用 `entity.row[2]` 当 geometry_id：那是 `Entity::
+    // component_rows[Geometry]` = **组件池行号**（每实体一行），而 AABB 池与
+    // MeshDrawParams 池按 **asset geometry_id** 索引（一号双表，每 asset 一行）⇒
+    // 两者不同口径（PBRSpheres 实测：组件行 1..100 vs 池 id 1..10）。拿组件行去查池
+    // = 越界/错借别人的 AABB ⇒ 剔除判据从根上就是错的（旧版 GPU 与 CPU 参考**错得
+    // 同源**，所以 mismatch 仍为 0 —— 假绿，见设计稿 §8.2d）。
+    //
+    // 本表由 collect 在"本项进批"的同一判据点写入（四元组与 SetRenderItem4ID 逐字
+    // 同源）⇒ 与消费侧 cmds/material rows 天然同口径。`geometry_id == 0` = 未上行
+    // （行 0 哨兵惯例，含"实体无几何"与"行还没到"两种，都该跳过本帧）。
+    // 行镜像复用 RenderItemResolve.glsl 的 RenderItemDescriptor / RenderItemBufferRef
+    //（16 B uvec4 形状的唯一真源；表与 addr_global_render_items 同结构、不同索引空间）。
+    const RenderItemDescriptor render_ids = entity_render_ids[entity_index];
 
-    if (geometry_id == 0u || transform_id == 0u)
+    const uint geometry_id = render_ids.geometry_id;   // MeshDrawParams / GeometryAABB 池行
+
+    if (geometry_id == 0u)
+        return;
+
+    // L2W 行号仍取实体行表的 `row[Transform]`（B1：变换侧写的**帧槽含基址**行号，
+    // 那边已闭环；本表的 transform_id 是原始句柄、含帧槽换算未做 ⇒ 不用它索引 L2W）
+    const uint transform_id = entity.row[1u];
+
+    if (transform_id == 0u)
         return;
 
     // 读取相机信息

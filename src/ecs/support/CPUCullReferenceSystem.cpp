@@ -100,6 +100,8 @@ namespace hgl::ecs
         }
 
         // 遍历所有实体
+        const EntityRenderIDTable &render_ids = context_->GetEntityRenderIDTable();
+
         for (uint32_t i = 0; i < entity_count; ++i)
         {
             const EntityGPU* row = entity_table.Row(i);
@@ -111,11 +113,18 @@ namespace hgl::ecs
             // 跳过不可见实体
             if (!EntityGPUTable::IsVisible(*row)) continue;
 
-            // 获取 L2W 行号和 Geometry 行号
-            const uint32_t l2w_row = row->row[static_cast<uint32_t>(ComponentType::Transform)];
-            const uint32_t geometry_id = row->row[static_cast<uint32_t>(ComponentType::Geometry)];
+            // T3d-3a：geometry_id 取**实体 4-ID 表**（池口径，与 GPU 剔除逐字同式；
+            // `row[Geometry]` 是组件池行、与 AABB 池不同口径 —— 旧版两端错得同源，见 §8.2d）
+            const graph::RenderItemDescriptor *ids = render_ids.Row(i);
 
-            if (l2w_row == 0 || geometry_id == 0) continue;
+            if (!ids || ids->geometry_id == 0) continue;
+
+            const uint32_t geometry_id = ids->geometry_id;
+
+            // 获取 L2W 行号（仍走实体行表 row[Transform]：变换侧写的帧槽含基址行号）
+            const uint32_t l2w_row = row->row[static_cast<uint32_t>(ComponentType::Transform)];
+
+            if (l2w_row == 0) continue;
 
             // 边界检查：L2W 行号必须在 buffer 范围内
             if (l2w_row >= l2w_matrix_count) continue;

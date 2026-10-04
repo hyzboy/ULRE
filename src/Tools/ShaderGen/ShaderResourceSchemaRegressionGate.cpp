@@ -3161,6 +3161,7 @@ namespace
         { "addr_shadow",                true  },
         { "addr_entity_gpu",           true  },   // T3：实体行表（世界私有；实体属世界 ⇒ 设备级会重演"跨世界同行冲突"）
         { "addr_l2w",                  true  },   // T3d：L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份）
+        { "addr_entity_render_ids",    true  },   // T3d-3a：实体 4-ID 表（世界私有 EntityRenderIDTable；GPU 消费者取池口径 id 的唯一通路）
         // ── 设备级全局（跨世界共享的资源池 + 每帧槽字段）──
         { "addr_mesh_draw_params_pool", false },
         { "addr_geometry_aabb",         false },   // B3-i：GeometryAABB 池（设备级全局；与 MeshDrawParams 同 ID 索引）
