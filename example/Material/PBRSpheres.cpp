@@ -28,6 +28,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
+#include<hgl/ecs/components/ShadowProxy.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -480,6 +481,22 @@ private:
 
                 Entity *e = ecs_world->CreateEntity<Entity>(name);
                 sphere_entities[row][col] = e;
+
+                // T3h 判据实体（PBR_SHADOW_FACTS=1 才挂）：两个**非默认阴影事实**
+                // 实体——(2,3) 不接收、(7,4) bias=2.0。本示例无投影光 ⇒ 像素看不出
+                // 差别（像素全等不构成接线证据）；真判据 = 台架 CheckShadowFacts
+                // 值链三段对拍（访问器→EntityGPU 行→gather 行，逐字节）。
+                if (getenv("PBR_SHADOW_FACTS"))
+                {
+                    if (row == 2 && col == 3)
+                    {
+                        e->AddComponent<ShadowProxy>()->SetReceiveShadow(false);
+                    }
+                    else if (row == 7 && col == 4)
+                    {
+                        e->AddComponent<ShadowProxy>()->SetBiasMultiplier(2.0f);
+                    }
+                }
 
                 // T3c-3 对照：**(0,0) 那个球是静态实体**（其余全可动）。静态实体的 L2W 行号
                 // 是常量（`1 + slot`）⇒ 写者每帧重下发也不产生脏行（零重传）；可动实体则随帧槽轮转。

@@ -50,6 +50,17 @@ namespace hgl
             uint32_t row [kEntityGPUSlotCount] = {}; ///< 槽 i 对应的 arena 行号；0 = 无
             uint32_t work_flags = 0;                ///< 工作期派生位（由 type/row 推出）；**留 0**，
                                                     ///< 等消费者定义后再填位表（不造没人读的位）
+
+            // ── T3h：阴影接收事实（形态 B 接管的 GPU 通路，第一个真消费者）──────
+            // 原 `_pad` 区划出 8 B：128 B 步长与 alignas(64) 不变（填充是契约、
+            // 划用不破坏契约）。写者 = collect 在「本项进批」判据点与 4-ID 表同行
+            // 写入（ShadowProxy 是 CPU-only 组件，T2-c；这里放**事实**不放行号——
+            // 组件行号对 GPU 无用，值进行才算接线）。
+            // 消费规则与 CPU FinalizeBatch 逐字同式（pcf_shadow.glsl:180 约定）：
+            //   bias_multiplier <= 0 ⇒ 行里留 0，着色侧视 0 为引擎默认 1.0
+            //   receive = 0 ⇒ 消费端写 kMaterialShadowFlagNoReceive
+            float  shadow_bias_multiplier = 0.0f;   ///< 局部 Bias 倍率事实（0 = 未上行/默认）
+            uint32_t shadow_receive       = 0;      ///< 1 = 接收阴影（CanReceiveShadow 事实位）
         };
 
         static_assert(sizeof(EntityGPU) == 128,
@@ -59,5 +70,9 @@ namespace hgl
         static_assert(offsetof(EntityGPU, type)       ==  4, "字段顺序/偏移被改动");
         static_assert(offsetof(EntityGPU, row)        == 20, "字段顺序/偏移被改动");
         static_assert(offsetof(EntityGPU, work_flags) == 84, "字段顺序/偏移被改动");
+        static_assert(offsetof(EntityGPU, shadow_bias_multiplier) == 88,
+                      "阴影事实字段偏移被改动（_pad 划用后 GPU 镜像会错位）");
+        static_assert(offsetof(EntityGPU, shadow_receive) == 92,
+                      "阴影事实字段偏移被改动");
     }//namespace ecs
 }//namespace hgl

@@ -1119,10 +1119,13 @@ namespace hgl::ecs
                                     GetShadowBiasMultiplier(prim_entity);
 
                                 // 非法倍率（<=0 / NaN / inf）按"不调节"处理：
-                                // 行里留 0，着色侧视 0 为引擎默认 1.0。
-                                if (bias_multiplier > 0.0f
-                                 && std::isfinite(bias_multiplier))
-                                    row_ptr[i].shadow_bias_multiplier = bias_multiplier;
+                                // 行里留 0，着色侧视 0 为引擎默认 1.0（归一式唯一
+                                // 出处见 ShadowProxy.h `NormalizeShadowBiasToRow`，
+                                // T3h：collect 事实位上行 / 台架值链判据同用本式）。
+                                const float bias_for_row =
+                                    NormalizeShadowBiasToRow(bias_multiplier);
+                                if (bias_for_row != 0.0f)
+                                    row_ptr[i].shadow_bias_multiplier = bias_for_row;
                             }
                         }
 
@@ -1343,12 +1346,8 @@ namespace hgl::ecs
                 return;
             }
 
-            // 阴影两位：全默认才可接管（gather 写 0/0 = 引擎默认语义）
-            if (!CanReceiveShadow(owner) || GetShadowBiasMultiplier(owner) != 1.0f)
-            {
-                reject("实体有非默认阴影参数（ShadowProxy GPU 行未接线）");
-                return;
-            }
+            // 阴影两位：T3h 起 GPU 通路已接线（collect 上事实位、gather 照抄），
+            // 非默认实体（不接收 / 自定义 bias）也能接管——本条 guard 退役。
         }
 
         // 派发定帧护栏（T3g，纯 CPU 判据）：dispatch 未攒满 2 帧 ⇒ 表还没被任何

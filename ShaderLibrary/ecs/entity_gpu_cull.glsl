@@ -10,9 +10,11 @@
 // 输出：可见实体索引表（形态 A 回灌读）+ 幸存计数；
 //       `enable_gather != 0`（形态 B 接管中）时另按幸存 slot gather 写四张 per-batch
 //       行表：icb{X,Y=1,Z=1} / cmds{geometry_id, first_instance=slot} /
-//       l2w_index{EntityGPU.row[Transform]} / mtl_rows{payload,texture,0,0}。
+//       l2w_index{EntityGPU.row[Transform]} / mtl_rows{payload,texture,
+//       entity.shadow_bias_multiplier,entity.shadow_receive==0?NoReceive:0}。
 //       **全部字段读真源、零复制**（X 从 MeshDrawParams 池行现算；材质两位来自
-//       实体 4-ID 表；阴影两位写 0 = 引擎默认，CPU guard 限定全默认才接管）。
+//       实体 4-ID 表；阴影两位来自实体行事实位——collect 按 CPU D3 同式归一上行，
+//       gather 逐字节照抄，T3h 起 guard 不再要求阴影全默认）。
 //
 // ⚠ `#version` 必须在**第 1 行**：引擎 GLSLCompiler 插件按"第 1 行是否 #version"
 // 决定是否注入版本头，`@ulre` 注释块把它挤下去 ⇒ 注入后出现第二个 #version ⇒
@@ -283,11 +285,13 @@ void main()
     //                   ⇒ mesh 侧 gl_InstanceIndex = s + wg.y → values[s] 全链 1:1
     //  · icb[s]       = { X = ceil(池行元素数 / mesh_group_size), Y = 1, Z = 1 }
     //                   （CPU CalcMeshGroupCount 同式；meshlet 分支由 CPU guard 排除）
-    //  · mtl[s]       = { material_id, texture_id, 0.0, 0u }（实体 4-ID 表 + 引擎默认阴影位：
-    //                    bias<=0 ⇒ 消费端视为 1.0、flags 0 ⇒ 正常受影 —— 与 CPU 缺省写行
-    //                    **语义等价**（注：CPU 对默认 1.0 写的是 1.0 字节，gather 写 0.0；
-    //                    像素同值，字节不同，见 pcf_shadow.glsl:180 消费规则）；
-    //                    CPU guard 已限定全默认才接管）
+    //  · mtl[s]       = { material_id, texture_id, entity.shadow_bias_multiplier,
+    //                     entity.shadow_receive==0 ? kNoReceive : 0 }
+    //                    （T3h：材质两位读实体 4-ID 表、阴影两位读实体行事实位——
+    //                    全部**逐字节照抄 CPU 归一后的值**（collect 上行时已按
+    //                    FinalizeBatch D3 同式归一：bias<=0 ⇒ 0 ⇒ 着色侧视 0 为
+    //                    默认 1.0；receive ⇒ flags 0 / 不接收 ⇒ kMaterialShadowFlag
+    //                    NoReceive=1）。CPU guard 的阴影前提已随之删除。）
     const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
     const uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
     const uint group_count_x = (element_count + pc.mesh_group_size - 1u) / pc.mesh_group_size;
@@ -301,5 +305,8 @@ void main()
         BatchCmdRow(geometry_id, visible_index);
 
     MtlRowsOutRef(pc.mtl_out_addr).values[visible_index] =
-        MtlRow(render_ids.material_id, render_ids.texture_id, 0.0, 0u);
+        MtlRow(render_ids.material_id,
+               render_ids.texture_id,
+               entity.shadow_bias_multiplier,
+               entity.shadow_receive == 0u ? 1u : 0u);   // 1 = kMaterialShadowFlagNoReceive
 }

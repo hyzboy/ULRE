@@ -1,6 +1,8 @@
 #include <hgl/ecs/support/CPUCullReferenceSystem.h>
 #include <hgl/ecs/support/GPUCullSystem.h>
 #include <hgl/ecs/core/EntityGPU.h>
+#include <hgl/ecs/core/Entity.h>
+#include <hgl/ecs/components/ShadowProxy.h>
 #include <hgl/ecs/support/EntityGPUTable.h>
 #include <hgl/ecs/support/TransformDataStorage.h>
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
@@ -9,6 +11,7 @@
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/log/Log.h>
+#include <cmath>
 #include <cstring>
 #include <cstdlib>
 
@@ -66,6 +69,108 @@ namespace hgl::ecs
 
         // 3. 位图对拍 + 打印统计
         CompareResults();
+
+        // 4. T3h：阴影值链三段对拍（仅形态 B 接管中有 gather 行可读）
+        if (gpu_cull->IsDrawOverrideEnabled())
+            CheckShadowFacts();
+    }
+
+    void CPUCullReferenceSystem::CheckShadowFacts()
+    {
+        // 前提（都在采样窗口后成立）：台架已 SyncForParityReadback ⇒ gather 输出
+        // = 本帧真值。值链 = CPU 访问器(真值) == EntityGPU 行(collect 归一上行)
+        // == gather mtl 行(GPU 照抄) ⇒ 三段逐字节相等才算接线成立。
+        auto gpu_cull = context_->GetSystem<GPUCullSystem>();
+        auto* mtl_buf = gpu_cull->GetMtlOutBuffer();
+        if (!mtl_buf || gpu_count_ == 0)
+            return;
+
+        const auto& entity_table = context_->GetEntityGPUTable();
+
+        const uint32_t read_count = (gpu_count_ < kMaxVisible) ? gpu_count_ : kMaxVisible;
+
+        const auto* mtl_rows = static_cast<const graph::mtl::MaterialInstanceAddresses *>(
+            mtl_buf->Map(0, static_cast<VkDeviceSize>(read_count)
+                                * sizeof(graph::mtl::MaterialInstanceAddresses)));
+        if (!mtl_rows)
+            return;
+
+        // index → owner 指针表（采样窗口一次，容量同实体表）：**不**用裸 EntityID
+        // 造 index-only 句柄——generation 不真 ⇒ IsValidID 判悬垂会失真；
+        // ForEachAliveEntity 只给存活实体，天然安全。
+        const Entity *owners[kMaxVisible] = {};
+        context_->ForEachAliveEntity([&owners](const Entity *e)
+        {
+            const uint32_t idx = e->GetEntityID().index;
+            if (idx < kMaxVisible)
+                owners[idx] = e;
+        });
+
+        uint32_t checked = 0, bad = 0;
+        uint32_t nondefault_seen = 0;   // 判据强度：非默认实体真进链才算"测到了"
+        for (uint32_t k = 0; k < read_count; ++k)
+        {
+            const uint32_t entity_index = gpu_visible_order_[k];
+
+            const EntityGPU *row = entity_table.Row(entity_index);
+            if (!row)
+                continue;
+
+            // 段一：CPU 真值（行字节归一式 = 唯一出处，与 collect/FinalizeBatch 同函数）
+            const Entity *owner = owners[entity_index];
+            const float bias_for_row =
+                NormalizeShadowBiasToRow(GetShadowBiasMultiplier(owner));
+            const uint32_t flags_for_row = CanReceiveShadow(owner) ? 0u
+                : uint32_t(graph::mtl::kMaterialShadowFlagNoReceive);
+
+            // 真非默认 = 与缺省约定（receive、bias 1.0）不同；未挂载实体 accessor
+            // 恒返回缺省 ⇒ 不混进本日志。bias 归一为 0（显式非法值）与 CPU 同字节
+            // 处理，也算显式配置差异，如实列出。
+            const bool nondefault = (flags_for_row != 0u) || (bias_for_row != 1.0f);
+            if (nondefault)
+            {
+                if (nondefault_seen < 8)
+                    GLogInfo(u8"[CPUCullReferenceSystem] shadow non-default: idx=%u"
+                             u8" bias=%.3f flags=%u（三段字节=%.3f/%.3f/%.3f"
+                             u8" %u/%u/%u）",
+                             entity_index, bias_for_row, flags_for_row,
+                             bias_for_row, row->shadow_bias_multiplier,
+                             mtl_rows[k].shadow_bias_multiplier,
+                             flags_for_row, row->shadow_receive,
+                             mtl_rows[k].shadow_flags);
+                ++nondefault_seen;
+            }
+
+            // 段二（实体行）+ 段三（gather 行）：逐字节比
+            if (row->shadow_bias_multiplier != bias_for_row
+             || (row->shadow_receive == 0u ? graph::mtl::kMaterialShadowFlagNoReceive : 0u)
+             != flags_for_row
+             || mtl_rows[k].shadow_bias_multiplier != bias_for_row
+             || mtl_rows[k].shadow_flags != flags_for_row)
+            {
+                if (bad < 5)
+                    GLogWarning(u8"[CPUCullReferenceSystem] shadow facts chain broken:"
+                                u8" idx=%u bias(accessor/row/gather)=%.3f/%.3f/%.3f"
+                                u8" flags(receive-bit/row/gather)=%u/%u/%u",
+                                entity_index,
+                                bias_for_row, row->shadow_bias_multiplier,
+                                mtl_rows[k].shadow_bias_multiplier,
+                                flags_for_row,
+                                row->shadow_receive == 0u ? 1u : 0u,
+                                mtl_rows[k].shadow_flags);
+                ++bad;
+            }
+            ++checked;
+        }
+
+        mtl_buf->Unmap();
+
+        // checked>0 且 bad=0 ⇒ 值链对每个幸存实体成立（非默认实体由测试挂载点
+        // 注入，其存在性在示例日志自证；形态 A 已退役 ⇒ 只有接管帧有 gather 行，
+        // 本判据天然只在形态 B 采样窗口跑）。
+        if (bad == 0)
+            GLogInfo(u8"[CPUCullReferenceSystem] Shadow facts value-chain: %u/%u 实体三段一致",
+                     checked, checked);
     }
 
     void CPUCullReferenceSystem::PerformCPUCulling()
@@ -233,6 +338,7 @@ namespace hgl::ecs
             for (uint32_t k = 0; k < read_count; ++k)
             {
                 const uint32_t idx = indices[k];
+                gpu_visible_order_[k] = idx;   // 保序供值链判据（slot k ↔ gather 行 k）
                 if (idx < kMaxVisible && gpu_visible_map_[idx] == 0)
                 {
                     gpu_visible_map_[idx] = 1;

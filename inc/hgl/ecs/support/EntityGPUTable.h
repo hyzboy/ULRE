@@ -155,6 +155,27 @@ namespace hgl
                 MarkDirty(id.index);
             }
 
+            /// T3h：阴影接收事实上行（写者=collect 的"本项进批"判据点，与 4-ID 表
+            /// 同行；值语义 = CPU FinalizeBatch D3 段已归一的结果 ⇒ 行值可被 gather
+            /// 逐字节照抄）。**值变才标脏**——与 SetVisible 不同的地方：每帧都调，
+            /// 若照抄无条件 MarkDirty，静态实体会永远脏行（「值变才标脏」纪律）。
+            void SetShadowFacts(EntityID id, float bias_multiplier, uint32_t receive)
+            {
+                EntityGPU *row = Row(id);
+
+                if (!row)
+                    return;
+
+                if (row->shadow_bias_multiplier == bias_multiplier
+                 && row->shadow_receive == receive)
+                    return;
+
+                row->shadow_bias_multiplier = bias_multiplier;
+                row->shadow_receive = receive;
+
+                MarkDirty(id.index);
+            }
+
             /// 按实体的**按类型行号表**刷新 `type[]/row[]`（组件挂卸后的唯一同步点）
             void Refresh(const Entity *entity)
             {

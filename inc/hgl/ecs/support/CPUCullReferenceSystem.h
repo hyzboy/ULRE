@@ -61,6 +61,12 @@ namespace hgl::ecs
         // 位图对拍 + 打印统计
         void CompareResults();
 
+        // T3h 值链判据（形态 B 接管中才有意义）：CPU 访问器 → EntityGPU 行事实位 →
+        // gather mtl 行，逐字节三段一致。像素判据对 receive 位不敏感（场景无可见
+        // 投影时全等是空转），值链判据才证明"接线存在且同式"。只查幸存集内的实体
+        //（未进批的实体行 = 从未上行 ⇒ 0/0 属合法初值，不算 mismatch）。
+        void CheckShadowFacts();
+
     private:
         ECSContext* context_ = nullptr;
 
@@ -72,6 +78,10 @@ namespace hgl::ecs
 
         uint8_t cpu_visible_map_[kMaxVisible] = {};
         uint8_t gpu_visible_map_[kMaxVisible] = {};
+
+        // GPU 幸存**顺序表**（= visible_indices 原文：slot k ↔ gather 行表第 k 行）⇒
+        // 值链判据用它把「实体 index → 其 gather mtl 行」对齐（位图丢序，这里保序）。
+        uint32_t gpu_visible_order_[kMaxVisible] = {};
 
         uint32_t cpu_count_ = 0;
         uint32_t gpu_count_ = 0;

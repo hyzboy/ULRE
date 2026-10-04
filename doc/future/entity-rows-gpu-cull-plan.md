@@ -317,6 +317,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 | **T3d-3a（方案 A）**：实体 4-ID 表——剔除改读池口径 geometry_id | `9e0aa0ad1` | **判据修正**：旧 mismatch=0 系两端读同一错下标的假绿；修后 Parity 100/100/0 + 像素逐字节全等（hash 不变）+ Test 断言 48→64 纳入构建；详见 §8.2d |
 | **T3f-2（形态 B）**：gather 输出直连接管绘制（含删除 GPUCullResultHookSystem） | `f2ed4fcd6` | 离屏对照（visible=14/100 真剔 86）像素 **三方逐字节全等**（CPU=A=B）；[T3f2] ENGAGED 正向判据；门 **44 PASS**（新用例 E.mesh-draw-params-head-parity，抓力实测）；详见 §8.2e |
 | **T3g**：派发异步化 + 资源生命周期一次化（修句柄泄漏/stall；**形态 A 退役**） | 本批 | Release `gpu_dispatch` 1114→**~150us/帧（-86%）**；泄漏判据 `tracked_objects` 960 帧**恒 165**（旧实现随帧上涨）；VUID=0（交接沿排空修掉 vkFreeMemory-00677）；门 44/0；像素 CPU==形态B；详见 §8.2f |
+| **T3h**：阴影接收事实的 GPU 通路（欠账①清；guard 阴影前提删除） | 本批 | 值链三段 **100/100**（非默认实体注入实测：idx=23 NoReceive、idx=74 bias=2.0）；门 44/0；ENGAGED reject=0；像素 CPU==B 全等；详见 §8.2g |
 
 ### 8.2 落地件清单（T3d/T3e/T3f-1/T3f-2 全部达成；各节 = §8.2b/§8.2c/§8.2d/§8.2e）
 
@@ -529,24 +530,83 @@ VUID=0；像素 CPU 基线 == 形态 B **逐字节全等**（离屏真剔场景�
 CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的收益是**规模无关性**：
 派发成本不随实体数增长，CPU 剔除 O(n) 线性（7us/100 ⇒ 万级实体 ≈ 0.7ms+），
 盈亏平衡在数千实体；且接管的前提价值（提交数与剔除数解耦、gather 数据面就绪）
-已验证。**形态 B = 唯一接管形态**；两档 opt-in（`SetEnabled` / `SetDrawOverrideEnabled`）
+已验证。**形态 B = 唯一 GPU 路径**；两档 opt-in（`SetEnabled` / `SetDrawOverrideEnabled`）
 默认关纪律不变。
 
-### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6/§8.2b–§8.2f；**T3d/T3e/T3f/T3g 全达成**）
+### 8.2g T3h 落账：阴影接收事实的 GPU 通路（欠账①清）—— 2026-10-04
+
+**目标**：形态 B 的 guard 原挡"实体有非默认阴影参数（ShadowProxy GPU 行未接线）"
+⇒ 非默认阴影实体不进接管范围。本批接线并**删除该前提**。
+
+**落点：为什么住 `EntityGPU` 行**（备选逐个否掉）：
+- 事实归属 = **实体级**（同 asset 的多个实体可各配 receive/bias），与 `Active/Visible`
+  同类——那两个也住在行里；
+- **4-ID 表不行**：它复用 `graph::RenderItemDescriptor`（16B uvec4），与**全局图元
+  描述符池共用同一 GLSL 形状**（T3d-3a"不制造第二个描述符形状"契约）⇒ 塞实体事实
+  会形状分叉，波及池的全部消费者；
+- **材质池 / MeshDrawParams 池不行**：池行按 asset 索引（100 实体共享 10 行），粒度
+  装不下 per-entity 值（§8.2d"一号双表"坑的反向）；
+- **ShadowProxy 无 GPU 行**（T2-c：CPU-only）⇒ 必须"值进行"，塞池行号 GPU 无处可用；
+- ⇒ `EntityGPU._pad` 划 8B：`shadow_bias_multiplier`@88 / `shadow_receive`@92，
+  `_pad` 40→32，**128B 步长与 `alignas(64)` 不变**（填充是布局契约，划用不破契约）。
+  SPIR-V 实测成员偏移 0/4/20/84/88/92/96 + ArrayStride=128，与 `offsetof` 断言族一致。
+
+**写者 / 归一 / 消费**：
+- 写者 = collect 的"本项进批"判据点（与四元组 `SetRenderIDs` **同一判据、同一行**）；
+  `SetShadowFacts` **值变才标脏**（每帧都调——照抄 `SetVisible` 的无条件标脏会让静态
+  实体永远脏行，违背「值变才标脏」纪律）；
+- 归一 = `NormalizeShadowBiasToRow`（ShadowProxy.h **唯一出处**）：`bias<=0 / 非有限
+  ⇒ 0`（消费侧视 0 为默认 1.0，pcf_shadow.glsl:180）；**CPU FinalizeBatch D3 / collect
+  上行 / 台架判据三处共用**（原三处手抄分支已收敛）；
+- 消费 = gather 写 mtl 行阴影两位：`{material, texture, entity.shadow_bias_multiplier,
+  entity.shadow_receive==0 ? NoReceive : 0}`（**逐字节照抄** CPU 归一值）。
+
+**判据：值链，不是像素**：
+- 本示例无投影光 ⇒ 像素对 receive/bias **不敏感**——像素全等只是回归保护，
+  **不构成接线证据**；
+- 真判据 = 台架 `CheckShadowFacts` **三段值链**：CPU 访问器 → `EntityGPU` 行 →
+  gather mtl 行，逐字节；
+- 实测：`Shadow facts value-chain: 100/100 实体三段一致`；`PBR_SHADOW_FACTS=1` 注入
+  两个非默认实体——idx=23（NoReceive：flags 1/0/1）、idx=74（bias=2.0：
+  2.000/2.000/2.000）；
+- 全套：门 44/0；探针/测试 RC=0；ENGAGED items=100 survivors=100（**reject=0**：
+  非默认实体不再挡接管）；Parity 100/100/0；像素 CPU==形态 B（3,686,400 B，与 T3g
+  基线同 sha256）；默认关运行 0 错 0 VUID。
+
+**踩坑**：非默认实体日志首版拿 `bias != 0` 当判据，把 98 个缺省实体（accessor 返
+1.0）全报 non-default——**对照物必须是"缺省约定"（receive / bias 1.0），不是零值**；
+已修正为 `flags!=0 || bias!=1.0`。
+
+### 8.3 下一步顺序（不要重做侦察：落点看 §7，坑看 §7.6/§8.2b–§8.2g；**T3d…T3h 全达成**）
 
 1. ~~性能对比~~ **已完成（T3g，结论见 §8.2f"收益的正确表述"）**：
    `gpu_dispatch` 异步化后 ~150us/帧（旧实现 1.1ms 里大头是每帧 fence + 每帧
    CreateQueue/CreateCmd 泄漏，不是 GPU 剔除）；小场景（100 实体）GPU 路径仍贵于
    CPU 剔除（7us）——收益在规模无关性（派发成本不随实体数增长），盈亏平衡数千实体。
-   ~~形态 A 的去留~~ **已裁决（T3g）**：整体退役，形态 B = 唯一接管形态。
+   ~~形态 A 的去留~~ **已裁决（T3g）**：整体退役；形态 B = 唯一 GPU 路径。
 2. **放开接管范围的既有欠账**（形态 B 首版 guard 挡在外的，按欠账逐个补）：
-   ① **ShadowProxy GPU 行**（阴影非默认实体）—— CPU-only 组件（T2-c 判据），要接管
-      需给实体 4-ID 表/新表补 shadow 两位的 GPU 通路；
+   ① ~~ShadowProxy GPU 行~~ **已完成（T3h，见 §8.2g）**；
    ② **meshlet 几何**（X 组数 = GetMeshletCount 分支）—— 池行补 meshlet_count 字段
       或另源，与 CPU 同口径后才放开；
    ③ **多批/混合材质场景**（R4 单批前提）—— 每批各持一份 gather 输出（着色器按池
       geometry_id 过滤幸存）或逐批 range/count，消费侧契约已核（§8.3 旧案存档）；
    ④ **实例化/多实例 item**（gather 每实体一命令 Y=1 不适配）。
+3. **架构决策（2026-10-04 拍板）**：
+   - **DGC 不在本线计划内**：开发机实测无 `VK_EXT_device_generated_commands`
+     （Intel Arc 140T / 驱动 2025-01，`vulkaninfo` 查无）。形态 B **不依赖任何扩展**
+     （compute + mesh shader + indirect count；引擎已按 `GetDeviceProc` 动态加载 +
+     空检查 + fallback 的既有模式接入，先例 `VKDeviceCreater.cpp:690-693`）。
+     将来若真要用，只需插"执行层"（见下），决策层/校验层零改动。
+   - **CPU 渲染路径的处置**：在 ②③④ 覆盖完真实场景之前，它是形态 B 覆盖不到的场景的
+     **唯一出路** ⇒ 保留；等形态 B 在真实场景全集（多批/混材质/meshlet/实例化/阴影）
+     判据全绿后再删，或按 RELEASE 宏屏蔽（CPU 参考判据不受影响）。
+   - **数据取回校验常驻**：CPU 参考实现（纯计算、不发命令）+ 台架采样对拍（fence +
+     Map，每 60 帧一个采样窗口，生产路径零同步）是"画面错了能查"的唯一手段 ⇒ 不受
+     渲染路径增删影响。覆盖：剔除判据 / 批次行表 / 命令流三类；管线·描述符·像素错
+     仍需 RenderDoc 做最终视觉确认。
+   - **分层契约（换任何执行器都不白做）**：决策层（compute 产可见集 / 批次分配 /
+     行表）→ 执行层（现 = CPU 按决策表录 indirect count 绘制；将来可换 token 流）→
+     校验层（读决策层对拍）。
 
 ### 8.4 已知的既有待查项（与本线无关但影响未来 GPU 剔除正确性）
 

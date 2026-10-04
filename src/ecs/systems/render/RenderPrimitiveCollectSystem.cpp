@@ -5,6 +5,7 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/ShadowProxy.h>
 #include<hgl/ecs/support/PrimitiveState.h>
+#include<cmath>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
@@ -2393,6 +2394,18 @@ namespace hgl::ecs
                     render_ids.material_id  = material_id;
                     render_ids.texture_id   = texture_id;
                     world->GetEntityRenderIDTable().SetRenderIDs(entity_id, render_ids);
+
+                    // T3h：阴影**事实**随同一判据点上 EntityGPU 行（ShadowProxy 是
+                    // CPU-only 组件、无 GPU 行号可推 ⇒ 值进行才算接线；写者=世界，
+                    // 与 SetVisible 同族）。消费规则与 CPU FinalizeBatch 的 D3 段
+                    // 逐字同式（bias<=0/非有限 ⇒ 行留 0 ⇒ 着色侧视 0 为默认 1.0）。
+                    {
+                        Entity *shadow_owner = world->GetEntity(entity_id);
+                        world->GetEntityGPUTable().SetShadowFacts(
+                            entity_id,
+                            NormalizeShadowBiasToRow(GetShadowBiasMultiplier(shadow_owner)),
+                            CanReceiveShadow(shadow_owner) ? 1u : 0u);
+                    }
                 }
             }
 

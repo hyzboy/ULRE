@@ -13,10 +13,10 @@
 // 已指向本帧槽 ⇒ 拿到的恒是**本帧**那份表），行 = 基址 + EntityID.index × 128，
 // 直索引、无 CPU 紧凑表。用法：entity_gpu_rows[index].flags / .type[CT] / .row[CT]。
 //
-// _pad[40] 是**布局契约**不是装饰：scalar layout 下 GLSL 结构按成员紧凑排布，
-// 88 B 载荷若不以 _pad 填回 40 B，数组步长就是 88 而非 C++ 端 alignas(64) 的
-// 128 ⇒ 第 2 行起全部错位。填充放在行尾（offset 88..127），任何 C++ 字段的偏移
-// 都不受影响，与头文件的 offsetof 断言族互不干扰。
+// _pad 是**布局契约**不是装饰：scalar layout 下 GLSL 结构按成员紧凑排布，载荷
+// 若不以 _pad 填回 128，数组步长就是载荷长而非 C++ 端 alignas(64) 的 128 ⇒
+// 第 2 行起全部错位。T3h 起填充区前部划出 shadow 两个事实字段（@88/@92，
+// _pad 40→32）——填充在行尾，划用同样不破坏契约，与 offsetof 断言族互验。
 //
 // 容量 4096（P-B8-6）不进本结构：那是表级常量，由 C++ 端持有（本文件是行形状，
 // 不是表边界）。
@@ -41,7 +41,9 @@ struct EntityGPUData
     uint8_t type[ENTITY_GPU_SLOT_COUNT];     // 槽 i != 0 ⇒ 实体有 ComponentType(i) 组件
     uint row[ENTITY_GPU_SLOT_COUNT];         // 槽 i 的 arena 行号；0 = 无（行 0 哨兵惯例）
     uint work_flags;                         // 工作期派生位；恒 0，等消费者定义（不造没人读的位）
-    uint8_t _pad[40];                        // 显式填充：88 B 载荷 ⇒ 128 B 步长（对齐契约）
+    float shadow_bias_multiplier;            // T3h 阴影 Bias 倍率事实（0=未上行/默认；消费规则同 CPU）
+    uint shadow_receive;                     // T3h 接收阴影事实位（1=接收；0⇒消费端置 NoReceive）
+    uint8_t _pad[32];                        // 显式填充：载荷 96 B ⇒ 128 B 步长（对齐契约）
 };
 
 layout(buffer_reference, scalar, buffer_reference_align=64) readonly buffer EntityGPURef

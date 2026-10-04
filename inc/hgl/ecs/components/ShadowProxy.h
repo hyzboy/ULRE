@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/ComponentRow.h>
 #include<hgl/ecs/core/Entity.h>
+#include<cmath>
 #include<string>
 
 namespace hgl::ecs
@@ -62,6 +63,14 @@ namespace hgl::ecs
     bool CanReceiveShadow(const Entity *owner);
     /// 缺省：未挂载 ShadowProxy ⇒ 倍率 1.0f
     float GetShadowBiasMultiplier(const Entity *owner);
+
+    /// T3h：Bias 的**行字节归一**（唯一出处）：<=0 / 非有限 ⇒ 0.0f（消费侧约定
+    /// 「行 0 = 引擎默认 1.0」，见 pcf_shadow.glsl）。CPU FinalizeBatch、collect
+    /// 事实位上行、台架值链判据三处共用本式 ⇒ 无第二口径。
+    inline float NormalizeShadowBiasToRow(float bias)
+    {
+        return (bias > 0.0f && std::isfinite(bias)) ? bias : 0.0f;
+    }
 
     /// T2-c：登记类型号（**CPU-only**：无 GPU 行、不写 `EntityGPU.row[]`）。
     template<> struct ComponentTypeOf<ShadowProxy> { static constexpr ComponentType value = ComponentType::ShadowProxy; };
