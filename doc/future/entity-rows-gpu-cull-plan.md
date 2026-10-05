@@ -1360,7 +1360,8 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
 ### 11.4 任务切分（按 B）
 
 - **T4c1** 竞技场按 pass 分扇区（主帧扇区 / 阴影扇区）——容量拍板：4096 不变（各半 2048）还是扩到 8192；不得跨帧槽互盖。
-- **T4c2** gather 加“直通档”（无剔除 ⇒ 行 = 批内项，序同 CPU 口径）+ 档位表与门/契约（同 `B.batch-info-struct-parity` 族）。
+- **T4c2 ✅ 已完成**（行为中性地铺管道：块 0 仍受剔除、块 1 直通档待 T4c3 启用）：批行/计数**按 pass 分块**（`kBatchBlockStride = kMaxBatches + 1`，块内 = 256 行 + 1 溢出槽）；API 全带 pass（`BeginBatchTagWrite(pass)` 并清本块、`SetBatchLayout`/`EndBatchLayout`/`GetBatchLayout`/`MapCurrentBatchCounters`/计数偏移）；push 新增 `batch_block_stride`（**sizeof 104 → 112**）；shader 两遍循环（可见表口径逐字不变；阴影图只看深度、绘制序无关 ⇒ 不必搬批内序号）；gate 补第三对常量。判据：门 45/0 + Test 42 + **六台架与阴影两例摘要逐位不变** + 0 VUID。
+- **T4c2 原计划（保留供追溯）** gather 加“直通档”（无剔除 ⇒ 行 = 批内项，序同 CPU 口径）+ 档位表与门/契约（同 `B.batch-info-struct-parity` 族）。
   ▸ **设计要点（本轮侦察）**：【１】**批布局（BatchInfoRow）需按 pass 分行** ——两 pass 各有自己的切片基址，
    而布局库今天每帧槽只有一份；【２】**剔除派发需覆盖两扇区**（主帧 pass 的 kMaxBatches 行 + 阴影 pass 的
    kMaxBatches 行 ⇒ 派发 2× 批数，带 pass 选择字段）。
