@@ -1370,6 +1370,14 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
    “GPU 行所属相机行”字段。不可用阴影相机行（会读到另一个槽的行）。
 - **T4c4** 删 `WriteMeshDrawCommands` / `EnsureMeshDrawParams`（`MaterialBatch` 版）/ `draw_batches`（含 `DrawBatch` 结构、CPU ICB 缓冲、`ReallocICB`；注意 `Geometry::EnsureMeshDrawParams` 是**几何侧另一个**，不能误删）。
 
-**判据**：阴影三例（`ShadowMap` / `AlphaTestShadow` / `CascadeShadowMap`）摘要不变（**需先给后两个补框摘要自检钩子**，目前只有 ATS 有 `ATS_SELFCHECK`）+ 六台架摘要不变 + 门/契约 + 0 VUID/0 ERROR。
+**判据**：阴影三例（`ShadowMap` / `AlphaTestShadow` / `CascadeShadowMap`）摘要不变 + 六台架摘要不变 + 门/契约 + 0 VUID/0 ERROR。
+
+> **判据前置 ✅ 已完成**：`ShadowMap` / `CascadeShadowMap` 已按 CV_/GC_/PG_ 同一打法补上帧摘要自检
+> （`SM_SELFCHECK` / `CSM_SELFCHECK`，第 8 帧色彩靶回读；退出码即契约）。实跑记录：
+> ShadowMap **`0xA8A369516CB04571`**（1280×720）、Cascade **`0x1CDAADEBF18B7CE4`**（1600×900）。
+> **必须从第 0 帧起冻结动画**（ShadowMap 网格自旋 + **光源环绕**；Cascade 时长驱动轨道），
+> 否则摘要随时序漂移（实测两次不同）；ShadowMap 另给 `SM_FREEZE=0` 专供敏感性验证。
+> 敏感性已证：`SM_FREEZE=0` 与 `CSM_AUTOWALK=1` 均使摘要变 + rc=1。
+> ⚠ 两例必须**以仓库根为 cwd、经 python subprocess 启动**（从 bash 直起 ⇒ `GLSLCompiler` 插件加载失败、rc=127 零输出）。
 
 **风险**：R1 扇区容量不足时的口径（与 T4b 同：fail-fast）；R2 参考系统的对拍是否要跟着分 pass；R3 `pc_root` 的相机行在阴影下取谁（与切片槽一致）；R4 `CV_STRESS` 类压测在两个扇区下的容量口径。
