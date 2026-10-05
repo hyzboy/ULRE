@@ -1318,3 +1318,46 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 
 > 下一动作（T1 试点）：在 `example/Cull/GPUDrivenCull` 加 `GC_SELFCHECK=1`——第 8 帧回读颜色靶，
 > 算 `{不同取值数, FNV-1a 64}` 与内联常量比对，PASS/FAIL 收成退出码；摘要常数由实跑记录。
+
+---
+
+## §11 T4c：shadow pass 进 GPU 路径（→ 写行/ICB 三样才可删）（2026-10-06 侦察）
+
+### 11.1 现状（量化，逐条有落点）
+
+| 事实 | 落点 |
+|---|---|
+| 接管在**每 pass 的批次装配**里评估（不是每帧一次） | `TryApplyGPUCullOverride` ← `FinalizeBatches` ← `RunBatching`；`PrimitiveRenderPipeline` 调 cull/sort → 每 pass 一趟 |
+| shadow pass **显式早退**（不接管） | `PrimitiveBatchPipeline.cpp:1171` `if (world->IsCurrentPassShadow()) return;`（理由：shadow 批共用同一 `materialBatches` 表） |
+| 接管激活时 **CPU 剔除对两 pass 都跳** | `RunCulling` 的 `IsGPUCullFullTakeoverActive()` 早退；注释明写“shadow pass 同样跳（caster 全进；多画不出错，§8.3 首版口径）” |
+| ⇒ 两 pass 的**输入项集相同**（全项） | 差别只在绘制集：主帧 = GPU 剔除后的子集；阴影 = 全量（今天由 CPU 写全量 ICB） |
+| 阴影的绘制今天仍走 CPU 写行/ICB | `WriteMeshDrawCommands` / `EnsureMeshDrawParams` / `draw_batches` 就是它的活路（T4b 后已无其他活路） |
+| 竞技场 = `EntityGPUTable::kCapacity(4096)` 行，按批切片（Σcapacity ≤ 4096，4 行对齐） | `GPUCullSystem` 切片装配 |
+| 剔除派发**每帧一次**（帧槽分份） | `SetExecutionPhase(RenderFrameSync)`；**ring 深度 == 槽空间**（L2W 同类事故的不变量） |
+
+### 11.2 目标与不可动的不变量
+
+目标：**shadow pass 的间接命令也由 GPU 产**（CPU 不再写 ICB/参数行）⇒ 三样可删（T4c4）。
+不可动：per-frame 的 ring/slot 不变量；竞技场行数 == 4096；切片 4 行对齐；`pc_root` 三表 push 的切片语义；帧槽间不得互盖（各槽各份）。
+
+### 11.3 三条路线
+
+| 路线 | 做法 | 阴影语义 | 规模 | 代价 / 风险 |
+|---|---|---|---|---|
+| **A 正确解** | 每 pass 各一次 GPU 剔除（阴影用**光锥 + caster 集**）⇒ 竞技场再分一份 | 正确（离屏 caster 也投影） | **大**：剔除从“每帧一次”变“每 pass 一次” ⇒ 帧槽/ring 机械要加 **pass 维** | R1：ring 不变量（L2W 同类）；R2：容量拍板 |
+| **B 中等（建议）** | GPU 产一份“**全量直通**”行集给阴影（gather 加 no-cull 档，不需光锥） | **与今天逐字等价**（全量） | 中：gather 加档 + 阴影自己的切片（容量：分扇区或 8192） | R：容量拍板；档位表 + 契约 |
+| **C 最省** | 阴影**复用主帧行集**（去早退 ⇒ 阴影也读 `gpu_row_base` 切片） | **退化**：只画主帧可见集（离屏 caster 不投影） | 小：去早退 + 阴影 push 用主帧相机行/槽 | R：**语义退化**（需拍板）；台架可能不敏感 ⇒ 不能靠摘要拤住 |
+
+**建议 B**：与今天行为**逐字等价**（阴影=全量），不引入新语义，且不需要 pass 维的 ring 改造；A 的正确性收益（光锥剔除）只在阴影质量/性能上体现，可留作后续。
+C 除非你明确接受“阴影只画主帧可见集”，否则不取。
+
+### 11.4 任务切分（按 B）
+
+- **T4c1** 竞技场按 pass 分扇区（主帧扇区 / 阴影扇区）——容量拍板：4096 不变（各半 2048）还是扩到 8192；不得跨帧槽互盖。
+- **T4c2** gather 加“直通档”（无剔除 ⇒ 行 = 批内项，序同 CPU 口径）+ 档位表与门/契约（同 `B.batch-info-struct-parity` 族）。
+- **T4c3** 阴影 pass 消费自己的切片（**定稿**：`pc_root` 的 `camera_row`/地址槽在阴影下取谁 —— 今天按 pass 取，需与切片所在槽一致）+ 去掉早退。
+- **T4c4** 删 `WriteMeshDrawCommands` / `EnsureMeshDrawParams`（`MaterialBatch` 版）/ `draw_batches`（含 `DrawBatch` 结构、CPU ICB 缓冲、`ReallocICB`；注意 `Geometry::EnsureMeshDrawParams` 是**几何侧另一个**，不能误删）。
+
+**判据**：阴影三例（`ShadowMap` / `AlphaTestShadow` / `CascadeShadowMap`）摘要不变（**需先给后两个补框摘要自检钩子**，目前只有 ATS 有 `ATS_SELFCHECK`）+ 六台架摘要不变 + 门/契约 + 0 VUID/0 ERROR。
+
+**风险**：R1 扇区容量不足时的口径（与 T4b 同：fail-fast）；R2 参考系统的对拍是否要跟着分 pass；R3 `pc_root` 的相机行在阴影下取谁（与切片槽一致）；R4 `CV_STRESS` 类压测在两个扇区下的容量口径。
