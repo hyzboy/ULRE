@@ -201,41 +201,16 @@ namespace hgl::ecs
         uint32_t max_instances               = 0;   ///< 实例容量
         uint32_t allocated_instance_capacity = 0;   ///< 已分配连续槽位数（>1 ⇒ 句柄为区间基址）
 
-        // ── B5-a（P-5）：缓冲区**只存句柄**（世界级 `MaterialRuntimeBufferTable` 的行号；
-        //    0 = 无缓冲）。行内不放指针 —— 这是本 slot 将来升格为定长行 arena 一行的前提。
-        //    取指针：`world.GetMaterialRuntimeBufferTable().Resolve<T>(handle)`。
-        uint32_t l2w_buffer_handle                = 0;  ///< L2W 矩阵 SSBO（BDA: l2w.mats[]）
-        uint32_t l2w_index_buffer_handle          = 0;  ///< L2W 索引表 SSBO（BDA: ResolveTransformID）
-        uint32_t mesh_draw_params_buffer_handle   = 0;  ///< MeshDrawCommand SSBO（BDA: cmds[gl_DrawID]）
-        uint32_t material_data_rows_buffer_handle = 0;  ///< MaterialInstanceAddresses SSBO（BDA: values[]）
-
-        uint32_t indirect_cmds_buffer_handle  = 0;      ///< GPU 间接绘制命令缓冲
-        uint32_t indirect_count_buffer_handle = 0;      ///< 动态绘制计数缓冲（可选）
-        uint64_t indirect_count_offset        = 0;      ///< 计数缓冲内偏移（字节；VkDeviceSize == uint64_t）
-
-        /// 本 slot 登记的全部缓冲区句柄（`DestroySlot` 按引用释放；见 B5-a）
-        uint32_t GetBufferHandles(uint32_t (&out)[6]) const noexcept
-        {
-            out[0] = l2w_buffer_handle;
-            out[1] = l2w_index_buffer_handle;
-            out[2] = mesh_draw_params_buffer_handle;
-            out[3] = material_data_rows_buffer_handle;
-            out[4] = indirect_cmds_buffer_handle;
-            out[5] = indirect_count_buffer_handle;
-            return 6;
-        }
-
-        bool is_gpu_driven = false;    ///< true ⇒ 绕过 CPU ICB / 索引表重建
-        bool is_indirect    = false;   ///< true ⇒ 用间接命令
     };
 
     /// **行宽定稿**（B5-b）：`MaterialRuntimeSlot` 全字段均为 POD、**无任何指针** ⇒
     /// 宽度是平台稳定的定值，这就是它将来升格为 (World, MaterialRuntime) 行 arena 一行的前提
     ///（行宽一变，所有按行索引的并行表/地址都要跟着动 ⇒ 用断言钉死，改动必须显式）。
     /// 字段与占位：row 4 | 2×u8 + bool +pad 4 | shadow_retry 4 | 2×tracked 4 | 3×bool +pad 4 |
-    /// last_materialize_epoch 8 | render_item_handle 8 | 实例三字段 12 +pad 4 | 6×句柄 24 |
-    /// indirect_count_offset 8 | 2×bool +pad ⇒ **x64/MSVC 实测 88 B**（探针 `ProbeTransformDiagnostics` 同源打印）。
-    static_assert(sizeof(MaterialRuntimeSlot) == 88,
+    /// last_materialize_epoch 8 | render_item_handle 4 | 实例三字段 12 ⇒ **x64/MSVC 实测 48 B**（探针 `ProbeTransformDiagnostics` 同源打印）。
+    /// B5-a 的 6 个缓冲区句柄与世界级 `MaterialRuntimeBufferTable` 已整体退役
+    ///（外部 GPU-Driven 入口系整体删除，见计划档）。
+    static_assert(sizeof(MaterialRuntimeSlot) == 48,
                   "MaterialRuntimeSlot 行宽已冻结（B5-b）：改字段必须同步改断言并回写计划文档");
 
     class MaterialRuntimeTable

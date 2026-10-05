@@ -4,10 +4,7 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
-#include<hgl/ecs/support/MaterialRuntimeBufferTable.h>
-#include<hgl/vk/buffer/BufferOwner.h>            // 句柄表按 BufferOwner* 收缓冲：upcast 需要完整类型
 #include<hgl/vk/buffer/DeviceBuffer.h>
-#include<hgl/vk/buffer/IndirectCommandBuffer.h>
 #include<hgl/ecs/support/RenderItemDataStorage.h>
 
 namespace hgl::ecs
@@ -241,70 +238,4 @@ namespace hgl::ecs
         return true;
     }
 
-    // ── 多实例 GPU 绑定 ──
-
-    // ── B5-a（P-5）：缓冲区以**句柄**入 slot（指针存世界级句柄表）。
-    //    统一姿势：先 Release 本 slot 上的旧句柄（0 句柄是 no-op），再 Register 新的
-    //    ⇒ 反复调用不会把引用计数堆高，也不会把共享缓冲的句柄提前回收。
-    namespace
-    {
-        uint32_t SwapBufferHandle(ECSContext &world, MaterialRuntimeSlot &slot,
-                                  uint32_t &field, graph::BufferOwner *buf)
-        {
-            MaterialRuntimeBufferTable &table = world.GetMaterialRuntimeBufferTable();
-
-            table.Release(field);
-            field = table.Register(buf);
-
-            (void)slot;
-            return field;
-        }
-    }//namespace
-
-    void SetL2WBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf)
-    {
-        MaterialRuntimeSlot &slot = world.GetOrCreateMaterialRuntimeSlot(owner);
-        SwapBufferHandle(world, slot, slot.l2w_buffer_handle, buf);
-    }
-
-    void SetL2WIndexBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf)
-    {
-        MaterialRuntimeSlot &slot = world.GetOrCreateMaterialRuntimeSlot(owner);
-        SwapBufferHandle(world, slot, slot.l2w_index_buffer_handle, buf);
-    }
-
-    void SetMeshDrawParamsBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf)
-    {
-        MaterialRuntimeSlot &slot = world.GetOrCreateMaterialRuntimeSlot(owner);
-        SwapBufferHandle(world, slot, slot.mesh_draw_params_buffer_handle, buf);
-    }
-
-    void SetMaterialDataRowsBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf)
-    {
-        MaterialRuntimeSlot &slot = world.GetOrCreateMaterialRuntimeSlot(owner);
-        SwapBufferHandle(world, slot, slot.material_data_rows_buffer_handle, buf);
-    }
-
-    void SetIndirectMeshTaskBuffer(ECSContext &world, EntityID owner, graph::IndirectMeshTaskBuffer *buf)
-    {
-        MaterialRuntimeSlot &slot = world.GetOrCreateMaterialRuntimeSlot(owner);
-
-        SwapBufferHandle(world, slot, slot.indirect_cmds_buffer_handle, buf);
-
-        if (buf)
-            slot.is_indirect = true;
-    }
-
-    void SetIndirectCountBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf, uint64_t offset)
-    {
-        MaterialRuntimeSlot &slot = world.GetOrCreateMaterialRuntimeSlot(owner);
-
-        SwapBufferHandle(world, slot, slot.indirect_count_buffer_handle, buf);
-        slot.indirect_count_offset = offset;
-    }
-
-    void SetGPUDriven(ECSContext &world, EntityID owner, bool enabled)
-    {
-        world.GetOrCreateMaterialRuntimeSlot(owner).is_gpu_driven = enabled;
-    }
 }//namespace hgl::ecs

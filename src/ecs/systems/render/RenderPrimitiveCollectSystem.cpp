@@ -2330,14 +2330,12 @@ namespace hgl::ecs
             std::unique_ptr<PrimitiveRenderItem> item;
 
             // A5b：多实例与否按**每实例 slot** 判定（原图元多实例组件已删）：
-            // 分配过连续槽位 / GPU 驱动 / 间接 = 多实例绑定。
+            // 分配过连续槽位 = 多实例绑定。
             const MaterialRuntimeSlot *render_slot = runtime_table
                 ? runtime_table->GetSlot(entity_id)
                 : nullptr;
             const bool is_instanced = render_slot
-                && (render_slot->allocated_instance_capacity > 0
-                 || render_slot->is_gpu_driven
-                 || render_slot->is_indirect);
+                && render_slot->allocated_instance_capacity > 0;
 
             if (is_instanced && render_slot->allocated_instance_capacity > 1)
             {

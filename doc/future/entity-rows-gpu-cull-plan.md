@@ -925,3 +925,53 @@ GLTFConvert.exe --no-images --no-meshlet <input.gltf> <out_dir>
   （dist 12→1036、40→84、150→6 ⇒ 模型很小/相机没对准）。T2 的"逐字节全等"判据需要**先把模型框满**，
   建议给 `LoadScene` 再补 `LS_TX/TY/TZ`（target 覆盖）并实测一组取景参数。
 - `LoadScene` 的资产路径是硬编码单例；本轮已加 `LS_SCENE` 覆盖，未改默认行为。
+
+---
+
+## §8.9 B5-a 外部 GPU-Driven 注入入口整体退役（2026-10-05）
+
+**背景**：`example/ApiValidation/ComputeFrustumCull` / `ComputeAsteroidBelt` 是**外部自己驱动 GPU
+绘制路径**的探针（自建 compute 管线 + 7 张 BDA 表 + 间接命令/计数/L2W 索引表，再用 `SetGPUDriven`
++ 5 个 `Set*Buffer` 把整套塞进引擎）。T3 线把这条路径**整体接管**（引擎 `GPUCullSystem` 成为唯一
+owner）之后，这两个示例在 **T3i `6b6baa39f` 静默黑屏**。
+
+### 根因（实测，可复现）
+
+T3i 在 `src/ecs/support/PipelineMaterialRenderer.cpp` 引入
+`max_count = gpu_driven_override ? gpu_capacity : indirect_draw_count`，而 **`gpu_capacity` 全仓只有
+`GPUCullSystem.cpp:763` 写**（引擎剔除接管时）；外部注入的批从不 engaged 它 ⇒ `maxDrawCount = 0`
+⇒ `vkCmdDrawMeshTasksIndirectCountEXT` 画 0 条。实测日志：
+`[IndirectMeshDraw] mesh indirect flush engaged: first=0 count=0（gpu_driven=1 row_base=0 capacity=0）`；
+**0 VUID、0 `[ERROR]`**（`maxDrawCount=0` 合法）⇒ 只有画面看得出黑屏。
+（不是迁移问题：源码逐字节相同、全新构建、由提交历史可确定复现。）
+
+### 处置（拍板「深删」，不补 fallback）
+
+删掉整个外部注入入口系：7 个 setter（`SetGPUDriven` / `SetL2WBuffer` / `SetL2WIndexBuffer` /
+`SetMeshDrawParamsBuffer` / `SetMaterialDataRowsBuffer` / `SetIndirectMeshTaskBuffer` /
+`SetIndirectCountBuffer`）、`MaterialRuntimeSlot` 的 6 个 `*_handle` + `indirect_count_offset` +
+`is_gpu_driven` / `is_indirect`、`GetBufferHandles`、**世界级 `MaterialRuntimeBufferTable` 句柄表整体**
+（B5-a 的唯一承载物）、`InstancedPrimitiveRenderItem` 的 9 个 buffer getter、
+`PrimitiveBatchPipeline::FinalizeBatch` 的外部注入支、`RenderPrimitiveCollectSystem` 的
+`is_gpu_driven`/`is_indirect ⇒ is_instanced` 两条判据、**Test 37（B5-a 契约）整块**。
+`MaterialRuntimeSlot` 行宽 **88 → 48 B**（`static_assert` 与布局注释同步改；Test 38 契约文本 88→48）。
+
+- ⚠ `gpu_driven_override` **字段不删**：`GPUCullSystem.cpp:756` 在用（引擎剔除路径），只删外部注入那支。
+- Test 30 盯的是 `PrimitiveBatchPipeline.cpp:531`（现役 GPU-Driven 路径），未受影响。
+
+### 示例侧处置
+
+| 示例 | 处置 | 依据 |
+|---|---|---|
+| `ComputeFrustumCull` | **重写为正式示例** `example/Cull/GPUDrivenCull`（新目录 `example/Cull/`，FOLDER `ULRE/Example/Cull`）：8×8=64 立方体单批；示例只装配实体 + 相机，剔除全交引擎 | 实测 `ENGAGED: batches=1/1 items=64 arena_rows=64`；三方（接管 / 仅 dispatch / 纯 CPU 账）像素**逐字节全等**；0 VUID / 0 `[ERROR]` |
+| `ComputeAsteroidBelt` | 源码停放 `example/ApiValidation/_Obsolete/`，**待 ④ 实例化落地后再重写为正式示例** | `EntityGPUTable::kCapacity = 4096` 冻结 + guard 拒 `InstancedPrimitiveRenderItem` ⇒ 百万规模现在进不了这条路径 |
+| `SimpleMeshTriangle` | 删除（无价值） | —— |
+| `ComputeDispatch` / `ComputeIndirectCount` / `ComputeTransformHierarchy` | **保留**（实测全绿，各自覆盖不同 API 面；其中 `ComputeIndirectCount` 走的正是 T3 **现役** `MaterialBatch.icb_count_buffer` 路径） | 三个各自验证 256 元素 compute+BDA 读回 / 22 PASS / 23 PASS（max_diff=1e-6） |
+
+### 门 / 测试
+
+- 门 `ShaderResourceSchemaRegressionGate`：**44 PASS / 0 FAIL**。
+- `TestCSMIncrementalPass`：**rc=0、40 Passed / 0 Failed**（"All CSM Incremental Pass Contract Tests PASSED"）。
+- 顺带修了 Test 14 一条**既有陈旧契约**：T3h `aa54f2dcb` 把写入改成归一后的 `bias_for_row`
+  （`NormalizeShadowBiasToRow`），契约串仍写 `bias_multiplier` ⇒ **HEAD 上本来就红**，且它 `return failed`
+  会挡住 Test 15..41（我改的 Test 38 在里面）。已把契约串同步为 `= bias_for_row;`，保留契约原意。

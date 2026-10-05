@@ -158,6 +158,10 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 - ④ **A5b 从已删渲染组件迁来的每实例绑定**（指针已出清，形态见下）：`render_item_handle`、
   多实例 `instance_count` / `max_instances` / `allocated_instance_capacity`、`is_gpu_driven` / `is_indirect`。
 
+> **⚠ 2026-10-05 退役**：下述「6 个缓冲字段 → 世界级句柄表行号」整条已
+> **随外部 GPU-Driven 注入入口整体退役而删除**（含 `MaterialRuntimeBufferTable` 与 `is_gpu_driven` / `is_indirect`）；
+> `MaterialRuntimeSlot` 行宽 88 → 48 B。本节保留为历史记录，详见 `doc/future/entity-rows-gpu-cull-plan.md` §8.9。
+
 **✅ 已闭合（B5-a + B5-b，2026-10-02）—— ④ 里的指针/句柄字段按「行 arena + 值类型句柄」全部出清，无"待定"残留**：
 
 - **6 个缓冲字段 → 世界级句柄表行号**（`inc/hgl/ecs/support/MaterialRuntimeBufferTable.h`）：`l2w` / `l2w_index` /

@@ -20,7 +20,6 @@
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/MaterialAuthoringSideTable.h>
-#include<hgl/ecs/support/MaterialRuntimeBufferTable.h>
 #include<hgl/ecs/support/MaterialRuntimePipelineTable.h>
 #include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/components/CameraComponent.h>
@@ -201,9 +200,6 @@ namespace hgl
             /// 按材质组件行行号索引；设备级行里只留 POD（授权位 + revision）。
             std::unique_ptr<MaterialAuthoringSideTable> material_authoring_side_table;
 
-            /// B5-a：设备缓冲**句柄表**（`MaterialRuntimeSlot` 里的缓冲区只存句柄，
-            /// 指针本体在这里；见 support/MaterialRuntimeBufferTable.h）。
-            std::unique_ptr<MaterialRuntimeBufferTable> material_runtime_buffer_table;
 
             /// B5-b：每实例 × 每 pass 的**运行期管线缓存**（slot 里不放指针 ⇒ 落这里；
             /// 见 support/MaterialRuntimePipelineTable.h）。
@@ -810,8 +806,6 @@ namespace hgl
             MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() { return *material_runtime_pipeline_table; }
             const MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() const { return *material_runtime_pipeline_table; }
 
-            MaterialRuntimeBufferTable& GetMaterialRuntimeBufferTable() { return *material_runtime_buffer_table; }
-            const MaterialRuntimeBufferTable& GetMaterialRuntimeBufferTable() const { return *material_runtime_buffer_table; }
 
             MaterialAuthoringSideTable* GetMaterialAuthoringTable() { return material_authoring_side_table.get(); }
             const MaterialAuthoringSideTable* GetMaterialAuthoringTable() const { return material_authoring_side_table.get(); }

@@ -817,33 +817,6 @@ namespace hgl::ecs
 
         for (auto *item : batch.items)
         {
-            if (auto *inst_item = dynamic_cast<InstancedPrimitiveRenderItem *>(item))
-            {
-                if (inst_item->IsGPUDriven())
-                {
-                    batch.gpu_driven_override = true;
-                    batch.own_icb_mesh_tasks = false;
-                    batch.own_mesh_draw_params = false;
-                    batch.own_l2w_index = false;
-                    batch.own_material_data_rows = false;
-
-                    if (inst_item->GetL2WBuffer())
-                        batch.l2w_buffer = inst_item->GetL2WBuffer();
-                    if (inst_item->GetL2WIndexBuffer())
-                        batch.l2w_index_buffer = inst_item->GetL2WIndexBuffer();
-                    if (inst_item->GetMeshDrawParamsBuffer())
-                        batch.mesh_draw_params_buffer = inst_item->GetMeshDrawParamsBuffer();
-                    if (inst_item->GetMaterialDataRowsBuffer())
-                        batch.material_data_index_rows_buffer = inst_item->GetMaterialDataRowsBuffer();
-                    if (inst_item->GetIndirectMeshTaskBuffer())
-                        batch.icb_mesh_tasks = inst_item->GetIndirectMeshTaskBuffer();
-                    if (inst_item->GetIndirectCountBuffer())
-                    {
-                        batch.icb_count_buffer = inst_item->GetIndirectCountBuffer();
-                        batch.icb_count_buffer_offset = inst_item->GetIndirectCountOffset();
-                    }
-                }
-            }
 
             if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(item))
             {

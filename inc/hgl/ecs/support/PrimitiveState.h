@@ -71,12 +71,4 @@ namespace hgl::ecs
                             uint32_t material_id, uint32_t texture_id,
                             bool sequential_transforms = true);
 
-    // ── 多实例 GPU 绑定（BDA 缓冲；每实体一份）──
-    void SetL2WBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf);
-    void SetL2WIndexBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf);
-    void SetMeshDrawParamsBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf);
-    void SetMaterialDataRowsBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf);
-    void SetIndirectMeshTaskBuffer(ECSContext &world, EntityID owner, graph::IndirectMeshTaskBuffer *buf);
-    void SetIndirectCountBuffer(ECSContext &world, EntityID owner, graph::DeviceBuffer *buf, uint64_t offset = 0);
-    void SetGPUDriven(ECSContext &world, EntityID owner, bool enabled);
 }//namespace hgl::ecs

@@ -22,14 +22,5 @@ namespace hgl::ecs
         ~InstancedPrimitiveRenderItem() override = default;
 
         uint32_t GetInstanceCount() const;
-        hgl::graph::DeviceBuffer *GetL2WBuffer() const;
-        hgl::graph::DeviceBuffer *GetL2WIndexBuffer() const;
-        hgl::graph::DeviceBuffer *GetMeshDrawParamsBuffer() const;
-        hgl::graph::DeviceBuffer *GetMaterialDataRowsBuffer() const;
-        hgl::graph::IndirectMeshTaskBuffer *GetIndirectMeshTaskBuffer() const;
-        hgl::graph::DeviceBuffer *GetIndirectCountBuffer() const;
-        uint64_t GetIndirectCountOffset() const;
-        bool IsGPUDriven() const;
-        bool IsIndirect() const;
     };
 }//namespace hgl::ecs

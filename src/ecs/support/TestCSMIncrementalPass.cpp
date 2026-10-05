@@ -1920,7 +1920,7 @@ int main(int argc, char** argv)
               "GetShadowBiasMultiplier(",
               "批处理写入端不再读局部偏差倍率（bias_multiplier 又成死旋钮）" },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
-              "row_ptr[i].shadow_bias_multiplier = bias_multiplier;",
+              "row_ptr[i].shadow_bias_multiplier = bias_for_row;",
               "局部偏差倍率没有写进 per-draw 行（着色端读到的永远是默认值）" },
 
             // ④ 片元端读取 + 早退 + 缩放
@@ -5156,103 +5156,6 @@ int main(int argc, char** argv)
     }
 
     // ──────────────────────────────────────────────────────
-    // Test 37: B5-a 契约（P-5：每实例缓冲区 = 世界级句柄表行号，行内不放指针）
-    //
-    // 背景：`MaterialRuntimeSlot` 是每实例状态（将来要成为定长行 arena 的一行），
-    // 行内不放指针（T8 教训）⇒ 6 个缓冲区指针换成 `*_handle`，指针本体进世界级
-    // `MaterialRuntimeBufferTable`（同一指针幂等 + **引用计数**：示例里多实体共享同一缓冲，
-    // 必须先销毁的 slot 不能把别人还在用的句柄回收掉）。
-    //
-    // 反证：把任一指针字段搬回 slot，或让 setter/getter 绕过句柄表 ⇒ 本用例必失败。
-    // ──────────────────────────────────────────────────────
-    {
-        const SourceContract kB5aContracts[] =
-        {
-            // ① 句柄表在位、以 BufferOwner 为键（DeviceBuffer 与 IndirectMeshTaskBuffer 同基类）
-            { "MaterialRuntimeBufferTable.h",
-              OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeBufferTable.h"),
-              "class MaterialRuntimeBufferTable",
-              "设备缓冲句柄表缺失（缓冲区指针无处安放）" },
-            { "MaterialRuntimeBufferTable.h",
-              OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeBufferTable.h"),
-              "uint32_t Register(graph::BufferOwner *buffer);",
-              "句柄表不再以 BufferOwner 为键（两类缓冲无法共用一张表）" },
-            { "MaterialRuntimeBufferTable.h",
-              OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeBufferTable.h"),
-              "uint32_t kInvalidBufferHandle = 0;",
-              "「句柄 0 = 无缓冲」哨兵缺失" },
-            { "MaterialRuntimeBufferTable.h",
-              OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeBufferTable.h"),
-              "++(*rc);",
-              "句柄表丢了引用计数（共享缓冲会被先销毁的 slot 提前回收）" },
-            { "MaterialRuntimeBufferTable.h",
-              OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeBufferTable.h"),
-              "if (const auto *exist = handle_by_buffer.GetValuePointer(buffer))",
-              "同一指针不再 interned（多实体共享缓冲会各占一个句柄）" },
-            // ② slot 只存句柄（6 条禁复活 + 6 条在位）
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "graph::DeviceBuffer *l2w_buffer", "L2W 缓冲指针又回到 slot（行内不放指针）", true },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "graph::DeviceBuffer *l2w_index_buffer", "L2W 索引缓冲指针又回到 slot", true },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "graph::DeviceBuffer *mesh_draw_params_buffer", "MeshDrawCommand 缓冲指针又回到 slot", true },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "graph::DeviceBuffer *material_data_rows_buffer", "材质数据行缓冲指针又回到 slot", true },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "graph::IndirectMeshTaskBuffer *indirect_cmds_buffer", "间接任务缓冲指针又回到 slot", true },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "graph::DeviceBuffer *indirect_count_buffer", "间接计数缓冲指针又回到 slot", true },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "uint32_t l2w_buffer_handle                = 0;", "L2W 句柄字段缺失" },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "uint32_t indirect_count_buffer_handle = 0;", "间接计数缓冲句柄字段缺失" },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "uint32_t GetBufferHandles(uint32_t (&out)[6]) const noexcept",
-              "slot 缺「交出全部缓冲句柄」的口（销毁时无法按引用释放）" },
-            // ③ 世界级持有 + 取用口
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "std::unique_ptr<MaterialRuntimeBufferTable> material_runtime_buffer_table;",
-              "句柄表不再由世界持有" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "MaterialRuntimeBufferTable& GetMaterialRuntimeBufferTable()",
-              "世界缺句柄表取用口" },
-            // ④ setter：先 Release 旧句柄再 Register（幂等、不堆引用计数）
-            { "PrimitiveState.cpp", OS_TEXT("src/ecs/support/PrimitiveState.cpp"),
-              "table.Release(field);", "setter 不再释放旧句柄（反复调用会堆高引用计数）" },
-            { "PrimitiveState.cpp", OS_TEXT("src/ecs/support/PrimitiveState.cpp"),
-              "field = table.Register(buf);", "setter 不再登记句柄" },
-            { "PrimitiveState.cpp", OS_TEXT("src/ecs/support/PrimitiveState.cpp"),
-              "SwapBufferHandle(world, slot, slot.l2w_buffer_handle, buf);", "SetL2WBuffer 未走句柄换装" },
-            { "PrimitiveState.cpp", OS_TEXT("src/ecs/support/PrimitiveState.cpp"),
-              "world.GetOrCreateMaterialRuntimeSlot(owner).l2w_buffer = buf;",
-              "setter 又把指针直接塞进 slot（绕过句柄表）", true },
-            // ⑤ getter：经句柄表解析
-            { "InstancedPrimitiveRenderItem.cpp",
-              OS_TEXT("src/ecs/core/InstancedPrimitiveRenderItem.cpp"),
-              "ResolveSlotBuffer<hgl::graph::DeviceBuffer>(context, slot ? slot->l2w_buffer_handle : 0)",
-              "getter 未从句柄解析缓冲" },
-            { "InstancedPrimitiveRenderItem.cpp",
-              OS_TEXT("src/ecs/core/InstancedPrimitiveRenderItem.cpp"),
-              "ResolveSlotBuffer<hgl::graph::IndirectMeshTaskBuffer>(",
-              "间接任务缓冲 getter 未从句柄解析" },
-            // ⑥ 销毁：按引用释放
-            { "MaterialRuntimeTable.cpp", OS_TEXT("src/ecs/support/MaterialRuntimeTable.cpp"),
-              "buffers.Release(handle);", "DestroySlot 未释放该 slot 的缓冲句柄（引用泄漏）" },
-            { "MaterialRuntimeTable.cpp", OS_TEXT("src/ecs/support/MaterialRuntimeTable.cpp"),
-              "it->second.GetBufferHandles(handles);", "DestroySlot 未取该 slot 的句柄清单" },
-        };
-
-        if (const int failed = verify_source_contracts(37, kB5aContracts,
-                                                       static_cast<uint>(sizeof(kB5aContracts) /
-                                                                         sizeof(kB5aContracts[0]))))
-            return failed;
-
-        GLogInfo(u8"Test 37 Passed: B5-a 契约成立（每实例缓冲区 = 世界级句柄表行号、同一指针 interned + "
-                 u8"引用计数、setter 先释放后登记、getter 经表解析、销毁按引用释放；共 %d 条契约）。",
-                 static_cast<int>(sizeof(kB5aContracts) / sizeof(kB5aContracts[0])));
-    }
-
-    // ──────────────────────────────────────────────────────
     // Test 38: B5-b 契约（每 pass 管线缓存落世界侧旁表 + slot 行宽冻结）
     //
     // 背景：`MaterialRuntimeSlot` 里最后两个指针（`runtime_pipeline_pass` / `runtime_pipeline`）是
@@ -5289,7 +5192,7 @@ int main(int argc, char** argv)
               "graph::Pipeline   *runtime_pipeline",
               "Pipeline 指针又回到 slot（行内不放指针）", true },
             { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "static_assert(sizeof(MaterialRuntimeSlot) == 88,",
+              "static_assert(sizeof(MaterialRuntimeSlot) == 48,",
               "slot 行宽冻结断言缺失（行宽可被无意改掉，所有按行索引的表都会错位）" },
             // ④ 写：collect 解析后落旁表
             { "RenderPrimitiveCollectSystem.cpp",
@@ -5319,7 +5222,7 @@ int main(int argc, char** argv)
             return failed;
 
         GLogInfo(u8"Test 38 Passed: B5-b 契约成立（每 pass 管线缓存落世界侧旁表、按 pass 比对、"
-                 u8"slot 无指针且行宽冻结 88B、写/读/失效/销毁四处都走旁表；共 %d 条契约）。",
+                 u8"slot 无指针且行宽冻结 48B、写/读/失效/销毁四处都走旁表；共 %d 条契约）。",
                  static_cast<int>(sizeof(kB5bContracts) / sizeof(kB5bContracts[0])));
     }
 

@@ -859,6 +859,11 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 - **反证**：把 `graph::RenderPass *runtime_pipeline_pass` 搬回 slot ⇒ `Test 38 Failed: RenderPass 指针
   又回到 slot（行内不放指针）`（rc=38）；逐字节还原（sha256 核对 OK）⇒ 重跑 rc=0 / Passed。
 
+> **⚠ 2026-10-05 退役**：本节所述 B5-a 子系统（`MaterialRuntimeBufferTable` 句柄表 + `MaterialRuntimeSlot`
+> 的 6 个 `*_handle`）已随「外部 GPU-Driven 注入入口整体退役」**整删**——它唯一的承载物
+> 就是 `ComputeFrustumCull` / `ComputeAsteroidBelt` 的外部注入缓冲；行宽 88 → 48 B。详见
+> `doc/future/entity-rows-gpu-cull-plan.md` §8.9。本节以下保留为历史记录。
+
 **B5-a 完成记录（2026-10-02）—— ✅ 每实例缓冲区 = 世界级句柄表行号（P-5 前半）**
 
 一、改动（8 文件：1 新建头 + 6 引擎/实现 + 1 契约）
