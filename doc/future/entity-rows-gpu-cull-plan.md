@@ -1235,3 +1235,72 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
    （未同步 ⇒ 一次性 `GLogError` 且**拒绝返回**残影数据）＋ needle 钉台架 Sync/Map 成对调用点
    （实测同一采样帧内 Sync 在 Map 之前成套执行 ⇒ 守卫不误报）。
 5. ⏳ **仍开**：§八 的运行长度合并（`Y=实例数`）落地时，命令数判据一并进 §五 验收矩阵。
+
+## §10 A6-d 计划：删 CPU 账 + 判据重建（2026-10-05 侦察定稿）
+
+> 前提（已量化，**不按整文件行数推断**）：本轮 ②③④ 关闭后，六个台架实测**全部 100% 接管**
+> （`ENGAGED batches=n/n`）⇒ 主帧 mesh 批的 CPU 账在**生产路径上已不被消费**，只剩
+> 「默认（无 opt-in）时用它」与「个别批被 guard 拒时兜底」两个活口。A6-d = 关掉这两个活口并删净它。
+
+### 一、量化前提（静态清点：面 / 落点 / 标记数 / 归属）
+
+| 面 | 落点（符号） | 标记数 | A6-d |
+|---|---|---|---|
+| CPU 剔除 / 收集 / 距离 | `RenderPrimitiveCollectSystem`（frustum 判据 + `item->distanceToCamera` 写者） | `distanceToCamera` 全仓 4 处 | **删** |
+| CPU 排序 | `PrimitiveBatchPipeline`（renderItems 按距离 + static/movable 两处 `std::sort`） | ≤3 处 | **删** |
+| CPU 压缩 | `DrawItemCompaction.{h,cpp}` + 调用面 | 引用 17 处 | **删** |
+| CPU 写行 / ICB | `PrimitiveBatchPipeline::WriteMeshDrawCommands`（+ `draw_batches` 16 处） | 定义 1 / 档外调用 **0** | **删** |
+| CPU flush 分支 | `PipelineMaterialRenderer::ProcIndirectRender` 的 CPU 支（`else` 侧） | 1 处 | **删**（GPU 支保留） |
+| CPU 绘制提交 | `PrimitiveRenderSystem`（95 行，RenderDrawSubmit）／`PrimitiveOverlayRenderSystem`（87 行，RenderDebug） | — | 主帧那条**删**；overlay **留** |
+| 台架参考实现 | `CPUCullReferenceSystem.{h,cpp}`（107+502）／`RenderStrategyParity`（130） | `PerformCPUCulling` 2 处 | **保留**（新判据的参考端） |
+| opt-in 面 | `PrimitiveBatchPipeline:1178` 三条件早退（`!gpu_cull \|\| !IsEnabled() \|\| !IsDrawOverrideEnabled()`）+ 示例 `*_CULL/_FORM_B` 门 | 3 处 | **删**（强制接管） |
+
+### 二、边界（**不在** A6-d 内，防误删）
+
+1. `PrimitiveOverlayRenderSystem`（**RenderDebug 相位**的 overlay；`AlphaTestShadow`/`CascadeShadowMap` 在用）；
+2. **Text**（自有 2D 管线 + 自己的 pipeline，未落地）；
+3. **shadow pass 的收集**（guard 本就 `IsCurrentPassShadow()` 直接 return ⇒ 从来不走接管）；
+4. 参考实现 + 台架对拍（= 新判据的一半，保留）。
+
+### 三、判据重建（**必须先做**，否则删完就没判据了）
+
+删 CPU 账后「三方像素（CPU 账 / 仅 dispatch / 接管）」失效 ⇒ 换成三条互补：
+
+1. **参考实现**（已在）：`CPUCullReferenceSystem`（**不出图**）对拍可见集合 ⇒ `不一致=0`；
+2. **回读自校验**（已在）：l2w 行号反查 + 值链三段 + `Σcount == 批内项数` + `overflow=0`；
+3. **帧摘要（新）**：固定帧回读颜色靶 ⇒ `{宽, 高, 格式, 不同取值数, FNV-1a 64}` 与示例内**常量**比对。
+   - 沿用 ATS 的「`D3 18189 px / 600662 px` 常量内联」风格，**不入库大图**（与「dump 家族退库」口径一致）；
+   - `不同取值数 > 1` 兼作**判据不空转**的守卫（全清屏帧会被抓）；
+   - 门形态：`<EXAMPLE>_SELFCHECK=1` → 固定帧判读 → PASS 退出 0 / FAIL 退出 1；
+   - **破坏验证**：改一像素 / 少画一批 / 档号漂移 ⇒ 摘要必须变（探针：临时把阈值调偏）。
+
+### 四、任务切分（每任务**自身可编译 + 判据绿**才进下一个）
+
+| # | 内容 | 判据 | 动全局结构 |
+|---|---|---|---|
+| **T1** | **判据重建**：帧摘要自检落到台架（先 `GPUDrivenCull` 试点，再推广六个） | 各 `*_SELFCHECK=1` PASS；摘要与现三方像素同源 | 否 |
+| **T2** | **强制接管**：删三条件早退 ⇒ 主帧 mesh 批恒走 GPU 路径 | 门 45/0；六台架 `ENGAGED` 且摘要不变；全示例 0 VUID | 否（**默认行为变**） |
+| **T3** | 删 CPU **排序** + `distanceToCamera`（含收集侧写者） | 摘要不变 + 门/契约 | 否 |
+| **T4** | 删 CPU **写行 / ICB**（`WriteMeshDrawCommands` + `draw_batches` + `EnsureMeshDrawParams`） | 同上 | 否 |
+| **T5** | 删 **压缩**（`DrawItemCompaction` + 17 处调用面） | 同上 | 否 |
+| **T6** | 删 CPU **剔除 / 收集**（只服务 CPU 账的那部分；收集相位改） | 同上 + `TestRenderItemDataStorage`/`TestCSM` 同步 | **是** |
+| **T7** | 清台架旧判据（三角里的 CPU 账那一臂）与示例 `*_CULL/_FORM_B` 门 | 门 45/0 + 各自检 PASS | 否 |
+| **T8** | 全量回归：所有示例（含 overlay / Text / shadow）跑一遍，摘要变的逐个复核 | 全绿 | — |
+
+### 五、风险
+
+| # | 风险 | 默认选择 |
+|---|---|---|
+| R1 | 非主帧路径（overlay / Text）被误删 | 边界见 §二；T6 收集面删除**前**按「谁消费」逐一 grep 列清单 |
+| R2 | 摘要对**合法**变化过脆（相机/时序微差） | 摘要只建在**冻结相机 + 定帧退出的台架**上（`*_FRAMES` 已具备） |
+| R3 | T2 改默认行为 ⇒ 个别示例暴露既有 bug | T2 判据 = 六台架摘要 + 全示例 rc=0/无 VUID；暴露的 bug 单独记档不顺手修 |
+| R4 | `check/` 类文本档行尾（CRLF/无 BOM） | 若走文本档则照既有 `check/*.md` 约定；**推荐内联常量**以免新增文件 |
+
+### 六、待拍板（3 项，均已在推荐值上）
+
+1. **帧摘要存哪**：示例内**常量**（推荐，沿用 ATS 风格、不新增文件）／`check/<example>-digest.txt`；
+2. **T2 强制范围**：**只主帧 mesh 批**（推荐）／连 overlay 一起（不建议：overlay 不是批路径）；
+3. **opt-in API 命运**：**整体删除**（推荐，零兼容：`SetEnabled`/`SetDrawOverrideEnabled` 与示例门一起删）／保留开关（不建议）。
+
+> 下一动作（T1 试点）：在 `example/Cull/GPUDrivenCull` 加 `GC_SELFCHECK=1`——第 8 帧回读颜色靶，
+> 算 `{不同取值数, FNV-1a 64}` 与内联常量比对，PASS/FAIL 收成退出码；摘要常数由实跑记录。
