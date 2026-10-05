@@ -83,10 +83,10 @@ namespace hgl::ecs
         // 三者均**按帧槽分份且 CPU 只写当前份**：否则本帧直写会与上一帧仍在飞行的
         // cull 竞争（同队列提交序只覆盖"新提交批次读旧批次写"，不覆盖 CPU 直写）。
         /// 批数上限。**失败模式分层**（A6-c 拍板，口径与实现一致）：
-        /// · 今天：超限**逐批软降级**——该批标签留无效 ⇒ 绘制退回 CPU 账 + 一次性 `GLogError`
-        ///   报因（`CV_STRESS=260` 台架实测 `Σcount=256 < global=260`，属**合法**判据）；
-        /// · 纯 GPU 后（CPU 账删除，A6-d）：同一情形**无兜底** ⇒ 改 **fail-fast**
-        ///   （容量是拍板冻结值，超限 = 项目 bug，不扩容、不静默丢批）。
+        /// · 旧：超限**逐批软降级**（该批退回 CPU 账 + 一次性 `GLogError`）——**已删**。
+        /// · 今（A6-d T4b）：**fail-fast**——超限批一次性 `GLogError` 报因且**本帧不绘制**
+        ///   （容量是拍板冻结值，超限 = 项目 bug，不扩容、不静默丢批）。台架 `CV_STRESS=260`
+        ///   预期：`ENGAGED 256/260` + 一次报因 + 超出批无绘制。
         static constexpr uint32_t kMaxBatches      = 256;
         static constexpr uint32_t kInvalidBatchTag = 0xFFFFFFFFu;   ///< 不属任何批 ⇒ cull 跳过
 

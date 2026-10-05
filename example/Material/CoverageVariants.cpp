@@ -15,7 +15,8 @@
 //   CV_STRESS=N   A4 容量台架：N 个「同 def(Lit) + 仅 alpha_cutoff 不同」的配方
 //                 ⇒ 生成的片元 GLSL 只差 `#define HGL_ALPHA_CUTOFF <v>` ⇒ N 个 program
 //                 ⇒ N 个批 ⇒ 用来撞守卫的 kMaxBatches(256)：期望只接管前 256 个、
-//                 多出来的批打**一次**告警并回 CPU 账；Σcount < global 属正常，overflow 必须为 0。
+//                 超出的批 **fail-fast**（一次告警 + 本帧不绘制，不再回 CPU 账兜底，A6-d T4b）；
+//                 overflow 必须为 0。
 //                 （N 个实体各占一行材质行 ⇒ N ≤ 512）
 //   CV_DUMP=<tag> 帧 8 帧内回读落原始字节后退出（像素判据）
 //   CV_YAW/CV_PITCH/CV_DIST/CV_TX/CV_TY/CV_TZ  相机覆盖
@@ -193,7 +194,7 @@ private:
             }
 
             printf("[A4] CV_STRESS=%u：%u 个同 def、仅 alpha_cutoff 不同的配方"
-                   "（期望 %u 个 program/批；守卫只接管前 256 个，其余回 CPU 账）\n",
+                   "（期望 %u 个 program/批；守卫只接管前 256 个，其余 fail-fast 不绘制）\n",
                    stress_count, stress_count, stress_count);
         }
 
@@ -495,8 +496,10 @@ public:
             static constexpr uint32_t kSelfW           = 1280;
             static constexpr uint32_t kSelfH           = 720;
             static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
-            static constexpr uint64_t kSelfFNV         = 0x8eed38bad9b8181eull;  // 冻结相机 + 接管下实跑记录
+            static constexpr uint64_t kSelfFNV         = 0x8eed38bad9b8181eull;  // 默认场景（2 变体）：冻结相机 + 接管下实跑记录
                                                         // （改渲染结果必须复核并重录）
+            static constexpr uint64_t kSelfFNV_Stress  = 0x88fba02a89c2c41bull;  // CV_STRESS=260：压测方阵（260 配方／256 接管 +
+                                                        // 超出批 fail-fast 不绘制）；同上，改结果必须重录
 
             if (s_selfcheck && ++s_self_frame == 8)
             {
@@ -511,7 +514,8 @@ public:
                 expect.width                = kSelfW;
                 expect.height               = kSelfH;
                 expect.distinct_byte_values = kSelfMinDistinct;
-                expect.fnv1a64              = kSelfFNV;
+                // 期望摘要按场景模式取（同一份代码两种场景；压测模式画面本就不同）
+                expect.fnv1a64              = getenv("CV_STRESS") ? kSelfFNV_Stress : kSelfFNV;
 
                 ulre_example::InstallFrameDigestHook(rt, expect, "CVSELF");
             }

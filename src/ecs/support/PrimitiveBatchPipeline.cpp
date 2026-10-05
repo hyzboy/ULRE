@@ -1179,16 +1179,26 @@ namespace hgl::ecs
         auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
         const EntityRenderIDTable &rid_table = world->GetEntityRenderIDTable();
 
-        auto reject = [](const char *why, const char *batch_name)
+        // A6-d T4b：拒 = **fail-fast**（不再回 CPU 账兜底）。依据 `GPUCullSystem::kMaxBatches`
+        // 的拍板政策：容量是冻结值，超限 = 项目 bug ⇒ 不扩容、不静默丢批；也不许"退回 CPU 账"
+        // 把问题伪装成正常渲染。
+        auto reject = [](const char *why, const char *batch_name, MaterialBatch *b)
         {
             static bool s_reported = false;
             if (!s_reported)
             {
                 s_reported = true;
                 GLogError("[T3i] GPU cull draw override 该批前提不满足：%s（批=%s）"
-                          "⇒ 该批不接管（绘制走 CPU 账；不影响其余批）",
+                          "⇒ fail-fast：该批本帧**不绘制**（容量/前提为拍板冻结值，超限属项目 bug；"
+                          "不回 CPU 账、不静默丢批）",
                           why, batch_name ? batch_name : "<null>");
             }
+
+            // 「不绘制」的落法 = 清空批内项：下游（FinalizeBatch 的 sort/ensure/build/write，
+            // 以及两个绘制系统的 `items.empty()` 早退）都以空批跳过 ⇒ 既不写 CPU ICB/参数行，
+            // 也不发绘制命令。标签留无效 ⇒ cull 也不为本批写行。
+            if (b)
+                b->items.clear();
         };
 
         MaterialBatch *pending[GPUCullSystem::kMaxBatches];
@@ -1236,7 +1246,7 @@ namespace hgl::ecs
                     // A6-c：原「含无 owner 实体项」拒绝条件已删——现管线只产带**有效
                     // EntityID** 的 `PrimitiveRenderItem`（无 owner 项属已退役的外部注入面）
                     // ⇒ 无生产者（全家族台架零命中）。真出现无 owner 项，下面的解引用会当场
-                    // 崩（响亮），好过静默把该批退回 CPU 账。
+                    // 崩（响亮），好过静默丢项。
                     Entity *owner = item->GetEntity();
 
                     const graph::RenderItemDescriptor *ids =
@@ -1261,7 +1271,7 @@ namespace hgl::ecs
 
             if (why)
             {
-                reject(why, batch_name);
+                reject(why, batch_name, b);
                 continue;
             }
 
@@ -1340,14 +1350,14 @@ namespace hgl::ecs
         if (engaged == geometry_batches)
             gpu_cull_full_frame_ = gpu_cull_override_eval_frame_;
 
-        // 正向判据日志（一次性）：证明"绘制真走 gather 表"，静默退回 CPU 账也会
-        // 像素全等 ⇒ 没有本日志就不能宣称接管成立。逐批计数由台架在 cull 之后读。
+        // 正向判据日志（一次性）：证明"绘制真走 gather 表"（T4b 起已无 CPU 账可退，
+        // 本日志仍是"接管真发生"的正面证据）。逐批计数由台架在 cull 之后读。
         static bool s_engaged_logged = false;
         if (!s_engaged_logged)
         {
             s_engaged_logged = true;
             GLogInfo("[T3i] GPU cull draw override ENGAGED: batches=%u/%u items=%u"
-                     " arena_rows=%u（逐批切片；未接管批走 CPU 账）",
+                     " arena_rows=%u（逐批切片）",
                      engaged, geometry_batches, total_items, row_cursor);
         }
     }

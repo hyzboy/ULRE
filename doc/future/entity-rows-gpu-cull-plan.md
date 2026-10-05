@@ -1069,9 +1069,10 @@ T3i 在 `src/ecs/support/PipelineMaterialRenderer.cpp` 引入
 
    | 容量类 | 今天（有 CPU 账） | 纯 GPU 后（A6-d 删除 CPU 账） |
    |---|---|---|
-   | 接管批数 > `kMaxBatches(256)` | **软降级**：该批标签留无效 ⇒ 绘制退回 CPU 账 + 一次性
-     `GLogError` 报因（`CV_STRESS=260` 实测 `ENGAGED 256/260`、`Σcount=256 < global=260`，**合法**）
-     | **fail-fast**（无兜底后不许静默丢批） |
+   | 接管批数 > `kMaxBatches(256)` | 旧「**软降级**：该批标签留无效 ⇒ 绘制退回 CPU 账 + 一次性 `GLogError`」
+     **已删**（A6-d T4b） | ✅ **已落地 fail-fast**：一次性 `GLogError` 报因 + **该批本帧不绘制**
+     （清空批内项 ⇒ 下游空批跳过，既不写 CPU ICB/参数行也不发绘制命令；标签留无效 ⇒ cull 不写行）。
+     `CV_STRESS=260` 预期：`ENGAGED 256/260` + 一次报因 + 超出批无绘制，`overflow=0` |
    | 实体行表 > `EntityGPUTable::kCapacity(4096)` | **fail-fast**：`GLogError` + 该实体不进表
      （P-B8-6 拍板：预算制、不扩容、不静默截断） | 同今天 |
    | 批内切片溢出（GPU 侧 `slot >= capacity`） | **计数丢弃**：跳过 + `atomicAdd(counter[batch_count])`；
@@ -1292,7 +1293,9 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 ② `PBRSpheres` 时间冻结条件补自检模式（原来只有 dump 模式冻结 `elapsed_time` ⇒ 自检两次几何不同）。
 | **T2** | **强制接管** ✅ **已完成**：删三条件早退 + opt-in 面整体删除（`SetEnabled`/`SetDrawOverrideEnabled`/`enabled_`/`override_draw_`/PC 字段 `enable_gather`；PC 104 B、`batch_count` 偏移 100）+ 六示例删 `*_CULL`/`*_FORM_B` 门与两个已不可实现的模式（`GC_CULL_OFF`/`GC_DISPATCH_ONLY`） | 门 **45/0**；`TestCSM` rc=0 + Test 42；**六台架摘要逐位不变**（只给 `_SELFCHECK`、不给 `_FORM_B`）+ `ENGAGED`；ATS 自检 PASS；冒烟 0 VUID/0 ERROR | 是（**默认行为已变**） |
 | **T3** | 删 CPU **排序** + `distanceToCamera` ✅ **已完成**：字段 / `Compare()` 的距离 tie-break / 专用函数 `SortByDistance()`（含声明与调用点）/ 收集侧写者（连同失去用者的 `worldPos`/`camera_pos`）；文档回扫 3 份（就地标注 + 持指针） | 门 45/0；Test 42；**六台架摘要逐位不变**（⇒ 该序不参与渲染；实测六台架均为**不依赖序**的不透明几何）+ `ENGAGED`；ATS PASS；冒烟 0 VUID/0 ERROR | 否（含 `RenderItem` 布局变更 ⇒ 清树全量重编） |
-| **T4** | 删 CPU **写行 / ICB** ⚠ **侦察后收窄**：这三样（`WriteMeshDrawCommands` / `EnsureMeshDrawParams` / `draw_batches`）对「被 guard 拒的批」仍是**活路**（兜底 CPU 绘制），不能裸删；`draw_batches` 更同时是 **overlay 系统的活需**（overlay 与主帧共用同一批缓存，也一样被接管）。<br>**T4a ✅ 已完成**：删接管批仍在跑的那圈 **CPU 命令累积**（`Render` 的 per-DrawBatch 循环——`Draw()` 只累计 `indirect_draw_count`，接管批用 `gpu_capacity` ⇒ 纯浪费）+ flush 调用门脱钩 CPU 计数（`|| gpu_driven_override`；否则跳过累积后多绘制不发）。<br>**T4b ⏳ 待拍板**：把 guard 拒改成 **fail-fast**（§五.3 的「纯 GPU 后」支）⇒ 届时三样才可删。 | T4a：门 45/0；Test 42；**六台架摘要逐位不变**（尖锐判据：flush 门错即整屏无绘制）+ ENGAGED；ATS PASS；冒烟 0 VUID/0 ERROR | T4a 否 / **T4b 是**（行为变更：拒批不再兜底绘制；`CV_STRESS` 台架预期随之改） |
+| **T4** | 删 CPU **写行 / ICB** ⚠ **侦察后收窄**：这三样（`WriteMeshDrawCommands` / `EnsureMeshDrawParams` / `draw_batches`）对「被 guard 拒的批」仍是**活路**（兜底 CPU 绘制），不能裸删；`draw_batches` 更同时是 **overlay 系统的活需**（overlay 与主帧共用同一批缓存，也一样被接管）。<br>**T4a ✅ 已完成**：删接管批仍在跑的那圈 **CPU 命令累积**（`Render` 的 per-DrawBatch 循环——`Draw()` 只累计 `indirect_draw_count`，接管批用 `gpu_capacity` ⇒ 纯浪费）+ flush 调用门脱钩 CPU 计数（`|| gpu_driven_override`；否则跳过累积后多绘制不发）。<br>**T4b ✅ 已完成**：guard 拒 = **fail-fast**（一次 `GLogError` + 该批本帧不绘制，依据 `GPUCullSystem::kMaxBatches` 既有拍板政策）<br>⚠ **范围修正（T4b 动手时的侦察）**：我原先说的「T4b 后三样即可删」**不成立**——`TryApplyGPUCullOverride` 在 `IsCurrentPassShadow()` 处**显式早退**（shadow 批共用同一 `materialBatches` 表）⇒ **shadow pass 的批仍走 CPU 绘制**
+⇒ `WriteMeshDrawCommands` / `EnsureMeshDrawParams` / `draw_batches` 至今仍是**活路**。要删它们，得先让 **shadow pass 也进 GPU 路径**
+（各写各的切片/档，§9 §二 四要素按 pass 复现）⇒ 记为 **T4c**。 | T4a：门 45/0；Test 42；**六台架摘要逐位不变**（尖锐判据：flush 门错即整屏无绘制）+ ENGAGED；ATS PASS；冒烟 0 VUID/0 ERROR | T4a 否 / **T4b 是**（行为变更：拒批不再兜底绘制；`CV_STRESS` 台架预期随之改） |
 | **T5** | 删 **压缩**（`DrawItemCompaction` + 17 处调用面） | 同上 | 否 |
 | **T6** | 删 CPU **剔除 / 收集**（只服务 CPU 账的那部分；收集相位改） | 同上 + `TestRenderItemDataStorage`/`TestCSM` 同步 | **是** |
 | **T7** | 清台架旧判据（三角里的 CPU 账那一臂）与示例 `*_CULL/_FORM_B` 门 | 门 45/0 + 各自检 PASS | 否 |
