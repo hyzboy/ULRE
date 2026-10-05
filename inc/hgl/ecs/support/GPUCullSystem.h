@@ -229,6 +229,7 @@ namespace hgl::ecs
         uint32_t *batch_tag_cpu_ = nullptr;           ///< 当前帧槽标签数组的映射
         uint32_t  batch_tag_cpu_slot_ = UINT32_MAX;   ///< 映射对应的帧槽（换槽重映射）
         uint32_t *batch_counter_cpu_ = nullptr;       ///< 台架读回时的映射
+        uint32_t counters_sync_frame_ = 0xFFFFFFFFu;  ///< §9 M6：最近一次 SyncForParityReadback 的帧号（Map 前校验）
 
         // 形态 B（T3f-2）gather 输出（容量 = kMaxVisibleEntities；被接管批直接指向它们）
         graph::DeviceBuffer *l2w_out_buffer_ = nullptr;

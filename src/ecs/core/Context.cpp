@@ -1797,7 +1797,9 @@ namespace hgl
             // T3c：实体行表（世界私有；消费者 = GPU 剔除读实体行）。未建表 ⇒ 保持 0（消费者判 0 跳过）。
             // **按帧槽偏移**（T3c-3 实测：可动实体的 `row[Transform]` 随帧槽变，3 个行号轮转
             // ⇒ 单份表会被本帧写入覆盖上一帧正在被读的内容 = 跨帧别名）。份数 = 帧槽空间，
-            // 不与变换侧环深度对齐（那个 3 是待查的既有条件，不是本表的依据）。
+            // 与变换侧环深度**同源**（A5 已关闭：`HGL_L2W_RING_FRAMES == HGL_FRAME_SLOT_TOTAL`；
+            // 历史上的 3 曾致离屏槽与主帧槽别名（4%3=1、5%3=2…）、prepass 覆写主帧在途矩阵
+            // ⇒ 整帧只剩清屏色）。
             want.addr_entity_gpu = entity_gpu_table_addr
                 + static_cast<uint64_t>(slot)
                 * static_cast<uint64_t>(EntityGPUTable::kCapacity)

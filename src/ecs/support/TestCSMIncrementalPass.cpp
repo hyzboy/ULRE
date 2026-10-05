@@ -5405,6 +5405,72 @@ int main(int argc, char** argv)
                  static_cast<int>(sizeof(kT2cPreludeContracts) / sizeof(kT2cPreludeContracts[0])));
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 42: A6-b 机制层契约（计划档 §9）—— 四条路共用的底座不变量
+    //
+    // 机制层漂移**不会有编译错、也不一定有 VUID**（后果都是静默的）：
+    //   · 帧槽/环深度不同源 ⇒ 离屏槽与主帧槽别名 ⇒ prepass 覆写主帧矩阵、整帧只剩清屏色
+    //     （历史上 L2W 环深度 3 vs 槽空间 8，间歇竞态，实测 D3 转储三帧恒清屏色）；
+    //   · 切片起点不 4 行对齐 ⇒ 三表 push 地址违 16B 对齐（引用声明）；
+    //   · 计数缓冲不带 INDIRECT_BUFFER ⇒ 当 countBuffer 用直接 VUID-02715；
+    //   · Map 读回不先 Sync ⇒ 静默读到上一已定帧的残影（对拍"全绿"而数据是旧的）。
+    // 前两条另配**运行期守卫**（装配侧 bug 当场响亮）；后两条钉实现行与调用对。
+    {
+        static const SourceContract kMechanismContracts[] =
+        {
+            { "RenderOptions.h", OS_TEXT("inc/hgl/common/RenderOptions.h"),
+              "#define HGL_L2W_RING_FRAMES HGL_FRAME_SLOT_TOTAL",
+              "§9 M1：变换侧/L2W 环深度必须**单源** = 帧槽空间（低模不同源 ⇒ 离屏槽与主帧槽别名）" },
+
+            { "RenderOptions.h", OS_TEXT("inc/hgl/common/RenderOptions.h"),
+              "#define HGL_L2W_RING_FRAMES 3",
+              "§9 M1：环深度**不许**退回硬编码小数（历史的 3 曾致 prepass 覆写主帧在途矩阵）",
+              true },
+
+            { "RingLayout.h", OS_TEXT("inc/hgl/vk/buffer/RingLayout.h"),
+              "const uint32_t frames = HGL_L2W_RING_FRAMES",
+              "§9 M1：RingLayout 的默认深度必须取单源常量，不许另写数字" },
+
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "row_cursor = (row_cursor + capacity + 3u) & ~3u;",
+              "§9 M4：切片起点必须 4 行对齐推进（三表 push 地址 16B 对齐的唯一解）" },
+
+            { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
+              "if (!s_reported_misaligned && (row_base % 4u) != 0u)",
+              "§9 M4：切片 4 行对齐的**运行期守卫**（装配侧 bug ⇒ 响亮，不静默违对齐）" },
+
+            { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
+              "batch_usage | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,",
+              "§9 M3：每批计数缓冲当 countBuffer 用 ⇒ 必带 INDIRECT_BUFFER（另需 TRANSFER_DST 清零）" },
+
+            { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
+              "if (counters_sync_frame_ != context_->GetFrameIndex())",
+              "§9 M6：Map 读回前的**运行期守卫**（未同步 ⇒ 拒绝返回残影）" },
+
+            { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
+              "counters_sync_frame_ = context_ ? context_->GetFrameIndex() : 0u;",
+              "§9 M6：SyncForParityReadback 必须记下已同步帧（守卫的另一半，删任一即红）" },
+
+            { "CPUCullReferenceSystem.cpp", OS_TEXT("src/ecs/support/CPUCullReferenceSystem.cpp"),
+              "gpu_cull_system->SyncForParityReadback()",
+              "§9 M6：台架读回路径必须显式同步（生产路径零同步，只在采样帧付出）" },
+
+            { "CPUCullReferenceSystem.cpp", OS_TEXT("src/ecs/support/CPUCullReferenceSystem.cpp"),
+              "counters = gpu_cull->MapCurrentBatchCounters();",
+              "§9 M6：台架读回路径的 Map 调用点（与上一条成对：删任一即红）" },
+        };
+
+        if (const int failed = verify_source_contracts(42, kMechanismContracts,
+                                                       static_cast<uint>(sizeof(kMechanismContracts) /
+                                                                         sizeof(kMechanismContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 42 Passed: A6-b 机制层契约成立（§9 M1 环深度单源 + M3 countBuffer 使用标志 + "
+                 u8"M4 切片 4 行对齐（实现行 + 运行期守卫）+ M6 回读前置（Sync 记帧 + Map 校验 + 台架调用对）；"
+                 u8"禁复活 1 条；共 %d 条契约）。",
+                 static_cast<int>(sizeof(kMechanismContracts) / sizeof(kMechanismContracts[0])));
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

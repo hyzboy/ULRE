@@ -403,6 +403,20 @@ namespace hgl::ecs
             return;
         }
 
+        // 契约（§9 M4）：切片起点必须 **4 行对齐**——绘制侧把三表 push 地址加 `row_base × 行字节`
+        // （cmds 8B / l2w 4B / mtl 16B），而引用声明是 16B 对齐 ⇒ `row_base % 4 == 0` 是同时满足
+        // 三者的唯一条件（§8.6 T3i-4）。违反 = 装配侧 bug（推进式 `(cursor + capacity + 3) & ~3`），
+        // 响亮报一次（不静默写出违对齐的切片）。
+        {
+            static bool s_reported_misaligned = false;
+            if (!s_reported_misaligned && (row_base % 4u) != 0u)
+            {
+                s_reported_misaligned = true;
+                GLogError(u8"[GPUCullSystem] 切片起点未 4 行对齐：row_base=%u（契约 §9 M4）"
+                          u8"⇒ 三表 push 地址会违 16B 对齐", row_base);
+            }
+        }
+
         batch_info_staging_[batch_index].row_base   = row_base;
         batch_info_staging_[batch_index].capacity   = capacity;
         batch_info_staging_[batch_index].topology   = topology;
@@ -462,6 +476,22 @@ namespace hgl::ecs
         if (!batch_counter_buffer_ || !context_)
             return nullptr;
 
+        // 契约（§9 M6）：Map 之前必须 `SyncForParityReadback()` 把队列排到**本帧** dispatch 完成
+        // ——Host Coherent ≠ 已执行（异步派发后直接 Map 读到的是上一已定帧的残影：对拍会"全绿"
+        // 而数据是旧的）。违反 = 台架接线错 ⇒ 响亮一次 + **不给数据**（返回 null 让调用方跳过）。
+        if (counters_sync_frame_ != context_->GetFrameIndex())
+        {
+            static bool s_reported_unsynced = false;
+            if (!s_reported_unsynced)
+            {
+                s_reported_unsynced = true;
+                GLogError(u8"[GPUCullSystem] MapCurrentBatchCounters 未先 SyncForParityReadback"
+                          u8"（本帧=%u / 已同步帧=%u）⇒ 读数是残影，拒绝返回（契约 §9 M6）",
+                          context_->GetFrameIndex(), counters_sync_frame_);
+            }
+            return nullptr;
+        }
+
         const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
         const VkDeviceSize slot_bytes = VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t);
 
@@ -518,7 +548,13 @@ namespace hgl::ecs
         if (!cull_queue_)
             return false;
 
-        return cull_queue_->WaitLastSubmitFence();
+        if (!cull_queue_->WaitLastSubmitFence())
+            return false;
+
+        // 契约（§9 M6）：记下"本帧已同步"，供 `MapCurrentBatchCounters` 校验
+        // （台架的 Sync → Map 在同一采样帧内成套执行；跨帧复用即残影）。
+        counters_sync_frame_ = context_ ? context_->GetFrameIndex() : 0u;
+        return true;
     }
 
     void GPUCullSystem::DrainForHandover()
