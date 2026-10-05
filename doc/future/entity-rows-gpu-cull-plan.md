@@ -1278,7 +1278,18 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 
 | # | 内容 | 判据 | 动全局结构 |
 |---|---|---|---|
-| **T1** | **判据重建**：帧摘要自检落到台架 —— **`GPUDrivenCull` 试点已落地**（`GC_SELFCHECK=1`：第 8 帧回读颜色靶 ⇒ `{不同取值数, FNV-1a 64}` 比对内联常量，PASS/FAIL 收退出码；实测摘要确定性 + 换相机角度即 FAIL）；待推广其余五个 | 各 `*_SELFCHECK=1` PASS；摘要与现三方像素同源 | 否 |
+| **T1** | **判据重建** ✅ **已完成**：帧摘要自检落到**全部六个台架**（共用件 `example/Shared/FrameDigest.h`）。用法：`<PREFIX>_FORM_B=1 <PREFIX>_SELFCHECK=1 <PREFIX>_YAW/_PITCH/_DIST=<默认>`（**前缀带下划线**；显式下发相机默认值 = 冻结相机，是摘要可判的前提） | 各台架：两遍摘要一致（确定性）→ 回填常量 → `PASS/rc=0`；敏感性对照 `YAW=75` ⇒ `FAIL/rc=1`；摘要跑同时打 `ENGAGED batches=n/n` | 否 |
+
+**六台架摘要（1280x720 A2BGR10UN，**GPU 接管下**实跑记录；改渲染结果必须复核并重录）**：
+
+| 台架 | `fnv1a64` | 台架 | `fnv1a64` |
+|---|---|---|---|
+| `GPUDrivenCull`（`GCSELF`） | `0x90E0745C2C7B8599` | `PBRSpheres`（`PBRSELF`） | `0x3DD88A0999CDC486` |
+| `AlphaModes`（`AMSELF`） | `0x2FE87B15EE8B8A16` | `LoadScene`（`LSSELF`） | `0xC9E38ED2F49A069B` |
+| `CoverageVariants`（`CVSELF`） | `0x8EED38BAD9B8181E` | `PlaneGrid3D`（`PGSELF`） | `0x4125C3C830CB92D3` |
+
+两条配套改动（T1 顺带）：① `PlaneGrid3D` 补相机 env 门（`PG_YAW/PITCH/DIST/TX/TY/TZ`，与其它台架同形）；
+② `PBRSpheres` 时间冻结条件补自检模式（原来只有 dump 模式冻结 `elapsed_time` ⇒ 自检两次几何不同）。
 | **T2** | **强制接管**：删三条件早退 ⇒ 主帧 mesh 批恒走 GPU 路径 | 门 45/0；六台架 `ENGAGED` 且摘要不变；全示例 0 VUID | 否（**默认行为变**） |
 | **T3** | 删 CPU **排序** + `distanceToCamera`（含收集侧写者） | 摘要不变 + 门/契约 | 否 |
 | **T4** | 删 CPU **写行 / ICB**（`WriteMeshDrawCommands` + `draw_batches` + `EnsureMeshDrawParams`） | 同上 | 否 |
