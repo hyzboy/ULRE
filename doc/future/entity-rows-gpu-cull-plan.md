@@ -1221,11 +1221,17 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 | 调试线（未落地） | 线段数 == 对象数（§8.10 §三：每对象一行、每形状一个专用 mesh shader） | 破坏：关剔除/换 shader |
 | Text（未落地） | 画家序 + 剔除数 | 破坏：顺序反转 |
 
-### 六、A6-b 的欠账（随对应 Driven 落地，已在门/契约里留位）
+### 六、A6-b 欠账：**1–4 已收口**（载体 = `TestCSMIncrementalPass` 的 Test 42，10 条契约；破坏验证 8/8 咬住）
 
-1. **帧槽不变量**（改槽空间必须查所有按 `frame_slot` 索引的 ring/UBO/SSBO；L2W ring 曾是 3 ⇒ 离屏槽与主帧槽
-   别名 ⇒ prepass 覆写主帧矩阵）——现在无断言，加 `static_assert(ring 深度 == HGL_FRAME_SLOT_TOTAL)`；
-2. **切片 4 行对齐**（`row_base % 4 == 0`）——加断言 + needle；
-3. **ICB countBuffer 的 `INDIRECT_BUFFER_BIT`**——加 needle；
-4. **回读前置**（`SyncForParityReadback` 先于 `MapCurrentBatchCounters`）——加 needle；
-5. **§八 的运行长度合并**（`Y=实例数`）落地时，命令数判据一并进本矩阵。
+1. ✅ **帧槽 / 环深度单源**：`HGL_L2W_RING_FRAMES` 本就是 `#define ... HGL_FRAME_SLOT_TOTAL`（A5 关闭），
+   故 `static_assert` 会是恒真（无用）⇒ 改用 **needle 钉单源定义 + 一条禁复活**（不许退回
+   `#define HGL_L2W_RING_FRAMES 3`）；另钉 `RingLayout` 默认深度必须取该常量。同时回扫了
+   `Context.cpp` 里「那个 3 是待查的既有条件」这句**陈旧注释**（A5 后已反）。
+2. ✅ **切片 4 行对齐**：推进式 `(cursor + capacity + 3u) & ~3u` 的 needle + **运行期守卫**
+   （`SetBatchLayout`：`row_base % 4 != 0` ⇒ 一次性 `GLogError`；装配侧 bug 不静默违 16B 对齐）。
+3. ✅ **ICB countBuffer 的 `INDIRECT_BUFFER_BIT`**：needle 钉 `batch_usage | INDIRECT | TRANSFER_DST`
+   那一行（缺 = VUID-02715）。
+4. ✅ **回读前置**：`SyncForParityReadback` 记「已同步帧」+ `MapCurrentBatchCounters` 校验
+   （未同步 ⇒ 一次性 `GLogError` 且**拒绝返回**残影数据）＋ needle 钉台架 Sync/Map 成对调用点
+   （实测同一采样帧内 Sync 在 Map 之前成套执行 ⇒ 守卫不误报）。
+5. ⏳ **仍开**：§八 的运行长度合并（`Y=实例数`）落地时，命令数判据一并进 §五 验收矩阵。
