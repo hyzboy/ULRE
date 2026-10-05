@@ -601,6 +601,16 @@ namespace hgl
                     {
                         const graph::SemaphoreSubmit main_wait = graph::SemaphoreSubmit::Wait(main_lane, main_value);
                         SetSubmitWaits(&main_wait, 1);
+
+                        // 正向判据（一次性）：确认"A1 车道等待"真的挂上了——
+                        // 此前车道恒 null（构造期设备未绑定），这段被静默跳过。
+                        static bool s_a1_wait_logged = false;
+                        if (!s_a1_wait_logged)
+                        {
+                            s_a1_wait_logged = true;
+                            GLogInfo("[A1] 离屏提交挂上主帧车道等待 v=%llu（prepass 覆写阴影前，在途主帧已读完）",
+                                     static_cast<unsigned long long>(main_value));
+                        }
                     }
                 }
             }

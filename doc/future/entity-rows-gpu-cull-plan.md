@@ -615,6 +615,21 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
 - ~~变换侧 L2W 环深度 = 3，而帧槽空间 = 8~~ **已闭**：`HGL_L2W_RING_FRAMES` 现定义为 `HGL_FRAME_SLOT_TOTAL`
   （`inc/hgl/common/RenderOptions.h:33`）⇒ 环深度 ≡ 帧槽空间，不存在别名槽。实体表同按帧槽空间切份。
 
+- ~~主帧车道（A1 timeline 信号量）**从未生效**~~ **已闭（2026-10-05）**：车道在 `SwapchainRenderTarget`
+  构造里创建，而构造期 `ecs_context` 尚未绑定 GPU 设备——`ECSContext::Initialize(device, target)` 的
+  **入参正是本 RT**（RT 必须先存在）⇒ 那一刻 `IRenderTarget::GetDevice()` 恒 null ⇒ 车道恒 null
+  ⇒ `src/ecs/core/Context.cpp`（离屏 `RenderTo`）的「prepass await 上一次主帧车道值」被**静默跳过**，
+  即「prepass 覆写阴影前，在途主帧已读完」这条保证**自 A1 落地（`2029ab516`）起就没生效过**。
+  - **反证**：同一 API 在 `RenderTargetManager` 给 4 个级联 RT 建车道**全部成功**（跑 `CascadeShadowMap`
+    实测，零失败日志）⇒ 不是驱动问题、也不是换机带来的；差别只在设备指针来源
+    （RT manager 用自存 device，swapchain RT 用 `ecs_context->GetGPUDevice()`）。
+  - **修法**：改为首次使用时 `EnsureMainLane()` **延迟创建**（`GetMainLane()` 亦经它），并加两条一次性
+    正向判据——`[SwapchainRenderTarget] 主帧车道（A1 timeline 信号量）就位（延迟创建）` 与
+    `[A1] 离屏提交挂上主帧车道等待 v=N`（缺后者即「锁没挂上」，此前正是如此）。
+  - **语义依据（与「阴影要不要分帧槽」绑定）**：车道是**单调递增值**，等「最新值」即可覆盖所有更早的在途
+    主帧（同队列提交序 ⇒ 值 N 完成蕴含 N-1… 已完成）⇒ **单个 timeline 车道足以保护跨帧共享的阴影纹理**
+    ⇒ 阴影**不需要**按帧槽分份（分份还要为 CSM1..3 的稀疏写付每帧显存 + 按份维护静态缓存状态机，
+    且离屏槽预算仅 4 槽、4 级联×2 槽装不下，会牵动 `HGL_FRAME_SLOT_TOTAL` 与 L2W 环深度不变式）。
 ### 8.5 ③ 多批/混材质设计（T3i —— **已实施，定稿与落地见 §8.6**；本节保留拍板前的方案推演）
 
 **现状缺口**：guard 的"恰好一个含几何批（R4）"前提把形态 B 锁死在单批场景——

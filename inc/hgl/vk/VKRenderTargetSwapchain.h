@@ -45,9 +45,14 @@ class SwapchainRenderTarget : public IRenderTarget
     DeviceQueue**       images_in_flight    = nullptr;  ///< [image_count] - which slot owns each image
     bool                resize_required     = false;
 
-    /// 主帧车道（A1）：timeline 信号量，主帧提交 signal、离屏 prepass await 其上一次值
+    /// 主帧车道（A1）：timeline 信号量，主帧提交 signal、离屏 prepass await 其上一次值。
+    /// **延迟创建**：构造期 `ecs_context` 尚未绑定 GPU 设备（`ECSContext::Initialize`
+    /// 的入参正是本 RT）⇒ 在构造里建必然拿不到设备、车道恒 null 且不会报错可用。
     Semaphore*          main_lane           = nullptr;
     uint64_t            main_lane_value     = 0;
+
+    /// 幂等取（必要时创建）主帧车道；设备不可用/创建失败 ⇒ 返回 null（调用方按"无车道"降级）
+    Semaphore*          EnsureMainLane();
 
     /// 颜色读回窗口状态：`NextFrame()` 成功后开启，`Submit()` 收尾（Present 之后）关闭。
     /// 只有在这个窗口里，交换链颜色图才是「已 acquire、未 present」⇒ 才可被访问。
@@ -101,7 +106,7 @@ public:
     RenderCmdBuffer*    GetRenderCmdBuffer()                 override;
 
     /// 主帧车道（A1）：主帧提交 signal，离屏 prepass await 上一次主帧的值
-    Semaphore*          GetMainLane()                        override { return main_lane; }
+    Semaphore*          GetMainLane()                        override { return EnsureMainLane(); }
     uint64_t            GetMainLaneValue()             const override { return main_lane_value; }
 
     bool                Submit(const SemaphoreSubmit* extra_waits,uint32_t extra_wait_count) override;

@@ -33,13 +33,35 @@ SwapchainRenderTarget::SwapchainRenderTarget(
     // Zero-initialise per-image ownership table
     images_in_flight = new DeviceQueue*[swapchain->image_count]();
 
-    // 主帧车道（A1）：timeline 信号量。主帧提交 signal 一个递增值；离屏 prepass
-    // await 上一次主帧的值 ⇒ GPU 侧保证「prepass 覆写阴影前，在途主帧已读完」。
-    if (VulkanDevice *device = GetDevice())
-        main_lane = device->CreateTimelineSemaphore("Swapchain:MainLane");
+    // 主帧车道（A1）**不在此创建**：构造期 `ecs_context` 还没绑定 GPU 设备
+    //（`ECSContext::Initialize(device, target)` 的入参就是本 RT ⇒ 本 RT 必须先存在）
+    // ⇒ 这里 `GetDevice()` 必为 null，建了也是恒 null 且静默失效。
+    // 改为首次真正需要时经 `EnsureMainLane()` 延迟创建（见下方定义）。
+}
+
+/// 主帧车道（A1）**延迟创建**：构造期设备未绑定（见构造里的说明）——首次真正
+/// 需要时（主帧提交 signal / 离屏 prepass 询问 GetMainLane）才建。
+/// 车道是**单调递增值**：等"最新值"即可覆盖所有更早的在途主帧（同队列提交序 ⇒
+/// 值 N 完成蕴含 N-1… 已完成）⇒ 单个 timeline 车道足以保护跨帧共享的阴影纹理。
+Semaphore *SwapchainRenderTarget::EnsureMainLane()
+{
+    if (main_lane)
+        return main_lane;
+
+    VulkanDevice *device = GetDevice();
+    if (!device)
+        return nullptr;             // 设备仍未就绪：按"无车道"降级（不刷屏、不报错）
+
+    main_lane = device->CreateTimelineSemaphore("Swapchain:MainLane");
 
     if (!main_lane)
+    {
         LogError("SwapchainRenderTarget: 主帧车道（timeline 信号量）创建失败");
+        return nullptr;
+    }
+
+    GLogInfo("[SwapchainRenderTarget] 主帧车道（A1 timeline 信号量）就位（延迟创建）");
+    return main_lane;
 }
 
 SwapchainRenderTarget::~SwapchainRenderTarget()
@@ -164,10 +186,10 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
     signals[signal_count++] = extra_signal;
 
     // 主帧车道（A1）：signal 一个递增值，供下一次离屏 prepass await
-    if (main_lane)
+    if (Semaphore *lane = EnsureMainLane())
     {
-        main_lane_value = main_lane->NextValue();
-        signals[signal_count++] = SemaphoreSubmit::Signal(main_lane, main_lane_value);
+        main_lane_value = lane->NextValue();
+        signals[signal_count++] = SemaphoreSubmit::Signal(lane, main_lane_value);
     }
 
     // Submit: wait image_available + upload semaphores + 调用方额外等待（本帧各离屏 RT 车道）；signal render_finished + 主帧车道
