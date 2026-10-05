@@ -69,6 +69,7 @@
 #include<hgl/ecs/support/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
+#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
 #include<hgl/time/Time.h>
 
 #include<glm/glm.hpp>
@@ -467,6 +468,39 @@ public:
 
         // AM_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（钩子在本帧提交后、present 前执行
         // ⇒ 读到本帧画面），落原始 packed 字节后退出。
+        // AMSELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
+        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
+        // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
+        {
+            static const bool s_selfcheck = (getenv("AM_SELFCHECK") != nullptr);
+            static uint32_t   s_self_frame = 0;
+
+            static constexpr uint32_t kSelfW           = 1280;
+            static constexpr uint32_t kSelfH           = 720;
+            static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
+            static constexpr uint64_t kSelfFNV         = 0x2fe87b15ee8b8a16ull;  // 冻结相机 + 接管下实跑记录
+                                                        // （改渲染结果必须复核并重录）
+
+            if (s_selfcheck && ++s_self_frame == 8)
+            {
+                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_world ? ecs_world->GetRenderTarget() : nullptr);
+                if (!rt)
+                {
+                    printf("[AMSELF] no swapchain RT\n");
+                    std::exit(2);
+                }
+
+                ulre_example::FrameDigest expect;
+                expect.width                = kSelfW;
+                expect.height               = kSelfH;
+                expect.distinct_byte_values = kSelfMinDistinct;
+                expect.fnv1a64              = kSelfFNV;
+
+                ulre_example::InstallFrameDigestHook(rt, expect, "AMSELF");
+            }
+        }
+
+
         if (!dump_tag.empty() && ++dump_frame == 8)
         {
             auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(

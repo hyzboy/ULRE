@@ -25,6 +25,7 @@
 #include<hgl/ecs/support/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
+#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -226,6 +227,16 @@ private:
         camera->distance = 48.0f;
         camera->yaw = 45.0f;
         camera->pitch = -20.0f;
+
+        // 相机 env 门（与其它台架同形：AM_/CV_/PBR_/LS_ 都是这一套 ⇒ 统一情况、可做敏感性对照）。
+        // 默认值不动 ⇒ 默认视角不变。原示例只演示「2D 网格转 3D 显示」，无相机控制的特例一并收掉。
+        if (const char * v = getenv("PG_YAW"))   camera->yaw      = (float)atof(v);
+        if (const char * v = getenv("PG_PITCH")) camera->pitch    = (float)atof(v);
+        if (const char * v = getenv("PG_DIST"))  camera->distance = (float)atof(v);
+        if (const char * v = getenv("PG_TX"))    camera->target.x = (float)atof(v);
+        if (const char * v = getenv("PG_TY"))    camera->target.y = (float)atof(v);
+        if (const char * v = getenv("PG_TZ"))    camera->target.z = (float)atof(v);
+
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
@@ -282,6 +293,39 @@ public:
 
         // PG_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（本帧提交后、present 前执行 ⇒ 读到
         // 本帧画面），落原始 packed 字节后退出（同 GPUDrivenCull / CoverageVariants 先例）。
+        // PGSELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
+        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
+        // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
+        {
+            static const bool s_selfcheck = (getenv("PG_SELFCHECK") != nullptr);
+            static uint32_t   s_self_frame = 0;
+
+            static constexpr uint32_t kSelfW           = 1280;
+            static constexpr uint32_t kSelfH           = 720;
+            static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
+            static constexpr uint64_t kSelfFNV         = 0x4125c3c830cb92d3ull;  // 冻结相机 + 接管下实跑记录
+                                                        // （改渲染结果必须复核并重录）
+
+            if (s_selfcheck && ++s_self_frame == 8)
+            {
+                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+                if (!rt)
+                {
+                    printf("[PGSELF] no swapchain RT\n");
+                    std::exit(2);
+                }
+
+                ulre_example::FrameDigest expect;
+                expect.width                = kSelfW;
+                expect.height               = kSelfH;
+                expect.distinct_byte_values = kSelfMinDistinct;
+                expect.fnv1a64              = kSelfFNV;
+
+                ulre_example::InstallFrameDigestHook(rt, expect, "PGSELF");
+            }
+        }
+
+
         if (!pg_dump_tag.empty() && ++pg_dump_frame == 8)
         {
             auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());

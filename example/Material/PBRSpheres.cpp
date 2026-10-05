@@ -35,6 +35,7 @@
 #include<hgl/ecs/support/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
+#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
 #include <cstdio>
 #include <cstdlib>
 #include <hgl/time/Time.h>
@@ -715,7 +716,8 @@ public:
 
         // dump 模式：时间冻结 ⇒ 两次运行（GPU 剔除 vs CPU 基线）的几何逐帧确定，
         // 像素差只可能来自剔除判据本身。
-        if (dump_tag.empty())
+        // 帧摘要自检（PBR_SELFCHECK=1）同理必须冻结时间，否则两次运行几何不同 ⇒ 摘要非确定。
+        if (dump_tag.empty() && getenv("PBR_SELFCHECK") == nullptr)
             elapsed_time += delta_time;
 
         const float t = static_cast<float>(elapsed_time);
@@ -743,6 +745,39 @@ public:
         // PBR_DUMP 模式：第 8 帧装一次性帧内回读钩子（钩子在本帧提交后、present 前
         // 执行 ⇒ 读到本帧画面），落原始 packed 字节后 std::exit（同 AlphaTestShadow
         // 自检先例：跳过框架析构，验收路径可接受）。
+        // PBRSELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
+        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
+        // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
+        {
+            static const bool s_selfcheck = (getenv("PBR_SELFCHECK") != nullptr);
+            static uint32_t   s_self_frame = 0;
+
+            static constexpr uint32_t kSelfW           = 1280;
+            static constexpr uint32_t kSelfH           = 720;
+            static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
+            static constexpr uint64_t kSelfFNV         = 0x3dd88a0999cdc486ull;  // 冻结相机 + 接管下实跑记录
+                                                        // （改渲染结果必须复核并重录）
+
+            if (s_selfcheck && ++s_self_frame == 8)
+            {
+                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_world ? ecs_world->GetRenderTarget() : nullptr);
+                if (!rt)
+                {
+                    printf("[PBRSELF] no swapchain RT\n");
+                    std::exit(2);
+                }
+
+                ulre_example::FrameDigest expect;
+                expect.width                = kSelfW;
+                expect.height               = kSelfH;
+                expect.distinct_byte_values = kSelfMinDistinct;
+                expect.fnv1a64              = kSelfFNV;
+
+                ulre_example::InstallFrameDigestHook(rt, expect, "PBRSELF");
+            }
+        }
+
+
         if (!dump_tag.empty() && ++dump_frame == 8)
         {
             auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
