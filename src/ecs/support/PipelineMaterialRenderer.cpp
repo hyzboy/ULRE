@@ -220,16 +220,25 @@ namespace hgl::ecs
 
         // 遍历绘制批次：全部累积命令（BDA 后无 per-draw descriptor/set——BDA 化前
         // 的 per-draw 独立 PerObject MP 池机制已随 7 表全 BDA 退场）
-        DrawBatch* batch = const_cast<DrawBatch*>(batches.data());
-
-        for (uint32_t i = 0; i < batch_count; i++)
+        //
+        // A6-d T4：**接管批跳过这一圈**——`Draw()` 只累计 `indirect_draw_count`（CPU 命令条数），
+        // 而接管批的间接命令与条数都由 GPU gather 写（切片 + 每批计数）⇒ 这圈对它是纯浪费。
+        // 未被接管的批（guard 拒）仍走 CPU 累积 ⇒ 兜底路径不变。
+        if (!(owner_batch && owner_batch->gpu_driven_override))
         {
-            Draw(batch, transform_buffer, owner_batch);
-            ++batch;
+            DrawBatch* batch = const_cast<DrawBatch*>(batches.data());
+
+            for (uint32_t i = 0; i < batch_count; i++)
+            {
+                Draw(batch, transform_buffer, owner_batch);
+                ++batch;
+            }
         }
 
         // 批末统一 flush 一条 vkCmdDrawMeshTasksIndirectEXT（multi-draw）
-        if (indirect_draw_count)
+        // A6-d T4：门不能只看 CPU 计数——接管批跳过 CPU 累积后 `indirect_draw_count` 恒 0，
+        // 而它的 first/max_count 取自批自身（gpu_row_base / gpu_capacity）⇒ 补上接管批这一支。
+        if (indirect_draw_count || (owner_batch && owner_batch->gpu_driven_override))
         {
             ProcIndirectRender();
         }
