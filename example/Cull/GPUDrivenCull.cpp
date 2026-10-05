@@ -46,7 +46,7 @@
 #include<hgl/ecs/support/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
-#include<hgl/util/hash/FNV1a.h>
+#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
 
 #include<glm/glm.hpp>
 #include<memory>
@@ -393,8 +393,8 @@ public:
             });
         }
 
-        // GC_SELFCHECK=1：**帧摘要自检**（A6-d 判据重建试点，计划档 §10 §三.3）——
-        // 第 8 帧回读颜色靶，算 {不同字节取值数, FNV-1a 64} 与内联常量比对：
+        // GC_SELFCHECK=1：**帧摘要自检**（A6-d 判据重建，计划档 §10 §三.3；共用件 example/Shared/FrameDigest.h）——
+        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：
         // PASS 退出 0 / FAIL 退出 1。判据必须建在**冻结相机 + 定帧**上（GC_STATIC=1）。
         if (selfcheck && ++selfcheck_frame == 8)
         {
@@ -405,42 +405,13 @@ public:
                 std::exit(2);
             }
 
-            graph::IRenderTarget * rt_ptr = rt;
-            rt->SetInFrameReadbackHook([rt_ptr]()
-            {
-                std::vector<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    printf("[GCSELF] readback failed\n");
-                    std::exit(2);
-                }
+            ulre_example::FrameDigest expect;
+            expect.width                = kSelfW;
+            expect.height               = kSelfH;
+            expect.distinct_byte_values = kSelfMinDistinct;
+            expect.fnv1a64              = kSelfFNV;
 
-                // 摘要对**打包字节**（与 dump 同源 ⇒ 两者可比）；用引擎现成 FNV1aHasher64。
-                hgl::hash::FNV1aHasher64 hasher;
-                hasher.AppendBytes(pixels.data(), pixels.size());
-                const uint64_t fnv = hasher;
-
-                uint8_t seen[256] = {};
-                uint32_t distinct = 0;
-                for (uint8_t b : pixels)
-                {
-                    if (!seen[b]) { seen[b] = 1; ++distinct; }
-                }
-
-                const bool ok = (info.width == kSelfW) && (info.height == kSelfH)
-                             && (distinct >= kSelfMinDistinct) && (fnv == kSelfFNV);
-
-                printf("[GCSELF] %ux%u %s  bytes=%zu  distinct_byte_values=%u  fnv1a64=0x%016llX\n",
-                       info.width, info.height,
-                       GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown",
-                       pixels.size(), distinct, (unsigned long long)fnv);
-                printf("[GCSELF] %s（期望 %ux%u distinct>=%u fnv=0x%016llX）\n",
-                       ok ? "PASS" : "FAIL", kSelfW, kSelfH, kSelfMinDistinct,
-                       (unsigned long long)kSelfFNV);
-                fflush(stdout);
-                std::exit(ok ? 0 : 1);
-            });
+            ulre_example::InstallFrameDigestHook(rt, expect, "GCSELF");
         }
 
         // GC_FRAMES=N：定帧退出（CI / 像素对照）
