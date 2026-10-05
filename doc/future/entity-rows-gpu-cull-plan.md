@@ -1278,7 +1278,7 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 
 | # | 内容 | 判据 | 动全局结构 |
 |---|---|---|---|
-| **T1** | **判据重建**：帧摘要自检落到台架（先 `GPUDrivenCull` 试点，再推广六个） | 各 `*_SELFCHECK=1` PASS；摘要与现三方像素同源 | 否 |
+| **T1** | **判据重建**：帧摘要自检落到台架 —— **`GPUDrivenCull` 试点已落地**（`GC_SELFCHECK=1`：第 8 帧回读颜色靶 ⇒ `{不同取值数, FNV-1a 64}` 比对内联常量，PASS/FAIL 收退出码；实测摘要确定性 + 换相机角度即 FAIL）；待推广其余五个 | 各 `*_SELFCHECK=1` PASS；摘要与现三方像素同源 | 否 |
 | **T2** | **强制接管**：删三条件早退 ⇒ 主帧 mesh 批恒走 GPU 路径 | 门 45/0；六台架 `ENGAGED` 且摘要不变；全示例 0 VUID | 否（**默认行为变**） |
 | **T3** | 删 CPU **排序** + `distanceToCamera`（含收集侧写者） | 摘要不变 + 门/契约 | 否 |
 | **T4** | 删 CPU **写行 / ICB**（`WriteMeshDrawCommands` + `draw_batches` + `EnsureMeshDrawParams`） | 同上 | 否 |

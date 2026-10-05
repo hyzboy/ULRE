@@ -46,6 +46,7 @@
 #include<hgl/ecs/support/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
+#include<hgl/util/hash/FNV1a.h>
 
 #include<glm/glm.hpp>
 #include<memory>
@@ -119,6 +120,16 @@ private:
     uint32_t    dump_frame  = 0;
     uint32_t    run_frames  = 0;
     uint32_t    frame_seen  = 0;
+    bool        selfcheck       = false;
+    uint32_t    selfcheck_frame = 0;
+
+    // 帧摘要常量（A6-d 判据重建试点，计划档 §10 §三.3）：**冻结相机 + 定帧**下的实跑记录。
+    // 它是「删 CPU 账后画面没变」的判据：少画一批 / 错画 / 全清屏都会让摘要变。
+    static constexpr uint32_t kSelfW           = 1280;
+    static constexpr uint32_t kSelfH           = 720;
+    static constexpr uint32_t kSelfMinDistinct = 2;      // 判据不空转守卫（全清屏 distinct==1 ⇒ FAIL）
+    static constexpr uint64_t kSelfFNV         = 0x90E0745C2C7B8599ull;  // 冻结相机 + 接管下实跑记录
+                                                        // （改渲染结果必须同步复核并重录）
 
 private:
 
@@ -318,6 +329,7 @@ public:
 
         if (const char * tag = getenv("GC_DUMP")) dump_tag = tag;
         if (const char * v   = getenv("GC_FRAMES")) run_frames = (uint32_t)atoi(v);
+        if (getenv("GC_SELFCHECK")) selfcheck = true;
 
         return true;
     }
@@ -378,6 +390,56 @@ public:
                 fclose(fp);
                 printf("[GCDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
                 std::exit(0);
+            });
+        }
+
+        // GC_SELFCHECK=1：**帧摘要自检**（A6-d 判据重建试点，计划档 §10 §三.3）——
+        // 第 8 帧回读颜色靶，算 {不同字节取值数, FNV-1a 64} 与内联常量比对：
+        // PASS 退出 0 / FAIL 退出 1。判据必须建在**冻结相机 + 定帧**上（GC_STATIC=1）。
+        if (selfcheck && ++selfcheck_frame == 8)
+        {
+            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+            if (!rt)
+            {
+                printf("[GCSELF] no swapchain RT\n");
+                std::exit(2);
+            }
+
+            graph::IRenderTarget * rt_ptr = rt;
+            rt->SetInFrameReadbackHook([rt_ptr]()
+            {
+                std::vector<uint8_t> pixels;
+                graph::TextureReadbackInfo info;
+                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
+                {
+                    printf("[GCSELF] readback failed\n");
+                    std::exit(2);
+                }
+
+                // 摘要对**打包字节**（与 dump 同源 ⇒ 两者可比）；用引擎现成 FNV1aHasher64。
+                hgl::hash::FNV1aHasher64 hasher;
+                hasher.AppendBytes(pixels.data(), pixels.size());
+                const uint64_t fnv = hasher;
+
+                uint8_t seen[256] = {};
+                uint32_t distinct = 0;
+                for (uint8_t b : pixels)
+                {
+                    if (!seen[b]) { seen[b] = 1; ++distinct; }
+                }
+
+                const bool ok = (info.width == kSelfW) && (info.height == kSelfH)
+                             && (distinct >= kSelfMinDistinct) && (fnv == kSelfFNV);
+
+                printf("[GCSELF] %ux%u %s  bytes=%zu  distinct_byte_values=%u  fnv1a64=0x%016llX\n",
+                       info.width, info.height,
+                       GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown",
+                       pixels.size(), distinct, (unsigned long long)fnv);
+                printf("[GCSELF] %s（期望 %ux%u distinct>=%u fnv=0x%016llX）\n",
+                       ok ? "PASS" : "FAIL", kSelfW, kSelfH, kSelfMinDistinct,
+                       (unsigned long long)kSelfFNV);
+                fflush(stdout);
+                std::exit(ok ? 0 : 1);
             });
         }
 
