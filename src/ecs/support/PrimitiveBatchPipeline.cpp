@@ -1278,7 +1278,7 @@ namespace hgl::ecs
             // 首个可接管批时取标签数组（进入即整表无效初值）
             if (!tags)
             {
-                tags = gpu_cull->BeginBatchTagWrite();
+                tags = gpu_cull->BeginBatchTagWrite(0u /*pass: 主帧*/);
                 if (!tags)
                     return;          // 拿不到映射 = 设备问题 ⇒ 整帧不接管
             }
@@ -1291,7 +1291,7 @@ namespace hgl::ecs
             // `MeshDispatchGroupSize()` 单一真源（CPU 的 ICB 组装同源 ⇒ 两条账不分叉）。
             const bool batch_is_lines =
                 b->key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines;
-            gpu_cull->SetBatchLayout(index, row_cursor, capacity,
+            gpu_cull->SetBatchLayout(0u /*pass: 主帧*/, index, row_cursor, capacity,
                 batch_is_lines ? GPUCullSystem::kBatchTopologyLines
                                : GPUCullSystem::kBatchTopologyTriangles,
                 MeshDispatchGroupSize(batch_is_lines));
@@ -1316,7 +1316,7 @@ namespace hgl::ecs
         if (pending_count == 0)
         {
             if (tags)
-                gpu_cull->EndBatchLayout(0);   // 无接管批 ⇒ batch_count=0（cull 只出计数）
+                gpu_cull->EndBatchLayout(0u, 0);   // 无接管批 ⇒ batch_count=0（cull 只出计数）
             return;
         }
 
@@ -1324,12 +1324,12 @@ namespace hgl::ecs
         // 一次派发看过；`SetEnabled(false)` 归零 ⇒ 场景切换/重开不会拿旧计数放行）。
         if (!gpu_cull->IsDispatchSettled())
         {
-            gpu_cull->EndBatchLayout(0);
+            gpu_cull->EndBatchLayout(0u, 0);
             return;
         }
 
         // 分区/标签落设备（batch_count = 接管批数）
-        gpu_cull->EndBatchLayout(pending_count);
+        gpu_cull->EndBatchLayout(0u /*pass: 主帧*/, pending_count);
 
         uint32_t engaged = 0;
 

@@ -3089,7 +3089,8 @@ namespace
             }
         }
 
-        // ── ② 派发档：C++ 常量 ↔ GLSL #define 数值一致（两处各写一遍的漂移面） ──
+        // ── ② 派发档 / 每 pass 块常量：C++ 常量 ↔ GLSL #define 数值一致（两处各写
+        //    一遍的漂移面；格 = 整数常量，故与档号同表） ──
         struct TierPair
         {
             const char *cpp_token;
@@ -3100,6 +3101,10 @@ namespace
         {
             { "kBatchTopologyTriangles", "#define TOPOLOGY_TRIANGLES" },
             { "kBatchTopologyLines",     "#define TOPOLOGY_LINES"     },
+            // T4c2：批行/计数按 pass 分块 ⇒ 遍数两端各写一遍（漂移 = 阴影块永不被写或被越界写）
+            // ⚠ C++ 端令牌必须带类型+声明符：`kArenaPasses` 的**首次出现**是
+            //   GetBatchLayout 的越界判断（同一行无数字）⇒ 只用标识符会提取失败误报。
+            { "static constexpr uint32_t kArenaPasses", "#define ULRE_ARENA_PASSES" },
         };
 
         for (const TierPair &tier : tiers)

@@ -78,13 +78,16 @@ namespace hgl::ecs
             uint32_t entity_count;
             uint32_t max_visible_count;
             uint32_t camera_row;          // ECSContext::GetActiveCameraRow()
-            uint32_t batch_count;         // T3i：本帧批数（0 = 无接管批）
+            uint32_t batch_count;         // T3i：本帧批数（0 = 无接管批；两 pass 同值）
+            uint32_t batch_block_stride;  // T4c2：批行/计数每 pass 块的行数（= kBatchBlockStride）
         };
 
-        // 11×u64(88) + 4×u32(16) = 104 ⇒ 对齐 8 ⇒ sizeof 104（A6-d T2 撤 enable_gather）。
-        static_assert(sizeof(CullPushConstants) == 104, "CullPushConstants layout mismatch");
+        // 11×u64(88) + 5×u32(20) = 108 ⇒ 对齐 8 ⇒ sizeof 112
+        //（A6-d T2 撤 enable_gather 后曾为 104；T4c2 加 batch_block_stride ⇒ 112）。
+        static_assert(sizeof(CullPushConstants) == 112, "CullPushConstants layout mismatch");
         static_assert(offsetof(CullPushConstants, batch_tag_addr) == 64, "T3i pc 段偏移");
         static_assert(offsetof(CullPushConstants, batch_count) == 100, "T3i pc 段偏移");
+        static_assert(offsetof(CullPushConstants, batch_block_stride) == 104, "T4c2 pc 段偏移（吃 4B 填充）");
 
         // 引擎合规文件读取（先例：ShaderCodeModuleRegistry::LoadFileContent ——
         // 同一读法与缓冲口径），路径由 ShaderLibrary 单源解析（禁绝对路径）。
@@ -324,8 +327,8 @@ namespace hgl::ecs
         // usage：STORAGE（CS 读写）+ SHADER_DEVICE_ADDRESS（BDA 下发）；counter 另带
         // TRANSFER_DST（cull cmd 内 FillBuffer 清零，VUID-vkCmdFillBuffer-dstBuffer-00031）。
         const VkDeviceSize tag_slot_bytes     = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
-        const VkDeviceSize info_slot_bytes    = VkDeviceSize(kMaxBatches) * sizeof(BatchInfoRow);
-        const VkDeviceSize counter_slot_bytes = VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t);
+        const VkDeviceSize info_slot_bytes    = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
+        const VkDeviceSize counter_slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
         const VkDeviceSize batch_slots        = VkDeviceSize(HGL_FRAME_SLOT_TOTAL);
 
         const VkBufferUsageFlags batch_usage =
@@ -368,10 +371,15 @@ namespace hgl::ecs
 
     // ── T3i（③ 多批）批标签 / 分区 / 计数 ─────────────────────────────
 
-    uint32_t *GPUCullSystem::BeginBatchTagWrite()
+    uint32_t *GPUCullSystem::BeginBatchTagWrite(uint32_t pass_index)
     {
-        if (!batch_tag_buffer_ || !context_)
+        if (!batch_tag_buffer_ || !context_ || pass_index >= kArenaPasses)
             return nullptr;
+
+        // T4c2：本 pass 那一块批分区清零——**必须每帧清**，否则上一帧写过、本帧没写的批
+        // 会留下残留行（capacity 非零），被本帧仍有效的标签引用 ⇒ 凭空写行。
+        for (uint32_t i = 0; i < kBatchBlockStride; ++i)
+            batch_info_staging_[BatchBlockBase(pass_index) + i] = BatchInfoRow{};
 
         const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
         const VkDeviceSize slot_bytes = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
@@ -391,9 +399,18 @@ namespace hgl::ecs
         return p;
     }
 
-    void GPUCullSystem::SetBatchLayout(uint32_t batch_index, uint32_t row_base, uint32_t capacity,
-                                       uint32_t topology, uint32_t group_size)
+    void GPUCullSystem::SetBatchLayout(uint32_t pass_index, uint32_t batch_index, uint32_t row_base,
+                                       uint32_t capacity, uint32_t topology, uint32_t group_size)
     {
+        if (pass_index >= kArenaPasses)
+        {
+            GLogError(u8"[GPUCullSystem] pass 号越界：%u ≥ kArenaPasses(%u)（fail-fast）",
+                      pass_index, kArenaPasses);
+            return;
+        }
+
+        const uint32_t stage_index = BatchBlockBase(pass_index) + batch_index;
+
         if (batch_index >= kMaxBatches)
         {
             GLogError(u8"[GPUCullSystem] 批号越界：%u ≥ kMaxBatches(%u)（超限 = 项目 bug，fail-fast）",
@@ -415,13 +432,13 @@ namespace hgl::ecs
             }
         }
 
-        batch_info_staging_[batch_index].row_base   = row_base;
-        batch_info_staging_[batch_index].capacity   = capacity;
-        batch_info_staging_[batch_index].topology   = topology;
-        batch_info_staging_[batch_index].group_size = group_size;
+        batch_info_staging_[stage_index].row_base   = row_base;
+        batch_info_staging_[stage_index].capacity   = capacity;
+        batch_info_staging_[stage_index].topology   = topology;
+        batch_info_staging_[stage_index].group_size = group_size;
     }
 
-    void GPUCullSystem::EndBatchLayout(uint32_t batch_count)
+    void GPUCullSystem::EndBatchLayout(uint32_t pass_index, uint32_t batch_count)
     {
         if (batch_count > kMaxBatches)
         {
@@ -440,36 +457,39 @@ namespace hgl::ecs
             batch_tag_cpu_slot_ = UINT32_MAX;
         }
 
-        // 2) 分区表落**当前帧槽**那一份
-        if (batch_info_buffer_ && context_ && batch_count > 0)
+        // 2) 分区表落**当前帧槽**那一份（T4c2：整张两块一起落——未写的那块是零，
+        //    shader 据 `capacity == 0` 跳过该 pass）
+        if (batch_info_buffer_ && context_ && batch_count > 0 && pass_index < kArenaPasses)
         {
             const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
-            const VkDeviceSize slot_bytes = VkDeviceSize(kMaxBatches) * sizeof(BatchInfoRow);
+            const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
 
             void *dst = batch_info_buffer_->Map(VkDeviceSize(slot) * slot_bytes, slot_bytes);
             if (dst)
             {
                 std::memcpy(dst, batch_info_staging_,
-                            size_t(batch_count) * sizeof(BatchInfoRow));
+                            size_t(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow));
                 batch_info_buffer_->Unmap();
             }
         }
     }
 
-    uint32_t GPUCullSystem::GetBatchCounterByteOffset(uint32_t batch_index) const
+    uint32_t GPUCullSystem::GetBatchCounterByteOffset(uint32_t pass_index, uint32_t batch_index) const
     {
         const uint32_t slot = context_ ? (context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL) : 0u;
-        const VkDeviceSize slot_bytes = VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t);
+        const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
 
-        return uint32_t(VkDeviceSize(slot) * slot_bytes + VkDeviceSize(batch_index) * sizeof(uint32_t));
+        return uint32_t(VkDeviceSize(slot) * slot_bytes
+                      + VkDeviceSize(BatchBlockBase(pass_index) + batch_index) * sizeof(uint32_t));
     }
 
-    uint32_t GPUCullSystem::GetOverflowCounterByteOffset() const
+    uint32_t GPUCullSystem::GetOverflowCounterByteOffset(uint32_t pass_index) const
     {
-        return GetBatchCounterByteOffset(kMaxBatches);
+        // 块内溢出槽 = 块内第 `batch_count` 行（与 GLSL 口径一致）
+        return GetBatchCounterByteOffset(pass_index, batch_count_);
     }
 
-    uint32_t *GPUCullSystem::MapCurrentBatchCounters()
+    uint32_t *GPUCullSystem::MapCurrentBatchCounters(uint32_t pass_index)
     {
         if (!batch_counter_buffer_ || !context_)
             return nullptr;
@@ -491,10 +511,13 @@ namespace hgl::ecs
         }
 
         const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
-        const VkDeviceSize slot_bytes = VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t);
+        const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
+        const VkDeviceSize block_off  = VkDeviceSize(BatchBlockBase(pass_index)) * sizeof(uint32_t);
 
+        // 返回**该 pass 块的起点**：调用方按 `counters[b]`（b < batch_count）+ `counters[batch_count]`
+        // （块内溢出槽）解读，与单块时代口径一致。
         batch_counter_cpu_ = static_cast<uint32_t *>(
-            batch_counter_buffer_->Map(VkDeviceSize(slot) * slot_bytes, slot_bytes));
+            batch_counter_buffer_->Map(VkDeviceSize(slot) * slot_bytes + block_off, slot_bytes - block_off));
 
         return batch_counter_cpu_;
     }
@@ -623,10 +646,11 @@ namespace hgl::ecs
         pc.batch_tag_addr     = batch_tag_addr_ + VkDeviceSize(batch_slot)
                                 * VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
         pc.batch_info_addr    = batch_info_addr_ + VkDeviceSize(batch_slot)
-                                * VkDeviceSize(kMaxBatches) * sizeof(BatchInfoRow);
+                                * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
         pc.batch_counter_addr = batch_counter_addr_ + VkDeviceSize(batch_slot)
-                                * VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t);
+                                * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
         pc.batch_count        = batch_count_;
+        pc.batch_block_stride = kBatchBlockStride;
 
         cmd->Begin();
 
@@ -699,7 +723,7 @@ namespace hgl::ecs
         if (batch_index >= kMaxBatches || batch_count_ == 0)
             return false;
 
-        const BatchInfoRow &info = batch_info_staging_[batch_index];
+        const BatchInfoRow &info = batch_info_staging_[BatchBlockBase(0u) + batch_index];
 
         // 切片容量必须容得下本批全部 item（写行最坏情况 = 全可见）：不等 ⇒ 口径冲突
         if (batch->items.size() > info.capacity)
@@ -769,7 +793,7 @@ namespace hgl::ecs
         // 计数 = **本批**的 GPU 原子计数（末位 overflow 槽不在此列；maxDrawCount 取
         // 切片容量，实际条数由该计数给出 ⇒ GPU-Driven 动态计数口径不变）
         batch->icb_count_buffer               = batch_counter_buffer_;
-        batch->icb_count_buffer_offset        = GetBatchCounterByteOffset(batch_index);
+        batch->icb_count_buffer_offset        = GetBatchCounterByteOffset(0u, batch_index);
         batch->mesh_draw_params_buffer        = cmds_out_buffer_;
         batch->mesh_draw_params_capacity      = info.capacity;
         batch->l2w_index_buffer               = l2w_out_buffer_;

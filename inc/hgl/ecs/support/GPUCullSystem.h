@@ -69,13 +69,14 @@ namespace hgl::ecs
         uint32_t GetBatchCount() const { return batch_count_; }
 
         /// 本帧第 index 批的竞技场切片。越界 ⇒ false（调用方不得假定容量）。
-        bool GetBatchLayout(uint32_t index, uint32_t &row_base, uint32_t &capacity) const
+        bool GetBatchLayout(uint32_t pass_index, uint32_t index, uint32_t &row_base, uint32_t &capacity) const
         {
-            if (index >= batch_count_ || index >= kMaxBatches)
+            if (index >= batch_count_ || index >= kMaxBatches || pass_index >= kArenaPasses)
                 return false;
 
-            row_base = batch_info_staging_[index].row_base;
-            capacity = batch_info_staging_[index].capacity;
+            const BatchInfoRow &row = batch_info_staging_[BatchBlockBase(pass_index) + index];
+            row_base = row.row_base;
+            capacity = row.capacity;
             return true;
         }
 
@@ -90,33 +91,61 @@ namespace hgl::ecs
         static constexpr uint32_t kMaxBatches      = 256;
         static constexpr uint32_t kInvalidBatchTag = 0xFFFFFFFFu;   ///< 不属任何批 ⇒ cull 跳过
 
+        // ── 容量与按 pass 的块/扇区常量 ──────────────────────────────────────
+        // ⚠ 必须声明在**成员之前**：`batch_info_staging_` 等成员数组要用它们
+        //   （类内声明序 = 使用序，前向引用不成立）。
+        static constexpr uint32_t kMaxVisibleEntities = 4096;
+
+        // T4c1：竞技场按 pass 分扇区（拍板：容量扩到 2 × 4096 = 8192）。
+        // 两个 pass 的绘制集不同（主帧 = GPU 剔除后子集；阴影 = 全量直通，T4c2/T4c3）
+        // ⇒ 各写各的扇区，互不覆盖。**实体索引空间与批标签不在此列**：标签按实体记
+        // "属哪一批"，与 pass 无关 ⇒ 仍为 kMaxVisibleEntities（一槽一份）。
+        static constexpr uint32_t kArenaPasses        = 2;
+        static constexpr uint32_t kArenaRowsPerPass   = kMaxVisibleEntities;
+        static constexpr uint32_t kArenaRows          = kArenaPasses * kArenaRowsPerPass;
+
+        /// 扇区 0 = 主帧 pass；扇区 1 = 阴影 pass。
+        static constexpr uint32_t ArenaSectorBase(uint32_t pass_index)
+        {
+            return (pass_index < kArenaPasses ? pass_index : 0u) * kArenaRowsPerPass;
+        }
+
+        /// T4c2：批行（`BatchInfoRow`）与每批计数**按 pass 分块**，块内 = `kMaxBatches` 行 +
+        /// 1 个溢出槽 ⇒ 两块共 `kArenaPasses * kBatchBlockStride` 行（块 0 = 主帧 pass、
+        /// 块 1 = 阴影 pass）。块的**行空间**与竞技场扇区（`ArenaSectorBase`）是两回事：
+        /// 前者是"每批的切片起点表"，后者是切片所在的行区。
+        static constexpr uint32_t kBatchBlockStride = kMaxBatches + 1;
+        static constexpr uint32_t BatchBlockBase(uint32_t pass_index)
+        { return (pass_index < kArenaPasses ? pass_index : 0u) * kBatchBlockStride; }
+
         /// 批的 dispatch 档（随 `BatchInfoRow.topology` 下发；**与 `entity_gpu_cull.glsl`
         /// 的 `TOPOLOGY_*` 同步**）：决定 gather 的 X 公式（线按段数，组大小也不同）。
         static constexpr uint32_t kBatchTopologyTriangles = 0;  ///< 顶点组→三角形（VertexPassthrough）
         static constexpr uint32_t kBatchTopologyLines     = 1;  ///< 段→quad（LineQuad；每线程 1 段）
 
         /// 批装配期写标签：返回**当前帧槽**标签数组的 CPU 映射（进入时整表清成
-        /// `kInvalidBatchTag`）。用法：`tag = BeginBatchTagWrite(); tag[entity_index] = b;`
-        /// 收尾必须调 `EndBatchLayout(batch_count)`（unmap + 落分区表）。
-        uint32_t *BeginBatchTagWrite();
+        /// `kInvalidBatchTag`）。用法：`tag = BeginBatchTagWrite(pass); tag[entity_index] = b;`
+        /// 同时把**本 pass 那一块**批分区清零（防上一帧残留行被本帧标签引用）。
+        /// 收尾必须调 `EndBatchLayout(pass, batch_count)`（unmap 标签 + 落**整张**分区表）。
+        uint32_t *BeginBatchTagWrite(uint32_t pass_index);
 
         /// 写一条批分区（CPU 侧暂存，`EndBatchLayout` 时落设备）
-        void SetBatchLayout(uint32_t batch_index, uint32_t row_base, uint32_t capacity,
+        void SetBatchLayout(uint32_t pass_index, uint32_t batch_index, uint32_t row_base, uint32_t capacity,
                             uint32_t topology, uint32_t group_size);
 
         /// 收尾：unmap 标签 + 把分区表（batch_count 条）写入当前帧槽 + 记 batch_count
-        void EndBatchLayout(uint32_t batch_count);
+        void EndBatchLayout(uint32_t pass_index, uint32_t batch_count);
 
         /// 每批计数缓冲（含末位 overflow 槽）：绘制侧把它当 `icb_count_buffer` 用
         graph::DeviceBuffer *GetBatchCounterBuffer() const { return batch_counter_buffer_; }
         /// 批 b 的计数在缓冲内的字节偏移（当前帧槽 + 批号；绘制侧 = icb_count_buffer_offset）
-        uint32_t GetBatchCounterByteOffset(uint32_t batch_index) const;
+        uint32_t GetBatchCounterByteOffset(uint32_t pass_index, uint32_t batch_index) const;
         /// overflow 计数（末位槽）的字节偏移
-        uint32_t GetOverflowCounterByteOffset() const;
+        uint32_t GetOverflowCounterByteOffset(uint32_t pass_index) const;
 
         /// 台架读回：映射当前帧槽的计数数组（**调用前须 SyncForParityReadback**）。
         /// 返回指针含 `kMaxBatches + 1` 项，末项 = overflow 计数。
-        uint32_t *MapCurrentBatchCounters();
+        uint32_t *MapCurrentBatchCounters(uint32_t pass_index);
         void      UnmapCurrentBatchCounters();
 
         /// 读回可见计数（**仅限对拍台架**，T3g）：生产路径零 CPU 同步 ⇒ 本函数
@@ -210,7 +239,9 @@ namespace hgl::ecs
             uint32_t group_size;  // MeshDispatchGroupSize(is_lines)（CPU 单源下发，GLSL 不硬编码）
         };
 
-        BatchInfoRow batch_info_staging_[256] = {};   ///< 与 kMaxBatches 同宽（CPU 暂存）
+        /// CPU 暂存：两块（每块 kBatchBlockStride 行）。未写的那块保持零 ⇒ 该 pass 的
+        /// `capacity == 0` ⇒ shader 跳过该 pass（T4c3 起阴影 pass 才会写自己的块）。
+        BatchInfoRow batch_info_staging_[kArenaPasses * kBatchBlockStride] = {};
         uint32_t batch_count_ = 0;                    ///< 本帧批数（0 = 无批 ⇒ cull 只为对拍出计数）
         uint32_t *batch_tag_cpu_ = nullptr;           ///< 当前帧槽标签数组的映射
         uint32_t  batch_tag_cpu_slot_ = UINT32_MAX;   ///< 映射对应的帧槽（换槽重映射）
@@ -253,22 +284,6 @@ namespace hgl::ecs
         uint64_t cmds_out_addr_ = 0;
         uint64_t mtl_out_addr_ = 0;
 
-        // 容量
-        static constexpr uint32_t kMaxVisibleEntities = 4096;
-
-        // ── T4c1：竞技场按 pass 分扇区（拍板：容量扩到 2 × 4096 = 8192）──
-        // 两个 pass 的绘制集不同（主帧 = GPU 剔除后子集；阴影 = 全量直通，T4c2/T4c3）
-        // ⇒ 各写各的扇区，互不覆盖。**实体索引空间与批标签不在此列**：标签按实体记
-        // "属哪一批"，与 pass 无关 ⇒ 仍为 kMaxVisibleEntities（一槽一份）。
-        static constexpr uint32_t kArenaPasses        = 2;
-        static constexpr uint32_t kArenaRowsPerPass   = kMaxVisibleEntities;
-        static constexpr uint32_t kArenaRows          = kArenaPasses * kArenaRowsPerPass;
-
-        /// 扇区 0 = 主帧 pass；扇区 1 = 阴影 pass（`bIsShadowSector` 由调用方给出）。
-        static constexpr uint32_t ArenaSectorBase(uint32_t pass_index)
-        {
-            return (pass_index < kArenaPasses ? pass_index : 0u) * kArenaRowsPerPass;
-        }
         static constexpr uint32_t kWorkGroupSize = 64;
     };
 }

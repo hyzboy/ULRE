@@ -5456,7 +5456,7 @@ int main(int argc, char** argv)
               "§9 M6：台架读回路径必须显式同步（生产路径零同步，只在采样帧付出）" },
 
             { "CPUCullReferenceSystem.cpp", OS_TEXT("src/ecs/support/CPUCullReferenceSystem.cpp"),
-              "counters = gpu_cull->MapCurrentBatchCounters();",
+              "counters = gpu_cull->MapCurrentBatchCounters(0u /*pass: 主帧*/);",
               "§9 M6：台架读回路径的 Map 调用点（与上一条成对：删任一即红）" },
         };
 

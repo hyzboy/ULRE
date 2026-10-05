@@ -100,11 +100,11 @@ namespace hgl::ecs
         if (!mtl_buf || !l2w_buf)
             return;
 
-        const uint32_t *counters = gpu_cull->MapCurrentBatchCounters();
+        const uint32_t *counters = gpu_cull->MapCurrentBatchCounters(0u /*pass: 主帧*/);
         if (!counters)
             return;
 
-        const uint32_t overflow = counters[GPUCullSystem::kMaxBatches];
+        const uint32_t overflow = counters[batch_count];   // 块内溢出槽 = 块内第 batch_count 行
         uint32_t sum = 0;
 
         for (uint32_t b = 0; b < batch_count; ++b)
@@ -146,7 +146,7 @@ namespace hgl::ecs
         {
             uint32_t row_base = 0, capacity = 0;
 
-            if (!gpu_cull->GetBatchLayout(b, row_base, capacity))
+            if (!gpu_cull->GetBatchLayout(0u /*pass: 主帧*/, b, row_base, capacity))
                 continue;
 
             const uint32_t n = (counters[b] < capacity) ? counters[b] : capacity;

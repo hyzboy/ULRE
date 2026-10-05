@@ -1,6 +1,10 @@
 #version 460
 // @ulre begin
 // @ulre name entity_gpu_cull
+// ⚠ `ULRE_ARENA_PASSES` 必须与 C++ `GPUCullSystem::kArenaPasses` 同值（门
+//   `B.batch-info-struct-parity` 兜底）；批行/计数的块行数经 push constant 下发
+//   （`pc.batch_block_stride`），不在此硬编码。
+#define ULRE_ARENA_PASSES 2u
 // @ulre kind Utility
 // @ulre priority 0
 // @ulre end
@@ -49,7 +53,8 @@ layout(push_constant) uniform PushConstants
     uint   entity_count;             // 实体总数
     uint   max_visible_count;        // 幸存表容量上限
     uint   camera_row;               // 本 pass 活跃相机行号（与 pc_root.camera_row 同式）
-    uint   batch_count;              // T3i：本帧批数（0 = 无接管批 ⇒ 只为对拍出计数）
+    uint   batch_count;              // T3i：本帧批数（0 = 无接管批；两 pass 同值）
+    uint   batch_block_stride;       // T4c2：批行/计数每 pass 块的行数（= C++ kBatchBlockStride）
 } pc;
 
 // 世界地址表（通过 push constant 访问，覆盖 scene_ubo.glsl 里的定义）
@@ -291,20 +296,25 @@ void main()
         }
     }
 
-    if (!visible)
-        return;
+    // ── 块 0（主帧 pass）的可见表：口径与单块时代**逐字一致**（不以标签为条件）──
+    // T4c2 起块 1（阴影 pass）也要写行，而它不看可见性 ⇒ 不能用早退收工，改用它做块 0 的开关。
+    bool cull_ok = visible;
+    if (visible)
+    {
+        // 原子递增可见计数
+        DrawCountRef draw_count = DrawCountRef(pc.draw_count_addr);
+        const uint visible_index = atomicAdd(draw_count.value, 1u);
 
-    // 原子递增可见计数
-    DrawCountRef draw_count = DrawCountRef(pc.draw_count_addr);
-    uint visible_index = atomicAdd(draw_count.value, 1u);
-
-    // 检查是否超出最大可见数
-    if (visible_index >= pc.max_visible_count)
-        return;
-
-    // 写入可见实体索引（两档共用）
-    VisibleEntityIndicesRef visible_indices = VisibleEntityIndicesRef(pc.visible_indices_addr);
-    visible_indices.indices[visible_index] = entity_index;
+        // 检查是否超出最大可见数（超出：与单块时代同义——不进可见表、块 0 也不写行）
+        if (visible_index >= pc.max_visible_count)
+            cull_ok = false;
+        else
+        {
+            // 写入可见实体索引（两档共用）
+            VisibleEntityIndicesRef visible_indices = VisibleEntityIndicesRef(pc.visible_indices_addr);
+            visible_indices.indices[visible_index] = entity_index;
+        }
+    }
 
     // ── T3i（③ 多批）：批标签 → 本批切片 → 写四表 ──────────────────────────
     // 标签 = CPU 批装配直写（当前帧槽；cull 在 RenderFrameSync ⇒ 本帧产物）。
@@ -313,44 +323,60 @@ void main()
     const uint batch = BatchTagRef(pc.batch_tag_addr).tags[entity_index];
 
     if (batch == 0xFFFFFFFFu || batch >= pc.batch_count)
-        return;
+        return;      // 不属任何接管批 ⇒ 两个 pass 都不写行（该实体由 CPU 路径绘制）
 
-    const BatchInfoRow binfo = BatchInfoRef(pc.batch_info_addr).rows[batch];
-
-    const uint slot = atomicAdd(BatchCountersRef(pc.batch_counter_addr).counters[batch], 1u);
-
-    if (slot >= binfo.capacity)
+    // ── T4c2：按 pass 两遍写行 ────────────────────────────────────────────
+    //  块 0 = 主帧 pass：仍受视锥剔除（`cull_ok`）⇒ 写"幸存者"行；
+    //  块 1 = 阴影 pass：**直通档**（不判可见性）⇒ 该批全部项写行。阴影图只看深度、
+    //  绘制序无关，故不必搬"批内序号"上 GPU（省一层数据）。
+    //  某 pass 未接管该批 ⇒ 该块 `capacity == 0` ⇒ 跳过（块由 CPU 每帧清零）。
+    for (uint blk = 0u; blk < ULRE_ARENA_PASSES; ++blk)
     {
-        // 3A：溢出 = 批归属与容量不同源（布局错配/越界）⇒ 跳过 + 计入 overflow 槽；
-        // 台架把该计数当**硬判据**（非零即红）。
-        atomicAdd(BatchCountersRef(pc.batch_counter_addr).counters[pc.batch_count], 1u);
-        return;
+        if (blk == 0u && !cull_ok)
+            continue;
+
+        const uint block_base = blk * pc.batch_block_stride;
+        const BatchInfoRow binfo = BatchInfoRef(pc.batch_info_addr).rows[block_base + batch];
+
+        if (binfo.capacity == 0u)
+            continue;    // 本 pass 未接管该批（布局行未写）
+
+        BatchCountersRef counters = BatchCountersRef(pc.batch_counter_addr);
+        const uint slot = atomicAdd(counters.counters[block_base + batch], 1u);
+
+        if (slot >= binfo.capacity)
+        {
+            // 3A：溢出 = 批归属与容量不同源（布局错配/越界）⇒ 跳过 + 计入**本块**溢出槽；
+            // 台架把该计数当**硬判据**（非零即红）。
+            atomicAdd(counters.counters[block_base + pc.batch_count], 1u);
+            continue;
+        }
+
+        // 契约（§8.5；全部读真源、零复制）：
+        //  · 行号 = 本批切片起点 + 切片内序号 ⇒ 每批 draw 只读自己的幸存者
+        //  · cmds 的 first_instance = **切片内序号**（mesh 侧 gl_InstanceIndex =
+        //    first_instance + wg.y；绘制侧 push 地址已带 row_base 偏移 ⇒ 切片内 0 起）
+        //  · mtl 两位 = 实体行事实位逐字节照抄（T3h 口径不变）
+        const uint row = binfo.row_base + slot;
+
+        const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
+        uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
+        if (binfo.topology == TOPOLOGY_LINES)
+            element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段，与 CPU CalcMeshGroupCount 同式）
+        const uint group_count_x = (element_count + binfo.group_size - 1u) / binfo.group_size;
+
+        DrawIndirectCommandsRef(pc.indirect_commands_addr).commands[row] =
+            DrawMeshTasksIndirectCommand(group_count_x, 1u, 1u);
+
+        L2WIndexOutRef(pc.l2w_out_addr).values[row] = transform_id;
+
+        BatchCmdsOutRef(pc.cmds_out_addr).cmds[row] =
+            BatchCmdRow(geometry_id, slot);
+
+        MtlRowsOutRef(pc.mtl_out_addr).values[row] =
+            MtlRow(render_ids.material_id,
+                   render_ids.texture_id,
+                   entity.shadow_bias_multiplier,
+                   entity.shadow_receive == 0u ? 1u : 0u);
     }
-
-    // 契约（§8.5；全部读真源、零复制）：
-    //  · 行号 = 本批切片起点 + 切片内序号 ⇒ 每批 draw 只读自己的幸存者
-    //  · cmds 的 first_instance = **切片内序号**（mesh 侧 gl_InstanceIndex =
-    //    first_instance + wg.y；绘制侧 push 地址已带 row_base 偏移 ⇒ 切片内 0 起）
-    //  · mtl 两位 = 实体行事实位逐字节照抄（T3h 口径不变）
-    const uint row = binfo.row_base + slot;
-
-    const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
-    uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
-    if (binfo.topology == TOPOLOGY_LINES)
-        element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段，与 CPU CalcMeshGroupCount 同式）
-    const uint group_count_x = (element_count + binfo.group_size - 1u) / binfo.group_size;
-
-    DrawIndirectCommandsRef(pc.indirect_commands_addr).commands[row] =
-        DrawMeshTasksIndirectCommand(group_count_x, 1u, 1u);
-
-    L2WIndexOutRef(pc.l2w_out_addr).values[row] = transform_id;
-
-    BatchCmdsOutRef(pc.cmds_out_addr).cmds[row] =
-        BatchCmdRow(geometry_id, slot);
-
-    MtlRowsOutRef(pc.mtl_out_addr).values[row] =
-        MtlRow(render_ids.material_id,
-               render_ids.texture_id,
-               entity.shadow_bias_multiplier,
-               entity.shadow_receive == 0u ? 1u : 0u);
 }
