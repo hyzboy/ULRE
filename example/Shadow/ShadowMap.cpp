@@ -1,4 +1,6 @@
 #include<hgl/framework/WorkManager.h>
+
+#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VertexDataManager.h>
@@ -1196,7 +1198,13 @@ private:
     /// 只能在帧外做。Tick 相位正好在 Render 之前、且没有开帧。
     void UpdateAnimation(const double delta)
     {
-        anim_time += delta;
+        // SM_SELFCHECK=1：冻结动画（**含光源环绕**）——摘要判据只在"静止场景 + 定帧"上成立；
+        // 必须从**第 0 帧**起就冻结，否则光源/网格位置随时序漂移 ⇒ 摘要不可复现。
+        // SM_FREEZE=0 可关（用于**敏感性验证**：摘要必须"画面一变就变"）。
+        static const bool s_sm_frozen = (getenv("SM_SELFCHECK") != nullptr)
+                                     && (getenv("SM_FREEZE") == nullptr || atoi(getenv("SM_FREEZE")) != 0);
+        if (!s_sm_frozen)
+            anim_time += delta;
 
         const float azimuth = kLightStartAzimuthDeg
                             + kLightOrbitDegPerSec * static_cast<float>(anim_time);
@@ -1333,6 +1341,37 @@ public:
         // 基类实现把 delta 转给 ECSContext，主世界的 Tick 相位（主相机、环境、
         // Transform…）都在那里跑。**必须调**，否则主相机矩阵不再更新。
         WorkObject::Tick(delta);
+
+        // SM_SELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
+        // 第 8 帧帧内回读颜色靶 ⇒ {{不同字节取值数, FNV-1a 64}} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
+        // 判据只建在**冻结动画（从第 0 帧起）+ 定帧**上；常量由实跑记录，改渲染结果必须复核重录。
+        {{
+            static const bool s_selfcheck = (getenv("SM_SELFCHECK") != nullptr);
+            static uint32_t   s_self_frame = 0;
+
+            static constexpr uint32_t kSelfW           = 1280;
+            static constexpr uint32_t kSelfH           = 720;
+            static constexpr uint32_t kSelfMinDistinct = 2;    // 不空转守卫
+            static constexpr uint64_t kSelfFNV         = 0xa8a369516cb04571ull;   // 冻结动画（从第 0 帧）+ 接管下实跑记录
+
+            if (s_selfcheck && ++s_self_frame == 8)
+            {{
+                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_context ? ecs_context->GetRenderTarget() : nullptr );
+                if (!rt)
+                {{
+                    printf("[SMSELF] no swapchain RT\n");
+                    std::exit(2);
+                }}
+
+                ulre_example::FrameDigest expect;
+                expect.width                = kSelfW;
+                expect.height               = kSelfH;
+                expect.distinct_byte_values = kSelfMinDistinct;
+                expect.fnv1a64              = kSelfFNV;
+
+                ulre_example::InstallFrameDigestHook(rt, expect, "SMSELF");
+            }}
+        }}
 
         UpdateAnimation(delta);
     }
