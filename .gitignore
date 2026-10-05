@@ -39,3 +39,15 @@ shader-cache/
 /_build
 /.workbuddy
 /Tools
+
+# 示例运行产物：帧内回读 dump —— 带 *_DUMP=<tag> / ATS_SELFCHECK 的示例跑一次就落仓根
+# ats_*=AlphaTestShadow lsdump_*=LoadScene pbrdump_*=PBRSpheres amdump_*=AlphaModes cvdump_*=CoverageVariants gcdump_*=GPUDrivenCull
+ats_*
+lsdump_*
+pbrdump_*
+amdump_*
+cvdump_*
+gcdump_*
+
+# 影子诊断 dump（ATS/CSM 每跑一次就重生成，故不再入库；Python 复算输入同源可复现）
+cascade_depth_*
