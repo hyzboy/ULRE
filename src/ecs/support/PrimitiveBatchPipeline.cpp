@@ -16,7 +16,6 @@
 #include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/support/GPUCullSystem.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
-#include<hgl/ecs/core/InstancedPrimitiveRenderItem.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
@@ -552,57 +551,9 @@ namespace hgl::ecs
 
             if (has_valid_4id && !batch.gpu_driven_override)
             {
-                if (cluster_size == 1 && batch.uses_render_item_resolve)
-                {
-                    if (auto *inst = dynamic_cast<InstancedPrimitiveRenderItem *>(batch.items[i]))
-                    {
-                        const uint32_t inst_count = inst->GetInstanceCount();
-                        if (inst_count > 1)
-                        {
-                            CompactedDrawRange range{};
-                            range.first_instance = inst->GetRenderItemHandle();
-                            range.instance_count = inst_count;
-                            range.is_direct = true;
-
-                            DrawBatch db{};
-                            db.first_instance = range.first_instance;
-                            db.instance_count = range.instance_count;
-                            db.Set(draw_key, geometry);
-                            batch.draw_batches.push_back(db);
-
-                            last_compaction_stats.total_input_items     += inst_count;
-                            last_compaction_stats.direct_ranges         += 1;
-                            last_compaction_stats.direct_items          += inst_count;
-                            last_compaction_stats.bytes_saved_over_full += inst_count * 12;
-
-                            i = cluster_end + 1;
-                            continue;
-                        }
-                    }
-                }
-
                 hgl::ValueArray<RenderItemHandle> cluster_handles;
-                for (size_t k = i; k <= cluster_end; ++k)
-                {
-                    if (auto *inst = dynamic_cast<InstancedPrimitiveRenderItem *>(batch.items[k]))
-                    {
-                        const uint32_t inst_count = inst->GetInstanceCount();
-                        const RenderItemHandle base_h = inst->GetRenderItemHandle();
-                        if (inst_count > 1)
-                        {
-                            for (uint32_t j = 0; j < inst_count; ++j)
-                                cluster_handles.Add(base_h + j);
-                        }
-                        else
-                        {
-                            cluster_handles.Add(base_h);
-                        }
-                    }
-                    else
-                    {
+                    for (size_t k = i; k <= cluster_end; ++k)
                         cluster_handles.Add(batch.items[k]->GetRenderItemHandle());
-                    }
-                }
 
                 CompactionStats stats{};
                 hgl::ValueArray<CompactedDrawRange> compacted_ranges;
@@ -639,13 +590,8 @@ namespace hgl::ecs
                     db.instance_count = 0;
                     for (size_t k = i; k <= cluster_end; ++k)
                     {
-                        if (auto *inst = dynamic_cast<InstancedPrimitiveRenderItem *>(batch.items[k]))
-                            db.instance_count += inst->GetInstanceCount();
-                        else
-                            ++db.instance_count;
+                        ++db.instance_count;
                     }
-                    if (db.instance_count == 0)
-                        db.instance_count = 1;
                     db.Set(draw_key, geometry);
                     batch.draw_batches.push_back(db);
                 }
@@ -657,13 +603,8 @@ namespace hgl::ecs
                 db.instance_count = 0;
                 for (size_t k = i; k <= cluster_end; ++k)
                 {
-                    if (auto *inst = dynamic_cast<InstancedPrimitiveRenderItem *>(batch.items[k]))
-                        db.instance_count += inst->GetInstanceCount();
-                    else
-                        ++db.instance_count;
+                    ++db.instance_count;
                 }
-                if (db.instance_count == 0)
-                    db.instance_count = 1;
                 db.Set(draw_key, geometry);
                 batch.draw_batches.push_back(db);
             }
@@ -1303,9 +1244,9 @@ namespace hgl::ecs
             {
                 for (auto *item : b->items)
                 {
-                    if (!item || dynamic_cast<InstancedPrimitiveRenderItem *>(item))
+                    if (!item)
                     {
-                        why = "含实例化/多实例项（gather 每实体一命令 Y=1 不适配）";
+                        why = "批内含空项";
                         break;
                     }
 

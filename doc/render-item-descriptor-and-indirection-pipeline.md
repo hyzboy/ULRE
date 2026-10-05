@@ -215,7 +215,7 @@ mat4   mesh_draw = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params_pool
 - **1.2 实现槽位分配器与空闲链表 (`RenderItemDataStorage::Allocator`)** 【✅ 已完成】
   - 采用无 STL 的 HGL 数组（`hgl::ValueArray` / `hgl::ArrayList`）。
   - 支持单槽分配与回收（基于 `FreeList` O(1) 槽位重用）。
-  - **连续块分配 (`AllocateContiguous(count)`)**：为静态网格簇或实例化群体预留连续物理槽位区间，为后续连号直通奠定基础。
+  - **连续块分配 (`AllocateContiguous(count)`)**：为静态网格簇预留连续物理槽位区间，为后续连号直通奠定基础（原「实例化群体」用法已随 ④ 整体删除，2026-10-05）。
 - **1.3 实现增量脏标记与 GPU 镜像同步机制** 【✅ 已完成】
   - 维护 `dirty_range` 或脏页位图（BitMap），记录自上一帧以来被修改的描述符槽位。
   - 支持增量更新模式：仅将发生变动的槽位段通过 Staging Buffer 或环形动态缓冲刷入显存中的 `GlobalRenderItemBuffer` SSBO。
@@ -288,7 +288,7 @@ mat4   mesh_draw = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params_pool
 > **核心目标**：将 GPU-Driven CS 视锥剔除与多实例渲染彻底收编至统一架构。
 
 - **5.1 `InstancedPrimitiveComponent` 统一模型接入** 【✅ 已完成】
-  - **CPU 驱动多实例**：`InstancedPrimitiveComponent` 支持 `AllocateContiguousInstances(count)` 向 `RenderItemDataStorage` 申请连续连号 Handle 区间 `[base, count)`，并支持 `SetAllInstances4ID` 与逐实例原地修改。
+  - **~~CPU 驱动多实例~~（2026-10-05 整体删除）**：原 `InstancedPrimitiveComponent`（组件早已不存在）支持 `AllocateContiguousInstances(count)` 向 `RenderItemDataStorage` 申请连续连号 Handle 区间 `[base, count)`，并支持 `SetAllInstances4ID` 与逐实例原地修改。
   - **直接折叠直通**：在 `PrimitiveBatchPipeline::BuildBatches` 中针对 CPU 驱动多实例建立直通加速，多实例直接以连号直通区间 `(first_instance = base, count = N)` 单次 DrawCall 提交，完全免除二级索引表写入（0 字节上传）。
   - **100% GPU-Driven 模式**：`DrawItemIDStorage` 支持外部 GPU 缓冲区物理地址覆盖（`SetExternalGPUBuffer` / `SetExternalGPUAddress`），Compute Shader 输出的存活索引表直接与 `DrawItemIDBuffer` / `GlobalRenderItemBuffer` 统一对齐，不再需要任何特殊的管线外挂代码。
 - **5.2 重构验证 `ComputeAsteroidBelt.cpp`** 【✅ 已完成】

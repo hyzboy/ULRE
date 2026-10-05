@@ -19,7 +19,6 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/ShaderProgramPipelineKey.h
     ${ECS_INCLUDE_PATH}/core/RenderItem.h
     ${ECS_INCLUDE_PATH}/core/PrimitiveRenderItem.h
-    ${ECS_INCLUDE_PATH}/core/InstancedPrimitiveRenderItem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
     core/Object.cpp
     core/ComponentRow.cpp
@@ -37,7 +36,6 @@ set(ECS_CORE_FILES
     core/MaterialBatch.cpp
     core/RenderItem.cpp
     core/PrimitiveRenderItem.cpp
-    core/InstancedPrimitiveRenderItem.cpp
     systems/render/RenderSystemCore.cpp
 )
 

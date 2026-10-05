@@ -592,7 +592,14 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
    ② **meshlet 几何**（X 组数 = GetMeshletCount 分支）—— 池行补 meshlet_count 字段
       或另源，与 CPU 同口径后才放开；
    ③ ~~多批/混合材质场景~~ **已完成（T3i `6b6baa39f`，见 §8.6；测试床 CoverageVariants/AlphaModes）**；
-   ④ **实例化/多实例 item**（gather 每实体一命令 Y=1 不适配）。
+   ④ ~~实例化/多实例 item~~ **won't-do（2026-10-05 关闭）**：查实该能力**无真实使用者**——
+      组件多实例的活调用方只有 A3 台架（它为「被拒」而存在）；`SetInstance4ID` 只有测试在调；
+      collector 对多实例写的是「全部同 4-ID」；上游没有「每实例不同」的生产者 ⇒ 就算把 gather 的
+      Y 写成实例数，画的也只是同一项原地叠 N 遍，**判据立不起来**。故按零兼容**整体删除**：
+      `InstancedPrimitiveRenderItem` + 8 个自由函数 + slot 实例三字段（**行宽 48→40 B**）+ guard 该条
+      + A3 台架的④类项（保留其「独立 program」半）。**CPU 侧自动合批（`DrawItemRange::instance_count`
+      聚类）不受影响**——那才是活的实例化。存储侧 `AllocateContiguous/ReleaseContiguous` 保留
+      （低层存储原语，Test 6 覆盖），只删掉 `PrimitiveState` 对它的包装。
 3. **架构决策（2026-10-04 拍板）**：
    - **DGC 不在本线计划内**：开发机实测无 `VK_EXT_device_generated_commands`
      （Intel Arc 140T / 驱动 2025-01，`vulkaninfo` 查无）。形态 B **不依赖任何扩展**
@@ -824,8 +831,8 @@ cull 派发（RenderFrameSync，本帧）
 | # | 内容 | 现状 / 落点 | 接手判据 |
 |---|------|-------------|----------|
 | **A1** | **② meshlet 几何**（X 组数走 CPU `GetMeshletCount()` 分支） | guard 仍把这类批挡在接管外（池行 `addr_meshlets != 0` ⇒ 该批不接管）。需给 GPU 一个**可读的 meshlet_count 源**（池行加字段或另表） | 与 CPU 同口径后放开；门 44/0；该批接管且像素三方全等 |
-| **A2** | **④ 实例化/多实例 item**（gather 每实体一命令 `Y=1` 不适配） | guard 挡 `InstancedPrimitiveRenderItem`；需 **per-item instance_count 源**（gather 时把 Y 写成实例数） | 同上 |
-| ~~**A3**~~ | ~~**部分接管路径从未被真实触发**~~ **已完成（`c96cac8cd`，AlphaModes `AM_PARTIAL=1`）** | 台架 = Opaque 行最后一格改"同 def + billboard 顶点节点"（⇒ 独立批）+ `AllocateContiguousInstances(…,1)`（⇒ `InstancedPrimitiveRenderItem`，④ 类项）。实测：reject 日志（④ 理由）+ `ENGAGED batches=4/5 items=27` + `Parity 28/28/0` + `Σcount=27 < global=28 overflow=0 值链=27/27`（台架判据本就 Σ≤global，未误报）+ 未接管批确实被 CPU 账画出（Opaque 行 7 块）+ 像素三方逐字节全等 + 默认关时仍 4/4 | 已达成 |
+| ~~**A2**~~ | ~~**④ 实例化/多实例 item**~~ **won't-do（2026-10-05 关闭）** | **查实无真实使用者**：唯一活调用方是 A3 台架（它为「被拒」而存在）、`SetInstance4ID` 只有测试在调、collector 对多实例写「全部同 4-ID」、上游无「每实例不同」的生产者 ⇒ 就算把 Y 写成实例数也只是同一项原地叠 N 遍，判据立不起来 | 按零兼容**整体删除**：`InstancedPrimitiveRenderItem` + 8 个自由函数 + slot 实例三字段（**行宽 48→40 B**）+ guard 该条 + A3 的④类项（其「异 program 自成一批」半保留 ⇒ A3 现为 5/5 全量）。存储侧 `AllocateContiguous/ReleaseContiguous` 保留（低层存储原语，Test 6 覆盖）；**CPU 侧自动合批不受影响** |
+| ~~**A3**~~ | ~~**部分接管路径从未被真实触发**~~ **已完成（`c96cac8cd`，AlphaModes `AM_PARTIAL=1`）** | 台架 = Opaque 行最后一格改"同 def + billboard 顶点节点"（⇒ 独立批）+ `AllocateContiguousInstances(…,1)`（⇒ `InstancedPrimitiveRenderItem`，④ 类项）。实测：reject 日志（④ 理由）+ `ENGAGED batches=4/5 items=27` + `Parity 28/28/0` + `Σcount=27 < global=28 overflow=0 值链=27/27`（台架判据本就 Σ≤global，未误报）+ 未接管批确实被 CPU 账画出（Opaque 行 7 块）+ 像素三方逐字节全等 + 默认关时仍 4/4。**2026-10-05 补记**：④ 类项已整体删除 ⇒ 本台架的 `AllocateContiguousInstances(…,1)` 半消失，实测变为 `ENGAGED batches=5/5 items=28 arena_rows=36`（全量接管；异 program 自成一批照常被正确处理）⇒ 本行原「4/5 部分接管」判据改由 A4 批数超限（`CV_STRESS=260` ⇒ 256/260）覆盖 | 已达成（判据已迁移） |
 | ~~**A4**~~ | ~~**容量边界未验**~~ **已完成（`CoverageVariants` 加 `CV_STRESS=N` 台架）** | N 个「同 def(Lit) + 仅 `alpha_cutoff` 不同」的配方（阈值进 `#define HGL_ALPHA_CUTOFF <v>` ⇒ program/批各不同）。实测 `CV_STRESS=260 CV_DIST=60`：**告警 1 次**（`接管批数超 kMaxBatches(256)`）+ `ENGAGED batches=256/260 items=256 arena_rows=1024`（=256×4，4 行对齐）+ `Parity 260/260/0` + `batch slices 256 rows=256 Σcount=256 global=260 overflow=0 值链=256/256`（**Σcount < global 合法**、无假红）+ 像素（CPU 账 vs 部分接管）逐字节全等 ⇒ 未接管的 4 批仍由 CPU 账画出。**负控**（临时改码，验完即撤）已证两条硬判据非空转：竞技场容量临时改 256 ⇒ `批次累计项数超共享竞技场` 精确在 64 批×4 行=256 顶格触发；批容量少一行 ⇒ `[T3i] 切片溢出！overflow=N`。**新发现**：竞技场那条在**现容量下不可达**——`EntityGPUTable::kCapacity(4096) == GetGatherCapacity()(4096)` 且**每实体至多 1 个批 item**（多批床台实测 items == 实体数）⇒ Σitems ≤ 4096 ⇒ 对齐后恒 ≤ 容量。**拍板 ①**：该分支已删除，随之删除只为它存在的 `GPUCullSystem::GetGatherCapacity()`（零残留）；删后判据复验不变（`batches=256/260`、`Σcount=256<global=260`、门 44/0）。⚠ 残留风险：若将来 `EntityGPUTable::kCapacity` 被抬到超过竞技场行数，切片会越过 gather 缓冲（静默越界写）——挡这个要的是 `static_assert(kCapacity <= kMaxVisibleEntities)`（机会性手段，②被否） | 已达成 |
 | ~~**A5**~~ | ~~**L2W 环深度 = 3 vs 帧槽空间 = 8**~~ **已闭（代码层已按不变式写死）** | `inc/hgl/common/RenderOptions.h:33`：`#define HGL_L2W_RING_FRAMES HGL_FRAME_SLOT_TOTAL` ⇒ **环深度 ≡ 帧槽空间**，不可能再出现"离屏槽与主帧槽别名"（该别名曾导致 prepass 覆写主帧矩阵、整帧只剩清屏色）。§8.4 的旧"待查"已过时 | 已闭 |
 | **A6** | **CPU 渲染路径的去留** | 按 2026-10-04 拍板：等 ②③④ 覆盖真实场景后再删或按 RELEASE 宏屏蔽（取回校验常驻） | — |

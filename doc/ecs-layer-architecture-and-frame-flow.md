@@ -22,9 +22,9 @@
 inc/hgl/ecs/
 ├ core/        Object / Component / Entity / EntityHandle / EntityManager / Context
 │              System / SystemGroup / RenderGraph / RenderPassRequest
-│              RenderItem / PrimitiveRenderItem / InstancedPrimitiveRenderItem
+│              RenderItem / PrimitiveRenderItem
 │              MaterialBatch / ShaderProgramPipelineKey
-├ components/  Transform / Primitive / InstancedPrimitive / Material / Camera
+├ components/  CameraComponent / CameraControlMode / GeometryData / LinesComponent
 │              Visibility / BoundingBox / Lines / Text / Renderable
 ├ systems/
 │  ├ tick/     InputSystem / TransformSystem / CameraSystem (+ CameraInputMapping)
@@ -319,7 +319,7 @@ BeginManagedRenderFrame(dt, /*need_swapchain_acquire=*/false, options)   ← 离
 | `BoundingBoxComponent` `inc/hgl/ecs/components/BoundingBoxComponent.h:26-237` | 剔除用的 AABB（SOA） | `storageHandle`（静态共享 `BoundingBoxDataStorage`）、world AABB + valid | `SetAABB` → `TouchChange`；`LineBoundsUpdateSystem` 写线的世界 AABB（**没有 `BoundingBoxUpdateSystem`，0 命中**） |
 | `CameraComponent` `inc/hgl/ecs/components/CameraComponent.h:32-85` | 相机参数与控制模式 | `control_mode`(ViewModel 等)、`target/distance/yaw/pitch/min_distance/max_distance`、`local_camera_data/local_camera_info` 与裸指针 `camera_data/camera_info/viewport_info`、**`camera_id`（相机槽号，**世界内**；0 = 本世界默认相机，:81）**、`is_main_camera`（:84）、`matrix_dirty`（:85） | `CameraSystem` 每帧按模式计算 → `UpdateMatrices` |
 | `RenderableComponent` `inc/hgl/ecs/components/RenderableComponent.h:18-45` | 可渲染基类（`PrimitiveComponent` 的查询基） | `visible`、`boundingRadius` | 查询基：`GetComponents<RenderableComponent>()` 召回派生 |
-| `InstancedPrimitiveComponent` `inc/hgl/ecs/components/InstancedPrimitiveComponent.h` | 实例化图元（多 4-ID 一次写） | 实例容量 + 多描符读写 | RPCS 主循环走 `SetAllInstances4ID(..., false)` 分支（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:1410-1423`） |
+| ~~`InstancedPrimitiveComponent`~~ **（不存在：2026-10-05 ④ 多实例能力整体删除）** | ~~实例化图元（多 4-ID 一次写）~~ | ~~实例容量 + 多描符读写~~ | ~~RPCS 主循环走 `SetAllInstances4ID(..., false)` 分支（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:1410-1423`） |
 | `LinesComponent` / `TextComponent` | Line / Text 元素数据 | 局部包围盒等 | 各自 Collect/Build 系统 |
 
 组件变更机制（`inc/hgl/ecs/core/Component.h:23-79`）：`version` 单调自增（:26，`GetVersion()` :50，`TouchChange` 时 `++version` :73）+ `change_mask` 位掩码（`TouchChange(mask)` / `ClearAllChanges()`，`TransformChange{Position,Rotation,Scale,Parent,WorldMatrix,Mobility}`）。`TransformComponent` 另用 `matrixDirty` + mask + `version` 判定是否需要重算（`TransformSystem::ShouldUpdateTransform`，`src/ecs/systems/tick/TransformSystem.cpp:457-476`）。

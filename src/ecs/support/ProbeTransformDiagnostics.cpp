@@ -110,7 +110,7 @@ static void SectionSizes()
     printf("sizeof(hgl::ecs::TransformAccessor)   = %zu B\n",sizeof(TransformAccessor));
     printf("sizeof(hgl::ecs::Entity)              = %zu B\n",sizeof(Entity));
     printf("sizeof(hgl::ecs::TransformDataStorage)= %zu B\n",sizeof(TransformDataStorage));
-    printf("sizeof(MaterialRuntimeSlot)           = %zu B (B5-b 行宽冻结：static_assert 88)\n",sizeof(hgl::ecs::MaterialRuntimeSlot));
+    printf("sizeof(MaterialRuntimeSlot)           = %zu B (B5-b 行宽冻结：static_assert 40；B5-b 88 → B5-a 48 → ④ 40)\n",sizeof(hgl::ecs::MaterialRuntimeSlot));
     printf("sizeof(hgl::ecs::EntityGPU)           = %zu B (T1 定稿：88 B 载荷 + 40 B 填充，alignas(64))\n",sizeof(hgl::ecs::EntityGPU));
     printf("alignof(hgl::ecs::EntityGPU)          = %zu B\n",alignof(hgl::ecs::EntityGPU));
     printf("  offsetof: flags=%zu type=%zu row=%zu work_flags=%zu (期望 0/4/20/84)\n",

@@ -4009,9 +4009,6 @@ int main(int argc, char** argv)
             { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
               "render_item_handle",
               "每实例 slot 不再承载 render_item 句柄（4-ID 无主）" },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "allocated_instance_capacity",
-              "每实例 slot 不再承载多实例连续槽位状态（多实例绑定无主）" },
             { "PrimitiveState.h", OS_TEXT("inc/hgl/ecs/support/PrimitiveState.h"),
               "bool CanRender(",
               "CanRender 的自由函数缺失（能力判定无出处）" },
@@ -5192,7 +5189,7 @@ int main(int argc, char** argv)
               "graph::Pipeline   *runtime_pipeline",
               "Pipeline 指针又回到 slot（行内不放指针）", true },
             { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "static_assert(sizeof(MaterialRuntimeSlot) == 48,",
+              "static_assert(sizeof(MaterialRuntimeSlot) == 40,",
               "slot 行宽冻结断言缺失（行宽可被无意改掉，所有按行索引的表都会错位）" },
             // ④ 写：collect 解析后落旁表
             { "RenderPrimitiveCollectSystem.cpp",

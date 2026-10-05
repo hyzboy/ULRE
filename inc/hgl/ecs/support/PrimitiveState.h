@@ -54,21 +54,4 @@ namespace hgl::ecs
     /// 释放实体 render_item 句柄（连续区间一并释放；实体销毁/世界关停时调用）。
     void ReleaseRenderItemHandle(ECSContext &world, EntityID owner);
 
-    // ── 多实例连续槽位（原图元多实例组件状态）──
-
-    bool     AllocateContiguousInstances(ECSContext &world, EntityID owner, uint32_t count);
-    void     ReleaseInstances(ECSContext &world, EntityID owner);
-    uint32_t GetAllocatedInstanceCapacity(const ECSContext &world, EntityID owner);
-    uint32_t GetInstanceCount(const ECSContext &world, EntityID owner);
-    void     SetInstanceCount(ECSContext &world, EntityID owner, uint32_t count);
-    void     SetMaxInstances(ECSContext &world, EntityID owner, uint32_t max_count);
-
-    graph::RenderItemHandle GetInstanceHandle(const ECSContext &world, EntityID owner, uint32_t instance_idx);
-    bool SetInstance4ID(ECSContext &world, EntityID owner, uint32_t instance_idx,
-                        uint32_t transform_id, uint32_t geometry_id, uint32_t material_id, uint32_t texture_id);
-    bool SetAllInstances4ID(ECSContext &world, EntityID owner,
-                            uint32_t base_transform_id, uint32_t geometry_id,
-                            uint32_t material_id, uint32_t texture_id,
-                            bool sequential_transforms = true);
-
 }//namespace hgl::ecs

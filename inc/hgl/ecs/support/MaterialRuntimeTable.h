@@ -196,21 +196,19 @@ namespace hgl::ecs
         /// **B5-b 起不入 slot**（行内不放指针）：落世界级 `MaterialRuntimePipelineTable`
         ///（键 = 本实体；读时比对 pass，语义与旧字段逐字一致）。
 
-        // ── A5b：多实例（连续连号槽位）绑定（原图元多实例组件状态）──
-        uint32_t instance_count              = 0;   ///< 活动实例数
-        uint32_t max_instances               = 0;   ///< 实例容量
-        uint32_t allocated_instance_capacity = 0;   ///< 已分配连续槽位数（>1 ⇒ 句柄为区间基址）
-
     };
 
     /// **行宽定稿**（B5-b）：`MaterialRuntimeSlot` 全字段均为 POD、**无任何指针** ⇒
     /// 宽度是平台稳定的定值，这就是它将来升格为 (World, MaterialRuntime) 行 arena 一行的前提
     ///（行宽一变，所有按行索引的并行表/地址都要跟着动 ⇒ 用断言钉死，改动必须显式）。
     /// 字段与占位：row 4 | 2×u8 + bool +pad 4 | shadow_retry 4 | 2×tracked 4 | 3×bool +pad 4 |
-    /// last_materialize_epoch 8 | render_item_handle 4 | 实例三字段 12 ⇒ **x64/MSVC 实测 48 B**（探针 `ProbeTransformDiagnostics` 同源打印）。
+    /// last_materialize_epoch 8 | render_item_handle 4 ⇒ **x64/MSVC 实测 40 B**（探针 `ProbeTransformDiagnostics` 同源打印）。
     /// B5-a 的 6 个缓冲区句柄与世界级 `MaterialRuntimeBufferTable` 已整体退役
     ///（外部 GPU-Driven 入口系整体删除，见计划档）。
-    static_assert(sizeof(MaterialRuntimeSlot) == 48,
+    /// ④ 组件多实例能力（实例三字段 + 8 个自由函数 + `InstancedPrimitiveRenderItem`）
+    /// **won't-do 整体删除**：唯一活调用方是为「被拒」而存在的 A3 台架，无真实使用者
+    ///（见计划档 §8.7 A2 关闭记录）。
+    static_assert(sizeof(MaterialRuntimeSlot) == 40,
                   "MaterialRuntimeSlot 行宽已冻结（B5-b）：改字段必须同步改断言并回写计划文档");
 
     class MaterialRuntimeTable

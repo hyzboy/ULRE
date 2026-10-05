@@ -97,7 +97,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
    `:150-152`（`GetStaticRowBudget()` / `GetRowBudget()`）；超限 **fail-fast 不扩容**。
 3. ~~行字节瘦身未做~~ ⇒ **已做并实测（B2）**：**279 → 223 B/行**（19 条平行数组；`Test 9` 与探针两处独立测量一致，
    其中 `local_mat4 + world_mat4` = 128 B）。
-4. ~~探针未运行~~ ⇒ **已运行**：B2 出每行字节、B5-b 出 `sizeof(MaterialRuntimeSlot) = 88 B`。
+4. ~~探针未运行~~ ⇒ **已运行**：B2 出每行字节、B5-b 出 `sizeof(MaterialRuntimeSlot) = 88 B`（**现值 40 B**：B5-a 删缓冲区句柄 88→48、④ 删实例三字段 48→40，2026-10-05）。
 
 **统一预算口径（stage B 后；全部"声明式容量 + 超限 fail-fast + 不扩容"）**
 
@@ -157,6 +157,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
   + 生命周期/脏标志（`:184-187`）；
 - ④ **A5b 从已删渲染组件迁来的每实例绑定**（指针已出清，形态见下）：`render_item_handle`、
   多实例 `instance_count` / `max_instances` / `allocated_instance_capacity`、`is_gpu_driven` / `is_indirect`。
+  （**2026-10-05 补**：后三个字段与 `InstancedPrimitiveRenderItem` 亦删 ⇒ 行宽 **40 B**。）
 
 > **⚠ 2026-10-05 退役**：下述「6 个缓冲字段 → 世界级句柄表行号」整条已
 > **随外部 GPU-Driven 注入入口整体退役而删除**（含 `MaterialRuntimeBufferTable` 与 `is_gpu_driven` / `is_indirect`）；
@@ -172,7 +173,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 - **`runtime_pipeline_pass` / `runtime_pipeline`（每 pass 解析产物）→ 世界侧旁表**
   （`inc/hgl/ecs/support/MaterialRuntimePipelineTable.h`：`Set(id, pass)` / `Get(id, pass)`，
   **pass 不匹配即未命中**——与旧 slot 字段语义逐字一致；失效与销毁两条路径都摘除）。
-- **出清后 slot 全 POD、行宽冻结 88 B**：`static_assert(sizeof(MaterialRuntimeSlot) == 88)` +
+- **出清后 slot 全 POD、行宽冻结**（B5-b 88 B ⇒ **现值 40 B**）：`static_assert(sizeof(MaterialRuntimeSlot) == 40)` +
   `ProbeTransformDiagnostics` 同源打印（编译期与运行期两处值一致）。
 - **契约**：Test 37（24 条，含 6 条"指针禁回 slot"）/ Test 38（12 条，含 2 条字段禁回 + pass 比对语义 + 行宽断言）。
   反证分别 rc=37 / rc=38，逐字节还原后必绿。

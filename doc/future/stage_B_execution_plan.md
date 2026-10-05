@@ -879,7 +879,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
   `GetBufferHandles(uint32_t(&)[6])`（销毁时交出清单）；`indirect_count_offset` 本就是偏移，保留。
 - `PrimitiveState.cpp`：6 个 setter 统一走 `SwapBufferHandle` = **先 `Release` 本 slot 旧句柄、
   再 `Register` 新的**（反复调用不堆引用计数、也不误回收共享缓冲）；**示例调用点零改动**（签名不变）。
-- `InstancedPrimitiveRenderItem.cpp`：6 个 getter 改 `ResolveSlotBuffer<T>(context, handle)` 经世界表解析。
+- ~~`InstancedPrimitiveRenderItem.cpp`：6 个 getter 改 `ResolveSlotBuffer<T>`~~（**作废**：该文件已随 ④ 整体删除，2026-10-05）。
 - `MaterialRuntimeTable.cpp`：`DestroySlot` 按引用释放该 slot 的 6 个句柄。
 - `Context.h/.cpp`：世界级持有 `unique_ptr<MaterialRuntimeBufferTable>` + 取用口 + 构造初始化。
 - `TestCSMIncrementalPass.cpp`：**Test 37（24 条契约）**，含 6 条「缓冲指针禁回 slot」+ setter

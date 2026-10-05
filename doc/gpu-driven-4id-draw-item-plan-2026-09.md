@@ -153,7 +153,7 @@ addr_text_char_style, addr_text_char_instance, camera_row, _pad_camera
 | 二级绘制索引 | `DrawItemIDStorage` | `inc/hgl/ecs/support/DrawItemIDStorage.h` |
 | 连号折叠 | `kRenderItemIndexedFlag=0x80000000u`、`CompactedDrawRange`、`CompactRenderItemHandles` | `inc/hgl/ecs/support/DrawItemCompaction.h:15/32/64` |
 | 组件落地 | `PrimitiveComponent::render_item_descriptor`、`Set4ID`、`GetRenderItemDescriptor` | `inc/hgl/ecs/components/PrimitiveComponent.h:140/251/257` |
-| 实例化组件 | `InstancedPrimitiveComponent::AllocateContiguousInstances` / `SetAllInstances4ID` | `inc/hgl/ecs/components/InstancedPrimitiveComponent.h` |
+| ~~实例化组件~~（**2026-10-05 整体删除**） | 原 `AllocateContiguousInstances` / `SetAllInstances4ID` | `inc/hgl/ecs/components/InstancedPrimitiveComponent.h` |
 | 登记点 | `RenderPrimitiveCollectSystem.cpp:1418/1426` `primitiveComp->Set4ID(transform_id, geometry_id, material_id, texture_id)` | — |
 | GLSL 解析 | `ResolveRenderItemDirect`(:73) / `ResolveRenderItemIndexed`(:79) / `ResolveRenderItemAuto`(:112) / `RENDER_ITEM_INDEXED_FLAG`(:99) / `global_render_items`·`draw_item_ids` 宏(:69-70) | `ShaderLibrary/common/RenderItemResolve.glsl`（142 行） |
 | 包围盒（CS 剔除用） | `GeometryAABB`（32B：center.xyz+r、extents.xyz） | `inc/hgl/graph/ShaderBufferSources.h:188-198` |
