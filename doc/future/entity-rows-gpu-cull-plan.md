@@ -1351,11 +1351,23 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 **建议 B**：与今天行为**逐字等价**（阴影=全量），不引入新语义，且不需要 pass 维的 ring 改造；A 的正确性收益（光锥剔除）只在阴影质量/性能上体现，可留作后续。
 C 除非你明确接受“阴影只画主帧可见集”，否则不取。
 
+> **拍板（2026-10-06）：走 B，且 T4c1 容量扩到 8192**（两扇区各 4096）。
+> **T4c1 ✅ 已完成**：`kArenaPasses(2)` / `kArenaRowsPerPass(4096)` / `kArenaRows(8192)` +
+> `ArenaSectorBase(pass)`（扇区 0 = 主帧、扇区 1 = 阴影）；gather 三表（l2w/cmds/mtl）行数改用
+> `kArenaRows`（共 229 KB）。实体索引空间与批标签**不变**（标签按实体记“属哪一批”，与 pass 无关）。
+> 判据：门 45/0 + Test 42 + **六台架摘要逐位不变** + 0 VUID。
+
 ### 11.4 任务切分（按 B）
 
 - **T4c1** 竞技场按 pass 分扇区（主帧扇区 / 阴影扇区）——容量拍板：4096 不变（各半 2048）还是扩到 8192；不得跨帧槽互盖。
 - **T4c2** gather 加“直通档”（无剔除 ⇒ 行 = 批内项，序同 CPU 口径）+ 档位表与门/契约（同 `B.batch-info-struct-parity` 族）。
-- **T4c3** 阴影 pass 消费自己的切片（**定稿**：`pc_root` 的 `camera_row`/地址槽在阴影下取谁 —— 今天按 pass 取，需与切片所在槽一致）+ 去掉早退。
+  ▸ **设计要点（本轮侦察）**：【１】**批布局（BatchInfoRow）需按 pass 分行** ——两 pass 各有自己的切片基址，
+   而布局库今天每帧槽只有一份；【２】**剔除派发需覆盖两扇区**（主帧 pass 的 kMaxBatches 行 + 阴影 pass 的
+   kMaxBatches 行 ⇒ 派发 2× 批数，带 pass 选择字段）。
+- **T4c3** 阴影 pass 消费自己的切片 + 去掉早退。
+  ▸ **R3 定稿（本轮侦察）**：GPU 行集由**主帧相机那一次剔除**写成（每帧一次、按主帧相机）
+   ⇒ 阴影批的 `pc_root` 必须用**该行所属的槽**（l2w/mtl 行也在那个槽）——今天 push 按 pass 取相机行 ⇒ 需给批记一个
+   “GPU 行所属相机行”字段。不可用阴影相机行（会读到另一个槽的行）。
 - **T4c4** 删 `WriteMeshDrawCommands` / `EnsureMeshDrawParams`（`MaterialBatch` 版）/ `draw_batches`（含 `DrawBatch` 结构、CPU ICB 缓冲、`ReallocICB`；注意 `Geometry::EnsureMeshDrawParams` 是**几何侧另一个**，不能误删）。
 
 **判据**：阴影三例（`ShadowMap` / `AlphaTestShadow` / `CascadeShadowMap`）摘要不变（**需先给后两个补框摘要自检钩子**，目前只有 ATS 有 `ATS_SELFCHECK`）+ 六台架摘要不变 + 门/契约 + 0 VUID/0 ERROR。
