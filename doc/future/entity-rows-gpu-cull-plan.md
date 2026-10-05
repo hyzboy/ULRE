@@ -1065,8 +1065,21 @@ T3i 在 `src/ecs/support/PipelineMaterialRenderer.cpp` 引入
      两边同语义、不分叉），到 A6-d 再删；
    - 台架：现有线框示例的 `ENGAGED` / `Parity` / `Σcount` / `overflow` / 值链 / 像素三方。
 2. **删两条疑似死条件**（无 mesh stage / 无 owner 实体项）——**先跑一遍全家族台架复验零命中**，再删。
-3. **容量失败模式拍板**：`kMaxBatches(256)` / 竞技场行数 / `EntityGPUTable::kCapacity(4096)` fail-fast
-   在全 GPU 下的失败语义（丢谁、报什么）——这是纯 GPU 后**唯一没有兜底**的一类。
+3. **容量失败模式（A6-c 已拍板：分三层，不搞一刀切）**：
+
+   | 容量类 | 今天（有 CPU 账） | 纯 GPU 后（A6-d 删除 CPU 账） |
+   |---|---|---|
+   | 接管批数 > `kMaxBatches(256)` | **软降级**：该批标签留无效 ⇒ 绘制退回 CPU 账 + 一次性
+     `GLogError` 报因（`CV_STRESS=260` 实测 `ENGAGED 256/260`、`Σcount=256 < global=260`，**合法**）
+     | **fail-fast**（无兜底后不许静默丢批） |
+   | 实体行表 > `EntityGPUTable::kCapacity(4096)` | **fail-fast**：`GLogError` + 该实体不进表
+     （P-B8-6 拍板：预算制、不扩容、不静默截断） | 同今天 |
+   | 批内切片溢出（GPU 侧 `slot >= capacity`） | **计数丢弃**：跳过 + `atomicAdd(counter[batch_count])`；
+     台架把 `overflow ≠ 0` 当**硬判据** | 同今天（**运行时**收窄，不是设计容量） |
+   | 竞技场行数（`EntityGPUTable::kCapacity == GetGatherCapacity()`） | **不可达** ⇒ 分支已删
+     （`0072145aa`）；残留风险见 §8.7 | 同今天（要挡就用 `static_assert(kCapacity <= kMaxVisibleEntities)`） |
+
+   一句话：**设计容量超限 = 项目 bug（响亮）；运行时收窄 = 计数上报（可判）**——两类都不许静默。
 4. **判据重建**：像素三方（CPU 账 vs 仅 dispatch vs 接管）在删 CPU 账后失效 ⇒ 换成
    「参考实现（`CPUCullReferenceSystem`，不出图）+ golden 像素 + 回读自校验」。
 5. **才删 CPU 账**（顺序：CPU 剔除 → compaction/ICB/l2w 写入 → 排序与 `distanceToCamera`）。

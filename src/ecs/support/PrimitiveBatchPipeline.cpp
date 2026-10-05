@@ -1225,11 +1225,14 @@ namespace hgl::ecs
                 ? b->key.shader_program->GetName().c_str() : "<null>";
 
             // 逐批前提（一条不满足 ⇒ **仅该批**不接管）
+            //
+            // A6-c：原「批无 mesh stage」拒绝条件已删——它是**重复前提**：mesh 是本引擎唯一
+            // 的顶点路径（见 `BatchRequiresIndirectCommands` 注释），且 `EnsureMeshDrawParams`
+            // 对无 mesh stage 的批已整批 bail（写不出 mesh 命令 ⇒ 本就不可绘制）⇒ 能进行到
+            // 这里的批必然有 mesh stage（全家族台架零命中，2026-10-05）。
             const char *why = nullptr;
 
-            if (!ProgramHasMeshStage(b->key.shader_program))
-                why = "批无 mesh stage";
-            else if (next_index >= GPUCullSystem::kMaxBatches)
+            if (next_index >= GPUCullSystem::kMaxBatches)
                 why = "接管批数超 kMaxBatches(256)";
             else
             {
@@ -1241,12 +1244,11 @@ namespace hgl::ecs
                         break;
                     }
 
+                    // A6-c：原「含无 owner 实体项」拒绝条件已删——现管线只产带**有效
+                    // EntityID** 的 `PrimitiveRenderItem`（无 owner 项属已退役的外部注入面）
+                    // ⇒ 无生产者（全家族台架零命中）。真出现无 owner 项，下面的解引用会当场
+                    // 崩（响亮），好过静默把该批退回 CPU 账。
                     Entity *owner = item->GetEntity();
-                    if (!owner)
-                    {
-                        why = "含无 owner 实体项（4-ID 表只覆盖实体）";
-                        break;
-                    }
 
                     const graph::RenderItemDescriptor *ids =
                         rid_table.Row(owner->GetEntityID().index);
