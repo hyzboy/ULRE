@@ -729,14 +729,7 @@ namespace hgl::ecs
                     // B3-iii：绘制元素数取自行键（= 行里 is_indexed ? index_count : vertex_count，逐位等价）
                     const uint32_t total_vertices = db.draw_key.DrawElementCount();
 
-                    if (db.geometry && db.geometry->HasMeshlets())
-                    {
-                        mesh_cmd->groupCountX = db.geometry->GetMeshletCount();
-                    }
-                    else
-                    {
-                        mesh_cmd->groupCountX = CalcMeshGroupCount(is_lines, total_vertices);
-                    }
+                    mesh_cmd->groupCountX = CalcMeshGroupCount(is_lines, total_vertices);
                     mesh_cmd->groupCountY = db.instance_count > 1
                         ? db.instance_count
                         : 1u;
@@ -1272,12 +1265,6 @@ namespace hgl::ecs
                     if (!params)
                     {
                         why = "MeshDrawParams 池行缺失";
-                        break;
-                    }
-
-                    if (params->addr_meshlets != 0)
-                    {
-                        why = "meshlet 几何（X 组数与 CPU GetMeshletCount 分支不同源）";
                         break;
                     }
                 }

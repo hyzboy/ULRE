@@ -477,6 +477,18 @@ namespace
 
 static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,hgl::io::minipack::MiniPackReader *mpr,const OSString &debug_name)
 {
+    // meshlet 几何：本引擎**不支持**（2026-10-05 拍板，相关代码已整体删除）。
+    // 在**创建任何对象之前**拒绝（旧写法在 new 之后 delete，析构了尚未进入正常生命周期的
+    // DeviceMemory ⇒ 8 条 [DESTROY-WARNING]）；调用方既有的失败路径（MLogError + nullptr）
+    // 会把它当作"几何加载失败"处理 ⇒ 不会用错口径把 meshlet 数当 X 顶点组数画出去。
+    if (mpr->FindFile(AnsiStringView("meshlets")) >= 0
+     || mpr->FindFile(AnsiStringView("meshlet_vertices")) >= 0
+     || mpr->FindFile(AnsiStringView("meshlet_triangles")) >= 0)
+    {
+        MLogError(LoadGeometry, OS_TEXT("本引擎不支持 meshlet 几何（资产含 meshlets 表）：") + debug_name);
+        return(nullptr);
+    }
+
     // 1) Read GeometryHeader
     GeometryHeader header{};
     if(!ReadGeometryHeader(mpr, header, debug_name))
@@ -523,64 +535,6 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVerte
     }
 
     geometry->SetBoundingVolumes(bounding_volumes);
-
-    // 5) Read Meshlet data if present
-    const int32 meshlets_idx = mpr->FindFile(AnsiStringView("meshlets"));
-    const int32 meshlet_vertices_idx = mpr->FindFile(AnsiStringView("meshlet_vertices"));
-    const int32 meshlet_triangles_idx = mpr->FindFile(AnsiStringView("meshlet_triangles"));
-
-    if (meshlets_idx >= 0 && meshlet_vertices_idx >= 0 && meshlet_triangles_idx >= 0)
-    {
-        const uint32 meshlets_bytes = mpr->GetFileLength(meshlets_idx);
-        const uint32 meshlet_vertices_bytes = mpr->GetFileLength(meshlet_vertices_idx);
-        const uint32 meshlet_triangles_bytes = mpr->GetFileLength(meshlet_triangles_idx);
-
-        if (meshlets_bytes > 0 && (meshlets_bytes % sizeof(MeshletDescriptor) == 0))
-        {
-            const uint32 meshlet_count = meshlets_bytes / static_cast<uint32>(sizeof(MeshletDescriptor));
-
-            AutoDeleteArray<uint8_t> raw_desc(meshlets_bytes);
-            AutoDeleteArray<uint8_t> raw_verts(meshlet_vertices_bytes);
-            AutoDeleteArray<uint8_t> raw_tris(meshlet_triangles_bytes);
-
-            if (mpr->ReadFile(meshlets_idx, raw_desc.data(), 0, meshlets_bytes) == meshlets_bytes
-             && mpr->ReadFile(meshlet_vertices_idx, raw_verts.data(), 0, meshlet_vertices_bytes) == meshlet_vertices_bytes
-             && mpr->ReadFile(meshlet_triangles_idx, raw_tris.data(), 0, meshlet_triangles_bytes) == meshlet_triangles_bytes)
-            {
-                DeviceBuffer *mb = device->CreateSSBO(meshlets_bytes, raw_desc.data());
-                DeviceBuffer *mvb = device->CreateSSBO(meshlet_vertices_bytes, raw_verts.data());
-                DeviceBuffer *mtb = device->CreateSSBO(meshlet_triangles_bytes, raw_tris.data());
-                DeviceBuffer *mbb = nullptr;
-
-                const int32 meshlet_bounds_idx = mpr->FindFile(AnsiStringView("meshlet_bounds"));
-                if (meshlet_bounds_idx >= 0)
-                {
-                    const uint32 bounds_bytes = mpr->GetFileLength(meshlet_bounds_idx);
-                    if (bounds_bytes > 0 && bounds_bytes == meshlet_count * sizeof(MeshletBounds))
-                    {
-                        AutoDeleteArray<uint8_t> raw_bounds(bounds_bytes);
-                        if (mpr->ReadFile(meshlet_bounds_idx, raw_bounds.data(), 0, bounds_bytes) == bounds_bytes)
-                        {
-                            mbb = device->CreateSSBO(bounds_bytes, raw_bounds.data());
-                        }
-                    }
-                }
-
-                if (mb && mvb && mtb)
-                {
-                    geometry->SetMeshlets(meshlet_count, mb, mvb, mtb, mbb);
-                    MLogInfo(LoadGeometry, OS_TEXT("Loaded %u meshlets for ") + debug_name, meshlet_count);
-                }
-                else
-                {
-                    SAFE_CLEAR(mb);
-                    SAFE_CLEAR(mvb);
-                    SAFE_CLEAR(mtb);
-                    SAFE_CLEAR(mbb);
-                }
-            }
-        }
-    }
 
     return geometry;
 }

@@ -6,7 +6,7 @@
 namespace hgl::graph::mtl
 {
     // mesh per-draw 参数行——与 MeshTemplateEmitter 生成的 GLSL struct MeshDrawParams
-    // 严格同构（std430 头部 9×4B 成员 + 4B 对齐填充 + 11×uint64 设备地址尾 = 128B；
+    // 严格同构（std430 头部 9×4B 成员 + 4B 对齐填充 + 8×uint64 设备地址尾 = 104B；
     // offsetof 连续性由下方 MeshDrawParamsLayoutValid() 断言）。
     //
     // 单一真源（X 列表）：CPU struct 成员 / GLSL 字段名 / GLSL 字段类型 /
@@ -30,10 +30,7 @@ namespace hgl::graph::mtl
         M(addr_luminance,         "uint64_t", uint64_t) \
         M(addr_transform_id,      "uint64_t", uint64_t) \
         M(addr_size,              "uint64_t", uint64_t) \
-        M(addr_index,             "uint64_t", uint64_t) \
-        M(addr_meshlets,          "uint64_t", uint64_t) \
-        M(addr_meshlet_vertices,  "uint64_t", uint64_t) \
-        M(addr_meshlet_triangles, "uint64_t", uint64_t)
+        M(addr_index,             "uint64_t", uint64_t)
 
     struct MeshDrawParams
     {
@@ -63,7 +60,7 @@ namespace hgl::graph::mtl
         static_cast<uint32>(sizeof(kMeshDrawParamsFieldNames) / sizeof(kMeshDrawParamsFieldNames[0]));
 
     // 布局断言（std430 规则）：
-    //   头部 9×4B（offset 0..32，逐字段连续）+ 4B 对齐填充 + 11×uint64 基址（offset 40 起，8B 步进）= 128B。
+    //   头部 9×4B（offset 0..32，逐字段连续）+ 4B 对齐填充 + 8×uint64 基址（offset 40 起，8B 步进）= 104B。
     //   头部字段数 / 基址首偏移 / 总大小三处若漂移，本断言直接编译失败（GLSL 侧同构由发射器按同一份 X 列表生成）。
     constexpr bool MeshDrawParamsLayoutValid() noexcept
     {
@@ -86,10 +83,10 @@ namespace hgl::graph::mtl
             if (offsets[i] != 40u + (i - 9u) * 8u)
                 return false;
         }
-        return sizeof(MeshDrawParams) == 128;
+        return sizeof(MeshDrawParams) == 104;
     }
     static_assert(MeshDrawParamsLayoutValid(),
-        "MeshDrawParams 布局必须与 GLSL std430 声明逐字段一致（36B 头部 + 4B 填充 + 11×uint64 基址 = 128B）");
+        "MeshDrawParams 布局必须与 GLSL std430 声明逐字段一致（36B 头部 + 4B 填充 + 8×uint64 基址 = 104B）");
 
     // mesh per-draw 命令参数行（IndirectMeshDraw）：
     // 几何体的 112B 顶点流参数与 BDA 已池化在全局 GlobalSSBOBufferRegistry 中，

@@ -589,8 +589,13 @@ CPU 剔除（~7us）——这条线在**当前场景规模**不省 CPU。它的�
    ~~形态 A 的去留~~ **已裁决（T3g）**：整体退役；形态 B = 唯一 GPU 路径。
 2. **放开接管范围的既有欠账**（形态 B 首版 guard 挡在外的，按欠账逐个补）：
    ① ~~ShadowProxy GPU 行~~ **已完成（T3h，见 §8.2g）**；
-   ② **meshlet 几何**（X 组数 = GetMeshletCount 分支）—— 池行补 meshlet_count 字段
-      或另源，与 CPU 同口径后才放开；
+   ② ~~**meshlet 几何**（X 组数 = GetMeshletCount 分支）~~ **won't-do（2026-10-05 关闭）**：
+      **本引擎不支持 meshlet**（2026-10-05 拍板）⇒ 引擎侧 meshlet 代码**整体删除**：
+      池行 3 个 `addr_meshlet*` 字段（**行宽 128→104 B**）、GLSL 镜像 `_pad[92]→[68]`、门步长断言、
+      `MeshShaderVertexAdapter` 的 `MeshletDescriptor`+3 个 `sbo_meshlet*` 宏、`VKGeometry` 的持有与
+      访问器、`PrimitiveBatchPipeline` 的 X 组数分支与 guard 代理；loader 改**建对象前显式拒绝**。
+      GLTFConvert（独立子模块，用户拍板保留产出能力）⇒ 终态是「工具能产出、引擎**响亮拒绝**」，
+      不再是静默错渲（旧路径把 meshlet 数当 X 顶点组数 ⇒ 错渲且零 VUID、门全绿）。台账 §8.7 A1 同闭。
    ③ ~~多批/混合材质场景~~ **已完成（T3i `6b6baa39f`，见 §8.6；测试床 CoverageVariants/AlphaModes）**；
    ④ ~~实例化/多实例 item~~ **won't-do（2026-10-05 关闭）**：查实该能力**无真实使用者**——
       组件多实例的活调用方只有 A3 台架（它为「被拒」而存在）；`SetInstance4ID` 只有测试在调；
@@ -819,7 +824,7 @@ cull 派发（RenderFrameSync，本帧）
 ### 欠账更新（§8.5 清单）
 
 - ③ **多批/混材质** —— 本节点完成（无 DGC 依赖：切片 + 批标签 + 每批计数即"无 DGC 的 GPU 驱动多批"）。
-- ② meshlet（补 GPU 可读 meshlet_count 源）、④ 实例化（per-item instance_count 源）仍待办；
+- ~~② meshlet（补 GPU 可读 meshlet_count 源）~~ / ~~④ 实例化（per-item instance_count 源）~~ **均 won't-do（2026-10-05，代码整体删除）** ⇒ **本线 A 系列欠账已清空**，只剩 §8.7 B 系列与 A6；
   DGC 按拍板**不处理**（开发机无支持；形态 B 不需要任何扩展，只依赖 mesh shader）。
 
 ---
@@ -830,7 +835,7 @@ cull 派发（RenderFrameSync，本帧）
 
 | # | 内容 | 现状 / 落点 | 接手判据 |
 |---|------|-------------|----------|
-| **A1** | **② meshlet 几何**（X 组数走 CPU `GetMeshletCount()` 分支） | guard 仍把这类批挡在接管外（池行 `addr_meshlets != 0` ⇒ 该批不接管）。需给 GPU 一个**可读的 meshlet_count 源**（池行加字段或另表） | 与 CPU 同口径后放开；门 44/0；该批接管且像素三方全等 |
+| ~~**A1**~~ | ~~**② meshlet 几何**~~ **won't-do（2026-10-05 关闭）**（X 组数走 CPU `GetMeshletCount()` 分支） | guard 仍把这类批挡在接管外（池行 `addr_meshlets != 0` ⇒ 该批不接管）。**已改为整体删除**（不再补源）：池行 3 个 `addr_meshlet*` 删 ⇒ **128→104 B**、GLSL 镜像、门步长断言、`VKGeometry`/`MeshShaderVertexAdapter`/`PrimitiveBatchPipeline` 全删、loader 建对象前显式拒绝 | 门 44/0（含 `E.mesh-draw-params-head-parity` 步长 104）+ loader 拒绝 8/8 + 0 `[DESTROY-WARNING]` + 回归示例全绿 |
 | ~~**A2**~~ | ~~**④ 实例化/多实例 item**~~ **won't-do（2026-10-05 关闭）** | **查实无真实使用者**：唯一活调用方是 A3 台架（它为「被拒」而存在）、`SetInstance4ID` 只有测试在调、collector 对多实例写「全部同 4-ID」、上游无「每实例不同」的生产者 ⇒ 就算把 Y 写成实例数也只是同一项原地叠 N 遍，判据立不起来 | 按零兼容**整体删除**：`InstancedPrimitiveRenderItem` + 8 个自由函数 + slot 实例三字段（**行宽 48→40 B**）+ guard 该条 + A3 的④类项（其「异 program 自成一批」半保留 ⇒ A3 现为 5/5 全量）。存储侧 `AllocateContiguous/ReleaseContiguous` 保留（低层存储原语，Test 6 覆盖）；**CPU 侧自动合批不受影响** |
 | ~~**A3**~~ | ~~**部分接管路径从未被真实触发**~~ **已完成（`c96cac8cd`，AlphaModes `AM_PARTIAL=1`）** | 台架 = Opaque 行最后一格改"同 def + billboard 顶点节点"（⇒ 独立批）+ `AllocateContiguousInstances(…,1)`（⇒ `InstancedPrimitiveRenderItem`，④ 类项）。实测：reject 日志（④ 理由）+ `ENGAGED batches=4/5 items=27` + `Parity 28/28/0` + `Σcount=27 < global=28 overflow=0 值链=27/27`（台架判据本就 Σ≤global，未误报）+ 未接管批确实被 CPU 账画出（Opaque 行 7 块）+ 像素三方逐字节全等 + 默认关时仍 4/4。**2026-10-05 补记**：④ 类项已整体删除 ⇒ 本台架的 `AllocateContiguousInstances(…,1)` 半消失，实测变为 `ENGAGED batches=5/5 items=28 arena_rows=36`（全量接管；异 program 自成一批照常被正确处理）⇒ 本行原「4/5 部分接管」判据改由 A4 批数超限（`CV_STRESS=260` ⇒ 256/260）覆盖 | 已达成（判据已迁移） |
 | ~~**A4**~~ | ~~**容量边界未验**~~ **已完成（`CoverageVariants` 加 `CV_STRESS=N` 台架）** | N 个「同 def(Lit) + 仅 `alpha_cutoff` 不同」的配方（阈值进 `#define HGL_ALPHA_CUTOFF <v>` ⇒ program/批各不同）。实测 `CV_STRESS=260 CV_DIST=60`：**告警 1 次**（`接管批数超 kMaxBatches(256)`）+ `ENGAGED batches=256/260 items=256 arena_rows=1024`（=256×4，4 行对齐）+ `Parity 260/260/0` + `batch slices 256 rows=256 Σcount=256 global=260 overflow=0 值链=256/256`（**Σcount < global 合法**、无假红）+ 像素（CPU 账 vs 部分接管）逐字节全等 ⇒ 未接管的 4 批仍由 CPU 账画出。**负控**（临时改码，验完即撤）已证两条硬判据非空转：竞技场容量临时改 256 ⇒ `批次累计项数超共享竞技场` 精确在 64 批×4 行=256 顶格触发；批容量少一行 ⇒ `[T3i] 切片溢出！overflow=N`。**新发现**：竞技场那条在**现容量下不可达**——`EntityGPUTable::kCapacity(4096) == GetGatherCapacity()(4096)` 且**每实体至多 1 个批 item**（多批床台实测 items == 实体数）⇒ Σitems ≤ 4096 ⇒ 对齐后恒 ≤ 容量。**拍板 ①**：该分支已删除，随之删除只为它存在的 `GPUCullSystem::GetGatherCapacity()`（零残留）；删后判据复验不变（`batches=256/260`、`Σcount=256<global=260`、门 44/0）。⚠ 残留风险：若将来 `EntityGPUTable::kCapacity` 被抬到超过竞技场行数，切片会越过 gather 缓冲（静默越界写）——挡这个要的是 `static_assert(kCapacity <= kMaxVisibleEntities)`（机会性手段，②被否） | 已达成 |
@@ -859,6 +864,10 @@ cull 派发（RenderFrameSync，本帧）
 ---
 
 ## §8.8 A1（② meshlet 接管）侦察结论与任务切分（2026-10-05）
+
+> **⚠ 本节整体作废（2026-10-05 晚）**：用户拍板**本轮不支持 meshlet** ⇒ T2..T5 不再实施，
+> 改为**删除引擎侧 meshlet 代码**（清单见 §8.3 第 2 条②）。本节保留作**被否方案**的记录，
+> 其中的坑仍然有效（「X 组数 = 集群数」在着色器侧**没有语义**；G1–G5 接线缺口）。
 
 **结论：引擎侧改动很小（1 个池行字段 + 1 处写入 + GLSL 镜像 + 门用例 9→10 + 放开 guard）；
 真正的成本全在"测试床"——`res/` 里没有任何带 meshlets 的资产（33 个 `.mesh/.scene` 全查过，零命中），

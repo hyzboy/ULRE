@@ -18,9 +18,9 @@
 #include<cstdio>
 #include<filesystem>
 
-// ── T1 台架（② meshlet）门控，默认全关 ──────────────────────────────
+// ── 台架门控（默认全关） ────────────────────────────────────────────
 //   LS_SCENE=<path>  覆盖 .scene 资产路径（默认 res/ABeautifulGame.StaticMesh/…；
-//                    转好的 meshlet 版在 res/model/ChessMeshlet/，对照版在 res/model/ChessClassic/）
+//                    含 meshlets 表的资产已**不支持** ⇒ 加载即显式拒绝）
 //   LS_DIST/LS_YAW/LS_PITCH  相机覆盖
 //   LS_FRAMES=N      跑 N 帧退出
 //   LS_DUMP=<tag>    第 8 帧帧内回读落原始字节后退出（lsdump_<tag>_WxH_fmt.raw）
@@ -155,7 +155,7 @@ private:
         using std::filesystem::path;
         using std::filesystem::exists;
 
-        // T1：资产路径可覆盖（默认不变）。meshlet 版/对照版在同一目录布局下产出。
+        // 资产路径可覆盖（默认不变）。
         const char * scene_env = getenv("LS_SCENE");
         const path scene_path(scene_env ? scene_env
                                         : "res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene");

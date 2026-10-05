@@ -34,10 +34,6 @@ Geometry::~Geometry()
     }
 
     SAFE_CLEAR(geometry_data);
-    SAFE_CLEAR(meshlets_buffer);
-    SAFE_CLEAR(meshlet_vertices_buffer);
-    SAFE_CLEAR(meshlet_triangles_buffer);
-    SAFE_CLEAR(meshlet_bounds_buffer);
 }
 
 const VkDeviceSize Geometry::GetVertexCount()const
@@ -189,16 +185,6 @@ bool Geometry::RegisterMeshDrawParams(GlobalSSBOBufferRegistry *pool, VulkanDevi
     if (auto *ibo = GetIBO())
     {
         params.addr_index = dev->GetBufferDeviceAddressAligned16(ibo->GetVkBuffer());
-    }
-
-    if (HasMeshlets())
-    {
-        if (auto *mb = GetMeshletsBuffer())
-            params.addr_meshlets = dev->GetBufferDeviceAddressAligned16(mb->GetBuffer());
-        if (auto *mvb = GetMeshletVerticesBuffer())
-            params.addr_meshlet_vertices = dev->GetBufferDeviceAddressAligned16(mvb->GetBuffer());
-        if (auto *mtb = GetMeshletTrianglesBuffer())
-            params.addr_meshlet_triangles = dev->GetBufferDeviceAddressAligned16(mtb->GetBuffer());
     }
 
     if (geometry_id == 0)

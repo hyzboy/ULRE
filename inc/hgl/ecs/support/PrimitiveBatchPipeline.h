@@ -70,12 +70,11 @@ namespace hgl::ecs
         ///   opt-in 开 && 主帧 pass（shadow 批共用 materialBatches 表，实测本场景每帧
         ///   仅 1 批，判据仍要显式挡 pass）&& **恰好一个含几何批**（R4 单批口径：
         ///   纹理基址/材质池按批单值 push）&& 全 mesh 批 && 非 lines &&
-        ///   全 PrimitiveRenderItem（禁实例化/多实例——gather 每幸存实体一命令 Y=1）&&
+        ///   全 PrimitiveRenderItem（gather 每幸存实体一命令 Y=1）&&
         ///   批容量 ≤ gather 容量 && 全 item 有 owner 实体（4-ID 表只覆盖实体）&&
         ///   T3i：**逐批独立评估**（按批粒度接管）——每批要求 mesh stage / 非 lines /
-        ///   非实例化项 / 每实体 4-ID 行在 && 池行在 && 非 meshlet（池行 addr_meshlets==0
-        ///   ⇒ X 组数公式与 CPU `GetMeshletCount()` 分支不同源，挡在接管外）；不满足的批
-        ///   只是**该批**不接管（标签留无效 ⇒ cull 不写行、CPU 账照旧）。
+        ///   每实体 4-ID 行在 && 池行在；不满足的批只是**该批**不接管
+        ///   （标签留无效 ⇒ cull 不写行、CPU 账照旧）。
         void TryApplyGPUCullOverride();
 
         /// 本帧是否有任一含几何批正在接管（`TryApplyGPUCullOverride` 记账）。

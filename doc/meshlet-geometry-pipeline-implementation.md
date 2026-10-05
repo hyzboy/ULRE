@@ -1,7 +1,8 @@
 # Meshlet 几何数据管道与压缩顶点格式实现规范
 
 - **文档日期**：2026-09-18
-- **状态**：已落地实现 (Production Implementation)
+- **状态**：~~已落地实现 (Production Implementation)~~ ⇒ **⚠ 已作废（2026-10-05）**：用户拍板**本轮不支持 meshlet** ⇒ 引擎侧 meshlet 代码（池行字段/GLSL 镜像/门断言/`VKGeometry` 持有/调度分支）**整体删除**，loader 改为**显式拒绝**。
+  本文保留作 **meshlet 数据格式与离线剖分**的参考（GLTFConvert 是独立工具、仍按此格式产出资产；该导入链未来重写），但**运行时不再有 meshlet 路径**。
 - **涵盖范围**：顶点压缩、离线 Meshlet 剖分、MiniPack 存储规范、运行时自适应加载与 BDA 调度双轨分流
 
 ---

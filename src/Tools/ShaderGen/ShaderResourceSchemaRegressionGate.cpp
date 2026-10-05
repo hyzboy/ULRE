@@ -3127,7 +3127,7 @@ namespace
     /// ——X 列表头部漂移（改名/调序/插字段）而镜像没跟 ⇒ CS 按错偏移读 is_indexed/
     /// index_count/vertex_count ⇒ 组数算错 = 静默画错/画漏，实机与现有门都抓不到。
     /// 镜像只承诺头部前 9 项（尾部 11×uint64 地址不进镜像 ⇒ 不做全表前缀断言），
-    /// 但**步长必须 ==128**（池行 sizeof 契约；`_pad` 承担余量，与 entity_gpu 同纪律）。
+    /// 但**步长必须 ==104**（池行 sizeof 契约；`_pad` 承担余量，与 entity_gpu 同纪律）。
     static GateResult RunMeshDrawParamsHeadParityCase()
     {
         GateResult result;
@@ -3274,12 +3274,12 @@ namespace
         }
 
         // CPU 端对照：X 列表头部 9 项 = 4B×8 + float×1 = 36 B（sizeof 断言在头文件里，
-        // 门里核对镜像总尺寸 == 池行 128 即可；36+92=128 是本用例的算术前提）
-        if (glsl_bytes != 128)
+        // 门里核对镜像总尺寸 == 池行 104 即可；36+68=104 是本用例的算术前提）
+        if (glsl_bytes != 104)
         {
             result.diagnostics.emplace_back(
                 "MeshDrawParamsHeadData 的 GLSL 总存储 = " + std::to_string(glsl_bytes)
-                + " B，必须 == 128 B（池行 sizeof；差值必须由行尾 _pad 显式写死）");
+                + " B，必须 == 104 B（池行 sizeof；差值必须由行尾 _pad 显式写死）");
         }
 
         result.passed = result.diagnostics.empty();

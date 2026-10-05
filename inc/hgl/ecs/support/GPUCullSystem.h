@@ -149,9 +149,9 @@ namespace hgl::ecs
         /// 标签留无效 ⇒ cull 不为其写行、CPU 路径照旧绘制（**按批粒度**）。
         /// 前提（§8.3/§8.5，一条不满足 ⇒ **该批**不接管 + 一次性报错，绝不让批指向错数据）：
         /// opt-in 开 && 主帧 pass && 批内全
-        /// PrimitiveRenderItem（禁实例化/多实例）&& 全 mesh 批 && 批容量 ≤ gather 容量
+        /// PrimitiveRenderItem && 全 mesh 批 && 批容量 ≤ gather 容量
         /// && 全 item 有 owner 实体（禁 VDM 等无实体项——4-ID 表只覆盖实体）&&
-        /// 每实体池行存在 && 非 meshlet（池行 addr_meshlets==0）&& 非 lines &&
+        /// 每实体池行存在 && 非 lines &&
         /// 阴影全默认（CanReceiveShadow && bias==1.0 ⇒ gather 写 0 与 CPU 行逐字节一致）。
         /// T3i：逐批调用（`batch_index` = 该批在**本帧分区表**中的槽号，由 guard 装配时
         /// 分配并写入标签/分区；`row_base`/`capacity` 从分区表取，口径唯一）。

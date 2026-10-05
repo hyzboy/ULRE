@@ -96,7 +96,6 @@ RenderFrameSync ┌─ GPUCullSystem：一次 compute 派发（独立 cmd，异�
 | 2 | 非 `Lines`（X 组数公式不同源） | 该批不接管 |
 | 3 | 接管批数 < `kMaxBatches`(256) | 超出的批不接管（告警一次） |
 | 4 | 项有 owner 实体、实体 4-ID 行存在、`MeshDrawParams` 池行存在 | 该批不接管 |
-| 5 | `MeshDrawParams.addr_meshlets == 0` | ② meshlet 几何：该批不接管 |
 
 - **全量 / 部分接管**：只有**全量**接管才跳过 CPU 剔除（`IsGPUCullFullTakeoverActive()`）；部分接管时未接管批仍走 CPU 账。
   时序上"跳不跳"只能取**上一帧**的 guard 结果（guard 在建批之后评估）——稳态下批 = 全项、幸存数 ≤ 批容量 ⇒ 记账不被截。
@@ -211,7 +210,7 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 | 条数 | CPU 已知 | 独立 countBuffer，CPU 不读回 |
 | 记账 | —— | 全局幸存表 + 每批计数 + overflow 槽 |
 | 校验 | —— | `CPUCullReferenceSystem` 纯参考 + 台架 Map 对拍；像素三方对拍 |
-| 适用 | 现状全场景；保留作**调试参考**（未来 RELEASE 屏蔽由 C++ 宏完成） | 已覆盖：普通批 / 多批 / 混合材质 / 多覆盖模式；未覆盖：② meshlet |
+| 适用 | 现状全场景；保留作**调试参考**（未来 RELEASE 屏蔽由 C++ 宏完成） | 已覆盖：普通批 / 多批 / 混合材质 / 多覆盖模式；未覆盖：（② 已整删，无） |
 
 ### 6.2 台架与判据（这段流程怎么自证）
 
@@ -234,7 +233,7 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 
 | 编号 | 内容 | 现状 |
 |---|---|---|
-| ② | **meshlet 几何接管** | guard 挡 `addr_meshlets != 0`；需给 GPU 一个可读的 meshlet 组数源（池行加字段或另表） |
+| ~~②~~ | ~~**meshlet 几何接管**~~ **won't-do（2026-10-05）** | 拍板**不支持 meshlet** ⇒ 引擎侧代码整体删除（池行 **128→104 B**）；GLTFConvert 保留产出能力 ⇒ loader **建对象前显式拒绝**（响亮，不静默错渲） |
 | ④ | ~~实例化/多实例接管~~ **won't-do（2026-10-05）** | 查实**无真实使用者**（唯一活调用方是为「被拒」而存在的 A3 台架；上游没有「每实例不同」的生产者）⇒ 按零兼容**整体删除**：项类型 + 8 自由函数 + slot 实例三字段（行宽 48→40 B）+ guard 该条。详见 `entity-rows-gpu-cull-plan.md` §8.7 A2 |
 | B1 | **混合排无深度排序** | §3 ④；GPU 接管批行序非确定 ⇒ 像素判据对混合排不保证 |
 | —— | **DGC 不来支撑现状** | 开发机无 `VK_EXT_device_generated_commands`；形态 B 不依赖任何扩展。将来接 DGC 只换"执行层"，决策层/校验层零改动 |
@@ -268,7 +267,7 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 | 仅派发（判决） | `<示例>_CULL=1` | Parity mismatch=0；绘制不变 |
 | 形态 B 接管 | `<示例>_FORM_B=1` | `ENGAGED batches=k/n`；Pixel 三方全等 |
 | 多批 | `PBR_MULTIBATCH=1` / `CoverageVariants`（2 批）/ `AlphaModes`（4 批） | `batches=2/2`、`4/4` |
-| 部分接管 | `CV_STRESS=260 CV_DIST=60`（CoverageVariants，批数超限）/ meshlet 批（②） | `batches=256/260`、`Σcount < global` |
+| 部分接管 | `CV_STRESS=260 CV_DIST=60`（CoverageVariants，批数超限） | `batches=256/260`、`Σcount < global` |
 | 批数上限 | `CV_STRESS=260 CV_DIST=60`（CoverageVariants） | 告警 1 次、`batches=256/260`、`arena_rows=1024` |
 | 像素对拍 | `*_DUMP=<tag>` 三次（CPU / dispatch / 接管） | 逐字节全等（混合排除外） |
 

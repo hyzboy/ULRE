@@ -687,7 +687,7 @@ namespace hgl::ecs
     bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index)
     {
         // 调用前提（guard 已在 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 核完）：
-        // opt-in 开 / gather 输出与批行表**同容量契约** / 非 meshlet / 全 mesh / …
+        // opt-in 开 / gather 输出与批行表**同容量契约** / 全 mesh / …
         // 本函数只做"指向 + 置标志"，不再重复校验 ⇒ 校验与接线分离，口径唯一。
         // T3i：逐批调用；本批在共享竞技场里的切片从**本帧分区表**取（与标签写值同源）。
         if (!batch || !indirect_commands_buffer_ || !l2w_out_buffer_

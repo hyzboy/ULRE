@@ -90,7 +90,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Geom
 
 // MeshDrawParams 池行镜像（T3f-2）：**只镜像头部前 9 字段**（X 列表 offset 0..32 连续，
 // 算组数只读 is_indexed/index_count/vertex_count）；尾部 11×uint64 地址不进镜像。
-// 步长必须 ==128（池行 sizeof 契约）⇒ scalar layout 下用显式 `_pad[92]` 填回
+// 步长必须 ==104（池行 sizeof 契约）⇒ scalar layout 下用显式 `_pad[68]` 填回
 //（entity_gpu 镜像同纪律：GLSL 不隐式补 alignas，§7.6；9×4=36 载荷 + 92 填充 = 128）。
 // ⚠ 与 X 列表 `HGL_MESH_DRAW_PARAMS_FIELD_LIST` 前 9 项逐字段同序同型，由门用例
 // `E.mesh-draw-params-head-parity` 对拍兜底 —— 改 X 列表必须同步本镜像。
@@ -105,7 +105,7 @@ struct MeshDrawParamsHeadData
     uint data_vertex_count;
     float char_height;
     uint first_instance;
-    uint8_t _pad[92];
+    uint8_t _pad[68];
 };
 
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer MeshDrawParamsHeadRef
