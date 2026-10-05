@@ -1160,3 +1160,72 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 （`GC_*` 家族已有）。
 
 **登记**：`doc/backlog.md` E 线 **E2**（待排期）；**与 Text/调试线无依赖**，排在机制层 + 内容线之后。
+
+## §9 机制层规格与契约条目（A6-b，2026-10-05）
+
+> 本节把 §8.10 说的「机制层 + 契约」定成形：**机制层 = 所有 Driven 共用的那套底座**，
+> 策略层（每个 Driven）只补四样。契约分「已落地（可执行）」与「欠账（随对应 Driven 落地）」两栏。
+
+### 一、机制层职责（六件，全 Driven 共用）
+
+| # | 机制件 | 内容（唯一口径） | 现状落点（符号） | 契约载体 |
+|---|---|---|---|---|
+| M1 | **帧槽空间** | `HGL_FRAME_SLOT_TOTAL(=8)`；每张按帧索引的表**按槽分份**，CPU 只写本帧槽 | `Context`（世界地址表）/ 实体行表 / CameraInfoStorage | 门 + needle（ring 深度 == 槽空间） |
+| M2 | **地址派发 / `pc_root`** | 每帧槽基址 + `pc_root` 指向本帧槽；行的每帧地址 = `基址 + 槽 × 容量 × sizeof(行)` | `RootAddressPush` / `WorldAddresses.addr_*` | needle |
+| M3 | **ICB 形状 + 间接 dispatch** | 命令 = `{X=组数, Y=实例数, Z=1}`（每项一条、Y=1 现状见 §8.10 §八）；countBuffer 必须带 `INDIRECT_BUFFER_BIT`；切片偏移 = `row_base × 12B` | `PipelineMaterialRenderer::ProcIndirectRender` | needle + VUID 兜底 |
+| M4 | **批标签 / 切片 / 每批计数纪律** | 三者**按帧槽分份**且 CPU 只写当前份；切片起点 **4 行对齐**（三表 push 对齐的唯一解）；`first_instance` = **切片内序号**；计数缓冲末项 = overflow 槽 | `GPUCullSystem`（`BeginBatchTagWrite` / `SetBatchLayout` / `MapCurrentBatchCounters`） | needle（见 §四欠账） |
+| M5 | **竞技场 / 容量** | `kMaxBatches(256)`；竞技场行数 == `EntityGPUTable::kCapacity(4096)` | `GPUCullSystem` / `EntityGPUTable` | 台架 `overflow=0` + 失败模式见 §8.10 §五.3 |
+| M6 | **回读 + 台架基座** | 生产路径零 CPU 同步 ⇒ 读前必须 `SyncForParityReadback`；`MapCurrentBatchCounters` 返回 `kMaxBatches + 1` 项 | `GPUCullSystem` | needle + 台架 |
+
+### 二、策略层（每个 Driven）必须提供的四样 + 自己的台架
+
+1. **剔除算法**（每类图元的可见性判据）；
+2. **发射 / gather**（元素 → 图元 的映射与 X 公式的档）；
+3. **排序策略**（有无、按什么序；**网格路径有，内容线没有，Text 需要画家序**）；
+4. **容量配额与失败模式**（走 M5 的三层语义，明写「哪类超限算项目 bug」）。
+**外加**：该 Driven 自己的台架（正向 `ENGAGED` 行 + 数值判据 + 像素/对账 + 破坏验证），
+否则「静默退回旧账」也会像素全等（§8.10 的 T3i 黑屏教训）。
+
+### 三、可省项矩阵（哪些机制件某条路可以不要）
+
+| 机制件 | 网格路径 | 内容线（LineQuad） | 调试线（真 `layout(lines)`） | Text |
+|---|---|---|---|---|
+| M1 帧槽空间 | 必需 | 必需 | 必需 | 必需 |
+| M2 地址派发 / `pc_root` | 必需 | 必需 | 必需 | 必需（自己的 `pc_root` 语义） |
+| M3 ICB 形状 | 必需（`Y=实例数` 待补，§八） | 必需（同网格） | 可省（量小、可直接 `vkCmdDraw`） | 可省（同） |
+| M4 切片 / 多批 | 必需 | 必需 | **可省**（固定小容量、单批即可） | 可省 |
+| M5 竞技场 / 容量 | 必需 | 必需 | 必需（容量更小、失败模式同三层） | 必需 |
+| M6 回读 / 台架基座 | 必需 | 必需 | **必需**（否则判据只能是目视） | 必需 |
+| 排序策略 | 有（批内保序 + 批号稳定） | 有（同） | 无 | **有（画家序）** |
+
+一句话：**帧槽与回读口径任何一条路都不许省**（§8.10 §六 的"可省项"落到这两条之外）。
+
+### 四、A6-b 已落地的可执行契约
+
+- **门新增 `B.batch-info-struct-parity`**（`ShaderResourceSchemaRegressionGate`，基线 **45 PASS / 0 FAIL**）：
+  ① 批信息行 `BatchInfoRow` 的 C++ ↔ GLSL **逐字段同序同型**（类型/长度已归一，复用
+  `ExtractStructFieldsLineWise`）；② 派发档 `kBatchTopologyTriangles/Lines` ↔ GLSL `#define TOPOLOGY_*`
+  **数值一致**（两处各写一遍 ⇒ 这才是漂移面）。
+  **破坏验证（两处都咬住）**：档号 `TOPOLOGY_LINES 1u→2u` ⇒
+  `派发档数值漂移：kBatchTopologyLines=1 vs #define TOPOLOGY_LINES=2`；行字段换序 ⇒
+  `BatchInfoRow 第 1 字段漂移：C++=uint capacity / GLSL=uint topology`。
+  ⚠ **门的失败明细打在 stderr**（只抓 stdout 会误判"契约没牙"）；被检文件是门运行时读取 ⇒ 破坏/还原无需重编。
+- 既有同族：`S.global-addresses-struct-parity` / `W.world-addresses-struct-parity` / `E.entity-gpu-struct-parity`。
+
+### 五、三路验收矩阵（每路：正向判据 + 反证）
+
+| 路 | 正向判据（可判定） | 反证 |
+|---|---|---|
+| 网格路径 | `ENGAGED batches=x/y items=N arena_rows=M` + `Σcount == 项数` + `overflow=0` + 对拍 `不一致=0` + 三方像素全等 | 破坏：容量 −1 / 档号漂移 / 关闭 gather |
+| 内容线 | 同上 + `binfo.topology == LINES` 时 X 按**段数**（同示例三方像素全等） | 破坏：把线的档改成 TRIANGLES（应缺段/错画） |
+| 调试线（未落地） | 线段数 == 对象数（§8.10 §三：每对象一行、每形状一个专用 mesh shader） | 破坏：关剔除/换 shader |
+| Text（未落地） | 画家序 + 剔除数 | 破坏：顺序反转 |
+
+### 六、A6-b 的欠账（随对应 Driven 落地，已在门/契约里留位）
+
+1. **帧槽不变量**（改槽空间必须查所有按 `frame_slot` 索引的 ring/UBO/SSBO；L2W ring 曾是 3 ⇒ 离屏槽与主帧槽
+   别名 ⇒ prepass 覆写主帧矩阵）——现在无断言，加 `static_assert(ring 深度 == HGL_FRAME_SLOT_TOTAL)`；
+2. **切片 4 行对齐**（`row_base % 4 == 0`）——加断言 + needle；
+3. **ICB countBuffer 的 `INDIRECT_BUFFER_BIT`**——加 needle；
+4. **回读前置**（`SyncForParityReadback` 先于 `MapCurrentBatchCounters`）——加 needle；
+5. **§八 的运行长度合并**（`Y=实例数`）落地时，命令数判据一并进本矩阵。
