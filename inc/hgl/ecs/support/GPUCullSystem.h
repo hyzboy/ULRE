@@ -255,6 +255,20 @@ namespace hgl::ecs
 
         // 容量
         static constexpr uint32_t kMaxVisibleEntities = 4096;
+
+        // ── T4c1：竞技场按 pass 分扇区（拍板：容量扩到 2 × 4096 = 8192）──
+        // 两个 pass 的绘制集不同（主帧 = GPU 剔除后子集；阴影 = 全量直通，T4c2/T4c3）
+        // ⇒ 各写各的扇区，互不覆盖。**实体索引空间与批标签不在此列**：标签按实体记
+        // "属哪一批"，与 pass 无关 ⇒ 仍为 kMaxVisibleEntities（一槽一份）。
+        static constexpr uint32_t kArenaPasses        = 2;
+        static constexpr uint32_t kArenaRowsPerPass   = kMaxVisibleEntities;
+        static constexpr uint32_t kArenaRows          = kArenaPasses * kArenaRowsPerPass;
+
+        /// 扇区 0 = 主帧 pass；扇区 1 = 阴影 pass（`bIsShadowSector` 由调用方给出）。
+        static constexpr uint32_t ArenaSectorBase(uint32_t pass_index)
+        {
+            return (pass_index < kArenaPasses ? pass_index : 0u) * kArenaRowsPerPass;
+        }
         static constexpr uint32_t kWorkGroupSize = 64;
     };
 }

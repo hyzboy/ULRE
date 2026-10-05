@@ -287,15 +287,15 @@ namespace hgl::ecs
         if (!draw_count_buffer_) return false;
         draw_count_addr_ = device_->GetBufferDeviceAddressAligned16(draw_count_buffer_->GetBuffer());
 
-        // ── 形态 B（T3f-2）gather 输出三表（容量 = kMaxVisibleEntities；icb 复用上面）──
+        // ── 形态 B（T3f-2）gather 输出三表（容量 = kArenaRows = 每 pass 4096 × 2 扇区；icb 复用上面）──
         // 行距契约（与着色器镜像逐字段一致，§8.2d 的"读真源零复制"口径）：
         //   l2w_out  = uint32 × 4 B/行；cmds_out = MeshDrawCommand 8 B/行；
         //   mtl_out  = MaterialInstanceAddresses 16 B/行。
         // usage：STORAGE（CS 写）+ INDIRECT（icb/count 已有；三张行表被 mesh shader
         // 经 BDA 解引用 ⇒ SHADER_DEVICE_ADDRESS 必带，与 §7.6 设备地址纪律一致）。
-        const VkDeviceSize l2w_bytes  = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
-        const VkDeviceSize cmds_bytes = VkDeviceSize(kMaxVisibleEntities) * 8;    // MeshDrawCommand
-        const VkDeviceSize mtl_bytes  = VkDeviceSize(kMaxVisibleEntities) * 16;   // MaterialInstanceAddresses
+        const VkDeviceSize l2w_bytes  = VkDeviceSize(kArenaRows) * sizeof(uint32_t);
+        const VkDeviceSize cmds_bytes = VkDeviceSize(kArenaRows) * 8;    // MeshDrawCommand
+        const VkDeviceSize mtl_bytes  = VkDeviceSize(kArenaRows) * 16;   // MaterialInstanceAddresses
 
         const VkBufferUsageFlags gather_usage =
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
