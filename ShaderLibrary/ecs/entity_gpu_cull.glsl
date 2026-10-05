@@ -49,7 +49,6 @@ layout(push_constant) uniform PushConstants
     uint   entity_count;             // 实体总数
     uint   max_visible_count;        // 幸存表容量上限
     uint   camera_row;               // 本 pass 活跃相机行号（与 pc_root.camera_row 同式）
-    uint   mesh_group_size;          // mesh 组顶点上限（CPU 下发 kMeshVertexPassthroughMaxVertices）
     uint   enable_gather;            // 0 = 只出计数（对拍/形态 A）；非 0 = 写 gather 四表（形态 B）
     uint   batch_count;              // T3i：本帧批数（0 = 无接管批 ⇒ 只为对拍出计数）
 } pc;
@@ -185,10 +184,16 @@ layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer Batch
     uint tags[];      // [entity_index] = 批号；0xFFFFFFFF = 不属任何接管批（跳过）
 };
 
+// 批的 dispatch 档（与 CPU `GPUCullSystem::kBatchTopology*` 同步）：决定本批的 X 公式
+#define TOPOLOGY_TRIANGLES 0u   // 顶点组→三角形（VertexPassthrough）
+#define TOPOLOGY_LINES     1u   // 段→quad（LineQuad；每线程 1 段 ⇒ 元素数按段数）
+
 struct BatchInfoRow
 {
     uint row_base;    // 本批切片在共享竞技场里的起始行
     uint capacity;    // 切片容量（= 本批 item 数；绘制侧 maxDrawCount）
+    uint topology;    // TOPOLOGY_*（dispatch 档）
+    uint group_size;  // 本批组大小（CPU 单源下发；不在 GLSL 硬编码）
 };
 
 layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer BatchInfoRef
@@ -334,8 +339,10 @@ void main()
     const uint row = binfo.row_base + slot;
 
     const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
-    const uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
-    const uint group_count_x = (element_count + pc.mesh_group_size - 1u) / pc.mesh_group_size;
+    uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
+    if (binfo.topology == TOPOLOGY_LINES)
+        element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段，与 CPU CalcMeshGroupCount 同式）
+    const uint group_count_x = (element_count + binfo.group_size - 1u) / binfo.group_size;
 
     DrawIndirectCommandsRef(pc.indirect_commands_addr).commands[row] =
         DrawMeshTasksIndirectCommand(group_count_x, 1u, 1u);

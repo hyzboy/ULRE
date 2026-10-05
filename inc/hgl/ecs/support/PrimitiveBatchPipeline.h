@@ -72,9 +72,10 @@ namespace hgl::ecs
         ///   纹理基址/材质池按批单值 push）&& 全 mesh 批 && 非 lines &&
         ///   全 PrimitiveRenderItem（gather 每幸存实体一命令 Y=1）&&
         ///   批容量 ≤ gather 容量 && 全 item 有 owner 实体（4-ID 表只覆盖实体）&&
-        ///   T3i：**逐批独立评估**（按批粒度接管）——每批要求 mesh stage / 非 lines /
+        ///   T3i：**逐批独立评估**（按批粒度接管）——每批要求 mesh stage /
         ///   每实体 4-ID 行在 && 池行在；不满足的批只是**该批**不接管
         ///   （标签留无效 ⇒ cull 不写行、CPU 账照旧）。
+        ///   A6：**lines 已可接管**（dispatch 档随批信息行下发：线按段数 + 组大小 64）。
         void TryApplyGPUCullOverride();
 
         /// 本帧是否有任一含几何批正在接管（`TryApplyGPUCullOverride` 记账）。

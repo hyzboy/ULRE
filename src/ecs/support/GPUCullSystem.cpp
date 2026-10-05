@@ -78,14 +78,15 @@ namespace hgl::ecs
             uint32_t entity_count;
             uint32_t max_visible_count;
             uint32_t camera_row;          // ECSContext::GetActiveCameraRow()
-            uint32_t mesh_group_size;     // kMeshVertexPassthroughMaxVertices（CPU 单源下发）
             uint32_t enable_gather;       // 0 = 只出计数；非 0 = 写 gather 四表（形态 B opt-in）
             uint32_t batch_count;         // T3i：本帧批数（0 = 无接管批）
         };
 
+        // 11×u64(88) + 5×u32(20) = 108 ⇒ 结构对齐 8 ⇒ **sizeof 仍 112**（4 B 尾填充）；
+        // 撤掉 mesh_group_size 不改尺寸（填充吸收），只把后面的 u32 前移一档。
         static_assert(sizeof(CullPushConstants) == 112, "CullPushConstants layout mismatch");
         static_assert(offsetof(CullPushConstants, batch_tag_addr) == 64, "T3i pc 段偏移");
-        static_assert(offsetof(CullPushConstants, batch_count) == 108, "T3i pc 段偏移");
+        static_assert(offsetof(CullPushConstants, batch_count) == 104, "T3i pc 段偏移");
 
         // 引擎合规文件读取（先例：ShaderCodeModuleRegistry::LoadFileContent ——
         // 同一读法与缓冲口径），路径由 ShaderLibrary 单源解析（禁绝对路径）。
@@ -392,7 +393,8 @@ namespace hgl::ecs
         return p;
     }
 
-    void GPUCullSystem::SetBatchLayout(uint32_t batch_index, uint32_t row_base, uint32_t capacity)
+    void GPUCullSystem::SetBatchLayout(uint32_t batch_index, uint32_t row_base, uint32_t capacity,
+                                       uint32_t topology, uint32_t group_size)
     {
         if (batch_index >= kMaxBatches)
         {
@@ -401,8 +403,10 @@ namespace hgl::ecs
             return;
         }
 
-        batch_info_staging_[batch_index].row_base = row_base;
-        batch_info_staging_[batch_index].capacity = capacity;
+        batch_info_staging_[batch_index].row_base   = row_base;
+        batch_info_staging_[batch_index].capacity   = capacity;
+        batch_info_staging_[batch_index].topology   = topology;
+        batch_info_staging_[batch_index].group_size = group_size;
     }
 
     void GPUCullSystem::EndBatchLayout(uint32_t batch_count)
@@ -611,7 +615,6 @@ namespace hgl::ecs
         pc.entity_count = entity_count;
         pc.max_visible_count = kMaxVisibleEntities;
         pc.camera_row = context_->GetActiveCameraRow();   // 与材质侧 pc_root.camera_row 同式
-        pc.mesh_group_size = graph::mtl::kMeshVertexPassthroughMaxVertices;  // 单源下发（不在 GLSL 硬编码）
         // 形态 B：gather 开关恒等于 opt-in（表内容由 CPU guard 决定批是否消费；
         // 未接管帧写出的 gather 表 = 无人读的富余写，代价一次 gather 写）。
         pc.enable_gather = override_draw_ ? 1u : 0u;

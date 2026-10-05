@@ -22,10 +22,17 @@
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
+#include<hgl/ecs/support/GPUCullSystem.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKTextureReadback.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<memory>
+#include<cstdio>
+#include<cstdlib>
+#include<string>
+#include<vector>
 #include<cstring>
 
 using namespace hgl;
@@ -44,6 +51,40 @@ private:
     Geometry *         geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_grid_recipe{};
     PrimitiveAsset             plane_grid_asset{};
+
+    // ── GPU 剔除台架（A6：**内容线**能否进接管）───────────────────────────
+    //   3 张 32×32（sub 8×8）网格 = 数千条线段 ⇒ X 必须按**段数**算（÷2），
+    //   公式错则整块网格缺线/错线 ⇒ 像素判据可直接抓。
+    //   PG_CULL=1      启用引擎 GPU 剔除（dispatch + 计数）
+    //   PG_FORM_B=1    启用 + gather 输出接管绘制（形态 B）⇒ 期望 ENGAGED batches=n/n
+    //   PG_FRAMES=N    跑 N 帧后退出（CI / 像素对照）
+    //   PG_DUMP=<tag>  第 8 帧帧内回读落原始字节后退出（pgdump_<tag>_WxH_fmt.raw）
+    std::string pg_dump_tag;
+    uint32_t    pg_run_frames = 0;
+    uint32_t    pg_dump_frame = 0;
+    uint32_t    pg_frame_seen = 0;
+
+    bool InitCull()
+    {
+        if (!getenv("PG_CULL") && !getenv("PG_FORM_B"))
+            return true;                       // 默认全关 ⇒ 纯 CPU 账（基线）
+
+        auto   gpu_cull = ecs_context->GetSystem<hgl::ecs::GPUCullSystem>();   // shared_ptr（非裸指针）
+        if (!gpu_cull)
+        {
+            printf("[ERROR] InitCull: GPUCullSystem 未注册\n");
+            return false;
+        }
+
+        gpu_cull->SetEnabled(true);             // dispatch 剔除 + 计数
+
+        if (getenv("PG_FORM_B"))
+            gpu_cull->SetDrawOverrideEnabled(true);     // 形态 B：gather 输出接管绘制
+
+        printf("[PlaneGrid3D] 台架：PG_CULL=1%s（内容线：3×(32×32, sub 8×8) 网格）\n",
+               getenv("PG_FORM_B") ? " + PG_FORM_B=1（形态 B 接管绘制）" : "（仅 dispatch）");
+        return true;
+    }
 
     bool CreateRenderObject()
     {
@@ -226,7 +267,68 @@ public:
         if(!InitECS())
             return(false);
 
+        if(!InitCull())
+            return(false);
+
+        if (const char * tag = getenv("PG_DUMP"))   pg_dump_tag   = tag;
+        if (const char * v   = getenv("PG_FRAMES")) pg_run_frames = (uint32_t)atoi(v);
+
         return(true);
+    }
+
+    void Tick(double delta_time) override
+    {
+        WorkObject::Tick(delta_time);
+
+        // PG_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（本帧提交后、present 前执行 ⇒ 读到
+        // 本帧画面），落原始 packed 字节后退出（同 GPUDrivenCull / CoverageVariants 先例）。
+        if (!pg_dump_tag.empty() && ++pg_dump_frame == 8)
+        {
+            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+            if (!rt)
+            {
+                printf("[PGDUMP] no swapchain RT\n");
+                std::exit(2);
+            }
+
+            std::string tag = pg_dump_tag;
+            graph::IRenderTarget * rt_ptr = rt;
+            rt->SetInFrameReadbackHook([tag, rt_ptr]()
+            {
+                std::vector<uint8_t> pixels;
+                graph::TextureReadbackInfo info;
+                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
+                {
+                    printf("[PGDUMP] readback failed\n");
+                    std::exit(2);
+                }
+
+                char name[256];
+                snprintf(name, sizeof(name), "pgdump_%s_%ux%u_%s.raw",
+                         tag.c_str(), info.width, info.height,
+                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
+
+                FILE * fp = fopen(name, "wb");
+                if (!fp)
+                {
+                    printf("[PGDUMP] open %s failed\n", name);
+                    std::exit(2);
+                }
+
+                fwrite(pixels.data(), 1, pixels.size(), fp);
+                fclose(fp);
+                printf("[PGDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
+                std::exit(0);
+            });
+        }
+
+        // PG_FRAMES=N：定帧退出（CI / 像素对照）
+        if (pg_run_frames > 0 && ++pg_frame_seen >= pg_run_frames)
+        {
+            printf("[PG] done frames=%u\n", pg_frame_seen);
+            fflush(stdout);
+            std::exit(0);
+        }
     }
 };//class PlaneGrid3DApp:public CameraAppFramework
 

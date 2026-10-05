@@ -51,3 +51,5 @@ gcdump_*
 
 # 影子诊断 dump（ATS/CSM 每跑一次就重生成，故不再入库；Python 复算输入同源可复现）
 cascade_depth_*
+# PlaneGrid3D 台架（A6 内容线接管）的帧内回读 dump
+pgdump_*

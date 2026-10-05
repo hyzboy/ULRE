@@ -97,13 +97,19 @@ namespace hgl::ecs
         static constexpr uint32_t kMaxBatches      = 256;           ///< 批数上限（超限 fail-fast）
         static constexpr uint32_t kInvalidBatchTag = 0xFFFFFFFFu;   ///< 不属任何批 ⇒ cull 跳过
 
+        /// 批的 dispatch 档（随 `BatchInfoRow.topology` 下发；**与 `entity_gpu_cull.glsl`
+        /// 的 `TOPOLOGY_*` 同步**）：决定 gather 的 X 公式（线按段数，组大小也不同）。
+        static constexpr uint32_t kBatchTopologyTriangles = 0;  ///< 顶点组→三角形（VertexPassthrough）
+        static constexpr uint32_t kBatchTopologyLines     = 1;  ///< 段→quad（LineQuad；每线程 1 段）
+
         /// 批装配期写标签：返回**当前帧槽**标签数组的 CPU 映射（进入时整表清成
         /// `kInvalidBatchTag`）。用法：`tag = BeginBatchTagWrite(); tag[entity_index] = b;`
         /// 收尾必须调 `EndBatchLayout(batch_count)`（unmap + 落分区表）。
         uint32_t *BeginBatchTagWrite();
 
         /// 写一条批分区（CPU 侧暂存，`EndBatchLayout` 时落设备）
-        void SetBatchLayout(uint32_t batch_index, uint32_t row_base, uint32_t capacity);
+        void SetBatchLayout(uint32_t batch_index, uint32_t row_base, uint32_t capacity,
+                            uint32_t topology, uint32_t group_size);
 
         /// 收尾：unmap 标签 + 把分区表（batch_count 条）写入当前帧槽 + 记 batch_count
         void EndBatchLayout(uint32_t batch_count);
@@ -203,7 +209,16 @@ namespace hgl::ecs
         uint64_t batch_info_addr_ = 0;
         uint64_t batch_counter_addr_ = 0;
 
-        struct BatchInfoRow { uint32_t row_base; uint32_t capacity; };
+        /// 批信息行（**与 `entity_gpu_cull.glsl` 的 `BatchInfoRow` 逐字段同序同型**；
+        /// 16 B/行）。后两字段 = **dispatch 档**：gather 的 X 公式按它选（线按段数、组大小不同）。
+        struct BatchInfoRow
+        {
+            uint32_t row_base;    // 本批切片在共享竞技场里的起始行
+            uint32_t capacity;    // 切片容量（= 本批 item 数；绘制侧 maxDrawCount）
+            uint32_t topology;    // kBatchTopology*（与 GLSL 的 TOPOLOGY_* 同步）
+            uint32_t group_size;  // MeshDispatchGroupSize(is_lines)（CPU 单源下发，GLSL 不硬编码）
+        };
+
         BatchInfoRow batch_info_staging_[256] = {};   ///< 与 kMaxBatches 同宽（CPU 暂存）
         uint32_t batch_count_ = 0;                    ///< 本帧批数（0 = 无批 ⇒ cull 只为对拍出计数）
         uint32_t *batch_tag_cpu_ = nullptr;           ///< 当前帧槽标签数组的映射

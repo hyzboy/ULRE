@@ -1229,8 +1229,6 @@ namespace hgl::ecs
 
             if (!ProgramHasMeshStage(b->key.shader_program))
                 why = "批无 mesh stage";
-            else if (b->key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines)
-                why = "批是 lines（X 组数公式不同源）";
             else if (next_index >= GPUCullSystem::kMaxBatches)
                 why = "接管批数超 kMaxBatches(256)";
             else
@@ -1287,7 +1285,15 @@ namespace hgl::ecs
             const uint32_t index = next_index++;
             const uint32_t capacity = uint32_t(b->items.size());
 
-            gpu_cull->SetBatchLayout(index, row_cursor, capacity);
+            // A6 前置：把本批的 dispatch 档随行下发（gather 按档选 X 公式）——
+            // 线的 X 按段数、组大小 64，其余按顶点数、组大小 192，两值都出自
+            // `MeshDispatchGroupSize()` 单一真源（CPU 的 ICB 组装同源 ⇒ 两条账不分叉）。
+            const bool batch_is_lines =
+                b->key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines;
+            gpu_cull->SetBatchLayout(index, row_cursor, capacity,
+                batch_is_lines ? GPUCullSystem::kBatchTopologyLines
+                               : GPUCullSystem::kBatchTopologyTriangles,
+                MeshDispatchGroupSize(batch_is_lines));
 
             for (auto *item : b->items)
             {

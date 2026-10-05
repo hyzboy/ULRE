@@ -1006,3 +1006,107 @@ T3i 在 `src/ecs/support/PipelineMaterialRenderer.cpp` 引入
 - 顺带修了 Test 14 一条**既有陈旧契约**：T3h `aa54f2dcb` 把写入改成归一后的 `bias_for_row`
   （`NormalizeShadowBiasToRow`），契约串仍写 `bias_multiplier` ⇒ **HEAD 上本来就红**，且它 `return failed`
   会挡住 Test 15..41（我改的 Test 38 在里面）。已把契约串同步为 `= bias_for_row;`，保留契约原意。
+
+## §8.10 A6 侦察：三条路划分与主路径纯化清单（2026-10-05）
+
+> 用户拍板口径：**Driven 按"策略"分路**，不按"子系统"分；**共用机制层、各自语义**。
+> 本节是 A6 的落地面——量完之后比原设想小得多（原设想“逐个给出路”，实际只剩一条活洞）。
+
+### 一、三条路 + 两条线（拍板）
+
+| 路 | 归属 | 现状 | 缺什么 |
+|---|---|---|---|
+| **Mesh Driven** | 主路径（form B） | 已落地（T3d..T3i） | 主路径纯化（见下） |
+| **Text Driven** | 独立（`TextRenderSystem`/`TextRenderPipeline`，2D 管线配置） | 已有独立路径、**不在**实体行/L2W 体系 | 补自己的剔除与顺序（**painter 序，必须有序**） |
+| **Line · 内容线** | **主路径的一档**（`MeshShaderMode::LineQuad` = 每线程 1 段 → quad） | 已在 mesh 管线里，只缺 X 组数语义 | 公式档 + 删 guard 该条 |
+| **Line · 调试线** | 独立小 Driven（**停放中**） | **今天不存在**（真线拓扑无通路） | 做的话：**每对象一行 + 每形状一个专用 mesh shader**（AABB / 球 / 胶囊…各自在 shader 内按 xyz+size 生成线段） |
+
+### 二、判别四要素（为什么这么分）
+
+| 要素 | Mesh（主路径） | 内容线 | 调试线 | Text |
+|---|---|---|---|---|
+| 元素→图元映射 | 顶点组→三角 | 段→quad（4 顶点 2 图元） | 段→**真 line**（2 顶点 1 图元） | 字形→quad |
+| 元素身份/实例源 | 实体 4-ID 行 | 同左（资产几何） | 每对象一行（参数） | 字形/排版行 |
+| 变换源 | L2W 行 | **L2W（唯一共用项）** | 不共用（世界空间参数） | **不用 L2W**（2D） |
+| 顶点源 | 资产缓冲（BDA） | 资产缓冲 | **参数**（xyz+size/style） | atlas + 每字形参数 |
+| 剔除判据 | 世界 AABB × 视锥 | 同源（同一实体的 AABB） | 不需要（调试系统自己决定画什么） | 2D：屏幕矩形/裁剪 |
+| 顺序 | 融合排（B1 待定） | 不排序 | 不排序 | painter 序 |
+| 拓扑 | `layout(triangles)` | `layout(triangles)`（quad 模拟） | `layout(lines)`（**无通路**） | `layout(triangles)` |
+
+⇒ **内容线 5/7 项与 mesh 同源（只差发射公式）；调试线/Text 与 mesh 近乎 0 同源。**
+
+### 三、两条硬技术约束（决定了"内容线 vs 调试线"必须分开，不是取向）
+
+1. **拓扑是编译期固定的硬编码 triangles**：`MeshShaderHeaderGen.h:75` 只发 `layout(triangles, max_vertices = …)`
+   ⇒ 真线拓扑**完全没有通路**；反过来说，拓扑不同的程序**天然自成一批**，与现有批键机制兼容。
+2. **宽线是设备可选特性**：`VKDeviceCreater.h:127` `wideLines = SupportLevel::Want`（可选）、
+   `VKPhysicalDevice.h:211 SupportWideLines()`、`lineWidthGranularity` ⇒ 现代驱动（含本机 AMDVLK）通常不支持
+   ⇒ **真线只能是 1px**；**有厚度/抗锯齿的线必须 quad 模拟** ⇒ 这正是"内容线（质量）"与"调试线（1px 精确）"
+   必须分开的硬件根据。
+
+### 四、A6-a 静态清点：guard 五条洞的现状（本会话实测 + 全仓静态面）
+
+| guard 条件 | 今天谁产（实测） | 判定 |
+|---|---|---|
+| 批无 mesh stage | **找不到生产者**：15 个材质里 10 个无 `[mesh_shader]` 段但走缺省 `VertexPassthrough` ⇒ 都有 mesh 程序；本会话全部台架从未命中该理由 | **疑似死条件**（删前先复验） |
+| 批是 lines（X 组数不同源） | **内容线**：`PlaneGrid3D` / `RenderBoundBox` / `SimplestAxis` / `GizmoUsage` / `RayPicking` / `LoadGeometry` / `LineRender` 的线框资产 | **活洞①（唯一真洞）** |
+| 接管批数超 `kMaxBatches(256)` | 人为台架 `CV_STRESS=260`（CoverageVariants） | **容量类**（非语义洞） |
+| 含无 owner 实体项 | **找不到生产者**：④ 之后现管线只产 `PrimitiveRenderItem`，恒带 `EntityID`；"VDM 等无实体项"属**已退役的外部注入面** | **疑似死条件**（删前先复验） |
+| 实体 4-ID 行缺失 / 池行缺失 | 未挂载几何/材质的实体（收集侧本来就不进批） | **护栏**（保留） |
+
+### 五、主路径纯化清单（A6 的落地面）
+
+1. **内容线公式档**（唯一活洞）：
+   - X 语义差的**唯一位置** = 元素数取"段数"还是"顶点数"（`line_quad.glsl.tmpl:1`
+     `line_id = gl_WorkGroupID.x * group_size + gl_LocalInvocationIndex`）⇒ 两者都能从池行现算
+     （`is_indexed ? index_count : vertex_count`，线再 ÷2）；
+   - 实施：**批标签表加一位 `lines`（或 topology 档）** ⇒ gather 按位选公式（不再需要 CPU 分支）
+     ⇒ guard 删 `is_lines` 那条；CPU 侧 `CalcMeshGroupCount(is_lines, …)` **暂时保留**（未接管批仍走 CPU 账，
+     两边同语义、不分叉），到 A6-d 再删；
+   - 台架：现有线框示例的 `ENGAGED` / `Parity` / `Σcount` / `overflow` / 值链 / 像素三方。
+2. **删两条疑似死条件**（无 mesh stage / 无 owner 实体项）——**先跑一遍全家族台架复验零命中**，再删。
+3. **容量失败模式拍板**：`kMaxBatches(256)` / 竞技场行数 / `EntityGPUTable::kCapacity(4096)` fail-fast
+   在全 GPU 下的失败语义（丢谁、报什么）——这是纯 GPU 后**唯一没有兜底**的一类。
+4. **判据重建**：像素三方（CPU 账 vs 仅 dispatch vs 接管）在删 CPU 账后失效 ⇒ 换成
+   「参考实现（`CPUCullReferenceSystem`，不出图）+ golden 像素 + 回读自校验」。
+5. **才删 CPU 账**（顺序：CPU 剔除 → compaction/ICB/l2w 写入 → 排序与 `distanceToCamera`）。
+
+### 六、顺序与并行
+
+A6-a（本节，已完成）→ **机制层 + 契约**（含"可省项"：调试线可省切片/多批，但不能省帧槽与回读口径）
+→ **内容线公式档**（A6 前置，小改动）→ Text Driven（顺它已有路径补剔除/顺序）
+→ 调试线 Driven（**停放**）→ 主路径纯化 + 删 CPU 账。
+
+### 七、A6 前置落地结果（本提交）
+
+**内容线已能进接管**：批信息行 `BatchInfoRow` 8 → **16 B**（加 `topology` + `group_size` 两字段，
+与 `entity_gpu_cull.glsl` 逐字段同序同型），CPU 在 `SetBatchLayout` 里**随行下发本批的 dispatch 档**：
+
+| 档 | 元素数语义 | 组大小 | 出处 |
+|---|---|---|---|
+| `kBatchTopologyTriangles`(=0) | 顶点数 | 192（`kMeshVertexPassthroughMaxVertices`） | `MeshDispatchGroupSize(false)` |
+| `kBatchTopologyLines`(=1) | **段数**（`element_count >> 1`） | 64（`kMeshLineQuadMaxInvocations`） | `MeshDispatchGroupSize(true)` |
+
+- 组大小**单源**：`PipelineMaterialRenderer.h` 抽出 `MeshDispatchGroupSize(is_lines)` ⇒ CPU 的 ICB 组装
+  （`CalcMeshGroupCount`）与批信息行同取一处，两条账不分叉；`CullPushConstants.mesh_group_size` **撤掉**
+  （GLSL 不再硬编码）——结构 11×u64 + 5×u32 = 108 ⇒ 对齐 8 ⇒ **sizeof 仍 112**、`batch_count` 偏移 → **104**
+  （两条静态断言随改）。
+- guard 删掉 `is_lines` 那条 ⇒ 线批不再被拒；未接管批的 CPU 账 `CalcMeshGroupCount(is_lines, …)` **保留**
+  （与 GPU 侧同语义，到 A6-d 随 CPU 账一起删）。
+
+**顺手修掉线模版的一处潜在坏数据**：`line_quad.glsl.tmpl` 的
+`lines_this_group = min(group, total_lines - x*group)` 是**无符号减法** ⇒ 过派发（X 偏大）时下溢成巨值
+⇒ 先 `SetMeshOutputsEXT` 声明满额输出再 `return` ⇒ **未写顶点 = 未定义数据**。改为**饱和式**求本组条数
+（保持单次 `SetMeshOutputsEXT` 调用）。⚠ 实测教训：改成「越界即 `SetMeshOutputsEXT(0,0)` + `return`」会在本机
+AMDVLK 上**挂死并丢设备**（三个线示例各 863 / 859 / 825 次 `VK_ERROR_DEVICE_LOST`；换回 HEAD 模版即恢复）
+⇒ **勿改成那种形态**。
+
+**验收床**：`example/Debug/PlaneGrid3D`（3×(32×32, sub 8×8) 网格 = 数千段）加 `PG_CULL` / `PG_FORM_B` /
+`PG_FRAMES` / `PG_DUMP`。判据：`ENGAGED batches=1/1 items=3 arena_rows=4`（此前被 guard 拒 ⇒ 从无此日志）；
+三方像素（纯 CPU 账 / 仅 dispatch / 形态 B 接管）md5 全等 `a896e5be650cd097bf8fe8f6b9fc97d0`，
+非背景像素 11.9%（⇒ 非空帧，判据不空转）；0 VUID / 0 设备丢失。
+
+**回归**（改的是共享批信息行 + gather + push constant，全台架复跑）：门 44 PASS / 0 FAIL；`TestCSMIncrementalPass`
+40 / 0；`TestRenderItemDataStorage` 全过；ATS 自检 D3/D4 PASS；CV 常规 `2/2 items=20`、A4 `Σcount=256
+overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPUDrivenCull `1/1 items=64`
+——全部 `ENGAGED`、对拍 `不一致=0`、`Σcount` == 批内项数、`overflow=0`、0 VUID / 0 `[ERROR]`。
