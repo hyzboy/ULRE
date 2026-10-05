@@ -10,8 +10,22 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
+#include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKTextureReadback.h>
+#include<hgl/ecs/support/GPUCullSystem.h>
 #include<cstring>
+#include<cstdlib>
+#include<cstdio>
 #include<filesystem>
+
+// ── T1 台架（② meshlet）门控，默认全关 ──────────────────────────────
+//   LS_SCENE=<path>  覆盖 .scene 资产路径（默认 res/ABeautifulGame.StaticMesh/…；
+//                    转好的 meshlet 版在 res/model/ChessMeshlet/，对照版在 res/model/ChessClassic/）
+//   LS_DIST/LS_YAW/LS_PITCH  相机覆盖
+//   LS_FRAMES=N      跑 N 帧退出
+//   LS_DUMP=<tag>    第 8 帧帧内回读落原始字节后退出（lsdump_<tag>_WxH_fmt.raw）
+//   LS_CULL=1        启用 GPU 剔除（dispatch + 台架对拍）
+//   LS_FORM_B=1      启用 + gather 输出接管绘制（形态 B）
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -69,6 +83,11 @@ private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
+
+    std::string dump_tag;
+    uint32_t    ls_frames      = 0;
+    uint32_t    ls_frame_seen  = 0;
+    uint32_t    dump_frame     = 0;
 
     struct MaterialData
     {
@@ -136,7 +155,10 @@ private:
         using std::filesystem::path;
         using std::filesystem::exists;
 
-        const path scene_path("res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene");
+        // T1：资产路径可覆盖（默认不变）。meshlet 版/对照版在同一目录布局下产出。
+        const char * scene_env = getenv("LS_SCENE");
+        const path scene_path(scene_env ? scene_env
+                                        : "res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene");
         if (!exists(scene_path))
             return false;
 
@@ -241,6 +263,10 @@ private:
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
+        if (const char * v = getenv("LS_DIST"))  camera->distance = (float)atof(v);
+        if (const char * v = getenv("LS_YAW"))   camera->yaw      = (float)atof(v);
+        if (const char * v = getenv("LS_PITCH")) camera->pitch    = (float)atof(v);
+
         camera->viewport_info = GetViewportInfo();
 
         return true;
@@ -271,6 +297,27 @@ public:
         scene_root_nodes_.clear();
     }
 
+    bool InitCull()
+    {
+        // GPU 剔除 opt-in（默认全关 = 纯 CPU 账基线）
+        if (!getenv("LS_CULL") && !getenv("LS_FORM_B"))
+            return true;
+
+        auto gpu_cull = ecs_context ? ecs_context->GetSystem<hgl::ecs::GPUCullSystem>() : nullptr;
+        if (!gpu_cull)
+        {
+            printf("[ERROR] InitCull: GPUCullSystem 未注册\n");
+            return false;
+        }
+
+        gpu_cull->SetEnabled(true);
+
+        if (getenv("LS_FORM_B"))
+            gpu_cull->SetDrawOverrideEnabled(true);
+
+        return true;
+    }
+
     bool Init() override
     {
         if(!InitSolidMDP())
@@ -282,7 +329,69 @@ public:
         if(!InitECS())
             return(false);
 
+        if(!InitCull())
+            return(false);
+
+        if (const char * tag = getenv("LS_DUMP"))
+            dump_tag = tag;
+
+        if (const char * v = getenv("LS_FRAMES"))
+            ls_frames = (uint32_t)atoi(v);
+
         return(true);
+    }
+
+    void Tick(double delta_time) override
+    {
+        WorkObject::Tick(delta_time);
+
+        // LS_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（本帧提交后、present 前执行 ⇒ 读到本帧画面），
+        // 落原始 packed 字节后退出 —— 像素判据用。
+        if (!dump_tag.empty() && ++dump_frame == 8)
+        {
+            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
+                ecs_context ? ecs_context->GetRenderTarget() : nullptr);
+            if (!rt)
+            {
+                printf("[LSDUMP] no swapchain RT\n");
+                std::exit(2);
+            }
+
+            std::string tag = dump_tag;
+            graph::IRenderTarget * rt_ptr = rt;
+            rt->SetInFrameReadbackHook([tag, rt_ptr]()
+            {
+                std::vector<uint8_t> pixels;
+                graph::TextureReadbackInfo info;
+                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
+                {
+                    printf("[LSDUMP] readback failed\n");
+                    std::exit(2);
+                }
+
+                char name[256];
+                snprintf(name, sizeof(name), "lsdump_%s_%ux%u_%s.raw",
+                         tag.c_str(), info.width, info.height,
+                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
+                FILE * fp = fopen(name, "wb");
+                if (!fp)
+                {
+                    printf("[LSDUMP] open %s failed\n", name);
+                    std::exit(2);
+                }
+                fwrite(pixels.data(), 1, pixels.size(), fp);
+                fclose(fp);
+                printf("[LSDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
+                std::exit(0);
+            });
+        }
+
+        if (ls_frames > 0 && ++ls_frame_seen >= ls_frames)
+        {
+            printf("[LoadScene] done frames=%u\n", ls_frame_seen);
+            fflush(stdout);
+            std::exit(0);
+        }
     }
 };//class LoadSceneApp
 

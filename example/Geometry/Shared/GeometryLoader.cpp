@@ -569,7 +569,7 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVerte
                 if (mb && mvb && mtb)
                 {
                     geometry->SetMeshlets(meshlet_count, mb, mvb, mtb, mbb);
-                    MLogInfo(LoadGeometry, OS_TEXT("Loaded %u meshlets for ") + debug_name);
+                    MLogInfo(LoadGeometry, OS_TEXT("Loaded %u meshlets for ") + debug_name, meshlet_count);
                 }
                 else
                 {

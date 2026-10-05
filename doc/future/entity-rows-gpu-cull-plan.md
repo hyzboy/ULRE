@@ -872,3 +872,56 @@ cull 派发（RenderFrameSync，本帧）
 **风险**：① 池行是共享结构 ⇒ 改后**必须清整棵 Debug obj 树 + 清 shader 缓存**（`布局没变 ≠ 安全`：陈旧 TU 不会初始化新字段）；
 ② 门用例的头字段数写死 ⇒ 忘改就是"用例红"，别误判成渲染回归；③ 若 T1 床立不住（mesh 着色器对 meshlet 数据布局另有要求），
 回退到"产出带 meshlets 的资产"这条内容线（更重，需单独拍板）。
+
+### §8.8 补记（2026-10-05 晚，含工具链与渲染路径侦察）
+
+**结论：② 的真正工作量不在"给 GPU 一个可读的 meshlet 组数源"，而在"meshlet 的集群展开渲染路径根本不存在"。**
+`MeshShaderVertexAdapter` 只**声明**了 `MeshletDescriptorRef` / `MeshletVertexRef` / `MeshletTriangleRef` 与
+`sbo_meshlets` 等宏，**全仓没有任何着色器读它们**（`sbo_meshlets` 全仓仅出现在那三行声明里）；现有网格顶点节点模板只有
+`vertex_passthrough.glsl.tmpl` / `char_quad` / `line_quad`。因此：
+
+- CPU 侧 `meshcmd->groupCountX = GetMeshletCount()`（meshlet 几何时 X = 集群数）**没有对应的着色器语义**
+  —— 现在的 mesh shader 把 X 当"顶点组数"，于是 meshlet 资产会画错（实测：meshlet 版 vs `--no-meshlet` 版
+  像素差 138 px / 0.015%，集中在可见小片区域）。**这也是 guard 第 6 条存在的真正原因**（不是"不同源"这么轻）。
+- ⇒ ② 的正确切分（重排：先有渲染路径，再谈接管）：
+
+| 任务 | 内容 |
+|---|---|
+| **T1 ✅（本轮完成）** | 资产与台架：`GLTFConvert` 转出 meshlet 资产 + `LoadScene` 加 `LS_*` 门控（含像素回读） |
+| **T2** | **新增 meshlet 顶点节点**（`ShaderLibrary/mesh/meshlet_*.glsl.tmpl` + `VertexShaderNodeConfig` 一档 + 发射端接线）：`gl_WorkGroupID.x` = 集群号，读 descriptor → `meshlet_vertices` 取全局顶点号 → `meshlet_triangles` 取局部三角 → `SetMeshOutputsEXT` + `gl_MeshVerticesEXT`/`gl_PrimitiveTriangleIndicesEXT`。**判据**：meshlet 资产 vs `--no-meshlet` 资产像素**逐字节全等** |
+| **T3** | 池行加 `meshlet_group_count`（单源表 + `VKGeometry` 写入 + GLSL 镜像 `_pad[92]→[88]` + 门 `E.mesh-draw-params-head-parity` 头字段 9→10） |
+| **T4** | gather 的 X 改读该字段 + **放开 guard 第 6 条** |
+| **T5** | 阴影侧 + 文档收口 |
+
+### 工具链用法（本轮实测，写下来免得再摸）
+
+```bat
+:: 带 meshlet（默认就是开）
+GLTFConvert.exe --no-images <input.gltf> <out_dir>
+:: 不带 meshlet（对照）
+GLTFConvert.exe --no-images --no-meshlet <input.gltf> <out_dir>
+```
+- exe：`build/out/Windows_64_Debug/GLTFConvert.exe`（`cmake --build build --target GLTFConvert --config Debug`）；
+- **meshlet 数据写在 `.geometry`（minipack）里，条目名 `meshlets` / `meshlet_vertices` / `meshlet_triangles` / `meshlet_bounds`**，
+  `.mesh` 只是小引用包（192 B）⇒ 用 `grep -a meshlets` 查的时候要查 `.geometry`；
+- **不要省 `--no-images`**：纹理导出（mipmap 生成）是分钟级；台架只需要几何；
+- 实测（Khronos `ABeautifulGame`）：8 个几何全部产出 meshlet（`meshlets` 条目 8704 B ÷ 16 = **544 集群**（40,480 tris）、
+  `meshlet_triangles` = 40,480×3 B 全覆盖；索引被升成 U32 ⇒ 工具侧的 `indexType == U32` 前置不是障碍）；
+- 本机落位：meshlet 版 `res/model/ChessMeshlet/`、对照版 `res/model/ChessClassic/`（与既有 `res/ABeautifulGame.StaticMesh/`
+  一样**不入库**，按上面两行命令可再生）；
+- 台架：`LoadScene` + `LS_SCENE=<.scene>` / `LS_DIST|LS_YAW|LS_PITCH` / `LS_FRAMES=N` / `LS_DUMP=<tag>`（像素回读）/
+  `LS_CULL` / `LS_FORM_B`；loader 会打 `Loaded N meshlets for ...`（**注意**：该日志原缺 vararg ⇒ 打的是垃圾，
+  已顺手修好——见下）。
+
+### 本轮顺手修的真 bug
+
+`example/Geometry/Shared/GeometryLoader.cpp` 的 meshlet 装载日志：
+`MLogInfo(..., OS_TEXT("Loaded %u meshlets for ") + debug_name)` **没有传 vararg** ⇒ UB，实测打印垃圾常量 64
+（8 个不同几何都显示 64，差点被当成"工具截断"）。已改为把 `meshlet_count` 作为实参传入。
+
+### 另外两件待查（本轮暴露，非本线阻塞）
+
+- **相机没框住模型**：`LoadScene` 默认（`ViewModel` + `distance=8`）下 ABeautifulGame 只占约 2.3 k 前景像素
+  （dist 12→1036、40→84、150→6 ⇒ 模型很小/相机没对准）。T2 的"逐字节全等"判据需要**先把模型框满**，
+  建议给 `LoadScene` 再补 `LS_TX/TY/TZ`（target 覆盖）并实测一组取景参数。
+- `LoadScene` 的资产路径是硬编码单例；本轮已加 `LS_SCENE` 覆盖，未改默认行为。
