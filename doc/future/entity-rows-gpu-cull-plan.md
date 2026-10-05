@@ -1291,7 +1291,7 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 两条配套改动（T1 顺带）：① `PlaneGrid3D` 补相机 env 门（`PG_YAW/PITCH/DIST/TX/TY/TZ`，与其它台架同形）；
 ② `PBRSpheres` 时间冻结条件补自检模式（原来只有 dump 模式冻结 `elapsed_time` ⇒ 自检两次几何不同）。
 | **T2** | **强制接管** ✅ **已完成**：删三条件早退 + opt-in 面整体删除（`SetEnabled`/`SetDrawOverrideEnabled`/`enabled_`/`override_draw_`/PC 字段 `enable_gather`；PC 104 B、`batch_count` 偏移 100）+ 六示例删 `*_CULL`/`*_FORM_B` 门与两个已不可实现的模式（`GC_CULL_OFF`/`GC_DISPATCH_ONLY`） | 门 **45/0**；`TestCSM` rc=0 + Test 42；**六台架摘要逐位不变**（只给 `_SELFCHECK`、不给 `_FORM_B`）+ `ENGAGED`；ATS 自检 PASS；冒烟 0 VUID/0 ERROR | 是（**默认行为已变**） |
-| **T3** | 删 CPU **排序** + `distanceToCamera`（含收集侧写者） | 摘要不变 + 门/契约 | 否 |
+| **T3** | 删 CPU **排序** + `distanceToCamera` ✅ **已完成**：字段 / `Compare()` 的距离 tie-break / 专用函数 `SortByDistance()`（含声明与调用点）/ 收集侧写者（连同失去用者的 `worldPos`/`camera_pos`）；文档回扫 3 份（就地标注 + 持指针） | 门 45/0；Test 42；**六台架摘要逐位不变**（⇒ 该序不参与渲染；实测六台架均为**不依赖序**的不透明几何）+ `ENGAGED`；ATS PASS；冒烟 0 VUID/0 ERROR | 否（含 `RenderItem` 布局变更 ⇒ 清树全量重编） |
 | **T4** | 删 CPU **写行 / ICB**（`WriteMeshDrawCommands` + `draw_batches` + `EnsureMeshDrawParams`） | 同上 | 否 |
 | **T5** | 删 **压缩**（`DrawItemCompaction` + 17 处调用面） | 同上 | 否 |
 | **T6** | 删 CPU **剔除 / 收集**（只服务 CPU 账的那部分；收集相位改） | 同上 + `TestRenderItemDataStorage`/`TestCSM` 同步 | **是** |
