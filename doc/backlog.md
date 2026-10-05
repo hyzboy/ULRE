@@ -613,6 +613,24 @@
 
 </details>
 
+### E2. gather 侧运行长度合并：把「一项一条 ICB 命令」合批成实例（2026-10-05 用户留置）
+
+**状态：⏸ 待排期（本轮不做）。** 详版 = `doc/future/entity-rows-gpu-cull-plan.md` §8.10 §八。
+
+- **现象**：`GPUDrivenCull` 接管后 ICB 内 64 个 cube 是 **64 条 `(x,1,1)` 命令**（用户 RenderDoc 截帧实测），
+  而 CPU 账路径是 **1 条 Y=64**（`src/ecs/support/PrimitiveBatchPipeline.cpp:733`
+  `groupCountY = instance_count > 1 ? instance_count : 1`）；**像素一致 ⇒ 现有判据无感**。
+- **为什么是欠账而不是 bug**：合批机制已在（`gl_InstanceIndex = first_instance + gl_WorkGroupID.y`，
+  `src/ShaderGen/meshgen/MeshShaderHeaderGen.h:123`；**Y 维度 = 实例维度**）；本轮 ④ 只清了组件多实例，
+  **CPU 侧自动合批保留** ⇒ 由「CPU 合、GPU 不合」的不对称产生。
+- **要做的事**：gather 内按「相邻幸存项同几何（及发射相关行）」做**运行长度合并** ⇒ 命令数
+  从「项数」降到「运行段数」。
+- **代价**：需 run-start 标记 / 前缀和（gather 现为每项独立 invocation 的纯并行模型）⇒ 属并行性改造，
+  **故不夹进 A6-b 机制层**（会污染机制层判据）。
+- **判据**：**命令数**（回读 ICB 计数）= 1 条 + `Σcount` 不变 + 像素三方（CPU 账 / 仅 dispatch / 接管）全等；
+  **像素对命令数永远无感**，必须补数值判据。
+- **触发时机**：不影响正确性；与 Text/调试线无依赖，排在机制层 + 内容线之后；大批重复网格场景收益最大。
+
 ## 相机 / 地址表归口（2026-09-28 定稿）
 
 权威口径与执行计划：`doc/world-addresses-and-camera-model-plan.md`。

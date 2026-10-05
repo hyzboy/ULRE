@@ -1123,3 +1123,40 @@ AMDVLK 上**挂死并丢设备**（三个线示例各 863 / 859 / 825 次 `VK_ER
 40 / 0；`TestRenderItemDataStorage` 全过；ATS 自检 D3/D4 PASS；CV 常规 `2/2 items=20`、A4 `Σcount=256
 overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPUDrivenCull `1/1 items=64`
 ——全部 `ENGAGED`、对拍 `不一致=0`、`Σcount` == 批内项数、`overflow=0`、0 VUID / 0 `[ERROR]`。
+
+### 八、欠账（本轮不做，未来排期）：gather 侧运行长度合并 —— 「CPU 合、GPU 不合」
+
+**现象**（2026-10-05 用户 RenderDoc 截帧发现，**非 bug**）：`GPUDrivenCull` 截帧里 64 个 cube 是
+**在 ICB 内一条条画**出来的，没合批成实例。三层事实：
+
+1. **现状是按设计**：gather 每项写 `DrawMeshTasksIndirectCommand(group_count_x, 1u, 1u)`
+   （`ShaderLibrary/ecs/entity_gpu_cull.glsl:348`）⇒ 一项一条命令、Y=1；而顶点侧实例号定义 =
+   `gl_InstanceIndex = draw_params.first_instance + gl_WorkGroupID.y`
+   （`src/ShaderGen/meshgen/MeshShaderHeaderGen.h:123`）⇒ **Y 维度本来就是实例维度，机制已在**。
+2. **CPU 账会合，接管后不会**（同示例实测对照）：`src/ecs/support/PrimitiveBatchPipeline.cpp:733`
+   `mesh_cmd->groupCountY = db.instance_count > 1 ? db.instance_count : 1u` ⇒ 同几何连续项合并；
+   `GPUDrivenCull` 的 64 个 cube 同几何 ⇒
+
+   | 模式 | ICB 命令数 | 证据 |
+   |---|---|---|
+   | CPU 账（基线 / 仅 dispatch） | **1 条（Y=64）** | flush 日志 `first=0 count=1（gpu_driven=0）` |
+   | 形态 B 接管 | **64 条（Y=1）** | gather 写死 `(x,1,1)` + RenderDoc 截帧 |
+
+   像素完全一致 ⇒ **现有像素/对账判据对此无感**；差的是命令数（ICB 条目、per-draw 参数行、
+   每条 mesh 命令的固定启动开销）。
+3. **成因 = ④ 关掉的那半边的侧效应**：本轮 ④ 只删了**组件多实例**（`InstancedPrimitiveRenderItem`、
+   slot 实例三字段、管线的实例展开），**CPU 侧自动合批（compaction 的 `DrawItemRange::instance_count`）
+   保留着** ⇒ 出现「CPU 合、GPU 不合」的不对称。
+
+**未来任务形状**：gather 内做**运行长度合并**——相邻幸存项 `geometry_id`（及发射相关行）相同则
+`groupCountY++` 并入同一命令，不同则 flush + 起新命令 ⇒ 命令数从「项数」降到「运行段数」。
+
+**代价（这就是不夹进 A6-b 的原因）**：gather 现为「每项一个独立 invocation」的**纯并行**模型，
+而「相邻项同键则并」需要知道**前一个幸存者**的键 ⇒ 要加一趟 run-start 标记 / 前缀和（或退化成
+部分串行）⇒ 属**并行性改造**，会污染机制层的判据。
+
+**判据（必须换维度）**：**命令数**（回读 ICB 计数）——CPU 1 条 vs 接管 1 条，且 `Σcount` 与
+三方像素仍全等；**像素判据对这件事永远无感**（改错了也看不出来）。台架可直接扩 `GPUDrivenCull`
+（`GC_*` 家族已有）。
+
+**登记**：`doc/backlog.md` E 线 **E2**（待排期）；**与 Text/调试线无依赖**，排在机制层 + 内容线之后。
