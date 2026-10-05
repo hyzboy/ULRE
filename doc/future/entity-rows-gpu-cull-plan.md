@@ -833,3 +833,42 @@ cull 派发（RenderFrameSync，本帧）
 - 判据口径：门 44 PASS / 0 FAIL；`ENGAGED batches=x/y`（正向）；台架 Parity + `Σcount` + `overflow` + 值链；
   像素三方（CPU 账 / 仅 dispatch / 接管）逐字节全等（**混合排见 B1**）。
 - 本节若与 §8.3/§8.6 冲突，以本节（最新）为准。
+
+---
+
+## §8.8 A1（② meshlet 接管）侦察结论与任务切分（2026-10-05）
+
+**结论：引擎侧改动很小（1 个池行字段 + 1 处写入 + GLSL 镜像 + 门用例 9→10 + 放开 guard）；
+真正的成本全在"测试床"——`res/` 里没有任何带 meshlets 的资产（33 个 `.mesh/.scene` 全查过，零命中），
+但 `VKGeometry::SetMeshlets(count, mb, mvb, mtb, mbb)` 允许**在代码里造 meshlet 几何** ⇒ 床走"代码造"，
+不走内容管线（除非将来要走 GLTFConvert/meshoptimizer 产资产，那是另一条内容线）。**
+
+### 侦察事实（逐条带落点）
+
+| # | 事实 | 落点 |
+|---|---|---|
+| 1 | 池行是**单源表**：CPU struct / GLSL 字段名 / 字段类型 / 偏移断言全部由一张 X 列表生成 | `inc/hgl/graph/ShaderBufferSources.h`（`HGL_MESH_DRAW_PARAMS_FIELD_LIST`） |
+| 2 | 行布局 = 头 9×4B + **4B 对齐填充** + 11×uint64 = **128B**；`static_assert(MeshDrawParamsLayoutValid())` 抓漂移 | 同上（`MeshDrawParamsLayoutValid` / `static_assert`） |
+| 3 | ⇒ 新增一个 `uint` 头字段**正好吃掉那 4B 填充**：总长仍 128B、uint64 尾偏移不动 | —— |
+| 4 | GLSL 侧镜像 `MeshDrawParamsHeadData`：9 字段 + `uint8_t _pad[92]` ⇒ 加字段须同步改 `_pad[92] → _pad[88]` | `ShaderLibrary/ecs/entity_gpu_cull.glsl` |
+| 5 | **门有对表用例**：`E.mesh-draw-params-head-parity` 解析 X 列表**头字段**并与镜像逐字段比 + 断言步长 128 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp`（`RunMeshDrawParamsHeadParityCase`） |
+| 6 | 池行作者（唯一写 `addr_meshlets` 的地方）就在 meshlet 分支里，`meshlet_count` 成员近在咫尺 | `src/SceneGraph/VKGeometry.cpp`（`if (HasMeshlets())`）+ `inc/hgl/graph/geo/VKGeometry.h`（`meshlet_count` / `SetMeshlets`） |
+| 7 | CPU 账的 X 口径：`mesh_cmd->groupCountX = db.geometry->GetMeshletCount()` | `src/ecs/support/PrimitiveBatchPipeline.cpp`（`WriteMeshDrawCommands`） |
+| 8 | GPU gather 侧**已能读池行**（`#define mesh_draw_params_pool …rows`）⇒ 加字段后可直接算 X | `ShaderLibrary/ecs/entity_gpu_cull.glsl` |
+| 9 | 网格着色器侧无需新变体：镜像声明**无条件**发射 `#define sbo_meshlets MeshletDescriptorRef(draw_params.addr_meshlets)`；meshlet 与经典路径由 `draw_params` 决定 | `src/ShaderGen/meshgen/MeshShaderVertexAdapter.h` |
+| 10 | guard 第 6 条（`addr_meshlets != 0` ⇒ 不接管）是这一件要放开的那条 | `src/ecs/support/PrimitiveBatchPipeline.cpp`（`TryApplyGPUCullOverride`） |
+| 11 | 阴影批同路：caster 走 `ResolveShadowCasterProgram` 形成独立批 ⇒ 同一 guard/同一池行 ⇒ 放开口径对 forward/shadow 一致 | `RenderPrimitiveCollectSystem.cpp`（`ResolveShadowCasterProgram`） |
+
+### 任务切分（每步编译 + 运行验证后再进下一步）
+
+| 任务 | 内容 | 判据（可自动判定） |
+|---|---|---|
+| **T1 床（代码造 meshlet 几何）** | 参照 ApiValidation 的 meshlet 布缓冲方式，用 `SetMeshlets` 在一个示例里造几何（如 1~K 个 meshlet 的方块/球）；**先不开 GPU cull** | CPU 账下正常出图（X=`GetMeshletCount` 已是 CPU 口径）；`[IndirectMeshDraw]` 日志 x>1 的段；`[ERROR]`=0、VUID=0 |
+| **T2 池行加字段** | X 列表加 `meshlet_group_count`(uint) + `VKGeometry.cpp` 在 meshlet 分支写值 + GLSL 镜像加字段并把 `_pad[92]→[88]` + 门用例头字段 9→10（含诊断文案） | 门 44/0；`static_assert` 通过；非 meshlet 示例像素**逐字节不变**（新字段=0 ⇒ X 仍 1） |
+| **T3 gather 的 X + 放开 guard #6** | `X = (meshlet_group_count == 0) ? 1 : meshlet_group_count`（与 CPU 同口径）；删除 guard 第 6 条 | meshlet 床：`ENGAGED batches=k/n`；Parity mismatch=0；`Σcount ≤ global`、`overflow=0`、值链满；**像素三方逐字节全等**（cluster 数错会画漏/画重） |
+| **T4 阴影侧** | 同一 meshlet 几何 + caster ⇒ 阴影批也接管 | 阴影图 dump 对拍（沿 CSM 判据口径）；VUID=0 |
+| **T5 文档收口** | §8.7 A1 关闭 + 本档 §8.5/§8.6 口径 + `doc/render-flow-cull-sort-drawcall.md` §2.3 guard 表 | 全仓 grep 无残留旧口径 |
+
+**风险**：① 池行是共享结构 ⇒ 改后**必须清整棵 Debug obj 树 + 清 shader 缓存**（`布局没变 ≠ 安全`：陈旧 TU 不会初始化新字段）；
+② 门用例的头字段数写死 ⇒ 忘改就是"用例红"，别误判成渲染回归；③ 若 T1 床立不住（mesh 着色器对 meshlet 数据布局另有要求），
+回退到"产出带 meshlets 的资产"这条内容线（更重，需单独拍板）。
