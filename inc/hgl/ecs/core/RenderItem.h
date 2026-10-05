@@ -35,7 +35,6 @@ namespace hgl::ecs
         uint32_t index = 0;                      // Index in batch
         uint32_t transform_index = 0;            // Transform index in buffer
 
-        float distanceToCamera = 0.0f;           // Distance to camera for sorting
         bool isVisible = true;                   // Visibility flag
 
         virtual ~RenderItem() = default;

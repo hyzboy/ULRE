@@ -2025,8 +2025,6 @@ namespace hgl::ecs
         uint64_t shadow_pass_idsum = 0;
         size_t added = 0;
 
-        const glm::vec3 camera_pos = glm::vec3(cameraInfo->pos);
-
         for (GeometryData *geometryComp : primitives)
         {
             if (!geometryComp)
@@ -2340,9 +2338,6 @@ namespace hgl::ecs
 
             item = std::make_unique<PrimitiveRenderItem>(
                 entity_id, transform, material_row_id, world);
-
-            const glm::vec3 worldPos = transform.GetWorldPosition();
-            item->distanceToCamera = glm::length(worldPos - camera_pos);
 
             item->UpdateWorldMatrix();
 

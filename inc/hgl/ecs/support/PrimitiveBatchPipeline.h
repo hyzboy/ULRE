@@ -56,7 +56,6 @@ namespace hgl::ecs
         bool TestFrustumWithLocalAABB(RenderItem* item, const glm::vec3& local_center, const glm::vec3& local_extents);
         bool TestFrustumWithBoundingSphere(RenderItem* item);
 
-        void SortByDistance();
         void AssignTransformIndices(TransformSystem* transform_system);
         void BuildMaterialBatches();
         void FinalizeBatches();

@@ -19,9 +19,9 @@
 Tick    │ TickInput → TickTransform(L2W/AABB) → TickCamera(VP) → TickPostCamera       │
         └──────────────────────────────────────┬─────────────────────────────────────┘
                                                ▼
-RenderCollect  ┌─ Collect：实体 → RenderItem（4-ID、world 矩阵、distanceToCamera）      CPU
+RenderCollect  ┌─ Collect：实体 → RenderItem（4-ID、world 矩阵、distanceToCamera）      CPU 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
                ├─ Cull(CPU)：视锥三层取精 → item->isVisible                            CPU
-               └─ Sort(CPU)：① 项按 distanceToCamera 升序                             CPU
+               └─ Sort(CPU)：① 项按 distanceToCamera 升序                             CPU 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
                                                ▼
 RenderBatch    ┌─ TransformIndexing：L2W 组内下标（static/movable 分档）               CPU
                ├─ BuildMaterialBatches：按批键 {ShaderProgram*, Pipeline*} 归批        CPU
@@ -110,7 +110,7 @@ RenderFrameSync ┌─ GPUCullSystem：一次 compute 派发（独立 cmd，异�
 
 | 层 | 位置 | 规则 |
 |---|---|---|
-| ① 项（帧级） | `PrimitiveBatchPipeline::RunSorting → SortByDistance` | 全部渲染项按 `distanceToCamera` **升序**（远 → 近） |
+| ① 项（帧级） | `PrimitiveBatchPipeline::RunSorting → SortByDistance` | 全部渲染项按 `distanceToCamera` **升序**（远 → 近） | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
 | ② 批内 | `SortBatchItems` | 分**静态**（`!transform.IsMovable()`）与**可动**两组，各自按 `RenderItem::Compare()` 排序；静态在前；回写 `item->index`、记 `static_count`。**`gpu_driven_override` 批直接 return（不排序）** |
 | ③ 批间 | `PrimitiveRenderSystem::OnRender` | 按 `MaterialBatch::key`（`ShaderProgramPipelineKey{shader_program, pipeline}`）排序后逐个提交 ⇒ 同 program 相邻、状态切换最少 |
 | ④ 透明排序 | **不存在** | 没有按深度给混合材质排序的机制。`alpha_blend` 的真结果顺序 = ①②③ 的副产物；GPU 接管批的行序 = `atomicAdd` **到达序** ⇒ 与 CPU 账可不同。**像素逐字节判据只对不透明/镂空/抖动类硬，对混合排不硬**（"B1"，已知缺口） |
@@ -135,7 +135,7 @@ RenderFrameSync ┌─ GPUCullSystem：一次 compute 派发（独立 cmd，异�
 |---|---|---|
 | `item->index` | `SortBatchItems` | **批内**序号（写回后即"行号"，供四流/属性表按批内序号定位） |
 | `item->transform_index` | `AssignTransformIndices` | L2W 存储句柄：movable → `dynamic_base + group_index`，static → `group_index + 1`（**slot 0 恒单位矩阵**） |
-| `item->distanceToCamera` | Collect（`RenderPrimitiveCollectSystem`） | 用于 ① 排序 |
+| `item->distanceToCamera` | Collect（`RenderPrimitiveCollectSystem`） | 用于 ① 排序 | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
 
 ### 4.3 DrawBatch 压缩（`BuildBatches`）
 

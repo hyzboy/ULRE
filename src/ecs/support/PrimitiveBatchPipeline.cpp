@@ -212,7 +212,6 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::RunSorting()
     {
-        SortByDistance();
     }
 
     void PrimitiveBatchPipeline::RunTransformIndexing()
@@ -315,18 +314,6 @@ namespace hgl::ecs
         return frustum.SphereIn(worldPos, worldRadius) != math::Frustum::Scope::OUTSIDE;
     }
 
-    void PrimitiveBatchPipeline::SortByDistance()
-    {
-        if (!world)
-            return;
-
-        auto& cache = world->GetRenderFrameCache();
-
-        std::sort(cache.renderItems.begin(), cache.renderItems.end(),
-            [](const std::unique_ptr<RenderItem>& a, const std::unique_ptr<RenderItem>& b) {
-                return a->distanceToCamera < b->distanceToCamera;
-            });
-    }
 
     void PrimitiveBatchPipeline::AssignTransformIndices(TransformSystem* transform_system)
     {

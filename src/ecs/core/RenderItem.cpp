@@ -27,11 +27,6 @@ namespace hgl::ecs
             if (h1 > h2) return 1;
         }
 
-        // 再按到相机距离
-        float diff = other.distanceToCamera - distanceToCamera;
-        if (diff > 0.0f) return 1;
-        if (diff < 0.0f) return -1;
-
         return 0;
     }
 }//namespace hgl::ecs
