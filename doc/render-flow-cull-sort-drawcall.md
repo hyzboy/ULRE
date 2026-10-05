@@ -216,7 +216,7 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 
 | 判据 | 看什么 | 合格线 |
 |---|---|---|
-| 门（离线） | `ShaderResourceSchemaRegressionGate` | **44 PASS / 0 FAIL** |
+| 门（离线） | `ShaderResourceSchemaRegressionGate` | **45 PASS / 0 FAIL** |
 | 判决对拍 | `[CPUCullReferenceSystem] Parity: CPU=…, GPU=…, match=…, mismatch=0` | mismatch = 0 |
 | 记账交叉 | `[T3i] batch slices: batches= rows= Σcount= global= overflow=` | `Σcount ≤ global`（切片只记被接管批）；`overflow == 0`（硬红） |
 | 值链 | 同上行的 `值链=n/n bad=0`（实体行 + gather 行的阴影事实逐字节同源） | bad = 0 |
@@ -262,7 +262,7 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 
 | 场景 | 命令要点 | 期望 |
 |---|---|---|
-| 离线正确性 | `ShaderResourceSchemaRegressionGate.exe` | 44 PASS / 0 FAIL |
+| 离线正确性 | `ShaderResourceSchemaRegressionGate.exe` | 45 PASS / 0 FAIL |
 | CPU 账基线 | 示例直接跑（不开 cull） | `[ERROR]`=0、VUID=0 |
 | 仅派发（判决） | `<示例>_CULL=1` | Parity mismatch=0；绘制不变 |
 | 形态 B 接管 | `<示例>_FORM_B=1` | `ENGAGED batches=k/n`；Pixel 三方全等 |

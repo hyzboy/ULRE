@@ -2998,6 +2998,138 @@ namespace
         return false;
     }
 
+    /// 取 `token` 之后**首个十进制整数**（吃 `= 0` / `= 0u` / `#define X 0u` 三种写法）；
+    /// 不许跨行取，找不到返回 -1（调用方据此报错，不静默当 0）。
+    static int ExtractFirstIntAfter(const std::string &text, const std::string &token)
+    {
+        const size_t at = text.find(token);
+        if (at == std::string::npos)
+            return -1;
+
+        size_t i = at + token.size();
+        for (; i < text.size(); ++i)
+        {
+            const char ch = text[i];
+            if (ch >= '0' && ch <= '9')
+                break;
+            if (ch == '\n')
+                return -1;
+        }
+        if (i >= text.size())
+            return -1;
+
+        int value = 0;
+        for (; i < text.size() && text[i] >= '0' && text[i] <= '9'; ++i)
+            value = value * 10 + (text[i] - '0');
+        return value;
+    }
+
+    /// 机制层契约（A6-b）：**批信息行** + **批的 dispatch 档**两端同序同型同值。
+    /// · `BatchInfoRow`（16 B：row_base / capacity / topology / group_size）是 gather 逐批读的
+    ///   切片描述 —— 漂移 = 按错偏移读切片（静默错位/错画）；
+    /// · 档号（`kBatchTopologyTriangles/Lines` ↔ GLSL `#define TOPOLOGY_*`）**两处各写一遍**
+    ///   ⇒ 漂移 = 线的 X 公式选错档（按顶点数而非段数）⇒ 整批线段少画/错画。
+    /// 两条都是 S./E. 同族的**静默**错位坑（像素判据只在特定角度才看得见），必须门禁。
+    static GateResult RunBatchInfoStructParityCase()
+    {
+        GateResult result;
+        result.name = "B.batch-info-struct-parity";
+
+        const std::string cpp_text =
+            ReadFileText(RepoRootPath("inc/hgl/ecs/support/GPUCullSystem.h"));
+        const std::string glsl_text =
+            ReadFileText(RepoRootPath("ShaderLibrary/ecs/entity_gpu_cull.glsl"));
+
+        if (cpp_text.empty() || glsl_text.empty())
+        {
+            result.diagnostics.emplace_back(
+                "无法读取 GPUCullSystem.h / entity_gpu_cull.glsl（结构对表的两端）");
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        // ── ① 行形状：逐字段同序同型（类型/长度已归一） ──
+        const std::vector<StructFieldEntry> cpp_fields =
+            ExtractStructFieldsLineWise(cpp_text, "BatchInfoRow");
+        const std::vector<StructFieldEntry> glsl_fields =
+            ExtractStructFieldsLineWise(glsl_text, "BatchInfoRow");
+
+        if (cpp_fields.empty() || glsl_fields.empty())
+        {
+            result.diagnostics.emplace_back(
+                "BatchInfoRow 字段提取为空（块头被改写？）C++="
+                + std::to_string(cpp_fields.size())
+                + " GLSL=" + std::to_string(glsl_fields.size()));
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        if (cpp_fields.size() != glsl_fields.size())
+        {
+            result.diagnostics.emplace_back(
+                "BatchInfoRow 字段数漂移：C++ " + std::to_string(cpp_fields.size())
+                + " 项 / GLSL " + std::to_string(glsl_fields.size())
+                + " 项；漂移 = gather 按错偏移读切片（静默错位/错画）");
+        }
+        else
+        {
+            for (size_t i = 0; i < cpp_fields.size(); ++i)
+            {
+                if (cpp_fields[i].type == glsl_fields[i].type
+                 && cpp_fields[i].name == glsl_fields[i].name
+                 && cpp_fields[i].dim  == glsl_fields[i].dim)
+                    continue;
+
+                result.diagnostics.emplace_back(
+                    "BatchInfoRow 第 " + std::to_string(i) + " 字段漂移：C++="
+                    + cpp_fields[i].type + " " + cpp_fields[i].name
+                    + " / GLSL=" + glsl_fields[i].type + " " + glsl_fields[i].name
+                    + "；漂移 = gather 按错偏移读切片（静默错位/错画）");
+                break;
+            }
+        }
+
+        // ── ② 派发档：C++ 常量 ↔ GLSL #define 数值一致（两处各写一遍的漂移面） ──
+        struct TierPair
+        {
+            const char *cpp_token;
+            const char *glsl_token;
+        };
+
+        const TierPair tiers[] =
+        {
+            { "kBatchTopologyTriangles", "#define TOPOLOGY_TRIANGLES" },
+            { "kBatchTopologyLines",     "#define TOPOLOGY_LINES"     },
+        };
+
+        for (const TierPair &tier : tiers)
+        {
+            const int cpp_value  = ExtractFirstIntAfter(cpp_text,  tier.cpp_token);
+            const int glsl_value = ExtractFirstIntAfter(glsl_text, tier.glsl_token);
+
+            if (cpp_value < 0 || glsl_value < 0)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("派发档找不到数值：C++ ") + tier.cpp_token
+                    + " / GLSL " + tier.glsl_token
+                    + "（常量改名？两端各写一遍，改名必须同步）");
+                continue;
+            }
+
+            if (cpp_value != glsl_value)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("派发档数值漂移：") + tier.cpp_token + "="
+                    + std::to_string(cpp_value) + " vs " + tier.glsl_token + "="
+                    + std::to_string(glsl_value)
+                    + "；档号错 = 线/网格的 X 公式选错（整批少画/错画）");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     /// C++ EntityGPU（inc/hgl/ecs/core/EntityGPU.h）与 GLSL 侧 EntityGPUData
     /// （ShaderLibrary/ecs/entity_gpu.glsl）必须逐字段同序同型同长度（§7.4 / §8.3-③）。
     /// 为什么必须门禁：这是 128 B 行的 GPU 镜像 —— 漂移 = 剔除着色器按错步长解引用
@@ -5350,6 +5482,7 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());
     if (run_interface) results.push_back(RunWorldAddressesStructParityCase());
     if (run_interface) results.push_back(RunEntityGPUStructParityCase());
+    if (run_interface) results.push_back(RunBatchInfoStructParityCase());
     if (run_interface) results.push_back(RunMeshDrawParamsHeadParityCase());
     if (run_interface) results.push_back(RunAddressOwnershipCase(false));
     if (run_interface) results.push_back(RunAddressOwnershipCase(true));
