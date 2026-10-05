@@ -677,20 +677,7 @@ public:
         if (!InitCamera())
             return false;
 
-        // B8/T3f-1：显式 opt-in 启用 GPU 剔除管线。
-        // PBR_DISABLE_CULL=1 ⇒ 不开任何开关 = **CPU 判据基线**（像素验收对照组）。
-        // PBR_FORM_B=1 ⇒ 第二档 opt-in：gather 输出接管绘制（形态 B，唯一接管形态——
-        //   形态 A 回灌已随 T3g 退役：每帧 CPU Map 读回 = 生产路径同步点，§8.2f）。
-        //   不开 B ⇒ 只 dispatch + 对拍（绘制仍走 CPU 账）。
-        if (!getenv("PBR_DISABLE_CULL"))
-        {
-            if (auto gpu_cull = ecs_world->GetSystem<GPUCullSystem>())
-            {
-                gpu_cull->SetEnabled(true);
-                if (getenv("PBR_FORM_B"))
-                    gpu_cull->SetDrawOverrideEnabled(true);
-            }
-        }
+        // A6-d T2：**接管已强制**（opt-in 面整体删除）——主帧 mesh 批恒走 GPU 路径。
 
         // PBR_DUMP=<tag>：像素验收 dump —— 帧 8（剔除已热、场景静止）装一次性帧内
         // 回读钩子，落原始字节（A2B10G10R10 packed，与 AlphaTestShadow 同口径），

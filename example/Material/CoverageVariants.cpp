@@ -11,8 +11,6 @@
 // 日志给出接管批数（ENGAGED batches=2/2）与台架两本账/值链判据；dump 走像素全等判据。
 //
 // env（全部默认关 ⇒ 基线 = 纯 CPU 账、无剔除）：
-//   CV_CULL=1     启用 GPU 剔除管线（dispatch + 台架对拍；绘制仍走 CPU 账）
-//   CV_FORM_B=1   启用 + gather 输出接管绘制（形态 B）
 //   CV_FRAMES=N   跑 N 帧后退出（CI / 性能对照）
 //   CV_STRESS=N   A4 容量台架：N 个「同 def(Lit) + 仅 alpha_cutoff 不同」的配方
 //                 ⇒ 生成的片元 GLSL 只差 `#define HGL_ALPHA_CUTOFF <v>` ⇒ N 个 program
@@ -433,20 +431,12 @@ private:
     bool InitCull()
     {
         // GPU 剔除 **opt-in**（默认全关 = 纯 CPU 账基线）：见 doc §8.6 两档开关。
-        if (!getenv("CV_CULL") && !getenv("CV_FORM_B"))
-            return true;
-
         auto gpu_cull = ecs_world->GetSystem<GPUCullSystem>();
         if (!gpu_cull)
         {
             printf("[ERROR] InitCull: GPUCullSystem 未注册\n");
             return false;
         }
-
-        gpu_cull->SetEnabled(true);
-
-        if (getenv("CV_FORM_B"))
-            gpu_cull->SetDrawOverrideEnabled(true);
 
         return true;
     }

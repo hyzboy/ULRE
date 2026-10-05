@@ -50,7 +50,7 @@ namespace hgl::ecs
         // opt-in 门：GPU 剔除管线未启用 ⇒ 对拍没有对照物，整段跳过
         // （本系统的采样会 Map 整块 L2W SSBO，白跑一次全量遍历）。
         auto gpu_cull = context_->GetSystem<GPUCullSystem>();
-        if (!gpu_cull || !gpu_cull->IsEnabled())
+        if (!gpu_cull)
             return;
 
         // 未定帧不采样（T3g）：派发攒满 2 帧前读回的是空表/旧表，
@@ -74,9 +74,8 @@ namespace hgl::ecs
         // 3. 位图对拍 + 打印统计
         CompareResults();
 
-        // 4. T3h：阴影值链三段对拍（仅形态 B 接管中有 gather 行可读）
-        if (gpu_cull->IsDrawOverrideEnabled())
-            CheckShadowFacts();
+        // 4. T3h：阴影值链三段对拍（A6-d T2：接管已强制 ⇒ gather 行恒可读）
+        CheckShadowFacts();
     }
 
     void CPUCullReferenceSystem::CheckShadowFacts()

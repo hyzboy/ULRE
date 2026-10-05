@@ -32,11 +32,9 @@
 //（alpha_blend 在 EDS 下是**动态状态**，见 VKCommandBufferRender.cpp 的
 // cmd_set_color_blend_enable）⇒ 预计**同批**；Dither 改的是生成 GLSL（#define
 // HGL_ALPHA_DITHER）⇒ 不同 shader program ⇒ **单独一批**。配合 GPU 剔除接管
-//（AM_FORM_B=1）可直接在日志里看 batches=x/y 验证。
+// 接管已强制（A6-d T2）⇒ 日志里可直接看 batches=x/y 验证。
 //
 // env（全部默认关 ⇒ 基线 = 纯 CPU 账、无剔除）：
-//   AM_CULL=1     启用 GPU 剔除管线（dispatch + 台架对拍；绘制仍走 CPU 账）
-//   AM_FORM_B=1   启用 + gather 输出接管绘制（形态 B）
 //   AM_PARTIAL=1  A3 台架：把 Opaque 行最后一格改成**独立 program**
 //                 （billboard 顶点节点 ⇒ 自成一批）⇒ 接管须能处理「多批异 program」
    //                 ⇒ 期望 ENGAGED batches=5/5（全量）：④ 条已删（2026-10-05）该批不再被挡；「部分接管」判据改由 A4 批数超限覆盖
@@ -403,20 +401,12 @@ private:
     bool InitCull()
     {
         // GPU 剔除 **opt-in**（默认全关 = 纯 CPU 账基线）
-        if (!getenv("AM_CULL") && !getenv("AM_FORM_B"))
-            return true;
-
         auto gpu_cull = ecs_world->GetSystem<GPUCullSystem>();
         if (!gpu_cull)
         {
             printf("[ERROR] InitCull: GPUCullSystem 未注册\n");
             return false;
         }
-
-        gpu_cull->SetEnabled(true);
-
-        if (getenv("AM_FORM_B"))
-            gpu_cull->SetDrawOverrideEnabled(true);
 
         return true;
     }

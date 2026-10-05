@@ -78,15 +78,13 @@ namespace hgl::ecs
             uint32_t entity_count;
             uint32_t max_visible_count;
             uint32_t camera_row;          // ECSContext::GetActiveCameraRow()
-            uint32_t enable_gather;       // 0 = 只出计数；非 0 = 写 gather 四表（形态 B opt-in）
             uint32_t batch_count;         // T3i：本帧批数（0 = 无接管批）
         };
 
-        // 11×u64(88) + 5×u32(20) = 108 ⇒ 结构对齐 8 ⇒ **sizeof 仍 112**（4 B 尾填充）；
-        // 撤掉 mesh_group_size 不改尺寸（填充吸收），只把后面的 u32 前移一档。
-        static_assert(sizeof(CullPushConstants) == 112, "CullPushConstants layout mismatch");
+        // 11×u64(88) + 4×u32(16) = 104 ⇒ 对齐 8 ⇒ sizeof 104（A6-d T2 撤 enable_gather）。
+        static_assert(sizeof(CullPushConstants) == 104, "CullPushConstants layout mismatch");
         static_assert(offsetof(CullPushConstants, batch_tag_addr) == 64, "T3i pc 段偏移");
-        static_assert(offsetof(CullPushConstants, batch_count) == 104, "T3i pc 段偏移");
+        static_assert(offsetof(CullPushConstants, batch_count) == 100, "T3i pc 段偏移");
 
         // 引擎合规文件读取（先例：ShaderCodeModuleRegistry::LoadFileContent ——
         // 同一读法与缓冲口径），路径由 ShaderLibrary 单源解析（禁绝对路径）。
@@ -510,36 +508,6 @@ namespace hgl::ecs
         }
     }
 
-    void GPUCullSystem::SetEnabled(bool enabled)
-    {
-        if (enabled_ == enabled)
-            return;
-
-        enabled_ = enabled;
-
-        // T3g 防坑 3：关 ⇒ 派发计数归零。场景切换/暂停再开时必须重新攒满
-        // 2 帧才允许接管，旧计数不得放行首帧误接管（表可能已换新内容）。
-        if (!enabled_)
-        {
-            dispatch_count_ = 0;
-            override_reject_reported_ = false;
-            batch_count_ = 0;      // T3i：批分区随之作废（重开重新装配）
-        }
-
-        GLogInfo(u8"[GPUCullSystem] GPU cull dispatch %s (opt-in)",
-                 enabled_ ? u8"ENABLED" : u8"disabled");
-    }
-
-    void GPUCullSystem::SetDrawOverrideEnabled(bool enabled)
-    {
-        if (override_draw_ == enabled)
-            return;
-
-        override_draw_ = enabled;
-        GLogInfo(u8"[GPUCullSystem] batch draw override %s (opt-in)",
-                 override_draw_ ? u8"ENABLED" : u8"disabled");
-    }
-
     bool GPUCullSystem::SyncForParityReadback()
     {
         // 对拍台架同步点（T3g）：Map 读回**之前**必须等本帧 dispatch 完成——
@@ -603,10 +571,6 @@ namespace hgl::ecs
 
     void GPUCullSystem::Update(float delta_time)
     {
-        // opt-in 门（默认关）：未显式启用就不 dispatch，避免默认全局接管把示例画空。
-        if (!enabled_)
-            return;
-
         // 延迟初始化：第一次 Update 时执行
         if (!EnsureInitialized())
             return;
@@ -653,7 +617,6 @@ namespace hgl::ecs
         pc.camera_row = context_->GetActiveCameraRow();   // 与材质侧 pc_root.camera_row 同式
         // 形态 B：gather 开关恒等于 opt-in（表内容由 CPU guard 决定批是否消费；
         // 未接管帧写出的 gather 表 = 无人读的富余写，代价一次 gather 写）。
-        pc.enable_gather = override_draw_ ? 1u : 0u;
 
         // T3i：批标签 / 分区 / 计数（**当前帧槽**的份；与实体表同槽口径）
         const uint32_t batch_slot = frame_slot % HGL_FRAME_SLOT_TOTAL;

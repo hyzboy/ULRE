@@ -13,16 +13,17 @@
 // 判据（可自动判定）：
 //   · 正向：引擎日志 `[T3i] GPU cull draw override ENGAGED: batches=x/y items=N arena_rows=M`
 //     ——**必须有这条**：静默退回 CPU 账**也会**像素全等，没有它不能宣称接管成立。
-//   · 像素：默认（接管） / `GC_DISPATCH_ONLY=1`（仅 dispatch，绘制仍走 CPU 账） /
-//     `GC_CULL_OFF=1`（纯 CPU 账）三者 dump **逐字节全等**。
+//   · **帧摘要自检**：`GC_SELFCHECK=1`（第 8 帧回读颜色靶 ⇒ {不同取值数, FNV-1a 64}
+//     比对内联常量；A6-d 判据重建，见计划档 §10 §三.3）。A6-d T2 起接管已强制 ⇒ 原
+//     「三方像素（接管 / 仅 dispatch / 纯 CPU 账）」判据随 `GC_DISPATCH_ONLY` /
+//     `GC_CULL_OFF` 两个模式一起删除。
 //   · 0 VUID / 0 `[ERROR]`。
 //
-// env（默认 = 引擎剔除全开）：
-//   GC_CULL_OFF=1      关闭引擎剔除（纯 CPU 账基线，供三方像素对照）
-//   GC_DISPATCH_ONLY=1 只 dispatch、不做绘制接管（供三方像素对照）
-//   GC_STATIC=1        冻结相机 ⇒ 取景确定，像素判据不被时序干扰
+// env（**接管恒开，无开关**）：
+//   GC_STATIC=1        冻结相机 ⇒ 取景确定，摘要判据不被时序干扰
 //   GC_FRAMES=N        跑 N 帧后退出
 //   GC_DUMP=<tag>      第 8 帧帧内回读落原始字节后退出（`gcdump_<tag>_WxH_fmt.raw`）
+//   GC_SELFCHECK=1     帧摘要自检（PASS 退 0 / FAIL 退 1；配 GC_STATIC=1）
 //   GC_ORBIT_SPEED=<deg/s>  轨道转速（默认 18）
 //   GC_YAW/GC_PITCH/GC_DIST/GC_TX/GC_TY/GC_TZ  相机覆盖（取景迭代，无需重编）
 
@@ -111,8 +112,6 @@ private:
     // 行只影响 per-item 材质绑定 ⇒ 仍是 **1 个批**（CoverageVariants 已验证同一现象）。
     MaterialDataAccessor color_rows[CUBE_COUNT]{};
 
-    bool  cull_off      = false;
-    bool  dispatch_only = false;
     bool  static_camera = false;
     float orbit_speed   = 18.0f;
 
@@ -271,13 +270,8 @@ private:
 
     bool InitCull()
     {
-        if (cull_off)
-        {
-            printf("[GPUDrivenCull] GC_CULL_OFF=1 ⇒ 引擎剔除关闭（纯 CPU 账基线）\n");
-            fflush(stdout);
-            return true;
-        }
-
+        // A6-d T2：**接管已强制**（opt-in 面整体删除）——主帧 mesh 批恒走 GPU 路径，
+        // 不再有「未启用就不接管」的活口；本函数只剩「系统在不在」这一道检查。
         auto gpu_cull = ecs_context->GetSystem<GPUCullSystem>();
         if (!gpu_cull)
         {
@@ -285,13 +279,7 @@ private:
             return false;
         }
 
-        gpu_cull->SetEnabled(true);                          // dispatch 剔除 + 计数
-
-        if (!dispatch_only)
-            gpu_cull->SetDrawOverrideEnabled(true);           // 形态 B：gather 输出接管绘制
-
-        printf("[GPUDrivenCull] 引擎 GPU 剔除：dispatch=on、绘制接管=%s\n",
-               dispatch_only ? "off（GC_DISPATCH_ONLY）" : "on");
+        printf("[GPUDrivenCull] 引擎 GPU 剔除：接管已强制（A6-d T2）\n");
         fflush(stdout);
 
         return true;
@@ -315,8 +303,6 @@ public:
             return false;
         }
 
-        cull_off      = getenv("GC_CULL_OFF")      != nullptr;
-        dispatch_only = getenv("GC_DISPATCH_ONLY") != nullptr;
         static_camera = getenv("GC_STATIC")        != nullptr;
 
         if (const char * v = getenv("GC_ORBIT_SPEED")) orbit_speed = (float)atof(v);

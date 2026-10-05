@@ -25,8 +25,6 @@
 //   LS_DIST/LS_YAW/LS_PITCH  相机覆盖
 //   LS_FRAMES=N      跑 N 帧退出
 //   LS_DUMP=<tag>    第 8 帧帧内回读落原始字节后退出（lsdump_<tag>_WxH_fmt.raw）
-//   LS_CULL=1        启用 GPU 剔除（dispatch + 台架对拍）
-//   LS_FORM_B=1      启用 + gather 输出接管绘制（形态 B）
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -301,20 +299,12 @@ public:
     bool InitCull()
     {
         // GPU 剔除 opt-in（默认全关 = 纯 CPU 账基线）
-        if (!getenv("LS_CULL") && !getenv("LS_FORM_B"))
-            return true;
-
         auto gpu_cull = ecs_context ? ecs_context->GetSystem<hgl::ecs::GPUCullSystem>() : nullptr;
         if (!gpu_cull)
         {
             printf("[ERROR] InitCull: GPUCullSystem 未注册\n");
             return false;
         }
-
-        gpu_cull->SetEnabled(true);
-
-        if (getenv("LS_FORM_B"))
-            gpu_cull->SetDrawOverrideEnabled(true);
 
         return true;
     }

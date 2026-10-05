@@ -8,7 +8,7 @@
 // 输入：实体行表（枚举源，Active/Visible 位）+ 实体 4-ID 表（池口径 id 唯一来源）
 //       L2W 矩阵池（世界私有）/ 相机（世界私有）/ GeometryAABB + MeshDrawParams 池（全局）
 // 输出：可见实体索引表（形态 A 回灌读）+ 幸存计数；
-//       `enable_gather != 0`（形态 B 接管中）时另按幸存 slot gather 写四张 per-batch
+//       另按幸存 slot gather 写四张 per-batch
 //       行表：icb{X,Y=1,Z=1} / cmds{geometry_id, first_instance=slot} /
 //       l2w_index{EntityGPU.row[Transform]} / mtl_rows{payload,texture,
 //       entity.shadow_bias_multiplier,entity.shadow_receive==0?NoReceive:0}。
@@ -49,7 +49,6 @@ layout(push_constant) uniform PushConstants
     uint   entity_count;             // 实体总数
     uint   max_visible_count;        // 幸存表容量上限
     uint   camera_row;               // 本 pass 活跃相机行号（与 pc_root.camera_row 同式）
-    uint   enable_gather;            // 0 = 只出计数（对拍/形态 A）；非 0 = 写 gather 四表（形态 B）
     uint   batch_count;              // T3i：本帧批数（0 = 无接管批 ⇒ 只为对拍出计数）
 } pc;
 
@@ -306,9 +305,6 @@ void main()
     // 写入可见实体索引（两档共用）
     VisibleEntityIndicesRef visible_indices = VisibleEntityIndicesRef(pc.visible_indices_addr);
     visible_indices.indices[visible_index] = entity_index;
-
-    if (pc.enable_gather == 0u)
-        return;
 
     // ── T3i（③ 多批）：批标签 → 本批切片 → 写四表 ──────────────────────────
     // 标签 = CPU 批装配直写（当前帧槽；cull 在 RenderFrameSync ⇒ 本帧产物）。

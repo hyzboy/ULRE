@@ -56,8 +56,6 @@ private:
     // ── GPU 剔除台架（A6：**内容线**能否进接管）───────────────────────────
     //   3 张 32×32（sub 8×8）网格 = 数千条线段 ⇒ X 必须按**段数**算（÷2），
     //   公式错则整块网格缺线/错线 ⇒ 像素判据可直接抓。
-    //   PG_CULL=1      启用引擎 GPU 剔除（dispatch + 计数）
-    //   PG_FORM_B=1    启用 + gather 输出接管绘制（形态 B）⇒ 期望 ENGAGED batches=n/n
     //   PG_FRAMES=N    跑 N 帧后退出（CI / 像素对照）
     //   PG_DUMP=<tag>  第 8 帧帧内回读落原始字节后退出（pgdump_<tag>_WxH_fmt.raw）
     std::string pg_dump_tag;
@@ -67,8 +65,7 @@ private:
 
     bool InitCull()
     {
-        if (!getenv("PG_CULL") && !getenv("PG_FORM_B"))
-            return true;                       // 默认全关 ⇒ 纯 CPU 账（基线）
+        // A6-d T2：**接管已强制**（opt-in 面整体删除）——主帧 mesh 批恒走 GPU 路径。
 
         auto   gpu_cull = ecs_context->GetSystem<hgl::ecs::GPUCullSystem>();   // shared_ptr（非裸指针）
         if (!gpu_cull)
@@ -77,13 +74,7 @@ private:
             return false;
         }
 
-        gpu_cull->SetEnabled(true);             // dispatch 剔除 + 计数
-
-        if (getenv("PG_FORM_B"))
-            gpu_cull->SetDrawOverrideEnabled(true);     // 形态 B：gather 输出接管绘制
-
-        printf("[PlaneGrid3D] 台架：PG_CULL=1%s（内容线：3×(32×32, sub 8×8) 网格）\n",
-               getenv("PG_FORM_B") ? " + PG_FORM_B=1（形态 B 接管绘制）" : "（仅 dispatch）");
+        printf("[PlaneGrid3D] 台架：接管已强制（A6-d T2）（内容线：3×(32×32, sub 8×8) 网格）\n");
         return true;
     }
 

@@ -1174,8 +1174,10 @@ namespace hgl::ecs
         // 每帧先复位（评估失败/从未评估 ⇒ 恒不接管；collect 读本记账）
         ++gpu_cull_override_eval_frame_;
 
+        // A6-d T2：**接管已强制**（opt-in 面整体删除）——主帧 mesh 批恒走 GPU 路径，
+        // 不再有「未启用就不接管」的活口；本函数只剩「系统在不在」这一道检查。
         auto gpu_cull = world->GetSystem<GPUCullSystem>();
-        if (!gpu_cull || !gpu_cull->IsEnabled() || !gpu_cull->IsDrawOverrideEnabled())
+        if (!gpu_cull)
             return;
 
         // 只在主帧 pass 接管（shadow 批共用 materialBatches 表 ⇒ 必须显式挡）

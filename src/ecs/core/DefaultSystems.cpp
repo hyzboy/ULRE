@@ -102,9 +102,8 @@ namespace
         if (gpu_cull_system)
         {
             gpu_cull_system->Initialize(ctx);
-            // 开关由示例显式 opt-in（引擎默认不启用）：dispatch/对拍 = SetEnabled，
-            // 接管批次绘制（形态 B）= SetDrawOverrideEnabled；两个都不开 ⇒
-            // 管线完全不触达渲染路径。（形态 A 回灌已随 T3g 退役，见 §8.2f。）
+            // A6-d T2：接管已强制（opt-in 面整体删除）——dispatch 与 gather 接管恒开；
+            // 实际是否接管某批仍由 PrimitiveBatchPipeline 的逐批 guard 判定。
         }
 
         // CPU cull reference system for parity testing (T3d-2)

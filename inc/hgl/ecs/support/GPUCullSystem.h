@@ -39,26 +39,14 @@ namespace hgl::ecs
         // 初始化：创建 compute pipeline 和输出 buffer
         bool Initialize(ECSContext* context);
 
-        /// **opt-in 开关（默认关）**：dispatch 剔除着色器 + 供 CPU 对拍读取。
-        /// 本管线仍在 T3f 验收阶段，未逐示例验证过像素正确性 ⇒ 不得默认全局
-        /// 接管批次（否则 `count=0` 会把所有示例画空）。
-        /// 关 ⇒ `dispatch_count_` 归零：重新开启从"未定帧"状态起算（T3g 防坑 3：
-        /// 场景切换/暂停再开不能让旧计数放行误接管）。
-        void SetEnabled(bool enabled);
-        bool IsEnabled() const { return enabled_; }
-
-        /// **第二个 opt-in（默认关，T3f-2 形态 B）**：允许 gather 输出接管绘制。
-        /// 实际接管由 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 逐帧 guard 判定
-        /// （前提清单见该函数注释）；本开关只是总闸 + `enable_gather` dispatch 参数。
-        /// （原 `GPUCullResultHookSystem` 的跨帧接线方式与批生命周期不匹配，已删除。）
-        /// （T3f-1 的形态 A `SetApplyVisibleSetEnabled` 已整体退役：回灌 = 每帧
-        /// CPU Map 读回，生产路径同步点；对拍台架已覆盖其验证价值，见 §8.2f。）
-        void SetDrawOverrideEnabled(bool enabled);
-        bool IsDrawOverrideEnabled() const { return override_draw_; }
+        /// **接管已强制**（A6-d T2）：opt-in 面（两开关 `SetEnabled`/`SetDrawOverrideEnabled`
+        /// + `enable_gather` dispatch 参数）**整体删除** ⇒ dispatch 与 gather 接管恒开。
+        /// 实际是否接管某批仍由 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 逐批 guard
+        /// 判定（前提清单见该函数注释）。历史：T3f-1 形态 A 回灌随 T3g 退役（见 §8.2f）。
 
         /// **接管护栏的"派发已定帧"判据**（T3g）：dispatch 至少完成过 **2 帧** ⇒
         /// 实体行表 / 4-ID 表都已含就绪数据，首帧 `survivors=0` 假象不可能出现。
-        /// 纯 CPU 计数（不等 GPU）；`SetEnabled(false)` 归零 ⇒ 重开必须重新满 2 帧。
+        /// 纯 CPU 计数（不等 GPU）。
         bool IsDispatchSettled() const { return dispatch_count_ >= 2; }
 
         // 获取输出 buffer（供 MaterialBatch 使用）
@@ -194,8 +182,6 @@ namespace hgl::ecs
         ECSContext* context_ = nullptr;
         graph::VulkanDevice* device_ = nullptr;
         bool initialized_ = false;
-        bool enabled_ = false;        ///< opt-in 开关：默认关（dispatch + 对拍）
-        bool override_draw_ = false;  ///< opt-in 开关：默认关（接管批次间接绘制）
 
         // Compute pipeline
         graph::ShaderProgram* shader_program_ = nullptr;
