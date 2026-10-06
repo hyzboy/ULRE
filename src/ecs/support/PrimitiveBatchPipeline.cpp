@@ -1167,7 +1167,12 @@ namespace hgl::ecs
         if (!gpu_cull)
             return;
 
-        // 只在主帧 pass 接管（shadow 批共用 materialBatches 表 ⇒ 必须显式挡）
+        // 只在主帧 pass 接管（shadow 批共用 materialBatches 表 ⇒ 必须显式挡）。
+        // T4c3 曾去掉这条早退（两 pass 各写各的块/扇区），实测：ShadowMap 摘要一致，
+        // 但 **ATS 契约破 + Cascade 挂**——根因是 GPU 行取自**实体行**，而实体行每帧只有
+        // 一份、内容为**最后一个 pass**（主帧）写入 ⇒ 阴影行带的是主帧的材质变体
+        //（阴影程序/材质行本按 pass 解析，见 `GetShadowProgram`）。要重启 T4c3 必须先给
+        // 阴影一份**自己的实体行风味**（或让 shader 侧按阴影程序解析材质）——见计划档 §11。
         if (world->IsCurrentPassShadow())
             return;
 
@@ -1206,7 +1211,7 @@ namespace hgl::ecs
         uint32_t pending_count = 0;
 
         uint32_t next_index = 0;
-        uint32_t row_cursor = 0;
+        uint32_t row_cursor = 0;   // T4c3 回退：恒主帧扇区（阴影扇区待重启）
         uint32_t total_items = 0;
         uint32_t geometry_batches = 0;
         uint32_t *tags = nullptr;

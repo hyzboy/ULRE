@@ -322,8 +322,8 @@ namespace hgl::ecs
         mtl_out_addr_ = device_->GetBufferDeviceAddressAligned16(mtl_out_buffer_->GetBuffer());
 
         // ── T3i（③ 多批）：批标签 / 分区 / 每批计数（按帧槽分份；CPU 只写当前份）──
-        // tag = kSlots × 4096 × u32；info = kSlots × kMaxBatches × 8 B；
-        // counter = kSlots × (kMaxBatches + 1) × u32（末位 = overflow 计数）。
+        // tag = kSlots × 4096 × u32；info = kSlots × kArenaPasses × kBatchBlockStride × 8 B；
+        // counter = kSlots × kArenaPasses × kBatchBlockStride × u32（每块末位 = 该块 overflow 槽）。
         // usage：STORAGE（CS 读写）+ SHADER_DEVICE_ADDRESS（BDA 下发）；counter 另带
         // TRANSFER_DST（cull cmd 内 FillBuffer 清零，VUID-vkCmdFillBuffer-dstBuffer-00031）。
         const VkDeviceSize tag_slot_bytes     = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
@@ -668,9 +668,11 @@ namespace hgl::ecs
 
         // T3i：每批计数（含 overflow 末位槽）同 cmd 内清零——同一 FillBuffer 纪律
         // （TRANSFER→COMPUTE barrier，批内无隐式序）。只清**本帧槽**那一份。
+        // ⚠ T4c2 起按 pass **两块**：偏移与长度都必须用整槽尺寸，否则只清块 0
+        //   ⇒ 块 1（阴影）计数逐帧累加 ⇒ 阴影超画（实测：ATS 契约破 + Cascade 挂）。
         cmd->FillBuffer(batch_counter_buffer_->GetBuffer(),
-                        VkDeviceSize(batch_slot) * VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t),
-                        VkDeviceSize(kMaxBatches + 1) * sizeof(uint32_t), 0);
+                        VkDeviceSize(batch_slot) * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t),
+                        VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t), 0);
         cmd->BufferMemoryBarrier2(batch_counter_buffer_->GetBuffer(),
                                   VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                   VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,

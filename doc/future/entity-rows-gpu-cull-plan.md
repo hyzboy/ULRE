@@ -1365,10 +1365,26 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   ▸ **设计要点（本轮侦察）**：【１】**批布局（BatchInfoRow）需按 pass 分行** ——两 pass 各有自己的切片基址，
    而布局库今天每帧槽只有一份；【２】**剔除派发需覆盖两扇区**（主帧 pass 的 kMaxBatches 行 + 阴影 pass 的
    kMaxBatches 行 ⇒ 派发 2× 批数，带 pass 选择字段）。
-- **T4c3** 阴影 pass 消费自己的切片 + 去掉早退。
-  ▸ **R3 定稿（本轮侦察）**：GPU 行集由**主帧相机那一次剔除**写成（每帧一次、按主帧相机）
-   ⇒ 阴影批的 `pc_root` 必须用**该行所属的槽**（l2w/mtl 行也在那个槽）——今天 push 按 pass 取相机行 ⇒ 需给批记一个
-   “GPU 行所属相机行”字段。不可用阴影相机行（会读到另一个槽的行）。
+- **T4c3 ⚠ 尝试过、已回退（待拍板）**：删「只在主帧 pass 接管」的早退（它正是 shadow 至今走 CPU 写行/ICB 的唯一原因）；
+  `pass_index = IsCurrentPassShadow() ? 1 : 0` 同时定**块**（`BatchBlockBase`）与**扇区**（`ArenaSectorBase`）；切片起点从本 pass 的扇区基址起
+  （主帧 0／阴影 4096）⇒ 直通档真正启用；`ApplyGPUCullOverrideHook` 带 pass；ENGAGED 日志按 pass 各记一次。
+  判据：**阴影两例摘要逐位不变**（接管前后画面一致 = 直通档 ≡ CPU 全量 ICB）+ 六台架摘要不变 + 门/契约。
+  **原计划（保留供追溯）** 阴影 pass 消费自己的切片 + 去掉早退。
+  ❗ **实测结果（已回退）**：ShadowMap 摘要逐位不变、六台架不变，但 **ATS 契约破（rc=1）+ Cascade 挂**（两事例均 rc=124）。
+  根因：GPU 行的内容取自**实体行**，而实体行**每帧只有一份**、内容是**最后一个 pass**（主帧）写入的
+  ⇒ 阴影行里带的是**主帧的材质变体**；而阴影程序与材质行本是**按 pass 解析**的
+  （`GetShadowProgram` / `shadow_pass_idsum` 那套就是实例）⇒ 遮罩/变体用错（ATS 锭空契约破），Cascade 挂是同一错配在增量级联路径上的后果。
+  → **B 路线的前提被推翻**（原以为“与今天逐字等价”）：行内容**并非 pass 无关**。
+  出路：（a）给阴影一份**自己的实体行风味**（实体行空间×2 + collect 按 pass 写，shader 按 pass 取行基址）；
+  （b）让 shader 侧**按阴影程序解析材质**（需一张每材质的阴影变体表）；（c）缩范围：阴影暂留 CPU 路径（T4c4 删三样继续受阻）。
+  本轮已回退到 T4c2 的绿色状态（仅保留一处**真 bug 修**：计数清零未跟上分块尺寸）。
+  ▸ ~~**R3 定稿**：阴影批的 `pc_root` 必须用 GPU 行所属的槽、不能用阴影相机行~~
+   ❌ **该推断已被推翻（T4c3 定稿）**：竞技场三表（l2w/cmds/mtl）**不以相机为维**（按帧槽分份），
+   且行内容全是 pass 无关的（`transform_id` / `geometry_id`+切片内序号 / 材质位）⇒ 谁写都等价；
+   而 `pc_root.camera_row` 的用途是让 mesh shader 读**该 pass 的相机矩阵** ⇒ 阴影 pass 就该用**光源相机行**（既有代码本就如此，无需改）。
+   真正要求只有一条：该相机行的 global-addresses 槽必须已发布。
+   ⚠ 已知边界：某批**只存在于阴影 pass**时，主帧那次 `BeginBatchTagWrite` 会清掉整表 ⇒ 该批阴影扇区无行；
+   当前台架/示例不涉及（两侧批成员一致），将来真出现需按 pass 各持标签数组。
 - **T4c4** 删 `WriteMeshDrawCommands` / `EnsureMeshDrawParams`（`MaterialBatch` 版）/ `draw_batches`（含 `DrawBatch` 结构、CPU ICB 缓冲、`ReallocICB`；注意 `Geometry::EnsureMeshDrawParams` 是**几何侧另一个**，不能误删）。
 
 **判据**：阴影三例（`ShadowMap` / `AlphaTestShadow` / `CascadeShadowMap`）摘要不变 + 六台架摘要不变 + 门/契约 + 0 VUID/0 ERROR。
