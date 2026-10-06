@@ -1536,12 +1536,12 @@ namespace hgl
             for (uint32_t copy = 0; copy < kCopies; ++copy)
             {
                 graph::RenderItemDescriptor *dst =
-                    base + size_t(copy) * EntityRenderIDTable::kCapacity;
+                    base + size_t(copy) * EntityRenderIDTable::kRowStride;
 
                 for (const uint32_t index : dirty_rows)
                 {
                     const graph::RenderItemDescriptor *src =
-                        entity_render_id_table.Row(index);
+                        entity_render_id_table.FlatRow(index);
 
                     if (src)
                         dst[index] = *src;
@@ -1579,7 +1579,7 @@ namespace hgl
             entity_render_id_buffer = bm->CreateSSBO(
                 name_buf,
                 VkDeviceSize(graph::kWorldAddressesSlotCount)
-                    * VkDeviceSize(EntityRenderIDTable::kCapacity)
+                    * VkDeviceSize(EntityRenderIDTable::kRowStride)   // T4c3a：每槽 = 每 pass 一半
                     * VkDeviceSize(sizeof(graph::RenderItemDescriptor)));
             if (!entity_render_id_buffer)
             {

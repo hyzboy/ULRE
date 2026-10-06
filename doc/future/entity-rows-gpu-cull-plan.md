@@ -1378,6 +1378,11 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   出路：（a）给阴影一份**自己的实体行风味**（实体行空间×2 + collect 按 pass 写，shader 按 pass 取行基址）；
   （b）让 shader 侧**按阴影程序解析材质**（需一张每材质的阴影变体表）；（c）缩范围：阴影暂留 CPU 路径（T4c4 删三样继续受阻）。
   本轮已回退到 T4c2 的绿色状态（仅保留一处**真 bug 修**：计数清零未跟上分块尺寸）。
+  ✅ **路线 (a) 第一步已落（T4c3a）**：新增单头 `RenderPassSlot.h`（Main/Shadow/Count）；
+  **实体 4-ID 表按 pass 分半**（行空间→每 pass 一半，`PassBase(pass)+index`；设备镜像 512 KB → 1 MB），
+  收集侧 `SetRenderIDs(pass, …)` 写本 pass 那一半；行为中性（阴影半边待启用）。
+  下一步 **T4c3b**：`entity_gpu_cull.glsl` 的 4-ID 读放进两遍循环内（行号 = `blk * pc.max_visible_count + entity_index`，
+  容量与可见表同值故不加 push 字段）+ 重启两 pass 接管（重放 T4c3 补丁，并把接管侧那处 `Row(0u,…)` 改穿 pass）。
   ▸ ~~**R3 定稿**：阴影批的 `pc_root` 必须用 GPU 行所属的槽、不能用阴影相机行~~
    ❌ **该推断已被推翻（T4c3 定稿）**：竞技场三表（l2w/cmds/mtl）**不以相机为维**（按帧槽分份），
    且行内容全是 pass 无关的（`transform_id` / `geometry_id`+切片内序号 / 材质位）⇒ 谁写都等价；

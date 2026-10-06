@@ -326,7 +326,7 @@ namespace hgl::ecs
 
             // T3d-3a：geometry_id 取**实体 4-ID 表**（池口径，与 GPU 剔除逐字同式；
             // `row[Geometry]` 是组件池行、与 AABB 池不同口径 —— 旧版两端错得同源，见 §8.2d）
-            const graph::RenderItemDescriptor *ids = render_ids.Row(i);
+            const graph::RenderItemDescriptor *ids = render_ids.Row(0u /*pass: 主帧*/, i);
 
             if (!ids || ids->geometry_id == 0) continue;
 

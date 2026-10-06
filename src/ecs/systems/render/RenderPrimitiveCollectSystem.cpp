@@ -2366,7 +2366,9 @@ namespace hgl::ecs
                     render_ids.geometry_id  = geometry_id;
                     render_ids.material_id  = material_id;
                     render_ids.texture_id   = texture_id;
-                    world->GetEntityRenderIDTable().SetRenderIDs(entity_id, render_ids);
+                    // T4c3a：4-ID 是**按 pass 解析**的（阴影程序/材质变体不同）⇒ 写本 pass 那一半
+                    world->GetEntityRenderIDTable().SetRenderIDs(
+                        world->IsCurrentPassShadow() ? 1u : 0u, entity_id, render_ids);
 
                     // T3h：阴影**事实**随同一判据点上 EntityGPU 行（ShadowProxy 是
                     // CPU-only 组件、无 GPU 行号可推 ⇒ 值进行才算接线；写者=世界，

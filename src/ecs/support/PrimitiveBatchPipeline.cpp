@@ -1255,7 +1255,7 @@ namespace hgl::ecs
                     Entity *owner = item->GetEntity();
 
                     const graph::RenderItemDescriptor *ids =
-                        rid_table.Row(owner->GetEntityID().index);
+                        rid_table.Row(0u /*pass: 主帧（阴影接管启用即改 pass_index）*/, owner->GetEntityID().index);
 
                     if (!ids || ids->geometry_id == 0)
                     {

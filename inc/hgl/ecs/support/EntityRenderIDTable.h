@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/ecs/support/EntityGPUTable.h>
+#include <hgl/ecs/support/RenderPassSlot.h>   // 跨模块单源：pass 槽位/遍数（T4c3a）
 #include <hgl/graph/render/RenderItemDescriptor.h>
 #include <vector>
 
@@ -39,6 +40,14 @@ namespace hgl
             /// 容量与实体行表同口径（P-B8-6 冻结值；同一 index 空间，必须等容）
             static constexpr uint32_t kCapacity = EntityGPUTable::kCapacity;
 
+            // ── T4c3a：按 pass 分半 ────────────────────────────────────────────────
+            // 本表行内容是**按 pass 解析**的（阴影 pass 用阴影程序/材质变体，见
+            // `GetShadowProgram`）⇒ 一份表存不下两个 pass 的风味：主帧那次写会盖掉阴影的。
+            // 分工：每帧槽每 pass 一半，flat 行号 = `PassBase(pass) + entity.index`。
+            static constexpr uint32_t kRowStride  = RenderPassSlot::Count * kCapacity;
+            static constexpr uint32_t PassBase(uint32_t pass_index)
+            { return (pass_index < RenderPassSlot::Count ? pass_index : 0u) * kCapacity; }
+
         private:
 
             std::vector<graph::RenderItemDescriptor> rows;   ///< 按 `EntityID.index` 直索引
@@ -75,33 +84,47 @@ namespace hgl
             {
                 if (rows.empty())
                 {
-                    rows.resize(kCapacity);
-                    row_dirty.assign(kCapacity, 0);
+                    rows.resize(kRowStride);
+                    row_dirty.assign(kRowStride, 0);
                 }
             }
 
-            const graph::RenderItemDescriptor *Row(uint32_t index) const
+            /// 按 pass 取行。⚠ 判界必须同时含 `rows.size()`：**未分配**的表（`Ensure()` 尚未调用，
+            /// 例如空世界在销毁期走 `Clear()`）上若只判 `index < kCapacity` 会返回悬垂指针 ⇒
+            /// 读写越界（实测：测试进程堆损坏 abort）。
+            const graph::RenderItemDescriptor *Row(uint32_t pass_index, uint32_t index) const
             {
-                return index < rows.size() ? &rows[index] : nullptr;
+                const uint32_t flat = PassBase(pass_index) + index;
+                return (index < kCapacity && pass_index < RenderPassSlot::Count && flat < rows.size())
+                     ? &rows[flat] : nullptr;
             }
 
-            graph::RenderItemDescriptor *Row(uint32_t index)
+            graph::RenderItemDescriptor *Row(uint32_t pass_index, uint32_t index)
             {
-                return index < rows.size() ? &rows[index] : nullptr;
+                const uint32_t flat = PassBase(pass_index) + index;
+                return (index < kCapacity && pass_index < RenderPassSlot::Count && flat < rows.size())
+                     ? &rows[flat] : nullptr;
+            }
+
+            /// flat 行（= `PassBase(pass) + index`）：**仅供设备上传**逐行拷贝用
+            const graph::RenderItemDescriptor *FlatRow(uint32_t flat_index) const
+            {
+                return flat_index < rows.size() ? &rows[flat_index] : nullptr;
             }
 
         public: // ── 写入路径（唯一写者 = collect；生死钩子 = 世界 DeactivateEntityRow）──
 
             /// 写四元组（**值变才标脏**：静态实体的池 id 是常量 ⇒ 首帧上行一次，
             /// 之后整批零成本；可动实体的 `transform_id` 随帧槽变 ⇒ 自然每帧一行）
-            void SetRenderIDs(EntityID id, const graph::RenderItemDescriptor &desc)
+            void SetRenderIDs(uint32_t pass_index, EntityID id, const graph::RenderItemDescriptor &desc)
             {
                 Ensure();
 
-                graph::RenderItemDescriptor *row = Row(id.index);
+                graph::RenderItemDescriptor *row = Row(pass_index, id.index);
 
                 if (!row)
                 {
+                    // 越界与越 pass 同口径：都是"进了不该进的地方"= 项目 bug（fail-fast）
                     ReportOverflow(id);
                     return;
                 }
@@ -110,24 +133,26 @@ namespace hgl
                     return;
 
                 *row = desc;
-                MarkDirty(id.index);
+                MarkDirty(PassBase(pass_index) + id.index);
             }
 
-            /// 实体销毁：清行（消费者按 `geometry_id == 0` 判无 ⇒ 与行 0 哨兵惯例一致）
+            /// 实体销毁：清行（消费者按 `geometry_id == 0` 判无 ⇒ 与行 0 哨兵惯例一致）。
+            /// T4c3a：**两半都清**——本钩子（`~Entity` → `DeactivateEntityRow`）没有 pass 语境，
+            /// 而实体已销毁 ⇒ 两个风味都该消失。
             void Clear(EntityID id)
             {
-                graph::RenderItemDescriptor *row = Row(id.index);
-
-                if (!row)
-                    return;
-
                 const graph::RenderItemDescriptor cleared{};
 
-                if (*row == cleared)
-                    return;
+                for (uint32_t pass_index = 0; pass_index < RenderPassSlot::Count; ++pass_index)
+                {
+                    graph::RenderItemDescriptor *row = Row(pass_index, id.index);
 
-                *row = cleared;
-                MarkDirty(id.index);
+                    if (!row || *row == cleared)
+                        continue;
+
+                    *row = cleared;
+                    MarkDirty(PassBase(pass_index) + id.index);
+                }
             }
 
             void ClearAll()

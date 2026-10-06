@@ -1,4 +1,6 @@
 #pragma once
+
+#include <hgl/ecs/support/RenderPassSlot.h>   // 跨模块单源：pass 槽位/遍数（T4c3a）
 #include <hgl/ecs/core/System.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKQueue.h>
@@ -100,7 +102,11 @@ namespace hgl::ecs
         // 两个 pass 的绘制集不同（主帧 = GPU 剔除后子集；阴影 = 全量直通，T4c2/T4c3）
         // ⇒ 各写各的扇区，互不覆盖。**实体索引空间与批标签不在此列**：标签按实体记
         // "属哪一批"，与 pass 无关 ⇒ 仍为 kMaxVisibleEntities（一槽一份）。
+        // 数值与 `RenderPassSlot::Count` 同值（保留字面量：门 `B.batch-info-struct-parity`
+        // 对 GLSL 的 `ULRE_ARENA_PASSES` 做整数对拍，别名会让提取失败）。
         static constexpr uint32_t kArenaPasses        = 2;
+        static_assert(kArenaPasses == RenderPassSlot::Count,
+                      "kArenaPasses 与 RenderPassSlot::Count 漂移（分份遍数必须单源）");
         static constexpr uint32_t kArenaRowsPerPass   = kMaxVisibleEntities;
         static constexpr uint32_t kArenaRows          = kArenaPasses * kArenaRowsPerPass;
 
