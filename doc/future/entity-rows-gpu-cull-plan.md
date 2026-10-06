@@ -1365,7 +1365,24 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   ▸ **设计要点（本轮侦察）**：【１】**批布局（BatchInfoRow）需按 pass 分行** ——两 pass 各有自己的切片基址，
    而布局库今天每帧槽只有一份；【２】**剔除派发需覆盖两扇区**（主帧 pass 的 kMaxBatches 行 + 阴影 pass 的
    kMaxBatches 行 ⇒ 派发 2× 批数，带 pass 选择字段）。
-- **T4c3 ⚠ 尝试过、已回退（待拍板）**：删「只在主帧 pass 接管」的早退（它正是 shadow 至今走 CPU 写行/ICB 的唯一原因）；
+- **T4c3 ✅ 已达成**（提交 `f4a4891f0`；前置独立修 = ICB 尺寸 `17c5e0841`）：阴影 pass 进 GPU 路径，两 pass 各自接管。
+  真因链（首试失败的三层，全部已解）：
+  ① **行内容并非 pass 无关** —— 4-ID 表由 collect 按 pass 写，gather 必须按
+     `blk * pc.max_visible_count + entity_index` 读**本 pass 那一半**（T4c3b；`GPUCullSystem.cpp` 的 `static_assert` 守"4-ID 表 pass 容量 == 可见表上限"）；
+  ② **批对象跨 pass 共享** —— 绘制侧消费的四样（切片行基址 / 容量 / 计数偏移 / 当前 pass）必须**按 pass 存**
+     （`MaterialBatch::gpu_slice[RenderPassSlot::Count]` + `Render(...)` 穿 `pass_index`）；
+     `gpu_driven_override` **保持单份**（批内 sort/ensure/build/write 的十处跳过是"本帧装配"语义，与 pass 无关）；
+  ③ **ICB 尺寸漏改（T4c1）** —— 三张 gather 表已按 `kArenaRows`(8192) 扩，`CreateIndirectMeshTaskBuffer` 却留
+     `kMaxVisibleEntities`(4096 条 = 49152 B) ⇒ 阴影扇区绘制偏移 `4096×12 = 49152` + 20 条 ⇒ 49376 越界
+     ⇒ `VUID-vkCmdDrawMeshTasksIndirectCountEXT` + AMDVLK 丢设备（表现为 rc=124"挂死"）。
+     ⇒ **凡扩容竞技场，把"按容量分配"的每一处列出来数一遍**（同一条坑的第二个实例：上次漏的是计数清零长度）。
+  判据：ATS `rc=0` + `[ATSSELF] PASS`（第 1 帧判据，覆盖启动帧）+ 追踪 `pass={0:2,1:1}`（阴影真进接管）；
+  `ShadowMap` `0xA8A369516CB04571` / `CascadeShadowMap` `0x1CDAADEBF18B7CE4` **逐位不变**；六台架不变；门 45/契约 rc=0；
+  阴影两例敏感性（`SM_FREEZE=0` / `CSM_AUTOWALK=1`）如预期变值；验证层 VUID 0、`result -4` 0。
+  ⇒ **T4c4 入口条件已齐**：`WriteMeshDrawCommands` / `EnsureMeshDrawParams` / `draw_batches` 赖以存活的
+    守卫早退（`IsCurrentPassShadow()` 处 return）已不存在，阴影批不再依赖 CPU 账。
+  --- 以下为首试失败时的原始记录（保留作对照）---
+删「只在主帧 pass 接管」的早退（它正是 shadow 至今走 CPU 写行/ICB 的唯一原因）；
   `pass_index = IsCurrentPassShadow() ? 1 : 0` 同时定**块**（`BatchBlockBase`）与**扇区**（`ArenaSectorBase`）；切片起点从本 pass 的扇区基址起
   （主帧 0／阴影 4096）⇒ 直通档真正启用；`ApplyGPUCullOverrideHook` 带 pass；ENGAGED 日志按 pass 各记一次。
   判据：**阴影两例摘要逐位不变**（接管前后画面一致 = 直通档 ≡ CPU 全量 ICB）+ 六台架摘要不变 + 门/契约。
@@ -1381,7 +1398,7 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   ✅ **路线 (a) 第一步已落（T4c3a）**：新增单头 `RenderPassSlot.h`（Main/Shadow/Count）；
   **实体 4-ID 表按 pass 分半**（行空间→每 pass 一半，`PassBase(pass)+index`；设备镜像 512 KB → 1 MB），
   收集侧 `SetRenderIDs(pass, …)` 写本 pass 那一半；行为中性（阴影半边待启用）。
-  下一步 **T4c3b**：`entity_gpu_cull.glsl` 的 4-ID 读放进两遍循环内（行号 = `blk * pc.max_visible_count + entity_index`，
+  ✅ **T4c3b/c 已完成**（提交 `f4a4891f0`）；原交接内容：`entity_gpu_cull.glsl` 的 4-ID 读放进两遍循环内（行号 = `blk * pc.max_visible_count + entity_index`，
   容量与可见表同值故不加 push 字段）+ 重启两 pass 接管（重放 T4c3 补丁，并把接管侧那处 `Row(0u,…)` 改穿 pass）。
   ▸ ~~**R3 定稿**：阴影批的 `pc_root` 必须用 GPU 行所属的槽、不能用阴影相机行~~
    ❌ **该推断已被推翻（T4c3 定稿）**：竞技场三表（l2w/cmds/mtl）**不以相机为维**（按帧槽分份），
