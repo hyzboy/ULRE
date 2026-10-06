@@ -3,6 +3,7 @@
 #include <hgl/ecs/core/Entity.h>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 #include <hgl/ecs/core/EntityGPU.h>
 #include <hgl/ecs/support/EntityGPUTable.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -334,16 +335,27 @@ namespace hgl::ecs
         const VkBufferUsageFlags batch_usage =
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
+        // ── T4c-ini：三个按帧槽分份的缓冲**建缓冲即填初值** ──────────────────────
+        // 每个帧槽的布局只在"轮到它的那一帧"才被写；未写过的槽（头几帧 / 离屏 RT 的槽 4/5）
+        // 若被当成有效布局 ⇒ gather 按垃圾 `capacity`/`row_base` 往**共享竞技场**写行；
+        // 主帧侧则表现为"布局未初始化 ⇒ count=0 ⇒ 该帧不画"（实测 AlphaTestShadow 第 1 帧）。
+        // 约定：标签初值 = `kInvalidBatchTag`（cull 直接跳过）；布局/计数初值 = 0
+        // （`capacity == 0` ⇒ 该 pass 该批跳过，与"未接管"同口径）。
+        std::vector<uint32_t> tag_init(tag_slot_bytes * batch_slots / sizeof(uint32_t),
+                                       GPUCullSystem::kInvalidBatchTag);
+        std::vector<uint8_t>  zero_init(size_t(info_slot_bytes * batch_slots), 0);
+        std::vector<uint8_t>  counter_zero_init(size_t(counter_slot_bytes * batch_slots), 0);
+
         batch_tag_buffer_ = device_->CreateBuffer(
             "GPUCullSystem.BatchTag", batch_usage,
-            tag_slot_bytes * batch_slots, tag_slot_bytes * batch_slots, nullptr,
+            tag_slot_bytes * batch_slots, tag_slot_bytes * batch_slots, tag_init.data(),
             graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
         if (!batch_tag_buffer_) return false;
         batch_tag_addr_ = device_->GetBufferDeviceAddressAligned16(batch_tag_buffer_->GetBuffer());
 
         batch_info_buffer_ = device_->CreateBuffer(
             "GPUCullSystem.BatchInfo", batch_usage,
-            info_slot_bytes * batch_slots, info_slot_bytes * batch_slots, nullptr,
+            info_slot_bytes * batch_slots, info_slot_bytes * batch_slots, zero_init.data(),
             graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
         if (!batch_info_buffer_) return false;
         batch_info_addr_ = device_->GetBufferDeviceAddressAligned16(batch_info_buffer_->GetBuffer());
@@ -354,7 +366,7 @@ namespace hgl::ecs
         batch_counter_buffer_ = device_->CreateBuffer(
             "GPUCullSystem.BatchCounter",
             batch_usage | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            counter_slot_bytes * batch_slots, counter_slot_bytes * batch_slots, nullptr,
+            counter_slot_bytes * batch_slots, counter_slot_bytes * batch_slots, counter_zero_init.data(),
             graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
         if (!batch_counter_buffer_) return false;
         batch_counter_addr_ = device_->GetBufferDeviceAddressAligned16(batch_counter_buffer_->GetBuffer());
