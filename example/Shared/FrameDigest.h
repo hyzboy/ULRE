@@ -136,6 +136,10 @@ namespace ulre_example
                     std::exit(ok ? 0 : 1);
                 }
 
+                // ⚠ 钩子是**一次性**的（`VKSwapchainRenderTarget` 执行后即清除，见
+                //   `VKSwapchainRenderTarget.cpp:216` "一次性：执行后即清除"）⇒ 逐帧模式
+                //   必须**自续装**，否则只打第 1 帧就静默停摆（本模式长期失效的原因）。
+                InstallFrameDigestHook(rt, expected, tag);
                 return;
             }
 
