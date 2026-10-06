@@ -267,8 +267,11 @@ namespace hgl::ecs
 
         // 间接绘制命令表（IndirectMeshTaskBuffer）
         // VkDrawMeshTasksIndirectCommandEXT = { groupCountX, groupCountY, groupCountZ }
+        // ⚠ T4c1 漏改：ICB 必须与 gather 三表同域 —— 按 **kArenaRows** 分配。
+        //   阴影扇区切片从 4096 行起，绘制偏移 = row_base × 12 ⇒ 只按 4096 条分配会触发
+        //   VUID-vkCmdDrawMeshTasksIndirectCountEXT 越界读（实测 AMDVLK ⇒ VK_ERROR_DEVICE_LOST）。
         indirect_commands_buffer_ = device_->CreateIndirectMeshTaskBuffer(
-            kMaxVisibleEntities,
+            kArenaRows,
             graph::BufferAllocPolicy::Auto,
             "GPUCullSystem.IndirectCommands",
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
