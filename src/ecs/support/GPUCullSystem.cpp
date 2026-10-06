@@ -710,10 +710,12 @@ namespace hgl::ecs
         uint32_t group_count = (entity_count + kWorkGroupSize - 1) / kWorkGroupSize;
         cmd->Dispatch(group_count, 1, 1);
 
-        // 批内保守屏障：compute 写 → 本 cmd 之后的 indirect 消费可见性
-        // （跨 cmd 的 [本 cull 提交 → 主帧绘制提交] 序由**同队列 submission order**
-        // 保证——CreateQueue 包的就是 attr->graphics_queue，与主帧同一条 VkQueue；
-        // 本提交发生在主帧录制/提交之前 ⇒ 后一批全部可见前一批的写出）。
+        // 批内保守屏障：compute 写 → indirect 消费的可见性。
+        // ⚠ 口径纠正：跨 cmd **不能**只靠"同队列 submission order"——那只保证**执行次序**，
+        //   **不建立内存可见性**（Vulkan 同步章：即使同队列、即使提交序在前，内存依赖也须由
+        //   barrier/event/semaphore 建立）。这里能覆盖跨 cmd 的 consumer，靠的是
+        //   **内存 barrier 的作用域按 submission order 向后延伸**（dst 阶段点名了
+        //   `DRAW_INDIRECT`）——**不是**靠"提交序"本身。改这条时别把 dst 阶段删掉。
         VkMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
         barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;

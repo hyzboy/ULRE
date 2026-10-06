@@ -1465,6 +1465,23 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   ② 在**截断样本**上断言"没有 pass_index=1"（只看了前 26 行）。
   ⇒ 纪律：**先确认量的是那个对象/槽，再拿"全量分布"下结论**；不同长度的列表要先对齐再比较。
 
+- **负结果（2026-10-06，逐条排除，别再重走）**：
+  ① **"计数器清零→compute" 与 "compute→indirect 消费" 两条 barrier 都在且掩码正确**
+     （`TRANSFER/TRANSFER_WRITE → COMPUTE/SHADER_READ|WRITE`；`COMPUTE/SHADER_WRITE →
+     DRAW_INDIRECT/INDIRECT_COMMAND_READ`）⇒ **"缺 barrier 导致读到清掉的 0"不成立**。
+     但源码注释里那句"跨 cmd 靠同队列 submission order 保证可见性"**本身是错的**（那只保证执行次序，
+     不建立内存可见性）——代码侥幸写对，**注释已改对**（改这条时别把 dst 阶段 `DRAW_INDIRECT` 删掉）。
+  ② **槽就绪门不拦**：四个槽（0/1/2/4）的 `就绪` 实测**全为 1**。
+  ③ **接管与发出链健康**：槽 1 那帧 `出口=ok 辖批=1 items=14 标签项=14 布局容量和=14`、
+     `ENGAGED batches=1/1`、`flush ... count=14`。
+  ④ **槽地址/标签/布局/批数**逐项已验正确（见上一节）。
+  ⇒ **真正剩余的疑点只剩一个**：绘制"以 count=14 发出"与"countBuffer 读出 0"之间，**读回端是否在读同一槽**——
+    即 `MapCurrentBatchCounters`（用 `context_->GetFrameIndex()`）与逐帧摘要/探针标签（用
+    `rt->GetCurrentFrameIndex()`）**是否同源**。若不同源，则"槽 1 恒 0"这个*标签*本身就是错的，
+    需要改用**同一个**取槽源再量一次（这也是下一轮的第一个动作）。
+  ⚠ 诊断代码的失败路径**不许静默**（本轮探针走了 `rt`/`gpu_cull` 为空的无声分支 ⇒ 输出 0 行、
+    既看不出"探针没装上"也看不出"链路没走到"，白等一个构建周期）。
+
   --- 以下为首试失败时的原始记录（保留作对照）---
 删「只在主帧 pass 接管」的早退（它正是 shadow 至今走 CPU 写行/ICB 的唯一原因）；
   `pass_index = IsCurrentPassShadow() ? 1 : 0` 同时定**块**（`BatchBlockBase`）与**扇区**（`ArenaSectorBase`）；切片起点从本 pass 的扇区基址起
