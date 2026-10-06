@@ -1323,6 +1323,9 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 
 ## §11 T4c：shadow pass 进 GPU 路径（→ 写行/ICB 三样才可删）（2026-10-06 侦察）
 
+> **叙事版见** `doc/future/gpu-cull-flicker-postmortem.md`（问题史 + 各方案结局 + 教训）。
+> 本节保留**原始测量记录**；两档分工：这里存数据，那里存推理链。
+
 ### 11.1 现状（量化，逐条有落点）
 
 | 事实 | 落点 |
