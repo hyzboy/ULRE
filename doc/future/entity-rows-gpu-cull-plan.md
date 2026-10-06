@@ -1578,3 +1578,43 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
 > ⚠ 两例必须**以仓库根为 cwd、经 python subprocess 启动**（从 bash 直起 ⇒ `GLSLCompiler` 插件加载失败、rc=127 零输出）。
 
 **风险**：R1 扇区容量不足时的口径（与 T4b 同：fail-fast）；R2 参考系统的对拍是否要跟着分 pass；R3 `pc_root` 的相机行在阴影下取谁（与切片槽一致）；R4 `CV_STRESS` 类压测在两个扇区下的容量口径。
+
+### §11.9 第二例根因（ATS/Cascade 每图一帧内容异常）—— 判据盲区 + 标签表缺 pass 维度
+
+**症状**：`AlphaTestShadow` / `CascadeShadowMap` 每 3 帧有一帧内容异常（地面消失），
+`ShadowMap` 无（其离屏 pass 与主帧同槽，掩盖了差异）；帧摘要按图号分组 ⇒ 恒定某一张图不同。
+
+**定位过程（全部为实测，非推断）**：
+1. 逐帧计数回读（示例侧探针，`printf` 通路）：`c0`=0 恒出现在**同一图槽**，`c1`=2 恒正常；
+2. 引擎自带 CPU↔GPU 剔除对拍（`CPUCullReferenceSystem`）报 `mismatch=0` —— 但发现
+   **采样周期 60 与交换链图数 3 同倍（60 % 3 == 0）⇒ 判据永远只落在图槽 0**，
+   结构上看不到"某一张图整体异常"。把周期改为 61（与 3 互质）后采样扫过所有图槽；
+3. 修好采样后，引擎自己的两本账判据给出决定性数据（**每次采样同形**）：
+   `Σcount=2 < global=3`、**`overflow=1`**、可见性对拍 `CPU=3 GPU=3` ——
+   即：**可见性判定正确，但 gather 少写一行、且有实体被当"切片溢出"丢弃**。
+
+**根因（代码层不对称，两处"两 pass 同源"假设不成立）**：
+- **批**分区表**（`batch_info`）与**计数表**都按 pass 分块（`kArenaPasses × kBatchBlockStride`），
+  **唯独批标签表只有帧槽维度**：`batch_tag_addr_ + slot * kMaxVisibleEntities * 4`；
+  `BeginBatchTagWrite(pass)` 更是**整表清空重填**（`GPUCullSystem.cpp:410-412`）⇒
+  一帧内**后装配的 pass 会盖掉先装配 pass 的标签**；
+  而着色器查表也不带 pass 项：`entity_gpu_cull.glsl:323` 的
+  `BatchTagRef(pc.batch_tag_addr).tags[entity_index]`（同一文件 `:381` 的 4-ID 表**已**按
+  `blk * pc.max_visible_count + entity_index` 分半 —— 标签表漏了同款处理）。
+- `pc.batch_count` 亦为**单份共享值**（`GPUCullSystem.h:257`，着色器 `:56` 注释"两 pass 同值"），
+  而着色器**一次派发内自己循环写两个 pass 块**（`:329` `blk` 循环）⇒
+  后 `EndBatchLayout` 的批数会作用到两个 pass（实测参考实现读到 `batches=1`，即阴影的批数）。
+⇒ 静止物体被按**另一个 pass 的批索引**写行 ⇒ 全部挤进批 0（其 `capacity=1`）⇒ 溢出 ⇒ 该行被丢。
+
+**修复方案（照抄同文件既有范式，6 处）**：
+1. `tag_slot_bytes` 乘 `kArenaPasses`（缓冲按 pass 分块）；
+2. `BeginBatchTagWrite(pass)`：按 `pass` 块 Map，且**只清本块**；
+3. `entity_gpu_cull.glsl:323`：改为 `tags[blk * pc.max_visible_count + entity_index]`（1 行）；
+4. `pc.batch_count` 改为按 pass 取值（`batch_count_[kArenaPasses]`），
+   `GetBatchCount()` 返回主帧那份（参考实现读的就是主帧）；
+5. 参考实现同步（对拍口径按主帧）；
+6. 判据：`Σ批计数 == 全局幸存` 在**全量接管**时为**严格相等**（现仅查 `sum > global` 单向）。
+
+**遗留**：本项（示例侧计数探针、布局打印、采样周期诊断口）已全部回退或转正；
+临时探针纪律见技能 `ulre-entity-gpu-cull`（探针必须先自证能出声；长跑输出**不要**套 `tail`，
+缓冲会让健康运行看起来像卡死 —— 本轮两次误判均源于此）。

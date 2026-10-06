@@ -59,11 +59,17 @@ namespace hgl::ecs
             return;
 
         // T3g 台架节奏：**每 60 帧一个采样窗口**（旧版每帧全量跑 + 内部再降频
-        // 打印）。异步化后读回真值需要 fence（SyncForParityReadback）⇒ 每帧跑 =
-        // 每帧 stall，与"生产路径零同步"矛盾 ⇒ fence + 全量遍历的成本只在采样帧
-        // 付出。窗口内三步恒**成套执行**（算 CPU 账 → 同步读 GPU → 位图比对）。
-        if (++frame_counter_ % 60 != 0)
-            return;
+                // 打印）。异步化后读回真值需要 fence（SyncForParityReadback）⇒ 每帧跑 =
+                // 每帧 stall，与"生产路径零同步"矛盾 ⇒ fence + 全量遍历的成本只在采样帧
+                // 付出。窗口内三步恒**成套执行**（算 CPU 账 → 同步读 GPU → 位图比对）。
+                //
+                // ⚠ 采样周期必须与**交换链图数互质**：60 % 3 == 0 ⇒ 本判据**永远只落在
+                //   图槽 0**，而"某一张图整体异常"（实测：全量接管下 gather 在槽 1 少写
+                //   一行 ⇒ 该图地面消失、`Σ批计数 < 全局幸存`）在**结构上**看不见 —— 恒报
+                //   match=3/mismatch=0。改用 61（与 3 互质）⇒ 采样逐步扫过所有图槽。
+                static const uint32_t kParitySamplePeriod = 61u;
+                        if (++frame_counter_ % kParitySamplePeriod != 0)
+                            return;
 
         // 1. 执行 CPU 剔除（产 cpu 位图）
         PerformCPUCulling();
@@ -253,10 +259,10 @@ namespace hgl::ecs
             GLogError(u8"[T3i] 两本账越界：Σbatch_counts=%u > 全局幸存=%u"
                       u8"（标签/分区与 gather 输出不同源）", sum, gpu_count_);
 
-        GLogInfo(u8"[T3i] batch slices: batches=%u rows=%u Σcount=%u global=%u overflow=%u"
-                 u8" 值链=%u/%u bad=%u nondefault=%u",
-                 batch_count, rows_read, sum, gpu_count_, overflow,
-                 checked, checked, bad, nondefault_seen);
+        GLogInfo(u8"[T3i] batch slices: image=%u batches=%u rows=%u Σcount=%u global=%u overflow=%u"
+                         u8" 值链=%u/%u bad=%u nondefault=%u",
+                         context_->GetFrameIndex(), batch_count, rows_read, sum, gpu_count_, overflow,
+                         checked, checked, bad, nondefault_seen);
     }
 
     void CPUCullReferenceSystem::PerformCPUCulling()
@@ -485,8 +491,9 @@ namespace hgl::ecs
         last_parity_stats_.match_count = both;
         last_parity_stats_.mismatch_count = mismatch;
 
-        GLogInfo(u8"[CPUCullReferenceSystem] Parity: CPU=%u, GPU=%u, match=%u, mismatch=%u",
-                 last_parity_stats_.cpu_count,
+        GLogInfo(u8"[CPUCullReferenceSystem] Parity: image=%u CPU=%u, GPU=%u, match=%u, mismatch=%u",
+                         context_->GetFrameIndex(),
+                         last_parity_stats_.cpu_count,
                  last_parity_stats_.gpu_count,
                  last_parity_stats_.match_count,
                  last_parity_stats_.mismatch_count);
