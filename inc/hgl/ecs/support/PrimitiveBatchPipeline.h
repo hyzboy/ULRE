@@ -92,12 +92,9 @@ namespace hgl::ecs
         uint64_t gpu_cull_full_frame_ = 0;
 
         graph::BufferManager* GetBufferManager() const;
-        graph::ObjectNameBuilder BuildICBNames() const;
 
-        void ReallocICB(MaterialBatch& batch);
         void BuildBatches(MaterialBatch& batch, const uint32_t base_instance);
-        void EnsureMeshDrawParams(MaterialBatch& batch);       ///<mesh per-draw 参数表容量保障
-        void WriteMeshDrawCommands(MaterialBatch& batch);      ///<mesh 命令 + 参数行（与 draw_batches 同序）
+        void EnsureMeshDrawParams(MaterialBatch& batch);       ///<mesh per-draw 参数表容量保障（gather 消费该池 ⇒ 必须物化）
         void FinalizeBatch(MaterialBatch& batch);
         void SortBatchItems(MaterialBatch& batch);
         void EnsureBatchIndexRows(MaterialBatch& batch);

@@ -48,6 +48,21 @@ namespace hgl::ecs
     {
         // 材质来源判据已收敛为实体级自由函数 HasAnyMaterialSource(Entity*)（support/PrimitiveState.h）。
 
+        // 材质是否含 mesh stage（ShaderGen 材质恒是——mesh 为唯一顶点路径）
+        bool ProgramHasMeshStage(const graph::ShaderProgram *program)
+        {
+            if (!program)
+                return false;
+
+            for (const auto &stage : program->GetStageList())
+            {
+                if (stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+                    return true;
+            }
+
+            return false;
+        }
+
         bool BatchRequiresIndirectCommands(const MaterialBatch &batch)
         {
             // BDA 后顶点数据经行内地址寻址——所有 DrawBatch（含私有 VBO）都进
@@ -63,29 +78,6 @@ namespace hgl::ecs
             return false;
         }
 
-        void ReleaseICB(MaterialBatch &batch)
-        {
-            if (batch.icb_mesh_tasks && batch.own_icb_mesh_tasks)
-            {
-                delete batch.icb_mesh_tasks;
-                batch.icb_mesh_tasks = nullptr;
-            }
-        }
-
-        // 材质是否含 mesh stage（ShaderGen 材质恒是——mesh 为唯一顶点路径）
-        bool ProgramHasMeshStage(const graph::ShaderProgram *program)
-        {
-            if (!program)
-                return false;
-
-            for (const auto &stage : program->GetStageList())
-            {
-                if (stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
-                    return true;
-            }
-
-            return false;
-        }
 
         // A6-2b/b3：BDA 后无 per-material SSBO 绑定差异（材质数据/顶点流全走行内
         // 地址与 pc_root），合批 key 只按 shader+pipeline 区分——同 shader 即同批。
@@ -389,49 +381,6 @@ namespace hgl::ecs
         return gc ? gc->GetBufferManager() : nullptr;
     }
 
-    graph::ObjectNameBuilder
-    PrimitiveBatchPipeline::BuildICBNames() const
-    {
-        graph::ObjectNameBuilder draw_name;
-
-        if (world && !world->GetResourceNamePrefix().empty())
-        {
-            std::string draw_str = world->GetResourceNamePrefix() + ":IndirectMeshTaskBuffer";
-
-            draw_name = graph::ObjectNameBuilder(draw_str.c_str());
-        }
-        else
-        {
-            draw_name = graph::ObjectNameBuilder("RPBS_IndirectMeshTaskBuffer");
-        }
-
-        return draw_name;
-    }
-
-    void PrimitiveBatchPipeline::ReallocICB(MaterialBatch& batch)
-    {
-        HGL_CAPTURE_SCOPE();
-        if (!device || batch.items.empty() || batch.gpu_driven_override)
-            return;
-
-        uint32_t icb_new_count = 1;
-        while (icb_new_count < batch.items.size())
-            icb_new_count <<= 1;
-
-        if (batch.icb_mesh_tasks && icb_new_count <= batch.icb_mesh_tasks->GetMaxCount())
-            return;
-
-        if (batch.icb_mesh_tasks)
-        {
-            delete batch.icb_mesh_tasks;
-            batch.icb_mesh_tasks = nullptr;
-        }
-
-        auto draw_name = BuildICBNames();
-
-        batch.icb_mesh_tasks = device->CreateIndirectMeshTaskBuffer(icb_new_count, draw_name);
-    }
-
     void PrimitiveBatchPipeline::BuildBatches(MaterialBatch& batch, const uint32_t base_instance)
     {
         const size_t count = batch.items.size();
@@ -449,22 +398,8 @@ namespace hgl::ecs
             return;
         }
 
-        const bool needs_indirect = BatchRequiresIndirectCommands(batch);
-        if (needs_indirect)
-        {
-            ReallocICB(batch);
-
-            if (!batch.icb_mesh_tasks)
-            {
-                batch.draw_batches_count = 0;
-                batch.draw_batches.clear();
-                return;
-            }
-        }
-        else
-        {
-            ReleaseICB(batch);
-        }
+        // T4c4：CPU 侧自有 ICB 路径已删（前提：无批走 CPU 绘制）。接管钩子把 icb_mesh_tasks
+        // 指向剔除输出的共享 ICB 并置 own_* = false；本函数只负责批内 CPU 侧行表的整理。
 
         batch.draw_batches.clear();
         batch.draw_batches.reserve(count);
@@ -601,9 +536,8 @@ namespace hgl::ecs
 
         batch.draw_batches_count = static_cast<uint32_t>(batch.draw_batches.size());
 
-        // ── IndirectMeshDraw：mesh 命令 + per-draw 参数行（后置统一写）──
-        WriteMeshDrawCommands(batch);
     }
+
 
     void PrimitiveBatchPipeline::EnsureMeshDrawParams(MaterialBatch& batch)
     {
@@ -654,77 +588,6 @@ namespace hgl::ecs
                     std::memset(zero_ptr, 0, static_cast<size_t>(byte_size));
                     gpu_zero->Unmap();
                 }
-            }
-        }
-    }
-
-    void PrimitiveBatchPipeline::WriteMeshDrawCommands(MaterialBatch& batch)
-    {
-        if (batch.gpu_driven_override)
-            return;
-
-        const uint32_t count = batch.draw_batches_count;
-        if (count == 0 || !batch.key.shader_program)
-            return;
-
-        const bool is_lines =
-            batch.key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines;
-
-        // 命令参数行：每个 DrawBatch 一行（MeshDrawCommand: geometry_id + first_instance）
-        if (batch.mesh_draw_params_buffer)
-        {
-            auto *params_gpu = batch.mesh_draw_params_buffer->GetGPUBuffer();
-            auto *cmds = params_gpu
-                ? static_cast<graph::mtl::MeshDrawCommand *>(params_gpu->Map(
-                      0, static_cast<VkDeviceSize>(count) * sizeof(graph::mtl::MeshDrawCommand)))
-                : nullptr;
-
-            if (cmds)
-            {
-                for (uint32_t i = 0; i < count; ++i)
-                {
-                    DrawBatch &db = batch.draw_batches[i];
-
-                    // B3-iii：几何行号直接来自批的行键（旧实现三级回退 + 往每实体副本里回写镜像）
-                    cmds[i].geometry_id = db.draw_key.geometry_id;
-                    cmds[i].first_instance = db.first_instance;
-                }
-
-                params_gpu->Unmap();
-            }
-        }
-
-        // mesh 命令：仅 VDM DrawBatch（与渲染器累积逻辑一致）。
-        // run（同 GeometryDataBuffer 连续段）内命令序与行序 1:1——间接 flush 按 run
-        // 首行 offset 绑定参数表，shader 内 rows[gl_DrawID]（每次 indirect 调用 0 起
-        // 编号）恰好对齐；Z 恒 1。
-        if (batch.icb_mesh_tasks)
-        {
-            auto *mesh_cmd = batch.icb_mesh_tasks->MapCmd();
-
-            if (mesh_cmd)
-            {
-                for (uint32_t i = 0; i < count; ++i)
-                {
-                    const DrawBatch &db = batch.draw_batches[i];
-                    // BDA：全部 DrawBatch（含私有 VBO，地址经 db.geometry 直取填行）都写
-                    // mesh 间接命令——命令序 = DrawBatch 序 = 参数行序 1:1
-                    if (!db.draw_key.HasGeometry())
-                        continue;
-
-
-                    // B3-iii：绘制元素数取自行键（= 行里 is_indexed ? index_count : vertex_count，逐位等价）
-                    const uint32_t total_vertices = db.draw_key.DrawElementCount();
-
-                    mesh_cmd->groupCountX = CalcMeshGroupCount(is_lines, total_vertices);
-                    mesh_cmd->groupCountY = db.instance_count > 1
-                        ? db.instance_count
-                        : 1u;
-                    mesh_cmd->groupCountZ = 1u;
-                    ++mesh_cmd;
-                }
-
-                batch.icb_mesh_tasks->Unmap();
             }
         }
     }
@@ -1242,9 +1105,9 @@ namespace hgl::ecs
             // 逐批前提（一条不满足 ⇒ **仅该批**不接管）
             //
             // A6-c：原「批无 mesh stage」拒绝条件已删——它是**重复前提**：mesh 是本引擎唯一
-            // 的顶点路径（见 `BatchRequiresIndirectCommands` 注释），且 `EnsureMeshDrawParams`
-            // 对无 mesh stage 的批已整批 bail（写不出 mesh 命令 ⇒ 本就不可绘制）⇒ 能进行到
-            // 这里的批必然有 mesh stage（全家族台架零命中，2026-10-05）。
+            // 的顶点路径（见 `BatchRequiresIndirectCommands` 注释）⇒ 能进行到这里的批必然有
+            // mesh stage（全家族台架零命中，2026-10-05）。
+            //（T4c4 起不再走 `EnsureMeshDrawParams` 那条"写不出 mesh 命令"的兜底：CPU 命令链已删。）
             const char *why = nullptr;
 
             if (next_index >= GPUCullSystem::kMaxBatches)

@@ -4730,12 +4730,19 @@ int main(int argc, char** argv)
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "next_item->draw_key == draw_key",
               "聚簇不再按行键相等断簇" },
+            // T4c4：CPU 绘制链已删 ⇒ 原「正向 needle = `db.draw_key.DrawElementCount()`」失去载体。
+            // 契约**意图不变**（ICB 组数不得回到取自 draw 行键 / 每实体 CPU draw range），改成两条更强证据：
+            //   (a) 该旧表达式整体**禁出现**（禁复活）；
+            //   (b) 组数只在 gather（着色器）内由分派式算出（正向，见下条）。
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "db.draw_key.DrawElementCount()",
-              "ICB 组数不再取自行键（回到每实体 CPU draw range）" },
+              "ICB 组数不得回到取自 draw 行键（T4c4 起 CPU 绘制链已整体删除）", true },
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+              "(element_count + binfo.group_size - 1u) / binfo.group_size",
+              "ICB 组数只在 gather 内按元素数/组大小算出（GPU 侧唯一出处）" },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "cmds[i].geometry_id = db.draw_key.geometry_id;",
-              "命令几何行号不再直取行键（回到三级回退 + 镜像回写）" },
+              "命令几何行号不得回到直取行键（T4c4 起 CPU 绘制链已整体删除 ⇒ 旧表达式禁复活）", true },
             { "PipelineMaterialRenderer.h", OS_TEXT("inc/hgl/ecs/support/PipelineMaterialRenderer.h"),
               "RenderItem::MeshDrawKey                draw_key;",
               "DrawBatch 不再持行键" },
