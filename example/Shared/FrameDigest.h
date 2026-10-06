@@ -79,12 +79,64 @@ namespace ulre_example
     {
         rt->SetInFrameReadbackHook([rt, expected, tag]()
         {
+            // ── `FRAMEDIGEST_PERFRAME=N`：**逐帧**模式 ─────────────────────────────
+            // 每帧打一行摘要，累计 N 帧后收尾：**所有帧一致**（且满足 distinct 下限）⇒ PASS 退 0；
+            // 出现不一致 ⇒ FAIL 退 1，并把差异帧数与首个差异帧打出来。
+            // 为什么需要：一次性模式只读**一张图** ⇒ **看不见"每 N 帧闪一帧"**这类帧间不稳定
+            // （实测踩过：物体每 3 帧缺一帧，摘要在第 8 帧采样恰好避开）。
+            static const int s_perframe = []()
+            {
+                const char * v = getenv("FRAMEDIGEST_PERFRAME");
+                return v ? atoi(v) : 0;
+            }();
+            static uint32_t s_pf_frame = 0;
+            static uint64_t s_pf_first_fnv = 0;
+            static uint32_t s_pf_first_distinct = 0;
+            static uint32_t s_pf_diff = 0;
+
             FrameDigest actual;
 
             if (!ComputeFrameDigest(rt, actual))
             {
                 printf("[%s] readback failed\n", tag);
                 std::exit(2);
+            }
+
+            if (s_perframe > 0)
+            {
+                ++s_pf_frame;
+
+                const bool differs = (s_pf_frame > 1) && (actual.fnv1a64 != s_pf_first_fnv);
+
+                if (s_pf_frame == 1)
+                {
+                    s_pf_first_fnv      = actual.fnv1a64;
+                    s_pf_first_distinct = actual.distinct_byte_values;
+                }
+                else if (differs)
+                {
+                    ++s_pf_diff;
+                }
+
+                printf("[%s] frame=%u %ux%u distinct=%u fnv1a64=0x%016llX%s\n",
+                       tag, s_pf_frame, actual.width, actual.height,
+                       actual.distinct_byte_values,
+                       static_cast<unsigned long long>(actual.fnv1a64),
+                       differs ? "  <== 与首帧不同" : "");
+                fflush(stdout);
+
+                if (s_pf_frame >= static_cast<uint32_t>(s_perframe))
+                {
+                    const bool ok = (s_pf_diff == 0)
+                                 && (s_pf_first_distinct >= expected.distinct_byte_values);
+
+                    printf("[%s] PERFRAME %s：%u 帧，与首帧不同的帧数=%u（首帧 distinct=%u）\n",
+                           tag, ok ? "PASS" : "FAIL", s_pf_frame, s_pf_diff, s_pf_first_distinct);
+                    fflush(stdout);
+                    std::exit(ok ? 0 : 1);
+                }
+
+                return;
             }
 
             const bool ok = (actual.width  == expected.width)

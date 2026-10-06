@@ -1216,6 +1216,7 @@ namespace hgl::ecs
         static const bool s_takeover_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
         uint32_t row_cursor = 0;   // T4c3 回退：恒主帧扇区（阴影扇区待重启）
         uint32_t total_items = 0;
+        uint32_t tagged_items = 0;   // 诊断：本帧打上标签的项数
         uint32_t geometry_batches = 0;
         uint32_t *tags = nullptr;
 
@@ -1310,6 +1311,9 @@ namespace hgl::ecs
                 tags[owner->GetEntityID().index] = index;   // 结构类值：本帧装配、本帧消费
             }
 
+            if (s_takeover_trace)
+                tagged_items += capacity;   // 本帧本 pass 打上标签的项数（应 == Σcapacity）
+
             pending[pending_count] = b;
             pending_index[pending_count] = index;
             ++pending_count;
@@ -1369,9 +1373,10 @@ namespace hgl::ecs
         // 正向判据日志（一次性）：证明"绘制真走 gather 表"（T4b 起已无 CPU 账可退，
         // 本日志仍是"接管真发生"的正面证据）。逐批计数由台架在 cull 之后读。
         if (s_takeover_trace)
-            GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=ok 几何批=%u 辖批=%u items=%u arena_rows=%u",
+            GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=ok 几何批=%u 辖批=%u items=%u arena_rows=%u "
+                     "标签项=%u 布局容量和=%u（应相等）",
                      world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, geometry_batches,
-                     pending_count, total_items, row_cursor);
+                     pending_count, total_items, row_cursor, tagged_items, total_items);
 
         static bool s_engaged_logged = false;
         if (!s_engaged_logged)
