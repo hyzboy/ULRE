@@ -1465,6 +1465,33 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   ② 在**截断样本**上断言"没有 pass_index=1"（只看了前 26 行）。
   ⇒ 纪律：**先确认量的是那个对象/槽，再拿"全量分布"下结论**；不同长度的列表要先对齐再比较。
 
+## ⭐⭐ 真根因与修复（2026-10-06，已结案）
+
+**症状**：接收阴影的示例在**其中一张交换链图**上整帧近乎空（`distinct 256→4`），每 3 帧一次，恒为同一 image；
+且**改动看似无关的提交（甚至只加注释）会翻转判定**。
+
+**根因**：`RenderPassRequest.is_shadow_pass` 是**调用方设置、可以漏设**的旗标。
+`ShadowMapApp::RenderShadowMap()` 把**主世界**渲染进 shadow RT 时**没设它**（`RenderTo(rt,clear,dt,cull)` 便捷重载同样没设）
+⇒ 那次离屏渲染的 `is_current_pass_shadow` 为 false ⇒ 批装配取 `pass_index = Main`
+⇒ **把两 pass 共享的批对象的 `gpu_slice[Main]` 改写成离屏自己的切片** ⇒ 主帧绘制随后读到它、
+去读**别的帧槽**的计数（0）⇒ 该图整帧空。
+"只加注释也翻转"的机理：**两条路径写同一份切片，谁最后写由时序决定**；每份二进制的代码布局固定了时序
+⇒ 每个提交的判定"稳定但不同"（这正是我数轮误判的根源——不是代码变了，是竞争赢家变了）。
+
+**修复**：调用方声明 `req.is_shadow_pass = true`（示例侧一行）。
+**验证（全套绿）**：逐帧摘要 30 帧 ×3 次 ⇒ 三图取值集合全为 `[256]`（闪烁消除）；
+`ShadowMap` `0xA8A369516CB04571` / `CascadeShadowMap` `0x1CDAADEBF18B7CE4` **逐位不变**
+（阴影 pass 改走 `pass=1` 后渲染结果不变——与 T4c2 的设计判断一致：阴影图只看深度、与绘制序无关）；
+`AlphaTestShadow` 契约 rc=0（四个子契约全绿）；门绿。
+
+**遗留两处（同一坑，待拍板方向）**：
+1. `Context::RenderTo(rt, clear, dt, cull)` 便捷重载**不设旗标**，调用者 `SceneGraph/module/OffscreenWorld.cpp:147`
+   ⇒ 那个离屏世界仍被判成主帧 pass（同一后果，只是尚未以闪烁形式暴露）。
+2. `TestCSMIncrementalPass` 的契约只断言"**默认值必须为 false**"，**没守"离屏渲染必须声明自身 pass 身份"**
+   ——这正是该 bug 能长期存活的制度原因。
+   ⇒ **引擎侧正解（建议）**：pass 身份**由目标推导**（非交换链目标 ⇒ 非主帧 pass）或改成不可漏设的字段，
+   并把契约从"默认值"改为"离屏必须声明/推导正确"。
+
 - **负结果（2026-10-06，逐条排除，别再重走）**：
   ① **"计数器清零→compute" 与 "compute→indirect 消费" 两条 barrier 都在且掩码正确**
      （`TRANSFER/TRANSFER_WRITE → COMPUTE/SHADER_READ|WRITE`；`COMPUTE/SHADER_WRITE →
