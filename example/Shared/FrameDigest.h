@@ -118,11 +118,13 @@ namespace ulre_example
                     ++s_pf_diff;
                 }
 
-                printf("[%s] frame=%u %ux%u distinct=%u fnv1a64=0x%016llX%s\n",
-                       tag, s_pf_frame, actual.width, actual.height,
-                       actual.distinct_byte_values,
-                       static_cast<unsigned long long>(actual.fnv1a64),
-                       differs ? "  <== 与首帧不同" : "");
+                printf("[%s] frame=%u image=%u %ux%u distinct=%u fnv1a64=0x%016llX%s\n",
+                                       tag, s_pf_frame,
+                                       static_cast<unsigned>(rt->GetCurrentFrameIndex()),
+                                       actual.width, actual.height,
+                                       actual.distinct_byte_values,
+                                       static_cast<unsigned long long>(actual.fnv1a64),
+                                       differs ? "  <== 与首帧不同" : "");
                 fflush(stdout);
 
                 if (s_pf_frame >= static_cast<uint32_t>(s_perframe))
