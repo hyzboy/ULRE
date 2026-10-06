@@ -1406,6 +1406,26 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
     （否则别的表条目会算进来造成假阳性）；**失败的权威信息是测试自己打的那条**。
   - **T4c4-4**：清 `MaterialBatch` CPU 字段 + 文档回扫 + 台账。
 
+- **闪烁取证（"有 shadow 的示例每 3 帧一次"，2026-10-06，未结）**：
+  - **已测量（可靠）**：`ShadowMap` 用引擎现成的 `SyncForParityReadback` + `MapCurrentBatchCounters` 逐帧读数
+    ⇒ 主帧 pass 的 0 号批计数在**交换链槽 1 上恒为 0**，槽 0/2 恒为 14 ⇒ 与"3 张交换链图"一一对应。
+  - **已排除（修正测量后）**：槽 1 的**标签**（本槽有效标签=14 ✓）、**布局**（绘制行 `max=14`、计数偏移 2056
+    = 槽 1 正确算术 ✓）、**批数**（`批=1` ✓）、**三个按槽地址**（`pc.batch_*_addr = 基址 + batch_slot × 槽步长` ✓）。
+    ⚠ **我自己的一次测量错**：数标签时用 `Map(0, …)` 读了**第 0 槽** ⇒ 据此得的结论作废；
+    改按 `Map(slot × slot_bytes, …)` 后才是真值（教训与"别单次采样"同族：**先确认量的是不是那个槽**）。
+  - **最强线索**：`[TAGTRACE]` 实测**离屏（帧号=4）那一路的批装配 `pass_index=0`、`shadow_flag=0`**；
+    而 `EnvironmentSystem.cpp:378/410` 对真阴影 pass **确实**签发了 `req.is_shadow_pass = true` ⇒ 说明帧号 4
+    的那次装配**不是（或不只是）阴影 pass**，或标志在帧内被切换过（`Context::RenderTo`：
+    `is_current_pass_shadow = req.is_shadow_pass`(:669) → 渲染 → `= false`(:735) → **之后才**归还主帧槽）。
+    另一处便捷重载 `RenderTo(rt, clear, dt, cull)`(:815) **不设** `is_shadow_pass` ⇒ 走它的离屏 pass 会被判成
+    主帧 pass（块 0 / 扇区 0）⇒ 与主帧**共用同一份切片与竞技场扇区** ⇒ 互相覆盖。
+  - **两条修法（都在当前阶段）**：① **判定与槽同生命周期** —— 离屏 pass 期间 `is_current_pass_shadow` 与帧槽
+    必须同源同置同清（把 :669/:735 与两次 `SetFrameIndex` 绑成一条），并给便捷重载补 `is_shadow_pass`；
+    ② **行集按帧槽分份** —— 竞技场（cmds/l2w/mtl/ICB 命令）目前只按 pass 分扇区、**不按帧槽** ⇒
+    在飞帧之间会互相覆写；按帧槽分份（2.6 MB 量级）可同时消掉跨帧竞态。
+  - **下一步**：重跑"pass × 槽"组合计数取证（上一轮该测量因进程早退失败，**当次无数据**）⇒ 按 ① 收敛判定
+    ⇒ ② 作为竞态根治。临时取证代码已从库中清除（`example/Shadow/ShadowMap.cpp`、`src/ecs/support/GPUCullSystem.cpp`）。
+
   --- 以下为首试失败时的原始记录（保留作对照）---
 删「只在主帧 pass 接管」的早退（它正是 shadow 至今走 CPU 写行/ICB 的唯一原因）；
   `pass_index = IsCurrentPassShadow() ? 1 : 0` 同时定**块**（`BatchBlockBase`）与**扇区**（`ArenaSectorBase`）；切片起点从本 pass 的扇区基址起
