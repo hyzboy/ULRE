@@ -1393,8 +1393,17 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   （`0x1BAB088CA3B63B3C` vs 基线 `0x1CDAADEBF18B7CE4`）。**每删一处先问：绘制侧还是写 gather 消费的数据？**
   ⚠ 配套纪律：引用检查用 `rg`/搜索工具（shell `grep '\b'` 静默全 0 命中，据此删会断构建）；
   死码表在**主删除稳定后**再取；"命中行数 ≠ 有调用"（`GPUCullSystem.cpp` 对 `ReleaseICB` 只是注释提及）。
-  - **T4c4-3 待做**：删 `DrawBatch`/`draw_batches` 产出 + 同批收窄 `Render/Draw` 与两个调用方
-    （`PrimitiveRenderSystem` + `PrimitiveOverlayRenderSystem` —— overlay 属 RenderDebug 相位边界，必须同批改）。
+  - **T4c4-3 ✅**（`49d9e2430`）：删 CPU 绘制批对象链 —— `MaterialBatch::draw_batches(*)`、`struct DrawBatch`、
+    `DrawBatchArray`、`Renderer::Draw()`、`Render` 的 `batches`+`batch_count` 入参、Render 里的 CPU 循环、
+    三个 CPU 累积计数成员、`BuildBatches`、`SortBatchItems`、`last_compaction_stats`（删前 rg 复查外部使用者=0）；
+    两个调用方（`PrimitiveRenderSystem` + `PrimitiveOverlayRenderSystem`，后者属 RenderDebug 相位边界）**同批**改；
+    flush 门 ⇒ `if (owner_batch && owner_batch->gpu_driven_override)`。
+    契约 needle 按意图换形三条（`RenderItem::MeshDrawKey draw_key;` / `next_item->draw_key == draw_key` /
+    `if (batch.gpu_driven_override)`（16 空格缩进）⇒ 转禁复活 + 正向钉「行键只在采集期填」）。
+    ⚠ **编辑工具纪律**（本轮为它们多花了好几个构建周期）：批量改动脚本**先干跑预检锚点**（全中才写盘）；
+    纯声明无函数体、不能大括号配平切（按整块文本删）；函数定义首参与函数名同行、其余参数按实际对齐宽度缩进；
+    往字符串追加文字注意切尾长度（`" },` 是 4 字符）；契约表解析要按条目花括号配对且限定区间边界
+    （否则别的表条目会算进来造成假阳性）；**失败的权威信息是测试自己打的那条**。
   - **T4c4-4**：清 `MaterialBatch` CPU 字段 + 文档回扫 + 台账。
 
   --- 以下为首试失败时的原始记录（保留作对照）---
