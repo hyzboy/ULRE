@@ -320,10 +320,17 @@ void main()
     // 标签 = CPU 批装配直写（当前帧槽；cull 在 RenderFrameSync ⇒ 本帧产物）。
     // 无效/越界 = 不属任何接管批 ⇒ **不写行**（该实体由 CPU 路径绘制），
     // 但仍计入全局幸存（对拍口径不变）。
-    const uint batch = BatchTagRef(pc.batch_tag_addr).tags[entity_index];
+    // T4c2 同族：标签表**按 pass 分块**（块步长 = 可见表上限，与实体 4-ID 表同口径）——
+    // 两个 pass **各查自己那一块**：此前不带 pass 项 ⇒ 两 pass 共用标签，静止物体被按
+    // 另一 pass 的批索引写行 ⇒ 挤进批 0（capacity=1）⇒ 切片溢出（计划 §11.9）。
+    const uint batch0 = BatchTagRef(pc.batch_tag_addr).tags[0u * pc.max_visible_count + entity_index];
+    const uint batch1 = BatchTagRef(pc.batch_tag_addr).tags[1u * pc.max_visible_count + entity_index];
 
-    if (batch == 0xFFFFFFFFu || batch >= pc.batch_count)
-        return;      // 不属任何接管批 ⇒ 两个 pass 都不写行（该实体由 CPU 路径绘制）
+    const bool tagged0 = (batch0 != 0xFFFFFFFFu && batch0 < pc.batch_count);
+    const bool tagged1 = (batch1 != 0xFFFFFFFFu && batch1 < pc.batch_count);
+
+    if (!tagged0 && !tagged1)
+        return;      // 两个 pass 都不属任何接管批 ⇒ 不写行（该实体由 CPU 路径绘制）
 
     // ── T4c2：按 pass 两遍写行 ────────────────────────────────────────────
     //  块 0 = 主帧 pass：仍受视锥剔除（`cull_ok`）⇒ 写"幸存者"行；
@@ -333,6 +340,13 @@ void main()
     for (uint blk = 0u; blk < ULRE_ARENA_PASSES; ++blk)
     {
         if (blk == 0u && !cull_ok)
+            continue;
+
+        // 本块的批索引 = **本 pass 自己那一块**标签；本 pass 未接管该实体 ⇒ 只跳过本块
+        // （另一 pass 仍可能接管它，故不早退）。
+        const uint batch = (blk == 0u) ? batch0 : batch1;
+
+        if (batch == 0xFFFFFFFFu || batch >= pc.batch_count)
             continue;
 
         const uint block_base = blk * pc.batch_block_stride;

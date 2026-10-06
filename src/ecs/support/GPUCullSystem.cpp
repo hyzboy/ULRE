@@ -330,7 +330,12 @@ namespace hgl::ecs
         // counter = kSlots × kArenaPasses × kBatchBlockStride × u32（每块末位 = 该块 overflow 槽）。
         // usage：STORAGE（CS 读写）+ SHADER_DEVICE_ADDRESS（BDA 下发）；counter 另带
         // TRANSFER_DST（cull cmd 内 FillBuffer 清零，VUID-vkCmdFillBuffer-dstBuffer-00031）。
-        const VkDeviceSize tag_slot_bytes     = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
+        // T4c2 同族：标签表**按 pass 分块**（块步长 = kMaxVisibleEntities，与实体 4-ID 表同口径）。
+        // 此前只有帧槽维度 => 一帧内两个 pass 共用一张表，而 `BeginBatchTagWrite` 整表清空重填
+        // => 后装配的 pass 盖掉先装配的标签 => 静止物体按**另一 pass 的批索引**写行 =>
+        // 挤进批 0（其 capacity=1）=> 切片溢出、该行被丢
+        //（实测 AlphaTestShadow/CascadeShadowMap 每图一帧地面消失；见计划 §11.9）。
+        const VkDeviceSize tag_slot_bytes     = VkDeviceSize(kArenaPasses * kMaxVisibleEntities) * sizeof(uint32_t);
         const VkDeviceSize info_slot_bytes    = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
         const VkDeviceSize counter_slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
         const VkDeviceSize batch_slots        = VkDeviceSize(HGL_FRAME_SLOT_TOTAL);
@@ -397,10 +402,14 @@ namespace hgl::ecs
             batch_info_staging_[BatchBlockBase(pass_index) + i] = BatchInfoRow{};
 
         const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
-        const VkDeviceSize slot_bytes = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
+        const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kMaxVisibleEntities) * sizeof(uint32_t);
+        const VkDeviceSize block_bytes = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
 
+        // 只 Map / 只清**本 pass 那一块**（整表清空会盖掉另一 pass 的标签）。
         uint32_t *p = static_cast<uint32_t *>(
-            batch_tag_buffer_->Map(VkDeviceSize(slot) * slot_bytes, slot_bytes));
+            batch_tag_buffer_->Map(VkDeviceSize(slot) * slot_bytes
+                                       + VkDeviceSize(pass_index) * block_bytes,
+                                   block_bytes));
         if (!p)
             return nullptr;
 
@@ -462,7 +471,7 @@ namespace hgl::ecs
             batch_count = kMaxBatches;
         }
 
-        batch_count_ = batch_count;
+        batch_count_[pass_index] = batch_count;
 
         // 1) 标签 unmap（Map 期内已直写；host-visible ⇒ unmap 后对后续提交可见）
         if (batch_tag_cpu_ && batch_tag_buffer_)
@@ -504,7 +513,9 @@ namespace hgl::ecs
     uint32_t GPUCullSystem::GetOverflowCounterByteOffset(uint32_t pass_index) const
     {
         // 块内溢出槽 = 块内第 `batch_count` 行（与 GLSL 口径一致）
-        return GetBatchCounterByteOffset(pass_index, batch_count_);
+        // 与着色器同口径：GLSL 溢出槽 = `block_base + pc.batch_count`，而 pc 下发的是**主帧**
+        // 那份批数 ⇒ 读侧也用主帧那份（pass 1 的该槽仅为信息量，不作判据）。
+        return GetBatchCounterByteOffset(pass_index, batch_count_[0]);
     }
 
     uint32_t *GPUCullSystem::MapCurrentBatchCounters(uint32_t pass_index)
@@ -662,19 +673,21 @@ namespace hgl::ecs
         // T3i：批标签 / 分区 / 计数（**当前帧槽**的份；与实体表同槽口径）
         const uint32_t batch_slot = frame_slot % HGL_FRAME_SLOT_TOTAL;
         pc.batch_tag_addr     = batch_tag_addr_ + VkDeviceSize(batch_slot)
-                                * VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
+                                * VkDeviceSize(kArenaPasses * kMaxVisibleEntities) * sizeof(uint32_t);
         pc.batch_info_addr    = batch_info_addr_ + VkDeviceSize(batch_slot)
                                 * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
         pc.batch_counter_addr = batch_counter_addr_ + VkDeviceSize(batch_slot)
                                 * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
-        pc.batch_count        = batch_count_;
+        // 一次派发内着色器自己循环写两个 pass 块 => 这里下发**主帧**那份（与绘制侧/参考实现同口径）；
+        // 阴影块的有效性由自己的 `binfo.capacity == 0` 决定，不依赖本值。
+        pc.batch_count        = batch_count_[0];
 
         // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：派发当帧用的槽 —— 与接管侧（绘制读的槽）对照，
         // 定位"派发写的槽 ≠ 绘制读的槽"（帧内切 RT 时槽会变，而派发每帧只跑一次）。
         static const bool s_dispatch_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
         if (s_dispatch_trace)
             GLogInfo("[T3i][TRACE] dispatch frame_slot=%u(槽=%u) 批=%u 相机行=%u",
-                     context_->GetFrameIndex(), batch_slot, batch_count_, context_->GetActiveCameraRow());
+                     context_->GetFrameIndex(), batch_slot, batch_count_[0], context_->GetActiveCameraRow());
         pc.batch_block_stride = kBatchBlockStride;
 
         cmd->Begin();
@@ -750,7 +763,7 @@ namespace hgl::ecs
          || !cmds_out_buffer_ || !mtl_out_buffer_ || !batch_counter_buffer_)
             return false;
 
-        if (batch_index >= kMaxBatches || batch_count_ == 0)
+        if (batch_index >= kMaxBatches || batch_count_[pass_index] == 0)
             return false;
 
         const BatchInfoRow &info = batch_info_staging_[BatchBlockBase(pass_index) + batch_index];

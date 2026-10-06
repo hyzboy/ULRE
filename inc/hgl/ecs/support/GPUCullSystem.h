@@ -72,12 +72,13 @@ namespace hgl::ecs
         // ── T3i（③ 多批）：台架/对拍用只读视图 ────────────────────────────────
         // 本帧接管批数（0 = 无接管批 ⇒ cull 只为对拍出计数）。分区在 guard 装配、
         // 本帧消费（同帧同源）；台架在 cull 之后读，两处都在本帧内。
-        uint32_t GetBatchCount() const { return batch_count_; }
+        /// 批数（**主帧 pass** 那份）。参考实现与绘制侧读的都是主帧口径。
+        uint32_t GetBatchCount() const { return batch_count_[0]; }
 
         /// 本帧第 index 批的竞技场切片。越界 ⇒ false（调用方不得假定容量）。
         bool GetBatchLayout(uint32_t pass_index, uint32_t index, uint32_t &row_base, uint32_t &capacity) const
         {
-            if (index >= batch_count_ || index >= kMaxBatches || pass_index >= kArenaPasses)
+            if (index >= batch_count_[pass_index] || index >= kMaxBatches || pass_index >= kArenaPasses)
                 return false;
 
             const BatchInfoRow &row = batch_info_staging_[BatchBlockBase(pass_index) + index];
@@ -254,7 +255,10 @@ namespace hgl::ecs
         /// CPU 暂存：两块（每块 kBatchBlockStride 行）。未写的那块保持零 ⇒ 该 pass 的
         /// `capacity == 0` ⇒ shader 跳过该 pass（T4c3 起阴影 pass 才会写自己的块）。
         BatchInfoRow batch_info_staging_[kArenaPasses * kBatchBlockStride] = {};
-        uint32_t batch_count_ = 0;                    ///< 本帧批数（0 = 无批 ⇒ cull 只为对拍出计数）
+        /// 本帧批数，**按 pass 分开**（0 = 无批）。此前是单份共享值 ⇒ 一帧内后一次
+        /// `EndBatchLayout` 的批数会作用到两个 pass（实测：主帧派发拿到阴影的批数 ⇒
+        /// 主帧批 1 被整批丢弃）。着色器 `pc.batch_count` 取主帧那份。
+        uint32_t batch_count_[kArenaPasses] = {0, 0};
         uint32_t *batch_tag_cpu_ = nullptr;           ///< 当前帧槽标签数组的映射
         uint32_t  batch_tag_cpu_slot_ = UINT32_MAX;   ///< 映射对应的帧槽（换槽重映射）
         uint32_t *batch_counter_cpu_ = nullptr;       ///< 台架读回时的映射

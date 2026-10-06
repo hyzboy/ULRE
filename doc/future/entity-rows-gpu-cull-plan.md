@@ -1618,3 +1618,23 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
 **遗留**：本项（示例侧计数探针、布局打印、采样周期诊断口）已全部回退或转正；
 临时探针纪律见技能 `ulre-entity-gpu-cull`（探针必须先自证能出声；长跑输出**不要**套 `tail`，
 缓冲会让健康运行看起来像卡死 —— 本轮两次误判均源于此）。
+
+### §11.10 第二例修复与验证（标签表/批数补齐 pass 维度）
+
+按 §11.9 方案落地，实际改动 **3 文件 6 处**：
+
+| 处 | 改动 |
+|---|---|
+| `GPUCullSystem.h` | `batch_count_` → `batch_count_[kArenaPasses]`；`GetBatchCount()` 返回**主帧**那份；`GetBatchLayout` 界检查按 pass |
+| `GPUCullSystem.cpp` | 标签表 `tag_slot_bytes` 乘 `kArenaPasses`；`BeginBatchTagWrite(pass)` 只 Map/只清**本块**；`EndBatchLayout` 存按 pass；派发下发 `pc.batch_count = batch_count_[0]`；**`pc.batch_tag_addr` 槽步长同步改为 `kArenaPasses × kMaxVisibleEntities`**（pass 项由着色器加，故基址不带 pass）；溢出槽偏移与逐批前置校验同步 |
+| `entity_gpu_cull.glsl` | 标签查表改为**两个 pass 各查自己那一块**（`tags[blk * pc.max_visible_count + entity_index]`，与同文件 4-ID 表同式）；早退语义拆分：**两块都无**才 `return`，单块无则 `continue`（否则会连带跳过材质行写入） |
+
+**踩到的两个坑（均已修，记录以免重犯）**：
+1. **漏改 `pc.batch_tag_addr` 的槽步长** —— 缓冲已改为"每帧槽两块"，但下发基址仍用旧步长 ⇒ 槽 ≥ 1 时指进上一个槽的块 1 ⇒ 标签全错。表现：**D3 契约 `receive_shadow` 直接 FAIL（变红 0 px，阴影整体消失）**、坏图 `distinct` 塌到 4。⇒ 改寻址类改动必须把**缓冲尺寸 / 写入映射 / 下发基址 / 着色器索引**四处列成清单逐一对账。
+2. **枚举使用点被 `head` 截断** ⇒ 漏掉 `GetOverflowCounterByteOffset` 与 `ApplyGPUCullOverrideHook` 里的两处 `batch_count_`（编译器只报第一个）。⇒ 改成员形态时用 `rg <名>` **去重列出全部**，不靠编译器逐个发现。
+
+**验证（全部实测）**：
+- ATS 逐帧摘要按图号分组：**图 0/1/2 的 FNV 种类各为 1**（修复前坏图恒 2 种、`distinct=4` 空图）；`distinct` 回到 255/254/255；
+- ATS 契约 `ATS_SELFCHECK=1`：**D1 c0 PASS（填充率 57.6%）/ D3 receive_shadow PASS（变红 18187 px）/ D3 bias_multiplier PASS / D4 行池写入 PASS / selfcheck PASS (exit 0)**；
+- `TestCSMIncrementalPass`（自仓库根）：**All CSM Incremental Pass Contract Tests PASSED**；
+- `ShadowMap` / `CascadeShadowMap`：每图 FNV 种类=1、`distinct=256`（注：两者自检首帧即退出，每图仅 1 帧样本，"逐帧稳定"这一条证据弱，强证在 ATS）。
