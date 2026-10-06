@@ -1638,3 +1638,22 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
 - ATS 契约 `ATS_SELFCHECK=1`：**D1 c0 PASS（填充率 57.6%）/ D3 receive_shadow PASS（变红 18187 px）/ D3 bias_multiplier PASS / D4 行池写入 PASS / selfcheck PASS (exit 0)**；
 - `TestCSMIncrementalPass`（自仓库根）：**All CSM Incremental Pass Contract Tests PASSED**；
 - `ShadowMap` / `CascadeShadowMap`：每图 FNV 种类=1、`distinct=256`（注：两者自检首帧即退出，每图仅 1 帧样本，"逐帧稳定"这一条证据弱，强证在 ATS）。
+
+**§11.10 补充：回归面（修复后实测）**
+
+| 台架 | 判据 | 结果 |
+|---|---|---|
+| AlphaTestShadow | 逐帧摘要按图号（10 帧/图） | 图 0/1/2 各 1 种 FNV；契约 D1/D3/D4 全 PASS（receive_shadow 变红 18187 px） |
+| CascadeShadowMap / ShadowMap | 逐帧摘要按图号 | 各图 1 种 FNV、distinct=256 |
+| AlphaModes / CoverageVariants / PBRSpheres / LoadScene / PlaneGrid3D | 逐帧摘要按图号 | 各图 1 种 FNV |
+| **GPUDrivenCull** | **自带自检对基线（冻结相机）** | **fnv=0x90E0745C2C7B8599 == 基线 ⇒ PASS（逐位未变）** |
+| TestCSMIncrementalPass（自仓库根） | 契约 | All CSM Incremental Pass Contract Tests PASSED |
+
+判据选择说明：`GPUDrivenCull` 默认模式物体在轨道运动（`GC_STATIC` 只冻结**相机**），
+"逐图 FNV 唯一"对它不适用 ⇒ 改用其自带自检（冻结取景对基线），这才是该示例设计的回归口径，
+且给出逐位一致的强结论。另注：各示例 `*_SELFCHECK` 早退 ⇒ 部分台架每图仅 1 帧样本。
+
+**另发现（非本任务，供决策）**：`src/ecs/CMakeLists.txt` 给这些测试只设了
+`VS_DEBUGGER_WORKING_DIRECTORY`（仅 VS 调试器生效），**未设 `ctest` 用的 `WORKING_DIRECTORY`**
+⇒ 凡按相对路径读 `ShaderLibrary/...` 的测试在 `ctest` 下必红（实测 CSM 契约与
+TransformFlatStorage 从仓库根跑均 RC=0，经 ctest 跑则 FAIL）。
