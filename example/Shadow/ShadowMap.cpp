@@ -1104,6 +1104,10 @@ private:
         req.camera           = ecs_context->GetCameraByEntity(light_camera_id);
         req.use_target_clear = true;
         req.cull_mode        = ecs::CullMode::Front; // 阴影贴图渲染模型背面（显式声明，无隐式推断）
+        // ⚠ 必须声明这是**非主帧 pass**：漏了它，本 pass 会被判成主帧 pass，批装配取
+        //   `pass_index = Main`，把两 pass 共享的批对象的 `gpu_slice[Main]` 改写成阴影自己的切片
+        //   ⇒ 主帧绘制随后读到它、去读别的帧槽的计数 ⇒ 该槽读 0 ⇒ **每 3 帧有一张交换链图整帧空**。
+        req.is_shadow_pass   = true;
 
         const bool ok = ecs_context->RenderTo(req);
 
