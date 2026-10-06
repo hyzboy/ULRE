@@ -4729,7 +4729,7 @@ int main(int argc, char** argv)
               "Compare 不再按行键排序" },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "next_item->draw_key == draw_key",
-              "聚簇不再按行键相等断簇" },
+              "聚簇不得回到按行键相等断簇（T4c4-3 已删 CPU 绘制批构建链）", true },
             // T4c4：CPU 绘制链已删 ⇒ 原「正向 needle = `db.draw_key.DrawElementCount()`」失去载体。
             // 契约**意图不变**（ICB 组数不得回到取自 draw 行键 / 每实体 CPU draw range），改成两条更强证据：
             //   (a) 该旧表达式整体**禁出现**（禁复活）；
@@ -4743,9 +4743,14 @@ int main(int argc, char** argv)
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "cmds[i].geometry_id = db.draw_key.geometry_id;",
               "命令几何行号不得回到直取行键（T4c4 起 CPU 绘制链已整体删除 ⇒ 旧表达式禁复活）", true },
+            // T4c4-3：CPU 绘制批 `DrawBatch` 已整体删除 ⇒ 原正向 needle 失载体。
+            // 意图不变（行键不得被 CPU 绘制批携带），换成两条更强证据：
             { "PipelineMaterialRenderer.h", OS_TEXT("inc/hgl/ecs/support/PipelineMaterialRenderer.h"),
-              "RenderItem::MeshDrawKey                draw_key;",
-              "DrawBatch 不再持行键" },
+              "struct DrawBatch",
+              "CPU 绘制批类型不得复活（T4c4-3 已删：批的绘制一律走 GPU 切片）", true },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "key.geometry_id  = geometry_id;",
+              "行派生键只在采集期填（GPU 侧唯一来源）" },
 
             // ② 采集期填键 + 行号直读 + 行读取口
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
@@ -4782,7 +4787,7 @@ int main(int argc, char** argv)
             // 该行（16 空格缩进）在文件中唯一。
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "                if (batch.gpu_driven_override)",
-              "GPU-Driven 批的逐项成簇判据丢失（多实例簇会让整簇共用首实例，只剩 1 个实例可见）" },
+              "GPU-Driven 批的逐项成簇判据丢失（多实例簇会让整簇共用首实例，只剩 1 个实例可见）（T4c4-3 起 CPU 绘制批构建链已整体删除 ⇒ 禁复活）", true },
         };
 
         if (const int failed = verify_source_contracts(30, kB3iiiContracts,

@@ -57,28 +57,6 @@ namespace hgl::ecs
         return (process_count + MeshDispatchGroupSize(is_lines) - 1u) / MeshDispatchGroupSize(is_lines);
     }
 
-    /**
-     * 绘制批次：将使用相同几何数据的节点合并为一个批次
-     */
-    struct DrawBatch
-    {
-                uint32_t                first_instance = 0;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
-                uint32_t                instance_count = 0;     ///<此批次包含的实例数量
-                uint32_t                geometry_id = 0;
-
-        RenderItem::MeshDrawKey                draw_key;                     ///<行派生键（B3-iii：排序/聚簇/ICB 唯一判据）
-        const   graph::Geometry *              geometry = nullptr;           ///<几何体（asset 层；BDA 地址直取——行内填 addr_*）
-
-        void Set(const RenderItem::MeshDrawKey &key,
-                 const graph::Geometry *geom = nullptr)
-        {
-            draw_key = key;
-            geometry = geom;
-            geometry_id = key.geometry_id;
-        }
-    };//struct DrawBatch
-
-    using DrawBatchArray = std::vector<DrawBatch>;
 
     /**
      * ECS Pipeline材质渲染器
@@ -99,24 +77,11 @@ namespace hgl::ecs
         const MaterialBatch *cur_owner_batch = nullptr;     ///<当前材质批（间接 flush 取 icb_mesh_tasks）
         uint32_t cur_pass_index = RenderPassSlot::Main;     ///<T4c3c：当前 render pass（切片按 pass 取）
 
-        int first_indirect_draw_index;                      ///<首个间接绘制索引
-        uint32_t indirect_draw_count;                       ///<累积的间接绘制数量
-        uint32_t indirect_draw_command_offset = 0;          ///<本批次已提交的间接命令数（ICB 命令序号累计）
         /**
          * 处理间接渲染（mesh：一条 vkCmdDrawMeshTasksIndirectEXT multi-draw）
          */
         void ProcIndirectRender();
 
-        /**
-         * 绘制单个批次
-         * @param batch 绘制批次
-         * @param transform_buffer ECS Transform分配缓冲
-         * @param owner_batch 所属材质批（间接命令 + 参数表）
-         * @return 绘制是否成功
-         */
-        bool Draw(DrawBatch* batch,
-                  TransformAssignmentBuffer* transform_buffer,
-                  const MaterialBatch *owner_batch = nullptr);
 
     public:
         PipelineMaterialRenderer(graph::ShaderProgram* m, graph::Pipeline* p);
@@ -124,14 +89,12 @@ namespace hgl::ecs
         /**
          * 执行渲染
          * @param rcb 渲染命令缓冲
-         * @param batches 绘制批次数组
-         * @param batch_count 批次数量
          * @param transform_buffer ECS Transform分配缓冲（可为空）
          * @param owner_batch 所属材质批（间接命令 + 参数表）
          */
+        /// T4c4-3：CPU 绘制批（`DrawBatch`）已删 ⇒ 不再有 `batches`/`batch_count` 入参；
+        /// 批的绘制一律走 GPU 剔除输出的切片（接管批），无 CPU 兜底。
         void Render(graph::RenderCmdBuffer* rcb,
-                    const DrawBatchArray& batches,
-                    uint32_t batch_count,
                     TransformAssignmentBuffer* transform_buffer,
                     const MaterialBatch *owner_batch,
                     graph::RenderContext *render_context,

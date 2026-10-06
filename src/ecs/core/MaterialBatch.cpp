@@ -13,7 +13,6 @@ namespace hgl::ecs
         , static_count(0)
         , device(dev)
         , buffer_manager(bm)
-        , draw_batches_count(0)
         , renderer(nullptr)
     {
         if (key.shader_program && key.pipeline)
@@ -56,8 +55,6 @@ namespace hgl::ecs
     {
         items.clear();
         static_count = 0;
-        draw_batches.clear();
-        draw_batches_count = 0;
         texture_reference_base_addr = 0;
         icb_count_buffer = nullptr;
         // T4c3c：计数偏移随切片按 pass 存（`gpu_slice[p].count_buffer_offset`）

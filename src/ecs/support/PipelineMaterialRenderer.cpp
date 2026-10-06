@@ -28,8 +28,6 @@ namespace hgl::ecs
         : material(m)
         , pipeline(p)
         , cmd_buf(nullptr)
-        , first_indirect_draw_index(-1)
-        , indirect_draw_count(0)
     {
     }
 
@@ -45,12 +43,8 @@ namespace hgl::ecs
             // maxDrawCount = 切片容量，实际条数由本批 GPU 计数给出。
             // T4c3c：切片**按当前 pass** 取（批对象跨 pass 共享，两 pass 各有自己的块/扇区）。
             const MaterialBatch::GpuSlice &slice = cur_owner_batch->GetGpuSlice(cur_pass_index);
-            const int32_t  first = cur_owner_batch->gpu_driven_override
-                                 ? static_cast<int32_t>(slice.row_base)
-                                 : first_indirect_draw_index;
-            const uint32_t max_count = cur_owner_batch->gpu_driven_override
-                                 ? slice.capacity
-                                 : indirect_draw_count;
+            const int32_t  first     = static_cast<int32_t>(slice.row_base);
+            const uint32_t max_count = slice.capacity;
 
             // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：绘制侧读的槽/切片 —— 与派发侧对照
             static const bool s_flush_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
@@ -90,41 +84,9 @@ namespace hgl::ecs
         }
 
         // 重置间接绘制状态（命令序号累计到本批次已提交段）
-        first_indirect_draw_index = -1;
-        indirect_draw_command_offset += indirect_draw_count;
-        indirect_draw_count = 0;
-    }
-
-    bool PipelineMaterialRenderer::Draw( DrawBatch* batch,
-                                            TransformAssignmentBuffer* transform_buffer,
-                                            const MaterialBatch *owner_batch)
-    {
-        (void)transform_buffer;
-        (void)owner_batch;
-
-        // mesh 为唯一顶点路径（VS 已彻底删除）：顶点数据与 per-draw 参数全部经
-        // MeshDrawParams 行内 BDA 寻址——无 buffer 切换、无 per-draw descriptor
-        //（BDA 使能前 need_buffer_switch 会在 buffer 变化时 flush + 重绑 PerObject set，
-        //  该机制已随 7 表全 BDA 化退场）。所有 DrawBatch（含私有 VBO）累积为同一条
-        //  vkCmdDrawMeshTasksIndirectEXT multi-draw：命令序 = DrawBatch 序 = 参数行序
-        // （gl_DrawID 1:1），批末由 Render 统一 flush。
-        if (material_is_mesh)
-        {
-            if (indirect_draw_count == 0)
-            {
-                first_indirect_draw_index =
-                    static_cast<int32_t>(indirect_draw_command_offset);
-            }
-
-            ++indirect_draw_count;
-        }
-
-        return true;
     }
 
     void PipelineMaterialRenderer::Render(graph::RenderCmdBuffer* rcb,
-                                          const DrawBatchArray& batches,
-                                          uint32_t batch_count,
                                           TransformAssignmentBuffer* transform_buffer,
                                           const MaterialBatch *owner_batch,
                                           graph::RenderContext *render_context,
@@ -137,9 +99,6 @@ namespace hgl::ecs
             GLogError("[PipelineMaterialRenderer::Render] No render command buffer");
             return;
         }
-
-        if (batch_count <= 0)
-            return;
 
         cmd_buf = rcb;
 
@@ -159,9 +118,6 @@ namespace hgl::ecs
         }
 
         // 重置间接命令状态（每批次从 0 开始；本批所有 DrawBatch 累积后一次 flush）
-        indirect_draw_count = 0;
-        indirect_draw_command_offset = 0;
-        first_indirect_draw_index = -1;
         cur_owner_batch = owner_batch;
         cur_pass_index = pass_index;   // T4c3c：切片/计数按本 pass 取
 
@@ -234,24 +190,8 @@ namespace hgl::ecs
         // 遍历绘制批次：全部累积命令（BDA 后无 per-draw descriptor/set——BDA 化前
         // 的 per-draw 独立 PerObject MP 池机制已随 7 表全 BDA 退场）
         //
-        // A6-d T4：**接管批跳过这一圈**——`Draw()` 只累计 `indirect_draw_count`（CPU 命令条数），
-        // 而接管批的间接命令与条数都由 GPU gather 写（切片 + 每批计数）⇒ 这圈对它是纯浪费。
-        // 未被接管的批（guard 拒）仍走 CPU 累积 ⇒ 兜底路径不变。
-        if (!(owner_batch && owner_batch->gpu_driven_override))
-        {
-            DrawBatch* batch = const_cast<DrawBatch*>(batches.data());
-
-            for (uint32_t i = 0; i < batch_count; i++)
-            {
-                Draw(batch, transform_buffer, owner_batch);
-                ++batch;
-            }
-        }
-
-        // 批末统一 flush 一条 vkCmdDrawMeshTasksIndirectEXT（multi-draw）
-        // A6-d T4：门不能只看 CPU 计数——接管批跳过 CPU 累积后 `indirect_draw_count` 恒 0，
-        // 而它的 first/max_count 取自批自身（gpu_row_base / gpu_capacity）⇒ 补上接管批这一支。
-        if (indirect_draw_count || (owner_batch && owner_batch->gpu_driven_override))
+        // T4c4-3：CPU 绘制批已删 ⇒ 这里只剩接管批的 flush（间接命令与条数都由 GPU gather 写）。
+        if (owner_batch && owner_batch->gpu_driven_override)
         {
             ProcIndirectRender();
         }

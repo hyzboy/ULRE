@@ -2,7 +2,6 @@
 #include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/RenderStrategyParity.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
-#include<hgl/ecs/support/DrawItemCompaction.h>
 #include<hgl/ecs/support/BoundingVolumeCull.h>
 #include<source_location>
 #include<cmath>
@@ -104,7 +103,6 @@ namespace hgl::ecs
         if (prepared_frame_index != frame_index)
             prepared_frame_index = frame_index;
 
-        last_compaction_stats = CompactionStats{};
         if (world)
         {
             if (auto *id_storage = world->GetDrawItemIDStorage())
@@ -381,163 +379,6 @@ namespace hgl::ecs
         return gc ? gc->GetBufferManager() : nullptr;
     }
 
-    void PrimitiveBatchPipeline::BuildBatches(MaterialBatch& batch, const uint32_t base_instance)
-    {
-        const size_t count = batch.items.size();
-        if (count == 0)
-        {
-            batch.draw_batches_count = 0;
-            batch.draw_batches.clear();
-            return;
-        }
-
-        if (!device)
-        {
-            batch.draw_batches_count = 0;
-            batch.draw_batches.clear();
-            return;
-        }
-
-        // T4c4：CPU 侧自有 ICB 路径已删（前提：无批走 CPU 绘制）。接管钩子把 icb_mesh_tasks
-        // 指向剔除输出的共享 ICB 并置 own_* = false；本函数只负责批内 CPU 侧行表的整理。
-
-        batch.draw_batches.clear();
-        batch.draw_batches.reserve(count);
-
-        auto *gc = world ? world->GetGraphicsContext() : nullptr;
-        auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-        auto *dev = world ? world->GetGPUDevice() : nullptr;
-        auto *id_storage = world ? world->GetDrawItemIDStorage() : nullptr;
-
-        size_t i = 0;
-        while (i < count)
-        {
-            RenderItem *first_item = batch.items[i];
-            const RenderItem::MeshDrawKey draw_key = first_item
-                ? first_item->draw_key
-                : RenderItem::MeshDrawKey{};
-
-            // B3-iii：无行键 = 无几何（旧判据是"两份 CPU 副本都在"）⇒ 不进批
-            if (!draw_key.HasGeometry())
-            {
-                ++i;
-                continue;
-            }
-
-            const graph::Geometry *geometry = nullptr;
-            if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(first_item))
-            {
-                const GeometryData *geometry_comp = nullptr;
-                if (Entity *owner = first_item->GetEntity())
-                {
-                    if (ECSContext *context = owner->GetContext())
-                        geometry_comp = context->GetGeometryData(owner);
-                }
-                if (geometry_comp && geometry_comp->GetPrimitiveAsset())
-                    geometry = geometry_comp->GetPrimitiveAsset()->GetGeometry();
-            }
-
-            // 同簇判据 = **行键相等**（B3-iii：旧实现按两份每实体 CPU 副本逐字段比较，
-            // 含 VAB 列表与 ibo；同 asset ⇒ 同一行 ⇒ 必然同键，判定等价且不再需要那两份副本）。
-            //
-            // ⚠ GPU-Driven 批次例外（**必须每项自成簇**）：这类批次的绘制指令、L2W 索引槽、
-            // mesh 命令行都由 GPU/示例侧的表逐项给出（第 i 项 ↔ 第 i 行/第 i 槽一一对应），
-            // 合并成多实例簇会让整簇共用一个首实例 ⇒ 屏幕上只剩 1 个实例的变换
-            // （2026-10-02 实测：ComputeFrustumCull 64 个立方体只显示 1 个）。
-            size_t cluster_end = i;
-            while (cluster_end + 1 < count)
-            {
-                RenderItem *next_item = batch.items[cluster_end + 1];
-
-                if (batch.gpu_driven_override)
-                    break;
-
-                if (!next_item || !(next_item->draw_key == draw_key))
-                    break;
-
-                ++cluster_end;
-            }
-
-            const size_t cluster_size = cluster_end - i + 1;
-
-            bool has_valid_4id = true;
-            for (size_t k = i; k <= cluster_end; ++k)
-            {
-                RenderItem *item_k = batch.items[k];
-                if (!item_k || item_k->GetRenderItemHandle() == INVALID_RENDER_ITEM_HANDLE)
-                {
-                    has_valid_4id = false;
-                    break;
-                }
-            }
-
-            if (has_valid_4id && !batch.gpu_driven_override)
-            {
-                hgl::ValueArray<RenderItemHandle> cluster_handles;
-                    for (size_t k = i; k <= cluster_end; ++k)
-                        cluster_handles.Add(batch.items[k]->GetRenderItemHandle());
-
-                CompactionStats stats{};
-                hgl::ValueArray<CompactedDrawRange> compacted_ranges;
-                CompactRenderItemHandles(
-                    cluster_handles.GetData(),
-                    static_cast<uint32_t>(cluster_handles.GetCount()),
-                    id_storage,
-                    compacted_ranges,
-                    &stats);
-
-                last_compaction_stats.total_input_items     += stats.total_input_items;
-                last_compaction_stats.direct_ranges         += stats.direct_ranges;
-                last_compaction_stats.direct_items          += stats.direct_items;
-                last_compaction_stats.indexed_ranges        += stats.indexed_ranges;
-                last_compaction_stats.indexed_items         += stats.indexed_items;
-                last_compaction_stats.bytes_saved_over_full += stats.bytes_saved_over_full;
-
-                if (batch.uses_render_item_resolve)
-                {
-                    for (int r = 0; r < compacted_ranges.GetCount(); ++r)
-                    {
-                        const auto &range = compacted_ranges[r];
-                        DrawBatch db{};
-                        db.first_instance = range.first_instance;
-                        db.instance_count = range.instance_count;
-                        db.Set(draw_key, geometry);
-                        batch.draw_batches.push_back(db);
-                    }
-                }
-                else
-                {
-                    DrawBatch db{};
-                    db.first_instance = base_instance + static_cast<uint32_t>(i);
-                    db.instance_count = 0;
-                    for (size_t k = i; k <= cluster_end; ++k)
-                    {
-                        ++db.instance_count;
-                    }
-                    db.Set(draw_key, geometry);
-                    batch.draw_batches.push_back(db);
-                }
-            }
-            else
-            {
-                DrawBatch db{};
-                db.first_instance = base_instance + static_cast<uint32_t>(i);
-                db.instance_count = 0;
-                for (size_t k = i; k <= cluster_end; ++k)
-                {
-                    ++db.instance_count;
-                }
-                db.Set(draw_key, geometry);
-                batch.draw_batches.push_back(db);
-            }
-
-            i = cluster_end + 1;
-        }
-
-        batch.draw_batches_count = static_cast<uint32_t>(batch.draw_batches.size());
-
-    }
-
 
     void PrimitiveBatchPipeline::EnsureMeshDrawParams(MaterialBatch& batch)
     {
@@ -638,58 +479,9 @@ namespace hgl::ecs
             }
         }
 
-        SortBatchItems(batch);
         EnsureBatchIndexRows(batch);
         EnsureMeshDrawParams(batch);
-        BuildBatches(batch, 0);
         WriteBatchIndexRows(batch);
-    }
-
-    void PrimitiveBatchPipeline::SortBatchItems(MaterialBatch& batch)
-    {
-        if (batch.gpu_driven_override)
-            return;
-
-        std::vector<RenderItem*> static_items;
-        std::vector<RenderItem*> movable_items;
-        static_items.reserve(batch.items.size());
-        movable_items.reserve(batch.items.size());
-
-        for (auto *item : batch.items)
-        {
-            if (!item)
-                continue;
-
-            auto transform = item->GetTransform();
-            if (transform.IsValid() && !transform.IsMovable())
-                static_items.push_back(item);
-            else
-                movable_items.push_back(item);
-        }
-
-        std::sort(static_items.begin(), static_items.end(),
-            [](const RenderItem* a, const RenderItem* b) {
-                return a->Compare(*b) < 0;
-            });
-
-        std::sort(movable_items.begin(), movable_items.end(),
-            [](const RenderItem* a, const RenderItem* b) {
-                return a->Compare(*b) < 0;
-            });
-
-        batch.items.clear();
-        batch.items.reserve(static_items.size() + movable_items.size());
-        for (auto *item : static_items)
-            batch.items.push_back(item);
-        for (auto *item : movable_items)
-            batch.items.push_back(item);
-
-        for (size_t i = 0; i < batch.items.size(); ++i)
-        {
-            batch.items[i]->index = i;
-        }
-
-        batch.static_count = static_cast<uint32_t>(static_items.size());
     }
 
     void PrimitiveBatchPipeline::EnsureBatchIndexRows(MaterialBatch& batch)

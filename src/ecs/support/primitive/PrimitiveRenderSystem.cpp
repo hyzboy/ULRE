@@ -76,16 +76,11 @@ namespace hgl::ecs
             if (!key.shader_program || !key.pipeline)
                 continue;
 
-            if (batch->draw_batches_count == 0)
-                continue;
-
             auto* renderer = batch->renderer;
             if (!renderer)
                 continue;
 
             renderer->Render(cmdBuffer,
-                             batch->draw_batches,
-                             batch->draw_batches_count,
                              batch->transform_buffer,
                              batch,
                              context->GetRenderContext(),

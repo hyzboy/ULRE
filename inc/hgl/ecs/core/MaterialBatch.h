@@ -106,8 +106,6 @@ namespace hgl::ecs
 
         bool                                  debug_blocks_logged = false;                       ///<[ArenaDebug] 首次行表诊断日志已输出                      ///<批次级descriptor绑定是否有效
 
-        DrawBatchArray                          draw_batches;                               ///<绘制批次数组
-        uint32_t                                draw_batches_count      = 0;                ///<有效批次数量
 
         PipelineMaterialRenderer *           renderer                = nullptr;          ///<ECS渲染器实例
 
