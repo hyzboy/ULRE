@@ -483,6 +483,9 @@ namespace hgl::ecs
                             size_t(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow));
                 batch_info_buffer_->Unmap();
             }
+
+            // T4c-ini-2：记下"本槽的布局已写过"（供下一次轮到该槽时判定"派发已见过它"）
+            slot_layout_written_[slot] = true;
         }
     }
 

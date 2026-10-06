@@ -1351,12 +1351,28 @@ namespace hgl::ecs
         // 分区/标签落设备（batch_count = 接管批数）
         gpu_cull->EndBatchLayout(0u /*pass: 主帧*/, pending_count);
 
+        // T4c-ini-2：本帧槽的布局**此前是否已被写过**？未写过 ⇒ 本帧的派发必然看到初值
+        //（`capacity == 0`）⇒ 这帧不接管（批量走 CPU 账画，画面完整）；布局本轮已写，
+        // 下轮该槽就有可用布局。
+        const uint32_t frame_slot_now = (world ? world->GetFrameIndex() : 0u) % HGL_FRAME_SLOT_TOTAL;
+        const bool     slot_ready     = gpu_cull->IsSlotLayoutWritten(frame_slot_now);
+
         uint32_t engaged = 0;
 
-        for (uint32_t i = 0; i < pending_count; ++i)
+        if (!slot_ready)
         {
-            if (gpu_cull->ApplyGPUCullOverrideHook(pending[i], pending_index[i]))
-                ++engaged;
+            if (s_takeover_trace)
+                GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=槽首写（槽=%u 此前未写过 ⇒ 本帧不接管，走 CPU 账）",
+                         world ? world->GetFrameIndex() : 0u,
+                         (world && world->IsCurrentPassShadow()) ? 1u : 0u, frame_slot_now);
+        }
+        else
+        {
+            for (uint32_t i = 0; i < pending_count; ++i)
+            {
+                if (gpu_cull->ApplyGPUCullOverrideHook(pending[i], pending_index[i]))
+                    ++engaged;
+            }
         }
 
         if (engaged == 0)
@@ -1373,9 +1389,10 @@ namespace hgl::ecs
         // 正向判据日志（一次性）：证明"绘制真走 gather 表"（T4b 起已无 CPU 账可退，
         // 本日志仍是"接管真发生"的正面证据）。逐批计数由台架在 cull 之后读。
         if (s_takeover_trace)
-            GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=ok 几何批=%u 辖批=%u items=%u arena_rows=%u "
+            GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=ok 槽=%u 就绪=%d 几何批=%u 辖批=%u items=%u arena_rows=%u "
                      "标签项=%u 布局容量和=%u（应相等）",
-                     world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, geometry_batches,
+                     world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u,
+                     frame_slot_now, slot_ready ? 1 : 0, geometry_batches,
                      pending_count, total_items, row_cursor, tagged_items, total_items);
 
         static bool s_engaged_logged = false;

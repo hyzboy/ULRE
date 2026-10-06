@@ -51,6 +51,10 @@ namespace hgl::ecs
         /// 纯 CPU 计数（不等 GPU）。
         bool IsDispatchSettled() const { return dispatch_count_ >= 2; }
 
+        /// 该帧槽的布局**在此前某帧**是否已被写过（见 `slot_layout_written_`）。
+        bool IsSlotLayoutWritten(uint32_t frame_slot) const
+        { return slot_layout_written_[frame_slot % HGL_FRAME_SLOT_TOTAL]; }
+
         // 获取输出 buffer（供 MaterialBatch 使用）
         graph::DeviceBuffer* GetVisibleIndicesBuffer() const { return visible_indices_buffer_; }
         graph::IndirectMeshTaskBuffer* GetIndirectCommandsBuffer() const { return indirect_commands_buffer_; }
@@ -281,6 +285,12 @@ namespace hgl::ecs
         // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT，Begin 合法）。
         graph::ComputeCmdBuffer *cull_cmds_[HGL_FRAME_SLOT_TOTAL] = {};
         uint32_t dispatch_count_ = 0;   ///< 成功派发帧数（IsDispatchSettled 判据）
+
+        /// 各帧槽的批布局**是否已被写过**（T4c-ini-2）。
+        /// 用途：布局只在"轮到该槽的那一帧"写，而剔除派发在**同一帧**读它 ⇒ 首次写入的那一帧，
+        /// 派发必然看到初值（`capacity == 0`）⇒ 那一帧若仍让批接管，主帧 count 就是 0（物体不画）。
+        /// 所以：接管前查"该槽此前是否已写过"，未写过 ⇒ 本帧只写布局、不接管（回落 CPU 账）。
+        bool slot_layout_written_[HGL_FRAME_SLOT_TOTAL] = {};
 
         // 设备地址（BDA）
         uint64_t visible_indices_addr_ = 0;

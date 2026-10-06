@@ -44,6 +44,8 @@
 #include <vector>
 #include <cmath>
 
+#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
@@ -688,6 +690,40 @@ public:
     void Tick(double delta) override
     {
         WorkObject::Tick(delta);
+
+        // ── 帧摘要自检（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）──────────────
+        // **装在第 1 帧**：本示例曾出现"第 1 帧接收阴影的平面不画"（帧槽布局未就绪的启动空洞），
+        // 判据必须覆盖启动帧，而不是只看稳态（第 8 帧）。
+        // `ATS_SELFCHECK=1` ⇒ 第 1 帧读回颜色靶比对常量（PASS 退 0 / FAIL 退 1）；
+        // `FRAMEDIGEST_PERFRAME=N` ⇒ 逐帧打摘要、N 帧后按"所有帧一致"收尾。
+        {
+            static const bool s_selfcheck = (getenv("ATS_SELFCHECK") != nullptr);
+            static const bool s_perframe  = (getenv("FRAMEDIGEST_PERFRAME") != nullptr);
+            static uint32_t   s_frame = 0;
+
+            static constexpr uint32_t kSelfW           = 1280;
+            static constexpr uint32_t kSelfH           = 720;
+            static constexpr uint32_t kSelfMinDistinct = 2;
+            static constexpr uint64_t kSelfFNV         = 0x21AB6CF6CBB6BA49ull;   // 第 1 帧实测（覆盖启动帧的判据）
+
+            if ((s_selfcheck || s_perframe) && ++s_frame == 1)
+            {
+                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_context ? ecs_context->GetRenderTarget() : nullptr );
+                if (!rt)
+                {
+                    printf("[ATSSELF] no swapchain RT\n");
+                    std::exit(2);
+                }
+
+                ulre_example::FrameDigest expect;
+                expect.width                = kSelfW;
+                expect.height               = kSelfH;
+                expect.distinct_byte_values = kSelfMinDistinct;
+                expect.fnv1a64              = kSelfFNV;
+
+                ulre_example::InstallFrameDigestHook(rt, expect, "ATSSELF");
+            }
+        }
 
         // 深度图直接读回取证（第 45 帧，一次性）+ D1 契约自判
         if (!depth_dumped)
