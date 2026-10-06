@@ -650,6 +650,13 @@ namespace hgl::ecs
         pc.batch_counter_addr = batch_counter_addr_ + VkDeviceSize(batch_slot)
                                 * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
         pc.batch_count        = batch_count_;
+
+        // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：派发当帧用的槽 —— 与接管侧（绘制读的槽）对照，
+        // 定位"派发写的槽 ≠ 绘制读的槽"（帧内切 RT 时槽会变，而派发每帧只跑一次）。
+        static const bool s_dispatch_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
+        if (s_dispatch_trace)
+            GLogInfo("[T3i][TRACE] dispatch frame_slot=%u(槽=%u) 批=%u 相机行=%u",
+                     context_->GetFrameIndex(), batch_slot, batch_count_, context_->GetActiveCameraRow());
         pc.batch_block_stride = kBatchBlockStride;
 
         cmd->Begin();

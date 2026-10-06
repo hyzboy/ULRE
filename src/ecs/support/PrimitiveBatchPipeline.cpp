@@ -1211,6 +1211,9 @@ namespace hgl::ecs
         uint32_t pending_count = 0;
 
         uint32_t next_index = 0;
+        // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：逐帧/逐 pass 记录接管评估的出口与关键量——
+        // "某帧 count=0"这类症状必须靠它定位（帧摘要只看一张图，看不见帧间差异）。
+        static const bool s_takeover_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
         uint32_t row_cursor = 0;   // T4c3 回退：恒主帧扇区（阴影扇区待重启）
         uint32_t total_items = 0;
         uint32_t geometry_batches = 0;
@@ -1322,6 +1325,10 @@ namespace hgl::ecs
         {
             if (tags)
                 gpu_cull->EndBatchLayout(0u, 0);   // 无接管批 ⇒ batch_count=0（cull 只出计数）
+            if (s_takeover_trace)
+                GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=pending0 几何批=%u 辖批=%u items=%u arena_rows=%u",
+                         world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, "pending0",
+                         geometry_batches, pending_count, total_items, row_cursor);
             return;
         }
 
@@ -1330,6 +1337,10 @@ namespace hgl::ecs
         if (!gpu_cull->IsDispatchSettled())
         {
             gpu_cull->EndBatchLayout(0u, 0);
+            if (s_takeover_trace)
+                GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=undsettled 几何批=%u 辖批=%u items=%u arena_rows=%u",
+                         world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, "undsettled",
+                         geometry_batches, pending_count, total_items, row_cursor);
             return;
         }
 
@@ -1357,6 +1368,11 @@ namespace hgl::ecs
 
         // 正向判据日志（一次性）：证明"绘制真走 gather 表"（T4b 起已无 CPU 账可退，
         // 本日志仍是"接管真发生"的正面证据）。逐批计数由台架在 cull 之后读。
+        if (s_takeover_trace)
+            GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=ok 几何批=%u 辖批=%u items=%u arena_rows=%u",
+                     world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, geometry_batches,
+                     pending_count, total_items, row_cursor);
+
         static bool s_engaged_logged = false;
         if (!s_engaged_logged)
         {

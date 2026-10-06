@@ -50,6 +50,14 @@ namespace hgl::ecs
                                  ? cur_owner_batch->gpu_capacity
                                  : indirect_draw_count;
 
+            // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：绘制侧读的槽/切片 —— 与派发侧对照
+            static const bool s_flush_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
+            if (s_flush_trace)
+                // 槽 = 偏移 / 2056（每槽 2 pass × 257 行 × 4 B）；此处只打原始偏移，离线换算
+                GLogInfo("[T3i][TRACE] flush first=%d max=%u gpu_driven=%d 计数偏移=%u",
+                         first, max_count, cur_owner_batch->gpu_driven_override ? 1 : 0,
+                         cur_owner_batch->icb_count_buffer_offset);
+
             static bool s_logged_once = false;
             if (!s_logged_once)
             {
