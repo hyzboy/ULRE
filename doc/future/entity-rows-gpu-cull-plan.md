@@ -1657,3 +1657,37 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
 `VS_DEBUGGER_WORKING_DIRECTORY`（仅 VS 调试器生效），**未设 `ctest` 用的 `WORKING_DIRECTORY`**
 ⇒ 凡按相对路径读 `ShaderLibrary/...` 的测试在 `ctest` 下必红（实测 CSM 契约与
 TransformFlatStorage 从仓库根跑均 RC=0，经 ctest 跑则 FAIL）。
+
+### §11.11 负结果：每图一帧全空（非阴影示例同样命中）—— 环假说不成立
+
+**症状（用户报）**：不只 ATS/Cascade，**所有走 GPU 剔除的示例**每 3 帧有 1 帧整幅空白。
+用**横向判据**（冻结取景下三张图的 FNV 必须彼此相等）首次照出——此前判据都是"单帧对单值"，
+结构上抓不到"三张图内容不同"。
+
+**实测**：PBRSpheres / AlphaModes / CoverageVariants / LoadScene / PlaneGrid3D 的
+图 0/图 2 均等于各自**已知基线**，图 1 全空（`distinct=2~4`）；且 `LoadScene` 与
+`PlaneGrid3D` 的图 1 FNV **完全相同**（`0x16F0718FCC800383`）⇒ 纯清屏、与场景无关。
+Cascade 图 1 是 `distinct=256` 的满图（另一种形态）。
+
+**已排除（全部实测）**：
+- 就绪门：坏帧上 `出口=ok 就绪=1` ⇒ 接管确已发生；
+- 派发槽号 / 绘制计数偏移：逐图正确对应（0 / 2056 / 4112），用户 RenderDoc 佐证
+  `countBufferOffset` 正确、`maxDrawCount=100` 非零 ⇒ 布局与寻址正确；
+- 标签表：写标签的槽 == 派发读标签的槽（逐帧一致），且标签值合法（`0x00000000`，非 `0xFFFFFFFF`）；
+- 实体行表：`Context.cpp:1503` 明确写进**每一份**；
+- world addresses：`:1461` 初始化时**为每个槽都写**；
+- 可见性：CPU↔GPU 对拍 `match`、`不一致=0` ⇒ 着色器认得出实体。
+
+**假说 A（L2W 环被渲染目标切换推进）—— 已实施并实测否定**：
+`Context::SetFrameIndex` 会被主帧/离屏各调一次（`SetFrameIndex(4)`），
+而环的帧号决定动态行基址（`RingLayout::GetBaseIndex = static + frame × dynamic`）。
+把环改为"只跟主帧序号推进"后重建（改动确已进二进制：exe 时间戳晚于源码、0 错误）——
+**六台架的图 1 FNV 与修复前逐字节相同** ⇒ 环与此症状无关，改动已回退。
+
+**下一个该查的方向**（供接手）：那一帧"只清屏"说明**绘制没画任何东西**，
+而可见性/标签/布局/寻址均已验证正确 ⇒ 矛盾点收敛到
+**"cull 写入的槽"与"draw 读取的槽"在同一帧内的时序**：
+cull 在 `RenderFrameSync`（帧末）跑并**同时清理本槽计数**，而 draw 发生在其之前 ——
+即 draw 读的是"上一次轮到该槽"的计数。当某槽的写入与清理**跨帧错位**时，
+draw 就会读到已清零的值。接手判据建议：在该槽的 cull 命令与 draw 之间插入
+"计数回读 + 帧号"记录（我的 `printf` 探针法已验证可用）。
