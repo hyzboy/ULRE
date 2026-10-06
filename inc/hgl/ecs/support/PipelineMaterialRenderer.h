@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include <hgl/ecs/support/RenderPassSlot.h>
+
 #include<hgl/vk/VK.h>
 #include <hgl/ecs/core/RenderItem.h>
 #include<hgl/mtl/MeshShaderLimits.h>
@@ -95,6 +97,7 @@ namespace hgl::ecs
 
         bool material_is_mesh = false;                      ///<材质是否含 mesh stage（间接 flush 分派）
         const MaterialBatch *cur_owner_batch = nullptr;     ///<当前材质批（间接 flush 取 icb_mesh_tasks）
+        uint32_t cur_pass_index = RenderPassSlot::Main;     ///<T4c3c：当前 render pass（切片按 pass 取）
 
         int first_indirect_draw_index;                      ///<首个间接绘制索引
         uint32_t indirect_draw_count;                       ///<累积的间接绘制数量
@@ -130,8 +133,9 @@ namespace hgl::ecs
                     const DrawBatchArray& batches,
                     uint32_t batch_count,
                     TransformAssignmentBuffer* transform_buffer,
-                    const MaterialBatch *owner_batch = nullptr,
-                    graph::RenderContext *render_context = nullptr,
-                    uint32_t camera_row = 0);
+                    const MaterialBatch *owner_batch,
+                    graph::RenderContext *render_context,
+                    uint32_t camera_row,
+                    uint32_t pass_index);   ///<T4c3c：本帧本 pass（切片/计数按 pass 取）
     };
 }//namespace hgl::ecs

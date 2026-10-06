@@ -60,7 +60,7 @@ namespace hgl::ecs
         draw_batches_count = 0;
         texture_reference_base_addr = 0;
         icb_count_buffer = nullptr;
-        icb_count_buffer_offset = 0;
+        // T4c3c：计数偏移随切片按 pass 存（`gpu_slice[p].count_buffer_offset`）
 
         if (!own_icb_mesh_tasks)
             icb_mesh_tasks = nullptr;
@@ -73,8 +73,12 @@ namespace hgl::ecs
 
         l2w_buffer = nullptr;
         gpu_driven_override = false;
-        gpu_row_base = 0;      // T3i：切片随 override 作废（下帧重新装配）
-        gpu_capacity = 0;
+        for (uint32_t p = 0; p < RenderPassSlot::Count; ++p)   // T4c3c：切片随 override 作废（两 pass 同清）
+        {
+            gpu_slice[p].row_base            = 0;
+            gpu_slice[p].capacity            = 0;
+            gpu_slice[p].count_buffer_offset = 0;
+        }
         uses_render_item_resolve = false;
         own_icb_mesh_tasks = true;
         own_mesh_draw_params = true;

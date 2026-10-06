@@ -194,7 +194,9 @@ namespace hgl::ecs
         /// T3i：逐批调用（`batch_index` = 该批在**本帧分区表**中的槽号，由 guard 装配时
         /// 分配并写入标签/分区；`row_base`/`capacity` 从分区表取，口径唯一）。
         /// @return true = 本帧该批由 GPU gather 输出接管绘制。
-        bool ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index);
+        /// T4c3c：`pass_index` 决定切片落**哪个块/扇区**（`BatchBlockBase(pass)`），
+        /// 以及写进批的**哪一份**切片（`MaterialBatch::gpu_slice[pass]`）。
+        bool ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index, uint32_t pass_index);
 
         /// guard 的**本帧有效**判定：collect 的 CPU 剔除跳不跳全看它（接管与 CPU 账
         /// 必须按同一帧的 guard 结果二选一，否则 = 双份账/漏帧）。

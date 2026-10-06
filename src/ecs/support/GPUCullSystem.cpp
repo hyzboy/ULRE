@@ -737,7 +737,8 @@ namespace hgl::ecs
             s_dispatch_perf.Add("gpu_dispatch", GetUptimeUs() - t_dispatch0, device_);
     }
 
-    bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index)
+    bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index,
+                                                 uint32_t pass_index)
     {
         // 调用前提（guard 已在 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 核完）：
         // opt-in 开 / gather 输出与批行表**同容量契约** / 全 mesh / …
@@ -750,7 +751,7 @@ namespace hgl::ecs
         if (batch_index >= kMaxBatches || batch_count_ == 0)
             return false;
 
-        const BatchInfoRow &info = batch_info_staging_[BatchBlockBase(0u) + batch_index];
+        const BatchInfoRow &info = batch_info_staging_[BatchBlockBase(pass_index) + batch_index];
 
         // 切片容量必须容得下本批全部 item（写行最坏情况 = 全可见）：不等 ⇒ 口径冲突
         if (batch->items.size() > info.capacity)
@@ -812,15 +813,20 @@ namespace hgl::ecs
         batch->own_l2w_index                  = false;
         batch->own_material_data_rows         = false;
 
-        // T3i：切片信息（绘制侧的 maxDrawCount / 地址偏移全从这里取）
-        batch->gpu_row_base                   = info.row_base;
-        batch->gpu_capacity                   = info.capacity;
+        // T3i / T4c3c：切片信息（绘制侧的 maxDrawCount / 地址偏移全从这里取）——
+        // 写进**本 pass 那一份**，不覆盖另一 pass（批对象跨 pass 共享）。
+        {
+            MaterialBatch::GpuSlice &slice = batch->gpu_slice[pass_index];
+            slice.row_base            = info.row_base;
+            slice.capacity            = info.capacity;
+            slice.count_buffer_offset = GetBatchCounterByteOffset(pass_index, batch_index);
+        }
 
         batch->icb_mesh_tasks                 = indirect_commands_buffer_;
         // 计数 = **本批**的 GPU 原子计数（末位 overflow 槽不在此列；maxDrawCount 取
         // 切片容量，实际条数由该计数给出 ⇒ GPU-Driven 动态计数口径不变）
         batch->icb_count_buffer               = batch_counter_buffer_;
-        batch->icb_count_buffer_offset        = GetBatchCounterByteOffset(0u, batch_index);
+        // 计数偏移随切片按 pass 存（见上）⇒ 这里不再单写
         batch->mesh_draw_params_buffer        = cmds_out_buffer_;
         batch->mesh_draw_params_capacity      = info.capacity;
         batch->l2w_index_buffer               = l2w_out_buffer_;

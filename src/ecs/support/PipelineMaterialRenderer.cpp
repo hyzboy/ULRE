@@ -41,22 +41,24 @@ namespace hgl::ecs
         {
             // T3i（③ 多批）：GPU 托管批的段偏移/段长 = **本批切片**（CPU 侧不再写 ICB
             // 与行表 ⇒ `first_indirect_draw_index`/`indirect_draw_count` 只是 items 计数，
-            // 不是段位置）。段偏移 = `gpu_row_base × 12B`（ICB 是共享竞技场）；
+            // 不是段位置）。段偏移 = `row_base × 12B`（ICB 是共享竞技场）；
             // maxDrawCount = 切片容量，实际条数由本批 GPU 计数给出。
+            // T4c3c：切片**按当前 pass** 取（批对象跨 pass 共享，两 pass 各有自己的块/扇区）。
+            const MaterialBatch::GpuSlice &slice = cur_owner_batch->GetGpuSlice(cur_pass_index);
             const int32_t  first = cur_owner_batch->gpu_driven_override
-                                 ? static_cast<int32_t>(cur_owner_batch->gpu_row_base)
+                                 ? static_cast<int32_t>(slice.row_base)
                                  : first_indirect_draw_index;
             const uint32_t max_count = cur_owner_batch->gpu_driven_override
-                                 ? cur_owner_batch->gpu_capacity
+                                 ? slice.capacity
                                  : indirect_draw_count;
 
             // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：绘制侧读的槽/切片 —— 与派发侧对照
             static const bool s_flush_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
             if (s_flush_trace)
                 // 槽 = 偏移 / 2056（每槽 2 pass × 257 行 × 4 B）；此处只打原始偏移，离线换算
-                GLogInfo("[T3i][TRACE] flush first=%d max=%u gpu_driven=%d 计数偏移=%u",
+                GLogInfo("[T3i][TRACE] flush first=%d max=%u gpu_driven=%d 计数偏移=%u pass=%u",
                          first, max_count, cur_owner_batch->gpu_driven_override ? 1 : 0,
-                         cur_owner_batch->icb_count_buffer_offset);
+                         slice.count_buffer_offset, cur_pass_index);
 
             static bool s_logged_once = false;
             if (!s_logged_once)
@@ -66,7 +68,7 @@ namespace hgl::ecs
                          u8"（gpu_driven=%d row_base=%u capacity=%u）",
                          first, max_count,
                          cur_owner_batch->gpu_driven_override ? 1 : 0,
-                         cur_owner_batch->gpu_row_base, cur_owner_batch->gpu_capacity);
+                         slice.row_base, slice.capacity);
             }
 
             if (cur_owner_batch->icb_count_buffer)
@@ -75,7 +77,7 @@ namespace hgl::ecs
                     cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
                     static_cast<VkDeviceSize>(first) * sizeof(VkDrawMeshTasksIndirectCommandEXT),
                     cur_owner_batch->icb_count_buffer->GetBuffer(),
-                    cur_owner_batch->icb_count_buffer_offset,
+                    slice.count_buffer_offset,
                     max_count);
             }
             else
@@ -126,7 +128,8 @@ namespace hgl::ecs
                                           TransformAssignmentBuffer* transform_buffer,
                                           const MaterialBatch *owner_batch,
                                           graph::RenderContext *render_context,
-                                          uint32_t camera_row)
+                                          uint32_t camera_row,
+                                          uint32_t pass_index)
     {
         // 前置条件检查
         if (!rcb)
@@ -160,6 +163,7 @@ namespace hgl::ecs
         indirect_draw_command_offset = 0;
         first_indirect_draw_index = -1;
         cur_owner_batch = owner_batch;
+        cur_pass_index = pass_index;   // T4c3c：切片/计数按本 pass 取
 
         // mesh stage 判定（批级一次——push constant 与间接 flush 分派共用）
         material_is_mesh = false;
@@ -217,9 +221,10 @@ namespace hgl::ecs
                 // T3i（③ 多批）：本批切片起点 ⇒ 三表 push 地址各加 `row_base × 行字节`
                 //（cmds 8B / l2w_index 4B / mtl 16B；row_base % 4 == 0 ⇒ 三者皆 16B 对齐，
                 //  与 shader 侧 buffer_reference_align 声明相符）。非托管批 row_base=0。
-                VkDeviceSize(owner_batch->gpu_row_base) * 8u,
-                VkDeviceSize(owner_batch->gpu_row_base) * 4u,
-                VkDeviceSize(owner_batch->gpu_row_base) * 16u);
+                // T4c3c：切片按当前 pass 取。
+                VkDeviceSize(owner_batch->GetGpuSlice(cur_pass_index).row_base) * 8u,
+                VkDeviceSize(owner_batch->GetGpuSlice(cur_pass_index).row_base) * 4u,
+                VkDeviceSize(owner_batch->GetGpuSlice(cur_pass_index).row_base) * 16u);
         }
 
         // 批次级描述符覆盖（batch_descriptor_mp）与材质级绑定（BindDescriptorSets(material)）

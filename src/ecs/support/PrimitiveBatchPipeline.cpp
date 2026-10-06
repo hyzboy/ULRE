@@ -1167,14 +1167,20 @@ namespace hgl::ecs
         if (!gpu_cull)
             return;
 
-        // 只在主帧 pass 接管（shadow 批共用 materialBatches 表 ⇒ 必须显式挡）。
-        // T4c3 曾去掉这条早退（两 pass 各写各的块/扇区），实测：ShadowMap 摘要一致，
-        // 但 **ATS 契约破 + Cascade 挂**——根因是 GPU 行取自**实体行**，而实体行每帧只有
-        // 一份、内容为**最后一个 pass**（主帧）写入 ⇒ 阴影行带的是主帧的材质变体
-        //（阴影程序/材质行本按 pass 解析，见 `GetShadowProgram`）。要重启 T4c3 必须先给
-        // 阴影一份**自己的实体行风味**（或让 shader 侧按阴影程序解析材质）——见计划档 §11。
-        if (world->IsCurrentPassShadow())
-            return;
+        // T4c3b/c：**两 pass 都可接管**（早期退已删）。
+        // T4c3 首试失败的根因不在"两 pass 接管"本身，而在**行内容并非 pass 无关**：
+        // 4-ID 表（transform/geometry/material/texture）由 collect 按 pass 写，而 gather
+        // 当时只读主帧那一半 ⇒ 阴影行带的是主帧的材质变体（阴影程序按 pass 解析材质
+        // ⇒ 遮罩/变体用错 ⇒ ATS 契约破、Cascade 挂）。T4c3a 已把 4-ID 表按 pass 分半，
+        // 本批把 gather 的读点也按 pass 取（见 `entity_gpu_cull.glsl` 的 `ids_blk`）。
+        //
+        // 每 pass 自治：各写各的**块**（`pass*kBatchBlockStride`）、各占各的**竞技场扇区**
+        //（`ArenaSectorBase(pass)`）、各读各的 4-ID 半、各记各的**切片**（绘制侧按当前
+        // pass 取 `MaterialBatch::gpu_slice[pass]`）。自洽性依据：派发本就**每 RT 一次**
+        //（主帧槽 + 阴影离屏槽），每槽的布局只由"该槽自己的那次批装配"写 ⇒ 行、标签、
+        // 计数、切片全在同槽内闭环，不存在跨槽读取。
+        const uint32_t pass_index = world->IsCurrentPassShadow() ? RenderPassSlot::Shadow
+                                                                 : RenderPassSlot::Main;
 
         // ── T3i（③ 多批）：逐批评估 + 共享竞技场切片装配 ──────────────────────
         // 迭代顺序 = `cache.materialBatches` 的 map 键序（确定性）⇒ 批号帧间稳定；
@@ -1214,7 +1220,8 @@ namespace hgl::ecs
         // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：逐帧/逐 pass 记录接管评估的出口与关键量——
         // "某帧 count=0"这类症状必须靠它定位（帧摘要只看一张图，看不见帧间差异）。
         static const bool s_takeover_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
-        uint32_t row_cursor = 0;   // T4c3 回退：恒主帧扇区（阴影扇区待重启）
+        // T4c3c：切片起点 = 本 pass 的竞技场扇区（主帧 0 / 阴影 4096）⇒ 两 pass 行集互不覆盖。
+        uint32_t row_cursor = GPUCullSystem::ArenaSectorBase(pass_index);
         uint32_t total_items = 0;
         uint32_t tagged_items = 0;   // 诊断：本帧打上标签的项数
         uint32_t geometry_batches = 0;
@@ -1259,7 +1266,7 @@ namespace hgl::ecs
                     Entity *owner = item->GetEntity();
 
                     const graph::RenderItemDescriptor *ids =
-                        rid_table.Row(0u /*pass: 主帧（阴影接管启用即改 pass_index）*/, owner->GetEntityID().index);
+                        rid_table.Row(pass_index, owner->GetEntityID().index);
 
                     if (!ids || ids->geometry_id == 0)
                     {
@@ -1287,7 +1294,7 @@ namespace hgl::ecs
             // 首个可接管批时取标签数组（进入即整表无效初值）
             if (!tags)
             {
-                tags = gpu_cull->BeginBatchTagWrite(0u /*pass: 主帧*/);
+                tags = gpu_cull->BeginBatchTagWrite(pass_index);
                 if (!tags)
                     return;          // 拿不到映射 = 设备问题 ⇒ 整帧不接管
             }
@@ -1300,7 +1307,7 @@ namespace hgl::ecs
             // `MeshDispatchGroupSize()` 单一真源（CPU 的 ICB 组装同源 ⇒ 两条账不分叉）。
             const bool batch_is_lines =
                 b->key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines;
-            gpu_cull->SetBatchLayout(0u /*pass: 主帧*/, index, row_cursor, capacity,
+            gpu_cull->SetBatchLayout(pass_index, index, row_cursor, capacity,
                 batch_is_lines ? GPUCullSystem::kBatchTopologyLines
                                : GPUCullSystem::kBatchTopologyTriangles,
                 MeshDispatchGroupSize(batch_is_lines));
@@ -1328,7 +1335,7 @@ namespace hgl::ecs
         if (pending_count == 0)
         {
             if (tags)
-                gpu_cull->EndBatchLayout(0u, 0);   // 无接管批 ⇒ batch_count=0（cull 只出计数）
+                gpu_cull->EndBatchLayout(pass_index, 0);   // 无接管批 ⇒ 本 pass 批数=0
             if (s_takeover_trace)
                 GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=pending0 几何批=%u 辖批=%u items=%u arena_rows=%u",
                          world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, "pending0",
@@ -1340,7 +1347,7 @@ namespace hgl::ecs
         // 一次派发看过；`SetEnabled(false)` 归零 ⇒ 场景切换/重开不会拿旧计数放行）。
         if (!gpu_cull->IsDispatchSettled())
         {
-            gpu_cull->EndBatchLayout(0u, 0);
+            gpu_cull->EndBatchLayout(pass_index, 0);
             if (s_takeover_trace)
                 GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=undsettled 几何批=%u 辖批=%u items=%u arena_rows=%u",
                          world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, "undsettled",
@@ -1349,7 +1356,7 @@ namespace hgl::ecs
         }
 
         // 分区/标签落设备（batch_count = 接管批数）
-        gpu_cull->EndBatchLayout(0u /*pass: 主帧*/, pending_count);
+        gpu_cull->EndBatchLayout(pass_index, pending_count);
 
         // T4c-ini-2：本帧槽的布局**此前是否已被写过**？未写过 ⇒ 本帧的派发必然看到初值
         //（`capacity == 0`）⇒ 这帧不接管（批量走 CPU 账画，画面完整）；布局本轮已写，
@@ -1370,7 +1377,7 @@ namespace hgl::ecs
         {
             for (uint32_t i = 0; i < pending_count; ++i)
             {
-                if (gpu_cull->ApplyGPUCullOverrideHook(pending[i], pending_index[i]))
+                if (gpu_cull->ApplyGPUCullOverrideHook(pending[i], pending_index[i], pass_index))
                     ++engaged;
             }
         }

@@ -373,9 +373,17 @@ void main()
         BatchCmdsOutRef(pc.cmds_out_addr).cmds[row] =
             BatchCmdRow(geometry_id, slot);
 
+        // ── T4c3b：4-ID 表按 pass 分半，本块必须读**本 pass 自己那一半** ────────
+        // 行内容**不是 pass 无关**：材质/纹理二 ID 由 collect 按 pass 写（`SetRenderIDs`），
+        // 阴影程序/材质行按 pass 解析 ⇒ 阴影块若照抄主帧那一半，解析到的是主帧的材质变体。
+        // 行号 = `blk * 每 pass 容量 + entity_index`；4-ID 表 pass 容量与可见表上限同值
+        //（`static_assert` 在 `GPUCullSystem.cpp` 守着），故不必再加 push 字段。
+        const RenderItemDescriptor ids_blk =
+            entity_render_ids[blk * pc.max_visible_count + entity_index];
+
         MtlRowsOutRef(pc.mtl_out_addr).values[row] =
-            MtlRow(render_ids.material_id,
-                   render_ids.texture_id,
+            MtlRow(ids_blk.material_id,
+                   ids_blk.texture_id,
                    entity.shadow_bias_multiplier,
                    entity.shadow_receive == 0u ? 1u : 0u);
     }

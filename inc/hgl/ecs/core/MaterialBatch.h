@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <hgl/ecs/support/RenderPassSlot.h>
+
 #include<hgl/ecs/core/ShaderProgramPipelineKey.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
@@ -71,11 +73,28 @@ namespace hgl::ecs
         bool                                     gpu_driven_override               = false;    ///<该批次是否为 GPU-Driven 托管（跳过 CPU 侧 ICB 和行表生成）
 
         // T3i（③ 多批）：本批在剔除输出**共享竞技场**里的行切片（gather 输出四表共用
-        // 一套 arena，按批分摊）。语义：行 r 的 arena 索引 = gpu_row_base + r。
-        // 着色器按此写；绘制侧把 cmds/l2w/mtl 的 push 地址各加 `gpu_row_base × 行字节`
+        // 一套 arena，按批分摊）。语义：行 r 的 arena 索引 = pass 切片.row_base + r。
+        // 着色器按此写；绘制侧把 cmds/l2w/mtl 的 push 地址各加 `row_base × 行字节`
         // ⇒ 着色器内 `gl_DrawID`/`gl_InstanceIndex` 语义不变（切片内 0 起）。
-        uint32_t                                 gpu_row_base                      = 0;        ///<切片起点（arena 行号）
-        uint32_t                                 gpu_capacity                      = 0;        ///<切片容量（= 本批 item 数；绘制 maxDrawCount）
+        //
+        // T4c3c：切片**按 pass 存**（下标 = `RenderPassSlot`）。
+        // 为什么必须按 pass：批对象**跨 pass 共享**（主帧与阴影复用同一张 `materialBatches`
+        // 表），而两个 pass 各有自己的批块与竞技场扇区（`BatchBlockBase` / `ArenaSectorBase`）
+        // ⇒ 只存一套的话，后接管的 pass 会**覆盖**前一个的切片 ⇒ 绘制侧拿别的 pass 的行基址
+        // 画（实测：CascadeShadowMap 挂死）。
+        // 注意 `gpu_driven_override` **保持单份**：它是"本帧装配是否被接管"的批级事实，
+        // 批构建路径（sort/ensure/build/write 的十处跳过）读的就是它，与 pass 无关。
+        struct GpuSlice
+        {
+            uint32_t row_base            = 0;   ///<切片起点（arena 行号）
+            uint32_t capacity            = 0;   ///<切片容量（= 本批 item 数；绘制 maxDrawCount）
+            uint32_t count_buffer_offset = 0;   ///<本 pass 的每批计数偏移（计数块按 pass 分块）
+        };
+
+        GpuSlice                                 gpu_slice[RenderPassSlot::Count];
+
+        /// 本 pass 的切片（越界 pass 由调用点 fail-fast；这里不做钳位，下标直取）。
+        const GpuSlice &GetGpuSlice(uint32_t pass_index) const { return gpu_slice[pass_index]; }
         bool                                     uses_render_item_resolve          = false;    ///<是否在 Shader 中通过 WorldAddresses::addr_global_render_items 进行 4-ID 运行时解析
         bool                                     own_icb_mesh_tasks                = true;     ///<是否拥有 icb_mesh_tasks
         bool                                     own_mesh_draw_params              = true;     ///<是否拥有 mesh_draw_params_buffer
