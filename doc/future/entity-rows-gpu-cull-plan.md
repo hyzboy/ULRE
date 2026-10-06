@@ -1381,6 +1381,22 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   阴影两例敏感性（`SM_FREEZE=0` / `CSM_AUTOWALK=1`）如预期变值；验证层 VUID 0、`result -4` 0。
   ⇒ **T4c4 入口条件已齐**：`WriteMeshDrawCommands` / `EnsureMeshDrawParams` / `draw_batches` 赖以存活的
     守卫早退（`IsCurrentPassShadow()` 处 return）已不存在，阴影批不再依赖 CPU 账。
+- **T4c4 ✅ 进行中（T4c4-1/2 已完成，提交 `6d1df5083`）**：删 CPU 绘制链。
+  - **T4c4-1 量化前提**（方法固化）：九例逐个抓 `ENGAGED batches=x/y`（要求 x==y）+ guard 拒绝次数（要求 0）
+    ⇒ "无批走 CPU 绘制"。⚠ **ENGAGED 行缺失 = 静默退回 CPU 账**（像素可能仍一样）⇒ 必看项。
+  - **T4c4-2**：删 `WriteMeshDrawCommands` / `ReallocICB` / CPU 自有 ICB 分支 + 变死的
+    `ReleaseICB`/`BuildICBNames`；契约 needle 按**意图**换形（旧表达式转禁复活 + 新增 gather 侧正向 needle
+    钉 "组数只在 gather 内按 `(element_count + group_size - 1u) / group_size` 算出"）。
+  ⭐⭐ **删除边界（本线最贵的教训）**：**"零拒绝 ⇒ 无批走 CPU 绘制"只覆盖"绘制"，不覆盖"数据物化"**。
+  `PrimitiveBatchPipeline::EnsureMeshDrawParams` 是 **mesh per-draw 参数池行的物化者**（gather 从该池取
+  `mdph` 的 `element_count`/`is_indexed`）⇒ 按绘制语义删它 ⇒ 池行过期 ⇒ **Cascade 画面变**
+  （`0x1BAB088CA3B63B3C` vs 基线 `0x1CDAADEBF18B7CE4`）。**每删一处先问：绘制侧还是写 gather 消费的数据？**
+  ⚠ 配套纪律：引用检查用 `rg`/搜索工具（shell `grep '\b'` 静默全 0 命中，据此删会断构建）；
+  死码表在**主删除稳定后**再取；"命中行数 ≠ 有调用"（`GPUCullSystem.cpp` 对 `ReleaseICB` 只是注释提及）。
+  - **T4c4-3 待做**：删 `DrawBatch`/`draw_batches` 产出 + 同批收窄 `Render/Draw` 与两个调用方
+    （`PrimitiveRenderSystem` + `PrimitiveOverlayRenderSystem` —— overlay 属 RenderDebug 相位边界，必须同批改）。
+  - **T4c4-4**：清 `MaterialBatch` CPU 字段 + 文档回扫 + 台账。
+
   --- 以下为首试失败时的原始记录（保留作对照）---
 删「只在主帧 pass 接管」的早退（它正是 shadow 至今走 CPU 写行/ICB 的唯一原因）；
   `pass_index = IsCurrentPassShadow() ? 1 : 0` 同时定**块**（`BatchBlockBase`）与**扇区**（`ArenaSectorBase`）；切片起点从本 pass 的扇区基址起
