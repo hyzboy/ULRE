@@ -666,7 +666,15 @@ namespace hgl
             }
 
             active_mobility_filter = req.mobility_filter;
-            is_current_pass_shadow = req.is_shadow_pass;
+            // pass 身份**由目标推导**，不再只依赖调用方声明：非交换链目标 ⇒ 非主帧 pass。
+            // ⚠ 漏设 `is_shadow_pass` 的后果不是报错，而是"**某一张交换链图整帧空/内容错**"：
+            //   离屏 pass 被判成主帧 pass ⇒ 批装配取 `pass_index = Main` ⇒ 改写两 pass 共享的批对象的
+            //   `gpu_slice[Main]` ⇒ 主帧绘制读到它、去读别的帧槽的计数（0）⇒ 该图不画东西。
+            //   ShadowMap（示例侧）与 AlphaTestShadow（引擎侧）两条离屏路径都因此中招过。见计划档 §11。
+            const bool offscreen_target =
+                req.target && (dynamic_cast<graph::SwapchainRenderTarget *>(req.target) == nullptr);
+
+            is_current_pass_shadow = req.is_shadow_pass || offscreen_target;
             has_shadow_origin = false;
 
             if (req.is_shadow_pass)
