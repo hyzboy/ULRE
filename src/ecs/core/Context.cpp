@@ -1009,6 +1009,19 @@ namespace hgl
             // before BeginRenderPass; the render pass only issues draw commands.
             SetFrameIndex(frameIndex);
 
+            // ⚠ 变换提交必须在本函数最前段（SetFrameIndex 之后——L2W ring 帧索引刚被推到位；
+            // collect/派发之前——见下）。`SubmitTransformUpdates` 是 **L2W 矩阵行**与实体行
+            // `row[Transform]` 的唯一落盘点（WriteEntityTransformRows，TransformSystem.cpp），
+            // 而本帧的 GPU 剔除派发在 RenderFrameSync（本函数末尾）就读这两样。
+            // 历史上它只挂在 RecordPreparedRenderPhaseRange（BeginRenderPass 之后的绘制录制段）
+            // ⇒ 派发恒读到**上一帧**的写入：每帧驱动的世界第 2 帧自愈（稳态滞后一帧），
+            // 而 RenderOnce 的离屏世界只有一帧 ⇒ `row[Transform]=0` ⇒ cull 着色器在视锥测试前
+            // return ⇒ DrawCount=0、离屏永久空白（实测 RenderToTexture/ColorDepth；
+            // 离屏单帧世界缺陷族的第五层，前四层见 doc/future/offscreen-onetime-world-stall-analysis.md）。
+            // 同帧幂等（值变才标脏 + 版本记账）⇒ 绘制录制段的第二次调用退化为 no-op。
+            if (auto transform_system = GetSystem<TransformSystem>())
+                transform_system->SubmitTransformUpdates();   // M8-needle：本调用必须在 collect/派发之前（Test 42 钉住）
+
             // 相机行发布必须在这之后：本帧数据槽（frameIndex）此时才确定
             // （主帧 = acquire 之后拿到的交换链槽；离屏 pass = 该 RT 的槽带）。
             // 这里只覆盖本世界 CameraSystem 收集得到的相机（= 经 Entity 注册的那些）；系统内建
