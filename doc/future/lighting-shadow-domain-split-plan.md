@@ -21,6 +21,7 @@
 | D2 | **光源数据 = 世界私有独立表**（`addr_lights`，与 `addr_entity_gpu` 同级），**不跟 `EnvProfile`** | §2 |
 | D3 | `SkyInfo.moon_color` / `moon_intensity` **删除**（零兼容；真需要第二光源时再加行） | §4 触点 |
 | D4 | **不**新增"大而全光影系统"；**不**为 GI/RT 造脚手架（加速结构/降噪/帧间历史 = 另立项） | §1 非目标 |
+| D5 | **P1–P4 按推荐拍板**（2026-10-07）：容量 16 / `alignas(64)` / controller 移 `render/shadow/` / `ShadowInfo` 世界私有 | §9 / §2 / §4 |
 
 ### 0.2 已定输入 —— 引擎不变量（违反即编译失败或渲染崩）
 
@@ -212,14 +213,19 @@
 
 ---
 
-## 9. 待拍板项
+## 9. 待拍板项（✅ 全部已拍板）
 
-| # | 议题 | 选项 | 推荐 |
+> **已拍板（用户 2026-10-07，答复「按推荐」）**：**P1–P4 全部按推荐值** ——
+> P1 = **容量 16**（`kLightRowCapacity`，冻结、超限 fail-fast）；P2 = **`alignas(64)`**（与 `EntityGPU` 同族）；
+> P3 = **`CascadedShadowController.h` 移到 `render/shadow/`**（纯搬家，判据 = 构建 + 契约绿）；
+> P4 = **`ShadowInfo` 由 `MainLightShadowSystem` 直写世界私有缓冲**（与 D2 同源）。**T6b 按此执行，不再回问。**
+
+| # | 议题 | 选项 | 采纳值 |
 |---|---|---|---|
-| P1 | `kLightRowCapacity`（冻结容量） | (a) 16 (b) 64 | **(a) 16**：主光 + 15 个未来光源足够；超限 fail-fast；真要更多是一次改常量 + 清树重编 |
-| P2 | 光行是否 `alignas(64)` | (a) 是（与 `EntityGPU` 同族） (b) 紧凑 | **(a)**：跨帧写入/缓存行对齐一致，代价是容量×64B（16 行 = 1 KB） |
-| P3 | `CascadedShadowController.h` 的目录归位（`render/lighting/` 现混装"阴影机制"） | (a) 移到 `render/shadow/` (b) 不动 | **(a)**：目录名与内容一致；纯搬家，判据 = 构建 + 契约绿 |
-| P4 | `ShadowInfo` 的物化归属 | (a) 由 `MainLightShadowSystem` 直接写世界私有缓冲 (b) 仍走 profile 机制 | **(a)**：与 D2 同源（光影数据世界私有） |
+| P1 | `kLightRowCapacity`（冻结容量） | (a) 16 (b) 64 | **✅ (a) 16**：主光 + 15 个未来光源足够；超限 fail-fast；真要更多是一次改常量 + 清树重编 |
+| P2 | 光行是否 `alignas(64)` | (a) 是（与 `EntityGPU` 同族） (b) 紧凑 | **✅ (a)**：跨帧写入/缓存行对齐一致，代价是容量×64B（16 行 = 1 KB） |
+| P3 | `CascadedShadowController.h` 的目录归位（`render/lighting/` 现混装"阴影机制"） | (a) 移到 `render/shadow/` (b) 不动 | **✅ (a)**：目录名与内容一致；纯搬家，判据 = 构建 + 契约绿 |
+| P4 | `ShadowInfo` 的物化归属 | (a) 由 `MainLightShadowSystem` 直接写世界私有缓冲 (b) 仍走 profile 机制 | **✅ (a)**：与 D2 同源（光影数据世界私有） |
 
 ---
 
