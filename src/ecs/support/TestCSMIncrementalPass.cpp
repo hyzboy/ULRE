@@ -5509,6 +5509,22 @@ int main(int argc, char** argv)
               "§9 M9 禁复活：「槽首写不接管」护栏——其\"退 CPU 账\"前提在 T4c4 后已不存在，"
               "单帧世界永等不到第二次写入（IsSlotLayoutWritten/slot_layout_written_ 已删，零读者）",
               true },
+
+            // ── M12：场景预处理（主光 CSM 阴影）必须挂在**帧入口**（D6 收敛）──
+            // 历史形态：只有 RenderGraph 的 Render() 显式调用 ExecuteScenePrePassWorkflow
+            // ⇒ 依赖「调用方记得」，而离屏世界正是第二个帧入口 ⇒ 那一入口一出现就是「阴影静默失效」
+            // （无断言、无日志）。现在内聚在 BeginManagedRenderFrame 里、以「主帧」为条件执行
+            // （离屏帧传 need_swapchain_acquire=false ⇒ 不重复 prepass，嵌套阴影 pass 也不递归）。
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "if (need_swapchain_acquire)\r\n                ExecuteScenePrePassWorkflow(deltaTime);",
+              "§9 M12：场景预处理必须在**主帧帧入口**执行（守卫与调用一起钉：只留调用 ⇒ 离屏帧也跑 "
+              "prepass；只留守卫 ⇒ 入口又退回「调用方负责」的单入口形态）" },
+
+            { "RenderGraph.cpp", OS_TEXT("src/ecs/core/RenderGraph.cpp"),
+              "ExecuteScenePrePassWorkflow",
+              "§9 M12 禁复活：RenderGraph 的 Render() 不得再显式调用场景预处理——那是 D6 之前的"
+              "单入口形态，第二个帧入口一出现就会静默丢阴影",
+              true },
         };
 
         if (const int failed = verify_source_contracts(42, kMechanismContracts,
@@ -5518,8 +5534,9 @@ int main(int argc, char** argv)
 
         GLogInfo(u8"Test 42 Passed: A6-b 机制层契约成立（§9 M1 环深度单源 + M3 countBuffer 使用标志 + "
                  u8"M4 切片 4 行对齐（实现行 + 运行期守卫）+ M6 回读前置（Sync 记帧 + Map 校验 + 台架调用对）+ "
-                 u8"M7 AABB 始终可见哨兵两端同式兑现 + M8 变换提交先于 collect/派发 + M9 guard 入口 EnsureInitialized；"
-                 u8"禁复活 3 条；共 %d 条契约）。",
+                 u8"M7 AABB 始终可见哨兵两端同式兑现 + M8 变换提交先于 collect/派发 + M9 guard 入口 EnsureInitialized + "
+                 u8"M12 场景预处理必须挂主帧帧入口（且 RenderGraph 不得再单入口调用）；"
+                 u8"禁复活 4 条；共 %d 条契约）。",
                  static_cast<int>(sizeof(kMechanismContracts) / sizeof(kMechanismContracts[0])));
     }
 

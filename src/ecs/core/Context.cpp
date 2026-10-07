@@ -461,6 +461,15 @@ namespace hgl
             if (!active)
                 return false;
 
+            // ── D6：场景预处理（主光 CSM 阴影）挂到**帧入口**，不再靠调用方记得调用 ──
+            // 历史形态只有 RenderGraph 那条 Render() 显式调用它（单入口）⇒ 第二个帧入口
+            // 一出现就是"阴影静默失效、断言与日志都没有"（离屏世界正是第二个入口）。
+            // 判别式 = 「主帧」：离屏帧一律传 need_swapchain_acquire=false（RenderTo 路径），
+            // 其嵌套的阴影 pass 因此也不会递归进来。
+            // 位置保持 AcquireSwapchainImage 之前 = 黄金路径原序（先渲阴影 RT，主帧再取图）。
+            if (need_swapchain_acquire)
+                ExecuteScenePrePassWorkflow(deltaTime);
+
             if (!EnsureRenderCoreInitialized())
                 return false;
 
