@@ -16,6 +16,7 @@
 #include <hgl/ecs/support/text/TextRenderSystem.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
+#include <hgl/ecs/systems/render/MainLightShadowSystem.h>
 #include <hgl/ecs/systems/render/ColorPaletteSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
@@ -194,6 +195,7 @@ namespace hgl::ecs
         auto input_system = EnsureTickSystem<ecs::InputSystem>(ctx);
         auto camera_system = EnsureTickSystem<ecs::CameraSystem>(ctx);
         auto environment_system = EnsureRenderSystem<ecs::EnvironmentSystem>(ctx);
+        auto main_light_shadow_system = EnsureRenderSystem<ecs::MainLightShadowSystem>(ctx);
         auto color_palette_system = EnsureRenderSystem<ecs::ColorPaletteSystem>(ctx);
         auto render_target_system = EnsureRenderSystem<ecs::RenderTargetSystem>(ctx);
         auto swapchain_next_image_system = EnsureRenderSystem<ecs::SwapchainNextImageSystem>(ctx);
@@ -202,6 +204,7 @@ namespace hgl::ecs
         auto view_ubo_commit_system = EnsureRenderSystem<ecs::ViewUBOCommitSystem>(ctx);
 
         (void)input_system;
+        (void)main_light_shadow_system;
         (void)swapchain_next_image_system;
         (void)swapchain_submit_system;
         (void)render_descriptor_binding_system;

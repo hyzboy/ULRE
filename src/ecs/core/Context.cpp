@@ -26,7 +26,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/MainLightShadowSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include<hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -534,15 +534,16 @@ namespace hgl
                 case ScenePipelineMode::StandardLitCSM:
                 {
                     // ── 黄金路径：标准 3D / FPS / TPS 陆地场景主光级联阴影自动化 ──
-                    if (auto env = GetSystem<EnvironmentSystem>())
+                    // 阴影托管域 = MainLightShadowSystem（T6a 自 EnvironmentSystem 拆出）
+                    if (auto shadow = GetSystem<MainLightShadowSystem>())
                     {
-                        if (env->IsMainLightShadowEnabled())
+                        if (shadow->IsMainLightShadowEnabled())
                         {
                             if (auto cam_sys = GetSystem<CameraSystem>())
                             {
                                 if (auto *main_cam = cam_sys->GetMainCameraComponent())
                                 {
-                                    env->RenderMainLightShadowPass(main_cam, deltaTime);
+                                    shadow->RenderMainLightShadowPass(main_cam, deltaTime);
                                 }
                             }
                         }

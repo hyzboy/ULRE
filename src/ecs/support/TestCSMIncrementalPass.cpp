@@ -8,7 +8,7 @@
 #include <hgl/ecs/support/PrimitiveState.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
-#include <hgl/ecs/systems/render/EnvironmentSystem.h>
+#include <hgl/ecs/systems/render/MainLightShadowSystem.h>
 #include <hgl/ecs/support/CameraInfoStorage.h>
 #include <hgl/ecs/support/CameraSlotGuard.h>
 #include <hgl/graph/render/lighting/CascadedShadowController.h>
@@ -1325,7 +1325,7 @@ int main(int argc, char** argv)
             // 9D: A3 静态场景 revision 失效链契约。
             // 静态级联滚动缓存的"静态"前提由该链兜底：TransformSystem 在
             // SubmitTransformUpdates 检出 Static transform 变更 → 递增
-            // ECSContext::static_scene_revision → EnvironmentSystem 的阴影
+            // ECSContext::static_scene_revision → MainLightShadowSystem 的阴影
             // prepass 比对消费并 InvalidateStaticCache。历史教训：失效钩子
             // 曾只有 API（InvalidateStaticCache 零调用者），静态缓存默认
             // "场景永不变"——相机静止时移走静态物体，旧阴影挂在原地。
@@ -1360,15 +1360,15 @@ int main(int argc, char** argv)
                     return 9;
                 }
 
-                // EnvironmentSystem 消费端接线：阴影 prepass 必须比对 revision
+                // MainLightShadowSystem 消费端接线：阴影 prepass 必须比对 revision
                 // 并调用 InvalidateStaticCache（防止消费逻辑被静默删除）。
                 {
                     static const OSString kEnvSysPath =
-                        OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp");
+                        OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp");
                     hgl::io::OpenFileInputStream env_fis(kEnvSysPath);
                     if (!env_fis)
                     {
-                        GLogError(u8"Test 9D Failed: cannot open EnvironmentSystem.cpp (run from repo root)");
+                        GLogError(u8"Test 9D Failed: cannot open MainLightShadowSystem.cpp (run from repo root)");
                         return 9;
                     }
                     AnsiString env_src;
@@ -1395,17 +1395,17 @@ int main(int argc, char** argv)
         // Test 10: Cascade Mask & Bias Modulation Contracts
         // ─────────────────────────────────────────────────────────────
         {
-            EnvironmentSystem env_sys;
+            MainLightShadowSystem shadow_sys;
 
             // 10A: 默认所有级联开启
-            if (env_sys.GetCascadeMask() != 0)
+            if (shadow_sys.GetCascadeMask() != 0)
             {
                 GLogError(u8"Test 10A Failed: default cascade_mask must be 0 (all enabled)");
                 return 10;
             }
             for (uint32_t c = 0; c < 4; ++c)
             {
-                if (!env_sys.IsCascadeEnabled(c))
+                if (!shadow_sys.IsCascadeEnabled(c))
                 {
                     GLogError(u8"Test 10A Failed: cascade %u must be enabled by default", c);
                     return 10;
@@ -1413,24 +1413,24 @@ int main(int argc, char** argv)
             }
 
             // 10B: 单独关闭/开启指定级联（如关闭 CSM 0, CSM 1）
-            env_sys.SetCascadeEnabled(0, false);
-            if (env_sys.IsCascadeEnabled(0) != false || env_sys.GetCascadeMask() != 1u)
+            shadow_sys.SetCascadeEnabled(0, false);
+            if (shadow_sys.IsCascadeEnabled(0) != false || shadow_sys.GetCascadeMask() != 1u)
             {
-                GLogError(u8"Test 10B Failed: disabling cascade 0 failed (mask=%u)", env_sys.GetCascadeMask());
+                GLogError(u8"Test 10B Failed: disabling cascade 0 failed (mask=%u)", shadow_sys.GetCascadeMask());
                 return 10;
             }
 
-            env_sys.SetCascadeEnabled(1, false);
-            if (env_sys.IsCascadeEnabled(1) != false || env_sys.GetCascadeMask() != 3u)
+            shadow_sys.SetCascadeEnabled(1, false);
+            if (shadow_sys.IsCascadeEnabled(1) != false || shadow_sys.GetCascadeMask() != 3u)
             {
-                GLogError(u8"Test 10B Failed: disabling cascade 1 failed (mask=%u)", env_sys.GetCascadeMask());
+                GLogError(u8"Test 10B Failed: disabling cascade 1 failed (mask=%u)", shadow_sys.GetCascadeMask());
                 return 10;
             }
 
-            env_sys.SetCascadeEnabled(0, true);
-            if (env_sys.IsCascadeEnabled(0) != true || env_sys.GetCascadeMask() != 2u)
+            shadow_sys.SetCascadeEnabled(0, true);
+            if (shadow_sys.IsCascadeEnabled(0) != true || shadow_sys.GetCascadeMask() != 2u)
             {
-                GLogError(u8"Test 10B Failed: re-enabling cascade 0 failed (mask=%u)", env_sys.GetCascadeMask());
+                GLogError(u8"Test 10B Failed: re-enabling cascade 0 failed (mask=%u)", shadow_sys.GetCascadeMask());
                 return 10;
             }
 
@@ -1488,11 +1488,11 @@ int main(int argc, char** argv)
             // 分配/复用/耗尽与"析构归还"的**行为**契约在 Test 23。
             {
                 static const OSString kEnvSysPath =
-                    OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp");
+                    OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp");
                 hgl::io::OpenFileInputStream env_fis(kEnvSysPath);
                 if (!env_fis)
                 {
-                    GLogError(u8"Test 10D Failed: cannot open EnvironmentSystem.cpp (run from repo root)");
+                    GLogError(u8"Test 10D Failed: cannot open MainLightShadowSystem.cpp (run from repo root)");
                     return 10;
                 }
                 AnsiString env_src;
@@ -3917,13 +3917,13 @@ int main(int argc, char** argv)
               "升格为默认相机",
               "相机升格为默认相机时不再交回旧槽（旧槽永久泄漏，换主相机迟早顶满 16 槽）" },
             // ④ guard：槽与宿主相机一起交给 guard，占用期由弱引用判定
-            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+            { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
               "CameraSlotGuard(context, light_camera, \"AutoCSMLightCamera\")",
               "光相机不再用 RAII guard 持有槽 + 宿主相机（C3：槽随灯光生命周期）" },
-            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+            { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
               "light_camera_slot.Reset()",
               "Disable/销毁时没有归还光相机槽（Enable/Disable 会逐次漏槽）" },
-            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+            { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
               "ReleaseCameraSlot(",
               "光相机又回到了手工 Acquire/Release 路径（应由 CameraSlotGuard 持有）",
               true },

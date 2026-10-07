@@ -37,6 +37,7 @@
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/MainLightShadowSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
@@ -589,6 +590,7 @@ private:
 
     /// 主世界的环境系统与它的 SkyInfo 数据。sun_direction 从这里写进去。
     std::shared_ptr<EnvironmentSystem> environment_system;
+    std::shared_ptr<MainLightShadowSystem> main_light_shadow_system;
     graph::SkyInfo *                   sky_info = nullptr;
 
     /// 动画累计时间（秒）。用它算方位角与自转角，而不是依赖固定帧率。
@@ -1272,7 +1274,7 @@ private:
         if (!light_camera || !environment_system)
             return;
 
-        auto *shadow_info = environment_system->EditShadowInfo();
+        auto *shadow_info = main_light_shadow_system->EditShadowInfo();
         if (!shadow_info)
             return;
 
@@ -1287,7 +1289,7 @@ private:
         shadow_info->inv_shadow_map_size = math::Vector2f(1.0f / static_cast<float>(kShadowMapSize), 1.0f / static_cast<float>(kShadowMapSize));
         shadow_info->shadow_tex          = math::Vector4u(shadow_map_handle, 0, 0, 0);
 
-        environment_system->MarkShadowDirty();
+        main_light_shadow_system->MarkShadowDirty();
     }
 
     bool SetupMainCamera()
@@ -1430,6 +1432,9 @@ public:
         environment_system = ecs_context->GetSystem<EnvironmentSystem>();
         if (!environment_system)
             environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+        main_light_shadow_system = ecs_context->GetSystem<MainLightShadowSystem>();
+        if (!main_light_shadow_system)
+            main_light_shadow_system = ecs_context->RegisterRenderSystem<MainLightShadowSystem>();
 
         if (!environment_system)
             return LogStageFail("ShadowMapApp::Init", "environment system unavailable");

@@ -36,6 +36,7 @@
 #include <hgl/ecs/components/CameraControlMode.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
+#include <hgl/ecs/systems/render/MainLightShadowSystem.h>
 
 #include <glm/glm.hpp>
 #include <algorithm>
@@ -126,6 +127,7 @@ class AlphaTestShadowApp final : public WorkObject
 private:
     ECSContext *ecs_context = nullptr;
     std::shared_ptr<EnvironmentSystem> environment_system;
+    std::shared_ptr<MainLightShadowSystem> main_light_shadow_system;
 
     VertexDataManager *vdm = nullptr;
     Texture2DArray *alpha_base_texture = nullptr;
@@ -683,7 +685,7 @@ public:
         cfg.pcf_radius = 1.0f;           // 小半径：镂空图案尽量锐利
         cfg.darkness = 0.15f;
 
-        return environment_system->EnableMainLightShadow(cfg, kShadowMapSize);
+        return main_light_shadow_system->EnableMainLightShadow(cfg, kShadowMapSize);
     }
 
 public:
@@ -740,7 +742,7 @@ public:
 
                 for (uint32_t c = 0; c < 2; ++c)
                 {
-                    auto *rt = environment_system->GetCascadeRenderTarget(c);
+                    auto *rt = main_light_shadow_system->GetCascadeRenderTarget(c);
                     if (!rt)
                         continue;
 
@@ -957,6 +959,9 @@ public:
         environment_system = ecs_context->GetSystem<EnvironmentSystem>();
         if (!environment_system)
             environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+        main_light_shadow_system = ecs_context->GetSystem<MainLightShadowSystem>();
+        if (!main_light_shadow_system)
+            main_light_shadow_system = ecs_context->RegisterRenderSystem<MainLightShadowSystem>();
         if (!environment_system)
             return false;
 

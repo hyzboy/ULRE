@@ -42,6 +42,7 @@
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderSystemCore.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
+#include <hgl/ecs/systems/render/MainLightShadowSystem.h>
 #include <hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 
@@ -141,6 +142,7 @@ private:
     std::shared_ptr<CameraSystem> camera_system;
 
     std::shared_ptr<EnvironmentSystem> environment_system;
+    std::shared_ptr<MainLightShadowSystem> main_light_shadow_system;
     graph::SkyInfo *sky_info = nullptr;
 
     VertexDataManager *vdm = nullptr;
@@ -298,7 +300,7 @@ private:
         if (!cache_diff.enabled || !environment_system)
             return;
 
-        auto *ctrl = environment_system->GetShadowController();
+        auto *ctrl = main_light_shadow_system->GetShadowController();
         if (!ctrl)
             return;
 
@@ -366,7 +368,7 @@ private:
             {
                 if ((roll_mask & (1u << c)) == 0)
                     continue;
-                auto *rt = environment_system->GetCascadeRenderTarget(c);
+                auto *rt = main_light_shadow_system->GetCascadeRenderTarget(c);
                 if (!rt || !ReadbackCascadeDepth(rt, cache_diff.roll[c]))
                     return;                       // 读回失败：留在 state 0，下帧重试
 
@@ -394,7 +396,7 @@ private:
         if (cache_diff.state == 1)
         {
             // 相机保持不动（本轮不再自动前进），强制下一帧整级重建、offset 归零
-            environment_system->InvalidateMainLightStaticShadowCache();
+            main_light_shadow_system->InvalidateMainLightStaticShadowCache();
             cache_diff.state = 2;
             return;
         }
@@ -423,7 +425,7 @@ private:
                 if ((cache_diff.rolling_mask & (1u << c)) == 0)
                     continue;
 
-                auto *rt = environment_system->GetCascadeRenderTarget(c);
+                auto *rt = main_light_shadow_system->GetCascadeRenderTarget(c);
                 if (!rt || !ReadbackCascadeDepth(rt, cache_diff.full[c]))
                     return;
 
@@ -636,7 +638,7 @@ private:
             // 同一相机、同一内容时两次整级重建必须逐纹素相同；若这里也有差异
             // ⇒ 帧间内容在变（如可移动物体动画），上面 A vs B 的数字就不作数。
             cache_diff.state = 3;
-            environment_system->InvalidateMainLightStaticShadowCache();
+            main_light_shadow_system->InvalidateMainLightStaticShadowCache();
             return;
         }
 
@@ -663,7 +665,7 @@ private:
                 if ((cache_diff.rolling_mask & (1u << c)) == 0)
                     continue;
 
-                auto *rt = environment_system->GetCascadeRenderTarget(c);
+                auto *rt = main_light_shadow_system->GetCascadeRenderTarget(c);
                 std::vector<float> b2;
                 if (!rt || !ReadbackCascadeDepth(rt, b2))
                     return;
@@ -1089,7 +1091,7 @@ private:
             GLogInfo(u8"[CSM-CACHE-DIFF] 对拍诊断已启用（autowalk=%.1f m/s）：等条带滚动帧取 A → 强制整级重建取 B → 逐纹素比对",
                      cache_diff.autowalk);
 
-        return environment_system->EnableMainLightShadow(cfg, kShadowMapSize);
+        return main_light_shadow_system->EnableMainLightShadow(cfg, kShadowMapSize);
     }
 
     bool PopulateWorld()
@@ -1384,7 +1386,7 @@ private:
 
         if (environment_system)
         {
-            if (auto *ctrl = environment_system->GetShadowController())
+            if (auto *ctrl = main_light_shadow_system->GetShadowController())
                 ctrl->SetConfig(csm_config);
         }
 
@@ -1395,10 +1397,10 @@ private:
         const float w = csm_config.bias_world;
         if (w != 0.0f)
         {
-            const float d0 = environment_system ? environment_system->GetCascadeDepthRange(0) : 0.0f;
-            const float d1 = environment_system ? environment_system->GetCascadeDepthRange(1) : 0.0f;
-            const float d2 = environment_system ? environment_system->GetCascadeDepthRange(2) : 0.0f;
-            const float d3 = environment_system ? environment_system->GetCascadeDepthRange(3) : 0.0f;
+            const float d0 = main_light_shadow_system ? main_light_shadow_system->GetCascadeDepthRange(0) : 0.0f;
+            const float d1 = main_light_shadow_system ? main_light_shadow_system->GetCascadeDepthRange(1) : 0.0f;
+            const float d2 = main_light_shadow_system ? main_light_shadow_system->GetCascadeDepthRange(2) : 0.0f;
+            const float d3 = main_light_shadow_system ? main_light_shadow_system->GetCascadeDepthRange(3) : 0.0f;
 
             GLogInfo(u8"[Shadow Bias] bias_world=%.2fm normalized=[%.5f %.5f %.5f %.5f] (per-cascade depth range=[%.0f %.0f %.0f %.0f]m)",
                      w,
@@ -1451,7 +1453,7 @@ private:
         csm_config.normal_offset_world = new_offset;
         if (environment_system)
         {
-            if (auto *ctrl = environment_system->GetShadowController())
+            if (auto *ctrl = main_light_shadow_system->GetShadowController())
                 ctrl->SetConfig(csm_config);
         }
 
@@ -1476,7 +1478,7 @@ private:
             const bool r_down = input_system->IsKeyDown(io::KeyboardButton::R);
             if (r_down && !r_key_prev)
             {
-                environment_system->InvalidateMainLightStaticShadowCache();
+                main_light_shadow_system->InvalidateMainLightStaticShadowCache();
                 GLogInfo(u8"[Cascade Switch] static cascade cache invalidated (R)");
             }
             r_key_prev = r_down;
@@ -1493,15 +1495,15 @@ private:
         {
             if (keys[c] && !f_key_prev[c])
             {
-                bool cur_enabled = environment_system->IsCascadeEnabled(c);
-                environment_system->SetCascadeEnabled(c, !cur_enabled);
+                bool cur_enabled = main_light_shadow_system->IsCascadeEnabled(c);
+                main_light_shadow_system->SetCascadeEnabled(c, !cur_enabled);
 
                 GLogInfo(u8"[Cascade Switch] Cascade %u -> %s | State: [C0:%s C1:%s C2:%s C3:%s]",
                          c, !cur_enabled ? u8"ENABLED" : u8"MASKED/OFF",
-                         environment_system->IsCascadeEnabled(0) ? "ON" : "OFF",
-                         environment_system->IsCascadeEnabled(1) ? "ON" : "OFF",
-                         environment_system->IsCascadeEnabled(2) ? "ON" : "OFF",
-                         environment_system->IsCascadeEnabled(3) ? "ON" : "OFF");
+                         main_light_shadow_system->IsCascadeEnabled(0) ? "ON" : "OFF",
+                         main_light_shadow_system->IsCascadeEnabled(1) ? "ON" : "OFF",
+                         main_light_shadow_system->IsCascadeEnabled(2) ? "ON" : "OFF",
+                         main_light_shadow_system->IsCascadeEnabled(3) ? "ON" : "OFF");
             }
             f_key_prev[c] = keys[c];
         }
@@ -1580,7 +1582,7 @@ public:
         // 采样各级联"最近一帧"的更新形态（条带数/条带面积/环形偏移/是否整级重建）
         if (environment_system)
         {
-            if (auto *ctrl = environment_system->GetShadowController())
+            if (auto *ctrl = main_light_shadow_system->GetShadowController())
             {
                 // 单调计数器差分：Update 调用次数（> 帧数 ⇒ 同帧被多次调用，stats 会被覆盖）、
                 // 失效调用次数、各级真实的整级重建/条带/命中累计次数
@@ -1695,6 +1697,9 @@ public:
         environment_system = ecs_context->GetSystem<EnvironmentSystem>();
         if (!environment_system)
             environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+        main_light_shadow_system = ecs_context->GetSystem<MainLightShadowSystem>();
+        if (!main_light_shadow_system)
+            main_light_shadow_system = ecs_context->RegisterRenderSystem<MainLightShadowSystem>();
 
         if (!environment_system)
             return false;
