@@ -271,6 +271,12 @@ SET(VK_TEXTURE_READBACK_FILES   ${VK_INCLUDE_PATH}/VKTextureReadback.h
 
 SOURCE_GROUP("TextureReadback" FILES ${VK_TEXTURE_READBACK_FILES})
 
+# --- 16. Buffer Readback & Dump (GPU → CPU) ---
+SET(VK_BUFFER_READBACK_FILES    ${VK_INCLUDE_PATH}/VKBufferReadback.h
+                                VKBufferReadback.cpp)
+
+SOURCE_GROUP("BufferReadback" FILES ${VK_BUFFER_READBACK_FILES})
+
 # ============================================================================
 # Combine all Vulkan files
 # ============================================================================
@@ -296,7 +302,8 @@ SET(VULKAN_ALL_FILES    ${VK_DEVICE_INSTANCE_FILES}
                         ${VULKAN_RENDER_DEVICE_SOURCE}
                         ${GEOMETRY_VERTEX_DATA_FILES}
                         ${VK_HIGH_LEVEL_HEADERS}
-                        ${VK_TEXTURE_READBACK_FILES})
+                        ${VK_TEXTURE_READBACK_FILES}
+                        ${VK_BUFFER_READBACK_FILES})
 
 # ============================================================================
 # Build Library

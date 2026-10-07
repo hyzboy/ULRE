@@ -21,6 +21,7 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/RootAddressPush.h>
 #include<hgl/graph/ShaderBufferSources.h>
+#include<hgl/vk/VKBufferReadback.h>
 
 namespace hgl::ecs
 {
@@ -67,6 +68,17 @@ namespace hgl::ecs
 
             if (cur_owner_batch->icb_count_buffer)
             {
+                uint32_t current_count_val = UINT32_MAX;
+                graph::ReadbackBuffer(cur_owner_batch->icb_count_buffer, slice.count_buffer_offset, sizeof(uint32_t), &current_count_val);
+
+                static const bool s_count_dump = (getenv("CULL_SSBO_DUMP") != nullptr) || (getenv("ECS_TAKEOVER_TRACE") != nullptr);
+                if (s_count_dump || current_count_val == 0)
+                {
+                    GLogInfo(u8"[IndirectMeshDraw][COUNT_DUMP] first=%d max=%u gpu_driven=%d 计数偏移=%u (槽=%u pass=%u) => COUNT_IN_BUFFER=%u",
+                             first, max_count, cur_owner_batch->gpu_driven_override ? 1 : 0,
+                             slice.count_buffer_offset, slice.count_buffer_offset / 2056, cur_pass_index, current_count_val);
+                }
+
                 cmd_buf->DrawMeshTasksIndirectCount(
                     cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
                     static_cast<VkDeviceSize>(first) * sizeof(VkDrawMeshTasksIndirectCommandEXT),

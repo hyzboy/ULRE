@@ -51,6 +51,7 @@ public:
     virtual ~BufferOwner();
 
             VkBuffer                    GetBuffer    () const { return buf.buffer; }
+            VkDevice                    GetVkDevice  () const { return device; }
             DeviceMemory               *GetMemory    () const { return buf.memory; }
             VkDeviceMemory              GetVkMemory  () const { return buf.memory->operator VkDeviceMemory(); }
     const   VkDescriptorBufferInfo     *GetBufferInfo() const { return &buf.info; }

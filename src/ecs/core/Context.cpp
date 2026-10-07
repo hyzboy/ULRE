@@ -1619,7 +1619,7 @@ namespace hgl
             if (auto *rows = reinterpret_cast<graph::RenderItemDescriptor *>(
                     entity_render_id_view->Data()))
             {
-                for (uint32_t i = 0; i < EntityRenderIDTable::kCapacity * graph::kWorldAddressesSlotCount; ++i)
+                for (uint32_t i = 0; i < EntityRenderIDTable::kRowStride * graph::kWorldAddressesSlotCount; ++i)
                     rows[i] = graph::RenderItemDescriptor{};
             }
 
@@ -1628,11 +1628,11 @@ namespace hgl
             LogInfo("[ECSContext] 实体 4-ID 表就绪：%s  %u 行 × %zu B = %zu KB／份 × %u 份（帧槽）= %zu KB，"
                     "帧槽 0 基址=0x%llX（消费者：GPU 剔除 / CPU 参考对拍 / 形态 B gather；"
                     "每帧地址=基址+帧槽×每份字节，经 WorldAddresses.addr_entity_render_ids 下发）",
-                    GetName().c_str(), EntityRenderIDTable::kCapacity,
+                    GetName().c_str(), EntityRenderIDTable::kRowStride,
                     sizeof(graph::RenderItemDescriptor),
-                    size_t(EntityRenderIDTable::kCapacity) * sizeof(graph::RenderItemDescriptor) / 1024,
+                    size_t(EntityRenderIDTable::kRowStride) * sizeof(graph::RenderItemDescriptor) / 1024,
                     uint32_t(graph::kWorldAddressesSlotCount),
-                    size_t(graph::kWorldAddressesSlotCount) * EntityRenderIDTable::kCapacity
+                    size_t(graph::kWorldAddressesSlotCount) * EntityRenderIDTable::kRowStride
                         * sizeof(graph::RenderItemDescriptor) / 1024,
                     (unsigned long long)entity_render_id_table_addr);
 
@@ -1818,7 +1818,7 @@ namespace hgl
             // 未建表 ⇒ 保持 0（消费者判 0 跳过；0 基址解引用纪律见 §8.2b①）。
             want.addr_entity_render_ids = entity_render_id_table_addr
                 + static_cast<uint64_t>(slot)
-                * static_cast<uint64_t>(EntityRenderIDTable::kCapacity)
+                * static_cast<uint64_t>(EntityRenderIDTable::kRowStride)   // T4c3a：每槽 = kRowStride 行（pass 分半）
                 * static_cast<uint64_t>(sizeof(graph::RenderItemDescriptor));
 
             // T3c-2b（B1）：L2W 行号由**变换侧**写入实体行表（生产者写自己的产物）；

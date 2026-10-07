@@ -1,4 +1,5 @@
 #include <hgl/ecs/support/GPUCullSystem.h>
+#include <hgl/ecs/support/CameraInfoStorage.h>
 #include <hgl/ecs/core/MaterialBatch.h>
 #include <hgl/ecs/core/Entity.h>
 #include <cstdlib>
@@ -15,6 +16,7 @@
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/buffer/BufferPolicy.h>
+#include <hgl/vk/VKBufferReadback.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
 #include <hgl/log/Log.h>
@@ -274,7 +276,7 @@ namespace hgl::ecs
             kArenaRows,
             graph::BufferAllocPolicy::Auto,
             "GPUCullSystem.IndirectCommands",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
         );
         if (!indirect_commands_buffer_) return false;
         indirect_commands_addr_ = device_->GetBufferDeviceAddressAligned16(indirect_commands_buffer_->GetBuffer());
@@ -750,6 +752,13 @@ namespace hgl::ecs
 
         if (s_dispatch_perf.on)
             s_dispatch_perf.Add("gpu_dispatch", GetUptimeUs() - t_dispatch0, device_);
+
+        static const bool s_cull_ssbo_dump = (getenv("CULL_SSBO_DUMP") != nullptr);
+        if (s_cull_ssbo_dump)
+        {
+            cull_queue_->WaitLastSubmitFence();
+            DumpCullSSBOs("AFTER_DISPATCH");
+        }
     }
 
     bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index,
@@ -865,4 +874,183 @@ namespace hgl::ecs
         }
         return visible_count;
     }
+
+    void GPUCullSystem::DumpCullSSBOs(const char *stage_tag)
+    {
+        if (!context_ || !device_)
+            return;
+
+        const uint32_t current_frame = context_->GetFrameIndex();
+        const uint32_t current_slot  = current_frame % HGL_FRAME_SLOT_TOTAL;
+
+        GLogInfo(u8"========== [SSBO DUMP: %s] frame=%u (slot=%u) ==========",
+                 stage_tag ? stage_tag : "INFO", current_frame, current_slot);
+
+        // 1. 全局幸存数 draw_count_buffer_
+        const uint32_t global_survivors = GetGPUVisibleCount();
+        GLogInfo(u8"  [DrawCount] 全局幸存数: %u", global_survivors);
+
+        // 2. 批计数缓冲 batch_counter_buffer_
+        if (batch_counter_buffer_)
+        {
+            const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
+            const VkDeviceSize total_counter_bytes = slot_bytes * HGL_FRAME_SLOT_TOTAL;
+            ValueArray<uint32_t> counters;
+            counters.Resize(static_cast<int>(total_counter_bytes / sizeof(uint32_t)));
+
+            if (graph::ReadbackBuffer(batch_counter_buffer_, 0, total_counter_bytes, counters.GetData()))
+            {
+                for (uint32_t s = 0; s < HGL_FRAME_SLOT_TOTAL; ++s)
+                {
+                    AnsiString main_info = "Main: [";
+                    AnsiString shadow_info = "Shadow: [";
+                    const uint32_t slot_u32_base = s * (kArenaPasses * kBatchBlockStride);
+
+                    // 主帧 pass
+                    for (uint32_t b = 0; b < batch_count_[0] && b < 10; ++b)
+                    {
+                        main_info += "b" + AnsiString::numberOf(b) + "=" + AnsiString::numberOf(counters[slot_u32_base + b]) + " ";
+                    }
+                    const uint32_t main_ovf = counters[slot_u32_base + batch_count_[0]];
+                    main_info += "ovf=" + AnsiString::numberOf(main_ovf) + "]";
+
+                    // 阴影 pass
+                    const uint32_t shadow_u32_base = slot_u32_base + kBatchBlockStride;
+                    for (uint32_t b = 0; b < batch_count_[1] && b < 10; ++b)
+                    {
+                        shadow_info += "b" + AnsiString::numberOf(b) + "=" + AnsiString::numberOf(counters[shadow_u32_base + b]) + " ";
+                    }
+                    const uint32_t shadow_ovf = counters[shadow_u32_base + batch_count_[1]];
+                    shadow_info += "ovf=" + AnsiString::numberOf(shadow_ovf) + "]";
+
+                    const char *slot_mark = (s == current_slot) ? " <= CURRENT" : "";
+                    GLogInfo(u8"  [BatchCounters] Slot %u (offset=%u): %s %s%s",
+                             s, static_cast<uint32_t>(s * slot_bytes),
+                             main_info.c_str(), shadow_info.c_str(), slot_mark);
+                }
+            }
+        }
+
+        // 3. 当前槽的批信息 batch_info_buffer_
+        if (batch_info_buffer_)
+        {
+            const VkDeviceSize slot_info_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
+            ValueArray<BatchInfoRow> infos;
+            infos.Resize(kArenaPasses * kBatchBlockStride);
+
+            if (graph::ReadbackBuffer(batch_info_buffer_, VkDeviceSize(current_slot) * slot_info_bytes,
+                                      slot_info_bytes, infos.GetData()))
+            {
+                for (uint32_t p = 0; p < kArenaPasses; ++p)
+                {
+                    const uint32_t blk_base = BatchBlockBase(p);
+                    for (uint32_t b = 0; b < batch_count_[p]; ++b)
+                    {
+                        const auto &row = infos[blk_base + b];
+                        GLogInfo(u8"  [BatchInfo] Slot %u Pass %u Batch %u: row_base=%u, capacity=%u, topology=%u, group_size=%u",
+                                 current_slot, p, b, row.row_base, row.capacity, row.topology, row.group_size);
+                    }
+                }
+            }
+        }
+
+        // 4. 当前槽的批标签 batch_tag_buffer_
+        if (batch_tag_buffer_)
+        {
+            const VkDeviceSize slot_tag_bytes = VkDeviceSize(kArenaPasses * kMaxVisibleEntities) * sizeof(uint32_t);
+            ValueArray<uint32_t> tags;
+            tags.Resize(kArenaPasses * kMaxVisibleEntities);
+
+            if (graph::ReadbackBuffer(batch_tag_buffer_, VkDeviceSize(current_slot) * slot_tag_bytes,
+                                      slot_tag_bytes, tags.GetData()))
+            {
+                for (uint32_t p = 0; p < kArenaPasses; ++p)
+                {
+                    uint32_t valid_tags = 0;
+                    uint32_t batch_histogram[16] = {};
+                    const uint32_t blk_off = p * kMaxVisibleEntities;
+
+                    for (uint32_t e = 0; e < kMaxVisibleEntities; ++e)
+                    {
+                        const uint32_t tag = tags[blk_off + e];
+                        if (tag != kInvalidBatchTag)
+                        {
+                            ++valid_tags;
+                            if (tag < 16)
+                                ++batch_histogram[tag];
+                        }
+                    }
+
+                    AnsiString hist_str;
+                    for (uint32_t b = 0; b < 16 && b < batch_count_[p]; ++b)
+                    {
+                        hist_str += "b" + AnsiString::numberOf(b) + ":" + AnsiString::numberOf(batch_histogram[b]) + " ";
+                    }
+
+                    GLogInfo(u8"  [BatchTag] Slot %u Pass %u: 有效标签实体数=%u (%s)",
+                             current_slot, p, valid_tags, hist_str.c_str());
+                }
+            }
+        }
+
+        // 5. 间接命令缓冲 indirect_commands_buffer_（前几个命令）
+        if (indirect_commands_buffer_)
+        {
+            constexpr uint32_t kDumpCmds = 8;
+            VkDrawMeshTasksIndirectCommandEXT cmds[kDumpCmds] = {};
+            if (graph::ReadbackBuffer(device_, indirect_commands_buffer_->GetVkBuffer(), 0,
+                                      sizeof(cmds), cmds))
+            {
+                for (uint32_t i = 0; i < kDumpCmds; ++i)
+                {
+                    if (cmds[i].groupCountX != 0 || cmds[i].groupCountY != 0)
+                    {
+                        GLogInfo(u8"  [IndirectCmd] row %u: groupCount=(%u, %u, %u)",
+                                 i, cmds[i].groupCountX, cmds[i].groupCountY, cmds[i].groupCountZ);
+                    }
+                }
+            }
+        }
+
+        // 6. 相机行与视锥平面
+        auto *storage = context_->GetCameraInfoStorage();
+        if (storage && storage->IsReady())
+        {
+            const uint32_t active_cam_row = context_->GetActiveCameraRow();
+            const graph::CameraInfo *ci = storage->GetCameraRow(0, current_slot);
+            if (ci)
+            {
+                GLogInfo(u8"  [CameraInfo] Slot %u (row=%u): pos=(%.2f, %.2f, %.2f) z=(%.2f, %.2f) revZ=%u",
+                         current_slot, active_cam_row, ci->pos.x, ci->pos.y, ci->pos.z,
+                         ci->znear, ci->zfar, ci->use_reversed_z);
+                for (int p = 0; p < 6; ++p)
+                {
+                    GLogInfo(u8"    plane[%d] = (%.3f, %.3f, %.3f, w=%.3f)",
+                             p, ci->frustum_planes[p].x, ci->frustum_planes[p].y,
+                             ci->frustum_planes[p].z, ci->frustum_planes[p].w);
+                }
+            }
+            else
+            {
+                GLogWarning(u8"  [CameraInfo] Slot %u: GetCameraRow 返回 nullptr!", current_slot);
+            }
+        }
+
+        // 7. 实体行与 4-ID
+        const auto& entity_table = context_->GetEntityGPUTable();
+        const auto& rid_table = context_->GetEntityRenderIDTable();
+        for (uint32_t e = 0; e < 3; ++e)
+        {
+            const auto *row = entity_table.Row(e);
+            const auto *desc = rid_table.Row(0, e);
+            if (row && desc)
+            {
+                GLogInfo(u8"  [EntityDump] Slot %u Entity %u: flags=0x%08X, transform_id=%u, geom_id=%u",
+                         current_slot, e, row->flags, row->row[1], desc->geometry_id);
+            }
+        }
+
+        GLogInfo(u8"============================================================");
+    }
 }
+

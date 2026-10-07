@@ -179,6 +179,9 @@ namespace hgl::ecs
         /// in use by Swapchain_RenderCmdBuffer_0。）
         void DrainForHandover();
 
+        /// **SSBO DUMP 诊断**：同步读回并向日志 Dump 所有帧槽的计数缓冲、布局缓冲、标签分布与全局幸存数
+        void DumpCullSSBOs(const char *stage_tag = "CULL_DUMP");
+
         /// **形态 B（T3f-2）接管 hook**：本帧 build 之前由 `PrimitiveBatchPipeline::
         /// RunBatching()` 调用（批对象已被 `MaterialBatch::Clear()` 复位成"自有 buffer +
         /// override=false"状态）。前提校验全部通过 ⇒ 释放批自有行表、四张 gather 表 +
@@ -250,6 +253,12 @@ namespace hgl::ecs
             uint32_t capacity;    // 切片容量（= 本批 item 数；绘制侧 maxDrawCount）
             uint32_t topology;    // kBatchTopology*（与 GLSL 的 TOPOLOGY_* 同步）
             uint32_t group_size;  // MeshDispatchGroupSize(is_lines)（CPU 单源下发，GLSL 不硬编码）
+
+            bool operator==(const BatchInfoRow &rhs) const
+            {
+                return row_base == rhs.row_base && capacity == rhs.capacity &&
+                       topology == rhs.topology && group_size == rhs.group_size;
+            }
         };
 
         /// CPU 暂存：两块（每块 kBatchBlockStride 行）。未写的那块保持零 ⇒ 该 pass 的
