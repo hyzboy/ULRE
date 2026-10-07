@@ -745,7 +745,7 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 
 ### E2. gather 侧运行长度合并：把「一项一条 ICB 命令」合批成实例（2026-10-05 用户留置）
 
-**状态：⏸ 待排期（本轮不做）。** 详版 = `doc/future/entity-rows-gpu-cull-plan.md` §8.10 §八。
+**状态：🟡 已开工（2026-10-07）—— 执行方案 = `doc/future/e2-gather-run-length-merge-plan.md`（本稿定"怎么做 + 怎么验"：硬约束=合并命令的实例行号必须连续；形态 A 块内合并（推荐）/ B 全局扫描；判据必须换维度=命令数 + ΣY==项数）。** 现象详版 = `doc/future/entity-rows-gpu-cull-plan.md` §8.10 §八。
 
 - **现象**：`GPUDrivenCull` 接管后 ICB 内 64 个 cube 是 **64 条 `(x,1,1)` 命令**（用户 RenderDoc 截帧实测），
   而 CPU 账路径是 **1 条 Y=64**（`src/ecs/support/PrimitiveBatchPipeline.cpp:733`
