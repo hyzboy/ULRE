@@ -842,7 +842,7 @@ cull 派发（RenderFrameSync，本帧）
 | ~~**A3**~~ | ~~**部分接管路径从未被真实触发**~~ **已完成（`c96cac8cd`，AlphaModes `AM_PARTIAL=1`）** | 台架 = Opaque 行最后一格改"同 def + billboard 顶点节点"（⇒ 独立批）+ `AllocateContiguousInstances(…,1)`（⇒ `InstancedPrimitiveRenderItem`，④ 类项）。实测：reject 日志（④ 理由）+ `ENGAGED batches=4/5 items=27` + `Parity 28/28/0` + `Σcount=27 < global=28 overflow=0 值链=27/27`（台架判据本就 Σ≤global，未误报）+ 未接管批确实被 CPU 账画出（Opaque 行 7 块）+ 像素三方逐字节全等 + 默认关时仍 4/4。**2026-10-05 补记**：④ 类项已整体删除 ⇒ 本台架的 `AllocateContiguousInstances(…,1)` 半消失，实测变为 `ENGAGED batches=5/5 items=28 arena_rows=36`（全量接管；异 program 自成一批照常被正确处理）⇒ 本行原「4/5 部分接管」判据改由 A4 批数超限（`CV_STRESS=260` ⇒ 256/260）覆盖 | 已达成（判据已迁移） |
 | ~~**A4**~~ | ~~**容量边界未验**~~ **已完成（`CoverageVariants` 加 `CV_STRESS=N` 台架）** | N 个「同 def(Lit) + 仅 `alpha_cutoff` 不同」的配方（阈值进 `#define HGL_ALPHA_CUTOFF <v>` ⇒ program/批各不同）。实测 `CV_STRESS=260 CV_DIST=60`：**告警 1 次**（`接管批数超 kMaxBatches(256)`）+ `ENGAGED batches=256/260 items=256 arena_rows=1024`（=256×4，4 行对齐）+ `Parity 260/260/0` + `batch slices 256 rows=256 Σcount=256 global=260 overflow=0 值链=256/256`（**Σcount < global 合法**、无假红）+ 像素（CPU 账 vs 部分接管）逐字节全等 ⇒ 未接管的 4 批仍由 CPU 账画出。**负控**（临时改码，验完即撤）已证两条硬判据非空转：竞技场容量临时改 256 ⇒ `批次累计项数超共享竞技场` 精确在 64 批×4 行=256 顶格触发；批容量少一行 ⇒ `[T3i] 切片溢出！overflow=N`。**新发现**：竞技场那条在**现容量下不可达**——`EntityGPUTable::kCapacity(4096) == GetGatherCapacity()(4096)` 且**每实体至多 1 个批 item**（多批床台实测 items == 实体数）⇒ Σitems ≤ 4096 ⇒ 对齐后恒 ≤ 容量。**拍板 ①**：该分支已删除，随之删除只为它存在的 `GPUCullSystem::GetGatherCapacity()`（零残留）；删后判据复验不变（`batches=256/260`、`Σcount=256<global=260`、门 44/0）。⚠ 残留风险：若将来 `EntityGPUTable::kCapacity` 被抬到超过竞技场行数，切片会越过 gather 缓冲（静默越界写）——挡这个要的是 `static_assert(kCapacity <= kMaxVisibleEntities)`（机会性手段，②被否） | 已达成 |
 | ~~**A5**~~ | ~~**L2W 环深度 = 3 vs 帧槽空间 = 8**~~ **已闭（代码层已按不变式写死）** | `inc/hgl/common/RenderOptions.h:33`：`#define HGL_L2W_RING_FRAMES HGL_FRAME_SLOT_TOTAL` ⇒ **环深度 ≡ 帧槽空间**，不可能再出现"离屏槽与主帧槽别名"（该别名曾导致 prepass 覆写主帧矩阵、整帧只剩清屏色）。§8.4 的旧"待查"已过时 | 已闭 |
-| **A6** | **CPU 渲染路径的去留** —— **已拍板：删（用户 2026-10-07）** | 不再取「RELEASE 宏屏蔽」那条备选（代码里本就没有宏残留，已核）。**执行线 = §11 T4c4**：T4c1/T4c2/T4c3 ✅、T4c4-1 ✅、T4c4-2 ✅、T4c4-3 ✅（`49d9e2430`，CPU 绘制批对象链已删）；**剩 T4c4-4**（清 `MaterialBatch` 剩余 CPU 字段 + 文档回扫 + 台账）。判据沿用 A6-d：九例 `ENGAGED x==y` + guard 拒绝 0 + 六台架摘要逐位不变 + 阴影两例逐位不变 | T4c4-4 完成即结案 |
+| **A6** | **CPU 渲染路径的去留** —— **已拍板：删（用户 2026-10-07）** | 不再取「RELEASE 宏屏蔽」那条备选（代码里本就没有宏残留，已核）。**执行线 = §11 T4c4**：T4c1/T4c2/T4c3 ✅、T4c4-1 ✅、T4c4-2 ✅、T4c4-3 ✅（`49d9e2430`，CPU 绘制批对象链已删）；**T4c4-4 ✅（`82e488103`）** —— 逐字段取证只删真死件（`debug_blocks_logged` / `icb_count_buffer_offset`），其余字段仍有真实读者 ⇒ 不动。判据沿用 A6-d：九例 `ENGAGED x==y` + guard 拒绝 0 + 六台架摘要逐位不变 + 阴影两例逐位不变 | ✅ **已结案（`82e488103`）** |
 
 ### B. 本次会话（alpha 呈现链）带出的新欠账
 
@@ -1390,7 +1390,7 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   阴影两例敏感性（`SM_FREEZE=0` / `CSM_AUTOWALK=1`）如预期变值；验证层 VUID 0、`result -4` 0。
   ⇒ **T4c4 入口条件已齐**：`WriteMeshDrawCommands` / `EnsureMeshDrawParams` / `draw_batches` 赖以存活的
     守卫早退（`IsCurrentPassShadow()` 处 return）已不存在，阴影批不再依赖 CPU 账。
-- **T4c4 ✅ 进行中（T4c4-1/2 已完成，提交 `6d1df5083`）**：删 CPU 绘制链。
+- **T4c4 ✅ 全部完成（`6d1df5083` → `82e488103`）**：删 CPU 绘制链 ⇒ **CPU 渲染路径已删净**。
   - **T4c4-1 量化前提**（方法固化）：九例逐个抓 `ENGAGED batches=x/y`（要求 x==y）+ guard 拒绝次数（要求 0）
     ⇒ "无批走 CPU 绘制"。⚠ **ENGAGED 行缺失 = 静默退回 CPU 账**（像素可能仍一样）⇒ 必看项。
   - **T4c4-2**：删 `WriteMeshDrawCommands` / `ReallocICB` / CPU 自有 ICB 分支 + 变死的
@@ -1413,7 +1413,15 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
     纯声明无函数体、不能大括号配平切（按整块文本删）；函数定义首参与函数名同行、其余参数按实际对齐宽度缩进；
     往字符串追加文字注意切尾长度（`" },` 是 4 字符）；契约表解析要按条目花括号配对且限定区间边界
     （否则别的表条目会算进来造成假阳性）；**失败的权威信息是测试自己打的那条**。
-  - **T4c4-4**：清 `MaterialBatch` CPU 字段 + 文档回扫 + 台账。
+  - **T4c4-4 ✅**（`82e488103`）：清 `MaterialBatch` 死字段 + 文档回扫 + 台账。**逐字段取证后只删真死件**：
+    `debug_blocks_logged`（0 读者；该行注释本身已损坏 —— 两个 `///<` 串在一行）与 `icb_count_buffer_offset`
+    （引擎 0 读者 —— 绘制侧自 T4c3c 起取 `gpu_slice[pass].count_buffer_offset`，批级偏移被取代；唯一写者是探针示例
+    `ApiValidation/ComputeIndirectCount`，其死写入一并删）。其余字段（`own_*` / `l2w_buffer` / `mesh_draw_params_*` /
+    `icb_count_buffer` / `gpu_slice` / `transform_buffer` / `renderer` …）逐个查证**仍有真实读者 ⇒ 一律不动**。
+    同步修 `GPUCullSystem.h` 里已过时的「绘制侧 = icb_count_buffer_offset」注释。
+    判据：清树全量重编 rc=0；八台架摘要逐位不变（D=0）+ **ENGAGED x==y**（含 Cascade 2/2、AlphaModes 4/4）+ 拒绝 0；
+    ATS rc=0；门 45/0；TestCSM rc=0；ATU rc=0 且 05149=0。
+  ⇒ **T4c4 全线完成 ⇒ §11 T4c 结案：引擎内已无 CPU 绘制路径。**
 
 - **闪烁取证（"有 shadow 的示例每 3 帧一次"，2026-10-06，未结）**：
   > **订正（2026-10-07 复核）—— 本块已结案**：症状（含阴影示例每 3 帧一次整帧异常）由 §11.9 根因 +

@@ -72,6 +72,9 @@
 > 按零兼容纪律**连字段一起删**（全仓读写者只有 `RenderTargetDesc.h` 自身两处；删后需清树全量重编）。
 > 本节由此**只剩 cubemap 六面（点光源阴影）**一项，且它属**新特性**而非欠账 ⇒ 做不做需另行拍板。
 > CSM 部分（array + 条带滚动）**早已落地**（见本节正文与 D5）。
+> **已执行（`82e488103`）**：`samples` 字段 + `IsValid()` 那条恒拒分支已删（全仓读写者确认为 `RenderTargetDesc.h`
+> 自身，另三处 `VK_SAMPLE_COUNT_1_BIT` 属 `VkAttachmentDescription`，另一个结构）；清树全量重编后八台架摘要逐位不变、
+> 门 45/0、TestCSM / ATS / ATU 全绿。
 
 - **现状**：`CreateFBO` 的 `fb_info.layers=1`、`BeginRendering` 的
   `layerCount=1` 硬编码；`RenderTargetDesc::samples != 1` 被 `IsValid()`
