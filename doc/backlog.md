@@ -65,7 +65,13 @@
 - **已落地**：`sampler.toml` 中配置 `ShadowPCF` 采样器为 Reversed-Z `GreaterOrEqual` 硬件深度比较（Linear 滤波 + ClampToEdge）；
   `bindless_textures.glsl` 补充 `Sample2DArrayShadow`；`pcf_shadow.glsl` 全面切换至硬件深度比较采样（Hardware PCF），消除软件手动比较并享受硬件 2x2 面积双线性平滑。
 
-### A6. cubemap / CSM / MSAA
+### A6. cubemap / CSM / MSAA —— **MSAA 永久不做（用户 2026-10-07 拍板）；本节只剩 cubemap 六面**
+
+> **订正（2026-10-07，用户拍板）**：**不支持 MSAA（永不）** ⇒ `RenderTargetDesc` 的 `samples` 字段与
+> `IsValid()` 里那条 `if(samples != 1) return false;` 是**只用来拒绝**的残留（注释自称「阶段 D」），
+> 按零兼容纪律**连字段一起删**（全仓读写者只有 `RenderTargetDesc.h` 自身两处；删后需清树全量重编）。
+> 本节由此**只剩 cubemap 六面（点光源阴影）**一项，且它属**新特性**而非欠账 ⇒ 做不做需另行拍板。
+> CSM 部分（array + 条带滚动）**早已落地**（见本节正文与 D5）。
 
 - **现状**：`CreateFBO` 的 `fb_info.layers=1`、`BeginRendering` 的
   `layerCount=1` 硬编码；`RenderTargetDesc::samples != 1` 被 `IsValid()`

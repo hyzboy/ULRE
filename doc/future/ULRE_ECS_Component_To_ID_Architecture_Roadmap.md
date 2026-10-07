@@ -258,6 +258,10 @@ namespace hgl::ecs {
 
 ## 六、 阶段三：64 字节 Entity 结构升级与二进制场景直载 (Blit Loading)
 
+> **订正（2026-10-07）**：本阶段的**二进制场景直载**（`.ulrescene` / mmap / 离线 Cooker）已明确
+> **「本计划不做」**（用户拍板）⇒ 本章 6.2/6.3 的格式规范与 `LoadSceneBlit` 属**历史设计**，不排期。
+> 「64 字节 Entity 结构」本身是否仍要做，与 `doc/future/entitygpu-and-ulrescene-design.md` 的 P-B8-1..6 一并另议。
+
 ### 6.1 实体物理定义（严格对齐 1 个 Cache Line）
 在 `inc/hgl/ecs/core/Entity.h` 中彻底重构 `Entity`：
 * **元数据区 (16 字节)**：`uint32_t entity_index`、`uint16_t generation` (代数防僵尸句柄)、`uint16_t flags`、`uint32_t layer_mask`、`uint32_t string_name_offset`。
