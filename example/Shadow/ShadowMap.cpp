@@ -1289,7 +1289,8 @@ private:
         shadow_info->inv_shadow_map_size = math::Vector2f(1.0f / static_cast<float>(kShadowMapSize), 1.0f / static_cast<float>(kShadowMapSize));
         shadow_info->shadow_tex          = math::Vector4u(shadow_map_handle, 0, 0, 0);
 
-        main_light_shadow_system->MarkShadowDirty();
+        // T6b/P4：影子数据是世界私有的 CPU 权威（`ECSContext::shadow_info`）——改完不必标脏，
+        // 提交点（交换链帧 acquire 之后）由 `ECSContext::CommitShadowInfo` 写本帧槽。
     }
 
     bool SetupMainCamera()

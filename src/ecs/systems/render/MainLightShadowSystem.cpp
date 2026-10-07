@@ -6,7 +6,6 @@
 #include<hgl/ecs/core/RenderPassRequest.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/render/shadow/CascadedShadowController.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
@@ -29,82 +28,23 @@ namespace hgl::ecs
         DisableMainLightShadow();
     }
 
-    graph::EnvProfileID MainLightShadowSystem::ResolveProfileID() const
-    {
-        if (context)
-            return context->GetEnvProfileID();
-
-        return graph::kEnvProfileDefault;
-    }
-
-    graph::EnvironmentManager *MainLightShadowSystem::ResolveManager()
-    {
-        if (render_context)
-        {
-            if (auto *gc = render_context->GetGraphicsContext())
-                return gc->GetEnvironmentManager();
-        }
-
-        if (context)
-        {
-            if (auto *rc = context->GetRenderContext())
-            {
-                if (auto *gc = rc->GetGraphicsContext())
-                    return gc->GetEnvironmentManager();
-            }
-
-            if (auto *gc = context->GetGraphicsContext())
-                return gc->GetEnvironmentManager();
-        }
-
-        return nullptr;
-    }
-
+    // T6b/P4：影子数据的 CPU 权威在**世界**（`ECSContext::shadow_info`），不再挂 env profile。
+    // 本系统只是它的写者（prepass 里逐帧解算级联），GPU 侧由提交点的
+    // `ECSContext::CommitShadowInfo` 写本帧槽。
     graph::ShadowInfo *MainLightShadowSystem::EditShadowInfo()
     {
-        auto *manager = ResolveManager();
-        if (!manager)
-            return nullptr;
-
-        auto *info = manager->Edit(ResolveProfileID());
-        if (!info)
-            return nullptr;
-
-        return &info->shadow;
+        return context ? context->EditShadowInfo() : nullptr;
     }
 
     const graph::ShadowInfo *MainLightShadowSystem::GetShadowInfo() const
     {
-        auto *manager = const_cast<MainLightShadowSystem *>(this)->ResolveManager();
-        if (!manager)
-            return nullptr;
-
-        const auto *info = manager->Get(ResolveProfileID());
-        if (!info)
-            return nullptr;
-
-        return &info->shadow;
+        return context ? context->GetShadowInfo() : nullptr;
     }
 
-    void MainLightShadowSystem::SetShadowInfo(const graph::ShadowInfo &info, bool immediate)
+    void MainLightShadowSystem::SetShadowInfo(const graph::ShadowInfo &info)
     {
-        auto *manager = ResolveManager();
-        if (!manager)
-            return;
-
-        auto *env = manager->Edit(ResolveProfileID());
-        if (!env)
-            return;
-
-        env->shadow = info;
-        if (immediate)
-            manager->MarkDirty(ResolveProfileID());
-    }
-
-    void MainLightShadowSystem::MarkShadowDirty()
-    {
-        if (auto *manager = ResolveManager())
-            manager->MarkDirty(ResolveProfileID());
+        if (context)
+            context->SetShadowInfo(info);
     }
 
     bool MainLightShadowSystem::EnableMainLightShadow(const graph::CascadedShadowConfig &config, uint32_t shadow_map_size)
@@ -336,7 +276,6 @@ namespace hgl::ecs
         }
 
         shadow_info->shadow_tex.x = active_global_tex;
-        MarkShadowDirty();
 
         for (uint32_t c = 0; c < graph::kMaxShadowCascades; ++c)
         {

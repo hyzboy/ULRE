@@ -3485,6 +3485,29 @@ int main(int argc, char** argv)
               "addr_draw_item_ids",
               "世界私有 DrawItemID 表地址出现在设备级全局表",
               true },
+            // ⑤ T6b/P4：影子数据（ShadowInfo）+ 光源行也是**世界私有**。
+            //    以前影子挂在 env profile（EnvironmentInfo::shadow）而 CSM 的 RT/控制器挂世界 ⇒
+            //    两个世界共享 kEnvProfileDefault 时会互相覆写同一份影子数据（今天没爆只是因为离屏世界不开 CSM）。
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "graph::ShadowInfo shadow_info;",
+              "影子数据不再是每世界一份（退回挂 env profile ⇒ 两世界同帧互相覆写）" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "LightRowTable light_row_table;",
+              "光源行表不再是每世界一份" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_shadow = shadow_info_addr",
+              "影子地址不取本世界表（跨世界共用一份 ⇒ 同帧互相覆写）" },
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_lights = light_row_table_addr",
+              "光源行地址不取本世界表" },
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
+              "ShadowInfo  shadow;",
+              "T6b/P4 禁复活：影子数据回到 env profile（profile 可被多世界共享 ⇒ 互踩）",
+              true },
+            { "EnvironmentManager.h", OS_TEXT("inc/hgl/graph/module/EnvironmentManager.h"),
+              "GetShadowAddress",
+              "T6b/P4 禁复活：影子地址重新经 env profile 取（旧形态）",
+              true },
         };
 
         if (const int failed = verify_source_contracts(22, kIsolationContracts,
@@ -3492,9 +3515,10 @@ int main(int argc, char** argv)
                                                                          sizeof(kIsolationContracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 22 Passed: 两世界同帧隔离契约成立（%d 条）：四个世界私有存储/地址表均为每世界一份、"
+        GLogInfo(u8"Test 22 Passed: 两世界同帧隔离契约成立（%d 条）：六个世界私有存储/地址表均为每世界一份、"
                  u8"世界表只取本世界存储地址且按帧槽轮转、相机行只走本世界存储且校验 world_owner，"
-                 u8"设备级相机行池与全局表世界私有字段均未复活。",
+                 u8"设备级相机行池与全局表世界私有字段均未复活；影子数据与光源行同属世界私有（T6b/P4："
+                 u8"影子不再挂 env profile，两个世界同帧各写各的）。",
                  static_cast<int>(sizeof(kIsolationContracts) / sizeof(kIsolationContracts[0])));
     }
 
@@ -6003,6 +6027,106 @@ int main(int argc, char** argv)
 
         GLogInfo(u8"Test 45 Passed: T6b 减法契约成立（光源定义单一真源 = 世界光源行 0；天空两侧 6 条禁复活 + "
                  u8"阴影域不回读环境域；shader 四处改读光行；死头与空 TU 已清）。");
+    }
+
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 46: T6b/P4 契约 —— 影子数据（`ShadowInfo`）**世界私有化**
+    //
+    // 判据三类：
+    // ① **归属搬家**：影子数据的 CPU 权威与设备镜像都在**世界**（`ECSContext`），
+    //    不再经 env profile；建表与其余世界表同批、地址经世界表 `addr_shadow` 下发；
+    // ② **提交时序**：设备写入只在交换链帧 acquire 之后写**本帧槽**（在飞帧读自己的槽）；
+    // ③ **旧形态禁复活**：profile 侧 shadow ring / 取址 API / 提交 API / 脏标记全部不得回潮
+    //    （`shadow_ring` 曾让两世界共享 default profile 时互踩）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        static const SourceContract kShadowWorldPrivateContracts[] =
+        {
+            // ① 归属搬家：世界持有 CPU 权威 + 世界私有设备镜像
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "graph::StructView<graph::ShadowInfo> *shadow_info_view = nullptr;",
+              "T6b/P4：影子数据设备镜像不在世界（退回 profile ⇒ 两世界互踩）" },
+
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "void CommitShadowInfo(const uint32_t frame_slot);",
+              "T6b/P4：世界缺少影子数据提交口（写者/时序无单源）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "bool ECSContext::InitializeShadowInfoTable()",
+              "T6b/P4：影子数据表的建表入口丢失" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "if (!InitializeShadowInfoTable())",
+              "T6b/P4：影子数据建表不与其余世界表同批（失败不中止 ⇒ 静默缺地址）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "base[slot] = shadow_info;",
+              "T6b/P4：提交写成了「单份」而非「本帧槽」（在飞帧会读到被覆写的数据）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "* static_cast<uint64_t>(sizeof(graph::ShadowInfo));",
+              "T6b/P4：影子表按帧槽各一份的步长口径丢失（地址 = 基址 + 帧槽 × 每份字节）" },
+
+            // ② 提交时序 + 写者
+            { "ViewUBOCommitSystem.cpp", OS_TEXT("src/ecs/systems/render/ViewUBOCommitSystem.cpp"),
+              "context->CommitShadowInfo(rt->GetCurrentFrameIndex());",
+              "T6b/P4：影子数据提交点丢失（或不再按交换链帧的当前槽提交）" },
+
+            { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
+              "return context ? context->EditShadowInfo() : nullptr;",
+              "T6b/P4：阴影域不再写世界影子数据（写者单源丢失）" },
+
+            { "MainLightShadowSystem.h", OS_TEXT("inc/hgl/ecs/systems/render/MainLightShadowSystem.h"),
+              "void SetShadowInfo(const graph::ShadowInfo &info);",
+              "T6b/P4：影子数据写入口签名丢失（旧 immediate 参数属 profile 脏标记时代）" },
+
+            // ③ 旧形态禁复活
+            { "EnvironmentManager.h", OS_TEXT("inc/hgl/graph/module/EnvironmentManager.h"),
+              "kShadowUboRing",
+              "T6b/P4 禁复活：profile 侧 shadow ring（profile 可被多世界共享 ⇒ 影子数据互踩）",
+              true },
+
+            { "EnvironmentManager.h", OS_TEXT("inc/hgl/graph/module/EnvironmentManager.h"),
+              "MaterializeShadowUBO",
+              "T6b/P4 禁复活：profile 侧物化影子 UBO",
+              true },
+
+            { "EnvironmentManager.h", OS_TEXT("inc/hgl/graph/module/EnvironmentManager.h"),
+              "CommitMaterialized",
+              "T6b/P4 禁复活：旧提交口（sky+shadow 同提交 ⇒ 影子数据又挂 profile）",
+              true },
+
+            { "MainLightShadowSystem.h", OS_TEXT("inc/hgl/ecs/systems/render/MainLightShadowSystem.h"),
+              "MarkShadowDirty",
+              "T6b/P4 禁复活：脏标记 API（世界私有影子数据走提交点写本帧槽，不需要标脏）",
+              true },
+
+            { "MainLightShadowSystem.h", OS_TEXT("inc/hgl/ecs/systems/render/MainLightShadowSystem.h"),
+              "ResolveManager",
+              "T6b/P4 禁复活：阴影域重新解析环境域管理器（依赖方向被破坏）",
+              true },
+
+            { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
+              "graph/module/EnvironmentManager.h",
+              "T6b/P4 禁复活：阴影域重新 include 环境域（影子数据必须留在世界）",
+              true },
+
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
+              "ShadowInfo  shadow;",
+              "T6b/P4 禁复活：环境综合信息里出现影子数据字段（profile 载体 = 多世界互踩）",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(46, kShadowWorldPrivateContracts,
+                                                       static_cast<uint>(sizeof(kShadowWorldPrivateContracts) /
+                                                                         sizeof(kShadowWorldPrivateContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 46 Passed: T6b/P4 契约成立 —— 影子数据（ShadowInfo）已世界私有化："
+                 u8"CPU 权威与世界私有设备镜像都在 ECSContext、建表与其余世界表同批、地址经世界表 addr_shadow "
+                 u8"按帧槽下发、提交点只在交换链帧写本帧槽；profile 侧 shadow ring / GetShadowAddress / "
+                 u8"CommitMaterialized / MarkShadowDirty / 阴影域→环境域依赖 全部禁复活。");
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

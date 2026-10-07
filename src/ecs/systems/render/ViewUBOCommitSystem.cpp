@@ -1,9 +1,6 @@
 #include<hgl/ecs/systems/render/ViewUBOCommitSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
-#include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/EnvironmentManager.h>
-#include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VKRenderTarget.h>
 
 namespace hgl::ecs
@@ -22,28 +19,14 @@ namespace hgl::ecs
         if (auto rdb = context->GetSystem<RenderSceneUBOSystem>())
             rdb->CommitViewportUBO();
 
-        graph::GraphicsContext *gc = nullptr;
-        if (auto *rc = context->GetRenderContext())
-            gc = rc->GetGraphicsContext();
-        if (!gc)
-            gc = context->GetGraphicsContext();
-
-        if (auto *env_manager = gc ? gc->GetEnvironmentManager() : nullptr)
+        // 本世界的影子数据（T6b/P4：世界私有，不再经 env profile）：只在**交换链帧 acquire
+        // 之后**写它那一槽 —— 该槽（交换链图像）的上一帧已在 NextFrame 里等完，写它不会踩
+        // 仍在飞的其它帧（它们读自己的槽）。离屏 pass 不采样影子数据、且发生在 acquire 之前
+        // ⇒ 那里不提交。天空（sky）是单份 buffer：数据变时 `MarkDirty` 即时写，不需要每帧重提。
+        if (auto *rt = context->GetRenderTarget())
         {
-            // 只有交换链帧在 acquire 之后写 shadow 槽：该 acquired image 的上一帧
-            // 已经在 NextFrame 里等完，其它在途帧读的是自己的槽。离屏 shadow pass
-            // 不采样 ShadowInfo，且发生在 acquire 之前，写任何槽都可能踩主帧。
-            uint32_t shadow_frame = 0;
-            bool commit_shadow = false;
-            if (auto *rt = context->GetRenderTarget())
-            {
-                if (rt->IsSwapchain())
-                {
-                    shadow_frame = rt->GetCurrentFrameIndex();
-                    commit_shadow = true;
-                }
-            }
-            env_manager->CommitMaterialized(shadow_frame, commit_shadow);
+            if (rt->IsSwapchain())
+                context->CommitShadowInfo(rt->GetCurrentFrameIndex());
         }
     }
 }//namespace hgl::ecs

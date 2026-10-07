@@ -68,7 +68,7 @@ namespace hgl::graph
         profile->sky_ubo->Update(profile->cpu.sky);    // 拷贝数据 + 置脏
         profile->sky_ubo->Commit();                    // 标脏交 L2
 
-        // 地址不在这里入表：sky / shadow 是**世界私有**字段（世界表 WorldAddresses），
+        // 地址不在这里入表：sky 是**世界私有**字段（世界表 WorldAddresses 的 addr_sky），
         // 每世界按自己的 profile 取址（`GetSkyAddress`）并由 ECSContext::SyncWorldAddresses 写本世界槽。
         // 但仍在物化处做一次取址 fail-fast：取不到地址 = shader 解引用 0 基址（UB），
         // 而 0 校验层消息抓不到这类崩。
@@ -82,95 +82,6 @@ namespace hgl::graph
             return false;
         }
 
-        return true;
-    }
-
-    void EnvironmentManager::ReleaseShadowRing(Profile *profile)
-    {
-        if (!profile)
-            return;
-
-        auto *gc = GetGraphicsContext();
-        auto *buffer_manager = gc ? gc->GetBufferManager() : nullptr;
-
-        for (uint32_t i = 0; i < kShadowUboRing; ++i)
-        {
-            if (!profile->shadow_ring[i])
-                continue;
-
-            auto *buf = profile->shadow_ring[i]->GetBuffer();
-            delete profile->shadow_ring[i];
-            profile->shadow_ring[i] = nullptr;
-
-            if (buffer_manager && buf)
-                buffer_manager->Release(buf);
-        }
-    }
-
-    bool EnvironmentManager::MaterializeShadowUBO(Profile *profile)
-    {
-        if (!profile || profile->shadow_ring[0])
-            return profile && profile->shadow_ring[0];
-
-        auto *gc = GetGraphicsContext();
-        if (!gc)
-            return false;
-
-        auto *buffer_manager = gc->GetBufferManager();
-        if (!buffer_manager)
-            return false;
-
-        // ring 下标即帧槽号：地址表按帧槽分份，靠这条不变量对齐（改一处必改另一处）。
-        static_assert(kShadowUboRing == HGL_FRAME_SLOT_TOTAL,
-                      "阴影 ring 下标 = 帧槽号；与 GlobalAddresses 表槽数必须一致");
-
-        GLogInfo(u8"[EnvironmentManager] MaterializeShadowUBO: %s ring=%u",
-                 profile->name.c_str(), kShadowUboRing);
-
-        for (uint32_t i = 0; i < kShadowUboRing; ++i)
-        {
-            AnsiString buf_name = "ShadowUBO:";
-            buf_name += profile->name;
-            buf_name += ":";
-            buf_name += AnsiString::numberOf(i);
-
-            // 必须用 CreateSSBO：只有它带 SHADER_DEVICE_ADDRESS usage（BDA 取址前提）；
-            // shadow 数据经**世界表** world_addresses.addr_shadow 解引用（C2 起随世界），不吃 Scene 集绑定。
-            auto *buf = buffer_manager->CreateSSBO(buf_name,
-                                                   StructView<ShadowInfo>::GetSize());
-            if (!buf)
-            {
-                GLogError("[EnvironmentManager] create shadow UBO failed: %s slot=%u",
-                          profile->name.c_str(), i);
-                ReleaseShadowRing(profile);
-                return false;
-            }
-
-            buf->SetUpdateClass(BufferUpdateClass::Deferred);
-            profile->shadow_ring[i] = StructView<ShadowInfo>::Create(buf, false);
-            if (!profile->shadow_ring[i])
-            {
-                buffer_manager->Release(buf);
-                GLogError("[EnvironmentManager] create shadow accessor failed: %s slot=%u",
-                          profile->name.c_str(), i);
-                ReleaseShadowRing(profile);
-                return false;
-            }
-
-            // 每槽一份初始数据。之后只写 acquire 完成的那一槽，避免踩在途帧。
-            profile->shadow_ring[i]->Update(profile->cpu.shadow);
-            profile->shadow_ring[i]->Commit();
-
-            // 地址不在这里入表（随世界 → 世界表 addr_shadow，按 profile 取址）；物化处做一次
-            // 取址 fail-fast：0 地址 = shader 解引用 0 基址（UB）。
-            if (gc->GetDevice()->GetBufferDeviceAddressAligned16(buf->GetBuffer()) == 0)
-            {
-                GLogError("[EnvironmentManager] shadow ring 取不到设备地址: %s slot=%u",
-                          profile->name.c_str(), i);
-                ReleaseShadowRing(profile);
-                return false;
-            }
-        }
         return true;
     }
 
@@ -196,11 +107,9 @@ namespace hgl::graph
 
         // default 立即物化并标脏：任何 world 第一帧的设备级上传扫描即可拿到有效数据。
         MaterializeSkyUBO(p);
-        MaterializeShadowUBO(p);
 
-        GLogInfo(u8"[EnvironmentManager] default profile ready (sky UBO=%p, shadow ring0=%p)",
-                 (void *)(p->sky_ubo ? p->sky_ubo->GetGPUBuffer() : nullptr),
-                 (void *)(p->shadow_ring[0] ? p->shadow_ring[0]->GetGPUBuffer() : nullptr));
+        GLogInfo(u8"[EnvironmentManager] default profile ready (sky UBO=%p)",
+                 (void *)(p->sky_ubo ? p->sky_ubo->GetGPUBuffer() : nullptr));
     }
 
     EnvironmentManager::EnvironmentManager(GraphicsContext *gc)
@@ -239,8 +148,6 @@ namespace hgl::graph
                 if (buffer_manager && buf)
                     buffer_manager->Release(buf);
             }
-
-            ReleaseShadowRing(p);
         }
     }
 
@@ -286,32 +193,7 @@ namespace hgl::graph
             p->sky_ubo->Update(p->cpu.sky);    // 拷贝数据 + 置脏
             p->sky_ubo->Commit();              // 标脏交 L2
         }
-        // shadow 不在这里写 GPU。调用点在 Tick（阴影 pass 之前），交换链上仍有
-        // 1~2 帧在飞读着同一块 ShadowInfo。写 CPU 即可，GPU 槽由 CommitMaterialized
-        // 在 acquire 之后写入。
-    }
-
-    void EnvironmentManager::CommitMaterialized(uint32_t shadow_frame_index, bool commit_shadow)
-    {
-        if (shadow_frame_index >= kShadowUboRing)
-            shadow_frame_index %= kShadowUboRing;
-
-        for (auto *p : profiles)
-        {
-            if (!p)
-                continue;
-
-            if (p->sky_ubo)
-            {
-                p->sky_ubo->Update(p->cpu.sky);
-                p->sky_ubo->Commit();
-            }
-            if (commit_shadow && p->shadow_ring[shadow_frame_index])
-            {
-                p->shadow_ring[shadow_frame_index]->Update(p->cpu.shadow);
-                p->shadow_ring[shadow_frame_index]->Commit();
-            }
-        }
+        // 影子数据不在本模块（T6b/P4：随世界，见 ECSContext::CommitShadowInfo）。
     }
 
     uint64_t EnvironmentManager::GetSkyAddress(EnvProfileID id)
@@ -338,37 +220,6 @@ namespace hgl::graph
         return addr;
     }
 
-    uint64_t EnvironmentManager::GetShadowAddress(EnvProfileID id, uint32_t frame_slot)
-    {
-        EnsureDefault();
-
-        Profile *p = FindProfile(id);
-        if (!p)
-            p = FindProfile(kEnvProfileDefault);
-        if (!p || !MaterializeShadowUBO(p))
-            return 0;
-
-        if (frame_slot >= kShadowUboRing)
-            frame_slot %= kShadowUboRing;
-
-        auto *ring = p->shadow_ring[frame_slot];
-        if (!ring)
-            return 0;
-
-        auto *gc = GetGraphicsContext();
-        auto *device = gc ? gc->GetDevice() : nullptr;
-        if (!device)
-            return 0;
-
-        const uint64_t addr = device->GetBufferDeviceAddressAligned16(ring->GetBuffer()->GetBuffer());
-        if (addr == 0)
-        {
-            GLogError("[EnvironmentManager] GetShadowAddress 取不到设备地址: %s slot=%u",
-                      p->name.c_str(), frame_slot);
-        }
-        return addr;
-    }
-
     void EnvironmentManager::Release(EnvProfileID id)
     {
         // 内置 default 可共享（任何世界都能用它），**不随任何世界销毁**；无效句柄 no-op。
@@ -380,8 +231,6 @@ namespace hgl::graph
             Profile *p = *it;
             if (!p || p->id != id)
                 continue;
-
-            ReleaseShadowRing(p);
 
             if (p->sky_ubo)
             {

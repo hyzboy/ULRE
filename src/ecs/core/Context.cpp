@@ -360,6 +360,10 @@ namespace hgl
                         // T6b：光源行表随世界释放（同一纪律）
                         if (light_row_buffer)
                             bm->Release(light_row_buffer);
+
+                        // T6b/P4：影子数据表随世界释放（同一纪律）
+                        if (shadow_info_buffer)
+                            bm->Release(shadow_info_buffer);
                     }
                 }
 
@@ -376,6 +380,10 @@ namespace hgl
                 light_row_buffer = nullptr;
                 light_row_view = nullptr;
                 light_row_table_addr = 0;
+
+                shadow_info_buffer = nullptr;
+                shadow_info_view = nullptr;
+                shadow_info_addr = 0;
             }
 
             world_addresses_addr = 0;
@@ -1679,6 +1687,10 @@ namespace hgl
             if (!InitializeLightRowTable())
                 return false;
 
+            // T6b/P4：影子数据表与前几表同批（世界私有；多世界同帧各写各的）
+            if (!InitializeShadowInfoTable())
+                return false;
+
             SyncWorldAddresses();
             return true;
         }
@@ -2046,6 +2058,107 @@ namespace hgl
             return true;
         }
 
+        /// T6b/P4：建影子数据（`graph::ShadowInfo`）的**世界私有**设备镜像。
+        ///
+        /// 为什么随世界：它以前挂在 env profile（`EnvironmentInfo::shadow`），而 CSM 的 RT/控制器
+        /// 挂世界 ⇒ **两个世界共享 `kEnvProfileDefault` 时会互相覆写同一份影子数据**（P4 修的就是
+        /// 这个归属错位）。现在：CPU 权威 = `ECSContext::shadow_info`（写者 = `MainLightShadowSystem`），
+        /// 设备镜像 = 本表，**按帧槽各一份**（地址 = 基址 + 帧槽 × `sizeof(ShadowInfo)`，与
+        /// `WorldAddresses.addr_shadow` 的下发口径一致）。
+        /// 地址缺失 = 采样阴影的 shader 解引用 0 基址（UB）⇒ fail-fast，与其余世界表同款判据。
+        bool ECSContext::InitializeShadowInfoTable()
+        {
+            if (shadow_info_buffer)
+                return true;
+
+            auto *gc = GetGraphicsContext();
+            if (!gc)
+            {
+                LogError("[ECSContext::InitializeShadowInfoTable] graphics context is null");
+                return false;
+            }
+
+            auto *bm = gc->GetBufferManager();
+            if (!bm)
+            {
+                LogError("[ECSContext::InitializeShadowInfoTable] buffer manager is null");
+                return false;
+            }
+
+            const VkDeviceSize one_copy = VkDeviceSize(sizeof(graph::ShadowInfo));
+
+            char name_buf[192];
+            std::snprintf(name_buf, sizeof(name_buf), "World:%s:ShadowInfo", GetName().c_str());
+
+            shadow_info_buffer = bm->CreateSSBO(
+                name_buf,
+                one_copy * VkDeviceSize(graph::kWorldAddressesSlotCount));
+            if (!shadow_info_buffer)
+            {
+                LogError("[ECSContext::InitializeShadowInfoTable] CreateSSBO failed");
+                return false;
+            }
+
+            // 与旧 profile 侧同口径（staged 映射窗口：Update 写窗口、Commit 标脏交 L2）
+            shadow_info_buffer->SetUpdateClass(graph::BufferUpdateClass::Deferred);
+
+            shadow_info_view = graph::StructView<graph::ShadowInfo>::Create(shadow_info_buffer, false);
+            if (!shadow_info_view)
+            {
+                LogError("[ECSContext::InitializeShadowInfoTable] StructView create failed");
+                return false;
+            }
+
+            shadow_info_addr = gpu_device
+                ? gpu_device->GetBufferDeviceAddressAligned16(shadow_info_buffer->GetBuffer())
+                : 0;
+            if (shadow_info_addr == 0)
+            {
+                LogError("[ECSContext::InitializeShadowInfoTable] 影子数据表取不到设备地址"
+                          "（16B 对齐 / SHADER_DEVICE_ADDRESS usage 检查）");
+                return false;
+            }
+
+            // 每份清零：未提交前 shader 读到「无阴影」的零值（cascade_count=0 / 句柄 0）
+            if (auto *base = reinterpret_cast<graph::ShadowInfo *>(shadow_info_view->Data()))
+            {
+                for (uint32_t copy = 0; copy < graph::kWorldAddressesSlotCount; ++copy)
+                    base[copy] = graph::ShadowInfo{};
+            }
+
+            shadow_info_view->Commit();
+
+            LogInfo("[ECSContext] 影子数据表就绪：%s  %zu B × %u 份（帧槽）= %zu KB，帧槽 0 基址=0x%llX"
+                    "（世界私有；写者 = MainLightShadowSystem 的 EditShadowInfo + 提交点 CommitShadowInfo；"
+                    "每帧地址=基址+帧槽×每份字节，经 WorldAddresses.addr_shadow 下发）",
+                    GetName().c_str(), size_t(one_copy),
+                    uint32_t(graph::kWorldAddressesSlotCount),
+                    size_t(graph::kWorldAddressesSlotCount) * size_t(one_copy) / 1024,
+                    (unsigned long long)shadow_info_addr);
+
+            return true;
+        }
+
+        /// T6b/P4：把世界 CPU 权威的影子数据写进**本帧槽**的设备副本。
+        ///
+        /// 调用点 = 交换链帧 acquire **之后**（`ViewUBOCommitSystem`）：此时本帧槽（该交换链图像）
+        /// 的上一帧已在 NextFrame 等完，写它不会踩仍在飞的其它帧（它们读自己的槽）。
+        /// 离屏 pass 不采样影子数据、且发生在 acquire 之前 ⇒ 那里不提交。
+        void ECSContext::CommitShadowInfo(const uint32_t frame_slot)
+        {
+            if (!shadow_info_view)
+                return;
+
+            auto *base = reinterpret_cast<graph::ShadowInfo *>(shadow_info_view->Data());
+            if (!base)
+                return;
+
+            const uint32_t slot = frame_slot % graph::kWorldAddressesSlotCount;
+
+            base[slot] = shadow_info;
+            shadow_info_view->Commit();
+        }
+
         uint64_t ECSContext::GetWorldAddressesAddress(const uint32_t frame_slot) const
         {
             if (world_addresses_addr == 0)
@@ -2195,20 +2308,22 @@ namespace hgl
             UploadEntityRenderIDDirtyRows();
             UploadLightRowDirtyRows();
 
-            // env（sky / shadow）随世界（C2）：按**本世界生效 profile** 取址写本世界槽。
-            // sky 单份 buffer（全帧槽同址）；shadow 是每帧槽一份的 ring（下标 = 帧槽）⇒ 取本槽那份。
-            // 取不到地址（0）时保留上一份好值——0 地址会让读 sky/shadow 的 shader 解引用 0 基址（UB）。
+            // env：**sky 随本世界生效的 profile**（单份 buffer ⇒ 全帧槽同址），
+            // **影子数据随世界**（T6b/P4 归属订正：以前挂 profile，两世界共享 default profile 时互踩）。
+            // 影子表按帧槽各一份 ⇒ 地址 = 基址 + 帧槽 × sizeof(ShadowInfo)（写本帧槽的是提交点的
+            // CommitShadowInfo）；未建表 ⇒ 0（消费者判 0 缺席）。
+            // sky 取不到地址（0）时保留上一份好值 —— 0 地址会让读 sky 的 shader 解引用 0 基址（UB）。
             const graph::EnvProfileID active_env_profile = GetEnvProfileID();
             if (auto *env_manager = ResolveEnvManager())
             {
                 const uint64_t sky_addr = env_manager->GetSkyAddress(active_env_profile);
                 if (sky_addr != 0)
                     want.addr_sky = sky_addr;
-
-                const uint64_t shadow_addr = env_manager->GetShadowAddress(active_env_profile, slot);
-                if (shadow_addr != 0)
-                    want.addr_shadow = shadow_addr;
             }
+
+            want.addr_shadow = shadow_info_addr
+                + static_cast<uint64_t>(slot)
+                * static_cast<uint64_t>(sizeof(graph::ShadowInfo));
 
             const uint64_t old_sky = dst->addr_sky;
             const uint64_t old_shadow = dst->addr_shadow;
@@ -2221,7 +2336,7 @@ namespace hgl
 
             // env 地址变化时留一行痕（诊断"两世界同帧各自的 sky/shadow 是否真的分开"）
             if (old_sky != want.addr_sky || old_shadow != want.addr_shadow)
-                LogInfo("[ECSContext::SyncWorldAddresses] 世界 \"%s\" env 入表：profile=%u "
+                LogInfo("[ECSContext::SyncWorldAddresses] 世界 \"%s\" 地址入表：profile=%u "
                         "sky=0x%llX shadow[%u]=0x%llX",
                         GetName().c_str(), active_env_profile,
                         static_cast<unsigned long long>(want.addr_sky), slot,

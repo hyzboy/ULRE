@@ -2,7 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/support/CameraSlotGuard.h>
-#include<hgl/graph/ubo/EnvironmentInfo.h>
+#include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/graph/render/RenderTargetDesc.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<memory>
@@ -12,7 +12,6 @@ namespace hgl
     namespace graph
     {
         class RenderContext;
-        class EnvironmentManager;
         struct CascadedShadowConfig;
         class CascadedShadowController;
     }
@@ -63,11 +62,6 @@ namespace hgl
             /// 主光被禁用（光行 flags 无 enabled）时的**一次性**告警闩：不刷屏、也不静默。
             bool disabled_light_reported = false;
 
-            // 影子数据当前仍存于本世界**环境 profile** 的 ShadowInfo（`EnvironmentInfo::shadow`）；
-            // 世界私有化属下一步（见设计档 P4）。
-            graph::EnvProfileID ResolveProfileID() const;
-            graph::EnvironmentManager *ResolveManager();
-
         public:
 
             MainLightShadowSystem(const std::string &name = "MainLightShadowSystem");
@@ -75,12 +69,12 @@ namespace hgl
 
             void SetRenderContext(graph::RenderContext *ctx) { render_context = ctx; }
 
-            // 编辑 ShadowInfo
+            // 编辑影子数据（T6b/P4：CPU 权威在**世界** `ECSContext::shadow_info`，
+            // 本系统只是写者；设备侧提交点 = `ECSContext::CommitShadowInfo`）
             graph::ShadowInfo *EditShadowInfo();
             const graph::ShadowInfo *GetShadowInfo() const;
 
-            void SetShadowInfo(const graph::ShadowInfo &info, bool immediate = true);
-            void MarkShadowDirty();
+            void SetShadowInfo(const graph::ShadowInfo &info);
 
             // ── 主光源级联阴影自动化托管 ──
             bool EnableMainLightShadow(const graph::CascadedShadowConfig &config, uint32_t shadow_map_size = 1024);

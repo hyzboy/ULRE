@@ -20,16 +20,20 @@ namespace hgl::graph
      *
      * ⚠ 归属订正（2026-09-28；决策见 doc/world-addresses-and-camera-model-plan.md §4）：
      * **Env 随世界** —— profile 的所有权与生命周期跟随世界（世界创建时选/建自己的
-     * profile、销毁时 `Release()` 归还；内置 default 可共享），sky / shadow 的**地址发布按世界**
-     * （写世界表 `WorldAddresses` 的 `addr_sky` / `addr_shadow`，由 `ECSContext::SyncWorldAddresses`
+     * profile、销毁时 `Release()` 归还；内置 default 可共享），sky 的**地址发布按世界**
+     * （写世界表 `WorldAddresses` 的 `addr_sky`，由 `ECSContext::SyncWorldAddresses`
      * 每帧写本世界槽）。C2 之前地址走全局字段 ⇒ 多世界同帧只有最后解析的那个 profile 生效（互踩）。
+     *
+     * ⚠ T6b/P4：**影子数据（`ShadowInfo`）已迁出本模块** —— 它随世界（`ECSContext`），
+     * 世界私有 SSBO 由 `ECSContext::InitializeShadowInfoTable` 建、`CommitShadowInfo` 写本帧槽，
+     * 地址经世界表 `addr_shadow` 下发。本模块只管**天空 / IBL**（`sky_ubo` + profile 生命周期）。
      *
      * 分层约定：
      * - 数据层：EnvironmentInfo（纯数据，CPU 侧唯一权威在 Profile::cpu）
      * - 管理层：本类（Profile 注册 / GPU UBO 物化 / 脏标记 / **按 profile 取设备地址**）
      * - 选择层：**世界**（`ECSContext::GetEnvProfileID()`；世界初始化时取本世界 RT 的 env_profile）
-     * - 绑定层：**世界表**（`WorldAddresses::addr_sky` / `addr_shadow`；Scene 集已随 S3 整体退场，
-     *   world/sky/shadow 全部经 pc_root 下的表 + BDA 解引用，无 binding 可推）
+     * - 绑定层：**世界表**（`WorldAddresses::addr_sky`；Scene 集已随 S3 整体退场，
+     *   world/sky 全部经 pc_root 下的表 + BDA 解引用，无 binding 可推）
      *
      * GPU 上传统一走设备级 dirty 扫描（RenderBufferUploadSystem），
      * default Profile 在 GraphicsContext 初始化阶段即物化并标脏，
@@ -39,18 +43,12 @@ namespace hgl::graph
     {
     public:
 
-        /// ShadowInfo 按交换链图像分槽。slot_count == image_count（本引擎至少 3），
-        /// 多帧同时在飞；单份 host-visible UBO 会被下一帧 CPU 覆写，主帧采样读到
-        /// 别的帧的级联矩阵（阴影逐帧左右/远近跳）。8 覆盖常见 image_count。
-        static constexpr uint32_t kShadowUboRing = 8;
-
         struct Profile
         {
             EnvProfileID    id = kEnvProfileInvalid;
             AnsiString      name;
             EnvironmentInfo cpu;                                               ///< CPU 侧唯一权威数据
             StructView<SkyInfo> *sky_ubo = nullptr;              ///< sky 段 GPU 物化（懒创建，default 例外）
-            StructView<ShadowInfo> *shadow_ring[kShadowUboRing] = {}; ///< 每帧一份，按下标 = acquired image
         };
 
     private:
@@ -62,8 +60,6 @@ namespace hgl::graph
         Profile *FindProfile(const AnsiString &name) const;
 
         bool MaterializeSkyUBO(Profile *profile);
-        bool MaterializeShadowUBO(Profile *profile);
-        void ReleaseShadowRing(Profile *profile);
 
         void EnsureDefault();
 
@@ -83,24 +79,16 @@ namespace hgl::graph
         EnvironmentInfo *Edit(EnvProfileID id);
         const EnvironmentInfo *Get(EnvProfileID id) const;
 
-        /// 数据改完调用。sky 立即写入单份 UBO；shadow 只留在 CPU，
-        /// 等交换链 acquire 之后由 CommitMaterialized 写入本帧槽。
+        /// 数据改完调用：sky 立即写入它的单份 UBO（影子数据不在本模块，见类注释）。
         void MarkDirty(EnvProfileID id);
 
         /// 世界表用：本 profile 的 sky 段**设备地址**（懒物化）。取不到返回 0 并报错 ——
         /// 0 地址会让读 sky 的 shader 解引用 0 基址（UB）⇒ 调用方必须保证不把 0 写进表。
         uint64_t GetSkyAddress(EnvProfileID id);
 
-        /// 世界表用：本 profile 的 shadow 段第 `frame_slot` 份 ring 的设备地址（懒物化）。
-        uint64_t GetShadowAddress(EnvProfileID id, uint32_t frame_slot);
-
-        /// 归还 profile：释放它的 GPU 物化（sky + shadow ring）并从注册表移除。
+        /// 归还 profile：释放它的 GPU 物化（sky）并从注册表移除。
         /// **世界销毁时归还自己创建/拥有的 profile**；`kEnvProfileDefault` 与无效句柄是 no-op
         /// （内置 default 可共享）。归还后再用该 id 会回退 default（`GetSkyAddress` 语义同 `Get`）。
         void Release(EnvProfileID id);
-
-        /// ViewUBOCommitSystem 专用：pass 开始固定写入。
-        /// commit_shadow 仅在当前 RT 是交换链（acquire 已完成、该图像槽空闲）时为 true。
-        void CommitMaterialized(uint32_t shadow_frame_index, bool commit_shadow);
     };//class EnvironmentManager
 }//namespace hgl::graph

@@ -13,6 +13,7 @@
 #include<hgl/ecs/support/EntityGPUTable.h>
 #include<hgl/ecs/support/EntityRenderIDTable.h>
 #include<hgl/ecs/support/LightRowTable.h>
+#include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -112,6 +113,12 @@ namespace hgl
             /// T6b：光源行表（`LightRow`，世界私有；**行 0 = 主方向光**）。
             /// 与上两表同域（世界的 GPU 行数据），但没有 `~Entity` 回写者 ⇒ 声明位置不涉及析构逆序。
             LightRowTable light_row_table;
+
+            /// T6b/P4：影子数据（`graph::ShadowInfo`）的 **CPU 权威**（世界私有）。
+            /// 以前它挂在 env profile（`EnvironmentInfo::shadow`）而 CSM 的 RT/控制器挂世界 ⇒
+            /// 两个世界共享 default profile 时互相覆写；现在随世界。写者 = `MainLightShadowSystem`
+            /// （经 `EditShadowInfo`），设备侧由 `CommitShadowInfo` 在提交点写本帧槽。
+            graph::ShadowInfo shadow_info;
 
             std::unique_ptr<EntityManager> entity_manager;
 
@@ -242,6 +249,11 @@ namespace hgl
             graph::StructView<graph::LightRow> *light_row_view = nullptr;
             graph::DeviceBuffer *light_row_buffer = nullptr;
             uint64_t light_row_table_addr = 0;
+
+            // T6b/P4：影子数据的设备镜像（世界私有；**按帧槽各一份** —— 地址 = 基址 + 帧槽 × 832 B）。
+            graph::StructView<graph::ShadowInfo> *shadow_info_view = nullptr;
+            graph::DeviceBuffer *shadow_info_buffer = nullptr;
+            uint64_t shadow_info_addr = 0;
 
             bool active = false;
             bool shutdown_in_progress = false;
@@ -450,6 +462,10 @@ namespace hgl
 
             /// T6b：光源行表脏行上传（与实体两表同批调用；同一条「值变才标脏」纪律）
             void UploadLightRowDirtyRows();
+
+            /// T6b/P4：影子数据建表（与光源行表同批、同判据：`CreateSSBO` → `StructView` → 设备地址
+            /// fail-fast）。世界私有 ⇒ 多世界同帧各写各的，不再经 env profile。
+            bool InitializeShadowInfoTable();
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
@@ -724,6 +740,16 @@ namespace hgl
             //   写者 = LightSystem 的编辑入口；本表只被世界的「脏行 → 设备镜像」上传播径读。
             LightRowTable&       GetLightRowTable()       { return light_row_table; }
             const LightRowTable& GetLightRowTable() const { return light_row_table; }
+
+            // ── T6b/P4：影子数据（`ShadowInfo`，世界私有）──────────────────────────
+            /// 编辑本世界的影子数据（CPU 权威；GPU 侧由 `CommitShadowInfo` 在提交点写本帧槽）
+            graph::ShadowInfo       *EditShadowInfo()       { return &shadow_info; }
+            const graph::ShadowInfo *GetShadowInfo()  const { return &shadow_info; }
+
+            void SetShadowInfo(const graph::ShadowInfo &info) { shadow_info = info; }
+
+            /// 提交点（交换链帧 acquire 之后）把 CPU 权威的影子数据写进**本帧槽**的设备副本。
+            void CommitShadowInfo(const uint32_t frame_slot);
 
             /// 组件卸载 / 全卸后重刷 `type[]/row[]`（由 `Entity` 的卸载路径调用）
             void RefreshEntityRow(Entity *entity) { entity_gpu_table.Refresh(entity); }
