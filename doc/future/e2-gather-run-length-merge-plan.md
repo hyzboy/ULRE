@@ -6,6 +6,7 @@
 > 而**绝大多数几何基本不动**。改为**「改变时烘焙」**：静态集合一次分类合并好、之后按桶做一次 instance 渲染；
 > 动态项完全不合；开发者可**显式指定实例组**（粒子 / Foliage / 挂在会动父体上的静态附件）。
 >
+> **背景/机制/方案空间通读稿**（研究用）= `doc/instance-batching-and-static-bake-design.md`（技术文档 v1）。
 > **来源**：`doc/backlog.md` E 线 E2（2026-10-05 用户留置）→ 2026-10-07 用户重定方向（本稿 v2）。
 > 现象与机制层规格仍见 `doc/future/entity-rows-gpu-cull-plan.md` §8.10 §八 / §9。
 >
