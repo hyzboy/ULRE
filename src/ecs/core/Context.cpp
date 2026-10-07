@@ -666,15 +666,22 @@ namespace hgl
             }
 
             active_mobility_filter = req.mobility_filter;
-            // pass 身份**由目标推导**，不再只依赖调用方声明：非交换链目标 ⇒ 非主帧 pass。
-            // ⚠ 漏设 `is_shadow_pass` 的后果不是报错，而是"**某一张交换链图整帧空/内容错**"：
-            //   离屏 pass 被判成主帧 pass ⇒ 批装配取 `pass_index = Main` ⇒ 改写两 pass 共享的批对象的
-            //   `gpu_slice[Main]` ⇒ 主帧绘制读到它、去读别的帧槽的计数（0）⇒ 该图不画东西。
-            //   ShadowMap（示例侧）与 AlphaTestShadow（引擎侧）两条离屏路径都因此中招过。见计划档 §11。
-            const bool offscreen_target =
-                req.target && (dynamic_cast<graph::SwapchainRenderTarget *>(req.target) == nullptr);
+            // pass 身份**由目标相对本世界主渲染目标推导**，不再只依赖调用方声明。
+            // 判据不是"离屏与否"，而是"**是否本世界的主目标**"：
+            //   · `req.target == render_target` ⇒ 这就是本世界的正常 forward pass——
+            //     **独立离屏世界（OffscreenWorld）的主目标是自己的 RT**，它必须走完整
+            //     forward 收集；按"非交换链 ⇒ shadow"误判会让 collect 只收 ShadowCaster
+            //     ⇒ 子世界无 caster ⇒ 收集为空 ⇒ 离屏 cmd 里只有 Begin/EndRendering
+            //     （实测 RenderToTexture / RenderToTextureColorDepth 离屏全空）。
+            //   · `req.target != render_target`（同一世界渲进 shadow/mirror 等**别的**目标）
+            //     ⇒ 与主帧**共享批对象/GPU 接管资源**，必须错开 Main 块——这才是第一例
+            //     （ShadowMap/ATS 漏设旗标 ⇒ 改写共享 `gpu_slice[Main]` ⇒ 某张交换链图整帧空）
+            //     的病源，漏设旗标仍被本推导兜住。
+            // 两个正交条件都保留：`req.is_shadow_pass`（调用方显式声明）与"异目标"推导。
+            const bool foreign_target =
+                req.target && (req.target != render_target);
 
-            is_current_pass_shadow = req.is_shadow_pass || offscreen_target;
+            is_current_pass_shadow = req.is_shadow_pass || foreign_target;
             has_shadow_origin = false;
 
             if (req.is_shadow_pass)

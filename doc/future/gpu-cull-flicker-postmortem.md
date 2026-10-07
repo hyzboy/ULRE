@@ -106,8 +106,9 @@ image=2: ✓
 ### 2.3 修复与验证
 
 - **修复**：调用方声明 `req.is_shadow_pass = true`（示例侧一行）。
-- **引擎侧收口**：`pass 身份由目标推导`（非交换链目标 ⇒ 非主帧 pass），
-  消掉"调用方忘设旗标"这个口子。
+- **引擎侧收口**（`46e2da935`；⚠ 该推导的**判据**后被 §2.5 修正）：
+  `pass 身份由目标推导`（当时口径：非交换链目标 ⇒ 非主帧 pass），消掉"调用方忘设旗标"的口子。
+  方向正确，但"非交换链"这个判据把**独立离屏世界**也误判成了 shadow pass（§2.5）。
 - **验证（全套绿）**：逐帧摘要 30 帧 ×3 次 ⇒ 三图取值集合全为 `[256]`（闪烁消除）；
   `ShadowMap 0xA8A369516CB04571` / `CascadeShadowMap 0x1CDAADEBF18B7CE4` **逐位不变**；
   `AlphaTestShadow` 契约 rc=0；门 45/0。
@@ -118,6 +119,30 @@ image=2: ✓
    仍会被判成主帧 pass（同一后果，只是尚未以闪烁形式暴露）；
 2. `TestCSMIncrementalPass` 的契约只断言"**默认值必须为 false**"，**没守"离屏渲染必须声明自身 pass 身份"**
    —— 这正是该 bug 能长期存活的**制度原因**。
+
+
+### 2.5 后续：§2.3 的推导判据修坏了离屏世界（2026-10-07，已修正）
+
+**症状**：`RenderToTexture` / `RenderToTextureColorDepth` 离屏 RT 全空——RenderDoc 截帧见离屏
+cmd 只有 `vkCmdBeginRendering/vkCmdEndRendering`、**中间零绘制指令**；ShadowMap 的离屏却正常。
+
+**根因**：`is_current_pass_shadow = req.is_shadow_pass || 非交换链目标` 这条推导的**判据选错了**——
+第一例的病源是"**同一个世界**渲进第二个目标 ⇒ 与主帧共享批对象 ⇒ 必须错开 Main 块"；
+而 RTT 的离屏是 `OffscreenWorld` **独立子世界**（自己的批表/自己的 GPUCullSystem，无任何共享），
+它的 `RenderTo` 目标就是**它自己的主目标**，本该走完整 forward 收集。被判成 shadow 后
+collect 走阴影精简链（只收 ShadowCaster）⇒ 子世界物体无投射阴影属性 ⇒ **收集为空 ⇒ 0 批 ⇒
+cmd 只剩 Begin/End**。ShadowMap 离屏本来就只该收 caster ⇒ 它"正常"恰好掩盖了这条误判。
+
+**修正**（`Context.cpp::RenderTo`）：推导判据改为 `req.target != render_target`
+（**目标是否本世界主目标**）：`== render_target` ⇒ 本世界正常 forward pass（含独立离屏世界
+对自有 RT 的渲染）；`!= render_target` ⇒ 同一世界渲进 shadow/mirror 等别的目标 ⇒ 判 shadow，
+第一例兜底不变；`req.is_shadow_pass` 显式声明仍是正交条件。
+
+**验证**：RTT 两例离屏世界每帧恢复完整装配/派发（`pass=0 几何批=1`、flush 逐帧、0 ERROR）；
+阴影三例 + ATS 契约 + AsyncTextureUpload + 门 45/0 + CSM 契约全部对基线逐字节不变。
+
+**教训**：兜底推导要按「**共享资源争用**」建模，不能按「目标长什么样（离屏/交换链）」建模——
+后者把拓扑上完全无关的独立世界卷进来了。
 
 ---
 

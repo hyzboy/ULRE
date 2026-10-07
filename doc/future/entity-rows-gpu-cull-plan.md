@@ -1492,7 +1492,7 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
    ⇒ 那个离屏世界仍被判成主帧 pass（同一后果，只是尚未以闪烁形式暴露）。
 2. `TestCSMIncrementalPass` 的契约只断言"**默认值必须为 false**"，**没守"离屏渲染必须声明自身 pass 身份"**
    ——这正是该 bug 能长期存活的制度原因。
-   ⇒ **引擎侧正解（建议）**：pass 身份**由目标推导**（非交换链目标 ⇒ 非主帧 pass）或改成不可漏设的字段，
+   ⇒ **引擎侧正解**（`46e2da935` 落地；判据后由 §11.16 修正）：pass 身份**由目标推导**或改成不可漏设的字段，
    并把契约从"默认值"改为"离屏必须声明/推导正确"。
 
 ### 第二例：`AlphaTestShadow` / `CascadeShadowMap` 的每图内容差异（未解决，已界定）
@@ -1806,3 +1806,21 @@ ATS 契约 D1/D3/D4 全 PASS；CSM 契约 42 项 PASSED；门 45/0。
 **收尾教训**：初验时 Cascade 一度 `0x1BAB…`，真凶是排查期遗留的**无门控热路径同步回读**
 （每批每帧 `ReadbackBuffer` = GPU stall，改变帧间节奏）——收进门控后立刻回基线。
 **未门控的观测本身会改变被观测系统**；清理调试件属于判据环节，不是卫生环节。
+
+### §11.16 pass 身份推导判据修正：「非交换链」⇒「异于本世界主目标」（2026-10-07）
+
+`46e2da935` 的推导 `is_current_pass_shadow = req.is_shadow_pass || 非交换链目标` 把
+**独立离屏世界**（OffscreenWorld：自有批表/自有 GPUCullSystem/`RenderTo(自有RT)`）误判成
+shadow pass ⇒ collect 走阴影精简链只收 ShadowCaster ⇒ 子世界无 caster ⇒ 收集为空 ⇒
+RTT/RTT-ColorDepth 离屏 cmd 只剩 Begin/EndRendering（RenderDoc 实证零绘制）。
+ShadowMap 离屏本就只该收 caster ⇒ 它正常，恰好掩盖误判。
+
+**正解**（`Context.cpp::RenderTo`）：判据按「**是否与主帧共享批对象**」建模 =
+`req.target != render_target`（目标异于**本世界主目标**才判 shadow）；
+`== render_target`（含独立离屏世界对自有 RT）走完整 forward。第一例兜底与
+`req.is_shadow_pass` 显式声明两个正交条件都保留。
+
+**判据（实测）**：RTT 两例离屏每帧 `pass=0 几何批=1` + flush 逐帧 + 0 ERROR；阴影三例/ATS/
+AsyncTextureUpload/门/CSM 全对基线逐字节不变。
+
+**教训**：兜底推导要按**资源争用拓扑**建模，不按"目标外观（离屏/交换链）"建模。
