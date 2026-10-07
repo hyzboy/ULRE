@@ -30,7 +30,7 @@
 | `GetCascadeRenderTarget(c)` / `GetCascadeDepthRange(c)` | 级联 RT 与深度区间（示例对拍用） |
 | `SetCascadeMask/GetCascadeMask/SetCascadeEnabled/IsCascadeEnabled` | 逐级屏蔽（D5 单级对拍用） |
 | `InvalidateMainLightStaticShadowCache()` | 让静态级联缓存整体失效（场景/锚点失效时） |
-| `Set/GetShadowInfo(info, immediate)` / `MarkShadowDirty()` | ShadowInfo UBO 下发 |
+| `SetShadowInfo(info)` / `EditShadowInfo()` / `GetShadowInfo()` | 写**本世界**影子数据的 CPU 权威（`ECSContext::shadow_info`）；**T6b/P4**：设备下发 = 世界私有缓冲 + 提交点 `ECSContext::CommitShadowInfo`（写本世界帧 RT 的当前槽）；~~`MarkShadowDirty()`~~ 与 `immediate` 参数已删（影子数据不再挂 env profile） |
 
 ## 3. 数据契约（GPU 侧，`ShadowCascadeInfo`，176B，std140 ABI 锚点）
 

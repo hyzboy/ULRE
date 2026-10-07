@@ -90,10 +90,13 @@ struct Profile
     EnvironmentInfo cpu;                                // CPU 权威数据
     StructView<SkyInfo>    *sky_ubo    = nullptr;       // sky 段 GPU 物化(懒创建,default 例外)
     StructView<ShadowInfo> *shadow_ring[kShadowUboRing] = {}; // 按 acquired image 分槽,不是单份
+    // ⚠ 历史口径(T6b/P4):shadow_ring / kShadowUboRing **已整删** —— 影子数据现在**世界私有**
+    //   (ECSContext::shadow_info + InitializeShadowInfoTable + CommitShadowInfo),不再挂 profile
 };
 ```
 
-- sky 每个 profile 物化**一份** UBO;多个 RT 选同一 profile 时共享这一块。shadow 每个 profile 物化 `kShadowUboRing`(8) 份,按下标 = 交换链 `acquired_image`。不是按 RT 复制。
+- ⚠ **历史口径(T6b/P4)**:~~shadow 每个 profile 物化 `kShadowUboRing`(8) 份,按下标 = 交换链 `acquired_image`~~ —— 影子数据已世界私有(按帧槽各一份,地址 = 基址 + 帧槽 × `sizeof(ShadowInfo)`);下述是成文时的形态。
+- sky 每个 profile 物化**一份** UBO;多个 RT 选同一 profile 时共享这一块。
 - UBO 命名 `"SkyUBO:<profile名>"` / `"ShadowUBO:<profile名>:<slot>"`,走 `BufferManager::CreateUBO` + `StructView`,并设 `SetUpdateClass(BufferUpdateClass::Deferred)`。`Deferred` 的「延迟到下一帧」语义**没有实现**,不能靠它避免跨帧覆写。shader source 分别是 `mtl::SBS_SkyInfo` / `mtl::SBS_ShadowInfo`;**Scene 集已整体退场 ⇒ 两段都没有 binding**,现经 `global_addresses.addr_sky` / `addr_shadow` 解引用(`src/SceneGraph/module/EnvironmentManager.cpp:47`、`:155`),本轮改为经**世界表** `world.addr_sky` / `world.addr_shadow`(见 §11.3)。
 
 ### 关键 API
@@ -145,7 +148,9 @@ const SkyInfo *GetSkyInfo() const;
 void SetSkyInfo(const SkyInfo &info, bool immediate = true);
 void MarkSkyDirty();
 
-// 同构的 shadow 一套(已落地,可作为"新增段落"的参照实现)
+// ⚠ 历史口径(T6b/P4):下面这一套**已不在 EnvironmentSystem** —— shadow 数据落在世界
+//   (ECSContext::shadow_info / EditShadowInfo),MarkShadowDirty() 与 immediate 参数**已删除**;
+//   新增段落请参照 **sky 那一套**(EditSkyInfo/GetSkyInfo/SetSkyInfo/MarkSkyDirty)。
 ShadowInfo *EditShadowInfo();
 const ShadowInfo *GetShadowInfo() const;
 void SetShadowInfo(const ShadowInfo &info, bool immediate = true);
@@ -203,7 +208,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 | 信息 | 写入策略 |
 |---|---|
 | camera / viewport / sky | **pass 开始固定全量写** |
-| shadow | 交换链帧 acquire 之后只写当前 image 槽;Tick 里的 `MarkShadowDirty` 不写 GPU。见 `doc/shadow-ubo-inflight-overwrite.md` |
+| ~~shadow~~ | **已移出本模块(T6b/P4)**:影子数据世界私有,写入点 = `ECSContext::CommitShadowInfo`(**本世界帧 RT** 的当前槽,非仅交换链);~~`MarkShadowDirty`~~ 已删。旧症状与修法见 `doc/shadow-ubo-inflight-overwrite.md`(头部已标结构性解决) |
 | ColorPalette | 变化时写一次(内容基本静态) |
 | 材质 SSBO(PBRSurface 等) | 作者侧 `Commit()`,不在此管 |
 
@@ -258,7 +263,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 5. **地址发布**:`EnvironmentManager::GetFogUBO(id)`(暂无);照抄 `EnsureViewportUBO` → `registry->SetViewportAddress(...)` 这条链(`RenderSceneUBOSystem.cpp:88-148`、调用点 `:145`)在 `RenderSceneUBOSystem` 里加一个 fog 地址写入(本轮之后写**世界表**,不写全局表),解析照抄 `ResolveSkyUBO` / `ResolveShadowUBO`(`:340-400`)。Scene 集已退场 ⇒ **不存在 `global_scene_set->UpdateUBO(kSceneBindingFog, ...)` 这种写法**。旧文建议的通用帮手 **`ResolveEnvUBO` 并未落地**,现实是每个段落一个 `Resolve<X>UBO()`。
 
-6. **编辑转发**:`EnvironmentSystem` 加 `EditFogInfo()/MarkFogDirty()`,与 sky 同构——**已落地的参照是 shadow 那套**:`EditShadowInfo()/GetShadowInfo()/SetShadowInfo()/MarkShadowDirty()`(`inc/hgl/ecs/systems/render/EnvironmentSystem.h:49-54`,`src/ecs/systems/render/EnvironmentSystem.cpp:100-145`)。
+6. **编辑转发**:`EnvironmentSystem` 加 `EditFogInfo()/MarkFogDirty()`,与 sky 同构——参照 `EditSkyInfo()/GetSkyInfo()/SetSkyInfo()/MarkSkyDirty()`(`inc/hgl/ecs/systems/render/EnvironmentSystem.h`)。⚠ **别再照抄 shadow 那套**:`EditShadowInfo()` 现落在**世界**(`ECSContext::shadow_info`,T6b/P4),`MarkShadowDirty()` 已删除。
 
 7. **RT 选择无需改动**——这正是本架构的目的:选择层只传句柄,不感知内容;新信息自动对所有 profile 生效。
 

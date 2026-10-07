@@ -1,6 +1,14 @@
 # ShadowInfo 跨帧覆写：阴影逐帧左右/远近跳
 
 > **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。
+>
+> **⚠ 结构性解决（2026-10-07，T6b/P4）**：本文 §3 那套「profile 侧 shadow ring + `CommitMaterialized` + 交换链 image index 绑定」
+> **已整体删除**。现在的形态是：影子数据 = **世界私有**（CPU 权威 `ECSContext::shadow_info`、设备镜像
+> `ECSContext::InitializeShadowInfoTable` **按帧槽各一份**）、提交点 = `ECSContext::CommitShadowInfo`（写
+> **本世界帧 RT** 的当前槽，不再"仅交换链"）、地址 = 世界表 `addr_shadow`。
+> ⇒ **本文要解决的问题（在飞帧被覆写）依然成立、分槽与"只在安全时机写当前槽"的结论依然有效**，
+> 但凡涉及 `kShadowUboRing` / `GetShadowUBO` / `CommitMaterialized` / `MarkShadowDirty` / `Profile::cpu.shadow`
+> 的实现描述都按**已删除**读。详见 `doc/future/lighting-shadow-domain-split-plan.md` §5（第 3/4 步）。
 
 > 2026-09 结案。示例 `example/Shadow/CascadeShadowMap.cpp` 拖拽视角时，阴影会一帧偏左、一帧偏右，贴合距离也一帧近、一帧远。静止后稳定。RenderDoc 连续截帧永远正常；把帧率降到约 1fps 时非常明显。
 
@@ -22,8 +30,8 @@ CPU 侧已经排除。拖拽探针下静态级联在缓存命中期间 `shadow_v
 
 `ShadowInfo` 原来是**一份** host-visible 映射（`StructView::MapInternal()` = `MapWindow(0, 整块)`）。两条路径都会在主帧还在读的时候整块覆写：
 
-1. `EnvironmentSystem::MarkShadowDirty()` → `EnvironmentManager::MarkDirty()`。示例在 `Tick()` 里、交换链 acquire **之前**调用。此时上一帧主通道可能还在采样。
-2. `ViewUBOCommitSystem` → `CommitMaterialized()`。主帧 acquire 之后会再写一次，但另外两个槽仍在飞，写的还是同一块内存。
+1. ~~`EnvironmentSystem::MarkShadowDirty()` → `EnvironmentManager::MarkDirty()`~~（**已删**，T6b/P4）。示例在 `Tick()` 里、交换链 acquire **之前**调用。此时上一帧主通道可能还在采样。
+2. ~~`ViewUBOCommitSystem` → `CommitMaterialized()`~~（**已删**，T6b/P4）→ 现为 `ViewUBOCommitSystem` → `ECSContext::CommitShadowInfo()`。主帧 acquire 之后会再写一次，但另外两个槽仍在飞，写的还是同一块内存。
 
 主帧片元用 Scene Set binding 5 的 `shadow_vp` 把世界坐标变到光空间，再采样已经画好的阴影贴图。（订正（2026-09-28）：Scene 集已整体退场、不再有 binding 5——shadow 地址按**世界**发布进世界表 `WorldAddresses.addr_shadow`（每槽一份 ring），着色器经 pc_root 地址解引用读取；sky / shadow / env 地址随世界，viewport 保持全局。见 doc/world-addresses-and-camera-model-plan.md §4。）贴图是用「这一帧的矩阵」画的（离屏 `RenderTo` 自己有 fence），UBO 里却可能已经是下一帧的矩阵。结果就是阴影相对遮挡体跳一格：左右是光空间 UV 变了，远近是深度比较基准变了。
 
@@ -35,31 +43,34 @@ Push Descriptor 本身没问题：`vkCmdPushDescriptorSet` 记进命令缓冲，
 
 ## 3. 修复
 
+> ⚠ **（2026-10-07）本节描述的 profile 侧实现（`kShadowUboRing` / `CommitMaterialized` / `ResolveShadowUBO`）已随 T6b/P4 整删**；
+> 现在同一思路落在**世界私有**缓冲上：按帧槽各一份 + 只在安全时机写当前槽。下文按历史读，结论仍然有效。
+
 `ShadowInfo` 按 acquired image 分槽，不靠每帧排空 fence（那会把 3 帧流水线打成 1 帧）。
 
-- 每份 profile 物化 `kShadowUboRing = 8` 个独立 UBO（`ShadowUBO:<name>:<slot>`）。8 盖住常见 `image_count`；运行时实际在飞的是 3。
-- `MarkDirty()` **不再写** shadow GPU。CPU 权威仍是 `Profile::cpu.shadow`。Tick 里的 `MarkShadowDirty()` 只保证 CPU 数据是新的。
-- 只有当前 RT 是交换链时，`ViewUBOCommitSystem` 才调用 `CommitMaterialized(acquired_image, true)`。`NextFrame()` 已经等过这张图像的上一帧，这个槽可以写。其它在途帧读自己的槽。
-- 离屏 shadow pass 不写任何槽。它发生在主帧 acquire 之前，`GetCurrentFrameIndex()` 默认是 0，此时写 slot 0 会踩仍在飞的主帧。深度 pass 不采样 `ShadowInfo`。
-- `RenderSceneUBOSystem::ResolveShadowUBO()` 在 `RenderFrameSync`（commit 与 upload 之后）按同一 `acquired_image` 绑定。Push Descriptor 把该槽的 `VkBuffer` 记进本帧命令缓冲。（订正（2026-09-28）：此处的“绑定 / Push Descriptor”写法已过时——Scene 集与 push descriptor 随 S3 整体退场；现为把该槽的地址写进地址表（世界表 `addr_shadow`），由 pc_root 地址解引用。）
+- ~~每份 profile 物化 `kShadowUboRing = 8` 个独立 UBO~~（**已删**）→ 现为：`ECSContext::InitializeShadowInfoTable` 为**本世界**建 **`kWorldAddressesSlotCount`（8）份**（地址 = 基址 + 帧槽 × `sizeof(ShadowInfo)`）。8 盖住常见 `image_count`；运行时实际在飞的是 3。
+- ~~`MarkDirty()` 不写 shadow GPU、CPU 权威 `Profile::cpu.shadow`、`MarkShadowDirty()`~~（**已删**）→ 现为：CPU 权威 = `ECSContext::shadow_info`（`MainLightShadowSystem` 经 `EditShadowInfo` 写）；设备写入只在提交点发生。
+- ~~只有当前 RT 是交换链时 `CommitMaterialized(acquired_image, true)`~~（**已改**）→ 现为：**本世界自己的帧 RT** 且非中间 pass（`!IsCurrentPassShadow()`）时 `CommitShadowInfo(rt->GetCurrentFrameIndex())`。交换链帧：`NextFrame()` 已等过这张图像的上一帧，这个槽可以写；离屏世界主帧：其槽 fence 已在 `BeginRender` 等过。其它在途帧读自己的槽。
+- 中间 pass（CSM 级联 `RenderTo(req)` / 同世界异目标 pass）不写任何槽：那发生在主帧之前/之外、且写的是同一个在飞槽。深度 pass 不采样 `ShadowInfo`。
+- ~~`RenderSceneUBOSystem::ResolveShadowUBO()` 按 `acquired_image` 绑定~~（**已删**）→ 现为：地址在 `SyncWorldAddresses` 按帧槽写进**世界表** `addr_shadow`，shader 经该地址解引用（无绑定可推）。（订正（2026-09-28）：此处的“绑定 / Push Descriptor”写法已过时——Scene 集与 push descriptor 随 S3 整体退场；现为把该槽的地址写进地址表（世界表 `addr_shadow`），由 pc_root 地址解引用。）
 
 sky 仍是单份，不在本次范围。Camera UBO 同样是单份；`RenderTo` 用全槽 `WaitFence()` 挡住了离屏 pass 那条路径。（订正（2026-09-28）：**Camera UBO 已删除**——相机存储下沉世界级，改走世界私有相机表（16 槽 × 8 帧槽，行号 = camera_slot × 帧槽总数 + 槽），经 `pc_root.camera_row` 索引；sky 随世界（每世界一份 profile），地址进世界表。见 doc/world-addresses-and-camera-model-plan.md §2/§4。）主帧相机数据若再出现「整幅画面逐帧跳」而阴影不跳，按同一办法分槽，不要先怀疑 CSM 拟合。
 
 ## 4. 以后不要做的事
 
-- 不要在 `MarkDirty` / `MarkShadowDirty` 里把 `cpu.shadow` 写回 GPU。调用点在 acquire 之前。
-- 不要在离屏 `RenderTo` 期间写 shadow ring 的任意槽。
+- 不要把影子数据写回 GPU 的时机提前到 acquire 之前（~~`MarkDirty`/`MarkShadowDirty`~~ 已删；现在的唯一写点是提交点的 `CommitShadowInfo`）。
+- 不要在中间 pass（`IsCurrentPassShadow()` / 离屏 `RenderTo`）期间写影子数据的任意槽。
 - 不要用 `WaitFence()` 全槽排空来「修」这个跳变。能消症状，但每帧都把在途帧等完。
 - 绑定用的 `frame_index` 必须等于本帧写入的槽。两边都取 `IRenderTarget::GetCurrentFrameIndex()`（交换链上即 `acquired_image`），不要一边用 `current_slot`、一边用 image index。二者不相等。
-- `kShadowUboRing` 必须 ≥ 交换链 `image_count`。若以后把最小图像数抬过 8，先加大 ring，不能对 index 取模（取模会让两张在飞图像共用一槽，bug 原样回来）。
+- 影子缓冲的**帧槽份数**（现为 `kWorldAddressesSlotCount`，旧名 `kShadowUboRing`）必须 ≥ 交换链 `image_count`。若以后把最小图像数抬过 8，先加份数，不能对 index 取模（取模会让两张在飞图像共用一槽，bug 原样回来）。
 
 ## 5. 相关文件
 
 | 文件 | 角色 |
 |------|------|
-| `inc/hgl/graph/module/EnvironmentManager.h` | `kShadowUboRing`、`GetShadowUBO(id, frame_index)`、`CommitMaterialized(frame, commit_shadow)` |
+| ~~`inc/hgl/graph/module/EnvironmentManager.h`~~ | ~~`kShadowUboRing`、`GetShadowUBO(id, frame_index)`、`CommitMaterialized(frame, commit_shadow)`~~ **均已删除（T6b/P4）**；现见 `inc/hgl/ecs/core/Context.h`（`shadow_info` / `InitializeShadowInfoTable` / `CommitShadowInfo`） |
 | `src/SceneGraph/module/EnvironmentManager.cpp` | 分槽物化；`MarkDirty` 只写 sky |
-| `src/ecs/systems/render/ViewUBOCommitSystem.cpp` | 仅交换链帧、acquire 之后写当前槽 |
+| `src/ecs/systems/render/ViewUBOCommitSystem.cpp` | 非中间 pass（`!IsCurrentPassShadow()`）时写**本世界帧 RT** 的当前槽（T6b/P4 起不再仅交换链） |
 | `src/ecs/systems/render/RenderSceneUBOSystem.cpp` | 按同一 image index 绑定 binding 5（订正（2026-09-28）：现为把该槽地址写进世界表 `addr_shadow`，无 binding） |
 | `src/Vulkan/VKSwapchainRenderTarget.cpp` | 只等当前槽；`GetCurrentFrameIndex()` = `acquired_image` |
 | `src/SceneGraph/module/SwapchainModule.cpp` | `image_count` 至少 3，`slot_count == image_count` |

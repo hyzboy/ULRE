@@ -21,7 +21,7 @@ CSM 主线（约 30 个提交，其中 20 个只动 CSM 相关文件）：
 | `4cfc57501` / `3e1bf254b` | 示例 `example/Shadow/CascadeShadowMap.cpp` + 文档 |
 | `a6c5ce3ae` | 两处几何根因：`light_forward` 二次取反；`zfar` 缺接收端余量 |
 | `f09d2d8f9` | `IRenderTarget` 自持视口（离屏 RT 不再篡改主视口） |
-| `b0b850109` | `ShadowInfo` 被在途帧覆写 → 分槽 `kShadowUboRing` |
+| `b0b850109` | `ShadowInfo` 被在途帧覆写 → 分槽 `kShadowUboRing`（**旧形**：2026-10-07 T6b/P4 已改为**世界私有**分槽 + `ECSContext::CommitShadowInfo`；`kShadowUboRing` 已删） |
 | `fbe0f402b` | CSM pipeline 收敛：`CullMode` 显式化、`RefreshCameraInfo*` 拆分、契约测试扩到 892 行 |
 | `37157d8e9` | 法线偏移（normal-offset）+ `bias_world` 世界单位 bias |
 | `3cc91da20` / `6618554c0` | 背面渲染 + bias 极性；Poisson PCF 开关 |
