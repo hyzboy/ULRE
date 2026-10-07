@@ -112,7 +112,6 @@ public: //Create/Chagne
 
     /// 整条 mip 链逐层拷入（源 buffer 布局 = .Tex2D 文件内的 level0..level(n-1) 连续排列）
     bool ChangeTexture2DArrayMipmaps(Texture2DArray *,DeviceBuffer *buf,const VkExtent3D &extent,const uint32_t top_mipmap_bytes,const uint32_t base_layer,const uint32_t layer_count=1,VkPipelineStageFlags2=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2DArray(Texture2DArray *,const void *data,const VkDeviceSize size,const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags2=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 
 public:
 

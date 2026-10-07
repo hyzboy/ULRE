@@ -122,28 +122,6 @@ bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf_
     return result;
 }
 
-bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,const void *data,const VkDeviceSize size,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags2 destinationStage)
-{
-    if(!tex||!data
-        ||size<=0
-        ||layer_count<=0
-        ||scope.GetWidth()<=0
-        ||scope.GetHeight()<=0
-        ||scope.GetRight()>tex->GetWidth()
-        ||scope.GetBottom()>tex->GetHeight())
-        return(false);
-
-    // 裸 CPU 内存版：升格成临时传输源缓冲，再委托 DeviceBuffer 重载（与 2D 的
-    // ChangeTexture2D(tex,const void*,...) 同构）。base_layer 为无符号 ⇒ 不写
-    // `base_layer<0` 这类恒假的死判据（历史实现里有，随 a5cfa672c 一并删除）。
-    DeviceBuffer *buf=CreateTransferSourceBuffer(size,data);
-
-    const bool result=ChangeTexture2DArray(tex,buf,scope,base_layer,layer_count,destinationStage);
-
-    delete buf;
-    return(result);
-}
-
 bool TextureManager::ChangeTexture2DArrayMipmaps(Texture2DArray *tex,DeviceBuffer *buf_dev,const VkExtent3D &extent,const uint32_t top_mipmap_bytes,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags2 destinationStage)
 {
     if(!tex||!buf_dev
