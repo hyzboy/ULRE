@@ -497,9 +497,16 @@
   ⇒ **A6 的前提不成立**（「4 次 submit + 4 次全槽排空」不存在）⇒ **A6 已关闭（见下条 + 用户裁定）**；
   真正的大头是每 pass 的 `PrepareRenderPassSetup`（2.31ms/帧 ≈ 13.9%），属独立优化项。数据与结论见
   `doc/csm-mechanism.md` §8.5。
-- **T6**：CSM 从 `EnvironmentSystem`（瘦转发层，现堆满控制器/4 RT/bindless/
-  光相机/固化防御）拆出 `MainLightShadowSystem`；A10（重复 Enable 重建
-  4 RT + 头文件重量）随 RAII 一并解决。
+- **T6 → 拆成 T6a/T6b 两步（用户 2026-10-07 拍板；详见 `doc/future/lighting-shadow-domain-split-plan.md`）**：
+  · **T6a ✅ 已完成（`e355f0da2`）**：CSM 域自 `EnvironmentSystem` **原样搬出** `MainLightShadowSystem`
+    （12 方法 + 9 成员 + 日志前缀；`EnvironmentSystem` 只留天空/IBL，.cpp 427→99 行）。判据实测：
+    八台架摘要逐位不变（D=0）+ ENGAGED x==y + 拒绝 0、ATS rc=0、离屏两例逐位不变、门 45/0、
+    TestCSM 42 Passed（Test 9D/10D 与三条 SlotGuard 契约已随内容改指新档）。
+  · **T6b（待做）**：数据模型切换 —— 世界私有光源行 `LightRow` + `addr_lights`（行 0 = 主方向光）、
+    `SkyInfo` 删 `sun_*`/`moon_*`、`ShadowInfo` 移出 `EnvironmentInfo` 并世界私有化、shader 四处光源方向
+    真源改取光行、删三份死头（`Light.h`/`LightCullMode.h`/`ShadowPolicy.h`）。
+  · **A10 现状订正**：其「重复 Enable 重建 4 RT」一半已由 C3①（槽带归还，`d9b2c6886`）消解（重复 Enable
+    现为资源正确）；剩余价值 = 结构/头文件重量 + RAII（T6a 已兑现结构那一半）。
 - **A6 ❌ 已判为不成立并关闭（2026-10-07，用户裁定「4 级联更新频繁都不一样，怎么会合并 submit」）**：
   三条结构事实各自都否掉「合并」——
   ① **每级更新节奏独立**：`need_full_update` 是**逐级联**触发的（级联0 / 锚点失效 / **位移非整步滚动**），

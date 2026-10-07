@@ -141,7 +141,7 @@
 
 ## 5. 分阶段实施
 
-### T6a —— 影子域纯搬运（行为零变化）
+### T6a —— 影子域纯搬运（行为零变化）  ✅ **已落地（`e355f0da2`，2026-10-07）**
 
 - **内容**：`MainLightShadowSystem` 承接 `EnvironmentSystem` 的影子成员与 API
   （controller / `cascade_rts[4]` / `light_camera` / `light_camera_slot` / `shadow_enabled` /
@@ -152,8 +152,10 @@
 - **判据（可自动判定）**：八台架帧摘要**逐位不变**（D=0）+ `ENGAGED batches=x/y` 且 x==y + guard 拒绝 0；
   `CascadeShadowMap` `0x1CDAADEBF18B7CE4`、`ShadowMap` `0xA8A369516CB04571` 逐位不变；
   `ATS_SELFCHECK=1` D1/D3/D4 与基线一致 + rc=0；门 45/0；`TestCSMIncrementalPass` 42 Passed；
-  CSM 探针 `CSM_REENABLE_PROBE=1`（first=1 second=1）、`CSM_DISABLE_PROBE=120`（VUID-05149 = 0）；
-  离屏两例 RTT/RTTCD 逐位不变。
+  离屏两例 RTT/RTTCD 逐位不变；环境示例族（AtmosphereSky*、IBL*、BasicLitSunDirection）重建通过。
+  ⚠ **订正（2026-10-07 执行时）**：C3①/C3② 的端到端探针（`CSM_REENABLE_PROBE` / `CSM_DISABLE_PROBE`）
+  **是临时件、早已撤**（示例内 0 命中）⇒ 这两条行为由**常驻契约**承载：`Test 43 生命周期账 a–f` +
+  `M10`（槽带接线/游标禁复活）+ `M11`（销毁前设备静默）。
 - **回滚 tag**：`pre-t6a`（纯搬运，可整笔 revert）。
 
 ### T6b —— 数据模型切换（光源行 + 世界私有化）
@@ -183,7 +185,7 @@
 | V3 | `RenderToTexture` / `RenderToTextureColorDepth` | `RTT_SELFCHECK`/`RTTCD_SELFCHECK`：`0xBA9CA214778AF3A4` / `0xD71ABABC2BE460C0` |
 | V4 | `ShaderResourceSchemaRegressionGate` | 45 PASS / 0 FAIL（新增 GLSL 模块则 +1） |
 | V5 | `TestCSMIncrementalPass` | 42 Passed / rc=0（Test 42 契约条数随新增同步） |
-| V6 | CSM 生命周期探针 | `CSM_REENABLE_PROBE=1` → `first=1 second=1`；`CSM_DISABLE_PROBE=120` → `05149` 计数 0 |
+| V6 | CSM 生命周期不变量（常驻） | `Test 43 生命周期账 a–f` + `M10`（槽带接线 / 游标禁复活）+ `M11`（销毁前设备静默）。⚠ 临时端到端探针（`CSM_REENABLE_PROBE`/`CSM_DISABLE_PROBE`）已撤，不再作为判据 |
 | V7 | 跨世界隔离（T6b 新增） | 两世界同帧各自主光/影子数据互不影响（摘要各自稳定） |
 
 ---
