@@ -6256,6 +6256,75 @@ int main(int argc, char** argv)
                  u8"天空块不再持有句柄与显式填充（禁复活 5 条）。");
     }
 
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 48: V7 契约 —— **两世界同帧**的光照/阴影数据隔离（世界私有）与其两条引擎前提
+    //
+    // 判据载体 = `example/Shadow/DualWorldShadows.cpp`（`DWS_SELFCHECK=1`：翻转一个世界的主光，
+    // 断言另一个世界的帧摘要逐位不变；翻转自身必须变，作为"判据不空转"守卫）。
+    // 本测试钉住三件事（缺任一，那条台架要么跑不起来、要么判据失效）：
+    //   ① 级联 RT 数 = `CascadedShadowConfig::cascade_count`（离屏帧槽带全设备仅 4 条 ⇒ 建满 4 条
+    //      则"两个世界各自开 CSM"在容量上不可达）；
+    //   ② 影子数据的设备上传点 = **本世界自己的帧 RT**（不只交换链；否则离屏世界的 addr_shadow
+    //      永为零值 ⇒ 离屏世界无阴影，隔离判据失去一半覆盖面）；
+    //   ③ 台架本身：注册进构建、子世界自带提交入口、自检模式不建"显示子世界"的屏幕
+    //      （那块屏幕让主世界合法依赖 B 的纹理 ⇒ 隔离判据 ① 假红，实测踩过）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        static const SourceContract kV7IsolationContracts[] =
+        {
+            { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
+              "? config.cascade_count : graph::kMaxShadowCascades;",
+              "V7①：级联 RT 数不再固定 4 —— 不按配置创建则两个世界各自开 CSM 会耗尽离屏帧槽带" },
+
+            { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
+              "for (uint32_t c = 0; c < cascade_count; ++c)",
+              "V7①：创建级联 RT 的循环边界必须是被配置的级联数" },
+
+            { "ViewUBOCommitSystem.cpp", OS_TEXT("src/ecs/systems/render/ViewUBOCommitSystem.cpp"),
+              "if (!context->IsCurrentPassShadow())",
+              "V7②：影子数据上传点必须按\"本世界自己的帧 RT\"判定（交换链 / 离屏世界主帧都要提交）" },
+
+            { "ViewUBOCommitSystem.cpp", OS_TEXT("src/ecs/systems/render/ViewUBOCommitSystem.cpp"),
+              "IsSwapchain()",
+              "V7② 禁复活：提交点回到\"仅交换链\" ⇒ 离屏世界的影子数据永不上传（离屏世界不可能有阴影）",
+              true },
+
+            { "CMakeLists.txt", OS_TEXT("example/Shadow/CMakeLists.txt"),
+              "CreateProject(DualWorldShadows",
+              "V7：两世界隔离台架必须注册进构建（否则判据只是文本）" },
+
+            { "DualWorldShadows.cpp", OS_TEXT("example/Shadow/DualWorldShadows.cpp"),
+              "child_world->RegisterRenderSystem<ViewUBOCommitSystem>()",
+              "V7②：子世界必须自带影子数据提交入口（OffscreenWorld 默认只注册 RT/Collect/UBO/Camera）" },
+
+            { "DualWorldShadows.cpp", OS_TEXT("example/Shadow/DualWorldShadows.cpp"),
+              "ConfigureWorldLight(child_world",
+              "V7：离屏世界必须写**自己的**光源行（世界私有的写入面）" },
+
+            { "DualWorldShadows.cpp", OS_TEXT("example/Shadow/DualWorldShadows.cpp"),
+              "FAIL ①：翻转**离屏世界**的光改变了**主世界**的画面",
+              "V7 判据①：翻转 B 的光若改变了 A 的画面 ⇒ 光照/阴影数据不是世界私有" },
+
+            { "DualWorldShadows.cpp", OS_TEXT("example/Shadow/DualWorldShadows.cpp"),
+              "FAIL ③：翻转**主世界**的光改变了**离屏世界**的画面",
+              "V7 判据③：翻转 A 的光若改变了 B 的画面 ⇒ 光照/阴影数据不是世界私有" },
+
+            { "DualWorldShadows.cpp", OS_TEXT("example/Shadow/DualWorldShadows.cpp"),
+              "自检模式：不建 ChildScreen",
+              "V7：自检模式必须去掉\"主世界引用 B 纹理\"这条合法数据流（否则判据①无法区分泄漏与合法显示依赖）" },
+        };
+
+        if (const int failed = verify_source_contracts(48, kV7IsolationContracts,
+                                                       static_cast<uint>(sizeof(kV7IsolationContracts) /
+                                                                         sizeof(kV7IsolationContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 48 Passed: V7 契约成立 —— 两世界同帧的光照/阴影数据隔离台架（DualWorldShadows）"
+                 u8"与它的两条引擎前提都在位：级联 RT 数按 cascade_count 创建、影子数据上传点按\"本世界帧 RT\""
+                 u8"判定（不再仅交换链）、子世界自带提交入口、自检模式去掉跨世界纹理引用。");
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

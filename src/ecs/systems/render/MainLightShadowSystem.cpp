@@ -75,7 +75,19 @@ namespace hgl::ecs
         shadow_controller = std::make_unique<graph::CascadedShadowController>();
         shadow_controller->SetConfig(config);
 
-        for (uint32_t c = 0; c < graph::kMaxShadowCascades; ++c)
+        // 只建**配置里声明**的级联数（1..kMaxShadowCascades）。为什么不能一律建满 4：
+        // 每张级联 RT 占 **1 条离屏帧槽带**（`OffscreenSlotBands`；全设备共
+        // `HGL_FRAME_SLOT_TOTAL - HGL_FRAME_SLOT_MAIN` = 4 条，`RenderTargetManager::Create`
+        // 里 first-fit 分配、Destroy 归还）。建满 4 条就把 4 条全占掉 ⇒ 本设备再申请任何
+        // 别的离屏 RT（第二个世界的 RT / 另一个 CSM 世界）必然分配失败（fail-fast）
+        // ⇒ 「两个世界各自开 CSM」在容量上不可达（V7 台架 DualWorldShadows 实测卡在这一点）。
+        // 少建的级联：`cascade_rts[c] == nullptr`（渲染循环跳过）+ `cascade_handles[c] == 0`
+        //（shader 侧"该级无阴影"哨兵）⇒ 等价于"该级不参与"，不是半残状态。
+        const uint32_t cascade_count =
+            (config.cascade_count > 0 && config.cascade_count <= graph::kMaxShadowCascades)
+            ? config.cascade_count : graph::kMaxShadowCascades;
+
+        for (uint32_t c = 0; c < cascade_count; ++c)
         {
             graph::RenderTargetDesc desc = graph::RenderTargetDesc::OffscreenDepthOnly(
                 shadow_map_size, shadow_map_size,
