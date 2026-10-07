@@ -94,17 +94,42 @@
   本卡剩余：cubemap 6 面（点光源阴影）与前向 MSAA 仍未实现（`fb_info.layers=1`、
   `BeginRendering` 的 `layerCount=1` 硬编码、`RenderTargetDesc::samples != 1` 被 `IsValid()` 拒绝）。
 
-### A7. 离屏 RT in-flight 槽 —— **机制已建、调用方未启用（2026-10-07 复核）**
+### A7. 离屏 RT in-flight 槽 —— **✅ 已量化结案：按数据不做（2026-10-07）**
 
-> **订正（2026-10-07 复核）**：不再是「未做」——`RenderTargetData` 已有完整 in-flight 槽机制
-> （`slot_count`/`slot_index` + 每槽一份 `{cmd_buf, queue(1 fence)}`，`BeginRender()` 复用槽前 `queue->WaitLastSubmitFence()`）；
-> 但 `RenderTargetDesc::slot_count` 默认 1（`inc/hgl/graph/render/RenderTargetDesc.h:77`）且**全仓无人传 >1**
-> ⇒ 实际行为仍是「每帧一次 CPU 等待」。本卡的触发条件（与 A1 同做）已满足 ⇒ **只需调用方按需启用**（离屏/级联 RT 传 `slot_count>1`）。
+> **原始口径（同日复核）**：`RenderTargetData` 已有完整 in-flight 槽机制（`slot_count`/`slot_index` + 每槽一份
+> `{cmd_buf, queue(1 fence)}`，`BeginRender()` 复用槽前 `queue->WaitLastSubmitFence()`）；但
+> `RenderTargetDesc::slot_count` 默认 1（`inc/hgl/graph/render/RenderTargetDesc.h:78`）且**全仓无人传 >1** ⇒
+> 行为 = 「每帧一次 CPU 等待」。当时结论是「触发条件已满足 ⇒ 只需调用方按需启用」。
 
-- **现状**：5a 评估"单做不解决跨 pass 采样竞态"而搁置；fence 等待后仍
-  每帧一次 CPU 等待。
-- **触发条件**：与 A1 同做才有意义（GPU 侧链路通了，N 份
-  cmd_buf+queue+fence 轮转才换来真重叠）。
+**实测（2026-10-07；用已有探针 `PREPASS_TIMING=1`，每主帧一行；单位 µs）**
+
+| 场景 | 离屏 pass/帧 | 下沿等自身（本 RT 自己的 fence） | 上沿等主帧（共享 per-frame 资源排空） | begin（collect/装配/派发） | 主帧均值 |
+|---|---|---|---|---|---|
+| `CascadeShadowMap`（增量） | 1.00 | 182~251 | 725~12962 | 2166~2400 | 16.7~25.7 ms |
+| `CascadeShadowMap`（`CSM_CACHE_DIFF=1`） | 1.00 | 195~238 | 839~19294 | 2172~2386 | 16.7~31.3 ms |
+| `DualWorldShadows`（子世界每帧离屏） | 2.00 | **376~405** | 9~37 | 1145~1685 | 16.1~17.3 ms |
+
+**结论：三条独立理由，任一条都足以否掉「调用方传 `slot_count>1`」这个动作。**
+
+1. **收益上限 = 实测「下沿等自身」≈ 0.19 ms/pass**，且只在「同一帧对同一 RT 提交多次」时兑现（`slot_count≥2`
+   ⇒ 第 2 次提交不必等第 1 次完成）。单 pass/帧的 RT（CSM 增量恒 **1.00 次/帧**）收益 **≈ 0**；DWS 两 pass 也
+   只有 ~0.2 ms/帧 ≈ 主帧 1.2%。何况呈现模式**硬编码 FIFO**（`src/SceneGraph/module/SwapchainModule.cpp:75`）⇒
+   主帧均值恒 = 16.6 ms = vsync，探针那 19 ms 的「上沿」主要是在**等 vsync**，不是真实争用 ⇒ 时间类判据在当前
+   呈现模式下不可比。
+2. **上沿全槽排空已经把重叠吃掉了**：每次离屏 pass 前 `RenderTo` 会 `saved_target->WaitFence()` **排空主帧在途 GPU**
+   （为护住单份 Camera UBO / L2W ring，见 `inc/hgl/vk/VKRenderTargetData.h:21-27`）。既然 CPU 每帧都被这个排空
+   拽住，离屏 RT 多几个 in-flight 槽**换不来 CPU/GPU 重叠**；量到的大头（排空 + `begin` 1.1~2.4 ms）与
+   `slot_count` **无关**。
+3. **代价与收益差两个量级**：`slot_count` 同时决定该 RT 的 **per-frame 数据槽带宽度**，而离屏带空间总共只有
+   `HGL_FRAME_SLOT_TOTAL - HGL_FRAME_SLOT_MAIN = 4` 条，**CSM 一条级联占一带 ⇒ 4 条级联即占满**
+   （`inc/hgl/graph/module/OffscreenSlotBands.h` 原话）。给级联 RT 拿 `slot_count=2` ⇒ `HGL_FRAME_SLOT_TOTAL`
+   8→≥12 ⇒ 所有 per-frame-slot 数据 ×1.5（L2W ring 深度 = TOTAL）+ 清树全量重编 + 全部基线重录，
+   **换 ≤1% 帧时间**。
+
+⇒ **本卡关闭（不做）**。若将来真要拿回这部分时间，正确对象是第 2 条指向的两项：**「4 级联合并成单 prepass」**
+（消掉重复 pass 提交与排空）与 **「per-frame 资源共享多份化」**（Camera UBO / L2W ring 按离屏 RT 各一份 ⇒
+排空可去；会牵动「L2W ring 深度 == 槽空间」不变量）。两者都比 `slot_count` 大，且**前置** = 先有非 vsync 的
+度量手段（现在是 FIFO 硬编码）。
 
 ### A8. ~~CameraInfo 全局 SSBO 化与 PushConstants 索引（多相机同帧并发）~~ **已完成（c7430f92f，2026-09-23）**
 
