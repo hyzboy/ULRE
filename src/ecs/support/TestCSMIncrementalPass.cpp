@@ -3433,8 +3433,8 @@ int main(int argc, char** argv)
               "世界地址表不再是每世界一张（共表 ⇒ 两世界的地址互相覆盖）" },
             // ② 世界表写入端：地址只取本世界存储 + 按帧槽轮转
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "addr_camera_info = camera_info_storage->GetGPUBase()",
-              "相机行地址不来自本世界存储（跨世界共用一份 ⇒ 同帧互相覆写）" },
+              "want.addr_camera_info = pick((camera_info_storage && camera_info_storage->IsReady())",
+              "相机行地址不来自本世界存储（跨世界共用一份 ⇒ 同帧互相覆写）；2026-10-07 起同走 0 地址统一口径" },
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
               "GetRenderItemStorage()",
               "渲染项表地址不取本世界存储" },
@@ -3495,11 +3495,11 @@ int main(int argc, char** argv)
               "LightRowTable light_row_table;",
               "光源行表不再是每世界一份" },
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "want.addr_shadow = shadow_info_addr",
-              "影子地址不取本世界表（跨世界共用一份 ⇒ 同帧互相覆写）" },
+              "want.addr_shadow = pick(",
+              "影子地址不取本世界表（跨世界共用一份 ⇒ 同帧互相覆写；2026-10-07 起同走 0 地址统一口径）" },
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "want.addr_lights = light_row_table_addr",
-              "光源行地址不取本世界表" },
+              "want.addr_lights = pick(",
+              "光源行地址不取本世界表（2026-10-07 起同走 0 地址统一口径）" },
             { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "ShadowInfo  shadow;",
               "T6b/P4 禁复活：影子数据回到 env profile（profile 可被多世界共享 ⇒ 互踩）",
@@ -5854,8 +5854,8 @@ int main(int argc, char** argv)
               "T6b：光源行表与实体两表同批建（缺这条 = 表不存在、地址恒 0）" },
 
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "want.addr_lights = light_row_table_addr",
-              "T6b：地址发布（I4：新地址字段必须接写者；只有字段没有写者 = 静默剔空）" },
+              "want.addr_lights = pick(",
+              "T6b：地址发布（I4：新地址字段必须接写者；只有字段没有写者 = 静默剔空；2026-10-07 起按统一口径 pick(基址+slot×步长, 旧值)）" },
 
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
               "UploadLightRowDirtyRows();",
@@ -6069,8 +6069,8 @@ int main(int argc, char** argv)
               "T6b/P4：提交写成了「单份」而非「本帧槽」（在飞帧会读到被覆写的数据）" },
 
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "* static_cast<uint64_t>(sizeof(graph::ShadowInfo));",
-              "T6b/P4：影子表按帧槽各一份的步长口径丢失（地址 = 基址 + 帧槽 × 每份字节）" },
+              "slot_offset(shadow_info_addr, sizeof(graph::ShadowInfo)),",
+              "T6b/P4：影子表按帧槽各一份的步长口径丢失（地址 = 基址 + 帧槽 × 每份字节；2026-10-07 起经 slot_offset 统一口径）" },
 
             // ② 提交时序 + 写者
             { "ViewUBOCommitSystem.cpp", OS_TEXT("src/ecs/systems/render/ViewUBOCommitSystem.cpp"),
@@ -6177,8 +6177,8 @@ int main(int argc, char** argv)
               "T1：新地址字段未在归属门登记（未分类字段 ⇒ 门报错；登记错侧 ⇒ 多世界串数据）" },
 
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "const uint64_t ambient_env_addr = env_manager->GetAmbientEnvAddress(active_env_profile);",
-              "T1：地址只有字段没发布（I4 的历史坑：表里恒 0 ⇒ 静默失效）" },
+              "want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);",
+              "T1：地址只有字段没发布（I4 的历史坑：表里恒 0 ⇒ 静默失效）；2026-10-07 起走统一口径（0 ⇒ 沿用本槽旧值）" },
 
             { "TestRenderItemDataStorage.cpp", OS_TEXT("src/ecs/support/TestRenderItemDataStorage.cpp"),
               "static_assert(sizeof(graph::WorldAddresses) == 72,",
@@ -6302,6 +6302,64 @@ int main(int argc, char** argv)
               "sky.",
               "2026-10-07 禁复活：天空模块不得回读已删的天空块成员（外观 = 光行 + 常量）",
               true },
+
+            // ⑦ 2026-10-07：**世界表地址列的"0 地址口径"统一**（`SyncWorldAddresses` 是这张表的唯一写者）。
+            //    规则：解不到有效地址（0）⇒ 沿用**本槽**上一份好值；0 基址的按帧槽列**不参与** slot×步长 运算；
+            //    写 0 = 让 shader 解引用 0 基址（UB），比沿用一份稍旧的有效地址危险得多；
+            //    "从来没有过有效值"（世界刚建）自然保持 0 = 消费者判缺席。
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "const auto pick = [](const uint64_t resolved, const uint64_t previous) -> uint64_t",
+              "2026-10-07：口径的单点（resolved==0 ⇒ 沿用 previous）——缺它 = 各路又各写各的" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "return base != 0 ? (base + static_cast<uint64_t>(slot) * per_slot_bytes) : 0;",
+              "2026-10-07：按帧槽列**不许**把 slot×步长 加到 0 基址上（否则写出 slot×832 这类垃圾地址）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_camera_info = pick(",
+              "2026-10-07：相机行列走统一口径（9 列逐条钉住，漏一列 = 该列解不到时把 0 写进表）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_global_render_items = pick(",
+              "2026-10-07：4-ID 渲染项表列走统一口径" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_draw_item_ids = pick(",
+              "2026-10-07：DrawItemID 表列走统一口径" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_entity_gpu = pick(",
+              "2026-10-07：实体行表列（按帧槽切份）走统一口径" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_entity_render_ids = pick(",
+              "2026-10-07：实体 4-ID 表列（按帧槽切份）走统一口径" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_lights = pick(",
+              "2026-10-07：光源行表列（按帧槽切份）走统一口径" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_l2w = pick(l2w_addr, dst->addr_l2w);",
+              "2026-10-07：L2W 池列（口径的首个使用者，B1b）同批并入" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);",
+              "2026-10-07：ambient_env 列 —— 原为 `if (addr != 0)` 静默丢值写法（注释说「不写 0」、实现写 0）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_shadow = pick(",
+              "2026-10-07：影子列（按帧槽切份）—— 原无守卫，未建表时会写 slot×832 垃圾地址" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "if (ambient_env_addr != 0)",
+              "2026-10-07 禁复活：静默丢值写法（`want{}` 从零起算 ⇒ 它等价于「把 0 写进表」）",
+              true },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_shadow = shadow_info_addr",
+              "2026-10-07 禁复活：影子列不得回到「基址 + slot×步长」的无守卫写法",
+              true },
         };
 
         if (const int failed = verify_source_contracts(47, kProviderBlockRelocationContracts,
@@ -6313,7 +6371,8 @@ int main(int argc, char** argv)
                  u8" + GLSL 镜像/宏 + 世界表 addr_ambient_env（字段/镜像/门登记/发布/夹具五处接线；"
                  u8"2026-10-07 起夹具 = 72 B / 9 字段）"
                  u8" + EnvironmentSystem 四件套与 profile 侧物化/取址/脏标记 + 唯一读者间接光照模块改读新块；"
-                 u8"天空块不再持有句柄与显式填充（禁复活 5 条）。");
+                 u8"天空块不再持有句柄与显式填充（禁复活 5 条）"
+                 u8" + ⑦ 世界表地址列 0 地址口径统一（9 列逐条钉住 + pick/slot_offset 单点 + 静默丢值禁复活 2 条）。");
     }
 
 

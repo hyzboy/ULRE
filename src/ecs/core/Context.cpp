@@ -2240,40 +2240,59 @@ namespace hgl
 
             graph::WorldAddresses want{};
 
-            if (camera_info_storage && camera_info_storage->IsReady())
-                want.addr_camera_info = camera_info_storage->GetGPUBase();
+            // ══ 地址列的统一口径（本函数是这张表的**唯一**写者）══════════════════════════════
+            // 每一列只写"解出来的**有效**地址"；解不到有效地址（0）时**保留本槽上一份好值**
+            //（`dst->addr_xxx` —— `dst` 指向本帧槽那一行 ⇒ "上一份好值"天然同槽，不会串到别槽）。
+            // 为什么不写 0：0 基址会让读该段的 shader 解引用 0（UB / 设备丢失），比"沿用一份稍旧的
+            // **有效**地址"危险得多。"从来没有过有效值"（世界刚建、`dst` 亦为 0）自然保持 0
+            // = 消费者判**缺席**。
+            // ⚠ 对**按帧槽切份**的列同样成立，且**不许把 `slot × 步长` 加到 0 基址上** —— 那会写出
+            //   `slot×832` 这类"看着有效"的垃圾地址，消费者判不出缺席 ⇒ 解引用 UB（本批就是收这个口）。
+            // 首个按此口径写的是 `addr_l2w`（B1b）；2026-10-07 起**全表九列统一**（契约见 Test 47 ⑦）。
+            // ────────────────────────────────────────────────────────────────────────────
 
-            if (auto *storage = GetRenderItemStorage())
-                want.addr_global_render_items = storage->GetGPUAddress();
+            // 解不到（0）⇒ 沿用本槽旧值；基址为 0 的按帧槽列**不参与** `slot × 步长` 运算。
+            const auto pick = [](const uint64_t resolved, const uint64_t previous) -> uint64_t
+            { return resolved != 0 ? resolved : previous; };
+            const auto slot_offset = [slot](const uint64_t base, const uint64_t per_slot_bytes) -> uint64_t
+            { return base != 0 ? (base + static_cast<uint64_t>(slot) * per_slot_bytes) : 0; };
 
-            if (auto *id_storage = GetDrawItemIDStorage())
-                want.addr_draw_item_ids = id_storage->GetGPUAddress();
+            want.addr_camera_info = pick((camera_info_storage && camera_info_storage->IsReady())
+                                         ? camera_info_storage->GetGPUBase() : 0,
+                                         dst->addr_camera_info);
 
-            // T3c：实体行表（世界私有；消费者 = GPU 剔除读实体行）。未建表 ⇒ 保持 0（消费者判 0 跳过）。
-            // **按帧槽偏移**（T3c-3 实测：可动实体的 `row[Transform]` 随帧槽变，3 个行号轮转
-            // ⇒ 单份表会被本帧写入覆盖上一帧正在被读的内容 = 跨帧别名）。份数 = 帧槽空间，
-            // 与变换侧环深度**同源**（A5 已关闭：`HGL_L2W_RING_FRAMES == HGL_FRAME_SLOT_TOTAL`；
-            // 历史上的 3 曾致离屏槽与主帧槽别名（4%3=1、5%3=2…）、prepass 覆写主帧在途矩阵
-            // ⇒ 整帧只剩清屏色）。
-            want.addr_entity_gpu = entity_gpu_table_addr
-                + static_cast<uint64_t>(slot)
-                * static_cast<uint64_t>(EntityGPUTable::kCapacity)
-                * static_cast<uint64_t>(sizeof(EntityGPU));
+            want.addr_global_render_items = pick(GetRenderItemStorage()
+                                                 ? GetRenderItemStorage()->GetGPUAddress() : 0,
+                                                 dst->addr_global_render_items);
+
+            want.addr_draw_item_ids = pick(GetDrawItemIDStorage()
+                                           ? GetDrawItemIDStorage()->GetGPUAddress() : 0,
+                                           dst->addr_draw_item_ids);
+
+            // T3c：实体行表（世界私有；消费者 = GPU 剔除读实体行）。**按帧槽偏移**（T3c-3 实测：
+            // 可动实体的 `row[Transform]` 随帧槽变，3 个行号轮转 ⇒ 单份表会被本帧写入覆盖上一帧
+            // 正在被读的内容 = 跨帧别名）。份数 = 帧槽空间，与变换侧环深度**同源**（A5 已关闭：
+            // `HGL_L2W_RING_FRAMES == HGL_FRAME_SLOT_TOTAL`；历史上的 3 曾致离屏槽与主帧槽别名
+            //（4%3=1、5%3=2…）、prepass 覆写主帧在途矩阵 ⇒ 整帧只剩清屏色）。未建表 ⇒ 沿用旧值/缺席。
+            want.addr_entity_gpu = pick(
+                slot_offset(entity_gpu_table_addr,
+                            static_cast<uint64_t>(EntityGPUTable::kCapacity) * sizeof(EntityGPU)),
+                dst->addr_entity_gpu);
 
             // T3d-3a：实体 4-ID 表（世界私有；消费者 = GPU 剔除取池口径 geometry_id /
             // material / texture 行）。按帧槽偏移（与实体行表同纪律：可动实体 transform_id 随帧槽变）。
-            // 未建表 ⇒ 保持 0（消费者判 0 跳过；0 基址解引用纪律见 §8.2b①）。
-            want.addr_entity_render_ids = entity_render_id_table_addr
-                + static_cast<uint64_t>(slot)
-                * static_cast<uint64_t>(EntityRenderIDTable::kRowStride)   // T4c3a：每槽 = kRowStride 行（pass 分半）
-                * static_cast<uint64_t>(sizeof(graph::RenderItemDescriptor));
+            want.addr_entity_render_ids = pick(
+                slot_offset(entity_render_id_table_addr,
+                            static_cast<uint64_t>(EntityRenderIDTable::kRowStride)   // T4c3a：每槽 = kRowStride 行（pass 分半）
+                            * sizeof(graph::RenderItemDescriptor)),
+                dst->addr_entity_render_ids);
 
             // T6b：光源行表（世界私有；行 0 = 主方向光）。按帧槽偏移——光参数可由作者逐帧改
-            //（行内容随帧变），与实体行表同判据。未建表 ⇒ 保持 0（消费者判 0 缺席）。
-            want.addr_lights = light_row_table_addr
-                + static_cast<uint64_t>(slot)
-                * static_cast<uint64_t>(LightRowTable::kCapacity)
-                * static_cast<uint64_t>(sizeof(graph::LightRow));
+            //（行内容随帧变），与实体行表同判据。
+            want.addr_lights = pick(
+                slot_offset(light_row_table_addr,
+                            static_cast<uint64_t>(LightRowTable::kCapacity) * sizeof(graph::LightRow)),
+                dst->addr_lights);
 
             // T3c-2b（B1）：L2W 行号由**变换侧**写入实体行表（生产者写自己的产物）；
             // 世界这里只负责把**脏行**上传设备镜像。
@@ -2281,8 +2300,8 @@ namespace hgl
             // T3d：L2W 矩阵池基址入表（消费者 = GPU 剔除按 `row[Transform]` 行号直索引）。
             // **整块一个地址**（全帧槽同址）：行号本身已含帧槽段基址（B1b：静态 `1+slot` /
             // 动态 `环基址+slot`）⇒ 不需要像实体表那样按帧槽切份、也不需要帧槽偏移。
-            // 取不到（变换缓冲未建 / 系统未注册）⇒ 保留上一份好值：0 基址会让 shader
-            // 解引用 = UB（与 sky/shadow 同纪律）。
+            // 取不到（变换缓冲未建 / 系统未注册）⇒ 保留上一份好值（统一口径的**首个**使用者，
+            // 见函数开头的"地址列的统一口径"）。
             {
                 uint64_t l2w_addr = 0;
                 if (auto ts = GetSystem<TransformSystem>())
@@ -2301,7 +2320,7 @@ namespace hgl
                         }
                     }
                 }
-                want.addr_l2w = (l2w_addr != 0) ? l2w_addr : dst->addr_l2w;
+                want.addr_l2w = pick(l2w_addr, dst->addr_l2w);
             }
 
             UploadEntityGPUDirtyRows(slot);
@@ -2313,19 +2332,20 @@ namespace hgl
             // 2026-10-07：`addr_sky` 随 sky 段整删退出本表），
             // **影子数据随世界**（T6b/P4 归属订正：以前挂 profile，两世界共享 default profile 时互踩）。
             // 影子表按帧槽各一份 ⇒ 地址 = 基址 + 帧槽 × sizeof(ShadowInfo)（写本帧槽的是提交点的
-            // CommitShadowInfo）；未建表 ⇒ 0（消费者判 0 缺席）。
-            // 两段任一段取不到地址都**不把 0 写进表** —— 0 基址会让读该段的 shader 解引用 0（UB）。
+            // CommitShadowInfo）。两列同走函数开头的统一口径。
+            // ⚠ 2026-10-07 订正（本批）：此处原来是"`if (addr != 0)` 才赋值"的**静默丢值**写法 ——
+            //   `want{}` 从零起算 ⇒ 解不到就**真的把 0 写进了表**，与注释完全相反；而影子那列没有守卫，
+            //   未建表时会把 `slot × 832` 写成"看着有效"的垃圾地址。两处都已按统一口径（0 ⇒ 沿用本槽旧值；
+            //   基址 0 不参与 slot 偏移）改正。
             const graph::EnvProfileID active_env_profile = GetEnvProfileID();
-            if (auto *env_manager = ResolveEnvManager())
-            {
-                const uint64_t ambient_env_addr = env_manager->GetAmbientEnvAddress(active_env_profile);
-                if (ambient_env_addr != 0)
-                    want.addr_ambient_env = ambient_env_addr;
-            }
+            const uint64_t ambient_env_addr = ResolveEnvManager()
+                                              ? ResolveEnvManager()->GetAmbientEnvAddress(active_env_profile)
+                                              : 0;
+            want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);
 
-            want.addr_shadow = shadow_info_addr
-                + static_cast<uint64_t>(slot)
-                * static_cast<uint64_t>(sizeof(graph::ShadowInfo));
+            want.addr_shadow = pick(
+                slot_offset(shadow_info_addr, sizeof(graph::ShadowInfo)),
+                dst->addr_shadow);
 
             const uint64_t old_shadow = dst->addr_shadow;
             const uint64_t old_ambient_env = dst->addr_ambient_env;

@@ -80,6 +80,13 @@ CPU 侧消费者（剔除 / gizmo / Line 视锥 / shadow origin）统一通过"�
 
 - `sky` / `shadow` 地址写进**世界表**（`addr_sky` / `addr_shadow`）。**T6b/P4 订正**：影子数据不再走 profile 侧 shadow ring（`kShadowUboRing` 已删）—— 它是**世界私有**数据（`ECSContext::shadow_info` + `InitializeShadowInfoTable`，**按帧槽各一份**，地址 = 基址 + 帧槽 × `sizeof(ShadowInfo)`），提交点 `ECSContext::CommitShadowInfo` 写**本世界帧 RT**的当前槽；`sky` 仍单份同址。
   **2026-10-07 订正**：`addr_sky` 已**整删**（`SkyInfo` 两个外观字段全仓无写者 ⇒ 取值搬成 `sky_atmosphere.glsl` 常量，外观逐位不变）；世界表现在剩 `addr_shadow` + `addr_ambient_env` 两条参数段地址。
+- **地址列的「0 地址口径」（2026-10-07 统一；`SyncWorldAddresses` 是这张表的唯一写者）**：
+  每一列只写「解出来的**有效**地址」；解不到（0）⇒ **沿用本槽上一份好值**
+  （`pick(resolved, dst->addr_xxx)`；`dst` = 本帧槽那一行 ⇒ 旧值天然同槽）。理由：写 0 = 让读该段
+  的 shader 解引用 0 基址（UB / 设备丢失），比沿用一份稍旧的有效地址危险得多；「从来没有过有效值」
+  （世界刚建）自然保持 0 = 消费者判**缺席**。
+  **按帧槽切份的列**（实体行表 / 4-ID 表 / 光源行 / 影子数据）**不许**把 `slot × 步长` 加到 0 基址上
+  （那会写出 `slot×832` 这类「看着有效」的垃圾地址 ⇒ 消费者判不出缺席）。九列逐条钉在 Test 47 ⑦。
 - **profile 的所有权与生命周期跟随世界**：世界创建时选/建自己的 profile、销毁时归还；内置 default 可共享。
   现状是设备级配置仓库 + "世界/RT 只持有 `EnvProfileID`"（`EnvironmentManager.h`、`OffscreenWorld.h:59`、`RenderTargetDesc.h:82`），**地址发布却走全局字段** ⇒ 多世界同帧只有最后解析的那个 profile 生效。本轮落点就是把地址与选择按世界走。
 - 收益：不同世界可用不同阴影技术（室内/室外）成为一等支持；消除跨世界互踩。

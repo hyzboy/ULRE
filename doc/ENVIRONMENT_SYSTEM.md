@@ -208,7 +208,8 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 - camera:`CameraSystem::PublishCamera(Rows)`（相机行；世界共享载体与 camera UBO 已于 C1-5 删除）
 - viewport:`RenderSceneUBOSystem::CommitViewportUBO()`
-- sky / 影子:**地址**都按世界写世界表（`ECSContext::SyncWorldAddresses` → `WorldAddresses.addr_sky` / `addr_shadow`，见 §6.1）；**数据**写入点 sky = `MarkDirty` 即时写、影子 = `ECSContext::CommitShadowInfo`（仅当前 RT 为交换链时写 `shadow_info[acquired_image]`，离屏 pass 不写影子槽）
+- ~~sky~~ / 影子:**地址**都按世界写世界表（`ECSContext::SyncWorldAddresses` → `WorldAddresses.addr_shadow` / `addr_ambient_env`；~~`addr_sky`~~ 2026-10-07 整删，见头部 ④）；**数据**写入点影子 = `ECSContext::CommitShadowInfo`（写**本世界帧 RT**的当前槽；~~sky = `MarkDirty` 即时写~~ 随天空块整删）。
+  **地址列口径（2026-10-07 统一）**：解不到有效地址（0）⇒ 沿用**本槽**上一份好值（`pick(…)`），绝不把 0 写进表；按帧槽切份的列不许把 `slot×步长` 加到 0 基址上（否则写出「看着有效」的垃圾地址）。九列逐条钉在 Test 47 ⑦。
 
 (实现:`src/ecs/systems/render/ViewUBOCommitSystem.cpp:14` 定阶段,`:17-36` 三个调用点)
 
