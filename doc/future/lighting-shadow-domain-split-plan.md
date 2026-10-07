@@ -184,9 +184,24 @@
 >   （不新开模块 ⇒ 门「模块总数 71」不变）；② 取址宏用 `buffer_reference_align=16`（只承诺
 >   `GetBufferDeviceAddressAligned16` 能兑现的对齐），**行步长 64 B 由末尾显式 `_pad1[2]` 写死**
 >   （scalar layout 不隐式补 alignas 填充，不写就成 48 B = 除行 0 外全错位）。
-> - ⏳ **待做（减法）**：`SkyInfo` 删 `sun_*`/`moon_*` + `pcf_shadow`/`shadow_receiver_source`/`sky_atmosphere`/
->   `sky_minimal_surface` 四处改读光行 + `LightSystem`（与示例 / `MainLightShadowSystem` 消费者**同批**落，
->   不造无调用者的系统）+ `ShadowInfo` 世界私有化（P4）+ 删三份死头。
+> - ✅ **第 3 步（减法）**：`SkyInfo` 删 `sun_*`/`moon_*`（并**删 `halo_color`** —— 它一直是主光色的同步副本，
+>   shader 侧改读 `main_light.color_angle.rgb`，双源清零）+ `SkyInfo::SetTime` 迁为光源域的
+>   `EvaluateSunLight`（空 TU `env/SkyInfo.cpp` 删除）+ 四处 shader（`pcf_shadow` /
+>   `shadow_receiver_source` / `sky_atmosphere` / `sky_minimal_surface`）改读光行 + 新增 `LightSystem`
+>   （默认系统注册；`SunDirectionControlSystem` 改写光行）+ **影随光**（`MainLightShadowSystem` 删 T6a 临时
+>   依赖、改读光行 0，Enable/Disable 落/清光行的 `cast_shadow + shadow_kind(CSM) + shadow_index`）
+>   + 9 个示例改写光行 + 删三份死头（`render/lighting/*`）+ 控制器归位 `render/shadow/`（P3）+ Test 45 契约。
+>   **实测**：门 **46 PASS / 0 FAIL**；`TestCSMIncrementalPass` rc=0（Test 44 + **Test 45**）；
+>   八台架摘要**逐位对基线**（PBRSpheres `0x3DD88A0999CDC486`、ShadowMap `0xA8A369516CB04571`、
+>   Cascade `0x1CDAADEBF18B7CE4`、GPUDrivenCull `0x90E0745C2C7B8599`、AlphaModes `0x2FE87B15EE8B8A16`、
+>   CoverageVariants `0x8EED38BAD9B8181E`、LoadScene `0xC9E38ED2F49A069B`、PlaneGrid3D `0x4125C3C830CB92D3`）；
+>   RTT `0xBA9CA214778AF3A4` / RTTCD `0xD71ABABC2BE460C0`；ATS D1 112x58 & 57.6% / D3 18187 & 19109 px /
+>   bias 600662 px / D4 0；环境示例族 5 个 0 VUID / 0 shader 编译失败。
+>   **两条迁移保真教训**（旧代码语义陷阱，值得记住）：① `halo_color` 与主光色的同步由 `SetTime` 隐式完成，
+>   把 SetTime 拆开就会**静默改变 ambient**（`GetSkyAmbientColor` 的 Mie 项用它）——四处摘要当场不符，
+>   结构上单一化（读主光色）才解决；② Cascade / ATS 的旧代码在**手写方向之后**调 `SetTime` ⇒ 手写方向
+>   当场被模型方向覆盖、从未生效（死代码），迁移必须按**实际生效顺序**保真。
+> - ✅ **第 4 步（P4）**：`ShadowInfo` 世界私有化 + `EnvironmentInfo` 去 shadow（另批）。
 
 ### T6c —— **本次不做**（留触发）
 
