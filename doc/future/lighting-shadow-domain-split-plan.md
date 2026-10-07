@@ -170,6 +170,24 @@
 - **回滚 tag**：`pre-t6b`（本阶段动全局结构 = **不可逆点的开始**；先落 `LightRow`/`addr_lights` 的加法，
   再切 `SkyInfo` 的减法，两步各自可回滚）。
 
+> **落地进度（2026-10-07）**
+> - ✅ **第 1 步（加法·结构）**：`LightRow` POD + 编译期契约（`10edaf040`）。
+> - ✅ **第 2 步（加法·接线）**：`WorldAddresses.addr_lights`（C++ / GLSL / 门归属登记 / 测试夹具同批）
+>   + `LightRowTable`（世界私有 CPU 权威：16 行 × 64 B、超限 fail-fast、**值变才标脏**）
+>   + `LightRow::MakeDefaultMainLight`（行 0 默认主光 = `SkyInfo` 时代同值默认太阳）
+>   + `ECSContext::InitializeLightRowTable` / `UploadLightRowDirtyRows`（按帧槽切份 + 脏行写进每一份）
+>   + `SyncWorldAddresses` 发布 + 门 `W.light-row-struct-parity` + Test 44 契约（`4d53abb34`）。
+>   **实测**：门 45 → **46 PASS / 0 FAIL**；`TestCSMIncrementalPass` rc=0（Test 44 Passed）；`TestRenderItemDataStorage` rc=0；
+>   `PBRSpheres` 9 帧摘要恒 `0x3DD88A0999CDC486`（逐位对基线 ⇒ 零渲染影响，尚无 GPU 消费者）；
+>   探针实测发布：`addr_lights` slot0/slot1/slot2 = `0x308880000` / `0x308880400` / `0x308880800`（+1024 B/帧槽，探针已撤）。
+>   **两处与 §4 的落地口径差**（避免下一步当成漏做）：① `LightRow` 的 GLSL 镜像**并入** `ubo/scene_ubo.glsl`
+>   （不新开模块 ⇒ 门「模块总数 71」不变）；② 取址宏用 `buffer_reference_align=16`（只承诺
+>   `GetBufferDeviceAddressAligned16` 能兑现的对齐），**行步长 64 B 由末尾显式 `_pad1[2]` 写死**
+>   （scalar layout 不隐式补 alignas 填充，不写就成 48 B = 除行 0 外全错位）。
+> - ⏳ **待做（减法）**：`SkyInfo` 删 `sun_*`/`moon_*` + `pcf_shadow`/`shadow_receiver_source`/`sky_atmosphere`/
+>   `sky_minimal_surface` 四处改读光行 + `LightSystem`（与示例 / `MainLightShadowSystem` 消费者**同批**落，
+>   不造无调用者的系统）+ `ShadowInfo` 世界私有化（P4）+ 删三份死头。
+
 ### T6c —— **本次不做**（留触发）
 
 多光源渲染机制（forward 光照循环 / cluster）与第二条光源（点光源 + cubemap 六面阴影）。
