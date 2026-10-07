@@ -12,7 +12,8 @@ namespace hgl::graph
      *
      * 分层（定稿见 doc/world-addresses-and-camera-model-plan.md §1）：
      *   `GlobalAddresses` = **跨世界共享的资源池**（MeshDrawParams 池 / 材质行池 / 调色板 / viewport）；
-     *   **本表** = **世界私有的观察者 / 状态**（相机行表、渲染项表、DrawItemID 表；sky / shadow / env 随 C2 迁入）；
+     *   **本表** = **世界私有的观察者 / 状态**（相机行表、渲染项表、DrawItemID 表；sky / shadow / env 随 C2 迁入；
+     *   光源行表随 T6b 迁入）；
      *   `pc_root` = 每批 / 每材质 / 本字体。
      *
      * 为什么必须独立成表：这些 buffer 由**世界**（`ECSContext`）拥有，一个设备上可以同时存在多个世界
@@ -35,6 +36,9 @@ namespace hgl::graph
                                                 // 行 = graph::RenderItemDescriptor 16 B；T3d-3a：GPU 消费者取**池口径** id 的唯一通路
                                                 // —— `EntityGPU.row[Geometry]` 是组件池行号，与 AABB / MeshDrawParams 全局池的
                                                 // asset geometry_id **不同口径**，剔除与 gather 必须读本表）
+        uint64_t addr_lights = 0;               // 光源行表 LightRow（世界私有 LightRowTable；**行 0 = 主方向光**；
+                                                // T6b：光源定义自 SkyInfo 迁出后的唯一真源。按帧槽切份 ——
+                                                // 光参数可由作者逐帧改（太阳方向在示例里就是逐帧写的）
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽）。

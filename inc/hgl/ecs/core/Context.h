@@ -12,6 +12,7 @@
 #include<hgl/ecs/support/ComponentPool.h>
 #include<hgl/ecs/support/EntityGPUTable.h>
 #include<hgl/ecs/support/EntityRenderIDTable.h>
+#include<hgl/ecs/support/LightRowTable.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/ecs/support/TransformID.h>
 #include<hgl/ecs/support/TransformAccessor.h>
@@ -107,6 +108,10 @@ namespace hgl
             /// T3d-3a：实体 4-ID 表（世界私有；与 `entity_gpu_table` 同批声明 ⇒ 同一条析构逆序纪律，
             /// `~Entity` 经 `DeactivateEntityRow` 同时清两表，两表都必须比 `entity_manager` 活得久）
             EntityRenderIDTable entity_render_id_table;
+
+            /// T6b：光源行表（`LightRow`，世界私有；**行 0 = 主方向光**）。
+            /// 与上两表同域（世界的 GPU 行数据），但没有 `~Entity` 回写者 ⇒ 声明位置不涉及析构逆序。
+            LightRowTable light_row_table;
 
             std::unique_ptr<EntityManager> entity_manager;
 
@@ -231,6 +236,12 @@ namespace hgl
             graph::StructView<graph::RenderItemDescriptor> *entity_render_id_view = nullptr;
             graph::DeviceBuffer *entity_render_id_buffer = nullptr;
             uint64_t entity_render_id_table_addr = 0;
+
+            // T6b：光源行表的设备镜像（骨架与实体两表逐字同构：CreateSSBO → StructView → BDA）。
+            // 按帧槽切份（光参数可逐帧改 ⇒ 行内容随帧变）；脏行上传写进每一份。
+            graph::StructView<graph::LightRow> *light_row_view = nullptr;
+            graph::DeviceBuffer *light_row_buffer = nullptr;
+            uint64_t light_row_table_addr = 0;
 
             bool active = false;
             bool shutdown_in_progress = false;
@@ -432,6 +443,13 @@ namespace hgl
 
             /// T3d-3a：实体 4-ID 表建表（与上面同批、同判据）
             bool InitializeEntityRenderIDTable();
+
+            /// T6b：光源行表建表（与上面两表同批、同判据：`CreateSSBO` → `StructView` → 设备地址
+            /// fail-fast）。行 0 = 主方向光；地址经 `WorldAddresses.addr_lights` 按帧槽下发。
+            bool InitializeLightRowTable();
+
+            /// T6b：光源行表脏行上传（与实体两表同批调用；同一条「值变才标脏」纪律）
+            void UploadLightRowDirtyRows();
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
@@ -701,6 +719,11 @@ namespace hgl
             /// T3d-3a：实体 4-ID 表访问器（写者 = collect；消费者 = GPU 剔除 / CPU 参考对拍 / 形态 B）
             EntityRenderIDTable&       GetEntityRenderIDTable()       { return entity_render_id_table; }
             const EntityRenderIDTable& GetEntityRenderIDTable() const { return entity_render_id_table; }
+
+            // ── T6b：光源行表（`LightRow`，世界私有；行 0 = 主方向光）──
+            //   写者 = LightSystem 的编辑入口；本表只被世界的「脏行 → 设备镜像」上传播径读。
+            LightRowTable&       GetLightRowTable()       { return light_row_table; }
+            const LightRowTable& GetLightRowTable() const { return light_row_table; }
 
             /// 组件卸载 / 全卸后重刷 `type[]/row[]`（由 `Entity` 的卸载路径调用）
             void RefreshEntityRow(Entity *entity) { entity_gpu_table.Refresh(entity); }

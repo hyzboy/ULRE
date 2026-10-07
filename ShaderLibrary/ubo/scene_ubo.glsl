@@ -132,9 +132,38 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
     uint64_t addr_l2w;                  // L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份，每帧槽一份）
     uint64_t addr_entity_render_ids;    // 实体 4-ID 表（世界私有；按 EntityID.index 直索引，行 = RenderItemDescriptor 16 B；
                                         // GPU 消费者取池口径 geometry_id / material_id / texture_id 的唯一通路）
+    uint64_t addr_lights;               // 光源行表（世界私有；行 0 = 主方向光；按帧槽切份）
 };
 
 #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)
+
+// ── 光源行（世界私有表 `addr_lights`）─────────────────────────────────────────
+// C++ 真源 = `inc/hgl/graph/ubo/LightRow.h`（门 `W.light-row-struct-parity` 逐字段同序同型对拍）。
+// 行步长 = 64 B：C++ 侧由 `alignas(64)` + 显式 `_pad` 补齐，而 GLSL 的 scalar layout
+// **不隐式补**这个填充 ⇒ 末尾 `_pad1[2]` 是必须的（写了数组步长才是 64；不写 = 48，
+// 除第 0 行外全部错位读 = 静默拿到垃圾光照参数）。
+// `buffer_reference_align=16`：取址走 `GetBufferDeviceAddressAligned16`（只承诺 16），
+// 行内成员最大对齐也是 16（vec4）⇒ 16 是能兑现的承诺。
+struct LightRowData
+{
+    uint  type;                  // LightType（0 = Direction）
+    uint  flags;                 // kLightFlag*（bit0 enabled / bit1 cast_shadow）
+    float _pad0[2];              // 与 C++ 的 _pad0 同形（vec4 必须落在 16B 边界）
+    vec4  direction_intensity;   // xyz = **指向光源**的方向（与 pcf_shadow 既有约定一致）；w = 强度
+    vec4  color_angle;           // rgb = 颜色；a = 角径（度）
+    uint  shadow_kind;           // LightShadowKind（0 = None / 1 = CSM）
+    uint  shadow_index;          // 该机制下的资源索引（0 = 无）
+    uint  _pad1[2];              // 显式填充至 64 B（行步长契约）
+};
+
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer LightRowBufferRef
+{
+    LightRowData lights[];
+};
+
+// 行数组本体：下标 = 行号。主方向光恒为 **行 0**（C++ `kMainLightRowIndex`）。
+#define light_rows LightRowBufferRef(world_addresses.addr_lights).lights
+#define main_light light_rows[0]
 
 struct ShadowCascadeInfo
 {

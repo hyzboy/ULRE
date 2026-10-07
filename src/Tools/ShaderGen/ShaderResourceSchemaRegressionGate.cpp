@@ -2860,6 +2860,12 @@ namespace
     {
         if (field.type == "uint32_t") field.type = "uint";
         if (field.type == "uint8_t")  field.type = "uint8";
+        // T6b：`LightRow` 是 GLSL 镜像行 ⇒ 数学类型要与 GLSL 写法折到同一口径
+        if (field.type == "Vector4f") field.type = "vec4";
+        if (field.type == "Color4f")  field.type = "vec4";
+        if (field.type == "Vector4u") field.type = "uvec4";
+        if (field.type == "Vector2f") field.type = "vec2";
+        if (field.type == "Matrix4f") field.type = "mat4";
         if (field.dim == "kEntityGPUSlotCount") field.dim = "ENTITY_GPU_SLOT_COUNT";
     }
 
@@ -2976,7 +2982,14 @@ namespace
                                        const std::vector<std::pair<std::string, size_t>> &defines,
                                        size_t &out_bytes)
     {
-        out_bytes = (field.type == "uint8") ? 1u : 4u;
+        // 词汇表：uint8=1 / uint=float=4 / vec2=8 / vec4=uvec4=16 / mat4=64（本门只对拍
+        // 逐行式取块器的产物，字段类型都在这张表内；未登记类型按 4 处理会在总尺寸处报红）
+        if (field.type == "uint8")      out_bytes = 1u;
+        else if (field.type == "vec2")  out_bytes = 8u;
+        else if (field.type == "vec4")  out_bytes = 16u;
+        else if (field.type == "uvec4") out_bytes = 16u;
+        else if (field.type == "mat4")  out_bytes = 64u;
+        else                            out_bytes = 4u;
         if (field.dim.empty())
             return true;
         try
@@ -3257,6 +3270,115 @@ namespace
         return result;
     }
 
+    /// C++ `LightRow`（inc/hgl/graph/ubo/LightRow.h）与 GLSL 侧 `LightRowData`
+    /// （ShaderLibrary/ubo/scene_ubo.glsl）必须逐字段同序同型同长度（T6b）。
+    /// 为什么必须门禁：这是光源的 64 B GPU 行 —— 漂移 = 光照按错偏移取值（方向/颜色/强度
+    /// 静默变垃圾，画面偏暗或光从侧面来，而没有任何报错）。
+    /// 手法与 E.entity-gpu-struct-parity 同（逐行取块器），差别两条：
+    ///   ① 字段数必须**相等**（LightRow 的填充两端都显式写 `_pad*`，没有 alignas 余量）；
+    ///   ② GLSL 总存储必须 == 64 B（数组步长契约；C++ 侧另有 sizeof 静态断言把守）。
+    static GateResult RunLightRowStructParityCase()
+    {
+        GateResult result;
+        result.name = "W.light-row-struct-parity";
+
+        const std::string cpp_text =
+            ReadFileText(RepoRootPath("inc/hgl/graph/ubo/LightRow.h"));
+        const std::string glsl_text =
+            ReadFileText(RepoRootPath("ShaderLibrary/ubo/scene_ubo.glsl"));
+
+        if (cpp_text.empty() || glsl_text.empty())
+        {
+            result.diagnostics.emplace_back(
+                "无法读取 LightRow.h / scene_ubo.glsl（结构对表的两端）");
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        const std::vector<StructFieldEntry> cpp_fields =
+            ExtractStructFieldsLineWise(cpp_text, "LightRow");
+        const std::vector<StructFieldEntry> glsl_fields =
+            ExtractStructFieldsLineWise(glsl_text, "LightRowData");
+
+        const auto fmt = [](const std::vector<StructFieldEntry> &fields) -> std::string
+        {
+            std::string out;
+            for (const StructFieldEntry &f : fields)
+            {
+                if (!out.empty()) out += ", ";
+                out += f.type + " " + f.name;
+                if (!f.dim.empty()) out += "[" + f.dim + "]";
+            }
+            return out;
+        };
+
+        if (cpp_fields.empty() || glsl_fields.empty())
+        {
+            result.diagnostics.emplace_back(
+                std::string("LightRow 字段提取为空（结构标记被改写？）取块器 = 逐行式，")
+                + "C++= " + fmt(cpp_fields) + " | GLSL= " + fmt(glsl_fields));
+            result.passed = result.diagnostics.empty();
+            return result;
+        }
+
+        if (cpp_fields.size() != glsl_fields.size())
+        {
+            result.diagnostics.emplace_back(
+                "LightRow 字段数不一致（C++ " + std::to_string(cpp_fields.size())
+                + " 项 / GLSL " + std::to_string(glsl_fields.size())
+                + " 项）：两端逐字段同序同型，填充也必须两端显式写 `_pad*`"
+                "（C++= " + fmt(cpp_fields) + " | GLSL= " + fmt(glsl_fields) + "）");
+            result.passed = false;
+            return result;
+        }
+
+        for (size_t i = 0; i < cpp_fields.size(); ++i)
+        {
+            if (cpp_fields[i].type != glsl_fields[i].type
+             || cpp_fields[i].name != glsl_fields[i].name
+             || cpp_fields[i].dim  != glsl_fields[i].dim)
+            {
+                result.diagnostics.emplace_back(
+                    "LightRow 字段漂移：第 " + std::to_string(i) + " 项 C++="
+                    + cpp_fields[i].type + " " + cpp_fields[i].name
+                    + (cpp_fields[i].dim.empty() ? "" : "[" + cpp_fields[i].dim + "]")
+                    + " GLSL=" + glsl_fields[i].type + " " + glsl_fields[i].name
+                    + (glsl_fields[i].dim.empty() ? "" : "[" + glsl_fields[i].dim + "]")
+                    + "；两端必须同序同型同长度（改一侧必改另一侧）");
+                result.passed = false;
+                return result;
+            }
+        }
+
+        // GLSL 总存储必须恰为 64 B（行步长契约；不写行尾 `_pad1[2]` 会得 48 B）
+        std::string glsl_stripped = glsl_text;
+        StripCommentTokens(glsl_stripped);
+        const auto glsl_defines = CollectDefineConstants(glsl_stripped);
+        size_t glsl_bytes = 0;
+        for (const StructFieldEntry &f : glsl_fields)
+        {
+            size_t bytes = 0;
+            if (!StructFieldStorageSize(f, glsl_defines, bytes))
+            {
+                result.diagnostics.emplace_back(
+                    "LightRow GLSL 字段 " + f.name + " 的数组长度不是可求值常数：" + f.dim);
+                result.passed = false;
+                return result;
+            }
+            glsl_bytes += bytes;
+        }
+        if (glsl_bytes != 64)
+        {
+            result.diagnostics.emplace_back(
+                "LightRowData 的 GLSL 总存储 = " + std::to_string(glsl_bytes)
+                + " B，必须 == 64 B（sizeof(LightRow)；scalar layout 无隐式填充，"
+                  "差值必须由行尾 `_pad` 显式写死）");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     /// X 列表（`HGL_MESH_DRAW_PARAMS_FIELD_LIST`，ShaderBufferSources.h）前 9 个头部
     /// 字段与剔除着色器里的**头部镜像**（`MeshDrawParamsHeadData`，entity_gpu_cull.glsl）
     /// 必须逐字段同序同型（E.entity-gpu-struct-parity 同族手法；§7.6 取块器复用）。
@@ -3443,6 +3565,7 @@ namespace
         { "addr_entity_gpu",           true  },   // T3：实体行表（世界私有；实体属世界 ⇒ 设备级会重演"跨世界同行冲突"）
         { "addr_l2w",                  true  },   // T3d：L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份）
         { "addr_entity_render_ids",    true  },   // T3d-3a：实体 4-ID 表（世界私有 EntityRenderIDTable；GPU 消费者取池口径 id 的唯一通路）
+        { "addr_lights",               true  },   // T6b：光源行表（世界私有 LightRowTable；行 0 = 主方向光，按帧槽切份）
         // ── 设备级全局（跨世界共享的资源池 + 每帧槽字段）──
         { "addr_mesh_draw_params_pool", false },
         { "addr_geometry_aabb",         false },   // B3-i：GeometryAABB 池（设备级全局；与 MeshDrawParams 同 ID 索引）
@@ -5487,6 +5610,7 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());
     if (run_interface) results.push_back(RunWorldAddressesStructParityCase());
     if (run_interface) results.push_back(RunEntityGPUStructParityCase());
+    if (run_interface) results.push_back(RunLightRowStructParityCase());
     if (run_interface) results.push_back(RunBatchInfoStructParityCase());
     if (run_interface) results.push_back(RunMeshDrawParamsHeadParityCase());
     if (run_interface) results.push_back(RunAddressOwnershipCase(false));

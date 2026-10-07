@@ -71,4 +71,25 @@ namespace hgl::graph
     static_assert(offsetof(LightRow, direction_intensity) == 16, "direction_intensity 必须落在 16B 边界");
     static_assert(offsetof(LightRow, color_angle) == 32, "color_angle 必须落在 32B");
     static_assert(offsetof(LightRow, shadow_kind) == 48, "shadow_kind 必须落在 48B");
+
+    /**
+     * 默认主方向光（**行 0 的初值**）：字段值与「光源寄居 `SkyInfo`」时代的默认太阳参数同源
+     *（方向 (0,0,1)、颜色 (1,0.95,0.9)、强度 1、角径 16°）⇒ 数据模型切换不改变默认外观。
+     *
+     * 只置 `kLightFlagEnabled`（不投阴影）：阴影由 `MainLightShadowSystem` 的 Enable/Disable
+     * 在光行上落 `cast_shadow` / `shadow_kind`，本函数不预置机制。
+     */
+    inline LightRow MakeDefaultMainLight()
+    {
+        LightRow row;
+
+        row.type                = uint32_t(LightType::Direction);
+        row.flags               = kLightFlagEnabled;
+        row.direction_intensity = Vector4f(0.0f, 0.0f, 1.0f, 1.0f);
+        row.color_angle         = Vector4f(1.0f, 0.95f, 0.9f, 16.0f);
+        row.shadow_kind         = uint32_t(LightShadowKind::None);
+        row.shadow_index        = 0;
+
+        return row;
+    }
 }//namespace hgl::graph

@@ -10,6 +10,7 @@
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/render/MainLightShadowSystem.h>
 #include <hgl/graph/ubo/LightRow.h>   // T6b：光源行（世界私有 addr_lights）的结构契约
+#include <hgl/ecs/support/LightRowTable.h>   // T6b：光源行表（世界私有行表的 CPU 权威）
 
 // T6b 光源行结构契约（编译期）：布局/对齐/容量/枚举覆盖性 —— 任一漂移当场失败。
 // 枚举覆盖性由头里的 kAll* 表判定（新增枚举值而不更新表 ⇒ 编译期失败，自动 scale）。
@@ -5700,6 +5701,166 @@ int main(int argc, char** argv)
 
         GLogInfo(u8"Test 43 Passed: 离屏槽带分配器成立（生命周期账 a-f + §9 M10 接线契约 + M11 销毁前设备静默；"
                  u8"C3①「二次 Enable 槽带越界」与 C3②「Disable 信号量 in-use」均已根治）。");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 44: T6b 光源行表（`LightRow`，世界私有 `addr_lights`）契约
+    //
+    // 分两半：① **运行期** —— 行表的分配 / 行 0 默认主光 / 超容量拒绝 / 脏行语义
+    //          （纯 CPU，无设备可测）；② **源码** —— 地址表两端、建表/上传/发布三处接线
+    //          （缺一处 = 地址只有字段没有写者 ⇒ 静默失效，见 I4 的历史坑）、CMake 注册、
+    //          门用例与它的注册行。
+    // ─────────────────────────────────────────────────────────────
+    {
+        LightRowTable table;
+
+        // (a) 懒分配：未 Ensure 前不占内存，Ensure 后容量 = 冻结值
+        if (table.IsAllocated())
+        {
+            GLogError(u8"Test 44 Failed: 未 Ensure 就已分配（懒分配纪律被破坏）");
+            return 44;
+        }
+
+        table.Ensure();
+
+        if (!table.IsAllocated() || table.Row(LightRowTable::kCapacity) != nullptr)
+        {
+            GLogError(u8"Test 44 Failed: 分配后 IsAllocated/越界读语义不符（容量=%u）",
+                      LightRowTable::kCapacity);
+            return 44;
+        }
+
+        // (b) 行 0 = 主方向光（默认主光恒存在：否则「世界有渲染、没有启用的光源」= 全黑且无报错）
+        const LightRow *main_light = table.Row(kMainLightRowIndex);
+
+        if (!main_light
+         || (main_light->flags & kLightFlagEnabled) == 0
+         || main_light->type != uint32_t(LightType::Direction)
+         || main_light->shadow_kind != uint32_t(LightShadowKind::None))
+        {
+            GLogError(u8"Test 44 Failed: 行 0 默认主光不成立（enabled/type/shadow_kind 任一不符）");
+            return 44;
+        }
+
+        // 其余行必须保持「未启用」（不预置未实现的光源）
+        for (uint32_t i = 1; i < LightRowTable::kCapacity; ++i)
+        {
+            const LightRow *row = table.Row(i);
+
+            if (!row || (row->flags & kLightFlagEnabled) != 0)
+            {
+                GLogError(u8"Test 44 Failed: 行 %u 被预置为启用（未实现的光源不得占位）", i);
+                return 44;
+            }
+        }
+
+        // (c) 脏行语义：Ensure 后行 0 待上行；**同值写不标脏**；改动才标脏
+        if (table.GetDirtyCount() != 1)
+        {
+            GLogError(u8"Test 44 Failed: Ensure 后应有 1 行待上行（行 0），实得 %u",
+                      table.GetDirtyCount());
+            return 44;
+        }
+
+        table.SetRow(kMainLightRowIndex, *main_light);      // 同值写
+
+        if (table.GetDirtyCount() != 1)
+        {
+            GLogError(u8"Test 44 Failed: 同值写把行标脏了（静态光参数会每帧重传，脏行上传失去意义）");
+            return 44;
+        }
+
+        LightRow changed = *main_light;
+        changed.direction_intensity.x = 0.25f;
+        table.SetRow(kMainLightRowIndex, changed);
+
+        if (table.GetDirtyCount() != 1)
+        {
+            GLogError(u8"Test 44 Failed: 改动后未标脏");
+            return 44;
+        }
+
+        std::vector<uint32_t> dirty_rows;
+        table.CollectDirtyRows(dirty_rows);
+
+        if (dirty_rows.size() != 1 || dirty_rows[0] != kMainLightRowIndex)
+        {
+            GLogError(u8"Test 44 Failed: 脏行集合不符（size=%zu）", dirty_rows.size());
+            return 44;
+        }
+
+        table.ClearDirty();
+
+        if (table.GetDirtyCount() != 0)
+        {
+            GLogError(u8"Test 44 Failed: ClearDirty 后仍有脏行");
+            return 44;
+        }
+
+        // (d) 超容量 = fail-fast（拒绝写入、不越界、不改已有行）
+        table.SetRow(LightRowTable::kCapacity, changed);    // 越界：应被拒绝（含一次性告警）
+
+        if (table.GetDirtyCount() != 0 || table.Row(LightRowTable::kCapacity) != nullptr)
+        {
+            GLogError(u8"Test 44 Failed: 越界行号未被拒绝（容量是冻结值，超限须 fail-fast）");
+            return 44;
+        }
+
+        // (e) 源码契约：地址表两端 + 三处接线 + CMake 注册 + 门用例（含注册行）
+        static const SourceContract kLightRowContracts[] =
+        {
+            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
+              "uint64_t addr_lights = 0;",
+              "T6b：光源行表的地址字段（世界私有；行 0 = 主方向光）" },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "uint64_t addr_lights;",
+              "T6b：GLSL 侧地址表镜像（漏加 = shader 解引用错地址 / 读不到光源）" },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "struct LightRowData",
+              "T6b：光源行的 GLSL 镜像（门 W.light-row-struct-parity 逐字段对拍的另一端）" },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "#define light_rows LightRowBufferRef(world_addresses.addr_lights).lights",
+              "T6b：光源行的取址宏（行数组本体；下标 = 行号）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "if (!InitializeLightRowTable())",
+              "T6b：光源行表与实体两表同批建（缺这条 = 表不存在、地址恒 0）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_lights = light_row_table_addr",
+              "T6b：地址发布（I4：新地址字段必须接写者；只有字段没有写者 = 静默剔空）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "UploadLightRowDirtyRows();",
+              "T6b：脏行上传接线（缺这条 = CPU 改了光参数但设备镜像不更新）" },
+
+            { "LightRowTable.h", OS_TEXT("inc/hgl/ecs/support/LightRowTable.h"),
+              "static constexpr uint32_t kCapacity = graph::kLightRowCapacity;",
+              "T6b：行表容量 = 冻结值（单一真源；两处各写一个数字 = 迟早漂移）" },
+
+            { "CMakeLists.txt", OS_TEXT("src/ecs/CMakeLists.txt"),
+              "support/LightRowTable.h",
+              "T6b：新头必须进构建注册（只写文件不加列表 = 静默不编译）" },
+
+            { "ShaderResourceSchemaRegressionGate.cpp", OS_TEXT("src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp"),
+              "W.light-row-struct-parity",
+              "T6b：光行结构对拍门用例（C++ ↔ GLSL 漂移必须编译期/门期报红）" },
+
+            { "ShaderResourceSchemaRegressionGate.cpp", OS_TEXT("src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp"),
+              "results.push_back(RunLightRowStructParityCase())",
+              "T6b：门用例必须**注册**（写了函数不注册 = 恒绿装饰）" },
+        };
+
+        if (const int failed = verify_source_contracts(44, kLightRowContracts,
+                                                       static_cast<uint>(sizeof(kLightRowContracts) /
+                                                                         sizeof(kLightRowContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 44 Passed: T6b 光源行表契约成立（行 0 = 默认主方向光 + 越界 fail-fast + "
+                 u8"值变才标脏；地址字段/GLSL 镜像/建表/上传/发布/门用例六处接线全在位）。");
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

@@ -356,6 +356,10 @@ namespace hgl
                         // T3d-3a：实体 4-ID 表随世界释放（同一纪律）
                         if (entity_render_id_buffer)
                             bm->Release(entity_render_id_buffer);
+
+                        // T6b：光源行表随世界释放（同一纪律）
+                        if (light_row_buffer)
+                            bm->Release(light_row_buffer);
                     }
                 }
 
@@ -368,6 +372,10 @@ namespace hgl
                 entity_render_id_buffer = nullptr;
                 entity_render_id_view = nullptr;
                 entity_render_id_table_addr = 0;
+
+                light_row_buffer = nullptr;
+                light_row_view = nullptr;
+                light_row_table_addr = 0;
             }
 
             world_addresses_addr = 0;
@@ -1667,6 +1675,10 @@ namespace hgl
             if (!InitializeEntityRenderIDTable())
                 return false;
 
+            // T6b：光源行表与前几表同批（同一个 BDA 前提 + 同一个「世界 GPU 行数据」生命周期）
+            if (!InitializeLightRowTable())
+                return false;
+
             SyncWorldAddresses();
             return true;
         }
@@ -1752,6 +1764,44 @@ namespace hgl
 
             entity_render_id_view->Commit();
             entity_render_id_table.ClearDirty();
+        }
+
+        /// T6b：光源行表脏行上传。骨架与实体两表**逐字同构**（零脏零成本 + 脏行写进
+        /// **每一帧槽份**）：光参数可由作者逐帧改（太阳方向在示例里就是逐帧写的）⇒ 值随帧变，
+        /// 只写本帧那份会让其余份留旧值，与「per-frame ring 深度 == 槽空间」同源的跨帧别名坑。
+        void ECSContext::UploadLightRowDirtyRows()
+        {
+            if (!light_row_view || !light_row_buffer)
+                return;
+
+            if (light_row_table.GetDirtyCount() == 0)
+                return;
+
+            static thread_local std::vector<uint32_t> dirty_rows;
+
+            light_row_table.CollectDirtyRows(dirty_rows);
+
+            auto *base = reinterpret_cast<graph::LightRow *>(light_row_view->Data());
+            if (!base)
+                return;
+
+            constexpr uint32_t kCopies = uint32_t(graph::kWorldAddressesSlotCount);
+
+            for (uint32_t copy = 0; copy < kCopies; ++copy)
+            {
+                graph::LightRow *dst = base + size_t(copy) * LightRowTable::kCapacity;
+
+                for (const uint32_t index : dirty_rows)
+                {
+                    const graph::LightRow *src = light_row_table.Row(index);
+
+                    if (src)
+                        dst[index] = *src;
+                }
+            }
+
+            light_row_view->Commit();
+            light_row_table.ClearDirty();
         }
 
         /// T3d-3a：建实体 4-ID 表的设备镜像（与 `InitializeEntityGPUTable` 逐字同构；
@@ -1906,6 +1956,96 @@ namespace hgl
             return true;
         }
 
+        /// T6b：建光源行表的设备镜像（与实体两表逐字同构；16 行 × 64 B = 1 KB／份）。
+        ///
+        /// 行 0 = **主方向光**（`kMainLightRowIndex`；光源定义自 `SkyInfo` 迁出后的唯一真源）；
+        /// 其余行为 0（`flags.enabled == 0` ⇒ 消费者判「未启用」跳过）—— 不预置未实现的光源。
+        /// 按帧槽切份 + 脏行上传：与 `EntityGPUTable` 同判据（行内容随帧变就必须分份）。
+        /// 地址缺失 = 读光行的 shader 解引用 0 基址（UB）⇒ fail-fast，与另两表同款判据。
+        bool ECSContext::InitializeLightRowTable()
+        {
+            if (light_row_buffer)
+                return true;
+
+            auto *gc = GetGraphicsContext();
+            if (!gc)
+            {
+                LogError("[ECSContext::InitializeLightRowTable] graphics context is null");
+                return false;
+            }
+
+            auto *bm = gc->GetBufferManager();
+            if (!bm)
+            {
+                LogError("[ECSContext::InitializeLightRowTable] buffer manager is null");
+                return false;
+            }
+
+            light_row_table.Ensure();
+
+            char name_buf[192];
+            std::snprintf(name_buf, sizeof(name_buf), "World:%s:LightRows", GetName().c_str());
+
+            const VkDeviceSize one_copy = VkDeviceSize(LightRowTable::kCapacity)
+                                        * VkDeviceSize(sizeof(graph::LightRow));
+
+            light_row_buffer = bm->CreateSSBO(
+                name_buf,
+                one_copy * VkDeviceSize(graph::kWorldAddressesSlotCount));
+            if (!light_row_buffer)
+            {
+                LogError("[ECSContext::InitializeLightRowTable] CreateSSBO failed");
+                return false;
+            }
+
+            light_row_buffer->SetUpdateClass(graph::BufferUpdateClass::Default);
+
+            light_row_view = graph::StructView<graph::LightRow>::Create(light_row_buffer, false);
+            if (!light_row_view)
+            {
+                LogError("[ECSContext::InitializeLightRowTable] StructView create failed");
+                return false;
+            }
+
+            light_row_table_addr = gpu_device
+                ? gpu_device->GetBufferDeviceAddressAligned16(light_row_buffer->GetBuffer())
+                : 0;
+            if (light_row_table_addr == 0)
+            {
+                LogError("[ECSContext::InitializeLightRowTable] 光源行表取不到设备地址"
+                          "（16B 对齐 / SHADER_DEVICE_ADDRESS usage 检查）");
+                return false;
+            }
+
+            // 整表按「行 0 = 默认主光 / 其余 0（未启用）」写满**每一份**：这些初值对所有帧槽一致
+            // ⇒ 写完即与 CPU 权威一致，不需要再走脏行上传（ClearDirty）。
+            if (auto *base = reinterpret_cast<graph::LightRow *>(light_row_view->Data()))
+            {
+                for (uint32_t copy = 0; copy < graph::kWorldAddressesSlotCount; ++copy)
+                {
+                    graph::LightRow *rows = base + size_t(copy) * LightRowTable::kCapacity;
+
+                    for (uint32_t i = 0; i < LightRowTable::kCapacity; ++i)
+                        rows[i] = (i == graph::kMainLightRowIndex)
+                                ? graph::MakeDefaultMainLight()
+                                : graph::LightRow{};
+                }
+            }
+
+            light_row_view->Commit();
+            light_row_table.ClearDirty();
+
+            LogInfo("[ECSContext] 光源行表就绪：%s  %u 行 × %zu B = %zu B／份 × %u 份（帧槽），"
+                    "帧槽 0 基址=0x%llX（行 0 = 主方向光；每帧地址=基址+帧槽×每份字节，"
+                    "经 WorldAddresses.addr_lights 下发）",
+                    GetName().c_str(), LightRowTable::kCapacity, sizeof(graph::LightRow),
+                    size_t(one_copy),
+                    uint32_t(graph::kWorldAddressesSlotCount),
+                    (unsigned long long)light_row_table_addr);
+
+            return true;
+        }
+
         uint64_t ECSContext::GetWorldAddressesAddress(const uint32_t frame_slot) const
         {
             if (world_addresses_addr == 0)
@@ -2015,6 +2155,13 @@ namespace hgl
                 * static_cast<uint64_t>(EntityRenderIDTable::kRowStride)   // T4c3a：每槽 = kRowStride 行（pass 分半）
                 * static_cast<uint64_t>(sizeof(graph::RenderItemDescriptor));
 
+            // T6b：光源行表（世界私有；行 0 = 主方向光）。按帧槽偏移——光参数可由作者逐帧改
+            //（行内容随帧变），与实体行表同判据。未建表 ⇒ 保持 0（消费者判 0 缺席）。
+            want.addr_lights = light_row_table_addr
+                + static_cast<uint64_t>(slot)
+                * static_cast<uint64_t>(LightRowTable::kCapacity)
+                * static_cast<uint64_t>(sizeof(graph::LightRow));
+
             // T3c-2b（B1）：L2W 行号由**变换侧**写入实体行表（生产者写自己的产物）；
             // 世界这里只负责把**脏行**上传设备镜像。
 
@@ -2046,6 +2193,7 @@ namespace hgl
 
             UploadEntityGPUDirtyRows(slot);
             UploadEntityRenderIDDirtyRows();
+            UploadLightRowDirtyRows();
 
             // env（sky / shadow）随世界（C2）：按**本世界生效 profile** 取址写本世界槽。
             // sky 单份 buffer（全帧槽同址）；shadow 是每帧槽一份的 ring（下标 = 帧槽）⇒ 取本槽那份。
