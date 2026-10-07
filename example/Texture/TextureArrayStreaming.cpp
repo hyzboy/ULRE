@@ -1,9 +1,9 @@
-﻿// 图标墙：读 res/image/icon/freepik/list.txt 拿到 50 个图标名，按 1 秒 1 个的节奏
+﻿// 图标墙：读 res/image/icon/freepik/list.txt 拿到 50 个图标名，按 0.1 秒 1 个的节奏
 // 逐个加载进一张 50 层 Texture2DArray，并在屏幕上按 10×5 排列显示。
 //
 // 一次演示三件事：
-//   ① 流式加载：启动即可出帧/交互，图标随秒逐个补上（不是开局一次性读 50 张）；
-//   ② ChangeTexture2DArray：每张图标写进数组纹理自己那一层（层号 = list.txt 顺序）；
+//   ① 流式加载：启动即可出帧/交互，图标按 0.1 秒/个逐个补上（不是开局一次性读 50 张）；
+//   ② 逐层上传 ChangeTexture2DArray：每张图标写进数组纹理自己那一层（层号 = list.txt 顺序）；
 //   ③ 全批渲染：50 个格子共用同一几何 + 同一材质配方 ⇒ 同 program、同一个批。
 //
 // 屏幕空间由 Make2DNodeConfigZeroToOne 提供（0..1 铺满视口，位置映射 ZeroOneToNDC），
@@ -43,7 +43,7 @@ namespace
     constexpr uint32_t kIconCount = kGridCols * kGridRows;      // 50 = 墙的格数 = 数组层数
 
     constexpr uint32_t kIconSize     = 512;                     // 图标边长（资产实测）
-    constexpr float    kLoadInterval = 1.0f;                    // 秒 / 个
+    constexpr float    kLoadInterval = 0.1f;                    // 秒 / 个
 
     constexpr const os_char *kIconDirName = OS_TEXT("res/image/icon/freepik");
     constexpr const os_char *kIconListFile= OS_TEXT("res/image/icon/freepik/list.txt");
@@ -298,6 +298,6 @@ public:
 int os_main(int argc,os_char **argv)
 {
     return RunFramework<TextureArrayStreamingApp>(
-        OS_TEXT("Stream 50 freepik icons into a Texture2DArray (1 icon/sec, 10x5 grid)"),
+        OS_TEXT("Stream 50 freepik icons into a Texture2DArray (10 icons/sec, 10x5 grid)"),
         argc, argv, 1600, 800);
 }
