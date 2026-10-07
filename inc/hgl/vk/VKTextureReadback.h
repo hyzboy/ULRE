@@ -44,6 +44,11 @@ namespace hgl::graph
      * 读回一张纹理的整幅内容。
      * @param device 所属设备（纹理自身不回落设备，需显式给出）
      * @param tex 目标纹理（需为 2D、单 mip、单层；格式的每像素字节数必须可知，压缩格式不支持）
+     *         **且必须带 `VK_IMAGE_USAGE_TRANSFER_SRC_BIT`** —— `TextureCreateInfo` 的默认 usage 只有
+     *         `TRANSFER_DST|SAMPLED`，用它建的普通纹理（含 `CreateTexture2DArray(w,h,l,…)`）回读会触发
+     *         `VUID-VkImageMemoryBarrier2-oldLayout-01212` / `VUID-vkCmdCopyImageToBuffer-srcImage-00186`
+     *         （驱动仍会照做，但非法）。需要时在建纹理处 `tci->usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT`；
+     *         附件类（`ColorAttachmentTextureCreateInfo` / `DepthAttachmentTextureCreateInfo`）自带该位。
      * @param out_pixels 输出原始像素字节（尺寸 = row_pitch * height）
      * @param out_info 可选：尺寸/格式/步长信息
      */
