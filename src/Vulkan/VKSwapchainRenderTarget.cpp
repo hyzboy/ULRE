@@ -139,7 +139,7 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
     SwapchainFrameSync& slot  = sync_slots[current_slot];
     SwapchainImage*     image = swapchain->sc_image + acquired_image;
 
-    // 等待列表：本槽 image_available（COLOR_ATTACHMENT_OUTPUT）+ 本帧 Transfer 完成信号量
+    // 等待列表：本槽 image_available（COLOR_ATTACHMENT_OUTPUT）+ 上传车道（latest signal）
     // + 调用方额外等待（A1：本帧各离屏 RT 的车道值）
     constexpr uint32_t MAX_WAITS = 16;
     SemaphoreSubmit waits[MAX_WAITS];
@@ -147,29 +147,21 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
 
     waits[wait_count++] = SemaphoreSubmit::WaitImage(slot.image_available);
 
-    TextureUploadQueue *upload_queue = nullptr;
-    bool has_upload_waits = false;
-
     if (ecs_context)
     {
         if (auto *gc = ecs_context->GetGraphicsContext())
         {
             if (auto *tm = gc->GetTextureManager())
             {
-                upload_queue = tm->GetUploadQueue();
-                if (upload_queue)
+                if (auto *uq = tm->GetUploadQueue())
                 {
-                    const auto &sems = upload_queue->GetPendingWaitSemaphores();
-                    const Semaphore *const *sem_list = sems.GetData();
-
-                    for (uint32_t i = 0; i < sems.GetCount() && wait_count < MAX_WAITS; i++)
-                    {
-                        if (!sem_list[i])
-                            continue;
-
-                        waits[wait_count++] = SemaphoreSubmit::Wait(const_cast<Semaphore *>(sem_list[i]));
-                        has_upload_waits = true;
-                    }
+                    // 上传车道 timeline：**单个等待项覆盖全部在飞 DMA 拷贝**
+                    //（旧逐任务二进制 sem 收集：溢出丢弃 = 裸用未同步纹理；且提交后未消费即被
+                    //  任务析构删除 = VUID-vkDestroySemaphore-semaphore-05149）
+                    Semaphore *lane = uq->GetUploadLane();
+                    const uint64_t lane_value = uq->GetUploadLaneValue();
+                    if (lane && lane_value != 0 && wait_count < MAX_WAITS)
+                        waits[wait_count++] = SemaphoreSubmit::Wait(lane, lane_value);
                 }
             }
         }
@@ -192,7 +184,7 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         signals[signal_count++] = SemaphoreSubmit::Signal(lane, main_lane_value);
     }
 
-    // Submit: wait image_available + upload semaphores + 调用方额外等待（本帧各离屏 RT 车道）；signal render_finished + 主帧车道
+    // Submit: wait image_available + upload lane + 调用方额外等待（本帧各离屏 RT 车道）；signal render_finished + 主帧车道
     if (!slot.queue->Submit(image->cmd_buf, waits, wait_count, signals, signal_count))
     {
         LogError("SwapchainRenderTarget: queue submit failed (slot=%u image=%u)",
@@ -200,11 +192,6 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         current_slot = (current_slot + 1) % slot_count;
         acquire_window_open = false;
         return false;
-    }
-
-    if (upload_queue && has_upload_waits)
-    {
-        upload_queue->ClearPendingWaitSemaphores();
     }
 
     // ── 帧内回读窗口：本帧已提交、尚未 present ───────────────────────────────

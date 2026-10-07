@@ -38,7 +38,6 @@ namespace hgl::graph
         GpuGraphicsDma      // Graphics 队列 DMA 传输（用于需 Blit 生成 Mipmap 等）
     };
 
-    class Semaphore;
     class Fence;
 
     struct TextureUploadTask
@@ -56,8 +55,6 @@ namespace hgl::graph
         bool                is_ring_staging  = false;        // 是否使用共享环形 Staging 缓冲
         VkDeviceSize        ring_offset      = 0;            // 环形缓冲内的起始偏移
 
-        Semaphore *         transfer_sem     = nullptr;      // Transfer 队列完成信号量包装
-        VkSemaphore         signal_semaphore = VK_NULL_HANDLE; // Transfer 队列完成信号量句柄
         Fence *             fence            = nullptr;      // 同步栅栏
 
         uint32_t            bindless_handle  = 0;            // 分配的 Bindless 槽位
@@ -75,11 +72,6 @@ namespace hgl::graph
                 if (!is_ring_staging)
                     delete staging_buffer;
                 staging_buffer = nullptr;
-            }
-            if (transfer_sem)
-            {
-                delete transfer_sem;
-                transfer_sem = nullptr;
             }
             if (fence)
             {

@@ -58,9 +58,13 @@ namespace hgl::graph
         // 已经完成并提取的历史任务集合
         OrderedSet<uint64_t> completed_task_ids_;
 
-        // 收集本帧由 Transfer 队列发出、需 Graphics 队列在渲染前等待的信号量
-        // （保留 Semaphore* 而非裸 VkSemaphore 句柄：提交链路要按类型区分二进制/timeline）
-        ValueArray<Semaphore *> pending_wait_semaphores_;
+        // 跨队列同步 = **单条 upload lane**（timeline）：每次 transfer 派发 signal 一个递增值，
+        // 主帧渲染提交前 wait 最新值 ⇒ 覆盖全部在飞 DMA 拷贝，且等待项恒为 1 个。
+        // 旧方案（逐任务二进制信号量收集）有两处坏：① 批量完成任务的 sem 在批次执行完毕前仍
+        //   “in use”，任务析构 delete → vkDestroySemaphore 踩 VUID-vkDestroySemaphore-semaphore-05149；
+        // ② 收集数量可超主帧 waits[MAX_WAITS]，溢出丢弃 = 无等待裸用刚拷贝的纹理。
+        Semaphore * upload_lane_       = nullptr;
+        uint64_t    upload_lane_value_ = 0;      ///< 已提交的最新信号值（0 = 从未派发）
 
         ThreadMutex         mutex_;
 
@@ -101,11 +105,11 @@ namespace hgl::graph
         /** 帧轮询调度：回收已完成任务、依据优先级和背压调度新任务 */
         void Update();
 
-        /** 获取需 Graphics 队列等待的 Transfer 完成信号量合集 */
-        const ValueArray<Semaphore *> &GetPendingWaitSemaphores() const { return pending_wait_semaphores_; }
+        /** 上传车道（nullptr = 未初始化）；主帧渲染提交前对 GetUploadLaneValue() 发起等待 */
+        Semaphore *GetUploadLane() const { return upload_lane_; }
 
-        /** 清空已接入等待链的信号量列表 */
-        void ClearPendingWaitSemaphores() { pending_wait_semaphores_.Clear(); }
+        /** 已提交的最新信号值（0 = 从未派发 ⇒ 无需等待） */
+        uint64_t GetUploadLaneValue() const { return upload_lane_value_; }
 
         /** 提取当前已完成的任务列表（移交给外部进行 Bindless 更新） */
         void ExtractCompletedTasks(ValueArray<TextureUploadTask *> &out_completed);

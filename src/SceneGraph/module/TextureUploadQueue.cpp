@@ -245,6 +245,7 @@ namespace hgl::graph
         SAFE_CLEAR(graphics_cmd_buf_);
         SAFE_CLEAR(transfer_queue_);
         SAFE_CLEAR(graphics_queue_);
+        SAFE_CLEAR(upload_lane_);   // device_->WaitIdle() 已执行 ⇒ 无任何批次还引用它
 
         for (int p = 0; p < static_cast<int>(UploadPriority::Count); ++p)
         {
@@ -268,7 +269,6 @@ namespace hgl::graph
         completed_tasks_.Clear();
 
         all_tasks_.Clear();
-        pending_wait_semaphores_.Clear();
     }
 
     void TextureUploadQueue::EnsureResources()
@@ -302,6 +302,10 @@ namespace hgl::graph
         if (!graphics_cmd_buf_)
         {
             graphics_cmd_buf_ = device_->CreateTextureCommandBuffer("TextureUploadGraphicsCmdBuf");
+        }
+        if (!upload_lane_)
+        {
+            upload_lane_ = device_->CreateTimelineSemaphore("TextureUploadLane");
         }
     }
 
@@ -607,14 +611,13 @@ namespace hgl::graph
 
         tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        Semaphore *sem = device_->CreateGPUSemaphore("TextureUploadTransferCompleteSem");
-        task->transfer_sem = sem;
-        task->signal_semaphore = *sem;
+        // upload lane：signal 递增值（sem 为 null 时提交路径自动跳过 signal 项）；
+        // 提交成功后才抬升对外的值 ⇒ 等待方看到的每个值都已真正入队
+        const uint64_t lane_signal = upload_lane_ ? upload_lane_->NextValue() : 0;
+        SemaphoreSubmit transfer_signal = SemaphoreSubmit::Signal(upload_lane_, lane_signal);
+        if (transfer_queue_->Submit(transfer_cmd_buf_, nullptr, 0, &transfer_signal, 1) && lane_signal != 0)
+            upload_lane_value_ = lane_signal;
 
-        SemaphoreSubmit transfer_signal = SemaphoreSubmit::Signal(sem);
-        transfer_queue_->Submit(transfer_cmd_buf_, nullptr, 0, &transfer_signal, 1);
-
-        pending_wait_semaphores_.Add(sem);
         task->state = UploadTaskState::InFlight;
         in_flight_tasks_.Add(task);
 
