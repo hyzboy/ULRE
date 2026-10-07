@@ -29,7 +29,9 @@ namespace hgl::graph
         uint64_t addr_global_render_items = 0;  // 4-ID 渲染项表（世界私有 RenderItemDataStorage）
         uint64_t addr_draw_item_ids = 0;        // DrawItemID 压缩索引表（世界私有 DrawItemIDStorage）
         uint64_t addr_sky = 0;                  // 本世界 profile 的 SkyInfo（单份 buffer ⇒ 全帧槽同址）
-        uint64_t addr_shadow = 0;               // 本世界 profile 的 ShadowInfo（每帧槽一份，下标 = 帧槽）
+        uint64_t addr_shadow = 0;               // **本世界**的影子数据 ShadowInfo（T6b/P4：已世界私有，不再是 profile 的；
+                                                // 每帧槽一份，下标 = 帧槽；写者 = MainLightShadowSystem，设备写入点 =
+                                                // ECSContext::CommitShadowInfo（交换链帧 acquire 后写本帧槽））
         uint64_t addr_entity_gpu = 0;           // 实体行表 EntityGPU（世界私有；T3：GPU 剔除的枚举源，按 EntityID.index 索引）
         uint64_t addr_l2w = 0;                  // L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份，每帧槽一份）
         uint64_t addr_entity_render_ids = 0;    // 实体 4-ID 表（世界私有 EntityRenderIDTable，按 EntityID.index 直索引，

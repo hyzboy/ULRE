@@ -7,7 +7,9 @@
 > `doc/world-addresses-and-camera-model-plan.md`（地址三档；本稿新增 `addr_lights` 与它同级）、
 > `doc/ENVIRONMENT_SYSTEM.md`（本稿**改变其一部分结论**：Environment 不再托管阴影、不再持有光源参数）、
 > `doc/shadow-component-and-automated-pipeline-design.md`（本稿**推翻其 §1 的一句定论**，见 §8 变更记录）、
-> `doc/shadow-mask-and-hybrid-shadows-design.md`（**未来多光源阴影**的设计草案 = 本稿的消费者）。
+> `doc/shadow-mask-and-hybrid-shadows-design.md`（**未来多光源阴影**的设计草案 = 本稿的消费者）、
+> `doc/future/sky-domain-and-provider-params-plan.md`（**后续档**：天空/环境光数据面的正式形态 ——
+> 本稿把 `SkyInfo` 瘦成“天空外观”后，那份档定它作为“多种天空/天光方法共用结构”的规则；触发项，本稿不做）。
 
 ---
 
@@ -222,6 +224,10 @@
 
 多光源渲染机制（forward 光照循环 / cluster）与第二条光源（点光源 + cubemap 六面阴影）。
 触发条件：真实需求出现（backlog A6 的 cubemap 六面，或 `shadow-mask-and-hybrid-shadows-design.md` 的多源阴影）。
+
+**天空侧的遗留（不在本稿）**：`SkyInfo` 里仍寄生着 `env_tex`（IBL 句柄，其消费者是 `ambient_light_provider`
+槽而非 `sky_provider` 槽）与为对齐而存在的 `_pad[3]`；归位规则与执行步骤见
+`doc/future/sky-domain-and-provider-params-plan.md`（含其 T0「先给消费者示例接帧摘要」的前置任务）。
 
 ---
 
