@@ -8,19 +8,19 @@
 
 namespace hgl
 {
-    namespace graph
-    {
-        class IRenderTarget;
-    }
-
     namespace ecs
     {
         class ECSContext;
 
         /**
          * RenderGraph defines a sequence of render passes to be executed
-         * Each pass can target a different render target and has custom setup
-         * This enables multi-RT rendering, conditional passes, and flexible render topology
+         * 每个 pass 覆盖一段 ExecutionPhase 区间并带自己的 setup 回调。
+         *
+         * ⚠ **一个 pass ≠ 一个新的渲染目标**（A3 结案 2026-10-07）：引擎的多 RT 机制是
+         * `ECSContext::RenderTo(rt, ...)` + RenderPassOptions（CSM 与离屏世界都走它，
+         * 且已含槽带/帧槽分份），不在 pass 上。历史字段 `Pass::renderTarget` 从未被任何
+         * 调用方设置过、执行器只打印一条永不可能触发的告警 ⇒ 已整体删除。
+         * 将来做后处理链，请基于 `RenderTo`，不要复活该字段。
          */
         struct RenderGraph
         {
@@ -34,18 +34,6 @@ namespace hgl
 
                 /// Ending ExecutionPhase for this pass (inclusive)
                 ExecutionPhase endPhase = static_cast<ExecutionPhase>(0);
-
-                /// 期望的渲染目标（nullptr = 沿用世界当前的 RT）
-                ///
-                /// @warning 尚未生效。ExecuteRenderGraphPasses() 目前不读取此字段：
-                ///          命令缓冲由 RenderSystemCore::BeginFrame() 从帧初始 RT 获取，
-                ///          每个 RT 持有自己的 cmd_buf。要让本字段真正生效，需要
-                ///          RenderSystemCore 支持"多段渲染"——每个 target 切换处做一次
-                ///          EndRendering/EndRender → BeginRender/BeginRendering，
-                ///          并处理跨 RT 的提交与信号量同步。
-                ///          在此之前若设置了非当前 RT，执行器会输出警告而非静默忽略。
-                ///          详见 doc/render-target-standardization-design.md 阶段 D。
-                hgl::graph::IRenderTarget* renderTarget = nullptr;
 
                 /// Whether this pass should execute
                 bool enabled = true;
@@ -70,14 +58,12 @@ namespace hgl
                 Pass() = default;
 
                 Pass(ExecutionPhase start, ExecutionPhase end,
-                     hgl::graph::IRenderTarget* rt = nullptr,
                                          bool en = true,
                                          bool update = true,
                                          bool submit = true,
                                          bool render = true)
                                         : startPhase(start),
                                             endPhase(end),
-                                            renderTarget(rt),
                                             enabled(en),
                                             runUpdate(update),
                                             submitTransforms(submit),
