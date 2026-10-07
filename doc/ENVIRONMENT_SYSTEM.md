@@ -10,7 +10,7 @@
 > 版本:2026-09(BDA 终态 / 单集(Bindless)描述符分支;本稿已按当前代码校对)
 >
 > **订正(2026-10-07,T6b/P4 **已落地**)**:本文「环境 = 天空 `SkyInfo` + 阴影 `ShadowInfo` **两段**」的口径**已作废**——
-> ① 环境域现在只剩**天空外观 + IBL**（`EnvironmentInfo` 只有 `sky` 一段）；
+> ① 环境域现在只剩**天空外观 + IBL**（`EnvironmentInfo` 当时只有 `sky` 一段；**T1 之后见下方第二条订正**：又加了 `ambient_env` 段）；
 > ② **影子数据已世界私有**:CPU 权威 `ECSContext::shadow_info`、世界私有设备镜像 `ECSContext::InitializeShadowInfoTable`
 >    （按帧槽各一份）、地址经世界表 `WorldAddresses.addr_shadow` 下发、提交点 `ECSContext::CommitShadowInfo`
 >    （交换链帧 acquire 之后写**本帧槽**）；profile 侧的 shadow ring / `GetShadowAddress` / `MaterializeShadowUBO` /
