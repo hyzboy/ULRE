@@ -459,7 +459,7 @@ private:
         }
 
         if (!PlaceEntity(ecs_context, "ChildScreen", child_screen_asset,
-                         math::Vector3f(6.2f, 0.8f, 3.2f), 3.2f, Mobility::Static, &child_screen_entity, -30.0f))
+                         math::Vector3f(5.0f, 1.0f, 4.6f), 4.6f, Mobility::Static, &child_screen_entity, -35.0f))
             return LogStageFail("BuildMainScene", "child screen failed");
 
         return true;
