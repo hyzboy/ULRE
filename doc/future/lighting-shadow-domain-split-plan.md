@@ -210,7 +210,20 @@
 >   （**只在交换链帧 acquire 之后写本帧槽**，离屏 pass 不提交）；`EnvironmentManager` 的 shadow ring /
 >   `MaterializeShadowUBO` / `GetShadowAddress` / `CommitMaterialized` 与 `MainLightShadowSystem` 的
 >   `MarkShadowDirty` / `ResolveManager` **整删**（零死代码；`CommitMaterialized` 改名后无调用者，一并删）。
->   契约 = `Test 46`（归属搬家 / 提交时序 / 旧形态禁复活）+ `Test 22` 增补 6 条（影子与光源行的**两世界隔离** = V7）。
+>   契约 = `Test 46`（归属搬家 / 提交时序 / 旧形态禁复活）+ `Test 22` 增补 6 条（影子与光源行的**两世界隔离** = V7 的结构面）。
+> - ✅ **第 5 步（V7 运行时台架，本批落地）**：新增 `example/Shadow/DualWorldShadows.cpp`（目标 `DualWorldShadows`），
+>   同一 app 帧两个世界各自渲染（主世界交换链 + `OffscreenWorld` 子世界），两个世界各有**自己的**主光方向与 CSM；
+>   `DWS_SELFCHECK=1` 的判据 = 翻转其中一个世界的主光，断言**另一个世界的帧摘要逐位不变**，同世界必须变（不空转守卫）：
+>   · A（交换链）S0=S1=`0x55B0F81FEB86BACC`、S2=`0xD58FA9C3DF405ACF`；
+>     B（子世界）S0=`0xB63D9FE07F9BEA9C`、S1=S2=`0xFDA63532CCBB8E2F`（两次连跑逐位一致，rc=0，0 VUID）；
+>   · **破坏验证**（证明判据有牙）：临时把子世界的光写进主世界的光源行（模拟共享载体）⇒ `FAIL ①：翻转离屏世界的光
+>     改变了主世界的画面 ⇒ 光照/阴影数据不是世界私有` + rc=1；逐字节还原后复绿。
+>   · 该台架顺带暴露并修掉两条**引擎前提**（缺任一条台架根本跑不起来）：
+>     ① 级联 RT 数改为按 `CascadedShadowConfig::cascade_count` 创建（离屏帧槽带全设备仅 4 条，固定建 4 张则
+>        "两个世界各自开 CSM"在容量上不可达）；
+>     ② 影子数据的设备上传点改为**本世界自己的帧 RT**（不再"仅交换链"）—— 否则离屏世界的 `addr_shadow`
+>        永远停在建表零值、**离屏世界不可能有阴影**（P4 的遗留，属该台账架暴露的真实缺陷）。
+>   契约 = `Test 48`（10 条：两条引擎前提 + 台架注册/子世界提交入口/自检模式不建跨世界屏幕 + 判据①②③的措辞）。
 > - 🔧 **修复（用户实测发现）**：减法把 `SkyInfo` 收紧后 `env_tex` 两端偏移错位 —— C++ `Vector4u`
 >   （GLM 对齐 16）在 **32**，GLSL `scalar` 布局（`uvec4` 只要求 4）在 **20** ⇒ shader 读到
 >   `env_tex.x = 0 / y ≠ 0`、越过"句柄全 0 早退"、拿句柄 0 采样 ⇒ **IBL 全黑**（`IBLEnvironment`
@@ -241,7 +254,7 @@
 | V4 | `ShaderResourceSchemaRegressionGate` | 45 PASS / 0 FAIL（新增 GLSL 模块则 +1） |
 | V5 | `TestCSMIncrementalPass` | 42 Passed / rc=0（Test 42 契约条数随新增同步） |
 | V6 | CSM 生命周期不变量（常驻） | `Test 43 生命周期账 a–f` + `M10`（槽带接线 / 游标禁复活）+ `M11`（销毁前设备静默）。⚠ 临时端到端探针（`CSM_REENABLE_PROBE`/`CSM_DISABLE_PROBE`）已撤，不再作为判据 |
-| V7 | 跨世界隔离（T6b 新增） | 两世界同帧各自主光/影子数据互不影响（摘要各自稳定） |
+| V7 | `DualWorldShadows`（新台架，`DWS_SELFCHECK=1`） | 两世界同帧各自主光/影子数据互不影响：翻转 B 的光 ⇒ A 摘要**逐位不变**、B 必变；翻转 A 的光 ⇒ B 摘要**逐位不变**、A 必变（rc=0）。实测值见 §5 第 5 步；判据有牙（共享光源行的破坏验证 ⇒ rc=1） |
 
 ---
 

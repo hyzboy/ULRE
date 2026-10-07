@@ -147,6 +147,14 @@
    - 世界存活时 `DisableMainLightShadow` ⇒ 2 条 `vkDestroySemaphore(): VkSemaphore[CSM_Cascade_0:Lane] that is currently in use by VkQueue`（级联 RT 的 timeline 车道在队列仍在用时销毁）。**已根治（2026-10-07，`5a085a627`）**：lane 有**外部**等待者（主帧提交 `AddFrameLaneWait` await 它），RT 自己枚举不到 ⇒ `RenderTargetData::Clear()` 在销毁同步对象前 `device->WaitIdle()`。「运行中 Disable」探针（第 120 帧）实测告警 **2 → 0**；契约 §9 M11。
    相机槽一侧（C3）在两条路径上都是干净对称的（申请/归还同槽，见 §7 第 5 项与 `doc/world-addresses-and-camera-model-plan.md` §2）。
 
+0-bis. **离屏帧槽带的容量账（2026-10-07 起，V7 台架实测）**：级联 RT 数 = `CascadedShadowConfig::cascade_count`
+   （此前一律固定建 4 张；`EnableMainLightShadow` 已改为按配置创建），**每张占 1 条离屏帧槽带**
+   （`OffscreenSlotBands`；全设备共 `HGL_FRAME_SLOT_TOTAL - HGL_FRAME_SLOT_MAIN` = **4 条**，
+   `RenderTargetManager::Create` first-fit 分配、`Destroy` 归还）⇒ 同设备可共存的离屏 RT 总额 ≤ 4。
+   实测：`DualWorldShadows`（两世界各自开 CSM）用 3 条 = 主世界 1 级联 + 子世界 RT 1 + 子世界 1 级联；
+   而"某世界 4 级联 + 任何第二个离屏 RT"必然分配失败（fail-fast，不静默降级）。要更多并发离屏 RT 只有提高
+   `HGL_FRAME_SLOT_TOTAL`（当前不做：不按极端场景预留容量）。
+
 1. **交换链颜色图帧外读回** —— **✅ 已闭合（2026-10-07 复核）**：所需的引擎侧「渲染后 present 前」回读窗口 + 非 acquire 态 fail-fast 护栏**均已落地**
    （`IRenderTarget::IsColorReadbackWindowOpen()` + 交换链 RT 的帧内回读钩子 + `ReadbackColorTarget` 在窗口外直接拒绝），
    各示例的帧摘要自检（`*_SELFCHECK`）正是走这条窗口。以下原文保留作背景：
