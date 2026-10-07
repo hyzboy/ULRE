@@ -166,7 +166,8 @@
     归还 `next_offscreen_slot_base`（RenderTargetManager.cpp:255 只增），CSM 一条级联占一带
     （EnvironmentSystem.cpp:190-197）⇒ 一次 Enable 即耗尽 4 带 ⇒ **这就是 C3 遗留缺陷①
     「二次 EnableMainLightShadow ⇒ 越界(起点=8)」的根因**；OffscreenWorld+CSM 同应用必
-    fail-fast。修法 A/B/C 待拍板，详见计划档 §11.17 遗留核查段。
+    fail-fast。**已修（2026-10-07，走 A，`d9b2c6886`）**：OffscreenSlotBands 位图 first-fit +
+    Destroy 归还（Test 43 + 端到端探针二次 Enable first=1 second=1 验证），详见计划档 §11.17。
 - **P2 ⇒ 已随层③清除**：`undsettled` trace 行（含曾打印未初始化 `几何批=%u` 的那条）在删
   护栏时整块移除；改 trace 行仍须编译验证格式串/参数对齐。
 - **P3 ⇒ 仍在**：`CPUCullReferenceSystem` 的采样门用 `IsDispatchSettled()`——语义是

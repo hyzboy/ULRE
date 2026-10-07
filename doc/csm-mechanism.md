@@ -139,9 +139,9 @@
 
 ## 8. 已知问题 / 遗留（都不是本次引入）
 
-0. **反复 Enable / 运行中 Disable 灯影**（C3 探针暴露，任何示例都没走过 ⇒ 属预存在的生命周期缺口）：
-   - 同一会话里 `EnableMainLightShadow` 第二次以上 ⇒ `[RenderTargetManager] CSM_Cascade_0: in-flight 槽带越界（起点=8 槽数=1 上限=8）`（RT 的 in-flight 槽带不回收）⇒ 初始化失败（框架退出码 127）。
-   - 世界存活时 `DisableMainLightShadow` ⇒ 2 条 `vkDestroySemaphore(): VkSemaphore[CSM_Cascade_0:Lane] that is currently in use by VkQueue`（级联 RT 的 timeline 车道在队列仍在用时销毁）。
+0. **反复 Enable / 运行中 Disable 灯影**（C3 探针暴露的生命周期缺口；**① 已于 2026-10-07 根治，`d9b2c6886`**）：
+   - ~~同一会话里 `EnableMainLightShadow` 第二次以上 ⇒ `[RenderTargetManager] CSM_Cascade_0: in-flight 槽带越界（起点=8 槽数=1 上限=8）`~~ **已修**：离屏数据槽带改为占用位图 first-fit 分配 + `Destroy` 归还（`OffscreenSlotBands`，Test 43 生命周期账 + 端到端探针二次 Enable first=1 second=1 验证；根因与修法详见 `doc/future/entity-rows-gpu-cull-plan.md` §11.17）。
+   - 世界存活时 `DisableMainLightShadow` ⇒ 2 条 `vkDestroySemaphore(): VkSemaphore[CSM_Cascade_0:Lane] that is currently in use by VkQueue`（级联 RT 的 timeline 车道在队列仍在用时销毁）。**待复核**：2026-10-07 的 C3① 端到端探针（Init 期二次 Enable，内部先 Disable）实测该告警 0 命中——但 Init 期队列无在途工作，与"运行中 Disable"（队列有在途提交）路径不同，本条不能据该探针销账。
    相机槽一侧（C3）在两条路径上都是干净对称的（申请/归还同槽，见 §7 第 5 项与 `doc/world-addresses-and-camera-model-plan.md` §2）。
 
 1. **交换链颜色图帧外读回**（真 VUID `presentable VkImage ... has not been acquired`）：

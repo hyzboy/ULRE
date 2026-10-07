@@ -1872,6 +1872,10 @@ M9 钉 guard 入口 `EnsureInitialized` + 禁 `gpu_cull->IsDispatchSettled()`/`I
 这就是 C3 遗留缺陷①「二次 `EnableMainLightShadow` ⇒ 越界(起点=8)」的**根因**；
 OffscreenWorld+CSM 同应用 = 第 5 个离屏 RT 必 fail-fast（合理组合，非极端场景）。
 `Resize` 不泄漏（`RebuildOffscreenRT` 复用同一 rtd 只重建纹理/FBO）。
-修法（待拍板）：A=Destroy 归还带（空闲带位图，分配最小空闲带；顺带消 C3①）；
-B=CSM 级联共享一带（治标）；C=只记上限（但二次 Enable 是正常生命周期，按 fail-fast
-哲学属项目 bug 而非设计容量）。
+**已修（2026-10-07，走 A，`d9b2c6886`）**：新增 `OffscreenSlotBands`（占用位图 first-fit
++ 显式归还，纯算术可单测，`inc/hgl/graph/module/OffscreenSlotBands.h`）；RTM 游标删除、
+registry 登记 slot_base/slot_count、`Destroy` 归还（创建失败路径 BandGuard 收口）、`Release`
+后 Reset。EnvironmentSystem 零改动（handle reset ⇒ Deleter ⇒ Destroy ⇒ 归还天然接通）。
+判据：Test 43（生命周期账 a-f 含 C3① 场景重放 + §9 M10 接线契约/游标禁复活）；端到端探针
+二次 `EnableMainLightShadow` first=1 second=1、0 VUID、0 信号量 in-use（C3② 路径同净，探针已撤）；
+八台架/ATS/ATU/门 45/0/TestCSM 43 用例全绿。
