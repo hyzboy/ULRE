@@ -53,8 +53,9 @@ struct RenderTargetDesc
 
     bool has_depth = true;
 
-    /// MSAA 采样数。当前 Create 仅支持 1（MSAA 留待阶段 D 实现，非 1 时创建失败）
-    uint32_t samples = 1;
+    // 本引擎**不支持 MSAA**（用户 2026-10-07 拍板，永久）：原先这里的 `samples` 字段与
+    // IsValid() 里的 `samples != 1 ⇒ 拒绝` 只起到「拒绝非法值」的作用，按零兼容纪律已整体删除
+    // —— 没有字段就没有「设了再被拒」这个状态。
 
     // ---- 行为 ----
 
@@ -132,8 +133,6 @@ public:
         if(width == 0 || height == 0)
             return(false);
 
-        if(samples != 1)
-            return(false);          // MSAA 尚未实现（阶段 D）
 
         if(!has_color && !has_depth)
             return(false);          // 既无颜色也无深度——空附件没有意义

@@ -146,7 +146,8 @@ namespace hgl::ecs
 
         /// 每批计数缓冲（含末位 overflow 槽）：绘制侧把它当 `icb_count_buffer` 用
         graph::DeviceBuffer *GetBatchCounterBuffer() const { return batch_counter_buffer_; }
-        /// 批 b 的计数在缓冲内的字节偏移（当前帧槽 + 批号；绘制侧 = icb_count_buffer_offset）
+        /// 批 b 的计数在缓冲内的字节偏移（当前帧槽 × pass 块 + 批号）；绘制侧取
+        /// `MaterialBatch::gpu_slice[pass].count_buffer_offset`（T4c3c 起切片按 pass 存）
         uint32_t GetBatchCounterByteOffset(uint32_t pass_index, uint32_t batch_index) const;
         /// overflow 计数（末位槽）的字节偏移
         uint32_t GetOverflowCounterByteOffset(uint32_t pass_index) const;

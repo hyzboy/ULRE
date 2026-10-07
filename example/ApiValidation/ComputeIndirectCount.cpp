@@ -117,7 +117,6 @@ void main() {
                 if (batch && !batch->items.empty() && batch->icb_mesh_tasks)
                 {
                     batch->icb_count_buffer = count_buffer;
-                    batch->icb_count_buffer_offset = 0;
                 }
             }
         }

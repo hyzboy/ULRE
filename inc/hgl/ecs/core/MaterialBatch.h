@@ -53,7 +53,6 @@ namespace hgl::ecs
         //（BuildBatches 与命令同序写行；直接绘制/私有 VBO 走参数表 offset 视图）
         graph::IndirectMeshTaskBuffer *          icb_mesh_tasks          = nullptr;          ///<mesh 间接命令缓冲
         graph::DeviceBuffer *                    icb_count_buffer        = nullptr;          ///<mesh 间接绘制计数缓冲（可选，GPU-Driven 动态计数）
-        VkDeviceSize                             icb_count_buffer_offset = 0;                ///<计数缓冲偏移
         graph::DeviceBuffer *                    mesh_draw_params_buffer = nullptr;          ///<mesh per-draw 参数表 SSBO（每 DrawBatch 一行）
         uint32_t                                 mesh_draw_params_capacity = 0;              ///<参数表容量（行数）
 
@@ -104,7 +103,6 @@ namespace hgl::ecs
 
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有；由 TransformSystem 持有——系统销毁后此指针失效，勿跨帧缓存系统指针，A6)
 
-        bool                                  debug_blocks_logged = false;                       ///<[ArenaDebug] 首次行表诊断日志已输出                      ///<批次级descriptor绑定是否有效
 
 
         PipelineMaterialRenderer *           renderer                = nullptr;          ///<ECS渲染器实例
