@@ -1860,6 +1860,18 @@ M9 钉 guard 入口 `EnsureInitialized` + 禁 `gpu_cull->IsDispatchSettled()`/`I
 第 8 帧、冻结自旋、distinct≥50 不空转守卫；三次连跑一致后回填）。
 任何"晚一帧"类回潮在 RTT 上直接 FAIL，不再依赖每帧世界的自愈掩盖。
 
-**遗留（独立立项）**：离屏 RT 的 frame index 恒 4 不轮转（ShadowMap 同样恒 4，每帧重传掩盖）。
-对 RenderOnce 无害；但"恒槽 = 跨帧在飞覆写同一份"与 §11.11 同源，离屏 RT 的
-`GetCurrentFrameIndex()` 推进策略待单独立项核查。
+**遗留核查（2026-10-07 已定案，勿再立项查"恒 4"）**：离屏 RT frame index 恒 4 = **设计行为**——
+`RenderTargetDesc.slot_count` 默认 1（全仓无人传 >1）⇒ `slot_index=(x+1)%1` 恒 0 ⇒
+`GetCurrentFrameIndex()=data_slot_base+0`，首个离屏 RT 带基址 = `HGL_FRAME_SLOT_MAIN`(4)。
+**"恒槽跨帧覆写"风险不成立**（双重串行化）：① 深度 1 带自保护（`BeginRender` 复用槽前
+`WaitLastSubmitFence`，VKRenderTargetData.cpp:51）；② `RenderTo` 下沿 `rt->WaitFence()`
+⇒ 每次离屏提交返回前已 CPU 落地。代价只是离屏无 CPU-GPU 重叠（本就被②串行化）。
+⭐ **真缺陷（顺带定位）= 槽带只借不还**：`next_offscreen_slot_base` 只增
+（RenderTargetManager.cpp:255），`Destroy/Release` 不归还，离屏带共 4 个（[4,8)）——
+**CSM 一条级联占一带**（EnvironmentSystem.cpp:190-197）⇒ 一次 Enable 即耗尽 ⇒
+这就是 C3 遗留缺陷①「二次 `EnableMainLightShadow` ⇒ 越界(起点=8)」的**根因**；
+OffscreenWorld+CSM 同应用 = 第 5 个离屏 RT 必 fail-fast（合理组合，非极端场景）。
+`Resize` 不泄漏（`RebuildOffscreenRT` 复用同一 rtd 只重建纹理/FBO）。
+修法（待拍板）：A=Destroy 归还带（空闲带位图，分配最小空闲带；顺带消 C3①）；
+B=CSM 级联共享一带（治标）；C=只记上限（但二次 Enable 是正常生命周期，按 fail-fast
+哲学属项目 bug 而非设计容量）。

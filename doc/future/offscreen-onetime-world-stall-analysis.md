@@ -159,10 +159,14 @@
   - **修复**：`PrepareRenderPassSetup` 在 `SetFrameIndex` 之后、collect 之前补一次
     `SubmitTransformUpdates`（同帧幂等 ⇒ 绘制段第二次调用退化 no-op）。实测离屏首帧即
     `transform_id=1`（静态 = 1+slot）、`DrawCount=1`、`COUNT_IN_BUFFER=1`。
-  - 附带事实（**未在本批处理，独立立项**）：离屏世界帧槽**恒 4 不轮转**（ShadowMap 同样恒 4
-    但每帧重传掩盖）。对 RenderOnce 无害；但"恒槽 = 跨帧在飞覆写同一份"与闪烁案 §11.11
-    同源，离屏 RT 的 `GetCurrentFrameIndex()` 推进策略（对 OffscreenRenderTarget 是否恒 4）
-    待单独立项核查。
+  - 附带事实（**同日核查已定案**）：离屏世界帧槽恒 4 = 设计行为（`slot_count` 默认 1 ⇒
+    `slot_index=(x+1)%1` 恒 0 ⇒ `GetCurrentFrameIndex()=data_slot_base+0`；首带基址=4）。
+    "恒槽跨帧覆写"不成立——深度 1 带自保护（BeginRender 复用前 WaitLastSubmitFence）+
+    RenderTo 下沿 rt->WaitFence() 双重串行化。**真缺陷是槽带只借不还**：Destroy/Release 不
+    归还 `next_offscreen_slot_base`（RenderTargetManager.cpp:255 只增），CSM 一条级联占一带
+    （EnvironmentSystem.cpp:190-197）⇒ 一次 Enable 即耗尽 4 带 ⇒ **这就是 C3 遗留缺陷①
+    「二次 EnableMainLightShadow ⇒ 越界(起点=8)」的根因**；OffscreenWorld+CSM 同应用必
+    fail-fast。修法 A/B/C 待拍板，详见计划档 §11.17 遗留核查段。
 - **P2 ⇒ 已随层③清除**：`undsettled` trace 行（含曾打印未初始化 `几何批=%u` 的那条）在删
   护栏时整块移除；改 trace 行仍须编译验证格式串/参数对齐。
 - **P3 ⇒ 仍在**：`CPUCullReferenceSystem` 的采样门用 `IsDispatchSettled()`——语义是
