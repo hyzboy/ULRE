@@ -8,6 +8,10 @@
 > 5. §7 的「Scene 集 6 个 UBO 绑定」表、§9 的「Scene Set 加槽位」流程、§9 末的「Scene Set 仍是设备级单例」全部作废,已就地改写为世界表口径。
 >
 > 版本:2026-09(BDA 终态 / 单集(Bindless)描述符分支;本稿已按当前代码校对)
+>
+> **注(2026-10-07)**：本文「环境 = 天空 `SkyInfo` + 阴影 `ShadowInfo` **两段**」的口径**将被改变**——光影拆域后
+> 环境域只管天空/IBL,`ShadowInfo` 移出 `EnvironmentInfo` 并**世界私有化**,光源参数从 `SkyInfo` 迁到世界私有光源行
+> （`addr_lights`,与 `addr_entity_gpu` 同级）。见 `doc/future/lighting-shadow-domain-split-plan.md` §3/§5。
 > 相关文件:`inc/hgl/graph/ubo/EnvironmentInfo.h`、`inc/hgl/graph/ubo/SkyInfo.h`、`inc/hgl/graph/ubo/ShadowInfo.h`、`inc/hgl/graph/ubo/UBOShaderSources.h`、`inc/hgl/graph/module/EnvironmentManager.h`、`src/SceneGraph/module/EnvironmentManager.cpp`、`inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp`、`inc/hgl/ecs/systems/render/ViewUBOCommitSystem.h/.cpp`、`inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h/.cpp`(原 RenderDescriptorBindingSystem)、`inc/hgl/vk/VKRenderTarget.h`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`inc/hgl/common/DescriptorSetTypeDef.h`(`inc/hgl/vk/VKGlobalSceneUBOSet.h` 已随 Scene 集退场删除)、`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`
 
 ## 1. 这套东西解决什么问题
