@@ -120,6 +120,8 @@
 | `CSM_CACHE_DIFF=1` | S5 整级 vs 条带 **深度图对拍**，逐轮打印 `不一致=`（判据：恒 `不一致=0`） |
 | `CSM_AUTOWALK=<m/s>` | 相机自动行走速度（**不是帧数**） |
 | `CSM_CACHE_DIFF_FREEZE` | 冻结对拍基准（配合上一项） |
+| `CSM_PASS_LOG=1` | **S6 仪器**（默认静默）：逐 pass 打印 `[S6-PASS] cascade/kind=full|strip/mobility/off/rect`，与 |
+| | `[S6-COLLECT]`（图元数 + Σ(entity<<16\|gen) 校验和）配对读 ⇒ "同批 caster 却在光栅化侧不同"才成立 |
 | `ATS_SELFCHECK=1` | AlphaTestShadow 自检：D1/D3/D4 契约 + selfcheck 退出码 |
 | `PREPASS_TIMING=<N>` | **prepass 性能账目**（每 N 个主帧报一行均值）：离屏 pass 次数/帧、总墙钟、
 | | 两处 fence 等待（上沿等主帧 / 下沿等自身）、begin/draw/submit 细分。未设 = **零成本**
