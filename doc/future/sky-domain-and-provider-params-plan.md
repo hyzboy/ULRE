@@ -258,10 +258,15 @@
 
 **T0 录入位（执行时把实跑值填进来）**：
 
-| 示例 | 分辨率 | distinct_byte_values | fnv1a64 |
-|---|---|---|---|
-| IBLEnvironment | ___×___ | ___ | `0x___` |
-| AtmosphereSkyMinimal | ___×___ | ___ | `0x___` |
+| 示例 | 自检环境变量 | 分辨率 | distinct_byte_values | fnv1a64 |
+|---|---|---|---|---|
+| IBLEnvironment | `IBLENV_SELFCHECK=1` | 1280×720 | 256 | `0x2D28D72AEA4FC87D` |
+| AtmosphereSkyMinimal | `SKYMIN_SELFCHECK=1` | 1280×720 | 219 | `0xC914C338EFC7790E` |
+
+> 上表 = **T0 实跑值**（改结构前的基线；帧 8、帧内回读、A2BGR10UN 打包字节）。
+> 逐帧自证（`FRAMEDIGEST_PERFRAME=9`）：两例 9 帧 × 3 张交换链图**逐位同哈希**、`与首帧不同的帧数=0`
+> ⇒ 静止场景下摘要确定（不是「每帧闪一帧」被采样避开）。
+> 改渲染结果（少画 / 错画 / 挪相机 / 句柄错位）⇒ 摘要必变，常量必须复核重录。
 
 ---
 

@@ -28,6 +28,8 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include "../Shared/FrameDigest.h"   // 帧摘要自检（T0 判据前置共用件）
 
 #include<vector>
 #include<memory>
@@ -591,6 +593,42 @@ private:
     }
 
 public:
+    void Tick(double delta_time) override
+    {
+        WorkObject::Tick(delta_time);
+
+        // IBLENV_SELFCHECK=1：**帧摘要自检**（T0 判据前置；共用件 example/Shared/FrameDigest.h）——
+        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
+        // 为什么本例必须有它：IBL 句柄（env_tex）是八台架摘要的**盲区**（只有本示例把 indirect_ibl
+        // 选为 ambient_light_provider）⇒ 句柄错位这种静默发黑事故只有这条判据有分辨力。
+        // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
+        static const bool s_selfcheck = (getenv("IBLENV_SELFCHECK") != nullptr);
+        static uint32_t   s_self_frame = 0;
+
+        static constexpr uint32_t kSelfW           = 1280;
+        static constexpr uint32_t kSelfH           = 720;
+        static constexpr uint32_t kSelfMinDistinct = 256;   // 不空转守卫（恒定图会 FAIL）
+        static constexpr uint64_t kSelfFNV         = 0x2D28D72AEA4FC87Dull;  // T0 实跑记录
+
+        if (s_selfcheck && ++s_self_frame == 8)
+        {
+            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_context ? ecs_context->GetRenderTarget() : nullptr );
+            if (!rt)
+            {
+                printf("[IBLSELF] no swapchain RT\n");
+                std::exit(2);
+            }
+
+            ulre_example::FrameDigest expect;
+            expect.width                = kSelfW;
+            expect.height               = kSelfH;
+            expect.distinct_byte_values = kSelfMinDistinct;
+            expect.fnv1a64              = kSelfFNV;
+
+            ulre_example::InstallFrameDigestHook(rt, expect, "IBLSELF");
+        }
+    }
+
     ~IBLEnvironmentApp()
     {
         SAFE_CLEAR(mesh_vdm)
