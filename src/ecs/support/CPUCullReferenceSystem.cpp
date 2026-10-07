@@ -364,9 +364,11 @@ namespace hgl::ecs
             const float max_scale = std::max({scale_x, scale_y, scale_z});
             const glm::vec3 world_extents(aabb->extents[0] * max_scale, aabb->extents[1] * max_scale, aabb->extents[2] * max_scale);
 
-            // 视锥剔除（6 个平面）
+            // 视锥剔除（6 个平面）。center[3] = 外接球半径，< 0 ⇒ 「始终可见」哨兵
+            //（与 entity_gpu_cull.glsl 逐字同式；写者 = Geometry::RefreshGeometryAABBRow，
+            //  2D 几何（V2F 位置）无有效本地 AABB ⇒ 全靠这条不静默剔空）
             bool visible = true;
-            for (int p = 0; p < 6; ++p)
+            for (int p = 0; aabb->center[3] >= 0.0f && p < 6; ++p)
             {
                 const glm::vec4& plane = camera_info->frustum_planes[p];
                 const glm::vec3 normal = glm::vec3(plane);

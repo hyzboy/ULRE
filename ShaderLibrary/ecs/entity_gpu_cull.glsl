@@ -87,7 +87,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Loca
 // 几何 AABB 池（全局）
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer GeometryAABBDataRef
 {
-    vec4 center_extents[];  // xyz=center, w=unused; xyz=extents（连续存储）
+    vec4 center_extents[];  // xyz=center, w=外接球半径（<0 ⇒ 始终可见哨兵）; xyz=extents（连续存储）
 };
 #define geometry_aabbs GeometryAABBDataRef(global_addresses.addr_geometry_aabb)
 
@@ -272,9 +272,13 @@ void main()
     float scale = max(length(l2w_matrix[0].xyz), max(length(l2w_matrix[1].xyz), length(l2w_matrix[2].xyz)));
     vec3 world_extents = aabb_extents.xyz * scale;
 
-    // 视锥剔除（6 个平面）
+    // 视锥剔除（6 个平面）。
+    // ⚠ center.w = 外接球半径；**< 0 ⇒ 「始终可见」哨兵**（写者：`Geometry::RefreshGeometryAABBRow`
+    //   无有效本地 AABB 时填 `GlobalSSBOBufferRegistry::kAlwaysVisibleRadius`=-1，
+    //   语义 = 缺数据不得静默剔空物体——2D 几何（V2F 位置）全在这里被救回）。
+    //   半径只被哨兵判定消费：extents 才是投影半径的来源（与 CPU 参考逐字同式）。
     bool visible = true;
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; (aabb_center.w >= 0.0) && (i < 6); ++i)
     {
         vec4 plane = cam.frustum_planes[i];
         vec3 normal = plane.xyz;

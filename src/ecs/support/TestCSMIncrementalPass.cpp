@@ -5470,6 +5470,14 @@ int main(int argc, char** argv)
             { "CPUCullReferenceSystem.cpp", OS_TEXT("src/ecs/support/CPUCullReferenceSystem.cpp"),
               "counters = gpu_cull->MapCurrentBatchCounters(0u /*pass: 主帧*/);",
               "§9 M6：台架读回路径的 Map 调用点（与上一条成对：删任一即红）" },
+
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+              "(aabb_center.w >= 0.0) && (i < 6)",
+              "§9 M7：GeometryAABB center.w<0 的「始终可见」哨兵必须被 GPU 消费者兑现（2D 几何/V2F 靠它不被零 extents 静默剔空；写者 = RefreshGeometryAABBRow）" },
+
+            { "CPUCullReferenceSystem.cpp", OS_TEXT("src/ecs/support/CPUCullReferenceSystem.cpp"),
+              "aabb->center[3] >= 0.0f",
+              "§9 M7 对拍同式：CPU 参考的哨兵判定必须与 GLSL 逐字同汽（丢一端 = 两端又错得不同源）" },
         };
 
         if (const int failed = verify_source_contracts(42, kMechanismContracts,
@@ -5478,7 +5486,7 @@ int main(int argc, char** argv)
             return failed;
 
         GLogInfo(u8"Test 42 Passed: A6-b 机制层契约成立（§9 M1 环深度单源 + M3 countBuffer 使用标志 + "
-                 u8"M4 切片 4 行对齐（实现行 + 运行期守卫）+ M6 回读前置（Sync 记帧 + Map 校验 + 台架调用对）；"
+                 u8"M4 切片 4 行对齐（实现行 + 运行期守卫）+ M6 回读前置（Sync 记帧 + Map 校验 + 台架调用对）+ M7 AABB 始终可见哨兵两端同式兑现；"
                  u8"禁复活 1 条；共 %d 条契约）。",
                  static_cast<int>(sizeof(kMechanismContracts) / sizeof(kMechanismContracts[0])));
     }
