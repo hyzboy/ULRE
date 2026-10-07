@@ -377,7 +377,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 1. 一个 `GlobalSSBOType` 只会有一个材质 SSBO（Arena 终身不重建）。
 2. 材质字段专用类型另立枚举；纹理引用已独立成 `MaterialTextureReferencePool`（per-definition）。
 3. 任意材质可访问所有材质字段 SSBO（固定配表：`PBRSurface` → `global_addresses.addr_pbr_surface` 等）。
-4. BDA 分层：类型池基址 + MeshDrawParams 基址 → UBO；`mtl_data_addrs`/纹理引用池/L2W 基址 → push constants（L2W 暂 push）。**现状：mesh_draw_params 在 UBO 与 push 双源，收敛为待办（§6.5）。**
+4. BDA 分层：类型池基址 + MeshDrawParams 基址 → UBO；`mtl_data_addrs`/纹理引用池/L2W 基址 → push constants（L2W 暂 push）。**现状（2026-10-07 订正）：该「双源」表述已作废** —— `addr_mesh_draw_params` 已按 §6.5 订正② 一拆为二（表内 `addr_mesh_draw_params_pool` 池基址 / push 批内 `addr_batch_mesh_draw_params`），「UBO 与 push 双源并存」随 Scene 集退场消失；与 §7.4-3 的订正一致。
 5. MeshDrawParams 池永久固定（预分配上限，**现为 16384 行**、`reserve_rows=1`；只增不减）。
 6. 4-ID draw buffer 做 SSBO：现 ReBAR CPU 写，未来 CS 写（CS 写已在示例打通）。
 7. L2W 沿用 static/dynamic 两段，**动态段 × `HGL_L2W_RING_FRAMES` 环形复用**（`graph::RingLayout`，`inc/hgl/vk/buffer/RingLayout.h:15-47`；`TransformAssignmentBuffer.h:55/70`）。
