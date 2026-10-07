@@ -202,6 +202,14 @@
 >   结构上单一化（读主光色）才解决；② Cascade / ATS 的旧代码在**手写方向之后**调 `SetTime` ⇒ 手写方向
 >   当场被模型方向覆盖、从未生效（死代码），迁移必须按**实际生效顺序**保真。
 > - ✅ **第 4 步（P4）**：`ShadowInfo` 世界私有化 + `EnvironmentInfo` 去 shadow（另批）。
+> - 🔧 **修复（用户实测发现）**：减法把 `SkyInfo` 收紧后 `env_tex` 两端偏移错位 —— C++ `Vector4u`
+>   （GLM 对齐 16）在 **32**，GLSL `scalar` 布局（`uvec4` 只要求 4）在 **20** ⇒ shader 读到
+>   `env_tex.x = 0 / y ≠ 0`、越过"句柄全 0 早退"、拿句柄 0 采样 ⇒ **IBL 全黑**（`IBLEnvironment`
+>   球/环/方纯黑只剩高光；八台架都不走 IBL ⇒ 摘要全绿也照样错）。
+>   修法 = **两端显式 `_pad[3]` 写死 env_tex@32 + `SkyInfo.h` 加 `sizeof==48` / `halo_intensity@16` /
+>   `env_tex@32` 三条 ABI 断言**。教训：**C++↔GLSL 共享结构不许依赖隐式对齐**（旧布局的 uvec4 前面
+>   恰是 4 个 float、落在 16 的倍数上，坑一直藏着）。**待补强**：`SkyInfo` 的 GLSL 镜像还没有门对拍用例
+>   （只有 C++ 侧断言），另立一条 `W.sky-info-struct-parity`。
 
 ### T6c —— **本次不做**（留触发）
 

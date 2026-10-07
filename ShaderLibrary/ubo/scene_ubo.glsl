@@ -66,7 +66,8 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer SkyI
 {
     vec4 base_sky_color;
     float halo_intensity;
-    uvec4 env_tex;
+    uint _pad[3];       // 显式填充：env_tex 落在 32B（与 C++ _pad 同形，别靠隐式对齐）
+    uvec4 env_tex;      // 32..48（IBL 三个句柄：irradiance / prefilter / BRDF LUT）
 };
 
 #define sky SkyInfoRef(world_addresses.addr_sky)

@@ -27,6 +27,12 @@ namespace hgl::graph
         Color4f     base_sky_color = Color4f(0.1f, 0.3f, 0.6f, 1.0f);
         float       halo_intensity = 0.1f;   ///< 光晕（Mie）强度；**颜色恒取主光色**
 
+        /// **显式填充**（20 → 32）：让 `env_tex` 落在两端写死的 32 字节处。
+        /// 为什么不能靠隐式对齐：GLSL 侧是 `scalar` 布局（对齐按**分量**算，`uvec4` 只要求 4），
+        /// 而 C++ 侧 GLM 的对齐与类型/编译选项相关 —— 两边都"合理"却可能差 12 字节，
+        /// 结果是 shader 拿 `env_tex.x = 0 / y ≠ 0`（越过早退）去采样、IBL 变黑/乱（实测踩过）。
+        uint32_t    _pad[3] = { 0, 0, 0 };
+
         /**
          * IBL 环境贴图 bindless 句柄(1-based,0=未绑定):
          *   x = Diffuse Irradiance Cubemap
@@ -37,4 +43,10 @@ namespace hgl::graph
          */
         Vector4u    env_tex        = Vector4u(0);
     };
+
+    // GPU ABI：布局是 C++↔GLSL 的契约（镜像见 ShaderLibrary/ubo/scene_ubo.glsl 的 SkyInfoRef）
+    static_assert(sizeof(SkyInfo) == 48, "SkyInfo 必须恰为 48 字节（改字段请同步 GLSL 镜像与断言）");
+    static_assert(offsetof(SkyInfo, halo_intensity) == 16, "halo_intensity 必须落在 16B");
+    static_assert(offsetof(SkyInfo, env_tex) == 32, "env_tex 必须落在 32B（显式 _pad 保证；"
+                                                     "错位 = shader 读到 0 句柄 = IBL 静默失效）");
 }
