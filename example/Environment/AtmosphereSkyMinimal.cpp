@@ -132,15 +132,6 @@ private:
         if(!ecs_context)
             return false;
 
-        auto environment_system = ecs_context->GetSystem<hgl::ecs::EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<hgl::ecs::EnvironmentSystem>();
-
-        if (environment_system)
-        {
-            environment_system->EditSkyInfo();
-                    }
-
         if(!InitECSScene())
             return false;
 

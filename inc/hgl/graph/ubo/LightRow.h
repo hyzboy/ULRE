@@ -8,7 +8,7 @@
 
 namespace hgl::graph
 {
-    // 与 SkyInfo.h / ShadowInfo.h 同款：本头会被大量 TU（含无 `using namespace math` 的）直接包含，
+    // 与 ShadowInfo.h 同款：本头会被大量 TU（含无 `using namespace math` 的）直接包含，
     // 裸写 `Vector4f` 会因查找不到而报 C3861 ⇒ 在本命名空间内显式引入 math 名（保证自足）。
     using namespace math;
 

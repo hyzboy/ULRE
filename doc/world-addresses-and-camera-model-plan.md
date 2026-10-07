@@ -32,6 +32,7 @@
   `draw_item_ids = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids)`，
   `viewport = ViewportInfoRef(global_addresses.addr_viewport)`（保持全局）。
   表内 `addr_sky` / `addr_shadow` / `addr_env` 槽位**已预留、尚未接线**（C2 落地）。
+  ⚠ **2026-10-07 订正**：`addr_sky` 已随 `sky` 段整删（世界表 = **72 B / 9 字段**，无 `addr_sky`）。
 - **硬规矩**：`GlobalAddresses` 内**不得**出现世界私有地址；`WorldAddresses` 内**不得**出现资源池地址。各配一条契约（parity + 归属）。
 
 ## 2. 相机存储（世界私有）
@@ -78,6 +79,7 @@ CPU 侧消费者（剔除 / gizmo / Line 视锥 / shadow origin）统一通过"�
 ## 4. 环境（Env / Sky / Shadow 随世界；viewport 全局）
 
 - `sky` / `shadow` 地址写进**世界表**（`addr_sky` / `addr_shadow`）。**T6b/P4 订正**：影子数据不再走 profile 侧 shadow ring（`kShadowUboRing` 已删）—— 它是**世界私有**数据（`ECSContext::shadow_info` + `InitializeShadowInfoTable`，**按帧槽各一份**，地址 = 基址 + 帧槽 × `sizeof(ShadowInfo)`），提交点 `ECSContext::CommitShadowInfo` 写**本世界帧 RT**的当前槽；`sky` 仍单份同址。
+  **2026-10-07 订正**：`addr_sky` 已**整删**（`SkyInfo` 两个外观字段全仓无写者 ⇒ 取值搬成 `sky_atmosphere.glsl` 常量，外观逐位不变）；世界表现在剩 `addr_shadow` + `addr_ambient_env` 两条参数段地址。
 - **profile 的所有权与生命周期跟随世界**：世界创建时选/建自己的 profile、销毁时归还；内置 default 可共享。
   现状是设备级配置仓库 + "世界/RT 只持有 `EnvProfileID`"（`EnvironmentManager.h`、`OffscreenWorld.h:59`、`RenderTargetDesc.h:82`），**地址发布却走全局字段** ⇒ 多世界同帧只有最后解析的那个 profile 生效。本轮落点就是把地址与选择按世界走。
 - 收益：不同世界可用不同阴影技术（室内/室外）成为一等支持；消除跨世界互踩。

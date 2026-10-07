@@ -527,7 +527,7 @@ namespace hgl
             const graph::CameraInfo* GetActiveCameraInfo();
 
             /// 本世界**生效**的 env profile：显式设置优先，否则取本世界 RT 的 env_profile，再退回
-            /// 内置 default。世界表里的 `addr_sky` / `addr_shadow` 按它解析。
+            /// 内置 default。世界表里的 `addr_ambient_env` / `addr_shadow` 按它解析。
             graph::EnvProfileID GetEnvProfileID() const;
 
             /// 选本世界的 env profile；`take_ownership=true` 表示"本世界创建的"（Shutdown 时归还）。

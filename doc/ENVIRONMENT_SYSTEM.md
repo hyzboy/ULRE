@@ -27,6 +27,15 @@
 >    + 世界表 `WorldAddresses.addr_ambient_env` + profile 侧 `ambient_env_ubo` 物化/取址 + `EnvironmentSystem::EditAmbientEnvInfo` 四件套；
 > ③ shader 侧读点从天空块改到新块（`ShaderLibrary/ubo/scene_ubo.glsl` 的 `AmbientEnvInfoRef` + `#define ambient_env`）。
 > **下文凡把 IBL 句柄算作天空段内容、或写 `SkyInfo.env_tex` / 两段物化只有 `sky_ubo` 的段落，一律读作历史口径。**
+>
+> **④ 追加订正（2026-10-07，`sky` 段整删）**：`SkyInfo` 连同 `addr_sky` 已**整删** —— 它的两个字段
+> （`base_sky_color` / `halo_intensity`）只服务「假大气天空」这一种方法、且**全仓无写者**（唯一调用点是
+> `AtmosphereSkyMinimal` 的一句空 `EditSkyInfo()`）⇒ 取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl`
+> 内常量 `kBaseSkyColor` / `kHaloIntensity`，**外观逐位不变**（八台架/离屏两例/环境两条自检摘要均未变）。
+> `EnvironmentInfo` 现在只剩 `AmbientEnvInfo ambient_env` 一段；世界表 `WorldAddresses` = **72 B（9 字段）**。
+> **下文凡出现 `SkyInfo` / `SkyInfo sky` / `sky_ubo` / `SkyUBO:<profile>` / `EditSkyInfo()` 三件套 /
+> `addr_sky` / `SkyInfoRef` / `#define sky` / `GetSkyAddress` 的段落（字段清单、编辑入口、动态编辑说明、
+> shader 宏表），一律读作历史口径；要天空外观参数就按 R1 新建**它自己的**参数块。**
 > 规则与触点见 `doc/future/sky-domain-and-provider-params-plan.md` §2（R1 一槽一块一地址 / R2 同族字段）与 §3；
 > 禁复活由 `Test 47` 钉住（天空块再出现句柄或显式填充即红）。
 
@@ -65,7 +74,7 @@ constexpr EnvProfileID kEnvProfileDefault = 1;   // 内置默认 Profile 的固�
 
 struct EnvironmentInfo
 {
-    SkyInfo     sky;
+    AmbientEnvInfo ambient_env;   // ⚠（原 SkyInfo sky; 已于 2026-10-07 整删，见头部 ④）
     ShadowInfo  shadow;
 
     // 预留:FogInfo fog; ...
@@ -88,7 +97,7 @@ struct Profile
     EnvProfileID    id = kEnvProfileInvalid;
     AnsiString      name;
     EnvironmentInfo cpu;                                // CPU 权威数据
-    StructView<SkyInfo>    *sky_ubo    = nullptr;       // sky 段 GPU 物化(懒创建,default 例外)
+    // ⚠（原 sky_ubo 已于 2026-10-07 随 sky 段整删删除，见头部 ④）
     StructView<ShadowInfo> *shadow_ring[kShadowUboRing] = {}; // 按 acquired image 分槽,不是单份
     // ⚠ 历史口径(T6b/P4):shadow_ring / kShadowUboRing **已整删** —— 影子数据现在**世界私有**
     //   (ECSContext::shadow_info + InitializeShadowInfoTable + CommitShadowInfo),不再挂 profile
@@ -223,7 +232,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 | 数据 | GLSL 读点 | 地址来源 |
 |---|---|---|
 | camera | `CameraInfoBufferRef(...).cameras[pc_root.camera_row]`(`ShaderLibrary/ubo/scene_ubo.glsl:149`) | 相机行(世界级数据;`pc_root.camera_row` = 行号) |
-| sky | `SkyInfoRef(global_addresses.addr_sky)`(`scene_ubo.glsl:74`) | `GlobalAddresses.addr_sky` → 本轮改 `world.addr_sky` |
+| ~~sky~~ | ~~`SkyInfoRef(global_addresses.addr_sky)`~~（2026-10-07 整删） | — |
 | shadow | `ShadowInfoRef(global_addresses.addr_shadow)`(`scene_ubo.glsl:147`) | `GlobalAddresses.addr_shadow` → 本轮改 `world.addr_shadow` |
 | viewport | `ViewportInfoRef(global_addresses.addr_viewport)`(`scene_ubo.glsl:86`) | `GlobalAddresses.addr_viewport`(**保持全局**) |
 
@@ -236,7 +245,8 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 - 一个设备、N 个 profile、任意 RT 绑任意 profile、随时切换(下一帧生效);
 - 不设置即有合理默认(default,10:00 太阳,初始化即就绪);
-- 运行时动态编辑(太阳时间/方向/强度/天空色):`EditSkyInfo → MarkSkyDirty`,当帧生效;
+- 运行时动态编辑(太阳时间/方向/强度):**改光源行**（`LightSystem` / `EditLightRow`），当帧生效；
+  ~~`EditSkyInfo → MarkSkyDirty`~~（天空块已整删；天空色 = shader 常量）；
 - 离屏 RT 用不同天光(示例:`example/Offscreen/RenderToTexture.cpp:233-241`,`sun_intensity = 4.0f`、profile 名 `"RenderToTexture.OffscreenBright"`,补偿贴图二次着色的能量损耗,主屏保持 default);
 - 多 world(主/离屏)各按自己选中的 profile 取 sky 数据(未设置即 default);**订正(2026-09-28)**:现状 sky / shadow 地址写在**全局表**字段里,两个 world 选不同 profile 时后解析者覆盖前者 ⇒ 地址改为**按世界**发布(C2)后互不干扰。
 

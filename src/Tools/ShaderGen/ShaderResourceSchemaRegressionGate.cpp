@@ -3556,11 +3556,11 @@ namespace
 
     static const AddressOwnershipEntry kAddressOwnershipTable[] =
     {
-        // ── 世界私有（随世界：相机行表 / 4-ID 渲染项表 / DrawItemID 表 / 本世界 profile 的 sky+shadow）──
+        // ── 世界私有（随世界：相机行表 / 4-ID 渲染项表 / DrawItemID 表 / 影子数据）──
+        //   `addr_sky` 已于 2026-10-07 随 sky 段整删退出（表内不再登记）
         { "addr_camera_info",           true  },
         { "addr_global_render_items",   true  },
         { "addr_draw_item_ids",         true  },
-        { "addr_sky",                   true  },
         { "addr_shadow",                true  },
         { "addr_entity_gpu",           true  },   // T3：实体行表（世界私有；实体属世界 ⇒ 设备级会重演"跨世界同行冲突"）
         { "addr_l2w",                  true  },   // T3d：L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份）

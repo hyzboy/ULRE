@@ -11,7 +11,6 @@
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/module/EnvironmentManager.h>
-#include <hgl/graph/ubo/SkyInfo.h>
 #include <hgl/graph/ubo/ShadowInfo.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKTextureReadback.h>

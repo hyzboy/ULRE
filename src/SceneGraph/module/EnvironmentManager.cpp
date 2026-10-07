@@ -25,10 +25,10 @@ namespace hgl::graph
         return nullptr;
     }
 
-    /// 物化 profile 的**一个参数段**到 SSBO（sky / ambient_env 共用同一条纪律）。
+    /// 物化 profile 的**一个参数段**到 SSBO。
     ///
     /// 必须用 CreateSSBO：只有它带 SHADER_DEVICE_ADDRESS usage（BDA 取址前提）；
-    /// 数据经**世界表**解引用（addr_sky / addr_ambient_env），不吃 Scene 集绑定。
+    /// 数据经**世界表**解引用（addr_ambient_env），不吃 Scene 集绑定。
     /// 段不在设备级 dirty 扫描 registry 内（仅 StagedBuffer 注册）：数据写进映射窗口即可，
     /// Commit() 只把窗口范围标脏交 L2（staged 由 RenderBufferUploadSystem 上传）。
     ///
@@ -92,12 +92,6 @@ namespace hgl::graph
         return true;
     }
 
-    bool EnvironmentManager::MaterializeSkyUBO(Profile *profile)
-    {
-        return MaterializeProfileSegment(GetGraphicsContext(), profile,
-                                         profile->sky_ubo, profile->cpu.sky, "SkyUBO");
-    }
-
     bool EnvironmentManager::MaterializeAmbientEnvUBO(Profile *profile)
     {
         return MaterializeProfileSegment(GetGraphicsContext(), profile,
@@ -140,11 +134,9 @@ namespace hgl::graph
         profiles.push_back(p);
 
         // default 立即物化并标脏：任何 world 第一帧的设备级上传扫描即可拿到有效数据。
-        MaterializeSkyUBO(p);
         MaterializeAmbientEnvUBO(p);
 
-        GLogInfo(u8"[EnvironmentManager] default profile ready (sky UBO=%p, ambient_env UBO=%p)",
-                 (void *)(p->sky_ubo ? p->sky_ubo->GetGPUBuffer() : nullptr),
+        GLogInfo(u8"[EnvironmentManager] default profile ready (ambient_env UBO=%p)",
                  (void *)(p->ambient_env_ubo ? p->ambient_env_ubo->GetGPUBuffer() : nullptr));
     }
 
@@ -175,7 +167,6 @@ namespace hgl::graph
             if (!p)
                 continue;
 
-            ReleaseProfileSegment(p->sky_ubo, buffer_manager);
             ReleaseProfileSegment(p->ambient_env_ubo, buffer_manager);
         }
     }
@@ -217,42 +208,12 @@ namespace hgl::graph
         if (!p)
             return;
 
-        if (p->sky_ubo)
-        {
-            p->sky_ubo->Update(p->cpu.sky);    // 拷贝数据 + 置脏
-            p->sky_ubo->Commit();              // 标脏交 L2
-        }
-
         if (p->ambient_env_ubo)
         {
             p->ambient_env_ubo->Update(p->cpu.ambient_env);
             p->ambient_env_ubo->Commit();
         }
         // 影子数据不在本模块（T6b/P4：随世界，见 ECSContext::CommitShadowInfo）。
-    }
-
-    uint64_t EnvironmentManager::GetSkyAddress(EnvProfileID id)
-    {
-        EnsureDefault();
-
-        Profile *p = FindProfile(id);
-        if (!p)
-            p = FindProfile(kEnvProfileDefault);      // 无效句柄回退 default（与 Get 同语义）
-        if (!p || !MaterializeSkyUBO(p))
-            return 0;
-
-        auto *gc = GetGraphicsContext();
-        auto *device = gc ? gc->GetDevice() : nullptr;
-        if (!device)
-            return 0;
-
-        const uint64_t addr = device->GetBufferDeviceAddressAligned16(p->sky_ubo->GetBuffer()->GetBuffer());
-        if (addr == 0)
-        {
-            // 0 地址 = 读 sky 的 shader 解引用 0 基址（UB）⇒ 调用方必须保证不写进表
-            GLogError("[EnvironmentManager] GetSkyAddress 取不到设备地址: %s", p->name.c_str());
-        }
-        return addr;
     }
 
     uint64_t EnvironmentManager::GetAmbientEnvAddress(EnvProfileID id)
@@ -294,7 +255,6 @@ namespace hgl::graph
             auto *gc = GetGraphicsContext();
             auto *buffer_manager = gc ? gc->GetBufferManager() : nullptr;
 
-            ReleaseProfileSegment(p->sky_ubo, buffer_manager);
             ReleaseProfileSegment(p->ambient_env_ubo, buffer_manager);
 
             GLogInfo(u8"[EnvironmentManager] Release profile: %s (id=%u)",

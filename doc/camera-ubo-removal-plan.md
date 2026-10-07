@@ -1,5 +1,7 @@
 # 死绑定 Camera UBO 清理：统计结论与执行方案
 
+> ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
+
 > **注（2026-09-28）**：本文的清理已落地（相机数据统一走 BDA）。**相机数据的后续归属定稿**：
 > 相机是**世界级观察者数据**，将从设备级 `GlobalSSBOBufferRegistry` 的行池下沉为**世界私有存储**
 > （16 槽 × 8 帧槽，0 号槽恒为本世界默认相机），地址从全局表迁到世界表 `WorldAddresses` ——

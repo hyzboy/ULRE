@@ -2308,8 +2308,9 @@ namespace hgl
             UploadEntityRenderIDDirtyRows();
             UploadLightRowDirtyRows();
 
-            // env：**两个 provider 槽参数块都随本世界生效的 profile**（都单份 buffer ⇒ 全帧槽同址；
-            // T1：IBL 句柄自 sky 归位到它真正的消费者槽 `addr_ambient_env`），
+            // env：**provider 槽参数块随本世界生效的 profile**（单份 buffer ⇒ 全帧槽同址；
+            // T1：IBL 句柄自 sky 归位到它真正的消费者槽 `addr_ambient_env`；
+            // 2026-10-07：`addr_sky` 随 sky 段整删退出本表），
             // **影子数据随世界**（T6b/P4 归属订正：以前挂 profile，两世界共享 default profile 时互踩）。
             // 影子表按帧槽各一份 ⇒ 地址 = 基址 + 帧槽 × sizeof(ShadowInfo)（写本帧槽的是提交点的
             // CommitShadowInfo）；未建表 ⇒ 0（消费者判 0 缺席）。
@@ -2317,10 +2318,6 @@ namespace hgl
             const graph::EnvProfileID active_env_profile = GetEnvProfileID();
             if (auto *env_manager = ResolveEnvManager())
             {
-                const uint64_t sky_addr = env_manager->GetSkyAddress(active_env_profile);
-                if (sky_addr != 0)
-                    want.addr_sky = sky_addr;
-
                 const uint64_t ambient_env_addr = env_manager->GetAmbientEnvAddress(active_env_profile);
                 if (ambient_env_addr != 0)
                     want.addr_ambient_env = ambient_env_addr;
@@ -2330,7 +2327,6 @@ namespace hgl
                 + static_cast<uint64_t>(slot)
                 * static_cast<uint64_t>(sizeof(graph::ShadowInfo));
 
-            const uint64_t old_sky = dst->addr_sky;
             const uint64_t old_shadow = dst->addr_shadow;
             const uint64_t old_ambient_env = dst->addr_ambient_env;
 
@@ -2340,13 +2336,11 @@ namespace hgl
             *dst = want;
             world_addresses_table->Commit();
 
-            // env 地址变化时留一行痕（诊断"两世界同帧各自的 sky/shadow/ambient_env 是否真的分开"）
-            if (old_sky != want.addr_sky || old_shadow != want.addr_shadow
-             || old_ambient_env != want.addr_ambient_env)
+            // env 地址变化时留一行痕（诊断"两世界同帧各自的 shadow/ambient_env 是否真的分开"）
+            if (old_shadow != want.addr_shadow || old_ambient_env != want.addr_ambient_env)
                 LogInfo("[ECSContext::SyncWorldAddresses] 世界 \"%s\" 地址入表：profile=%u "
-                        "sky=0x%llX shadow[%u]=0x%llX ambient_env=0x%llX",
-                        GetName().c_str(), active_env_profile,
-                        static_cast<unsigned long long>(want.addr_sky), slot,
+                        "shadow[%u]=0x%llX ambient_env=0x%llX",
+                        GetName().c_str(), active_env_profile, slot,
                         static_cast<unsigned long long>(want.addr_shadow),
                         static_cast<unsigned long long>(want.addr_ambient_env));
 

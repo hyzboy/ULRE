@@ -1,5 +1,7 @@
 # Lit 材质数据流全链路分析
 
+> ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
+
 > **订正（2026-09-28）**：相机 / 环境 / 地址表断言已按权威文档 `doc/world-addresses-and-camera-model-plan.md`（§1、§4、§7）就地修订，本文改动项：
 > ① toml `[resources].ubos = [CameraInfo, SkyInfo]` **不再是"场景 UBO 描述符"**——Scene 集已整体退场，camera 经**相机行**（世界级数据，shader 用 `pc_root.camera_row` 索引）、sky 经**地址**（现为 `global_addresses.addr_sky`，批次 C2 后进世界表 `WorldAddresses`）消费；
 > ② `MTL_ROW` 的基址来自 **`GlobalAddresses` SSBO（无绑定无集，`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长）**，经 `pc_root.addr_global_addresses` 下发，不是"Scene 集里的 `GlobalAddressesInfo` UBO"；

@@ -5897,48 +5897,55 @@ int main(int argc, char** argv)
     {
         static const SourceContract kLightDomainContracts[] =
         {
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
-              "float       halo_intensity = 0.1f;",
-              "T6b：天空只留外观（底色 / 光晕强度）——光晕色恒为主光色，不再是独立字段" },
-
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+            // ── 2026-10-07 订正：天空参数块（原 `SkyInfo`）**整删**（见 Test 47 ⑥）──
+            // 它的两个字段只服务"假大气天空"这一种方法、且全仓无写者 ⇒ 取值搬成
+            // `sky_atmosphere.glsl` 内常量后外观逐位不变；空结构 + 从没被写过的地址没有保留价值。
+            // 于是"光源/时刻数据不得住参数块"改为钉在**唯一剩下的参数块载体** `EnvironmentInfo.h` 上
+            // （模型不变：光源与时刻只在光源域）。
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "halo_color",
               "T6b 禁复活：光晕色曾是主光色的同步副本（双源）—— 颜色直接读光源行，不许回字段",
               true },
 
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "sun_direction",
-              "T6b 禁复活：光源方向不得再住天空结构（真源 = 光源行 0）",
+              "T6b 禁复活：光源方向不得再住参数块（真源 = 光源行 0）",
               true },
 
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "sun_color",
-              "T6b 禁复活：光源颜色不得再住天空结构",
+              "T6b 禁复活：光源颜色不得再住参数块",
               true },
 
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "sun_intensity",
-              "T6b 禁复活：光源强度不得再住天空结构（shader 读 main_light.direction_intensity.w）",
+              "T6b 禁复活：光源强度不得再住参数块（shader 读 main_light.direction_intensity.w）",
               true },
 
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "sun_ang_deg",
-              "T6b 禁复活：太阳角径不得再住天空结构（真源 = 光行 color_angle.a）",
+              "T6b 禁复活：太阳角径不得再住参数块（真源 = 光行 color_angle.a）",
               true },
 
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "moon_color",
               "T6b/D3 禁复活：第二光源的月亮色字段（真要第二光源时加一行，不复活字段）",
               true },
 
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "SetTime",
-              "T6b 禁复活：天空的时刻模型已迁到 graph::EvaluateSunLight（光源域）",
+              "T6b 禁复活：时刻模型只住 graph::EvaluateSunLight（光源域）",
+              true },
+
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
+              "SkyInfo         sky;",
+              "2026-10-07 禁复活：天空参数块不得作为 profile 载体字段复活",
               true },
 
             { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
               "float halo_intensity;",
-              "T6b/T1：天空镜像只留外观标量（底色 / 光晕强度）——与 C++ SkyInfo 同序" },
+              "2026-10-07 禁复活：天空外观标量的 GLSL 镜像不得复活（取值已是 sky_atmosphere.glsl 内常量）",
+              true },
 
             { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
               "sky.sun_direction",
@@ -5985,8 +5992,8 @@ int main(int argc, char** argv)
               "T6b：太阳时刻模型收在光源域（默认主光与默认光晕同源，避免双份模型）" },
 
             { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
-              "vec3 mie = main_light.color_angle.rgb * mie_phase * sky.halo_intensity;",
-              "T6b：Mie 光晕色读主光色（旧双源副本已删）" },
+              "vec3 mie = main_light.color_angle.rgb * mie_phase * kHaloIntensity;",
+              "T6b：Mie 光晕色读主光色；2026-10-07：强度乘子改为 shader 内常量（天空块整删）" },
 
             { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
               "const auto *light_row = context->GetLightRowTable().Row(graph::kMainLightRowIndex);",
@@ -6021,8 +6028,9 @@ int main(int argc, char** argv)
                                                                          sizeof(kLightDomainContracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 45 Passed: T6b 减法契约成立（光源定义单一真源 = 世界光源行 0；天空两侧 6 条禁复活 + "
-                 u8"阴影域不回读环境域；shader 四处改读光行；死头与空 TU 已清）。");
+        GLogInfo(u8"Test 45 Passed: T6b 减法契约成立（光源定义单一真源 = 世界光源行 0；"
+                 u8"光源/时刻字段不得住参数块（2026-10-07 起钉在 EnvironmentInfo.h）+ 阴影域不回读环境域；"
+                 u8"shader 四处改读光行；死头与空 TU 已清）。");
     }
 
 
@@ -6147,10 +6155,6 @@ int main(int argc, char** argv)
               "static_assert(sizeof(AmbientEnvInfo) == 16,",
               "T1：新块尺寸契约丢失（块内只有 uvec4 ⇒ 16 B，不需要显式填充）" },
 
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
-              "static_assert(sizeof(SkyInfo) == 32,",
-              "T1：SkyInfo 尺寸契约丢失（20 B 数据 + 12 B 尾部对齐填充）" },
-
             { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
               "layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer AmbientEnvInfoRef",
               "T1：GLSL 侧缺 ambient_env 参数块镜像（两端不同步 = 静默读垃圾句柄）" },
@@ -6177,8 +6181,8 @@ int main(int argc, char** argv)
               "T1：地址只有字段没发布（I4 的历史坑：表里恒 0 ⇒ 静默失效）" },
 
             { "TestRenderItemDataStorage.cpp", OS_TEXT("src/ecs/support/TestRenderItemDataStorage.cpp"),
-              "static_assert(sizeof(graph::WorldAddresses) == 80,",
-              "T1：世界表夹具未同步（10×uint64 = 80 B；不同步 = 契约测试读旧布局）" },
+              "static_assert(sizeof(graph::WorldAddresses) == 72,",
+              "T1/2026-10-07：世界表夹具未同步（9×uint64 = 72 B，addr_sky 退出；不同步 = 契约测试读旧布局）" },
 
             // ③ 写者入口 + profile 侧物化/取址/脏标记
             { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
@@ -6219,12 +6223,12 @@ int main(int argc, char** argv)
               "T1：唯一读者未改读新块（只改一半 = 两端不同源）" },
 
             // ⑤ 旧形态禁复活
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "env_tex",
-              "T1 禁复活：句柄不得再寄住天空外观结构（偏移错位事故的病灶）",
+              "T1 禁复活：句柄不得再寄住参数块载体（偏移错位事故的病灶；句柄只住它自己的消费者块）",
               true },
 
-            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "_pad",
               "T1 禁复活：同族字段块不需要显式填充（填充只是兜底，不是解法）",
               true },
@@ -6243,6 +6247,61 @@ int main(int argc, char** argv)
               "sky.env_tex",
               "T1 禁复活：IBL 模块不得再读 sky 的句柄",
               true },
+
+            // ⑥ 2026-10-07：**sky 段整删**（`SkyInfo` / `addr_sky` / GLSL 镜像与宏 / 编辑入口 / 发布侧）
+            //    两个外观字段取值搬成 `sky/sky_atmosphere.glsl` 内常量 ⇒ 全仓外观逐位不变。
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
+              "#include<hgl/graph/ubo/SkyInfo.h>",
+              "2026-10-07 禁复活：SkyInfo.h 已删除，参数块载体不得再包含它",
+              true },
+
+            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
+              "uint64_t addr_sky",
+              "2026-10-07 禁复活：世界表不得再有 sky 地址字段（表 = 9×uint64 = 72 B）",
+              true },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "readonly buffer SkyInfoRef",
+              "2026-10-07 禁复活：GLSL 侧天空块镜像不得复活",
+              true },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "#define sky ",
+              "2026-10-07 禁复活：天空块消费者宏不得复活",
+              true },
+
+            { "EnvironmentManager.h", OS_TEXT("inc/hgl/graph/module/EnvironmentManager.h"),
+              "GetSkyAddress",
+              "2026-10-07 禁复活：profile 侧天空取址 API 不得复活",
+              true },
+
+            { "EnvironmentManager.h", OS_TEXT("inc/hgl/graph/module/EnvironmentManager.h"),
+              "sky_ubo",
+              "2026-10-07 禁复活：profile 侧天空段物化槽不得复活",
+              true },
+
+            { "EnvironmentSystem.h", OS_TEXT("inc/hgl/ecs/systems/render/EnvironmentSystem.h"),
+              "graph::SkyInfo *EditSkyInfo()",
+              "2026-10-07 禁复活：天空外观编辑入口不得复活（要写天空就按 R1 建它**自己的**参数块）",
+              true },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "want.addr_sky",
+              "2026-10-07 禁复活：世界表发布侧不得再写 sky 地址",
+              true },
+
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+              "const vec3  kBaseSkyColor  = vec3(0.1, 0.3, 0.6);",
+              "2026-10-07：天空底色常量（原 SkyInfo::base_sky_color 取值 —— 外观逐位不变的前提）" },
+
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+              "const float kHaloIntensity = 0.1;",
+              "2026-10-07：光晕强度常量（原 SkyInfo::halo_intensity 取值）" },
+
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+              "sky.",
+              "2026-10-07 禁复活：天空模块不得回读已删的天空块成员（外观 = 光行 + 常量）",
+              true },
         };
 
         if (const int failed = verify_source_contracts(47, kProviderBlockRelocationContracts,
@@ -6251,7 +6310,8 @@ int main(int argc, char** argv)
             return failed;
 
         GLogInfo(u8"Test 47 Passed: T1 归位契约成立 —— IBL 句柄已迁出天空块：AmbientEnvInfo（块内只有句柄）"
-                 u8" + GLSL 镜像/宏 + 世界表 addr_ambient_env（字段/镜像/门登记/发布/80B 夹具五处接线）"
+                 u8" + GLSL 镜像/宏 + 世界表 addr_ambient_env（字段/镜像/门登记/发布/夹具五处接线；"
+                 u8"2026-10-07 起夹具 = 72 B / 9 字段）"
                  u8" + EnvironmentSystem 四件套与 profile 侧物化/取址/脏标记 + 唯一读者间接光照模块改读新块；"
                  u8"天空块不再持有句柄与显式填充（禁复活 5 条）。");
     }

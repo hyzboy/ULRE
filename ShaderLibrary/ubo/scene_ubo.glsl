@@ -55,23 +55,10 @@ layout(buffer_reference, scalar, buffer_reference_align=64) readonly buffer Came
     CameraInfoData cameras[];
 };
 
-// sky（S2：地址进表，退出 Scene 集绑定）：sky 是单份 buffer ⇒ 所有帧槽同址。
-// **`sky_provider` 槽的参数块，块内只含外观标量**（底色 / 光晕强度）：
-//   · 光源参数（方向 / 颜色 / 强度 / 角径 / 阴影开关）已迁出到**光源行**
-//（`light_rows[0]` = 主方向光，T6b）；
-//   · IBL 句柄已归位到它真正的消费者槽 —— 见下方 `AmbientEnvInfoRef`
-//（`ambient_light_provider`，T1）。
-// 光晕**颜色**直接读主光色（不再单独成字段）。
-// 块内同族字段 ⇒ 不再需要显式填充，也不存在句柄对齐分歧（R2）。
-// 字段与 C++ `SkyInfo` 逐字段同序（`vec4 base_sky_color` / `float halo_intensity`）。
-layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer SkyInfoRef
-{
-    vec4 base_sky_color;
-    float halo_intensity;
-};
-
-#define sky SkyInfoRef(world_addresses.addr_sky)
-
+// ⚠ **sky 段已整删（2026-10-07）**：原 `SkyInfoRef`（`base_sky_color` / `halo_intensity`）
+// 与宏 `sky` 一并删除 —— 那两个字段全仓无写者，取值搬成 `sky/sky_atmosphere.glsl` 内常量；
+// 世界表 `addr_sky` 同步退出。真做天空方法时按 R1 新建它自己的参数块 + 地址。
+//
 // ambient_env（`ambient_light_provider` 槽的参数块；地址进世界表 ⇒ 单份 buffer，全帧槽同址）。
 // C++ 真源 = `inc/hgl/graph/ubo/AmbientEnvInfo.h`；块内**只有句柄**（两端同型 `uvec4`）
 // ⇒ 不需要填充、也不会有偏移分歧。消费者 = `lighting/indirect_ibl.glsl`。
@@ -135,7 +122,6 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
     uint64_t addr_camera_info;          // 相机行表（行号 = 相机槽 × 帧槽总数 + 帧槽）
     uint64_t addr_global_render_items;  // 4-ID 渲染项表（世界私有）
     uint64_t addr_draw_item_ids;        // DrawItemID 压缩索引表（世界私有）
-    uint64_t addr_sky;                  // 本世界 profile 的 SkyInfo（单份 ⇒ 全帧槽同址）
     uint64_t addr_shadow;               // 本世界 profile 的 ShadowInfo（每帧槽一份 ring）
     uint64_t addr_entity_gpu;           // 实体行表 EntityGPU（世界私有；GPU 剔除的枚举源）
     uint64_t addr_l2w;                  // L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份，每帧槽一份）

@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/graph/ubo/SkyInfo.h>
 #include<hgl/graph/ubo/AmbientEnvInfo.h>
 #include<cstdint>
 
@@ -21,13 +20,18 @@ namespace hgl::graph
      * 随 profile（profile 可被多个世界共享 ⇒ 两个世界同帧会互相覆写同一份影子数据；CSM 的
      * RT/控制器本来就挂世界）。影子数据的 CPU 权威 = `ECSContext::EditShadowInfo()`，
      * 设备镜像 = 世界私有 SSBO（地址 `WorldAddresses.addr_shadow`，按帧槽各一份）。
-     * 光源数据同理在**世界私有光源行**（`addr_lights`）。本结构只剩**两个 provider 槽的参数块**：
-     * `sky`（天空外观 = `sky_provider`）与 `ambient_env`（环境光 = `ambient_light_provider`，T1 归位）。
+     * 光源数据同理在**世界私有光源行**（`addr_lights`）。
+     *
+     * ⚠ **2026-10-07：`sky` 段整删**（原 `SkyInfo`）。理由：它的两个字段（`base_sky_color` /
+     * `halo_intensity`）只服务"假大气天空"这一种方法，且**全仓从来没有写者**（唯一调用点只调了一次
+     * `EditSkyInfo()` 未改字段）⇒ 取值搬成 `sky_atmosphere.glsl` 内常量后外观逐位不变；空的结构 +
+     * 一条从没被写过的地址（`addr_sky`）没有保留价值（零兼容、不留空壳）。真做天空方法时按 R1 新建
+     * 它**自己的**参数块。
+     * 本结构现在只剩 **`ambient_env`**（`ambient_light_provider` 槽参数块）。
      */
     struct EnvironmentInfo
     {
-        SkyInfo         sky;            ///< `sky_provider` 槽参数块（天空外观）
-        AmbientEnvInfo  ambient_env;    ///< `ambient_light_provider` 槽参数块（IBL 句柄；T1 从 sky 归位）
+        AmbientEnvInfo  ambient_env;    ///< `ambient_light_provider` 槽参数块（IBL 句柄）
 
         // 预留：FogInfo fog; ...
     };

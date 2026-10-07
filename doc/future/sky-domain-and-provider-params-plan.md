@@ -13,6 +13,16 @@
 > - `doc/ENVIRONMENT_SYSTEM.md`（环境域现状：profile + sky UBO；本稿改变其「sky 段形态」一节）
 > - `doc/world-addresses-and-camera-model-plan.md`（地址三档；本稿给世界表**再加一格** `addr_ambient_env`）
 > - `doc/csm-mechanism.md`（CSM 机制，本稿不碰）
+>
+> **⚠ 落地记录（2026-10-07）：`sky` 段整删 —— 本稿 §0.3 / §2.2 / §3.2 / §4-T1 里「`SkyInfo` 保留外观标量」的形态已作废。**
+> 用户拍板：`SkyInfo` 的两个字段（`base_sky_color` / `halo_intensity`）只服务「假大气天空」这一种方法，且
+> **全仓没有一个写者**（唯一「调用点」是 `example/Environment/AtmosphereSkyMinimal.cpp` 的一句空 `EditSkyInfo()`，
+> 连返回值都没接、未改任何字段）⇒ 取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 内常量
+> `kBaseSkyColor` / `kHaloIntensity`，**外观逐位不变**；`SkyInfo.h` 删除、`addr_sky` 退出世界表
+> （`WorldAddresses` 80 → **72 B**）、GLSL 镜像与 `#define sky` 删除、`EnvironmentManager` / `EnvironmentSystem`
+> 的 sky 面删除、`EnvironmentInfo` 只剩 `ambient_env` 一段。
+> **R1–R4 规则不变**（它们定义的正是「将来怎么做」），且本稿 **T2 的触发面因此缩到 `AmbientEnvInfo` 一段**（16 B）。
+> 实跑判据见 §5.1；口径订正见 §7。
 
 ---
 
@@ -22,7 +32,7 @@
 
 | # | 决策 | 落点 |
 |---|---|---|
-| S1 | **`SkyInfo` 的定位是"未来多种天空/天光方法共用的数据结构"**，不是"光照参数结构"；当前只有一个方向光，它存在的唯一理由是"避免场景太黑"（光照系统尚未正式开始做） | §1 / §2 |
+| S1 | **（该结构已于 2026-10-07 整删；本决策作为「将来天空方法共用一个块」的规则保留）`SkyInfo` 的定位是"未来多种天空/天光方法共用的数据结构"**，不是"光照参数结构"；当前只有一个方向光，它存在的唯一理由是"避免场景太黑"（光照系统尚未正式开始做） | §1 / §2 |
 | S2 | **现在不改结构，只把规则定下来**（不为未实现的功能造脚手架；等第三种 provider 或某个天空方法需要逐帧演化时再动） | §2 / §4 |
 | S3 | **句柄类字段必须与外观标量分离成独立块**；`_pad` + `offsetof` 断言只是**兜底**，不是解法 | §2.1 R2 |
 | S4 | 沿用零兼容纪律：**不保留双写期/兼容分支**；删除时全仓 grep 确认零残留 | §4 / §6 |
@@ -42,7 +52,7 @@
 
 ### 0.3 现状诊断（事实依据，逐条给 path:symbol）
 
-- **`SkyInfo` 现在只有 4 个字段、48 B**（`inc/hgl/graph/ubo/SkyInfo.h`）：
+- **（当时现状；该结构 2026-10-07 整删）`SkyInfo` 当时只有 4 个字段、48 B**（`inc/hgl/graph/ubo/SkyInfo.h`）：
   `Color4f base_sky_color`(0) + `float halo_intensity`(16) + `uint32_t _pad[3]`(20..32，**为对齐而存在的填充**) + `Vector4u env_tex`(32)；
   三条 GPU ABI 断言：`sizeof == 48` / `halo_intensity@16` / `env_tex@32`。
 
@@ -144,7 +154,7 @@
 
 | 块 | 内容 | 地址 | 写者 | 帧槽 |
 |---|---|---|---|---|
-| `SkyInfo`（`sky_provider`） | `Color4f base_sky_color` + `float halo_intensity`（20 B，**不再有 `_pad`、不再有句柄**） | `addr_sky`（保持现状） | `EnvironmentSystem::EditSkyInfo` → `EnvironmentManager`（profile 侧，**保持现状**） | 单份（R3 触发后再议） |
+| ~~`SkyInfo`（`sky_provider`）~~ **已整删（2026-10-07）** | 两个外观标量 ⇒ 取值搬成 `sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（**外观逐位不变**） | ~~`addr_sky`~~（一并删除） | ~~`EnvironmentSystem::EditSkyInfo`~~（一并删除） | —（无块则无帧槽问题；将来天空方法需要参数时按 R1 建**它自己的**块） |
 | `AmbientEnvInfo`（`ambient_light_provider`） | `Vector4u env_tex`（3 句柄 + 1 预留，16 B，块内只有句柄 ⇒ 天然 16 对齐） | **新增** `addr_ambient_env` | `EnvironmentSystem`（或新 `AmbientLightSystem`，见下）| 单份（同 R3） |
 
 > 写者归属：`env_tex` 的写者是**示例/资源侧**（`IBLEnvironment` 注册三张纹理后写句柄）。
@@ -224,8 +234,12 @@
 - **内容**：把该块从"单份"改为"按帧槽各一份"（照 `addr_lights`/影子数据的做法：步长 = `sizeof(块)`，
   只写当前交换链帧那一槽、且**在 acquire 之后**写），`SyncWorldAddresses` 发布 `基址 + 帧槽 × 步长`，
   写者改为"提交点写本帧槽"（照 `ECSContext::CommitShadowInfo`）。
-- **判据**：八台架摘要仍逐位 + 该方法的自检 + 新增契约（"步长口径/写本帧槽/离 acquire 之前不写"各一条）。
+- **判据**：八台架摘要仍逐位 + 该方法的自检 + 新增契约（「步长口径/写本帧槽/离 acquire 之前不写」各一条）。
 - **回滚点**：tag `pre-sky-t2`。
+- **⚠ 2026-10-07：触发面已缩小** —— `sky` 段整删后，本任务只剩 `AmbientEnvInfo` 一段（16 B）可被逐帧演化。
+  另按上一轮口径（会话内已拍板）：**逐帧演化的参数块 = 世界私有 + 按帧槽分份** —— 只做分份会在
+  profile 侧把「跨帧覆写」换成「跨世界覆写」（共享 profile 的两个世界同槽互踩），所以 T2 落地时
+  建议与世界私有化同批。
 
 ### T3（触发）—— 通用结构镜像对拍（R4）
 
@@ -294,6 +308,31 @@
 > 16 对齐 ⇒ 结构体尺寸向上取整。**不是** 20。尾部填充其后没有字段 ⇒ 两端不构成契约，
 > 真正的契约只有偏移 `base_sky_color@0` / `halo_intensity@16`（断言按实际值写成 32）。
 
+### 5.1 场景 A 实跑记录（2026-10-07：sky 段整删）
+
+**改动面**（一次落地）：`SkyInfo.h` 删除；`EnvironmentInfo` 只剩 `ambient_env`；`WorldAddresses` 删 `addr_sky`
+（80 → **72 B**，夹具 `sizeof/offsetof/零值` + 3 处内联 GLSL 镜像 + 门 `kAddressOwnershipTable` 同步）；
+`scene_ubo.glsl` 删 `SkyInfoRef` + `#define sky` + 世界表镜像字段；`Context.cpp` 删 sky 地址发布与日志字段；
+`EnvironmentManager` 删 `sky_ubo` / ``MaterializeSkyUBO`/ `GetSkyAddress` / `MarkDirty` 的 sky 一半 / 释放路径；
+`EnvironmentSystem` 删 `EditSkyInfo`/`GetSkyInfo`/`SetSkyInfo`/`MarkSkyDirty`；两处 CMake 源清单（SceneGraph/ShaderGen）同步；
+shader 两个标量 → 常量 `kBaseSkyColor` / `kHaloIntensity`。
+**纪律**：结构尺寸变了 ⇒ 清整棵 `*.dir` obj 树 + 清全部 `shader-cache` 后重编（I7）。
+
+| 判据 | 实测 |
+|---|---|
+| 全量重编 | 0 编译错误（3 个 CM 示例的 `MSB3073` 来自 vcpkg `z-applocal` 并行拷贝竞态；单建各目标 RC=0） |
+| 门 `ShaderResourceSchemaRegressionGate` | **46 PASS / 0 FAIL**（`addr_sky` 归属登记删掉不改 PASS 数） |
+| `TestCSMIncrementalPass` | rc=0（Test 44/45/46/47/48 全 Passed；Test 47 新增 ⑥「sky 整删」11 条） |
+| `TestRenderItemDataStorage` | rc=0（`WorldAddresses` **72 B** 夹具 + 3 处内联 GLSL 镜像同步） |
+| 八台架 + 离屏两例（12 项） | **全 PASS**，摘要**逐位不变**、`D=0`、`ENGAGED x==y`、拒绝 0 |
+| **环境两条自检（外观零变化的实证）** | **逐位不变**：IBLEnvironment `0x2D28D72AEA4FC87D` / AtmosphereSkyMinimal `0xC914C338EFC7790E` |
+| `AlphaTestShadow` | rc=0，拒绝 0 |
+| V7 `DualWorldShadows` | **PASS**（S0=S1=`0x55B0F81FEB86BACC` / S2=`0xD58FA9C3DF405ACF`；子世界 S0=`0xB63D9FE07F9BEA9C` / S1=S2=`0xFDA63532CCBB8E2F`，与 C4 记录一致） |
+| 环境示例族 5 例 | 0 VUID / 0 `[ERROR]` / 0 shader 编译失败 |
+
+> 结论：**外观逐位不变**（两条自检 + 八台架摘要同时不变 = 结构性删除没有动渲染结果），且 R1–R4 规则未变。
+> 这是"删死代码"的标准收口姿势：**先证明"没有人写它"，再证明"删了画面一样"**。
+
 ---
 
 ## 6. 风险
@@ -316,6 +355,7 @@
 | 「给 `SkyInfo` 加一条专用门 `W.sky-info-struct-parity`」（本会话上一轮的助手建议） | **不做专用门**；改为 R2（块内同族字段 + 句柄独立成块）治根 + T3 的**通用**对拍机制 | 结构未定型、只有 2 个消费者、48 B；专用门治的是症状（偏移对齐）。真正病根是"句柄寄生在外观结构里"（§0.3 IBL 事故） |
 | 「`SkyInfo` 是光照参数结构」（T6b 之前的形态） | `SkyInfo` = **`sky_provider` 槽的参数块**；光源参数在光源行、IBL 句柄归 `ambient_light_provider` | 字段与消费者的映射本就是一槽一块（§0.3 表） |
 | 「T1 后 `sizeof(SkyInfo) == 20`」（本稿 §3.2 原写法） | 实测 **32**（20 B 数据 + 12 B 尾部对齐填充），断言按 32 落地 | 工程定义 `GLM_FORCE_DEFAULT_ALIGNED_GENTYPES` ⇒ `Color4f` 16 对齐 ⇒ 尺寸向上取整；**写断言前先量化**（否则又一条「凭形状推断」的错断言） |
+| 「`SkyInfo` 作为 `sky_provider` 参数块保留（本稿 §2.2 原写法）」 | **整删**（`SkyInfo.h` / `addr_sky` / GLSL 镜像与宏 / 编辑入口一并删） | 两个外观字段全仓**无写者**、只服务一种假大气方法 ⇒ 搬成 shader 常量后外观逐位不变；空结构 + 从未被写过的地址没有保留价值（零兼容、不留空壳）。**留着反而违反 R1**：它会招「往天空块堆字段」的老路 |
 | 「sky 取不到地址（0）时保留上一份好值」（`SyncWorldAddresses` 的注释） | **注释与实现不符**：代码实际把 0 写进表（`want{}` 从零起算）。本轮为 `addr_ambient_env` **按原形镜像**、未改 sky 语义（保持单批可归因） | 与 `addr_l2w` 的 `(addr != 0) ? addr : dst->addr_l2w` 口径不一致；两段应一起收口（另立小批，届时同批改注释与实现） |
 | 「T3 触发 = 第 3 个 BDA 结构块出现」（本稿 §4 原写法） | 改为**按新需求触发**：新增参数块 / 新增 BDA 结构块时随该块一起落地；存量块不补专门门 | 按块数判在今天就已成立（5+ 块且刚出过一次布局错位）⇒ 条件失去筛选力，是「任何时刻都成立 = 永远不做」的伪触发 |
 
@@ -325,11 +365,13 @@
 
 ### 8.1 关键文件索引
 
-- 天空/环境数据：`inc/hgl/graph/ubo/{SkyInfo.h, AmbientEnvInfo.h(新建), EnvironmentInfo.h, WorldAddresses.h}`
+- 天空/环境数据：`inc/hgl/graph/ubo/{AmbientEnvInfo.h, EnvironmentInfo.h, WorldAddresses.h}`
+  （`SkyInfo.h` 已于 2026-10-07 整删；天空外观常量在 `ShaderLibrary/sky/sky_atmosphere.glsl`）
 - profile 管理：`inc/hgl/graph/module/EnvironmentManager.h` + `src/SceneGraph/module/EnvironmentManager.cpp`
 - 系统与帧入口：`inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp`、
   `src/ecs/core/Context.cpp`（`SyncWorldAddresses` / `Initialize*Table` / `CommitShadowInfo`）
-- shader：`ShaderLibrary/ubo/scene_ubo.glsl`（`SkyInfoRef` / `WorldAddresses` 镜像 / `#define sky`）、
+- shader：`ShaderLibrary/ubo/scene_ubo.glsl`（`WorldAddresses` 镜像 / `AmbientEnvInfoRef` / `#define ambient_env`；
+  `SkyInfoRef` 与 `#define sky` 已于 2026-10-07 删除）、
   `ShaderLibrary/sky/sky_atmosphere.glsl`（`sky_provider`）、`ShaderLibrary/lighting/indirect_ibl.glsl`（`ambient_light_provider`）
 - 消费者示例：`example/Environment/{IBLEnvironment.cpp, AtmosphereSkyMinimal.cpp}`
 - 判据载体：`example/Shared/FrameDigest.h`、`src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp`、
@@ -341,7 +383,7 @@
   T6b 减法 `dc49c0dd9` + `24cfb90e6`；`SkyInfo` 布局错位修复 `949234482`；P4 影子世界私有化 `ada3fa48b` + `b46fced20`。
 - 已定型：光源行（`LightRow` 64 B × 16 行，`addr_lights` 按帧槽切份，行 0 = 主方向光，`LightSystem` 写）；
   影子数据（世界私有，`ECSContext::shadow_info` + `InitializeShadowInfoTable` + `CommitShadowInfo`，`addr_shadow`）。
-- `SkyInfo` 现状 = `base_sky_color` + `halo_intensity` + `_pad[3]` + `env_tex`（48 B）。
+- `SkyInfo` 现状 = **已整删（2026-10-07）**；当时形态为 `base_sky_color` + `halo_intensity` + `_pad[3]` + `env_tex`（48 B）。
 
 ### 8.3 执行须知（给新会话）
 

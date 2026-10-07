@@ -1,5 +1,7 @@
 # 材质数据全局池化 + 4-ID Draw Item 大计划（技术文档）
 
+> ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
+
 > 基线：**2026-09-23**（HEAD `d07b85526`）——2026-09-11 纹理引用重构 + 2026-09-18 Meshlet 双轨调度 + 2026-09-19～23 全局池化/4-ID/Global 改名收口。
 > 状态：数据面（阶段 1、2、3、4、6）**已全部落地并改名收口**；阶段 5（地址载体分层）**已落地（2026-10-02 实测核对）**——全局地址表已在（现为 **SSBO 表**，非 UBO；见下方订正①）且类型池基址已挪入；`addr_mesh_draw_params` 已一拆为二（表内 `addr_mesh_draw_params_pool` / 批内 `addr_batch_mesh_draw_params`，见订正②），原「UBO 与 push 双源并存」状态已随 Scene 集退场消失（详见 §6.5 订正）。
 > 目的：子会话拿到本文即可拆任务，无需重新 grep——结构、数据流、改动点、行号均以本基线核实。行号随改动漂移，**以符号定位为准**。

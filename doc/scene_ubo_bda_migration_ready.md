@@ -2,6 +2,8 @@
 
 ## 先说结论
 
+> ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
+
 这份交接文档**任务定性正确、验证清单可信，但它的核心前提（pc_root 容量）是错的**，而且照它的口径做会在迁移到一半时撞上 128B 硬顶。它把 `GlobalAddresses` 的 56B 当成了 `RootAddresses`（pc_root）的大小（真实 **72B**，`inc/hgl/graph/ShaderBufferSources.h:265-323`），于是"加 4~5 个地址 ⇒ 约 96B"的估算是少算了一倍；按真实清单算是 **144B > 128B**。另外它的"读取面 7/4/2/2/2（文件数）"是朴素 grep 的结果，含声明文件、include 路径与同名局部变量的假阳性，不可用于排期。
 
 ---

@@ -21,7 +21,6 @@ set(SHADERGEN_COMMON_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderCacheRoot.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModule.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeResourceManifest.h
-    ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ColorPalette.h)
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})

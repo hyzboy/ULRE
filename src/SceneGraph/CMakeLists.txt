@@ -63,8 +63,7 @@ SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 # 2. Scene Management - 场景管理系统
 # ============================================================================
 
-SET(SCENE_ENVIRONMENT_FILES ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
-    ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/LightRow.h
+SET(SCENE_ENVIRONMENT_FILES ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/LightRow.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/EnvironmentInfo.h)
 
 SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})

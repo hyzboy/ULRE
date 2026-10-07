@@ -211,29 +211,28 @@ int main(int argc, char **argv)
         static_assert(offsetof(graph::GlobalAddresses, addr_emissive_surface) == 24);
         static_assert(offsetof(graph::GlobalAddresses, addr_transmission_surface) == 32);
         static_assert(offsetof(graph::GlobalAddresses, addr_color_palette) == 40);
-        // 每帧槽字段：viewport（sky / shadow 已随世界迁入 WorldAddresses —— C2）
+        // 每帧槽字段：viewport（shadow 已随世界迁入 WorldAddresses —— C2）
         static_assert(offsetof(graph::GlobalAddresses, addr_viewport) == 48);
 
-        // 2. WorldAddresses = **世界私有**（相机行表 / 渲染项表 / DrawItemID 表 / 本世界 profile 的 sky+shadow；
+        // 2. WorldAddresses = **世界私有**（相机行表 / 渲染项表 / DrawItemID 表 / 本世界 profile 的影子数据；
         //    + 实体行表 / L2W 池 / 实体 4-ID 表（T3d-3a）；+ 光源行表（T6b）；
-        //    + 环境光 provider 参数块（T1）；10×uint64 = 80B）
-        static_assert(sizeof(graph::WorldAddresses) == 80, "WorldAddresses must be exactly 80 bytes");
+        //    + 环境光 provider 参数块（T1）；9×uint64 = 72B（2026-10-07 addr_sky 退出））
+        static_assert(sizeof(graph::WorldAddresses) == 72, "WorldAddresses must be exactly 72 bytes");
         static_assert(offsetof(graph::WorldAddresses, addr_camera_info) == 0);
         static_assert(offsetof(graph::WorldAddresses, addr_global_render_items) == 8);
         static_assert(offsetof(graph::WorldAddresses, addr_draw_item_ids) == 16);
-        static_assert(offsetof(graph::WorldAddresses, addr_sky) == 24);
-        static_assert(offsetof(graph::WorldAddresses, addr_shadow) == 32);
-        static_assert(offsetof(graph::WorldAddresses, addr_entity_gpu) == 40);
-        static_assert(offsetof(graph::WorldAddresses, addr_l2w) == 48);
-        static_assert(offsetof(graph::WorldAddresses, addr_entity_render_ids) == 56);
-        static_assert(offsetof(graph::WorldAddresses, addr_lights) == 64);
-        static_assert(offsetof(graph::WorldAddresses, addr_ambient_env) == 72);
+        static_assert(offsetof(graph::WorldAddresses, addr_shadow) == 24);
+        static_assert(offsetof(graph::WorldAddresses, addr_entity_gpu) == 32);
+        static_assert(offsetof(graph::WorldAddresses, addr_l2w) == 40);
+        static_assert(offsetof(graph::WorldAddresses, addr_entity_render_ids) == 48);
+        static_assert(offsetof(graph::WorldAddresses, addr_lights) == 56);
+        static_assert(offsetof(graph::WorldAddresses, addr_ambient_env) == 64);
         static_assert(graph::kWorldAddressesSlotStride % 16 == 0,
                       "WorldAddresses 槽步长必须 16B 对齐");
 
         graph::WorldAddresses wa{};
         if (wa.addr_camera_info != 0 || wa.addr_global_render_items != 0 || wa.addr_draw_item_ids != 0
-         || wa.addr_sky != 0 || wa.addr_shadow != 0 || wa.addr_entity_gpu != 0 || wa.addr_l2w != 0
+         || wa.addr_shadow != 0 || wa.addr_entity_gpu != 0 || wa.addr_l2w != 0
          || wa.addr_entity_render_ids != 0 || wa.addr_lights != 0 || wa.addr_ambient_env != 0)
         {
             GLogError(u8"Test 8 Failed: Expected 0 initialized addresses in WorldAddresses");
@@ -243,7 +242,6 @@ int main(int argc, char **argv)
         wa.addr_camera_info         = 0x123456780000ULL;
         wa.addr_global_render_items = 0xABCD12340000ULL;
         wa.addr_draw_item_ids       = 0xDCBA43210000ULL;
-        wa.addr_sky                 = 0xA1B2C3D40000ULL;
         wa.addr_shadow              = 0xB2C3D4E50000ULL;
         wa.addr_entity_gpu          = 0xC3D4E5F60000ULL;
         wa.addr_l2w                 = 0xD4E5F6070000ULL;
@@ -254,7 +252,6 @@ int main(int argc, char **argv)
         if (wa.addr_camera_info         != 0x123456780000ULL ||
             wa.addr_global_render_items != 0xABCD12340000ULL ||
             wa.addr_draw_item_ids       != 0xDCBA43210000ULL ||
-            wa.addr_sky                 != 0xA1B2C3D40000ULL ||
             wa.addr_shadow              != 0xB2C3D4E50000ULL ||
             wa.addr_entity_gpu          != 0xC3D4E5F60000ULL ||
             wa.addr_l2w                 != 0xD4E5F6070000ULL ||
@@ -302,7 +299,6 @@ int main(int argc, char **argv)
                     uint64_t addr_camera_info;
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
-                    uint64_t addr_sky;
                     uint64_t addr_shadow;
                     uint64_t addr_entity_gpu;
                     uint64_t addr_l2w;
@@ -567,7 +563,6 @@ int main(int argc, char **argv)
                     uint64_t addr_camera_info;
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
-                    uint64_t addr_sky;
                     uint64_t addr_shadow;
                     uint64_t addr_entity_gpu;
                     uint64_t addr_l2w;
@@ -719,7 +714,6 @@ int main(int argc, char **argv)
                     uint64_t addr_camera_info;
                     uint64_t addr_global_render_items;
                     uint64_t addr_draw_item_ids;
-                    uint64_t addr_sky;
                     uint64_t addr_shadow;
                     uint64_t addr_entity_gpu;
                     uint64_t addr_l2w;

@@ -15,7 +15,6 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 
 #include<hgl/graph/module/EnvironmentManager.h>
-#include<hgl/graph/ubo/SkyInfo.h>
 #include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/graph/camera/ReversedZProj.h>
 #include<hgl/vk/VKBindlessTextureManager.h>

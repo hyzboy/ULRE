@@ -1,5 +1,7 @@
 # SimpleSphere 到 vkCmd 的完整渲染链与数据流（技术文档）
 
+> ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
+
 > 基线：**2026-09-24，分支 `CSM`**——描述符机制退役后的 **BDA 终态**：4-ID 全局图元描述符池 + 全局 SSBO 行池 + `pc_root`/`buffer_reference` 寻址，mesh shader（`vkCmdDrawMeshTasksIndirectEXT`）是唯一顶点路径。
 > 入口示例：`example/GettingStarted/SimpleSphere.cpp`（264 行；私有缓冲几何 + `Lit` PBR 材质 + 单球体 ECS 实体 + `ViewModel` 相机）。
 > 目的：以单个最小示例为剖面，记录「作者侧 API → 每帧 CPU 物化 → 一条 vkCmd 提交 → shader BDA 取数」的完整链路与行号证据。全部 path:line 在本基线核实；**符号名是稳定锚点，行号随重构漂移**，引用时按 `file:line` + 符号名双锚。

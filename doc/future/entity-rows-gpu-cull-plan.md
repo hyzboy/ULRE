@@ -202,7 +202,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
     uint64_t addr_camera_info;          // 相机行表（行号 = 相机槽 × 帧槽总数 + 帧槽）
     uint64_t addr_global_render_items;  // 4-ID 渲染项表（世界私有）
     uint64_t addr_draw_item_ids;        // DrawItemID 压缩索引表（世界私有）
-    uint64_t addr_sky;                  // 世界 profile 的 SkyInfo（单份 ⇒ 全帧槽同址）
+    // （2026-10-07：addr_sky 已随 sky 段整删 —— 本片段是当时形态）
     uint64_t addr_shadow;               // 世界 profile 的 ShadowInfo（每帧槽一份 ring）
     uint64_t addr_entity_gpu;           // 实体行表 EntityGPU（世界私有；GPU 剔除的枚举源）
 };

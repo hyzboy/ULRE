@@ -13,7 +13,7 @@ namespace hgl::graph
      * 分层（定稿见 doc/world-addresses-and-camera-model-plan.md §1）：
      *   `GlobalAddresses` = **跨世界共享的资源池**（MeshDrawParams 池 / 材质行池 / 调色板 / viewport）；
      *   **本表** = **世界私有的观察者 / 状态**（相机行表、渲染项表、DrawItemID 表；sky / shadow / env 随 C2 迁入；
-     *   光源行表随 T6b 迁入）；
+     *   光源行表随 T6b 迁入；**`addr_sky` 已于 2026-10-07 随 sky 段整删退出本表**）；
      *   `pc_root` = 每批 / 每材质 / 本字体。
      *
      * 为什么必须独立成表：这些 buffer 由**世界**（`ECSContext`）拥有，一个设备上可以同时存在多个世界
@@ -28,7 +28,6 @@ namespace hgl::graph
         uint64_t addr_camera_info = 0;          // 相机行表（世界私有；行号 = 相机槽 × 帧槽总数 + 帧槽）
         uint64_t addr_global_render_items = 0;  // 4-ID 渲染项表（世界私有 RenderItemDataStorage）
         uint64_t addr_draw_item_ids = 0;        // DrawItemID 压缩索引表（世界私有 DrawItemIDStorage）
-        uint64_t addr_sky = 0;                  // 本世界 profile 的 SkyInfo（单份 buffer ⇒ 全帧槽同址）
         uint64_t addr_shadow = 0;               // **本世界**的影子数据 ShadowInfo（T6b/P4：已世界私有，不再是 profile 的；
                                                 // 每帧槽一份，下标 = 帧槽；写者 = MainLightShadowSystem，设备写入点 =
                                                 // ECSContext::CommitShadowInfo（交换链帧 acquire 后写本帧槽））
@@ -43,7 +42,7 @@ namespace hgl::graph
                                                 // 光参数可由作者逐帧改（太阳方向在示例里就是逐帧写的）
         uint64_t addr_ambient_env = 0;          // 环境光 provider 参数块 AmbientEnvInfo（世界私有；T1 归位）——
                                                 // 内容 = IBL 三个 bindless 句柄，资源就绪时写一次、无人逐帧改
-                                                // ⇒ 单份 buffer（全帧槽同址，同 addr_sky 口径）
+                                                // ⇒ 单份 buffer（全帧槽同址；逐帧演化的块须按帧槽分份，见 R3/T2）
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽）。

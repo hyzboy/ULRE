@@ -20,26 +20,26 @@ namespace hgl::graph
      *
      * ⚠ 归属订正（2026-09-28；决策见 doc/world-addresses-and-camera-model-plan.md §4）：
      * **Env 随世界** —— profile 的所有权与生命周期跟随世界（世界创建时选/建自己的
-     * profile、销毁时 `Release()` 归还；内置 default 可共享），sky 的**地址发布按世界**
-     * （写世界表 `WorldAddresses` 的 `addr_sky`，由 `ECSContext::SyncWorldAddresses`
+     * profile、销毁时 `Release()` 归还；内置 default 可共享），参数段的**地址发布按世界**
+     * （写世界表 `WorldAddresses`，由 `ECSContext::SyncWorldAddresses`
      * 每帧写本世界槽）。C2 之前地址走全局字段 ⇒ 多世界同帧只有最后解析的那个 profile 生效（互踩）。
      *
      * ⚠ T6b/P4：**影子数据（`ShadowInfo`）已迁出本模块** —— 它随世界（`ECSContext`），
      * 世界私有 SSBO 由 `ECSContext::InitializeShadowInfoTable` 建、`CommitShadowInfo` 写本帧槽，
      * 地址经世界表 `addr_shadow` 下发。本模块管**两个 provider 槽的参数块物化**
-     *（`sky_ubo`（`sky_provider`）+ `ambient_env_ubo`（`ambient_light_provider`，T1 归位）
+     *（`ambient_env_ubo`（`ambient_light_provider`）
      * + profile 生命周期）。
      *
      * 分层约定：
      * - 数据层：EnvironmentInfo（纯数据，CPU 侧唯一权威在 Profile::cpu）
      * - 管理层：本类（Profile 注册 / GPU UBO 物化 / 脏标记 / **按 profile 取设备地址**）
      * - 选择层：**世界**（`ECSContext::GetEnvProfileID()`；世界初始化时取本世界 RT 的 env_profile）
-     * - 绑定层：**世界表**（`WorldAddresses::addr_sky`；Scene 集已随 S3 整体退场，
-     *   world/sky 全部经 pc_root 下的表 + BDA 解引用，无 binding 可推）
+     * - 绑定层：**世界表**（`WorldAddresses::addr_ambient_env`；Scene 集已随 S3 整体退场，
+     *   参数段全部经 pc_root 下的表 + BDA 解引用，无 binding 可推）
      *
      * GPU 上传统一走设备级 dirty 扫描（RenderBufferUploadSystem），
      * default Profile 在 GraphicsContext 初始化阶段即物化并标脏，
-     * 保证任何 world（含离屏 RenderOnce）第一帧拿到的就是有效 sky 数据。
+     * 保证任何 world（含离屏 RenderOnce）第一帧拿到的就是有效参数数据。
      */
     GRAPH_MODULE_CLASS(EnvironmentManager)
     {
@@ -50,7 +50,6 @@ namespace hgl::graph
             EnvProfileID    id = kEnvProfileInvalid;
             AnsiString      name;
             EnvironmentInfo cpu;                                               ///< CPU 侧唯一权威数据
-            StructView<SkyInfo> *sky_ubo = nullptr;              ///< sky 段 GPU 物化（懒创建，default 例外）
             StructView<AmbientEnvInfo> *ambient_env_ubo = nullptr;  ///< ambient_env 段 GPU 物化（同上）
         };
 
@@ -62,7 +61,6 @@ namespace hgl::graph
         Profile *FindProfile(EnvProfileID id) const;
         Profile *FindProfile(const AnsiString &name) const;
 
-        bool MaterializeSkyUBO(Profile *profile);
         bool MaterializeAmbientEnvUBO(Profile *profile);
 
         void EnsureDefault();
@@ -83,20 +81,16 @@ namespace hgl::graph
         EnvironmentInfo *Edit(EnvProfileID id);
         const EnvironmentInfo *Get(EnvProfileID id) const;
 
-        /// 数据改完调用：sky / ambient_env 各立即写入它的单份 UBO（影子数据不在本模块，见类注释）。
+        /// 数据改完调用：ambient_env 立即写入它的单份 UBO（影子数据不在本模块，见类注释）。
         void MarkDirty(EnvProfileID id);
 
-        /// 世界表用：本 profile 的 sky 段**设备地址**（懒物化）。取不到返回 0 并报错 ——
-        /// 0 地址会让读 sky 的 shader 解引用 0 基址（UB）⇒ 调用方必须保证不把 0 写进表。
-        uint64_t GetSkyAddress(EnvProfileID id);
-
         /// 世界表用：本 profile 的 ambient_env 段**设备地址**（懒物化）。取不到返回 0 并报错 ——
-        /// 同 `GetSkyAddress` 纪律（0 地址会让读该段的 shader 解引用 0 基址 ⇒ 静默发黑）。
+        /// 同取址纪律（0 地址会让读该段的 shader 解引用 0 基址 ⇒ 静默发黑）。
         uint64_t GetAmbientEnvAddress(EnvProfileID id);
 
-        /// 归还 profile：释放它的 GPU 物化（sky）并从注册表移除。
+        /// 归还 profile：释放它的参数段 GPU 物化并从注册表移除。
         /// **世界销毁时归还自己创建/拥有的 profile**；`kEnvProfileDefault` 与无效句柄是 no-op
-        /// （内置 default 可共享）。归还后再用该 id 会回退 default（`GetSkyAddress` 语义同 `Get`）。
+        /// （内置 default 可共享）。归还后再用该 id 会回退 default（`GetAmbientEnvAddress` 语义同 `Get`）。
         void Release(EnvProfileID id);
     };//class EnvironmentManager
 }//namespace hgl::graph

@@ -48,56 +48,9 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    graph::SkyInfo *EnvironmentSystem::EditSkyInfo()
-    {
-        auto *manager = ResolveManager();
-        if (!manager)
-            return nullptr;
-
-        auto *info = manager->Edit(ResolveProfileID());
-        if (!info)
-            return nullptr;
-
-        return &info->sky;
-    }
-
-    const graph::SkyInfo *EnvironmentSystem::GetSkyInfo() const
-    {
-        // Edit 路径非 const（manager 懒物化），GetSkyInfo 只读 CPU 数据，
-        // 这里的 const_cast 不触发任何 GPU 操作。
-        auto *manager = const_cast<EnvironmentSystem *>(this)->ResolveManager();
-        if (!manager)
-            return nullptr;
-
-        const auto *info = manager->Get(ResolveProfileID());
-        if (!info)
-            return nullptr;
-
-        return &info->sky;
-    }
-
-    void EnvironmentSystem::SetSkyInfo(const graph::SkyInfo &info, bool immediate)
-    {
-        auto *manager = ResolveManager();
-        if (!manager)
-            return;
-
-        auto *env = manager->Edit(ResolveProfileID());
-        if (!env)
-            return;
-
-        env->sky = info;
-        if (immediate)
-            manager->MarkDirty(ResolveProfileID());
-    }
-
-    void EnvironmentSystem::MarkSkyDirty()
-    {
-        if (auto *manager = ResolveManager())
-            manager->MarkDirty(ResolveProfileID());
-    }
-
-    // ── 环境光 provider 槽（`ambient_light_provider`）：与 sky 三件套同形 ──
+    // ── 环境光 provider 槽（`ambient_light_provider`）──
+    //  ⚠ 原 `sky` 三件套（EditSkyInfo/GetSkyInfo/SetSkyInfo/MarkSkyDirty）已于 2026-10-07
+    //  随 sky 段整删（两个字段全仓无写者 ⇒ 取值搬成 shader 常量；`addr_sky` 退出世界表）。
 
     graph::AmbientEnvInfo *EnvironmentSystem::EditAmbientEnvInfo()
     {

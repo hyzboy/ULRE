@@ -513,6 +513,11 @@
     ④ P4 `ada3fa48b` + `b46fced20`（`ShadowInfo` 移出 `EnvironmentInfo` 并**世界私有化**：CPU 权威
     `ECSContext::shadow_info` + `InitializeShadowInfoTable` + 提交点 `CommitShadowInfo`；profile 侧 shadow ring /
     `GetShadowAddress` / `MaterializeShadowUBO` / `CommitMaterialized` / `MarkShadowDirty` 整删）；
+    ⑤ **sky 段整删（2026-10-07，场景 A）**：`SkyInfo.h` 删除（两个外观字段 `base_sky_color` /
+    `halo_intensity` **全仓无写者** ⇒ 取值搬成 `sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`，
+    外观逐位不变）、`addr_sky` 退出世界表（80 → **72 B**）、GLSL `SkyInfoRef` / `#define sky` /
+    `EnvironmentManager`（`sky_ubo` / `MaterializeSkyUBO` / `GetSkyAddress`）/ `EnvironmentSystem` 三件套整删
+    ⇒ `EnvironmentInfo` 只剩 `ambient_env`；Test 45 的禁令改钉 `EnvironmentInfo.h`、Test 47 加 ⑥「sky 整删」11 条；
     ⑤ **V7 运行时台架** `c26df6009` + `79997b2d2`（`example/Shadow/DualWorldShadows.cpp`：两世界同帧各自
     开 CSM，翻转一个世界的主光 ⇒ **另一个世界帧摘要逐位不变**、自身必变；破坏验证证明判据有牙。
     顺带补两条引擎前提：级联 RT 数 = `CascadedShadowConfig::cascade_count`（离屏帧槽带全设备 4 条）、

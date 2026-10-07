@@ -1,5 +1,7 @@
 # Scene UBO 彻底 BDA 化 — 交接文档（给新会话）
 
+> ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
+
 > **注（2026-09-28）**：本文目标**已达成** —— Scene 集 Set 0 已整体退场（S1–S3），描述符集收敛为
 > 唯一 Bindless(0)，本文的 T1–T6 计划仅作历史记录。**当前权威口径**见
 > `doc/world-addresses-and-camera-model-plan.md`（Global/World 双地址表、相机下沉世界级、Env 随世界）。
