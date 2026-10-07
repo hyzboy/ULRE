@@ -200,7 +200,7 @@ if (world && world->IsCurrentPassShadow())
 2. **A4** PCF 边缘 `fract` → clamp（环形寻址落地时再切回）
 3. **A2 / A10 / T6** 资源所有权与托管拆分：light camera 归还相机行、controller 改 `unique_ptr`、Enable 幂等
 4. **A3** 静态缓存失效钩子（或至少 API + 文档化的适用前提）
-5. **A6** 4 级联合并到单 command buffer / 单次 prepass
+5. ~~**A6** 4 级联合并到单 command buffer / 单次 prepass~~ —— **❌ 已否决（2026-10-07）**：只级联 0 每帧全量更新 ⇒ 稳态 1.00 离屏 pass/帧，无「每帧 4 次提交」；见 `doc/csm-mechanism.md` §6
 6. **A9 / A8 / A7 的未消费 API** 一并清理（先删遗留再改进）
 7. **A5** `receive_shadow` / `bias_multiplier`：实现或删 —— **后续（2026-09-26 D3）：已实现并落地**（材质行 16B 四字段 + D3 契约）
 8. 文档同步（见 §4）

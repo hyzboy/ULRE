@@ -437,13 +437,15 @@ namespace hgl
         }
 
         // ── T8（D7）prepass 性能账目：env `PREPASS_TIMING=<N>`（未设 = 完全零成本）──
-        // 背景：CSM prepass 每帧对每级联各发一次离屏 pass（`RenderTo`），每次 pass 前要**等主帧在途
-        // GPU 全槽排空**（上沿 `saved_target->WaitFence()`）、后要**等本次离屏 RT 自己的 fence**
-        // （下沿 `rt->WaitFence()`）—— A6「4 级联合并成单 cmd / 单 prepass」要消灭的正是这些重复的
-        // 提交与等待，但**收益必须先量出来**（backlog D7 的 T8）。
-        // 本引擎当前**没有 GPU 时间戳设施**（全仓无 `vkCmdWriteTimestamp` / `VkQueryPool`）⇒ 这里量的是
-        // CPU 可见账：每次离屏 pass 的墙钟总耗时 = 阻塞（上沿 + 下沿两处 fence 等待）+ 非阻塞
-        // （录制 / 提交 / 相机与槽簿记）。要 GPU 侧时间须另立时间戳设施（独立工作项）。
+        // 用途 = 量**CPU 可见账**：每次离屏 pass 的墙钟总耗时 = 阻塞（上沿 `saved_target->WaitFence()`
+        // 等主帧在途槽排空 + 下沿 `rt->WaitFence()` 等本次离屏 RT 自己的 fence）+ 非阻塞
+        //（录制 / 提交 / 相机与槽簿记）。本引擎**没有 GPU 时间戳设施**（全仓无 `vkCmdWriteTimestamp` /
+        // `VkQueryPool`）⇒ 只能答"CPU 被什么卡住"，答不了"GPU 用了多久"；要 GPU 侧时间须另立设施。
+        // 正式基线见 `doc/csm-mechanism.md` §6（T8 `f8760056b`：稳态 **1.00 离屏 pass/帧**、3.76 ms/帧 ≈ 主帧 19%，
+        // 其中 `begin` 2.32 ms 是大头、下沿 0.23 ms）。
+        // ⚠ 两点别记错：① **CSM 稳态只有级联 0 每帧全量更新**（其余 3 级 = 静态滚动缓存 + 条带脏矩形）
+        //   ⇒ 不存在"每帧 4 次离屏提交"；② 「4 级联合并成单 cmd / 单 prepass」（= A6）**已被否决**
+        //   （`doc/csm-mechanism.md` §6；`doc/backlog.md` 顶部「已否决」表）⇒ 别拿这些数字去论证它。
         namespace
         {
             struct PrepassTimingAccum

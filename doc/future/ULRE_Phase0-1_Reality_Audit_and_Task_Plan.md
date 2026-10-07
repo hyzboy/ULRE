@@ -1216,6 +1216,8 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 - **A 线**：A1 GPU 提交原语（semaphore 链 / per-frame 资源多份化）、A3 RenderGraph 跨 RT pass 链（`Pass::renderTarget` 死字段）、A6 cubemap/CSM/MSAA、A7 离屏 RT in-flight 槽。
 - **C 线**：**TexConvCore 链接 `out\Windows_64_Release\TexImage.lib`** —— ✅ **已修（2026-09-30）**。根因是**设计使然**而非笔误（`src/Tools/TexConv/CMakeLists.txt:179-196`：`TexImage.dll` 恒按 Release 构建，Debug 宿主必须链它的 import lib；`image/CMakeLists.txt:25` 也写了"Debug 构建前需先完成一次 Release 构建"），而本树从未做过 Release 构建 ⇒ 每次全量 Debug 必吃一条 LNK1104。处置：① 在 `texconv_link_teximage()` 加 **configure 期明确警告**（缺库时打印路径/原因/修复命令，已受控验证"缺则打印、在则静默"）；② 实跑一次 `--config Release --target TexImage`（rc=0），此后**全量 Debug 构建 EXIT=0（编译错误 0、链接/工具错误 0）**，`TexConv.exe`/`TexConvCore.dll` 正常产出。
 - **D 线**：D5/D6 已完成；**D7 = 性能账目 → EnvironmentSystem 拆分 → 4 级联合并**（大组按序）。
+  **后续（2026-10-07 订正）**：T8 性能账目 ✅、T6 拆分 ✅（T6a/T6b/P4/sky 段整删）、**A6「4 级联合并」❌ 已否决**
+  （只级联 0 每帧全量更新 ⇒ 稳态 1.00 离屏 pass/帧）⇒ D7 卡已关闭，见 `doc/backlog.md`。
 - **B 线**：RenderContext 类移除、FreeCameraMode 空实现且为默认值、LineStatsSystem 默认注册、WorkManager 序列空架子、示例干净退出时 LEAK + 间歇 CRT abort（判据看日志内容，**不看退出码**）。
 
 ### 9.7 固定验证集（口径重申，脚本见 §5）

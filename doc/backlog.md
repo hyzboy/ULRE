@@ -7,6 +7,21 @@
 >
 > 关联文档：`doc/render-target-standardization-design.md`（RT 标准化主线）。
 
+## ❌ 已否决（勿重开；附判据出处）
+
+> 目的：**结论要被找得到**。写"替代方案/建议"之前先扫这一节 —— 已否决的东西再被当候选提出来，
+> 等于把当初的实测与裁定作废重做一遍。
+
+| 已否决项 | 理由（出处） |
+|---|---|
+| **4 级联合并成单 prepass / 单 cmd（= A6）** | 各级更新节奏独立（只有级联 0 每帧全量；其余走静态缓存 + 条带）⇒ 稳态 1.00 离屏 pass/帧，无「每帧 4 次提交」；各级 `mobility_filter` 不同 ⇒ 无共享 prepass 可合并；条带是局部写（scissor）⇒ 合并 = 整图重建，把 D5 的收益还回去。`doc/csm-mechanism.md` §6 + 本档 D7（用户裁定） |
+| **MSAA（含 `samples` 字段）** | 永久不做；`RenderTargetDesc::samples` 与恒拒分支已整删（`82e488103`）。本档 A6 节 |
+| **② meshlet 几何 / ④ 实例化**（GPU 剔除线） | won't-do，相关字段/管线已整体删除（池行 128→104 B）。`doc/future/entity-rows-gpu-cull-plan.md` §8.7 A1/A4 |
+| **DGC（device-generated commands）** | 开发机无支持；形态 B 只依赖 mesh shader，不需要。同上 |
+| **`ulrescene` 直载（该计划内）** | 本计划不做。同上 |
+| **对 `SkyInfo` 加专用门 `W.sky-info-struct-parity`** | 结构未定型、只 2 消费者；改为通用对拍机制（T3 触发制）。`doc/future/sky-domain-and-provider-params-plan.md` §7 |
+| **给离屏 RT 传 `slot_count>1`（= A7 的动作）** | 上沿全槽排空已吃掉重叠；收益上限 ≈ 0.19 ms/pass；带空间 4 条已被 CSM 占满。见本档 A7 |
+
 ## A 线：渲染架构演进
 
 ### A1. GPU 提交原语升级（semaphore 链 / per-frame 资源多份化） —— **✅ 已完成（2026-10-07 复核）**
@@ -101,7 +116,10 @@
 > `RenderTargetDesc::slot_count` 默认 1（`inc/hgl/graph/render/RenderTargetDesc.h:78`）且**全仓无人传 >1** ⇒
 > 行为 = 「每帧一次 CPU 等待」。当时结论是「触发条件已满足 ⇒ 只需调用方按需启用」。
 
-**实测（2026-10-07；用已有探针 `PREPASS_TIMING=1`，每主帧一行；单位 µs）**
+**判据来源**：探针 `PREPASS_TIMING` 的**正式基线已在 T8（`f8760056b`）**量过（`CascadeShadowMap` 1600×900、
+稳态 60fps、50 窗口 = 1500 帧）：离屏 pass **1.00 次/帧**、合计 **3.76 ms/帧（≈主帧 19%）**，细分 begin 2.32 / draw 0.23 /
+submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗口 1.30 pass/帧、合计 13.9 ms/帧。见 `doc/csm-mechanism.md` §6。
+下表为本次**复测复核**（`PREPASS_TIMING=1` = 每主帧一行 ⇒ 噪声大，只作趋势用；单位 µs）：
 
 | 场景 | 离屏 pass/帧 | 下沿等自身（本 RT 自己的 fence） | 上沿等主帧（共享 per-frame 资源排空） | begin（collect/装配/派发） | 主帧均值 |
 |---|---|---|---|---|---|
@@ -126,10 +144,15 @@
    8→≥12 ⇒ 所有 per-frame-slot 数据 ×1.5（L2W ring 深度 = TOTAL）+ 清树全量重编 + 全部基线重录，
    **换 ≤1% 帧时间**。
 
-⇒ **本卡关闭（不做）**。若将来真要拿回这部分时间，正确对象是第 2 条指向的两项：**「4 级联合并成单 prepass」**
-（消掉重复 pass 提交与排空）与 **「per-frame 资源共享多份化」**（Camera UBO / L2W ring 按离屏 RT 各一份 ⇒
-排空可去；会牵动「L2W ring 深度 == 槽空间」不变量）。两者都比 `slot_count` 大，且**前置** = 先有非 vsync 的
-度量手段（现在是 FIFO 硬编码）。
+⇒ **本卡关闭（不做）**。若将来真要拿回这部分时间，正确对象是第 2 条指向的
+**「per-frame 资源共享多份化」**（Camera UBO / L2W ring 按离屏 RT 各一份 ⇒ 排空可去；会牵动
+「L2W ring 深度 == 槽空间」不变量），**前置** = 先有非 vsync 的度量手段（现在是 FIFO 硬编码）。
+
+> ⚠ **别再把「4 级联合并成单 prepass」当作本卡的替代方案**：它 = **A6，已于 2026-10-07 否决**（用户裁定，
+> 见 `doc/csm-mechanism.md` §6 与下方 D7 卡）。实测事实：**CSM 只有级联 0 每帧全量更新**，其余 3 级走静态滚动
+> 缓存 + 条带脏矩形 ⇒ 稳态 **1.00 离屏 pass/帧**，根本不存在「每帧 4 次提交」；且各级 `mobility_filter` 不同
+> （级联 0 = Movable、1..3 = Static）、strip 是局部写（scissor）⇒ 合并会把条带变整图重建、把 D5 省下的还回去。
+> 能合并的只有 submit（47 µs）与部分等待，而按级联不可省的 `PrepareRenderPassSetup`（2.31 ms）才是大头。
 
 ### A8. ~~CameraInfo 全局 SSBO 化与 PushConstants 索引（多相机同帧并发）~~ **已完成（c7430f92f，2026-09-23）**
 
@@ -345,7 +368,7 @@
 
 ### D5. A8 scissor 增量分支：接通条带滚动（路线 A，S1 ✅ / S2 ✅ / **S3 ✅** / S4 ✅ —— **全档完成**）
 - **决策（2026-09-26 用户）**：走**路线 A**——接通 Toroidal 条带滚动，不删死分支；
-  与 A6（4 级联合并）**解耦推进**（A6 之后再合并，条带滚动先独立可用）。
+  与 A6（4 级联合并）**解耦推进**（当时口径；**A6 已于 2026-10-07 否决 —— 见顶部「已否决」表**，条带滚动独立可用这点不变）。
 - **主参数口径（用户裁定）**：横向锚定步长以 **shadowmap 侧 texel 数 `B_c`** 为主参数，
   世界米数是**派生量**（引擎数据模型本就是 texel 语义：`cache_offset`/`cache_valid_rect`
   是 `uvec`）。**世界米口径被否定**：`texel = 2r/M` ⇒ M 翻倍则同一米步长折合的 texel 数
