@@ -831,7 +831,7 @@ cull 派发（RenderFrameSync，本帧）
 
 ## §8.7 未完成清单（2026-10-05 整理；**新会话照此接手**）
 
-> **订正（2026-10-07）**：A1–A5 已全部结案（下表的划删即凭证）。**仍未做**：`A6`（CPU 渲染路径去留——其前置「②③④ 覆盖真实场景」已定：② meshlet 与 ④ 实例化均 won't-do、③ 已落地 ⇒ 可重新拍板）、`B1`（混合排绘制顺序自由度）、`B2`（unlit/sky 的 alpha 语义统一）、`B4`（dither 白噪声 → Bayer）、`B5`（`ChangeTexture2DArray` 的 `const void*` 重载**只有声明无实现** ⇒ 谁用谁 LNK2019；2026-10-07 复核仍在）。另：本表「门 44/0」是当时口径，现门为 **45 PASS / 0 FAIL**。
+> **订正（2026-10-07）**：A1–A5 已全部结案（下表的划删即凭证）。**仍未做**：`A6`（CPU 渲染路径去留——其前置「②③④ 覆盖真实场景」已定：② meshlet 与 ④ 实例化均 won't-do、③ 已落地 ⇒ 可重新拍板）、`B1`（混合排绘制顺序自由度）、`B2`（unlit/sky 的 alpha 语义统一）、`B4`（dither 白噪声 → Bayer）、~~`B5`~~（**已成修，2026-10-07**：`ChangeTexture2DArray` 的 `const void*` 重载已补实现，见本表 B5 行与 `VKTextureReadback.h` 的 usage 前置注）。另：本表「门 44/0」是当时口径，现门为 **45 PASS / 0 FAIL**。
 
 ### A. 本线（GPU 剔除）欠账
 
@@ -852,7 +852,7 @@ cull 派发（RenderFrameSync，本帧）
 | **B2** | **unlit / 其它材质源的 alpha 语义未统一** | 只有 Lit 源改成 `alpha = base_color.a × opacity_mask.r`；unlit/sky 的 alpha 仍来自各自源模块（`forward_flat` 的 `lighting.alpha`） | 若要同一"比例 × 图案"语义 ⇒ 逐个材质源改对应 alpha 求值 |
 | ~~**B3**~~ | ~~`alpha_to_coverage`~~ **已按拍板整体删除（2026-10-05）** | 该特性**永不支持** ⇒ 清掉全部残留：`MaterialPipelineConfig.alpha_to_coverage`、TOML 键、`MaterialCoverageMode::AlphaToCoverage`、`BlendMode/PassType` 的 A2C 枚举项、Vulkan 侧（EDS3 的 `extendedDynamicState3AlphaToCoverageEnable` 启用 + `vkCmdSetAlphaToCoverageEnableEXT` proc/命令录制 + 动态状态表项 + 名字表项）、门与文档 | 全仓 grep 零残留（`alpha_to_coverage`/`alphaToCoverage`/`AlphaToCoverage`/`ALPHA_TO_COVERAGE`/`ForwardA2C`，`backup/` 与第三方目录除外） |
 | **B4** | **dither 阈值是位置哈希（白噪声）** | `ShaderLibrary/common/alpha_compositor.glsl:HGLDitherThreshold` = `fract(sin(dot(pixel,...))*43758.5453)` | 想要**有序抖动点阵** ⇒ 换 Bayer 4×4（一处改动） |
-| **B5** | **引擎 API 缺口**：`ChangeTexture2DArray(tex, const void*, …)` **只有声明没有实现**（LNK2019；raw 版 `ChangeTexture2D` 有实现） | 谁想用数组的 raw 上传就会链接失败（本次已踩） | 补实现，或删声明避免误用 |
+| ~~**B5**~~ | ~~**引擎 API 缺口**：`ChangeTexture2DArray(tex, const void*, …)` **只有声明没有实现**（LNK2019；raw 版 `ChangeTexture2D` 有实现）~~ **已修（2026-10-07）**：走「补实现」——`VKDeviceTexture2DArray.cpp` 按 2D 范式（`CreateTransferSourceBuffer` → 委托 `DeviceBuffer` 重载 → `delete`）补齐，并去掉历史实现里那处无符号恒假判据 `base_layer<0`（该实现随 `a5cfa672c` 被删、声明漏删 ⇒ 悬空 3 周）。**判据（实测）**：临时往返探针（上传已知字节 → GPU → `ReadbackTexture` 逐字节比对）三项全过：A 层 0 经裸指针重载后回读==源、B 重传全零生效（证非空操作）、C 只写层 1 而层 0 保持不动（证 `base_layer` 被遵守）；VUID/[ERROR] 归零。**顺带**：探针暴露 `ReadbackTexture` 的隐含前置——目标纹理必须带 `VK_IMAGE_USAGE_TRANSFER_SRC_BIT`（`TextureCreateInfo` 默认只有 `DST|SAMPLED`），已补进 `VKTextureReadback.h` 的接口注释。 | 已达成 |
 
 ### C. 文档/测试床现状（本次会话后）
 
