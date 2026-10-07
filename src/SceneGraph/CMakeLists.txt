@@ -64,6 +64,7 @@ SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 # ============================================================================
 
 SET(SCENE_ENVIRONMENT_FILES ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
+    ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/LightRow.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/EnvironmentInfo.h
                             env/SkyInfo.cpp)
 

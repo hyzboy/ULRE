@@ -9,6 +9,14 @@
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/render/MainLightShadowSystem.h>
+#include <hgl/graph/ubo/LightRow.h>   // T6b：光源行（世界私有 addr_lights）的结构契约
+
+// T6b 光源行结构契约（编译期）：布局/对齐/容量/枚举覆盖性 —— 任一漂移当场失败。
+// 枚举覆盖性由头里的 kAll* 表判定（新增枚举值而不更新表 ⇒ 编译期失败，自动 scale）。
+static_assert(sizeof(hgl::graph::LightRow) == 64, "LightRow 必须 64B");
+static_assert(alignof(hgl::graph::LightRow) == 64, "LightRow 必须 alignas(64)");
+static_assert(hgl::graph::kLightRowCapacity == 16, "光源行容量冻结为 16（超限 fail-fast，不扩容）");
+static_assert(hgl::graph::kMainLightRowIndex == 0, "主方向光恒为 0 号行（阴影域与 shader 均按此假设）");
 #include <hgl/ecs/support/CameraInfoStorage.h>
 #include <hgl/ecs/support/CameraSlotGuard.h>
 #include <hgl/graph/render/lighting/CascadedShadowController.h>
