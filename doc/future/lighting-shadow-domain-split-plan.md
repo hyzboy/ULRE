@@ -36,7 +36,7 @@
 | I5 | CSM：**每级联一个离屏 RT + 一条离屏数据槽带**（`OffscreenSlotBands` first-fit + Destroy 归还）；光相机槽由 `CameraSlotGuard` RAII 持有 | `doc/csm-mechanism.md` §5/§8、`inc/hgl/ecs/support/CameraSlotGuard.h` |
 | I6 | 帧槽空间：主帧 `[0, HGL_FRAME_SLOT_MAIN=4)` / 离屏 `[4, HGL_FRAME_SLOT_TOTAL=8)` 按 RT **整带**；per-frame ring 深度必须 **== 槽空间** | `inc/hgl/common/RenderOptions.h`、`ulre-frame-sync-slots` |
 | I7 | 结构类值（批标签/切片/计数）必须与绘制同源；**改结构体 ⇒ 清 obj 树全量重编** | 同上 |
-| I8 | 判据基线：门 **45 PASS / 0 FAIL**；`TestCSMIncrementalPass` **42 Passed**（Test 42 = 18 条机制层契约 / 禁复活 4 条）；八台架**帧摘要逐位**对基线（RTT `0xBA9CA214778AF3A4`、RTTCD `0xD71ABABC2BE460C0`） | 本轮实测 |
+| I8 | **判据基线（T6b 全线落地后，2026-10-07）**：门 **46 PASS / 0 FAIL**；`TestCSMIncrementalPass` **48 个测试** rc=0（Test 22 = 25 条两世界隔离；Test 43 = 离屏槽带生命周期；Test 44–48 = T6b 五步各自的契约）；`TestRenderItemDataStorage` rc=0；八台架 + RTT/RTTCD **帧摘要逐位**对基线（数值见 §6 V4/V5）；ATS 三契约与基线一致；环境两例（`IBLENV_SELFCHECK` `0x2D28D72AEA4FC87D` / `SKYMIN_SELFCHECK` `0xC914C338EFC7790E`）rc=0 | 本轮实测 |
 
 ### 0.3 现状诊断（本稿的事实依据）
 
@@ -154,7 +154,8 @@
   **不改任何数据布局、不改 shader、不改示例。**
 - **判据（可自动判定）**：八台架帧摘要**逐位不变**（D=0）+ `ENGAGED batches=x/y` 且 x==y + guard 拒绝 0；
   `CascadeShadowMap` `0x1CDAADEBF18B7CE4`、`ShadowMap` `0xA8A369516CB04571` 逐位不变；
-  `ATS_SELFCHECK=1` D1/D3/D4 与基线一致 + rc=0；门 45/0；`TestCSMIncrementalPass` 42 Passed；
+  `ATS_SELFCHECK=1` D1/D3/D4 与基线一致 + rc=0；门/契约按**当轮基线**（T6a 当时 = 门 45/0、`TestCSMIncrementalPass` 42 Passed；
+  现已随后续批次升至门 46/0、48 个测试 —— 见 §0.2 I8）；
   离屏两例 RTT/RTTCD 逐位不变；环境示例族（AtmosphereSky*、IBL*、BasicLitSunDirection）重建通过。
   ⚠ **订正（2026-10-07 执行时）**：C3①/C3② 的端到端探针（`CSM_REENABLE_PROBE` / `CSM_DISABLE_PROBE`）
   **是临时件、早已撤**（示例内 0 命中）⇒ 这两条行为由**常驻契约**承载：`Test 43 生命周期账 a–f` +
@@ -251,8 +252,8 @@
 | V1 | 八台架（PBRSpheres/ShadowMap/Cascade/GPUDrivenCull/AlphaModes/CoverageVariants/LoadScene/PlaneGrid3D） | `<前缀>_SELFCHECK=1 FRAMEDIGEST_PERFRAME=9`：摘要逐位对基线、D=0、`ENGAGED x==y`、拒绝 0、rc=0 |
 | V2 | `AlphaTestShadow` | `ATS_SELFCHECK=1`：D1 填充率 / D3 px / D4 拒绝 0 与基线一致 + rc=0 + 0 VUID |
 | V3 | `RenderToTexture` / `RenderToTextureColorDepth` | `RTT_SELFCHECK`/`RTTCD_SELFCHECK`：`0xBA9CA214778AF3A4` / `0xD71ABABC2BE460C0` |
-| V4 | `ShaderResourceSchemaRegressionGate` | 45 PASS / 0 FAIL（新增 GLSL 模块则 +1） |
-| V5 | `TestCSMIncrementalPass` | 42 Passed / rc=0（Test 42 契约条数随新增同步） |
+| V4 | `ShaderResourceSchemaRegressionGate` | **46 PASS / 0 FAIL**（新增独立 GLSL 模块则 +1；新增世界表地址字段只改归属登记表，不增加 PASS 数） |
+| V5 | `TestCSMIncrementalPass` | **48 个测试 rc=0**（Test 22 = 25 条；44–48 = T6b 每一步的契约；新增契约时此数与 Test 编号同步） |
 | V6 | CSM 生命周期不变量（常驻） | `Test 43 生命周期账 a–f` + `M10`（槽带接线 / 游标禁复活）+ `M11`（销毁前设备静默）。⚠ 临时端到端探针（`CSM_REENABLE_PROBE`/`CSM_DISABLE_PROBE`）已撤，不再作为判据 |
 | V7 | `DualWorldShadows`（新台架，`DWS_SELFCHECK=1`） | 两世界同帧各自主光/影子数据互不影响：翻转 B 的光 ⇒ A 摘要**逐位不变**、B 必变；翻转 A 的光 ⇒ B 摘要**逐位不变**、A 必变（rc=0）。实测值见 §5 第 5 步；判据有牙（共享光源行的破坏验证 ⇒ rc=1） |
 
