@@ -5657,6 +5657,11 @@ int main(int argc, char** argv)
               "slot_bands.ReleaseBand(band_base, band_slots);",
               "§9 M10：Destroy 必须归还带（C3①「二次 Enable 越界」的根治点；删这条 = 带泄漏复发）" },
 
+            { "VKRenderTargetData.cpp", OS_TEXT("src/Vulkan/VKRenderTargetData.cpp"),
+              "if(device)\r\n        device->WaitIdle();",
+              "§9 M11：销毁同步对象前必须设备静默（lane 有**外部**等待者——主帧提交 await 它；"
+              "删这条 ⇒ 世界存活时 DisableMainLightShadow 重新报 vkDestroySemaphore in-use / VUID-…-05149）" },
+
             { "RenderTargetManager.cpp", OS_TEXT("src/SceneGraph/module/RenderTargetManager.cpp"),
               "next_offscreen_slot_base",
               "§9 M10 禁复活：只增不还的槽带游标（历史 C3① 根因；归还语义已由 slot_bands 接管）",
@@ -5668,8 +5673,8 @@ int main(int argc, char** argv)
                                                                          sizeof(kBandContracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 43 Passed: 离屏槽带分配器成立（生命周期账 a-f + §9 M10 接线契约；"
-                 u8"C3①「二次 EnableMainLightShadow 槽带越界」已根治：Destroy 归还 + first-fit 复用）。");
+        GLogInfo(u8"Test 43 Passed: 离屏槽带分配器成立（生命周期账 a-f + §9 M10 接线契约 + M11 销毁前设备静默；"
+                 u8"C3①「二次 Enable 槽带越界」与 C3②「Disable 信号量 in-use」均已根治）。");
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

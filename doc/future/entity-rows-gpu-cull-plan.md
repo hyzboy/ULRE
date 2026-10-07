@@ -1881,5 +1881,10 @@ OffscreenWorld+CSM 同应用 = 第 5 个离屏 RT 必 fail-fast（合理组合�
 registry 登记 slot_base/slot_count、`Destroy` 归还（创建失败路径 BandGuard 收口）、`Release`
 后 Reset。EnvironmentSystem 零改动（handle reset ⇒ Deleter ⇒ Destroy ⇒ 归还天然接通）。
 判据：Test 43（生命周期账 a-f 含 C3① 场景重放 + §9 M10 接线契约/游标禁复活）；端到端探针
-二次 `EnableMainLightShadow` first=1 second=1、0 VUID、0 信号量 in-use（C3② 路径同净，探针已撤）；
+二次 `EnableMainLightShadow` first=1 second=1、0 VUID（**订正：该探针在 Init 期、队列无在途工作 ⇒ 不足以销 C3②，勿据此判定**）；
 八台架/ATS/ATU/门 45/0/TestCSM 43 用例全绿。
+
+**C3② 另行结案（2026-10-07，`5a085a627`）**：世界存活时 `DisableMainLightShadow` ⇒ `vkDestroySemaphore(): VkSemaphore[CSM_Cascade_0:Lane] that is currently in use by VkQueue`（VUID-vkDestroySemaphore-semaphore-05149）。
+根因：lane 不只被本 RT 的提交 signal，还被**主帧提交 await**（`Context.cpp` 的 `AddFrameLaneWait(rt->GetLane(), rt->GetLaneValue())`）⇒ 那个队列不属于 `RenderTargetData`、结构里枚举不到 ⇒ 只等自己的 queue fence 不够。
+修复：`RenderTargetData` 增加 device 句柄（`CreateOffscreenRT` 注入），`Clear()` 在销毁 fbo/cmd_bufs/queues/lane **之前** `device->WaitIdle()`（空守卫覆盖创建失败路径；RT 销毁是低频路径 ⇒ 全局静默代价可接受）。
+判据：「运行中 Disable」探针（第 120 帧、世界已渲染 119 帧）修前 in-use 命中 **2**、修后 **0**（验证层 1.4.363 确认在加载）；Test 43 增 §9 **M11** needle（连守卫一起钉 `if(device)`，两种破坏模式均点名 rc=43，逐字节还原复绿）。探针验后已撤。
