@@ -1314,6 +1314,10 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 
 ### 六、待拍板（3 项，均已在推荐值上）
 
+> **订正（2026-10-07 复核）**：本节 3 项已按推荐值落地，且其「下一动作（T1 试点）」**已完成**——
+> `example/Cull/GPUDrivenCull` 的帧摘要自检已在位（`GC_SELFCHECK` 家族，回归基线 `0x90E0745C2C7B8599`）。
+> 本节保留作决策记录，不再作为待办入口。
+
 1. **帧摘要存哪**：示例内**常量**（推荐，沿用 ATS 风格、不新增文件）／`check/<example>-digest.txt`；
 2. **T2 强制范围**：**只主帧 mesh 批**（推荐）／连 overlay 一起（不建议：overlay 不是批路径）；
 3. **opt-in API 命运**：**整体删除**（推荐，零兼容：`SetEnabled`/`SetDrawOverrideEnabled` 与示例门一起删）／保留开关（不建议）。

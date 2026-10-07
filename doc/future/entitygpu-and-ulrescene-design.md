@@ -238,7 +238,11 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 
 ### T2-c 主体 —— 开工清单（下一批的入口，2026-10-02 定稿）
 
-> **状态**：全部前置条件已就绪（类型号、判据工具、边界拍板、改动面已量化），**尚未动代码**。
+> **状态**：~~全部前置条件已就绪（类型号、判据工具、边界拍板、改动面已量化），**尚未动代码**。~~
+> **✅ 已完成（2026-10-07 复核）**：类型化对象池已落地 —— `inc/hgl/ecs/support/ComponentPool.h` 提供
+> `ComponentPool::Base`（世界侧统一接口）与 `ComponentPool::T<T>`（类型化对象池，注释直写「T2-c『取消逐 new』的落点」）；
+> 组件基类已由 `Component` 换成 `ComponentRow`（`GeometryData`/`MaterialData`/`CameraComponent` 均如此），
+> 全仓 `make_shared<GeometryData|MaterialData>` **0 命中** ⇒ 逐 new 路径已撤。**仅剩** §9 的 P-B8-1..7 拍板与 `.ulrescene` 版本策略。
 
 **目标（判据）**：探针 `[T0b]` 与 `[T0]` 的差值 —— 从 **`+195.4 B / +3.000 块`** 压到 **`≤ +40 B / +1 块`**；
 外加：固定验证集全绿 + 像素 + 反证（破坏→必红→sha256 逐字节还原→必绿）。

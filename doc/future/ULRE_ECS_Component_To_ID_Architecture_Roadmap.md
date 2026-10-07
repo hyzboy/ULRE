@@ -1,5 +1,11 @@
 ﻿# ULRE 引擎架构演进：从 OOP Component 到全 ID + Accessor 与二进制场景的重构技术规范 (Technical Specification & Implementation Roadmap)
 
+> **⚠ 时点规范（引用前必读，2026-10-07 加注）**：本文是**重构早期的目标形态规范**（其示例代码为设计示意，非现状）。
+> 阶段一/二 已大部推进（Transform 已 ID 化 + Accessor、五类组件已有类型号与行/句柄、组件基类换 `ComponentRow` +
+> `ComponentPool` 类型化对象池、`Entity` 已从 168 B 压到 112 B）；**阶段三（64 B Entity + `.ulrescene` mmap 直载）仍未做**。
+> ⇒ 照抄本文结构/字段前先按符号复核现状；口径以 `doc/future/entitygpu-and-ulrescene-design.md` §9/§9.5 与
+> `doc/backlog.md` 为准（本文的 `g_CurrentTransformStorage` 等写法已被 **D3** 否决，勿按本文实现）。
+
 ## 一、 背景与核心设计目标 (Background & Goals)
 
 ### 1.1 现状与痛点

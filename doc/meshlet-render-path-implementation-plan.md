@@ -1,5 +1,13 @@
 # Meshlet 渲染路径实现方案（T2 详细设计 + T3..T5 接线面）
 
+> **⚠ 本档已废止（2026-10-07 复核）**：2026-10-05 用户拍板**本轮不支持 meshlet**，
+> `entity-rows-gpu-cull-plan.md` §8.7 **A1** 已把该欠账判为 **won't-do 并引擎侧整体删除**：
+> 池行 3 个 `addr_meshlet*` 字段删（池行 128 → 104 B）、GLSL 镜像与门步长断言同步、
+> `VKGeometry::SetMeshlets` / `MeshletDescriptor` / `MeshShaderVertexAdapter` / `PrimitiveBatchPipeline` 相关路径全删，
+> **含 meshlet 表的资产加载即被拒绝**（`[ERROR] 本引擎不支持 meshlet 几何`）。
+> 代码侧复核：全仓已无 `addr_meshlet` / `SetMeshlets`（只剩 `src/Tools/GLTFConvert` 工具侧的 `pure::Meshlet`）。
+> ⇒ 本档 T2..T5 规划的落点**在当前代码里已不存在**，仅作历史记录；**若要重启 meshlet，须先翻案 §8.7 A1**。
+
 > **版次说明**：首版（2026-10-05）。范围 = 让 meshlet 几何能被**正确渲染**（集群展开）、把组数改成**单源**、
 > 最后**放开** GPU 剔除对 meshlet 批的排除。不覆盖 meshlet 级剔除 / LOD / task shader。
 > 本档给的是**设计与接线面**（可直接照做），任务台账仍以 `entity-rows-gpu-cull-plan.md` §8.7/§8.8 为准。

@@ -580,6 +580,12 @@ MSBuild 的增量构建**可能漏编部分源文件**（实测漏编 `VKSwapcha
 
 ### 未做（后续）
 
+> **订正（2026-10-07 复核）**：本节两条**均已随后续工作消解**，保留作历史——
+> 「深度比较采样」= `doc/backlog.md` **A5 ✅（2026-09-23）**；「多层 / cubemap」已由 CSM 以 **array 纹理**
+> 实际使用（`SetCascadeTexture(handle, layer)`），cubemap 六面与前向 MSAA 仍开放（见 backlog **A6**）。
+> 另：本档的 RT 标准化**主体已由 `RenderPassRequest` 收官**（backlog **A2 ✅ f99f8dda1**）。
+> ⇒ 本节不再作为待办入口，**当前台账以 `doc/backlog.md` 为准**。
+
 - **多层 / cubemap**：点光源阴影（cubemap 6 面）与 CSM（array）需要
   `layers` 字段，且 `CreateFBO` 的 `fb_info.layers = 1`、`BeginRendering` 的
   `ri.layerCount = 1` 都是硬编码，需一并改为变量。本次按单层 2D 实现。

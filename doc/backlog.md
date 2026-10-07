@@ -9,7 +9,14 @@
 
 ## A 线：渲染架构演进
 
-### A1. GPU 提交原语升级（semaphore 链 / per-frame 资源多份化）
+### A1. GPU 提交原语升级（semaphore 链 / per-frame 资源多份化） —— **✅ 已完成（2026-10-07 复核）**
+
+> **订正（2026-10-07 复核，按符号取证）**：本节列的三个前置缺陷与「单份 host-visible 内存」**全部已消解**——
+> ① `DeviceQueue::Submit` 已改为 waits[]/signals[] 列表（多等待、多信号）；
+> ② 离屏 `RenderTargetData::Submit` 恒 signal 本 RT 的 lane（timeline 信号量）；
+> ③ 主帧提交经 `Context` 的帧车道等待累积（`AddFrameLaneWait(rt->GetLane(), rt->GetLaneValue())` + `SetSubmitWaitsFromFrameLanes()`）await 各 pass 的车道 ⇒ 跨 pass 双向排序成立；
+> ④ per-frame 资源多份化已落地：`HGL_FRAME_SLOT_TOTAL=8`（`inc/hgl/common/RenderOptions.h:17`）、L2W ring 深度 ≡ 帧槽空间（`:33`）、相机行 16 槽 × 8 帧槽。
+> ⇒ 「每帧 2 次 CPU-GPU 同步点」已由 ③④ 解除；本卡的触发条件（多逐帧离屏 RT / 级联 pass 链）也早已满足（CSM + T3i 多批）。
 
 - **现状**：三个前置缺陷——`DeviceQueue::Submit` 只支持单个 wait semaphore；
   `SwapchainRenderTarget::Submit(Semaphore*)` 显式忽略外部 wait_sem；
@@ -72,7 +79,12 @@
   本卡剩余：cubemap 6 面（点光源阴影）与前向 MSAA 仍未实现（`fb_info.layers=1`、
   `BeginRendering` 的 `layerCount=1` 硬编码、`RenderTargetDesc::samples != 1` 被 `IsValid()` 拒绝）。
 
-### A7. 离屏 RT in-flight 槽
+### A7. 离屏 RT in-flight 槽 —— **机制已建、调用方未启用（2026-10-07 复核）**
+
+> **订正（2026-10-07 复核）**：不再是「未做」——`RenderTargetData` 已有完整 in-flight 槽机制
+> （`slot_count`/`slot_index` + 每槽一份 `{cmd_buf, queue(1 fence)}`，`BeginRender()` 复用槽前 `queue->WaitLastSubmitFence()`）；
+> 但 `RenderTargetDesc::slot_count` 默认 1（`inc/hgl/graph/render/RenderTargetDesc.h:77`）且**全仓无人传 >1**
+> ⇒ 实际行为仍是「每帧一次 CPU 等待」。本卡的触发条件（与 A1 同做）已满足 ⇒ **只需调用方按需启用**（离屏/级联 RT 传 `slot_count>1`）。
 
 - **现状**：5a 评估"单做不解决跨 pass 采样竞态"而搁置；fence 等待后仍
   每帧一次 CPU 等待。
@@ -291,7 +303,7 @@
   解释了冒烟日志里那 2 次（长跑 16 次）`invalidating static cascade` 的来源：不是回归，
   是示例自身的刻意取舍（代码处已加注释说明）。
 
-### D5. A8 scissor 增量分支：接通条带滚动（路线 A，S1 ✅ / S2 ✅ / S4 ✅）
+### D5. A8 scissor 增量分支：接通条带滚动（路线 A，S1 ✅ / S2 ✅ / **S3 ✅** / S4 ✅ —— **全档完成**）
 - **决策（2026-09-26 用户）**：走**路线 A**——接通 Toroidal 条带滚动，不删死分支；
   与 A6（4 级联合并）**解耦推进**（A6 之后再合并，条带滚动先独立可用）。
 - **主参数口径（用户裁定）**：横向锚定步长以 **shadowmap 侧 texel 数 `B_c`** 为主参数，
