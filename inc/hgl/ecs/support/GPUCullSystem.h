@@ -253,12 +253,6 @@ namespace hgl::ecs
             uint32_t capacity;    // 切片容量（= 本批 item 数；绘制侧 maxDrawCount）
             uint32_t topology;    // kBatchTopology*（与 GLSL 的 TOPOLOGY_* 同步）
             uint32_t group_size;  // MeshDispatchGroupSize(is_lines)（CPU 单源下发，GLSL 不硬编码）
-
-            bool operator==(const BatchInfoRow &rhs) const
-            {
-                return row_base == rhs.row_base && capacity == rhs.capacity &&
-                       topology == rhs.topology && group_size == rhs.group_size;
-            }
         };
 
         /// CPU 暂存：两块（每块 kBatchBlockStride 行）。未写的那块保持零 ⇒ 该 pass 的

@@ -14,16 +14,18 @@
 
 ## 0. 摘要
 
-三个症状同源家族，**两例已结案（都是真 bug 且已修）、一例未解决但边界已钉死**：
+三个症状同源家族，**三例全部结案（都是真 bug 且已修）**：
 
 | # | 症状 | 状态 | 根因 |
 |---|---|---|---|
 | 1 | `ShadowMap` 每 3 帧缺一帧（整帧近乎空） | **已修并验证** | `RenderPassRequest.is_shadow_pass` 是**可漏设**的旗标；示例渲染主世界进 shadow RT 时漏设 ⇒ 离屏 pass 被判成主帧 pass ⇒ 改写了**两 pass 共享**批对象的 `gpu_slice[Main]` ⇒ 主帧读**别的帧槽**的计数（0）⇒ 整帧空 |
 | 2 | `AlphaTestShadow`/`CascadeShadowMap` 每图内容不同（地面消失） | **已修并验证** | **批标签表缺 pass 维度**（批分区表/计数表都按 pass 分块，唯独标签表只有帧槽）+ `pc.batch_count` 单份共享 ⇒ 后装配的 pass 盖掉先装配 pass 的标签 ⇒ 静止物体按**别 pass 的批索引**写行 ⇒ 挤进 `capacity=1` 的批 0 ⇒ 溢出丢行 |
-| 3 | **所有**走 GPU 剔除的示例每 3 帧一帧**纯清屏** | **未解决**（边界已定） | **CPU 侧每一项输入均实测正确**，而 GPU 自有幸存计数在其中一个帧槽上为 **0** ⇒ 收敛到 GPU 执行侧；唯一剩余自相矛盾见 §4.5 |
+| 3 | **所有**走 GPU 剔除的示例每 3 帧一帧**纯清屏** | **已修并验证** | **实体 4-ID 表的设备地址下发漏了 pass 分半的槽步长**（T4c3a 把表按 pass 分半、分配与上传都改用 `kRowStride`=8192 行/槽，唯独 `SyncWorldAddresses` 下发 `addr_entity_render_ids` 仍按 `kCapacity`=4096 行步进 ⇒ 槽 1 的着色器读进**全零的阴影半区** ⇒ `geometry_id==0` ⇒ 每实体在视锥测试前 `return` ⇒ `DrawCount=0` ⇒ 纯清屏）。详见 §4.7 |
 
-**一句话结论**：第 1、2 例是**真缺陷且已修**；第 3 例尚未解决，但已把"不是原因"的范围
-逐项实测排除完毕（§4.2/§4.3），接手者应从 §4.6 的**唯一测量**开始，不要再重走本文列出的任何一条老路。
+**一句话结论**：三例全是**真缺陷且都已修复**；第 3 例的根因与第 2 例是**同一条坑**
+（"分块/分半改造时漏改下发地址的步长"，§11.10 坑 1 的第二个实例），由特殊 dump 版
+（`CULL_SSBO_DUMP=1`：每次 compute 派发后 `WaitLastSubmitFence` 再全量回读）一锤定音。
+排查过程本身（§4.2~§4.6 的逐项排除表）保留 —— 它定义了此类问题的完整排除清单。
 
 ---
 
@@ -181,7 +183,7 @@ image=2: ✓
 
 ---
 
-## 4. 第三例：**所有** GPU 剔除示例每 3 帧一帧纯清屏（**未解决**，边界已定）
+## 4. 第三例：**所有** GPU 剔除示例每 3 帧一帧纯清屏（**已结案**，见 §4.7）
 
 ### 4.1 症状的扩散
 
@@ -221,11 +223,11 @@ image=2: ✓
 | H | 相机行未激活/未提交/值为零 | 探针读 `active_camera_row` 与行内容 | 三者均正常 ⇒ 否定 |
 | I | 实体行表某槽那份未写入 | 引擎内探针统计 8 份的 `Active/Visible` | 8 份全为 `101/101` ⇒ 否定 |
 | J | world addresses 某槽未写/写错 | 探针比对 `pc.addr_world_addresses` 与应为值 | 逐帧一致 ⇒ 否定 |
-| K | 派发规模为 0（无线程执行） | 探针读 `pc.entity_count` | 恒为 4096 ⇒ 否定 |
+| K | 派发规模为 0（无线程执行） | 探针读 `pc.entity_count` | 恒为 4096 ⇒ 否定（但这条**方向对了**：确实每实体在派发内被 early-return，只是出口不是规模而是 §4.7 的 4-ID 半区） |
 | L | 缺 barrier 导致读到被清的 0 | 复查两条 barrier 与掩码 | 两条都在且掩码正确 ⇒ 否定（但源码注释"跨 cmd 靠 submission order 保证可见性"**本身是错的**，已改正） |
 | M | 槽就绪门拦住 | 读四槽 `就绪` | 全为 1 ⇒ 否定 |
 
-### 4.4 决定性数据：GPU 自己的幸存计数
+### 4.4 决定性数据：GPU 自己的幸存计数（`CULL_SSBO_DUMP` 特殊 dump 版）
 
 用引擎现成访问器（`GetDrawCountBuffer()` + `SyncForParityReadback()`，**无需改着色器**）逐帧回读：
 
@@ -238,31 +240,75 @@ image=2: ✓
 ⇒ **GPU 的剔除在槽 1 上产出 0 个可见实体**，而 CPU 参考（对拍）说 3。
 ⇒ 两侧在**可见性判定**上分歧，而**能读到的每一项输入都正确且逐槽一致**（§4.2）。
 
-### 4.5 收敛结论与唯一剩余矛盾
+### 4.5 收敛结论与当时的"自相矛盾"（已解）
 
-**收敛结论**：**CPU 侧与所有按槽分份的资源都是正确的**，而 GPU 在其中一个槽上产出 0
-⇒ 差异只能发生在 **GPU 执行侧**：该槽对应的那次派发**要么没执行、要么其写入落在别处**。
+**收敛结论**：**CPU 侧与所有按帧槽分份的资源都是正确的**，而 GPU 在其中一个槽上产出 0
+⇒ 差异只能发生在 **GPU 执行侧**。
 
-**唯一剩余的自相矛盾**（接手第一站）：
+**当时的"自相矛盾"**（`draw_count` 单份 ⇒ image=1 帧为何读到 0）后来被证明是**问题问错了**：
+`draw_count` 与批计数**每帧都被派发重写**，"上一帧的值"这个概念本就不存在——
+真正要问的是"**本帧派发为什么产出 0**"。特殊 dump 版（§4.7）直接回答了它。
 
-> `draw_count` 是**全帧单份 1 个 u32**（**非**按帧槽），由剔除在**帧末**写入；
-> 而回读发生在**帧首**，因此 `image=1` 帧读到的应是 `image=0` 帧（槽 0）的剔除结果 = **100**
-> —— **实测却是 0**。
-> ⇒ 说明该量在"写入时刻 ↔ 读取时刻"之间存在**尚未建模的按槽/跨帧关系**。
+### 4.6 当时留下的"下一步"（事后回看：方向部分正确）
 
-### 4.6 下一步（唯一未使用的观测面）
+当时写的下一步是"给 `draw_count` 缓冲记录写入/读回帧号"与"GPU 侧诊断 SSBO"。
+事后看，**真正奏效的是第三条**：用户提出的**特殊 dump 版**——每次 compute 派发后
+`WaitLastSubmitFence()` 同步等待，再把**所有帧槽的计数/布局/标签/命令**全量回读（`CULL_SSBO_DUMP=1`）。
+它的价值在于把观测点从"帧首"搬到"**派发后**"，第一次看到了 GPU 在真实执行时刻的状态。
 
-两条并行手段，任一都能定案：
+> 教训：**帧首读回永远看不到"本帧派发写了什么"**。此类跨帧时序问题，
+> 观测必须锚在派发之后（dump 版），或者干脆串行化（dump 版自带的 `WaitFence` 效果）。
 
-1. **最省的一步（先做这个）**：在该缓冲上同时记录**写入时的帧号/槽号**与**读回时的帧号/槽号**
-   ⇒ 直接把 §4.5 的矛盾摊开成一张表即可定位（一行探针 + 一次构建）。
-2. **GPU 侧诊断 SSBO**：在剔除着色器出口把每个线程的判据
-   （`visible` / `cull_ok` / 读到的 `batch` / `binfo.capacity` / `pc.camera_row`）写入一张**诊断 SSBO**，
-   帧末回读打印，与 CPU 参考逐项对照。**GLSL 无法打印，故必须走"写 SSBO + 回读"**。
-   这是本轮之后**唯一还未使用的观测面**。
+---
 
-⚠ 不要在以下方向再花时间（都已实测否定）：计数时序、命令步长、标签/布局/基址寻址、
-相机行、实体行表、world addresses、派发规模、屏障缺失、槽就绪门、离屏/阴影 pass 相关性。
+### 4.7 结案：根因、修复与验证（特殊 dump 版一击命中）
+
+**dump 版给出的逐帧数据**（`[BatchCounters]` 显示槽 1 恒 0、标签/布局全部有效、
+`[COUNT_DUMP]` 显示绘制端读到与剔除端一致的 0；再配合 `[WADUMP]` 打印每帧下发的
+`addr_entity_render_ids` 基址）：
+
+```
+render_ids 基址: slot0=0x308700000 slot1=0x308710000 slot2=0x308720000
+                        相邻差 = 0x10000 = 4096 行 × 16 B   ← 用了 kCapacity
+缓冲实际布局（分配/写侧）: 每槽 kRowStride = 2 pass × 4096 = 8192 行 = 0x20000 B  ← 差一倍
+```
+
+**根因**（`Context.cpp` `SyncWorldAddresses`，T4c3a 的漏改点）：
+
+```cpp
+want.addr_entity_render_ids = entity_render_id_table_addr
+    + (uint64_t)slot * EntityRenderIDTable::kCapacity * 16;   // ✗ 应为 kRowStride
+```
+
+T4c3a 把 4-ID 表**按 pass 分半**（flat 行号 = `PassBase(pass)+index`，每帧槽 = 8192 行），
+**分配（`CreateSSBO`）与上传（`UploadEntityRenderIDDirtyRows`）都改成了 `kRowStride`，
+唯独下发地址没跟上** ⇒ 槽 s 的着色器指向"半份错位"的地址：
+- **槽 1 → 槽 0 的阴影半区**：无阴影 pass 的示例（PBRSpheres 等）那半**从未被写 = 全零**
+  ⇒ `geometry_id == 0` ⇒ 每个实体在视锥测试**之前** early-return ⇒ `DrawCount=0` ⇒ **纯清屏**；
+  有阴影 pass 的示例（Cascade）那半有阴影风味数据 ⇒ 满图但内容不同 = §11.11 记录的"另一种形态"；
+- **槽 2 → 下一份的 pass-0 半区**：上传把每份都写成相同内容 ⇒ 恰好读到**正确数据** ⇒ 正常。
+
+⇒ 与全部观测严丝合缝：只坏一张图、CPU 侧每样都对、标签布局无罪、对拍看不见（CPU 参考不走设备地址）。
+**与第 2 例同一条坑**：§11.10 坑 1"改寻址必须对账『缓冲尺寸/写映射/下发基址/着色器索引』四处"——
+这次漏的正是第三处"下发基址"，**该纪律的第三个实例**。
+
+**修复**（`src/ecs/core/Context.cpp` 3 处同口径）：`addr_entity_render_ids` 下发、
+整表清零循环、就绪日志，`kCapacity` → `kRowStride`。
+
+**验证（全部实测）**：
+- `PBRSpheres`：12 帧逐图 ⇒ 三图 FNV 全等 `0x3DD88A0999CDC486`（= image0/2 原基线，
+  **空白图消失且好图逐字节未变**），`PERFRAME PASS`；
+- 回归 7 台架：`AlphaModes`/`CoverageVariants`/`LoadScene`/`PlaneGrid3D`/`ShadowMap`/
+  `CascadeShadowMap`/`GPUDrivenCull` **每图唯一 + 横向相等 + 全部回到各自基线**
+  （Cascade 修复后的多帧摘要三图全等 `0x1CDAADEBF18B7CE4` ⇒ 旧基线本来记录的是 image0/2 的正常帧）；
+- `AlphaTestShadow` 契约 D1/D3/D4 全 PASS（receive_shadow 变红 18187 px）；
+  `TestCSMIncrementalPass` 42 项契约 PASSED；`ShaderResourceSchemaRegressionGate` **45 PASS / 0 FAIL**。
+
+**一个插曲（调试件污染的实例）**：修复初验时 Cascade 一度显示 `0x1BAB…` ≠ 基线，
+追踪发现是 `PipelineMaterialRenderer` 里排查期加的**无门控同步回读**（每批每帧
+`ReadbackBuffer` = GPU stall，改变帧间节奏）所致；把它收进 `CULL_SSBO_DUMP` 门控并撤除
+`current_count_val == 0` 调查分支后，Cascade 立刻回到基线。**"未门控的观测本身会改变被观测系统"**
+——收尾清理因此不只是卫生问题，它是判据的一部分。
 
 ---
 
@@ -319,6 +365,8 @@ image=2: ✓
 | `189edc7ec` | 计划 §11.12：CPU 侧全部输入逐字节排除，收敛到 GPU 执行侧 |
 | `4207da6e8` | 计划 §11.13：实验 A/B 结果（计数无关、步长 12 正确） |
 | `1265c43a1` | 计划 §11.14：逐项实测收尾（含 §4.5 的矛盾） |
+| `84dcf57e5` | 本文 v1（结案前的版本） |
+| `7b385d025` | **修复**：`addr_entity_render_ids` 下发槽步长 `kCapacity`→`kRowStride`（+清零/日志同口径）；SSBO DUMP 设施（`CULL_SSBO_DUMP` + `DumpCullSSBOs` + `VKBufferReadback`）入库 |
 | `219dd8802` | **修复**：阴影 pass 漏设 `is_shadow_pass`（第 1 例真因） |
 | `46e2da935` | 引擎侧收口：pass 身份由目标推导 |
 | `d60622e58` | 计划：补记第 1 例真根因、修复、全套验证与两处遗留 |
@@ -333,7 +381,7 @@ AlphaModes        0x2FE87B15EE8B8A16
 CoverageVariants  0x8EED38BAD9B8181E
 LoadScene         0xC9E38ED2F49A069B
 PlaneGrid3D       0x4125C3C830CB92D3
-PBRSpheres        0x3DD88A0999CDC486   （image0/2；image1 仍空 = 未解决症状）
+PBRSpheres        0x3DD88A0999CDC486   （结案后 = 三图全等；旧注"image1 仍空"作废）
 ```
 
 **已知遗留（非本症状，供决策）**：`src/ecs/CMakeLists.txt` 给若干测试只设了
