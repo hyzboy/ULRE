@@ -9,14 +9,20 @@
 >
 > 版本:2026-09(BDA 终态 / 单集(Bindless)描述符分支;本稿已按当前代码校对)
 >
-> **注(2026-10-07)**：本文「环境 = 天空 `SkyInfo` + 阴影 `ShadowInfo` **两段**」的口径**将被改变**——光影拆域后
-> 环境域只管天空/IBL,`ShadowInfo` 移出 `EnvironmentInfo` 并**世界私有化**,光源参数从 `SkyInfo` 迁到世界私有光源行
-> （`addr_lights`,与 `addr_entity_gpu` 同级）。见 `doc/future/lighting-shadow-domain-split-plan.md` §3/§5。
+> **订正(2026-10-07,T6b/P4 **已落地**)**:本文「环境 = 天空 `SkyInfo` + 阴影 `ShadowInfo` **两段**」的口径**已作废**——
+> ① 环境域现在只剩**天空外观 + IBL**（`EnvironmentInfo` 只有 `sky` 一段）；
+> ② **影子数据已世界私有**:CPU 权威 `ECSContext::shadow_info`、世界私有设备镜像 `ECSContext::InitializeShadowInfoTable`
+>    （按帧槽各一份）、地址经世界表 `WorldAddresses.addr_shadow` 下发、提交点 `ECSContext::CommitShadowInfo`
+>    （交换链帧 acquire 之后写**本帧槽**）；profile 侧的 shadow ring / `GetShadowAddress` / `MaterializeShadowUBO` /
+>    `CommitMaterialized` / `MarkShadowDirty` **全部已删**（禁复活由 `Test 46` + `Test 22` 钉住）；
+> ③ 光源参数已从 `SkyInfo` 迁到**世界私有光源行**（`addr_lights`,与 `addr_entity_gpu` 同级）。
+> **下文凡提到「shadow UBO / shadow ring / 两段 / `GetShadowUBO` / `CommitMaterialized` / `MaterializeShadowUBO`」的段落,
+> 一律读作历史口径。** 见 `doc/future/lighting-shadow-domain-split-plan.md` §3/§5。
 > 相关文件:`inc/hgl/graph/ubo/EnvironmentInfo.h`、`inc/hgl/graph/ubo/SkyInfo.h`、`inc/hgl/graph/ubo/ShadowInfo.h`、`inc/hgl/graph/ubo/UBOShaderSources.h`、`inc/hgl/graph/module/EnvironmentManager.h`、`src/SceneGraph/module/EnvironmentManager.cpp`、`inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp`、`inc/hgl/ecs/systems/render/ViewUBOCommitSystem.h/.cpp`、`inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h/.cpp`(原 RenderDescriptorBindingSystem)、`inc/hgl/vk/VKRenderTarget.h`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`inc/hgl/common/DescriptorSetTypeDef.h`(`inc/hgl/vk/VKGlobalSceneUBOSet.h` 已随 Scene 集退场删除)、`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`
 
 ## 1. 这套东西解决什么问题
 
-统一管理"世界级环境信息"(目前有天空 `SkyInfo` 与阴影 `ShadowInfo` 两段,见 `inc/hgl/graph/ubo/EnvironmentInfo.h:20-26`;雾/环境光/IBL 仍是预留),并回答三个问题:
+统一管理"世界级环境信息"(**现在只有天空 `SkyInfo` 一段**——阴影 `ShadowInfo` 已按 T6b/P4 移出并世界私有化,见 `inc/hgl/graph/ubo/EnvironmentInfo.h`;雾/环境光仍是预留),并回答三个问题:
 
 1. **数据放哪**——集中在一个管理器(`EnvironmentManager`,设备级容器;profile 生命周期随世界,见下 2),而不是每个 ECS world 各自建 UBO。旧 EnvironmentSystem 模式当年的症状是"多 RT 争抢共享描述符集的 sky binding",但**Scene 集已整体退场**,该形态不复存在;现在要防的是 sky / shadow / env 的**地址写全局字段** ⇒ 多世界同帧只有最后解析的那个 profile 生效(权威文档 §4);
 2. **谁用哪份**——RT/WORLD 只持有一个 `EnvProfileID` 引用,不复制数据;未设置即用内置 default(订正 2026-09-28:profile 的所有权与生命周期**随世界**——世界创建时选/建自己的 profile、销毁时归还,内置 default 可共享;C2);
@@ -87,10 +93,10 @@ struct Profile
 | `Create(name, init_info)` | 注册 profile(重名返回已有句柄) |
 | `Find(name)` | 名字查句柄,失败 `kEnvProfileInvalid` |
 | `Edit(id)` / `Get(id)` | 取 CPU 权威数据指针(可写/只读),无效句柄返回 nullptr |
-| `MarkDirty(id)` | sky:`Update(cpu)+Commit()` 立即写入。shadow **不写 GPU**(调用点在 acquire 之前,写了会踩在途主帧) |
+| `MarkDirty(id)` | sky:`Update(cpu)+Commit()` 立即写入（影子数据不在本模块:T6b/P4 已世界私有） |
 | `GetSkyUBO(id)` | 绑定层用,取 sky 段 GPU buffer(懒物化;无效句柄回退 default) |
-| `GetShadowUBO(id, frame_index)` | 绑定层用。`frame_index` 必须是本帧 acquired image,与写入槽一致;离屏传 0 |
-| `CommitMaterialized(frame, commit_shadow)` | ViewUBOCommitSystem 用。sky 每次都写;shadow 仅 `commit_shadow==true`(当前 RT 是交换链)时写 `shadow_ring[frame]` |
+| ~~`GetShadowUBO(id, frame_index)`~~ | **已删(T6b/P4)**:影子数据不再挂 profile |
+| ~~`CommitMaterialized(frame, commit_shadow)`~~ | **已删(T6b/P4)**:sky 由 `MarkDirty` 即时写；影子数据的设备写入已移到世界侧提交点 `ECSContext::CommitShadowInfo` |
 
 ### default Profile 的特殊性
 
@@ -105,8 +111,8 @@ struct Profile
 
 - `accessor->Update(data)`(拷贝进映射窗口 + 置脏,`inc/hgl/vk/buffer/StructView.h:200`)接着 `accessor->Commit()`(把窗口范围标脏交 L2,`StructView.h:215`)——只调其中一个都不完整;
 - 直接改 `Data()` 返回的指针后必须自己 `Commit()`,否则数据停在映射窗口未提交(历史上 sky 丢数据就是这个原因);
-- manager 内所有写入路径都遵守这一约定:`MaterializeSkyUBO`(`EnvironmentManager.cpp:65-66`)、`MaterializeShadowUBO`(`:105-106`)、`MarkDirty`(`:217-234`)、`CommitMaterialized`(`:236-256`);
-- 注:`MarkSkyDirty()` 转发到 `MarkDirty`,sky 当帧写入 GPU。`MarkShadowDirty()` 同样转发,但 shadow 的 GPU 写入推迟到交换链 acquire 之后的 `CommitMaterialized`。不要把 shadow 加回 `MarkDirty` 的 GPU 写入。跨帧覆写的症状与修复见 `doc/shadow-ubo-inflight-overwrite.md`。
+- manager 内所有写入路径都遵守这一约定:`MaterializeSkyUBO`(`EnvironmentManager.cpp`)、`MarkDirty`;**影子数据的写入路径已不在此**(世界侧 `ECSContext::InitializeShadowInfoTable` / `CommitShadowInfo`,同样 `Update()+Commit()` 两连);
+- 注:`MarkSkyDirty()` 转发到 `MarkDirty`,sky 当帧写入 GPU。~~`MarkShadowDirty()`~~ **已删(T6b/P4)**;影子数据的跨帧安全由「世界私有 + 按帧槽各一份 + 只在交换链帧 acquire 之后写本帧槽」保证(旧症状与修复见 `doc/shadow-ubo-inflight-overwrite.md`)。
 
 ## 4. 选择层:RT 持有句柄
 
@@ -178,7 +184,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 - camera:`CameraSystem::PublishCamera(Rows)`（相机行；世界共享载体与 camera UBO 已于 C1-5 删除）
 - viewport:`RenderSceneUBOSystem::CommitViewportUBO()`
-- sky / shadow:**数据**在这里写（sky 每次 `CommitMaterialized` 都写；shadow 仅当前 RT 为交换链时写 `shadow_ring[acquired_image]`，离屏 pass 不写 shadow 槽）；**地址**按世界写世界表（C2：`ECSContext::SyncWorldAddresses` → `WorldAddresses.addr_sky` / `addr_shadow`，见 §6.1）
+- sky / 影子:**地址**都按世界写世界表（`ECSContext::SyncWorldAddresses` → `WorldAddresses.addr_sky` / `addr_shadow`，见 §6.1）；**数据**写入点 sky = `MarkDirty` 即时写、影子 = `ECSContext::CommitShadowInfo`（仅当前 RT 为交换链时写 `shadow_info[acquired_image]`，离屏 pass 不写影子槽）
 
 (实现:`src/ecs/systems/render/ViewUBOCommitSystem.cpp:14` 定阶段,`:17-36` 三个调用点)
 
@@ -238,7 +244,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 3. **地址进表**(如果它是"每视图"信息):**不要再想 Scene 集槽位——Scene 集已整体退场**(`kSceneBindingFog` / `GlobalSceneUBOSet` / `SceneBinding` 全部不存在)。世界私有的观察者 / 状态(sky / shadow / env 这类)进**世界地址表 `WorldAddresses`**(与全局表同形:8 槽 × 128B;地址经 `pc_root.addr_world_addresses` 解引用,见权威文档 §1 / §4);GLSL 侧照 `sky` 宏写法加 `#define fog FogInfoRef(world.addr_fog)`,并同步「表归属」契约——世界私有地址**不得**再出现在全局表 `GlobalAddresses` 里;
    - 若更适合做材质级数据(每材质不同),则不走世界表,改走材质 SSBO/纹理槽(`TextureSlot`/`SSBOType`)路线,不经过本管理器。
 
-4. **manager 物化**:`Profile` 加 `StructView<FogInfo> *fog_ubo`;照抄**已落地的第二段落** `MaterializeShadowUBO`(`EnvironmentManager.cpp:70-108`,写入是 `Update(data)+Commit()` 两连,见 `:105-106`);`MarkDirty`/`CommitMaterialized` 把 fog 段一并写入(`EnvironmentManager.cpp:217-234`、`:236-256`)。
+4. **manager 物化**:`Profile` 加 `StructView<FogInfo> *fog_ubo`;照抄 `MaterializeSkyUBO`(`EnvironmentManager.cpp`,写入是 `Update(data)+Commit()` 两连);`MarkDirty` 把 fog 段一并写入。（注:影子数据**不再**是本模块的段落范例——它已世界私有,见头部订正。）
 
 5. **地址发布**:`EnvironmentManager::GetFogUBO(id)`(暂无);照抄 `EnsureViewportUBO` → `registry->SetViewportAddress(...)` 这条链(`RenderSceneUBOSystem.cpp:88-148`、调用点 `:145`)在 `RenderSceneUBOSystem` 里加一个 fog 地址写入(本轮之后写**世界表**,不写全局表),解析照抄 `ResolveSkyUBO` / `ResolveShadowUBO`(`:340-400`)。Scene 集已退场 ⇒ **不存在 `global_scene_set->UpdateUBO(kSceneBindingFog, ...)` 这种写法**。旧文建议的通用帮手 **`ResolveEnvUBO` 并未落地**,现实是每个段落一个 `Resolve<X>UBO()`。
 

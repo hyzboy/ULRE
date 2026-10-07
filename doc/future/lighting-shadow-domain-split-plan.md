@@ -201,7 +201,14 @@
 >   把 SetTime 拆开就会**静默改变 ambient**（`GetSkyAmbientColor` 的 Mie 项用它）——四处摘要当场不符，
 >   结构上单一化（读主光色）才解决；② Cascade / ATS 的旧代码在**手写方向之后**调 `SetTime` ⇒ 手写方向
 >   当场被模型方向覆盖、从未生效（死代码），迁移必须按**实际生效顺序**保真。
-> - ✅ **第 4 步（P4）**：`ShadowInfo` 世界私有化 + `EnvironmentInfo` 去 shadow（另批）。
+> - ✅ **第 4 步（P4，本批落地）**：`ShadowInfo` 世界私有化 —— `EnvironmentInfo` 去 `shadow` 字段（不再挂 profile）；
+>   CPU 权威 = `ECSContext::shadow_info`（写者 = `MainLightShadowSystem`，经 `EditShadowInfo`）；
+>   世界私有设备镜像 = `ECSContext::InitializeShadowInfoTable`（**按帧槽各一份**，与其余世界表同批建、同判据 fail-fast）；
+>   地址经世界表 `addr_shadow` 下发；提交点 = `ViewUBOCommitSystem` → `ECSContext::CommitShadowInfo`
+>   （**只在交换链帧 acquire 之后写本帧槽**，离屏 pass 不提交）；`EnvironmentManager` 的 shadow ring /
+>   `MaterializeShadowUBO` / `GetShadowAddress` / `CommitMaterialized` 与 `MainLightShadowSystem` 的
+>   `MarkShadowDirty` / `ResolveManager` **整删**（零死代码；`CommitMaterialized` 改名后无调用者，一并删）。
+>   契约 = `Test 46`（归属搬家 / 提交时序 / 旧形态禁复活）+ `Test 22` 增补 6 条（影子与光源行的**两世界隔离** = V7）。
 > - 🔧 **修复（用户实测发现）**：减法把 `SkyInfo` 收紧后 `env_tex` 两端偏移错位 —— C++ `Vector4u`
 >   （GLM 对齐 16）在 **32**，GLSL `scalar` 布局（`uvec4` 只要求 4）在 **20** ⇒ shader 读到
 >   `env_tex.x = 0 / y ≠ 0`、越过"句柄全 0 早退"、拿句柄 0 采样 ⇒ **IBL 全黑**（`IBLEnvironment`
