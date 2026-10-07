@@ -48,7 +48,13 @@
   "串行 pass"模型——真并行多视口（同帧多相机同时渲染）需要共享数据
   实例化或全局 SSBO 化（见 A8），留待 A3/多视口用例出现时评估。
 
-### A3. RenderGraph 跨 RT pass 链
+### A3. RenderGraph 跨 RT pass 链 ✅ **已结案：删除死字段（`34af98709`，2026-10-07）**
+
+> **判定 = 删除而非实现**：`Pass::renderTarget` **全仓无一处设置**（唯一构造点位置传 nullptr），
+> 执行器那段「设了会被忽略」的告警因此**永不可能触发** ⇒ 死 API + 死告警，且类注释还宣称
+> `multi-RT rendering`（与实现相反）。引擎**已有在用的多 RT 机制** = `ECSContext::RenderTo()` +
+> RenderPassOptions（CSM 四张 RT 与离屏世界都走它，并已含离屏槽带/帧槽分份）⇒ 在 pass 上再实现一套
+> 属同一职责的第二套实现。将来做后处理链请基于 `RenderTo`，**勿复活该字段**（`RenderGraph.h` 已留注）。
 
 - **现状**：`RenderGraph::Pass::renderTarget` 是死字段（执行器只
   LogWarning 不生效）；真正多段渲染需要命令缓冲跨 RT 切换点
@@ -468,7 +474,13 @@
   ⇒ （原 RenderDoc 抓帧方案未采用：用户选定引擎侧日志路线，见上。）
   （E1 影像读回下沉 + CM2D TGA 仍是独立留置项，与本条无依赖。）
 
-### D6. prepass 入口防御（T4）
+### D6. prepass 入口防御（T4） ✅ **已完成（`f1df79a5e`，2026-10-07）**
+
+> **已落地**：prepass 内聚到 `BeginManagedRenderFrame`，判别式 = **主帧**
+> （`need_swapchain_acquire`；离屏帧一律传 false）⇒ 离屏帧不重复 prepass、嵌套的阴影 pass 不递归，
+> 位置保持 `AcquireSwapchainImage` 之前；`RenderGraph.cpp` 的单入口调用删除。契约 = Test 42 的
+> **M12 两条**（正向钉「守卫 + 调用」一起在，禁复活钉 RenderGraph 不得再出现该调用）；带牙验证
+> （破坏 A=守望去守卫 / B=单入口复活 ⇒ 各 rc=42 点名 M12；逐字节还原复绿）。行为中性：八台架摘要逐位不变。
 
 - **现状**：自动化 shadow prepass 仅在 `RenderGraph.cpp:171` 一条入口被驱动，
   新增/绕过入口时阴影静默失效（无断言无日志）。

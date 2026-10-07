@@ -2,6 +2,13 @@
 
 > **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。
 
+> **订正（2026-10-07）**：本文两处「待做」已结案，**别再按本文去实现**——
+> （a）`RenderGraph::Pass::renderTarget` 字段**已整体删除**（A3 结案 `34af98709`：从未被设置过、
+> 执行器那段告警永不可触发；多 RT 的权柄是 `ECSContext::RenderTo()` + RenderPassOptions）⇒
+> 本文「阶段 D — RenderGraph 集成」不再排期，`offscreen->Resize(...)` 那类示例按当时口径读即可；
+> （b）`RenderTargetDesc::samples` 字段与其 `IsValid()` 恒拒分支**已删除**（本引擎永久不支持 MSAA，
+> 用户 2026-10-07 拍板，`82e488103`）⇒ 本文关于「`samples != 1` 返回 false」的段落为历史形态。
+
 > 目标：把 RenderTarget 从"能用但要背隐式契约"变成"声明式资源 + 统一入口"，
 > 让未来所有需要 RT 的工作（离屏、后处理、阴影图、CubeMap、多视口）走同一套路。
 >
