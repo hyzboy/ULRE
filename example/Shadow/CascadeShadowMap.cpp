@@ -22,7 +22,7 @@
 #include <hgl/graph/geo/InlineGeometry.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include <hgl/graph/render/lighting/CascadedShadowController.h>
+#include <hgl/graph/render/shadow/CascadedShadowController.h>
 #include <hgl/color/Color.h>
 #include <hgl/log/Log.h>
 #include <hgl/mtl/MaterialRecipe.h>
@@ -41,7 +41,7 @@
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderSystemCore.h>
-#include <hgl/ecs/systems/render/EnvironmentSystem.h>
+#include <hgl/ecs/systems/render/LightSystem.h>
 #include <hgl/ecs/systems/render/MainLightShadowSystem.h>
 #include <hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
@@ -141,9 +141,9 @@ private:
     /// 取相机一律走 `ECSContext::GetCameraByEntity(EntityID)`，不直取组件。
     std::shared_ptr<CameraSystem> camera_system;
 
-    std::shared_ptr<EnvironmentSystem> environment_system;
+    /// T6b：太阳方向/颜色写进**世界私有光源行 0**（sky 已不含光源参数）。
+    std::shared_ptr<LightSystem>           light_system;
     std::shared_ptr<MainLightShadowSystem> main_light_shadow_system;
-    graph::SkyInfo *sky_info = nullptr;
 
     VertexDataManager *vdm = nullptr;
     Texture2DArray *base_color_texture = nullptr;
@@ -169,8 +169,6 @@ private:
     graph::GlobalSSBODataAccessor ground_accessor{};
 
     // 静态太阳光方向（指向场景地面）
-    glm::vec3 sun_direction{0.5f, 0.6f, 0.8f};
-    math::Vector3f light_dir_math{0.0f};
 
     // ── 动态物体（Movable）动画追踪 ──
     struct MovableTrack
@@ -297,7 +295,7 @@ private:
     /// 完成后自动回到 state 0 ⇒ 一轮跑多级/多次（每次抓到"恰好滚动的那几级"）。
     void RunCacheDiff()
     {
-        if (!cache_diff.enabled || !environment_system)
+        if (!cache_diff.enabled || !main_light_shadow_system)
             return;
 
         auto *ctrl = main_light_shadow_system->GetShadowController();
@@ -1053,7 +1051,7 @@ private:
 
     bool InitCSMTargets()
     {
-        if (!environment_system)
+        if (!main_light_shadow_system)
             return false;
 
         CascadedShadowConfig &cfg = csm_config;
@@ -1384,7 +1382,7 @@ private:
             csm_config.bias = new_bias;
         }
 
-        if (environment_system)
+        if (main_light_shadow_system)
         {
             if (auto *ctrl = main_light_shadow_system->GetShadowController())
                 ctrl->SetConfig(csm_config);
@@ -1451,7 +1449,7 @@ private:
             return;
 
         csm_config.normal_offset_world = new_offset;
-        if (environment_system)
+        if (main_light_shadow_system)
         {
             if (auto *ctrl = main_light_shadow_system->GetShadowController())
                 ctrl->SetConfig(csm_config);
@@ -1465,7 +1463,7 @@ private:
     /// 级联调试开关：F1..F4 切换屏蔽对应级联（边沿触发）
     void TuneCascadeMask()
     {
-        if (!ecs_context || !environment_system)
+        if (!ecs_context || !main_light_shadow_system)
             return;
 
         auto input_system = ecs_context->GetSystem<InputSystem>();
@@ -1580,7 +1578,7 @@ public:
         TuneCascadeMask();
 
         // 采样各级联"最近一帧"的更新形态（条带数/条带面积/环形偏移/是否整级重建）
-        if (environment_system)
+        if (main_light_shadow_system)
         {
             if (auto *ctrl = main_light_shadow_system->GetShadowController())
             {
@@ -1694,25 +1692,21 @@ public:
         // 显式声明场景工作流模式（黄金路径：标准 3D 陆地主光级联阴影）
         ecs_context->SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
 
-        environment_system = ecs_context->GetSystem<EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+        light_system = ecs_context->GetSystem<LightSystem>();
+        if (!light_system)
+            light_system = ecs_context->RegisterRenderSystem<LightSystem>();
         main_light_shadow_system = ecs_context->GetSystem<MainLightShadowSystem>();
         if (!main_light_shadow_system)
             main_light_shadow_system = ecs_context->RegisterRenderSystem<MainLightShadowSystem>();
 
-        if (!environment_system)
+        if (!light_system)
             return false;
 
-        sky_info = environment_system->EditSkyInfo();
-        if (!sky_info)
-            return false;
-
-        sun_direction = glm::normalize(glm::vec3(0.5f, 0.6f, 0.8f));
-        light_dir_math = math::Vector3f(-sun_direction.x, -sun_direction.y, -sun_direction.z);
-        sky_info->sun_direction = math::Vector4f(sun_direction.x, sun_direction.y, sun_direction.z, 0.0f);
-        sky_info->SetTime(9, 30, 0);
-        environment_system->MarkSkyDirty();
+        // 9:30 模型给出方向 + 颜色 + 强度。
+        // ⚠ 迁移保真：旧代码在**手写方向之后**调 `sky.SetTime(9,30,0)` ⇒ 手写的
+        // (0.5,0.6,0.8) 当场被模型方向覆盖、从未生效（那两行是死代码，本批一并删）。
+        // 这里只调模型，方向/颜色与旧实现**逐值相同**。
+        light_system->SetMainLightTime(9, 30, 0);
 
         if (!InitTextures())
             return false;

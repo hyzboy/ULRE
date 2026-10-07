@@ -19,7 +19,7 @@
 #include <hgl/graph/geo/InlineGeometry.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include <hgl/graph/render/lighting/CascadedShadowController.h>
+#include <hgl/graph/render/shadow/CascadedShadowController.h>
 #include <hgl/color/Color.h>
 #include <hgl/log/Log.h>
 #include <hgl/mtl/MaterialRecipe.h>
@@ -35,7 +35,7 @@
 #include <hgl/ecs/components/ShadowProxy.h>
 #include <hgl/ecs/components/CameraControlMode.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
-#include <hgl/ecs/systems/render/EnvironmentSystem.h>
+#include <hgl/ecs/systems/render/LightSystem.h>
 #include <hgl/ecs/systems/render/MainLightShadowSystem.h>
 
 #include <glm/glm.hpp>
@@ -126,7 +126,8 @@ class AlphaTestShadowApp final : public WorkObject
 {
 private:
     ECSContext *ecs_context = nullptr;
-    std::shared_ptr<EnvironmentSystem> environment_system;
+    /// T6b：太阳方向写进**世界私有光源行 0**（sky 已不含光源参数）。
+    std::shared_ptr<LightSystem> light_system;
     std::shared_ptr<MainLightShadowSystem> main_light_shadow_system;
 
     VertexDataManager *vdm = nullptr;
@@ -956,23 +957,19 @@ public:
         ecs_context->SetResourceNamePrefix("AlphaTestShadow:MainScene");
         ecs_context->SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
 
-        environment_system = ecs_context->GetSystem<EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+        light_system = ecs_context->GetSystem<LightSystem>();
+        if (!light_system)
+            light_system = ecs_context->RegisterRenderSystem<LightSystem>();
         main_light_shadow_system = ecs_context->GetSystem<MainLightShadowSystem>();
         if (!main_light_shadow_system)
             main_light_shadow_system = ecs_context->RegisterRenderSystem<MainLightShadowSystem>();
-        if (!environment_system)
+        if (!light_system)
             return false;
 
-        auto *sky_info = environment_system->EditSkyInfo();
-        if (!sky_info)
-            return false;
-
-        const glm::vec3 sun_direction = glm::normalize(glm::vec3(0.4f, 0.5f, 0.76f));
-        sky_info->sun_direction = math::Vector4f(sun_direction.x, sun_direction.y, sun_direction.z, 0.0f);
-        sky_info->SetTime(10, 0, 0);
-        environment_system->MarkSkyDirty();
+        // 10:00 模型给出方向 + 颜色 + 强度。
+        // ⚠ 迁移保真：旧代码在手写方向**之后**调 `sky.SetTime(10,0,0)` ⇒ 手写的
+        // (0.4,0.5,0.76) 当场被模型方向覆盖、从未生效（死代码，本批一并删）。
+        light_system->SetMainLightTime(10, 0, 0);
 
         if (!InitTextures())
             return false;

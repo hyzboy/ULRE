@@ -114,10 +114,10 @@ const float SHADOW_NORMAL_OFFSET_MAX = 1.5;
 /// 用**几何**法线（SurfaceInput.worldNormal）而非着色法线：normal map 的扰动
 /// 只改变外观、不改变真实轮廓，拿它做偏移会在法线花纹上抖出噪点。
 ///
-/// 光方向取 sky.sun_direction —— 与本引擎其余阴影接收代码
-/// （material/shadow_receiver_source.glsl）同源，其约定是 forward = -sun_direction，
-/// 故 sun_direction 指向**光源**，正是这里要的 L。若某个场景把 CSM 光与
-/// sun_direction 驱动成两个不同的方向，请把强度置 0 或关掉宏。
+/// 光方向取**主方向光行**（`main_light.direction_intensity.xyz`，行 0）—— 与本引擎其余
+/// 阴影接收代码（material/shadow_receiver_source.glsl）同源：其约定是 forward = -direction，
+/// 故 direction 指向**光源**，正是这里要的 L。T6b 起光的定义只有这一处真源
+///（曾经分居天空数据与 CSM 光两处、靠"约定一致"维系）。
 vec3 ShadowNormalOffsetPosition(vec3 world_pos, vec3 world_normal, float strength)
 {
     if (strength <= 0.0)
@@ -128,7 +128,7 @@ vec3 ShadowNormalOffsetPosition(vec3 world_pos, vec3 world_normal, float strengt
         return world_pos;
 
     const vec3  N         = world_normal / n_len;
-    const vec3  L         = normalize(sky.sun_direction.xyz);
+    const vec3  L         = normalize(main_light.direction_intensity.xyz);
     const float cos_theta = dot(N, L);
 
     // 背光面本来就在阴影里，偏移没有意义；同时 cos→0 时 tan 发散，必须挡掉

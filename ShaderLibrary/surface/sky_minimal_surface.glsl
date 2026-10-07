@@ -15,11 +15,11 @@
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     vec3 dir      = normalize(si.worldPos);   // VS 传来的方向向量
-    vec3 to_light = normalize(sky.sun_direction.xyz);
+    vec3 to_light = normalize(main_light.direction_intensity.xyz);
 
     float h = clamp(dir.z, 0.0, 1.0);
     float cos_t = clamp(dot(dir, to_light), -1.0, 1.0);
-    float sun_rad = radians(sky.sun_ang_deg);
+    float sun_rad = radians(main_light.color_angle.a);
     vec3 sky_color = EvalSkyAtmosphere(dir);
 
     // ---- sun disc (hard core + glow) ----
@@ -30,7 +30,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     float glow = pow(coreN, 6.0)   * pow(max(h, 1e-3), 0.5);
 
     float sunMask  = clamp(hard + glow, 0.0, 1.0);
-    vec3  sun_color = sky.sun_color.rgb * sunMask * sky.sun_intensity;
+    vec3  sun_color = main_light.color_angle.rgb * sunMask * main_light.direction_intensity.w;
 
     // ---- output ----
     SurfaceOutput so;

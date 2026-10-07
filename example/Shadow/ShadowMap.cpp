@@ -36,7 +36,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/LightSystem.h>
 #include<hgl/ecs/systems/render/MainLightShadowSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
@@ -92,7 +92,8 @@
  *
  * 为了只动"ShaderLibrary + 示例"两层（不改引擎 ABI），光源方向是这样传进 shader 的：
  *
- *   **复用 SkyInfo UBO 里本就存在的 sun_direction，在 shader 中把光源相机整个重建出来。**
+ *   **写进世界私有光源行的第 0 行（主方向光），在 shader 中把光源相机整个重建出来。**
+ *   （T6b 前这个方向寄居 `SkyInfo.sun_direction`；迁到光源行后定义有了单一真源。）
  *
  * 具体地：
  *   a. 光源相机是 ViewModel 摆法 —— 位置 = target − forward × distance、target 恒为原点，
@@ -103,9 +104,9 @@
  *   c. 投影用与 MakeInfiniteReversedZProj 同构的式子（fov/近平面是已知常量）；
  *   d. 地面点由 PlaneSquare 的 uv0 反推世界 XY（uv0 = 0.5 + 世界XY / 20）。
  *
- * sun_direction 在 C++ 侧**直接取自光源相机解算出的 forward 取反**，不重复算一套
- * 三角函数 —— 两侧因此不可能对不上。它也同时是主世界方向光的来源
- * （forward_lighting.glsl 的 mainLightDir = GetSkyMainLightDir()），
+ * 光源行里的方向在 C++ 侧**直接取自光源相机解算出的 forward 取反**，不重复算一套
+ * 三角函数 —— 两侧因此不可能对不上。它同时是主世界方向光的唯一来源
+ * （forward_lighting.glsl 的 mainLightDir = GetMainLightDir()，读的就是这一行），
  * 于是"物体受光方向"与"影子方向"天然一致。
  *
  * 深度比较是 reversed-Z 的标准形式：投影给出 depth = near / lin，
@@ -323,11 +324,11 @@ namespace
     /// 方位角 + 固定仰角 → **指向太阳**的单位方向（w 分量为 0 的 Vector4f）。
     ///
     /// 这个向量同时喂给两个地方，且必须完全一致：
-    ///   1. SkyInfo::sun_direction —— 主世界方向光的来源（forward_lighting.glsl
-    ///      的 mainLightDir = GetSkyMainLightDir()），决定物体的受光方向；
+    ///   1. 主方向光行（`main_light`）—— 主世界方向光的来源（forward_lighting.glsl
+    ///      的 mainLightDir = GetMainLightDir()），决定物体的受光方向；
     ///   2. shader 里重建光源相机（shadow_receiver_source.glsl::BuildShadowReceiverLight）。
     ///
-    /// 实际上示例并不直接把它写进 sun_direction —— 见 UpdateAnimation：
+    /// 实际上示例并不直接把它写进光源行 —— 见 UpdateAnimation：
     /// 那里是先把 yaw/pitch 交给光源相机，再取相机解算出的 forward 取反，
     /// 于是"shader 用的方向"与"相机真实朝向"在浮点层面也完全同源。
     /// 这里保留这个函数是为了在 Init 里给出**初始**方向（那时相机还没 tick 过）。
@@ -588,10 +589,9 @@ private:
 
     hgl::ecs::GeometryData *receiver_prim = nullptr;
 
-    /// 主世界的环境系统与它的 SkyInfo 数据。sun_direction 从这里写进去。
-    std::shared_ptr<EnvironmentSystem> environment_system;
+    /// 主世界的光源域：太阳方向写进**世界私有光源行 0**（T6b 起 SkyInfo 已不含光源参数）。
+    std::shared_ptr<LightSystem>           light_system;
     std::shared_ptr<MainLightShadowSystem> main_light_shadow_system;
-    graph::SkyInfo *                   sky_info = nullptr;
 
     /// 动画累计时间（秒）。用它算方位角与自转角，而不是依赖固定帧率。
     double anim_time = 0.0;
@@ -1175,7 +1175,7 @@ private:
         return true;
     }
 
-    /// 把光源相机解算出的朝向写进 SkyInfo::sun_direction（取反 = 指向太阳）。
+    /// 把光源相机解算出的朝向写进**主方向光行**（取反 = 指向太阳）。
     ///
     /// 为什么绕这一圈而不是直接写三角函数算出来的方向：这样"shader 重建的
     /// 光源相机"与"C++ 里真正的相机"在浮点层面完全同源，不可能出现
@@ -1187,13 +1187,13 @@ private:
     {
         auto *light_camera = ecs_context ? ecs_context->GetCameraByEntity(light_camera_id) : nullptr;
 
-        if (!light_camera || !environment_system || !sky_info)
+        if (!light_camera || !light_system)
             return;
 
         const glm::vec3 to_sun = -light_camera->forward;
 
-        sky_info->sun_direction = math::Vector4f(to_sun.x, to_sun.y, to_sun.z, 0.0f);
-        environment_system->MarkSkyDirty();
+        // 行表负责脏标记与上行（值变才标脏）⇒ 不再需要 MarkSkyDirty 那一套。
+        light_system->SetMainLightDirection(math::Vector3f(to_sun.x, to_sun.y, to_sun.z));
     }
 
     /// 逐帧推进：光源环绕 → 重拍 shadow map → 网格自转（两个世界同步写入）。
@@ -1271,7 +1271,7 @@ private:
     {
         auto *light_camera = ecs_context ? ecs_context->GetCameraByEntity(light_camera_id) : nullptr;
 
-        if (!light_camera || !environment_system)
+        if (!light_camera || !main_light_shadow_system)
             return;
 
         auto *shadow_info = main_light_shadow_system->EditShadowInfo();
@@ -1429,27 +1429,22 @@ public:
         if (auto *main_rt = ecs_context->GetRenderTarget())
             camera_system->SetViewportInfo(main_rt->GetViewportInfo());
 
-        environment_system = ecs_context->GetSystem<EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+        light_system = ecs_context->GetSystem<LightSystem>();
+        if (!light_system)
+            light_system = ecs_context->RegisterRenderSystem<LightSystem>();
         main_light_shadow_system = ecs_context->GetSystem<MainLightShadowSystem>();
         if (!main_light_shadow_system)
             main_light_shadow_system = ecs_context->RegisterRenderSystem<MainLightShadowSystem>();
 
-        if (!environment_system)
-            return LogStageFail("ShadowMapApp::Init", "environment system unavailable");
+        if (!light_system)
+            return LogStageFail("ShadowMapApp::Init", "light system unavailable");
 
-        sky_info = environment_system->EditSkyInfo();
-        if (!sky_info)
-            return LogStageFail("ShadowMapApp::Init", "edit sky info failed");
-
-        // 时间刻意配到与光源仰角一致的那一档：SetTime 的模型里
+        // 时间刻意配到与光源仰角一致的那一档：EvaluateSunLight 的模型里
         //   仰角 = (小时 − 6) × 15°
         // 取 7:52 → 仰角恰好 28°，与 kLightElevationDeg 对齐。
         // 这样太阳颜色/强度也是"这个仰角该有的样子"，而不是正午的白光。
-        // （SetTime 写进去的 sun_direction 随后会被真实的光源相机朝向覆盖。）
-        sky_info->SetTime(7, 52, 0);
-        environment_system->MarkSkyDirty();
+        // （落进去的方向随后会被真实的光源相机朝向覆盖。）
+        light_system->SetMainLightTime(7, 52, 0);
 
         // ── shadow map：只建一个 depth-only RT，**不建第二个 ECS 世界** ──
         depth_pass = new ShadowDepthPass();
@@ -1486,7 +1481,7 @@ public:
         if (!CreateLightCamera(ecs_context))
             return LogStageFail("ShadowMapApp::Init", "CreateLightCamera failed");
 
-        // 第一帧之前就要有正确的 shadow map 与 sun_direction 以及 ShadowInfo：
+        // 第一帧之前就要有正确的 shadow map 与主光方向（光源行 0）以及 ShadowInfo：
         // 主循环里 Tick 在 Render 之前，而 WorkManager 的**第一次** Tick 会因为
         // delta < frame_time 被跳过，所以不能指望 UpdateAnimation 来补这一发。
         if (!RenderShadowMap())
@@ -1495,12 +1490,16 @@ public:
         SyncSunDirectionFromLightCamera();
         SyncShadowInfo();
 
+        const graph::LightRow *main_light = light_system->GetMainLight();
+
         GLogInfo("[ShadowMap][ShadowMapApp::Init] success shadow_map=%p layout=%u size=%ux%u sun=(%.3f,%.3f,%.3f)",
                  (void *)shadow_map_tex,
                  (uint32_t)shadow_map_tex->GetImageLayout(),
                  shadow_map_tex->GetWidth(),
                  shadow_map_tex->GetHeight(),
-                 sky_info->sun_direction.x, sky_info->sun_direction.y, sky_info->sun_direction.z);
+                 main_light ? main_light->direction_intensity.x : 0.0f,
+                 main_light ? main_light->direction_intensity.y : 0.0f,
+                 main_light ? main_light->direction_intensity.z : 0.0f);
 
         LogStage("ShadowMapApp::Init", "success");
         return true;

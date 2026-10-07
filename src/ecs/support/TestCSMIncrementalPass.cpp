@@ -20,7 +20,7 @@ static_assert(hgl::graph::kLightRowCapacity == 16, "光源行容量冻结为 16�
 static_assert(hgl::graph::kMainLightRowIndex == 0, "主方向光恒为 0 号行（阴影域与 shader 均按此假设）");
 #include <hgl/ecs/support/CameraInfoStorage.h>
 #include <hgl/ecs/support/CameraSlotGuard.h>
-#include <hgl/graph/render/lighting/CascadedShadowController.h>
+#include <hgl/graph/render/shadow/CascadedShadowController.h>
 #include <hgl/graph/module/OffscreenSlotBands.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/io/FileInputStream.h>
@@ -2182,23 +2182,23 @@ int main(int argc, char** argv)
         static const SourceContract kBandContracts[] =
         {
             { "CascadedShadowController.h",
-              OS_TEXT("inc/hgl/graph/render/lighting/CascadedShadowController.h"),
+              OS_TEXT("inc/hgl/graph/render/shadow/CascadedShadowController.h"),
               "uint32_t cache_scroll_band_texels[kMaxShadowCascades] = { 0, 16, 16, 32 }",
               "texel 口径主参数被删/改默认档——横向锚定步长退回世界米口径（失去跨分辨率可比的量子语义）" },
             { "CascadedShadowController.cpp",
-              OS_TEXT("src/SceneGraph/render/lighting/CascadedShadowController.cpp"),
+              OS_TEXT("src/SceneGraph/render/shadow/CascadedShadowController.cpp"),
               "lateral_anchor = (2.0f * band * radius) / denom;",
               "L=2B·r0/(M−1.416B) 闭式被改——锚定格不再是该级 texel 的整数倍（环形偏移会引入亚 texel 抖动）" },
             { "CascadedShadowController.cpp",
-              OS_TEXT("src/SceneGraph/render/lighting/CascadedShadowController.cpp"),
+              OS_TEXT("src/SceneGraph/render/shadow/CascadedShadowController.cpp"),
               "const float denom = map_size - 1.416f * band;",
               "退化保护被删——B ≥ M/1.416 时除零/负半径（NaN 半径会让整级联消失）" },
             { "CascadedShadowController.cpp",
-              OS_TEXT("src/SceneGraph/render/lighting/CascadedShadowController.cpp"),
+              OS_TEXT("src/SceneGraph/render/shadow/CascadedShadowController.cpp"),
               "config_.cache_scroll_band_texels[c]",
               "调用点未逐级传 B——退化成所有级联共用一个步长（远景级联条带退化）" },
             { "CascadedShadowController.h",
-              OS_TEXT("inc/hgl/graph/render/lighting/CascadedShadowController.h"),
+              OS_TEXT("inc/hgl/graph/render/shadow/CascadedShadowController.h"),
               "cache_lateral_anchor_step",
               "世界米口径的横向锚定字段复活——与 texel 口径主参数并存会造成两套步长语义",
               true },
@@ -5861,6 +5861,148 @@ int main(int argc, char** argv)
 
         GLogInfo(u8"Test 44 Passed: T6b 光源行表契约成立（行 0 = 默认主方向光 + 越界 fail-fast + "
                  u8"值变才标脏；地址字段/GLSL 镜像/建表/上传/发布/门用例六处接线全在位）。");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 45: T6b 减法契约（光源定义迁出 SkyInfo + 影随光 + 死代码清零）
+    //
+    // 判据分三类：① **禁复活**（天空两侧不得再出现光源参数；阴影域不得再回读环境域）；
+    // ② 正向接线（shader 四处改读光源行、光源行模型单一出处、LightSystem 写行）；
+    // ③ 死代码清零（旧 OO 灯模型头 + 被 SetTime 掏空的 SkyInfo.cpp 不得留在构建里）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        static const SourceContract kLightDomainContracts[] =
+        {
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "float       halo_intensity = 0.1f;",
+              "T6b：天空只留外观（底色 / 光晕强度）——光晕色恒为主光色，不再是独立字段" },
+
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "halo_color",
+              "T6b 禁复活：光晕色曾是主光色的同步副本（双源）—— 颜色直接读光源行，不许回字段",
+              true },
+
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "sun_direction",
+              "T6b 禁复活：光源方向不得再住天空结构（真源 = 光源行 0）",
+              true },
+
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "sun_color",
+              "T6b 禁复活：光源颜色不得再住天空结构",
+              true },
+
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "sun_intensity",
+              "T6b 禁复活：光源强度不得再住天空结构（shader 读 main_light.direction_intensity.w）",
+              true },
+
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "sun_ang_deg",
+              "T6b 禁复活：太阳角径不得再住天空结构（真源 = 光行 color_angle.a）",
+              true },
+
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "moon_color",
+              "T6b/D3 禁复活：第二光源的月亮色字段（真要第二光源时加一行，不复活字段）",
+              true },
+
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "SetTime",
+              "T6b 禁复活：天空的时刻模型已迁到 graph::EvaluateSunLight（光源域）",
+              true },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "float halo_intensity;",
+              "T6b：天空镜像只留外观（底色 / 光晕强度 / IBL 句柄）——与 C++ SkyInfo 同序" },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "uvec4 env_tex;",
+              "T6b：IBL 句柄仍在天空镜像里（GLSL 侧 64 B 步长的最后一项）" },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "sky.sun_direction",
+              "T6b 禁复活：天空镜像不得再有光源方向（两端漂移 = 静默读垃圾光照）",
+              true },
+
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+              "const vec3  L         = normalize(main_light.direction_intensity.xyz);",
+              "T6b：法线偏移的光方向改读光源行 0（阴影域读光，单向）" },
+
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+              "sky.sun_direction",
+              "T6b 禁复活：阴影接收侧不得回读天空里的方向",
+              true },
+
+            { "shadow_receiver_source.glsl", OS_TEXT("ShaderLibrary/material/shadow_receiver_source.glsl"),
+              "const vec3 to_sun = normalize(main_light.direction_intensity.xyz);",
+              "T6b：重建光源相机的方向改读光源行 0" },
+
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+              "vec3 GetMainLightDir()",
+              "T6b：主光取用口改名（读光源行，不再叫 Sky*）" },
+
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+              "return max(main_light.color_angle.rgb * main_light.direction_intensity.w, vec3(0.05));",
+              "T6b：主光颜色 × 强度取自光行（颜色 color_angle.rgb / 强度 direction_intensity.w）" },
+
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+              "sky.sun_direction",
+              "T6b 禁复活：天光模块不得回读天空里的方向",
+              true },
+
+            { "sky_minimal_surface.glsl", OS_TEXT("ShaderLibrary/surface/sky_minimal_surface.glsl"),
+              "float sun_rad = radians(main_light.color_angle.a);",
+              "T6b：日盘角径取自光行 color_angle.a（天空不再持有角径）" },
+
+            { "sky_minimal_surface.glsl", OS_TEXT("ShaderLibrary/surface/sky_minimal_surface.glsl"),
+              "sky.sun_color",
+              "T6b 禁复活：日盘颜色取自光行（天空不再持有颜色）",
+              true },
+
+            { "LightRow.h", OS_TEXT("inc/hgl/graph/ubo/LightRow.h"),
+              "inline SunLightSample EvaluateSunLight(float hour, float minute, float second)",
+              "T6b：太阳时刻模型收在光源域（默认主光与默认光晕同源，避免双份模型）" },
+
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+              "vec3 mie = main_light.color_angle.rgb * mie_phase * sky.halo_intensity;",
+              "T6b：Mie 光晕色读主光色（旧双源副本已删）" },
+
+            { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
+              "const auto *light_row = context->GetLightRowTable().Row(graph::kMainLightRowIndex);",
+              "T6b：阴影解算改成读**世界光源行 0**（T6a 的临时依赖删除）" },
+
+            { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/MainLightShadowSystem.cpp"),
+              "GetSystem<EnvironmentSystem>",
+              "T6b 禁复活：阴影域不得再回读环境域取光（单向依赖：阴影读光）",
+              true },
+
+            { "LightSystem.cpp", OS_TEXT("src/ecs/systems/render/LightSystem.cpp"),
+              "context->GetLightRowTable().SetRow(graph::kMainLightRowIndex, row);",
+              "T6b：光源域的唯一写入口（值变才标脏由行表判定）" },
+
+            { "CMakeLists.txt", OS_TEXT("src/SceneGraph/CMakeLists.txt"),
+              "render/shadow/CascadedShadowController.h",
+              "T6b/P3：控制器归位 render/shadow/（目录名与内容一致）" },
+
+            { "CMakeLists.txt", OS_TEXT("src/SceneGraph/CMakeLists.txt"),
+              "render/lighting/Light.h",
+              "T6b/D3 禁复活：旧 OO 灯模型头（零 include 死代码）不得回构建",
+              true },
+
+            { "CMakeLists.txt", OS_TEXT("src/SceneGraph/CMakeLists.txt"),
+              "env/SkyInfo.cpp",
+              "T6b 禁复活：被 SetTime 掏空的 SkyInfo.cpp 不得回构建（时刻模型在 LightRow.h）",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(45, kLightDomainContracts,
+                                                       static_cast<uint>(sizeof(kLightDomainContracts) /
+                                                                         sizeof(kLightDomainContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 45 Passed: T6b 减法契约成立（光源定义单一真源 = 世界光源行 0；天空两侧 6 条禁复活 + "
+                 u8"阴影域不回读环境域；shader 四处改读光行；死头与空 TU 已清）。");
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

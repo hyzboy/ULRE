@@ -56,17 +56,15 @@ layout(buffer_reference, scalar, buffer_reference_align=64) readonly buffer Came
 };
 
 // sky（S2：地址进表，退出 Scene 集绑定）：sky 是单份 buffer ⇒ 所有帧槽同址。
-// 宏名与成员名均不变 ⇒ 正文与生成侧的 `sky.*` 读点零改动。
+// T6b：光源参数（方向 / 颜色 / 强度 / 角径 / 阴影开关）已迁出到**光源行**
+//（`light_rows[0]` = 主方向光）——
+// 天空只留外观（底色 / 光晕强度）与 IBL 句柄；光晕**颜色**直接读主光色（不再单独成字段）。
+// 字段与 C++ `SkyInfo` 逐字段同序：
+// scalar layout 下 `halo_intensity` 之后的 `uvec4` 需 16B 对齐（隐式补 12 B），
+// 与 C++ 侧 glm 对齐类型的填充同款 ⇒ 两端 sizeof 都是 64 B。
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer SkyInfoRef
 {
     vec4 base_sky_color;
-    vec4 sun_direction;
-    vec4 sun_color;
-    vec4 halo_color;
-    vec4 moon_color;
-    float sun_ang_deg;
-    float sun_intensity;
-    float moon_intensity;
     float halo_intensity;
     uvec4 env_tex;
 };

@@ -31,8 +31,8 @@ LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si, uin
     lighting.emissive = surf.emissive;
     lighting.alpha = surf.alpha;
 
-    lighting.mainLightDir = GetSkyMainLightDir();
-    lighting.mainLightColor = GetSkyMainLightColor();
+    lighting.mainLightDir = GetMainLightDir();
+    lighting.mainLightColor = GetMainLightColor();
     lighting.ambientColor = GetSkyAmbientColor();
     lighting.reflectionColor = vec3(0.0);
     // D3：阴影接收开关与局部偏差倍率随 per-draw 行到达（data_index = 本 FS 的

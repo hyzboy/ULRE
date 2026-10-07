@@ -1,11 +1,17 @@
 ﻿#pragma once
 
 #include<hgl/math/Vector.h>
+#include<hgl/color/Color4f.h>
+#include<cmath>
 #include<cstdint>
 #include<cstddef>
 
 namespace hgl::graph
 {
+    // 与 SkyInfo.h / ShadowInfo.h 同款：本头会被大量 TU（含无 `using namespace math` 的）直接包含，
+    // 裸写 `Vector4f` 会因查找不到而报 C3861 ⇒ 在本命名空间内显式引入 math 名（保证自足）。
+    using namespace math;
+
     /**
      * 光源类型（加类型 = 加常量；**不得**为未实现类型写分支）。
      * ⚠ 新增枚举值必须同步 `kAllLightTypes`——那是覆盖性判定的唯一真源（漏更新 = 编译期失败）。
@@ -72,24 +78,92 @@ namespace hgl::graph
     static_assert(offsetof(LightRow, color_angle) == 32, "color_angle 必须落在 32B");
     static_assert(offsetof(LightRow, shadow_kind) == 48, "shadow_kind 必须落在 48B");
 
+    // ── 太阳模型（时刻 → 主方向光参数）──────────────────────────────────────────
+    // 唯一出处：默认主光（`MakeDefaultMainLight`）取它，时刻驱动的作者调用（LightSystem）也取它 ——
+    // 算术与「光源寄居 `SkyInfo`」时代的 `SkyInfo::SetTime` 逐式相同
+    //（仰角：6→12 点线性 0→90°、12→18 点线性 90→0°，其余时刻 -10°；方位角固定 180°；
+    // 白天色温由地平线（暖）到正顶（近白）；夜间强度 0）。
+    // ⚠ 两处与旧式不同，均**不改变现有画面**（旧调用点全是白天）：
+    //   ① 夜间只表达「主光熄灭」——旧模型此时打开 `moon_*`（第二光源），而 D3 已删 `moon_*`；
+    //   ② 采样是**纯函数**（旧实现夜里保留上一份 sun_color 不动；夜里强度为 0 ⇒ 颜色不可观测）。
+    struct SunLightSample
+    {
+        Vector4f direction = Vector4f(0.0f, 0.0f, 1.0f, 0.0f);  ///< 指向光源（.w = 0，与 sky 时代同约定）
+        Color4f  color     = Color4f(1.0f, 0.95f, 0.9f, 1.0f);
+        float    intensity = 1.0f;
+    };
+
+    inline SunLightSample EvaluateSunLight(float hour, float minute, float second)
+    {
+        const float total_hours = hour + minute / 60.0f + second / 3600.0f;
+
+        // 简单模型：太阳在正南方（180 度），12 点最高（仰角 90 度），6 / 18 点在地平线（0 度）
+        float elevation_deg = -10.0f;
+
+        if (total_hours >= 6.0f && total_hours <= 18.0f)
+        {
+            if (total_hours <= 12.0f)
+                elevation_deg = (total_hours - 6.0f) * (90.0f / 6.0f);
+            else
+                elevation_deg = (18.0f - total_hours) * (90.0f / 6.0f);
+        }
+
+        const float azimuth_deg = 180.0f;
+
+        const float azimuth_rad   = azimuth_deg * (3.14159265f / 180.0f);
+        const float elevation_rad = elevation_deg * (3.14159265f / 180.0f);
+
+        SunLightSample sample;
+
+        sample.direction.x = cos(elevation_rad) * sin(azimuth_rad);
+        sample.direction.y = cos(elevation_rad) * cos(azimuth_rad);
+        sample.direction.z = sin(elevation_rad);
+        sample.direction.w = 0.0f; // 方向向量
+
+        // 色温随仰角（地平线最暖，正顶最冷）
+        const float elev_norm = elevation_deg >= 90.0f ? 1.0f
+                              : (elevation_deg <= 0.0f ? 0.0f : elevation_deg / 90.0f);
+        const float warm = powf(1.0f - elev_norm, 1.2f);
+
+        const Color4f day_col (1.00f, 0.98f, 0.95f, 1.0f);
+        const Color4f dusk_col(1.00f, 0.62f, 0.32f, 1.0f);
+
+        sample.color.r = day_col.r + (dusk_col.r - day_col.r) * warm;
+        sample.color.g = day_col.g + (dusk_col.g - day_col.g) * warm;
+        sample.color.b = day_col.b + (dusk_col.b - day_col.b) * warm;
+        sample.color.a = 1.0f;
+
+        // 白天主光可见；夜里主光熄灭（不由本模型点亮第二光源）
+        sample.intensity = (elevation_deg > 0.0f) ? 1.0f : 0.0f;
+
+        return sample;
+    }
+
+    /// 引擎默认时刻（默认主光与默认天空光晕**同源同参**：改这里 = 两处同改）
+    inline constexpr float kDefaultSunHour   = 10.0f;
+    inline constexpr float kDefaultSunMinute =  0.0f;
+    inline constexpr float kDefaultSunSecond =  0.0f;
+
     /**
-     * 默认主方向光（**行 0 的初值**）：字段值与「光源寄居 `SkyInfo`」时代的默认太阳参数同源
-     *（方向 (0,0,1)、颜色 (1,0.95,0.9)、强度 1、角径 16°）⇒ 数据模型切换不改变默认外观。
+     * 默认主方向光（**行 0 的初值**）= `EvaluateSunLight(默认时刻)` + 启用位。
      *
-     * 只置 `kLightFlagEnabled`（不投阴影）：阴影由 `MainLightShadowSystem` 的 Enable/Disable
-     * 在光行上落 `cast_shadow` / `shadow_kind`，本函数不预置机制。
+     * 只置 `kLightFlagEnabled`（不投阴影）：阴影机制由 `MainLightShadowSystem` 的
+     * Enable / Disable 在光行上落 `cast_shadow` / `shadow_kind`，本函数不预置机制。
      */
     inline LightRow MakeDefaultMainLight()
     {
+        const SunLightSample sun = EvaluateSunLight(kDefaultSunHour, kDefaultSunMinute, kDefaultSunSecond);
+
         LightRow row;
 
         row.type                = uint32_t(LightType::Direction);
         row.flags               = kLightFlagEnabled;
-        row.direction_intensity = Vector4f(0.0f, 0.0f, 1.0f, 1.0f);
-        row.color_angle         = Vector4f(1.0f, 0.95f, 0.9f, 16.0f);
+        row.direction_intensity = Vector4f(sun.direction.x, sun.direction.y, sun.direction.z, sun.intensity);
+        row.color_angle         = Vector4f(sun.color.r, sun.color.g, sun.color.b, 16.0f);
         row.shadow_kind         = uint32_t(LightShadowKind::None);
         row.shadow_index        = 0;
 
         return row;
     }
+
 }//namespace hgl::graph

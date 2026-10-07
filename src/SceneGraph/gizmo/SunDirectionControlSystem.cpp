@@ -7,7 +7,7 @@
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/LightSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<glm/gtc/quaternion.hpp>
@@ -26,20 +26,20 @@ SunDirectionControlSystem::~SunDirectionControlSystem()
     Shutdown();
 }
 
-bool SunDirectionControlSystem::EnsureEnvironment()
+bool SunDirectionControlSystem::EnsureLightSystem()
 {
     if (!context)
         return false;
 
-    if (environment_system)
+    if (light_system)
         return true;
 
-    if (!auto_find_environment)
+    if (!auto_find_light)
         return false;
 
-    auto env_sp = context->GetSystem<hgl::ecs::EnvironmentSystem>();
-    environment_system = env_sp.get();
-    return environment_system != nullptr;
+    auto sys_sp = context->GetSystem<hgl::ecs::LightSystem>();
+    light_system = sys_sp.get();
+    return light_system != nullptr;
 }
 
 bool SunDirectionControlSystem::EnsureProxyEntity()
@@ -95,7 +95,7 @@ void SunDirectionControlSystem::Initialize()
     if (!EnsureGizmoSystemResources(context))
         return;
 
-    if (!EnsureEnvironment())
+    if (!EnsureLightSystem())
         return;
 
     if (!EnsureProxyEntity())
@@ -104,13 +104,13 @@ void SunDirectionControlSystem::Initialize()
     if (!EnsureGizmo())
         return;
 
-    if (environment_system)
+    if (light_system)
     {
-        if (const auto *sky = environment_system->GetSkyInfo())
+        if (const auto *main_light = light_system->GetMainLight())
         {
-            const math::Vector3f sun_dir(sky->sun_direction.x,
-                                         sky->sun_direction.y,
-                                         sky->sun_direction.z);
+            const math::Vector3f sun_dir(main_light->direction_intensity.x,
+                                         main_light->direction_intensity.y,
+                                         main_light->direction_intensity.z);
 
             proxy_transform.SetLocalPosition(glm::vec3(gizmo_position));
             proxy_transform.SetLocalRotation(hgl::math::DirectionToRotation(sun_dir));
@@ -168,7 +168,7 @@ void SunDirectionControlSystem::Update(float)
             return;
     }
 
-    if (!EnsureEnvironment())
+    if (!EnsureLightSystem())
         return;
 
     if (!EnsureProxyEntity())
@@ -206,30 +206,27 @@ void SunDirectionControlSystem::Update(float)
     frame_input.left_released = left_released;
     UpdateTransformGizmo(gizmo, frame_input);
 
-    if (environment_system)
+    if (light_system)
     {
-        auto *sky = environment_system->EditSkyInfo();
-        if (sky)
+        if (proxy_transform.IsValid())
+            proxy_transform.SetLocalPosition(glm::vec3(gizmo_position));
+
+        math::Vector3f dir(0.0f, 0.0f, 1.0f);
+        if (auto *gizmo_root = GetGizmoRootEntity(gizmo))
         {
-            if (proxy_transform.IsValid())
-                proxy_transform.SetLocalPosition(glm::vec3(gizmo_position));
-
-            math::Vector3f dir(0.0f, 0.0f, 1.0f);
-            if (auto *gizmo_root = GetGizmoRootEntity(gizmo))
+            auto gizmo_root_transform = context->GetTransformByEntity(gizmo_root->GetEntityID());
+            if (gizmo_root_transform.IsValid())
             {
-                auto gizmo_root_transform = context->GetTransformByEntity(gizmo_root->GetEntityID());
-                if (gizmo_root_transform.IsValid())
-                {
-                    dir = hgl::math::RotationToDirection(gizmo_root_transform.GetLocalRotation());
+                dir = hgl::math::RotationToDirection(gizmo_root_transform.GetLocalRotation());
 
-                    if (proxy_transform.IsValid())
-                        proxy_transform.SetLocalRotation(gizmo_root_transform.GetLocalRotation());
-                }
+                if (proxy_transform.IsValid())
+                    proxy_transform.SetLocalRotation(gizmo_root_transform.GetLocalRotation());
             }
-
-            sky->sun_direction = math::Vector4f(dir.x, dir.y, dir.z, 0.0f);
-            environment_system->MarkSkyDirty();
         }
+
+        // 写**世界私有光源行 0**（T6b：太阳方向不再寄居 SkyInfo；脏行上传由行表接管，
+        // 与旧 `MarkSkyDirty()` 同效但归属正确）
+        light_system->SetMainLightDirection(dir);
     }
 }
 

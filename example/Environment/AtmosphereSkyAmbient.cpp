@@ -21,7 +21,7 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/LightSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -306,18 +306,17 @@ private:
         if (!ecs_context)
             return false;
 
-        auto environment_system = ecs_context->GetSystem<EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
-        if (!environment_system)
+        auto light_system = ecs_context->GetSystem<LightSystem>();
+        if (!light_system)
+            light_system = ecs_context->RegisterRenderSystem<LightSystem>();
+        if (!light_system)
             return false;
 
-        // 同一 SkyInfo——sky dome 显示与物体 ambient 采样共用
-        auto* sky = environment_system->EditSkyInfo();
-        if (sky)
+        // T6b：光源 = **世界私有光源行 0** —— sky dome 显示与物体 ambient 采样都从这一行取光
+        //（天空只留外观：底色/光晕色，走本世界的 env profile）。
         {
-            glm::vec3 sun_dir = glm::normalize(glm::vec3(0.35f, 0.55f, 0.76f));
-            sky->sun_direction = math::Vector4f(sun_dir.x, sun_dir.y, sun_dir.z, 0.0f);
+            const glm::vec3 sun_dir = glm::normalize(glm::vec3(0.35f, 0.55f, 0.76f));
+            light_system->SetMainLightDirection(math::Vector3f(sun_dir.x, sun_dir.y, sun_dir.z));
         }
 
         if (!InitSceneEntities())

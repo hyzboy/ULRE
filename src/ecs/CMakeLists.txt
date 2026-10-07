@@ -83,6 +83,11 @@ set(ECS_SYS_09A_RenderPreBeginFrame_MainLightShadowSystem_FILES
     systems/render/MainLightShadowSystem.cpp
 )
 
+set(ECS_SYS_09C_RenderPreBeginFrame_LightSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/LightSystem.h
+    systems/render/LightSystem.cpp
+)
+
 set(ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/EnvironmentSystem.h
     systems/render/EnvironmentSystem.cpp
@@ -269,6 +274,7 @@ set(ECS_SOURCE
     ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
     ${ECS_SYS_09A_RenderPreBeginFrame_MainLightShadowSystem_FILES}
     ${ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES}
+    ${ECS_SYS_09C_RenderPreBeginFrame_LightSystem_FILES}
 
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES}
@@ -303,6 +309,7 @@ source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${E
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
 source_group("ECS\\Systems\\09A RenderPreBeginFrame_MainLightShadowSystem" FILES ${ECS_SYS_09A_RenderPreBeginFrame_MainLightShadowSystem_FILES})
 source_group("ECS\\Systems\\09B RenderPreBeginFrame_ColorPaletteSystem" FILES ${ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES})
+source_group("ECS\\Systems\\09C RenderPreBeginFrame_LightSystem" FILES ${ECS_SYS_09C_RenderPreBeginFrame_LightSystem_FILES})
 source_group("ECS\\Systems\\13B RenderBufferCommit_ViewUBOCommitSystem" FILES ${ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15B RenderFrameSync_RenderSceneUBOSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES})

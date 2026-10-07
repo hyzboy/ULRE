@@ -1,4 +1,4 @@
-#include <hgl/graph/render/lighting/CascadedShadowController.h>
+#include <hgl/graph/render/shadow/CascadedShadowController.h>
 #include <hgl/math/Projection.h>
 #include <hgl/log/Log.h>
 #include <numbers>

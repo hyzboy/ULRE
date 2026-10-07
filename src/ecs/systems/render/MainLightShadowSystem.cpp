@@ -1,5 +1,4 @@
 ﻿#include<hgl/ecs/systems/render/MainLightShadowSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/support/CameraInfoStorage.h>
@@ -9,7 +8,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
-#include<hgl/graph/render/lighting/CascadedShadowController.h>
+#include<hgl/graph/render/shadow/CascadedShadowController.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include <cstdlib>
@@ -177,6 +176,24 @@ namespace hgl::ecs
         // 多做一次静态级联全量重建。
         consumed_static_scene_revision = context ? context->GetStaticSceneRevision() : 0;
 
+        // 影随光（T6b）：在主光行上落「投阴影 + 机制 = CSM + 资源索引 0（本世界唯一一份影子数据）」。
+        // 光行是影子的**归属方**（阴影从属于光源），本系统只是机制的执行者。
+        if (context)
+        {
+            if (auto *row = context->GetLightRowTable().Row(graph::kMainLightRowIndex))
+            {
+                graph::LightRow light = *row;
+
+                light.flags       |= graph::kLightFlagCastShadow;
+                light.shadow_kind  = uint32_t(graph::LightShadowKind::CSM);
+                light.shadow_index = 0;
+
+                context->GetLightRowTable().SetRow(graph::kMainLightRowIndex, light);
+            }
+        }
+
+        disabled_light_reported = false;
+
         shadow_enabled = true;
         GLogInfo("[MainLightShadowSystem] Main light shadow enabled successfully (4 cascades, size=%u)", shadow_map_size);
         return true;
@@ -197,6 +214,22 @@ namespace hgl::ecs
         // 世界槽上限 16、超限报错不扩容：每次 Enable/Disable 泄漏一槽迟早把槽位顶满。
         light_camera_slot.Reset();
         light_camera.reset();
+
+        // 影随光（T6b）：光行上的阴影开关随机制一起清（不投阴影 / 机制 None / 索引归零）
+        if (context)
+        {
+            if (auto *row = context->GetLightRowTable().Row(graph::kMainLightRowIndex))
+            {
+                graph::LightRow light = *row;
+
+                light.flags       &= ~graph::kLightFlagCastShadow;
+                light.shadow_kind  = uint32_t(graph::LightShadowKind::None);
+                light.shadow_index = 0;
+
+                context->GetLightRowTable().SetRow(graph::kMainLightRowIndex, light);
+            }
+        }
+
         shadow_enabled = false;
     }
 
@@ -232,15 +265,24 @@ namespace hgl::ecs
         if (!shadow_info)
             return;
 
-        // 光源定义当前仍住环境域（T6a 临时依赖）：L2 步迁到世界私有光源行后改为读光行。
-        auto env = context ? context->GetSystem<EnvironmentSystem>() : nullptr;
-        const auto *sky = env ? env->GetSkyInfo() : nullptr;
-        if (!sky)
-            return;
+        // 光源定义 = **本世界的光源行 0**（T6b；写者是 `LightSystem`，本系统只读 —— 阴影从属于
+        // 光源、单向依赖）。不经 `GetSystem<LightSystem>()` 取，避免反向依赖：行表归世界所有。
+        const auto *light_row = context->GetLightRowTable().Row(graph::kMainLightRowIndex);
+        if (!light_row || (light_row->flags & graph::kLightFlagEnabled) == 0)
+        {
+            if (!disabled_light_reported)
+            {
+                disabled_light_reported = true;
+                GLogWarning("[MainLightShadowSystem] 主方向光未启用（光行 0 的 flags 缺 enabled）"
+                            "⇒ 本帧跳过阴影解算；请经 LightSystem 点亮主光");
+            }
 
-        // 太阳光方向从 sky 提取（指向场景地面的相反方向 = 光源到表面）
-        const auto &sun = sky->sun_direction;
-        math::Vector3f light_dir_math(-sun.x, -sun.y, -sun.z);
+            return;
+        }
+
+        // 光行约定：direction 指向**光源**；CSM 解算要的是「光源到表面」的方向 ⇒ 取反
+        const auto &to_light = light_row->direction_intensity;
+        math::Vector3f light_dir_math(-to_light.x, -to_light.y, -to_light.z);
 
         // 主相机当前视锥数据
         graph::Camera main_cam;

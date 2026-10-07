@@ -189,7 +189,9 @@ namespace hgl::graph
         auto *p = new Profile();
         p->id = kEnvProfileDefault;
         p->name = "default";
-        p->cpu.sky.SetTime(10, 0, 0);
+        // T6b：这里不再调 `sky.SetTime(10,0,0)` —— 天空已不含光源参数（光晕色也不再是字段，
+        // shader 直接读主光色）；默认 profile 的天空数据（底色 / 光晕强度 / IBL 句柄）与旧值逐字段相同，
+        // 主光走世界私有光源行。
         profiles.push_back(p);
 
         // default 立即物化并标脏：任何 world 第一帧的设备级上传扫描即可拿到有效数据。

@@ -18,7 +18,7 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/LightSystem.h>
 
 #include<hgl/graph/gizmo/SunDirectionControlSystem.h>
 
@@ -78,7 +78,8 @@ private:
 
 #ifdef DRAW_SKY_SPHERE
     Entity* sky_entity = nullptr;
-    std::shared_ptr<EnvironmentSystem> environment_system;
+    /// T6b：太阳方向写进**世界私有光源行 0**（sky 已不含光源参数）。
+    std::shared_ptr<LightSystem> light_system;
     Geometry* sky_geometry = nullptr;
     graph::mtl::MaterialRecipe sky_recipe{};
     PrimitiveAsset             sky_asset{};
@@ -112,18 +113,14 @@ private:
             return false;
 
     #ifdef DRAW_SKY_SPHERE
-        environment_system = ecs_context->GetSystem<EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+        light_system = ecs_context->GetSystem<LightSystem>();
+        if (!light_system)
+            light_system = ecs_context->RegisterRenderSystem<LightSystem>();
 
-        if (!environment_system)
+        if (!light_system)
             return false;
 
-        if (auto* sky = environment_system->EditSkyInfo())
-        {
-            sky->sun_direction = math::Vector4f(0.2f, 0.7f, 0.68f, 0.0f);
-        }
-        environment_system->MarkSkyDirty();
+        light_system->SetMainLightDirection(math::Vector3f(0.2f, 0.7f, 0.68f));
             #endif//DRAW_SKY_SPHERE
 
     #ifdef DRAW_GIZMO
@@ -134,7 +131,7 @@ private:
         if (!sun_gizmo_system)
             return false;
 
-        sun_gizmo_system->SetEnvironmentSystem(environment_system.get());
+        sun_gizmo_system->SetLightSystem(light_system.get());
         sun_gizmo_system->SetGizmoPosition(math::Vector3f(0.0f, 0.0f, 0.0f));
     #endif//DRAW_GIZMO
 

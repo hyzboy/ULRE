@@ -25,14 +25,14 @@
 // uv0 恰好可以当光源空间 uv 用。**一旦把光源倾斜（为了把影子拉长），
 // 这个前提就不再成立**：地面不再垂直于光轴，光锥在地面处的截面也不再等于地面。
 //
-// 现在的做法是：在 shader 里用 **sky.sun_direction** 把光源相机整个重建出来，
+// 现在的做法是：在 shader 里用 **主方向光行**（`main_light`）把光源相机整个重建出来，
 // 再把地面点解析投影到光源空间，求出 uv 与自身深度。
 //
-//   * 光源相机恒为 ViewModel 摆法：位于 +sun_direction * DISTANCE，target = 原点。
-//     于是 forward = -sun_direction、pos = sun_direction * DISTANCE，
+//   * 光源相机恒为 ViewModel 摆法：位于 +to_sun * DISTANCE，target = 原点。
+//     于是 forward = -to_sun、pos = to_sun * DISTANCE，
 //     右/上向量用与 C++ CameraSystem::ComputeRightUp 完全相同的式子算出；
-//   * sun_direction 是 SkyInfo UBO 的字段（Scene 集 binding 1），示例每帧写入，
-//     并且**直接取自光源相机自身的 forward**（取反），所以两侧不可能对不上；
+//   * to_sun 取自**世界私有光源行的第 0 行**（`main_light`，地址 WorldAddresses.addr_lights），
+//     示例每帧写入，并且**直接取自光源相机自身的 forward**（取反），所以两侧不可能对不上；
 //   * 地面点的世界 XY 由 uv0 反推（PlaneSquare 的 uv0 = 0.5 + 世界XY / 20）。
 //
 // ## 深度比较（reversed-Z）
@@ -58,7 +58,7 @@
 
 #include "common/material_source_interface.glsl"
 #include "common/bindless_textures.glsl"
-// sky.sun_direction —— 光源方向的唯一来源。
+// main_light —— 光源方向的唯一来源（世界私有光源行，行 0 = 主方向光）。
 // forward_lit.glsl.tmpl 已经 include 过它，这里再写一次是幂等的（有 include guard），
 // 但能让本模块单独可读、不依赖被拼进来的顺序。
 #include "ubo/scene_ubo.glsl"
@@ -97,17 +97,17 @@ const float SHADOW_RECEIVER_BIAS = 0.002;
 /// 被遮挡时的反照率系数（0 = 全黑，1 = 不受影响）
 const float SHADOW_RECEIVER_DARKNESS = 0.12;
 
-/// 由 sun_direction 重建出来的光源相机。
+/// 由主方向光的方向（to_sun）重建出来的光源相机。
 struct ShadowReceiverLight
 {
-    vec3 pos;       ///< 相机位置 = sun_direction * DISTANCE
+    vec3 pos;       ///< 相机位置 = to_sun * DISTANCE
     vec3 right;     ///< = normalize(cross(forward, world_up))
     vec3 up;        ///< = normalize(cross(right, forward))
-    vec3 forward;   ///< = -sun_direction
+    vec3 forward;   ///< = -to_sun
 };
 
 /// 重建光源相机。与 ShadowMap.cpp::CreateLightCamera 的摆法一一对应：
-///   forward = -sun_direction
+///   forward = -to_sun
 ///   position = target - forward * distance （target = 原点）
 /// 右/上向量与 CameraSystem::ComputeRightUp 同构。
 ///
@@ -118,7 +118,7 @@ ShadowReceiverLight BuildShadowReceiverLight()
 {
     ShadowReceiverLight l;
 
-    const vec3 to_sun = normalize(sky.sun_direction.xyz);
+    const vec3 to_sun = normalize(main_light.direction_intensity.xyz);
 
     l.forward = -to_sun;
     l.pos     = to_sun * SHADOW_RECEIVER_LIGHT_DISTANCE;

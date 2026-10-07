@@ -30,9 +30,12 @@ namespace hgl
          * CSM 控制器 / 4 张级联 RT / 光相机与其相机槽 RAII / 级联屏蔽 / 静态缓存失效钩子
          * / `ShadowInfo` 的物化与发布。
          *
-         * ⚠ 光源的**定义**（方向/颜色/强度）当前仍住在 `SkyInfo`（环境域）：T6a 里本系统经
-         *   `GetSystem<EnvironmentSystem>()` 读 sky；迁到**世界私有光源行**后此依赖消失
-         *   （L2 步；见 `doc/future/lighting-shadow-domain-split-plan.md` §3/§5）。
+         * T6b：光源的**定义**（方向/颜色/强度/角径）已迁到**世界私有光源行**
+         *   （`LightRowTable` 行 0）—— 本系统直接读该行（T6a 的
+         *   `GetSystem<EnvironmentSystem>()` 临时依赖已删），并在 Enable / Disable 时把
+         *   「投阴影 + 机制 + 资源索引」落回光行（影随光）。依赖方向 = **阴影读光、单向**，
+         *   光源域（`LightSystem`）对本系统零依赖。见
+         *   `doc/future/lighting-shadow-domain-split-plan.md` §3。
          */
         class MainLightShadowSystem : public System
         {
@@ -56,6 +59,9 @@ namespace hgl
             // A3：上次消费的 static_scene_revision——与 context 当前值不等即
             // 静态级联失效重建一次，随后追平不再触发。
             uint64_t consumed_static_scene_revision = 0;
+
+            /// 主光被禁用（光行 flags 无 enabled）时的**一次性**告警闩：不刷屏、也不静默。
+            bool disabled_light_reported = false;
 
             // 影子数据当前仍存于本世界**环境 profile** 的 ShadowInfo（`EnvironmentInfo::shadow`）；
             // 世界私有化属下一步（见设计档 P4）。

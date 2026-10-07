@@ -10,7 +10,7 @@ namespace hgl
     namespace ecs
     {
         class Entity;
-        class EnvironmentSystem;
+        class LightSystem;
     }
 }
 
@@ -22,10 +22,11 @@ private:
     GizmoECS *gizmo = nullptr;
     hgl::ecs::Entity *proxy_entity = nullptr;
     hgl::ecs::TransformAccessor proxy_transform;
-    hgl::ecs::EnvironmentSystem *environment_system = nullptr;
+    /// 光源域（T6b）：太阳方向住在**世界私有光源行 0**，本 gizmo 是它的编辑入口之一。
+    hgl::ecs::LightSystem *light_system = nullptr;
 
     math::Vector3f gizmo_position = math::Vector3f(0.0f);
-    bool auto_find_environment = true;
+    bool auto_find_light = true;
 
     bool last_left_down = false;
     bool resource_registered = false;
@@ -38,13 +39,13 @@ public:
     void Shutdown() override;
     void Update(float deltaTime) override;
 
-    void SetEnvironmentSystem(hgl::ecs::EnvironmentSystem *env_system)
+    void SetLightSystem(hgl::ecs::LightSystem *sys)
     {
-        environment_system = env_system;
-        auto_find_environment = (env_system == nullptr);
+        light_system = sys;
+        auto_find_light = (sys == nullptr);
     }
 
-    hgl::ecs::EnvironmentSystem *GetEnvironmentSystem() const { return environment_system; }
+    hgl::ecs::LightSystem *GetLightSystem() const { return light_system; }
 
     void SetGizmoPosition(const math::Vector3f &position) { gizmo_position = position; }
     const math::Vector3f &GetGizmoPosition() const { return gizmo_position; }
@@ -52,7 +53,7 @@ public:
     void SetGizmoVisible(bool visible);
 
 private:
-    bool EnsureEnvironment();
+    bool EnsureLightSystem();
     bool EnsureProxyEntity();
     bool EnsureGizmo();
 };

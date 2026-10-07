@@ -65,8 +65,7 @@ SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 
 SET(SCENE_ENVIRONMENT_FILES ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/LightRow.h
-                            ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/EnvironmentInfo.h
-                            env/SkyInfo.cpp)
+                            ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/EnvironmentInfo.h)
 
 SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})
 
@@ -92,12 +91,10 @@ SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/render/RenderContext.h
 
 SOURCE_GROUP("4.Rendering\\Core" FILES ${RENDERING_CORE_FILES})
 
-SET(RENDERING_LIGHTING_FILES ${SG_INCLUDE_PATH}/render/lighting/Light.h
-                             ${SG_INCLUDE_PATH}/render/lighting/ShadowPolicy.h
-                             ${SG_INCLUDE_PATH}/render/lighting/CascadedShadowController.h
-                             render/lighting/CascadedShadowController.cpp)
+SET(RENDERING_SHADOW_FILES ${SG_INCLUDE_PATH}/render/shadow/CascadedShadowController.h
+                         render/shadow/CascadedShadowController.cpp)
 
-SOURCE_GROUP("4.Rendering\\Lighting" FILES ${RENDERING_LIGHTING_FILES})
+SOURCE_GROUP("4.Rendering\\Shadow" FILES ${RENDERING_SHADOW_FILES})
 
 # ============================================================================
 # 5. Gizmo System - Gizmo交互系统
@@ -262,7 +259,7 @@ SOURCE_GROUP("9.Vulkan\\TextureLoader" FILES ${VK_TEXTURE_LOADER_FILES})
 
 SET(SCENE_GRAPH_FILES   ${SCENE_ENVIRONMENT_FILES}
                         ${RENDERING_CORE_FILES}
-                        ${RENDERING_LIGHTING_FILES}
+                        ${RENDERING_SHADOW_FILES}
                         ${GIZMO_ALL_FILES})
 
 # ============================================================================

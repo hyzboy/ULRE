@@ -19,7 +19,7 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/LightSystem.h>
 
 #include<hgl/graph/gizmo/SunDirectionControlSystem.h>
 
@@ -44,7 +44,8 @@ private:
     hgl::ecs::Entity *sky_entity = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
+    /// T6b：太阳方向写进**世界私有光源行 0**（sky 已不含光源参数）。
+    std::shared_ptr<hgl::ecs::LightSystem> light_system;
     std::shared_ptr<hgl::graph::SunDirectionControlSystem> sun_gizmo_system;
 
     Geometry *prim_sky_sphere = nullptr;
@@ -136,18 +137,14 @@ private:
         if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        environment_system = ecs_context->GetSystem<hgl::ecs::EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<hgl::ecs::EnvironmentSystem>();
+        light_system = ecs_context->GetSystem<hgl::ecs::LightSystem>();
+        if (!light_system)
+            light_system = ecs_context->RegisterRenderSystem<hgl::ecs::LightSystem>();
 
-        if (environment_system)
+        if (light_system)
         {
-            if (auto *sky = environment_system->EditSkyInfo())
-            {
-                sky->sun_direction = math::Vector4f(0.2f, 0.7f, 0.68f, 0.0f);
-            }
-            environment_system->MarkSkyDirty();
-                    }
+            light_system->SetMainLightDirection(math::Vector3f(0.2f, 0.7f, 0.68f));
+        }
 
         sun_gizmo_system = ecs_context->GetSystem<hgl::graph::SunDirectionControlSystem>();
         if (!sun_gizmo_system)
@@ -156,7 +153,7 @@ private:
         if (!sun_gizmo_system)
             return false;
 
-        sun_gizmo_system->SetEnvironmentSystem(environment_system.get());
+        sun_gizmo_system->SetLightSystem(light_system.get());
         sun_gizmo_system->SetGizmoPosition(math::Vector3f(0.0f, 0.0f, 0.0f));
 
         if(!InitECSScene())

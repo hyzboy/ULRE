@@ -29,7 +29,7 @@
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/LightSystem.h>
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
@@ -248,12 +248,31 @@ public:
             if (auto *env_manager = gc->GetEnvironmentManager())
             {
                 graph::EnvironmentInfo info{};
-                info.sky.SetTime(8, 30, 0);
-                info.sky.sun_intensity = 4.0f;
+
+                // T6b：光源参数已迁到**世界私有光源行**（不再跟 profile）—— profile 里只剩天空外观
+                // （底色 / 光晕强度；光晕色恒为主光色，故不需要也写入）。
+                const graph::SunLightSample sun = graph::EvaluateSunLight(8.0f, 30.0f, 0.0f);
 
                 offscreen_env_profile = env_manager->Create("RenderToTexture.OffscreenBright", info);
                 if (offscreen->GetRenderTarget())
                     offscreen->GetRenderTarget()->SetEnvironmentProfile(offscreen_env_profile);
+
+                // 离屏世界的主光：8:30 的方向/颜色 + 强度 ×4。离屏世界没有 LightSystem
+                // ⇒ 直接写它的**光源行**（行表归世界所有，不需要系统在场）。
+                if (auto *world = offscreen->GetWorld())
+                {
+                    if (auto *row = world->GetLightRowTable().Row(graph::kMainLightRowIndex))
+                    {
+                        graph::LightRow light = *row;
+
+                        light.direction_intensity = math::Vector4f(sun.direction.x, sun.direction.y, sun.direction.z, 4.0f);
+                        light.color_angle.x = sun.color.r;
+                        light.color_angle.y = sun.color.g;
+                        light.color_angle.z = sun.color.b;
+
+                        world->GetLightRowTable().SetRow(graph::kMainLightRowIndex, light);
+                    }
+                }
             }
         }
 
@@ -590,19 +609,15 @@ public:
 
         ecs_context->SetResourceNamePrefix("RenderToTexture:MainScene");
 
-        auto environment_system = ecs_context->GetSystem<EnvironmentSystem>();
-        if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+        auto light_system = ecs_context->GetSystem<LightSystem>();
+        if (!light_system)
+            light_system = ecs_context->RegisterRenderSystem<LightSystem>();
 
-        if (environment_system)
+        if (light_system)
         {
             // 默认 10:00 太阳仰角 60°，本例相机平视立方体侧面（与太阳点积≈0），
             // 只剩天顶环境光会显得整体偏暗。改 8:30（仰角 37.5°）让侧面吃到直射光。
-            if (auto *sky = environment_system->EditSkyInfo())
-            {
-                sky->SetTime(8, 30, 0);
-                environment_system->MarkSkyDirty();
-            }
+            light_system->SetMainLightTime(8, 30, 0);
         }
 
         if (!CreateOffscreenRT())

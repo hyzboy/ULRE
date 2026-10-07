@@ -21,9 +21,10 @@ namespace hgl
          * 环境数据与 GPU UBO 统一归 EnvironmentManager（GraphicsContext 模块）所有；
          * 本系统只按所属 world 的 Profile 转发编辑请求，不拥有任何 GPU 资源。
          *
-         * ⚠ 主方向光的**级联阴影托管**已于 2026-10-07（T6a）拆出到 `MainLightShadowSystem`；
-         *    光源参数（`SkyInfo.sun_*`）当前仍住在环境域，迁往**世界私有光源行**是下一步（T6b）——
-         *    见 `doc/future/lighting-shadow-domain-split-plan.md` §3/§5。
+         * 拆域结果（T6a + T6b）：级联阴影托管在 `MainLightShadowSystem`；**光源参数**
+         *   （方向 / 颜色 / 强度 / 角径 / 阴影开关）在世界私有**光源行**（`LightSystem` /
+         *   `WorldAddresses.addr_lights`）—— 本系统只剩天空外观与 IBL。见
+         *   `doc/future/lighting-shadow-domain-split-plan.md` §3。
          */
         class EnvironmentSystem : public System
         {
