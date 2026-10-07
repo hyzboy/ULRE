@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
+#include<hgl/graph/module/OffscreenSlotBands.h>
 #include<hgl/graph/render/RenderTargetDesc.h>
 #include<memory>
 #include<vector>
@@ -60,15 +61,18 @@ public:
         AnsiString       name;
         IRenderTarget    *rt=nullptr;
         RenderTargetDesc desc;
+        uint32_t         slot_base  = OffscreenSlotBands::kInvalidBase;  ///<本 RT 占用的数据槽带起点
+        uint32_t         slot_count = 0;                                 ///<带内槽数（Destroy 归还用）
     };
 
 private:
 
     std::vector<RenderTargetEntry> registry;
 
-    /// 下一个离屏 RT 的 per-frame 数据槽带起点（主帧槽之上整带分配，见 RenderOptions.h；
-    /// 由构造函数初始化为主帧槽上限，主帧槽按交换链 image_count 使用）
-    uint32_t next_offscreen_slot_base = 0;
+    /// 离屏 RT 的 per-frame 数据槽带分配器（主帧槽之上整带分配，见 RenderOptions.h）。
+    /// first-fit 分配 + `Destroy` 归还 ⇒ 带随 RT 生命周期回收（历史只增游标让 CSM
+    /// 一次 Enable 即耗尽 4 带、二次 Enable 必越界——遗留缺陷 C3① 的根因，勿复活游标）。
+    OffscreenSlotBands slot_bands;
 
     /// 把 desc 解析为 FramebufferInfo：补齐设备默认格式。
     /// - has_color 为假 → 零颜色附件（depth-only），不补默认颜色格式

@@ -31,9 +31,8 @@ RenderTargetManager::RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContex
     rp_manager=rpm;
     ecs_context=ecs_ctx;
 
-    // 离屏 RT 的 per-frame 数据槽带从主帧槽之上开始分配（见 RenderOptions.h）
-    next_offscreen_slot_base = HGL_FRAME_SLOT_MAIN;
-
+    // 离屏 RT 的 per-frame 数据槽带由 slot_bands 分配（带空间 = [HGL_FRAME_SLOT_MAIN,
+    // HGL_FRAME_SLOT_TOTAL)，见 OffscreenSlotBands.h）；Destroy 归还 ⇒ 带随 RT 生命周期回收。
     // 回设到 GraphicsContext：其余 manager 由 module_manager->GetOrCreate 创建并
     // 赋给 GraphicsContext 成员，而 RTM 构造需要 ECSContext，只能外部创建。
     // 若此处不回设，gc->GetRenderTargetManager() 恒为 nullptr。
@@ -196,22 +195,36 @@ OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSConte
     // （复用前等该槽 fence，见 RenderTargetData::BeginRender）；同时占一段 per-frame 数据槽带
     // （主帧槽之上整带分配，见 RenderOptions.h 的槽划分）。
     //
-    // 固定上限、不为极端场景预留增长：带越界即 fail-fast（属项目 bug，不是要扩容的场景）。
+    // 带分配 = `slot_bands` first-fit；`Destroy` 归还 ⇒ 带随 RT 生命周期回收（历史只增游标
+    // 让 CSM 一次 Enable 即耗尽、二次 Enable 必越界）。固定上限、不为极端场景预留增长：
+    // 分配失败即 fail-fast（属项目 bug，不是要扩容的场景）。
     const uint32_t slots = (slot_count > 0) ? slot_count : 1;
 
-    if(next_offscreen_slot_base + slots > HGL_FRAME_SLOT_TOTAL)
+    const uint32_t band_base = slot_bands.AcquireBand(slots);
+
+    if(band_base == OffscreenSlotBands::kInvalidBase)
     {
-        GLogError("[RenderTargetManager] %s: in-flight 槽带越界（起点=%u 槽数=%u 上限=%u）"
-                 "—— 请减少该 RT 的 slot_count 或提高 HGL_FRAME_SLOT_TOTAL",
-                 name.c_str(), next_offscreen_slot_base, slots, HGL_FRAME_SLOT_TOTAL);
+        GLogError("[RenderTargetManager] %s: in-flight 槽带耗尽（请求槽数=%u 带空间=[%u,%u) 已占=%u）"
+                 "—— 请减少该 RT 的 slot_count、及时 Destroy 不再使用的离屏 RT，或提高 HGL_FRAME_SLOT_TOTAL",
+                 name.c_str(), slots, OffscreenSlotBands::kBandBegin, OffscreenSlotBands::kBandEnd,
+                 slot_bands.GetOccupiedCount());
         delete rtd;
         return(nullptr);
     }
 
     rtd->slot_count       = slots;
     rtd->slot_index       = slots - 1;              // 首次 BeginRender 前进后落在槽 0
-    rtd->data_slot_base   = next_offscreen_slot_base;
+    rtd->data_slot_base   = band_base;
     rtd->frame_slot_total = HGL_FRAME_SLOT_TOTAL;
+
+    // 带已在上面 AcquireBand 成功 ⇒ 本函数此后任一失败路径都必须归还，否则带泄漏
+    //（只增不还正是本改造要根除的病）。用 scope guard 收口：成功走到登记入册时 Dismiss。
+    struct BandGuard
+    {
+        OffscreenSlotBands *bands; uint32_t base; uint32_t slots; bool armed = true;
+        ~BandGuard(){ if(armed) bands->ReleaseBand(base, slots); }
+        void Dismiss(){ armed = false; }
+    } band_guard{ &slot_bands, band_base, slots };
 
     rtd->cmd_bufs                   = new RenderCmdBuffer *[slots]();
     rtd->queues                     = new DeviceQueue *[slots]();
@@ -252,8 +265,6 @@ OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSConte
         }
     }
 
-    next_offscreen_slot_base += slots;
-
     if(!CreateAttachments(rtd, name, fbi))
     {
         rtd->Clear();
@@ -267,11 +278,15 @@ OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSConte
         OffscreenRenderTarget *rt = new OffscreenRenderTarget(ecs_ctx, rtd);
 
         // 登记入注册表：所有权归本 Manager，推荐用 RenderTargetHandle（RAII），
-        // 裸指针场景用 Destroy()，不得手动 delete
+        // 裸指针场景用 Destroy()，不得手动 delete。带信息一并登记 ⇒ Destroy 时归还。
         RenderTargetEntry entry;
-        entry.name = name;
-        entry.rt   = rt;
+        entry.name       = name;
+        entry.rt         = rt;
+        entry.slot_base  = band_base;
+        entry.slot_count = slots;
         registry.push_back(entry);
+
+        band_guard.Dismiss();   // 带的所有权移交 registry（由 Destroy 归还）
 
         return rt;
     }
@@ -460,6 +475,14 @@ bool RenderTargetManager::Destroy(IRenderTarget *rt)
         if(it->rt != rt)
             continue;
 
+        // 归还本 RT 占用的数据槽带（erase 前先取带信息；带随 RT 生命周期回收——
+        // 历史只增游标不归还 ⇒ CSM 一次 Enable 即耗尽 4 带、二次 Enable 必越界）
+        const uint32_t band_base  = it->slot_base;
+        const uint32_t band_slots = it->slot_count;
+
+        if(band_base != OffscreenSlotBands::kInvalidBase && band_slots > 0)
+            slot_bands.ReleaseBand(band_base, band_slots);
+
         registry.erase(it);
         delete rt;
         return(true);
@@ -489,6 +512,10 @@ void RenderTargetManager::Release()
     }
 
     registry.clear();
+
+    // 全部 RT 已销毁 ⇒ 带记账整体归零（与逐条 ReleaseBand 等价；此处不走 Destroy，
+    // 若漏掉这行，Release 后管理器若被复用（理论上不会）会带着假占用的位图）
+    slot_bands.Reset();
 }
 
 void RenderTargetManager::OnResize(const VkExtent2D &extent)

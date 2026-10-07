@@ -12,6 +12,7 @@
 #include <hgl/ecs/support/CameraInfoStorage.h>
 #include <hgl/ecs/support/CameraSlotGuard.h>
 #include <hgl/graph/render/lighting/CascadedShadowController.h>
+#include <hgl/graph/module/OffscreenSlotBands.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/String.h>
@@ -5520,6 +5521,155 @@ int main(int argc, char** argv)
                  u8"M7 AABB 始终可见哨兵两端同式兑现 + M8 变换提交先于 collect/派发 + M9 guard 入口 EnsureInitialized；"
                  u8"禁复活 3 条；共 %d 条契约）。",
                  static_cast<int>(sizeof(kMechanismContracts) / sizeof(kMechanismContracts[0])));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 43: 离屏数据槽带分配器（OffscreenSlotBands）生命周期账
+    //
+    // 背景：历史实现是只增不还的游标（next_offscreen_slot_base）⇒ 离屏带只有 4 个
+    // （[HGL_FRAME_SLOT_MAIN, HGL_FRAME_SLOT_TOTAL)），CSM 一条级联占一带 ⇒ 一次
+    // EnableMainLightShadow 即耗尽 ⇒ 同会话二次 Enable 必报「槽带越界」（遗留缺陷
+    // C3① 的根因）。修法 = 占用位图 first-fit + Destroy 归还。
+    // 本测试无设备依赖（分配器是纯算术），直接实例化跑账；另配源码契约钉住
+    // RTM 的归还点与「游标禁复活」。
+    // ─────────────────────────────────────────────────────────────
+    {
+        using hgl::graph::OffscreenSlotBands;
+        OffscreenSlotBands bands;
+
+        // (a) 初始全空闲
+        if (bands.GetOccupiedCount() != 0 || bands.GetFreeCount() != OffscreenSlotBands::kBandCount)
+        {
+            GLogError(u8"Test 43 Failed: 初始账不平（occupied=%u free=%u 应 0/%u）",
+                      bands.GetOccupiedCount(), bands.GetFreeCount(), OffscreenSlotBands::kBandCount);
+            return 43;
+        }
+
+        // (b) CSM 场景重放：4 条级联各占 1 带 ⇒ 恰好用满；第 5 个分配必须失败（fail-fast）
+        uint32_t cascade_bases[4] = {};
+        for (uint32_t c = 0; c < 4; ++c)
+        {
+            cascade_bases[c] = bands.AcquireBand(1);
+            if (cascade_bases[c] == OffscreenSlotBands::kInvalidBase
+             || cascade_bases[c] < OffscreenSlotBands::kBandBegin
+             || cascade_bases[c] >= OffscreenSlotBands::kBandEnd)
+            {
+                GLogError(u8"Test 43 Failed: 级联 %u 带分配非法（base=%u）", c, cascade_bases[c]);
+                return 43;
+            }
+        }
+        if (bands.GetOccupiedCount() != OffscreenSlotBands::kBandCount)
+        {
+            GLogError(u8"Test 43 Failed: 4 级联后应满占（occupied=%u）", bands.GetOccupiedCount());
+            return 43;
+        }
+        if (bands.AcquireBand(1) != OffscreenSlotBands::kInvalidBase)
+        {
+            GLogError(u8"Test 43 Failed: 带空间耗尽后分配必须失败（fail-fast，不许静默复用）");
+            return 43;
+        }
+
+        // (c) 归还全部（= DisableMainLightShadow 的 4 个 handle reset ⇒ Destroy ⇒ ReleaseBand）
+        for (uint32_t c = 0; c < 4; ++c)
+        {
+            if (!bands.ReleaseBand(cascade_bases[c], 1))
+            {
+                GLogError(u8"Test 43 Failed: 级联 %u 带归还失败（base=%u）", c, cascade_bases[c]);
+                return 43;
+            }
+        }
+        if (bands.GetOccupiedCount() != 0)
+        {
+            GLogError(u8"Test 43 Failed: 全归还后 occupied=%u 应为 0", bands.GetOccupiedCount());
+            return 43;
+        }
+
+        // (d) C3① 判据：二次 Enable 必须成功（first-fit 拿回同一批带）
+        for (uint32_t c = 0; c < 4; ++c)
+        {
+            const uint32_t again = bands.AcquireBand(1);
+            if (again == OffscreenSlotBands::kInvalidBase)
+            {
+                GLogError(u8"Test 43 Failed: 二次分配失败——归还没生效（C3① 复现）");
+                return 43;
+            }
+        }
+        bands.Reset();
+
+        // (e) 多槽带 + 空洞复用：占 [0,2) 与 [3,4)，释放前者后 2 槽分配必须落回低位空洞
+        {
+            const uint32_t b0 = bands.AcquireBand(2);
+            const uint32_t b1 = bands.AcquireBand(1);
+            (void)b1;
+            if (b0 == OffscreenSlotBands::kInvalidBase || b1 == OffscreenSlotBands::kInvalidBase
+             || b0 + 2 != b1)   // first-fit 连续推进
+            {
+                GLogError(u8"Test 43 Failed: 多槽带 first-fit 布局错（b0=%u b1=%u）", b0, b1);
+                return 43;
+            }
+            bands.ReleaseBand(b0, 2);
+            const uint32_t reuse = bands.AcquireBand(2);
+            if (reuse != b0)
+            {
+                GLogError(u8"Test 43 Failed: 空洞未复用（reuse=%u 应=%u）", reuse, b0);
+                return 43;
+            }
+            bands.Reset();
+        }
+
+        // (f) 非法入参：0 槽 / 超带空间 / 双重归还都必须拒绝
+        if (bands.AcquireBand(0) != OffscreenSlotBands::kInvalidBase
+         || bands.AcquireBand(OffscreenSlotBands::kBandCount + 1) != OffscreenSlotBands::kInvalidBase)
+        {
+            GLogError(u8"Test 43 Failed: 非法槽数分配未被拒绝");
+            return 43;
+        }
+        {
+            const uint32_t b = bands.AcquireBand(1);
+            if (!bands.ReleaseBand(b, 1))
+            {
+                GLogError(u8"Test 43 Failed: 正常归还被拒");
+                return 43;
+            }
+            // 双重归还必须失败（下面这条 GLogError 是**预期输出**，不是故障）
+            if (bands.ReleaseBand(b, 1))
+            {
+                GLogError(u8"Test 43 Failed: 双重归还未被拒绝（账已坏）");
+                return 43;
+            }
+            // 带空间外的 base 必须失败
+            if (bands.ReleaseBand(OffscreenSlotBands::kBandEnd, 1))
+            {
+                GLogError(u8"Test 43 Failed: 越界归还未被拒绝");
+                return 43;
+            }
+            bands.Reset();
+        }
+
+        // (g) 源码契约：RTM 的分配/归还接线在位 + 只增游标禁复活
+        static const SourceContract kBandContracts[] =
+        {
+            { "RenderTargetManager.cpp", OS_TEXT("src/SceneGraph/module/RenderTargetManager.cpp"),
+              "slot_bands.AcquireBand(slots)",
+              "§9 M10：离屏带必须经 OffscreenSlotBands first-fit 分配（勿复活只增游标）" },
+
+            { "RenderTargetManager.cpp", OS_TEXT("src/SceneGraph/module/RenderTargetManager.cpp"),
+              "slot_bands.ReleaseBand(band_base, band_slots);",
+              "§9 M10：Destroy 必须归还带（C3①「二次 Enable 越界」的根治点；删这条 = 带泄漏复发）" },
+
+            { "RenderTargetManager.cpp", OS_TEXT("src/SceneGraph/module/RenderTargetManager.cpp"),
+              "next_offscreen_slot_base",
+              "§9 M10 禁复活：只增不还的槽带游标（历史 C3① 根因；归还语义已由 slot_bands 接管）",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(43, kBandContracts,
+                                                       static_cast<uint>(sizeof(kBandContracts) /
+                                                                         sizeof(kBandContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 43 Passed: 离屏槽带分配器成立（生命周期账 a-f + §9 M10 接线契约；"
+                 u8"C3①「二次 EnableMainLightShadow 槽带越界」已根治：Destroy 归还 + first-fit 复用）。");
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
