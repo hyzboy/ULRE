@@ -935,11 +935,12 @@ namespace hgl::ecs
         if (batch_info_buffer_)
         {
             const VkDeviceSize slot_info_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
-            ValueArray<BatchInfoRow> infos;
-            infos.Resize(kArenaPasses * kBatchBlockStride);
+            // 裸 vector：ValueArray<T> 实例化 Find() 隐式要求 operator==，
+            // 而 BatchInfoRow 必须与 GLSL 逐字段同序同型（字段数受门对拍）⇒ 不加成员函数
+            std::vector<BatchInfoRow> infos(size_t(kArenaPasses) * kBatchBlockStride);
 
             if (graph::ReadbackBuffer(batch_info_buffer_, VkDeviceSize(current_slot) * slot_info_bytes,
-                                      slot_info_bytes, infos.GetData()))
+                                      slot_info_bytes, infos.data()))
             {
                 for (uint32_t p = 0; p < kArenaPasses; ++p)
                 {
