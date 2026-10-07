@@ -45,6 +45,7 @@
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
 #include<chrono>
+#include<cstdlib>
 #include<cstdio>
 #include<vector>
 
@@ -419,6 +420,113 @@ namespace hgl
             return true;
         }
 
+        // ── T8（D7）prepass 性能账目：env `PREPASS_TIMING=<N>`（未设 = 完全零成本）──
+        // 背景：CSM prepass 每帧对每级联各发一次离屏 pass（`RenderTo`），每次 pass 前要**等主帧在途
+        // GPU 全槽排空**（上沿 `saved_target->WaitFence()`）、后要**等本次离屏 RT 自己的 fence**
+        // （下沿 `rt->WaitFence()`）—— A6「4 级联合并成单 cmd / 单 prepass」要消灭的正是这些重复的
+        // 提交与等待，但**收益必须先量出来**（backlog D7 的 T8）。
+        // 本引擎当前**没有 GPU 时间戳设施**（全仓无 `vkCmdWriteTimestamp` / `VkQueryPool`）⇒ 这里量的是
+        // CPU 可见账：每次离屏 pass 的墙钟总耗时 = 阻塞（上沿 + 下沿两处 fence 等待）+ 非阻塞
+        // （录制 / 提交 / 相机与槽簿记）。要 GPU 侧时间须另立时间戳设施（独立工作项）。
+        namespace
+        {
+            struct PrepassTimingAccum
+            {
+                bool     enabled            = false;
+                uint32_t print_interval     = 60;
+                uint64_t last_main_frame_ns = 0;
+                uint64_t calls = 0, t_total_ns = 0, t_up_ns = 0, t_down_ns = 0;
+                uint64_t t_begin_ns = 0, t_draw_ns = 0, t_submit_ns = 0;
+                uint64_t frames_total = 0;
+                uint32_t frames       = 0;   // 本窗口主帧数
+                uint64_t t_frame_ns   = 0;   // 本窗口主帧间距之和
+            };
+
+            PrepassTimingAccum g_prepass_timing;
+
+            inline uint64_t PrepassTimingNow()
+            {
+                return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                           std::chrono::steady_clock::now().time_since_epoch()).count());
+            }
+
+            void PrepassTimingInit()
+            {
+                static bool s_inited = false;
+                if (s_inited)
+                    return;
+
+                s_inited = true;
+
+                if (const char *v = std::getenv("PREPASS_TIMING"))
+                {
+                    g_prepass_timing.enabled = true;
+
+                    const int n = std::atoi(v);
+                    if (n > 0)
+                        g_prepass_timing.print_interval = static_cast<uint32_t>(n);
+
+                    GLogInfo("[PREPASS-TIMING] 启用（env PREPASS_TIMING=%s）：每 %u 个主帧报一次均值；"
+                             "本引擎无 GPU 时间戳 ⇒ 量的是 CPU 可见账（两处 fence 等待 + 其余）",
+                             v, g_prepass_timing.print_interval);
+                }
+            }
+
+            // 主帧入口调用：闭合上一帧、按窗口打印均值并复位
+            void PrepassTimingFrameBoundary()
+            {
+                PrepassTimingInit();
+
+                PrepassTimingAccum &T = g_prepass_timing;
+                if (!T.enabled)
+                    return;
+
+                const uint64_t now = PrepassTimingNow();
+                if (T.last_main_frame_ns != 0)
+                {
+                    T.t_frame_ns += now - T.last_main_frame_ns;
+                    ++T.frames;
+                    ++T.frames_total;
+                }
+                T.last_main_frame_ns = now;
+
+                if (T.frames < T.print_interval)
+                    return;
+
+                const double f          = static_cast<double>(T.frames);
+                const double frame_us   = static_cast<double>(T.t_frame_ns) / 1000.0 / f;
+                const double calls_pf   = static_cast<double>(T.calls) / f;
+                const double total_us   = static_cast<double>(T.t_total_ns) / 1000.0 / f;
+                const double up_us      = static_cast<double>(T.t_up_ns) / 1000.0 / f;
+                const double down_us    = static_cast<double>(T.t_down_ns) / 1000.0 / f;
+                const double begin_us  = static_cast<double>(T.t_begin_ns) / 1000.0 / f;
+                const double draw_us   = static_cast<double>(T.t_draw_ns) / 1000.0 / f;
+                const double submit_us = static_cast<double>(T.t_submit_ns) / 1000.0 / f;
+                const double rest_us   = total_us - up_us - down_us - begin_us - draw_us - submit_us;
+                const double blocked_us = up_us + down_us;
+
+                GLogInfo("[PREPASS-TIMING] 主帧#%llu（窗口 %u 帧）：主帧均值=%.0fus | 离屏 pass=%.2f 次/帧、"
+                         "合计=%.0fus/帧〔begin=%.0fus（collect/装配/派发） draw=%.0fus submit=%.0fus "
+                         "| 上沿等主帧=%.0fus 下沿等自身=%.0fus | 其余=%.0fus〕"
+                         "阻塞=%.0fus（占总 %.1f%%）⇒ 占主帧 %.1f%%",
+                         static_cast<unsigned long long>(T.frames_total), T.frames, frame_us, calls_pf,
+                         total_us, begin_us, draw_us, submit_us, up_us, down_us, rest_us,
+                         blocked_us,
+                         total_us > 0.0 ? blocked_us / total_us * 100.0 : 0.0,
+                         frame_us > 0.0 ? total_us / frame_us * 100.0 : 0.0);
+
+                T.calls       = 0;
+                T.t_total_ns  = 0;
+                T.t_up_ns     = 0;
+                T.t_down_ns   = 0;
+                T.t_begin_ns  = 0;
+                T.t_draw_ns   = 0;
+                T.t_submit_ns = 0;
+                T.frames     = 0;
+                T.t_frame_ns = 0;
+            }
+        }
+
         void ECSContext::ExecuteScenePrePassWorkflow(float deltaTime)
         {
             switch (scene_pipeline_mode)
@@ -460,6 +568,10 @@ namespace hgl
         {
             if (!active)
                 return false;
+
+            // T8：主帧边界 = prepass 性能账目的帧界（打印上一窗口均值 + 复位）
+            if (need_swapchain_acquire)
+                PrepassTimingFrameBoundary();
 
             // ── D6：场景预处理（主光 CSM 阴影）挂到**帧入口**，不再靠调用方记得调用 ──
             // 历史形态只有 RenderGraph 那条 Render() 显式调用它（单入口）⇒ 第二个帧入口
@@ -586,6 +698,15 @@ namespace hgl
             if (!active)
                 return false;
 
+            // T8：本次离屏 pass 的墙钟账（未启用 PREPASS_TIMING 时 probe_t0 = 0，后续判断全短路）
+            PrepassTimingInit();
+            const uint64_t probe_t0 = g_prepass_timing.enabled ? PrepassTimingNow() : 0;
+            uint64_t probe_up_ns = 0;
+            uint64_t probe_down_ns = 0;
+            uint64_t probe_begin_ns = 0;    // BeginManagedRenderFrame（含 PrepareRenderPassSetup：collect/批装配/剔除派发）
+            uint64_t probe_draw_ns = 0;     // RenderDrawOnly（录制绘制）
+            uint64_t probe_submit_ns = 0;   // EndManagedRenderFrame（提交 + 呈现）
+
             graph::IRenderTarget *rt = req.target;
             if (!rt)
             {
@@ -626,8 +747,11 @@ namespace hgl
 
             // 共享 per-frame 资源保护（上沿）：Camera UBO 与 L2W ring 为单份内存，
             // 覆写前等在途主帧 GPU 完成，防止其 draw 读到覆盖后的数据
+            const uint64_t probe_up_begin = (probe_t0 != 0) ? PrepassTimingNow() : 0;
             if (saved_target)
                 saved_target->WaitFence();
+            if (probe_up_begin != 0)
+                probe_up_ns = PrepassTimingNow() - probe_up_begin;
 
             // clear 覆盖语义：临时改写目标 RT 上的清屏色（唯一权威），
             // 渲染结束（含失败路径）后恢复原声明值。
@@ -727,9 +851,14 @@ namespace hgl
 
             bool ok = false;
 
+            const uint64_t probe_begin_start = (probe_t0 != 0) ? PrepassTimingNow() : 0;
+
             // 离屏 RT 无 swapchain 图像可获取，跳过 AcquireSwapchainImage
             if (BeginManagedRenderFrame(req.delta_time, false, p_options))
             {
+                if (probe_begin_start != 0)
+                    probe_begin_ns = PrepassTimingNow() - probe_begin_start;
+
                 // 本 pass 的 per-frame 数据槽 = 该 RT 的槽带（与主帧槽不相交）
                 SetFrameIndex(render_target ? render_target->GetCurrentFrameIndex() : 0u);
 
@@ -752,8 +881,16 @@ namespace hgl
                 if (auto cs = GetSystem<CameraSystem>())
                     cs->PublishCamera(req.camera, frame_index);
 
+                const uint64_t probe_draw_start = (probe_t0 != 0) ? PrepassTimingNow() : 0;
                 RenderDrawOnly(render_core->GetRenderCmd(), req.delta_time);
+                if (probe_draw_start != 0)
+                    probe_draw_ns = PrepassTimingNow() - probe_draw_start;
+
+                const uint64_t probe_submit_start = (probe_t0 != 0) ? PrepassTimingNow() : 0;
                 EndManagedRenderFrame(req.delta_time);
+                if (probe_submit_start != 0)
+                    probe_submit_ns = PrepassTimingNow() - probe_submit_start;
+
                 ok = true;
             }
 
@@ -765,8 +902,11 @@ namespace hgl
             // 必须在恢复主相机共享数据前等，因为 GPU 仍在异步读取本 pass 提交的光源
             // CameraUBO；若未等即在 CPU 上 Update(0.0f) 覆盖主相机数据，会踩踏 GPU 正在读取的内存，
             // 导致 shadow map 被画成主相机视角（间歇性阴影闪烁丢失）。
+            const uint64_t probe_down_begin = (probe_t0 != 0) ? PrepassTimingNow() : 0;
             if (ok)
                 rt->WaitFence();
+            if (probe_down_begin != 0)
+                probe_down_ns = PrepassTimingNow() - probe_down_begin;
 
             // A1：本帧离屏 RT 的车道值累积给主帧提交等（RenderTargetData::Submit 已 signal）
             if (ok)
@@ -792,6 +932,18 @@ namespace hgl
 
             // pass 退出：回到主帧的"本世界默认相机"（0 号槽；RestoreMainCamera 已把主相机重解算）
             active_camera_id = CameraInfoStorage::kDefaultCameraSlot;
+
+            // T8：入账（总耗时含两处等待；非阻塞 = 总 − 等待 = 录制/提交/相机与槽簿记）
+            if (probe_t0 != 0)
+            {
+                g_prepass_timing.calls       += 1;
+                g_prepass_timing.t_total_ns  += PrepassTimingNow() - probe_t0;
+                g_prepass_timing.t_up_ns     += probe_up_ns;
+                g_prepass_timing.t_down_ns   += probe_down_ns;
+                g_prepass_timing.t_begin_ns  += probe_begin_ns;
+                g_prepass_timing.t_draw_ns   += probe_draw_ns;
+                g_prepass_timing.t_submit_ns += probe_submit_ns;
+            }
 
             return ok;
         }
