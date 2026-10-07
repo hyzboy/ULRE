@@ -165,10 +165,15 @@
      collect/批装配/剔除派发；极稳 2.16–2.59）、draw 0.23ms、**submit 0.047ms（43–57µs）**、
      上沿等主帧 0.83/0.27ms（**突发**：最大 4.39ms，50 窗口里 17 个 >0.5ms）、下沿等自身 0.23ms；
    - 预热窗口（级联全量重建、1.30 pass/帧）：begin 11.7ms、合计 13.9ms/帧 = 34ms 帧的 40.7%。
-   ⇒ **结论：A6「4 级联合并成单 cmd / 单 prepass」的稳态收益 ≈ 零** —— 它针对的「4 次 submit + 4 次全槽排空」
-   在稳态**不存在**（1 次 pass / submit 47µs / 两处等待中位合计 ≈0.48ms）。**稳定大头 = 每个阴影 pass 自己的
-   `PrepareRenderPassSetup`（2.31ms/帧 ≈ 主帧的 13.9%）**，与「合并几级联」无关（1 个 pass 也要付一次）⇒
-   那才是独立的优化线。要 prepass 的 **GPU** 时间须另立时间戳设施（全仓无 `vkCmdWriteTimestamp`/`VkQueryPool`）。
+   ⇒ **结论：A6「4 级联合并成单 cmd / 单 prepass」不成立（不只是收益低）——已关闭（用户裁定）**：
+   ① 每级更新节奏独立（`need_full_update` 逐级触发；中远景 = 静态滚动缓存 + 条带脏矩形）⇒ 同一帧里各级
+   「要不要渲、渲多少」不同，**没有「每帧 4 次 submit」的稳态形态**（实测 1.00 次/帧）；
+   ② 各级 `mobility_filter` 不同（级联0 = Movable、1..3 = Static）⇒ 没有「一份共享 prepass」可合并，
+   合并要么遍历两遍、要么推翻「静态/动态分离」（已裁定勿翻案）；
+   ③ strip 是**局部写**（scissor），合并会把条带变整图重建 ⇒ 放大写带宽，把 D5 省下的还回去。
+   能合并的只有 submit（47µs）与部分等待；**`PrepareRenderPassSetup`（2.31ms）按级联不可省**
+   （光矩阵 / caster 集 / scissor 各级都不同）⇒ **真正的优化线是「per-pass 装配」与「上沿等待突发」，
+   不是「合并级联」**。要 prepass 的 **GPU** 时间须另立时间戳设施（全仓无 `vkCmdWriteTimestamp`/`VkQueryPool`）。
 
 ## 9. 改动禁忌（踩过的坑）
 
