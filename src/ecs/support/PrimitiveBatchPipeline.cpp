@@ -822,6 +822,12 @@ namespace hgl::ecs
         if (!gpu_cull)
             return;
 
+        // 延迟初始化与**首次批装配**同帧：guard 相位（RenderBatch）早于系统的 Update
+        // 相位（RenderFrameSync）⇒ 不在此确保，新世界首帧的标签/布局写入会拿到空缓冲，
+        // 布局永不落、该世界永不画（RTT 两例根因；每帧驱动的世界则只闪首帧、无人报故）。
+        if (!gpu_cull->EnsureInitialized())
+            return;
+
         // T4c3b/c：**两 pass 都可接管**（早期退已删）。
         // T4c3 首试失败的根因不在"两 pass 接管"本身，而在**行内容并非 pass 无关**：
         // 4-ID 表（transform/geometry/material/texture）由 collect 按 pass 写，而 gather
@@ -951,7 +957,13 @@ namespace hgl::ecs
             {
                 tags = gpu_cull->BeginBatchTagWrite(pass_index);
                 if (!tags)
-                    return;          // 拿不到映射 = 设备问题 ⇒ 整帧不接管
+                {
+                    // 响亮（A6-d T4b 政策：不许静默丢接管）：Map 失败 = 设备/资源问题
+                    GLogError("[T3i] GPU cull draw override：BeginBatchTagWrite 拿不到标签映射"
+                              "（世界=%s pass=%u）⇒ 本帧不接管",
+                              world->GetName().c_str(), pass_index);
+                    return;
+                }
             }
 
             const uint32_t index = next_index++;
@@ -992,49 +1004,34 @@ namespace hgl::ecs
             if (tags)
                 gpu_cull->EndBatchLayout(pass_index, 0);   // 无接管批 ⇒ 本 pass 批数=0
             if (s_takeover_trace)
-                GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=pending0 几何批=%u 辖批=%u items=%u arena_rows=%u",
+                GLogInfo("[T3i][TRACE] 世界=%s frame=%u pass=%u 出口=pending0 几何批=%u 辖批=%u items=%u arena_rows=%u",
+                         world ? world->GetName().c_str() : "<null>",
                          world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, "pending0",
                          geometry_batches, pending_count, total_items, row_cursor);
             return;
         }
 
-        // 派发定帧护栏（T3g 纯 CPU 判据）：未攒满 2 帧 ⇒ 本帧不接管（表还没被任何
-        // 一次派发看过；`SetEnabled(false)` 归零 ⇒ 场景切换/重开不会拿旧计数放行）。
-        if (!gpu_cull->IsDispatchSettled())
-        {
-            gpu_cull->EndBatchLayout(pass_index, 0);
-            if (s_takeover_trace)
-                GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=undsettled 几何批=%u 辖批=%u items=%u arena_rows=%u",
-                         world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, "undsettled",
-                         geometry_batches, pending_count, total_items, row_cursor);
-            return;
-        }
+        // ⚠ 原两条定帧护栏已删（「IsDispatchSettled = 派发攒满 2 帧」与「槽首写不接管」），
+        // 依据 = 它们是 **T3g/T4c-ini「不接管则退 CPU 账」时代的遗迹**：
+        //   · T3i 起相位序为 RenderBatch(guard 写布局) → RenderFrameSync(cull 派发读布局)
+        //     → RenderSubmit(绘制读计数)，**全部同帧闭环** ⇒ "布局必须此前某帧已被派发
+        //     看过"不成立；垃圾布局的风险由 T4c-ini 建缓冲即填初值兜底
+        //     （capacity==0 ⇒ shader 跳过该 pass，与未接管同口径）。
+        //   · A6-d/T4c4 删净 CPU 账后，"本帧不接管"不再是退路而是**整批不画** ⇒
+        //     旧护栏把"只渲染一次的离屏世界"（RTT 的 RenderToTexture/ColorDepth 走
+        //     RenderOnce）永久锁死在 undsettled ⇒ 离屏 cmd 只剩 Begin/End。
+        // 保留响亮出口：BeginBatchTagWrite 失败（资源问题）与逐批 guard 拒绝。
 
         // 分区/标签落设备（batch_count = 接管批数）
         gpu_cull->EndBatchLayout(pass_index, pending_count);
 
-        // T4c-ini-2：本帧槽的布局**此前是否已被写过**？未写过 ⇒ 本帧的派发必然看到初值
-        //（`capacity == 0`）⇒ 这帧不接管（批量走 CPU 账画，画面完整）；布局本轮已写，
-        // 下轮该槽就有可用布局。
-        const uint32_t frame_slot_now = (world ? world->GetFrameIndex() : 0u) % HGL_FRAME_SLOT_TOTAL;
-        const bool     slot_ready     = gpu_cull->IsSlotLayoutWritten(frame_slot_now);
-
+        // 接管逐批（原 T4c-ini-2「槽首写不接管」已删，依据见上方护栏删除注释）。
         uint32_t engaged = 0;
 
-        if (!slot_ready)
+        for (uint32_t i = 0; i < pending_count; ++i)
         {
-            if (s_takeover_trace)
-                GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=槽首写（槽=%u 此前未写过 ⇒ 本帧不接管，走 CPU 账）",
-                         world ? world->GetFrameIndex() : 0u,
-                         (world && world->IsCurrentPassShadow()) ? 1u : 0u, frame_slot_now);
-        }
-        else
-        {
-            for (uint32_t i = 0; i < pending_count; ++i)
-            {
-                if (gpu_cull->ApplyGPUCullOverrideHook(pending[i], pending_index[i], pass_index))
-                    ++engaged;
-            }
+            if (gpu_cull->ApplyGPUCullOverrideHook(pending[i], pending_index[i], pass_index))
+                ++engaged;
         }
 
         if (engaged == 0)
@@ -1051,18 +1048,20 @@ namespace hgl::ecs
         // 正向判据日志（一次性）：证明"绘制真走 gather 表"（T4b 起已无 CPU 账可退，
         // 本日志仍是"接管真发生"的正面证据）。逐批计数由台架在 cull 之后读。
         if (s_takeover_trace)
-            GLogInfo("[T3i][TRACE] frame=%u pass=%u 出口=ok 槽=%u 就绪=%d 几何批=%u 辖批=%u items=%u arena_rows=%u "
+            GLogInfo("[T3i][TRACE] 世界=%s frame=%u pass=%u 出口=ok 槽=%u 就绪=%d 几何批=%u 辖批=%u items=%u arena_rows=%u "
                      "标签项=%u 布局容量和=%u（应相等）",
+                     world ? world->GetName().c_str() : "<null>",
                      world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u,
-                     frame_slot_now, slot_ready ? 1 : 0, geometry_batches,
+                     (world ? world->GetFrameIndex() : 0u) % HGL_FRAME_SLOT_TOTAL, 1, geometry_batches,
                      pending_count, total_items, row_cursor, tagged_items, total_items);
 
         static bool s_engaged_logged = false;
         if (!s_engaged_logged)
         {
             s_engaged_logged = true;
-            GLogInfo("[T3i] GPU cull draw override ENGAGED: batches=%u/%u items=%u"
+            GLogInfo("[T3i] GPU cull draw override ENGAGED: 世界=%s batches=%u/%u items=%u"
                      " arena_rows=%u（逐批切片）",
+                     world ? world->GetName().c_str() : "<null>",
                      engaged, geometry_batches, total_items, row_cursor);
         }
     }

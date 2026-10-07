@@ -678,8 +678,10 @@ namespace hgl
             //     （ShadowMap/ATS 漏设旗标 ⇒ 改写共享 `gpu_slice[Main]` ⇒ 某张交换链图整帧空）
             //     的病源，漏设旗标仍被本推导兜住。
             // 两个正交条件都保留：`req.is_shadow_pass`（调用方显式声明）与"异目标"推导。
+            // ⚠ 必须比 **saved_target 快照**：:638 已把 `render_target` 切成本 pass 的目标，
+            //   此刻再读 `render_target` 恒等于 req.target ⇒ 判据永假、兜底失效（实测踩过）。
             const bool foreign_target =
-                req.target && (req.target != render_target);
+                req.target && (req.target != saved_target);
 
             is_current_pass_shadow = req.is_shadow_pass || foreign_target;
             has_shadow_origin = false;
@@ -1015,6 +1017,16 @@ namespace hgl
                 cs->PublishCameraRows(frameIndex);
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderCollect,     deltaTime); // collect / cull visible components
+
+            // 实体行表 / 4-ID 表的脏行**由本帧 collect 标出**：帧首那次同步（SetFrameIndex）
+            // 只能传到"上一帧的脏行"⇒ 新世界首帧的派发（RenderFrameSync）会读到全零行
+            // （Active=0 ⇒ 视锥测试前 return ⇒ DrawCount=0）。每帧驱动的世界第二帧自愈，
+            // **只渲染一次的离屏世界（RenderTo 的 RenderOnce 用法）永远等不到那第二帧**
+            //（实测 RenderToTexture/ColorDepth 离屏只剩 Begin/End）。⇒ collect 后再同步一次
+            //（WA 行 memcmp 未变则不提交；脏行上传只传本帧新标的 ⇒ 二次调用近零成本），
+            // 让本帧派发读到**本帧**的行。
+            SyncWorldAddresses();
+
             RunRenderPhaseUpdates(ExecutionPhase::RenderBatch,       deltaTime); // write VABs (StagedBuffer → marks dirty)
             RenderBufferCommit(deltaTime);                                       // finalize staged CPU writes
             RenderBufferUpload(deltaTime);                                       // GPU transfer (dirty → uploaded)

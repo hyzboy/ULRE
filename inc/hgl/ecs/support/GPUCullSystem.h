@@ -51,9 +51,6 @@ namespace hgl::ecs
         /// 纯 CPU 计数（不等 GPU）。
         bool IsDispatchSettled() const { return dispatch_count_ >= 2; }
 
-        /// 该帧槽的布局**在此前某帧**是否已被写过（见 `slot_layout_written_`）。
-        bool IsSlotLayoutWritten(uint32_t frame_slot) const
-        { return slot_layout_written_[frame_slot % HGL_FRAME_SLOT_TOTAL]; }
 
         // 获取输出 buffer（供 MaterialBatch 使用）
         graph::DeviceBuffer* GetVisibleIndicesBuffer() const { return visible_indices_buffer_; }
@@ -206,6 +203,12 @@ namespace hgl::ecs
         /// 必须按同一帧的 guard 结果二选一，否则 = 双份账/漏帧）。
         bool IsOverrideActiveThisFrame() const { return override_active_frame_ == override_eval_frame_; }
 
+        /// 延迟初始化（pipeline/输出缓冲/派发资源）：由**首次 Update 或首次批装配 guard**
+        /// 触发（两者都在 render pass 内、设备已绑）。⚠ guard 相位（RenderBatch）早于
+        /// Update 相位（RenderFrameSync）⇒ 新世界首帧必须由 guard 侧确保资源就位，
+        /// 否则 BeginBatchTagWrite 拿到空缓冲、布局永不落、该世界永不画（RTT 实测）。
+        bool EnsureInitialized();
+
     private:
         // 创建 compute pipeline
         bool CreateComputePipeline();
@@ -219,9 +222,6 @@ namespace hgl::ecs
 
         // 每帧 dispatch
         void DispatchCullShader();
-
-        // 延迟初始化（在第一次 Update 时执行）
-        bool EnsureInitialized();
 
     private:
         ECSContext* context_ = nullptr;
@@ -299,7 +299,6 @@ namespace hgl::ecs
         /// 用途：布局只在"轮到该槽的那一帧"写，而剔除派发在**同一帧**读它 ⇒ 首次写入的那一帧，
         /// 派发必然看到初值（`capacity == 0`）⇒ 那一帧若仍让批接管，主帧 count 就是 0（物体不画）。
         /// 所以：接管前查"该槽此前是否已写过"，未写过 ⇒ 本帧只写布局、不接管（回落 CPU 账）。
-        bool slot_layout_written_[HGL_FRAME_SLOT_TOTAL] = {};
 
         // 设备地址（BDA）
         uint64_t visible_indices_addr_ = 0;
