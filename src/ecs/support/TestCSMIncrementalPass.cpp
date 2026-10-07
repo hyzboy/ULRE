@@ -5478,6 +5478,36 @@ int main(int argc, char** argv)
             { "CPUCullReferenceSystem.cpp", OS_TEXT("src/ecs/support/CPUCullReferenceSystem.cpp"),
               "aabb->center[3] >= 0.0f",
               "§9 M7 对拍同式：CPU 参考的哨兵判定必须与 GLSL 逐字同汽（丢一端 = 两端又错得不同源）" },
+
+            // ── M8/M9：离屏单帧世界（RenderOnce）缺陷族固化（doc/future/offscreen-onetime-world-stall-analysis.md）──
+            // 该拓扑（独立子世界 × 只渲染一帧）没有"第 2 帧自愈"兜底，任何"晚一帧"缺陷都直接
+            // 变成"永不绘制"。以下针钉住已修的四层里可源码判定的两层 + 禁两条旧护栏复活。
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "transform_system->SubmitTransformUpdates();   // M8-needle",
+              "§9 M8：PrepareRenderPassSetup 必须在 collect/派发**之前**提交变换——`SubmitTransformUpdates` 是 "
+              "L2W 矩阵行与实体行 row[Transform] 的唯一落盘点，而 GPU 剔除派发在同帧 RenderFrameSync 就读它们；"
+              "只挂绘制录制段（RecordPreparedRenderPhaseRange）⇒ 派发恒读上一帧写入 ⇒ 单帧世界 row[Transform]=0 "
+              "⇒ cull 着色器视锥测试前 return ⇒ DrawCount=0（RTT 两例第五层根因）" },
+
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "if (!gpu_cull->EnsureInitialized())",
+              "§9 M9：guard 入口必须 EnsureInitialized——guard 在 RenderBatch 相位，GPUCullSystem 延迟初始化在 "
+              "RenderFrameSync 的 Update ⇒ 新世界首帧 BeginBatchTagWrite 拿空缓冲静默 return、布局永不落"
+              "（离屏单帧世界第二层根因）" },
+
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "gpu_cull->IsDispatchSettled()",
+              "§9 M9 禁复活：「派发攒满 2 帧才接管」护栏是 T3g 相位序时代遗迹（T3i 已同帧闭环）；"
+              "A6-d 删净 CPU 账后它把 RenderOnce 世界永久锁死在 undsettled。"
+              "IsDispatchSettled 本体保留（CPUCullReferenceSystem 的采样同步门在用），但接管路径不得再调用"
+              "（needle 取调用形态，避免误伤 PrimitiveBatchPipeline 里解释护栏删除的注释）",
+              true },
+
+            { "GPUCullSystem.h", OS_TEXT("inc/hgl/ecs/support/GPUCullSystem.h"),
+              "IsSlotLayoutWritten",
+              "§9 M9 禁复活：「槽首写不接管」护栏——其\"退 CPU 账\"前提在 T4c4 后已不存在，"
+              "单帧世界永等不到第二次写入（IsSlotLayoutWritten/slot_layout_written_ 已删，零读者）",
+              true },
         };
 
         if (const int failed = verify_source_contracts(42, kMechanismContracts,
@@ -5486,8 +5516,9 @@ int main(int argc, char** argv)
             return failed;
 
         GLogInfo(u8"Test 42 Passed: A6-b 机制层契约成立（§9 M1 环深度单源 + M3 countBuffer 使用标志 + "
-                 u8"M4 切片 4 行对齐（实现行 + 运行期守卫）+ M6 回读前置（Sync 记帧 + Map 校验 + 台架调用对）+ M7 AABB 始终可见哨兵两端同式兑现；"
-                 u8"禁复活 1 条；共 %d 条契约）。",
+                 u8"M4 切片 4 行对齐（实现行 + 运行期守卫）+ M6 回读前置（Sync 记帧 + Map 校验 + 台架调用对）+ "
+                 u8"M7 AABB 始终可见哨兵两端同式兑现 + M8 变换提交先于 collect/派发 + M9 guard 入口 EnsureInitialized；"
+                 u8"禁复活 3 条；共 %d 条契约）。",
                  static_cast<int>(sizeof(kMechanismContracts) / sizeof(kMechanismContracts[0])));
     }
 

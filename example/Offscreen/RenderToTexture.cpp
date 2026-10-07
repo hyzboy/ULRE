@@ -33,8 +33,13 @@
 #include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
+#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+
 #include <memory>
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
 #include <numbers>
 
 using namespace hgl;
@@ -615,9 +620,17 @@ public:
 
     void Tick(double delta_time) override
     {
+        // RTT_SELFCHECK=1：**帧摘要自检**（§6.5；共用件 example/Shared/FrameDigest.h）——
+        // 第 8 帧帧内回读主场景颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：
+        // PASS 退出 0 / FAIL 退出 1 / 读回失败退出 2。
+        // 判据意义 = **单帧离屏世界回归床**：主场景立方体贴的是 RenderOnce 离屏球的纹理，
+        // 离屏世界若再"永不绘制"（五层缺陷族任一回潮），贴图退化为纯清屏色 ⇒ 摘要立变。
+        // 摘要必须冻结（自旋停走 + 定帧），否则两次运行几何不同 ⇒ 假红。
+        static const bool s_selfcheck = (getenv("RTT_SELFCHECK") != nullptr);
+
         // 逻辑更新写在 Tick（渲染前）——TransformSystem 在渲染帧内提交变换，
         // Tick 里改与本回调内改同帧等价，且不占用命令缓冲录制时间
-        if (cube_transform.IsValid())
+        if (!s_selfcheck && cube_transform.IsValid())
         {
             cube_theta += static_cast<float>(delta_time) * 0.8f;
             cube_theta = fmodf(cube_theta, 2.0f * std::numbers::pi_v<float>);
@@ -628,6 +641,34 @@ public:
         }
 
         WorkObject::Tick(delta_time);
+
+        {
+            static uint32_t s_self_frame = 0;
+
+            static constexpr uint32_t kSelfW           = 1280;
+            static constexpr uint32_t kSelfH           = 720;
+            static constexpr uint32_t kSelfMinDistinct = 50;  // 不空转守卫：实测 distinct=256；纯清屏帧只有个位数
+            static constexpr uint64_t kSelfFNV         = 0xBA9CA214778AF3A4ull;  // 冻结自旋 + 第 8 帧实测（三次连跑一致）
+
+            if (s_selfcheck && ++s_self_frame == 8)
+            {
+                auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
+                    ecs_context ? ecs_context->GetRenderTarget() : nullptr);
+                if (!rt)
+                {
+                    printf("[RTTSELF] no swapchain RT\n");
+                    std::exit(2);
+                }
+
+                ulre_example::FrameDigest expect;
+                expect.width                = kSelfW;
+                expect.height               = kSelfH;
+                expect.distinct_byte_values = kSelfMinDistinct;
+                expect.fnv1a64              = kSelfFNV;
+
+                ulre_example::InstallFrameDigestHook(rt, expect, "RTTSELF");
+            }
+        }
     }
 };
 

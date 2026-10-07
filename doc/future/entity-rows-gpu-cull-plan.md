@@ -1824,3 +1824,42 @@ ShadowMap 离屏本就只该收 caster ⇒ 它正常，恰好掩盖误判。
 AsyncTextureUpload/门/CSM 全对基线逐字节不变。
 
 **教训**：兜底推导要按**资源争用拓扑**建模，不按"目标外观（离屏/交换链）"建模。
+
+### §11.17 离屏单帧世界（RenderOnce）永不绘制 —— 五层"晚一帧"缺陷族结案（2026-10-07）
+
+专项档案 = `doc/future/offscreen-onetime-world-stall-analysis.md`（症状/取证时间线/验收判据全量）。
+拓扑独特性：**独立子世界（OffscreenWorld 自有批表 + 自有 GPUCullSystem）× 只渲染一帧（RenderOnce）**。
+每层缺陷本质都是"晚一帧"，每帧驱动的世界第 2 帧自愈 ⇒ 全部潜伏；单帧世界逐层暴露。
+
+| 层 | 根因 | 修复 | 状态 |
+|---|---|---|---|
+| ① pass 身份 | 兜底推导「非交换链 ⇒ shadow」误判子世界 ⇒ collect 只收 caster ⇒ 收集为空 | 判据改「异于本世界主目标」（比 `saved_target` 快照）| `71cc6390c`（§11.16）|
+| ② 初始化时机 | guard（RenderBatch）早于 GPUCullSystem 延迟初始化（RenderFrameSync）⇒ 首帧 `BeginBatchTagWrite` 拿空缓冲静默 return | guard 入口 `EnsureInitialized()` + null 出口改响亮 | `2f9a8a437` |
+| ③ 定帧护栏 | `IsDispatchSettled`（≥2 帧）/「槽首写不接管」= T3g"退 CPU 账"时代遗迹 ⇒ 单帧世界永久 undsettled | 两条护栏整体删除（`IsSlotLayoutWritten`/`slot_layout_written_` 零读者同删；`IsDispatchSettled` 本体保留给 CPUCullReferenceSystem 采样门）| `2f9a8a437` |
+| ④ 脏行上传时机 | 实体行/4-ID 表脏行上传挂帧首 `SetFrameIndex` ⇒ 本帧 collect 标的行传不到本帧派发 | `PrepareRenderPassSetup` 在 RenderCollect 后补一次 `SyncWorldAddresses()` | `2f9a8a437` |
+| ⑤ **变换提交时机（真·最后一步）** | `SubmitTransformUpdates`（= L2W 矩阵行与实体行 `row[Transform]` 的**唯一落盘点**）只挂在 `RecordPreparedRenderPhaseRange`（BeginRenderPass **之后**的绘制录制段）⇒ 同帧 RenderFrameSync 的剔除派发恒读**上一帧**的写入；单帧世界首帧 `row[Transform]=0` ⇒ cull 着色器视锥测试前 return ⇒ `DrawCount=0` | `PrepareRenderPassSetup` 在 `SetFrameIndex` 后、collect 前补一次 `SubmitTransformUpdates`（同帧幂等 ⇒ 绘制段第二次调用退化 no-op）| 本批 |
+
+**⑤ 的取证捷径（关键教训）**：`CULL_SSBO_DUMP` 的 `[EntityDump]` 段读的是 **CPU 权威表**
+（`GPUCullSystem.cpp` `context_->GetEntityGPUTable().Row(e)`），不是 GPU 回读 ⇒
+`transform_id=0` 直接证明**派发时刻 CPU 侧就没写过**（上传路径无罪，专项档 §7 P1 的方向 1/2
+都不成立——不是 Mobility 登记也不是 `GetDirtyCount()==0` 短路，是**写者相位晚于消费者相位**）。
+诊断件输出的是哪一侧的数据，必须先确认再当证据。
+
+**附带收益**：修复后主世界 frame=0 即 `DrawCount=1`（此前恒 0/0 第 2 帧才自愈）——
+A6-d 删 CPU 账后每个应用的**首帧**都静默空白一帧，同批修掉。
+
+**验收（实测）**：RTT/RTTCD 离屏 `transform_id=1`（静态 1+slot）+ `DrawCount=1` +
+`COUNT_IN_BUFFER=1` + flush engaged；八台架逐字节对基线；ATS/TestCSM/ATU(05149=0)/门 45/0 全绿。
+
+**契约固化（Test 42 = M8/M9，破坏验证过）**：M8 钉 Context.cpp 的提交点（needle 带注释锚）；
+M9 钉 guard 入口 `EnsureInitialized` + 禁 `gpu_cull->IsDispatchSettled()`/`IsSlotLayoutWritten`
+在接管路径复活。
+
+**新不变式测试床**：「单帧渲染世界」正式成为回归床——RTT 两例已装帧摘要自检
+（`RTT_SELFCHECK=1` → `0xBA9CA214778AF3A4`、`RTTCD_SELFCHECK=1` → `0xD71ABABC2BE460C0`，
+第 8 帧、冻结自旋、distinct≥50 不空转守卫；三次连跑一致后回填）。
+任何"晚一帧"类回潮在 RTT 上直接 FAIL，不再依赖每帧世界的自愈掩盖。
+
+**遗留（独立立项）**：离屏 RT 的 frame index 恒 4 不轮转（ShadowMap 同样恒 4，每帧重传掩盖）。
+对 RenderOnce 无害；但"恒槽 = 跨帧在飞覆写同一份"与 §11.11 同源，离屏 RT 的
+`GetCurrentFrameIndex()` 推进策略待单独立项核查。
