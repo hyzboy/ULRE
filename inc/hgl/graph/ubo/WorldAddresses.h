@@ -41,6 +41,9 @@ namespace hgl::graph
         uint64_t addr_lights = 0;               // 光源行表 LightRow（世界私有 LightRowTable；**行 0 = 主方向光**；
                                                 // T6b：光源定义自 SkyInfo 迁出后的唯一真源。按帧槽切份 ——
                                                 // 光参数可由作者逐帧改（太阳方向在示例里就是逐帧写的）
+        uint64_t addr_ambient_env = 0;          // 环境光 provider 参数块 AmbientEnvInfo（世界私有；T1 归位）——
+                                                // 内容 = IBL 三个 bindless 句柄，资源就绪时写一次、无人逐帧改
+                                                // ⇒ 单份 buffer（全帧槽同址，同 addr_sky 口径）
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽）。

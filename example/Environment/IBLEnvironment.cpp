@@ -72,7 +72,7 @@ namespace
  *   * <env>_prefilter.TexCube   镜面预滤波(按反射向量采样)
  *   * brdflut.Tex2D             BRDF LUT((NdotV,roughness) → scale/bias)
  *
- * 三张纹理以 bindless 句柄形式写入 SkyInfo.env_tex(场景全局环境数据),
+ * 三张纹理以 bindless 句柄形式写入 ambient_env(ambient_light_provider 槽参数块,场景全局环境数据),
  * 由材质 "LitIBL"(ShaderLibrary/material/lit_ibl.material.toml)的
  * indirect_ibl ambient 光照模块采样。场内物体是不同金属度/粗糙度的
  * PBR 材质,便于对比 IBL 在不同表面上的表现。
@@ -97,7 +97,7 @@ private:
 
 #ifdef DRAW_SKY_SPHERE
     Entity* sky_entity = nullptr;
-    std::shared_ptr<EnvironmentSystem> environment_system;   // 天空外观 + IBL 句柄（env_tex）
+    std::shared_ptr<EnvironmentSystem> environment_system;   // 天空外观（sky_provider）+ IBL 句柄（ambient_light_provider）
     /// T6b：太阳方向写进**世界私有光源行 0**（sky 已不含光源参数）。
     std::shared_ptr<LightSystem> light_system;
     Geometry* sky_geometry = nullptr;
@@ -265,7 +265,7 @@ private:
         return true;
     }
 
-    /// 把 IBL 纹理注册进 bindless,句柄写入 SkyInfo.env_tex(场景全局)
+    /// 把 IBL 纹理注册进 bindless,句柄写入 AmbientEnvInfo(ambient_light_provider 槽参数块)
     bool InitIBLBinding()
     {
         if (!environment_system)
@@ -284,12 +284,12 @@ private:
         if (!irr_handle || !pre_handle || !lut_handle)
             return false;
 
-        auto* sky = environment_system->EditSkyInfo();
-        if (!sky)
+        auto* ambient_env = environment_system->EditAmbientEnvInfo();
+        if (!ambient_env)
             return false;
 
-        sky->env_tex = math::Vector4u(irr_handle, pre_handle, lut_handle, 0);
-        environment_system->MarkSkyDirty();
+        ambient_env->env_tex = math::Vector4u(irr_handle, pre_handle, lut_handle, 0);
+        environment_system->MarkAmbientEnvDirty();
 
         return true;
     }

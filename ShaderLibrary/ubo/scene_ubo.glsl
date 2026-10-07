@@ -56,21 +56,31 @@ layout(buffer_reference, scalar, buffer_reference_align=64) readonly buffer Came
 };
 
 // sky（S2：地址进表，退出 Scene 集绑定）：sky 是单份 buffer ⇒ 所有帧槽同址。
-// T6b：光源参数（方向 / 颜色 / 强度 / 角径 / 阴影开关）已迁出到**光源行**
-//（`light_rows[0]` = 主方向光）——
-// 天空只留外观（底色 / 光晕强度）与 IBL 句柄；光晕**颜色**直接读主光色（不再单独成字段）。
-// 字段与 C++ `SkyInfo` 逐字段同序：
-// scalar layout 下 `halo_intensity` 之后的 `uvec4` 需 16B 对齐（隐式补 12 B），
-// 与 C++ 侧 glm 对齐类型的填充同款 ⇒ 两端 sizeof 都是 64 B。
+// **`sky_provider` 槽的参数块，块内只含外观标量**（底色 / 光晕强度）：
+//   · 光源参数（方向 / 颜色 / 强度 / 角径 / 阴影开关）已迁出到**光源行**
+//（`light_rows[0]` = 主方向光，T6b）；
+//   · IBL 句柄已归位到它真正的消费者槽 —— 见下方 `AmbientEnvInfoRef`
+//（`ambient_light_provider`，T1）。
+// 光晕**颜色**直接读主光色（不再单独成字段）。
+// 块内同族字段 ⇒ 不再需要显式填充，也不存在句柄对齐分歧（R2）。
+// 字段与 C++ `SkyInfo` 逐字段同序（`vec4 base_sky_color` / `float halo_intensity`）。
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer SkyInfoRef
 {
     vec4 base_sky_color;
     float halo_intensity;
-    uint _pad[3];       // 显式填充：env_tex 落在 32B（与 C++ _pad 同形，别靠隐式对齐）
-    uvec4 env_tex;      // 32..48（IBL 三个句柄：irradiance / prefilter / BRDF LUT）
 };
 
 #define sky SkyInfoRef(world_addresses.addr_sky)
+
+// ambient_env（`ambient_light_provider` 槽的参数块；地址进世界表 ⇒ 单份 buffer，全帧槽同址）。
+// C++ 真源 = `inc/hgl/graph/ubo/AmbientEnvInfo.h`；块内**只有句柄**（两端同型 `uvec4`）
+// ⇒ 不需要填充、也不会有偏移分歧。消费者 = `lighting/indirect_ibl.glsl`。
+layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer AmbientEnvInfoRef
+{
+    uvec4 env_tex;      // IBL 三个句柄：irradiance / prefilter / BRDF LUT（w = 预留）
+};
+
+#define ambient_env AmbientEnvInfoRef(world_addresses.addr_ambient_env)
 
 // viewport（S2：地址进表 —— 单份 buffer，内容按 pass/RT 覆盖写、地址恒定 ⇒ 全帧槽同址）
 // 退出 Scene 集绑定；宏名与成员名不变 ⇒ `viewport.*` 读点零改动。
@@ -132,6 +142,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
     uint64_t addr_entity_render_ids;    // 实体 4-ID 表（世界私有；按 EntityID.index 直索引，行 = RenderItemDescriptor 16 B；
                                         // GPU 消费者取池口径 geometry_id / material_id / texture_id 的唯一通路）
     uint64_t addr_lights;               // 光源行表（世界私有；行 0 = 主方向光；按帧槽切份）
+    uint64_t addr_ambient_env;          // 环境光 provider 参数块（世界私有；单份 ⇒ 全帧槽同址；T1 归位）
 };
 
 #define world_addresses WorldAddressesRef(pc_root.addr_world_addresses)

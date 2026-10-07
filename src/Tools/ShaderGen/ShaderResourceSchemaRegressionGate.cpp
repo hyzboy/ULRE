@@ -3566,6 +3566,7 @@ namespace
         { "addr_l2w",                  true  },   // T3d：L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份）
         { "addr_entity_render_ids",    true  },   // T3d-3a：实体 4-ID 表（世界私有 EntityRenderIDTable；GPU 消费者取池口径 id 的唯一通路）
         { "addr_lights",               true  },   // T6b：光源行表（世界私有 LightRowTable；行 0 = 主方向光，按帧槽切份）
+        { "addr_ambient_env",          true  },   // T1：环境光 provider 参数块（世界私有；单份 ⇒ 全帧槽同址）
         // ── 设备级全局（跨世界共享的资源池 + 每帧槽字段）──
         { "addr_mesh_draw_params_pool", false },
         { "addr_geometry_aabb",         false },   // B3-i：GeometryAABB 池（设备级全局；与 MeshDrawParams 同 ID 索引）

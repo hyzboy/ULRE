@@ -204,7 +204,7 @@
 - **判据**：两个示例 `<PREFIX>_SELFCHECK=1` rc=0，且记录的摘要 ≠ 0、`distinct` ≥ 2（不空转）。
 - **回滚点**：tag `pre-sky-t0`（纯加法，独立于结构改造）。
 
-### T1 —— 块归位（单批：加法 + 减法同批，见 P1）
+### T1 —— 块归位（单批：加法 + 减法同批，见 P1）【**已落地 2026-10-07**，见 §5 的 T1 实跑记录】
 
 - **内容**：按 §3 触点表一次做完 —— 新建 `AmbientEnvInfo` + `addr_ambient_env` + GLSL 镜像与宏 +
   profile 侧物化/取址 + 发布 + 写者入口 + 示例改写 + `SkyInfo` 删 `env_tex`/`_pad`/两条断言 + 门归属登记 +
@@ -267,6 +267,28 @@
 > 逐帧自证（`FRAMEDIGEST_PERFRAME=9`）：两例 9 帧 × 3 张交换链图**逐位同哈希**、`与首帧不同的帧数=0`
 > ⇒ 静止场景下摘要确定（不是「每帧闪一帧」被采样避开）。
 > 改渲染结果（少画 / 错画 / 挪相机 / 句柄错位）⇒ 摘要必变，常量必须复核重录。
+> 两条自检已并入技能脚本 `ulre-gpu-pipeline-verification/scripts/full_regression_criteria.py` 的
+> **ENV 组**（它们不打 `ENGAGED` ⇒ 单走 rc + 摘要 + `D=0` 判据）。
+
+**T1 实跑记录（2026-10-07，已落地）**：单批完成 §3.2 触点表全部 13 处。
+
+| 判据 | 实测 |
+|---|---|
+| I7 全量重编（清整棵 `*.dir/Debug` + 两个 shader-cache） | `BUILD_RC=0` / 0 error |
+| 门 `ShaderResourceSchemaRegressionGate` | **46 PASS / 0 FAIL**（并入 `scene_ubo.glsl`，模块总数未变 ⇒ 不欠门） |
+| `TestCSMIncrementalPass` | rc=0（**Test 47 Passed**；Test 45 的「句柄在天空镜像里」needle 同批改指新块） |
+| `TestRenderItemDataStorage` | rc=0（`WorldAddresses` 80 B 夹具；3 处内联 GLSL 镜像同批加字段） |
+| 八台架 + 离屏两例（12 项，脚本全跑） | 摘要**逐位不变**、`ENGAGED x==y`、guard 拒绝=0 |
+| **T0 两条自检（真正的目标判据）** | 逐位不变：IBLEnvironment `0x2D28D72AEA4FC87D` / AtmosphereSkyMinimal `0xC914C338EFC7790E`，`D=0` |
+| 环境示例族 5 例 | 0 VUID / 0 `[ERROR]` / 0 shader 编译失败 |
+| V8 目视（IBLEnvironment） | 球/环/方**受光 + 显示环境反射**（非「纯黑 + 单个高光点」= I5 症状） |
+| 判据 6 零残留 | `grep -rn "sky\.env_tex\|_pad\[3\]" ShaderLibrary/ inc/hgl/graph/ubo/SkyInfo.h` 零命中 |
+| 全仓 `env_tex` 残留 | 只剩新块 / 新镜像 / 唯一消费者 / 示例 / Test 47 针（无历史形态） |
+
+> ⚠ 与 §2.2／§3.2 的一处口径订正：`SkyInfo` 实际 `sizeof` = **32**（20 B 有效数据 + 12 B 尾部对齐填充）
+> —— 本工程在 `CMCMakeModule/math.cmake` 定义 `GLM_FORCE_DEFAULT_ALIGNED_GENTYPES` ⇒ `Color4f`（glm::vec4 派生）
+> 16 对齐 ⇒ 结构体尺寸向上取整。**不是** 20。尾部填充其后没有字段 ⇒ 两端不构成契约，
+> 真正的契约只有偏移 `base_sky_color@0` / `halo_intensity@16`（断言按实际值写成 32）。
 
 ---
 
@@ -289,6 +311,8 @@
 |---|---|---|
 | 「给 `SkyInfo` 加一条专用门 `W.sky-info-struct-parity`」（本会话上一轮的助手建议） | **不做专用门**；改为 R2（块内同族字段 + 句柄独立成块）治根 + T3 的**通用**对拍机制 | 结构未定型、只有 2 个消费者、48 B；专用门治的是症状（偏移对齐）。真正病根是"句柄寄生在外观结构里"（§0.3 IBL 事故） |
 | 「`SkyInfo` 是光照参数结构」（T6b 之前的形态） | `SkyInfo` = **`sky_provider` 槽的参数块**；光源参数在光源行、IBL 句柄归 `ambient_light_provider` | 字段与消费者的映射本就是一槽一块（§0.3 表） |
+| 「T1 后 `sizeof(SkyInfo) == 20`」（本稿 §3.2 原写法） | 实测 **32**（20 B 数据 + 12 B 尾部对齐填充），断言按 32 落地 | 工程定义 `GLM_FORCE_DEFAULT_ALIGNED_GENTYPES` ⇒ `Color4f` 16 对齐 ⇒ 尺寸向上取整；**写断言前先量化**（否则又一条「凭形状推断」的错断言） |
+| 「sky 取不到地址（0）时保留上一份好值」（`SyncWorldAddresses` 的注释） | **注释与实现不符**：代码实际把 0 写进表（`want{}` 从零起算）。本轮为 `addr_ambient_env` **按原形镜像**、未改 sky 语义（保持单批可归因） | 与 `addr_l2w` 的 `(addr != 0) ? addr : dst->addr_l2w` 口径不一致；两段应一起收口（另立小批，届时同批改注释与实现） |
 
 ---
 

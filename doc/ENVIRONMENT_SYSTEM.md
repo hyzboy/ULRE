@@ -20,9 +20,19 @@
 > 一律读作历史口径。** 见 `doc/future/lighting-shadow-domain-split-plan.md` §3/§5。
 > 相关文件:`inc/hgl/graph/ubo/EnvironmentInfo.h`、`inc/hgl/graph/ubo/SkyInfo.h`、`inc/hgl/graph/ubo/ShadowInfo.h`、`inc/hgl/graph/ubo/UBOShaderSources.h`、`inc/hgl/graph/module/EnvironmentManager.h`、`src/SceneGraph/module/EnvironmentManager.cpp`、`inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp`、`inc/hgl/ecs/systems/render/ViewUBOCommitSystem.h/.cpp`、`inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h/.cpp`(原 RenderDescriptorBindingSystem)、`inc/hgl/vk/VKRenderTarget.h`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`inc/hgl/common/DescriptorSetTypeDef.h`(`inc/hgl/vk/VKGlobalSceneUBOSet.h` 已随 Scene 集退场删除)、`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`
 
+> **订正(2026-10-07,T1 **已落地**)**:环境域从「只有 `sky` 一段」变为**两个 provider 槽各占一段** ——
+> ① `SkyInfo` = `sky_provider` 槽参数块，**只剩外观标量**（`Color4f base_sky_color` + `float halo_intensity`；
+>    原 `_pad[3]` 显式填充与两条句柄偏移断言一并删除 —— 块内同族字段后它们只是兜底）；
+> ② IBL 句柄归位到它真正的消费者槽：新增 `AmbientEnvInfo`（`ambient_light_provider`，块内只有 `Vector4u env_tex`）
+>    + 世界表 `WorldAddresses.addr_ambient_env` + profile 侧 `ambient_env_ubo` 物化/取址 + `EnvironmentSystem::EditAmbientEnvInfo` 四件套；
+> ③ shader 侧读点从天空块改到新块（`ShaderLibrary/ubo/scene_ubo.glsl` 的 `AmbientEnvInfoRef` + `#define ambient_env`）。
+> **下文凡把 IBL 句柄算作天空段内容、或写 `SkyInfo.env_tex` / 两段物化只有 `sky_ubo` 的段落，一律读作历史口径。**
+> 规则与触点见 `doc/future/sky-domain-and-provider-params-plan.md` §2（R1 一槽一块一地址 / R2 同族字段）与 §3；
+> 禁复活由 `Test 47` 钉住（天空块再出现句柄或显式填充即红）。
+
 ## 1. 这套东西解决什么问题
 
-统一管理"世界级环境信息"(**现在只有天空 `SkyInfo` 一段**——阴影 `ShadowInfo` 已按 T6b/P4 移出并世界私有化,见 `inc/hgl/graph/ubo/EnvironmentInfo.h`;雾/环境光仍是预留),并回答三个问题:
+统一管理"世界级环境信息"(**现在有 `sky` 与 `ambient_env` 两段** —— 分别是 `sky_provider` / `ambient_light_provider` 两个 provider 槽的参数块;阴影 `ShadowInfo` 已按 T6b/P4 移出并世界私有化,见 `inc/hgl/graph/ubo/EnvironmentInfo.h`;雾仍是预留),并回答三个问题:
 
 1. **数据放哪**——集中在一个管理器(`EnvironmentManager`,设备级容器;profile 生命周期随世界,见下 2),而不是每个 ECS world 各自建 UBO。旧 EnvironmentSystem 模式当年的症状是"多 RT 争抢共享描述符集的 sky binding",但**Scene 集已整体退场**,该形态不复存在;现在要防的是 sky / shadow / env 的**地址写全局字段** ⇒ 多世界同帧只有最后解析的那个 profile 生效(权威文档 §4);
 2. **谁用哪份**——RT/WORLD 只持有一个 `EnvProfileID` 引用,不复制数据;未设置即用内置 default(订正 2026-09-28:profile 的所有权与生命周期**随世界**——世界创建时选/建自己的 profile、销毁时归还,内置 default 可共享;C2);

@@ -5938,11 +5938,7 @@ int main(int argc, char** argv)
 
             { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
               "float halo_intensity;",
-              "T6b：天空镜像只留外观（底色 / 光晕强度 / IBL 句柄）——与 C++ SkyInfo 同序" },
-
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
-              "uvec4 env_tex;",
-              "T6b：IBL 句柄仍在天空镜像里（GLSL 侧 64 B 步长的最后一项）" },
+              "T6b/T1：天空镜像只留外观标量（底色 / 光晕强度）——与 C++ SkyInfo 同序" },
 
             { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
               "sky.sun_direction",
@@ -6127,6 +6123,137 @@ int main(int argc, char** argv)
                  u8"CPU 权威与世界私有设备镜像都在 ECSContext、建表与其余世界表同批、地址经世界表 addr_shadow "
                  u8"按帧槽下发、提交点只在交换链帧写本帧槽；profile 侧 shadow ring / GetShadowAddress / "
                  u8"CommitMaterialized / MarkShadowDirty / 阴影域→环境域依赖 全部禁复活。");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 47: T1 契约 —— 天空 / 环境光**参数块归位**（IBL 句柄离开天空块）
+    //
+    // 判据五类：
+    // ① 新块就位：`AmbientEnvInfo`（块内只有句柄）+ GLSL 镜像 `AmbientEnvInfoRef` + 宏 `ambient_env`；
+    // ② 地址接线五处：世界表字段 / GLSL 镜像字段 / 门归属登记 / 发布（写者接上）/ 夹具同步；
+    // ③ 写者入口：`EnvironmentSystem` 四件套 + profile 侧物化/取址/脏标记都覆盖新段；
+    // ④ 唯一消费者改读新块；
+    // ⑤ **旧形态禁复活**：天空块不得再持有句柄、不得再有显式填充，shader 不得再读 `sky.*` 的句柄。
+    // ─────────────────────────────────────────────────────────────
+    {
+        static const SourceContract kProviderBlockRelocationContracts[] =
+        {
+            // ① 新块就位
+            { "AmbientEnvInfo.h", OS_TEXT("inc/hgl/graph/ubo/AmbientEnvInfo.h"),
+              "Vector4u    env_tex = Vector4u(0);",
+              "T1：环境光 provider 参数块缺句柄字段（IBL 三句柄的唯一住处）" },
+
+            { "AmbientEnvInfo.h", OS_TEXT("inc/hgl/graph/ubo/AmbientEnvInfo.h"),
+              "static_assert(sizeof(AmbientEnvInfo) == 16,",
+              "T1：新块尺寸契约丢失（块内只有 uvec4 ⇒ 16 B，不需要显式填充）" },
+
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "static_assert(sizeof(SkyInfo) == 32,",
+              "T1：SkyInfo 尺寸契约丢失（20 B 数据 + 12 B 尾部对齐填充）" },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer AmbientEnvInfoRef",
+              "T1：GLSL 侧缺 ambient_env 参数块镜像（两端不同步 = 静默读垃圾句柄）" },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "#define ambient_env AmbientEnvInfoRef(world_addresses.addr_ambient_env)",
+              "T1：ambient_env 宏丢失（块 = 结构 + 镜像 + 宏三件套，缺一消费者就拿不到）" },
+
+            // ② 地址接线五处
+            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
+              "        uint64_t addr_ambient_env = 0;",
+              "T1：世界表缺 addr_ambient_env 字段（块无地址 ⇒ 消费者拿不到）" },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "    uint64_t addr_ambient_env;          // 环境光 provider 参数块（世界私有；单份 ⇒ 全帧槽同址；T1 归位）",
+              "T1：GLSL 世界表镜像缺 addr_ambient_env（结构漂移 = 其后字段全部错位读）" },
+
+            { "ShaderResourceSchemaRegressionGate.cpp", OS_TEXT("src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp"),
+              "{ \"addr_ambient_env\",          true  },",
+              "T1：新地址字段未在归属门登记（未分类字段 ⇒ 门报错；登记错侧 ⇒ 多世界串数据）" },
+
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "const uint64_t ambient_env_addr = env_manager->GetAmbientEnvAddress(active_env_profile);",
+              "T1：地址只有字段没发布（I4 的历史坑：表里恒 0 ⇒ 静默失效）" },
+
+            { "TestRenderItemDataStorage.cpp", OS_TEXT("src/ecs/support/TestRenderItemDataStorage.cpp"),
+              "static_assert(sizeof(graph::WorldAddresses) == 80,",
+              "T1：世界表夹具未同步（10×uint64 = 80 B；不同步 = 契约测试读旧布局）" },
+
+            // ③ 写者入口 + profile 侧物化/取址/脏标记
+            { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
+              "AmbientEnvInfo  ambient_env;",
+              "T1：profile 载体缺新段（CPU 权威无处安放）" },
+
+            { "EnvironmentManager.h", OS_TEXT("inc/hgl/graph/module/EnvironmentManager.h"),
+              "StructView<AmbientEnvInfo> *ambient_env_ubo = nullptr;",
+              "T1：profile 侧缺 ambient_env 段物化槽" },
+
+            { "EnvironmentManager.h", OS_TEXT("inc/hgl/graph/module/EnvironmentManager.h"),
+              "uint64_t GetAmbientEnvAddress(EnvProfileID id);",
+              "T1：profile 侧缺取址 API（世界表的地址来源）" },
+
+            { "EnvironmentManager.cpp", OS_TEXT("src/SceneGraph/module/EnvironmentManager.cpp"),
+              "EnvironmentManager::GetAmbientEnvAddress(EnvProfileID id)",
+              "T1：取址实现丢失（懒物化 + 取址 fail-fast）" },
+
+            { "EnvironmentManager.cpp", OS_TEXT("src/SceneGraph/module/EnvironmentManager.cpp"),
+              "p->ambient_env_ubo->Update(p->cpu.ambient_env);",
+              "T1：脏标记未覆盖新段（改数据不落 GPU ⇒ shader 读旧句柄）" },
+
+            { "EnvironmentSystem.h", OS_TEXT("inc/hgl/ecs/systems/render/EnvironmentSystem.h"),
+              "graph::AmbientEnvInfo *EditAmbientEnvInfo();",
+              "T1：写者入口缺失（真实消费者无路可写）" },
+
+            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+              "return &info->ambient_env;",
+              "T1：编辑入口未指向新段（转发到别处 = 双真源）" },
+
+            // ④ 唯一消费者
+            { "IBLEnvironment.cpp", OS_TEXT("example/Environment/IBLEnvironment.cpp"),
+              "environment_system->MarkAmbientEnvDirty();",
+              "T1：真实写者（唯一 IBL 示例）未改到新入口" },
+
+            { "indirect_ibl.glsl", OS_TEXT("ShaderLibrary/lighting/indirect_ibl.glsl"),
+              "SampleCubeArray(ambient_env.env_tex.x, TrilinearSampler, vec4(N, 0.0)).rgb;",
+              "T1：唯一读者未改读新块（只改一半 = 两端不同源）" },
+
+            // ⑤ 旧形态禁复活
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "env_tex",
+              "T1 禁复活：句柄不得再寄住天空外观结构（偏移错位事故的病灶）",
+              true },
+
+            { "SkyInfo.h", OS_TEXT("inc/hgl/graph/ubo/SkyInfo.h"),
+              "_pad",
+              "T1 禁复活：同族字段块不需要显式填充（填充只是兜底，不是解法）",
+              true },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "sky.env_tex",
+              "T1 禁复活：shader 不得再回读天空块里的句柄",
+              true },
+
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "_pad[3]",
+              "T1 禁复活：天空镜像的显式填充（句柄迁出后不再需要）",
+              true },
+
+            { "indirect_ibl.glsl", OS_TEXT("ShaderLibrary/lighting/indirect_ibl.glsl"),
+              "sky.env_tex",
+              "T1 禁复活：IBL 模块不得再读 sky 的句柄",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(47, kProviderBlockRelocationContracts,
+                                                       static_cast<uint>(sizeof(kProviderBlockRelocationContracts) /
+                                                                         sizeof(kProviderBlockRelocationContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 47 Passed: T1 归位契约成立 —— IBL 句柄已迁出天空块：AmbientEnvInfo（块内只有句柄）"
+                 u8" + GLSL 镜像/宏 + 世界表 addr_ambient_env（字段/镜像/门登记/发布/80B 夹具五处接线）"
+                 u8" + EnvironmentSystem 四件套与 profile 侧物化/取址/脏标记 + 唯一读者间接光照模块改读新块；"
+                 u8"天空块不再持有句柄与显式填充（禁复活 5 条）。");
     }
 
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");

@@ -26,7 +26,9 @@ namespace hgl::graph
      *
      * ⚠ T6b/P4：**影子数据（`ShadowInfo`）已迁出本模块** —— 它随世界（`ECSContext`），
      * 世界私有 SSBO 由 `ECSContext::InitializeShadowInfoTable` 建、`CommitShadowInfo` 写本帧槽，
-     * 地址经世界表 `addr_shadow` 下发。本模块只管**天空 / IBL**（`sky_ubo` + profile 生命周期）。
+     * 地址经世界表 `addr_shadow` 下发。本模块管**两个 provider 槽的参数块物化**
+     *（`sky_ubo`（`sky_provider`）+ `ambient_env_ubo`（`ambient_light_provider`，T1 归位）
+     * + profile 生命周期）。
      *
      * 分层约定：
      * - 数据层：EnvironmentInfo（纯数据，CPU 侧唯一权威在 Profile::cpu）
@@ -49,6 +51,7 @@ namespace hgl::graph
             AnsiString      name;
             EnvironmentInfo cpu;                                               ///< CPU 侧唯一权威数据
             StructView<SkyInfo> *sky_ubo = nullptr;              ///< sky 段 GPU 物化（懒创建，default 例外）
+            StructView<AmbientEnvInfo> *ambient_env_ubo = nullptr;  ///< ambient_env 段 GPU 物化（同上）
         };
 
     private:
@@ -60,6 +63,7 @@ namespace hgl::graph
         Profile *FindProfile(const AnsiString &name) const;
 
         bool MaterializeSkyUBO(Profile *profile);
+        bool MaterializeAmbientEnvUBO(Profile *profile);
 
         void EnsureDefault();
 
@@ -79,12 +83,16 @@ namespace hgl::graph
         EnvironmentInfo *Edit(EnvProfileID id);
         const EnvironmentInfo *Get(EnvProfileID id) const;
 
-        /// 数据改完调用：sky 立即写入它的单份 UBO（影子数据不在本模块，见类注释）。
+        /// 数据改完调用：sky / ambient_env 各立即写入它的单份 UBO（影子数据不在本模块，见类注释）。
         void MarkDirty(EnvProfileID id);
 
         /// 世界表用：本 profile 的 sky 段**设备地址**（懒物化）。取不到返回 0 并报错 ——
         /// 0 地址会让读 sky 的 shader 解引用 0 基址（UB）⇒ 调用方必须保证不把 0 写进表。
         uint64_t GetSkyAddress(EnvProfileID id);
+
+        /// 世界表用：本 profile 的 ambient_env 段**设备地址**（懒物化）。取不到返回 0 并报错 ——
+        /// 同 `GetSkyAddress` 纪律（0 地址会让读该段的 shader 解引用 0 基址 ⇒ 静默发黑）。
+        uint64_t GetAmbientEnvAddress(EnvProfileID id);
 
         /// 归还 profile：释放它的 GPU 物化（sky）并从注册表移除。
         /// **世界销毁时归还自己创建/拥有的 profile**；`kEnvProfileDefault` 与无效句柄是 no-op
