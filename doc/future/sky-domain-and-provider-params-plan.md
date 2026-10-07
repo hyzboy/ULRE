@@ -356,7 +356,7 @@ cd /e/ULRE
 taskkill /F /IM MSBuild.exe
 rm -rf build/out/Windows_64_Debug/shader-cache build/cache-hot/shader-cache
 find build -type d -path "*.dir/Debug" -print0 | xargs -0 rm -rf
-# ② 构建（判据用到的目标集；全量 build 里有 2 个无关目标会因 vcpkg z-applocal 失败，见下）
+# ② 构建（判据用到的目标集；全量 build 里 `minipack_info` 会因 vcpkg z-applocal 失败，见下）
 cmake --build build --config Debug --target ULRE.ECS ULRE.SceneGraph TestCSMIncrementalPass \
   TestRenderItemDataStorage ShaderResourceSchemaRegressionGate IBLEnvironment AtmosphereSkyMinimal \
   PBRSpheres ShadowMap -- -m:8 -v:m
@@ -372,8 +372,9 @@ taskkill /F /IM PBRSpheres.exe
 **已知坑（都踩过）**
 
 1. **不要用 `| grep error` 判构建结果**：`grep -c` 零匹配返回 1 ⇒ 假红。判据取日志里的 `BUILD_RC=` 行与错误计数。
-2. **全量 `cmake --build build` 会因两个无关目标失败**（`DrawCurvesTest`、`minipack_info`，卡在 vcpkg `z-applocal`
-   后置 DLL 部署步 `MSB3073`/exit 32）；**编译侧 0 error**，与引擎无关 ⇒ 用上面的目标集构建。
+2. **全量 `cmake --build build` 里 `minipack_info` 会卡在 vcpkg `z-applocal` 后置 DLL 部署步**
+   （`MSB3073`/exit 32）：**编译侧 0 error**，纯工具链环境问题、与该目标的功能无关（用户口径：minipack 能正常用，
+   不必管）⇒ 判据一律用上面的目标集构建。（原并列的 `DrawCurvesTest` 已于 2026-10-07 从 CM2D 删除。）
 3. 跑判据时先 `taskkill` 占用 exe 的旧进程，否则链接报 `LNK1104 cannot open file`。
 4. 别用 `shell=True` + 相对路径跑 exe 判退出码；契约失败的编号是**精确**的（如 Test 44 失败 ⇒ rc=44）。
 5. 改完 `.glsl` **不需要重编 C++**（运行时编译），但要清 shader-cache 才能确保不读旧缓存。
