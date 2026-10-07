@@ -31,6 +31,9 @@ struct RenderTargetData
     OBJECT_LOGGER
 
     Framebuffer *       fbo            = nullptr;
+    VulkanDevice *      device         = nullptr;   ///<所属设备；销毁同步对象前必须 WaitIdle
+                                                   ///<（lane 有**外部**等待者：主帧提交 await 它，
+                                                   ///< 见 Context.cpp 的 AddFrameLaneWait）
 
     uint32_t            color_count    = 0;         ///<颜色成分数量
     Texture2D **        color_textures = nullptr;   ///<颜色成分纹理列表

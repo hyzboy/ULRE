@@ -100,6 +100,17 @@ void RenderTargetData::Clear()
     LogDebug("[RenderTargetData] Clear");
     SAFE_CLEAR(fbo);
 
+    // 销毁同步对象前必须让**设备静默**。lane 不只被本 RT 的提交 signal，还被
+    // **主帧提交 await**（Context.cpp 的 AddFrameLaneWait(rt->GetLane(),...)），
+    // 那个队列不属于本结构 ⇒ 只等自己的 queue fence 不够（实测：世界存活时
+    // DisableMainLightShadow ⇒ 级联 RT 析构即报
+    // "vkDestroySemaphore(): ... in use by VkQueue"（VUID-vkDestroySemaphore-semaphore-05149）；
+    // cmd_buf 在途释放、DeviceQueue 的 fence 在途销毁同类）。
+    // RT 销毁是低频路径（Enable/Disable、Resize、关停）⇒ 全局静默的代价可接受。
+    // 注：创建失败路径也会调 Clear()（此时 device 可能为空/未提交）⇒ 必须守卫。
+    if(device)
+        device->WaitIdle();
+
     // queue（含其 fence 数组）与 cmd_buf 由 CreateOffscreenRT 创建、本结构独占，
     // 仅在 OffscreenRenderTarget 析构走到这里时销毁。此前只置空不销毁，
     // 导致 fence 泄漏至 vkDestroyDevice（VUID-vkDestroyDevice-device-05137）。

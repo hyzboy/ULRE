@@ -189,6 +189,7 @@ OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSConte
         return(nullptr);
 
     RenderTargetData *rtd = new RenderTargetData{};
+    rtd->device = device;       // Clear() 需在销毁同步对象前 WaitIdle
 
     // ---- in-flight 槽（A7）----
     // 每个槽独占一组 {cmd_buf, queue(1 fence), render_complete_semaphore}，按提交次数轮转
