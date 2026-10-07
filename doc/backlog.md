@@ -490,8 +490,13 @@
 
 ### D7. 性能账目 → EnvironmentSystem 拆分 → 4 级联合并（T8 → T6 → A6，大组按序）
 
-- **T8**：量测 prepass GPU 时间 / 4 次 submit+全槽排空的 CPU 等待 / masked
-  caster 保留 FS 后的片元开销（A1 修复后收益才真实可测）。
+- **T8 ✅ 已完成（`f8760056b`，2026-10-07）**：探针 `PREPASS_TIMING=<N>`（默认零成本）量的是 CPU 可见账。
+  实测（`CascadeShadowMap` 1600×900 稳态 60fps、50 窗口 = 1500 帧）：**离屏 pass = 1.00 次/帧**、合计
+  **3.76ms/帧（占主帧 ≈19%）**，细分 = **begin 2.32ms**（`PrepareRenderPassSetup`：collect/批装配/派发）
+  + draw 0.23ms + **submit 0.047ms** + 上沿等主帧 0.83ms（**突发**，最大 4.39ms）+ 下沿等自身 0.23ms。
+  ⇒ **A6 的前提在稳态不成立**（「4 次 submit + 4 次全槽排空」不存在）⇒ **A6 的稳态收益 ≈ 零，建议降级/推迟**；
+  真正的大头是每 pass 的 `PrepareRenderPassSetup`（2.31ms/帧 ≈ 13.9%），属独立优化项。数据与结论见
+  `doc/csm-mechanism.md` §8.5。**待拍板：A6 是否就此降级/关闭。**
 - **T6**：CSM 从 `EnvironmentSystem`（瘦转发层，现堆满控制器/4 RT/bindless/
   光相机/固化防御）拆出 `MainLightShadowSystem`；A10（重复 Enable 重建
   4 RT + 头文件重量）随 RAII 一并解决。

@@ -121,6 +121,9 @@
 | `CSM_AUTOWALK=<m/s>` | 相机自动行走速度（**不是帧数**） |
 | `CSM_CACHE_DIFF_FREEZE` | 冻结对拍基准（配合上一项） |
 | `ATS_SELFCHECK=1` | AlphaTestShadow 自检：D1/D3/D4 契约 + selfcheck 退出码 |
+| `PREPASS_TIMING=<N>` | **prepass 性能账目**（每 N 个主帧报一行均值）：离屏 pass 次数/帧、总墙钟、
+| | 两处 fence 等待（上沿等主帧 / 下沿等自身）、begin/draw/submit 细分。未设 = **零成本**
+| | （`Context.cpp` 内匿名 namespace 门控）。基线数据见 §8.5；**引擎无 GPU 时间戳 ⇒ 这是 CPU 可见账** |
 
 示例契约（AlphaTestShadow）：**D1** 填充率（`bbox=112x58 填充率 57.6%`）、
 **D3** 外观变化（`receive_shadow 18189 px` / `bias_multiplier 600662 px`，注意亮度是低 3 字节**代理**口径）、
@@ -131,8 +134,8 @@
 1. **清陈旧产物缓存**：`rm -rf build/cache-hot/shader-cache`（不清会拿旧产物冒充新结果）。
 2. 改到**头文件/结构大小**时先 purge：`purge-stale-deps.sh D:/ULRE D:/ULRE/build D:/ULRE/src D:/ULRE/inc D:/ULRE/example -- <headers>`。
 3. 构建 → **禁用 `| grep error` 判结果**（吞错后会跑旧 exe ⇒ 假绿；构建失败时 MSBuild 不重链 exe）。
-4. `ShaderResourceSchemaRegressionGate`：基线 **42 PASS / 0 FAIL**（含两张表各一条 parity + 各一条 `*-field-ownership` 归属用例，见 §6 契约 ④）。
-5. `TestCSMIncrementalPass` = **23 Passed**（Test 22 = 两世界同帧隔离契约；Test 23 = 相机槽拥有者生命周期契约 —— 分配/复用/耗尽拒绝 + 组件析构归还挂钩 + `CameraSlotGuard` 未就绪不下发 / 世界先销毁 no-op）；`TestRenderItemDataStorage` 通过。
+4. `ShaderResourceSchemaRegressionGate`：基线 **45 PASS / 0 FAIL**（每新增一个 shader 模块或一条用例 +1；含两张表各一条 parity + 各一条 `*-field-ownership` 归属用例）。
+5. `TestCSMIncrementalPass` = **42 Passed**（末条 = Test 43；Test 42 = 机制层 **18 条契约**〔M1/M3/M4/M6/M7/M8/M9/M11/M12〕、禁复活 4 条；Test 43 = 离屏槽带生命周期账 a–f + M10/M11）；`TestRenderItemDataStorage` 通过。
 6. `ATS_SELFCHECK=1 AlphaTestShadow` → 三契约 + selfcheck PASS + **0 VUID** + 数字与基线一致。
 7. `CSM_CACHE_DIFF=1 CSM_AUTOWALK=4 CascadeShadowMap` → 多轮 **不一致=0**（该项无自动退出，需 timeout）。
 8. **破坏验证**（证明门有牙）：如跳过行池预激活应看到 `D4 FAIL（拒绝 160 次）`、ATS rc=1。
@@ -153,6 +156,19 @@
 3. **ViewportInfo 每帧多份化**未做（与 BDA 化任务有耦合）。
 4. ~~Scene 集剩余 5 个 UBO 待彻底 BDA 化~~ —— **✅ 已闭合（2026-10-07 复核）**：描述符机制**整体退役**（终态 = 唯一集 `pc_root` + `Bindless=0`），
    `inc/hgl/common/DescriptorSetTypeDef.h` 的注已明写「Set 0（Scene 集）与其绑定枚举**已整体退场**」⇒ 不再有待迁出的 UBO。
+
+5. **prepass 性能账目（D7 的 T8）✅ 已量测（`f8760056b`，2026-10-07）** —— 探针 `PREPASS_TIMING=<N>`（见 §6）。
+   实测床 = `CascadeShadowMap` 1600×900、稳态 60fps（帧 16.67ms）、50 个窗口 = 1500 帧：
+   - **离屏 pass = 1.00 次/帧**（只有级联 0 每帧全量；其余 3 级走静态缓存 + dirty-rect 条带，稳态无条带）；
+   - 合计均值 **3.76ms/帧**（中位 3.23）⇒ 占主帧 **≈19%**；
+   - 细分（均值/中位）：**begin 2.32/2.31ms**（= `BeginManagedRenderFrame`，含 `PrepareRenderPassSetup` 的
+     collect/批装配/剔除派发；极稳 2.16–2.59）、draw 0.23ms、**submit 0.047ms（43–57µs）**、
+     上沿等主帧 0.83/0.27ms（**突发**：最大 4.39ms，50 窗口里 17 个 >0.5ms）、下沿等自身 0.23ms；
+   - 预热窗口（级联全量重建、1.30 pass/帧）：begin 11.7ms、合计 13.9ms/帧 = 34ms 帧的 40.7%。
+   ⇒ **结论：A6「4 级联合并成单 cmd / 单 prepass」的稳态收益 ≈ 零** —— 它针对的「4 次 submit + 4 次全槽排空」
+   在稳态**不存在**（1 次 pass / submit 47µs / 两处等待中位合计 ≈0.48ms）。**稳定大头 = 每个阴影 pass 自己的
+   `PrepareRenderPassSetup`（2.31ms/帧 ≈ 主帧的 13.9%）**，与「合并几级联」无关（1 个 pass 也要付一次）⇒
+   那才是独立的优化线。要 prepass 的 **GPU** 时间须另立时间戳设施（全仓无 `vkCmdWriteTimestamp`/`VkQueryPool`）。
 
 ## 9. 改动禁忌（踩过的坑）
 
