@@ -6,7 +6,7 @@ namespace hgl
 {
     namespace ecs
     {
-        Entity::Entity(const std::string& name)
+        Entity::Entity(const AnsiString& name)
             : Object(name)
         {
         }

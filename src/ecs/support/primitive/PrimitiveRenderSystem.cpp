@@ -36,7 +36,7 @@ namespace hgl::ecs
         return context->GetRenderPipeline("Primitive");
     }
 
-    void PrimitiveRenderSystem::OnRender(RenderPipelineBase* /*pipeline*/, hgl::graph::RenderCmdBuffer* cmdBuffer)
+    void PrimitiveRenderSystem::RenderBatches(ECSContext* context, hgl::graph::RenderCmdBuffer* cmdBuffer, bool overlay_only)
     {
         if (!context || !cmdBuffer)
             return;
@@ -45,7 +45,8 @@ namespace hgl::ecs
         if (cache.renderableCount == 0)
             return;
 
-        std::vector<MaterialBatch*> ordered_batches;
+        auto& ordered_batches = cache.ordered_batches;
+        ordered_batches.clear();
         ordered_batches.reserve(cache.materialBatches.GetCount());
 
         for (auto& pair : cache.materialBatches)
@@ -69,7 +70,8 @@ namespace hgl::ecs
             if (!batch || batch->items.empty())
                 continue;
 
-            if (IsOverlayLikeBatch(batch))
+            const bool is_overlay = IsOverlayLikeBatch(batch);
+            if (overlay_only != is_overlay)
                 continue;
 
             const auto& key = batch->key;
@@ -87,5 +89,10 @@ namespace hgl::ecs
                              context->GetActiveCameraRow(),
                              context->IsCurrentPassShadow() ? RenderPassSlot::Shadow : RenderPassSlot::Main);
         }
+    }
+
+    void PrimitiveRenderSystem::OnRender(RenderPipelineBase* /*pipeline*/, hgl::graph::RenderCmdBuffer* cmdBuffer)
+    {
+        RenderBatches(context, cmdBuffer, false);
     }
 }

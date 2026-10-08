@@ -114,13 +114,13 @@ namespace hgl::ecs
         graph::DeviceBuffer* bound_transform_data_buffer_ = nullptr;
 
     public:
-        static const std::string kName;  ///< "Line"
+        static const AnsiString kName;  ///< "Line"
 
         explicit LineRenderPipeline(ECSContext* context);
         ~LineRenderPipeline() override;
 
         // ---- RenderPipelineBase interface ----
-        const std::string& GetName()  const override;
+        const AnsiString&   GetName()  const override;
         ECSContext*         GetWorld() const override;
 
         bool PrepareFrame()   override;

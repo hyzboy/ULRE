@@ -2,6 +2,8 @@
 
 #include <hgl/ecs/core/System.h>
 #include <hgl/ecs/core/SystemGroup.h>
+#include <hgl/util/hash/FNV1a.h>
+#include <hgl/type/String.h>
 #include <vector>
 #include <functional>
 #include <set>
@@ -104,17 +106,15 @@ namespace hgl
                 return active_render_groups.find(group_name) != active_render_groups.end();
             }
 
-            // Returns a hash for caching decisions
+            // Returns a hash for caching decisions using HGL FNV1a
             uint64_t GetHash() const
             {
-                uint64_t hash = 1469598103934665603ULL;
+                hgl::hash::FNV1aHasher64 h;
                 for (const auto& group_name : active_render_groups)
                 {
-                    const uint64_t value = static_cast<uint64_t>(std::hash<std::string>{}(group_name));
-                    hash ^= value;
-                    hash *= 1099511628211ULL;
+                    h.AppendBytes(group_name.data(), group_name.size());
                 }
-                return hash;
+                return h;
             }
         };
 

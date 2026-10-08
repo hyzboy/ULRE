@@ -193,9 +193,9 @@ namespace hgl::ecs
         resources_by_font.Clear();
     }
 
-    const std::string TextRenderPipeline::kName{ "Text" };
+    const AnsiString TextRenderPipeline::kName{ "Text" };
 
-    const std::string& TextRenderPipeline::GetName() const
+    const AnsiString& TextRenderPipeline::GetName() const
     {
         return kName;
     }

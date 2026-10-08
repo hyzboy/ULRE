@@ -203,9 +203,11 @@ namespace hgl::ecs
 
 
 
-    void TransformAssignmentBuffer::WriteStaticDirtyIndices(const TransformDataStorage& storage,
-                                                            const std::vector<TransformDataStorage::HandleID>& handles,
-                                                            const std::vector<uint32_t>& dirty_indices)
+    void TransformAssignmentBuffer::WriteDirtyIndicesInternal(const char* label,
+                                                              uint32_t base_index,
+                                                              const TransformDataStorage& storage,
+                                                              const std::vector<TransformDataStorage::HandleID>& handles,
+                                                              const std::vector<uint32_t>& dirty_indices)
     {
         if (!transform_buffer || handles.empty() || dirty_indices.empty())
             return;
@@ -231,15 +233,24 @@ namespace hgl::ecs
         if (min_first == std::numeric_limits<uint32_t>::max() || max_last < min_first)
             return;
 
-        const VkDeviceSize span_logical_first = static_cast<VkDeviceSize>(kFirstObjectL2WSlot + min_first);
+        const VkDeviceSize span_logical_first = static_cast<VkDeviceSize>(base_index + min_first);
         const VkDeviceSize span_matrix_count = static_cast<VkDeviceSize>(max_last - min_first + 1);
+        if (span_logical_first + span_matrix_count > transform_buffer_max_count)
+        {
+            GLogError("[TransformAssignmentBuffer] %s L2W 越界拦截：span_end=%llu > max_count=%u",
+                      label,
+                      static_cast<unsigned long long>(span_logical_first + span_matrix_count),
+                      transform_buffer_max_count);
+            return;
+        }
         const VkDeviceSize span_offset_bytes = sizeof(math::Matrix4f) * span_logical_first;
         const VkDeviceSize span_size_bytes = sizeof(math::Matrix4f) * span_matrix_count;
 
         math::Matrix4f *mapped = static_cast<math::Matrix4f *>(tbuf->Map(span_offset_bytes, span_size_bytes));
         if (!mapped)
         {
-            GLogWarning("[TransformAssignmentBuffer] Static L2W map failed: map_offset=%llu map_size=%llu handles=%u dirty_indices=%u",
+            GLogWarning("[TransformAssignmentBuffer] %s L2W map failed: map_offset=%llu map_size=%llu handles=%u dirty_indices=%u",
+                        label,
                         static_cast<unsigned long long>(span_offset_bytes),
                         static_cast<unsigned long long>(span_size_bytes),
                         static_cast<uint32_t>(handles.size()),
@@ -249,109 +260,6 @@ namespace hgl::ecs
 
         std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
         flush_ranges.reserve(merged_ranges.size());
-        VkDeviceSize total_written_bytes = 0;
-
-        for (const auto &range : merged_ranges)
-        {
-            const uint32_t first = static_cast<uint32_t>(range.first);
-            const uint32_t last = static_cast<uint32_t>(range.last);
-            const uint32_t count = last - first + 1;
-            const VkDeviceSize logical_index = static_cast<VkDeviceSize>(kFirstObjectL2WSlot + first);
-            const VkDeviceSize byte_offset = sizeof(math::Matrix4f) * logical_index;
-            const VkDeviceSize byte_size = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(count);
-
-            math::Matrix4f *dst = mapped + (logical_index - span_logical_first);
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                const auto handle = handles[first + i];
-
-                // 槽位表含空洞（B1b：下标 = 槽位）⇒ 空洞行不写（无人引用，保持上次内容）
-                if (handle == TransformDataStorage::INVALID_HANDLE)
-                    continue;
-
-                const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
-                dst[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-            }
-
-            flush_ranges.push_back({byte_offset, byte_size});
-            total_written_bytes += byte_size;
-        }
-
-        tbuf->Unmap();
-
-        if (!flush_ranges.empty())
-        {
-            RebuildTrackedDirtyRanges(tbuf, flush_ranges);
-
-            //GLogInfo("[TransformAssignmentBuffer] Static L2W flush: ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d",
-            //          static_cast<uint32_t>(flush_ranges.size()),
-            //          static_cast<uint32_t>(dirty_indices.size()),
-            //          static_cast<unsigned long long>(total_written_bytes),
-            //          tbuf->IsDirty() ? 1 : 0);
-
-            //if (ShouldEmitPeriodicLog(60))
-            //{
-            //    GLogInfo("[TransformAssignmentBuffer] Static L2W detail: min=%u max=%u span_offset=%llu span_size=%llu",
-            //             min_first,
-            //             max_last,
-            //             static_cast<unsigned long long>(span_offset_bytes),
-            //             static_cast<unsigned long long>(span_size_bytes));
-            //}
-        }
-    }
-
-    void TransformAssignmentBuffer::WriteDynamicDirtyIndices(const TransformDataStorage& storage,
-                                                             const std::vector<TransformDataStorage::HandleID>& handles,
-                                                             const std::vector<uint32_t>& dirty_indices)
-    {
-        if (!transform_buffer || handles.empty() || dirty_indices.empty())
-            return;
-
-        auto *tbuf = transform_buffer->GetGPUBuffer();
-        if (!tbuf)
-            return;
-
-        const uint32_t slot_count = static_cast<uint32_t>(handles.size());
-        const uint32_t base_index = GetDynamicBaseIndex();
-
-        const auto merged_ranges = BuildMergedRangesFromIndices(dirty_indices, slot_count);
-        if (merged_ranges.empty())
-            return;
-
-        uint32_t min_first = std::numeric_limits<uint32_t>::max();
-        uint32_t max_last = 0;
-        for (const auto &range : merged_ranges)
-        {
-            const uint32_t first = static_cast<uint32_t>(range.first);
-            const uint32_t last = static_cast<uint32_t>(range.last);
-            min_first = hgl_min(min_first, first);
-            max_last = hgl_max(max_last, last);
-        }
-
-        if (min_first == std::numeric_limits<uint32_t>::max() || max_last < min_first)
-            return;
-
-        const VkDeviceSize span_logical_first = static_cast<VkDeviceSize>(base_index + min_first);
-        const VkDeviceSize span_matrix_count = static_cast<VkDeviceSize>(max_last - min_first + 1);
-        const VkDeviceSize span_offset_bytes = sizeof(math::Matrix4f) * span_logical_first;
-        const VkDeviceSize span_size_bytes = sizeof(math::Matrix4f) * span_matrix_count;
-
-        math::Matrix4f *mapped = static_cast<math::Matrix4f *>(tbuf->Map(span_offset_bytes, span_size_bytes));
-        if (!mapped)
-        {
-            GLogWarning("[TransformAssignmentBuffer] Dynamic L2W map failed: map_offset=%llu map_size=%llu slots=%u base=%u dirty_indices=%u frame=%u",
-                        static_cast<unsigned long long>(span_offset_bytes),
-                        static_cast<unsigned long long>(span_size_bytes),
-                        slot_count,
-                        base_index,
-                        static_cast<uint32_t>(dirty_indices.size()),
-                        ring_layout.GetFrameIndex());
-            return;
-        }
-
-        std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
-        flush_ranges.reserve(merged_ranges.size());
-        VkDeviceSize total_written_bytes = 0;
 
         for (const auto &range : merged_ranges)
         {
@@ -367,7 +275,7 @@ namespace hgl::ecs
             {
                 const auto handle = handles[first + i];
 
-                // 槽位表含空洞 ⇒ 空洞行不写
+                // 槽位表含空洞 ⇒ 空洞行不写（保持上次内容）
                 if (handle == TransformDataStorage::INVALID_HANDLE)
                     continue;
 
@@ -376,7 +284,6 @@ namespace hgl::ecs
             }
 
             flush_ranges.push_back({byte_offset, byte_size});
-            total_written_bytes += byte_size;
         }
 
         tbuf->Unmap();
@@ -384,48 +291,21 @@ namespace hgl::ecs
         if (!flush_ranges.empty())
         {
             RebuildTrackedDirtyRanges(tbuf, flush_ranges);
-
-            uint32_t sample_handle_u32 = 0;
-            glm::vec3 sample_world_pos(0.0f);
-            bool has_sample = false;
-            for (const auto &range : merged_ranges)
-            {
-                const uint32_t first = static_cast<uint32_t>(range.first);
-                if (first < handles.size() && handles[first] != TransformDataStorage::INVALID_HANDLE)
-                {
-                    const auto sample_handle = handles[first];
-                    const glm::mat4 sample_world = storage.GetWorldMatrix(sample_handle);
-                    sample_world_pos = glm::vec3(sample_world[3]);
-                    sample_handle_u32 = static_cast<uint32_t>(sample_handle);
-                    has_sample = true;
-                    break;
-                }
-            }
-
-        #if HGL_TRANSFORM_DEBUG_LOGGING
-            GLogInfo("[TransformAssignmentBuffer] Dynamic L2W flush: base=%u slots=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d sample_handle=%u sample_pos=(%.3f, %.3f, %.3f)",
-                      base_index,
-                      slot_count,
-                      static_cast<uint32_t>(flush_ranges.size()),
-                      static_cast<uint32_t>(dirty_indices.size()),
-                      static_cast<unsigned long long>(total_written_bytes),
-                      tbuf->IsDirty() ? 1 : 0,
-                      has_sample ? sample_handle_u32 : 0u,
-                      has_sample ? sample_world_pos.x : 0.0f,
-                      has_sample ? sample_world_pos.y : 0.0f,
-                      has_sample ? sample_world_pos.z : 0.0f);
-
-            if (ShouldEmitPeriodicLog(60))
-            {
-                GLogInfo("[TransformAssignmentBuffer] Dynamic L2W detail: min=%u max=%u span_offset=%llu span_size=%llu frame=%u",
-                         min_first,
-                         max_last,
-                         static_cast<unsigned long long>(span_offset_bytes),
-                         static_cast<unsigned long long>(span_size_bytes),
-                         ring_layout.GetFrameIndex());
-            }
-        #endif//HGL_TRANSFORM_DEBUG_LOGGING
         }
+    }
+
+    void TransformAssignmentBuffer::WriteStaticDirtyIndices(const TransformDataStorage& storage,
+                                                            const std::vector<TransformDataStorage::HandleID>& handles,
+                                                            const std::vector<uint32_t>& dirty_indices)
+    {
+        WriteDirtyIndicesInternal("Static", kFirstObjectL2WSlot, storage, handles, dirty_indices);
+    }
+
+    void TransformAssignmentBuffer::WriteDynamicDirtyIndices(const TransformDataStorage& storage,
+                                                             const std::vector<TransformDataStorage::HandleID>& handles,
+                                                             const std::vector<uint32_t>& dirty_indices)
+    {
+        WriteDirtyIndicesInternal("Dynamic", GetDynamicBaseIndex(), storage, handles, dirty_indices);
     }
 
     void TransformAssignmentBuffer::Clear()
@@ -462,9 +342,9 @@ namespace hgl::ecs
         if (MaxTransformCount && row_count > MaxTransformCount)
         {
             GLogError("[TransformAssignmentBuffer] 声明预算超过设备 SSBO 上限：需要 %u 行 > 设备上限 %u 行"
-                      " —— 按设备上限截断（请调小预算），不静默扩容。",
+                      " —— 拒绝分配（请调小预算），不截断以防行号算术越界写。",
                       row_count, MaxTransformCount);
-            row_count = MaxTransformCount;
+            return false;
         }
 
         transform_buffer_max_count = row_count;

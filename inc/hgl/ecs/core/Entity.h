@@ -45,7 +45,9 @@ namespace hgl
 
         public:
 
-            explicit Entity(const std::string& name = "Entity");
+            explicit Entity(const char* name) : Object(name) {}
+            explicit Entity(const AnsiString& name = "Entity");
+            explicit Entity(const std::string& name) : Object(name) {}
             ~Entity() override;
 
             /// Get entity ID

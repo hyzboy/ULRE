@@ -30,9 +30,3 @@ namespace hgl::ecs
         return 0;
     }
 }//namespace hgl::ecs
-#include<hgl/graph/mesh/GeometryDataBuffer.h>
-#include<hgl/graph/mesh/GeometryDrawRange.h>
-
-namespace hgl::ecs
-{
-}//namespace hgl::ecs

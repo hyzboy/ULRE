@@ -19,6 +19,7 @@
 
 #include<hgl/vk/VKTextureReadback.h>
 #include<hgl/vk/VKFormat.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/util/hash/FNV1a.h>
 
 #include<cstdio>

@@ -65,7 +65,7 @@ namespace hgl::ecs
     }
 
     // -------------------------------------------------------------------------
-    const std::string LineRenderPipeline::kName{ "Line" };
+    const AnsiString LineRenderPipeline::kName{ "Line" };
 
     // -------------------------------------------------------------------------
     // LineBuffer helpers（P2：单 buffer——删 4 slot 分组）
@@ -119,6 +119,7 @@ namespace hgl::ecs
                                           * LineRenderPipeline::LINES_GRANULE;
 
         // Release old resources
+        gpu_capacity = 0;
         va_pos.Bind(nullptr);
         va_color.Bind(nullptr);
         va_transform.Bind(nullptr);
@@ -302,7 +303,7 @@ namespace hgl::ecs
         Shutdown();
     }
 
-    const std::string& LineRenderPipeline::GetName() const { return kName; }
+    const AnsiString& LineRenderPipeline::GetName() const { return kName; }
     ECSContext*         LineRenderPipeline::GetWorld() const { return context_; }
 
     bool LineRenderPipeline::Initialize()

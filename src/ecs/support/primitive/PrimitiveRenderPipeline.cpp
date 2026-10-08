@@ -3,7 +3,7 @@
 
 namespace hgl::ecs
 {
-    const std::string PrimitiveRenderPipeline::kName{ "Primitive" };
+    const AnsiString PrimitiveRenderPipeline::kName{ "Primitive" };
 
     PrimitiveRenderPipeline::PrimitiveRenderPipeline(ECSContext* context)
         : context_(context)
@@ -11,7 +11,7 @@ namespace hgl::ecs
         impl_ = std::make_unique<PrimitiveBatchPipeline>();
     }
 
-    const std::string& PrimitiveRenderPipeline::GetName() const
+    const AnsiString& PrimitiveRenderPipeline::GetName() const
     {
         return kName;
     }

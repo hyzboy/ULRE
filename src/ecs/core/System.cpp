@@ -4,7 +4,7 @@ namespace hgl
 {
     namespace ecs
     {
-        System::System(const std::string& name)
+        System::System(const AnsiString& name)
             : Object(name)
         {
         }

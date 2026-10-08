@@ -78,6 +78,7 @@ namespace hgl
         {
             std::vector<std::unique_ptr<RenderItem>> renderItems;
             hgl::UnorderedMap<ShaderProgramPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
+            std::vector<MaterialBatch*> ordered_batches;    ///< 帧内排序复用缓冲（零逐帧堆分配）
             const graph::CameraInfo* cameraInfo = nullptr;
             uint32_t renderableCount = 0;
 
@@ -95,7 +96,9 @@ namespace hgl
         {
         public:
 
-            ECSContext(const std::string& name = "World");
+            ECSContext(const char* name) : ECSContext(AnsiString(name)) {}
+            ECSContext(const AnsiString& name = "World");
+            ECSContext(const std::string& name) : ECSContext(AnsiString(name.c_str())) {}
             ~ECSContext() override;
 
         private:
@@ -627,12 +630,16 @@ namespace hgl
             /// Get a pipeline by name (e.g., "Primitive", "Text", "Line", "Quad")
             /// @param name: pipeline group name from SystemGroup
             /// @return pointer to RenderPipelineBase, or nullptr if not registered
+            RenderPipelineBase* GetRenderPipeline(const char* name);
             RenderPipelineBase* GetRenderPipeline(const std::string& name);
+            RenderPipelineBase* GetRenderPipeline(const AnsiString& name);
 
             /// Register a render pipeline (typically called during system group installation)
             /// @param name: pipeline group name
             /// @param pipeline: newly created pipeline instance
+            void RegisterRenderPipeline(const char* name, std::unique_ptr<RenderPipelineBase> pipeline);
             void RegisterRenderPipeline(const std::string& name, std::unique_ptr<RenderPipelineBase> pipeline);
+            void RegisterRenderPipeline(const AnsiString& name, std::unique_ptr<RenderPipelineBase> pipeline);
 
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"

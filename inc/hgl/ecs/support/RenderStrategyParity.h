@@ -13,10 +13,12 @@
 
 #include<hgl/ecs/support/RenderStrategyTable.h>
 
-#ifdef NDEBUG
-    #define ULRE_STRATEGY_PARITY_ENABLED 0
-#else
-    #define ULRE_STRATEGY_PARITY_ENABLED 1
+#ifndef ULRE_STRATEGY_PARITY_ENABLED
+    #ifdef NDEBUG
+        #define ULRE_STRATEGY_PARITY_ENABLED 0
+    #else
+        #define ULRE_STRATEGY_PARITY_ENABLED 1
+    #endif
 #endif
 
 namespace hgl

@@ -1,8 +1,5 @@
-﻿#include<hgl/ecs/systems/render/SwapchainSubmitSystem.h>
+#include<hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
-#include<hgl/ecs/support/text/TextRenderSystem.h>
-#include<hgl/ecs/support/line/LineRenderSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/log/Log.h>
 

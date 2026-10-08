@@ -5,17 +5,15 @@ namespace hgl::ecs
 {
     bool RenderPipelineSystem::ValidatePipeline(ECSContext* context)
     {
-        if (!IsEnabled())
-            return false;
+        return GetValidatedPipeline(context) != nullptr;
+    }
 
-        if (!context)
-            return false;
+    RenderPipelineBase* RenderPipelineSystem::GetValidatedPipeline(ECSContext* context)
+    {
+        if (!IsEnabled() || !context)
+            return nullptr;
 
-        auto pipeline = GetPipeline(context);
-        if (!pipeline)
-            return false;
-
-        return true;
+        return GetPipeline(context);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -23,10 +21,10 @@ namespace hgl::ecs
     // ─────────────────────────────────────────────────────────────
     void CollectSystem::Update(float dt)
     {
-        if (!ValidatePipeline(context))
+        auto pipeline = GetValidatedPipeline(context);
+        if (!pipeline)
             return;
 
-        auto pipeline = GetPipeline(context);
         OnCollect(pipeline);
     }
 
@@ -35,10 +33,10 @@ namespace hgl::ecs
     // ─────────────────────────────────────────────────────────────
     void CullSystem::Update(float dt)
     {
-        if (!ValidatePipeline(context))
+        auto pipeline = GetValidatedPipeline(context);
+        if (!pipeline)
             return;
 
-        auto pipeline = GetPipeline(context);
         OnCull(pipeline);
     }
 
@@ -47,10 +45,10 @@ namespace hgl::ecs
     // ─────────────────────────────────────────────────────────────
     void SortSystem::Update(float dt)
     {
-        if (!ValidatePipeline(context))
+        auto pipeline = GetValidatedPipeline(context);
+        if (!pipeline)
             return;
 
-        auto pipeline = GetPipeline(context);
         OnSort(pipeline);
     }
 
@@ -59,10 +57,10 @@ namespace hgl::ecs
     // ─────────────────────────────────────────────────────────────
     void BuildSystem::Update(float dt)
     {
-        if (!ValidatePipeline(context))
+        auto pipeline = GetValidatedPipeline(context);
+        if (!pipeline)
             return;
 
-        auto pipeline = GetPipeline(context);
         OnBuild(pipeline);
     }
 
@@ -71,10 +69,10 @@ namespace hgl::ecs
     // ─────────────────────────────────────────────────────────────
     void SyncSystem::Update(float dt)
     {
-        if (!ValidatePipeline(context))
+        auto pipeline = GetValidatedPipeline(context);
+        if (!pipeline)
             return;
 
-        auto pipeline = GetPipeline(context);
         OnSync(pipeline);
     }
 
@@ -83,10 +81,10 @@ namespace hgl::ecs
     // ─────────────────────────────────────────────────────────────
     void RenderPipelineDrawSystem::Render(hgl::graph::RenderCmdBuffer* cmd, float dt)
     {
-        if (!ValidatePipeline(context))
+        auto pipeline = GetValidatedPipeline(context);
+        if (!pipeline)
             return;
 
-        auto pipeline = GetPipeline(context);
         OnRender(pipeline, cmd);
     }
 

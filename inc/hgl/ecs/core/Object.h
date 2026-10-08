@@ -1,8 +1,7 @@
 ﻿#pragma once
 
 #include<cstdint>
-#include<string>
-#include<memory>
+#include<hgl/type/String.h>
 
 namespace hgl
 {
@@ -21,7 +20,7 @@ namespace hgl
         protected:
 
             ObjectID objectId;
-            std::string objectName;
+            AnsiString objectName;
 
         private:
 
@@ -29,7 +28,9 @@ namespace hgl
 
         public:
 
-            explicit Object(const std::string& name = "Object");
+            explicit Object(const char* name) : objectId(nextObjectId++), objectName(name) {}
+            explicit Object(const AnsiString& name = "Object");
+            explicit Object(const std::string& name) : objectId(nextObjectId++), objectName(name.c_str()) {}
             virtual ~Object() = default;
 
             // Delete copy operations
@@ -46,10 +47,10 @@ namespace hgl
             ObjectID GetID() const { return objectId; }
 
             /// Get object name
-            const std::string& GetName() const { return objectName; }
+            const AnsiString& GetName() const { return objectName; }
 
             /// Set object name
-            void SetName(const std::string& name) { objectName = name; }
+            void SetName(const AnsiString& name) { objectName = name; }
 
         public: // Lifecycle methods
         // 生命周期动词三套体系（W7 评估：不同阶段，非重复概念——勿统一改名）：

@@ -177,33 +177,36 @@ namespace hgl
             if (!context)
                 return stats;
 
-            std::vector<const Entity*> entities;
-            context->GetAllEntities(entities);
+            bool active_groups[kSystemGroupCount] = {};
 
-            for (const Entity* entity : entities)
+            // 零堆分配结构性遍历：消除逐帧 vector<const Entity*> 堆分配与 set::emplace 频繁查找
+            context->ForEachAliveEntity([&active_groups](const Entity* entity)
             {
                 if (!entity)
-                    continue;
+                    return;
 
-                // T2-c：不再有"实体 → 组件对象列表"（组件住世界的类型化池，实体只持行号）
-                // ⇒ 组活跃度直接由「行号表 × 类型表」推导：组归属是**类型属性**，不在组件对象上。
                 for (uint32_t type = 1; type < COMPONENT_TYPE_COUNT; ++type)
                 {
                     if (!entity->GetComponentRow(static_cast<ComponentType>(type)))
                         continue;
 
                     const SystemGroupID group = GetComponentGroup(static_cast<ComponentType>(type));
-
-                    if (group != SystemGroupID::None)
+                    const uint32_t group_idx = static_cast<uint32_t>(group);
+                    if (group != SystemGroupID::None && group_idx < kSystemGroupCount)
                     {
-                        // stats 仍存组名（注册表/管线按名键控）；名字取自唯一一份组名表
-                        stats.active_render_groups.emplace(
-                            kSystemGroupNames[static_cast<uint32_t>(group)]);
+                        active_groups[group_idx] = true;
                     }
+                }
+            });
+
+            for (uint32_t i = 1; i < kSystemGroupCount; ++i)
+            {
+                if (active_groups[i])
+                {
+                    stats.active_render_groups.emplace(kSystemGroupNames[i]);
                 }
             }
 
-//            MLogDebug(RenderGraph,"[RenderGraph] Scene stats: detected %zu active render groups",stats.active_render_groups.size());
             for (const auto& group_name : stats.active_render_groups)
             {
                 MLogDebug(RenderGraph,"[RenderGraph]   active group: %s", group_name.c_str());

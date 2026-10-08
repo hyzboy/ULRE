@@ -62,11 +62,13 @@ namespace hgl
             std::vector<std::type_index> dependencies; // Type IDs of systems this depends on
             class ECSContext* context = nullptr;  // Owning context
             bool enabled = true;
-            std::string render_element_type;  // Render element type (e.g., "Primitive", "Text", "SkySphere")
+            AnsiString render_element_type;  // Render element type (e.g., "Primitive", "Text", "SkySphere")
 
         public:
 
-            explicit System(const std::string& name = "System");
+            explicit System(const char* name) : Object(name) {}
+            explicit System(const AnsiString& name = "System");
+            explicit System(const std::string& name) : Object(name) {}
             virtual ~System() = default;
 
         public:
@@ -87,8 +89,8 @@ namespace hgl
             bool IsEnabled() const { return enabled; }
 
             /// Set render element type (e.g., "Primitive", "Text", "SkySphere")
-            void SetRenderElementType(const std::string& type) { render_element_type = type; }
-            const std::string& GetRenderElementType() const { return render_element_type; }
+            void SetRenderElementType(const AnsiString& type) { render_element_type = type; }
+            const AnsiString& GetRenderElementType() const { return render_element_type; }
 
             /// Get execution phase
             ExecutionPhase GetExecutionPhase() const { return executionPhase; }

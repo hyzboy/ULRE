@@ -66,6 +66,12 @@ namespace hgl::ecs
     private:
         void Clear();
 
+        void WriteDirtyIndicesInternal(const char* label,
+                                       uint32_t base_index,
+                                       const TransformDataStorage& storage,
+                                       const std::vector<TransformDataStorage::HandleID>& handles,
+                                       const std::vector<uint32_t>& dirty_indices);
+
     public:
         TransformAssignmentBuffer(graph::BufferManager* bm,
                                   uint32_t ring_frames,

@@ -1,25 +1,10 @@
-﻿#include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/MaterialBatch.h>
-#include <hgl/ecs/support/PipelineMaterialRenderer.h>
-#include <hgl/vk/VKCommandBuffer.h>
-#include <algorithm>
-#include <vector>
 
 namespace hgl::ecs
 {
-    namespace
-    {
-        bool IsOverlayLikeBatch(const MaterialBatch* batch)
-        {
-            if (!batch || !batch->key.pipeline)
-                return false;
-
-            return batch->key.pipeline->GetOverlay();
-        }
-    }
-
     PrimitiveOverlayRenderSystem::PrimitiveOverlayRenderSystem(const std::string& name)
         : RenderPipelineDrawSystem(name)
     {
@@ -34,50 +19,6 @@ namespace hgl::ecs
 
     void PrimitiveOverlayRenderSystem::OnRender(RenderPipelineBase* /*pipeline*/, hgl::graph::RenderCmdBuffer* cmdBuffer)
     {
-        if (!context || !cmdBuffer)
-            return;
-
-        auto& cache = context->GetRenderFrameCache();
-        if (cache.renderableCount == 0)
-            return;
-
-        std::vector<MaterialBatch *> ordered_batches;
-        ordered_batches.reserve(cache.materialBatches.GetCount());
-        for (auto& pair : cache.materialBatches)
-        {
-            MaterialBatch* batch = pair.second.get();
-            if (!batch || batch->items.empty())
-                continue;
-
-            ordered_batches.push_back(batch);
-        }
-
-        std::sort(ordered_batches.begin(),
-                  ordered_batches.end(),
-                  [](const MaterialBatch *a, const MaterialBatch *b)
-                  {
-                      return a->key < b->key;
-                  });
-
-        for (MaterialBatch *batch : ordered_batches)
-        {
-            if (!IsOverlayLikeBatch(batch))
-                continue;
-
-            const auto& key = batch->key;
-            if (!key.shader_program || !key.pipeline)
-                continue;
-
-            auto* renderer = batch->renderer;
-            if (!renderer)
-                continue;
-
-            renderer->Render(cmdBuffer,
-                             batch->transform_buffer,
-                             batch,
-                             context->GetRenderContext(),
-                             context->GetActiveCameraRow(),
-                             context->IsCurrentPassShadow() ? RenderPassSlot::Shadow : RenderPassSlot::Main);
-        }
+        PrimitiveRenderSystem::RenderBatches(context, cmdBuffer, true);
     }
 }

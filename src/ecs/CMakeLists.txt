@@ -68,7 +68,7 @@ set(ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES
     systems/tick/LineBoundsUpdateSystem.cpp
 )
 
-set(ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES
+set(ECS_SYS_07_RenderSwapchainNextImage_SwapchainNextImageSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainNextImageSystem.h
     systems/render/SwapchainNextImageSystem.cpp
 )
@@ -124,50 +124,6 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     components/GeometryData.cpp
     ${ECS_INCLUDE_PATH}/components/ShadowProxy.h
     components/ShadowProxy.cpp
-)
-
-set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveCullSystem
-)
-
-set(ECS_SYS_18_RenderCollect_TextCollectSystem_FILES
-    # REMOVED: replaced by support/text/TextCollectSystem
-)
-
-set(ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES
-    # REMOVED: replaced by support/line/LineCollectSystem
-)
-
-set(ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveSortSystem
-)
-
-set(ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveBuildSystem
-)
-
-set(ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveBuildSystem
-)
-
-set(ECS_SYS_22_RenderBatch_TextBuildSystem_FILES
-    # REMOVED: replaced by support/text/TextBuildSystem
-)
-
-set(ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES
-    # REMOVED: replaced by support/text/TextSyncSystem
-)
-
-set(ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveRenderSystem
-)
-
-set(ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES
-    # REMOVED: replaced by support/text/TextRenderSystem
-)
-
-set(ECS_SYS_26_RenderBatch_LineRenderSystem_FILES
-    # REMOVED: replaced by support/line/LineRenderSystem
 )
 
 set(ECS_SYS_26B_RenderStat_LineStatsSystem_FILES
@@ -269,7 +225,7 @@ set(ECS_SOURCE
     ${ECS_SYS_02_TickTransform_TransformSystem_FILES}
     ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
     ${ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES}
-    ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES}
+    ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainNextImageSystem_FILES}
     ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES}
     ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
     ${ECS_SYS_09A_RenderPreBeginFrame_MainLightShadowSystem_FILES}
@@ -280,17 +236,6 @@ set(ECS_SOURCE
     ${ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES}
     ${ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
-    ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
-    ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES}
-    ${ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES}
-    ${ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES}
-    ${ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES}
-    ${ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES}
-    ${ECS_SYS_22_RenderBatch_TextBuildSystem_FILES}
-    ${ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES}
-    ${ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES}
-    ${ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES}
-    ${ECS_SYS_26_RenderBatch_LineRenderSystem_FILES}
     ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES}
     ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES}
     ${ECS_SUPPORT_FILES}
@@ -304,7 +249,7 @@ source_group("ECS\\Systems\\00 RenderSystemCore" FILES ${ECS_SYS_00_RenderSystem
 source_group("ECS\\Systems\\01 TickInput_InputSystem" FILES ${ECS_SYS_01_TickInput_InputSystem_FILES})
 source_group("ECS\\Systems\\02 TickTransform_TransformSystem" FILES ${ECS_SYS_02_TickTransform_TransformSystem_FILES})
 source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickCamera_CameraSystem_FILES})
-source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainAcquireSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES})
+source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainNextImageSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainNextImageSystem_FILES})
 source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES})
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
 source_group("ECS\\Systems\\09A RenderPreBeginFrame_MainLightShadowSystem" FILES ${ECS_SYS_09A_RenderPreBeginFrame_MainLightShadowSystem_FILES})
@@ -314,16 +259,6 @@ source_group("ECS\\Systems\\13B RenderBufferCommit_ViewUBOCommitSystem" FILES ${
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15B RenderFrameSync_RenderSceneUBOSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
-source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})
-source_group("ECS\\Systems\\18 RenderCollect_TextCollectSystem" FILES ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES})
-source_group("ECS\\Systems\\19 RenderBatch_RenderPrimitiveSortSystem" FILES ${ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES})
-source_group("ECS\\Systems\\20 RenderBatch_RenderPrimitiveBatchBuildSystem" FILES ${ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES})
-source_group("ECS\\Systems\\21 RenderBatch_RenderPrimitiveBatchFinalizeSystem" FILES ${ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES})
-source_group("ECS\\Systems\\22 RenderBatch_TextBuildSystem" FILES ${ECS_SYS_22_RenderBatch_TextBuildSystem_FILES})
-source_group("ECS\\Systems\\23 RenderBatch_TextResourceSyncSystem" FILES ${ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES})
-source_group("ECS\\Systems\\24 RenderDrawSubmit_RenderPrimitiveSubmitSystem" FILES ${ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES})
-source_group("ECS\\Systems\\25 RenderDrawSubmit_TextRenderSubmitSystem" FILES ${ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES})
-source_group("ECS\\Systems\\26 RenderBatch_LineRenderSystem" FILES ${ECS_SYS_26_RenderBatch_LineRenderSystem_FILES})
 source_group("ECS\\Systems\\26B RenderStat_LineStatsSystem" FILES ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES})
 source_group("ECS\\Systems\\27 RenderSubmit_SwapchainSubmitSystem" FILES ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES})
 source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
@@ -366,8 +301,9 @@ if(MSVC)
 endif()
 
 # 渲染策略判定表（A1；A7a 起为收集/阴影能力的**唯一判据**）
-add_executable(TestRenderStrategyTable support/TestRenderStrategyTable.cpp)
+add_executable(TestRenderStrategyTable support/TestRenderStrategyTable.cpp support/RenderStrategyParity.cpp)
 target_link_libraries(TestRenderStrategyTable PRIVATE ${ULRE})
+target_compile_definitions(TestRenderStrategyTable PRIVATE ULRE_STRATEGY_PARITY_ENABLED=1)
 if(MSVC)
     set_target_properties(TestRenderStrategyTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
@@ -414,7 +350,8 @@ endif()
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
-        COMMAND TestTransformFlatStorage)
+        COMMAND TestTransformFlatStorage
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         TestTransformFlatStorage
         PROPERTIES LABELS "ecs;transform")
@@ -428,7 +365,8 @@ if(BUILD_TESTING)
 
     add_test(
         NAME TestCSMIncrementalPass
-        COMMAND TestCSMIncrementalPass)
+        COMMAND TestCSMIncrementalPass
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         TestCSMIncrementalPass
         PROPERTIES LABELS "csm;pass")
@@ -453,4 +391,32 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestMaterialRuntimeTable
         PROPERTIES LABELS "ecs;material_runtime")
+
+    add_test(
+        NAME TestBoundingBoxStorage
+        COMMAND TestBoundingBoxStorage)
+    set_tests_properties(
+        TestBoundingBoxStorage
+        PROPERTIES LABELS "ecs;bounding_box")
+
+    add_test(
+        NAME TestRenderStrategyTable
+        COMMAND TestRenderStrategyTable)
+    set_tests_properties(
+        TestRenderStrategyTable
+        PROPERTIES LABELS "ecs;render_strategy")
+
+    add_test(
+        NAME TestComponentMask
+        COMMAND TestComponentMask)
+    set_tests_properties(
+        TestComponentMask
+        PROPERTIES LABELS "ecs;component_mask")
+
+    add_test(
+        NAME TestVisibilityStorage
+        COMMAND TestVisibilityStorage)
+    set_tests_properties(
+        TestVisibilityStorage
+        PROPERTIES LABELS "ecs;visibility")
 endif()

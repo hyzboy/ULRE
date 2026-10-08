@@ -47,8 +47,7 @@ namespace hgl::ecs
     #endif
         if (slot.entity)
         {
-            slot.entity->DetachAllComponents();
-            slot.entity->~Entity();      // 块池：显式析构；存储留待该槽复用（行/地址语义不变）
+            slot.entity->~Entity();      // 块池显式析构（~Entity 内部统一执行 DetachAllComponents 与行表注销）
             slot.entity = nullptr;
         }
         slot.alive = false;

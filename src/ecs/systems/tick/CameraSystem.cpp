@@ -199,12 +199,59 @@ namespace hgl::ecs
                 return CameraControlMode::Free;
             }
 
-            void ProcessInput(CameraComponent* /*camera*/, const CameraInputState& /*input_state*/, float /*deltaTime*/) override
+            void ProcessInput(CameraComponent* camera, const CameraInputState& input_state, float deltaTime) override
             {
+                if (!camera)
+                    return;
+
+                bool input_changed = false;
+
+                // 自由飞行相机旋转：支持鼠标左键或右键拖拽自由旋转
+                if ((input_state.left_button || input_state.right_button) &&
+                    (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
+                {
+                    camera->yaw += input_state.mouse_delta.x * camera->rotation_sensitivity * camera->input_invert.x;
+                    camera->pitch -= input_state.mouse_delta.y * camera->rotation_sensitivity * camera->input_invert.y;
+
+                    if (camera->pitch > 89.0f) camera->pitch = 89.0f;
+                    if (camera->pitch < -89.0f) camera->pitch = -89.0f;
+
+                    input_changed = true;
+                }
+
+                math::Vector3f movement(0.0f, 0.0f, 0.0f);
+
+                if (input_state.move_forward)
+                    movement += camera->forward;
+                if (input_state.move_backward)
+                    movement -= camera->forward;
+                if (input_state.move_right)
+                    movement += camera->right;
+                if (input_state.move_left)
+                    movement -= camera->right;
+                if (input_state.move_up)
+                    movement += camera->up;
+                if (input_state.move_down)
+                    movement -= camera->up;
+
+                if (length(movement) > 0.001f)
+                {
+                    movement = normalize(movement) * camera->move_speed * deltaTime;
+                    camera->position += movement;
+                    input_changed = true;
+                }
+
+                if (input_changed)
+                {
+                    camera->matrix_dirty = true;
+                }
             }
 
-            void UpdateTransform(CameraComponent* /*camera*/) override
+            void UpdateTransform(CameraComponent* camera) override
             {
+                if (!camera)
+                    return;
+                camera->target = camera->position + camera->forward;
             }
         };
     }

@@ -1,8 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <string>
-#include <memory>
-#include <vector>
+#include <hgl/type/String.h>
 
 namespace hgl::graph
 {
@@ -19,7 +17,7 @@ namespace hgl::ecs
         virtual ~RenderPipelineBase() = default;
 
         /// Get pipeline name (e.g., "Primitive", "Text", "Line", "Quad")
-        virtual const std::string& GetName() const = 0;
+        virtual const AnsiString& GetName() const = 0;
 
         /// Get associated ECS context (if any)
         virtual ECSContext* GetWorld() const = 0;

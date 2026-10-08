@@ -10,7 +10,7 @@ namespace hgl::ecs
         if (!entity_id.IsValid())
             return;
 
-        std::lock_guard<std::mutex> lock(mutex);
+        hgl::ThreadMutexLock lock(&mutex);
         invisible_entities.insert(entity_id);
     }
 
@@ -19,7 +19,7 @@ namespace hgl::ecs
         if (!entity_id.IsValid())
             return;
 
-        std::lock_guard<std::mutex> lock(mutex);
+        hgl::ThreadMutexLock lock(&mutex);
         invisible_entities.erase(entity_id);
     }
 
@@ -28,7 +28,7 @@ namespace hgl::ecs
         if (!entity_id.IsValid())
             return false;
 
-        std::lock_guard<std::mutex> lock(mutex);
+        hgl::ThreadMutexLock lock(&mutex);
         return invisible_entities.count(entity_id) > 0;
     }
 
@@ -39,7 +39,7 @@ namespace hgl::ecs
 
         // Check if directly invisible
         {
-            std::lock_guard<std::mutex> lock(mutex);
+            hgl::ThreadMutexLock lock(&mutex);
             if (invisible_entities.count(entity_id) > 0)
                 return true;
         }
@@ -65,7 +65,7 @@ namespace hgl::ecs
 
             // Check if parent is invisible
             {
-                std::lock_guard<std::mutex> lock(mutex);
+                hgl::ThreadMutexLock lock(&mutex);
                 if (invisible_entities.count(parent_id) > 0)
                     return true;
             }
@@ -78,13 +78,13 @@ namespace hgl::ecs
 
     size_t VisibilityDataStorage::GetInvisibleCount() const
     {
-        std::lock_guard<std::mutex> lock(mutex);
+        hgl::ThreadMutexLock lock(&mutex);
         return invisible_entities.size();
     }
 
     void VisibilityDataStorage::Clear()
     {
-        std::lock_guard<std::mutex> lock(mutex);
+        hgl::ThreadMutexLock lock(&mutex);
         invisible_entities.clear();
     }
 }//namespace hgl::ecs

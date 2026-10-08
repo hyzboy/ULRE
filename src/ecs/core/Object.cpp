@@ -6,7 +6,7 @@ namespace hgl
     {
         Object::ObjectID Object::nextObjectId = 1;
 
-        Object::Object(const std::string& name)
+        Object::Object(const AnsiString& name)
             : objectId(nextObjectId++)
             , objectName(name)
         {

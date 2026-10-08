@@ -43,8 +43,8 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
 #include<hgl/object/ObjectTracker.h>
+#include<hgl/time/Time.h>
 #include<algorithm>
-#include<chrono>
 #include<cstdlib>
 #include<cstdio>
 #include<vector>
@@ -58,6 +58,7 @@ namespace hgl
         void RenderFrameCache::BeginFrame()
         {
             renderItems.clear();
+            ordered_batches.clear();
             renderableCount = 0;
 
             // 清空批次内容，保留对象以供重用
@@ -68,7 +69,7 @@ namespace hgl
             }
         }
 
-        ECSContext::ECSContext(const std::string& name)
+        ECSContext::ECSContext(const AnsiString& name)
             : Object(name)
             , entity_manager(std::make_unique<EntityManager>(1000))
             , transform_storage(std::make_unique<TransformDataStorage>())
@@ -115,7 +116,7 @@ namespace hgl
             // 0 号槽恒为本世界默认相机。定稿见 doc/world-addresses-and-camera-model-plan.md §2。
             if (camera_info_storage && !camera_info_storage->IsReady())
             {
-                if (!camera_info_storage->Create(device, GetName()))
+                if (!camera_info_storage->Create(device, GetName().c_str()))
                 {
                     LogError("[ECSContext::Initialize] 世界相机行存储（CameraInfoStorage）创建失败");
                     return false;
@@ -208,12 +209,29 @@ namespace hgl
             return camera_system;
         }
 
+        RenderPipelineBase* ECSContext::GetRenderPipeline(const char* name)
+        {
+            if (!name) return nullptr;
+            return GetRenderPipeline(std::string(name));
+        }
+
         RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
         {
             auto it = render_pipelines.find(name);
             if (it != render_pipelines.end())
                 return it->second.get();
             return nullptr;
+        }
+
+        RenderPipelineBase* ECSContext::GetRenderPipeline(const AnsiString& name)
+        {
+            return GetRenderPipeline(std::string(name.c_str()));
+        }
+
+        void ECSContext::RegisterRenderPipeline(const char* name, std::unique_ptr<RenderPipelineBase> pipeline)
+        {
+            if (!name || !pipeline) return;
+            RegisterRenderPipeline(std::string(name), std::move(pipeline));
         }
 
         void ECSContext::RegisterRenderPipeline(const std::string& name, std::unique_ptr<RenderPipelineBase> pipeline)
@@ -223,6 +241,11 @@ namespace hgl
 
 //            LogDebug("[ECS] Registering render pipeline: %s", name.c_str());
             render_pipelines[name] = std::move(pipeline);
+        }
+
+        void ECSContext::RegisterRenderPipeline(const AnsiString& name, std::unique_ptr<RenderPipelineBase> pipeline)
+        {
+            RegisterRenderPipeline(std::string(name.c_str()), std::move(pipeline));
         }
 
         void ECSContext::Shutdown()
@@ -464,8 +487,7 @@ namespace hgl
 
             inline uint64_t PrepassTimingNow()
             {
-                return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
-                           std::chrono::steady_clock::now().time_since_epoch()).count());
+                return static_cast<uint64_t>(hgl::GetUptimeUs() * 1000ULL);
             }
 
             void PrepassTimingInit()
@@ -794,6 +816,54 @@ namespace hgl
             // 覆盖分支只解算覆盖相机（不吃输入）；此时 RTSystem 已把 viewport 同步为本 RT。
             auto camera_system = GetSystem<CameraSystem>();
             const bool use_camera_override = (req.camera != nullptr && camera_system);
+
+            // RAII 状态恢复守卫：保证提前 return 或异常退出时，全套全局状态无条件还原
+            struct RenderToStateGuard
+            {
+                ECSContext* ctx;
+                graph::IRenderTarget* saved_target;
+                graph::IRenderTarget* current_rt;
+                const hgl::Color4f saved_clear;
+                bool restore_clear;
+                RenderTargetSystem* rts;
+                graph::IRenderTarget* rts_saved;
+                CameraSystem* cs;
+                bool use_override;
+
+                ~RenderToStateGuard()
+                {
+                    if (ctx)
+                    {
+                        ctx->render_target = saved_target;
+                        ctx->SetFrameIndex(saved_target ? saved_target->GetCurrentFrameIndex() : 0u);
+
+                        if (restore_clear && current_rt)
+                            current_rt->SetClearColor(saved_clear);
+
+                        if (rts)
+                            rts->SetRenderTarget(rts_saved ? rts_saved : saved_target);
+
+                        if (use_override && cs)
+                            cs->RestoreMainCamera();
+
+                        ctx->active_camera_id = CameraInfoStorage::kDefaultCameraSlot;
+                        ctx->active_mobility_filter = -1;
+                        ctx->is_current_pass_shadow = false;
+                        ctx->has_shadow_origin = false;
+                    }
+                }
+            } state_guard{
+                this,
+                saved_target,
+                rt,
+                saved_clear,
+                !req.use_target_clear,
+                rts.get(),
+                rts_saved,
+                camera_system.get(),
+                use_camera_override
+            };
+
             if (use_camera_override)
             {
                 camera_system->SetOverrideCamera(req.camera);
@@ -933,24 +1003,7 @@ namespace hgl
 
             SetSubmitWaitsFromFrameLanes();
 
-            render_target = saved_target;
-
-            // 归还主帧的 per-frame 数据槽（pass 期间被切到离屏槽）
-            SetFrameIndex(saved_target ? saved_target->GetCurrentFrameIndex() : 0u);
-
-            if (!req.use_target_clear)
-                rt->SetClearColor(saved_clear);
-
-            if (rts)
-                rts->SetRenderTarget(rts_saved ? rts_saved : saved_target);
-
-            if (use_camera_override)
-            {
-                camera_system->RestoreMainCamera();
-            }
-
-            // pass 退出：回到主帧的"本世界默认相机"（0 号槽；RestoreMainCamera 已把主相机重解算）
-            active_camera_id = CameraInfoStorage::kDefaultCameraSlot;
+            // （render_target / frame_index / clearColor / RenderTargetSystem / Camera 均由 state_guard 析构安全恢复）
 
             // T8：入账（总耗时含两处等待；非阻塞 = 总 − 等待 = 录制/提交/相机与槽簿记）
             if (probe_t0 != 0)
@@ -1519,10 +1572,10 @@ namespace hgl
             sys_map[key] = system;
 
             // Register in element type map
-            const std::string& element_type = system->GetRenderElementType();
-            if (!element_type.empty())
+            const AnsiString& element_type = system->GetRenderElementType();
+            if (!element_type.IsEmpty())
             {
-                auto& systems_list = systems_by_element_type[element_type];
+                auto& systems_list = systems_by_element_type[element_type.c_str()];
 
                 // A2：本组系统变了 ⇒ 置空快照，下次启用/禁用重建（避免漏启用后加入的系统）
                 {
@@ -1697,125 +1750,72 @@ namespace hgl
             return true;
         }
 
-        /// T3c-2：把实体行表里**脏了的那几行**写进设备镜像（不整表 512 KB 传）。
-        /// 判据：`entity_gpu_table.GetDirtyCount() == 0` ⇒ **一行都不传**（零成本）。
-        void ECSContext::UploadEntityGPUDirtyRows(const uint32_t frame_slot)
+        namespace
         {
-            if (!entity_gpu_view || !entity_gpu_buffer)
-                return;
-
-            if (entity_gpu_table.GetDirtyCount() == 0)
-                return;
-
-            static thread_local std::vector<uint32_t> dirty_rows;
-
-            entity_gpu_table.CollectDirtyRows(dirty_rows);
-
-            auto *base = reinterpret_cast<EntityGPU *>(entity_gpu_view->Data());
-            if (!base)
-                return;
-
-            constexpr uint32_t kCopies = uint32_t(graph::kWorldAddressesSlotCount);
-
-            // 写进**每一份**：某行在第 N 帧变脏，第 N+1..N+k 帧用的是别的份（帧槽轮转）——
-            // 只写本帧那份会让其余份留着旧值。脏行数通常只有几十行（可动实体），
-            // 8 份 × 128 B × 脏行数 ≪ 整表 4 MB，故不做逐份脏位（复杂度换不到东西）。
-            for (uint32_t copy = 0; copy < kCopies; ++copy)
+            /// 通用脏行上传辅助函数：收敛 EntityGPU / EntityRenderID / LightRow 的逐字同构上传循环
+            template<typename Table, typename RowType, typename View, typename RowGetter>
+            void UploadDirtyRowsHelper(Table &table, View *view, uint32_t capacity_per_copy, RowGetter &&getter)
             {
-                EntityGPU *dst = base + size_t(copy) * EntityGPUTable::kCapacity;
+                if (!view || table.GetDirtyCount() == 0)
+                    return;
 
-                for (const uint32_t index : dirty_rows)
+                static thread_local std::vector<uint32_t> dirty_rows;
+                table.CollectDirtyRows(dirty_rows);
+
+                auto *base = reinterpret_cast<RowType *>(view->Data());
+                if (!base)
+                    return;
+
+                constexpr uint32_t kCopies = uint32_t(graph::kWorldAddressesSlotCount);
+
+                for (uint32_t copy = 0; copy < kCopies; ++copy)
                 {
-                    const EntityGPU *src = entity_gpu_table.Row(index);
+                    RowType *dst = base + size_t(copy) * capacity_per_copy;
 
-                    if (src)
-                        dst[index] = *src;
+                    for (const uint32_t index : dirty_rows)
+                    {
+                        const RowType *src = getter(table, index);
+                        if (src)
+                            dst[index] = *src;
+                    }
                 }
+
+                view->Commit();
+                table.ClearDirty();
             }
-
-            (void)frame_slot;
-
-            entity_gpu_view->Commit();
-            entity_gpu_table.ClearDirty();
         }
 
-        /// T3d-3a：实体 4-ID 表脏行上传。骨架与 `UploadEntityGPUDirtyRows` 同构：
-        /// 零脏零成本 + 脏行写进**每一帧槽份**（`transform_id` 对可动实体随帧槽变 ⇒
-        /// 单份会被本帧写覆盖上一帧在读的内容 = 跨帧别名，与实体行表 T3c-3 同判据）。
+        /// T3c-2：把实体行表里**脏了的那几行**写进设备镜像（不整表 512 KB 传）。
+        void ECSContext::UploadEntityGPUDirtyRows(const uint32_t /*frame_slot*/)
+        {
+            if (!entity_gpu_buffer)
+                return;
+
+            UploadDirtyRowsHelper<EntityGPUTable, EntityGPU>(
+                entity_gpu_table, entity_gpu_view, EntityGPUTable::kCapacity,
+                [](const EntityGPUTable &t, uint32_t idx) { return t.Row(idx); });
+        }
+
+        /// T3d-3a：实体 4-ID 表脏行上传。
         void ECSContext::UploadEntityRenderIDDirtyRows()
         {
-            if (!entity_render_id_view || !entity_render_id_buffer)
+            if (!entity_render_id_buffer)
                 return;
 
-            if (entity_render_id_table.GetDirtyCount() == 0)
-                return;
-
-            static thread_local std::vector<uint32_t> dirty_rows;
-
-            entity_render_id_table.CollectDirtyRows(dirty_rows);
-
-            auto *base = reinterpret_cast<graph::RenderItemDescriptor *>(
-                entity_render_id_view->Data());
-            if (!base)
-                return;
-
-            constexpr uint32_t kCopies = uint32_t(graph::kWorldAddressesSlotCount);
-
-            for (uint32_t copy = 0; copy < kCopies; ++copy)
-            {
-                graph::RenderItemDescriptor *dst =
-                    base + size_t(copy) * EntityRenderIDTable::kRowStride;
-
-                for (const uint32_t index : dirty_rows)
-                {
-                    const graph::RenderItemDescriptor *src =
-                        entity_render_id_table.FlatRow(index);
-
-                    if (src)
-                        dst[index] = *src;
-                }
-            }
-
-            entity_render_id_view->Commit();
-            entity_render_id_table.ClearDirty();
+            UploadDirtyRowsHelper<EntityRenderIDTable, graph::RenderItemDescriptor>(
+                entity_render_id_table, entity_render_id_view, EntityRenderIDTable::kRowStride,
+                [](const EntityRenderIDTable &t, uint32_t idx) { return t.FlatRow(idx); });
         }
 
-        /// T6b：光源行表脏行上传。骨架与实体两表**逐字同构**（零脏零成本 + 脏行写进
-        /// **每一帧槽份**）：光参数可由作者逐帧改（太阳方向在示例里就是逐帧写的）⇒ 值随帧变，
-        /// 只写本帧那份会让其余份留旧值，与「per-frame ring 深度 == 槽空间」同源的跨帧别名坑。
+        /// T6b：光源行表脏行上传。
         void ECSContext::UploadLightRowDirtyRows()
         {
-            if (!light_row_view || !light_row_buffer)
+            if (!light_row_buffer)
                 return;
 
-            if (light_row_table.GetDirtyCount() == 0)
-                return;
-
-            static thread_local std::vector<uint32_t> dirty_rows;
-
-            light_row_table.CollectDirtyRows(dirty_rows);
-
-            auto *base = reinterpret_cast<graph::LightRow *>(light_row_view->Data());
-            if (!base)
-                return;
-
-            constexpr uint32_t kCopies = uint32_t(graph::kWorldAddressesSlotCount);
-
-            for (uint32_t copy = 0; copy < kCopies; ++copy)
-            {
-                graph::LightRow *dst = base + size_t(copy) * LightRowTable::kCapacity;
-
-                for (const uint32_t index : dirty_rows)
-                {
-                    const graph::LightRow *src = light_row_table.Row(index);
-
-                    if (src)
-                        dst[index] = *src;
-                }
-            }
-
-            light_row_view->Commit();
-            light_row_table.ClearDirty();
+            UploadDirtyRowsHelper<LightRowTable, graph::LightRow>(
+                light_row_table, light_row_view, LightRowTable::kCapacity,
+                [](const LightRowTable &t, uint32_t idx) { return t.Row(idx); });
         }
 
         /// T3d-3a：建实体 4-ID 表的设备镜像（与 `InitializeEntityGPUTable` 逐字同构；

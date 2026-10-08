@@ -108,12 +108,14 @@ namespace
             // 实际是否接管某批仍由 PrimitiveBatchPipeline 的逐批 guard 判定。
         }
 
-        // CPU cull reference system for parity testing (T3d-2)
+#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)
+        // CPU cull reference system for parity testing (T3d-2) - 仅在显式开启对拍测试时注册，避免生产管线每 60 帧 GPU stall
         auto cpu_cull_system = EnsureRenderSystem<hgl::ecs::CPUCullReferenceSystem>(ctx);
         if (cpu_cull_system)
         {
             cpu_cull_system->Initialize(ctx);
         }
+#endif
 
         // T3f-2：GPU 剔除结果接管绘制改由 `PrimitiveBatchPipeline::TryApplyGPUCullOverride`
         // （FinalizeBatches 开头、批建成之后逐帧 guard）+ `GPUCullSystem::ApplyGPUCullOverrideHook`
@@ -160,8 +162,10 @@ namespace
         ctx->RegisterRenderSystem<hgl::ecs::LineBuildSystem>();
         ctx->RegisterRenderSystem<hgl::ecs::LineRenderSystem>();
 
-        // Stats system (thin stats logger, not part of the pipeline)
+#if defined(ULRE_ENABLE_LINE_STATS) || defined(ULRE_ECS_DEBUG_API)
+        // Stats system (thin stats logger, 按需注册)
         EnsureRenderSystem<hgl::ecs::LineStatsSystem>(ctx);
+#endif
 
         return true;
     }
@@ -193,25 +197,17 @@ namespace hgl::ecs
 
         auto *rc = ctx->GetRenderContext();
 
-        auto input_system = EnsureTickSystem<ecs::InputSystem>(ctx);
+        EnsureTickSystem<ecs::InputSystem>(ctx);
         auto camera_system = EnsureTickSystem<ecs::CameraSystem>(ctx);
-        auto light_system = EnsureRenderSystem<ecs::LightSystem>(ctx);
+        EnsureRenderSystem<ecs::LightSystem>(ctx);
         auto environment_system = EnsureRenderSystem<ecs::EnvironmentSystem>(ctx);
-        auto main_light_shadow_system = EnsureRenderSystem<ecs::MainLightShadowSystem>(ctx);
+        EnsureRenderSystem<ecs::MainLightShadowSystem>(ctx);
         auto color_palette_system = EnsureRenderSystem<ecs::ColorPaletteSystem>(ctx);
         auto render_target_system = EnsureRenderSystem<ecs::RenderTargetSystem>(ctx);
-        auto swapchain_next_image_system = EnsureRenderSystem<ecs::SwapchainNextImageSystem>(ctx);
-        auto swapchain_submit_system = EnsureRenderSystem<ecs::SwapchainSubmitSystem>(ctx);
-        auto render_descriptor_binding_system = EnsureRenderSystem<ecs::RenderSceneUBOSystem>(ctx);
-        auto view_ubo_commit_system = EnsureRenderSystem<ecs::ViewUBOCommitSystem>(ctx);
-
-        (void)input_system;
-        (void)light_system;
-        (void)main_light_shadow_system;
-        (void)swapchain_next_image_system;
-        (void)swapchain_submit_system;
-        (void)render_descriptor_binding_system;
-        (void)view_ubo_commit_system;
+        EnsureRenderSystem<ecs::SwapchainNextImageSystem>(ctx);
+        EnsureRenderSystem<ecs::SwapchainSubmitSystem>(ctx);
+        EnsureRenderSystem<ecs::RenderSceneUBOSystem>(ctx);
+        EnsureRenderSystem<ecs::ViewUBOCommitSystem>(ctx);
 
         if (environment_system)
             environment_system->SetRenderContext(rc);

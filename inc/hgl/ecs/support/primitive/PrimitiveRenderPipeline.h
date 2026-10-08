@@ -21,7 +21,7 @@ namespace hgl::ecs
     {
     private:
         // W7 统一：类静态成员 kName（Line/Text/Primitive 三管线同模式）
-        static const std::string kName;
+        static const AnsiString kName;
         std::unique_ptr<PrimitiveBatchPipeline> impl_;
         ECSContext* context_ = nullptr;
 
@@ -29,7 +29,7 @@ namespace hgl::ecs
         explicit PrimitiveRenderPipeline(ECSContext* context);
         ~PrimitiveRenderPipeline() override = default;
 
-        const std::string& GetName() const override;
+        const AnsiString& GetName() const override;
         ECSContext* GetWorld() const override;
 
         bool PrepareFrame() override;
