@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/platform/Window.h>
 #include <hgl/vk/VKInstance.h>
@@ -105,9 +105,6 @@ namespace hgl
     public:
         // Event callbacks
         virtual void OnResize(uint w, uint h);
-        virtual void OnActive(bool active);
-        virtual void OnClose();
-        virtual void Tick();
 
     public:
         // Application state access

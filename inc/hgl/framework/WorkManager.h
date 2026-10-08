@@ -1,76 +1,66 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/framework/WorkObject.h>
-#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/framework/AppFramework.h>
-#include<hgl/object/ObjectTracker.h>
-#include <memory>
+#include<hgl/time/Time.h>
 
 namespace hgl
 {
     /**
-    * 工作管理器，管理一个序列的WorkObject<br>
+    * 工作管理器，驱动单个 WorkObject 的帧循环。<br>
+    *
+    * 原生路径由 RunFramework 托管（内部创建并 Run）；外部事件循环
+    * （Qt/GTK）路径由外壳每帧调用 RunFrame。
     */
-    class WorkManager:public io::WindowEvent
+    class WorkManager
     {
-    protected:
+    private:
 
-        AppFramework *app_framework;
-        uint fps=60;
-        double frame_time=1.0f/double(fps);
+        AppFramework *app_framework = nullptr;
 
-        double last_update_time=-1;
-        double last_render_time=-1;
-        double cur_time=0;
+        uint fps = 60;
+        double frame_time = 1.0 / double(fps);
 
-        WorkObject *cur_work_object=nullptr;
+        double last_frame_time = -1;
+        double cur_time = 0;
+
+        WorkObject *cur_work_object = nullptr;
 
     public:
 
         WorkManager(AppFramework *af)
+            : app_framework(af)
         {
-            app_framework=af;
-
-            af->AddChildDispatcher(this);
         }
 
-        virtual ~WorkManager()
-        {
-            if (app_framework)
-                app_framework->RemoveChildDispatcher(this);
-            if(cur_work_object)
-                OnChangeWorkObject(cur_work_object, nullptr);
-            SAFE_CLEAR(cur_work_object);
-        }
-
-                void Tick   (WorkObject *wo);
-        virtual void Render (WorkObject *wo);
-                void Run    (WorkObject *wo);
+        ~WorkManager();
 
         /**
          * 外部事件循环（Qt/GTK 等）驱动的单帧推进：
-         * 等效于 Run() 循环体的一次迭代（更新时间 → Tick → Render）。
-         * 由外部定时器每帧调用；wo 需先经 Run() 的初始化流程（或手动 OnChangeWorkObject + Init）。
+         * 更新节流 → Tick → Render。
+         * 由外部定时器每帧调用；wo 需先 Init()。
          */
         void RunFrame(WorkObject *wo);
 
-        // Called when the current active WorkObject changes. Default does nothing.
-        virtual void OnChangeWorkObject(WorkObject *old_work,WorkObject *new_work);
+        /**
+         * 原生阻塞式帧循环：内部反复 RunFrame 直到窗口关闭。
+         * 窗口最小化/隐藏时跳过整帧。
+         */
+        void Run(WorkObject *wo);
     };//class WorkManager
 
-    template<typename WO> int RunFramework(const OSString &title,uint width=1280,uint height=720)
-    {
-        return RunFramework<WO>(title,0,nullptr,width,height);
-    }
+    /**
+     * 开启对象追踪器（泄漏诊断）。HGL_ENABLE_OBJECT_TRACKER 关闭时为空实现。
+     * 刻意不放在 RunFramework 内：它只服务诊断，不该出现在正常启动路径上。
+     */
+    void EnableObjectTracking();
+    void DisableObjectTracking();
 
     template<typename WO> int RunFramework(const OSString &title,int argc,os_char **argv,uint width=1280,uint height=720)
     {
-        hgl::utils::initialize_object_tracker();
-
         int result = 0;
 
-        // Use explicit scope to ensure AppFramework/WorkObject destructors are called
-        // BEFORE shutdown_object_tracker() checks for leaks
+        // 显式作用域：保证 AppFramework/WorkObject 析构先于返回码结算
         {
             AppFramework app(title);
 
@@ -95,10 +85,7 @@ namespace hgl
                     wm.Run(wo);
                 }
             }
-        } // AppFramework destructor called here (cleanup happens)
-
-        // Now check for leaks AFTER all destructors have run
-        hgl::utils::shutdown_object_tracker();
+        }
 
         return result;
     }

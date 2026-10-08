@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/object/TickObject.h>
 #include<hgl/ecs/core/Context.h>
@@ -34,39 +34,31 @@ namespace hgl
 
         ecs::ECSContext *world=nullptr;
 
-        graph::RenderContext *render_context=nullptr;
-
-        bool render_dirty=true;
-
     protected:
 
         // 以下数据在 ECS 模式下来自 ECSContext/GraphicsContext
 
     public:
 
-        ecs::ECSContext *           GetECSContext       (){return world;}
-        graph::RenderContext *      GetRenderContext    (){return render_context;}
-        graph::GraphicsContext *    GetGraphicsContext  ()
+        /// ECS 世界（唯一权威）。图形资源一律经它派生，见下方便捷方法。
+        ecs::ECSContext *           GetECSContext       ()const{return world;}
+
+        graph::RenderContext *      GetRenderContext    ()const
         {
-            if (render_context)
-            {
-                if (auto *gc = render_context->GetGraphicsContext())
-                    return gc;
-            }
-            if (world)
-                return world->GetGraphicsContext();
-            return nullptr;
+            return world ? world->GetRenderContext() : nullptr;
         }
 
-        graph::VulkanDevice *       GetDevice           ()
+        graph::GraphicsContext *    GetGraphicsContext  ()const
         {
-            if (auto *gc = GetGraphicsContext())
-                return gc->GetDevice();
-            if (world && world->GetGPUDevice())
-                return world->GetGPUDevice();
-            return nullptr;
+            return world ? world->GetGraphicsContext() : nullptr;
         }
-        template<typename T> T *    GetManager          ()
+
+        graph::VulkanDevice *       GetDevice           ()const
+        {
+            auto *gc = GetGraphicsContext();
+            return gc ? gc->GetDevice() : nullptr;
+        }
+        template<typename T> T *    GetManager          ()const
         {
             auto *gc = GetGraphicsContext();
             return gc ? gc->GetManager<T>() : nullptr;
@@ -83,10 +75,6 @@ namespace hgl
     public:
 
         virtual const bool IsDestroy  ()const{return false;}   ///< 退出机制未实现，恒 false（见 WorkManager::Run）
-
-        const   bool IsRenderDirty  ()const{return render_dirty;}
-                void MarkRenderDirty(){render_dirty=true;}
-            void ClearRenderDirty(){render_dirty=false;}
 
     protected:
 
@@ -113,10 +101,6 @@ namespace hgl
         /// 效果同帧等价；放 Tick 语义正确且不占用录制时间）。
         /// 范本：example/ApiValidation/SimpleMeshTriangle.cpp
         virtual void OnRenderPass(double delta_time) {}
-
-        /// [[deprecated]] 旧名。语义同 OnRenderPass——历史上名字误导了大量
-        /// 示例在渲染回调里写逻辑更新，新代码一律重写 OnRenderPass。
-        virtual void Render(double delta_time) {}
 
     public:
 

@@ -1,4 +1,4 @@
-﻿#include<hgl/framework/WorkObject.h>
+#include<hgl/framework/WorkObject.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -14,8 +14,6 @@ namespace hgl
     void WorkObject::SetECSContext(ecs::ECSContext *ctx)
     {
         world = ctx;
-        if (world)
-            render_context = world->GetRenderContext();
     }
 
     void WorkObject::SetClearColor(const Color4f &color)
@@ -69,7 +67,7 @@ namespace hgl
     }
 
     // WorkObject::OnRenderPass：渲染帧内录制钩子（BeginRenderPass 之后、
-    // 系统绘制之前），基类无操作；旧名 Render 保留为 deprecated 别名。
+    // 系统绘制之前），基类无操作。
 
     // Resource helpers removed. Use RenderContext/GraphicsContext directly.
 }//namespace hgl

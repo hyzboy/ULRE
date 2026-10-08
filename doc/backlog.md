@@ -171,13 +171,20 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 | RenderContext 类整体移除 | 只剩 `{GraphicsContext*}` 一个指针，src 25 处纯转发 | 波及 20+ 文件系统成员；下次动系统基类时顺带 |
 | 组启停双写者 | 组件挂卸按计数开关 vs scene gather 全量重算 | 5d 已消全局 enabled；剩余两套可收敛为"仅 gather" |
 | `RegisterGroup` 相位区间互写无校验 | 同名组不同相位区间静默覆盖 | 5–10 行 fail-fast 校验 |
-| destroy/IsDestroy 机制 | 恒 false 但 CMQT 仍 polling | 实现 `RequestExit()` 或删机制+改 CMQT |
+| ~~destroy/IsDestroy 机制~~ | 恒 false 但 CMQT 仍 polling | **未做**：实现 `RequestExit()` 或删机制+改 CMQT |
 | FreeCameraMode 空实现且为默认值 | 未设 control_mode 的相机零输入响应 | FirstPerson/LookAt 零使用，枚举可瘦身 |
 | LineStatsSystem 默认注册 | 每 120 帧一条日志，`SetLogInterval` 零调用 | 降为按需注册 |
-| WorkManager"序列"空架子 | `OnChangeWorkObject(old,new)` 0 重写 | 与 destroy 同属旧工作流残留 |
-| TickObject 双名同物 + 继承趋零 | `hgl/type/TickObject.h` 旧版无人用仍在编译 | 跨 CMCore 子仓库 |
-| AppFramework 空虚函数/死参 | OnActive/OnClose/Tick 空、`(void)argc` | 化妆级 |
+| ~~WorkManager"序列"空架子~~ | ✅ **已删**（本轮）：`OnChangeWorkObject(old,new)` 虚实全删，改裸 `cur_work_object` + 析构只解引用（所有权归创建方） | — |
+| ~~TickObject 双名同物~~ | ✅ **已整删**（本轮）：`hgl/object/TickObject.h` 的 `IsTickable/SetTickable`（零引用）已删；旧版 `hgl/type/TickObject.h` + 空实现 `src/Object/TickObject.cpp` 连 CMake 条目一并删除（**无任何文件 include 该头**，唯一 include 者是它自己的空 cpp；引擎实际用的是 `hgl/object/TickObject.h`） | — |
+| ~~AppFramework 空虚函数/死参~~ | ✅ **已删**（本轮）：`OnActive/OnClose/Tick` 三虚函数整删（零重写者，`app.Tick()` 唯一调用点在 CMQT 已移除）；`(void)argc` 保留（Vulkan 层未用实参） | — |
+| ~~WorkObject::Render 死虚函数~~ | ✅ **已删**（本轮）：声明自称 deprecated「旧名」，但全仓零调用零重写（`WorkManager` 只调 `OnRenderPass`） | — |
+| ~~RunFramework 3 参重载~~ | ✅ **已删**（本轮）：`RunFramework(title,w,h)` 递归调用自身（5 参形参类型不匹配 ⇒ 编译期必然失败）。零调用点，但写出即编译炸弹 | — |
+| ~~WorkManager 继承 WindowEvent~~ | ✅ **已删**（本轮）：挂 `AddChildDispatcher` 却不重写 `OnEvent`/任何 `On*` ⇒ 每个输入事件白走一层分发 | — |
+| ~~render_dirty 三件套~~ | ✅ **已删**（本轮）：`MarkRenderDirty` 零调用 ⇒ `IsRenderDirty()` 恒 true ⇒ `WorkManager::Render` 的节流分支永不生效 | — |
+| ~~WorkObject 取值链四层 fallback~~ | ✅ **已收敛**（本轮）：`SetECSContext` 不再缓存 `render_context`，一律经 `world` 派生（`GetRenderContext/GetGraphicsContext/GetDevice/GetManager` 全 const） | — |
+| ~~RunFramework 内 ObjectTracker 仪式~~ | ✅ **已移出**（本轮）：`initialize/shutdown_object_tracker` 改为显式 `EnableObjectTracking()/DisableObjectTracking()`（`HGL_ENABLE_OBJECT_TRACKER` 默认 0 ⇒ 原调用是空转） | — |
 | `DetachAllComponents(bool)` 参数无效 | 只进日志不进分支 | 顺手 |
+| **`CascadeShadowMap` 编译失败（既有缺陷，非本轮引入）** | `FrameDigest.h` 只在 `InstallFrameDigestHook` 签名里**提及** `graph::SwapchainRenderTarget`，从未 include 其定义（该头只包 `VKTextureReadback.h`/`VKFormat.h`/`FNV1a.h`），而 `CascadeShadowMap.cpp:1549` 又对它做 `dynamic_cast` ⇒ `error C2680: 'hgl::graph::SwapchainRenderTarget': class must be defined before using in a dynamic_cast` + `C3536`。**已用 git stash + 清 obj 双向验证：纯净基线上同样 FAIL(exit 1)** ⇒ 与本轮框架清理无关 | 修法：`FrameDigest.h` 补 `#include<hgl/vk/VKRenderTargetSwapchain.h>`。**注意**：该 TU 的对象文件一旦陈旧，增量构建会假绿（同 D2 卡 :271-276 的 tlog 陷阱）——判据必须是 `/t:Rebuild` 或先删 `.obj` |
 | 示例**干净退出**时泄漏 + CRT abort（退出码 3） | `CascadeShadowMap` 关窗后：133 条 `[LEAK]`（TransferSrcBuffer 27 / Texture_ 21 / UBO:ShadowUBO 8 / Shader stage 7 / VAB_ 6 / SSBO:ECS:Batch:* …）+ `BufferManager::Release` 清理 → 弹 "Microsoft Visual C++ Runtime Library" abort 对话框，进程退出码 **3** | 2026-09-26 冒烟时发现（两次复现）。**与 D1/D8 无关**：示例自身未改，D8 diff 零资源生命周期行（已 grep 核对）。`shutdown_object_tracker` 只 delete tracker、不 abort ⇒ 来源在设备/静态析构期。**注意**：拿 CSM 示例做冒烟时退出码 3 不是回归信号，判据是日志内容（路由/缓存/0 VUID）。**2026-09-26 D3 冒烟第 3 次实跑 exit=0 且 0 VUID/ERROR** ⇒ 该 abort 是**间歇性**的（不是每次干净退出都触发），更不能用退出码当判据 |
 
 ## C 线：构建与文档
