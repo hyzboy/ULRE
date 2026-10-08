@@ -506,6 +506,10 @@ int main(int argc, char** argv)
             { "inc/hgl/ecs/core/Context.h",               "TryGetTransformSlot",       1, "稳定槽位查询缺失" },
             { "src/ecs/systems/tick/TransformSystem.cpp", "static_slot_map",           4, "槽位映射缺失（每帧派生自世界槽位表）" },
             { "src/ecs/support/TransformAccessor.cpp",    "MigrateTransform",          1, "换边未通知世界（只改 mobility 字节 ⇒ 实例拿默认行、全画在原点）" },
+
+            // T8.5：局部矩阵常驻缓存与二级标脏字段**必须零残留**（行内存 223 B → 158 B 的验收点）
+            { "inc/hgl/ecs/support/TransformDataStorage.h", "local_matrices",            0, "局部矩阵常驻缓存复活（真源只剩 TRS + 求值循环内按需合成）" },
+            { "inc/hgl/ecs/support/TransformDataStorage.h", "local_dirty",               0, "第二级标脏字段复活（只留单级 matrixDirty）" },
         };
 
         for (const SourceNeedle &n : kNeedles)

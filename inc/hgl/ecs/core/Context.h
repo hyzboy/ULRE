@@ -172,6 +172,8 @@ namespace hgl
             bool                     transform_slot_overflow_warned = false;    ///< 段预算用尽：一次性告警闩
             bool                     transform_row_move_warned      = false;    ///< Mobility 换边（行号移动）：一次性告警闩
             uint32_t                 transform_row_move_count       = 0;        ///< 换边次数（可观测）
+            /// 变换行存储（本世界独占拥有）。存储侧另持一条**指向本世界的非拥有反向指针**
+            /// （构造期 `SetContext(this)` 回填）⇒ 变换行句柄（TransformAccessor）无需自带 context。
             std::unique_ptr<TransformDataStorage> transform_storage;
 
             // 世界私有包围盒行存储（原组件已删除；连续 SoA + 值类型句柄，与 transform_storage 同范式）。

@@ -23,9 +23,11 @@ namespace hgl
 
     namespace ecs
     {
+        class ECSContext;
+
         /**
          * Optimized SOA (Structure of Arrays) storage for transform data
-         * Provides flat triplet layout (local_matrices, parent_indices, world_matrices)
+         * Provides flat layout (parent_indices, world_matrices; local matrix is composed on the fly)
          * with level-by-level topological order for object-independent evaluation
          * (ready for future ComputeShader migration).
          */
@@ -42,8 +44,16 @@ namespace hgl
 
         private:
 
-            // ── 核心三元组数据（对应未来 GPU Storage Buffer）──
-            hgl::ValueArray<glm::mat4>      local_matrices;     // 64 bytes each, consecutive
+            /// 世界反向引用（**非拥有**；由所属 `ECSContext` 构造期 `SetContext(this)` 回填，
+            /// 与 `VisibilityDataStorage` 同范式）。目的：任意持有本存储的代码都能反查世界，
+            /// 行句柄（`TransformAccessor`）因此**不必在每个实例里重复携带 8 字节 context 指针**。
+            /// 注意：本存储允许独立存在（探针 `ProbeTransformDiagnostics` / 单元测试里没有世界）⇒
+            /// 所有消费点**必须容忍空**，不得假设非空。
+            ECSContext *context = nullptr;
+
+            // ── 核心数据（对应未来 GPU Storage Buffer）──
+            // 局部矩阵**不落内存**：TRS 是唯一真源，local 由 `ComposeLocalMatrix()` 在求值循环里
+            // 寄存器内合成后直接乘父世界矩阵（省掉每行 64 B 常驻缓存 + 第二级标脏）。
             hgl::ValueArray<HandleID>       parent_indices;     // 4 bytes each, consecutive (index in same storage)
             hgl::ValueArray<glm::mat4>      world_matrices;     // 64 bytes each, consecutive (final L2W)
 
@@ -59,8 +69,7 @@ namespace hgl
             hgl::ValueArray<glm::vec3>      scales;             // 12 bytes each, consecutive
 
             // ── 状态标记 ──
-            hgl::ValueArray<uint8_t>        local_dirty;        // 1 byte each (本地 TRS 矩阵是否需要重新合成)
-            hgl::ValueArray<uint8_t>        matrixDirty;        // 1 byte each (世界矩阵是否脏)
+            hgl::ValueArray<uint8_t>        matrixDirty;        // 1 byte each (世界矩阵是否脏；单级标脏)
             hgl::ValueArray<uint8_t>        mobility;           // 1 byte each (0=static, 1=movable)
 
             /// 子节点表（与行一一对应；CPU 侧层级查询用）
@@ -128,12 +137,10 @@ namespace hgl
                 positions.Reserve(budget);
                 rotations.Reserve(budget);
                 scales.Reserve(budget);
-                local_matrices.Reserve(budget);
                 parent_indices.Reserve(budget);
                 world_matrices.Reserve(budget);
                 hierarchy_depths.Reserve(budget);
                 eval_order.Reserve(budget);
-                local_dirty.Reserve(budget);
                 matrixDirty.Reserve(budget);
                 mobility.Reserve(budget);
                 owners.Reserve(budget);
@@ -152,6 +159,10 @@ namespace hgl
             uint32_t GetRowBudget()        const { return max_static_rows + max_dynamic_rows; }
             uint32_t GetRowOverflowCount() const { return row_overflow_count; }
             bool     HasWarnedRowOverflow() const { return row_overflow_warned; }
+
+            /// 世界反向引用（见成员注释）。本存储独立存在时（探针/单测）为空 ⇒ 消费点必须容忍空。
+            void        SetContext(ECSContext *ctx) { context = ctx; }
+            ECSContext *GetContext() const          { return context; }
 
             /// Allocate space for a new transform
             /// 预算超限 ⇒ **拒绝分配**（返回 INVALID_HANDLE）并一次性明确告警；不扩容。
@@ -177,12 +188,10 @@ namespace hgl
                 rotations.Add(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
                 scales.Add(glm::vec3(1.0f));
 
-                local_matrices.Add(glm::mat4(1.0f));
                 parent_indices.Add(INVALID_HANDLE);
                 world_matrices.Add(glm::mat4(1.0f));
 
                 hierarchy_depths.Add(0);
-                local_dirty.Add(1);
                 matrixDirty.Add(1);
                 mobility.Add(1);  // Default to movable
 
@@ -214,7 +223,6 @@ namespace hgl
                 // Mark as unused but keep slot to preserve stable indices
                 parent_indices[id] = INVALID_HANDLE;
                 matrixDirty[id] = 0;
-                local_dirty[id] = 0;
 
                 if (id < static_cast<HandleID>(owners.GetCount()))
                 {
@@ -251,7 +259,6 @@ namespace hgl
             void SetPosition(HandleID id, const glm::vec3& pos)
             {
                 positions[id] = pos;
-                local_dirty[id] = 1;
                 matrixDirty[id] = 1;
             }
 
@@ -265,7 +272,6 @@ namespace hgl
             void SetRotation(HandleID id, const glm::quat& rot)
             {
                 rotations[id] = rot;
-                local_dirty[id] = 1;
                 matrixDirty[id] = 1;
             }
 
@@ -279,7 +285,6 @@ namespace hgl
             void SetScale(HandleID id, const glm::vec3& scale)
             {
                 scales[id] = scale;
-                local_dirty[id] = 1;
                 matrixDirty[id] = 1;
             }
 
@@ -288,25 +293,24 @@ namespace hgl
                 positions[id] = pos;
                 rotations[id] = rot;
                 scales[id] = scale;
-                local_dirty[id] = 1;
                 matrixDirty[id] = 1;
             }
 
-        public: // Local matrix accessors
-                 // local_matrices 是**求值中间量**（由 TRS 合成，供两个平铺世界求值读），
-                 // 不是可写的第二真源：写入只有 TRS 与求值两条路。
+        public: // Local matrix（派生量：按需瞬时合成，**不落内存**）
 
-            void UpdateLocalMatrix(HandleID id)
+            /// TRS → 局部矩阵（M = T * R * S），全程寄存器局部变量。
+            /// 求值循环算完立刻乘父世界矩阵 ⇒ 不再需要第二份 64 B 常驻缓存。
+            /// 只读接口不另开：引擎侧无人读局部矩阵，需要它的调用点（示例）自己从 TRS 现算。
+            static glm::mat4 ComposeLocalMatrix(const glm::vec3 &pos,const glm::quat &rot,const glm::vec3 &scale)
             {
-                if (id >= static_cast<HandleID>(positions.GetCount()))
-                    return;
+                glm::mat4 local = glm::mat4_cast(rot);
 
-                glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scales[id]);
-                glm::mat4 rotMatrix = glm::mat4_cast(rotations[id]);
-                glm::mat4 transMatrix = glm::translate(glm::mat4(1.0f), positions[id]);
+                local[0] *= scale.x;                    // 直接缩放列向量 ⇒ 省一次 scale 矩阵乘
+                local[1] *= scale.y;
+                local[2] *= scale.z;
+                local[3] = glm::vec4(pos,1.0f);
 
-                local_matrices[id] = transMatrix * rotMatrix * scaleMatrix;
-                local_dirty[id] = 0;
+                return local;
             }
 
         public: // World matrix accessors
@@ -443,7 +447,7 @@ namespace hgl
                 uint32_t    count;   ///< 元素数（不变量：恒等于 GetCount()）
             };
 
-            static constexpr uint32_t PER_ROW_FIELD_COUNT = 19;
+            static constexpr uint32_t PER_ROW_FIELD_COUNT = 17;
 
             using PerRowFieldTable = std::array<PerRowField,PER_ROW_FIELD_COUNT>;
 
@@ -452,7 +456,6 @@ namespace hgl
             PerRowFieldTable GetPerRowFields() const
             {
                 return { {
-                    { "local_mat4",   static_cast<uint32_t>(sizeof(glm::mat4)),        static_cast<uint32_t>(local_matrices.GetCount()) },
                     { "parent",       static_cast<uint32_t>(sizeof(HandleID)),         static_cast<uint32_t>(parent_indices.GetCount()) },
                     { "world_mat4",   static_cast<uint32_t>(sizeof(glm::mat4)),        static_cast<uint32_t>(world_matrices.GetCount()) },
                     { "depth",        static_cast<uint32_t>(sizeof(uint16_t)),         static_cast<uint32_t>(hierarchy_depths.GetCount()) },
@@ -460,7 +463,6 @@ namespace hgl
                     { "positions",    static_cast<uint32_t>(sizeof(glm::vec3)),        static_cast<uint32_t>(positions.GetCount()) },
                     { "rotations",    static_cast<uint32_t>(sizeof(glm::quat)),        static_cast<uint32_t>(rotations.GetCount()) },
                     { "scales",       static_cast<uint32_t>(sizeof(glm::vec3)),        static_cast<uint32_t>(scales.GetCount()) },
-                    { "local_dirty",  static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(local_dirty.GetCount()) },
                     { "matrix_dirty", static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(matrixDirty.GetCount()) },
                     { "mobility",     static_cast<uint32_t>(sizeof(uint8_t)),          static_cast<uint32_t>(mobility.GetCount()) },
                     { "owners",       static_cast<uint32_t>(sizeof(EntityID)),         static_cast<uint32_t>(owners.GetCount()) },
@@ -485,10 +487,10 @@ namespace hgl
                 return total;
             }
 
-            /// 其中"派生/缓存"部分（local_mat4 + world_mat4）—— 报告里单列，便于讨论去留
+            /// 其中"派生/缓存"部分（只剩 world_mat4：局部矩阵改为按需合成、不常驻）—— 报告里单列，便于讨论去留
             uint32_t DerivedRowBytes() const
             {
-                return static_cast<uint32_t>(sizeof(glm::mat4) * 2);
+                return static_cast<uint32_t>(sizeof(glm::mat4));
             }
 
             /// 不变量检查：每个每行数组的元素数都必须等于行数。
@@ -676,22 +678,11 @@ namespace hgl
 
         public: // Flat arrays accessors (for GPU uploads / ComputeShader dispatch)
 
-            const glm::mat4* GetLocalMatricesData() const { return local_matrices.GetData(); }
             const HandleID* GetParentIndicesData() const { return parent_indices.GetData(); }
             const glm::mat4* GetWorldMatricesData() const { return world_matrices.GetData(); }
             glm::mat4* GetWorldMatricesData() { return world_matrices.GetData(); }
 
             const HandleID* GetEvalOrderData() const { return eval_order.GetData(); }
-
-            void UpdateAllLocalMatrices()
-            {
-                const int count = local_dirty.GetCount();
-                for (int i = 0; i < count; ++i)
-                {
-                    if (local_dirty[i])
-                        UpdateLocalMatrix(i);
-                }
-            }
 
         public: // 拓扑（供示例/probe 读层级；重建由脏标记驱动）
 
@@ -817,18 +808,18 @@ namespace hgl
                 for (int i = 0; i < count; ++i)
                 {
                     const HandleID idx = eval_order[i];
+                    const HandleID p   = parent_indices[idx];
 
-                    if (local_dirty[idx])
-                        UpdateLocalMatrix(idx);
+                    // 局部矩阵当场合成（寄存器局部变量），不再写回常驻数组
+                    const glm::mat4 local = ComposeLocalMatrix(positions[idx],rotations[idx],scales[idx]);
 
-                    const HandleID p = parent_indices[idx];
                     if (p != INVALID_HANDLE && p < static_cast<HandleID>(world_matrices.GetCount()))
                     {
-                        world_matrices[idx] = world_matrices[p] * local_matrices[idx];
+                        world_matrices[idx] = world_matrices[p] * local;
                     }
                     else
                     {
-                        world_matrices[idx] = local_matrices[idx];
+                        world_matrices[idx] = local;
                     }
                     matrixDirty[idx] = 0;
                 }
@@ -846,21 +837,22 @@ namespace hgl
                     const HandleID idx = eval_order[i];
                     const HandleID p = parent_indices[idx];
 
+                    // ⚠️ `parent_dirty` 不能省：存储层不做子树标脏（Set* 只写自己一行），
+                    //    "父动子跟" 只能靠这里传播（Test 5 就是这条路的回归门）。
                     const bool parent_dirty = (p != INVALID_HANDLE && p < static_cast<HandleID>(matrixDirty.GetCount()))
                                             ? (matrixDirty[p] != 0) : false;
 
-                    if (local_dirty[idx] || matrixDirty[idx] || parent_dirty)
+                    if (matrixDirty[idx] || parent_dirty)
                     {
-                        if (local_dirty[idx])
-                            UpdateLocalMatrix(idx);
+                        const glm::mat4 local = ComposeLocalMatrix(positions[idx],rotations[idx],scales[idx]);
 
                         if (p != INVALID_HANDLE && p < static_cast<HandleID>(world_matrices.GetCount()))
                         {
-                            world_matrices[idx] = world_matrices[p] * local_matrices[idx];
+                            world_matrices[idx] = world_matrices[p] * local;
                         }
                         else
                         {
-                            world_matrices[idx] = local_matrices[idx];
+                            world_matrices[idx] = local;
                         }
                         matrixDirty[idx] = 1; // 传导至子节点
 
@@ -875,10 +867,6 @@ namespace hgl
                 }
             }
 
-        public: // Batch data accessors（只保留有消费者的；0 引用的读取口已删）
-
-            const hgl::ValueArray<glm::mat4>& GetLocalMatrices() const { return local_matrices; }
-
         public:
 
             size_t GetSize() const { return static_cast<size_t>(positions.GetCount()); }
@@ -889,13 +877,11 @@ namespace hgl
                 positions.Clear();
                 rotations.Clear();
                 scales.Clear();
-                local_matrices.Clear();
                 parent_indices.Clear();
                 world_matrices.Clear();
                 hierarchy_depths.Clear();
                 eval_order.Clear();
                 level_offsets.Clear();
-                local_dirty.Clear();
                 matrixDirty.Clear();
                 mobility.Clear();
                 owners.Clear();

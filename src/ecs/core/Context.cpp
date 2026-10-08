@@ -73,6 +73,10 @@ namespace hgl
             // 可见性存储需要拿到本世界指针：祖先链上溯要回查实体与变换行
             visibility_storage->SetContext(this);
 
+            // 变换行存储需要拿到本世界指针：行句柄（TransformAccessor）不再自带 context，
+            // 一律经 storage->GetContext() 反查世界（Mobility 换边通知 / owner 实体解析走这条）。
+            transform_storage->SetContext(this);
+
             // 材质运行期表需要拿到本世界指针：共享行回收时退休其纹理配置池行
             // （GPU 侧绑定随行存亡）；单测里没有世界，钩子自动 no-op。
             material_runtime_table->SetContext(this);
@@ -964,7 +968,7 @@ namespace hgl
 
         TransformAccessor ECSContext::GetTransform(TransformID id)
         {
-            return TransformAccessor(GetTransformStorage(),id,this);
+            return TransformAccessor(GetTransformStorage(),id);
         }
 
         BoundingBoxAccessor ECSContext::GetBoundingBoxByEntity(EntityID owner) const

@@ -24,7 +24,9 @@ namespace hgl
 
         Entity *TransformAccessor::GetOwner() const
         {
-            if (!context)
+            ECSContext *ctx = GetContext();          // 由 storage 反查，句柄不再自带
+
+            if (!ctx)
                 return nullptr;
 
             const EntityID owner = GetOwnerID();
@@ -32,20 +34,12 @@ namespace hgl
             if (!owner.IsValid())
                 return nullptr;
 
-            return context->GetEntity(owner);
+            return ctx->GetEntity(owner);
         }
 
         EntityID TransformAccessor::GetOwnerID() const
         {
             return IsValid() ? storage->GetOwner(id) : EntityID();
-        }
-
-        TransformAccessor TransformAccessor::FromOwner(TransformDataStorage *storage,EntityID owner,ECSContext *context)
-        {
-            if (!storage)
-                return TransformAccessor();
-
-            return TransformAccessor(storage,storage->FindByOwner(owner),context);
         }
 
         // ── 元数据（变更版本 / D4 标记）──────────────────────────────────────
@@ -283,7 +277,7 @@ namespace hgl
 
             if (InRange(storage,parent))
             {
-                const glm::mat4 parent_world = TransformAccessor(storage,parent,context).GetWorldMatrix();
+                const glm::mat4 parent_world = TransformAccessor(storage,parent).GetWorldMatrix();
                 storage->SetPosition(id,glm::vec3(glm::inverse(parent_world) * glm::vec4(pos,1.0f)));
             }
             else
@@ -319,7 +313,7 @@ namespace hgl
 
             if (InRange(storage,parent))
             {
-                const glm::quat parent_world = TransformAccessor(storage,parent,context).GetWorldRotation();
+                const glm::quat parent_world = TransformAccessor(storage,parent).GetWorldRotation();
                 storage->SetRotation(id,glm::inverse(parent_world) * rot);
             }
             else
@@ -355,7 +349,7 @@ namespace hgl
 
             if (InRange(storage,parent))
             {
-                const glm::vec3 parent_world = TransformAccessor(storage,parent,context).GetWorldScale();
+                const glm::vec3 parent_world = TransformAccessor(storage,parent).GetWorldScale();
                 storage->SetScale(id,scale / parent_world);
             }
             else
@@ -523,8 +517,8 @@ namespace hgl
             // 通知世界：该行必须在 静态/可动 列表之间换边。
             // 渲染侧的索引映射与上传通道都按列表分流——只改存储里的 mobility 字节，
             // 该行会停在旧通道：索引取不到 ⇒ 实例拿到默认行（单位矩阵）⇒ 全画在原点。
-            if (context)
-                context->MigrateTransform(id,to_movable);
+            if (ECSContext *migrate_world = GetContext())
+                migrate_world->MigrateTransform(id,to_movable);
         }
 
         bool TransformAccessor::IsDirty() const

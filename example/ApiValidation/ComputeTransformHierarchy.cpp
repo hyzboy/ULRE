@@ -4,10 +4,11 @@
  * 演示内容：
  * 1. 利用 TransformDataStorage 构建 8 层深度的多分支层级树（212 个节点）
  * 2. CPU 侧生成分层拓扑序列 eval_order 与各层偏移 level_offsets
- * 3. 将 local_matrices、parent_indices、eval_order 上传至 GPU SSBO
+ * 3. 将**原生 TRS**（positions/rotations/scales）+ parent_indices + eval_order 上传至 GPU SSBO
+ *    （引擎侧已不再常驻局部矩阵 ⇒ 局部矩阵由 Compute Shader 从 TRS 当场合成）
  * 4. Compute Shader 配合 PushConstants (level_start_offset, level_node_count)
  *    按 Level 逐层分派，层间插入 VkBufferMemoryBarrier 保证父级写入对子级可见
- * 5. GPU 端使用 column-major 与局部矩阵乘法 world_parent * local_child 计算世界矩阵
+ * 5. GPU 端从 TRS 合成 local（quat→mat3→mat4 + 列缩放 + 平移），再 world_parent * local
  * 6. CPU 读回 world_matrices 并与 CPU 平铺计算结果进行高精度数值比对
  * 7. 在每帧 Tick 中动态旋转根节点，验证动态更新下的 GPU-CPU 严格一致性
  */
@@ -26,6 +27,7 @@
 #include<glm/gtc/matrix_transform.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<cmath>
+#include<vector>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -36,13 +38,15 @@ namespace
     {
         uint32_t level_start_offset;
         uint32_t level_node_count;
-        uint64_t local_addr;        // local_matrices 表设备地址（BDA）
+        uint64_t pos_addr;          // positions 表设备地址（BDA；vec4 对齐）
+        uint64_t rot_addr;          // rotations 表设备地址（quat xyzw）
+        uint64_t scale_addr;        // scales 表设备地址
         uint64_t parent_addr;       // parent_indices 表设备地址
         uint64_t eval_order_addr;   // eval_order 表设备地址
         uint64_t world_addr;        // world_matrices 表设备地址（读写）
     };
 
-    static_assert(sizeof(LevelPushConstant) == 40, "LevelPushConstant 布局必须与 GLSL push_constant block 一致");
+    static_assert(sizeof(LevelPushConstant) == 56, "LevelPushConstant 布局必须与 GLSL push_constant block 一致");
 
     constexpr const char COMPUTE_TRANSFORM_GLSL[] = R"(
 #version 450
@@ -54,17 +58,40 @@ layout(push_constant) uniform LevelPushConstant
 {
     uint level_start_offset;
     uint level_node_count;
-    uint64_t local_addr;
+    uint64_t pos_addr;
+    uint64_t rot_addr;
+    uint64_t scale_addr;
     uint64_t parent_addr;
     uint64_t eval_order_addr;
     uint64_t world_addr;
 } pc;
 
-// 四张表全走 BDA：地址经 push constant 下发，无 set 无 binding
+// 全部走 BDA：地址经 push constant 下发，无 set 无 binding
 layout(buffer_reference, std430, buffer_reference_align=16) buffer Mat4ArrayRef { mat4 values[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) buffer Vec4ArrayRef { vec4 values[]; };
 layout(buffer_reference, std430, buffer_reference_align=16) buffer UintArrayRef { uint values[]; };
 
 const uint INVALID_HANDLE = 0xFFFFFFFFu;
+
+// 由原生 TRS 合成局部矩阵（与 CPU 端 ComposeLocalMatrix 同式：M = T * R * S）
+mat4 ComposeLocalMatrix(vec3 p,vec4 q,vec3 s)
+{
+    const float x = q.x, y = q.y, z = q.z, w = q.w;
+
+    // GLSL mat3 构造按**列**填（col0 / col1 / col2），与 glm::mat4_cast 一致
+    mat3 r = mat3(1.0 - 2.0 * (y * y + z * z), 2.0 * (x * y + z * w), 2.0 * (x * z - y * w),
+                  2.0 * (x * y - z * w), 1.0 - 2.0 * (x * x + z * z), 2.0 * (y * z + x * w),
+                  2.0 * (x * z + y * w), 2.0 * (y * z - x * w), 1.0 - 2.0 * (x * x + y * y));
+
+    mat4 local = mat4(r);
+
+    local[0] *= s.x;
+    local[1] *= s.y;
+    local[2] *= s.z;
+    local[3]  = vec4(p,1.0);
+
+    return local;
+}
 
 void main()
 {
@@ -72,7 +99,9 @@ void main()
     if (local_idx >= pc.level_node_count)
         return;
 
-    Mat4ArrayRef local_matrices = Mat4ArrayRef(pc.local_addr);
+    Vec4ArrayRef positions = Vec4ArrayRef(pc.pos_addr);
+    Vec4ArrayRef rotations = Vec4ArrayRef(pc.rot_addr);
+    Vec4ArrayRef scales    = Vec4ArrayRef(pc.scale_addr);
     UintArrayRef parent_indices = UintArrayRef(pc.parent_addr);
     UintArrayRef eval_order     = UintArrayRef(pc.eval_order_addr);
     Mat4ArrayRef world_matrices = Mat4ArrayRef(pc.world_addr);
@@ -80,7 +109,9 @@ void main()
     uint node_idx = eval_order.values[pc.level_start_offset + local_idx];
     uint parent_idx = parent_indices.values[node_idx];
 
-    mat4 local_mat = local_matrices.values[node_idx];
+    mat4 local_mat = ComposeLocalMatrix(positions.values[node_idx].xyz,
+                                        rotations.values[node_idx],
+                                        scales.values[node_idx].xyz);
 
     if (parent_idx != INVALID_HANDLE)
     {
@@ -98,7 +129,9 @@ class ComputeTransformHierarchyApp: public WorkObject
 {
     ecs::TransformDataStorage storage;
 
-    DeviceBuffer *local_buffer      = nullptr;
+    DeviceBuffer *pos_buffer        = nullptr;
+    DeviceBuffer *rot_buffer        = nullptr;
+    DeviceBuffer *scale_buffer      = nullptr;
     DeviceBuffer *parent_buffer     = nullptr;
     DeviceBuffer *eval_order_buffer = nullptr;
     DeviceBuffer *world_buffer      = nullptr;
@@ -108,6 +141,13 @@ class ComputeTransformHierarchyApp: public WorkObject
     DeviceQueue      *compute_queue   = nullptr;
 
     uint32_t total_node_count = 0;
+
+    /// TRS 导出暂存（**示例私有**）：引擎侧不再提供局部矩阵导出，TRS 的"搬上 GPU"由示例自己做。
+    /// 这不是第二真源 —— 真源仍在存储里，此后只在 Tick 里重填并重传真正变化的行。
+    std::vector<glm::vec4> trs_positions;
+    std::vector<glm::vec4> trs_rotations;
+    std::vector<glm::vec4> trs_scales;
+
     ecs::TransformDataStorage::HandleID root_handles[4]{};
     float anim_time = 0.0f;
     uint32_t tick_frame_count = 0;
@@ -177,11 +217,33 @@ private:
         }
 
         storage.RebuildTopologyOrder();
-        storage.UpdateAllLocalMatrices();
         total_node_count = static_cast<uint32_t>(storage.GetCount());
+
+        BuildTRSStaging();
 
         GLogInfo(u8"[ComputeTransformHierarchy] Hierarchy built: %u nodes across %u levels",
                  total_node_count, storage.GetLevelCount());
+    }
+
+    /// 把 TRS 真源拷进示例私有暂存（vec4 对齐，与 shader 的 Vec4ArrayRef 逐字节对应）
+    void BuildTRSStaging()
+    {
+        const uint32_t rows = static_cast<uint32_t>(storage.GetCount());
+
+        trs_positions.resize(rows);
+        trs_rotations.resize(rows);
+        trs_scales.resize(rows);
+
+        for (uint32_t i = 0; i < rows; ++i)
+        {
+            const glm::vec3 p = storage.GetPosition(i);
+            const glm::quat q = storage.GetRotation(i);
+            const glm::vec3 s = storage.GetScale(i);
+
+            trs_positions[i] = glm::vec4(p,1.0f);
+            trs_rotations[i] = glm::vec4(q.x,q.y,q.z,q.w);
+            trs_scales[i]    = glm::vec4(s,1.0f);
+        }
     }
 
     bool DispatchAndVerify(bool log_verbose = true)
@@ -195,17 +257,20 @@ private:
         compute_cmd->BindPipeline(compute_pipeline);
         GetGraphicsContext()->BindGlobalDescriptorSets(compute_cmd, compute_pipeline->GetPipelineLayout());
 
-        // 四张表的设备地址（BDA）——每层 push 一次，随层 offset/count 一起下发
+        // 六张表的设备地址（BDA）——每层 push 一次，随层 offset/count 一起下发
         VulkanDevice *dev = GetDevice();
         if (!dev)
             return false;
 
-        const uint64_t local_addr      = dev->GetBufferDeviceAddressAligned16(local_buffer     ->GetBuffer());
+        const uint64_t pos_addr        = dev->GetBufferDeviceAddressAligned16(pos_buffer      ->GetBuffer());
+        const uint64_t rot_addr        = dev->GetBufferDeviceAddressAligned16(rot_buffer      ->GetBuffer());
+        const uint64_t scale_addr      = dev->GetBufferDeviceAddressAligned16(scale_buffer    ->GetBuffer());
         const uint64_t parent_addr     = dev->GetBufferDeviceAddressAligned16(parent_buffer    ->GetBuffer());
         const uint64_t eval_order_addr = dev->GetBufferDeviceAddressAligned16(eval_order_buffer->GetBuffer());
         const uint64_t world_addr      = dev->GetBufferDeviceAddressAligned16(world_buffer     ->GetBuffer());
 
-        if (local_addr == 0 || parent_addr == 0 || eval_order_addr == 0 || world_addr == 0)
+        if (pos_addr == 0 || rot_addr == 0 || scale_addr == 0 ||
+            parent_addr == 0 || eval_order_addr == 0 || world_addr == 0)
         {
             GLogError(u8"[ComputeTransformHierarchy] 缓冲区设备地址无效（BDA 16B 对齐承诺失败）");
             return false;
@@ -222,7 +287,7 @@ private:
             if (count == 0)
                 continue;
 
-            LevelPushConstant pc{ offset, count, local_addr, parent_addr, eval_order_addr, world_addr };
+            LevelPushConstant pc{ offset, count, pos_addr, rot_addr, scale_addr, parent_addr, eval_order_addr, world_addr };
             compute_cmd->PushConstants(compute_pipeline->GetPipelineLayout(), &pc, sizeof(LevelPushConstant));
 
             const uint32_t group_x = (count + 63) / 64;
@@ -308,10 +373,13 @@ public:
         BuildHierarchy();
 
         const VkDeviceSize mat_bytes = sizeof(glm::mat4) * total_node_count;
+        const VkDeviceSize vec_bytes = sizeof(glm::vec4) * total_node_count;
         const VkDeviceSize idx_bytes = sizeof(uint32_t) * total_node_count;
 
-        // 输入 SSBO
-        local_buffer      = gc->GetBufferManager()->CreateSSBO("ComputeTransform.Local", mat_bytes, (void *)storage.GetLocalMatricesData());
+        // 输入 SSBO：TRS 三张表（局部矩阵由 compute 端现算）+ 层级两张表
+        pos_buffer        = gc->GetBufferManager()->CreateSSBO("ComputeTransform.Positions", vec_bytes, (void *)trs_positions.data());
+        rot_buffer        = gc->GetBufferManager()->CreateSSBO("ComputeTransform.Rotations", vec_bytes, (void *)trs_rotations.data());
+        scale_buffer      = gc->GetBufferManager()->CreateSSBO("ComputeTransform.Scales",    vec_bytes, (void *)trs_scales.data());
         parent_buffer     = gc->GetBufferManager()->CreateSSBO("ComputeTransform.Parent", idx_bytes, (void *)storage.GetParentIndicesData());
         eval_order_buffer = gc->GetBufferManager()->CreateSSBO("ComputeTransform.EvalOrder", idx_bytes, (void *)storage.GetEvalOrderData());
 
@@ -320,7 +388,7 @@ public:
                                               mat_bytes, mat_bytes,
                                               BufferAllocPolicy::CPUVisible);
 
-        if (!local_buffer || !parent_buffer || !eval_order_buffer || !world_buffer)
+        if (!pos_buffer || !rot_buffer || !scale_buffer || !parent_buffer || !eval_order_buffer || !world_buffer)
             return false;
 
         compute_cmd   = dev->CreateComputeCommandBuffer("ComputeTransformHierarchy");
@@ -352,12 +420,18 @@ public:
             storage.SetRotation(root_handles[r], glm::angleAxis(glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f)));
         }
 
-        storage.UpdateAllLocalMatrices();
-
-        // 更新 local_buffer
-        if (auto *gpu = local_buffer->GetGPUBuffer())
+        // 真源变了 ⇒ 只重填/重传真正变化的行（4 个根行，行号 = 前 4 次 Allocate）
+        if (auto *gpu = rot_buffer->GetGPUBuffer())
         {
-            gpu->Write(storage.GetLocalMatricesData(), 0, sizeof(glm::mat4) * 4);
+            for (int r = 0; r < 4; ++r)
+            {
+                const uint32_t row = root_handles[r];
+                const glm::quat q  = storage.GetRotation(row);
+
+                trs_rotations[row] = glm::vec4(q.x,q.y,q.z,q.w);
+            }
+
+            gpu->Write(trs_rotations.data(), 0, sizeof(glm::vec4) * 4);
         }
 
         ++tick_frame_count;
