@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/support/MaterialRuntimeTable.h>
+#include<hgl/ecs/support/MaterialRuntimePipelineTable.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>

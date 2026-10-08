@@ -4,6 +4,7 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
+#include<hgl/ecs/support/MaterialRuntimePipelineTable.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 
 namespace hgl::ecs

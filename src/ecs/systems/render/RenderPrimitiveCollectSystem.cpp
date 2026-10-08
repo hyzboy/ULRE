@@ -7,6 +7,7 @@
 #include<hgl/ecs/support/PrimitiveState.h>
 #include<cmath>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
+#include<hgl/ecs/support/MaterialRuntimePipelineTable.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/TransformAccessor.h>

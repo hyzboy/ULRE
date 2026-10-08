@@ -19,6 +19,7 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/ShaderProgramPipelineKey.h
     ${ECS_INCLUDE_PATH}/core/RenderItem.h
     ${ECS_INCLUDE_PATH}/core/PrimitiveRenderItem.h
+    ${ECS_INCLUDE_PATH}/core/RenderFrameCache.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
     core/Object.cpp
     core/ComponentRow.cpp
@@ -26,6 +27,10 @@ set(ECS_CORE_FILES
     core/EntityManager.cpp
     core/System.cpp
     core/Context.cpp
+    core/ContextRender.cpp
+    core/ContextGPU.cpp
+    core/ContextSystems.cpp
+    core/RenderFrameCache.cpp
     support/RenderResource.cpp
     support/CameraInfoStorage.cpp
     support/CameraSlotGuard.cpp

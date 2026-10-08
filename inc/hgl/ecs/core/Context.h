@@ -5,6 +5,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/core/RenderGraph.h>
+#include<hgl/ecs/core/RenderFrameCache.h>
 #include<hgl/ecs/core/RenderPassRequest.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/ecs/core/ScenePipelineMode.h>
@@ -21,14 +22,10 @@
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/ecs/support/MaterialVariantTable.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
-#include<hgl/ecs/support/MaterialAuthoringSideTable.h>
-#include<hgl/ecs/support/MaterialRuntimePipelineTable.h>
-#include<hgl/ecs/support/PrimitiveState.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
-#include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/log/Log.h>
 #include<memory>
 #include<functional>
@@ -52,6 +49,7 @@ namespace hgl {
         class VulkanDevice;
         class RenderContext;
         class DeviceBuffer;
+        class EnvironmentManager;
         template<typename T> class StructView;
         struct WorldAddresses;
         struct RenderPassOptions;
@@ -73,20 +71,11 @@ namespace hgl
         class MaterialData;
         class GeometryData;
         class ShadowProxy;
+        class MaterialAuthoringSideTable;
+        class MaterialRuntimePipelineTable;
 
-        struct RenderFrameCache
-        {
-            std::vector<std::unique_ptr<RenderItem>> renderItems;
-            hgl::UnorderedMap<ShaderProgramPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
-            std::vector<MaterialBatch*> ordered_batches;    ///< 帧内排序复用缓冲（零逐帧堆分配）
-            const graph::CameraInfo* cameraInfo = nullptr;
-            uint32_t renderableCount = 0;
-
-            RenderFrameCache() = default;
-            ~RenderFrameCache();
-
-            void BeginFrame();
-        };
+        class ECSContext;
+        void ReleaseRenderItemHandle(ECSContext &world, EntityID owner);
 
         /**
          * ECSContext manages all entities and systems

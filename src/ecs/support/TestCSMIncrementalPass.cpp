@@ -3432,16 +3432,16 @@ int main(int argc, char** argv)
               "graph::StructView<graph::WorldAddresses> *world_addresses_table",
               "世界地址表不再是每世界一张（共表 ⇒ 两世界的地址互相覆盖）" },
             // ② 世界表写入端：地址只取本世界存储 + 按帧槽轮转
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_camera_info = pick((camera_info_storage && camera_info_storage->IsReady())",
               "相机行地址不来自本世界存储（跨世界共用一份 ⇒ 同帧互相覆写）；2026-10-07 起同走 0 地址统一口径" },
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "GetRenderItemStorage()",
               "渲染项表地址不取本世界存储" },
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "GetDrawItemIDStorage()",
               "DrawItemID 表地址不取本世界存储" },
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "frame_index % graph::kWorldAddressesSlotCount",
               "世界表不再按帧槽轮转（在途帧之间会互踩）" },
             // ③ 相机行写入路径 = 本世界存储；pass 相机必须属本世界
@@ -3494,10 +3494,10 @@ int main(int argc, char** argv)
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "LightRowTable light_row_table;",
               "光源行表不再是每世界一份" },
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_shadow = pick(",
               "影子地址不取本世界表（跨世界共用一份 ⇒ 同帧互相覆写；2026-10-07 起同走 0 地址统一口径）" },
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_lights = pick(",
               "光源行地址不取本世界表（2026-10-07 起同走 0 地址统一口径）" },
             { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
@@ -4173,7 +4173,7 @@ int main(int argc, char** argv)
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "uint32_t system_group_component_counts[kSystemGroupCount]",
               "组计数退回按字符串键控的容器（O(1) 数组缺失）" },
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextSystems.cpp", OS_TEXT("src/ecs/core/ContextSystems.cpp"),
               "void ECSContext::SetSystemGroupEnabled(SystemGroupID group, bool enabled)",
               "启用/禁用改回按名查找（热路径又重新字符串哈希）" },
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
@@ -5516,7 +5516,7 @@ int main(int argc, char** argv)
             // ── M8/M9：离屏单帧世界（RenderOnce）缺陷族固化（doc/future/offscreen-onetime-world-stall-analysis.md）──
             // 该拓扑（独立子世界 × 只渲染一帧）没有"第 2 帧自愈"兜底，任何"晚一帧"缺陷都直接
             // 变成"永不绘制"。以下针钉住已修的四层里可源码判定的两层 + 禁两条旧护栏复活。
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextRender.cpp", OS_TEXT("src/ecs/core/ContextRender.cpp"),
               "transform_system->SubmitTransformUpdates();   // M8-needle",
               "§9 M8：PrepareRenderPassSetup 必须在 collect/派发**之前**提交变换——`SubmitTransformUpdates` 是 "
               "L2W 矩阵行与实体行 row[Transform] 的唯一落盘点，而 GPU 剔除派发在同帧 RenderFrameSync 就读它们；"
@@ -5548,7 +5548,7 @@ int main(int argc, char** argv)
             // ⇒ 依赖「调用方记得」，而离屏世界正是第二个帧入口 ⇒ 那一入口一出现就是「阴影静默失效」
             // （无断言、无日志）。现在内聚在 BeginManagedRenderFrame 里、以「主帧」为条件执行
             // （离屏帧传 need_swapchain_acquire=false ⇒ 不重复 prepass，嵌套阴影 pass 也不递归）。
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextRender.cpp", OS_TEXT("src/ecs/core/ContextRender.cpp"),
               "if (need_swapchain_acquire)\r\n                ExecuteScenePrePassWorkflow(deltaTime);",
               "§9 M12：场景预处理必须在**主帧帧入口**执行（守卫与调用一起钉：只留调用 ⇒ 离屏帧也跑 "
               "prepass；只留守卫 ⇒ 入口又退回「调用方负责」的单入口形态）" },
@@ -5849,15 +5849,15 @@ int main(int argc, char** argv)
               "#define light_rows LightRowBufferRef(world_addresses.addr_lights).lights",
               "T6b：光源行的取址宏（行数组本体；下标 = 行号）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "if (!InitializeLightRowTable())",
               "T6b：光源行表与实体两表同批建（缺这条 = 表不存在、地址恒 0）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_lights = pick(",
               "T6b：地址发布（I4：新地址字段必须接写者；只有字段没有写者 = 静默剔空；2026-10-07 起按统一口径 pick(基址+slot×步长, 旧值)）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "UploadLightRowDirtyRows();",
               "T6b：脏行上传接线（缺这条 = CPU 改了光参数但设备镜像不更新）" },
 
@@ -6056,19 +6056,19 @@ int main(int argc, char** argv)
               "void CommitShadowInfo(const uint32_t frame_slot);",
               "T6b/P4：世界缺少影子数据提交口（写者/时序无单源）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "bool ECSContext::InitializeShadowInfoTable()",
               "T6b/P4：影子数据表的建表入口丢失" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "if (!InitializeShadowInfoTable())",
               "T6b/P4：影子数据建表不与其余世界表同批（失败不中止 ⇒ 静默缺地址）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "base[slot] = shadow_info;",
               "T6b/P4：提交写成了「单份」而非「本帧槽」（在飞帧会读到被覆写的数据）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "slot_offset(shadow_info_addr, sizeof(graph::ShadowInfo)),",
               "T6b/P4：影子表按帧槽各一份的步长口径丢失（地址 = 基址 + 帧槽 × 每份字节；2026-10-07 起经 slot_offset 统一口径）" },
 
@@ -6176,7 +6176,7 @@ int main(int argc, char** argv)
               "{ \"addr_ambient_env\",          true  },",
               "T1：新地址字段未在归属门登记（未分类字段 ⇒ 门报错；登记错侧 ⇒ 多世界串数据）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);",
               "T1：地址只有字段没发布（I4 的历史坑：表里恒 0 ⇒ 静默失效）；2026-10-07 起走统一口径（0 ⇒ 沿用本槽旧值）" },
 
@@ -6307,56 +6307,56 @@ int main(int argc, char** argv)
             //    规则：解不到有效地址（0）⇒ 沿用**本槽**上一份好值；0 基址的按帧槽列**不参与** slot×步长 运算；
             //    写 0 = 让 shader 解引用 0 基址（UB），比沿用一份稍旧的有效地址危险得多；
             //    "从来没有过有效值"（世界刚建）自然保持 0 = 消费者判缺席。
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "const auto pick = [](const uint64_t resolved, const uint64_t previous) -> uint64_t",
               "2026-10-07：口径的单点（resolved==0 ⇒ 沿用 previous）——缺它 = 各路又各写各的" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "return base != 0 ? (base + static_cast<uint64_t>(slot) * per_slot_bytes) : 0;",
               "2026-10-07：按帧槽列**不许**把 slot×步长 加到 0 基址上（否则写出 slot×832 这类垃圾地址）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_camera_info = pick(",
               "2026-10-07：相机行列走统一口径（9 列逐条钉住，漏一列 = 该列解不到时把 0 写进表）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_global_render_items = pick(",
               "2026-10-07：4-ID 渲染项表列走统一口径" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_draw_item_ids = pick(",
               "2026-10-07：DrawItemID 表列走统一口径" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_entity_gpu = pick(",
               "2026-10-07：实体行表列（按帧槽切份）走统一口径" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_entity_render_ids = pick(",
               "2026-10-07：实体 4-ID 表列（按帧槽切份）走统一口径" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_lights = pick(",
               "2026-10-07：光源行表列（按帧槽切份）走统一口径" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_l2w = pick(l2w_addr, dst->addr_l2w);",
               "2026-10-07：L2W 池列（口径的首个使用者，B1b）同批并入" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);",
               "2026-10-07：ambient_env 列 —— 原为 `if (addr != 0)` 静默丢值写法（注释说「不写 0」、实现写 0）" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_shadow = pick(",
               "2026-10-07：影子列（按帧槽切份）—— 原无守卫，未建表时会写 slot×832 垃圾地址" },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "if (ambient_env_addr != 0)",
               "2026-10-07 禁复活：静默丢值写法（`want{}` 从零起算 ⇒ 它等价于「把 0 写进表」）",
               true },
 
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_shadow = shadow_info_addr",
               "2026-10-07 禁复活：影子列不得回到「基址 + slot×步长」的无守卫写法",
               true },
