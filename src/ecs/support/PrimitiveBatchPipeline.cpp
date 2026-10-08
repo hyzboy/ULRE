@@ -486,7 +486,7 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::EnsureBatchIndexRows(MaterialBatch& batch)
     {
-        if (batch.gpu_driven_override || batch.uses_render_item_resolve)
+        if (batch.gpu_driven_override)
             return;
 
         if (!batch.buffer_manager || batch.items.empty())
@@ -571,7 +571,7 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::WriteBatchIndexRows(MaterialBatch& batch)
     {
-        if (batch.items.empty() || batch.gpu_driven_override || batch.uses_render_item_resolve)
+        if (batch.items.empty() || batch.gpu_driven_override)
             return;
 
         const uint32_t item_count = static_cast<uint32_t>(batch.items.size());

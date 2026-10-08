@@ -315,7 +315,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | **P0** | §2.4 `RenderTo` 三处手工遮蔽/还原权威值 | 冗余 | 建议改 RAII 守卫（提前 return 安全） |
 | **P0** | §3.1 `Register*System` 的 `is_render` 被丢弃 | 名不符实 | 相位误配**静默**改类 |
 | **P0** | §1.2 `CameraControlMode::Free` 默认值 + 处理器全空 | 特例 | 建议先加显式告警，把静默冻结变成报错 |
-| **P0** | §1.2 `uses_render_item_resolve` 恒假 + 4-ID 链未接线 | 死代码 | 整条子系统既未启用也未删除 |
+| ~~P0~~ | §1.2 `uses_render_item_resolve` 恒假 | 死代码 | ✅ **已处置（2026-10-09）**：恒假开关整体删除（`MaterialBatch.h` 字段 + `.cpp` 复位 + `PrimitiveBatchPipeline.cpp` 两处判定）；**4-ID 表 / `addr_global_render_items` / shader 解析链保留** —— 那是 GPU-Driven 路径的活路径 |
 | **P1** | §6 文档-代码脱钩（尤其把死函数当活约束的规划档） | 文档完整性 | 正在误导设计 |
 | **P1** | §2.3 4×`Initialize*Table` + 3×`Upload*DirtyRows`（~450 行） | 冗余 | `Context.cpp` 最大机械简化 |
 | **P1** | §3.5 `PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 合并（差一个取反） | 多路径 | ~90 行，最清晰候选 |

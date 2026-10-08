@@ -94,7 +94,6 @@ namespace hgl::ecs
 
         /// 本 pass 的切片（越界 pass 由调用点 fail-fast；这里不做钳位，下标直取）。
         const GpuSlice &GetGpuSlice(uint32_t pass_index) const { return gpu_slice[pass_index]; }
-        bool                                     uses_render_item_resolve          = false;    ///<是否在 Shader 中通过 WorldAddresses::addr_global_render_items 进行 4-ID 运行时解析
         bool                                     own_icb_mesh_tasks                = true;     ///<是否拥有 icb_mesh_tasks
         bool                                     own_mesh_draw_params              = true;     ///<是否拥有 mesh_draw_params_buffer
         bool                                     own_l2w_index                     = true;     ///<是否拥有 l2w_index_buffer

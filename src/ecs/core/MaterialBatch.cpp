@@ -76,7 +76,6 @@ namespace hgl::ecs
             gpu_slice[p].capacity            = 0;
             gpu_slice[p].count_buffer_offset = 0;
         }
-        uses_render_item_resolve = false;
         own_icb_mesh_tasks = true;
         own_mesh_draw_params = true;
         own_l2w_index = true;
