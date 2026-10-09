@@ -146,6 +146,10 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 - **脏行上传机制在 `EntityGPUTable` / `EntityRenderIDTable` / `LightRowTable` 里逐字重复**：`CollectDirtyRows`、`ClearDirty`、`GetDirtyCount` 三处**字节相同**；`MarkDirty`/`ReportOverflow`（同一闩、同一 `GLogError`，仅文案不同）/`IsAllocated`/`Clear` 近乎相同；成员 `row_dirty` + `overflow_reported` 声明 3 次。命名漂移：`EntityGPUTable` 叫 `Clear()` 而 `EntityRenderIDTable` 同名概念叫 `ClearAll()`。世界侧上传路径重复同一套 quartet 3 次 — `Context.cpp:1701-1712,1750-1755,1791-1796` ⇒ **~120 行**。`S3`
 - **`WriteStaticDirtyIndices` 与 `WriteDynamicDirtyIndices` ~95% 相同** — `TransformAssignmentBuffer.cpp:206-301` vs `:303-429`（差异只有 base 算术、日志串、日志采样块），含两处**逐字相同的跳洞注释**（`:268-269` / `:370-371`）⇒ **~200 行**，同一修复要改两遍。`S3`
 - **4 个 `Initialize*Table()` + 3 个 `Upload*DirtyRows()` 近乎逐字重复**（"CreateSSBO → SetUpdateClass → StructView → BDA 校验 → zero-fill → Commit → LogInfo" ×7）— `Context.cpp:1616,1823,1900,1979,2071` 与 `:1702,1745,1786` ⇒ **~450 行**，`Context.cpp` 内最大的机械简化点。`S2`
+  - ⇒ **已处置（2026-10-09）**：`Upload*DirtyRows` 侧随 `Context.h/.cpp` 拆解时已收敛为 `UploadDirtyRowsHelper`（现 `ContextGPU.cpp:72`）；
+    5 个 `Initialize*Table`（现全在 `ContextGPU.cpp`）抽成公共件 `BuildWorldRowTable<RowType>`（`:67`）——建表骨架一处定义，
+    各表只留**专属**部分（容量算式 / 清零策略 / 日志文案）。该文件 **725 → 608 行**（−117），`git diff` 142+/258−。
+    顺带修掉一处口径错位：实体行表此前**只清第 0 份**（分配是 8 份、上传也逐份），现按每一份清零，与另两表一致。
 - **`SharedComponentPool<T>` 重实现 `ComponentPool<T>`**：`RemoveActive`、`GetActiveCount`、`GetActiveRow`、`DestroyRow` 守卫链、`Clear` 四阶段体**逐字重复** — `support/ComponentPool.h:98-111 vs 260-273` 等 ⇒ ~120 行。且 `ComponentPoolBase` 只暴露 3 个虚函数（**没有 `GetActiveCount`**），而 `Context.h:1146` 在具体类型上调它 ⇒ **基类对活跃集遍历毫无价值**。`S3`
 - **implies 不动点闭包实现两次** — `ComponentTypeTable.h:207-230` 与 `RenderStrategyTable.h:197-209` 内联副本。`S3`
 - **`GetMaxWorldScale` 公式在 CPU 剔除参考里被重推一遍** — helper 在 `BoundingVolumeCull.h:18-32`（注释解释了为何必须缩放），而 `CPUCullReferenceSystem.cpp:361-365` 自己重算 scale + `std::max`。**这一对系统本是互相校验用的**，却各自实现同一最易错的公式。`S3`
@@ -317,7 +321,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | **P0** | §1.2 `CameraControlMode::Free` 默认值 + 处理器全空 | 特例 | 建议先加显式告警，把静默冻结变成报错 |
 | ~~P0~~ | §1.2 `uses_render_item_resolve` 恒假 | 死代码 | ✅ **已处置（2026-10-09）**：恒假开关整体删除（`MaterialBatch.h` 字段 + `.cpp` 复位 + `PrimitiveBatchPipeline.cpp` 两处判定）；**4-ID 表 / `addr_global_render_items` / shader 解析链保留** —— 那是 GPU-Driven 路径的活路径 |
 | **P1** | §6 文档-代码脱钩（尤其把死函数当活约束的规划档） | 文档完整性 | 正在误导设计 |
-| **P1** | §2.3 4×`Initialize*Table` + 3×`Upload*DirtyRows`（~450 行） | 冗余 | `Context.cpp` 最大机械简化 |
+| ~~P1~~ | §2.3 4×`Initialize*Table` + 3×`Upload*DirtyRows` | 冗余 | ✅ **已处置（2026-10-09）**：上传侧=`UploadDirtyRowsHelper`（拆解时已做）；建表侧=抽 `BuildWorldRowTable<RowType>`，`ContextGPU.cpp` −117 行；§2.3 其余项（脏行机制 trio / `Write*DirtyIndices` / `SharedComponentPool` / implies 闭包 / profiler×2 / 重复计数常量）**仍未做** |
 | **P1** | §3.5 `PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 合并（差一个取反） | 多路径 | ~90 行，最清晰候选 |
 | **P1** | §2.3 三张表的脏行机制抽公共件（~120 行）+ 两个 `Write*DirtyIndices`（~200 行） | 冗余 | |
 | **P1** | §3.2 双重 `DetachAllComponents`；§2.2 `component_mask` 一致性仅测试保证 | 多路径/冗余 | |

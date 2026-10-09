@@ -20,90 +20,6 @@
 
 namespace hgl::ecs
 {
-        bool ECSContext::InitializeWorldAddressesTable()
-        {
-            if (world_addresses_table)
-                return true;
-
-            auto *gc = GetGraphicsContext();
-            if (!gc)
-            {
-                LogError("[ECSContext::InitializeWorldAddressesTable] graphics context is null");
-                return false;
-            }
-
-            auto *bm = gc->GetBufferManager();
-            if (!bm)
-            {
-                LogError("[ECSContext::InitializeWorldAddressesTable] buffer manager is null");
-                return false;
-            }
-
-            // BDA 要求：必须以 SHADER_DEVICE_ADDRESS usage 创建（CreateUBO 的额外 usage 位是 0）。
-            // 表本体一份、**按帧槽切成 kWorldAddressesSlotCount 份**：每帧只写自己那一槽。
-            char name_buf[192];
-            std::snprintf(name_buf, sizeof(name_buf),
-                          "World:%s:AddressesTable", GetName().c_str());
-
-            world_addresses_buffer = bm->CreateSSBO(
-                name_buf,
-                VkDeviceSize(graph::kWorldAddressesSlotStride) * graph::kWorldAddressesSlotCount);
-            if (!world_addresses_buffer)
-            {
-                LogError("[ECSContext::InitializeWorldAddressesTable] CreateSSBO failed");
-                return false;
-            }
-
-            world_addresses_buffer->SetUpdateClass(graph::BufferUpdateClass::Default);
-
-            world_addresses_table =
-                graph::StructView<graph::WorldAddresses>::Create(world_addresses_buffer, false);
-            if (!world_addresses_table)
-            {
-                LogError("[ECSContext::InitializeWorldAddressesTable] StructView create failed");
-                return false;
-            }
-
-            world_addresses_addr = gpu_device
-                ? gpu_device->GetBufferDeviceAddressAligned16(world_addresses_buffer->GetBuffer())
-                : 0;
-            if (world_addresses_addr == 0)
-            {
-                // 地址缺失 = shader 解引用 0 基址 = UB / 设备丢失（0 VUID 抓不到）⇒ fail-fast
-                LogError("[ECSContext::InitializeWorldAddressesTable] 世界地址表取不到设备地址（16B 对齐 / usage 检查）");
-                return false;
-            }
-
-            // 整表清零（每槽）：未发布的字段保持 0，由消费者自行判定"无数据"。
-            if (auto *base = reinterpret_cast<uint8_t *>(world_addresses_table->Data()))
-            {
-                for (uint32_t slot = 0; slot < graph::kWorldAddressesSlotCount; ++slot)
-                    *reinterpret_cast<graph::WorldAddresses *>(
-                        base + size_t(slot) * graph::kWorldAddressesSlotStride) = graph::WorldAddresses{};
-            }
-
-            world_addresses_table->Commit();
-
-            // T3c：实体行表与地址表**同批**建（同一个 BDA 前提；地址要写进本表 ⇒ 必须先有）
-            if (!InitializeEntityGPUTable())
-                return false;
-
-            // T3d-3a：实体 4-ID 表与前两表同批（同一 BDA 前提、同一生命周期）
-            if (!InitializeEntityRenderIDTable())
-                return false;
-
-            // T6b：光源行表与前几表同批（同一个 BDA 前提 + 同一个「世界 GPU 行数据」生命周期）
-            if (!InitializeLightRowTable())
-                return false;
-
-            // T6b/P4：影子数据表与前几表同批（世界私有；多世界同帧各写各的）
-            if (!InitializeShadowInfoTable())
-                return false;
-
-            SyncWorldAddresses();
-            return true;
-        }
-
         namespace
         {
             /// 通用脏行上传辅助函数：收敛 EntityGPU / EntityRenderID / LightRow 的逐字同构上传循环
@@ -137,6 +53,115 @@ namespace hgl::ecs
                 view->Commit();
                 table.ClearDirty();
             }
+
+            /// 世界 GPU 行表建表的公共骨架：CreateSSBO → SetUpdateClass → StructView → BDA 校验。
+            ///
+            /// 5 张世界表（WorldAddresses / EntityGPU / EntityRenderID / LightRow / ShadowInfo）
+            /// 此前把这段逐字复制了 5 遍。抽出来的**只有「建 + 校验」**：各表专属的部分仍留在各自的
+            /// `Initialize*Table` 里 —— 容量算式、清零策略（按份 / 单份 / 特殊初值）与日志文案
+            /// （每张表都要说清自己的消费者）。本函数**不 Commit**：调用方清完零再 Commit
+            /// （与改造前顺序一致）。
+            ///
+            /// 用 `GLogError`（自由函数取不到成员 `Log`）；失败文案保持原样，`tag` 即原消息前缀。
+            template<typename RowType>
+            bool BuildWorldRowTable(const char *tag,const char *name_suffix,VkDeviceSize bytes,
+                                    hgl::graph::GraphicsContext *gc,
+                                    hgl::graph::VulkanDevice *gpu_device,
+                                    const char *world_name,
+                                    graph::BufferUpdateClass update_class,
+                                    graph::DeviceBuffer *&out_buffer,
+                                    graph::StructView<RowType> *&out_view,
+                                    uint64_t &out_addr)
+            {
+                if (!gc)
+                {
+                    GLogError("[%s] graphics context is null",tag);
+                    return false;
+                }
+
+                auto *bm = gc->GetBufferManager();
+                if (!bm)
+                {
+                    GLogError("[%s] buffer manager is null",tag);
+                    return false;
+                }
+
+                char name_buf[192];
+                std::snprintf(name_buf,sizeof(name_buf),"World:%s:%s",world_name,name_suffix);
+
+                out_buffer = bm->CreateSSBO(name_buf,bytes);
+                if (!out_buffer)
+                {
+                    GLogError("[%s] CreateSSBO failed",tag);
+                    return false;
+                }
+
+                out_buffer->SetUpdateClass(update_class);
+
+                out_view = graph::StructView<RowType>::Create(out_buffer,false);
+                if (!out_view)
+                {
+                    GLogError("[%s] StructView create failed",tag);
+                    return false;
+                }
+
+                out_addr = gpu_device
+                    ? gpu_device->GetBufferDeviceAddressAligned16(out_buffer->GetBuffer())
+                    : 0;
+                if (out_addr == 0)
+                {
+                    // 地址缺失 = shader 解引用 0 基址 = UB / 设备丢失（0 VUID 抓不到）⇒ fail-fast
+                    GLogError("[%s] 取不到设备地址（16B 对齐 / SHADER_DEVICE_ADDRESS usage 检查）",tag);
+                    return false;
+                }
+
+                return true;
+            }
+        }
+
+        bool ECSContext::InitializeWorldAddressesTable()
+        {
+            if (world_addresses_table)
+                return true;
+
+            // BDA 要求：必须以 SHADER_DEVICE_ADDRESS usage 创建（CreateUBO 的额外 usage 位是 0）。
+            // 表本体一份、**按帧槽切成 kWorldAddressesSlotCount 份**：每帧只写自己那一槽。
+            if (!BuildWorldRowTable<graph::WorldAddresses>(
+                    "ECSContext::InitializeWorldAddressesTable","AddressesTable",
+                    VkDeviceSize(graph::kWorldAddressesSlotStride) * graph::kWorldAddressesSlotCount,
+                    GetGraphicsContext(),gpu_device,GetName().c_str(),
+                    graph::BufferUpdateClass::Default,
+                    world_addresses_buffer,world_addresses_table,world_addresses_addr))
+                return false;
+
+            // 整表清零（每槽）：未发布的字段保持 0，由消费者自行判定"无数据"。
+            if (auto *base = reinterpret_cast<uint8_t *>(world_addresses_table->Data()))
+            {
+                for (uint32_t slot = 0; slot < graph::kWorldAddressesSlotCount; ++slot)
+                    *reinterpret_cast<graph::WorldAddresses *>(
+                        base + size_t(slot) * graph::kWorldAddressesSlotStride) = graph::WorldAddresses{};
+            }
+
+            world_addresses_table->Commit();
+
+            // T3c：实体行表与地址表**同批**建（同一个 BDA 前提；地址要写进本表 ⇒ 必须先有）
+            if (!InitializeEntityGPUTable())
+                return false;
+
+            // T3d-3a：实体 4-ID 表与前两表同批（同一 BDA 前提、同一生命周期）
+            if (!InitializeEntityRenderIDTable())
+                return false;
+
+            // T6b：光源行表与前几表同批（同一个 BDA 前提 + 同一个「世界 GPU 行数据」生命周期）
+            if (!InitializeLightRowTable())
+                return false;
+
+            // T6b/P4：影子数据表与前几表同批（世界私有；多世界同帧各写各的）
+            if (!InitializeShadowInfoTable())
+                return false;
+
+            SyncWorldAddresses();
+            return true;
         }
 
         /// T3c-2：把实体行表里**脏了的那几行**写进设备镜像（不整表 512 KB 传）。
@@ -172,60 +197,22 @@ namespace hgl::ecs
                 [](const LightRowTable &t, uint32_t idx) { return t.Row(idx); });
         }
 
-        /// T3d-3a：建实体 4-ID 表的设备镜像（与 `InitializeEntityGPUTable` 逐字同构；
+        /// T3d-3a：建实体 4-ID 表的设备镜像（与实体行表同骨架，共用 `BuildWorldRowTable`；
         /// 行 16 B ⇒ 8 份 × 4096 行 × 16 B = 512 KB）。地址缺失 = 消费者解引用 0 基址 ⇒ fail-fast。
         bool ECSContext::InitializeEntityRenderIDTable()
         {
             if (entity_render_id_buffer)
                 return true;
 
-            auto *gc = GetGraphicsContext();
-            if (!gc)
-            {
-                LogError("[ECSContext::InitializeEntityRenderIDTable] graphics context is null");
+            if (!BuildWorldRowTable<graph::RenderItemDescriptor>(
+                    "ECSContext::InitializeEntityRenderIDTable","EntityRenderIDTable",
+                    VkDeviceSize(graph::kWorldAddressesSlotCount)
+                        * VkDeviceSize(EntityRenderIDTable::kRowStride)   // T4c3a：每槽 = 每 pass 一半
+                        * VkDeviceSize(sizeof(graph::RenderItemDescriptor)),
+                    GetGraphicsContext(),gpu_device,GetName().c_str(),
+                    graph::BufferUpdateClass::Default,
+                    entity_render_id_buffer,entity_render_id_view,entity_render_id_table_addr))
                 return false;
-            }
-
-            auto *bm = gc->GetBufferManager();
-            if (!bm)
-            {
-                LogError("[ECSContext::InitializeEntityRenderIDTable] buffer manager is null");
-                return false;
-            }
-
-            char name_buf[192];
-            std::snprintf(name_buf, sizeof(name_buf), "World:%s:EntityRenderIDTable", GetName().c_str());
-
-            entity_render_id_buffer = bm->CreateSSBO(
-                name_buf,
-                VkDeviceSize(graph::kWorldAddressesSlotCount)
-                    * VkDeviceSize(EntityRenderIDTable::kRowStride)   // T4c3a：每槽 = 每 pass 一半
-                    * VkDeviceSize(sizeof(graph::RenderItemDescriptor)));
-            if (!entity_render_id_buffer)
-            {
-                LogError("[ECSContext::InitializeEntityRenderIDTable] CreateSSBO failed");
-                return false;
-            }
-
-            entity_render_id_buffer->SetUpdateClass(graph::BufferUpdateClass::Default);
-
-            entity_render_id_view = graph::StructView<graph::RenderItemDescriptor>::Create(
-                entity_render_id_buffer, false);
-            if (!entity_render_id_view)
-            {
-                LogError("[ECSContext::InitializeEntityRenderIDTable] StructView create failed");
-                return false;
-            }
-
-            entity_render_id_table_addr = gpu_device
-                ? gpu_device->GetBufferDeviceAddressAligned16(entity_render_id_buffer->GetBuffer())
-                : 0;
-            if (entity_render_id_table_addr == 0)
-            {
-                LogError("[ECSContext::InitializeEntityRenderIDTable] 实体 4-ID 表取不到设备地址"
-                          "（16B 对齐 / SHADER_DEVICE_ADDRESS usage 检查）");
-                return false;
-            }
 
             // 整表清零：未上行 = 全 0 ⇒ 消费者按 `geometry_id == 0` 判无（行 0 哨兵惯例）
             if (auto *rows = reinterpret_cast<graph::RenderItemDescriptor *>(
@@ -256,58 +243,29 @@ namespace hgl::ecs
             if (entity_gpu_buffer)
                 return true;
 
-            auto *gc = GetGraphicsContext();
-            if (!gc)
-            {
-                LogError("[ECSContext::InitializeEntityGPUTable] graphics context is null");
+            // 分配 = kWorldAddressesSlotCount 份 × kCapacity 行（与 `UploadEntityGPUDirtyRows` 的
+            // 逐份上传口径一致）：行内容按实体槽位索引，与 CPU 侧 `entity_gpu_table`（T3b）逐行对应。
+            if (!BuildWorldRowTable<EntityGPU>(
+                    "ECSContext::InitializeEntityGPUTable","EntityGPUTable",
+                    VkDeviceSize(graph::kWorldAddressesSlotCount)
+                        * VkDeviceSize(EntityGPUTable::kCapacity) * VkDeviceSize(sizeof(EntityGPU)),
+                    GetGraphicsContext(),gpu_device,GetName().c_str(),
+                    graph::BufferUpdateClass::Default,
+                    entity_gpu_buffer,entity_gpu_view,entity_gpu_table_addr))
                 return false;
-            }
 
-            auto *bm = gc->GetBufferManager();
-            if (!bm)
+            // 整表清零（**每一份**）：未激活的槽 `flags.Active == 0`，消费者据此跳过（T3b 的槽位语义）。
+            // （改造前只清了第 0 份，其余 7 份留驱动初值——与"分配 8 份 + 逐份上传"的口径不一致。）
+            if (auto *base = reinterpret_cast<EntityGPU *>(entity_gpu_view->Data()))
             {
-                LogError("[ECSContext::InitializeEntityGPUTable] buffer manager is null");
-                return false;
+                for (uint32_t copy = 0; copy < graph::kWorldAddressesSlotCount; ++copy)
+                {
+                    EntityGPU *rows = base + size_t(copy) * EntityGPUTable::kCapacity;
+
+                    for (uint32_t i = 0; i < EntityGPUTable::kCapacity; ++i)
+                        rows[i] = EntityGPU{};
+                }
             }
-
-            char name_buf[192];
-            std::snprintf(name_buf, sizeof(name_buf), "World:%s:EntityGPUTable", GetName().c_str());
-
-            // 整表一份（**不按帧槽切**）：行内容按实体槽位索引，与 entity_gpu_table（T3b）逐行对应。
-            // 上传策略（脏行 or 整表 / 单份 or 帧槽多份）见设计稿 P-4：T3c-2/T3c-3 用实测定。
-            entity_gpu_buffer = bm->CreateSSBO(
-                name_buf,
-                VkDeviceSize(graph::kWorldAddressesSlotCount)
-                    * VkDeviceSize(EntityGPUTable::kCapacity) * VkDeviceSize(sizeof(EntityGPU)));
-            if (!entity_gpu_buffer)
-            {
-                LogError("[ECSContext::InitializeEntityGPUTable] CreateSSBO failed");
-                return false;
-            }
-
-            entity_gpu_buffer->SetUpdateClass(graph::BufferUpdateClass::Default);
-
-            entity_gpu_view = graph::StructView<EntityGPU>::Create(entity_gpu_buffer, false);
-            if (!entity_gpu_view)
-            {
-                LogError("[ECSContext::InitializeEntityGPUTable] StructView create failed");
-                return false;
-            }
-
-            entity_gpu_table_addr = gpu_device
-                ? gpu_device->GetBufferDeviceAddressAligned16(entity_gpu_buffer->GetBuffer())
-                : 0;
-            if (entity_gpu_table_addr == 0)
-            {
-                LogError("[ECSContext::InitializeEntityGPUTable] 实体行表取不到设备地址"
-                          "（16B 对齐 / SHADER_DEVICE_ADDRESS usage 检查）");
-                return false;
-            }
-
-            // 整表清零：未激活的槽 `flags.Active == 0`，消费者据此跳过（T3b 的槽位语义）。
-            if (auto *rows = reinterpret_cast<EntityGPU *>(entity_gpu_view->Data()))
-                for (uint32_t i = 0; i < EntityGPUTable::kCapacity; ++i)
-                    rows[i] = EntityGPU{};
 
             entity_gpu_view->Commit();
 
@@ -335,55 +293,18 @@ namespace hgl::ecs
             if (light_row_buffer)
                 return true;
 
-            auto *gc = GetGraphicsContext();
-            if (!gc)
-            {
-                LogError("[ECSContext::InitializeLightRowTable] graphics context is null");
-                return false;
-            }
-
-            auto *bm = gc->GetBufferManager();
-            if (!bm)
-            {
-                LogError("[ECSContext::InitializeLightRowTable] buffer manager is null");
-                return false;
-            }
-
             light_row_table.Ensure();
-
-            char name_buf[192];
-            std::snprintf(name_buf, sizeof(name_buf), "World:%s:LightRows", GetName().c_str());
 
             const VkDeviceSize one_copy = VkDeviceSize(LightRowTable::kCapacity)
                                         * VkDeviceSize(sizeof(graph::LightRow));
 
-            light_row_buffer = bm->CreateSSBO(
-                name_buf,
-                one_copy * VkDeviceSize(graph::kWorldAddressesSlotCount));
-            if (!light_row_buffer)
-            {
-                LogError("[ECSContext::InitializeLightRowTable] CreateSSBO failed");
+            if (!BuildWorldRowTable<graph::LightRow>(
+                    "ECSContext::InitializeLightRowTable","LightRows",
+                    one_copy * VkDeviceSize(graph::kWorldAddressesSlotCount),
+                    GetGraphicsContext(),gpu_device,GetName().c_str(),
+                    graph::BufferUpdateClass::Default,
+                    light_row_buffer,light_row_view,light_row_table_addr))
                 return false;
-            }
-
-            light_row_buffer->SetUpdateClass(graph::BufferUpdateClass::Default);
-
-            light_row_view = graph::StructView<graph::LightRow>::Create(light_row_buffer, false);
-            if (!light_row_view)
-            {
-                LogError("[ECSContext::InitializeLightRowTable] StructView create failed");
-                return false;
-            }
-
-            light_row_table_addr = gpu_device
-                ? gpu_device->GetBufferDeviceAddressAligned16(light_row_buffer->GetBuffer())
-                : 0;
-            if (light_row_table_addr == 0)
-            {
-                LogError("[ECSContext::InitializeLightRowTable] 光源行表取不到设备地址"
-                          "（16B 对齐 / SHADER_DEVICE_ADDRESS usage 检查）");
-                return false;
-            }
 
             // 整表按「行 0 = 默认主光 / 其余 0（未启用）」写满**每一份**：这些初值对所有帧槽一致
             // ⇒ 写完即与 CPU 权威一致，不需要再走脏行上传（ClearDirty）。
@@ -427,53 +348,16 @@ namespace hgl::ecs
             if (shadow_info_buffer)
                 return true;
 
-            auto *gc = GetGraphicsContext();
-            if (!gc)
-            {
-                LogError("[ECSContext::InitializeShadowInfoTable] graphics context is null");
-                return false;
-            }
-
-            auto *bm = gc->GetBufferManager();
-            if (!bm)
-            {
-                LogError("[ECSContext::InitializeShadowInfoTable] buffer manager is null");
-                return false;
-            }
-
             const VkDeviceSize one_copy = VkDeviceSize(sizeof(graph::ShadowInfo));
 
-            char name_buf[192];
-            std::snprintf(name_buf, sizeof(name_buf), "World:%s:ShadowInfo", GetName().c_str());
-
-            shadow_info_buffer = bm->CreateSSBO(
-                name_buf,
-                one_copy * VkDeviceSize(graph::kWorldAddressesSlotCount));
-            if (!shadow_info_buffer)
-            {
-                LogError("[ECSContext::InitializeShadowInfoTable] CreateSSBO failed");
+            // 更新类别与旧 profile 侧同口径（staged 映射窗口：Update 写窗口、Commit 标脏交 L2）
+            if (!BuildWorldRowTable<graph::ShadowInfo>(
+                    "ECSContext::InitializeShadowInfoTable","ShadowInfo",
+                    one_copy * VkDeviceSize(graph::kWorldAddressesSlotCount),
+                    GetGraphicsContext(),gpu_device,GetName().c_str(),
+                    graph::BufferUpdateClass::Deferred,
+                    shadow_info_buffer,shadow_info_view,shadow_info_addr))
                 return false;
-            }
-
-            // 与旧 profile 侧同口径（staged 映射窗口：Update 写窗口、Commit 标脏交 L2）
-            shadow_info_buffer->SetUpdateClass(graph::BufferUpdateClass::Deferred);
-
-            shadow_info_view = graph::StructView<graph::ShadowInfo>::Create(shadow_info_buffer, false);
-            if (!shadow_info_view)
-            {
-                LogError("[ECSContext::InitializeShadowInfoTable] StructView create failed");
-                return false;
-            }
-
-            shadow_info_addr = gpu_device
-                ? gpu_device->GetBufferDeviceAddressAligned16(shadow_info_buffer->GetBuffer())
-                : 0;
-            if (shadow_info_addr == 0)
-            {
-                LogError("[ECSContext::InitializeShadowInfoTable] 影子数据表取不到设备地址"
-                          "（16B 对齐 / SHADER_DEVICE_ADDRESS usage 检查）");
-                return false;
-            }
 
             // 每份清零：未提交前 shader 读到「无阴影」的零值（cascade_count=0 / 句柄 0）
             if (auto *base = reinterpret_cast<graph::ShadowInfo *>(shadow_info_view->Data()))
