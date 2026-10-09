@@ -304,12 +304,11 @@ namespace hgl::graph
 
         VkPipeline pre_raster_pipeline =
             FindLibraryPipeline(g_pre_raster_library_cache, request.device, request.pipeline_layout, pre_raster_key);
-        VkPipeline fragment_shader_pipeline = fragment_stages.IsEmpty()
-                                           ? VK_NULL_HANDLE
-                                           : FindLibraryPipeline(g_fragment_shader_library_cache,
-                                                                 request.device,
-                                                                 request.pipeline_layout,
-                                                                 fragment_shader_key);
+        VkPipeline fragment_shader_pipeline =
+            FindLibraryPipeline(g_fragment_shader_library_cache,
+                                request.device,
+                                request.pipeline_layout,
+                                fragment_shader_key);
         VkPipeline fragment_output_pipeline =
             FindLibraryPipeline(g_fragment_output_library_cache, request.device, request.pipeline_layout, fragment_output_key);
 
@@ -469,8 +468,10 @@ namespace hgl::graph
             pre_raster_created = true;
         }
 
-        if(!fragment_stages.IsEmpty() && fragment_shader_pipeline == VK_NULL_HANDLE)
+        if(fragment_shader_pipeline == VK_NULL_HANDLE)
         {
+            // The fragment-shader state subset is required for rasterizing
+            // executables even when its shader-stage list is empty (depth-only).
             if(!CreatePipelineLibrary(request,
                                       VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT,
                                       fragment_stages,
@@ -512,8 +513,7 @@ namespace hgl::graph
         VkPipeline libraries[3]{};
         uint32_t library_count = 0;
         libraries[library_count++] = pre_raster_pipeline;
-        if(fragment_shader_pipeline != VK_NULL_HANDLE)
-            libraries[library_count++] = fragment_shader_pipeline;
+        libraries[library_count++] = fragment_shader_pipeline;
         libraries[library_count++] = fragment_output_pipeline;
 
         VkPipelineLibraryCreateInfoKHR library_link_info{};
@@ -531,14 +531,6 @@ namespace hgl::graph
         link_info.renderPass = VK_NULL_HANDLE;
         link_info.subpass = 0;
         link_info.basePipelineIndex = -1;
-        if(fragment_stages.IsEmpty())
-        {
-            // A depth-only pipeline has no fragment-shader library. Supply its
-            // depth state and dynamic depth state in the executable link info.
-            link_info.pDepthStencilState = &depth_stencil;
-            link_info.pDynamicState = &fragment_shader_dynamic_state;
-        }
-
         const VkResult link_result = vkCreateGraphicsPipelines(*request.device,
                                                                request.pipeline_cache,
                                                                1,
