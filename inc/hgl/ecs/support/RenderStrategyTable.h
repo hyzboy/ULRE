@@ -193,20 +193,9 @@ namespace hgl
         /// 先按 implies 展开组件集合（如 MaterialRuntime ⇒ MaterialData），再逐条套规则。
         constexpr uint32_t EvaluateRenderNeed(uint32_t component_mask, uint32_t fact_mask)
         {
-            // implies 展开：把掩码里每个槽位的蕴含并进来
-            uint32_t slots = component_mask;
-
-            for (uint32_t round = 0; round <= COMPONENT_TYPE_COUNT; ++round)
-            {
-                const uint32_t before = slots;
-
-                for (uint32_t i = 0; i < COMPONENT_TYPE_COUNT; ++i)
-                    if (slots & (1u << i))
-                        slots |= kComponentTypeImplies[i];
-
-                if (slots == before)
-                    break;
-            }
+            // implies 展开：与 `GetImpliedComponentMask` 共用同一份闭包实现
+            // （`ComponentTypeTable.h` 的 `ExpandComponentImplies`；此前这里内联了第二份）
+            const uint32_t slots = ExpandComponentImplies(component_mask);
 
             uint32_t needs = 0;
 

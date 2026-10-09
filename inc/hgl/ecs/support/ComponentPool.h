@@ -32,11 +32,126 @@ namespace hgl
 
             virtual ComponentType GetComponentType() const = 0;
 
+            /// 活跃行数 —— 活跃集**遍历**的通用入口。
+            /// （`component_pool_slots[]` 是基类指针数组，此前基类只有 3 个虚函数、拿不到计数
+            ///   ⇒ 任何按类型遍历活跃集的调用点都只能 static_cast 回具体类型。）
+            virtual uint32_t GetActiveCount() const = 0;
+
             /// 释放一行（显式析构 + 行归还空闲表）；`handle == 0` / 越界 / 已释放 ⇒ no-op
             virtual void DestroyRow(uint32_t handle) = 0;
 
             /// 释放全部行（世界 Shutdown / Clear；块保留复用至池析构）
             virtual void Clear() = 0;
+        };
+
+        /**
+         * ComponentRowLedger —— 池的**行账目**：空闲表 + 活跃集（尾替 O(1) 摘除）+ 已分配行数。
+         *
+         * `ComponentPool<T>`（块池）与 `SharedComponentPool<T>`（shared_ptr 行）只在
+         * 「行的内存怎么来、怎么还」上不同：账目这套此前被逐字复制了两遍
+         * （`free_rows` / `active_rows` / `active_pos` / `next_index` + `RemoveActive`
+         * + 活跃集查询 + `Clear` 的四阶段复位体），现收到这里供两者**组合**持有。
+         *
+         * 行号约定与两个池一致：**句柄 = 下标 + 1**（`0` = 无），`kNoPos` = 非活跃。
+         */
+        class ComponentRowLedger
+        {
+        public:
+
+            static constexpr uint32_t kNoPos = UINT32_MAX;
+
+        private:
+
+            std::vector<uint32_t> free_rows;        ///< 空闲行（0 基下标，LIFO）
+            std::vector<uint32_t> active_rows;      ///< 活跃集（0 基下标；尾替删除，顺序无关）
+            std::vector<uint32_t> active_pos;       ///< 行 → 活跃集位置（O(1) 摘除；kNoPos = 空洞）
+            uint32_t              next_index = 0;   ///< 已分配过的行数（0 基上界）
+
+        public:
+
+            uint32_t GetNextIndex() const { return next_index; }
+
+            /// 取一个可用下标：优先空闲表，否则追加（同时把 `active_pos` 扩到 `next_index`）
+            uint32_t AllocateIndex()
+            {
+                if (!free_rows.empty())
+                {
+                    const uint32_t index = free_rows.back();
+                    free_rows.pop_back();
+                    return index;
+                }
+
+                const uint32_t index = next_index++;
+
+                if (active_pos.size() < next_index)
+                    active_pos.resize(next_index, kNoPos);
+
+                return index;
+            }
+
+            /// 认领该下标为活跃（`Create` 的最后一步）
+            void MarkActive(uint32_t index)
+            {
+                active_pos[index] = uint32_t(active_rows.size());
+                active_rows.push_back(index);
+            }
+
+            bool IsActive(uint32_t index) const
+            {
+                return index < active_pos.size() && active_pos[index] != kNoPos;
+            }
+
+        private:
+
+            /// 摘除活跃（尾替 + 回填；非活跃 ⇒ no-op）—— 只由 `ReleaseIndex` 调用，不对外
+            void RemoveActive(uint32_t index)
+            {
+                if (index >= active_pos.size())
+                    return;
+
+                const uint32_t pos = active_pos[index];
+
+                if (pos == kNoPos)
+                    return;
+
+                const uint32_t last = active_rows.back();
+
+                active_rows[pos]  = last;
+                active_pos[last]  = pos;
+                active_rows.pop_back();
+                active_pos[index] = kNoPos;
+            }
+
+        public:
+
+            /// 归还下标（摘除活跃 + 压入空闲表）
+            void ReleaseIndex(uint32_t index)
+            {
+                RemoveActive(index);
+                free_rows.push_back(index);
+            }
+
+            /// 全部复位：清活跃集；空闲表重新铺满 `[0, next_index)`（四阶段体，与改造前同序）
+            void ResetAll()
+            {
+                active_rows.clear();
+
+                if (!active_pos.empty())
+                    std::fill(active_pos.begin(), active_pos.end(), kNoPos);
+
+                free_rows.clear();
+                free_rows.reserve(next_index);
+
+                for (uint32_t index = 0; index < next_index; ++index)
+                    free_rows.push_back(index);
+            }
+
+        public: // 活跃集视图（收集路径的遍历源；不分配，不拷贝）
+
+            uint32_t GetActiveCount() const { return uint32_t(active_rows.size()); }
+
+            /// 活跃集第 `i` 项的**行下标**（0 基；调用方自己取行指针）
+            uint32_t GetActiveIndex(uint32_t i) const { return active_rows[i]; }
         };
 
         /**
@@ -72,13 +187,8 @@ namespace hgl
 
         private:
 
-            static constexpr uint32_t kNoPos = UINT32_MAX;
-
             std::vector<std::unique_ptr<std::byte[]>> blocks;   ///< 行块（地址稳定，随池析构释放）
-            std::vector<uint32_t> free_rows;                    ///< 空闲行（0 基下标，LIFO）
-            std::vector<uint32_t> active_rows;                  ///< 活跃集（0 基下标；尾替删除，顺序无关）
-            std::vector<uint32_t> active_pos;                   ///< 行 → 活跃集位置（O(1) 摘除；kNoPos = 空洞）
-            uint32_t next_index = 0;                            ///< 已分配过的行数（0 基上界）
+            ComponentRowLedger ledger;                          ///< 空闲表 / 活跃集（与 SharedComponentPool 同一份账目）
 
         private:
 
@@ -95,22 +205,7 @@ namespace hgl
                     blocks.emplace_back(std::make_unique<std::byte[]>(size_t(kBlockRows) * sizeof(T)));
             }
 
-            void RemoveActive(uint32_t index)
-            {
-                const uint32_t pos = active_pos[index];
-
-                if (pos == kNoPos)
-                    return;
-
-                const uint32_t last = active_rows.back();
-
-                active_rows[pos]  = last;
-                active_pos[last]  = pos;
-                active_rows.pop_back();
-                active_pos[index] = kNoPos;
-            }
-
-            /// 析构一行（卸载钩子 → 显式析构）；不做活跃集维护
+            /// 析构一行（卸载钩子 → 显式析构）；**不做账目维护**（调用方按需 `ReleaseIndex`）
             void DestroyRowAt(uint32_t index)
             {
                 T *row = RowAt(index);
@@ -134,6 +229,7 @@ namespace hgl
         public:
 
             ComponentType GetComponentType() const override { return ComponentTypeOf<T>::value; }
+            uint32_t      GetActiveCount()   const override { return ledger.GetActiveCount(); }
 
             /// 句柄 → 行指针（`0` / 越界 ⇒ nullptr）
             T *Row(uint32_t handle) const
@@ -143,7 +239,7 @@ namespace hgl
 
                 const uint32_t index = handle - 1;
 
-                if (index >= next_index)
+                if (index >= ledger.GetNextIndex())
                     return nullptr;
 
                 return RowAt(index);
@@ -156,29 +252,16 @@ namespace hgl
             template<typename... Args>
             uint32_t Create(Entity *owner, Args &&...args)
             {
-                uint32_t index;
+                const uint32_t index = ledger.AllocateIndex();
 
-                if (!free_rows.empty())
-                {
-                    index = free_rows.back();
-                    free_rows.pop_back();
-                }
-                else
-                {
-                    index = next_index++;
-                    EnsureBlockFor(index);
-
-                    if (active_pos.size() < next_index)
-                        active_pos.resize(next_index, kNoPos);
-                }
+                EnsureBlockFor(index);
 
                 T *row = RowAt(index);
 
                 new (row) T(std::forward<Args>(args)...);
                 static_cast<ComponentRow *>(row)->SetOwner(owner);
 
-                active_pos[index] = uint32_t(active_rows.size());
-                active_rows.push_back(index);
+                ledger.MarkActive(index);
 
                 return index + 1;
             }
@@ -190,41 +273,30 @@ namespace hgl
 
                 const uint32_t index = handle - 1;
 
-                if (index >= next_index || active_pos[index] == kNoPos)
+                if (index >= ledger.GetNextIndex() || !ledger.IsActive(index))
                     return;     // 空洞（重复释放）⇒ no-op
 
                 DestroyRowAt(index);
-                RemoveActive(index);
-                free_rows.push_back(index);
+                ledger.ReleaseIndex(index);
             }
 
             void Clear() override
             {
-                for (uint32_t index = 0; index < next_index; ++index)
+                for (uint32_t index = 0; index < ledger.GetNextIndex(); ++index)
                 {
-                    if (active_pos.size() <= index || active_pos[index] == kNoPos)
+                    if (!ledger.IsActive(index))
                         continue;
 
                     DestroyRowAt(index);
                 }
 
-                active_rows.clear();
-
-                if (!active_pos.empty())
-                    std::fill(active_pos.begin(), active_pos.end(), kNoPos);
-
-                free_rows.clear();
-                free_rows.reserve(next_index);
-
-                for (uint32_t index = 0; index < next_index; ++index)
-                    free_rows.push_back(index);
+                ledger.ResetAll();
             }
 
         public: // 活跃集视图（收集路径的遍历源；不分配，不拷贝）
 
-            uint32_t GetActiveCount() const { return uint32_t(active_rows.size()); }
 
-            T *GetActiveRow(uint32_t i) const { return RowAt(active_rows[i]); }
+            T *GetActiveRow(uint32_t i) const { return RowAt(ledger.GetActiveIndex(i)); }
         };
 
         /**
@@ -247,39 +319,18 @@ namespace hgl
 
         private:
 
-            static constexpr uint32_t kNoPos = UINT32_MAX;
-
             std::vector<std::shared_ptr<T>> rows;       ///< 行（shared_ptr 持有；下标 = 句柄 - 1）
-            std::vector<uint32_t>           free_rows;  ///< 空闲行（0 基下标，LIFO）
-            std::vector<uint32_t>           active_rows;
-            std::vector<uint32_t>           active_pos;
-            uint32_t                        next_index = 0;
+            ComponentRowLedger              ledger;     ///< 空闲表 / 活跃集（与 ComponentPool 同一份账目）
 
         private:
 
-            void RemoveActive(uint32_t index)
-            {
-                const uint32_t pos = active_pos[index];
-
-                if (pos == kNoPos)
-                    return;
-
-                const uint32_t last = active_rows.back();
-
-                active_rows[pos]  = last;
-                active_pos[last]  = pos;
-                active_rows.pop_back();
-                active_pos[index] = kNoPos;
-            }
-
-            /// 卸载一行（钩子 + 释放 shared_ptr —— 最后一个持有者析构 ⇒ 槽账目的弱引用同时失效）
+            /// 卸载一行（钩子 + 归还行号 + 释放 shared_ptr —— 最后一个持有者析构 ⇒ 槽账目的弱引用同时失效）
             void DestroyRowAt(uint32_t index)
             {
                 if constexpr (requires(T &r) { r.OnDetach(); })
                     rows[index]->OnDetach();
 
-                RemoveActive(index);
-                free_rows.push_back(index);
+                ledger.ReleaseIndex(index);
 
                 rows[index].reset();
             }
@@ -292,6 +343,7 @@ namespace hgl
             }
 
             ComponentType GetComponentType() const override { return ComponentTypeOf<T>::value; }
+            uint32_t      GetActiveCount()   const override { return ledger.GetActiveCount(); }
 
             T *Row(uint32_t handle) const
             {
@@ -306,25 +358,15 @@ namespace hgl
             template<typename... Args>
             uint32_t Create(Entity *owner, Args &&...args)
             {
-                uint32_t index;
+                const uint32_t index = ledger.AllocateIndex();
 
-                if (!free_rows.empty())
-                {
-                    index = free_rows.back();
-                    free_rows.pop_back();
-                }
-                else
-                {
-                    index = next_index++;
-                    rows.resize(next_index);
-                    active_pos.resize(next_index, kNoPos);
-                }
+                if (rows.size() < ledger.GetNextIndex())
+                    rows.resize(ledger.GetNextIndex());
 
                 rows[index] = std::make_shared<T>(std::forward<Args>(args)...);
                 static_cast<ComponentRow *>(rows[index].get())->SetOwner(owner);
 
-                active_pos[index] = uint32_t(active_rows.size());
-                active_rows.push_back(index);
+                ledger.MarkActive(index);
 
                 return index + 1;
             }
@@ -336,7 +378,7 @@ namespace hgl
 
                 const uint32_t index = handle - 1;
 
-                if (index >= rows.size() || active_pos[index] == kNoPos)
+                if (index >= rows.size() || !ledger.IsActive(index))
                     return;
 
                 DestroyRowAt(index);
@@ -344,9 +386,9 @@ namespace hgl
 
             void Clear() override
             {
-                for (uint32_t index = 0; index < next_index; ++index)
+                for (uint32_t index = 0; index < ledger.GetNextIndex(); ++index)
                 {
-                    if (active_pos.size() <= index || active_pos[index] == kNoPos)
+                    if (!ledger.IsActive(index))
                         continue;
 
                     if constexpr (requires(T &r) { r.OnDetach(); })
@@ -355,23 +397,13 @@ namespace hgl
                     rows[index].reset();
                 }
 
-                active_rows.clear();
-
-                if (!active_pos.empty())
-                    std::fill(active_pos.begin(), active_pos.end(), kNoPos);
-
-                free_rows.clear();
-                free_rows.reserve(next_index);
-
-                for (uint32_t index = 0; index < next_index; ++index)
-                    free_rows.push_back(index);
+                ledger.ResetAll();
             }
 
         public: // 活跃集视图
 
-            uint32_t GetActiveCount() const { return uint32_t(active_rows.size()); }
 
-            T *GetActiveRow(uint32_t i) const { return rows[active_rows[i]].get(); }
+            T *GetActiveRow(uint32_t i) const { return rows[ledger.GetActiveIndex(i)].get(); }
         };
 
         /**

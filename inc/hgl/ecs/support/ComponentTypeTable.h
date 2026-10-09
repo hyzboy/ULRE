@@ -186,7 +186,7 @@ namespace hgl
         // ─────────────────────────────────────────────────────────────
         // implies（蕴含）规则：某类型出现 ⇒ 必然同时具备哪些槽位
         //   · 例：`MaterialRuntime ⇒ MaterialData`（运行期数据必以数据层为源）
-        //   · 表只写**直接**蕴含；传递闭包由 GetImpliedComponentMask 在编译期算完并自检
+        //   · 表只写**直接**蕴含；传递闭包由 `ExpandComponentImplies` 在编译期算完并自检
         // ─────────────────────────────────────────────────────────────
 
         inline constexpr uint32_t kComponentTypeImplies[COMPONENT_TYPE_COUNT] =
@@ -203,6 +203,31 @@ namespace hgl
             /* ShadowProxy     */ 0,
         };
 
+        /// implies 掩码的**不动点展开**：把掩码里每个槽位的蕴含并进来，反复迭代到不变。
+        /// 组件种类是个位数，代价可忽略；只在编译期与规则求值用。
+        ///
+        /// **单一实现**：`GetImpliedComponentMask`（单类型入口）与 `RenderStrategyTable` 的
+        /// `EvaluateRenderNeed`（多槽掩码入口）此前各自内联了同一条迭代循环 ⇒ 收成这一份。
+        /// 多槽入口的正确性依据：F(A) = A ∪ ⋃_{i∈A} implies[i] 对并集可加（F(A∪B) = F(A) ∪ F(B)）
+        /// ⇒ 任意掩码的闭包 == 各位闭包之并（下面的 `CheckComponentMaskClosure` 对全部
+        /// 单点与两两组合自检：同源 / 幂等 / 可加）。
+        constexpr uint32_t ExpandComponentImplies(uint32_t slots)
+        {
+            for (uint32_t round = 0; round <= COMPONENT_TYPE_COUNT; ++round)
+            {
+                const uint32_t before = slots;
+
+                for (uint32_t i = 0; i < COMPONENT_TYPE_COUNT; ++i)
+                    if (slots & (1u << i))
+                        slots |= kComponentTypeImplies[i];
+
+                if (slots == before)
+                    break;
+            }
+
+            return slots;
+        }
+
         /// 该类型的**完整蕴含掩码**（含自身位）；编译期展开传递闭包
         constexpr uint32_t GetImpliedComponentMask(const ComponentType type)
         {
@@ -211,22 +236,7 @@ namespace hgl
             if (self == 0)
                 return 0;
 
-            uint32_t mask = self;
-
-            // 反复迭代到不动点。类型种类是个位数，代价可忽略。
-            for (uint32_t round = 0; round <= COMPONENT_TYPE_COUNT; ++round)
-            {
-                const uint32_t before = mask;
-
-                for (uint32_t i = 0; i < COMPONENT_TYPE_COUNT; ++i)
-                    if (mask & (1u << i))
-                        mask |= kComponentTypeImplies[i];
-
-                if (mask == before)
-                    break;
-            }
-
-            return mask;
+            return ExpandComponentImplies(self);
         }
 
         namespace detail
@@ -259,7 +269,47 @@ namespace hgl
 
                 return true;
             }
+
+            /// 自检（自动 scale：遍历全表，新增类型自动纳入）：
+            ///   ① 多槽入口与单类型入口**同源**（Expand(自身位) == GetImpliedComponentMask）；
+            ///   ② 幂等（闭包再闭包不变）；③ 可加（两两组合的闭包 == 各自闭包之并）。
+            /// 两条路径漂移**不会报错**，只会让规则表静默不一致 —— 这条断言就是防漂移的门。
+            constexpr bool CheckComponentMaskClosure()
+            {
+                if (ExpandComponentImplies(0) != 0)
+                    return false;
+
+                for (uint32_t i = 0; i < COMPONENT_TYPE_COUNT; ++i)
+                {
+                    const ComponentType ti    = static_cast<ComponentType>(i);
+                    const uint32_t      bit_i = ComponentTypeBit(ti);
+                    const uint32_t      once  = ExpandComponentImplies(bit_i);
+
+                    if (once != GetImpliedComponentMask(ti))
+                        return false;
+
+                    if (ExpandComponentImplies(once) != once)
+                        return false;
+
+                    for (uint32_t j = i + 1; j < COMPONENT_TYPE_COUNT; ++j)
+                    {
+                        const uint32_t bit_j = ComponentTypeBit(static_cast<ComponentType>(j));
+                        const uint32_t both  = ExpandComponentImplies(bit_i | bit_j);
+
+                        if (both != (once | ExpandComponentImplies(bit_j)))
+                            return false;
+
+                        if (ExpandComponentImplies(both) != both)
+                            return false;
+                    }
+                }
+
+                return true;
+            }
         }
+
+        static_assert(detail::CheckComponentMaskClosure(),
+                      "implies 掩码闭包自检失败（多槽入口与单类型入口漂移 / 幂等或可加性不成立）");
 
         static_assert(detail::CheckComponentTypeImplies(),
                       "组件类型 implies 规则不自洽：必须自反（含自身位）且传递闭包幂等（检查是否成环或漏项）");
