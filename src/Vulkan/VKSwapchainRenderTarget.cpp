@@ -88,10 +88,34 @@ SwapchainRenderTarget::~SwapchainRenderTarget()
 
 bool SwapchainRenderTarget::NextFrame()
 {
+    if(fatal_sync_error)
+        return false;
+
+    if(!swapchain||!sync_slots||slot_count==0||current_slot>=slot_count)
+    {
+        LogError("[WSI] NextFrame rejected invalid state swapchain=%p slots=%p slot_count=%u current_slot=%u",
+                 (void*)swapchain,(void*)sync_slots,slot_count,current_slot);
+        return false;
+    }
+
     SwapchainFrameSync& slot = sync_slots[current_slot];
+    if(!slot.queue||!slot.image_available||!slot.render_finished)
+    {
+        LogError("[WSI] NextFrame missing sync object slot=%u queue=%p image_available=%p render_finished=%p",
+                 current_slot,(void*)slot.queue,(void*)slot.image_available,
+                 (void*)slot.render_finished);
+        return false;
+    }
 
     // 1. Wait this slot's fence so its image_available semaphore is free to reuse
-    slot.queue->WaitLastSubmitFence();
+    if(!slot.queue->WaitLastSubmitFence())
+    {
+        if(slot.queue->IsDeviceLost())
+            fatal_sync_error=true;
+        LogError("[WSI] Not acquiring: frame-slot fence wait failed slot=%u queue=%p image_available=%p",
+                 current_slot,(void*)slot.queue,(void*)*slot.image_available);
+        return false;
+    }
 
     // 2. Acquire next swapchain image, signalling this slot's image_available semaphore
     VkResult result = vkAcquireNextImageKHR(
@@ -106,7 +130,8 @@ bool SwapchainRenderTarget::NextFrame()
     {
         resize_required = true;
         acquire_window_open = false;
-        LogWarning("vkAcquireNextImageKHR: OUT_OF_DATE");
+        LogWarning("[WSI] vkAcquireNextImageKHR OUT_OF_DATE slot=%u semaphore=%p swapchain=%p",
+                   current_slot,(void*)*slot.image_available,(void*)swapchain->swap_chain);
         return false;
     }
     if (result == VK_SUBOPTIMAL_KHR)
@@ -114,15 +139,40 @@ bool SwapchainRenderTarget::NextFrame()
 
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
     {
+        if(result==VK_ERROR_DEVICE_LOST)
+            fatal_sync_error=true;
         acquire_window_open = false;
-        LogError("vkAcquireNextImageKHR failed, result=%d", (int)result);
+        LogError("[WSI] vkAcquireNextImageKHR failed result=%d slot=%u semaphore=%p swapchain=%p",
+                 (int)result,current_slot,(void*)*slot.image_available,
+                 (void*)swapchain->swap_chain);
+        return false;
+    }
+    if(acquired_image>=swapchain->image_count)
+    {
+        fatal_sync_error=true;
+        acquire_window_open=false;
+        LogError("[WSI] vkAcquireNextImageKHR returned invalid image index=%u image_count=%u slot=%u",
+                 acquired_image,swapchain->image_count,current_slot);
         return false;
     }
 
     // 3. If this swapchain image is still in-flight from a different slot, wait that slot too
     DeviceQueue* prev_owner = images_in_flight[acquired_image];
     if (prev_owner && prev_owner != slot.queue)
-        prev_owner->WaitLastSubmitFence();
+    {
+        if(!prev_owner->WaitLastSubmitFence())
+        {
+            LogWarning("[WSI] Image owner fence timed out after acquire slot=%u image=%u owner_queue=%p; waiting queue idle",
+                       current_slot,acquired_image,(void*)prev_owner);
+            if(!prev_owner->WaitQueue())
+            {
+                fatal_sync_error=true;
+                LogError("[WSI] Cannot safely reuse acquired image slot=%u image=%u owner_queue=%p",
+                         current_slot,acquired_image,(void*)prev_owner);
+                return false;
+            }
+        }
+    }
 
     // 4. Claim this image for the current slot
     images_in_flight[acquired_image] = slot.queue;
@@ -136,6 +186,24 @@ bool SwapchainRenderTarget::NextFrame()
 
 bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint32_t extra_wait_count)
 {
+    if(fatal_sync_error)
+        return false;
+
+    if(!acquire_window_open||!swapchain||!sync_slots||current_slot>=slot_count
+       ||acquired_image>=swapchain->image_count)
+    {
+        LogError("[WSI] Submit rejected without a valid acquired image slot=%u image=%u slot_count=%u image_count=%u acquired=%d",
+                 current_slot,acquired_image,slot_count,swapchain?swapchain->image_count:0,
+                 acquire_window_open?1:0);
+        return false;
+    }
+    if(extra_wait_count>0&&!extra_waits)
+    {
+        LogError("[WSI] Submit rejected null extra-wait list count=%u slot=%u image=%u",
+                 extra_wait_count,current_slot,acquired_image);
+        return false;
+    }
+
     SwapchainFrameSync& slot  = sync_slots[current_slot];
     SwapchainImage*     image = swapchain->sc_image + acquired_image;
 
@@ -185,11 +253,12 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
     }
 
     // Submit: wait image_available + upload lane + 调用方额外等待（本帧各离屏 RT 车道）；signal render_finished + 主帧车道
-    if (!slot.queue->Submit(image->cmd_buf, waits, wait_count, signals, signal_count))
+    if(!slot.queue||!slot.image_available||!slot.render_finished||!image||!image->cmd_buf
+       ||!slot.queue->Submit(image->cmd_buf, waits, wait_count, signals, signal_count))
     {
+        fatal_sync_error=true;
         LogError("SwapchainRenderTarget: queue submit failed (slot=%u image=%u)",
                  current_slot, acquired_image);
-        current_slot = (current_slot + 1) % slot_count;
         acquire_window_open = false;
         return false;
     }
@@ -228,6 +297,7 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
     }
     if (result != VK_SUCCESS)
     {
+        fatal_sync_error=true;
         LogError("vkQueuePresentKHR failed, result=%d", (int)result);
         return false;
     }
@@ -293,9 +363,22 @@ RenderCmdBuffer* SwapchainRenderTarget::GetRenderCmdBuffer()
 
 RenderCmdBuffer* SwapchainRenderTarget::BeginRender()
 {
+    if(fatal_sync_error||!acquire_window_open||!swapchain||!swapchain->sc_image
+       ||acquired_image>=swapchain->image_count)
+    {
+        LogError("[WSI] BeginRender without valid acquired image slot=%u image=%u acquired=%d",
+                 current_slot,acquired_image,acquire_window_open?1:0);
+        return nullptr;
+    }
+
     RenderCmdBuffer* cb = swapchain->sc_image[acquired_image].cmd_buf;
     if (!cb) return nullptr;
-    cb->Begin();
+    if(!cb->Begin())
+    {
+        LogError("[WSI] BeginRender failed slot=%u image=%u cmd=%p",
+                 current_slot,acquired_image,(void*)(VkCommandBuffer)*cb);
+        return nullptr;
+    }
     // Dynamic Rendering：不再 BindFramebuffer——附件由 RenderSystemCore::BeginRenderPass
     // 经 IRenderTarget::GetColorAttachment/GetDepthAttachment 提供（见 VKCommandBuffer.h）
     return cb;

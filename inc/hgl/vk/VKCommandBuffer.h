@@ -47,7 +47,15 @@ public:
 
         cmd_begin=false;
 
-        return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);
+        VkResult result=vkEndCommandBuffer(cmd_buf);
+        if(result!=VK_SUCCESS)
+        {
+            LogError("[CMD] vkEndCommandBuffer failed cmd=%p result=%d",
+                     (void*)cmd_buf,static_cast<int>(result));
+            return(false);
+        }
+
+        return(true);
     }
 
     void PipelineBarrier2(const VkDependencyInfo *dep_info);

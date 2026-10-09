@@ -81,16 +81,17 @@ namespace hgl::ecs
             uint32_t entity_count;
             uint32_t max_visible_count;
             uint32_t camera_row;          // ECSContext::GetActiveCameraRow()
-            uint32_t batch_count;         // T3i：本帧批数（0 = 无接管批；两 pass 同值）
+            uint32_t batch_count;         // T3i：本帧主帧批数（0 = 无接管批）
             uint32_t batch_block_stride;  // T4c2：批行/计数每 pass 块的行数（= kBatchBlockStride）
+            uint32_t batch_count_shadow;  // 本帧阴影批数（0 = 无阴影接管批）
         };
 
-        // 11×u64(88) + 5×u32(20) = 108 ⇒ 对齐 8 ⇒ sizeof 112
-        //（A6-d T2 撤 enable_gather 后曾为 104；T4c2 加 batch_block_stride ⇒ 112）。
+        // 11×u64(88) + 6×u32(24) = 112（对齐 8）
         static_assert(sizeof(CullPushConstants) == 112, "CullPushConstants layout mismatch");
         static_assert(offsetof(CullPushConstants, batch_tag_addr) == 64, "T3i pc 段偏移");
         static_assert(offsetof(CullPushConstants, batch_count) == 100, "T3i pc 段偏移");
-        static_assert(offsetof(CullPushConstants, batch_block_stride) == 104, "T4c2 pc 段偏移（吃 4B 填充）");
+        static_assert(offsetof(CullPushConstants, batch_block_stride) == 104, "T4c2 pc 段偏移");
+        static_assert(offsetof(CullPushConstants, batch_count_shadow) == 108, "batch_count_shadow pc 段偏移");
 
         // 引擎合规文件读取（先例：ShaderCodeModuleRegistry::LoadFileContent ——
         // 同一读法与缓冲口径），路径由 ShaderLibrary 单源解析（禁绝对路径）。
@@ -583,7 +584,10 @@ namespace hgl::ecs
         // cull_queue_ 包的就是 attr->graphics_queue（与主帧同一条，VKDeviceCreater
         // 单队列族）⇒ WaitQueue 覆盖主帧引用，这正是释放批自有 buffer 的前提。
         if (cull_queue_)
-            cull_queue_->WaitQueue();
+        {
+            if(!cull_queue_->WaitQueue())
+                GLogError(u8"[GPUCullSystem] queue drain failed during CPU→GPU handover");
+        }
     }
 
     bool GPUCullSystem::CreateDispatchResources()
@@ -591,8 +595,8 @@ namespace hgl::ecs
         if (cull_queue_)
             return true;
 
-        // 队列一份：fence 环深度 = 帧槽数（Submit 自动轮转；本帧只可能重录
-        // ≥8 帧前用过的 cmd，那时其 fence 早已轮空）——照 SwapchainModule 样板。
+        // 队列一份：fence 环深度 = 帧槽数；每个命令缓冲单独记住其提交 fence 槽，
+        // 重录前等待该槽，而不是假设固定帧数后 GPU 必定完成。
         cull_queue_ = device_->CreateQueue("GPUCullSystem:Queue",
                                            uint32_t(HGL_FRAME_SLOT_TOTAL), false);
         if (!cull_queue_)
@@ -601,10 +605,8 @@ namespace hgl::ecs
             return false;
         }
 
-        // 命令缓冲环：一次性分配 HGL_FRAME_SLOT_TOTAL 个，按帧槽取用、每帧重录。
-        // 复用合法性（防坑 2 查实）：引擎 graphics pool 带
-        // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT（VKDeviceCreater.cpp:146），
-        // 非在飞 cmd 可直接 Begin()；同槽重录隔 8 帧 ≥ 在飞深度 ⇒ 必已执行完。
+        // 命令缓冲环：一次性分配 HGL_FRAME_SLOT_TOTAL 个，按帧槽取用；Begin 前的
+        // fence wait 保证它不再处于 pending 状态，graphics pool 允许单独 reset。
         for (uint32_t i = 0; i < HGL_FRAME_SLOT_TOTAL; ++i)
         {
             const AnsiString name = AnsiString("GPUCullSystem.Cmd[") + AnsiString::numberOf(i) + "]";
@@ -651,8 +653,20 @@ namespace hgl::ecs
         const uint64_t t_dispatch0 = s_dispatch_perf.on ? GetUptimeUs() : 0;
 
         // 命令缓冲按帧槽取用（T3g：环一次建好，这里只重录——旧版每帧 Create 是泄漏）
-        graph::ComputeCmdBuffer *cmd = cull_cmds_[frame_slot % HGL_FRAME_SLOT_TOTAL];
+        const uint32_t batch_slot = frame_slot % HGL_FRAME_SLOT_TOTAL;
+        graph::ComputeCmdBuffer *cmd = cull_cmds_[batch_slot];
         if (!cmd) return;
+
+        // Frame-slot reuse must wait for the submission that last used this exact cmd.
+        // The queue fence ring can drift from frame slots when dispatches are skipped.
+        if(cull_cmd_submitted_[batch_slot]
+           &&!cull_queue_->WaitFenceAt(cull_cmd_fence_slots_[batch_slot]))
+        {
+            GLogError(u8"[GPUCullSystem] refusing to re-record pending command buffer frame=%u slot=%u cmd=%p fence_slot=%u",
+                      frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd,
+                      cull_cmd_fence_slots_[batch_slot]);
+            return;
+        }
 
         // 准备 push constants
         CullPushConstants pc{};
@@ -671,26 +685,29 @@ namespace hgl::ecs
         // 未接管帧写出的 gather 表 = 无人读的富余写，代价一次 gather 写）。
 
         // T3i：批标签 / 分区 / 计数（**当前帧槽**的份；与实体表同槽口径）
-        const uint32_t batch_slot = frame_slot % HGL_FRAME_SLOT_TOTAL;
         pc.batch_tag_addr     = batch_tag_addr_ + VkDeviceSize(batch_slot)
                                 * VkDeviceSize(kArenaPasses * kMaxVisibleEntities) * sizeof(uint32_t);
         pc.batch_info_addr    = batch_info_addr_ + VkDeviceSize(batch_slot)
                                 * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
         pc.batch_counter_addr = batch_counter_addr_ + VkDeviceSize(batch_slot)
                                 * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
-        // 一次派发内着色器自己循环写两个 pass 块 => 这里下发**主帧**那份（与绘制侧/参考实现同口径）；
-        // 阴影块的有效性由自己的 `binfo.capacity == 0` 决定，不依赖本值。
         pc.batch_count        = batch_count_[0];
+        pc.batch_block_stride = kBatchBlockStride;
+        pc.batch_count_shadow = batch_count_[1];
 
         // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：派发当帧用的槽 —— 与接管侧（绘制读的槽）对照，
         // 定位"派发写的槽 ≠ 绘制读的槽"（帧内切 RT 时槽会变，而派发每帧只跑一次）。
         static const bool s_dispatch_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
         if (s_dispatch_trace)
-            GLogInfo("[T3i][TRACE] dispatch frame_slot=%u(槽=%u) 批=%u 相机行=%u",
-                     context_->GetFrameIndex(), batch_slot, batch_count_[0], context_->GetActiveCameraRow());
-        pc.batch_block_stride = kBatchBlockStride;
+            GLogInfo("[T3i][TRACE] dispatch frame_slot=%u(槽=%u) 批=[main:%u, shadow:%u] 相机行=%u",
+                     context_->GetFrameIndex(), batch_slot, batch_count_[0], batch_count_[1], context_->GetActiveCameraRow());
 
-        cmd->Begin();
+        if(!cmd->Begin())
+        {
+            GLogError(u8"[GPUCullSystem] command buffer begin failed frame=%u slot=%u cmd=%p",
+                      frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd);
+            return;
+        }
 
         // ── 计数 GPU 侧清零（T3g：旧版 CPU `Write(&zero)` 是同步上传，去掉）──
         // ⚠ 防坑 1：FillBuffer 属 TRANSFER 阶段（`vkCmdFillBuffer` size=4/offset=0
@@ -741,11 +758,25 @@ namespace hgl::ecs
                             0, nullptr,
                             0, nullptr);
 
-        cmd->End();
+        if(!cmd->End())
+        {
+            GLogError(u8"[GPUCullSystem] command buffer end failed frame=%u slot=%u cmd=%p",
+                      frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd);
+            return;
+        }
 
         // 提交即返回（T3g：删 WaitLastSubmitFence——旧版每帧同步等待 = 流水线自杀；
         // 生产路径不需要 CPU 侧知道结果，接管 guard 用 dispatch_count_ 纯 CPU 判据）
-        cull_queue_->Submit(cmd, nullptr, 0, nullptr, 0);
+        const uint32_t submit_fence_slot=cull_queue_->GetCurrentFenceIndex();
+        if(!cull_queue_->Submit(cmd, nullptr, 0, nullptr, 0))
+        {
+            GLogError(u8"[GPUCullSystem] command buffer submit failed frame=%u slot=%u cmd=%p dispatch_count=%llu",
+                      frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd,
+                      static_cast<unsigned long long>(dispatch_count_));
+            return;
+        }
+        cull_cmd_fence_slots_[batch_slot]=submit_fence_slot;
+        cull_cmd_submitted_[batch_slot]=true;
         ++dispatch_count_;
 
         if (s_dispatch_perf.on)
@@ -754,8 +785,10 @@ namespace hgl::ecs
         static const bool s_cull_ssbo_dump = (getenv("CULL_SSBO_DUMP") != nullptr);
         if (s_cull_ssbo_dump)
         {
-            cull_queue_->WaitLastSubmitFence();
-            DumpCullSSBOs("AFTER_DISPATCH");
+            if(cull_queue_->WaitLastSubmitFence())
+                DumpCullSSBOs("AFTER_DISPATCH");
+            else
+                GLogError(u8"[GPUCullSystem] SSBO dump skipped: dispatch fence wait failed");
         }
     }
 
@@ -1052,4 +1085,3 @@ namespace hgl::ecs
         GLogInfo(u8"============================================================");
     }
 }
-

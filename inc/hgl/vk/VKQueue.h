@@ -56,6 +56,9 @@ protected:
 
     uint32_t current_fence;
     uint32_t last_submitted_fence;
+    uint64_t submit_count;
+    bool device_lost;
+    bool device_lost_submit_reported;
     bool has_last_submit;
     Fence **fence_list;
     uint32_t fence_count;
@@ -72,7 +75,9 @@ public:
 
     operator VkQueue(){return queue;}
 
-    VkResult Present(const VkPresentInfoKHR *pi){return vkQueuePresentKHR(queue,pi);}
+    VkResult Present(const VkPresentInfoKHR *pi);
+
+    bool IsDeviceLost() const { return device_lost; }
 
     /**
     * 等待Submit的队列完成操作。这个操作会阻塞当前线程，所以在Submit后请不要立即使用它。而是在下一次队列提交前再做这个操作。
@@ -88,6 +93,12 @@ public:
     * 等待上一条提交使用的fence信号
     */
     bool WaitLastSubmitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
+
+    /// Wait for a specific fence-ring slot if it still owns a submitted operation.
+    bool WaitFenceAt(uint32_t fence_index,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
+
+    /// Fence slot that the next successful submission will use.
+    uint32_t GetCurrentFenceIndex() const { return current_fence; }
 
     /**
     * 检查上一条提交是否已完成（非阻塞）

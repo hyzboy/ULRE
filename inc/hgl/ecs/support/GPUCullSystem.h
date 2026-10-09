@@ -289,11 +289,11 @@ namespace hgl::ecs
         // 与主帧共用 attr->graphics_queue ⇒ 同队列 FIFO 天然保证
         // [本帧 cull cmd → 主帧 draw] 的消费序（去 WaitLastSubmitFence 的依据）。
         graph::DeviceQueue *cull_queue_ = nullptr;
-        // 命令缓冲环：槽号 = frame_index % HGL_FRAME_SLOT_TOTAL。同槽再次重录
-        // 隔 8 帧、在飞深度 ≤4 ⇒ 必已执行完（与 swapchain per-image cmd 同一安全
-        // 假设，见 SwapchainRenderTarget::BeginRender；pool 带
-        // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT，Begin 合法）。
+        // 命令缓冲环：槽号 = frame_index % HGL_FRAME_SLOT_TOTAL。重录前等待该 cmd
+        // 上次提交对应的 fence 槽；帧槽与 fence 槽独立记账，避免跳过派发时错配。
         graph::ComputeCmdBuffer *cull_cmds_[HGL_FRAME_SLOT_TOTAL] = {};
+        uint32_t cull_cmd_fence_slots_[HGL_FRAME_SLOT_TOTAL] = {};
+        bool cull_cmd_submitted_[HGL_FRAME_SLOT_TOTAL] = {};
         uint32_t dispatch_count_ = 0;   ///< 成功派发帧数（IsDispatchSettled 判据）
 
         /// 各帧槽的批布局**是否已被写过**（T4c-ini-2）。

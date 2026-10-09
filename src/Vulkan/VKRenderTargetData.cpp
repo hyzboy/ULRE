@@ -37,25 +37,43 @@ bool RenderTargetData::Submit(const SemaphoreSubmit *extra_waits,const uint32_t 
 
 RenderCmdBuffer *RenderTargetData::BeginRender()
 {
-    if(!cmd_bufs||slot_count==0)
+    if(!cmd_bufs||!queues||slot_count==0)
         return(nullptr);
 
-    // 轮到下一个槽：复用前先等该槽自己的 fence（标准 WSI 模型；该槽从未提交过时
-    // WaitLastSubmitFence 内部直接返回 true，无需额外状态）。
-    //
-    // 槽游标在 BeginRender 前进、而不是在 Submit 之后前进：这样 EndManagedRenderFrame
-    // 提交完成后，GetRenderCompleteSemaphore() 读到的仍是**本次提交**那个槽的信号量
-    // （A1 的信号量链要用它作为主帧提交的等待对象）。
-    slot_index = (slot_index + 1) % slot_count;
+    // 轮到下一个槽：复用前先等该槽自己的 fence。等待失败时不推进游标，
+    // 避免下一帧跳过这个仍在使用的槽。
+    const uint32_t next_slot_index=(slot_index+1)%slot_count;
+    DeviceQueue *queue=queues[next_slot_index];
+    if(!queue)
+    {
+        LogError("[RenderTargetData] BeginRender missing queue for slot=%u",next_slot_index);
+        return nullptr;
+    }
+    if(!queue->WaitLastSubmitFence())
+    {
+        LogError("[RenderTargetData] BeginRender fence wait failed slot=%u queue=%p",
+                 next_slot_index,(void*)queue);
+        return nullptr;
+    }
 
-    if(DeviceQueue *queue = GetQueue())
-        queue->WaitLastSubmitFence();
+    const uint32_t previous_slot_index=slot_index;
+    slot_index=next_slot_index;
 
     RenderCmdBuffer *cmd_buf = GetCmdBuffer();
     if(!cmd_buf)
+    {
+        slot_index=previous_slot_index;
         return(nullptr);
+    }
 
-    cmd_buf->Begin();
+    if(!cmd_buf->Begin())
+    {
+        LogError("[RenderTargetData] BeginRender command buffer begin failed slot=%u cmd=%p",
+                 slot_index,(void*)(VkCommandBuffer)*cmd_buf);
+        slot_index=previous_slot_index;
+        return nullptr;
+    }
+    // Submit 后 GetRenderCompleteSemaphore() 仍对应本次提交使用的槽。
     // Dynamic Rendering：不再 BindFramebuffer——附件由渲染循环经 IRenderTarget 附件接口提供
     return cmd_buf;
 }
@@ -154,4 +172,3 @@ void RenderTargetData::Clear()
 }
 
 }//namespace hgl::graph
-
