@@ -146,8 +146,16 @@ SET(PIPELINE_SOURCE_PATH   pipeline)
 
 SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineResolver.h
+                            ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineBackend.h
+                            ${PIPELINE_HEADER_PATH}/VKMonolithicPipelineBackend.h
+                            ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineLibraryBackend.h
+                            ${PIPELINE_HEADER_PATH}/VKShaderObjectPipelineBackend.h
                             ${PIPELINE_HEADER_PATH}/VKComputePipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCompare.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineBackend.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKMonolithicPipelineBackend.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineLibraryBackend.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKShaderObjectPipelineBackend.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineResolver.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
