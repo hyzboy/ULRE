@@ -42,6 +42,7 @@ class VulkanPhyDevice
     VkPhysicalDevice16BitStorageFeatures features16;
     VkPhysicalDeviceVulkan13Features    features13;
     VkPhysicalDeviceVulkan14Features    features14;
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 
     VkPhysicalDeviceProperties          properties;
     VkPhysicalDeviceVulkan11Properties  properties11;
@@ -62,6 +63,7 @@ private:
 
     bool support_u8_index=false;
     bool support_descriptor_buffer=false;
+    bool support_graphics_pipeline_library=false;
     VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features{};
     VkPhysicalDeviceMeshShaderPropertiesEXT mesh_shader_properties{};
     VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};
@@ -117,6 +119,8 @@ public:
     const bool              SupportSynchronization2()const{return features13.synchronization2;}
     const bool              SupportVulkan14         ()const{return properties.apiVersion >= VK_API_VERSION_1_4;}
     const bool              SupportDescriptorBuffer()const{return support_descriptor_buffer;}
+    const bool              SupportGraphicsPipelineLibrary()const{return support_graphics_pipeline_library;}
+    const VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT &GetGraphicsPipelineLibraryFeatures()const{return graphics_pipeline_library_features;}
     const VkPhysicalDeviceDescriptorBufferFeaturesEXT &GetDescriptorBufferFeatures()const{return descriptor_buffer_features;}
     const VkPhysicalDeviceDescriptorBufferPropertiesEXT &GetDescriptorBufferProperties()const{return descriptor_buffer_properties;}
 
@@ -268,4 +272,3 @@ public: // Vulkan API
     }
 };//class VulkanPhyDevice
 }//namespace hgl::graph
-

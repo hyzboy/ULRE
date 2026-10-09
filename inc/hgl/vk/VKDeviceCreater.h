@@ -108,7 +108,7 @@ struct VulkanHardwareRequirement
 #endif
     SupportLevel descriptorBuffer;             ///<要求支持描述符缓冲区
 
-    GraphicsPipelineMode graphics_pipeline_mode = GraphicsPipelineMode::Monolithic; ///<单设备统一 graphics backend
+    GraphicsPipelineMode graphics_pipeline_mode = GraphicsPipelineMode::GraphicsPipelineLibrary; ///<优先 GPL；不支持时使用 Monolithic
 
 public:
 
@@ -120,7 +120,7 @@ public:
         descriptor_pool=1024;
 #endif
         descriptorBuffer=SupportLevel::Want;
-        graphics_pipeline_mode=GraphicsPipelineMode::Monolithic;
+        graphics_pipeline_mode=GraphicsPipelineMode::GraphicsPipelineLibrary;
 
         geometryShader=SupportLevel::Want;
 
@@ -282,7 +282,7 @@ protected:
 
 protected:
 
-    VkDevice CreateDevice(const uint32_t);
+    VkDevice CreateDevice(const uint32_t, const bool enable_graphics_pipeline_library);
 
     bool IsDescriptorBufferSupported() const;
 

@@ -13,6 +13,10 @@
 
 #include<hgl/log/Log.h>
 
+#ifdef _WIN32
+#include<windows.h>
+#endif
+
 namespace hgl::graph{
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
 
@@ -38,10 +42,20 @@ void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
 
 namespace
 {
+    bool IsRenderDocInjected()
+    {
+#ifdef _WIN32
+        return ::GetModuleHandleA("renderdoc.dll") != nullptr;
+#else
+        return getenv("ENABLE_VULKAN_RENDERDOC_CAPTURE") != nullptr;
+#endif
+    }
+
     void SetDeviceExtension(CharPointerList *ext_list,
                             const VulkanPhyDevice *physical_device,
                             const VulkanHardwareRequirement &require,
-                            const bool enable_descriptor_buffer)
+                            const bool enable_descriptor_buffer,
+                            const bool enable_graphics_pipeline_library)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -84,6 +98,12 @@ namespace
 
         if(enable_descriptor_buffer)
             ext_list->Add(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
+
+        if(enable_graphics_pipeline_library)
+        {
+            ext_list->Add(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+            ext_list->Add(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
+        }
 
         // indexTypeUint8 走 VkPhysicalDeviceVulkan14Features（1.4 核心），无需 EXT_INDEX_TYPE_UINT8 扩展
     }
@@ -297,6 +317,13 @@ namespace
                           int(f->extendedDynamicState3ColorWriteMask), int(f->extendedDynamicState3PolygonMode));
                 break;
             }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT:
+            {
+                const auto *f = static_cast<const VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT *>(curr);
+                GLogError(u8"    [%u] GraphicsPipelineLibraryFeaturesEXT (sType=%d): graphicsPipelineLibrary=%d",
+                          node_index, int(hdr->sType), int(f->graphicsPipelineLibrary));
+                break;
+            }
             default:
                 GLogError(u8"    [%u] 未知 sType = %d, ptr = %p", node_index, int(hdr->sType), curr);
                 break;
@@ -334,7 +361,7 @@ bool VulkanDeviceCreater::IsDescriptorBufferSupported() const
     // RenderDoc 截获环境下（加载了 renderdoc.dll 或设置了环境变量）自动禁用 Descriptor Buffer，回退到标准的 DescriptorPool 模式保证截帧正常
 #ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
 #if HGL_OS == HGL_OS_Windows
-    if(::GetModuleHandleA("renderdoc.dll") != nullptr)
+    if(IsRenderDocInjected())
     {
         GLogInfo(u8"[VKDeviceCreater] 检测到 RenderDoc 正在截帧 (renderdoc.dll 已加载)，自动禁用 Descriptor Buffer 并回退到 DescriptorPool");
         return false;
@@ -360,7 +387,8 @@ bool VulkanDeviceCreater::IsDescriptorBufferSupported() const
     return true;
 }
 
-VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
+VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
+                                           const bool enable_graphics_pipeline_library)
 {
     const uint32_t transfer_family = physical_device->GetTransferFamilyIndex(graphics_family);
 
@@ -411,6 +439,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT     eds1{};
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT    eds3{};
     VkPhysicalDeviceDescriptorBufferFeaturesEXT         desc_buffer_features{};
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT  graphics_pipeline_library_features{};
 
     // Vulkan 1.1: shaderDrawParameters —— SSBO 顶点输入 gl_BaseVertexARB 读取必需
     // （ShaderDrawParameters capability 由该特性启用；设备 v1.4 必支持）
@@ -561,6 +590,23 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         create_info.pNext = &eds3;
     }
 
+    if(enable_graphics_pipeline_library)
+    {
+        const VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT &supported =
+            physical_device->GetGraphicsPipelineLibraryFeatures();
+        if(!supported.graphicsPipelineLibrary)
+        {
+            GLogError(u8"[VKDeviceCreater] GPL was selected but graphicsPipelineLibrary is not supported");
+            return VK_NULL_HANDLE;
+        }
+
+        graphics_pipeline_library_features.sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
+        graphics_pipeline_library_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        graphics_pipeline_library_features.graphicsPipelineLibrary = VK_TRUE;
+        create_info.pNext = &graphics_pipeline_library_features;
+    }
+
     if(IsDescriptorBufferSupported())
     {
         desc_buffer_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
@@ -628,13 +674,30 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
 
 VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 {
+    GraphicsPipelineMode active_pipeline_mode = require.graphics_pipeline_mode;
+    bool enable_graphics_pipeline_library = false;
+
     switch(require.graphics_pipeline_mode)
     {
     case GraphicsPipelineMode::Monolithic:
         break;
     case GraphicsPipelineMode::GraphicsPipelineLibrary:
-        GLogError(u8"[VKDeviceCreater] Graphics Pipeline Library backend is not implemented");
-        return nullptr;
+        if(IsRenderDocInjected())
+        {
+            GLogInfo(u8"[VKDeviceCreater] RenderDoc detected; disabling GPL and using Monolithic pipelines");
+            active_pipeline_mode = GraphicsPipelineMode::Monolithic;
+        }
+        else
+        if(!physical_device || !physical_device->SupportGraphicsPipelineLibrary())
+        {
+            GLogInfo(u8"[VKDeviceCreater] GPL is unavailable on the selected device; using Monolithic pipelines");
+            active_pipeline_mode = GraphicsPipelineMode::Monolithic;
+        }
+        else
+        {
+            enable_graphics_pipeline_library = true;
+        }
+        break;
     case GraphicsPipelineMode::ShaderObject:
         GLogError(u8"[VKDeviceCreater] Shader Object backend is not implemented");
         return nullptr;
@@ -646,7 +709,7 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     VulkanDevAttr *device_attr=new VulkanDevAttr(instance,physical_device,surface);
 
     AutoDelete<VulkanDevAttr> auto_delete(device_attr);
-    device_attr->graphics_pipeline_mode = require.graphics_pipeline_mode;
+    device_attr->graphics_pipeline_mode = active_pipeline_mode;
 
     const uint32_t graphics_family=device_attr->surface->GetGraphicsFamilyIndex();
 
@@ -657,18 +720,15 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     device_attr->graphics_family_index = graphics_family;
     device_attr->transfer_family_index = transfer_family;
 
-    // 管线物化路径：默认单 pipeline；backend mode 保存在 VulkanDevAttr，由 resolver
-    // 统一分发。当前仅 Monolithic 已实现，GPL/Shader Object 选择会显式报错，不静默回退。
-    // GPL 已整体删除——激活实测在混合材质上存在
-    // 渲染正确性问题且无法用 RenderDoc 调试，详见 2026-08-29 提交记录）。
-    // 现状：pipeline 只保留 shader 部分，全部渲染状态走 EDS 1/2/3 动态设置
-    //（vkCmdSet* 渲染侧应用材质配置）。
+    GLogInfo(u8"[VKDeviceCreater] Graphics pipeline backend: %s",
+             active_pipeline_mode == GraphicsPipelineMode::GraphicsPipelineLibrary ? "GPL" : "Monolithic");
+
     const bool use_desc_buffer = IsDescriptorBufferSupported();
 
-    SetDeviceExtension(&ext_list,physical_device,require,use_desc_buffer);
+    SetDeviceExtension(&ext_list,physical_device,require,use_desc_buffer,enable_graphics_pipeline_library);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
 
-    device_attr->device=CreateDevice(graphics_family);
+    device_attr->device=CreateDevice(graphics_family,enable_graphics_pipeline_library);
 
     if(!device_attr->device)
         return(nullptr);

@@ -62,6 +62,7 @@ namespace hgl::graph
     {
     private:
         static bool MaterializeMonolithicPipeline(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline);
+        static bool MaterializeGraphicsPipelineLibrary(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline);
 
     public:
         static bool BuildFinalPipelineKey(const FinalPipelineResolveRequest &request, FinalPipelineKey &out_key);

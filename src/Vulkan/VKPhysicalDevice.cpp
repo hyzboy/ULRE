@@ -147,10 +147,23 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 ppNext=&descriptor_buffer_features.pNext;
             }
 
+            if(CheckExtensionSupport(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME)
+            && CheckExtensionSupport(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME))
+            {
+                graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
+                graphics_pipeline_library_features.pNext=nullptr;
+                *ppNext=&graphics_pipeline_library_features;
+                ppNext=&graphics_pipeline_library_features.pNext;
+            }
+
             func(physical_device,&features2);
 
             mem_copy(features,features2.features);
             support_descriptor_buffer = descriptor_buffer_features.descriptorBuffer;
+            support_graphics_pipeline_library =
+                CheckExtensionSupport(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME)
+                && CheckExtensionSupport(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME)
+                && graphics_pipeline_library_features.graphicsPipelineLibrary;
         }
         else
         {
@@ -307,6 +320,10 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
              (size_t)descriptor_buffer_properties.samplerDescriptorSize,
              (size_t)descriptor_buffer_properties.descriptorBufferOffsetAlignment);
 
+    GLogInfo("%s graphics pipeline library: supported=%d",
+             debug_front.c_str(),
+             support_graphics_pipeline_library ? 1 : 0);
+
     physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 
 }
@@ -454,4 +471,3 @@ uint32_t VulkanPhyDevice::GetTransferFamilyIndex(uint32_t graphics_family) const
     return graphics_family;
 }
 }//namespace hgl::graph
-

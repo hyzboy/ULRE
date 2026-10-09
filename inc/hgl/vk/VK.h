@@ -243,7 +243,7 @@ class ShaderResource;
 class ShaderModule;
 class ShaderModuleMap;
 
-/// Per-device graphics pipeline backend; non-Monolithic modes are reserved until implemented.
+/// Per-device graphics pipeline backend.
 enum class GraphicsPipelineMode:uint8_t
 {
     Monolithic = 0,
