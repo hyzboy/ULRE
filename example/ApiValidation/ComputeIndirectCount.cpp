@@ -310,7 +310,7 @@ public:
         if (!CreateComputeResources(dev)) return false;
 
         // 注册 ECS 挂载系统
-        ecs_context->RegisterRenderSystem<GPUIndirectCountHookSystem>(count_buffer);
+        ecs_context->RegisterSystem<GPUIndirectCountHookSystem>(count_buffer);
 
         GLogInfo(u8"[ComputeIndirectCount] Init completed successfully. 12 cubes ready for GPU-Driven Indirect Count!");
         return true;

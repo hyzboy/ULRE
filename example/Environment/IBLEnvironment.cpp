@@ -141,14 +141,14 @@ private:
     #ifdef DRAW_SKY_SPHERE
         environment_system = ecs_context->GetSystem<EnvironmentSystem>();
         if (!environment_system)
-            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
+            environment_system = ecs_context->RegisterSystem<EnvironmentSystem>();
 
         if (!environment_system)
             return false;
 
         light_system = ecs_context->GetSystem<LightSystem>();
         if (!light_system)
-            light_system = ecs_context->RegisterRenderSystem<LightSystem>();
+            light_system = ecs_context->RegisterSystem<LightSystem>();
         if (!light_system)
             return false;
 
@@ -158,7 +158,7 @@ private:
     #ifdef DRAW_GIZMO
         sun_gizmo_system = ecs_context->GetSystem<SunDirectionControlSystem>();
         if (!sun_gizmo_system)
-            sun_gizmo_system = ecs_context->RegisterTickSystem<SunDirectionControlSystem>();
+            sun_gizmo_system = ecs_context->RegisterSystem<SunDirectionControlSystem>();
 
         if (!sun_gizmo_system)
             return false;

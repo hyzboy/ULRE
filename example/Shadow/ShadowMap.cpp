@@ -1431,10 +1431,10 @@ public:
 
         light_system = ecs_context->GetSystem<LightSystem>();
         if (!light_system)
-            light_system = ecs_context->RegisterRenderSystem<LightSystem>();
+            light_system = ecs_context->RegisterSystem<LightSystem>();
         main_light_shadow_system = ecs_context->GetSystem<MainLightShadowSystem>();
         if (!main_light_shadow_system)
-            main_light_shadow_system = ecs_context->RegisterRenderSystem<MainLightShadowSystem>();
+            main_light_shadow_system = ecs_context->RegisterSystem<MainLightShadowSystem>();
 
         if (!light_system)
             return LogStageFail("ShadowMapApp::Init", "light system unavailable");

@@ -133,7 +133,7 @@ namespace hgl
                 auto transform_system = GetSystem<TransformSystem>();
                 if (!transform_system)
                 {
-                    transform_system = RegisterTickSystem<TransformSystem>();
+                    transform_system = RegisterSystem<TransformSystem>();
                 }
 
                 if (transform_system)
@@ -147,7 +147,7 @@ namespace hgl
             {
                 auto upload_system = GetSystem<RenderBufferUploadSystem>();
                 if (!upload_system)
-                    upload_system = RegisterRenderSystem<RenderBufferUploadSystem>();
+                    upload_system = RegisterSystem<RenderBufferUploadSystem>();
 
                 if (upload_system)
                 {
@@ -185,7 +185,7 @@ namespace hgl
             auto camera_system = GetSystem<CameraSystem>();
             if (!camera_system)
             {
-                camera_system = RegisterTickSystem<CameraSystem>(this);
+                camera_system = RegisterSystem<CameraSystem>(this);
             }
 
             if (!camera_system)
@@ -820,7 +820,7 @@ namespace hgl
             {
                 auto transform_system = GetSystem<TransformSystem>();
                 if (!transform_system)
-                    transform_system = RegisterTickSystem<TransformSystem>();
+                    transform_system = RegisterSystem<TransformSystem>();
 
                 if (transform_system)
                 {

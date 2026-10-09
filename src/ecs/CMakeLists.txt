@@ -1,6 +1,7 @@
 ﻿SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
 
 option(ULRE_ECS_DEBUG_API "Enable ECS debug API surface" OFF)
+option(ULRE_ENABLE_CPU_CULL_PARITY_TEST "注册 CPU 剔除参考台架（每 60 帧 GPU 读回对拍）；默认关，生产管线不付那笔 stall" OFF)
 
 set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/Object.h
@@ -278,6 +279,12 @@ if(ULRE_ECS_DEBUG_API)
     target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=1)
 else()
     target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=0)
+endif()
+
+# 台架门（2026-10-09 补）：`DefaultSystems.cpp` 早就把 CPUCullReferenceSystem 放进
+# `#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)`，但这个宏此前全仓无处定义 ⇒ 台架永远编不进来。
+if(ULRE_ENABLE_CPU_CULL_PARITY_TEST)
+    target_compile_definitions(ULRE.ECS PRIVATE ULRE_ENABLE_CPU_CULL_PARITY_TEST=1)
 endif()
 
 add_executable(TestTransformFlatStorage support/TestTransformFlatStorage.cpp)

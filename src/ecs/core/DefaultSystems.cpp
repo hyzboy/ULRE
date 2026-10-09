@@ -39,28 +39,16 @@
 
 namespace
 {
+    /// 幂等注册：已有就取回，没有才注册。tick / render 由系统自身相位决定，故不再分两个包装。
     template<typename T>
-    std::shared_ptr<T> EnsureTickSystem(hgl::ecs::ECSContext* ctx)
+    std::shared_ptr<T> EnsureSystem(hgl::ecs::ECSContext* ctx)
     {
         if (!ctx)
             return nullptr;
 
         auto system = ctx->GetSystem<T>();
         if (!system)
-            system = ctx->RegisterTickSystem<T>();
-
-        return system;
-    }
-
-    template<typename T>
-    std::shared_ptr<T> EnsureRenderSystem(hgl::ecs::ECSContext* ctx)
-    {
-        if (!ctx)
-            return nullptr;
-
-        auto system = ctx->GetSystem<T>();
-        if (!system)
-            system = ctx->RegisterRenderSystem<T>();
+            system = ctx->RegisterSystem<T>();
 
         return system;
     }
@@ -73,14 +61,14 @@ namespace
         auto *device = ctx->GetGPUDevice();
 
         // Collect system stays: gathers primitive entities (GeometryData) into RenderFrameCache
-        auto render_collect_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveCollectSystem>(ctx);
+        auto render_collect_system = EnsureSystem<hgl::ecs::RenderPrimitiveCollectSystem>(ctx);
         if (render_collect_system)
         {
             render_collect_system->SetWorld(ctx);
         }
 
         // Buffer upload is a shared utility system, not Primitive-specific
-        auto render_upload_system = EnsureRenderSystem<hgl::ecs::RenderBufferUploadSystem>(ctx);
+        auto render_upload_system = EnsureSystem<hgl::ecs::RenderBufferUploadSystem>(ctx);
         if (render_upload_system)
         {
             render_upload_system->SetWorld(ctx);
@@ -93,14 +81,14 @@ namespace
         // via this installer mechanism instead)
         auto pipeline = std::make_unique<hgl::ecs::PrimitiveRenderPipeline>(ctx);
         ctx->RegisterRenderPipeline("Primitive", std::move(pipeline));
-        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveCullSystem>();
-        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveSortSystem>();
-        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveBuildSystem>();
-        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveRenderSystem>();
-        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveOverlayRenderSystem>();
+        ctx->RegisterSystem<hgl::ecs::PrimitiveCullSystem>();
+        ctx->RegisterSystem<hgl::ecs::PrimitiveSortSystem>();
+        ctx->RegisterSystem<hgl::ecs::PrimitiveBuildSystem>();
+        ctx->RegisterSystem<hgl::ecs::PrimitiveRenderSystem>();
+        ctx->RegisterSystem<hgl::ecs::PrimitiveOverlayRenderSystem>();
 
         // GPU cull system for entity-based frustum culling (T3d-1b)
-        auto gpu_cull_system = EnsureRenderSystem<hgl::ecs::GPUCullSystem>(ctx);
+        auto gpu_cull_system = EnsureSystem<hgl::ecs::GPUCullSystem>(ctx);
         if (gpu_cull_system)
         {
             gpu_cull_system->Initialize(ctx);
@@ -110,7 +98,7 @@ namespace
 
 #if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)
         // CPU cull reference system for parity testing (T3d-2) - 仅在显式开启对拍测试时注册，避免生产管线每 60 帧 GPU stall
-        auto cpu_cull_system = EnsureRenderSystem<hgl::ecs::CPUCullReferenceSystem>(ctx);
+        auto cpu_cull_system = EnsureSystem<hgl::ecs::CPUCullReferenceSystem>(ctx);
         if (cpu_cull_system)
         {
             cpu_cull_system->Initialize(ctx);
@@ -136,10 +124,10 @@ namespace
         text_pipeline->SetWorld(ctx);
         text_pipeline->SetRenderContext(ctx->GetRenderContext());
         ctx->RegisterRenderPipeline("Text", std::move(text_pipeline));
-        ctx->RegisterRenderSystem<hgl::ecs::TextCollectSystem>();
-        ctx->RegisterRenderSystem<hgl::ecs::TextBuildSystem>();
-        ctx->RegisterRenderSystem<hgl::ecs::TextSyncSystem>();
-        ctx->RegisterRenderSystem<hgl::ecs::TextRenderSystem>();
+        ctx->RegisterSystem<hgl::ecs::TextCollectSystem>();
+        ctx->RegisterSystem<hgl::ecs::TextBuildSystem>();
+        ctx->RegisterSystem<hgl::ecs::TextSyncSystem>();
+        ctx->RegisterSystem<hgl::ecs::TextRenderSystem>();
 
         return true;
     }
@@ -151,20 +139,20 @@ namespace
             return false;
 
         // LineBoundsUpdateSystem is a tick system, stays outside the group
-        auto line_bounds_update_system = EnsureTickSystem<hgl::ecs::LineBoundsUpdateSystem>(ctx);
+        auto line_bounds_update_system = EnsureSystem<hgl::ecs::LineBoundsUpdateSystem>(ctx);
         if (line_bounds_update_system)
             line_bounds_update_system->SetWorld(ctx);
 
         // Register the Line pipeline and its thin proxy systems directly
         auto line_pipeline = std::make_unique<hgl::ecs::LineRenderPipeline>(ctx);
         ctx->RegisterRenderPipeline("Line", std::move(line_pipeline));
-        ctx->RegisterRenderSystem<hgl::ecs::LineCollectSystem>();
-        ctx->RegisterRenderSystem<hgl::ecs::LineBuildSystem>();
-        ctx->RegisterRenderSystem<hgl::ecs::LineRenderSystem>();
+        ctx->RegisterSystem<hgl::ecs::LineCollectSystem>();
+        ctx->RegisterSystem<hgl::ecs::LineBuildSystem>();
+        ctx->RegisterSystem<hgl::ecs::LineRenderSystem>();
 
 #if defined(ULRE_ENABLE_LINE_STATS) || defined(ULRE_ECS_DEBUG_API)
         // Stats system (thin stats logger, 按需注册)
-        EnsureRenderSystem<hgl::ecs::LineStatsSystem>(ctx);
+        EnsureSystem<hgl::ecs::LineStatsSystem>(ctx);
 #endif
 
         return true;
@@ -197,17 +185,17 @@ namespace hgl::ecs
 
         auto *rc = ctx->GetRenderContext();
 
-        EnsureTickSystem<ecs::InputSystem>(ctx);
-        auto camera_system = EnsureTickSystem<ecs::CameraSystem>(ctx);
-        EnsureRenderSystem<ecs::LightSystem>(ctx);
-        auto environment_system = EnsureRenderSystem<ecs::EnvironmentSystem>(ctx);
-        EnsureRenderSystem<ecs::MainLightShadowSystem>(ctx);
-        auto color_palette_system = EnsureRenderSystem<ecs::ColorPaletteSystem>(ctx);
-        auto render_target_system = EnsureRenderSystem<ecs::RenderTargetSystem>(ctx);
-        EnsureRenderSystem<ecs::SwapchainNextImageSystem>(ctx);
-        EnsureRenderSystem<ecs::SwapchainSubmitSystem>(ctx);
-        EnsureRenderSystem<ecs::RenderSceneUBOSystem>(ctx);
-        EnsureRenderSystem<ecs::ViewUBOCommitSystem>(ctx);
+        EnsureSystem<ecs::InputSystem>(ctx);
+        auto camera_system = EnsureSystem<ecs::CameraSystem>(ctx);
+        EnsureSystem<ecs::LightSystem>(ctx);
+        auto environment_system = EnsureSystem<ecs::EnvironmentSystem>(ctx);
+        EnsureSystem<ecs::MainLightShadowSystem>(ctx);
+        auto color_palette_system = EnsureSystem<ecs::ColorPaletteSystem>(ctx);
+        auto render_target_system = EnsureSystem<ecs::RenderTargetSystem>(ctx);
+        EnsureSystem<ecs::SwapchainNextImageSystem>(ctx);
+        EnsureSystem<ecs::SwapchainSubmitSystem>(ctx);
+        EnsureSystem<ecs::RenderSceneUBOSystem>(ctx);
+        EnsureSystem<ecs::ViewUBOCommitSystem>(ctx);
 
         if (environment_system)
             environment_system->SetRenderContext(rc);

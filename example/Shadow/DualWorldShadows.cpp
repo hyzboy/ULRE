@@ -142,7 +142,7 @@ private:
 
         auto light_system = world->GetSystem<LightSystem>();
         if (!light_system)
-            light_system = world->RegisterRenderSystem<LightSystem>();
+            light_system = world->RegisterSystem<LightSystem>();
 
         if (!light_system)
             return LogStageFail("ConfigureWorldLight", "LightSystem unavailable");
@@ -162,7 +162,7 @@ private:
 
         auto csm = world->GetSystem<MainLightShadowSystem>();
         if (!csm)
-            csm = world->RegisterRenderSystem<MainLightShadowSystem>();
+            csm = world->RegisterSystem<MainLightShadowSystem>();
 
         if (!csm)
             return LogStageFail(tag, "MainLightShadowSystem unavailable");
@@ -398,7 +398,7 @@ private:
         // `ViewUBOCommitSystem`（RenderBufferCommit 相）—— 只注册 RT/Collect/UBO/Camera
         // 的子世界不会提交，影子数据永远是建表零值（离屏世界无阴影）。
         if (!child_world->GetSystem<ViewUBOCommitSystem>())
-            if (!child_world->RegisterRenderSystem<ViewUBOCommitSystem>())
+            if (!child_world->RegisterSystem<ViewUBOCommitSystem>())
                 return LogStageFail("CreateOffscreenWorld", "register ViewUBOCommitSystem failed");
 
         child_world->SetResourceNamePrefix("DualWorldShadows:Child");

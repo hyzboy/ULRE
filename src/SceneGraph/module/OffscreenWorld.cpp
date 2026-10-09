@@ -88,9 +88,9 @@ namespace hgl::graph
         if(render_context_)
             world_->SetRenderContext(render_context_);
 
-        rt_system_      = world_->RegisterRenderSystem<ecs::RenderTargetSystem>();
-        collect_system_ = world_->RegisterRenderSystem<ecs::RenderPrimitiveCollectSystem>();
-        ubo_system_     = world_->RegisterRenderSystem<ecs::RenderSceneUBOSystem>();
+        rt_system_      = world_->RegisterSystem<ecs::RenderTargetSystem>();
+        collect_system_ = world_->RegisterSystem<ecs::RenderPrimitiveCollectSystem>();
+        ubo_system_     = world_->RegisterSystem<ecs::RenderSceneUBOSystem>();
 
         if(!ubo_system_)
         {
@@ -99,7 +99,7 @@ namespace hgl::graph
         }
 
         if(desc.register_input_system)
-            world_->RegisterTickSystem<ecs::InputSystem>();
+            world_->RegisterSystem<ecs::InputSystem>();
 
         if(desc.register_camera_system)
             camera_system_ = world_->EnsureCameraSystem();

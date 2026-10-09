@@ -139,7 +139,7 @@ private:
 
         light_system = ecs_context->GetSystem<hgl::ecs::LightSystem>();
         if (!light_system)
-            light_system = ecs_context->RegisterRenderSystem<hgl::ecs::LightSystem>();
+            light_system = ecs_context->RegisterSystem<hgl::ecs::LightSystem>();
 
         if (light_system)
         {
@@ -148,7 +148,7 @@ private:
 
         sun_gizmo_system = ecs_context->GetSystem<hgl::graph::SunDirectionControlSystem>();
         if (!sun_gizmo_system)
-            sun_gizmo_system = ecs_context->RegisterTickSystem<hgl::graph::SunDirectionControlSystem>();
+            sun_gizmo_system = ecs_context->RegisterSystem<hgl::graph::SunDirectionControlSystem>();
 
         if (!sun_gizmo_system)
             return false;

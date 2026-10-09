@@ -134,29 +134,23 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    void ECSContext::AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system)
+    void ECSContext::AddOrUpdateSystem(size_t key, const std::shared_ptr<System>& system)
     {
         if (!system)
             return;
 
         system->SetContext(this);
 
+        // tick / render 分类的唯一权威 = 系统自己的 ExecutionPhase。
+        // 旧版还收一个调用方声明的 `is_render`：相位不一致时只 LogWarning 一句就把系统
+        // 静默换表（"纠正"），声明面因此是纯噪音 ⇒ 已整体删除（`Context.h` 的 `RegisterSystem`）。
         const int effective_phase = static_cast<int>(system->GetExecutionPhase());
-        const bool phase_is_render = effective_phase >= static_cast<int>(ExecutionPhase::RenderSwapchainNextImage);
-        const bool effective_is_render = phase_is_render;
+        const bool is_render = effective_phase >= static_cast<int>(ExecutionPhase::RenderSwapchainNextImage);
 
-        if (effective_is_render != is_render)
-        {
-            LogWarning("[ECS] System '%s' registration corrected by phase (%s -> %s)",
-                       system->GetName().c_str(),
-                       is_render ? "render" : "tick",
-                       effective_is_render ? "render" : "tick");
-        }
-
-        auto& sys_map = effective_is_render ? render_systems : tick_systems;
-        auto& order_list = effective_is_render ? render_system_order : tick_system_order;
-        auto& dirty_flag = effective_is_render ? render_order_dirty : tick_order_dirty;
-        auto& deps = effective_is_render ? render_dependencies : tick_dependencies;
+        auto& sys_map = is_render ? render_systems : tick_systems;
+        auto& order_list = is_render ? render_system_order : tick_system_order;
+        auto& dirty_flag = is_render ? render_order_dirty : tick_order_dirty;
+        auto& deps = is_render ? render_dependencies : tick_dependencies;
 
         sys_map[key] = system;
 
@@ -205,7 +199,7 @@ namespace hgl::ecs
         for (const auto& dep_type : deps_decl)
         {
             size_t dep_key = dep_type.hash_code();
-            AddSystemDependency(effective_is_render, key, dep_key);
+            AddSystemDependency(is_render, key, dep_key);
         }
         if (active)
         {

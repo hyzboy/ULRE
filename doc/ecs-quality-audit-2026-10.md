@@ -96,7 +96,7 @@
 | 参数 | 位置 |
 |---|---|
 | `RenderMainLightShadowPass(..., float deltaTime)`（连 `(void)` 都没有） | `MainLightShadowSystem.cpp:211` |
-| `AddOrUpdateSystem(bool is_render, ...)`（只用于拼告警串） | `Context.cpp:1502-1514` ✅复核 |
+| ~~`AddOrUpdateSystem(bool is_render, ...)`（只用于拼告警串）~~ | ✅ **已删（2026-10-09）**：`is_render` 形参 + `RegisterTickSystem`/`RegisterRenderSystem` 两个包装一并删除，分类唯一权威 = 系统自己的相位 |
 | `UploadEntityGPUDirtyRows(uint32_t frame_slot)`（`(void)frame_slot`，实写全部 8 份） | `Context.cpp:1702-1740` ✅复核 |
 | `TransformSystem::Update(deltaTime)`（`(void)deltaTime`） | `TransformSystem.cpp:68-70` |
 | `MaterialData::BuildResolvedRecipe(..., const ShaderProgram*)`（一路传到底再丢） | `MaterialData.cpp:364` |
@@ -162,7 +162,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 ## 3. 多路径
 
 ### 3.1 注册/身份两条路
-- **`RegisterTickSystem` / `RegisterRenderSystem` / `RegisterSystem(is_render,…)` 实为一条路**：`is_render` 只用于告警串，容器由**相位**决定（`Context.cpp:1502-1514`）。⇒ 误配相位的系统**静默**改类。`S2 ✅复核`
+- **`RegisterTickSystem` / `RegisterRenderSystem` / `RegisterSystem(is_render,…)` 实为一条路**：`is_render` 只用于告警串，容器由**相位**决定。⇒ 误配相位的系统**静默**改类。`S2 ✅复核` ⇒ **已处置（2026-10-09）**：三个名字收成一个 `RegisterSystem<T>(args...)`，调用方声明面整体删除。
 - **`CreateEntity<T>` 两个互相矛盾的 `static_assert`**：`Context.h:914` 放宽 `is_base_of`，`EntityManager.h:51` 要求 `is_same_v<T,Entity>`；~150 个调用点全传 `Entity`/无参 ⇒ 外层放宽不可用 + 编译错陷阱。`S2`
 - **`Object::objectId`（死）与 `Entity::id`（活）两套身份**；系统键用 `type_info::hash_code()` 而依赖用 `std::type_index`。`S2`
 
@@ -230,7 +230,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 
 | 项 | 位置 | 实际行为 |
 |---|---|---|
-| `RegisterTickSystem` / `RegisterRenderSystem` | `Context.h:1009,1016` | 不决定任何列表；相位决定（`Context.cpp:1503`）✅复核 |
+| ~~`RegisterTickSystem` / `RegisterRenderSystem`~~ | — | ✅ **已删（2026-10-09）**：合并为 `RegisterSystem<T>(args...)`；分类唯一权威 = 相位 |
 | `Object::GetID()` | `core/Object.h:46` | 标识不了任何东西（零读者）✅复核 |
 | `ECSContext::GetActiveCameraID()` | `Context.h:517` | 零调用者；真正的调用点用 `GetActiveCameraRow()` ✅复核（另见 §6） |
 | `CameraSystem::GetActiveCameraComponent()` | `CameraSystem.cpp:275-284` | **读操作写世界状态**（经 `GetMainCameraComponent` → "幂等**认领**" ⇒ `SetDefaultCamera`）✅复核 |
@@ -313,7 +313,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | **P0** | §0.1 `LineBuffer::EnsureCapacity` 失败后 `gpu_capacity` 不回落 | **缺陷** | 后续调用带空 geometry 返回 true |
 | **P0** | §0.2 L2W 缓冲按设备上限截断而行号算术用预算 | **缺陷** | 越界写 |
 | **P0** | §2.4 `RenderTo` 三处手工遮蔽/还原权威值 | 冗余 | 建议改 RAII 守卫（提前 return 安全） |
-| **P0** | §3.1 `Register*System` 的 `is_render` 被丢弃 | 名不符实 | 相位误配**静默**改类 |
+| ~~P0~~ | §3.1 `Register*System` 的 `is_render` | 名不符实 | ✅ **已处置（2026-10-09）**：`is_render` 形参 + 两个包装整体删除，只剩 `RegisterSystem<T>` |
 | **P0** | §1.2 `CameraControlMode::Free` 默认值 + 处理器全空 | 特例 | 建议先加显式告警，把静默冻结变成报错 |
 | ~~P0~~ | §1.2 `uses_render_item_resolve` 恒假 | 死代码 | ✅ **已处置（2026-10-09）**：恒假开关整体删除（`MaterialBatch.h` 字段 + `.cpp` 复位 + `PrimitiveBatchPipeline.cpp` 两处判定）；**4-ID 表 / `addr_global_render_items` / shader 解析链保留** —— 那是 GPU-Driven 路径的活路径 |
 | **P1** | §6 文档-代码脱钩（尤其把死函数当活约束的规划档） | 文档完整性 | 正在误导设计 |
@@ -321,7 +321,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | **P1** | §3.5 `PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 合并（差一个取反） | 多路径 | ~90 行，最清晰候选 |
 | **P1** | §2.3 三张表的脏行机制抽公共件（~120 行）+ 两个 `Write*DirtyIndices`（~200 行） | 冗余 | |
 | **P1** | §3.2 双重 `DetachAllComponents`；§2.2 `component_mask` 一致性仅测试保证 | 多路径/冗余 | |
-| **P1** | §4.1 `CPUCullReferenceSystem` 退出默认注册；4 个未注册测试补 `add_test` | 特例/测试 | 低风险 |
+| ~~P1~~ | §4.1 `CPUCullReferenceSystem` 默认注册 / 4 个测试未注册 | 特例/测试 | ✅ **已处置**：台架已在 `#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)` 之后，且该宏此前**全仓无处定义**——2026-10-09 补上 CMake 选项（`src/ecs/CMakeLists.txt`）；10 个测试目标 `add_test` 齐备（ctest 实测全部运行） |
 | **P2** | §1.1 零调用 API 批量删除（约 45 项，含 `Object` 身份半边） | 死代码 | 免费 |
 | **P2** | §3.3 变换遍历统一走 `ForEach*` | 多路径 | 须逐处核对跳洞 |
 | **P2** | §4.2 硬编码 0/1 号约定收敛为具名权威 | 特例 | |

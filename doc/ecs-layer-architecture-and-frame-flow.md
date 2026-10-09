@@ -128,24 +128,22 @@ GetAllEntities(out)                            inc/hgl/ecs/core/Context.h:410
 
 **不存在** `RenderResourceSetup` / `RenderMaterialBind` / `RenderBeginFrame` / `RenderPostProcess`（4 名全仓 0 命中）——曾经用数字（9/10/11/12/13/14/16）指代的做法已废弃，一律写枚举名。
 
-分界值 = `RenderSwapchainNextImage`：`AddOrUpdateSystem` 用它判定「tick 系统 or render 系统」（`src/ecs/core/Context.cpp:1008`），注册方传错会被自动纠正。
+分界值 = `RenderSwapchainNextImage`：`AddOrUpdateSystem` 用它判定「tick 系统 or render 系统」（`src/ecs/core/ContextSystems.cpp`）——**这是唯一权威**，注册方无从声明（2026-10-09 起 `is_render` 形参已删除）。
 
 ### 3.2 系统注册
 
 ```
-RegisterSystem<T>(is_render, args...)   inc/hgl/ecs/core/Context.h:422-429
-RegisterTickSystem<T>(args...)          inc/hgl/ecs/core/Context.h:433-436
-RegisterRenderSystem<T>(args...)        inc/hgl/ecs/core/Context.h:440-443
-GetSystem<T>()                          inc/hgl/ecs/core/Context.h:447-457（先查 tick_systems 再查 render_systems）
-EnsureTickSystem<T> / EnsureRenderSystem<T>    src/ecs/core/DefaultSystems.cpp:39-62（幂等）
+RegisterSystem<T>(args...)              inc/hgl/ecs/core/Context.h（tick / render 由系统相位决定）
+GetSystem<T>()                          inc/hgl/ecs/core/Context.h（先查 tick_systems 再查 render_systems）
+EnsureSystem<T>(ctx)                    src/ecs/core/DefaultSystems.cpp（幂等；文件内辅助）
 ```
 
-**注册没有权限门**：`SystemOwnershipScope` / `ContextRole` / `RegisterTickSystemScoped` / `RegisterRenderSystemScoped` / `rejected_render_system_registration_count` 全部 0 命中（多世界子系统权限门已退役）。`AddOrUpdateSystem`（`src/ecs/core/Context.cpp:999-1075`）的职责收敛为：
+**注册没有权限门**：`SystemOwnershipScope` / `ContextRole` / `RegisterTickSystemScoped` / `RegisterRenderSystemScoped` / `rejected_render_system_registration_count` 全部 0 命中（多世界子系统权限门已退役）。`AddOrUpdateSystem`（`src/ecs/core/ContextSystems.cpp`）的职责收敛为：
 
 - 按相位决定进 `tick_systems` 还是 `render_systems`；
 - 非空 `render_element_type` 时把系统登记进 `systems_by_element_type[type]`——这是「整组开关」的抓手；
 - 维护 `OrderedSystem{key, phase, insertion_order, system}` 列表（`next_system_order` 单调递增，`inc/hgl/ecs/core/Context.h:102`），置 `*_order_dirty`；
-- 把 `system->GetDependencies()` 声明的依赖写进依赖图（`AddSystemDependency`，`src/ecs/core/Context.cpp:1076-1098`）；
+- 把 `system->GetDependencies()` 声明的依赖写进依赖图（`AddSystemDependency`，`src/ecs/core/ContextSystems.cpp`）；
 - 若 Context 已 active，立即 `Initialize()`（运行期热插拔系统）。
 
 依赖声明方式唯一：`System::AddDependency<T>()`（`inc/hgl/ecs/core/System.h:110-115`）。当前代码里一共 4 处：
@@ -545,7 +543,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 | `OnCreate` / `OnDependenciesReady`（System 生命周期） | 两个钩子都不存在（0 命中）。System 生命周期 = `Initialize / Update / Render / Shutdown`；`ECSContext::Initialize` 里直接按拓扑序调 `Initialize()` | `inc/hgl/ecs/core/System.h:75-84`；`src/ecs/core/Context.cpp:136-151` |
 | `Context::CreateChildEntity(parent, desc)` | API 不存在（0 命中）。层级改为 `TransformComponent::SetParent/AddChild/RemoveChild` + `CreateEntity<Entity>` | `inc/hgl/ecs/components/TransformComponent.h:145-154` |
 | `DisableUnusedSystemGroups` / `CleanupSystemGroup` | 两个 API 都不存在（0 命中）。组关闭只发生在 `CreateAdaptiveRenderGraph` 与反注册计数归零路径 | `src/ecs/core/RenderGraph.cpp:230-237`；`src/ecs/core/Context.cpp:1154-1187` |
-| `SystemOwnershipScope{GlobalShared,LocalIsolated,Auto}` × `ContextRole{RootShared,LocalSubWorld}` 及被拒计数器 | **全部不存在**（0 命中）。注册无权限门，只有 `RegisterSystem/RegisterTickSystem/RegisterRenderSystem` 与 `Ensure*System` 幂等包装 | `inc/hgl/ecs/core/Context.h:422-443`；`src/ecs/core/DefaultSystems.cpp:39-62` |
+| `SystemOwnershipScope{GlobalShared,LocalIsolated,Auto}` × `ContextRole{RootShared,LocalSubWorld}` 及被拒计数器 | **全部不存在**（0 命中）。注册无权限门，只有 `RegisterSystem` 与 `EnsureSystem` 幂等包装 | `inc/hgl/ecs/core/Context.h`；`src/ecs/core/DefaultSystems.cpp` |
 | `RegisterTickSystemScoped` / `RegisterRenderSystemScoped` | 不存在（0 命中） | 同上 |
 | `CameraSystem` 依赖 `InputSystem`、`TransformSystem` | 构造里依赖声明为空（仅一句注释）；顺序由相位 `TickInput < TickTransform < TickCamera` 保证。当前仓库显式依赖只有 4 条（LineBoundsUpdate→Transform、TextCollect→RenderPrimitiveCollect、TextSync→TextBuild、TextRender→PrimitiveRender） | `src/ecs/systems/tick/CameraSystem.cpp:219-232`；`grep AddDependency<` 命中 4 处 |
 | `swapchain 提交系统依赖三个 RenderSystem` | `SwapchainSubmitSystem` 未声明显式依赖，靠相位 `RenderSubmit` 保证在三个 `RenderDrawSubmit` 系统之后 | `src/ecs/systems/render/SwapchainSubmitSystem.cpp:14`；`grep AddDependency<` 无该文件 |

@@ -255,7 +255,7 @@ private:
 
         gizmo_system = ecs_context->GetSystem<TransformGizmoSystem>();
         if(!gizmo_system)
-            gizmo_system = ecs_context->RegisterTickSystem<TransformGizmoSystem>();
+            gizmo_system = ecs_context->RegisterSystem<TransformGizmoSystem>();
 
         if(!gizmo_system)
             return false;

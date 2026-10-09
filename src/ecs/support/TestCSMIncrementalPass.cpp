@@ -1228,7 +1228,7 @@ int main(int argc, char** argv)
             }
 
             // 9C: CameraSystem::GetMainCameraComponent 权威获取契约
-            auto cam_sys = ctx.RegisterTickSystem<CameraSystem>();
+            auto cam_sys = ctx.RegisterSystem<CameraSystem>();
             if (!cam_sys)
             {
                 GLogError(u8"Test 9C Failed: CameraSystem registration failed");
@@ -1260,7 +1260,7 @@ int main(int argc, char** argv)
             {
                 ECSContext empty_world("TestNoCameraWorld");
 
-                auto no_cam_sys = empty_world.RegisterTickSystem<CameraSystem>();
+                auto no_cam_sys = empty_world.RegisterSystem<CameraSystem>();
                 if (!no_cam_sys)
                 {
                     GLogError(u8"Test 9C+ Failed: CameraSystem registration failed");
@@ -1339,7 +1339,7 @@ int main(int argc, char** argv)
             // 曾只有 API（InvalidateStaticCache 零调用者），静态缓存默认
             // "场景永不变"——相机静止时移走静态物体，旧阴影挂在原地。
             {
-                auto tf_sys = ctx.RegisterTickSystem<TransformSystem>();
+                auto tf_sys = ctx.RegisterSystem<TransformSystem>();
                 if (!tf_sys)
                 {
                     GLogError(u8"Test 9D Failed: TransformSystem registration failed");
@@ -1531,7 +1531,7 @@ int main(int argc, char** argv)
             // ECSContext 已含 world/transform storage，可建实体并注册 TransformSystem。
             ECSContext ctx;
 
-            auto tf_sys = ctx.RegisterTickSystem<TransformSystem>();
+            auto tf_sys = ctx.RegisterSystem<TransformSystem>();
             if (!tf_sys)
             {
                 GLogError(u8"Test 15 Failed: TransformSystem registration failed");
@@ -6414,7 +6414,7 @@ int main(int argc, char** argv)
               "V7：两世界隔离台架必须注册进构建（否则判据只是文本）" },
 
             { "DualWorldShadows.cpp", OS_TEXT("example/Shadow/DualWorldShadows.cpp"),
-              "child_world->RegisterRenderSystem<ViewUBOCommitSystem>()",
+              "child_world->RegisterSystem<ViewUBOCommitSystem>()",
               "V7②：子世界必须自带影子数据提交入口（OffscreenWorld 默认只注册 RT/Collect/UBO/Camera）" },
 
             { "DualWorldShadows.cpp", OS_TEXT("example/Shadow/DualWorldShadows.cpp"),

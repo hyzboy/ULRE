@@ -338,7 +338,8 @@ namespace hgl
                                 bool& dirty_flag,
                                 const char* label);
             OrderedSystem* FindOrderedSystem(std::vector<OrderedSystem>& list, size_t key);
-            void AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system);
+            void AddOrUpdateSystem(size_t key, const std::shared_ptr<System>& system);
+            /// `is_render` 是**相位推导出的路由位**（不是调用方声明）：决定写 tick 还是 render 依赖图。
             void AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key);
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
             void RunRenderPhaseUpdates(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
@@ -991,29 +992,18 @@ namespace hgl
             /// If created after context activation, it is initialized immediately.
             std::shared_ptr<CameraSystem> EnsureCameraSystem();
 
-            /// Register a system
-            /// @param is_render true则放入渲染系统列表，否则为逻辑更新系统
+            /// 注册一个系统。
+            /// **tick / render 的分类不接受调用方声明**：唯一权威是该系统自己的 `ExecutionPhase`
+            /// （分界 = `RenderSwapchainNextImage`）。曾经的 `is_render` 形参与
+            /// `RegisterTickSystem` / `RegisterRenderSystem` 两个包装都不决定任何列表，
+            /// 只在相位误配时打一句告警就把系统静默换表 ⇒ 整条声明面已删除（2026-10-09）。
             template<typename T, typename... Args>
-            std::shared_ptr<T> RegisterSystem(bool is_render, Args&&... args)
+            std::shared_ptr<T> RegisterSystem(Args&&... args)
             {
                 auto system = std::make_shared<T>(std::forward<Args>(args)...);
                 const size_t key = typeid(T).hash_code();
-                AddOrUpdateSystem(is_render, key, system);
+                AddOrUpdateSystem(key, system);
                 return system;
-            }
-
-            /// Register a tick (logic) system
-            template<typename T, typename... Args>
-            std::shared_ptr<T> RegisterTickSystem(Args&&... args)
-            {
-                return RegisterSystem<T>(false, std::forward<Args>(args)...);
-            }
-
-            /// Register a render system
-            template<typename T, typename... Args>
-            std::shared_ptr<T> RegisterRenderSystem(Args&&... args)
-            {
-                return RegisterSystem<T>(true, std::forward<Args>(args)...);
             }
 
              /// Get a system by type

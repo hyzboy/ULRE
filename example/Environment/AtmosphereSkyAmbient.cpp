@@ -308,7 +308,7 @@ private:
 
         auto light_system = ecs_context->GetSystem<LightSystem>();
         if (!light_system)
-            light_system = ecs_context->RegisterRenderSystem<LightSystem>();
+            light_system = ecs_context->RegisterSystem<LightSystem>();
         if (!light_system)
             return false;
 
