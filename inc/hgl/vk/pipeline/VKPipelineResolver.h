@@ -17,10 +17,12 @@ namespace hgl::graph
 
     /**
      * 最终管线 key——pipeline 只保留 shader 部分（全动态状态走 EDS 1/2/3，
-     * 渲染侧 vkCmdSet* 应用材质配置），故 key 仅含 shader stage + 帧输出附件格式。
+     * 渲染侧 vkCmdSet* 应用材质配置），descriptor ABI 在设备内固定不参与 key；
+     * key 包含 backend、shader stage 与帧输出附件格式。
      */
     struct FinalPipelineKey
     {
+        GraphicsPipelineMode backend_mode = GraphicsPipelineMode::Monolithic;
         uint64_t shader_stages_hash = 0;        ///< shader stage（stage 位 + module + entry point）
         uint64_t color_formats_hash = 0;        ///< 颜色附件格式集合
         VkFormat depth_stencil_format = VK_FORMAT_UNDEFINED;
@@ -28,7 +30,8 @@ namespace hgl::graph
 
         bool operator == (const FinalPipelineKey &rhs) const
         {
-            return shader_stages_hash == rhs.shader_stages_hash
+            return backend_mode == rhs.backend_mode
+                && shader_stages_hash == rhs.shader_stages_hash
                 && color_formats_hash == rhs.color_formats_hash
                 && depth_stencil_format == rhs.depth_stencil_format
                 && color_attachment_count == rhs.color_attachment_count;
@@ -57,6 +60,9 @@ namespace hgl::graph
 
     class PipelineResolver
     {
+    private:
+        static bool MaterializeMonolithicPipeline(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline);
+
     public:
         static bool BuildFinalPipelineKey(const FinalPipelineResolveRequest &request, FinalPipelineKey &out_key);
         static bool HasCompleteFinalKey(const FinalPipelineKey &key);

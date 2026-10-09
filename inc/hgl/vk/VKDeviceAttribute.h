@@ -27,6 +27,8 @@ struct VulkanDevAttr
 
     VkSurfaceFormatKHR                  surface_format;
 
+    GraphicsPipelineMode                graphics_pipeline_mode = GraphicsPipelineMode::Monolithic; ///<设备创建时选定的 graphics backend
+
     bool                                uint8_index_type    =false;
     bool                                uint32_index_type   =false;
     bool                                wide_lines          =false;
@@ -91,4 +93,3 @@ public:
     }
 };//class VulkanDevAttr
 }//namespace hgl::graph
-

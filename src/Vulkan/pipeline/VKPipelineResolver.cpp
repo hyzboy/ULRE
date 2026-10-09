@@ -91,7 +91,9 @@ namespace hgl::graph
             MissingDevice,
             MissingShaderStages,
             MissingPipelineLayout,
-            MissingColorAttachmentConfig
+            MissingColorAttachmentConfig,
+            UnimplementedBackendMode,
+            InvalidBackendMode
         };
 
         PipelineResolveStats g_resolve_stats;
@@ -105,7 +107,20 @@ namespace hgl::graph
             case ResolveError::MissingShaderStages: return "missing shader_stages";
             case ResolveError::MissingPipelineLayout: return "missing pipeline_layout";
             case ResolveError::MissingColorAttachmentConfig: return "missing frame_output color attachments";
+            case ResolveError::UnimplementedBackendMode: return "selected graphics pipeline backend is not implemented";
+            case ResolveError::InvalidBackendMode: return "invalid graphics pipeline backend mode";
             default: return "none";
+            }
+        }
+
+        const char *GraphicsPipelineModeName(const GraphicsPipelineMode mode)
+        {
+            switch(mode)
+            {
+            case GraphicsPipelineMode::Monolithic: return "Monolithic";
+            case GraphicsPipelineMode::GraphicsPipelineLibrary: return "GraphicsPipelineLibrary";
+            case GraphicsPipelineMode::ShaderObject: return "ShaderObject";
+            default: return "Unknown";
             }
         }
 
@@ -113,6 +128,21 @@ namespace hgl::graph
         {
             if(!request.device)
                 return ResolveError::MissingDevice;
+
+            const VulkanDevAttr *device_attr = request.device->GetDevAttr();
+            if(!device_attr)
+                return ResolveError::MissingDevice;
+
+            switch(device_attr->graphics_pipeline_mode)
+            {
+            case GraphicsPipelineMode::Monolithic:
+                break;
+            case GraphicsPipelineMode::GraphicsPipelineLibrary:
+            case GraphicsPipelineMode::ShaderObject:
+                return ResolveError::UnimplementedBackendMode;
+            default:
+                return ResolveError::InvalidBackendMode;
+            }
 
             if(!request.shader_stages || request.shader_stages->IsEmpty())
                 return ResolveError::MissingShaderStages;
@@ -208,6 +238,9 @@ namespace hgl::graph
     {
         out_key = {};
 
+        if(request.device && request.device->GetDevAttr())
+            out_key.backend_mode = request.device->GetDevAttr()->graphics_pipeline_mode;
+
         out_key.shader_stages_hash = HashShaderStages(request.device, request.shader_stages);
 
         out_key.color_attachment_count = request.frame_output.color_attachment_count;
@@ -232,6 +265,29 @@ namespace hgl::graph
     }
 
     bool PipelineResolver::MaterializePipeline(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline)
+    {
+        out_pipeline = VK_NULL_HANDLE;
+
+        if(!request.device || !request.device->GetDevAttr())
+            return false;
+
+        switch(request.device->GetDevAttr()->graphics_pipeline_mode)
+        {
+        case GraphicsPipelineMode::Monolithic:
+            return MaterializeMonolithicPipeline(request, out_pipeline);
+        case GraphicsPipelineMode::GraphicsPipelineLibrary:
+        case GraphicsPipelineMode::ShaderObject:
+            GLogError("[PipelineResolver] Graphics backend '%s' is not implemented",
+                      GraphicsPipelineModeName(request.device->GetDevAttr()->graphics_pipeline_mode));
+            return false;
+        default:
+            GLogError("[PipelineResolver] Invalid graphics backend mode value: %u",
+                      static_cast<unsigned>(request.device->GetDevAttr()->graphics_pipeline_mode));
+            return false;
+        }
+    }
+
+    bool PipelineResolver::MaterializeMonolithicPipeline(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline)
     {
         out_pipeline = VK_NULL_HANDLE;
 
@@ -381,7 +437,16 @@ namespace hgl::graph
         {
             ++g_resolve_stats.invalid_request;
 
-            GLogError("[PipelineResolver] Resolve failed: %s", ResolveErrorText(request_error));
+            if(request_error == ResolveError::UnimplementedBackendMode && request.device && request.device->GetDevAttr())
+            {
+                GLogError("[PipelineResolver] Resolve failed: %s ('%s')",
+                          ResolveErrorText(request_error),
+                          GraphicsPipelineModeName(request.device->GetDevAttr()->graphics_pipeline_mode));
+            }
+            else
+            {
+                GLogError("[PipelineResolver] Resolve failed: %s", ResolveErrorText(request_error));
+            }
             LogResolveStatsIfNeeded();
             return false;
         }

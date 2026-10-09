@@ -628,9 +628,25 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
 
 VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 {
+    switch(require.graphics_pipeline_mode)
+    {
+    case GraphicsPipelineMode::Monolithic:
+        break;
+    case GraphicsPipelineMode::GraphicsPipelineLibrary:
+        GLogError(u8"[VKDeviceCreater] Graphics Pipeline Library backend is not implemented");
+        return nullptr;
+    case GraphicsPipelineMode::ShaderObject:
+        GLogError(u8"[VKDeviceCreater] Shader Object backend is not implemented");
+        return nullptr;
+    default:
+        GLogError(u8"[VKDeviceCreater] Invalid graphics pipeline backend mode");
+        return nullptr;
+    }
+
     VulkanDevAttr *device_attr=new VulkanDevAttr(instance,physical_device,surface);
 
     AutoDelete<VulkanDevAttr> auto_delete(device_attr);
+    device_attr->graphics_pipeline_mode = require.graphics_pipeline_mode;
 
     const uint32_t graphics_family=device_attr->surface->GetGraphicsFamilyIndex();
 
@@ -641,10 +657,12 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     device_attr->graphics_family_index = graphics_family;
     device_attr->transfer_family_index = transfer_family;
 
-    // 管线物化路径：仅单 pipeline（GPL 已整体删除——激活实测在混合材质上存在
+    // 管线物化路径：默认单 pipeline；backend mode 保存在 VulkanDevAttr，由 resolver
+    // 统一分发。当前仅 Monolithic 已实现，GPL/Shader Object 选择会显式报错，不静默回退。
+    // GPL 已整体删除——激活实测在混合材质上存在
     // 渲染正确性问题且无法用 RenderDoc 调试，详见 2026-08-29 提交记录）。
     // 现状：pipeline 只保留 shader 部分，全部渲染状态走 EDS 1/2/3 动态设置
-    //（vkCmdSet* 渲染侧应用材质配置）；远期可迁 VK_EXT_shader_object。
+    //（vkCmdSet* 渲染侧应用材质配置）。
     const bool use_desc_buffer = IsDescriptorBufferSupported();
 
     SetDeviceExtension(&ext_list,physical_device,require,use_desc_buffer);
