@@ -6,6 +6,7 @@
 #include <hgl/ecs/support/EntityGPUTable.h>
 #include <hgl/ecs/support/TransformDataStorage.h>
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
+#include <hgl/ecs/support/BoundingVolumeCull.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/core/GraphicsContext.h>
@@ -357,11 +358,10 @@ namespace hgl::ecs
             const glm::vec4 local_center(aabb->center[0], aabb->center[1], aabb->center[2], 1.0f);
             const glm::vec3 world_center = glm::vec3(world_matrix * local_center);
 
-            // 计算变换后的 extents（简化：取最大缩放 = 与 GLSL 逐字同式）
-            const float scale_x = glm::length(glm::vec3(world_matrix[0]));
-            const float scale_y = glm::length(glm::vec3(world_matrix[1]));
-            const float scale_z = glm::length(glm::vec3(world_matrix[2]));
-            const float max_scale = std::max({scale_x, scale_y, scale_z});
+            // 计算变换后的 extents（简化：取最大缩放）
+            // 公式单一来源 = `GetMaxWorldScaleRaw`（**用 Raw 不用带退化保护的 GetMaxWorldScale**：
+            // 后者在 scale==0 时给 1.0，会与 GPU 判出不同可见性 ⇒ 假对拍差异）
+            const float max_scale = GetMaxWorldScaleRaw(world_matrix);
             const glm::vec3 world_extents(aabb->extents[0] * max_scale, aabb->extents[1] * max_scale, aabb->extents[2] * max_scale);
 
             // 视锥剔除（6 个平面）。center[3] = 外接球半径，< 0 ⇒ 「始终可见」哨兵

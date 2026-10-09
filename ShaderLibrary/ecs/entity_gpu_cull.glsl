@@ -270,6 +270,8 @@ void main()
     vec3 world_center = (l2w_matrix * vec4(aabb_center.xyz, 1.0)).xyz;
 
     // 计算变换后的 extents（简化：取最大缩放）
+    // 本式是 C++ 侧 `hgl::ecs::GetMaxWorldScaleRaw`（BoundingVolumeCull.h）的**镜像**：
+    // 两边都不带退化保护（scale==0 就返回 0）—— 那正是 CPU 剔除参考能逐字对拍的前提。
     float scale = max(length(l2w_matrix[0].xyz), max(length(l2w_matrix[1].xyz), length(l2w_matrix[2].xyz)));
     vec3 world_extents = aabb_extents.xyz * scale;
 

@@ -169,6 +169,14 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
     `static_assert` 钉住 —— 两条路径漂移不会报错，这条断言就是防漂移的门。
     反证：临时让多槽入口不展开（只破坏可加性）⇒ 编译期精确报「implies 掩码闭包自检失败（多槽入口与单类型入口漂移 / 幂等或可加性不成立）」，恢复后即绿。`S3`
 - **`GetMaxWorldScale` 公式在 CPU 剔除参考里被重推一遍** — helper 在 `BoundingVolumeCull.h:18-32`（注释解释了为何必须缩放），而 `CPUCullReferenceSystem.cpp:361-365` 自己重算 scale + `std::max`。**这一对系统本是互相校验用的**，却各自实现同一最易错的公式。`S3`
+  - ⇒ **已处置（2026-10-09）**：公式收成 `BoundingVolumeCull.h` 的 `GetMaxWorldScaleRaw()`（唯一一份
+    三轴列长 + max，**不带退化保护** ⇒ 与 `ShaderLibrary/ecs/entity_gpu_cull.glsl` 逐字同式）；
+    `GetMaxWorldScale()` = `Raw` + 退化保护（1.0；`PrimitiveBatchPipeline` 两个调用点的既有语义，
+    `TestBoundingVolumeCull` 7 条断言钉着）。`CPUCullReferenceSystem` 改调 **Raw** —— 若调带保护的版本，
+    scale==0 时 CPU 判「可见」而 GPU 判「不可见」，正是在这对系统要检的维度上制造**假对拍差异**。
+    GLSL 侧补了「本式是 C++ `GetMaxWorldScaleRaw` 的镜像、两边都不带保护」的指路注释（零行为变化）。
+    ⚠️ **端到端对拍未取到**：开关打开后台架能正常注册并初始化（见 §4.1 行），但 `ShadowMap` 当前
+    过不了启动阶段 ⇒ 拿不到对拍采样（与本次改动无关，见 §4.1 行）。`S3`
 - **两套同构 profiler** — `CullPerfTimer`（`GPUCullSystem.cpp:33-60`）与 `PerfTimer`（`PrimitiveBatchPipeline.cpp:121-146`），都匿名 namespace、都读 `getenv("PBR_PERF")`、都按 240 帧窗口平均。`S3`
 - **重复计数常量** — `RENDER_NEED_COUNT=6` + `kRenderNeedRules_Count` + enum；`STRATEGY_FACT_COUNT=8` + 无人用的 `StrategyFact::Count`；`kSystemGroupCount` + `SystemGroupID::Count` + 字面 `static_assert == 4`。`S3`
 
@@ -337,11 +345,16 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | **P0** | §1.2 `CameraControlMode::Free` 默认值 + 处理器全空 | 特例 | 建议先加显式告警，把静默冻结变成报错 |
 | ~~P0~~ | §1.2 `uses_render_item_resolve` 恒假 | 死代码 | ✅ **已处置（2026-10-09）**：恒假开关整体删除（`MaterialBatch.h` 字段 + `.cpp` 复位 + `PrimitiveBatchPipeline.cpp` 两处判定）；**4-ID 表 / `addr_global_render_items` / shader 解析链保留** —— 那是 GPU-Driven 路径的活路径 |
 | **P1** | §6 文档-代码脱钩（尤其把死函数当活约束的规划档） | 文档完整性 | 正在误导设计 |
-| ~~P1~~ | §2.3 4×`Initialize*Table` + 3×`Upload*DirtyRows` | 冗余 | ✅ **已处置（2026-10-09）**：上传侧=`UploadDirtyRowsHelper`（拆解时已做）；建表侧=抽 `BuildWorldRowTable<RowType>`，`ContextGPU.cpp` −117 行；§2.3 其余项（`GetMaxWorldScale` / profiler×2 / 重复计数常量）**仍未做** |
+| ~~P1~~ | §2.3 4×`Initialize*Table` + 3×`Upload*DirtyRows` | 冗余 | ✅ **已处置（2026-10-09）**：上传侧=`UploadDirtyRowsHelper`（拆解时已做）；建表侧=抽 `BuildWorldRowTable<RowType>`，`ContextGPU.cpp` −117 行；§2.3 其余项（profiler×2 / 重复计数常量）**仍未做**；另：对拍台架开关正常，但当前树取不到对拍采样（见 §4.1 行） |
 | **P1** | §3.5 `PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 合并（差一个取反） | 多路径 | ~90 行，最清晰候选 |
 | **P1** | §2.3 三张表的脏行机制抽公共件（~120 行）+ 两个 `Write*DirtyIndices`（~200 行） | 冗余 | |
 | **P1** | §3.2 双重 `DetachAllComponents`；§2.2 `component_mask` 一致性仅测试保证 | 多路径/冗余 | |
-| ~~P1~~ | §4.1 `CPUCullReferenceSystem` 默认注册 / 4 个测试未注册 | 特例/测试 | ✅ **已处置**：台架已在 `#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)` 之后，且该宏此前**全仓无处定义**——2026-10-09 补上 CMake 选项（`src/ecs/CMakeLists.txt`）；10 个测试目标 `add_test` 齐备（ctest 实测全部运行） |
+| ~~P1~~ | §4.1 `CPUCullReferenceSystem` 默认注册 / 4 个测试未注册 | 特例/测试 | ✅ **已处置**：台架已在 `#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)` 之后，且该宏此前**全仓无处定义**——2026-10-09 补上 CMake 选项（`src/ecs/CMakeLists.txt`）；10 个测试目标 `add_test` 齐备（ctest 实测全部运行）。2026-10-10 实测：开关打开后台架**能正常注册并初始化**
+（日志有 `[#22] [CPUCullReferenceSystem] Initialized`）⇒ 开关与注册路径本身是好的。⚠️ **但对拍采样取不到**：
+当前树跑 `ShadowMap` 在 `[#19] Created RenderPass 'RenderPass_2_130_1000001002_3_1_64'`（阴影 Pass）之后即退出
+（252 行日志、无错误行、退出码 127）。已做控制组：把本批改动 stash 掉后表现**完全相同**；同环境 `ClockUse`
+正常跑满 774 行帧循环 ⇒ **非环境问题、非台架问题、非本批改动**。疑与 `3fe2194ee`（GPU 剔除阴影 Pass 批数校验 /
+Vulkan 同步保护）及《GPU 剔除多 Pass 架构设计与无阴影场景 GPU 挂起技术分析》所查的挂起同源 —— **待用户确认**。 |
 | **P2** | §1.1 零调用 API 批量删除（约 45 项，含 `Object` 身份半边） | 死代码 | 免费 |
 | **P2** | §3.3 变换遍历统一走 `ForEach*` | 多路径 | 须逐处核对跳洞 |
 | **P2** | §4.2 硬编码 0/1 号约定收敛为具名权威 | 特例 | |
