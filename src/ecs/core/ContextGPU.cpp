@@ -24,13 +24,13 @@ namespace hgl::ecs
         {
             /// 通用脏行上传辅助函数：收敛 EntityGPU / EntityRenderID / LightRow 的逐字同构上传循环
             template<typename Table, typename RowType, typename View, typename RowGetter>
-            void UploadDirtyRowsHelper(Table &table, View *view, uint32_t capacity_per_copy, RowGetter &&getter)
+            void UploadDirtyRowsHelper(Table &table, DirtyRowSet &dirty, View *view, uint32_t capacity_per_copy, RowGetter &&getter)
             {
-                if (!view || table.GetDirtyCount() == 0)
+                if (!view || dirty.GetDirtyCount() == 0)
                     return;
 
                 static thread_local std::vector<uint32_t> dirty_rows;
-                table.CollectDirtyRows(dirty_rows);
+                dirty.CollectDirtyRows(dirty_rows);
 
                 auto *base = reinterpret_cast<RowType *>(view->Data());
                 if (!base)
@@ -51,7 +51,7 @@ namespace hgl::ecs
                 }
 
                 view->Commit();
-                table.ClearDirty();
+                dirty.ClearDirty();
             }
 
             /// 世界 GPU 行表建表的公共骨架：CreateSSBO → SetUpdateClass → StructView → BDA 校验。
@@ -171,7 +171,7 @@ namespace hgl::ecs
                 return;
 
             UploadDirtyRowsHelper<EntityGPUTable, EntityGPU>(
-                entity_gpu_table, entity_gpu_view, EntityGPUTable::kCapacity,
+                entity_gpu_table, entity_gpu_table.GetDirtySet(), entity_gpu_view, EntityGPUTable::kCapacity,
                 [](const EntityGPUTable &t, uint32_t idx) { return t.Row(idx); });
         }
 
@@ -182,7 +182,7 @@ namespace hgl::ecs
                 return;
 
             UploadDirtyRowsHelper<EntityRenderIDTable, graph::RenderItemDescriptor>(
-                entity_render_id_table, entity_render_id_view, EntityRenderIDTable::kRowStride,
+                entity_render_id_table, entity_render_id_table.GetDirtySet(), entity_render_id_view, EntityRenderIDTable::kRowStride,
                 [](const EntityRenderIDTable &t, uint32_t idx) { return t.FlatRow(idx); });
         }
 
@@ -193,7 +193,7 @@ namespace hgl::ecs
                 return;
 
             UploadDirtyRowsHelper<LightRowTable, graph::LightRow>(
-                light_row_table, light_row_view, LightRowTable::kCapacity,
+                light_row_table, light_row_table.GetDirtySet(), light_row_view, LightRowTable::kCapacity,
                 [](const LightRowTable &t, uint32_t idx) { return t.Row(idx); });
         }
 
@@ -322,7 +322,7 @@ namespace hgl::ecs
             }
 
             light_row_view->Commit();
-            light_row_table.ClearDirty();
+            light_row_table.GetDirtySet().ClearDirty();
 
             LogInfo("[ECSContext] 光源行表就绪：%s  %u 行 × %zu B = %zu B／份 × %u 份（帧槽），"
                     "帧槽 0 基址=0x%llX（行 0 = 主方向光；每帧地址=基址+帧槽×每份字节，"

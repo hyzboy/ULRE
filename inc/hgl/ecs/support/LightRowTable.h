@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/graph/ubo/LightRow.h>
+#include<hgl/ecs/support/DirtyRowSet.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<cstdint>
@@ -36,24 +37,13 @@ namespace hgl
         private:
 
             std::vector<graph::LightRow> rows;        ///< 按行号直索引（行 0 = 主方向光）
-            std::vector<uint8_t>         row_dirty;   ///< 行脏位（1 B/行；上传后清）
-            bool                         overflow_reported = false;
-
-            void MarkDirty(uint32_t index)
-            {
-                if (row_dirty.size() < rows.size())
-                    row_dirty.resize(rows.size(), 0);
-
-                if (index < row_dirty.size())
-                    row_dirty[index] = 1;
-            }
+            /// 行脏位 + 「超容量只报一次」闩（与两张实体表共用 `DirtyRowSet`）
+            DirtyRowSet dirty;
 
             void ReportOverflow(uint32_t index)
             {
-                if (overflow_reported)
+                if (!dirty.ArmOverflowWarning())
                     return;
-
-                overflow_reported = true;
 
                 // fail-fast：容量与场景规模不匹配是**项目 bug**（冻结值、不扩容、不静默截断）
                 GLogError("[LightRowTable] 光源行表超容量：row=%u ≥ %u ⇒ 该光源不进表"
@@ -74,10 +64,10 @@ namespace hgl
                     return;
 
                 rows.assign(kCapacity, graph::LightRow{});
-                row_dirty.assign(kCapacity, 0);
+                dirty.Reset(kCapacity);
 
                 rows[graph::kMainLightRowIndex] = graph::MakeDefaultMainLight();
-                row_dirty[graph::kMainLightRowIndex] = 1;
+                dirty.MarkDirty(graph::kMainLightRowIndex, rows.size());
             }
 
             const graph::LightRow *Row(uint32_t index) const
@@ -110,46 +100,14 @@ namespace hgl
                     return;
 
                 *dst = row;
-                MarkDirty(index);
-            }
-
-            void Clear()
-            {
-                for (graph::LightRow &row : rows)
-                    row = graph::LightRow{};
-
-                if (!row_dirty.empty())
-                    std::fill(row_dirty.begin(), row_dirty.end(), 0);
+                dirty.MarkDirty(index, rows.size());
             }
 
         public: // ── 上传计划（与 EntityGPUTable 同形）：把**脏行**交出去 ──
 
-            /// 收集脏行下标（不改状态）；`out` 会被清空后填充
-            void CollectDirtyRows(std::vector<uint32_t> &out) const
-            {
-                out.clear();
-
-                for (uint32_t i = 0; i < row_dirty.size(); ++i)
-                    if (row_dirty[i])
-                        out.push_back(i);
-            }
-
-            /// 上传完成后清脏（唯一入口：世界的上传路径）
-            void ClearDirty()
-            {
-                if (!row_dirty.empty())
-                    std::fill(row_dirty.begin(), row_dirty.end(), 0);
-            }
-
-            uint32_t GetDirtyCount() const
-            {
-                uint32_t n = 0;
-
-                for (uint8_t d : row_dirty)
-                    n += d ? 1u : 0u;
-
-                return n;
-            }
+            /// 脏位集合（`DirtyRowSet`；上传侧直接用它）
+            DirtyRowSet       &GetDirtySet()       { return dirty; }
+            const DirtyRowSet &GetDirtySet() const { return dirty; }
         };
     }//namespace ecs
 }//namespace hgl

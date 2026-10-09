@@ -5779,16 +5779,16 @@ int main(int argc, char** argv)
         }
 
         // (c) 脏行语义：Ensure 后行 0 待上行；**同值写不标脏**；改动才标脏
-        if (table.GetDirtyCount() != 1)
+        if (table.GetDirtySet().GetDirtyCount() != 1)
         {
             GLogError(u8"Test 44 Failed: Ensure 后应有 1 行待上行（行 0），实得 %u",
-                      table.GetDirtyCount());
+                      table.GetDirtySet().GetDirtyCount());
             return 44;
         }
 
         table.SetRow(kMainLightRowIndex, *main_light);      // 同值写
 
-        if (table.GetDirtyCount() != 1)
+        if (table.GetDirtySet().GetDirtyCount() != 1)
         {
             GLogError(u8"Test 44 Failed: 同值写把行标脏了（静态光参数会每帧重传，脏行上传失去意义）");
             return 44;
@@ -5798,14 +5798,14 @@ int main(int argc, char** argv)
         changed.direction_intensity.x = 0.25f;
         table.SetRow(kMainLightRowIndex, changed);
 
-        if (table.GetDirtyCount() != 1)
+        if (table.GetDirtySet().GetDirtyCount() != 1)
         {
             GLogError(u8"Test 44 Failed: 改动后未标脏");
             return 44;
         }
 
         std::vector<uint32_t> dirty_rows;
-        table.CollectDirtyRows(dirty_rows);
+        table.GetDirtySet().CollectDirtyRows(dirty_rows);
 
         if (dirty_rows.size() != 1 || dirty_rows[0] != kMainLightRowIndex)
         {
@@ -5813,9 +5813,9 @@ int main(int argc, char** argv)
             return 44;
         }
 
-        table.ClearDirty();
+        table.GetDirtySet().ClearDirty();
 
-        if (table.GetDirtyCount() != 0)
+        if (table.GetDirtySet().GetDirtyCount() != 0)
         {
             GLogError(u8"Test 44 Failed: ClearDirty 后仍有脏行");
             return 44;
@@ -5824,7 +5824,7 @@ int main(int argc, char** argv)
         // (d) 超容量 = fail-fast（拒绝写入、不越界、不改已有行）
         table.SetRow(LightRowTable::kCapacity, changed);    // 越界：应被拒绝（含一次性告警）
 
-        if (table.GetDirtyCount() != 0 || table.Row(LightRowTable::kCapacity) != nullptr)
+        if (table.GetDirtySet().GetDirtyCount() != 0 || table.Row(LightRowTable::kCapacity) != nullptr)
         {
             GLogError(u8"Test 44 Failed: 越界行号未被拒绝（容量是冻结值，超限须 fail-fast）");
             return 44;

@@ -289,17 +289,17 @@ static void SectionAllocation()
         std::vector<uint32_t> plan;
         EntityGPUTable &mut_table=context.GetEntityGPUTable();
 
-        mut_table.ClearDirty();
-        mut_table.CollectDirtyRows(plan);
+        mut_table.GetDirtySet().ClearDirty();
+        mut_table.GetDirtySet().CollectDirtyRows(plan);
         const size_t plan_clean=plan.size();
 
         context.SetEntityVisible(entities[1]->GetEntityID(),false);
-        mut_table.CollectDirtyRows(plan);
+        mut_table.GetDirtySet().CollectDirtyRows(plan);
         const size_t plan_one=plan.size();
         const bool plan_one_ok=(plan_one==1 && !plan.empty() && plan[0]==entities[1]->GetEntityID().index);
 
-        mut_table.ClearDirty();
-        mut_table.CollectDirtyRows(plan);
+        mut_table.GetDirtySet().ClearDirty();
+        mut_table.GetDirtySet().CollectDirtyRows(plan);
 
         printf("  脏行计划：无脏=%zu 行（期望 0）、改 1 个实体可见性=%zu 行（期望 1，且正是该实体槽=%s）、清脏后=%zu 行（期望 0）\n",
                plan_clean,plan_one,plan_one_ok?"是":"否",plan.size());
@@ -307,17 +307,17 @@ static void SectionAllocation()
         // T3c-2b：静态段的**机理**判据（纯数据；无需设备/系统）——
         //   静态实体的行号是**常量**，写者每帧重下发它**不该**产生脏行（值变才标脏），
         //   这正是"静态只在首帧上行一次"的根据；公式 `1 + slot` 由变换侧写者负责（真世界）。
-        mut_table.ClearDirty();
+        mut_table.GetDirtySet().ClearDirty();
         mut_table.SetTransformRow(entities[0]->GetEntityID(),7);
-        const uint32_t tr_dirty_first=mut_table.GetDirtyCount();
+        const uint32_t tr_dirty_first=mut_table.GetDirtySet().GetDirtyCount();
 
-        mut_table.ClearDirty();
+        mut_table.GetDirtySet().ClearDirty();
         mut_table.SetTransformRow(entities[0]->GetEntityID(),7);      // 同值重复下发
-        const uint32_t tr_dirty_same=mut_table.GetDirtyCount();
+        const uint32_t tr_dirty_same=mut_table.GetDirtySet().GetDirtyCount();
 
         mut_table.SetTransformRow(entities[0]->GetEntityID(),8);      // 值变
-        const uint32_t tr_dirty_changed=mut_table.GetDirtyCount();
-        mut_table.ClearDirty();
+        const uint32_t tr_dirty_changed=mut_table.GetDirtySet().GetDirtyCount();
+        mut_table.GetDirtySet().ClearDirty();
 
         printf("  静态行号重下发：首写脏=%u（期望 1）、同值重下发脏=%u（期望 0=静态零重传依据）、值变后脏=%u（期望 1）\n",
                tr_dirty_first,tr_dirty_same,tr_dirty_changed);

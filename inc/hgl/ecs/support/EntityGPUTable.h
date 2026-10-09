@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/EntityGPU.h>
+#include<hgl/ecs/support/DirtyRowSet.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<cstdint>
@@ -39,26 +40,16 @@ namespace hgl
         private:
 
             std::vector<EntityGPU> rows;        ///< 按 `EntityID.index` 直索引（槽位表）
-            std::vector<uint8_t>   row_dirty;   ///< 行脏位（1 B/行；上传后清）
-            bool                   overflow_reported = false;
-
-            void MarkDirty(uint32_t index)
-            {
-                if (row_dirty.size() < rows.size())
-                    row_dirty.resize(rows.size(), 0);
-
-                if (index < row_dirty.size())
-                    row_dirty[index] = 1;
-            }
+            /// 行脏位 + 「超容量只报一次」闩：与 `EntityRenderIDTable` / `LightRowTable` 共用
+            /// `DirtyRowSet`（此前三张表各复制一份逐字相同的机制）
+            DirtyRowSet            dirty;
 
         private:
 
             void ReportOverflow(const EntityID id)
             {
-                if (overflow_reported)
+                if (!dirty.ArmOverflowWarning())
                     return;
-
-                overflow_reported = true;
 
                 // fail-fast：预算与场景规模不匹配是**项目 bug**（设计稿 P-B8-6：预算制、超限报错、不扩容）
                 GLogError("[EntityGPUTable] 实体行表超容量：index=%u ≥ %u ⇒ 该实体不进表"
@@ -76,7 +67,7 @@ namespace hgl
                 if (rows.empty())
                 {
                     rows.resize(kCapacity);
-                    row_dirty.assign(kCapacity, 0);
+                    dirty.Reset(kCapacity);
                 }
             }
 
@@ -124,7 +115,7 @@ namespace hgl
 
                 row->flags |= uint32_t(EntityGPUFlags::Active)
                             | uint32_t(EntityGPUFlags::Visible);
-                MarkDirty(id.index);
+                dirty.MarkDirty(id.index, rows.size());
             }
 
             /// 实体销毁：清 `Active`（其余字段保持原文，供诊断；消费者先判 Active）
@@ -135,7 +126,7 @@ namespace hgl
                 if (row)
                 {
                     row->flags &= ~uint32_t(EntityGPUFlags::Active);
-                    MarkDirty(id.index);
+                    dirty.MarkDirty(id.index, rows.size());
                 }
             }
 
@@ -152,7 +143,7 @@ namespace hgl
                 else
                     row->flags &= ~uint32_t(EntityGPUFlags::Visible);
 
-                MarkDirty(id.index);
+                dirty.MarkDirty(id.index, rows.size());
             }
 
             /// T3h：阴影接收事实上行（写者=collect 的"本项进批"判据点，与 4-ID 表
@@ -173,7 +164,7 @@ namespace hgl
                 row->shadow_bias_multiplier = bias_multiplier;
                 row->shadow_receive = receive;
 
-                MarkDirty(id.index);
+                dirty.MarkDirty(id.index, rows.size());
             }
 
             /// 按实体的**按类型行号表**刷新 `type[]/row[]`（组件挂卸后的唯一同步点）
@@ -195,7 +186,7 @@ namespace hgl
                     row->row [t] = handle;
                 }
 
-                MarkDirty(entity->GetEntityID().index);
+                dirty.MarkDirty(entity->GetEntityID().index, rows.size());
             }
 
             /// `row[Transform]` = **L2W 行号**（P-1）；由变换上传路径下发（0 = 尚无行）
@@ -217,46 +208,14 @@ namespace hgl
                 row->row[slot_index]  = l2w_row;
                 row->type[slot_index] = type;
 
-                MarkDirty(id.index);
-            }
-
-            void Clear()
-            {
-                for (EntityGPU &row : rows)
-                    row = EntityGPU{};
-
-                if (!row_dirty.empty())
-                    std::fill(row_dirty.begin(), row_dirty.end(), 0);
+                dirty.MarkDirty(id.index, rows.size());
             }
 
         public: // ── 上传计划（T3c-2）：把**脏行**交出去，不整表 512 KB 传 ──
 
-            /// 收集脏行下标（不改状态）；`out` 会被清空后填充
-            void CollectDirtyRows(std::vector<uint32_t> &out) const
-            {
-                out.clear();
-
-                for (uint32_t i = 0; i < row_dirty.size(); ++i)
-                    if (row_dirty[i])
-                        out.push_back(i);
-            }
-
-            /// 上传完成后清脏（唯一入口：世界的上传路径）
-            void ClearDirty()
-            {
-                if (!row_dirty.empty())
-                    std::fill(row_dirty.begin(), row_dirty.end(), 0);
-            }
-
-            uint32_t GetDirtyCount() const
-            {
-                uint32_t n = 0;
-
-                for (uint8_t d : row_dirty)
-                    n += d ? 1u : 0u;
-
-                return n;
-            }
+            /// 脏位集合（`DirtyRowSet`；上传侧直接用它：GetDirtyCount / CollectDirtyRows / ClearDirty）
+            DirtyRowSet       &GetDirtySet()       { return dirty; }
+            const DirtyRowSet &GetDirtySet() const { return dirty; }
 
         public: // ── 自检（探针 / 测试用）：与实体行号表逐字段对拍 ──
 

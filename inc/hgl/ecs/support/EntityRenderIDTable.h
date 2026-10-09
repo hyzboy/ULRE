@@ -3,6 +3,7 @@
 #include <hgl/ecs/support/EntityGPUTable.h>
 #include <hgl/ecs/support/RenderPassSlot.h>   // 跨模块单源：pass 槽位/遍数（T4c3a）
 #include <hgl/graph/render/RenderItemDescriptor.h>
+#include <hgl/ecs/support/DirtyRowSet.h>
 #include <vector>
 
 namespace hgl
@@ -51,24 +52,13 @@ namespace hgl
         private:
 
             std::vector<graph::RenderItemDescriptor> rows;   ///< 按 `EntityID.index` 直索引
-            std::vector<uint8_t> row_dirty;                  ///< 行脏位（1 B/行；上传后清）
-            bool overflow_reported = false;
-
-            void MarkDirty(uint32_t index)
-            {
-                if (row_dirty.size() < rows.size())
-                    row_dirty.resize(rows.size(), 0);
-
-                if (index < row_dirty.size())
-                    row_dirty[index] = 1;
-            }
+            /// 行脏位 + 「超容量只报一次」闩（与实体行表 / 光源行表共用 `DirtyRowSet`）
+            DirtyRowSet dirty;
 
             void ReportOverflow(const EntityID id)
             {
-                if (overflow_reported)
+                if (!dirty.ArmOverflowWarning())
                     return;
-
-                overflow_reported = true;
 
                 // 与实体行表同纪律：预算与场景规模不匹配 = 项目 bug（fail-fast，不扩容）
                 GLogError("[EntityRenderIDTable] 实体 4-ID 表超容量：index=%u ≥ %u ⇒ 该实体不进表",
@@ -85,7 +75,7 @@ namespace hgl
                 if (rows.empty())
                 {
                     rows.resize(kRowStride);
-                    row_dirty.assign(kRowStride, 0);
+                    dirty.Reset(kRowStride);
                 }
             }
 
@@ -133,7 +123,7 @@ namespace hgl
                     return;
 
                 *row = desc;
-                MarkDirty(PassBase(pass_index) + id.index);
+                dirty.MarkDirty(PassBase(pass_index) + id.index, rows.size());
             }
 
             /// 实体销毁：清行（消费者按 `geometry_id == 0` 判无 ⇒ 与行 0 哨兵惯例一致）。
@@ -151,47 +141,15 @@ namespace hgl
                         continue;
 
                     *row = cleared;
-                    MarkDirty(PassBase(pass_index) + id.index);
+                    dirty.MarkDirty(PassBase(pass_index) + id.index, rows.size());
                 }
-            }
-
-            void ClearAll()
-            {
-                for (graph::RenderItemDescriptor &row : rows)
-                    row = graph::RenderItemDescriptor{};
-
-                if (!row_dirty.empty())
-                    std::fill(row_dirty.begin(), row_dirty.end(), 0);
             }
 
         public: // ── 上传计划（与实体行表同接口形状）──
 
-            /// 收集脏行下标（不改状态）；`out` 会被清空后填充
-            void CollectDirtyRows(std::vector<uint32_t> &out) const
-            {
-                out.clear();
-
-                for (uint32_t i = 0; i < row_dirty.size(); ++i)
-                    if (row_dirty[i])
-                        out.push_back(i);
-            }
-
-            /// 上传完成后清脏（唯一入口：世界的上传路径）
-            void ClearDirty()
-            {
-                if (!row_dirty.empty())
-                    std::fill(row_dirty.begin(), row_dirty.end(), 0);
-            }
-
-            uint32_t GetDirtyCount() const
-            {
-                uint32_t n = 0;
-
-                for (uint8_t d : row_dirty)
-                    n += d ? 1u : 0u;
-
-                return n;
-            }
+            /// 脏位集合（`DirtyRowSet`；上传侧直接用它）
+            DirtyRowSet       &GetDirtySet()       { return dirty; }
+            const DirtyRowSet &GetDirtySet() const { return dirty; }
         };
     }
 }
