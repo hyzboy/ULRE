@@ -154,6 +154,7 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/CPUCullReferenceSystem.h
     ${ECS_INCLUDE_PATH}/support/TransformAccessor.h
     ${ECS_INCLUDE_PATH}/support/CameraInfoStorage.h
+    ${ECS_INCLUDE_PATH}/support/PerfTimer.h
     ${ECS_INCLUDE_PATH}/support/CameraSlotGuard.h
     ${ECS_INCLUDE_PATH}/support/RenderItemDataStorage.h
     ${ECS_INCLUDE_PATH}/support/DrawItemIDStorage.h

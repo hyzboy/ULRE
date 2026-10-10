@@ -58,9 +58,13 @@ namespace hgl
             /// A7b：「无材质来源」不是剔除条件，而是必须用保底材质（+ 根颜色标注错误
             /// 种类）渲染出来的材质错误 —— 该需求位就是这条语义的**唯一判据**。
             FallbackMaterial = 1u << 5,
+
+            /// 需求位总数（自动 scale：新增需求位插在上面，`Count` 恒排最后）
+            Count = 6,
         };
 
-        inline constexpr uint32_t RENDER_NEED_COUNT = 6;
+        /// 需求位总数（**唯一来源 = `RenderNeed::Count`**：只改枚举，别处自动跟）
+        inline constexpr uint32_t RENDER_NEED_COUNT = static_cast<uint32_t>(RenderNeed::Count);
 
         // ─────────────────────────────────────────────────────────────
         // 事实（求值输入）
@@ -88,7 +92,8 @@ namespace hgl
             Count             = 8,
         };
 
-        inline constexpr uint32_t STRATEGY_FACT_COUNT = 8;
+        /// 事实位总数（**唯一来源 = `StrategyFact::Count`**）
+        inline constexpr uint32_t STRATEGY_FACT_COUNT = static_cast<uint32_t>(StrategyFact::Count);
 
         /// 事实集合（调用侧填；`ToMask()` 后本表只做位运算）
         struct StrategyFacts
@@ -133,9 +138,9 @@ namespace hgl
             uint32_t   then_required_facts;     ///< 触发时额外必须为真的事实位
         };
 
-        inline constexpr uint32_t kRenderNeedRules_Count = RENDER_NEED_COUNT;
-
-        inline constexpr RenderNeedRule kRenderNeedRules[kRenderNeedRules_Count] =
+        /// 规则表（**长度由初始化列表推出**，条数由下面的 static_assert 与需求位数对齐 ——
+        /// 不写固定长度，免得漏一条规则时被静默补零而看不出来）
+        inline constexpr RenderNeedRule kRenderNeedRules[] =
         {
             // 进当前 pass 的收集：可见（**实体级唯一真值**）、有 owner、有可渲染资源；
             // **若当前是阴影 pass**，再要求允许投射且在距离裁剪内
@@ -184,6 +189,9 @@ namespace hgl
               ComponentTypeBit(ComponentType::MaterialRuntime),
               0, 0, 0, 0 },
         };
+
+        static_assert(sizeof(kRenderNeedRules) / sizeof(kRenderNeedRules[0]) == RENDER_NEED_COUNT,
+                      "kRenderNeedRules 条数必须等于 RENDER_NEED_COUNT（新增 RenderNeed 忘加规则 ⇒ 编译失败）");
 
         // ─────────────────────────────────────────────────────────────
         // 求值

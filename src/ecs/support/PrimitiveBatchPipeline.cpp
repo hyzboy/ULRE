@@ -3,6 +3,7 @@
 #include<hgl/ecs/support/RenderStrategyParity.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/BoundingVolumeCull.h>
+#include<hgl/ecs/support/PerfTimer.h>
 #include<source_location>
 #include<cmath>
 #include<cstdlib>
@@ -112,62 +113,10 @@ namespace hgl::ecs
         return true;
     }
 
-    namespace
-    {
-        // PBR_PERF=1 计时代（三处独立累计，函数内 static ⇒ 零头文件改动）：
-        //   cull  = PerformFrustumCulling 的 CPU 时间（形态 B 接管帧 = 0）
-        //   batch = RunBatching 的 CPU 时间（形态 B guard+接管帧仍要建批，含差异）
-        // 每 240 帧打印均值一次（稳态口径；启动杂项不进均值窗口）。
-        struct PerfTimer
-        {
-            const bool      on;
-            uint64_t        total_us = 0;
-            uint32_t        frames = 0;
-
-            PerfTimer(const char *name) : on(getenv("PBR_PERF") != nullptr), name_(name) {}
-
-            bool Active() const { return on; }
-
-            void Add(uint64_t us)
-            {
-                total_us += us;
-                ++frames;
-                if (frames % 240 == 0)
-                {
-                    GLogInfo("[PBR-PERF] %s: frames=%u avg=%.1f us/frame (total=%.1f ms)",
-                             name_, frames, double(total_us) / frames, double(total_us) / 1000.0);
-                    total_us = 0;
-                    frames = 0;
-                }
-            }
-
-        private:
-            const char *name_;
-        };
-
-        // 计时用引擎时间源（CMCore `hgl/time/Time.h` 的单调 uptime，禁 std::chrono）
-        inline uint64_t DeltaUs(uint64_t t0_us)
-        {
-            return GetUptimeUs() - t0_us;
-        }
-
-        /// RAII 段（多点 return 的函数用它，出口统一累计）
-        struct PerfSpan
-        {
-            PerfTimer  *timer;
-            bool        on;
-            uint64_t    t0;
-
-            explicit PerfSpan(PerfTimer &t) : timer(&t), on(t.Active()), t0(on ? GetUptimeUs() : 0) {}
-
-            ~PerfSpan()
-            {
-                if (on)
-                    timer->Add(DeltaUs(t0));
-            }
-        };
-    }
-
+    // PBR_PERF=1 计时代（三处独立累计，函数内 static ⇒ 零头文件改动）：
+    //   cull  = PerformFrustumCulling 的 CPU 时间（形态 B 接管帧 = 0）
+    //   batch = RunBatching 的 CPU 时间（形态 B guard+接管帧仍要建批，含差异）
+    // 计时器/RAII 段本体见 `support/PerfTimer.h`（与 `GPUCullSystem` 的派发计时共用一份实现）。
     void PrimitiveBatchPipeline::RunCulling()
     {
         static PerfTimer s_cull_timer("cpu_cull");

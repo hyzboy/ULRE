@@ -350,7 +350,9 @@ namespace hgl
         //   **一次性注册路径**（组定义 / 安装器 / 管线），不在本映射范围；两侧同名由 Test 25 契约钉住。
         // ──────────────────────────────────────────────────────
 
-        /// 组名（**唯一一份字符串**）：只用于桥接仍按名键控的一次性路径（组注册表 / 安装器 / 管线）
+        /// 组名（**唯一一份字符串**）：只用于桥接仍按名键控的一次性路径（组注册表 / 安装器 / 管线）。
+        /// ⚠ 组增删只需改 `SystemGroupID`（本数组与各处 `[kSystemGroupCount]` 数组都随枚举自动 scale），
+        ///   但**系统侧的 `SetRenderElementType` 字符串**是另一套声明，增删时必须同步（Test 25 契约钉住）。
         constexpr const char *kSystemGroupNames[kSystemGroupCount] =
         {
             "",             // None
@@ -383,8 +385,5 @@ namespace hgl
 
             return SystemGroupID::None;
         }
-
-        static_assert(kSystemGroupCount == 4,
-                      "系统组增删必须同步 kSystemGroupNames 与系统侧的 SetRenderElementType 字面量");
     }//namespace ecs
 }//namespace hgl

@@ -1,5 +1,6 @@
 #include <hgl/ecs/support/GPUCullSystem.h>
 #include <hgl/ecs/support/CameraInfoStorage.h>
+#include <hgl/ecs/support/PerfTimer.h>
 #include <hgl/ecs/core/MaterialBatch.h>
 #include <hgl/ecs/core/Entity.h>
 #include <cstdlib>
@@ -24,41 +25,6 @@
 
 namespace hgl::ecs
 {
-    namespace
-    {
-        // PBR_PERF=1 计时代（临时插桩，与 PrimitiveBatchPipeline.cpp 同口径）：
-        //   gpu_dispatch = 派发录制的 CPU 侧成本（T3g 起 = record+submit，不再含
-        //                  fence 等待与 Map 读回——那两项就是旧数据 1.1ms 的元凶）
-        // 计时用引擎时间源（CMCore hgl/time/Time.h 的单调 uptime，禁 std::chrono）。
-        struct CullPerfTimer
-        {
-            const bool on;
-            uint64_t   total_us = 0;
-            uint32_t   frames = 0;
-
-            CullPerfTimer() : on(getenv("PBR_PERF") != nullptr) {}
-
-            void Add(const char *name, uint64_t us, graph::VulkanDevice *device)
-            {
-                if (!on)
-                    return;
-
-                total_us += us;
-                ++frames;
-                if (frames % 240 == 0)
-                {
-                    // 泄漏判据（T3g）：稳态派发路径不再产生任何 Vk 对象 ⇒ 跟踪表
-                    // 计数应在启动期建完之后**恒定**；随帧上涨 = 又有每帧 new 混进来。
-                    const size_t tracked =
-                        device ? (size_t)device->GetTrackedObjectCount() : 0;
-                    GLogInfo("[PBR-PERF] %s: frames=%u avg=%.1f us/frame tracked_objects=%zu",
-                             name, frames, double(total_us) / frames, tracked);
-                    total_us = 0;
-                    frames = 0;
-                }
-            }
-        };
-    }
     namespace
     {
         // Push constants 结构（必须与 GLSL 侧 entity_gpu_cull.glsl 的
@@ -649,7 +615,11 @@ namespace hgl::ecs
         uint64_t global_addr = global_registry->GetGlobalAddressesAddress(frame_slot);
         if (global_addr == 0) return;
 
-        static CullPerfTimer s_dispatch_perf;
+        // gpu_dispatch = 派发录制的 CPU 侧成本（T3g 起 = record+submit，不再含 fence 等待与
+        // Map 读回——那两项就是旧数据 1.1ms 的元凶）。
+        // 附加诊断 tracked_objects：泄漏判据（T3g）—— 稳态派发路径不再产生任何 Vk 对象 ⇒
+        // 跟踪表计数应在启动期建完之后**恒定**；随帧上涨 = 又有每帧 new 混进来。
+        static PerfTimer s_dispatch_perf("gpu_dispatch");
         const uint64_t t_dispatch0 = s_dispatch_perf.on ? GetUptimeUs() : 0;
 
         // 命令缓冲按帧槽取用（T3g：环一次建好，这里只重录——旧版每帧 Create 是泄漏）
@@ -780,7 +750,8 @@ namespace hgl::ecs
         ++dispatch_count_;
 
         if (s_dispatch_perf.on)
-            s_dispatch_perf.Add("gpu_dispatch", GetUptimeUs() - t_dispatch0, device_);
+            s_dispatch_perf.Add(GetUptimeUs() - t_dispatch0, "tracked_objects",
+                                device_ ? (size_t)device_->GetTrackedObjectCount() : 0);
 
         static const bool s_cull_ssbo_dump = (getenv("CULL_SSBO_DUMP") != nullptr);
         if (s_cull_ssbo_dump)

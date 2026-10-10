@@ -178,7 +178,20 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
     ⚠️ **端到端对拍未取到**：开关打开后台架能正常注册并初始化（见 §4.1 行），但 `ShadowMap` 当前
     过不了启动阶段 ⇒ 拿不到对拍采样（与本次改动无关，见 §4.1 行）。`S3`
 - **两套同构 profiler** — `CullPerfTimer`（`GPUCullSystem.cpp:33-60`）与 `PerfTimer`（`PrimitiveBatchPipeline.cpp:121-146`），都匿名 namespace、都读 `getenv("PBR_PERF")`、都按 240 帧窗口平均。`S3`
+  - ⇒ **已处置（2026-10-10）**：抽成 `inc/hgl/ecs/support/PerfTimer.h` —— `PerfTimer`（`name` 构造 +
+    `Active()` + `Add(us, probe_name=nullptr, probe_value=0)`）+ `DeltaUs` + `PerfSpan` 一份实现；
+    两处调用点删掉本地副本。差异点收敛为**一个可选探针**：`gpu_dispatch` 的 `tracked_objects` 泄漏判据
+    只在打印那一帧格式化，取值成本留在调用侧（`GetTrackedObjectCount()` = `tracked_objects.size()`，O(1)）；
+    两种日志格式**逐字保留**（无探针=短格式，有探针=长格式）。`S3`
 - **重复计数常量** — `RENDER_NEED_COUNT=6` + `kRenderNeedRules_Count` + enum；`STRATEGY_FACT_COUNT=8` + 无人用的 `StrategyFact::Count`；`kSystemGroupCount` + `SystemGroupID::Count` + 字面 `static_assert == 4`。`S3`
+  - ⇒ **已处置（2026-10-10）**：`RenderNeed` 补 `Count = 6`，`RENDER_NEED_COUNT =
+    static_cast<uint32_t>(RenderNeed::Count)`（唯一来源）；删 `kRenderNeedRules_Count`，规则表改
+    `kRenderNeedRules[]`（长度由初始化列表推出）+ `static_assert(元素数 == RENDER_NEED_COUNT)` ——
+    比固定长度**更强**：漏一条规则是编译失败，而不是被静默补零；
+    `STRATEGY_FACT_COUNT = static_cast<uint32_t>(StrategyFact::Count)`（后者从"无人用"变成唯一来源）；
+    删字面 `static_assert(kSystemGroupCount == 4)` —— 各处 `[kSystemGroupCount]` 数组与 `kSystemGroupNames`
+    都已随 `SystemGroupID` 枚举自动 scale，该断言是纯噪音；其"系统侧 `SetRenderElementType` 字符串必须同步"
+    的信息并入组名注释（Test 25 契约仍钉着）。`S3`
 
 ### 2.4 `RenderTo` 手工遮蔽三个权威值（风险最高的一条冗余）✅复核
 `Context.cpp:739,777-779,786-788,941-942,944-945`
@@ -345,7 +358,12 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | **P0** | §1.2 `CameraControlMode::Free` 默认值 + 处理器全空 | 特例 | 建议先加显式告警，把静默冻结变成报错 |
 | ~~P0~~ | §1.2 `uses_render_item_resolve` 恒假 | 死代码 | ✅ **已处置（2026-10-09）**：恒假开关整体删除（`MaterialBatch.h` 字段 + `.cpp` 复位 + `PrimitiveBatchPipeline.cpp` 两处判定）；**4-ID 表 / `addr_global_render_items` / shader 解析链保留** —— 那是 GPU-Driven 路径的活路径 |
 | **P1** | §6 文档-代码脱钩（尤其把死函数当活约束的规划档） | 文档完整性 | 正在误导设计 |
-| ~~P1~~ | §2.3 4×`Initialize*Table` + 3×`Upload*DirtyRows` | 冗余 | ✅ **已处置（2026-10-09）**：上传侧=`UploadDirtyRowsHelper`（拆解时已做）；建表侧=抽 `BuildWorldRowTable<RowType>`，`ContextGPU.cpp` −117 行；§2.3 其余项（profiler×2 / 重复计数常量）**仍未做**；另：对拍台架开关正常，但当前树取不到对拍采样（见 §4.1 行） |
+| ~~P1~~ | §2.3 4×`Initialize*Table` + 3×`Upload*DirtyRows` | 冗余 | ✅ **已处置（2026-10-09）**：上传侧=`UploadDirtyRowsHelper`（拆解时已做）；建表侧=抽 `BuildWorldRowTable<RowType>`，`ContextGPU.cpp` −117 行；**§2.3 全部处置完**（2026-10-10：profiler 合并 `support/PerfTimer.h` + 计数常量单源）；
+另：对拍台架开关正常，但当前树取不到对拍采样（见 §4.1 行）。⚠️ 2026-10-10 补充环境事实：**所有 GUI 示例**
+在本会话的无声运行下都会早退（约 5s、退出码 127、日志停在不同位置 ⇒ 竞态；`CrashDumps` 无转储 ⇒ 非异常终止）——
+已用控制组排除代码原因（把本批改动整体换回 HEAD 版本后表现相同，且 `ClockUse`/`ShadowMap`/`GizmoUsage` 三个
+不同示例一致）⇒ **与审计各项无关**；其影响是：本轮及后续整改的**示例冒烟验证必须由用户在交互（有窗口）会话下做**，
+我在无声会话里只能跑无窗口测试（`ctest`）。 |
 | **P1** | §3.5 `PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 合并（差一个取反） | 多路径 | ~90 行，最清晰候选 |
 | **P1** | §2.3 三张表的脏行机制抽公共件（~120 行）+ 两个 `Write*DirtyIndices`（~200 行） | 冗余 | |
 | **P1** | §3.2 双重 `DetachAllComponents`；§2.2 `component_mask` 一致性仅测试保证 | 多路径/冗余 | |
