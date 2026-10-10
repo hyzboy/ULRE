@@ -40,7 +40,6 @@ set(ECS_CORE_FILES
     core/SystemGroup.cpp
     core/DefaultSystems.cpp
     core/MaterialBatch.cpp
-    core/RenderItem.cpp
     core/PrimitiveRenderItem.cpp
     systems/render/RenderSystemCore.cpp
 )

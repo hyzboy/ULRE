@@ -4758,9 +4758,12 @@ int main(int argc, char** argv)
             { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/RenderItem.h"),
               "MeshDrawKey draw_key;",
               "RenderItem 不再持行键（批处理又得回每实体 CPU 副本）" },
-            { "RenderItem.cpp", OS_TEXT("src/ecs/core/RenderItem.cpp"),
-              "const MeshDrawKey &a = draw_key;",
-              "Compare 不再按行键排序" },
+            // T4c4 起 CPU 绘制链已整体删除；2026-10-10（§1.1）又删掉它唯一的残留 `RenderItem::Compare`
+            // （零调用者）⇒ 原正向 needle（`const MeshDrawKey &a = draw_key;`）失去载体。
+            // 契约**意图不变**（不得回到 RenderItem 上的逐字段内容比较），改钉**禁复活**：
+            { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/RenderItem.h"),
+              "virtual int Compare(const RenderItem& other) const;",
+              "RenderItem::Compare 禁复活（CPU 绘制链已删；行派生键的唯一真源是 `draw_key`）", true },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "next_item->draw_key == draw_key",
               "聚簇不得回到按行键相等断簇（T4c4-3 已删 CPU 绘制批构建链）", true },

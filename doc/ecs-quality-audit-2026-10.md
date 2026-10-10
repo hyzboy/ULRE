@@ -15,6 +15,10 @@
 
 这两条不是风格问题，是**运行期可出错的状态机缺陷**。
 
+> ⚠️ **2026-10-10 对账：本节两条已在 `ce4259799`（2026-10-09 00:41「P0 安全修复」，当前分支祖先）修复。**
+> 各条下方给的是**当前代码**证据；审计写作时的行号已失效（被修代码所在文件其后经过重构/搬迁）。
+> 保留本节仅为历史记录 —— 请勿按本节去"修"已不存在的问题。
+
 ### 0.1 `LineBuffer::EnsureCapacity` 失败后 `gpu_capacity` 不回落 ⇒ 后续调用带空 geometry 返回成功 ✅复核
 `src/ecs/support/line/LineRenderPipeline.cpp:109-209`
 - `:113` 入口守卫 `if (needed <= gpu_capacity) return true;`
@@ -22,12 +26,23 @@
 - 五条失败路径（`:137-138`、`:146-153`、`:156-161`、`:170-176`、`:189-200`）都 `SAFE_CLEAR(geometry)` 后 `return false`，**都不重置 `gpu_capacity`**
 - 后果：**先成功扩容到 N，再失败一次扩容**（`geometry` 已置空）→ 之后任何 `needed <= N` 的调用在 `:113` 直接 `return true`，而 `geometry == nullptr`、四个 `va_*.Bind(nullptr)` 也已失效 ⇒ 调用方继续用空句柄
 - 佐证：`:601-614` 的 Build-mismatch 告警路径与 `.cpp:224` 的 `AddSegment` 失败，正是这个状态的症状面
+- ⇒ **已处置（2026-10-09 `ce4259799`）**：`EnsureCapacity` 在**放掉旧资源之前**先 `gpu_capacity = 0`
+  （现 `LineRenderPipeline.cpp:122`，紧接 `needed <= gpu_capacity` 守卫与 granule 取整之后）——
+  该函数此后所有 `return false` 路径离开时 `gpu_capacity` 恒为 0，`:113` 守卫**不可能**再在无 geometry
+  时返回 true；成功路径才在末尾写回 `new_cap`（现 `:208`）。反证方式：删掉 `:122` 那一行，即回到旧缺陷。
 
 ### 0.2 L2W 缓冲被按设备上限截断，而行号算术仍用预算值 ✅复核（支撑组指出）
 `src/ecs/support/TransformAssignmentBuffer.cpp`
 - `:460-470` `AllocateBudgetBuffers` 把 `row_count` **按设备 SSBO 上限截断**（注释自认"按设备上限截断（请调小预算）"）
 - 但 `:195-199` `GetDynamicBaseIndex()` 及两个 writer 仍用**预算**（`max_static_rows + kFirstObjectL2WSlot` / `max_dynamic_rows`）
 - 后果：设备 SSBO 上限低于声明预算时，动态段基址指向已建缓冲之外，而代码仍在写 ⇒ 越界写
+- ⇒ **已处置（2026-10-09 `ce4259799`）**：不再截断，改为**拒绝分配 + 明确报错**
+  （现 `TransformAssignmentBuffer.cpp:342-350`）：`row_count > MaxTransformCount` 时打
+  `声明预算超过设备 SSBO 上限：需要 N 行 > 设备上限 M 行 —— 拒绝分配（请调小预算），不截断以防行号算术越界写。`
+  并 `return false`。于是 `transform_buffer_max_count` **恒等于**由预算算出的
+  `GetTotalCount(max_static_rows + kFirstObjectL2WSlot, max_dynamic_rows)`，与 `GetDynamicBaseIndex()`
+  及两个 writer 的算法**同源** ⇒ 越界写在结构上不可能（这正是用户"资源容量不为极端场景预留、超限 fail-fast"的取向）。
+  注：审计引用的 `:460-470`/`:195-199` 行号是旧版文件（现 382 行）的，已失效。
 
 ---
 
@@ -85,10 +100,39 @@
 | `PrimitiveBatchPipeline::RunSorting()` **空体**，而 `PrimitiveSortSystem` **已注册在真实帧图里** | `PrimitiveBatchPipeline.cpp:203-205`；`DefaultSystems.cpp:97` | S3 |
 | `DrawItemCompaction` 的 indexed 标志（`IsIndexedDraw/GetDrawIndexOffset` 无生产调用者） | `support/DrawItemCompaction.h:18,24` | S3 |
 
+> ### ✅ 2026-10-10 执行记录（chunk 1：core 死代码，已全仓复核后删除）
+>
+> 逐符号 grep 复核（不信本表的旧快照）后删除：
+>
+> | 删掉的 | 复核证据 |
+> |---|---|
+> | `Object` 的 **ID 半边**：`ObjectID` / `objectId` / `nextObjectId` / `GetID()` / `SetName()` | 全仓命中只在 `Object.h/.cpp` 自身（`GetID()` 的其余命中属 `TransformAccessor`/`BoundingBoxAccessor` 等**别的类**）。**名字半边保留**：`objectName`/`GetName()` 被 `ECSContext`（建表/日志）与 `EntityManager` 在用 |
+> | `RenderItem::Compare()`（声明 + 24 行定义，零调用者） | 排序链随 T4c4 删 CPU 绘制后已消失；`Compare` 是最后残留 |
+> | `RenderItem::index`（唯一写者 `MaterialBatch.cpp:88`，零读者） | 写者一并删除 ⇒ 字段无任何使用者 |
+> | `src/ecs/core/RenderItem.cpp` **整个文件** | 删掉 `Compare` 后即为空 TU ⇒ 删文件 + 从 `CMakeLists.txt` 去登记；B3-iii 排序键说明迁到 `RenderItem.h` 的 `draw_key` 处 |
+> | `MaterialBatch::static_count`（恒 0、零读者） | 只有 `= 0` 的两处赋值 |
+> | `RenderGraph::Pass` 的 `enabled` / `runUpdate` / `submitTransforms` / `runRender` / `onBeforePass` / `onAfterPass` | 六者**全仓无赋值点**（唯一构造点传全 true/空）⇒ 删字段 + `RenderGraph.cpp` 五个死分支改无条件执行（含 `else if (submitTransforms)` 那条因 `runRender` 恒 true 而不可达的分支）；`RenderGraph.cpp` 的 `TransformSystem.h` include 一并清掉 |
+>
+> **明确保留（不属"免费删除"）**：`EntityGPU::work_flags` —— 它是 GPU 行**载荷合同**字段（88 B 载荷 / 128 B 步长 / `alignas(64)`），
+> GLSL 侧 `entity_gpu.glsl:43` 同序同型镜像 + `offsetof` 断言 + `ProbeTransformDiagnostics` 期望值都钉着它；
+> 删它等于改跨端布局（另一类改动），且文档已写明"等消费者定义后再填位表"。
+>
+> **顺带订正两条已失效子项**：① 本表 `TransformDataStorage::GetLocalMatrices`（原 row）—— 该读取口**已不存在**
+> （`grep` 全空；`local_matrices` 于 T8.5 随局部矩阵数组一起删除）；② `StrategyFact::Count`（原 row 标"全仓 0 命中"）
+> —— 现已作 `STRATEGY_FACT_COUNT` 的**唯一来源**（§2.3 计数常量单源那批）。
+>
+> 契约测试同步：`TestCSMIncrementalPass` 的 B3-iii 契约里那条读 `RenderItem.cpp` 的正向 needle 失去载体 ⇒
+> 按其自身先例改钉**禁复活**（`virtual int Compare(const RenderItem& other) const;` 不得再出现）。
+>
+> 其余 ~25 行待后续 chunk（下一批建议：Transform/行表一侧 + `PrimitiveBatchPipeline` 一侧）。
+
 ### 1.2 死枚举 / 死分支
 - **`ScenePipelineMode` 7 值中 5 个是空壳** — `core/ScenePipelineMode.h:19-23`；`Context.cpp:572-578` 全落同一空 `break`。仅 `StandardLitCSM` 有实现。且 `TestCSMIncrementalPass.cpp:1211-1224` 只断言 set/get 往返 ⇒ **测试全绿但功能为空**。项目已留置（`doc/backlog.md:674`）。`M ✅复核`
 - **`ComponentType::Texture` 零消费者槽位** — `support/ComponentTypeTable.h:35-36,106`。`M ✅复核`（注释自认"无组件载体…零消费者，仅登记"）
 - **`CameraControlMode::Free` 是组件默认值，而其处理器全空** — `CameraComponent.cpp:19` + `CameraSystem.cpp:202-208`（`ProcessInput`/`UpdateTransform` 皆空）⇒ **未配置的相机静默冻结**。`M ✅复核`
+  - ⇒ **已处置（2026-10-09 `ce4259799`）**：`FreeCameraMode::ProcessInput`（现 `CameraSystem.cpp:202-248`）
+    已实现自由飞行：鼠标左/右键拖拽改 `yaw`/`pitch`（±89° 夹紧）、六向移动 × `move_speed` × dt、
+    置 `matrix_dirty`；`UpdateTransform`（`:250-255`）维护 `target = position + forward` ⇒ 默认相机不再静默冻结。
 - **`LinesComponent::LineStyle`（`Dashed`/`Dotted` 永不选中，`style` 永不读）** + `LineChange::Style/Geometry` 与 `TextChange::*` 全部**只写不读** — `support/.../LinesComponent.h:29-34,46,118,122-132`；唯一活消费者 `TextRenderPipeline.cpp:664` 只判 `mask != 0`。`M ✅复核`（LineStyle）
 - **`CameraInputMapping` 的 `kActionResetView`(R) / `kActionFocusView`(F) 已绑定但无处置** — `CameraInputMapping.cpp:31-32`。`M ✅复核`
 
@@ -194,9 +238,15 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
     的信息并入组名注释（Test 25 契约仍钉着）。`S3`
 
 ### 2.4 `RenderTo` 手工遮蔽三个权威值（风险最高的一条冗余）✅复核
-`Context.cpp:739,777-779,786-788,941-942,944-945`
+`Context.cpp:739,777-779,786-788,941-942,944-945`（**行号已失效**）
 - 覆写 RT 的**权威清屏色**、覆写 `RenderTargetSystem` 的缓存 RT，再还原
 - **每个提前 return / 异常路径都是一次留下错误状态的机会**
+- ⇒ **已处置（2026-10-09 `ce4259799`）**：手工保存/还原已换成 RAII 守卫
+  **`RenderToStateGuard`（现 `src/ecs/core/ContextRender.cpp:402-435`）**，析构里无条件还原：
+  `render_target` + 帧号、RT 清屏色（`restore_clear` 时）、`RenderTargetSystem` 的缓存 RT、
+  相机覆盖（`RestoreMainCamera`），以及四个权威位 `active_camera_id` / `active_mobility_filter` /
+  `is_current_pass_shadow` / `has_shadow_origin` —— 任何提前 return 或异常都会走析构。
+  注：`RenderTo` 整条后续迁到了 `ContextRender.cpp`（审计引用的 `Context.cpp:739` 等已不存在）。
 
 ---
 
@@ -351,11 +401,11 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 
 | 优先级 | 项 | 类别 | 备注 |
 |---|---|---|---|
-| **P0** | §0.1 `LineBuffer::EnsureCapacity` 失败后 `gpu_capacity` 不回落 | **缺陷** | 后续调用带空 geometry 返回 true |
-| **P0** | §0.2 L2W 缓冲按设备上限截断而行号算术用预算 | **缺陷** | 越界写 |
-| **P0** | §2.4 `RenderTo` 三处手工遮蔽/还原权威值 | 冗余 | 建议改 RAII 守卫（提前 return 安全） |
+| ~~P0~~ | §0.1 `LineBuffer::EnsureCapacity` 失败后 `gpu_capacity` 不回落 | **缺陷** | ✅ **已处置（2026-10-09 `ce4259799`）**：`gpu_capacity = 0` 前置到放资源之前（`LineRenderPipeline.cpp:122`）⇒ 所有失败路径离开时恒 0，守卫不可能在空 geometry 时放行 |
+| ~~P0~~ | §0.2 L2W 缓冲按设备上限截断而行号算术用预算 | **缺陷** | ✅ **已处置（2026-10-09 `ce4259799`）**：不截断，超上限即**拒绝分配 + 报错**（`TransformAssignmentBuffer.cpp:342-350`）⇒ 实分配行数与预算同源 |
+| ~~P0~~ | §2.4 `RenderTo` 三处手工遮蔽/还原权威值 | 冗余 | ✅ **已处置（2026-10-09 `ce4259799`）**：`RenderToStateGuard` RAII（`ContextRender.cpp:402-435`）无条件还原 RT/帧号/清屏色/RTS 缓存/相机覆盖 + 四个权威位 |
 | ~~P0~~ | §3.1 `Register*System` 的 `is_render` | 名不符实 | ✅ **已处置（2026-10-09）**：`is_render` 形参 + 两个包装整体删除，只剩 `RegisterSystem<T>` |
-| **P0** | §1.2 `CameraControlMode::Free` 默认值 + 处理器全空 | 特例 | 建议先加显式告警，把静默冻结变成报错 |
+| ~~P0~~ | §1.2 `CameraControlMode::Free` 默认值 + 处理器全空 | 特例 | ✅ **已处置（2026-10-09 `ce4259799`）**：`FreeCameraMode` 已实现旋转/六向移动/`matrix_dirty`（`CameraSystem.cpp:202-255`） |
 | ~~P0~~ | §1.2 `uses_render_item_resolve` 恒假 | 死代码 | ✅ **已处置（2026-10-09）**：恒假开关整体删除（`MaterialBatch.h` 字段 + `.cpp` 复位 + `PrimitiveBatchPipeline.cpp` 两处判定）；**4-ID 表 / `addr_global_render_items` / shader 解析链保留** —— 那是 GPU-Driven 路径的活路径 |
 | **P1** | §6 文档-代码脱钩（尤其把死函数当活约束的规划档） | 文档完整性 | 正在误导设计 |
 | ~~P1~~ | §2.3 4×`Initialize*Table` + 3×`Upload*DirtyRows` | 冗余 | ✅ **已处置（2026-10-09）**：上传侧=`UploadDirtyRowsHelper`（拆解时已做）；建表侧=抽 `BuildWorldRowTable<RowType>`，`ContextGPU.cpp` −117 行；**§2.3 全部处置完**（2026-10-10：profiler 合并 `support/PerfTimer.h` + 计数常量单源）；
@@ -365,7 +415,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 不同示例一致）⇒ **与审计各项无关**；其影响是：本轮及后续整改的**示例冒烟验证必须由用户在交互（有窗口）会话下做**，
 我在无声会话里只能跑无窗口测试（`ctest`）。 |
 | **P1** | §3.5 `PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 合并（差一个取反） | 多路径 | ~90 行，最清晰候选 |
-| **P1** | §2.3 三张表的脏行机制抽公共件（~120 行）+ 两个 `Write*DirtyIndices`（~200 行） | 冗余 | |
+| ~~P1~~ | §2.3 三张表的脏行机制抽公共件（~120 行）+ 两个 `Write*DirtyIndices`（~200 行） | 冗余 | ✅ **已处置**：`support/DirtyRowSet.h` 收敛三表（`EntityGPUTable`/`EntityRenderIDTable`/`LightRowTable`）；两个 `Write*DirtyIndices` 已收敛为 `WriteDirtyIndicesInternal`（`TransformAssignmentBuffer.cpp`，公开壳仅 3 行） |
 | **P1** | §3.2 双重 `DetachAllComponents`；§2.2 `component_mask` 一致性仅测试保证 | 多路径/冗余 | |
 | ~~P1~~ | §4.1 `CPUCullReferenceSystem` 默认注册 / 4 个测试未注册 | 特例/测试 | ✅ **已处置**：台架已在 `#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)` 之后，且该宏此前**全仓无处定义**——2026-10-09 补上 CMake 选项（`src/ecs/CMakeLists.txt`）；10 个测试目标 `add_test` 齐备（ctest 实测全部运行）。2026-10-10 实测：开关打开后台架**能正常注册并初始化**
 （日志有 `[#22] [CPUCullReferenceSystem] Initialized`）⇒ 开关与注册路径本身是好的。⚠️ **但对拍采样取不到**：
@@ -373,7 +423,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 （252 行日志、无错误行、退出码 127）。已做控制组：把本批改动 stash 掉后表现**完全相同**；同环境 `ClockUse`
 正常跑满 774 行帧循环 ⇒ **非环境问题、非台架问题、非本批改动**。疑与 `3fe2194ee`（GPU 剔除阴影 Pass 批数校验 /
 Vulkan 同步保护）及《GPU 剔除多 Pass 架构设计与无阴影场景 GPU 挂起技术分析》所查的挂起同源 —— **待用户确认**。 |
-| **P2** | §1.1 零调用 API 批量删除（约 45 项，含 `Object` 身份半边） | 死代码 | 免费 |
+| **P2** | §1.1 零调用 API 批量删除（约 45 项，含 `Object` 身份半边） | 死代码 | ◐ **chunk 1 已删（2026-10-10）**：`Object` ID 半边 / `RenderItem::Compare`（+ 整删空 TU `RenderItem.cpp`）/ `RenderItem::index` 及其唯一写者 / `MaterialBatch::static_count` / `RenderGraph::Pass` 六个无赋值点字段（含 `RenderGraph.cpp` 五个死分支改无条件）；**`EntityGPU::work_flags` 保留**（GPU 行载荷合同，删它属跨端布局改动）；其余 ~25 行待后续 chunk |
 | **P2** | §3.3 变换遍历统一走 `ForEach*` | 多路径 | 须逐处核对跳洞 |
 | **P2** | §4.2 硬编码 0/1 号约定收敛为具名权威 | 特例 | |
 | **P3** | CMake 空壳变量（`ECS_SYS_17..26` 全空仍列在 `ECS_SOURCE` + `source_group`）、重复登记、变量名不符；测试移出生产目录 | 结构 | |
