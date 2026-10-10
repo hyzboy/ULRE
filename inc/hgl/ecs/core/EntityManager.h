@@ -30,7 +30,9 @@ namespace hgl::ecs
         {
             Entity  *entity = nullptr;   ///< 指向块内对象（**不拥有**；析构由本类显式调用）
             uint16_t generation = 0;
-            bool     alive = false;
+            // 2026-10-10（审计 §2.2）：`bool alive` 已删除 —— 它与 `entity != nullptr` **是同一事实**
+            // （创建/销毁/清空三处都成对写），而每个读取点都在重复判 `slot.alive && slot.entity`。
+            // 现在"有实体指针"就是"活着"的唯一来源。
         };
 
         std::vector<EntitySlot> slots;
@@ -83,7 +85,6 @@ namespace hgl::ecs
             entity->SetID(id);
 
             slots[index].entity = entity;
-            slots[index].alive = true;
             slots[index].generation = generation;
 
         #if ULRE_ECS_DEBUG_API
@@ -112,7 +113,7 @@ namespace hgl::ecs
         void ForEachAliveEntity(Fn &&fn) const
         {
             for (const EntitySlot &slot : slots)
-                if (slot.alive && slot.entity)
+                if (slot.entity)
                     fn(slot.entity);
         }
 

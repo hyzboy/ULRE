@@ -50,7 +50,6 @@ namespace hgl::ecs
             slot.entity->~Entity();      // 块池显式析构（~Entity 内部统一执行 DetachAllComponents 与行表注销）
             slot.entity = nullptr;
         }
-        slot.alive = false;
         slot.generation++;
 
         AddFreeIndex(id.index);
@@ -78,7 +77,7 @@ namespace hgl::ecs
             return false;
 
         const EntitySlot& slot = slots[id.index];
-        return slot.alive && slot.generation == id.generation;
+        return slot.entity != nullptr && slot.generation == id.generation;
     }
 
     void EntityManager::GetAllEntityPointers(std::vector<const Entity*>& out_entities) const
@@ -87,7 +86,7 @@ namespace hgl::ecs
 
         for (const auto& slot : slots)
         {
-            if (slot.alive && slot.entity)
+            if (slot.entity)
             {
                 out_entities.push_back(slot.entity);
             }
@@ -111,7 +110,6 @@ namespace hgl::ecs
                 ++detach_count;
             }
             slot.entity = nullptr;
-            slot.alive = false;
         }
         slots.clear();
         free_indices.clear();
