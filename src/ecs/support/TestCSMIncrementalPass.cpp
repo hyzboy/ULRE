@@ -4854,8 +4854,10 @@ int main(int argc, char** argv)
             // ① 仍在：类型 + 行号（三者缺一即 "GPU 面" 塌掉）
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "hgl::graph::GlobalSSBOBinding", "材质组件的 GPU 面不再是「类型 + 行号」" },
+            // B4-i 续（2026-10-10）：`authored` 与上面三个字段**同判据**（`.authored` 全仓读写 0 处、
+            // 且与「GPU 面只剩类型 + 行号」相矛盾）⇒ 原正向 needle 失去载体，改钉**禁复活**。
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "bool authored = false;", "材质数据行资源的「已授权」标记缺失" },
+              "bool authored = false;", "材质数据行资源又挂回 `authored` 死字段（零读写 ⇒ 按 B4-i 零残留判）", true },
             // B4-iii-a：行号复位语义已搬到「组件行结构默认值 + ClearMaterialRow 写默认行」
             { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
               "uint32 surface_data_index = uint32(-1);", "组件行缺「未设」哨兵默认值（会残留旧行号）" },
@@ -4878,8 +4880,9 @@ int main(int argc, char** argv)
                                                                          sizeof(kB4Contracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 31 Passed: B4-i 契约成立（MaterialData 的 GPU 面 = GlobalSSBOBinding 类型+行号 + authored；"
-                 u8"禁复活：per-entity buffer / element_capacity / byte_stride；共 %d 条契约）。",
+        GLogInfo(u8"Test 31 Passed: B4-i 契约成立（MaterialData 的 GPU 面 = GlobalSSBOBinding 类型+行号"
+                 u8"（2026-10-10 起 `authored` 死字段同按零残留在禁复活列）；"
+                 u8"禁复活：per-entity buffer / element_capacity / byte_stride / authored；共 %d 条契约）。",
                  static_cast<int>(sizeof(kB4Contracts) / sizeof(kB4Contracts[0])));
     }
 

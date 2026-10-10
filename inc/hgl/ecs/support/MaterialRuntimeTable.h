@@ -13,6 +13,16 @@
  *           覆盖 ⇒ `recipe_hash` 变；自有 SSBO 行 ⇒ `data_index_row` 变）⇒ 下次
  *           `Intern` 自然落到新行；`DetachOwned` 覆盖"同一实例必须就地独立、且
  *           键还没变"的显式分裂路径（分裂出的**自有行**不入键索引）。
+ *
+ *           ⚠ **现状（2026-10-10 审计 §1.1 复核）：生产路径当前不调用 `DetachOwned`** ——
+ *           所有差异都压进了键（见下「键的规矩」），且对共享行的写入被约束为**键的纯函数**
+ *           （幂等：见 `RenderPrimitiveCollectSystem` 里刷新 `cached_effective_recipe*` 处的注释）
+ *           ⇒ 共享在语义上安全、无需分裂。它**保留**为该模型的第二条路径（安全阀），
+ *           **使用条件** = 要写一个「不入键、且只属于该实例」的行内绑定字段时（直接 `GetMutable`
+ *           写共享行会让同键的其它实例一起变 = 串味）；也可用于「先分裂、后续帧原地改」的
+ *           编辑/调试流（分裂是内容拷贝 ⇒ 绑定地址不变、不重算；自有行不入键索引 ⇒ 键空间不随
+ *           实体数增长）。**别把它当死代码删**：`owned` 已织进表的账目 —— `RecycleRow` 据它
+ *           决定是否摘键索引，`GetSharedRowCount` / `GetOwnedRowCount` 也都读它。
  *         · **refcount**：`Intern` / `AddRef` 加引用，`Release` 减引用，**归零回收**
  *           （回收时经世界退休该行的纹理配置池行 —— GPU 侧绑定随行存亡）。
  *         · **世代**：行号复用按 **`+2` 保持奇数**（与 `TransformDataStorage` /
@@ -278,6 +288,9 @@ namespace hgl::ecs
         ///   · 独占的共享行（refcount <= 1）⇒ **就地**转自有（摘键索引）；
         ///   · 被多处引用的共享行 ⇒ 复制出一条**自有行**（不在键索引里，refcount = 1），
         ///     源行 refcount -1；返回新行号（超容量 ⇒ INVALID）。
+        /// 写时分裂（CoW）：把实例的行引用换成一条**不入键索引的自有行**
+        /// （已是自有行 ⇒ 幂等；独占行 ⇒ 就地转自有、零拷贝；被多处引用 ⇒ 拷贝 + 对源行 `Release`）。
+        /// ⚠ 生产路径当前未调用；用途与使用条件见文件头「写时分裂」条（2026-10-10 审计复核）。
         MaterialRuntimeRowID DetachOwned(MaterialRuntimeRowID id);
 
         /// 注意：`Get`/`GetMutable` 返回的指针在下一次 `Intern`/`DetachOwned`/`Clear`

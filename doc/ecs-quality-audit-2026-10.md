@@ -159,12 +159,16 @@
 > `LightRowTable::IsAllocated` 有 Test 44 在用（保留，chunk 2 已记）；`TransformSystem::SetDevice` 不是"空函数无人管"——
 > 它有唯一调用点 `PrimitiveBatchPipeline`，已随 API 一并删除（chunk 2）。
 >
-> ### ⏳ 待拍板（本 chunk **未动**，需要你给一句方向）
+> ### chunk 3b（2026-10-10，用户拍板后执行）
 >
-> | 项 | 现状 | 为何不直接删 |
-> |---|---|---|
-> | `MaterialRuntimeTable` 的 CoW 组：`DetachOwned`（50 行写时分裂）/ `AddRef` / `GetRefCount` / `GetFreeRowCount` / `GetGeneration` | **零生产调用者**，但 `DetachOwned` 是该表头注里写明的设计语义（写时分裂），且 `TestMaterialRuntimeTable` 有整套专属用例钉着（CoW 幂等 / refcount / 世代 ABA） | 删它等于砍表的语义面（refcount 本身被生产路径的 `Intern`/`Release` 用着）——属"设计取舍"而非"清零调用 API"，按你的零兼容取向**可以删**，但需要你确认那张表未来的定位 |
-> | `MaterialDataAuthoringResource::authored` | 审计说零消费者，但 `TestCSMIncrementalPass` **Test 31 有正向 needle**（`"bool authored = false;"` 必须在 `MaterialData.h` 里） | 删它会红一条契约测试；按"测试不是权威"我可以连 needle 一起改，但该字段与 `PackMaterialDataAuthoredFlags` 的 GPU 面同源，建议你拍板 |
+> | 项 | 处置 |
+> |---|---|
+> | `MaterialRuntimeTable` 的 CoW 组（`DetachOwned` / `AddRef` / `GetRefCount` / `GetFreeRowCount` / `GetGeneration`） | **保留**。它是该表「共享行 + per-instance 覆盖」模型的**第二条路径（安全阀）**：生产路径把一切差异压进了键、且对共享行的写入被约束为「键的纯函数」（幂等）⇒ 现状无需分裂；但一旦要写「不入键、只属该实例」的行内绑定字段，直接 `GetMutable` 会串味，那时必须先 `DetachOwned`。**用途 / 使用条件 / 「别当死代码删」的判据已写进 `MaterialRuntimeTable.h` 文件头「写时分裂」条与 `DetachOwned` 声明处**（判据：`owned` 已织进 `RecycleRow` 的摘键索引判定与 `GetSharedRowCount`/`GetOwnedRowCount`）。 |
+> | `MaterialDataAuthoringResource::authored` | **删除**。`.authored` 全仓**读写 0 处**，且与该结构自己的 B4-i「零残留」判据（GPU 面只剩类型 + 行号）矛盾 ⇒ 删字段 + 把 `Test 31` 失去载体的**正向 needle 改钉禁复活**（契约意图不变、判据更严；该针在同一个表里已有 `element_capacity` / `byte_stride` / `DeviceBuffer` 三条同族先例）。 |
+>
+> 踩坑记录：**禁复活 needle 会被注释里的同文本命中** —— 我在 `MaterialData.h` 的新注释里写了被禁声明的原文，`Test 31` 立刻红；改掉注释措辞（注释内不得出现被禁声明的字面量）后复绿。
+>
+> 验证：全仓 Release **0 error**；`ctest -C Release -L ecs` **9/9**；`TestCSMIncrementalPass` / `TestMaterialRuntimeTable` **2/2**（Test 31 新针生效、文案已更新）。
 >
 > 验证：全仓 Release **0 error**；`ctest -C Release -L ecs` **9/9**；`TestCSMIncrementalPass` **1/1（48 条契约全过）**。
 >
@@ -470,7 +474,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 （252 行日志、无错误行、退出码 127）。已做控制组：把本批改动 stash 掉后表现**完全相同**；同环境 `ClockUse`
 正常跑满 774 行帧循环 ⇒ **非环境问题、非台架问题、非本批改动**。疑与 `3fe2194ee`（GPU 剔除阴影 Pass 批数校验 /
 Vulkan 同步保护）及《GPU 剔除多 Pass 架构设计与无阴影场景 GPU 挂起技术分析》所查的挂起同源 —— **待用户确认**。 |
-| **P2** | §1.1 零调用 API 批量删除（约 45 项，含 `Object` 身份半边） | 死代码 | ◐ **进展（2026-10-10）**：**chunk 1**（core）= `Object` ID 半边 / `RenderItem::Compare`（+ 整删空 TU `RenderItem.cpp`）/ `RenderItem::index` 及唯一写者 / `MaterialBatch::static_count` / `RenderGraph::Pass` 六字段；**chunk 2**（Transform/行表/剔除）= 12 项（`SetWorldMatrix`、`GetSlotOwnerShared`、台架读数三件 + `ParityStats`、`gpu_visible_order_` 16KB、`TransformSystem::SetDevice/SetUpdateMovable/IsUpdateMovableEnabled/last_dynamic_count`、`LineStatsSystem::SetLogInterval`、两处 `IsAllocated`、`RenderBufferUploadSystem::GetDevice`、`CameraSystem::GetOverrideCamera`、`CameraInputMapping::EditContext/GetContext`）；**chunk 3a**（4-ID/材质表/SceneUBO）= `RenderItemDataStorage` 5 项 + `DrawItemIDStorage` 3 项与两个只写成员 + `SetExternalGPUBuffer`（含停放示例调用点）+ 两个 `GetLiveEntryCount` + `ResolveViewportUBO`/`ApplyResourceLayoutBindings` + `GetAuthoredGeneration`。**保留/待拍板**：`EntityGPU::work_flags`（GPU 行载荷合同）、`LightRowTable::IsAllocated`（测试用）、`SetMaterialID/SetTextureID`（测试用）、`updateMovable`/`last_static_count`（活）、`MaterialRuntimeTable` CoW 组与 `MaterialDataAuthoringResource::authored`（见执行记录里的待拍板节）。其余 ~20 行待 chunk 4（系统/组件一侧） |
+| **P2** | §1.1 零调用 API 批量删除（约 45 项，含 `Object` 身份半边） | 死代码 | ◐ **进展（2026-10-10）**：**chunk 1**（core）= `Object` ID 半边 / `RenderItem::Compare`（+ 整删空 TU `RenderItem.cpp`）/ `RenderItem::index` 及唯一写者 / `MaterialBatch::static_count` / `RenderGraph::Pass` 六字段；**chunk 2**（Transform/行表/剔除）= 12 项（`SetWorldMatrix`、`GetSlotOwnerShared`、台架读数三件 + `ParityStats`、`gpu_visible_order_` 16KB、`TransformSystem::SetDevice/SetUpdateMovable/IsUpdateMovableEnabled/last_dynamic_count`、`LineStatsSystem::SetLogInterval`、两处 `IsAllocated`、`RenderBufferUploadSystem::GetDevice`、`CameraSystem::GetOverrideCamera`、`CameraInputMapping::EditContext/GetContext`）；**chunk 3a**（4-ID/材质表/SceneUBO）= `RenderItemDataStorage` 5 项 + `DrawItemIDStorage` 3 项与两个只写成员 + `SetExternalGPUBuffer`（含停放示例调用点）+ 两个 `GetLiveEntryCount` + `ResolveViewportUBO`/`ApplyResourceLayoutBindings` + `GetAuthoredGeneration`。**保留/待拍板**：`EntityGPU::work_flags`（GPU 行载荷合同）、`LightRowTable::IsAllocated`（测试用）、`SetMaterialID/SetTextureID`（测试用）、`updateMovable`/`last_static_count`（活）、`MaterialRuntimeTable` CoW 组与 `MaterialDataAuthoringResource::authored`（见执行记录里的 chunk 3b 节；原「待拍板」两项已定）。其余 ~20 行待 chunk 4（系统/组件一侧） |
 | **P2** | §3.3 变换遍历统一走 `ForEach*` | 多路径 | 须逐处核对跳洞 |
 | **P2** | §4.2 硬编码 0/1 号约定收敛为具名权威 | 特例 | |
 | **P3** | CMake 空壳变量（`ECS_SYS_17..26` 全空仍列在 `ECS_SOURCE` + `source_group`）、重复登记、变量名不符；测试移出生产目录 | 结构 | |
