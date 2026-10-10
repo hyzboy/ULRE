@@ -1,4 +1,5 @@
 #include <hgl/ecs/support/RenderItemDataStorage.h>
+#include <hgl/ecs/support/GpuMirrorBuffer.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
 #include <algorithm>
@@ -215,54 +216,44 @@ namespace hgl::ecs
         if (!dev)
             return false;
 
-        if (device_buffer && gpu_capacity >= min_capacity && min_capacity > 0)
+        // 容量够 ⇒ 什么都不做（**不重标脏**，与旧实现逐字一致；脏标记只在真重分配后打）。
+        if (GpuMirrorCapacitySufficient(device_buffer, gpu_capacity, min_capacity))
             return true;
 
-        uint32_t target_capacity = min_capacity > 0 ? min_capacity : 1024;
-        if (gpu_capacity > 0)
-        {
-            target_capacity = std::max(target_capacity, gpu_capacity * 2);
-        }
-        // 对齐至 2 的幂次或至少 64
-        if (target_capacity < 64)
-            target_capacity = 64;
+        uint32_t target_capacity = 0;
 
-        const VkDeviceSize byte_size = sizeof(RenderItemDescriptor) * target_capacity;
+        // 策略 / 建 SSBO / 换缓冲 / 记容量与 BDA 走公共件（审计 §2.2）；本表特有的两点：
+        // ① 迁移已有行（钩子）② 重分配后重标全量脏。日志留在本表（对象日志宏）。
+        const GpuMirrorResult result = EnsureGpuMirrorBuffer(dev,
+                                                             device_buffer,
+                                                             gpu_capacity,
+                                                             gpu_address,
+                                                             min_capacity,
+                                                             sizeof(RenderItemDescriptor),
+                                                             target_capacity,
+                                                             [this](graph::DeviceBuffer *new_buffer, uint32_t)
+                                                             {
+                                                                 if (items.GetCount() > 0)
+                                                                 {
+                                                                     const VkDeviceSize copy_size = sizeof(RenderItemDescriptor) * items.GetCount();
+                                                                     new_buffer->Write(items.GetData(), 0, static_cast<uint32_t>(copy_size));
+                                                                 }
+                                                             });
 
-        graph::DeviceBuffer *new_buffer = dev->CreateSSBO(byte_size,
-                                                         nullptr,
-                                                         graph::BufferAllocPolicy::Auto,
-                                                         graph::SharingMode::Exclusive);
-        if (!new_buffer)
+        if (result == GpuMirrorResult::Unchanged)
+            return true;
+
+        if (result == GpuMirrorResult::Failed)
         {
             LogError(u8"[RenderItemDataStorage] 创建 SSBO 失败, 目标容量: %u, 字节数: %llu",
                      target_capacity,
-                     byte_size);
+                     static_cast<VkDeviceSize>(sizeof(RenderItemDescriptor)) * target_capacity);
             return false;
         }
 
-        // 如果已有旧缓冲且存在数据，迁移至新缓冲
-        if (items.GetCount() > 0)
-        {
-            const VkDeviceSize copy_size = sizeof(RenderItemDescriptor) * items.GetCount();
-            new_buffer->Write(items.GetData(), 0, static_cast<uint32_t>(copy_size));
-        }
-
-        if (device_buffer)
-        {
-            delete device_buffer;
-            device_buffer = nullptr;
-        }
-
-        device_buffer = new_buffer;
-        gpu_capacity = target_capacity;
-        gpu_address = dev->GetBufferDeviceAddressAligned16(device_buffer->GetBuffer());
-
         // 重新标记全量脏以确保 GPU 状态一致
         if (items.GetCount() > 0)
-        {
             MarkRangeDirty(0, static_cast<uint32_t>(items.GetCount()));
-        }
 
         LogInfo(u8"[RenderItemDataStorage] 扩容 GPU SSBO 成功: 容量 %u, 地址: 0x%llx",
                 gpu_capacity,

@@ -148,6 +148,7 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/EntityGPUTable.h
     ${ECS_INCLUDE_PATH}/support/EntityRenderIDTable.h
     ${ECS_INCLUDE_PATH}/support/DirtyRowSet.h
+    ${ECS_INCLUDE_PATH}/support/GpuMirrorBuffer.h
     ${ECS_INCLUDE_PATH}/support/LightRowTable.h
     ${ECS_INCLUDE_PATH}/support/GPUCullSystem.h
     ${ECS_INCLUDE_PATH}/support/CPUCullReferenceSystem.h
