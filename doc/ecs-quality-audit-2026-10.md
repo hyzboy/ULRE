@@ -169,6 +169,47 @@
 > 踩坑记录：**禁复活 needle 会被注释里的同文本命中** —— 我在 `MaterialData.h` 的新注释里写了被禁声明的原文，`Test 31` 立刻红；改掉注释措辞（注释内不得出现被禁声明的字面量）后复绿。
 >
 > 验证：全仓 Release **0 error**；`ctest -C Release -L ecs` **9/9**；`TestCSMIncrementalPass` / `TestMaterialRuntimeTable` **2/2**（Test 31 新针生效、文案已更新）。
+
+> ### chunk 4（2026-10-10）：系统 / 组件 / 统计一侧的零调用 API
+>
+> **删除（16 文件，全仓零调用者已逐个复核）**
+>
+> | 文件 | 删除项 |
+> |---|---|
+> | `Context.h` + `Context.cpp` | `GetActiveCameraID()`；`GetShadowProxy` **×4 重载**（decl+def）；只读 `GetShadowInfo()`；只读 `GetResourceNamePrefix()` |
+> | `Context.h` | `MainLightShadowSystem::GetShadowInfo()`（decl+def）—— 其唯一调用者是同为零外部调用者的系统侧同名 getter |
+> | `ShadowProxy.h` | 指向已删 API 的注释行 |
+> | `EntityManager.h/.cpp` | 非 const 版 `GetAllEntityPointers(std::vector<Entity*>&)`（**const 版才是活的**：`Context::GetAllEntities` 在用） |
+> | `PrimitiveRenderItem.h/.cpp` | `GetRuntimeSlot()` |
+> | `ColorPaletteSystem.h/.cpp` | 整个编辑 API：`GetPaletteUBO()` / `SetColor()` / `ResetToWhite()` |
+> | `EnvironmentSystem.h/.cpp` | `GetAmbientEnvInfo()` / `SetAmbientEnvInfo()`（读写都走 `EditAmbientEnvInfo()` + `MarkAmbientEnvDirty()`） |
+> | `GPUCullSystem.h` | `IsOverrideActiveThisFrame()`（自注与实际闸门不符，留着误导） |
+> | `ComponentTypeTable.h` | `ComponentMaskAdd` / `ComponentMaskRemove` / `ComponentTypeOf_v` |
+> | `LineRenderPipeline.h` + 3 处日志 | `LineCollectStats::culled_by_hzb`（**从不自增、恒 0**，却参与 `GetCullRatio()` 与三处日志）⇒ 字段 + 求和项 + 三处格式串/实参同步去掉 |
+> | `PrimitiveBatchPipeline.h/.cpp` | `prepared_frame_index`（只被"读一次再写回"、无 early return 用它 ⇒ **不是守卫**；`TextRenderPipeline` 的同名字段是真守卫，未动） |
+> | `TransformAssignmentBuffer.cpp` | `ShouldEmitPeriodicLog()`（恒 `false`，body 已注释）+ 其唯一调用点（EnsureBudget 里的死分支）+ 随之成为零调用者的 `LogDeviceBufferSnapshot()` |
+>
+> **判定项结论（本批保留，均已注明理由）**
+>
+> | 项 | 结论 |
+> |---|---|
+> | `PrimitiveRenderPipeline::Render(cmd)` 空实现 | **保留**：`RenderPipelineBase::Render` 是**纯虚**（`= 0`），删了类变抽象 —— 这行空体不是死代码而是接口要求。 |
+> | `LightSystem::SetMainLight(const LightRow&)` | **保留**：它不是"零调用 API"，而是 5 个公开 setter（Direction/Color/Intensity/AngleDeg/Time）**共用的内部写入器**。 |
+> | `PrimitiveBatchPipeline::RunSorting()` 空体 + `PrimitiveSortSystem`（已注册在真实帧图） | **保留（设计取舍）**：Sort 相位本身在帧图里，空体是形态 B（GPU 驱动、CPU 排序随 T4c4 删除）的正常结果；删系统 = 动帧图结构，非"删死 API"。 |
+> | `IsIndexedDraw` / `GetDrawIndexOffset` | **保留**：`TestRenderItemDataStorage` 在用（与 `SetMaterialID`/`SetTextureID` 同族：测试覆盖的编码解码器）。 |
+> | `RenderNeed::EarlyZ` | **保留**：策略表有规则（"有几何即可"），`TestRenderStrategyTable` 钉着 `HasRenderNeed(EarlyZ)`。 |
+> | `GetMaterialRuntimeSlot(Entity*)` ×2 | **保留**：`Test 28` 既钉存在性 needle 又做"EntityID 版与 `Entity*` 版同落点"的行为对拍。 |
+> | `MainLightShadowSystem::SetShadowInfo` / `ECSContext::SetShadowInfo` | **保留**：前者被 `TestCSMIncrementalPass` 的存在性 needle 钉为"影子数据写入口"，后者是它的落点。 |
+> | `ECSContext::SetResourceNamePrefix` + 成员 `resource_name_prefix` | **保留**：**8 个活调用点**（`SceneGraph/module/OffscreenWorld` + 7 个示例）；只删零调用者的**读取端** —— 该成员因此"只写不读"（分层泄漏追踪读取端未实现，即审计原判）。 |
+>
+> **本批两处踩坑（都已修）**
+>
+> 1. **grep 范围漏洞**：复核零调用者时我只扫了 `inc/hgl/ecs` + `src/ecs` + `example/`，**漏了 `src/SceneGraph/`** ⇒ `SetResourceNamePrefix` 被误删、`ULRE.SceneGraph` 编译报 `C2039`。教训："全仓零调用者"的 grep 必须覆盖 `inc/`、`src/`、`example/` 的全部子目录（本仓 ECS 之外还有 SceneGraph 等模块在调 ECS API）。
+> 2. **隐式实例化的载体**：删掉 `Context.cpp` 的四个 `GetShadowProxy` 包装后，`TestTransformFlatStorage` 报 `LNK2019: unresolved external symbol Entity::GetComponent<ShadowProxy>()` —— 该模板**只声明在 `Entity.h`、定义在 `Context.h` 尾部**，而 `ShadowProxy.cpp` 此前并不 include `Context.h`：是那四个被删函数经组件模板**顺带实例化**出了这个符号。修法：按同目录 `GeometryData.cpp` / `MaterialData.cpp` 的既有规矩，`ShadowProxy.cpp` 补 `#include<hgl/ecs/core/Entity.h>` + `<hgl/ecs/core/Context.h>`（自己看得见定义）。**教训**：删"零调用"的包装函数前，先查它是否顺带提供了某个只在别处声明的模板实例。
+>
+> **测试改钉（Test 28，A7c-2 双句柄契约）**：`ECSContext::GetShadowProxy` 的"指针版直通核心"计数针失去载体 ⇒ ① 原行改钉**禁复活**（`GetShadowProxy` 在 `Context.cpp` 中出现 0 次）；② 同一"计数式"精度迁到存活唯一路径 `src/ecs/components/ShadowProxy.cpp`（`return owner->GetComponent<ShadowProxy>();` 必须恰好 2 条：const / 非 const）+ 该文件不得出现 `GetEntity(owner)`；③ `GetEntity(owner)` 期望数 11 → **9**（删掉的 2 个 EntityID 重载各解析一次）。
+>
+> 验证：全仓 Release **0 error**；`ctest -C Release -L ecs` **9/9**；`TestCSMIncrementalPass` **48 契约全过**（Test 28：4 条存在性 + 10 条计数式）。
 >
 > 验证：全仓 Release **0 error**；`ctest -C Release -L ecs` **9/9**；`TestCSMIncrementalPass` **1/1（48 条契约全过）**。
 >
