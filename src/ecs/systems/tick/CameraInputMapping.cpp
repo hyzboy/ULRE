@@ -45,11 +45,5 @@ namespace hgl::ecs
         mapper.PushContext(&context);
         context_ready = true;
     }
-
-    io::InputContext& CameraInputMapping::EditContext()
-    {
-        configured = true;
-        return context;
-    }
 }
 

@@ -124,7 +124,54 @@
 > 契约测试同步：`TestCSMIncrementalPass` 的 B3-iii 契约里那条读 `RenderItem.cpp` 的正向 needle 失去载体 ⇒
 > 按其自身先例改钉**禁复活**（`virtual int Compare(const RenderItem& other) const;` 不得再出现）。
 >
-> 其余 ~25 行待后续 chunk（下一批建议：Transform/行表一侧 + `PrimitiveBatchPipeline` 一侧）。
+> ### ✅ 2026-10-10 执行记录（chunk 2：Transform / 行表 / 剔除 一侧，共 12 项）
+>
+> | 删掉的 | 复核证据 |
+> |---|---|
+> | `TransformDataStorage::SetWorldMatrix` | 全仓只有自身定义（公开写 `world_matrices` 并清 `matrixDirty` ⇒ 本可绕过重算，反被当隐患） |
+> | `CameraInfoStorage::GetSlotOwnerShared` | 只有声明 + 定义；`GetSlotOwner`（裸指针版）是活的（Context + Test 23 用），保留 |
+> | `CPUCullReferenceSystem::GetVisibleCount` / `GetGPUVisibleCount` | 台架读数导出面，**全仓零调用者**（`GPUCullSystem::GetGPUVisibleCount` 是**另一个类**的，别混） |
+> | `CPUCullReferenceSystem::ParityStats` 结构 + `GetParityStats()` + `last_parity_stats_` | 唯一读者是它自己那行 `[CPUCullReferenceSystem] Parity:` 日志 ⇒ 取消结构，日志直接用局部量（`cpu_count_`/`gpu_count_`/`both`/`mismatch`） |
+> | `CPUCullReferenceSystem::gpu_visible_order_`（**16 KB**） | 只有一处写入（读回循环），零读者 ⇒ 删字段 + 该写入行；只写不读的"保序表"在多批下早已作废（同文件注释自认） |
+> | `TransformSystem::SetDevice()`（**空函数**） | 声明 + 唯一调用点 `PrimitiveBatchPipeline`（`transform_system->SetDevice(device)`）一并删除 |
+> | `TransformSystem::SetUpdateMovable` / `IsUpdateMovableEnabled` | 零调用者；**`updateMovable` 成员是活的**（`TransformSystem.cpp:72` 判据，恒默认 true），保留成员只删访问器 |
+> | `TransformSystem::last_dynamic_count` | 只有一处写入、零读者；`last_static_count` 是活的（`:249` 读），保留 |
+> | `LineStatsSystem::SetLogInterval` | 零调用者；`log_interval` 成员照旧（系统自己用于周期日志） |
+> | `EntityGPUTable::IsAllocated` / `EntityRenderIDTable::IsAllocated` | 零调用者；**`LightRowTable::IsAllocated` 保留**（Test 44 契约在用） |
+> | `RenderBufferUploadSystem::GetDevice` | 零调用者；`SetDevice` 与 `device` 成员是活的（Context / DefaultSystems 在用） |
+> | `CameraSystem::GetOverrideCamera` | 零调用者；`SetOverrideCamera` + `RestoreMainCamera` 是活的（RenderTo 用） |
+> | `CameraInputMapping::EditContext()` / `GetContext()` | 零调用者（⇒ 作者自定义键位路径不可达）；`context` 成员与 `EnsureContext` 是活的 |
+>
+> 验证：全仓 Release **0 error**；`ctest -C Release -L ecs` **9/9**；`TestCSMIncrementalPass` **1/1（48 条契约全过）**。
+>
+> ### ✅ 2026-10-10 执行记录（chunk 3a：4-ID / 材质表 / SceneUBO 一侧）
+>
+> | 删掉的 | 复核证据 |
+> |---|---|
+> | `RenderItemDataStorage::SetTransformID` / `SetGeometryID` / `IsValidHandle` / `GetGPUCapacity` / `GetDeviceBuffer` | 全仓零调用者（声明 + 定义之外无引用） |
+> | `DrawItemIDStorage::GetDeviceBuffer` / `GetLastFrameUploadedBytes` / `GetLastFrameItemCount` + 成员 `last_frame_uploaded_bytes` / `last_frame_item_count` | getter 零调用者 ⇒ 成员随之成为只写死状态（6 处写入一并删除） |
+> | `DrawItemIDStorage::SetExternalGPUBuffer`（+ 停放示例 `_Obsolete/ComputeAsteroidBelt.cpp` 的调用点） | 引擎侧零生产调用者，仅该停放示例在用；**external-GPU 地址模式保留**（`Set/Get/HasExternalGPUAddress` 有 `TestRenderItemDataStorage` Test 12 在用） |
+> | `MaterialAuthoringSideTable::GetLiveEntryCount` / `MaterialRuntimePipelineTable::GetLiveEntryCount` | 连测试都不用（注释自认"观测/诊断用"） |
+> | `RenderSceneUBOSystem::ResolveViewportUBO()` + `ApplyResourceLayoutBindings()` | 前者零调用者；后者**确为空体**（只有 guard + 一段"无绑定可推"说明）⇒ 删函数、把说明并进 `SyncBindingsForCurrentCommand` 注释。⚠️ **审计说 `SyncBindingsForCurrentCommand` 也空——错**：它内含 `EnsureViewportUBO()`（真动作），保留 |
+> | `MaterialData::GetAuthoredGeneration()` | 零调用者；B4-ii 起消费者只读行内 revision（Test 35 的禁复活 needle 正是钉"不得再读组件副本"）⇒ 删访问器，成员 `authored_generation` 仍在内部使用 |
+>
+> **顺带订正审计旧表三处**（都以全仓 grep 为准）：`SetMaterialID` / `SetTextureID` **有测试在用**（保留）；
+> `LightRowTable::IsAllocated` 有 Test 44 在用（保留，chunk 2 已记）；`TransformSystem::SetDevice` 不是"空函数无人管"——
+> 它有唯一调用点 `PrimitiveBatchPipeline`，已随 API 一并删除（chunk 2）。
+>
+> ### ⏳ 待拍板（本 chunk **未动**，需要你给一句方向）
+>
+> | 项 | 现状 | 为何不直接删 |
+> |---|---|---|
+> | `MaterialRuntimeTable` 的 CoW 组：`DetachOwned`（50 行写时分裂）/ `AddRef` / `GetRefCount` / `GetFreeRowCount` / `GetGeneration` | **零生产调用者**，但 `DetachOwned` 是该表头注里写明的设计语义（写时分裂），且 `TestMaterialRuntimeTable` 有整套专属用例钉着（CoW 幂等 / refcount / 世代 ABA） | 删它等于砍表的语义面（refcount 本身被生产路径的 `Intern`/`Release` 用着）——属"设计取舍"而非"清零调用 API"，按你的零兼容取向**可以删**，但需要你确认那张表未来的定位 |
+> | `MaterialDataAuthoringResource::authored` | 审计说零消费者，但 `TestCSMIncrementalPass` **Test 31 有正向 needle**（`"bool authored = false;"` 必须在 `MaterialData.h` 里） | 删它会红一条契约测试；按"测试不是权威"我可以连 needle 一起改，但该字段与 `PackMaterialDataAuthoredFlags` 的 GPU 面同源，建议你拍板 |
+>
+> 验证：全仓 Release **0 error**；`ctest -C Release -L ecs` **9/9**；`TestCSMIncrementalPass` **1/1（48 条契约全过）**。
+>
+> 其余约 20 行待后续 chunk（下一批建议：系统/组件一侧 —— `ColorPaletteSystem` 编辑 API、`LightSystem::SetMainLight`、
+> `EnvironmentSystem::Set/GetAmbientEnvInfo`、`MainLightShadowSystem::Get/SetShadowInfo` 等；以及四条"非免费删"的判定项：
+> `RenderNeed::EarlyZ`、`PrimitiveBatchPipeline::RunSorting()` 空体（但 `PrimitiveSortSystem` 注册在真实帧图里，要连注册面处理）、
+> `ShouldEmitPeriodicLog`（恒 false、body 已注释）、`TransformDataStorage::GetLocalMatrices`（**已不存在** ⇒ 只需标注）。）
 
 ### 1.2 死枚举 / 死分支
 - **`ScenePipelineMode` 7 值中 5 个是空壳** — `core/ScenePipelineMode.h:19-23`；`Context.cpp:572-578` 全落同一空 `break`。仅 `StandardLitCSM` 有实现。且 `TestCSMIncrementalPass.cpp:1211-1224` 只断言 set/get 往返 ⇒ **测试全绿但功能为空**。项目已留置（`doc/backlog.md:674`）。`M ✅复核`
@@ -423,7 +470,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 （252 行日志、无错误行、退出码 127）。已做控制组：把本批改动 stash 掉后表现**完全相同**；同环境 `ClockUse`
 正常跑满 774 行帧循环 ⇒ **非环境问题、非台架问题、非本批改动**。疑与 `3fe2194ee`（GPU 剔除阴影 Pass 批数校验 /
 Vulkan 同步保护）及《GPU 剔除多 Pass 架构设计与无阴影场景 GPU 挂起技术分析》所查的挂起同源 —— **待用户确认**。 |
-| **P2** | §1.1 零调用 API 批量删除（约 45 项，含 `Object` 身份半边） | 死代码 | ◐ **chunk 1 已删（2026-10-10）**：`Object` ID 半边 / `RenderItem::Compare`（+ 整删空 TU `RenderItem.cpp`）/ `RenderItem::index` 及其唯一写者 / `MaterialBatch::static_count` / `RenderGraph::Pass` 六个无赋值点字段（含 `RenderGraph.cpp` 五个死分支改无条件）；**`EntityGPU::work_flags` 保留**（GPU 行载荷合同，删它属跨端布局改动）；其余 ~25 行待后续 chunk |
+| **P2** | §1.1 零调用 API 批量删除（约 45 项，含 `Object` 身份半边） | 死代码 | ◐ **进展（2026-10-10）**：**chunk 1**（core）= `Object` ID 半边 / `RenderItem::Compare`（+ 整删空 TU `RenderItem.cpp`）/ `RenderItem::index` 及唯一写者 / `MaterialBatch::static_count` / `RenderGraph::Pass` 六字段；**chunk 2**（Transform/行表/剔除）= 12 项（`SetWorldMatrix`、`GetSlotOwnerShared`、台架读数三件 + `ParityStats`、`gpu_visible_order_` 16KB、`TransformSystem::SetDevice/SetUpdateMovable/IsUpdateMovableEnabled/last_dynamic_count`、`LineStatsSystem::SetLogInterval`、两处 `IsAllocated`、`RenderBufferUploadSystem::GetDevice`、`CameraSystem::GetOverrideCamera`、`CameraInputMapping::EditContext/GetContext`）；**chunk 3a**（4-ID/材质表/SceneUBO）= `RenderItemDataStorage` 5 项 + `DrawItemIDStorage` 3 项与两个只写成员 + `SetExternalGPUBuffer`（含停放示例调用点）+ 两个 `GetLiveEntryCount` + `ResolveViewportUBO`/`ApplyResourceLayoutBindings` + `GetAuthoredGeneration`。**保留/待拍板**：`EntityGPU::work_flags`（GPU 行载荷合同）、`LightRowTable::IsAllocated`（测试用）、`SetMaterialID/SetTextureID`（测试用）、`updateMovable`/`last_static_count`（活）、`MaterialRuntimeTable` CoW 组与 `MaterialDataAuthoringResource::authored`（见执行记录里的待拍板节）。其余 ~20 行待 chunk 4（系统/组件一侧） |
 | **P2** | §3.3 变换遍历统一走 `ForEach*` | 多路径 | 须逐处核对跳洞 |
 | **P2** | §4.2 硬编码 0/1 号约定收敛为具名权威 | 特例 | |
 | **P3** | CMake 空壳变量（`ECS_SYS_17..26` 全空仍列在 `ECS_SOURCE` + `source_group`）、重复登记、变量名不符；测试移出生产目录 | 结构 | |

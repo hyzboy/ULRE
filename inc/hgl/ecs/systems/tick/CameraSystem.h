@@ -133,7 +133,6 @@ namespace hgl
 
             /// pass 级相机覆盖（RenderTo 期间由 ECSContext 设置/解除）
             void SetOverrideCamera(CameraComponent* camera) { override_camera = camera; }
-            CameraComponent* GetOverrideCamera() const { return override_camera; }
 
             /// pass 覆盖解除后恢复主相机共享数据（不重算矩阵、不消耗输入）
             void RestoreMainCamera();

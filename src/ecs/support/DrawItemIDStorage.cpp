@@ -22,18 +22,6 @@ namespace hgl::ecs
         external_gpu_address = 0;
     }
 
-    void DrawItemIDStorage::SetExternalGPUBuffer(graph::DeviceBuffer *buf, graph::VulkanDevice *dev)
-    {
-        if (buf && buf->GetBuffer() && dev)
-        {
-            external_gpu_address = dev->GetBufferDeviceAddressAligned16(buf->GetBuffer());
-        }
-        else
-        {
-            external_gpu_address = 0;
-        }
-    }
-
     uint32_t DrawItemIDStorage::Append(const uint32_t *handles, const uint32_t count)
     {
         if (!handles || count == 0)
@@ -106,29 +94,21 @@ namespace hgl::ecs
     bool DrawItemIDStorage::SyncToGPU(graph::VulkanDevice *dev)
     {
         if (external_gpu_address != 0)
-        {
-            last_frame_uploaded_bytes = 0;
             return true;
-        }
 
         if (!dev)
             return false;
 
         const uint32_t count = static_cast<uint32_t>(ids.GetCount());
-        last_frame_item_count = count;
 
         if (count == 0)
-        {
-            last_frame_uploaded_bytes = 0;
             return true;
-        }
 
         if (!EnsureGPUBuffer(dev, count))
             return false;
 
         const VkDeviceSize byte_size = static_cast<VkDeviceSize>(count) * sizeof(uint32_t);
         device_buffer->Write(ids.GetData(), 0, static_cast<uint32_t>(byte_size));
-        last_frame_uploaded_bytes = static_cast<uint32_t>(byte_size);
         is_dirty = false;
         return true;
     }
@@ -142,7 +122,5 @@ namespace hgl::ecs
         }
         gpu_capacity = 0;
         gpu_address = 0;
-        last_frame_uploaded_bytes = 0;
-        last_frame_item_count = 0;
     }
 }

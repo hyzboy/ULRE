@@ -84,13 +84,11 @@ namespace hgl::ecs
         RenderItemDescriptor *Get(RenderItemHandle handle);
 
         bool Set(RenderItemHandle handle, const RenderItemDescriptor &desc);
-        bool SetTransformID(RenderItemHandle handle, uint32_t transform_id);
-        bool SetGeometryID(RenderItemHandle handle, uint32_t geometry_id);
+        // 2026-10-10（审计 §1.1）：`SetTransformID` / `SetGeometryID` / `IsValidHandle` 全仓零调用者 ⇒ 删除。
+        //（`SetMaterialID` / `SetTextureID` 有 `TestRenderItemDataStorage` 在用，保留。）
         bool SetMaterialID(RenderItemHandle handle, uint32_t material_id);
         bool SetTextureID(RenderItemHandle handle, uint32_t texture_id);
         bool Set4ID(RenderItemHandle handle, uint32_t transform_id, uint32_t geometry_id, uint32_t material_id, uint32_t texture_id);
-
-        bool IsValidHandle(RenderItemHandle handle) const;
 
     public:
         // ── 容量与计数查询 ──
@@ -123,8 +121,7 @@ namespace hgl::ecs
         void ReleaseGPUBuffer();
 
         /// 获取 GPU SSBO 句柄与 BDA
-        graph::DeviceBuffer *GetDeviceBuffer() const { return device_buffer; }
         uint64_t GetGPUAddress() const { return gpu_address; }
-        uint32_t GetGPUCapacity() const { return gpu_capacity; }
+        // `GetDeviceBuffer()` / `GetGPUCapacity()` 零调用者 ⇒ 已删除（2026-10-10）。
     };
 }//namespace hgl::ecs

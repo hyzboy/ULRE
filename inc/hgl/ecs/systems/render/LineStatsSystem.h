@@ -18,7 +18,6 @@ namespace hgl::ecs
         ~LineStatsSystem() override = default;
 
         void SetWorld(ECSContext* w) { world = w; }
-        void SetLogInterval(uint32_t interval) { log_interval = interval > 0 ? interval : 1; }
 
         void Update(float deltaTime) override;
     };

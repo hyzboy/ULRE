@@ -96,7 +96,6 @@ namespace hgl::ecs
         CameraComponent *GetSlotOwner(uint32_t slot) const;
 
         /// 槽的宿主相机（shared 形式；槽空闲 / 宿主已死 ⇒ 空）
-        std::shared_ptr<CameraComponent> GetSlotOwnerShared(uint32_t slot) const;
 
         /// 相机在本世界的槽号；不属于本世界 ⇒ INVALID_SLOT
         uint32_t FindSlot(const CameraComponent *camera) const;

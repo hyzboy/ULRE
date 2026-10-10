@@ -203,17 +203,19 @@ RegisterDefaultEcsSystems       :228-245 → 返回 input_system 给 WorkObject
 
 ### 3.6 RenderGraph：pass 序列
 
-`RenderGraph::Pass{startPhase, endPhase, renderTarget, enabled, runUpdate, submitTransforms, runRender, onBeforePass, onAfterPass}`（`inc/hgl/ecs/core/RenderGraph.h:30-85`）。**只有一条构造路径**：
+`RenderGraph::Pass{startPhase, endPhase}`（`inc/hgl/ecs/core/RenderGraph.h:31-47`）。**只有一条构造路径**：
+
+（历史：该结构曾带 `renderTarget` 与 `enabled` / `runUpdate` / `submitTransforms` / `runRender` / `onBeforePass` / `onAfterPass` 六个配置字段 —— `renderTarget` 随 A3「pass 级跨 RT 切换」删除；其余六个**全仓从未有过赋值点**（唯一构造点传全 true/空），2026-10-10 随审计 §1.1 一并删除 ⇒ pass 执行改为无条件。）
 
 | 路径 | 内容 | 触发 |
 |---|---|---|
-| `CreateAdaptiveRenderGraph(context, stats)`（`inc/hgl/ecs/core/RenderGraph.h:145`，`src/ecs/core/RenderGraph.cpp:217-262`） | 遍历 `SystemGroupRegistry` 全部组：先按 `stats.HasGroup(name)` 调 `SetElementTypeSystemsEnabled`；命中的组各 `Add` 一段 pass（`startPhase..endPhase`，全 true，`renderTarget = nullptr`） | 每帧 `Render` 入口；仅当 `scene_structure_dirty` 且 `SceneStats::GetHash()` 变化才真正重建（`src/ecs/core/Context.cpp:602-615`） |
+| `CreateAdaptiveRenderGraph(context, stats)`（`inc/hgl/ecs/core/RenderGraph.h:145`，`src/ecs/core/RenderGraph.cpp:217-262`） | 遍历 `SystemGroupRegistry` 全部组：先按 `stats.HasGroup(name)` 调 `SetElementTypeSystemsEnabled`；命中的组各 `Add` 一段 pass（`startPhase..endPhase`） | 每帧 `Render` 入口；仅当 `scene_structure_dirty` 且 `SceneStats::GetHash()` 变化才真正重建（`src/ecs/core/Context.cpp:602-615`） |
 
 `CreateDefaultLinearGraph` / `use_adaptive_render_graph` / `SetAdaptiveRenderGraphEnabled` 均已删除（0 命中）。
 
 `SceneStats`（`inc/hgl/ecs/core/RenderGraph.h:112-133`）只持有 `std::set<std::string> active_render_groups` + FNV 风格 `GetHash()`；`GatherSceneStats`（`src/ecs/core/RenderGraph.cpp:179-215`）遍历全部实体及其组件，按 `Component::GetSystemGroupName()` 收敛组名集合。
 
-**注意 `Pass::renderTarget` 尚未生效**：`ExecuteRenderGraphPasses` 不读该字段（cmd buffer 由帧初始 RT 的 `RenderSystemCore::BeginFrame()` 取得），设了非当前 RT 只会打一条告警（`inc/hgl/ecs/core/RenderGraph.h:38-48` 警告注释、`src/ecs/core/RenderGraph.cpp:110-118`）。跨 RT 渲染的现行路径是 `ECSContext::RenderTo(RenderPassRequest)`（§4.5），不是 pass 的 RT 字段。
+**pass 不带目标 RT**：`renderTarget` 字段与那条「设了会被忽略」的告警已随 A3 删除（cmd buffer 由帧初始 RT 的 `RenderSystemCore::BeginFrame()` 取得）。跨 RT 渲染的唯一现行路径是 `ECSContext::RenderTo(RenderPassRequest)`（§4.5）。
 
 `EnsureSystemGroupsRegistered` 必须在建图前跑过一次（`src/ecs/core/DefaultSystems.cpp:240`），否则组元数据缺失 → 图里没有对应 pass。
 
@@ -260,13 +262,11 @@ RenderFrameSync(dt)                     Context.cpp:711-717（RenderSceneUBOSyst
 `ExecuteRenderGraphPasses`（`src/ecs/core/RenderGraph.cpp:91-160`）对每个 pass：
 
 ```
-跳过 !pass.enabled 的 pass（:102-106）
-pass.renderTarget 与当前 RT 不同 → 告警但按当前 RT 渲染（:112-118）
-onBeforePass（可选）                        （:120-124）
-runUpdate → RunRenderPhaseUpdates(max(start, RenderDrawSubmit), endPhase)   （:126-138，只跑 pass 内相位）
-runRender → RecordPreparedRenderPhaseRange(start, endPhase, dt, submitTransforms, "[ECS RENDER] Render")  （:140-144）
-   （runRender == false 但 submitTransforms == true 时只调 TransformSystem::SubmitTransformUpdates()，:145-150）
-onAfterPass（可选）                         （:152-156）
+RunRenderPhaseUpdates(max(start, RenderDrawSubmit), endPhase)                （:106-113，只跑 pass 内相位）
+RecordPreparedRenderPhaseRange(start, endPhase, dt, true, "[ECS RENDER] Render")  （:115-116）
+（2026-10-10 §1.1：原 `!pass.enabled` 跳过、`pass.renderTarget` 告警、`onBeforePass`/`onAfterPass`
+ 回调与 `runUpdate`/`runRender`/`submitTransforms` 三道闸门**全部删除** ⇒ 只剩上面两步，无条件执行；
+ 详见 `RenderGraph.cpp:101-104` 的结案注释。）
 ```
 
 `RecordPreparedRenderPhaseRange`（`src/ecs/core/Context.cpp:400-421`）先按需提交变换，再 `RunRenderSystemsInRange`。
@@ -403,7 +403,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 材质行地址物化在 `MaterializeRecipeRowsForPrimitive`（:653-1088）里：`TryGetRowBuffer`（:750）→ `IsActive(type, data_index)`（:762）→ 容量检查（:779-791）→ `material_row_gpu = gpu_base + data_index*row_bytes`（:801）、`data_index_row = data_index`（:815）；纹理引用行走 `AcquireMaterialTextureConfiguration`（:990）/ `WriteMaterialTextureConfiguration`（:1004）/ `RetireMaterialTextureConfiguration`（:1010）。
 
-`PrimitiveRenderItem`（`inc/hgl/ecs/core/PrimitiveRenderItem.h:28-72`、`src/ecs/core/PrimitiveRenderItem.cpp`）是 `RenderItem` 接口的实现：对外暴露实体/组件句柄、`GetShaderProgram/GetPipeline(render_pass)/GetGeometryDataBuffer/GetGeometryDrawRange/GetRenderItemHandle`（后两者转问 `PrimitiveComponent` 的运行时绑定），构造时缓存世界矩阵。批处理只需要 `RenderItem*` 这层接口（`inc/hgl/ecs/core/RenderItem.h:37-72`，含 `index` / `transform_index` / `distanceToCamera` / `isVisible` 与 `Compare`）——这是 ECS 与渲染层解耦的接缝。
+`PrimitiveRenderItem`（`inc/hgl/ecs/core/PrimitiveRenderItem.h:28-72`、`src/ecs/core/PrimitiveRenderItem.cpp`）是 `RenderItem` 接口的实现：对外暴露实体/组件句柄、`GetShaderProgram/GetPipeline(render_pass)/GetGeometryDataBuffer/GetGeometryDrawRange/GetRenderItemHandle`（后两者转问 `PrimitiveComponent` 的运行时绑定），构造时缓存世界矩阵。批处理只需要 `RenderItem*` 这层接口（`inc/hgl/ecs/core/RenderItem.h:32-46`，含 `transform_index` / `isVisible` / `draw_key`(=`MeshDrawKey`)）。`index`（零读者）与 `Compare`（零调用者）2026-10-10 随审计 §1.1 删除 —— 排序/聚簇一律读 `draw_key` 这份行派生 POD 键 —— 这是 ECS 与渲染层解耦的接缝。
 
 ### 7.4 批处理阶段：PrimitiveBatchPipeline
 

@@ -432,7 +432,6 @@ namespace hgl::ecs
             for (uint32_t k = 0; k < read_count; ++k)
             {
                 const uint32_t idx = indices[k];
-                gpu_visible_order_[k] = idx;   // 保序供值链判据（slot k ↔ gather 行 k）
                 if (idx < kMaxVisible && gpu_visible_map_[idx] == 0)
                 {
                     gpu_visible_map_[idx] = 1;
@@ -445,10 +444,6 @@ namespace hgl::ecs
 
     void CPUCullReferenceSystem::CompareResults()
     {
-        last_parity_stats_ = ParityStats{};
-        last_parity_stats_.cpu_count = cpu_count_;
-        last_parity_stats_.gpu_count = gpu_count_;
-
         // 位图对拍（逐槽）：集合相等 ⇔ 两侧每一位一致；不一致槽数 = mismatch。
         // match = 两侧同时为 1 的槽数。旧 std::set 路子是给"atomicAdd 顺序不定"
         // 买的单，位图把顺序问题消掉（且零动态分配，替代 <set>/<algorithm>）。
@@ -490,21 +485,8 @@ namespace hgl::ecs
             }
         }
 
-        last_parity_stats_.match_count = both;
-        last_parity_stats_.mismatch_count = mismatch;
-
         GLogInfo(u8"[CPUCullReferenceSystem] Parity: image=%u CPU=%u, GPU=%u, match=%u, mismatch=%u",
-                         context_->GetFrameIndex(),
-                         last_parity_stats_.cpu_count,
-                 last_parity_stats_.gpu_count,
-                 last_parity_stats_.match_count,
-                 last_parity_stats_.mismatch_count);
+                 context_->GetFrameIndex(), cpu_count_, gpu_count_, both, mismatch);
     }
 
-    uint32_t CPUCullReferenceSystem::GetGPUVisibleCount() const
-    {
-        // 台架读数 = 最近一次采样窗口的同步读回结果，**不**现读 GPU
-        //（现读者须自行先 SyncForParityReadback；旧版这里直接 Map 异步表 = 残影）。
-        return gpu_count_;
-    }
 }

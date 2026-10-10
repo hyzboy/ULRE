@@ -119,32 +119,6 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderItemDataStorage::SetTransformID(const RenderItemHandle handle, const uint32_t transform_id)
-    {
-        if (handle >= static_cast<RenderItemHandle>(items.GetCount()))
-            return false;
-
-        if (items[handle].transform_id != transform_id)
-        {
-            items[handle].transform_id = transform_id;
-            MarkDirty(handle);
-        }
-        return true;
-    }
-
-    bool RenderItemDataStorage::SetGeometryID(const RenderItemHandle handle, const uint32_t geometry_id)
-    {
-        if (handle >= static_cast<RenderItemHandle>(items.GetCount()))
-            return false;
-
-        if (items[handle].geometry_id != geometry_id)
-        {
-            items[handle].geometry_id = geometry_id;
-            MarkDirty(handle);
-        }
-        return true;
-    }
-
     bool RenderItemDataStorage::SetMaterialID(const RenderItemHandle handle, const uint32_t material_id)
     {
         if (handle >= static_cast<RenderItemHandle>(items.GetCount()))
@@ -193,11 +167,6 @@ namespace hgl::ecs
             MarkDirty(handle);
         }
         return true;
-    }
-
-    bool RenderItemDataStorage::IsValidHandle(const RenderItemHandle handle) const
-    {
-        return handle < static_cast<RenderItemHandle>(items.GetCount());
     }
 
     void RenderItemDataStorage::MarkDirty(const uint32_t index)

@@ -161,7 +161,6 @@ namespace hgl::ecs
             if (auto system = world->GetSystem<TransformSystem>())
             {
                 transform_system = system.get();
-                transform_system->SetDevice(device);
                 transform_system->EnsureTransformBuffer();
                 transform_system->RefreshHandleOrder();
             }

@@ -1,6 +1,12 @@
 # ULRE 渲染流程：剔除 / 排序 / DrawCall 生成与提交（CPU 与 GPU 双路）——技术文档
 
 > 版次：**v1（2026-10-05，HEAD = `0072145aa`，T3i 之后）**
+>
+> ⚠ **历史口径补注（2026-10-10）**：本文描述的 **CPU 排序步**（`SortBatchItems` 分静态/可动两组、回写 `item->index`、
+> 记 `static_count`）与 `RenderItem::Compare()` **已不存在** —— 前者随 T4c4「删 CPU 绘制链」消失，
+> 后者（零调用者）与 `RenderItem::index`（零读者）、`MaterialBatch::static_count`（恒 0）于 2026-10-10 随审计 §1.1 删除。
+> 排序键的现行形态 = `RenderItem::draw_key`（`MeshDrawKey`，行派生 POD 键）；现状以
+> `doc/ecs-layer-architecture-and-frame-flow.md` 与 `doc/future/entity-rows-gpu-cull-plan.md` 为准，相关段落读作**当时形态**。
 > 关联文档：
 > - 帧骨架、系统装配、RenderGraph、相位表 → `doc/ecs-layer-architecture-and-frame-flow.md`
 >   （**其 §7.4/§7.5 的行号属旧修订、且写于 T3i 之前**；"多批切片 / 批标签 / GPU 接管"的现状以本档为准）

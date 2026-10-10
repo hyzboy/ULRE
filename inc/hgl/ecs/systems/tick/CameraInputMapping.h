@@ -43,9 +43,6 @@ namespace hgl::ecs
         void ApplyDefaultBindings();
         void EnsureContext(io::InputMapper& mapper);
 
-        io::InputContext& EditContext();
-        const io::InputContext& GetContext() const { return context; }
-
     private:
         io::InputContext context;
         bool configured;

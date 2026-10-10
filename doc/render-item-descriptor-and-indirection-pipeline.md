@@ -1,6 +1,10 @@
 # 全局图元描述符池与二级绘制索引管线设计规范
 
 > ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
+> ⚠ **历史口径补注（2026-10-10）**：文中「增强 `RenderItem::Compare`（相同材质与几何时按 `render_item_handle` 升序）」
+> 的排序方案**已无载体** —— `Compare` 于 2026-10-10 随审计 §1.1 删除（零调用者）；排序键的现行形态是
+> `RenderItem::draw_key`（`MeshDrawKey`，行派生 POD 键，见 `inc/hgl/ecs/core/RenderItem.h`）。
+
 # (Global RenderItem Descriptor Pool & Indirection Pipeline Architecture)
 
 > **文档版本**：v2.0 (2026-09)  

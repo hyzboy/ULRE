@@ -320,12 +320,6 @@ namespace hgl
                 return world_matrices[id];
             }
 
-            void SetWorldMatrix(HandleID id, const glm::mat4& matrix)
-            {
-                world_matrices[id] = matrix;
-                matrixDirty[id] = 0;
-            }
-
         public: // 元数据（owner / 变更版本 / D4 标记）—— T8 起是唯一真源
 
             EntityID GetOwner(HandleID id) const

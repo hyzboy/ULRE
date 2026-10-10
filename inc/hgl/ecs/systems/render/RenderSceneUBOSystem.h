@@ -96,7 +96,7 @@ namespace hgl::ecs
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
         void SyncBindingsForCurrentCommand();
-        void ApplyResourceLayoutBindings();
-        const graph::IGPUBuffer *ResolveViewportUBO() const;
+        // 2026-10-10（审计 §1.1）：空体的 `ApplyResourceLayoutBindings()` 与零调用者的
+        // `ResolveViewportUBO()` 已删除（`SyncBindingsForCurrentCommand` 是活的：内含 EnsureViewportUBO）。
     };
 }

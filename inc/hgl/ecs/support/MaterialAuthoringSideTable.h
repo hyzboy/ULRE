@@ -77,9 +77,6 @@ namespace hgl::ecs
         /// 摘除条目（组件分离时调用）；返回是否真的摘到
         bool Remove(uint32_t row_id);
 
-        /// 当前条目数（观测：测试/诊断用）
-        int GetLiveEntryCount() const { return entries.GetCount(); }
-
     private:
 
         hgl::UnorderedMap<uint32_t, Entry> entries;

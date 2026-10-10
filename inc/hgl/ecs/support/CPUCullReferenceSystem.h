@@ -36,21 +36,9 @@ namespace hgl::ecs
         // 初始化
         bool Initialize(ECSContext* context);
 
-        // 最近一次采样窗口的 CPU 可见数
-        uint32_t GetVisibleCount() const { return cpu_count_; }
-
-        // 获取 GPU 剔除计数（最近一次采样窗口的读数）
-        uint32_t GetGPUVisibleCount() const;
-
-        // 对拍统计
-        struct ParityStats
-        {
-            uint32_t cpu_count = 0;
-            uint32_t gpu_count = 0;
-            uint32_t match_count = 0;
-            uint32_t mismatch_count = 0;
-        };
-        ParityStats GetParityStats() const { return last_parity_stats_; }
+        // 2026-10-10（审计 §1.1）：原 `GetVisibleCount` / `GetGPUVisibleCount` / `ParityStats`
+        // + `GetParityStats()` 三件"台架读数"导出面**全仓零调用者**（对拍结论只经 GLogInfo 输出）
+        // ⇒ 整组删除；`last_parity_stats_` 随之取消，日志直接用局部量。
 
     private:
         // CPU 侧视锥剔除（产出 cpu 位图 + 计数）
@@ -80,10 +68,6 @@ namespace hgl::ecs
         uint8_t cpu_visible_map_[kMaxVisible] = {};
         uint8_t gpu_visible_map_[kMaxVisible] = {};
 
-        // GPU 幸存**顺序表**（= visible_indices 原文：slot k ↔ gather 行表第 k 行）⇒
-        // 值链判据用它把「实体 index → 其 gather mtl 行」对齐（位图丢序，这里保序）。
-        uint32_t gpu_visible_order_[kMaxVisible] = {};
-
         // T3i（③ 多批）：值链走查需要「竞技场行 → 实体」的**精确**映射——多批
         // atomicAdd 交错下"第 k 行 = 第 k 个幸存者"不再成立（保序表在多批下作废）。
         // 映射走 **L2W 行号反查**：L2W 行空间 = 实体数 × 帧槽（每个 (实体, 帧槽)
@@ -97,9 +81,6 @@ namespace hgl::ecs
 
         uint32_t cpu_count_ = 0;
         uint32_t gpu_count_ = 0;
-
-        // 对拍统计（最近一次采样窗口）
-        ParityStats last_parity_stats_;
 
         // 采样节奏计数（Update 自降频：每 60 帧 = 一个采样窗口）
         uint32_t frame_counter_ = 0;

@@ -130,7 +130,8 @@ namespace hgl::ecs
 
         /// 组件侧授权代数（每次授权状态变化 +1）。**行内 revision 与之同源**（见
         /// `GetAuthoredRowRevision`）——只读行的消费者应当读行，不要读组件副本。
-        uint32_t GetAuthoredGeneration() const { return authored_generation; }
+        // 2026-10-10（审计 §1.1）：`GetAuthoredGeneration()`（零调用者；B4-ii 起消费者只读行内
+        // revision —— 见 Test 35 的禁复活 needle）已删除。成员 `authored_generation` 仍在内部使用。
 
         /// B4-ii：设备级组件行里的**行内 revision**（= 上面的代数在行内的镜像）。
         /// 消费者（每实例 slot 的变更检测）用这个 ⇒ 状态真源是**行**，不是组件副本。

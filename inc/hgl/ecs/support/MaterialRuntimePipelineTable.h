@@ -59,9 +59,6 @@ namespace hgl::ecs
         /// 摘除（实体销毁 / 管线失效时调用；未登记则忽略）
         void Clear(EntityID id) { entries.erase(id); }
 
-        /// 观测（测试/诊断）
-        int GetLiveEntryCount() const { return static_cast<int>(entries.size()); }
-
     private:
 
         std::unordered_map<EntityID, Entry> entries;

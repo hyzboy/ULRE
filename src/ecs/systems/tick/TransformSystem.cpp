@@ -372,7 +372,6 @@ namespace hgl::ecs
         }
 
         last_static_count = static_count;
-        last_dynamic_count = dynamic_count;
 
     #if HGL_TRANSFORM_DEBUG_LOGGING
         static uint32_t s_submit_log_tick = 0;
