@@ -173,15 +173,8 @@ namespace hgl
             return bit != 0 && (mask & bit) != 0;
         }
 
-        inline constexpr uint32_t ComponentMaskAdd(const uint32_t mask, const ComponentType type)
-        {
-            return mask | ComponentTypeBit(type);
-        }
-
-        inline constexpr uint32_t ComponentMaskRemove(const uint32_t mask, const ComponentType type)
-        {
-            return mask & ~ComponentTypeBit(type);
-        }
+        // 2026-10-10（审计 §1.1）：`ComponentMaskAdd` / `ComponentMaskRemove` 全仓零调用者 ⇒ 删除
+        //（掩码拼装直接写 `| ComponentTypeBit(...)` / `& ~ComponentTypeBit(...)`）。
 
         // ─────────────────────────────────────────────────────────────
         // implies（蕴含）规则：某类型出现 ⇒ 必然同时具备哪些槽位
@@ -327,9 +320,6 @@ namespace hgl
         {
             static constexpr ComponentType value = ComponentType::None;
         };
-
-        template<typename T>
-        inline constexpr ComponentType ComponentTypeOf_v = ComponentTypeOf<T>::value;
 
         /// 该类型挂载时驱动哪个系统组（类型属性；`None` = 不驱动）
         inline constexpr SystemGroupID GetComponentGroup(const ComponentType type)

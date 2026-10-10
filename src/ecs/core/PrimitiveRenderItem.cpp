@@ -34,13 +34,6 @@ namespace hgl::ecs
         return context->GetEntity(entity_id);
     }
 
-    const MaterialRuntimeSlot *PrimitiveRenderItem::GetRuntimeSlot() const
-    {
-        const MaterialRuntimeTable *runtime_table = context ? context->GetMaterialRuntimeTable() : nullptr;
-
-        return runtime_table ? runtime_table->GetSlot(entity_id) : nullptr;
-    }
-
     const MaterialRuntimeRow *PrimitiveRenderItem::GetMaterialRuntimeRow() const
     {
         if (!context || material_runtime_row == INVALID_MATERIAL_RUNTIME_ROW_ID)

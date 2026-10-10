@@ -42,8 +42,8 @@ namespace hgl::ecs
 
         glm::mat4 worldMatrix;
 
-        /// 本实体在世界材质运行期表里的每实例 slot（无则 nullptr）——每实例状态唯一载体
-        const MaterialRuntimeSlot *GetRuntimeSlot() const;
+        // 2026-10-10（审计 §1.1）：零调用者的 `GetRuntimeSlot()` 已删除
+        //（需要时经 `context->GetMaterialRuntimeTable()->GetSlot(id)`）。
 
     public:
         PrimitiveRenderItem(

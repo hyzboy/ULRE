@@ -200,9 +200,8 @@ namespace hgl::ecs
         /// 以及写进批的**哪一份**切片（`MaterialBatch::gpu_slice[pass]`）。
         bool ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index, uint32_t pass_index);
 
-        /// guard 的**本帧有效**判定：collect 的 CPU 剔除跳不跳全看它（接管与 CPU 账
-        /// 必须按同一帧的 guard 结果二选一，否则 = 双份账/漏帧）。
-        bool IsOverrideActiveThisFrame() const { return override_active_frame_ == override_eval_frame_; }
+        // 2026-10-10（审计 §1.1）：`IsOverrideActiveThisFrame()` 已删除 —— 全仓零调用者，且其自注
+        //「collect 的 CPU 剔除跳不跳全看它」与实际闸门不符（会误导读者去找错地方）。
 
         /// 延迟初始化（pipeline/输出缓冲/派发资源）：由**首次 Update 或首次批装配 guard**
         /// 触发（两者都在 render pass 内、设备已绑）。⚠ guard 相位（RenderBatch）早于

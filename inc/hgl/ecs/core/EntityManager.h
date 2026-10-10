@@ -116,8 +116,7 @@ namespace hgl::ecs
                     fn(slot.entity);
         }
 
-        /// Get all alive entity pointers
-        void GetAllEntityPointers(std::vector<Entity*>& out_entities);
+        /// Get all alive entity pointers（const 版；**非 const 版全仓零调用者**，2026-10-10 审计 §1.1 删除）
         void GetAllEntityPointers(std::vector<const Entity*>& out_entities) const;
 
         /// Clear all entities（块池一并释放）

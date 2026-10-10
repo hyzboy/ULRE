@@ -40,13 +40,8 @@ namespace hgl
             ~ColorPaletteSystem() override;
 
             void SetRenderContext(graph::RenderContext *ctx) { render_context = ctx; }
-            UBOColorPalette *GetPaletteUBO() const { return palette_ubo; }
-
-            /// 设置调色板某一项颜色（立即提交，若资源已就绪）。
-            void SetColor(int index, const hgl::Color4f &color);
-
-            /// 重置整张调色板为白色。
-            void ResetToWhite();
+            // 2026-10-10（审计 §1.1）：整个编辑 API（`GetPaletteUBO()` / `SetColor()` / `ResetToWhite()`）
+            // 全仓零调用者 ⇒ 删除。`palette_ubo` 成员与 `Flush()` 仍由系统自身的初始化/更新路径在用。
 
             void Initialize() override;
             void Update(float deltaTime) override;

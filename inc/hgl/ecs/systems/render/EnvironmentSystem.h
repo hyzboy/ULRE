@@ -48,9 +48,8 @@ namespace hgl
             // 环境光 provider 槽（`ambient_light_provider`）的参数块。
             // 修改后需调用 MarkAmbientEnvDirty()。
             graph::AmbientEnvInfo *EditAmbientEnvInfo();
-            const graph::AmbientEnvInfo *GetAmbientEnvInfo() const;
-
-            void SetAmbientEnvInfo(const graph::AmbientEnvInfo &info, bool immediate = true);
+            // 2026-10-10（审计 §1.1）：`GetAmbientEnvInfo()` / `SetAmbientEnvInfo()` 全仓零调用者 ⇒ 删除
+            //（读写都走 `EditAmbientEnvInfo()` + `MarkAmbientEnvDirty()`）。
             void MarkAmbientEnvDirty();
         };
     }//namespace ecs

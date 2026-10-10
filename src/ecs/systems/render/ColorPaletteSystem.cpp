@@ -55,33 +55,6 @@ namespace hgl::ecs
         }
     }
 
-    void ColorPaletteSystem::SetColor(int index, const hgl::Color4f &color)
-    {
-        if (index < 0 || index >= graph::ColorPalette::kSize)
-        {
-            GLogWarning(u8"[ColorPaletteSystem] SetColor: index %d out of range", index);
-            return;
-        }
-
-        palette_cpu_.color[index] = color.toABGR8();
-        palette_dirty_ = true;
-
-        // 资源就绪后立即提交（与 LineRenderPipeline 原行为一致）。
-        if (palette_ubo)
-            Flush();
-    }
-
-    void ColorPaletteSystem::ResetToWhite()
-    {
-        const uint32 white = hgl::Color4f(1.0f, 1.0f, 1.0f, 1.0f).toABGR8();
-        for (int i = 0; i < graph::ColorPalette::kSize; ++i)
-            palette_cpu_.color[i] = white;
-
-        palette_dirty_ = true;
-        if (palette_ubo)
-            Flush();
-    }
-
     void ColorPaletteSystem::Flush()
     {
         if (!palette_dirty_ || !palette_ubo)

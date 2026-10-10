@@ -81,19 +81,6 @@ namespace hgl::ecs
         return slot.alive && slot.generation == id.generation;
     }
 
-    void EntityManager::GetAllEntityPointers(std::vector<Entity*>& out_entities)
-    {
-        out_entities.clear();
-
-        for (auto& slot : slots)
-        {
-            if (slot.alive && slot.entity)
-            {
-                out_entities.push_back(slot.entity);
-            }
-        }
-    }
-
     void EntityManager::GetAllEntityPointers(std::vector<const Entity*>& out_entities) const
     {
         out_entities.clear();
