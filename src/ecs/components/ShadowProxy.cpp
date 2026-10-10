@@ -1,4 +1,9 @@
 #include<hgl/ecs/components/ShadowProxy.h>
+// 2026-10-10（审计 §1.1）：本文件用 `Entity::GetComponent<T>()`，其**模板定义在 Context.h 尾部**
+//（Entity.h 只声明）。此前该实例由 Context.cpp 的 `ECSContext::GetShadowProxy` 顺带实例化 —— 那四个
+// 零调用者重载删除后，本 TU 必须自己看得见定义（与同目录 GeometryData.cpp / MaterialData.cpp 同规矩）。
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/Context.h>
 
 namespace hgl::ecs
 {

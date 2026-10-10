@@ -4604,7 +4604,9 @@ int main(int argc, char** argv)
                 // 指针版**直通**（const + 非 const 两条）
                 { "return ComponentOfEntity<GeometryData>(owner);",         2, "GeometryData 指针版必须直通核心（不得再解析 ID）" },
                 { "return ComponentOfEntity<MaterialData>(owner);",         2, "MaterialData 指针版必须直通核心" },
-                { "return ComponentOfEntity<ShadowProxy>(owner);",          2, "ShadowProxy 指针版必须直通核心" },
+                // （2026-10-10 审计 §1.1）：`ECSContext` 的四个 ShadowProxy 包装重载全仓零调用者，已删 ⇒
+                // 该条"计数式直通契约"迁到组件侧自由函数上（见本块末尾 kDirectFree），这里只钉**禁复活**。
+                { "GetShadowProxy",                                          0, "ECSContext 的 ShadowProxy 包装已删（禁复活；指针版走组件侧自由函数）" },
                 { "return ComponentOfEntity<CameraComponent>(owner);",      2, "相机指针版必须直通核心" },
 
                 // 指针版「无则创建」**直通**（各一条：创建必须能改实体）
@@ -4613,7 +4615,7 @@ int main(int argc, char** argv)
                 { "return GetOrAddComponentOfEntity<CameraComponent>(owner, name);", 1, "相机「无则创建」指针版必须直通核心" },
 
                 // ID 版**每个重载解析一次**：少了 = 有人跳过解析（返回垃圾/nullptr）
-                { "GetEntity(owner)",                                      11, "EntityID 版必须每个重载各解析一次 GetEntity" },
+                { "GetEntity(owner)",                                       9, "EntityID 版必须每个重载各解析一次 GetEntity（9 = 组件访问器 EntityID 重载数；2026-10-10 删 ShadowProxy 两条 ⇒ 11→9）" },
             };
 
             for (const CountExpect &c : kDirect)
@@ -4625,9 +4627,39 @@ int main(int argc, char** argv)
                     return 28;
                 }
             }
+
+            // （2026-10-10 审计 §1.1）：ShadowProxy 的指针版直通契约随 `ECSContext` 包装删除而迁到
+            // **组件侧自由函数文件** —— 保持同一"计数式"精度（const / 非 const 各一条直通体）。
+            {
+                std::ifstream in_free(OS_TEXT("src/ecs/components/ShadowProxy.cpp"), std::ios::binary);
+
+                if (!in_free)
+                {
+                    GLogError(u8"Test 28 Failed: cannot open src/ecs/components/ShadowProxy.cpp (run from repo root)");
+                    return 28;
+                }
+
+                const std::string src_free((std::istreambuf_iterator<char>(in_free)),
+                                           std::istreambuf_iterator<char>());
+                const CountExpect kDirectFree[] =
+                {
+                    { "return owner->GetComponent<ShadowProxy>();", 2, "ShadowProxy 指针版（自由函数）必须直通核心" },
+                    { "GetEntity(owner)",                          0, "自由函数版不得经 ECSContext 解析（禁复活包装）" },
+                };
+
+                for (const CountExpect &c : kDirectFree)
+                {
+                    if (const uint32_t n = CountSubstring(src_free, c.needle); n != c.count)
+                    {
+                        GLogError(u8"Test 28 Failed: %s —— ‘%s’ 出现 %u 次（期望 %u）",
+                                  c.why, c.needle, n, c.count);
+                        return 28;
+                    }
+                }
+            }
         }
 
-        GLogInfo(u8"Test 28 Passed: A7c-2 双句柄契约成立（%d 条存在性契约 + 8 条**计数式**直通契约"
+        GLogInfo(u8"Test 28 Passed: A7c-2 双句柄契约成立（%d 条存在性契约 + 10 条**计数式**直通契约"
                  u8"（指针版直通核心、ID 版每个重载各解析一次 GetEntity）+ 行为：EntityID 版与 "
                  u8"Entity* 版同落点、GetOrCreate* 幂等、无效句柄一律 nullptr）。",
                  static_cast<int>(sizeof(kA7c2Contracts) / sizeof(kA7c2Contracts[0])));

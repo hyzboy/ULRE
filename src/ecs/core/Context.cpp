@@ -1060,26 +1060,6 @@ namespace hgl
             return GetOrAddComponentOfEntity<GeometryData>(owner);
         }
 
-        ShadowProxy* ECSContext::GetShadowProxy(EntityID owner)
-        {
-            return ComponentOfEntity<ShadowProxy>(GetEntity(owner));
-        }
-
-        const ShadowProxy* ECSContext::GetShadowProxy(EntityID owner) const
-        {
-            return ComponentOfEntity<ShadowProxy>(GetEntity(owner));
-        }
-
-        ShadowProxy* ECSContext::GetShadowProxy(Entity *owner)
-        {
-            return ComponentOfEntity<ShadowProxy>(owner);
-        }
-
-        const ShadowProxy* ECSContext::GetShadowProxy(const Entity *owner) const
-        {
-            return ComponentOfEntity<ShadowProxy>(owner);
-        }
-
         void ECSContext::InvalidateEntityRuntimePipeline(EntityID owner)
         {
             // B5-b：管线缓存已迁到世界级旁表（slot 里不放指针）

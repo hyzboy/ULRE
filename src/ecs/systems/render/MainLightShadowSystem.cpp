@@ -36,11 +36,6 @@ namespace hgl::ecs
         return context ? context->EditShadowInfo() : nullptr;
     }
 
-    const graph::ShadowInfo *MainLightShadowSystem::GetShadowInfo() const
-    {
-        return context ? context->GetShadowInfo() : nullptr;
-    }
-
     void MainLightShadowSystem::SetShadowInfo(const graph::ShadowInfo &info)
     {
         if (context)

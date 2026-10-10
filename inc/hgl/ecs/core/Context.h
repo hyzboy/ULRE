@@ -327,6 +327,9 @@ namespace hgl
 
             /// Resource naming prefix for hierarchical tracking (e.g., "RenderToTexture:OffscreenRT")
             /// Used by systems when creating GPU resources for better leak tracking
+            /// ⚠ 2026-10-10（审计 §1.1）：**setter 是真 API**（`SceneGraph/module/OffscreenWorld` + 7 个示例在用），
+            /// 只读的 `GetResourceNamePrefix()` 才是零调用者（已删）—— 该成员目前「只写不读」，即
+            /// 分层泄漏追踪的读取端尚未实现（审计原判）。
             std::string resource_name_prefix;
 
         private:
@@ -509,7 +512,7 @@ namespace hgl
 
             /// 本 pass 活跃相机的**槽号**（世界内；PushConstants 的 `camera_row` 由它算出行号）。
             /// 只由本世界的 pass 设置路径（`RenderTo`）写 —— 不做公开 setter，避免出现第二个写者。
-            uint32_t GetActiveCameraID() const { return active_camera_id; }
+            // 2026-10-10（审计 §1.1）：零调用者的 `GetActiveCameraID()` 已删除（成员 `active_camera_id` 照旧）。
 
             /// 当前相机的 CameraInfo 行号 = 槽号 * HGL_FRAME_SLOT_TOTAL + 本帧数据槽。
             /// 着色器端 `pc_root.camera_row` 收到的就是这个行号（scene_ubo.glsl 的 cameras[] 下标），
@@ -635,8 +638,8 @@ namespace hgl
 
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"
+            /// ⚠ 读取端（`GetResourceNamePrefix()`）零调用者，2026-10-10 审计 §1.1 已删；写入端保留。
             void SetResourceNamePrefix(const std::string& prefix) { resource_name_prefix = prefix; }
-            const std::string& GetResourceNamePrefix() const { return resource_name_prefix; }
 
             // ── T2-c：组件挂载 / 卸载 / 收集（世界侧唯一入口；实体只持行号）──
             //   `GetTypedPool` / `EnsureTypedPool` / `CreateComponent` / `GetComponentByRow` /
@@ -692,10 +695,9 @@ namespace hgl
             /// A5b：阴影组件正名为 ShadowProxy，并成为**唯一**阴影组件；
             /// 未挂载时的缺省约定（可投射/可接收/距离 0/倍率 1.0）见
             /// components/ShadowProxy.h 的自由函数（唯一出处）。
-            ShadowProxy* GetShadowProxy(EntityID owner);
-            const ShadowProxy* GetShadowProxy(EntityID owner) const;
-            ShadowProxy* GetShadowProxy(Entity* owner);
-            const ShadowProxy* GetShadowProxy(const Entity* owner) const;
+            // 2026-10-10（审计 §1.1）：四个 `ECSContext::GetShadowProxy` 重载全仓零调用者 ⇒ 删除。
+            // 取影子代理走组件侧自由函数 `hgl::ecs::GetShadowProxy(const Entity*)`（`components/ShadowProxy.h`）——
+            // 它被 `CanCastShadow` / `GetShadowMaxDistance` / `CanReceiveShadow` / `GetShadowBiasMultiplier` 在用。
 
             /// 让某实体已解析的运行期管线缓存失效（几何/变体变化时调用）。
             /// A5b：管线缓存不再挂在渲染组件上，改由每实例 slot 承载 ⇒ 本入口清 slot 字段。
@@ -743,7 +745,8 @@ namespace hgl
             // ── T6b/P4：影子数据（`ShadowInfo`，世界私有）──────────────────────────
             /// 编辑本世界的影子数据（CPU 权威；GPU 侧由 `CommitShadowInfo` 在提交点写本帧槽）
             graph::ShadowInfo       *EditShadowInfo()       { return &shadow_info; }
-            const graph::ShadowInfo *GetShadowInfo()  const { return &shadow_info; }
+            // 2026-10-10（审计 §1.1）：只读 `GetShadowInfo()` 已删除 —— 它唯一的调用者是同样零外部调用者的
+            // `MainLightShadowSystem::GetShadowInfo()`（一并删除）；读影子数据请经 `EditShadowInfo()`。
 
             void SetShadowInfo(const graph::ShadowInfo &info) { shadow_info = info; }
 
