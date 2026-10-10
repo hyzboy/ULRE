@@ -278,6 +278,31 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 - **`MaterialRuntimeRow` 把 key 存了约 3.5 份**（`key` + `recipe_hash` + `data_index_row` + `cached_effective_recipe_hash`） — `MaterialRuntimeTable.h:125-150`。`S3`
 - **`frame_index` 存三份** — `Context.h:262` / `RingLayout` / RT 自身。`"非法相机槽⇒0 号槽"写三处** — `Context.cpp:810-812,817,2392-2394`。`S2`
 
+> ### 2.2 处置记录（2026-10-10）
+>
+> **已做（本批两条，都是「同一事实两处实现」的收敛）**
+>
+> | # | 项 | 处置 |
+> |---|---|---|
+> | 4 | `DrawItemIDStorage` 与 `RenderItemDataStorage` 的 `EnsureGPUBuffer` 逐字同源（早退判据 / 默认 1024 / ×2 / 下限 64 / 建 SSBO / 删旧缓冲 / 记容量+BDA 全同，只有 element_size、日志表名、"是否迁移行"不同） | ✅ 抽成 **`inc/hgl/ecs/support/GpuMirrorBuffer.h`**：`NextGpuMirrorCapacity()`（唯一增长策略）+ `GpuMirrorCapacitySufficient()` + `EnsureGpuMirrorBuffer()`（返回 `NoDevice/Unchanged/Reallocated/Failed`）。两表的 `EnsureGPUBuffer` 各剩 ~20 行（策略调用 + 自己的日志 + 自己的钩子/脏标记）。**日志有意留在调用方**：`LogInfo/LogError` 是 `OBJECT_LOGGER` 的**对象日志宏**（`this->Log.Info(...)` + `typeid(*this)`），挪进自由函数会 `C2355` —— 而把日志文本改成全局 `GLogInfo` 会动输出格式。两条语义细节按旧实现逐字保住：① `RenderItemDataStorage` 只有"真重分配"才 `MarkRangeDirty`（容量够⇒什么都不做，不重标脏）；② `!dev` ⇒ 失败且**不报错**。 |
+> | 5 | `EntitySlot::alive` 与 `entity != nullptr` 完全等价，每个读取点同时判两者 | ✅ **删 `bool alive`**：创建 / 销毁 / 清空三处都成对写，唯一真源改成"有实体指针就是活着"。读取点 `slot.alive && slot.entity` → `slot.entity`（`ForEachAliveEntity` / `GetAllEntityPointers` / `IsValidID` 三处）；`alive = true/false` 三处写入删除。`EntitySlot` 由 8+2+1(→16 对齐) 变 8+2(→16 对齐) ⇒ **尺寸不变**、零布局影响。 |
+>
+> **复扫后自然关闭（前提已被前面的改动消掉，无需动手）**
+>
+> - 本行"非法相机槽 ⇒ 0 号槽**写三处**"：现已**单点** —— `active_camera_id` 的默认值（`Context.h:275` = `kDefaultSlot`）+ 唯一的回退解析 `ECSContext::GetActiveCameraRow()`（`Context.cpp:468-477`：槽非法 ⇒ `CameraInfoStorage::kDefaultCameraSlot`）+ 常驻 fallback 相机 `EnsureFallbackCamera()`。全仓 `kDefaultSlot` 只出现 1 次（成员默认值）。
+> - "`frame_index` 存三份"：`Context.h` 侧只剩成员 + getter（`GetFrameIndex()`），其它两份在 `RingLayout` 与 RT 自身 —— 属于**不同物件的各自状态**（世界帧号 / 环形布局基址 / 帧槽号），不是同一事实的副本 ⇒ 不按冗余处置。
+>
+> **需要拍板（结构性问题，改动会碰 GPU 行载荷 / 索引空间，本批**未动**）**
+>
+> | # | 项 | 现状与判据 | 可选方向（按风险从低到高） |
+> |---|---|---|---|
+> | 1 | `Entity::component_mask` 是 `component_rows` 的缓存视图，而唯一一致性对拍 `VerifyComponentMaskAgainstComponents()` **生产零调用**（只被 `TestComponentMask.cpp` 用） | 掩码是 `HasComponentType()` / 策略判定的 O(1) 输入，删它会让每帧每次判定退化成扫 16 行；但"缓存视图"的断言现在只在测试里成立 | (a) **在组件挂载/卸载的单一写者处做 debug-only 对拍**（`ULRE_ECS_DEBUG_API` 下 `VerifyComponentMaskAgainstComponents()`，每帧零成本）—— 把"缓存视图"从口头约束变成 debug 期 fail-fast；(b) 删掩码、`HasComponentType` 改读 `component_rows[type] != 0`（同为 O(1)，但 `GetComponentMask()` 的 32 位汇总要现场拼，策略路径变 O(16)） |
+> | 3 | 同一份 16 B `RenderItemDescriptor` 同时存 `RenderItemDataStorage::items`（handle + free list）与 `EntityRenderIDTable::rows`（`EntityID.index × pass` 直索引），各自脏跟踪/缓冲 ⇒ **静默可失步** | 两个索引空间服务不同消费者（CPU 侧 handle 空间 / GPU 侧实体直寻址），写时机也不同；风险不是"多余"而是"失步没门" | (a) **在每帧同步点做一次 debug-only 一致性对拍**（同 #1 的做法，把"可失步"变成可发现）；(b) 让一侧在同步时**派生**另一侧（真单源，但会改 GPU 行写入路径 ⇒ 需端到端验证） |
+> | 2 | "实体有哪些组件"存 4–5 份（`component_rows` → `EntityGPU.type[16]/row[16]` → `EntityGPUTable` CPU 行 → GPU SSBO；另有 `EntityRenderIDTable`） | `EntityGPU.h` **自注"显式冗余"**；这是 GPU 行载荷的既定形态（`type[]/row[]` 是 shader 直接寻址面，`work_flags` 同族已判"保留 = GPU 合同"） | 不建议删（会动 shader 合同）；可做的只有**把"谁是权威、谁在哪一帧被刷新"写进头注**，防下次审计再当冗余删 |
+> | 6 | 可见性三种表示、两种极性（缺席集 / 正位 `EntityGPUFlags::Visible` / 每帧重算的 `StrategyFact::EntityVisible`） | 三者分别是 CPU 权威、GPU 行位、策略事实，极性差异是各自消费者的语义 | 同 #2：属"值得写清权威链"而非"可删冗余"；若要收敛需先定"谁是唯一权威"（建议：`VisibilityDataStorage` 缺席集） |
+> | 7 | 材质四条键空间（variant 2 元组 / runtime 3 元组 / authoring row id / pipeline EntityID），且 `MaterialVariantKey` 是 `MaterialRuntimeKey` 的**严格前缀** | 前缀关系说明两者可共用一段键（variant 键 = runtime 键的前两元），但**四张表的生命周期与索引空间不同**（variant 可共享、runtime 每实例、authoring 按行、pipeline 按实体） | 可做的小收敛：`MaterialVariantKey` 作为 `MaterialRuntimeKey` 的**前两元编解码同一份函数**（消掉各自解析），不去合并表 |
+> | 8 | `MaterialRuntimeRow` 把 key 存了约 3.5 份（`key` + `recipe_hash` + `data_index_row` + `cached_effective_recipe_hash`） | `key` 是段内三元组；`recipe_hash`/`data_index_row` 是键的可比字段（比较/索引用），`cached_effective_recipe_hash` 是**缓存**（键的纯函数） | 可做：把"键的三元组"与"缓存值"的**边界写进头注**（哪些字段必须与键一致、哪些允许滞后）；真删字段要连带改键比较与 GPU 侧读取，风险中 |
+
 ### 2.3 逐字复制的机制
 - **脏行上传机制在 `EntityGPUTable` / `EntityRenderIDTable` / `LightRowTable` 里逐字重复**：`CollectDirtyRows`、`ClearDirty`、`GetDirtyCount` 三处**字节相同**；`MarkDirty`/`ReportOverflow`（同一闩、同一 `GLogError`，仅文案不同）/`IsAllocated`/`Clear` 近乎相同；成员 `row_dirty` + `overflow_reported` 声明 3 次。命名漂移：`EntityGPUTable` 叫 `Clear()` 而 `EntityRenderIDTable` 同名概念叫 `ClearAll()`。世界侧上传路径重复同一套 quartet 3 次 — `Context.cpp:1701-1712,1750-1755,1791-1796` ⇒ **~120 行**。`S3`
   - ⇒ **已处置（2026-10-09）**：新增 `inc/hgl/ecs/support/DirtyRowSet.h`，三张表改按**组合**持有
