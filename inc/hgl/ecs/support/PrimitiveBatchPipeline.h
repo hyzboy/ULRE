@@ -35,7 +35,8 @@ namespace hgl::ecs
         const graph::CameraInfo* camera_info = nullptr;
         graph::VulkanDevice* device = nullptr;
         math::Frustum frustum;
-        uint32_t prepared_frame_index = std::numeric_limits<uint32_t>::max();
+        // 2026-10-10（审计 §1.1）：`prepared_frame_index` 已删除 —— 它只被"读一次再写回"、
+        // 没有任何 early return 用它 ⇒ 不是守卫（TextRenderPipeline 里同名字段是**真守卫**，勿混）。
 
     public:
         bool PrepareFrame(ECSContext* ctx);

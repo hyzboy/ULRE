@@ -100,10 +100,6 @@ namespace hgl::ecs
         if (!device)
             device = world->GetGPUDevice();
 
-        const uint32_t frame_index = world->GetFrameIndex();
-        if (prepared_frame_index != frame_index)
-            prepared_frame_index = frame_index;
-
         if (world)
         {
             if (auto *id_storage = world->GetDrawItemIDStorage())

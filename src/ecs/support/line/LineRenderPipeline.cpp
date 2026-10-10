@@ -469,13 +469,12 @@ namespace hgl::ecs
             ++stats_.visible_components;
         }
 
-        LinePeriodicLog(s_line_log_ticks[3], "[LineRenderPipeline] Collect summary: total=%u visible=%u collected=%zu culled_visibility=%u culled_frustum=%u culled_hzb=%u",
+        LinePeriodicLog(s_line_log_ticks[3], "[LineRenderPipeline] Collect summary: total=%u visible=%u collected=%zu culled_visibility=%u culled_frustum=%u",
                  stats_.total_components,
                  stats_.visible_components,
                  collected_.size(),
                  stats_.culled_by_visibility,
-                 stats_.culled_by_frustum,
-                 stats_.culled_by_hzb);
+                 stats_.culled_by_frustum);
     }
 
     void LineRenderPipeline::RunBuild()

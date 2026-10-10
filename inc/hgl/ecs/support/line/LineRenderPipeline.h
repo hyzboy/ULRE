@@ -38,12 +38,12 @@ namespace hgl::ecs
         uint32_t visible_components  = 0;
         uint32_t culled_by_visibility = 0;
         uint32_t culled_by_frustum   = 0;
-        uint32_t culled_by_hzb       = 0;
+        // 2026-10-10（审计 §1.1）：`culled_by_hzb`（从不自增、恒 0）已删除；求和与三处日志同步去掉该项。
 
         float GetCullRatio() const
         {
             if (total_components == 0) return 0.0f;
-            const uint32_t culled = culled_by_visibility + culled_by_frustum + culled_by_hzb;
+            const uint32_t culled = culled_by_visibility + culled_by_frustum;
             return static_cast<float>(culled) / static_cast<float>(total_components);
         }
     };
