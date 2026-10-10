@@ -81,7 +81,7 @@ RemoveComponent<T>() 对称：UnregisterFromContext → OnDetach → 删除 → 
 `ECSContext::RegisterComponentInstance`（`src/ecs/core/Context.cpp:1125-1153`）做三件事：
 
 1. 调 `RegisterComponentInstanceInternal`（`src/ecs/core/Context.cpp:1189-1212`）把组件按类型 hash 存进 `component_registry`（`weak_ptr` 列表）——`GetComponents<T>` 就是遍历这张表（`inc/hgl/ecs/core/Context.h:483-501`）；
-2. 若组件声明了 `GetSystemGroupName()`（`PrimitiveComponent` 返回 `"Primitive"`，`inc/hgl/ecs/components/PrimitiveComponent.h:159`）：**自动安装该组的系统**（`EnsureSystemGroupSystems`）+ **打开该组系统开关**（`SetElementTypeSystemsEnabled(group, true)`）；
+2. 若组件声明了 `GetSystemGroupName()`（`PrimitiveComponent` 返回 `"Primitive"`，`inc/hgl/ecs/components/PrimitiveComponent.h:159`）：**自动安装该组的系统**（`EnsureSystemGroupSystems`）+ **打开该组系统开关**（`SetSystemGroupEnabled(group, true)`）；
 3. 对 `component_query_bases` 再做一次登记，于是 `GetComponents<RenderableComponent>()` 能召回派生子类实例。当前登记基类的入口是 `RegisterComponentQueryBase<PrimitiveComponent>()`（`src/ecs/core/Context.cpp:88`，模板定义 `inc/hgl/ecs/core/Context.h:502-514`）。
 
 反注册对称处理：`UnregisterComponentInstance`（`src/ecs/core/Context.cpp:1154-1187`）在计数归零时关组。**没有** `DisableUnusedSystemGroups` / `CleanupSystemGroup` 这类显式入口（全仓 0 命中）——组开关的唯一驱动点是 `CreateAdaptiveRenderGraph` 按本世界 `SceneStats.active_render_groups` 逐组调用（`src/ecs/core/RenderGraph.cpp:230-237`）。
@@ -197,7 +197,7 @@ RegisterDefaultEcsSystems       :228-245 → 返回 input_system 给 WorkObject
 - `SystemGroup{name, startPhase, endPhase}`（`inc/hgl/ecs/core/SystemGroup.h:28-43`）——**只有组定义，没有 `enabled` 字段**：组的「是否启用」是每世界状态，由 `CreateAdaptiveRenderGraph` 按本世界 `SceneStats` 即时推导（`src/ecs/core/RenderGraph.cpp:226-240`），不写进全局注册表（多世界建图时全局存会被互相覆盖）。
 - 注册表 `SystemGroupRegistry`（`inc/hgl/ecs/core/SystemGroup.h:53-89`）是**静态单例**，只承载真正的全局不变量：组定义 + `RegisterGroupInstaller` 插件式安装器；API 为 `RegisterGroup` / `RegisterGroupInstaller` / `EnsureGroupSystems` / `GetAllGroups` / `GetGroup` / `DebugPrint`。**`ScopedSystemGroupState` 与旧别名 `RenderSystemGroup / RenderSystemGroupRegistry / ScopedGroupState` 均已删除**（0 命中）。
 - 组元数据在首帧由 `EnsureSystemGroupsRegistered` 从系统集合反推：遍历每个 element type 的系统，取 `min(startPhase)/max(phase)` 作为组区间（`src/ecs/core/RenderGraph.cpp:21-87`，幂等，只补缺失，注册后打印一条组清单日志）。
-- 「组是否启用」的落地点唯一：`SetElementTypeSystemsEnabled` 直接 `SetEnabled(false)` 掉该组所有系统（`src/ecs/core/Context.cpp:1342-1356`）。
+- 「组是否启用」的落地点唯一：`SetSystemGroupEnabled(SystemGroupID, bool)`（`Context.h:1033`）直接 `SetEnabled(false)` 掉该组所有系统。
 
 对 SimpleSphere：只有 `PrimitiveComponent` 存在 → 只有 `"Primitive"` 组有组件计数 → Text/Line 组的系统在首帧就被关掉；这一点在日志里表现为 pass 只有 1 个、且看不到 Line/Text 系统。
 
@@ -209,7 +209,7 @@ RegisterDefaultEcsSystems       :228-245 → 返回 input_system 给 WorkObject
 
 | 路径 | 内容 | 触发 |
 |---|---|---|
-| `CreateAdaptiveRenderGraph(context, stats)`（`inc/hgl/ecs/core/RenderGraph.h:145`，`src/ecs/core/RenderGraph.cpp:217-262`） | 遍历 `SystemGroupRegistry` 全部组：先按 `stats.HasGroup(name)` 调 `SetElementTypeSystemsEnabled`；命中的组各 `Add` 一段 pass（`startPhase..endPhase`） | 每帧 `Render` 入口；仅当 `scene_structure_dirty` 且 `SceneStats::GetHash()` 变化才真正重建（`src/ecs/core/Context.cpp:602-615`） |
+| `CreateAdaptiveRenderGraph(context, stats)`（`inc/hgl/ecs/core/RenderGraph.h:145`，`src/ecs/core/RenderGraph.cpp:217-262`） | 遍历 `SystemGroupRegistry` 全部组：先按 `stats.HasGroup(name)` 调 `SetSystemGroupEnabled`；命中的组各 `Add` 一段 pass（`startPhase..endPhase`） | 每帧 `Render` 入口；仅当 `scene_structure_dirty` 且 `SceneStats::GetHash()` 变化才真正重建（`src/ecs/core/Context.cpp:602-615`） |
 
 `CreateDefaultLinearGraph` / `use_adaptive_render_graph` / `SetAdaptiveRenderGraphEnabled` 均已删除（0 命中）。
 
@@ -416,7 +416,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 | 排序 | `RunSorting → SortByDistance` `:125/:231-243` | 按 `distanceToCamera` | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
 | 变换索引 | `RunTransformIndexing → AssignTransformIndices` `:130/:244-302` | 由 handle 查组内序号，movable → `dynamic_base + group_index`，static → `group_index + 1`（slot 0 恒为单位矩阵）；写 `item->transform_index` |
 | 成批 | `RunBatching → BuildMaterialBatches` `:147/:1014-1088` | 按 `ShaderProgramPipelineKey{shader_program, pipeline}`（`inc/hgl/ecs/core/ShaderProgramPipelineKey.h:23-48`）归批；缺 recipe rows 或未解析 pipeline 的 item 直接跳过并告警 |
-| 批内定型 | `FinalizeBatches → FinalizeBatch` `:1090-1102 / :732-784` | `SortBatchItems`（:786-831）→ `EnsureBatchIndexRows`（:833-916）→ `EnsureMeshDrawParams`（:591-642）→ `BuildBatches`（:366-589，生成 DrawBatch，同几何同 range 合并实例）→ `WriteBatchIndexRows`（:918-1013）+ `WriteMeshDrawCommands`（:644-730） |
+| 批内定型 | `FinalizeBatches → FinalizeBatch` | `EnsureBatchIndexRows` → `EnsureMeshDrawParams` → `WriteBatchIndexRows`。⚠ **2026-10-10 订正**：`SortBatchItems` / `BuildBatches` / `WriteMeshDrawCommands` **全仓已不存在**（CPU 建批 / 排序 / 写命令链随 T4c4「删 CPU 绘制链」消失）；批间排序现为 `PrimitiveRenderSystem::RenderBatches` 里的 `std::sort(ordered_batches)`（按 `MaterialBatch::key`），`PrimitiveOverlayRenderSystem` 转发同一函数（`overlay_only=true`） |
 
 `MaterialBatch`（`inc/hgl/ecs/core/MaterialBatch.h:40-94`）是「一个 shader program 的全部待绘项」：`key`（shader+pipeline）、`items`（`RenderItem*`）、`draw_batches`/`draw_batches_count`、**`mesh_draw_params_buffer`（现装 `MeshDrawCommand` 表，每 DrawBatch 一行 8B）+ `mesh_draw_params_capacity`**、`icb_mesh_tasks`（mesh 间接命令）、`icb_count_buffer`/`icb_count_buffer_offset`（GPU 计数，可选）、`l2w_index_buffer`、`material_data_index_rows_buffer`、`texture_reference_base_addr`、`gpu_driven_override`/`own_*` 所有权位（`uses_render_item_resolve` 于 2026-10-09 删除：恒假死开关，4-ID 运行时解析从未启用）、`transform_buffer`（非拥有，来自 TransformSystem）、`renderer`（`PipelineMaterialRenderer`）。
 
@@ -425,7 +425,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 > ⚠ **T3i 之后的提交分两路**（未接管批走 CPU 账 `DrawMeshTasksIndirect`；接管批按切片走
 > `DrawMeshTasksIndirectCount` + GPU 计数缓冲），现状见 `doc/render-flow-cull-sort-drawcall.md` §5。
 
-`PrimitiveRenderSystem::OnRender`（`src/ecs/support/primitive/PrimitiveRenderSystem.cpp:39-94`）：从 `cache.materialBatches` 收集非空批 → 按 `MaterialBatch::key` 排序（:60-65）→ 跳过 `pipeline->GetOverlay()` 的批（:72-73，交给 Overlay 系统）→ 逐个 `renderer->Render(cmdBuffer, draw_batches, count, transform_buffer, batch, context->GetRenderContext(), context->GetActiveCameraID())`（:86-92）。批次内动作见配套文档 `doc/simple-sphere-ecs-render-chain.md` §5。
+`PrimitiveRenderSystem::OnRender`（`src/ecs/support/primitive/PrimitiveRenderSystem.cpp:39-94`）：从 `cache.materialBatches` 收集非空批 → 按 `MaterialBatch::key` 排序（:60-65）→ 跳过 `pipeline->GetOverlay()` 的批（:72-73，交给 Overlay 系统）→ 逐个 `renderer->Render(cmdBuffer, draw_batches, count, transform_buffer, batch, context->GetRenderContext(), context->GetActiveCameraRow())`（:86-92）。批次内动作见配套文档 `doc/simple-sphere-ecs-render-chain.md` §5。
 
 ### 7.6 描述符现状（BDA 终态）
 
@@ -465,7 +465,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 - 跨帧存活的还有：`TransformAssignmentBuffer`（TransformSystem 持有）、`MaterialBatch` 的各类 buffer（`Ensure*` 按 pow2 扩容）、行池（`GlobalSSBOBufferRegistry` / `MaterialTextureReferencePool` 持有）、`RenderItemDataStorage` / `DrawItemIDStorage`（`ECSContext` 成员，`inc/hgl/ecs/core/Context.h:122-123`，构造时创建于 `src/ecs/core/Context.cpp:64-65`）。
 - 非拥有关系要小心：`MaterialBatch::transform_buffer` 是 TransformSystem 的指针（`inc/hgl/ecs/core/MaterialBatch.h:78` 注释明示勿跨帧缓存系统指针）；`PrimitiveRenderItem` 持 `shared_ptr` 组件句柄（会延长组件寿命到当帧结束）。
 - `frame_index`（`SetFrameIndex`，`src/ecs/core/Context.cpp:1113-1124`）供 ring 分段；`render_submission_serial`（`inc/hgl/ecs/core/Context.h:130`）供资源回收（纹理引用池的 retire 延迟与此挂钩，常量 `MaterialTextureConfigurationRetireEpochDelay = 3u`，`inc/hgl/graph/module/MaterialTextureReferencePool.h:15`）。
-- 活跃相机/可见性过滤：`active_camera_id`（`inc/hgl/ecs/core/Context.h:148`，`GetActiveCameraID()` :298）与 `active_mobility_filter`（:151，`GetActiveMobilityFilter()` :266）由 `RenderTo` 的 pass 级设置在区间内覆盖，供 RPCS 与渲染器消费。
+- 活跃相机/可见性过滤：成员 `active_camera_id`（`inc/hgl/ecs/core/Context.h:275`；读取口 `GetActiveCameraRow()` :520）与 `active_mobility_filter`（:471，`GetActiveMobilityFilter()`）由 `RenderTo` 的 pass 级设置在区间内覆盖，供 RPCS 与渲染器消费。⚠ **2026-10-10**：裸读成员槽号的 `GetActiveCameraID()` 已删除（零调用者）。
 
 ---
 
@@ -502,7 +502,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 1. **不要手写遍历顺序**：顺序 = `ExecutionPhase` + 显式依赖（`AddDependency<T>`，`inc/hgl/ecs/core/System.h:110-115`）+ 注册先后；想插到某系统前就加依赖，别改相位数值。
 2. **Update 与 Render 是两套遍历**（§4.4）：`RenderCollect/RenderBatch/...` 阶段的工作写在 `Update()` 里，pass 内录命令写在 `Render()` 里；把录命令逻辑写进 `Update()` 会在 cmd buffer 未开时崩。
 3. **`final` 封死的阶段基类**：要扩展 Collect/Build/Render 的行为，必须经对应 pipeline（`RenderPipelineBase` 虚函数）或新增阶段基类，不能直接 override。
-4. **组开关是单向收敛的**：`CreateAdaptiveRenderGraph` 每帧按 `SceneStats` 推导组开关，组件计数归零即 `SetElementTypeSystemsEnabled(false)` 关掉整组系统；因此「系统没跑」的第一嫌疑是**组里没有组件**（而不是系统没注册）。新增元素类型必须同时提供：组件（`GetSystemGroupName`）+ 组安装器（`DefaultSystems`）+ 相位区间可推导的系统。
+4. **组开关是单向收敛的**：`CreateAdaptiveRenderGraph` 每帧按 `SceneStats` 推导组开关，组件计数归零即 `SetSystemGroupEnabled(group, false)` 关掉整组系统；因此「系统没跑」的第一嫌疑是**组里没有组件**（而不是系统没注册）。新增元素类型必须同时提供：组件（`GetSystemGroupName`）+ 组安装器（`DefaultSystems`）+ 相位区间可推导的系统。
 5. **图构造依赖组元数据**：`EnsureSystemGroupsRegistered` 必须先于建图（`src/ecs/core/DefaultSystems.cpp:240` 已保证）；运行期新出现的元素类型会让 `MarkSceneStructureDirty` 生效，下一帧重建图时才真正换 pass 集合。
 6. **帧缓存生命周期**：`cache.renderItems` 每帧重建（持有对象的是 `unique_ptr`），`materialBatches` 跨帧复用但每帧 `Clear()`——**不要跨帧缓存 `RenderItem*`**；`MaterialBatch::transform_buffer` 是非拥有指针。
 7. **物化 epoch 语义**：共享行表被重写会让「本帧被跳过的 primitive」行号失效，因此 `materialize_epoch` 不匹配时必须重物化（RPCS `:1141-1216` 的预扫描就是为此）。改收集逻辑时保留这条不变量。
@@ -539,7 +539,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 | `SystemProfiler`（per-system / per-group 计时） | 类型不存在（0 命中），`componentCount` 组状态字段也随之删除 | 全仓 0 命中 |
 | `RenderSystemGroup` / `RenderSystemGroupRegistry` / `ScopedGroupState`（旧别名） | 全部删除（0 命中）；只有 `SystemGroup` / `SystemGroupRegistry` | `inc/hgl/ecs/core/SystemGroup.h:28-89` |
 | `SystemGroup{name, startPhase, endPhase, enabled}` | **`enabled` 字段已移除**：组开关是每世界状态，由 `CreateAdaptiveRenderGraph` 按 `SceneStats` 即时推导，不再存全局注册表 | `inc/hgl/ecs/core/SystemGroup.h:28-43,45-52`；`src/ecs/core/RenderGraph.cpp:226-240` |
-| `ScopedSystemGroupState` 临时开关 | 不存在（0 命中）；开关唯一入口 `SetElementTypeSystemsEnabled` | `src/ecs/core/Context.cpp:1342-1356` |
+| `ScopedSystemGroupState` 临时开关 | 不存在（0 命中）；开关唯一入口 `SetSystemGroupEnabled(SystemGroupID, bool)` | `Context.h:1033`、`src/ecs/core/Context.cpp:685,701` |
 | `OnCreate` / `OnDependenciesReady`（System 生命周期） | 两个钩子都不存在（0 命中）。System 生命周期 = `Initialize / Update / Render / Shutdown`；`ECSContext::Initialize` 里直接按拓扑序调 `Initialize()` | `inc/hgl/ecs/core/System.h:75-84`；`src/ecs/core/Context.cpp:136-151` |
 | `Context::CreateChildEntity(parent, desc)` | API 不存在（0 命中）。层级改为 `TransformComponent::SetParent/AddChild/RemoveChild` + `CreateEntity<Entity>` | `inc/hgl/ecs/components/TransformComponent.h:145-154` |
 | `DisableUnusedSystemGroups` / `CleanupSystemGroup` | 两个 API 都不存在（0 命中）。组关闭只发生在 `CreateAdaptiveRenderGraph` 与反注册计数归零路径 | `src/ecs/core/RenderGraph.cpp:230-237`；`src/ecs/core/Context.cpp:1154-1187` |

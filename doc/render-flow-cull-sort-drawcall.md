@@ -117,12 +117,12 @@ RenderFrameSync ┌─ GPUCullSystem：一次 compute 派发（独立 cmd，异�
 | 层 | 位置 | 规则 |
 |---|---|---|
 | ① 项（帧级） | `PrimitiveBatchPipeline::RunSorting → SortByDistance` | 全部渲染项按 `distanceToCamera` **升序**（远 → 近） | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
-| ② 批内 | `SortBatchItems` | 分**静态**（`!transform.IsMovable()`）与**可动**两组，各自按 `RenderItem::Compare()` 排序；静态在前；回写 `item->index`、记 `static_count`。**`gpu_driven_override` 批直接 return（不排序）** |
+| ② 批内 | ~~`SortBatchItems`~~ **已不存在** | ⚠ **2026-10-10 订正**（`SortBatchItems` / `RenderItem::Compare()` / `item->index` / `static_count` 全仓已无，随 T4c4「删 CPU 绘制链」消失）——原描述：分**静态**（`!transform.IsMovable()`）与**可动**两组，各自按 `RenderItem::Compare()` 排序；静态在前；回写 `item->index`、记 `static_count`。**`gpu_driven_override` 批直接 return（不排序）** |
 | ③ 批间 | `PrimitiveRenderSystem::OnRender` | 按 `MaterialBatch::key`（`ShaderProgramPipelineKey{shader_program, pipeline}`）排序后逐个提交 ⇒ 同 program 相邻、状态切换最少 |
 | ④ 透明排序 | **不存在** | 没有按深度给混合材质排序的机制。`alpha_blend` 的真结果顺序 = ①②③ 的副产物；GPU 接管批的行序 = `atomicAdd` **到达序** ⇒ 与 CPU 账可不同。**像素逐字节判据只对不透明/镂空/抖动类硬，对混合排不硬**（"B1"，已知缺口） |
 
 > 机制提醒：② 的"静态在前"是**为帧间稳定性**服务的（静态项不随相机重排 ⇒ 命令流稳定、属性更新量小）；
-> 可动项仍按 `Compare()` 定序。别把这一层换成全局深度序——那会破坏 CPU 账与命令复用。
+> （原文「可动项仍按 `Compare()` 定序」已失效 —— `Compare()` 已删。）别把这一层换成全局深度序——那会破坏 CPU 账与命令复用。
 
 ---
 
@@ -139,7 +139,7 @@ RenderFrameSync ┌─ GPUCullSystem：一次 compute 派发（独立 cmd，异�
 
 | 下标 | 谁写 | 含义 |
 |---|---|---|
-| `item->index` | `SortBatchItems` | **批内**序号（写回后即"行号"，供四流/属性表按批内序号定位） |
+| ~~`item->index`~~ | ~~`SortBatchItems`~~ | ⚠ **2026-10-10 订正：两者全仓已不存在** ——原描述：**批内**序号（写回后即"行号"，供四流/属性表按批内序号定位） |
 | `item->transform_index` | `AssignTransformIndices` | L2W 存储句柄：movable → `dynamic_base + group_index`，static → `group_index + 1`（**slot 0 恒单位矩阵**） |
 | `item->distanceToCamera` | Collect（`RenderPrimitiveCollectSystem`） | 用于 ① 排序 | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
 
@@ -255,7 +255,7 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 | 收集（渲染项、4-ID、距离、材质行物化） | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` |
 | 相位代理 | `src/ecs/support/primitive/PrimitiveCullSystem.cpp`、`PrimitiveSortSystem.cpp`、`PrimitiveBuildSystem.cpp`、`PrimitiveRenderSystem.cpp` |
 | pipeline 门面 | `src/ecs/support/primitive/PrimitiveRenderPipeline.cpp`（`PrepareFrame/RunCull/RunSort/RunBuild`） |
-| CPU 剔除 / 排序 / 建批 / guard | `src/ecs/support/PrimitiveBatchPipeline.cpp:PerformFrustumCulling / SortByDistance / SortBatchItems / BuildMaterialBatches / BuildBatches / WriteMeshDrawCommands / FinalizeBatches / TryApplyGPUCullOverride` |
+| CPU 剔除 / 建批 / guard | `src/ecs/support/PrimitiveBatchPipeline.cpp:PerformFrustumCulling / BuildMaterialBatches / FinalizeBatches / FinalizeBatch / EnsureBatchIndexRows / EnsureMeshDrawParams / WriteBatchIndexRows / TryApplyGPUCullOverride`（⚠ **2026-10-10 订正**：`SortByDistance` / `SortBatchItems` / `BuildBatches` / `WriteMeshDrawCommands` 全仓已不存在） |
 | 批对象与键 | `inc/hgl/ecs/core/MaterialBatch.h`、`inc/hgl/ecs/core/ShaderProgramPipelineKey.h` |
 | 提交与间接绘制 | `src/ecs/support/PipelineMaterialRenderer.cpp:Render / ProcIndirectRender` |
 | GPU 剔除 / 切片 / 计数 / barrier | `src/ecs/support/GPUCullSystem.cpp`（`Dispatch`、`ApplyGPUCullOverrideHook`）、`ShaderLibrary/ecs/entity_gpu_cull.glsl` |

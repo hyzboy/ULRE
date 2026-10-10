@@ -474,6 +474,28 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | `doc/future/entity-rows-gpu-cull-plan.md:1253` 把 "CPU 排序 `PrimitiveBatchPipeline`（两处 `std::sort`）" 列为待删活代码 | 该文件已无 `std::sort` |
 | `ComponentTypeTable.h` 注释"0 引用的读取口已删"（`TransformDataStorage.h:878`） | 下一行 `:880` 就是零引用的 `GetLocalMatrices` |
 
+### 6.1 ✅ 处置记录（2026-10-10）
+
+先做了一次**事实复扫**，发现本表有两行的前提已随 §1.1/§2.3 的清理自然消失：
+
+- `TransformDataStorage::GetLocalMatrices` —— **全仓已不存在**（连同其上方那句"0 引用的读取口已删"注释一起没了）⇒ 本表末行(第 8 行)与 §1.1/§5 的对应行均**过期**，无需改动即可关闭。
+- **`PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 已是一份实现**（§3.5 首行）：
+  现 `PrimitiveRenderSystem::RenderBatches(context, cmdBuffer, overlay_only)`（`PrimitiveRenderSystem.cpp:39`）是唯一实现，
+  `PrimitiveOverlayRenderSystem.cpp` 全文 **24 行**、`OnRender` 只有一句 `PrimitiveRenderSystem::RenderBatches(context, cmdBuffer, true);`
+  ⇒ §3.5 的"~90 行最清晰合并候选"**已经合并完成**（差异参数化成一个 bool）。
+
+本表逐行的订正（全部按"文档描述的函数/API 在代码里是否真的存在"复核后再改）：
+
+| 文档声称 | 处置 |
+|---|---|
+| `SortBatchItems` 是批排序主函数（`PrimitiveBatchPipeline.cpp:786-831`） | ✅ 已订正 4 份文档（`ecs-layer-architecture-and-frame-flow.md` 批内定型行、`simple-sphere-ecs-render-chain.md`、`render-flow-cull-sort-drawcall.md`、`future/entity-rows-gpu-cull-plan.md`）：说明该函数**全仓不存在**，批内定型现为 `FinalizeBatch → EnsureBatchIndexRows → EnsureMeshDrawParams → WriteBatchIndexRows`，批间排序是 `PrimitiveRenderSystem::RenderBatches` 的 `std::sort(ordered_batches)`（按 `MaterialBatch::key`） |
+| `RenderItem::Compare()` 是批排序主键 | ✅ 已订正：`render-flow-cull-sort-drawcall.md`（②批内行 + 机制提醒 + `item->index` 行 + 文件清单行）、`render-item-descriptor-and-indirection-pipeline.md`（4.1 条） |
+| `future/stage_B_execution_plan.md:370` / `stage_B_debt_list.md:249` 把 `Compare` 当活约束 | ✅ 两份规划档都加了**事实订正**块：该函数与 `src/ecs/core/RenderItem.cpp` 已删除 ⇒ 围绕它的设计前提失效（另一处 `:1071` 的 B3-iii 侦察前提同样订正） |
+| 3 份文档称 `PrimitiveRenderSystem` 调 `GetActiveCameraID()` | ✅ 已订正为 `GetActiveCameraRow()`（`ecs-layer-architecture-and-frame-flow.md`、`simple-sphere-ecs-render-chain.md`、`t3-camera-row-slotting-plan.md`）；并注记裸读槽号的该 API 已于 2026-10-10 删除 |
+| 4 份文档用 `SetElementTypeSystemsEnabled(...)` | ✅ 已订正为真 API **`SetSystemGroupEnabled(SystemGroupID, bool)`**（`Context.h:1033` / `Context.cpp:685,701`）：`ecs-layer-architecture-and-frame-flow.md` 5 处、`simple-sphere-ecs-render-chain.md` 1 处、`future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md` 1 处（保留旧名的说明） |
+| `entity-rows-gpu-cull-plan.md:1253` 称该管线有两处 `std::sort` | ✅ 已订正：`PrimitiveBatchPipeline.cpp` 现**没有任何 `std::sort`**（`SortByDistance` 亦不存在）；同文件 `:1407` 的删除清单标注"已不存在" |
+| `ecs-layer-architecture-and-frame-flow.md` 里按行号跳转的 `Context.h:422-429` 等 | ◐ 部分订正：本轮改到的那几处（相机/组开关/相机读取口）已换成**符号 + 现行号**；其余零散行号引用留给后续文档统一整理（行号随代码漂移是结构性问题，符号锚点才是稳的） |
+
 ---
 
 ## 7. 已核查、判定"不是问题"（防止重复翻案）
@@ -499,14 +521,14 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | ~~P0~~ | §3.1 `Register*System` 的 `is_render` | 名不符实 | ✅ **已处置（2026-10-09）**：`is_render` 形参 + 两个包装整体删除，只剩 `RegisterSystem<T>` |
 | ~~P0~~ | §1.2 `CameraControlMode::Free` 默认值 + 处理器全空 | 特例 | ✅ **已处置（2026-10-09 `ce4259799`）**：`FreeCameraMode` 已实现旋转/六向移动/`matrix_dirty`（`CameraSystem.cpp:202-255`） |
 | ~~P0~~ | §1.2 `uses_render_item_resolve` 恒假 | 死代码 | ✅ **已处置（2026-10-09）**：恒假开关整体删除（`MaterialBatch.h` 字段 + `.cpp` 复位 + `PrimitiveBatchPipeline.cpp` 两处判定）；**4-ID 表 / `addr_global_render_items` / shader 解析链保留** —— 那是 GPU-Driven 路径的活路径 |
-| **P1** | §6 文档-代码脱钩（尤其把死函数当活约束的规划档） | 文档完整性 | 正在误导设计 |
+| ~~P1~~ | §6 文档-代码脱钩（尤其把死函数当活约束的规划档） | 文档完整性 | ✅ **已处置（2026-10-10）**：见 §6.1 —— 8 份文档订正（`SortBatchItems`/`RenderItem::Compare`/`GetActiveCameraID`/`SetElementTypeSystemsEnabled` 四族 + `entity-rows-gpu-cull-plan` 的 `std::sort` 断言），两份 stage_B 规划档加"前提已失效"块；**同时复扫发现**：`GetLocalMatrices` 全仓已不存在（本表末行自然关闭）、`PrimitiveRenderSystem`/`PrimitiveOverlayRenderSystem` **已合并成一份实现**（§3.5 首行已完成，Overlay 全文 24 行）。 |
 | ~~P1~~ | §2.3 4×`Initialize*Table` + 3×`Upload*DirtyRows` | 冗余 | ✅ **已处置（2026-10-09）**：上传侧=`UploadDirtyRowsHelper`（拆解时已做）；建表侧=抽 `BuildWorldRowTable<RowType>`，`ContextGPU.cpp` −117 行；**§2.3 全部处置完**（2026-10-10：profiler 合并 `support/PerfTimer.h` + 计数常量单源）；
 另：对拍台架开关正常，但当前树取不到对拍采样（见 §4.1 行）。⚠️ 2026-10-10 补充环境事实：**所有 GUI 示例**
 在本会话的无声运行下都会早退（约 5s、退出码 127、日志停在不同位置 ⇒ 竞态；`CrashDumps` 无转储 ⇒ 非异常终止）——
 已用控制组排除代码原因（把本批改动整体换回 HEAD 版本后表现相同，且 `ClockUse`/`ShadowMap`/`GizmoUsage` 三个
 不同示例一致）⇒ **与审计各项无关**；其影响是：本轮及后续整改的**示例冒烟验证必须由用户在交互（有窗口）会话下做**，
 我在无声会话里只能跑无窗口测试（`ctest`）。 |
-| **P1** | §3.5 `PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 合并（差一个取反） | 多路径 | ~90 行，最清晰候选 |
+| ~~P1~~ | §3.5 `PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 合并（差一个取反） | 多路径 | ✅ **已完成（复核发现）**：合并早已落地 —— 唯一实现 `PrimitiveRenderSystem::RenderBatches(ctx, cmd, bool overlay_only)`（`PrimitiveRenderSystem.cpp:39`），`PrimitiveOverlayRenderSystem.cpp` 全文 24 行、`OnRender` 只转发 `RenderBatches(context, cmdBuffer, true)`。 |
 | ~~P1~~ | §2.3 三张表的脏行机制抽公共件（~120 行）+ 两个 `Write*DirtyIndices`（~200 行） | 冗余 | ✅ **已处置**：`support/DirtyRowSet.h` 收敛三表（`EntityGPUTable`/`EntityRenderIDTable`/`LightRowTable`）；两个 `Write*DirtyIndices` 已收敛为 `WriteDirtyIndicesInternal`（`TransformAssignmentBuffer.cpp`，公开壳仅 3 行） |
 | **P1** | §3.2 双重 `DetachAllComponents`；§2.2 `component_mask` 一致性仅测试保证 | 多路径/冗余 | |
 | ~~P1~~ | §4.1 `CPUCullReferenceSystem` 默认注册 / 4 个测试未注册 | 特例/测试 | ✅ **已处置**：台架已在 `#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)` 之后，且该宏此前**全仓无处定义**——2026-10-09 补上 CMake 选项（`src/ecs/CMakeLists.txt`）；10 个测试目标 `add_test` 齐备（ctest 实测全部运行）。2026-10-10 实测：开关打开后台架**能正常注册并初始化**

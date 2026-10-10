@@ -246,6 +246,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 **变更前形态（记录用）**：`GeometryData` 曾持每实体 `new` 出来的
 `GeometryDataBuffer*` / `GeometryDrawRange*` / `Geometry*`，而这三者正是**批处理的主键**：
 
+- ⚠ **2026-10-10 事实订正：本条已作废** —— `RenderItem::Compare` 与 `src/ecs/core/RenderItem.cpp` 已被删除（审计 §1.1；零调用者 + CPU 排序链随 T4c4 消失）⇒ 不再是"活约束"。历史原文：
 - `RenderItem::Compare`（`src/ecs/core/RenderItem.cpp:8-52`）= 批排序主键，按 `*GeometryDataBuffer <=>`
   （内容比较 geometry_id/vdm/vab/ibo）与 `*GeometryDrawRange <=>`（vertex_offset/first_index/counts）排序；
   `DrawBatch::Set(...)`（`inc/hgl/ecs/support/PipelineMaterialRenderer.h:62-79`）再由 `data_buffer->geometry_id` 定 `geometry_id`；

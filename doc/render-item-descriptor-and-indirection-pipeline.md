@@ -272,7 +272,7 @@ mat4   mesh_draw = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params_pool
 > **核心目标**：CPU 绘制提交全面切换为整数 Handle 模式，终结每帧组织重型数据。
 
 - **4.1 `PrimitiveBatchPipeline` 收集项轻量化与几何聚类排序** 【✅ 已完成】
-  - 增强 `RenderItem::Compare`，相同材质与几何数据时按 `render_item_handle` 升序排列，最大化形成连号区间的概率。
+  - （⚠ **2026-10-10 订正**：`RenderItem::Compare` 与 `item->index` **全仓已不存在** —— 随 T4c4「删 CPU 绘制链」消失，本条"增强"已无载体；连号折叠现由 `DrawItemCompaction.h` 的 `CompactRenderItemHandles` 承担。）历史原文：增强 `RenderItem::Compare`，相同材质与几何数据时按 `render_item_handle` 升序排列，最大化形成连号区间的概率。
   - 在 `PrimitiveBatchPipeline::BuildBatches` 中针对 4-ID 几何项提取 `RenderItemHandle` 序列。
 - **4.2 实现连号区间折叠算法 (Run-Length Compaction)** 【✅ 已完成】
   - 在 `DrawItemCompaction.h/.cpp` 中实现无 STL 的高效折叠算法 `CompactRenderItemHandles`：

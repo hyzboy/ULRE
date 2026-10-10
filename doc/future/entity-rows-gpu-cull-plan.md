@@ -1250,7 +1250,7 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 | 面 | 落点（符号） | 标记数 | A6-d |
 |---|---|---|---|
 | CPU 剔除 / 收集 / 距离 | `RenderPrimitiveCollectSystem`（frustum 判据 + `item->distanceToCamera` 写者） | `distanceToCamera` 全仓 4 处 | **删** |
-| CPU 排序 | `PrimitiveBatchPipeline`（renderItems 按距离 + static/movable 两处 `std::sort`） | ≤3 处 | **删** |
+| CPU 排序 | ~~`PrimitiveBatchPipeline`（renderItems 按距离 + static/movable 两处 `std::sort`）~~ ✅ **2026-10-10 订正：本行已过期** —— `PrimitiveBatchPipeline.cpp` 现**没有任何 `std::sort`**（`SortByDistance` 全仓已不存在）；唯一的排序是 `PrimitiveRenderSystem::RenderBatches` 里按 `MaterialBatch::key` 排**批** | ≤0 处 | **已完成** |
 | CPU 压缩 | `DrawItemCompaction.{h,cpp}` + 调用面 | 引用 17 处 | **删** |
 | CPU 写行 / ICB | `PrimitiveBatchPipeline::WriteMeshDrawCommands`（+ `draw_batches` 16 处） | 定义 1 / 档外调用 **0** | **删** |
 | CPU flush 分支 | `PipelineMaterialRenderer::ProcIndirectRender` 的 CPU 支（`else` 侧） | 1 处 | **删**（GPU 支保留） |
@@ -1405,6 +1405,7 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   - **T4c4-3 ✅**（`49d9e2430`）：删 CPU 绘制批对象链 —— `MaterialBatch::draw_batches(*)`、`struct DrawBatch`、
     `DrawBatchArray`、`Renderer::Draw()`、`Render` 的 `batches`+`batch_count` 入参、Render 里的 CPU 循环、
     三个 CPU 累积计数成员、`BuildBatches`、`SortBatchItems`、`last_compaction_stats`（删前 rg 复查外部使用者=0）；
+    ⚠ **2026-10-10 订正**：`BuildBatches` / `SortBatchItems` 已随 T4c4 删除，现在**全仓都不存在**（本行从"计划删除"变成"已不存在"，无需再动）；
     两个调用方（`PrimitiveRenderSystem` + `PrimitiveOverlayRenderSystem`，后者属 RenderDebug 相位边界）**同批**改；
     flush 门 ⇒ `if (owner_batch && owner_batch->gpu_driven_override)`。
     契约 needle 按意图换形三条（`RenderItem::MeshDrawKey draw_key;` / `next_item->draw_key == draw_key` /
