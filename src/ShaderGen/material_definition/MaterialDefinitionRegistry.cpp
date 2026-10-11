@@ -293,7 +293,6 @@ void NormalizeRecipe(MaterialRecipe &recipe)
     }
 
     recipe.mtl_def_id = definition.definition_id;
-    ApplyBaseMaterialInfoDefaults(recipe, definition, false);
 
     const ResolvedMaterialRenderState resolved =
         ResolveMaterialRenderState(definition, recipe);

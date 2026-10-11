@@ -601,14 +601,6 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,
-                                              const MaterialDefinition &definition,
-                                              const bool overwrite_existing = false)
-    {
-        if (recipe.mtl_def_id.empty())
-            recipe.mtl_def_id = definition.definition_id;
-    }
-
     inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept
     {
         hgl::hash::FNV1aHasher64 h;

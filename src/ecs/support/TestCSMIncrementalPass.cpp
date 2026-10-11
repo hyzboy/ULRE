@@ -1841,6 +1841,11 @@ int main(int argc, char** argv)
               "ShaderCodeModuleResolutionRequest",
               "ResolutionRequest/GeometryCapability 已于 2026-10-11 F-3 删除（整类型无读写）",
               true },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "ApplyBaseMaterialInfoDefaults",
+              "ApplyBaseMaterialInfoDefaults 已于 2026-10-11 F-4 删除：形参 overwrite_existing 从不被读，"
+              "且唯一调用点紧邻一行已直接写 mtl_def_id ⇒ 该调用恒为 no-op（先证此再删，不是删参数了事）",
+              true },
             { "Vulkan/CMakeLists.txt", OS_TEXT("src/Vulkan/CMakeLists.txt"),
               "VKString.cpp",
               "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"

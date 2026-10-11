@@ -194,7 +194,7 @@ grep -n "MaterialMeshIndexTables" src/ShaderGen/compile/MaterialShaderEmitter.cp
 | **S2** | **B 层整体删除**：`MaterialTextureSamplingOptions`（结构 + hash + `operator==`）+ `MaterialTextureDeclaration::sampling` + `MaterialDefinitionFile.cpp:493-710` 解析块 + `ParseTextureFilterMode/WrapMode/CompareOp`（**已核**：`MaterialTextureCompareOp` 仅出现在 `MaterialRecipe.h` 与 `MaterialDefinitionFile.cpp:466-473`，**没有**独立通路——真是源的 compare 走 `ShaderLibrary/sampler.toml:57` → `SamplerPreset.cpp:34` 的 `VkCompareOp`） | 15 份材质 TOML 无 `sampling` 键（已成立）；删后门用例同批收敛；`git grep -nw sampling` 只剩无关注释 | `channels` **不在**本批范围（活：3 份 TOML 授权 + 纹理通道宏消费者） |
 | **S3** | **C 层平行解析表收敛**：`ParseCompareOp` 合一份；filter/wrap 的名字↔值收敛到枚举定义处（T1 模式：`Get*Name` + `Parse*`）；补 `GLSLSamplerType`/`MaterialVertexProviderPolicy`/`ShaderCodeModuleKind`/`MeshShaderMode` 的注册表 | 每个枚举的 name→value 只有 1 处实现（`git grep -c` 计数）；`ToGLSLSamplerTypeName` 要么被用、要么删；门用例同步 | 与 T1/T2 既定口径一致，可独立成批 |
 | **S4** | **D 层去双真值**：D1（删硬编码必需槽，改读表 + 表里显式标 required）；D2（`double_sided` 与 `cull_mode` 二选一，另一条删或加一致性校验；TOML 侧两者 0 授权 ⇒ 可直接收敛）；D4（`GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删除该口）；F-4 死参数删除 | 删 D1 后：把某模板槽设为 `required=false` 且不提供 ⇒ 不再被硬编码判死；D4 反证：传未归一化 recipe ⇒ 报错而非静默全零 | D2/D4 触及 recipe/normalize 语义，建议单独一批并附反证 |
-| **S5** | **F 层逐符号删除**（F-1 五字段 / F-2 二十三个零调用函数 / F-3 类型与常量 / F-4 已并入 S4） | 每个符号：`git grep -nw <sym> -- src inc example` 归 0（注释与测试针同批改写为"禁复活"） | 与 §1.2/§1.3 那一轮的删除纪律完全同构；`ShaderArtifactSPVExtension` 处置前先核 `".spv"` 是否有别处硬写（若有 ⇒ 改为用常量而非删） |
+| **S5** | **F 层逐符号删除**（F-1 五字段 / F-2 二十三个零调用函数 / F-3 类型与常量 / F-4 已并入 S4） | 每个符号：`git grep -nw <sym> -- src inc example` 归 0（注释与测试针同批改写为"禁复活"） | 与 §1.2/§1.3 那一轮的删除纪律完全同构；`ShaderArtifactSPVExtension` 处置前先核 `".spv"` 是否有别处硬写（若有 ⇒ 改为用常量而非删） | **〔2026-10-11 已完成：F-1 §12 / F-2 §13 / F-3 §14 / F-4 §15，见 §16 小结〕**
 | **S6** | **G 层顺序协议加守卫**：G1 sampler 顺序（加载时校验索引连续性/或改为显式 index 字段）；G2 slot 顺序（对 `SurfaceProvider` 早于 provider 的排列加断言）；G3/G4 至少加注释+哨兵（模板占位符位置校验、相位序哈希输入校验） | 反证：手工错排 sampler.toml / 调换 slot 顺序 ⇒ 加载或编译**报错**，而非静默产出错 GLSL | G1 影响已编译 shader 的宏索引 ⇒ 需与 SPV 缓存失效策略一起定 |
 | **S7** | **E 层特例收敛**（可选，按用户口径"真需要才留"）：E2 把剩余 mode 分支推进 `s_descriptors` 表；E3 抽共享常量；E4 shadow 合成器外置为 `.tmpl`；E5/E6 profile 表化 | E2：编排器内 `mode ==` 直比归 0；E4：`CompositionShadow` 走 `.tmpl` 后与其它模板同路径 | E1 的 CharQuad 特判若判定"领域固有"则保留（4 处已收敛到 `IsCharQuadMode` + 表行）；不要为消除而过度抽象 |
 
@@ -656,6 +656,58 @@ BlendFactor/BlendOp/DynamicState）的 name↔value 注册表，含 `VkEnum2Stri
 §F-3 原文把 `ShaderArtifactContract.h` 的路径写作 `src/ShaderGen/contract/…`，**实际是 `inc/hgl/mtl/ShaderArtifactContract.h`**（本批按实际路径处置）。
 
 **剩余**：**F-4** 死参数 `ApplyBaseMaterialInfoDefaults(..., overwrite_existing)`（函数体从不读该参数、唯一调用点传 `false`，名字承诺的"覆盖已有"不存在）。
+
+---
+
+## 15. F-4 执行记录：死参数（复核后升级为「删整个函数 + 调用点」）+ **S5 / F 层收官**（2026-10-11）
+
+**靶**：`ApplyBaseMaterialInfoDefaults(MaterialRecipe &, const MaterialDefinition &, const bool overwrite_existing = false)`
+（§F-4 记为"死参数：函数体从不读 `overwrite_existing`，唯一调用点传 `false`"；函数实际在 `MaterialRecipe.h:604`，行号漂移）。
+
+**复核发现（比评审结论更强）**：唯一调用点在 `MaterialDefinitionRegistry.cpp:296`，而**紧邻的上一行**已经
+`recipe.mtl_def_id = definition.definition_id;`。函数体是：
+
+```cpp
+if (recipe.mtl_def_id.empty())
+    recipe.mtl_def_id = definition.definition_id;
+```
+
+⇒ 无论 `definition.definition_id` 是否为空，该调用**恒为 no-op**（非空 ⇒ 条件为假；空 ⇒ 赋回去的还是空）。
+故处置**不是"删参数了事"**，而是删掉整个函数与那次调用 —— 参数问题随之消失。
+
+### 15.1 落地
+
+| 位置 | 改动 |
+|---|---|
+| `inc/hgl/mtl/MaterialRecipe.h` | 删函数本体（8 行，含 `overwrite_existing` 形参） |
+| `src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp` | 删调用行（保留其上一行的直接赋值——那才是真正的来源） |
+| `TestCSMIncrementalPass.cpp` | 新增 1 条禁复活针（文案写明"先证恒 no-op 再删，不是删参数了事"） |
+
+### 15.2 验收（实测）
+
+| 项 | 结果 |
+|---|---|
+| 全量 Release（先 purge 57 TU / 95 obj） | `rc=0` / 0 error / 0 MSB / **392 目标** |
+| `ctest -L ecs` / `TestCSMIncrementalPass` | **12/12** / **1/1** |
+| 门 | **43 PASS / 0 FAIL** |
+| cook / 示例 | 38/0 / `PBRSpheres` rc=124、0 错误 |
+| 残留 | `ApplyBaseMaterialInfoDefaults` / `overwrite_existing` 源码面归零（仅针条目文案保留） |
+| 反证 | 函数加回 `MaterialRecipe.h` ⇒ `Test 11 Failed: … 'ApplyBaseMaterialInfoDefaults' 重新出现在 MaterialRecipe.h（禁复活）`；还原后 1/1 |
+
+---
+
+## 16. S5（F 层）收官小结
+
+| 子批 | 内容 | 结果 |
+|---|---|---|
+| F-1（§12） | 5 个只写不读字段 + `item_index` 形参/12 处实参 + `CountQueueFamilies` | 全删 + 5 条禁复活针 |
+| F-2（§13） | 22 个零调用函数 + 级联 `GetPassTypeName` / `GetNumericClassFromVkFormat` | 全删 + 4 条禁复活针 |
+| F-3（§14） | `BlendMode` / `ResourceClass`+`ResourceRequirement` / `ResolutionRequest`+`GeometryCapability` / `kMeshVertexPassthroughMaxPrimitives`；`ShaderArtifactSPVExtension` 改回真源引用（含门里 3 处硬编码） | 5 删 1 改 + 1 条"必须存在"针 + 3 条禁复活针 |
+| F-4（§15） | `ApplyBaseMaterialInfoDefaults`（复核为恒 no-op ⇒ 连函数带调用点删） | 删 + 1 条禁复活针 |
+
+**F 层剩余遗漏项**：无（原清单逐条复核；`HasDescriptorSemantic` 归 S1、`ShaderArtifactSPVExtension` 归类为"改引用"）。
+**计划内剩余任务**：`S3b`（`GLSLSamplerType` 与 `SamplerType` 收敛 + 3 个注册表盲区）、`S4`（D 层去双真值）、
+`S6`（G 层顺序协议加守卫）、`S7`（E 层特例收敛，可选）。
 
 ## 5. 本档边界
 
