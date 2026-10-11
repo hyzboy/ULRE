@@ -80,19 +80,6 @@ namespace hgl::ecs
         return slot.entity != nullptr && slot.generation == id.generation;
     }
 
-    void EntityManager::GetAllEntityPointers(std::vector<const Entity*>& out_entities) const
-    {
-        out_entities.clear();
-
-        for (const auto& slot : slots)
-        {
-            if (slot.entity)
-            {
-                out_entities.push_back(slot.entity);
-            }
-        }
-    }
-
     void EntityManager::Clear()
     {
         size_t detach_count = 0;

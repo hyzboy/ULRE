@@ -984,13 +984,6 @@ namespace hgl
                     entity_manager->DestroyEntity(id);
             }
 
-            /// Get all alive entity pointers (const version)
-            void GetAllEntities(std::vector<const Entity*>& out_entities) const
-            {
-                if (entity_manager)
-                    entity_manager->GetAllEntityPointers(out_entities);
-            }
-
             /// Ensure CameraSystem exists in this context.
             /// If created after context activation, it is initialized immediately.
             std::shared_ptr<CameraSystem> EnsureCameraSystem();

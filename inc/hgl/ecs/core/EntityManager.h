@@ -107,8 +107,8 @@ namespace hgl::ecs
 
         /// **结构性遍历**：只访问存活实体（跳空槽），不分配、不裸遍历 `slots`。
         /// 与 `ECSContext::ForEachMovableTransform/ForEachStaticTransform` 同族 ——
-        /// 新增消费者一律用它（`GetAllEntityPointers` 每条实体指针要一个 vector 元素，
-        /// 每帧调用 = 每帧一次堆分配，与「取消逐帧分配」的方向相反）。
+        /// 新增消费者一律用它（原先那条「收集全部实体指针」的接口每条实体要一个 vector 元素，
+        /// 每帧调用 = 每帧一次堆分配，与「取消逐帧分配」的方向相反；2026-10-11 审计已整体删除）。
         template<typename Fn>
         void ForEachAliveEntity(Fn &&fn) const
         {
@@ -116,9 +116,6 @@ namespace hgl::ecs
                 if (slot.entity)
                     fn(slot.entity);
         }
-
-        /// Get all alive entity pointers（const 版；**非 const 版全仓零调用者**，2026-10-10 审计 §1.1 删除）
-        void GetAllEntityPointers(std::vector<const Entity*>& out_entities) const;
 
         /// Clear all entities（块池一并释放）
         void Clear();
