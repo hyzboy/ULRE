@@ -162,6 +162,13 @@ namespace hgl::ecs
         /// 必须先 `SyncForParityReadback()` 把队列排到本帧 dispatch 完成，否则读数
         /// 与真值有至多一帧漂移——对"每 60 帧一次"的台架采样无碍，但绝不可作为
         /// 生产判据（形态 A 的回灌就是死在这里被退役的，§8.2f）。
+        ///
+        /// **§3-④（2026-10-11）：前置条件 + 自守卫。** 调用前本帧必须已经"等过 fence"或
+        /// "`SyncForParityReadback()`"，二者满足其一才会返回计数；否则**拒绝返回残影**
+        /// （一次性报错 + 返回 0，与 `MapCurrentBatchCounters` 的 §9 M6 守卫同一纪律）。
+        /// 现有两个调用点都满足：对拍台架先 `SyncForParityReadback()`
+        /// （`CPUCullReferenceSystem.cpp:419`）；SSBO dump 在 `WaitLastSubmitFence()` 之后
+        /// （`GPUCullSystem.cpp:757-758`）。
         uint32_t GetGPUVisibleCount() const;
 
         /// **对拍台架专用同步点**（T3g）：等本系统队列最近一次提交完成（fence）。
@@ -266,6 +273,13 @@ namespace hgl::ecs
         uint32_t  batch_tag_cpu_slot_ = UINT32_MAX;   ///< 映射对应的帧槽（换槽重映射）
         uint32_t *batch_counter_cpu_ = nullptr;       ///< 台架读回时的映射
         uint32_t counters_sync_frame_ = 0xFFFFFFFFu;  ///< §9 M6：最近一次 SyncForParityReadback 的帧号（Map 前校验）
+
+        /// §3-④：fence 路径的记账（`WaitLastSubmitFence()` 成功之后置位）——
+        /// `GetGPUVisibleCount` 的自守卫据此判定"本帧已可安全读回"。
+        /// 为什么不用 `counters_sync_frame_` 一个判据：那条只由 `SyncForParityReadback()` 记账，
+        /// 而 fence 路径不经过它 ⇒ 单用会误报。
+        uint32_t readback_ready_frame_ = 0xFFFFFFFFu;
+        mutable bool readback_guard_warned_ = false;   ///< 自守卫的一次性告警（每实例，非进程级）
 
         // 形态 B（T3f-2）gather 输出（容量 = kMaxVisibleEntities；被接管批直接指向它们）
         graph::DeviceBuffer *l2w_out_buffer_ = nullptr;

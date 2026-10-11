@@ -104,6 +104,10 @@ namespace hgl
                 //  而永不可达，一并删除）。
 
                 {
+                    // §3-③（2026-10-11 定案）：抬高下界 = **避免重跑**，不是漏执行。
+                    // 帧首 `BeginManagedRenderFrame` 已跑完 Collect/Batch/Commit/Upload/FrameSync
+                    // （`ContextRender.cpp:838-862`）⇒ 本 pass 只从 `RenderDrawSubmit` 起补跑。
+                    // 详见 `RenderGraph.h` 的 `Pass::startPhase` 头注（契约口径在那里）。
                     const ExecutionPhase update_min =
                         std::max(pass.startPhase, ExecutionPhase::RenderDrawSubmit);
                     if (update_min <= pass.endPhase)

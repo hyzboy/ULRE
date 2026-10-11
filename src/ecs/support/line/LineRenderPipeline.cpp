@@ -232,24 +232,40 @@ namespace hgl::ecs
             return false;
         }
 
-        if (!va_pos.Write(from))
+        // §3-⑤（2026-10-11，P3 防御性回滚）：**四个写入流必须同进同退**。
+        // 原实现逐个 `Write` 后直接 `return false`：若前半段成功、后半段（容量满/访问器失效）失败，
+        // 就会留下**游标错位**（例如位置流已步进 2、颜色/变换/宽度流未步进）⇒ 后续线段整体错位，
+        // GPU 顶点属性流撕裂。现在任一失败 ⇒ 四个流一律回退到上次成功的游标（本次线段整体丢弃）。
+        //
+        // 回退点 = `line_count * 2`：四流按"每线段 2 顶点"锁步写，故上次成功追加后的游标就是它。
+        // 常见路径不可达（容量预分配 + 上面的有效性前置 + 每帧 `Reset()` 归零）⇒ 这是防御性措施；
+        // 若回退自身失败（缓冲已到容量末尾，`Seek(count)` 不合法）则记一条周期性日志说明"本就没写进去"。
+        const uint32_t rollback_cursor = line_count * 2u;
+
+        const bool wrote_ok = va_pos.Write(from)
+                            & va_pos.Write(to)
+                            & va_color.Write(color_index)
+                            & va_color.Write(color_index)
+                            & va_transform.Write(transform_index)
+                            & va_transform.Write(transform_index)
+                            // Size 语义 V2F：[满宽(最粗), 最细阈值]——mesh shader 统一 clamp(满宽×衰减, 最细, 满宽)
+                            // 每线段 2 顶点（from/to）各写一次
+                            & va_width.Write(hgl::math::Vector2f(width, min_width))
+                            & va_width.Write(hgl::math::Vector2f(width, min_width));
+
+        if (!wrote_ok)
+        {
+            const bool rolled_back = va_pos.Seek(rollback_cursor)
+                                   & va_color.Seek(rollback_cursor)
+                                   & va_transform.Seek(rollback_cursor)
+                                   & va_width.Seek(rollback_cursor);
+
+            LinePeriodicLog(s_line_log_ticks[4],
+                            "[LineRenderPipeline] AddSegment 写入失败：本次线段整体丢弃"
+                            "（四流回退到游标 %u，回退成功=%d；缓冲到容量末尾时该回退不适用）",
+                            rollback_cursor, rolled_back ? 1 : 0);
             return false;
-        if (!va_pos.Write(to))
-            return false;
-        if (!va_color.Write(color_index))
-            return false;
-        if (!va_color.Write(color_index))
-            return false;
-        if (!va_transform.Write(transform_index))
-            return false;
-        if (!va_transform.Write(transform_index))
-            return false;
-        // Size 语义 V2F：[满宽(最粗), 最细阈值]——mesh shader 统一 clamp(满宽×衰减, 最细, 满宽)
-        // 每线段 2 顶点（from/to）各写一次
-        if (!va_width.Write(hgl::math::Vector2f(width, min_width)))
-            return false;
-        if (!va_width.Write(hgl::math::Vector2f(width, min_width)))
-            return false;
+        }
 
         ++line_count;
         if (draw_range)

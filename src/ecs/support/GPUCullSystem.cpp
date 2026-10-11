@@ -755,7 +755,11 @@ namespace hgl::ecs
         if (s_cull_ssbo_dump)
         {
             if(cull_queue_->WaitLastSubmitFence())
+            {
+                // §3-④：fence 已等 ⇒ 本帧可安全读回（供 GetGPUVisibleCount 的自守卫判定）
+                readback_ready_frame_ = context_ ? context_->GetFrameIndex() : 0xFFFFFFFFu;
                 DumpCullSSBOs("AFTER_DISPATCH");
+            }
             else
                 GLogError(u8"[GPUCullSystem] SSBO dump skipped: dispatch fence wait failed");
         }
@@ -864,6 +868,27 @@ namespace hgl::ecs
     uint32_t GPUCullSystem::GetGPUVisibleCount() const
     {
         if (!draw_count_buffer_) return 0;
+
+        // §3-④（2026-10-11）：前置条件自守卫 —— 本帧必须已"等过 fence"（SSBO dump 路径）
+        // 或已 `SyncForParityReadback()`（对拍台架路径）。都不满足 ⇒ 读到的是上一已定帧的残影
+        // （Host Coherent ≠ 已执行）⇒ **拒绝返回**（一次性报错 + 返回 0），不把残影当数据。
+        {
+            const uint32_t frame = context_ ? context_->GetFrameIndex() : 0xFFFFFFFFu;
+
+            if (counters_sync_frame_ != frame && readback_ready_frame_ != frame)
+            {
+                if (!readback_guard_warned_)
+                {
+                    readback_guard_warned_ = true;
+                    GLogError(u8"[GPUCullSystem] GetGPUVisibleCount 前置条件未满足：本帧(%u)既未"
+                              u8"WaitLastSubmitFence（已记账帧=%u）也未 SyncForParityReadback"
+                              u8"（已同步帧=%u）⇒ 拒绝返回残影（契约 §9 M6 / §3-④）",
+                              frame, readback_ready_frame_, counters_sync_frame_);
+                }
+
+                return 0;
+            }
+        }
 
         uint32_t visible_count = 0;
         void* mapped = draw_count_buffer_->Map(0, sizeof(uint32_t));

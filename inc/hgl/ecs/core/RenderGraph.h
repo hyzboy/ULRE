@@ -32,6 +32,14 @@ namespace hgl
             struct Pass
             {
                 /// Starting ExecutionPhase for this pass
+                ///
+                /// ⚠ **语义定案（2026-10-11，§3-③）**：`ECSContext::ExecuteRenderGraphPasses`
+                /// 只从 `max(startPhase, ExecutionPhase::RenderDrawSubmit)` 起跑本 pass 的相位更新。
+                /// 这**不是**"声明在 `RenderCollect` 起点的更新被忽略/漏执行"，而是**避免重跑**：
+                /// 帧首的 `BeginManagedRenderFrame`（`ContextRender.cpp:838-862`）已按序跑过
+                /// `SubmitTransformUpdates → PublishCameraRows → RenderCollect → SyncWorldAddresses
+                ///  → RenderBatch → RenderBufferCommit → RenderBufferUpload → RenderFrameSync`。
+                /// 契约 = 「pass 相位区间中 **< `RenderDrawSubmit`** 的部分由帧首前置段执行」。
                 ExecutionPhase startPhase = static_cast<ExecutionPhase>(0);
 
                 /// Ending ExecutionPhase for this pass (inclusive)
