@@ -811,10 +811,10 @@ namespace hgl
             return live;
         }
 
-        void ECSContext::RegisterTransform(TransformID id,bool isMovable)
+        bool ECSContext::RegisterTransform(TransformID id,bool isMovable)
         {
             if (!IsValidTransformID(id))
-                return;
+                return false;
 
             // 有变换出现即自动装上 TransformSystem（避免样例手动注册）
             {
@@ -832,13 +832,12 @@ namespace hgl
             uint32_t existing_slot = 0;
 
             if (TryGetTransformSlot(id,isMovable,existing_slot))
-                return;                                     // 幂等：重复登记不改行号
+                return true;                                // 幂等：重复登记不改行号
 
-            // 换段（移动性变了）时先归还旧段槽位，避免同一变换占两段
+            // 换段（移动性变了）也要**先取目标槽、成功后才交还旧段槽**（与 MigrateTransform 同一原子性口径）。
+            // 原顺序先 Release 旧段再 Acquire，失败时旧段槽已进空闲表却没有任何行占它 ⇒ 账目与名单不一致。
             uint32_t other_slot = 0;
-
-            if (TryGetTransformSlot(id,!isMovable,other_slot))
-                ReleaseTransformSlot(!isMovable,other_slot);
+            const bool has_other_slot = TryGetTransformSlot(id,!isMovable,other_slot);
 
             const uint32_t slot = AcquireTransformSlot(isMovable);
 
@@ -853,24 +852,31 @@ namespace hgl
                               GetTransformSegmentBudget(isMovable));
                 }
 
-                return;
+                return false;                               // 旧段槽未动（若先前在另一段），调用方负责回收行
             }
 
+            if (has_other_slot)
+                ReleaseTransformSlot(!isMovable,other_slot);
+
             (isMovable ? movable_transforms : static_transforms)[slot] = id;
+
+            return true;
         }
 
-        void ECSContext::MigrateTransform(TransformID id,bool toMovable)
+        bool ECSContext::MigrateTransform(TransformID id,bool toMovable)
         {
             if (!IsValidTransformID(id))
-                return;
+                return false;
 
             uint32_t old_slot = 0;
 
             if (!TryGetTransformSlot(id,!toMovable,old_slot))
-                return;                                     // 不在旧段 ⇒ 无需迁移
+                return true;                                // 已不在旧段 ⇒ 目标段就是现状（幂等成功）
 
-            ReleaseTransformSlot(!toMovable,old_slot);
-
+            // 2026-10-11（审计 · 批 1.1 B3）：**先取目标槽，成功后才交还旧槽**（原顺序相反）。
+            // 原失败分支写 `(toMovable ? movable : static)[old_slot] = id` —— 目标段 + **旧下标**：
+            // ① 挤掉目标段里已有行的槽位；② old_slot ≥ 目标段长度时越界写；③ 旧段槽已进空闲表 ⇒
+            // 「mobility 真源 / 段名单 / 空闲表」三方不一致。现在失败 = 什么都不动（原子拒绝）。
             const uint32_t slot = AcquireTransformSlot(toMovable);
 
             if (slot == INVALID_TRANSFORM_SLOT)
@@ -884,9 +890,10 @@ namespace hgl
                               GetTransformSegmentBudget(toMovable));
                 }
 
-                (toMovable ? movable_transforms : static_transforms)[old_slot] = id;   // 换边失败 ⇒ 复位
-                return;
+                return false;                               // 旧段槽与段名单保持原状
             }
+
+            ReleaseTransformSlot(!toMovable,old_slot);       // 目标槽到手，才交还旧槽
 
             (toMovable ? movable_transforms : static_transforms)[slot] = id;
 
@@ -903,6 +910,8 @@ namespace hgl
 
             if (auto *storage = GetTransformStorage())
                 storage->SetMobility(id,toMovable ? 1 : 0);
+
+            return true;
         }
 
         void ECSContext::UnregisterTransform(TransformID id)
@@ -935,7 +944,14 @@ namespace hgl
             storage->SetOwner(id,owner);
             storage->SetMobility(id,(mobility == Mobility::Movable) ? 1 : 0);
 
-            RegisterTransform(id,mobility == Mobility::Movable);
+            // 2026-10-11（审计 · 批 1.1 B3）：登记失败必须**回收刚分配的行**并返回无效值。
+            // 失败面 = 「总行预算还有空间、但所选段满」：原实现丢弃登记结果，返回一个
+            // **有效但没有 L2W 行**的半成品（与上方「不再造半个变换」的注释自相矛盾）。
+            if (!RegisterTransform(id,mobility == Mobility::Movable))
+            {
+                storage->Deallocate(id);
+                return INVALID_TRANSFORM_ID;
+            }
 
             return id;
         }

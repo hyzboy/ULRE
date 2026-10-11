@@ -650,8 +650,10 @@ namespace hgl
             void DestroyComponent(ComponentType type, uint32_t row);
 
             /// 登记/迁移/注销一个变换（按 TransformID；由作者 API 与过渡期的组件外壳调用）
-            void RegisterTransform(TransformID id, bool isMovable);
-            void MigrateTransform(TransformID id, bool toMovable);
+            /// 登记：**返回是否成功**（段预算用尽 ⇒ false，调用方必须回收已分配的行 —— 批 1.1 B3）
+            bool RegisterTransform(TransformID id, bool isMovable);
+            /// 换段：**先取目标槽、成功后才交还旧槽**（失败即原状返回 false，原子拒绝 —— 批 1.1 B3）
+            bool MigrateTransform(TransformID id, bool toMovable);
             void UnregisterTransform(TransformID id);
 
             /// 槽位分配（B1b）：段预算内取一个**稳定槽位**（优先复用空洞）；预算用尽返回 INVALID_TRANSFORM_SLOT
