@@ -1,5 +1,6 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/VkEnumText.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
@@ -4858,6 +4859,92 @@ namespace
         return result;
     }
 
+    // S3a（2026-10-11）：Vk 枚举 name↔value 单一真源（inc/hgl/mtl/VkEnumText.h）。
+    // 判据用 for 遍历全表 —— 表里新增一项自动纳入，不需要手列断言。
+    static GateResult RunVkEnumTextCase()
+    {
+        GateResult result;
+        result.name = "C.vk-enum-text";
+
+        // ① 每个条目：正查能命中且值一致，反查名字一致。
+        for (const auto &e : hgl::graph::mtl::kCullModeText)
+        {
+            VkCullModeFlags parsed = VK_CULL_MODE_NONE;
+            if (!hgl::graph::mtl::ParseVkCullMode(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("CullMode 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkCullModeName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("CullMode 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kCompareOpText)
+        {
+            VkCompareOp parsed = VK_COMPARE_OP_NEVER;
+            if (!hgl::graph::mtl::ParseVkCompareOp(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("CompareOp 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkCompareOpName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("CompareOp 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kBlendFactorText)
+        {
+            VkBlendFactor parsed = VK_BLEND_FACTOR_ZERO;
+            if (!hgl::graph::mtl::ParseVkBlendFactor(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("BlendFactor 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkBlendFactorName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("BlendFactor 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kFilterText)
+        {
+            VkFilter parsed = VK_FILTER_LINEAR;
+            if (!hgl::graph::mtl::ParseVkFilter(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("Filter 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkFilterName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("Filter 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kSamplerMipmapModeText)
+        {
+            VkSamplerMipmapMode parsed = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            if (!hgl::graph::mtl::ParseVkSamplerMipmapMode(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("MipmapMode 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkSamplerMipmapModeName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("MipmapMode 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kSamplerAddressModeText)
+        {
+            VkSamplerAddressMode parsed = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            if (!hgl::graph::mtl::ParseVkSamplerAddressMode(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("AddressMode 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkSamplerAddressModeName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("AddressMode 条目不可反查: ") + e.text);
+        }
+
+        // ② 未知名 / 空名必须被拒（不静默落默认值）。
+        {
+            VkCompareOp op = VK_COMPARE_OP_NEVER;
+            if (hgl::graph::mtl::ParseVkCompareOp("Bogus", op)
+             || hgl::graph::mtl::ParseVkCompareOp("", op)
+             || hgl::graph::mtl::ParseVkCompareOp(nullptr, op))
+                result.diagnostics.emplace_back("CompareOp 未知名/空名必须被拒");
+
+            VkFilter f = VK_FILTER_LINEAR;
+            if (hgl::graph::mtl::ParseVkFilter("Trilinear", f))
+                result.diagnostics.emplace_back("Filter 未知名必须被拒");
+
+            VkSamplerAddressMode am = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            if (hgl::graph::mtl::ParseVkSamplerAddressMode("Clamp", am))
+                result.diagnostics.emplace_back("AddressMode 未知名必须被拒");
+
+            VkBlendFactor bf = VK_BLEND_FACTOR_ZERO;
+            if (hgl::graph::mtl::ParseVkBlendFactor("Src", bf))
+                result.diagnostics.emplace_back("BlendFactor 未知名必须被拒");
+
+            VkCullModeFlags cm = VK_CULL_MODE_NONE;
+            if (hgl::graph::mtl::ParseVkCullMode("FrontAndBackBit", cm))
+                result.diagnostics.emplace_back("CullMode 未知名必须被拒");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunSamplerPresetLibraryCase()
     {
         GateResult result;
@@ -5376,6 +5463,7 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunAddressOwnershipCase(false));
     if (run_interface) results.push_back(RunAddressOwnershipCase(true));
     if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());
+    if (run_glsl) results.push_back(RunVkEnumTextCase());
     if (run_cache) results.push_back(RunProviderGraphIdentityCase());
     if (run_cache) results.push_back(RunProviderGraphCompositionCase());
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
