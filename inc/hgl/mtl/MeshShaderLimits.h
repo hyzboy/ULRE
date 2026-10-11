@@ -12,7 +12,6 @@ namespace hgl::graph::mtl
     // 采用跨步协作模型（Stride Loop）处理 192 顶点 64 三角形。
     constexpr uint32_t kMeshVertexPassthroughMaxInvocations = 64u;
     constexpr uint32_t kMeshVertexPassthroughMaxVertices    = 192u;
-    constexpr uint32_t kMeshVertexPassthroughMaxPrimitives  = 64u;
     constexpr uint32_t kMeshLineQuadMaxInvocations          = 64u;
     // CharQuad 用 TEXT_CHARQUAD_MAX_INVOCATIONS（CharQuadConfig.h——与 CPU dispatch 共享的唯一真源）
 }

@@ -9,24 +9,6 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::mtl::contract
 {
     using namespace hgl::graph::mtl;
-    enum class ResourceClass : uint8_t
-    {
-        Unknown = 0,
-        UniformBuffer,
-        StorageBuffer,
-        SampledImage,
-        Sampler,
-        CombinedImageSampler,
-        InputAttachment,
-    };
-
-    struct ResourceRequirement
-    {
-        std::string name;
-        ResourceClass resource_class = ResourceClass::Unknown;
-        bool required = true;
-    };
-
     struct PhysicalDeviceLimitsLite
     {
         uint32_t max_image_dimension_2d = 0;

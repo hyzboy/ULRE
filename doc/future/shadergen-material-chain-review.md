@@ -137,6 +137,8 @@
 `kMeshVertexPassthroughMaxPrimitives`（`MeshShaderLimits.h:15`）· `ShaderCodeModuleResolutionRequest`（`ShaderCodeModuleCapabilityResolver.h:61`，整类型 + 7 成员无读写）·
 `ShaderCodeModuleGeometryCapability`（`:17`，仅被上面那个死类型引用）· `ShaderCodeModuleResolutionRequest::resource_count`（`:72`）
 
+**2026-10-11 处置**：F-3 六项已全部处理（5 删 1 改）+ 门里三处同族硬编码改引用契约常量 + 1 条"必须存在"针 / 3 条禁复活针；`ShaderArtifactContract.h` 路径订正为 `inc/hgl/mtl/…` —— 见 §14。
+
 **F-4 死参数（名不符实）**
 `ApplyBaseMaterialInfoDefaults(MaterialRecipe&, const MaterialDefinition&, const bool overwrite_existing = false)`
 （`inc/hgl/mtl/MaterialRecipe.h:746-752`）：**函数体从不读 `overwrite_existing`**，行为恒为"仅当 `mtl_def_id` 为空才填"；
@@ -607,6 +609,53 @@ BlendFactor/BlendOp/DynamicState）的 name↔value 注册表，含 `VkEnum2Stri
 
 - **F-3**：零消费者类型 / 枚举 / 常量（`BlendMode`、`ResourceClass::CombinedImageSampler`、`kMeshVertexPassthroughMaxPrimitives`、`ShaderCodeModuleResolutionRequest` 一族；`ShaderArtifactSPVExtension` 属"让它引用常量"而非删除）。
 - **F-4**：死参数 `ApplyBaseMaterialInfoDefaults(..., overwrite_existing)`（函数体从不读该参数，唯一调用点传 `false`）。
+
+---
+
+## 14. F-3 执行记录：零消费者类型 / 枚举 / 常量（2026-10-11）
+
+**靶**：§F-3 清单 6 项，全部处理（其中 1 项是"改引用常量"而非删除）。
+
+| 项 | 处置 |
+|---|---|
+| `enum class BlendMode`（`inc/hgl/mtl/BlendMode.h`，全仓 `BlendMode::` **0 命中**） | **删文件** + `ShaderGen/CMakeLists.txt` 的条目 + `ShaderLinkSpec.h` 注释里去名（改为"混合/深度/模板"）——混合状态由运行时管线状态管，材质侧不建平行类型 |
+| `ResourceClass::CombinedImageSampler` | **连带删整个 `ResourceClass` 枚举 + `ResourceRequirement` 结构**：后者全仓 0 消费者，枚举失去唯一字段引用（描述符契约层退役后的遗留） |
+| `ShaderCodeModuleGeometryCapability`（含 `operator==`） | 整类型删除 |
+| `ShaderCodeModuleResolutionRequest`（7 成员，其中 `resource_count`） | 整类型删除（它是上面那个类型的唯一引用者）。**同文件其余仍活**：`ResolutionResult` / `ProviderSelection` / `RejectDiagnostic` / `GetShaderCodeModuleProviderGraphHash` / `ComposeShaderCodeModuleProviderGraph` 一律保留 |
+| `kMeshVertexPassthroughMaxPrimitives` | 删除（0 消费者；同族 `kMeshVertexPassthroughMaxInvocations` / `kMeshVertexPassthroughMaxVertices` / `kMeshLineQuadMaxInvocations` 仍活，保留） |
+| `ShaderArtifactSPVExtension` | **不删**（它是 `.spv` 扩展名的单一真源）：把 `ShaderArtifactStore.cpp:23` 的硬编码 `OS_TEXT(".spv")` 改为 `ToOSString(ShaderArtifactSPVExtension)` |
+
+**顺带修正同族第二处"真源被绕过"**：门 `ShaderResourceSchemaRegressionGate.cpp` 里 `"shader-cache"` / `"program"` / `".meta"`
+三处硬编码 ⇒ 改为引用契约常量 `ShaderArtifactCacheDirectory` / `ShaderArtifactProgramDirectory` / `ShaderArtifactMetadataExtension`。
+门的"只读完整 program artifact"用例照旧通过、产物目录名仍为 `shader-cache/{stage,program}` ⇒ 路径等价、行为零变化。
+
+**针**：**1 条"必须存在"针**（钉 `ShaderArtifactStore.cpp` 含 `ToOSString(ShaderArtifactSPVExtension)`——防再退回硬编码字面量）
++ **3 条禁复活针**（`BlendMode.h` / `ResourceClass` / `ShaderCodeModuleResolutionRequest`）。
+
+### 14.1 验收（实测）
+
+| 项 | 结果 |
+|---|---|
+| 全量 Release（先 purge 19 TU / 22 obj） | `rc=0` / 0 error / 0 MSB / **392 目标** |
+| `ctest -L ecs` / `TestCSMIncrementalPass` | **12/12** / **1/1**（4 条新针在内） |
+| 门 | **43 PASS / 0 FAIL** |
+| cook | 38/0 |
+| 示例冒烟 | `PBRSpheres` / `CascadeShadowMap` 各 rc=124、0 错误 |
+| 产物目录 | 仍为 `shader-cache/{stage,program}`（常量拼出的路径逐字节等价） |
+| 残留 | 6 项源码面归零（`CombinedImageSampler` / `GeometryCapability` / `kMeshVertexPassthroughMaxPrimitives` 0 命中；其余命中只在针条目文案里） |
+
+### 14.2 反证（逐针过）
+
+- 把 `ShaderArtifactStore.cpp` 退回硬编码 `.spv` ⇒ `Test 11 Failed: … 'ToOSString(ShaderArtifactSPVExtension)' not found in ShaderArtifactStore.cpp`
+  （**"必须存在"针生效**：真源用法回退立刻被抓住）。
+- `BlendMode.h` 加回 `ShaderGen/CMakeLists.txt` ⇒ `Test 11 Failed: … 'BlendMode.h' 重新出现在 ShaderGen/CMakeLists.txt（禁复活）`。
+- 两次还原后 `TestCSMIncrementalPass` **1/1** 且两个文件逐字节回原。
+
+### 14.3 订正
+
+§F-3 原文把 `ShaderArtifactContract.h` 的路径写作 `src/ShaderGen/contract/…`，**实际是 `inc/hgl/mtl/ShaderArtifactContract.h`**（本批按实际路径处置）。
+
+**剩余**：**F-4** 死参数 `ApplyBaseMaterialInfoDefaults(..., overwrite_existing)`（函数体从不读该参数、唯一调用点传 `false`，名字承诺的"覆盖已有"不存在）。
 
 ## 5. 本档边界
 

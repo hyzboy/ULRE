@@ -1000,12 +1000,12 @@ namespace
             hgl::filesystem::Path metadata_path(
                 RepoRootOSPath("build"));
             metadata_path /=
-                hgl::OSString(OS_TEXT("shader-cache"));
+                hgl::ToOSString(hgl::graph::mtl::ShaderArtifactCacheDirectory);
             metadata_path /=
-                hgl::OSString(OS_TEXT("program"));
+                hgl::ToOSString(hgl::graph::mtl::ShaderArtifactProgramDirectory);
             metadata_path /= hgl::ToOSString(
                 (program_link.BuildKey().ToString()
-                    + hgl::AnsiString(".meta")).c_str());
+                    + hgl::AnsiString(hgl::graph::mtl::ShaderArtifactMetadataExtension)).c_str());
             hgl::int64 metadata_file_size = 0;
             void *metadata_file =
                 hgl::filesystem::LoadFileToMemory(

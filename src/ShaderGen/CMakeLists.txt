@@ -147,7 +147,6 @@ SOURCE_GROUP("Builder" FILES ${BUILDER_FILES})
 
 # ── 公共类型（Surface/Blend/Pass/Pipeline 等，头-only）────────────────────────
 set(MATERIAL_TYPE_FILES
-    ${SHADERGEN_INCLUDE_PATH}/BlendMode.h
     ${SHADERGEN_INCLUDE_PATH}/PassType.h
     ${SHADERGEN_INCLUDE_PATH}/PipelineConfig.h
     ${ROOT_INCLUDE_PATH}/hgl/common/RenderTargetOutputConfig.h)

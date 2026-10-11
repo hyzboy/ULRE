@@ -20,7 +20,7 @@ namespace hgl::graph::mtl
         OSString MakeStageFilename(const ShaderStageKey &key)
         {
             const AnsiString key_name = key.ToString();
-            return ToOSString(key_name.c_str()) + OS_TEXT(".spv");
+            return ToOSString(key_name.c_str()) + ToOSString(ShaderArtifactSPVExtension);
         }
 
         OSString MakeStageSourceFilename(const ShaderStageKey &key)

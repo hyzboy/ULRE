@@ -13,22 +13,6 @@ namespace hgl::graph
 
 namespace hgl::graph::mtl
 {
-    // A capability contributed by a single Geometry vertex attribute.
-    struct ShaderCodeModuleGeometryCapability
-    {
-        ShaderCodeModuleSemantic semantic = ShaderCodeModuleSemantic::Unknown;
-        uint32 numeric_class_mask = 0;
-        uint8 component_count = 0;
-    };
-
-    inline bool operator==(const ShaderCodeModuleGeometryCapability &lhs,
-                           const ShaderCodeModuleGeometryCapability &rhs) noexcept
-    {
-        return lhs.semantic == rhs.semantic
-            && lhs.numeric_class_mask == rhs.numeric_class_mask
-            && lhs.component_count == rhs.component_count;
-    }
-
     // One selected provider edge: which required semantic the provider satisfies.
     struct ShaderCodeModuleProviderSelection
     {
@@ -57,21 +41,6 @@ namespace hgl::graph::mtl
     {
         return lhs.requirement == rhs.requirement && lhs.candidate == rhs.candidate;
     }
-
-    struct ShaderCodeModuleResolutionRequest
-    {
-        // Surface requirements to satisfy (ProducedSemantic drives provider
-        // selection; GeometryAttribute/Resource are validated directly).
-        const ShaderCodeModuleSemanticRequirement *requirements = nullptr;
-        uint32 requirement_count = 0;
-
-        const ShaderCodeModuleGeometryCapability *geometry_capabilities = nullptr;
-        uint32 geometry_capability_count = 0;
-
-        const ShaderCodeModuleSemantic *resources = nullptr;
-        uint32 resource_count = 0;
-
-    };
 
     struct ShaderCodeModuleResolutionResult
     {
