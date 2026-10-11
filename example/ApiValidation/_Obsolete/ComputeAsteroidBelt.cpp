@@ -504,7 +504,9 @@ private:
             const uint32_t total_verts = static_cast<uint32_t>(
                 builtin_geometries[i]->GetIndexCount() > 0 ? builtin_geometries[i]->GetIndexCount()
                                                            : builtin_geometries[i]->GetVertexCount());
-            mesh_group_counts[i] = CalcMeshGroupCount(false, total_verts);
+            // 原 CalcMeshGroupCount（2026-10-11 F-2 删除）：非线 = total_verts，组大小 = MeshDispatchGroupSize(false)
+            const uint32_t group_size = 192u;   // kMeshVertexPassthroughMaxVertices
+            mesh_group_counts[i] = (total_verts + group_size - 1u) / group_size;
         }
 
         return true;

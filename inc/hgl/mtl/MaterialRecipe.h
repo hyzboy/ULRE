@@ -38,7 +38,6 @@ namespace hgl::graph::mtl
     // 无纹理材质此列表为空。
 
     // GLSL 采样器类型枚举，避免传裸字符串指针。
-    // ToGLSLSamplerTypeName() 将此值转换为 GLSL 类型名称字符串。
     enum class GLSLSamplerType : uint8_t
     {
         Sampler2D = 0,        // "sampler2D"
@@ -48,20 +47,6 @@ namespace hgl::graph::mtl
         SamplerCubeArray,     // "samplerCubeArray"
         Sampler3D,            // "sampler3D"
     };
-
-    inline const char *ToGLSLSamplerTypeName(const GLSLSamplerType t) noexcept
-    {
-        switch (t)
-        {
-        case GLSLSamplerType::Sampler2D:        return "sampler2D";
-        case GLSLSamplerType::Sampler2DArray:   return "sampler2DArray";
-        case GLSLSamplerType::Sampler2DShadow:  return "sampler2DShadow";
-        case GLSLSamplerType::SamplerCube:      return "samplerCube";
-        case GLSLSamplerType::SamplerCubeArray: return "samplerCubeArray";
-        case GLSLSamplerType::Sampler3D:        return "sampler3D";
-        }
-        return "sampler2D";
-    }
 
     constexpr uint32_t DefaultMaterialTextureConfigurationCapacity = 1024u;
 
@@ -355,20 +340,6 @@ namespace hgl::graph::mtl
             ? 0
             : static_cast<uint32_t>((raw_row_bytes + 15u) & ~uint64_t(15u));
         return out_layout.layout_hash != 0;
-    }
-
-    inline void ConfigureMaterialVertexSemanticContract(
-        MaterialDefinition &definition,
-        const ShaderCodeModuleSemanticRequirement *requirements,
-        const uint32 requirement_count,
-        const MaterialVertexProviderPolicy provider_policy =
-            MaterialVertexProviderPolicy::Auto)
-    {
-        definition.vertex_semantic_requirements.Clear();
-        definition.vertex_provider_policy = provider_policy;
-
-        for (uint32 i = 0; i < requirement_count; ++i)
-            definition.vertex_semantic_requirements.Add(requirements[i]);
     }
 
     // ── Layer 2: MaterialRecipe = Instance Input ──────────────────────────────────

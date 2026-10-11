@@ -140,26 +140,6 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    // 直通访问器——ShaderCodeResourceManifest 等公共调用方经此访问依赖表
-    // （Metadata.cpp 内部已直接访问字段）
-    uint32 GetNormalizedShaderCodeModuleDependencyCount(
-        const ShaderCodeModuleDefinition &definition) noexcept
-    {
-        return definition.dependency_count;
-    }
-
-    bool GetNormalizedShaderCodeModuleDependency(
-        const ShaderCodeModuleDefinition &definition,
-        const uint32 index,
-        ShaderCodeModuleDependency &out_dependency) noexcept
-    {
-        if (!definition.dependencies || index >= definition.dependency_count)
-            return false;
-
-        out_dependency = definition.dependencies[index];
-        return true;
-    }
-
     bool AreShaderCodeModulesConflicting(
         const ShaderCodeModuleDefinition &lhs,
         const ShaderCodeModuleDefinition &rhs) noexcept
@@ -274,8 +254,7 @@ namespace hgl::graph::mtl
             definition.dependency_count;
         for (uint32 i = 0; i < dependency_count; ++i)
         {
-            // 内联访问（原 GetNormalizedShaderCodeModuleDependency 的边界防御
-            // 由循环条件保证——i 恒 < dependency_count）
+            // 内联访问：边界由循环条件保证（i 恒 < dependency_count）
             const ShaderCodeModuleDependency &dependency =
                 definition.dependencies[i];
 

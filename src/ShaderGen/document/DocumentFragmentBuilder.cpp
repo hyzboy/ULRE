@@ -10,16 +10,6 @@ namespace hgl::graph::mtl
     {
     }
 
-    void DocumentFragmentBuilder::SetStage(const char *stage)
-    {
-        source.stage = stage ? stage : "";
-    }
-
-    void DocumentFragmentBuilder::SetMaterial(const char *material)
-    {
-        source.material = material ? material : "";
-    }
-
     bool DocumentFragmentBuilder::AddDiagnostic(
         const char *code,
         const char *message,

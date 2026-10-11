@@ -382,7 +382,7 @@ void main()
         const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
         uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
         if (binfo.topology == TOPOLOGY_LINES)
-            element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段，与 CPU CalcMeshGroupCount 同式）
+            element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段；CPU 侧组数同式，组大小见 MeshDispatchGroupSize）
         const uint group_count_x = (element_count + binfo.group_size - 1u) / binfo.group_size;
 
         DrawIndirectCommandsRef(pc.indirect_commands_addr).commands[row] =

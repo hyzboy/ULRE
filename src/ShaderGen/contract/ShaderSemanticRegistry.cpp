@@ -157,10 +157,4 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    bool ValidateShaderSemanticRegistries(
-        ShaderSemanticRegistryValidationResult &out_result) noexcept
-    {
-        // VBO 顶点属性语义不走此校验——仅 InterStage 校验
-        return ValidateInterStageSemanticRegistry(out_result);
-    }
 }

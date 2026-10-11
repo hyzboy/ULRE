@@ -28,12 +28,6 @@ namespace hgl::graph::mtl::contract_detail
             WriteU8(value ? 1 : 0);
         }
 
-        void WriteU16(const uint16 value)
-        {
-            WriteU8(static_cast<uint8>(value));
-            WriteU8(static_cast<uint8>(value >> 8));
-        }
-
         void WriteU32(const uint32 value)
         {
             WriteU8(static_cast<uint8>(value));
@@ -42,30 +36,12 @@ namespace hgl::graph::mtl::contract_detail
             WriteU8(static_cast<uint8>(value >> 24));
         }
 
-        void WriteI32(const int32 value)
-        {
-            WriteU32(static_cast<uint32>(value));
-        }
-
         void WriteU64(const uint64 value)
         {
             WriteU32(static_cast<uint32>(value));
             WriteU32(static_cast<uint32>(value >> 32));
         }
 
-        void WriteCString(const char *value)
-        {
-            uint32 length = 0;
-            if (value)
-            {
-                for (const char *cursor = value; *cursor; ++cursor)
-                    ++length;
-            }
-
-            WriteU32(length);
-            for (uint32 i = 0; i < length; ++i)
-                WriteU8(static_cast<uint8>(value[i]));
-        }
     };
 
     template<typename T, typename Less>

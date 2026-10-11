@@ -58,15 +58,6 @@ struct MaterialShaderDocumentCapture
         fragment_document = fragment_source_snapshot;
     }
 
-    void CaptureFinalDocuments(
-        const ShaderDocument &mesh_final,
-        const ShaderDocument &fragment_final) noexcept
-    {
-        const ShaderDocument mesh_final_snapshot = mesh_final;
-        const ShaderDocument fragment_final_snapshot = fragment_final;
-        mesh_final_document = mesh_final_snapshot;
-        fragment_final_document = fragment_final_snapshot;
-    }
 };
 
 struct MaterialShaderCompilerInput

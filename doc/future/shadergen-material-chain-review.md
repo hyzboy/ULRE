@@ -129,6 +129,8 @@
 `MaterialData::ClearAuthoredResources`（`MaterialData.h:132`，仅注释与测试针提及）· `MaterialData::GetMaterialRowID`（`:129`，仅 2 处注释引用）·
 `CalcMeshGroupCount`（`PipelineMaterialRenderer.h:54`，唯一消费者在 `example/ApiValidation/_Obsolete/`；而 `ShaderLibrary/ecs/entity_gpu_cull.glsl:385` 的注释仍以它为"同式"锚点）
 
+**2026-10-11 处置**：23 项中 `HasDescriptorSemantic` 已在 **S1** 删除，其余 **22 项已全部删除**（含级联 `GetPassTypeName`、`GetNumericClassFromVkFormat` 与 4 条禁复活针）—— 见 §13。
+
 **F-3 零消费者类型 / 枚举 / 常量**
 `enum class BlendMode`（`inc/hgl/mtl/BlendMode.h:7`，全仓 `BlendMode::` **0 命中**；文件同时被列进 `ShaderGen/CMakeLists.txt:155`）·
 `ResourceClass::CombinedImageSampler`（`ShaderGenContract.h:19`）· `ShaderArtifactSPVExtension`（`ShaderArtifactContract.h:17`）—— **升级为"真源被绕过"**：该常量是 artifact 契约里".spv"扩展名的**单一真源**（技能口径：`ShaderArtifactContract.h` 是缓存目录/扩展名/头布局唯一真源），但唯一使用点 `src/ShaderGen/compile/ShaderArtifactStore.cpp:23` **硬编码 `OS_TEXT(".spv")`** 而非引用它 ⇒ 处置 = **让它引用常量**（不是删除常量）·
@@ -548,6 +550,63 @@ BlendFactor/BlendOp/DynamicState）的 name↔value 注册表，含 `VkEnum2Stri
   `… 'material_row_cpu' 重新出现在 MaterialRuntimeTable.h（禁复活）`。
 - 把 `queue_family_count` 加回 `ShaderGenContract.h` ⇒ 同处精确报红（文案带"禁复活"）。
 - 两次还原后 `ctest` 1/1 且**逐字节一致**（`sha` 级比对）。
+
+---
+
+## 13. F-2 执行记录：零调用函数整删（2026-10-11）
+
+**靶**：§F-2 清单 23 项 —— 其中 `HasDescriptorSemantic` 已在 **S1** 同批删掉（清单为旧稿），本批实做 **22 项**。
+判据：`git grep -nw <符号>` 除自身声明/定义外**全仓 0 命中**；每一处先复算（评审是前一天写的，S2/S3a 之后状态可能已变）。
+
+### 13.1 删除面（按形态）
+
+| 形态 | 符号 |
+|---|---|
+| 声明 + 定义（跨 .h/.cpp） | `CaptureFinalDocuments` · `GetShaderCompilerTargetVersions` · `BuildStageInterfaceDocument` · `ValidateShaderSemanticRegistries` · `GetNormalizedShaderCodeModuleDependencyCount` · `GetNormalizedShaderCodeModuleDependency` · `DocumentFragmentBuilder::SetStage` / `SetMaterial` · `MaterialData::ClearAuthoredResources` |
+| 头内 inline（声明即定义） | `ConfigureMaterialVertexSemanticContract` · `ToGLSLSamplerTypeName` · `ParsePassType` · `SetCacheMode` · `GetRootPath` · `WriteU16` / `WriteI32` / `WriteCString` · `EmitMeshShaderHeader` · `CalcMeshGroupCount` |
+| .cpp 内 static | `AppendStageResourceBlocks` · `GetGLSLVertexInputType` |
+
+### 13.2 级联（删掉目标后随之变死，同批删除）
+
+| 符号 | 变死原因 |
+|---|---|
+| `GetPassTypeName`（`PassType.h`） | `ParsePassType` 是它**唯一**调用者（PassType 枚举本身仍活：`MaterialOutputContract` 用其作形参类型） |
+| `GetNumericClassFromVkFormat`（`VertexABIBuilder.cpp`，**94 行**） | `GetGLSLVertexInputType` 是它唯一调用者（`ShaderCodeModuleNumericClass` 枚举仍活：`ShaderCodeModule` 的 `numeric_class_mask` 字段在用） |
+
+### 13.3 连带同步（不留指向已删符号的引用）
+
+| 位置 | 改动 |
+|---|---|
+| `MaterialData.h` | 授权入口清单去掉 `ClearAuthoredResources`（唯一入口纪律本身不变） |
+| `MaterialAuthoringSideTable.h` / `graph/ssbo/MaterialDataRows.h` | 两处注释 `MaterialData::GetMaterialRowID()` → `MaterialData::material_row_id`（字段仍活：内部 20+ 处使用） |
+| `ShaderCodeModuleMetadata.cpp` | 内联访问处的注释删掉旧函数名（改为"边界由循环条件保证"） |
+| `ShaderLibrary/ecs/entity_gpu_cull.glsl:385` | 注释去 `CalcMeshGroupCount`，改为"组大小见 `MeshDispatchGroupSize`"（该函数是活真源，被 `PrimitiveBatchPipeline` 使用） |
+| `example/ApiValidation/_Obsolete/ComputeAsteroidBelt.cpp` | **停放源码**（不在任何 CMake 构建内，`example/ApiValidation/CMakeLists.txt` 只留一行说明）：调用点就地展开组数公式，保持该停放文件自洽 |
+| 针 | 删 1 条（绑定 `ClearAuthoredResources` 的"唯一入口"针随函数退场；`SetDataResource`/`SetTextureResource` 两条同类针仍在）；**新增 4 条禁复活针**（`CalcMeshGroupCount` / `ToGLSLSamplerTypeName` / `GetNormalizedShaderCodeModuleDependency` / `GetMaterialRowID`），文案写明替代表达 |
+
+### 13.4 验收（实测）
+
+| 项 | 结果 |
+|---|---|
+| 全量 Release（先 `purge-stale-deps.sh`：101 TU / 142 obj） | `rc=0` / 0 error / 0 MSB / **392 目标** |
+| `ctest -L ecs` / `TestCSMIncrementalPass` | **12/12** / **1/1**（含 4 条新针） |
+| 门 | **43 PASS / 0 FAIL** |
+| cook | 38/0 |
+| 示例冒烟 | `PBRSpheres` / `CascadeShadowMap` / `TextDraw` 三个 rc=124 正常出帧、各 0 错误 |
+
+### 13.5 反证（逐针单独跑，避免"第一处即停"掩盖第二条）
+
+- `CalcMeshGroupCount` 加回 `PipelineMaterialRenderer.h` ⇒
+  `Test 11 Failed: … 'CalcMeshGroupCount' 重新出现在 PipelineMaterialRenderer.h（禁复活）`；
+- `ToGLSLSamplerTypeName` 加回 `MaterialRecipe.h` ⇒ 同处精确报红。
+  两次还原后 `TestCSMIncrementalPass` **1/1**，且两个头文件逐字节回到改写前状态（0 残留）。
+
+**残留判据**：23 个符号在 `src inc example ShaderLibrary` 内源码面**全部归零**；仅 4 条针的禁用串与文案保留。
+
+### 13.6 剩余
+
+- **F-3**：零消费者类型 / 枚举 / 常量（`BlendMode`、`ResourceClass::CombinedImageSampler`、`kMeshVertexPassthroughMaxPrimitives`、`ShaderCodeModuleResolutionRequest` 一族；`ShaderArtifactSPVExtension` 属"让它引用常量"而非删除）。
+- **F-4**：死参数 `ApplyBaseMaterialInfoDefaults(..., overwrite_existing)`（函数体从不读该参数，唯一调用点传 `false`）。
 
 ## 5. 本档边界
 

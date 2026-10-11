@@ -98,24 +98,6 @@ namespace hgl::graph::mtl
         ms += "\n";
     }
 
-    // 生成 mesh shader 头部：版本声明、extension、layout、UBO/SSBO 条件包含。
-    inline void EmitMeshShaderHeader(
-        std::string &ms,
-        const VertexShaderNodeConfig &node_cfg,
-        uint32_t max_invocations,
-        uint32_t max_vertices,
-        uint32_t max_primitives)
-    {
-        EmitMeshShaderVersion(ms);
-        EmitMeshShaderExtensions(ms);
-        EmitMeshShaderHeaderResources(
-            ms,
-            node_cfg,
-            max_invocations,
-            max_vertices,
-            max_primitives);
-    }
-
     // mesh shader 无 gl_InstanceIndex（VS 专属内置）——实例索引 = first_instance + gl_WorkGroupID.y
     inline void EmitGlInstanceIndexMacro(std::string &ms)
     {

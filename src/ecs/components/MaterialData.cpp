@@ -281,20 +281,6 @@ namespace hgl::ecs
         }
     }
 
-    void MaterialData::ClearAuthoredResources()
-    {
-        if (MaterialAuthoringSideTable *table = GetAuthoringTable())
-        {
-            if (MaterialAuthoringSideTable::Entry *entry = table->Find(material_row_id))
-                entry->named_texture_resources.Clear();
-        }
-
-        if (material_row_id != 0)
-            ClearMaterialRow();
-
-        TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagMask);
-    }
-
     // ── B4-iii-b：世界级旁表取用（键 = 材质行行号）──────────────────────────
     MaterialAuthoringSideTable *MaterialData::GetAuthoringTable() const
     {

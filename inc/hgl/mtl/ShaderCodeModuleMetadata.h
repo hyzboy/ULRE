@@ -40,14 +40,6 @@ namespace hgl::graph::mtl
     const char *GetShaderCodeModuleMetadataValidationErrorName(
         ShaderCodeModuleMetadataValidationError error) noexcept;
 
-    uint32 GetNormalizedShaderCodeModuleDependencyCount(
-        const ShaderCodeModuleDefinition &definition) noexcept;
-
-    bool GetNormalizedShaderCodeModuleDependency(
-        const ShaderCodeModuleDefinition &definition,
-        uint32 index,
-        ShaderCodeModuleDependency &out_dependency) noexcept;
-
     bool AreShaderCodeModulesConflicting(
         const ShaderCodeModuleDefinition &lhs,
         const ShaderCodeModuleDefinition &rhs) noexcept;

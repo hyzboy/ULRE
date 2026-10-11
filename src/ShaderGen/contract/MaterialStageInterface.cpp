@@ -272,28 +272,4 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    bool BuildStageInterfaceDocument(
-        const ValueArray<InterStageSemanticContractEntry> &entries,
-        const char *direction,
-        const char *stage,
-        ShaderDocument &out_document)
-    {
-        out_document.Clear();
-        for (int i = 0; i < entries.GetCount(); ++i)
-        {
-            AnsiString declaration;
-            if (!BuildGLSLInterStageDeclaration(
-                    entries[i], direction, declaration))
-                return false;
-
-            ShaderDocumentSource source;
-            source.stage = stage ? stage : "";
-            source.logical_name = "MaterialStageInterface";
-            out_document.Add(
-                ShaderDocumentBlockKind::Interface,
-                declaration,
-                source);
-        }
-        return true;
-    }
 }

@@ -125,12 +125,6 @@ namespace hgl::ecs
         /// `resource.ssbo_id == 0` ⇒ 清空（行保留）；其余情况要求 binding 有效（无效即报错拒绝）。
         void SetDataResource(const MaterialDataAuthoringResource &resource);
 
-        /// 本组件的设备级组件行行号（0 = 无材质数据）
-        uint32_t GetMaterialRowID() const { return material_row_id; }
-
-        /// 清空全部授权资源（纹理 + 数据行；配方覆盖不在其内）
-        void ClearAuthoredResources();
-
         /// 组件侧授权代数（每次授权状态变化 +1）。**行内 revision 与之同源**（见
         /// `GetAuthoredRowRevision`）——只读行的消费者应当读行，不要读组件副本。
         // 2026-10-10（审计 §1.1）：`GetAuthoredGeneration()`（零调用者；B4-ii 起消费者只读行内
@@ -169,7 +163,7 @@ namespace hgl::ecs
         const hgl::graph::ssbo::MaterialDataRow *GetMaterialRow() const;
         /// B4-ii：授权变更**唯一入口**——组件计数器 +1，并（有行时）把
         /// 「(flags 置位 ∧ clear_flags 清位) + 新 revision」写进组件行。
-        /// 所有授权入口（SetRecipe / SetTextureResource / SetDataResource / ClearAuthoredResources）
+        /// 所有授权入口（SetRecipe / SetTextureResource / SetDataResource）
         /// 都必须走它，不得自己 `++authored_generation`（否则行内 revision 与代数列不同步）。
         void TouchAuthoredRow(uint32_t set_flags, uint32_t clear_flags);
         /// 写本组件的组件行

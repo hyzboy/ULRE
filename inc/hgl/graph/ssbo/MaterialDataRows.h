@@ -61,7 +61,7 @@ namespace hgl::graph::ssbo
     static_assert(sizeof(MaterialDataRow) == 16);
 
     /// ── 「材质行号」口径（B4-ii 钉死；改这里之前先读）────────────────────────────
-    /// ① **组件行** = `MaterialDataRow`：行号 = `ecs::MaterialData::GetMaterialRowID()`，
+    /// ① **组件行** = `MaterialDataRow`：行号 = `ecs::MaterialData::material_row_id`，
     ///    池 = `GlobalSSBOType::MaterialData`（设备级、跨世界共享），**行 0 = 「无材质数据」哨兵**；
     /// ② **内容行** = `PBRSurfaceRow` / `EmissiveSurfaceRow` / `TransmissionSurfaceRow`：
     ///    由组件行三元组定位 `{surface_type, surface_ssbo_id, surface_data_index}`
