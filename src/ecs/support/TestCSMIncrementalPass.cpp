@@ -5540,8 +5540,15 @@ int main(int argc, char** argv)
               "§9 M4：切片起点必须 4 行对齐推进（三表 push 地址 16B 对齐的唯一解）" },
 
             { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
-              "if (!s_reported_misaligned && (row_base % 4u) != 0u)",
-              "§9 M4：切片 4 行对齐的**运行期守卫**（装配侧 bug ⇒ 响亮，不静默违对齐）" },
+              "if (!reported_misaligned_rows_ && (row_base % 4u) != 0u)",
+              "§9 M4：切片 4 行对齐的**运行期守卫**（装配侧 bug ⇒ 响亮，不静默违对齐；"
+              "批 1.3 C5 起闩是每实例成员，不是进程级 static）" },
+
+            { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
+              "static bool s_reported_misaligned",
+              "§9 M4/C5：运行期守卫的闩**禁复活进程级 static**（第二个世界会被静默；"
+              "每实例成员才是正确形态）",
+              true },
 
             { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
               "batch_usage | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,",

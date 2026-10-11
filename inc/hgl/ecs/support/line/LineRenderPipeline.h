@@ -38,6 +38,9 @@ namespace hgl::ecs
         uint32_t visible_components  = 0;
         uint32_t culled_by_visibility = 0;
         uint32_t culled_by_frustum   = 0;
+        /// 批 1.3 C2：`lines` 为空的组件（压根没有线段可收）——它**不是可见性剔除**，
+        /// 单列一项，避免污染真视锥/可见性统计（原实现把它计进 `culled_by_visibility`）。
+        uint32_t skipped_empty       = 0;
         // 2026-10-10（审计 §1.1）：`culled_by_hzb`（从不自增、恒 0）已删除；求和与三处日志同步去掉该项。
 
         float GetCullRatio() const

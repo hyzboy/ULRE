@@ -35,9 +35,10 @@ namespace hgl::ecs
         }
 
         const LineCollectStats& stats = line_pipeline->GetCollectStats();
-        GLogInfo("[LineCollectSystem] Collect summary: total=%u visible=%u culled_visibility=%u culled_frustum=%u cull_ratio=%.3f",
+        GLogInfo("[LineCollectSystem] Collect summary: total=%u visible=%u skipped_empty=%u culled_visibility=%u culled_frustum=%u cull_ratio=%.3f",
                  stats.total_components,
                  stats.visible_components,
+                 stats.skipped_empty,
                  stats.culled_by_visibility,
                  stats.culled_by_frustum,
                  stats.GetCullRatio());

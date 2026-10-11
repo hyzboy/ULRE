@@ -416,10 +416,9 @@ namespace hgl::ecs
         // 三者的唯一条件（§8.6 T3i-4）。违反 = 装配侧 bug（推进式 `(cursor + capacity + 3) & ~3`），
         // 响亮报一次（不静默写出违对齐的切片）。
         {
-            static bool s_reported_misaligned = false;
-            if (!s_reported_misaligned && (row_base % 4u) != 0u)
+            if (!reported_misaligned_rows_ && (row_base % 4u) != 0u)
             {
-                s_reported_misaligned = true;
+                reported_misaligned_rows_ = true;
                 GLogError(u8"[GPUCullSystem] 切片起点未 4 行对齐：row_base=%u（契约 §9 M4）"
                           u8"⇒ 三表 push 地址会违 16B 对齐", row_base);
             }
@@ -495,10 +494,9 @@ namespace hgl::ecs
         // 而数据是旧的）。违反 = 台架接线错 ⇒ 响亮一次 + **不给数据**（返回 null 让调用方跳过）。
         if (counters_sync_frame_ != context_->GetFrameIndex())
         {
-            static bool s_reported_unsynced = false;
-            if (!s_reported_unsynced)
+            if (!reported_unsynced_map_)
             {
-                s_reported_unsynced = true;
+                reported_unsynced_map_ = true;
                 GLogError(u8"[GPUCullSystem] MapCurrentBatchCounters 未先 SyncForParityReadback"
                           u8"（本帧=%u / 已同步帧=%u）⇒ 读数是残影，拒绝返回（契约 §9 M6）",
                           context_->GetFrameIndex(), counters_sync_frame_);

@@ -1451,10 +1451,9 @@ namespace hgl::ecs
             // data_index is the active row ID in this type's shared material
             // buffer; translate it to the CPU/GPU address used by the current ABI.
             {
-                static bool arena_trace_done = false;
-                if (getenv("ULRE_ARENA_DEBUG") && !arena_trace_done)
+                if (getenv("ULRE_ARENA_DEBUG") && !arena_trace_done_)   // 批 1.3 C5：每实例闩
                 {
-                    arena_trace_done = true;
+                    arena_trace_done_ = true;
                     GLogInfo("[ArenaTrace] materialize: ssbo_id=%u data_index=%u assets=%u",
                              asset_binding.ssbo_id,
                              asset_binding.data_index,
@@ -1523,7 +1522,11 @@ namespace hgl::ecs
                     : nullptr;
                 row->material_row_gpu = material_buffer.gpu_base + row_offset;
 
-                if (!arena_trace_done)
+                // 批 1.3 C5：同上，闩改每实例（原 static 是进程级）。
+                // 注意：本处 trace 与上面的 materialize trace **共用同一个闩** ⇒ 上面那次
+                // 触发之后这里恒为假（该行日志实际从未输出）——行为保持原样，仅随闩改名，
+                // 是否拆成两个闩留给后续拍板。
+                if (!arena_trace_done_)
                 {
                     GLogInfo(
                         "[ArenaTrace] translated: gpu=0x%llx (base=%llu row_bytes=%u domain=material)",

@@ -76,6 +76,7 @@ namespace hgl::ecs
         bool material_is_mesh = false;                      ///<材质是否含 mesh stage（间接 flush 分派）
         const MaterialBatch *cur_owner_batch = nullptr;     ///<当前材质批（间接 flush 取 icb_mesh_tasks）
         uint32_t cur_pass_index = RenderPassSlot::Main;     ///<T4c3c：当前 render pass（切片按 pass 取）
+        bool engaged_logged_ = false;                       ///<批 1.3 C5：一次性「间接 flush 已启用」日志闩（每实例，非进程级）
 
         /**
          * 处理间接渲染（mesh：一条 vkCmdDrawMeshTasksIndirectEXT multi-draw）

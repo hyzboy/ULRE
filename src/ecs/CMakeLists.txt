@@ -362,6 +362,14 @@ if(MSVC)
     set_target_properties(ProbeTransformDiagnostics PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 批 1.3 C5 判据探针：一次性告警闩必须**每实例**（进程级 static ⇒ 第二个世界静默）。
+# 判据（外部）：跑完 grep -c "切片起点未 4 行对齐" ⇒ 期望 2（两个实例各 1）。
+add_executable(ProbeWarnLatchPerWorld support/ProbeWarnLatchPerWorld.cpp)
+target_link_libraries(ProbeWarnLatchPerWorld PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(ProbeWarnLatchPerWorld PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage

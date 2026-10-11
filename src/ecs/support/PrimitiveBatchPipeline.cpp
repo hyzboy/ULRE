@@ -798,12 +798,13 @@ namespace hgl::ecs
         // A6-d T4b：拒 = **fail-fast**（不再回 CPU 账兜底）。依据 `GPUCullSystem::kMaxBatches`
         // 的拍板政策：容量是冻结值，超限 = 项目 bug ⇒ 不扩容、不静默丢批；也不许"退回 CPU 账"
         // 把问题伪装成正常渲染。
-        auto reject = [](const char *why, const char *batch_name, MaterialBatch *b)
+        // 批 1.3 C5：闩改**每实例**（原先的进程级 static 告警闩 ⇒ 第二个世界静默）
+        // ⇒ 该 lambda 必须捕获 this。
+        auto reject = [this](const char *why, const char *batch_name, MaterialBatch *b)
         {
-            static bool s_reported = false;
-            if (!s_reported)
+            if (!gpu_cull_reject_warned_)
             {
-                s_reported = true;
+                gpu_cull_reject_warned_ = true;
                 GLogError("[T3i] GPU cull draw override 该批前提不满足：%s（批=%s）"
                           "⇒ fail-fast：该批本帧**不绘制**（容量/前提为拍板冻结值，超限属项目 bug；"
                           "不回 CPU 账、不静默丢批）",
@@ -999,10 +1000,9 @@ namespace hgl::ecs
                      (world ? world->GetFrameIndex() : 0u) % HGL_FRAME_SLOT_TOTAL, 1, geometry_batches,
                      pending_count, total_items, row_cursor, tagged_items, total_items);
 
-        static bool s_engaged_logged = false;
-        if (!s_engaged_logged)
+        if (!gpu_cull_engaged_logged_)
         {
-            s_engaged_logged = true;
+            gpu_cull_engaged_logged_ = true;
             GLogInfo("[T3i] GPU cull draw override ENGAGED: 世界=%s batches=%u/%u items=%u"
                      " arena_rows=%u（逐批切片）",
                      world ? world->GetName().c_str() : "<null>",

@@ -504,7 +504,9 @@ int main(int argc, char** argv)
             { "src/ecs/systems/tick/TransformSystem.cpp", "static_index_map",          0, "排名映射复活（应为 static_slot_map）" },
             { "src/ecs/systems/tick/TransformSystem.cpp", "dynamic_index_map",         0, "同上（动态段）" },
             { "inc/hgl/ecs/core/Context.h",               "TryGetTransformSlot",       1, "稳定槽位查询缺失" },
-            { "src/ecs/systems/tick/TransformSystem.cpp", "static_slot_map",           4, "槽位映射缺失（每帧派生自世界槽位表）" },
+            // 批 1.3 C6：遍历统一走 `ForEach*Transform` 后，槽号改由 slot_map 反查（2 处遍历）
+            // ⇒ 该符号用点由 4 涨到 6；针的意图（每帧派生自世界槽位表、不许退化成排名映射）不变。
+            { "src/ecs/systems/tick/TransformSystem.cpp", "static_slot_map",           6, "槽位映射缺失（每帧派生自世界槽位表）" },
             { "src/ecs/support/TransformAccessor.cpp",    "MigrateTransform",          1, "换边未通知世界（只改 mobility 字节 ⇒ 实例拿默认行、全画在原点）" },
 
             // T8.5：局部矩阵常驻缓存与二级标脏字段**必须零残留**（行内存 223 B → 158 B 的验收点）

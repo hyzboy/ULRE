@@ -89,6 +89,11 @@ namespace hgl::ecs
         uint64_t gpu_cull_override_frame_ = 0;
         uint64_t gpu_cull_full_frame_ = 0;
 
+        /// 批 1.3 C5：两个一次性闩改**每实例**（原 `static bool` 是进程级 ⇒ 第二个世界静默）：
+        /// 前者 = 批前提不满足的 fail-fast 告警；后者 = 「GPU 剔除接管生效」的一次性正面证据日志。
+        bool gpu_cull_reject_warned_  = false;
+        bool gpu_cull_engaged_logged_ = false;
+
         graph::BufferManager* GetBufferManager() const;
 
         void EnsureMeshDrawParams(MaterialBatch& batch);       ///<mesh per-draw 参数表容量保障（gather 消费该池 ⇒ 必须物化）

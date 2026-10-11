@@ -205,6 +205,10 @@ namespace hgl::ecs
 
     void MainLightShadowSystem::RenderMainLightShadowPass(CameraComponent *main_camera, float deltaTime)
     {
+        // 批 1.3 C4：本 pass 目前不消费帧时间（形参按调用契约保留）——显式丢弃，
+        // 与 TransformSystem.cpp 的 `(void)deltaTime;`、MaterialData.cpp 的 `(void)material_program;` 同一写法。
+        (void)deltaTime;
+
         if (!shadow_enabled || !shadow_controller || !context || !main_camera || !light_camera)
             return;
 

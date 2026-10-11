@@ -295,6 +295,12 @@ namespace hgl::ecs
         bool cull_cmd_submitted_[HGL_FRAME_SLOT_TOTAL] = {};
         uint32_t dispatch_count_ = 0;   ///< 成功派发帧数（IsDispatchSettled 判据）
 
+        /// 批 1.3 C5：一次性告警闩改**每实例**（每个世界一个 GPUCullSystem 实例 ⇒ 实例级 = 世界级）。
+        /// 原 `static bool` 是**进程级** ⇒ 第一个世界报过之后，第二个世界（如离屏世界）
+        /// 的同类配置错误被永久静默，排查时看不见。
+        bool reported_misaligned_rows_ = false;
+        bool reported_unsynced_map_    = false;
+
         /// 各帧槽的批布局**是否已被写过**（T4c-ini-2）。
         /// 用途：布局只在"轮到该槽的那一帧"写，而剔除派发在**同一帧**读它 ⇒ 首次写入的那一帧，
         /// 派发必然看到初值（`capacity == 0`）⇒ 那一帧若仍让批接管，主帧 count 就是 0（物体不画）。

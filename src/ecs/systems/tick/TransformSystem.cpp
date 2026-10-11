@@ -275,93 +275,85 @@ namespace hgl::ecs
             dirty_static_indices.reserve(static_count);
             dirty_dynamic_indices.reserve(dynamic_count);
 
-            const auto& static_transforms = world->GetStaticTransforms();
-            const auto& movable_transforms = world->GetMovableTransforms();
-
             if (static_dirty)
             {
                 // 槽位表（含空洞）⇒ 只把**活着的槽位**记为脏（空洞无人引用）
-                const auto &static_slots = world->GetStaticTransforms();
-
-                for (uint32_t slot = 0; slot < static_cast<uint32_t>(static_slots.size()); ++slot)
+                // 批 1.3 C6：统一走世界的 `ForEach*`（跳洞由世界侧保证，不再手写 `IsValidTransformID`）；
+                // 槽号由 slot_map 反查（`static_slot_map[handle] = slot`，见 RefreshHandleOrder）——与旧写法同值。
+                world->ForEachStaticTransform([&](TransformID id)
                 {
-                    if (IsValidTransformID(static_slots[slot]))
-                        dirty_static_indices.push_back(slot);
-                }
+                    const uint32_t *idx = static_slot_map.GetValuePointer(id);
+
+                    if (idx)
+                        dirty_static_indices.push_back(*idx);
+                });
             }
             else
             {
-                for (const TransformID handle : static_transforms)
+                world->ForEachStaticTransform([&](TransformID id)
                 {
-                    if (!IsValidTransformID(handle))
-                        continue;
+                    const uint32_t *idx = static_slot_map.GetValuePointer(id);
 
-                    const uint32_t *idx = static_slot_map.GetValuePointer(handle);
                     if (!idx)
-                        continue;
+                        return;
 
-                    const uint64_t version = storage->GetVersion(handle);
-                    const uint64_t *last_uploaded = last_uploaded_version.GetValuePointer(handle);
+                    const uint64_t version = storage->GetVersion(id);
+                    const uint64_t *last_uploaded = last_uploaded_version.GetValuePointer(id);
+
                     if (!last_uploaded || *last_uploaded != version)
                     {
                         dirty_static_indices.push_back(*idx);
-                        last_uploaded_version[handle] = version;
+                        last_uploaded_version[id] = version;
                     }
-                }
+                });
             }
 
             if (dynamic_force_full)
             {
                 // 动态段每帧全量写本帧 ring 切片 ⇒ 活着的槽位全部记脏
-                const auto &movable_slots = world->GetMovableTransforms();
-
-                for (uint32_t slot = 0; slot < static_cast<uint32_t>(movable_slots.size()); ++slot)
+                // 批 1.3 C6：同上，走世界的 `ForEach*`（槽号由 slot_map 反查）。
+                world->ForEachMovableTransform([&](TransformID id)
                 {
-                    if (IsValidTransformID(movable_slots[slot]))
-                        dirty_dynamic_indices.push_back(slot);
-                }
+                    const uint32_t *idx = dynamic_slot_map.GetValuePointer(id);
+
+                    if (idx)
+                        dirty_dynamic_indices.push_back(*idx);
+                });
             }
             else
             {
-                for (const TransformID handle : movable_transforms)
+                world->ForEachMovableTransform([&](TransformID id)
                 {
-                    if (!IsValidTransformID(handle))
-                        continue;
+                    const uint32_t *idx = dynamic_slot_map.GetValuePointer(id);
 
-                    const uint32_t *idx = dynamic_slot_map.GetValuePointer(handle);
                     if (!idx)
-                        continue;
+                        return;
 
-                    const uint64_t version = storage->GetVersion(handle);
-                    const uint64_t *last_uploaded = last_uploaded_version.GetValuePointer(handle);
+                    const uint64_t version = storage->GetVersion(id);
+                    const uint64_t *last_uploaded = last_uploaded_version.GetValuePointer(id);
+
                     if (!last_uploaded || *last_uploaded != version)
                     {
                         dirty_dynamic_indices.push_back(*idx);
-                        last_uploaded_version[handle] = version;
+                        last_uploaded_version[id] = version;
                     }
-                }
+                });
             }
 
             if (static_dirty)
             {
-                for (const TransformID handle : world->GetStaticTransforms())
+                world->ForEachStaticTransform([&](TransformID id)
                 {
-                    if (!IsValidTransformID(handle))
-                        continue;
-
-                    last_uploaded_version[handle] = storage->GetVersion(handle);
-                }
+                    last_uploaded_version[id] = storage->GetVersion(id);
+                });
             }
 
             if (dynamic_force_full)
             {
-                for (const TransformID handle : world->GetMovableTransforms())
+                world->ForEachMovableTransform([&](TransformID id)
                 {
-                    if (!IsValidTransformID(handle))
-                        continue;
-
-                    last_uploaded_version[handle] = storage->GetVersion(handle);
-                }
+                    last_uploaded_version[id] = storage->GetVersion(id);
+                });
             }
 
             if (!dirty_static_indices.empty())

@@ -432,7 +432,8 @@ namespace hgl::ecs
 
             if (comp->lines.empty())
             {
-                ++stats_.culled_by_visibility;
+                // 批 1.3 C2：空线段不是**可见性剔除**——单列一项，别污染真视锥/可见性统计。
+                ++stats_.skipped_empty;
                 continue;
             }
 
@@ -469,9 +470,10 @@ namespace hgl::ecs
             ++stats_.visible_components;
         }
 
-        LinePeriodicLog(s_line_log_ticks[3], "[LineRenderPipeline] Collect summary: total=%u visible=%u collected=%zu culled_visibility=%u culled_frustum=%u",
+        LinePeriodicLog(s_line_log_ticks[3], "[LineRenderPipeline] Collect summary: total=%u visible=%u skipped_empty=%u collected=%zu culled_visibility=%u culled_frustum=%u",
                  stats_.total_components,
                  stats_.visible_components,
+                 stats_.skipped_empty,
                  collected_.size(),
                  stats_.culled_by_visibility,
                  stats_.culled_by_frustum);
@@ -565,10 +567,9 @@ namespace hgl::ecs
                         const uint32_t resolved = transform.IsMovable() ? (dynamic_base + slot)
                                                                           : (slot + 1u);
 
-                        constexpr uint32_t kMaxTransformID = std::numeric_limits<uint32_t>::max();
-                        transform_id = resolved > kMaxTransformID
-                                     ? 0
-                                     : static_cast<uint32_t>(resolved);
+                        // 批 1.3 C3：删掉恒真守卫——`resolved` 本身就是 uint32_t，
+                        // `resolved > UINT32_MAX` 在 C++ 里恒为 false，只会给出「这里有边界保护」的假信心。
+                        transform_id = resolved;
 
                         if (transform_id != 0)
                             ++resolved_transform_components;
