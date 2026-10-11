@@ -80,6 +80,13 @@ namespace hgl
             hgl::ValueArray<uint32_t>       child_count;
             std::vector<HandleID>           child_pool;
 
+            /// **静态段变更序号**（审计 · 批 1.1 B4）：与 per-row `matrixDirty` **解耦**的静态失效信号。
+            /// 为什么单开一个：`TransformSystem::Update()` 开头的 `UpdateDirtyWorldMatricesFlat()`
+            /// 会先把 `matrixDirty` 清掉，于是 `SubmitTransformUpdates()` 里所有基于 dirty 的判据在
+            /// 正常帧序（Update → Submit）下恒假 ⇒ 静态场景 revision 永不递增、静态级联阴影缓存不失效。
+            /// 本序号只增不减，语义 = 「自上次上报以来静态集合/静态值是否变过」。
+            uint64_t static_change_seq = 0;
+
             /// 表现层状态：fixed-pixel 尺寸控制（gizmo 等"屏幕上恒定大小"的对象）。
             /// CPU 侧、不参与世界矩阵求值 ⇒ 用普通结构数组（不是 GPU 数据）。
             struct FixedPixelState
@@ -205,6 +212,10 @@ namespace hgl
                 child_count.Add(0);
 
                 topology_dirty = true;
+
+                // 批 1.1 B4：新行 = 场景结构变化（它可能立刻成为静态 caster）⇒ 保守触发一次静态失效
+                ++static_change_seq;
+
                 return id;
             }
 
@@ -213,6 +224,9 @@ namespace hgl
             {
                 if (id >= static_cast<HandleID>(positions.GetCount()))
                     return;
+
+                // 批 1.1 B4：行消失也是静态集合变化（静态 caster 被销毁必须让静态缓存失效）
+                ++static_change_seq;
 
                 // 失效机制（v2 §2）：释放即换代 ⇒ 任何持有旧世代的行句柄立刻作废。
                 // 世代编码约定：**0 = 死/未分配；正奇数 = 活**。
@@ -384,6 +398,10 @@ namespace hgl
 
                 ++versions[id];
                 change_masks[id] |= mask;
+
+                // 批 1.1 B4：静态行（mobility 0）的值变更 ⇒ 静态集合/静态值变了
+                if (id < static_cast<HandleID>(mobility.GetCount()) && mobility[id] == 0)
+                    ++static_change_seq;
             }
 
             void AddChangeMask(HandleID id,uint32_t mask)
@@ -399,6 +417,9 @@ namespace hgl
 
                 return versions[id];
             }
+
+            /// 静态变更序号（批 1.1 B4）：消费者按「与上次上报的值是否相同」判定静态场景是否变更
+            uint64_t GetStaticChangeSeq() const { return static_change_seq; }
 
             /// 行世代（句柄失效检测）。越界或从未分配返回 0 —— 默认构造的句柄世代也是 0 ⇒ 不会误判为有效。
             uint32_t GetGeneration(HandleID id) const
@@ -580,9 +601,29 @@ namespace hgl
                 const uint32_t count  = child_count[id];
 
                 // 本行 span 恰好贴着池尾 ⇒ 直接续写（装配期常见路径，零浪费）；
-                // 否则把本行重指到池尾（旧 span 成为垃圾，不回收——子表只在装配期增长）。
-                if (count == 0 || (offset + count) != static_cast<uint32_t>(child_pool.size()))
+                // 否则把本行整段**复制**到池尾（旧 span 成为垃圾，不回收——子表只在装配期增长）。
+                //
+                // 2026-10-11（审计 · 批 1.1 B1）修复：原实现只把 `child_offset` 重指到池尾却**不搬旧子节点**，
+                // 随后照样写 `count + 1` ⇒ 区间前半是新子节点、其后是别人的数据；`CopyChildren`/`HasChild`
+                // 还会按 `[offset, offset+count)` 读出 `child_pool` 之外（UB）。触发面 = 任意
+                // 「父 X 先有子、另一父 Y 也有子、X 再加子」的装配顺序（普通层级装配即可命中）。
+                if (count != 0 && (offset + count) != static_cast<uint32_t>(child_pool.size()))
+                {
+                    const uint32_t new_offset = static_cast<uint32_t>(child_pool.size());
+
+                    // 先保容量：insert 的源区间就在同一 vector 内，一旦重分配迭代器即失效
+                    child_pool.reserve(child_pool.size() + static_cast<size_t>(count) + 1u);
+
+                    child_pool.insert(child_pool.end(),
+                                      child_pool.begin() + offset,
+                                      child_pool.begin() + offset + count);
+
+                    child_offset[id] = new_offset;
+                }
+                else if (count == 0)
+                {
                     child_offset[id] = static_cast<uint32_t>(child_pool.size());
+                }
 
                 child_pool.push_back(child);
                 child_count[id] = count + 1;
@@ -656,6 +697,10 @@ namespace hgl
             void SetDirty(HandleID id, bool dirty)
             {
                 matrixDirty[id] = dirty ? 1 : 0;
+
+                // 批 1.1 B4：静态行被标脏（含只标脏不 bump version 的路径）同样算静态变更
+                if (dirty && id < static_cast<HandleID>(mobility.GetCount()) && mobility[id] == 0)
+                    ++static_change_seq;
             }
 
         public: // Mobility tracking (0 = static, 1 = movable)
@@ -667,7 +712,14 @@ namespace hgl
 
             void SetMobility(HandleID id, uint8_t mobilityValue)
             {
+                const bool changed = (id < static_cast<HandleID>(mobility.GetCount()))
+                                   && (mobility[id] != mobilityValue);
+
                 mobility[id] = mobilityValue;
+
+                // 批 1.1 B4：换段 = 静态集合变化（进静态 / 出静态都要让静态缓存失效）
+                if (changed)
+                    ++static_change_seq;
             }
 
         public: // Flat arrays accessors (for GPU uploads / ComputeShader dispatch)
