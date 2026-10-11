@@ -303,6 +303,17 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 > | 7 | 材质四条键空间（variant 2 元组 / runtime 3 元组 / authoring row id / pipeline EntityID），且 `MaterialVariantKey` 是 `MaterialRuntimeKey` 的**严格前缀** | 前缀关系说明两者可共用一段键（variant 键 = runtime 键的前两元），但**四张表的生命周期与索引空间不同**（variant 可共享、runtime 每实例、authoring 按行、pipeline 按实体） | 可做的小收敛：`MaterialVariantKey` 作为 `MaterialRuntimeKey` 的**前两元编解码同一份函数**（消掉各自解析），不去合并表 |
 > | 8 | `MaterialRuntimeRow` 把 key 存了约 3.5 份（`key` + `recipe_hash` + `data_index_row` + `cached_effective_recipe_hash`） | `key` 是段内三元组；`recipe_hash`/`data_index_row` 是键的可比字段（比较/索引用），`cached_effective_recipe_hash` 是**缓存**（键的纯函数） | 可做：把"键的三元组"与"缓存值"的**边界写进头注**（哪些字段必须与键一致、哪些允许滞后）；真删字段要连带改键比较与 GPU 侧读取，风险中 |
 
+**逐条详述报告（2026-10-10）**：`doc/analysis/ecs-audit-2026-10/` 下 6 份，每份含「现状证据 → 为什么要这么设计 → 可证的问题 → 未证实/需确认 → 处置选项与成本 → 建议」：
+
+| # | 报告 | 一句话结论 |
+|---|---|---|
+| 1 | `01-component-mask-cache-view.md` | 掩码生产读者只有 1 处、`HasComponentType()` 生产零调用，而对拍器 `VerifyComponentMaskAgainstComponents()` **生产零调用** ⇒ 口头约束、无门 |
+| 2 | `02-entity-component-list-copies.md` | 复制链 = **4 份**（权威 → CPU 行镜像 → GPU SSBO(帧槽份) → GLSL 镜像）；审计列的 `EntityRenderIDTable` **不属于本链**（订正）；`EntityGPUTable::VerifyAgainst()` 同样**零调用** |
+| 3 | `03-renderitem-descriptor-two-tables.md` | 值真同源，但四条不对称（写条件/索引空间/pass 维度/脏+帧槽）＋三条"静默"机制；先决问题 =「池无条件写、实体表只在进批判据内写」是有意还是疏漏 |
+| 6 | `06-visibility-three-representations.md` | 权威（缺席集，含**祖先继承**）→ GPU 行正位是**扁平**的：`SetEntityVisible` 不传播后代 ⇒ 可证的一处失步；三表示都该在，缺的是权威链与传播规则 |
+| 7 | `07-material-four-key-spaces.md` | 前缀关系**成立**且不该合并表；缺的是**前缀的共用实现**（`VariantKeyOf`）+ 四条键的权威链文档 |
+| 8 | `08-materialruntime-row-key-duplication.md` | **订正**：`row.recipe_hash`/`row.data_index_row` 不是 key 副本（CoW 自有行 `key` 为空，只剩 `row.*` 可用），`cached_effective_recipe_hash` 是**不同哈希** ⇒ 可省字段 **0 处**，该补的是不变量文档 + debug 对拍 |
+
 ### 2.3 逐字复制的机制
 - **脏行上传机制在 `EntityGPUTable` / `EntityRenderIDTable` / `LightRowTable` 里逐字重复**：`CollectDirtyRows`、`ClearDirty`、`GetDirtyCount` 三处**字节相同**；`MarkDirty`/`ReportOverflow`（同一闩、同一 `GLogError`，仅文案不同）/`IsAllocated`/`Clear` 近乎相同；成员 `row_dirty` + `overflow_reported` 声明 3 次。命名漂移：`EntityGPUTable` 叫 `Clear()` 而 `EntityRenderIDTable` 同名概念叫 `ClearAll()`。世界侧上传路径重复同一套 quartet 3 次 — `Context.cpp:1701-1712,1750-1755,1791-1796` ⇒ **~120 行**。`S3`
   - ⇒ **已处置（2026-10-09）**：新增 `inc/hgl/ecs/support/DirtyRowSet.h`，三张表改按**组合**持有
