@@ -35,7 +35,6 @@ namespace hgl::graph::mtl
         AnsiString module_name;
         AnsiString related_module_name;
         ShaderCodeModuleSemantic semantic = ShaderCodeModuleSemantic::Unknown;
-        uint32 item_index = 0;
     };
 
     const char *GetShaderCodeModuleMetadataValidationErrorName(

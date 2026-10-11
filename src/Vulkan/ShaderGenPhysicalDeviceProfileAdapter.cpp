@@ -57,8 +57,6 @@ namespace hgl::graph::mtl::contract
         profile.device_id = props.deviceID;
         profile.api_version = pd.GetVulkanVersion();
 
-        profile.queue_family_count = static_cast<uint32_t>(pd.GetQueueFamilyProperties().GetCount());
-
         profile.limits.max_image_dimension_2d = limits.maxImageDimension2D;
         profile.limits.max_uniform_buffer_range = limits.maxUniformBufferRange;
         profile.limits.max_storage_buffer_range = limits.maxStorageBufferRange;

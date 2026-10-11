@@ -116,29 +116,6 @@ namespace hgl::graph::mtl::contract
             return false;
         }
 
-        inline uint32_t CountQueueFamilies(const std::string &json)
-        {
-            const std::size_t qf_pos = json.find("\"queue_families\"");
-            if (qf_pos == std::string::npos)
-                return 0;
-
-            const std::size_t arr_begin = json.find('[', qf_pos);
-            const std::size_t arr_end = json.find(']', arr_begin == std::string::npos ? qf_pos : arr_begin);
-            if (arr_begin == std::string::npos || arr_end == std::string::npos || arr_end <= arr_begin)
-                return 0;
-
-            uint32_t count = 0;
-            std::size_t cursor = arr_begin;
-            while (true)
-            {
-                cursor = json.find("\"queueFlags\"", cursor + 1);
-                if (cursor == std::string::npos || cursor > arr_end)
-                    break;
-                ++count;
-            }
-
-            return count;
-        }
     }
 
     inline bool BuildPhysicalDeviceProfileFromCollectorJson(const std::string &json,
@@ -186,7 +163,6 @@ namespace hgl::graph::mtl::contract
         detail::ReadJsonBool(json, "wideLines", out_profile.features.wide_lines);
         detail::ReadJsonBool(json, "samplerAnisotropy", out_profile.features.sampler_anisotropy);
 
-        out_profile.queue_family_count = detail::CountQueueFamilies(json);
         return true;
     }
 }

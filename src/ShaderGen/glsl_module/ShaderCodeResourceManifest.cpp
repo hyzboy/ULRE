@@ -97,7 +97,6 @@ namespace hgl::graph::mtl
                 if (visited_count >= MaxShaderCodeResourceManifestCodeModules)
                 {
                     manifest.error = ShaderCodeResourceManifestError::CodeModuleCapacityExceeded;
-                    manifest.error_module_name = name;
                     return false;
                 }
                 state_index = static_cast<int>(visited_count);
@@ -110,21 +109,18 @@ namespace hgl::graph::mtl
             if (!definition)
             {
                 manifest.error = ShaderCodeResourceManifestError::UnknownCodeModule;
-                manifest.error_module_name = name;
                 return false;
             }
 
             if (!definition->glsl_code)
             {
                 manifest.error = ShaderCodeResourceManifestError::ResourceConflict;
-                manifest.error_module_name = name;
                 return false;
             }
 
             if (states[state_index] == VisitState::Visiting)
             {
                 manifest.error = ShaderCodeResourceManifestError::CodeModuleCycle;
-                manifest.error_module_name = name;
                 return false;
             }
 
@@ -159,7 +155,6 @@ namespace hgl::graph::mtl
                 {
                     manifest.error =
                         ShaderCodeResourceManifestError::ResourceConflict;
-                    manifest.error_module_name = definition->name;
                     return false;
                 }
             }
@@ -167,7 +162,6 @@ namespace hgl::graph::mtl
             if (manifest.code_module_count >= MaxShaderCodeResourceManifestCodeModules)
             {
                 manifest.error = ShaderCodeResourceManifestError::CodeModuleCapacityExceeded;
-                manifest.error_module_name = name;
                 return false;
             }
 

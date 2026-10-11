@@ -37,7 +37,6 @@ namespace hgl::graph::mtl
 
         uint64 stable_hash = 0;
         ShaderCodeResourceManifestError error = ShaderCodeResourceManifestError::None;
-        const char *error_module_name = nullptr;
 
         bool IsValid() const noexcept
         {

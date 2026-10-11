@@ -142,13 +142,11 @@ namespace hgl::ecs
         // 初值 `uint32_t(-1)` = **尚未物化**（批处理侧据此判定"行未就绪"）；
         // 物化完成写回真实行号（无绑定 ⇒ 0）。
         uint32_t data_index_row = uint32_t(-1);
-        void    *material_row_cpu = nullptr;
         uint64_t material_row_gpu = 0;
 
         // ── 纹理引用配置（MaterialTextureReferencePool 的按 definition 池行）──
         graph::MaterialTextureConfigurationAllocation
                 material_texture_configuration;
-        void    *material_texture_row_cpu = nullptr;
         uint64_t material_texture_row_gpu = 0;
         uint64_t material_texture_zero_row_gpu = 0;
         uint64_t material_texture_configuration_hash = 0;

@@ -13,7 +13,6 @@ namespace hgl::graph::mtl
             ShaderCodeModuleMetadataValidationDiagnostic &out_diagnostic,
             const ShaderCodeModuleMetadataValidationError error,
             const char *module_name,
-            const uint32 item_index = 0,
             const char *related_module_name = nullptr,
             const ShaderCodeModuleSemantic semantic =
                 ShaderCodeModuleSemantic::Unknown) noexcept
@@ -23,7 +22,6 @@ namespace hgl::graph::mtl
             out_diagnostic.related_module_name =
                 related_module_name ? related_module_name : "";
             out_diagnostic.semantic = semantic;
-            out_diagnostic.item_index = item_index;
             return false;
         }
 
@@ -117,7 +115,6 @@ namespace hgl::graph::mtl
                         out_diagnostic,
                         ShaderCodeModuleMetadataValidationError::DependencyCycle,
                         definition->name,
-                        dependency_index,
                         dependency.module_name);
                 }
 
@@ -230,7 +227,6 @@ namespace hgl::graph::mtl
                     out_diagnostic,
                     ShaderCodeModuleMetadataValidationError::InvalidRequirement,
                     definition.name,
-                    i,
                     nullptr,
                     requirement.semantic);
 
@@ -246,7 +242,6 @@ namespace hgl::graph::mtl
                         ShaderCodeModuleMetadataValidationError::
                             DuplicateRequirement,
                         definition.name,
-                        i,
                         nullptr,
                         requirement.semantic);
                 }
@@ -261,8 +256,7 @@ namespace hgl::graph::mtl
                 return SetMetadataFailure(
                     out_diagnostic,
                     ShaderCodeModuleMetadataValidationError::InvalidRequirement,
-                    definition.name,
-                    i);
+                    definition.name);
 
             for (uint32 j = 0; j < i; ++j)
             {
@@ -271,7 +265,6 @@ namespace hgl::graph::mtl
                         out_diagnostic,
                         ShaderCodeModuleMetadataValidationError::DuplicateProvide,
                         definition.name,
-                        i,
                         nullptr,
                         semantic);
             }
@@ -291,7 +284,6 @@ namespace hgl::graph::mtl
                     out_diagnostic,
                     ShaderCodeModuleMetadataValidationError::SelfDependency,
                     definition.name,
-                    i,
                     dependency.module_name);
 
             for (uint32 j = 0; j < i; ++j)
@@ -306,7 +298,6 @@ namespace hgl::graph::mtl
                         ShaderCodeModuleMetadataValidationError::
                             DuplicateDependency,
                         definition.name,
-                        i,
                         dependency.module_name);
                 }
             }
@@ -320,7 +311,6 @@ namespace hgl::graph::mtl
                     out_diagnostic,
                     ShaderCodeModuleMetadataValidationError::SelfConflict,
                     definition.name,
-                    i,
                     conflict);
 
             for (uint32 j = 0; j < i; ++j)
@@ -331,7 +321,6 @@ namespace hgl::graph::mtl
                         ShaderCodeModuleMetadataValidationError::
                             DuplicateConflict,
                         definition.name,
-                        i,
                         conflict);
             }
         }
@@ -368,7 +357,6 @@ namespace hgl::graph::mtl
                         out_diagnostic,
                         ShaderCodeModuleMetadataValidationError::MissingDependency,
                         definition->name,
-                        i,
                         dependency.module_name);
 
             }
@@ -381,7 +369,6 @@ namespace hgl::graph::mtl
                         ShaderCodeModuleMetadataValidationError::
                             MissingConflictTarget,
                         definition->name,
-                        i,
                         definition->module_conflict_names[i]);
             }
         }
@@ -435,7 +422,6 @@ namespace hgl::graph::mtl
                                 ShaderCodeModuleMetadataValidationError::
                                     AmbiguousProviderPriority,
                                 left->name,
-                                left_provide,
                                 right->name,
                                 left->semantic_provides[left_provide]);
                         }

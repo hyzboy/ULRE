@@ -116,6 +116,8 @@
 | `ShaderCodeModuleDiagnostic::item_index` | `inc/hgl/mtl/ShaderCodeModuleMetadata.h:38` | `ShaderCodeModuleMetadata.cpp:26` | **0** |
 | `ShaderGenContract.h` `queue_family_count` | `inc/hgl/mtl/contract/ShaderGenContract.h:68` | `ShaderGenPhysicalDeviceProfileJson.h:189`、`Vulkan/ShaderGenPhysicalDeviceProfileAdapter.cpp:60` | **0** |
 
+**2026-10-11 处置**：上表 5 处**已全部删除**（含 `item_index` 的形参与 12 处调用点实参、`queue_family_count` 删后变死的 `CountQueueFamilies` 整函数）+ 5 条禁复活针 —— 见 §12。
+
 **F-2 零调用函数（除声明/定义外全仓 0 命中）**
 `CaptureFinalDocuments`（`MaterialShaderCompiler.h:63`）· `ConfigureMaterialVertexSemanticContract`（`MaterialRecipe.h:474`）·
 `ToGLSLSamplerTypeName`（`:54`）· `ParsePassType`（`PassType.h:39`）· `GetShaderCompilerTargetVersions`（`ShaderCompilerProfileAPI.h:12`）·
@@ -505,6 +507,47 @@ BlendFactor/BlendOp/DynamicState）的 name↔value 注册表，含 `VkEnum2Stri
 - `bin/PipelineCompiler.exe`（2025-03 入库的**预编译二进制**，全仓无任何 CMake target 引用它）二进制里含这些符号名
   ⇒ 它是更早的构建产物，与本次删源无关；但**陈旧二进制入库**本身是卫生问题（本项目既有 `GLSLCompiler.dll` 这类
   **有意**入库的运行时插件，也有 `bin/PipelineCompiler.exe` 这种无 target 的遗留件）。删/留交用户。
+
+---
+
+## 12. S5a 执行记录：F-1 五个“只写不读”字段整删（2026-10-11）
+
+**靶与判据**：5 个字段逐符号核实 = **只有赋值、全仓 0 读取**（`git grep -nw <字段>` 命中仅 声明 + 写点）：
+
+| # | 字段 | 位置 | 写点 | 读取 |
+|---|---|---|---|---|
+| 1 | `MaterialRuntimeRow::material_row_cpu` | `inc/hgl/ecs/support/MaterialRuntimeTable.h` | `RenderPrimitiveCollectSystem.cpp` ×3 | 0 |
+| 2 | `MaterialRuntimeRow::material_texture_row_cpu` | 同上 | 同上 ×3 | 0 |
+| 3 | `ShaderCodeResourceManifest::error_module_name` | `inc/hgl/mtl/ShaderCodeResourceManifest.h` | `ShaderCodeResourceManifest.cpp` ×6 | 0 |
+| 4 | `ShaderCodeModuleMetadataValidationDiagnostic::item_index` | `inc/hgl/mtl/ShaderCodeModuleMetadata.h` | 同上 `.cpp` ×1 | 0 |
+| 5 | `PhysicalDeviceProfileLite::queue_family_count` | `inc/hgl/mtl/contract/ShaderGenContract.h` | JSON 读取侧 ×1 + Vulkan 适配器 ×1 | 0 |
+
+### 12.1 落地
+
+| 项 | 内容 |
+|---|---|
+| 1/2 | 删 2 个字段声明 + **6 处写点**（2 处 `= nullptr` 重置各 2 次；一处三行三元表达式；一处两行赋值）。**无级联**：`new_allocation.cpu_row` 另有活消费者（池的 `RowCPU` 校验），`material_buffer`/`row_offset` 仍被 GPU 侧赋值使用 |
+| 3 | 删字段 + **6 处赋值**（全在失败路径）；诊断仍由 `error` 枚举 + 调用方自带的模块名承担 |
+| 4 | 删字段 + 赋值 + `SetMetadataFailure` 的**形参** + **12 处调用点的第 4 实参**（14 个调用点中 12 处传了它）——刻意连参数一起删，不留“参数已死”的中间态 |
+| 5 | 删契约字段 + 2 处写点 + **`CountQueueFamilies` 整函数（23 行）**（删掉唯一调用者后变死）。JSON 里的 `queue_families` 数组由采集器直接产出、**不经过本字段** ⇒ 产出文本与任何哈希都不受影响 |
+| 针 | 5 条禁复活针（每个字段一条，钉在其定义处所属头文件），文案写明“何时删 / 替代表达是什么” |
+
+### 12.2 验收（实测）
+
+| 项 | 结果 |
+|---|---|
+| 全量 Release | **整树清 obj + 全量重编**（4 个公共头结构变化）；`-j 8` 撞 applocal 竞态（`env=10`，落点全在无关目标 `CMCore/examples/…/UnorderedSetMoveSemantics`）⇒ **`-j 1` 收敛 `rc=0 / code=0 / env=0` / 392 目标** |
+| `ctest -L ecs` / `TestCSMIncrementalPass` | **12/12** / **1/1**（含 5 条新针 ⇒ 字段在源码面确已归零） |
+| 门 | **43 PASS / 0 FAIL** |
+| cook / `PBRSpheres` | 38/0 / rc=124 正常出帧、0 错误 |
+| 残留 | `git grep` 5 个字段名在 `src inc example` 只剩针自身的禁用串与文案；`CountQueueFamilies` 归零 |
+
+### 12.3 反证（逐针过）
+
+- 把 `material_row_cpu` 字段加回 `MaterialRuntimeTable.h` ⇒ `TestCSMIncrementalPass` **Test 11 精确报红**：
+  `… 'material_row_cpu' 重新出现在 MaterialRuntimeTable.h（禁复活）`。
+- 把 `queue_family_count` 加回 `ShaderGenContract.h` ⇒ 同处精确报红（文案带"禁复活"）。
+- 两次还原后 `ctest` 1/1 且**逐字节一致**（`sha` 级比对）。
 
 ## 5. 本档边界
 

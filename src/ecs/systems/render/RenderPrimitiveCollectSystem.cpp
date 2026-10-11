@@ -714,9 +714,7 @@ namespace hgl::ecs
             {
                 runtime_table->RetireRowTextureConfiguration(*row);
                 row->data_index_row = uint32_t(-1);
-                row->material_row_cpu = nullptr;
                 row->material_row_gpu = 0;
-                row->material_texture_row_cpu = nullptr;
                 row->material_texture_row_gpu = 0;
                 row->material_texture_zero_row_gpu = 0;
                 row->material_texture_configuration_hash = 0;
@@ -1391,7 +1389,6 @@ namespace hgl::ecs
                              1u);
                 }
 
-                row->material_row_cpu = nullptr;
                 row->material_row_gpu     = 0;
 
                 auto *graphics_context = world->GetGraphicsContext();
@@ -1448,9 +1445,6 @@ namespace hgl::ecs
 
                 const uint64_t row_offset =
                     uint64_t(asset_binding.data_index) * material_buffer.row_bytes;
-                row->material_row_cpu = material_buffer.cpu_base
-                    ? static_cast<uint8_t *>(material_buffer.cpu_base) + row_offset
-                    : nullptr;
                 row->material_row_gpu = material_buffer.gpu_base + row_offset;
 
                 // 批 1.3 C5：同上，闩改每实例（原 static 是进程级）。
@@ -1681,8 +1675,6 @@ namespace hgl::ecs
                     retire_epoch);
 
             row->material_texture_configuration = new_allocation;
-            row->material_texture_row_cpu =
-                new_allocation.cpu_row;
             row->material_texture_row_gpu =
                 new_allocation.gpu_row;
             row->material_texture_zero_row_gpu =
@@ -1740,7 +1732,6 @@ namespace hgl::ecs
                     row->material_texture_configuration,
                     retire_epoch);
             row->material_texture_configuration = {};
-            row->material_texture_row_cpu = nullptr;
             row->material_texture_row_gpu = 0;
             row->material_texture_zero_row_gpu = 0;
         }
