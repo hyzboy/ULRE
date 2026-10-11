@@ -979,7 +979,7 @@ namespace hgl
                 return BoundingBoxAccessor();
 
             // const 成员里仍要交出可变 storage 句柄（行数据由世界拥有；句柄只做定位）
-            return BoundingBoxAccessor(storage,storage->FindByOwner(owner),const_cast<ECSContext *>(this));
+            return BoundingBoxAccessor(storage,storage->FindByOwner(owner));
         }
 
         BoundingBoxAccessor ECSContext::GetOrCreateBoundingBox(EntityID owner)
@@ -997,7 +997,7 @@ namespace hgl
                 storage->SetOwner(id,owner);
             }
 
-            return BoundingBoxAccessor(storage,id,this);
+            return BoundingBoxAccessor(storage,id);
         }
 
         MaterialData* ECSContext::GetMaterialData(EntityID owner)
