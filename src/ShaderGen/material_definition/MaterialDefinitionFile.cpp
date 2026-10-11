@@ -1,4 +1,5 @@
 ﻿#include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/VkEnumText.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileInputStream.h>
@@ -90,75 +91,6 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        bool ParseCullMode(const std::string &name, VkCullModeFlags &out)
-        {
-            static const struct { const char *name; VkCullModeFlags value; } table[] = {
-                { "None",         VK_CULL_MODE_NONE },
-                { "Front",        VK_CULL_MODE_FRONT_BIT },
-                { "Back",         VK_CULL_MODE_BACK_BIT },
-                { "FrontAndBack", VK_CULL_MODE_FRONT_AND_BACK },
-            };
-            for (const auto &entry : table)
-            {
-                if (name == entry.name)
-                {
-                    out = entry.value;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParseCompareOp(const std::string &name, VkCompareOp &out)
-        {
-            static const VkCompareOp values[] = {
-                VK_COMPARE_OP_NEVER, VK_COMPARE_OP_LESS, VK_COMPARE_OP_EQUAL,
-                VK_COMPARE_OP_LESS_OR_EQUAL, VK_COMPARE_OP_GREATER,
-                VK_COMPARE_OP_NOT_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL,
-                VK_COMPARE_OP_ALWAYS
-            };
-            static const char *const names[] = {
-                "Never", "Less", "Equal", "LessOrEqual", "Greater",
-                "NotEqual", "GreaterOrEqual", "Always"
-            };
-            for (uint32 i = 0; i < 8; ++i)
-            {
-                if (name == names[i])
-                {
-                    out = values[i];
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParseBlendFactor(const std::string &name, VkBlendFactor &out)
-        {
-            static const VkBlendFactor values[] = {
-                VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ONE,
-                VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                VK_BLEND_FACTOR_DST_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
-                VK_BLEND_FACTOR_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
-                VK_BLEND_FACTOR_DST_COLOR, VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
-                VK_BLEND_FACTOR_SRC_ALPHA_SATURATE
-            };
-            static const char *const names[] = {
-                "Zero", "One", "SrcAlpha", "OneMinusSrcAlpha",
-                "DstAlpha", "OneMinusDstAlpha", "SrcColor",
-                "OneMinusSrcColor", "DstColor", "OneMinusDstColor",
-                "SrcAlphaSaturate"
-            };
-            for (uint32 i = 0; i < 11; ++i)
-            {
-                if (name == names[i])
-                {
-                    out = values[i];
-                    return true;
-                }
-            }
-            return false;
-        }
-
         bool ParseRenderState(const toml::value &root, MaterialDefinition &definition)
         {
             if (!root.contains("render_state"))
@@ -195,25 +127,25 @@ namespace hgl::graph::mtl
             if (pipeline.contains("cull_mode"))
             {
                 if (!ReadString(pipeline, "cull_mode", value)
-                 || !ParseCullMode(value, definition.default_render_state.pipeline_config.cull_mode))
+                 || !ParseVkCullMode(value.c_str(), definition.default_render_state.pipeline_config.cull_mode))
                     return false;
             }
             if (pipeline.contains("depth_compare_op"))
             {
                 if (!ReadString(pipeline, "depth_compare_op", value)
-                 || !ParseCompareOp(value, definition.default_render_state.pipeline_config.depth_compare_op))
+                 || !ParseVkCompareOp(value.c_str(), definition.default_render_state.pipeline_config.depth_compare_op))
                     return false;
             }
             if (pipeline.contains("blend_src"))
             {
                 if (!ReadString(pipeline, "blend_src", value)
-                 || !ParseBlendFactor(value, definition.default_render_state.pipeline_config.blend_src))
+                 || !ParseVkBlendFactor(value.c_str(), definition.default_render_state.pipeline_config.blend_src))
                     return false;
             }
             if (pipeline.contains("blend_dst"))
             {
                 if (!ReadString(pipeline, "blend_dst", value)
-                 || !ParseBlendFactor(value, definition.default_render_state.pipeline_config.blend_dst))
+                 || !ParseVkBlendFactor(value.c_str(), definition.default_render_state.pipeline_config.blend_dst))
                     return false;
             }
 
