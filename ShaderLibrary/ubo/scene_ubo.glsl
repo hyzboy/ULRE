@@ -175,7 +175,7 @@ struct ShadowCascadeInfo
 };
 
 // shadow（S2：地址进表，**按帧槽各一份** —— ring[i] 对应帧槽 i）退出 Scene 集绑定。
-// 宏名与成员名不变 ⇒ `shadow.*` 读点零改动。
+// 结构成员名保持 `shadow_*`（读点语义不变）；宏名见下方一行（2026-10-11 由 shadow 改名）。
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer ShadowInfoRef
 {
     mat4 shadow_vp;
@@ -187,7 +187,11 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Shad
     ShadowCascadeInfo cascades[4];
 };
 
-#define shadow ShadowInfoRef(world_addresses.addr_shadow)
+// ⚠ 宏名不得取单词级常用标识符：原名 `shadow` 会把任何材质里名为 shadow 的局部变量
+// 整词改写成 buffer_reference 表达式 ⇒ 编译期报 'const' : no qualifiers allowed for
+// function return（实测击穿过一个材质源里的 `const float shadow = ...` 局部变量声明）。
+// 2026-10-11 改名 shadow → shadow_info，同步 pcf_shadow.glsl 的使用点。
+#define shadow_info ShadowInfoRef(world_addresses.addr_shadow)
 
 // 相机行：**世界私有**（世界表 WorldAddresses 的 addr_camera_info），行号 = 相机槽 × 帧槽总数 + 帧槽。
 // 为什么不在全局表：相机是每个世界独有的观察者数据（多个世界同帧时全局表只能表达一个）。

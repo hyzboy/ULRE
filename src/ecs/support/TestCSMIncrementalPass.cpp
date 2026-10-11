@@ -1033,7 +1033,7 @@ int main(int argc, char** argv)
         // UBO，**证明不了 shader 会读它**。历次最贵的 bug 恰恰是"旋钮接通了但下游
         // 没人用"（cache_offset 就是这样烂了很久的）。所以这里直接对源码断言：
         //   1) 有编译期宏 HGL_SHADOW_NORMAL_OFFSET 且偏移代码受它保护；
-        //   2) 强度取自 shadow.cascades[0].shadow_params.w（CPU 侧 7A 写入的那个字段）；
+        //   2) 强度取自 shadow_info.cascades[0].shadow_params.w（CPU 侧 7A 写入的那个字段）；
         //   3) 偏移只用于采样，级联选级仍用未偏移的位置（EvalPCFShadowAt 的双入参）；
         //   4) 公式仍是 tan(θ) 加权且被 MAX 夹住 —— 被"简化"成角度无关的常量偏移
         //      会让正面被推离遮挡体（peter-panning 立刻回来），这条就是那道闸门。
@@ -1075,7 +1075,7 @@ int main(int argc, char** argv)
                 { "ShadowNormalOffsetPosition",      "offset helper is missing" },
                 { "#if HGL_SHADOW_NORMAL_OFFSET > 0",
                   "the offset code is not guarded by the compile-time switch" },
-                { "shadow.cascades[0].shadow_params.w",
+                { "shadow_info.cascades[0].shadow_params.w",
                   "GetShadowFactor does not read the UBO field the controller writes (dead knob)" },
                 { "sin_theta / cos_theta",
                   "offset is no longer tan(theta) weighted; a constant offset brings peter-panning back" },
@@ -1084,7 +1084,7 @@ int main(int argc, char** argv)
                 { "SHADOW_NORMAL_OFFSET_MAX",        "tan() clamp is missing (grazing angle will diverge)" },
                 { "EvalPCFShadowAt(sample_pos, surface.worldPos, receive_params.bias_multiplier)",
                   "offset must not leak into cascade selection (selectPos must stay un-offset)" },
-                { "shadow.cascades[selected].shadow_tex.x == 0u",
+                { "shadow_info.cascades[selected].shadow_tex.x == 0u",
                   "masked cascade must yield LIT inside its own depth interval; letting selection "
                   "descend to a farther cascade makes CSM 2 take over CSM 1's near range" },
                 { "cascade_params.w",
@@ -1789,6 +1789,18 @@ int main(int argc, char** argv)
               "MaterialRequiresRecipeRuntimeRows",
               "自由函数包装已按 S1 删除：运行期行需求改读 program->RequiresRecipeRuntimeRows()",
               true },
+            { "Shadow/CMakeLists.txt", OS_TEXT("example/Shadow/CMakeLists.txt"),
+              "CreateProject(ShadowMap ",
+              "ShadowMap 技术示例已于 2026-10-11 删除（旧 shadow-map 直采路线，被 CSM 取代；"
+              "其独占材质 shadow_receiver* 与 ShadowMap 采样器预设同批删除）——要恢复单张阴影图请把 "
+              "CascadeShadowMap 的 cascade_count 设为 1，勿重建双路线",
+              true },
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "#define shadow ",
+              "单词级宏名会整词改写同名局部变量（实测击穿 material/shadow_receiver_source.glsl 的"
+              " `const float shadow = ...` ⇒ 'const' : no qualifiers allowed for function return，"
+              "该材质因此长期编不过）；世界 shadow 行的别名宏必须带前缀（现为 shadow_info）",
+              true },
             // ── 禁复活（D8 收敛，2026-09-26 实测证据见 doc/backlog.md D8）──
             { "ShaderProgramManager.cpp", OS_TEXT("src/SceneGraph/module/ShaderProgramManager.cpp"),
               "ScanSPVHasDiscard",
@@ -1989,7 +2001,7 @@ int main(int argc, char** argv)
               "if (!receive_params.receive)",
               "不接收阴影的图元没有早退——仍会采样/选级，开关只影响噪音" },
             { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
-              "shadow.cascades[c].shadow_params.x * bias_scale",
+              "shadow_info.cascades[c].shadow_params.x * bias_scale",
               "级联路径的深度 bias 不再乘局部倍率（bias_multiplier 只改法线偏移）" },
             { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
               "* receive_params.bias_multiplier",
@@ -2982,7 +2994,7 @@ int main(int argc, char** argv)
             const OSString kPcf(OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"));
             const SourceContract seam_contracts[] =
             {
-                { "pcf_shadow.glsl", kPcf, "shadow.cascades[c].cache_offset.x != 0.0",
+                { "pcf_shadow.glsl", kPcf, "shadow_info.cascades[c].cache_offset.x != 0.0",
                   "wrap 必须逐级由该级联的 cache_offset 驱动（全局/编译期开关会让未滚动的级联也环绕）" },
                 { "pcf_shadow.glsl", kPcf, "fract(shadow_uv + offset_uv)",
                   "读侧映射失效：物理 uv 不再与 cache_offset 对齐，滚动后阴影会整体滑一整个步长" },
@@ -4432,9 +4444,6 @@ int main(int argc, char** argv)
             { "SimpleCube.cpp", OS_TEXT("example/GettingStarted/SimpleCube.cpp"),
               "ecs_context->GetOrCreateCamera(",
               "示例建相机未走世界级访问器" },
-            { "ShadowMap.cpp", OS_TEXT("example/Shadow/ShadowMap.cpp"),
-              "GetCameraByEntity(light_camera_id)",
-              "示例读相机未走世界级访问器（光源相机按宿主实体取回）" },
             { "AlphaTestShadow.cpp", OS_TEXT("example/Shadow/AlphaTestShadow.cpp"),
               "CameraControlMode::LookAt",
               "示例不再用命名空间级控制模式枚举（作者流程没跟上）" },
@@ -6054,9 +6063,6 @@ int main(int argc, char** argv)
               "T6b 禁复活：阴影接收侧不得回读天空里的方向",
               true },
 
-            { "shadow_receiver_source.glsl", OS_TEXT("ShaderLibrary/material/shadow_receiver_source.glsl"),
-              "const vec3 to_sun = normalize(main_light.direction_intensity.xyz);",
-              "T6b：重建光源相机的方向改读光源行 0" },
 
             { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
               "vec3 GetMainLightDir()",

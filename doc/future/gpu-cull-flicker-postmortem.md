@@ -110,7 +110,7 @@ image=2: ✓
   `pass 身份由目标推导`（当时口径：非交换链目标 ⇒ 非主帧 pass），消掉"调用方忘设旗标"的口子。
   方向正确，但"非交换链"这个判据把**独立离屏世界**也误判成了 shadow pass（§2.5）。
 - **验证（全套绿）**：逐帧摘要 30 帧 ×3 次 ⇒ 三图取值集合全为 `[256]`（闪烁消除）；
-  `ShadowMap 0xA8A369516CB04571` / `CascadeShadowMap 0x1CDAADEBF18B7CE4` **逐位不变**；
+  `ShadowMap 0xA8A369516CB04571` / `CascadeShadowMap 0x1CDAADEBF18B7CE4` **逐位不变**；〔2026-10-11：ShadowMap 台架已删除（旧 shadow-map 直采示例，CSM 路线取代；如需退化为单张阴影图，把 CascadeShadowMap.cpp 的 `cfg.cascade_count` 设 1 即可）——本行基线仅适用于删除前〕
   `AlphaTestShadow` 契约 rc=0；门 45/0。
 
 ### 2.4 遗留
@@ -400,7 +400,7 @@ T4c3a 把 4-ID 表**按 pass 分半**（flat 行号 = `PassBase(pass)+index`，�
 
 ```
 GPUDrivenCull     0x90E0745C2C7B8599   （需 GC_STATIC=1）
-ShadowMap         0xA8A369516CB04571
+ShadowMap         0xA8A369516CB04571〔2026-10-11：ShadowMap 台架已删除（旧 shadow-map 直采示例，CSM 路线取代；如需退化为单张阴影图，把 CascadeShadowMap.cpp 的 `cfg.cascade_count` 设 1 即可）——本行基线仅适用于删除前〕
 CascadeShadowMap  0x1CDAADEBF18B7CE4
 AlphaModes        0x2FE87B15EE8B8A16
 CoverageVariants  0x8EED38BAD9B8181E

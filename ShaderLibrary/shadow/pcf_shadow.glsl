@@ -115,7 +115,7 @@ const float SHADOW_NORMAL_OFFSET_MAX = 1.5;
 /// 只改变外观、不改变真实轮廓，拿它做偏移会在法线花纹上抖出噪点。
 ///
 /// 光方向取**主方向光行**（`main_light.direction_intensity.xyz`，行 0）—— 与本引擎其余
-/// 阴影接收代码（material/shadow_receiver_source.glsl）同源：其约定是 forward = -direction，
+/// 约定（与已退役的 shadow-map 直采路径同源，2026-10-11 该路径整删）：forward = -direction，
 /// 故 direction 指向**光源**，正是这里要的 L。T6b 起光的定义只有这一处真源
 ///（曾经分居天空数据与 CSM 光两处、靠"约定一致"维系）。
 vec3 ShadowNormalOffsetPosition(vec3 world_pos, vec3 world_normal, float strength)
@@ -185,10 +185,10 @@ ShadowReceiveParams GetShadowReceiveParams(uint data_index)
 
 float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv, float bias_scale)
 {
-    const vec2  texel      = shadow.cascades[c].inv_shadow_map_size;
-    const float pcf_radius = shadow.cascades[c].shadow_params.y;
+    const vec2  texel      = shadow_info.cascades[c].inv_shadow_map_size;
+    const float pcf_radius = shadow_info.cascades[c].shadow_params.y;
     // D3：局部偏差倍率逐级生效（shadow_params.x = 该级深度 bias）
-    const float bias       = shadow.cascades[c].shadow_params.x * bias_scale;
+    const float bias       = shadow_info.cascades[c].shadow_params.x * bias_scale;
 
     // 环形寻址（Toroidal Clipmap / 滚动缓存）：
     // 若 cache_offset 非零，通过 offset 偏移并求余 fract() 映射回物理纹理坐标，
@@ -197,16 +197,16 @@ float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv, float bias_scale)
     // 方框边缘留 ~2 texel 宽的杂斑圈。故 wrap 由 cache_offset 驱动，未启用
     // 滚动缓存时越界 tap 钳在贴图边缘（与"边界外无数据=最近纹素"语义一致）。
     const bool toroidal_wrap =
-           shadow.cascades[c].cache_offset.x != 0.0
-        || shadow.cascades[c].cache_offset.y != 0.0;
+           shadow_info.cascades[c].cache_offset.x != 0.0
+        || shadow_info.cascades[c].cache_offset.y != 0.0;
 
-    const vec2 offset_uv = vec2(shadow.cascades[c].cache_offset.xy) * texel;
+    const vec2 offset_uv = vec2(shadow_info.cascades[c].cache_offset.xy) * texel;
     const vec2 phys_uv   = toroidal_wrap ? fract(shadow_uv + offset_uv)
                                          : shadow_uv + offset_uv;
 
     const float current_depth = light_ndc.z + bias;
-    const float layer         = float(shadow.cascades[c].shadow_tex.y);
-    const uint  tex_handle    = shadow.cascades[c].shadow_tex.x;
+    const float layer         = float(shadow_info.cascades[c].shadow_tex.y);
+    const uint  tex_handle    = shadow_info.cascades[c].shadow_tex.x;
 
 #if HGL_SHADOW_PCF_POISSON_TAPS > 0
     const float unshadowed = EvalPoissonPCF(tex_handle, ShadowPCFSampler, phys_uv, texel,
@@ -228,7 +228,7 @@ float EvalCascadePCF(uint c, vec3 light_ndc, vec2 shadow_uv, float bias_scale)
     const float unshadowed = lit * (1.0 / 9.0);
 #endif
 
-    return mix(shadow.cascades[c].shadow_params.z, 1.0, unshadowed);
+    return mix(shadow_info.cascades[c].shadow_params.z, 1.0, unshadowed);
 }
 
 // 对单个级联求阴影因子。
@@ -248,7 +248,7 @@ float EvalCascadeShadowAt(uint c, vec3 worldPos, out float out_edge_dist, float 
 {
     out_edge_dist = -1.0;
 
-    const vec4 light_clip = shadow.cascades[c].shadow_vp * vec4(worldPos, 1.0);
+    const vec4 light_clip = shadow_info.cascades[c].shadow_vp * vec4(worldPos, 1.0);
     if (!(light_clip.w > 0.0))          // 同时挡住 w<=0 与 NaN
         return 1.0;
 
@@ -259,7 +259,7 @@ float EvalCascadeShadowAt(uint c, vec3 worldPos, out float out_edge_dist, float 
         return 1.0;
 
     const vec2 uv_raw     = vec2(0.5) + 0.5 * light_ndc.xy;
-    const vec2 texel      = shadow.cascades[c].inv_shadow_map_size;
+    const vec2 texel      = shadow_info.cascades[c].inv_shadow_map_size;
     const vec2 half_texel = texel * 0.5;
 
     out_edge_dist = min(min(uv_raw.x, 1.0 - uv_raw.x),
@@ -286,7 +286,7 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
     uint selected = last_c;                 // 超出所有区间时由最后一级兜底
     for (uint c = first_c; c <= last_c; ++c)
     {
-        if (view_depth <= shadow.cascades[c].cascade_params.y)
+        if (view_depth <= shadow_info.cascades[c].cascade_params.y)
         {
             selected = c;
             break;
@@ -294,14 +294,14 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
     }
 
     // 该深度区间无阴影数据（本级被屏蔽）→ 受光，禁止下沉到更远的级联
-    if (shadow.cascades[selected].shadow_tex.x == 0u)
+    if (shadow_info.cascades[selected].shadow_tex.x == 0u)
         return 1.0;
 
-    const float split_near = shadow.cascades[selected].cascade_params.x;
-    const float split_far  = shadow.cascades[selected].cascade_params.y;
+    const float split_near = shadow_info.cascades[selected].cascade_params.x;
+    const float split_far  = shadow_info.cascades[selected].cascade_params.y;
     // 交界带宽度：世界单位（米），由控制器写入 cascade_params.w；
     // 用世界单位而非比例，是为了让各级交界带的视觉宽度一致
-    const float band = shadow.cascades[selected].cascade_params.w;
+    const float band = shadow_info.cascades[selected].cascade_params.w;
 
     float edge_dist = -1.0;
     const float shadow_factor = EvalCascadeShadowAt(selected, worldPos, edge_dist, bias_scale);
@@ -311,7 +311,7 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
     // 对 min() 天然无副作用。
     // 注意：下一级被屏蔽时直接返回本级结果，屏蔽一级不得波及相邻级。
     if (band > 0.0 && selected + 1u <= last_c
-        && shadow.cascades[selected + 1u].shadow_tex.x != 0u
+        && shadow_info.cascades[selected + 1u].shadow_tex.x != 0u
         && view_depth > (split_far - band))
     {
         float next_edge = -1.0;
@@ -321,7 +321,7 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
     // 末级：在 max_distance 附近按比例带平滑淡出到受光，避免阴影范围边缘硬切
     if (selected + 1u > last_c)
     {
-        const float outer_band = shadow.cascades[selected].cascade_params.z
+        const float outer_band = shadow_info.cascades[selected].cascade_params.z
                                * max(split_far - split_near, 1.0e-3);
         if (outer_band > 0.0 && view_depth > (split_far - outer_band))
             return mix(1.0, shadow_factor, clamp((split_far - view_depth) / outer_band, 0.0, 1.0));
@@ -332,13 +332,13 @@ float EvalCascadeChain(uint first_c, uint last_c, vec3 worldPos, float view_dept
 
 float EvalPCFShadowAt(vec3 worldPos, vec3 selectPos, float bias_scale)
 {
-    if (shadow.shadow_tex.x == 0u)
+    if (shadow_info.shadow_tex.x == 0u)
         return 1.0;
 
     // 多级级联 CSM 模式 (csm_params.x > 0)
-    if (shadow.csm_params.x > 0u)
+    if (shadow_info.csm_params.x > 0u)
     {
-        const uint cascade_count = min(shadow.csm_params.x, 4u);
+        const uint cascade_count = min(shadow_info.csm_params.x, 4u);
 
         // ── 选级：按"相机 → 片元"的前向深度与每级 cascade_params.y(=split_far) 匹配 ──
         // 用 selectPos（未做算法线偏移的真实着色点）：法线偏移只是采样技巧，
@@ -351,23 +351,23 @@ float EvalPCFShadowAt(vec3 worldPos, vec3 selectPos, float bias_scale)
                                : length(selectPos - camera.camera_world_pos);
 
         // csm_params.y == 2u: 动静分层叠加模式（CSM 0 动态层，CSM 1..N-1 静态层）
-        if (shadow.csm_params.y == 2u && cascade_count > 1u)
+        if (shadow_info.csm_params.y == 2u && cascade_count > 1u)
         {
             // 1. 静态层覆盖链（从级联 1 到最后一级，全场景静态阴影）
             const float static_shadow = EvalCascadeChain(1u, cascade_count - 1u, worldPos, view_depth, bias_scale);
 
             // 2. 动态层（级联 0，仅在动态距离内求值并在远端淡出）
             float dynamic_shadow = 1.0;
-            const float dyn_far = shadow.cascades[0].cascade_params.y;
-            if (shadow.cascades[0].shadow_tex.x != 0u && view_depth <= dyn_far)
+            const float dyn_far = shadow_info.cascades[0].cascade_params.y;
+            if (shadow_info.cascades[0].shadow_tex.x != 0u && view_depth <= dyn_far)
             {
                 float dyn_edge = -1.0;
                 dynamic_shadow = EvalCascadeShadowAt(0u, worldPos, dyn_edge, bias_scale);
 
-                const float dyn_blend_w = shadow.cascades[0].cascade_params.z;
+                const float dyn_blend_w = shadow_info.cascades[0].cascade_params.z;
                 if (dyn_blend_w > 0.0 && dyn_edge >= 0.0)
                 {
-                    const float dyn_near = shadow.cascades[0].cascade_params.x;
+                    const float dyn_near = shadow_info.cascades[0].cascade_params.x;
                     const float band = dyn_blend_w * max(dyn_far - dyn_near, 1.0e-3);
                     const float fade_depth = clamp((dyn_far - view_depth) / band, 0.0, 1.0);
                     const float fade_uv = smoothstep(0.0, dyn_blend_w, dyn_edge);
@@ -389,7 +389,7 @@ float EvalPCFShadowAt(vec3 worldPos, vec3 selectPos, float bias_scale)
     }
 
     // 单级阴影回退路径（csm_params.x == 0）
-    const vec4 light_clip = shadow.shadow_vp * vec4(worldPos, 1.0);
+    const vec4 light_clip = shadow_info.shadow_vp * vec4(worldPos, 1.0);
     if (light_clip.w <= 0.0)
         return 1.0;
 
@@ -402,9 +402,9 @@ float EvalPCFShadowAt(vec3 worldPos, vec3 selectPos, float bias_scale)
     const vec2 shadow_uv = vec2(0.5) + 0.5 * light_ndc.xy;
 
     // D3：局部偏差倍率同样作用于单级回退路径
-    const float bias       = shadow.shadow_params.x * bias_scale;
-    const float pcf_radius = shadow.shadow_params.y;
-    const vec2  texel      = shadow.inv_shadow_map_size;
+    const float bias       = shadow_info.shadow_params.x * bias_scale;
+    const float pcf_radius = shadow_info.shadow_params.y;
+    const vec2  texel      = shadow_info.inv_shadow_map_size;
 
     const float margin = texel.x * (pcf_radius + 1.0);
     if (shadow_uv.x < margin || shadow_uv.x > (1.0 - margin) ||
@@ -417,8 +417,8 @@ float EvalPCFShadowAt(vec3 worldPos, vec3 selectPos, float bias_scale)
     // current_depth + bias 作为参考深度，硬件比较采样器（GreaterOrEqual）
     // 满足 ref >= depth 返回 1.0（未遮挡，受光），否则返回 0.0（被遮挡）
     const float current_depth = light_ndc.z + bias;
-    const float layer         = float(shadow.shadow_tex.y);
-    const uint  tex_handle    = shadow.shadow_tex.x;
+    const float layer         = float(shadow_info.shadow_tex.y);
+    const uint  tex_handle    = shadow_info.shadow_tex.x;
 
 #if HGL_SHADOW_PCF_POISSON_TAPS > 0
     const float unshadowed = EvalPoissonPCF(tex_handle, ShadowPCFSampler, shadow_uv, texel,
@@ -438,7 +438,7 @@ float EvalPCFShadowAt(vec3 worldPos, vec3 selectPos, float bias_scale)
     const float unshadowed = lit * (1.0 / 9.0);
 #endif
 
-    return mix(shadow.shadow_params.z, 1.0, unshadowed);
+    return mix(shadow_info.shadow_params.z, 1.0, unshadowed);
 }
 
 /// 兼容入口：采样点与选级点相同；无逐图元覆盖（= 引擎默认倍率）。
@@ -466,7 +466,7 @@ float GetShadowFactor(SurfaceInput surface, uint data_index)
     // 因此读级联 0 即可；未配置时该字段是结构体默认值 0.0，等于不偏移。
     // D3：再乘该图元的局部倍率（薄片/特异物件按需放大或收敛）。
     sample_pos = ShadowNormalOffsetPosition(surface.worldPos, surface.worldNormal,
-                                           shadow.cascades[0].shadow_params.w
+                                           shadow_info.cascades[0].shadow_params.w
                                                * receive_params.bias_multiplier);
 #endif
 

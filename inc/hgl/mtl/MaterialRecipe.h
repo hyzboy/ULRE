@@ -510,7 +510,8 @@ namespace hgl::graph::mtl
     //     ② **2D/3D 必须区分**：2D 走 UV、3D 走面空间/三平面（沿用两者现有采样差异），
     //        因此标记色要分别落到两套着色器，不能共用一套；
     //     ③ 同步两个 ShaderGen 门的期望值：F 断言回退定义 ID == `builtin/pure_color`
-    //        （SchemaGate:3534）、E 把 material TOML 文件数钉死为 15（:3360-3367）
+    //        （SchemaGate:3534）、E 把 material TOML 文件数钉死为 14（:3360-3367；2026-10-11 由 15 更新——
+    //        ShadowMap 示例退场连带删除 shadow_receiver.material.toml）
     //        —— 换外观必然要动这两处。
     //   触发前提（用户 2026-10-01 实测）：**跑遍全部示例均正常触发 0 次**，现有示例
     //   不存在"有几何、无材质来源"的实体 ⇒ 该错误路径目前只有契约测试覆盖，

@@ -4035,7 +4035,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 15
+         || file_count != 14
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -4047,7 +4047,6 @@ namespace
                 "DebugNormalColor",
                 "VertexColor", "UnlitTexture",
                 "VertexLuminance", "VertexPaletteColor",
-                "ShadowReceiver",
                 "builtin/pure_color",
                 "builtin/checkerboard_2d",
                 "builtin/checkerboard_3d",
@@ -4464,14 +4463,14 @@ namespace
         else
         {
             // Consolidated scene Set 0 UBOs into single scene_ubo.glsl; added RenderItemResolve.glsl, shadow_receiver_source.glsl, pcf_shadow.glsl.
-            if (file_count != 71)
-                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
+            if (file_count != 70)
+                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 71;
+            const int expected_count = 70;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -4955,7 +4954,6 @@ namespace
             { "ShadowPCF",      4u },
             { "Terrain",        5u },
             { "UI",             6u },
-            { "ShadowMap",      7u },
         };
         if (lib.GetCount() != uint32_t(std::size(expected)))
         {

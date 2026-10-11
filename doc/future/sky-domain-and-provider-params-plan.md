@@ -268,7 +268,7 @@
 | V1 | 门 `ShaderResourceSchemaRegressionGate` | **46 PASS / 0 FAIL**（新增独立 GLSL 模块则 47；新增地址字段改 `kAddressOwnershipTable` 不改 PASS 数） |
 | V2 | `TestCSMIncrementalPass` | **rc=0**，46 个测试 + 新增 Test 47（Test 22 = 25 条两世界隔离；44/45/46 = T6b 契约） |
 | V3 | `TestRenderItemDataStorage` | **rc=0**（`WorldAddresses` 80 B 夹具） |
-| V4 | 八台架（PBRSpheres / ShadowMap / CascadeShadowMap / GPUDrivenCull / AlphaModes / CoverageVariants / LoadScene / PlaneGrid3D） | `<前缀>_SELFCHECK=1 FRAMEDIGEST_PERFRAME=9`：摘要**逐位不变** — `0x3DD88A0999CDC486` / `0xA8A369516CB04571` / `0x1CDAADEBF18B7CE4` / `0x90E0745C2C7B8599` / `0x2FE87B15EE8B8A16` / `0x8EED38BAD9B8181E` / `0xC9E38ED2F49A069B` / `0x4125C3C830CB92D3`（Cascade 为 1600×900） |
+| V4 | 八台架（PBRSpheres / ShadowMap / CascadeShadowMap / GPUDrivenCull / AlphaModes / CoverageVariants / LoadScene / PlaneGrid3D） | `<前缀>_SELFCHECK=1 FRAMEDIGEST_PERFRAME=9`：摘要**逐位不变** — `0x3DD88A0999CDC486` / `0xA8A369516CB04571` / `0x1CDAADEBF18B7CE4` / `0x90E0745C2C7B8599` / `0x2FE87B15EE8B8A16` / `0x8EED38BAD9B8181E` / `0xC9E38ED2F49A069B` / `0x4125C3C830CB92D3`（Cascade 为 1600×900） |〔2026-10-11：ShadowMap 台架已删除（旧 shadow-map 直采示例，CSM 路线取代；如需退化为单张阴影图，把 CascadeShadowMap.cpp 的 `cfg.cascade_count` 设 1 即可）——本行基线仅适用于删除前〕
 | V5 | `RenderToTexture` / `RenderToTextureColorDepth` | `0xBA9CA214778AF3A4` / `0xD71ABABC2BE460C0`（逐位） |
 | V6 | `AlphaTestShadow` | `ATS_SELFCHECK=1`：D1 57.6%（bbox 112×58）/ D3 18187 & 19109 px / bias 600662 px / D4 拒绝 0 / rc=0 |
 | V7 | **环境示例族 5 个**（IBLEnvironment / BasicLitSunDirection / AtmosphereSkyMinimal / AtmosphereSkyAmbient / AtmosphereSkySunGizmo） | T0 之前：0 VUID / 0 `[ERROR]` / 0 shader 编译失败（**非数值判据**）；**T0 之后**：IBLEnvironment 与 AtmosphereSkyMinimal 的 `<PREFIX>_SELFCHECK=1` rc=0（基线常量由 T0 实跑录入本档） |
