@@ -37,6 +37,13 @@ namespace hgl::ecs
         // 空闲单槽复用表 (LIFO)
         hgl::ValueArray<RenderItemHandle> free_list;
 
+        // §2 #2（2026-10-11）：每槽**显式分配状态**（0 = 空闲 / 1 = 已分配）。
+        // 为什么不能靠"descriptor 是否全零"判定：分配路径会**合法产出全零载荷**
+        // （`Allocate(RenderItemDescriptor{})`）⇒ 零载荷 ≠ 未分配。
+        // 没有它时 `Release` 可对同一 handle 重复释放 ⇒ 同一槽被两次放进 free_list ⇒
+        // 两次 Allocate 返回**同一个** handle（槽位别名：两个使用者写同一行），且活跃计数少算。
+        hgl::ValueArray<uint8_t> allocated;
+
         // 脏范围标记
         uint32_t dirty_min = UINT32_MAX;
         uint32_t dirty_max = 0;
@@ -96,6 +103,10 @@ namespace hgl::ecs
         uint32_t GetCount() const { return static_cast<uint32_t>(items.GetCount()); }
         uint32_t GetCapacity() const { return static_cast<uint32_t>(items.GetAllocCount()); }
         uint32_t GetFreeCount() const { return static_cast<uint32_t>(free_list.GetCount()); }
+        bool IsAllocated(RenderItemHandle handle) const
+        {
+            return handle < static_cast<RenderItemHandle>(allocated.GetCount()) && allocated[handle] != 0;
+        }
         uint32_t GetActiveCount() const { return GetCount() >= GetFreeCount() ? (GetCount() - GetFreeCount()) : 0; }
         const RenderItemDescriptor *GetData() const { return items.GetData(); }
 

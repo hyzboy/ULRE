@@ -380,7 +380,7 @@ namespace hgl
 
             void RenderSwapchainNextImage(float deltaTime);
             bool AcquireSwapchainImage(float deltaTime = 0.0f);
-            void SyncRenderTargetViewport();
+            void SyncRenderTargetViewportToExtent();
             void RenderBufferCommit(float deltaTime);
             void RenderBufferUpload(float deltaTime);
             void RenderFrameSync(float deltaTime);

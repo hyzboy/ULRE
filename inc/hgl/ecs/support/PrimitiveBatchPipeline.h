@@ -40,6 +40,7 @@ namespace hgl::ecs
 
     public:
         bool PrepareFrame(ECSContext* ctx);
+        uint32_t GetPrepareFrameCount() const { return prepare_frame_count_; }   ///< §2 #11 判据用
 
         void RunCulling();
         void RunSorting();
@@ -55,6 +56,7 @@ namespace hgl::ecs
         bool TestFrustumWithBoundingSphere(RenderItem* item);
 
         void AssignTransformIndices(TransformSystem* transform_system);
+        bool PrepareFrameInternal(ECSContext* ctx);   ///< §2 #11：真正的帧前准备（守卫只调它一次/帧）
         void BuildMaterialBatches();
         void FinalizeBatches();
 
@@ -93,6 +95,14 @@ namespace hgl::ecs
         /// 前者 = 批前提不满足的 fail-fast 告警；后者 = 「GPU 剔除接管生效」的一次性正面证据日志。
         bool gpu_cull_reject_warned_  = false;
         bool gpu_cull_engaged_logged_ = false;
+
+        /// §2 #11（2026-10-11）：`PrepareFrame` 的**真守卫**状态 —— 帧号 + 该帧结果缓存。
+        /// 三个 `Run*`（Cull/Sort/Build）各自调用 `PrepareFrame`，原实现每帧最多做三遍同样的
+        /// 帧前准备（Sort 那遍还没有下游动作）。注意与 2026-10-10 删掉的 `prepared_frame_index`
+        /// 区分：那个只有"读一次再写回"、没有任何 early return，属**假守卫**；这里有 early return。
+        uint64_t prepared_frame_      = UINT64_MAX;   ///< 上次已处理的帧号（UINT64_MAX = 从未）
+        bool     prepared_frame_ok_   = false;        ///< 该帧的准备结果（同帧重复调用直接复用）
+        uint32_t prepare_frame_count_ = 0;            ///< 真正做过准备的次数（判据用）
 
         graph::BufferManager* GetBufferManager() const;
 

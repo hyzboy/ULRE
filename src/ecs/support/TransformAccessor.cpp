@@ -68,7 +68,7 @@ namespace hgl
         }
 
         // 写入本行后的记账。T8 起调用面只剩访问器 ⇒ 必须在这里做（原先由组件侧的
-        // MarkDirty + 子孙标脏承担），否则"只经访问器写入"的行 change_mask 恒为 0，
+        // 标脏 + 子孙标脏承担；那套组件侧记账已删），否则"只经访问器写入"的行 change_mask 恒为 0，
         // `TransformSystem::ShouldUpdateTransform` 的掩码判据会让它**永不上传**。
         void TransformAccessor::MarkLocalChanged(uint32_t change_mask) const
         {
@@ -436,7 +436,7 @@ namespace hgl
             storage->SetFixedPixel(id,state);
         }
 
-        void TransformAccessor::SetFixedPixelSizingContext(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info) const
+        void TransformAccessor::SetFixedPixelSizingContextAndApply(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info) const
         {
             if (!IsValid())
                 return;
@@ -582,11 +582,11 @@ namespace hgl
             return IsValid() ? storage->IsDirty(id) : false;
         }
 
-        void TransformAccessor::MarkDirty() const
-        {
-            if (IsValid())
-                storage->SetDirty(id,true);
-        }
+        // 2026-10-11（§3-1 选项①）：`TransformAccessor::MarkDirty()` 已删除 —— 只写 `matrixDirty`、
+        // 不 bump `versions` ⇒ 静态行按版本比对的上传路径永不重传（而批 1.1 B4 之后它对静态行还会
+        // `++static_change_seq`，于是"阴影缓存失效、矩阵仍旧"的半效状态更易误导）；动态行每帧全量写，
+        // 该调用本就冗余。唯一调用点（`example/Transform/ClockUse.cpp`）上一行已 `SetLocalRotation`
+        // （内部 bump 版本）⇒ 删除零行为变化。
 
         void TransformAccessor::UpdateIfDirty() const
         {

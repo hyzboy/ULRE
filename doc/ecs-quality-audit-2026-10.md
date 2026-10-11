@@ -484,7 +484,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | 两处日志打印同一值两个标签 | `LineRenderPipeline.cpp:795-797`；`CPUCullReferenceSystem.cpp:262-265` | `submitted=X expected=X`；`值链=X/X`（恒 1:1 比值）—— 恰是运维读来判帧健康的那几行 |
 | `TextSyncSystem` | `text/TextSyncSystem.cpp:10` | 名为 Sync 相位，实际 `SetExecutionPhase(RenderBatch)`；基类 `SyncSystem` 文档写的是 Upload/FrameSync |
 | `PrimitiveSortSystem` / `PrimitiveCullSystem` | `.h:8` vs `.cpp:10` | 头文件声明 "RenderSort/RenderCull phase"，实际都设 `RenderCollect`，且 **`RunSorting()` 空体 ⇒ 排序系统不排序**（但已注册进真实帧图） |
-| `TransformAccessor::MarkDirty()` | `.h:130` / `.cpp:535-539` | 只标脏不 bump 版本；其私有兄弟 `MarkLocalChanged` 的注释说明"只标脏不 bump，子节点 L2W 行不会重传" ⇒ 该公开 API 标记的是**永不上传的活** |
+| `TransformAccessor::MarkDirty()` | `.h:130` / `.cpp:535-539` | 只标脏不 bump 版本；其私有兄弟 `MarkLocalChanged` 的注释说明"只标脏不 bump，子节点 L2W 行不会重传" ⇒ 该公开 API 标记的是**永不上传的活**。**已处置（2026-10-11，§3-1 选项①）：该公开 API 已整体删除**（声明/定义/唯一调用点；唯一调用点是可动手上的冗余调用 ⇒ 零行为变化） |
 | `TransformAccessor::SetFixedPixelSizingContext` | `.cpp:405-426` | 名字像设置上下文，实际**直接改实体 SCALE**（`SetLocalScale` → 递归 `MarkLocalChanged` 全子树） |
 | `MaterialRuntimeSlot::pass_selector/lod_selector/dither_enabled` | `MaterialRuntimeTable.h:167-168` | 注释称"当前 pass / LOD 档"，实际 `pass_selector` 只被测试写；真实 per-pass 机制是另一张表 |
 | `MaterialRuntimeRow::generation` | `.h:18-20,155` | 描述了"与 Transform/BoundingBox 同约定"的 ABA 免疫规则，但该机制在此**无消费者**（`GetGeneration` 只被测试读） |

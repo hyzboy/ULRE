@@ -219,7 +219,7 @@ namespace hgl::ecs
 
 //            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
             RenderPreBeginFrame(deltaTime);
-            SyncRenderTargetViewport();
+            SyncRenderTargetViewportToExtent();
 
             if (auto *gc = GetGraphicsContext())
             {
@@ -774,7 +774,9 @@ namespace hgl::ecs
             return swapchain_ok;
         }
 
-        void ECSContext::SyncRenderTargetViewport()
+        /// §2 #4：原名 `SyncRenderTargetViewport` 名不符实（它**不**同步 viewport 尺寸给 Rt，
+        /// 而是反过来：把渲染目标的视口同步到该目标当前的 extent）。改名以暴露真实语义，行为不变。
+        void ECSContext::SyncRenderTargetViewportToExtent()
         {
             if (!active)
                 return;

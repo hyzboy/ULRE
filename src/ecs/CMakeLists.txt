@@ -21,7 +21,6 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/RenderItem.h
     ${ECS_INCLUDE_PATH}/core/PrimitiveRenderItem.h
     ${ECS_INCLUDE_PATH}/core/RenderFrameCache.h
-    ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
     core/Object.cpp
     core/ComponentRow.cpp
     core/Entity.cpp
@@ -41,7 +40,6 @@ set(ECS_CORE_FILES
     core/DefaultSystems.cpp
     core/MaterialBatch.cpp
     core/PrimitiveRenderItem.cpp
-    systems/render/RenderSystemCore.cpp
 )
 
 set(ECS_SYS_00_RenderSystemCore_FILES
@@ -377,6 +375,13 @@ if(MSVC)
     set_target_properties(TestSystemReplaceAndPoolLiveness PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# §2 #11 判据：PrepareFrame 必须是每帧一次的真守卫（同帧三次调用只做一次准备）
+add_executable(TestFramePrepareOncePerFrame support/TestFramePrepareOncePerFrame.cpp)
+target_link_libraries(TestFramePrepareOncePerFrame PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestFramePrepareOncePerFrame PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -458,4 +463,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestSystemReplaceAndPoolLiveness
         PROPERTIES LABELS "ecs;registry" TIMEOUT 60)
+
+    add_test(
+        NAME TestFramePrepareOncePerFrame
+        COMMAND TestFramePrepareOncePerFrame)
+    set_tests_properties(
+        TestFramePrepareOncePerFrame
+        PROPERTIES LABELS "ecs;render" TIMEOUT 60)
 endif()

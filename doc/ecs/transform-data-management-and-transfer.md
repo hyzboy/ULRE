@@ -189,7 +189,7 @@
 `example/Transform/ClockUse.cpp` 能完整体现该设计：
 
 - 12 个刻度：`Mobility::Static`，初始化后不做每帧逻辑更新。
-- 3 根指针：`Mobility::Movable`，每帧根据系统时间旋转并 `MarkDirty()`。
+- 3 根指针：`Mobility::Movable`，每帧根据系统时间旋转（`SetLocalRotation` 内部完成版本 bump 与脏标记）。（原文档此处写作"并 `MarkDirty()`" —— 该 API 已于 2026-10-11 §3-1 选项① 删除，调用点同步移除。）
 - Tick 中调用 `TransformSystem::Update(delta_time)`，只更新 movable。
 - Render 前由系统统一 `SubmitTransformUpdates()` 上传到共享 LocalToWorld 缓冲。
 

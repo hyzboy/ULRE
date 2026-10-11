@@ -88,6 +88,26 @@ namespace hgl::ecs
         if (!ctx)
             return false;
 
+        // §2 #11（2026-10-11）：**每帧只准备一次**的真守卫。
+        // `PrimitiveRenderPipeline::RunCull/RunSort/RunBuild` 各自调用本函数 ⇒ 原实现每帧最多
+        // 做三遍同样的帧前准备（其中 Sort 那遍没有任何下游动作）。守卫 = 帧号 + 结果缓存：
+        // 同一帧的后续调用直接返回首次结果（含失败），帧号推进后才重新准备。
+        // 本对象每世界一个（`PrimitiveRenderPipeline::impl_`）⇒ 用帧号做键是安全的。
+        if (prepared_frame_ == ctx->GetFrameIndex())
+            return prepared_frame_ok_;
+
+        ++prepare_frame_count_;
+        prepared_frame_      = ctx->GetFrameIndex();
+        prepared_frame_ok_   = PrepareFrameInternal(ctx);
+
+        return prepared_frame_ok_;
+    }
+
+    bool PrimitiveBatchPipeline::PrepareFrameInternal(ECSContext* ctx)
+    {
+        if (!ctx)
+            return false;
+
         world = ctx;
         auto& cache = world->GetRenderFrameCache();
         if (cache.renderItems.empty())

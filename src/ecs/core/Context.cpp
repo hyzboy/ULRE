@@ -283,6 +283,9 @@ namespace hgl
                 static_transforms.clear();
                 movable_transforms.clear();
 
+                if (auto *transform_storage = GetTransformStorage())
+                    transform_storage->Clear();     // §2 #9：行存储随世界复位（世代不复位 ⇒ 旧句柄不复活）
+
                 LogDebug("[ECSContext] Shutdown(inactive) - releasing %zu material batches",
                          render_frame_cache.materialBatches.GetCount());
                 render_frame_cache.materialBatches.Clear();
@@ -324,6 +327,9 @@ namespace hgl
             ResetComponentDrivenGroups();
             static_transforms.clear();
             movable_transforms.clear();
+
+            if (auto *transform_storage = GetTransformStorage())
+                transform_storage->Clear();         // §2 #9：同上（active 路径）
 
             // Finally, clear materialBatches after all systems/entities are destroyed
             LogDebug("[ECSContext] Shutdown - releasing %zu material batches",
@@ -425,7 +431,7 @@ namespace hgl
             // 原每帧全实体 × 全组件的 OnUpdate 虚分发已删除——其唯一有效实现
             // （fixed_pixel 等像素缩放）由 gizmo 的
             // TransformGizmoSystem 在 TickPostCamera 相位经
-            // SetFixedPixelSizingContext 即时重算（本就是主通道）。
+            // SetFixedPixelSizingContextAndApply 即时重算（本就是主通道）。
             // 逻辑更新归 tick 系统，不归组件。
 
             if (auto input_system = GetSystem<InputSystem>())

@@ -1104,6 +1104,94 @@ int main(int argc, char** argv)
                       u8"计数与 mobility 真源不动 / 段满创建回收行不造半成品）。");
         }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Test 19: 世界复位契约（§2 #9）
+    //   ① 复位（`TransformDataStorage::Clear()`）**不复位世代**：复位前取得的访问器必须失效
+    //      （原实现 Clear 清空 generations、新行又从常量 1 起编号 ⇒ 旧访问器"复活"）
+    //   ② `ECSContext::Shutdown` 必须复位变换行存储（原实现只清实体与名单 ⇒ 新实体继承旧变换行）
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        ECSContext ctx_reset;
+
+        auto e1 = ctx_reset.CreateEntity<Entity>("ResetOwner1");
+
+        const TransformID id1 = ctx_reset.CreateTransform(e1->GetEntityID(), Mobility::Static);
+
+        auto *st_reset = ctx_reset.GetTransformStorage();
+
+        if (!IsValidTransformID(id1) || !st_reset)
+        {
+            GLogError(u8"Test 19 Failed: 前置创建失败（id=%u storage=%p）",
+                      static_cast<uint32_t>(id1), static_cast<void *>(st_reset));
+            return 21;
+        }
+
+        const uint32_t gen1 = st_reset->GetGeneration(static_cast<TransformDataStorage::HandleID>(id1));
+
+        const TransformAccessor acc_old = ctx_reset.GetTransform(id1);      // 建柄时捕获 gen1
+
+        if (!acc_old.IsValid())
+        {
+            GLogError(u8"Test 19 Failed: 新建访问器本该有效");
+            return 21;
+        }
+
+        st_reset->Clear();                                                  // Shutdown 走的就是这条路
+
+        auto e2 = ctx_reset.CreateEntity<Entity>("ResetOwner2");
+
+        const TransformID id2 = ctx_reset.CreateTransform(e2->GetEntityID(), Mobility::Static);
+
+        if (!IsValidTransformID(id2))
+        {
+            GLogError(u8"Test 19 Failed: 复位后新建变换失败");
+            return 21;
+        }
+
+        const uint32_t gen2 = st_reset->GetGeneration(static_cast<TransformDataStorage::HandleID>(id2));
+
+        if (gen2 == gen1)
+        {
+            GLogError(u8"Test 19 Failed: 复位后新行的世代与旧行相同（gen=%u）⇒ 世代计数器被复位了", gen2);
+            return 21;
+        }
+
+        if (acc_old.IsValid())
+        {
+            GLogError(u8"Test 19 Failed: 复位前取得的访问器在【复位 + 重分配】后仍然有效（句柄复活）");
+            return 21;
+        }
+
+        // ② Shutdown 复位行存储（未 Initialize 的世界走 inactive 早退分支，也要复位）
+        ECSContext ctx_shutdown;
+
+        auto e3 = ctx_shutdown.CreateEntity<Entity>("ShutdownOwner");
+
+        if (!IsValidTransformID(ctx_shutdown.CreateTransform(e3->GetEntityID(), Mobility::Movable)))
+        {
+            GLogError(u8"Test 19 Failed: Shutdown 前置创建失败");
+            return 21;
+        }
+
+        ctx_shutdown.Shutdown();
+
+        if (auto *st_after = ctx_shutdown.GetTransformStorage())
+        {
+            if (st_after->GetCount() != 0)
+            {
+                GLogError(u8"Test 19 Failed: Shutdown 后变换行存储未复位（rows=%d）⇒ 新实体继承旧变换行",
+                          st_after->GetCount());
+                return 21;
+            }
+        }
+        else
+        {
+            GLogInfo(u8"Test 19: Shutdown 已整体释放变换存储（等价于复位）");
+        }
+
+        GLogInfo(u8"Test 19 Passed: 世界复位契约成立（世代不复位 ⇒ 旧句柄不复活；Shutdown 复位行存储）。");
+    }
+
     GLogInfo(u8"=== All TransformDataStorage tests passed successfully! ===");
     return 0;
 }

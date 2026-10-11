@@ -108,6 +108,12 @@ namespace hgl
             hgl::ValueArray<uint32_t>       change_masks;       // 变更位掩码（TouchChange 累积）
             hgl::ValueArray<uint64_t>       versions;           // 变更计数（渲染侧比对"是否已上传"）
             hgl::ValueArray<uint32_t>       generations;        // 行世代：释放/重分配时 +1 ⇒ 旧句柄读时失效（v2 §2 句柄 revision 校验）
+
+            /// §2 #9（2026-10-11）：行世代的**发放计数器**（单调，跨 `Clear()` **不复位**）。
+            /// 为什么需要：`Clear()` 会清空 `generations` 数组，若新行仍从常量 1 起编号，
+            /// 则"同一行号 + 世代同为 1"的旧句柄会**复活**（`TransformAccessor` 的世代校验失效）。
+            /// 单调计数器保证"同一行号的新主人世代必不同"。
+            uint32_t next_row_generation = 1;
             hgl::ValueArray<uint8_t>        write_armed;        // D4：该行已被渲染侧消费过
             hgl::ValueArray<uint8_t>        write_warned;       // D4：已就"运行期写静态"告警过一次
 
@@ -205,7 +211,7 @@ namespace hgl
                 owners.Add(EntityID());
                 change_masks.Add(0);
                 versions.Add(0);
-                generations.Add(1);         // 新行从 1 起（正奇数 = 活；0 = 死/未分配）
+                generations.Add(next_row_generation++); // §2 #9：世代**单调**发放（跨 Clear 不复位）⇒ 旧句柄不复活
                 write_armed.Add(0);
                 write_warned.Add(0);
                 child_offset.Add(0);
@@ -918,6 +924,10 @@ namespace hgl
             size_t GetSize() const { return static_cast<size_t>(positions.GetCount()); }
             int GetCount() const { return positions.GetCount(); }
 
+            /// 整表复位（行数据 + 全部平行数组）。
+            /// §2 #9（2026-10-11）：**世代计数器不复位**（见 `next_row_generation`）⇒ 复位后
+            /// 新行拿到的世代与旧行必不同，旧句柄不会复活；调用点 = `ECSContext::Shutdown`
+            /// （此前它零调用者 ⇒ Shutdown 清了实体却不清行存储 ⇒ 新实体继承旧变换行）。
             void Clear()
             {
                 positions.Clear();

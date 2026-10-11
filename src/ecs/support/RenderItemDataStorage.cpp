@@ -32,12 +32,14 @@ namespace hgl::ecs
             free_list.Delete(last_idx);
 
             items[handle] = desc;
+            allocated[handle] = 1;      // §2 #2
             MarkDirty(handle);
             return handle;
         }
 
         const RenderItemHandle handle = static_cast<RenderItemHandle>(items.GetCount());
         items.Add(desc);
+        allocated.Add(1);               // §2 #2
         MarkDirty(handle);
         return handle;
     }
@@ -51,6 +53,7 @@ namespace hgl::ecs
         for (uint32_t i = 0; i < count; ++i)
         {
             items.Add(RenderItemDescriptor{});
+            allocated.Add(1);           // §2 #2
         }
 
         MarkRangeDirty(base, count);
@@ -62,7 +65,13 @@ namespace hgl::ecs
         if (handle >= static_cast<RenderItemHandle>(items.GetCount()))
             return false;
 
+        // §2 #2：重复释放（含 release 后再次 release）必须整体 no-op —— 否则同一槽两次进
+        // free_list，后续两次 Allocate 会返回同一个 handle（槽位别名），活跃计数也会少算。
+        if (!IsAllocated(handle))
+            return false;
+
         items[handle] = RenderItemDescriptor{};
+        allocated[handle] = 0;          // §2 #2
         free_list.Add(handle);
         MarkDirty(handle);
         return true;
@@ -73,12 +82,24 @@ namespace hgl::ecs
         if (count == 0 || base + count > static_cast<RenderItemHandle>(items.GetCount()))
             return false;
 
+        // §2 #2：只释放**当前确实已分配**的槽；区间内一个都没有可释放的 ⇒ 整体 no-op（返回 false）
+        uint32_t released = 0;
+
         for (uint32_t i = 0; i < count; ++i)
         {
             const RenderItemHandle h = base + i;
+
+            if (!IsAllocated(h))
+                continue;
+
             items[h] = RenderItemDescriptor{};
+            allocated[h] = 0;           // §2 #2
             free_list.Add(h);
+            ++released;
         }
+
+        if (released == 0)
+            return false;
 
         MarkRangeDirty(base, count);
         return true;
@@ -88,6 +109,7 @@ namespace hgl::ecs
     {
         items.Clear();
         free_list.Clear();
+        allocated.Clear();              // §2 #2
         ClearDirty();
     }
 

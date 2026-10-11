@@ -344,11 +344,9 @@ public:
         glm::quat second_rotation = glm::angleAxis(second_angle, glm::vec3(0.0f, 0.0f, 1.0f));
         hands[Second].transform.SetLocalRotation(second_rotation);
 
-        // === 标记指针为脏，等待系统更新 ===
-        for (uint i = 0; i < 3; i++)
-        {
-            hands[i].transform.MarkDirty();
-        }
+        // 2026-10-11（§3-1 选项①）：原先这里对三根指针调 `MarkDirty()` —— 该 API 已删除。
+        // 三针是 `Mobility::Movable`（见上面的创建/`SetMobility`），而动态段每帧全量写；
+        // 上面的 `SetLocalRotation` 也已经做了版本 bump ⇒ 那三行本就是冗余调用，删除后行为不变。
 
         // === 让TransformSystem更新所有movable transform ===
         if (auto transform_system = ecs_world->GetSystem<TransformSystem>())
