@@ -546,8 +546,6 @@ namespace hgl::ecs
         uint32_t resolved_transform_components = 0;
         for (const auto& comp : collected_)
         {
-            bool comp_write_ok = true;
-
             uint32_t transform_id = 0;
             if (transform_system)
             {
@@ -587,12 +585,8 @@ namespace hgl::ecs
                                              transform_id))
                 {
                     ++write_fail_count;
-                    comp_write_ok = false;
                 }
             }
-
-            if (comp_write_ok)
-                comp->MarkSynced();
         }
 
         // Tally total

@@ -20,12 +20,6 @@ namespace hgl::ecs
     struct LinesComponent : public ComponentRow
     {
     public:
-        enum class LineChange : uint32_t
-        {
-            Geometry = 1u << 0,
-            Style = 1u << 1,
-        };
-
         enum class LineStyle : uint8_t
         {
             Solid = 0,
@@ -44,7 +38,6 @@ namespace hgl::ecs
         std::vector<LineSegment> lines;      ///< CN: 线段列表 EN: Line segments
         uint8_t width = 1;                   ///< CN: 线宽(1-16) EN: Line width (1-16)
         LineStyle style = LineStyle::Solid;  ///< CN: 线条风格 EN: Line style
-        bool dirty = true;                   ///< CN: 是否需要同步 EN: Need sync to renderer
 
     private:
 
@@ -61,14 +54,6 @@ namespace hgl::ecs
         // 系统组（`Line`）由**类型表**声明（`kComponentTypeTable[ComponentType::Lines].group`）：
         // T2-c 起组归属是类型属性，不再由组件对象上的虚函数声明（虚表已随基类删除）。
 
-        // ── 变更计数 / 变更位 ──
-        // T2-c：原 `Component` 基类的 `version` / `change_mask` 实测只有线条与文本在用
-        // ⇒ 搬进真正用它的类型（别的组件行不必再背这 12 B；语义与基类逐字一致）。
-        uint64_t version = 0;
-        uint32_t change_mask = 0;
-
-        void TouchChange(uint32_t mask) { ++version; change_mask |= mask; }
-
         /**
          * CN: 添加一条线段
          * EN: Add a line segment
@@ -76,9 +61,7 @@ namespace hgl::ecs
         void AddLine(const hgl::math::Vector3f &from, const hgl::math::Vector3f &to, uint8_t color_index = 0)
         {
             lines.push_back({from, to, color_index});
-            dirty = true;
             local_bounds_valid = false;
-            TouchChange(static_cast<uint32_t>(LineChange::Geometry));
         }
 
         /**
@@ -88,9 +71,7 @@ namespace hgl::ecs
         void ClearLines()
         {
             lines.clear();
-            dirty = true;
             local_bounds_valid = false;
-            TouchChange(static_cast<uint32_t>(LineChange::Geometry));
         }
 
         /**
@@ -114,8 +95,6 @@ namespace hgl::ecs
             if (width != w)
             {
                 width = w;
-                dirty = true;
-                TouchChange(static_cast<uint32_t>(LineChange::Style));
             }
         }
 
@@ -124,8 +103,6 @@ namespace hgl::ecs
             if (style != s)
             {
                 style = s;
-                dirty = true;
-                TouchChange(static_cast<uint32_t>(LineChange::Style));
             }
         }
 
@@ -166,15 +143,6 @@ namespace hgl::ecs
             return true;
         }
 
-        /**
-         * CN: 标记为已同步
-         * EN: Mark as synced
-         */
-        void MarkSynced() { dirty = false; }
-
-        // ── 变更查询（原基类接口；收集路径读它决定是否重传）──
-        uint32_t GetChangeMask() const { return change_mask; }
-        void ClearAllChanges() { change_mask = 0; }
     };
 
     /// T2-c：登记类型号（**CPU-only**：无 GPU 行、不写 `EntityGPU.row[]`）。
