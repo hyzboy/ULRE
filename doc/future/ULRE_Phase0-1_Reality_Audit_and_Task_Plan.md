@@ -1038,7 +1038,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 1. `BoundingBoxComponent` → `BoundingBoxDataStorage` 连续化（评审 R5：剔除是热路径；当前 `src/ecs/support/PrimitiveBatchPipeline.cpp:176`、`src/ecs/support/line/LineRenderPipeline.cpp:454`、`src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:37` 全是逐实体 OOP）⇒ `PrimitiveCullSystem` 改连续数组批处理。
    - **状态：✅ 已完成（2026-10-01）**
      - **存储**：`inc/hgl/ecs/support/BoundingBoxDataStorage.h` 重写为世界私有 SoA 行存储（并行 `hgl::ValueArray`）：`local_min/local_max/world_min/world_max`(各 `glm::vec3`) + `world_valid`(uint8) + `owners`(EntityID) + `generations`(uint32) + `entity_rows` 反查表 ⇒ **每行 77 B**（旧的 `std::vector<vec3>` 实现是 64 B，但**没有世代/owner 反查**，且句柄走 free list 复用 ⇒ ABA 隐患）。
-     - **句柄**：新增 `BoundingBoxAccessor`（值类型，`static_assert(sizeof==24)`），建柄捕获世代、`IsValid()` 三重判据 ⇒ 与 Transform 完全同范式。
+     - **句柄**：新增 `BoundingBoxAccessor`（值类型，`static_assert(sizeof==24)`），建柄捕获世代、`IsValid()` 三重判据 ⇒ 与 Transform 完全同范式。**〔2026-10-11：现值 16 B，批 1.2 A4〕**
      - **世界接入**：`Context.h/.cpp` 加 `bounding_box_storage` 与 `GetBoundingBoxByEntity/GetOrCreateBoundingBox/DestroyBoundingBox`；`DestroyEntity` 追加行回收（T8 教训：销毁必回收行）。
      - **删组件**：`BoundingBoxComponent.{h,cpp}` 已 `git rm`（含它的**全局静态共享存储** `sharedStorage` —— 违反 v2 §1 世界私有/单一真源）；`GetSerializationType()`（零调用者）与 `IsDirty/ClearDirty/dirtyFlags`（零消费者）一并删除。全仓 `grep BoundingBoxComponent inc src example` = **0**。
      - **调用点**：`PrimitiveBatchPipeline` 两个函数签名改为传数据（`const math::AABB&` / `const glm::vec3& ×2`），`LineRenderPipeline`、`LineBoundsUpdateSystem` 改 accessor；无兼容层。

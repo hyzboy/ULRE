@@ -33,7 +33,7 @@
 | 类型表 | `inc/hgl/ecs/support/ComponentTypeTable.h:66-75`：6 项（`None` + 5 类），Transform 有 `gpu_row_bytes=64`，其余四类 `0` + `cpu_type_name="(待 ID 化)"` | **arena 只是字符串**：`arena_name` 全仓唯一消费者是契约测试（`src/ecs/support/TestTransformFlatStorage.cpp:30`）；**没有** `(scope,type) → 分配器/注册表` 的运行时实体 |
 | 行存储 | 只有 Transform 一类（`TransformDataStorage`，`hgl::ValueArray` **自增长、无上限**、无分区、无预分配） | `Initialize(...)` 不存在；行号会随增长漂移 |
 | GPU 行面 | `TransformAssignmentBuffer` 按需扩容并**重建** L2W/L2WIndex SSBO（`src/ecs/support/TransformAssignmentBuffer.cpp:163` `EnsureCapacity`、`:511` `L2W recreated`） | 行号/地址在运行期会变 ⇒ 与"预烘焙 ID / 后续场景直载"的物理前提冲突 |
-| 值句柄 | 已是值句柄：`TransformAccessor` / `BoundingBoxAccessor`（24 B，世代校验） | `MaterialData` / `GeometryData` / `ShadowProxy` / `Camera` / `MaterialRuntimeSlot` 仍返回**裸指针**（`inc/hgl/ecs/core/Context.h:461-472`、`:553-583`、`:662-682`） |
+| 值句柄 | 已是值句柄：`TransformAccessor` / `BoundingBoxAccessor`（24 B，世代校验）**〔2026-10-11 订正：`BoundingBoxAccessor` 现值 16 B —— 批 1.2 A4 删冗余 `context`；`TransformAccessor` 16 B 不变〕** | `MaterialData` / `GeometryData` / `ShadowProxy` / `Camera` / `MaterialRuntimeSlot` 仍返回**裸指针**（`inc/hgl/ecs/core/Context.h:461-472`、`:553-583`、`:662-682`） |
 | 组件载体 | `ComponentTypeOf<T>` 特化：`GeometryData`（B3）、`MaterialData`（B4）、**`CameraComponent`（B7）** | **B6/B7 后全部类型有定论**：`MaterialRuntime` 的载体 = 每实例 `MaterialRuntimeSlot`（B5，行宽冻结 88 B）；`Texture` **无组件载体**——纹理授权在 `MaterialData` 的具名纹理资源里，其载体形态属"材质定义级行空间"，**与欠账 §2.9 同批处理**（勿补实体级组件） |
 | `EntityGPU` | **零实现**（仅 `Entity.h:29`、`ComponentTypeTable.h:121` 两条注释） | 见 B8（延后） |
 | **行空间的第二类**（新发现：**行宽由材质定义决定**） | 已有：`MaterialTextureReferencePool` = 每 `(definition, layout)` 一份的**字节行池**（行 = `uvec2[reference_count]`，**元数随材质变、行距运行时才知道、无 C++ 结构体**，行 0 预留零行、延迟回收）；每实例 slot 已持 `pool_key + row_index` | **不属于 `(scope, type)` 坐标** —— 行空间的键是**材质定义**。用户 2026-10-02 决议：**先不动，放到计划末期处理**（详见 `stage_B_debt_list.md` §2.9，含与组件行空间的形状对照表 + 末期清单）。**同批处理**（用户补充定性）：纹理引用 ⊂ `MaterialPrivateData`（今天与 surface 池分开放），故 **surface 三池 + 纹理配置池 + `ComponentType::Texture` 的类型号去留** 三项一起收，不各自开条 |
@@ -606,10 +606,10 @@ static_assert(sizeof(MaterialDataRow) == 24);
 
 五、下一批 **B4-iii-b**（句柄化）
 
-`MaterialDataAccessor`（24 B：`{material_row_id, generation}`，与 `BoundingBoxAccessor` 同构，含 `IsValid()` 世代校验）
+`MaterialDataAccessor`（24 B：`{material_row_id, generation}`，与 `BoundingBoxAccessor` 同构，含 `IsValid()` 世代校验）〔2026-10-11：`BoundingBoxAccessor` 现值 **16 B** —— 冗余 `context` 与 `GetContext()` 已删（批 1.2 A4）；其句柄范式仍成立，只是不再是 24 B〕
 替换 `GetMaterialData` / `GetOrCreateMaterialData` 的 4 个裸指针重载，并同批迁移全部调用点
 （`PrimitiveState.cpp` 的 `HasAnyMaterialSource`、`GeometryData.cpp:43`、测试与示例）。
-- **B4-iii**：访问器句柄化（`GetMaterialData` 4 个裸指针重载 → 24 B 值句柄，与 `BoundingBoxAccessor` 同构）；
+- **B4-iii**：访问器句柄化（`GetMaterialData` 4 个裸指针重载 → 24 B 值句柄，与 `BoundingBoxAccessor` 同构）；〔2026-10-11：`BoundingBoxAccessor` 现值 **16 B** —— 冗余 `context` 与 `GetContext()` 已删（批 1.2 A4）；其句柄范式仍成立，只是不再是 24 B〕
   两条路见 B4-0 表 —— **路 A**（组件槽句柄）vs **路 B**（新建 (Global, MaterialData) 行 arena，
   重类型落旁表），推荐 **路 B 分两步**。**待用户拍板**。
 
@@ -804,7 +804,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 
 - `inc/hgl/ecs/support/ComponentTypeTable.h`：把后四列的过时占位 `"(待 ID 化)"` 换成 **stage B 后的真实承载类型**——
   `Geometry` → `"GeometryData"`（B3）；`MaterialData` → `"MaterialData"` **并按实测把 `gpu_row_bytes` 0 → 16**
-  （B4 的 (Global, MaterialData) 组件行）；`MaterialRuntime` → `"MaterialRuntimeSlot"`（B5；注释写明**行宽冻结 88 B**、
+  （B4 的 (Global, MaterialData) 组件行）；`MaterialRuntime` → `"MaterialRuntimeSlot"`（B5；注释写明**行宽冻结 88 B**〔2026-10-11 订正：该注释已在批 1.3 C1 改为 **40 B**〕、
   因是 CPU 侧行故 `gpu_row_bytes` 记 0）；`Texture` → `cpu_type_name` 留空 + 注释**无组件载体**（B6）。
   表头那段"后四类 scope 待 ID 化定稿、现记 World 保守默认"的**过时注释**改为"scope/行宽已随各类型 ID 化定稿"
   （Global = Geometry / MaterialData / Texture；World = Transform / MaterialRuntime）。
@@ -827,7 +827,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
   不能含中文**（`SyntaxError`），**破坏没发生**却照样跑出 rc=0；换成**纯 ASCII 破坏点**（`"GeometryData"` →
   `"BogusType"`）才真红。⇒ 反证/破坏点一律用 ASCII 模式；该坑已回写 `crlf-safe-editing` 技能。
 
-**B5-b 完成记录（2026-10-02）—— ✅ 每 pass 管线缓存落世界侧旁表 + slot 行宽冻结 88 B（B5 收口）**
+**B5-b 完成记录（2026-10-02）—— ✅ 每 pass 管线缓存落世界侧旁表 + slot 行宽冻结 88 B（B5 收口）**〔2026-10-11：`MaterialRuntimeSlot` 行宽现值 **40 B** —— `MaterialRuntimeTable.h` 的 `static_assert(sizeof(...) == 40)` 为权威；88 B 是旧值（批 1.3 C1 已把源注释订正为 40 B）〕
 
 一、改动（9 文件：1 新建头 + 7 引擎/实现 + 1 契约）
 

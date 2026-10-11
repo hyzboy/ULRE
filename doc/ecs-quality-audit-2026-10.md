@@ -219,7 +219,7 @@
 >
 > 其余约 20 行待后续 chunk（下一批建议：系统/组件一侧 —— `ColorPaletteSystem` 编辑 API、`LightSystem::SetMainLight`、
 > `EnvironmentSystem::Set/GetAmbientEnvInfo`、`MainLightShadowSystem::Get/SetShadowInfo` 等；以及四条"非免费删"的判定项：
-> `RenderNeed::EarlyZ`、`PrimitiveBatchPipeline::RunSorting()` 空体（但 `PrimitiveSortSystem` 注册在真实帧图里，要连注册面处理）、
+> `RenderNeed::EarlyZ`、`PrimitiveBatchPipeline::RunSorting()` 空体（但 `PrimitiveSortSystem` 注册在真实帧图里，要连注册面处理）、**（已拍板 2026-10-11：`PrimitiveSortSystem` 保留 —— §1.4 勿动清单；且其帧前准备已加每帧真守卫）**
 > `ShouldEmitPeriodicLog`（恒 false、body 已注释）、`TransformDataStorage::GetLocalMatrices`（**已不存在** ⇒ 只需标注）。）
 
 ### 1.2 死枚举 / 死分支
@@ -229,7 +229,7 @@
   - ⇒ **已处置（2026-10-09 `ce4259799`）**：`FreeCameraMode::ProcessInput`（现 `CameraSystem.cpp:202-248`）
     已实现自由飞行：鼠标左/右键拖拽改 `yaw`/`pitch`（±89° 夹紧）、六向移动 × `move_speed` × dt、
     置 `matrix_dirty`；`UpdateTransform`（`:250-255`）维护 `target = position + forward` ⇒ 默认相机不再静默冻结。
-- **`LinesComponent::LineStyle`（`Dashed`/`Dotted` 永不选中，`style` 永不读）** + `LineChange::Style/Geometry` 与 `TextChange::*` 全部**只写不读** — `support/.../LinesComponent.h:29-34,46,118,122-132`；唯一活消费者 `TextRenderPipeline.cpp:664` 只判 `mask != 0`。`M ✅复核`（LineStyle）
+- **`LinesComponent::LineStyle`（`Dashed`/`Dotted` 永不选中，`style` 永不读）** + `LineChange::Style/Geometry` 与 `TextChange::*` 全部**只写不读****（已处置 2026-10-11：`LineChange` 随批 1.2 A2 整体删除；`TextChange` 族保留为唯一活消费者）** — `support/.../LinesComponent.h:29-34,46,118,122-132`；唯一活消费者 `TextRenderPipeline.cpp:664` 只判 `mask != 0`。`M ✅复核`（LineStyle）
 - **`CameraInputMapping` 的 `kActionResetView`(R) / `kActionFocusView`(F) 已绑定但无处置** — `CameraInputMapping.cpp:31-32`。`M ✅复核`
 
 ### 1.3"接受即丢弃"的参数
@@ -489,7 +489,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | `MaterialRuntimeSlot::pass_selector/lod_selector/dither_enabled` | `MaterialRuntimeTable.h:167-168` | 注释称"当前 pass / LOD 档"，实际 `pass_selector` 只被测试写；真实 per-pass 机制是另一张表 |
 | `MaterialRuntimeRow::generation` | `.h:18-20,155` | 描述了"与 Transform/BoundingBox 同约定"的 ABA 免疫规则，但该机制在此**无消费者**（`GetGeneration` 只被测试读） |
 | `GPUCullSystem::GetGPUVisibleCount` | `.h:160-165` | 头部要求先 `SyncForParityReadback()`，而其唯一生产消费者 `DumpCullSSBOs` 直接当"全局幸存数"用 |
-| **`ComponentTypeTable.h:105` 说 `MaterialRuntimeSlot` "行宽冻结 88 B"** | vs `MaterialRuntimeTable.h:211-212` `static_assert(sizeof(...) == 40)` | 两份"冻结契约"互相矛盾，88 B 那份在**每个组件类型消费者都读的表**里 ✅复核（88 B 侧） |
+| **`ComponentTypeTable.h:105` 说 `MaterialRuntimeSlot` "行宽冻结 88 B"** | vs `MaterialRuntimeTable.h:211-212` `static_assert(sizeof(...) == 40)` | 两份"冻结契约"互相矛盾，88 B 那份在**每个组件类型消费者都读的表**里 ✅复核。**已处置（2026-10-11，批 1.3 C1）：注释订正为 40 B，与 `static_assert` 对齐**（88 B 侧） |
 | `RenderPipelineBase::RunCollect()` | `.h:33` `= 0` vs `PrimitiveRenderPipeline.h:36` `override {}` | 声明为必需，对 primitive 是刻意的 no-op ⇒ "Collect" 不是该层的阶段 |
 | `PrimitiveBatchPipeline::PrepareFrame` | `.cpp:85-113` | 名字与两个兄弟相同，但**没有 once-per-frame 守卫** ⇒ 每帧多跑 3 次全量并反复 `Reset()` |
 | `RenderItemDataStorage::GetActiveCount` | `.h:101` | 由"总数 − 空闲数"推算，而 `Release` 无"已释放"检查（`.cpp:59-68`）⇒ 重复释放即虚高 |

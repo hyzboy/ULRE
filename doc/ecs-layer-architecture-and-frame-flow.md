@@ -13,6 +13,16 @@
 > ⑤ sky / shadow（及 env）地址**随世界**（世界表 `WorldAddresses`，批次 C1/C2），**viewport 保持全局**；
 > ⑥ 阴影光源相机是 `EnvironmentSystem` 用 `make_shared` 建的**系统内建相机**（不经 Entity/AddComponent 注册 ⇒ `CollectCameras()` 看不到它）；「光源相机属另一个世界」是错误归因，CSM 始终是一个世界 + 多个渲染过滤程；
 > ⑦ `scene_ubo.glsl` 的 `camera` 宏在 **`:149`**、字段名为 **`camera_row`**。
+>
+> **订正（2026-10-11，§4 连带文档回扫）**——下列符号/口径在本文基线之后已变，命中处请读作历史：
+> · `Component` / `Component.h` / `Component::version` / `change_mask`（`:71`、`:332`、`:582`、`:586`）：**组件基类整删**
+>   （T2-c：实体槽 = 按类型行号、组件住世界类型化池）⇒ 那几段描述的是旧组件模型。
+> · `TransformAccessor::MarkDirty`（`:519` 一带）：**已删**（ECS §3-①）——它只写 `matrixDirty`、不 bump 版本 ⇒
+>   对静态行永不上传；"连带标脏整棵子树"的行为一直由 `MarkLocalChanged` 承担。
+> · `PrimitiveSortSystem` / `RunSorting`（`:358`、`:394`、`:425`）：**保留**（§1.4 拍板；`RunSorting()` 仍是空体 = 占位无操作）；
+>   其帧前准备自 §2-#11 起是**每帧一次的真守卫**（`PrimitiveBatchPipeline::PrepareFrame`）。
+> · `BoundingBoxAccessor` 24 B（`:575` 一带）：**现值 16 B**（批 1.2 A4 删冗余 `context`，与 `TransformAccessor` 同范式）。
+>（以上行号为 **2026-10-11** 校对值。）
 
 ---
 

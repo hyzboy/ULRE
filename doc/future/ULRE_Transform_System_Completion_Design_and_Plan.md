@@ -72,7 +72,7 @@
   2. Accessor 中**冗余持有 `ECSContext*`**：`TransformDataStorage` 由 `ECSContext` 私有独占（`Context.h:175` + `Context.cpp:61` 的 `unique_ptr`），可以 `storage->GetContext()` 反查，无需在每个句柄实例中重复 8 字节。
 * **但瘦身的理由不是 ABI**：实测 MSVC x64 对 12/16/24 B 的聚合体**一律按引用**传递（见 §〇 证据），所以“降到 16 B 就能两寄存器传参”不成立。真实收益是：
   * **消除第二真源**：`context` 与 `storage` 的归属必须永远一致，重复携带等于让“两个字段互相不一致”成为可能（一旦有人用 `TransformAccessor(storage, id)` 建柄，`SetMobility` 就静默不换边）；
-  * **范式一致**：`BoundingBoxAccessor` 是同一问题的另一处实例（`inc/hgl/ecs/support/BoundingBoxAccessor.h:52`），本轮要么同步做，要么在文档里写明只做 Transform 的理由；
+  * **范式一致**：`BoundingBoxAccessor` 是同一问题的另一处实例（`inc/hgl/ecs/support/BoundingBoxAccessor.h:52`），本轮要么同步做，要么在文档里写明只做 Transform 的理由；〔2026-10-11：`BoundingBoxAccessor` 现值 **16 B** —— 冗余 `context` 与 `GetContext()` 已删（批 1.2 A4）；其句柄范式仍成立，只是不再是 24 B〕
   * 尺寸 24 → 16 B（按值返回的调用点栈临时少 8 B 拷贝，属附带小收益）。
 * 现状里 `TransformAccessor::GetContext()` 这个 getter **零消费者**，`context` 只在内部被 `GetOwner()`（`:25-36`）与 `SetMobility → MigrateTransform`（`:526-527`）使用 —— 因此改成反查对调用面是纯内部变更。
 
@@ -358,7 +358,7 @@ static_assert(sizeof(TransformAccessor) == 16,
 3. **测试覆盖不得降级**：`TestTransformFlatStorage` 现有 **15 项**契约（跳洞安全、世代防僵尸、预算拒绝分配、稳定槽位、稀疏侧表、源码禁复活……），任何变动不得减少断言或屏蔽断言；“12 项”是错误计数。
 4. **改存储成员布局必清 obj**：`TransformDataStorage` 为内联头，陈旧 TU 按旧偏移访问会表现为“垃圾值 / 首调用崩溃”，看起来像真回归。反证类构建尤其要先清中间目录再编，并核对 `.obj` mtime 晚于头文件 mtime。
 5. **禁止示例侧双真源**：局部矩阵真源随 `local_matrices` 一起消失；示例若需要 mat4，只能从 TRS 现算（选项 a 放 GPU、选项 b 放示例私有缓冲并注明），不得回写引擎存储。
-6. **同范式一致性**：`BoundingBoxAccessor`（`inc/hgl/ecs/support/BoundingBoxAccessor.h:52`）持有同样的冗余 `context`。本轮若只做 Transform，请在此处记录理由，避免留下两种范式。
+6. **同范式一致性**：`BoundingBoxAccessor`（`inc/hgl/ecs/support/BoundingBoxAccessor.h:52`）持有同样的冗余 `context`。**〔2026-10-11：该冗余已删 —— 批 1.2 A4 把 `BoundingBoxAccessor` 瘦到 16 B，与本文范式一致〕**本轮若只做 Transform，请在此处记录理由，避免留下两种范式。
 
 ---
 

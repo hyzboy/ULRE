@@ -39,6 +39,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 
 **已落地**：`TransformAccessor`（`inc/hgl/ecs/support/TransformAccessor.h`）与 `BoundingBoxAccessor`
 （`inc/hgl/ecs/support/BoundingBoxAccessor.h`）。
+（2026-10-11：`BoundingBoxAccessor` 现 **16 B** —— 冗余 `context` 与 `GetContext()` 已删，批 1.2 A4；两个基础访问器现已同范式。）
 
 **差距**：其余类型仍走**裸指针**世界入口，且注释自己写明"stage B 会换成值类型句柄"：
 - `MaterialData* GetMaterialData` / `GetOrCreateMaterialData`（`inc/hgl/ecs/core/Context.h:553-556`、`:560-561`）
@@ -327,7 +328,7 @@ GLSL `GeometryAABB/GeometryAABBsRef` + 候选用**变体下标** `geom_id` 索�
 
 ### 2.9 【新发现·结构性】行空间有两类——组件行是"按类型定宽"，材质纹理引用是"按定义变长"
 
-**用户 2026-10-02 点出**：设想的组件数据段是定长（这点确实成立：Transform 64 B / MaterialData 16 B /
+**用户 2026-10-02 点出**：设想的组件数据段是定长（这点确实成立：Transform 64 B / MaterialData 16 B /〔2026-10-11：`MaterialRuntimeSlot` 行宽现值 **40 B** —— `MaterialRuntimeTable.h` 的 `static_assert(sizeof(...) == 40)` 为权威；88 B 是旧值（批 1.3 C1 已把源注释订正为 40 B）〕
 MaterialRuntime 88 B 都是编译期冻结的），但**纹理引用每个材质要的数量不一样** ⇒ 它的数据形态与其它
 组件不同，**既不属于 Global 也不属于 World**，而是**每种材质独有**。决议：**先不动它，放到计划末期处理**。
 
