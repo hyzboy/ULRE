@@ -65,117 +65,6 @@ namespace hgl::graph::mtl
 
     constexpr uint32_t DefaultMaterialTextureConfigurationCapacity = 1024u;
 
-    enum class MaterialTextureFilterMode : uint8_t
-    {
-        Nearest = 0,
-        Linear
-    };
-
-    enum class MaterialTextureWrapMode : uint8_t
-    {
-        Repeat = 0,
-        MirroredRepeat,
-        ClampToEdge,
-        ClampToBorder,
-        MirrorClampToEdge
-    };
-
-    enum class MaterialTextureSwizzle : uint8_t
-    {
-        Zero = 0,
-        One,
-        R,
-        G,
-        B,
-        A
-    };
-
-    enum class MaterialTextureCompareOp : uint8_t
-    {
-        Never = 0,
-        Less,
-        Equal,
-        LessOrEqual,
-        Greater,
-        NotEqual,
-        GreaterOrEqual,
-        Always
-    };
-
-    struct MaterialTextureSamplingOptions
-    {
-        MaterialTextureFilterMode mag_filter =
-            MaterialTextureFilterMode::Linear;
-        MaterialTextureFilterMode min_filter =
-            MaterialTextureFilterMode::Linear;
-        MaterialTextureFilterMode mipmap_mode =
-            MaterialTextureFilterMode::Linear;
-        MaterialTextureWrapMode wrap_u = MaterialTextureWrapMode::Repeat;
-        MaterialTextureWrapMode wrap_v = MaterialTextureWrapMode::Repeat;
-        MaterialTextureWrapMode wrap_w = MaterialTextureWrapMode::Repeat;
-        MaterialTextureSwizzle swizzle_r = MaterialTextureSwizzle::R;
-        MaterialTextureSwizzle swizzle_g = MaterialTextureSwizzle::G;
-        MaterialTextureSwizzle swizzle_b = MaterialTextureSwizzle::B;
-        MaterialTextureSwizzle swizzle_a = MaterialTextureSwizzle::A;
-        MaterialTextureCompareOp compare_op =
-            MaterialTextureCompareOp::Never;
-        float mip_lod_bias = 0.0f;
-        float min_lod = 0.0f;
-        float max_lod = 15.0f;
-        float max_anisotropy = 16.0f;
-        bool anisotropy = false;
-        bool has_sampler_override = false;
-        bool has_swizzle_override = false;
-    };
-
-    inline bool operator==(
-        const MaterialTextureSamplingOptions &lhs,
-        const MaterialTextureSamplingOptions &rhs) noexcept
-    {
-        return lhs.mag_filter == rhs.mag_filter
-            && lhs.min_filter == rhs.min_filter
-            && lhs.mipmap_mode == rhs.mipmap_mode
-            && lhs.wrap_u == rhs.wrap_u
-            && lhs.wrap_v == rhs.wrap_v
-            && lhs.wrap_w == rhs.wrap_w
-            && lhs.swizzle_r == rhs.swizzle_r
-            && lhs.swizzle_g == rhs.swizzle_g
-            && lhs.swizzle_b == rhs.swizzle_b
-            && lhs.swizzle_a == rhs.swizzle_a
-            && lhs.compare_op == rhs.compare_op
-            && lhs.mip_lod_bias == rhs.mip_lod_bias
-            && lhs.min_lod == rhs.min_lod
-            && lhs.max_lod == rhs.max_lod
-            && lhs.max_anisotropy == rhs.max_anisotropy
-            && lhs.anisotropy == rhs.anisotropy
-            && lhs.has_sampler_override == rhs.has_sampler_override
-            && lhs.has_swizzle_override == rhs.has_swizzle_override;
-    }
-
-    inline uint64_t HashMaterialTextureSamplingOptions(
-        const MaterialTextureSamplingOptions &options) noexcept
-    {
-        hgl::hash::FNV1aHasher64 hasher;
-        hasher << options.mag_filter
-               << options.min_filter
-               << options.mipmap_mode
-               << options.wrap_u
-               << options.wrap_v
-               << options.wrap_w
-               << options.swizzle_r
-               << options.swizzle_g
-               << options.swizzle_b
-               << options.swizzle_a
-               << options.compare_op
-               << options.mip_lod_bias
-               << options.min_lod
-               << options.max_lod
-               << options.max_anisotropy
-               << options.anisotropy
-               << options.has_sampler_override
-               << options.has_swizzle_override;
-        return hasher;
-    }
 
     struct MaterialTextureReference
     {
@@ -198,7 +87,6 @@ namespace hgl::graph::mtl
         std::string      name;                                        // TOML/GLSL texture key, such as "base_color".
         GLSLSamplerType  sampler_type = GLSLSamplerType::Sampler2D;   // GLSL sampler kind.
         bool             required     = false;                         // Missing binding is an explicit error.
-        MaterialTextureSamplingOptions sampling;                       // Sampler/view overrides; not connected at stage 1.
         uint32_t         channels     = 0;                             // 0 = 由纹素格式决定；2 = 双通道法线(XY)，Z 由 shader 还原
     };
 

@@ -50,7 +50,7 @@
 `BuildDescriptorsFromDefinition` / `AppendEntry` / `BuildEffectiveDescriptorContract` / `BuildResourceSchemaFromContract` / `GetDescriptorContractHash` / `HasDescriptorSemantic` 随之消失；
 `MaterialShaderCompiler.cpp:301` 的错误注释必须同批改掉（否则下一个会话按它去找 Scene UBO 条目）。
 
-### B. `MaterialTextureSamplingOptions`：双端空转（高）
+### B. `MaterialTextureSamplingOptions`：双端空转〔2026-10-11 **已整删**：见 §9〕（高）
 
 | # | 位置 | 事实 | 判据 |
 |---|---|---|---|
@@ -377,6 +377,44 @@ buffer_reference 表达式。`material/shadow_receiver_source.glsl:233` 的 `con
    计数/穷举类取证不要接 `head`（同一天踩两次）。
 3. **禁复活针的禁用串要防子串误撞**：首版钉 `"ShadowMap.cpp"`，而 `CascadeShadowMap.cpp` 含该子串 ⇒ 假红；
    改用 `CreateProject(ShadowMap ` 才准。凡是"禁用旧名"的针，先想一遍它与活名字的子串关系。
+
+---
+
+## 9. S2 执行记录：材质侧纹理采样选项双端死路径整删（2026-10-11）
+
+**靶**：`MaterialTextureSamplingOptions` 及其 4 个枚举 + 解析链 + authoring 键。判据：**0 授权 + 0 消费者**
+（15 份材质 TOML 对 `filter/wrap/swizzle/anisotropy/max_anisotropy/mip_lod_bias/min_lod/max_lod/compare_op` 全部 0 命中；
+运行期采样器真源是 `ShaderLibrary/sampler.toml` 预设表）。删除面 4 档：
+
+| 档 | 净删 | 内容 |
+|---|---|---|
+| `inc/hgl/mtl/MaterialRecipe.h` | −112 | `MaterialTextureFilterMode/WrapMode/Swizzle/CompareOp` 4 枚举 + `MaterialTextureSamplingOptions` + `operator==` + `HashMaterialTextureSamplingOptions` + `MaterialTextureDeclaration::sampling` 字段 |
+| `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp` | −334 | `ParseTextureFilterMode/WrapMode/CompareOp/Swizzle/SwizzleOptions/TextureSamplingOptions` 6 个函数 + 调用点 + `ValidateTextureDeclarationKeys` 里 9 个 authoring 键 |
+| 门 `ShaderResourceSchemaRegressionGate.cpp` | −96/+新 1 用例 | 采样 TOML 输入、`S.material-definition-file-schema` 的采样断言、`changed_sampling` ABI 用例；2 处聚合初始化改 3 元 |
+| `doc/texture2darray-unified-texture-binding.md:216` | 标注 | dated 订正：该组 authoring 键整删，材质侧再写会被键校验拒绝 |
+
+**意图不丢**：原先那条"非法 swizzle **值**必须被拒"的用例**改造成**"已退役 authoring **键**必须被键校验拒绝"
+（机制换了、意图保留：畸形纹理声明不得静默通过）+ 一条禁复活针（`MaterialDefinitionFile.cpp` 不得再出现 `key != "swizzle"`）。
+
+**反证（判据有牙）**：把 `key != "swizzle"` 放回白名单 ⇒ 门精确报
+`[FAIL] S.material-definition-file-schema — retired texture sampling keys must be rejected as unknown keys`；还原后 42 PASS。
+
+**验收**：全量 Release `rc=0`/0 error/392 目标；`ctest -L ecs` **12/12**；CSM **1/1**；门 **42 PASS/0 FAIL**；
+cook `38/0`；`PBRSpheres` 15s 0 错误；`CascadeShadowMap` 12s 0 错误。
+
+### 9.1 本批踩坑：定向 purge 不足以覆盖"改结构大小"（重要）
+
+删 `MaterialTextureDeclaration` 的一个字段改变了**公共头的结构大小**。按老习惯对 `MaterialRecipe.h` 跑定向 purge
+（`purge-stale-deps.sh` 命中 57 TU / 95 obj）后全量构建 `rc=0`、`ctest` 全绿、门 42 PASS、cook 38/0 ——**但**
+`PBRSpheres.exe` 启动即崩（`0xC0000005` @ `PBRSpheres+0x16f450`：`mov r8,[rax-8]`，`rax=7`）。
+
+排查顺序与结论：
+1. 冷缓存复现（挪走 `shader-cache`）⇒ **仍崩** ⇒ 排除"SPV 缓存里烘焙了已删采样器索引 7"。
+2. `find build -name "*.obj" -delete` + 全量重编 ⇒ **立刻恢复**（rc=124 正常出帧、0 错误）。
+⇒ 结论：**改结构大小/字段集时，obj 必须「整树」清**；`grep` 出的包含者列表会漏掉间接包含的 TU，
+漏一个就是"库用新头、某 TU 用旧头"的布局错位（本次崩在首个材质绑定路径）。
+
+**注**：定向 purge 只能用于"只改实现/只加不删"的小改；凡动 `struct` 字段（增删改序/改类型）一律整树清。
 
 ## 5. 本档边界
 

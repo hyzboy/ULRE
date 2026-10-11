@@ -90,7 +90,7 @@ X-macro `HGL_MESH_DRAW_COMMAND_FIELD_LIST`：`MeshDrawCommand{ geometry_id, firs
 - GLSL：`MTL_TEX(dataIndex).tex_<texture_name>`（`.x`=descriptor index，`.y`=array layer）。
 - 2D 与 Texture2DArray 统一注册进 `texture2DArray[]`（2D 用 layer 0）。
 - **sampler 运行时创建已接入（全局预设路径）**：`ShaderLibrary/sampler.toml`（array-of-tables，出现顺序即索引）→ `mtl::SamplerPresetLibrary::Load`（`src/ShaderGen/glsl_module/SamplerPreset.cpp:85`，`GetCreateInfo` :77）→ 运行时 `BindlessTextureManager::RegisterSamplers`（`src/Vulkan/VKBindlessTextureManager.cpp:330-369`）按序 `vkCreateSampler` 写入 bindless 布局 binding=1；入口 `src/SceneGraph/render/GraphicsContext.cpp:96-118`，离线侧同源加载 `src/Tools/ShaderGen/ShaderCooker.cpp:198-213`。ShaderGen 按名发射 `#define <name>Sampler <idx>u` 宏（`MaterialShaderEmitter.cpp:119`）。纹理统一为 `texture2DArray[]`(binding=0) / `sampler[]`(binding=1) / `textureCubeArray[]`(binding=2)，见 `ShaderLibrary/common/bindless_textures.glsl:40-45`；运行时重建单 sampler 走 `RebuildSampler`（`VKBindlessTextureManager.cpp:373`）。
-  - **未接入的部分**：per-材质 `MaterialTextureSamplingOptions`（`MaterialRecipe.h:107`，`MaterialTextureDeclaration::sampling` :203）仅参与布局 hash，尚未驱动运行时 sampler 创建。
+  - **未接入的部分**：per-材质 `MaterialTextureSamplingOptions`（`MaterialRecipe.h:107`，`MaterialTextureDeclaration::sampling` :203）仅参与布局 hash，尚未驱动运行时 sampler 创建。 〔2026-10-11：`MaterialTextureSamplingOptions` 已整删（双端空转，无授权+无消费者）——本条作废，见 `doc/future/shadergen-material-chain-review.md` §9〕
 
 ### 2.6 两个地址载体（BDA 分层现状）
 **① `GlobalAddresses` SSBO 表（**无绑定无集**，`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长）** — 表本体是 SSBO，基址经 `pc_root.addr_global_addresses` 下发；按帧槽分份（每帧只写本帧槽），全局字段启动写一次，仅会变的项每帧刷。
@@ -367,7 +367,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 - 百万级实例示例 `example/ApiValidation/ComputeAsteroidBelt.cpp`（`TOTAL_ASTEROIDS = GEOMETRY_VARIANT_COUNT(10) × INSTANCES_PER_GEOM(100000) = 1,000,000`，`ComputeAsteroidBelt.cpp:66-68`）、CS 剔除示例 `example/ApiValidation/ComputeFrustumCull.cpp`。
 
 ### 7.4 开放待办（独立，不阻塞）
-1. ~~**sampler 运行时创建未接入**——filter/wrap/swizzle/compare 的 TOML 配置只到「解析 + 布局 hash + 契约传递」~~——**已完成（2026-09-23）**：`ShaderLibrary/sampler.toml` → `SamplerPresetLibrary::Load`（`SamplerPreset.cpp:85`）→ `BindlessTextureManager::RegisterSamplers`（`VKBindlessTextureManager.cpp:330`）按序 `vkCreateSampler` 写 binding=1，入口 `GraphicsContext.cpp:96-118`；`max_lod`/`compare_op`/`anisotropy` 等字段齐备。**仅剩**：per-材质 `MaterialTextureSamplingOptions` 覆盖（`MaterialRecipe.h:107/203`）只参与 layout hash，尚未驱动运行时创建。
+1. ~~**sampler 运行时创建未接入**——filter/wrap/swizzle/compare 的 TOML 配置只到「解析 + 布局 hash + 契约传递」~~——**已完成（2026-09-23）**：`ShaderLibrary/sampler.toml` → `SamplerPresetLibrary::Load`（`SamplerPreset.cpp:85`）→ `BindlessTextureManager::RegisterSamplers`（`VKBindlessTextureManager.cpp:330`）按序 `vkCreateSampler` 写 binding=1，入口 `GraphicsContext.cpp:96-118`；`max_lod`/`compare_op`/`anisotropy` 等字段齐备。**仅剩**：per-材质 `MaterialTextureSamplingOptions` 覆盖（`MaterialRecipe.h:107/203`）只参与 layout hash，尚未驱动运行时创建。 〔2026-10-11：`MaterialTextureSamplingOptions` 已整删（双端空转，无授权+无消费者）——本条作废，见 `doc/future/shadergen-material-chain-review.md` §9〕
 2. ~~**屏蔽示例恢复**~~——**已完成**：`LoadGeometry`/`LoadScene` 已在 `example/Geometry/CMakeLists.txt:23-24` 恢复。
 3. ~~**阶段 5 收口**（§6.5）：`addr_mesh_draw_params` 双源收敛~~ —— **订正（2026-09-28）**：该待办已作废（字段改名、双源不再存在，见 §6.5）。
 4. ~~MeshDrawParams 88B→112B 注释残留~~ —— **✅ 已修（2026-10-02 实测核对）**：`inc/hgl/graph/ShaderBufferSources.h` 内 `88B` **0 命中**，注释现为「头部 9×4B + 4B 对齐填充 + 11×uint64 设备地址尾 = **128B**」（`ShaderBufferSources.h:10`）与「几何体的 **112B** 顶点流参数」（`:95`）。
@@ -414,7 +414,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 | 池转发头 | `inc/hgl/graph/module/MeshDrawParamsPool.h` | 4 行，只 include 上者 |
 | 通用域注册 | `inc/hgl/graph/module/SSBOBufferRegistry.h` | `SSBOBufferBinding`(:16)、`domain_map`(:29)、纹理引用池(:31/48-52)、`RegisterBuffer`(:60)、`GetNullRowAddress`(:113) |
 | 纹理引用池 | `inc/hgl/graph/module/MaterialTextureReferencePool.h` + `.cpp` | `Acquire/Write/Retire/CollectRetired`(:102-110)、`MakePoolKey`(:75)、`row_generations`(:61)、retire 延迟(:15) |
-| 纹理引用结构 | `inc/hgl/mtl/MaterialRecipe.h` | `MaterialTextureReference`(:182)、`MaterialTextureReferenceLayout`(:207)、`BuildMaterialTextureReferenceLayout`(:415)、`DefaultMaterialTextureConfigurationCapacity`(:68)、`MaterialTextureSamplingOptions`(:107)、`MaterialDefinition.material_private_data`(:299) |
+| 纹理引用结构 | `inc/hgl/mtl/MaterialRecipe.h` | `MaterialTextureReference`(:182)、`MaterialTextureReferenceLayout`(:207)、`BuildMaterialTextureReferenceLayout`(:415)、`DefaultMaterialTextureConfigurationCapacity`(:68)、`MaterialTextureSamplingOptions`(:107)、`MaterialDefinition.material_private_data`(:299) | 〔2026-10-11：`MaterialTextureSamplingOptions` 已整删（双端空转，无授权+无消费者）——本条作废，见 `doc/future/shadergen-material-chain-review.md` §9〕
 | 行租约 | `inc/hgl/vk/buffer/ActiveRowPool.h` / `ActiveRowLease.h` / `ActiveRowView.h` | `Acquire`(:92)、`ReleaseDeferred`(:102)、`RowGPU`(:134)、`RowCPU`(:127)、`CommitRow`(:142) |
 | 全局地址表 | `inc/hgl/graph/ubo/GlobalAddresses.h` | `struct GlobalAddresses`(:27-46)、`kGlobalAddressesSlotCount`(:49)、`kGlobalAddressesSlotStride=128`(:53) |
 | MeshDrawParams | `inc/hgl/graph/ShaderBufferSources.h` | `HGL_MESH_DRAW_PARAMS_FIELD_LIST`(:16-33)、**112B** 断言(:85/:88)、`MeshDrawCommand`(:93-127)、`MaterialInstanceAddresses`(:142-198，**16B 四字段**)、`DrawItem4ID`(:200-244)、`GeometryAABB`(:246-256) |
@@ -504,7 +504,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 3. **Meshlet 三地址**是否需与顶点流地址区分规则——同在 112B 行内，无额外机制可查。
 4. **`geometry_id` 粒度**：现为 per `Geometry`（单槽 + `EnsureMeshDrawParams` 短路）；是否还需 per 运行时实例 ID，无证据。
 5. **CS 写 4-ID 是否接入引擎 ECS 主路径**：仅确认示例 `ComputeFrustumCull.cpp` 打通；引擎侧 `gpu_driven_override`/`uses_render_item_resolve`（`MaterialBatch.h:70-71`）的实际启用点未逐一核实。
-6. **per-材质 `MaterialTextureSamplingOptions`** 运行时接入状态：仅确认其参与 layout hash 且注释标「not connected at stage 1」，未找到运行时消费点。
+6. **per-材质 `MaterialTextureSamplingOptions`** 运行时接入状态：仅确认其参与 layout hash 且注释标「not connected at stage 1」，未找到运行时消费点。 〔2026-10-11：`MaterialTextureSamplingOptions` 已整删（双端空转，无授权+无消费者）——本条作废，见 `doc/future/shadergen-material-chain-review.md` §9〕
 7. **`ActiveRowPool` 内部容器细节**（行号空闲表结构）未逐一核实，只确认对外 `Acquire/Release/ReleaseDeferred/RowCPU/RowGPU/CommitRow`。
 8. **文件名与内容的旧前缀错配**（`MaterialSSBOLayout.h`/`MaterialDataRows.h` 内容已是 `Global*`）是否为有意保留，未见决策记录。
 9. **`pbr_surface` 21 处命中**中 18 处为文档/`ShaderLibrary` 材质源模块名（`material/pbr_surface_source.glsl`），与 C++ 符号无关——未逐一确认每处语义。

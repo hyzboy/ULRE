@@ -3769,7 +3769,7 @@ namespace
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
             "textures = [\n"
-            "    { name = \"base_color\", sampler = \"Sampler2DArray\", required = true, filter = { mag_filter = \"Nearest\", min_filter = \"Linear\", mipmap_mode = \"Nearest\" }, wrap = { u = \"ClampToEdge\", v = \"MirroredRepeat\", w = \"Repeat\" }, swizzle = \"BGR1\", anisotropy = true, max_anisotropy = 8.0, mip_lod_bias = 0.25, min_lod = 1.0, max_lod = 7.0, compare_op = \"LessOrEqual\" },\n"
+            "    { name = \"base_color\", sampler = \"Sampler2DArray\", required = true },\n"
             "    { name = \"detail_mask\", sampler = \"Sampler2D\", required = false }\n"
             "]\n"
             "[resources.texture_configurations]\n"
@@ -3806,55 +3806,7 @@ namespace
                     definition.texture_declarations[0].sampler_type)
              || IsMaterialTextureArraySampler(
                     definition.texture_declarations[1].sampler_type)
-             || !definition.texture_declarations[0].
-                    sampling.has_sampler_override
-             || !definition.texture_declarations[0].
-                    sampling.has_swizzle_override
-             || definition.texture_declarations[0].
-                    sampling.mag_filter
-                    != MaterialTextureFilterMode::Nearest
-             || definition.texture_declarations[0].
-                    sampling.min_filter
-                    != MaterialTextureFilterMode::Linear
-             || definition.texture_declarations[0].
-                    sampling.mipmap_mode
-                    != MaterialTextureFilterMode::Nearest
-             || definition.texture_declarations[0].
-                    sampling.wrap_u
-                    != MaterialTextureWrapMode::ClampToEdge
-             || definition.texture_declarations[0].
-                    sampling.wrap_v
-                    != MaterialTextureWrapMode::MirroredRepeat
-             || definition.texture_declarations[0].
-                    sampling.wrap_w
-                    != MaterialTextureWrapMode::Repeat
-             || definition.texture_declarations[0].
-                    sampling.swizzle_r
-                    != MaterialTextureSwizzle::B
-             || definition.texture_declarations[0].
-                    sampling.swizzle_g
-                    != MaterialTextureSwizzle::G
-             || definition.texture_declarations[0].
-                    sampling.swizzle_b
-                    != MaterialTextureSwizzle::R
-             || definition.texture_declarations[0].
-                    sampling.swizzle_a
-                    != MaterialTextureSwizzle::One
-             || !definition.texture_declarations[0].
-                    sampling.anisotropy
-             || definition.texture_declarations[0].
-                    sampling.max_anisotropy != 8.0f
-             || definition.texture_declarations[0].
-                    sampling.mip_lod_bias != 0.25f
-             || definition.texture_declarations[0].
-                    sampling.min_lod != 1.0f
-             || definition.texture_declarations[0].
-                    sampling.max_lod != 7.0f
-             || definition.texture_declarations[0].
-                    sampling.compare_op
-                    != MaterialTextureCompareOp::LessOrEqual
-             || !(definition.texture_declarations[1].sampling
-                    == MaterialTextureSamplingOptions{}))
+)
             {
                 result.diagnostics.emplace_back(
                     "texture-reference layout fields mismatch");
@@ -3896,24 +3848,6 @@ namespace
                     "texture-reference pool identity or empty allocation is invalid");
             }
 
-            MaterialTextureSamplingOptions changed_sampling =
-                definition.texture_declarations[0].sampling;
-            changed_sampling.wrap_v = MaterialTextureWrapMode::ClampToBorder;
-            MaterialDefinition changed_sampling_definition = definition;
-            changed_sampling_definition.texture_declarations[0].sampling =
-                changed_sampling;
-            MaterialTextureReferenceLayout changed_sampling_layout{};
-            if (HashMaterialTextureSamplingOptions(changed_sampling)
-                    == HashMaterialTextureSamplingOptions(
-                        definition.texture_declarations[0].sampling)
-             || !BuildMaterialTextureReferenceLayout(
-                    changed_sampling_definition, changed_sampling_layout)
-             || changed_sampling_layout.layout_hash != layout.layout_hash
-             || changed_sampling_layout.row_stride != layout.row_stride)
-            {
-                result.diagnostics.emplace_back(
-                    "sampling overrides must not alter texture-reference ABI");
-            }
         }
 
         const char invalid_texture_configuration_file[] =
@@ -3966,26 +3900,29 @@ namespace
                 "duplicate material texture names must be rejected");
         }
 
-        const char invalid_texture_swizzle_file[] =
+        // S2（2026-10-11）：材质侧纹理采样选项（filter/wrap/swizzle/anisotropy/lod/compare_op）整删
+        // —— 这些 authoring 键现在是**未知键**，必须被 ValidateTextureDeclarationKeys 拒绝。
+        // （原先此处测的是"swizzle 值非法"，机制换了、意图保留：畸形纹理声明不得静默通过。）
+        const char retired_sampling_key_file[] =
             "schema = 3\n"
-            "id = \"InvalidTextureSwizzle\"\n"
-            "name = \"InvalidTextureSwizzle\"\n"
+            "id = \"RetiredSamplingKey\"\n"
+            "name = \"RetiredSamplingKey\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
             "material_source_module = \"material/texture_source.glsl\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
-            "textures = [{ name = \"base_color\", sampler = \"Sampler2D\", required = true, swizzle = \"RGB\" }]\n";
-        MaterialDefinitionFileData invalid_texture_swizzle_data;
+            "textures = [{ name = \"base_color\", sampler = \"Sampler2D\", required = true, swizzle = \"BGR1\" }]\n";
+        MaterialDefinitionFileData retired_sampling_key_data;
         if (ParseMaterialDefinitionFile(
-                invalid_texture_swizzle_file,
-                static_cast<int>(std::strlen(invalid_texture_swizzle_file)),
-                invalid_texture_swizzle_data)
+                retired_sampling_key_file,
+                static_cast<int>(std::strlen(retired_sampling_key_file)),
+                retired_sampling_key_data)
                 != MaterialDefinitionFileParseResult::InvalidValue)
         {
             result.diagnostics.emplace_back(
-                "invalid texture swizzle must be rejected");
+                "retired texture sampling keys must be rejected as unknown keys");
         }
 
         const char unknown_table_file[] =
@@ -4768,9 +4705,9 @@ namespace
         MaterialDefinition texture_definition{};
         texture_definition.definition_id = "MaterialTextureReferenceOnly";
         texture_definition.texture_declarations.push_back(
-            {"base_color", GLSLSamplerType::Sampler2D, true, {}});
+            {"base_color", GLSLSamplerType::Sampler2D, true});
         texture_definition.texture_declarations.push_back(
-            {"normal", GLSLSamplerType::Sampler2DArray, false, {}});
+            {"normal", GLSLSamplerType::Sampler2DArray, false});
         texture_definition.vertex_varying.emit_data_index_id = false;
 
         MaterialShaderCompilerInput texture_compiler_input{

@@ -1789,6 +1789,13 @@ int main(int argc, char** argv)
               "MaterialRequiresRecipeRuntimeRows",
               "自由函数包装已按 S1 删除：运行期行需求改读 program->RequiresRecipeRuntimeRows()",
               true },
+            { "MaterialDefinitionFile.cpp",
+              OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "key != \"swizzle\"",
+              "材质侧纹理采样选项（filter/wrap/swizzle/anisotropy/lod/compare_op）已于 2026-10-11 S2 整删："
+              "双端空转（0 材质授权 + 0 消费者），运行期采样器真源 = ShaderLibrary/sampler.toml 预设表；"
+              "要恢复必须先有真实消费者与授权方",
+              true },
             { "Shadow/CMakeLists.txt", OS_TEXT("example/Shadow/CMakeLists.txt"),
               "CreateProject(ShadowMap ",
               "ShadowMap 技术示例已于 2026-10-11 删除（旧 shadow-map 直采路线，被 CSM 取代；"
