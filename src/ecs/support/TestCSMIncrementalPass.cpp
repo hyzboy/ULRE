@@ -1352,7 +1352,10 @@ int main(int argc, char** argv)
                 auto tf_static = ctx.GetTransform(ctx.CreateTransform(e_static->GetEntityID(), Mobility::Static));
                 tf_static.SetLocalPosition(math::Vector3f(5.0f, 6.0f, 7.0f));
 
-                // 检出：提交后 revision 必须前移（移动静态物体必须打破静态缓存）
+                // 批 1.1 B4：必须走**正常帧序**（先 Update —— 它会清 matrixDirty，再 Submit）。
+                // 历史写法直接 Submit、跳过 Update，正好掩盖了「dirty 位被提前消费 ⇒ 静态场景
+                // revision 永不递增」的缺陷；本用例现在就是那条缺陷的判据。
+                tf_sys->Update(0.0f);
                 tf_sys->SubmitTransformUpdates();
                 if (ctx.GetStaticSceneRevision() == revision_base)
                 {
@@ -1362,10 +1365,27 @@ int main(int argc, char** argv)
                 }
 
                 // 稳态：无变更的重复提交不得继续递增（否则每帧全量重建静态级联）
+                tf_sys->Update(0.0f);
                 tf_sys->SubmitTransformUpdates();
                 if (ctx.GetStaticSceneRevision() != revision_base + 1)
                 {
                     GLogError(u8"Test 9D Failed: unchanged scene must not keep bumping static_scene_revision");
+                    return 9;
+                }
+
+                // 批 1.1 B4：**删除静态实体**同样必须通知静态缓存失效（静态集合变了）。
+                // 历史用例只覆盖"移动"，删除路径完全没测（revision 不动 ⇒ 阴影残留）。
+                const uint64_t revision_before_delete = ctx.GetStaticSceneRevision();
+
+                ctx.DestroyEntity(e_static->GetEntityID());
+
+                tf_sys->Update(0.0f);
+                tf_sys->SubmitTransformUpdates();
+
+                if (ctx.GetStaticSceneRevision() == revision_before_delete)
+                {
+                    GLogError(u8"Test 9D Failed: destroying a Static entity must bump static_scene_revision "
+                              u8"(removing a caster leaves its stale shadows in the cache)");
                     return 9;
                 }
 

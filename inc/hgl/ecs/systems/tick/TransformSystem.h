@@ -28,6 +28,7 @@ namespace hgl::ecs
         bool updateMovable = true;
         TransformAssignmentBuffer* transform_buffer = nullptr;
         uint32_t last_static_count = 0;
+        uint64_t last_static_change_seq = 0;   ///< 批 1.1 B4：上次上报的静态变更序号（独立于 matrixDirty）
         bool static_dirty = true;
         std::vector<TransformDataStorage::HandleID> static_handles;
         std::vector<TransformDataStorage::HandleID> dynamic_handles;

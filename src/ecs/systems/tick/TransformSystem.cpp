@@ -188,6 +188,16 @@ namespace hgl::ecs
                                          ToChangeMask(TransformChange::WorldMatrix) |
                                          ToChangeMask(TransformChange::Mobility);
 
+            auto *static_storage = world ? world->GetTransformStorage() : nullptr;
+
+            // 批 1.1 B4：静态变更的**独立信号**。为什么不能只看 has_dirty_static —— `Update()` 开头的
+            // `UpdateDirtyWorldMatricesFlat()` 会先把 `matrixDirty` 清掉，于是正常帧序（Update → Submit）下
+            // `ShouldUpdateTransform` 的第一道门 `!IsDirty(id)` 恒真 ⇒ has_dirty_static 恒假 ⇒
+            // revision 永不递增（移动/删除静态物体都不会让静态级联阴影缓存失效）。
+            // 存储侧的单调序号只增不减，与 per-row 脏位的生命周期解耦。
+            const uint64_t static_change_seq = static_storage ? static_storage->GetStaticChangeSeq() : 0u;
+            const bool static_scene_changed  = (static_change_seq != last_static_change_seq);
+
             bool has_dirty_static = false;
 
             // 结构性遍历（内部跳空洞）——裸遍历会把空洞（INVALID_TRANSFORM_ID）
@@ -198,7 +208,7 @@ namespace hgl::ecs
                     has_dirty_static = true;
             });
 
-            if (has_dirty_static)
+            if (has_dirty_static || static_scene_changed)
             {
                 UpdateStaticDirty();
 
@@ -209,11 +219,11 @@ namespace hgl::ecs
                 // 这个位置有两个刻意选择：①在下面的 transform_buffer 早退**之前**，
                 // 无图形设备的路径（单元测试）同样成立；②只在真有静态变更时做
                 // （O(N) 只在罕见事件上付，稳态每帧仍是早退）。
-                if (auto *storage = world->GetTransformStorage())
+                if (static_storage)
                 {
                     world->ForEachStaticTransform([&](TransformID id)
                     {
-                        storage->ArmWrite(id);
+                        static_storage->ArmWrite(id);
                     });
                 }
 
@@ -222,6 +232,9 @@ namespace hgl::ecs
                 // EnvironmentSystem 在 RenderPreBeginFrame 比对消费（同帧失效，
                 // 当帧 prepass 即重建）。
                 world->BumpStaticSceneRevision();
+
+                // 批 1.1 B4：消费掉本次序号（重复提交不再递增 —— 静态级联不会每帧全量重建）
+                last_static_change_seq = static_change_seq;
             }
         }
 

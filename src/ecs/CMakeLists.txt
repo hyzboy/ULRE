@@ -367,9 +367,10 @@ if(BUILD_TESTING)
         NAME TestTransformFlatStorage
         COMMAND TestTransformFlatStorage
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    # TIMEOUT：B2 的父环回归一旦复发就是**挂死**（死循环），加超时把挂死变成测试失败
     set_tests_properties(
         TestTransformFlatStorage
-        PROPERTIES LABELS "ecs;transform")
+        PROPERTIES LABELS "ecs;transform" TIMEOUT 120)
 
     add_test(
         NAME TestRenderItemDataStorage

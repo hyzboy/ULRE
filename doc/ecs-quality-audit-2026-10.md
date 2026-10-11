@@ -9,6 +9,10 @@
 > - `S1` = systems/components 分组、`S2` = core 分组、`S3` = support 分组、`M` = 我方
 > - 数字行号以审计当时的工作树为准（工作树含 `69df4fdde` 之后的框架简化）
 
+> **交叉评审入口（2026-10-11）**：`doc/ecs-deep-audit-crossreview-2026-10.md` 对本档与 `doc/ecs-deep-quality-audit-and-evidence-2026-10.md` 做了逐条取证（@`e8ee755fd` 行号、订正后的分批判据、文档回扫清单）。**本档历史原貌保留**（处置记录不改写），只加两条事实订正：
+> · chunk 4 处置表内「非 const 版 `GetAllEntityPointers`（**const 版才是活的**：`Context::GetAllEntities` 在用）」**已被后续改动反转** —— `Context::GetAllEntities` 自己现零调用者 ⇒ const 版与其调用者都成了死接口（全仓 5 命中，全在自身声明/定义处）。
+> · §5 表「`SyncRenderTargetViewport()`」的行号已随文件搬迁失效（现 `src/ecs/core/ContextRender.cpp`，`Context.cpp` 侧不存在）。
+> · **同类判错（§4.2 硬编码约定行）**：「`RenderItemHandle 0` 作空句柄」**错** —— 0 是首个合法句柄，无效值是 `UINT32_MAX`（`inc/hgl/graph/render/RenderItemDescriptor.h:44`）。
 ---
 
 ## 0. 两个真正的缺陷（优先级高于一切"代码质量"项）
