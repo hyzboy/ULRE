@@ -370,6 +370,13 @@ if(MSVC)
     set_target_properties(ProbeWarnLatchPerWorld PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# S1/S2 判据：同类型系统替换必须摘旧实例；裸行池 Row() 必须验活跃（+ 两个池语义对齐 + 析构顺序钉）
+add_executable(TestSystemReplaceAndPoolLiveness support/TestSystemReplaceAndPoolLiveness.cpp)
+target_link_libraries(TestSystemReplaceAndPoolLiveness PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestSystemReplaceAndPoolLiveness PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -443,4 +450,12 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestVisibilityStorage
         PROPERTIES LABELS "ecs;visibility")
+
+    add_test(
+        NAME TestSystemReplaceAndPoolLiveness
+        COMMAND TestSystemReplaceAndPoolLiveness
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestSystemReplaceAndPoolLiveness
+        PROPERTIES LABELS "ecs;registry" TIMEOUT 60)
 endif()
