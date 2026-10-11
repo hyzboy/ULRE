@@ -18,6 +18,7 @@ set(SHADERGEN_COMMON_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSource.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderLibraryPath.h
+    ${SHADERGEN_INCLUDE_PATH}/VkEnumText.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCacheRoot.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModule.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeResourceManifest.h
