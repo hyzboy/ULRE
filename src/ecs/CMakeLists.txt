@@ -382,6 +382,13 @@ if(MSVC)
     set_target_properties(TestFramePrepareOncePerFrame PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# §3-②/⑥ 判据：相机纯读（Resolve）与认领（Ensure）分离（+ 实体级相机模板编译期禁死）
+add_executable(TestCameraResolveAndClaim support/TestCameraResolveAndClaim.cpp)
+target_link_libraries(TestCameraResolveAndClaim PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestCameraResolveAndClaim PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -470,4 +477,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestFramePrepareOncePerFrame
         PROPERTIES LABELS "ecs;render" TIMEOUT 60)
+
+    add_test(
+        NAME TestCameraResolveAndClaim
+        COMMAND TestCameraResolveAndClaim)
+    set_tests_properties(
+        TestCameraResolveAndClaim
+        PROPERTIES LABELS "ecs;camera" TIMEOUT 60)
 endif()

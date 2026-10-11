@@ -148,17 +148,33 @@ namespace hgl
             /// 获取当前场景中激活的主相机组件（= 三级解析结果，同时认领 0 号槽）
             CameraComponent *GetMainCameraComponent();
 
-            /// 本 pass 生效相机：pass 覆盖相机（RenderTo(req.camera) 期间）优先，否则本世界主相机。
-            /// 相机数据一律以**组件自己的** CameraInfo 为准（世界共享载体已退役）。
-            CameraComponent* GetActiveCameraComponent();
+            /// 本 pass 生效相机（**认领版**，§3-⑥ 2026-10-11）：pass 覆盖相机（`RenderTo(req.camera)`
+            /// 期间）优先，否则本世界主相机 —— 必要时**认领 0 号槽 / 生成常驻 fallback**。
+            /// 只给**渲染前置路径**用（渲染必须有一个相机）；只读意图请用 `ResolveActiveCamera()`。
+            /// （旧名 `GetActiveCameraComponent` 名不符实：名字像 Getter、实际会写世界 ⇒ 已改名。）
+            CameraComponent* EnsureActiveCamera();
 
-            /// 本 pass 生效相机的 CameraInfo（= 组件自己的 camera_info；无相机时为 nullptr）
+            /// 本 pass 生效相机（**纯读**，§3-⑥）：pass 覆盖相机优先，否则本世界主相机；
+            /// **不认领 0 号槽、不生成 fallback、不改任何世界状态**；解析不到 ⇒ nullptr。
+            /// 只读意图（gizmo 朝向 / 拾取射线 / 诊断）一律走这里。
+            const CameraComponent* ResolveActiveCamera() const;
+
+            /// 本 pass 生效相机的 CameraInfo（= 组件自己的 camera_info；无相机时为 nullptr）。
+            /// 认领版：渲染路径用（会认领 0 号槽 / 必要时生成 fallback）。
             const graph::CameraInfo* GetActiveCameraInfo();
+
+            /// 本 pass 生效相机的 CameraInfo（**纯读**，§3-⑥）：不认领、不生成 fallback；
+            /// 世界当前解析不到相机 ⇒ nullptr。
+            const graph::CameraInfo* ResolveActiveCameraInfo() const;
 
         private:
 
             /// 收集所有摄像机组件 / Collect all camera components
-            std::vector<CameraComponent *> CollectCameras();      ///< T2-c：池活跃集视图（裸指针）
+            std::vector<CameraComponent *> CollectCameras() const;      ///< T2-c：池活跃集视图（裸指针）
+
+            /// 三级解析的**纯读**部分（§3-⑥）：只选择，不认领 0 号槽、不生成 fallback；
+            /// 解析不到 ⇒ nullptr（认领版 `SelectMainCamera` 在此之后补 fallback/升格）。
+            CameraComponent* SelectMainCameraPure(const std::vector<CameraComponent *> &cameras) const;
 
             /// 收集输入状态 / Collect input state
             void CollectInput();

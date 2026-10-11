@@ -319,8 +319,9 @@ namespace hgl::ecs
             MarkAllCameraMatricesDirty();
     }
 
-    CameraComponent* CameraSystem::GetActiveCameraComponent()
+    CameraComponent* CameraSystem::EnsureActiveCamera()
     {
+        // §3-⑥（2026-10-11）：本函数是**认领版**（名字已改，暴露"会写世界"）。
         // pass 覆盖相机优先（离屏 pass 期间"本 pass 生效相机"就是它），否则走**本世界主相机的
         // 三级解析**（复用 GetMainCameraComponent ⇒ 与 Update/PublishCameraRows 同一套解析与
         // 幂等认领：① 已有默认相机 ② is_main_camera ③ 最小 EntityID ④ 常驻 fallback）。
@@ -330,9 +331,26 @@ namespace hgl::ecs
         return GetMainCameraComponent();
     }
 
+    const CameraComponent* CameraSystem::ResolveActiveCamera() const
+    {
+        // §3-⑥（2026-10-11）：**纯读** —— 与 EnsureActiveCamera 共用同一套解析顺序
+        // （`SelectMainCameraPure`），但停在"选出"这一步：不认领 0 号槽、不生成 fallback。
+        // 世界当前一个相机都没有 ⇒ 返回 nullptr（调用方按"没有相机"处理，而不是给它造一个）。
+        if (override_camera)
+            return override_camera;
+
+        return SelectMainCameraPure(CollectCameras());
+    }
+
     const graph::CameraInfo* CameraSystem::GetActiveCameraInfo()
     {
-        CameraComponent* camera = GetActiveCameraComponent();
+        const CameraComponent* camera = EnsureActiveCamera();
+        return camera ? &camera->camera_info : nullptr;
+    }
+
+    const graph::CameraInfo* CameraSystem::ResolveActiveCameraInfo() const
+    {
+        const CameraComponent* camera = ResolveActiveCamera();
         return camera ? &camera->camera_info : nullptr;
     }
 
@@ -428,7 +446,7 @@ namespace hgl::ecs
             first_update_pending = false;
     }
 
-    std::vector<CameraComponent *> CameraSystem::CollectCameras()
+    std::vector<CameraComponent *> CameraSystem::CollectCameras() const
     {
         // T2-c：组件收集 = **池的活跃集视图**（裸指针；生命期 = 池行生命期）。
         // 收集路径不再经过 shared_ptr 注册表（旧的 `vector<shared_ptr<CameraComponent>>` 形态是
@@ -683,9 +701,11 @@ namespace hgl::ecs
     }
 
 
-    CameraComponent* CameraSystem::SelectMainCamera(const std::vector<CameraComponent *> &cameras)
+    CameraComponent* CameraSystem::SelectMainCameraPure(const std::vector<CameraComponent *> &cameras) const
     {
-        // 三级解析（doc/world-addresses-and-camera-model-plan.md §3）：渲染**必须**有一个相机。
+        // §3-⑥（2026-10-11）：三级解析的**纯读**部分（doc/world-addresses-and-camera-model-plan.md §3）。
+        // 只做选择：不改 0 号槽归属、不生成 fallback。认领版 `SelectMainCamera` 复用本函数 ⇒
+        // 两条公开口不会各有一套解析逻辑（否则又是"两份真值"）。
         if (!context)
             return nullptr;
 
@@ -703,7 +723,7 @@ namespace hgl::ecs
         for (CameraComponent *camera : cameras)
         {
             if (camera && camera->is_main_camera)
-                return ClaimDefaultCamera(camera);
+                return camera;
         }
 
         // ③ 已加载实体中 **EntityID 最小**的相机（同实体多相机按组件注册顺序 ⇒ 集合序即可）
@@ -718,10 +738,28 @@ namespace hgl::ecs
         }
 
         if (best)
-            return ClaimDefaultCamera(best);
+            return best;
 
-        // ④ 世界内一个相机组件都没有 ⇒ 强制生成常驻 fallback（(0,0,0)、占 0 号槽）
-        return context->EnsureFallbackCamera();
+        // ④ 没有**实体相机**：当前 0 号槽宿主就是生效相机（常驻 fallback / 系统内建相机 —— 它们
+        // 不经实体组件注册，`CollectCameras()` 看不到）⇒ 纯读返回它；世界连 0 号槽都空 ⇒ nullptr。
+        // （认领版在此之后才补"没有就生成常驻 fallback"。）
+        return context->GetDefaultCamera();
+    }
+
+    CameraComponent* CameraSystem::SelectMainCamera(const std::vector<CameraComponent *> &cameras)
+    {
+        // §3-⑥（2026-10-11）：**认领版** —— 在纯读结果之上补齐"渲染必须有一个相机"的契约：
+        // ① 结果已是 0 号槽宿主 ⇒ 直接用；②/③ 选中的相机 ⇒ 升格为默认相机；④ 一个都没有 ⇒
+        // 生成常驻 fallback。三种情况的落点都是"谁是 0 号槽的宿主"。
+        CameraComponent *selected = SelectMainCameraPure(cameras);
+
+        if (!selected)
+            return context ? context->EnsureFallbackCamera() : nullptr;     // ④
+
+        if (context && context->GetDefaultCamera() == selected)
+            return selected;                                                // ①
+
+        return ClaimDefaultCamera(selected);                                // ②/③
     }
 
     CameraComponent* CameraSystem::ClaimDefaultCamera(CameraComponent *camera)

@@ -488,6 +488,13 @@ namespace hgl
             return camera_system ? camera_system->GetActiveCameraInfo() : nullptr;
         }
 
+        const graph::CameraInfo* ECSContext::ResolveActiveCameraInfo() const
+        {
+            // §3-⑥：纯读转发（不认领、不造 fallback）
+            auto camera_system = GetSystem<CameraSystem>();
+            return camera_system ? camera_system->ResolveActiveCameraInfo() : nullptr;
+        }
+
         // ==== 相机（世界级资源：16 槽 × 帧槽，0 号槽恒为本世界默认相机）====
         // 「相机属于哪个世界 / 哪个槽」的唯一真源 = camera_info_storage 的槽账目（槽 → 宿主弱引用）。
 
@@ -555,36 +562,60 @@ namespace hgl
 
         // 实体 → 相机（世界级读取口；与 GetMaterialData / GetGeometryData 同族）。
         // 相机是**世界级资源**（槽账目在 camera_info_storage），实体只是宿主：
-        // 示例/系统取相机一律走这里，不走 Entity::GetComponent<CameraComponent>
-        // （那会形成第二个读取入口 ⇒ 组件级旧读法 vs 世界级访问器成双真值）。
+        // 示例/系统取相机一律走这里。
+        //
+        // §3-②（2026-10-11）：这四个口与 `GetOrCreateCamera` **不再**经 `ComponentOfEntity<T>` /
+        // `GetOrAddComponentOfEntity<T>`（那两者内部用 `Entity::GetComponent<T>` / `AddComponent<T>`，
+        // 而这两个模板已对 `CameraComponent` **编译期禁死**）—— 改走同一套"行号 → 池行"路径
+        // （`Entity::GetComponentRow` + `ECSContext::GetComponentByRow`），语义逐字一致。
         const CameraComponent* ECSContext::GetCameraByEntity(const EntityID owner) const
         {
-            return ComponentOfEntity<CameraComponent>(GetEntity(owner));
+            const Entity *entity = GetEntity(owner);
+
+            return entity ? GetComponentByRow<CameraComponent>(
+                                entity->GetComponentRow(ComponentTypeOf<CameraComponent>::value))
+                          : nullptr;
         }
 
         CameraComponent* ECSContext::GetCameraByEntity(const EntityID owner)
         {
-            return ComponentOfEntity<CameraComponent>(GetEntity(owner));
+            Entity *entity = GetEntity(owner);
+
+            return entity ? GetComponentByRow<CameraComponent>(
+                                entity->GetComponentRow(ComponentTypeOf<CameraComponent>::value))
+                          : nullptr;
         }
 
         const CameraComponent* ECSContext::GetCameraByEntity(const Entity *owner) const
         {
-            return ComponentOfEntity<CameraComponent>(owner);
+            return owner ? GetComponentByRow<CameraComponent>(
+                               owner->GetComponentRow(ComponentTypeOf<CameraComponent>::value))
+                         : nullptr;
         }
 
         CameraComponent* ECSContext::GetCameraByEntity(Entity *owner)
         {
-            return ComponentOfEntity<CameraComponent>(owner);
+            return owner ? GetComponentByRow<CameraComponent>(
+                               owner->GetComponentRow(ComponentTypeOf<CameraComponent>::value))
+                         : nullptr;
         }
 
         CameraComponent* ECSContext::GetOrCreateCamera(const EntityID owner, const std::string& name)
         {
-            return GetOrAddComponentOfEntity<CameraComponent>(GetEntity(owner), name);
+            return GetOrCreateCamera(GetEntity(owner), name);
         }
 
         CameraComponent* ECSContext::GetOrCreateCamera(Entity *owner, const std::string& name)
         {
-            return GetOrAddComponentOfEntity<CameraComponent>(owner, name);
+            // §3-②（2026-10-11）：相机**唯一创建入口** —— 不再经 `Entity::AddComponent<CameraComponent>`
+            // （已编译期禁死），改走世界侧的 `CreateComponent<CameraComponent>`（同一挂载路径）。
+            if (!owner)
+                return nullptr;
+
+            if (CameraComponent *existing = GetCameraByEntity(owner))
+                return existing;
+
+            return CreateComponent<CameraComponent>(owner, name);
         }
 
         bool ECSContext::ReleaseCameraSlot(const CameraComponent* camera)

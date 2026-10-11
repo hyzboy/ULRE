@@ -521,8 +521,15 @@ namespace hgl
 
             /// **本 pass 生效相机**的 CameraInfo（组件自己的那份，没有世界共享载体）。
             /// 离屏 pass 期间 = `RenderTo(req.camera)` 的相机（如 CSM 光相机），主帧 = 本世界主相机。
-            /// 剔除 / gizmo / Line 视锥 / shadow origin 统一读这里，不要各自缓存指针。
+            /// **认领版**（会认领 0 号槽 / 必要时生成常驻 fallback）：
+            /// 剔除 / Line 视锥 / shadow origin 等**渲染侧**统一读这里，不要各自缓存指针。
             const graph::CameraInfo* GetActiveCameraInfo();
+
+            /// **纯读版**（§3-⑥ 2026-10-11）：不认领 0 号槽、不生成 fallback、不改世界状态；
+            /// 世界当前解析不到相机 ⇒ nullptr。
+            /// **只读意图（gizmo 朝向 / 拾取射线 / 诊断）一律走这里** —— 走认领版会让"读一次"变成
+            /// "改世界"（空世界凭空多出常驻 fallback 相机并占 0 号槽；有相机时会把某个相机升格）。
+            const graph::CameraInfo* ResolveActiveCameraInfo() const;
 
             /// 本世界**生效**的 env profile：显式设置优先，否则取本世界 RT 的 env_profile，再退回
             /// 内置 default。世界表里的 `addr_ambient_env` / `addr_shadow` 按它解析。
@@ -1143,12 +1150,21 @@ namespace hgl
         template<typename T, typename... Args>
         T *Entity::AddComponent(Args &&...args)
         {
+            // §3-②（2026-10-11）：相机是**世界级资源**，实体只是宿主 ⇒ 实体级挂载**编译期禁死**。
+            // 组件级挂载曾是"第二套相机创建入口"（与世界上级访问器成双入口）。
+            static_assert(!std::is_same_v<T, CameraComponent>,
+                          "相机不能经 Entity::AddComponent 挂载：走世界级入口 ECSContext::GetOrCreateCamera");
+
             return context ? context->CreateComponent<T>(this, std::forward<Args>(args)...) : nullptr;
         }
 
         template<typename T>
         T *Entity::GetComponent() const
         {
+            // §3-②（2026-10-11）：同上，实体级**读取**相机也编译期禁死（曾是第二个读取入口 ⇒ 双真值）。
+            static_assert(!std::is_same_v<T, CameraComponent>,
+                          "相机不能经 Entity::GetComponent 读取：走世界级入口 ECSContext::GetCameraByEntity");
+
             return context ? context->GetComponentByRow<T>(GetComponentRow(ComponentTypeOf<T>::value)) : nullptr;
         }
 

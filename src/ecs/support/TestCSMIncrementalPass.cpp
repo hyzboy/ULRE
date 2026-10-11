@@ -1237,7 +1237,8 @@ int main(int argc, char** argv)
 
             auto e_cam = ctx.CreateEntity<Entity>("TestMainCamera");
             // T2-c：实体相机住世界相机行（行内持 shared_ptr —— 世界相机槽账目按宿主弱引用计占用期）
-            CameraComponent *cam_comp = e_cam->AddComponent<CameraComponent>();
+            // §3-②：相机不再有实体级挂载口（已编译期禁死）⇒ 走世界级唯一入口
+            CameraComponent *cam_comp = ctx.GetOrCreateCamera(e_cam->GetEntityID());
             cam_comp->is_main_camera = true;
             cam_comp->position = math::Vector3f(12.0f, 34.0f, 56.0f);
 
@@ -4627,12 +4628,18 @@ int main(int argc, char** argv)
                 // （2026-10-10 审计 §1.1）：`ECSContext` 的四个 ShadowProxy 包装重载全仓零调用者，已删 ⇒
                 // 该条"计数式直通契约"迁到组件侧自由函数上（见本块末尾 kDirectFree），这里只钉**禁复活**。
                 { "GetShadowProxy",                                          0, "ECSContext 的 ShadowProxy 包装已删（禁复活；指针版走组件侧自由函数）" },
-                { "return ComponentOfEntity<CameraComponent>(owner);",      2, "相机指针版必须直通核心" },
+                // §3-②（2026-10-11）：相机访问器不再经 `ComponentOfEntity<T>`（该模板内部实例化
+                // `Entity::GetComponent<T>`，而相机类型已被**编译期禁死**）⇒ 针改为钉"直通行号→池行"
+                // 的新形态（仍是 2 条指针版、仍然不经 GetEntity 往返，意图逐字保留）。
+                { "owner->GetComponentRow(ComponentTypeOf<CameraComponent>::value)", 2, "相机指针版必须直通核心（行号→池行）" },
 
                 // 指针版「无则创建」**直通**（各一条：创建必须能改实体）
                 { "return GetOrAddComponentOfEntity<GeometryData>(owner);", 1, "GeometryData「无则创建」指针版必须直通核心" },
                 { "return GetOrAddComponentOfEntity<MaterialData>(owner);", 1, "MaterialData「无则创建」指针版必须直通核心" },
-                { "return GetOrAddComponentOfEntity<CameraComponent>(owner, name);", 1, "相机「无则创建」指针版必须直通核心" },
+                // §3-②：相机「无则创建」的指针版同样改走世界侧直通（判存在 + 世界侧创建），
+                // 不再经 `GetOrAddComponentOfEntity<T>`（其内部实例化被禁的两个 Entity 模板）。
+                { "if (CameraComponent *existing = GetCameraByEntity(owner))",       1, "相机「无则创建」指针版必须直通判存在（不经 ID→Entity 往返）" },
+                { "return CreateComponent<CameraComponent>(owner, name);",           1, "相机创建的指针版必须直通核心（绕开已禁死的 Entity::AddComponent）" },
 
                 // ID 版**每个重载解析一次**：少了 = 有人跳过解析（返回垃圾/nullptr）
                 { "GetEntity(owner)",                                       9, "EntityID 版必须每个重载各解析一次 GetEntity（9 = 组件访问器 EntityID 重载数；2026-10-10 删 ShadowProxy 两条 ⇒ 11→9）" },

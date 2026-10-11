@@ -393,7 +393,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 - **4 种读组件行**：`Entity::GetComponent<T>` / `GetComponentByRow<T>` / `GetComponents<T>` / `GetTypedPool<T>`，全汇入同一 pool slot。`S2`
 - **4 种实体遍历**，含被头文件自己标注"新增消费者一律不要用"的 `GetAllEntityPointers`（每条实体指针一个 vector 元素 = 每帧一次堆分配）—— 而 `RenderGraph.cpp:180-181` 的 `GatherSceneStats` **仍在热路径用它**。`S2`
 - **5 个重叠销毁入口 + 双重 detach**：`EntityManager.cpp:50` 显式 `DetachAllComponents()`，紧接着 `~Entity()`（`Entity.cpp:16`）**再调一次** ⇒ 每销毁一个实体付一次**必然全空**的 O(COMPONENT_TYPE_COUNT) 扫描。`S2`
-- **组件读取双域**：`Entity::GetComponent<T>`（实体级）vs `GetMaterialData/GetGeometryData/GetShadowProxy/GetCameraByEntity`（世界级）。`Context.h:560-571` 自己警告实体级读法会成"第二个相机读取入口 ⇒ 双真值"。`M ✅复核`
+- **组件读取双域**：`Entity::GetComponent<T>`（实体级）vs `GetMaterialData/GetGeometryData/GetShadowProxy/GetCameraByEntity`（世界级）。`Context.h:560-571` 自己警告实体级读法会成"第二个相机读取入口 ⇒ 双真值"。`M ✅复核`。**已处置（2026-10-11，§3-②）：相机类型的 `Entity::GetComponent<T>` / `AddComponent<T>` 已**编译期禁死**（`static_assert` 指向世界级入口），四条 `GetCameraByEntity` 与两条 `GetOrCreateCamera` 改走"行号 → 池行"直通（不再实例化被禁模板）**
 
 ### 3.3 变换遍历两条路（同一函数内混用）✅复核
 `Context.h:778-783` 用重笔警告裸遍历 `GetStaticTransforms()/GetMovableTransforms()` 会把空洞当有效 id，"**越界崩溃（2026-10-02 实测）**"，要求一律用 `ForEach*`。而 `TransformSystem.cpp` **两种风格混用**：安全路径 `:98,162,195,214`；危险路径 `:181,265,266,271,303,334,345,358,365,489,490`（靠手写 `if (!IsValidTransformID(handle)) continue;` 兜住 ⇒ 复制了 `ForEach*` 已封装的跳洞逻辑，漏一处即复现崩溃）。附带 `:265/271`、`:266/303` 是同数组重复绑定。
@@ -456,7 +456,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | ~~`RegisterTickSystem` / `RegisterRenderSystem`~~ | — | ✅ **已删（2026-10-09）**：合并为 `RegisterSystem<T>(args...)`；分类唯一权威 = 相位 |
 | `Object::GetID()` | `core/Object.h:46` | 标识不了任何东西（零读者）✅复核 |
 | `ECSContext::GetActiveCameraID()` | `Context.h:517` | 零调用者；真正的调用点用 `GetActiveCameraRow()` ✅复核（另见 §6） |
-| `CameraSystem::GetActiveCameraComponent()` | `CameraSystem.cpp:275-284` | **读操作写世界状态**（经 `GetMainCameraComponent` → "幂等**认领**" ⇒ `SetDefaultCamera`）✅复核 |
+| `CameraSystem::GetActiveCameraComponent()` | `CameraSystem.cpp:275-284` | **读操作写世界状态**（经 `GetMainCameraComponent` → "幂等**认领**" ⇒ `SetDefaultCamera`）✅复核。**已处置（2026-10-11，§3-⑥）：改名 `EnsureActiveCamera()`（认领版）+ 新增纯读 `ResolveActiveCamera()` / `ECSContext::ResolveActiveCameraInfo()`；gizmo ×2 与拾取示例已迁到纯读口** |
 | `SyncRenderTargetViewport()` | `Context.cpp:1143-1157` | 不同步 viewport，而是比较分辨率并触发 `OnResize` |
 | `UploadEntityGPUDirtyRows(uint32_t frame_slot)` | `Context.h:446` | 写全部 8 份并丢弃参数；兄弟上传函数无参数 |
 | `RenderGraph::Pass::runUpdate` | `RenderGraph.h:41-42` | 相位下界被替换为 `RenderDrawSubmit`，文档语义对所有 pass 均错 |
