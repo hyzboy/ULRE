@@ -10,7 +10,7 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderBuildContext *
 {
     name=n;
     geometry=ctx->GetPrimitiveType();
-    shader_resource_schema=ctx->GetShaderResourceSchema();
+    requires_recipe_runtime_rows=ctx->RequiresRecipeRuntimeRows();
     program_key=ctx->GetProgramLink().BuildKey();
 
     // mesh 化后无 VBO 顶点输入布局（VS 遗留 vertex_input 已删）

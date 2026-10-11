@@ -7,10 +7,8 @@
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
-#include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
-#include <hgl/mtl/DescriptorContract.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
@@ -67,11 +65,9 @@ namespace hgl::graph::mtl
 
         hgl::graph::PrimitiveType primitive_type = hgl::graph::PrimitiveType::Triangles;
 
-        // Phase 3: resource contract
+        // Phase 3: resource manifest
         ShaderCodeResourceManifest manifest;
         MaterialDefinition manifest_definition;
-        std::vector<SerializedDescriptorEntry> descriptors;
-        mtl::DescriptorContract descriptor_contract;
 
         // Phase 4: stage sources
         std::string ms;   // mesh stage（唯一顶点路径——VS 已废弃）

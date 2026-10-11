@@ -1,11 +1,9 @@
-#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
-#include <hgl/mtl/DescriptorContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
@@ -31,7 +29,6 @@
 #include <hgl/mtl/ShaderStructureDump.h>
 #include <fstream>
 #include <filesystem>
-#include "../../ShaderGen/builder/DefinitionDescriptorBuilder.h"
 #include "../../ShaderGen/builder/GenericMaterialBuilder.h"
 #include <hgl/mtl/MeshShaderLimits.h>
 #include "VertexBuilderCommon.h"
@@ -231,19 +228,6 @@ namespace
     static hgl::OSString RepoRootOSPath(const char *suffix)
     {
         return hgl::ToOSString(RepoRootPath(suffix));
-    }
-
-    static GateResult RunValidationCase(const char *name,
-                                        const SerializedDescriptorEntry *entries,
-                                        const uint32_t count,
-                                        const bool expected_pass)
-    {
-        GateResult result;
-        result.name = name ? name : "<unnamed>";
-
-        const ShaderResourceSchema schema = BuildShaderResourceSchema(entries, count);
-        result.passed = (ValidateShaderResourceSchema(schema, result.diagnostics) == expected_pass);
-        return result;
     }
 
     static bool CheckVertexEntries(const std::vector<SerializedVertexEntry> &actual,
@@ -1946,10 +1930,8 @@ namespace
                     const auto has_material_resource =
                         [](const ShaderBuildContext &spec)
                     {
-                        // A6-2b-b2：数据槽需求不再以 descriptor 契约条目表达，
-                        // schema.requires_runtime_data_rows 直判承载。
-                        return spec.GetShaderResourceSchema()
-                            .requires_runtime_data_rows;
+                        // 运行时数据行需求由编译期直判信号承载（2026-10-11 S1）。
+                        return spec.RequiresRecipeRuntimeRows();
                     };
                     // sky 已 BDA 化（不在任何 shader 的资源声明里）⇒ 原「depth 不得携带
                     // sky 资源」的检查已结构性成立，随 SkyInfo 语义退场一并删除。
@@ -4307,8 +4289,6 @@ namespace
                         lit_definition))
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare TOML-aligned texture references");
-                // A6-2b-b2：行表需求不再经 descriptor 契约条目（BuildDescriptorsFromDefinition
-                // 只产 UBO），由编译配置 material_private_data 直判。
             }
 
             const char *derivative_root = ntb_derivative->name;
@@ -4683,9 +4663,7 @@ namespace
         result.name = "Z.material-bda-emitter";
         const MaterialShaderCompilerInput compiler_input{
             "MaterialPrivateDataMaterial",
-            PrimitiveType::Triangles,
-            nullptr,
-            0
+            PrimitiveType::Triangles
         };
 
         MaterialCompileConfig config{};
@@ -4798,9 +4776,7 @@ namespace
 
         MaterialShaderCompilerInput texture_compiler_input{
             "MaterialTextureReferenceOnly",
-            PrimitiveType::Triangles,
-            nullptr,
-            0};
+            PrimitiveType::Triangles};
         MaterialCompileConfig texture_config{};
         texture_config.material_private_data = GlobalSSBOType::PBRSurface;
         texture_config.material_definition = &texture_definition;
@@ -4821,8 +4797,7 @@ namespace
         }
         else
         {
-            if (!texture_build_spec->GetShaderResourceSchema()
-                    .requires_runtime_data_rows)
+            if (!texture_build_spec->RequiresRecipeRuntimeRows())
             {
                 result.diagnostics.emplace_back(
                     "pure texture material did not require runtime address rows");
@@ -4874,26 +4849,11 @@ namespace
 
         // 固定 ABI 的 set/binding 宏唯一真源是 descriptor_macros.glsl（生成物）。
         // 编译器不得再注入 #define（原 kBindingDefineTable 注入路径已删除，Phase 3）。
-        // 输入 GLSL 特意 include 并使用宏（与真实模板一致），且携带 LocalToWorld
-        // 描述符——旧注入路径会因此向 mesh 阶段注入 L2W_SET/L2W_BINDING。
-        const SerializedDescriptorEntry descriptors[] = {
-            {
-                DescriptorSetType::Bindless,
-                uint32_t(hgl::graph::kMeshFragment),
-                "l2w",
-                "LocalToWorldData",
-                nullptr,
-                DescriptorSemantic::LocalToWorld,
-                SSBOType::UserDefined,
-                GlobalSSBOType::PBRSurface,
-                DescriptorSemanticLayer::SSBO
-            }
-        };
+        // 输入 GLSL 特意 include 并使用宏（与真实模板一致）——旧注入路径会因此向
+        // mesh 阶段注入 L2W_SET/L2W_BINDING（该注入路径已删除，本用例钉住不许复活）。
         const MaterialShaderCompilerInput compiler_input{
             "BindingMacroSingleSourceMaterial",
-            PrimitiveType::Triangles,
-            descriptors,
-            1
+            PrimitiveType::Triangles
         };
 
         MaterialCompileConfig config{};
@@ -4958,123 +4918,6 @@ namespace
         }
 
         delete build_spec;
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunDescriptorContractCase()
-    {
-        GateResult result;
-        result.name = "W1.material-descriptor-contract";
-
-        ShaderResourceSchema persistent_layout;
-        DescriptorContract first_contract{};
-        DescriptorContract second_contract{};
-        {
-            std::string texture_name = "bindless_texture";
-            std::string texture_struct = "MaterialTextureData";
-            std::string material_name = "mtl_private_data";
-            std::string material_struct = "PBRSurfaceData";
-            SerializedDescriptorEntry entries[] =
-            {
-                {
-                    DescriptorSetType::Bindless,
-                    uint32_t(hgl::graph::kMeshFragment),
-                    texture_name.c_str(),
-                    texture_struct.c_str(),
-                    nullptr,
-                    DescriptorSemantic::MaterialTexture,
-                    SSBOType::UserDefined,
-                    GlobalSSBOType::PBRSurface,
-                    DescriptorSemanticLayer::Texture
-                },
-                {
-                    DescriptorSetType::Bindless,
-                    uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                    material_name.c_str(),
-                    material_struct.c_str(),
-                    nullptr,
-                    DescriptorSemantic::MaterialPrivateData,
-                    SSBOType::UserDefined,
-                    GlobalSSBOType::PBRSurface,
-                    DescriptorSemanticLayer::SSBO,
-                    MakeRecipeSSBOId(0),
-                    true,
-                    true,
-                    false
-                }
-            };
-            std::vector<SerializedDescriptorEntry> reversed{
-                entries[1], entries[0]
-            };
-
-            if (!BuildDescriptorContract(
-                    entries, 2, first_contract)
-             || !BuildDescriptorContract(
-                    reversed, second_contract)
-             || GetDescriptorContractHash(first_contract)
-                    != GetDescriptorContractHash(second_contract)
-             || !BuildResourceSchemaFromContract(
-                    first_contract, persistent_layout))
-            {
-                result.diagnostics.emplace_back(
-                    "descriptor contract build/hash/layout failed");
-            }
-
-            SerializedDescriptorEntry visibility_changed_entries[] =
-            {
-                entries[0], entries[1]
-            };
-            visibility_changed_entries[1].stage_flags =
-                uint32_t(hgl::graph::kMeshFragment);
-            DescriptorContract visibility_changed{};
-            if (!BuildDescriptorContract(
-                    visibility_changed_entries,
-                    2,
-                    visibility_changed)
-             || GetDescriptorContractHash(first_contract)
-                    == GetDescriptorContractHash(
-                        visibility_changed))
-            {
-                result.diagnostics.emplace_back(
-                    "descriptor stage visibility must affect contract hash");
-            }
-
-            // C1-T2 + 契约删减：DescriptorContract 即规范化条目数组本身，
-            // 直接校验契约条目（原 ConvertDescriptorContractToFixed 往返已删）
-            const auto &roundtrip = first_contract;
-            if (roundtrip.size() != 2
-             || std::strcmp(roundtrip[0].name, "bindless_texture") != 0
-             || std::strcmp(
-                    roundtrip[1].struct_name, "PBRSurfaceData") != 0)
-            {
-                result.diagnostics.emplace_back(
-                    "descriptor contract Fixed adapter mismatch");
-            }
-
-            SerializedDescriptorEntry duplicate_entries[] =
-            {
-                entries[0], entries[0]
-            };
-            DescriptorContract invalid_contract{};
-            if (BuildDescriptorContract(
-                    duplicate_entries, 2, invalid_contract))
-            {
-                result.diagnostics.emplace_back(
-                    "duplicate descriptor identities must be rejected");
-            }
-
-        }
-
-        if (persistent_layout.resources.size() != 2
-         || persistent_layout.resources[0].name != "bindless_texture"
-         || persistent_layout.resources[0].struct_name != "MaterialTextureData"
-         || persistent_layout.resources[1].struct_name != "PBRSurfaceData")
-        {
-            result.diagnostics.emplace_back(
-                "material layout did not retain owned descriptor strings");
-        }
-
         result.passed = result.diagnostics.empty();
         return result;
     }
@@ -5564,25 +5407,6 @@ int main(const int argc, char **argv)
 
     if (run_descriptor)
     {
-        constexpr SerializedDescriptorEntry valid_entries[] =
-        {
-            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "bindless_texture", "MaterialTextureData", nullptr, DescriptorSemantic::MaterialTexture, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::Texture },
-            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::SSBO },
-        };
-        results.push_back(RunValidationCase("A.valid-contract-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
-
-        constexpr SerializedDescriptorEntry unknown_semantic[] =
-        {
-            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
-        };
-        results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
-
-        constexpr SerializedDescriptorEntry generic_material_type[] =
-        {
-            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "EmissiveSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, SSBOType::LocalToWorld, GlobalSSBOType::EmissiveSurface, DescriptorSemanticLayer::SSBO },
-        };
-        results.push_back(RunValidationCase("B2.generic-material-type-hard-fail", generic_material_type, 1, false));
-
     }
 
     if (run_materialization) results.push_back(RunMaterializationSharedInstanceCase());
@@ -5623,7 +5447,6 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
-    if (run_descriptor) results.push_back(RunDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());

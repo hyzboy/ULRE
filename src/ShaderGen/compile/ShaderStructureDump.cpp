@@ -1,7 +1,6 @@
 /// ShaderStructureDump.cpp — 编译产物结构化快照（S4 试点实现）
 
 #include <hgl/mtl/ShaderStructureDump.h>
-#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <algorithm>
@@ -127,71 +126,12 @@ std::string DumpShaderStructure(const ShaderBuildContext &ctx, const char *label
         out += '\n';
     }
 
-    // ── 资源（结构 + set/binding）──────────────────────────────────────
-    // A6-2b 后契约恒只含 Scene UBO（全局集按帧绑，不注册进任何 per-material 分配器）——
-    // set/binding 不再有分配器可查，统一记 -1，文本按 set_type 区分 global/unallocated。
-    const ShaderResourceSchema &schema = ctx.GetShaderResourceSchema();
-
-    struct Row
-    {
-        int         set = -1;
-        int         binding = -1;
-        std::string text;
-    };
-
-    std::vector<Row> rows;
-    rows.reserve(schema.resources.size());
-
-    for (const ShaderResourceSlot &res : schema.resources)
-    {
-        int set = -1;
-        int binding = -1;
-
-        Row row;
-        row.set = set;
-        row.binding = binding;
-
-        // Scene 全局集已退场 ⇒ 无解出的 set/binding 一律记 "unallocated"
-        //（BDA 化后 per-material 分配器已整体删除，这是正常形态）。
-        const std::string set_text = set >= 0 ? std::to_string(set) : "unallocated";
-        const std::string binding_text = binding >= 0 ? std::to_string(binding) : "unallocated";
-
-        row.text = "resource";
-        AppendKV(row.text, "semantic", GetDescriptorSemanticName(res.semantic));
-        AppendKV(row.text, "layer", GetDescriptorSemanticLayerName(res.semantic_layer));
-        AppendKV(row.text, "declared_set", GetDescriptorSetTypeName(res.set_type));
-        AppendKV(row.text, "set", set_text);
-        AppendKV(row.text, "binding", binding_text);
-        AppendKV(row.text, "stages", StageBitsText(res.stage_flags));
-        AppendKV(row.text, "ssbo_type", GetSSBOTypeName(res.ssbo_type));
-        AppendKV(row.text, "name", res.name);
-        AppendKV(row.text, "struct", res.struct_name);
-        AppendKV(row.text, "required", res.required ? 1 : 0);
-        AppendKV(row.text, "fallback", res.allow_fallback ? 1 : 0);
-
-        rows.push_back(std::move(row));
-    }
-
-    // 顺序稳定化：(set, binding, 行文本) —— 不依赖内部容器顺序
-    std::sort(rows.begin(), rows.end(),
-        [](const Row &a, const Row &b)
-        {
-            if (a.set != b.set)
-                return a.set < b.set;
-            if (a.binding != b.binding)
-                return a.binding < b.binding;
-            return a.text < b.text;
-        });
-
-    out += "resource_count=";
-    out += std::to_string(rows.size());
+    // ── 资源需求（2026-10-11 S1：条目载体已删，只剩活信号）──────────────
+    // 旧资源表恒为空（唯一生产者已删）⇒ 表与 set/binding 列一并移除；
+    // 快照改为直报编译期直判信号。
+    out += "requires_recipe_runtime_rows=";
+    out += ctx.RequiresRecipeRuntimeRows() ? "1" : "0";
     out += '\n';
-
-    for (const Row &row : rows)
-    {
-        out += row.text;
-        out += '\n';
-    }
 
     return out;
 }

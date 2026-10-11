@@ -1,0 +1,289 @@
+# ShaderGen → ECS 材质链评审（MaterialRecipe 到材质行）
+
+> **快照**：HEAD = `73fa8ddae`（2026-10-11）；工作区在 `src/ShaderGen`、`inc/hgl/mtl`、`inc/hgl/ecs/**Material*`、`ShaderLibrary` 面**干净**。
+> **范围**：`ShaderLibrary/material/*.toml`（15 份）→ `MaterialDefinitionRegistry` → `ShaderProgramManager::AcquireShaderProgram`
+> → `BuildGenericMaterial`（5 相位）→ `CompileMaterial`（7 步）→ `ShaderBuildContext` → `FinalizeShaderBuildContext`（SPV 缓存/glslang）
+> → `ShaderProgram`；ECS 侧 `RenderPrimitiveCollectSystem` → `MaterialData::BuildResolvedRecipe` + `MaterialVariantTable::Intern`
+> + `MaterialRuntimeTable::Intern`/`AssignSlotRow` → 共享行/slot → `PipelineMaterialRenderer`。
+> **规模**：`src/ShaderGen` 12,242 行（36 个 .cpp/.h）+ `inc/hgl/mtl` 材质头 + 回归门 5,649 行。
+> **方法**：三路机械枚举（死代码 / 特例 / 平行真源）→ **逐条本机复核**（子代理结论不作为依据；下面每条都带可复跑的判据）。
+> **口径**：评审只做分析，本档不含任何代码改动。
+
+---
+
+## 1. 结论摘要
+
+| 级别 | 发现 | 一句话 |
+|---|---|---|
+| **高** | **A. 描述符契约层"活着但全空转"** | `BuildDescriptorsFromDefinition()` 忽略入参恒返回空 ⇒ `DescriptorContract.cpp` 296 行、`SerializedDescriptorEntry`、`ShaderResourceSchema.resources`、契约哈希全在空 vector 上跑；且入参路径无生产者 |
+| **高** | **B. `MaterialTextureSamplingOptions` 双端空转** | 解析 ~220 行 + 结构/hash ~75 行；**0 个材质 TOML 授权**（15 份全无）、**0 个运行时消费者**（30 处命中 = 23 门 + 3 解析 + 1 声明 + 3 无关注释） |
+| **中** | **C. 平行解析表** | 同一枚举的名字↔值映射被实现 2–3 份（`ParseCompareOp` ×2、filter/wrap ×2、采样器类型名 ×3）；T1 单一真源注册表**漏掉 7 个枚举** |
+| **中** | **D. 双份真值（同事实多处表达）** | 模板必需槽（表 vs 硬编码）、`double_sided` vs `cull_mode`、`vertex_node_config` ×3、recipe"已归一化"两态两套纪律 |
+| **中** | **F-1. 只写不读字段 5 处** | `material_row_cpu`/`material_texture_row_cpu`/`error_module_name`/`item_index`/`queue_family_count` —— 有赋值、**全仓 0 读取** |
+| **中** | **G. 隐式顺序协议 4 条无守卫** | sampler.toml 顺序=索引、模板 slot 顺序=发射顺序、模板 define 早于 include、5 相位语句顺序=哈希输入 |
+| **低** | **E. 特例簇** | CharQuad 特判、`MaterialMeshIndexTables` 字面量 3 处 strcmp、shadow 合成器手写、Sky routing 嵌套三元 |
+| **低** | **F-2. 零消费者函数 23 / 类型与常量 8** | 含整个 `enum class BlendMode`、`ShaderArtifactSPVExtension`（artifact 契约真源常量却无人用） |
+| **正面** | 数据驱动已成立者 | `s_descriptors`（mesh 模式表）、`kEmittedSemantics` 白名单、sampler 名→索引查表、`Templates[]`、回退规则表 + `static_assert`、`ShaderDocument` 块序协议（**带**诊断） |
+
+---
+
+## 2. 分模块发现
+
+### A. 描述符契约层：活着但全空转（高）
+
+| # | 位置 | 事实（机制） | 判据 |
+|---|---|---|---|
+| A1 | `src/ShaderGen/builder/DefinitionDescriptorBuilder.h:14-27` | `BuildDescriptorsFromDefinition(const MaterialDefinition &definition)` **忽略入参**（`(void)definition`）**恒返回空 vector**；函数名承诺"从 definition 构建描述符" | 函数体只有 `(void)definition; std::vector<...> descriptors; return descriptors;` |
+| A2 | `src/ShaderGen/builder/GenericMaterialBuilder.cpp:387-408` | Phase 3 仍为它保留一步：`plan.descriptors = BuildDescriptorsFromDefinition(...)` → `BuildDescriptorContract(...)` + 失败路径 + 日志 | 该 Phase 的产物恒为空契约 |
+| A3 | `src/ShaderGen/contract/DescriptorContract.cpp:56-99 / 133-158 / 160-202 / 250-295` | `AppendEntry`（语义推导、`LocalToWorldIndex`/`MaterialPrivateData` 特判）、`BuildEffectiveDescriptorContract` 的条目改写循环、`ValidateDescriptorContract` 的两两碰撞检查、`GetDescriptorContractHash` 的排序+逐字段哈希 —— **全部在空 vector 上运行**；哈希对构建键只贡献常量（`module_manifest_hash` ⊕ 空 entries hash） | 输入恒空 ⇒ 循环体不可达 |
+| A4 | `src/ShaderGen/compile/MaterialShaderCompiler.cpp:301` | 注释"**契约恒 Scene UBO 条目**"与事实**相反**：`git grep -n "DescriptorSemantic::Scene\|DescriptorSetType::Scene" -- src inc` = **0 命中**（唯一同名物是无关的 `RenderSceneUBOSystem`） | 0 命中 |
+| A5 | `inc/hgl/mtl/MaterialShaderCompiler.h:78-79` → `MaterialShaderCompiler.cpp:254-260` | `input.descriptor_entries` / `descriptor_entry_count` **全仓无生产者**（只有声明与这一处读取）⇒ `PrepareBaseDescriptorContract` 的 fallback 分支**不可达** | `git grep -n "descriptor_entries\|descriptor_entry_count" -- src inc` = 声明 2 + 读取 2 |
+| A6 | `src/ShaderGen/compile/MaterialShaderCompiler.cpp:130-141` | `HasDescriptorSemantic()` 是 **static 且全仓零调用**（连本文件内也没有；`/W3` 不报 C4505 故构建 0 warning 掩盖了它） | 1 命中 |
+| A7 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | **5,649 行**门里有 **58 处**描述符相关断言 —— 其中大部分在验证上述空机制（哪些用例仍有意义需逐条判） | `grep -c "descriptor\|Descriptor"` = 58 |
+| ✅ | `MaterialShaderCompiler.cpp:150-173` `ValidateDefinitionCapabilitySubset` | **仍真有价值**：唯一合法态是"definition 声明的描述符为空"，任何一条即回归（现态：循环无条件为每条 push 诊断） | 生产路径每次编译都跑 |
+| ✅ | `ShaderResourceSchema::requires_runtime_data_rows`（`ShaderResourceSchema.h:43`） | **仍真有价值**：行表需求信号（Step 6 直判），渲染侧建表/绑定表的判据 | `IsRuntimeDataRowsRequired()` 读它 |
+
+**成因**：描述符集（Scene 集 / per-material 分配器 / L2W / mesh_draw_params 契约条目）逐轮退役时，**只删了生产点，没删载体**——契约类型、校验器、哈希器、门用例都留了下来，于是"永远为空的容器"继续参与每材质的构建与键计算。
+
+**改进方向（供拍板，不在本档执行）**：把"描述符层"收敛为两个函数——`ValidateDefinitionCapabilitySubset`（必须为空）+ `requires_runtime_data_rows` 直判；
+`DescriptorContract`/`SerializedDescriptorEntry`/`ShaderResourceSchema.resources`/`DescriptorSemantic` 的**条目载体与哈希**可整体删除，
+`BuildDescriptorsFromDefinition` / `AppendEntry` / `BuildEffectiveDescriptorContract` / `BuildResourceSchemaFromContract` / `GetDescriptorContractHash` / `HasDescriptorSemantic` 随之消失；
+`MaterialShaderCompiler.cpp:301` 的错误注释必须同批改掉（否则下一个会话按它去找 Scene UBO 条目）。
+
+### B. `MaterialTextureSamplingOptions`：双端空转（高）
+
+| # | 位置 | 事实 | 判据 |
+|---|---|---|---|
+| B1 | `inc/hgl/mtl/MaterialRecipe.h:107-180` | 结构（17 字段：filter×3 / wrap×3 / swizzle×4 / compare / lod×3 / anisotropy / 2×has_*）+ `operator==` + `HashMaterialTextureSamplingOptions` ≈ **75 行** | 定义处 |
+| B2 | `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:493-710` | TOML 解析（`mag_filter`/`min_filter`/`mipmap_mode`/`u`/`v`/`w`/`r`/`g`/`b`/`a`/`compare_op`/`mip_lod_bias`/`min_lod`/`max_lod`/`max_anisotropy`/`anisotropy`/`swizzle` 等逐键 if-else）≈ **220 行** | 解析处 |
+| B3 | **消费者 = 0** | `git grep -nw sampling -- src inc example ShaderLibrary` = 30 处 → 门 23 + 解析 3 + 声明 1 + GLSL/文本里无关词的注释 3 | 运行时绑定链（`RenderPrimitiveCollectSystem`、`MaterialData`）、GLSL 发射（`MaterialShaderEmitter` 的纹理通道宏只读 `channels`）、`VkSampler` 创建（`SamplerPresetLibrary` 读**另一个文件** `ShaderLibrary/sampler.toml`）都不读它 |
+| B4 | **授权面 = 0** | 15 份材质 TOML 中 `sampling` / `anisotropy` / `swizzle` / `compare_op` 各 **0 个文件**（只有 `channels` 3 个文件在用，且那是另一条通路） | 逐键 `grep -l <key> ShaderLibrary/material/*.toml \| wc -l` = 0 |
+
+**结论**：这是一条**没有作者写、也没有运行时读**的完整机制——只有回归门在替它维持存在。真实采样器由 `ShaderLibrary/sampler.toml`（预设名 → 索引 → `vkCreateSampler`）驱动，与 per-material 的 sampling 选项是**两套互不相通的东西**。
+
+### C. 平行解析表（中）
+
+| 枚举 | 实现 A | 实现 B（同语义第二份） | 备注 |
+|---|---|---|---|
+| `VkCompareOp` | `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:112-133`（`ParseCompareOp`，8 项） | `src/ShaderGen/glsl_module/SamplerPreset.cpp:34-45`（`ParseCompareOp`，8 项） | **同名同语义两份实现** |
+| 纹理 filter | `MaterialDefinitionFile.cpp:394-409`（`ParseTextureFilterMode` → `MaterialTextureFilterMode`，2 项） | `SamplerPreset.cpp:14-17`（`ParseFilter` → `VkFilter`，1 分支+默认） | 取值空间重叠、真源分离 |
+| 纹理 wrap | `MaterialDefinitionFile.cpp:411-435`（`ParseTextureWrapMode`，5 项） | `SamplerPreset.cpp:25-32`（`ParseAddressMode`，4 显式 + default） | 同上 |
+| 采样器类型名 | `MaterialDefinitionFile.cpp:377-392`（`ParseSampler`，6 项索引序） | `inc/hgl/mtl/MaterialRecipe.h:54-66`（`ToGLSLSamplerTypeName`，**零调用**）；另与 `inc/hgl/common/TextureSamplerTypeDef.h:105-152`（`SamplerTypeName` 数组 + `ParseSamplerType`）重叠 | **同一枚举反/正/第三方三张表** |
+| 纹理 compare | `MaterialDefinitionFile.cpp:464-491`（`ParseTextureCompareOp` → `MaterialTextureCompareOp`，8 项） | 上面两处 `VkCompareOp` 解析（第三份） | 三个平行实现 |
+
+**T1 单一真源注册表的覆盖盲区**（`枚举定义处` 提供 `Get*Name`/`Parse*` 的模式已用于
+`ShaderCodeModuleSemantic`、`GlobalSSBOType`、`ShaderModuleSlotRole`、`DescriptorSemantic`）：
+**未纳入** `GLSLSamplerType`、`MaterialTextureFilterMode`、`MaterialTextureWrapMode`、`MaterialTextureCompareOp`、
+`MaterialVertexProviderPolicy`（`MaterialDefinitionFile.cpp:58-74` 只有单向解析）、`ShaderCodeModuleKind`（`ShaderCodeModuleFile.cpp:153-163` 单向）、
+`MeshShaderMode`（`inc/hgl/mtl/MeshShaderMode.h:18-29` 单向）⇒ 与既定口径（T1/T2 之后"名字表收敛到枚举定义处"）不一致。
+
+### D. 双份真值（中）
+
+| # | 事实 | 表达 1 | 表达 2 | 是否自动同步 |
+|---|---|---|---|---|
+| D1 | "模板的哪些槽是必需的" | `inc/hgl/mtl/RenderTemplate.h:83` `required` 字段（默认 true；`RenderTemplate.cpp:54` 有唯一显式 false），在 `FragmentTemplateComposer.cpp:355` **已生效** | `FragmentTemplateComposer.cpp:493-500` 按模板**硬编码**必需槽（ForwardUnlit 三项 / Sky 两项） | 否。硬编码与表当前对 ForwardUnlit 恰好同集合 ⇒ 冗余；与 `ShadowCasterOpaque` 的 `MaterialSourceProvider=false` 不一致的风险已存在 |
+| D2 | 剔除方向 | `ResolvedMaterialRenderState.double_sided`（`PipelineConfig.h:59`） | `MaterialPipelineConfig.cull_mode`（`PipelineConfig.h:17`） | 否。TOML 可同时给、无一致性校验；最终 `src/Vulkan/VKRenderPass.cpp:166-168` 用 `double_sided` 覆盖成 `VK_CULL_MODE_NONE`。**两种键在 15 份材质 TOML 里均 0 授权** ⇒ 目前仅代码可达（`RenderPrimitiveCollectSystem.cpp:1110` 注释承认"仅 double_sided/cull 变化"也要重建 program 身份） |
+| D3 | 顶点节点配置 | `MaterialDefinition.vertex_node_config`（`MaterialRecipe.h:322`） | `MaterialRecipe.vertex_node_config`（`:633`）+ `BuildRequest.vertex_node_config_override` | 否。优先级 request > recipe(非默认) > definition(非默认)，判"作者是否设置"用 `IsDefault3DNodeConfig`（`VertexShaderNodeConfig.h:85-92`）⇒ **默认值即缺席**的隐式三态 |
+| D4 | "recipe 已归一化" | `IsRecipeNormalized`（`MaterialRecipe.h:693-701`，5 个 `has_*` 全真） | 消费侧纪律两套：`VKRenderPass.cpp:149-154` **报错拒绝**未归一化 recipe；`MaterialRecipe.h:678-690` `GetNormalizedRecipeRenderState` 对未归一化 recipe **静默返回全零** | 否。同一不变量，一个 fail-fast、一个静默给错值 |
+| D5 | 回退材质定义 ID | `kFallbackMaterialRules`（`MaterialRecipe.h:540-560`，唯一权威 + `static_assert` 自检） | 门 `ShaderResourceSchemaRegressionGate.cpp:435/465/4052-4069/4224` 独立硬钉字面量 | 否。档内注释自述"换外观必然要动这两处" |
+| D6 | TOML 允许键集合 | 解析器实际读取的键（`MaterialDefinitionFile.cpp:738-1068`） | 白名单 `ValidateMaterialDefinitionKeys`（`:1113-1174`） | 否。手工逐项对应（`:1112` 注释自述）；漏改白名单 ⇒ UnknownKey 拒绝（**有**保护，但需双维护） |
+
+### E. 特例（低–中）
+
+| # | 位置 | 内容 | 判据 / 定性 |
+|---|---|---|---|
+| E1 | `inc/hgl/mtl/MeshShaderMode.h:32`（`IsCharQuadMode`，注释自认"CharQuad 特判"）、`GenericMaterialBuilder.cpp:269`（CharQuad 跳过顶点 ABI）、`:427-455`（三分支硬编码各模式 max_invocations）、`MeshShaderModeCharQuad.h:21/39`（专属 include 与 .tmpl 名） | CharQuad 特判簇 | 触发源是 definition 字段（TOML `mode="CharQuad"`，仅 1 份材质）；"领域固有"（字符三层数据结构）**但**为单模式开的口已散成 4 处 |
+| E2 | `src/ShaderGen/meshgen/MeshModeDescriptor.h:3` 自述目标"**消除** MeshTemplateEmitter 编排器内的特殊分支（如 `if (mode == CharQuad)`）"；实际 `MeshTemplateEmitter.h:264` 仍写 `if (mode == VertexPassthrough \|\| mode == LineQuad) … else（CharQuad 走 rows[gl_DrawID]）` | 目标已声明、**未达成**的残留分支 | 表 `s_descriptors`（`MeshModeDescriptor.h:183`）已建，编排器内仍有 mode 直比 |
+| E3 | `MaterialShaderEmitter.cpp:388` 生产字面量 `"MaterialMeshIndexTables"`；`:609`/`:776`/`:788` 三处 `std::strcmp(..., "MaterialMeshIndexTables")` | 内部块名用字符串比较，无共享常量 | 1 生产 + 3 消费、字面量重复 4 次 |
+| E4 | `FragmentTemplateComposer.cpp:536-694` `ComposeShadow`（整段 shadow GLSL 在 C++ 内逐块拼写）被 `:695` 唯一调用 | 唯一**不走 `.tmpl`** 的模板族 | 与"模板外置"口径不一致；新增 shadow 变体只能改 C++ |
+| E5 | `SceneGraph/module/ShaderProgramManager.cpp:228-235` 模板路由嵌套三元（含"无 source 且无 ntb ⇒ Sky"隐含策略）；`:242`/`:263` 为 SkyCube / IBL 开的 surface/ambient 覆盖口 | 能力→模板的映射未表化 | 覆盖口的字段是通用的，但当前各只有 1 个声明者（`sky_cube.material.toml:14-15`、`lit_ibl.material.toml:17-18`） |
+| E6 | `src/ShaderGen/template/SceneRenderTemplateResolver.cpp:5-60` | ForwardLit / Sky profile 逐行 `AddModule(role, name, path)` 硬编码（8 个槽） | 字面量各对应唯一模块文件；表化后即可消 |
+| E7 | `src/ShaderGen/contract/MaterialOutputContract.cpp:37-60 / 61-…` | `switch (pass)`→purpose、`switch (purpose)`→附件 | 领域固有（pass↔purpose），但形式是 switch 而非表 |
+| E8 | `DescriptorContract.cpp:77-83` | 为**恰好一个**语义（`LocalToWorldIndex`）硬写 `ssbo_type` 推导，紧邻又为 `MaterialPrivateData` 单列校验 | 属 A 层空转机制的一部分（随 A 一并处置） |
+
+### F. 死代码与零消费者（低，逐符号，全部本机复核）
+
+**F-1 只写不读的字段（有赋值、0 读取）**
+
+| 字段 | 位置 | 写入点 | 读取 |
+|---|---|---|---|
+| `MaterialRuntimeRow::material_row_cpu` | `inc/hgl/ecs/support/MaterialRuntimeTable.h:145` | `RenderPrimitiveCollectSystem.cpp:745/1463/1520` | **0** |
+| `MaterialRuntimeRow::material_texture_row_cpu` | `:151` | `RenderPrimitiveCollectSystem.cpp:747/1753/1812` | **0** |
+| `ShaderCodeResourceManifest::error_module_name` | `inc/hgl/mtl/ShaderCodeResourceManifest.h:40` | `ShaderCodeResourceManifest.cpp:100/113/120/127/162/170` | **0**（错误文案走 `error` 枚举 + 调用方自带 `definition->name`） |
+| `ShaderCodeModuleDiagnostic::item_index` | `inc/hgl/mtl/ShaderCodeModuleMetadata.h:38` | `ShaderCodeModuleMetadata.cpp:26` | **0** |
+| `ShaderGenContract.h` `queue_family_count` | `inc/hgl/mtl/contract/ShaderGenContract.h:68` | `ShaderGenPhysicalDeviceProfileJson.h:189`、`Vulkan/ShaderGenPhysicalDeviceProfileAdapter.cpp:60` | **0** |
+
+**F-2 零调用函数（除声明/定义外全仓 0 命中）**
+`CaptureFinalDocuments`（`MaterialShaderCompiler.h:63`）· `ConfigureMaterialVertexSemanticContract`（`MaterialRecipe.h:474`）·
+`ToGLSLSamplerTypeName`（`:54`）· `ParsePassType`（`PassType.h:39`）· `GetShaderCompilerTargetVersions`（`ShaderCompilerProfileAPI.h:12`）·
+`SetCacheMode`/`GetRootPath`（`ShaderArtifactStore.h:31/33`）· `BuildStageInterfaceDocument`（`MaterialStageInterface.h:58`）·
+`ValidateShaderSemanticRegistries`（`ShaderSemanticRegistry.h:141`）· `GetNormalizedShaderCodeModuleDependencyCount/Dependency`（`ShaderCodeModuleMetadata.h:44/47`）·
+`WriteCString`/`WriteI32`/`WriteU16`（`CanonicalContractWriter.h:31/45/56`）· `EmitMeshShaderHeader`（`MeshShaderHeaderGen.h:103`）·
+`AppendStageResourceBlocks`（`MaterialShaderEmitter.cpp:596`）· `HasDescriptorSemantic`（`MaterialShaderCompiler.cpp:130`）·
+`GetGLSLVertexInputType`（`VertexABIBuilder.cpp:115`）· `DocumentFragmentBuilder::SetStage/SetMaterial`（`DocumentFragmentBuilder.cpp:13/18`；该类本体**活的**，被 `MaterialShaderEmitter.cpp:434` 使用）·
+`MaterialData::ClearAuthoredResources`（`MaterialData.h:132`，仅注释与测试针提及）· `MaterialData::GetMaterialRowID`（`:129`，仅 2 处注释引用）·
+`CalcMeshGroupCount`（`PipelineMaterialRenderer.h:54`，唯一消费者在 `example/ApiValidation/_Obsolete/`；而 `ShaderLibrary/ecs/entity_gpu_cull.glsl:385` 的注释仍以它为"同式"锚点）
+
+**F-3 零消费者类型 / 枚举 / 常量**
+`enum class BlendMode`（`inc/hgl/mtl/BlendMode.h:7`，全仓 `BlendMode::` **0 命中**；文件同时被列进 `ShaderGen/CMakeLists.txt:155`）·
+`ResourceClass::CombinedImageSampler`（`ShaderGenContract.h:19`）· `ShaderArtifactSPVExtension`（`ShaderArtifactContract.h:17`）—— **升级为"真源被绕过"**：该常量是 artifact 契约里".spv"扩展名的**单一真源**（技能口径：`ShaderArtifactContract.h` 是缓存目录/扩展名/头布局唯一真源），但唯一使用点 `src/ShaderGen/compile/ShaderArtifactStore.cpp:23` **硬编码 `OS_TEXT(".spv")`** 而非引用它 ⇒ 处置 = **让它引用常量**（不是删除常量）·
+`kMeshVertexPassthroughMaxPrimitives`（`MeshShaderLimits.h:15`）· `ShaderCodeModuleResolutionRequest`（`ShaderCodeModuleCapabilityResolver.h:61`，整类型 + 7 成员无读写）·
+`ShaderCodeModuleGeometryCapability`（`:17`，仅被上面那个死类型引用）· `ShaderCodeModuleResolutionRequest::resource_count`（`:72`）
+
+**F-4 死参数（名不符实）**
+`ApplyBaseMaterialInfoDefaults(MaterialRecipe&, const MaterialDefinition&, const bool overwrite_existing = false)`
+（`inc/hgl/mtl/MaterialRecipe.h:746-752`）：**函数体从不读 `overwrite_existing`**，行为恒为"仅当 `mtl_def_id` 为空才填"；
+唯一调用点 `MaterialDefinitionRegistry.cpp:296` 传 `false` ⇒ 参数既无用也无第二取值，名字承诺的"覆盖已有"不存在。
+
+### G. 隐式顺序协议（中）
+
+| # | 协议 | 位置 | 现有守卫 |
+|---|---|---|---|
+| G1 | `sampler.toml` 的 `[[samplers]]` **出现顺序 = sampler 索引**（宏 `#define <name>Sampler <idx>u` 与运行时 `vkCreateSampler` 同源） | 生产/消费 `src/ShaderGen/glsl_module/SamplerPreset.cpp:131-214`、`MaterialShaderEmitter.cpp:112-136`；表 `ShaderLibrary/sampler.toml` | **仅注释警告**（"插在中间会让所有已编译 shader 里的宏错位"），无任何校验 |
+| G2 | fragment 模板的 **slot 数组顺序 = `#include` 发射顺序**，并隐含"SurfaceProvider 必须在 MaterialSourceProvider/NTBProvider 之后"（否则 GLSL 调用未声明函数） | 约定 `inc/hgl/mtl/RenderTemplate.h:92-104`（逐字写明"硬约束"）；消费 `FragmentTemplateComposer.cpp:340-364` | **仅注释 + 数组书写顺序**；无断言（重排会改生成文本 ⇒ program hash 变，但不会报错） |
+| G3 | 模板 **define 必须早于 module_includes**（`#ifndef` 取值依赖顺序） | `FragmentTemplateComposer.cpp:399-417`（`{{defines}}` 块位置）、`:508-516`（占位符回填） | **仅注释**；正确性靠 `.tmpl` 内占位符书写位置 |
+| G4 | `GenericMaterialBuilder.cpp` 的**语句顺序 = stage key / resource contract 的哈希输入序**（文件头自述"Do not reorder statements here"） | `src/ShaderGen/builder/GenericMaterialBuilder.cpp:1-8`（5 相位、Phase 3 注释同） | **仅注释**（`src/Vulkan/VKRenderPass.cpp:149-154` 的 recipe 归一化哨兵是同类做法的正例：那里是 fail-fast） |
+| ✅ | 反例（有守卫的良好范例） | `ShaderDocument` 块序：顺序表 `document/ShaderDocument.cpp:42-57` + 强制点 `:115-131` + `DocumentFragmentBuilder.cpp:57-62`，倒退即 `block-order` 诊断且 `Serialize` 失败；code-module 依赖 DFS 序（`ShaderCodeResourceManifest.cpp:136-174`）+ 环检测（`:124-128`、`ShaderCodeModuleMetadata.cpp:84-131`）+ 依赖缺失检测（`ShaderCodeModuleRegistry.cpp:200-207`），顺序计入 `BuildStableHash` | **有显式校验** |
+
+---
+
+## 3. 已验证为真（可直接复跑）
+
+```bash
+# A. 描述符层空转
+git grep -n "DescriptorSemantic::Scene\|DescriptorSetType::Scene" -- src inc | wc -l          # 0
+git grep -n -w HasDescriptorSemantic -- src inc example | wc -l                              # 1（仅 static 定义）
+git grep -n "descriptor_entries\|descriptor_entry_count" -- src inc                          # 声明 2 + 读取 2（无生产者）
+grep -c "descriptor\|Descriptor" src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp   # 58（门长 5649 行）
+# B. sampling 双端空转
+git grep -n -w sampling -- src inc example ShaderLibrary | wc -l                             # 30（门 23 + 解析 3 + 声明 1 + 无关注释 3）
+for k in sampling anisotropy swizzle compare_op; do echo -n "$k: "; grep -l "$k" ShaderLibrary/material/*.toml 2>/dev/null | wc -l; done   # 全 0（共 15 份材质）
+# C/F. 逐符号计数
+git grep -nw BlendMode -- src inc example        # 3（枚举声明 + 1 注释 + CMake 清单；BlendMode:: 全仓 0）
+git grep -nw ShaderArtifactSPVExtension          # 1
+git grep -nw kMeshVertexPassthroughMaxPrimitives # 1
+git grep -nw material_row_cpu -- src inc example                    # 4（1 声明 + 3 赋值，0 读）
+git grep -nw material_texture_row_cpu -- src inc example            # 4（同上）
+git grep -nw error_module_name -- src inc example                   # 7（1 声明 + 6 赋值，0 读）
+git grep -nw ClearAuthoredResources -- src inc example              # 4（声明/定义/2 注释；无调用）
+# D/E. 双份真值与特例
+sed -n '48,56p;76,78p' src/ShaderGen/template/RenderTemplate.cpp    # 槽表（含唯一 required=false）
+sed -n '488,502p' src/ShaderGen/template/FragmentTemplateComposer.cpp  # 硬编码必需槽 vs 表
+sed -n '264,275p' src/ShaderGen/meshgen/MeshTemplateEmitter.h       # mode 直比（与 MeshModeDescriptor.h:3 自述矛盾）
+grep -n "MaterialMeshIndexTables" src/ShaderGen/compile/MaterialShaderEmitter.cpp   # 1 生产 + 3 比较
+```
+
+**构建/测试基线**：本档为只读评审，未改任何文件；`ctest -L ecs` 12/12、`TestCSMIncrementalPass` 1/1 为上一批（§4）状态。
+
+---
+
+## 4. 任务表（建议执行顺序：**先删遗留/未使用 → 再处理改进**，与既定口径一致）
+
+| 批 | 任务 | 判据（红的样子） | 依赖 / 备注 |
+|---|---|---|---|
+| **S1** | **A 层收敛**：`ValidateDefinitionCapabilitySubset` + `requires_runtime_data_rows` 保留为唯一两条；删 `BuildDescriptorsFromDefinition` / `DescriptorContract`（含 `AppendEntry` / `BuildEffective*` / `BuildResourceSchemaFromContract` / `GetDescriptorContractHash` / `HasDescriptorSemantic` / `input.descriptor_entries*`）与 `plan.descriptors` 字段 | 全仓 grep 上述符号 = 0；`GenericMaterialBuilder` Phase 3 只剩 manifest + 验证；门的 58 处描述符断言同批收敛（保留"必须为空"反证针：往 definition 声明一条描述符 ⇒ 编译失败） | 改动面含 `inc/hgl/mtl/*` 公共头 ⇒ 先 purge 依赖 TU 再全量重编；`MaterialShaderCompiler.cpp:301` 错误注释同批改 |
+| **S2** | **B 层整体删除**：`MaterialTextureSamplingOptions`（结构 + hash + `operator==`）+ `MaterialTextureDeclaration::sampling` + `MaterialDefinitionFile.cpp:493-710` 解析块 + `ParseTextureFilterMode/WrapMode/CompareOp`（**已核**：`MaterialTextureCompareOp` 仅出现在 `MaterialRecipe.h` 与 `MaterialDefinitionFile.cpp:466-473`，**没有**独立通路——真是源的 compare 走 `ShaderLibrary/sampler.toml:57` → `SamplerPreset.cpp:34` 的 `VkCompareOp`） | 15 份材质 TOML 无 `sampling` 键（已成立）；删后门用例同批收敛；`git grep -nw sampling` 只剩无关注释 | `channels` **不在**本批范围（活：3 份 TOML 授权 + 纹理通道宏消费者） |
+| **S3** | **C 层平行解析表收敛**：`ParseCompareOp` 合一份；filter/wrap 的名字↔值收敛到枚举定义处（T1 模式：`Get*Name` + `Parse*`）；补 `GLSLSamplerType`/`MaterialVertexProviderPolicy`/`ShaderCodeModuleKind`/`MeshShaderMode` 的注册表 | 每个枚举的 name→value 只有 1 处实现（`git grep -c` 计数）；`ToGLSLSamplerTypeName` 要么被用、要么删；门用例同步 | 与 T1/T2 既定口径一致，可独立成批 |
+| **S4** | **D 层去双真值**：D1（删硬编码必需槽，改读表 + 表里显式标 required）；D2（`double_sided` 与 `cull_mode` 二选一，另一条删或加一致性校验；TOML 侧两者 0 授权 ⇒ 可直接收敛）；D4（`GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删除该口）；F-4 死参数删除 | 删 D1 后：把某模板槽设为 `required=false` 且不提供 ⇒ 不再被硬编码判死；D4 反证：传未归一化 recipe ⇒ 报错而非静默全零 | D2/D4 触及 recipe/normalize 语义，建议单独一批并附反证 |
+| **S5** | **F 层逐符号删除**（F-1 五字段 / F-2 二十三个零调用函数 / F-3 类型与常量 / F-4 已并入 S4） | 每个符号：`git grep -nw <sym> -- src inc example` 归 0（注释与测试针同批改写为"禁复活"） | 与 §1.2/§1.3 那一轮的删除纪律完全同构；`ShaderArtifactSPVExtension` 处置前先核 `".spv"` 是否有别处硬写（若有 ⇒ 改为用常量而非删） |
+| **S6** | **G 层顺序协议加守卫**：G1 sampler 顺序（加载时校验索引连续性/或改为显式 index 字段）；G2 slot 顺序（对 `SurfaceProvider` 早于 provider 的排列加断言）；G3/G4 至少加注释+哨兵（模板占位符位置校验、相位序哈希输入校验） | 反证：手工错排 sampler.toml / 调换 slot 顺序 ⇒ 加载或编译**报错**，而非静默产出错 GLSL | G1 影响已编译 shader 的宏索引 ⇒ 需与 SPV 缓存失效策略一起定 |
+| **S7** | **E 层特例收敛**（可选，按用户口径"真需要才留"）：E2 把剩余 mode 分支推进 `s_descriptors` 表；E3 抽共享常量；E4 shadow 合成器外置为 `.tmpl`；E5/E6 profile 表化 | E2：编排器内 `mode ==` 直比归 0；E4：`CompositionShadow` 走 `.tmpl` 后与其它模板同路径 | E1 的 CharQuad 特判若判定"领域固有"则保留（4 处已收敛到 `IsCharQuadMode` + 表行）；不要为消除而过度抽象 |
+
+### 勿动清单（评审认为现态合理，勿被下一轮当死代码删）
+
+- `MeshModeDescriptor::s_descriptors` 表、`kEmittedSemantics` 白名单、`SamplerPresetLibrary` 的名→索引表、`Templates[]` 槽表、`kFallbackMaterialRules` + `static_assert`、`ShaderDocument` 块序协议与 code-module DFS 序（**有**守卫的两处）；`MaterialRuntimeTable` 的 `DetachOwned`（文件头已写明"别当死代码删"及其使用条件）。
+- `MaterialData` 的 `authored_generation` 与行内 revision 的"镜像"关系（已由 §1.1 审计裁定不是双真值）。
+- `IsCharQuadMode` 之外的 CharQuad 表行与专属 GLSL（`s1_text_char_quad.glsl`、`char_quad.glsl.tmpl`）——领域固有。
+
+---
+
+---
+
+## 6. S1 执行记录（2026-10-11）—— 描述符契约层整体删除 + 载体塌缩为单信号
+
+### 6.1 落地内容（33 档，净 **−1,367 / +72** 行）
+
+**删除（7 档）**：`inc/hgl/mtl/ShaderResourceSchema.h`、`inc/hgl/mtl/SerializedDescriptorEntry.h`、
+`inc/hgl/mtl/DescriptorContract.h`、`inc/hgl/mtl/DescriptorSemantic.h`、
+`src/ShaderGen/contract/DescriptorContract.cpp`、`src/ShaderGen/builder/DefinitionDescriptorBuilder.h`、
+`src/ShaderGen/builder/DescriptorBuilderCommon.h`。
+
+**新增/改名**：`src/ShaderGen/builder/MaterialResourceManifestBuilder.h`（原 `DescriptorBuilderCommon.h` +
+`DefinitionDescriptorBuilder.h` 合一；namespace `descriptor_builder_common` → `resource_manifest_builder`，
+函数 → `BuildMaterialShaderCodeResourceManifest`）—— 一并去掉 `CStrEqual` 里「指针 < 0x10000 视为损坏」的装饰性守卫
+（x64 上合法 C 字符串不可能落在低 64KB，该分支恒不触发）。
+
+**载体塌缩**：材质编译产物只剩 **一个布尔** —— `ShaderBuildContext::requires_recipe_runtime_rows` /
+`ShaderProgram::RequiresRecipeRuntimeRows()`；消费者 5 处（`PrimitiveBatchPipeline` ×2、`RenderPrimitiveCollectSystem` ×3）
+由自由函数包装改读成员，行为逐字不变。
+
+**生成器侧**：`MaterialShaderCompiler` 的 Step 1/3b/6 与 `HasDescriptorSemantic`、`ValidateDefinitionCapabilitySubset`、
+`PrepareBaseDescriptorContract`、`BuildEffectiveDescriptorEntries`、`BuildAndValidateResourceSchema` 全删；
+`GenericMaterialBuilder` 的 `plan.descriptors` 推导 + `BuildDescriptorContract` 步骤删除、Phase 3 改名
+（resource manifest）；门的 `W1.material-descriptor-contract` 用例、`RunValidationCase` 及其 A/B1/B2 三用例删除，
+`AE.binding-macro-single-source` 去掉合成条目输入。
+
+**ECS/graph 侧（本批**新发现**的死消费者，评审档 §2-A 未列全）**：
+- `RenderPrimitiveCollectSystem` 里 **3 处遍历 `schema.resources`（恒空）** 的循环全删 —— 其中 `:1214` 那处是
+  `RenderSceneUBOSystem::RegisterMaterialStructLayout` 的**唯一调用点**；
+- `RegisterMaterialStructLayout` 一并删除 —— 它把**同一张 stride 表的取值与自己比**（`byte_stride` 由调用方
+  从 `GetGlobalSSBOTypeStructStride(type)` 取、再与 `GetGlobalSSBOTypeStructStride(type)` 比）⇒ **恒通过**，
+  属装饰性校验（与「恒真守卫」同族）。真校验应落在**行写入侧**（那里才有实际写入字节数）⇒ 记为欠账。
+- `GizmoResource::InitColorSSBO(gr, const ShaderResourceSchema&)` 的该参数**从未使用**，且其唯一调用点先花一次
+  材质编译去拿这份 schema ⇒ 同批删除（生产路径上的死调用）。
+- `ShaderProgramManager::BuildShaderResourceSchema` 删除（唯一生产消费者 = 上面那处死调用）。
+- `ULRE_ARENA_DEBUG` 的诊断字段 `schema_reqs=%u` 恒为 0 ⇒ 改为只打印 `material_binding_valid`。
+
+**缓存键等价式**：Phase 5 的 `resource_contract_hash` 原 = `GetDescriptorContractHash(空契约, manifest_hash)`
+= `FNV1a(manifest_hash, FNV1a(uint32(0)))`；改为同名局部函数 `ComputeResourceLayoutHash(depth, manifest_hash)`
+**逐位复现**原算式 ⇒ stage key / `resource_layout_hash` 不变，**不触发 SPV 与管线缓存整体失效**。
+（`ShaderProgramArtifactBuilder` 的 artifact interface hash 含原 schema 哈希，改用单布尔 ⇒ 该值变化属预期。）
+
+### 6.2 验收（实测）
+
+| 项 | 结果 |
+|---|---|
+| 全量 Release（先清整棵 obj 树 1,804 个 + 全量重编；`-j 8` 撞已知 applocal 竞态 MSB3075 ⇒ `-j 1` 收敛） | `BUILD rc=0` / `error C*｜LNK*` = **0** / `error MSB3073｜3075` = **0** / `warning C*` = **0** / **393 目标** |
+| `ctest -L ecs` | **12/12** |
+| `TestCSMIncrementalPass` | **1/1** |
+| ShaderGen 门 `ShaderResourceSchemaRegressionGate.exe`（cwd = 仓根） | **rc=0**，42 PASS / 0 FAIL（连跑两次：首跑重生成 golden、二跑走 golden 比对路径） |
+| `ShaderCooker.exe --store <tmp>`（真生产路径，全变体） | `cooked=40 failed=1 skipped=17` |
+| 运行时冒烟 | `SimpleSphere.exe` 18s / 107 帧 / 0 真错误；`PBRSpheres.exe` 18s / **2,630 帧** / 0 错误（每球一行材质数据的关键用例，`materialize(ok/fail)=1/0`） |
+
+### 6.3 反证（针有牙）
+
+往 `inc/hgl/vk/VKShaderProgram.h` 临时写回旧读口名 ⇒ `Test 11` **精确变红**：
+`Test 11 Failed: 资源条目 schema 已按 S1 删除：… 'GetShaderResourceSchema' 重新出现在 VKShaderProgram.h（禁复活）`；
+逐字节还原后复绿。新增 **4 条禁复活针**（`GenericMaterialBuilder.cpp` 的 `SerializedDescriptorEntry`、
+`VKShaderProgram.h` 的 `GetShaderResourceSchema`、`RenderSceneUBOSystem.h` 的 `RegisterMaterialStructLayout`、
+`PrimitiveBatchPipeline.cpp` 的 `MaterialRequiresRecipeRuntimeRows`）。
+
+### 6.4 本批发现（未擅自处理）
+
+1. **评审档 §2-A 的三处判断被本批订正**（详见 §6.5）。
+2. **既存红（非本批引入）**：`ShaderCooker` 的 40/41 里那 1 例是
+   `ShaderLibrary/material/shadow_receiver_source.glsl` 组成后的 GLSL 语法错
+   （`glslang: 'const' : no qualifiers allowed for function return`，报在组成文本的 `:233`）。
+   判据：该档**工作区与 HEAD 逐字节相同**、本批**未改动任何 GLSL 发射路径**（改动集中在契约/schema/哈希/dump）
+   ⇒ 组成文本与 HEAD 逐字节相同 ⇒ 该例在 HEAD 即失败。
+   **为何门没抓到**：门里 `ShadowReceiver` 只出现在「注册表覆盖」的文件 ID 列表断言里，**没有编译用例**；
+   门绝大多数用例以 `defer_finalize=true` 构建（**不过 glslang**）⇒ 语法错在门里不可见。这正是技能里那条
+   「门绿 ≠ 能编译」的实例；是否补一个 `ShadowReceiver` 的真实编译用例由用户拍板。
+3. **门仍有两处「名不符实」未动**（避免与验证改动混批）：门文件名/目标名 `ShaderResourceSchemaRegressionGate`
+   与其分组名 `descriptor`（该组现存用例已与描述符无关，只剩材质契约/SSBO 绑定键等活用例）。
+
+### 6.5 评审档三处订正（旧说法 → 新结论）
+
+| 位置 | 旧说法（本档早先写的） | 订正 |
+|---|---|---|
+| §2-A ✅ 行 | 「`ValidateDefinitionCapabilitySubset` 仍真有价值：唯一合法态是 definition 声明的描述符为空」 | **该函数是空的**：它检查的是「有效契约 → schema.resources」，而契约恒空、`resources` 恒空 ⇒ 任一条目都不可能存在，永远通过。S1 里删除；「不许描述符复活」改由**禁复活针**承担（可验证、可复现红） |
+| §2-A A3/A5 行 | 「`input.descriptor_entries` 无生产者 ⇒ 分支不可达」 | 「**生产不可达，仅门/测试可达**」：门的 `AE.binding-macro-single-source` 与已删的 `W1` 用例曾手工构造条目喂它。S1 同批删掉这两处输入 |
+| §4-S1 行 | 只列了生成器侧删除 | **补三类 ECS/graph 死消费者**（三处恒空循环、自比校验 `RegisterMaterialStructLayout`、`InitColorSSBO` 死参数）——它们是「同一机制的下游」，纯删生成器侧会留下一半 |
+
+## 5. 本档边界
+
+- 评审（§1–§4）为只读静态取证（grep / 行号 / 结构）；**§6 是其后 S1 批的落地记录**（该批改了引擎代码，验收数字见 §6.2）。
+- 视觉验证：S1 只做删除，未逐像素目视；运行时证据为帧数与错误计数（§6.2）。
+- 未覆盖：`inc/hgl/graph/**` 的材质表头与 `src/Vulkan` 的 sampler/pipeline 创建细节（仅按调用面引用）、`doc/` 文档与代码的一致性（另属 `repo-docs-sync` 范畴）。
+- 数字均为本机 `HEAD=73fa8ddae` 实测；行号会随重构漂移，**符号名是稳定锚点**。
+- 子代理的枚举结论已逐条复核：其中 2 处计数与 1 处定性被本档修正（`sampling` 命中 30 而非"仅定义+解析"；`MaterialMeshIndexTables` 消费点 3 处而非 2；`RenderTemplateSlot.required` **是活的**、硬编码必需槽属**重复表达**而非"表未使用"）。

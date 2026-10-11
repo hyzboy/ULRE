@@ -5,7 +5,6 @@
 #include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/graph/ssbo/GlobalSSBOTypes.h>
-#include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/vk/VK.h>
 #include <hgl/mtl/ShaderCodeModule.h>
@@ -36,7 +35,6 @@ namespace hgl::graph::mtl
     // GlobalSSBOBinding 的类型、物理 SSBO 和行 ID 定位。
 
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
-    // 供 Step C 的 Definition→SerializedDescriptorEntry 推导使用。
     // 无纹理材质此列表为空。
 
     // GLSL 采样器类型枚举，避免传裸字符串指针。

@@ -485,7 +485,7 @@ namespace hgl::ecs
 
         // Per-batch DataIndex rows SSBO — shader consumes fixed-width rows by instance index.
         if (batch.key.shader_program
-            && graph::mtl::MaterialRequiresRecipeRuntimeRows(batch.key.shader_program->GetShaderResourceSchema()))
+            && batch.key.shader_program->RequiresRecipeRuntimeRows())
         {
             if (!batch.material_data_index_rows_buffer || batch.material_data_index_rows_capacity < item_count)
             {
@@ -727,7 +727,7 @@ namespace hgl::ecs
             if (prim_item)
             {
                 const bool needs_recipe_rows = shader_prog
-                    && graph::mtl::MaterialRequiresRecipeRuntimeRows(shader_prog->GetShaderResourceSchema());
+                    && shader_prog->RequiresRecipeRuntimeRows();
                 const bool missing_rows = needs_recipe_rows
                                        && (!material_row
                                         || material_row->data_index_row == uint32_t(-1));

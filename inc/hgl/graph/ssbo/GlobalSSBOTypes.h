@@ -77,7 +77,7 @@ namespace hgl::graph
 
     /// 材质字段行类型（version != 0）必须给出非零 stride —— 同样遍历全枚举自动判定。
     /// stride 表是**材质字段行**专用的：MeshDrawParams / GeometryAABB 等非材质类型本就不在此表内，
-    /// 返回 0 表「无需校验」（`RenderSceneUBOSystem::RegisterMaterialStructLayout` 的判据也是 `> 0`）。
+    /// 返回 0 表「无需校验」。
     /// 故判据取「version != 0 ⇒ stride != 0」，而不是「所有类型都必须有 stride」。
     constexpr bool GlobalSSBOTypeStrideTableComplete() noexcept
     {

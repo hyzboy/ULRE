@@ -7,8 +7,8 @@
 /// 生成器任何格式变动都要改断言 → 生成器与测试双向锁死。
 ///
 /// 设计约束：
-///   1. **不新增真源**——快照只是既有结构（ShaderResourceSchema /
-///      ShaderBuildContext）的视图。
+///   1. **不新增真源**——快照只是既有结构（ShaderBuildContext 的编译期信号 /
+///      模块列表 / 有效 varying）的视图。
 ///   2. **不含 hash 值与 GLSL 文本**——hash 随任何文本变动而变，写进 golden 会让
 ///      golden 每次都要重刷，失去意义；只记录「结构」（谁存在、在哪个 set/binding、
 ///      给哪些 stage、是否 required）。

@@ -11,7 +11,6 @@
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
-#include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/type/OrderedSet.h>
 #include <hgl/log/Log.h>
 #include <vulkan/vulkan.h>

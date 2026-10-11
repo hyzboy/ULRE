@@ -24,7 +24,7 @@
 #include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include "compile/MaterialShaderEmitter.h"
-#include "builder/DefinitionDescriptorBuilder.h"
+#include "builder/MaterialResourceManifestBuilder.h"
 #include "meshgen/MeshTemplateEmitter.h"
 #include "builder/GenericMaterialBuilder.h"
 
@@ -312,8 +312,21 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        /// 资源布局身份 = manifest 内容哈希（契约层删除后的等价式，见 Phase 5 处注释）。
+        inline uint64 ComputeResourceLayoutHash(
+            const bool depth_purpose, const uint64 manifest_stable_hash) noexcept
+        {
+            hgl::hash::FNV1aHasher64 empty_entries;
+            empty_entries << uint32(0);
+
+            hgl::hash::FNV1aHasher64 h;
+            h << (depth_purpose ? uint64(0) : manifest_stable_hash)
+              << static_cast<uint64>(empty_entries);
+            return h;
+        }
+
         // ═══════════════════════════════════════════════════════════════════
-        // Phase 3 — resource manifest / descriptors / descriptor contract
+        // Phase 3 — resource manifest
         // (originally MaterialDefinitionRegistry.cpp:339-438)
         // ═══════════════════════════════════════════════════════════════════
         bool BuildResourceContract(
@@ -356,7 +369,7 @@ namespace hgl::graph::mtl
                 if (provider_root_count < 2)
                     provider_root_names[provider_root_count++] = provider->name;
             }
-            if (!BuildShaderCodeResourceManifest(
+            if (!resource_manifest_builder::BuildMaterialShaderCodeResourceManifest(
                     plan.manifest_definition, plan.manifest,
                     provider_root_names, provider_root_count, &module_registry))
             {
@@ -378,19 +391,6 @@ namespace hgl::graph::mtl
                         : "<invalid>");
                 return false;
             }
-            // 顶点需求真源统一：描述符与模块 include 必须来自同一份「变体有效 definition」。
-            // plan.vertex_definition 已在 Phase 2 按 effective_vertex_varying 裁剪过
-            // vertex_semantic_requirements（depth 变体去掉 UV/NTB 等）——原先此处用原始
-            // definition，导致**模块侧已裁剪、描述符侧未裁剪**：depth mesh shader 不声明
-            // VertexUV/VertexNTB buffer，但 set layout 仍含这两个 binding，且运行期绑定
-            // 会去找几何的 UV/NTB VAB（几何未提供即报 no resource）。
-            plan.descriptors =
-                BuildDescriptorsFromDefinition(plan.vertex_definition);
-            // 注：原「深度变体剔除 SkyInfo 条目」的 remove_if 已删——S3 后 definition 侧
-            // descriptor 恒为空（sky / viewport 走 BDA），剔除无可剔。
-            // A6-2b-b1：mesh_draw_params 不再经契约声明——参数行本体走 BDA
-            //（buffer_reference，模板恒发 rows[gl_DrawID] 加载点），无描述符无 set；
-            // 契约条目（原仅 schema 记录 + PerObject layout binding 空洞）删除。
             if (!plan.manifest.IsValid())
             {
                 GLogError("[ShaderGen] Generic material resource contract failed: name=%s error=%s",
@@ -398,14 +398,8 @@ namespace hgl::graph::mtl
                           GetShaderCodeResourceManifestErrorName(plan.manifest.error));
                 return false;
             }
-            if (!BuildDescriptorContract(
-                    plan.descriptors, plan.descriptor_contract))
-            {
-                GLogError(
-                    "[ShaderGen] Material descriptor contract build failed: name=%s",
-                    definition.definition_name.c_str());
-                return false;
-            }
+            // 2026-10-11（S1）：原「由 definition 推导描述符条目 → 构建描述符契约」两步已整体删除 ——
+            // 推导函数恒返回空（definition 侧不再声明任何描述符），契约与其校验/哈希随之无消费者。
             return true;
         }
 
@@ -772,8 +766,7 @@ namespace hgl::graph::mtl
         {
             out_compiler_input = MaterialShaderCompilerInput{
                 definition.definition_name.c_str(),
-                request.primitive_type,
-                plan.descriptors.data(), static_cast<uint32>(plan.descriptors.size())
+                request.primitive_type
             };
             MaterialCompileConfig &config = out_config;
             config.primitive_type = request.primitive_type;
@@ -785,11 +778,13 @@ namespace hgl::graph::mtl
             config.material_definition = &plan.contract_definition;
             config.resource_manifest = plan.manifest.IsValid() ? &plan.manifest : nullptr;
             config.artifact_store = request.shader_artifact_store;
-            config.descriptor_contract = &plan.descriptor_contract;
+            // 资源布局身份 = manifest 内容哈希（2026-10-11 S1：描述符契约层删除）。
+            // 等价式保留：原「契约哈希(空契约, manifest_hash)」= FNV1a(manifest_hash, FNV1a(uint32(0)))
+            // —— 空契约的条目哈希是常量 ⇒ 逐位同值，stage key / resource_layout_hash 不变、
+            // 不触发 SPV 与管线缓存整体失效。
             const uint64 resource_contract_hash =
-                GetDescriptorContractHash(
-                    plan.descriptor_contract,
-                    plan.depth_purpose ? 0 : plan.manifest.stable_hash);
+                ComputeResourceLayoutHash(
+                    plan.depth_purpose, plan.manifest.stable_hash);
             const uint64 vertex_input_hash = request.geometry_vertex_format
                 ? request.geometry_vertex_format->GetVertexInputHash() : 0;
             const uint64 compiler_hash =

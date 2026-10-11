@@ -3,7 +3,6 @@
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
 #include<hgl/vk/VKShaderModuleMap.h>
-#include<hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ShaderProgramKey.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/log/Log.h>
@@ -35,7 +34,8 @@ class ShaderProgram
 
     ShaderModuleMap *shader_maps;
 
-    mtl::ShaderResourceSchema shader_resource_schema;
+    /// 材质是否需要 per-instance 运行时数据行（见 ShaderBuildContext 同名字段）
+    bool requires_recipe_runtime_rows = false;
     mtl::ShaderProgramKey program_key;
 
     ShaderStageCreateInfoList shader_stage_list;
@@ -53,7 +53,7 @@ public:
     virtual ~ShaderProgram();
 
     const   AnsiString &                        GetName                 ()const{return name;}
-    const   mtl::ShaderResourceSchema &              GetShaderResourceSchema      ()const{return shader_resource_schema;}
+    const   bool                                    RequiresRecipeRuntimeRows    ()const{return requires_recipe_runtime_rows;}
     const   mtl::ShaderProgramKey &             GetProgramKey          ()const{return program_key;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}

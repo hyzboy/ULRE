@@ -1,7 +1,6 @@
 #pragma once
 
 #include <hgl/CoreType.h>
-#include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/mtl/RenderTemplate.h>
 #include <hgl/type/StrChar.h>
 #include <hgl/util/hash/FNV1a.h>

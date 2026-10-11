@@ -231,26 +231,6 @@ namespace hgl::ecs
         }
     }
 
-    bool RenderSceneUBOSystem::RegisterMaterialStructLayout(graph::GlobalSSBOType ssbo_type,
-                                                                     uint32_t ssbo_id,
-                                                                     uint32_t byte_stride)
-    {
-        const uint32_t expected_version = graph::GetGlobalSSBOTypeStructVersion(ssbo_type);
-        const uint32_t expected_stride = graph::GetGlobalSSBOTypeStructStride(ssbo_type);
-        if (expected_version > 0 && expected_stride > 0 && byte_stride != expected_stride)
-        {
-            GLogError("[R11] SSBO struct layout rejected: type=%s version=%u expected_stride=%u actual_stride=%u ssbo_id=%u",
-                      graph::GetGlobalSSBOTypeName(ssbo_type),
-                      expected_version,
-                      expected_stride,
-                      byte_stride,
-                      ssbo_id);
-            return false;
-        }
-
-        return true;
-    }
-
     uint32_t RenderSceneUBOSystem::RegisterTextureResource(const std::string &resource_id,
                                                                     graph::Texture *tex,
                                                                     graph::BindlessTextureManager *bindless_mgr)

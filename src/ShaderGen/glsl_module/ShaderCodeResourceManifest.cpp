@@ -1,7 +1,7 @@
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeModuleMetadata.h>
-#include "builder/DescriptorBuilderCommon.h"
+#include "builder/MaterialResourceManifestBuilder.h"
 #include <hgl/util/hash/FNV1a.h>
 
 #include <cstring>
@@ -41,7 +41,7 @@ namespace hgl::graph::mtl
             for (uint32 i = 0; i < manifest.texture_reference_count; ++i)
             {
                 auto &existing = manifest.texture_references[i];
-                if (!descriptor_builder_common::CStrEqual(
+                if (!resource_manifest_builder::CStrEqual(
                         existing.texture_name,
                         incoming.texture_name))
                     continue;

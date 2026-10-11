@@ -8,7 +8,6 @@
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/graph/ShaderBufferSources.h>
-#include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/type/OrderedSet.h>
 #include <string>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>

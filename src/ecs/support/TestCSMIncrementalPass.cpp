@@ -1766,8 +1766,29 @@ int main(int argc, char** argv)
               "forward 本体的 discard 调用丢失（PBR 输出 alpha 恒 1，alpha test 永不触发）" },
             { "RenderPrimitiveCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
-              "MaterialRequiresRecipeRuntimeRows",
+              "RequiresRecipeRuntimeRows",
               "阴影 pass 不再判定 masked caster 的行需求——行未就绪时仍采深度会写出实心影子" },
+            // ── 禁复活（S1 收敛，2026-10-11：描述符契约层 + 三处恒空消费者）──
+            { "GenericMaterialBuilder.cpp",
+              OS_TEXT("src/ShaderGen/builder/GenericMaterialBuilder.cpp"),
+              "SerializedDescriptorEntry",
+              "描述符条目载体已按 S1 整体删除（生产点为 0、消费者或空转或自比）：要恢复"
+              "「按 definition 声明描述符」必须先重做载体与其真源，勿在生成器里补半套",
+              true },
+            { "VKShaderProgram.h", OS_TEXT("inc/hgl/vk/VKShaderProgram.h"),
+              "GetShaderResourceSchema",
+              "资源条目 schema 已按 S1 删除：材质编译产物只剩 requires_recipe_runtime_rows 单信号，"
+              "读口 = RequiresRecipeRuntimeRows()",
+              true },
+            { "RenderSceneUBOSystem.h", OS_TEXT("inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h"),
+              "RegisterMaterialStructLayout",
+              "该「布局校验」拿同一张 stride 表的取值与自己比（恒通过）+ 唯一调用点遍历恒空表"
+              "⇒ S1 删除；真校验必须落在行写入侧（那里才有实际写入字节数）",
+              true },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "MaterialRequiresRecipeRuntimeRows",
+              "自由函数包装已按 S1 删除：运行期行需求改读 program->RequiresRecipeRuntimeRows()",
+              true },
             // ── 禁复活（D8 收敛，2026-09-26 实测证据见 doc/backlog.md D8）──
             { "ShaderProgramManager.cpp", OS_TEXT("src/SceneGraph/module/ShaderProgramManager.cpp"),
               "ScanSPVHasDiscard",

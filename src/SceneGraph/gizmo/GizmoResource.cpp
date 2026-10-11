@@ -14,7 +14,6 @@
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/mtl/ShaderResourceSchema.h>
 #include"GizmoResource.h"
 
 namespace hgl::graph
@@ -82,7 +81,7 @@ namespace hgl::graph
 
         // Create the SSBO holding one Color4f per GizmoColor slot.
         // PureColor MI data is exactly one Color4f (16 bytes, std430 vec4).
-        bool InitColorSSBO(GizmoResource *gr, const mtl::ShaderResourceSchema &material_layout)
+        bool InitColorSSBO(GizmoResource *gr)
         {
             if (!gr)
                 return false;
@@ -148,29 +147,9 @@ namespace hgl::graph
                 return(false);
 
             const GeometryVertexFormat gizmo_gvf = CreateGizmoGeometryVertexFormat();
-            mtl::ShaderResourceSchema gizmo_material_layout{};
 
             {
-                mtl::MaterialRecipe recipe{};
-                recipe.mtl_def_id = "builtin/pure_color";
-                mtl::MaterialDefinitionBuildRequest request{};
-                request.recipe = recipe;
-                request.primitive_type = PrimitiveType::Triangles;
-                request.geometry_vertex_format = &gizmo_gvf;
-                mtl::RenderTemplateValidationDiagnostic template_diagnostic{};
-                if (!mtl::ResolveSceneRenderTemplateRequest(
-                        mtl::RenderTemplateID::ForwardUnlit,
-                        ShaderStage::Fragment,
-                        mtl::MakeForwardUnlitProfile(),
-                        request.render_template_request, template_diagnostic))
-                    return false;
-
-                if(!gizmo_mtl_manager->BuildShaderResourceSchema(request, gizmo_material_layout))
-                    return(false);
-            }
-
-            {
-                if(!InitColorSSBO(&gizmo_triangle, gizmo_material_layout))
+                if(!InitColorSSBO(&gizmo_triangle))
                     return(false);
 
                 gizmo_triangle.vdm=new VertexDataManager(

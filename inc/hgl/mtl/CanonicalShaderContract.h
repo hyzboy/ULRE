@@ -45,8 +45,6 @@ namespace hgl::graph::mtl
 
     // ── 校验已就地化（不再经第二套表示中转）───────────────────────────
     //   inter-stage 条目 → MaterialStageInterface.cpp::ValidateInterStageEntries
-    //   描述符条目       → DescriptorContract.cpp::ValidateDescriptorContract
-    //   描述符契约哈希   → DescriptorContract.cpp::GetDescriptorContractHash
 
     struct ShaderOutputAttachmentContract
     {
