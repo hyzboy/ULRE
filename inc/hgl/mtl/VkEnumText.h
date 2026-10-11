@@ -17,7 +17,7 @@
 //
 // 历史：此前 MaterialDefinitionFile.cpp 有 3 份手写解析器（cull_mode/compare_op/blend_src|dst）、
 //   SamplerPreset.cpp 有 4 份（filter/mipmap_mode/address_mode/compare_op），
-//   另有 src/Vulkan/VKString.cpp 一套覆盖同类枚举但全仓 0 消费者的注册表。
+//   另有 src/Vulkan/VKString.{h,cpp} 一套同类注册表（全仓 0 消费者），已于 2026-10-11 整删。
 
 namespace hgl::graph::mtl
 {

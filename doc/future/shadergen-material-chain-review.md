@@ -461,6 +461,51 @@ cook `38/0`；`PBRSpheres` 15s 0 错误；`CascadeShadowMap` 12s 0 错误。
 - **`src/Vulkan/VKString.{h,cpp}` 整套 Vk↔文本注册表 0 消费者**：`VkEnum2String`/`String2VkEnum`/`VkCullMode2String` 全仓无调用点，`IVulkanEnumStringList`/`VkGetEnumStringList` 仅出现在自身文件内。⇒ 真死代码（覆盖 compare/blend/cull，正是 S3a 收敛掉的那几份）。处置：删除（含其公共头）或日后并入公共头复用 —— **待拍板**。
 - **S3b 待办**：`GLSLSamplerType`（6 项，`ParseSampler` 按**索引序**映射名字 ⇒ 枚举顺序一改即静默错位）与 `inc/hgl/common/TextureSamplerTypeDef.h` 的 `SamplerType`（18 项，已带 `GetSamplerTypeName`/`ParseSamplerType`）是同一概念的两套；`ToGLSLSamplerTypeName` 0 调用。另有 3 个注册表盲区：`MaterialVertexProviderPolicy`、`ShaderCodeModuleKind`、`MeshShaderMode`（均只有单向解析）。
 
+---
+
+## 11. S5-VKString：Vk↔文本注册表（死代码）整删（2026-10-11）
+
+**靶**：`src/Vulkan/VKString.{h,cpp}` —— 覆盖 9 个 Vk 枚举（PolygonMode/CullMode/FrontFace/StencilOp/CompareOp/LogicOp/
+BlendFactor/BlendOp/DynamicState）的 name↔value 注册表，含 `VkEnum2String`/`String2VkEnum`/`VkGetEnumStringList`/
+`IVulkanEnumStringList`/`VkCullMode2String`/`String2VkCullMode`。
+
+**判据（全仓 0 消费者，逐符号核实）**：7 个符号的 `git grep` 命中**只在自己两档内**；无人 `#include<hgl/vk/VKString.h>`；
+`VkEnum2String` 等模板特化没有任何调用点。它覆盖的 compare/blend/cull 正是 S3a 收敛掉的那几份手写解析器 ⇒ 平行且更死的第二套。
+
+### 11.1 删除面
+
+| 项 | 内容 |
+|---|---|
+| `inc/hgl/vk/VKString.h`（公共头） | 删除（含 4 个导出声明） |
+| `src/Vulkan/VKString.cpp` | 删除（含注册表实现 + `VK_ENUM_STRING_LIST` 宏 + DynamicState 大表） |
+| `src/Vulkan/CMakeLists.txt` | 去掉两行（`${VK_INCLUDE_PATH}/VKString.h` 头文件登记；`VKString.cpp` 源文件，`)` 收在 `VKFormat.cpp` 行上） |
+| `inc/hgl/mtl/VkEnumText.h` 注释 | 「另有 `src/Vulkan/VKString.cpp` 一套…」改为「…**已于 2026-10-11 整删**」（否则注释把读者指向已删文件） |
+| 禁复活针 | `src/Vulkan/CMakeLists.txt` 不得再出现 `VKString.cpp` |
+
+### 11.2 验收（实测）
+
+| 项 | 结果 |
+|---|---|
+| 全量 Release（含 CMake 重配） | `rc=0` / 0 error / 392 目标 |
+| `ctest -L ecs` / `TestCSMIncrementalPass` | **12/12** / **1/1** |
+| 门 | **43 PASS / 0 FAIL** |
+| cook | 38/0 |
+| 示例冒烟（Vulkan 库重链后） | `PBRSpheres` rc=124 / 0 错误；`CascadeShadowMap` rc=124 / 0 错误 |
+
+### 11.3 反证（针有牙）
+
+把 `VKString.cpp` 加回 `src/Vulkan/CMakeLists.txt` ⇒ `TestCSMIncrementalPass` **Test 11 精确报红**：
+`'VKString.cpp' 重新出现在 Vulkan/CMakeLists.txt（禁复活）`；还原后 1/1。
+
+**残留判据**：7 个符号在 `src/inc/example/check/ShaderLibrary` 内只剩两处**有意保留**的文本
+（本档的删除记录 + 新针自身的禁用串与文案），源码面零引用。
+
+### 11.4 另注（未处理，待用户拍板）
+
+- `bin/PipelineCompiler.exe`（2025-03 入库的**预编译二进制**，全仓无任何 CMake target 引用它）二进制里含这些符号名
+  ⇒ 它是更早的构建产物，与本次删源无关；但**陈旧二进制入库**本身是卫生问题（本项目既有 `GLSLCompiler.dll` 这类
+  **有意**入库的运行时插件，也有 `bin/PipelineCompiler.exe` 这种无 target 的遗留件）。删/留交用户。
+
 ## 5. 本档边界
 
 - 评审（§1–§4）为只读静态取证（grep / 行号 / 结构）；**§6 是其后 S1 批的落地记录**（该批改了引擎代码，验收数字见 §6.2）。

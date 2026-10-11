@@ -1789,6 +1789,11 @@ int main(int argc, char** argv)
               "MaterialRequiresRecipeRuntimeRows",
               "自由函数包装已按 S1 删除：运行期行需求改读 program->RequiresRecipeRuntimeRows()",
               true },
+            { "Vulkan/CMakeLists.txt", OS_TEXT("src/Vulkan/CMakeLists.txt"),
+              "VKString.cpp",
+              "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"
+              "（全仓 0 消费者）：Vk 枚举文本名的唯一真源 = inc/hgl/mtl/VkEnumText.h，不得再引入第二套注册表",
+              true },
             { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
               "LessOrEqual",
               "Vk 枚举文本名单一真源 = inc/hgl/mtl/VkEnumText.h（S3a 收敛，2026-10-11）："
