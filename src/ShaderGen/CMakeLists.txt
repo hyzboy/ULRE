@@ -18,6 +18,7 @@ set(SHADERGEN_COMMON_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSource.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderLibraryPath.h
+    ${SHADERGEN_INCLUDE_PATH}/VkEnumText.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCacheRoot.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModule.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeResourceManifest.h
@@ -105,8 +106,6 @@ SOURCE_GROUP("Material Definition" FILES ${MATERIAL_DEFINITION_FILES})
 set(CONTRACT_FILES
     ${SHADERGEN_INCLUDE_PATH}/CanonicalShaderContract.h
     contract/CanonicalShaderContract.cpp
-    ${SHADERGEN_INCLUDE_PATH}/DescriptorContract.h
-    contract/DescriptorContract.cpp
     ${SHADERGEN_INCLUDE_PATH}/MaterialOutputContract.h
     contract/MaterialOutputContract.cpp
     ${SHADERGEN_INCLUDE_PATH}/MaterialCoverageContract.h
@@ -117,9 +116,6 @@ set(CONTRACT_FILES
     contract/ShaderSemanticRegistry.cpp
     contract/CanonicalContractWriter.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderStageValueType.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderResourceSchema.h
-    ${SHADERGEN_INCLUDE_PATH}/DescriptorSemantic.h
-    ${SHADERGEN_INCLUDE_PATH}/SerializedDescriptorEntry.h
     ${SHADERGEN_INCLUDE_PATH}/SerializedVertexEntry.h)
 SOURCE_GROUP("Contract" FILES ${CONTRACT_FILES})
 
@@ -144,15 +140,13 @@ set(BUILDER_FILES
     builder/GenericMaterialBuilder.h
     builder/GenericMaterialBuilder.cpp
     builder/VertexABIBuilder.cpp
-    builder/DefinitionDescriptorBuilder.h
-    builder/DescriptorBuilderCommon.h
+    builder/MaterialResourceManifestBuilder.h
     ${SHADERGEN_INCLUDE_PATH}/VertexShaderNodeConfig.h
     ${SHADERGEN_INCLUDE_PATH}/VertexNodeConfigResolver.h)
 SOURCE_GROUP("Builder" FILES ${BUILDER_FILES})
 
 # ── 公共类型（Surface/Blend/Pass/Pipeline 等，头-only）────────────────────────
 set(MATERIAL_TYPE_FILES
-    ${SHADERGEN_INCLUDE_PATH}/BlendMode.h
     ${SHADERGEN_INCLUDE_PATH}/PassType.h
     ${SHADERGEN_INCLUDE_PATH}/PipelineConfig.h
     ${ROOT_INCLUDE_PATH}/hgl/common/RenderTargetOutputConfig.h)

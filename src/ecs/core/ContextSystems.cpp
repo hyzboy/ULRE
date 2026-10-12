@@ -2,6 +2,7 @@
 #include <hgl/ecs/core/System.h>
 #include <hgl/log/Log.h>
 #include <algorithm>
+#include <typeinfo>
 #include <vector>
 
 namespace hgl::ecs
@@ -165,14 +166,21 @@ namespace hgl::ecs
                 if (changed_group != SystemGroupID::None)
                     group_systems[static_cast<uint32_t>(changed_group)].clear();
             }
-            for (auto it = systems_list.begin(); it != systems_list.end(); ++it)
-            {
-                if (*it == system)
-                {
-                    systems_list.erase(it);
-                    break;
-                }
-            }
+            // 2026-10-11（§1 S1）：按**键**摘旧实例。原写法 `*it == system` 是"同一实例"比较 ⇒
+            // `RegisterSystem<T>()` 再注册（替换同类型系统）时，列表里没有任何元素等于**新**实例，
+            // 于是**旧实例永远留在列表里**；`SetSystemGroupEnabled` 从该列表重建快照
+            // ⇒ 快照同时挂着新旧两个实例，组开关会去开关一个"已不在 sys_map 里"的僵尸实例
+            // （`RenderGraph` 取该列表算组的相位区间时也会把僵尸算进去）。
+            // 键 = `typeid(T).hash_code()`（见 `Context::RegisterSystem`）⇒ 同类型即同键，
+            // 按类型比较等价于按键比较。
+            systems_list.erase(
+                std::remove_if(systems_list.begin(), systems_list.end(),
+                               [&system](const std::shared_ptr<System> &candidate)
+                               {
+                                   return !candidate || typeid(*candidate) == typeid(*system);
+                               }),
+                systems_list.end());
+
             systems_list.push_back(system);
         }
 

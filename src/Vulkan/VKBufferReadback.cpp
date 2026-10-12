@@ -14,7 +14,13 @@ namespace hgl::graph
             return false;
 
         // 读回前先排空图形队列，避免读到进行中的写入
-        vkQueueWaitIdle(device->GetGraphicsQueue());
+        VkResult queue_wait_result=vkQueueWaitIdle(device->GetGraphicsQueue());
+        if(queue_wait_result!=VK_SUCCESS)
+        {
+            GLogError("[BufferReadback] vkQueueWaitIdle failed result=%d",
+                      static_cast<int>(queue_wait_result));
+            return false;
+        }
 
         DeviceBuffer *staging = device->CreateBuffer(
             ObjectNameBuilder(AnsiString("BufferReadback:Staging")),
@@ -56,6 +62,7 @@ namespace hgl::graph
 
             if (vkCreateFence(device->GetDevice(), &fi, nullptr, &fence) != VK_SUCCESS)
             {
+                GLogError("[BufferReadback] vkCreateFence failed cmd=%p", (void*)raw_cmd);
                 ok = false;
             }
             else
@@ -65,10 +72,24 @@ namespace hgl::graph
                 si.commandBufferCount = 1;
                 si.pCommandBuffers = &raw_cmd;
 
-                ok = (vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence) == VK_SUCCESS);
+                VkResult submit_result=vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence);
+                if(submit_result!=VK_SUCCESS)
+                {
+                    GLogError("[BufferReadback] vkQueueSubmit failed result=%d cmd=%p fence=%p",
+                              static_cast<int>(submit_result),(void*)raw_cmd,(void*)fence);
+                    ok=false;
+                }
 
                 if (ok)
-                    ok = (vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX) == VK_SUCCESS);
+                {
+                    VkResult wait_result=vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+                    if(wait_result!=VK_SUCCESS)
+                    {
+                        GLogError("[BufferReadback] vkWaitForFences failed result=%d cmd=%p fence=%p",
+                                  static_cast<int>(wait_result),(void*)raw_cmd,(void*)fence);
+                        ok=false;
+                    }
+                }
 
                 vkDestroyFence(device->GetDevice(), fence, nullptr);
             }

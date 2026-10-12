@@ -40,6 +40,7 @@ class SwapchainRenderTarget : public IRenderTarget
     uint32_t            slot_count          = 0;        ///< Number of in-flight frame slots
     uint32_t            current_slot        = 0;        ///< Which slot is being processed this frame
     uint32_t            acquired_image      = 0;        ///< Image index from vkAcquireNextImageKHR
+    bool                fatal_sync_error    = false;    ///< Stop WSI reuse after device loss / failed submit
 
     SwapchainFrameSync* sync_slots          = nullptr;  ///< [slot_count] - owned
     DeviceQueue**       images_in_flight    = nullptr;  ///< [image_count] - which slot owns each image

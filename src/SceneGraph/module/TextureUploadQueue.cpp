@@ -413,13 +413,35 @@ namespace hgl::graph
 
         if (task->state == UploadTaskState::InFlight)
         {
-            if (task->backend == UploadBackendType::GpuTransferDma && transfer_queue_)
+            if (task->backend == UploadBackendType::GpuTransferDma)
             {
-                transfer_queue_->WaitLastSubmitFence();
+                if(!transfer_queue_)
+                {
+                    LogError(u8"[TextureUploadQueue] CompleteTask has no transfer queue for in-flight task=%llu",
+                             static_cast<unsigned long long>(task->task_id));
+                    return;
+                }
+                if(!transfer_queue_->WaitLastSubmitFence()&&!transfer_queue_->WaitQueue())
+                {
+                    LogError(u8"[TextureUploadQueue] CompleteTask could not drain transfer queue task=%llu",
+                             static_cast<unsigned long long>(task->task_id));
+                    return;
+                }
             }
             else if (graphics_queue_)
             {
-                graphics_queue_->WaitLastSubmitFence();
+                if(!graphics_queue_->WaitLastSubmitFence()&&!graphics_queue_->WaitQueue())
+                {
+                    LogError(u8"[TextureUploadQueue] CompleteTask could not drain graphics queue task=%llu",
+                             static_cast<unsigned long long>(task->task_id));
+                    return;
+                }
+            }
+            else
+            {
+                LogError(u8"[TextureUploadQueue] CompleteTask has no queue for in-flight task=%llu",
+                         static_cast<unsigned long long>(task->task_id));
+                return;
             }
 
             if (task->staging_buffer)
@@ -466,8 +488,16 @@ namespace hgl::graph
 
         EnsureResources();
 
-        if (transfer_queue_)
-            transfer_queue_->WaitLastSubmitFence();
+        if(!transfer_queue_||!transfer_cmd_buf_)
+        {
+            LogError(u8"[TextureUploadQueue] GpuTransferDma missing queue or command buffer");
+            return false;
+        }
+        if(!transfer_queue_->WaitLastSubmitFence())
+        {
+            LogError(u8"[TextureUploadQueue] GpuTransferDma prior submission is still in flight");
+            return false;
+        }
 
         TextureCreateInfo *tci = task->tci;
         Texture *tex = task->target_texture;
@@ -530,7 +560,12 @@ namespace hgl::graph
 
         const uint32_t mip_levels = tci->target_mipmaps > 0 ? tci->target_mipmaps : 1;
 
-        transfer_cmd_buf_->Begin();
+        if(!transfer_cmd_buf_->Begin())
+        {
+            LogError(u8"[TextureUploadQueue] GpuTransferDma command buffer begin failed task=%llu",
+                     static_cast<unsigned long long>(task->task_id));
+            return false;
+        }
 
         VkImageSubresourceRange subresource_range{};
         subresource_range.aspectMask = tex->GetAspect();
@@ -607,7 +642,12 @@ namespace hgl::graph
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             subresource_range);
 
-        transfer_cmd_buf_->End();
+        if(!transfer_cmd_buf_->End())
+        {
+            LogError(u8"[TextureUploadQueue] GpuTransferDma command buffer end failed task=%llu",
+                     static_cast<unsigned long long>(task->task_id));
+            return false;
+        }
 
         tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -615,15 +655,26 @@ namespace hgl::graph
         // 提交成功后才抬升对外的值 ⇒ 等待方看到的每个值都已真正入队
         const uint64_t lane_signal = upload_lane_ ? upload_lane_->NextValue() : 0;
         SemaphoreSubmit transfer_signal = SemaphoreSubmit::Signal(upload_lane_, lane_signal);
-        if (transfer_queue_->Submit(transfer_cmd_buf_, nullptr, 0, &transfer_signal, 1) && lane_signal != 0)
-            upload_lane_value_ = lane_signal;
+        if(!transfer_queue_->Submit(transfer_cmd_buf_, nullptr, 0, &transfer_signal, 1))
+        {
+            LogError(u8"[TextureUploadQueue] GpuTransferDma submit failed task=%llu",
+                     static_cast<unsigned long long>(task->task_id));
+            return false;
+        }
+        if(lane_signal!=0)
+            upload_lane_value_=lane_signal;
 
         task->state = UploadTaskState::InFlight;
         in_flight_tasks_.Add(task);
 
         if (task->priority == UploadPriority::Immediate)
         {
-            transfer_queue_->WaitLastSubmitFence();
+            if(!transfer_queue_->WaitLastSubmitFence()&&!transfer_queue_->WaitQueue())
+            {
+                LogError(u8"[TextureUploadQueue] Immediate transfer completion wait failed task=%llu",
+                         static_cast<unsigned long long>(task->task_id));
+                return false;
+            }
             current_staging_bytes_ -= task->staging_bytes;
             if (!task->is_ring_staging && task->staging_buffer)
             {
@@ -654,8 +705,16 @@ namespace hgl::graph
 
         EnsureResources();
 
-        if (graphics_queue_)
-            graphics_queue_->WaitLastSubmitFence();
+        if(!graphics_queue_||!graphics_cmd_buf_)
+        {
+            LogError(u8"[TextureUploadQueue] GpuGraphicsDma missing queue or command buffer");
+            return false;
+        }
+        if(!graphics_queue_->WaitLastSubmitFence())
+        {
+            LogError(u8"[TextureUploadQueue] GpuGraphicsDma prior submission is still in flight");
+            return false;
+        }
 
         TextureCreateInfo *tci = task->tci;
         Texture *tex = task->target_texture;
@@ -716,7 +775,12 @@ namespace hgl::graph
 
         const uint32_t mip_levels = tci->target_mipmaps > 0 ? tci->target_mipmaps : 1;
 
-        graphics_cmd_buf_->Begin();
+        if(!graphics_cmd_buf_->Begin())
+        {
+            LogError(u8"[TextureUploadQueue] GpuGraphicsDma command buffer begin failed task=%llu",
+                     static_cast<unsigned long long>(task->task_id));
+            return false;
+        }
 
         VkImageSubresourceRange subresource_range{};
         subresource_range.aspectMask = tex->GetAspect();
@@ -813,18 +877,33 @@ namespace hgl::graph
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             subresource_range);
 
-        graphics_cmd_buf_->End();
+        if(!graphics_cmd_buf_->End())
+        {
+            LogError(u8"[TextureUploadQueue] GpuGraphicsDma command buffer end failed task=%llu",
+                     static_cast<unsigned long long>(task->task_id));
+            return false;
+        }
 
         tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        graphics_queue_->Submit(graphics_cmd_buf_, nullptr, 0, nullptr, 0);
+        if(!graphics_queue_->Submit(graphics_cmd_buf_, nullptr, 0, nullptr, 0))
+        {
+            LogError(u8"[TextureUploadQueue] GpuGraphicsDma submit failed task=%llu",
+                     static_cast<unsigned long long>(task->task_id));
+            return false;
+        }
 
         task->state = UploadTaskState::InFlight;
         in_flight_tasks_.Add(task);
 
         if (task->priority == UploadPriority::Immediate)
         {
-            graphics_queue_->WaitLastSubmitFence();
+            if(!graphics_queue_->WaitLastSubmitFence()&&!graphics_queue_->WaitQueue())
+            {
+                LogError(u8"[TextureUploadQueue] Immediate graphics completion wait failed task=%llu",
+                         static_cast<unsigned long long>(task->task_id));
+                return false;
+            }
             current_staging_bytes_ -= task->staging_bytes;
             if (!task->is_ring_staging && task->staging_buffer)
             {

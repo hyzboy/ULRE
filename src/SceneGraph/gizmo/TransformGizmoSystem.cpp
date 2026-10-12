@@ -191,7 +191,8 @@ void TransformGizmoSystem::Update(float)
     if (!input_system || !camera_system)
         return;
 
-    const CameraInfo *camera_info = context->GetActiveCameraInfo();
+    // §3-⑥：只读意图 ⇒ 纯读口（不会认领 0 号槽 / 不会凭空生成 fallback 相机）
+    const CameraInfo *camera_info = context->ResolveActiveCameraInfo();
     const ViewportInfo *viewport_info = camera_system->GetViewportInfo();
     if (!camera_info || !viewport_info)
         return;

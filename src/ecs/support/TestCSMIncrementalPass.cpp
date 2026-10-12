@@ -1033,7 +1033,7 @@ int main(int argc, char** argv)
         // UBO，**证明不了 shader 会读它**。历次最贵的 bug 恰恰是"旋钮接通了但下游
         // 没人用"（cache_offset 就是这样烂了很久的）。所以这里直接对源码断言：
         //   1) 有编译期宏 HGL_SHADOW_NORMAL_OFFSET 且偏移代码受它保护；
-        //   2) 强度取自 shadow.cascades[0].shadow_params.w（CPU 侧 7A 写入的那个字段）；
+        //   2) 强度取自 shadow_info.cascades[0].shadow_params.w（CPU 侧 7A 写入的那个字段）；
         //   3) 偏移只用于采样，级联选级仍用未偏移的位置（EvalPCFShadowAt 的双入参）；
         //   4) 公式仍是 tan(θ) 加权且被 MAX 夹住 —— 被"简化"成角度无关的常量偏移
         //      会让正面被推离遮挡体（peter-panning 立刻回来），这条就是那道闸门。
@@ -1075,7 +1075,7 @@ int main(int argc, char** argv)
                 { "ShadowNormalOffsetPosition",      "offset helper is missing" },
                 { "#if HGL_SHADOW_NORMAL_OFFSET > 0",
                   "the offset code is not guarded by the compile-time switch" },
-                { "shadow.cascades[0].shadow_params.w",
+                { "shadow_info.cascades[0].shadow_params.w",
                   "GetShadowFactor does not read the UBO field the controller writes (dead knob)" },
                 { "sin_theta / cos_theta",
                   "offset is no longer tan(theta) weighted; a constant offset brings peter-panning back" },
@@ -1084,7 +1084,7 @@ int main(int argc, char** argv)
                 { "SHADOW_NORMAL_OFFSET_MAX",        "tan() clamp is missing (grazing angle will diverge)" },
                 { "EvalPCFShadowAt(sample_pos, surface.worldPos, receive_params.bias_multiplier)",
                   "offset must not leak into cascade selection (selectPos must stay un-offset)" },
-                { "shadow.cascades[selected].shadow_tex.x == 0u",
+                { "shadow_info.cascades[selected].shadow_tex.x == 0u",
                   "masked cascade must yield LIT inside its own depth interval; letting selection "
                   "descend to a farther cascade makes CSM 2 take over CSM 1's near range" },
                 { "cascade_params.w",
@@ -1237,7 +1237,8 @@ int main(int argc, char** argv)
 
             auto e_cam = ctx.CreateEntity<Entity>("TestMainCamera");
             // T2-c：实体相机住世界相机行（行内持 shared_ptr —— 世界相机槽账目按宿主弱引用计占用期）
-            CameraComponent *cam_comp = e_cam->AddComponent<CameraComponent>();
+            // §3-②：相机不再有实体级挂载口（已编译期禁死）⇒ 走世界级唯一入口
+            CameraComponent *cam_comp = ctx.GetOrCreateCamera(e_cam->GetEntityID());
             cam_comp->is_main_camera = true;
             cam_comp->position = math::Vector3f(12.0f, 34.0f, 56.0f);
 
@@ -1352,7 +1353,10 @@ int main(int argc, char** argv)
                 auto tf_static = ctx.GetTransform(ctx.CreateTransform(e_static->GetEntityID(), Mobility::Static));
                 tf_static.SetLocalPosition(math::Vector3f(5.0f, 6.0f, 7.0f));
 
-                // 检出：提交后 revision 必须前移（移动静态物体必须打破静态缓存）
+                // 批 1.1 B4：必须走**正常帧序**（先 Update —— 它会清 matrixDirty，再 Submit）。
+                // 历史写法直接 Submit、跳过 Update，正好掩盖了「dirty 位被提前消费 ⇒ 静态场景
+                // revision 永不递增」的缺陷；本用例现在就是那条缺陷的判据。
+                tf_sys->Update(0.0f);
                 tf_sys->SubmitTransformUpdates();
                 if (ctx.GetStaticSceneRevision() == revision_base)
                 {
@@ -1362,10 +1366,27 @@ int main(int argc, char** argv)
                 }
 
                 // 稳态：无变更的重复提交不得继续递增（否则每帧全量重建静态级联）
+                tf_sys->Update(0.0f);
                 tf_sys->SubmitTransformUpdates();
                 if (ctx.GetStaticSceneRevision() != revision_base + 1)
                 {
                     GLogError(u8"Test 9D Failed: unchanged scene must not keep bumping static_scene_revision");
+                    return 9;
+                }
+
+                // 批 1.1 B4：**删除静态实体**同样必须通知静态缓存失效（静态集合变了）。
+                // 历史用例只覆盖"移动"，删除路径完全没测（revision 不动 ⇒ 阴影残留）。
+                const uint64_t revision_before_delete = ctx.GetStaticSceneRevision();
+
+                ctx.DestroyEntity(e_static->GetEntityID());
+
+                tf_sys->Update(0.0f);
+                tf_sys->SubmitTransformUpdates();
+
+                if (ctx.GetStaticSceneRevision() == revision_before_delete)
+                {
+                    GLogError(u8"Test 9D Failed: destroying a Static entity must bump static_scene_revision "
+                              u8"(removing a caster leaves its stale shadows in the cache)");
                     return 9;
                 }
 
@@ -1745,8 +1766,128 @@ int main(int argc, char** argv)
               "forward 本体的 discard 调用丢失（PBR 输出 alpha 恒 1，alpha test 永不触发）" },
             { "RenderPrimitiveCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
-              "MaterialRequiresRecipeRuntimeRows",
+              "RequiresRecipeRuntimeRows",
               "阴影 pass 不再判定 masked caster 的行需求——行未就绪时仍采深度会写出实心影子" },
+            // ── 禁复活（S1 收敛，2026-10-11：描述符契约层 + 三处恒空消费者）──
+            { "GenericMaterialBuilder.cpp",
+              OS_TEXT("src/ShaderGen/builder/GenericMaterialBuilder.cpp"),
+              "SerializedDescriptorEntry",
+              "描述符条目载体已按 S1 整体删除（生产点为 0、消费者或空转或自比）：要恢复"
+              "「按 definition 声明描述符」必须先重做载体与其真源，勿在生成器里补半套",
+              true },
+            { "VKShaderProgram.h", OS_TEXT("inc/hgl/vk/VKShaderProgram.h"),
+              "GetShaderResourceSchema",
+              "资源条目 schema 已按 S1 删除：材质编译产物只剩 requires_recipe_runtime_rows 单信号，"
+              "读口 = RequiresRecipeRuntimeRows()",
+              true },
+            { "RenderSceneUBOSystem.h", OS_TEXT("inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h"),
+              "RegisterMaterialStructLayout",
+              "该「布局校验」拿同一张 stride 表的取值与自己比（恒通过）+ 唯一调用点遍历恒空表"
+              "⇒ S1 删除；真校验必须落在行写入侧（那里才有实际写入字节数）",
+              true },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "MaterialRequiresRecipeRuntimeRows",
+              "自由函数包装已按 S1 删除：运行期行需求改读 program->RequiresRecipeRuntimeRows()",
+              true },
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "material_row_cpu",
+              "只写不读字段已于 2026-10-11 S5a 删除（行内 CPU 指针从不被读；行地址走 GPU 侧字段/注册表解析）",
+              true },
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "material_texture_row_cpu",
+              "同上：纹理配置行的 CPU 指针 0 读取；配置本身由 MaterialTextureConfigurationAllocation 表达",
+              true },
+            { "ShaderCodeResourceManifest.h", OS_TEXT("inc/hgl/mtl/ShaderCodeResourceManifest.h"),
+              "error_module_name",
+              "0 读取（诊断走 error 枚举 + 调用方自带模块名）；已于 2026-10-11 S5a 删除",
+              true },
+            { "ShaderCodeModuleMetadata.h", OS_TEXT("inc/hgl/mtl/ShaderCodeModuleMetadata.h"),
+              "item_index",
+              "诊断的 item_index 全仓 0 读取；已连 SetMetadataFailure 的参数一并删（2026-10-11 S5a）",
+              true },
+            { "ShaderGenContract.h", OS_TEXT("inc/hgl/mtl/contract/ShaderGenContract.h"),
+              "queue_family_count",
+              "0 读取（JSON 的 queue_families 数组由采集器直接产出，不经本字段；CountQueueFamilies 随之删，2026-10-11 S5a）",
+              true },
+            { "PipelineMaterialRenderer.h", OS_TEXT("inc/hgl/ecs/support/PipelineMaterialRenderer.h"),
+              "CalcMeshGroupCount",
+              "CalcMeshGroupCount 已于 2026-10-11 F-2 删除（唯一消费者是 _Obsolete 停放源码）：组大小真源 = MeshDispatchGroupSize，组数由调用点就地算",
+              true },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "ToGLSLSamplerTypeName",
+              "ToGLSLSamplerTypeName 已于 2026-10-11 F-2 删除（0 调用）：GLSL 采样器类型名走 inc/hgl/common/TextureSamplerTypeDef.h 的 GetSamplerTypeName",
+              true },
+            { "ShaderCodeModuleMetadata.h", OS_TEXT("inc/hgl/mtl/ShaderCodeModuleMetadata.h"),
+              "GetNormalizedShaderCodeModuleDependency",
+              "GetNormalizedShaderCodeModuleDependency{Count,} 已于 2026-10-11 F-2 删除（0 调用）：依赖表直接读 definition.dependencies/dependency_count",
+              true },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "GetMaterialRowID",
+              "MaterialData::GetMaterialRowID 已于 2026-10-11 F-2 删除（0 调用）：组件行号即 material_row_id 字段（内部使用）",
+              true },
+            { "ShaderArtifactStore.cpp", OS_TEXT("src/ShaderGen/compile/ShaderArtifactStore.cpp"),
+              "ToOSString(ShaderArtifactSPVExtension)",
+              "artifact 扩展名单一真源 = inc/hgl/mtl/ShaderArtifactContract.h：SPV 文件名必须由常量拼出，不得再硬编码字面量（2026-10-11 F-3 修正）",
+              false },
+            { "ShaderGen/CMakeLists.txt", OS_TEXT("src/ShaderGen/CMakeLists.txt"),
+              "BlendMode.h",
+              "BlendMode 枚举已于 2026-10-11 F-3 删除（全仓 0 使用）；混合状态由运行时管线状态管，不建材质侧类型",
+              true },
+            { "ShaderGenContract.h", OS_TEXT("inc/hgl/mtl/contract/ShaderGenContract.h"),
+              "ResourceClass",
+              "ResourceClass/ResourceRequirement 已于 2026-10-11 F-3 删除（0 消费者，描述符契约层退役的遗留）",
+              true },
+            { "ShaderCodeModuleCapabilityResolver.h", OS_TEXT("inc/hgl/mtl/ShaderCodeModuleCapabilityResolver.h"),
+              "ShaderCodeModuleResolutionRequest",
+              "ResolutionRequest/GeometryCapability 已于 2026-10-11 F-3 删除（整类型无读写）",
+              true },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "ApplyBaseMaterialInfoDefaults",
+              "ApplyBaseMaterialInfoDefaults 已于 2026-10-11 F-4 删除：形参 overwrite_existing 从不被读，"
+              "且唯一调用点紧邻一行已直接写 mtl_def_id ⇒ 该调用恒为 no-op（先证此再删，不是删参数了事）",
+              true },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "GLSLSamplerType",
+              "材质侧的 6 项采样器类型枚举已于 2026-10-11 S3b 收敛掉：类型与名字表唯一真源 = "
+              "inc/hgl/common/TextureSamplerTypeDef.h 的 SamplerType（两套枚举数值不同，会让哈希与名字映射各说一套）",
+              true },
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "static_cast<GLSLSamplerType>",
+              "按索引序把名字映射成枚举值的解析器已删（枚举一改即静默错位）：改走 ParseSamplerType（大小写不敏感、未知名 ⇒ Error）",
+              true },
+            { "Vulkan/CMakeLists.txt", OS_TEXT("src/Vulkan/CMakeLists.txt"),
+              "VKString.cpp",
+              "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"
+              "（全仓 0 消费者）：Vk 枚举文本名的唯一真源 = inc/hgl/mtl/VkEnumText.h，不得再引入第二套注册表",
+              true },
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "LessOrEqual",
+              "Vk 枚举文本名单一真源 = inc/hgl/mtl/VkEnumText.h（S3a 收敛，2026-10-11）："
+              "解析文件里不得再出现枚举名字面量，也不得再手写 name<->value 表",
+              true },
+            { "SamplerPreset.cpp", OS_TEXT("src/ShaderGen/glsl_module/SamplerPreset.cpp"),
+              "ClampToEdge",
+              "同上：sampler.toml 的 filter/mipmap_mode/address_mode/compare_op 一律走 VkEnumText.h",
+              true },
+            { "MaterialDefinitionFile.cpp",
+              OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "key != \"swizzle\"",
+              "材质侧纹理采样选项（filter/wrap/swizzle/anisotropy/lod/compare_op）已于 2026-10-11 S2 整删："
+              "双端空转（0 材质授权 + 0 消费者），运行期采样器真源 = ShaderLibrary/sampler.toml 预设表；"
+              "要恢复必须先有真实消费者与授权方",
+              true },
+            { "Shadow/CMakeLists.txt", OS_TEXT("example/Shadow/CMakeLists.txt"),
+              "CreateProject(ShadowMap ",
+              "ShadowMap 技术示例已于 2026-10-11 删除（旧 shadow-map 直采路线，被 CSM 取代；"
+              "其独占材质 shadow_receiver* 与 ShadowMap 采样器预设同批删除）——要恢复单张阴影图请把 "
+              "CascadeShadowMap 的 cascade_count 设为 1，勿重建双路线",
+              true },
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "#define shadow ",
+              "单词级宏名会整词改写同名局部变量（实测击穿 material/shadow_receiver_source.glsl 的"
+              " `const float shadow = ...` ⇒ 'const' : no qualifiers allowed for function return，"
+              "该材质因此长期编不过）；世界 shadow 行的别名宏必须带前缀（现为 shadow_info）",
+              true },
             // ── 禁复活（D8 收敛，2026-09-26 实测证据见 doc/backlog.md D8）──
             { "ShaderProgramManager.cpp", OS_TEXT("src/SceneGraph/module/ShaderProgramManager.cpp"),
               "ScanSPVHasDiscard",
@@ -1947,7 +2088,7 @@ int main(int argc, char** argv)
               "if (!receive_params.receive)",
               "不接收阴影的图元没有早退——仍会采样/选级，开关只影响噪音" },
             { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
-              "shadow.cascades[c].shadow_params.x * bias_scale",
+              "shadow_info.cascades[c].shadow_params.x * bias_scale",
               "级联路径的深度 bias 不再乘局部倍率（bias_multiplier 只改法线偏移）" },
             { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
               "* receive_params.bias_multiplier",
@@ -2940,7 +3081,7 @@ int main(int argc, char** argv)
             const OSString kPcf(OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"));
             const SourceContract seam_contracts[] =
             {
-                { "pcf_shadow.glsl", kPcf, "shadow.cascades[c].cache_offset.x != 0.0",
+                { "pcf_shadow.glsl", kPcf, "shadow_info.cascades[c].cache_offset.x != 0.0",
                   "wrap 必须逐级由该级联的 cache_offset 驱动（全局/编译期开关会让未滚动的级联也环绕）" },
                 { "pcf_shadow.glsl", kPcf, "fract(shadow_uv + offset_uv)",
                   "读侧映射失效：物理 uv 不再与 cache_offset 对齐，滚动后阴影会整体滑一整个步长" },
@@ -4390,9 +4531,6 @@ int main(int argc, char** argv)
             { "SimpleCube.cpp", OS_TEXT("example/GettingStarted/SimpleCube.cpp"),
               "ecs_context->GetOrCreateCamera(",
               "示例建相机未走世界级访问器" },
-            { "ShadowMap.cpp", OS_TEXT("example/Shadow/ShadowMap.cpp"),
-              "GetCameraByEntity(light_camera_id)",
-              "示例读相机未走世界级访问器（光源相机按宿主实体取回）" },
             { "AlphaTestShadow.cpp", OS_TEXT("example/Shadow/AlphaTestShadow.cpp"),
               "CameraControlMode::LookAt",
               "示例不再用命名空间级控制模式枚举（作者流程没跟上）" },
@@ -4604,16 +4742,24 @@ int main(int argc, char** argv)
                 // 指针版**直通**（const + 非 const 两条）
                 { "return ComponentOfEntity<GeometryData>(owner);",         2, "GeometryData 指针版必须直通核心（不得再解析 ID）" },
                 { "return ComponentOfEntity<MaterialData>(owner);",         2, "MaterialData 指针版必须直通核心" },
-                { "return ComponentOfEntity<ShadowProxy>(owner);",          2, "ShadowProxy 指针版必须直通核心" },
-                { "return ComponentOfEntity<CameraComponent>(owner);",      2, "相机指针版必须直通核心" },
+                // （2026-10-10 审计 §1.1）：`ECSContext` 的四个 ShadowProxy 包装重载全仓零调用者，已删 ⇒
+                // 该条"计数式直通契约"迁到组件侧自由函数上（见本块末尾 kDirectFree），这里只钉**禁复活**。
+                { "GetShadowProxy",                                          0, "ECSContext 的 ShadowProxy 包装已删（禁复活；指针版走组件侧自由函数）" },
+                // §3-②（2026-10-11）：相机访问器不再经 `ComponentOfEntity<T>`（该模板内部实例化
+                // `Entity::GetComponent<T>`，而相机类型已被**编译期禁死**）⇒ 针改为钉"直通行号→池行"
+                // 的新形态（仍是 2 条指针版、仍然不经 GetEntity 往返，意图逐字保留）。
+                { "owner->GetComponentRow(ComponentTypeOf<CameraComponent>::value)", 2, "相机指针版必须直通核心（行号→池行）" },
 
                 // 指针版「无则创建」**直通**（各一条：创建必须能改实体）
                 { "return GetOrAddComponentOfEntity<GeometryData>(owner);", 1, "GeometryData「无则创建」指针版必须直通核心" },
                 { "return GetOrAddComponentOfEntity<MaterialData>(owner);", 1, "MaterialData「无则创建」指针版必须直通核心" },
-                { "return GetOrAddComponentOfEntity<CameraComponent>(owner, name);", 1, "相机「无则创建」指针版必须直通核心" },
+                // §3-②：相机「无则创建」的指针版同样改走世界侧直通（判存在 + 世界侧创建），
+                // 不再经 `GetOrAddComponentOfEntity<T>`（其内部实例化被禁的两个 Entity 模板）。
+                { "if (CameraComponent *existing = GetCameraByEntity(owner))",       1, "相机「无则创建」指针版必须直通判存在（不经 ID→Entity 往返）" },
+                { "return CreateComponent<CameraComponent>(owner, name);",           1, "相机创建的指针版必须直通核心（绕开已禁死的 Entity::AddComponent）" },
 
                 // ID 版**每个重载解析一次**：少了 = 有人跳过解析（返回垃圾/nullptr）
-                { "GetEntity(owner)",                                      11, "EntityID 版必须每个重载各解析一次 GetEntity" },
+                { "GetEntity(owner)",                                       9, "EntityID 版必须每个重载各解析一次 GetEntity（9 = 组件访问器 EntityID 重载数；2026-10-10 删 ShadowProxy 两条 ⇒ 11→9）" },
             };
 
             for (const CountExpect &c : kDirect)
@@ -4625,9 +4771,39 @@ int main(int argc, char** argv)
                     return 28;
                 }
             }
+
+            // （2026-10-10 审计 §1.1）：ShadowProxy 的指针版直通契约随 `ECSContext` 包装删除而迁到
+            // **组件侧自由函数文件** —— 保持同一"计数式"精度（const / 非 const 各一条直通体）。
+            {
+                std::ifstream in_free(OS_TEXT("src/ecs/components/ShadowProxy.cpp"), std::ios::binary);
+
+                if (!in_free)
+                {
+                    GLogError(u8"Test 28 Failed: cannot open src/ecs/components/ShadowProxy.cpp (run from repo root)");
+                    return 28;
+                }
+
+                const std::string src_free((std::istreambuf_iterator<char>(in_free)),
+                                           std::istreambuf_iterator<char>());
+                const CountExpect kDirectFree[] =
+                {
+                    { "return owner->GetComponent<ShadowProxy>();", 2, "ShadowProxy 指针版（自由函数）必须直通核心" },
+                    { "GetEntity(owner)",                          0, "自由函数版不得经 ECSContext 解析（禁复活包装）" },
+                };
+
+                for (const CountExpect &c : kDirectFree)
+                {
+                    if (const uint32_t n = CountSubstring(src_free, c.needle); n != c.count)
+                    {
+                        GLogError(u8"Test 28 Failed: %s —— ‘%s’ 出现 %u 次（期望 %u）",
+                                  c.why, c.needle, n, c.count);
+                        return 28;
+                    }
+                }
+            }
         }
 
-        GLogInfo(u8"Test 28 Passed: A7c-2 双句柄契约成立（%d 条存在性契约 + 8 条**计数式**直通契约"
+        GLogInfo(u8"Test 28 Passed: A7c-2 双句柄契约成立（%d 条存在性契约 + 10 条**计数式**直通契约"
                  u8"（指针版直通核心、ID 版每个重载各解析一次 GetEntity）+ 行为：EntityID 版与 "
                  u8"Entity* 版同落点、GetOrCreate* 幂等、无效句柄一律 nullptr）。",
                  static_cast<int>(sizeof(kA7c2Contracts) / sizeof(kA7c2Contracts[0])));
@@ -4758,9 +4934,12 @@ int main(int argc, char** argv)
             { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/RenderItem.h"),
               "MeshDrawKey draw_key;",
               "RenderItem 不再持行键（批处理又得回每实体 CPU 副本）" },
-            { "RenderItem.cpp", OS_TEXT("src/ecs/core/RenderItem.cpp"),
-              "const MeshDrawKey &a = draw_key;",
-              "Compare 不再按行键排序" },
+            // T4c4 起 CPU 绘制链已整体删除；2026-10-10（§1.1）又删掉它唯一的残留 `RenderItem::Compare`
+            // （零调用者）⇒ 原正向 needle（`const MeshDrawKey &a = draw_key;`）失去载体。
+            // 契约**意图不变**（不得回到 RenderItem 上的逐字段内容比较），改钉**禁复活**：
+            { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/RenderItem.h"),
+              "virtual int Compare(const RenderItem& other) const;",
+              "RenderItem::Compare 禁复活（CPU 绘制链已删；行派生键的唯一真源是 `draw_key`）", true },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "next_item->draw_key == draw_key",
               "聚簇不得回到按行键相等断簇（T4c4-3 已删 CPU 绘制批构建链）", true },
@@ -4851,8 +5030,10 @@ int main(int argc, char** argv)
             // ① 仍在：类型 + 行号（三者缺一即 "GPU 面" 塌掉）
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "hgl::graph::GlobalSSBOBinding", "材质组件的 GPU 面不再是「类型 + 行号」" },
+            // B4-i 续（2026-10-10）：`authored` 与上面三个字段**同判据**（`.authored` 全仓读写 0 处、
+            // 且与「GPU 面只剩类型 + 行号」相矛盾）⇒ 原正向 needle 失去载体，改钉**禁复活**。
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "bool authored = false;", "材质数据行资源的「已授权」标记缺失" },
+              "bool authored = false;", "材质数据行资源又挂回 `authored` 死字段（零读写 ⇒ 按 B4-i 零残留判）", true },
             // B4-iii-a：行号复位语义已搬到「组件行结构默认值 + ClearMaterialRow 写默认行」
             { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
               "uint32 surface_data_index = uint32(-1);", "组件行缺「未设」哨兵默认值（会残留旧行号）" },
@@ -4875,8 +5056,9 @@ int main(int argc, char** argv)
                                                                          sizeof(kB4Contracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 31 Passed: B4-i 契约成立（MaterialData 的 GPU 面 = GlobalSSBOBinding 类型+行号 + authored；"
-                 u8"禁复活：per-entity buffer / element_capacity / byte_stride；共 %d 条契约）。",
+        GLogInfo(u8"Test 31 Passed: B4-i 契约成立（MaterialData 的 GPU 面 = GlobalSSBOBinding 类型+行号"
+                 u8"（2026-10-10 起 `authored` 死字段同按零残留在禁复活列）；"
+                 u8"禁复活：per-entity buffer / element_capacity / byte_stride / authored；共 %d 条契约）。",
                  static_cast<int>(sizeof(kB4Contracts) / sizeof(kB4Contracts[0])));
     }
 
@@ -5089,9 +5271,6 @@ int main(int argc, char** argv)
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource);",
               "SetDataResource 清空分支未走唯一入口" },
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagMask);",
-              "ClearAuthoredResources 未走唯一入口" },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "hgl::graph::ssbo::PackMaterialDataAuthoredFlags(",
               "SetDataResource 写行未带行内 revision（行内副本会停在 0）" },
@@ -5482,8 +5661,15 @@ int main(int argc, char** argv)
               "§9 M4：切片起点必须 4 行对齐推进（三表 push 地址 16B 对齐的唯一解）" },
 
             { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
-              "if (!s_reported_misaligned && (row_base % 4u) != 0u)",
-              "§9 M4：切片 4 行对齐的**运行期守卫**（装配侧 bug ⇒ 响亮，不静默违对齐）" },
+              "if (!reported_misaligned_rows_ && (row_base % 4u) != 0u)",
+              "§9 M4：切片 4 行对齐的**运行期守卫**（装配侧 bug ⇒ 响亮，不静默违对齐；"
+              "批 1.3 C5 起闩是每实例成员，不是进程级 static）" },
+
+            { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
+              "static bool s_reported_misaligned",
+              "§9 M4/C5：运行期守卫的闩**禁复活进程级 static**（第二个世界会被静默；"
+              "每实例成员才是正确形态）",
+              true },
 
             { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
               "batch_usage | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,",
@@ -5961,9 +6147,6 @@ int main(int argc, char** argv)
               "T6b 禁复活：阴影接收侧不得回读天空里的方向",
               true },
 
-            { "shadow_receiver_source.glsl", OS_TEXT("ShaderLibrary/material/shadow_receiver_source.glsl"),
-              "const vec3 to_sun = normalize(main_light.direction_intensity.xyz);",
-              "T6b：重建光源相机的方向改读光源行 0" },
 
             { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
               "vec3 GetMainLightDir()",

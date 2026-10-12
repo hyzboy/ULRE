@@ -47,7 +47,10 @@ namespace hgl::ecs
             // 缓冲指针 + 元素容量 + 字节步长三个**死字段**（实测外部读者 0、示例赋值 0 处；容量与
             // 步长的真源在 `SSBOBufferRegistry::RegisterBuffer`，由字节数 ÷ 容量反算步长）
             // ⇒ 与 B3-iii「删几何三指针」同构，整组删除；名字不再出现，契约按「零残留」判。
-            bool authored = false;
+            // 2026-10-10（审计 §1.1）：字段 `authored` 已删除 —— `.authored` 全仓**读写 0 处**，
+            // 与本结构 B4-i 自己立的「零残留」判据（GPU 面只剩类型 + 行号）矛盾；上面那句注释里的
+            // 三个死字段同批被判过。Test 31 的对应 needle 已由「必须存在」改为「禁复活」
+            // （⚠ 注释里不得再出现该声明原文，否则会撞上那条禁复活针）。
 
             MaterialDataAuthoringResource() = default;
             MaterialDataAuthoringResource(
@@ -122,15 +125,10 @@ namespace hgl::ecs
         /// `resource.ssbo_id == 0` ⇒ 清空（行保留）；其余情况要求 binding 有效（无效即报错拒绝）。
         void SetDataResource(const MaterialDataAuthoringResource &resource);
 
-        /// 本组件的设备级组件行行号（0 = 无材质数据）
-        uint32_t GetMaterialRowID() const { return material_row_id; }
-
-        /// 清空全部授权资源（纹理 + 数据行；配方覆盖不在其内）
-        void ClearAuthoredResources();
-
         /// 组件侧授权代数（每次授权状态变化 +1）。**行内 revision 与之同源**（见
         /// `GetAuthoredRowRevision`）——只读行的消费者应当读行，不要读组件副本。
-        uint32_t GetAuthoredGeneration() const { return authored_generation; }
+        // 2026-10-10（审计 §1.1）：`GetAuthoredGeneration()`（零调用者；B4-ii 起消费者只读行内
+        // revision —— 见 Test 35 的禁复活 needle）已删除。成员 `authored_generation` 仍在内部使用。
 
         /// B4-ii：设备级组件行里的**行内 revision**（= 上面的代数在行内的镜像）。
         /// 消费者（每实例 slot 的变更检测）用这个 ⇒ 状态真源是**行**，不是组件副本。
@@ -165,7 +163,7 @@ namespace hgl::ecs
         const hgl::graph::ssbo::MaterialDataRow *GetMaterialRow() const;
         /// B4-ii：授权变更**唯一入口**——组件计数器 +1，并（有行时）把
         /// 「(flags 置位 ∧ clear_flags 清位) + 新 revision」写进组件行。
-        /// 所有授权入口（SetRecipe / SetTextureResource / SetDataResource / ClearAuthoredResources）
+        /// 所有授权入口（SetRecipe / SetTextureResource / SetDataResource）
         /// 都必须走它，不得自己 `++authored_generation`（否则行内 revision 与代数列不同步）。
         void TouchAuthoredRow(uint32_t set_flags, uint32_t clear_flags);
         /// 写本组件的组件行

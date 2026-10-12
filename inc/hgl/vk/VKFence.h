@@ -13,8 +13,11 @@ namespace hgl::graph{
  */
 class Fence : public hgl::utils::ObjectBase
 {
+    friend class DeviceQueue;
+
     VkDevice device;
     VkFence fence;
+    bool queue_submitted = false;
 
 private:
 

@@ -138,6 +138,4 @@ namespace hgl::graph::mtl
 
     bool ValidateInterStageSemanticRegistry(
         ShaderSemanticRegistryValidationResult &out_result) noexcept;
-    bool ValidateShaderSemanticRegistries(
-        ShaderSemanticRegistryValidationResult &out_result) noexcept;
 }//namespace hgl::graph::mtl

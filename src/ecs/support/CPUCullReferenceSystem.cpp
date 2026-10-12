@@ -6,6 +6,7 @@
 #include <hgl/ecs/support/EntityGPUTable.h>
 #include <hgl/ecs/support/TransformDataStorage.h>
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
+#include <hgl/ecs/support/BoundingVolumeCull.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/core/GraphicsContext.h>
@@ -357,11 +358,10 @@ namespace hgl::ecs
             const glm::vec4 local_center(aabb->center[0], aabb->center[1], aabb->center[2], 1.0f);
             const glm::vec3 world_center = glm::vec3(world_matrix * local_center);
 
-            // 计算变换后的 extents（简化：取最大缩放 = 与 GLSL 逐字同式）
-            const float scale_x = glm::length(glm::vec3(world_matrix[0]));
-            const float scale_y = glm::length(glm::vec3(world_matrix[1]));
-            const float scale_z = glm::length(glm::vec3(world_matrix[2]));
-            const float max_scale = std::max({scale_x, scale_y, scale_z});
+            // 计算变换后的 extents（简化：取最大缩放）
+            // 公式单一来源 = `GetMaxWorldScaleRaw`（**用 Raw 不用带退化保护的 GetMaxWorldScale**：
+            // 后者在 scale==0 时给 1.0，会与 GPU 判出不同可见性 ⇒ 假对拍差异）
+            const float max_scale = GetMaxWorldScaleRaw(world_matrix);
             const glm::vec3 world_extents(aabb->extents[0] * max_scale, aabb->extents[1] * max_scale, aabb->extents[2] * max_scale);
 
             // 视锥剔除（6 个平面）。center[3] = 外接球半径，< 0 ⇒ 「始终可见」哨兵
@@ -432,7 +432,6 @@ namespace hgl::ecs
             for (uint32_t k = 0; k < read_count; ++k)
             {
                 const uint32_t idx = indices[k];
-                gpu_visible_order_[k] = idx;   // 保序供值链判据（slot k ↔ gather 行 k）
                 if (idx < kMaxVisible && gpu_visible_map_[idx] == 0)
                 {
                     gpu_visible_map_[idx] = 1;
@@ -445,10 +444,6 @@ namespace hgl::ecs
 
     void CPUCullReferenceSystem::CompareResults()
     {
-        last_parity_stats_ = ParityStats{};
-        last_parity_stats_.cpu_count = cpu_count_;
-        last_parity_stats_.gpu_count = gpu_count_;
-
         // 位图对拍（逐槽）：集合相等 ⇔ 两侧每一位一致；不一致槽数 = mismatch。
         // match = 两侧同时为 1 的槽数。旧 std::set 路子是给"atomicAdd 顺序不定"
         // 买的单，位图把顺序问题消掉（且零动态分配，替代 <set>/<algorithm>）。
@@ -490,21 +485,8 @@ namespace hgl::ecs
             }
         }
 
-        last_parity_stats_.match_count = both;
-        last_parity_stats_.mismatch_count = mismatch;
-
         GLogInfo(u8"[CPUCullReferenceSystem] Parity: image=%u CPU=%u, GPU=%u, match=%u, mismatch=%u",
-                         context_->GetFrameIndex(),
-                         last_parity_stats_.cpu_count,
-                 last_parity_stats_.gpu_count,
-                 last_parity_stats_.match_count,
-                 last_parity_stats_.mismatch_count);
+                 context_->GetFrameIndex(), cpu_count_, gpu_count_, both, mismatch);
     }
 
-    uint32_t CPUCullReferenceSystem::GetGPUVisibleCount() const
-    {
-        // 台架读数 = 最近一次采样窗口的同步读回结果，**不**现读 GPU
-        //（现读者须自行先 SyncForParityReadback；旧版这里直接 Map 异步表 = 残影）。
-        return gpu_count_;
-    }
 }

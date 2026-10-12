@@ -653,7 +653,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 
 namespace
 {
-    // AcquireShaderProgram(request) 与 BuildShaderResourceSchema 的公共前半段：
+    // AcquireShaderProgram(request) 的公共前半段：
     // 解析 definition → 创建构建上下文。失败返回 nullptr 并写日志。
     mtl::ShaderBuildContext *BuildContextFromRequest(
         const mtl::contract::PhysicalDeviceProfileLite *profile,
@@ -682,19 +682,6 @@ namespace
         return ctx.Finish();
     }
 }//namespace
-
-bool ShaderProgramManager::BuildShaderResourceSchema(const mtl::MaterialDefinitionBuildRequest &request,
-                                                  mtl::ShaderResourceSchema &out_schema)
-{
-    mtl::MaterialDefinition definition{};
-    AutoDelete<mtl::ShaderBuildContext> ctx =
-        BuildContextFromRequest(GetPhysicalDeviceProfile(), request, definition);
-    if (!ctx)
-        return false;
-
-    out_schema = ctx->GetShaderResourceSchema();
-    return true;
-}
 
 ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     const mtl::MaterialDefinitionBuildRequest &request)

@@ -22,35 +22,9 @@ namespace hgl::ecs
         constexpr uint32_t kIdentityL2WSlot = 0;
         constexpr uint32_t kFirstObjectL2WSlot = 1;
 
-        static bool ShouldEmitPeriodicLog(const uint32_t period = 120)
-        {
-            //static uint32_t tick = 0;
-            //++tick;
-            //return (tick % period) == 1;
-
-            return false;
-        }
-
-        static void LogDeviceBufferSnapshot(const char *tag, const graph::DeviceBuffer *buffer)
-        {
-            if (!tag)
-                tag = "[TransformAssignmentBuffer]";
-
-            if (!buffer)
-            {
-                GLogWarning("%s buffer=null", tag);
-                return;
-            }
-
-            const auto *gpu = buffer->GetGPUBuffer();
-            GLogInfo("%s buffer=0x%llX vk=0x%llX size=%llu gpu=0x%llX dirty=%d",
-                     tag,
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(buffer)),
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(buffer->GetBuffer())),
-                     static_cast<unsigned long long>(buffer->GetSize()),
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
-                     gpu ? (gpu->IsDirty() ? 1 : 0) : -1);
-        }
+        // 2026-10-10（审计 §1.1）：`ShouldEmitPeriodicLog`（恒 false、body 已注释）与其唯一调用点
+        // （EnsureBudget 里的死分支）一并删除；随它走的 `LogDeviceBufferSnapshot` 也成了零调用者 ⇒ 同删。
+        // 需要时按 GLogInfo 的"budget:"行/设备快照重建即可（本轮不加回）。
 
         static bool WriteIdentityToL2WSlot0(graph::DeviceBuffer *buffer)
         {
@@ -181,15 +155,6 @@ namespace hgl::ecs
         // 索引行表已整块删除（B1b-2：全局 `ECS:LocalToWorldIndex` 只写不读；
         // per-batch 行表由 PrimitiveBatchPipeline 直接按槽位写 `item->transform_index`）。
 
-        if (ShouldEmitPeriodicLog())
-        {
-            GLogInfo("[TransformAssignmentBuffer] budget: static=%u/%u dynamic=%u/%u rows=%u ring_base=%u frame=%u",
-                     static_count, max_static_rows, dynamic_count, max_dynamic_rows,
-                     transform_buffer_max_count,
-                     ring_layout.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count),
-                     ring_layout.GetFrameIndex());
-            LogDeviceBufferSnapshot("[TransformAssignmentBuffer] EnsureBudget snapshot", transform_buffer);
-        }
     }
 
     uint32_t TransformAssignmentBuffer::GetDynamicBaseIndex() const

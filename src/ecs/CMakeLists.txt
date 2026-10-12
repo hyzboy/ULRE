@@ -21,7 +21,6 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/RenderItem.h
     ${ECS_INCLUDE_PATH}/core/PrimitiveRenderItem.h
     ${ECS_INCLUDE_PATH}/core/RenderFrameCache.h
-    ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
     core/Object.cpp
     core/ComponentRow.cpp
     core/Entity.cpp
@@ -40,9 +39,7 @@ set(ECS_CORE_FILES
     core/SystemGroup.cpp
     core/DefaultSystems.cpp
     core/MaterialBatch.cpp
-    core/RenderItem.cpp
     core/PrimitiveRenderItem.cpp
-    systems/render/RenderSystemCore.cpp
 )
 
 set(ECS_SYS_00_RenderSystemCore_FILES
@@ -149,11 +146,13 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/EntityGPUTable.h
     ${ECS_INCLUDE_PATH}/support/EntityRenderIDTable.h
     ${ECS_INCLUDE_PATH}/support/DirtyRowSet.h
+    ${ECS_INCLUDE_PATH}/support/GpuMirrorBuffer.h
     ${ECS_INCLUDE_PATH}/support/LightRowTable.h
     ${ECS_INCLUDE_PATH}/support/GPUCullSystem.h
     ${ECS_INCLUDE_PATH}/support/CPUCullReferenceSystem.h
     ${ECS_INCLUDE_PATH}/support/TransformAccessor.h
     ${ECS_INCLUDE_PATH}/support/CameraInfoStorage.h
+    ${ECS_INCLUDE_PATH}/support/PerfTimer.h
     ${ECS_INCLUDE_PATH}/support/CameraSlotGuard.h
     ${ECS_INCLUDE_PATH}/support/RenderItemDataStorage.h
     ${ECS_INCLUDE_PATH}/support/DrawItemIDStorage.h
@@ -361,14 +360,44 @@ if(MSVC)
     set_target_properties(ProbeTransformDiagnostics PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 批 1.3 C5 判据探针：一次性告警闩必须**每实例**（进程级 static ⇒ 第二个世界静默）。
+# 判据（外部）：跑完 grep -c "切片起点未 4 行对齐" ⇒ 期望 2（两个实例各 1）。
+add_executable(ProbeWarnLatchPerWorld support/ProbeWarnLatchPerWorld.cpp)
+target_link_libraries(ProbeWarnLatchPerWorld PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(ProbeWarnLatchPerWorld PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
+# S1/S2 判据：同类型系统替换必须摘旧实例；裸行池 Row() 必须验活跃（+ 两个池语义对齐 + 析构顺序钉）
+add_executable(TestSystemReplaceAndPoolLiveness support/TestSystemReplaceAndPoolLiveness.cpp)
+target_link_libraries(TestSystemReplaceAndPoolLiveness PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestSystemReplaceAndPoolLiveness PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
+# §2 #11 判据：PrepareFrame 必须是每帧一次的真守卫（同帧三次调用只做一次准备）
+add_executable(TestFramePrepareOncePerFrame support/TestFramePrepareOncePerFrame.cpp)
+target_link_libraries(TestFramePrepareOncePerFrame PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestFramePrepareOncePerFrame PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
+# §3-②/⑥ 判据：相机纯读（Resolve）与认领（Ensure）分离（+ 实体级相机模板编译期禁死）
+add_executable(TestCameraResolveAndClaim support/TestCameraResolveAndClaim.cpp)
+target_link_libraries(TestCameraResolveAndClaim PRIVATE ${ULRE})
+if(MSVC)
+    set_target_properties(TestCameraResolveAndClaim PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
         COMMAND TestTransformFlatStorage
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    # TIMEOUT：B2 的父环回归一旦复发就是**挂死**（死循环），加超时把挂死变成测试失败
     set_tests_properties(
         TestTransformFlatStorage
-        PROPERTIES LABELS "ecs;transform")
+        PROPERTIES LABELS "ecs;transform" TIMEOUT 120)
 
     add_test(
         NAME TestRenderItemDataStorage
@@ -433,4 +462,26 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestVisibilityStorage
         PROPERTIES LABELS "ecs;visibility")
+
+    add_test(
+        NAME TestSystemReplaceAndPoolLiveness
+        COMMAND TestSystemReplaceAndPoolLiveness
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestSystemReplaceAndPoolLiveness
+        PROPERTIES LABELS "ecs;registry" TIMEOUT 60)
+
+    add_test(
+        NAME TestFramePrepareOncePerFrame
+        COMMAND TestFramePrepareOncePerFrame)
+    set_tests_properties(
+        TestFramePrepareOncePerFrame
+        PROPERTIES LABELS "ecs;render" TIMEOUT 60)
+
+    add_test(
+        NAME TestCameraResolveAndClaim
+        COMMAND TestCameraResolveAndClaim)
+    set_tests_properties(
+        TestCameraResolveAndClaim
+        PROPERTIES LABELS "ecs;camera" TIMEOUT 60)
 endif()

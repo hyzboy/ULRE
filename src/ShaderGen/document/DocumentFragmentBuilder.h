@@ -23,8 +23,6 @@ namespace hgl::graph::mtl
             ShaderDocumentDiagnostics &target_diagnostics,
             const ShaderDocumentSource &base_source = {});
 
-        void SetStage(const char *stage);
-        void SetMaterial(const char *material);
         bool Add(
             ShaderDocumentBlockKind kind,
             const AnsiString &text,

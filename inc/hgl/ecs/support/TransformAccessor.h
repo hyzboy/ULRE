@@ -117,7 +117,7 @@ namespace hgl
             void SetFixedPixelSizingEnabled(bool enabled) const;
             bool IsFixedPixelSizingEnabled() const;
             void SetFixedPixelSizingParameters(float pixel_diameter,float reference_world_diameter,float min_scale=0.01f) const;
-            void SetFixedPixelSizingContext(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info) const;
+            void SetFixedPixelSizingContextAndApply(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info) const;
 
             float ComputeWorldUnitsPerPixel(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info) const;
             float ComputeFixedPixelUniformScale(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info,float pixel_diameter,float reference_world_diameter) const;
@@ -131,8 +131,11 @@ namespace hgl
             bool     IsStatic() const  { return GetMobility() == Mobility::Static; }
 
             bool IsDirty() const;
-            void MarkDirty() const;
             void UpdateIfDirty() const;
+            // 2026-10-11（§3-1 选项①）：`MarkDirty()` 已**删除**。它只写 `matrixDirty`、
+            // 不 bump 版本 ⇒ 对静态行**永不上传**（上传判据是 `last_uploaded_version` 比对），
+            // 对动态行则因每帧全量写而可有可无 ⇒ 名字承诺「刷新」、实际不保证，属语义陷阱。
+            // 需要"变更记账 + 上传"请用 `SetLocal*/SetLocalScale` 一族（内部走 `MarkLocalChanged`）。
 
         private: // 内部：变更记账（掩码累积 + 子级版本 bump）与 D4「运行期写静态」告警
 

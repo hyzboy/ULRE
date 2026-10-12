@@ -29,6 +29,15 @@ namespace hgl::ecs
      *     每帧/每实例可变状态（pass/LOD/dither 选择器、D9 重试与降频计数、脏标志、
      *     每实体授权代跟踪副本）。
      */
+    // §2 #3（2026-10-11）：本文件实现里有 **9 处 `world->IsCurrentPassShadow()`**
+    // （`:800,:1027,:1318,:2118,:2152,:2372,:2391,:2421,:2425`），与头注所言
+    // 「渲染策略判定表（`RenderStrategyTable`）是图元收集与阴影能力的**唯一判据**」看似冲突。
+    // 三方复核的分类（不是第二套判据，因此**不收敛**）：
+    //   · **1 处 = 事实注入**：把"本帧是不是 shadow pass"填进 gathered facts，供策略表消费；
+    //   · **6 处 = 程序选择/重试/状态机**：按 pass 选程序、D9 阴影重试推进与降频、本帧状态复位；
+    //   · **2 处 = 诊断**：日志/计数里的 pass 归属。
+    // 分工口径：**能力与意图**由策略表唯一裁决；上面 9 处只是"在本 pass 内怎么执行"的局部机制。
+    // 若后续要收敛，必须先证明局部机制可由策略表驱动（会改动 pass 分流与 D9 重试链，风险 > 收益）。
     class RenderPrimitiveCollectSystem : public System
     {
     private:
@@ -61,6 +70,9 @@ namespace hgl::ecs
                                 Entity *primitive_comp);
         bool MaterializeRecipeRowsForPrimitive(Entity *primitive_comp,
                                                MaterialRuntimeSlot &slot);
+
+        /// 批 1.3 C5：`ULRE_ARENA_DEBUG` 一次性 trace 闩改**每实例**（原 static 是进程级 ⇒ 第二个世界静默）
+        bool arena_trace_done_ = false;
 
     public:
 

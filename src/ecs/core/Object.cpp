@@ -4,11 +4,8 @@ namespace hgl
 {
     namespace ecs
     {
-        Object::ObjectID Object::nextObjectId = 1;
-
         Object::Object(const AnsiString& name)
-            : objectId(nextObjectId++)
-            , objectName(name)
+            : objectName(name)
         {
         }
     }//namespace ecs

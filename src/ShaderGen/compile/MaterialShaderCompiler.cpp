@@ -6,7 +6,6 @@
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
-#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
@@ -127,50 +126,7 @@ bool FinalizeShaderBuildContext(
     return true;
 }
 
-static bool HasDescriptorSemantic(
-    const DescriptorContract &contract,
-    const DescriptorSemantic semantic)
-{
-    for (const SerializedDescriptorEntry &entry : contract)
-    {
-        if (entry.semantic == semantic)
-            return true;
-    }
 
-    return false;
-}
-
-// ── 能力子集授权：**只认无条件内置**（目录 engine_builtin）──────────────────
-// 原「能力规则表」（definition 侧条件授权谓词 + 目录交叉覆盖 static_assert）已整体
-// 删除：表内唯一行 SkyInfo 的 UBO 需求规则随 sky 退出 Scene 集绑定而失效——
-// sky 不再是描述符声明资源（C2 起数据随世界表解引用；2026-10-07 起该块本身已整删），
-// definition 侧不可能再出现该 slot。其余语义（Unknown、MaterialTexture/Sampler
-// 等 bindless 通道）本就没有 definition 侧授权 ⇒ 无需表格。
-
-static bool ValidateDefinitionCapabilitySubset(
-    const MaterialDefinition &definition,
-    const ShaderResourceSchema &layout,
-    std::vector<std::string> &diagnostics)
-{
-    diagnostics.clear();
-
-    // Scene 集与资源目录整体退场后，definition 侧已无任何被授权的描述符声明
-    //（TOML 的 ubos 键已删、viewport/sky/shadow 走 BDA、纹理/采样器走 bindless）
-    // ⇒ 唯一合法态是「definition 声明的描述符为空」，出现任何一条即为回归。
-    for (const auto &req : layout.resources)
-    {
-
-        std::string message = "Definition capability subset violation: semantic=";
-        message += GetDescriptorSemanticName(req.semantic);
-        message += ", name=";
-        message += req.name.empty() ? "<unnamed>" : req.name;
-        message += ", def=";
-        message += definition.definition_name.empty() ? "<unnamed>" : definition.definition_name;
-        diagnostics.push_back(std::move(message));
-    }
-
-    return diagnostics.empty();
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CompileMaterial — Compositor 模板完整 GLSL → ShaderBuildContext
@@ -235,35 +191,6 @@ static void CaptureProductionSnapshot(
     document_capture->fragment_final_document = fragment_final_snapshot;
 }
 
-// ── Step 1: Config（primitive 校验留在主函数）────────────────────────────────
-static bool PrepareBaseDescriptorContract(
-    const MaterialShaderCompilerInput &input,
-    const MaterialCompileConfig &config,
-    uint32_t &out_shader_stage_bits,
-    DescriptorContract &out_base_contract,
-    CompileContext &c)
-{
-    out_shader_stage_bits = config.shader_stage_flag_bits != 0
-        ? config.shader_stage_flag_bits
-        : uint32_t(ShaderStage::MeshFragment);
-
-    if (config.descriptor_contract)
-    {
-        out_base_contract = *config.descriptor_contract;
-    }
-    else if (!BuildDescriptorContract(
-                input.descriptor_entries,
-                input.descriptor_entry_count,
-                out_base_contract))
-    {
-        return c.Fail("BuildDescriptorContract failed");
-    }
-
-    // A6-2a：契约不再含 L2W 条目（Push 已删）——L2W 需求按模板类别静态判定，
-    // mesh 为唯一顶点路径且 l2w_ssbo 恒注入；无 L2W 材质不消费地址，
-    // 运行时 push nullptr 安全（has_l2w_matrix ctx 链已随 A6-2b 删除）。
-    return true;
-}
 
 // ── Step 2: 创建 ShaderBuildContext ─────────────────────────────────────────
 static bool CreateBuildContext(
@@ -295,31 +222,7 @@ static bool ResolveEffectiveMaterialPrivateData(
     return IsGlobalSSBOType(out_material_private_data);
 }
 
-// ── Step 3b: 有效契约 ────────────────────────────────────────────────────────
-// A6-2b-b2：数据槽行表不再补录进契约——改为编译期直判信号
-// schema.requires_runtime_data_rows（Step 6 设置，条件同 emit_data_index_id），
-// 渲染侧建表/绑定表判定统一读该标志。契约恒 Scene UBO 条目。
-static bool BuildEffectiveDescriptorEntries(
-    const DescriptorContract &base_contract,
-    const GlobalSSBOType material_private_data,
-    CompileContext &c,
-    DescriptorContract &out_effective_contract)
-{
-    (void)material_private_data;
 
-    if (!BuildEffectiveDescriptorContract(
-            base_contract,
-            material_private_data,
-            out_effective_contract))
-        return c.Fail("invalid effective material descriptor contract");
-
-    return true;
-}
-
-// ── 已删除：Step 3c canonical 描述符注册 ─────────────────────────────────────
-// 原 RegisterCanonicalDescriptors() 遍历契约条目查资源目录后什么都不做——
-// Scene UBO 已全局化（P1），per-material 分配器随 BDA 化退场，无条目触发注册。
-// 该函数与其唯一消费的 SerializedDescriptorEntry[] 副本一并移除。
 
 // ── Step 5a: set/binding 宏 ──────────────────────────────────────────────────
 // 固定 ABI 的 set/binding 宏（L2W/MESH_DRAW_PARAMS/VIEWPORT/CAMERA/SKY/COLOR_PALETTE
@@ -330,52 +233,6 @@ static bool BuildEffectiveDescriptorEntries(
 // 行表（material_data_addresses / l2w_index）无 set/binding 概念：
 // BDA 化后行表经 pc_root + buffer_reference 寻址，声明由 index table 生成器恒发射。
 
-// ── Step 6: ShaderResourceSchema 构建与校验 ──────────────────────────────────
-static bool BuildAndValidateResourceSchema(
-    const DescriptorContract &effective_descriptor_contract,
-    const MaterialCompileConfig &config,
-    CompileContext &c,
-    ShaderResourceSchema &out_schema)
-{
-    if (!BuildResourceSchemaFromContract(
-            effective_descriptor_contract,
-            out_schema))
-        return c.Fail("descriptor contract/layout build failed");
-
-    std::vector<std::string> contract_diagnostics;
-    if (!ValidateShaderResourceSchema(out_schema, contract_diagnostics))
-    {
-        for (const auto &diag : contract_diagnostics)
-        {
-            std::fprintf(stderr,
-                "[CompileMaterial][ShaderResourceSchema] material=%s: %s\n",
-                c.input->debug_name ? c.input->debug_name : "<unnamed>",
-                diag.c_str());
-        }
-        return c.Fail("ShaderResourceSchema validation failed");
-    }
-
-    if (config.material_definition)
-    {
-        std::vector<std::string> capability_diagnostics;
-        if (!ValidateDefinitionCapabilitySubset(
-                *config.material_definition,
-                out_schema,
-                capability_diagnostics))
-        {
-            for (const auto &diag : capability_diagnostics)
-            {
-                std::fprintf(stderr,
-                    "[CompileMaterial][DefinitionCapability] material=%s: %s\n",
-                    c.input->debug_name ? c.input->debug_name : "<unnamed>",
-                    diag.c_str());
-            }
-            return c.Fail("Definition capability subset validation failed");
-        }
-    }
-
-    return true;
-}
 
 // ── Step 6b: ShaderProgram artifact metadata ─────────────────────────────────
 static bool BuildArtifactMetadata(
@@ -447,13 +304,9 @@ ShaderBuildContext *CompileMaterial(
         }
     }
 
-    DescriptorContract base_descriptor_contract{};
-    uint32_t shader_stage_bits = 0;
-    if (!PrepareBaseDescriptorContract(input, config,
-                                       shader_stage_bits,
-                                       base_descriptor_contract,
-                                       c))
-        return FailCompile(c);
+    const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0
+        ? config.shader_stage_flag_bits
+        : uint32_t(ShaderStage::MeshFragment);
 
     // ── Step 2: Create ShaderBuildContext ─────────────────────────
     if (!CreateBuildContext(config, shader_stage_bits, c))
@@ -461,18 +314,9 @@ ShaderBuildContext *CompileMaterial(
 
     ShaderBuildContext *ctx = c.ctx;
 
-    // ── Step 3: Add Descriptors from SerializedDescriptorEntry[] ──
-    // MaterialDefinition/CompileConfig supplies the material payload type;
-    // provider metadata no longer contributes descriptor declarations.
+    // ── Step 3: 材质私有数据 SSBO 类型（编译配置单一声明）──
     GlobalSSBOType effective_material_private_data = GlobalSSBOType::PBRSurface;
     if (!ResolveEffectiveMaterialPrivateData(config, c, effective_material_private_data))
-        return FailCompile(c);
-
-    DescriptorContract effective_descriptor_contract{};
-    if (!BuildEffectiveDescriptorEntries(
-            base_descriptor_contract, effective_material_private_data,
-            c,
-            effective_descriptor_contract))
         return FailCompile(c);
 
     // ── Step 5: Complete both stages through ShaderDocument ───────
@@ -548,14 +392,9 @@ ShaderBuildContext *CompileMaterial(
         frag->SetFinalGLSL(std::string(fragment_final_glsl.c_str(), fragment_final_glsl.Length()));
 
 
-    // ── Step 6: Build ShaderResourceSchema from descriptor entries. ──
-    // Material payload declarations are generated from the effective material type;
-    // they are not read from provider resource metadata.
-    ShaderResourceSchema shader_resource_schema;
-    if (!BuildAndValidateResourceSchema(effective_descriptor_contract, config, c,
-                                        shader_resource_schema))
-        return FailCompile(c);
-
+    // ── Step 6: 运行时数据行需求（编译期直判，唯一活信号）──
+    // 2026-10-11（S1）：原资源条目载体与其校验已整体删除；这里只保留
+    // 「本材质是否需要 per-instance 运行时数据行」这一条编译期直判信号。
     // Runtime address rows are required by payload data or an active
     // texture-reference consumer. Depth variants may retain the definition's
     // declarations while omitting every provider that samples them.
@@ -568,13 +407,13 @@ ShaderBuildContext *CompileMaterial(
         IsGlobalSSBOType(effective_material_private_data)
         && (!config.material_definition
          || config.material_definition->vertex_varying.emit_data_index_id);
-    shader_resource_schema.requires_runtime_data_rows =
+    const bool requires_recipe_runtime_rows =
         has_material_ssbo_payload
         || (config.material_definition
          && (config.material_definition->vertex_varying.emit_data_index_id
           || has_active_texture_reference_consumer));
 
-    ctx->SetShaderResourceSchema(shader_resource_schema);
+    ctx->SetRequiresRecipeRuntimeRows(requires_recipe_runtime_rows);
 
     // ── 结构快照观察字段（不参与 shader 生成语义，仅 ShaderStructureDump 用）──
     // 把求解层产出的模块列表与有效 varying 存到 ctx，回归门/快照无需持有 plan。

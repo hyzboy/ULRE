@@ -3,6 +3,7 @@
 #include<hgl/ecs/support/RenderStrategyParity.h>
 #include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/BoundingVolumeCull.h>
+#include<hgl/ecs/support/PerfTimer.h>
 #include<source_location>
 #include<cmath>
 #include<cstdlib>
@@ -87,6 +88,26 @@ namespace hgl::ecs
         if (!ctx)
             return false;
 
+        // §2 #11（2026-10-11）：**每帧只准备一次**的真守卫。
+        // `PrimitiveRenderPipeline::RunCull/RunSort/RunBuild` 各自调用本函数 ⇒ 原实现每帧最多
+        // 做三遍同样的帧前准备（其中 Sort 那遍没有任何下游动作）。守卫 = 帧号 + 结果缓存：
+        // 同一帧的后续调用直接返回首次结果（含失败），帧号推进后才重新准备。
+        // 本对象每世界一个（`PrimitiveRenderPipeline::impl_`）⇒ 用帧号做键是安全的。
+        if (prepared_frame_ == ctx->GetFrameIndex())
+            return prepared_frame_ok_;
+
+        ++prepare_frame_count_;
+        prepared_frame_      = ctx->GetFrameIndex();
+        prepared_frame_ok_   = PrepareFrameInternal(ctx);
+
+        return prepared_frame_ok_;
+    }
+
+    bool PrimitiveBatchPipeline::PrepareFrameInternal(ECSContext* ctx)
+    {
+        if (!ctx)
+            return false;
+
         world = ctx;
         auto& cache = world->GetRenderFrameCache();
         if (cache.renderItems.empty())
@@ -99,10 +120,6 @@ namespace hgl::ecs
         if (!device)
             device = world->GetGPUDevice();
 
-        const uint32_t frame_index = world->GetFrameIndex();
-        if (prepared_frame_index != frame_index)
-            prepared_frame_index = frame_index;
-
         if (world)
         {
             if (auto *id_storage = world->GetDrawItemIDStorage())
@@ -112,62 +129,10 @@ namespace hgl::ecs
         return true;
     }
 
-    namespace
-    {
-        // PBR_PERF=1 计时代（三处独立累计，函数内 static ⇒ 零头文件改动）：
-        //   cull  = PerformFrustumCulling 的 CPU 时间（形态 B 接管帧 = 0）
-        //   batch = RunBatching 的 CPU 时间（形态 B guard+接管帧仍要建批，含差异）
-        // 每 240 帧打印均值一次（稳态口径；启动杂项不进均值窗口）。
-        struct PerfTimer
-        {
-            const bool      on;
-            uint64_t        total_us = 0;
-            uint32_t        frames = 0;
-
-            PerfTimer(const char *name) : on(getenv("PBR_PERF") != nullptr), name_(name) {}
-
-            bool Active() const { return on; }
-
-            void Add(uint64_t us)
-            {
-                total_us += us;
-                ++frames;
-                if (frames % 240 == 0)
-                {
-                    GLogInfo("[PBR-PERF] %s: frames=%u avg=%.1f us/frame (total=%.1f ms)",
-                             name_, frames, double(total_us) / frames, double(total_us) / 1000.0);
-                    total_us = 0;
-                    frames = 0;
-                }
-            }
-
-        private:
-            const char *name_;
-        };
-
-        // 计时用引擎时间源（CMCore `hgl/time/Time.h` 的单调 uptime，禁 std::chrono）
-        inline uint64_t DeltaUs(uint64_t t0_us)
-        {
-            return GetUptimeUs() - t0_us;
-        }
-
-        /// RAII 段（多点 return 的函数用它，出口统一累计）
-        struct PerfSpan
-        {
-            PerfTimer  *timer;
-            bool        on;
-            uint64_t    t0;
-
-            explicit PerfSpan(PerfTimer &t) : timer(&t), on(t.Active()), t0(on ? GetUptimeUs() : 0) {}
-
-            ~PerfSpan()
-            {
-                if (on)
-                    timer->Add(DeltaUs(t0));
-            }
-        };
-    }
-
+    // PBR_PERF=1 计时代（三处独立累计，函数内 static ⇒ 零头文件改动）：
+    //   cull  = PerformFrustumCulling 的 CPU 时间（形态 B 接管帧 = 0）
+    //   batch = RunBatching 的 CPU 时间（形态 B guard+接管帧仍要建批，含差异）
+    // 计时器/RAII 段本体见 `support/PerfTimer.h`（与 `GPUCullSystem` 的派发计时共用一份实现）。
     void PrimitiveBatchPipeline::RunCulling()
     {
         static PerfTimer s_cull_timer("cpu_cull");
@@ -212,7 +177,6 @@ namespace hgl::ecs
             if (auto system = world->GetSystem<TransformSystem>())
             {
                 transform_system = system.get();
-                transform_system->SetDevice(device);
                 transform_system->EnsureTransformBuffer();
                 transform_system->RefreshHandleOrder();
             }
@@ -521,7 +485,7 @@ namespace hgl::ecs
 
         // Per-batch DataIndex rows SSBO — shader consumes fixed-width rows by instance index.
         if (batch.key.shader_program
-            && graph::mtl::MaterialRequiresRecipeRuntimeRows(batch.key.shader_program->GetShaderResourceSchema()))
+            && batch.key.shader_program->RequiresRecipeRuntimeRows())
         {
             if (!batch.material_data_index_rows_buffer || batch.material_data_index_rows_capacity < item_count)
             {
@@ -763,7 +727,7 @@ namespace hgl::ecs
             if (prim_item)
             {
                 const bool needs_recipe_rows = shader_prog
-                    && graph::mtl::MaterialRequiresRecipeRuntimeRows(shader_prog->GetShaderResourceSchema());
+                    && shader_prog->RequiresRecipeRuntimeRows();
                 const bool missing_rows = needs_recipe_rows
                                        && (!material_row
                                         || material_row->data_index_row == uint32_t(-1));
@@ -854,12 +818,13 @@ namespace hgl::ecs
         // A6-d T4b：拒 = **fail-fast**（不再回 CPU 账兜底）。依据 `GPUCullSystem::kMaxBatches`
         // 的拍板政策：容量是冻结值，超限 = 项目 bug ⇒ 不扩容、不静默丢批；也不许"退回 CPU 账"
         // 把问题伪装成正常渲染。
-        auto reject = [](const char *why, const char *batch_name, MaterialBatch *b)
+        // 批 1.3 C5：闩改**每实例**（原先的进程级 static 告警闩 ⇒ 第二个世界静默）
+        // ⇒ 该 lambda 必须捕获 this。
+        auto reject = [this](const char *why, const char *batch_name, MaterialBatch *b)
         {
-            static bool s_reported = false;
-            if (!s_reported)
+            if (!gpu_cull_reject_warned_)
             {
-                s_reported = true;
+                gpu_cull_reject_warned_ = true;
                 GLogError("[T3i] GPU cull draw override 该批前提不满足：%s（批=%s）"
                           "⇒ fail-fast：该批本帧**不绘制**（容量/前提为拍板冻结值，超限属项目 bug；"
                           "不回 CPU 账、不静默丢批）",
@@ -1055,10 +1020,9 @@ namespace hgl::ecs
                      (world ? world->GetFrameIndex() : 0u) % HGL_FRAME_SLOT_TOTAL, 1, geometry_batches,
                      pending_count, total_items, row_cursor, tagged_items, total_items);
 
-        static bool s_engaged_logged = false;
-        if (!s_engaged_logged)
+        if (!gpu_cull_engaged_logged_)
         {
-            s_engaged_logged = true;
+            gpu_cull_engaged_logged_ = true;
             GLogInfo("[T3i] GPU cull draw override ENGAGED: 世界=%s batches=%u/%u items=%u"
                      " arena_rows=%u（逐批切片）",
                      world ? world->GetName().c_str() : "<null>",

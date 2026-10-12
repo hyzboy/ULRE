@@ -59,8 +59,6 @@ namespace hgl
 
         public:
 
-            bool IsAllocated() const { return !rows.empty(); }
-
             /// 懒分配：一次 `kCapacity × 128 B = 512 KB`（世界从未建实体则一分不占）
             void Ensure()
             {

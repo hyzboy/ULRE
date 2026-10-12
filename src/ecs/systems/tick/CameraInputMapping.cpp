@@ -28,9 +28,6 @@ namespace hgl::ecs
         context.BindKey(kActionZoomOut, io::KeyboardButton::PageDown);
         context.BindKey(kActionZoomOut, io::KeyboardButton::Minus);
 
-        context.BindKey(kActionResetView, io::KeyboardButton::R);
-        context.BindKey(kActionFocusView, io::KeyboardButton::F);
-
         configured = true;
     }
 
@@ -44,12 +41,6 @@ namespace hgl::ecs
 
         mapper.PushContext(&context);
         context_ready = true;
-    }
-
-    io::InputContext& CameraInputMapping::EditContext()
-    {
-        configured = true;
-        return context;
     }
 }
 

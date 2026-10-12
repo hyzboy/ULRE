@@ -24,12 +24,24 @@ VulkanCmdBuffer::~VulkanCmdBuffer()
 
 bool VulkanCmdBuffer::Begin()
 {
+    if(cmd_begin)
+    {
+        LogError("[CMD] vkBeginCommandBuffer rejected: command buffer already recording cmd=%p",
+                 (void*)cmd_buf);
+        return false;
+    }
+
     CommandBufferBeginInfo cmd_buf_info;
 
     cmd_buf_info.pInheritanceInfo = nullptr;
 
-    if(vkBeginCommandBuffer(cmd_buf, &cmd_buf_info)!=VK_SUCCESS)
+    VkResult result=vkBeginCommandBuffer(cmd_buf, &cmd_buf_info);
+    if(result!=VK_SUCCESS)
+    {
+        LogError("[CMD] vkBeginCommandBuffer failed cmd=%p result=%d",
+                 (void*)cmd_buf,static_cast<int>(result));
         return(false);
+    }
 
     cmd_begin=true;
     global_sets_bound=false;

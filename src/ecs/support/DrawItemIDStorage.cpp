@@ -1,4 +1,5 @@
 #include <hgl/ecs/support/DrawItemIDStorage.h>
+#include <hgl/ecs/support/GpuMirrorBuffer.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
 #include <algorithm>
@@ -20,18 +21,6 @@ namespace hgl::ecs
         ids.Clear();
         is_dirty = false;
         external_gpu_address = 0;
-    }
-
-    void DrawItemIDStorage::SetExternalGPUBuffer(graph::DeviceBuffer *buf, graph::VulkanDevice *dev)
-    {
-        if (buf && buf->GetBuffer() && dev)
-        {
-            external_gpu_address = dev->GetBufferDeviceAddressAligned16(buf->GetBuffer());
-        }
-        else
-        {
-            external_gpu_address = 0;
-        }
     }
 
     uint32_t DrawItemIDStorage::Append(const uint32_t *handles, const uint32_t count)
@@ -59,43 +48,33 @@ namespace hgl::ecs
 
     bool DrawItemIDStorage::EnsureGPUBuffer(graph::VulkanDevice *dev, const uint32_t min_capacity)
     {
-        if (!dev)
+        // 策略 / 建 SSBO / 换缓冲 / 记容量与 BDA 走公共件（审计 §2.2：与 `RenderItemDataStorage`
+        // 逐字同源的那一份已删）；两条日志留在本表（对象日志宏带 `typeid(*this)`，文本逐字不变）。
+        // 本表无"迁移已有行"需求：`SyncToGPU` 每次都整段重写 CPU 数组。
+        uint32_t target_capacity = 0;
+
+        const GpuMirrorResult result = EnsureGpuMirrorBuffer(dev,
+                                                             device_buffer,
+                                                             gpu_capacity,
+                                                             gpu_address,
+                                                             min_capacity,
+                                                             sizeof(uint32_t),
+                                                             target_capacity,
+                                                             [](graph::DeviceBuffer *, uint32_t) {});
+
+        if (result == GpuMirrorResult::NoDevice)
             return false;
 
-        if (device_buffer && gpu_capacity >= min_capacity && min_capacity > 0)
+        if (result == GpuMirrorResult::Unchanged)
             return true;
 
-        uint32_t target_capacity = min_capacity > 0 ? min_capacity : 1024;
-        if (gpu_capacity > 0)
-        {
-            target_capacity = std::max(target_capacity, gpu_capacity * 2);
-        }
-        if (target_capacity < 64)
-            target_capacity = 64;
-
-        const VkDeviceSize byte_size = sizeof(uint32_t) * target_capacity;
-
-        graph::DeviceBuffer *new_buffer = dev->CreateSSBO(byte_size,
-                                                          nullptr,
-                                                          graph::BufferAllocPolicy::Auto,
-                                                          graph::SharingMode::Exclusive);
-        if (!new_buffer)
+        if (result == GpuMirrorResult::Failed)
         {
             LogError(u8"[DrawItemIDStorage] 创建 SSBO 失败, 目标容量: %u, 字节数: %llu",
                      target_capacity,
-                     byte_size);
+                     static_cast<VkDeviceSize>(sizeof(uint32_t)) * target_capacity);
             return false;
         }
-
-        if (device_buffer)
-        {
-            delete device_buffer;
-            device_buffer = nullptr;
-        }
-
-        device_buffer = new_buffer;
-        gpu_capacity = target_capacity;
-        gpu_address = dev->GetBufferDeviceAddressAligned16(device_buffer->GetBuffer());
 
         LogInfo(u8"[DrawItemIDStorage] 扩容 GPU SSBO 成功: 容量 %u, 地址: 0x%llx",
                 gpu_capacity,
@@ -106,29 +85,21 @@ namespace hgl::ecs
     bool DrawItemIDStorage::SyncToGPU(graph::VulkanDevice *dev)
     {
         if (external_gpu_address != 0)
-        {
-            last_frame_uploaded_bytes = 0;
             return true;
-        }
 
         if (!dev)
             return false;
 
         const uint32_t count = static_cast<uint32_t>(ids.GetCount());
-        last_frame_item_count = count;
 
         if (count == 0)
-        {
-            last_frame_uploaded_bytes = 0;
             return true;
-        }
 
         if (!EnsureGPUBuffer(dev, count))
             return false;
 
         const VkDeviceSize byte_size = static_cast<VkDeviceSize>(count) * sizeof(uint32_t);
         device_buffer->Write(ids.GetData(), 0, static_cast<uint32_t>(byte_size));
-        last_frame_uploaded_bytes = static_cast<uint32_t>(byte_size);
         is_dirty = false;
         return true;
     }
@@ -142,7 +113,5 @@ namespace hgl::ecs
         }
         gpu_capacity = 0;
         gpu_address = 0;
-        last_frame_uploaded_bytes = 0;
-        last_frame_item_count = 0;
     }
 }

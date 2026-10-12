@@ -116,7 +116,7 @@
   `0xD71ABABC2BE460C0`（同守卫）。PASS 退 0 / FAIL 退 1 / 读回失败退 2；
   基线由三次连跑一致后回填。离屏若再"永不绘制"，主场景贴图退化为纯清屏色 ⇒ 摘要立变。
 - **回归判据**（不许被本修复扰动）：
-  `PBRSpheres 0x3DD88A0999CDC486`、`ShadowMap 0xA8A369516CB04571`、
+  `PBRSpheres 0x3DD88A0999CDC486`、`ShadowMap 0xA8A369516CB04571`、〔2026-10-11：ShadowMap 台架已删除（旧 shadow-map 直采示例，CSM 路线取代；如需退化为单张阴影图，把 CascadeShadowMap.cpp 的 `cfg.cascade_count` 设 1 即可）——本行基线仅适用于删除前〕
   `CascadeShadowMap 0x1CDAADEBF18B7CE4`、`GPUDrivenCull(GC_STATIC=1) 0x90E0745C2C7B8599`、
   `AlphaModes 0x2FE87B15EE8B8A16`、`CoverageVariants 0x8EED38BAD9B8181E`、
   `LoadScene 0xC9E38ED2F49A069B`、`PlaneGrid3D 0x4125C3C830CB92D3`

@@ -504,7 +504,9 @@ int main(int argc, char** argv)
             { "src/ecs/systems/tick/TransformSystem.cpp", "static_index_map",          0, "排名映射复活（应为 static_slot_map）" },
             { "src/ecs/systems/tick/TransformSystem.cpp", "dynamic_index_map",         0, "同上（动态段）" },
             { "inc/hgl/ecs/core/Context.h",               "TryGetTransformSlot",       1, "稳定槽位查询缺失" },
-            { "src/ecs/systems/tick/TransformSystem.cpp", "static_slot_map",           4, "槽位映射缺失（每帧派生自世界槽位表）" },
+            // 批 1.3 C6：遍历统一走 `ForEach*Transform` 后，槽号改由 slot_map 反查（2 处遍历）
+            // ⇒ 该符号用点由 4 涨到 6；针的意图（每帧派生自世界槽位表、不许退化成排名映射）不变。
+            { "src/ecs/systems/tick/TransformSystem.cpp", "static_slot_map",           6, "槽位映射缺失（每帧派生自世界槽位表）" },
             { "src/ecs/support/TransformAccessor.cpp",    "MigrateTransform",          1, "换边未通知世界（只改 mobility 字节 ⇒ 实例拿默认行、全画在原点）" },
 
             // T8.5：局部矩阵常驻缓存与二级标脏字段**必须零残留**（行内存 223 B → 158 B 的验收点）
@@ -820,6 +822,374 @@ int main(int argc, char** argv)
         GLogInfo(u8"Test 15 Passed: 名单空洞安全契约成立（IsDirty(INVALID_HANDLE) 安全返回 false 不崩；"
                  u8"ForEachMovableTransform 跳过空洞且计数 %u == 活槽数 %u）。",
                  iterated, context.GetLiveTransformCount(true));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 16: CSR 子表搬迁契约（审计 · 批 1.1 B1）
+    //   · 交错追加（父 P 有子 → 另一父 Q 有子 → P 再加子）必须把 P 的旧子节点**整段复制**到池尾
+    //   · 删除后再追加（span 不再贴池尾）同样必须复制
+    //   · count / 顺序 / HasChild / CopyChildren 四者必须一致（原实现丢内容 + 可越界读）
+    // ─────────────────────────────────────────────────────────────
+    {
+        TransformDataStorage csr;
+
+        const TransformDataStorage::HandleID p = csr.Allocate();
+        const TransformDataStorage::HandleID q = csr.Allocate();
+        const TransformDataStorage::HandleID a = csr.Allocate();
+        const TransformDataStorage::HandleID b = csr.Allocate();
+        const TransformDataStorage::HandleID c = csr.Allocate();
+
+        csr.AddChild(p,a);
+        csr.AddChild(q,b);                 // 让 p 的 span 不再贴着池尾
+        csr.AddChild(p,c);                 // ← 交错追加：必须复制 [a]
+
+        if (csr.GetChildCount(p) != 2 || csr.GetChild(p,0) != a || csr.GetChild(p,1) != c)
+        {
+            GLogError(u8"Test 16 Failed: 交错追加后 P 的子表不对（count=%u first=%u second=%u，期望 2/%u/%u）",
+                      csr.GetChildCount(p), csr.GetChild(p,0), csr.GetChild(p,1), a, c);
+            return 18;
+        }
+
+        if (!csr.HasChild(p,a) || !csr.HasChild(p,c) || csr.HasChild(p,b))
+        {
+            GLogError(u8"Test 16 Failed: HasChild 不一致（a=%d c=%d b=%d，期望 1/1/0）",
+                      csr.HasChild(p,a), csr.HasChild(p,c), csr.HasChild(p,b));
+            return 18;
+        }
+
+        std::vector<TransformDataStorage::HandleID> kids;
+        csr.CopyChildren(p,kids);
+
+        if (kids.size() != 2 || kids[0] != a || kids[1] != c)
+        {
+            GLogError(u8"Test 16 Failed: CopyChildren 结果不对（size=%zu [0]=%u [1]=%u）",
+                      kids.size(), kids.empty() ? 0u : kids[0], kids.size() < 2 ? 0u : kids[1]);
+            return 18;
+        }
+
+        // 删除后再追加：RemoveChild 行内前移保持连续，span 不再贴池尾 ⇒ 同样走复制路径
+        csr.RemoveChild(p,a);
+        csr.AddChild(p,a);
+        csr.CopyChildren(p,kids);
+
+        if (kids.size() != 2 || kids[0] != c || kids[1] != a)
+        {
+            GLogError(u8"Test 16 Failed: 删除后追加的子表不对（size=%zu [0]=%u [1]=%u，期望 2/%u/%u）",
+                      kids.size(), kids.empty() ? 0u : kids[0], kids.size() < 2 ? 0u : kids[1], c, a);
+            return 18;
+        }
+
+        GLogInfo(u8"Test 16 Passed: CSR 子表搬迁契约（交错追加 / 删除后追加都整段复制旧子节点；count/顺序/查找/拷贝一致）。");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 17: 父环拒绝 + 后代遍历可终止（审计 · 批 1.1 B2）
+    //   · 经公共 API（accessor）设父时，祖先环必须在改父链之前被拒绝
+    //   · 拒绝后父链保持不变、且调用**必须返回**（原先 A↔B 互指会让后代标脏死循环）
+    // ─────────────────────────────────────────────────────────────
+    {
+        auto ent_w = context.CreateEntity<Entity>("CycleW");
+        auto ent_x = context.CreateEntity<Entity>("CycleX");
+        auto ent_y = context.CreateEntity<Entity>("CycleY");
+
+        const TransformID id_w = context.CreateTransform(ent_w->GetEntityID(), Mobility::Static);
+        const TransformID id_x = context.CreateTransform(ent_x->GetEntityID(), Mobility::Static);
+        const TransformID id_y = context.CreateTransform(ent_y->GetEntityID(), Mobility::Static);
+
+        if (!IsValidTransformID(id_w) || !IsValidTransformID(id_x) || !IsValidTransformID(id_y))
+        {
+            GLogError(u8"Test 17 Failed: 创建三个静态变换失败（段预算用尽？用例前提不成立）");
+            return 19;
+        }
+
+        auto tw = context.GetTransform(id_w);
+        auto tx = context.GetTransform(id_x);
+        auto ty = context.GetTransform(id_y);
+
+        tw.SetParent(id_x);                       // X → W
+        tx.SetParent(id_y);                       // Y → X → W
+
+        if (tw.GetParent() != id_x || tx.GetParent() != id_y)
+        {
+            GLogError(u8"Test 17 Failed: 正常设父失败（W.parent=%u X.parent=%u）",
+                      static_cast<uint32_t>(tw.GetParent()), static_cast<uint32_t>(tx.GetParent()));
+            return 19;
+        }
+
+        const TransformID w_parent_before = tw.GetParent();
+
+        ty.SetParent(id_w);                       // W → Y 会成环（Y → X → W）⇒ 必须被拒绝且必须返回
+
+        if (tw.GetParent() != w_parent_before || tw.GetParent() == id_y)
+        {
+            GLogError(u8"Test 17 Failed: 成环的 SetParent 未被拒绝（W.parent 现在=%u）",
+                      static_cast<uint32_t>(tw.GetParent()));
+            return 19;
+        }
+
+        if (ty.GetParent() != INVALID_TRANSFORM_ID)
+        {
+            GLogError(u8"Test 17 Failed: 被拒的行父链被改动（Y.parent=%u，期望无效）",
+                      static_cast<uint32_t>(ty.GetParent()));
+            return 19;
+        }
+
+        // 拒绝后仍能正常改父（无残留半改状态）。
+        // 注意：此刻 X 的父正是 Y ⇒ 「Y 挂到 X 下」本身就是 2-环，必须先摘掉 X→Y 这条边。
+        tx.SetParent(INVALID_TRANSFORM_ID);
+
+        if (tx.GetParent() != INVALID_TRANSFORM_ID)
+        {
+            GLogError(u8"Test 17 Failed: 摘父失败（X.parent=%u）",
+                      static_cast<uint32_t>(tx.GetParent()));
+            return 19;
+        }
+
+        ty.SetParent(id_x);
+
+        if (ty.GetParent() != id_x)
+        {
+            GLogError(u8"Test 17 Failed: 被拒后合法设父失效（Y.parent=%u，期望 %u）",
+                      static_cast<uint32_t>(ty.GetParent()), static_cast<uint32_t>(id_x));
+            return 19;
+        }
+
+        // 后代标脏传播必须终止（这一步在修复前会死循环 —— 用例本身完成即是判据）
+        tx.SetLocalPosition(glm::vec3(1.0f, 1.0f, 1.0f));
+
+        GLogInfo(u8"Test 17 Passed: 父环拒绝契约成立（祖先环被拒 / 父链保持不变 / 调用返回 / 拒绝后仍可正常设父）。");
+    }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Test 18: 段预算拒绝的原子性（审计 · 批 1.1 B3）
+        //   ① 换段被拒（目标段满）必须**整体拒绝**：源段槽保持、目标段已有行的槽位不得被挤掉
+        //      （原实现的失败分支写「目标段 + 旧下标」⇒ 挤掉别人的槽位，old_slot 超出目标段
+        //       长度时还会越界写）、换边计数与 storage 的 mobility 真源都不得被改动。
+        //   ② 段满时的 CreateTransform 不得返回半成品：登记失败必须回收已分配的行并返回 INVALID
+        //      （原实现丢弃登记结果 ⇒ 返回"有效但拿不到 L2W 槽"的行）。
+        // ─────────────────────────────────────────────────────────────────────
+        {
+            // ① 换段被拒：静态段 1 槽 / 动态段 1 槽 ⇒ 两边都只剩 0 个空位
+            ECSContext ctx_full;
+
+            auto *st_full = ctx_full.GetTransformStorage();
+
+            if (!st_full)
+            {
+                GLogError(u8"Test 18 Failed: 无变换存储");
+                return 20;
+            }
+
+            st_full->Initialize(1, 1);
+
+            auto e_s = ctx_full.CreateEntity<Entity>("SegStatic");
+            auto e_d = ctx_full.CreateEntity<Entity>("SegDynamic");
+
+            const TransformID id_s = ctx_full.CreateTransform(e_s->GetEntityID(), Mobility::Static);
+            const TransformID id_d = ctx_full.CreateTransform(e_d->GetEntityID(), Mobility::Movable);
+
+            if (!IsValidTransformID(id_s) || !IsValidTransformID(id_d))
+            {
+                GLogError(u8"Test 18 Failed: 段预算内创建变换失败（static=%u movable=%u）",
+                          static_cast<uint32_t>(id_s), static_cast<uint32_t>(id_d));
+                return 20;
+            }
+
+            const uint32_t moves_before = ctx_full.GetTransformRowMoveCount();
+            const uint32_t live_static_before = ctx_full.GetLiveTransformCount(false);
+
+            ctx_full.GetTransform(id_s).SetMobility(Mobility::Movable);   // 目标段已满 ⇒ 必须整体拒绝
+
+            uint32_t slot_probe = 0;
+
+            if (!ctx_full.TryGetTransformSlot(id_s, false, slot_probe))
+            {
+                GLogError(u8"Test 18 Failed: 被拒的换边把该行从源段摘掉了（源段查不到 id=%u）",
+                          static_cast<uint32_t>(id_s));
+                return 20;
+            }
+
+            if (ctx_full.TryGetTransformSlot(id_s, true, slot_probe))
+            {
+                GLogError(u8"Test 18 Failed: 目标段满却仍完成了换边（id=%u 出现在动态段）",
+                          static_cast<uint32_t>(id_s));
+                return 20;
+            }
+
+            uint32_t slot_d_after = 99;
+
+            if (!ctx_full.TryGetTransformSlot(id_d, true, slot_d_after) || slot_d_after != 0)
+            {
+                GLogError(u8"Test 18 Failed: 目标段原有行的槽位被被拒的换边挤掉（动态槽=%u，期望 0）",
+                          slot_d_after);
+                return 20;
+            }
+
+            if (ctx_full.GetTransformRowMoveCount() != moves_before)
+            {
+                GLogError(u8"Test 18 Failed: 被拒的换边仍计入换边次数（%u → %u）",
+                          moves_before, ctx_full.GetTransformRowMoveCount());
+                return 20;
+            }
+
+            if (ctx_full.GetLiveTransformCount(false) != live_static_before)
+            {
+                GLogError(u8"Test 18 Failed: 被拒的换边改了段名单（静态活行 %u → %u）",
+                          live_static_before, ctx_full.GetLiveTransformCount(false));
+                return 20;
+            }
+
+            if (ctx_full.GetTransform(id_s).IsMovable())
+            {
+                GLogError(u8"Test 18 Failed: 被拒的换边改了 storage 的 mobility 真源（应为静态）");
+                return 20;
+            }
+
+            // ② 段满创建：总行预算仍有空间（静态 1 + 动态 3 = 4），只有静态段满
+            ECSContext ctx_segfull;
+
+            auto *st_seg = ctx_segfull.GetTransformStorage();
+
+            if (!st_seg)
+            {
+                GLogError(u8"Test 18 Failed: 无变换存储");
+                return 20;
+            }
+
+            st_seg->Initialize(1, 3);
+
+            auto e_s2 = ctx_segfull.CreateEntity<Entity>("SegFullStatic");
+
+            if (!IsValidTransformID(ctx_segfull.CreateTransform(e_s2->GetEntityID(), Mobility::Static)))
+            {
+                GLogError(u8"Test 18 Failed: 静态段首个变换创建失败");
+                return 20;
+            }
+
+            const int rows_before = st_seg->GetCount();
+
+            auto e_over = ctx_segfull.CreateEntity<Entity>("SegOverflow");
+            const TransformID id_over = ctx_segfull.CreateTransform(e_over->GetEntityID(), Mobility::Static);
+
+            if (IsValidTransformID(id_over))
+            {
+                GLogError(u8"Test 18 Failed: 静态段满仍返回有效变换 id=%u（半成品：有行无 L2W 槽）",
+                          static_cast<uint32_t>(id_over));
+                return 20;
+            }
+
+            // 回收判据：Allocate 总是**追加**（无空闲行复用），所以被拒时那一行应停在
+            // 下标 rows_before 且**世代归零**（Deallocate 的换代语义）；泄漏则它仍是活行。
+            if (st_seg->GetCount() != rows_before + 1
+             || st_seg->GetGeneration(static_cast<TransformDataStorage::HandleID>(rows_before)) != 0)
+            {
+                GLogError(u8"Test 18 Failed: 段满创建失败后行未回收（rows %d → %d，行世代=%u）",
+                          rows_before, st_seg->GetCount(),
+                          st_seg->GetGeneration(static_cast<TransformDataStorage::HandleID>(rows_before)));
+                return 20;
+            }
+
+            // 失败不得留下"占了槽却查不到"的账：动态段随后必须能正常建行
+            auto e_dyn = ctx_segfull.CreateEntity<Entity>("SegAfterFail");
+            const TransformID id_dyn = ctx_segfull.CreateTransform(e_dyn->GetEntityID(), Mobility::Movable);
+
+            if (!IsValidTransformID(id_dyn) || ctx_segfull.GetLiveTransformCount(true) != 1)
+            {
+                GLogError(u8"Test 18 Failed: 失败路径污染了段账目（动态建行=%u，动态活行=%u）",
+                          static_cast<uint32_t>(id_dyn), ctx_segfull.GetLiveTransformCount(true));
+                return 20;
+            }
+
+            GLogInfo(u8"Test 18 Passed: 段预算拒绝的原子性成立（换边整体拒绝 / 目标段槽位不被挤 / "
+                      u8"计数与 mobility 真源不动 / 段满创建回收行不造半成品）。");
+        }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Test 19: 世界复位契约（§2 #9）
+    //   ① 复位（`TransformDataStorage::Clear()`）**不复位世代**：复位前取得的访问器必须失效
+    //      （原实现 Clear 清空 generations、新行又从常量 1 起编号 ⇒ 旧访问器"复活"）
+    //   ② `ECSContext::Shutdown` 必须复位变换行存储（原实现只清实体与名单 ⇒ 新实体继承旧变换行）
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        ECSContext ctx_reset;
+
+        auto e1 = ctx_reset.CreateEntity<Entity>("ResetOwner1");
+
+        const TransformID id1 = ctx_reset.CreateTransform(e1->GetEntityID(), Mobility::Static);
+
+        auto *st_reset = ctx_reset.GetTransformStorage();
+
+        if (!IsValidTransformID(id1) || !st_reset)
+        {
+            GLogError(u8"Test 19 Failed: 前置创建失败（id=%u storage=%p）",
+                      static_cast<uint32_t>(id1), static_cast<void *>(st_reset));
+            return 21;
+        }
+
+        const uint32_t gen1 = st_reset->GetGeneration(static_cast<TransformDataStorage::HandleID>(id1));
+
+        const TransformAccessor acc_old = ctx_reset.GetTransform(id1);      // 建柄时捕获 gen1
+
+        if (!acc_old.IsValid())
+        {
+            GLogError(u8"Test 19 Failed: 新建访问器本该有效");
+            return 21;
+        }
+
+        st_reset->Clear();                                                  // Shutdown 走的就是这条路
+
+        auto e2 = ctx_reset.CreateEntity<Entity>("ResetOwner2");
+
+        const TransformID id2 = ctx_reset.CreateTransform(e2->GetEntityID(), Mobility::Static);
+
+        if (!IsValidTransformID(id2))
+        {
+            GLogError(u8"Test 19 Failed: 复位后新建变换失败");
+            return 21;
+        }
+
+        const uint32_t gen2 = st_reset->GetGeneration(static_cast<TransformDataStorage::HandleID>(id2));
+
+        if (gen2 == gen1)
+        {
+            GLogError(u8"Test 19 Failed: 复位后新行的世代与旧行相同（gen=%u）⇒ 世代计数器被复位了", gen2);
+            return 21;
+        }
+
+        if (acc_old.IsValid())
+        {
+            GLogError(u8"Test 19 Failed: 复位前取得的访问器在【复位 + 重分配】后仍然有效（句柄复活）");
+            return 21;
+        }
+
+        // ② Shutdown 复位行存储（未 Initialize 的世界走 inactive 早退分支，也要复位）
+        ECSContext ctx_shutdown;
+
+        auto e3 = ctx_shutdown.CreateEntity<Entity>("ShutdownOwner");
+
+        if (!IsValidTransformID(ctx_shutdown.CreateTransform(e3->GetEntityID(), Mobility::Movable)))
+        {
+            GLogError(u8"Test 19 Failed: Shutdown 前置创建失败");
+            return 21;
+        }
+
+        ctx_shutdown.Shutdown();
+
+        if (auto *st_after = ctx_shutdown.GetTransformStorage())
+        {
+            if (st_after->GetCount() != 0)
+            {
+                GLogError(u8"Test 19 Failed: Shutdown 后变换行存储未复位（rows=%d）⇒ 新实体继承旧变换行",
+                          st_after->GetCount());
+                return 21;
+            }
+        }
+        else
+        {
+            GLogInfo(u8"Test 19: Shutdown 已整体释放变换存储（等价于复位）");
+        }
+
+        GLogInfo(u8"Test 19 Passed: 世界复位契约成立（世代不复位 ⇒ 旧句柄不复活；Shutdown 复位行存储）。");
     }
 
     GLogInfo(u8"=== All TransformDataStorage tests passed successfully! ===");

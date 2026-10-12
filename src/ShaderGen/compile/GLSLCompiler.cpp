@@ -187,11 +187,6 @@ namespace hgl
             return true;
         }
 
-        void GetShaderCompilerTargetVersions(uint32 &vulkan_version,uint32 &spv_version)
-        {
-            vulkan_version=compile_info.vulkan_version;
-            spv_version=compile_info.spv_version;
-        }
         }//namespace mtl
 
         static ExternalModule *gsi_module=nullptr;

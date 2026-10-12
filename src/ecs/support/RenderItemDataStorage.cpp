@@ -1,4 +1,5 @@
 #include <hgl/ecs/support/RenderItemDataStorage.h>
+#include <hgl/ecs/support/GpuMirrorBuffer.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
 #include <algorithm>
@@ -31,12 +32,14 @@ namespace hgl::ecs
             free_list.Delete(last_idx);
 
             items[handle] = desc;
+            allocated[handle] = 1;      // §2 #2
             MarkDirty(handle);
             return handle;
         }
 
         const RenderItemHandle handle = static_cast<RenderItemHandle>(items.GetCount());
         items.Add(desc);
+        allocated.Add(1);               // §2 #2
         MarkDirty(handle);
         return handle;
     }
@@ -50,6 +53,7 @@ namespace hgl::ecs
         for (uint32_t i = 0; i < count; ++i)
         {
             items.Add(RenderItemDescriptor{});
+            allocated.Add(1);           // §2 #2
         }
 
         MarkRangeDirty(base, count);
@@ -61,7 +65,13 @@ namespace hgl::ecs
         if (handle >= static_cast<RenderItemHandle>(items.GetCount()))
             return false;
 
+        // §2 #2：重复释放（含 release 后再次 release）必须整体 no-op —— 否则同一槽两次进
+        // free_list，后续两次 Allocate 会返回同一个 handle（槽位别名），活跃计数也会少算。
+        if (!IsAllocated(handle))
+            return false;
+
         items[handle] = RenderItemDescriptor{};
+        allocated[handle] = 0;          // §2 #2
         free_list.Add(handle);
         MarkDirty(handle);
         return true;
@@ -72,12 +82,24 @@ namespace hgl::ecs
         if (count == 0 || base + count > static_cast<RenderItemHandle>(items.GetCount()))
             return false;
 
+        // §2 #2：只释放**当前确实已分配**的槽；区间内一个都没有可释放的 ⇒ 整体 no-op（返回 false）
+        uint32_t released = 0;
+
         for (uint32_t i = 0; i < count; ++i)
         {
             const RenderItemHandle h = base + i;
+
+            if (!IsAllocated(h))
+                continue;
+
             items[h] = RenderItemDescriptor{};
+            allocated[h] = 0;           // §2 #2
             free_list.Add(h);
+            ++released;
         }
+
+        if (released == 0)
+            return false;
 
         MarkRangeDirty(base, count);
         return true;
@@ -87,6 +109,7 @@ namespace hgl::ecs
     {
         items.Clear();
         free_list.Clear();
+        allocated.Clear();              // §2 #2
         ClearDirty();
     }
 
@@ -114,32 +137,6 @@ namespace hgl::ecs
         if (items[handle] != desc)
         {
             items[handle] = desc;
-            MarkDirty(handle);
-        }
-        return true;
-    }
-
-    bool RenderItemDataStorage::SetTransformID(const RenderItemHandle handle, const uint32_t transform_id)
-    {
-        if (handle >= static_cast<RenderItemHandle>(items.GetCount()))
-            return false;
-
-        if (items[handle].transform_id != transform_id)
-        {
-            items[handle].transform_id = transform_id;
-            MarkDirty(handle);
-        }
-        return true;
-    }
-
-    bool RenderItemDataStorage::SetGeometryID(const RenderItemHandle handle, const uint32_t geometry_id)
-    {
-        if (handle >= static_cast<RenderItemHandle>(items.GetCount()))
-            return false;
-
-        if (items[handle].geometry_id != geometry_id)
-        {
-            items[handle].geometry_id = geometry_id;
             MarkDirty(handle);
         }
         return true;
@@ -195,11 +192,6 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderItemDataStorage::IsValidHandle(const RenderItemHandle handle) const
-    {
-        return handle < static_cast<RenderItemHandle>(items.GetCount());
-    }
-
     void RenderItemDataStorage::MarkDirty(const uint32_t index)
     {
         if (index < dirty_min)
@@ -246,54 +238,44 @@ namespace hgl::ecs
         if (!dev)
             return false;
 
-        if (device_buffer && gpu_capacity >= min_capacity && min_capacity > 0)
+        // 容量够 ⇒ 什么都不做（**不重标脏**，与旧实现逐字一致；脏标记只在真重分配后打）。
+        if (GpuMirrorCapacitySufficient(device_buffer, gpu_capacity, min_capacity))
             return true;
 
-        uint32_t target_capacity = min_capacity > 0 ? min_capacity : 1024;
-        if (gpu_capacity > 0)
-        {
-            target_capacity = std::max(target_capacity, gpu_capacity * 2);
-        }
-        // 对齐至 2 的幂次或至少 64
-        if (target_capacity < 64)
-            target_capacity = 64;
+        uint32_t target_capacity = 0;
 
-        const VkDeviceSize byte_size = sizeof(RenderItemDescriptor) * target_capacity;
+        // 策略 / 建 SSBO / 换缓冲 / 记容量与 BDA 走公共件（审计 §2.2）；本表特有的两点：
+        // ① 迁移已有行（钩子）② 重分配后重标全量脏。日志留在本表（对象日志宏）。
+        const GpuMirrorResult result = EnsureGpuMirrorBuffer(dev,
+                                                             device_buffer,
+                                                             gpu_capacity,
+                                                             gpu_address,
+                                                             min_capacity,
+                                                             sizeof(RenderItemDescriptor),
+                                                             target_capacity,
+                                                             [this](graph::DeviceBuffer *new_buffer, uint32_t)
+                                                             {
+                                                                 if (items.GetCount() > 0)
+                                                                 {
+                                                                     const VkDeviceSize copy_size = sizeof(RenderItemDescriptor) * items.GetCount();
+                                                                     new_buffer->Write(items.GetData(), 0, static_cast<uint32_t>(copy_size));
+                                                                 }
+                                                             });
 
-        graph::DeviceBuffer *new_buffer = dev->CreateSSBO(byte_size,
-                                                         nullptr,
-                                                         graph::BufferAllocPolicy::Auto,
-                                                         graph::SharingMode::Exclusive);
-        if (!new_buffer)
+        if (result == GpuMirrorResult::Unchanged)
+            return true;
+
+        if (result == GpuMirrorResult::Failed)
         {
             LogError(u8"[RenderItemDataStorage] 创建 SSBO 失败, 目标容量: %u, 字节数: %llu",
                      target_capacity,
-                     byte_size);
+                     static_cast<VkDeviceSize>(sizeof(RenderItemDescriptor)) * target_capacity);
             return false;
         }
 
-        // 如果已有旧缓冲且存在数据，迁移至新缓冲
-        if (items.GetCount() > 0)
-        {
-            const VkDeviceSize copy_size = sizeof(RenderItemDescriptor) * items.GetCount();
-            new_buffer->Write(items.GetData(), 0, static_cast<uint32_t>(copy_size));
-        }
-
-        if (device_buffer)
-        {
-            delete device_buffer;
-            device_buffer = nullptr;
-        }
-
-        device_buffer = new_buffer;
-        gpu_capacity = target_capacity;
-        gpu_address = dev->GetBufferDeviceAddressAligned16(device_buffer->GetBuffer());
-
         // 重新标记全量脏以确保 GPU 状态一致
         if (items.GetCount() > 0)
-        {
             MarkRangeDirty(0, static_cast<uint32_t>(items.GetCount()));
-        }
 
         LogInfo(u8"[RenderItemDataStorage] 扩容 GPU SSBO 成功: 容量 %u, 地址: 0x%llx",
                 gpu_capacity,

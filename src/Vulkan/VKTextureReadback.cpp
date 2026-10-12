@@ -126,7 +126,13 @@ namespace hgl::graph
         const VkImageSubresourceRange range{aspect, 0, 1, 0, 1};
 
         // 读回在帧外进行：先把图形队列排空，避免与在途帧竞争同一张图（内容也会更确定）
-        vkQueueWaitIdle(device->GetGraphicsQueue());
+        VkResult queue_wait_result=vkQueueWaitIdle(device->GetGraphicsQueue());
+        if(queue_wait_result!=VK_SUCCESS)
+        {
+            GLogError("[TextureReadback] vkQueueWaitIdle failed result=%d",
+                      static_cast<int>(queue_wait_result));
+            return false;
+        }
 
         DeviceBuffer *staging = device->CreateBuffer(
             ObjectNameBuilder(AnsiString("TextureReadback:Staging")),
@@ -180,6 +186,7 @@ namespace hgl::graph
 
             if (vkCreateFence(device->GetDevice(), &fi, nullptr, &fence) != VK_SUCCESS)
             {
+                GLogError("[TextureReadback] vkCreateFence failed cmd=%p", (void*)raw_cmd);
                 ok = false;
             }
             else
@@ -189,10 +196,24 @@ namespace hgl::graph
                 si.commandBufferCount = 1;
                 si.pCommandBuffers = &raw_cmd;
 
-                ok = (vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence) == VK_SUCCESS);
+                VkResult submit_result=vkQueueSubmit(device->GetGraphicsQueue(), 1, &si, fence);
+                if(submit_result!=VK_SUCCESS)
+                {
+                    GLogError("[TextureReadback] vkQueueSubmit failed result=%d cmd=%p fence=%p",
+                              static_cast<int>(submit_result),(void*)raw_cmd,(void*)fence);
+                    ok=false;
+                }
 
                 if (ok)
-                    ok = (vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX) == VK_SUCCESS);
+                {
+                    VkResult wait_result=vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+                    if(wait_result!=VK_SUCCESS)
+                    {
+                        GLogError("[TextureReadback] vkWaitForFences failed result=%d cmd=%p fence=%p",
+                                  static_cast<int>(wait_result),(void*)raw_cmd,(void*)fence);
+                        ok=false;
+                    }
+                }
 
                 vkDestroyFence(device->GetDevice(), fence, nullptr);
             }

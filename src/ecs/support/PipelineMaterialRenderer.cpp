@@ -55,10 +55,9 @@ namespace hgl::ecs
                          first, max_count, cur_owner_batch->gpu_driven_override ? 1 : 0,
                          slice.count_buffer_offset, cur_pass_index);
 
-            static bool s_logged_once = false;
-            if (!s_logged_once)
+            if (!engaged_logged_)                       // 批 1.3 C5：每实例闩（原 static 是进程级）
             {
-                s_logged_once = true;
+                engaged_logged_ = true;
                 GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u"
                          u8"（gpu_driven=%d row_base=%u capacity=%u）",
                          first, max_count,

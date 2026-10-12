@@ -1,4 +1,5 @@
 ﻿#include <hgl/mtl/SamplerPreset.h>
+#include <hgl/mtl/VkEnumText.h>
 
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
@@ -11,38 +12,6 @@ namespace hgl::graph::mtl
 {
     namespace
     {
-        VkFilter ParseFilter(const std::string &s)
-        {
-            return (s == "Nearest") ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
-        }
-
-        VkSamplerMipmapMode ParseMipmapMode(const std::string &s)
-        {
-            return (s == "Nearest") ? VK_SAMPLER_MIPMAP_MODE_NEAREST
-                                    : VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        }
-
-        VkSamplerAddressMode ParseAddressMode(const std::string &s)
-        {
-            if (s == "MirroredRepeat")    return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-            if (s == "ClampToEdge")       return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            if (s == "ClampToBorder")     return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-            if (s == "MirrorClampToEdge") return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
-            return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        }
-
-        VkCompareOp ParseCompareOp(const std::string &s)
-        {
-            if (s == "Never")          return VK_COMPARE_OP_NEVER;
-            if (s == "Less")           return VK_COMPARE_OP_LESS;
-            if (s == "Equal")          return VK_COMPARE_OP_EQUAL;
-            if (s == "LessOrEqual")    return VK_COMPARE_OP_LESS_OR_EQUAL;
-            if (s == "Greater")        return VK_COMPARE_OP_GREATER;
-            if (s == "NotEqual")       return VK_COMPARE_OP_NOT_EQUAL;
-            if (s == "GreaterOrEqual") return VK_COMPARE_OP_GREATER_OR_EQUAL;
-            if (s == "Always")         return VK_COMPARE_OP_ALWAYS;
-            return VK_COMPARE_OP_NEVER;
-        }
     }//anonymous namespace
 
     SamplerPresetLibrary &SamplerPresetLibrary::Instance()
@@ -168,16 +137,43 @@ namespace hgl::graph::mtl
             sci.borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
             sci.unnormalizedCoordinates = VK_FALSE;
 
+            // 枚举取值一律走 inc/hgl/mtl/VkEnumText.h 的单一真源；未知名 = 加载失败（不静默落默认值）。
             if (item.contains("mag_filter") && item.at("mag_filter").is_string())
-                sci.magFilter = ParseFilter(item.at("mag_filter").as_string());
+            {
+                const std::string value = item.at("mag_filter").as_string();
+                if (!ParseVkFilter(value.c_str(), sci.magFilter))
+                {
+                    GLogError("[SamplerPreset] %s: 非法 mag_filter: %s", name.c_str(), value.c_str());
+                    return false;
+                }
+            }
             if (item.contains("min_filter") && item.at("min_filter").is_string())
-                sci.minFilter = ParseFilter(item.at("min_filter").as_string());
+            {
+                const std::string value = item.at("min_filter").as_string();
+                if (!ParseVkFilter(value.c_str(), sci.minFilter))
+                {
+                    GLogError("[SamplerPreset] %s: 非法 min_filter: %s", name.c_str(), value.c_str());
+                    return false;
+                }
+            }
             if (item.contains("mipmap_mode") && item.at("mipmap_mode").is_string())
-                sci.mipmapMode = ParseMipmapMode(item.at("mipmap_mode").as_string());
+            {
+                const std::string value = item.at("mipmap_mode").as_string();
+                if (!ParseVkSamplerMipmapMode(value.c_str(), sci.mipmapMode))
+                {
+                    GLogError("[SamplerPreset] %s: 非法 mipmap_mode: %s", name.c_str(), value.c_str());
+                    return false;
+                }
+            }
             if (item.contains("address_mode") && item.at("address_mode").is_string())
             {
-                const VkSamplerAddressMode am =
-                    ParseAddressMode(item.at("address_mode").as_string());
+                const std::string value = item.at("address_mode").as_string();
+                VkSamplerAddressMode am = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+                if (!ParseVkSamplerAddressMode(value.c_str(), am))
+                {
+                    GLogError("[SamplerPreset] %s: 非法 address_mode: %s", name.c_str(), value.c_str());
+                    return false;
+                }
                 sci.addressModeU = am;
                 sci.addressModeV = am;
                 sci.addressModeW = am;
@@ -199,8 +195,15 @@ namespace hgl::graph::mtl
             }
             if (item.contains("compare_op") && item.at("compare_op").is_string())
             {
+                const std::string value = item.at("compare_op").as_string();
+                VkCompareOp op = VK_COMPARE_OP_NEVER;
+                if (!ParseVkCompareOp(value.c_str(), op))
+                {
+                    GLogError("[SamplerPreset] %s: 非法 compare_op: %s", name.c_str(), value.c_str());
+                    return false;
+                }
                 sci.compareEnable = VK_TRUE;
-                sci.compareOp = ParseCompareOp(item.at("compare_op").as_string());
+                sci.compareOp = op;
             }
 
             const AnsiString key(name.c_str());

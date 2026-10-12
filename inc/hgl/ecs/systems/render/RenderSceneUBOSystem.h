@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
-#include<hgl/mtl/ShaderResourceSchema.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/String.h>
 #include<cstdint>
@@ -37,8 +36,7 @@ namespace hgl::ecs
      * BDA 终态后描述符绑定已全部退场，本系统只剩场景 UBO 数据流与资源注册职责：
      *   1. 持有 viewport UBO（跨 swapchain resize 稳定）；camera / sky / viewport / shadow
      *      一律经 global_addresses（BDA）寻址，RenderFrameSync 阶段只同步表内地址（无绑定可推）；
-     *   2. 材质化注册：纹理 bindless handle / 材质行结构 layout 登记
-     *      （RegisterTextureResource / RegisterMaterialStructLayout，被
+     *   2. 材质化注册：纹理 bindless handle 登记（RegisterTextureResource，被
      *      RenderPrimitiveCollectSystem 消费）。
      */
     class RenderSceneUBOSystem : public System
@@ -69,10 +67,6 @@ namespace hgl::ecs
         void Update(float deltaTime) override;
         void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
 
-        bool RegisterMaterialStructLayout(graph::GlobalSSBOType ssbo_type,
-                                          uint32_t ssbo_id,
-                                          uint32_t byte_stride);
-
         /**
          * 便利版本：向 BindlessTextureManager 注册纹理并预注册 pool 映射。
          * 所有纹理（2D / 2DArray）统一注册到 sampler2DArray[]（binding=0）；2D 走单层 array view。
@@ -96,7 +90,7 @@ namespace hgl::ecs
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
         void SyncBindingsForCurrentCommand();
-        void ApplyResourceLayoutBindings();
-        const graph::IGPUBuffer *ResolveViewportUBO() const;
+        // 2026-10-10（审计 §1.1）：空体的 `ApplyResourceLayoutBindings()` 与零调用者的
+        // `ResolveViewportUBO()` 已删除（`SyncBindingsForCurrentCommand` 是活的：内含 EnsureViewportUBO）。
     };
 }

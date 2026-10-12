@@ -51,7 +51,6 @@ namespace hgl::ecs
 
     // ── 阴影访问器与缺省约定（**唯一出处**；未挂载 ⇒ 全局缺省）──
     // 参数为所有者实体（nullptr ⇒ 视作未挂载）。世界级访问器见
-    // ECSContext::GetShadowProxy(EntityID)（同义，经实体查询）。
     ShadowProxy *GetShadowProxy(Entity *owner);
     const ShadowProxy *GetShadowProxy(const Entity *owner);
 

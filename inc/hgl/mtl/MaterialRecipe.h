@@ -5,8 +5,8 @@
 #include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/graph/ssbo/GlobalSSBOTypes.h>
-#include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/common/TextureSamplerTypeDef.h>
 #include <hgl/vk/VK.h>
 #include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
@@ -36,148 +36,16 @@ namespace hgl::graph::mtl
     // GlobalSSBOBinding 的类型、物理 SSBO 和行 ID 定位。
 
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
-    // 供 Step C 的 Definition→SerializedDescriptorEntry 推导使用。
     // 无纹理材质此列表为空。
 
-    // GLSL 采样器类型枚举，避免传裸字符串指针。
-    // ToGLSLSamplerTypeName() 将此值转换为 GLSL 类型名称字符串。
-    enum class GLSLSamplerType : uint8_t
-    {
-        Sampler2D = 0,        // "sampler2D"
-        Sampler2DArray,       // "sampler2DArray"
-        Sampler2DShadow,      // "sampler2DShadow"
-        SamplerCube,          // "samplerCube"
-        SamplerCubeArray,     // "samplerCubeArray"
-        Sampler3D,            // "sampler3D"
-    };
-
-    inline const char *ToGLSLSamplerTypeName(const GLSLSamplerType t) noexcept
-    {
-        switch (t)
-        {
-        case GLSLSamplerType::Sampler2D:        return "sampler2D";
-        case GLSLSamplerType::Sampler2DArray:   return "sampler2DArray";
-        case GLSLSamplerType::Sampler2DShadow:  return "sampler2DShadow";
-        case GLSLSamplerType::SamplerCube:      return "samplerCube";
-        case GLSLSamplerType::SamplerCubeArray: return "samplerCubeArray";
-        case GLSLSamplerType::Sampler3D:        return "sampler3D";
-        }
-        return "sampler2D";
-    }
+    // 采样器类型直接复用 hgl::graph::SamplerType —— 唯一真源与名字表在
+    // inc/hgl/common/TextureSamplerTypeDef.h（GetSamplerTypeName / ParseSamplerType，
+    // 匹配大小写不敏感 ⇒ 材质 TOML 可继续写 "Sampler2DArray" 这种作者写法）。
+    // 不要再在材质侧另建一份采样器类型枚举：两份枚举的数值不同，会让 layout 哈希与
+    // 名字↔值映射各说一套（2026-10-11 S3b 收敛）。
 
     constexpr uint32_t DefaultMaterialTextureConfigurationCapacity = 1024u;
 
-    enum class MaterialTextureFilterMode : uint8_t
-    {
-        Nearest = 0,
-        Linear
-    };
-
-    enum class MaterialTextureWrapMode : uint8_t
-    {
-        Repeat = 0,
-        MirroredRepeat,
-        ClampToEdge,
-        ClampToBorder,
-        MirrorClampToEdge
-    };
-
-    enum class MaterialTextureSwizzle : uint8_t
-    {
-        Zero = 0,
-        One,
-        R,
-        G,
-        B,
-        A
-    };
-
-    enum class MaterialTextureCompareOp : uint8_t
-    {
-        Never = 0,
-        Less,
-        Equal,
-        LessOrEqual,
-        Greater,
-        NotEqual,
-        GreaterOrEqual,
-        Always
-    };
-
-    struct MaterialTextureSamplingOptions
-    {
-        MaterialTextureFilterMode mag_filter =
-            MaterialTextureFilterMode::Linear;
-        MaterialTextureFilterMode min_filter =
-            MaterialTextureFilterMode::Linear;
-        MaterialTextureFilterMode mipmap_mode =
-            MaterialTextureFilterMode::Linear;
-        MaterialTextureWrapMode wrap_u = MaterialTextureWrapMode::Repeat;
-        MaterialTextureWrapMode wrap_v = MaterialTextureWrapMode::Repeat;
-        MaterialTextureWrapMode wrap_w = MaterialTextureWrapMode::Repeat;
-        MaterialTextureSwizzle swizzle_r = MaterialTextureSwizzle::R;
-        MaterialTextureSwizzle swizzle_g = MaterialTextureSwizzle::G;
-        MaterialTextureSwizzle swizzle_b = MaterialTextureSwizzle::B;
-        MaterialTextureSwizzle swizzle_a = MaterialTextureSwizzle::A;
-        MaterialTextureCompareOp compare_op =
-            MaterialTextureCompareOp::Never;
-        float mip_lod_bias = 0.0f;
-        float min_lod = 0.0f;
-        float max_lod = 15.0f;
-        float max_anisotropy = 16.0f;
-        bool anisotropy = false;
-        bool has_sampler_override = false;
-        bool has_swizzle_override = false;
-    };
-
-    inline bool operator==(
-        const MaterialTextureSamplingOptions &lhs,
-        const MaterialTextureSamplingOptions &rhs) noexcept
-    {
-        return lhs.mag_filter == rhs.mag_filter
-            && lhs.min_filter == rhs.min_filter
-            && lhs.mipmap_mode == rhs.mipmap_mode
-            && lhs.wrap_u == rhs.wrap_u
-            && lhs.wrap_v == rhs.wrap_v
-            && lhs.wrap_w == rhs.wrap_w
-            && lhs.swizzle_r == rhs.swizzle_r
-            && lhs.swizzle_g == rhs.swizzle_g
-            && lhs.swizzle_b == rhs.swizzle_b
-            && lhs.swizzle_a == rhs.swizzle_a
-            && lhs.compare_op == rhs.compare_op
-            && lhs.mip_lod_bias == rhs.mip_lod_bias
-            && lhs.min_lod == rhs.min_lod
-            && lhs.max_lod == rhs.max_lod
-            && lhs.max_anisotropy == rhs.max_anisotropy
-            && lhs.anisotropy == rhs.anisotropy
-            && lhs.has_sampler_override == rhs.has_sampler_override
-            && lhs.has_swizzle_override == rhs.has_swizzle_override;
-    }
-
-    inline uint64_t HashMaterialTextureSamplingOptions(
-        const MaterialTextureSamplingOptions &options) noexcept
-    {
-        hgl::hash::FNV1aHasher64 hasher;
-        hasher << options.mag_filter
-               << options.min_filter
-               << options.mipmap_mode
-               << options.wrap_u
-               << options.wrap_v
-               << options.wrap_w
-               << options.swizzle_r
-               << options.swizzle_g
-               << options.swizzle_b
-               << options.swizzle_a
-               << options.compare_op
-               << options.mip_lod_bias
-               << options.min_lod
-               << options.max_lod
-               << options.max_anisotropy
-               << options.anisotropy
-               << options.has_sampler_override
-               << options.has_swizzle_override;
-        return hasher;
-    }
 
     struct MaterialTextureReference
     {
@@ -198,9 +66,8 @@ namespace hgl::graph::mtl
     struct MaterialTextureDeclaration
     {
         std::string      name;                                        // TOML/GLSL texture key, such as "base_color".
-        GLSLSamplerType  sampler_type = GLSLSamplerType::Sampler2D;   // GLSL sampler kind.
+        SamplerType      sampler_type = SamplerType::Sampler2D;       // GLSL sampler kind（真源见 TextureSamplerTypeDef.h）。
         bool             required     = false;                         // Missing binding is an explicit error.
-        MaterialTextureSamplingOptions sampling;                       // Sampler/view overrides; not connected at stage 1.
         uint32_t         channels     = 0;                             // 0 = 由纹素格式决定；2 = 双通道法线(XY)，Z 由 shader 还原
     };
 
@@ -353,11 +220,25 @@ namespace hgl::graph::mtl
 
     };
 
+    // 数组型采样器（声明需 array_layer / 走 texture2DArray 一族）。收敛到 SamplerType
+    // 的 18 项域后，所有 array 形式一并覆盖（含 shadow / MS 数组变体）。
     inline bool IsMaterialTextureArraySampler(
-        const GLSLSamplerType sampler_type) noexcept
+        const SamplerType sampler_type) noexcept
     {
-        return sampler_type == GLSLSamplerType::Sampler2DArray
-            || sampler_type == GLSLSamplerType::SamplerCubeArray;
+        switch (sampler_type)
+        {
+        case SamplerType::Sampler1DArray:
+        case SamplerType::Sampler2DArray:
+        case SamplerType::SamplerCubeArray:
+        case SamplerType::Sampler1DArrayShadow:
+        case SamplerType::Sampler2DArrayShadow:
+        case SamplerType::SamplerCubeArrayShadow:
+        case SamplerType::Sampler2DMSArray:
+            return true;
+
+        default:
+            return false;
+        }
     }
 
     inline bool IsValidMaterialTextureName(
@@ -471,20 +352,6 @@ namespace hgl::graph::mtl
         return out_layout.layout_hash != 0;
     }
 
-    inline void ConfigureMaterialVertexSemanticContract(
-        MaterialDefinition &definition,
-        const ShaderCodeModuleSemanticRequirement *requirements,
-        const uint32 requirement_count,
-        const MaterialVertexProviderPolicy provider_policy =
-            MaterialVertexProviderPolicy::Auto)
-    {
-        definition.vertex_semantic_requirements.Clear();
-        definition.vertex_provider_policy = provider_policy;
-
-        for (uint32 i = 0; i < requirement_count; ++i)
-            definition.vertex_semantic_requirements.Add(requirements[i]);
-    }
-
     // ── Layer 2: MaterialRecipe = Instance Input ──────────────────────────────────
     // 描述"这次渲染想要什么"。由上层作者按需填写，不含 Vulkan 句柄。
     // mtl_def_id 是唯一与 MaterialDefinition 对接的字段。
@@ -512,7 +379,8 @@ namespace hgl::graph::mtl
     //     ② **2D/3D 必须区分**：2D 走 UV、3D 走面空间/三平面（沿用两者现有采样差异），
     //        因此标记色要分别落到两套着色器，不能共用一套；
     //     ③ 同步两个 ShaderGen 门的期望值：F 断言回退定义 ID == `builtin/pure_color`
-    //        （SchemaGate:3534）、E 把 material TOML 文件数钉死为 15（:3360-3367）
+    //        （SchemaGate:3534）、E 把 material TOML 文件数钉死为 14（:3360-3367；2026-10-11 由 15 更新——
+    //        ShadowMap 示例退场连带删除 shadow_receiver.material.toml）
     //        —— 换外观必然要动这两处。
     //   触发前提（用户 2026-10-01 实测）：**跑遍全部示例均正常触发 0 次**，现有示例
     //   不存在"有几何、无材质来源"的实体 ⇒ 该错误路径目前只有契约测试覆盖，
@@ -741,14 +609,6 @@ namespace hgl::graph::mtl
         binding.required = required;
         recipe.textures.emplace_back(std::move(binding));
         return true;
-    }
-
-    inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,
-                                              const MaterialDefinition &definition,
-                                              const bool overwrite_existing = false)
-    {
-        if (recipe.mtl_def_id.empty())
-            recipe.mtl_def_id = definition.definition_id;
     }
 
     inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept

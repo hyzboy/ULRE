@@ -1,6 +1,5 @@
 ﻿#include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 
-#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/ShaderBuildContext.h>
@@ -49,8 +48,9 @@ namespace hgl::graph::mtl
         hgl::hash::FNV1aHasher64 interface_hasher;
         interface_hasher << link.mesh_stage.interface_hash
                          << link.fragment_stage.interface_hash
-                         << HashShaderResourceSchema(
-                             build_spec.GetShaderResourceSchema());
+                         // 2026-10-11（S1）：原资源 schema 哈希 → 其唯一活字段。
+                         // 取值变化属预期（artifact / SPV 缓存一次性重建）。
+                         << build_spec.RequiresRecipeRuntimeRows();
         const uint64 interface_hash = interface_hasher;
 
         const uint64 program_digest = link.BuildKey().GetDigest();

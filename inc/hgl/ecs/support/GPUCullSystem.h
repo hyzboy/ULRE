@@ -162,6 +162,13 @@ namespace hgl::ecs
         /// 必须先 `SyncForParityReadback()` 把队列排到本帧 dispatch 完成，否则读数
         /// 与真值有至多一帧漂移——对"每 60 帧一次"的台架采样无碍，但绝不可作为
         /// 生产判据（形态 A 的回灌就是死在这里被退役的，§8.2f）。
+        ///
+        /// **§3-④（2026-10-11）：前置条件 + 自守卫。** 调用前本帧必须已经"等过 fence"或
+        /// "`SyncForParityReadback()`"，二者满足其一才会返回计数；否则**拒绝返回残影**
+        /// （一次性报错 + 返回 0，与 `MapCurrentBatchCounters` 的 §9 M6 守卫同一纪律）。
+        /// 现有两个调用点都满足：对拍台架先 `SyncForParityReadback()`
+        /// （`CPUCullReferenceSystem.cpp:419`）；SSBO dump 在 `WaitLastSubmitFence()` 之后
+        /// （`GPUCullSystem.cpp:757-758`）。
         uint32_t GetGPUVisibleCount() const;
 
         /// **对拍台架专用同步点**（T3g）：等本系统队列最近一次提交完成（fence）。
@@ -200,9 +207,8 @@ namespace hgl::ecs
         /// 以及写进批的**哪一份**切片（`MaterialBatch::gpu_slice[pass]`）。
         bool ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index, uint32_t pass_index);
 
-        /// guard 的**本帧有效**判定：collect 的 CPU 剔除跳不跳全看它（接管与 CPU 账
-        /// 必须按同一帧的 guard 结果二选一，否则 = 双份账/漏帧）。
-        bool IsOverrideActiveThisFrame() const { return override_active_frame_ == override_eval_frame_; }
+        // 2026-10-10（审计 §1.1）：`IsOverrideActiveThisFrame()` 已删除 —— 全仓零调用者，且其自注
+        //「collect 的 CPU 剔除跳不跳全看它」与实际闸门不符（会误导读者去找错地方）。
 
         /// 延迟初始化（pipeline/输出缓冲/派发资源）：由**首次 Update 或首次批装配 guard**
         /// 触发（两者都在 render pass 内、设备已绑）。⚠ guard 相位（RenderBatch）早于
@@ -268,6 +274,13 @@ namespace hgl::ecs
         uint32_t *batch_counter_cpu_ = nullptr;       ///< 台架读回时的映射
         uint32_t counters_sync_frame_ = 0xFFFFFFFFu;  ///< §9 M6：最近一次 SyncForParityReadback 的帧号（Map 前校验）
 
+        /// §3-④：fence 路径的记账（`WaitLastSubmitFence()` 成功之后置位）——
+        /// `GetGPUVisibleCount` 的自守卫据此判定"本帧已可安全读回"。
+        /// 为什么不用 `counters_sync_frame_` 一个判据：那条只由 `SyncForParityReadback()` 记账，
+        /// 而 fence 路径不经过它 ⇒ 单用会误报。
+        uint32_t readback_ready_frame_ = 0xFFFFFFFFu;
+        mutable bool readback_guard_warned_ = false;   ///< 自守卫的一次性告警（每实例，非进程级）
+
         // 形态 B（T3f-2）gather 输出（容量 = kMaxVisibleEntities；被接管批直接指向它们）
         graph::DeviceBuffer *l2w_out_buffer_ = nullptr;
         graph::DeviceBuffer *cmds_out_buffer_ = nullptr;
@@ -289,12 +302,18 @@ namespace hgl::ecs
         // 与主帧共用 attr->graphics_queue ⇒ 同队列 FIFO 天然保证
         // [本帧 cull cmd → 主帧 draw] 的消费序（去 WaitLastSubmitFence 的依据）。
         graph::DeviceQueue *cull_queue_ = nullptr;
-        // 命令缓冲环：槽号 = frame_index % HGL_FRAME_SLOT_TOTAL。同槽再次重录
-        // 隔 8 帧、在飞深度 ≤4 ⇒ 必已执行完（与 swapchain per-image cmd 同一安全
-        // 假设，见 SwapchainRenderTarget::BeginRender；pool 带
-        // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT，Begin 合法）。
+        // 命令缓冲环：槽号 = frame_index % HGL_FRAME_SLOT_TOTAL。重录前等待该 cmd
+        // 上次提交对应的 fence 槽；帧槽与 fence 槽独立记账，避免跳过派发时错配。
         graph::ComputeCmdBuffer *cull_cmds_[HGL_FRAME_SLOT_TOTAL] = {};
+        uint32_t cull_cmd_fence_slots_[HGL_FRAME_SLOT_TOTAL] = {};
+        bool cull_cmd_submitted_[HGL_FRAME_SLOT_TOTAL] = {};
         uint32_t dispatch_count_ = 0;   ///< 成功派发帧数（IsDispatchSettled 判据）
+
+        /// 批 1.3 C5：一次性告警闩改**每实例**（每个世界一个 GPUCullSystem 实例 ⇒ 实例级 = 世界级）。
+        /// 原 `static bool` 是**进程级** ⇒ 第一个世界报过之后，第二个世界（如离屏世界）
+        /// 的同类配置错误被永久静默，排查时看不见。
+        bool reported_misaligned_rows_ = false;
+        bool reported_unsynced_map_    = false;
 
         /// 各帧槽的批布局**是否已被写过**（T4c-ini-2）。
         /// 用途：布局只在"轮到该槽的那一帧"写，而剔除派发在**同一帧**读它 ⇒ 首次写入的那一帧，

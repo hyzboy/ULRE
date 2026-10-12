@@ -7,13 +7,11 @@
 # --- 0. Core ---
 SET(VK_CORE_FILES               ${VK_INCLUDE_PATH}/VK.h
                                 ${VK_INCLUDE_PATH}/VKFormat.h
-                                ${VK_INCLUDE_PATH}/VKString.h
                                 ${VK_INCLUDE_PATH}/VKInterpolation.h
                                 ${VK_INCLUDE_PATH}/VKStruct.h
                                 ${VK_INCLUDE_PATH}/VKObjectName.h
                                 ${VK_INCLUDE_PATH}/VKUUID.h
-                                VKFormat.cpp
-                                VKString.cpp)
+                                VKFormat.cpp)
 
 SOURCE_GROUP("Core" FILES ${VK_CORE_FILES})
 

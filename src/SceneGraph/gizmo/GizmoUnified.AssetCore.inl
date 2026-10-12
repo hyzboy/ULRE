@@ -116,7 +116,7 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
 
         auto t = gizmo->world->GetTransformByEntity(entity->GetEntityID());
         if (t.IsValid() && t.IsFixedPixelSizingEnabled())
-            t.SetFixedPixelSizingContext(camera_info, viewport_info);
+            t.SetFixedPixelSizingContextAndApply(camera_info, viewport_info);
     };
 
     apply_ctx(gizmo->move_mode.entity);

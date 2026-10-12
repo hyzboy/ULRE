@@ -53,8 +53,9 @@ layout(push_constant) uniform PushConstants
     uint   entity_count;             // 实体总数
     uint   max_visible_count;        // 幸存表容量上限
     uint   camera_row;               // 本 pass 活跃相机行号（与 pc_root.camera_row 同式）
-    uint   batch_count;              // T3i：本帧批数（0 = 无接管批；两 pass 同值）
+    uint   batch_count;              // T3i：本帧主帧批数（0 = 无接管批）
     uint   batch_block_stride;       // T4c2：批行/计数每 pass 块的行数（= C++ kBatchBlockStride）
+    uint   batch_count_shadow;       // 本帧阴影批数（0 = 无阴影接管批）
 } pc;
 
 // 世界地址表（通过 push constant 访问，覆盖 scene_ubo.glsl 里的定义）
@@ -269,6 +270,8 @@ void main()
     vec3 world_center = (l2w_matrix * vec4(aabb_center.xyz, 1.0)).xyz;
 
     // 计算变换后的 extents（简化：取最大缩放）
+    // 本式是 C++ 侧 `hgl::ecs::GetMaxWorldScaleRaw`（BoundingVolumeCull.h）的**镜像**：
+    // 两边都不带退化保护（scale==0 就返回 0）—— 那正是 CPU 剔除参考能逐字对拍的前提。
     float scale = max(length(l2w_matrix[0].xyz), max(length(l2w_matrix[1].xyz), length(l2w_matrix[2].xyz)));
     vec3 world_extents = aabb_extents.xyz * scale;
 
@@ -331,7 +334,7 @@ void main()
     const uint batch1 = BatchTagRef(pc.batch_tag_addr).tags[1u * pc.max_visible_count + entity_index];
 
     const bool tagged0 = (batch0 != 0xFFFFFFFFu && batch0 < pc.batch_count);
-    const bool tagged1 = (batch1 != 0xFFFFFFFFu && batch1 < pc.batch_count);
+    const bool tagged1 = (batch1 != 0xFFFFFFFFu && batch1 < pc.batch_count_shadow);
 
     if (!tagged0 && !tagged1)
         return;      // 两个 pass 都不属任何接管批 ⇒ 不写行（该实体由 CPU 路径绘制）
@@ -346,11 +349,10 @@ void main()
         if (blk == 0u && !cull_ok)
             continue;
 
-        // 本块的批索引 = **本 pass 自己那一块**标签；本 pass 未接管该实体 ⇒ 只跳过本块
-        // （另一 pass 仍可能接管它，故不早退）。
+        const uint cur_batch_count = (blk == 0u) ? pc.batch_count : pc.batch_count_shadow;
         const uint batch = (blk == 0u) ? batch0 : batch1;
 
-        if (batch == 0xFFFFFFFFu || batch >= pc.batch_count)
+        if (batch == 0xFFFFFFFFu || batch >= cur_batch_count)
             continue;
 
         const uint block_base = blk * pc.batch_block_stride;
@@ -366,7 +368,7 @@ void main()
         {
             // 3A：溢出 = 批归属与容量不同源（布局错配/越界）⇒ 跳过 + 计入**本块**溢出槽；
             // 台架把该计数当**硬判据**（非零即红）。
-            atomicAdd(counters.counters[block_base + pc.batch_count], 1u);
+            atomicAdd(counters.counters[block_base + cur_batch_count], 1u);
             continue;
         }
 
@@ -380,7 +382,7 @@ void main()
         const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
         uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
         if (binfo.topology == TOPOLOGY_LINES)
-            element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段，与 CPU CalcMeshGroupCount 同式）
+            element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段；CPU 侧组数同式，组大小见 MeshDispatchGroupSize）
         const uint group_count_x = (element_count + binfo.group_size - 1u) / binfo.group_size;
 
         DrawIndirectCommandsRef(pc.indirect_commands_addr).commands[row] =

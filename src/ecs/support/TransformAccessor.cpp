@@ -68,7 +68,7 @@ namespace hgl
         }
 
         // 写入本行后的记账。T8 起调用面只剩访问器 ⇒ 必须在这里做（原先由组件侧的
-        // MarkDirty + 子孙标脏承担），否则"只经访问器写入"的行 change_mask 恒为 0，
+        // 标脏 + 子孙标脏承担；那套组件侧记账已删），否则"只经访问器写入"的行 change_mask 恒为 0，
         // `TransformSystem::ShouldUpdateTransform` 的掩码判据会让它**永不上传**。
         void TransformAccessor::MarkLocalChanged(uint32_t change_mask) const
         {
@@ -82,8 +82,22 @@ namespace hgl
             std::vector<TransformID> stack;
             storage->CopyChildren(id,stack);
 
+            // 2026-10-11（审计 · 批 1.1 B2）防御性终止闸：`SetParent` 已在入口拒环，但若有人
+            // 绕过访问器、直接用原始存储 API 造出环（`Test 6` 那条容忍契约），这里必须能停下来。
+            // 正常树/菱形传播的步数远小于「行数 × 4 + 64」；超出即视为环，报一次错后停止传播。
+            const uint64_t max_steps = static_cast<uint64_t>(storage->GetCount()) * 4u + 64u;
+            uint64_t steps = 0;
+
             while (!stack.empty())
             {
+                if (++steps > max_steps)
+                {
+                    GLogError(u8"[TransformAccessor] 后代标脏遍历步数异常（>%llu）—— 疑似父子成环，已停止传播"
+                              u8"（环数据应由 SetParent 拒绝；绕过 API 写入属越界使用）",
+                              static_cast<unsigned long long>(max_steps));
+                    break;
+                }
+
                 const TransformID child = stack.back();
                 stack.pop_back();
 
@@ -223,6 +237,32 @@ namespace hgl
             WarnStaticRuntimeWrite("SetParent");
 
             const TransformID new_parent = (parent == id) ? INVALID_TRANSFORM_ID : parent;   // 自我成环直接忽略
+
+            // 2026-10-11（审计 · 批 1.1 B2）：**祖先环检测**。原实现只拒自环，
+            // `A.SetParent(B)` 后再 `B.SetParent(A)` 就造出环，而下面的 `MarkLocalChanged`
+            // 后代遍历既无 visited 也无深度上限 ⇒ 探针实测第二次调用 >3s 不返回（真死循环）。
+            // 判决点选在**访问器**（公共 API）而不是存储层：`TransformDataStorage::SetParent`
+            // 保持容忍环，因为 `Test 6（Cycle protection）` 钉的正是「原始数据层能容忍环、
+            // 拓扑重建不崩」这条契约 —— 数据层不该替调用方做策略判断。
+            // 代价 O(depth)，且只在真正改父时付；必须在动父链/子表**之前**判，否则会留下半改状态。
+            if (IsValidTransformID(new_parent))
+            {
+                const uint32_t max_steps = static_cast<uint32_t>(storage->GetCount()) + 1u;
+                TransformID walker = new_parent;
+
+                for (uint32_t steps = 0; walker != INVALID_TRANSFORM_ID; ++steps)
+                {
+                    if (walker == id || steps > max_steps)
+                    {
+                        GLogError(u8"[TransformAccessor] SetParent 拒绝成环：%u 认 %u 为父将与祖先链相撞"
+                                  u8"（环上没有终止条件 ⇒ 后代标脏会死循环）—— 父链与子表均保持不变",
+                                  static_cast<uint32_t>(id), static_cast<uint32_t>(new_parent));
+                        return;
+                    }
+
+                    walker = storage->GetParent(walker);
+                }
+            }
 
             // 父链与**子表**都要维护：子表是真源的一部分，子孙标脏/版本 bump 靠它遍历
             const TransformID old_parent = storage->GetParent(id);
@@ -396,7 +436,7 @@ namespace hgl
             storage->SetFixedPixel(id,state);
         }
 
-        void TransformAccessor::SetFixedPixelSizingContext(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info) const
+        void TransformAccessor::SetFixedPixelSizingContextAndApply(const hgl::graph::CameraInfo *camera_info,const hgl::graph::ViewportInfo *viewport_info) const
         {
             if (!IsValid())
                 return;
@@ -507,18 +547,34 @@ namespace hgl
             if (IsMovable() == to_movable)
                 return;
 
-            storage->SetMobility(id,to_movable ? 1 : 0);
+            // 2026-10-11（审计 · 批 1.1 B3）：**先换段、成功后才改真源**。
+            // 原顺序是先 `storage->SetMobility(...)` 再通知世界换段，而换段可能被拒绝（目标段满）
+            // ⇒ storage 说「可动」、段名单还在静态段。现在换段成功时才写 mobility（世界侧唯一写入点），
+            // 失败即原状返回。
+            //
+            // 渲染侧的索引映射与上传通道都按段名单分流——只改存储里的 mobility 字节、不换段的话，
+            // 该行会停在旧通道：索引取不到 ⇒ 实例拿到默认行（单位矩阵）⇒ 全画在原点。
+            ECSContext *migrate_world = GetContext();
+
+            if (migrate_world)
+            {
+                if (!migrate_world->MigrateTransform(id,to_movable))
+                {
+                    GLogWarning("[TransformAccessor] SetMobility 被拒绝（目标段预算用尽）—— mobility 与段名单均保持原状：%u",
+                                static_cast<uint32_t>(id));
+                    return;
+                }
+            }
+            else
+            {
+                storage->SetMobility(id,to_movable ? 1 : 0);   // 无世界（纯存储用法）：没有段可换，只改真源
+            }
+
             MarkLocalChanged(ToChangeMask(TransformChange::Mobility));
 
             // 迁到静态通道前先把世界矩阵算一次（冻结前的最后状态必须正确）
             if (!to_movable)
                 UpdateIfDirty();
-
-            // 通知世界：该行必须在 静态/可动 列表之间换边。
-            // 渲染侧的索引映射与上传通道都按列表分流——只改存储里的 mobility 字节，
-            // 该行会停在旧通道：索引取不到 ⇒ 实例拿到默认行（单位矩阵）⇒ 全画在原点。
-            if (ECSContext *migrate_world = GetContext())
-                migrate_world->MigrateTransform(id,to_movable);
         }
 
         bool TransformAccessor::IsDirty() const
@@ -526,11 +582,11 @@ namespace hgl
             return IsValid() ? storage->IsDirty(id) : false;
         }
 
-        void TransformAccessor::MarkDirty() const
-        {
-            if (IsValid())
-                storage->SetDirty(id,true);
-        }
+        // 2026-10-11（§3-1 选项①）：`TransformAccessor::MarkDirty()` 已删除 —— 只写 `matrixDirty`、
+        // 不 bump `versions` ⇒ 静态行按版本比对的上传路径永不重传（而批 1.1 B4 之后它对静态行还会
+        // `++static_change_seq`，于是"阴影缓存失效、矩阵仍旧"的半效状态更易误导）；动态行每帧全量写，
+        // 该调用本就冗余。唯一调用点（`example/Transform/ClockUse.cpp`）上一行已 `SetLocalRotation`
+        // （内部 bump 版本）⇒ 删除零行为变化。
 
         void TransformAccessor::UpdateIfDirty() const
         {

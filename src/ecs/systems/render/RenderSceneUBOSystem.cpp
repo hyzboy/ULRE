@@ -231,26 +231,6 @@ namespace hgl::ecs
         }
     }
 
-    bool RenderSceneUBOSystem::RegisterMaterialStructLayout(graph::GlobalSSBOType ssbo_type,
-                                                                     uint32_t ssbo_id,
-                                                                     uint32_t byte_stride)
-    {
-        const uint32_t expected_version = graph::GetGlobalSSBOTypeStructVersion(ssbo_type);
-        const uint32_t expected_stride = graph::GetGlobalSSBOTypeStructStride(ssbo_type);
-        if (expected_version > 0 && expected_stride > 0 && byte_stride != expected_stride)
-        {
-            GLogError("[R11] SSBO struct layout rejected: type=%s version=%u expected_stride=%u actual_stride=%u ssbo_id=%u",
-                      graph::GetGlobalSSBOTypeName(ssbo_type),
-                      expected_version,
-                      expected_stride,
-                      byte_stride,
-                      ssbo_id);
-            return false;
-        }
-
-        return true;
-    }
-
     uint32_t RenderSceneUBOSystem::RegisterTextureResource(const std::string &resource_id,
                                                                     graph::Texture *tex,
                                                                     graph::BindlessTextureManager *bindless_mgr)
@@ -297,31 +277,14 @@ namespace hgl::ecs
         if (!context)
             return;
 
+        // 2026-10-10（审计 §1.1）：原 `ApplyResourceLayoutBindings()`（空体 + 「无绑定可推」说明）
+        // 与 `ResolveViewportUBO()` 已删除 —— 全局地址表 BDA 化后确实无可推字段：Scene 集已于 S3 整体退场；
+        // sky / viewport / shadow 地址都在表内，shader 经 global_addresses 解引用；渲染项 / DrawItemID 地址
+        // 由**世界表**（WorldAddresses）随 ECSContext::SetFrameIndex 写本帧槽；per-material
+        // apply_requirement / MP / 批覆盖那段绑定时代死段已随 desc_manager 退役整删（2026-09-08）。
+        // 留下的是**真动作**：物化本帧 viewport UBO。
         EnsureViewportUBO();
-
-        ApplyResourceLayoutBindings();
     }
 
-    const graph::IGPUBuffer *RenderSceneUBOSystem::ResolveViewportUBO() const
-    {
-        return viewport_ubo ? viewport_ubo->GetGPUBuffer() : nullptr;
-    }
-
-    // 全局 Scene UBO 描述符集更新：一帧写一次（sky=0/viewport=1/shadow=2）。
-    // 全局地址表已 BDA 化（表本体 SSBO，基址经 pc_root）——不在本集内。
-    // viewport 为所有材质必需；sky/shadow 为可选（布局已带 PARTIALLY_BOUND 位，
-    // 未静态使用的 binding 允许为空）。调色板已 BDA 化，不在本集内。
-    // （绑定时代死段——per-material apply_requirement/MP/批覆盖——已随
-    // desc_manager 机制退役整删，2026-09-08。）
-    void RenderSceneUBOSystem::ApplyResourceLayoutBindings()
-    {
-        if (!context)
-            return;
-
-        // 全局地址表已 BDA 化（无绑定无集）：Scene 集已于 S3 整体退场，这里只同步表内会变的字段。
-        // sky / viewport / shadow 的地址都在表内，shader 经 global_addresses 解引用 ⇒ 无绑定可推。
-        // 渲染项 / DrawItemID 的地址现由**世界表**（WorldAddresses）承载，随
-        // ECSContext::SetFrameIndex 写入本帧槽 ⇒ 全局表内不再有这两个字段，无绑定可推。
-    }
 
 }

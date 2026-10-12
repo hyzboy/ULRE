@@ -13,13 +13,12 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 
- // 引入ECS相关头文件
- #include<hgl/ecs/core/Context.h>
- #include<hgl/ecs/core/Entity.h>
+// 引入ECS相关头文件
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
- #include<hgl/ecs/components/GeometryData.h>
- #include<hgl/object/ObjectTracker.h>
-
+#include<hgl/ecs/components/GeometryData.h>
+#include<hgl/object/ObjectTracker.h>
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;

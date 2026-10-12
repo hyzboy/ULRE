@@ -10,13 +10,11 @@ namespace hgl::graph::mtl {}
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 ///   3. 填充并返回 ShaderBuildContext*
 
-#include <hgl/mtl/SerializedDescriptorEntry.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/ShaderCodeResourceManifest.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
-#include<hgl/mtl/DescriptorContract.h>
 #include <hgl/mtl/ShaderDocument.h>
 #include <string>
 #include <vector>
@@ -60,23 +58,12 @@ struct MaterialShaderDocumentCapture
         fragment_document = fragment_source_snapshot;
     }
 
-    void CaptureFinalDocuments(
-        const ShaderDocument &mesh_final,
-        const ShaderDocument &fragment_final) noexcept
-    {
-        const ShaderDocument mesh_final_snapshot = mesh_final;
-        const ShaderDocument fragment_final_snapshot = fragment_final;
-        mesh_final_document = mesh_final_snapshot;
-        fragment_final_document = fragment_final_snapshot;
-    }
 };
 
 struct MaterialShaderCompilerInput
 {
     const char *debug_name = nullptr;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
-    const mtl::SerializedDescriptorEntry *descriptor_entries = nullptr;
-    uint32 descriptor_entry_count = 0;
 };
 
 struct MaterialCompileConfig
@@ -87,15 +74,13 @@ struct MaterialCompileConfig
     // Material payloads are tracked with the material-specific enum, not the generic
     // runtime SSBO enum.
     GlobalSSBOType material_private_data = GlobalSSBOType::PBRSurface;
-    // Optional: capability declaration source for development-time subset validation.
-    // When non-null, CompileMaterial checks Layout requirements ⊆ Definition capabilities.
+    // Optional: definition view for texture-reference validation + 运行时数据行需求直判。
     const mtl::MaterialDefinition *material_definition = nullptr;
     // Optional unified stage/link contract. When supplied, the compiler
     // validates the declared VS/FS interface before compiling the local SPV.
     const ShaderLinkSpec *program_link = nullptr;
     const ShaderCodeResourceManifest *resource_manifest = nullptr;
     ShaderArtifactStore *artifact_store = nullptr;
-    const DescriptorContract *descriptor_contract = nullptr;
     bool defer_finalize = false; // 生成 GLSL/契约后返回，SPV 编译推迟（生产主路径先查 program 缓存）
 };
 

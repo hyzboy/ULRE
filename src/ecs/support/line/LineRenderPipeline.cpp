@@ -232,24 +232,40 @@ namespace hgl::ecs
             return false;
         }
 
-        if (!va_pos.Write(from))
+        // §3-⑤（2026-10-11，P3 防御性回滚）：**四个写入流必须同进同退**。
+        // 原实现逐个 `Write` 后直接 `return false`：若前半段成功、后半段（容量满/访问器失效）失败，
+        // 就会留下**游标错位**（例如位置流已步进 2、颜色/变换/宽度流未步进）⇒ 后续线段整体错位，
+        // GPU 顶点属性流撕裂。现在任一失败 ⇒ 四个流一律回退到上次成功的游标（本次线段整体丢弃）。
+        //
+        // 回退点 = `line_count * 2`：四流按"每线段 2 顶点"锁步写，故上次成功追加后的游标就是它。
+        // 常见路径不可达（容量预分配 + 上面的有效性前置 + 每帧 `Reset()` 归零）⇒ 这是防御性措施；
+        // 若回退自身失败（缓冲已到容量末尾，`Seek(count)` 不合法）则记一条周期性日志说明"本就没写进去"。
+        const uint32_t rollback_cursor = line_count * 2u;
+
+        const bool wrote_ok = va_pos.Write(from)
+                            & va_pos.Write(to)
+                            & va_color.Write(color_index)
+                            & va_color.Write(color_index)
+                            & va_transform.Write(transform_index)
+                            & va_transform.Write(transform_index)
+                            // Size 语义 V2F：[满宽(最粗), 最细阈值]——mesh shader 统一 clamp(满宽×衰减, 最细, 满宽)
+                            // 每线段 2 顶点（from/to）各写一次
+                            & va_width.Write(hgl::math::Vector2f(width, min_width))
+                            & va_width.Write(hgl::math::Vector2f(width, min_width));
+
+        if (!wrote_ok)
+        {
+            const bool rolled_back = va_pos.Seek(rollback_cursor)
+                                   & va_color.Seek(rollback_cursor)
+                                   & va_transform.Seek(rollback_cursor)
+                                   & va_width.Seek(rollback_cursor);
+
+            LinePeriodicLog(s_line_log_ticks[4],
+                            "[LineRenderPipeline] AddSegment 写入失败：本次线段整体丢弃"
+                            "（四流回退到游标 %u，回退成功=%d；缓冲到容量末尾时该回退不适用）",
+                            rollback_cursor, rolled_back ? 1 : 0);
             return false;
-        if (!va_pos.Write(to))
-            return false;
-        if (!va_color.Write(color_index))
-            return false;
-        if (!va_color.Write(color_index))
-            return false;
-        if (!va_transform.Write(transform_index))
-            return false;
-        if (!va_transform.Write(transform_index))
-            return false;
-        // Size 语义 V2F：[满宽(最粗), 最细阈值]——mesh shader 统一 clamp(满宽×衰减, 最细, 满宽)
-        // 每线段 2 顶点（from/to）各写一次
-        if (!va_width.Write(hgl::math::Vector2f(width, min_width)))
-            return false;
-        if (!va_width.Write(hgl::math::Vector2f(width, min_width)))
-            return false;
+        }
 
         ++line_count;
         if (draw_range)
@@ -432,7 +448,8 @@ namespace hgl::ecs
 
             if (comp->lines.empty())
             {
-                ++stats_.culled_by_visibility;
+                // 批 1.3 C2：空线段不是**可见性剔除**——单列一项，别污染真视锥/可见性统计。
+                ++stats_.skipped_empty;
                 continue;
             }
 
@@ -469,13 +486,13 @@ namespace hgl::ecs
             ++stats_.visible_components;
         }
 
-        LinePeriodicLog(s_line_log_ticks[3], "[LineRenderPipeline] Collect summary: total=%u visible=%u collected=%zu culled_visibility=%u culled_frustum=%u culled_hzb=%u",
+        LinePeriodicLog(s_line_log_ticks[3], "[LineRenderPipeline] Collect summary: total=%u visible=%u skipped_empty=%u collected=%zu culled_visibility=%u culled_frustum=%u",
                  stats_.total_components,
                  stats_.visible_components,
+                 stats_.skipped_empty,
                  collected_.size(),
                  stats_.culled_by_visibility,
-                 stats_.culled_by_frustum,
-                 stats_.culled_by_hzb);
+                 stats_.culled_by_frustum);
     }
 
     void LineRenderPipeline::RunBuild()
@@ -547,8 +564,6 @@ namespace hgl::ecs
         uint32_t resolved_transform_components = 0;
         for (const auto& comp : collected_)
         {
-            bool comp_write_ok = true;
-
             uint32_t transform_id = 0;
             if (transform_system)
             {
@@ -568,10 +583,9 @@ namespace hgl::ecs
                         const uint32_t resolved = transform.IsMovable() ? (dynamic_base + slot)
                                                                           : (slot + 1u);
 
-                        constexpr uint32_t kMaxTransformID = std::numeric_limits<uint32_t>::max();
-                        transform_id = resolved > kMaxTransformID
-                                     ? 0
-                                     : static_cast<uint32_t>(resolved);
+                        // 批 1.3 C3：删掉恒真守卫——`resolved` 本身就是 uint32_t，
+                        // `resolved > UINT32_MAX` 在 C++ 里恒为 false，只会给出「这里有边界保护」的假信心。
+                        transform_id = resolved;
 
                         if (transform_id != 0)
                             ++resolved_transform_components;
@@ -588,12 +602,8 @@ namespace hgl::ecs
                                              transform_id))
                 {
                     ++write_fail_count;
-                    comp_write_ok = false;
                 }
             }
-
-            if (comp_write_ok)
-                comp->MarkSynced();
         }
 
         // Tally total

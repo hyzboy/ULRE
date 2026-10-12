@@ -65,35 +65,6 @@ namespace hgl::ecs
         return &info->ambient_env;
     }
 
-    const graph::AmbientEnvInfo *EnvironmentSystem::GetAmbientEnvInfo() const
-    {
-        // 同 GetSkyInfo：只读 CPU 数据，const_cast 不触发任何 GPU 操作。
-        auto *manager = const_cast<EnvironmentSystem *>(this)->ResolveManager();
-        if (!manager)
-            return nullptr;
-
-        const auto *info = manager->Get(ResolveProfileID());
-        if (!info)
-            return nullptr;
-
-        return &info->ambient_env;
-    }
-
-    void EnvironmentSystem::SetAmbientEnvInfo(const graph::AmbientEnvInfo &info, bool immediate)
-    {
-        auto *manager = ResolveManager();
-        if (!manager)
-            return;
-
-        auto *env = manager->Edit(ResolveProfileID());
-        if (!env)
-            return;
-
-        env->ambient_env = info;
-        if (immediate)
-            manager->MarkDirty(ResolveProfileID());
-    }
-
     void EnvironmentSystem::MarkAmbientEnvDirty()
     {
         if (auto *manager = ResolveManager())

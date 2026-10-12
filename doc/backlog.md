@@ -335,7 +335,7 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 - **原状**：`SetLocalPosition` 等 setter 无条件 `MarkDirty`（版本 +1），
   `ShouldUpdateTransform` 用"版本变了"当变更判据 ⇒ **同值**写也被判为变更 ⇒
   A3 链 `BumpStaticSceneRevision()` ⇒ 整段静态矩阵重写 + 全部静态级联缓存失效
-  （当帧 4 级全量重绘）+ `MarkDirty` 连带标脏整棵子树。
+  （当帧 4 级全量重绘）+ 变更记账 `MarkLocalChanged`（版本 + 掩码 + 子孙传播）连带标脏整棵子树。
 - **关键澄清（先量化再动手）**：动静分离本来就在，且**没有**"静态每帧刷新 TRS/L2W"
   这回事——`Movable` 每帧全量写 ring 段、`Static` 走版本门控的**增量**写
   （`TransformSystem.cpp:207-281`），静态 L2W 只在被判脏时算。所以真问题不是

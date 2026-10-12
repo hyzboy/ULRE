@@ -10,7 +10,6 @@ namespace hgl::ecs
 {
     MaterialBatch::MaterialBatch(const ShaderProgramPipelineKey& k, graph::VulkanDevice* dev, graph::BufferManager* bm)
         : key(k)
-        , static_count(0)
         , device(dev)
         , buffer_manager(bm)
         , renderer(nullptr)
@@ -54,7 +53,6 @@ namespace hgl::ecs
     void MaterialBatch::Clear()
     {
         items.clear();
-        static_count = 0;
         texture_reference_base_addr = 0;
         icb_count_buffer = nullptr;
         // T4c3c：计数偏移随切片按 pass 存（`gpu_slice[p].count_buffer_offset`）
@@ -87,7 +85,6 @@ namespace hgl::ecs
         if (!item)
             return;
 
-        item->index = static_cast<uint32_t>(items.size());
         items.push_back(item);
     }
 

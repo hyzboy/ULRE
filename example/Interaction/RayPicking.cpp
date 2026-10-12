@@ -321,7 +321,8 @@ public:
 
         // 从 ECS 获取摄像机信息（本 pass 生效相机）
         ECSContext *ctx = GetECSContext();
-        const CameraInfo *ci = ctx ? ctx->GetActiveCameraInfo() : nullptr;
+        // §3-⑥：只读意图 ⇒ 纯读口（拾取不该改变世界的相机状态；世界无相机 ⇒ nullptr 并提前返回）
+        const CameraInfo *ci = ctx ? ctx->ResolveActiveCameraInfo() : nullptr;
         const ViewportInfo *vi = GetViewportInfo();
 
         if(!ci || !vi)

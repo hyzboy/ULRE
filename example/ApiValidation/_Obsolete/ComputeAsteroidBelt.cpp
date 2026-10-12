@@ -504,7 +504,9 @@ private:
             const uint32_t total_verts = static_cast<uint32_t>(
                 builtin_geometries[i]->GetIndexCount() > 0 ? builtin_geometries[i]->GetIndexCount()
                                                            : builtin_geometries[i]->GetVertexCount());
-            mesh_group_counts[i] = CalcMeshGroupCount(false, total_verts);
+            // 原 CalcMeshGroupCount（2026-10-11 F-2 删除）：非线 = total_verts，组大小 = MeshDispatchGroupSize(false)
+            const uint32_t group_size = 192u;   // kMeshVertexPassthroughMaxVertices
+            mesh_group_counts[i] = (total_verts + group_size - 1u) / group_size;
         }
 
         return true;
@@ -1126,10 +1128,10 @@ public:
 
         if (ecs_context)
         {
-            if (auto *id_storage = ecs_context->GetDrawItemIDStorage())
-            {
-                id_storage->SetExternalGPUBuffer(l2w_index_buffer, GetDevice());
-            }
+            // 2026-10-10（审计 §1.1）：原 `id_storage->SetExternalGPUBuffer(l2w_index_buffer, GetDevice())`
+            // 调用已删 —— `DrawItemIDStorage::SetExternalGPUBuffer` 引擎侧零生产调用者，仅本停放示例在用。
+            // 本示例待 ④ 实例化落地重写时，改用 `SetExternalGPUAddress(addr)`（该模式有 Test 12 在用，保留）。
+            (void)ecs_context;
         }
 
         WorkObject::Tick(delta_time);

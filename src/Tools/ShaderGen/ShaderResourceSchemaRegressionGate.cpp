@@ -1,11 +1,10 @@
-#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/VkEnumText.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
-#include <hgl/mtl/DescriptorContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
@@ -31,7 +30,6 @@
 #include <hgl/mtl/ShaderStructureDump.h>
 #include <fstream>
 #include <filesystem>
-#include "../../ShaderGen/builder/DefinitionDescriptorBuilder.h"
 #include "../../ShaderGen/builder/GenericMaterialBuilder.h"
 #include <hgl/mtl/MeshShaderLimits.h>
 #include "VertexBuilderCommon.h"
@@ -231,19 +229,6 @@ namespace
     static hgl::OSString RepoRootOSPath(const char *suffix)
     {
         return hgl::ToOSString(RepoRootPath(suffix));
-    }
-
-    static GateResult RunValidationCase(const char *name,
-                                        const SerializedDescriptorEntry *entries,
-                                        const uint32_t count,
-                                        const bool expected_pass)
-    {
-        GateResult result;
-        result.name = name ? name : "<unnamed>";
-
-        const ShaderResourceSchema schema = BuildShaderResourceSchema(entries, count);
-        result.passed = (ValidateShaderResourceSchema(schema, result.diagnostics) == expected_pass);
-        return result;
     }
 
     static bool CheckVertexEntries(const std::vector<SerializedVertexEntry> &actual,
@@ -1015,12 +1000,12 @@ namespace
             hgl::filesystem::Path metadata_path(
                 RepoRootOSPath("build"));
             metadata_path /=
-                hgl::OSString(OS_TEXT("shader-cache"));
+                hgl::ToOSString(hgl::graph::mtl::ShaderArtifactCacheDirectory);
             metadata_path /=
-                hgl::OSString(OS_TEXT("program"));
+                hgl::ToOSString(hgl::graph::mtl::ShaderArtifactProgramDirectory);
             metadata_path /= hgl::ToOSString(
                 (program_link.BuildKey().ToString()
-                    + hgl::AnsiString(".meta")).c_str());
+                    + hgl::AnsiString(hgl::graph::mtl::ShaderArtifactMetadataExtension)).c_str());
             hgl::int64 metadata_file_size = 0;
             void *metadata_file =
                 hgl::filesystem::LoadFileToMemory(
@@ -1946,10 +1931,8 @@ namespace
                     const auto has_material_resource =
                         [](const ShaderBuildContext &spec)
                     {
-                        // A6-2b-b2：数据槽需求不再以 descriptor 契约条目表达，
-                        // schema.requires_runtime_data_rows 直判承载。
-                        return spec.GetShaderResourceSchema()
-                            .requires_runtime_data_rows;
+                        // 运行时数据行需求由编译期直判信号承载（2026-10-11 S1）。
+                        return spec.RequiresRecipeRuntimeRows();
                     };
                     // sky 已 BDA 化（不在任何 shader 的资源声明里）⇒ 原「depth 不得携带
                     // sky 资源」的检查已结构性成立，随 SkyInfo 语义退场一并删除。
@@ -3787,7 +3770,7 @@ namespace
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
             "textures = [\n"
-            "    { name = \"base_color\", sampler = \"Sampler2DArray\", required = true, filter = { mag_filter = \"Nearest\", min_filter = \"Linear\", mipmap_mode = \"Nearest\" }, wrap = { u = \"ClampToEdge\", v = \"MirroredRepeat\", w = \"Repeat\" }, swizzle = \"BGR1\", anisotropy = true, max_anisotropy = 8.0, mip_lod_bias = 0.25, min_lod = 1.0, max_lod = 7.0, compare_op = \"LessOrEqual\" },\n"
+            "    { name = \"base_color\", sampler = \"Sampler2DArray\", required = true },\n"
             "    { name = \"detail_mask\", sampler = \"Sampler2D\", required = false }\n"
             "]\n"
             "[resources.texture_configurations]\n"
@@ -3824,55 +3807,7 @@ namespace
                     definition.texture_declarations[0].sampler_type)
              || IsMaterialTextureArraySampler(
                     definition.texture_declarations[1].sampler_type)
-             || !definition.texture_declarations[0].
-                    sampling.has_sampler_override
-             || !definition.texture_declarations[0].
-                    sampling.has_swizzle_override
-             || definition.texture_declarations[0].
-                    sampling.mag_filter
-                    != MaterialTextureFilterMode::Nearest
-             || definition.texture_declarations[0].
-                    sampling.min_filter
-                    != MaterialTextureFilterMode::Linear
-             || definition.texture_declarations[0].
-                    sampling.mipmap_mode
-                    != MaterialTextureFilterMode::Nearest
-             || definition.texture_declarations[0].
-                    sampling.wrap_u
-                    != MaterialTextureWrapMode::ClampToEdge
-             || definition.texture_declarations[0].
-                    sampling.wrap_v
-                    != MaterialTextureWrapMode::MirroredRepeat
-             || definition.texture_declarations[0].
-                    sampling.wrap_w
-                    != MaterialTextureWrapMode::Repeat
-             || definition.texture_declarations[0].
-                    sampling.swizzle_r
-                    != MaterialTextureSwizzle::B
-             || definition.texture_declarations[0].
-                    sampling.swizzle_g
-                    != MaterialTextureSwizzle::G
-             || definition.texture_declarations[0].
-                    sampling.swizzle_b
-                    != MaterialTextureSwizzle::R
-             || definition.texture_declarations[0].
-                    sampling.swizzle_a
-                    != MaterialTextureSwizzle::One
-             || !definition.texture_declarations[0].
-                    sampling.anisotropy
-             || definition.texture_declarations[0].
-                    sampling.max_anisotropy != 8.0f
-             || definition.texture_declarations[0].
-                    sampling.mip_lod_bias != 0.25f
-             || definition.texture_declarations[0].
-                    sampling.min_lod != 1.0f
-             || definition.texture_declarations[0].
-                    sampling.max_lod != 7.0f
-             || definition.texture_declarations[0].
-                    sampling.compare_op
-                    != MaterialTextureCompareOp::LessOrEqual
-             || !(definition.texture_declarations[1].sampling
-                    == MaterialTextureSamplingOptions{}))
+)
             {
                 result.diagnostics.emplace_back(
                     "texture-reference layout fields mismatch");
@@ -3914,24 +3849,6 @@ namespace
                     "texture-reference pool identity or empty allocation is invalid");
             }
 
-            MaterialTextureSamplingOptions changed_sampling =
-                definition.texture_declarations[0].sampling;
-            changed_sampling.wrap_v = MaterialTextureWrapMode::ClampToBorder;
-            MaterialDefinition changed_sampling_definition = definition;
-            changed_sampling_definition.texture_declarations[0].sampling =
-                changed_sampling;
-            MaterialTextureReferenceLayout changed_sampling_layout{};
-            if (HashMaterialTextureSamplingOptions(changed_sampling)
-                    == HashMaterialTextureSamplingOptions(
-                        definition.texture_declarations[0].sampling)
-             || !BuildMaterialTextureReferenceLayout(
-                    changed_sampling_definition, changed_sampling_layout)
-             || changed_sampling_layout.layout_hash != layout.layout_hash
-             || changed_sampling_layout.row_stride != layout.row_stride)
-            {
-                result.diagnostics.emplace_back(
-                    "sampling overrides must not alter texture-reference ABI");
-            }
         }
 
         const char invalid_texture_configuration_file[] =
@@ -3984,26 +3901,29 @@ namespace
                 "duplicate material texture names must be rejected");
         }
 
-        const char invalid_texture_swizzle_file[] =
+        // S2（2026-10-11）：材质侧纹理采样选项（filter/wrap/swizzle/anisotropy/lod/compare_op）整删
+        // —— 这些 authoring 键现在是**未知键**，必须被 ValidateTextureDeclarationKeys 拒绝。
+        // （原先此处测的是"swizzle 值非法"，机制换了、意图保留：畸形纹理声明不得静默通过。）
+        const char retired_sampling_key_file[] =
             "schema = 3\n"
-            "id = \"InvalidTextureSwizzle\"\n"
-            "name = \"InvalidTextureSwizzle\"\n"
+            "id = \"RetiredSamplingKey\"\n"
+            "name = \"RetiredSamplingKey\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
             "material_source_module = \"material/texture_source.glsl\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
-            "textures = [{ name = \"base_color\", sampler = \"Sampler2D\", required = true, swizzle = \"RGB\" }]\n";
-        MaterialDefinitionFileData invalid_texture_swizzle_data;
+            "textures = [{ name = \"base_color\", sampler = \"Sampler2D\", required = true, swizzle = \"BGR1\" }]\n";
+        MaterialDefinitionFileData retired_sampling_key_data;
         if (ParseMaterialDefinitionFile(
-                invalid_texture_swizzle_file,
-                static_cast<int>(std::strlen(invalid_texture_swizzle_file)),
-                invalid_texture_swizzle_data)
+                retired_sampling_key_file,
+                static_cast<int>(std::strlen(retired_sampling_key_file)),
+                retired_sampling_key_data)
                 != MaterialDefinitionFileParseResult::InvalidValue)
         {
             result.diagnostics.emplace_back(
-                "invalid texture swizzle must be rejected");
+                "retired texture sampling keys must be rejected as unknown keys");
         }
 
         const char unknown_table_file[] =
@@ -4053,7 +3973,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 15
+         || file_count != 14
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -4065,7 +3985,6 @@ namespace
                 "DebugNormalColor",
                 "VertexColor", "UnlitTexture",
                 "VertexLuminance", "VertexPaletteColor",
-                "ShadowReceiver",
                 "builtin/pure_color",
                 "builtin/checkerboard_2d",
                 "builtin/checkerboard_3d",
@@ -4307,8 +4226,6 @@ namespace
                         lit_definition))
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare TOML-aligned texture references");
-                // A6-2b-b2：行表需求不再经 descriptor 契约条目（BuildDescriptorsFromDefinition
-                // 只产 UBO），由编译配置 material_private_data 直判。
             }
 
             const char *derivative_root = ntb_derivative->name;
@@ -4484,14 +4401,14 @@ namespace
         else
         {
             // Consolidated scene Set 0 UBOs into single scene_ubo.glsl; added RenderItemResolve.glsl, shadow_receiver_source.glsl, pcf_shadow.glsl.
-            if (file_count != 71)
-                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
+            if (file_count != 70)
+                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 71;
+            const int expected_count = 70;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -4683,9 +4600,7 @@ namespace
         result.name = "Z.material-bda-emitter";
         const MaterialShaderCompilerInput compiler_input{
             "MaterialPrivateDataMaterial",
-            PrimitiveType::Triangles,
-            nullptr,
-            0
+            PrimitiveType::Triangles
         };
 
         MaterialCompileConfig config{};
@@ -4791,16 +4706,14 @@ namespace
         MaterialDefinition texture_definition{};
         texture_definition.definition_id = "MaterialTextureReferenceOnly";
         texture_definition.texture_declarations.push_back(
-            {"base_color", GLSLSamplerType::Sampler2D, true, {}});
+            {"base_color", SamplerType::Sampler2D, true});
         texture_definition.texture_declarations.push_back(
-            {"normal", GLSLSamplerType::Sampler2DArray, false, {}});
+            {"normal", SamplerType::Sampler2DArray, false});
         texture_definition.vertex_varying.emit_data_index_id = false;
 
         MaterialShaderCompilerInput texture_compiler_input{
             "MaterialTextureReferenceOnly",
-            PrimitiveType::Triangles,
-            nullptr,
-            0};
+            PrimitiveType::Triangles};
         MaterialCompileConfig texture_config{};
         texture_config.material_private_data = GlobalSSBOType::PBRSurface;
         texture_config.material_definition = &texture_definition;
@@ -4821,8 +4734,7 @@ namespace
         }
         else
         {
-            if (!texture_build_spec->GetShaderResourceSchema()
-                    .requires_runtime_data_rows)
+            if (!texture_build_spec->RequiresRecipeRuntimeRows())
             {
                 result.diagnostics.emplace_back(
                     "pure texture material did not require runtime address rows");
@@ -4874,26 +4786,11 @@ namespace
 
         // 固定 ABI 的 set/binding 宏唯一真源是 descriptor_macros.glsl（生成物）。
         // 编译器不得再注入 #define（原 kBindingDefineTable 注入路径已删除，Phase 3）。
-        // 输入 GLSL 特意 include 并使用宏（与真实模板一致），且携带 LocalToWorld
-        // 描述符——旧注入路径会因此向 mesh 阶段注入 L2W_SET/L2W_BINDING。
-        const SerializedDescriptorEntry descriptors[] = {
-            {
-                DescriptorSetType::Bindless,
-                uint32_t(hgl::graph::kMeshFragment),
-                "l2w",
-                "LocalToWorldData",
-                nullptr,
-                DescriptorSemantic::LocalToWorld,
-                SSBOType::UserDefined,
-                GlobalSSBOType::PBRSurface,
-                DescriptorSemanticLayer::SSBO
-            }
-        };
+        // 输入 GLSL 特意 include 并使用宏（与真实模板一致）——旧注入路径会因此向
+        // mesh 阶段注入 L2W_SET/L2W_BINDING（该注入路径已删除，本用例钉住不许复活）。
         const MaterialShaderCompilerInput compiler_input{
             "BindingMacroSingleSourceMaterial",
-            PrimitiveType::Triangles,
-            descriptors,
-            1
+            PrimitiveType::Triangles
         };
 
         MaterialCompileConfig config{};
@@ -4962,117 +4859,86 @@ namespace
         return result;
     }
 
-    static GateResult RunDescriptorContractCase()
+    // S3a（2026-10-11）：Vk 枚举 name↔value 单一真源（inc/hgl/mtl/VkEnumText.h）。
+    // 判据用 for 遍历全表 —— 表里新增一项自动纳入，不需要手列断言。
+    static GateResult RunVkEnumTextCase()
     {
         GateResult result;
-        result.name = "W1.material-descriptor-contract";
+        result.name = "C.vk-enum-text";
 
-        ShaderResourceSchema persistent_layout;
-        DescriptorContract first_contract{};
-        DescriptorContract second_contract{};
+        // ① 每个条目：正查能命中且值一致，反查名字一致。
+        for (const auto &e : hgl::graph::mtl::kCullModeText)
         {
-            std::string texture_name = "bindless_texture";
-            std::string texture_struct = "MaterialTextureData";
-            std::string material_name = "mtl_private_data";
-            std::string material_struct = "PBRSurfaceData";
-            SerializedDescriptorEntry entries[] =
-            {
-                {
-                    DescriptorSetType::Bindless,
-                    uint32_t(hgl::graph::kMeshFragment),
-                    texture_name.c_str(),
-                    texture_struct.c_str(),
-                    nullptr,
-                    DescriptorSemantic::MaterialTexture,
-                    SSBOType::UserDefined,
-                    GlobalSSBOType::PBRSurface,
-                    DescriptorSemanticLayer::Texture
-                },
-                {
-                    DescriptorSetType::Bindless,
-                    uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                    material_name.c_str(),
-                    material_struct.c_str(),
-                    nullptr,
-                    DescriptorSemantic::MaterialPrivateData,
-                    SSBOType::UserDefined,
-                    GlobalSSBOType::PBRSurface,
-                    DescriptorSemanticLayer::SSBO,
-                    MakeRecipeSSBOId(0),
-                    true,
-                    true,
-                    false
-                }
-            };
-            std::vector<SerializedDescriptorEntry> reversed{
-                entries[1], entries[0]
-            };
-
-            if (!BuildDescriptorContract(
-                    entries, 2, first_contract)
-             || !BuildDescriptorContract(
-                    reversed, second_contract)
-             || GetDescriptorContractHash(first_contract)
-                    != GetDescriptorContractHash(second_contract)
-             || !BuildResourceSchemaFromContract(
-                    first_contract, persistent_layout))
-            {
-                result.diagnostics.emplace_back(
-                    "descriptor contract build/hash/layout failed");
-            }
-
-            SerializedDescriptorEntry visibility_changed_entries[] =
-            {
-                entries[0], entries[1]
-            };
-            visibility_changed_entries[1].stage_flags =
-                uint32_t(hgl::graph::kMeshFragment);
-            DescriptorContract visibility_changed{};
-            if (!BuildDescriptorContract(
-                    visibility_changed_entries,
-                    2,
-                    visibility_changed)
-             || GetDescriptorContractHash(first_contract)
-                    == GetDescriptorContractHash(
-                        visibility_changed))
-            {
-                result.diagnostics.emplace_back(
-                    "descriptor stage visibility must affect contract hash");
-            }
-
-            // C1-T2 + 契约删减：DescriptorContract 即规范化条目数组本身，
-            // 直接校验契约条目（原 ConvertDescriptorContractToFixed 往返已删）
-            const auto &roundtrip = first_contract;
-            if (roundtrip.size() != 2
-             || std::strcmp(roundtrip[0].name, "bindless_texture") != 0
-             || std::strcmp(
-                    roundtrip[1].struct_name, "PBRSurfaceData") != 0)
-            {
-                result.diagnostics.emplace_back(
-                    "descriptor contract Fixed adapter mismatch");
-            }
-
-            SerializedDescriptorEntry duplicate_entries[] =
-            {
-                entries[0], entries[0]
-            };
-            DescriptorContract invalid_contract{};
-            if (BuildDescriptorContract(
-                    duplicate_entries, 2, invalid_contract))
-            {
-                result.diagnostics.emplace_back(
-                    "duplicate descriptor identities must be rejected");
-            }
-
+            VkCullModeFlags parsed = VK_CULL_MODE_NONE;
+            if (!hgl::graph::mtl::ParseVkCullMode(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("CullMode 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkCullModeName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("CullMode 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kCompareOpText)
+        {
+            VkCompareOp parsed = VK_COMPARE_OP_NEVER;
+            if (!hgl::graph::mtl::ParseVkCompareOp(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("CompareOp 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkCompareOpName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("CompareOp 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kBlendFactorText)
+        {
+            VkBlendFactor parsed = VK_BLEND_FACTOR_ZERO;
+            if (!hgl::graph::mtl::ParseVkBlendFactor(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("BlendFactor 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkBlendFactorName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("BlendFactor 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kFilterText)
+        {
+            VkFilter parsed = VK_FILTER_LINEAR;
+            if (!hgl::graph::mtl::ParseVkFilter(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("Filter 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkFilterName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("Filter 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kSamplerMipmapModeText)
+        {
+            VkSamplerMipmapMode parsed = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            if (!hgl::graph::mtl::ParseVkSamplerMipmapMode(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("MipmapMode 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkSamplerMipmapModeName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("MipmapMode 条目不可反查: ") + e.text);
+        }
+        for (const auto &e : hgl::graph::mtl::kSamplerAddressModeText)
+        {
+            VkSamplerAddressMode parsed = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            if (!hgl::graph::mtl::ParseVkSamplerAddressMode(e.text, parsed) || parsed != e.value)
+                result.diagnostics.emplace_back(std::string("AddressMode 条目不可正查: ") + e.text);
+            if (hgl::graph::mtl::GetVkSamplerAddressModeName(e.value) == nullptr)
+                result.diagnostics.emplace_back(std::string("AddressMode 条目不可反查: ") + e.text);
         }
 
-        if (persistent_layout.resources.size() != 2
-         || persistent_layout.resources[0].name != "bindless_texture"
-         || persistent_layout.resources[0].struct_name != "MaterialTextureData"
-         || persistent_layout.resources[1].struct_name != "PBRSurfaceData")
+        // ② 未知名 / 空名必须被拒（不静默落默认值）。
         {
-            result.diagnostics.emplace_back(
-                "material layout did not retain owned descriptor strings");
+            VkCompareOp op = VK_COMPARE_OP_NEVER;
+            if (hgl::graph::mtl::ParseVkCompareOp("Bogus", op)
+             || hgl::graph::mtl::ParseVkCompareOp("", op)
+             || hgl::graph::mtl::ParseVkCompareOp(nullptr, op))
+                result.diagnostics.emplace_back("CompareOp 未知名/空名必须被拒");
+
+            VkFilter f = VK_FILTER_LINEAR;
+            if (hgl::graph::mtl::ParseVkFilter("Trilinear", f))
+                result.diagnostics.emplace_back("Filter 未知名必须被拒");
+
+            VkSamplerAddressMode am = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            if (hgl::graph::mtl::ParseVkSamplerAddressMode("Clamp", am))
+                result.diagnostics.emplace_back("AddressMode 未知名必须被拒");
+
+            VkBlendFactor bf = VK_BLEND_FACTOR_ZERO;
+            if (hgl::graph::mtl::ParseVkBlendFactor("Src", bf))
+                result.diagnostics.emplace_back("BlendFactor 未知名必须被拒");
+
+            VkCullModeFlags cm = VK_CULL_MODE_NONE;
+            if (hgl::graph::mtl::ParseVkCullMode("FrontAndBackBit", cm))
+                result.diagnostics.emplace_back("CullMode 未知名必须被拒");
         }
 
         result.passed = result.diagnostics.empty();
@@ -5112,7 +4978,6 @@ namespace
             { "ShadowPCF",      4u },
             { "Terrain",        5u },
             { "UI",             6u },
-            { "ShadowMap",      7u },
         };
         if (lib.GetCount() != uint32_t(std::size(expected)))
         {
@@ -5564,25 +5429,6 @@ int main(const int argc, char **argv)
 
     if (run_descriptor)
     {
-        constexpr SerializedDescriptorEntry valid_entries[] =
-        {
-            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "bindless_texture", "MaterialTextureData", nullptr, DescriptorSemantic::MaterialTexture, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::Texture },
-            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "mesh_draw_params", "MeshDrawParamsData", nullptr, DescriptorSemantic::MeshDrawParams, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::SSBO },
-        };
-        results.push_back(RunValidationCase("A.valid-contract-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
-
-        constexpr SerializedDescriptorEntry unknown_semantic[] =
-        {
-            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, SSBOType::UserDefined, GlobalSSBOType::PBRSurface, DescriptorSemanticLayer::UBO },
-        };
-        results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
-
-        constexpr SerializedDescriptorEntry generic_material_type[] =
-        {
-            { DescriptorSetType::Bindless, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "EmissiveSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, SSBOType::LocalToWorld, GlobalSSBOType::EmissiveSurface, DescriptorSemanticLayer::SSBO },
-        };
-        results.push_back(RunValidationCase("B2.generic-material-type-hard-fail", generic_material_type, 1, false));
-
     }
 
     if (run_materialization) results.push_back(RunMaterializationSharedInstanceCase());
@@ -5617,13 +5463,13 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunAddressOwnershipCase(false));
     if (run_interface) results.push_back(RunAddressOwnershipCase(true));
     if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());
+    if (run_glsl) results.push_back(RunVkEnumTextCase());
     if (run_cache) results.push_back(RunProviderGraphIdentityCase());
     if (run_cache) results.push_back(RunProviderGraphCompositionCase());
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
-    if (run_descriptor) results.push_back(RunDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());

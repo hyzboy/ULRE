@@ -3,7 +3,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
-#include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
@@ -99,54 +98,26 @@ namespace hgl
             {
                 const auto& pass = graph.passes[pass_idx];
 
-                if (!pass.enabled)
+                // A3 结案（2026-10-07）：pass 级跨 RT 切换已删。多 RT 走 ECSContext::RenderTo()。
+                // 2026-10-10（§1.1）：六个 pass 配置字段无赋值点 ⇒ 删除，此处恢复**无条件执行**
+                // （与恒 true / 恒空逐字等价；原 `else if (submitTransforms)` 分支因 runRender 恒 true
+                //  而永不可达，一并删除）。
+
                 {
-//                    LogDebug("[ECS RENDER] Skipping disabled pass %zu (phases %d-%d)",pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
-                    continue;
-                }
-
-//                LogInfo("[ECS RENDER] Executing pass %zu (phases %d-%d)",pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
-
-                // A3 结案（2026-10-07）：pass 级跨 RT 切换已删（字段从未被设置 ⇒ 上面那段
-                // "设了会被忽略"的告警永不可能触发）。多 RT 走 ECSContext::RenderTo()。
-
-                if (pass.onBeforePass)
-                {
-//                    LogDebug("[ECS RENDER] Invoking onBeforePass for pass %zu", pass_idx);
-                    pass.onBeforePass(*this, pass);
-                }
-
-                if (pass.runUpdate)
-                {
+                    // §3-③（2026-10-11 定案）：抬高下界 = **避免重跑**，不是漏执行。
+                    // 帧首 `BeginManagedRenderFrame` 已跑完 Collect/Batch/Commit/Upload/FrameSync
+                    // （`ContextRender.cpp:838-862`）⇒ 本 pass 只从 `RenderDrawSubmit` 起补跑。
+                    // 详见 `RenderGraph.h` 的 `Pass::startPhase` 头注（契约口径在那里）。
                     const ExecutionPhase update_min =
                         std::max(pass.startPhase, ExecutionPhase::RenderDrawSubmit);
                     if (update_min <= pass.endPhase)
                     {
-                        //HGL_CAPTURE_SCOPE();
-                        //LogDebug("[ECS RENDER] Update phase range %d to %d (clamped from %d)",
-                        //        static_cast<int>(update_min), static_cast<int>(pass.endPhase),
-                        //        static_cast<int>(pass.startPhase));
                         RunRenderPhaseUpdates(update_min, pass.endPhase, deltaTime);
                     }
                 }
 
-                if (pass.runRender)
-                {
-                    HGL_CAPTURE_SCOPE();
-                    RecordPreparedRenderPhaseRange(pass.startPhase,pass.endPhase,deltaTime,pass.submitTransforms,"[ECS RENDER] Render");
-                }
-                else
-                if (pass.submitTransforms)
-                {
-                    if (auto transform_system = GetSystem<TransformSystem>())
-                        transform_system->SubmitTransformUpdates();
-                }
-
-                if (pass.onAfterPass)
-                {
-//                    LogDebug("[ECS RENDER] Invoking onAfterPass for pass %zu", pass_idx);
-                    pass.onAfterPass(*this, pass);
-                }
+                HGL_CAPTURE_SCOPE();
+                RecordPreparedRenderPhaseRange(pass.startPhase,pass.endPhase,deltaTime,true,"[ECS RENDER] Render");
 
 //                LogDebug("[ECS RENDER] Completed pass %zu", pass_idx);
             }
@@ -257,11 +228,7 @@ namespace hgl
                 // Each enabled group becomes a pass in the graph
                 graph.Add(RenderGraph::Pass(
                     group.startPhase,
-                    group.endPhase,
-                    true,              // pass enabled
-                    true,              // run Update()
-                    true,              // submit transforms
-                    true               // run Render()
+                    group.endPhase
                 ));
             }
 

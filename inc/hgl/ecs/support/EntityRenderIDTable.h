@@ -67,8 +67,6 @@ namespace hgl
 
         public:
 
-            bool IsAllocated() const { return !rows.empty(); }
-
             /// 懒分配（与实体行表同策略；行 16 B ⇒ 全表 64 KB）
             void Ensure()
             {

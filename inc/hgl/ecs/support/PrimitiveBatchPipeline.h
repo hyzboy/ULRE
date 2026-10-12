@@ -35,10 +35,12 @@ namespace hgl::ecs
         const graph::CameraInfo* camera_info = nullptr;
         graph::VulkanDevice* device = nullptr;
         math::Frustum frustum;
-        uint32_t prepared_frame_index = std::numeric_limits<uint32_t>::max();
+        // 2026-10-10（审计 §1.1）：`prepared_frame_index` 已删除 —— 它只被"读一次再写回"、
+        // 没有任何 early return 用它 ⇒ 不是守卫（TextRenderPipeline 里同名字段是**真守卫**，勿混）。
 
     public:
         bool PrepareFrame(ECSContext* ctx);
+        uint32_t GetPrepareFrameCount() const { return prepare_frame_count_; }   ///< §2 #11 判据用
 
         void RunCulling();
         void RunSorting();
@@ -54,6 +56,7 @@ namespace hgl::ecs
         bool TestFrustumWithBoundingSphere(RenderItem* item);
 
         void AssignTransformIndices(TransformSystem* transform_system);
+        bool PrepareFrameInternal(ECSContext* ctx);   ///< §2 #11：真正的帧前准备（守卫只调它一次/帧）
         void BuildMaterialBatches();
         void FinalizeBatches();
 
@@ -87,6 +90,19 @@ namespace hgl::ecs
         uint64_t gpu_cull_override_eval_frame_ = 0;
         uint64_t gpu_cull_override_frame_ = 0;
         uint64_t gpu_cull_full_frame_ = 0;
+
+        /// 批 1.3 C5：两个一次性闩改**每实例**（原 `static bool` 是进程级 ⇒ 第二个世界静默）：
+        /// 前者 = 批前提不满足的 fail-fast 告警；后者 = 「GPU 剔除接管生效」的一次性正面证据日志。
+        bool gpu_cull_reject_warned_  = false;
+        bool gpu_cull_engaged_logged_ = false;
+
+        /// §2 #11（2026-10-11）：`PrepareFrame` 的**真守卫**状态 —— 帧号 + 该帧结果缓存。
+        /// 三个 `Run*`（Cull/Sort/Build）各自调用 `PrepareFrame`，原实现每帧最多做三遍同样的
+        /// 帧前准备（Sort 那遍还没有下游动作）。注意与 2026-10-10 删掉的 `prepared_frame_index`
+        /// 区分：那个只有"读一次再写回"、没有任何 early return，属**假守卫**；这里有 early return。
+        uint64_t prepared_frame_      = UINT64_MAX;   ///< 上次已处理的帧号（UINT64_MAX = 从未）
+        bool     prepared_frame_ok_   = false;        ///< 该帧的准备结果（同帧重复调用直接复用）
+        uint32_t prepare_frame_count_ = 0;            ///< 真正做过准备的次数（判据用）
 
         graph::BufferManager* GetBufferManager() const;
 

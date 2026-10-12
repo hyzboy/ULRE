@@ -132,8 +132,6 @@ public: //Compute（直接源码路径，不走 ShaderGen 生成器）
 
 public: //ShaderProgram
 
-    bool            BuildShaderResourceSchema(const mtl::MaterialDefinitionBuildRequest &request,
-                                                mtl::ShaderResourceSchema &out_schema);
     ShaderProgram *AcquireShaderProgram(
         const mtl::MaterialDefinitionBuildRequest &request);
 

@@ -72,7 +72,6 @@ namespace hgl
             // 编辑影子数据（T6b/P4：CPU 权威在**世界** `ECSContext::shadow_info`，
             // 本系统只是写者；设备侧提交点 = `ECSContext::CommitShadowInfo`）
             graph::ShadowInfo *EditShadowInfo();
-            const graph::ShadowInfo *GetShadowInfo() const;
 
             void SetShadowInfo(const graph::ShadowInfo &info);
 

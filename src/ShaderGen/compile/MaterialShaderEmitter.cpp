@@ -593,29 +593,6 @@ namespace
         }
     }
 
-    void AppendStageResourceBlocks(
-        ShaderDocument &out_document,
-        const ShaderDocument &resources,
-        const ShaderStage stage,
-        const char *stage_name,
-        const char *material)
-    {
-        for (int i = 0; i < resources.GetBlockCount(); ++i)
-        {
-            const ShaderDocumentBlock &block = resources.GetBlock(i);
-            const bool mesh_index_tables =
-                std::strcmp(
-                    block.source.logical_name.c_str(),
-                    "MaterialMeshIndexTables") == 0;
-            if ((stage == ShaderStage::Mesh) != mesh_index_tables)
-                continue;
-
-            ShaderDocumentSource source = block.source;
-            source.stage = stage_name;
-            source.material = material ? material : "";
-            out_document.Add(block.kind, block.text, source);
-        }
-    }
 }
 
 bool BuildMaterialStageDocument(

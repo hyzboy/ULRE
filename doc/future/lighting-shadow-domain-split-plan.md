@@ -137,7 +137,7 @@
 | `inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp` | 影子职责整体迁出；只留天空/IBL | §3 |
 | `src/ecs/core/Context.cpp` | ① 地址发布补 `addr_lights`；② `ExecuteScenePrePassWorkflow` 改调新系统 | I4 + D6 的帧入口路径 |
 | `ShaderLibrary/ubo/scene_ubo.glsl` | `SkyInfo` 段删 sun/moon 字段；新增光行引用 | C++↔GLSL 表漂移 = 静默回退默认材质 |
-| `ShaderLibrary/shadow/pcf_shadow.glsl`、`material/shadow_receiver_source.glsl`、`compositor/forward_lighting.glsl`、`sky/sky_atmosphere.glsl` | 光源方向改从**光行**取（`sky.sun_direction` 作废） | 光的定义散在四处，漏一处 = 双源 |
+| `ShaderLibrary/shadow/pcf_shadow.glsl`、`material/shadow_receiver_source.glsl`〔2026-10-11 已随 ShadowMap 示例删除〕、`compositor/forward_lighting.glsl`、`sky/sky_atmosphere.glsl` | 光源方向改从**光行**取（`sky.sun_direction` 作废） | 光的定义散在四处，漏一处 = 双源 |
 | `example/Shadow/{ShadowMap, CascadeShadowMap, AlphaTestShadow}.cpp` | 写 `sky_info->sun_direction` → 改写光行 | 示例是真实消费者 |
 | 门/契约 | 若新增 GLSL 模块 ⇒ 门"模块总数"三处同步 +1；新增两条契约（光行结构对拍 / 主光行号恒 0）+ **禁复活** `sky.sun_direction` | 见 `ulre-entity-gpu-cull` 约定 2 |
 | `inc/hgl/graph/render/lighting/{Light.h, LightCullMode.h, ShadowPolicy.h}` + `src/SceneGraph/CMakeLists.txt` 条目 | **删除**（零 include 死头） | D3 同源的零兼容清理 |
@@ -155,7 +155,7 @@
   `Context.cpp::ExecuteScenePrePassWorkflow` 改调新系统；`EnvironmentSystem` 去掉影子转发。
   **不改任何数据布局、不改 shader、不改示例。**
 - **判据（可自动判定）**：八台架帧摘要**逐位不变**（D=0）+ `ENGAGED batches=x/y` 且 x==y + guard 拒绝 0；
-  `CascadeShadowMap` `0x1CDAADEBF18B7CE4`、`ShadowMap` `0xA8A369516CB04571` 逐位不变；
+  `CascadeShadowMap` `0x1CDAADEBF18B7CE4`、`ShadowMap` `0xA8A369516CB04571` 逐位不变；〔2026-10-11：ShadowMap 台架已删除（旧 shadow-map 直采示例，CSM 路线取代；如需退化为单张阴影图，把 CascadeShadowMap.cpp 的 `cfg.cascade_count` 设 1 即可）——本行基线仅适用于删除前〕
   `ATS_SELFCHECK=1` D1/D3/D4 与基线一致 + rc=0；门/契约按**当轮基线**（T6a 当时 = 门 45/0、`TestCSMIncrementalPass` 42 Passed；
   现已随后续批次升至门 46/0、48 个测试 —— 见 §0.2 I8）；
   离屏两例 RTT/RTTCD 逐位不变；环境示例族（AtmosphereSky*、IBL*、BasicLitSunDirection）重建通过。
@@ -197,7 +197,7 @@
 >   依赖、改读光行 0，Enable/Disable 落/清光行的 `cast_shadow + shadow_kind(CSM) + shadow_index`）
 >   + 9 个示例改写光行 + 删三份死头（`render/lighting/*`）+ 控制器归位 `render/shadow/`（P3）+ Test 45 契约。
 >   **实测**：门 **46 PASS / 0 FAIL**；`TestCSMIncrementalPass` rc=0（Test 44 + **Test 45**）；
->   八台架摘要**逐位对基线**（PBRSpheres `0x3DD88A0999CDC486`、ShadowMap `0xA8A369516CB04571`、
+>   八台架摘要**逐位对基线**（PBRSpheres `0x3DD88A0999CDC486`、ShadowMap `0xA8A369516CB04571`、〔2026-10-11：ShadowMap 台架已删除（旧 shadow-map 直采示例，CSM 路线取代；如需退化为单张阴影图，把 CascadeShadowMap.cpp 的 `cfg.cascade_count` 设 1 即可）——本行基线仅适用于删除前〕
 >   Cascade `0x1CDAADEBF18B7CE4`、GPUDrivenCull `0x90E0745C2C7B8599`、AlphaModes `0x2FE87B15EE8B8A16`、
 >   CoverageVariants `0x8EED38BAD9B8181E`、LoadScene `0xC9E38ED2F49A069B`、PlaneGrid3D `0x4125C3C830CB92D3`）；
 >   RTT `0xBA9CA214778AF3A4` / RTTCD `0xD71ABABC2BE460C0`；ATS D1 112x58 & 57.6% / D3 18187 & 19109 px /

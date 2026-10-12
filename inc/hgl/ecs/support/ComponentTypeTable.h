@@ -102,7 +102,7 @@ namespace hgl
             { ComponentType::Transform,       ComponentScope::World,  "ECS:Transform",       64, "TransformDataStorage", SystemGroupID::None },
             { ComponentType::Geometry,        ComponentScope::Global, "ECS:Geometry",         0, "GeometryData",        SystemGroupID::Primitive },   ///< B3：ID 化完成（几何数据落 MeshDrawParams / GeometryAABB 行）。A5b：本组件是"该实体是一个 Primitive 渲染元素"的**唯一标记** ⇒ 驱动图元组；T2-c 起组归属由**类型表**声明（组件虚函数已删）
             { ComponentType::MaterialData,    ComponentScope::Global, "ECS:MaterialData",    16, "MaterialData",        SystemGroupID::None },        ///< B4：组件行 16 B（(Global, MaterialData) arena，行内只放 POD）
-            { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "MaterialRuntimeSlot", SystemGroupID::None },        ///< B5：slot 全 POD、行宽冻结 88 B（CPU 侧行 ⇒ gpu_row_bytes 记 0）
+            { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "MaterialRuntimeSlot", SystemGroupID::None },        ///< B5：slot 全 POD、行宽冻结 40 B（CPU 侧行 ⇒ gpu_row_bytes 记 0；批 1.3 C1：旧注释写的行宽数字与 MaterialRuntimeTable.h 的 static_assert(sizeof==40) 不一致，此处已订正）
             { ComponentType::Texture,         ComponentScope::Global, "ECS:Texture",          0, "",                    SystemGroupID::None },        ///< B6：**无组件载体**（纹理授权在 MaterialData 的具名纹理资源里，零消费者，仅登记）；载体形态 = 材质私有数据一族（按定义变长的行空间）⇒ 与欠账 §2.9 同批处理，**勿补实体级组件**
             { ComponentType::Camera,          ComponentScope::World,  "ECS:Camera",           0, "CameraComponent",     SystemGroupID::None },        ///< B7：相机（P-6 ②：**不新开 arena**，参数留组件；世界相机表 = 派生视图 ⇒ 本类型无自己的 GPU 行）；T2-c：相机行内持 `shared_ptr`（槽账目按宿主弱引用计占用期，见 `SharedComponentPool`）
             { ComponentType::Lines,           ComponentScope::World,  "ECS:Lines",            0, "LinesComponent",      SystemGroupID::Line },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）——全场景收集 + 末次一次绘制，收集语义不随存储统一而变
@@ -173,15 +173,8 @@ namespace hgl
             return bit != 0 && (mask & bit) != 0;
         }
 
-        inline constexpr uint32_t ComponentMaskAdd(const uint32_t mask, const ComponentType type)
-        {
-            return mask | ComponentTypeBit(type);
-        }
-
-        inline constexpr uint32_t ComponentMaskRemove(const uint32_t mask, const ComponentType type)
-        {
-            return mask & ~ComponentTypeBit(type);
-        }
+        // 2026-10-10（审计 §1.1）：`ComponentMaskAdd` / `ComponentMaskRemove` 全仓零调用者 ⇒ 删除
+        //（掩码拼装直接写 `| ComponentTypeBit(...)` / `& ~ComponentTypeBit(...)`）。
 
         // ─────────────────────────────────────────────────────────────
         // implies（蕴含）规则：某类型出现 ⇒ 必然同时具备哪些槽位
@@ -328,9 +321,6 @@ namespace hgl
             static constexpr ComponentType value = ComponentType::None;
         };
 
-        template<typename T>
-        inline constexpr ComponentType ComponentTypeOf_v = ComponentTypeOf<T>::value;
-
         /// 该类型挂载时驱动哪个系统组（类型属性；`None` = 不驱动）
         inline constexpr SystemGroupID GetComponentGroup(const ComponentType type)
         {
@@ -350,7 +340,9 @@ namespace hgl
         //   **一次性注册路径**（组定义 / 安装器 / 管线），不在本映射范围；两侧同名由 Test 25 契约钉住。
         // ──────────────────────────────────────────────────────
 
-        /// 组名（**唯一一份字符串**）：只用于桥接仍按名键控的一次性路径（组注册表 / 安装器 / 管线）
+        /// 组名（**唯一一份字符串**）：只用于桥接仍按名键控的一次性路径（组注册表 / 安装器 / 管线）。
+        /// ⚠ 组增删只需改 `SystemGroupID`（本数组与各处 `[kSystemGroupCount]` 数组都随枚举自动 scale），
+        ///   但**系统侧的 `SetRenderElementType` 字符串**是另一套声明，增删时必须同步（Test 25 契约钉住）。
         constexpr const char *kSystemGroupNames[kSystemGroupCount] =
         {
             "",             // None
@@ -383,8 +375,5 @@ namespace hgl
 
             return SystemGroupID::None;
         }
-
-        static_assert(kSystemGroupCount == 4,
-                      "系统组增删必须同步 kSystemGroupNames 与系统侧的 SetRenderElementType 字面量");
     }//namespace ecs
 }//namespace hgl

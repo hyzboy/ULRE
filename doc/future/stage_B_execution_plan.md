@@ -33,7 +33,7 @@
 | 类型表 | `inc/hgl/ecs/support/ComponentTypeTable.h:66-75`：6 项（`None` + 5 类），Transform 有 `gpu_row_bytes=64`，其余四类 `0` + `cpu_type_name="(待 ID 化)"` | **arena 只是字符串**：`arena_name` 全仓唯一消费者是契约测试（`src/ecs/support/TestTransformFlatStorage.cpp:30`）；**没有** `(scope,type) → 分配器/注册表` 的运行时实体 |
 | 行存储 | 只有 Transform 一类（`TransformDataStorage`，`hgl::ValueArray` **自增长、无上限**、无分区、无预分配） | `Initialize(...)` 不存在；行号会随增长漂移 |
 | GPU 行面 | `TransformAssignmentBuffer` 按需扩容并**重建** L2W/L2WIndex SSBO（`src/ecs/support/TransformAssignmentBuffer.cpp:163` `EnsureCapacity`、`:511` `L2W recreated`） | 行号/地址在运行期会变 ⇒ 与"预烘焙 ID / 后续场景直载"的物理前提冲突 |
-| 值句柄 | 已是值句柄：`TransformAccessor` / `BoundingBoxAccessor`（24 B，世代校验） | `MaterialData` / `GeometryData` / `ShadowProxy` / `Camera` / `MaterialRuntimeSlot` 仍返回**裸指针**（`inc/hgl/ecs/core/Context.h:461-472`、`:553-583`、`:662-682`） |
+| 值句柄 | 已是值句柄：`TransformAccessor` / `BoundingBoxAccessor`（24 B，世代校验）**〔2026-10-11 订正：`BoundingBoxAccessor` 现值 16 B —— 批 1.2 A4 删冗余 `context`；`TransformAccessor` 16 B 不变〕** | `MaterialData` / `GeometryData` / `ShadowProxy` / `Camera` / `MaterialRuntimeSlot` 仍返回**裸指针**（`inc/hgl/ecs/core/Context.h:461-472`、`:553-583`、`:662-682`） |
 | 组件载体 | `ComponentTypeOf<T>` 特化：`GeometryData`（B3）、`MaterialData`（B4）、**`CameraComponent`（B7）** | **B6/B7 后全部类型有定论**：`MaterialRuntime` 的载体 = 每实例 `MaterialRuntimeSlot`（B5，行宽冻结 88 B）；`Texture` **无组件载体**——纹理授权在 `MaterialData` 的具名纹理资源里，其载体形态属"材质定义级行空间"，**与欠账 §2.9 同批处理**（勿补实体级组件） |
 | `EntityGPU` | **零实现**（仅 `Entity.h:29`、`ComponentTypeTable.h:121` 两条注释） | 见 B8（延后） |
 | **行空间的第二类**（新发现：**行宽由材质定义决定**） | 已有：`MaterialTextureReferencePool` = 每 `(definition, layout)` 一份的**字节行池**（行 = `uvec2[reference_count]`，**元数随材质变、行距运行时才知道、无 C++ 结构体**，行 0 预留零行、延迟回收）；每实例 slot 已持 `pool_key + row_index` | **不属于 `(scope, type)` 坐标** —— 行空间的键是**材质定义**。用户 2026-10-02 决议：**先不动，放到计划末期处理**（详见 `stage_B_debt_list.md` §2.9，含与组件行空间的形状对照表 + 末期清单）。**同批处理**（用户补充定性）：纹理引用 ⊂ `MaterialPrivateData`（今天与 surface 池分开放），故 **surface 三池 + 纹理配置池 + `ComponentType::Texture` 的类型号去留** 三项一起收，不各自开条 |
@@ -367,6 +367,7 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 
 | 耦合点 | 现状（实测） | 改写方向 |
 |---|---|---|
+| ⚠ **2026-10-10 事实订正：`RenderItem::Compare` 与整个 `src/ecs/core/RenderItem.cpp` 已被删除**（审计 §1.1 cleanup：零调用者；CPU 绘制/排序链随 T4c4 消失）⇒ 本行的"待改造"前提**已失效**，不要再围绕它做设计。以下为订正前的历史口径。 | |
 | `RenderItem::Compare`（`src/ecs/core/RenderItem.cpp:8-52`） | **批排序主键** = `*GeometryDataBuffer <=> *…`（内容比较：geometry_id / vdm / vab / ibo）+ `*GeometryDrawRange <=>`（vertex_offset / first_index / counts）。注释明写"必须内容比较：指针比较会打散同几何项 ⇒ 失去实例化合并" | 改比较**行派生 POD 键**（`geometry_id` + `vertex_base`/`index_base`/`vertex_count`/`index_count`/`is_indexed`） |
 | `DrawBatch::geom_data_buffer` / `geom_draw_range` + `Set(...)`（`PipelineMaterialRenderer.h:62-79`） | 每批持两个 CPU 对象指针；`Set()` 再由 `data_buffer->geometry_id` 定 `geometry_id` | 换成 POD `MeshDrawKey`；**4 个建批点**（`PrimitiveBatchPipeline.cpp:491/552/570/588`）改传键 |
 | `BatchRequiresIndirectCommands`（`PrimitiveBatchPipeline.cpp:56-63`） | "任一 item 有 `data_buffer` ⇒ 需要 ICB" | "任一 item 的键有 `geometry_id`" |
@@ -605,10 +606,10 @@ static_assert(sizeof(MaterialDataRow) == 24);
 
 五、下一批 **B4-iii-b**（句柄化）
 
-`MaterialDataAccessor`（24 B：`{material_row_id, generation}`，与 `BoundingBoxAccessor` 同构，含 `IsValid()` 世代校验）
+`MaterialDataAccessor`（24 B：`{material_row_id, generation}`，与 `BoundingBoxAccessor` 同构，含 `IsValid()` 世代校验）〔2026-10-11：`BoundingBoxAccessor` 现值 **16 B** —— 冗余 `context` 与 `GetContext()` 已删（批 1.2 A4）；其句柄范式仍成立，只是不再是 24 B〕
 替换 `GetMaterialData` / `GetOrCreateMaterialData` 的 4 个裸指针重载，并同批迁移全部调用点
 （`PrimitiveState.cpp` 的 `HasAnyMaterialSource`、`GeometryData.cpp:43`、测试与示例）。
-- **B4-iii**：访问器句柄化（`GetMaterialData` 4 个裸指针重载 → 24 B 值句柄，与 `BoundingBoxAccessor` 同构）；
+- **B4-iii**：访问器句柄化（`GetMaterialData` 4 个裸指针重载 → 24 B 值句柄，与 `BoundingBoxAccessor` 同构）；〔2026-10-11：`BoundingBoxAccessor` 现值 **16 B** —— 冗余 `context` 与 `GetContext()` 已删（批 1.2 A4）；其句柄范式仍成立，只是不再是 24 B〕
   两条路见 B4-0 表 —— **路 A**（组件槽句柄）vs **路 B**（新建 (Global, MaterialData) 行 arena，
   重类型落旁表），推荐 **路 B 分两步**。**待用户拍板**。
 
@@ -803,7 +804,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 
 - `inc/hgl/ecs/support/ComponentTypeTable.h`：把后四列的过时占位 `"(待 ID 化)"` 换成 **stage B 后的真实承载类型**——
   `Geometry` → `"GeometryData"`（B3）；`MaterialData` → `"MaterialData"` **并按实测把 `gpu_row_bytes` 0 → 16**
-  （B4 的 (Global, MaterialData) 组件行）；`MaterialRuntime` → `"MaterialRuntimeSlot"`（B5；注释写明**行宽冻结 88 B**、
+  （B4 的 (Global, MaterialData) 组件行）；`MaterialRuntime` → `"MaterialRuntimeSlot"`（B5；注释写明**行宽冻结 88 B**〔2026-10-11 订正：该注释已在批 1.3 C1 改为 **40 B**〕、
   因是 CPU 侧行故 `gpu_row_bytes` 记 0）；`Texture` → `cpu_type_name` 留空 + 注释**无组件载体**（B6）。
   表头那段"后四类 scope 待 ID 化定稿、现记 World 保守默认"的**过时注释**改为"scope/行宽已随各类型 ID 化定稿"
   （Global = Geometry / MaterialData / Texture；World = Transform / MaterialRuntime）。
@@ -826,7 +827,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
   不能含中文**（`SyntaxError`），**破坏没发生**却照样跑出 rc=0；换成**纯 ASCII 破坏点**（`"GeometryData"` →
   `"BogusType"`）才真红。⇒ 反证/破坏点一律用 ASCII 模式；该坑已回写 `crlf-safe-editing` 技能。
 
-**B5-b 完成记录（2026-10-02）—— ✅ 每 pass 管线缓存落世界侧旁表 + slot 行宽冻结 88 B（B5 收口）**
+**B5-b 完成记录（2026-10-02）—— ✅ 每 pass 管线缓存落世界侧旁表 + slot 行宽冻结 88 B（B5 收口）**〔2026-10-11：`MaterialRuntimeSlot` 行宽现值 **40 B** —— `MaterialRuntimeTable.h` 的 `static_assert(sizeof(...) == 40)` 为权威；88 B 是旧值（批 1.3 C1 已把源注释订正为 40 B）〕
 
 一、改动（9 文件：1 新建头 + 7 引擎/实现 + 1 契约）
 
@@ -1068,6 +1069,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 | 2026-10-02 | **B3 定稿（用户拍板）**：Geometry 的 GPU 可用部分 ID 化 —— 先不扩 8ID、`data_*` 上 GPU、`GeometryAABB` 独立池与 MeshDrawParams **同 ID 索引**（`ActivateAllRows` 结构保证 + 成对写入 + 负半径哨兵）；行 112→128 B；`GlobalAddresses` 加 `addr_geometry_aabb`（步长不变）；**范围订正**：不需要 arena 宿主/值句柄/173 调用点迁移。 |
 | 2026-10-02 | **B3-i 完成**：`GlobalSSBOType::GeometryAABB` + 池（`ActivateAllRows` 静态行空间、`reserve 0`）+ `GlobalAddresses::addr_geometry_aabb`（48→56 B，步长不变）+ GLSL 同步 + 两条自动扩展覆盖性断言；build rc=0/0 error、门 42 PASS/0 FAIL、10 测试 rc=0、4 示例对拍 0（探针 `rows=16384 AABB 32 B/行`）；反证两处（容量不等 ⇒ 运行期不变量红；缺 name case ⇒ 编译期断言红）；**实测修掉 `ActivateAllRows` 与 `reserve_rows` 的机制冲突**。 |
 | 2026-10-02 | **B3-ii 完成**：`MeshDrawParams` 112→**128 B**（拆 `total_vertices` + 补 `data_*`，X-macro 单源 + 三处 GLSL 读侧 + 三处写侧）；AABB 行收敛为唯一写入口 `RefreshGeometryAABBRow()`（实测修掉"Create 先于 SetBoundingVolumes"的顺序坑，PBRSpheres 10/21 行真值、半径 1.7321 与 CPU 同式逐位一致）；`bounding_radius` 改按需反算；门 42/0、10 测试 + Test 29（25 条契约含 6 条禁复活）、四示例 0 error/对拍 0；反证：抽掉刷新 ⇒ 真值 10→0。 |
+| 2026-10-10 | ⚠ **事实订正**：`RenderItem::Compare` / `src/ecs/core/RenderItem.cpp` / `RenderItem::index` 均已删除（审计 §1.1）⇒ 下面这条 2026-10-02 的侦察前提已不存在。 | |
 | 2026-10-02 | **B3-iii 侦察（未动手）**：规模订正 —— 三指针是**批排序/聚簇主键**（`RenderItem::Compare` + `DrawBatch::Set` 的 4 个建批点 + 采集侧 4ID 填充/列武装 3 处），删它们等于改实例化合并判定；方向 = 行派生 POD 键（ICB 组数逐位等价）；待拍板：同 asset 的每实体 draw range 差异是否退出判定；本轮试改已还原，树保持 B3-ii 已验证状态。 |
 | 2026-10-02 | **B3-iii 缺陷修正**：漏掉 `batch.gpu_driven_override` 逐项成簇判据 ⇒ GPU-Driven 批被合并成多实例簇、屏幕上只剩 1 个实例（界面上可见的错）；修复 + Test 30 契约 ④（去掉判据必 rc=30、逐字节还原必绿）+ 截图复核；教训：**改批/绘制语义必须看像素，数字全绿证明不了画得对**。 |
 | 2026-10-02 | **B4-i 完成**：`MaterialData` 组件删 `buffer`/`element_capacity`/`byte_stride` 三个每实体死字段（外部读者 0、示例赋值 0 处，真源在 `SSBOBufferRegistry` 反算）⇒ GPU 面 = 类型 + 行号；零调用点改动、build rc=0、Test 31（7 契约）+ 反证（加回字段 ⇒ rc=31）。 |

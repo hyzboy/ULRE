@@ -34,9 +34,6 @@ namespace hgl::ecs
         uint64_t external_gpu_address = 0;            ///< 外部 GPU 设备地址覆盖 (用于 100% GPU-Driven 模式)
         bool is_dirty = false;                        ///< 当前帧是否有新数据需要同步
 
-        uint32_t last_frame_uploaded_bytes = 0;       ///< 上一帧上传的字节数
-        uint32_t last_frame_item_count = 0;           ///< 上一帧容纳的项目数
-
     public:
         DrawItemIDStorage();
         ~DrawItemIDStorage();
@@ -46,9 +43,6 @@ namespace hgl::ecs
 
         /// 设置外部 GPU 设备地址覆盖（用于 100% GPU-Driven 模式）
         void SetExternalGPUAddress(const uint64_t addr) { external_gpu_address = addr; }
-
-        /// 设置外部 GPU 缓冲覆盖
-        void SetExternalGPUBuffer(graph::DeviceBuffer *buf, graph::VulkanDevice *dev = nullptr);
 
         /// 清除外部 GPU 地址覆盖
         void ClearExternalGPUAddress() { external_gpu_address = 0; }
@@ -71,9 +65,6 @@ namespace hgl::ecs
         /// 获取 GPU 显存物理地址 (BDA, 16 字节对齐)
         uint64_t GetGPUAddress() const { return external_gpu_address != 0 ? external_gpu_address : gpu_address; }
 
-        /// 获取 GPU 设备缓冲区指针
-        graph::DeviceBuffer *GetDeviceBuffer() const { return device_buffer; }
-
         /// 确保存储容量至少达到 min_capacity
         bool EnsureGPUBuffer(graph::VulkanDevice *dev, const uint32_t min_capacity);
 
@@ -83,8 +74,5 @@ namespace hgl::ecs
         /// 释放 GPU 显存缓冲
         void ReleaseGPUBuffer();
 
-        /// 统计信息查询
-        uint32_t GetLastFrameUploadedBytes() const { return last_frame_uploaded_bytes; }
-        uint32_t GetLastFrameItemCount() const { return last_frame_item_count; }
     };
 }

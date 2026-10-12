@@ -129,14 +129,6 @@ namespace hgl::ecs
         return slot_owners[slot].lock().get();
     }
 
-    std::shared_ptr<CameraComponent> CameraInfoStorage::GetSlotOwnerShared(const uint32_t slot) const
-    {
-        if (!IsValidSlot(slot))
-            return {};
-
-        return slot_owners[slot].lock();
-    }
-
     uint32_t CameraInfoStorage::FindSlot(const CameraComponent *camera) const
     {
         if (!camera)

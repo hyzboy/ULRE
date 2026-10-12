@@ -21,9 +21,7 @@ namespace hgl::ecs
     X(PanMiddle)              \
     X(ZoomWheel)              \
     X(ZoomIn)                 \
-    X(ZoomOut)                \
-    X(ResetView)              \
-    X(FocusView)
+    X(ZoomOut)
 
 #define HGL_CAMERA_ACTION_ENUM(name) name,
     enum class Action : uint8
@@ -42,9 +40,6 @@ namespace hgl::ecs
 
         void ApplyDefaultBindings();
         void EnsureContext(io::InputMapper& mapper);
-
-        io::InputContext& EditContext();
-        const io::InputContext& GetContext() const { return context; }
 
     private:
         io::InputContext context;

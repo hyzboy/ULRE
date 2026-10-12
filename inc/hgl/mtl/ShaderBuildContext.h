@@ -1,6 +1,5 @@
 #pragma once
 
-#include<hgl/mtl/ShaderResourceSchema.h>
 #include<hgl/mtl/ShaderCreateInfoMap.h>
 #include<hgl/mtl/ShaderLinkSpec.h>
 #include<hgl/mtl/ShaderArtifactContract.h>
@@ -32,7 +31,11 @@ namespace hgl::graph::mtl
             PrimitiveType primitive_type = PrimitiveType::Triangles;
             uint32_t shader_stage_flag_bits = 0;
 
-            mtl::ShaderResourceSchema shader_resource_schema;                       ///<descriptor semantic contract (phase 2)
+            /// 材质是否需要 per-instance 运行时数据行（`mtl_data_addrs` 行表 + 材质数据行）。
+            /// 编译期直判信号；消费者 = `RenderPrimitiveCollectSystem` / `PrimitiveBatchPipeline`。
+            /// 2026-10-11（S1）：原「资源条目载体」已整体删除（其生产点为 0、消费者或空转或自比），
+            /// 此处只留这一个活字段。
+            bool requires_recipe_runtime_rows = false;
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
@@ -69,9 +72,9 @@ namespace hgl::graph::mtl
 
         public:
 
-            const mtl::ShaderResourceSchema &GetShaderResourceSchema()const{return shader_resource_schema;}
+            const bool RequiresRecipeRuntimeRows()const{return requires_recipe_runtime_rows;}
 
-            void SetShaderResourceSchema(const mtl::ShaderResourceSchema &contract){shader_resource_schema=contract;}
+            void SetRequiresRecipeRuntimeRows(const bool v){requires_recipe_runtime_rows=v;}
 
             void SetProgramLink(const ShaderLinkSpec &link)
             {

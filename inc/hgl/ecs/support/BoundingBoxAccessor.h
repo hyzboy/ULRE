@@ -11,9 +11,10 @@ namespace hgl
         class ECSContext;
 
         /**
-         * 包围盒的**薄句柄**（值类型，24 字节，可随意拷贝）。
+         * 包围盒的**薄句柄**（值类型，16 字节，可随意拷贝）。
          *
-         * 它只记「哪一行 + 哪个世界」，自身**不持有任何包围盒副本**：
+         * 它只记「哪一行 + 建柄时的行世代」，自身**不持有任何包围盒副本**，也不留世界指针
+         * （与 `TransformAccessor` 同范式：要世界时由 `storage` 反查，句柄上不存第二份）：
          * 所有读写直落 `BoundingBoxDataStorage`（local_bounds 唯一的真源），
          * world_bounds 是派生缓存（本地 AABB × 世界矩阵）。
          *
@@ -25,7 +26,6 @@ namespace hgl
             BoundingBoxDataStorage           *storage    = nullptr;
             BoundingBoxDataStorage::HandleID  id         = BoundingBoxDataStorage::INVALID_HANDLE;
             uint32_t                          generation = 0;         ///< 建柄时捕获的行世代（revision）：释放后旧柄自动失效
-            ECSContext                       *context    = nullptr;   ///< 用于解析 owner 实体（可为空：纯数据操作不需要）
 
         public:
 
@@ -35,9 +35,8 @@ namespace hgl
             /// 世代编码：**0 = 死/未分配；正奇数 = 活**。释放（Deallocate）会把它归 0
             /// ⇒ 旧柄与"死行上的新柄"都无效；将来行复用时 +2 保持奇数 ⇒ ABA 免疫。
             BoundingBoxAccessor(BoundingBoxDataStorage *s,
-                                BoundingBoxDataStorage::HandleID i,
-                                ECSContext *c = nullptr)
-                : storage(s),id(i),generation(s ? s->GetGeneration(i) : 0),context(c) {}
+                                BoundingBoxDataStorage::HandleID i)
+                : storage(s),id(i),generation(s ? s->GetGeneration(i) : 0) {}
 
             bool IsValid() const
             {
@@ -49,7 +48,6 @@ namespace hgl
 
             BoundingBoxDataStorage::HandleID  GetID() const      { return id; }
             BoundingBoxDataStorage           *GetStorage() const { return storage; }
-            ECSContext                       *GetContext() const { return context; }
 
         public: // 归属（真源在存储的 owners 行）
 
@@ -122,8 +120,8 @@ namespace hgl
             }
         };
 
-        // 值类型句柄：24 B（8 + 4 + 4 + 8），可随意拷贝、无堆开销
-        static_assert(sizeof(BoundingBoxAccessor) == 24,
-                      "BoundingBoxAccessor 必须是 24 字节的值类型句柄（storage/id/generation/context）");
+        // 值类型句柄：16 B（8 + 4 + 4），可随意拷贝、无堆开销
+        static_assert(sizeof(BoundingBoxAccessor) == 16,
+                      "BoundingBoxAccessor 必须是 16 字节的值类型句柄（storage/id/generation）");
     }//namespace ecs
 }//namespace hgl

@@ -39,7 +39,6 @@ namespace hgl::ecs
 
         void SetWorld(ECSContext* w) { world = w; }
         void SetDevice(graph::VulkanDevice* dev) { device = dev; }
-        graph::VulkanDevice* GetDevice() const { return device; }
 
         void Update(float deltaTime) override;
     };

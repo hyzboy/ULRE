@@ -39,7 +39,7 @@
 
 - 逻辑数据（position/rotation/scale/worldMatrix）放在共享 SOA 中。
 - 组件只保留 `storageHandle` 与少量状态（如 `matrixDirty`、`mobility`、parent/child）。
-- `SetLocalPosition/Rotation/Scale` 会写入 SOA，并调用 `MarkDirty`。
+- `SetLocalPosition/Rotation/Scale` 会写入 SOA，并走内部变更记账 `MarkLocalChanged`（版本 +1、累积掩码、并逐行 bump 子/孙的 WorldMatrix）。（2026-10-11 订正：原文写作 `MarkDirty` ——那个"只标脏不 bump 版本"的口子已在 ECS §3-① 删除。）
 
 这种设计把高频批处理数据集中到连续内存，减少了 AOS 布局带来的缓存抖动。
 
@@ -64,7 +64,7 @@
 
 ## 4.1 脏标记与版本门控
 
-`TransformComponent::MarkDirty` 会：
+`TransformComponent::MarkDirty` 会：  **（2026-10-11 订正：`TransformComponent` 已随 T2-c 整删——变换 = 平铺行 + `TransformAccessor`；同一记账现由 `TransformAccessor::MarkLocalChanged` → `TransformDataStorage::TouchChange/SetDirty` 承担，本文下两行描述的语义仍然成立。）**
 
 - 置 `matrixDirty=true`
 - 写入 change mask（Position/Rotation/Scale/Parent/WorldMatrix/Mobility 等）
@@ -189,7 +189,7 @@
 `example/Transform/ClockUse.cpp` 能完整体现该设计：
 
 - 12 个刻度：`Mobility::Static`，初始化后不做每帧逻辑更新。
-- 3 根指针：`Mobility::Movable`，每帧根据系统时间旋转并 `MarkDirty()`。
+- 3 根指针：`Mobility::Movable`，每帧根据系统时间旋转（`SetLocalRotation` 内部完成版本 bump 与脏标记）。（原文档此处写作"并 `MarkDirty()`" —— 该 API 已于 2026-10-11 §3-1 选项① 删除，调用点同步移除。）
 - Tick 中调用 `TransformSystem::Update(delta_time)`，只更新 movable。
 - Render 前由系统统一 `SubmitTransformUpdates()` 上传到共享 LocalToWorld 缓冲。
 

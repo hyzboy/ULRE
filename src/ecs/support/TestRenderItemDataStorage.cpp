@@ -779,6 +779,89 @@ int main(int argc, char **argv)
         }
     }
 
+    // ── Stage 6（§2 #2）：重复释放必须 no-op、不得造成槽位别名 ──────────────
+    {
+        RenderItemDataStorage storage;
+
+        const RenderItemHandle h = storage.Allocate();
+
+        if (!storage.IsAllocated(h) || storage.GetActiveCount() != 1)
+        {
+            GLogError(u8"Test 63 Failed: 分配后状态不对（allocated=%d active=%u）",
+                      storage.IsAllocated(h) ? 1 : 0, storage.GetActiveCount());
+            return 63;
+        }
+
+        if (!storage.Release(h))
+        {
+            GLogError(u8"Test 63 Failed: 首次释放应成功");
+            return 63;
+        }
+
+        // 重复释放：必须 no-op（返回 false），不得把同一 handle 再塞一次 free_list
+        if (storage.Release(h))
+        {
+            GLogError(u8"Test 63 Failed: 重复释放返回了成功（应 no-op）");
+            return 63;
+        }
+
+        if (storage.GetActiveCount() != 0 || storage.GetFreeCount() != 1)
+        {
+            GLogError(u8"Test 63 Failed: 重复释放污染账目（active=%u free=%u；期望 0/1）",
+                      storage.GetActiveCount(), storage.GetFreeCount());
+            return 63;
+        }
+
+        // 关键判据：回收两次分配必须拿到**两个不同**的槽（原实现两次都返回 h = 槽位别名）
+        const RenderItemHandle h1 = storage.Allocate();
+        const RenderItemHandle h2 = storage.Allocate();
+
+        if (h1 == h2)
+        {
+            GLogError(u8"Test 63 Failed: 两次分配返回同一 handle(%u) —— 槽位别名（两个使用者写同一行）", h1);
+            return 63;
+        }
+
+        if (storage.GetActiveCount() != 2)
+        {
+            GLogError(u8"Test 63 Failed: 别名修复后活跃计数应为 2，实际 %u", storage.GetActiveCount());
+            return 63;
+        }
+
+        // 连续释放区间：区间内全未分配 ⇒ 整体 no-op
+        RenderItemDataStorage block;
+
+        const RenderItemHandle base = block.AllocateContiguous(2);
+
+        if (base == INVALID_RENDER_ITEM_HANDLE || block.GetActiveCount() != 2)
+        {
+            GLogError(u8"Test 63 Failed: AllocateContiguous 状态不对（base=%u active=%u）",
+                      base, block.GetActiveCount());
+            return 63;
+        }
+
+        if (!block.ReleaseContiguous(base, 2))
+        {
+            GLogError(u8"Test 63 Failed: 连续释放应成功");
+            return 63;
+        }
+
+        if (block.ReleaseContiguous(base, 2))
+        {
+            GLogError(u8"Test 63 Failed: 连续区间重复释放返回了成功（应整体 no-op）");
+            return 63;
+        }
+
+        if (block.GetActiveCount() != 0 || block.GetFreeCount() != 2)
+        {
+            GLogError(u8"Test 63 Failed: 连续区间重复释放污染账目（active=%u free=%u；期望 0/2）",
+                      block.GetActiveCount(), block.GetFreeCount());
+            return 63;
+        }
+
+        GLogInfo(u8"Test 63 Passed: 重复释放 no-op 契约成立（单槽/连续区间都不再造成槽位别名与计数少算）。");
+    }
+
     GLogInfo(u8"=== All RenderItemDataStorage Stage 1, 2, 3, 4 & 5 Tests Passed Successfully! ===");
     return 0;
 }

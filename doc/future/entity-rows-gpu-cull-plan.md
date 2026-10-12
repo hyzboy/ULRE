@@ -1050,7 +1050,7 @@ T3i 在 `src/ecs/support/PipelineMaterialRenderer.cpp` 引入
 
 | guard 条件 | 今天谁产（实测） | 判定 |
 |---|---|---|
-| 批无 mesh stage | **找不到生产者**：15 个材质里 10 个无 `[mesh_shader]` 段但走缺省 `VertexPassthrough` ⇒ 都有 mesh 程序；本会话全部台架从未命中该理由 | **疑似死条件**（删前先复验） |
+| 批无 mesh stage | **找不到生产者**：14 个材质里 10 个无 `[mesh_shader]` 段〔2026-10-11：原 15，ShadowMap 示例退场删掉 1 个材质〕但走缺省 `VertexPassthrough` ⇒ 都有 mesh 程序；本会话全部台架从未命中该理由 | **疑似死条件**（删前先复验） |
 | 批是 lines（X 组数不同源） | **内容线**：`PlaneGrid3D` / `RenderBoundBox` / `SimplestAxis` / `GizmoUsage` / `RayPicking` / `LoadGeometry` / `LineRender` 的线框资产 | **活洞①（唯一真洞）** |
 | 接管批数超 `kMaxBatches(256)` | 人为台架 `CV_STRESS=260`（CoverageVariants） | **容量类**（非语义洞） |
 | 含无 owner 实体项 | **找不到生产者**：④ 之后现管线只产 `PrimitiveRenderItem`，恒带 `EntityID`；"VDM 等无实体项"属**已退役的外部注入面** | **疑似死条件**（删前先复验） |
@@ -1250,7 +1250,7 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 | 面 | 落点（符号） | 标记数 | A6-d |
 |---|---|---|---|
 | CPU 剔除 / 收集 / 距离 | `RenderPrimitiveCollectSystem`（frustum 判据 + `item->distanceToCamera` 写者） | `distanceToCamera` 全仓 4 处 | **删** |
-| CPU 排序 | `PrimitiveBatchPipeline`（renderItems 按距离 + static/movable 两处 `std::sort`） | ≤3 处 | **删** |
+| CPU 排序 | ~~`PrimitiveBatchPipeline`（renderItems 按距离 + static/movable 两处 `std::sort`）~~ ✅ **2026-10-10 订正：本行已过期** —— `PrimitiveBatchPipeline.cpp` 现**没有任何 `std::sort`**（`SortByDistance` 全仓已不存在）；唯一的排序是 `PrimitiveRenderSystem::RenderBatches` 里按 `MaterialBatch::key` 排**批** | ≤0 处 | **已完成** |
 | CPU 压缩 | `DrawItemCompaction.{h,cpp}` + 调用面 | 引用 17 处 | **删** |
 | CPU 写行 / ICB | `PrimitiveBatchPipeline::WriteMeshDrawCommands`（+ `draw_batches` 16 处） | 定义 1 / 档外调用 **0** | **删** |
 | CPU flush 分支 | `PipelineMaterialRenderer::ProcIndirectRender` 的 CPU 支（`else` 侧） | 1 处 | **删**（GPU 支保留） |
@@ -1386,7 +1386,7 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
      ⇒ `VUID-vkCmdDrawMeshTasksIndirectCountEXT` + AMDVLK 丢设备（表现为 rc=124"挂死"）。
      ⇒ **凡扩容竞技场，把"按容量分配"的每一处列出来数一遍**（同一条坑的第二个实例：上次漏的是计数清零长度）。
   判据：ATS `rc=0` + `[ATSSELF] PASS`（第 1 帧判据，覆盖启动帧）+ 追踪 `pass={0:2,1:1}`（阴影真进接管）；
-  `ShadowMap` `0xA8A369516CB04571` / `CascadeShadowMap` `0x1CDAADEBF18B7CE4` **逐位不变**；六台架不变；门 45/契约 rc=0；
+  `ShadowMap` `0xA8A369516CB04571` / `CascadeShadowMap` `0x1CDAADEBF18B7CE4` **逐位不变**；六台架不变；门 45/契约 rc=0；〔2026-10-11：ShadowMap 台架已删除（旧 shadow-map 直采示例，CSM 路线取代；如需退化为单张阴影图，把 CascadeShadowMap.cpp 的 `cfg.cascade_count` 设 1 即可）——本行基线仅适用于删除前〕
   阴影两例敏感性（`SM_FREEZE=0` / `CSM_AUTOWALK=1`）如预期变值；验证层 VUID 0、`result -4` 0。
   ⇒ **T4c4 入口条件已齐**：`WriteMeshDrawCommands` / `EnsureMeshDrawParams` / `draw_batches` 赖以存活的
     守卫早退（`IsCurrentPassShadow()` 处 return）已不存在，阴影批不再依赖 CPU 账。
@@ -1405,6 +1405,7 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
   - **T4c4-3 ✅**（`49d9e2430`）：删 CPU 绘制批对象链 —— `MaterialBatch::draw_batches(*)`、`struct DrawBatch`、
     `DrawBatchArray`、`Renderer::Draw()`、`Render` 的 `batches`+`batch_count` 入参、Render 里的 CPU 循环、
     三个 CPU 累积计数成员、`BuildBatches`、`SortBatchItems`、`last_compaction_stats`（删前 rg 复查外部使用者=0）；
+    ⚠ **2026-10-10 订正**：`BuildBatches` / `SortBatchItems` 已随 T4c4 删除，现在**全仓都不存在**（本行从"计划删除"变成"已不存在"，无需再动）；
     两个调用方（`PrimitiveRenderSystem` + `PrimitiveOverlayRenderSystem`，后者属 RenderDebug 相位边界）**同批**改；
     flush 门 ⇒ `if (owner_batch && owner_batch->gpu_driven_override)`。
     契约 needle 按意图换形三条（`RenderItem::MeshDrawKey draw_key;` / `next_item->draw_key == draw_key` /
@@ -1505,7 +1506,7 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
 
 **修复**：调用方声明 `req.is_shadow_pass = true`（示例侧一行）。
 **验证（全套绿）**：逐帧摘要 30 帧 ×3 次 ⇒ 三图取值集合全为 `[256]`（闪烁消除）；
-`ShadowMap` `0xA8A369516CB04571` / `CascadeShadowMap` `0x1CDAADEBF18B7CE4` **逐位不变**
+`ShadowMap` `0xA8A369516CB04571` / `CascadeShadowMap` `0x1CDAADEBF18B7CE4` **逐位不变**〔2026-10-11：ShadowMap 台架已删除（旧 shadow-map 直采示例，CSM 路线取代；如需退化为单张阴影图，把 CascadeShadowMap.cpp 的 `cfg.cascade_count` 设 1 即可）——本行基线仅适用于删除前〕
 （阴影 pass 改走 `pass=1` 后渲染结果不变——与 T4c2 的设计判断一致：阴影图只看深度、与绘制序无关）；
 `AlphaTestShadow` 契约 rc=0（四个子契约全绿）；门绿。
 
@@ -1596,7 +1597,7 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
 
 > **判据前置 ✅ 已完成**：`ShadowMap` / `CascadeShadowMap` 已按 CV_/GC_/PG_ 同一打法补上帧摘要自检
 > （`SM_SELFCHECK` / `CSM_SELFCHECK`，第 8 帧色彩靶回读；退出码即契约）。实跑记录：
-> ShadowMap **`0xA8A369516CB04571`**（1280×720）、Cascade **`0x1CDAADEBF18B7CE4`**（1600×900）。
+> ShadowMap **`0xA8A369516CB04571`**（1280×720）、Cascade **`0x1CDAADEBF18B7CE4`**（1600×900）。〔2026-10-11：ShadowMap 台架已删除（旧 shadow-map 直采示例，CSM 路线取代；如需退化为单张阴影图，把 CascadeShadowMap.cpp 的 `cfg.cascade_count` 设 1 即可）——本行基线仅适用于删除前〕
 > **必须从第 0 帧起冻结动画**（ShadowMap 网格自旋 + **光源环绕**；Cascade 时长驱动轨道），
 > 否则摘要随时序漂移（实测两次不同）；ShadowMap 另给 `SM_FREEZE=0` 专供敏感性验证。
 > 敏感性已证：`SM_FREEZE=0` 与 `CSM_AUTOWALK=1` 均使摘要变 + rc=1。

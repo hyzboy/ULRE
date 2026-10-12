@@ -91,12 +91,23 @@ bool TextureManager::CopyBufferToImage(Texture *tex,VkBuffer buf,const VkBufferI
 
 bool TextureManager::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
 {
-    if(!cmd_bufs||count<=0)
+    if(!cmd_bufs||count<=0||!texture_queue)
         return(false);
 
-    texture_queue->Submit(cmd_bufs,count,nullptr,0,nullptr,0);
+    if(!texture_queue->Submit(cmd_bufs,count,nullptr,0,nullptr,0))
+    {
+        GLogError("[TextureManager] command buffer submission failed count=%u first_cmd=%p",
+                  count,(void*)cmd_bufs[0]);
+        return false;
+    }
 //    texture_queue->WaitQueue();
-    texture_queue->WaitLastSubmitFence();
+    if(!texture_queue->WaitLastSubmitFence(true,UINT64_MAX)
+       &&!texture_queue->WaitQueue())
+    {
+        GLogError("[TextureManager] command buffer completion wait failed count=%u first_cmd=%p",
+                  count,(void*)cmd_bufs[0]);
+        return false;
+    }
 
     return(true);
 }

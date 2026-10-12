@@ -38,7 +38,7 @@
 | 1 | `MeshDrawParams` 行 = **128B**（头 9×4B + 4B 对齐填充 + 11×uint64），改字段只改 X 列表 `HGL_MESH_DRAW_PARAMS_FIELD_LIST` | `inc/hgl/graph/ShaderBufferSources.h`（`MeshDrawParamsLayoutValid` + `static_assert`） |
 | 2 | GLSL 侧 `MeshDrawParamsHeadData` 是**手写镜像**（不由 X 列表生成）⇒ 加头字段必须同步 `_pad[92] → _pad[88]` | `ShaderLibrary/ecs/entity_gpu_cull.glsl` |
 | 3 | 门 `E.mesh-draw-params-head-parity` 解析 X 列表**头字段**并与镜像逐字段比 + 断言步长 128 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` |
-| 4 | 门钉死 GLSL 模块总数：`file_count != 71` / `expected_count = 71`（两处 + 诊断串）⇒ 新增 **`.glsl`** 模块必须三处 +1 | 同上 |
+| 4 | 门钉死 GLSL 模块总数：`file_count != 70` / `expected 70 file modules`（两处 + 诊断串）⇒ 新增 **`.glsl`** 模块必须三处 +1〔2026-10-11：原值 71 —— 删除 `material/shadow_receiver_source.glsl`（ShadowMap 示例退场）后同步为 70；口径不变〕 | 同上 |
 | 5 | `.glsl.tmpl` **不在**门扫描范围（只认 `.glsl`）⇒ 新模板不占模块数 | `src/ShaderGen/glsl_module/ShaderCodeModuleRegistry.cpp:19` |
 | 6 | 顶点数据读取唯一接口 = `#define VertexIndexID (MeshVertexIndex)` + `LoadVertexData()`；mesh shader 无 `gl_VertexIndex` | `src/ShaderGen/meshgen/MeshShaderVertexAdapter.h` + `ShaderLibrary/vertex/s1_*.glsl` |
 | 7 | mesh 实例号 = `draw_params.first_instance + gl_WorkGroupID.y` | `MeshShaderHeaderGen.h`（`EmitGlInstanceIndexMacro`） |

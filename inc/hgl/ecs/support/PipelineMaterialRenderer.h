@@ -39,9 +39,6 @@ namespace hgl::ecs
 {
     struct MaterialBatch;
 
-    // mesh shader 组数计算（与 MeshTemplateEmitter 的 dispatch 约定一致）：
-    // Lines（LineQuad）每线程 1 线段 = 2 顶点 → 线段数 = total/2，每组处理 64 线段；
-    // 其它（VertexPassthrough）跨步协作：64 线程处理 192 顶点（64 三角形）
     /// 本批 dispatch 档的**组大小**（唯一真源）：线（LineQuad）1 线程 1 段 ⇒ 64 段/组；
     /// 其余（VertexPassthrough）跨步协作 ⇒ 192 顶点/组。**GPU gather 侧不吃硬编码**：
     /// 该值经 `GPUCullSystem::SetBatchLayout` 下发进批信息行（`BatchInfoRow.group_size`）。
@@ -49,12 +46,6 @@ namespace hgl::ecs
     {
         return is_lines ? graph::mtl::kMeshLineQuadMaxInvocations
                         : graph::mtl::kMeshVertexPassthroughMaxVertices;
-    }
-
-    inline uint32_t CalcMeshGroupCount(const bool is_lines, const uint32_t total_vertices)
-    {
-        const uint32_t process_count = is_lines ? (total_vertices >> 1u) : total_vertices;
-        return (process_count + MeshDispatchGroupSize(is_lines) - 1u) / MeshDispatchGroupSize(is_lines);
     }
 
 
@@ -76,6 +67,7 @@ namespace hgl::ecs
         bool material_is_mesh = false;                      ///<材质是否含 mesh stage（间接 flush 分派）
         const MaterialBatch *cur_owner_batch = nullptr;     ///<当前材质批（间接 flush 取 icb_mesh_tasks）
         uint32_t cur_pass_index = RenderPassSlot::Main;     ///<T4c3c：当前 render pass（切片按 pass 取）
+        bool engaged_logged_ = false;                       ///<批 1.3 C5：一次性「间接 flush 已启用」日志闩（每实例，非进程级）
 
         /**
          * 处理间接渲染（mesh：一条 vkCmdDrawMeshTasksIndirectEXT multi-draw）

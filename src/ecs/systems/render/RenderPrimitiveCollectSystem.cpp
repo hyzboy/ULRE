@@ -251,12 +251,6 @@ namespace hgl::ecs
             return true;
         }
 
-        inline graph::GlobalSSBOType ResolveMaterialSSBORequirementType(
-            const graph::mtl::ShaderResourceSlot &req) noexcept
-        {
-            return req.global_ssbo_type;
-        }
-
         // ── A7b：材质缺失 ⇒ 回退（错误）材质 ────────────────────────────
         // 用户定稿语义：「有几何但无材质来源」**不是剔除条件**，而是**材质错误** ——
         // 必须用保底材质渲染出来，并由**根颜色**标注错误种类。
@@ -606,28 +600,6 @@ namespace hgl::ecs
                 }
             }
 
-            for (const auto &req :
-                 material_program->GetShaderResourceSchema().resources)
-            {
-                if (req.semantic
-                        != graph::mtl::DescriptorSemantic::MaterialPrivateData)
-                    continue;
-
-                const auto &binding = recipe.material_ssbo_binding;
-                if (!binding.IsValid()
-                 || binding.ssbo_type
-                        != ResolveMaterialSSBORequirementType(req))
-                {
-                    GLogError(
-                        "[MaterialBinding] Material data binding missing or invalid owner=%s descriptor=%s type=%s",
-                        owner_name ? owner_name : "<null>",
-                        req.name.empty() ? "<unnamed>" : req.name.c_str(),
-                        graph::GetGlobalSSBOTypeName(
-                            ResolveMaterialSSBORequirementType(req)));
-                    return false;
-                }
-            }
-
             return true;
         }
 
@@ -742,9 +714,7 @@ namespace hgl::ecs
             {
                 runtime_table->RetireRowTextureConfiguration(*row);
                 row->data_index_row = uint32_t(-1);
-                row->material_row_cpu = nullptr;
                 row->material_row_gpu = 0;
-                row->material_texture_row_cpu = nullptr;
                 row->material_texture_row_gpu = 0;
                 row->material_texture_zero_row_gpu = 0;
                 row->material_texture_configuration_hash = 0;
@@ -1207,23 +1177,6 @@ namespace hgl::ecs
             row = nullptr;
         }
 
-        if (auto rdbs = world->GetSystem<RenderSceneUBOSystem>())
-        {
-            for (const auto &req : resolved_program->GetShaderResourceSchema().resources)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialPrivateData)
-                    continue;
-
-                const graph::GlobalSSBOType global_ssbo_type =
-                    ResolveMaterialSSBORequirementType(req);
-                const uint32_t stride = graph::GetGlobalSSBOTypeStructStride(global_ssbo_type);
-                if (stride == 0)
-                    continue;
-
-                rdbs->RegisterMaterialStructLayout(global_ssbo_type, req.ssbo_id, stride);
-            }
-        }
-
         // A3：登记/复用该键的变体记录并落 program（记录 program 只在解析路径写）。
         // 变体键 = (build context, **recipe 身份**)：同 build context 下**不同材质必须
         // 落不同记录**，否则后解析者的 program 会覆盖先解析者（键少一维的 bug）。
@@ -1380,8 +1333,7 @@ namespace hgl::ecs
             GetForwardProgram(GetVariantTable(world), row);
 
         if (!material_program
-         || !graph::mtl::MaterialRequiresRecipeRuntimeRows(
-                material_program->GetShaderResourceSchema()))
+         || !material_program->RequiresRecipeRuntimeRows())
         {
             row->data_index_row = 0;
             slot.runtime_dirty = false;
@@ -1404,31 +1356,8 @@ namespace hgl::ecs
         }
 
         if (getenv("ULRE_ARENA_DEBUG"))
-            GLogInfo("[ArenaTrace] materialize entry: material_binding_valid=%d schema_reqs=%u",
-                     material_binding_recipe.material_ssbo_binding.IsValid() ? 1 : 0,
-                     (uint32_t)material_program->GetShaderResourceSchema().resources.size());
-
-        // Keep the schema-to-recipe readiness check. The recipe binding below is
-        // the single source for the BDA row address and active data ID.
-        for (const auto &req : material_program->GetShaderResourceSchema().resources)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialPrivateData)
-                continue;
-
-            const auto &recipe_binding =
-                material_binding_recipe.material_ssbo_binding;
-            if (!recipe_binding.IsValid()
-             || recipe_binding.ssbo_type
-                    != ResolveMaterialSSBORequirementType(req))
-            {
-                GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s type=%s",
-                            GetOwnerName(primitive_comp),
-                            req.name.empty() ? "<unnamed>" : req.name.c_str(),
-                            graph::GetGlobalSSBOTypeName(
-                                ResolveMaterialSSBORequirementType(req)));
-                return false;
-            }
-        }
+            GLogInfo("[ArenaTrace] materialize entry: material_binding_valid=%d",
+                     material_binding_recipe.material_ssbo_binding.IsValid() ? 1 : 0);
 
         auto rdbs = world->GetSystem<RenderSceneUBOSystem>();
         if (!rdbs)
@@ -1451,17 +1380,15 @@ namespace hgl::ecs
             // data_index is the active row ID in this type's shared material
             // buffer; translate it to the CPU/GPU address used by the current ABI.
             {
-                static bool arena_trace_done = false;
-                if (getenv("ULRE_ARENA_DEBUG") && !arena_trace_done)
+                if (getenv("ULRE_ARENA_DEBUG") && !arena_trace_done_)   // 批 1.3 C5：每实例闩
                 {
-                    arena_trace_done = true;
+                    arena_trace_done_ = true;
                     GLogInfo("[ArenaTrace] materialize: ssbo_id=%u data_index=%u assets=%u",
                              asset_binding.ssbo_id,
                              asset_binding.data_index,
                              1u);
                 }
 
-                row->material_row_cpu = nullptr;
                 row->material_row_gpu     = 0;
 
                 auto *graphics_context = world->GetGraphicsContext();
@@ -1518,12 +1445,13 @@ namespace hgl::ecs
 
                 const uint64_t row_offset =
                     uint64_t(asset_binding.data_index) * material_buffer.row_bytes;
-                row->material_row_cpu = material_buffer.cpu_base
-                    ? static_cast<uint8_t *>(material_buffer.cpu_base) + row_offset
-                    : nullptr;
                 row->material_row_gpu = material_buffer.gpu_base + row_offset;
 
-                if (!arena_trace_done)
+                // 批 1.3 C5：同上，闩改每实例（原 static 是进程级）。
+                // 注意：本处 trace 与上面的 materialize trace **共用同一个闩** ⇒ 上面那次
+                // 触发之后这里恒为假（该行日志实际从未输出）——行为保持原样，仅随闩改名，
+                // 是否拆成两个闩留给后续拍板。
+                if (!arena_trace_done_)
                 {
                     GLogInfo(
                         "[ArenaTrace] translated: gpu=0x%llx (base=%llu row_bytes=%u domain=material)",
@@ -1747,8 +1675,6 @@ namespace hgl::ecs
                     retire_epoch);
 
             row->material_texture_configuration = new_allocation;
-            row->material_texture_row_cpu =
-                new_allocation.cpu_row;
             row->material_texture_row_gpu =
                 new_allocation.gpu_row;
             row->material_texture_zero_row_gpu =
@@ -1806,7 +1732,6 @@ namespace hgl::ecs
                     row->material_texture_configuration,
                     retire_epoch);
             row->material_texture_configuration = {};
-            row->material_texture_row_cpu = nullptr;
             row->material_texture_row_gpu = 0;
             row->material_texture_zero_row_gpu = 0;
         }
@@ -1976,8 +1901,7 @@ namespace hgl::ecs
 
             const bool runtime_rows =
                 forward_program
-             && graph::mtl::MaterialRequiresRecipeRuntimeRows(
-                    forward_program->GetShaderResourceSchema());
+             && forward_program->RequiresRecipeRuntimeRows();
 
             // A primitive whose program is not yet resolved may still resolve
             // to a runtime-rows program this frame, so it can trigger direct
@@ -2171,8 +2095,7 @@ namespace hgl::ecs
 
                     const bool shadow_needs_rows =
                         shadow_pass_program
-                     && graph::mtl::MaterialRequiresRecipeRuntimeRows(
-                            shadow_pass_program->GetShaderResourceSchema());
+                     && shadow_pass_program->RequiresRecipeRuntimeRows();
 
                     if (shadow_needs_rows && !material_slot.valid)
                     {

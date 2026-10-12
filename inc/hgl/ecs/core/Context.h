@@ -327,6 +327,9 @@ namespace hgl
 
             /// Resource naming prefix for hierarchical tracking (e.g., "RenderToTexture:OffscreenRT")
             /// Used by systems when creating GPU resources for better leak tracking
+            /// ⚠ 2026-10-10（审计 §1.1）：**setter 是真 API**（`SceneGraph/module/OffscreenWorld` + 7 个示例在用），
+            /// 只读的 `GetResourceNamePrefix()` 才是零调用者（已删）—— 该成员目前「只写不读」，即
+            /// 分层泄漏追踪的读取端尚未实现（审计原判）。
             std::string resource_name_prefix;
 
         private:
@@ -377,7 +380,7 @@ namespace hgl
 
             void RenderSwapchainNextImage(float deltaTime);
             bool AcquireSwapchainImage(float deltaTime = 0.0f);
-            void SyncRenderTargetViewport();
+            void SyncRenderTargetViewportToExtent();
             void RenderBufferCommit(float deltaTime);
             void RenderBufferUpload(float deltaTime);
             void RenderFrameSync(float deltaTime);
@@ -509,7 +512,7 @@ namespace hgl
 
             /// 本 pass 活跃相机的**槽号**（世界内；PushConstants 的 `camera_row` 由它算出行号）。
             /// 只由本世界的 pass 设置路径（`RenderTo`）写 —— 不做公开 setter，避免出现第二个写者。
-            uint32_t GetActiveCameraID() const { return active_camera_id; }
+            // 2026-10-10（审计 §1.1）：零调用者的 `GetActiveCameraID()` 已删除（成员 `active_camera_id` 照旧）。
 
             /// 当前相机的 CameraInfo 行号 = 槽号 * HGL_FRAME_SLOT_TOTAL + 本帧数据槽。
             /// 着色器端 `pc_root.camera_row` 收到的就是这个行号（scene_ubo.glsl 的 cameras[] 下标），
@@ -518,8 +521,15 @@ namespace hgl
 
             /// **本 pass 生效相机**的 CameraInfo（组件自己的那份，没有世界共享载体）。
             /// 离屏 pass 期间 = `RenderTo(req.camera)` 的相机（如 CSM 光相机），主帧 = 本世界主相机。
-            /// 剔除 / gizmo / Line 视锥 / shadow origin 统一读这里，不要各自缓存指针。
+            /// **认领版**（会认领 0 号槽 / 必要时生成常驻 fallback）：
+            /// 剔除 / Line 视锥 / shadow origin 等**渲染侧**统一读这里，不要各自缓存指针。
             const graph::CameraInfo* GetActiveCameraInfo();
+
+            /// **纯读版**（§3-⑥ 2026-10-11）：不认领 0 号槽、不生成 fallback、不改世界状态；
+            /// 世界当前解析不到相机 ⇒ nullptr。
+            /// **只读意图（gizmo 朝向 / 拾取射线 / 诊断）一律走这里** —— 走认领版会让"读一次"变成
+            /// "改世界"（空世界凭空多出常驻 fallback 相机并占 0 号槽；有相机时会把某个相机升格）。
+            const graph::CameraInfo* ResolveActiveCameraInfo() const;
 
             /// 本世界**生效**的 env profile：显式设置优先，否则取本世界 RT 的 env_profile，再退回
             /// 内置 default。世界表里的 `addr_ambient_env` / `addr_shadow` 按它解析。
@@ -635,8 +645,8 @@ namespace hgl
 
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"
+            /// ⚠ 读取端（`GetResourceNamePrefix()`）零调用者，2026-10-10 审计 §1.1 已删；写入端保留。
             void SetResourceNamePrefix(const std::string& prefix) { resource_name_prefix = prefix; }
-            const std::string& GetResourceNamePrefix() const { return resource_name_prefix; }
 
             // ── T2-c：组件挂载 / 卸载 / 收集（世界侧唯一入口；实体只持行号）──
             //   `GetTypedPool` / `EnsureTypedPool` / `CreateComponent` / `GetComponentByRow` /
@@ -647,8 +657,10 @@ namespace hgl
             void DestroyComponent(ComponentType type, uint32_t row);
 
             /// 登记/迁移/注销一个变换（按 TransformID；由作者 API 与过渡期的组件外壳调用）
-            void RegisterTransform(TransformID id, bool isMovable);
-            void MigrateTransform(TransformID id, bool toMovable);
+            /// 登记：**返回是否成功**（段预算用尽 ⇒ false，调用方必须回收已分配的行 —— 批 1.1 B3）
+            bool RegisterTransform(TransformID id, bool isMovable);
+            /// 换段：**先取目标槽、成功后才交还旧槽**（失败即原状返回 false，原子拒绝 —— 批 1.1 B3）
+            bool MigrateTransform(TransformID id, bool toMovable);
             void UnregisterTransform(TransformID id);
 
             /// 槽位分配（B1b）：段预算内取一个**稳定槽位**（优先复用空洞）；预算用尽返回 INVALID_TRANSFORM_SLOT
@@ -692,10 +704,9 @@ namespace hgl
             /// A5b：阴影组件正名为 ShadowProxy，并成为**唯一**阴影组件；
             /// 未挂载时的缺省约定（可投射/可接收/距离 0/倍率 1.0）见
             /// components/ShadowProxy.h 的自由函数（唯一出处）。
-            ShadowProxy* GetShadowProxy(EntityID owner);
-            const ShadowProxy* GetShadowProxy(EntityID owner) const;
-            ShadowProxy* GetShadowProxy(Entity* owner);
-            const ShadowProxy* GetShadowProxy(const Entity* owner) const;
+            // 2026-10-10（审计 §1.1）：四个 `ECSContext::GetShadowProxy` 重载全仓零调用者 ⇒ 删除。
+            // 取影子代理走组件侧自由函数 `hgl::ecs::GetShadowProxy(const Entity*)`（`components/ShadowProxy.h`）——
+            // 它被 `CanCastShadow` / `GetShadowMaxDistance` / `CanReceiveShadow` / `GetShadowBiasMultiplier` 在用。
 
             /// 让某实体已解析的运行期管线缓存失效（几何/变体变化时调用）。
             /// A5b：管线缓存不再挂在渲染组件上，改由每实例 slot 承载 ⇒ 本入口清 slot 字段。
@@ -743,7 +754,8 @@ namespace hgl
             // ── T6b/P4：影子数据（`ShadowInfo`，世界私有）──────────────────────────
             /// 编辑本世界的影子数据（CPU 权威；GPU 侧由 `CommitShadowInfo` 在提交点写本帧槽）
             graph::ShadowInfo       *EditShadowInfo()       { return &shadow_info; }
-            const graph::ShadowInfo *GetShadowInfo()  const { return &shadow_info; }
+            // 2026-10-10（审计 §1.1）：只读 `GetShadowInfo()` 已删除 —— 它唯一的调用者是同样零外部调用者的
+            // `MainLightShadowSystem::GetShadowInfo()`（一并删除）；读影子数据请经 `EditShadowInfo()`。
 
             void SetShadowInfo(const graph::ShadowInfo &info) { shadow_info = info; }
 
@@ -981,13 +993,6 @@ namespace hgl
                     entity_manager->DestroyEntity(id);
             }
 
-            /// Get all alive entity pointers (const version)
-            void GetAllEntities(std::vector<const Entity*>& out_entities) const
-            {
-                if (entity_manager)
-                    entity_manager->GetAllEntityPointers(out_entities);
-            }
-
             /// Ensure CameraSystem exists in this context.
             /// If created after context activation, it is initialized immediately.
             std::shared_ptr<CameraSystem> EnsureCameraSystem();
@@ -1145,12 +1150,21 @@ namespace hgl
         template<typename T, typename... Args>
         T *Entity::AddComponent(Args &&...args)
         {
+            // §3-②（2026-10-11）：相机是**世界级资源**，实体只是宿主 ⇒ 实体级挂载**编译期禁死**。
+            // 组件级挂载曾是"第二套相机创建入口"（与世界上级访问器成双入口）。
+            static_assert(!std::is_same_v<T, CameraComponent>,
+                          "相机不能经 Entity::AddComponent 挂载：走世界级入口 ECSContext::GetOrCreateCamera");
+
             return context ? context->CreateComponent<T>(this, std::forward<Args>(args)...) : nullptr;
         }
 
         template<typename T>
         T *Entity::GetComponent() const
         {
+            // §3-②（2026-10-11）：同上，实体级**读取**相机也编译期禁死（曾是第二个读取入口 ⇒ 双真值）。
+            static_assert(!std::is_same_v<T, CameraComponent>,
+                          "相机不能经 Entity::GetComponent 读取：走世界级入口 ECSContext::GetCameraByEntity");
+
             return context ? context->GetComponentByRow<T>(GetComponentRow(ComponentTypeOf<T>::value)) : nullptr;
         }
 

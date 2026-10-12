@@ -44,7 +44,7 @@ namespace hgl::ecs
      * 为什么存在：设备级组件行（`graph::ssbo::MaterialDataRow`，16B）**只能放 POD**，
      * 而配方覆盖（`mtl::MaterialRecipe`）与具名纹理资源（`UnorderedMap<AnsiString, …>`）
      * 是重类型 ⇒ 按「行内只留 generation + side_row，重类型落旁表**按行号索引**」的规则
-     * 落在这里：**键 = 材质组件行行号**（`MaterialData::GetMaterialRowID()`）。
+     * 落在这里：**键 = 材质组件行行号**（`MaterialData::material_row_id`，设备级组件行）。
      *
      * 归属：**世界级**（`ECSContext` 持有，与 MaterialVariantTable / MaterialRuntimeTable 同域）——
      * 行的行号是设备级（跨世界可解析），但重类型数据只被本世界的组件与渲染路径消费；
@@ -76,9 +76,6 @@ namespace hgl::ecs
 
         /// 摘除条目（组件分离时调用）；返回是否真的摘到
         bool Remove(uint32_t row_id);
-
-        /// 当前条目数（观测：测试/诊断用）
-        int GetLiveEntryCount() const { return entries.GetCount(); }
 
     private:
 

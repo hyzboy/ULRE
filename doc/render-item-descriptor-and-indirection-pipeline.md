@@ -1,6 +1,10 @@
 # 全局图元描述符池与二级绘制索引管线设计规范
 
 > ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
+> ⚠ **历史口径补注（2026-10-10）**：文中「增强 `RenderItem::Compare`（相同材质与几何时按 `render_item_handle` 升序）」
+> 的排序方案**已无载体** —— `Compare` 于 2026-10-10 随审计 §1.1 删除（零调用者）；排序键的现行形态是
+> `RenderItem::draw_key`（`MeshDrawKey`，行派生 POD 键，见 `inc/hgl/ecs/core/RenderItem.h`）。
+
 # (Global RenderItem Descriptor Pool & Indirection Pipeline Architecture)
 
 > **文档版本**：v2.0 (2026-09)  
@@ -268,7 +272,7 @@ mat4   mesh_draw = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params_pool
 > **核心目标**：CPU 绘制提交全面切换为整数 Handle 模式，终结每帧组织重型数据。
 
 - **4.1 `PrimitiveBatchPipeline` 收集项轻量化与几何聚类排序** 【✅ 已完成】
-  - 增强 `RenderItem::Compare`，相同材质与几何数据时按 `render_item_handle` 升序排列，最大化形成连号区间的概率。
+  - （⚠ **2026-10-10 订正**：`RenderItem::Compare` 与 `item->index` **全仓已不存在** —— 随 T4c4「删 CPU 绘制链」消失，本条"增强"已无载体；连号折叠现由 `DrawItemCompaction.h` 的 `CompactRenderItemHandles` 承担。）历史原文：增强 `RenderItem::Compare`，相同材质与几何数据时按 `render_item_handle` 升序排列，最大化形成连号区间的概率。
   - 在 `PrimitiveBatchPipeline::BuildBatches` 中针对 4-ID 几何项提取 `RenderItemHandle` 序列。
 - **4.2 实现连号区间折叠算法 (Run-Length Compaction)** 【✅ 已完成】
   - 在 `DrawItemCompaction.h/.cpp` 中实现无 STL 的高效折叠算法 `CompactRenderItemHandles`：

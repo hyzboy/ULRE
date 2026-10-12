@@ -214,9 +214,12 @@ namespace hgl
                 if constexpr (requires(T &r) { r.OnDetach(); })
                     row->OnDetach();
 
-                row->~T();
-
+                // 2026-10-11（§1 S2）：**先摘宿主再析构**。原顺序在 `row->~T()` **之后**写
+                // `SetOwner(nullptr)` —— 那是对**生命周期已结束**的对象写其基类子对象（UB；
+                // 只因行头恰好是 POD、内存未归还才"没炸"）。顺序反过来才是正确语义。
                 static_cast<ComponentRow *>(row)->SetOwner(nullptr);
+
+                row->~T();
             }
 
         public:
@@ -231,7 +234,7 @@ namespace hgl
             ComponentType GetComponentType() const override { return ComponentTypeOf<T>::value; }
             uint32_t      GetActiveCount()   const override { return ledger.GetActiveCount(); }
 
-            /// 句柄 → 行指针（`0` / 越界 ⇒ nullptr）
+            /// 句柄 → 行指针（`0` / 越界 / **已释放** ⇒ nullptr）
             T *Row(uint32_t handle) const
             {
                 if (handle == 0)
@@ -240,6 +243,13 @@ namespace hgl
                 const uint32_t index = handle - 1;
 
                 if (index >= ledger.GetNextIndex())
+                    return nullptr;
+
+                // 2026-10-11（§1 S2）：必须验活跃。只判上界时，`DestroyRow` 之后这里仍返回
+                // 指向**已析构行**的非空指针 —— 与 `ComponentPoolBase::DestroyRow` 的
+                // "已释放 ⇒ no-op"、`ComponentRow::GetOwner` 一族的"已释放 ⇒ nullptr"承诺相悖，
+                // 也与 `SharedComponentPool<T>::Row`（reset 后自然是 nullptr）语义不一致。
+                if (!ledger.IsActive(index))
                     return nullptr;
 
                 return RowAt(index);

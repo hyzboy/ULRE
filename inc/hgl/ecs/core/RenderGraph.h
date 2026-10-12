@@ -32,44 +32,29 @@ namespace hgl
             struct Pass
             {
                 /// Starting ExecutionPhase for this pass
+                ///
+                /// ⚠ **语义定案（2026-10-11，§3-③）**：`ECSContext::ExecuteRenderGraphPasses`
+                /// 只从 `max(startPhase, ExecutionPhase::RenderDrawSubmit)` 起跑本 pass 的相位更新。
+                /// 这**不是**"声明在 `RenderCollect` 起点的更新被忽略/漏执行"，而是**避免重跑**：
+                /// 帧首的 `BeginManagedRenderFrame`（`ContextRender.cpp:838-862`）已按序跑过
+                /// `SubmitTransformUpdates → PublishCameraRows → RenderCollect → SyncWorldAddresses
+                ///  → RenderBatch → RenderBufferCommit → RenderBufferUpload → RenderFrameSync`。
+                /// 契约 = 「pass 相位区间中 **< `RenderDrawSubmit`** 的部分由帧首前置段执行」。
                 ExecutionPhase startPhase = static_cast<ExecutionPhase>(0);
 
                 /// Ending ExecutionPhase for this pass (inclusive)
                 ExecutionPhase endPhase = static_cast<ExecutionPhase>(0);
 
-                /// Whether this pass should execute
-                bool enabled = true;
-
-                /// Whether this pass should execute Update() over the phase range
-                bool runUpdate = true;
-
-                /// Whether this pass should submit transform data before Render()
-                bool submitTransforms = true;
-
-                /// Whether this pass should execute Render() over the phase range
-                bool runRender = true;
-
-                /// Optional setup callback invoked before running this pass
-                /// Useful for clearing colors, setting stencil state, etc.
-                /// Signature: void(ECSContext& context, const Pass& pass)
-                std::function<void(ECSContext&, const Pass&)> onBeforePass = nullptr;
-
-                /// Optional cleanup callback invoked after running this pass
-                std::function<void(ECSContext&, const Pass&)> onAfterPass = nullptr;
-
                 Pass() = default;
 
-                Pass(ExecutionPhase start, ExecutionPhase end,
-                                         bool en = true,
-                                         bool update = true,
-                                         bool submit = true,
-                                         bool render = true)
-                                        : startPhase(start),
-                                            endPhase(end),
-                                            enabled(en),
-                                            runUpdate(update),
-                                            submitTransforms(submit),
-                                            runRender(render) {}
+                /// 只剩 (起点相位, 终点相位)。
+                /// 原先的 `enabled` / `runUpdate` / `submitTransforms` / `runRender` /
+                /// `onBeforePass` / `onAfterPass` 六个字段**从无赋值点**（唯一构造点传全 true/空，
+                /// 全仓无任何 `pass.X = ...`）⇒ 2026-10-10 随 §1.1 删除；执行路径同时改回无条件调用
+                /// （与恒 true/空的旧行为逐字等价）。
+                Pass(ExecutionPhase start, ExecutionPhase end)
+                    : startPhase(start),
+                      endPhase(end) {}
             };
 
             /// Ordered sequence of render passes
