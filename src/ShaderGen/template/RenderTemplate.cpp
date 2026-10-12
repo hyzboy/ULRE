@@ -26,8 +26,10 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::SurfaceProvider }
         };
 
-        // Composer 对 ForwardLit 系列一律要求 MaterialSource 与 NTB 非空，
-        // 因此这两个 slot 必须存在——此前缺失会让该模板永远校验失败。
+        // ForwardLit 的 defines 恒为 "HGL_USE_MATERIAL_SOURCE_PROVIDER 1" /
+        // "HGL_USE_NTB_PROVIDER 1"（FragmentTemplateComposer::BuildFragmentDefines 按模板
+        // 分支发射），故表中这两个槽必须保持 required=true：置 false 会让定义里承诺
+        // 恒为 1 的宏指向缺失模块。必需性判定的唯一执行点 = BuildAllSlotIncludeText。
         constexpr RenderTemplateSlot ForwardLitUnshadowedSlots[] =
         {
             { ShaderModuleSlotRole::SkyProvider },
