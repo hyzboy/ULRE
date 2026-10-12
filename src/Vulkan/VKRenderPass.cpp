@@ -149,14 +149,14 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
     // recipe 必须已完成 NormalizeRecipe（组件/acquire 边界负责），此处直接从
     // 规范化 overrides 重建渲染状态，不再反查 MaterialDefinition——Vulkan 层
     // 由此不依赖材质注册表。
-    if(!mtl::IsRecipeNormalized(recipe))
+    mtl::ResolvedMaterialRenderState render_state{};
+    if(!mtl::TryGetNormalizedRecipeRenderState(recipe, render_state))
     {
+        // 唯一取用口（S4b/D4）：未归一化 ⇒ 明确失败，不再有"静默给默认值"的第二条路。
         GLogError(u8"[RenderPass::CreatePipeline] recipe not normalized (call NormalizeRecipe at the authoring/acquire boundary): '%s'",
                   recipe.mtl_def_id.c_str());
         return nullptr;
     }
-    mtl::ResolvedMaterialRenderState render_state =
-        mtl::GetNormalizedRecipeRenderState(recipe);
 
     // Lines 图元（LineQuad mesh shader 输出 quad 三角形）：绕序不定——强制双面绘制
     //（cull off）
