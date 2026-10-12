@@ -1860,6 +1860,11 @@ int main(int argc, char** argv)
               "解析文件里不得再有本地单向解析器", true },
             { "ShaderCodeModuleFile.cpp", OS_TEXT("src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp"),
               "ParseKind(", "ShaderCodeModuleKind 的名字表已归位到枚举定义处（ShaderCodeModule.h，2026-10-11 S3b-2）", true },
+            { "FragmentTemplateComposer.cpp", OS_TEXT("src/ShaderGen/template/FragmentTemplateComposer.cpp"),
+              "output_policy_inc.empty()", "必需槽强制已收归模板表（BuildAllSlotIncludeText，2026-10-12 S4a）："
+              "Composer 里不得再出现按模板 ID 硬编码的必需槽判断", true },
+            { "FragmentTemplateComposer.cpp", OS_TEXT("src/ShaderGen/template/FragmentTemplateComposer.cpp"),
+              "sky_provider_inc.empty()", "同上（S4a）：Sky 的必需集合也不得在 Composer 里硬编码", true },
             { "Vulkan/CMakeLists.txt", OS_TEXT("src/Vulkan/CMakeLists.txt"),
               "VKString.cpp",
               "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"
