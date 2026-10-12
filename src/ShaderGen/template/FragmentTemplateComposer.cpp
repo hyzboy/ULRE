@@ -489,15 +489,10 @@ namespace hgl::graph::mtl
                     input, ShaderModuleSlotRole::SurfaceProvider, surface_inc))
                 surface_inc.clear();
 
-            // 必需 slot 缺失 → 失败（ForwardUnlit / Sky 的 output/sky/surface 为必需）。
-            if (id == RenderTemplateID::ForwardUnlit
-             && (output_policy_inc.empty()
-              || material_source_inc.empty()
-              || surface_inc.empty()))
-                return false;
-            if (id == RenderTemplateID::Sky
-             && (sky_provider_inc.empty() || surface_inc.empty()))
-                return false;
+            // 必需 slot 的强制**只有一处**：上面那次 BuildAllSlotIncludeText —— 它按模板表
+            // （RenderTemplate.cpp 的槽表）的 required 判定，且在本函数里**先于**此处执行。
+            // 此处曾另按模板 ID 硬编码一份必需集合（同一事实的第二处表达，且与表中
+            // required=false 的槽语义冲突），已整删（S4a，见评审档 §19.1）。
 
             // [SkyRoute 诊断] Sky 模板实际注入的 surface 模块（保留 ComposeSky 日志）。
             if (id == RenderTemplateID::Sky && !surface_inc.empty())
