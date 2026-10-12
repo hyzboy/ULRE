@@ -2498,6 +2498,49 @@ namespace
                 "resolved render-state differences must affect pipeline identity");
         }
 
+        // S4b/D4：归一化取用口只剩 TryGet… —— 未归一化 recipe 必须被**拒绝**
+        // （旧口会静默拷结构体默认值 ⇒ 错值），归一化后与 ResolveMaterialRenderState(definition, recipe) 等价。
+        MaterialRecipe unnormalized{};
+        ResolvedMaterialRenderState from_recipe{};
+        if (TryGetNormalizedRecipeRenderState(unnormalized, from_recipe))
+        {
+            result.diagnostics.emplace_back(
+                "un-normalized recipe must be rejected by TryGetNormalizedRecipeRenderState");
+        }
+
+        MaterialRecipe normalized_recipe{};
+        normalized_recipe.mtl_def_id = "builtin/pure_color";
+        NormalizeRecipe(normalized_recipe);
+        if (!TryGetNormalizedRecipeRenderState(normalized_recipe, from_recipe))
+        {
+            result.diagnostics.emplace_back(
+                "normalized recipe must be readable by TryGetNormalizedRecipeRenderState");
+        }
+        else
+        {
+            MaterialDefinition pure_color{};
+            if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
+            {
+                result.diagnostics.emplace_back(
+                    "builtin/pure_color definition is missing");
+            }
+            else
+            {
+                const ResolvedMaterialRenderState expected =
+                    ResolveMaterialRenderState(pure_color, normalized_recipe);
+                if (from_recipe.double_sided != expected.double_sided
+                 || from_recipe.alpha_test != expected.alpha_test
+                 || from_recipe.alpha_cutoff != expected.alpha_cutoff
+                 || from_recipe.dither != expected.dither
+                 || HashResolvedMaterialRenderState(from_recipe)
+                        != HashResolvedMaterialRenderState(expected))
+                {
+                    result.diagnostics.emplace_back(
+                        "normalized-recipe accessor must equal ResolveMaterialRenderState(definition, recipe)");
+                }
+            }
+        }
+
         result.passed = result.diagnostics.empty();
         return result;
     }
