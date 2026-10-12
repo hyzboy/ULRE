@@ -2448,17 +2448,17 @@ namespace
         result.name = "Y1.resolved-material-render-state";
 
         MaterialDefinition definition{};
-        definition.default_render_state.double_sided = true;
         definition.default_render_state.alpha_test = true;
         definition.default_render_state.alpha_cutoff = 0.35f;
         definition.default_render_state.pipeline_config =
             MakeSolid3DConfig();
         definition.default_render_state.pipeline_config.depth_write = false;
+        definition.default_render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
 
         MaterialRecipe defaults{};
         const ResolvedMaterialRenderState default_state =
             ResolveMaterialRenderState(definition, defaults);
-        if (!default_state.double_sided
+        if (default_state.pipeline_config.cull_mode != VK_CULL_MODE_NONE
          || !default_state.alpha_test
          || default_state.alpha_cutoff != 0.35f
          || default_state.pipeline_config.depth_write)
@@ -2468,8 +2468,6 @@ namespace
         }
 
         MaterialRecipe overrides{};
-        overrides.render_state_overrides.has_double_sided = true;
-        overrides.render_state_overrides.double_sided = false;
         overrides.render_state_overrides.has_alpha_test = true;
         overrides.render_state_overrides.alpha_test = false;
         overrides.render_state_overrides.has_alpha_cutoff = true;
@@ -2479,9 +2477,10 @@ namespace
         overrides.render_state_overrides.has_pipeline_config = true;
         overrides.render_state_overrides.pipeline_config =
             MakeAlpha3DConfig();
+        overrides.render_state_overrides.pipeline_config.cull_mode = VK_CULL_MODE_BACK_BIT;
         const ResolvedMaterialRenderState resolved =
             ResolveMaterialRenderState(definition, overrides);
-        if (resolved.double_sided
+        if (resolved.pipeline_config.cull_mode != VK_CULL_MODE_BACK_BIT
          || resolved.alpha_test
          || resolved.alpha_cutoff != 0.8f
          || !resolved.dither
@@ -2528,8 +2527,7 @@ namespace
             {
                 const ResolvedMaterialRenderState expected =
                     ResolveMaterialRenderState(pure_color, normalized_recipe);
-                if (from_recipe.double_sided != expected.double_sided
-                 || from_recipe.alpha_test != expected.alpha_test
+                if (from_recipe.alpha_test != expected.alpha_test
                  || from_recipe.alpha_cutoff != expected.alpha_cutoff
                  || from_recipe.dither != expected.dither
                  || HashResolvedMaterialRenderState(from_recipe)

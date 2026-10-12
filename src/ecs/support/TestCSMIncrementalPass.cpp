@@ -1868,6 +1868,15 @@ int main(int argc, char** argv)
             { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
               "ResolvedMaterialRenderState GetNormalizedRecipeRenderState(", "归一化取用口已收敛为 TryGetNormalizedRecipeRenderState(recipe, out_state)（S4b/D4，2026-10-12）："
               "不得再出现「未归一化也照拷默认值」的取用口", true },
+            { "PipelineConfig.h", OS_TEXT("inc/hgl/mtl/PipelineConfig.h"),
+              "double_sided", "剔面语义唯一表达 = MaterialPipelineConfig::cull_mode（S4b/D2，2026-10-12）："
+              "double_sided 全链已删，不得复活", true },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "double_sided", "同上（S4b/D2）：overrides / 取用口 / 哈希输入里都不得再有它", true },
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "double_sided", "同上（S4b/D2）：render_state 段不再解析该键（写入 ⇒ 未知键报错）", true },
+            { "VKRenderPass.cpp", OS_TEXT("src/Vulkan/VKRenderPass.cpp"),
+              "double_sided", "同上（S4b/D2）：管线创建侧不再有该值的 cull NONE 覆盖分支", true },
             { "Vulkan/CMakeLists.txt", OS_TEXT("src/Vulkan/CMakeLists.txt"),
               "VKString.cpp",
               "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"

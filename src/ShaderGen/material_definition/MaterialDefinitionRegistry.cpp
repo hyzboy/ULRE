@@ -306,8 +306,6 @@ void NormalizeRecipe(MaterialRecipe &recipe)
         ResolveMaterialRenderState(definition, recipe);
 
     // Write resolved values back to render_state_overrides as authoritative.
-    recipe.render_state_overrides.has_double_sided = true;
-    recipe.render_state_overrides.double_sided = resolved.double_sided;
     recipe.render_state_overrides.has_alpha_test = true;
     recipe.render_state_overrides.alpha_test = resolved.alpha_test;
     recipe.render_state_overrides.has_alpha_cutoff = true;

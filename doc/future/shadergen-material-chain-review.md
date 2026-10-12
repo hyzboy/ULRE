@@ -193,7 +193,7 @@ grep -n "MaterialMeshIndexTables" src/ShaderGen/compile/MaterialShaderEmitter.cp
 | **S1** | **A 层收敛**：`ValidateDefinitionCapabilitySubset` + `requires_runtime_data_rows` 保留为唯一两条；删 `BuildDescriptorsFromDefinition` / `DescriptorContract`（含 `AppendEntry` / `BuildEffective*` / `BuildResourceSchemaFromContract` / `GetDescriptorContractHash` / `HasDescriptorSemantic` / `input.descriptor_entries*`）与 `plan.descriptors` 字段 | 全仓 grep 上述符号 = 0；`GenericMaterialBuilder` Phase 3 只剩 manifest + 验证；门的 58 处描述符断言同批收敛（保留"必须为空"反证针：往 definition 声明一条描述符 ⇒ 编译失败） | 改动面含 `inc/hgl/mtl/*` 公共头 ⇒ 先 purge 依赖 TU 再全量重编；`MaterialShaderCompiler.cpp:301` 错误注释同批改 |
 | **S2** | **B 层整体删除**：`MaterialTextureSamplingOptions`（结构 + hash + `operator==`）+ `MaterialTextureDeclaration::sampling` + `MaterialDefinitionFile.cpp:493-710` 解析块 + `ParseTextureFilterMode/WrapMode/CompareOp`（**已核**：`MaterialTextureCompareOp` 仅出现在 `MaterialRecipe.h` 与 `MaterialDefinitionFile.cpp:466-473`，**没有**独立通路——真是源的 compare 走 `ShaderLibrary/sampler.toml:57` → `SamplerPreset.cpp:34` 的 `VkCompareOp`） | 15 份材质 TOML 无 `sampling` 键（已成立）；删后门用例同批收敛；`git grep -nw sampling` 只剩无关注释 | `channels` **不在**本批范围（活：3 份 TOML 授权 + 纹理通道宏消费者） |
 | **S3** | **C 层平行解析表收敛**：`ParseCompareOp` 合一份；filter/wrap 的名字↔值收敛到枚举定义处（T1 模式：`Get*Name` + `Parse*`）；补 `GLSLSamplerType`/`MaterialVertexProviderPolicy`/`ShaderCodeModuleKind`/`MeshShaderMode` 的注册表 | 每个枚举的 name→value 只有 1 处实现（`git grep -c` 计数）；`ToGLSLSamplerTypeName` 要么被用、要么删；门用例同步 | 与 T1/T2 既定口径一致，可独立成批 |
-| **S4** | **D 层去双真值**：D1（删硬编码必需槽，改读表 + 表里显式标 required）；D2（`double_sided` 与 `cull_mode` 二选一，另一条删或加一致性校验；TOML 侧两者 0 授权 ⇒ 可直接收敛）；D4（`GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删除该口）；F-4 死参数删除。**（F-4 已并入并在 `694ab2002` 完成 ⇒ 本批只剩 D1/D2/D4；施工单见 §19）** | 删 D1 后：把某模板槽设为 `required=false` 且不提供 ⇒ 不再被硬编码判死；D4 反证：传未归一化 recipe ⇒ 报错而非静默全零 | D2/D4 触及 recipe/normalize 语义，建议单独一批并附反证 |
+| **S4** | **D 层去双真值**：D1（删硬编码必需槽，改读表 + 表里显式标 required）；D2（`double_sided` 与 `cull_mode` 二选一，另一条删或加一致性校验；TOML 侧两者 0 授权 ⇒ 可直接收敛）；D4（`GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删除该口）；F-4 死参数删除。**〔2026-10-12 全部完成：F-4 并入并完成（`694ab2002`）、S4a=D1（§19.6）、S4b-D4（§19.7）、S4b-D2（§19.8）〕** | 删 D1 后：把某模板槽设为 `required=false` 且不提供 ⇒ 不再被硬编码判死；D4 反证：传未归一化 recipe ⇒ 报错而非静默全零 | D2/D4 触及 recipe/normalize 语义，建议单独一批并附反证 |
 | **S5** | **F 层逐符号删除**（F-1 五字段 / F-2 二十三个零调用函数 / F-3 类型与常量 / F-4 已并入 S4） | 每个符号：`git grep -nw <sym> -- src inc example` 归 0（注释与测试针同批改写为"禁复活"） | 与 §1.2/§1.3 那一轮的删除纪律完全同构；`ShaderArtifactSPVExtension` 处置前先核 `".spv"` 是否有别处硬写（若有 ⇒ 改为用常量而非删） | **〔2026-10-11 已完成：F-1 §12 / F-2 §13 / F-3 §14 / F-4 §15，见 §16 小结〕**
 | **S6** | **G 层顺序协议加守卫**：G1 sampler 顺序（加载时校验索引连续性/或改为显式 index 字段）；G2 slot 顺序（对 `SurfaceProvider` 早于 provider 的排列加断言）；G3/G4 至少加注释+哨兵（模板占位符位置校验、相位序哈希输入校验） | 反证：手工错排 sampler.toml / 调换 slot 顺序 ⇒ 加载或编译**报错**，而非静默产出错 GLSL | G1 影响已编译 shader 的宏索引 ⇒ 需与 SPV 缓存失效策略一起定 |
 | **S7** | **E 层特例收敛**（可选，按用户口径"真需要才留"）：E2 把剩余 mode 分支推进 `s_descriptors` 表；E3 抽共享常量；E4 shadow 合成器外置为 `.tmpl`；E5/E6 profile 表化 | E2：编排器内 `mode ==` 直比归 0；E4：`CompositionShadow` 走 `.tmpl` 后与其它模板同路径 | E1 的 CharQuad 特判若判定"领域固有"则保留（4 处已收敛到 `IsCharQuadMode` + 表行）；不要为消除而过度抽象 |
@@ -834,6 +834,13 @@ if (recipe.mtl_def_id.empty())
   `blend_src`/`blend_dst`/`transform` 五键/`provider_policy`/`normal_mode`/`requirements`/`material_data.type`/
   `mesh_shader.mode`）⇒ **键 + 值 + 期望提示**；③ 键白名单（`ValidateKnownKeys`，8 个段落各 `SetParseTable`）⇒ 键；
   ④ TOML **语法错误** ⇒ 行号 + 库原文（`toml::syntax_error::errors()`）。
+
+> **订正（2026-10-12，S4b/D2 收尾时实测）**：③ 里「8 个段落各 `SetParseTable`」**当时并未落盘** ——
+> 那批脚本在 `mesh_shader` 锚点上报错中止、重试又栽在 `rs.contains("pipeline")` 锚点，最终只写进 `render_state.pipeline` 一条；
+> 后果是**诊断日志的表前缀是残留值**（实测：把 `double_sided` 写进 `[render_state]` 时报成 `resources.textures.double_sided`）。
+> 已在 S4b/D2 批补齐 7 条（校验器内现共 **8** 条，实测计数），复验报 `render_state.double_sided` ✓。
+> **教训**：`apply()` 里 `assert` 中止 ⇒ 该次调用**整体不写盘** ⇒ 脚本打印的那些 `ok:` 行**不代表整批落盘成功**；
+> 落盘后必须按**结果计数 / 运行输出**复验，不能凭 apply 的打印。
 - **顺带补了两个静默失败洞**（实测发现的）：纹理声明的形态契约（`name`/`sampler` 必须字符串、`required` 必须布尔）
   与 `material_data` 的形态检查原先直接 `return false` ⇒ 现在逐项报到键级
   （例如缺 `required` 现在报 `resources.textures.required（必须有布尔 required（显式声明，不取默认值））`）。
@@ -977,6 +984,10 @@ if (recipe.mtl_def_id.empty())
 
 ### 19.5 边界（不做什么）
 
+- 不碰 GPU 侧行载荷 / 描述符（D 层是纯 CPU 侧语义收敛）；
+- 不保留旧键别名 / 双写期（零兼容）；
+- 不动 `RenderPrimitiveCollectSystem` 那条"配方内容变了 ⇒ 重建管线"的机制（只改注释里的举例）。
+
 ### 19.6 S4a 执行记录（2026-10-12）
 
 **处置**：`src/ShaderGen/template/FragmentTemplateComposer.cpp` 里那两处「按模板 ID 硬编码必需槽」的 8 行**整删**；
@@ -1033,12 +1044,61 @@ Composer 里不得再出现按模板 ID 硬编码的必需槽判断
   - un-normalized recipe must be rejected by TryGetNormalizedRecipeRenderState
 ```
 
-**待做**：D2（见 §19.2）—— 剔面语义收敛，会改 `HashMaterialRecipe` 输入 ⇒ 见那里的"哈希变化声明"。
+**D2 已完成**，见 §19.8。
 
+---
 
-- 不碰 GPU 侧行载荷 / 描述符（D 层是纯 CPU 侧语义收敛）；
-- 不保留旧键别名 / 双写期（零兼容）；
-- 不动 `RenderPrimitiveCollectSystem` 那条"配方内容变了 ⇒ 重建管线"的机制（只改注释里的举例）。
+### 19.8 S4b/D2 执行记录（2026-10-12）
+
+**处置**：`double_sided` **全链删除**，剔面语义唯一表达 = `MaterialPipelineConfig::cull_mode`：
+
+| 档 | 改动 |
+|---|---|
+| `inc/hgl/mtl/PipelineConfig.h` | 删 `ResolvedMaterialRenderState.double_sided`、`MaterialRenderStateOverrides.has_double_sided/double_sided`、`HashResolvedMaterialRenderState` 对应输入 |
+| `inc/hgl/mtl/MaterialRecipe.h` | 删覆盖应用分支、`IsRecipeNormalized` 合取项、`TryGetNormalizedRecipeRenderState` 的赋值、`HashMaterialRecipe` 两个输入 |
+| `MaterialDefinitionFile.cpp` | 删 `render_state.double_sided` 解析块 + 键白名单条目 ⇒ **写该键 = 未知键报错** |
+| `MaterialDefinitionRegistry.cpp` | 删归一化写回两行 |
+| `src/Vulkan/VKRenderPass.cpp` | 删「double_sided ⇒ cull NONE」覆盖分支（**Lines 图元**那条按图元类型的独立规则保留） |
+| `VKCommandBufferRender.cpp` / `RenderPrimitiveCollectSystem.cpp` | 两处注释改写，**不复述被删符号** |
+| 门 `Y1.resolved-material-render-state` | 5 处断言改写成 **`cull_mode`**（定义默认 `NONE` + 覆盖为 `BACK_BIT`），三条原意图逐条保留；D4 块的等价断言去掉该合取项 |
+| `TestCSMIncrementalPass.cpp` | **4 条禁复活针**（PipelineConfig.h / MaterialRecipe.h / MaterialDefinitionFile.cpp / VKRenderPass.cpp） |
+
+**⚠️ 哈希变化声明**：`HashMaterialRecipe` / `HashResolvedMaterialRenderState` 的输入集合变了 ⇒ **所有**配方的
+program 身份键都会变（一次性冷缓存重建；首次运行会重编 stage GLSL）。这是设计内的键空间收敛，**不是回归**。
+
+**验收（全绿）**：**整树清 obj（1809 个）+ `*.module.json`** 后全量重编 ⇒ `rc=0 / 0 error / **392** 目标`
+（本轮删了 struct 字段集合，按仓库规矩必须整树清）；门 **45 PASS / 0 FAIL**（`Y1` PASS）；`ctest -L ecs` **12/12**；
+`TestCSMIncrementalPass` **1/1**；四个 ShaderGen 回归工具 **4/4**；`ShaderCooker` **38/0**；
+示例 `PBRSpheres` / `CascadeShadowMap` / `TextDraw` **0 错误**。残留判据：`git grep -n double_sided -- src inc` **只剩 4 条针**。
+
+**红的样子（四条，均为实测原文）**
+
+① 针（把该名写回任一被针文件）：
+```
+Test 11 Failed: 剔面语义唯一表达 = MaterialPipelineConfig::cull_mode（S4b/D2，2026-10-12）：
+double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 PipelineConfig.h（禁复活）
+```
+② 解析键（材质 TOML 写 `[render_state]` + `double_sided = false`）：
+```
+[MaterialDefinitionFileRegistry] 材质定义解析失败:
+  E:\ULRE\ShaderLibrary\material\lit.material.toml (UnknownKey)
+  render_state.double_sided (未知键（拼写错误或已删字段残留）)
+```
+③ 门（把定义默认 cull 改回 `BACK_BIT`）：
+```
+[FAIL] Y1.resolved-material-render-state
+  - definition render defaults were not preserved by resolution
+```
+④ D4（把归一化判定短路成 `if (false && …)`）：
+```
+[FAIL] Y1.resolved-material-render-state
+  - un-normalized recipe must be rejected by TryGetNormalizedRecipeRenderState
+```
+
+**顺带修正**：§18.3 记录的「键白名单 8 个段落各 `SetParseTable`」当时**并未落盘**（只有 `render_state.pipeline` 一条）
+⇒ 诊断日志的表前缀是残留值；本批补齐 7 条（校验器内现共 8 条）并复验 ② 输出为 `render_state.double_sided` ✓。详见 §18.3 的订正框。
+
+**S4 收口**：S4a（§19.6）/ S4b-D4（§19.7）/ S4b-D2（本节）全部完成 ⇒ 材质链评审计划的**计划内批次全部结清**。
 
 ## 5. 本档边界
 

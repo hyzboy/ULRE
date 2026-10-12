@@ -567,8 +567,6 @@ namespace hgl::graph::mtl
         ResolvedMaterialRenderState state = definition.default_render_state;
 
         const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
-        if (overrides.has_double_sided)
-            state.double_sided = overrides.double_sided;
         if (overrides.has_alpha_test)
             state.alpha_test = overrides.alpha_test;
         if (overrides.has_alpha_cutoff)
@@ -586,8 +584,7 @@ namespace hgl::graph::mtl
     inline bool IsRecipeNormalized(const MaterialRecipe &recipe) noexcept
     {
         const auto &overrides = recipe.render_state_overrides;
-        return overrides.has_double_sided
-            && overrides.has_alpha_test
+        return overrides.has_alpha_test
             && overrides.has_alpha_cutoff
             && overrides.has_dither
             && overrides.has_pipeline_config;
@@ -615,7 +612,6 @@ namespace hgl::graph::mtl
         const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
 
         ResolvedMaterialRenderState state{};
-        state.double_sided = overrides.double_sided;
         state.alpha_test = overrides.alpha_test;
         state.alpha_cutoff = overrides.alpha_cutoff;
         state.dither = overrides.dither;
@@ -675,8 +671,6 @@ namespace hgl::graph::mtl
           << recipe.mtl_def_id;
 
         h << recipe.vertex_node_config
-          << recipe.render_state_overrides.has_double_sided
-          << recipe.render_state_overrides.double_sided
           << recipe.render_state_overrides.has_alpha_test
           << recipe.render_state_overrides.alpha_test
           << recipe.render_state_overrides.has_alpha_cutoff

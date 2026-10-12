@@ -176,10 +176,6 @@ namespace hgl::graph::mtl
             if (!render_state.is_table())
                 return false;
 
-            if (render_state.contains("double_sided")
-             && !ReadBool(render_state, "double_sided",
-                          definition.default_render_state.double_sided))
-                return false;
             if (render_state.contains("alpha_test")
              && !ReadBool(render_state, "alpha_test",
                           definition.default_render_state.alpha_test))
@@ -887,11 +883,13 @@ namespace hgl::graph::mtl
                 "mesh_shader", "render_state"}))
             return false;
 
+        SetParseTable("transform");
         if (root.contains("transform")
          && !ValidateKnownKeys(root.at("transform"), {
                 "source", "mapping", "orientation", "projection", "scale"}))
             return false;
 
+        SetParseTable("fragment");
         if (root.contains("fragment")
          && !ValidateKnownKeys(root.at("fragment"), {
                 "material_source_module", "ntb_module",
@@ -899,11 +897,13 @@ namespace hgl::graph::mtl
                 "ambient_module_name", "ambient_module_include"}))
             return false;
 
+        SetParseTable("vertex");
         if (root.contains("vertex")
          && !ValidateKnownKeys(root.at("vertex"), {
                 "requirements", "normal_mode", "varyings"}))
             return false;
 
+        SetParseTable("resources");
         if (root.contains("resources"))
         {
             const toml::value &resources = root.at("resources");
@@ -913,6 +913,7 @@ namespace hgl::graph::mtl
                     "texture_configurations", "defines"}))
                 return false;
 
+            SetParseTable("resources.texture_configurations");
             if (resources.contains("texture_configurations")
              && (!resources.at("texture_configurations").is_table()
               || !ValidateKnownKeys(
@@ -920,16 +921,18 @@ namespace hgl::graph::mtl
                 return false;
         }
 
+        SetParseTable("mesh_shader");
         if (root.contains("mesh_shader")
          && !ValidateKnownKeys(root.at("mesh_shader"), {
                 "mode", "max_invocations"}))
             return false;
 
+        SetParseTable("render_state");
         if (root.contains("render_state"))
         {
             const toml::value &rs = root.at("render_state");
             if (!ValidateKnownKeys(rs, {
-                    "double_sided", "alpha_test", "alpha_cutoff", "dither", "pipeline"}))
+                    "alpha_test", "alpha_cutoff", "dither", "pipeline"}))
                 return false;
             SetParseTable("render_state.pipeline");
             if (rs.contains("pipeline")

@@ -1077,7 +1077,7 @@ namespace hgl::ecs
             row = nullptr;
 
             // 管线由 (program 身份, 规范化 recipe) 共同决定：配方内容变化后，
-            // 即便 program 身份不变（例如仅 double_sided/cull 变化）也必须重建
+            // 即便 program 身份不变（例如仅 cull_mode 等渲染状态变化）也必须重建
             // 管线。原失效点在组件级配方设置里，A2 随
             // 配方覆盖迁到数据层后，改由这里在"配方内容确实变了"时触发。
             world->InvalidateEntityRuntimePipeline(primitive_comp->GetEntityID());

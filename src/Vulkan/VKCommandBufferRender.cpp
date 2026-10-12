@@ -384,8 +384,8 @@ void RenderCmdBuffer::ApplyPipelineState(const mtl::MaterialPipelineConfig &conf
     if(dev_attr->cmd_set_cull_mode)
     {
         // pass 级显式声明（如 shadow map 渲染背面）优先于材质配置；材质显式声明
-        // 双面（cull NONE——MaterialPipelineConfig 默认 Back，double_sided / Lines
-        // 图元在管线创建时被合并为 NONE）时保持双面，语义不被 pass 覆盖改写
+        // 双面（cull NONE——MaterialPipelineConfig 默认 Back；Lines 图元在管线创建时
+        // 被合并为 NONE）时保持双面，语义不被 pass 覆盖改写
         VkCullModeFlags cull_mode_value = config.cull_mode;
 
         if(cull_mode >= 0 && cull_mode_value != VK_CULL_MODE_NONE)

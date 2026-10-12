@@ -56,7 +56,6 @@ namespace hgl::graph::mtl
      */
     struct ResolvedMaterialRenderState
     {
-        bool double_sided = false;
         bool alpha_test = false;
         float alpha_cutoff = 0.5f;
         bool dither = false;
@@ -65,8 +64,6 @@ namespace hgl::graph::mtl
 
     struct MaterialRenderStateOverrides
     {
-        bool has_double_sided = false;
-        bool double_sided = false;
         bool has_alpha_test = false;
         bool alpha_test = false;
         bool has_alpha_cutoff = false;
@@ -160,8 +157,7 @@ namespace hgl::graph::mtl
     {
         hgl::hash::FNV1aHasher64 h;
 
-        h << state.double_sided
-          << state.alpha_test
+        h << state.alpha_test
           << state.alpha_cutoff
           << state.dither
           << HashMaterialPipelineConfig(state.pipeline_config);

@@ -163,9 +163,8 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
     if (mtl->GetPrimitiveType() == PrimitiveType::Lines)
         render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
 
-    // double_sided 合并进 config（渲染侧 EDS 动态状态只读 config）
-    if (render_state.double_sided)
-        render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
+    // 剔面语义的唯一表达 = MaterialPipelineConfig::cull_mode（上面 Lines 图元那条是
+    // **按图元类型**的独立规则，与材质语义无关）。
 
     // alpha test / dither 的 discard 依赖片元——depth-only 通道不得剥 FS。
     // 判据 = recipe 语义（alpha_test/dither）——与 ShadowCasterMasked 模板分派
