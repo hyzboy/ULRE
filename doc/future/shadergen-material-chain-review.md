@@ -709,6 +709,62 @@ if (recipe.mtl_def_id.empty())
 **计划内剩余任务**：`S3b`（`GLSLSamplerType` 与 `SamplerType` 收敛 + 3 个注册表盲区）、`S4`（D 层去双真值）、
 `S6`（G 层顺序协议加守卫）、`S7`（E 层特例收敛，可选）。
 
+---
+
+## 17. 材质配置写错的处置口径落地：LOG 报错 + 走错误材质路径（2026-10-11，用户口径）
+
+**用户口径（2026-10-11）**：发售用**全预编译 SPV**，届时不再有 shader 合成器 ⇒ sampler 配错这类问题**直接 LOG 报错**，
+材质侧**走错误材质处理路径**（"也就是棋盘格渲染"）。
+
+### 17.1 实测到的真实现状（与口径相反）
+
+任何一份材质 TOML 配置写错，整个进程**立即中止**：`src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp:213`
+把 `error_count > 0` 也当成致命条件，命中即 `GLogFatal(...) + std::abort()`。
+指纹：cdb 抓到 `code c0000409 / Subcode 0x7 FAST_FAIL_FATAL_APP_EXIT`；因为 stdout 还压在缓冲里，
+**门与 cooker 表现为"零输出 + 非零 rc"的静默早退**（此前 §14 反证时踩到过这个现象，当时误以为是工具偶发）。
+
+### 17.2 落地
+
+| 位置 | 改动 |
+|---|---|
+| `MaterialDefinitionFileRegistry::LoadFile` | 三类失败各自 LOG：`打不开 / 文件为空 / 读取失败`；**解析失败**打 `材质定义解析失败: <完整路径> (<ParseResultName>)`；**ID 重复**打 `材质定义 ID 重复: <ID> (file=<完整路径>)` |
+| `MaterialDefinitionFileRegistry::LoadDirectory` | 有失败时补一行汇总：`材质库加载完成：成功 N 份、失败 M 份（失败项不注册 ⇒ 引用者走错误材质路径）` |
+| `MaterialDefinitionRegistry` | **fatal 条件收窄**：只有"整库不可用"（`file_count == 0 || 已解析 == 0`）才 `GLogFatal + abort`；单份失败 ⇒ `GLogError` + 跳过 |
+| `ShaderCodeModuleRegistry`（同族） | 5 处日志的**路径**格式串 `%s` → `%ls`（`OSString` 是宽字符；此前只打出首字符，例如 `E`） |
+
+链路语义（落地后）：写错的材质**不注册** ⇒ 引用它的配方分类为 `MaterialErrorKind::UnknownMaterialDefinition`
+⇒ 走 `kFallbackMaterialRules` 的保底材质 + 标记色（现状见 §17.4-a）。
+
+### 17.3 验证（实测）
+
+| 项 | 结果 |
+|---|---|
+| 全量 Release | `rc=0` / 0 error / 392 目标 |
+| `ctest -L ecs` / `TestCSMIncrementalPass` / 门 / cook | **12/12** / **1/1** / **43 PASS / 0 FAIL** / 38/0 |
+| 示例 | `PBRSpheres` rc=124、0 错误 |
+
+**探针（把 `lit.material.toml` 的 `sampler` 改成 `"SamplerBogus"`）**：
+
+- 日志（完整路径 + 原因，路径修 `%ls` 后正确）：
+  `[MaterialDefinitionFileRegistry] 材质定义解析失败: E:\ULRE\ShaderLibrary\material\lit.material.toml (InvalidValue)`
+  → `材质库加载完成：成功 13 份、失败 1 份（失败项不注册 ⇒ 引用者走错误材质路径）`
+  → `[ShaderGen] 1 份材质定义加载失败（逐份原因见上）——这些定义不注册，引用它们的配方会走错误材质路径。`
+- 门：**不再静默早退** ⇒ 35 PASS / 8 FAIL，其中 `[FAIL] S.material-definition-file-schema — material file registry bulk load failed`（可读的红），其余用例照跑。
+- cooker：`cooked=35 failed=0 skipped=15`（照编其余，不中止）。
+- 示例：打日志后**继续运行**（不再 abort）。
+- 还原后：43 PASS / 38-0 / 0 错误，`SamplerBogus` 归零。
+
+### 17.4 待办 / 待拍板
+
+- **a. 保底材质当前不是棋盘格**：`kFallbackMaterialRules` 三条（None / MissingMaterialSource / UnknownMaterialDefinition）
+  的定义 ID 都是 **`builtin/pure_color`**（标记色 白 / 洋红 / 橙）；`builtin/checkerboard_2d|3d` 是**普通文件材质**、
+  棋盘格颜色**写死灰度**、**不在回退链上**；门还把"回退 ID == `builtin/pure_color`"与"material TOML 文件数 == 14"钉死。
+  ⇒ 要做到"棋盘格渲染标注错误"需单独一轮：① `checkerboard_{2d,3d}_source.glsl` 读 EmissiveSurface 标记色；
+  ② 2D 走 UV / 3D 走面空间（两套着色器各自独立）；③ 把两者接到回退链 + 同步门的两处期望值。
+- **b. 日志粒度**：现在到"文件 + 错误类别"（如 `InvalidValue`）。要打到**出错键/值**需 `ParseMaterialDefinitionFile`
+  回传细节（现行 API 只返回 `MaterialDefinitionFileParseResult` 枚举）；`%ls` 那轮已证明日志管线可读。
+- **c. S3b-2 未做**：`MaterialVertexProviderPolicy` / `ShaderCodeModuleKind` / `MeshShaderMode` 三个注册表盲区（补 `Get*Name`）。
+
 ## 5. 本档边界
 
 - 评审（§1–§4）为只读静态取证（grep / 行号 / 结构）；**§6 是其后 S1 批的落地记录**（该批改了引擎代码，验收数字见 §6.2）。

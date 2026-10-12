@@ -63,7 +63,7 @@ namespace hgl::graph::mtl
         const int scan_count = hgl::filesystem::GetFileInfoList(file_list, directory, true, true, true);
         if (scan_count < 0)
         {
-            GLogError(u8"[ShaderCodeModuleRegistry] Failed to scan code-module directory: %s",
+            GLogError(u8"[ShaderCodeModuleRegistry] Failed to scan code-module directory: %ls",
                       directory.c_str());
             return false;
         }
@@ -94,7 +94,7 @@ namespace hgl::graph::mtl
 
             if (!LoadFileContent(full_name, data->glsl_code))
             {
-                GLogError(u8"[ShaderCodeModuleRegistry] Failed to read code-module file: %s",
+                GLogError(u8"[ShaderCodeModuleRegistry] Failed to read code-module file: %ls",
                           full_name.c_str());
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;
@@ -112,7 +112,7 @@ namespace hgl::graph::mtl
 
             if (result != ShaderCodeModuleParseResult::OK)
             {
-                GLogError(u8"[ShaderCodeModuleRegistry] Code-module metadata parse failed: file=%s error=%s",
+                GLogError(u8"[ShaderCodeModuleRegistry] Code-module metadata parse failed: file=%ls error=%s",
                           full_name.c_str(), GetShaderCodeModuleParseResultName(result));
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;
@@ -123,7 +123,7 @@ namespace hgl::graph::mtl
             {
                 // @ulre name 是必填身份——模块身份统一为 name（T2 起），
                 // 不接受"文件名即名字"的隐式特例
-                GLogError(u8"[ShaderCodeModuleRegistry] Code-module metadata missing @ulre name: file=%s",
+                GLogError(u8"[ShaderCodeModuleRegistry] Code-module metadata missing @ulre name: file=%ls",
                           full_name.c_str());
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;
@@ -132,7 +132,7 @@ namespace hgl::graph::mtl
 
             if (FindByName(data->name.c_str()))
             {
-                GLogError(u8"[ShaderCodeModuleRegistry] Duplicate code-module name: %s (file=%s)",
+                GLogError(u8"[ShaderCodeModuleRegistry] Duplicate code-module name: %s (file=%ls)",
                           data->name.c_str(), full_name.c_str());
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;

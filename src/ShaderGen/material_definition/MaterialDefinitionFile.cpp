@@ -1,4 +1,6 @@
 ﻿#include <hgl/mtl/MaterialDefinitionFile.h>
+
+#include <hgl/log/Log.h>
 #include <hgl/mtl/VkEnumText.h>
 
 #include <hgl/filesystem/FileSystem.h>
@@ -306,23 +308,6 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        bool ParseSampler(const std::string &name, GLSLSamplerType &out)
-        {
-            static const char *const names[] = {
-                "Sampler2D", "Sampler2DArray", "Sampler2DShadow",
-                "SamplerCube", "SamplerCubeArray", "Sampler3D"
-            };
-            for (uint32 i = 0; i < 6; ++i)
-            {
-                if (name == names[i])
-                {
-                    out = static_cast<GLSLSamplerType>(i);
-                    return true;
-                }
-            }
-            return false;
-        }
-
 
         bool ValidateTextureDeclarationKeys(const toml::value &item)
         {
@@ -501,9 +486,11 @@ namespace hgl::graph::mtl
                          || !item.contains("required") || !item.at("required").is_boolean())
                             return false;
                         const std::string texture_name = item.at("name").as_string();
-                        GLSLSamplerType sampler;
+                        // 采样器类型名走唯一真源（大小写不敏感）；未知名 ⇒ Error ⇒ 解析失败。
+                        const SamplerType sampler =
+                            ParseSamplerType(item.at("sampler").as_string().c_str());
                         if (!IsValidMaterialTextureName(texture_name)
-                         || !ParseSampler(item.at("sampler").as_string(), sampler))
+                         || sampler == SamplerType::Error)
                             return false;
 
                         for (const auto &existing :
@@ -817,23 +804,38 @@ namespace hgl::graph::mtl
     {
         hgl::io::OpenFileInputStream opener(path);
         if (!opener)
+        {
+            GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义打不开: %ls", path.c_str());
             return false;
+        }
         const int64 size = opener->GetSize();
         if (size <= 0)
+        {
+            GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义文件为空: %ls", path.c_str());
             return false;
+        }
 
         hgl::AutoDeleteArray<char> buffer(size_t(size) + 1);
         if (!buffer || opener->Read(buffer.data(), size) != size)
+        {
+            GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义读取失败: %ls", path.c_str());
             return false;
+        }
         buffer[size_t(size)] = 0;
 
         MaterialDefinitionFileData *data = files.Create();
         if (!data)
             return false;
 
-        if (ParseMaterialDefinitionFile(buffer.data(), static_cast<int>(size), *data)
-            != MaterialDefinitionFileParseResult::OK)
+        const MaterialDefinitionFileParseResult parse_result =
+            ParseMaterialDefinitionFile(buffer.data(), static_cast<int>(size), *data);
+        if (parse_result != MaterialDefinitionFileParseResult::OK)
         {
+            // 口径（2026-10-11 用户）：采样器等配置写错 = **LOG 报错**（不静默、不假装能编）。
+            // 该定义**不注册** ⇒ 引用它的配方落到错误材质路径
+            // （MaterialErrorKind::UnknownMaterialDefinition ⇒ 保底材质 + 按颜色标错误种类）。
+            GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义解析失败: %ls (%s)",
+                      path.c_str(), GetMaterialDefinitionFileParseResultName(parse_result));
             files.DeleteAt(files.GetCount() - 1);
             return false;
         }
@@ -845,6 +847,8 @@ namespace hgl::graph::mtl
              && files[i]->definition.definition_id
                     == data->definition.definition_id)
             {
+                GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义 ID 重复: %s (file=%ls)",
+                          data->definition.definition_id.c_str(), path.c_str());
                 files.DeleteAt(new_file_index);
                 return false;
             }
@@ -876,6 +880,10 @@ namespace hgl::graph::mtl
             else
                 ++error_count;
         }
+
+        if (error_count > 0)
+            GLogError(u8"[MaterialDefinitionFileRegistry] 材质库加载完成：成功 %d 份、失败 %d 份"
+                      u8"（失败项不注册 ⇒ 引用者走错误材质路径）", file_count, error_count);
 
         if (out_file_count) *out_file_count = file_count;
         if (out_error_count) *out_error_count = error_count;

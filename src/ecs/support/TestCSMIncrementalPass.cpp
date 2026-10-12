@@ -1846,6 +1846,15 @@ int main(int argc, char** argv)
               "ApplyBaseMaterialInfoDefaults 已于 2026-10-11 F-4 删除：形参 overwrite_existing 从不被读，"
               "且唯一调用点紧邻一行已直接写 mtl_def_id ⇒ 该调用恒为 no-op（先证此再删，不是删参数了事）",
               true },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "GLSLSamplerType",
+              "材质侧的 6 项采样器类型枚举已于 2026-10-11 S3b 收敛掉：类型与名字表唯一真源 = "
+              "inc/hgl/common/TextureSamplerTypeDef.h 的 SamplerType（两套枚举数值不同，会让哈希与名字映射各说一套）",
+              true },
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "static_cast<GLSLSamplerType>",
+              "按索引序把名字映射成枚举值的解析器已删（枚举一改即静默错位）：改走 ParseSamplerType（大小写不敏感、未知名 ⇒ Error）",
+              true },
             { "Vulkan/CMakeLists.txt", OS_TEXT("src/Vulkan/CMakeLists.txt"),
               "VKString.cpp",
               "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"

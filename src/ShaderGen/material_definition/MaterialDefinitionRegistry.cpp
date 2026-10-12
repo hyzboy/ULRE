@@ -208,12 +208,20 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
             std::abort();
         }
 
-        if (file_count == 0 || error_count > 0 || registry.GetCount() == 0)
+        // 口径（2026-10-11 用户）：**单份材质写错（例如 sampler 配错）= LOG 报错**，不是进程级致命；
+        // 出错的那份不注册 ⇒ 引用它的配方落到错误材质路径
+        // （MaterialErrorKind::UnknownMaterialDefinition ⇒ 保底材质 + 按颜色标错误种类）。
+        // 只有「整库不可用」（目录缺失 / 读不出 / 零份可解析）才是 fatal。
+        if (file_count == 0 || registry.GetCount() == 0)
         {
             GLogFatal("[ShaderGen] ShaderLibrary/material is empty or invalid (%d files, %d errors, %d parsed definitions). File-backed schema-3 materials are required.",
                       file_count, error_count, registry.GetCount());
             std::abort();
         }
+
+        if (error_count > 0)
+            GLogError("[ShaderGen] %d 份材质定义加载失败（逐份原因见上）——这些定义不注册，"
+                      "引用它们的配方会走错误材质路径。", error_count);
 
         GLogInfo("[ShaderGen] Loaded %d material TOML definitions (%d errors)",
                  file_count, error_count);

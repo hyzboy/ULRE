@@ -4706,9 +4706,9 @@ namespace
         MaterialDefinition texture_definition{};
         texture_definition.definition_id = "MaterialTextureReferenceOnly";
         texture_definition.texture_declarations.push_back(
-            {"base_color", GLSLSamplerType::Sampler2D, true});
+            {"base_color", SamplerType::Sampler2D, true});
         texture_definition.texture_declarations.push_back(
-            {"normal", GLSLSamplerType::Sampler2DArray, false});
+            {"normal", SamplerType::Sampler2DArray, false});
         texture_definition.vertex_varying.emit_data_index_id = false;
 
         MaterialShaderCompilerInput texture_compiler_input{

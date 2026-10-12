@@ -6,6 +6,7 @@
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/common/TextureSamplerTypeDef.h>
 #include <hgl/vk/VK.h>
 #include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
@@ -37,16 +38,11 @@ namespace hgl::graph::mtl
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
     // 无纹理材质此列表为空。
 
-    // GLSL 采样器类型枚举，避免传裸字符串指针。
-    enum class GLSLSamplerType : uint8_t
-    {
-        Sampler2D = 0,        // "sampler2D"
-        Sampler2DArray,       // "sampler2DArray"
-        Sampler2DShadow,      // "sampler2DShadow"
-        SamplerCube,          // "samplerCube"
-        SamplerCubeArray,     // "samplerCubeArray"
-        Sampler3D,            // "sampler3D"
-    };
+    // 采样器类型直接复用 hgl::graph::SamplerType —— 唯一真源与名字表在
+    // inc/hgl/common/TextureSamplerTypeDef.h（GetSamplerTypeName / ParseSamplerType，
+    // 匹配大小写不敏感 ⇒ 材质 TOML 可继续写 "Sampler2DArray" 这种作者写法）。
+    // 不要再在材质侧另建一份采样器类型枚举：两份枚举的数值不同，会让 layout 哈希与
+    // 名字↔值映射各说一套（2026-10-11 S3b 收敛）。
 
     constexpr uint32_t DefaultMaterialTextureConfigurationCapacity = 1024u;
 
@@ -70,7 +66,7 @@ namespace hgl::graph::mtl
     struct MaterialTextureDeclaration
     {
         std::string      name;                                        // TOML/GLSL texture key, such as "base_color".
-        GLSLSamplerType  sampler_type = GLSLSamplerType::Sampler2D;   // GLSL sampler kind.
+        SamplerType      sampler_type = SamplerType::Sampler2D;       // GLSL sampler kind（真源见 TextureSamplerTypeDef.h）。
         bool             required     = false;                         // Missing binding is an explicit error.
         uint32_t         channels     = 0;                             // 0 = 由纹素格式决定；2 = 双通道法线(XY)，Z 由 shader 还原
     };
@@ -224,11 +220,25 @@ namespace hgl::graph::mtl
 
     };
 
+    // 数组型采样器（声明需 array_layer / 走 texture2DArray 一族）。收敛到 SamplerType
+    // 的 18 项域后，所有 array 形式一并覆盖（含 shadow / MS 数组变体）。
     inline bool IsMaterialTextureArraySampler(
-        const GLSLSamplerType sampler_type) noexcept
+        const SamplerType sampler_type) noexcept
     {
-        return sampler_type == GLSLSamplerType::Sampler2DArray
-            || sampler_type == GLSLSamplerType::SamplerCubeArray;
+        switch (sampler_type)
+        {
+        case SamplerType::Sampler1DArray:
+        case SamplerType::Sampler2DArray:
+        case SamplerType::SamplerCubeArray:
+        case SamplerType::Sampler1DArrayShadow:
+        case SamplerType::Sampler2DArrayShadow:
+        case SamplerType::SamplerCubeArrayShadow:
+        case SamplerType::Sampler2DMSArray:
+            return true;
+
+        default:
+            return false;
+        }
     }
 
     inline bool IsValidMaterialTextureName(
