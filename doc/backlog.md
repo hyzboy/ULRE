@@ -7,6 +7,65 @@
 >
 > 关联文档：`doc/render-target-standardization-design.md`（RT 标准化主线）。
 
+## 🚧 当前未结项索引（唯一入口，2026-10-12 建立）
+
+> 目的：**一眼看全"还没做完的事"**。本索引只写「在哪、什么状态、下一步/谁拍板」，细节一律留在各自主档
+> （材质链评审档 / ECS 审计档 / 本档 A~E 线），**不复制**。完成一项在这里划掉并注日期。
+> 取证标注：〔档〕= 主档内记录；〔实测 2026-10-12〕= 建立本索引时现场核对。
+
+### 1. 材质链计划（主档 `doc/future/shadergen-material-chain-review.md`；批表 §196，执行记录 §6–§18）
+
+| 项 | 状态 | 判据 / 下一步 |
+|---|---|---|
+| **S4 = D 层去双真值**（计划内**唯一**的未开工批次；**S4a 已完成，剩 S4b = D4 + D2**） | **S4a ✅ 已完成（2026-10-12，评审档 §19.6）**；S4b 未开工 | D1 删硬编码必需槽改读表并显式标 required（`RenderTemplateValidationError::MissingRequiredSlot` 仍在）；D2 `double_sided` 与 `cull_mode` 二选一（parser 两个键并存、材质侧 0 授权）；D4 `GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删口〔实测三者均在〕；**施工单见评审档 §19**（含实测行号 / 判据 / 反证 / 分批 S4a+S4b） |
+| **S3b-3：6 个顶点节点枚举归位** | 未开工〔评审档 §18.1〕 | `VertexInputMode`/`MappingMode`/`OrientationMode`/`ScaleMode`/`ProjectionMode`/`MaterialVertexNormalMode` 的 `Get*Name` **全仓 = 0**（名字只活在 `MaterialDefinitionFile.cpp` 的本地单向表）⇒ 按 S3b-2 形态搬回枚举定义旁；需动各自枚举手（部分属 `hgl::graph`）〔实测 Get*Name 全 0〕 |
+| **棋盘格标记色 + 2D/3D 分派**（功能项） | 未开工；TODO 已写进 `MaterialRecipe.h` 规则表上方〔档〕 | 两套 checkerboard 源读 `EmissiveSurface` 标记色；2D 走 NDC/UV、3D 走面空间；回退 ID 需按绘制维度分派；门/契约同步 |
+| **过期声明订正（3 处）** | 未做〔实测原文已定位〕 | ① `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1136-1139`、② `doc/future/HANDOFF_2026-10-01.md:55` 仍写"棋盘格不在回退链上、需单独一轮"（2026-10-12 已落地）；③ `doc/future/lighting-shadow-domain-split-plan.md` 的 **`T6b` 标题缺 ✅**——实测**已落地**（`LightRow`/`addr_lights`/`LightSystem`/`MainLightShadowSystem` 均在位、`sun_direction` 在 ShaderLibrary 归零）；另有 `MaterialRecipe.h` 注释里的 `SchemaGate:3534` 行号已漂移 |
+
+### 2. ECS 审计待拍板（主档 `doc/ecs-quality-audit-2026-10.md` §2.2；共识档 `doc/ecs-audit-consensus-and-task-plan-2026-10-11.md`；逐条报告 `doc/analysis/ecs-audit-2026-10/`）
+
+已定：**已做 2 条**（#4 `GpuMirrorBuffer.h` 抽取、#5 删 `EntitySlot::alive`）+ **复扫关闭 2 条**（非法相机槽单点化、`frame_index` 三份属不同物件状态）。**待拍板 6 条**（选项按风险从低到高，详见逐条报告）：
+
+- **#1** `component_mask` 是缓存视图（对拍器 `VerifyComponentMaskAgainstComponents()` **生产零调用**）→ (a) 挂件写者处 debug-only 对拍；(b) 删掩码改读 `component_rows`
+- **#3** `RenderItemDescriptor` 双表（CPU handle 空间 vs GPU 实体直寻址）**静默可失步、无门** → (a) 每帧同步点 debug 对拍；(b) 一侧派生另一侧（动 GPU 行写入）
+- **#2** 组件列表 4~5 份（`EntityGPU.h` 自注"显式冗余"，属 GPU 合同）→ **不建议删**，只写"权威链"头注
+- **#6** 可见性三表示两极性（`SetEntityVisible` **不传播后代** = 可证的一处失步）→ 先定唯一权威（建议缺席集）+ 传播规则
+- **#7** 材质四条键空间（前缀关系成立，**不该并表**）→ 最便宜小收敛：`VariantKeyOf` 前缀共用编解码
+- **#8** `MaterialRuntimeRow` key 存 3.5 份（**已订正：可省字段 = 0**）→ 只需不变量文档 + debug 对拍
+
+挂同一次拍板：**旧档 §2 #5**（`AddFreeIndex` 有序维护 vs 栈消费）、**9 套系统容器合并**（共识档 §2 明确"不单独立批，与六条一起定"）。
+
+### 3. 既存红 / 环境（与任一在途批次无关，但挡"全绿"口径）
+
+| 项 | 状态 |
+|---|---|
+| **示例自检门 7/13 FAIL**〔实测 2026-10-12〕 | 触发：`*_SELFCHECK=1`。**FAIL**：`PBRSpheres`（实测 `fnv=0xA48D90BAC9AAD04D` / 期望 `0x3DD88A0999CDC486`）、`AlphaModes`、`CascadeShadowMap`、`CoverageVariants`、`GPUDrivenCull`、`IBLEnvironment`、`PlaneGrid3D`；**PASS**：`LoadScene`、`RenderToTexture`、`RenderToTextureColorDepth`、`AtmosphereSkyMinimal`；窗口内未出结论：`AlphaTestShadow`（需 `--selfcheck`）、`DualWorldShadows`。⇒ **需用户目视定性**（基线陈旧 ⇒ 重钉；画面真漂 ⇒ 查因），**未定性前不得重钉** |
+| CMCore 独立仓 2 项 SEGV | `OrderedMapBasicOperations` / `ObjectManagerTest`，与本仓无交集 |
+| GUI 类示例在桌面会话 | 环境问题，未触碰 |
+
+### 4. 建议顺序（按"先删遗留/未使用 → 再改进"）
+
+1. **S4**（纯删重复表达 + 契约收口，判据已写好）
+2. **S3b-3**（与 S3b 同族的一致性收尾）
+3. **§1 的 2 处过期声明订正 + C 线 doc 十篇**（文档卫生，可与任意批并行）
+4. **stage B `receive_shadow` 幅度漂移专项**（未 bisect 的行为漂移，B 线已收口 ⇒ 可开；修完 `ATS_SELFCHECK=1` 必须 rc=0）
+5. **§2 待拍板 6 条**（其中 #7 前缀共用、#1/#3/#8 的 debug-only 对拍最便宜："把口头约束变成 fail-fast"）
+6. **示例自检门基线**（blocked on 用户目视定性）
+7. 功能项：棋盘格上色 + 2D/3D 分派
+
+### 5. stage B 存储形欠账（主档 `doc/future/stage_B_debt_list.md`）
+
+| 项 | 状态 | 判据 / 下一步 |
+|---|---|---|
+| **§2.9 末期同批**（已在档内决议"统一标记、不再各自开条、不顺手做"） | 未开工〔档 §1.5 / §2.9〕 | 纹理引用配置的数据形态（按定义变长、容量 1024/定义）+ 与它同批的另两项；行号冻结表里唯一带 ⏳ 的行 |
+| **`receive_shadow` 生效幅度漂移未定位** | 未开工〔档 §2.9 后段〕 | 实测 `600662 → 593213`（`bias` 侧基本未动）⇒ 中间某提交改了生效幅度但**未 bisect**；档内已定"不顺手修"：待开专项批（先按配方打印 pass 相机 / 相机行内容 / 受影像素方向），修完 `ATS_SELFCHECK=1` 必须 rc=0 |
+| **`RenderItem` 虚接口 vs `PositionSourceSpec`/`TransformPolicySpec`** | 待定（无定稿）〔档 §1.2 后段〕 | 现存形态 =「虚接口 + 默认实现」，非「组件字段」；是否借 stage B 降为**每实例 slot 上的选择器**（去掉虚函数）—— 需拍板 |
+| `.ulrescene` 直载 | **已延后**（用户拍板 2026-09-30）〔档 §1.4〕 | 前提 = 全部 Component ID 化 + 访问器完成；本计划内不做 |
+
+### 6. 本档内残留（细节见下文各线，不在此复述）
+
+B 线 7 项小项 · A6 只剩 cubemap 六面 · E1/E2 未来项（用户留置）· 示例**干净退出**泄漏 + 间歇 CRT abort（退出码 3，判据看日志不看退出码）。
+
 ## ❌ 已否决（勿重开；附判据出处）
 
 > 目的：**结论要被找得到**。写"替代方案/建议"之前先扫这一节 —— 已否决的东西再被当候选提出来，
@@ -184,7 +243,7 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 | ~~WorkObject 取值链四层 fallback~~ | ✅ **已收敛**（本轮）：`SetECSContext` 不再缓存 `render_context`，一律经 `world` 派生（`GetRenderContext/GetGraphicsContext/GetDevice/GetManager` 全 const） | — |
 | ~~RunFramework 内 ObjectTracker 仪式~~ | ✅ **已移出**（本轮）：`initialize/shutdown_object_tracker` 改为显式 `EnableObjectTracking()/DisableObjectTracking()`（`HGL_ENABLE_OBJECT_TRACKER` 默认 0 ⇒ 原调用是空转） | — |
 | `DetachAllComponents(bool)` 参数无效 | 只进日志不进分支 | 顺手 |
-| **`CascadeShadowMap` 编译失败（既有缺陷，非本轮引入）** | `FrameDigest.h` 只在 `InstallFrameDigestHook` 签名里**提及** `graph::SwapchainRenderTarget`，从未 include 其定义（该头只包 `VKTextureReadback.h`/`VKFormat.h`/`FNV1a.h`），而 `CascadeShadowMap.cpp:1549` 又对它做 `dynamic_cast` ⇒ `error C2680: 'hgl::graph::SwapchainRenderTarget': class must be defined before using in a dynamic_cast` + `C3536`。**已用 git stash + 清 obj 双向验证：纯净基线上同样 FAIL(exit 1)** ⇒ 与本轮框架清理无关 | 修法：`FrameDigest.h` 补 `#include<hgl/vk/VKRenderTargetSwapchain.h>`。**注意**：该 TU 的对象文件一旦陈旧，增量构建会假绿（同 D2 卡 :271-276 的 tlog 陷阱）——判据必须是 `/t:Rebuild` 或先删 `.obj` |
+| ~~**`CascadeShadowMap` 编译失败（既有缺陷，非本轮引入）**~~ | **✅ 已否定（2026-10-12 复核）**：清整树 1798 obj 全量重编 **rc=0 / 0 error / 392 目标**，且 `CascadeShadowMap.exe` 冒烟 0 错误 ⇒ 原判据不成立（该条要求 `/t:Rebuild` 复核，已被整树重编覆盖）；**再复现才重开**。原判据与修法保留备查：`FrameDigest.h` 只在 `InstallFrameDigestHook` 签名里**提及** `graph::SwapchainRenderTarget`，从未 include 其定义（该头只包 `VKTextureReadback.h`/`VKFormat.h`/`FNV1a.h`），而 `CascadeShadowMap.cpp:1549` 又对它做 `dynamic_cast` ⇒ `error C2680: 'hgl::graph::SwapchainRenderTarget': class must be defined before using in a dynamic_cast` + `C3536`。**已用 git stash + 清 obj 双向验证：纯净基线上同样 FAIL(exit 1)** ⇒ 与本轮框架清理无关 | 修法：`FrameDigest.h` 补 `#include<hgl/vk/VKRenderTargetSwapchain.h>`。**注意**：该 TU 的对象文件一旦陈旧，增量构建会假绿（同 D2 卡 :271-276 的 tlog 陷阱）——判据必须是 `/t:Rebuild` 或先删 `.obj` |
 | 示例**干净退出**时泄漏 + CRT abort（退出码 3） | `CascadeShadowMap` 关窗后：133 条 `[LEAK]`（TransferSrcBuffer 27 / Texture_ 21 / UBO:ShadowUBO 8 / Shader stage 7 / VAB_ 6 / SSBO:ECS:Batch:* …）+ `BufferManager::Release` 清理 → 弹 "Microsoft Visual C++ Runtime Library" abort 对话框，进程退出码 **3** | 2026-09-26 冒烟时发现（两次复现）。**与 D1/D8 无关**：示例自身未改，D8 diff 零资源生命周期行（已 grep 核对）。`shutdown_object_tracker` 只 delete tracker、不 abort ⇒ 来源在设备/静态析构期。**注意**：拿 CSM 示例做冒烟时退出码 3 不是回归信号，判据是日志内容（路由/缓存/0 VUID）。**2026-09-26 D3 冒烟第 3 次实跑 exit=0 且 0 VUID/ERROR** ⇒ 该 abort 是**间歇性**的（不是每次干净退出都触发），更不能用退出码当判据 |
 
 ## C 线：构建与文档

@@ -193,7 +193,7 @@ grep -n "MaterialMeshIndexTables" src/ShaderGen/compile/MaterialShaderEmitter.cp
 | **S1** | **A 层收敛**：`ValidateDefinitionCapabilitySubset` + `requires_runtime_data_rows` 保留为唯一两条；删 `BuildDescriptorsFromDefinition` / `DescriptorContract`（含 `AppendEntry` / `BuildEffective*` / `BuildResourceSchemaFromContract` / `GetDescriptorContractHash` / `HasDescriptorSemantic` / `input.descriptor_entries*`）与 `plan.descriptors` 字段 | 全仓 grep 上述符号 = 0；`GenericMaterialBuilder` Phase 3 只剩 manifest + 验证；门的 58 处描述符断言同批收敛（保留"必须为空"反证针：往 definition 声明一条描述符 ⇒ 编译失败） | 改动面含 `inc/hgl/mtl/*` 公共头 ⇒ 先 purge 依赖 TU 再全量重编；`MaterialShaderCompiler.cpp:301` 错误注释同批改 |
 | **S2** | **B 层整体删除**：`MaterialTextureSamplingOptions`（结构 + hash + `operator==`）+ `MaterialTextureDeclaration::sampling` + `MaterialDefinitionFile.cpp:493-710` 解析块 + `ParseTextureFilterMode/WrapMode/CompareOp`（**已核**：`MaterialTextureCompareOp` 仅出现在 `MaterialRecipe.h` 与 `MaterialDefinitionFile.cpp:466-473`，**没有**独立通路——真是源的 compare 走 `ShaderLibrary/sampler.toml:57` → `SamplerPreset.cpp:34` 的 `VkCompareOp`） | 15 份材质 TOML 无 `sampling` 键（已成立）；删后门用例同批收敛；`git grep -nw sampling` 只剩无关注释 | `channels` **不在**本批范围（活：3 份 TOML 授权 + 纹理通道宏消费者） |
 | **S3** | **C 层平行解析表收敛**：`ParseCompareOp` 合一份；filter/wrap 的名字↔值收敛到枚举定义处（T1 模式：`Get*Name` + `Parse*`）；补 `GLSLSamplerType`/`MaterialVertexProviderPolicy`/`ShaderCodeModuleKind`/`MeshShaderMode` 的注册表 | 每个枚举的 name→value 只有 1 处实现（`git grep -c` 计数）；`ToGLSLSamplerTypeName` 要么被用、要么删；门用例同步 | 与 T1/T2 既定口径一致，可独立成批 |
-| **S4** | **D 层去双真值**：D1（删硬编码必需槽，改读表 + 表里显式标 required）；D2（`double_sided` 与 `cull_mode` 二选一，另一条删或加一致性校验；TOML 侧两者 0 授权 ⇒ 可直接收敛）；D4（`GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删除该口）；F-4 死参数删除 | 删 D1 后：把某模板槽设为 `required=false` 且不提供 ⇒ 不再被硬编码判死；D4 反证：传未归一化 recipe ⇒ 报错而非静默全零 | D2/D4 触及 recipe/normalize 语义，建议单独一批并附反证 |
+| **S4** | **D 层去双真值**：D1（删硬编码必需槽，改读表 + 表里显式标 required）；D2（`double_sided` 与 `cull_mode` 二选一，另一条删或加一致性校验；TOML 侧两者 0 授权 ⇒ 可直接收敛）；D4（`GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删除该口）；F-4 死参数删除。**（F-4 已并入并在 `694ab2002` 完成 ⇒ 本批只剩 D1/D2/D4；施工单见 §19）** | 删 D1 后：把某模板槽设为 `required=false` 且不提供 ⇒ 不再被硬编码判死；D4 反证：传未归一化 recipe ⇒ 报错而非静默全零 | D2/D4 触及 recipe/normalize 语义，建议单独一批并附反证 |
 | **S5** | **F 层逐符号删除**（F-1 五字段 / F-2 二十三个零调用函数 / F-3 类型与常量 / F-4 已并入 S4） | 每个符号：`git grep -nw <sym> -- src inc example` 归 0（注释与测试针同批改写为"禁复活"） | 与 §1.2/§1.3 那一轮的删除纪律完全同构；`ShaderArtifactSPVExtension` 处置前先核 `".spv"` 是否有别处硬写（若有 ⇒ 改为用常量而非删） | **〔2026-10-11 已完成：F-1 §12 / F-2 §13 / F-3 §14 / F-4 §15，见 §16 小结〕**
 | **S6** | **G 层顺序协议加守卫**：G1 sampler 顺序（加载时校验索引连续性/或改为显式 index 字段）；G2 slot 顺序（对 `SurfaceProvider` 早于 provider 的排列加断言）；G3/G4 至少加注释+哨兵（模板占位符位置校验、相位序哈希输入校验） | 反证：手工错排 sampler.toml / 调换 slot 顺序 ⇒ 加载或编译**报错**，而非静默产出错 GLSL | G1 影响已编译 shader 的宏索引 ⇒ 需与 SPV 缓存失效策略一起定 |
 | **S7** | **E 层特例收敛**（可选，按用户口径"真需要才留"）：E2 把剩余 mode 分支推进 `s_descriptors` 表；E3 抽共享常量；E4 shadow 合成器外置为 `.tmpl`；E5/E6 profile 表化 | E2：编排器内 `mode ==` 直比归 0；E4：`CompositionShadow` 走 `.tmpl` 后与其它模板同路径 | E1 的 CharQuad 特判若判定"领域固有"则保留（4 处已收敛到 `IsCharQuadMode` + 表行）；不要为消除而过度抽象 |
@@ -762,6 +762,7 @@ if (recipe.mtl_def_id.empty())
 - **b. 日志粒度到键/值**：**已完成（§18.3）** —— `ParseMaterialDefinitionFile` 回传 表/键/值/行号，
   日志报到配置项级别；顺带补了纹理声明形态、`material_data` 形态两个静默失败洞。
 - **c. S3b-2 注册表归位**：**已完成（§18.1）** —— 三个盲区归位到枚举定义旁 + 2 条禁复活针；
+- **本档剩余项去哪找**：S4 / S3b-3 / 棋盘格上色 与 ECS 待拍板、既存红已统一折进 `doc/backlog.md` 的「当前未结项索引」（2026-10-12）——本档不再单独维护清单。
   本轮又发现 5~6 个同类盲区（顶点节点模式枚举，全仓无 `Get*Name`），列为 **S3b-3** 待办。
 
 ---
@@ -872,6 +873,146 @@ if (recipe.mtl_def_id.empty())
    必须 `touch` 目标 TU（或按依赖 purge）后再反证 —— 本轮两次反证都栽在这上面，补 `touch` 后精确报红。
 3. 锚点全是"我手抄的原文"，两处多打了一个 `)` 导致命中 0（`mesh_shader`/`pipeline`）⇒
    锚点一律从文件里 `repr()` 出来核对，别凭记忆抄。
+
+---
+
+## 19. S4 施工单：D 层去双真值（2026-10-12 建立，开工前）
+
+> **范围**：批表 §196 原列 D1 / D2 / D4 + F-4。**F-4 已并入并在 `694ab2002` 完成**
+> （`ApplyBaseMaterialInfoDefaults` 恒 no-op ⇒ 连函数带调用点删）⇒ **本施工单只剩 D1 / D2 / D4**。
+> **§196 批表里的行号已随重构漂移，下面全部是本轮实测行号**（每条都写了复核方式）。
+> 分批结论见 §19.4；边界见 §19.5。
+
+### 19.1 D1 —— 「模板哪些槽必需」的双真值（模板层：最小、判据现成）
+
+**取证（实测）**
+
+| 角色 | 位置 | 说明 |
+|---|---|---|
+| 真源 | `src/ShaderGen/template/RenderTemplate.cpp:16-70` | 6 张槽表（`ForwardLitSlots` / `ForwardLitUnshadowedSlots` / `ForwardUnlitSlots` / `ShadowCasterOpaqueSlots` / `ShadowCasterMaskedSlots` / `SkySlots`），每槽一个 `required`；字段定义 `inc/hgl/mtl/RenderTemplate.h:83`（默认 true）；**全仓唯一显式 false** = `ShadowCasterOpaqueSlots` 的 `MaterialSourceProvider`（`RenderTemplate.cpp:54`） |
+| 表驱动校验（**正确形态**） | `src/ShaderGen/template/RenderTemplate.cpp:290-300` | `if (slot.required && !request.FindModuleRoot(slot.role))` ⇒ `RenderTemplateValidationError::MissingRequiredSlot` |
+| 第二处表达（**硬编码**） | `src/ShaderGen/template/FragmentTemplateComposer.cpp:492-500` | `if (id == ForwardUnlit && (output_policy_inc.empty() \|\| material_source_inc.empty() \|\| surface_inc.empty())) return false;` + `if (id == Sky && (sky_provider_inc.empty() \|\| surface_inc.empty())) return false;` |
+| 耦合自证（同一事实要手工对齐的痕迹） | `RenderTemplate.cpp:32-34` | 注释："Composer 对 ForwardLit 系列一律要求 MaterialSource 与 NTB 非空，因此这两个 slot 必须存在——此前缺失会让该模板永远校验失败" |
+| 回归工具 | `src/Tools/ShaderGen/ShaderDocumentRegression.cpp:148` / `:174` | 钉 `MissingRequiredSlot`；用 `ForwardUnlit` 造 unexpected slot 请求 |
+
+**语义差异（决定不能"直接删分支"）**：表看的是「槽有没有 module root」，Composer 看的是「生成的 include 文本是否为空」——
+后者额外覆盖「module 在、但 include 产出为空」这一类失败。⇒ 收口方式是**把知识收回表里**，不是删掉那一层判断。
+
+**施工步骤**
+
+1. `FragmentTemplateComposer.cpp:492-500` 的 2 个 `if (id == …)` ⇒ 换成**表驱动**：取当前模板的 slots，对 `required == true` 的槽调用既有 `BuildSlotIncludeText(...)`，**为空即失败**（保留原「include 非空」语义）。
+2. 删掉那 2 个硬编码分支；`RenderTemplate.cpp:32-34` 的耦合注释改写为「必需槽由表声明，Composer 按表校验 include 非空」（**不复述被删分支原文**，避免污染禁复活判据）。
+3. 复查 `*_inc` 局部变量：确认不再存在任何"按模板 ID 特判必需性"的旁路。
+
+**判据（红/绿）**
+
+- 绿：`ShaderDocumentRegression` rc=0（`MissingRequiredSlot` 仍红得出来）+ 门 45 PASS/0 FAIL + `ctest -L ecs` 12/12 + `ShaderCooker` 38/0 + 示例 0 错误。
+- **反证**（必须打印预期的失败用例名与文案）：① 取任一模板某槽置 `required=false` 且不提供 ⇒ 改后**不再**被硬编码判死（改前死在这 2 个 if 上）；② 移除一个必需槽的 module ⇒ 仍报 `MissingRequiredSlot`。
+- 规模：1 处改动；无 TOML / GPU 侧影响。
+
+### 19.2 D2 —— 剔除方向的双真值（`double_sided` vs `cull_mode`）
+
+**取证（实测）**
+
+| 角色 | 位置 |
+|---|---|
+| `cull_mode`（管线键，粒度更细） | `inc/hgl/mtl/PipelineConfig.h:17`（`MaterialPipelineConfig`，默认 `VK_CULL_MODE_BACK_BIT`） |
+| `double_sided`（覆盖键） | `PipelineConfig.h:68-69`（overrides 的 `has_double_sided` / 值）、`:59`（`ResolvedMaterialRenderState.double_sided`） |
+| 覆盖点（两者汇合处） | `src/Vulkan/VKRenderPass.cpp:170-172`：`if (render_state.double_sided) render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;` |
+| 解析/键 | `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp`（render_state 段含 `double_sided`；pipeline 段含 `cull_mode`） |
+| 哈希输入 | `inc/hgl/mtl/MaterialRecipe.h:669-671`：`h << overrides.has_double_sided << overrides.double_sided` |
+| 门用例 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp:2451-2484`（5 处） |
+| 影响面 | `double_sided` 共 **8 档**：`MaterialRecipe.h`(6) / `PipelineConfig.h`(4) / `MaterialDefinitionFile.cpp`(4) / `MaterialDefinitionRegistry.cpp`(2) / 门(5) / `VKRenderPass.cpp`(2) / `RenderPrimitiveCollectSystem.cpp`(1) |
+| TOML 授权 | `grep -rn "double_sided\|cull_mode" ShaderLibrary/` ⇒ **0**（只有代码可达 ⇒ 收敛成本极低） |
+| **保留**（独立规则，不动） | `VKRenderPass.cpp:166-168`「Lines 图元强制 cull off」——按**图元类型**而非材质语义 |
+
+**可证问题**：TOML 可同时给两键且无一致性校验 ⇒ `cull_mode = "Back"` + `double_sided = true` 时，
+作者写的 `cull_mode` 被 `double_sided` **静默覆盖**（渲染结果与配置字面不符）。
+
+**施工步骤（建议：删 `double_sided` 全链，剔面语义只留 `cull_mode`）**
+
+1. 把现有 `double_sided = true` 的**代码写入点**改写成显式 `cull_mode = VK_CULL_MODE_NONE`；
+2. 删 overrides 的 `has_double_sided` / `double_sided`、`ResolvedMaterialRenderState.double_sided`、解析键与键白名单条目、`HashMaterialRecipe` 的两个输入项、`VKRenderPass.cpp:170-172` 的覆盖分支；
+3. 门 `:2451-2484` 的用例改写为 **`cull_mode` 断言**（意图保留：override 生效 + `has_` 语义）；
+4. 注释同步：`RenderPrimitiveCollectSystem.cpp:1079-1083` 里"仅 double_sided/cull 变化"的举例改成 `cull_mode` 说法（**机制不动**）。
+
+**判据（红/绿）**
+
+- `git grep -nw double_sided` 归零（注释里同样不得复述）；
+- 门 45 PASS/0 FAIL（用例已换断言）+ `ctest` 12/12 + cook 38/0 + 示例 0 错误；
+- **反证**：材质 TOML 写 `double_sided = true` ⇒ 必须是**未知键报错**（不得静默忽略）；
+- ⚠️ **哈希变化声明**：删哈希输入后**所有**配方的 program 身份键都会变 ⇒ 一次性冷缓存重建（首次运行会重编 stage GLSL）。
+  这条要写进当批验收说明，否则后续 bisect 会把它当成回归。
+
+### 19.3 D4 —— 「recipe 已归一化」的两套消费纪律
+
+**取证（实测）**
+
+| 角色 | 位置 | 行为 |
+|---|---|---|
+| 检查口 | `inc/hgl/mtl/MaterialRecipe.h:608-615` `IsRecipeNormalized` | 5 个 `has_*` 全真 |
+| fail-fast 侧 | `src/Vulkan/VKRenderPass.cpp:152-157` | 未归一化 ⇒ `GLogError` + 返回 `nullptr` |
+| **静默侧** | `inc/hgl/mtl/MaterialRecipe.h:593-605` `GetNormalizedRecipeRenderState` | **不检查** `has_*`，直接拷 overrides |
+| 唯一调用者 | `VKRenderPass.cpp:159` | 先检查后取值 ⇒ 当前无可达错值路径，但**不变量两套纪律** |
+
+**订正**：评审档记「静默返回全零」，实测更准确的说法是**返回结构体默认值 + 未写回的 overrides**
+（`alpha_cutoff = 0.5`、`cull_mode = BACK`、`double_sided = false`…）——作者定义的默认值可能不同 ⇒ **错值**而非零值，性质相同。
+
+**施工步骤**：把「检查 + 取值」合并成一个口
+`bool TryGetNormalizedRecipeRenderState(const MaterialRecipe &, ResolvedMaterialRenderState &out)`（内部即 `IsRecipeNormalized` 判定），
+调用方沿用现有报错文案；删 `GetNormalizedRecipeRenderState`（**不留兼容重载**）。
+
+**判据 / 反证**：构造未归一化 recipe 调新口 ⇒ 返回 `false`（改前静默给默认值）；
+反证挂门或 `TestCSMIncrementalPass`，**失败用例名与文案必须打印出来**才算数。
+
+### 19.4 分批（每批自编译 + 测试绿 + 反证）
+
+| 批 | 内容 | 为什么这么切 |
+|---|---|---|
+| **S4a** | **D1** | 只在模板层，不碰 recipe 语义/哈希；回归工具现成 |
+| **S4b** | **D4 + D2** | 同属 recipe/normalize 语义（§196 批表亦建议"单独一批并附反证"）；D2 改哈希输入，与 D4 的语义收敛同批验收最省事 |
+
+若要更小步：**D4 可单独一批**（2 个符号 + 1 个调用点）。
+**不建议**把 D1 与 D2/D4 合并 —— 三者无共享文件，合并只会模糊"哪一处导致契约变化"。
+
+### 19.5 边界（不做什么）
+
+### 19.6 S4a 执行记录（2026-10-12）
+
+**处置**：`src/ShaderGen/template/FragmentTemplateComposer.cpp` 里那两处「按模板 ID 硬编码必需槽」的 8 行**整删**；
+原位置留 5 行说明（指向唯一执行点，不复述被删分支原文）；表侧耦合注释（`RenderTemplate.cpp`）改写为
+「ForwardLit 的 defines 恒为 1 ⇒ 表中这两个槽必须保持 required=true；必需性判定唯一执行点 = `BuildAllSlotIncludeText`」；
+`src/ecs/support/TestCSMIncrementalPass.cpp` 加 **2 条禁复活针**（`output_policy_inc.empty()` / `sky_provider_inc.empty()`）。
+
+**开工复核（比施工单预期更省）**：施工单原计划"把硬编码换成表驱动循环"，实测**不需要新代码** ——
+`BuildAllSlotIncludeText`（同文件 `:340`）**已经是表驱动**（`if (definition.slots[index].required) return false;`），
+且在同一函数里**先于**那 8 行执行；而 `BuildSlotIncludeText` 的 `*_inc.empty()` ⟺ `ResolvedInclude()` 返回空
+⟺ 同一次 `FindModuleRoot(role)` 查找（`ResolvedInclude` 已含 `include_path` 非空判定）⇒ 两处**同条件**，
+对现有表（ForwardUnlit 三槽、Sky 的 slot 全 `required=true`）那 8 行**永不触达** ⇒ 处置定为整删。
+
+**验收（全绿）**：`shader_document_regression`（钉 `MissingRequiredSlot`）/`scene_render_template_resolver_regression`/
+`shader_document_production_regression`/`ShaderCookSmoke` **4/4 Passed**；门 **45 PASS / 0 FAIL**；
+`ctest -L ecs` **12/12**（含 2 条新针）；`TestCSMIncrementalPass` **1/1**；`ShaderCooker` **38/0**；
+示例 `CascadeShadowMap` / `TextDraw` **0 错误**。残留判据：`git grep "output_policy_inc.empty()\|sky_provider_inc.empty()"`
+仅剩 2 条针本身。
+
+**红的样子**（针反证，实测原文）：
+
+```
+Test 11 Failed: 必需槽强制已收归模板表（BuildAllSlotIncludeText，2026-10-12 S4a）：
+Composer 里不得再出现按模板 ID 硬编码的必需槽判断
+-- 'output_policy_inc.empty()' 重新出现在 FragmentTemplateComposer.cpp（禁复活）
+```
+
+**诚实边界**：硬编码块与表的分歧场景（表标 `required=false` + 该模块缺失 + 模板属 ForwardUnlit/Sky）目前**没有任何生产者**
+（表中无此条目，请求路径也不会缺该模块）⇒ 该分歧无法被现有工具触发，故本轮的红只有"针"这一条 + 上述静态不可达性论证。
+若将来要这道保险，应加门 case「表中 optional 槽缺失 ⇒ 组合器不得失败」，并先造出生产者。
+
+**未做**：S4b（D4 + D2）—— 见 §19.2 / §19.3 施工步骤。
+
+- 不碰 GPU 侧行载荷 / 描述符（D 层是纯 CPU 侧语义收敛）；
+- 不保留旧键别名 / 双写期（零兼容）；
+- 不动 `RenderPrimitiveCollectSystem` 那条"配方内容变了 ⇒ 重建管线"的机制（只改注释里的举例）。
 
 ## 5. 本档边界
 
