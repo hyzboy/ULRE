@@ -1865,6 +1865,9 @@ int main(int argc, char** argv)
               "Composer 里不得再出现按模板 ID 硬编码的必需槽判断", true },
             { "FragmentTemplateComposer.cpp", OS_TEXT("src/ShaderGen/template/FragmentTemplateComposer.cpp"),
               "sky_provider_inc.empty()", "同上（S4a）：Sky 的必需集合也不得在 Composer 里硬编码", true },
+            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
+              "ResolvedMaterialRenderState GetNormalizedRecipeRenderState(", "归一化取用口已收敛为 TryGetNormalizedRecipeRenderState(recipe, out_state)（S4b/D4，2026-10-12）："
+              "不得再出现「未归一化也照拷默认值」的取用口", true },
             { "Vulkan/CMakeLists.txt", OS_TEXT("src/Vulkan/CMakeLists.txt"),
               "VKString.cpp",
               "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"

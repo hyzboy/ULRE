@@ -1008,7 +1008,33 @@ Composer 里不得再出现按模板 ID 硬编码的必需槽判断
 （表中无此条目，请求路径也不会缺该模块）⇒ 该分歧无法被现有工具触发，故本轮的红只有"针"这一条 + 上述静态不可达性论证。
 若将来要这道保险，应加门 case「表中 optional 槽缺失 ⇒ 组合器不得失败」，并先造出生产者。
 
-**未做**：S4b（D4 + D2）—— 见 §19.2 / §19.3 施工步骤。
+**未做**：S4b 的 D2 —— 见 §19.2 施工步骤（D4 已完成，见 §19.7）。
+
+### 19.7 S4b/D4 执行记录（2026-10-12）
+
+**处置**：`inc/hgl/mtl/MaterialRecipe.h` 的 `GetNormalizedRecipeRenderState`（静默拷 overrides）**整删**，
+换成 **`TryGetNormalizedRecipeRenderState(const MaterialRecipe &, ResolvedMaterialRenderState &out)`** ——
+内部先过 `IsRecipeNormalized`，未归一化直接返回 `false`（**不留兼容重载**）。
+为让内联可见性成立，`IsRecipeNormalized` 上移到 `TryGet…` 之前（两者相邻、语义不拆）。
+调用点 `src/Vulkan/VKRenderPass.cpp`：「先判定 + 后取值」收成**一次调用**，报错文案/位置与 `return nullptr` 语义不变。
+门 `Y1.resolved-material-render-state` 扩两条断言：① 未归一化 recipe 必须被拒；
+② 归一化后与 `ResolveMaterialRenderState(definition, recipe)` **等价**（逐字段 + `HashResolvedMaterialRenderState` 一致）。
+**1 条禁复活针**：串取**声明形态** `ResolvedMaterialRenderState GetNormalizedRecipeRenderState(` ——
+刻意避开新名字（`TryGetNormalizedRecipeRenderState(` 会包含旧名子串 ⇒ 取调用形态会误撞，这是既有教训）。
+
+**验收（全绿）**：门 **45 PASS / 0 FAIL**（`Y1` PASS）；`ctest -L ecs` **12/12**；`TestCSMIncrementalPass` **1/1**；
+`ShaderCooker` **38/0**；示例 `PBRSpheres` / `TextDraw` **0 错误**。
+残留判据：`git grep -n GetNormalizedRecipeRenderState` 只剩 `TryGet…` 四处调用/声明与针本身。
+
+**红的样子**（把判定短路成 `if (false && …)` 后，实测原文）：
+
+```
+[FAIL] Y1.resolved-material-render-state
+  - un-normalized recipe must be rejected by TryGetNormalizedRecipeRenderState
+```
+
+**待做**：D2（见 §19.2）—— 剔面语义收敛，会改 `HashMaterialRecipe` 输入 ⇒ 见那里的"哈希变化声明"。
+
 
 - 不碰 GPU 侧行载荷 / 描述符（D 层是纯 CPU 侧语义收敛）；
 - 不保留旧键别名 / 双写期（零兼容）；

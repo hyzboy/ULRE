@@ -17,7 +17,7 @@
 
 | 项 | 状态 | 判据 / 下一步 |
 |---|---|---|
-| **S4 = D 层去双真值**（计划内**唯一**的未开工批次；**S4a 已完成，剩 S4b = D4 + D2**） | **S4a ✅ 已完成（2026-10-12，评审档 §19.6）**；S4b 未开工 | D1 删硬编码必需槽改读表并显式标 required（`RenderTemplateValidationError::MissingRequiredSlot` 仍在）；D2 `double_sided` 与 `cull_mode` 二选一（parser 两个键并存、材质侧 0 授权）；D4 `GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删口〔实测三者均在〕；**施工单见评审档 §19**（含实测行号 / 判据 / 反证 / 分批 S4a+S4b） |
+| **S4 = D 层去双真值**（计划内**唯一**的未开工批次；**S4a 已完成，剩 S4b = D4 + D2**） | **S4a ✅ 已完成（§19.6）；S4b/D4 ✅ 已完成（§19.7）；S4b/D2 未开工（§19.2）** | D1 删硬编码必需槽改读表并显式标 required（`RenderTemplateValidationError::MissingRequiredSlot` 仍在）；D2 `double_sided` 与 `cull_mode` 二选一（parser 两个键并存、材质侧 0 授权）；D4 `GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删口〔实测三者均在〕；**施工单见评审档 §19**（含实测行号 / 判据 / 反证 / 分批 S4a+S4b） |
 | **S3b-3：6 个顶点节点枚举归位** | 未开工〔评审档 §18.1〕 | `VertexInputMode`/`MappingMode`/`OrientationMode`/`ScaleMode`/`ProjectionMode`/`MaterialVertexNormalMode` 的 `Get*Name` **全仓 = 0**（名字只活在 `MaterialDefinitionFile.cpp` 的本地单向表）⇒ 按 S3b-2 形态搬回枚举定义旁；需动各自枚举手（部分属 `hgl::graph`）〔实测 Get*Name 全 0〕 |
 | **棋盘格标记色 + 2D/3D 分派**（功能项） | 未开工；TODO 已写进 `MaterialRecipe.h` 规则表上方〔档〕 | 两套 checkerboard 源读 `EmissiveSurface` 标记色；2D 走 NDC/UV、3D 走面空间；回退 ID 需按绘制维度分派；门/契约同步 |
 | **过期声明订正（3 处）** | 未做〔实测原文已定位〕 | ① `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1136-1139`、② `doc/future/HANDOFF_2026-10-01.md:55` 仍写"棋盘格不在回退链上、需单独一轮"（2026-10-12 已落地）；③ `doc/future/lighting-shadow-domain-split-plan.md` 的 **`T6b` 标题缺 ✅**——实测**已落地**（`LightRow`/`addr_lights`/`LightSystem`/`MainLightShadowSystem` 均在位、`sun_direction` 在 ShaderLibrary 归零）；另有 `MaterialRecipe.h` 注释里的 `SchemaGate:3534` 行号已漂移 |
