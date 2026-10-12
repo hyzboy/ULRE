@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
 #include<hgl/common/RenderOptions.h>
 #include<hgl/vk/VKInstance.h>
 #include<hgl/vk/VKTexture.h>
