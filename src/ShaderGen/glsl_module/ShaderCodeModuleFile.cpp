@@ -150,18 +150,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ParseKind(const char *token, ShaderCodeModuleKind &out_kind) noexcept
-        {
-            if (std::strcmp(token, "Shared") == 0) out_kind = ShaderCodeModuleKind::Shared;
-            else if (std::strcmp(token, "Surface") == 0) out_kind = ShaderCodeModuleKind::Surface;
-            else if (std::strcmp(token, "Position") == 0) out_kind = ShaderCodeModuleKind::Position;
-            else if (std::strcmp(token, "Transform") == 0) out_kind = ShaderCodeModuleKind::Transform;
-            else if (std::strcmp(token, "Utility") == 0) out_kind = ShaderCodeModuleKind::Utility;
-            else if (std::strcmp(token, "FragmentShader") == 0) out_kind = ShaderCodeModuleKind::FragmentShader;
-            else return false;
-            return true;
-        }
-
         bool ParseSlotRole(
             const char *token, ShaderModuleSlotRole &out_role) noexcept
         {
@@ -457,7 +445,7 @@ namespace hgl::graph::mtl
                         return ShaderCodeModuleParseResult::MissingDirectiveArgument;
 
                     ShaderCodeModuleKind kind;
-                    if (!ParseKind(token, kind))
+                    if (!ParseShaderCodeModuleKind(token, kind))
                         return ShaderCodeModuleParseResult::InvalidKind;
                     out_data.kind = kind;
                     saw_kind = true;

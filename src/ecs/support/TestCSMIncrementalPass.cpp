@@ -1855,6 +1855,11 @@ int main(int argc, char** argv)
               "static_cast<GLSLSamplerType>",
               "按索引序把名字映射成枚举值的解析器已删（枚举一改即静默错位）：改走 ParseSamplerType（大小写不敏感、未知名 ⇒ Error）",
               true },
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "ParsePolicy(", "MaterialVertexProviderPolicy 的名字表已归位到枚举定义处（MaterialRecipe.h，2026-10-11 S3b-2）："
+              "解析文件里不得再有本地单向解析器", true },
+            { "ShaderCodeModuleFile.cpp", OS_TEXT("src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp"),
+              "ParseKind(", "ShaderCodeModuleKind 的名字表已归位到枚举定义处（ShaderCodeModule.h，2026-10-11 S3b-2）", true },
             { "Vulkan/CMakeLists.txt", OS_TEXT("src/Vulkan/CMakeLists.txt"),
               "VKString.cpp",
               "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"

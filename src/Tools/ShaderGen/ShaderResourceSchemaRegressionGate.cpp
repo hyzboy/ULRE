@@ -1628,6 +1628,52 @@ namespace
         return result;
     }
 
+    /// 回退材质必须"任何几何都能画"（数据驱动：遍历整张回退规则表，新增种类自动纳入）：
+    ///   ① 定义 ID 必须能在材质库里解析（打字错 = 兜底路径整条失效）；
+    ///   ② 顶点需求只允许 GeometryAttribute/Position（不得依赖 UV/法线/颜色等可选属性）；
+    ///   ③ provider_policy 必须是 GeometryOnly（不得靠 code module 反推属性）。
+    static GateResult RunMaterialFallbackDefinitionCase()
+    {
+        GateResult result;
+        result.name = "S.material-fallback-definitions-exist";
+
+        for (uint32_t index = 0; index < MATERIAL_ERROR_KIND_COUNT; ++index)
+        {
+            const MaterialErrorKind kind = static_cast<MaterialErrorKind>(index);
+            const FallbackMaterialRule &rule = GetFallbackMaterialRule(kind);
+
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(rule.definition_id, definition))
+            {
+                result.diagnostics.emplace_back(std::string("fallback definition for kind '")
+                    + rule.marker_name + "' is not registered: " + rule.definition_id);
+                continue;
+            }
+
+            if (definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
+                result.diagnostics.emplace_back(std::string("fallback definition for kind '")
+                    + rule.marker_name + "' must use GeometryOnly provider policy: "
+                    + rule.definition_id);
+
+            for (uint32_t i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
+            {
+                const ShaderCodeModuleSemanticRequirement &requirement =
+                    definition.vertex_semantic_requirements[i];
+
+                // 只看**几何输入**（GeometryAttribute）：ProducedSemantic 是着色器内部
+                // 产出（例如 WorldPosition），不依赖顶点数据，任何几何都满足。
+                if (requirement.source == ShaderCodeModuleCapabilitySource::GeometryAttribute
+                 && requirement.semantic != ShaderCodeModuleSemantic::Position)
+                    result.diagnostics.emplace_back(std::string("fallback definition for kind '")
+                        + rule.marker_name + "' must not require vertex attributes beyond Position: "
+                        + rule.definition_id);
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunMaterialDefinitionIdentityCase()
     {
         GateResult result;
@@ -4126,6 +4172,85 @@ namespace
         return result;
     }
 
+    /// 解析失败细节回传（2026-10-12 用户口径）：材质配置写错必须能 LOG 到"表/键/值/行号"级别
+    /// —— 发售口径是全预编译 SPV、届时不再有 shader 合成器，配置错误只能靠日志定位。
+    /// 三个子项分别覆盖：枚举/名字值写错、键名写错、TOML 语法错。
+    static GateResult RunMaterialDefinitionParseDetailCase()
+    {
+        GateResult result;
+        result.name = "S.material-definition-parse-detail";
+
+        // ① 采样器类型名写错：必须报到 键 + 值（本次口径的原始触发场景）
+        const char bad_sampler_file[] =
+            "schema = 3\n"
+            "id = \"ParseDetailBadSampler\"\n"
+            "name = \"ParseDetailBadSampler\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "[fragment]\n"
+            "material_source_module = \"material/unlit_source.glsl\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\"]\n"
+            "[resources]\n"
+            "textures = [{ name = \"base_color\", sampler = \"SamplerBogus\", required = false }]\n";
+        MaterialDefinitionFileData bad_sampler_data;
+        if (ParseMaterialDefinitionFile(
+                bad_sampler_file, static_cast<int>(std::strlen(bad_sampler_file)),
+                bad_sampler_data) != MaterialDefinitionFileParseResult::InvalidValue)
+        {
+            result.diagnostics.emplace_back(
+                "bogus sampler name must fail the material definition parse");
+        }
+        else if (bad_sampler_data.parse_error.key != "sampler"
+              || bad_sampler_data.parse_error.value != "SamplerBogus")
+        {
+            result.diagnostics.emplace_back(std::string("bogus sampler name must report key+value, got key='")
+                + bad_sampler_data.parse_error.key + "' value='"
+                + bad_sampler_data.parse_error.value + "' (table='"
+                + bad_sampler_data.parse_error.table + "')");
+        }
+
+        // ② 未知键：必须报到键名（键白名单是"作者笔误 / 已删字段残留"的第一道闸）
+        const char unknown_key_file[] =
+            "schema = 3\n"
+            "id = \"ParseDetailUnknownKey\"\n"
+            "name = \"ParseDetailUnknownKey\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "bogus_root_key = 1\n"
+            "[fragment]\n"
+            "material_source_module = \"material/unlit_source.glsl\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\"]\n";
+        MaterialDefinitionFileData unknown_key_data;
+        if (ParseMaterialDefinitionFile(
+                unknown_key_file, static_cast<int>(std::strlen(unknown_key_file)),
+                unknown_key_data) != MaterialDefinitionFileParseResult::UnknownKey)
+        {
+            result.diagnostics.emplace_back("unknown root key must be rejected as UnknownKey");
+        }
+        else if (unknown_key_data.parse_error.key != "bogus_root_key")
+        {
+            result.diagnostics.emplace_back(std::string("unknown root key must report its name, got '")
+                + unknown_key_data.parse_error.key + "'");
+        }
+
+        // ③ TOML 语法错误：必须报出行号（作者最常见的失效模式之一）
+        const char syntax_error_file[] = "schema = 3\nid = \"Unterminated\n";
+        MaterialDefinitionFileData syntax_error_data;
+        if (ParseMaterialDefinitionFile(
+                syntax_error_file, static_cast<int>(std::strlen(syntax_error_file)),
+                syntax_error_data) != MaterialDefinitionFileParseResult::InvalidValue)
+        {
+            result.diagnostics.emplace_back("broken TOML must fail the parse");
+        }
+        else if (syntax_error_data.parse_error.line <= 0)
+        {
+            result.diagnostics.emplace_back("broken TOML must report the offending line number");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunFallbackInferenceCase()
     {
         GateResult result;
@@ -5434,6 +5559,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunMaterializationSharedInstanceCase());
     if (run_materialization) results.push_back(RunMaterialRegistryCoverageCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionIdentityCase());
+    if (run_materialization) results.push_back(RunMaterialFallbackDefinitionCase());
     if (run_pipeline) results.push_back(RunUnifiedMaterialBaselineCase());
     if (run_pipeline) results.push_back(RunMaterialOutputContractCase());
     if (run_pipeline) results.push_back(RunPrimitiveVariantPurposeCase());
@@ -5446,6 +5572,7 @@ int main(const int argc, char **argv)
     if (run_descriptor) results.push_back(RunGlobalSSBOBindingKeyCase());
     if (run_materialization) results.push_back(RunResolvedMaterialRenderStateCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
+    if (run_materialization) results.push_back(RunMaterialDefinitionParseDetailCase());
     if (run_materialization) results.push_back(RunMaterialLibraryContractCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());

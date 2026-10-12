@@ -29,6 +29,28 @@ namespace hgl::graph::mtl
         AnsiString surface_module_include_storage;
         AnsiString ambient_module_name_storage;
         AnsiString ambient_module_include_storage;
+
+        // ── 解析失败细节（2026-10-12 用户口径）────────────────────────────
+        // 发售口径：全预编译 SPV、届时不再有 shader 合成器 ⇒ 材质配置写错只能靠
+        // **日志**定位，所以失败必须报到"哪个表、哪个键、什么值"级别，而不是只说
+        // "某文件解析失败"。仅当 ParseMaterialDefinitionFile 返回非 OK 时有意义；
+        // 只记**第一个**失败点（根因优先），诊断用、不参与任何控制流判定。
+        struct ParseErrorDetail
+        {
+            std::string table;   // 出错所在表/段落（"root"/"transform"/"render_state.pipeline"/…）
+            std::string key;     // 出错键名（如 "sampler"；空 = 未定位到键）
+            std::string value;   // 出错值原文（如 "SamplerBogus"；空 = 无值可报）
+            std::string detail;  // 人类可读补充（期望提示 / TOML 报错原文）
+            int         line = 0; // TOML 语法错误行号（1-based；0 = 不适用）
+
+            bool IsEmpty() const noexcept
+            {
+                return line == 0 && table.empty() && key.empty()
+                    && value.empty() && detail.empty();
+            }
+        };
+
+        ParseErrorDetail parse_error;
     };
 
     MaterialDefinitionFileParseResult ParseMaterialDefinitionFile(

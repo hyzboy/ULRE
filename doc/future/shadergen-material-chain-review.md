@@ -756,14 +756,122 @@ if (recipe.mtl_def_id.empty())
 
 ### 17.4 待办 / 待拍板
 
-- **a. 保底材质当前不是棋盘格**：`kFallbackMaterialRules` 三条（None / MissingMaterialSource / UnknownMaterialDefinition）
-  的定义 ID 都是 **`builtin/pure_color`**（标记色 白 / 洋红 / 橙）；`builtin/checkerboard_2d|3d` 是**普通文件材质**、
-  棋盘格颜色**写死灰度**、**不在回退链上**；门还把"回退 ID == `builtin/pure_color`"与"material TOML 文件数 == 14"钉死。
-  ⇒ 要做到"棋盘格渲染标注错误"需单独一轮：① `checkerboard_{2d,3d}_source.glsl` 读 EmissiveSurface 标记色；
-  ② 2D 走 UV / 3D 走面空间（两套着色器各自独立）；③ 把两者接到回退链 + 同步门的两处期望值。
-- **b. 日志粒度**：现在到"文件 + 错误类别"（如 `InvalidValue`）。要打到**出错键/值**需 `ParseMaterialDefinitionFile`
-  回传细节（现行 API 只返回 `MaterialDefinitionFileParseResult` 枚举）；`%ls` 那轮已证明日志管线可读。
-- **c. S3b-2 未做**：`MaterialVertexProviderPolicy` / `ShaderCodeModuleKind` / `MeshShaderMode` 三个注册表盲区（补 `Get*Name`）。
+- **a. 保底材质接棋盘格**：**已完成（§18.2）** —— 两条错误种类改用 `builtin/checkerboard_3d`（只依赖 Position +
+  GeometryOnly ⇒ 任意几何可画），`None` 仍为 `builtin/pure_color`；新增门 case `S.material-fallback-definitions-exist`。
+  标记色仍不可见（棋盘格源不读 MaterialData），按用户口径**只留 TODO**（`MaterialRecipe.h` 规则表上方注释）。
+- **b. 日志粒度到键/值**：**已完成（§18.3）** —— `ParseMaterialDefinitionFile` 回传 表/键/值/行号，
+  日志报到配置项级别；顺带补了纹理声明形态、`material_data` 形态两个静默失败洞。
+- **c. S3b-2 注册表归位**：**已完成（§18.1）** —— 三个盲区归位到枚举定义旁 + 2 条禁复活针；
+  本轮又发现 5~6 个同类盲区（顶点节点模式枚举，全仓无 `Get*Name`），列为 **S3b-3** 待办。
+
+---
+
+## 18. 三个任务：S3b-2 注册表归位 / 错误材质接棋盘格 / 解析失败回传细节（2026-10-12，用户拍板）
+
+用户当轮三项指令（原文）：①「棋盘格就先不管颜色吧！改让它支持颜色的事未来再说，现在仅留个注释说明未来要做就行了」
+②「那就增加 ParseMaterialDefinitionFile 回传细节吧」③「S3b-2 可以做了」。执行顺序：S3b-2 → 棋盘格 → 解析细节（前一项独立、后两项都动公共头）。
+
+### 18.1 S3b-2：三个注册表盲区归位（名字↔值只此一处）
+
+| 枚举 | 归位处（枚举定义旁） | 删掉的本地单向解析器 |
+|---|---|---|
+| `MaterialVertexProviderPolicy` | `inc/hgl/mtl/MaterialRecipe.h` | `MaterialDefinitionFile.cpp::ParsePolicy` |
+| `ShaderCodeModuleKind` | `inc/hgl/mtl/ShaderCodeModule.h` | `ShaderCodeModuleFile.cpp::ParseKind` |
+| `MeshShaderMode` | `inc/hgl/mtl/MeshShaderMode.h` | 无（`ParseMeshShaderMode` 原地重写为走 `GetMeshShaderModeName`） |
+
+形态：`Get*Name`（switch，枚举 → 名字）+ `Parse*`（线性查表，名字 → 枚举）+ `*Count = static_cast<uint32>(末值) + 1`
+——**新增枚举值自动纳入**（不必补断言/补表项）。`MeshShaderMode` 的空串 = `VertexPassthrough` 缺省语义保留。
+判据：`git grep -n "ParsePolicy(\|ParseKind("` 只剩 2 条**禁复活针**（`TestCSMIncrementalPass.cpp`）⇒ 本地单向解析器不得回来。
+反证：把 `ParseKind(` 重新写进 `ShaderCodeModuleFile.cpp` ⇒ `Test 11 Failed: ShaderCodeModuleKind 的名字表已归位到枚举定义处（…，2026-10-11 S3b-2） -- 'ParseKind(' 重新出现（禁复活）`。
+
+**本轮新发现（S3b-3 待办，同一形态，本次未动）**：`MaterialDefinitionFile.cpp` 里还有 **5 个本地单向解析器**
+（`ParseVertexInput`/`ParseMapping`/`ParseOrientation`/`ParseScale`/`ParseProjection` + `ParseVertexNormalMode`）
+对 `VertexInputMode`/`MappingMode`/`OrientationMode`/`ScaleMode`/`ProjectionMode`/`MaterialVertexNormalMode` 做单向映射，
+这 6 个枚举**全仓没有 `Get*Name`**（`git grep -c Get*Name` = 0）⇒ 名字只存在于这些本地表里。归位需要动各自枚举所在的头
+（其中几个属 `hgl::graph` 顶点节点侧，blast radius 比 S3b-2 大），故另起一批做。
+
+### 18.2 错误材质接棋盘格（颜色留 TODO）
+
+`kFallbackMaterialRules`（`inc/hgl/mtl/MaterialRecipe.h`）两条**错误种类**的定义 ID
+由 `builtin/pure_color` 改为 **`builtin/checkerboard_3d`**；`None`（非错误默认）**仍是** `builtin/pure_color`
+⇒ 门 `F.fallback-dimension-neutral`（钉无参回退 ID）与既有契约**不破**。
+
+选 `checkerboard_3d` 的依据（不是拍脑袋）：它 `provider_policy = GeometryOnly`、顶点需求只有 `Position`、
+`normal_mode = OptionalFaceFallback` ⇒ **无需 UV/法线即可在任意几何上画出来**（`checkerboard_2d` 走 NDC/LocalToWorldOnly，面向 2D 绘制）。
+深度/阴影 pass **不受影响**：program 由 `SelectCurrentSceneRenderTemplateRequest` 按 **purpose** 选模板
+（`ShadowCasterOpaque/Masked`），与本材质的 fragment 源无关。
+
+新增门 case **`S.material-fallback-definitions-exist`**（数据驱动遍历整张规则表）：
+① 定义 ID 必须能在材质库里解析；② 顶点需求里**几何输入**（`GeometryAttribute`）只允许 `Position`
+（`ProducedSemantic` 是着色器内部产出，不依赖顶点数据 —— 第一版判据漏了这条，被自己的用例当场报红，
+日志为 `fallback definition for kind 'none' must not require vertex attributes beyond Position`）；
+③ `provider_policy == GeometryOnly`。
+
+反证两条：① 规则 ID 改成 `builtin/checkerboard_typo` ⇒ 门报
+`fallback definition for kind 'missing_material_source' is not registered: builtin/checkerboard_typo`；
+② 规则 ID 改成合法的 `builtin/checkerboard_2d` ⇒ 门仍绿（它是合法的棋盘格材质），但
+`TestRenderStrategyTable` 的**意图针**报红：`Test 6 Failed: 材质错误必须走棋盘格保底材质 builtin/checkerboard_3d`。
+两道闸互补：门兜"打错字/定义不存在"，测试钉"拍板的那一款"。
+
+颜色仍**看不到**：`checkerboard_{2d,3d}_source.glsl` 没有 `@ulre require Resource MaterialData`，
+棋盘格两色写死灰度（`vec3(0.0)`/`vec3(0.35)`）⇒ 规则表里的 `marker_color` 照旧下发到材质数据行但无人读。
+按用户口径**只留 TODO**（`MaterialRecipe.h` 规则表上方注释）：未来 ① 两套 checkerboard 源读 EmissiveSurface 标记色；
+② 2D/3D 分派（届时回退 ID 需按绘制维度区分）；③ 门/契约同步。
+
+### 18.3 `ParseMaterialDefinitionFile` 回传失败细节（表 / 键 / 值 / 行号）
+
+**动因**（用户口径）：发售用全预编译 SPV、不再有 shader 合成器 ⇒ 材质配置写错只能靠**日志**定位，
+所以失败必须报到"哪个表、哪个键、什么值"，而不是只说"某文件解析失败"。
+
+机制（`MaterialDefinitionFile.h` 新增 `MaterialDefinitionFileData::ParseErrorDetail`：
+`table`/`key`/`value`/`detail`/`line`）：
+
+- 解析器内部失败点极多且都以 `return false` 收敛 ⇒ **不逐点改**，而是引入**诊断上下文** `ParseErrorContext`
+  （文件内匿名命名空间 + `thread_local` 指针 + RAII `ParseErrorContextScope`）；上下文**不参与任何控制流判定**，
+  只记**第一个**失败点（根因优先）。
+- 记录点：① `ReadString/ReadBool/ReadFloat` 失败 ⇒ 键；② 各枚举/名字解析失败（`sampler`/`cull_mode`/`depth_compare_op`/
+  `blend_src`/`blend_dst`/`transform` 五键/`provider_policy`/`normal_mode`/`requirements`/`material_data.type`/
+  `mesh_shader.mode`）⇒ **键 + 值 + 期望提示**；③ 键白名单（`ValidateKnownKeys`，8 个段落各 `SetParseTable`）⇒ 键；
+  ④ TOML **语法错误** ⇒ 行号 + 库原文（`toml::syntax_error::errors()`）。
+- **顺带补了两个静默失败洞**（实测发现的）：纹理声明的形态契约（`name`/`sampler` 必须字符串、`required` 必须布尔）
+  与 `material_data` 的形态检查原先直接 `return false` ⇒ 现在逐项报到键级
+  （例如缺 `required` 现在报 `resources.textures.required（必须有布尔 required（显式声明，不取默认值））`）。
+
+日志形态（`MaterialDefinitionFileRegistry::LoadFile`）：
+
+```
+[#10][MaterialDefinitionFile.cpp:1084] [MaterialDefinitionFileRegistry] 材质定义解析失败:
+  E:\ULRE\ShaderLibrary\material\lit.material.toml (InvalidValue) resources.textures.sampler = "SamplerBogus"
+  (未知采样器类型名（见 inc/hgl/common/TextureSamplerTypeDef.h）)
+```
+
+新增门 case **`S.material-definition-parse-detail`**（自造 TOML，3 个子项）：
+① 名字写错 ⇒ `InvalidValue` + `key == "sampler"` + `value == "SamplerBogus"`；
+② 未知键 ⇒ `UnknownKey` + `key == "bogus_root_key"`；③ TOML 语法错 ⇒ `line > 0`。
+
+反证两条（都是当场真实出现过的红）：① 测试 TOML 缺 `required` 时（先于 sampler 失败）
+报 `bogus sampler name must report key+value, got key='' value=''` ⇒ 促使我补上纹理形态的记录点；
+② 去掉 `ValidateKnownKeys` 里的记录 ⇒ `unknown root key must report its name, got ''`。
+
+### 18.4 验收（本轮最终状态）
+
+| 项 | 结果 |
+|---|---|
+| 全量 Release | `rc=0` / 0 error / **392** 目标 |
+| `ctest -L ecs` / `TestCSMIncrementalPass` | **12/12** / **1/1** |
+| ShaderGen 门 | **45 PASS / 0 FAIL**（43 → +`S.material-fallback-definitions-exist` → +`S.material-definition-parse-detail`） |
+| `ShaderCooker` | **38/0** |
+| 示例冒烟 | `PBRSpheres` rc=124、0 错误 |
+
+### 18.5 本轮自己踩的坑（供下次）
+
+1. **blob 重铺会吃掉未提交改动**：编辑 helper 从 `git show HEAD:` 取内容重铺 ⇒ 把 `MaterialRecipe.h` 里
+   **未提交**的 S3b-2 改动整块抹掉（编报 `ParseMaterialVertexProviderPolicy: identifier not found`）。
+   正确口径：**内容取工作区、BOM/行尾取 blob**；只有"从干净形态重建"才用 blob 内容。
+2. **反证假绿 = 二进制没重编**：改的是**头文件里的表**，MSBuild 不跟踪头依赖 ⇒ 门/测试仍跑旧二进制、反证"不红"。
+   必须 `touch` 目标 TU（或按依赖 purge）后再反证 —— 本轮两次反证都栽在这上面，补 `touch` 后精确报红。
+3. 锚点全是"我手抄的原文"，两处多打了一个 `)` 导致命中 0（`mesh_shader`/`pipeline`）⇒
+   锚点一律从文件里 `repr()` 出来核对，别凭记忆抄。
 
 ## 5. 本档边界
 

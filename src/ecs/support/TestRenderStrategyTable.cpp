@@ -341,6 +341,24 @@ int main(int argc, char** argv)
             }
         }
 
+        // 保底外观（2026-10-12 用户拍板）：非错误默认 = 纯色；**材质错误 = 棋盘格**
+        if (std::strcmp(GetFallbackMaterialRule(MaterialErrorKind::None).definition_id,
+                        "builtin/pure_color") != 0)
+        {
+            GLogError(u8"Test 6 Failed: 非错误回退必须仍是纯色 builtin/pure_color");
+            return 15;
+        }
+
+        if (std::strcmp(GetFallbackMaterialDefinitionID(MaterialErrorKind::MissingMaterialSource),
+                        "builtin/checkerboard_3d") != 0
+         || std::strcmp(GetFallbackMaterialDefinitionID(MaterialErrorKind::UnknownMaterialDefinition),
+                        "builtin/checkerboard_3d") != 0)
+        {
+            GLogError(u8"Test 6 Failed: 材质错误必须走棋盘格保底材质 builtin/checkerboard_3d"
+                      u8"（配置写错 ⇒ LOG + 棋盘格错误材质路径）");
+            return 15;
+        }
+
         // 错误种类（非 None）的根颜色两两不同
         for (uint32_t i = 1; i < MATERIAL_ERROR_KIND_COUNT; ++i)
         {

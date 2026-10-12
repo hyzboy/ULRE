@@ -13,8 +13,24 @@ namespace hgl::graph::mtl
         CharQuad,            // 每线程 1 字符实例 → quad（6 顶点 2 三角形）
     };
 
+    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    inline constexpr uint32 MeshShaderModeCount =
+        static_cast<uint32>(MeshShaderMode::CharQuad) + 1;
+
+    inline const char *GetMeshShaderModeName(const MeshShaderMode mode) noexcept
+    {
+        switch (mode)
+        {
+        case MeshShaderMode::VertexPassthrough: return "VertexPassthrough";
+        case MeshShaderMode::LineQuad:          return "LineQuad";
+        case MeshShaderMode::CharQuad:          return "CharQuad";
+        }
+        return "VertexPassthrough";
+    }
+
     // TOML 值 → 枚举。空串 = VertexPassthrough（缺省语义）；
     // 未知值返回 false（拼写错误 = 显式解析失败，而非静默降级到默认模式）。
+    // 名字只在 GetMeshShaderModeName 里写一份（新增模式改枚举 + 那个 switch）。
     inline bool ParseMeshShaderMode(const char *name, MeshShaderMode &out) noexcept
     {
         if (!name || !name[0])
@@ -22,9 +38,16 @@ namespace hgl::graph::mtl
             out = MeshShaderMode::VertexPassthrough;
             return true;
         }
-        if (std::strcmp(name, "VertexPassthrough") == 0) { out = MeshShaderMode::VertexPassthrough; return true; }
-        if (std::strcmp(name, "LineQuad") == 0)          { out = MeshShaderMode::LineQuad;          return true; }
-        if (std::strcmp(name, "CharQuad") == 0)          { out = MeshShaderMode::CharQuad;          return true; }
+
+        for (uint32 i = 0; i < MeshShaderModeCount; ++i)
+        {
+            const MeshShaderMode mode = static_cast<MeshShaderMode>(i);
+            if (std::strcmp(name, GetMeshShaderModeName(mode)) == 0)
+            {
+                out = mode;
+                return true;
+            }
+        }
         return false;
     }
 

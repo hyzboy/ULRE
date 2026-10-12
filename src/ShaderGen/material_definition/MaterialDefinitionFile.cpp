@@ -14,10 +14,90 @@ namespace hgl::graph::mtl
 {
     namespace
     {
+        // ── 解析失败诊断上下文（2026-10-12）────────────────────────────────
+        // 口径：材质配置写错必须能 LOG 到"表/键/值"。解析器内部失败点极多且都以
+        // `return false` 收敛，故用**读值/校验 helper 统一记录**：谁先失败谁写入
+        // 上下文（只记第一个 = 根因）。上下文是**纯诊断**，不参与任何控制流判定。
+        // 置位用 RAII 作用域（thread_local：解析发生在加载线程；嵌套调用不会串）。
+        struct ParseErrorContext
+        {
+            const char *current_table = "";   // 当前正在解析的表/段落
+            std::string table;                // 快照：第一个失败点所在的表
+            std::string key;
+            std::string value;
+            std::string detail;
+            int         line = 0;
+            bool        recorded = false;
+
+            void SetTable(const char *name) noexcept
+            {
+                current_table = name ? name : "";
+            }
+
+            // 记第一个失败点（后续失败点忽略：根因优先）
+            void Record(const char *in_key, const char *in_value, const char *in_detail)
+            {
+                if (recorded)
+                    return;
+
+                table = current_table ? current_table : "";
+                key = in_key ? in_key : "";
+                value = in_value ? in_value : "";
+                detail = in_detail ? in_detail : "";
+                recorded = true;
+            }
+
+            void RecordLine(const int in_line, const char *in_detail)
+            {
+                if (recorded)
+                    return;
+
+                line = in_line;
+                Record(nullptr, nullptr, in_detail);
+            }
+        };
+
+        thread_local ParseErrorContext *g_parse_error_context = nullptr;
+
+        struct ParseErrorContextScope
+        {
+            explicit ParseErrorContextScope(ParseErrorContext *context) noexcept
+            {
+                g_parse_error_context = context;
+            }
+            ~ParseErrorContextScope() { g_parse_error_context = nullptr; }
+
+            ParseErrorContextScope(const ParseErrorContextScope &) = delete;
+            ParseErrorContextScope &operator=(const ParseErrorContextScope &) = delete;
+        };
+
+        inline void SetParseTable(const char *name) noexcept
+        {
+            if (g_parse_error_context)
+                g_parse_error_context->SetTable(name);
+        }
+
+        inline void RecordParseFailure(const char *in_key,
+                                       const char *in_value = nullptr,
+                                       const char *in_detail = nullptr)
+        {
+            if (g_parse_error_context)
+                g_parse_error_context->Record(in_key, in_value, in_detail);
+        }
+
+        inline void RecordParseSyntaxError(const int line, const char *detail)
+        {
+            if (g_parse_error_context)
+                g_parse_error_context->RecordLine(line, detail);
+        }
+
         bool ReadString(const toml::value &table, const char *key, AnsiString &out)
         {
             if (!table.is_table() || !table.contains(key) || !table.at(key).is_string())
+            {
+                RecordParseFailure(key);
                 return false;
+            }
             const std::string &value = table.at(key).as_string();
             out = value.c_str();
             return true;
@@ -26,7 +106,10 @@ namespace hgl::graph::mtl
         bool ReadString(const toml::value &table, const char *key, std::string &out)
         {
             if (!table.is_table() || !table.contains(key) || !table.at(key).is_string())
+            {
+                RecordParseFailure(key);
                 return false;
+            }
             out = table.at(key).as_string();
             return true;
         }
@@ -34,7 +117,10 @@ namespace hgl::graph::mtl
         bool ReadBool(const toml::value &table, const char *key, bool &out)
         {
             if (!table.is_table() || !table.contains(key) || !table.at(key).is_boolean())
+            {
+                RecordParseFailure(key);
                 return false;
+            }
             out = table.at(key).as_boolean();
             return true;
         }
@@ -42,38 +128,26 @@ namespace hgl::graph::mtl
         bool ReadFloat(const toml::value &table, const char *key, float &out)
         {
             if (!table.is_table() || !table.contains(key))
+            {
+                RecordParseFailure(key);
                 return false;
+            }
             const toml::value &value = table.at(key);
             if (value.is_floating())
                 out = static_cast<float>(value.as_floating());
             else if (value.is_integer())
                 out = static_cast<float>(value.as_integer());
             else
+            {
+                RecordParseFailure(key);
                 return false;
+            }
             return true;
         }
 
         bool ReadRequiredString(const toml::value &table, const char *key, std::string &out)
         {
             return ReadString(table, key, out) && !out.empty();
-        }
-
-        bool ParsePolicy(const std::string &name, MaterialVertexProviderPolicy &out)
-        {
-            static const struct { const char *name; MaterialVertexProviderPolicy value; } table[] = {
-                { "Auto",         MaterialVertexProviderPolicy::Auto },
-                { "GeometryOnly", MaterialVertexProviderPolicy::GeometryOnly },
-                { "AllowDerived", MaterialVertexProviderPolicy::AllowDerived },
-            };
-            for (const auto &entry : table)
-            {
-                if (name == entry.name)
-                {
-                    out = entry.value;
-                    return true;
-                }
-            }
-            return false;
         }
 
         bool ParseVertexNormalMode(
@@ -128,27 +202,43 @@ namespace hgl::graph::mtl
             std::string value;
             if (pipeline.contains("cull_mode"))
             {
-                if (!ReadString(pipeline, "cull_mode", value)
-                 || !ParseVkCullMode(value.c_str(), definition.default_render_state.pipeline_config.cull_mode))
+                if (!ReadString(pipeline, "cull_mode", value))
                     return false;
+                if (!ParseVkCullMode(value.c_str(), definition.default_render_state.pipeline_config.cull_mode))
+                {
+                    RecordParseFailure("cull_mode", value.c_str(), "未知值（见 inc/hgl/mtl/VkEnumText.h）");
+                    return false;
+                }
             }
             if (pipeline.contains("depth_compare_op"))
             {
-                if (!ReadString(pipeline, "depth_compare_op", value)
-                 || !ParseVkCompareOp(value.c_str(), definition.default_render_state.pipeline_config.depth_compare_op))
+                if (!ReadString(pipeline, "depth_compare_op", value))
                     return false;
+                if (!ParseVkCompareOp(value.c_str(), definition.default_render_state.pipeline_config.depth_compare_op))
+                {
+                    RecordParseFailure("depth_compare_op", value.c_str(), "未知值（见 inc/hgl/mtl/VkEnumText.h）");
+                    return false;
+                }
             }
             if (pipeline.contains("blend_src"))
             {
-                if (!ReadString(pipeline, "blend_src", value)
-                 || !ParseVkBlendFactor(value.c_str(), definition.default_render_state.pipeline_config.blend_src))
+                if (!ReadString(pipeline, "blend_src", value))
                     return false;
+                if (!ParseVkBlendFactor(value.c_str(), definition.default_render_state.pipeline_config.blend_src))
+                {
+                    RecordParseFailure("blend_src", value.c_str(), "未知值（见 inc/hgl/mtl/VkEnumText.h）");
+                    return false;
+                }
             }
             if (pipeline.contains("blend_dst"))
             {
-                if (!ReadString(pipeline, "blend_dst", value)
-                 || !ParseVkBlendFactor(value.c_str(), definition.default_render_state.pipeline_config.blend_dst))
+                if (!ReadString(pipeline, "blend_dst", value))
                     return false;
+                if (!ParseVkBlendFactor(value.c_str(), definition.default_render_state.pipeline_config.blend_dst))
+                {
+                    RecordParseFailure("blend_dst", value.c_str(), "未知值（见 inc/hgl/mtl/VkEnumText.h）");
+                    return false;
+                }
             }
 
             bool &depth_test = definition.default_render_state.pipeline_config.depth_test;
@@ -273,17 +363,47 @@ namespace hgl::graph::mtl
                                  VertexShaderNodeConfig &out)
         {
             std::string value;
-            if (!ReadRequiredString(table, "source", value)
-             || !ParseVertexInput(value, out.input)
-             || !ReadRequiredString(table, "mapping", value)
-             || !ParseMapping(value, out.position_mapping)
-             || !ReadRequiredString(table, "orientation", value)
-             || !ParseOrientation(value, out.orientation)
-             || !ReadRequiredString(table, "scale", value)
-             || !ParseScale(value, out.scale)
-             || !ReadRequiredString(table, "projection", value)
-             || !ParseProjection(value, out.projection))
+
+            if (!ReadRequiredString(table, "source", value))
                 return false;
+            if (!ParseVertexInput(value, out.input))
+            {
+                RecordParseFailure("source", value.c_str(), "未知顶点输入模式名");
+                return false;
+            }
+
+            if (!ReadRequiredString(table, "mapping", value))
+                return false;
+            if (!ParseMapping(value, out.position_mapping))
+            {
+                RecordParseFailure("mapping", value.c_str(), "未知位置映射模式名");
+                return false;
+            }
+
+            if (!ReadRequiredString(table, "orientation", value))
+                return false;
+            if (!ParseOrientation(value, out.orientation))
+            {
+                RecordParseFailure("orientation", value.c_str(), "未知朝向模式名");
+                return false;
+            }
+
+            if (!ReadRequiredString(table, "scale", value))
+                return false;
+            if (!ParseScale(value, out.scale))
+            {
+                RecordParseFailure("scale", value.c_str(), "未知缩放入参模式名");
+                return false;
+            }
+
+            if (!ReadRequiredString(table, "projection", value))
+                return false;
+            if (!ParseProjection(value, out.projection))
+            {
+                RecordParseFailure("projection", value.c_str(), "未知投影模式名");
+                return false;
+            }
+
             return true;
         }
 
@@ -334,9 +454,14 @@ namespace hgl::graph::mtl
 
             if (!ReadRequiredString(root, "id", id)
              || !ReadRequiredString(root, "name", name)
-             || !ReadRequiredString(root, "provider_policy", policy)
-             || !ParsePolicy(policy, out.definition.vertex_provider_policy))
+             || !ReadRequiredString(root, "provider_policy", policy))
                 return false;
+            if (!ParseMaterialVertexProviderPolicy(policy.c_str(), out.definition.vertex_provider_policy))
+            {
+                RecordParseFailure("provider_policy", policy.c_str(),
+                                   "未知策略名（见 MaterialRecipe.h 的 GetMaterialVertexProviderPolicyName）");
+                return false;
+            }
 
             out.definition.definition_id = id;
             out.definition.definition_name = name;
@@ -414,10 +539,14 @@ namespace hgl::graph::mtl
             if (vertex->contains("normal_mode"))
             {
                 std::string normal_mode;
-                if (!ReadRequiredString(*vertex, "normal_mode", normal_mode)
-                 || !ParseVertexNormalMode(
-                        normal_mode, out.definition.vertex_normal_mode))
+                if (!ReadRequiredString(*vertex, "normal_mode", normal_mode))
                     return false;
+                if (!ParseVertexNormalMode(
+                        normal_mode, out.definition.vertex_normal_mode))
+                {
+                    RecordParseFailure("normal_mode", normal_mode.c_str(), "未知法线模式名");
+                    return false;
+                }
             }
             for (const auto &item : vertex->at("requirements").as_array())
             {
@@ -425,7 +554,11 @@ namespace hgl::graph::mtl
                     return false;
                 ShaderCodeModuleSemantic semantic;
                 if (!ParseSemantic(item.as_string(), semantic))
+                {
+                    RecordParseFailure("requirements", item.as_string().c_str(),
+                                       "未知顶点语义名（见 ShaderCodeModule.h 的 GetShaderCodeModuleSemanticName）");
                     return false;
+                }
                 ShaderCodeModuleSemanticRequirement requirement;
                 requirement.source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
                 requirement.semantic = semantic;
@@ -464,34 +597,73 @@ namespace hgl::graph::mtl
                     // 名字固定为 DefaultMaterialPrivateDataName；
                     // type 必须是材质 SSBO 类型。
                     const auto &item = resources.at("material_data");
-                    if (!item.is_table()
-                     || !item.contains("type") || !item.at("type").is_string())
+                    if (!item.is_table())
+                    {
+                        RecordParseFailure("material_data", nullptr, "必须是内联表");
                         return false;
+                    }
+                    if (!item.contains("type") || !item.at("type").is_string())
+                    {
+                        RecordParseFailure("material_data.type", nullptr, "必须有字符串 type");
+                        return false;
+                    }
                     GlobalSSBOType type;
                     if (!ParseGlobalSSBOType(item.at("type").as_string(), type)
                      || !IsGlobalSSBOType(type))
+                    {
+                        RecordParseFailure("material_data.type", item.at("type").as_string().c_str(),
+                                           "未知材质数据类型名（见 GlobalSSBOTypes.h 的 GetGlobalSSBOTypeName）");
                         return false;
+                    }
                     out.definition.material_private_data = type;
                 }
 
                 if (resources.contains("textures"))
                 {
                     if (!resources.at("textures").is_array())
+                    {
+                        RecordParseFailure("textures", nullptr, "必须是数组");
                         return false;
+                    }
+                    SetParseTable("resources.textures");
                     for (const auto &item : resources.at("textures").as_array())
                     {
-                        if (!ValidateTextureDeclarationKeys(item)
-                         || !item.contains("name") || !item.at("name").is_string()
-                         || !item.contains("sampler") || !item.at("sampler").is_string()
-                         || !item.contains("required") || !item.at("required").is_boolean())
+                        // 纹理声明的形态契约：键白名单 + name/sampler 为字符串 + required 为布尔。
+                        // 逐项记录到键级：形态不符曾被静默拒绝，作者看不出哪里写错。
+                        if (!ValidateTextureDeclarationKeys(item))
                             return false;
+
+                        if (!item.contains("name") || !item.at("name").is_string())
+                        {
+                            RecordParseFailure("name", nullptr, "必须有字符串 name");
+                            return false;
+                        }
+                        if (!item.contains("sampler") || !item.at("sampler").is_string())
+                        {
+                            RecordParseFailure("sampler", nullptr, "必须有字符串 sampler（采样器类型名）");
+                            return false;
+                        }
+                        if (!item.contains("required") || !item.at("required").is_boolean())
+                        {
+                            RecordParseFailure("required", nullptr, "必须有布尔 required（显式声明，不取默认值）");
+                            return false;
+                        }
                         const std::string texture_name = item.at("name").as_string();
-                        // 采样器类型名走唯一真源（大小写不敏感）；未知名 ⇒ Error ⇒ 解析失败。
-                        const SamplerType sampler =
-                            ParseSamplerType(item.at("sampler").as_string().c_str());
-                        if (!IsValidMaterialTextureName(texture_name)
-                         || sampler == SamplerType::Error)
+                        if (!IsValidMaterialTextureName(texture_name))
+                        {
+                            RecordParseFailure("name", texture_name.c_str(), "非法纹理声明名");
                             return false;
+                        }
+
+                        // 采样器类型名走唯一真源（大小写不敏感）；未知名 ⇒ Error ⇒ 解析失败。
+                        const std::string sampler_name = item.at("sampler").as_string();
+                        const SamplerType sampler = ParseSamplerType(sampler_name.c_str());
+                        if (sampler == SamplerType::Error)
+                        {
+                            RecordParseFailure("sampler", sampler_name.c_str(),
+                                               "未知采样器类型名（见 inc/hgl/common/TextureSamplerTypeDef.h）");
+                            return false;
+                        }
 
                         for (const auto &existing :
                              out.definition.texture_declarations)
@@ -641,7 +813,12 @@ namespace hgl::graph::mtl
                     if (!ReadRequiredString(ms, "mode", mode_str))
                         return false;
                     if (!ParseMeshShaderMode(mode_str.c_str(), out.definition.mesh_shader_mode))
-                        return false;   // 未知模式名 = 拼写错误，硬失败而非静默降级
+                    {
+                        // 未知模式名 = 拼写错误，硬失败而非静默降级
+                        RecordParseFailure("mode", mode_str.c_str(),
+                                           "未知 mesh shader 模式名（见 MeshShaderMode.h 的 GetMeshShaderModeName）");
+                        return false;
+                    }
                 }
                 if (ms.contains("max_invocations"))
                 {
@@ -693,7 +870,10 @@ namespace hgl::graph::mtl
                 }
             }
             if (!known)
+            {
+                RecordParseFailure(key.c_str(), nullptr, "未知键（拼写错误或已删字段残留）");
                 return false;
+            }
         }
         return true;
     }
@@ -751,6 +931,7 @@ namespace hgl::graph::mtl
             if (!ValidateKnownKeys(rs, {
                     "double_sided", "alpha_test", "alpha_cutoff", "dither", "pipeline"}))
                 return false;
+            SetParseTable("render_state.pipeline");
             if (rs.contains("pipeline")
              && !ValidateKnownKeys(rs.at("pipeline"), {
                     "cull_mode", "depth_compare_op", "blend_src", "blend_dst",
@@ -771,24 +952,71 @@ namespace hgl::graph::mtl
         if (!content || content_size <= 0)
             return MaterialDefinitionFileParseResult::Skipped;
 
-        try
+        ParseErrorContext parse_error_context;
+        MaterialDefinitionFileParseResult result = MaterialDefinitionFileParseResult::OK;
+
         {
-            const toml::value root = toml::parse_str(
-                std::string(content, static_cast<size_t>(content_size)));
-            if (!root.is_table() || !root.contains("schema")
-             || !root.at("schema").is_integer()
-             || root.at("schema").as_integer() != 3)
-                return MaterialDefinitionFileParseResult::InvalidValue;
-            if (!ParseDefinition(root, out_data))
-                return MaterialDefinitionFileParseResult::InvalidValue;
-            if (!ValidateMaterialDefinitionKeys(root))
-                return MaterialDefinitionFileParseResult::UnknownKey;
-            return MaterialDefinitionFileParseResult::OK;
+            ParseErrorContextScope parse_error_scope(&parse_error_context);
+
+            try
+            {
+                const toml::value root = toml::parse_str(
+                    std::string(content, static_cast<size_t>(content_size)));
+
+                if (!root.is_table() || !root.contains("schema")
+                 || !root.at("schema").is_integer()
+                 || root.at("schema").as_integer() != 3)
+                {
+                    RecordParseFailure("schema", nullptr, "必须存在且等于 3");
+                    result = MaterialDefinitionFileParseResult::InvalidValue;
+                }
+                else if (!ParseDefinition(root, out_data))
+                    result = MaterialDefinitionFileParseResult::InvalidValue;
+                else if (!ValidateMaterialDefinitionKeys(root))
+                    result = MaterialDefinitionFileParseResult::UnknownKey;
+            }
+            catch (const toml::syntax_error &error)
+            {
+                // TOML 语法错误：报出行号 + 库给的原文（作者最常见的失效模式之一）
+                int line = 0;
+                const char *detail = nullptr;
+
+                if (!error.errors().empty())
+                {
+                    const toml::error_info &info = error.errors().front();
+                    if (!info.locations().empty())
+                    {
+                        const toml::source_location &location = info.locations().front().first;
+                        line = static_cast<int>(location.first_line_number());
+                        detail = info.locations().front().second.c_str();
+                    }
+                    else
+                        detail = info.title().c_str();
+                }
+
+                RecordParseSyntaxError(line, detail);
+                result = MaterialDefinitionFileParseResult::InvalidValue;
+            }
+            catch (const toml::exception &error)
+            {
+                RecordParseFailure(nullptr, nullptr, error.what());
+                result = MaterialDefinitionFileParseResult::InvalidValue;
+            }
         }
-        catch (const toml::exception &)
+
+        if (result != MaterialDefinitionFileParseResult::OK)
         {
-            return MaterialDefinitionFileParseResult::InvalidValue;
+            // 诊断细节回传（表/键/值/行号）：调用方据此把日志报到配置项级别
+            const ParseErrorContext &context = parse_error_context;
+
+            out_data.parse_error.table = context.table;
+            out_data.parse_error.key = context.key;
+            out_data.parse_error.value = context.value;
+            out_data.parse_error.detail = context.detail;
+            out_data.parse_error.line = context.line;
         }
+
+        return result;
     }
 
     bool IsValidMaterialDefinitionFileData(
@@ -834,8 +1062,28 @@ namespace hgl::graph::mtl
             // 口径（2026-10-11 用户）：采样器等配置写错 = **LOG 报错**（不静默、不假装能编）。
             // 该定义**不注册** ⇒ 引用它的配方落到错误材质路径
             // （MaterialErrorKind::UnknownMaterialDefinition ⇒ 保底材质 + 按颜色标错误种类）。
-            GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义解析失败: %ls (%s)",
-                      path.c_str(), GetMaterialDefinitionFileParseResultName(parse_result));
+            const MaterialDefinitionFileData::ParseErrorDetail &error = data->parse_error;
+            std::string error_detail;
+
+            if (error.line > 0)
+                error_detail += " line=" + std::to_string(error.line);
+            if (!error.key.empty())
+            {
+                error_detail += " ";
+                if (!error.table.empty())
+                    error_detail += error.table + ".";
+                error_detail += error.key;
+            }
+            else if (!error.table.empty())
+                error_detail += " " + error.table;
+            if (!error.value.empty())
+                error_detail += " = \"" + error.value + "\"";
+            if (!error.detail.empty())
+                error_detail += " (" + error.detail + ")";
+
+            GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义解析失败: %ls (%s)%s",
+                      path.c_str(), GetMaterialDefinitionFileParseResultName(parse_result),
+                      error_detail.c_str());
             files.DeleteAt(files.GetCount() - 1);
             return false;
         }

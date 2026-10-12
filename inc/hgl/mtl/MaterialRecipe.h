@@ -15,6 +15,7 @@
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <hgl/type/String.h>
+#include <hgl/type/StrChar.h>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -94,6 +95,44 @@ namespace hgl::graph::mtl
         GeometryOnly,
         AllowDerived
     };
+
+    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    //   GetMaterialVertexProviderPolicyName：枚举 → 名字（switch）
+    //   ParseMaterialVertexProviderPolicy：名字 → 枚举（线性查表）
+    // 新增策略只需改枚举 + 本 switch 一处（名字表随之自动覆盖）。
+    inline constexpr uint32_t MaterialVertexProviderPolicyCount =
+        static_cast<uint32_t>(MaterialVertexProviderPolicy::AllowDerived) + 1;
+
+    inline const char *GetMaterialVertexProviderPolicyName(
+        const MaterialVertexProviderPolicy policy) noexcept
+    {
+        switch (policy)
+        {
+        case MaterialVertexProviderPolicy::Auto:         return "Auto";
+        case MaterialVertexProviderPolicy::GeometryOnly: return "GeometryOnly";
+        case MaterialVertexProviderPolicy::AllowDerived: return "AllowDerived";
+        }
+        return "Auto";
+    }
+
+    inline bool ParseMaterialVertexProviderPolicy(
+        const char *name, MaterialVertexProviderPolicy &out_policy) noexcept
+    {
+        if (!name || !name[0])
+            return false;
+
+        for (uint32_t i = 0; i < MaterialVertexProviderPolicyCount; ++i)
+        {
+            const MaterialVertexProviderPolicy policy =
+                static_cast<MaterialVertexProviderPolicy>(i);
+            if (hgl::strcmp(name, GetMaterialVertexProviderPolicyName(policy)) == 0)
+            {
+                out_policy = policy;
+                return true;
+            }
+        }
+        return false;
+    }
 
     enum class MaterialVertexNormalMode : uint8
     {
@@ -370,21 +409,29 @@ namespace hgl::graph::mtl
     // （`EmissiveSurface.color`）——与 `builtin/pure_color` 完全同一条下发路径，
     // 不新建并行机制。新增错误种类 = 加一行；下面的 static_assert 自动纳入检查。
     //
-    // TODO(未来·保底外观升级为棋盘格 + 传入标记色)：当前保底材质是**纯色**
-    //   `builtin/pure_color`（颜色只有材质数据行 `EmissiveSurface.color` 一维）；
-    //   `builtin/checkerboard_2d|3d` 是普通文件材质、棋盘格颜色写死灰度、且**不在
-    //   回退链上**。未来要做的（需专门一轮，已评估）：
-    //     ① 让 `checkerboard_2d_source.glsl` / `checkerboard_3d_source.glsl` 同样读
-    //        EmissiveSurface 标记色作为棋盘格两色基色；
-    //     ② **2D/3D 必须区分**：2D 走 UV、3D 走面空间/三平面（沿用两者现有采样差异），
-    //        因此标记色要分别落到两套着色器，不能共用一套；
-    //     ③ 同步两个 ShaderGen 门的期望值：F 断言回退定义 ID == `builtin/pure_color`
-    //        （SchemaGate:3534）、E 把 material TOML 文件数钉死为 14（:3360-3367；2026-10-11 由 15 更新——
-    //        ShadowMap 示例退场连带删除 shadow_receiver.material.toml）
-    //        —— 换外观必然要动这两处。
+    // 保底外观（2026-10-12 用户拍板）：**材质错误**（`MissingMaterialSource` /
+    //   `UnknownMaterialDefinition`）走**棋盘格** `builtin/checkerboard_3d` —— 它只
+    //   依赖 Position 且 `provider_policy = GeometryOnly`（`normal_mode =
+    //   OptionalFaceFallback`）⇒ 任意几何都画得出来；**非错误默认**（`None`）仍是
+    //   纯色 `builtin/pure_color`（门 F.fallback-dimension-neutral 钉住）。
+    //   口径来源（用户原话）：发售用全预编译 SPV、不再有 shader 合成器 ⇒ 材质配置
+    //   写错只 LOG 报错 + 材质侧走错误材质处理路径（即棋盘格渲染）。
+    //
+    // TODO(未来·标记色 + 2D/3D 分派)：**棋盘格现在看不到错误色** ——
+    //   `checkerboard_{2d,3d}_source.glsl` 没有 `@ulre require Resource MaterialData`，
+    //   棋盘格两色写死灰度（`vec3(0.0)` / `vec3(0.35)`），所以本表的 `marker_color`
+    //   虽然照旧下发到材质数据行（`EmissiveSurface.color`）却无人读。未来要做的：
+    //     ① 让两套 checkerboard 源同样读 EmissiveSurface 标记色作为棋盘格两色基色
+    //        （那时 `marker_color` / `fallback_marker_color` 才真正可见）；
+    //     ② **2D/3D 必须区分**：2D 走 NDC/UV、3D 走面空间/三平面（沿用两者现有采样
+    //        差异）⇒ 标记色要分别落到两套着色器，不能共用一套；届时回退 ID 还需按
+    //        绘制维度分派（现在两条错误种类共用 3D 版 ⇒ 仍是维度无关的单一 ID）；
+    //     ③ 门/契约：门 F 仍断言无参回退 ID == `builtin/pure_color`（本次未动）；
+    //        门 case `S.material-fallback-definitions-exist` 自动遍历本表校验
+    //        "定义已注册 + 只依赖 Position + GeometryOnly"（换 ID 写错它会兜底报红）。
     //   触发前提（用户 2026-10-01 实测）：**跑遍全部示例均正常触发 0 次**，现有示例
     //   不存在"有几何、无材质来源"的实体 ⇒ 该错误路径目前只有契约测试覆盖，
-    //   无肉眼可验场景；故先留注释与计划，不做外观改造。
+    //   无肉眼可验场景。
     // ─────────────────────────────────────────────────────────────
     enum class MaterialErrorKind : uint32_t
     {
@@ -414,15 +461,15 @@ namespace hgl::graph::mtl
           { 1.0f, 1.0f, 1.0f, 1.0f },
           "none" },
 
-        // 有几何、无材质来源：洋红（最不易与真实材质混淆的“缺材质”色）
+        // 有几何、无材质来源：棋盘格保底材质（标记色洋红；**暂未下发到棋盘格**，见上面 TODO）
         { MaterialErrorKind::MissingMaterialSource,
-          "builtin/pure_color",
+          "builtin/checkerboard_3d",
           { 1.0f, 0.0f, 1.0f, 1.0f },
           "missing_material_source" },
 
-        // 材质定义 ID 不可解析：橙色
+        // 材质定义 ID 不可解析（含配置写错）：棋盘格保底材质（标记色橙；**暂未下发**，见上面 TODO）
         { MaterialErrorKind::UnknownMaterialDefinition,
-          "builtin/pure_color",
+          "builtin/checkerboard_3d",
           { 1.0f, 0.5f, 0.0f, 1.0f },
           "unknown_material_definition" },
     };

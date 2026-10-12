@@ -121,8 +121,13 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 
 /**
  * 回退（错误）材质的**定义 ID**：由 `kFallbackMaterialRules`（MaterialRecipe.h）唯一
- * 决定 —— 数据驱动表，不是散落的字面量。无参重载 = 非错误回退
- * （`MaterialErrorKind::None`），返回值仍是 `builtin/pure_color`。
+ * 决定 —— 数据驱动表，不是散落的字面量。
+ *   无参重载            = 非错误回退（`MaterialErrorKind::None`）⇒ 纯色 `builtin/pure_color`；
+ *   错误种类            ⇒ 棋盘格 `builtin/checkerboard_3d`（2026-10-12 用户拍板：
+ *                         材质配置写错只 LOG 报错，渲染走错误材质路径 = 棋盘格）。
+ * 回退材质的硬约束（门 case `S.material-fallback-definitions-exist` 自动遍历本表校验）：
+ * 定义必须已注册、顶点需求只依赖 Position、`provider_policy = GeometryOnly`
+ * ⇒ 任意几何都画得出来。
  */
 inline const char *GetFallbackMaterialDefinitionID(const MaterialErrorKind kind)
 {

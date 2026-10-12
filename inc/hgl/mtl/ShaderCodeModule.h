@@ -26,6 +26,43 @@ namespace hgl::graph::mtl
         FragmentShader
     };
 
+    // ── Kind 名字注册表（单一真源；T1 口径：同上面的 Semantic 一处式）────
+    inline constexpr uint32 ShaderCodeModuleKindCount =
+        static_cast<uint32>(ShaderCodeModuleKind::FragmentShader) + 1;
+
+    inline const char *GetShaderCodeModuleKindName(
+        const ShaderCodeModuleKind kind) noexcept
+    {
+        switch (kind)
+        {
+        case ShaderCodeModuleKind::Shared:         return "Shared";
+        case ShaderCodeModuleKind::Surface:        return "Surface";
+        case ShaderCodeModuleKind::Position:       return "Position";
+        case ShaderCodeModuleKind::Transform:      return "Transform";
+        case ShaderCodeModuleKind::Utility:        return "Utility";
+        case ShaderCodeModuleKind::FragmentShader: return "FragmentShader";
+        }
+        return "Shared";
+    }
+
+    inline bool ParseShaderCodeModuleKind(
+        const char *name, ShaderCodeModuleKind &out_kind) noexcept
+    {
+        if (!name || !name[0])
+            return false;
+
+        for (uint32 i = 0; i < ShaderCodeModuleKindCount; ++i)
+        {
+            const ShaderCodeModuleKind kind = static_cast<ShaderCodeModuleKind>(i);
+            if (hgl::strcmp(name, GetShaderCodeModuleKindName(kind)) == 0)
+            {
+                out_kind = kind;
+                return true;
+            }
+        }
+        return false;
+    }
+
     enum class ShaderCodeModuleSemantic : uint16
     {
         Unknown = 0,
