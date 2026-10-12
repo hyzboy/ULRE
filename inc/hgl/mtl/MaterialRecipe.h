@@ -582,28 +582,6 @@ namespace hgl::graph::mtl
         return state;
     }
 
-    /**
-     * 从已 Normalize 的 recipe 重建解析后的渲染状态。
-     *
-     * NormalizeRecipe 会把 ResolveMaterialRenderState 的结果写回
-     * render_state_overrides（has_* 全 true），此后 definition 不再参与——
-     * 本函数与 ResolveMaterialRenderState(definition, normalized_recipe) 等价，
-     * 供管线创建侧使用，避免为取渲染状态反查材质定义。
-     */
-    inline ResolvedMaterialRenderState GetNormalizedRecipeRenderState(
-        const MaterialRecipe &recipe) noexcept
-    {
-        const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
-
-        ResolvedMaterialRenderState state{};
-        state.double_sided = overrides.double_sided;
-        state.alpha_test = overrides.alpha_test;
-        state.alpha_cutoff = overrides.alpha_cutoff;
-        state.dither = overrides.dither;
-        state.pipeline_config = overrides.pipeline_config;
-        return state;
-    }
-
     /** recipe 是否已经 Normalize（render_state_overrides 被写回为权威值）*/
     inline bool IsRecipeNormalized(const MaterialRecipe &recipe) noexcept
     {
@@ -613,6 +591,37 @@ namespace hgl::graph::mtl
             && overrides.has_alpha_cutoff
             && overrides.has_dither
             && overrides.has_pipeline_config;
+    }
+
+    /**
+     * 从已 Normalize 的 recipe 重建解析后的渲染状态；**未归一化 ⇒ false**（S4b/D4）。
+     *
+     * 不静默给值：未归一化时拷出来的是结构体默认值（如 alpha_cutoff 0.5 / cull BACK），
+     * 与作者定义的默认值可能不同 ⇒ 那是**错值**，比显式失败难查得多。
+     * 调用方负责报错（管线创建侧沿用既有文案 + 返回 nullptr）；本口只回答「可不可用」。
+     *
+     * NormalizeRecipe 会把 ResolveMaterialRenderState 的结果写回
+     * render_state_overrides（has_* 全 true），此后 definition 不再参与 ——
+     * 本函数与 ResolveMaterialRenderState(definition, normalized_recipe) 等价，
+     * 供管线创建侧使用，避免为取渲染状态反查材质定义。
+     */
+    inline bool TryGetNormalizedRecipeRenderState(
+        const MaterialRecipe &recipe,
+        ResolvedMaterialRenderState &out_state) noexcept
+    {
+        if (!IsRecipeNormalized(recipe))
+            return false;
+
+        const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
+
+        ResolvedMaterialRenderState state{};
+        state.double_sided = overrides.double_sided;
+        state.alpha_test = overrides.alpha_test;
+        state.alpha_cutoff = overrides.alpha_cutoff;
+        state.dither = overrides.dither;
+        state.pipeline_config = overrides.pipeline_config;
+        out_state = state;
+        return true;
     }
 
     inline GlobalSSBOType ResolveRecipeSSBOType(
