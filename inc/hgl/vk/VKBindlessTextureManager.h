@@ -1,7 +1,8 @@
 ﻿#pragma once
 
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
 #include <vulkan/vulkan.h>
-#include <hgl/vk/VKConfig.h>
+#include <hgl/common/RenderOptions.h>
 #include <hgl/type/String.h>
 #include <hgl/type/UnorderedMap.h>
 #include <hgl/type/ValueArray.h>
@@ -48,7 +49,7 @@ namespace hgl::graph
         bool           use_descriptor_buffer_ = false;
 
         // ── Descriptor Pool 资源（传统回退路径） ──
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
         VkDescriptorPool pool_ = VK_NULL_HANDLE;
         VkDescriptorSet  set_  = VK_NULL_HANDLE;
 #endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
@@ -79,7 +80,7 @@ namespace hgl::graph
 
     private:
         bool InitDescriptorBuffer();
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
         bool InitDescriptorPool();
 #endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 
@@ -99,7 +100,7 @@ namespace hgl::graph
 
         bool IsValid() const
         {
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
             if (!use_descriptor_buffer_)
                 return set_ != VK_NULL_HANDLE;
 #endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
@@ -108,7 +109,7 @@ namespace hgl::graph
 
         bool IsDescriptorBufferMode() const { return use_descriptor_buffer_; }
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
         VkDescriptorSet GetDescriptorSet() const { return set_; }
 #endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
 

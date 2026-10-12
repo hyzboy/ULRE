@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKDevice.h>
 
@@ -103,7 +104,7 @@ struct VulkanHardwareRequirement
     // 1.0 特性
     SupportLevel shaderInt64;                  ///<要求支持着色器 64 位整数(BDA 指针运算依赖)
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     uint32_t descriptor_pool;                  ///<回退描述符池大小(默认1024)
 #endif
     SupportLevel descriptorBuffer;             ///<要求支持描述符缓冲区
@@ -114,7 +115,7 @@ public:
     {
         mem_zero(*this);
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
         descriptor_pool=1024;
 #endif
         descriptorBuffer=SupportLevel::Want;

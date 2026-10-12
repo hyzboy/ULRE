@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/core/EntityManager.h>
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<algorithm>

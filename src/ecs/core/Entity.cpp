@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include<hgl/log/Log.h>
 
 namespace hgl
@@ -44,15 +45,15 @@ namespace hgl
             else
                 component_mask &= ~ComponentTypeBit(type);
 
-        #ifndef NDEBUG
-            // §2 #1（2026-10-11）：debug-only 对拍。掩码是 `component_rows` 的**缓存视图**，
-            // 生产期此前没有任何一致性门（对拍器只在 `TestComponentMask` 里被调用）。
-            // 放在写完掩码**之后**做全表对照：O(COMPONENT_TYPE_COUNT) 的循环，Release（NDEBUG）零成本。
+        #if ULRE_ECS_DEBUG_API
+            // §2 #1（2026-10-11）：校验面对拍（开关见 `hgl/common/RenderOptions.h` §2，默认 Debug 开 / Release 关）。
+            // 掩码是 `component_rows` 的**缓存视图**，生产期此前没有任何一致性门（对拍器只在 `TestComponentMask` 里被调用）。
+            // 放在写完掩码**之后**做全表对照：O(COMPONENT_TYPE_COUNT) 的循环，宏=0 时整段不编。
             if (!VerifyComponentMaskAgainstComponents())
                 GLogError(u8"[Entity] component_mask 与 component_rows 失步（掩码缓存视图写坏）："
                           u8"type=%u row=%u mask=0x%08x",
                           static_cast<uint32_t>(type), row, component_mask);
-        #endif//NDEBUG
+        #endif//ULRE_ECS_DEBUG_API
 
             return old;
         }
@@ -85,11 +86,11 @@ namespace hgl
 
             component_mask = 0;
 
-        #ifndef NDEBUG
+        #if ULRE_ECS_DEBUG_API
             // §2 #1：同上，全卸路径也要对拍（此处应恒一致）
             if (!VerifyComponentMaskAgainstComponents())
                 GLogError(u8"[Entity] DetachAllComponents 后 component_mask 与 component_rows 失步");
-        #endif//NDEBUG
+        #endif//ULRE_ECS_DEBUG_API
 
             if (context)
                 context->RefreshEntityRow(this);        // T3b：实体行表随全卸同步

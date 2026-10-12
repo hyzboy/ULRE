@@ -13,12 +13,14 @@
 > （材质链评审档 / ECS 审计档 / 本档 A~E 线），**不复制**。完成一项在这里划掉并注日期。
 > 取证标注：〔档〕= 主档内记录；〔实测 2026-10-12〕= 建立本索引时现场核对。
 
-### 1. 材质链计划（主档 `doc/future/shadergen-material-chain-review.md`；批表 §196，执行记录 §6–§18）
+### 1. 材质链计划（主档 `doc/future/shadergen-material-chain-review.md`；批表 §196，执行记录 §6–§19.8）
 
 | 项 | 状态 | 判据 / 下一步 |
 |---|---|---|
-| **S4 = D 层去双真值**（计划内最后一个批次；2026-10-12 **已整批完成**） | **S4 全部完成（2026-10-12）：S4a=D1（§19.6）、S4b-D4（§19.7）、S4b-D2（§19.8）** | D1 删硬编码必需槽改读表并显式标 required（`RenderTemplateValidationError::MissingRequiredSlot` 仍在）；D2 `double_sided` 与 `cull_mode` 二选一（parser 两个键并存、材质侧 0 授权）；D4 `GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删口〔实测三者均在〕；**施工单见评审档 §19**（含实测行号 / 判据 / 反证 / 分批 S4a+S4b） |
+| ~~**S4 = D 层去双真值**~~（计划内最后一个批次；2026-10-12 **已整批完成**） | **S4 全部完成（2026-10-12）：S4a=D1（§19.6）、S4b-D4（§19.7）、S4b-D2（§19.8）** | 已完成，见评审档 **§19.6（D1 表驱动必需槽）/ §19.7（D4 归一化取用口）/ §19.8（D2 剔面语义）**；施工单与红的样子都在 §19 内 |
 | **S3b-3：6 个顶点节点枚举归位** | 未开工〔评审档 §18.1〕 | `VertexInputMode`/`MappingMode`/`OrientationMode`/`ScaleMode`/`ProjectionMode`/`MaterialVertexNormalMode` 的 `Get*Name` **全仓 = 0**（名字只活在 `MaterialDefinitionFile.cpp` 的本地单向表）⇒ 按 S3b-2 形态搬回枚举定义旁；需动各自枚举手（部分属 `hgl::graph`）〔实测 Get*Name 全 0〕 |
+| **诊断表前缀：解析器路径未设表名** | 未做〔实测 2026-10-12〕 | 校验器的 8 段已修，但 `ParseDefinition` / `ParseRenderState` / `ParseTransformGraph` 的失败点**没有表前缀** ⇒ 日志只说 `cull_mode = "Bogus"`，不说 `render_state.pipeline.`（判据 = 在材质 TOML 写 `[render_state.pipeline] cull_mode = "Bogus"` 后的日志原文）；修法 = 各段入口 `SetParseTable(...)`，与校验器同形 |
+| **S4a 的分歧场景无生产者**（可选保险） | 未做〔评审档 §19.6 诚实边界〕 | 「表标 `required=false` + 该模块缺失 + 模板属 ForwardUnlit/Sky」目前**没有任何生产者** ⇒ 要这道保险得先造生产者，再加门 case「表中 optional 槽缺失 ⇒ 组合器不得失败」 |
 | **棋盘格标记色 + 2D/3D 分派**（功能项） | 未开工；TODO 已写进 `MaterialRecipe.h` 规则表上方〔档〕 | 两套 checkerboard 源读 `EmissiveSurface` 标记色；2D 走 NDC/UV、3D 走面空间；回退 ID 需按绘制维度分派；门/契约同步 |
 | **过期声明订正（3 处）** | 未做〔实测原文已定位〕 | ① `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1136-1139`、② `doc/future/HANDOFF_2026-10-01.md:55` 仍写"棋盘格不在回退链上、需单独一轮"（2026-10-12 已落地）；③ `doc/future/lighting-shadow-domain-split-plan.md` 的 **`T6b` 标题缺 ✅**——实测**已落地**（`LightRow`/`addr_lights`/`LightSystem`/`MainLightShadowSystem` 均在位、`sun_direction` 在 ShaderLibrary 归零）；另有 `MaterialRecipe.h` 注释里的 `SchemaGate:3534` 行号已漂移 |
 
@@ -39,7 +41,7 @@
 
 | 项 | 状态 |
 |---|---|
-| **示例自检门 7/13 FAIL**〔实测 2026-10-12〕 | 触发：`*_SELFCHECK=1`。**FAIL**：`PBRSpheres`（实测 `fnv=0xA48D90BAC9AAD04D` / 期望 `0x3DD88A0999CDC486`）、`AlphaModes`、`CascadeShadowMap`、`CoverageVariants`、`GPUDrivenCull`、`IBLEnvironment`、`PlaneGrid3D`；**PASS**：`LoadScene`、`RenderToTexture`、`RenderToTextureColorDepth`、`AtmosphereSkyMinimal`；窗口内未出结论：`AlphaTestShadow`（需 `--selfcheck`）、`DualWorldShadows`。⇒ **需用户目视定性**（基线陈旧 ⇒ 重钉；画面真漂 ⇒ 查因），**未定性前不得重钉** |
+| **示例自检门：锚定值只在 Debug 配置成立**〔2026-10-13 订正；先前记的「7/13 FAIL ⇒ 疑似基线陈旧」与「GC 门 flaky」**两条都是我误诊**〕 | 触发 `*_SELFCHECK=1`；**每例有自己的入参要求**，读示例头注再跑：`AlphaTestShadow` 需 `--selfcheck`、**`GPUDrivenCull` 需 `GC_STATIC=1`（冻结相机；只带 `GC_SELFCHECK=1` 时相机在动 ⇒ 摘要逐次不同，我据此误判成「门 flaky」）**、`DualWorldShadows` 自判两世界隔离。**判据：Debug 13/13 PASS（逐位稳定；含 GC/ATS/DWS 各按其入参）**；**Release 只有 4 例 PASS**（PBRSpheres/AlphaModes/CascadeShadowMap/CoverageVariants/IBLEnvironment/PlaneGrid3D/GPUDrivenCull 均 FAIL） —— 同一张锚定值在 **Debug** 拍的，Release 因浮点/优化差异像素不同（`GPUDrivenCull` Release 冻结后两次 `1F32397E53E54C57`/`1F32397E53E54C57`，稳定但≠锚定值）：**不是回归、不是基线陈旧、不是 flaky**。⇒ **待你定**：门的配置口径（Debug-only 注明 / Release 另钉一份 / 只断言跨配置稳定的量）；可选加固 = `GC_SELFCHECK=1` 而无 `GC_STATIC=1` 时自动冻结（PBR 就是自动冻结）或 fail-fast 提示 |
 | CMCore 独立仓 2 项 SEGV | `OrderedMapBasicOperations` / `ObjectManagerTest`，与本仓无交集 |
 | GUI 类示例在桌面会话 | 环境问题，未触碰 |
 

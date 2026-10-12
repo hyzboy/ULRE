@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>

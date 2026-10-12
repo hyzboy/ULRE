@@ -6,20 +6,14 @@
  * 结论，不一致数必须为 0（不一致即 `GLogError`）。这样"表驱动 = 旧链结果"是可被实测证伪的
  * 命题：改动任一侧而另一侧不跟随，都会立刻报出来。
  *
- * 代价与边界：Release（NDEBUG）下全部编成空 inline（零成本）；Debug 下是几次比较 + 计数器。
+ * 代价与边界：Release 下全部编成空 inline（零成本）；Debug 下是几次比较 + 计数器。
+ * 开关（默认 AUTO：Debug 开 / Release 关）集中在 `hgl/common/RenderOptions.h` §2。
  * 装置**不得空转**——两侧都必须真读各自的计算结果（调用侧只传结论，不传常量）。
  */
 #pragma once
 
 #include<hgl/ecs/support/RenderStrategyTable.h>
-
-#ifndef ULRE_STRATEGY_PARITY_ENABLED
-    #ifdef NDEBUG
-        #define ULRE_STRATEGY_PARITY_ENABLED 0
-    #else
-        #define ULRE_STRATEGY_PARITY_ENABLED 1
-    #endif
-#endif
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 
 namespace hgl
 {

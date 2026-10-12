@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/ecs/core/EntityHandle.h>
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include<hgl/ecs/core/Entity.h>          // T2-a：块池要 placement-new（需完整类型）
 #include<hgl/log/Log.h>
 #include<vector>

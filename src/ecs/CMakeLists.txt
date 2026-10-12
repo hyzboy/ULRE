@@ -1,6 +1,9 @@
 ﻿SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
 
-option(ULRE_ECS_DEBUG_API "Enable ECS debug API surface" OFF)
+# ECS 调试/校验面（对拍器 + 诊断打印）。**开关与默认值的唯一台帐 = inc/hgl/common/RenderOptions.h §2**：
+# 本 option 只表达「在所有构建配置里**强制打开**」；默认 OFF = 不下发宏 ⇒ 由台帐按配置决定（Debug 开 / Release 关）。
+# 想「全配置强制关」：配置时另加 `-DCMAKE_CXX_FLAGS=-DULRE_ECS_DEBUG_API=0`（罕见）。
+option(ULRE_ECS_DEBUG_API "在所有构建配置里强制打开 ECS 调试/校验面（OFF = 交给 RenderOptions.h 台帐：Debug 开 / Release 关）" OFF)
 option(ULRE_ENABLE_CPU_CULL_PARITY_TEST "注册 CPU 剔除参考台架（每 60 帧 GPU 读回对拍）；默认关，生产管线不付那笔 stall" OFF)
 
 set(ECS_CORE_FILES
@@ -276,14 +279,15 @@ source_group("ECS\\Support\\Line" FILES ${ECS_SUPPORT_LINE_FILES})
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
 ${ECS_SOURCE})
 
+# 只在「强制打开」时下发；不下发时由 `inc/hgl/common/RenderOptions.h` §2 按 NDEBUG 决定（Debug 1 / Release 0）。
+# ⚠ 不要在这里下发 `=0`：那会压过台帐的 Debug 默认值，让 Debug 也丢掉校验面（2026-10-13 统一时删掉的分支）。
 if(ULRE_ECS_DEBUG_API)
     target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=1)
-else()
-    target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=0)
 endif()
 
-# 台架门（2026-10-09 补）：`DefaultSystems.cpp` 早就把 CPUCullReferenceSystem 放进
-# `#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)`，但这个宏此前全仓无处定义 ⇒ 台架永远编不进来。
+# CPU 剔除参考台架（每 60 帧 GPU 读回对拍；读回 stall ⇒ 默认关，生产不付这笔钱）。
+# 台帐默认值见 `inc/hgl/common/RenderOptions.h` §2（`ULRE_ENABLE_CPU_CULL_PARITY_TEST`，默认 0）。
+# 判定一律写 `#if ULRE_ENABLE_CPU_CULL_PARITY_TEST` —— 禁 `defined()`（值为 0 时它同样为真）。
 if(ULRE_ENABLE_CPU_CULL_PARITY_TEST)
     target_compile_definitions(ULRE.ECS PRIVATE ULRE_ENABLE_CPU_CULL_PARITY_TEST=1)
 endif()
@@ -316,6 +320,7 @@ endif()
 # 渲染策略判定表（A1；A7a 起为收集/阴影能力的**唯一判据**）
 add_executable(TestRenderStrategyTable support/TestRenderStrategyTable.cpp support/RenderStrategyParity.cpp)
 target_link_libraries(TestRenderStrategyTable PRIVATE ${ULRE})
+# 测试目标强制开对拍（默认值 / 打开方式见 inc/hgl/common/RenderOptions.h §2）
 target_compile_definitions(TestRenderStrategyTable PRIVATE ULRE_STRATEGY_PARITY_ENABLED=1)
 if(MSVC)
     set_target_properties(TestRenderStrategyTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})

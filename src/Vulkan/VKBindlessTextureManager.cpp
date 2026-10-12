@@ -1,4 +1,5 @@
-﻿#include <hgl/vk/VKBindlessTextureManager.h>
+﻿#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
+#include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VKSampler.h>
@@ -187,7 +188,7 @@ bool BindlessTextureManager::InitDescriptorBuffer()
     return true;
 }
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
 bool BindlessTextureManager::InitDescriptorPool()
 {
     // ── 描述符池（UPDATE_AFTER_BIND） ──────────────────────────────────
@@ -298,7 +299,7 @@ bool BindlessTextureManager::Init(VkDevice device, VulkanDevAttr *attr)
         if (InitDescriptorBuffer())
             return true;
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
         LogWarning(u8"[BindlessTextureManager] 初始化 Descriptor Buffer 模式失败，回退到 DescriptorPool 模式");
         Destroy();
         device_ = device;
@@ -309,7 +310,7 @@ bool BindlessTextureManager::Init(VkDevice device, VulkanDevAttr *attr)
 #endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
     }
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     return InitDescriptorPool();
 #else
     LogError(u8"[BindlessTextureManager] 设备未启用 Descriptor Buffer，无可用回退路径");
@@ -322,7 +323,7 @@ void BindlessTextureManager::Destroy()
     if (device_ == VK_NULL_HANDLE)
         return;
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (pool_ != VK_NULL_HANDLE)
     {
         vkDestroyDescriptorPool(device_, pool_, nullptr);
@@ -427,7 +428,7 @@ bool BindlessTextureManager::UpdateTextureHandle(uint32_t tex_handle, Texture *t
 
     tex_cache_.Add(tex, tex_handle);
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (!use_descriptor_buffer_)
     {
         VkWriteDescriptorSet write{};
@@ -509,7 +510,7 @@ bool BindlessTextureManager::RegisterSamplers(const VkSamplerCreateInfo *infos, 
         }
         samplers_.Add(samp);
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
         if (!use_descriptor_buffer_)
         {
             VkDescriptorImageInfo samp_info{};
@@ -558,7 +559,7 @@ bool BindlessTextureManager::RebuildSampler(uint32_t index, const VkSamplerCreat
         return false;
     }
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (!use_descriptor_buffer_)
     {
         VkDescriptorImageInfo samp_info{};
@@ -605,7 +606,7 @@ void BindlessTextureManager::BindOffsetToCmd(VkCommandBuffer cmd,
     if (!IsValid())
         return;
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (!use_descriptor_buffer_)
     {
         BindToCmd(cmd, pipeline_layout, set_index, bind_point);
@@ -634,7 +635,7 @@ void BindlessTextureManager::BindToCmd(VkCommandBuffer cmd,
     if (!IsValid())
         return;
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (!use_descriptor_buffer_)
     {
         if (set_ != VK_NULL_HANDLE)

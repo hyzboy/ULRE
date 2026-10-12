@@ -1,4 +1,5 @@
-﻿#include<hgl/platform/Vulkan.h>
+﻿#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
+#include<hgl/platform/Vulkan.h>
 #include<hgl/platform/Window.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKInstance.h>
@@ -175,7 +176,7 @@ namespace
         return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,miplevel,VK_IMAGE_ASPECT_DEPTH_BIT,img);
     }
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     VkDescriptorPool CreateDescriptorPool(VkDevice device,uint32_t sets_count)
     {
         VkDescriptorPoolSize pool_size[]=
@@ -332,7 +333,7 @@ bool VulkanDeviceCreater::IsDescriptorBufferSupported() const
         return false;
 
     // RenderDoc 截获环境下（加载了 renderdoc.dll 或设置了环境变量）自动禁用 Descriptor Buffer，回退到标准的 DescriptorPool 模式保证截帧正常
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
 #if HGL_OS == HGL_OS_Windows
     if(::GetModuleHandleA("renderdoc.dll") != nullptr)
     {
@@ -786,7 +787,7 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         device_attr->transfer_cmd_pool=device_attr->cmd_pool;
     }
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     device_attr->desc_pool=CreateDescriptorPool(device_attr->device,require.descriptor_pool);
 
     if(!device_attr->desc_pool)
@@ -811,7 +812,7 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
             device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"Main Command Pool");
             if(device_attr->transfer_cmd_pool && device_attr->transfer_cmd_pool != device_attr->cmd_pool)
                 device_attr->debug_utils->SetCommandPool(device_attr->transfer_cmd_pool,"Transfer Command Pool");
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
             if(device_attr->desc_pool)
                 device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"Main Descriptor Pool");
 #endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK

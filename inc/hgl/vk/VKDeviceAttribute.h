@@ -1,6 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKConfig.h>
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
+#include<hgl/common/RenderOptions.h>
 #include<hgl/vk/VKInstance.h>
 #include<hgl/vk/VKTexture.h>
 
@@ -36,7 +37,7 @@ struct VulkanDevAttr
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
     VkCommandPool                       transfer_cmd_pool =VK_NULL_HANDLE;
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     VkDescriptorPool                    desc_pool       =VK_NULL_HANDLE;
 #endif
 

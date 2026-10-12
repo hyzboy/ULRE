@@ -1,4 +1,5 @@
 ﻿#include <hgl/ecs/core/DefaultSystems.h>
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include <memory>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/SystemGroup.h>
@@ -96,7 +97,7 @@ namespace
             // 实际是否接管某批仍由 PrimitiveBatchPipeline 的逐批 guard 判定。
         }
 
-#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)
+#if ULRE_ENABLE_CPU_CULL_PARITY_TEST
         // CPU cull reference system for parity testing (T3d-2) - 仅在显式开启对拍测试时注册，避免生产管线每 60 帧 GPU stall
         auto cpu_cull_system = EnsureSystem<hgl::ecs::CPUCullReferenceSystem>(ctx);
         if (cpu_cull_system)
@@ -150,8 +151,8 @@ namespace
         ctx->RegisterSystem<hgl::ecs::LineBuildSystem>();
         ctx->RegisterSystem<hgl::ecs::LineRenderSystem>();
 
-#if defined(ULRE_ENABLE_LINE_STATS) || defined(ULRE_ECS_DEBUG_API)
-        // Stats system (thin stats logger, 按需注册)
+#if ULRE_ECS_DEBUG_API
+        // Stats system (thin stats logger, 按需注册；开关见 RenderOptions.h §2)
         EnsureSystem<hgl::ecs::LineStatsSystem>(ctx);
 #endif
 

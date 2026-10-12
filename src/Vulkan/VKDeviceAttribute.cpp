@@ -1,4 +1,5 @@
-﻿#include<hgl/vk/VKDeviceAttribute.h>
+﻿#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
+#include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKImageView.h>
 #include<hgl/vk/VKTexture.h>
@@ -45,7 +46,7 @@ VulkanDevAttr::~VulkanDevAttr()
         vkDestroyCommandPool(device,transfer_cmd_pool,nullptr);
     }
 
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if(desc_pool)
     {
         vkDestroyDescriptorPool(device,desc_pool,nullptr);

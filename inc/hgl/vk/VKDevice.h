@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
 #include<hgl/type/RectScope.h>
@@ -113,7 +114,7 @@ public:
 
                 bool                SupportDrawIndirectCount()const {return attr && attr->cmd_draw_mesh_tasks_indirect_count != nullptr;}
                 bool                IsDescriptorBufferActive()const {return attr && attr->use_descriptor_buffer;}
-#ifdef HGL_VK_DESCRIPTOR_POOL_FALLBACK
+#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
                 VkDescriptorPool    GetDescriptorPool   ()const {return attr ? attr->desc_pool : VK_NULL_HANDLE;}
 #endif
 
