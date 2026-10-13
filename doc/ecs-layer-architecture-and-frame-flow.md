@@ -5,6 +5,11 @@
 > 与 `doc/simple-sphere-ecs-render-chain.md` 的分工：那篇讲「数据怎么从作者 API 走到 vkCmd」；本篇讲「ECS 层内部由谁、在什么阶段、按什么顺序驱动这些数据」。
 > 全部 path:line 在本基线核实；**符号名是稳定锚点，行号随重构漂移**。本文只描述现状。
 >
+> ⚠ **订正（2026-10-14）**：世界表里的 **4-ID 渲染项表地址**与 **DrawItemID 表地址**已随「CPU/GPU 双剔除遗留」**整族删除**
+> （两级存储 + 压缩器 + 绘制期解析 GLSL；世界表 **9 → 7 字段**）。4-ID 元组的唯一真源 = **实体 4-ID 表**（`EntityRenderIDTable`，见下方「GPU 数据」表）。
+> 另：本文涉及 `PrimitiveComponent` 的段落（如「画什么」那一行）描述的是**该类已删除之前**的形态 —— 现行调用面是 `PrimitiveState` 自由函数 + 行表族，
+> 读到 `PrimitiveComponent::*`，以及 `render_item_handle` / `Set4ID` 一类槽位句柄，一律按历史口径处理（`render_item_handle` 字段本身已于 2026-10-14 删除）。
+>
 > **订正（2026-09-28）**：相机 / 环境 / 地址表断言已按权威文档 `doc/world-addresses-and-camera-model-plan.md`（§1–§4、§7）就地修订，本文改动项：
 > ① 描述符集**只剩 Bindless(0)**（Scene 集与 `SceneBinding` 已整体退场，「6 个场景 UBO 绑定」作废）；
 > ② `GlobalAddresses` 是 **SSBO**（`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长、无绑定无集、基址经 `pc_root.addr_global_addresses` 下发），不是 Set0/binding4 的 56B UBO；
@@ -47,8 +52,8 @@ inc/hgl/ecs/
                PipelineMaterialRenderer / PrimitiveRenderPipeline / LineRenderPipeline
                TextRenderPipeline / RenderResource
                TransformAssignmentBuffer / TransformDataStorage / VisibilityDataStorage
-               BoundingBoxDataStorage / RenderItemDataStorage / DrawItemIDStorage
-               DrawItemCompaction / PositionSourceSpec / TransformPolicySpec
+               BoundingBoxDataStorage / EntityGPUTable / EntityRenderIDTable
+               PositionSourceSpec / TransformPolicySpec
 ```
 
 两个互相独立的循环（帧入口 `src/Work/WorkManager.cpp:74`）：
@@ -413,7 +418,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 材质行地址物化在 `MaterializeRecipeRowsForPrimitive`（:653-1088）里：`TryGetRowBuffer`（:750）→ `IsActive(type, data_index)`（:762）→ 容量检查（:779-791）→ `material_row_gpu = gpu_base + data_index*row_bytes`（:801）、`data_index_row = data_index`（:815）；纹理引用行走 `AcquireMaterialTextureConfiguration`（:990）/ `WriteMaterialTextureConfiguration`（:1004）/ `RetireMaterialTextureConfiguration`（:1010）。
 
-`PrimitiveRenderItem`（`inc/hgl/ecs/core/PrimitiveRenderItem.h:28-72`、`src/ecs/core/PrimitiveRenderItem.cpp`）是 `RenderItem` 接口的实现：对外暴露实体/组件句柄、`GetShaderProgram/GetPipeline(render_pass)/GetGeometryDataBuffer/GetGeometryDrawRange/GetRenderItemHandle`（后两者转问 `PrimitiveComponent` 的运行时绑定），构造时缓存世界矩阵。批处理只需要 `RenderItem*` 这层接口（`inc/hgl/ecs/core/RenderItem.h:32-46`，含 `transform_index` / `isVisible` / `draw_key`(=`MeshDrawKey`)）。`index`（零读者）与 `Compare`（零调用者）2026-10-10 随审计 §1.1 删除 —— 排序/聚簇一律读 `draw_key` 这份行派生 POD 键 —— 这是 ECS 与渲染层解耦的接缝。
+`PrimitiveRenderItem`（`inc/hgl/ecs/core/PrimitiveRenderItem.h:28-72`、`src/ecs/core/PrimitiveRenderItem.cpp`）是 `RenderItem` 接口的实现：对外暴露实体/组件句柄、`GetShaderProgram/GetPipeline(render_pass)/GetGeometryDataBuffer/GetGeometryDrawRange`（后两者转问 `PrimitiveComponent` 的运行时绑定），构造时缓存世界矩阵。批处理只需要 `RenderItem*` 这层接口（`inc/hgl/ecs/core/RenderItem.h:32-46`，含 `transform_index` / `isVisible` / `draw_key`(=`MeshDrawKey`)）。`index`（零读者）与 `Compare`（零调用者）2026-10-10 随审计 §1.1 删除 —— 排序/聚簇一律读 `draw_key` 这份行派生 POD 键 —— 这是 ECS 与渲染层解耦的接缝。
 
 ### 7.4 批处理阶段：PrimitiveBatchPipeline
 
@@ -456,15 +461,14 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 | GPU 数据 | 写入者（ECS 侧） | 载体 |
 |---|---|---|
 | L2W 矩阵（静态段 + movable ring 段） | `TransformSystem::SubmitTransformUpdates`（tick 系统，渲染前被图调用） | `TransformAssignmentBuffer`（`src/ecs/support/TransformAssignmentBuffer.cpp`，`GetTransformDataBuffer()` `inc/hgl/ecs/support/TransformAssignmentBuffer.h:73`） |
-| 一级 4-ID 描述符表 | `RenderItemDataStorage`（组件挂载时 `Allocate`、RPCS 每帧 `Set4ID`） | `RenderItemDataStorage`（`inc/hgl/ecs/support/RenderItemDataStorage.h:29-130`） |
-| 二级绘制索引表 | `DrawItemIDStorage::Append`（批处理连号折叠 / GPU-Driven 路径） | `DrawItemIDStorage`（`inc/hgl/ecs/support/DrawItemIDStorage.h:25-90`） |
+| 实体 4-ID 表（世界私有；按 `EntityID.index` 直索引、按 pass 分半） | `RenderPrimitiveCollectSystem`（**唯一发布点**：collect 的「几何行成立 ⇒ 本项进批」判据块内 `SetRenderIDs`） | `EntityRenderIDTable`（`inc/hgl/ecs/support/EntityRenderIDTable.h`；地址 `WorldAddresses::addr_entity_render_ids`） |
 | L2W 索引行 / `MaterialInstanceAddresses` 行 | `PrimitiveBatchPipeline::WriteBatchIndexRows`（RenderBatch 相位） | `MaterialBatch::l2w_index_buffer` / `material_data_index_rows_buffer` |
 | `MeshDrawCommand` 行（geometry_id + first_instance）+ mesh 间接命令 | `PrimitiveBatchPipeline::WriteMeshDrawCommands` | `MaterialBatch::mesh_draw_params_buffer` / `icb_mesh_tasks` |
 | 几何参数行（112B `MeshDrawParams`，含全部顶点流 BDA 地址） | **几何创建期**：`Geometry::RegisterMeshDrawParams`（由 `GeometryCreater::Create()` 自动调用） | `GlobalSSBOBufferRegistry` 的 `MeshDrawParams` 池，按 `geometry_id` 索引 |
 | 材质参数行（`PBRSurfaceRow` …） | 作者侧 `GlobalSSBODataAccessor::Write`；地址由 RPCS `MaterializeRecipeRowsForPrimitive` 解析 | `GlobalSSBOBufferRegistry` 的 `ActiveRowPool` |
 | 纹理引用行（`uvec2` handle/layer） | RPCS 材质化（`AcquireMaterialTextureConfiguration` / `WriteMaterialTextureConfiguration`） | `MaterialTextureReferencePool`（按 definition 一池） |
-| CameraInfo / SkyInfo / ViewportInfo | 相机：**每个相机组件自持** `local_camera_info`，`CameraSystem::PublishCamera(Rows)` 在 pass 设置阶段 / `RenderTo` 写**世界表相机行**（C1-5 之前的 `CommitCameraUBO` 写世界共享载体已删）；~~sky：**按世界**取址（`ECSContext::GetEnvProfileID()` → `EnvironmentManager::GetSkyAddress`，单份 buffer）由 `ECSContext::SyncWorldAddresses` 写**世界表** `addr_sky`~~（**2026-10-07：`SkyInfo` / `addr_sky` 已整删**，外观标量搬成 `sky_atmosphere.glsl` 常量 ⇒ 无 sky 地址可发布）；**影子数据：世界私有**（T6b/P4）——CPU 权威 `ECSContext::shadow_info`、世界私有缓冲按帧槽各一份（`InitializeShadowInfoTable`）、地址 `addr_shadow` = 基址 + 帧槽 × `sizeof(ShadowInfo)`、设备写入点 = `ECSContext::CommitShadowInfo`（写本世界帧 RT 的当前槽）；**ambient_env（IBL 句柄）自 T1 起独立成段**（`AmbientEnvInfo` / `addr_ambient_env`，`ambient_env` 宏）（C2；旧的 `RenderSceneUBOSystem::ResolveSkyUBO/ResolveShadowUBO` + registry `SetSkyAddress/SetShadowAddress` 已整删；profile 侧 `GetShadowAddress` 亦已随 P4 删除）；viewport：`ViewUBOCommitSystem` → `RenderSceneUBOSystem::CommitViewportUBO`（仍全局表 `addr_viewport`） | **无描述符集**：相机经 `CameraInfoBufferRef(...).cameras[pc_root.camera_row]` 读（`ShaderLibrary/ubo/scene_ubo.glsl:149`），sky / shadow / viewport 经 `world_addresses` / `global_addresses` 表内地址解引用（`sky`/`shadow` 宏 C2 起读世界表）。相机行、sky / shadow、渲染项 / DrawItemID 地址**随世界**（世界表 `WorldAddresses`，C1/C2 落地；**viewport 保持全局**） |
-| 脏 buffer 的 GPU 传输 + barrier | `RenderBufferUploadSystem::Update`（先同步两个 4-ID storage，再遍历 `device->GetGPUBufferRegistry()`） | `IGPUBuffer::CopyToDevice` + `MemoryBarrier2`（`src/ecs/systems/render/RenderBufferUploadSystem.cpp:46-56,135-148`） |
+| CameraInfo / SkyInfo / ViewportInfo | 相机：**每个相机组件自持** `local_camera_info`，`CameraSystem::PublishCamera(Rows)` 在 pass 设置阶段 / `RenderTo` 写**世界表相机行**（C1-5 之前的 `CommitCameraUBO` 写世界共享载体已删）；~~sky：**按世界**取址（`ECSContext::GetEnvProfileID()` → `EnvironmentManager::GetSkyAddress`，单份 buffer）由 `ECSContext::SyncWorldAddresses` 写**世界表** `addr_sky`~~（**2026-10-07：`SkyInfo` / `addr_sky` 已整删**，外观标量搬成 `sky_atmosphere.glsl` 常量 ⇒ 无 sky 地址可发布）；**影子数据：世界私有**（T6b/P4）——CPU 权威 `ECSContext::shadow_info`、世界私有缓冲按帧槽各一份（`InitializeShadowInfoTable`）、地址 `addr_shadow` = 基址 + 帧槽 × `sizeof(ShadowInfo)`、设备写入点 = `ECSContext::CommitShadowInfo`（写本世界帧 RT 的当前槽）；**ambient_env（IBL 句柄）自 T1 起独立成段**（`AmbientEnvInfo` / `addr_ambient_env`，`ambient_env` 宏）（C2；旧的 `RenderSceneUBOSystem::ResolveSkyUBO/ResolveShadowUBO` + registry `SetSkyAddress/SetShadowAddress` 已整删；profile 侧 `GetShadowAddress` 亦已随 P4 删除）；viewport：`ViewUBOCommitSystem` → `RenderSceneUBOSystem::CommitViewportUBO`（仍全局表 `addr_viewport`） | **无描述符集**：相机经 `CameraInfoBufferRef(...).cameras[pc_root.camera_row]` 读（`ShaderLibrary/ubo/scene_ubo.glsl:149`），sky / shadow / viewport 经 `world_addresses` / `global_addresses` 表内地址解引用（`sky`/`shadow` 宏 C2 起读世界表）。相机行、sky / shadow、世界私有各列地址**随世界**（世界表 `WorldAddresses`，C1/C2 落地；**viewport 保持全局**） |
+| 脏 buffer 的 GPU 传输 + barrier | `RenderBufferUploadSystem::Update`（先同步世界行表族（实体行 / 实体 4-ID 表等），再遍历 `device->GetGPUBufferRegistry()`） | `IGPUBuffer::CopyToDevice` + `MemoryBarrier2`（`src/ecs/systems/render/RenderBufferUploadSystem.cpp:46-56,135-148`） |
 | swapchain 图获取 / 提交 | `SwapchainNextImageSystem`（帧首）/ `SwapchainSubmitSystem`（帧尾） | `SwapchainRenderTarget::NextFrame/Submit` |
 
 ---
@@ -472,7 +476,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 ## 9. 帧缓存与生命周期
 
 - `RenderFrameCache`（`inc/hgl/ecs/core/Context.h:48-63`）：`renderItems`（`unique_ptr` 数组，每帧重建）、`materialBatches`（key→`MaterialBatch` 的 map，**跨帧保留对象**只 `Clear()` 内容）、`cameraInfo`、`renderableCount`；实例挂载在 `ECSContext::render_frame_cache`（`inc/hgl/ecs/core/Context.h:128`），经 `GetRenderFrameCache()` 暴露。
-- 跨帧存活的还有：`TransformAssignmentBuffer`（TransformSystem 持有）、`MaterialBatch` 的各类 buffer（`Ensure*` 按 pow2 扩容）、行池（`GlobalSSBOBufferRegistry` / `MaterialTextureReferencePool` 持有）、`RenderItemDataStorage` / `DrawItemIDStorage`（`ECSContext` 成员，`inc/hgl/ecs/core/Context.h:122-123`，构造时创建于 `src/ecs/core/Context.cpp:64-65`）。
+- 跨帧存活的还有：`TransformAssignmentBuffer`（TransformSystem 持有）、`MaterialBatch` 的各类 buffer（`Ensure*` 按 pow2 扩容）、行池（`GlobalSSBOBufferRegistry` / `MaterialTextureReferencePool` 持有）。（另两个 4-ID 存储已随 2026-10-14 整族删除，见文首订正。）
 - 非拥有关系要小心：`MaterialBatch::transform_buffer` 是 TransformSystem 的指针（`inc/hgl/ecs/core/MaterialBatch.h:78` 注释明示勿跨帧缓存系统指针）；`PrimitiveRenderItem` 持 `shared_ptr` 组件句柄（会延长组件寿命到当帧结束）。
 - `frame_index`（`SetFrameIndex`，`src/ecs/core/Context.cpp:1113-1124`）供 ring 分段；`render_submission_serial`（`inc/hgl/ecs/core/Context.h:130`）供资源回收（纹理引用池的 retire 延迟与此挂钩，常量 `MaterialTextureConfigurationRetireEpochDelay = 3u`，`inc/hgl/graph/module/MaterialTextureReferencePool.h:15`）。
 - 活跃相机/可见性过滤：成员 `active_camera_id`（`inc/hgl/ecs/core/Context.h:275`；读取口 `GetActiveCameraRow()` :520）与 `active_mobility_filter`（:471，`GetActiveMobilityFilter()`）由 `RenderTo` 的 pass 级设置在区间内覆盖，供 RPCS 与渲染器消费。⚠ **2026-10-10**：裸读成员槽号的 `GetActiveCameraID()` 已删除（零调用者）。

@@ -156,9 +156,9 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 - ② 每实例选择器 `pass_selector` / `lod_selector` / `dither_enabled`（`:169-171`）；
 - ③ D9 重试/降频 `shadow_retry_frames`（A4 从共享变体记录迁来，`:176`）+ 授权代跟踪副本（`:180-181`）
   + 生命周期/脏标志（`:184-187`）；
-- ④ **A5b 从已删渲染组件迁来的每实例绑定**（指针已出清，形态见下）：`render_item_handle`、
+- ④ **A5b 从已删渲染组件迁来的每实例绑定**（指针已出清，形态见下）：~~`render_item_handle`~~（2026-10-14 随 4-ID 池表整族删除 ⇒ 行宽 40 → **32 B**）、
   多实例 `instance_count` / `max_instances` / `allocated_instance_capacity`、`is_gpu_driven` / `is_indirect`。
-  （**2026-10-05 补**：后三个字段与 `InstancedPrimitiveRenderItem` 亦删 ⇒ 行宽 **40 B**。）
+  （**2026-10-05 补**：后三个字段与 `InstancedPrimitiveRenderItem` 亦删 ⇒ 当时行宽 **40 B**；**2026-10-14 再删 4-ID 句柄 ⇒ 现 32 B**。）
 
 > **⚠ 2026-10-05 退役**：下述「6 个缓冲字段 → 世界级句柄表行号」整条已
 > **随外部 GPU-Driven 注入入口整体退役而删除**（含 `MaterialRuntimeBufferTable` 与 `is_gpu_driven` / `is_indirect`）；

@@ -150,7 +150,7 @@ RenderFrameSync ┌─ GPUCullSystem：一次 compute 派发（独立 cmd，异�
 | 情形 | 处理 |
 |---|---|
 | 句柄**连号**（连续静态项 / 实例化项的多实例区间） | **连号直通**：一条 DrawBatch 覆盖区间（`is_direct`、`instance_count = N`），不展开成 N 条 |
-| 句柄离散 | `CompactRenderItemHandles` 生成索引区间（索引表 + `instance_count`） |
+| 句柄离散 | ~~`CompactRenderItemHandles` 生成索引区间（索引表 + `instance_count`）~~ —— 该机制与 4-ID 两级表于 2026-10-14 整族删除，批行改按实体 4-ID 表取材质/纹理行 |
 | 混合（同几何同 range） | 同几何同绘制范围的相邻簇合并 |
 
 DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-draw**（见 §5）。

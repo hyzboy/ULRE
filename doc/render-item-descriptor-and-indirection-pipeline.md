@@ -5,6 +5,10 @@
 > 的排序方案**已无载体** —— `Compare` 于 2026-10-10 随审计 §1.1 删除（零调用者）；排序键的现行形态是
 > `RenderItem::draw_key`（`MeshDrawKey`，行派生 POD 键，见 `inc/hgl/ecs/core/RenderItem.h`）。
 
+> 🚫 **本机制已整族删除（2026-10-14）**：本文描述的**两级结构（一级 4-ID 描述符池 + 二级 DrawItemID 索引表）与绘制期运行时解析（直通 / 二级索引）全部删除**。
+> 依据三条：① 解析函数全仓零调用（其启用开关字段亦已不存在）；② 池的 CPU 面只剩批行写入、且已有等价回退在位；③ 池的索引粒度与实体 4-ID 表同为「每实体一行」⇒ 对实例化/间接绘制**零增益**。
+> 现行单一真源 = **实体 4-ID 表**（`EntityRenderIDTable`）。本文保留为**已作废的设计记录**；定论与落地验收见 `doc/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §九。
+
 # (Global RenderItem Descriptor Pool & Indirection Pipeline Architecture)
 
 > **文档版本**：v2.0 (2026-09)  

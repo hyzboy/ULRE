@@ -30,7 +30,7 @@
 
 - **#1（01 掩码是 `component_rows` 的缓存视图）** —— **(a) ✅ 已落地 2026-10-13**：`Entity::SetComponentRow` 与 `DetachAllComponents` 走 `#if ULRE_ECS_DEBUG_API`（开关见 §7 台帐）全表对拍，Release 宏=0 零成本。剩 **(b)** 删掩码、`HasComponentType` 改读 `component_rows[type] != 0`（`GetComponentMask()` 汇总要现场拼 ⇒ 策略路径 O(16)）／**(c)** 保持现状 —— **待你拍**
 - ~~**#2（02 组件列表 4~5 份）**~~ —— **✅ 已落地 2026-10-13**：`VerifyAfterWrite` 接三个写入点（挂卸 / 可见性 / 变换行**三条路径**），台帐宏门住（Release 空 inline ⇒ 生产零开销）；「权威链」头注在位（含 `row[Transform]` 两个权威点 + `type[16]` 有意冗余两警告）；顺手修「槽复用 `Activate` 不清 `type[]/row[]` ⇒ 对拍假红」；源码契约 **Test 49**（存在性 + 计数 + 禁复活）；**红的样子** = 破坏 `Refresh` 行号写入 ⇒ 899 条点名失步，还原 0 条。详见审计报告 02 **§六 落地记录**
-- **#3（03 RenderItemDescriptor 双表）** —— 先答"池**无条件写** / 实体表**只在进批判据内写**是**有意**还是**疏漏**"；**(b)** 一侧派生另一侧需先有生产者 —— `PublishRenderIDs(...)` **全仓 0**〔实测〕
+- ~~**#3（03 RenderItemDescriptor 双表）**~~ —— **✅ 已落地 2026-10-14（以「删」结案，不补对拍门）**：三条判据 —— ① 池的 **GPU 面零消费者**（解析函数全仓零调用、启用开关字段早已不存在）；② CPU 面只剩批行写入**且已有等价回退在位**；③ 池的索引粒度与实体表同为「每实体一行」⇒ **对实例化零增益**（实例化真正依赖的「每实例行」由每批 `l2w_index` / 每批材料行表 / 剔除侧输出行承担）⇒ 池 + 二级索引表 + 压缩器 + 解析 GLSL **整族删除**（≈1889 行），批行写入改读**实体 4-ID 表本 pass 那一半**（单一真源，等价性由「写点在同一进批判据块内」保证）；连带 `WorldAddresses` 9→8→7 字段、`MaterialRuntimeSlot` 40→32 B、`RenderItemHandle` 类型退役。详见报告 03 **§九 落地记录**
 - **#4（06 可见性三表示两极性）** —— **(c)** 权威链文档（零风险）+ **(b)** 每帧按权威重算 —— 未落地〔实测 `Recompute/Refresh/RebuildVisib*`、`UpdateVisibilityFrom*`、`PropagateVisibility` 全 0〕
 - ~~**#5（07 材质四条键空间）**~~ —— **✅ 已落地 2026-10-13**：`HashMaterialProgramIdentity()` 共用折字段（运行期键**以它为种子续算** ⇒ 哈希取值逐位不变、无缓存失效）+ `VariantKeyOf()` 前缀唯一实现 + forward 生产**由构造派生**（`Intern(VariantKeyOf(runtime_key))`）+ 5 条编译期 `static_assert`（类型/偏移/维序 ⇒ 只给一个键加维**立刻编译失败**）+ 权威链头注 + 源码契约 **Test 50**（4 存在性 + 1 接线 + 2 禁复活）；**红的样子**：加一维 ⇒ `error C2338`；手写折字段复活 ⇒ 退出码 50。**订正**：只有 forward 变体键是运行期键前缀，阴影键是**兄弟键**（ShadowDepth 上下文）。详见报告 07 **§七**
 - ~~**#6（08 `MaterialRuntimeRow` key 存 3.5 份）**~~ —— **✅ 已落地 2026-10-13**：订正"可省字段 = 0"（`row.recipe_hash`/`row.data_index_row` 不是 key 的副本、`cached_effective_recipe_hash` 是另一物）；不变量文档写在字段旁；两个**静态**对拍助手（定义在 .cpp、台帐宏门住 ⇒ 生产空 inline）接在「解析后写 recipe_hash」与「物化发布 data_index_row」两点；**订正报告 §四(b) 的裸等值断言**（未物化哨兵 `-1` 会误报 ⇒ 加哨兵跳过分支）；源码契约 **Test 51**；**实测**：4 例 + 18s 稳态窗口 0 告警（不变量成立），破坏同源 ⇒ 100 条点名、还原 ⇒ 0 条。详见报告 08 **§七**（含 (c) 不做、(d) 单独立项）
@@ -48,13 +48,13 @@
 ### 4. 建议顺序（按"先删遗留/未使用 → 再改进"，2026-10-13 重排）
 
 1. ~~**ECS #2 对拍器接入**~~ —— **✅ 2026-10-13 完成**（同 §2）
-2. ~~**ECS #5 `VariantKeyOf` 前缀共用**~~ ✅ / ~~**ECS #6 行字段不变量 + debug 门**~~ —— **均 2026-10-13 完成**；审计 §2 六条里剩 **#3（渲染项双表：先答"有意还是疏漏"）** 与 **#4（可见性权威链）**（见 §4 第 8 条）
+2. ~~**ECS #5 `VariantKeyOf` 前缀共用**~~ ✅ / ~~**ECS #6 行字段不变量 + debug 门**~~ —— **均 2026-10-13 完成**；审计 §2 六条里**只剩 #4（可见性权威链）**（#3 已于 2026-10-14 以「删」结案，见 §2 该条）
 3. **开关台帐的两条待定 + 自检门的配置口径**（§7 / §3，零~低成本，等你一句话）
 4. **S3b-3 顶点节点枚举归位**（与 S3b 同族收尾）
 5. **stage B `receive_shadow` 幅度漂移专项**（未 bisect 的行为漂移；修完 `ATS_SELFCHECK=1` 必须 rc=0）
 6. 文档卫生：**§1 的 3 处过期声明** + C 线 doc 十篇（可与任意批并行）
 7. 功能项：棋盘格标记色上色 + 2D/3D 分派
-8. **ECS #3 / #4**（"有意 vs 疏漏"与可见性权威链——牵动 GPU 行语义，放最后）
+8. **ECS #4**（可见性权威链——牵动 GPU 行语义，放最后；#3 已结案）
 
 ### 5. stage B 存储形欠账（主档 `doc/future/stage_B_debt_list.md`）
 
@@ -855,8 +855,8 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 权威口径与执行计划：`doc/world-addresses-and-camera-model-plan.md`。
 
 - **三档地址分层**：`GlobalAddresses` = 跨世界共享资源池（MeshDrawParams 池、PBR/Emissive/Transmission 行池、
-  调色板、**viewport**）；新增 **`WorldAddresses`** = 世界私有（相机行 / 渲染项表 / DrawItemID 表 /
-  sky / shadow / env）；`pc_root` = 每批 / 每材质 / 本字体（新增 `addr_world_addresses`）。
+  调色板、**viewport**）；**`WorldAddresses`** = 世界私有（相机行表 / 实体行表 / 实体 4-ID 表 / L2W / 光源行 / 影子数据 / 环境光块；
+  sky 段已于 2026-10-07 整删、渲染项表与 DrawItemID 表已于 2026-10-14 整族删除）；`pc_root` = 每批 / 每材质 / 本字体（含 `addr_world_addresses`）。
 - **相机下沉世界级**：世界私有 SSBO，**16 槽 × 8 帧槽**，0 号槽恒为本世界默认相机；
   三级解析（默认相机 → 最小 `EntityID.index` 相机 → `(0,0,0)` 强制常驻 fallback）；
   光相机随"投影阴影的灯光"创建、镜面未来同理（拥有者负责申请/归还）。

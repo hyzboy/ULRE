@@ -16,7 +16,7 @@
 - 数据契约：`inc/hgl/graph/ubo/ShadowInfo.h`（`kMaxShadowCascades = 4`）
 - GLSL：`ShaderLibrary/shadow/pcf_shadow.glsl`（选级 `EvalCascadeChain`）、`ShaderLibrary/ubo/scene_ubo.glsl`（`ShadowInfo`）
 - 示例：`example/Shadow/CascadeShadowMap.cpp`（诊断/契约最全）、`example/Shadow/AlphaTestShadow.cpp`（D1/D3/D4 契约）
-- 测试：`TestCSMIncrementalPass`（21 项）、`TestRenderItemDataStorage`
+- 测试：`TestCSMIncrementalPass`（`TestRenderItemDataStorage` 已于 2026-10-14 随 4-ID 池表整族删除）
 
 ## 2. ECS 侧接口（谁调什么）
 
@@ -98,7 +98,8 @@
 - 相机数据走 **BDA**：`scene_ubo.glsl` 的 `camera` 宏 =
   `CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[pc_root.camera_row]`
   （相机行表是**世界私有**；全局表里那两个旧字段 `addr_camera_info` 已随 C1-3 删除）。
-  同一世界表内还带 `addr_global_render_items` / `addr_draw_item_ids`（4-ID 解析用，当前未启用）。
+  同一世界表内还带相机行表 / 实体行表 / 实体 4-ID 表 / L2W / 光源行 / 影子数据 / 环境光块等世界私有列
+  （原 `addr_global_render_items` / `addr_draw_item_ids` 两个 4-ID 相关地址已于 2026-10-14 随池与二级索引表整族删除）。
 
 - **视图矩阵必须由 `forward` 构造，禁止用 `target`**（`CameraSystem::UpdateMatrices` 非 custom 分支）：
   `target` 由 `UpdateTransform` 维护，当 `position` 被**外部直接写**（示例 autowalk `position.x += speed*delta`、

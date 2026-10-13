@@ -3,6 +3,10 @@
 > 权威口径文档。决策人：hyzboy（2026-09-28 会话）。落地前请先读本文，再读
 > `doc/global-addresses-bda-unification-plan.md`（S1–S3：Scene 集退役 + 地址归口 GlobalAddresses）。
 > 本文同时收录**本轮核出的文档事实订正清单**（§7）——其它文档按该表对齐，不要再沿用旧写法。
+>
+> ⚠ **订正（2026-10-14）**：世界表里的 **渲染项表地址**（`addr_global_render_items`）与 **DrawItemID 表地址**（`addr_draw_item_ids`）已随「CPU/GPU 双剔除遗留」
+> **整族删除**（两级存储 + 压缩器 + 绘制期解析 GLSL + 二者地址/接线/契约）⇒ 世界表 **9 → 7 字段**；GLSL 侧的 `global_render_items` / `draw_item_ids` 两个宏同批删除。
+> 4-ID 元组的**唯一真源 = 实体 4-ID 表**（`addr_entity_render_ids`）。定论见 `doc/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §九；本文其余段落里的两表读作当时形态。
 
 ## 0. 决策记录（用户拍板，勿翻案）
 
@@ -28,9 +32,8 @@
 - **下发**：`pc_root.addr_world_addresses` = 本帧槽的世界表地址（`world->GetWorldAddressesAddress(frame_slot)`，与 `GraphicsContext::GetGlobalAddressesAddress(frame_slot)` 同款）；多世界渲染只需换这一个指针。
 - **GLSL（C1-1/C1-2/C1-3 已落地）**：`WorldAddressesRef`（与 `GlobalAddressesRef` 并列，`buffer_reference_align=16`）已在 `scene_ubo.glsl`；宏为
   `camera = CameraInfoBufferRef(world_addresses.addr_camera_info).cameras[pc_root.camera_row]`、
-  `global_render_items = RenderItemBufferRef(world_addresses.addr_global_render_items)`、
-  `draw_item_ids = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids)`，
   `viewport = ViewportInfoRef(global_addresses.addr_viewport)`（保持全局）。
+  （~~`global_render_items` / `draw_item_ids` 两个宏~~ 已于 2026-10-14 随两表整族删除。）
   表内 `addr_sky` / `addr_shadow` / `addr_env` 槽位**已预留、尚未接线**（C2 落地）。
   ⚠ **2026-10-07 订正**：`addr_sky` 已随 `sky` 段整删（世界表 = **72 B / 9 字段**，无 `addr_sky`）。
 - **硬规矩**：`GlobalAddresses` 内**不得**出现世界私有地址；`WorldAddresses` 内**不得**出现资源池地址。各配一条契约（parity + 归属）。
@@ -119,7 +122,7 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
 ## 6. 验收门
 
 1. 门：`ShaderResourceSchemaRegressionGate`（表结构变更需同步 golden/schema；新增 `W.world-addresses-struct-parity` 与"表归属"契约）。
-2. `TestCSMIncrementalPass`、`TestRenderItemDataStorage` 通过。
+2. `TestCSMIncrementalPass` 通过（`TestRenderItemDataStorage` 已于 2026-10-14 随 4-ID 池表整族删除）。
 3. `ATS_SELFCHECK=1 AlphaTestShadow`：D1/D3/D4 契约 + selfcheck PASS + 0 VUID。
 4. `CSM_CACHE_DIFF=1 CSM_AUTOWALK=4 CascadeShadowMap`：多轮 `不一致=0`。
 5. 示例冒烟：`ShadowMap`（单世界）+ `RenderToTexture` / `RenderToTextureColorDepth`（双世界）0 VUID。
@@ -127,8 +130,8 @@ C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面�
    `TestCSMIncrementalPass` 的 9C+ 用例断言 fallback 常驻 / 占 0 号槽 / 不进组件表）；
    ②`req.camera` 必须在本世界相机存储中占槽（跨世界 = fail-fast；**C1-4 已落地**：
    `CameraComponent::world_owner` 在 `CameraSystem::Update` 的覆盖分支比对）；③两个世界同帧互不污染
-   （相机行 / 4-ID 渲染项 / DrawItemID；**C1-6 已落地**：`TestCSMIncrementalPass` Test 22 共 19 条源码契约
-   钉住"四个世界私有存储/地址表均为每世界一份、世界表只取本世界存储地址 + 按帧槽轮转、相机行只走本世界
+   （相机行 / 实体 4-ID 表 —— 4-ID 渲染项表与 DrawItemID 表已于 2026-10-14 整族删除；**C1-6 已落地**：`TestCSMIncrementalPass` Test 22 以源码契约
+   钉住"世界私有存储/地址表均为每世界一份、世界表只取本世界存储地址 + 按帧槽轮转、相机行只走本世界
    存储 + 校验 `world_owner`、禁复活设备级相机行池与全局表世界私有字段"；sky / shadow / env 的按世界归属随 C2）；
    ④表归属（**C1-6 已落地**：门的两条 `S./W.*-field-ownership` 用例，唯一真源 = `kAddressOwnershipTable`
    —— 按侧比对字段集合：多出 = 未分类字段、缺少 = 漏字段、出现在另一侧 = 放错表；已做破坏验证：
