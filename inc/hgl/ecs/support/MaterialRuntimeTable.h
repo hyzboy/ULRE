@@ -173,6 +173,24 @@ namespace hgl::ecs
 
     /// **共享行**：同键的多实体引用同一行（interned）。
     ///
+    /// **字段不变量**（2026-10-13 审计 §2.2 问题 8；**改行字段/键之前必读**）：
+    ///
+    ///   · **共享行**（interned，`owned == false`）：`row.recipe_hash == key.recipe_hash`（同一份身份配方）；
+    ///     已物化（`data_index_row != uint32_t(-1)`）时 `row.data_index_row == key.data_index_row`。
+    ///   · **自有行**（CoW 分裂，`owned == true`）：`key` 为**空**（不入键索引，见 `DetachOwned`）
+    ///     ⇒ 以 `row.*` 字段为准（此时**没有**可对拍的键）。
+    ///   · `row.data_index_row` **不是** `key.data_index_row` 的副本 —— 两者语义不同：
+    ///       `key.data_index_row` = **授权态行号**（身份维度之一，`Intern` 时由
+    ///       `ResolveRowDataIndex(binding recipe)` 给定）；
+    ///       `row.data_index_row` = **物化标记 / 发布值**（`uint32_t(-1)` = 尚未物化；物化后 =
+    ///       发布的数据行号）。⇒ 判「行未就绪」读 `row.data_index_row`；判「身份/共享」读 `key.data_index_row`。
+    ///       两者取值在**已物化**的共享行上恰好相等（同一个 `material_ssbo_binding.data_index`），
+    ///       但**不能**用裸等值断言（未物化行的哨兵 `-1` 会让它误报）。
+    ///   · `cached_effective_recipe_hash` 与 `key.recipe_hash` 是**两个不同的哈希**
+    ///     （前者 = program 解析后的 effective recipe；后者 = 身份配方），不可互相替代。
+    ///
+    /// ⇒ 审计说的"key 存了 3.5 份"**要订正**：可省字段 = **0**（两份同名值在自有行上会消失一份，
+    ///    `cached_effective_recipe_hash` 则是另一物）；真正缺的是上面这组不变量 + 一条 debug 对拍。
     /// 字段准入判据（逐条见文件头）：**只放随授权态变化的绑定**。
     ///   · 变体 ID（program 身份所在；program 本体归 ShaderProgramManager 缓存持有）；
     ///   · 材质 SSBO 行号与 CPU/GPU 地址（由授权态 + 世界缓冲布局决定）；
@@ -386,6 +404,22 @@ namespace hgl::ecs
         bool DestroySlot(EntityID owner);
 
         uint32_t GetSlotCount() const { return static_cast<uint32_t>(slots.size()); }
+
+
+        public: // ── 自检（问题 8 选项 (b)）：行字段与身份键的一致性 ──
+                //  开关 = 台帐 `hgl/common/RenderOptions.h` §2 的 `ULRE_ECS_DEBUG_API`
+                //  （默认 AUTO：Debug 开 / Release 关）；关掉时函数体为空 inline ⇒ 生产零开销。
+
+            /// 共享行：写入的 `recipe_hash` 必须等于身份键的 `recipe_hash`（自有行键为空 ⇒ 不检查）。
+            /// **调用点 = 写 `row.recipe_hash` 之后**（不得提前/延后：未物化的行没有可比性）。
+            static void VerifyWrittenRecipeHash(const MaterialRuntimeRow &row,
+                                                const uint64_t written_recipe_hash,
+                                                const char *what);
+
+            /// 已发布的共享行：`data_index_row` 必须等于身份键的授权行号
+            /// （`uint32_t(-1)` = 未物化哨兵 ⇒ 跳过；自有行无键 ⇒ 跳过）。
+            /// **调用点 = 写 `row.data_index_row` 之后**（物化发布路径）。
+            static void VerifyWrittenDataIndexRow(const MaterialRuntimeRow &row, const char *what);
 
         /// 清空（行 + slot + 索引 + 告警闩；行回收会退休其 GPU 绑定）
         void Clear();

@@ -1,4 +1,5 @@
-﻿#include<hgl/ecs/support/MaterialRuntimeTable.h>
+﻿#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：对拍挂在 ULRE_ECS_DEBUG_API 下）
+#include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/MaterialRuntimePipelineTable.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -320,4 +321,50 @@ namespace hgl::ecs
         live_row_count = 0;
         overflow_warn_count = 0;
     }
+    // ── 自检（问题 8 选项 (b)）：行字段与身份键的一致性 ────────────────────────────
+    //  语义与调用点见头注；**定义在 .cpp**（不是头内 inline）⇒ 破坏/还原 A/B 不受
+    //  MSBuild "头内 inline 体扩散到间接调用者" 的陈旧 obj 陷阱影响（见技能记录）。
+    void MaterialRuntimeTable::VerifyWrittenRecipeHash(const MaterialRuntimeRow &row,
+                                                       const uint64_t written_recipe_hash,
+                                                       const char *what)
+    {
+    #if ULRE_ECS_DEBUG_API
+        if (row.owned)              // 自有行：key 为空（不入键索引）⇒ 以 row.* 为准，无一致性可查
+            return;
+
+        if (row.key.recipe_hash == written_recipe_hash)
+            return;
+
+        GLogError(u8"[MaterialRuntimeTable] 行 recipe_hash 与身份键不一致（写入点=%s）："
+                  u8"key.recipe_hash=%llu 写入值=%llu（共享行的两者必须同值；自有行不参与）",
+                  what,
+                  static_cast<unsigned long long>(row.key.recipe_hash),
+                  static_cast<unsigned long long>(written_recipe_hash));
+    #else
+        (void)row; (void)written_recipe_hash; (void)what;
+    #endif//ULRE_ECS_DEBUG_API
+    }
+
+    void MaterialRuntimeTable::VerifyWrittenDataIndexRow(const MaterialRuntimeRow &row, const char *what)
+    {
+    #if ULRE_ECS_DEBUG_API
+        if (row.owned)                              // 自有行：无键可比
+            return;
+
+        if (row.data_index_row == uint32_t(-1))     // 未物化哨兵：此时不与身份行号可比（**勿改成裸等值**）
+            return;
+
+        if (row.data_index_row == row.key.data_index_row)
+            return;
+
+        GLogError(u8"[MaterialRuntimeTable] 行 data_index_row 与身份键不一致（写入点=%s）："
+                  u8"key.data_index_row=%u row.data_index_row=%u"
+                  u8"（共享行已物化时必须同值；自有行/未物化行不参与）",
+                  what, row.key.data_index_row, row.data_index_row);
+    #else
+        (void)row; (void)what;
+    #endif//ULRE_ECS_DEBUG_API
+    }
+
+
 }//namespace hgl::ecs

@@ -115,6 +115,55 @@ assert(row->owned || (row->data_index_row == row->key.data_index_row
 
 ---
 
+---
+
+## 七、落地记录（2026-10-13；选项 (a) + (b) 完成，(c) 不做、(d) 记入「单独立项」）
+
+**(a) 不变量文档**：`MaterialRuntimeRow` 字段旁新增「字段不变量」块 —— 共享行同值 / 自有行 key 为空（以 `row.*` 为准）/
+`row.data_index_row` 是**物化标记·发布值**而不是 `key.data_index_row` 的副本（未物化 = `uint32_t(-1)`）/
+`cached_effective_recipe_hash` 与 `key.recipe_hash` 是**两个不同的哈希**。
+
+**(b) debug 对拍**：`MaterialRuntimeTable` 两个**静态**助手，**定义在 .cpp**（不是头内 inline ⇒ 破坏/还原 A/B
+不受 MSBuild「头内 inline 体扩散到间接调用者」陈旧 obj 陷阱影响），函数体内 `#if ULRE_ECS_DEBUG_API`
+（台帐开关，默认 AUTO：Debug 开 / Release 关 ⇒ 生产零开销）：
+
+| 助手 | 调用点 | 判据 |
+|---|---|---|
+| `VerifyWrittenRecipeHash(row, written, what)` | 解析后写 `row->recipe_hash` 之后 | 共享行：`row.key.recipe_hash == 写入值`；自有行（key 为空）跳过 |
+| `VerifyWrittenDataIndexRow(row, what)` | 物化发布 `row->data_index_row` 之后 | 已物化的共享行：`row.data_index_row == row.key.data_index_row`；`-1` 哨兵与自有行跳过 |
+
+**对本文 §四(b) 拟的断言的订正**：原拟的**裸等值** `row.data_index_row == row.key.data_index_row` 会在「未物化」行
+**误报**（此时 `row.data_index_row` 是哨兵 `uint32_t(-1)`，与身份行号无关）⇒ 实现里加了哨兵跳过分支后才成立。
+这正是 §六 要求「先查清再断言」的那一条 —— 查清结论：两个值确实取自同一个
+`material_ssbo_binding.data_index`（`ResolveRowDataIndex(recipe)` vs `entity_data_index`），**只在已物化时**才有可比性。
+
+**「先查清再断言」的实测证据**：接线后跑 4 个材质重示例（`PBRSpheres` / `AlphaModes` / `LoadScene` / `CascadeShadowMap`，
+Debug 宏开）+ 18 秒 PBR 稳态窗口（108071 行日志）⇒ 两类不一致告警 **0 条**。
+
+**红的样子（实测）**：把身份键构造里的 `recipe_hash` 改成 `recipe_hash ^ 0x1ull`（键与写入值不同源）⇒ Debug 跑
+`PBRSpheres` 打出 **100 条**：
+
+```
+[MaterialRuntimeTable] 行 recipe_hash 与身份键不一致（写入点=RenderPrimitiveCollectSystem: 解析后写 recipe_hash）：
+key.recipe_hash=9756265579378922461 写入值=9756265578922460（共享行的两者必须同值；自有行不参与）
+```
+
+逐字节还原 ⇒ **0 条**。
+
+**契约**：源码契约 **Test 51**（6 条存在性 + 1 条计数「两个助手各自门在 `#if ULRE_ECS_DEBUG_API` 下」+ 1 条禁复活
+「对拍不许用 `assert`」—— Release 下即使开着宏，NDEBUG 仍会把它整条抹掉）。
+
+**验收**：Debug/Release `rc=0 / 0 error`；门 45 PASS / 0 FAIL；`ctest -L ecs` 12/12；`TestCSMIncrementalPass` 1/1（含 49/50/51）；
+示例帧摘要 `PBRSpheres 0x3DD88A0999CDC486` / `AlphaModes 0x2FE87B15EE8B8A16` / `LoadScene 0xC9E38ED2F49A069B` /
+`CascadeShadowMap 0x1CDAADEBF18B7CE4` **全部逐位不变**。
+
+**(c) 不做**（维持原判）：删 `row.recipe_hash` / `row.data_index_row` 必须先解决「自有行 key 为空」这一档，
+收益（~16 B/行）远小于风险。
+**(d) 单独立项（未开工）**：配方缓存三件套（`cached_normalized_recipe` / `cached_effective_recipe` /
+`shadow_cached_normalized_recipe`）外置才是减行宽的真方向，属结构性改动，需单独评估与量化。
+
+---
+
 ## 六、未证实 / 需要确认
 
 - `row.data_index_row` 与 `key.data_index_row` 在**共享行**上是否**永远**相同：按 `Intern`（键含 `data_index_row`）+ 物化写回（`RenderPrimitiveCollectSystem.cpp:1287` 一带）的语义应当相同，但我未逐路径证明（例如"先 Intern 后物化"是否会用新行号重建键）——若要 (b) 的断言，需先把这条查清（否则断言可能误报）；

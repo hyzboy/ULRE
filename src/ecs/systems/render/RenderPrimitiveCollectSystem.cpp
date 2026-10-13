@@ -1247,6 +1247,8 @@ namespace hgl::ecs
         slot.program_dirty = false;
         slot.valid = false;                     // 等价于原 MarkProgramResolved()
         row->recipe_hash = recipe_hash;
+        // 问题 8(b)：共享行的行字段必须与身份键同值（自有行 key 为空 ⇒ 不检查）。台帐宏门住。
+        MaterialRuntimeTable::VerifyWrittenRecipeHash(*row, recipe_hash, "RenderPrimitiveCollectSystem: 解析后写 recipe_hash");
 
         // effective_recipe 出自 MaterialData::BuildResolvedRecipe（数据层边界
         // 已 NormalizeRecipe），直接缓存供 CreatePipeline 使用，无需再规范化。
@@ -1474,6 +1476,8 @@ namespace hgl::ecs
         // data_index（行号）仍按 data_index VALUE 发布——行表/行尾镜像共用。
         row->data_index_row =
             entity_data_index != uint32_t(-1) ? entity_data_index : 0u;
+        // 问题 8(b)：已物化的共享行，发布行号必须等于身份键的授权行号（未物化哨兵/自有行跳过）。
+        MaterialRuntimeTable::VerifyWrittenDataIndexRow(*row, "RenderPrimitiveCollectSystem: 物化发布 data_index_row");
 
         auto *texture_graphics_context = world->GetGraphicsContext();
         auto *texture_registry = texture_graphics_context

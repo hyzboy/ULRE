@@ -6779,6 +6779,85 @@ int main(int argc, char** argv)
                  u8"forward 变体键由运行期键派生，且两处哈希都禁止手写前缀折字段。");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 51: 运行期行字段不变量 + debug 对拍（2026-10-13；审计 §2.2 问题 8 选项 (a)+(b)）
+    //
+    // 背景：审计说 `MaterialRuntimeRow` 把 key "存了 3.5 份"，复核**要订正** —— 可省字段 = 0：
+    //   `row.recipe_hash` / `row.data_index_row` 不是 key 的副本（自有行 key 为空、物化行还有
+    //   未物化哨兵这一档），`cached_effective_recipe_hash` 更是另一个哈希。真正缺的是
+    //   「不变量写在字段旁」+「漂移在 debug 期点名」。本可执行文件无图形设备 ⇒ 这里只钉
+    //   判据链是否还在（行为级判据 = 示例 Debug 跑不打出不一致告警）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kRowInvariantContracts[] =
+        {
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "字段不变量",
+              "问题 8(a)：行字段不变量必须写在字段旁（防下次再把 row.recipe_hash / row.data_index_row 当可删副本）" },
+
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "static void VerifyWrittenRecipeHash(",
+              "问题 8(b)：recipe_hash 对拍助手必须存在（共享行的行字段必须与身份键同值）" },
+
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "static void VerifyWrittenDataIndexRow(",
+              "问题 8(b)：data_index_row 对拍助手必须存在（已物化共享行：发布行号 == 身份键授权行号）" },
+
+            { "MaterialRuntimeTable.cpp", OS_TEXT("src/ecs/support/MaterialRuntimeTable.cpp"),
+              "#if ULRE_ECS_DEBUG_API",
+              "问题 8(b)：对拍必须门在台帐开关下（生产零开销；开关见 hgl/common/RenderOptions.h §2）" },
+
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "MaterialRuntimeTable::VerifyWrittenRecipeHash(*row,",
+              "问题 8(b)：解析后写 recipe_hash 的调用点必须接上对拍" },
+
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "MaterialRuntimeTable::VerifyWrittenDataIndexRow(*row,",
+              "问题 8(b)：物化发布 data_index_row 的调用点必须接上对拍（未物化哨兵在助手里跳过）" },
+
+            { "MaterialRuntimeTable.cpp", OS_TEXT("src/ecs/support/MaterialRuntimeTable.cpp"),
+              "assert(",
+              "禁复活：对拍不许用 assert —— Release 下再开着宏时 NDEBUG 仍会把它整条抹掉（开了宏却什么都没查）",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(51, kRowInvariantContracts,
+                                                       static_cast<uint>(sizeof(kRowInvariantContracts) /
+                                                                         sizeof(kRowInvariantContracts[0]))))
+            return failed;
+
+        // 计数式：两个助手各自都要有 gated 实现（只判 Contains 分不出 1 处还是 2 处）
+        {
+            std::string cpp_src;
+            {
+                hgl::io::OpenFileInputStream fis(OS_TEXT("src/ecs/support/MaterialRuntimeTable.cpp"));
+                if (!fis)
+                {
+                    GLogError(u8"Test 51 Failed: cannot open MaterialRuntimeTable.cpp (run from repo root)");
+                    return 51;
+                }
+
+                char chunk[4096];
+                int64 got;
+                while ((got = fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
+                    cpp_src.append(chunk, static_cast<size_t>(got));
+            }
+
+            const uint32_t gates = CountSubstring(cpp_src, "#if ULRE_ECS_DEBUG_API");
+
+            if (gates != 2)
+            {
+                GLogError(u8"Test 51 Failed: 两个对拍助手必须各自门在台帐开关下 —— "
+                          u8"'#if ULRE_ECS_DEBUG_API' 出现 %u 次（期望 2）", gates);
+                return 51;
+            }
+        }
+
+        GLogInfo(u8"Test 51 Passed: 运行期行字段不变量契约成立 —— 不变量写在字段旁（共享行同值 / 自有行 key 为空 / "
+                 u8"data_index_row 是物化标记而非键副本 / 两个哈希不同物），两个对拍助手在台帐宏下生效"
+                 u8"（生产零开销）并接在 recipe_hash 写点与物化发布点上，且禁止用 assert 做对拍。");
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }
