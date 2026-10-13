@@ -257,3 +257,88 @@ A1 想省的（不动字段偏移、不重编 shader）在本仓按铁律本来�
    `[EntityRenderIDTable] 几何行不成立但本 pass 行未清零：entity_index=0/1/2 pass=0 geometry_id=0`。还原后源码 sha256 逐字节一致（`RESTORED_OK: True`）。
 
 **遗留**：时点 3 的语义（"表里有本帧新鲜 4-ID、却不会画"）如实写入本报告；`EntityRenderIDTable` 头注与写点旁注释里"表内只留真会画的实体"一句**口径过强**（材质/管线解析失败项仍会留值），待与批 D 同批订正。
+
+---
+
+## 十一、批 D 施工单：删「CPU 侧 per-batch 表构建」整族（T4c4-3 的遗留另一半）
+
+> 状态：**未开工**；本节即施工单（可照做）。账本索引指向本节：`doc/backlog.md` §2（ECS 审计）。
+> 与 §九/§十 的关系：§九删的是「4-ID 两级表族」，本节删的是**同一"CPU 绘制批"残留的另外四类 per-batch 表构建**。
+
+### 11.1 范围与前提
+
+**范围**：`MaterialBatch` 上由 **CPU 每帧构建**的四类 per-batch 表 —— 其构建函数、容量字段、`own_*` 所有权与释放分支。
+**不在范围**（四个指针本身要留）：`PipelineMaterialRenderer` 取它们推根地址（`src/ecs/support/PipelineMaterialRenderer.cpp:180-186`）；接管后它们指向剔除输出。
+
+**三条前提（本机已核实）**：
+
+1. **非接管批不画**（T4c4-3）：`PipelineMaterialRenderer.cpp:205-208` 只在 `owner_batch->gpu_driven_override` 为真时 `ProcIndirectRender()`，该处原话"CPU 绘制批已删 ⇒ 这里只剩接管批的 flush"。
+2. **接管切换把这四类全部换成 GPU 输出**（`src/ecs/support/GPUCullSystem.cpp:837-865`）：`icb_mesh_tasks ← indirect_commands_buffer_`、`icb_count_buffer ← batch_counter_buffer_`、`mesh_draw_params_buffer ← cmds_out_buffer_`、`l2w_index_buffer ← l2w_out_buffer_`、`material_data_index_rows_buffer ← mtl_out_buffer_`，并把 `own_*` 全置 false（:839-842）。
+3. **三个构建者都带接管守卫**（`PrimitiveBatchPipeline.cpp:341` / `:445` / `:530`）⇒ 它们**只在"不画的批"上执行**。
+
+### 11.2 逐项取证表（本机现测行号）
+
+| # | 字段（`inc/hgl/ecs/core/MaterialBatch.h`） | CPU 侧构建者 | 接管后的取值 | 消费者 | 判定 |
+|---|---|---|---|---|---|
+| 1 | `icb_mesh_tasks`（:53）+ `icb_count_buffer`（:54） | **无** —— 全仓 `icb_mesh_tasks =` 只有 `MaterialBatch.cpp:61`（复位置 null）与 `GPUCullSystem.cpp:853`（赋 GPU 缓冲） | `indirect_commands_buffer_` / `batch_counter_buffer_` | `PipelineMaterialRenderer.h:68`（间接 flush 取 `icb_mesh_tasks`） | CPU 侧**已无生产者**（T4c4 删 ICB 构建时留下）⇒ 指针留、所有权机制删 |
+| 2 | `mesh_draw_params_buffer`（:55）+ `_capacity`（:56） | `EnsureMeshDrawParams()`（`PrimitiveBatchPipeline.cpp:339-391`，守卫 :341） | `cmds_out_buffer_` + `info.capacity`（:858-859） | 根地址 push（`PipelineMaterialRenderer.cpp:180-186`） | 删构建函数 + 容量字段 |
+| 3 | `l2w_index_buffer`（:60）+ `_capacity`（:61） | `EnsureBatchIndexRows()`（`:443-526`，守卫 :445） | `l2w_out_buffer_` + `info.capacity`（:860-861） | 同上（`addr_l2w_index`） | 删构建 + 容量字段 |
+| 4 | `material_data_index_rows_buffer`（:65）+ `_capacity`（:66） | `EnsureBatchIndexRows()`（分配/预填 :482-520）+ `WriteBatchIndexRows()`（`:528-676`，守卫 :530） | `mtl_out_buffer_` + `info.capacity`（:862-863） | 同上（`addr_mtl_data_addrs`；`ShaderLibrary/shadow/pcf_shadow.glsl:171` 还判 0 地址） | 删构建 + 容量字段（**§九的批 B 曾把它的取数改到实体表，那段随之消失**） |
+| 5 | `own_icb_mesh_tasks` / `own_mesh_draw_params` / `own_l2w_index` / `own_material_data_rows`（:96-99） | —（所有权标志） | 接管切换置 false（:839-842） | `MaterialBatch.cpp:26-47`（析构/Clear 释放）、`:60-67`（复位置 null）、`:77-80`（Reset 置 true）、`GPUCullSystem.cpp:797-835`（交接前释放） | CPU 侧不再分配 ⇒ 标志恒假 ⇒ 连释放分支整族删 |
+| 6 | `l2w_buffer`（:100） | **无赋值点**（全仓只有 `MaterialBatch.cpp:69` 置 null） | — | 无 | **死字段** ⇒ 同批删 |
+
+### 11.3 施工步骤（逐文件）
+
+1. `src/ecs/support/PrimitiveBatchPipeline.cpp`：删 `EnsureMeshDrawParams`（:339-391）、`EnsureBatchIndexRows`（:443-526）、`WriteBatchIndexRows`（:528-676）三个函数体；删 `FinalizeBatch` 里的三次调用（:438-440）；删只服务它们的 `ULRE_ARENA_DEBUG` 打印（:422-436）。
+2. `inc/hgl/ecs/support/PrimitiveBatchPipeline.h`：删三条声明（`WriteBatchIndexRows` / `EnsureBatchIndexRows` 在 :111-112，`EnsureMeshDrawParams` 同区）。
+3. `inc/hgl/ecs/core/MaterialBatch.h`：删容量字段（:56 / :61 / :66）、四个 `own_*`（:96-99）、`l2w_buffer`（:100）；**保留**五个指针（:53-55 / :60 / :65），注释改为「**非拥有**：接管切换后指向剔除输出」。
+4. `src/ecs/core/MaterialBatch.cpp`：删释放分支（:26-47）、把复位处的条件置 null（:60-67）改无条件置 null、删 `Reset()` 里的 `own_* = true`（:77-80）。
+5. `src/ecs/support/GPUCullSystem.cpp`：`has_owned_to_release`（:797-801）与释放块（:806-835）里删与本批四类相关的条件/分支（保留 `own_icb_mesh_tasks / own_mesh_draw_params` 之外的既有语义需实施时逐行读后决定 —— **`DrainForHandover()` 的排空语义要保住**）；删 :839-842 四个置 false。
+6. `src/ecs/support/PipelineMaterialRenderer.cpp`：**不改**（它是四个指针的消费者）。
+7. 契约（`src/ecs/support/TestCSMIncrementalPass.cpp`）：三个被删函数名加**禁复活针**；新增一条钉「接管切换仍把这五个指针指到 GPU 输出」（存在性 + 位置）。
+
+### 11.4 判据（绿）
+
+- 两配置 `rc=0` / `error C/LNK/MSB` = 0（动公共头 `MaterialBatch.h` ⇒ **清整树 obj** 后全量重编）
+- 门 **45 PASS / 0 FAIL**；`ctest -C Release -L ecs` **11/11**；`TestCSMIncrementalPass`（含新针）**1/1**；`-L shadergen` **13/13**
+- **四示例帧摘要逐位不变**：PBR `0x3DD88A0999CDC486` / AM `0x2FE87B15EE8B8A16` / LS `0xC9E38ED2F49A069B` / CSM `0x1CDAADEBF18B7CE4`
+- **另加接管路径专职台架**（本批删的就是"接管前"那段代码）：`GC_STATIC=1 GC_SELFCHECK=1 GPUDrivenCull` + `DualWorldShadows`（后者自判两世界隔离）
+- 像素确认一句（按仓规：改绘制/存储语义类改动必须看过屏幕）
+
+### 11.5 反证（红的样子）
+
+1. **接力红**：删掉 `GPUCullSystem.cpp:860-863` 里任一指针赋值（如 `l2w_index_buffer ← l2w_out_buffer_`）⇒ 期望 `GPUDrivenCull` 画面缺内容或自检 FAIL（该指针为 null ⇒ `addr_l2w_index` 推 0 ⇒ shader 解引用 0 基址）。证明"四类指针只能由接管提供"。
+2. **禁复活红**：把任一被删函数名加回源码 ⇒ 期望契约针 `rc≠0` 并点名。
+3. **覆盖不到**：本批删的是"不画的批"上的构建 ⇒ **像素差异不应出现**；若出现，说明前提 1 被推翻（先查 `gpu_driven_override` 的求值），不要在批 D 里顺手修。
+
+### 11.6 分批与边界
+
+- 建议**一次整族**：四类同判据（同一接管切换替换、同一守卫），分开做会留"半死面"并多跑两次全量回归。若要更细：D1 = 第 3/4 类（L2W index + MatRow）、D2 = 第 1/2 类（ICB + MeshDrawParams）。
+- **边界**：不碰 GPU 侧输出行（`l2w_out` / `mtl_out` / `cmds_out`）、不碰 Lines/Text 的独立表、不动任何 `addr_*` 世界表字段、不顺手改 `DrainForHandover` 的排空语义。
+
+---
+
+## 十二、批 E 施工单：时点 2/3 的口径订正（注释级）
+
+> 状态：**未开工**；建议**并进批 D 同一次提交**（同一文件的邻近区域 + 同一头注）。账本索引指向本节：`doc/backlog.md` §2。
+
+### 12.1 取证（本机现测）
+
+| 位置 | 现文本（摘） | 问题 |
+|---|---|---|
+| `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:2269-2270` | 「行缺失 ⇒ 键 0 ⇒ 不进批 ⇒ 4-ID 也不上行；**表内只留"真会画"的实体** ⇒ 剔除/接管口径与批一致」 | 时点 3（装配期因不可见 / 配方行未解析 / 程序或管线为空被剔）的项**有**本帧 4-ID ⇒ "只留真会画"不成立 |
+| `inc/hgl/ecs/support/EntityRenderIDTable.h:25-27` | 「写者 = `RenderPrimitiveCollectSystem`（唯一现算点 ⇒ 无第二口径）；消费者 = …」 | 未写时点 2 的**清零**语义（新约定），也未点明"表内 = 几何行成立者" |
+
+### 12.2 施工步骤
+
+1. `RenderPrimitiveCollectSystem.cpp:2269-2273` 那段注释改为：**行缺失 ⇒ 键 0 ⇒ 不进批；本 pass 那一半清零**（见同函数里的 `ids_published` 分支）⇒ 表内实体 = **几何行成立**者，**不等于**"本帧一定会画"（装配期还会按可见性 / 配方行 / 程序管线再剔一次，而那一层在 collect 之后、4-ID 已经写过）。
+2. `EntityRenderIDTable.h` 头注补两条：① 时点 2「未上行即清零（零 = 未上行，消费者按 `geometry_id == 0` 判无）」；② 消费者清单补 **CPU 批行写入**（`WriteBatchIndexRows` 读本 pass 那一半）——**若批 D 先落地**，第 ② 条改为"接管前的 CPU 路径已删（批 D）"。
+
+### 12.3 判据（绿）/ 反证
+
+- 判据：注释/头注级 ⇒ 重编相关库 `rc=0` + 门 45/0 + `ctest -L ecs` 11/11 即可；**不需要**全量回归。
+- 反证：无（注释级）；机械判据 = `git grep -n "真会画"` **零残留**。
+
+### 12.4 边界
+
+只改措辞：不改任何判定、不加/删任何字段、不动行宽与地址表。
