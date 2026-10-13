@@ -94,5 +94,52 @@ bool VerifyAgainst(const Entity *entity, uint32_t *out_mismatch_type = nullptr,
 
 ## 五、未证实 / 需要确认
 
-- `VerifyAgainst` 是否曾有过测试调用、后来被删（我按当前树 grep 为 0；`git log -S "VerifyAgainst"` 可查出处，本次未查）。
-- GPU 剔除着色器读 `entity.row[1]` 之外的槽（如 `row[Geometry]`）？按 `entity_gpu_cull.glsl:235-240` 的注释，**几何口径显式不从 `row[]` 取**（改用 4-ID 表）⇒ 本链的 GPU 消费者实际只用到 `flags` + `row[Transform]`。这条对"CPU 行其余 14 槽是否真有人读"很关键，值得单独确认（若无人读，`Refresh` 的全量填槽可以退化成"只填会被读的槽"，但那属于下一步优化）。
+- ~~`VerifyAgainst` 是否曾有过测试调用、后来被删~~ ⇒ **已查（2026-10-13）**：`git log --oneline -S "VerifyAgainst" -- inc/hgl/ecs/support/EntityGPUTable.h`
+  只有一条 `1d877788a`（T3b/B8 引入），**从未有过测试调用**；唯一的调用者是探针 `ProbeTransformDiagnostics.cpp`（`[T0c]` 四项判据）。结论不变：它此前与"不存在"等价（本批已接进生产写入点，见 §六）。
+- ~~GPU 剔除着色器读 `entity.row[1]` 之外的槽（如 `row[Geometry]`）？~~ ⇒ **已确认（2026-10-13）**：`ShaderLibrary/ecs/entity_gpu_cull.glsl` 里 `row[]` 只出现两处 ——
+  `:254 const uint transform_id = entity.row[1u];`（Transform 槽）与注释行 `:17`；`:226/:230` 读 `entity.flags` 的 Active/Visible 位；`:235` 明写"不能用 `entity.row[2]` 当 geometry_id"。
+  ⇒ **其余 14 槽当前没有任何 GPU 消费者**（CPU 侧：上传走脏行、对拍走 `VerifyAgainst`）。"`Refresh` 退化成只填会被读的槽"属于下一步优化，不在本批。
+
+---
+
+## 六、落地记录（2026-10-13；选项 (a) + (b) 均已完成并验证）
+
+**对拍器接线 (a)**：`EntityGPUTable::VerifyAfterWrite(entity, what)`（`inc/hgl/ecs/support/EntityGPUTable.h`；函数体内
+`#if ULRE_ECS_DEBUG_API` ⇒  Release 下为空 inline，**生产零开销**；开关在台帐 `hgl/common/RenderOptions.h` §2）。
+接到**三个写入点**（含报告要求的 `Refresh` 调用侧、`SetVisible`、`SetTransformRow`）：
+
+| 写入点 | 落点 |
+|---|---|
+| 组件卸载 | `ECSContext::RefreshEntityRow` |
+| 组件挂载 | `ECSContext::CreateComponent`（`Refresh` 之后）|
+| 可见性 | `ECSContext::SetEntityVisible` |
+| 变换行 | `TransformSystem::WriteEntityTransformRows`（**三条路径各一处**：无变换 / 无槽 / 正常）|
+
+失步即 `GLogError` 点名：**写入点 + entity 名 + id + mismatch_type / mismatch_row + 该槽两侧值**（`type[t]` / `row[t]` / `component_rows[t]`）。
+
+**权威链头注 (b)**：`EntityGPUTable.h` 类头新增「权威链（四份副本 + 刷新时机）」一节 —— ①`Entity::component_rows` 权威 →
+②本表 CPU 镜像（刷新点逐条列出）→ ③GPU SSBO（按世界地址槽切份、只传脏行）→ ④GLSL 只读镜像；
+含两句防误删警告：`row[Transform]` 是链上唯一的**两个权威**点、`EntityGPU::type[16]` 是**有意冗余**。
+
+**顺手修一处会让对拍假红的真缺口**：槽位复用（块池 + generation）下 `Deactivate` 刻意不清 `type[]/row[]`，
+新实体在挂第一个组件**之前**与 `component_rows[]`（全新实体 = 全 0）不一致 ⇒ 现在 `Activate` 把这些槽清成「无组件」
+（与权威同源；挂卸仍由 `Refresh` 全槽同步）。
+
+**契约钉住**：`TestCSMIncrementalPass` **Test 49** —— 3 条存在性（对拍器本体 / 门在 `#if ULRE_ECS_DEBUG_API` / 头注含「权威链」）
++ 2 条写入点存在性 + 1 条**计数**（变换行三条路径各接一处）+ 1 条**禁复活**（不许在写入侧裸调 bool 版 `VerifyAgainst`：
+返回值一丢就等于没有门）。
+
+**红的样子（实测）**：把 `Refresh` 里的 `row->row[t] = handle;` 改成 `0`（模拟漏刷新）⇒ Debug 跑 `LoadScene` 打印
+**899 条**失步，例：
+
+```
+[EntityGPUTable.h:312] [EntityGPUTable] 实体行表与 component_rows 失步（写入点=ECSContext::CreateComponent）：
+entity=SceneNode_0 id=(0,0) mismatch_type=0 mismatch_row=2；该槽 type[2]=2 row[2]=0，权威 component_rows[2]=1
+```
+
+逐字节还原后 **0 条**。对拍**只报错不阻断**（示例照常跑完、帧摘要逐位不变），与"debug 面诊断"定位一致。
+
+**验收**：两配置 `rc=0 / 0 error`；门 45 PASS/0 FAIL；`ctest -L ecs` 12/12 + `TestCSMIncrementalPass` 1/1；
+`LoadScene` 自检摘要 `0xC9E38ED2F49A069B` **逐位不变**（⇒ 接线与 `Activate` 清槽对画面无影响）。
+
+**未做**：选项 (c) 收敛副本（维持原判：收益远小于风险）。

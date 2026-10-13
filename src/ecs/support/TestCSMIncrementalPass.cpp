@@ -6649,6 +6649,81 @@ int main(int argc, char** argv)
                  u8"判定（不再仅交换链）、子世界自带提交入口、自检模式去掉跨世界纹理引用。");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 49: 实体行表**写入侧对拍**的接线契约（2026-10-13；审计 §2.2 问题 2 选项 (a)+(b)）
+    //
+    // 背景：`EntityGPUTable::VerifyAgainst()` 早就写好，但**全仓零调用** —— 与问题 1 的掩码
+    // 对拍器同型：『三个写入者覆盖全部槽』只是口头约束，不是门。本批把它接进组件挂卸 /
+    // 可见性 / 变换行三个写入点，开关走台帐（`ULRE_ECS_DEBUG_API`，生产零开销）。
+    // 本可执行文件无图形设备 ⇒ 这里只钉**判据链是否还在**（行为级判据在示例运行期：
+    // 失步即 `GLogError` 点名 mismatch_type / mismatch_row）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kEntityRowContracts[] =
+        {
+            { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/EntityGPUTable.h"),
+              "void VerifyAfterWrite(const Entity *entity, const char *what)",
+              "问题 2(a)：写入侧对拍器必须存在（此前只有零调用的 VerifyAgainst = 与不存在等价）" },
+
+            { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/EntityGPUTable.h"),
+              "#if ULRE_ECS_DEBUG_API",
+              "问题 2(a)：对拍必须门在台帐开关下（生产零开销；开关见 hgl/common/RenderOptions.h §2）" },
+
+            { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/EntityGPUTable.h"),
+              "权威链",
+              "问题 2(b)：四份副本的权威顺序与刷新时机必须写进头注（防下次把 type[16] 当冗余删）" },
+
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "VerifyAfterWrite(GetEntity(id)",
+              "问题 2(a)：可见性写入点必须对拍（SetVisible 是三个刷新点之一）" },
+
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "VerifyAfterWrite(owner",
+              "问题 2(a)：组件挂卸写入点必须对拍（问题 2 的『漏刷新』正发生在这里）" },
+
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "entity_gpu_table.VerifyAgainst(",
+              "禁复活：不许在写入侧裸调 bool 版 VerifyAgainst（返回值一丢 = 没有门），统一走 VerifyAfterWrite",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(49, kEntityRowContracts,
+                                                       static_cast<uint>(sizeof(kEntityRowContracts) /
+                                                                         sizeof(kEntityRowContracts[0]))))
+            return failed;
+
+        // 计数式：变换行的**三条**写入路径（无变换 / 无槽 / 正常）必须各接一处（Contains 分不出 1 还是 3）
+        {
+            std::string ts_src;
+            {
+                hgl::io::OpenFileInputStream fis(OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"));
+                if (!fis)
+                {
+                    GLogError(u8"Test 49 Failed: cannot open TransformSystem.cpp (run from repo root)");
+                    return 49;
+                }
+
+                char chunk[4096];
+                int64 got;
+                while ((got = fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
+                    ts_src.append(chunk, static_cast<size_t>(got));
+            }
+
+            const uint32_t hits = CountSubstring(ts_src, "VerifyAfterWrite(entity");
+
+            if (hits != 3)
+            {
+                GLogError(u8"Test 49 Failed: 变换行写入点必须三条路径各接一处对拍 —— "
+                          u8"'VerifyAfterWrite(entity' 出现 %u 次（期望 3）", hits);
+                return 49;
+            }
+        }
+
+        GLogInfo(u8"Test 49 Passed: 实体行表写入侧对拍接线契约成立 —— 组件挂卸 / 可见性 / 变换行三处各接上"
+                 u8"`VerifyAfterWrite`（台帐 ULRE_ECS_DEBUG_API 门住 ⇒ 生产零开销），对拍器不再零调用，"
+                 u8"权威链头注在位，且禁止裸调 bool 版 `VerifyAgainst`。");
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

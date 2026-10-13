@@ -46,6 +46,7 @@ namespace hgl::ecs
             if (!IsValidTransformID(transform_id))
             {
                 world->GetEntityGPUTable().SetTransformRow(owner, 0);
+                world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
                 return;
             }
 
@@ -56,6 +57,7 @@ namespace hgl::ecs
             if (!world->TryGetTransformSlot(transform_id, movable, slot))
             {
                 world->GetEntityGPUTable().SetTransformRow(owner, 0);
+                world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
                 return;
             }
 
@@ -63,6 +65,7 @@ namespace hgl::ecs
             const uint32_t row = movable ? (dynamic_base + slot) : (slot + 1);
 
             world->GetEntityGPUTable().SetTransformRow(owner, row);
+            world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
         });
     }
 

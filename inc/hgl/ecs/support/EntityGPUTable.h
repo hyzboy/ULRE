@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/EntityGPU.h>
 #include<hgl/ecs/support/DirtyRowSet.h>
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2）：写入侧对拍挂在 ULRE_ECS_DEBUG_API 下
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<cstdint>
@@ -26,6 +27,18 @@ namespace hgl
          *     换算的唯一出处是变换存储/系统那一侧。
          *   · 容量 **4096**（设计稿 P-B8-6 拍板，与 Transform static 同口径）；超限 = **fail-fast**
          *     （一次性报错；不扩容、不截断成静默丢实体）。
+         *
+         * ── 权威链（四份副本 + 刷新时机；2026-10-13 审计 §2.2 问题 2 选项 (b)）─────────────
+         *   ① **权威**：`Entity::component_rows[16]`（1 基行号；唯一写者 `Entity::SetComponentRow`）
+         *   ② **本表**（CPU 派生镜像）—— 刷新点：`Activate`（建立：清 `type[]/row[]` 成"无组件"）、
+         *      `Refresh`（组件挂卸：全槽）、`SetVisible`（Visible 位）、
+         *      **`SetTransformRow`（Transform 槽的\**另一权威** = 变换上传路径，不是 `component_rows[Transform]`）**、
+         *      `SetShadowFacts`（阴影事实上行；写者 = collect 的进批判据点）
+         *   ③ GPU SSBO `EntityGPU` 行（**按世界地址槽切份**；只传脏行，写者 = 上传播径）
+         *   ④ GLSL 只读镜像（`ShaderLibrary/ecs/entity_gpu_cull.glsl`；实际只读 `flags` 与 `row[Transform]`）
+         *   ⇒ 本表是**派生视图**，不新增真值；`row[Transform]` 是链上唯一的"两个权威"点。
+         *   ⚠ `EntityGPU::type[16]` 是**有意冗余**（槽号已蕴含类型；保 shader 判空写法与 `offsetof` 断言）——**别当冗余删**。
+         *   守门：`VerifyAfterWrite()`（debug 面，开关 = 台帐 `ULRE_ECS_DEBUG_API`）在①三个写入点核 ②↔① 的 15 槽。
          *
          * ⚠ 成员声明位置：本表必须**先于 `entity_manager` 声明**（析构逆序 ⇒ 表比实体活得久）：
          *   `~Entity` 会回写本表（清 `Active`），表先死会写到已释放内存。
@@ -113,6 +126,17 @@ namespace hgl
 
                 row->flags |= uint32_t(EntityGPUFlags::Active)
                             | uint32_t(EntityGPUFlags::Visible);
+
+                // 槽位复用（T2-a 块池 + generation）：本行可能还留着**上一个占用者**的
+                // `type[]/row[]`（`Deactivate` 按诊断口径刻意不清）。新实体在挂第一个组件之前
+                // 与 `component_rows[]`（全新实体 = 全 0）不一致 ⇒ 会让下面 §2.2 问题 2 的
+                // 写入侧对拍**假红**。这里清成"无组件"（与权威同源；挂卸仍由 `Refresh` 全槽同步）。
+                for (uint32_t t = 1; t < COMPONENT_TYPE_COUNT; ++t)
+                {
+                    row->type[t] = 0;
+                    row->row [t] = 0;
+                }
+
                 dirty.MarkDirty(id.index, rows.size());
             }
 
@@ -256,6 +280,47 @@ namespace hgl
                 }
 
                 return true;
+            }
+
+            /// **写入侧对拍**（2026-10-13；审计 §2.2 问题 2 选项 (a)）：在**三个刷新点**——
+            /// 组件挂卸（`Refresh` 的调用侧）、可见性（`SetVisible`）、变换行（`SetTransformRow`）——
+            /// 调用，把"写入者恰好覆盖全部槽"从口头约束变成 debug 期可验证的断言。
+            ///
+            /// **生产零开销**：开关 = 台帐 `hgl/common/RenderOptions.h` §2 的 `ULRE_ECS_DEBUG_API`
+            /// （默认 AUTO：Debug 开 / Release 关）⇒ 关掉时本函数体为空 inline。
+            /// `row[Transform]` 不参与比对（单独口径，见 `SetTransformRow`）；空实体、超容量未进表
+            /// 都**不算失步**（后者 `Activate` 已报过一次）。
+            void VerifyAfterWrite(const Entity *entity, const char *what)
+            {
+            #if ULRE_ECS_DEBUG_API
+                if (!entity)
+                    return;
+
+                const EntityGPU *row = Row(entity->GetEntityID());
+
+                if (!row)
+                    return;
+
+                uint32_t bad_type = 0;
+                uint32_t bad_row  = 0;
+
+                if (VerifyAgainst(entity, &bad_type, &bad_row))
+                    return;
+
+                const uint32_t slot = bad_row ? bad_row : bad_type;
+
+                GLogError(u8"[EntityGPUTable] 实体行表与 component_rows 失步（写入点=%s）："
+                          u8"entity=%s id=(%u,%u) mismatch_type=%u mismatch_row=%u；"
+                          u8"该槽 type[%u]=%u row[%u]=%u，权威 component_rows[%u]=%u",
+                          what, entity->GetName().c_str(),
+                          entity->GetEntityID().index, entity->GetEntityID().generation,
+                          bad_type, bad_row,
+                          slot, row->type[slot], slot, row->row[slot],
+                          slot, entity->GetComponentRow(static_cast<ComponentType>(slot)));
+            #else
+                (void)entity;
+                (void)what;
+            #endif//ULRE_ECS_DEBUG_API
             }
         };
     }//namespace ecs

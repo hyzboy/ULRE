@@ -763,7 +763,11 @@ namespace hgl
             void CommitShadowInfo(const uint32_t frame_slot);
 
             /// 组件卸载 / 全卸后重刷 `type[]/row[]`（由 `Entity` 的卸载路径调用）
-            void RefreshEntityRow(Entity *entity) { entity_gpu_table.Refresh(entity); }
+            void RefreshEntityRow(Entity *entity)
+            {
+                entity_gpu_table.Refresh(entity);
+                entity_gpu_table.VerifyAfterWrite(entity, "ECSContext::RefreshEntityRow");   // §2.2 问题 2(a)：写入侧对拍（debug 面）
+            }
 
             /// 设置实体可见性 —— **唯一真值落在这里**（不再有组件内的第二份 bool）
             void SetEntityVisible(EntityID id, bool visible)
@@ -778,6 +782,7 @@ namespace hgl
 
                 // T3b：镜像到实体行（唯一真值仍是 VisibilityDataStorage；本表是派生视图）
                 entity_gpu_table.SetVisible(id, visible);
+                entity_gpu_table.VerifyAfterWrite(GetEntity(id), "ECSContext::SetEntityVisible");   // §2.2 问题 2(a)
             }
 
             /// 实体是否可见：O(1) 直查不可见集合 + 祖先链上溯（祖先不可见 ⇒ 后代不可见）
@@ -1111,6 +1116,7 @@ namespace hgl
                 owner->SetComponentRow(type, row);
                 OnComponentRowAdded(type);
                 entity_gpu_table.Refresh(owner);        // T3b：实体行表随挂载同步
+                entity_gpu_table.VerifyAfterWrite(owner, "ECSContext::CreateComponent");   // §2.2 问题 2(a)：写入侧对拍
                 owner->MarkSceneDirty();
 
                 return pool->Row(row);

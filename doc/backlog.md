@@ -7,11 +7,11 @@
 >
 > 关联文档：`doc/render-target-standardization-design.md`（RT 标准化主线）。
 
-## 🚧 当前未结项索引（唯一入口，2026-10-12 建立）
+## 🚧 当前未结项索引（唯一入口，2026-10-12 建立 · **2026-10-13 更新**）
 
 > 目的：**一眼看全"还没做完的事"**。本索引只写「在哪、什么状态、下一步/谁拍板」，细节一律留在各自主档
 > （材质链评审档 / ECS 审计档 / 本档 A~E 线），**不复制**。完成一项在这里划掉并注日期。
-> 取证标注：〔档〕= 主档内记录；〔实测 2026-10-12〕= 建立本索引时现场核对。
+> 取证标注：〔档〕= 主档内记录；〔实测 日期〕= 建立/更新本索引时现场核对。
 
 ### 1. 材质链计划（主档 `doc/future/shadergen-material-chain-review.md`；批表 §196，执行记录 §6–§19.8）
 
@@ -24,18 +24,18 @@
 | **棋盘格标记色 + 2D/3D 分派**（功能项） | 未开工；TODO 已写进 `MaterialRecipe.h` 规则表上方〔档〕 | 两套 checkerboard 源读 `EmissiveSurface` 标记色；2D 走 NDC/UV、3D 走面空间；回退 ID 需按绘制维度分派；门/契约同步 |
 | **过期声明订正（3 处）** | 未做〔实测原文已定位〕 | ① `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1136-1139`、② `doc/future/HANDOFF_2026-10-01.md:55` 仍写"棋盘格不在回退链上、需单独一轮"（2026-10-12 已落地）；③ `doc/future/lighting-shadow-domain-split-plan.md` 的 **`T6b` 标题缺 ✅**——实测**已落地**（`LightRow`/`addr_lights`/`LightSystem`/`MainLightShadowSystem` 均在位、`sun_direction` 在 ShaderLibrary 归零）；另有 `MaterialRecipe.h` 注释里的 `SchemaGate:3534` 行号已漂移 |
 
-### 2. ECS 审计待拍板（主档 `doc/ecs-quality-audit-2026-10.md` §2.2；共识档 `doc/ecs-audit-consensus-and-task-plan-2026-10-11.md`；逐条报告 `doc/analysis/ecs-audit-2026-10/`）
+### 2. ECS 审计（主档 `doc/ecs-quality-audit-2026-10.md` §2.2；共识档 `doc/ecs-audit-consensus-and-task-plan-2026-10-11.md`；逐条报告 `doc/analysis/ecs-audit-2026-10/`）
 
-已定：**已做 2 条**（#4 `GpuMirrorBuffer.h` 抽取、#5 删 `EntitySlot::alive`）+ **复扫关闭 2 条**（非法相机槽单点化、`frame_index` 三份属不同物件状态）。**待拍板 6 条**（选项按风险从低到高，详见逐条报告）：
+已定：**已做 2 条**（#4 `GpuMirrorBuffer.h` 抽取、#5 删 `EntitySlot::alive`）+ **复扫关闭 2 条**（非法相机槽单点化、`frame_index` 三份属不同物件状态）。**已落地 4 条（含 #1(a) 与 #2 整条）**：
 
-- **#1** `component_mask` 是缓存视图（对拍器 `VerifyComponentMaskAgainstComponents()` **生产零调用**）→ (a) 挂件写者处 debug-only 对拍；(b) 删掩码改读 `component_rows`
-- **#3** `RenderItemDescriptor` 双表（CPU handle 空间 vs GPU 实体直寻址）**静默可失步、无门** → (a) 每帧同步点 debug 对拍；(b) 一侧派生另一侧（动 GPU 行写入）
-- **#2** 组件列表 4~5 份（`EntityGPU.h` 自注"显式冗余"，属 GPU 合同）→ **不建议删**，只写"权威链"头注
-- **#6** 可见性三表示两极性（`SetEntityVisible` **不传播后代** = 可证的一处失步）→ 先定唯一权威（建议缺席集）+ 传播规则
-- **#7** 材质四条键空间（前缀关系成立，**不该并表**）→ 最便宜小收敛：`VariantKeyOf` 前缀共用编解码
-- **#8** `MaterialRuntimeRow` key 存 3.5 份（**已订正：可省字段 = 0**）→ 只需不变量文档 + debug 对拍
-
-挂同一次拍板：**旧档 §2 #5**（`AddFreeIndex` 有序维护 vs 栈消费）、**9 套系统容器合并**（共识档 §2 明确"不单独立批，与六条一起定"）。
+- **#1（01 掩码是 `component_rows` 的缓存视图）** —— **(a) ✅ 已落地 2026-10-13**：`Entity::SetComponentRow` 与 `DetachAllComponents` 走 `#if ULRE_ECS_DEBUG_API`（开关见 §7 台帐）全表对拍，Release 宏=0 零成本。剩 **(b)** 删掩码、`HasComponentType` 改读 `component_rows[type] != 0`（`GetComponentMask()` 汇总要现场拼 ⇒ 策略路径 O(16)）／**(c)** 保持现状 —— **待你拍**
+- ~~**#2（02 组件列表 4~5 份）**~~ —— **✅ 已落地 2026-10-13**：`VerifyAfterWrite` 接三个写入点（挂卸 / 可见性 / 变换行**三条路径**），台帐宏门住（Release 空 inline ⇒ 生产零开销）；「权威链」头注在位（含 `row[Transform]` 两个权威点 + `type[16]` 有意冗余两警告）；顺手修「槽复用 `Activate` 不清 `type[]/row[]` ⇒ 对拍假红」；源码契约 **Test 49**（存在性 + 计数 + 禁复活）；**红的样子** = 破坏 `Refresh` 行号写入 ⇒ 899 条点名失步，还原 0 条。详见审计报告 02 **§六 落地记录**
+- **#3（03 RenderItemDescriptor 双表）** —— 先答"池**无条件写** / 实体表**只在进批判据内写**是**有意**还是**疏漏**"；**(b)** 一侧派生另一侧需先有生产者 —— `PublishRenderIDs(...)` **全仓 0**〔实测〕
+- **#4（06 可见性三表示两极性）** —— **(c)** 权威链文档（零风险）+ **(b)** 每帧按权威重算 —— 未落地〔实测 `Recompute/Refresh/RebuildVisib*`、`UpdateVisibilityFrom*`、`PropagateVisibility` 全 0〕
+- **#5（07 材质四条键空间）** —— 不该并表；**(a)** `VariantKeyOf` 前缀共用编解码 ~50 行，**最便宜**〔实测 `VariantKeyOf` 全仓 0〕
+- **#6（08 `MaterialRuntimeRow` key 存 3.5 份）** —— 已订正"可省字段 = 0"；只需**不变量文档 + debug 门** ~15 行
+- 挂同一次拍板：**旧档 §2 #5**（`AddFreeIndex` 有序维护 vs 栈消费）、**9 套系统容器合并**（共识档 §2 明确"不单独立批"）
+- 小决定：**`HasComponentType()`**（生产零调用）删 or 留〔实测〕
 
 ### 3. 既存红 / 环境（与任一在途批次无关，但挡"全绿"口径）
 
@@ -45,15 +45,16 @@
 | CMCore 独立仓 2 项 SEGV | `OrderedMapBasicOperations` / `ObjectManagerTest`，与本仓无交集 |
 | GUI 类示例在桌面会话 | 环境问题，未触碰 |
 
-### 4. 建议顺序（按"先删遗留/未使用 → 再改进"）
+### 4. 建议顺序（按"先删遗留/未使用 → 再改进"，2026-10-13 重排）
 
-1. **S4**（纯删重复表达 + 契约收口，判据已写好）
-2. **S3b-3**（与 S3b 同族的一致性收尾）
-3. **§1 的 2 处过期声明订正 + C 线 doc 十篇**（文档卫生，可与任意批并行）
-4. **stage B `receive_shadow` 幅度漂移专项**（未 bisect 的行为漂移，B 线已收口 ⇒ 可开；修完 `ATS_SELFCHECK=1` 必须 rc=0）
-5. **§2 待拍板 6 条**（其中 #7 前缀共用、#1/#3/#8 的 debug-only 对拍最便宜："把口头约束变成 fail-fast"）
-6. **示例自检门基线**（blocked on 用户目视定性）
-7. 功能项：棋盘格上色 + 2D/3D 分派
+1. ~~**ECS #2 对拍器接入**~~ —— **✅ 2026-10-13 完成**（同 §2）
+2. **ECS #5 `VariantKeyOf` 前缀共用** + **#6 不变量文档/debug 门**（同为"把口头约束变成 fail-fast"；接入形态照 #2：台帐宏 + 源码契约针 + 红的样子）
+3. **开关台帐的两条待定 + 自检门的配置口径**（§7 / §3，零~低成本，等你一句话）
+4. **S3b-3 顶点节点枚举归位**（与 S3b 同族收尾）
+5. **stage B `receive_shadow` 幅度漂移专项**（未 bisect 的行为漂移；修完 `ATS_SELFCHECK=1` 必须 rc=0）
+6. 文档卫生：**§1 的 3 处过期声明** + C 线 doc 十篇（可与任意批并行）
+7. 功能项：棋盘格标记色上色 + 2D/3D 分派
+8. **ECS #3 / #4**（"有意 vs 疏漏"与可见性权威链——牵动 GPU 行语义，放最后）
 
 ### 5. stage B 存储形欠账（主档 `doc/future/stage_B_debt_list.md`）
 
@@ -67,6 +68,26 @@
 ### 6. 本档内残留（细节见下文各线，不在此复述）
 
 B 线 7 项小项 · A6 只剩 cubemap 六面 · E1/E2 未来项（用户留置）· 示例**干净退出**泄漏 + 间歇 CRT abort（退出码 3，判据看日志不看退出码）。
+
+### 7. 编译期开关台帐（`inc/hgl/common/RenderOptions.h`）—— **✅ 主体已完成 2026-10-13**
+
+> 目标（用户口径）：所有编译期开关集中一处，下次不用全仓找；校验面走宏 ⇒ **生产构建零运行时开销**。
+
+**已完成（`f1cff9422` 及其后续 `f45980347`）**：台帐建立（§1 帧槽/容量常量、§2 校验面 + 回退开关、§3 CMake-only、§4 处置记录）；
+**规约：所有开关永远有定义、值域只有 0/1 ⇒ 判断一律 `#if X`（禁 `#ifdef` / `defined()`）**；
+全仓自有开关站点（ECS 21 处 + VK 回退 22 处）全部 `#if` 化；修掉 `DefaultSystems.cpp` 的
+`defined(ULRE_ECS_DEBUG_API)` **Release 泄漏**（原会把 `LineStatsSystem` 也注册进去）；`RenderStrategyParity.h` 的本地默认块收归台帐；
+`Entity.cpp` 两处 `#ifndef NDEBUG` ⇒ 台帐宏；`VKConfig.h` **已删除**、include 直指台帐（用户操作）；
+`ULRE_ENABLE_RELEASE_SHELL` 删除（空开关）；`AssimpImport` `EXCLUDE_FROM_ALL` 屏蔽（旧转换器，不兼容，不处理）。
+验收：两配置 **rc=0 / 0 error / 392 目标**、门 **45/0**、`ctest -L ecs` **12/12**、CSM **1/1**；
+二进制级判据 = 校验面串 Debug 有 / Release 无、回退块 `InitDescriptorPool` 两配置都在、示例摘要三项逐位不变。
+
+| 待定 | 说明 |
+|---|---|
+| **① `ULRE_ECS_DEBUG_API` 的默认语义** | 台帐默认 = AUTO（`NDEBUG` ⇒ Debug 1 / Release 0）；CMake 的 option 只表示"**强制在所有配置打开**"（不再下发 `=0`，否则压过 Debug 默认）。⇒ 确认这个口径；若要 Debug 默认也关，改台帐一处即可 |
+| **② 验收口径要不要钉一条带宏的跑** | 建议：验收集里必须有一条 `-DULRE_ECS_DEBUG_API=ON`（可在 Release 上开）的构建 + 门/台架跑，否则这部分代码**长期不编译会 rot**；配套源码契约针钉住各对拍调用点存在 |
+| **③ 后续接入** | 审计 §2 里其余对拍器（**#3 = 报告 03 渲染项双表** / **#6 = 报告 08 MaterialRuntimeRow key**）统一挂 `ULRE_ECS_DEBUG_API`；**模板已由 #2 立好**：台帐宏门住 + 源码契约针（存在性/计数/禁复活）+ 红的样子（破坏后必须点名失步）|
+| **④ 可选加固** | `GC_SELFCHECK=1` 而无 `GC_STATIC=1` 时自动冻结（PBR 即自动冻结）或 fail-fast 提示（见 §3） |
 
 ## ❌ 已否决（勿重开；附判据出处）
 
