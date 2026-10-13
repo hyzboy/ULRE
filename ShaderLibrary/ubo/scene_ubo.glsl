@@ -111,8 +111,8 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
 #define global_addresses GlobalAddressesRef(pc_root.addr_global_addresses)
 
 // 世界地址表（**无绑定无集**）：世界私有 SSBO 的地址表，基址经 pc_root.addr_world_addresses 下发。
-// 为什么独立成表：表内都是**世界私有** buffer（相机行表 / 4-ID 渲染项表 / DrawItemID 表 /
-// 本世界 profile 的 sky + shadow）。一个设备上可同时存在多个世界（主世界 + OffscreenWorld），
+// 为什么独立成表：表内都是**世界私有** buffer（相机行表 / 影子数据 / 实体行表 / L2W /
+// 实体 4-ID 表 / 光源行 / 环境光块）。一个设备上可同时存在多个世界（主世界 + OffscreenWorld），
 // 放进全局表只能表达"最后一个世界"的地址 ⇒ 多世界同帧互踩。
 // 表本体与 GlobalAddresses 同形：HGL_FRAME_SLOT_TOTAL 份 × kWorldAddressesSlotStride，
 // pc_root 指向"本帧那一槽"。
@@ -120,13 +120,11 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer WorldAddressesRef
 {
     uint64_t addr_camera_info;          // 相机行表（行号 = 相机槽 × 帧槽总数 + 帧槽）
-    uint64_t addr_global_render_items;  // 4-ID 渲染项表（世界私有）
-    uint64_t addr_draw_item_ids;        // DrawItemID 压缩索引表（世界私有）
     uint64_t addr_shadow;               // 本世界 profile 的 ShadowInfo（每帧槽一份 ring）
     uint64_t addr_entity_gpu;           // 实体行表 EntityGPU（世界私有；GPU 剔除的枚举源）
     uint64_t addr_l2w;                  // L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份，每帧槽一份）
     uint64_t addr_entity_render_ids;    // 实体 4-ID 表（世界私有；按 EntityID.index 直索引，行 = RenderItemDescriptor 16 B；
-                                        // GPU 消费者取池口径 geometry_id / material_id / texture_id 的唯一通路）
+                                        // GPU 消费者取资源池口径 geometry_id / material_id / texture_id 的唯一通路）
     uint64_t addr_lights;               // 光源行表（世界私有；行 0 = 主方向光；按帧槽切份）
     uint64_t addr_ambient_env;          // 环境光 provider 参数块（世界私有；单份 ⇒ 全帧槽同址；T1 归位）
 };

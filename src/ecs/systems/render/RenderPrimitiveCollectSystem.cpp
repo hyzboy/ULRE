@@ -2246,7 +2246,7 @@ namespace hgl::ecs
                 ? runtime_table->Get(material_slot_ptr->row)
                 : nullptr;
 
-            // ── 同步 4-ID 描述符至 RenderItemDataStorage（句柄存每实例 slot）──
+            // ── 本帧 4-ID 四元组（唯一消费者 = 实体 4-ID 表；句柄空间副本已随池整删）──
             // B3-iii：geometry_id 直读几何行号（不再经每实体 CPU 几何副本的镜像字段与三级回退）
             const uint32_t transform_id = transform.GetID();
             GeometryData *geometry_comp = geometryComp;
@@ -2263,13 +2263,9 @@ namespace hgl::ecs
 
             std::unique_ptr<PrimitiveRenderItem> item;
 
-            SetRenderItem4ID(*world, entity_id, transform_id, geometry_id,
-                             material_id, texture_id);
-
-            // T3d-3a：同式写**实体 4-ID 表**（世界私有、按 EntityID.index 直索引）——
-            // 上面两分支喂的是 handle 空间（`addr_global_render_items`），本表喂的是
-            // **实体空间**（GPU 剔除按 index 枚举源直接取池口径 geometry_id / material /
-            // texture）。四元组与上面**逐字同源** ⇒ 无第二口径。
+            // T3d-3a：写**实体 4-ID 表**（世界私有、按 EntityID.index 直索引）——世界唯一的
+            // 4-ID 发布点（GPU 剔除按 index 枚举源直接取资源池口径 geometry_id / material /
+            // texture；CPU 侧批行写入读的也是本表本 pass 那一半）。
             // 挂在下面 B3-iii「几何行成立 ⇒ 本项进批」的同一判据块内（行缺失 ⇒ 键 0 ⇒
             // 不进批 ⇒ 4-ID 也不上行；表内只留"真会画"的实体 ⇒ 剔除/接管口径与批一致）。
 
@@ -2296,8 +2292,8 @@ namespace hgl::ecs
                     key.index_count  = params_row->index_count;
                     key.is_indexed   = params_row->is_indexed;
 
-                    // T3d-3a：实体 4-ID 表随"本项进批"同一判据上行（四元组与上面
-                    // SetRenderItem4ID 逐字同源 ⇒ 无第二口径；消费者 = GPU 剔除 / CPU 对拍 / 形态 B）
+                    // T3d-3a：实体 4-ID 表随"本项进批"同一判据上行
+                    //（消费者 = GPU 剔除 / CPU 批行写入 / 形态 B）
                     graph::RenderItemDescriptor render_ids{};
                     render_ids.transform_id = transform_id;
                     render_ids.geometry_id  = geometry_id;

@@ -3566,13 +3566,13 @@ int main(int argc, char** argv)
     // ─────────────────────────────────────────────────────────────
     // Test 22: 两个世界同帧互不污染的隔离契约（doc/world-addresses-and-camera-model-plan.md §6 契约 ③）
     //
-    // 背景：相机行 / 4-ID 渲染项表 / DrawItemID 表都是**世界私有**数据。多世界同帧渲染时
+    // 背景：相机行 / 实体 4-ID 表 / 世界地址表都是**世界私有**数据。多世界同帧渲染时
     // （主世界 + 离屏世界 / 多个 ECSContext 同时出帧），它们必须各自占独立存储与独立地址——
     // 一旦这些存储退化成设备级单例，两个世界就会共用一份：后写的世界覆盖先写的，症状是
     // "某个世界渲成另一个世界的相机/渲染项"（间歇、随帧序漂移），而单世界用例全绿。
     //
     // 本可执行文件无图形设备（图像级判读在 ATS/CSM 示例的门里），所以这里钉住"隔离机制是否还在"：
-    //   · 四个世界私有存储都是 ECSContext 的**实例成员**（每世界一份），地址表也是每世界一张；
+    //   · 世界私有存储都是 ECSContext 的**实例成员**（每世界一份），地址表也是每世界一张；
     //   · 世界表写入端（SyncWorldAddresses）取的是**本世界**存储的地址、按帧槽轮转；
     //   · 相机行写入只走本世界存储（GetCameraInfoStorage + WriteCameraRow），
     //     并且**禁止**重新接入设备级注册表（GlobalSSBOBufferRegistry / GlobalSSBOType::CameraInfo）
@@ -3586,24 +3586,12 @@ int main(int argc, char** argv)
               "std::shared_ptr<CameraInfoStorage> camera_info_storage",
               "相机行存储不再是每世界一份（退化成全局 ⇒ 两世界同帧互相覆写）" },
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "std::unique_ptr<RenderItemDataStorage> render_item_storage",
-              "4-ID 渲染项表不再是每世界一份" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "std::unique_ptr<DrawItemIDStorage> draw_item_id_storage",
-              "DrawItemID 表不再是每世界一份" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "graph::StructView<graph::WorldAddresses> *world_addresses_table",
               "世界地址表不再是每世界一张（共表 ⇒ 两世界的地址互相覆盖）" },
             // ② 世界表写入端：地址只取本世界存储 + 按帧槽轮转
             { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_camera_info = pick((camera_info_storage && camera_info_storage->IsReady())",
               "相机行地址不来自本世界存储（跨世界共用一份 ⇒ 同帧互相覆写）；2026-10-07 起同走 0 地址统一口径" },
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
-              "GetRenderItemStorage()",
-              "渲染项表地址不取本世界存储" },
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
-              "GetDrawItemIDStorage()",
-              "DrawItemID 表地址不取本世界存储" },
             { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "frame_index % graph::kWorldAddressesSlotCount",
               "世界表不再按帧槽轮转（在途帧之间会互踩）" },
@@ -3621,12 +3609,6 @@ int main(int argc, char** argv)
             { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
               "addr_camera_info",
               "世界表丢了相机行地址" },
-            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
-              "addr_global_render_items",
-              "世界表丢了 4-ID 渲染项表地址" },
-            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
-              "addr_draw_item_ids",
-              "世界表丢了 DrawItemID 表地址" },
             // ── 禁复活 ──
             { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
               "GlobalSSBOBufferRegistry",
@@ -3640,13 +3622,46 @@ int main(int argc, char** argv)
               "addr_camera_info",
               "世界私有相机行地址出现在设备级全局表（多世界共用一份 ⇒ 同帧互相覆写）",
               true },
-            { "GlobalAddresses.h", OS_TEXT("inc/hgl/graph/ubo/GlobalAddresses.h"),
-              "addr_global_render_items",
-              "世界私有渲染项表地址出现在设备级全局表",
+            // ── 2026-10-14（#3 结案）：两级 4-ID 表族整族删除 ⇒ **禁复活**（结构 / 地址 / 取数口 / 类型都不许回来）──
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "RenderItemDataStorage",
+              "4-ID 池表已整族删除（复活 = 重蹈双轨失步；4-ID 唯一真源 = 实体 4-ID 表）",
               true },
-            { "GlobalAddresses.h", OS_TEXT("inc/hgl/graph/ubo/GlobalAddresses.h"),
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "DrawItemIDStorage",
+              "二级绘制索引表已整族删除（同上）",
+              true },
+            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
+              "addr_global_render_items",
+              "世界表不许再挂 4-ID 池表地址（该表已删）",
+              true },
+            { "WorldAddresses.h", OS_TEXT("inc/hgl/graph/ubo/WorldAddresses.h"),
               "addr_draw_item_ids",
-              "世界私有 DrawItemID 表地址出现在设备级全局表",
+              "世界表不许再挂二级索引表地址（该表已删）",
+              true },
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+              "addr_global_render_items",
+              "GLSL 世界表镜像不许再挂 4-ID 池表地址",
+              true },
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "render_item_handle",
+              "每实例 slot 不许再承载 4-ID 句柄（现口径 = 32 B 行宽）",
+              true },
+            { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/RenderItem.h"),
+              "GetRenderItemHandle",
+              "RenderItem 不许再暴露 4-ID 句柄口（4-ID 由 collect 每帧现算并发布）",
+              true },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "GetRenderItemStorage",
+              "批行取数不许再走池（唯一真源 = 实体 4-ID 表本 pass 那一半）",
+              true },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "SetRenderItem4ID",
+              "采集侧不许再写 4-ID 池（世界唯一发布点 = 实体 4-ID 表）",
+              true },
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+              "ResolveRenderItem",
+              "剔除侧不许再引用已删的绘制期 4-ID 解析函数",
               true },
             // ⑤ T6b/P4：影子数据（ShadowInfo）+ 光源行也是**世界私有**。
             //    以前影子挂在 env profile（EnvironmentInfo::shadow）而 CSM 的 RT/控制器挂世界 ⇒
@@ -4203,9 +4218,6 @@ int main(int argc, char** argv)
               "->IsVisible()",
               "收集链又读组件级可见性（应改走 world->IsEntityVisible）",
               true },
-            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "render_item_handle",
-              "每实例 slot 不再承载 render_item 句柄（4-ID 无主）" },
             { "PrimitiveState.h", OS_TEXT("inc/hgl/ecs/support/PrimitiveState.h"),
               "bool CanRender(",
               "CanRender 的自由函数缺失（能力判定无出处）" },
@@ -5436,8 +5448,8 @@ int main(int argc, char** argv)
               "graph::Pipeline   *runtime_pipeline",
               "Pipeline 指针又回到 slot（行内不放指针）", true },
             { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
-              "static_assert(sizeof(MaterialRuntimeSlot) == 40,",
-              "slot 行宽冻结断言缺失（行宽可被无意改掉，所有按行索引的表都会错位）" },
+              "static_assert(sizeof(MaterialRuntimeSlot) == 32,",
+              "slot 行宽冻结断言缺失或数字与现口径不符（2026-10-14 删 4-ID 句柄后 = 32 B；行宽可被无意改掉 ⇒ 所有按行索引的表都会错位）" },
             // ④ 写：collect 解析后落旁表
             { "RenderPrimitiveCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
@@ -6385,10 +6397,6 @@ int main(int argc, char** argv)
               "want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);",
               "T1：地址只有字段没发布（I4 的历史坑：表里恒 0 ⇒ 静默失效）；2026-10-07 起走统一口径（0 ⇒ 沿用本槽旧值）" },
 
-            { "TestRenderItemDataStorage.cpp", OS_TEXT("src/ecs/support/TestRenderItemDataStorage.cpp"),
-              "static_assert(sizeof(graph::WorldAddresses) == 72,",
-              "T1/2026-10-07：世界表夹具未同步（9×uint64 = 72 B，addr_sky 退出；不同步 = 契约测试读旧布局）" },
-
             // ③ 写者入口 + profile 侧物化/取址/脏标记
             { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "AmbientEnvInfo  ambient_env;",
@@ -6522,15 +6530,7 @@ int main(int argc, char** argv)
 
             { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_camera_info = pick(",
-              "2026-10-07：相机行列走统一口径（9 列逐条钉住，漏一列 = 该列解不到时把 0 写进表）" },
-
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
-              "want.addr_global_render_items = pick(",
-              "2026-10-07：4-ID 渲染项表列走统一口径" },
-
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
-              "want.addr_draw_item_ids = pick(",
-              "2026-10-07：DrawItemID 表列走统一口径" },
+              "2026-10-07：相机行列走统一口径（按帧槽列逐条钉住，漏一列 = 该列解不到时把 0 写进表）" },
 
             { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
               "want.addr_entity_gpu = pick(",
@@ -6577,7 +6577,7 @@ int main(int argc, char** argv)
                  u8"2026-10-07 起夹具 = 72 B / 9 字段）"
                  u8" + EnvironmentSystem 四件套与 profile 侧物化/取址/脏标记 + 唯一读者间接光照模块改读新块；"
                  u8"天空块不再持有句柄与显式填充（禁复活 5 条）"
-                 u8" + ⑦ 世界表地址列 0 地址口径统一（9 列逐条钉住 + pick/slot_offset 单点 + 静默丢值禁复活 2 条）。");
+                 u8" + ⑦ 世界表地址列 0 地址口径统一（按帧槽列逐条钉住 + pick/slot_offset 单点 + 静默丢值禁复活 2 条）。");
     }
 
 

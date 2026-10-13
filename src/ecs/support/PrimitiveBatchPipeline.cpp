@@ -1,7 +1,5 @@
 ﻿#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
-#include<hgl/ecs/support/RenderItemDataStorage.h>
 #include<hgl/ecs/support/RenderStrategyParity.h>
-#include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/BoundingVolumeCull.h>
 #include<hgl/ecs/support/PerfTimer.h>
 #include<source_location>
@@ -119,12 +117,6 @@ namespace hgl::ecs
 
         if (!device)
             device = world->GetGPUDevice();
-
-        if (world)
-        {
-            if (auto *id_storage = world->GetDrawItemIDStorage())
-                id_storage->Reset();
-        }
 
         return true;
     }
@@ -399,8 +391,8 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::FinalizeBatch(MaterialBatch& batch)
     {
-        // 本批次的**世界表**（WorldAddresses）本帧槽地址：相机行表 / 渲染项表 / DrawItemID 表
-        // 都是世界私有地址、都在表内 —— 多世界渲染只换这一个指针。表地址随世界、随帧槽 ⇒ 每批重取。
+        // 本批次的**世界表**（WorldAddresses）本帧槽地址：表内各列（相机行 / 实体 4-ID 表 / 光源行 …）
+        // 都是世界私有地址 —— 多世界渲染只换这一个指针。表地址随世界、随帧槽 ⇒ 每批重取。
         batch.world_addresses_address = world
             ? world->GetWorldAddressesAddress(world->GetFrameIndex()) : 0;
 
@@ -567,7 +559,9 @@ namespace hgl::ecs
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
 
             // 行表写入 payload/texture-reference 两个索引。
-            // 优先从 RenderItemDataStorage 依据 4-ID 架构获取；若未注册则从材质运行期**共享行**回退。
+            // 单一真源 = **实体 4-ID 表**的本 pass 那一半（写点 = collect 的「几何行成立 ⇒ 本项进批」
+            // 判据块内 ⇒ 能进批的项其本 pass 行必定本帧写过）。旧的两级取数（世界 4-ID 池表 →
+            // 材质运行期共享行回退）已随池整删；超出实体行表容量者本来也拿不到 4-ID（剔除/形态 B 同判据）。
             if (mi_gpu)
             {
                 auto *row_ptr = static_cast<graph::mtl::MaterialInstanceAddresses *>(
@@ -577,40 +571,25 @@ namespace hgl::ecs
                             * sizeof(graph::mtl::MaterialInstanceAddresses)));
                 if (row_ptr)
                 {
-                    auto *storage = world ? world->GetRenderItemStorage() : nullptr;
                     for (size_t i = 0; i < item_count; ++i)
                     {
                         row_ptr[i] = { 0, 0 };
                         RenderItem *item = batch.items[i];
-                        bool resolved = false;
+                        if (!item)
+                            continue;
 
-                        const auto handle = item ? item->GetRenderItemHandle() : graph::INVALID_RENDER_ITEM_HANDLE;
-                        if (storage && handle != graph::INVALID_RENDER_ITEM_HANDLE)
+                        const EntityID id = item->GetEntityID();
+                        const graph::RenderItemDescriptor *desc = nullptr;
+                        if (world && id.IsValid())
                         {
-                            const auto *desc = storage->Get(handle);
-                            if (desc)
-                            {
-                                row_ptr[i].payload_index = desc->material_id;
-                                row_ptr[i].texture_reference_index = desc->texture_id;
-                                resolved = true;
-                            }
+                            desc = world->GetEntityRenderIDTable().Row(
+                                world->IsCurrentPassShadow() ? 1u : 0u, id.index);
                         }
 
-                        if (!resolved)
+                        if (desc)
                         {
-                            auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
-                            const MaterialRuntimeRow *material_row = primitive_item
-                                ? primitive_item->GetMaterialRuntimeRow()
-                                : nullptr;
-                            if (material_row)
-                            {
-                                row_ptr[i].payload_index =
-                                    material_row->data_index_row != uint32_t(-1)
-                                        ? material_row->data_index_row : 0u;
-
-                                row_ptr[i].texture_reference_index =
-                                    material_row->material_texture_configuration.row_index;
-                            }
+                            row_ptr[i].payload_index = desc->material_id;
+                            row_ptr[i].texture_reference_index = desc->texture_id;
                         }
 
                         // ── D3：接收侧阴影参数（逐图元）───────────────────────

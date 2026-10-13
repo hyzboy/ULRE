@@ -149,7 +149,6 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/EntityGPUTable.h
     ${ECS_INCLUDE_PATH}/support/EntityRenderIDTable.h
     ${ECS_INCLUDE_PATH}/support/DirtyRowSet.h
-    ${ECS_INCLUDE_PATH}/support/GpuMirrorBuffer.h
     ${ECS_INCLUDE_PATH}/support/LightRowTable.h
     ${ECS_INCLUDE_PATH}/support/GPUCullSystem.h
     ${ECS_INCLUDE_PATH}/support/CPUCullReferenceSystem.h
@@ -157,9 +156,6 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/CameraInfoStorage.h
     ${ECS_INCLUDE_PATH}/support/PerfTimer.h
     ${ECS_INCLUDE_PATH}/support/CameraSlotGuard.h
-    ${ECS_INCLUDE_PATH}/support/RenderItemDataStorage.h
-    ${ECS_INCLUDE_PATH}/support/DrawItemIDStorage.h
-    ${ECS_INCLUDE_PATH}/support/DrawItemCompaction.h
     ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
     ${ECS_INCLUDE_PATH}/support/MaterialVariantTable.h
     ${ECS_INCLUDE_PATH}/support/MaterialRuntimeTable.h
@@ -175,9 +171,6 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h
     ${ECS_INCLUDE_PATH}/support/TextRenderPipeline.h
     support/RenderPipelineSystem.cpp
-    support/RenderItemDataStorage.cpp
-    support/DrawItemIDStorage.cpp
-    support/DrawItemCompaction.cpp
     support/VisibilityDataStorage.cpp
     support/MaterialVariantTable.cpp
     support/MaterialRuntimeTable.cpp
@@ -298,12 +291,6 @@ if(MSVC)
     set_target_properties(TestTransformFlatStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
-add_executable(TestRenderItemDataStorage support/TestRenderItemDataStorage.cpp)
-target_link_libraries(TestRenderItemDataStorage PRIVATE ${ULRE})
-if(MSVC)
-    set_target_properties(TestRenderItemDataStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
-
 add_executable(TestCSMIncrementalPass support/TestCSMIncrementalPass.cpp)
 target_link_libraries(TestCSMIncrementalPass PRIVATE ${ULRE})
 if(MSVC)
@@ -403,13 +390,6 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestTransformFlatStorage
         PROPERTIES LABELS "ecs;transform" TIMEOUT 120)
-
-    add_test(
-        NAME TestRenderItemDataStorage
-        COMMAND TestRenderItemDataStorage)
-    set_tests_properties(
-        TestRenderItemDataStorage
-        PROPERTIES LABELS "ecs;render_item")
 
     add_test(
         NAME TestCSMIncrementalPass

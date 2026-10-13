@@ -3,13 +3,16 @@
 // @ulre kind Utility
 // @ulre priority 0
 // @ulre end
-// RenderItemResolve.glsl — 全局图元描述符 (4-ID) BDA 寻址与统一解码
+// RenderItemResolve.glsl — 4-ID 行形状的唯一真源
 //
-// 对应 CPU 端 RenderItemDescriptor (16B uvec4)
+// 只留两件活着的东西：
+//   · `RenderItemDescriptor`（16 B uvec4，对应 CPU 端 graph::RenderItemDescriptor）
+//   · `RenderItemBufferRef`（该形状的 buffer_reference 视图；实体 4-ID 表按 EntityID.index 寻址它）
 //
-// 支持两种寻址模式：
-// 1. 连号直通模式 (Direct Mode: gl_InstanceIndex / firstInstance)
-// 2. 间接索引模式 (Indexed Mode: gl_DrawID -> DrawItemIDBuffer -> GlobalRenderItemBuffer)
+// 2026-10-14：本文件原有的 BDA 寻址 + 直通/二级索引解析（含两级缓冲视图与两个地址宏）已随
+// 「CPU/GPU 双剔除遗留」整删 —— 那套解析全仓零调用者（其启用开关字段亦已不存在）。
+// 证据与定论见 doc/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md。
+// 文件名的 Resolve 属历史命名债（模块名被 ShaderGen 注册表引用，改名另批）。
 
 #ifndef RENDER_ITEM_RESOLVE_GLSL
 #define RENDER_ITEM_RESOLVE_GLSL
@@ -18,9 +21,6 @@
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_ARB_gpu_shader_int64 : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
-
-#include "common/descriptor_macros.glsl"
-#include "ubo/scene_ubo.glsl"
 
 // 16 字节图元描述符 (4-ID)
 struct RenderItemDescriptor
@@ -31,112 +31,10 @@ struct RenderItemDescriptor
     uint texture_id;
 };
 
-// 一级全局图元描述符池 (GlobalRenderItemBuffer, 16B scalar 对齐)
+// 4-ID 行表视图 (16B scalar 对齐)
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer RenderItemBufferRef
 {
     RenderItemDescriptor items[];
 };
-
-// uvec4 形式视图
-layout(buffer_reference, scalar, buffer_reference_align=16) buffer RenderItemUvec4BufferRef
-{
-    uvec4 items[];
-};
-
-// 二级绘制索引表 (DrawItemIDBuffer, uint32_t 紧凑数组, 4B 对齐)
-layout(buffer_reference, scalar, buffer_reference_align=4) buffer DrawItemIDBufferRef
-{
-    uint ids[];
-};
-
-// ── 基础 BDA 寻址函数 ──
-
-// 从指定显存物理地址直读 (Direct Mode)
-RenderItemDescriptor GetRenderItemDirectFrom(uint64_t addr_table, uint instance_index)
-{
-    return RenderItemBufferRef(addr_table).items[instance_index];
-}
-
-// 从指定显存物理地址二级索引读取 (Indexed Mode)
-RenderItemDescriptor GetRenderItemIndexedFrom(uint64_t addr_table, uint64_t addr_ids, uint draw_id)
-{
-    uint item_id = DrawItemIDBufferRef(addr_ids).ids[draw_id];
-    return RenderItemBufferRef(addr_table).items[item_id];
-}
-
-// ── 全局 UBO 便捷解引用宏与函数 ──
-
-#define global_render_items RenderItemBufferRef(world_addresses.addr_global_render_items)
-#define draw_item_ids       DrawItemIDBufferRef(world_addresses.addr_draw_item_ids)
-
-// 连号直通解析：以 instance_index 直接索引全局表
-RenderItemDescriptor ResolveRenderItemDirect(uint instance_index)
-{
-    return RenderItemBufferRef(world_addresses.addr_global_render_items).items[instance_index];
-}
-
-// 间接索引解析：以 draw_id 查二级索引表后索引全局表
-RenderItemDescriptor ResolveRenderItemIndexed(uint draw_id)
-{
-    uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
-    return RenderItemBufferRef(world_addresses.addr_global_render_items).items[item_id];
-}
-
-// 返回 uvec4 形式
-uvec4 ResolveRenderItemDirectUvec4(uint instance_index)
-{
-    return RenderItemUvec4BufferRef(world_addresses.addr_global_render_items).items[instance_index];
-}
-
-uvec4 ResolveRenderItemIndexedUvec4(uint draw_id)
-{
-    uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
-    return RenderItemUvec4BufferRef(world_addresses.addr_global_render_items).items[item_id];
-}
-
-// ── 自动区分直通与二级索引模式 ──
-
-#define RENDER_ITEM_INDEXED_FLAG 0x80000000u
-
-bool IsRenderItemIndexed(uint first_instance)
-{
-    return (first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u;
-}
-
-uint GetDrawItemIDOffset(uint first_instance)
-{
-    return first_instance & ~RENDER_ITEM_INDEXED_FLAG;
-}
-
-// 统一自动解析：根据 first_instance 是否带有 RENDER_ITEM_INDEXED_FLAG，自动选择直通或二级索引
-RenderItemDescriptor ResolveRenderItemAuto(uint first_instance, uint instance_offset)
-{
-    if ((first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u)
-    {
-        uint draw_id = (first_instance & ~RENDER_ITEM_INDEXED_FLAG) + instance_offset;
-        uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
-        return RenderItemBufferRef(world_addresses.addr_global_render_items).items[item_id];
-    }
-    else
-    {
-        uint item_id = first_instance + instance_offset;
-        return RenderItemBufferRef(world_addresses.addr_global_render_items).items[item_id];
-    }
-}
-
-uvec4 ResolveRenderItemAutoUvec4(uint first_instance, uint instance_offset)
-{
-    if ((first_instance & RENDER_ITEM_INDEXED_FLAG) != 0u)
-    {
-        uint draw_id = (first_instance & ~RENDER_ITEM_INDEXED_FLAG) + instance_offset;
-        uint item_id = DrawItemIDBufferRef(world_addresses.addr_draw_item_ids).ids[draw_id];
-        return RenderItemUvec4BufferRef(world_addresses.addr_global_render_items).items[item_id];
-    }
-    else
-    {
-        uint item_id = first_instance + instance_offset;
-        return RenderItemUvec4BufferRef(world_addresses.addr_global_render_items).items[item_id];
-    }
-}
 
 #endif // RENDER_ITEM_RESOLVE_GLSL

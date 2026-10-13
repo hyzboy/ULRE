@@ -5,7 +5,6 @@
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/support/MaterialRuntimeTable.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
-#include<hgl/ecs/support/RenderItemDataStorage.h>
 
 namespace hgl::ecs
 {
@@ -42,54 +41,4 @@ namespace hgl::ecs
             || (geometry && geometry->GetAssetMaterialRecipe() != nullptr);
     }
 
-    // ── render_item 4-ID 绑定 ──
-
-    graph::RenderItemHandle EnsureRenderItemHandle(ECSContext &world, EntityID owner)
-    {
-        RenderItemDataStorage *storage = world.GetRenderItemStorage();
-        if (!storage)
-            return graph::INVALID_RENDER_ITEM_HANDLE;
-
-        MaterialRuntimeSlot &slot = world.GetOrCreateMaterialRuntimeSlot(owner);
-
-        if (slot.render_item_handle == graph::INVALID_RENDER_ITEM_HANDLE)
-            slot.render_item_handle = storage->Allocate();
-
-        return slot.render_item_handle;
-    }
-
-    graph::RenderItemHandle GetRenderItemHandle(const ECSContext &world, EntityID owner)
-    {
-        const MaterialRuntimeTable *runtime_table = world.GetMaterialRuntimeTable();
-        const MaterialRuntimeSlot *slot = runtime_table ? runtime_table->GetSlot(owner) : nullptr;
-
-        return slot ? slot->render_item_handle : graph::INVALID_RENDER_ITEM_HANDLE;
-    }
-
-    bool SetRenderItem4ID(ECSContext &world, EntityID owner,
-                          uint32_t transform_id, uint32_t geometry_id,
-                          uint32_t material_id, uint32_t texture_id)
-    {
-        const graph::RenderItemHandle handle = EnsureRenderItemHandle(world, owner);
-        if (handle == graph::INVALID_RENDER_ITEM_HANDLE)
-            return false;
-
-        RenderItemDataStorage *storage = world.GetRenderItemStorage();
-        return storage
-            && storage->Set4ID(handle, transform_id, geometry_id, material_id, texture_id);
-    }
-
-    void ReleaseRenderItemHandle(ECSContext &world, EntityID owner)
-    {
-        MaterialRuntimeTable *runtime_table = world.GetMaterialRuntimeTable();
-        MaterialRuntimeSlot *slot = runtime_table ? runtime_table->GetSlot(owner) : nullptr;
-        if (!slot)
-            return;
-
-        RenderItemDataStorage *storage = world.GetRenderItemStorage();
-
-        if (storage && slot->render_item_handle != graph::INVALID_RENDER_ITEM_HANDLE)
-            storage->Release(slot->render_item_handle);
-
-        slot->render_item_handle = graph::INVALID_RENDER_ITEM_HANDLE;
-    }}//namespace hgl::ecs
+}//namespace hgl::ecs

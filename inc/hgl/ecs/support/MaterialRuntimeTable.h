@@ -263,9 +263,6 @@ namespace hgl::ecs
         // ── A5b：渲染侧每实例绑定（原图元渲染组件的残余状态）──
         // 判据：与授权态无关、每实体一份的可变绑定 —— 一律归 slot，绝不进共享行（A4 约定）。
 
-        /// render_item 4-ID 槽位句柄（世界 RenderItemDataStorage；按需分配，实体销毁时释放）
-        graph::RenderItemHandle render_item_handle = graph::INVALID_RENDER_ITEM_HANDLE;
-
         /// 最近一次 collect 解析出的运行期管线（按 RenderPass 维度；batch 紧随其后消费同一 pass）。
         /// 复用交给 RenderPass::CreatePipeline 内部（按 shader 内容 hash 键控，见 D2）——
         /// **B5-b 起不入 slot**（行内不放指针）：落世界级 `MaterialRuntimePipelineTable`
@@ -277,13 +274,14 @@ namespace hgl::ecs
     /// 宽度是平台稳定的定值，这就是它将来升格为 (World, MaterialRuntime) 行 arena 一行的前提
     ///（行宽一变，所有按行索引的并行表/地址都要跟着动 ⇒ 用断言钉死，改动必须显式）。
     /// 字段与占位：row 4 | 2×u8 + bool +pad 4 | shadow_retry 4 | 2×tracked 4 | 3×bool +pad 4 |
-    /// last_materialize_epoch 8 | render_item_handle 4 ⇒ **x64/MSVC 实测 40 B**（探针 `ProbeTransformDiagnostics` 同源打印）。
+    /// last_materialize_epoch 8 ⇒ **x64/MSVC 实测 32 B**（探针 `ProbeTransformDiagnostics` 同源打印；
+    /// 40 B 是「4-ID 句柄字段在册」时的宽度，该字段已随池整删 ⇒ 剩余 32 B 天然 8 对齐）。
     /// B5-a 的 6 个缓冲区句柄与世界级 `MaterialRuntimeBufferTable` 已整体退役
     ///（外部 GPU-Driven 入口系整体删除，见计划档）。
     /// ④ 组件多实例能力（实例三字段 + 8 个自由函数 + `InstancedPrimitiveRenderItem`）
     /// **won't-do 整体删除**：唯一活调用方是为「被拒」而存在的 A3 台架，无真实使用者
     ///（见计划档 §8.7 A2 关闭记录）。
-    static_assert(sizeof(MaterialRuntimeSlot) == 40,
+    static_assert(sizeof(MaterialRuntimeSlot) == 32,
                   "MaterialRuntimeSlot 行宽已冻结（B5-b）：改字段必须同步改断言并回写计划文档");
 
     class MaterialRuntimeTable

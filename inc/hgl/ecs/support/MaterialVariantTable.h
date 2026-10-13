@@ -49,8 +49,8 @@
  *   因此键的第二维必须能在 acquire 之前算出 ⇒ 用 recipe 哈希，而不是 acquire 之后
  *   才有的 `ShaderProgramKey`。
  *
- * 归属：表由 `ECSContext` 持有（与 `VisibilityDataStorage` / `RenderItemDataStorage`
- *       等世界私有存储同一访问范式，见 `Context.h::GetMaterialVariantTable()`）。
+ * 归属：表由 `ECSContext` 持有（与 `VisibilityDataStorage` 等世界私有存储同一访问范式，
+ *       见 `Context.h::GetMaterialVariantTable()`）。
  *       理由：记录里的 `program` 指针归该世界的 `GraphicsContext` 的
  *       `ShaderProgramManager` 缓存所有——表与程序缓存同生共死，不会出现
  *       "进程级全局表持有已销毁 GraphicsContext 的 program"的悬垂指针，也不会让

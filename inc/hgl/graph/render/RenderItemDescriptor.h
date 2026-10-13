@@ -39,7 +39,4 @@ namespace hgl::graph
 #pragma pack(pop)
 
     static_assert(sizeof(RenderItemDescriptor) == 16, "RenderItemDescriptor must be exactly 16 bytes (uvec4 aligned)");
-
-    using RenderItemHandle = uint32_t;
-    constexpr RenderItemHandle INVALID_RENDER_ITEM_HANDLE = UINT32_MAX;
 }

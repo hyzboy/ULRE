@@ -18,8 +18,8 @@ namespace hgl::graph
      * 地址归口口径（三档，定稿见 doc/world-addresses-and-camera-model-plan.md）：
      *   ① **跨世界共享的资源池** → 本表（MeshDrawParams 池、PBR/Emissive/Transmission 行池、
      *      调色板、viewport）；
-     *   ② **世界私有的观察者 / 状态** → 世界表 `WorldAddresses`（相机行、渲染项表、DrawItemID 表、
-     *      sky / shadow / env）——**不得再放进本表**；
+     *   ② **世界私有的观察者 / 状态** → 世界表 `WorldAddresses`（相机行、实体行表、实体 4-ID 表、
+     *      L2W、光源行、影子数据、环境光块）——**不得再放进本表**；
      *   ③ **每批 / 每材质 / 本字体** → pc_root（同一帧内逐批不同，一张标量表装不下，
      *      见 RootAddressPush.h）。
      * 硬规矩：本表内出现世界私有地址 = 回归（配归属契约门）。

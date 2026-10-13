@@ -12,8 +12,9 @@ namespace hgl::graph
      *
      * 分层（定稿见 doc/world-addresses-and-camera-model-plan.md §1）：
      *   `GlobalAddresses` = **跨世界共享的资源池**（MeshDrawParams 池 / 材质行池 / 调色板 / viewport）；
-     *   **本表** = **世界私有的观察者 / 状态**（相机行表、渲染项表、DrawItemID 表；sky / shadow / env 随 C2 迁入；
-     *   光源行表随 T6b 迁入；**`addr_sky` 已于 2026-10-07 随 sky 段整删退出本表**）；
+     *   **本表** = **世界私有的观察者 / 状态**（相机行表、实体行表、实体 4-ID 表、L2W、光源行表、影子数据、
+     *   环境光块；sky / shadow / env 随 C2 迁入，光源行表随 T6b 迁入；
+     *   **`addr_sky` 已于 2026-10-07 随 sky 段整删退出本表**）；
      *   `pc_root` = 每批 / 每材质 / 本字体。
      *
      * 为什么必须独立成表：这些 buffer 由**世界**（`ECSContext`）拥有，一个设备上可以同时存在多个世界
@@ -26,15 +27,13 @@ namespace hgl::graph
     struct WorldAddresses
     {
         uint64_t addr_camera_info = 0;          // 相机行表（世界私有；行号 = 相机槽 × 帧槽总数 + 帧槽）
-        uint64_t addr_global_render_items = 0;  // 4-ID 渲染项表（世界私有 RenderItemDataStorage）
-        uint64_t addr_draw_item_ids = 0;        // DrawItemID 压缩索引表（世界私有 DrawItemIDStorage）
         uint64_t addr_shadow = 0;               // **本世界**的影子数据 ShadowInfo（T6b/P4：已世界私有，不再是 profile 的；
                                                 // 每帧槽一份，下标 = 帧槽；写者 = MainLightShadowSystem，设备写入点 =
                                                 // ECSContext::CommitShadowInfo（交换链帧 acquire 后写本帧槽））
         uint64_t addr_entity_gpu = 0;           // 实体行表 EntityGPU（世界私有；T3：GPU 剔除的枚举源，按 EntityID.index 索引）
         uint64_t addr_l2w = 0;                  // L2W 矩阵池（世界私有 TransformAssignmentBuffer；按帧槽切份，每帧槽一份）
         uint64_t addr_entity_render_ids = 0;    // 实体 4-ID 表（世界私有 EntityRenderIDTable，按 EntityID.index 直索引，
-                                                // 行 = graph::RenderItemDescriptor 16 B；T3d-3a：GPU 消费者取**池口径** id 的唯一通路
+                                                // 行 = graph::RenderItemDescriptor 16 B；T3d-3a：GPU 消费者取**资源池口径** id 的唯一通路
                                                 // —— `EntityGPU.row[Geometry]` 是组件池行号，与 AABB / MeshDrawParams 全局池的
                                                 // asset geometry_id **不同口径**，剔除与 gather 必须读本表）
         uint64_t addr_lights = 0;               // 光源行表 LightRow（世界私有 LightRowTable；**行 0 = 主方向光**；

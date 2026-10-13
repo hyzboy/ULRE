@@ -2,8 +2,6 @@
 #include<hgl/vk/buffer/StructView.h>
 #include<cstdlib>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/support/RenderItemDataStorage.h>
-#include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -279,7 +277,7 @@ namespace hgl::ecs
 
         // 2026-10-10（审计 §1.1）：原 `ApplyResourceLayoutBindings()`（空体 + 「无绑定可推」说明）
         // 与 `ResolveViewportUBO()` 已删除 —— 全局地址表 BDA 化后确实无可推字段：Scene 集已于 S3 整体退场；
-        // sky / viewport / shadow 地址都在表内，shader 经 global_addresses 解引用；渲染项 / DrawItemID 地址
+        // viewport 地址在全局表内，shader 经 global_addresses 解引用；世界私有各列地址
         // 由**世界表**（WorldAddresses）随 ECSContext::SetFrameIndex 写本帧槽；per-material
         // apply_requirement / MP / 批覆盖那段绑定时代死段已随 desc_manager 退役整删（2026-09-08）。
         // 留下的是**真动作**：物化本帧 viewport UBO。

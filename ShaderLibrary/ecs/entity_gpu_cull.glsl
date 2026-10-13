@@ -70,9 +70,8 @@ layout(push_constant) uniform PushConstants
 
 // 实体 4-ID 表的行镜像（T3d-3a）：**复用** RenderItemResolve.glsl 的 `RenderItemDescriptor`
 // struct + `RenderItemBufferRef`（16 B uvec4 形状的唯一真源，不另造同类结构/镜像）。
-// ⚠ include 位置 = 宏展开时机：该模块的**函数体**引用 `world_addresses` 宏 ⇒ 必须
-// include 在上面的 pc 覆盖**之后**（否则宏还指向未声明的 pc_root ⇒ 'pc_root': undeclared，
-// 症状 = compute pipeline is null + GPU count 恒 0）。
+// （2026-10-14：该模块只余形状定义，不再有引用 `world_addresses` 宏的函数体 ⇒
+//  include 位置不再受宏展开时机约束；此前 "必须在上面的 pc 覆盖之后" 的告诫随解析函数一并作废。）
 #include "common/RenderItemResolve.glsl"
 
 // 行数组本体（与世界 RenderItemBufferRef 同结构、不同索引空间：这里按 EntityID.index）
@@ -239,8 +238,8 @@ void main()
     // = 越界/错借别人的 AABB ⇒ 剔除判据从根上就是错的（旧版 GPU 与 CPU 参考**错得
     // 同源**，所以 mismatch 仍为 0 —— 假绿，见设计稿 §8.2d）。
     //
-    // 本表由 collect 在"本项进批"的同一判据点写入（四元组与 SetRenderItem4ID 逐字
-    // 同源）⇒ 与消费侧 cmds/material rows 天然同口径。`geometry_id == 0` = 未上行
+    // 本表由 collect 在"本项进批"的同一判据点写入（世界唯一的 4-ID 发布点）
+    // ⇒ 与消费侧 cmds/material rows 天然同口径。`geometry_id == 0` = 未上行
     // （行 0 哨兵惯例，含"实体无几何"与"行还没到"两种，都该跳过本帧）。
     const RenderItemDescriptor render_ids = entity_render_ids[entity_index];
 

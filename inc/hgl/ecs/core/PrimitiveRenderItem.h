@@ -70,9 +70,6 @@ namespace hgl::ecs
         hgl::graph::ShaderProgram* GetShaderProgram() const override;
         hgl::graph::Pipeline* GetPipeline(hgl::graph::RenderPass* render_pass) const override;
 
-        // RenderItem 4-ID handle
-        graph::RenderItemHandle GetRenderItemHandle() const override;
-
         // Update world matrix from transform
         void UpdateWorldMatrix();
     };

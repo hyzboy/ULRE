@@ -22,8 +22,7 @@ namespace hgl
          *   按 `EntityID.index` 发布成 GPU 可达 SSBO —— 行型直接复用 4-ID 终态的
          *   `graph::RenderItemDescriptor`（16 B），**不制造第二个描述符形状**。
          *
-         *   · 写者 = `RenderPrimitiveCollectSystem`（唯一现算点，与喂给
-         *     `SetRenderItem4ID` 的四元组**逐字同源** ⇒ 无第二口径）；
+         *   · 写者 = `RenderPrimitiveCollectSystem`（唯一现算点 ⇒ 无第二口径）；
          *   · 消费者 = GPU 剔除着色器（池 geometry_id 查 AABB）+ CPU 参考剔除（同口径对拍）
          *     + 形态 B gather（material/texture 行 = gap #1/#2 的解）；
          *   · `transform_id` 存 `GetID()` 原始句柄（与 RenderItemDescriptor 同语义）；

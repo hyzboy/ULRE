@@ -1,7 +1,5 @@
 ﻿#include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/CameraInfoStorage.h>
-#include <hgl/ecs/support/RenderItemDataStorage.h>
-#include <hgl/ecs/support/DrawItemIDStorage.h>
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/graph/render/RenderContext.h>
@@ -500,14 +498,6 @@ namespace hgl::ecs
             want.addr_camera_info = pick((camera_info_storage && camera_info_storage->IsReady())
                                          ? camera_info_storage->GetGPUBase() : 0,
                                          dst->addr_camera_info);
-
-            want.addr_global_render_items = pick(GetRenderItemStorage()
-                                                 ? GetRenderItemStorage()->GetGPUAddress() : 0,
-                                                 dst->addr_global_render_items);
-
-            want.addr_draw_item_ids = pick(GetDrawItemIDStorage()
-                                           ? GetDrawItemIDStorage()->GetGPUAddress() : 0,
-                                           dst->addr_draw_item_ids);
 
             // T3c：实体行表（世界私有；消费者 = GPU 剔除读实体行）。**按帧槽偏移**（T3c-3 实测：
             // 可动实体的 `row[Transform]` 随帧槽变，3 个行号轮转 ⇒ 单份表会被本帧写入覆盖上一帧

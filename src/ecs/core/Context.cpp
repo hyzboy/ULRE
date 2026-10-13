@@ -16,8 +16,6 @@
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
-#include<hgl/ecs/support/RenderItemDataStorage.h>
-#include<hgl/ecs/support/DrawItemIDStorage.h>
 #include<hgl/ecs/support/CameraSlotGuard.h>
 #include<hgl/ecs/support/CameraInfoStorage.h>
 #include<hgl/ecs/support/MaterialAuthoringSideTable.h>
@@ -61,8 +59,6 @@ namespace hgl
             , transform_storage(std::make_unique<TransformDataStorage>())
             , bounding_box_storage(std::make_unique<BoundingBoxDataStorage>())
             , visibility_storage(std::make_unique<VisibilityDataStorage>())
-            , render_item_storage(std::make_unique<RenderItemDataStorage>())
-            , draw_item_id_storage(std::make_unique<DrawItemIDStorage>())
             , material_variant_table(std::make_unique<MaterialVariantTable>())
             , material_runtime_table(std::make_unique<MaterialRuntimeTable>())
             , material_authoring_side_table(std::make_unique<MaterialAuthoringSideTable>())
@@ -465,7 +461,7 @@ namespace hgl
                 if (auto *tb = ts->GetTransformBuffer())
                     tb->SetFrameIndex(index);
 
-            // 帧槽变了 ⇒ 本世界的地址表换到本槽（相机行表 / 渲染项表 / DrawItemID 表随世界，
+            // 帧槽变了 ⇒ 本世界的地址表换到本槽（表内各列随世界，
             // 每个 pass 各写自己的槽，不与在途帧/其它世界互踩）。
             SyncWorldAddresses();
         }

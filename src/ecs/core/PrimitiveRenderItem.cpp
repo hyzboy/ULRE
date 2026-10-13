@@ -74,14 +74,6 @@ namespace hgl::ecs
             : nullptr;
     }
 
-    graph::RenderItemHandle PrimitiveRenderItem::GetRenderItemHandle() const
-    {
-        // A5b：4-ID 句柄归每实例 slot（经世界访问器取；未分配 ⇒ INVALID）
-        return context
-            ? hgl::ecs::GetRenderItemHandle(*context, entity_id)
-            : graph::INVALID_RENDER_ITEM_HANDLE;
-    }
-
     void PrimitiveRenderItem::UpdateWorldMatrix()
     {
         if (transform.IsValid())

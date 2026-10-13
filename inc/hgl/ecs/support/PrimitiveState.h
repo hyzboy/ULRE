@@ -38,20 +38,4 @@ namespace hgl::ecs
     /// 实体是否有材质来源（材质数据层有配方覆盖，或几何 asset 里有默认配方）。
     bool HasAnyMaterialSource(const Entity *entity);
 
-    // ── render_item 4-ID 绑定（世界 RenderItemDataStorage；句柄存每实体 slot）──
-
-    /// 实体 → render_item 句柄（未分配则按需在世界存储分配并写进 slot）。无世界 ⇒ INVALID。
-    graph::RenderItemHandle EnsureRenderItemHandle(ECSContext &world, EntityID owner);
-
-    /// 实体 render_item 句柄（未分配 ⇒ INVALID；**不**分配）
-    graph::RenderItemHandle GetRenderItemHandle(const ECSContext &world, EntityID owner);
-
-    /// 实体 → 写 4-ID 到世界渲染项存储（按需分配句柄；单槽语义）。
-    bool SetRenderItem4ID(ECSContext &world, EntityID owner,
-                          uint32_t transform_id, uint32_t geometry_id,
-                          uint32_t material_id, uint32_t texture_id);
-
-    /// 释放实体 render_item 句柄（连续区间一并释放；实体销毁/世界关停时调用）。
-    void ReleaseRenderItemHandle(ECSContext &world, EntityID owner);
-
 }//namespace hgl::ecs

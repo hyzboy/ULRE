@@ -55,9 +55,6 @@ namespace hgl::ecs
         virtual TransformPolicySpec GetTransformPolicySpec() const { return TransformPolicySpec{}; }
         virtual PositionSourceSpec GetPositionSourceSpec() const { return PositionSourceSpec::MeshVertex; }
 
-        // RenderItem 4-ID handle
-        virtual graph::RenderItemHandle GetRenderItemHandle() const { return graph::INVALID_RENDER_ITEM_HANDLE; }
-
         /// 几何/绘制键（= `MeshDrawParams` 行的 CPU 镜像，24 B POD）。
         /// B3-iii：批排序 / 聚簇 / ICB 一律读这份**行数据**（采集侧从行填入），不再经每实体
         /// `new` 出来的 `GeometryDataBuffer` / `GeometryDrawRange` 副本 —— 后者已删除。
@@ -80,7 +77,7 @@ namespace hgl::ecs
         // B3-iii：排序键 = **行派生 POD 键**（同键 ⇒ 同簇 ⇒ 实例化合并）。
         // 旧实现是 `RenderItem::Compare`：按 `*GeometryDataBuffer <=>`（geometry_id / vdm / VAB 列表 / ibo）
         // + `*GeometryDrawRange <=>` 逐字段内容比较 —— 那两份每实体 CPU 副本已删除：行就是它们的真相，
-        // 且同 asset 必然同键 ⇒ `Compare` 零调用者，随本批删除（排序由 `draw_key` 与 render_item_handle 承担）。
+        // 且同 asset 必然同键 ⇒ `Compare` 零调用者，随本批删除（排序由 `draw_key` 承担）。
         MeshDrawKey draw_key;   ///< 采集期由 RenderPrimitiveCollectSystem 从行填入（每帧刷新）
     };
 

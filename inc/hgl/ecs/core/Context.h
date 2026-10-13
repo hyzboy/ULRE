@@ -65,8 +65,6 @@ namespace hgl
         class RenderPipelineBase;
         class MaterialBatch;
         class RenderItem;
-        class RenderItemDataStorage;
-        class DrawItemIDStorage;
         class CameraInfoStorage;
         class MaterialData;
         class GeometryData;
@@ -75,7 +73,6 @@ namespace hgl
         class MaterialRuntimePipelineTable;
 
         class ECSContext;
-        void ReleaseRenderItemHandle(ECSContext &world, EntityID owner);
 
         /**
          * ECSContext manages all entities and systems
@@ -185,13 +182,10 @@ namespace hgl
             // 只保留"不可见实体集合"这一份真值；查询时按变换父链上溯（祖先不可见 ⇒ 后代不可见）。
             std::unique_ptr<VisibilityDataStorage> visibility_storage;
 
-            std::unique_ptr<RenderItemDataStorage> render_item_storage;
-            std::unique_ptr<DrawItemIDStorage> draw_item_id_storage;
 
             // A3 材质变体表（v2 §9.3）：按**静态键**去重的 program/recipe 运行期记录。
             // program 归本世界 GraphicsContext 的 ShaderProgramManager 缓存所有 ⇒ 表随世界
-            // 存亡，不会跨 GraphicsContext 混用悬垂 program。访问范式同 visibility_storage /
-            // draw_item_id_storage。
+            // 存亡，不会跨 GraphicsContext 混用悬垂 program。访问范式同 visibility_storage。
             std::unique_ptr<MaterialVariantTable> material_variant_table;
 
             // A4 材质运行期表（v2 §9.3）：**共享行**（同授权态多实体 interned 到同一行：
@@ -220,7 +214,7 @@ namespace hgl
 
             // 世界地址表（WorldAddresses）：世界私有地址的 SSBO 表（HGL_FRAME_SLOT_TOTAL 槽 ×
             // kWorldAddressesSlotStride），基址经 pc_root.addr_world_addresses 下发 ——
-            // 多世界渲染只需换这一个指针（相机行表 / 渲染项表 / DrawItemID 表都随世界）。
+            // 多世界渲染只需换这一个指针（表内各列都随世界）。
             graph::StructView<graph::WorldAddresses> *world_addresses_table = nullptr;
             graph::DeviceBuffer *world_addresses_buffer = nullptr;
             uint64_t world_addresses_addr = 0;
@@ -854,14 +848,6 @@ namespace hgl
             TransformDataStorage* GetTransformStorage() { return transform_storage.get(); }
             const TransformDataStorage* GetTransformStorage() const { return transform_storage.get(); }
 
-            /// Get world-level RenderItemDataStorage
-            RenderItemDataStorage* GetRenderItemStorage() { return render_item_storage.get(); }
-            const RenderItemDataStorage* GetRenderItemStorage() const { return render_item_storage.get(); }
-
-            /// Get world-level DrawItemIDStorage
-            DrawItemIDStorage* GetDrawItemIDStorage() { return draw_item_id_storage.get(); }
-            const DrawItemIDStorage* GetDrawItemIDStorage() const { return draw_item_id_storage.get(); }
-
             /// A3 材质变体表（材质运行期 program/recipe 按静态键去重；见 support/MaterialVariantTable.h）
             MaterialVariantTable* GetMaterialVariantTable() { return material_variant_table.get(); }
             const MaterialVariantTable* GetMaterialVariantTable() const { return material_variant_table.get(); }
@@ -913,7 +899,7 @@ namespace hgl
             /// 世界地址表基址（**本帧槽**）：写入 pc_root.addr_world_addresses（0 = 尚未创建）
             uint64_t GetWorldAddressesAddress(uint32_t frame_slot) const;
 
-            /// 把本世界的 world 私有地址（相机行表 / 渲染项表 / DrawItemID 表）同步进**当前帧槽**的世界表。
+            /// 把本世界的 world 私有地址（相机行表 / 实体 4-ID 表等）同步进**当前帧槽**的世界表。
             /// 槽 = 当前 RT 的帧槽（主帧 [0,4) / 离屏 [4,8)），由 SetFrameIndex 触发。
             bool SyncWorldAddresses();
 
@@ -988,9 +974,6 @@ namespace hgl
 
                 // 材质运行期 slot 同理：slot 持共享行的引用计数，实体没了必须释放
                 // （否则共享行永远不归零 ⇒ 纹理配置池行泄漏、行表只增不减）。
-                // A5b：render_item 句柄与多实例连续槽位也归 slot ⇒ 先释放再销毁 slot。
-                ReleaseRenderItemHandle(*this,id);
-
                 if (material_runtime_table)
                     material_runtime_table->DestroySlot(id);
 
