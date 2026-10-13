@@ -142,6 +142,56 @@ inline MaterialVariantKey VariantKeyOf(const MaterialRuntimeKey &k)
 
 ---
 
+---
+
+## 七、落地记录（2026-10-13；选项 (a) + (b) + (c) 一批做完）
+
+**(a) 前缀共用实现（唯一一份）**
+
+| 件 | 落点 |
+|---|---|
+| program 身份前缀的**折字段** | `HashMaterialProgramIdentity(program_build_context, recipe_hash)`，落在 `MaterialVariantTable.h`（两键都能看到它）；两处 hasher 都经它 |
+| 前缀的**唯一实现** | `MaterialRuntimeTable.h` 的 `inline MaterialVariantKey VariantKeyOf(const MaterialRuntimeKey &k) noexcept` |
+| **生产接线** | `RenderPrimitiveCollectSystem` forward 路径：先构造 `runtime_key`，再由 `variant_table->Intern(VariantKeyOf(runtime_key))` **派生**变体键（原来两处各手抄两维）|
+
+⚠ **哈希取值未变**：运行期键哈希 = 以 `HashMaterialProgramIdentity(...)` 的结果为**种子**继续折第 3 维
+（`FNV1aHasher64(seed)` 的续算语义）⇒ 抽取前后**逐位相同**，不造成任何缓存失效（实测 PBR 帧摘要逐位不变）。
+
+**(b) 权威链头注**：`MaterialRuntimeTable.h` 文件头新增四行表（① variant 2 维 / ② runtime = ① + 自有 SSBO 行 /
+③ authoring 行 id 空间 / ④ pipeline 每实例每 pass）+ 先后顺序（③⇒①⇒②⇒④）+ 两条规矩
+（"加配方身份维度先改 `MaterialRuntimeKey`，`VariantKeyOf` 自动跟随；不决定 program 身份的维度不得进前缀"）。
+
+**(c) 前置的编译期钉死 + 源码契约**
+
+- **5 条 `static_assert`**（`MaterialRuntimeTable.h`）：前两维**类型**逐字相同、**偏移**逐字相同、第 3 维排在**前缀之后**
+  ⇒ 「只给一个键加维」这种漂移**立刻编译失败**（这正是报告 §2.1 担心的"漏一处静默分叉"）。
+- **源码契约 Test 50**（`TestCSMIncrementalPass`）：4 条存在性（共用折字段 / `VariantKeyOf` / static_assert / 权威链头注）
+  + 1 条生产接线（`VariantKeyOf(runtime_key)`）+ **2 条禁复活**（两处 hasher 都不许再手写前缀折字段）。
+
+### 红的样子（两条，实测）
+
+1. **只给 `MaterialVariantKey` 加一维** ⇒ 编译期即红：
+   `error C2338: static assertion failed: '第 3 维必须排在前缀之后（它是唯一的后缀维；插到前面就不成前缀了）'`；逐字节还原 ⇒ rc=0 / 0 错。
+2. **变体 hasher 改回手写折字段** ⇒ `Test 50 Failed: 禁复活：变体键哈希不许再手写前缀折字段 …（禁复活）`，退出码 **50**；逐字节还原 ⇒ 退出码 0。
+
+### 验收
+
+两配置 `rc=0 / 0 error`；门 45 PASS/0 FAIL；`ctest -L ecs` 12/12；`TestCSMIncrementalPass` 1/1（含 Test 49/50）；
+Debug 帧摘要 `PBRSpheres 0x3DD88A0999CDC486`（材质最敏感用例）/ `LoadScene 0xC9E38ED2F49A069B` /
+`GPUDrivenCull 0x90E0745C2C7B8599` **三项逐位不变**；示例日志无 `variant unavailable`/覆盖类告警。
+
+### 对 §六 待证点的就地订正
+
+- ~~① 与 ② 的实际取值是否在运行时永远满足前缀~~ ⇒ **只有 forward 变体键是运行期键的前缀**（同一
+  `build_context_hash` + `recipe_hash`，已改为**由构造派生**）。
+  **阴影变体键不是前缀**：它用 `ShaderProgramPurpose::ShadowDepth` 的 build context，而同一实体的运行期行键用
+  **forward** 的 build context ⇒ 阴影键是它的**兄弟键**（同 recipe、不同 purpose）。代码里已加显式注释钉住这一点
+  （防日后有人"顺手"把阴影侧也改成 `VariantKeyOf`）。
+- ~~③ 的 row id 与 ② 第三维是否同一空间~~ ⇒ 已在权威链表里写明：`data_index_row` 就是 ③ 那个行号。
+- **不做**（维持 §三 原判）：不合并四张表。
+
+---
+
 ## 六、未证实 / 需要确认
 
 - ① 与 ② 的实际取值是否在运行时永远满足前缀（我核的是**定义**；要证"取值一致"需要一条对拍，即选项 (c)）；

@@ -26,13 +26,13 @@
 
 ### 2. ECS 审计（主档 `doc/ecs-quality-audit-2026-10.md` §2.2；共识档 `doc/ecs-audit-consensus-and-task-plan-2026-10-11.md`；逐条报告 `doc/analysis/ecs-audit-2026-10/`）
 
-已定：**已做 2 条**（#4 `GpuMirrorBuffer.h` 抽取、#5 删 `EntitySlot::alive`）+ **复扫关闭 2 条**（非法相机槽单点化、`frame_index` 三份属不同物件状态）。**已落地 4 条（含 #1(a) 与 #2 整条）**：
+已定：**已做 2 条**（#4 `GpuMirrorBuffer.h` 抽取、#5 删 `EntitySlot::alive`）+ **复扫关闭 2 条**（非法相机槽单点化、`frame_index` 三份属不同物件状态）。**已落地 5 条（含 #1(a)、#2 整条、#5 整条）**：
 
 - **#1（01 掩码是 `component_rows` 的缓存视图）** —— **(a) ✅ 已落地 2026-10-13**：`Entity::SetComponentRow` 与 `DetachAllComponents` 走 `#if ULRE_ECS_DEBUG_API`（开关见 §7 台帐）全表对拍，Release 宏=0 零成本。剩 **(b)** 删掩码、`HasComponentType` 改读 `component_rows[type] != 0`（`GetComponentMask()` 汇总要现场拼 ⇒ 策略路径 O(16)）／**(c)** 保持现状 —— **待你拍**
 - ~~**#2（02 组件列表 4~5 份）**~~ —— **✅ 已落地 2026-10-13**：`VerifyAfterWrite` 接三个写入点（挂卸 / 可见性 / 变换行**三条路径**），台帐宏门住（Release 空 inline ⇒ 生产零开销）；「权威链」头注在位（含 `row[Transform]` 两个权威点 + `type[16]` 有意冗余两警告）；顺手修「槽复用 `Activate` 不清 `type[]/row[]` ⇒ 对拍假红」；源码契约 **Test 49**（存在性 + 计数 + 禁复活）；**红的样子** = 破坏 `Refresh` 行号写入 ⇒ 899 条点名失步，还原 0 条。详见审计报告 02 **§六 落地记录**
 - **#3（03 RenderItemDescriptor 双表）** —— 先答"池**无条件写** / 实体表**只在进批判据内写**是**有意**还是**疏漏**"；**(b)** 一侧派生另一侧需先有生产者 —— `PublishRenderIDs(...)` **全仓 0**〔实测〕
 - **#4（06 可见性三表示两极性）** —— **(c)** 权威链文档（零风险）+ **(b)** 每帧按权威重算 —— 未落地〔实测 `Recompute/Refresh/RebuildVisib*`、`UpdateVisibilityFrom*`、`PropagateVisibility` 全 0〕
-- **#5（07 材质四条键空间）** —— 不该并表；**(a)** `VariantKeyOf` 前缀共用编解码 ~50 行，**最便宜**〔实测 `VariantKeyOf` 全仓 0〕
+- ~~**#5（07 材质四条键空间）**~~ —— **✅ 已落地 2026-10-13**：`HashMaterialProgramIdentity()` 共用折字段（运行期键**以它为种子续算** ⇒ 哈希取值逐位不变、无缓存失效）+ `VariantKeyOf()` 前缀唯一实现 + forward 生产**由构造派生**（`Intern(VariantKeyOf(runtime_key))`）+ 5 条编译期 `static_assert`（类型/偏移/维序 ⇒ 只给一个键加维**立刻编译失败**）+ 权威链头注 + 源码契约 **Test 50**（4 存在性 + 1 接线 + 2 禁复活）；**红的样子**：加一维 ⇒ `error C2338`；手写折字段复活 ⇒ 退出码 50。**订正**：只有 forward 变体键是运行期键前缀，阴影键是**兄弟键**（ShadowDepth 上下文）。详见报告 07 **§七**
 - **#6（08 `MaterialRuntimeRow` key 存 3.5 份）** —— 已订正"可省字段 = 0"；只需**不变量文档 + debug 门** ~15 行
 - 挂同一次拍板：**旧档 §2 #5**（`AddFreeIndex` 有序维护 vs 栈消费）、**9 套系统容器合并**（共识档 §2 明确"不单独立批"）
 - 小决定：**`HasComponentType()`**（生产零调用）删 or 留〔实测〕
@@ -48,7 +48,7 @@
 ### 4. 建议顺序（按"先删遗留/未使用 → 再改进"，2026-10-13 重排）
 
 1. ~~**ECS #2 对拍器接入**~~ —— **✅ 2026-10-13 完成**（同 §2）
-2. **ECS #5 `VariantKeyOf` 前缀共用** + **#6 不变量文档/debug 门**（同为"把口头约束变成 fail-fast"；接入形态照 #2：台帐宏 + 源码契约针 + 红的样子）
+2. ~~**ECS #5 `VariantKeyOf` 前缀共用**~~ —— **✅ 2026-10-13 完成**；剩 **#6 不变量文档/debug 门**（接入形态照 #2/#5：共用实现 + 编译期/契约针 + 红的样子）
 3. **开关台帐的两条待定 + 自检门的配置口径**（§7 / §3，零~低成本，等你一句话）
 4. **S3b-3 顶点节点枚举归位**（与 S3b 同族收尾）
 5. **stage B `receive_shadow` 幅度漂移专项**（未 bisect 的行为漂移；修完 `ATS_SELFCHECK=1` 必须 rc=0）

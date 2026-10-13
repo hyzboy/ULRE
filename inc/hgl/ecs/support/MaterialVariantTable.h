@@ -105,16 +105,34 @@ namespace hgl::ecs
         }
     };
 
+
+    // ── program 身份前缀：**唯一**折字段实现（两个键共用；2026-10-13 审计 §2.2 问题 5 选项 (a)）──
+    //   `MaterialVariantKey` 与 `MaterialRuntimeKey` 的前两维（`program_build_context` +
+    //   `recipe_hash`）逐字相同、且变体键是运行期键的**严格前缀**（后者只多 `data_index_row`）。
+    //   这里把该前缀的哈希折字段**只写一次**：变体键哈希 = 本函数结果；运行期键哈希 =
+    //   以本结果为种子**继续**折第 3 维（`FNV1aHasher64(seed)` 的续算语义 ⇒ 哈希取值与
+    //   抽取本函数之前**逐位相同**，不造成任何缓存失效）。
+    //   规矩：要给「配方身份」加维度，**先改 `MaterialRuntimeKey`，再让 `VariantKeyOf()` 跟随**；
+    //   若新维度不决定 program 身份，**不得**进前缀（否则变体表无界膨胀）。
+    inline uint64_t HashMaterialProgramIdentity(const uint64_t program_build_context,
+                                                const uint64_t recipe_hash) noexcept
+    {
+        hgl::hash::FNV1aHasher64 h;
+        h << program_build_context
+          << recipe_hash;
+        return h.Result();
+    }
+
     /// 键哈希（**仅**用于内部索引）。相等性仍是全维度 `operator==`：哈希碰撞不会让
     /// 两个不同键共用记录（ankerl map 哈希相等时仍逐个比对 key）。
+    /// ⚠ 折字段必须走 `HashMaterialProgramIdentity()`（**禁**在此手写 `h << 字段`：
+    ///   那正是"前缀两份实现"的形态，见文件头与 `MaterialRuntimeTable.h::VariantKeyOf`）。
     struct MaterialVariantKeyHash
     {
         std::size_t operator()(const MaterialVariantKey &key) const noexcept
         {
-            hgl::hash::FNV1aHasher64 h;
-            h << key.program_build_context
-              << key.recipe_hash;
-            return static_cast<std::size_t>(h.Result());
+            return static_cast<std::size_t>(
+                HashMaterialProgramIdentity(key.program_build_context, key.recipe_hash));
         }
     };
 

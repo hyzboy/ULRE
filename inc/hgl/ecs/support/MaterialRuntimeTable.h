@@ -59,6 +59,8 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/type/UnorderedMap.h>
 #include<cstdint>
+#include<cstddef>
+#include<type_traits>
 #include<vector>
 #include<unordered_map>
 
@@ -109,15 +111,62 @@ namespace hgl::ecs
         }
     };
 
+
+    // ── 键空间权威链（2026-10-13 审计 §2.2 问题 5 选项 (b)）────────────────────────────
+    //   同一实体的"材质态"被四条键描述，它们是**同一件事的四个投影**，各自服务不同消费者
+    //   （**不该合并**：合并会让共享退化成每实例/每行一份，见审计报告 07 §三）：
+    //
+    //   | 键 | 维度 | 权威/产生步 | 消费者 |
+    //   |---|---|---|---|
+    //   | ① `MaterialVariantKey`（本报告的前缀） | build_context + recipe_hash | collect 解析 program 时 | program 记录（变体表；program 本体归 ShaderProgramManager） |
+    //   | ② `MaterialRuntimeKey`（= ① + `data_index_row`） | ① + 自有 SSBO 行 | collect 物化材质行之后（`Intern`） | 共享行（绑定状态：变体 ID / SSBO 行与地址 / 纹理配置 / 配方缓存） |
+    //   | ③ `MaterialAuthoringSideTable`（**行 id 空间**） | 材质 SSBO 行号 | 作者流程写行 | `data_index_row` 的来源（② 的第 3 维与它同源） |
+    //   | ④ `MaterialRuntimePipelineTable`（**每实例每 pass**） | EntityID + pass | 绘制前解析管线 | 复用已解析管线（**不是身份**，不该进 ①②） |
+    //
+    //   先后：③（授权行）⇒ ①（program 身份）⇒ ②（共享行身份，含 ③ 的行号）⇒ ④（每实例解析产物）。
+    //   ⚠ **只有 forward 变体键是运行期键的前缀**：阴影变体键用 **ShadowDepth** 的 build context
+    //     （与 forward 行的键同 recipe、不同 purpose）⇒ 它是**兄弟键**，不是前缀（见
+    //     `RenderPrimitiveCollectSystem` 阴影侧的注释）。
+
+    /// 变体键 = 运行期键去掉「授权 SSBO 行」维 —— **前缀关系的唯一实现**（放本文件是因为
+    /// 只有这里能同时看到两个键；`MaterialVariantKey` 的定义在
+    /// `MaterialVariantTable.h`，其哈希经 `HashMaterialProgramIdentity()` 共用同一份折字段）。
+    /// 规矩：加「配方身份」维度**先改 `MaterialRuntimeKey`**，本函数自动跟随；不决定 program
+    /// 身份的维度不得进前缀。生产接线见 `RenderPrimitiveCollectSystem` 的 forward 路径
+    /// （变体键由本函数从运行期键派生 ⇒ 前缀关系**由构造保证**，不靠约定）。
+    inline MaterialVariantKey VariantKeyOf(const MaterialRuntimeKey &k) noexcept
+    {
+        return MaterialVariantKey{ k.program_build_context, k.recipe_hash };
+    }
+
+    // 前缀的**编译期**钉死：类型 / 偏移逐字相同、第 3 维排在前缀之后。
+    // ⇒ "改一处漏一处"（只给其中一个键加维）会在这里立刻编译失败，而不是运行期静默分叉。
+    static_assert(std::is_same_v<decltype(MaterialVariantKey::program_build_context),
+                                 decltype(MaterialRuntimeKey::program_build_context)>,
+                  "前缀第 1 维类型必须与 MaterialRuntimeKey 一致（改维度请改 MaterialRuntimeKey，见 VariantKeyOf 规矩）");
+    static_assert(std::is_same_v<decltype(MaterialVariantKey::recipe_hash),
+                                 decltype(MaterialRuntimeKey::recipe_hash)>,
+                  "前缀第 2 维类型必须与 MaterialRuntimeKey 一致（改维度请改 MaterialRuntimeKey）");
+    static_assert(offsetof(MaterialRuntimeKey, program_build_context)
+                == offsetof(MaterialVariantKey, program_build_context),
+                  "前缀第 1 维偏移必须与 MaterialRuntimeKey 一致（逐字相同的前缀）");
+    static_assert(offsetof(MaterialRuntimeKey, recipe_hash) == offsetof(MaterialVariantKey, recipe_hash),
+                  "前缀第 2 维偏移必须与 MaterialRuntimeKey 一致（逐字相同的前缀）");
+    static_assert(offsetof(MaterialRuntimeKey, data_index_row) >= sizeof(MaterialVariantKey),
+                  "第 3 维必须排在前缀之后（它是唯一的后缀维；插到前面就不成前缀了）");
+
     /// 键哈希（**仅**用于内部索引；相等性仍是全维度 `operator==`）。
+    /// ⚠ 折字段必须走共用前缀 `HashMaterialProgramIdentity()` + 以它为种子续算第 3 维
+    ///   （**禁**在此再手写一遍「前缀两维的左移折字段」：那正是「前缀两份实现」的形态；
+    ///   本条同时被源码契约 Test 50 的禁复活针盯着）。
     struct MaterialRuntimeKeyHash
     {
         std::size_t operator()(const MaterialRuntimeKey &key) const noexcept
         {
-            hgl::hash::FNV1aHasher64 h;
-            h << key.program_build_context
-              << key.recipe_hash
-              << key.data_index_row;
+            hgl::hash::FNV1aHasher64 h(
+                HashMaterialProgramIdentity(key.program_build_context, key.recipe_hash));
+
+            h << key.data_index_row;
             return static_cast<std::size_t>(h.Result());
         }
     };

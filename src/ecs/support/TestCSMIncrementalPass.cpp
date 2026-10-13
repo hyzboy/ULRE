@@ -6724,6 +6724,61 @@ int main(int argc, char** argv)
                  u8"权威链头注在位，且禁止裸调 bool 版 `VerifyAgainst`。");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 50: 材质键**前缀关系**的接线契约（2026-10-13；审计 §2.2 问题 5 选项 (a)+(b)+(c)）
+    //
+    // 背景：`MaterialVariantKey` 是 `MaterialRuntimeKey` 的严格前缀（前两维逐字相同），
+    // 但前缀此前**只存在于人的脑子里** —— 两个键各自声明结构、各自写 operator==、各自
+    // 手写哈希折字段；漏改一处就静默分叉（变体表与运行期表对同一实体算出不同身份 ⇒
+    // 材质串味，极难定位）。本批把前缀变成**代码**：共用折字段 + `VariantKeyOf()` +
+    // 编译期 static_assert 钉住（类型/偏移/维序）+ 生产由构造派生。
+    // 本可执行文件无图形设备 ⇒ 这里只钉"判据链是否还在"（像素级判据在示例帧摘要）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        const SourceContract kMaterialKeyContracts[] =
+        {
+            { "MaterialVariantTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialVariantTable.h"),
+              "HashMaterialProgramIdentity(",
+              "问题 5(a)：program 身份前缀的折字段必须只有一份实现（两键共用）" },
+
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "inline MaterialVariantKey VariantKeyOf(const MaterialRuntimeKey &k) noexcept",
+              "问题 5(a)：前缀关系的唯一实现必须存在（变体键 = 运行期键去掉授权行维）" },
+
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "static_assert(offsetof(MaterialRuntimeKey, recipe_hash)",
+              "问题 5(c)：前缀必须被**编译期**钉住（偏移逐字相同）—— 只给一个键加维要立刻编译失败" },
+
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "键空间权威链",
+              "问题 5(b)：四条键空间的权威/产生步/消费者必须写在一处（防被当「四套重复键」合并掉）" },
+
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "variant_table->Intern(VariantKeyOf(runtime_key))",
+              "问题 5(c)：生产接线 —— forward 变体键必须由运行期键**派生**（前缀由构造保证，不靠约定）" },
+
+            { "MaterialVariantTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialVariantTable.h"),
+              "h << key.program_build_context",
+              "禁复活：变体键哈希不许再手写前缀折字段（那是「前缀两份实现」的形态）—— 必须走 HashMaterialProgramIdentity()",
+              true },
+
+            { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialRuntimeTable.h"),
+              "h << key.program_build_context",
+              "禁复活：运行期键哈希同样不许手写前缀折字段 —— 必须以共用前缀为种子续算第 3 维",
+              true },
+        };
+
+        if (const int failed = verify_source_contracts(50, kMaterialKeyContracts,
+                                                       static_cast<uint>(sizeof(kMaterialKeyContracts) /
+                                                                         sizeof(kMaterialKeyContracts[0]))))
+            return failed;
+
+        GLogInfo(u8"Test 50 Passed: 材质键前缀契约成立 —— program 身份前缀的折字段只有一份实现"
+                 u8"（HashMaterialProgramIdentity），VariantKeyOf() 是前缀的唯一实现，编译期 static_assert "
+                 u8"钉住类型/偏移/维序（只给一个键加维 = 立刻编译失败），键空间权威链写在头注里，"
+                 u8"forward 变体键由运行期键派生，且两处哈希都禁止手写前缀折字段。");
+    }
+
     GLogInfo(u8"=== All CSM Incremental Pass Contract Tests PASSED ===");
     return 0;
 }

@@ -906,6 +906,10 @@ namespace hgl::ecs
                                              ResolveRowDataIndex(effective_recipe)});
         }
 
+        // ⚠ 本处**不走** `VariantKeyOf()`：阴影变体键用的是 **ShadowDepth** 的 build context
+        // （上一段 `HashMaterialProgramPurpose::ShadowDepth` 那处），而上面的运行期行键用的是
+        // **forward** 的 build context ⇒ 阴影变体键是 forward 行键的**兄弟键**（同 recipe、
+        // 不同 purpose），不是它的前缀（见 `MaterialRuntimeTable.h` 的键空间权威链）。
         const MaterialVariantID shadow_variant = variant_table
             ? variant_table->Intern(MaterialVariantKey{build_context_hash, recipe_hash})
             : INVALID_MATERIAL_VARIANT_ID;
@@ -1177,13 +1181,23 @@ namespace hgl::ecs
             row = nullptr;
         }
 
+        // A4：登记/复用**运行期共享行**（intern + refcount；同键多实体共用一行）。
+        // 键 = (program 身份, 配方身份, 自有材质数据行)；`AssignSlotRow` 负责换行时的
+        // 旧行释放（归零回收 + 退休 GPU 绑定）与"同键复用抵消这次引用"。
+        // 注意：Intern 可能让行/记录两个容器扩容搬家 ⇒ 之后一律重新取指针。
+        const MaterialRuntimeKey runtime_key{
+            build_context_hash,
+            recipe_hash,
+            ResolveRowDataIndex(material_binding_recipe)};
+
         // A3：登记/复用该键的变体记录并落 program（记录 program 只在解析路径写）。
-        // 变体键 = (build context, **recipe 身份**)：同 build context 下**不同材质必须
-        // 落不同记录**，否则后解析者的 program 会覆盖先解析者（键少一维的 bug）。
-        // recipe_hash 取自本次解析所用的 effective recipe（见上方
-        // HashMaterialRecipe(effective_recipe) 那处比对）。
+        // 变体键 = 运行期键的**前缀**（去掉"自有 SSBO 行"维）⇒ 这里由 `VariantKeyOf()`
+        // **派生**而不是手抄两维：前缀关系由构造保证，日后给配方身份加维度只需改
+        // `MaterialRuntimeKey`（`VariantKeyOf` 与编译期 static_assert 一起盯着）。
+        // 该前缀的语义仍是：同 build context 下**不同材质必须落不同记录**，
+        // 否则后解析者的 program 会覆盖先解析者（键少一维的 bug）。
         const MaterialVariantID forward_variant =
-            variant_table->Intern(MaterialVariantKey{build_context_hash, recipe_hash});
+            variant_table->Intern(VariantKeyOf(runtime_key));
         if (forward_variant == INVALID_MATERIAL_VARIANT_ID)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] forward variant unavailable/full for %s build_context=%llu recipe=%llu",
@@ -1197,11 +1211,6 @@ namespace hgl::ecs
         // 键 = (program 身份, 配方身份, 自有材质数据行)；`AssignSlotRow` 负责换行时的
         // 旧行释放（归零回收 + 退休 GPU 绑定）与"同键复用抵消这次引用"。
         // 注意：Intern 可能让行/记录两个容器扩容搬家 ⇒ 之后一律重新取指针。
-        const MaterialRuntimeKey runtime_key{
-            build_context_hash,
-            recipe_hash,
-            ResolveRowDataIndex(material_binding_recipe)};
-
         const MaterialRuntimeRowID row_id = AssignSlotRow(runtime_table, slot, runtime_key);
         if (row_id == INVALID_MATERIAL_RUNTIME_ROW_ID)
         {
