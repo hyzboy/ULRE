@@ -221,3 +221,39 @@ A1 想省的（不动字段偏移、不重编 shader）在本仓按铁律本来�
 | `ShaderResourceSchemaRegressionGate` | 通过 | 45 PASS / 0 FAIL |
 | `-L shadergen`（含 `ShaderCookSmoke`） | 通过 | 13/13 |
 | 示例：0 VUID + 帧摘要 | 与基线逐位一致 | 四例逐位不变（PBRSpheres / AlphaModes / LoadScene / CascadeShadowMap） |
+
+### 10.6 方案 §Phase 1.2 的核对结论与选项 A 落地（2026-10-14）
+
+**逐条核对**：
+
+| 方案 §Phase 1.2 条目 | 现状 | 判定 |
+|---|---|---|
+| ① 移除 collect 里的 `SetRenderItem4ID` | 已删；池表族整体删除（不再存在"另一个出口"） | ✅ |
+| ② `SetRenderIDs` 成为 4-ID 唯一出口 | 表写者 = collect 一处 + `Clear()`（生死钩子）；装配期 0 处写表；剔除侧只读 | ✅ |
+| ③ **进批失败时显式写入清零描述符** | 原状为"保留上一帧值"；且"进批失败"分三个时点 | ⚠️ 拆开处理，见下 |
+
+**"进批失败"的三个时点**（现测 `path:line`）：
+
+1. **时点 1（collect 前置判据 ⇒ 根本不建 item）**：无 `GeometryData` / 策略表不收集（不可见、无 owner）/ transform 无效 / mobility 不匹配 / 阴影 pass 的 masked caster 行未就绪 —— 4-ID 不写。
+2. **时点 2（collect 内"几何行成立"判据 ⇒ 建了 item 但键留 0）**：`geometry_id == 0`，或 `params_row == nullptr`（含"没有 GraphicsContext / GPU 设备"）。
+3. **时点 3（批装配期被剔 ⇒ 4-ID 已经写了）**：`BuildMaterialBatches` 的 `!item->isVisible` / `missing_rows`（配方行未解析）/ `shader_prog == nullptr` / `GetPipeline(pass) == nullptr`。
+   反方向的特例：实体 `index ≥ EntityGPUTable::kCapacity` ⇒ `SetRenderIDs` 报 overflow 拒写，但键已填 ⇒ "进批却没有 4-ID"。
+
+**结论**：方案第三条**在 collect 处无法完整表达**（时点 3 发生在 collect 之后）⇒ 按"选项 A"落地 = 只覆盖**时点 2**（真实可做、成本≈0），时点 3 归**候选批 D**（删 CPU 装配链后该概念消失）。
+不采纳的两个落点：**装配期回写零**（会引入第二个写者 —— 正是本议题要消的双写源）、**把装配期判据前移到 collect**（`GetPipeline(current_render_pass)` 在 collect 阶段未必就绪，耦合过重）。
+
+**选项 A 落地**（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`）：新增 `pass_index` 与 `ids_published`；收尾 `if (!ids_published)` 写 `graph::RenderItemDescriptor{}` 到**本 pass 那一半**
+（写零即"未上行"，与 `EntityRenderIDTable::Clear()` 清两半、剔除侧 `geometry_id == 0 ⇒ 跳过本帧` 同一约定；表 setter 值变才标脏 ⇒ 稳态只在"有 → 无"那一帧脏一次）；
+另加 debug 自检（`#if ULRE_ECS_DEBUG_API`，Release 空）：清零后复查该行确为零，否则点名报错。契约 = Test 30 追加两条针（清零调用行 + 自检文案）。
+
+**验收**：两配置 `rc=0` / `error C/LNK/MSB` = 0；门 **45 PASS / 0 FAIL**；`ctest -C Release -L ecs` **11/11**；`TestCSMIncrementalPass` **1/1**（含新两条针）；`-L shadergen` **13/13**；
+**四示例帧摘要逐位不变**（清零只动剔除记账、不动像素 —— 这正是"画面不变、剔除账变"的可解释变化）。
+
+**红的样子（两段实测，均已逐字节还原）**：
+
+1. **契约红**（删清零行，不需重编 —— 针在运行期读源码）：`TestCSMIncrementalPass` `rc=30`，
+   `Test 30 Failed: 时点 2（几何行不成立）必须显式清零本 pass 那一半（删掉 = 退回留旧值 ⇒ 剔除按旧几何记账） -- 'world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});' not found`。
+2. **运行期红（合成场景）**：删清零行 + 令 `geometry_id` 自第 1 帧起恒 0（第 0 帧已上行过 ⇒ 存在旧值）⇒ Debug 示例 **500 条**
+   `[EntityRenderIDTable] 几何行不成立但本 pass 行未清零：entity_index=0/1/2 pass=0 geometry_id=0`。还原后源码 sha256 逐字节一致（`RESTORED_OK: True`）。
+
+**遗留**：时点 3 的语义（"表里有本帧新鲜 4-ID、却不会画"）如实写入本报告；`EntityRenderIDTable` 头注与写点旁注释里"表内只留真会画的实体"一句**口径过强**（材质/管线解析失败项仍会留值），待与批 D 同批订正。

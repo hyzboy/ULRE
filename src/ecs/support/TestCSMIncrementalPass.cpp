@@ -5035,6 +5035,17 @@ int main(int argc, char** argv)
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "                if (batch.gpu_driven_override)",
               "GPU-Driven 批的逐项成簇判据丢失（多实例簇会让整簇共用首实例，只剩 1 个实例可见）（T4c4-3 起 CPU 绘制批构建链已整体删除 ⇒ 禁复活）", true },
+            // ⑤ 2026-10-14（#3 结案）：几何行不成立（时点 2）⇒ 本 pass 那一半**显式清零**
+            //    留旧值 = 剔除按上一帧的几何 AABB 记账（画面不变、剔除账会偏）；零 = 未上行，
+            //    与 Clear()（实体销毁清两半）及剔除侧 geometry_id == 0 ⇒ 跳过本帧 同一约定。
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});",
+              "时点 2（几何行不成立）必须显式清零本 pass 那一半（删掉 = 退回留旧值 ⇒ 剔除按旧几何记账）" },
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "几何行不成立但本 pass 行未清零",
+              "清零后的 debug 自检丢失（清零若被绕过 ⇒ 无任何声音）" },
         };
 
         if (const int failed = verify_source_contracts(30, kB3iiiContracts,

@@ -2275,7 +2275,11 @@ namespace hgl::ecs
             item->UpdateWorldMatrix();
 
             // ── B3-iii：填"行派生键"（批排序 / 聚簇 / ICB 的唯一判据）──
-            // 行号 = geometry_id；其余字段从**行**读（同 asset ⇒ 同一行）。行缺失 ⇒ 键保持 0 ⇒ 本项不进批。
+            // 行号 = geometry_id；其余字段从**行**读（同 asset ⇒ 同一行）。行缺失 ⇒ 键保持 0 ⇒ 本项不进批，
+            // 且本 pass 那一半要**显式清零**（见下面 ids_published 的收尾分支）。
+            bool ids_published = false;
+            const uint32_t pass_index = world->IsCurrentPassShadow() ? 1u : 0u;   // T4c3a：4-ID 是**按 pass 解析**的（阴影程序/材质变体不同）
+
             if (geometry_id != 0)
             {
                 auto *gc_key = world ? world->GetGraphicsContext() : nullptr;
@@ -2299,9 +2303,8 @@ namespace hgl::ecs
                     render_ids.geometry_id  = geometry_id;
                     render_ids.material_id  = material_id;
                     render_ids.texture_id   = texture_id;
-                    // T4c3a：4-ID 是**按 pass 解析**的（阴影程序/材质变体不同）⇒ 写本 pass 那一半
-                    world->GetEntityRenderIDTable().SetRenderIDs(
-                        world->IsCurrentPassShadow() ? 1u : 0u, entity_id, render_ids);
+                    world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, render_ids);
+                    ids_published = true;
 
                     // T3h：阴影**事实**随同一判据点上 EntityGPU 行（ShadowProxy 是
                     // CPU-only 组件、无 GPU 行号可推 ⇒ 值进行才算接线；写者=世界，
@@ -2315,6 +2318,26 @@ namespace hgl::ecs
                             CanReceiveShadow(shadow_owner) ? 1u : 0u);
                     }
                 }
+            }
+
+            if (!ids_published)
+            {
+                // 时点 2（几何行不成立 ⇒ 本项不进批）：**显式清零本 pass 那一半**。
+                // 为什么：留着上一帧的值会让剔除按**旧几何的 AABB** 记账（画面不受影响 —— 该实体不在任何批里、
+                // 被 tags 跳过 —— 但剔除账与计数会偏）；零 = 未上行，与 `EntityRenderIDTable::Clear()`
+                //（实体销毁清两半）以及剔除侧 `geometry_id == 0 ⇒ 跳过本帧` 是同一约定。
+                // 成本：表的 setter 值变才标脏 ⇒ 稳态只在"有 → 无"那一帧脏一次。
+                world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});
+
+#if ULRE_ECS_DEBUG_API
+                const graph::RenderItemDescriptor *verif_row =
+                    world->GetEntityRenderIDTable().Row(pass_index, entity_id.index);
+                if (verif_row && !(*verif_row == graph::RenderItemDescriptor{}))
+                {
+                    GLogError("[EntityRenderIDTable] 几何行不成立但本 pass 行未清零：entity_index=%u pass=%u geometry_id=%u",
+                              entity_id.index, pass_index, geometry_id);
+                }
+#endif
             }
 
             // D9：阴影 pass 的 caster 本帧成功产出 item（该实例的阴影变体已就绪）
