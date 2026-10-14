@@ -22,7 +22,11 @@ namespace hgl
          *   按 `EntityID.index` 发布成 GPU 可达 SSBO —— 行型直接复用 4-ID 终态的
          *   `graph::RenderItemDescriptor`（16 B），**不制造第二个描述符形状**。
          *
-         *   · 写者 = `RenderPrimitiveCollectSystem`（唯一现算点 ⇒ 无第二口径）；
+         *   · 写者 = `RenderPrimitiveCollectSystem`（唯一现算点 ⇒ 无第二口径）；几何行不成立时
+         *     本 pass 那一半**显式清零**（零 = 未上行，消费者按 `geometry_id == 0` 判无）；
+         *   · 表内的实体 = **几何行成立**者（≠"本帧一定会画"：批装配期还会再剔一层）；
+         *   · 消费侧原含 CPU 批行写入（读本 pass 那一半）—— 2026-10-14 批 D 已删该路径
+         *     （非接管批不画，批行表一律由剔除输出提供）。
          *   · 消费者 = GPU 剔除着色器（池 geometry_id 查 AABB）+ CPU 参考剔除（同口径对拍）
          *     + 形态 B gather（material/texture 行 = gap #1/#2 的解）；
          *   · `transform_id` 存 `GetID()` 原始句柄（与 RenderItemDescriptor 同语义）；

@@ -182,24 +182,24 @@ namespace hgl::ecs
         /// 唯一稳妥 = `vkQueueWaitIdle` 排空。每次交接沿付一次，稳态不付。
         /// （VUID-vkFreeMemory-memory-00677 实测踩中：RPBS_IndirectMeshTaskBuffer
         /// in use by Swapchain_RenderCmdBuffer_0。）
-        void DrainForHandover();
 
         /// **SSBO DUMP 诊断**：同步读回并向日志 Dump 所有帧槽的计数缓冲、布局缓冲、标签分布与全局幸存数
         void DumpCullSSBOs(const char *stage_tag = "CULL_DUMP");
 
         /// **形态 B（T3f-2）接管 hook**：本帧 build 之前由 `PrimitiveBatchPipeline::
-        /// RunBatching()` 调用（批对象已被 `MaterialBatch::Clear()` 复位成"自有 buffer +
-        /// override=false"状态）。前提校验全部通过 ⇒ 释放批自有行表、四张 gather 表 +
-        /// icb + count 指向剔除输出、置 `gpu_driven_override`（既有契约：跳 sort/ensure/
-        /// write、每项自成 DrawBatch 给 maxDrawCount 记账）。
+        /// RunBatching()` 调用（批对象已被 `MaterialBatch::Clear()` 复位成"无表 +
+        /// override=false"状态）。前提校验全部通过 ⇒ 四张 gather 表 + icb + count 指向
+        /// 剔除输出、置 `gpu_driven_override`（既有契约：跳 sort/ensure/write、每项自成
+        /// DrawBatch 给 maxDrawCount 记账）。2026-10-14 批 D：CPU 侧自有行表已整族删除
+        /// ⇒ 交接不再需要释放任何 batch 自有 buffer（排空逻辑一并删除）。
         /// T3i：hook 逐批调用（`TryApplyGPUCullOverride` 遍历含几何批），未接管的批
-        /// 标签留无效 ⇒ cull 不为其写行、CPU 路径照旧绘制（**按批粒度**）。
+        /// 标签留无效 ⇒ cull 不为其写行（该批本帧**不画**：CPU 绘制批已随 T4c4-3 删除）。
         /// 前提（§8.3/§8.5，一条不满足 ⇒ **该批**不接管 + 一次性报错，绝不让批指向错数据）：
         /// opt-in 开 && 主帧 pass && 批内全
         /// PrimitiveRenderItem && 全 mesh 批 && 批容量 ≤ gather 容量
         /// && 全 item 有 owner 实体（禁 VDM 等无实体项——4-ID 表只覆盖实体）&&
         /// 每实体池行存在 && 非 lines &&
-        /// 阴影全默认（CanReceiveShadow && bias==1.0 ⇒ gather 写 0 与 CPU 行逐字节一致）。
+        /// 阴影全默认（receive 事实为 1 且 bias 常态 ⇒ gather 写 0 = 引擎默认，着色侧视 0 为 1.0）。
         /// T3i：逐批调用（`batch_index` = 该批在**本帧分区表**中的槽号，由 guard 装配时
         /// 分配并写入标签/分区；`row_base`/`capacity` 从分区表取，口径唯一）。
         /// @return true = 本帧该批由 GPU gather 输出接管绘制。

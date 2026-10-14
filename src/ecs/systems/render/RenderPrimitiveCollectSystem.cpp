@@ -2266,8 +2266,10 @@ namespace hgl::ecs
             // T3d-3a：写**实体 4-ID 表**（世界私有、按 EntityID.index 直索引）——世界唯一的
             // 4-ID 发布点（GPU 剔除按 index 枚举源直接取资源池口径 geometry_id / material /
             // texture；CPU 侧批行写入读的也是本表本 pass 那一半）。
-            // 挂在下面 B3-iii「几何行成立 ⇒ 本项进批」的同一判据块内（行缺失 ⇒ 键 0 ⇒
-            // 不进批 ⇒ 4-ID 也不上行；表内只留"真会画"的实体 ⇒ 剔除/接管口径与批一致）。
+            // 挂在下面 B3-iii「几何行成立 ⇒ 本项进批」的同一判据块内（行缺失 ⇒ 键 0 ⇒ 不进批；
+            // 本 pass 那一半清零 —— 见同函数里的 `ids_published` 分支）。⇒ 表内的实体 = **几何行成立**者，
+            // **不等于**"本帧一定会画"：装配期还会按可见性 / 配方行 / 程序管线再剔一次，而那一层在
+            // collect 之后、4-ID 已经写过（批 D 若落地，该层判据点还会减少）。
 
             item = std::make_unique<PrimitiveRenderItem>(
                 entity_id, transform, material_row_id, world);
@@ -2308,14 +2310,37 @@ namespace hgl::ecs
 
                     // T3h：阴影**事实**随同一判据点上 EntityGPU 行（ShadowProxy 是
                     // CPU-only 组件、无 GPU 行号可推 ⇒ 值进行才算接线；写者=世界，
-                    // 与 SetVisible 同族）。消费规则与 CPU FinalizeBatch 的 D3 段
-                    // 逐字同式（bias<=0/非有限 ⇒ 行留 0 ⇒ 着色侧视 0 为默认 1.0）。
+                    // 与 SetVisible 同族）。消费规则与着色侧逐字同式（bias<=0/非有限 ⇒ 行留 0
+                    // ⇒ 着色侧视 0 为默认 1.0）；剔除端按 `entity.shadow_*` 把本行抄进
+                    // per-draw 行（D3 契约段③ 现由这两跳承担 —— 原 CPU 行写入端已删）。
                     {
                         Entity *shadow_owner = world->GetEntity(entity_id);
+
+                        // A5b / A7a（2026-10-14 批 D **搬家**）：接收判定**由策略表给出**
+                        // —— `RenderNeed::ShadowReceiver` 是唯一判据。原实现长在 CPU 批行
+                        // 写入端（`PrimitiveBatchPipeline::WriteBatchIndexRows` 的 D3 段），随
+                        // 「CPU 侧 per-batch 表构建」整族删除后迁到本处：本事实行是它的**新载体**
+                        //（剔除端按 `entity.shadow_*` 抄进 per-draw 行 ⇒ 段③ 由两跳承担）。
+                        // `receive_shadow` 事实仍由实体级自由函数提供（缺省约定唯一出处见 ShadowProxy.h）。
+                        StrategyFacts shadow_facts;
+                        shadow_facts.receive_shadow = CanReceiveShadow(shadow_owner);
+
+                        const uint32_t shadow_needs =
+                            EvaluateRenderNeed(shadow_owner ? shadow_owner->GetComponentMask() : 0u,
+                                               shadow_facts.ToMask());
+
+#if ULRE_STRATEGY_PARITY_ENABLED
+                        // 反向守卫：参考实现 = 旧判据（Release 下整块编空）
+                        ParityCheckShadowReceiver(
+                            HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver),
+                            CanReceiveShadow(shadow_owner),
+                            "RenderPrimitiveCollectSystem#shadow-facts");
+#endif
+
                         world->GetEntityGPUTable().SetShadowFacts(
                             entity_id,
                             NormalizeShadowBiasToRow(GetShadowBiasMultiplier(shadow_owner)),
-                            CanReceiveShadow(shadow_owner) ? 1u : 0u);
+                            HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver) ? 1u : 0u);
                     }
                 }
             }

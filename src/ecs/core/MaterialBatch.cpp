@@ -23,29 +23,8 @@ namespace hgl::ecs
 
     MaterialBatch::~MaterialBatch()
     {
-        if (own_icb_mesh_tasks && icb_mesh_tasks)
-            delete icb_mesh_tasks;
-        if (own_mesh_draw_params && mesh_draw_params_buffer)
-        {
-            if (buffer_manager)
-                buffer_manager->Release(mesh_draw_params_buffer);
-            else
-                delete mesh_draw_params_buffer;
-        }
-        if (own_l2w_index && l2w_index_buffer)
-        {
-            if (buffer_manager)
-                buffer_manager->Release(l2w_index_buffer);
-            else
-                delete l2w_index_buffer;
-        }
-        if (own_material_data_rows && material_data_index_rows_buffer)
-        {
-            if (buffer_manager)
-                buffer_manager->Release(material_data_index_rows_buffer);
-            else
-                delete material_data_index_rows_buffer;
-        }
+        // 2026-10-14（批 D）：CPU 侧 per-batch 表构建已整删 ⇒ 本批只持**非拥有**指针（指向剔除输出）
+        // ⇒ 析构不再释放任何 per-batch 表（GPU 输出由 GPUCullSystem 拥有）。
         if (renderer)
             delete renderer;
     }
@@ -57,16 +36,11 @@ namespace hgl::ecs
         icb_count_buffer = nullptr;
         // T4c3c：计数偏移随切片按 pass 存（`gpu_slice[p].count_buffer_offset`）
 
-        if (!own_icb_mesh_tasks)
-            icb_mesh_tasks = nullptr;
-        if (!own_mesh_draw_params)
-            mesh_draw_params_buffer = nullptr;
-        if (!own_l2w_index)
-            l2w_index_buffer = nullptr;
-        if (!own_material_data_rows)
-            material_data_index_rows_buffer = nullptr;
-
-        l2w_buffer = nullptr;
+        // 2026-10-14（批 D）：四个 per-batch 表指针一律**非拥有** ⇒ 复位无条件置空（不再有 own_* 分支）。
+        icb_mesh_tasks                    = nullptr;
+        mesh_draw_params_buffer           = nullptr;
+        l2w_index_buffer                  = nullptr;
+        material_data_index_rows_buffer   = nullptr;
         gpu_driven_override = false;
         for (uint32_t p = 0; p < RenderPassSlot::Count; ++p)   // T4c3c：切片随 override 作废（两 pass 同清）
         {
@@ -74,10 +48,6 @@ namespace hgl::ecs
             gpu_slice[p].capacity            = 0;
             gpu_slice[p].count_buffer_offset = 0;
         }
-        own_icb_mesh_tasks = true;
-        own_mesh_draw_params = true;
-        own_l2w_index = true;
-        own_material_data_rows = true;
     }
 
     void MaterialBatch::AddItem(RenderItem* item)

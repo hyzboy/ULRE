@@ -2,6 +2,13 @@
 
 > **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。
 
+> **注（2026-10-14）**：正文里的 `WriteBatchIndexRows` 行写入端（含 D3 接收侧旋钮的段③）
+> 已随「CPU 侧 per-batch 表构建」整族删除（非接管批不画）——段③ 现由「实体事实上行
+> （`RenderPrimitiveCollectSystem`）→ 剔除写 per-draw 行（`entity_gpu_cull.glsl`）」两跳承担，
+> 判据（策略表 `RenderNeed::ShadowReceiver`）与对拍装置随之搬家；见
+> `doc/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §11.7。
+> 本文正文保留原貌作为历史记录。
+
 > 时间：2026-09-26；分支 `CSM`；起因 = csm-review-2026-09-25 的 A1/A1-4（阴影 pass 程序接线），
 > 追至终极根因 = RenderPass::CreatePipeline 的 depth-only 快速路径无条件剥离片元 stage。
 > 本文记录完整因果链、材质渲染管线关键机制、取证方法与经验教训。相关提交见文末清单。

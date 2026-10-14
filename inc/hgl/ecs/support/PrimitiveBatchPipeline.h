@@ -106,9 +106,6 @@ namespace hgl::ecs
 
         graph::BufferManager* GetBufferManager() const;
 
-        void EnsureMeshDrawParams(MaterialBatch& batch);       ///<mesh per-draw 参数表容量保障（gather 消费该池 ⇒ 必须物化）
         void FinalizeBatch(MaterialBatch& batch);
-        void EnsureBatchIndexRows(MaterialBatch& batch);
-        void WriteBatchIndexRows(MaterialBatch& batch);
     };
 }

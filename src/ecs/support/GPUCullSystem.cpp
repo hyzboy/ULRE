@@ -542,18 +542,6 @@ namespace hgl::ecs
         return true;
     }
 
-    void GPUCullSystem::DrainForHandover()
-    {
-        // CPU→GPU 交接沿：排空整条 graphics 队列（含上一帧主帧 cmd）。
-        // cull_queue_ 包的就是 attr->graphics_queue（与主帧同一条，VKDeviceCreater
-        // 单队列族）⇒ WaitQueue 覆盖主帧引用，这正是释放批自有 buffer 的前提。
-        if (cull_queue_)
-        {
-            if(!cull_queue_->WaitQueue())
-                GLogError(u8"[GPUCullSystem] queue drain failed during CPU→GPU handover");
-        }
-    }
-
     bool GPUCullSystem::CreateDispatchResources()
     {
         if (cull_queue_)
@@ -785,61 +773,10 @@ namespace hgl::ecs
         if (batch->items.size() > info.capacity)
             return false;
 
-        // 交接帧（CPU→GPU）：批可能已持有上一帧 CPU 路径分配的**自有** buffer
-        // （own_* 仍为 true 时 `MaterialBatch::Clear()` 保留指针）⇒ 覆盖前必须释放，
-        // 否则每交接一次漏一套 ICB/行表（稳态接管帧 own=false、指针=GPU 表，无此问题）。
-        //
-        // ⚠ 释放前必须排空队列（T3g 实测踩 VUID-vkFreeMemory-memory-00677）：
-        // 自有 ICB/行表可能仍被**上一帧主帧 cmd** 引用——自家 fence 只覆盖自家
-        // 提交（同队列各批"按序开始、可乱序完成"，Vulkan 同步章），等自家提交
-        // 不够 ⇒ vkQueueWaitIdle 全排空。只在这次交接**真有自有 buffer 要释放**
-        // 时付出（稳态 own=false ⇒ 零成本；每个 CPU↔GPU 沿一次性）。
-        const bool has_owned_to_release =
-            (batch->own_icb_mesh_tasks && batch->icb_mesh_tasks)
-         || (batch->own_mesh_draw_params && batch->mesh_draw_params_buffer)
-         || (batch->own_l2w_index && batch->l2w_index_buffer)
-         || (batch->own_material_data_rows && batch->material_data_index_rows_buffer);
-
-        if (has_owned_to_release)
-            DrainForHandover();
-
-        // 释放口径与 ~MaterialBatch / ReleaseICB 逐字一致。
-        if (batch->own_icb_mesh_tasks && batch->icb_mesh_tasks)
-        {
-            delete batch->icb_mesh_tasks;
-            batch->icb_mesh_tasks = nullptr;
-        }
-        if (batch->own_mesh_draw_params && batch->mesh_draw_params_buffer)
-        {
-            if (batch->buffer_manager)
-                batch->buffer_manager->Release(batch->mesh_draw_params_buffer);
-            else
-                delete batch->mesh_draw_params_buffer;
-            batch->mesh_draw_params_buffer = nullptr;
-        }
-        if (batch->own_l2w_index && batch->l2w_index_buffer)
-        {
-            if (batch->buffer_manager)
-                batch->buffer_manager->Release(batch->l2w_index_buffer);
-            else
-                delete batch->l2w_index_buffer;
-            batch->l2w_index_buffer = nullptr;
-        }
-        if (batch->own_material_data_rows && batch->material_data_index_rows_buffer)
-        {
-            if (batch->buffer_manager)
-                batch->buffer_manager->Release(batch->material_data_index_rows_buffer);
-            else
-                delete batch->material_data_index_rows_buffer;
-            batch->material_data_index_rows_buffer = nullptr;
-        }
-
-        // 指向剔除输出（own_* 全 false ⇒ 批析构/复位绝不 delete 这些 buffer）。
+        // 2026-10-14（批 D）：CPU 侧 per-batch 表构建整族已删 ⇒ 交接帧**没有自有 buffer 要释放**，
+        // 原先的队列排空（vkQueueWaitIdle 全排空，为释放自有 ICB/行表而付）与四个
+        // `own_*` 置 false 一并删除；下面的指针一律指向剔除输出（批只持**非拥有**指针）。
         batch->gpu_driven_override            = true;
-        batch->own_icb_mesh_tasks             = false;
-        batch->own_mesh_draw_params           = false;
-        batch->own_l2w_index                  = false;
-        batch->own_material_data_rows         = false;
 
         // T3i / T4c3c：切片信息（绘制侧的 maxDrawCount / 地址偏移全从这里取）——
         // 写进**本 pass 那一份**，不覆盖另一 pass（批对象跨 pass 共享）。
@@ -856,11 +793,9 @@ namespace hgl::ecs
         batch->icb_count_buffer               = batch_counter_buffer_;
         // 计数偏移随切片按 pass 存（见上）⇒ 这里不再单写
         batch->mesh_draw_params_buffer        = cmds_out_buffer_;
-        batch->mesh_draw_params_capacity      = info.capacity;
         batch->l2w_index_buffer               = l2w_out_buffer_;
-        batch->l2w_index_capacity             = info.capacity;
         batch->material_data_index_rows_buffer = mtl_out_buffer_;
-        batch->material_data_index_rows_capacity = info.capacity;
+        // 容量一律从 `gpu_slice[pass].capacity` 取（上面的切片信息）⇒ 不再单抄一份。
 
         return true;
     }

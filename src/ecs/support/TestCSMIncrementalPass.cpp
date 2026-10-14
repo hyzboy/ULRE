@@ -2044,7 +2044,10 @@ int main(int argc, char** argv)
     // 本测试钉住这条链的四段：
     //   ① 行结构是 X 列表单源（CPU struct / 布局断言 / GLSL 发射同源，无手写漂移面）；
     //   ② 发射端遍历该列表，不手写字段；
-    //   ③ 批处理写入端从实体级自由函数取真值（逐图元）；
+    //   ③ 逐图元真值 → per-draw 行：**2026-10-14（批 D）后载体是两跳**——
+    //      实体事实端（collect）读组件自由函数写 EntityGPU 行，剔除以
+    //      `entity.shadow_*` 把该行抄进 per-draw 行（CPU 行写入端已随
+    //      「CPU 侧 per-batch 表构建」整族删除 ⇒ 针随载体走）；
     //   ④ 片元端真的读该行，并据 receive 早退、据 bias_multiplier 缩放偏差。
     // 任一段被"简化"掉，旋钮就重新变回死旋钮——这正是本测试存在的理由。
     // ─────────────────────────────────────────────────────────────
@@ -2082,19 +2085,22 @@ int main(int argc, char** argv)
               "uint payload_index",
               "GLSL 行结构退回手写字段发射——加字段必然漏改一侧", true },
 
-            // ③ 逐图元写入（真值来自实体级阴影自由函数）
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
-              "CanReceiveShadow(",
-              "批处理写入端不再读阴影组件的接收开关（receive_shadow 又成死旋钮）" },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
-              "row_ptr[i].shadow_flags",
-              "接收开关没有写进 per-draw 行（着色端读到的永远是默认值）" },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
-              "GetShadowBiasMultiplier(",
-              "批处理写入端不再读局部偏差倍率（bias_multiplier 又成死旋钮）" },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
-              "row_ptr[i].shadow_bias_multiplier = bias_for_row;",
-              "局部偏差倍率没有写进 per-draw 行（着色端读到的永远是默认值）" },
+            // ③ 逐图元写入（真值 = 组件自由函数 → EntityGPU 事实行 → per-draw 行）
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "CanReceiveShadow(", "实体事实端不再读接收开关（receive_shadow 又成死旋钮）" },
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "GetShadowBiasMultiplier(", "实体事实端不再读局部偏差倍率（bias_multiplier 又成死旋钮）" },
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "SetShadowFacts(", "阴影事实不上 EntityGPU 行 ⇒ 后两跳全断（旋钮无声失效）" },
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+              "entity.shadow_receive == 0u ? 1u : 0u",
+              "剔除端不再把接收开关抄进 per-draw 行（着色端读到的永远是默认值）" },
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+              "entity.shadow_bias_multiplier,",
+              "剔除端不再把偏差倍率抄进 per-draw 行（着色端读到的永远是默认值）" },
 
             // ④ 片元端读取 + 早退 + 缩放
             { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
@@ -4276,10 +4282,14 @@ int main(int argc, char** argv)
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "legacy_collect",
               "旧 if 链参考实现不见了（对拍变成同义反复，报 0 不一致也毫无意义）" },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+            // 2026-10-14（批 D）：接收判定的载体从 CPU 批行写入端迁到「实体事实上行点」
+            //（collect）⇒ 针随载体走（同一语义：策略表判据 + 反向守卫）。
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "RenderNeed::ShadowReceiver",
-              "接收判定不再查 ShadowReceiver 需求位" },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "接收判定不再查 ShadowReceiver 需求位（抄组件开关 = 表不再是判据）" },
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "ParityCheckShadowReceiver(",
               "接收侧对拍装置不再被调用（反向守卫空转）" },
             { "RenderStrategyParity.h", OS_TEXT("inc/hgl/ecs/support/RenderStrategyParity.h"),
@@ -5046,6 +5056,23 @@ int main(int argc, char** argv)
               OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "几何行不成立但本 pass 行未清零",
               "清零后的 debug 自检丢失（清零若被绕过 ⇒ 无任何声音）" },
+            // ⑥ 2026-10-14（批 D）：CPU 侧 per-batch 表构建整族删除 ⇒ **禁复活**（构建者 / 自有标志 / 死字段）
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "EnsureMeshDrawParams", "CPU 侧 mesh per-draw 参数表构建复活（接管后该表由剔除输出提供）", true },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "EnsureBatchIndexRows", "CPU 侧批行表分配复活（非接管批不画）", true },
+            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
+              "WriteBatchIndexRows", "CPU 侧批行写入复活（同上）", true },
+            { "PrimitiveBatchPipeline.h", OS_TEXT("inc/hgl/ecs/support/PrimitiveBatchPipeline.h"),
+              "WriteBatchIndexRows", "同上（声明复活）", true },
+            { "MaterialBatch.h", OS_TEXT("inc/hgl/ecs/core/MaterialBatch.h"),
+              "own_icb_mesh_tasks", "per-batch 表自有标志复活（本批已删该机制）", true },
+            { "MaterialBatch.h", OS_TEXT("inc/hgl/ecs/core/MaterialBatch.h"),
+              "l2w_buffer", "死字段 l2w_buffer 复活（全仓无赋值点）", true },
+            { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
+              "DrainForHandover", "交接排空复活（CPU 侧已无自有 buffer 可释放）", true },
+            { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/GPUCullSystem.cpp"),
+              "= l2w_out_buffer_;", "接管切换不再把批行表指向剔除输出（接管失效 = 批不画）" },
         };
 
         if (const int failed = verify_source_contracts(30, kB3iiiContracts,

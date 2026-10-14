@@ -23,7 +23,8 @@
  *     （走保底材质渲染出来 + 根颜色标注错误种类），不是剔除条件。
  *   · `FallbackMaterial` ⇔「有几何、无材质来源 ⇒ 取保底（错误）材质」
  *   · `ShadowCaster`   ⇔ 同一处的 `CanCastShadow`（能力位）
- *   · `ShadowReceiver` ⇔ `PrimitiveBatchPipeline.cpp` 的 `CanReceiveShadow`（能力位）
+ *   · `ShadowReceiver` ⇔ `CanReceiveShadow`（能力位；事实由实体级自由函数提供，
+ *     **判定端 = `RenderPrimitiveCollectSystem` 的阴影事实上行点** —— 2026-10-14 批 D 起）
  */
 #pragma once
 

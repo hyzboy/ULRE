@@ -151,12 +151,10 @@ namespace hgl::ecs
         // 消费——行表 buffer 已带 SHADER_DEVICE_ADDRESS usage，地址可取即填）。
         if (material_is_mesh && owner_batch && owner_batch->device)
         {
+            // 2026-10-14（批 D）：原先可显式指定的 L2W 矩阵缓冲（全仓无赋值点）已删 ⇒
+            // 只剩 transform_buffer 这一条来源。
             graph::IGPUBuffer *l2w_gpu = nullptr;
-            if (owner_batch->l2w_buffer)
-            {
-                l2w_gpu = owner_batch->l2w_buffer->GetGPUBuffer();
-            }
-            else if (transform_buffer)
+            if (transform_buffer)
             {
                 auto *l2w_buf = transform_buffer->GetTransformDataBuffer();
                 if (l2w_buf)

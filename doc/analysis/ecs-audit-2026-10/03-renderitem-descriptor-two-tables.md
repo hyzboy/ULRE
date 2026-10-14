@@ -316,6 +316,60 @@ A1 想省的（不动字段偏移、不重编 shader）在本仓按铁律本来�
 - 建议**一次整族**：四类同判据（同一接管切换替换、同一守卫），分开做会留"半死面"并多跑两次全量回归。若要更细：D1 = 第 3/4 类（L2W index + MatRow）、D2 = 第 1/2 类（ICB + MeshDrawParams）。
 - **边界**：不碰 GPU 侧输出行（`l2w_out` / `mtl_out` / `cmds_out`）、不碰 Lines/Text 的独立表、不动任何 `addr_*` 世界表字段、不顺手改 `DrainForHandover` 的排空语义。
 
+### 11.7 落地记录（2026-10-14，本批已执行）
+
+**范围修正**：施工时取证到真实范围是**四类**（ICB / MeshDrawParams / L2W index / MaterialInstanceAddresses 行），
+比草案的两列更全 —— 仍按施工单 §11.6 的"一次整族"执行。
+
+**已删（引擎侧逐符号 `git grep -nw` 归零）**：
+
+| 位置 | 删除内容 |
+|---|---|
+| `PrimitiveBatchPipeline.cpp` | `EnsureMeshDrawParams` / `EnsureBatchIndexRows` / `WriteBatchIndexRows` 三函数体；`FinalizeBatch` 的三次调用；调试打印里的两个指针字段 |
+| `PrimitiveBatchPipeline.h` | 三条声明 |
+| `MaterialBatch.h` | 三个容量字段、四个 `own_*`、死字段 `l2w_buffer`；五个 per-batch 表指针改注「**非拥有**」 |
+| `MaterialBatch.cpp` | 析构释放分支、复位处 `own_*` 条件置空（改无条件）、`own_*=true` |
+| `GPUCullSystem.cpp` | `has_owned_to_release` + 交接释放块 + 四个 `own_*=false` + **`DrainForHandover()` 实现体**（唯一调用者即上面那段；CPU 侧已无自有 buffer 可释放 ⇒ 排空语义整体退场） |
+| `GPUCullSystem.h` | `DrainForHandover()` 声明 |
+| `PipelineMaterialRenderer.cpp` | `l2w_buffer` 的**死分支**（字段全仓无赋值点 ⇒ 只剩 `transform_buffer` 一条来源） |
+
+**连带修正（契约/语义搬家 = 载体迁移，不是放水）**：
+
+1. **Test 14（D3 阴影旋钮段③）**：CPU 行写入端被删 ⇒ 段③ 的载体变成「实体事实上行 → 剔除写行」两跳，
+   针随之搬到 `RenderPrimitiveCollectSystem.cpp`（`CanReceiveShadow(` / `GetShadowBiasMultiplier(` / `SetShadowFacts(`）
+   与 `entity_gpu_cull.glsl`（`entity.shadow_receive == 0u ? 1u : 0u` / `entity.shadow_bias_multiplier,`）。
+2. **Test 25（A7a：策略表是接收侧唯一判据 + 对拍）**：该判据原本**只**长在被删的 CPU 行写入里
+   （`RenderNeed::ShadowReceiver` + `ParityCheckShadowReceiver(`），全仓无第二个调用点 ⇒ 不是"改针"而是
+   **把语义搬到新载体**：`RenderPrimitiveCollectSystem` 的阴影事实上行点现用
+   `EvaluateRenderNeed(component_mask, facts.ToMask())` 求 `RenderNeed::ShadowReceiver` 作为
+   `SetShadowFacts` 的接收位（`ULRE_STRATEGY_PARITY_ENABLED` 下调 `ParityCheckShadowReceiver` 对拍）。
+   ⇒ 段③ 判据口径不变（策略表唯一判据），只是载体换代；`RenderStrategyTable.h` 表注的旧出处同步订正。
+3. Test 25 另一条（`if (!CanReceiveShadow(` 禁复活）不受影响 —— 删除只让它更"零手写判据"。
+4. 新增**禁复活针**（Test 30 的 `kB3iiiContracts`）：三个构建函数名（含头文件声明）、`own_icb_mesh_tasks`、
+   `l2w_buffer`、`DrainForHandover`；新增**存在性针**：接管切换仍把批行表指向剔除输出（`= l2w_out_buffer_;`）。
+
+**验收（最终源码态，清整树 obj 后两配置全量重编）**：
+
+- Debug / Release 全量重编：**rc=0 / 0 error**（391 目标）
+- 门 **45 PASS / 0 FAIL**；`ctest -C Release -L ecs` **11/11**；`-L shadergen` **13/13**；`ShaderCooker` rc=0
+- `TestCSMIncrementalPass` **51/51 契约全过**（Release + Debug 各 rc=0）
+- 四示例帧摘要**逐位不变**：PBR `0x3DD88A0999CDC486` / AM `0x2FE87B15EE8B8A16` / LS `0xC9E38ED2F49A069B` / CSM `0x1CDAADEBF18B7CE4`
+- 接管路径专职台架：`GC_STATIC=1 GC_SELFCHECK=1 GPUDrivenCull` **PASS**（`0x90E0745C2C7B8599`）；`DWS_SELFCHECK=1 DualWorldShadows` **PASS**
+
+**红的样子（实测原文）**：
+
+1. **接力红**：删掉 `GPUCullSystem` 接管切换里 `batch->l2w_index_buffer = l2w_out_buffer_;` ⇒ 编译 rc=0（不是编译错），
+   `GPUDrivenCull` 运行**挂死**（100s 未退出，日志刷 `[ECS RENDER] AcquireSwapchainImage FAILED`）⇒ 该指针确为承力项
+   （不被接管提供 ⇒ 批行表地址 0 ⇒ GPU 侧无法完成本帧）。
+2. **禁复活红**：把被删函数名写回 `PrimitiveBatchPipeline.cpp` ⇒ `TestCSMIncrementalPass` **rc=30** 并点名：
+   `Test 30 Failed: CPU 侧 mesh per-draw 参数表构建复活（接管后该表由剔除输出提供） -- 'EnsureMeshDrawParams' 重新出现在 PrimitiveBatchPipeline.cpp（禁复活）`。
+   两次改动均**逐字节还原**（sha256 复核）。
+
+**遗留（如实记录）**：
+
+- `MaterialBatch` 仍留 `gpu_slice[pass]`（绘制侧 maxDrawCount / 地址偏移取数口）与 `icb_count_buffer`（GPU 动态计数读回）—— 两者接管后仍在用，不属本批范围。
+- `example/ApiValidation/_Obsolete/ComputeAsteroidBelt.cpp` 是停放档，仍引用早已不存在的 `SetL2WIndexBuffer` / `SetMeshDrawParamsBuffer` 等 API；不入构建、不动。
+
 ---
 
 ## 十二、批 E 施工单：时点 2/3 的口径订正（注释级）
@@ -342,3 +396,13 @@ A1 想省的（不动字段偏移、不重编 shader）在本仓按铁律本来�
 ### 12.4 边界
 
 只改措辞：不改任何判定、不加/删任何字段、不动行宽与地址表。
+
+### 12.5 落地记录（2026-10-14，与批 D 同批执行）
+
+- `RenderPrimitiveCollectSystem.cpp` 的 4-ID 发布点旁注释已按 §12.2 第 1 条改写：明确"行缺失 ⇒ 键 0 ⇒ 不进批；
+  本 pass 那一半清零"，并把口径从"表内只留**真会画**的实体"订正为"表内 = **几何行成立**者
+  （≠本帧一定会画：批装配期还会再剔一层，而该层在 collect 之后、4-ID 已经写过）"。
+- `EntityRenderIDTable.h` 头注已补：① 时点 2「几何行不成立即显式清零（零 = 未上行）」；
+  ② 表内实体 = 几何行成立者；③ 消费者清单里"CPU 批行写入"一条改为历史注记（该路径已随批 D 删除）。
+- 顺带订正 `RenderPrimitiveCollectSystem.cpp` 阴影事实段的旧引用（"消费规则与 CPU FinalizeBatch 的 D3 段逐字同式"
+  → 改为与着色侧同式，并点明段③ 现由两跳承担）。
