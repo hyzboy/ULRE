@@ -40,6 +40,24 @@
   - `TestVisibilityStorage` 只测 CPU 侧（父不可见 ⇒ 子不可见 ✓），**没有任何 GPU 行位断言**；
   - **GPU 剔除的 CPU 参考实现**（`CPUCullReferenceSystem`）自己也是读 ②（`EntityGPUTable::IsVisible(*row)`）⇒ 它与 GPU 剔除**同读扁平位**、天然一致 ⇒ 台架报「0 不一致」**不是**「② 与权威同源」的证据。
 
+### 3.1 观察面（2026-10-14 落地）：镜像对拍
+
+失步不再无声 —— 落了一个**只为观察**的对拍器（不改语义）：
+
+| 项 | 内容 |
+|---|---|
+| 本体 | `EntityGPUTable::VerifyVisibleMirror(entity, authority_visible, what)`（`inc/hgl/ecs/support/EntityGPUTable.h`，与 `VerifyAfterWrite` 同族） |
+| 开关 | 台帐 `ULRE_ECS_DEBUG_API`（AUTO：Debug 开 / Release 关）⇒ 关掉时函数体**空 inline**，且**门加在触发点**（`RenderPrimitiveCollectSystem` 的接线处包 `#if`）——否则 Release 下 `IsEntityVisible(...)` 实参仍会被求值，「生产零开销」不成立 |
+| 状态 | 闩向量 + 计数**刻意不按宏门住**（全仓无「门住成员」先例；本表是 `ECSContext` 的**值成员** ⇒ 门住会让 Debug/Release 的 `sizeof(ECSContext)` 分叉，陈旧 TU 的错位只在 Debug 暴露，更难查）。常驻成本 = vector 头 + 4 B；闩向量**只在 Debug 首次失步时**惰性分配（Release 零分配） |
+| 接线 | collect 的 **4-ID / 阴影事实发布点**（`RenderPrimitiveCollectSystem`，紧邻 `SetShadowFacts`）—— 覆盖面恰是"有几何、会被剔除当候选"的子集 |
+| 报什么 | **有界点名**（每个实体行只说一次）+ 累计计数；文案含 `entity / id / 权威值 / 派生位` 与"已知失步"判语 |
+| 取数 | `EntityGPUTable::GetVisibleMirrorCount()`（累计**失步条目**数；探针前后取差 = 本段/本帧条数） |
+| 不做 | **不做 fail-fast 门**、不阻断：它报的是**预期偏差**，健康场景也可能 > 0 |
+
+⚠ **为什么不做成门**：这条失步按构造**永不错画**（闸门 = 4-ID 表 `geometry_id == 0` + 批标签 `0xFFFFFFFF`）⇒
+做成门就等于"健康场景常红"。它同时是选项 **(b)** 的**量化前置**：若将来走 (b)（每帧按权威重算），
+这个计数**必须归零**——红/绿线因此是明确的。
+
 ## 4. 为什么不删任一（存在理由）
 
 | 表示 | 理由 |
@@ -74,6 +92,22 @@
 本议题的 ② 与 `03-renderitem-descriptor-two-tables` 里「4-ID 表陈旧档」的 (b) 场景是**同一处**
 （「停止 collect 时 ② 是否该被清」）⇒ **两条一起拍板**，别分开改。
 
+### 与「问题 3 的 ②」的捆绑裁定（2026-10-14，同批）
+
+**问题**：实体**不再被 collect**（几何行不成立 / 被装配期剔除）时，②（实体行可见位）要不要**清零**？
+
+**裁定：不清。② 不承担"是否进批"的表达。** 三条证据：
+
+1. **已有闸门先于昂贵计算**：着色器 `entity_gpu_cull.glsl` 的顺序是 `flags & 1u`（Active，:225）→ `flags & 2u`（Visible，:229）
+   → 读实体 4-ID 行（:244）→ **`geometry_id == 0u` 直接 return（:248）** ⇒ L2W 取矩阵 / AABB / 6 平面这些**昂贵部分在 4-ID 门之后**。
+   故"未上行"的实体早已被 4-ID 表挡住（`SetRenderIDs(pass, entity, {})` 的时点 2 清零，见报告 03 §10.6），
+   残留 `② = 1` 的代价**只有一次表读**。
+2. **批标签是第二道**：非接管批的实体 `batch == 0xFFFFFFFF` ⇒ 剔除端不为其写行（`:335-336, :354`）。
+3. **语义冲突**：② 的权威定义是「该实体**自身**的可见开关」（唯一写者 `SetEntityVisible`）。拿它表达"在批里"
+   会给同一字段叠加**第二种语义** —— 正是本议题要消掉的"同一事实两套口径"。
+
+⇒ 维持 ② 的单一语义（扁平可见派生位），"未进批"由 4-ID 表 + 批标签表达；本裁定与上文观察面同批落地。
+
 ## 6. 本版（= 审计选项 (c)）的落地与守门
 
 - **头注四处**（把「扁平、不继承」写成显式契约 + 指向本档）：
@@ -82,7 +116,10 @@
 - **契约针**（挂在 `TestCSMIncrementalPass` 的 A7a 源码契约数组）：
   - **存在性**：`EntityGPUTable.h` 含「扁平派生位」；
   - **禁复活**：`EntityGPUTable.h` 不得出现 `IsInvisible` / `GetVisibilityStorage`
-    （派生表**不许**回查权威 —— 防止「在世界里再造一份继承语义」）。
+    （派生表**不许**回查权威 —— 防止「在世界里再逤一份继承语义」）。
+  - **观察面 ⑤（2026-10-14）**：`EntityGPUTable.h` 含 `void VerifyVisibleMirror(`（本体）+ `uint32_t GetVisibleMirrorCount() const`（取数口，
+    取**声明形态**以防子串别名绕过）；
+    `RenderPrimitiveCollectSystem.cpp` 含 `VerifyVisibleMirror(`（接线 —— 丢了它就等于反向守卫空转）。
 - **红的样子**：把 `IsInvisible` 写回 `EntityGPUTable.h` ⇒ 契约 rc≠0 并点名（落地时实测，文案见落地记录）。
 - **局限（如实记录）**：(c) **不修**失步本身，只把它从「隐式依赖兜底」变成「显式契约 + 影响面限定」。
 
@@ -112,3 +149,4 @@
 | 日期 | 变更 |
 |---|---|
 | 2026-10-14 | 首版（= 审计 06 的选项 (c)）：三表示 / 两极性 / 传播规则与已知失步收在一处；头注四处改「扁平派生位」显式契约 + 两条禁复活针；订正同题旧口径（ECS 层主档曾把 `VisibilityComponent` / `VisibilitySystem` 当现行 —— 二者已删、存储归世界）；查实原报告 §七 三个未证实项 |
+| 2026-10-14（同批） | 加 **§3.1 观察面**：`EntityGPUTable::VerifyVisibleMirror`（`ULRE_ECS_DEBUG_API` 门、collect 发布点接线、有界点名 + `GetVisibleMirrorCount` 取数；**不做门**）+ 三条契约针；加 **§5 捆绑裁定**：「问题 3 的 ②」= **不清位**（② 不承担"是否进批"的表达；4-ID 表 + 批标签已覆盖，且 4-ID 门在昂贵计算之前） |

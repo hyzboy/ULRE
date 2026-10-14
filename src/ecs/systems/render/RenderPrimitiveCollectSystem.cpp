@@ -2341,6 +2341,19 @@ namespace hgl::ecs
                             entity_id,
                             NormalizeShadowBiasToRow(GetShadowBiasMultiplier(shadow_owner)),
                             HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver) ? 1u : 0u);
+
+                        // ECS #4 观察面（2026-10-14）：可见性**镜像对拍** —— 权威（含祖先继承）与
+                        // 实体行派生位（**扁平**）在此处比一次。报的是**已知失步**（父不可见不传播 /
+                        // 后建立 / 重挂父链），不是缺陷：按构造不会错画（闸门 = 4-ID 表 + 批标签），
+                        // 因此**有界点名 + 计数**（EntityGPUTable::GetVisibleMirrorCount() 取数）
+                        // ⇒ 它是 (b)（每帧按权威重算）的**量化前置**：修完这个计数必须归零。
+                        // 开关 = 台帐 ULRE_ECS_DEBUG_API：**门加在触发点**（不是只门函数体）——
+                        // 否则 Release 下 `IsEntityVisible(...)` 仍会被求值，「生产零开销」不成立。
+                    #if ULRE_ECS_DEBUG_API
+                        world->GetEntityGPUTable().VerifyVisibleMirror(
+                            shadow_owner, world->IsEntityVisible(entity_id),
+                            "RenderPrimitiveCollectSystem#publish");
+                    #endif//ULRE_ECS_DEBUG_API
                     }
                 }
             }

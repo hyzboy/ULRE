@@ -330,6 +330,77 @@ namespace hgl
                 (void)what;
             #endif//ULRE_ECS_DEBUG_API
             }
+
+            /// **可见性镜像对拍**（2026-10-14；审计 §2.2 问题 6 / ECS #4 选项 (c) 的**观察面**）：
+            /// 比较**权威**（`ECSContext::IsEntityVisible` = 负向缺席集 + **含祖先继承**）与**派生位 ②**
+            /// （`EntityGPUFlags::Visible` = **扁平**，不继承）。
+            ///
+            /// ⚠ 本对拍报的是**已知失步**（父不可见不向后代传播 / 父不可见之后才建立 / 重挂父链
+            ///   认了不可见父），**不是缺陷**：按构造永不改画面（闸门 = 4-ID 表 `geometry_id == 0`
+            ///   跳过 + 批标签 `0xFFFFFFFF` 跳过）⇒ 因此**有界点名 + 计数**，不做 fail-fast 门。
+            ///   口径与成因见 `doc/visibility-authority-chain.md` §3。
+            ///
+            /// **生产零开销**：开关 = 台帐 `hgl/common/RenderOptions.h` §2 的 `ULRE_ECS_DEBUG_API`
+            /// （默认 AUTO：Debug 开 / Release 关）⇒ 关掉时函数体为空 inline，且**调用点也不求值**
+            ///   （门加在触发点，见 `RenderPrimitiveCollectSystem` 的接线处）。
+            /// 取数：`GetVisibleMirrorCount()`（累计**失步条目**数；探针前后取差 = 本段/本帧条数）。
+            void VerifyVisibleMirror(const Entity *entity, bool authority_visible, const char *what)
+            {
+            #if ULRE_ECS_DEBUG_API
+                if (!entity)
+                    return;
+
+                const uint32_t index = entity->GetEntityID().index;
+
+                if (index >= rows.size())
+                    return;
+
+                const bool mirror = (rows[index].flags & uint32_t(EntityGPUFlags::Visible)) != 0;
+
+                if (mirror == authority_visible)
+                    return;
+
+                ++visible_mirror_count;
+
+                if (visible_mirror_warned.size() < rows.size())
+                    visible_mirror_warned.resize(rows.size(), 0);
+
+                if (visible_mirror_warned[index])            // 每个实体行只点名一次（不刷屏）
+                    return;
+
+                visible_mirror_warned[index] = 1;
+
+                GLogWarning(u8"[EntityGPUTable] 可见性镜像与权威不同源（%s）：entity=%s id=(%u,%u) "
+                            u8"权威=%u 派生位=%u；已知失步（父不可见不传播 / 后建立 / 重挂父链），"
+                            u8"按构造不会错画（闸门 = 4-ID 表 geometry_id==0 + 批标签 0xFFFFFFFF）；"
+                            u8"成因与口径见 doc/visibility-authority-chain.md §3。本报告只点名一次/行。",
+                            what, entity->GetName().c_str(),
+                            index, entity->GetEntityID().generation,
+                            authority_visible ? 1u : 0u, mirror ? 1u : 0u);
+            #else
+                (void)entity;
+                (void)authority_visible;
+                (void)what;
+            #endif//ULRE_ECS_DEBUG_API
+            }
+
+            /// 累计**失步条目**数（对拍器取数口；仅在 `ULRE_ECS_DEBUG_API` 下累加）
+            uint32_t GetVisibleMirrorCount() const
+            {
+            #if ULRE_ECS_DEBUG_API
+                return visible_mirror_count;
+            #else
+                return 0;
+            #endif//ULRE_ECS_DEBUG_API
+            }
+
+        private: // ── 可见性镜像对拍的状态（**常驻**：与配置无关，避免 `ECSContext` 布局分叉）──
+
+            /// ⚠ 刻意**不按宏门住**：全仓无「门住成员」先例，而本表是 `ECSContext` 的**值成员** ⇒ 门住会让
+            /// Debug / Release 的 `sizeof(ECSContext)` 不同（陈旧 TU 的错位只在 Debug 暴露，更难查）。
+            /// 常驻成本 = vector 头 + 4 B；闩向量**只在 Debug 首次失步时**惰性分配（Release 零分配）。
+            std::vector<uint8_t> visible_mirror_warned;   ///< 每实体行只点名一次的闩（debug 面用）
+            uint32_t             visible_mirror_count = 0;///< 累计失步条目数（debug 面用）
         };
     }//namespace ecs
 }//namespace hgl

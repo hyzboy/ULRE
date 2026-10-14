@@ -33,7 +33,10 @@
 - ~~**批 D（删「CPU 侧 per-batch 表构建」整族）**~~ —— **2026-10-14 结案**：四类整族删除 + 契约载体迁移（D3 段③ / A7a 接收判据）+ 接管台架红的样子；落地记录见报告 03 **§11.7**〔档〕
 - ~~**批 E（时点 2/3 口径订正，注释级）**~~ —— **2026-10-14 结案**（与批 D 同批）：落地记录见报告 03 **§12.5**〔档〕
 - ~~**#3（03 RenderItemDescriptor 双表）**~~ —— **✅ 已落地 2026-10-14（以「删」结案，不补对拍门）**：三条判据 —— ① 池的 **GPU 面零消费者**（解析函数全仓零调用、启用开关字段早已不存在）；② CPU 面只剩批行写入**且已有等价回退在位**；③ 池的索引粒度与实体表同为「每实体一行」⇒ **对实例化零增益**（实例化真正依赖的「每实例行」由每批 `l2w_index` / 每批材料行表 / 剔除侧输出行承担）⇒ 池 + 二级索引表 + 压缩器 + 解析 GLSL **整族删除**（≈1889 行），批行写入改读**实体 4-ID 表本 pass 那一半**（单一真源，等价性由「写点在同一进批判据块内」保证）；连带 `WorldAddresses` 9→8→7 字段、`MaterialRuntimeSlot` 40→32 B、`RenderItemHandle` 类型退役。详见报告 03 **§九 落地记录**
-- **#4（06 可见性三表示两极性）** —— **(c) ✅ 已落地 2026-10-14**：契约档 `doc/visibility-authority-chain.md`（三表示 / 两极性 / 传播规则 / 已知失步收在一处）+ 头注四处（`EntityGPU.h` / `EntityGPUTable.h`×2 / `VisibilityDataStorage.h` / `Context.h`）+ 契约针三条（存在性「扁平派生位」+ 禁复活 `IsInvisible` / `GetVisibilityStorage`）；原报告 §七 三个未证实项**全部查实**（后代枚举已具备 / 台架同读扁平位对本失步免疫 / `TestVisibilityStorage` 未覆盖 GPU 位）。剩 **(b)** 每帧按权威重算（推荐）／**(a)** 写入点传播（比 (b) 易写错）—— **待你拍**
+- **#4（06 可见性三表示两极性）** —— **(c) ✅ 已落地 2026-10-14**：契约档 `doc/visibility-authority-chain.md`（三表示 / 两极性 / 传播规则 / 已知失步收在一处）+ 头注四处（`EntityGPU.h` / `EntityGPUTable.h`×2 / `VisibilityDataStorage.h` / `Context.h`）+ 契约针三条（存在性「扁平派生位」+ 禁复活 `IsInvisible` / `GetVisibilityStorage`）；原报告 §七 三个未证实项**全部查实**（后代枚举已具备 / 台架同读扁平位对本失步免疫 / `TestVisibilityStorage` 未覆盖 GPU 位）。
+  **2026-10-14 追加（用户拍「按建议走」）**：**观察面 ③ 已落地** —— `EntityGPUTable::VerifyVisibleMirror`（门=台帐 `ULRE_ECS_DEBUG_API`，接在 collect 的 4-ID/阴影事实发布点，**有界点名** + `GetVisibleMirrorCount()` 取数，**不做门**）+ 契约针三条（本体/取数口/接线）；
+  **「问题 3 的 ②」同批裁定 = 不清位**（② 不承担"是否进批"的表达：4-ID 表的时点 2 清零 + 批标签已覆盖，且 4-ID 门在昂贵计算之前 —— 见契约档 §5）。
+  剩 **(b)** 每帧按权威重算（推荐；走它则上面的计数**必须归零**）／**(a)** 写入点传播（比 (b) 易写错）—— **待你拍**
 - ~~**#5（07 材质四条键空间）**~~ —— **✅ 已落地 2026-10-13**：`HashMaterialProgramIdentity()` 共用折字段（运行期键**以它为种子续算** ⇒ 哈希取值逐位不变、无缓存失效）+ `VariantKeyOf()` 前缀唯一实现 + forward 生产**由构造派生**（`Intern(VariantKeyOf(runtime_key))`）+ 5 条编译期 `static_assert`（类型/偏移/维序 ⇒ 只给一个键加维**立刻编译失败**）+ 权威链头注 + 源码契约 **Test 50**（4 存在性 + 1 接线 + 2 禁复活）；**红的样子**：加一维 ⇒ `error C2338`；手写折字段复活 ⇒ 退出码 50。**订正**：只有 forward 变体键是运行期键前缀，阴影键是**兄弟键**（ShadowDepth 上下文）。详见报告 07 **§七**
 - ~~**#6（08 `MaterialRuntimeRow` key 存 3.5 份）**~~ —— **✅ 已落地 2026-10-13**：订正"可省字段 = 0"（`row.recipe_hash`/`row.data_index_row` 不是 key 的副本、`cached_effective_recipe_hash` 是另一物）；不变量文档写在字段旁；两个**静态**对拍助手（定义在 .cpp、台帐宏门住 ⇒ 生产空 inline）接在「解析后写 recipe_hash」与「物化发布 data_index_row」两点；**订正报告 §四(b) 的裸等值断言**（未物化哨兵 `-1` 会误报 ⇒ 加哨兵跳过分支）；源码契约 **Test 51**；**实测**：4 例 + 18s 稳态窗口 0 告警（不变量成立），破坏同源 ⇒ 100 条点名、还原 ⇒ 0 条。详见报告 08 **§七**（含 (c) 不做、(d) 单独立项）
 - 挂同一次拍板：**旧档 §2 #5**（`AddFreeIndex` 有序维护 vs 栈消费）、**9 套系统容器合并**（共识档 §2 明确"不单独立批"）
@@ -54,7 +57,12 @@
 3. **开关台帐的两条待定 + 自检门的配置口径**（§7 / §3，零~低成本，等你一句话）
 4. **S3b-3 顶点节点枚举归位**（与 S3b 同族收尾）
 5. **stage B `receive_shadow` 幅度漂移专项**（未 bisect 的行为漂移；修完 `ATS_SELFCHECK=1` 必须 rc=0）
-6. 文档卫生：**§1 的 3 处过期声明** + C 线 doc 十篇（可与任意批并行）
+6. 文档卫生：**§1 的 3 处过期声明** + C 线 doc 十篇（可与任意批并行）。
+   **2026-10-14 新量化（A5 去组件化后仍在提已删组件名的档 = 27 档 / 250 处，分三类处置）**：
+   · ① **现行口径档**（须改到与代码一致）：`doc/ecs/primitive-geometry-vdm.md`(7) · `doc/ecs/transform-data-management-and-transfer.md`(5) · `doc/simple-sphere-ecs-render-chain.md`(6) · `doc/simple-sphere-material-shadergen-overview.md`(4) · `doc/texture2darray-unified-texture-binding.md`(5) · `doc/shadow-component-and-automated-pipeline-design.md`(5) · `doc/material-lit-recipe-to-shadergen-dataflow.md`(3) · `doc/ShaderGen_MaterialGLSL_DesignAnalysis.md`(1)；
+   · ② **历史记录档**（只挂 banner 指路，不改正文）：`doc/future/**`（14 档，含 `ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`(49)、`ULRE_Architecture_Technical_Review_20260930.md`(29)）· `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`(5) · `doc/csm-review-2026-09-25.md`(4) · `doc/gpu-driven-4id-draw-item-plan-2026-09.md`(11) · `doc/render-item-descriptor-and-indirection-pipeline.md`(14，已挂 banner)；
+   · ③ **故意提及，不动**：逐条审计报告 / 本账本 / `doc/visibility-authority-chain.md` / 主档里的「已删」清单。
+   **主档 `doc/ecs-layer-architecture-and-frame-flow.md` 已于 2026-10-14 改到一致**（§2.1 对象模型 + §5 组件表 + 17 处同题口径）。
 7. 功能项：棋盘格标记色上色 + 2D/3D 分派
 8. **ECS #4（可见性权威链）** —— **(c) ✅ 2026-10-14 落地**（契约档 + 头注四处 + 三条针；原报告三疑查实）；剩 **(b)** 每帧按权威重算（推荐；与「问题 3 的 ②」同一处，须一起拍板）
 9. ~~**批 D / 批 E**（报告 03 §十一/§十二）~~ —— **2026-10-14 已结案**（四类整族删 + 契约载体迁移；落地记录 §11.7 / §12.5）

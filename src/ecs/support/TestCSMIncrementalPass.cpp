@@ -4412,6 +4412,16 @@ int main(int argc, char** argv)
             { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/EntityGPUTable.h"),
               "GetVisibilityStorage",
               "派生行表抓世界存储（同上：双真值入口）", true },
+            // ⑤ 可见性镜像对拍（ECS #4 观察面，2026-10-14）：本体常编译（体内 `#if ULRE_ECS_DEBUG_API`）、
+            //    接在 collect 的 4-ID/阴影事实发布点；取数口供探针/台架读。
+            { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/EntityGPUTable.h"),
+              "void VerifyVisibleMirror(", "可见性镜像对拍本体丢失（失步重新变成无声）" },
+            // 取数口取**声明形态**：只写标识符名会被 `GetVisibleMirrorCount2` 这类改名绕过（子串别名）。
+            { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/EntityGPUTable.h"),
+              "uint32_t GetVisibleMirrorCount() const", "对拍器的取数口丢失（台架/探针无法量化失步条数）" },
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "VerifyVisibleMirror(", "可见性对拍不再被发布点调用（反向守卫空转）" },
         };
 
         if (const int failed = verify_source_contracts(25, kA7aContracts,
