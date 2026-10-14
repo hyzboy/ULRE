@@ -96,7 +96,7 @@ AcquireSwapchainImage(dt)                    Context.cpp:342 → 相位 RenderSw
 
 ```
 TickInput              InputSystem
-TickTransform          TransformSystem → VisibilitySystem
+TickTransform          TransformSystem（VisibilitySystem 已删；可见性存储归世界，见 doc/visibility-authority-chain.md）
 TickCamera             CameraSystem
 
 RenderPreBeginFrame      EnvironmentSystem → ColorPaletteSystem → RenderTargetSystem

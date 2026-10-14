@@ -2317,10 +2317,10 @@ namespace hgl::ecs
                         Entity *shadow_owner = world->GetEntity(entity_id);
 
                         // A5b / A7a（2026-10-14 批 D **搬家**）：接收判定**由策略表给出**
-                        // —— `RenderNeed::ShadowReceiver` 是唯一判据。原实现长在 CPU 批行
-                        // 写入端（`PrimitiveBatchPipeline::WriteBatchIndexRows` 的 D3 段），随
-                        // 「CPU 侧 per-batch 表构建」整族删除后迁到本处：本事实行是它的**新载体**
-                        //（剔除端按 `entity.shadow_*` 抄进 per-draw 行 ⇒ 段③ 由两跳承担）。
+                        // —— `RenderNeed::ShadowReceiver` 是唯一判据。原实现长在 CPU 侧批行
+                        // 写入端，随「CPU 侧 per-batch 表构建」整族删除后迁到本处：
+                        // 本事实行是它的**新载体**（剔除端按 `entity.shadow_*` 抄进 per-draw 行
+                        // ⇒ D3 契约段③ 由两跳承担）。
                         // `receive_shadow` 事实仍由实体级自由函数提供（缺省约定唯一出处见 ShadowProxy.h）。
                         StrategyFacts shadow_facts;
                         shadow_facts.receive_shadow = CanReceiveShadow(shadow_owner);

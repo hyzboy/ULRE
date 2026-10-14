@@ -64,8 +64,8 @@ namespace hgl::ecs
     float GetShadowBiasMultiplier(const Entity *owner);
 
     /// T3h：Bias 的**行字节归一**（唯一出处）：<=0 / 非有限 ⇒ 0.0f（消费侧约定
-    /// 「行 0 = 引擎默认 1.0」，见 pcf_shadow.glsl）。CPU FinalizeBatch、collect
-    /// 事实位上行、台架值链判据三处共用本式 ⇒ 无第二口径。
+    /// 「行 0 = 引擎默认 1.0」，见 pcf_shadow.glsl）。collect 事实上行点、台架值链判据
+    /// 两处共用本式 ⇒ 无第二口径（原 CPU 批行写入端已随整族删除）。
     inline float NormalizeShadowBiasToRow(float bias)
     {
         return (bias > 0.0f && std::isfinite(bias)) ? bias : 0.0f;

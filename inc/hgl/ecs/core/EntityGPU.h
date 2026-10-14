@@ -31,7 +31,11 @@ namespace hgl
         {
             None    = 0,
             Active  = 1u << 0,      ///< 槽在用（实体销毁后清位）
-            Visible = 1u << 1,      ///< 与 CPU 侧 `ECSContext::SetEntityVisible` 同源
+            /// ⚠ **扁平派生位**：不继承祖先 —— 只镜像 `SetEntityVisible` 落在**这一个**实体上的值，
+            /// 父不可见时后代此行仍可能为 1。消费者**不得仅凭它判定「该画」**：最终闸门 =
+            /// 4-ID 表 `geometry_id == 0` 跳过 + 批标签 `0xFFFFFFFF` 跳过。
+            /// 权威链（三种表示 / 两种极性 / 传播规则 / 已知失步）见 doc/visibility-authority-chain.md。
+            Visible = 1u << 1,
         };
 
         /// `type` / `row` 的槽数（设计输入：16 槽）
@@ -56,7 +60,8 @@ namespace hgl
             // 划用不破坏契约）。写者 = collect 在「本项进批」判据点与 4-ID 表同行
             // 写入（ShadowProxy 是 CPU-only 组件，T2-c；这里放**事实**不放行号——
             // 组件行号对 GPU 无用，值进行才算接线）。
-            // 消费规则与 CPU FinalizeBatch 逐字同式（pcf_shadow.glsl:180 约定）：
+            // 消费规则现由**实体事实 → 剔除写行**两跳承担（原 CPU 批行写入段已随整族删除）；
+            // 与 pcf_shadow.glsl 的约定同式：
             //   bias_multiplier <= 0 ⇒ 行里留 0，着色侧视 0 为引擎默认 1.0
             //   receive = 0 ⇒ 消费端写 kMaterialShadowFlagNoReceive
             float  shadow_bias_multiplier = 0.0f;   ///< 局部 Bias 倍率事实（0 = 未上行/默认）

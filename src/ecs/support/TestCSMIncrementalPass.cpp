@@ -4401,6 +4401,17 @@ int main(int argc, char** argv)
             { "RenderSystemCore.h", OS_TEXT("inc/hgl/ecs/systems/render/RenderSystemCore.h"),
               "InitializeGraphics",
               "使用示例又引用已删除的两步初始化 API（InitializeGraphics）", true },
+            // ④ 可见性权威链（审计 06 选项 (c)，2026-10-14）：实体行位是**扁平派生位** ⇒ 派生表不许回查权威。
+            //    契约档 = doc/visibility-authority-chain.md；反证：把 IsInvisible 写回 EntityGPUTable.h ⇒ 本用例必须失败。
+            { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/EntityGPUTable.h"),
+              "扁平派生位",
+              "实体行位的「扁平派生位」契约注释丢失（下一个人会把 ② 当含继承的权威）" },
+            { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/EntityGPUTable.h"),
+              "IsInvisible",
+              "派生行表回查权威（在世界里再造一份继承语义 ⇒ 与权威双真值）", true },
+            { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/EntityGPUTable.h"),
+              "GetVisibilityStorage",
+              "派生行表抓世界存储（同上：双真值入口）", true },
         };
 
         if (const int failed = verify_source_contracts(25, kA7aContracts,

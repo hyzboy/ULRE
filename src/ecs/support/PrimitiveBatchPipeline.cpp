@@ -516,9 +516,9 @@ namespace hgl::ecs
                           why, batch_name ? batch_name : "<null>");
             }
 
-            // 「不绘制」的落法 = 清空批内项：下游（FinalizeBatch 的 sort/ensure/build/write，
-            // 以及两个绘制系统的 `items.empty()` 早退）都以空批跳过 ⇒ 既不写 CPU ICB/参数行，
-            // 也不发绘制命令。标签留无效 ⇒ cull 也不为本批写行。
+            // 「不绘制」的落法 = 清空批内项：下游（FinalizeBatch 的排序/聚簇，以及两个绘制
+            // 系统的 `items.empty()` 早退）都以空批跳过 ⇒ 不发绘制命令（CPU 侧的 ICB / 行表
+            // 构建链已随 2026-10-14 批 D 整族删除）。标签留无效 ⇒ cull 也不为本批写行。
             if (b)
                 b->items.clear();
         };

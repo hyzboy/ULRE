@@ -199,7 +199,7 @@ namespace hgl::ecs
                     continue;
                 }
 
-                // 段一：CPU 真值（行字节归一式 = 唯一出处，与 collect/FinalizeBatch 同函数）
+                // 段一：CPU 真值（行字节归一式 = 唯一出处；与 collect 事实上行点同一套自由函数）
                 const Entity *owner = alive_owner_[entity_index];
                 const float bias_for_row = NormalizeShadowBiasToRow(GetShadowBiasMultiplier(owner));
                 const uint32_t flags_for_row = CanReceiveShadow(owner) ? 0u

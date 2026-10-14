@@ -763,7 +763,11 @@ namespace hgl
                 entity_gpu_table.VerifyAfterWrite(entity, "ECSContext::RefreshEntityRow");   // §2.2 问题 2(a)：写入侧对拍（debug 面）
             }
 
-            /// 设置实体可见性 —— **唯一真值落在这里**（不再有组件内的第二份 bool）
+            /// 设置实体可见性 —— **唯一真值落在这里**（不再有组件内的第二份 bool）。
+            /// **边界换算的唯一位置**：① 缺席集（负向）与 ② 实体行位（正向、**扁平**）都按
+            /// **传入值**落，**不重算**。两条错法显式禁止：① 用 `IsDirectlyInvisible` 冒充
+            /// `IsInvisible`（漏继承 ⇒ 后代被误判可见）；② 在这里「顺手传播」到后代
+            ///（只写自己 ⇒ 行位与含继承的权威失步）。权威链见 doc/visibility-authority-chain.md。
             void SetEntityVisible(EntityID id, bool visible)
             {
                 if (!visibility_storage)

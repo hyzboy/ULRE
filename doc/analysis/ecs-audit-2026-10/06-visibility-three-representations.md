@@ -108,3 +108,31 @@ GPU 侧对"陈旧可见"有两道兜底：`geometry_id == 0` 跳过（`entity_gp
 - 是否存在**后代枚举**能力（我只确认了祖先上溯；`TransformDataStorage` 的父子链是否可直接遍历子树未查）；
 - 台架（`CPUCullReferenceSystem`）的可见性口径是否也走 `IsEntityVisible`（含继承）——若是，则 (a)/(b) 修好后它的对拍数字可能**变化**（变正确），需要按"预期变化"而非"回归"判读；
 - `TestVisibilityStorage` 现在的用例覆盖了"父不可见 ⇒ 子不可见"（CPU 侧 ✓ `:115-143`），但**没有**覆盖"GPU 行位是否同步"（我按当前树未见此断言）。
+
+## 八、落地记录（2026-10-14）：选项 (c) —— 权威链契约
+
+**选型**：(c)（零代码契约）先做，它是 (a)/(b) 的前置说明；§六 的推荐顺序照此执行。
+
+**产出**：
+
+1. **新增契约档** `doc/visibility-authority-chain.md` —— 三种表示 / 两种极性 / 传播规则（I1–I6）/ 已知失步与两道闸门 /
+   后续 (b)(a) 路径与判据 / 实测取证表 / 变更记录。**语义只此一处**（原先散在三个文件头注里，没人能拼全）。
+2. **头注四处**改成「扁平派生位」显式契约并指向该档：
+   `inc/hgl/ecs/core/EntityGPU.h`（`Visible` 位）、`inc/hgl/ecs/support/EntityGPUTable.h`（`SetVisible` + `Activate` 默认置位）、
+   `inc/hgl/ecs/support/VisibilityDataStorage.h`（权威 + 负向 + 含继承）、`inc/hgl/ecs/core/Context.h`（`SetEntityVisible` = 边界换算唯一处 + 两条错法禁止）。
+3. **契约针三条**（`TestCSMIncrementalPass` 的 A7a 组 ④）：存在性「扁平派生位」；
+   禁复活 `IsInvisible` / `GetVisibilityStorage`（派生行表不许回查权威）。
+4. **同题过期口径回扫**：ECS 层主档把 `VisibilityComponent` / `VisibilitySystem` 当现行的四处 + banner ⑧；
+   `simple-sphere` 的 tick 序；以及 `ShadowProxy.h` / `EntityGPU.h` / `EntityGPUTable.h` / `CPUCullReferenceSystem.cpp` /
+   `PrimitiveBatchPipeline.cpp` 里「CPU FinalizeBatch / D3 段」的旧提法（那段已随批 D 删除）。
+
+**红的样子（实测原文）**：
+- ① 删掉 `EntityGPUTable.h` 的「扁平派生位」契约注释 ⇒ `TestCSMIncrementalPass` **rc=25**：
+  `Test 25 Failed: 实体行位的「扁平派生位」契约注释丢失（下一个人会把 ② 当含继承的权威） -- '扁平派生位' not found in EntityGPUTable.h`；
+- ② 把 `IsInvisible` 写回 `EntityGPUTable.h` ⇒ **rc=25**：
+  `Test 25 Failed: 派生行表回查权威（在世界里再造一份继承语义 ⇒ 与权威双真值） -- 'IsInvisible' 重新出现在 EntityGPUTable.h（禁复活）`。
+两次改动均**逐字节还原**（sha256 复核）。针在运行期读源码 ⇒ 两条红都**不需要重编**。
+**验收**：两配置 rc=0 / 0 error；门 45/0；`ctest -L ecs` 11/11；`-L shadergen` 13/13；四示例帧摘要逐位不变；
+接管台架 `GC` / `DWS` PASS（可见性正是这两例覆盖的路径）。
+
+**未做（本版边界）**：(c) **不修**失步本身。(b)（每帧按权威重算）留 §五，与「问题 3 的 ②」同批拍板后再开。

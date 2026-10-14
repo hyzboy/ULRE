@@ -112,6 +112,9 @@ namespace hgl
             /// 是可见（`IsEntityVisible` 不在不可见集合 ⇒ true），派生行表若不在建立时
             /// 镜像这个默认值，就出现「真值可见、行表不可见」的漂移（GPU 剔除读行表 ⇒
             /// 全剔空）。之后只有 `SetEntityVisible` 会改它，两条路径闭环。
+            /// ⚠ 镜像是权威的**扁平默认**（=「没有被显式设过不可见」），**不是**「此刻对权威可见」：
+            /// 父已不可见之后才建立的后代，本位会与含继承的权威短时不一致（已知失步，见
+            /// doc/visibility-authority-chain.md §3），由 4-ID 表 / 批标签两道闸门兜住。
             void Activate(EntityID id)
             {
                 Ensure();
@@ -152,7 +155,12 @@ namespace hgl
                 }
             }
 
-            /// 可见性（与 `ECSContext::IsEntityVisible` 同源；唯一真值仍在 VisibilityDataStorage）
+            /// 可见性：写**扁平派生位**（不继承祖先）。
+            /// ⚠ 权威 = `VisibilityDataStorage` 的缺席集（**负向 + 含祖先继承**）；本位只镜像
+            /// `SetEntityVisible` 落在该实体自身上的值 ⇒ 父不可见时后代本位仍可能为 1，
+            /// 消费者**不得仅凭它判定「该画」**（闸门 = 4-ID 表 + 批标签）。
+            /// 本表**不得**回查可见性存储、也不得上溯祖先（那等于在世界里再造一份继承语义）。
+            /// 权威链与已知失步见 doc/visibility-authority-chain.md。
             void SetVisible(EntityID id, bool visible)
             {
                 EntityGPU *row = Row(id);
@@ -169,7 +177,7 @@ namespace hgl
             }
 
             /// T3h：阴影接收事实上行（写者=collect 的"本项进批"判据点，与 4-ID 表
-            /// 同行；值语义 = CPU FinalizeBatch D3 段已归一的结果 ⇒ 行值可被 gather
+            /// 同行；值语义 = 实体级自由函数 + collect 归一（原 CPU 行写入段已删）⇒ 行值可被 gather
             /// 逐字节照抄）。**值变才标脏**——与 SetVisible 不同的地方：每帧都调，
             /// 若照抄无条件 MarkDirty，静态实体会永远脏行（「值变才标脏」纪律）。
             void SetShadowFacts(EntityID id, float bias_multiplier, uint32_t receive)

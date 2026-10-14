@@ -14,6 +14,12 @@ namespace hgl::ecs
      * Maintains a set of invisible entity IDs for O(1) query during rendering.
      * **唯一真值**：由世界通过 `ECSContext::SetEntityVisible` 写入（A5a 起组件级可见性副本已删除）。
      *
+     * **极性 = 负向**（集合成员 = 不可见；默认可见）；`IsInvisible` **含祖先链继承**，
+     * `IsDirectlyInvisible` 只查自己 —— 后者**不得**冒充前者做可见判定（漏继承 ⇒ 后代被误判可见）。
+     * 另两种表示：`EntityGPU` 行的 `Visible` 位 = **扁平派生位**（不继承）；策略事实
+     * `StrategyFact::EntityVisible` = 每帧现算含继承。权威链 / 传播规则 / 已知失步见
+     * **doc/visibility-authority-chain.md**。
+     *
      * Supports hierarchical visibility: if an ancestor is invisible, all descendants are invisible.
      */
     class VisibilityDataStorage
