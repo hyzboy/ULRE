@@ -812,6 +812,23 @@ if (recipe.mtl_def_id.empty())
 由 `builtin/pure_color` 改为 **`builtin/checkerboard_3d`**；`None`（非错误默认）**仍是** `builtin/pure_color`
 ⇒ 门 `F.fallback-dimension-neutral`（钉无参回退 ID）与既有契约**不破**。
 
+**报错与运行时回退（2026-10-14 落地，用户口径：材质未知/写错 ⇒ 直接报错，运行时走错误材质 = 棋盘格）**：
+两条到达路径的**出声点**：
+  · **加载期**（单份定义写错，例如采样器 / 顶点输入名配错）⇒ `MaterialDefinitionFileRegistry::LoadFile`
+    的 `GLogError`（"材质定义解析失败" + 表/键/值/行号）；该份**不注册** ⇒ 引用它的配方落到回退路径。
+  · **运行期**（配方引用的材质定义 ID 无法解析：作者写了不存在的 ID）⇒ 此前**静默**（`NormalizeRecipe`
+    悄悄把 ID 换成保底材质、ECS 侧当"构建成功"）⇒ 现补 `GLogError("[MaterialFallback] 材质定义 ID 无法解析: "%s" => 
+    回退错误材质 %s …")`，**唯一出声点**；ECS 侧那条（`BuildResolvedRecipe` 构建失败⇒按种类合成回退）继续用
+    既有 `[MaterialFallback]` 告警，不重复。ECS 侧同时把「构建成功但配方已被换成错误材质」计入每帧回退计数
+    （取数口）。
+  · 行为断言：`TestRenderStrategyTable` Test 6 新增——伪造 `mtl_def_id` ⇒ 分类 = `UnknownMaterialDefinition`
+    且配方 ID 被换成 `builtin/checkerboard_3d`（此前只钉规则表，没钉**替换行为**）。
+  · 端到端正证（2026-10-14）：把 `GPUDrivenCull` 的 `cube_recipe.mtl_def_id` 临时改成 `"no/such_material_probe"`
+    ⇒ 运行日志出现上述报错行（129 条，每帧一次，与既有回退告警同口径）、帧摘要由 `0x90E0745C2C7B8599`
+    变为 `0x2DAE043A6929FCCB`（`distinct_byte_values` 256 → 16 = 棋盘格外观）⇒ **确实回退成棋盘格材质**；
+    逐字节还原后 rc=0、报错 0 条、摘要回到锚定值。
+  · 整库不可用（目录缺失 / 零份可解析）仍是 **fatal + abort**（设计口径：那不是"一份材质写错"）。
+
 选 `checkerboard_3d` 的依据（不是拍脑袋）：它 `provider_policy = GeometryOnly`、顶点需求只有 `Position`、
 `normal_mode = OptionalFaceFallback` ⇒ **无需 UV/法线即可在任意几何上画出来**（`checkerboard_2d` 走 NDC/LocalToWorldOnly，面向 2D 绘制）。
 深度/阴影 pass **不受影响**：program 由 `SelectCurrentSceneRenderTemplateRequest` 按 **purpose** 选模板

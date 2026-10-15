@@ -398,7 +398,16 @@ namespace hgl::ecs
             if (material_data->BuildResolvedRecipe(out_recipe,
                                                    material_program,
                                                    geometry ? geometry->GetAssetMaterialRecipe() : nullptr))
+            {
+                // A7b ②：构建"成功"，但 mtl 侧可能已把**无法解析的材质定义 ID** 换成保底材质
+                // （`NormalizeRecipe` 的分类结果记在 `fallback_error_kind` 上）⇒ 计入回退次数。
+                // 报错由 mtl 侧那一行承担（见 MaterialDefinitionRegistry.cpp），这里**不重复出声**；
+                // 该位同时是"这帧真的走了错误材质"的取数口（配合上面的每帧汇总行）。
+                if (out_recipe.fallback_error_kind != graph::mtl::MaterialErrorKind::None)
+                    ++g_fallback_recipe_builds;
+
                 return AttachFallbackMarkerColor(primitive_comp, out_recipe);
+            }
 
             // ── A7b：材质错误（用户定稿）**不是剔除条件** ──────────────────────
             // 「有几何但无材质来源」由策略表表达为 `RenderNeed::FallbackMaterial`

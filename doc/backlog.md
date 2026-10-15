@@ -18,6 +18,7 @@
 | 项 | 状态 | 判据 / 下一步 |
 |---|---|---|
 | ~~**S4 = D 层去双真值**~~（计划内最后一个批次；2026-10-12 **已整批完成**） | **S4 全部完成（2026-10-12）：S4a=D1（§19.6）、S4b-D4（§19.7）、S4b-D2（§19.8）** | 已完成，见评审档 **§19.6（D1 表驱动必需槽）/ §19.7（D4 归一化取用口）/ §19.8（D2 剔面语义）**；施工单与红的样子都在 §19 内 |
+| ~~**材质未知 ⇒ 报错 + 运行时棋盘格**~~ | **✅ 2026-10-14 结案** | 用户口径（材质未知/写错 ⇒ 直接报错，运行时走错误材质）。实查：回退**路由**早已在（`NormalizeRecipe`：未知 ID ⇒ `UnknownMaterialDefinition` ⇒ `builtin/checkerboard_3d`），缺的是**出声**——`NormalizeRecipe` 那条路径原本静默（mtl 侧替换 + ECS 侧当"构建成功"）⇒ 补 `GLogError` 唯一出声点 + ECS 侧计入回退计数 + `TestRenderStrategyTable` Test 6 行为断言（伪造 ID ⇒ 配方被换成棋盘格）；端到端正证见评审档 §18.2 |
 | ~~**S3b-3：6 个顶点节点枚举归位**~~ | **✅ 2026-10-14 结案（B1）** | `VertexInputMode`/`MappingMode`/`OrientationMode`/`ScaleMode`/`ProjectionMode`/`MaterialVertexNormalMode` 的 `Get*Name` **全仓 = 0**（名字只活在 `MaterialDefinitionFile.cpp` 的本地单向表）⇒ 按 S3b-2 形态搬回枚举定义旁；需动各自枚举手（部分属 `hgl::graph`）〔实测 Get*Name 全 0〕 |
 | **诊断表前缀：解析器路径未设表名** | 未做〔实测 2026-10-12〕 | 校验器的 8 段已修，但 `ParseDefinition` / `ParseRenderState` / `ParseTransformGraph` 的失败点**没有表前缀** ⇒ 日志只说 `cull_mode = "Bogus"`，不说 `render_state.pipeline.`（判据 = 在材质 TOML 写 `[render_state.pipeline] cull_mode = "Bogus"` 后的日志原文）；修法 = 各段入口 `SetParseTable(...)`，与校验器同形 |
 | **S4a 的分歧场景无生产者**（可选保险） | 未做〔评审档 §19.6 诚实边界〕 | 「表标 `required=false` + 该模块缺失 + 模板属 ForwardUnlit/Sky」目前**没有任何生产者** ⇒ 要这道保险得先造生产者，再加门 case「表中 optional 槽缺失 ⇒ 组合器不得失败」 |

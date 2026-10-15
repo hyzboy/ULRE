@@ -4509,6 +4509,15 @@ int main(int argc, char** argv)
               "ParseProjection(", "本地单向投影解析器复活（应走 ParseProjectionMode）", true },
             { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
               "ParseVertexNormalMode(", "本地单向法线模式解析器复活（应走 ParseMaterialVertexNormalMode）", true },
+            // ⑪ 材质错误口径（2026-10-14 用户）：材质未知/写错 ⇒ **直接报错**，运行时走错误材质 = 棋盘格。
+            //    加载期（单份定义写错）与运行期（配方引用的定义 ID 无法解析）两条路径都要出声；
+            //    后者曾长期静默（mtl 侧换成保底材质 + ECS 侧当"构建成功"）。
+            { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp"),
+              "u8\"[MaterialFallback] %s: \\\"%s\\\" => 回退错误材质 %s\"",
+              "未知材质定义 ID 的唯一报错点丢失（该路径曾静默：mtl 侧替换 + ECS 侧当成功）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "if (out_recipe.fallback_error_kind != graph::mtl::MaterialErrorKind::None)",
+              "ECS 侧未统计「构建成功但配方已被换成错误材质」这条（回退取数口丢失）" },
         };
 
         if (const int failed = verify_source_contracts(25, kA7aContracts,

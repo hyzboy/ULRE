@@ -410,8 +410,36 @@ int main(int argc, char** argv)
             return 15;
         }
 
+        // 运行期替换（**行为面**，不只是规则表）：引用不存在的材质定义 ID ⇒ 配方被换成
+        // 棋盘格保底材质 + 错误种类 = UnknownMaterialDefinition。用户口径（2026-10-14）：
+        // 材质未知 ⇒ 报错（mtl 侧 GLogError）+ 运行时走错误材质路径。这条路径曾长期**静默**
+        //（ECS 侧当"构建成功"），故用断言钉住"换过了"而不只是"表里有"。
+        {
+            graph::mtl::MaterialRecipe bogus_recipe{};
+            bogus_recipe.mtl_def_id = "no/such_material_definition";
+
+            graph::mtl::NormalizeRecipe(bogus_recipe);
+
+            if (bogus_recipe.fallback_error_kind
+                    != graph::mtl::MaterialErrorKind::UnknownMaterialDefinition)
+            {
+                GLogError(u8"Test 6 Failed: 未知材质定义 ID 未被分类为 UnknownMaterialDefinition"
+                          u8"（回退分类静默化？）kind=%u",
+                          static_cast<uint32_t>(bogus_recipe.fallback_error_kind));
+                return 15;
+            }
+
+            if (std::strcmp(bogus_recipe.mtl_def_id.c_str(), "builtin/checkerboard_3d") != 0)
+            {
+                GLogError(u8"Test 6 Failed: 未知材质定义 ID 未回退到棋盘格（实际 %s）",
+                          bogus_recipe.mtl_def_id.c_str());
+                return 15;
+            }
+        }
+
         GLogInfo(u8"Test 6 Passed: 回退材质规则表 %u 行（定义 ID + 根颜色两两不同 + 稳定名），"
-                 u8"分类表：无来源 ⇒ MissingMaterialSource、有来源 ⇒ None。",
+                 u8"分类表：无来源 ⇒ MissingMaterialSource、有来源 ⇒ None；"
+                 u8"未知定义 ID ⇒ 配方被换成 builtin/checkerboard_3d（行为断言）。",
                  static_cast<uint32_t>(MATERIAL_ERROR_KIND_COUNT));
     }
 

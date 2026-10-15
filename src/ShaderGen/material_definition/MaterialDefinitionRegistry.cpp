@@ -293,6 +293,25 @@ void NormalizeRecipe(MaterialRecipe &recipe)
         if (error_kind == MaterialErrorKind::None)
             error_kind = MaterialErrorKind::UnknownMaterialDefinition;
 
+        // 报错口径（2026-10-14 用户）：材质未知/写错 **直接报错**，不静默。单份定义写错
+        // （采样器 / 顶点输入名等配错）在**加载期**已 GLogError（那份定义不注册）；这里覆盖
+        // **另一条**到达路径：配方引用的材质定义 ID 无法解析（作者写了不存在的 ID / 数据层
+        // 覆盖指向不存在的材质）。本行是这条路径的**唯一出声点** —— ECS 侧把它当"构建成功"
+        // 处理（只计数，不再报一次），否则同一事件会出两条日志。
+        {
+            const FallbackMaterialRule &fallback_rule = GetFallbackMaterialRule(error_kind);
+            const char *reason = (error_kind == MaterialErrorKind::MissingMaterialSource)
+                                     ? "无材质来源（空 ID）"
+                                     : "材质定义 ID 无法解析";
+
+            GLogError(u8"[MaterialFallback] %s: \"%s\" => 回退错误材质 %s"
+                      u8"（棋盘格；错误种类 %s，颜色=(%.2f,%.2f,%.2f,%.2f)）",
+                      reason, recipe.mtl_def_id.c_str(), fallback_rule.definition_id,
+                      fallback_rule.marker_name,
+                      fallback_rule.marker_color[0], fallback_rule.marker_color[1],
+                      fallback_rule.marker_color[2], fallback_rule.marker_color[3]);
+        }
+
         if (!BuildFallbackMaterialRecipe(recipe, error_kind))
             return;
 
