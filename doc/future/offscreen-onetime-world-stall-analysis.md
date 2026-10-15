@@ -1,5 +1,8 @@
 # 离屏一次性世界（RenderOnce）永不绘制——专项分析与交接
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > **用途**：本文是 `RenderToTexture` / `RenderToTextureColorDepth` 离屏内容空白问题的
 > **独立分析档案（已结案）**：含症状定性、完整取证时间线、五层叠加根因、
 > **验收判据清单**、以及仍未解释的疑点。

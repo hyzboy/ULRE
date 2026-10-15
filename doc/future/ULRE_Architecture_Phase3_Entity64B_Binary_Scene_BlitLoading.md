@@ -1,5 +1,8 @@
 ﻿# ULRE 架构重构 - 阶段三：64 字节 Entity 与全场景二进制直载 (Blit-Loading) 技术规范 (Phase 3 Specification)
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 ## 一、 阶段目标与背景 (Goals & Background)
 
 在前两阶段完成全子系统的 ID 化与 Accessor 化后，系统已具备了终极收敛的前提条件：

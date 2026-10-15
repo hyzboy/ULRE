@@ -1,5 +1,8 @@
 # 材质数据全局池化 + 4-ID Draw Item 大计划（技术文档）
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
 
 > ⚠ **历史口径（2026-10-14 起）**：本文的 **4-ID Draw Item** 侧已整族删除 —— 一级 4-ID 描述符池、二级索引表、连号折叠、绘制期运行时解析

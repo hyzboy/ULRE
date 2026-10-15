@@ -1,5 +1,8 @@
 # ULRE 引擎 Transform 体系彻底转换：设计方案与实施计划（v2 · 实测订正版）
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > **文档定位**：针对 `ULRE_ECS_Component_To_ID_Architecture_Roadmap.md` 中阶段一（Transform 体系）在当前代码库中“仅完成一半”的现状，制定彻底消灭局部矩阵、轻量化 Accessor 句柄、简化标脏链路的深化重构技术规范与落地计划。
 > **关联基线**：
 > - 现状审查文档：`doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`

@@ -22,7 +22,9 @@
 | **诊断表前缀：解析器路径未设表名** | 未做〔实测 2026-10-12〕 | 校验器的 8 段已修，但 `ParseDefinition` / `ParseRenderState` / `ParseTransformGraph` 的失败点**没有表前缀** ⇒ 日志只说 `cull_mode = "Bogus"`，不说 `render_state.pipeline.`（判据 = 在材质 TOML 写 `[render_state.pipeline] cull_mode = "Bogus"` 后的日志原文）；修法 = 各段入口 `SetParseTable(...)`，与校验器同形 |
 | **S4a 的分歧场景无生产者**（可选保险） | 未做〔评审档 §19.6 诚实边界〕 | 「表标 `required=false` + 该模块缺失 + 模板属 ForwardUnlit/Sky」目前**没有任何生产者** ⇒ 要这道保险得先造生产者，再加门 case「表中 optional 槽缺失 ⇒ 组合器不得失败」 |
 | **棋盘格标记色 + 2D/3D 分派**（功能项） | 未开工；TODO 已写进 `MaterialRecipe.h` 规则表上方〔档〕 | 两套 checkerboard 源读 `EmissiveSurface` 标记色；2D 走 NDC/UV、3D 走面空间；回退 ID 需按绘制维度分派；门/契约同步 |
-| **过期声明订正（3 处）** | 未做〔实测原文已定位〕 | ① `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1136-1139`、② `doc/future/HANDOFF_2026-10-01.md:55` 仍写"棋盘格不在回退链上、需单独一轮"（2026-10-12 已落地）；③ `doc/future/lighting-shadow-domain-split-plan.md` 的 **`T6b` 标题缺 ✅**——实测**已落地**（`LightRow`/`addr_lights`/`LightSystem`/`MainLightShadowSystem` 均在位、`sun_direction` 在 ShaderLibrary 归零）；另有 `MaterialRecipe.h` 注释里的 `SchemaGate:3534` 行号已漂移 |
+| ~~**过期声明订正（3 处）**~~ | **✅ 2026-10-14（B4）结案** | ① `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1136-1139`、② `doc/future/HANDOFF_2026-10-01.md:55` 仍写"棋盘格不在回退链上、需单独一轮"（2026-10-12 已落地）；③ `doc/future/lighting-shadow-domain-split-plan.md` 的 **`T6b` 标题缺 ✅**——实测**已落地**（`LightRow`/`addr_lights`/`LightSystem`/`MainLightShadowSystem` 均在位、`sun_direction` 在 ShaderLibrary 归零）；另有 `MaterialRecipe.h` 注释里的 `SchemaGate:3534` 行号已漂移。
+  **落地**：① `Phase0-1…:1139`、② `HANDOFF_2026-10-01:58` 两处"棋盘格不在回退链上、需单独一轮"⇒ 就地加订正块（**2026-10-12 已上回退链**：`MaterialRecipe.h` 回退规则表 + `MaterialDefinitionRegistry.h:126`；余下 = 标记色 + 2D/3D 分派）；
+  ③ `lighting-shadow-domain-split-plan.md` 的 `T6b` 标题补 ✅（实测核对在位）；④ 行号引用口径 ⇒ **改按门 case 名引用**（如 `S.material-fallback-definitions-exist`；行号会随门源码漂移） |
 
 ### 2. ECS 审计（主档 `doc/ecs-quality-audit-2026-10.md` §2.2；共识档 `doc/ecs-audit-consensus-and-task-plan-2026-10-11.md`；逐条报告 `doc/analysis/ecs-audit-2026-10/`）
 
@@ -44,11 +46,18 @@
   （后者内部**已统一执行**卸载）⇒ 同一实体走两遍卸载路径；已删显式那行，与 `DestroyEntity` 同口径（唯一执行者 = 析构）。
 - ~~**#5（07 材质四条键空间）**~~ —— **✅ 已落地 2026-10-13**：`HashMaterialProgramIdentity()` 共用折字段（运行期键**以它为种子续算** ⇒ 哈希取值逐位不变、无缓存失效）+ `VariantKeyOf()` 前缀唯一实现 + forward 生产**由构造派生**（`Intern(VariantKeyOf(runtime_key))`）+ 5 条编译期 `static_assert`（类型/偏移/维序 ⇒ 只给一个键加维**立刻编译失败**）+ 权威链头注 + 源码契约 **Test 50**（4 存在性 + 1 接线 + 2 禁复活）；**红的样子**：加一维 ⇒ `error C2338`；手写折字段复活 ⇒ 退出码 50。**订正**：只有 forward 变体键是运行期键前缀，阴影键是**兄弟键**（ShadowDepth 上下文）。详见报告 07 **§七**
 - ~~**#6（08 `MaterialRuntimeRow` key 存 3.5 份）**~~ —— **✅ 已落地 2026-10-13**：订正"可省字段 = 0"（`row.recipe_hash`/`row.data_index_row` 不是 key 的副本、`cached_effective_recipe_hash` 是另一物）；不变量文档写在字段旁；两个**静态**对拍助手（定义在 .cpp、台帐宏门住 ⇒ 生产空 inline）接在「解析后写 recipe_hash」与「物化发布 data_index_row」两点；**订正报告 §四(b) 的裸等值断言**（未物化哨兵 `-1` 会误报 ⇒ 加哨兵跳过分支）；源码契约 **Test 51**；**实测**：4 例 + 18s 稳态窗口 0 告警（不变量成立），破坏同源 ⇒ 100 条点名、还原 ⇒ 0 条。详见报告 08 **§七**（含 (c) 不做、(d) 单独立项）
-- 挂同一次拍板：**旧档 §2 #5**（`AddFreeIndex` 有序维护 vs 栈消费）、**9 套系统容器合并**（共识档 §2 明确"不单独立批"）
+- ~~**旧档 §2 #5**（`AddFreeIndex` 有序维护 vs 栈消费）~~ —— **✅ 2026-10-14 已定：保持**（共识档口径：这是
+  "O(N) 换**确定性复用次序**"的取舍；改 LIFO 会改复用次序，非缺陷）
+- **9 套系统容器合并** —— 仍未开工〔共识档 §2：**不因"个数多"就整并**；唯一实证失步 = 系统替换未摘旧实例
+  `ContextSystems.cpp:155-177` ⇒ 建议只修那一处 + 定"一个系统一个容器"形态〕
+- **审计主档仍开放的两行**（P0–P3 表里状态列空的**全部**）：**P2 §4.2** 硬编码 0/1 号约定收敛为具名权威
+  （`Context.cpp` 三处"非法相机槽 ⇒ 0 号槽" + `frame_index` 三份）；**P3** CMake 空壳变量（`ECS_SYS_17..26`
+  全空仍列在 `ECS_SOURCE` + `source_group`）、重复登记、测试移出生产目录
 - **A5 同族死面（2026-10-14 已清）**：渲染项上的 L2W 行号副本（只写不读）+ 它的赋值函数 + 一个空壳排序步
-  ⇒ 整删；本步改名 `RunTransformSetup`（只留变换缓冲就绪）。证据：全仓零读取点（原读写两端随批 D / T4c4 删除）
-  + 把赋值改成常量示例帧摘要**逐位不变**；3 条禁复活针。
-- 小决定：**`HasComponentType()`**（生产零调用）删 or 留〔实测〕
+  **+ 一个与 `TransformSystem::SubmitTransformUpdates` 重复的"变换缓冲就绪"步（整步删除）** —— 该步的两件事在
+  其唯一执行者里每帧都做，且顺序由 Test 42 的 M8 针钉住（`ContextRender.cpp:839`）。证据：全仓零读取点
+  （原读写两端随批 D / T4c4 删除）+ 两次反证（行号赋值改常量 / 注掉重复调用）示例帧摘要均**逐位不变**；7 条禁复活针。
+- ~~小决定：**`HasComponentType()`**~~ —— **✅ 2026-10-14（开工 3）已删**（连同掩码字段；需要时用 `HasComponent<T>()` 或 `GetComponentRow()`；禁复活针在位）
 
 ### 3. 既存红 / 环境（与任一在途批次无关，但挡"全绿"口径）
 
@@ -65,7 +74,12 @@
 3. ~~**开关台帐的两条待定 + 自检门的配置口径**~~ —— **✅ 2026-10-14 结案**（用户拍「开工 1」）：① 保留 AUTO 并写进口径；② 钉 `scripts/ci/verify_debug_api_release.ps1`；④ `GC_SELFCHECK` 自动冻结；自检门口径 = Debug 钉像素 / Release 钉结构量（`kFrameDigestPinPixels`）
 4. **S3b-3 顶点节点枚举归位**（与 S3b 同族收尾）
 5. **stage B `receive_shadow` 幅度漂移专项**（未 bisect 的行为漂移；修完 `ATS_SELFCHECK=1` 必须 rc=0）
-6. 文档卫生：**§1 的 3 处过期声明** + C 线 doc 十篇（可与任意批并行）。
+6. 文档卫生：~~**§1 的 3 处过期声明**~~（**✅ 2026-10-14 B4 结案**，见 §1）+ ~~C 线 doc 十篇~~ —— **2026-10-14（B3）第一遍已做**：**33 档挂"文卫生订正块/banner"**
+   （**11 档现行口径档**：点明该档的已删符号 + 现行载体 + 权威档指针；**22 档历史记录档**：一行 banner 声明按历史口径读）
+   ＋ 关键落点就地订正（`texture2darray` 的作者侧校验 ⇒ `MaterialData.cpp:411`；`render-flow-cull-sort-drawcall` 的
+   行号副本一行 ⇒ 已不成立；`shadergen-material-chain-review.md` / `stage_B_*.md` / `render-item-descriptor-*.md` 是**活档/已有 banner** ⇒ 不挂）。
+   **余下（第二遍，随触碰收敛）**：① 8 档里**非关键句**的措辞（如散文里"经 PrimitiveComponent 绑定"）只被 banner 覆盖、未逐句改写；
+   ② 扫描口径注：banner 本身会**提**已删符号 ⇒ 原"250 处"计数会**升**，别把计数当进度（判据应是"没有档把已删符号当现行"）。
    **2026-10-14 新量化（A5 去组件化后仍在提已删组件名的档 = 27 档 / 250 处，分三类处置）**：
    · ① **现行口径档**（须改到与代码一致）：`doc/ecs/primitive-geometry-vdm.md`(7) · `doc/ecs/transform-data-management-and-transfer.md`(5) · `doc/simple-sphere-ecs-render-chain.md`(6) · `doc/simple-sphere-material-shadergen-overview.md`(4) · `doc/texture2darray-unified-texture-binding.md`(5) · `doc/shadow-component-and-automated-pipeline-design.md`(5) · `doc/material-lit-recipe-to-shadergen-dataflow.md`(3) · `doc/ShaderGen_MaterialGLSL_DesignAnalysis.md`(1)；
    · ② **历史记录档**（只挂 banner 指路，不改正文）：`doc/future/**`（14 档，含 `ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`(49)、`ULRE_Architecture_Technical_Review_20260930.md`(29)）· `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`(5) · `doc/csm-review-2026-09-25.md`(4) · `doc/gpu-driven-4id-draw-item-plan-2026-09.md`(11) · `doc/render-item-descriptor-and-indirection-pipeline.md`(14，已挂 banner)；

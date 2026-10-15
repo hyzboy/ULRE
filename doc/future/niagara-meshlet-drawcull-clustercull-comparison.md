@@ -1,5 +1,8 @@
 # Niagara vs ULRE：meshlet / drawcull / clustercull 实现对比
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 - 对照对象：`E:\zeux.io\niagara`（Arseny Kapoulkine，从零手写 Vulkan，33 集直播）↔ ULRE（`E:\ULRE`）
 - 目的：为 ULRE 的 **② meshlet X 源** 与 **④ 实例化** 两项欠账、以及未来遮挡剔除/剔除路线改造提供参考
 - 本文件全部结论都带 `path:line`，未标注的是推断，已标「推断」

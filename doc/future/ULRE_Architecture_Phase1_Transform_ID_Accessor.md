@@ -1,5 +1,8 @@
 ﻿# ULRE 架构重构 - 阶段一：Transform 体系 ID 化与 Accessor 重构技术规范 (Phase 1 Specification)
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 ## 一、 阶段目标与背景 (Goals & Background)
 
 * **现状痛点**：当前 `TransformComponent` 继承自 `Component` 虚基类，包含大量指针和动态容器开销，逻辑层修改后还需要经过复杂的 System 收集同步，存在明显的冗余内存税与数据二次搬运。

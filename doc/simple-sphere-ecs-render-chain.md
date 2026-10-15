@@ -1,5 +1,8 @@
 # SimpleSphere 到 vkCmd 的完整渲染链与数据流（技术文档）
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：本链文档里 `PrimitiveComponent` / `MaterialComponent` / `WriteBatchIndexRows` / `AssignTransformIndices` / `EnsureMeshDrawParams`（批处理侧）等均已删（A5 去组件化 / 批 D / A5）⇒ 相关段落按**历史口径**读；现行：几何面 = `GeometryData` + 9 行表（4-ID 由 collect 在「本项进批」判据点发布），材质面 = `MaterialData` (+ `MaterialRuntimeTable`)。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
 
 > ⚠ **历史口径（2026-10-14 起）**：世界表 `WorldAddresses` 里的 **渲染项表地址**（`addr_global_render_items`）与 **DrawItemID 表地址**（`addr_draw_item_ids`）

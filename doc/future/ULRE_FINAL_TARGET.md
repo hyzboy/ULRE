@@ -4,6 +4,9 @@ ULRE ECS 设计终极形态畅想
 
 # 1. Component Data
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 所有的Component都会有自己的数据，这个数据必须定长，并且这个数据需要符合GPU访问最小对齐单元。
 
 可以对应一个C++结构和一个GLSL结构，在后文中我们称之为struct ComponentData;

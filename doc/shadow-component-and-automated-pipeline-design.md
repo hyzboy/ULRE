@@ -1,5 +1,8 @@
 # 场景级全自动阴影管线与 ShadowComponent 解耦设计方案
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：本文的组件化设计（`RenderableComponent` / `ShadowComponent` / `class RenderableComponent : public Component`）是 A5 之前的形态 —— 现行：`Component` 基类与这些组件类**均不存在**，阴影事实走 `ShadowProxy`（CPU-only 载体）+ `EntityGPUTable::SetShadowFacts` 上行的实体行事实位。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
 
 > **注（2026-09-28）**：本文成文时的相机/地址表口径已更新（相机存储下沉世界级、Global/World 双地址表、Env/sky/shadow 随世界、viewport 全局、Scene 集已退场）——最新口径见 doc/world-addresses-and-camera-model-plan.md；本文正文保留原貌作为历史记录。

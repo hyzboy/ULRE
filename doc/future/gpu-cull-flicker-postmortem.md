@@ -1,5 +1,8 @@
 # GPU 剔除「每 3 帧一张交换链图整帧空白」问题技术文档
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > **版次**：v1（2026-10-06）。本文是**叙事性技术文档**（问题史 + 分析过程 + 各方案结局），
 > 按「初次出现 → 逐轮分析 → 各方案 → 当前边界 → 教训」组织，供接手者一次读完即可接手。
 > **范围**：只覆盖「每 3 帧一帧内容异常」这一族症状（三例），不覆盖 meshlet/实例化等其他线。

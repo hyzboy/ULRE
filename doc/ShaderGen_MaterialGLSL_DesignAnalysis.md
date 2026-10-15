@@ -1,5 +1,8 @@
 # ShaderGen 材质 GLSL 生成器设计分析
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：末段"交给 `PrimitiveComponent` 的 recipe 合并"按**历史口径**读（该类已删）；现行 = `MaterialData` + `MaterialRecipe` + collect 侧求值。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > 本文分析 ULRE 引擎的材质 GLSL 生成器（`src/ShaderGen` 为主），从示例程序
 > `example/Material/PBRSpheres.cpp` 入口出发，沿调用链覆盖
 > `inc/hgl/mtl`、`inc/hgl/graph/ssbo`、`src/ShaderGen`、`ShaderLibrary` 四个目录，

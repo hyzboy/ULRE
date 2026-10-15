@@ -1,5 +1,8 @@
 # Lit 材质数据流全链路分析
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：`PrimitiveComponent` 已删（A5）⇒ 文中"经 PrimitiveComponent 挂纹理 / BuildResolvedRecipe 从 PrimitiveComponent 收集"按**历史口径**读；现行 = `MaterialData` + `MaterialRecipe` + collect 侧求值（`RenderPrimitiveCollectSystem`）。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
 
 > **订正（2026-09-28）**：相机 / 环境 / 地址表断言已按权威文档 `doc/world-addresses-and-camera-model-plan.md`（§1、§4、§7）就地修订，本文改动项：

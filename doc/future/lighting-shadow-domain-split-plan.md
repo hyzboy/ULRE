@@ -164,7 +164,7 @@
   `M10`（槽带接线/游标禁复活）+ `M11`（销毁前设备静默）。
 - **回滚 tag**：`pre-t6a`（纯搬运，可整笔 revert）。
 
-### T6b —— 数据模型切换（光源行 + 世界私有化）
+### T6b —— 数据模型切换（光源行 + 世界私有化）  ✅ **已落地**（2026-10-14 核对：`LightRow` / `addr_lights` / `LightSystem` / `MainLightShadowSystem` 均在位、`sun_direction` 在 ShaderLibrary 归零）
 
 - **内容**：新增 `LightRow` + `addr_lights` + `LightSystem`（行 0 = 主方向光）；`SkyInfo` 删 sun/moon（D1/D3）；
   `ShadowInfo` 移出 `EnvironmentInfo` 并世界私有化；shader 侧光源方向改取光行；示例改写光行；删三份死头。

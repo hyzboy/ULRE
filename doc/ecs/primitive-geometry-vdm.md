@@ -1,5 +1,10 @@
 # Primitive 详细构成：Geometry / GeometryData / VertexDataManager
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：`PrimitiveComponent`（含 `inc/hgl/ecs/components/PrimitiveComponent.h`）已随去组件化删除 —— 现行面 = `GeometryData` + `PrimitiveState` 自由函数（`inc/hgl/ecs/support/PrimitiveState.h`）+ 行表族。
+> 本文凡出现 `PrimitiveComponent` / `SetMaterialTextureResource` 一类调用，按**历史口径**读（该类与该方法全仓 0 命中）。
+> `EnsureMeshDrawParams` 有两侧：**几何侧**（`inc/hgl/graph/geo/VKGeometry.h`、`GlobalSSBOBufferRegistry.h`，**仍在**）与**批处理侧**（批 D 已删）—— 读到时按上下文区分。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > 涉及文件：
 > - `inc/hgl/graph/mesh/Primitive.h`
 > - `inc/hgl/graph/mesh/GeometryDrawRange.h`

@@ -1,5 +1,8 @@
 ﻿# ULRE 架构重构 - 阶段零：Transform 局部数据 TRS 统一与 GLTFConvert 改造技术规范 (Phase 0 Specification)
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 ## 一、 阶段目标与背景 (Goals & Background)
 
 在全面推进 ECS 全 ID 模式与访问器化之前，必须首先建立**底层的变换数据标准真理源（Single Source of Truth）**。

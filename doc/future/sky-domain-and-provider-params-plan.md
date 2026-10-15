@@ -1,5 +1,8 @@
 # 天空 / 环境光域（provider 参数块）正式形态方案
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > **版次**：v1（2026-10-07）。范围 = 天空/环境光**数据面**的正式形态：provider 槽参数块的归位与规则、
 > 参数块纳入世界表地址体系、逐帧演化时的帧槽口径、结构镜像对拍的通用机制。
 > **不含**任何天空/天光**方法本身**（真大气散射、程序化天空、HDRI 天空、浑浊度模型等实现 = 另立项），

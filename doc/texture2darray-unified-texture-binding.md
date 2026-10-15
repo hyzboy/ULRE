@@ -1,5 +1,8 @@
 # Texture2DArray 统一纹理绑定机制与保留决策
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：作者侧落点已随 A5 迁移：**不再是** `src/ecs/components/PrimitiveComponent.cpp`（该文件已删），而是 `src/ecs/components/MaterialData.cpp`（例："非数组不得带层号"的交叉校验在 `:411`）与 `MaterialAuthoringSideTable`。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > 结论先行：**保留 `Texture2DArray`，不消灭。** 它是"同规格纹理集"在引擎里的正确表达方式——一个描述符 + 层号 = N 张纹理；删除它会把描述符占用量变成层数的线性函数。本文记录该机制的完整实现（含 path:line 证据与实测数值）、保留理由、已落地的收口改动，以及因此修订的后续计划。
 >
 > 文档状态：2026-09-13 定稿（决策 + O1 落地）。基线分支 `RemoveTexture2DArray`，原"消灭"计划已按本文第 6 节修订，分支名保留（未回退）。

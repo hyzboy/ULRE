@@ -1,5 +1,8 @@
 # B8 设计稿：`EntityGPU`（128 B）与 `.ulrescene` 直载 —— 拆分建议 + 拍板点
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > 版次：v1.1（2026-10-02）。**本稿只做设计与拍板，不含代码改动**（用户指定"先出设计与拍板点"）。
 > **范围决议（用户 2026-10-02）**：`.ulrescene` 直载（本稿 T4）**本轮不做** ⇒ 本轮范围 = **T1 + T2**；
 > T1 落成时进一步收窄为**纯 C++ 结构 + 断言**（GLSL 镜像与派生表本体等第一个真消费者，随 T3 一起做）。

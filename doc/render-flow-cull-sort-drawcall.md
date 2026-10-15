@@ -1,5 +1,8 @@
 # ULRE 渲染流程：剔除 / 排序 / DrawCall 生成与提交（CPU 与 GPU 双路）——技术文档
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：表中 `item->transform_index` / `AssignTransformIndices` 一行**已不成立**（A5：渲染项上的 L2W 行号副本只写不读 ⇒ 连同该函数删除；行号现由变换侧算式给出 + GPU 剔除写 per-batch `l2w_index` 表）；`EnsureMeshDrawParams`（批处理侧）同批删除。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > 版次：**v1（2026-10-05，HEAD = `0072145aa`，T3i 之后）**
 >
 > ⚠ **历史口径补注（2026-10-10）**：本文描述的 **CPU 排序步**（`SortBatchItems` 分静态/可动两组、回写 `item->index`、

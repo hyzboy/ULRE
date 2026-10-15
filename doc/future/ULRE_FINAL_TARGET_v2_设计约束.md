@@ -1,5 +1,8 @@
 ﻿# ULRE 终极形态 v2 —— 设计约束（2026-09-30 定稿）
 
+> **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > **来源**：本文以用户草案 `doc/future/ULRE_FINAL_TARGET.md` 为原文，逐条给出**已定调的设计约束**、
 > 与**现有代码**的对应关系、以及需新增/待细化项。原文的畅想意图全部保留，只在必要处收紧或修正。
 >

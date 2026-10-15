@@ -1,5 +1,6 @@
 # ShaderGen → ECS 材质链评审（MaterialRecipe 到材质行）
 
+
 > **快照**：HEAD = `73fa8ddae`（2026-10-11）；工作区在 `src/ShaderGen`、`inc/hgl/mtl`、`inc/hgl/ecs/**Material*`、`ShaderLibrary` 面**干净**。
 > **范围**：`ShaderLibrary/material/*.toml`（15 份）→ `MaterialDefinitionRegistry` → `ShaderProgramManager::AcquireShaderProgram`
 > → `BuildGenericMaterial`（5 相位）→ `CompileMaterial`（7 步）→ `ShaderBuildContext` → `FinalizeShaderBuildContext`（SPV 缓存/glslang）

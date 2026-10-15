@@ -1,5 +1,8 @@
 # 全局地址统一：GlobalAddresses 表接管全局表地址（执行计划）
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：文中出现 `RenderItemDataStorage` / `TestRenderItemDataStorage`（例："已于 2026-10-14 随 4-ID 池表整族删除"）属**落地记录**，按历史口径读；世界表字段数现行 = 7。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
 
 > ⚠ **历史口径（2026-10-14 起）**：世界表 `WorldAddresses` 里的 **渲染项表地址**（`addr_global_render_items`）与 **DrawItemID 表地址**（`addr_draw_item_ids`）

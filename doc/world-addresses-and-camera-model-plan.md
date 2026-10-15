@@ -1,5 +1,8 @@
 # Global / World 双地址表 + 相机模型（决策与执行计划）
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：文中 `TestRenderItemDataStorage`（已随 4-ID 池表整族删除，2026-10-14）属**记录**；本文的地址三档 / 相机模型结论仍是现行口径。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 > 权威口径文档。决策人：hyzboy（2026-09-28 会话）。落地前请先读本文，再读
 > `doc/global-addresses-bda-unification-plan.md`（S1–S3：Scene 集退役 + 地址归口 GlobalAddresses）。
 > 本文同时收录**本轮核出的文档事实订正清单**（§7）——其它文档按该表对齐，不要再沿用旧写法。

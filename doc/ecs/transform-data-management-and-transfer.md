@@ -1,5 +1,8 @@
 # ECS Transform 数据管理与传递技术分析
 
+> **⚠ 2026-10-14 文卫生订正（B3）**：`TransformComponent` 随 T2-c 整删（变换 = 平铺行 + `TransformAccessor`）⇒ 文中 §3.1 标题与若干句按**历史口径**读；§6.1/§6.2 已于同批订正到现行机制（L2W 行号归变换侧算式 + GPU 剔除写 per-batch 表）。
+> 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
+
 ## 1. 分析范围与目标
 
 本文面向当前 ULRE ECS 实现，分析 Transform 数据从 CPU 侧生成、管理、更新，到 GPU 侧绑定与着色器读取的完整链路。
