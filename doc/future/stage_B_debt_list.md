@@ -231,9 +231,14 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
     `inc/hgl/ecs/support/TransformPolicySpec.h`（20 行）。
   - 唯一消费者：`src/ecs/support/PrimitiveBatchPipeline.cpp:292-300`
     （读两个 spec 并 switch `PositionSourceSpec::{MeshVertex, Quad2DGenerated, TerrainHeightmapGrid, ProceduralGenerated}`）。
-- **待定（推测定标）**：A5b 删的是**组件上的字段**，`RenderItem` 虚接口是**另一层**。
-  是否借 stage B 一并收敛（例如把"位置来源/变换策略"降为**每实例 slot 上的选择器**，去掉虚函数）—— **没有定稿**；
-  现状是「虚接口 + 默认实现」，**不是**「组件字段」。
+- **✅ 已结案（2026-10-14，A5）**：这条通用化**整删** —— `RenderItem` 的两个 spec 虚接口（全仓**零 override**
+  ⇒ 无生产者）、`inc/hgl/ecs/support/PositionSourceSpec.h` 与 `TransformPolicySpec.h`（只被 `RenderItem.h` include）、
+  以及 `PrimitiveBatchPipeline::AssignTransformIndices` 里"位置来源 × 朝向策略"的**两层 switch
+  （九个分支全落到同一条路）**。
+  落地判据：`transform_index` 的赋值语义不变（静态 `1 + slot` / 动态 `预算基址 + slot`）；示例帧摘要**逐位不变**；
+  契约针 4 条禁复活。
+  **将来若要表达"位置来源 / 朝向策略"**（如 2D 分派、地形）以**每实例事实**重生，不要恢复虚接口 ——
+  地形方案已定 R7「不复用」（`doc/terrain-rendering-implementation-plan.md` 决策表）。
 
 ---
 

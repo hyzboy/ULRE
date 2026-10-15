@@ -27,7 +27,7 @@
 - 传输层：`TransformAssignmentBuffer`
   - 维护 LocalToWorld UBO/SSBO + ring 区段，支持脏区间写入。
 - 取数层：`PrimitiveBatchPipeline` / `LineRenderPipeline`
-  - 为每个渲染项分配 transform_index，并绑定 LocalToWorld 缓冲。
+  - 绑定 LocalToWorld 缓冲。**L2W 行号**由变换侧算式给出（渲染项**不再**携带副本 —— A5 2026-10-14 删）。
 
 ---
 
@@ -141,27 +141,34 @@
 
 ## 6. 渲染侧消费路径
 
-## 6.1 给每个 RenderItem 分配 transform_index
+## 6.1 L2W 行号归谁算（2026-10-14 订正）
 
-`PrimitiveBatchPipeline::AssignTransformIndices` 依据 Transform 的 handle 与 mobility 计算索引：
+算式仍在：static `1 + slot` / dynamic `GetDynamicBaseIndex() + slot`（`+1` 对应槽位 0 恒为单位矩阵），
+但**写者归变换侧**（`TransformSystem.h:57,70-71` 与其写入路径）；接管路径（形态 B）由 **GPU 剔除**
+把行号写进 per-batch `l2w_index` 表（`ShaderLibrary/ecs/entity_gpu_cull.glsl:253,390`，消费点见 `:146-147`）。
 
-- static：`transform_index = group_index + 1`
-- dynamic：`transform_index = dynamic_base + group_index`
-- 无效 handle：`transform_index = 0`（回退到 identity）
+**已删**（A5，2026-10-14）：`PrimitiveBatchPipeline::AssignTransformIndices` 与渲染项上的行号字段
+—— 那是同一算式在渲染项上的**第二份副本**：`WriteBatchIndexRows`（批 D 删）与它的读取点（CPU 绘制路径，
+T4c4 删）消失后，该字段**只写不读**（实测：把赋值改成常量，示例帧摘要逐位不变 ⇒ 确认不是承重路径）。
+该管线步骤本身也在同批删除：它只调 `EnsureTransformBuffer()` + `RefreshHandleOrder()`，而这两步的**唯一执行者**是
+`TransformSystem::SubmitTransformUpdates()`（`src/ecs/core/ContextRender.cpp:839`，由 Test 42 的 M8 针钉住"必须在
+collect/派发之前"）—— 管线里那份是**重复调用**（实测注掉它，示例帧摘要逐位不变）。
 
-这里的 `+1` 对应槽位 0 保留为恒等矩阵。
 
-## 6.2 TransformID 作为实例属性下发
+## 6.2 L2W 行号如何进着色器（2026-10-14 订正）
 
-批处理阶段会把每个 item 的 `transform_index` 写入 TransformID VAB——`VK_FORMAT_R32_UINT`（`VF_V1U`）；
-16 位方案（`HGL_TRANSFORM_ID_U32` 宏与 `RenderAssignDef.h` 的 `#if/#else` 分支）已整体删除，无条件写死 32 位。
+**图元路径**没有"每 item 写 TransformID 顶点属性"这一步（随 CPU 绘制路径消失）：行号在 **GPU 剔除**里
+按实体行 `entity.row[Transform]` 算出并写进 per-batch `l2w_index` 表（`entity_gpu_cull.glsl:253,390`），
+发射体经 `ResolveTransformID(iid) → LocalToWorldIndexRef(pc.l2w_index).values[iid] → l2w.mats[行号]` 取矩阵。
 
-含义是：
+**line 路径**另有自己的一份：`LineRenderPipeline::LineBuffer::AddSegment(..., transform_index)`
+（`src/ecs/support/line/LineRenderPipeline.cpp:218,249-250`，写 `VK_FORMAT_R32_UINT` 顶点属性 `VF_V1U`），
+其行号由该管线自己的 `dynamic_base / slot` 算式给出（`:533,580`）—— 与图元路径互不相干。
 
-- 顶点/实例侧仅传一个 32 位 ID。
-- shader 用该 ID 索引 LocalToWorld 表（表地址见 6.3，经 `pc_root` 下发）。
+共同点：shader 只拿到一个 32 位 ID，用该 ID 索引 LocalToWorld 表（表地址见 6.3，经 `pc_root` 下发）；
+16 位方案（`HGL_TRANSFORM_ID_U32` 宏与 `RenderAssignDef.h` 的 `#if/#else` 分支）已整体删除，无条件 32 位。
+这与"ID 走 Instance Rate、真实数据走全局表"的既定口径一致。
 
-这与项目文档中的“ID 走 Instance Rate，真实数据走全局表”完全一致。
 
 ## 6.3 LocalToWorld 表的 GPU 取数（BDA，无描述符绑定）
 

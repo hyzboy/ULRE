@@ -59,7 +59,6 @@ inc/hgl/ecs/
                TextRenderPipeline / RenderResource
                TransformAssignmentBuffer / TransformDataStorage / VisibilityDataStorage
                BoundingBoxDataStorage / EntityGPUTable / EntityRenderIDTable
-               PositionSourceSpec / TransformPolicySpec
 ```
 
 两个互相独立的循环（帧入口 `src/Work/WorkManager.cpp:74`）：
@@ -436,7 +435,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 材质行地址物化在 `MaterializeRecipeRowsForPrimitive`（:653-1088）里：`TryGetRowBuffer`（:750）→ `IsActive(type, data_index)`（:762）→ 容量检查（:779-791）→ `material_row_gpu = gpu_base + data_index*row_bytes`（:801）、`data_index_row = data_index`（:815）；纹理引用行走 `AcquireMaterialTextureConfiguration`（:990）/ `WriteMaterialTextureConfiguration`（:1004）/ `RetireMaterialTextureConfiguration`（:1010）。
 
-`PrimitiveRenderItem`（`inc/hgl/ecs/core/PrimitiveRenderItem.h:28-72`、`src/ecs/core/PrimitiveRenderItem.cpp`）是 `RenderItem` 接口的实现：对外暴露实体/组件句柄、`GetShaderProgram/GetPipeline(render_pass)/GetGeometryDataBuffer/GetGeometryDrawRange`（几何侧走 `GeometryData` + `MeshDrawParams` 行；材质侧 = `GetMaterialRuntimeRow()`），构造时缓存世界矩阵。批处理只需要 `RenderItem*` 这层接口（`inc/hgl/ecs/core/RenderItem.h:32-46`，含 `transform_index` / `isVisible` / `draw_key`(=`MeshDrawKey`)）。`index`（零读者）与 `Compare`（零调用者）2026-10-10 随审计 §1.1 删除 —— 排序/聚簇一律读 `draw_key` 这份行派生 POD 键 —— 这是 ECS 与渲染层解耦的接缝。
+`PrimitiveRenderItem`（`inc/hgl/ecs/core/PrimitiveRenderItem.h:28-72`、`src/ecs/core/PrimitiveRenderItem.cpp`）是 `RenderItem` 接口的实现：对外暴露实体/组件句柄、`GetShaderProgram/GetPipeline(render_pass)/GetGeometryDataBuffer/GetGeometryDrawRange`（几何侧走 `GeometryData` + `MeshDrawParams` 行；材质侧 = `GetMaterialRuntimeRow()`），构造时缓存世界矩阵。批处理只需要 `RenderItem*` 这层接口（`inc/hgl/ecs/core/RenderItem.h:32-46`，含 `isVisible` / `draw_key`(=`MeshDrawKey`)）。`index`（零读者）与 `Compare`（零调用者）2026-10-10 随审计 §1.1 删除 —— 排序/聚簇一律读 `draw_key` 这份行派生 POD 键 —— 这是 ECS 与渲染层解耦的接缝。
 
 ### 7.4 批处理阶段：PrimitiveBatchPipeline
 
@@ -447,7 +446,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 |---|---|---|
 | 剔除 | `RunCulling → PerformFrustumCulling` `:120/:153-186` | 视锥测试（`TestFrustumWithWorldAABB` `:187` / `LocalAABB` `:197` / `BoundingSphere` `:209`），置 `item->isVisible` |
 | 排序 | `RunSorting → SortByDistance` `:125/:231-243` | 按 `distanceToCamera` | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
-| 变换索引 | `RunTransformIndexing → AssignTransformIndices` `:130/:244-302` | 由 handle 查组内序号，movable → `dynamic_base + group_index`，static → `group_index + 1`（slot 0 恒为单位矩阵）；写 `item->transform_index` |
+| （空）变换缓冲就绪 | **2026-10-14（A5）整步删除** | 原步骤（`RunTransformSetup`，再往前叫 `RunTransformIndexing`）只调 `EnsureTransformBuffer()` + `RefreshHandleOrder()` —— 而这两步的**唯一执行者**是 `TransformSystem::SubmitTransformUpdates`（`src/ecs/core/ContextRender.cpp:839`，**M8-needle / Test 42 钉住"必须在 collect/派发之前"**），它在管线步骤之前就跑过 ⇒ 管线里那份是**重复调用**（实测注掉它，示例帧摘要逐位不变）。同批删除的还有：原空壳 `RunSorting`、原"行号分配"函数、以及渲染项上的 L2W 行号副本（该副本在批 D / T4c4 删掉读写两端后**只写不读**）。**L2W 行号的权威** = 变换侧算式（静态 `1 + slot` / 动态 `GetDynamicBaseIndex() + slot`）+ GPU 剔除写的 per-batch `l2w_index` 表（`ShaderLibrary/ecs/entity_gpu_cull.glsl:390`） |
 | 成批 | `RunBatching → BuildMaterialBatches` `:147/:1014-1088` | 按 `ShaderProgramPipelineKey{shader_program, pipeline}`（`inc/hgl/ecs/core/ShaderProgramPipelineKey.h:23-48`）归批；缺 recipe rows 或未解析 pipeline 的 item 直接跳过并告警 |
 | 批内定型 | `FinalizeBatches → FinalizeBatch` | `EnsureBatchIndexRows` → `EnsureMeshDrawParams` → `WriteBatchIndexRows`。⚠ **2026-10-10 订正**：`SortBatchItems` / `BuildBatches` / `WriteMeshDrawCommands` **全仓已不存在**（CPU 建批 / 排序 / 写命令链随 T4c4「删 CPU 绘制链」消失）；批间排序现为 `PrimitiveRenderSystem::RenderBatches` 里的 `std::sort(ordered_batches)`（按 `MaterialBatch::key`），`PrimitiveOverlayRenderSystem` 转发同一函数（`overlay_only=true`） |
 

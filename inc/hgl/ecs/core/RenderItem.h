@@ -1,8 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/EntityHandle.h>
-#include<hgl/ecs/support/PositionSourceSpec.h>
-#include<hgl/ecs/support/TransformPolicySpec.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/graph/render/RenderItemDescriptor.h>
 #include<memory>
@@ -32,7 +30,11 @@ namespace hgl::ecs
     class RenderItem
     {
     public:
-        uint32_t transform_index = 0;            // Transform index in buffer（PrimitiveBatchPipeline 写、:541 读）
+        // A5（2026-10-14）：原有一个"L2W 行号"字段（由批处理管线里的一个步骤写入；该步骤本身未留下别的职责，
+        // 也在同批删除 —— 行号现在只活在变换侧算式与 GPU 剔除写的 per-batch 表里）。
+        // 它的读取点（CPU 批行写入）与写入端的消费者随批 D / T4c4 删除后**只写不读** ⇒ 字段连同赋值
+        // 整删（实测把赋值改成常量，示例帧摘要逐位不变）。行号现在只活在变换侧算式与 GPU 剔除的
+        // `l2w_index` 表里（`ShaderLibrary/ecs/entity_gpu_cull.glsl:390`）。
 
         bool isVisible = true;                   // Visibility flag
 
@@ -51,9 +53,11 @@ namespace hgl::ecs
         // depth-only 离屏 Pass）时，各 RT 使用各自格式匹配的管线。
         virtual hgl::graph::Pipeline* GetPipeline(hgl::graph::RenderPass* render_pass) const = 0;
 
-        // Unified transform ingress for R08 (behavior stays unchanged until strategy rollout)
-        virtual TransformPolicySpec GetTransformPolicySpec() const { return TransformPolicySpec{}; }
-        virtual PositionSourceSpec GetPositionSourceSpec() const { return PositionSourceSpec::MeshVertex; }
+        // A5（2026-10-14）：原先这里还有两个带默认实现的虚接口（"位置来源"与"朝向策略"）。
+        // **全仓零 override** ⇒ 唯一消费者（批处理管线里的行号赋值）那两组
+        // switch 的九个分支全不可达 ⇒ 与两个只被本文件 include 的头**一并整删**（零兼容口径）。
+        // 将来真出现生产者（如 2D 分派 / 地形）应以**每实例事实**表达，不要恢复虚接口。
+        // 记录见 `doc/future/stage_B_debt_list.md` §2.5。
 
         /// 几何/绘制键（= `MeshDrawParams` 行的 CPU 镜像，24 B POD）。
         /// B3-iii：批排序 / 聚簇 / ICB 一律读这份**行数据**（采集侧从行填入），不再经每实体

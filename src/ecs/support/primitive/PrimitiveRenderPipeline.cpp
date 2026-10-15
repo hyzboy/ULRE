@@ -37,14 +37,12 @@ namespace hgl::ecs
     {
         if (!impl_->PrepareFrame(context_))
             return;
-        impl_->RunSorting();
     }
 
     void PrimitiveRenderPipeline::RunBuild()
     {
         if (!impl_->PrepareFrame(context_))
             return;
-        impl_->RunTransformIndexing();
         impl_->RunBatching();
     }
 

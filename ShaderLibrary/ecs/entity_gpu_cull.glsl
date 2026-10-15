@@ -145,7 +145,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer DrawIndirectC
 
 // 输出（形态 B）：per-batch l2w_index 表。消费点 = 发射体 `ResolveTransformID(iid) →
 // LocalToWorldIndexRef(pc_root.addr_l2w_index).values[iid] → l2w.mats[行号]`；
-// 行值语义 = **L2W 行号**（CPU WriteBatchIndexRows 写 `item->transform_index` 同值）。
+// 行值语义 = **L2W 行号**（本 pass 从实体行 `row[Transform]` 取，见本文件下方 `l2w_out_addr` 的写入点）。
 layout(buffer_reference, scalar, buffer_reference_align=4) buffer L2WIndexOutRef
 {
     uint values[];

@@ -185,6 +185,9 @@ per-frame 多份化未做。→ 地形的"compute 写 tile 表 / 间接命令"�
 但只在 `PrimitiveBatchPipeline.cpp:287-312` 的 `switch` 里与其它情况合并透传，**无任何实现**。
 → 本方案不走通用批处理，因此该分支保持现状；但它说明"地形高度网格"在引擎设计里早被预留。
 
+> **2026-10-14（A5）**：该枚举已**整删**（连同它的虚接口与消费者 switch —— 全仓零 override、无生产者）。
+> 本方案已定 R7「不复用」⇒ 不受影响；"地形高度网格"若将来要进批处理，以**每实例事实**表达。
+
 ### 2.11 可用的缓冲创建 API
 
 - `CreateSSBO(...)` → `STORAGE | SHADER_DEVICE_ADDRESS`（`inc/hgl/vk/VKDevice.h:315`，
@@ -509,7 +512,7 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
 | R4 | `uint16` 高度的世界单位换算精度 | 保留"整数高度 + 单一 `height_scale`"（源工程语义），`height_scale` 为 float、在最后一步相乘 |
 | R5 | 页与 tile 边界不对齐导致的跨页采样 | T2-T4 约束为"页内整数子矩形、tile 不跨页"；跨页支持留到 T5 |
 | R6 | 高度界金字塔（T3）的实现位置 | 先 CPU 侧构建（简单、可自检）；T4 后随 tile 表一起进 compute 的候选，但不是必须 |
-| R7 | 是否复用 `PositionSourceSpec::TerrainHeightmapGrid`（`PositionSourceSpec.h:12`）接入通用批处理 | **不复用**（专用管线更直接）。若希望地形统一走 4-ID 批处理，需先讨论（会与 meshlet 双轨分流耦合） |
+| R7 | 是否复用 `PositionSourceSpec::TerrainHeightmapGrid`（`PositionSourceSpec.h:12`）接入通用批处理 | **不复用**（专用管线更直接）。若希望地形统一走 4-ID 批处理，需先讨论（会与 meshlet 双轨分流耦合）。**2026-10-14（A5）：该枚举连虚接口已整删 ⇒ 本选项彻底不存在** |
 | R8 | 碎片/调试：地形材质的片元配色 | T1 先用纯色 + 导数法线，T2 起再讨论高程着色/材质 splatting（那时才需要材质纹理的 mip） |
 
 ---

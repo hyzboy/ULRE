@@ -157,26 +157,6 @@ namespace hgl::ecs
             s_batch_timer.Add(DeltaUs(t0));
     }
 
-    void PrimitiveBatchPipeline::RunSorting()
-    {
-    }
-
-    void PrimitiveBatchPipeline::RunTransformIndexing()
-    {
-        TransformSystem* transform_system = nullptr;
-        if (world)
-        {
-            if (auto system = world->GetSystem<TransformSystem>())
-            {
-                transform_system = system.get();
-                transform_system->EnsureTransformBuffer();
-                transform_system->RefreshHandleOrder();
-            }
-        }
-
-        AssignTransformIndices(transform_system);
-    }
-
     void PrimitiveBatchPipeline::PerformFrustumCulling()
     {
         if (!world || !camera_info)
@@ -260,73 +240,6 @@ namespace hgl::ecs
         return frustum.SphereIn(worldPos, worldRadius) != math::Frustum::Scope::OUTSIDE;
     }
 
-
-    void PrimitiveBatchPipeline::AssignTransformIndices(TransformSystem* transform_system)
-    {
-        if (!world)
-            return;
-
-        auto& cache = world->GetRenderFrameCache();
-        uint32_t dynamic_base = 0;
-
-        if (transform_system)
-            dynamic_base = transform_system->GetDynamicBaseIndex();   // B1b：预算决定，与名单长度无关
-
-        for (auto& itemPtr : cache.renderItems)
-        {
-            RenderItem* item = itemPtr.get();
-            if (!item)
-                continue;
-
-            auto transform = item->GetTransform();
-            if (!transform.IsValid())
-                continue;
-
-            const auto handle = transform.GetID();
-            if (handle == TransformDataStorage::INVALID_HANDLE)
-            {
-                item->transform_index = 0;
-                continue;
-            }
-
-            uint32_t slot = 0;
-            if (transform_system &&
-                transform_system->TryGetTransformSlot(handle, transform.IsMovable(), slot))
-            {
-                const PositionSourceSpec position_source_spec = item->GetPositionSourceSpec();
-                const TransformPolicySpec transform_policy_spec = item->GetTransformPolicySpec();
-
-                switch (position_source_spec)
-                {
-                case PositionSourceSpec::MeshVertex:
-                case PositionSourceSpec::Quad2DGenerated:
-                case PositionSourceSpec::TerrainHeightmapGrid:
-                case PositionSourceSpec::ProceduralGenerated:
-                default:
-                    switch (transform_policy_spec.facing)
-                    {
-                    case FacingPolicy::None:
-                    case FacingPolicy::CameraFacing:
-                    case FacingPolicy::AxisLocked:
-                    default:
-                        // Fixed screen-space scaling is a separate policy switch from facing.
-                        if (transform_policy_spec.fixedScreenSpaceScale)
-                        {
-                            // R08 ingress-only stage: keep transform index behavior unchanged.
-                        }
-                        // B1b：L2W 行号 = 静态 `1 + slot` / 动态 `预算基址 + slot`（slot 跨帧稳定）
-                        item->transform_index = transform.IsMovable() ? (dynamic_base + slot) : (slot + 1);
-                        break;
-                    }
-                    break;
-                }
-            }
-            else
-            {
-                item->transform_index = 0;
-            }
-        }
-    }
 
     graph::BufferManager* PrimitiveBatchPipeline::GetBufferManager() const
     {

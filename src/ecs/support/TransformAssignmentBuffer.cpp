@@ -152,8 +152,9 @@ namespace hgl::ecs
             }
         }
 
-        // 索引行表已整块删除（B1b-2：全局 `ECS:LocalToWorldIndex` 只写不读；
-        // per-batch 行表由 PrimitiveBatchPipeline 直接按槽位写 `item->transform_index`）。
+        // 索引行表已整块删除（B1b-2：全局 `ECS:LocalToWorldIndex` 只写不读）。
+        // 接管路径（形态 B）的 per-batch `l2w_index` 表由 **GPU 剔除**写（`entity_gpu_cull.glsl`），
+        // 行号来自实体行 `row[Transform]`；渲染项上曾有一份 CPU 侧副本，2026-10-14（A5）随"只写不读"删除。
 
     }
 

@@ -43,8 +43,6 @@ namespace hgl::ecs
         uint32_t GetPrepareFrameCount() const { return prepare_frame_count_; }   ///< §2 #11 判据用
 
         void RunCulling();
-        void RunSorting();
-        void RunTransformIndexing();
         void RunBatching();
 
 
@@ -55,7 +53,6 @@ namespace hgl::ecs
         bool TestFrustumWithLocalAABB(RenderItem* item, const glm::vec3& local_center, const glm::vec3& local_extents);
         bool TestFrustumWithBoundingSphere(RenderItem* item);
 
-        void AssignTransformIndices(TransformSystem* transform_system);
         bool PrepareFrameInternal(ECSContext* ctx);   ///< §2 #11：真正的帧前准备（守卫只调它一次/帧）
         void BuildMaterialBatches();
         void FinalizeBatches();
