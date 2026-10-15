@@ -449,5 +449,5 @@ CSM 阴影 `CascadeShadowMap` 阴影投射/接收正常（ShadowProxy 池路径�
 - 行池与预算：`inc/hgl/graph/ssbo/SSBOTypes.h`、`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`（`kGlobalSSBOConfigs`）
 - 世界地址表：`inc/hgl/graph/ubo/WorldAddresses.h`、`ShaderLibrary/ubo/scene_ubo.glsl`（`WorldAddressesRef`）、
   门用例 `W.world-addresses-struct-parity` / `W.world-addresses-field-ownership`、`kAddressOwnershipTable`
-- 探针：`src/ecs/support/ProbeTransformDiagnostics.cpp`（每实体字节 / 分配次数）
+- 探针：`src/ecs/tests/ProbeTransformDiagnostics.cpp`（每实体字节 / 分配次数）
 - 五处连带面（改世界/全局地址表的固定动作）：见技能 `ulre-ecs-layer`

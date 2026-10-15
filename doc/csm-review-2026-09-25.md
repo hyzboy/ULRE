@@ -124,7 +124,7 @@ if (world && world->IsCurrentPassShadow())
 
 ### A5【低-中】`ShadowComponent` 四个旋钮有两个完全无消费者
 
-- `receive_shadow`：`ShadowComponent.h:18/37`，`CanReceiveShadow()` 只被 `src/ecs/support/TestCSMIncrementalPass.cpp:1077/1101` 使用
+- `receive_shadow`：`ShadowComponent.h:18/37`，`CanReceiveShadow()` 只被 `src/ecs/tests/TestCSMIncrementalPass.cpp:1077/1101` 使用
   （**订正（2026-09-28）**：此断言已过期——D3（2026-09-26）已把 `receive_shadow` / `bias_multiplier` 接通到材质行：
   per-draw 行已是 16B 四字段 `{payload_index, texture_reference_index, shadow_bias_multiplier, shadow_flags}`
   （`ShaderBufferSources.h:142-152`），`ATS_SELFCHECK=1` 的 D3 契约（`receive_shadow` 18189 px、

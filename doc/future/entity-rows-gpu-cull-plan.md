@@ -107,7 +107,7 @@ grep -rn 'EntityGPU' inc/ src/ example/ ShaderLibrary/ src/Tools/
   ① `inc/hgl/graph/ubo/WorldAddresses.h`（C++ 真源 struct）
   ② `ShaderLibrary/ubo/scene_ubo.glsl`（`buffer WorldAddressesRef` 镜像）
   ③ 门的两条 parity 用例（`W.world-addresses-struct-parity` / `W.world-addresses-field-ownership`）
-  ④ `src/ecs/support/TestRenderItemDataStorage.cpp` 的**三份内嵌 GLSL 夹具** + 逐字段 `static_assert`
+  ④ `src/ecs/tests/TestRenderItemDataStorage.cpp` 的**三份内嵌 GLSL 夹具** + 逐字段 `static_assert`
   ⑤ `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` 的 `kAddressOwnershipTable`（登记"世界私有"）
 
 ### 2.4 容量与失败模式

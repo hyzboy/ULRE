@@ -295,7 +295,7 @@ A1 想省的（不动字段偏移、不重编 shader）在本仓按铁律本来�
 4. `src/ecs/core/MaterialBatch.cpp`：删释放分支（:26-47）、把复位处的条件置 null（:60-67）改无条件置 null、删 `Reset()` 里的 `own_* = true`（:77-80）。
 5. `src/ecs/support/GPUCullSystem.cpp`：`has_owned_to_release`（:797-801）与释放块（:806-835）里删与本批四类相关的条件/分支（保留 `own_icb_mesh_tasks / own_mesh_draw_params` 之外的既有语义需实施时逐行读后决定 —— **`DrainForHandover()` 的排空语义要保住**）；删 :839-842 四个置 false。
 6. `src/ecs/support/PipelineMaterialRenderer.cpp`：**不改**（它是四个指针的消费者）。
-7. 契约（`src/ecs/support/TestCSMIncrementalPass.cpp`）：三个被删函数名加**禁复活针**；新增一条钉「接管切换仍把这五个指针指到 GPU 输出」（存在性 + 位置）。
+7. 契约（`src/ecs/tests/TestCSMIncrementalPass.cpp`）：三个被删函数名加**禁复活针**；新增一条钉「接管切换仍把这五个指针指到 GPU 输出」（存在性 + 位置）。
 
 ### 11.4 判据（绿）
 

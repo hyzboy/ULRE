@@ -19,8 +19,8 @@ namespace hgl::ecs
 {
     namespace
     {
-        constexpr uint32_t kIdentityL2WSlot = 0;
-        constexpr uint32_t kFirstObjectL2WSlot = 1;
+        // L2W 行号约定的两个常量已上提到头（`TransformAssignmentBuffer.h`，唯一具名权威；
+        // 2026-10-14）。本文件只**用**它们。
 
         // 2026-10-10（审计 §1.1）：`ShouldEmitPeriodicLog`（恒 false、body 已注释）与其唯一调用点
         // （EnsureBudget 里的死分支）一并删除；随它走的 `LogDeviceBufferSnapshot` 也成了零调用者 ⇒ 同删。

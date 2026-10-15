@@ -328,7 +328,7 @@ static_assert(sizeof(TransformAccessor) == 16,
 * **目标**：示例按 §2.3 选项 (a)（推荐）或 (b) 适配，加上机器化“防复活”护栏，完成全量回归。
 * **修改文件**：
   * `example/ApiValidation/ComputeTransformHierarchy.cpp`：走 (a) 则改 shader + SSBO 布局为 TRS 直算；走 (b) 则示例自持派生缓冲并注明。
-  * `src/ecs/support/TestTransformFlatStorage.cpp:477-509`（Test 12 的 `SourceNeedle` 表，当前 21 条）：**新增两条**把“删干净”变成机器验收：
+  * `src/ecs/tests/TestTransformFlatStorage.cpp:477-509`（Test 12 的 `SourceNeedle` 表，当前 21 条）：**新增两条**把“删干净”变成机器验收：
     `{ "inc/hgl/ecs/support/TransformDataStorage.h", "local_matrices", 0, ... }`、
     `{ "inc/hgl/ecs/support/TransformDataStorage.h", "local_dirty",    0, ... }`。
 * **验证集执行（已按仓内实情订正）**：
@@ -383,7 +383,7 @@ static_assert(sizeof(TransformAccessor) == 16,
 
 **同批一起改掉的调用点**（API 变更与全部调用点同批，禁「新旧并存」）：
 `src/ecs/core/Context.cpp`（构造期回填 + `GetTransform` 去 `this`）、`src/ecs/support/TransformAccessor.cpp`（`GetOwner` / `SetMobility` / 三处内部父柄 / 删除零调用者的 `FromOwner`）、
-`inc/hgl/ecs/support/TransformAccessor.h`、`example/ApiValidation/ComputeTransformHierarchy.cpp`（TRS SSBO + GLSL 合成）、`src/ecs/support/TestTransformFlatStorage.cpp`（needle）。
+`inc/hgl/ecs/support/TransformAccessor.h`、`example/ApiValidation/ComputeTransformHierarchy.cpp`（TRS SSBO + GLSL 合成）、`src/ecs/tests/TestTransformFlatStorage.cpp`（needle）。
 
 **本批明确未做**：
 1. `BoundingBoxAccessor` 的同类冗余 `context` 未动（本轮只做 Transform，理由见 §五.6）。

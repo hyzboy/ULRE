@@ -4462,6 +4462,20 @@ int main(int argc, char** argv)
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "EnsureTransformBuffer",
               "变换缓冲就绪的重复副本复活（唯一执行者 = TransformSystem::SubmitTransformUpdates）", true },
+            // ⑨ P2 §4.2（2026-10-14）：0/1 号约定的**具名权威**。
+            { "TransformAssignmentBuffer.h", OS_TEXT("inc/hgl/ecs/support/TransformAssignmentBuffer.h"),
+              "constexpr uint32_t kFirstObjectL2WSlot = 1;",
+              "L2W 行号约定的具名权威丢失（行 0 = 单位矩阵 / 静态首对象 = 行 1）" },
+            { "TransformAssignmentBuffer.cpp", OS_TEXT("src/ecs/support/TransformAssignmentBuffer.cpp"),
+              "constexpr uint32_t kIdentityL2WSlot",
+              "L2W 槽常量在 .cpp 里重复定义复活（应只用头里的具名权威）", true },
+            { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
+              "(slot + 1)", "裸 slot 加一的算式复活（应写 kFirstObjectL2WSlot + slot）", true },
+            { "LineRenderPipeline.cpp", OS_TEXT("src/ecs/support/line/LineRenderPipeline.cpp"),
+              "(slot + 1", "裸 slot 加一的算式复活（应写 kFirstObjectL2WSlot + slot）", true },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/MaterialAuthoringSideTable.h"),
+              "inline constexpr uint32_t kNoMaterialRow = 0;",
+              "材质行 0 哨兵的具名权威丢失" },
         };
 
         if (const int failed = verify_source_contracts(25, kA7aContracts,
@@ -5566,7 +5580,7 @@ int main(int argc, char** argv)
               "context->GetMaterialRuntimePipelineTable().Clear(owner);",
               "DestroySlot 未清该实例的管线缓存（跨生命周期串味）" },
             // ⑦ 探针同源打印行宽（与断言值对齐的观测口）
-            { "ProbeTransformDiagnostics.cpp", OS_TEXT("src/ecs/support/ProbeTransformDiagnostics.cpp"),
+            { "ProbeTransformDiagnostics.cpp", OS_TEXT("src/ecs/tests/ProbeTransformDiagnostics.cpp"),
               "sizeof(hgl::ecs::MaterialRuntimeSlot)",
               "探针未打印 slot 行宽（断言值没有运行时观测口）" },
         };

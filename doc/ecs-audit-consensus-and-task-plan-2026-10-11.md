@@ -76,10 +76,10 @@
 >   并在上报后消费序号 ⇒ 与 per-row 脏位生命周期解耦（`Update()` 先清 `matrixDirty` 不再能吞掉信号）
 >
 > **用例**
-> · `src/ecs/support/TestTransformFlatStorage.cpp`：**Test 16**（CSR 搬迁契约：交错追加 / `RemoveChild` 后再加）、
+> · `src/ecs/tests/TestTransformFlatStorage.cpp`：**Test 16**（CSR 搬迁契约：交错追加 / `RemoveChild` 后再加）、
 >   **Test 18**（段预算拒绝的原子性：换边整体拒绝 / 目标段槽位不被挤 / 换边计数与 mobility 真源不动 /
 >   段满创建回收行（**世代归零**，`Allocate` 只追加故以世代判泄漏）/ 失败后动态段仍可正常建行）
-> · `src/ecs/support/TestCSMIncrementalPass.cpp`：**Test 9D 改造** —— 改走**正常帧序 `Update → Submit`**
+> · `src/ecs/tests/TestCSMIncrementalPass.cpp`：**Test 9D 改造** —— 改走**正常帧序 `Update → Submit`**
 >   （旧写法直接 `Submit`、跳过 `Update`，正好掩盖 B4 缺陷 ⇒ 原用例是假绿），并新增
 >   「**删除静态实体 ⇒ `static_scene_revision` 必须 +1**」判据
 > · `src/ecs/CMakeLists.txt`：两个测试目标加 `TIMEOUT`（防历史死循环挂住 ctest）
@@ -165,7 +165,7 @@
 >   `world->ForEach{Static,Movable}Transform`（槽号由 `slot_map` 反查，`static_slot_map[handle] = slot`
 >   见 `RefreshHandleOrder`）+ 删掉仅供裸遍历用的两个局部引用
 >
-> **新增判据程序**：`src/ecs/support/ProbeWarnLatchPerWorld.cpp`（+ `src/ecs/CMakeLists.txt` 注册目标）
+> **新增判据程序**：`src/ecs/tests/ProbeWarnLatchPerWorld.cpp`（+ `src/ecs/CMakeLists.txt` 注册目标）
 > —— 两个 `GPUCullSystem` 实例各触发一次「切片起点未 4 行对齐」，判据 = 该告警行数
 >
 > **验证（全量 Release，`-j 1` 收敛串行；`-j 4/-j 8` 会撞已知 applocal 竞态）**
@@ -468,7 +468,7 @@
 >   ② `DestroyRowAt(index)` 顺序改为**先摘宿主再析构**（`SetOwner(nullptr)` 移到 `row->~T()` 之前）——
 >      原顺序是对生命周期已结束的对象写基类子对象（UB，只因行头是 POD 且内存未归还才"没炸"）。
 >
-> **新增判据用例**：`src/ecs/support/TestSystemReplaceAndPoolLiveness.cpp`
+> **新增判据用例**：`src/ecs/tests/TestSystemReplaceAndPoolLiveness.cpp`
 > （+ `src/ecs/CMakeLists.txt` 目标与 `add_test`，`LABELS "ecs;registry"`、`TIMEOUT 60`）
 > · 段 1（S1）：`RegisterSystem<LineCollectSystem>()` 两次 ⇒ 列表只留新实例（size==1 且是新实例）；
 >   `SetSystemGroupEnabled(Line,false)` 必须关到新实例、**且不能碰旧实例**

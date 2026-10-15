@@ -54,11 +54,12 @@ inc/hgl/ecs/
 │              RenderSceneUBOSystem / ViewUBOCommitSystem / RenderSystemCore
 │              RenderTargetSystem / SwapchainNextImageSystem / SwapchainSubmitSystem
 │              EnvironmentSystem / ColorPaletteSystem / LineStatsSystem
-└ support/     RenderPipelineBase / RenderPipelineSystem / PrimitiveBatchPipeline
+├ support/     RenderPipelineBase / RenderPipelineSystem / PrimitiveBatchPipeline
                PipelineMaterialRenderer / PrimitiveRenderPipeline / LineRenderPipeline
                TextRenderPipeline / RenderResource
                TransformAssignmentBuffer / TransformDataStorage / VisibilityDataStorage
                BoundingBoxDataStorage / EntityGPUTable / EntityRenderIDTable
+└ tests/      Test*/Probe*（判据与探针源；2026-10-14 由 support/ 迁出）
 ```
 
 两个互相独立的循环（帧入口 `src/Work/WorkManager.cpp:74`）：

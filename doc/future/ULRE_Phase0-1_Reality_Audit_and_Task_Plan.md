@@ -56,7 +56,7 @@
 
 | 任务 | 状态 | 证据 |
 |---|---|---|
-| T0 量化探针 + 实测基线 | **✅ 完成** | 探针 `src/ecs/support/ProbeTransformDiagnostics.cpp`；数字见 §2.1 |
+| T0 量化探针 + 实测基线 | **✅ 完成** | 探针 `src/ecs/tests/ProbeTransformDiagnostics.cpp`；数字见 §2.1 |
 | T4 消费侧旋转提取修复 | **✅ 代码完成**（资产级视觉验证阻塞） | `LoadScene.cpp` 改 `math::DecomposeTransform`；顺带修 `CMMath` 镜像分支（§1.12） |
 | T1 GLTFConvert 死路收敛 | **✅ 完成** | `NodeTransform` 只剩 None/TRS；导入边界统一做配对转换 + 镜像感知分解；见 §4 T1 |
 | T2 负缩放/镜像对拍 | **✅ 完成（发现 3 个真 bug）** | 修前/修后：TRS 非均匀 0.383→1.6e-07；matrix 非均匀 0.500→1.2e-07；**matrix 镜像 1.243→1.9e-07**；见 §1.2 订正与 §4 T2 |
@@ -312,7 +312,7 @@ I2W 记账 + 每行存储等）。这是阶段一/三收益论证的基准数字
 
 ### T0 量化探针（先钉死数字）— ✅ 已完成（2026-09-29）
 
-- **落地**：新增 `src/ecs/support/ProbeTransformDiagnostics.cpp` + CMake 目标
+- **落地**：新增 `src/ecs/tests/ProbeTransformDiagnostics.cpp` + CMake 目标
   （`src/ecs/CMakeLists.txt`，diagnostic，不注册为 ctest）。实测数字见 §2.1。
 - **验收**：`cmake --build build --config Debug --target ProbeTransformDiagnostics` →
   `ProbeTransformDiagnostics.exe` rc=0，数值可复现（连跑两次一致：9.000 块/实体）。
@@ -322,7 +322,7 @@ I2W 记账 + 每行存储等）。这是阶段一/三收益论证的基准数字
   error C2664），写成 `= glm::vec3(...)`。
 
 - **目标**：把 §1.11 的估算换成实测值，作为后续收益论证的基准。
-- **做法**：新增探针程序（建议 `src/ecs/support/ProbeTransformFootprint.cpp` + CMake 目标，参照 `src/ecs/CMakeLists.txt:332-341` 的既有测试注册方式），打印 `sizeof(TransformComponent)`、`sizeof(Component)`、`sizeof(TransformDataStorage)`、每行字节、`Allocate()` 后的堆分配次数（用 `_CrtMemCheckpoint`/自增计数器任一种），以及 1 万个 transform 的实际内存占用。
+- **做法**：新增探针程序（建议 `src/ecs/tests/ProbeTransformFootprint.cpp` + CMake 目标，参照 `src/ecs/CMakeLists.txt:332-341` 的既有测试注册方式），打印 `sizeof(TransformComponent)`、`sizeof(Component)`、`sizeof(TransformDataStorage)`、每行字节、`Allocate()` 后的堆分配次数（用 `_CrtMemCheckpoint`/自增计数器任一种），以及 1 万个 transform 的实际内存占用。
 - **验收**：输出数字回写本文档 §2；探针可重复运行且数值稳定。
 - **为什么先做**：阶段一/三的全部收益都靠这组数字，而不是文档里低估 3 倍的那组。
 
@@ -1055,7 +1055,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
      - **API**：`GetVisibilityStorage()` / `SetEntityVisible(id,bool)` / `IsEntityVisible(id)`（O(1) 直查不可见集合 + 变换父链上溯）；`DestroyEntity` 追加可见性回收（T8 同类副作用）。
      - **调用点**：`RenderPrimitiveCollectSystem` 不再经 `GetSystem<VisibilitySystem>()->GetStorage()` 取存储，改为直取世界存储；`LineRenderPipeline` 改 `context_->IsEntityVisible()`（**行为统一**：此前查组件的"直接"标志，现与 Primitive 路径一致地走祖先继承）；`GizmoUnified` 改 `world->SetEntityVisible(root,...)`。
      - **保留项**：`GizmoECS::root_visible` 保留 —— 它是 gizmo 的**本地门控标志**，被 `GizmoUnified.AssetCore.inl:47-49`、`AssetUpdate.inl:86` 与 `modes/{Move,Rotate,Scale}GizmoMode.Input.inl:52` 读取（与"世界可见性真值"是两个用途）。
-     - **测试**：新增 `src/ecs/support/TestVisibilityStorage.cpp` + CMake target（3 项：默认可见 / 祖先不可见⇒后代不可见且后代非"直接"不可见 / 销毁回收）。**反证**：抽掉 `DestroyEntity` 里的回收 ⇒ `rc=12`、文案"实体销毁后不可见标记未回收（同索引新实体会继承旧状态）"（obj mtime 00:45:09 > 头 00:44:49）。
+     - **测试**：新增 `src/ecs/tests/TestVisibilityStorage.cpp` + CMake target（3 项：默认可见 / 祖先不可见⇒后代不可见且后代非"直接"不可见 / 销毁回收）。**反证**：抽掉 `DestroyEntity` 里的回收 ⇒ `rc=12`、文案"实体销毁后不可见标记未回收（同索引新实体会继承旧状态）"（obj mtime 00:45:09 > 头 00:44:49）。
      - **验证**：清除整棵 obj 树重编；build 0 error（非 C4715 警告 0）；`TestVisibilityStorage`/`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0；`GizmoUsage`/`LineRender`/`RecursiveCube` 各 8 秒 0 真 error 行且按时被 taskkill。
      - **⚠ 教训**：判定"某字段无读者"必须**扫整个目录、含 `.inl` 分片**（本仓 gizmo 把实现放在 `GizmoUnified.AssetCore.inl` / `AssetUpdate.inl` / `modes/*.Input.inl`）——只 grep `.cpp` + 头文件会误判为死字段，删掉即 C2039。
 > **顺序改版（用户拍板 2026-10-01）**：原来"逐个组件直接 ID 化"改为 **stage A（组成形）→ stage B（存储形）** 两阶段，
@@ -1121,7 +1121,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
     原口径（保留备查）：`Geometry`（引用资源行 + draw range + 变体索引）/ `MaterialBinding`（→Data/Variant/Runtime）/ `ShadowProxy`（现 `ShadowComponent` 正名）/ LOD 钩子；同时删两处 OOP 缓存（`cached_shadow_component`、`PrimitiveComponent.cpp:643` 的 `bound_render_item_storage`）⇒ **删 `PrimitiveComponent`/`RenderableComponent`/`InstancedPrimitiveComponent`**。
    - **★ 追加靶子（2026-10-01 侦察发现）**：现在"可见性"语义有**三份真值** —— ① 实体级 `VisibilityDataStorage`（读侧 `RenderPrimitiveCollectSystem.cpp:1348/:1458`、`LineRenderPipeline.cpp:441`）；② `RenderableComponent::visible`（`PrimitiveComponent` 继承；读侧同文件 `:1344/:1446/:1448`、`PrimitiveComponent.cpp`、`GizmoUnified.AssetVisual.inl`、示例）；③ `LinesComponent::visible`（读侧 `LineRenderPipeline.cpp:431`）。渲染剔除实际是 **① OR ②** / **③ OR ①**。本项要**收敛成一份真值**：实体级 `visible` 作为唯一可见性真值，组件侧只保留"能力/可渲染性"语义（如 `CanRender()`、几何有效性），同义字段删除或改名，不留双写。另需确认**阴影收集链**是否也应查可见性（当前未见）。
   A6 **`CameraComponent`**（独立；注意深层虚继承）— ✅ **代码已落地并通过我方独立复核（2026-10-01）**：
-    - **真实改动**（`git status` 地面真值）：**16 文件 / +832 −477** —— `inc/hgl/ecs/components/CameraComponent.h`、`src/ecs/components/CameraComponent.cpp`、`inc/hgl/ecs/core/Context.h`+`.cpp`、`inc/hgl/ecs/support/CameraInfoStorage.h`+`.cpp`、`inc/hgl/ecs/support/CameraSlotGuard.h`+`.cpp`、`inc/hgl/ecs/systems/tick/CameraSystem.h`+`.cpp`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`src/ecs/support/{PipelineMaterialRenderer,line/LineRenderPipeline,text/TextRenderPipeline}.cpp`、`src/ecs/systems/render/EnvironmentSystem.cpp`、`src/ecs/support/TestCSMIncrementalPass.cpp`。
+    - **真实改动**（`git status` 地面真值）：**16 文件 / +832 −477** —— `inc/hgl/ecs/components/CameraComponent.h`、`src/ecs/components/CameraComponent.cpp`、`inc/hgl/ecs/core/Context.h`+`.cpp`、`inc/hgl/ecs/support/CameraInfoStorage.h`+`.cpp`、`inc/hgl/ecs/support/CameraSlotGuard.h`+`.cpp`、`inc/hgl/ecs/systems/tick/CameraSystem.h`+`.cpp`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`src/ecs/support/{PipelineMaterialRenderer,line/LineRenderPipeline,text/TextRenderPipeline}.cpp`、`src/ecs/systems/render/EnvironmentSystem.cpp`、`src/ecs/tests/TestCSMIncrementalPass.cpp`。
     - **新 API（世界级、终态形状）**：`ECSContext::GetCamera(slot)` / `GetDefaultCamera()` / `GetCameraSlot(camera)`（`Context.h:445` 等），契约测试落在 **`TestCSMIncrementalPass.cpp:1232/:1259/:3472/:3705-3770`**（断言消息即"世界级访问器必须与三级解析同一落点"）。
     - **地址档口径**：`GlobalAddresses.h:18` 注明"地址归口口径（三档，定稿见 `doc/world-addresses-and-camera-model-plan.md`）"，`:55-59` 给出 **相机行号 ↔ 帧槽**映射（`camera_row = 槽号*槽总数 + 帧槽`；`GlobalAddressesSlotFromCameraRow(row) = row % kGlobalAddressesSlotCount`）；`CameraSlotGuard.h` 是"**系统内建相机**的槽宿主（RAII 持有）"⇒ 与"0 号槽恒为默认相机 + 系统提供默认相机"的定稿模型一致。`WorldAddresses.h` 位于 `inc/hgl/graph/ubo/`。
     - **实测证据（我方清 obj 重编，13 目标）**：build **rc=0 / 0 error / 4 条既有 C4715**；**10 个测试 rc=0**（含 A6 新增的相机契约）+ 门 **rc=0**；`PBRSpheres`/`CascadeShadowMap`/`GizmoUsage`/`LineRender`/`RayPicking` 各 8 秒 **0 真 error + 对拍不一致行 0**；`CSM_PASS_LOG=1` 探针唯一值组与 A5b 基线**逐字一致**（`rows=19/60/61 shared=同值 owned=0 slots=20/104/105`）。

@@ -285,27 +285,27 @@ if(ULRE_ENABLE_CPU_CULL_PARITY_TEST)
     target_compile_definitions(ULRE.ECS PRIVATE ULRE_ENABLE_CPU_CULL_PARITY_TEST=1)
 endif()
 
-add_executable(TestTransformFlatStorage support/TestTransformFlatStorage.cpp)
+add_executable(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
 target_link_libraries(TestTransformFlatStorage PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestTransformFlatStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
-add_executable(TestCSMIncrementalPass support/TestCSMIncrementalPass.cpp)
+add_executable(TestCSMIncrementalPass tests/TestCSMIncrementalPass.cpp)
 target_link_libraries(TestCSMIncrementalPass PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestCSMIncrementalPass PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
 # 包围盒 SoA 存储 + 值类型句柄（组件 → BoundingBoxDataStorage/BoundingBoxAccessor 改造）
-add_executable(TestBoundingBoxStorage support/TestBoundingBoxStorage.cpp)
+add_executable(TestBoundingBoxStorage tests/TestBoundingBoxStorage.cpp)
 target_link_libraries(TestBoundingBoxStorage PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestBoundingBoxStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
 # 渲染策略判定表（A1；A7a 起为收集/阴影能力的**唯一判据**）
-add_executable(TestRenderStrategyTable support/TestRenderStrategyTable.cpp support/RenderStrategyParity.cpp)
+add_executable(TestRenderStrategyTable tests/TestRenderStrategyTable.cpp support/RenderStrategyParity.cpp)
 target_link_libraries(TestRenderStrategyTable PRIVATE ${ULRE})
 # 测试目标强制开对拍（默认值 / 打开方式见 inc/hgl/common/RenderOptions.h §2）
 target_compile_definitions(TestRenderStrategyTable PRIVATE ULRE_STRATEGY_PARITY_ENABLED=1)
@@ -314,39 +314,39 @@ if(MSVC)
 endif()
 
 # A3 材质变体表（静态键去重 + 预算制 fail-fast）
-add_executable(TestMaterialVariantTable support/TestMaterialVariantTable.cpp)
+add_executable(TestMaterialVariantTable tests/TestMaterialVariantTable.cpp)
 target_link_libraries(TestMaterialVariantTable PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestMaterialVariantTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
 # A4 材质运行期表（共享行 interned + CoW + refcount + 世代 + 每实例 slot）
-add_executable(TestMaterialRuntimeTable support/TestMaterialRuntimeTable.cpp)
+add_executable(TestMaterialRuntimeTable tests/TestMaterialRuntimeTable.cpp)
 target_link_libraries(TestMaterialRuntimeTable PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestMaterialRuntimeTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
-add_executable(TestComponentRows support/TestComponentRows.cpp)
+add_executable(TestComponentRows tests/TestComponentRows.cpp)
 target_link_libraries(TestComponentRows PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestComponentRows PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
-add_executable(TestVisibilityStorage support/TestVisibilityStorage.cpp)
+add_executable(TestVisibilityStorage tests/TestVisibilityStorage.cpp)
 target_link_libraries(TestVisibilityStorage PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestVisibilityStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
-add_executable(TestBoundingVolumeCull support/TestBoundingVolumeCull.cpp)
+add_executable(TestBoundingVolumeCull tests/TestBoundingVolumeCull.cpp)
 target_link_libraries(TestBoundingVolumeCull PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestBoundingVolumeCull PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
 # 诊断探针（T0 量化基线 + T4 旋转提取证据）：只打印数值，不做通过/失败判定
-add_executable(ProbeTransformDiagnostics support/ProbeTransformDiagnostics.cpp)
+add_executable(ProbeTransformDiagnostics tests/ProbeTransformDiagnostics.cpp)
 target_link_libraries(ProbeTransformDiagnostics PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(ProbeTransformDiagnostics PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
@@ -354,28 +354,28 @@ endif()
 
 # 批 1.3 C5 判据探针：一次性告警闩必须**每实例**（进程级 static ⇒ 第二个世界静默）。
 # 判据（外部）：跑完 grep -c "切片起点未 4 行对齐" ⇒ 期望 2（两个实例各 1）。
-add_executable(ProbeWarnLatchPerWorld support/ProbeWarnLatchPerWorld.cpp)
+add_executable(ProbeWarnLatchPerWorld tests/ProbeWarnLatchPerWorld.cpp)
 target_link_libraries(ProbeWarnLatchPerWorld PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(ProbeWarnLatchPerWorld PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
 # S1/S2 判据：同类型系统替换必须摘旧实例；裸行池 Row() 必须验活跃（+ 两个池语义对齐 + 析构顺序钉）
-add_executable(TestSystemReplaceAndPoolLiveness support/TestSystemReplaceAndPoolLiveness.cpp)
+add_executable(TestSystemReplaceAndPoolLiveness tests/TestSystemReplaceAndPoolLiveness.cpp)
 target_link_libraries(TestSystemReplaceAndPoolLiveness PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestSystemReplaceAndPoolLiveness PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
 # §2 #11 判据：PrepareFrame 必须是每帧一次的真守卫（同帧三次调用只做一次准备）
-add_executable(TestFramePrepareOncePerFrame support/TestFramePrepareOncePerFrame.cpp)
+add_executable(TestFramePrepareOncePerFrame tests/TestFramePrepareOncePerFrame.cpp)
 target_link_libraries(TestFramePrepareOncePerFrame PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestFramePrepareOncePerFrame PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
 # §3-②/⑥ 判据：相机纯读（Resolve）与认领（Ensure）分离（+ 实体级相机模板编译期禁死）
-add_executable(TestCameraResolveAndClaim support/TestCameraResolveAndClaim.cpp)
+add_executable(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 target_link_libraries(TestCameraResolveAndClaim PRIVATE ${ULRE})
 if(MSVC)
     set_target_properties(TestCameraResolveAndClaim PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})

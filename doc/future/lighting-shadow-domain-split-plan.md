@@ -307,4 +307,4 @@
 - CSM 机制与控制器：`doc/csm-mechanism.md`、`inc/hgl/graph/render/lighting/CascadedShadowController.h` + `src/SceneGraph/render/lighting/CascadedShadowController.cpp`
 - shader 侧：`ShaderLibrary/{ubo/scene_ubo.glsl, shadow/pcf_shadow.glsl, material/shadow_receiver_source.glsl, compositor/forward_lighting.glsl, sky/sky_atmosphere.glsl}`
 - 死代码（待删）：`inc/hgl/graph/render/lighting/{Light.h, LightCullMode.h, ShadowPolicy.h}`
-- 判据载体：`src/ecs/support/TestCSMIncrementalPass.cpp`（Test 42/43 契约）、`ShaderResourceSchemaRegressionGate`、`example/Shared/FrameDigest.h`
+- 判据载体：`src/ecs/tests/TestCSMIncrementalPass.cpp`（Test 42/43 契约）、`ShaderResourceSchemaRegressionGate`、`example/Shared/FrameDigest.h`

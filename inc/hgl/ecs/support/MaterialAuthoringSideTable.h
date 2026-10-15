@@ -24,6 +24,12 @@ namespace hgl::ecs
         Texture2DArray
     };
 
+    /// **材质行 0 哨兵**（唯一具名权威）：作者侧旁表的 `row_id` 0 不表示任何材质（`MaterialData` 侧的 0 行
+    /// 同为"无材质"）。原先多处用裸 `0` 复述该约定（审计 §4.2）；2026-10-14 具名。
+    inline constexpr uint32_t kNoMaterialRow = 0;
+
+    static_assert(kNoMaterialRow == 0u, "0 行 = 无材质数据哨兵");
+
     /// 具名纹理授权资源（B4-iii-b：原为 `MaterialData` 的嵌套类型；随重类型整体移入旁表，
     /// 组件不再持有它 —— 类型名与限定名在 `hgl::ecs` 内保持不变，调用点零改动）。
     struct MaterialTextureAuthoringResource
@@ -85,9 +91,10 @@ namespace hgl::ecs
     inline MaterialAuthoringSideTable::Entry *
         MaterialAuthoringSideTable::GetOrCreate(const uint32_t row_id)
     {
-        if (row_id == 0)
+        if (row_id == kNoMaterialRow)
         {
-            GLogError("[MaterialAuthoringSideTable] 拒绝行 0（= 「无材质数据」哨兵）");
+            GLogError("[MaterialAuthoringSideTable] 拒绝行 %u（= 「无材质数据」哨兵 kNoMaterialRow）",
+                      kNoMaterialRow);
             return nullptr;
         }
 

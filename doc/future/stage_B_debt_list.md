@@ -30,7 +30,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 1. **四类没有 GPU 行**：`:71-74` 里 Geometry / MaterialData / MaterialRuntime / Texture 的 `gpu_row_bytes = 0`，
    且 `cpu_type_name` 直接写着 `"(待 ID 化)"`。
 2. **arena 只是字符串，没有分配器**：`arena_name`（`:54`）在全仓的**唯一消费者是一个契约测试**
-   （`src/ecs/support/TestTransformFlatStorage.cpp:30` 只校验它非空）；**没有**任何"(scope,type) → arena 分配器/注册表"的运行时实体
+   （`src/ecs/tests/TestTransformFlatStorage.cpp:30` 只校验它非空）；**没有**任何"(scope,type) → arena 分配器/注册表"的运行时实体
    （`grep -rn 'GetComponentTypeInfo|GetComponentGPURowBytes|GetComponentScope' inc/ src/` 只命中 `TestTransformFlatStorage.cpp:42-43` 两条 static_assert）。
 3. **scope 列有 3/6 是保守默认**：Geometry / MaterialData / Texture 记 `Global`，MaterialRuntime / Transform 记 `World`；
    表头自己注明"后四类的 scope 待各自 ID 化时定稿，现记 World 作保守默认"（`:62-64`，注意当前实际值已是混合态）。
@@ -53,7 +53,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 - `EntityID` 版只做一次 `GetEntity(owner)` 后转调（**每个重载恰好一次**，全文件 `GetEntity(owner)` 计 11 处）；
 - 指针版**直通核心、零查询**（`GetEntity` 在指针路径上为 0 处）。
 
-⇒ **stage B 换存储时，一个访问器的两个重载必须一起改**（同一个存储的两个入口，留一个就是半改状态）。契约钉在 `src/ecs/support/TestCSMIncrementalPass.cpp` 的 **Test 28**（行为 + 计数式源码契约）。
+⇒ **stage B 换存储时，一个访问器的两个重载必须一起改**（同一个存储的两个入口，留一个就是半改状态）。契约钉在 `src/ecs/tests/TestCSMIncrementalPass.cpp` 的 **Test 28**（行为 + 计数式源码契约）。
 
 ### 1.3 `EntityGPU`（128 B）
 
@@ -204,7 +204,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 - **键域实测就是 3 个字符串**：`"Primitive"`（`inc/hgl/ecs/components/GeometryData.h:76`）、
   `"Line"`（`inc/hgl/ecs/components/LinesComponent.h:59`）、
   `"Text"`（`inc/hgl/ecs/components/TextComponent.h:56`）；契约钉在
-  `src/ecs/support/TestCSMIncrementalPass.cpp:4071-4082`（A7a Test 25）。
+  `src/ecs/tests/TestCSMIncrementalPass.cpp:4071-4082`（A7a Test 25）。
 - **为什么 stage B 关注它**：它在**运行期按字符串**做哈希查找，并驱动"随组件挂卸自动装/启系统"。
   stage B 把组件换成"类型 → 行"后，组开关应从**类型 ID / 位掩码**推导（O(1)，无字符串）。
 - **注意（A0 教训）**：这是**活逻辑**，不是冗余计数；不能在"零行为变化"的批次里顺手删。

@@ -45,7 +45,7 @@
 | # | 不变量 | 出处 |
 |---|---|---|
 | I1 | 地址三档：`GlobalAddresses`（跨世界池）/ `WorldAddresses`（世界私有）/ `pc_root`（每批）；shader 经 BDA 取数，**描述符集只剩 `pc_root` + Bindless=0** | `inc/hgl/graph/ubo/WorldAddresses.h`、`inc/hgl/common/DescriptorSetTypeDef.h` |
-| I2 | 世界表当前 **9 字段 × 8 B = 72 B**（`static_assert(sizeof(WorldAddresses) == 72)` 在 `src/ecs/support/TestRenderItemDataStorage.cpp`），槽步长 `kWorldAddressesSlotStride = 128`、槽数 `kWorldAddressesSlotCount = HGL_FRAME_SLOT_TOTAL = 8`。**加一格字段 ⇒ 80 B，必须同批更新 sizeof 断言 + 逐字段 offsetof + 所有内嵌夹具** | 同上 |
+| I2 | 世界表当前 **9 字段 × 8 B = 72 B**（`static_assert(sizeof(WorldAddresses) == 72)` 在 `src/ecs/tests/TestRenderItemDataStorage.cpp`），槽步长 `kWorldAddressesSlotStride = 128`、槽数 `kWorldAddressesSlotCount = HGL_FRAME_SLOT_TOTAL = 8`。**加一格字段 ⇒ 80 B，必须同批更新 sizeof 断言 + 逐字段 offsetof + 所有内嵌夹具** | 同上 |
 | I3 | 容量冻结 + 超限 fail-fast（不扩容、不静默截断）；新增枚举必须 constexpr 全表覆盖判定 | 用户既定纪律 |
 | I4 | 新地址字段**必须接写者**（`addr_l2w` 曾只有字段没写者 ⇒ 静默剔空），且发布口径与 `addr_lights` 同形 | `ulre-entity-gpu-cull` 约定 10 |
 | I5 | **C++↔GLSL 共享结构不许依赖隐式对齐**：GLSL 是 `scalar` 布局（`uvec4` 只要求 4 对齐），GLM 的 `vec4/uvec4` 是 16 对齐 ⇒ 「`vec4` + `float` + `uvec4`」这种形状两端会差 12 B。症状**不是崩**，是越过句柄全 0 早退、拿 0 句柄采样 ⇒ 模块静默发黑 | 实测（见 §0.3「IBL 事故」） |
@@ -174,7 +174,7 @@
 |---|---|
 | `inc/hgl/graph/ubo/AmbientEnvInfo.h` | `AmbientEnvInfo` POD（`Vector4u env_tex` + 预留）+ `static_assert(sizeof == 16)` + `offsetof(env_tex) == 0` |
 | `ShaderLibrary/ubo/sky_provider_params.glsl`（或并入 `scene_ubo.glsl`，见下） | GLSL 镜像（`struct AmbientEnvInfoRef` + `#define ambient_env AmbientEnvInfoRef(world_addresses.addr_ambient_env)`） |
-| `src/ecs/support/TestCSMIncrementalPass.cpp` 内新增 **Test 47** | 契约（见 §5） |
+| `src/ecs/tests/TestCSMIncrementalPass.cpp` 内新增 **Test 47** | 契约（见 §5） |
 
 > ⚠ **GLSL 侧落点二选一**（执行时决定，两者都不新增"模块"则不欠门的模块计数）：
 > (a) 并入现有 `ShaderLibrary/ubo/scene_ubo.glsl`（与 `SkyInfoRef`/`WorldAddresses` 同处）；
@@ -187,7 +187,7 @@
 | `inc/hgl/graph/ubo/AmbientEnvInfo.h` | 新建块 | —— |
 | `inc/hgl/graph/ubo/SkyInfo.h` | 删 `env_tex`、删 `_pad[3]`、删 `env_tex@32` 与 `sizeof==48` 两条断言（改 `sizeof==20`） | 不删 = 双真源（I5 的病灶） |
 | `inc/hgl/graph/ubo/WorldAddresses.h` | 加 `uint64_t addr_ambient_env`（第 10 字段，72 → 80 B，仍在 128 B 槽步长内） | I2/I4 |
-| `src/ecs/support/TestRenderItemDataStorage.cpp` | `sizeof(WorldAddresses)` 断言 72 → **80** + 新增 `offsetof(addr_ambient_env) == 72` + 零值初始化检查加一项（另有内嵌夹具，`grep -n "sizeof(graph::WorldAddresses)" src/` 全部同步） | 夹具不同步 = 契约测试红 |
+| `src/ecs/tests/TestRenderItemDataStorage.cpp` | `sizeof(WorldAddresses)` 断言 72 → **80** + 新增 `offsetof(addr_ambient_env) == 72` + 零值初始化检查加一项（另有内嵌夹具，`grep -n "sizeof(graph::WorldAddresses)" src/` 全部同步） | 夹具不同步 = 契约测试红 |
 | `ShaderLibrary/ubo/scene_ubo.glsl` | `WorldAddresses` 镜像块加 `uint64_t addr_ambient_env;` + `AmbientEnvInfoRef` + `#define ambient_env ...`；`SkyInfoRef` 删 `uvec4 env_tex` | 两端镜像不同步 = 静默读垃圾（I5） |
 | `ShaderLibrary/lighting/indirect_ibl.glsl` | 3 处 `sky.env_tex` → `ambient_env.env_tex` | 唯一读者 |
 | `inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp` | 加 `EditAmbientEnvInfo()/GetAmbientEnvInfo()/SetAmbientEnvInfo()` + `MarkAmbientEnvDirty()`（与 sky 三件套同形） | 写者入口 |

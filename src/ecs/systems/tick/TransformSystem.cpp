@@ -61,8 +61,9 @@ namespace hgl::ecs
                 return;
             }
 
-            // B1b：L2W 行号 = 静态 `1 + slot` / 动态 `基址(环布局) + slot`
-            const uint32_t row = movable ? (dynamic_base + slot) : (slot + 1);
+            // L2W 行号约定（具名权威 = `inc/hgl/ecs/support/TransformAssignmentBuffer.h`）：
+            // 静态 = `kFirstObjectL2WSlot + slot`（行 0 恒为单位矩阵）/ 动态 = 基址(环布局) + slot
+            const uint32_t row = movable ? (dynamic_base + slot) : (kFirstObjectL2WSlot + slot);
 
             world->GetEntityGPUTable().SetTransformRow(owner, row);
             world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)

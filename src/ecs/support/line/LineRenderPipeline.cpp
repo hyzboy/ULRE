@@ -579,9 +579,10 @@ namespace hgl::ecs
                     if (handle != TransformDataStorage::INVALID_HANDLE
                         && transform_system->TryGetTransformSlot(handle, transform.IsMovable(), slot))
                     {
-                        // B1b：L2W 行号 = 静态 `1 + slot` / 动态 `预算基址 + slot`
+                        // L2W 行号约定（具名权威 = `TransformAssignmentBuffer.h`）：静态 `kFirstObjectL2WSlot + slot`
+                        // / 动态 `预算基址 + slot`
                         const uint32_t resolved = transform.IsMovable() ? (dynamic_base + slot)
-                                                                          : (slot + 1u);
+                                                                          : (kFirstObjectL2WSlot + slot);
 
                         // 批 1.3 C3：删掉恒真守卫——`resolved` 本身就是 uint32_t，
                         // `resolved > UINT32_MAX` 在 C++ 里恒为 false，只会给出「这里有边界保护」的假信心。

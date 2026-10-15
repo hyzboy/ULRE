@@ -30,7 +30,7 @@
 
 | 项 | 现状 | 差距 |
 |---|---|---|
-| 类型表 | `inc/hgl/ecs/support/ComponentTypeTable.h:66-75`：6 项（`None` + 5 类），Transform 有 `gpu_row_bytes=64`，其余四类 `0` + `cpu_type_name="(待 ID 化)"` | **arena 只是字符串**：`arena_name` 全仓唯一消费者是契约测试（`src/ecs/support/TestTransformFlatStorage.cpp:30`）；**没有** `(scope,type) → 分配器/注册表` 的运行时实体 |
+| 类型表 | `inc/hgl/ecs/support/ComponentTypeTable.h:66-75`：6 项（`None` + 5 类），Transform 有 `gpu_row_bytes=64`，其余四类 `0` + `cpu_type_name="(待 ID 化)"` | **arena 只是字符串**：`arena_name` 全仓唯一消费者是契约测试（`src/ecs/tests/TestTransformFlatStorage.cpp:30`）；**没有** `(scope,type) → 分配器/注册表` 的运行时实体 |
 | 行存储 | 只有 Transform 一类（`TransformDataStorage`，`hgl::ValueArray` **自增长、无上限**、无分区、无预分配） | `Initialize(...)` 不存在；行号会随增长漂移 |
 | GPU 行面 | `TransformAssignmentBuffer` 按需扩容并**重建** L2W/L2WIndex SSBO（`src/ecs/support/TransformAssignmentBuffer.cpp:163` `EnsureCapacity`、`:511` `L2W recreated`） | 行号/地址在运行期会变 ⇒ 与"预烘焙 ID / 后续场景直载"的物理前提冲突 |
 | 值句柄 | 已是值句柄：`TransformAccessor` / `BoundingBoxAccessor`（24 B，世代校验）**〔2026-10-11 订正：`BoundingBoxAccessor` 现值 16 B —— 批 1.2 A4 删冗余 `context`；`TransformAccessor` 16 B 不变〕** | `MaterialData` / `GeometryData` / `ShadowProxy` / `Camera` / `MaterialRuntimeSlot` 仍返回**裸指针**（`inc/hgl/ecs/core/Context.h:461-472`、`:553-583`、`:662-682`） |
@@ -289,7 +289,7 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 这是本批新加的不变量**当场抓到的真问题**（不是事后发现）。
 
 **既有契约按新真值同步（两处，都不是放宽）**：
-① `src/ecs/support/TestRenderItemDataStorage.cpp` 的 `static_assert(sizeof(GlobalAddresses) == 48)` 与逐字段偏移断言 → 改 56 B +
+① `src/ecs/tests/TestRenderItemDataStorage.cpp` 的 `static_assert(sizeof(GlobalAddresses) == 48)` 与逐字段偏移断言 → 改 56 B +
 新字段 assert（偏移整体 +8）——正是它先把这次结构变化挡在编译期；
 ② 门 `kAddressOwnershipTable`（`ShaderResourceSchemaRegressionGate.cpp:2881` 附近）登记 `addr_geometry_aabb`（设备级全局），
 否则"未分类字段"报红（门 §6 契约④）。
@@ -707,7 +707,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 | `src/ecs/core/Context.cpp` | 注册/注销两条路径改枚举驱动（O(1) 计数，无字符串）；`SetSystemGroupEnabled` 快路径走快照、兜底按名取一次并建快照；`RegisterSystem` 时置空该组快照（**保证后加入的系统不会漏启用**）；两处 Shutdown 清状态合并为 `ResetComponentDrivenGroups()` |
 | `inc/hgl/ecs/core/DefaultSystems.h` + `.cpp` | `EnsureSystemGroupSystems(ctx, SystemGroupID, rt)`；三个安装器注册与默认装配不再就地写字面量，改取 `kSystemGroupNames[...]` |
 | `src/ecs/core/RenderGraph.cpp` | 场景 stats 从组件取**枚举**再映射组名；组启用路径经 `SystemGroupFromName()` 严格转换，**未知组名留痕告警**（不再静默不启用） |
-| `src/ecs/support/TestCSMIncrementalPass.cpp` | Test 25：3 条组件契约改钉枚举形态、3 条安装器契约改钉"名取自组名表"，**新增 15 条 A2 契约**（枚举/组名表/虚函数/计数数组/启用函数/注册路径 + 7 条**禁复活**：字符串虚函数、字符串键容器、3 处字符串字面量） |
+| `src/ecs/tests/TestCSMIncrementalPass.cpp` | Test 25：3 条组件契约改钉枚举形态、3 条安装器契约改钉"名取自组名表"，**新增 15 条 A2 契约**（枚举/组名表/虚函数/计数数组/启用函数/注册路径 + 7 条**禁复活**：字符串虚函数、字符串键容器、3 处字符串字面量） |
 
 三、验证（purge 168 TU ⇒ 全量重编）
 
@@ -755,7 +755,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
   · `kComponentTypeImplies` **显式**补 `/* Camera */ 0`：漏填会被**静默零初始化**，必须与枚举写全对齐。
 - `inc/hgl/ecs/components/CameraComponent.h`：补 `ComponentTypeOf<CameraComponent>` 槽位映射
   （与 `GeometryData` / `MaterialData` 同范式）+ 归属注释（组件 = CPU 权威、世界表 = 派生视图）。
-- `src/ecs/support/TestCSMIncrementalPass.cpp`：**Test 40（6 条契约）**——枚举项 / 类型表行 / implies 对齐 /
+- `src/ecs/tests/TestCSMIncrementalPass.cpp`：**Test 40（6 条契约）**——枚举项 / 类型表行 / implies 对齐 /
   槽位映射四件套 + 「组件 = CPU 权威、世界表 = 派生视图」的模型句 + **把 P-6 拍板原文钉进契约**
   （决策不可悄悄翻案）。
 
@@ -808,7 +808,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
   因是 CPU 侧行故 `gpu_row_bytes` 记 0）；`Texture` → `cpu_type_name` 留空 + 注释**无组件载体**（B6）。
   表头那段"后四类 scope 待 ID 化定稿、现记 World 保守默认"的**过时注释**改为"scope/行宽已随各类型 ID 化定稿"
   （Global = Geometry / MaterialData / Texture；World = Transform / MaterialRuntime）。
-- `src/ecs/support/TestCSMIncrementalPass.cpp`：**Test 39（9 条契约）**——四行整行钉住（数值 + 名字）、
+- `src/ecs/tests/TestCSMIncrementalPass.cpp`：**Test 39（9 条契约）**——四行整行钉住（数值 + 名字）、
   2 条禁复活（`(待 ID 化)` 占位、旧表头注释）、完整性断言在位，以及 **B6 判据的负向钉子**：
   `MaterialData.h` / `TextComponent.h` 不得声明 `ComponentType::Texture`（把"Texture 无消费者"固化）。
 
@@ -926,7 +926,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
   （`GetAuthoringTable()` + `GetOrCreateAuthoringEntry()`，后者内部 `EnsureMaterialRow()`
   ⇒ **行号即身份**；`BuildResolvedRecipe` 的两处遍历/按名查表改为绑定旁表条目）；
   `OnDetach` 摘除旁表条目（**行不归还**，句柄语义）；删掉已成死函数的 `ResetRecipe`。
-- `src/ecs/support/TestCSMIncrementalPass.cpp`：新增 **Test 36（16 条契约）**，含 5 条禁复活
+- `src/ecs/tests/TestCSMIncrementalPass.cpp`：新增 **Test 36（16 条契约）**，含 5 条禁复活
   （三个重类型成员 + 嵌套枚举不得回到组件、旧「组件成员直读」形态）+ 分离摘除。
 
 二、验证（清整棵 Debug obj 树 376 目录后全量重编；rc 与数字均为实测）
@@ -963,7 +963,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
   `++authored_generation` 只剩 helper 与 `OnDetach`（分离时无行可写，只前进代数）。新增
   `GetAuthoredRowRevision()`（读行内 revision，无行 ⇒ 退回组件计数器，两者此时同为 0，不存在双真值）。
 - `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`：`MaterialAuthoredGenerationOf()` 改读**行内 revision**。
-- `src/ecs/support/TestCSMIncrementalPass.cpp`：新增 **Test 35（18 条契约）**，含「半改状态」防呆
+- `src/ecs/tests/TestCSMIncrementalPass.cpp`：新增 **Test 35（18 条契约）**，含「半改状态」防呆
   （三个专用读口都必须委托泛型口）与 1 条禁复活（消费者不得退回读组件计数器）。
 
 二、**两处偏离计划原文**（有据，非偷工）

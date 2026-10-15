@@ -95,7 +95,7 @@
 | `src/ecs/support/PrimitiveBatchPipeline.cpp` | ② guard 入口 `EnsureInitialized()`；`BeginBatchTagWrite` 失败改响亮；③ 删 undsettled/槽首写两块；判据行加世界名 | 2/3 |
 | `inc/hgl/ecs/support/GPUCullSystem.h` | `EnsureInitialized` 提公开（含相位时序警示注释）；删 `IsSlotLayoutWritten`+`slot_layout_written_` | 2/3 |
 | `src/ecs/support/GPUCullSystem.cpp` | `EndBatchLayout` 删 `slot_layout_written_[slot]=true` 写点 | 3 |
-| `src/ecs/support/TestCSMIncrementalPass.cpp` | Test 42 机制层加 M8（变换提交先于派发）+ M9（guard EnsureInitialized / 禁两旧护栏复活）；16 条契约 | 契约 |
+| `src/ecs/tests/TestCSMIncrementalPass.cpp` | Test 42 机制层加 M8（变换提交先于派发）+ M9（guard EnsureInitialized / 禁两旧护栏复活）；16 条契约 | 契约 |
 | `example/Offscreen/RenderToTexture.cpp`、`RenderToTextureColorDepth.cpp` | 帧摘要自检床（`RTT_SELFCHECK`/`RTTCD_SELFCHECK`，冻结自旋 + 第 8 帧 + distinct≥50） | 回归床 |
 | `doc/future/entity-rows-gpu-cull-plan.md`、本文 | §11.17 五层浓缩 + 结案收尾 | 文档 |
 

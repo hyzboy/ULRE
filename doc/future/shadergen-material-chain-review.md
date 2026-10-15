@@ -994,7 +994,7 @@ if (recipe.mtl_def_id.empty())
 **处置**：`src/ShaderGen/template/FragmentTemplateComposer.cpp` 里那两处「按模板 ID 硬编码必需槽」的 8 行**整删**；
 原位置留 5 行说明（指向唯一执行点，不复述被删分支原文）；表侧耦合注释（`RenderTemplate.cpp`）改写为
 「ForwardLit 的 defines 恒为 1 ⇒ 表中这两个槽必须保持 required=true；必需性判定唯一执行点 = `BuildAllSlotIncludeText`」；
-`src/ecs/support/TestCSMIncrementalPass.cpp` 加 **2 条禁复活针**（`output_policy_inc.empty()` / `sky_provider_inc.empty()`）。
+`src/ecs/tests/TestCSMIncrementalPass.cpp` 加 **2 条禁复活针**（`output_policy_inc.empty()` / `sky_provider_inc.empty()`）。
 
 **开工复核（比施工单预期更省）**：施工单原计划"把硬编码换成表驱动循环"，实测**不需要新代码** ——
 `BuildAllSlotIncludeText`（同文件 `:340`）**已经是表驱动**（`if (definition.slots[index].required) return false;`），

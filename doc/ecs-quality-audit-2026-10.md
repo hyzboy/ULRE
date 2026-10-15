@@ -428,6 +428,24 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 ### 4.2 硬编码"0 号/1 号"约定（无单一权威）
 `kMainLightRowIndex`（光源行 0 恒为主光；`Context.cpp:2043` + `LightSystem.cpp:21,29,37` + `MainLightShadowSystem.cpp:135,143,173,181,222`，**8 处**，且有测试 `static_assert == 0` 钉死）；0 号相机槽恒为默认相机；`kIdentityL2WSlot=0` / `kFirstObjectL2WSlot=1`（`TransformAssignmentBuffer.cpp:22-23`）；材质行 0 作"无材质"哨兵（`MaterialAuthoringSideTable.h:91-95`）；`RenderItemHandle 0` 作空句柄（`ComponentPool.h:141,188`）。`S2/S3`
 
+**处置（2026-10-14，P2）**：逐条核现状 ⇒ **3 条原已具名收敛、2 条本批具名、1 条随类型删除自然消解**：
+- 光源行 0 ⇒ `graph::kMainLightRowIndex`（`inc/hgl/graph/ubo/LightRow.h:49` **单一定义**）＋ 全站 8 处引用
+  ＋ 测试 `static_assert == 0` ⇒ **已收敛**（原记「8 处硬编码」实为 8 处**读到具名常量**）。
+- 0 号相机槽 ⇒ `CameraInfoStorage::kDefaultCameraSlot`（= `CameraComponent::kDefaultSlot`，6 档引用）
+  ＋ `static_assert(kDefaultCameraSlot == 0u)` ⇒ **已收敛**。
+- **L2W 槽约定（本批）** ⇒ 两个常量原为 `TransformAssignmentBuffer.cpp` 的**文件私有**匿名命名空间常量，
+  而两个写者各自用裸 `slot + 1` 复述「行 0 = 单位矩阵／首对象 = 行 1」⇒ **上提**到
+  `inc/hgl/ecs/support/TransformAssignmentBuffer.h`（唯一具名权威 ＋
+  `static_assert(kFirstObjectL2WSlot == kIdentityL2WSlot + 1u)`）；`TransformSystem.cpp:65` 与
+  `LineRenderPipeline.cpp:585` 的裸算式改用常量。
+- **材质行 0 哨兵（本批）** ⇒ 具名 `kNoMaterialRow`（`MaterialAuthoringSideTable.h`，含 `static_assert`），
+  `GetOrCreate` 的裸 `0` 判定与日志改用常量。
+- `RenderItemHandle 0` 作空句柄 ⇒ **类型已于 2026-10-14（ECS #3 批）整族删除**，此条自动消解；
+  现行对应惯例 = 组件行号 **1 基、0 = 无**（`ComponentPool.h:165` 注释作文字权威）。
+- 针：`TestCSMIncrementalPass` 新增 **5 条**（2 存在性：头里的 `kFirstObjectL2WSlot` / 哨兵名；
+  3 禁复活：`.cpp` 里重复定义常量、两处裸 `slot + 1` 算式）。
+
+
 ### 4.3 其它特例
 - **`is_current_pass_shadow` 由指针比较推断** — `Context.cpp:835-838` `foreign_target = req.target && (req.target != saved_target)`；代码注释自己记录了上一版读 `render_target` 导致"判据永假、兜底失效（**实测踩过**）"。该位驱动 ≥12 处决策 ⇒ 一次重构即可复现。`S2 ✅复核`
 - **`RenderPassOptions` 只在 4 个请求字段非默认时才转发** — `Context.cpp:867-869` ⇒ 手工维护字段清单，加第 5 个选项（如已硬编码的 `clear_depth_value`）静默回落默认。`S2`
@@ -579,8 +597,8 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 Vulkan 同步保护）及《GPU 剔除多 Pass 架构设计与无阴影场景 GPU 挂起技术分析》所查的挂起同源 —— **待用户确认**。 |
 | **P2** | §1.1 零调用 API 批量删除（约 45 项，含 `Object` 身份半边） | 死代码 | ◐ **进展（2026-10-10）**：**chunk 1**（core）= `Object` ID 半边 / `RenderItem::Compare`（+ 整删空 TU `RenderItem.cpp`）/ `RenderItem::index` 及唯一写者 / `MaterialBatch::static_count` / `RenderGraph::Pass` 六字段；**chunk 2**（Transform/行表/剔除）= 12 项（`SetWorldMatrix`、`GetSlotOwnerShared`、台架读数三件 + `ParityStats`、`gpu_visible_order_` 16KB、`TransformSystem::SetDevice/SetUpdateMovable/IsUpdateMovableEnabled/last_dynamic_count`、`LineStatsSystem::SetLogInterval`、两处 `IsAllocated`、`RenderBufferUploadSystem::GetDevice`、`CameraSystem::GetOverrideCamera`、`CameraInputMapping::EditContext/GetContext`）；**chunk 3a**（4-ID/材质表/SceneUBO）= `RenderItemDataStorage` 5 项 + `DrawItemIDStorage` 3 项与两个只写成员 + `SetExternalGPUBuffer`（含停放示例调用点）+ 两个 `GetLiveEntryCount` + `ResolveViewportUBO`/`ApplyResourceLayoutBindings` + `GetAuthoredGeneration`。**保留/待拍板**：`EntityGPU::work_flags`（GPU 行载荷合同）、`LightRowTable::IsAllocated`（测试用）、`SetMaterialID/SetTextureID`（测试用）、`updateMovable`/`last_static_count`（活）、`MaterialRuntimeTable` CoW 组与 `MaterialDataAuthoringResource::authored`（见执行记录里的 chunk 3b 节；原「待拍板」两项已定）。其余 ~20 行待 chunk 4（系统/组件一侧） |
 | **P2** | §3.3 变换遍历统一走 `ForEach*` | 多路径 | 须逐处核对跳洞 |
-| **P2** | §4.2 硬编码 0/1 号约定收敛为具名权威 | 特例 | |
-| **P3** | CMake 空壳变量（`ECS_SYS_17..26` 全空仍列在 `ECS_SOURCE` + `source_group`）、重复登记、变量名不符；测试移出生产目录 | 结构 | |
+| ~~P2~~ | §4.2 硬编码 0/1 号约定收敛为具名权威 | 特例 | ✅ **2026-10-14 结案**：五条约定逐条核（3 条原已具名 / 2 条本批具名：L2W 槽常量上提到头＋`static_assert`、材质行 0 哨兵 `kNoMaterialRow`；1 条随 `RenderItemHandle` 整族删除消解）；裸算式清零，针 5 条 |
+| ~~P3~~ | CMake 空壳变量（`ECS_SYS_17..26` 全空仍列在 `ECS_SOURCE` + `source_group`）、重复登记、变量名不符；测试移出生产目录 | 结构 | ✅ **已处置（2026-10-14）**：**前两半实测不成立** —— `src/ecs/CMakeLists.txt` 现存 17 个 `ECS_SYS_*_FILES` 变量**全部非空**（且已无 `ECS_SYS_17..26` 这一批）、`ECS_SOURCE` 22 条**无重复**、`source_group` 未引用未定义变量（`ECS_INCLUDE_PATH` 由父级 CMake 提供）⇒ 空壳/重复登记当时或后续已被清掉；**真活部分 = 测试移出生产目录**：12 个 `Test*.cpp` + 2 个 `Probe*.cpp` 由 `src/ecs/support/` 迁到新目录 **`src/ecs/tests/`**（CMake 目标名与输出路径不变、ctest 标签不变），并同步 CMake 14 处路径 + 15 档文档 + 1 处示例注释 + 测试内针表（`TestCSMIncrementalPass` 扫的 `ProbeTransformDiagnostics.cpp` 路径）。判据：两配置重编 0 error、`ctest -L ecs` 11/11、CSM 两配置 rc=0、门 45/0 |
 
 ---
 

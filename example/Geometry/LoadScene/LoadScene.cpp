@@ -220,7 +220,7 @@ private:
                 // 世界矩阵 → TRS 必须走 math::DecomposeTransform：旧写法
                 // quat_cast(glm::mat3(worldMatrix)) 在存在非均匀缩放时输入不是正交基
                 // （实测 S=(2,0.5,1)：|q|=1.0768、旋转误差 10.56°、重建误差 0.447），
-                // 明细见 src/ecs/support/ProbeTransformDiagnostics.cpp 的 [T4] 段。
+                // 明细见 src/ecs/tests/ProbeTransformDiagnostics.cpp 的 [T4] 段。
                 math::Vector3f world_pos;
                 math::Quatf    world_rot;
                 math::Vector3f world_scale;

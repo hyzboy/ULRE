@@ -39,6 +39,24 @@ namespace hgl::ecs
      * PipelineMaterialRenderer 从 GetTransformDataBuffer() 取）下发，
      * 全局域注册自 BDA 化后已无消费者（曾因同域互踩导致多世界悬空）。
      */
+    /**
+     * **L2W 行号约定**（唯一具名权威；2026-10-14 由 `TransformAssignmentBuffer.cpp` 的文件私有常量上提
+     * —— 原先跨文件的写者各自用裸 `slot + 1` 复述本约定，审计 §4.2「硬编码 0/1 号约定无单一权威」）。
+     *
+     *   · 行 `kIdentityL2WSlot`（= 0）恒为**单位矩阵**；
+     *   · **静态**第 `slot` 个对象在行 `kFirstObjectL2WSlot + slot`；
+     *   · **动态**第 `slot` 个对象在行 `GetDynamicBaseIndex() + slot`（预算基址，随帧槽轮转）。
+     *
+     * 读侧：`TransformSystem`（写者）、线路径（`LineRenderPipeline`，自己的同一算式）与 GPU 剔除写出的
+     * per-batch `l2w_index` 表（`ShaderLibrary/ecs/entity_gpu_cull.glsl`）。
+     */
+    constexpr uint32_t kIdentityL2WSlot    = 0;   ///< 行 0 = 单位矩阵
+    constexpr uint32_t kFirstObjectL2WSlot = 1;   ///< 静态首对象 = 行 1
+
+    static_assert(kIdentityL2WSlot == 0u, "行 0 恒为单位矩阵");
+    static_assert(kFirstObjectL2WSlot == kIdentityL2WSlot + 1u,
+                  "静态首对象必须紧接单位矩阵行 —— 改这里等于改全仓 L2W 行号约定");
+
     class TransformAssignmentBuffer
     {
     public:

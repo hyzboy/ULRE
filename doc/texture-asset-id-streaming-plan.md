@@ -247,7 +247,7 @@ E-3 既有泵    BeginManagedRenderFrame → UpdateUploadQueue → Completed →
 |---|---|---|
 | `inc/hgl/graph/module/TextureAssetManager.h` | §2 全部类型 + API | T1 |
 | `src/SceneGraph/module/TextureAssetManager.cpp` | 记录表、Request、泵后扫描、就绪批 | T1 |
-| `src/ecs/support/TestTextureAsset.cpp` | 契约台架（宏开关 + 注册） | T1，逐阶段追加用例 |
+| `src/ecs/tests/TestTextureAsset.cpp` | 契约台架（宏开关 + 注册） | T1，逐阶段追加用例 |
 
 ### 5.2 改动触点（缺一不可）
 
@@ -325,7 +325,7 @@ E-3 既有泵    BeginManagedRenderFrame → UpdateUploadQueue → Completed →
 - 收集链：`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`、`src/ecs/support/RenderResource.cpp`
 - 帧入口：`src/ecs/core/Context.cpp:BeginManagedRenderFrame`
 - 线程件：`CMCore/inc/hgl/thread/Workflow.h`、`SpscQueue.h`
-- 台架样板：`src/ecs/support/TestCSMIncrementalPass.cpp`；帧摘要 `example/Shared/FrameDigest.h`
+- 台架样板：`src/ecs/tests/TestCSMIncrementalPass.cpp`；帧摘要 `example/Shared/FrameDigest.h`
 
 ## 附录 B：术语
 

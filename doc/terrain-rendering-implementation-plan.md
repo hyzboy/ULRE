@@ -542,7 +542,7 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
 | 间接绘制 / GPU count 参照 | `example/ApiValidation/ComputeIndirectCount.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp:52-65` |
 | 导数法线 NTB 模块 | `ShaderLibrary/ntb/ntb_derivative_normalmap.glsl` |
 | 材质 TOML 自持模式参照 | `ShaderLibrary/material/text_2d_gpu.material.toml` |
-| 剔除基础设施 | `example/ApiValidation/ComputeFrustumCull.cpp`、`src/ecs/support/TestBoundingVolumeCull.cpp` |
+| 剔除基础设施 | `example/ApiValidation/ComputeFrustumCull.cpp`、`src/ecs/tests/TestBoundingVolumeCull.cpp` |
 | 帧资源在途现状 | `doc/backlog.md` A1 |
 
 ## 附录 B：术语
