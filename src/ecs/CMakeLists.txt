@@ -327,10 +327,10 @@ if(MSVC)
     set_target_properties(TestMaterialRuntimeTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
-add_executable(TestComponentMask support/TestComponentMask.cpp)
-target_link_libraries(TestComponentMask PRIVATE ${ULRE})
+add_executable(TestComponentRows support/TestComponentRows.cpp)
+target_link_libraries(TestComponentRows PRIVATE ${ULRE})
 if(MSVC)
-    set_target_properties(TestComponentMask PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+    set_target_properties(TestComponentRows PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
 add_executable(TestVisibilityStorage support/TestVisibilityStorage.cpp)
@@ -435,11 +435,11 @@ if(BUILD_TESTING)
         PROPERTIES LABELS "ecs;render_strategy")
 
     add_test(
-        NAME TestComponentMask
-        COMMAND TestComponentMask)
+        NAME TestComponentRows
+        COMMAND TestComponentRows)
     set_tests_properties(
-        TestComponentMask
-        PROPERTIES LABELS "ecs;component_mask")
+        TestComponentRows
+        PROPERTIES LABELS "ecs;component_rows")
 
     add_test(
         NAME TestVisibilityStorage

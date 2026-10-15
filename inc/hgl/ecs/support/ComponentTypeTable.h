@@ -157,7 +157,7 @@ namespace hgl
         // 位掩码：一个 uint32_t 表达"实体有哪些组件槽位"（stage A 地基；stage B 的 EntityGPU::type[16] 前身）
         // ─────────────────────────────────────────────────────────────
 
-        /// 槽位对应的位；`None`/越界一律返回 0 ⇒ 永远不占位，`HasComponentType(None)` 恒假
+        /// 槽位对应的位；`None`/越界一律返回 0 ⇒ 永远不占位（`GetComponentRow(None)` 恒 0）
         inline constexpr uint32_t ComponentTypeBit(const ComponentType type)
         {
             if (!IsValidComponentType(type))
@@ -174,7 +174,8 @@ namespace hgl
         }
 
         // 2026-10-10（审计 §1.1）：`ComponentMaskAdd` / `ComponentMaskRemove` 全仓零调用者 ⇒ 删除
-        //（掩码拼装直接写 `| ComponentTypeBit(...)` / `& ~ComponentTypeBit(...)`）。
+        //（掩码已是**派生量**：实体侧不再存字段，`Entity::BuildComponentMask()` 按行表拼；
+        //  这里只保留位/蕴含表的定义与自检）。
 
         // ─────────────────────────────────────────────────────────────
         // implies（蕴含）规则：某类型出现 ⇒ 必然同时具备哪些槽位

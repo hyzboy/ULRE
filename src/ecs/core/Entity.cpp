@@ -1,6 +1,5 @@
 ﻿#include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include<hgl/log/Log.h>
 
 namespace hgl
@@ -34,39 +33,13 @@ namespace hgl
             const uint32_t index = static_cast<uint32_t>(type);
 
             if (index == 0 || index >= COMPONENT_TYPE_COUNT)
-                return 0;       // None / 越界：不占槽位（`HasComponentType(None)` 恒假）
+                return 0;       // None / 越界：不占槽位（GetComponentRow(None) 恒 0）
 
             const uint32_t old = component_rows[index];
 
-            component_rows[index] = row;
-
-            if (row)
-                component_mask |= ComponentTypeBit(type);
-            else
-                component_mask &= ~ComponentTypeBit(type);
-
-        #if ULRE_ECS_DEBUG_API
-            // §2 #1（2026-10-11）：校验面对拍（开关见 `hgl/common/RenderOptions.h` §2，默认 Debug 开 / Release 关）。
-            // 掩码是 `component_rows` 的**缓存视图**，生产期此前没有任何一致性门（对拍器只在 `TestComponentMask` 里被调用）。
-            // 放在写完掩码**之后**做全表对照：O(COMPONENT_TYPE_COUNT) 的循环，宏=0 时整段不编。
-            if (!VerifyComponentMaskAgainstComponents())
-                GLogError(u8"[Entity] component_mask 与 component_rows 失步（掩码缓存视图写坏）："
-                          u8"type=%u row=%u mask=0x%08x",
-                          static_cast<uint32_t>(type), row, component_mask);
-        #endif//ULRE_ECS_DEBUG_API
+            component_rows[index] = row;      // A1(b)：唯一真源就是本表（没有第二份可失步 ⇒ 无对拍）
 
             return old;
-        }
-
-        bool Entity::VerifyComponentMaskAgainstComponents() const
-        {
-            uint32_t expected = 0;
-
-            for (uint32_t i = 1; i < COMPONENT_TYPE_COUNT; ++i)
-                if (component_rows[i])
-                    expected |= (1u << i);
-
-            return expected == component_mask;
         }
 
         void Entity::DetachAllComponents()
@@ -83,14 +56,6 @@ namespace hgl
                 if (context)
                     context->DestroyComponent(static_cast<ComponentType>(i), row);
             }
-
-            component_mask = 0;
-
-        #if ULRE_ECS_DEBUG_API
-            // §2 #1：同上，全卸路径也要对拍（此处应恒一致）
-            if (!VerifyComponentMaskAgainstComponents())
-                GLogError(u8"[Entity] DetachAllComponents 后 component_mask 与 component_rows 失步");
-        #endif//ULRE_ECS_DEBUG_API
 
             if (context)
                 context->RefreshEntityRow(this);        // T3b：实体行表随全卸同步

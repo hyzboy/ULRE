@@ -81,7 +81,7 @@ inc/hgl/ecs/
 |---|---|---|---|---|
 | `Object` | — | `objectId` + `objectName` | **无虚生命周期钩子**（`Object::OnUpdate` 链已删除） | `std::string objectName` `inc/hgl/ecs/core/Object.h:15-60`，注释 :54-59 明示三套动词体系 |
 | ~~`Component`~~ **（已删，T2-c）** | — | — | — | **基类与 `Component.h` 已不存在**：组件 = 类型化对象池里的裸行，行头 `ComponentRow` 只有 `Entity *owner`（8 B，`inc/hgl/ecs/core/ComponentRow.h`）；类型属性（系统组 / 掩码位 / GPU 行宽 / arena）在 `kComponentTypeTable`（`inc/hgl/ecs/support/ComponentTypeTable.h`）；挂卸钩子是**非虚**成员（池按 `requires` 调用，如 `GeometryData::OnDetach`） |
-| `Entity` | `Object` | `EntityID id`（由 `EntityManager` 的**块池**分配，含 `generation` 防悬垂） | 无自有钩子（挂载/卸载转发到类型化池行） | `uint32_t component_rows[COMPONENT_TYPE_COUNT]`（**1 基行号**，0 = 无；单一真源）+ `component_mask`（它的**缓存视图**）+ `EntityID id`（`inc/hgl/ecs/core/Entity.h`）；**不再有 `shared_ptr<Component>` 容器** |
+| `Entity` | `Object` | `EntityID id`（由 `EntityManager` 的**块池**分配，含 `generation` 防悬垂） | 无自有钩子（挂载/卸载转发到类型化池行） | `uint32_t component_rows[COMPONENT_TYPE_COUNT]`（**1 基行号**，0 = 无；**唯一真源**）+ `EntityID id`（`inc/hgl/ecs/core/Entity.h`）；掩码**不再是字段**（A1(b) 2026-10-14 删，需要位图时 `BuildComponentMask()` 现场拼）；**不再有 `shared_ptr<Component>` 容器** |
 | `System` | `Object` | `typeid(T).hash_code()` 作为注册键 | `Initialize / Update / Render / Shutdown` | phase / dependencies / enabled / `render_element_type` `inc/hgl/ecs/core/System.h:55-117` |
 
 生命周期动词是**三套不同语义**，不要统一（`inc/hgl/ecs/core/Object.h:54-59` 注释明示）：Component 挂载卸载 / System 初始化运行；Object 层只保留构造函数与析构。`System` **没有** `OnCreate` / `OnDependenciesReady`（全仓 0 命中）；`CreateEntity` 也不触发实体级 `OnCreate`。

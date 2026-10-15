@@ -315,7 +315,20 @@ public:
 
         if (const char * tag = getenv("GC_DUMP")) dump_tag = tag;
         if (const char * v   = getenv("GC_FRAMES")) run_frames = (uint32_t)atoi(v);
-        if (getenv("GC_SELFCHECK")) selfcheck = true;
+        if (getenv("GC_SELFCHECK"))
+        {
+            selfcheck = true;
+
+            // 加固（2026-10-14）：只有 `GC_SELFCHECK=1` 而没有 `GC_STATIC=1` 时相机在动 ⇒ 摘要**逐次不同**
+            // （曾据此误判成「门 flaky」，实为入参没给全）⇒ 这里**自动冻结**并显式提示，与 PBR 的自动冻结同口径。
+            if (!static_camera)
+            {
+                static_camera = true;
+                printf("[GCSELF] 加固：GC_SELFCHECK=1 但未给 GC_STATIC=1 ⇒ 已**自动冻结相机**"
+                       "（摘要判据需确定取景）；要动相机请只跑不带自检的模式。\n");
+                fflush(stdout);
+            }
+        }
 
         return true;
     }

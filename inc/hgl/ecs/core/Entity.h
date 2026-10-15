@@ -30,15 +30,12 @@ namespace hgl
 
             EntityID id;
 
-            /// 组件槽位位掩码（v2 §3 的 5 类）；**单一写者 = 组件挂载/卸载路径**。
-            /// T2-c 起它是 `component_rows` 的**缓存视图**（`row != 0` ⇔ 该位为 1），供 O(1) 策略判定；
-            /// 两者一致由 `VerifyComponentMaskAgainstComponents` 对拍。
-            /// 它就是 stage B `EntityGPU::type[16]` 的前身。
-            uint32_t component_mask = 0;
-
             /// **按类型的组件行号表**（T2-c）：下标 = `ComponentType` 值，值 = 该类型在世界类型化池里的
-            /// 行号（**1 基**；0 = 无）。这是"本实体有哪些组件、各自在哪一行"的**唯一真源** ——
-            /// 掩码只是它的缓存视图。
+            /// 行号（**1 基**；0 = 无）。这是"本实体有哪些组件、各自在哪一行"的**唯一真源**。
+            ///
+            /// A1(b)（2026-10-14）：原先并存的**掩码缓存字段已删** —— 同一事实不再存两份（字段与行表
+            /// 的失步原需要一条对拍器兜住，现在没有第二份可失步）。需要位图的消费者用
+            /// `BuildComponentMask()` **现场拼**（O(COMPONENT_TYPE_COUNT)）。
             uint32_t component_rows[COMPONENT_TYPE_COUNT] = {};
 
             ECSContext *context = nullptr;   ///< 所属的 ECSContext，不拥有
@@ -55,14 +52,21 @@ namespace hgl
             // 与 Object 的 ID 是两套体系，同名隐藏易混淆
             EntityID GetEntityID() const { return id; }
 
-            /// 组件槽位位掩码（O(1) 策略判定的输入；见 v2 §9.2 P3）
-            uint32_t GetComponentMask() const { return component_mask; }
+            /// **由行表现场拼**槽位位掩码（O(COMPONENT_TYPE_COUNT)）—— 掩码不再是字段（A1(b) 2026-10-14：
+            /// 同一事实不存两份）。生产读者 = 策略路径（`EvaluateRenderNeed` 的输入），每实体每次求值拼一次。
+            uint32_t BuildComponentMask() const
+            {
+                uint32_t mask = 0;
 
-            /// 是否挂了某槽位的组件（O(1)，不查组件表）
-            bool HasComponentType(ComponentType type) const { return ComponentMaskHas(component_mask,type); }
+                for (uint32_t i = 1; i < COMPONENT_TYPE_COUNT; ++i)
+                    if (component_rows[i])
+                        mask |= ComponentTypeBit(static_cast<ComponentType>(i));
 
-            /// 调试/测试用：把掩码与行号表逐一对照，返回是否一致（单一真源 = `component_rows`）
-            bool VerifyComponentMaskAgainstComponents() const;
+                return mask;
+            }
+
+            /// 「有没有挂某槽位」问 `HasComponent<T>()`（`Context.h`，只看行号表）或
+            /// `GetComponentRow(type) != 0`；无类型号（`None`）恒假 —— 两条都不经掩码。
 
             /// Set entity ID (called by EntityManager)
             void SetID(EntityID entity_id) { id = entity_id; }
@@ -84,7 +88,7 @@ namespace hgl
                 return index < COMPONENT_TYPE_COUNT ? component_rows[index] : 0u;
             }
 
-            /// 写行号（**唯一写者 = 世界的挂载/卸载路径**；掩码同步维护），返回旧行号
+            /// 写行号（**唯一写者 = 世界的挂载/卸载路径**；本表是唯一真源），返回旧行号
             uint32_t SetComponentRow(ComponentType type, uint32_t row);
 
         public: // ── 组件挂载/卸载（实现在 Context.h —— 需要完整的 ECSContext）──

@@ -73,6 +73,11 @@
  *
  * 打开：`cmake -DULRE_ECS_DEBUG_API=ON`（Release 下也开，用于"带校验跑一次验收"）。
  * 默认（不在 CMake 里显式开）= 本文件按配置决定：Debug 开、Release 关。
+ *
+ * **口径已确认（2026-10-14，用户拍）**：保留上述 AUTO 语义（option 只表示「全配置强制打开」，
+ * 不再下发 `=0`，否则压过 Debug 默认）。⇒ **验收集合必须含一条 `-DULRE_ECS_DEBUG_API=ON`**
+ *   （Release 下强制开）的构建 + 门/契约针/台架跑，否则这部分对拍代码 Release 侧长期不编译会 rot。
+ *   配方与脚本：`scripts/ci/verify_debug_api_release.ps1`（账本 §7②）。
  */
 #ifndef ULRE_ECS_DEBUG_API
     #ifdef NDEBUG

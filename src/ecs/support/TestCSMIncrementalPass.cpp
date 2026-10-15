@@ -4422,6 +4422,20 @@ int main(int argc, char** argv)
             { "RenderPrimitiveCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "VerifyVisibleMirror(", "可见性对拍不再被发布点调用（反向守卫空转）" },
+            // ⑥ A1(b)（2026-10-14）：掩码缓存字段整删（同一事实不存两份）⇒ 禁复活；
+            //    零消费者 API 也一并删（用 `HasComponent<T>()` / `GetComponentRow()` 表达）。
+            { "Entity.h", OS_TEXT("inc/hgl/ecs/core/Entity.h"),
+              "component_mask",
+              "掩码缓存字段复活（与 component_rows 双真值）", true },
+            { "Entity.h", OS_TEXT("inc/hgl/ecs/core/Entity.h"),
+              "VerifyComponentMaskAgainstComponents",
+              "掩码一致性对拍器复活（缓存视图已删 ⇒ 无对拍对象）", true },
+            { "Entity.h", OS_TEXT("inc/hgl/ecs/core/Entity.h"),
+              "HasComponentType",
+              "零消费者 API 复活（改用 HasComponent<T>() 或 GetComponentRow()）", true },
+            { "Entity.cpp", OS_TEXT("src/ecs/core/Entity.cpp"),
+              "component_mask",
+              "掩码字段复活（唯一写者已不再维护掩码）", true },
         };
 
         if (const int failed = verify_source_contracts(25, kA7aContracts,

@@ -14,7 +14,8 @@ namespace hgl
          * 设计输入（不可擅改，见 `doc/future/entitygpu-and-ulrescene-design.md` §0.1）：
          *   · 形状 = `flags(4) + type[16](16) + row[16](64) + work_flags(4)` = **88 B 载荷**
          *     ⇒ `alignas(64)` ⇒ **128 B**（40 B 填充是该对齐的必然结果，不是随手留的）；
-         *   · 槽位语义 = **`ComponentType` 值**、**每类型最多一行**（P-3 拍板：与 `Entity::component_mask` 1:1）；
+         *   · 槽位语义 = **`ComponentType` 值**、**每类型最多一行**（P-3 拍板：与 `Entity::component_rows[16]` 1:1；
+         *     A1(b) 2026-10-14 起实体侧的**掩码缓存字段已删** ⇒ 这里对应的是行表本身）；
          *   · `row[i] == 0` = 无（全仓「行 0 哨兵」惯例）；
          *   · **相机 / 阴影 / 可见性等世界级表不进本结构**（v2 §3 + P-6：相机参数留组件、世界相机表是派生视图）。
          *

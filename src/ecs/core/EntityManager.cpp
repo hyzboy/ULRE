@@ -93,7 +93,8 @@ namespace hgl::ecs
         {
             if (slot.entity)
             {
-                slot.entity->DetachAllComponents();
+                // 不在此显式 DetachAllComponents：`~Entity()` 内部统一执行（与 DestroyEntity 同口径）
+                // —— 原先这里两处都调 ⇒ 同一实体走两遍卸载路径（审计 §3.2「双重 DetachAllComponents」）。
                 slot.entity->~Entity();      // 块池：显式析构
                 ++detach_count;
             }

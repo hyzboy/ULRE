@@ -28,7 +28,7 @@
 
 已定：**已做 2 条**（#4 `GpuMirrorBuffer.h` 抽取（⚠ 2026-10-14：该文件已随 4-ID 池表整族删除 ⇒ 本项自然结案）、#5 删 `EntitySlot::alive`）+ **复扫关闭 2 条**（非法相机槽单点化、`frame_index` 三份属不同物件状态）。**已落地 6 条（含 #1(a)、#2、#5、#6 整条）**：
 
-- **#1（01 掩码是 `component_rows` 的缓存视图）** —— **(a) ✅ 已落地 2026-10-13**：`Entity::SetComponentRow` 与 `DetachAllComponents` 走 `#if ULRE_ECS_DEBUG_API`（开关见 §7 台帐）全表对拍，Release 宏=0 零成本。剩 **(b)** 删掩码、`HasComponentType` 改读 `component_rows[type] != 0`（`GetComponentMask()` 汇总要现场拼 ⇒ 策略路径 O(16)）／**(c)** 保持现状 —— **待你拍**
+- ~~**#1（01 掩码是 `component_rows` 的缓存视图）**~~ —— **(a) ✅ 2026-10-13 + (b) ✅ 2026-10-14（用户拍「开工 3」）**：**掩码字段整删** ⇒ 同一事实不再存两份；策略路径三处改 `Entity::BuildComponentMask()` 现场拼（O(16)，代价已记账）；`HasComponentType` / `VerifyComponentMaskAgainstComponents` / `GetComponentMask` 三个零消费者 API 一并删除；测试改名 `TestComponentRows`；契约针 4 条禁复活。**红的样子实测**：`BuildComponentMask` 漏一槽 ⇒ 用例红；写回字段 ⇒ 契约针点名。详见报告 01 **§六**
 - ~~**#2（02 组件列表 4~5 份）**~~ —— **✅ 已落地 2026-10-13**：`VerifyAfterWrite` 接三个写入点（挂卸 / 可见性 / 变换行**三条路径**），台帐宏门住（Release 空 inline ⇒ 生产零开销）；「权威链」头注在位（含 `row[Transform]` 两个权威点 + `type[16]` 有意冗余两警告）；顺手修「槽复用 `Activate` 不清 `type[]/row[]` ⇒ 对拍假红」；源码契约 **Test 49**（存在性 + 计数 + 禁复活）；**红的样子** = 破坏 `Refresh` 行号写入 ⇒ 899 条点名失步，还原 0 条。详见审计报告 02 **§六 落地记录**
 - ~~**批 D（删「CPU 侧 per-batch 表构建」整族）**~~ —— **2026-10-14 结案**：四类整族删除 + 契约载体迁移（D3 段③ / A7a 接收判据）+ 接管台架红的样子；落地记录见报告 03 **§11.7**〔档〕
 - ~~**批 E（时点 2/3 口径订正，注释级）**~~ —— **2026-10-14 结案**（与批 D 同批）：落地记录见报告 03 **§12.5**〔档〕
@@ -36,7 +36,12 @@
 - **#4（06 可见性三表示两极性）** —— **(c) ✅ 已落地 2026-10-14**：契约档 `doc/visibility-authority-chain.md`（三表示 / 两极性 / 传播规则 / 已知失步收在一处）+ 头注四处（`EntityGPU.h` / `EntityGPUTable.h`×2 / `VisibilityDataStorage.h` / `Context.h`）+ 契约针三条（存在性「扁平派生位」+ 禁复活 `IsInvisible` / `GetVisibilityStorage`）；原报告 §七 三个未证实项**全部查实**（后代枚举已具备 / 台架同读扁平位对本失步免疫 / `TestVisibilityStorage` 未覆盖 GPU 位）。
   **2026-10-14 追加（用户拍「按建议走」）**：**观察面 ③ 已落地** —— `EntityGPUTable::VerifyVisibleMirror`（门=台帐 `ULRE_ECS_DEBUG_API`，接在 collect 的 4-ID/阴影事实发布点，**有界点名** + `GetVisibleMirrorCount()` 取数，**不做门**）+ 契约针三条（本体/取数口/接线）；
   **「问题 3 的 ②」同批裁定 = 不清位**（② 不承担"是否进批"的表达：4-ID 表的时点 2 清零 + 批标签已覆盖，且 4-ID 门在昂贵计算之前 —— 见契约档 §5）。
-  剩 **(b)** 每帧按权威重算（推荐；走它则上面的计数**必须归零**）／**(a)** 写入点传播（比 (b) 易写错）—— **待你拍**
+  **2026-10-14 追加（用户拍「开工 2」）**：**(b) 每帧按权威重算已落地** —— ② 在 collect 的「本项进批」判据点（与 4-ID 同一判据块）按
+  `IsEntityVisible` 重算 ⇒ 不变量「4-ID 已发布 ⇒ ② == 权威」；`SetVisible` 改**值变才标脏**（不守卫则每帧整表 ≈512 KB 上传）；
+  `TestVisibilityStorage` 加 Test 4。**红的样子实测**：镜像写入取反 ⇒ 100 条点名 + 示例自检 rc=1（**整帧不画** ⇒ 该位对进批实体承力）；
+  去守卫 ⇒ Test 4 红。**(a) 不采用**（成因 iii 证明"穷举写入点"天然有洞）。
+- **审计 §3.2「双重 DetachAllComponents」同批结案**：`EntityManager::Clear()` 原先显式 `DetachAllComponents()` 之后又 `~Entity()`
+  （后者内部**已统一执行**卸载）⇒ 同一实体走两遍卸载路径；已删显式那行，与 `DestroyEntity` 同口径（唯一执行者 = 析构）。
 - ~~**#5（07 材质四条键空间）**~~ —— **✅ 已落地 2026-10-13**：`HashMaterialProgramIdentity()` 共用折字段（运行期键**以它为种子续算** ⇒ 哈希取值逐位不变、无缓存失效）+ `VariantKeyOf()` 前缀唯一实现 + forward 生产**由构造派生**（`Intern(VariantKeyOf(runtime_key))`）+ 5 条编译期 `static_assert`（类型/偏移/维序 ⇒ 只给一个键加维**立刻编译失败**）+ 权威链头注 + 源码契约 **Test 50**（4 存在性 + 1 接线 + 2 禁复活）；**红的样子**：加一维 ⇒ `error C2338`；手写折字段复活 ⇒ 退出码 50。**订正**：只有 forward 变体键是运行期键前缀，阴影键是**兄弟键**（ShadowDepth 上下文）。详见报告 07 **§七**
 - ~~**#6（08 `MaterialRuntimeRow` key 存 3.5 份）**~~ —— **✅ 已落地 2026-10-13**：订正"可省字段 = 0"（`row.recipe_hash`/`row.data_index_row` 不是 key 的副本、`cached_effective_recipe_hash` 是另一物）；不变量文档写在字段旁；两个**静态**对拍助手（定义在 .cpp、台帐宏门住 ⇒ 生产空 inline）接在「解析后写 recipe_hash」与「物化发布 data_index_row」两点；**订正报告 §四(b) 的裸等值断言**（未物化哨兵 `-1` 会误报 ⇒ 加哨兵跳过分支）；源码契约 **Test 51**；**实测**：4 例 + 18s 稳态窗口 0 告警（不变量成立），破坏同源 ⇒ 100 条点名、还原 ⇒ 0 条。详见报告 08 **§七**（含 (c) 不做、(d) 单独立项）
 - 挂同一次拍板：**旧档 §2 #5**（`AddFreeIndex` 有序维护 vs 栈消费）、**9 套系统容器合并**（共识档 §2 明确"不单独立批"）
@@ -46,7 +51,7 @@
 
 | 项 | 状态 |
 |---|---|
-| **示例自检门：锚定值只在 Debug 配置成立**〔2026-10-13 订正；先前记的「7/13 FAIL ⇒ 疑似基线陈旧」与「GC 门 flaky」**两条都是我误诊**〕 | 触发 `*_SELFCHECK=1`；**每例有自己的入参要求**，读示例头注再跑：`AlphaTestShadow` 需 `--selfcheck`、**`GPUDrivenCull` 需 `GC_STATIC=1`（冻结相机；只带 `GC_SELFCHECK=1` 时相机在动 ⇒ 摘要逐次不同，我据此误判成「门 flaky」）**、`DualWorldShadows` 自判两世界隔离。**判据：Debug 13/13 PASS（逐位稳定；含 GC/ATS/DWS 各按其入参）**；**Release 只有 4 例 PASS**（PBRSpheres/AlphaModes/CascadeShadowMap/CoverageVariants/IBLEnvironment/PlaneGrid3D/GPUDrivenCull 均 FAIL） —— 同一张锚定值在 **Debug** 拍的，Release 因浮点/优化差异像素不同（`GPUDrivenCull` Release 冻结后两次 `1F32397E53E54C57`/`1F32397E53E54C57`，稳定但≠锚定值）：**不是回归、不是基线陈旧、不是 flaky**。⇒ **待你定**：门的配置口径（Debug-only 注明 / Release 另钉一份 / 只断言跨配置稳定的量）；可选加固 = `GC_SELFCHECK=1` 而无 `GC_STATIC=1` 时自动冻结（PBR 就是自动冻结）或 fail-fast 提示 |
+| **示例自检门：锚定值只在 Debug 配置成立**〔2026-10-13 订正；先前记的「7/13 FAIL ⇒ 疑似基线陈旧」与「GC 门 flaky」**两条都是我误诊**〕 | 触发 `*_SELFCHECK=1`；**每例有自己的入参要求**，读示例头注再跑：`AlphaTestShadow` 需 `--selfcheck`、**`GPUDrivenCull` 需 `GC_STATIC=1`（冻结相机；只带 `GC_SELFCHECK=1` 时相机在动 ⇒ 摘要逐次不同，我据此误判成「门 flaky」）**、`DualWorldShadows` 自判两世界隔离。**判据：Debug 13/13 PASS（逐位稳定；含 GC/ATS/DWS 各按其入参）**；**Release 只有 4 例 PASS**（PBRSpheres/AlphaModes/CascadeShadowMap/CoverageVariants/IBLEnvironment/PlaneGrid3D/GPUDrivenCull 均 FAIL） —— 同一张锚定值在 **Debug** 拍的，Release 因浮点/优化差异像素不同（`GPUDrivenCull` Release 冻结后两次 `1F32397E53E54C57`/`1F32397E53E54C57`，稳定但≠锚定值）：**不是回归、不是基线陈旧、不是 flaky**。⇒ **✅ 已定（2026-10-14，用户拍）**：口径 = **Debug 钉像素摘要 / Release 只钉跨配置稳定的量**（尺寸 + 格式 + `distinct` 下限 ⇒ 仍能抓住「整帧只剩清屏色」这类回归），并把实测摘要打出来供落盘比对；判据一处决定 = `example/Shared/FrameDigest.h` 的 `kFrameDigestPinPixels`（**两侧都编译**）。**加固已落地**：`GPUDrivenCull` 在 `GC_SELFCHECK=1` 而无 `GC_STATIC=1` 时**自动冻结相机**并显式提示（PBR 早已自动冻结） |
 | CMCore 独立仓 2 项 SEGV | `OrderedMapBasicOperations` / `ObjectManagerTest`，与本仓无交集 |
 | GUI 类示例在桌面会话 | 环境问题，未触碰 |
 
@@ -54,7 +59,7 @@
 
 1. ~~**ECS #2 对拍器接入**~~ —— **✅ 2026-10-13 完成**（同 §2）
 2. ~~**ECS #5 `VariantKeyOf` 前缀共用**~~ ✅ / ~~**ECS #6 行字段不变量 + debug 门**~~ —— **均 2026-10-13 完成**；审计 §2 六条里**只剩 #4（可见性权威链）**（#3 已于 2026-10-14 以「删」结案，见 §2 该条）
-3. **开关台帐的两条待定 + 自检门的配置口径**（§7 / §3，零~低成本，等你一句话）
+3. ~~**开关台帐的两条待定 + 自检门的配置口径**~~ —— **✅ 2026-10-14 结案**（用户拍「开工 1」）：① 保留 AUTO 并写进口径；② 钉 `scripts/ci/verify_debug_api_release.ps1`；④ `GC_SELFCHECK` 自动冻结；自检门口径 = Debug 钉像素 / Release 钉结构量（`kFrameDigestPinPixels`）
 4. **S3b-3 顶点节点枚举归位**（与 S3b 同族收尾）
 5. **stage B `receive_shadow` 幅度漂移专项**（未 bisect 的行为漂移；修完 `ATS_SELFCHECK=1` 必须 rc=0）
 6. 文档卫生：**§1 的 3 处过期声明** + C 线 doc 十篇（可与任意批并行）。
@@ -64,7 +69,7 @@
    · ③ **故意提及，不动**：逐条审计报告 / 本账本 / `doc/visibility-authority-chain.md` / 主档里的「已删」清单。
    **主档 `doc/ecs-layer-architecture-and-frame-flow.md` 已于 2026-10-14 改到一致**（§2.1 对象模型 + §5 组件表 + 17 处同题口径）。
 7. 功能项：棋盘格标记色上色 + 2D/3D 分派
-8. **ECS #4（可见性权威链）** —— **(c) ✅ 2026-10-14 落地**（契约档 + 头注四处 + 三条针；原报告三疑查实）；剩 **(b)** 每帧按权威重算（推荐；与「问题 3 的 ②」同一处，须一起拍板）
+8. ~~**ECS #4（可见性权威链）**~~ —— **(c) ✅ + 观察面 ③ ✅ + (b) ✅ + 「问题 3 的 ②」裁定 ✅，均 2026-10-14 落地**（契约档 + 头注 + 针 + 写后一致断言 + Test 4）
 9. ~~**批 D / 批 E**（报告 03 §十一/§十二）~~ —— **2026-10-14 已结案**（四类整族删 + 契约载体迁移；落地记录 §11.7 / §12.5）
 
 ### 5. stage B 存储形欠账（主档 `doc/future/stage_B_debt_list.md`）
@@ -95,10 +100,10 @@ B 线 7 项小项 · A6 只剩 cubemap 六面 · E1/E2 未来项（用户留置�
 
 | 待定 | 说明 |
 |---|---|
-| **① `ULRE_ECS_DEBUG_API` 的默认语义** | 台帐默认 = AUTO（`NDEBUG` ⇒ Debug 1 / Release 0）；CMake 的 option 只表示"**强制在所有配置打开**"（不再下发 `=0`，否则压过 Debug 默认）。⇒ 确认这个口径；若要 Debug 默认也关，改台帐一处即可 |
-| **② 验收口径要不要钉一条带宏的跑** | 建议：验收集里必须有一条 `-DULRE_ECS_DEBUG_API=ON`（可在 Release 上开）的构建 + 门/台架跑，否则这部分代码**长期不编译会 rot**；配套源码契约针钉住各对拍调用点存在 |
+| ~~**① `ULRE_ECS_DEBUG_API` 的默认语义**~~ | **✅ 已确认（2026-10-14）**：保留 AUTO（`NDEBUG` ⇒ Debug 1 / Release 0）；CMake option 只表示"强制在所有配置打开"（不下发 `=0`）。已把口径写进台帐定义处注释 |
+| ~~**② 验收口径要不要钉一条带宏的跑**~~ | **✅ 已钉（2026-10-14）**：新增 `scripts/ci/verify_debug_api_release.ps1` —— 独立构建树（Release + `-DULRE_ECS_DEBUG_API=ON`）编 `ULRE.ECS`/`ShaderResourceSchemaRegressionGate`/`TestCSMIncrementalPass`/`PBRSpheres`/`GPUDrivenCull` 并跑，判据 = 编得过 + 门/契约针/示例自检都绿。配套源码契约针（存在性/计数/禁复活）已在 #2/#6/③ 各点就位 |
 | **③ 后续接入** | **#3 = 报告 03 渲染项双表已随「删」结案（2026-10-14）⇒ 无对拍器、无需挂宏**；**#6 = 报告 08 MaterialRuntimeRow key 已落地**（两个静态对拍助手挂台帐宏）。**模板已由 #2 立好**：台帐宏门住 + 源码契约针（存在性/计数/禁复活）+ 红的样子（破坏后必须点名失步）|
-| **④ 可选加固** | `GC_SELFCHECK=1` 而无 `GC_STATIC=1` 时自动冻结（PBR 即自动冻结）或 fail-fast 提示（见 §3） |
+| ~~**④ 可选加固**~~ | **✅ 已落地（2026-10-14）**：`GPUDrivenCull` 在 `GC_SELFCHECK=1` 而无 `GC_STATIC=1` 时**自动冻结相机** + 打提示（选定「自动冻结」而非 fail-fast：与 PBR 同口径、且不动已有入参习惯） |
 
 ## ❌ 已否决（勿重开；附判据出处）
 

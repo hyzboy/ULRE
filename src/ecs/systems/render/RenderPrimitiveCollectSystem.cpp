@@ -265,8 +265,9 @@ namespace hgl::ecs
             facts.has_material_source = HasAnyMaterialSource(owner);
             // 其余事实保持缺省（真）：FallbackMaterial 规则不引用它们（只会让别的需求位
             // 多出），本函数只读 FallbackMaterial 位 ⇒ 与全量事实求值结果一致。
+            // 掩码不再是实体字段（A1(b)）：由行表现场拼（见 `Entity::BuildComponentMask`）。
             const uint32_t needs = EvaluateRenderNeed(
-                owner ? owner->GetComponentMask() : 0u, facts.ToMask());
+                owner ? owner->BuildComponentMask() : 0u, facts.ToMask());
 
             if (!HasRenderNeed(needs, RenderNeed::FallbackMaterial))
                 return graph::mtl::MaterialErrorKind::None;
@@ -789,7 +790,7 @@ namespace hgl::ecs
             }
 
             out.facts.in_shadow_range = out.in_shadow_range;
-            out.needs = EvaluateRenderNeed(owner ? owner->GetComponentMask() : 0u,
+            out.needs = EvaluateRenderNeed(owner ? owner->BuildComponentMask() : 0u,
                                            out.facts.ToMask());
 
             return out;
@@ -2326,7 +2327,7 @@ namespace hgl::ecs
                         shadow_facts.receive_shadow = CanReceiveShadow(shadow_owner);
 
                         const uint32_t shadow_needs =
-                            EvaluateRenderNeed(shadow_owner ? shadow_owner->GetComponentMask() : 0u,
+                            EvaluateRenderNeed(shadow_owner ? shadow_owner->BuildComponentMask() : 0u,
                                                shadow_facts.ToMask());
 
 #if ULRE_STRATEGY_PARITY_ENABLED
@@ -2342,14 +2343,18 @@ namespace hgl::ecs
                             NormalizeShadowBiasToRow(GetShadowBiasMultiplier(shadow_owner)),
                             HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver) ? 1u : 0u);
 
-                        // ECS #4 观察面（2026-10-14）：可见性**镜像对拍** —— 权威（含祖先继承）与
-                        // 实体行派生位（**扁平**）在此处比一次。报的是**已知失步**（父不可见不传播 /
-                        // 后建立 / 重挂父链），不是缺陷：按构造不会错画（闸门 = 4-ID 表 + 批标签），
-                        // 因此**有界点名 + 计数**（EntityGPUTable::GetVisibleMirrorCount() 取数）
-                        // ⇒ 它是 (b)（每帧按权威重算）的**量化前置**：修完这个计数必须归零。
-                        // 开关 = 台帐 ULRE_ECS_DEBUG_API：**门加在触发点**（不是只门函数体）——
-                        // 否则 Release 下 `IsEntityVisible(...)` 仍会被求值，「生产零开销」不成立。
+                        // ECS #4 **(b)（2026-10-14 落地）**：每帧按权威**重算 ②**（实体行 `Visible` 位）。
+                        // 为什么只刷这一处：这里正是"本项进批"判据点（4-ID 就在上面同一判据里发）⇒
+                        // 不变量「**4-ID 已发布 ⇒ ② == 权威（含祖先继承）**」成立，且剔除端能读到的行
+                        // 一律是当帧值。未进批的实体不刷：其 4-ID 已清零，剔除端 `geometry_id == 0`
+                        // 闸门**先于**任何昂贵计算（契约档 §5「问题 3 的 ②」裁定）。
+                        // 成本：值已在本帧别处算过同类查询（O(1)+上溯）；`SetVisible` 是**值变才标脏**
+                        // ⇒ 静态实体不产生脏行（否则整表每帧上传）。
+                        world->GetEntityGPUTable().SetVisible(entity_id, world->IsEntityVisible(entity_id));
+
                     #if ULRE_ECS_DEBUG_API
+                        // 写后一致断言（debug 面）：这条**本该恒成立**（刚写的就是权威）⇒ 一旦点名即
+                        // 行缺失/溢出/有第二写者。取数：EntityGPUTable::GetVisibleMirrorCount()（应恒 0）。
                         world->GetEntityGPUTable().VerifyVisibleMirror(
                             shadow_owner, world->IsEntityVisible(entity_id),
                             "RenderPrimitiveCollectSystem#publish");

@@ -118,4 +118,24 @@ bool Entity::VerifyComponentMaskAgainstComponents() const
 ## 五、未证实 / 需要确认
 
 - 我按全仓 grep（`inc/`、`src/`、`example/`）确认 `GetComponentMask()` 只有 1 处生产读者、`HasComponentType()` 生产零调用；若存在生成式/宏展开的间接读者（我未发现任何迹象），结论需要修正。
-- 掩码宽度是否已按 `COMPONENT_TYPE_COUNT ≤ 16` 收紧到 u16（当前是 `uint32_t`）—— 属 §4.2「魔数/宽度」一族，需与"组件槽位数是否扩容"一起定。
+- 掩码宽度是否已按 `COMPONENT_TYPE_COUNT ≤ 16` 收紧到 u16（当前是 `uint32_t`）—— 属 §4.2「魔数/宽度」一族，需与"组件槽位数是否扩容"一起定。**（2026-10-14 落地 (b) 后该问题消失**：掩码已是派生量（`uint32_t`，与 `ComponentTypeBit` 同宽），宽度只由 `ComponentTypeBit` 的位宽约束。**）**
+
+## 六、落地记录（2026-10-14，选项 (b) 变体）
+
+用户拍「开工 3」后按 **(b) 删掩码** 落地，与本文档 §三 的 (b) 有两处偏离（都是收紧）：
+
+| 项 | 文档原设想 | 实际落地 |
+|---|---|---|
+| 策略入口 | "改收实体/行号表"（形态未定） | `Entity::BuildComponentMask()`（行表**现场拼**，O(COMPONENT_TYPE_COUNT)）；三个生产调用点（回退种类判定 / 主求值 / 阴影事实块）各拼一次 |
+| `HasComponentType()` | §四.3："要么找真读者、要么删" | **删**（生产零调用；需要时用 `HasComponent<T>()` 或 `GetComponentRow(type) != 0`） |
+| `VerifyComponentMaskAgainstComponents()` | 选项 (a) 引入的对拍器 | **一并删**（没有第二份可失步 ⇒ 无对拍对象） |
+
+判据与反证：
+
+- `TestComponentRows`（原 `TestComponentMask`，改名去概念残留）三项：行表置位 / 派生掩码同步、多槽位独立与移除只清自己、`None` 不占位；
+- **红的样子（实测）**：让 `BuildComponentMask()` 漏一个槽位（循环起点 1→2）⇒ 用例点名失败；把被删字段写回 `Entity.h` ⇒
+  契约针「掩码缓存字段复活（与 component_rows 双真值）」点名（文本针，无需重编）；
+- 契约针（`TestCSMIncrementalPass` 组④）：`Entity.h` / `Entity.cpp` 不得再出现掩码字段、旧对拍器、`HasComponentType`；
+- 验收：两配置全量重编 0 error、门 45/0、`ctest -L ecs` 11/11、示例摘要**逐位不变**。
+
+**代价（明确记账）**：策略路径由 O(1) 字段读变 O(16) 现场拼（每实体每帧 ≤3 次）—— 换掉 4 B/实体 + 一对「字段↔行表」双真值与配套对拍器。

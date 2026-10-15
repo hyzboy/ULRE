@@ -16,6 +16,10 @@ using namespace hgl::ecs;
  *   3) 销毁回收：实体销毁必须从不可见集合摘掉，否则同索引的新实体会继承旧状态（T8 同类副作用）。
  *
  * 反证：抽掉 `ECSContext::DestroyEntity` 里的 `visibility_storage->SetVisible(id);` ⇒ Test 3 必须失败。
+ *
+ *   4) 镜像位写入纪律（2026-10-14；(b) 落地后本函数**每帧**都会被调）：`EntityGPUTable::SetVisible`
+ *      必须**值变才标脏**，否则静态实体的行永远脏 ⇒ 每帧整表上传。
+ *      反证：去掉该守卫（无条件 `MarkDirty`）⇒ Test 4 必须失败。
  */
 int main(int argc, char** argv)
 {
@@ -181,6 +185,49 @@ int main(int argc, char** argv)
         }
 
         GLogInfo(u8"Test 3 Passed: 实体销毁回收不可见标记。");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Test 4: 镜像位写入纪律（值变才标脏）—— (b) 后每帧都写，不守卫就会让静态实体永远脏行
+    // ─────────────────────────────────────────────────────────────
+    {
+        ECSContext world("VisWorld4");
+
+        auto *entity = world.CreateEntity<Entity>("VisMirror");
+        if (!entity)
+        {
+            GLogError(u8"Test 4 Failed: 建实体失败");
+            return 13;
+        }
+
+        EntityGPUTable &table = world.GetEntityGPUTable();
+        const EntityID  id    = entity->GetEntityID();
+
+        // 判据必须"隔离本次写入"：`GetDirtyCount()` 数的是**当前标脏行数** ⇒ 重标同一位不会增加
+        // （行本来就脏）⇒ 用 `ClearDirty()` 先归零，再看这一次写入有没有把该行标脏。
+        table.SetVisible(id,false);
+        table.GetDirtySet().ClearDirty();
+
+        table.SetVisible(id,false);                       // 同值重复写（(b) 后每帧都会发生）
+        uint32_t dirty_now = table.GetDirtySet().GetDirtyCount();
+
+        if (dirty_now != 0u)
+        {
+            GLogError(u8"Test 4 Failed: 同值重复写仍标脏（脏行 %u 个）⇒ 静态实体每帧整表脏",
+                      dirty_now);
+            return 13;
+        }
+
+        table.SetVisible(id,true);                        // 值变必须标脏
+        dirty_now = table.GetDirtySet().GetDirtyCount();
+
+        if (dirty_now == 0u)
+        {
+            GLogError(u8"Test 4 Failed: 值变未标脏 ⇒ GPU 侧拿不到新可见性");
+            return 13;
+        }
+
+        GLogInfo(u8"Test 4 Passed: 镜像位写入值变才标脏（静态实体不产生每帧脏行）。");
     }
 
     GLogInfo(u8"=== All VisibilityDataStorage tests passed successfully! ===");

@@ -570,7 +570,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 我在无声会话里只能跑无窗口测试（`ctest`）。 |
 | ~~P1~~ | §3.5 `PrimitiveRenderSystem` / `PrimitiveOverlayRenderSystem` 合并（差一个取反） | 多路径 | ✅ **已完成（复核发现）**：合并早已落地 —— 唯一实现 `PrimitiveRenderSystem::RenderBatches(ctx, cmd, bool overlay_only)`（`PrimitiveRenderSystem.cpp:39`），`PrimitiveOverlayRenderSystem.cpp` 全文 24 行、`OnRender` 只转发 `RenderBatches(context, cmdBuffer, true)`。 |
 | ~~P1~~ | §2.3 三张表的脏行机制抽公共件（~120 行）+ 两个 `Write*DirtyIndices`（~200 行） | 冗余 | ✅ **已处置**：`support/DirtyRowSet.h` 收敛三表（`EntityGPUTable`/`EntityRenderIDTable`/`LightRowTable`）；两个 `Write*DirtyIndices` 已收敛为 `WriteDirtyIndicesInternal`（`TransformAssignmentBuffer.cpp`，公开壳仅 3 行） |
-| **P1** | §3.2 双重 `DetachAllComponents`；§2.2 `component_mask` 一致性仅测试保证 | 多路径/冗余 | |
+| ~~P1~~ | §3.2 双重 `DetachAllComponents`；§2.2 `component_mask` 一致性仅测试保证 | 多路径/冗余 | ✅ **已处置（2026-10-14）**：① `EntityManager::Clear()` 删掉显式 `DetachAllComponents()`（`~Entity()` 内部统一执行，与 `DestroyEntity` 同口径）；② **掩码字段整删**（A1(b)）⇒ 同一事实不再存两份，「一致性」问题本身消失：策略路径改 `Entity::BuildComponentMask()` 现场拼；零消费者 API（`HasComponentType` / `VerifyComponentMaskAgainstComponents`）一并删除；测试改名 `TestComponentRows`。见报告 01 §六 |
 | ~~P1~~ | §4.1 `CPUCullReferenceSystem` 默认注册 / 4 个测试未注册 | 特例/测试 | ✅ **已处置**：台架已在 `#if defined(ULRE_ENABLE_CPU_CULL_PARITY_TEST)` 之后，且该宏此前**全仓无处定义**——2026-10-09 补上 CMake 选项（`src/ecs/CMakeLists.txt`）；10 个测试目标 `add_test` 齐备（ctest 实测全部运行）。2026-10-10 实测：开关打开后台架**能正常注册并初始化**
 （日志有 `[#22] [CPUCullReferenceSystem] Initialized`）⇒ 开关与注册路径本身是好的。⚠️ **但对拍采样取不到**：
 当前树跑 `ShadowMap` 在 `[#19] Created RenderPass 'RenderPass_2_130_1000001002_3_1_64'`（阴影 Pass）之后即退出

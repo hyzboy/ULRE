@@ -53,3 +53,4 @@ gcdump_*
 cascade_depth_*
 # PlaneGrid3D 台架（A6 内容线接管）的帧内回读 dump
 pgdump_*
+build_debugapi_release/
