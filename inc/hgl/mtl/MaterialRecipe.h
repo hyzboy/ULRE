@@ -142,6 +142,41 @@ namespace hgl::graph::mtl
         OptionalFaceFallback
     };
 
+    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp::ParseVertexNormalMode` 的本地表。
+    inline constexpr uint32_t MaterialVertexNormalModeCount =
+        static_cast<uint32_t>(MaterialVertexNormalMode::OptionalFaceFallback) + 1;
+
+    inline const char *GetMaterialVertexNormalModeName(
+        const MaterialVertexNormalMode mode) noexcept
+    {
+        switch (mode)
+        {
+        case MaterialVertexNormalMode::None:                return "None";
+        case MaterialVertexNormalMode::OptionalFaceFallback: return "OptionalFaceFallback";
+        }
+        return "None";
+    }
+
+    inline bool ParseMaterialVertexNormalMode(
+        const char *name, MaterialVertexNormalMode &out) noexcept
+    {
+        if (!name || !name[0])
+            return false;
+
+        for (uint32_t i = 0; i < MaterialVertexNormalModeCount; ++i)
+        {
+            const MaterialVertexNormalMode mode =
+                static_cast<MaterialVertexNormalMode>(i);
+            if (hgl::strcmp(name, GetMaterialVertexNormalModeName(mode)) == 0)
+            {
+                out = mode;
+                return true;
+            }
+        }
+        return false;
+    }
+
     inline ShaderCodeModuleSemantic GetShaderCodeModuleSemanticFromVertexSemantic(
         const VertexSemantic semantic) noexcept
     {

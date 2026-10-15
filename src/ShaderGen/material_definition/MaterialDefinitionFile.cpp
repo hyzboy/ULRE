@@ -150,23 +150,6 @@ namespace hgl::graph::mtl
             return ReadString(table, key, out) && !out.empty();
         }
 
-        bool ParseVertexNormalMode(
-            const std::string &name,
-            MaterialVertexNormalMode &out)
-        {
-            if (name == "None")
-            {
-                out = MaterialVertexNormalMode::None;
-                return true;
-            }
-            if (name == "OptionalFaceFallback")
-            {
-                out = MaterialVertexNormalMode::OptionalFaceFallback;
-                return true;
-            }
-            return false;
-        }
-
         bool ParseRenderState(const toml::value &root, MaterialDefinition &definition)
         {
             if (!root.contains("render_state"))
@@ -264,97 +247,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ParseVertexInput(const std::string &name, VertexInputMode &out)
-        {
-            static const struct { const char *name; VertexInputMode value; } table[] = {
-                { "Vec2Position",    VertexInputMode::Vec2Position },
-                { "Vec3Position",    VertexInputMode::Vec3Position },
-                { "Vec2IntPosition", VertexInputMode::Vec2IntPosition },
-                { "None",            VertexInputMode::None },
-            };
-            for (const auto &entry : table)
-            {
-                if (name == entry.name)
-                {
-                    out = entry.value;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParseMapping(const std::string &name, PositionMappingMode &out)
-        {
-            static const char *const names[] = {
-                "Passthrough3D", "LiftXY_XY0", "LiftXY_X0Y", "LiftXY_0XY",
-                "NDCLift", "ZeroOneToNDC", "PixelToLocal"
-            };
-            for (uint32 i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
-            {
-                if (name == names[i])
-                {
-                    out = static_cast<PositionMappingMode>(i);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParseOrientation(const std::string &name, OrientationMode &out)
-        {
-            static const struct { const char *name; OrientationMode value; } table[] = {
-                { "World",            OrientationMode::World },
-                { "CameraFacingFree", OrientationMode::CameraFacingFree },
-                { "CameraFacingAxisY", OrientationMode::CameraFacingAxisY },
-            };
-            for (const auto &entry : table)
-            {
-                if (name == entry.name)
-                {
-                    out = entry.value;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParseScale(const std::string &name, ScaleMode &out)
-        {
-            static const struct { const char *name; ScaleMode value; } table[] = {
-                { "World",          ScaleMode::World },
-                { "FixedPixelSize", ScaleMode::FixedPixelSize },
-            };
-            for (const auto &entry : table)
-            {
-                if (name == entry.name)
-                {
-                    out = entry.value;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParseProjection(const std::string &name, ProjectionMode &out)
-        {
-            static const struct { const char *name; ProjectionMode value; } table[] = {
-                { "WorldCameraVP",        ProjectionMode::WorldCameraVP },
-                { "LocalToWorldOnly",     ProjectionMode::LocalToWorldOnly },
-                { "OrthoViewport",        ProjectionMode::OrthoViewport },
-                { "OrthoThenLocalToWorld", ProjectionMode::OrthoThenLocalToWorld },
-                { "ClipPassthrough",      ProjectionMode::ClipPassthrough },
-            };
-            for (const auto &entry : table)
-            {
-                if (name == entry.name)
-                {
-                    out = entry.value;
-                    return true;
-                }
-            }
-            return false;
-        }
-
         bool ParseTransformGraph(const toml::value &table,
                                  VertexShaderNodeConfig &out)
         {
@@ -362,7 +254,7 @@ namespace hgl::graph::mtl
 
             if (!ReadRequiredString(table, "source", value))
                 return false;
-            if (!ParseVertexInput(value, out.input))
+            if (!ParseVertexInputMode(value.c_str(), out.input))
             {
                 RecordParseFailure("source", value.c_str(), "未知顶点输入模式名");
                 return false;
@@ -370,7 +262,7 @@ namespace hgl::graph::mtl
 
             if (!ReadRequiredString(table, "mapping", value))
                 return false;
-            if (!ParseMapping(value, out.position_mapping))
+            if (!ParsePositionMappingMode(value.c_str(), out.position_mapping))
             {
                 RecordParseFailure("mapping", value.c_str(), "未知位置映射模式名");
                 return false;
@@ -378,7 +270,7 @@ namespace hgl::graph::mtl
 
             if (!ReadRequiredString(table, "orientation", value))
                 return false;
-            if (!ParseOrientation(value, out.orientation))
+            if (!ParseOrientationMode(value.c_str(), out.orientation))
             {
                 RecordParseFailure("orientation", value.c_str(), "未知朝向模式名");
                 return false;
@@ -386,7 +278,7 @@ namespace hgl::graph::mtl
 
             if (!ReadRequiredString(table, "scale", value))
                 return false;
-            if (!ParseScale(value, out.scale))
+            if (!ParseScaleMode(value.c_str(), out.scale))
             {
                 RecordParseFailure("scale", value.c_str(), "未知缩放入参模式名");
                 return false;
@@ -394,7 +286,7 @@ namespace hgl::graph::mtl
 
             if (!ReadRequiredString(table, "projection", value))
                 return false;
-            if (!ParseProjection(value, out.projection))
+            if (!ParseProjectionMode(value.c_str(), out.projection))
             {
                 RecordParseFailure("projection", value.c_str(), "未知投影模式名");
                 return false;
@@ -537,8 +429,8 @@ namespace hgl::graph::mtl
                 std::string normal_mode;
                 if (!ReadRequiredString(*vertex, "normal_mode", normal_mode))
                     return false;
-                if (!ParseVertexNormalMode(
-                        normal_mode, out.definition.vertex_normal_mode))
+                if (!ParseMaterialVertexNormalMode(
+                        normal_mode.c_str(), out.definition.vertex_normal_mode))
                 {
                     RecordParseFailure("normal_mode", normal_mode.c_str(), "未知法线模式名");
                     return false;

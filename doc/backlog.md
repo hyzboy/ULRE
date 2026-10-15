@@ -18,7 +18,7 @@
 | 项 | 状态 | 判据 / 下一步 |
 |---|---|---|
 | ~~**S4 = D 层去双真值**~~（计划内最后一个批次；2026-10-12 **已整批完成**） | **S4 全部完成（2026-10-12）：S4a=D1（§19.6）、S4b-D4（§19.7）、S4b-D2（§19.8）** | 已完成，见评审档 **§19.6（D1 表驱动必需槽）/ §19.7（D4 归一化取用口）/ §19.8（D2 剔面语义）**；施工单与红的样子都在 §19 内 |
-| **S3b-3：6 个顶点节点枚举归位** | 未开工〔评审档 §18.1〕 | `VertexInputMode`/`MappingMode`/`OrientationMode`/`ScaleMode`/`ProjectionMode`/`MaterialVertexNormalMode` 的 `Get*Name` **全仓 = 0**（名字只活在 `MaterialDefinitionFile.cpp` 的本地单向表）⇒ 按 S3b-2 形态搬回枚举定义旁；需动各自枚举手（部分属 `hgl::graph`）〔实测 Get*Name 全 0〕 |
+| ~~**S3b-3：6 个顶点节点枚举归位**~~ | **✅ 2026-10-14 结案（B1）** | `VertexInputMode`/`MappingMode`/`OrientationMode`/`ScaleMode`/`ProjectionMode`/`MaterialVertexNormalMode` 的 `Get*Name` **全仓 = 0**（名字只活在 `MaterialDefinitionFile.cpp` 的本地单向表）⇒ 按 S3b-2 形态搬回枚举定义旁；需动各自枚举手（部分属 `hgl::graph`）〔实测 Get*Name 全 0〕 |
 | **诊断表前缀：解析器路径未设表名** | 未做〔实测 2026-10-12〕 | 校验器的 8 段已修，但 `ParseDefinition` / `ParseRenderState` / `ParseTransformGraph` 的失败点**没有表前缀** ⇒ 日志只说 `cull_mode = "Bogus"`，不说 `render_state.pipeline.`（判据 = 在材质 TOML 写 `[render_state.pipeline] cull_mode = "Bogus"` 后的日志原文）；修法 = 各段入口 `SetParseTable(...)`，与校验器同形 |
 | **S4a 的分歧场景无生产者**（可选保险） | 未做〔评审档 §19.6 诚实边界〕 | 「表标 `required=false` + 该模块缺失 + 模板属 ForwardUnlit/Sky」目前**没有任何生产者** ⇒ 要这道保险得先造生产者，再加门 case「表中 optional 槽缺失 ⇒ 组合器不得失败」 |
 | **棋盘格标记色 + 2D/3D 分派**（功能项） | 未开工；TODO 已写进 `MaterialRecipe.h` 规则表上方〔档〕 | 两套 checkerboard 源读 `EmissiveSurface` 标记色；2D 走 NDC/UV、3D 走面空间；回退 ID 需按绘制维度分派；门/契约同步 |
@@ -77,7 +77,7 @@
 1. ~~**ECS #2 对拍器接入**~~ —— **✅ 2026-10-13 完成**（同 §2）
 2. ~~**ECS #5 `VariantKeyOf` 前缀共用**~~ ✅ / ~~**ECS #6 行字段不变量 + debug 门**~~ —— **均 2026-10-13 完成**；审计 §2 六条里**只剩 #4（可见性权威链）**（#3 已于 2026-10-14 以「删」结案，见 §2 该条）
 3. ~~**开关台帐的两条待定 + 自检门的配置口径**~~ —— **✅ 2026-10-14 结案**（用户拍「开工 1」）：① 保留 AUTO 并写进口径；② 钉 `scripts/ci/verify_debug_api_release.ps1`；④ `GC_SELFCHECK` 自动冻结；自检门口径 = Debug 钉像素 / Release 钉结构量（`kFrameDigestPinPixels`）
-4. **S3b-3 顶点节点枚举归位**（与 S3b 同族收尾）
+4. ~~**S3b-3 顶点节点枚举归位**~~（与 S3b 同族收尾）—— **✅ 2026-10-14 完成（B1）**：6 个枚举的名字表归位到枚举定义旁 + 12 条针（见 §1）
 5. **stage B `receive_shadow` 幅度漂移专项**（未 bisect 的行为漂移；修完 `ATS_SELFCHECK=1` 必须 rc=0）
 6. 文档卫生：~~**§1 的 3 处过期声明**~~（**✅ 2026-10-14 B4 结案**，见 §1）+ ~~C 线 doc 十篇~~ —— **2026-10-14（B3）第一遍已做**：**33 档挂"文卫生订正块/banner"**
    （**11 档现行口径档**：点明该档的已删符号 + 现行载体 + 权威档指针；**22 档历史记录档**：一行 banner 声明按历史口径读）

@@ -792,6 +792,20 @@ if (recipe.mtl_def_id.empty())
 这 6 个枚举**全仓没有 `Get*Name`**（`git grep -c Get*Name` = 0）⇒ 名字只存在于这些本地表里。归位需要动各自枚举所在的头
 （其中几个属 `hgl::graph` 顶点节点侧，blast radius 比 S3b-2 大），故另起一批做。
 
+**✅ 2026-10-14 已落地（B1）**：6 个枚举全部按 S3b-2 形态归位到**枚举定义旁**——
+`inc/hgl/mtl/VertexShaderNodeConfig.h` 的 `VertexInputMode` / `PositionMappingMode` / `OrientationMode` /
+`ScaleMode` / `ProjectionMode`（注意实际枚举名是 `PositionMappingMode`，不是评审档写的 `MappingMode`）
+＋ `inc/hgl/mtl/MaterialRecipe.h` 的 `MaterialVertexNormalMode`；每个都是
+`*Count = static_cast<uint32_t>(末值) + 1` + `Get*Name`（switch）+ `Parse*`（线性查表 `*Count` 格，
+名字只在 `Get*Name` 里写一份 ⇒ 新增枚举值自动纳入）。`MaterialDefinitionFile.cpp` 的 6 个本地单向解析器
+（含 `ParseVertexNormalMode` 的 if 链）**整删**，6 个调用点改走归位后的 `Parse*`（`std::string` ⇒ `.c_str()`）。
+空串语义保持原样（这 6 个键都是 `ReadRequiredString`/必填 ⇒ 一律 `false`，无缺省降级）。
+针 12 条（Test 25 组⑩）：6 存在性（`Get*Name` 声明形态，含头文件同址）+ 6 禁复活
+（`ParseVertexInput(` / `ParseMapping(` / `ParseOrientation(` / `ParseScale(` / `ParseProjection(` /
+`ParseVertexNormalMode(` 不得回到 `MaterialDefinitionFile.cpp`；新调用名的 `Parse*Mode(` 不撞子串）。
+承重反证：把 `GetVertexInputModeName` 的 `"Vec3Position"` 改成别的串 ⇒ 门报错
+（`ShaderLibrary/material/*.material.toml` 的 `source` 键就是按这个名字解析的）⇒ 名字表是真源而非装饰。
+
 ### 18.2 错误材质接棋盘格（颜色留 TODO）
 
 `kFallbackMaterialRules`（`inc/hgl/mtl/MaterialRecipe.h`）两条**错误种类**的定义 ID

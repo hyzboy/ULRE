@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include <hgl/type/EnumUtil.h>
+#include <cstring>
+
 namespace hgl::graph::mtl
 {
     // Stage 1 — 顶点位置输入格式
@@ -13,6 +15,44 @@ namespace hgl::graph::mtl
 
         ENUM_CLASS_RANGE(Vec2Position, None)
     };
+
+    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    //   GetVertexInputModeName：枚举 → 名字（switch）
+    //   ParseVertexInputMode：名字 → 枚举（线性查表）
+    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
+    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    inline constexpr uint32_t VertexInputModeCount =
+        static_cast<uint32_t>(VertexInputMode::None) + 1;
+
+    inline const char *GetVertexInputModeName(const VertexInputMode mode) noexcept
+    {
+        switch (mode)
+        {
+        case VertexInputMode::Vec2Position: return "Vec2Position";
+        case VertexInputMode::Vec3Position: return "Vec3Position";
+        case VertexInputMode::Vec2IntPosition: return "Vec2IntPosition";
+        case VertexInputMode::None:           return "None";
+        }
+        return "Vec3Position";
+    }
+
+    inline bool ParseVertexInputMode(const char *name, VertexInputMode &out) noexcept
+    {
+        if (!name || !name[0])
+            return false;
+
+        for (uint32_t i = 0; i < VertexInputModeCount; ++i)
+        {
+            const VertexInputMode mode = static_cast<VertexInputMode>(i);
+            if (std::strcmp(name, GetVertexInputModeName(mode)) == 0)
+            {
+                out = mode;
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     // Stage 2 — 物体空间位置映射策略
     // 输入为 Stage 1 的原始顶点位置，输出 vec4 local_pos（物体空间）
@@ -29,6 +69,47 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(Passthrough3D, PixelToLocal)
     };
 
+    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    //   GetPositionMappingModeName：枚举 → 名字（switch）
+    //   ParsePositionMappingMode：名字 → 枚举（线性查表）
+    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
+    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    inline constexpr uint32_t PositionMappingModeCount =
+        static_cast<uint32_t>(PositionMappingMode::PixelToLocal) + 1;
+
+    inline const char *GetPositionMappingModeName(const PositionMappingMode mode) noexcept
+    {
+        switch (mode)
+        {
+        case PositionMappingMode::Passthrough3D: return "Passthrough3D";
+        case PositionMappingMode::LiftXY_XY0: return "LiftXY_XY0";
+        case PositionMappingMode::LiftXY_X0Y: return "LiftXY_X0Y";
+        case PositionMappingMode::LiftXY_0XY: return "LiftXY_0XY";
+        case PositionMappingMode::NDCLift: return "NDCLift";
+        case PositionMappingMode::ZeroOneToNDC: return "ZeroOneToNDC";
+        case PositionMappingMode::PixelToLocal: return "PixelToLocal";
+        }
+        return "Passthrough3D";
+    }
+
+    inline bool ParsePositionMappingMode(const char *name, PositionMappingMode &out) noexcept
+    {
+        if (!name || !name[0])
+            return false;
+
+        for (uint32_t i = 0; i < PositionMappingModeCount; ++i)
+        {
+            const PositionMappingMode mode = static_cast<PositionMappingMode>(i);
+            if (std::strcmp(name, GetPositionMappingModeName(mode)) == 0)
+            {
+                out = mode;
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     // Stage 3a — 朝向策略
     enum class OrientationMode : uint8_t
     {
@@ -39,6 +120,43 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(World, CameraFacingAxisY)
     };
 
+    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    //   GetOrientationModeName：枚举 → 名字（switch）
+    //   ParseOrientationMode：名字 → 枚举（线性查表）
+    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
+    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    inline constexpr uint32_t OrientationModeCount =
+        static_cast<uint32_t>(OrientationMode::CameraFacingAxisY) + 1;
+
+    inline const char *GetOrientationModeName(const OrientationMode mode) noexcept
+    {
+        switch (mode)
+        {
+        case OrientationMode::World:         return "World";
+        case OrientationMode::CameraFacingFree: return "CameraFacingFree";
+        case OrientationMode::CameraFacingAxisY: return "CameraFacingAxisY";
+        }
+        return "World";
+    }
+
+    inline bool ParseOrientationMode(const char *name, OrientationMode &out) noexcept
+    {
+        if (!name || !name[0])
+            return false;
+
+        for (uint32_t i = 0; i < OrientationModeCount; ++i)
+        {
+            const OrientationMode mode = static_cast<OrientationMode>(i);
+            if (std::strcmp(name, GetOrientationModeName(mode)) == 0)
+            {
+                out = mode;
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     // Stage 3b — 缩放策略
     enum class ScaleMode : uint8_t
     {
@@ -47,6 +165,42 @@ namespace hgl::graph::mtl
 
         ENUM_CLASS_RANGE(World, FixedPixelSize)
     };
+
+    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    //   GetScaleModeName：枚举 → 名字（switch）
+    //   ParseScaleMode：名字 → 枚举（线性查表）
+    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
+    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    inline constexpr uint32_t ScaleModeCount =
+        static_cast<uint32_t>(ScaleMode::FixedPixelSize) + 1;
+
+    inline const char *GetScaleModeName(const ScaleMode mode) noexcept
+    {
+        switch (mode)
+        {
+        case ScaleMode::World:               return "World";
+        case ScaleMode::FixedPixelSize: return "FixedPixelSize";
+        }
+        return "World";
+    }
+
+    inline bool ParseScaleMode(const char *name, ScaleMode &out) noexcept
+    {
+        if (!name || !name[0])
+            return false;
+
+        for (uint32_t i = 0; i < ScaleModeCount; ++i)
+        {
+            const ScaleMode mode = static_cast<ScaleMode>(i);
+            if (std::strcmp(name, GetScaleModeName(mode)) == 0)
+            {
+                out = mode;
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     // Stage 3c — 投影策略
     enum class ProjectionMode : uint8_t
@@ -59,6 +213,45 @@ namespace hgl::graph::mtl
 
         ENUM_CLASS_RANGE(WorldCameraVP, ClipPassthrough)
     };
+
+    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    //   GetProjectionModeName：枚举 → 名字（switch）
+    //   ParseProjectionMode：名字 → 枚举（线性查表）
+    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
+    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    inline constexpr uint32_t ProjectionModeCount =
+        static_cast<uint32_t>(ProjectionMode::ClipPassthrough) + 1;
+
+    inline const char *GetProjectionModeName(const ProjectionMode mode) noexcept
+    {
+        switch (mode)
+        {
+        case ProjectionMode::WorldCameraVP: return "WorldCameraVP";
+        case ProjectionMode::LocalToWorldOnly: return "LocalToWorldOnly";
+        case ProjectionMode::OrthoViewport: return "OrthoViewport";
+        case ProjectionMode::OrthoThenLocalToWorld: return "OrthoThenLocalToWorld";
+        case ProjectionMode::ClipPassthrough: return "ClipPassthrough";
+        }
+        return "WorldCameraVP";
+    }
+
+    inline bool ParseProjectionMode(const char *name, ProjectionMode &out) noexcept
+    {
+        if (!name || !name[0])
+            return false;
+
+        for (uint32_t i = 0; i < ProjectionModeCount; ++i)
+        {
+            const ProjectionMode mode = static_cast<ProjectionMode>(i);
+            if (std::strcmp(name, GetProjectionModeName(mode)) == 0)
+            {
+                out = mode;
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     // 顶点 Shader PCG 节点配置：三阶段五参数
     struct VertexShaderNodeConfig
