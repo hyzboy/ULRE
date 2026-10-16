@@ -6,7 +6,7 @@
 #include<hgl/type/String.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/vk/VKFormat.h>
-#include<hgl/vk/VKPrimitiveType.h>
+#include<hgl/common/PrimitiveType.h>
 #include<hgl/vk/VKStruct.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/vk/VKRenderbufferInfo.h>

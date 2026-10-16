@@ -4,7 +4,7 @@
 #include<hgl/mtl/ShaderLinkSpec.h>
 #include<hgl/mtl/ShaderArtifactContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/common/PrimitiveTypeDef.h>
+#include<hgl/common/PrimitiveType.h>
 #include<hgl/common/ShaderStageDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>

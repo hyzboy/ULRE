@@ -1,5 +1,5 @@
 ﻿set(VK_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/vk)
-
+set(COMMON_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/common)
 # ============================================================================
 # Vulkan Backend - 纯 Vulkan API 层实现
 # ============================================================================
@@ -132,7 +132,7 @@ SOURCE_GROUP("Buffer" FILES ${VK_BUFFER_FILES})
 
 # --- 3. Vertex Input (与 Vulkan 底层密切) ---
 SET(VK_VERTEX_INPUT_FILES       ${VK_INCLUDE_PATH}/VKVertexInputFormat.h
-                                ${VK_INCLUDE_PATH}/VKPrimitiveType.h)
+                                ${COMMON_INCLUDE_PATH}/PrimitiveType.h)
 
 SOURCE_GROUP("VertexInput" FILES ${VK_VERTEX_INPUT_FILES})
 

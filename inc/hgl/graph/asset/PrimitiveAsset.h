@@ -2,7 +2,7 @@
 
 #include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/mtl/MaterialRecipe.h>
-#include <hgl/common/PrimitiveTypeDef.h>
+#include <hgl/common/PrimitiveType.h>
 
 namespace hgl::graph
 {

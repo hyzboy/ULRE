@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKPrimitiveType.h>
+#include<hgl/common/PrimitiveType.h>
 #include<hgl/type/String.h>
 #include<cstdint>
 
