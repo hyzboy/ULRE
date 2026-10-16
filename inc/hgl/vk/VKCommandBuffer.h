@@ -82,29 +82,6 @@ public:
                              VkImageLayout newImageLayout,
                              const VkImageSubresourceRange &subresourceRange);
 
-    void BufferMemoryBarrier(VkBuffer buffer,
-                             VkPipelineStageFlags2 srcStageMask,
-                             VkPipelineStageFlags2 dstStageMask,
-                             VkAccessFlags2 srcAccessMask,
-                             VkAccessFlags2 dstAccessMask,
-                             VkDeviceSize offset=0,
-                             VkDeviceSize size=VK_WHOLE_SIZE)
-    {
-        BufferMemoryBarrier2(buffer, srcStageMask, dstStageMask, srcAccessMask, dstAccessMask, offset, size);
-    }
-
-    void ImageMemoryBarrier(VkImage image,
-                            VkPipelineStageFlags2 srcStageMask,
-                            VkPipelineStageFlags2 dstStageMask,
-                            VkAccessFlags2 srcAccessMask,
-                            VkAccessFlags2 dstAccessMask,
-                            VkImageLayout oldImageLayout,
-                            VkImageLayout newImageLayout,
-                            const VkImageSubresourceRange &subresourceRange)
-    {
-        ImageMemoryBarrier2(image, srcStageMask, dstStageMask, srcAccessMask, dstAccessMask, oldImageLayout, newImageLayout, subresourceRange);
-    }
-
     void FillBuffer(VkBuffer buffer, VkDeviceSize offset, VkDeviceSize size, uint32_t data)
     {
         vkCmdFillBuffer(cmd_buf, buffer, offset, size, data);

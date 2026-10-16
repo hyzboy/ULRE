@@ -280,10 +280,11 @@ namespace hgl::graph::mtl
         mode_ctx.varying_cfg      = &varying_cfg;
         mode_ctx.emit_world_pos   = FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::WorldPosition) != nullptr;
         mode_ctx.emit_world_normal = FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::WorldNormal) != nullptr;
+        mode_ctx.position_format  = position_format;
 
         if (desc->emit_body)
         {
-            desc->emit_body(fragment, mode_ctx, position_format);
+            desc->emit_body(fragment, mode_ctx);
         }
 
         fragment += "}\n";

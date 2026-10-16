@@ -296,7 +296,7 @@ private:
             // 当存在后续层级时，必须插入内存屏障，确保子层级能读到本层写入的世界矩阵
             if (level + 1 < level_count)
             {
-                compute_cmd->BufferMemoryBarrier(
+                compute_cmd->BufferMemoryBarrier2(
                     world_buffer->GetBuffer(),
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -312,7 +312,7 @@ private:
         if (!compute_queue->Submit(compute_cmd, nullptr, 0, nullptr, 0))
             return false;
 
-        compute_queue->WaitFence();
+        compute_queue->WaitLastSubmitFence();
 
         // CPU 平铺参考计算
         storage.UpdateAllWorldMatricesFlat();

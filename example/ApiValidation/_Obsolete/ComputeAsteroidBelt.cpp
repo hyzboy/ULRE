@@ -1002,7 +1002,7 @@ public:
 
         // 2a. 清空计数缓冲 (44 B) 并设置屏障
         compute_cmd->FillBuffer(draw_count_buffer->GetBuffer(), 0, sizeof(DrawCountData), 0);
-        compute_cmd->BufferMemoryBarrier(
+        compute_cmd->BufferMemoryBarrier2(
             draw_count_buffer->GetBuffer(),
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -1016,7 +1016,7 @@ public:
         compute_cmd->Dispatch((TOTAL_ASTEROIDS + 255) / 256, 1, 1);
 
         // 2c. 屏障：确保计数写入完成后再生成间接命令
-        compute_cmd->BufferMemoryBarrier(
+        compute_cmd->BufferMemoryBarrier2(
             draw_count_buffer->GetBuffer(),
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -1033,7 +1033,7 @@ public:
         const bool need_readback = (tick_frame_count % 60 == 0);
         if (need_readback)
         {
-            compute_cmd->BufferMemoryBarrier(
+            compute_cmd->BufferMemoryBarrier2(
                 draw_count_buffer->GetBuffer(),
                 VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -1055,7 +1055,7 @@ public:
         }
 
         // 2f. 终态屏障：对 Draw Indirect 以及 Mesh Shader Read 完全可见
-        compute_cmd->BufferMemoryBarrier(
+        compute_cmd->BufferMemoryBarrier2(
             indirect_cmds_buffer->GetBuffer(),
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
@@ -1063,7 +1063,7 @@ public:
             VK_ACCESS_INDIRECT_COMMAND_READ_BIT
         );
 
-        compute_cmd->BufferMemoryBarrier(
+        compute_cmd->BufferMemoryBarrier2(
             world_matrices_buffer->GetBuffer(),
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT,
@@ -1071,7 +1071,7 @@ public:
             VK_ACCESS_SHADER_READ_BIT
         );
 
-        compute_cmd->BufferMemoryBarrier(
+        compute_cmd->BufferMemoryBarrier2(
             l2w_index_buffer->GetBuffer(),
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT,
@@ -1082,7 +1082,7 @@ public:
         compute_cmd->End();
 
         compute_queue->Submit(compute_cmd, nullptr, 0, nullptr, 0);
-        compute_queue->WaitFence();
+        compute_queue->WaitLastSubmitFence();
 
         // 3. 输出实时吞吐与视锥剔除诊断数据
         if (need_readback)

@@ -115,7 +115,7 @@ private:
         if (!compute_queue->Submit(compute_cmd, nullptr, 0, nullptr, 0))
             return false;
 
-        compute_queue->WaitFence();
+        compute_queue->WaitLastSubmitFence();
 
         // 读回验证：in = 1..DATA_COUNT，out 应为 i*i
         void *mapped = output_buffer->Map(0, output_buffer->GetSize());

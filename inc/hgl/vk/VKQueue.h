@@ -85,11 +85,6 @@ public:
     bool WaitQueue();
 
     /**
-    * 等待Queue命令执行完成的fence信号
-    */
-    bool WaitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
-
-    /**
     * 等待上一条提交使用的fence信号
     */
     bool WaitLastSubmitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);

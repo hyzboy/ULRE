@@ -3,11 +3,6 @@
 
 namespace hgl::ecs
 {
-    bool RenderPipelineSystem::ValidatePipeline(ECSContext* context)
-    {
-        return GetValidatedPipeline(context) != nullptr;
-    }
-
     RenderPipelineBase* RenderPipelineSystem::GetValidatedPipeline(ECSContext* context)
     {
         if (!IsEnabled() || !context)

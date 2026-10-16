@@ -40,12 +40,6 @@ namespace hgl::ecs
         virtual RenderPipelineBase* GetPipeline(ECSContext* context) = 0;
 
         /**
-         * Validate that the pipeline is available and enabled
-         * @return true if pipeline exists and system is enabled
-         */
-        bool ValidatePipeline(ECSContext* context);
-
-        /**
          * 单次查找并校验 Pipeline（消除 Update 内部的双重按名查表）
          * @return 有效且启用的 pipeline 指针，失败返回 nullptr
          */

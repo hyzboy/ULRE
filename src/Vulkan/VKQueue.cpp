@@ -68,11 +68,6 @@ VkResult DeviceQueue::Present(const VkPresentInfoKHR *pi)
     return result;
 }
 
-bool DeviceQueue::WaitFence(const bool wait_all,uint64_t time_out)
-{
-    return WaitLastSubmitFence(wait_all, time_out);
-}
-
 bool DeviceQueue::WaitLastSubmitFence(const bool wait_all,uint64_t time_out)
 {
     if(device_lost)

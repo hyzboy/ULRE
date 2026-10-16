@@ -48,15 +48,14 @@ namespace hgl::graph::mtl
         VkFormat position_format);
 
     using MeshStage2MappingResolver = const char *(*)(
-        const VertexShaderNodeConfig &node_cfg);
+        const VertexShaderNodeConfig &node_cfg) noexcept;
 
     using MeshStage3ProjectionResolver = const char *(*)(
-        const VertexShaderNodeConfig &node_cfg);
+        const VertexShaderNodeConfig &node_cfg) noexcept;
 
     using MeshBodyEmitter = void (*)(
         std::string &out_glsl,
-        const MeshShaderModeContext &ctx,
-        VkFormat position_format);
+        const MeshShaderModeContext &ctx);
 
     struct MeshModeDescriptor
     {
@@ -137,44 +136,12 @@ namespace hgl::graph::mtl
         return "vertex/s1_position_vec3.glsl";
     }
 
-    // ── Stage 2 Mapping Resolvers (Orthogonal to Stage 3) ───────────────
-    inline const char *ResolveStandardStage2Mapping(
-        const VertexShaderNodeConfig &node_cfg)
-    {
-        return VertexNodeConfigResolver::GetMappingModulePath(node_cfg);
-    }
-
-    // ── Stage 3 Projection Resolvers (Orthogonal to Stage 2) ────────────
-    inline const char *ResolveStandardStage3Projection(
-        const VertexShaderNodeConfig &node_cfg)
-    {
-        return VertexNodeConfigResolver::GetStage3ModulePath(node_cfg);
-    }
-
     // ── Mode Body Emitters ──────────────────────────────────────────────
-    inline void EmitVertexPassthroughModeBody(
-        std::string &out_glsl,
-        const MeshShaderModeContext &ctx,
-        VkFormat /*position_format*/)
-    {
-        EmitVertexPassthroughBody(out_glsl, ctx);
-    }
-
-    inline void EmitLineQuadModeBody(
-        std::string &out_glsl,
-        const MeshShaderModeContext &ctx,
-        VkFormat position_format)
-    {
-        EmitLineQuadBody(out_glsl, ctx, position_format);
-    }
-
-    inline void EmitCharQuadModeBody(
-        std::string &out_glsl,
-        const MeshShaderModeContext &ctx,
-        VkFormat /*position_format*/)
-    {
-        EmitCharQuadBody(out_glsl, ctx);
-    }
+    // 模式体发射器统一为 (std::string&, const MeshShaderModeContext&)。
+    // 原先此处有 5 个签名适配包装（2 个 1:1 转发到 VertexNodeConfigResolver、
+    // 3 个丢弃 position_format）——根因是 MeshBodyEmitter 多带一个 VkFormat。
+    // 该值已移入 MeshShaderModeContext.position_format（仅 LineQuad 使用），
+    // 于是描述符表可直接引用真实实现，包装层整体消失。
 
     // ── Registry Table & Lookup ─────────────────────────────────────────
     inline const MeshModeDescriptor *GetMeshModeDescriptor(MeshShaderMode mode)
@@ -187,9 +154,9 @@ namespace hgl::graph::mtl
                 EmitStandardMeshDefines,
                 nullptr,
                 ResolveStandardStage1Input,
-                ResolveStandardStage2Mapping,
-                ResolveStandardStage3Projection,
-                EmitVertexPassthroughModeBody,
+                VertexNodeConfigResolver::GetMappingModulePath,
+                VertexNodeConfigResolver::GetStage3ModulePath,
+                EmitVertexPassthroughBody,
             },
             {
                 MeshShaderMode::LineQuad,
@@ -198,9 +165,9 @@ namespace hgl::graph::mtl
                 EmitStandardMeshDefines,
                 nullptr,
                 ResolveStandardStage1Input,
-                ResolveStandardStage2Mapping,
-                ResolveStandardStage3Projection,
-                EmitLineQuadModeBody,
+                VertexNodeConfigResolver::GetMappingModulePath,
+                VertexNodeConfigResolver::GetStage3ModulePath,
+                EmitLineQuadBody,
             },
             {
                 MeshShaderMode::CharQuad,
@@ -211,7 +178,7 @@ namespace hgl::graph::mtl
                 nullptr,
                 nullptr,
                 nullptr,
-                EmitCharQuadModeBody,
+                EmitCharQuadBody,
             },
         };
 

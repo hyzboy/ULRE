@@ -11,6 +11,7 @@
 #pragma once
 
 #include <hgl/mtl/MaterialStageInterface.h>
+#include <vulkan/vulkan.h>
 #include <string>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 #include "MeshShaderTemplate.h"
@@ -27,6 +28,10 @@ namespace hgl::graph::mtl
         const MaterialVertexVaryingConfig *varying_cfg;
         bool                    emit_world_pos;
         bool                    emit_world_normal;
+        /// 位置属性格式（仅 LineQuad 使用：vec2/vec3 端点读取适配）。
+        /// 由 MeshTemplateEmitter 填充——放在上下文里，模式体发射器签名才能统一为
+        /// (std::string&, const MeshShaderModeContext&)，无需签名适配包装层。
+        VkFormat                position_format = VK_FORMAT_UNDEFINED;
     };
 
     inline void EmitVertexPassthroughBody(

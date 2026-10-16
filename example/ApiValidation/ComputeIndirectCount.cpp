@@ -343,7 +343,7 @@ public:
         compute_cmd->Dispatch(1, 1, 1);
 
         // 2. 管线内存屏障：确保 Compute Shader 写入完成，对后续 Indirect Command 读取完全可见
-        compute_cmd->BufferMemoryBarrier(
+        compute_cmd->BufferMemoryBarrier2(
             count_buffer->GetBuffer(),
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
@@ -354,7 +354,7 @@ public:
         compute_cmd->End();
 
         compute_queue->Submit(compute_cmd, nullptr, 0, nullptr, 0);
-        compute_queue->WaitFence();
+        compute_queue->WaitLastSubmitFence();
 
         // 3. CPU 读回验证：确认 GPU 计算并写入的数值 100% 正确
         uint32_t gpu_written_count = 0;
