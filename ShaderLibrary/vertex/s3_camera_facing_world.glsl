@@ -9,7 +9,7 @@
 // The quad extends in camera-right/up directions, scaled in world space.
 // Requires: camera UBO, l2w SSBO, helpers/orient_camera_facing.glsl
 
-#include "helpers/orient_camera_facing.glsl"
+#include "vertex/helpers/orient_camera_facing.glsl"
 
 vec4 GetClipPos(vec4 local_pos)
 {

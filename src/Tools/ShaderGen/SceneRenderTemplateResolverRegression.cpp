@@ -3,6 +3,8 @@
 #include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderCompilerProfileAPI.h>
+#include <hgl/ShaderCompilerAPI.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/filesystem/FileSystem.h>
@@ -152,9 +154,9 @@ namespace
                 "dot/backslash aliases preserve canonical identity"))
             return false;
         alias.module_roots[0].include_path = "../module_0.glsl";
-        if (!Check(ResolveRenderTemplate(alias, registry, resolved, diagnostic)
-                && resolved.stable_hash == canonical.stable_hash,
-                "common fallback follows compiler search order"))
+        if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
+                && diagnostic.error == RenderTemplateValidationError::IncludePathNotFound,
+                "reject escape above the include root"))
             return false;
         alias.module_roots[0].include_path = "module_1.glsl";
         if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
@@ -209,17 +211,26 @@ namespace
             return false;
         source_root.module_name = "common_source";
         source_root.include_path = "shared.glsl";
+        if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
+                && diagnostic.error == RenderTemplateValidationError::IncludePathNotFound,
+                "common requires an explicit root-relative prefix"))
+            return false;
+        source_root.include_path = "common/shared.glsl";
         if (!Check(ResolveRenderTemplate(alias, registry, resolved, diagnostic)
                 && resolved.request.module_roots[6].include_path == "common/shared.glsl",
-                "common-only alias resolves to canonical path"))
+                "explicit common path resolves to its registered source"))
             return false;
         if (!Check(fixtures.Write("shared.glsl",
                 ModuleText("direct_source", ShaderModuleSlotRole::MaterialSourceProvider)),
                 "write root search collision"))
             return false;
+        if (!Check(ResolveRenderTemplate(alias, registry, resolved, diagnostic),
+                "explicit common path is not shadowed by a root basename"))
+            return false;
+        source_root.include_path = "shared.glsl";
         if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
                 && diagnostic.error == RenderTemplateValidationError::IncludePathNameMismatch,
-                "root search wins over common alias"))
+                "root basename cannot substitute for a different registered source"))
             return false;
 
         FixtureDirectory invalid;
@@ -241,6 +252,96 @@ namespace
         registry.Clear();
         return Check(!registry.FindFileByName("common_source")
             && registry.GetCount() == 0, "clear removes provenance");
+    }
+
+    bool RunCompilerRootRegression()
+    {
+        FixtureDirectory fixtures;
+        if (!Check(fixtures.Init(), "create compiler root fixture"))
+            return false;
+        const AnsiString value = "vec4 FixtureValue() { return vec4(1.0); }\n";
+        const OSString previous_root = GetShaderIncludeRoot();
+        struct RestoreCompilerRoot
+        {
+            OSString root;
+            ~RestoreCompilerRoot()
+            {
+                hgl::graph::CloseShaderCompiler();
+                const U8String utf8 = ToU8String(root);
+                if (!SetShaderIncludeRoot(reinterpret_cast<const char *>(utf8.c_str())))
+                    GLogError(u8"Cannot restore shader include root");
+            }
+        } restore{previous_root};
+        const auto compile = [](const AnsiString &include, const bool expected)
+        {
+            const AnsiString source = AnsiString("#version 460\n#include ") + include
+                + "\nlayout(location=0) out vec4 color;\n"
+                  "void main() { color = FixtureValue(); }\n";
+            auto *spv = hgl::graph::CompileShader(
+                uint32(hgl::graph::ShaderStage::Fragment), source.c_str());
+            const bool success = spv != nullptr;
+            if (spv)
+                hgl::graph::FreeSPVData(spv);
+            return Check(success == expected, include.c_str());
+        };
+        const AnsiString quoted_shared = "\"shared.glsl\"";
+        if (!Check(fixtures.Write("shared.glsl", value)
+                && fixtures.Write("common/shared.glsl", "#error COMMON_MUST_NOT_SHADOW_ROOT\n")
+                && fixtures.Write("common/entry.glsl", "#include \"shared.glsl\"\n"),
+                "write nested include collision"))
+            return false;
+        const U8String fixture_utf8 = ToU8String(fixtures.root);
+        if (!Check(SetShaderIncludeRoot(
+                    reinterpret_cast<const char *>(fixture_utf8.c_str()))
+                && hgl::graph::InitShaderCompiler()
+                && hgl::graph::InitShaderCompiler(),
+                "initialize root-only compiler idempotently"))
+            return false;
+        if (!compile("\"common/entry.glsl\"", true)
+         || !compile("<common/entry.glsl>", true)
+         || !compile("\"common/../shared.glsl\"", true)
+         || !compile("\"common\\\\..\\\\shared.glsl\"", true)
+         || !Check(ResolveShaderLibraryModulePath(fixtures.root, "shared.glsl")
+                == filesystem::NormalizeFilename(
+                    (filesystem::Path(fixtures.root) / OSString(OS_TEXT("shared.glsl"))).ToOSString()),
+                "validator and real compiler choose the root file"))
+            return false;
+
+        const U8String fixture_name =
+            ToU8String(filesystem::Path(fixtures.root).GetFilename());
+        const AnsiString cwd_name = AnsiString(
+            reinterpret_cast<const char *>(fixture_name.c_str()), fixture_name.Length()) + ".glsl";
+        const AnsiString quoted_cwd = AnsiString("\"") + cwd_name + "\"";
+        if (!Check(fixtures.Write(cwd_name, value)
+                && fixtures.Write(AnsiString("../") + cwd_name, "#error CWD_MUST_NOT_SHADOW_ROOT\n"),
+                "write current-directory collision")
+         || !compile(quoted_cwd, true)
+         || !Check(filesystem::FileDelete(
+                (filesystem::Path(fixtures.root) / ToOSString(cwd_name.c_str())).ToOSString())
+                && fixtures.Write(AnsiString("../") + cwd_name, value),
+                "leave only a current-directory include")
+         || !compile(quoted_cwd, false))
+            return false;
+
+        const AnsiString absolute = AnsiString("\"")
+            + AnsiString(reinterpret_cast<const char *>(fixture_utf8.c_str()), fixture_utf8.Length())
+            + "/shared.glsl\"";
+        if (!compile(absolute, false)
+         || !compile("\"/shared.glsl\"", false)
+         || !compile(AnsiString("\"../") + cwd_name + "\"", false)
+         || !compile("\"common/../../shared.glsl\"", false))
+            return false;
+        if (!Check(filesystem::FileDelete(
+                (filesystem::Path(fixtures.root) / OSString(OS_TEXT("shared.glsl"))).ToOSString())
+                && fixtures.Write("common/shared.glsl", value),
+                "leave only the common-directory include")
+         || !Check(ResolveShaderLibraryModulePath(fixtures.root, "shared.glsl").IsEmpty(),
+                "validator has no common fallback")
+         || !compile(quoted_shared, false)
+         || !compile("\"common/entry.glsl\"", false)
+         || !compile("\"common/shared.glsl\"", true))
+            return false;
+        return true;
     }
 
     bool RunMaterialSchemaRegression()
@@ -326,10 +427,12 @@ namespace
     }
 }
 
-int main()
+int main(int argc, char **argv)
 {
     if (!logger::InitLogger(OS_TEXT("SceneRenderTemplateResolverRegression")))
         return 20;
+    if (argc == 2 && AnsiString(argv[1]) == "--compiler-root")
+        return RunCompilerRootRegression() ? 0 : 22;
     SceneRenderTemplateProfile profile;
     if (!profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider, "material_surface",

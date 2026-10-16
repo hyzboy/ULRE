@@ -163,6 +163,13 @@ if(BUILD_TESTING)
     set_tests_properties(
         scene_render_template_resolver_regression
         PROPERTIES LABELS "shadergen;template")
+    add_test(
+        NAME shader_include_root_regression
+        COMMAND SceneRenderTemplateResolverRegression --compiler-root
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        shader_include_root_regression
+        PROPERTIES LABELS "shadergen;compiler")
 endif()
 
 ####################################################################################################

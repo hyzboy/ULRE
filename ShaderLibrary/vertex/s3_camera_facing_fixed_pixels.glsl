@@ -12,8 +12,8 @@
 // Requires: camera UBO, viewport UBO, l2w SSBO,
 //           helpers/orient_world.glsl, helpers/scale_fixed_pixels.glsl
 
-#include "helpers/orient_world.glsl"
-#include "helpers/scale_fixed_pixels.glsl"
+#include "vertex/helpers/orient_world.glsl"
+#include "vertex/helpers/scale_fixed_pixels.glsl"
 
 vec4 GetClipPos(vec4 local_pos)
 {

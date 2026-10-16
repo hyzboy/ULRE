@@ -14,6 +14,7 @@
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderCompilerProfileAPI.h>
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/mtl/MaterialStageInterface.h>
@@ -614,7 +615,7 @@ namespace hgl::graph::mtl
         //
         // 最终文档（plan.ms / plan.fs）对 ShaderLibrary 里的 GLSL 模块只保留
         // `#include "path"` 指令，真正的展开发生在编译期（GLSLCompiler 按
-        // -I <ShaderLibrary> 与 -I <ShaderLibrary>/common 搜索并拼接源文件）。
+        // 唯一的 ShaderLibrary 根目录解析并拼接源文件）。
         // 因此若只把文档正文纳入哈希，修改被 include 的模块 .glsl 不会改变
         // stage key，磁盘上旧的 SPV 产物会被永久命中复用（曾导致长时间静默
         // 运行陈旧阴影代码）。这里按同样的 include 搜索顺序递归遍历依赖闭包，
@@ -631,18 +632,14 @@ namespace hgl::graph::mtl
                 hasher.AppendBytes(text, length);
         }
 
-        /// 按 GLSLCompiler 的 include 搜索顺序解析模块文件的物理路径
+        /// 与 GLSLCompiler 使用相同的唯一 include root
         OSString ResolveShaderLibraryModulePath(const AnsiString &include_path)
         {
             if (include_path.IsEmpty())
                 return OSString();
 
-            const std::string library_root = GetShaderLibraryPath();
-            if (library_root.empty())
-                return OSString();
-
             return mtl::ResolveShaderLibraryModulePath(
-                ToOSString(library_root.c_str()), include_path);
+                GetShaderIncludeRoot(), include_path);
         }
 
         /// 递归收集文档里的 `#include "..."`，把闭包内每个模块的正文并入哈希
@@ -675,10 +672,11 @@ namespace hgl::graph::mtl
                         && (text[cursor] == ' ' || text[cursor] == '\t'))
                         ++cursor;
 
-                    if (cursor < line_end && text[cursor] == '"')
+                    if (cursor < line_end && (text[cursor] == '"' || text[cursor] == '<'))
                     {
+                        const char closing = text[cursor] == '"' ? '"' : '>';
                         const size_t name_begin = ++cursor;
-                        while (cursor < line_end && text[cursor] != '"')
+                        while (cursor < line_end && text[cursor] != closing)
                             ++cursor;
 
                         const AnsiString include_path(
@@ -724,7 +722,11 @@ namespace hgl::graph::mtl
             static hgl::ThreadMutex dependency_hash_mutex;
             static hgl::UnorderedMap<uint64, uint64> dependency_hash_cache;
 
-            const uint64 document_hash = HashFinalShaderSource(document, length);
+            const OSString root = GetShaderIncludeRoot();
+            hgl::hash::FNV1aHasher64 key_hasher;
+            key_hasher << HashFinalShaderSource(document, length);
+            key_hasher.AppendBytes(root.c_str(), root.Length() * sizeof(os_char));
+            const uint64 document_hash = key_hasher;
 
             {
                 hgl::ThreadMutexLock lock(&dependency_hash_mutex);
@@ -735,6 +737,8 @@ namespace hgl::graph::mtl
             }
 
             hgl::hash::FNV1aHasher64 hasher;
+            const char policy[] = "ShaderLibraryRootOnly.v1";
+            hasher.AppendBytes(policy, sizeof(policy) - 1);
             AccumulateGLSLIncludeClosure(hasher, document, length, 0);
             const uint64 dependency_hash = hasher;
 

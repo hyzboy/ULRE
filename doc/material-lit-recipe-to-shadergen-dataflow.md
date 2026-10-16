@@ -97,7 +97,9 @@
 - `surface/material_surface.glsl` 的 `EvalSurface()` 调 `EvalMaterialSource()`——**这正是 `pbr_surface_source.glsl` 里实现的函数**；
 - `lighting/forward_pbr.glsl` 的 `EvalLighting()` 做 Cook-Torrance 直接光 + 天空环境光合成，这就是 Lit 光照模型本体。
 
-GLSL `#include` 的解析：`src/ShaderGen/compile/GLSLCompiler.cpp:278` 把 `ShaderLibrary/` 根和 `ShaderLibrary/common/` 作为 include 搜索路径传给 glslang 插件。
+GLSL `#include` 的解析：`src/ShaderGen/compile/GLSLCompiler.cpp` 只向插件传递一个
+ShaderLibrary 根目录。所有 include 都写库根相对路径（如 `common/descriptor_macros.glsl`），
+嵌套 include 也不搜索包含文件所在目录、当前工作目录或隐式的 `common/`。
 
 ## 六、运行时数据如何接上 shader
 

@@ -9,7 +9,7 @@
 // Applies l2w * (ortho * local_pos).
 // Requires: viewport UBO, l2w SSBO, helpers/orient_world.glsl
 
-#include "helpers/orient_world.glsl"
+#include "vertex/helpers/orient_world.glsl"
 
 vec4 GetClipPos(vec4 local_pos)
 {

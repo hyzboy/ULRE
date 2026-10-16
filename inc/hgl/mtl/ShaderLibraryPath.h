@@ -11,7 +11,7 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl
 {
-    /// Resolve a library-relative include: root first, then root/common.
+    /// Resolve only against root; no common/local fallback or absolute/escaping includes.
     OSString ResolveShaderLibraryModulePath(
         const OSString &root, const AnsiString &include_path);
 

@@ -8,8 +8,7 @@
 #include<hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include<hgl/mtl/contract/ShaderGenPhysicalDeviceProfileJson.h>
 #include<hgl/mtl/ShaderLibraryPath.h>
-#include<vector>
-#include<string>
+#include<hgl/mtl/ShaderCompilerProfileAPI.h>
 
 namespace hgl
 {
@@ -41,6 +40,9 @@ namespace hgl
         static bool g_pd_profile_valid = false;
 
         static CompileInfo compile_info;
+        static OSString g_include_root;
+        static AnsiString g_include_root_utf8;
+        static const char *g_include_root_ptr = nullptr;
 
         struct SPVParseData;
 
@@ -194,13 +196,10 @@ namespace hgl
         typedef GLSLCompilerInterface *(*GetInterfaceFUNC)();
 
         // 与插件侧 glsl2spv.cpp 的 plug_in_interface 首字段同步
-        constexpr uint32_t kGLSLCompilerInterfaceABIVersion = 1;
+        constexpr uint32_t kGLSLCompilerInterfaceABIVersion = 2;
 
         bool InitShaderCompiler()
         {
-            compile_info.includes=nullptr;
-            compile_info.includes_count=0;
-
             if(gsi)return(true);
 
             OSString cur_path;
@@ -258,9 +257,11 @@ namespace hgl
                 {
                     if (gsi->abi_version != kGLSLCompilerInterfaceABIVersion)
                     {
-                        GLogError(u8"[GLSLCompiler] interface ABI mismatch: plugin=%u expected=%u — "
-                                  u8"TBuiltInResourceCompat layout may have drifted (glslang upgrade?)",
+                        GLogError(u8"[GLSLCompiler] interface ABI mismatch: plugin=%u expected=%u; "
+                                  u8"rebuild the plugin for the current include/resource contract",
                                   gsi->abi_version, kGLSLCompilerInterfaceABIVersion);
+                        gsi=nullptr;
+                        CloseShaderCompiler();
                         return false;
                     }
 
@@ -269,15 +270,11 @@ namespace hgl
                         if(g_pd_profile_valid)
                             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
 
-                        const std::string shader_library_path =
-                            mtl::GetShaderLibraryPath();
-                        mtl::AddShaderIncludePath(shader_library_path.c_str());
-
-                        // bindless_textures 等模块被拼接进 fs_final 后，其
-                        // `#include "descriptor_macros.glsl"`（原相对 common/）
-                        // 在无目录上下文中按 -I 搜索——补 common/ 搜索路径，
-                        // 与带 common/ 前缀的 include（-I 根下）双路径兼容
-                        mtl::AddShaderIncludePath((shader_library_path + "/common").c_str());
+                        if (mtl::GetShaderIncludeRoot().IsEmpty())
+                        {
+                            CloseShaderCompiler();
+                            return false;
+                        }
 
                         return(true);
                     }
@@ -294,18 +291,17 @@ namespace hgl
                 std::fprintf(stderr,"[GLSLCompiler] Init failed: cannot resolve GetInterface symbol\n");
             }
 
+            gsi=nullptr;
             delete gsi_module;
             gsi_module=nullptr;
             return(false);
         }
 
-        static std::vector<std::string> g_include_path_storage;   // 持有字符串
-        static std::vector<const char*> g_include_path_ptrs;      // 持有指针
-
         void CloseShaderCompiler()
         {
-            g_include_path_storage.clear();
-            g_include_path_ptrs.clear();
+            g_include_root.Clear();
+            g_include_root_utf8.Clear();
+            g_include_root_ptr=nullptr;
             compile_info.includes=nullptr;
             compile_info.includes_count=0;
 
@@ -324,19 +320,44 @@ namespace hgl
 
         namespace mtl
         {
-        void AddShaderIncludePath(const char *path)
+        bool SetShaderIncludeRoot(const char *path)
         {
-            if(!path || path[0]=='\0') return;
+            OSString root = filesystem::NormalizeFilename(ToOSString(path ? path : ""));
+            if (!root.IsEmpty()
+             && root[0] != HGL_DIRECTORY_SEPARATOR
+             && (root.Length() < 2 || root[1] != ':'))
+            {
+                OSString current;
+                if (!filesystem::GetCurrentPath(current))
+                {
+                    GLogError(u8"[GLSLCompiler] Cannot resolve include root");
+                    return false;
+                }
+                root = filesystem::NormalizeFilename(
+                    (filesystem::Path(current) / root).ToOSString());
+            }
+            if (root.IsEmpty() || !filesystem::IsDirectory(root))
+            {
+                GLogError(u8"[GLSLCompiler] Include root must be an existing directory");
+                return false;
+            }
 
-            g_include_path_storage.emplace_back(path);
+            const U8String utf8 = ToU8String(root);
+            g_include_root_utf8 = AnsiString(
+                reinterpret_cast<const char *>(utf8.c_str()), utf8.Length());
+            g_include_root = root;
+            g_include_root_ptr = g_include_root_utf8.c_str();
+            compile_info.includes = &g_include_root_ptr;
+            compile_info.includes_count = 1;
+            return true;
+        }
 
-            // 重建指针数组
-            g_include_path_ptrs.clear();
-            for(auto &s : g_include_path_storage)
-                g_include_path_ptrs.push_back(s.c_str());
-
-            compile_info.includes       = g_include_path_ptrs.data();
-            compile_info.includes_count  = static_cast<uint32_t>(g_include_path_ptrs.size());
+        OSString GetShaderIncludeRoot()
+        {
+            if (g_include_root.IsEmpty()
+             && !SetShaderIncludeRoot(GetShaderLibraryPath().c_str()))
+                return {};
+            return g_include_root;
         }
         }//namespace mtl
 
@@ -378,10 +399,7 @@ namespace hgl
 
             if(!result)
             {
-                std::string err="Compile shader failed, error info: ";
-                err+=spv->log?spv->log:"";
-                std::fprintf(stderr,"[GLSLCompiler] %s\n", err.c_str());
-                GLogError(err.c_str());
+                GLogError(u8"[GLSLCompiler] Compile failed: %s", spv->log ? spv->log : "");
 
                 FreeSPVData(spv);
                 return(nullptr);

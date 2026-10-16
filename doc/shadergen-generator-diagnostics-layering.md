@@ -38,7 +38,9 @@
 `ntb_module_name`、`surface_module_name`，不接受旧路径键。注册表通过
 `FindFileByName` 提供当前有效注册项的来源；`ResolveRenderTemplate` 将 name-only
 roots 补成 canonical request，后续模板哈希与 Composer 都使用这个已解析请求。
-显式路径按库根优先、`common` 次之的实际搜索顺序校验；同一来源的合法路径别名
+所有 include（包括嵌套 include）只相对唯一的 ShaderLibrary 根目录解析，
+不搜索 `common`、当前工作目录或包含文件所在目录。公共文件必须显式写出
+`common/` 前缀；拒绝绝对路径和越过库根的 `..`。同一来源的合法库内路径别名
 归一化后具有相同身份，物理绝对路径不进入 shader 或稳定哈希。
 
 来源缺失、文件不存在、名字/路径不一致分别报告 `ModuleSourceMissing`、

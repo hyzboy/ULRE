@@ -29,7 +29,7 @@
 
 #extension GL_EXT_nonuniform_qualifier : enable
 
-#include "descriptor_macros.glsl"
+#include "common/descriptor_macros.glsl"
 
 layout(set=BINDLESS_SET, binding=0) uniform texture2DArray bindless_tex[];
 layout(set=BINDLESS_SET, binding=1) uniform sampler bindless_samp[];
