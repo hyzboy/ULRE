@@ -4518,6 +4518,20 @@ int main(int argc, char** argv)
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "if (out_recipe.fallback_error_kind != graph::mtl::MaterialErrorKind::None)",
               "ECS 侧未统计「构建成功但配方已被换成错误材质」这条（回退取数口丢失）" },
+            // ⑫ B2（2026-10-14）：材质定义解析失败的诊断必须带**全路径**（render_state.pipeline.cull_mode）。
+            //    机制 = 表路径栈 + RAII 作用域（ParseTableScope）；原「粘性单值 SetParseTable」只被键校验器
+            //    调用 ⇒ 值解析失败时路径为空、或继承陈旧表名（指错位置）⇒ 禁复活。
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "ParseTableScope render_state_table(\"render_state\");",
+              "解析失败的诊断表路径栈丢失（值解析失败会报不出 render_state 层）" },
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "ParseTableScope pipeline_table(\"pipeline\");",
+              "pipeline 子层未压栈（cull_mode 一类失败会丢掉 render_state.pipeline 前缀）" },
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "ParseTableScope texture_item_table(\"textures\", texture_index);",
+              "数组元素的索引路径丢失（纹理声明出错应报 resources.textures[i].<key>）" },
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              "SetParseTable(", "粘性单值表名 setter 复活（路径会变成陈旧值/空 ⇒ 指错位置）", true },
         };
 
         if (const int failed = verify_source_contracts(25, kA7aContracts,

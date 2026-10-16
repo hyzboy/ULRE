@@ -8,6 +8,7 @@
 #include <hgl/type/Smart.h>
 #include <toml/toml.hpp>
 
+#include <cstdio>
 #include <cstring>
 
 namespace hgl::graph::mtl
@@ -21,17 +22,41 @@ namespace hgl::graph::mtl
         // 置位用 RAII 作用域（thread_local：解析发生在加载线程；嵌套调用不会串）。
         struct ParseErrorContext
         {
-            const char *current_table = "";   // 当前正在解析的表/段落
-            std::string table;                // 快照：第一个失败点所在的表
+            // 表路径栈（B2 2026-10-14）：失败记录里带**全路径**（如 `render_state.pipeline.cull_mode`）。
+            // 原实现是"粘性单值 + 只有键校验器调用"（值解析失败时路径为空，或继承上一步的陈旧
+            // 表名 = 指错位置）。改栈 + RAII（ParseTableScope）后，路径 = 出事键真正所属的表。
+            static constexpr uint32_t kMaxTableDepth = 8;
+            const char *table_stack[kMaxTableDepth] = {};
+            uint32_t    table_depth = 0;
+
+            std::string table;                // 快照：第一个失败点所在的表（全路径）
             std::string key;
             std::string value;
             std::string detail;
             int         line = 0;
             bool        recorded = false;
 
-            void SetTable(const char *name) noexcept
+            void PushTable(const char *name) noexcept
             {
-                current_table = name ? name : "";
+                if (name && name[0] && table_depth < kMaxTableDepth)
+                    table_stack[table_depth++] = name;
+            }
+
+            void PopTable() noexcept
+            {
+                if (table_depth > 0)
+                    --table_depth;
+            }
+
+            void BuildTablePath(std::string &out) const
+            {
+                out.clear();
+                for (uint32_t i = 0; i < table_depth; ++i)
+                {
+                    if (i > 0)
+                        out += '.';
+                    out += table_stack[i];
+                }
             }
 
             // 记第一个失败点（后续失败点忽略：根因优先）
@@ -40,7 +65,7 @@ namespace hgl::graph::mtl
                 if (recorded)
                     return;
 
-                table = current_table ? current_table : "";
+                BuildTablePath(table);
                 key = in_key ? in_key : "";
                 value = in_value ? in_value : "";
                 detail = in_detail ? in_detail : "";
@@ -71,11 +96,47 @@ namespace hgl::graph::mtl
             ParseErrorContextScope &operator=(const ParseErrorContextScope &) = delete;
         };
 
-        inline void SetParseTable(const char *name) noexcept
+        /// 表路径作用域（B2 2026-10-14）：进入一个 TOML 表 / 数组元素时压栈，离开时自动弹出。
+        /// 值解析与键校验的失败因此都能报出**全路径**；嵌套用多个作用域表达
+        ///（`ParseTableScope("render_state")` + `ParseTableScope("pipeline")` ⇒ `render_state.pipeline`）。
+        /// 数组元素用索引形态：`ParseTableScope("textures", i)` ⇒ `resources.textures[2]`。
+        class ParseTableScope
         {
-            if (g_parse_error_context)
-                g_parse_error_context->SetTable(name);
-        }
+            char indexed_label[64] = {};
+            bool pushed = false;
+
+        public:
+            explicit ParseTableScope(const char *name) noexcept
+            {
+                Push(name);
+            }
+
+            ParseTableScope(const char *name, const uint32_t index) noexcept
+            {
+                std::snprintf(indexed_label, sizeof(indexed_label), "%s[%u]",
+                              name ? name : "", index);
+                Push(indexed_label);
+            }
+
+            ~ParseTableScope()
+            {
+                if (pushed && g_parse_error_context)
+                    g_parse_error_context->PopTable();
+            }
+
+            ParseTableScope(const ParseTableScope &) = delete;
+            ParseTableScope &operator=(const ParseTableScope &) = delete;
+
+        private:
+            void Push(const char *name) noexcept
+            {
+                if (g_parse_error_context && name && name[0])
+                {
+                    g_parse_error_context->PushTable(name);
+                    pushed = true;
+                }
+            }
+        };
 
         inline void RecordParseFailure(const char *in_key,
                                        const char *in_value = nullptr,
@@ -159,6 +220,9 @@ namespace hgl::graph::mtl
             if (!render_state.is_table())
                 return false;
 
+            // 本函数体的全部键都在 [render_state] 下（pipeline 子表另开一层作用域）。
+            ParseTableScope render_state_table("render_state");
+
             if (render_state.contains("alpha_test")
              && !ReadBool(render_state, "alpha_test",
                           definition.default_render_state.alpha_test))
@@ -177,6 +241,8 @@ namespace hgl::graph::mtl
             const toml::value &pipeline = render_state.at("pipeline");
             if (!pipeline.is_table())
                 return false;
+
+            ParseTableScope pipeline_table("pipeline");
 
             std::string value;
             if (pipeline.contains("cull_mode"))
@@ -250,6 +316,8 @@ namespace hgl::graph::mtl
         bool ParseTransformGraph(const toml::value &table,
                                  VertexShaderNodeConfig &out)
         {
+            ParseTableScope transform_table("transform");
+
             std::string value;
 
             if (!ReadRequiredString(table, "source", value))
@@ -365,6 +433,8 @@ namespace hgl::graph::mtl
             std::string value;
             if (fragment)
             {
+                ParseTableScope fragment_table("fragment");
+
                 if (fragment->contains("material_source_module"))
                 {
                     if (!ReadRequiredString(*fragment, "material_source_module", value))
@@ -424,20 +494,23 @@ namespace hgl::graph::mtl
             if (!vertex || !vertex->contains("requirements")
              || !vertex->at("requirements").is_array())
                 return false;
-            if (vertex->contains("normal_mode"))
             {
-                std::string normal_mode;
-                if (!ReadRequiredString(*vertex, "normal_mode", normal_mode))
-                    return false;
-                if (!ParseMaterialVertexNormalMode(
-                        normal_mode.c_str(), out.definition.vertex_normal_mode))
+                ParseTableScope vertex_table("vertex");
+
+                if (vertex->contains("normal_mode"))
                 {
-                    RecordParseFailure("normal_mode", normal_mode.c_str(), "未知法线模式名");
-                    return false;
+                    std::string normal_mode;
+                    if (!ReadRequiredString(*vertex, "normal_mode", normal_mode))
+                        return false;
+                    if (!ParseMaterialVertexNormalMode(
+                            normal_mode.c_str(), out.definition.vertex_normal_mode))
+                    {
+                        RecordParseFailure("normal_mode", normal_mode.c_str(), "未知法线模式名");
+                        return false;
+                    }
                 }
-            }
-            for (const auto &item : vertex->at("requirements").as_array())
-            {
+                for (const auto &item : vertex->at("requirements").as_array())
+                {
                 if (!item.is_string())
                     return false;
                 ShaderCodeModuleSemantic semantic;
@@ -451,11 +524,14 @@ namespace hgl::graph::mtl
                 requirement.source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
                 requirement.semantic = semantic;
                 out.definition.vertex_semantic_requirements.Add(requirement);
+                }
             }
 
             bool has_texture_configuration_settings = false;
             if (root.contains("resources"))
             {
+                ParseTableScope resources_table("resources");
+
                 const toml::value &resources = root.at("resources");
                 if (!resources.is_table())
                     return false;
@@ -466,6 +542,7 @@ namespace hgl::graph::mtl
 
                 if (resources.contains("code_modules"))
                 {
+                    ParseTableScope code_modules_table("code_modules");
                     if (!resources.at("code_modules").is_array())
                         return false;
                     for (const auto &item : resources.at("code_modules").as_array())
@@ -480,6 +557,7 @@ namespace hgl::graph::mtl
 
                 if (resources.contains("material_data"))
                 {
+                    ParseTableScope material_data_table("material_data");
                     // 单一声明：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
                     // TOML 形态：material_data = { type = "EmissiveSurface" }
                     // 名字固定为 DefaultMaterialPrivateDataName；
@@ -508,14 +586,19 @@ namespace hgl::graph::mtl
 
                 if (resources.contains("textures"))
                 {
+                    ParseTableScope textures_table("textures");
+
                     if (!resources.at("textures").is_array())
                     {
                         RecordParseFailure("textures", nullptr, "必须是数组");
                         return false;
                     }
-                    SetParseTable("resources.textures");
+                    uint32_t texture_index = 0;
                     for (const auto &item : resources.at("textures").as_array())
                     {
+                        // 数组元素带索引：路径形如 resources.textures[2].sampler。
+                        ParseTableScope texture_item_table("textures", texture_index);
+                        ++texture_index;
                         // 纹理声明的形态契约：键白名单 + name/sampler 为字符串 + required 为布尔。
                         // 逐项记录到键级：形态不符曾被静默拒绝，作者看不出哪里写错。
                         if (!ValidateTextureDeclarationKeys(item))
@@ -694,6 +777,8 @@ namespace hgl::graph::mtl
             // ── [mesh_shader] 段（可选）──────────────────────────────
             if (root.contains("mesh_shader"))
             {
+                ParseTableScope mesh_shader_table("mesh_shader");
+
                 const toml::value &ms = root.at("mesh_shader");
                 if (ms.contains("mode"))
                 {
@@ -775,29 +860,36 @@ namespace hgl::graph::mtl
                 "mesh_shader", "render_state"}))
             return false;
 
-        SetParseTable("transform");
-        if (root.contains("transform")
-         && !ValidateKnownKeys(root.at("transform"), {
-                "source", "mapping", "orientation", "projection", "scale"}))
-            return false;
+        if (root.contains("transform"))
+        {
+            ParseTableScope validate_transform_table("transform");
+            if (!ValidateKnownKeys(root.at("transform"), {
+                    "source", "mapping", "orientation", "projection", "scale"}))
+                return false;
+        }
 
-        SetParseTable("fragment");
-        if (root.contains("fragment")
-         && !ValidateKnownKeys(root.at("fragment"), {
-                "material_source_module", "ntb_module",
-                "surface_module_name", "surface_module_include",
-                "ambient_module_name", "ambient_module_include"}))
-            return false;
+        if (root.contains("fragment"))
+        {
+            ParseTableScope validate_fragment_table("fragment");
+            if (!ValidateKnownKeys(root.at("fragment"), {
+                    "material_source_module", "ntb_module",
+                    "surface_module_name", "surface_module_include",
+                    "ambient_module_name", "ambient_module_include"}))
+                return false;
+        }
 
-        SetParseTable("vertex");
-        if (root.contains("vertex")
-         && !ValidateKnownKeys(root.at("vertex"), {
-                "requirements", "normal_mode", "varyings"}))
-            return false;
+        if (root.contains("vertex"))
+        {
+            ParseTableScope validate_vertex_table("vertex");
+            if (!ValidateKnownKeys(root.at("vertex"), {
+                    "requirements", "normal_mode", "varyings"}))
+                return false;
+        }
 
-        SetParseTable("resources");
         if (root.contains("resources"))
         {
+            ParseTableScope validate_resources_table("resources");
+
             const toml::value &resources = root.at("resources");
             if (!resources.is_table()
              || !ValidateKnownKeys(resources, {
@@ -805,34 +897,42 @@ namespace hgl::graph::mtl
                     "texture_configurations", "defines"}))
                 return false;
 
-            SetParseTable("resources.texture_configurations");
-            if (resources.contains("texture_configurations")
-             && (!resources.at("texture_configurations").is_table()
-              || !ValidateKnownKeys(
-                    resources.at("texture_configurations"), {"max_count"})))
+            if (resources.contains("texture_configurations"))
+            {
+                ParseTableScope validate_texture_configurations_table("texture_configurations");
+                if (!resources.at("texture_configurations").is_table()
+                 || !ValidateKnownKeys(
+                        resources.at("texture_configurations"), {"max_count"}))
+                    return false;
+            }
+        }
+
+        if (root.contains("mesh_shader"))
+        {
+            ParseTableScope validate_mesh_shader_table("mesh_shader");
+            if (!ValidateKnownKeys(root.at("mesh_shader"), {
+                    "mode", "max_invocations"}))
                 return false;
         }
 
-        SetParseTable("mesh_shader");
-        if (root.contains("mesh_shader")
-         && !ValidateKnownKeys(root.at("mesh_shader"), {
-                "mode", "max_invocations"}))
-            return false;
-
-        SetParseTable("render_state");
         if (root.contains("render_state"))
         {
+            ParseTableScope validate_render_state_table("render_state");
+
             const toml::value &rs = root.at("render_state");
             if (!ValidateKnownKeys(rs, {
                     "alpha_test", "alpha_cutoff", "dither", "pipeline"}))
                 return false;
-            SetParseTable("render_state.pipeline");
-            if (rs.contains("pipeline")
-             && !ValidateKnownKeys(rs.at("pipeline"), {
-                    "cull_mode", "depth_compare_op", "blend_src", "blend_dst",
-                    "depth_test", "depth_write", "alpha_blend",
-                    "dynamic_line_width", "overlay", "wireframe", "line_width"}))
-                return false;
+
+            if (rs.contains("pipeline"))
+            {
+                ParseTableScope validate_pipeline_table("pipeline");
+                if (!ValidateKnownKeys(rs.at("pipeline"), {
+                        "cull_mode", "depth_compare_op", "blend_src", "blend_dst",
+                        "depth_test", "depth_write", "alpha_blend",
+                        "dynamic_line_width", "overlay", "wireframe", "line_width"}))
+                    return false;
+            }
         }
 
         return true;

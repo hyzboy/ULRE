@@ -792,6 +792,22 @@ if (recipe.mtl_def_id.empty())
 这 6 个枚举**全仓没有 `Get*Name`**（`git grep -c Get*Name` = 0）⇒ 名字只存在于这些本地表里。归位需要动各自枚举所在的头
 （其中几个属 `hgl::graph` 顶点节点侧，blast radius 比 S3b-2 大），故另起一批做。
 
+
+**诊断表前缀（B2，2026-10-14 落地）**：`MaterialDefinitionFile.cpp` 的解析失败诊断原本用**粘性单值**表名，
+且 `SetParseTable` 只被键校验器调用 ⇒ **值解析失败**（如 `cull_mode` 拼错）报出来的只有键名、没有所属表，
+更糟的是校验器先跑、其表名会**残留**给后面的值解析（报出**错误的位置**）。改法：
+  · `ParseErrorContext` 换成**表路径栈**（`PushTable`/`PopTable`/`BuildTablePath`）+ RAII 作用域 `ParseTableScope`
+    （名字形态与索引形态 `ParseTableScope("textures", i)` ⇒ `resources.textures[2].sampler`）；
+  · 19 处作用域覆盖**值解析**（`render_state` + 嵌套 `pipeline`、`transform`、`fragment`、`vertex`、`resources`
+    + `code_modules`/`material_data`/`textures[i]`、`mesh_shader`）与**键校验器**（各层同名，校验侧变量加 
+    `validate_` 前缀以免与解析侧同名 ⇒ 契约针可唯一定位）；
+  · 粘性单值 `SetParseTable` **整删**（零兼容：不留"看起来可选"的第二套机制）。
+  · 判据（账本原话）实测：`lit.material.toml` 临时加 `[render_state.pipeline] cull_mode = "Bogus"` ⇒ 示例日志
+    `材质定义解析失败: … (InvalidValue) render_state.pipeline.cull_mode = "Bogus" (未知值（见 inc/hgl/mtl/VkEnumText.h）)`；
+    **红版**（去掉那两个作用域）同一实验只报 `cull_mode = "Bogus"` ⇒ 路径栈是真源。
+  · 针 4 条（Test 25 组⑫）：3 存在性（`render_state` / `pipeline` / 索引形态）+ 1 禁复活（`SetParseTable(` 不得回来）。
+  · 注：**门（gate）自身不初始化 logger**，所以解析失败的 GLog 不出现在门的标准输出里 —— 该判据要走**示例**
+    （`GPUDrivenCull`，material load 在初始化期 ⇒ 日志早于首帧）。
 **✅ 2026-10-14 已落地（B1）**：6 个枚举全部按 S3b-2 形态归位到**枚举定义旁**——
 `inc/hgl/mtl/VertexShaderNodeConfig.h` 的 `VertexInputMode` / `PositionMappingMode` / `OrientationMode` /
 `ScaleMode` / `ProjectionMode`（注意实际枚举名是 `PositionMappingMode`，不是评审档写的 `MappingMode`）
