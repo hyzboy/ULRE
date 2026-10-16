@@ -129,15 +129,15 @@ bool FinalizeShaderBuildContext(
 
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CompileMaterial — Compositor 模板完整 GLSL → ShaderBuildContext
+// BuildMaterialStageDocuments — Compositor 模板完整 GLSL → ShaderBuildContext
 //
 // 使用 SetFinalGLSL + CreateShaderDirect 直接编译。
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CompileMaterial 内部辅助实现
+// BuildMaterialStageDocuments 内部辅助实现
 //
-// CompileMaterial 的 7 步流水线被拆分为多个静态辅助函数，
+// BuildMaterialStageDocuments 的 7 步流水线被拆分为多个静态辅助函数，
 // 描述符注册 / 行表声明 / binding 宏注入改为配表驱动，主函数仅做编排。
 // 所有失败路径统一走 CompileContext::Fail() + FailCompile()（打印并 delete ctx）。
 // ═══════════════════════════════════════════════════════════════════════════
@@ -160,7 +160,7 @@ static ShaderBuildContext *FailCompile(CompileContext &c)
     if (!c.last_error.empty())
     {
         std::fprintf(stderr,
-            "[CompileMaterial] material=%s failed: %s\n",
+            "[BuildMaterialStageDocuments] material=%s failed: %s\n",
             c.input && c.input->debug_name ? c.input->debug_name : "<unnamed>",
             c.last_error.c_str());
     }
@@ -250,18 +250,18 @@ static bool BuildArtifactMetadata(
     return true;
 }
 
-ShaderBuildContext *CompileMaterial(
+ShaderBuildContext *BuildMaterialStageDocuments(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
     const ShaderDocument &mesh_source_document,
     const ShaderDocument &fragment_source_document,
     const MaterialCompileConfig &config)
 {
-    return CompileMaterial(
+    return BuildMaterialStageDocuments(
         profile, input, mesh_source_document, fragment_source_document, config, nullptr);
 }
 
-ShaderBuildContext *CompileMaterial(
+ShaderBuildContext *BuildMaterialStageDocuments(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
     const ShaderDocument &mesh_source_document,

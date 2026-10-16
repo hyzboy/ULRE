@@ -49,9 +49,11 @@ SET(VK_DEVICE_DEBUG_FILES       ${VK_INCLUDE_PATH}/VKDebugOut.h
 SOURCE_GROUP("Device\\Debug" FILES ${VK_DEVICE_DEBUG_FILES})
 
 IF(WIN32)
-    OPTION(FORCE_DISCETE_GPU    "Force Discrete GPU" OFF)
+    # 注：原选项名拼作 FORCE_DISCETE_GPU（少一个 R），2026-10-16 更正为 FORCE_DISCRETE_GPU。
+    # 该选项只影响本文件下方的 ForceDiscreteGPU.c 是否参与编译。
+    OPTION(FORCE_DISCRETE_GPU   "Force Discrete GPU" OFF)
 
-    IF(FORCE_DISCETE_GPU)
+    IF(FORCE_DISCRETE_GPU)
         SET(VULKAN_RENDER_DEVICE_SOURCE ForceDiscreteGPU.c)
     ENDIF()
 

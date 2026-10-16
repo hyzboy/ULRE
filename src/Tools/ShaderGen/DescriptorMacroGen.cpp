@@ -47,7 +47,7 @@ namespace
         "// 行表（mtl_data_addrs / l2w / mesh_draw_params / 文本三表）已 BDA 化：\n"
         "// 地址经 pc_root push constant + buffer_reference 寻址，无描述符声明\n"
         "//（不在此定义任何默认绑定值）。\n"
-        "// 材质实例 mtl SSBO 的 struct/buffer 声明同样由 CompileMaterial 统一生成并注入。\n"
+        "// 材质实例 mtl SSBO 的 struct/buffer 声明同样由 BuildMaterialStageDocuments 统一生成并注入。\n"
         "\n"
         "#ifndef DESCRIPTOR_MACROS_GLSL\n"
         "#define DESCRIPTOR_MACROS_GLSL\n";

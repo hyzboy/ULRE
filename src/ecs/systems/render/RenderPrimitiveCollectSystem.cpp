@@ -825,7 +825,7 @@ namespace hgl::ecs
     // recipe；物化行、纹理配置等 forward 槽状态一概不动——否则 purpose 每帧
     // Forward↔Shadow 乒乓会让 InvalidateRecipeRuntime 反复 retire 纹理配置，
     // 并禁用 P1-1 全干净帧快路径。
-    bool RenderPrimitiveCollectSystem::ResolveShadowCasterProgram(Entity *primitive_comp,
+    bool RenderPrimitiveCollectSystem::EnsureShadowCasterProgram(Entity *primitive_comp,
                                                                   MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1000,7 +1000,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderPrimitiveCollectSystem::ResolveMaterialProgramForPrimitive(Entity *primitive_comp,
+    bool RenderPrimitiveCollectSystem::EnsureMaterialProgramForPrimitive(Entity *primitive_comp,
                                                                           MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1009,15 +1009,15 @@ namespace hgl::ecs
         // A1：阴影 pass 一律走专用 ShadowCaster 程序槽；下方解析链只服务
         // forward pass，不感知当前 pass。
         if (world->IsCurrentPassShadow())
-            return ResolveShadowCasterProgram(primitive_comp, slot);
+            return EnsureShadowCasterProgram(primitive_comp, slot);
 
-        return ResolveForwardProgram(primitive_comp, slot);
+        return EnsureForwardProgram(primitive_comp, slot);
     }
 
     // Forward 槽解析（主帧着色程序）。阴影 pass 中 masked caster 的行物化
     // 也会借道此处（见主循环 A1-4 分支）——纹理行是 per-primitive 共享
     // 状态，与 program 无关。
-    bool RenderPrimitiveCollectSystem::ResolveForwardProgram(Entity *primitive_comp,
+    bool RenderPrimitiveCollectSystem::EnsureForwardProgram(Entity *primitive_comp,
                                                              MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1778,7 +1778,7 @@ namespace hgl::ecs
         //
         // 归属判定与 A3 同口径：只有"该实例已经挂上共享行、且阴影变体已登记"才算有
         // 可记账的位置（解析还没走到算键的地方，例如 graphics 缺失时——那类失败本身
-        // 已逐帧有独立告警，见 ResolveShadowCasterProgram）。
+        // 已逐帧有独立告警，见 EnsureShadowCasterProgram）。
         const MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
         const MaterialRuntimeRow *row = runtime_table ? runtime_table->Get(slot.row) : nullptr;
         if (!row || row->shadow_variant == INVALID_MATERIAL_VARIANT_ID)
@@ -1841,7 +1841,7 @@ namespace hgl::ecs
         // the per-frame hotspot: they re-traverse the resource plan, rebuild the
         // binding recipe and re-materialize rows on every Update even when
         // nothing changed. This pre-scan mirrors the resolve fast-path
-        // (ResolveMaterialProgramForPrimitive), the materialization epoch and
+        // (EnsureMaterialProgramForPrimitive), the materialization epoch and
         // the component success state to decide whether ANY primitive needs
         // work this frame. When none does, the main loop reuses last frame's
         // results and skips those two calls entirely.
@@ -2060,7 +2060,7 @@ namespace hgl::ecs
                     world->GetOrCreateMaterialRuntimeSlot(entity);
                 material_slot_ptr = &material_slot;
 
-                if (!ResolveMaterialProgramForPrimitive(geometryComp->GetOwner(), material_slot))
+                if (!EnsureMaterialProgramForPrimitive(geometryComp->GetOwner(), material_slot))
                 {
                     if (world->IsCurrentPassShadow())
                     {
@@ -2089,7 +2089,7 @@ namespace hgl::ecs
                     else
                     {
                         GLogWarning(
-                            "[RenderPrimitiveCollectSystem] ResolveMaterialProgramForPrimitive failed for %s",
+                            "[RenderPrimitiveCollectSystem] EnsureMaterialProgramForPrimitive failed for %s",
                             GetOwnerName(geometryComp->GetOwner()));
                         // A4：行键不变（解析没走到算键处）⇒ 就地把本行物化绑定作废 + 退 program。
                         InvalidateRecipeRuntime(world, material_slot, true, true);
@@ -2172,7 +2172,7 @@ namespace hgl::ecs
                     // fall back to MarkFailed so the next frame retries the
                     // full chain.
                     const bool chain_ok =
-                        ResolveMaterialProgramForPrimitive(
+                        EnsureMaterialProgramForPrimitive(
                             geometryComp->GetOwner(), material_slot)
                      && EnsureGeometryRowReady(world, geometryComp->GetOwner())
                      && ResolveRuntimePipelineForPrimitive(

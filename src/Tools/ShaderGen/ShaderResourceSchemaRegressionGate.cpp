@@ -4788,7 +4788,7 @@ namespace
             ShaderDocumentBlockKind::Raw,
             "layout(location=0) out vec4 outColor;\n"
             "void main(){outColor=vec4(1.0);}\n");
-        ShaderBuildContext *build_spec = CompileMaterial(
+        ShaderBuildContext *build_spec = BuildMaterialStageDocuments(
             nullptr,
             compiler_input,
             mesh_document,
@@ -4886,7 +4886,7 @@ namespace
         texture_config.shader_stage_flag_bits =
             uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
-        ShaderBuildContext *texture_build_spec = CompileMaterial(
+        ShaderBuildContext *texture_build_spec = BuildMaterialStageDocuments(
             nullptr,
             texture_compiler_input,
             mesh_document,
@@ -4977,7 +4977,7 @@ namespace
             ShaderDocumentBlockKind::Raw,
             "layout(location=0) out vec4 outColor;\n"
             "void main(){outColor=vec4(1.0);}\n");
-        ShaderBuildContext *build_spec = CompileMaterial(
+        ShaderBuildContext *build_spec = BuildMaterialStageDocuments(
             nullptr,
             compiler_input,
             mesh_document,

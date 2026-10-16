@@ -50,12 +50,15 @@ namespace hgl::ecs
         // re-materialized — their rows were rebuilt while they were skipped.
         uint64_t materialize_epoch = 0;
 
-        bool ResolveMaterialProgramForPrimitive(Entity *primitive_comp,
-                                                MaterialRuntimeSlot &slot);
-        bool ResolveForwardProgram(Entity *primitive_comp,
-                                   MaterialRuntimeSlot &slot);
-        bool ResolveShadowCasterProgram(Entity *primitive_comp,
-                                        MaterialRuntimeSlot &slot);
+        /// 命名口径：**Ensure 而非 Resolve** —— "Resolve" 会被读成"只查表"，
+        /// 而这三个入口在缓存未命中时**会触发** GLSL 生成 + SPV 编译 + 磁盘落盘
+        /// （经 ShaderProgramManager::AcquireShaderProgram）。
+        bool EnsureMaterialProgramForPrimitive(Entity *primitive_comp,
+                                               MaterialRuntimeSlot &slot);
+        bool EnsureForwardProgram(Entity *primitive_comp,
+                                  MaterialRuntimeSlot &slot);
+        bool EnsureShadowCasterProgram(Entity *primitive_comp,
+                                       MaterialRuntimeSlot &slot);
         bool ResolveRuntimePipelineForPrimitive(Entity *primitive_comp,
                                                 MaterialRuntimeSlot &slot);
 

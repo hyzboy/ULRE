@@ -35,9 +35,7 @@ set(TEMPLATE_FILES
     template/RenderTemplate.cpp
     template/SceneRenderTemplateResolver.cpp
     ${SHADERGEN_INCLUDE_PATH}/FragmentTemplateComposer.h
-    template/FragmentTemplateComposer.cpp
-    ${SHADERGEN_INCLUDE_PATH}/MeshTemplateComposer.h
-    template/MeshTemplateComposer.cpp)
+    template/FragmentTemplateComposer.cpp)
 SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
 
 set(SSBO_STRUCT_FILES

@@ -61,14 +61,12 @@ private: // Helper methods with integrated DebugUtils
     ShaderProgram *TryGetCachedShaderProgram(
         const mtl::ShaderProgramKey &key);
     VkPipelineLayout GetOrCreateGlobalPipelineLayout();
-    bool BuildRuntimeShaderProgramState(ShaderProgram *mtl,
-                                        const AnsiString &mtl_name,
-                                        const mtl::ShaderBuildContext *ctx,
-                                        const mtl::ShaderCreateInfoMap &sci_map);
-    bool ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
-                                             const AnsiString &mtl_name,
-                                             const mtl::ShaderBuildContext *ctx,
-                                             const mtl::ShaderCreateInfoMap &sci_map);
+    /// 装配 ShaderProgram：ShaderModule + stage 列表 + 共享 pipeline layout。
+    /// **不创建 VkPipeline**（那是渲染侧 RenderPass::CreatePipeline 的职责）。
+    bool BuildRuntimeShaderProgram(ShaderProgram *mtl,
+                                   const AnsiString &mtl_name,
+                                   const mtl::ShaderBuildContext *ctx,
+                                   const mtl::ShaderCreateInfoMap &sci_map);
 
 public: //Add
 

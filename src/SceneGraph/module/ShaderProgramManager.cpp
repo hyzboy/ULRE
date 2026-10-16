@@ -525,16 +525,40 @@ ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(
     return shader_program_cache.Find(key);
 }
 
-bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
-                                                          const AnsiString &mtl_name,
-                                                          const mtl::ShaderBuildContext *ctx,
-                                                          const mtl::ShaderCreateInfoMap &sci_map)
+// 把编译好的 ShaderBuildContext 装配成可用的 ShaderProgram。
+//
+// 命名口径：**不叫 ...BuildPipeline** —— 本函数不创建 VkPipeline。VkPipeline 由渲染侧
+// 按 pass 创建（RenderPass::CreatePipeline(ShaderProgram*, const MaterialRecipe&)，
+// 见 RenderPrimitiveCollectSystem 的取用点）。这里只做：ShaderModule 装配 → stage 列表
+// → 全材质共享 pipeline layout。
+bool ShaderProgramManager::BuildRuntimeShaderProgram(ShaderProgram *mtl,
+                                                     const AnsiString &mtl_name,
+                                                     const mtl::ShaderBuildContext *ctx,
+                                                     const mtl::ShaderCreateInfoMap &sci_map)
 {
     if(!mtl || !ctx)
         return false;
 
-    if(!BuildRuntimeShaderProgramState(mtl, mtl_name, ctx, sci_map))
+    if(!BuildShaderModulesFromCreateInfoMap(this,
+                                            mtl_name,
+                                            sci_map,
+                                            ctx,
+                                            mtl->shader_maps,
+                                            mtl))
+    {
         return false;
+    }
+
+    CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
+
+    // 片元 stage 保留判据**不在这里**（曾经有两层程序级扫描，2026-09-26 D8 实测后
+    // 删除）：SPIRV 扫描常量写错从未命中、且唯一调用点位于 stage 缓存命中分支
+    // （冷缓存首编译不扫）；这里的 FinalGLSL 文本扫描也看不见 include 进来的
+    // alpha_compositor（实测 0 命中）。depth-only 通道的 FS 保留统一由 **recipe
+    // 语义**（alpha_test/dither，与 ShadowCasterMasked 模板分派同源）判定，见
+    // RenderPass::CreatePipeline(ShaderProgram*, const MaterialRecipe&)。
+    //
+    // mesh 化后顶点输入统一走 SSBO，无 VBO 顶点输入布局（VS 遗留 vertex_input 已删）
 
     // BDA 终态：全材质共享同一 pipeline layout（Scene(0)/Bindless(1) 全局集 + pc_root）——
     // 单例惰建缓存（GetOrCreateGlobalPipelineLayout），材质只持裸句柄、不拥有。
@@ -566,38 +590,6 @@ VkPipelineLayout ShaderProgramManager::GetOrCreateGlobalPipelineLayout()
     #endif//_DEBUG
 
     return shared_pipeline_layout_;
-}
-
-bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
-                                                     const AnsiString &mtl_name,
-                                                     const mtl::ShaderBuildContext *ctx,
-                                                     const mtl::ShaderCreateInfoMap &sci_map)
-{
-    if(!mtl || !ctx)
-        return false;
-
-    if(!BuildShaderModulesFromCreateInfoMap(this,
-                                            mtl_name,
-                                            sci_map,
-                                            ctx,
-                                            mtl->shader_maps,
-                                            mtl))
-    {
-        return false;
-    }
-
-    CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
-
-    // 片元 stage 保留判据**不在这里**（曾经有两层程序级扫描，2026-09-26 D8 实测后
-    // 删除）：SPIRV 扫描常量写错从未命中、且唯一调用点位于 stage 缓存命中分支
-    // （冷缓存首编译不扫）；这里的 FinalGLSL 文本扫描也看不见 include 进来的
-    // alpha_compositor（实测 0 命中）。depth-only 通道的 FS 保留统一由 **recipe
-    // 语义**（alpha_test/dither，与 ShadowCasterMasked 模板分派同源）判定，见
-    // RenderPass::CreatePipeline(ShaderProgram*, const MaterialRecipe&)。
-
-    // mesh 化后顶点输入统一走 SSBO，无 VBO 顶点输入布局（VS 遗留 vertex_input 已删）
-
-    return true;
 }
 
 ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
@@ -637,10 +629,10 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     const mtl::ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
 
     AutoDelete<ShaderProgram> mtl=new ShaderProgram(mtl_name,ctx);
-    if(!ExecuteRuntimeMaterialBuildPipeline(mtl,
-                                            mtl_name,
-                                            ctx,
-                                            sci_map))
+    if(!BuildRuntimeShaderProgram(mtl,
+                                  mtl_name,
+                                  ctx,
+                                  sci_map))
         return nullptr;
 
     Add(mtl);

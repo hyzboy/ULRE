@@ -4,7 +4,7 @@ namespace hgl::graph::mtl {}
 
 /// MaterialShaderCompiler.h — canonical material input → ShaderBuildContext
 ///
-/// 使用 CompileMaterial 编译 Compositor 模板产出的完整 GLSL。
+/// 使用 BuildMaterialStageDocuments 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
 ///   1. 求解层构建契约/schema（描述符分配器已随 BDA 化退役）
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
@@ -111,7 +111,7 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
  * @param config    编译期配置视图
  * @return          编译好的 ShaderBuildContext*; 失败返回 nullptr
  */
-ShaderBuildContext *CompileMaterial(
+ShaderBuildContext *BuildMaterialStageDocuments(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
     const ShaderDocument &mesh_source_document,
@@ -120,7 +120,7 @@ ShaderBuildContext *CompileMaterial(
 
 // Diagnostic-only overload. Keeping capture outside MaterialCompileConfig
 // preserves the layout of the production compiler configuration.
-ShaderBuildContext *CompileMaterial(
+ShaderBuildContext *BuildMaterialStageDocuments(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
     const ShaderDocument &mesh_source_document,

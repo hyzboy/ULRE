@@ -10,7 +10,6 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
-#include <hgl/mtl/MeshTemplateComposer.h>
 #include <hgl/graph/font/CharQuadConfig.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
@@ -451,21 +450,21 @@ namespace hgl::graph::mtl
             ShaderDocument &mesh_document = document_capture
                 ? document_capture->mesh_source_document
                 : plan.mesh_source_document;
-            MeshTemplateComposer mesh_composer;
-            MeshTemplateComposer::ComposeInput mesh_compose_input{};
-            mesh_compose_input.node_config = plan.vertex_node_config;
-            mesh_compose_input.varying_config = plan.varying;
-            mesh_compose_input.position_format = plan.position_format;
-            mesh_compose_input.mode = ms_mode;
-            mesh_compose_input.max_invocations = max_invocations;
-            mesh_compose_input.resolved_input_document =
-                &plan.resolved_vertex_input_document;
-            mesh_compose_input.provider_document =
-                &plan.resolved_provider_document;
-            mesh_compose_input.stage_interface = &plan.stage_interface;
-            if (!mesh_composer.Compose(mesh_compose_input, mesh_document))
+            // 直调 mesh 阶段发射器。原先这里经 MeshTemplateComposer 门面转发——
+            // 那个类体只有一句"9 实参原样透传"，没有任何编排（对照 fragment 侧的
+            // FragmentTemplateComposer 才是真编排器），仅增加一层间接，已删除。
+            if (!EmitMeshTemplateDocument(
+                    plan.vertex_node_config,
+                    plan.varying,
+                    plan.position_format,
+                    ms_mode,
+                    max_invocations,
+                    mesh_document,
+                    &plan.resolved_vertex_input_document,
+                    &plan.resolved_provider_document,
+                    &plan.stage_interface))
             {
-                s_last_build_generic_material_error = "mesh_composer.Compose failed";
+                s_last_build_generic_material_error = "EmitMeshTemplateDocument failed";
                 GLogError("[ShaderGen] Generic material mesh document build failed: name=%s",
                           definition.definition_name.c_str());
                 return false;
@@ -943,7 +942,7 @@ namespace hgl::graph::mtl
             return nullptr;
         }
 
-        ShaderBuildContext *result = CompileMaterial(
+        ShaderBuildContext *result = BuildMaterialStageDocuments(
             profile, compiler_input,
             document_capture
                 ? document_capture->mesh_source_document
@@ -954,7 +953,7 @@ namespace hgl::graph::mtl
             config, document_capture);
         if (!result)
         {
-            s_last_build_generic_material_error = "CompileMaterial failed";
+            s_last_build_generic_material_error = "BuildMaterialStageDocuments failed";
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
                       definition.definition_name.c_str());
         }
