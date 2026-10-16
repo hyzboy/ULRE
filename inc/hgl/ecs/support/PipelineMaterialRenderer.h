@@ -26,7 +26,6 @@ namespace hgl
         class ShaderProgram;
         class Pipeline;
         class RenderCmdBuffer;
-        class VABList;
     }
 
     namespace ecs

@@ -1,7 +1,6 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/VKVABList.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/pipeline/VKComputePipeline.h>
 #include<hgl/graph/mesh/Primitive.h>

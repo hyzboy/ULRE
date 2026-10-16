@@ -131,9 +131,7 @@ SET(VK_BUFFER_FILES     ${BUFFER_HEADER_PATH}/BufferOwner.h
 SOURCE_GROUP("Buffer" FILES ${VK_BUFFER_FILES})
 
 # --- 3. Vertex Input (与 Vulkan 底层密切) ---
-# VBO 输入类已删（mesh 化后顶点输入统一走 SSBO）；保留 VIF(VertexInputFormat)/VAB/VABList
 SET(VK_VERTEX_INPUT_FILES       ${VK_INCLUDE_PATH}/VKVertexInputFormat.h
-                                ${VK_INCLUDE_PATH}/VKVABList.h
                                 ${VK_INCLUDE_PATH}/VKPrimitiveType.h)
 
 SOURCE_GROUP("VertexInput" FILES ${VK_VERTEX_INPUT_FILES})

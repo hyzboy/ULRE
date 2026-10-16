@@ -28,7 +28,6 @@
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/RootAddressPush.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
-#include <hgl/vk/VKVABList.h>
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/log/Log.h>
 #include <glm/glm.hpp>
