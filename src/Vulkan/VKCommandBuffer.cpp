@@ -1,6 +1,7 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKDeviceAttribute.h>
+#include<cstdio>
 
 namespace hgl::graph{
 VulkanCmdBuffer::VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb,VkCommandPool pool)
@@ -45,6 +46,11 @@ bool VulkanCmdBuffer::Begin()
 
     cmd_begin=true;
     global_sets_bound=false;
+
+    // 顶层调试区域：整条命令缓冲一个作用域。抓帧工具里这一层下面的所有
+    // barrier / pass / draw 都归它管；由 End() 收口（正常路径在 End() 里闭合）。
+    BeginRegion("cmd");
+
     return(true);
 }
 
@@ -153,22 +159,55 @@ void VulkanCmdBuffer::ImageMemoryBarrier2(VkImage image,
 }
 
 #ifdef _DEBUG
+// ── 调试标注实现（VK_EXT_debug_utils 的 label 系列）────────────────────────────
+// 只有 _DEBUG 才存在这些调用；dev_attr->debug_utils 为空（未启用校验层/抓帧层）
+// 时全部安全空转——所以调用点可以无条件写，不需要环绕判断。
+
 void VulkanCmdBuffer::SetDebugName(const AnsiString &object_name)
 {
-    if(dev_attr->debug_utils)
+    if(dev_attr && dev_attr->debug_utils)
         dev_attr->debug_utils->SetCommandBuffer(cmd_buf,object_name);
 }
 
-void VulkanCmdBuffer::BeginRegion(const AnsiString &region_name,const Color4f &color)
+void VulkanCmdBuffer::BeginRegion(const char *name,const Color4f &color)
 {
-    if(dev_attr->debug_utils)
-        dev_attr->debug_utils->CmdBegin(cmd_buf,region_name,color);
+    if(!dev_attr || !dev_attr->debug_utils || !name || !*name)
+        return;
+
+    dev_attr->debug_utils->CmdBegin(cmd_buf,name,color);
+    ++debug_region_depth;
+}
+
+void VulkanCmdBuffer::BeginPassRegion(const char *kind,uint32_t width,uint32_t height)
+{
+    if(!dev_attr || !dev_attr->debug_utils)
+        return;
+
+    char name[96];
+
+    snprintf(name,sizeof(name),"%s %ux%u",kind?kind:"pass",width,height);
+
+    dev_attr->debug_utils->CmdBegin(cmd_buf,name,Color4f(0.30f,0.55f,0.90f,1.0f));
+    ++debug_region_depth;
 }
 
 void VulkanCmdBuffer::EndRegion()
 {
-    if(dev_attr->debug_utils)
+    if(debug_region_depth<=0)   // 未配对 ⇒ 安全空转，不产生悬空 CmdEnd
+        return;
+
+    --debug_region_depth;
+
+    if(dev_attr && dev_attr->debug_utils)
         dev_attr->debug_utils->CmdEnd(cmd_buf);
 }
-#endif
+
+void VulkanCmdBuffer::InsertMarker(const char *name,const Color4f &color)
+{
+    if(!dev_attr || !dev_attr->debug_utils || !name || !*name)
+        return;
+
+    dev_attr->debug_utils->CmdInsert(cmd_buf,name,color);
+}
+#endif//_DEBUG
 }//namespace hgl::graph

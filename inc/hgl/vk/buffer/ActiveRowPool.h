@@ -161,7 +161,6 @@ public:
 
     DeviceBuffer     *GetBuffer()       const { return buffer; }
     IGPUBuffer       *GetGPUBuffer()    const;
-    const IGPUBuffer *GetGPUBufferConst() const;
     void             *GetCPUBase()      const { return cpu_base; }
     uint64_t          GetGPUBase()      const { return gpu_base; }
     uint32_t          GetSSBOId()       const { return ssbo_id; }

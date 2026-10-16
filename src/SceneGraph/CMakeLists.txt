@@ -244,7 +244,6 @@ SOURCE_GROUP("9.Vulkan\\Material" FILES ${VK_SCENEGRAPH_MATERIAL_FILES})
 
 # --- 8.4 Texture Loader ---
 SET(VK_TEXTURE_LOADER_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureLoader.h
-                                ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureType.h
                                 Texture/VKTextureLoader.h
                                 Texture/VKTexture2DLoader.cpp
                                 Texture/VKTexture2DArrayLoader.cpp

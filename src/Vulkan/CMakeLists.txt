@@ -7,7 +7,6 @@ set(COMMON_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/common)
 # --- 0. Core ---
 SET(VK_CORE_FILES               ${VK_INCLUDE_PATH}/VK.h
                                 ${VK_INCLUDE_PATH}/VKFormat.h
-                                ${VK_INCLUDE_PATH}/VKInterpolation.h
                                 ${VK_INCLUDE_PATH}/VKStruct.h
                                 ${VK_INCLUDE_PATH}/VKObjectName.h
                                 ${VK_INCLUDE_PATH}/VKUUID.h
@@ -153,8 +152,8 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
 SOURCE_GROUP("Pipeline" FILES ${VK_PIPELINE_FILES})
 
 # --- 5. Descriptor Sets ---
-
-SOURCE_GROUP("DescriptorSets" FILES ${VK_DESCRIPTOR_SETS_FILES})
+# 本层无独立文件：descriptor buffer / bindless 归入 VKBindlessTextureManager（见 "13. Buffer Operations"），
+# 传统 DescriptorPool 回退路径亦在该文件内（HGL_VK_DESCRIPTOR_POOL_FALLBACK）。
 
 # --- 6. Shader ---
 SET(VK_SHADER_FILES             ${VK_INCLUDE_PATH}/VKShaderModule.h
@@ -167,13 +166,10 @@ SOURCE_GROUP("Shader" FILES ${VK_SHADER_FILES})
 
 # --- 7. Image & Texture Base (纯 API 层) ---
 SET(VK_IMAGE_FILES              ${VK_INCLUDE_PATH}/VKImageCreateInfo.h
-                                ${VK_INCLUDE_PATH}/VKImageType.h
                                 ${VK_INCLUDE_PATH}/VKImageView.h
                                 ${VK_INCLUDE_PATH}/VKTexture.h
                                 ${VK_INCLUDE_PATH}/VKTextureCreateInfo.h
-                                ${VK_INCLUDE_PATH}/VKTextureType.h
                                 ${VK_INCLUDE_PATH}/VKSampler.h
-                                ${VK_INCLUDE_PATH}/VKSamplerType.h
                                 VKImageView.cpp
                                 VKTexture.cpp
                                 VKSampler.cpp)
@@ -191,15 +187,13 @@ SET(VK_TEXTURE_DEVICE_FILES     Texture/BufferImageCopy2D.h
 SOURCE_GROUP("Texture\\Device" FILES ${VK_TEXTURE_DEVICE_FILES})
 
 # --- 8. Render Pass ---
+# 说明：本层使用 Dynamic Rendering（VK_KHR_dynamic_rendering），无传统 render pass 构建器；
+# 原 VKSubpass.{h,cpp} / VKSubpassInfo.h / VKAttachment.h / VKLoadStoreOpInfo.h 为遗留声明，
+# 全仓零 include、零引用，已于 2026-10-16 删除。
 SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/VKFramebuffer.h
                                 ${VK_INCLUDE_PATH}/VKRenderPass.h
-                                ${VK_INCLUDE_PATH}/VKLoadStoreOpInfo.h
-                                ${VK_INCLUDE_PATH}/VKSubpass.h
-                                ${VK_INCLUDE_PATH}/VKSubpassInfo.h
-                                ${VK_INCLUDE_PATH}/VKAttachment.h
                                 VKFramebuffer.cpp
-                                VKRenderPass.cpp
-                                VKSubpass.cpp)
+                                VKRenderPass.cpp)
 
 SOURCE_GROUP("RenderPass" FILES ${VK_RENDER_PASS_FILES})
 
@@ -243,7 +237,6 @@ SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
                                 VKDeviceImage.cpp
                                 VKDeviceSampler.cpp
                                 VKDeviceFramebuffer.cpp
-                                VKBindlessTextureManager.cpp
                                 VKBindlessTextureManager.cpp)
 SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})
 
@@ -285,7 +278,6 @@ SET(VULKAN_ALL_FILES    ${VK_DEVICE_INSTANCE_FILES}
                         ${VK_BUFFER_FILES}
                         ${VK_VERTEX_INPUT_FILES}
                         ${VK_PIPELINE_FILES}
-                        ${VK_DESCRIPTOR_SETS_FILES}
                         ${VK_SHADER_FILES}
                         ${VK_IMAGE_FILES}
                         ${VK_TEXTURE_DEVICE_FILES}

@@ -11,6 +11,8 @@ struct DebugUtilsFunction
     PFN_vkSetDebugUtilsObjectNameEXT    SetName;
     PFN_vkSetDebugUtilsObjectTagEXT     SetTag;
 
+    // queue / command buffer 标注区域（VK_EXT_debug_utils 的 label 系列）。
+    // 消费者：VulkanCmdBuffer::BeginRegion/EndRegion/InsertMarker（见 VKCommandBuffer.h）。
     PFN_vkQueueBeginDebugUtilsLabelEXT  QueueBegin;
     PFN_vkQueueEndDebugUtilsLabelEXT    QueueEnd;
     PFN_vkQueueInsertDebugUtilsLabelEXT QueueInsert;
@@ -100,6 +102,11 @@ public:
         SetImageView(   tex->GetVulkanImageView(),  info+"_ImageView"   );
         SetDeviceMemory(tex->GetDeviceMemory(),     info+"_Memory"      );
     }
+
+    // ── 标注区域 / 点标记（RenderDoc、校验层、GPU 抓帧工具可见）──────────────
+    // 作用域：QueueBegin/QueueEnd 包裹队列侧；CmdBegin/CmdEnd 包裹命令缓冲侧。
+    // 调用方见 VulkanCmdBuffer（VKCommandBuffer.cpp）——它把层次维护成配对的
+    // 父子区域，并在 vkEndCommandBuffer 前兜底收口。
 
     void QueueBegin  (VkQueue,const char *,const Color4f &color=Color4f(1,1,1,1));
     void QueueEnd    (VkQueue q){duf.QueueEnd(q);}

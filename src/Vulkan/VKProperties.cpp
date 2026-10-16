@@ -10,9 +10,6 @@ namespace
     static ValueArray<VkExtensionProperties> extension_properties;
 }//namespace
 
-const ValueArray<VkLayerProperties> &GetLayerProperties(){return layer_properties;}
-const ValueArray<VkExtensionProperties> &GetExtensionProperties(){return extension_properties;}
-
 void InitVulkanInstanceProperties()
 {
     layer_properties.Clear();
@@ -47,22 +44,6 @@ const bool CheckInstanceLayerSupport(const AnsiString &layer_name)
     for(const VkLayerProperties &lp:layer_properties)
         if(layer_name.Comp(lp.layerName)==0)
             return(true);
-
-    return(false);
-}
-
-const bool GetInstanceLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)
-{
-    for(const VkLayerProperties &lp:layer_properties)
-    {
-        if(name.Comp(lp.layerName)==0)
-        {
-            spec=lp.specVersion;
-            impl=lp.implementationVersion;
-
-            return(true);
-        }
-    }
 
     return(false);
 }

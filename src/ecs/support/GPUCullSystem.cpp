@@ -113,7 +113,7 @@ namespace hgl::ecs
         if (batch_tag_buffer_) delete batch_tag_buffer_;
         if (batch_info_buffer_) delete batch_info_buffer_;
         if (batch_counter_buffer_) delete batch_counter_buffer_;
-        // compute_pipeline_ 和 shader_program_ 由 MaterialManager 管理，不手动删除
+        // compute_pipeline_ 由 MaterialManager 管理，不手动删除
     }
     bool GPUCullSystem::Initialize(ECSContext* context)
     {

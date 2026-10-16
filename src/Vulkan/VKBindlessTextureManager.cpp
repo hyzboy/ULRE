@@ -544,59 +544,6 @@ bool BindlessTextureManager::RegisterSamplers(const VkSamplerCreateInfo *infos, 
     return true;
 }
 
-bool BindlessTextureManager::RebuildSampler(uint32_t index, const VkSamplerCreateInfo &info)
-{
-    if (!IsValid() || static_cast<int>(index) >= samplers_.GetCount())
-        return false;
-
-    // 等待设备空闲，消除运行时重建 Sampler 的同步隐患
-    vkDeviceWaitIdle(device_);
-
-    VkSampler new_samp = VK_NULL_HANDLE;
-    if (vkCreateSampler(device_, &info, nullptr, &new_samp) != VK_SUCCESS)
-    {
-        LogError(u8"[BindlessTextureManager] vkCreateSampler failed idx=%u", index);
-        return false;
-    }
-
-#if HGL_VK_DESCRIPTOR_POOL_FALLBACK
-    if (!use_descriptor_buffer_)
-    {
-        VkDescriptorImageInfo samp_info{};
-        samp_info.sampler = new_samp;
-
-        VkWriteDescriptorSet write{};
-        write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.dstSet          = set_;
-        write.dstBinding      = 1;
-        write.dstArrayElement = index;
-        write.descriptorCount = 1;
-        write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
-        write.pImageInfo      = &samp_info;
-
-        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
-    }
-    else
-#endif//HGL_VK_DESCRIPTOR_POOL_FALLBACK
-    {
-        VkDescriptorGetInfoEXT get_info{};
-        get_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
-        get_info.type          = VK_DESCRIPTOR_TYPE_SAMPLER;
-        get_info.data.pSampler = &new_samp;
-
-        const VkDeviceSize item_offset = binding_offset_1_ + index * sampler_desc_size_;
-        attr_->get_descriptor(device_, &get_info, sampler_desc_size_, mapped_ptr_ + item_offset);
-    }
-
-    // 替换成功后销毁旧句柄
-    if (samplers_[static_cast<int>(index)] != VK_NULL_HANDLE)
-        vkDestroySampler(device_, samplers_[static_cast<int>(index)], nullptr);
-    samplers_[static_cast<int>(index)] = new_samp;
-
-    LogInfo(u8"[BindlessTextureManager] Rebuilt sampler idx=%u", index);
-    return true;
-}
-
 void BindlessTextureManager::BindOffsetToCmd(VkCommandBuffer cmd,
                                              VkPipelineLayout pipeline_layout,
                                              uint32_t set_index,

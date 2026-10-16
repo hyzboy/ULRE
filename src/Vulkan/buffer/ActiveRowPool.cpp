@@ -309,9 +309,4 @@ IGPUBuffer *ActiveRowPool::GetGPUBuffer() const
     return buffer ? buffer->GetGPUBuffer() : nullptr;
 }
 
-const IGPUBuffer *ActiveRowPool::GetGPUBufferConst() const
-{
-    return buffer ? buffer->GetGPUBuffer() : nullptr;
-}
-
 } // namespace hgl::graph

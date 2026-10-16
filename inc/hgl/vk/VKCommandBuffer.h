@@ -46,6 +46,13 @@ public:
 
         cmd_begin=false;
 
+#ifdef _DEBUG
+        // 兜底收口：调用方漏配对时，不把未闭合的调试标注带进 vkEndCommandBuffer
+        //（未闭合标签会让抓帧工具的区域树错位，且校验层会报 label 不平衡）。
+        while(debug_region_depth>0)
+            EndRegion();
+#endif//_DEBUG
+
         VkResult result=vkEndCommandBuffer(cmd_buf);
         if(result!=VK_SUCCESS)
         {
@@ -87,13 +94,48 @@ public:
         vkCmdFillBuffer(cmd_buf, buffer, offset, size, data);
     }
 
+    // ── 调试标注（VK_EXT_debug_utils；RenderDoc / 校验层 / 抓帧工具可见）───────
+    //
+    // 设计要点：
+    //   * 全部只在 _DEBUG 下产生 vkCmd*DebugUtilsLabelEXT 调用；Release 侧是空 inline
+    //     ⇒ 调用点可以无 #ifdef 直接写。
+    //   * 形参一律 **const char\*** 而非 AnsiString：字符串转换发生在实现内部，
+    //     Release 空实现 ⇒ 调用点连一次字符串构造都不付（时间/分配都为零）。
+    //   * `debug_region_depth` 维护父子层次，End() 负责兜底收口（见上）。
+    //
+    // 用法（层次由调用方按配对维护）：
+    //     BeginRegion("cmd");                 // 顶层：整条命令缓冲
+    //       BeginPassRegion("pass",w,h);      // pass 作用域
+    //         BeginRegion("layout transition",<amber>);
+    //         EndRegion();
+    //       EndRegion();                      // 由 EndRendering/EndRenderingPresent 收
+    //     // End() 自动收掉残留层
 #ifdef _DEBUG
+    /// 给本命令缓冲对象重命名（创建时已按 ObjectNameBuilder 命名；此处用于运行期改标）。
     void SetDebugName(const AnsiString &);
-    void BeginRegion(const AnsiString &,const Color4f &);
+
+    /// 打开一个调试标注区域（必须与 EndRegion() 配对；End() 会兜底收口）。
+    void BeginRegion(const char *name,const Color4f &color=Color4f(1.0f,1.0f,1.0f,1.0f));
+
+    /// pass 作用域：区域名 = "<kind> <width>x<height>"。格式化在实现内部完成。
+    void BeginPassRegion(const char *kind,uint32_t width,uint32_t height);
+
+    /// 关闭最近一个调试标注区域（数量不匹配时安全空转）。
     void EndRegion();
+
+    /// 点标记（非作用域）：用于标注"某一刻发生了什么"的离散事件。
+    void InsertMarker(const char *name,const Color4f &color=Color4f(1.0f,1.0f,1.0f,1.0f));
+
+    /// 当前未闭合的调试区域层数（End() 兜底收口用）。
+    int debug_region_depth=0;
 #else
-    void BeginRegion(const AnsiString &,const Color4f &){}
+    // Release：空 inline。形参保持与 Debug 侧完全一致的默认值，否则单参数调用点编不过。
+    // 字符串一律以 const char* 传入、转换在（此处为空的）实现内部 ⇒ 调用点零构造开销。
+    void SetDebugName(const AnsiString &){}
+    void BeginRegion(const char *,const Color4f & =Color4f(1.0f,1.0f,1.0f,1.0f)){}
+    void BeginPassRegion(const char *,uint32_t,uint32_t){}
     void EndRegion(){}
+    void InsertMarker(const char *,const Color4f & =Color4f(1.0f,1.0f,1.0f,1.0f)){}
 #endif//_DEBUG
 };//class VulkanCmdBuffer
 
@@ -147,7 +189,6 @@ public:
     }
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
-    void SetRenderArea(const VkExtent2D &);
     void SetViewport(const VkViewport &vp){viewport=vp;}
     const VkViewport &GetViewport()const{return viewport;}
 
@@ -185,6 +226,9 @@ public:
     {
         if(!ri)return;
 
+        // 与 EndRendering() 配对（命名取 renderArea，和 BeginRendering(IRenderTarget*) 同形）
+        BeginPassRegion("pass",ri->renderArea.extent.width,ri->renderArea.extent.height);
+
         vkCmdBeginRendering(cmd_buf,ri);
     }
 
@@ -195,11 +239,9 @@ public:
     // 实现见 VKCommandBufferRender.cpp（需 IRenderTarget 完整定义，避免循环 include）
     bool BeginRendering(IRenderTarget *rt, const RenderPassOptions *options = nullptr);
 
-    // 局部深度区域清空（使用 vkCmdClearAttachments，必须在 BeginRendering 内部调用）
-    void ClearDepthRect(const VkRect2D &rect, float depth = 0.0f);
-
     void EndRendering()
     {
+        EndRegion();        // 关闭 BeginRendering 打开的 pass 作用域
         vkCmdEndRendering(cmd_buf);
     }
 

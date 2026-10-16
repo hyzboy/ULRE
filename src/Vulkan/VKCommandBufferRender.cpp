@@ -28,13 +28,6 @@ RenderCmdBuffer::~RenderCmdBuffer()
         hgl_free(clear_values);
 }
 
-void RenderCmdBuffer::SetRenderArea(const VkExtent2D &ext2d)
-{
-    render_area.offset.x=0;
-    render_area.offset.y=0;
-    render_area.extent=ext2d;
-}
-
 bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions *options)
 {
     if(!rt)return(false);
@@ -42,8 +35,17 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
     const uint32_t color_count=rt->GetColorCount();
     const uint32_t has_depth=rt->hasDepth()?1:0;
 
+    const VkExtent2D &ext=rt->GetExtent();
+
+    // pass 作用域：在 vkCmdBeginRendering 前打开，由 EndRendering() /
+    // EndRenderingPresent() 关闭。抓帧工具里本 pass 的全部屏障、清屏、绘制
+    // 都挂在这一层下面；下面两个短作用域是它的子区域。
+    BeginPassRegion(rt->IsSwapchain()?"pass:swapchain":"pass:offscreen",ext.width,ext.height);
+
     // Dynamic Rendering：无 render pass 的自动布局转换——必须先手动把附件
     // 从 UNDEFINED 转换到 attachment 布局（VUID-vkCmdBeginRendering-pRenderingInfo-09592/09588）
+    BeginRegion("layout transition",Color4f(0.90f,0.70f,0.25f,1.0f));
+
     VkImageMemoryBarrier2 barriers[8]{};
 
     for(uint32_t i=0;i<color_count;i++)
@@ -116,10 +118,10 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
 
     PipelineBarrier2(&dep_info);
 
+    EndRegion();    // layout transition
+
     // render_area / viewport 从 render target extent 设置
     //（原 BindFramebuffer 负责此初始化；dynamic rendering 下无 framebuffer，改在此处）
-    const VkExtent2D &ext=rt->GetExtent();
-
     render_area.offset.x=0;
     render_area.offset.y=0;
     render_area.extent=ext;
@@ -210,6 +212,8 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
 
     if (options && options->clear_scissor_depth && rt->hasDepth())
     {
+        BeginRegion("depth clear",Color4f(0.90f,0.35f,0.35f,1.0f));
+
         VkClearAttachment clear_att{};
         clear_att.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
         clear_att.clearValue.depthStencil.depth = options->clear_depth_value;
@@ -221,6 +225,8 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
         clear_rect.layerCount = 1;
 
         vkCmdClearAttachments(cmd_buf, 1, &clear_att, 1, &clear_rect);
+
+        EndRegion();    // depth clear
     }
 
     pipeline_layout=VK_NULL_HANDLE;
@@ -238,23 +244,9 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
     return(true);
 }
 
-void RenderCmdBuffer::ClearDepthRect(const VkRect2D &rect, float depth)
-{
-    VkClearAttachment clear_att{};
-    clear_att.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    clear_att.clearValue.depthStencil.depth = depth;
-    clear_att.clearValue.depthStencil.stencil = 0;
-
-    VkClearRect clear_rect{};
-    clear_rect.rect = rect;
-    clear_rect.baseArrayLayer = 0;
-    clear_rect.layerCount = 1;
-
-    vkCmdClearAttachments(cmd_buf, 1, &clear_att, 1, &clear_rect);
-}
-
 void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
 {
+    EndRegion();                    // 关闭 BeginRendering 打开的 pass 作用域
     vkCmdEndRendering(cmd_buf);
 
     if(!rt)return;
@@ -265,6 +257,8 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
     // ---- 窗口交换链：颜色附件转 PRESENT_SRC 交呈现引擎（维持原有语义）----
     if(rt->IsSwapchain())
     {
+        BeginRegion("present transition",Color4f(0.60f,0.40f,0.85f,1.0f));
+
         VkImageMemoryBarrier2 barriers[8]{};
 
         for(uint32_t i=0;i<color_count;i++)
@@ -300,6 +294,8 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
             PipelineBarrier2(&dep_info);
         }
 
+        EndRegion();    // present transition
+
         return;
     }
 
@@ -309,6 +305,8 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
     // depth-only RT（shadow map）没有任何颜色附件，深度是唯一需要转换的附件——
     // 原实现只在 color_count>0 时才发 barrier，导致纯深度目标的深度停留在
     // attachment 布局，采样即为非法。
+    BeginRegion("sampled transition",Color4f(0.45f,0.80f,0.55f,1.0f));
+
     VkImageMemoryBarrier2 barriers[8]{};
     uint32_t barrier_count=0;
 
@@ -370,6 +368,8 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
 
         PipelineBarrier2(&dep_info);
     }
+
+    EndRegion();    // sampled transition
 }
 
 void RenderCmdBuffer::ApplyPipelineState(const mtl::MaterialPipelineConfig &config)
@@ -453,6 +453,10 @@ void RenderCmdBuffer::DrawMeshTasksIndirect(VkBuffer buffer,VkDeviceSize offset,
 
     // 多命令直发——引擎设备创建强制 multiDrawIndirect（VKDeviceCreater VHRC_F10），
     // 无逐条退化路径（零兼容：必用不留分支）
+    // 点标记：GPU-driven 路径下"一次批绘制"是要在抓帧里定位的关键事件，
+    // 频率是每批一次（非每对象），标注开销可忽略。
+    InsertMarker("mesh tasks indirect");
+
     dev_attr->cmd_draw_mesh_tasks_indirect(cmd_buf,buffer,offset,drawCount,stride);
 }
 
@@ -462,6 +466,8 @@ void RenderCmdBuffer::DrawMeshTasksIndirectCount(VkBuffer buffer,VkDeviceSize of
 {
     if(!dev_attr||!dev_attr->cmd_draw_mesh_tasks_indirect_count)
         return;
+
+    InsertMarker("mesh tasks indirect-count");
 
     dev_attr->cmd_draw_mesh_tasks_indirect_count(cmd_buf,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
 }

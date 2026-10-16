@@ -97,8 +97,6 @@ public:
     VkPhysicalDeviceType    GetDeviceType()const{return properties.deviceType;}
     const char *            GetDeviceName()const{return properties.deviceName;}
 
-    const bool              GetLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl)const;
-    const uint32_t          GetExtensionVersion(const AnsiString &name)const;
     const bool              CheckExtensionSupport(const AnsiString &name)const;
 
     const VkQueueFamilyPropertiesList &GetQueueFamilyProperties()const{return queue_family_properties;}
@@ -189,7 +187,6 @@ public:
     bool IsDepthAttachmentLinear(const VkFormat format)const{return LinearSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
 
     VkFormat GetDepthFormat(bool lower_to_high=false)const;
-    VkFormat GetDepthStencilFormat(bool lower_to_high=false)const;
 
     const bool IsUBOTexelSupport    (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT);}
     const bool IsSTBSupport         (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT);}

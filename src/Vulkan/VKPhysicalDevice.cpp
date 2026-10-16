@@ -315,33 +315,6 @@ VulkanPhyDevice::~VulkanPhyDevice()
 {
 }
 
-const bool VulkanPhyDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const
-{
-    for(const VkLayerProperties &lp:layer_properties)
-    {
-        if(name.Comp(lp.layerName)==0)
-        {
-            spec=lp.specVersion;
-            impl=lp.implementationVersion;
-
-            return(true);
-        }
-    }
-
-    return(false);
-}
-
-const uint32_t VulkanPhyDevice::GetExtensionVersion(const AnsiString &name)const
-{
-    for(const VkExtensionProperties &ep:extension_properties)
-    {
-        if(name.Comp(ep.extensionName)==0)
-            return ep.specVersion;
-    }
-
-    return 0;
-}
-
 const bool VulkanPhyDevice::CheckExtensionSupport(const AnsiString &name)const
 {
     for(const VkExtensionProperties &ep:extension_properties)
@@ -384,31 +357,6 @@ VkFormat VulkanPhyDevice::GetDepthFormat(bool lower_to_high)const
     VkFormat result=VK_FORMAT_UNDEFINED;
 
     for (auto& format : depthFormats)
-    {
-        if(IsDepthAttachmentOptimal(format))
-        {
-            if(lower_to_high)
-                return format;
-            else
-                result=format;
-        }
-    }
-
-    return result;
-}
-
-VkFormat VulkanPhyDevice::GetDepthStencilFormat(bool lower_to_high)const
-{
-    constexpr VkFormat depthStencilFormats[] =
-    {
-        PF_D16UN_S8U,
-        PF_D24UN_S8U,
-        PF_D32F_S8U
-    };
-
-    VkFormat result=VK_FORMAT_UNDEFINED;
-
-    for (auto& format : depthStencilFormats)
     {
         if(IsDepthAttachmentOptimal(format))
         {

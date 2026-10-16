@@ -24,7 +24,8 @@ namespace hgl::graph::mtl
      * 二者引用本库，保证 name→index 唯一一致（避免两处独立读文件漂移）。
      *
      * GetIndex(name) 查不到时保底返回 0（Nearest），确保 ShaderGen 不因缺失名而失败。
-     * 特殊 sampler（Terrain 等）通过 RebuildSampler 运行时重建，索引/宏不变。
+     * 索引一经注册即固定：运行时不存在替换单个 sampler 槽位的路径（如需动态 sampler，
+     * 应重新注册整组，见 RegisterSamplers）。
      */
     class SamplerPresetLibrary
     {

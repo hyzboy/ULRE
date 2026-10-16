@@ -151,12 +151,6 @@ namespace hgl::graph
          */
         bool RegisterSamplers(const VkSamplerCreateInfo *infos, uint32_t count);
 
-        /**
-         * 运行时重建指定索引的 sampler（如动态重建 TerrainSampler）。
-         * 宏/索引不变，仅替换 binding=1 对应槽位的 VkSampler。
-         */
-        bool RebuildSampler(uint32_t index, const VkSamplerCreateInfo &info);
-
         /** 已注册的 sampler 数量。 */
         uint32_t GetSamplerCount() const { return static_cast<uint32_t>(samplers_.GetCount()); }
 

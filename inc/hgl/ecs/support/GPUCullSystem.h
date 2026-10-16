@@ -227,16 +227,12 @@ namespace hgl::ecs
         /// 泄漏修复的本体：这些对象**只在这里 new 一次**，析构显式释放。
         bool CreateDispatchResources();
 
-        // 每帧 dispatch
-        void DispatchCullShader();
-
     private:
         ECSContext* context_ = nullptr;
         graph::VulkanDevice* device_ = nullptr;
         bool initialized_ = false;
 
         // Compute pipeline
-        graph::ShaderProgram* shader_program_ = nullptr;
         graph::ComputePipeline* compute_pipeline_ = nullptr;
 
         // 输出 buffer
@@ -285,17 +281,6 @@ namespace hgl::ecs
         graph::DeviceBuffer *l2w_out_buffer_ = nullptr;
         graph::DeviceBuffer *cmds_out_buffer_ = nullptr;
         graph::DeviceBuffer *mtl_out_buffer_ = nullptr;
-
-        /// guard 记账（ApplyGPUCullOverrideHook 每帧 build 时评估；collect 的
-        /// "CPU 剔除跳不跳" 读本帧结果 ⇒ 两本账恒二选一）：
-        /// `override_eval_frame_` = 最近一次评估帧号，`override_active_frame_` =
-        /// 最近一次**通过**的帧号；两者相等 ⇔ 本帧正在接管。
-        uint64_t override_eval_frame_ = 0;
-        uint64_t override_active_frame_ = 0;
-
-        /// 单批前提的一次性报错门（前提不满足 = 场景装配与管线口径冲突，
-        /// fail-fast 报一次，不静默退回 CPU 账假装一切正常）
-        bool override_reject_reported_ = false;
 
         // ── 派发资源（T3g：生命周期一次化，修每帧 new 队列/命令缓冲的泄漏）──
         // 队列一份：fence 环深度 = 帧槽数（DeviceQueue::Submit 自动轮转 fence）；
