@@ -1,4 +1,4 @@
-schema = 3
+schema = 4
 id = "builtin/pure_color"
 name = "builtin/pure_color"
 provider_policy = "GeometryOnly"
@@ -11,7 +11,7 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-material_source_module = "material/unlit_source.glsl"
+material_source_module_name = "unlit_source"
 
 [vertex]
 requirements = ["Position"]

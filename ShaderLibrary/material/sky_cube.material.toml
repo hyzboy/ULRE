@@ -1,4 +1,4 @@
-schema = 3
+schema = 4
 id = "SkyCube"
 name = "SkyCube"
 provider_policy = "GeometryOnly"
@@ -12,7 +12,6 @@ projection = "WorldCameraVP"
 
 [fragment]
 surface_module_name = "sky_cube_surface"
-surface_module_include = "material/sky_cube_surface.glsl"
 
 [vertex]
 requirements = ["Position"]

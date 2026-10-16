@@ -247,7 +247,7 @@ MaterialDefinitionRegistry.h
 
 | 载体 | 用途 |
 | --- | --- |
-| `ShaderLibrary/material/*.material.toml` | 所有材质定义，包括 fallback、纯色、文本和错误棋盘格；解析器只接受 `schema = 3` |
+| `ShaderLibrary/material/*.material.toml` | 所有材质定义，包括 fallback、纯色、文本和错误棋盘格；解析器只接受 `schema = 4`，三种材质 provider 仅使用 `*_module_name` 注册名，路径由注册表提供 |
 
 `TryGetMaterialDefinitionByID` 只查询 `MaterialDefinitionFileRegistry`。fallback 直接使用 `builtin/pure_color` 文件定义；如果材质目录缺失，系统会显式报错，不再回退到 C++ 内嵌定义。
 

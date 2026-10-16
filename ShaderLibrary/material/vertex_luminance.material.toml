@@ -1,4 +1,4 @@
-schema = 3
+schema = 4
 id = "VertexLuminance"
 name = "VertexLuminance"
 provider_policy = "GeometryOnly"
@@ -11,7 +11,7 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-material_source_module = "material/luminance_source.glsl"
+material_source_module_name = "luminance_source"
 
 [vertex]
 requirements = ["Position", "Luminance"]

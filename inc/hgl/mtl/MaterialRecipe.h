@@ -271,15 +271,14 @@ namespace hgl::graph::mtl
         MaterialVertexNormalMode vertex_normal_mode = MaterialVertexNormalMode::None;
         // Material-source provider capability. Render preparation maps it into
         // the caller-selected MaterialSourceProvider template root.
-        const char *material_source_module = nullptr;
+        const char *material_source_module_name = nullptr;
         // Surface provider capability(Sky 渲染模板专用):声明后覆盖 Sky profile
         // 默认的 sky_minimal_surface,让纯 Surface 材质提供自己的天空采样。
-        // name 须匹配 ShaderCodeModuleRegistry 注册名;include 为库内路径。
+        // 名字必须匹配 @ulre name；include 路径由注册表来源解析。
         const char *surface_module_name = nullptr;
-        const char *surface_module_include = nullptr;
         // NTB provider capability. Render preparation maps it into the
         // caller-selected NTBProvider template root.
-        const char *ntb_module = nullptr;
+        const char *ntb_module_name = nullptr;
         // Ambient light provider capability(ForwardLit 渲染模板专用):声明后覆盖
         // Lit profile 默认的 indirect_sky_ambient —— 如 IBL 环境光照模块。
         // name 须匹配 ShaderCodeModuleRegistry 注册名;include 为库内路径。

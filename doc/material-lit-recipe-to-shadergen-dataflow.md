@@ -1,5 +1,7 @@
 # Lit 材质数据流全链路分析
 
+> **材质 provider 身份规范化**：材质只接受 schema 4；material-source、NTB、surface 只存 `@ulre name`，include 路径由注册表来源解析。Ambient 两字段本轮暂留，动态环境策略迁移另行处理。
+
 > **⚠ 2026-10-14 文卫生订正（B3）**：`PrimitiveComponent` 已删（A5）⇒ 文中"经 PrimitiveComponent 挂纹理 / BuildResolvedRecipe 从 PrimitiveComponent 收集"按**历史口径**读；现行 = `MaterialData` + `MaterialRecipe` + collect 侧求值（`RenderPrimitiveCollectSystem`）。
 > 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
 
@@ -44,8 +46,8 @@
 |---|---|
 | `id = "Lit"` | `definition_id`，即 `mtl_def_id` 的查找主键 |
 | `[transform]`（Vec3Position/Passthrough3D/World/WorldCameraVP） | `vertex_node_config`，决定 mesh 阶段的顶点变换节点图 |
-| `[fragment].material_source_module = "material/pbr_surface_source.glsl"` | `material_source_module`，最终成为片元模板的 **MaterialSourceProvider** 槽位 |
-| `[fragment].ntb_module = "ntb/ntb_tangent_vbo_normalmap.glsl"` | `ntb_module` → **NTBProvider** 槽位；**它的存在直接决定走 PBR 光照路径**（见第三节） |
+| `[fragment].material_source_module_name = "pbr_surface_source"` | `material_source_module_name`，按注册名成为片元模板的 **MaterialSourceProvider** 槽位 |
+| `[fragment].ntb_module_name = "ntb_tangent_vbo_normalmap"` | `ntb_module_name` → **NTBProvider** 槽位；**它的存在直接决定走 PBR 光照路径**（见第三节） |
 | `[vertex].requirements = [Position, UV0, Normal]` | `vertex_semantic_requirements`，与几何顶点格式做能力匹配 |
 | `[vertex].varyings = [emit_data_index_id, emit_world_pos, emit_world_normal, emit_uv0]` | `MaterialVertexVaryingConfig` → 决定 mesh/fragment 两阶段的插值接口 |
 | `[resources].ubos = [CameraInfo, SkyInfo]` | `ubo_requirements` → **场景数据需求**（不再是描述符集绑定：Scene 集已整体退场）——camera 由相机行 `cameras[pc_root.camera_row]` 提供、sky 由 `SkyInfoRef(global_addresses.addr_sky)` 解引用（C2 后为 `world.addr_sky`） |
@@ -60,7 +62,7 @@
 
 1. `BuildResolvedRecipe` 从 PrimitiveComponent 收集有效 recipe；
 2. `TryGetMaterialDefinitionByID("Lit")` 拿到定义；
-3. `SelectCurrentSceneRenderTemplateRequest`（`src/SceneGraph/module/ShaderProgramManager.cpp:211`）做**路由决策**：Lit 有 `ntb_module` → 选 `ForwardLitShadowedAO` 模板，并填 `MakeIdentityForwardLitProfile()` 的场景槽位（`src/ShaderGen/template/SceneRenderTemplateResolver.cpp:5`）：
+3. `SelectCurrentSceneRenderTemplateRequest`（`src/SceneGraph/module/ShaderProgramManager.cpp`）做**路由决策**：Lit 有 `ntb_module_name` → 选 `ForwardLitShadowedAO` 模板，并填 `MakeIdentityForwardLitProfile()` 的场景槽位（`src/ShaderGen/template/SceneRenderTemplateResolver.cpp`）：
    - Surface → `surface/material_surface.glsl`
    - 直接光 → `lighting/direct_cook_torrance_pbr.glsl`
    - 天光（SkyProvider）→ `sky/sky_atmosphere.glsl`
@@ -69,14 +71,14 @@
    - AO → `ao/identity.glsl`
    - 光照模型 → `lighting/forward_pbr.glsl`
    - 输出策略 → `compositor/forward_lighting.glsl`
-4. `AppendMaterialRenderTemplateRoots` 把 toml 来的 `material/pbr_surface_source.glsl` 和 `ntb/ntb_tangent_vbo_normalmap.glsl` 作为两个**材质能力槽位**追加进模板请求；
+4. `AppendMaterialRenderTemplateRoots` 把 toml 来的 `pbr_surface_source` 和 `ntb_tangent_vbo_normalmap` 作为两个 **name-only 材质能力槽位**追加进模板请求；Sky 模板的 surface 名字覆盖也集中在此，运行时、Cooker 和文档生产共用；
 5. `AcquireShaderProgram(request)`：先 `NormalizeRecipe`（把定义的默认渲染状态写回 recipe，之后 definition 退出参与），再 `BuildContextFromRequest` → `BuildGenericMaterial`。
 
 ## 四、ShaderGen 内部：BuildGenericMaterial 五阶段
 
 `src/ShaderGen/builder/GenericMaterialBuilder.cpp:702`：
 
-1. **ResolvePurposeAndCoverage**：校验模板请求，解析 coverage 合同（alpha test/dither）、按 purpose 裁剪 varying、构建 stage interface；
+1. **ResolvePurposeAndCoverage**：校验模板请求，按注册文件来源补齐规范 include 路径并校验名字/槽位/路径一致性，再用 canonical request 计算模板身份；解析 coverage 合同（alpha test/dither）、按 purpose 裁剪 varying、构建 stage interface；
 2. **ResolveVertexABI**：由几何的 `GeometryVertexFormat`（示例中 Position=V3F、TexCoord=V2HF、Normal=V2UN8）生成顶点输入 GLSL；
 3. **BuildResourceContract**：从 `ShaderCodeModuleRegistry`（它惰性扫描整个 `ShaderLibrary/`，解析每个 `.glsl` 头部的 `// @ulre` 元数据块）取 provider 模块元数据，构建资源清单并**交叉验证**——`pbr_surface_source.glsl` 头里声明的 `texture_reference base_color/roughness/...` 必须被 toml 的 `texture_declarations` 覆盖，否则构建失败；
 4. **GenerateStageSources**：`MeshTemplateComposer` 生成 mesh 阶段；`FragmentTemplateComposer::Compose`（`src/ShaderGen/template/FragmentTemplateComposer.cpp:614`）按模板 slots 拼装片元 `ShaderDocument`；
@@ -87,7 +89,7 @@
 `Compose` 产出的不是内联代码，而是以手写模板 `ShaderLibrary/fragment/forward_lit.glsl.tmpl`（含 `main()`）为骨架、按 `{{slot}}` 占位符填入后的 `#version 450` + 宏 + 一串 `#include`。关键对应关系：
 
 - 宏区：`HGL_USE_MATERIAL_SOURCE_PROVIDER 1`、`HGL_USE_NTB_PROVIDER 1`、`HGL_USE_SCENE_LIGHTING 1`，以及 **`MTL_TEX_NORMAL_CHANNELS 2`——直接来自 toml 里 normal 纹理的 `channels = 2`**（BC5 双通道法线，Z 在 shader 还原）；
-- 函数区槽位 include 由 `ShaderModuleSlotRole` 定位（`inc/hgl/mtl/RenderTemplate.h:27`）：`MaterialSourceProvider` 即 `#include "material/pbr_surface_source.glsl"`（toml 指定），`NTBProvider` 即 `ntb/ntb_tangent_vbo_normalmap.glsl`（`ForwardLit.MaterialSource` / `ForwardLit.NTB` 这类槽位名已不存在）；
+- 函数区槽位 include 由 `ShaderModuleSlotRole` 定位：`MaterialSourceProvider` 即 `#include "material/pbr_surface_source.glsl"`，`NTBProvider` 即 `ntb/ntb_tangent_vbo_normalmap.glsl`。TOML 指定的是注册名，路径来自注册来源，不再按文件 basename 猜名字；
 - `main()` 固定管线：装配 `SurfaceInput` → `EvalSurface(si, materialDataIndex)` → `BuildForwardLightingInput` → `EvalLighting` → 输出。
 
 调用闭环在 GLSL 侧：
@@ -123,7 +125,7 @@ PrimitiveComponent ──每帧──▶ RenderPrimitiveCollectSystem
       │ BuildResolvedRecipe → MaterialRecipe (Layer 2)
       ▼
 SelectCurrentSceneRenderTemplateRequest
-  (有 ntb_module → ForwardLitShadowedAO + IdentityForwardLitProfile)
+  (有 ntb_module_name → ForwardLitShadowedAO + IdentityForwardLitProfile)
       ▼
 ShaderProgramManager::AcquireShaderProgram
       │ NormalizeRecipe (Layer 2 合并 Layer 1 默认值)

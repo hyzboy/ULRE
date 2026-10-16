@@ -122,6 +122,9 @@ namespace hgl::graph::mtl
         ,MissingModuleCapability
         ,ModuleGraphInvalid
         ,ModuleConflict
+        ,ModuleSourceMissing
+        ,IncludePathNotFound
+        ,IncludePathNameMismatch
     };
 
     struct RenderTemplateValidationDiagnostic
@@ -131,6 +134,8 @@ namespace hgl::graph::mtl
         RenderTemplateID template_id = RenderTemplateID::Unknown;
         ShaderModuleSlotRole role = ShaderModuleSlotRole::Unknown;
         AnsiString module_name;
+        AnsiString include_path;
+        AnsiString expected_include_path;
     };
 
     const char *GetRenderTemplateName(RenderTemplateID id) noexcept;

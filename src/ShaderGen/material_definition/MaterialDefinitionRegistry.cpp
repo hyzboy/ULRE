@@ -22,19 +22,11 @@ namespace
     bool AddMaterialProviderRoot(
         RenderTemplateRequest &request,
         const ShaderModuleSlotRole role,
-        const char *include_path) noexcept
+        const char *module_name) noexcept
     {
-        if (!include_path || !include_path[0])
+        if (!module_name || !module_name[0])
             return true;
-
-        AnsiString module_name;
-        if (!ExtractShaderCodeModuleNameFromIncludePath(include_path, module_name)
-         || !request.AddModuleRoot(role, module_name))
-            return false;
-
-        request.module_roots[request.module_root_count - 1].include_path =
-            include_path;
-        return true;
+        return request.AddModuleRoot(role, AnsiString(module_name));
     }
 
     bool TryGetMaterialDefinitionByIDInternal(
@@ -70,17 +62,32 @@ bool AppendMaterialRenderTemplateRoots(
     case RenderTemplateID::ForwardLitUnshadowedAO:
         appended = AddMaterialProviderRoot(
                        request, ShaderModuleSlotRole::MaterialSourceProvider,
-                      definition.material_source_module)
+                      definition.material_source_module_name)
             && AddMaterialProviderRoot(
                    request, ShaderModuleSlotRole::NTBProvider,
-                   definition.ntb_module);
+                   definition.ntb_module_name);
         break;
     case RenderTemplateID::ForwardUnlit:
     case RenderTemplateID::ShadowCasterOpaque:
     case RenderTemplateID::ShadowCasterMasked:
         appended = AddMaterialProviderRoot(
             request, ShaderModuleSlotRole::MaterialSourceProvider,
-            definition.material_source_module);
+            definition.material_source_module_name);
+        break;
+    case RenderTemplateID::Sky:
+        if (definition.surface_module_name && definition.surface_module_name[0])
+        {
+            for (uint32 index = 0; index < request.module_root_count; ++index)
+            {
+                RenderTemplateModuleRoot &root = request.module_roots[index];
+                if (root.role == ShaderModuleSlotRole::SurfaceProvider)
+                {
+                    root.module_name = definition.surface_module_name;
+                    root.include_path.Clear();
+                    break;
+                }
+            }
+        }
         break;
     default:
         break;

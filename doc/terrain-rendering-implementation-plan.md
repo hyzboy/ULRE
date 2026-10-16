@@ -388,7 +388,7 @@ const uint base_vid = compact * 4u;
 **地形材质（`ShaderLibrary/material/terrain.material.toml`，照 `text_2d_gpu.material.toml`）**
 
 ```toml
-schema = 3
+schema = 4
 id = "Terrain"
 name = "Terrain"
 provider_policy = "GeometryOnly"
@@ -405,8 +405,8 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-material_source_module = "material/terrain_source.glsl"      # 新增：地势配色（可先取纯色）
-ntb_module = "ntb/ntb_derivative_normalmap.glsl"             # 用现有导数法线，不烘法线图
+material_source_module_name = "terrain_source"             # 新增：按 @ulre name 注册
+ntb_module_name = "ntb_derivative_normalmap"                # 用现有导数法线，不烘法线图
 
 [vertex]
 requirements = ["Position"]

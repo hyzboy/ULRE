@@ -196,6 +196,10 @@ BDA 行声明由编译器统一发射。`@ulre ssbo` 已删除并会被解析器
 `uses/conflicts` 两阶段名字→模块解析，收敛循环剔除悬空依赖）；
 `ShaderCodeModuleID` 数字 ID 表已删除——模块身份即名字
 （inc/hgl/mtl/ShaderCodeModule.h:14-17）。这是整个系统的"编译器前端"：
+schema 4 材质的 material-source、NTB、surface 只引用 `*_module_name`。
+文件注册项保存扫描根、来源文件和规范相对 include 路径；模板解析校验名字、
+槽位与实际来源一致，再向 Composer 交付完整 include roots。程序化 `Register`
+仍可用于纯元数据用例，但无文件来源的模块不能作为 include 型 provider root。
 **GLSL 文件本身同时是源码与清单**，改一行 shader 代码 = 改缓存 key，
 无手工同步。
 
@@ -208,9 +212,10 @@ BDA 行声明由编译器统一发射。`@ulre ssbo` 已删除并会被解析器
 > "无模块能力匹配（能力解析系统已删）…resolved 恒为 true"。
 > 设计意图（语义需求驱动、不按模块名硬编码）保持不变，机制按现载体描述如下。
 
-材质定义不直接说"用哪个法线模块"，而是声明
+材质定义按语义声明顶点输入需求，同时显式选择 NTB provider：
 `[vertex].requirements = ["Position","UV0","Normal"]` +
-`ntb_module = "ntb/ntb_tangent_vbo_normalmap.glsl"`。
+`ntb_module_name = "ntb_tangent_vbo_normalmap"`（显式选定 NTB provider 身份，
+不是按几何格式自动猜 NTB 文件；注册表负责补齐 include 路径）。
 
 现载体：`BuildResolvedMaterialVertexABI`（src/ShaderGen/builder/VertexABIBuilder.cpp:288）
 遍历 `definition.vertex_semantic_requirements`，按语义直接选 `vertex/s1_*` 模块

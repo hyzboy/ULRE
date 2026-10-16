@@ -154,10 +154,10 @@ namespace
             purpose == ShaderProgramPurpose::DepthOnly
          || purpose == ShaderProgramPurpose::ShadowDepth;
         const bool has_material_source =
-            definition.material_source_module
-         && definition.material_source_module[0];
+            definition.material_source_module_name
+         && definition.material_source_module_name[0];
         const bool has_ntb_provider =
-            definition.ntb_module && definition.ntb_module[0];
+            definition.ntb_module_name && definition.ntb_module_name[0];
         const RenderTemplateID template_id = depth_purpose
             ? (masked ? RenderTemplateID::ShadowCasterMasked
                       : RenderTemplateID::ShadowCasterOpaque)
@@ -319,8 +319,8 @@ int main(const int argc, char **argv)
             // A material without a fragment source is the current sky route;
             // it has no depth or shadow pass.
             if (purpose != mtl::ShaderProgramPurpose::ForwardColor
-             && (!definition.material_source_module
-              || !definition.material_source_module[0]))
+             && (!definition.material_source_module_name
+              || !definition.material_source_module_name[0]))
             {
                 ++skipped;
                 continue;

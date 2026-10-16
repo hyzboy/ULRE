@@ -23,10 +23,9 @@ namespace hgl::graph::mtl
     struct MaterialDefinitionFileData
     {
         MaterialDefinition definition;
-        AnsiString material_source_module_storage;
-        AnsiString ntb_module_storage;
+        AnsiString material_source_module_name_storage;
+        AnsiString ntb_module_name_storage;
         AnsiString surface_module_name_storage;
-        AnsiString surface_module_include_storage;
         AnsiString ambient_module_name_storage;
         AnsiString ambient_module_include_storage;
 

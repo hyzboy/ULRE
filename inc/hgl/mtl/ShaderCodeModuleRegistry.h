@@ -38,6 +38,8 @@ namespace hgl::graph::mtl
                            int *out_error_count = nullptr);
 
         const ShaderCodeModuleDefinition *FindByName(const char *name) const;
+        /// Source of the active file-backed definition; null for metadata-only entries.
+        const ShaderCodeModuleFileData *FindFileByName(const char *name) const;
 
         /// Remove the module registered under `name` (used when a module's
         /// dependency/conflict graph is incomplete). Returns false when absent.

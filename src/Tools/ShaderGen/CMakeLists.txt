@@ -158,7 +158,8 @@ CreateProject(SceneRenderTemplateResolverRegression)
 if(BUILD_TESTING)
     add_test(
         NAME scene_render_template_resolver_regression
-        COMMAND SceneRenderTemplateResolverRegression)
+        COMMAND SceneRenderTemplateResolverRegression
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         scene_render_template_resolver_regression
         PROPERTIES LABELS "shadergen;template")

@@ -75,6 +75,7 @@ SOURCE_GROUP("Compile" FILES ${COMPILE_FILES})
 set(GLSL_MODULE_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleRegistry.h
     glsl_module/ShaderCodeModuleRegistry.cpp
+    glsl_module/ShaderLibraryPath.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleMetadata.h
     glsl_module/ShaderCodeModuleMetadata.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleFile.h
@@ -174,4 +175,3 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${MATERIAL_TYPE_FILES}
     ${PROFILE_FILES}
 )
-

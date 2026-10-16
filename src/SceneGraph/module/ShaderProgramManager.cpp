@@ -221,10 +221,10 @@ bool SelectCurrentSceneRenderTemplateRequest(
     const bool masked = mtl::ResolveMaterialRenderState(
         definition, request.recipe).alpha_test;
     const bool has_material_source =
-        definition.material_source_module
-     && definition.material_source_module[0];
+        definition.material_source_module_name
+     && definition.material_source_module_name[0];
     const bool has_ntb_provider =
-        definition.ntb_module && definition.ntb_module[0];
+        definition.ntb_module_name && definition.ntb_module_name[0];
     const mtl::RenderTemplateID template_id = depth_purpose
         ? (masked ? mtl::RenderTemplateID::ShadowCasterMasked
                   : mtl::RenderTemplateID::ShadowCasterOpaque)
@@ -236,27 +236,6 @@ bool SelectCurrentSceneRenderTemplateRequest(
         : (has_ntb_provider ? mtl::MakeIdentityForwardLitProfile()
            : (has_material_source ? mtl::MakeForwardUnlitProfile()
                                   : mtl::MakeSkyProfile()));
-
-    // 材质声明了 surface module 时,覆盖 Sky profile 默认的
-    // sky_minimal_surface(程序化大气)——如 SkyCube 的 Cubemap 采样
-    if (!depth_purpose
-     && !has_ntb_provider
-     && !has_material_source
-     && definition.surface_module_name
-     && definition.surface_module_name[0]
-     && definition.surface_module_include
-     && definition.surface_module_include[0])
-    {
-        for (uint32 i = 0; i < scene_profile.module_count; ++i)
-        {
-            if (scene_profile.roles[i] == mtl::ShaderModuleSlotRole::SurfaceProvider)
-            {
-                scene_profile.module_names[i]   = definition.surface_module_name;
-                scene_profile.include_paths[i] = definition.surface_module_include;
-                break;
-            }
-        }
-    }
 
     // 材质声明了 ambient module 时,覆盖 Lit profile 默认的
     // indirect_sky_ambient(程序化天空环境光)——如 IBL 环境光照

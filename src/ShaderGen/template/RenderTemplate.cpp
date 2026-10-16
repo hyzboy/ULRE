@@ -2,6 +2,7 @@
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
+#include <hgl/mtl/ShaderLibraryPath.h>
 
 namespace hgl::graph::mtl
 {
@@ -111,6 +112,61 @@ namespace hgl::graph::mtl
         }
 
         bool SetFailure(
+            RenderTemplateValidationDiagnostic &,
+            RenderTemplateValidationError,
+            const RenderTemplateRequest &,
+            ShaderModuleSlotRole,
+            const AnsiString &) noexcept;
+
+        bool ResolveModuleRoot(
+            const RenderTemplateRequest &request,
+            const RenderTemplateModuleRoot &root,
+            const ShaderCodeModuleRegistry &registry,
+            RenderTemplateModuleRoot &out_root,
+            RenderTemplateValidationDiagnostic &diagnostic)
+        {
+            const ShaderCodeModuleDefinition *module =
+                registry.FindByName(root.module_name.c_str());
+            const ShaderCodeModuleFileData *source =
+                registry.FindFileByName(root.module_name.c_str());
+            const auto fail = [&](const RenderTemplateValidationError error)
+            {
+                SetFailure(diagnostic, error, request, root.role, root.module_name);
+                diagnostic.include_path = root.include_path;
+                diagnostic.expected_include_path = source
+                    ? source->include_path : AnsiString();
+                return false;
+            };
+            if (!module)
+                return fail(RenderTemplateValidationError::ModuleNotFound);
+            if (module->slot_role != root.role)
+                return fail(RenderTemplateValidationError::ModuleSlotMismatch);
+            if (!source)
+                return fail(RenderTemplateValidationError::ModuleSourceMissing);
+
+            const OSString expected = ResolveShaderLibraryModulePath(
+                source->source_root, source->include_path);
+            const OSString actual = ResolveShaderLibraryModulePath(
+                source->source_root,
+                root.include_path.IsEmpty() ? source->include_path : root.include_path);
+            if (expected.IsEmpty() || actual.IsEmpty())
+                return fail(RenderTemplateValidationError::IncludePathNotFound);
+#if HGL_OS == HGL_OS_Windows
+            const bool same_file = actual.CaseComp(source->source_path) == 0
+                && expected.CaseComp(source->source_path) == 0;
+#else
+            const bool same_file = actual == source->source_path
+                && expected == source->source_path;
+#endif
+            if (!same_file)
+                return fail(RenderTemplateValidationError::IncludePathNameMismatch);
+
+            out_root = root;
+            out_root.include_path = source->include_path;
+            return true;
+        }
+
+        bool SetFailure(
             RenderTemplateValidationDiagnostic &diagnostic,
             const RenderTemplateValidationError error,
             const RenderTemplateRequest &request,
@@ -213,6 +269,9 @@ namespace hgl::graph::mtl
         case RenderTemplateValidationError::MissingModuleCapability: return "MissingModuleCapability";
         case RenderTemplateValidationError::ModuleGraphInvalid: return "ModuleGraphInvalid";
         case RenderTemplateValidationError::ModuleConflict: return "ModuleConflict";
+        case RenderTemplateValidationError::ModuleSourceMissing: return "ModuleSourceMissing";
+        case RenderTemplateValidationError::IncludePathNotFound: return "IncludePathNotFound";
+        case RenderTemplateValidationError::IncludePathNameMismatch: return "IncludePathNameMismatch";
         }
         return "Unknown";
     }
@@ -316,23 +375,12 @@ namespace hgl::graph::mtl
         for (uint32 index = 0; index < request.module_root_count; ++index)
         {
             const RenderTemplateModuleRoot &root = request.module_roots[index];
-            const ShaderCodeModuleDefinition *definition =
-                module_registry.FindByName(root.module_name.c_str());
-            if (!definition)
-                return SetFailure(
-                    out_diagnostic,
-                    RenderTemplateValidationError::ModuleNotFound,
-                    request,
-                    root.role,
-                    root.module_name);
-            if (definition->slot_role != root.role)
-                return SetFailure(
-                    out_diagnostic,
-                    RenderTemplateValidationError::ModuleSlotMismatch,
-                    request,
-                    root.role,
-                    root.module_name);
-            root_names[index] = definition->name;
+            RenderTemplateModuleRoot resolved_root;
+            if (!ResolveModuleRoot(
+                    request, root, module_registry, resolved_root, out_diagnostic))
+                return false;
+            root_names[index] =
+                module_registry.FindByName(root.module_name.c_str())->name;
         }
 
         // 校验过程必须构建整张模块图；调用方可复用该结果（见 out_manifest）。
@@ -398,13 +446,10 @@ namespace hgl::graph::mtl
         out_template.module_root_count = request.module_root_count;
         for (uint32 index = 0; index < request.module_root_count; ++index)
         {
-            if (request.module_roots[index].include_path.IsEmpty())
-                return SetFailure(
-                    out_diagnostic,
-                    RenderTemplateValidationError::EmptyModuleRoot,
-                    request,
-                    request.module_roots[index].role,
-                    request.module_roots[index].module_name);
+            if (!ResolveModuleRoot(
+                    request, request.module_roots[index], module_registry,
+                    out_template.request.module_roots[index], out_diagnostic))
+                return false;
             const ShaderCodeModuleDefinition *module =
                 module_registry.FindByName(
                     request.module_roots[index].module_name.c_str());
@@ -418,7 +463,7 @@ namespace hgl::graph::mtl
             out_template.module_roots[index] = module;
         }
         hgl::hash::FNV1aHasher64 hash;
-        hash << request.GetHash() << out_template.manifest.stable_hash;
+        hash << out_template.request.GetHash() << out_template.manifest.stable_hash;
         out_template.stable_hash = hash;
         return out_template.IsValid();
     }

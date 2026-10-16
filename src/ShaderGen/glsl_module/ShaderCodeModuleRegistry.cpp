@@ -58,9 +58,31 @@ namespace hgl::graph::mtl
                                                int *out_file_count,
                                                int *out_error_count)
     {
+        OSString source_root = filesystem::NormalizeFilename(directory);
+        if (!source_root.IsEmpty()
+         && source_root[0] != HGL_DIRECTORY_SEPARATOR
+         && (source_root.Length() < 2 || source_root[1] != ':'))
+        {
+            OSString current_path;
+            if (!filesystem::GetCurrentPath(current_path))
+            {
+                GLogError(u8"[ShaderCodeModuleRegistry] Cannot resolve scan root");
+                return false;
+            }
+            source_root = filesystem::NormalizeFilename(
+                (filesystem::Path(current_path) / source_root).ToOSString());
+        }
+        while (source_root.Length() > 1
+            && source_root[source_root.Length() - 1] == HGL_DIRECTORY_SEPARATOR
+            && !(source_root.Length() == 3 && source_root[1] == ':'))
+            source_root.Delete(source_root.Length() - 1, 1);
+        const int relative_start = source_root.Length()
+            + (!source_root.IsEmpty()
+                && source_root[source_root.Length() - 1] != HGL_DIRECTORY_SEPARATOR ? 1 : 0);
+
         hgl::ValueArray<hgl::filesystem::FileInfo> file_list;
 
-        const int scan_count = hgl::filesystem::GetFileInfoList(file_list, directory, true, true, true);
+        const int scan_count = hgl::filesystem::GetFileInfoList(file_list, source_root, true, true, true);
         if (scan_count < 0)
         {
             GLogError(u8"[ShaderCodeModuleRegistry] Failed to scan code-module directory: %ls",
@@ -138,6 +160,15 @@ namespace hgl::graph::mtl
                 ++error_count;
                 continue;
             }
+
+            data->source_root = source_root;
+            data->source_path = filesystem::NormalizeFilename(full_name);
+            const OSString relative = data->source_path.SubString(relative_start);
+            const U8String relative_utf8 = ToU8String(relative);
+            data->include_path = AnsiString(
+                reinterpret_cast<const char *>(relative_utf8.c_str()),
+                relative_utf8.Length());
+            data->include_path.Replace('\\', '/');
 
             // Finalize the definition. Pointers reference stable members of the
             // heap-allocated entry, which are not mutated afterwards.
@@ -342,6 +373,21 @@ namespace hgl::graph::mtl
                 return definition;
         }
 
+        return nullptr;
+    }
+
+    const ShaderCodeModuleFileData *ShaderCodeModuleRegistry::FindFileByName(
+        const char *name) const
+    {
+        const ShaderCodeModuleDefinition *definition = FindByName(name);
+        if (!definition)
+            return nullptr;
+        for (int index = 0; index < file_data.GetCount(); ++index)
+        {
+            const ShaderCodeModuleFileData *data = file_data[index];
+            if (&data->definition == definition)
+                return data;
+        }
         return nullptr;
     }
 

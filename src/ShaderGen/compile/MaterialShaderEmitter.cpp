@@ -12,7 +12,6 @@
 #include <hgl/mtl/ShaderCacheRoot.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderCodeModule.h>
-#include <hgl/mtl/ShaderCodeModuleFile.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/type/StdString.h>
@@ -143,18 +142,18 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
 //   有（如 pbr_surface_source，用 MTL_ROW）→ true
 //   无（如 texture_source，只用 MTL_TEX）  → false
 static bool MaterialSourceRequiresMaterialDataRow(
-    const char *source_module_path) noexcept
+    const char *module_name, bool &out_required) noexcept
 {
-    AnsiString module_name;
-    if (!ExtractShaderCodeModuleNameFromIncludePath(
-            source_module_path, module_name))
-        return true;   // 路径无法解析：保守按「需要 payload」处理
-
     const ShaderCodeModuleDefinition *module =
-        GetShaderCodeModuleRegistry().FindByName(module_name.c_str());
+        GetShaderCodeModuleRegistry().FindByName(module_name);
     if (!module)
-        return true;   // 模块未注册：同上，保守处理
+    {
+        GLogError(u8"[MaterialShaderEmitter] Material source module not registered: %s",
+                  module_name);
+        return false;
+    }
 
+    out_required = false;
     for (uint32 i = 0; i < module->semantic_requirement_count; ++i)
     {
         const ShaderCodeModuleSemanticRequirement &requirement =
@@ -162,32 +161,43 @@ static bool MaterialSourceRequiresMaterialDataRow(
 
         if (requirement.source == ShaderCodeModuleCapabilitySource::Resource
          && requirement.semantic == ShaderCodeModuleSemantic::MaterialData)
-            return true;
+        {
+            out_required = true;
+            break;
+        }
     }
 
-    return false;
+    return true;
 }
 
 static bool MaterialDefinitionRequiresPayloadRow(
     const GlobalSSBOType material_private_data,
-    const MaterialDefinition *material_definition) noexcept
+    const MaterialDefinition *material_definition,
+    bool &out_required) noexcept
 {
+    out_required = false;
     if (!IsGlobalSSBOType(material_private_data))
-        return false;
+        return true;
 
     if (!material_definition)
+    {
+        out_required = true;
         return true;
+    }
 
     const bool has_texture_refs =
         material_definition->texture_declarations.size() > 0;
     if (!has_texture_refs)
+    {
+        out_required = true;
+        return true;
+    }
+
+    const char *source_module = material_definition->material_source_module_name;
+    if (!source_module || !source_module[0])
         return true;
 
-    const char *source_module = material_definition->material_source_module;
-    if (!source_module || !source_module[0])
-        return false;
-
-    return MaterialSourceRequiresMaterialDataRow(source_module);
+    return MaterialSourceRequiresMaterialDataRow(source_module, out_required);
 }
 
 // ── Step 5b: Material SSBO GLSL 声明 ─────────────────────────────────────────
@@ -202,9 +212,13 @@ bool BuildMaterialSSBODeclarations(
     std::string &out_macros,
     std::string &out_error)
 {
-    const bool has_payload = MaterialDefinitionRequiresPayloadRow(
-        material_private_data,
-        material_definition);
+    bool has_payload = false;
+    if (!MaterialDefinitionRequiresPayloadRow(
+            material_private_data, material_definition, has_payload))
+    {
+        out_error = "material source module is not registered";
+        return false;
+    }
     const bool has_texture_references =
         texture_layout && texture_layout->HasReferences();
     if (!has_payload && !has_texture_references)

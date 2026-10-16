@@ -11,6 +11,10 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl
 {
+    /// Resolve a library-relative include: root first, then root/common.
+    OSString ResolveShaderLibraryModulePath(
+        const OSString &root, const AnsiString &include_path);
+
     /// 环境变量覆盖项：优先级高于 requested_path 与向上搜索。
     /// 指向的目录必须本身是 ShaderLibrary 根（含 material/ 子目录）。
     inline constexpr const wchar_t *kShaderLibraryPathEnvironmentVariable =

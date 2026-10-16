@@ -208,7 +208,14 @@ namespace hgl::graph::mtl
 
         bool ReadRequiredString(const toml::value &table, const char *key, std::string &out)
         {
-            return ReadString(table, key, out) && !out.empty();
+            if (!ReadString(table, key, out))
+                return false;
+            if (out.empty())
+            {
+                RecordParseFailure(key, "", "必须是非空字符串");
+                return false;
+            }
+            return true;
         }
 
         bool ParseRenderState(const toml::value &root, MaterialDefinition &definition)
@@ -435,13 +442,13 @@ namespace hgl::graph::mtl
             {
                 ParseTableScope fragment_table("fragment");
 
-                if (fragment->contains("material_source_module"))
+                if (fragment->contains("material_source_module_name"))
                 {
-                    if (!ReadRequiredString(*fragment, "material_source_module", value))
+                    if (!ReadRequiredString(*fragment, "material_source_module_name", value))
                         return false;
-                    out.material_source_module_storage = value.c_str();
-                    out.definition.material_source_module =
-                        out.material_source_module_storage.c_str();
+                    out.material_source_module_name_storage = value.c_str();
+                    out.definition.material_source_module_name =
+                        out.material_source_module_name_storage.c_str();
                 }
                 if (fragment->contains("surface_module_name"))
                 {
@@ -451,21 +458,13 @@ namespace hgl::graph::mtl
                     out.definition.surface_module_name =
                         out.surface_module_name_storage.c_str();
                 }
-                if (fragment->contains("surface_module_include"))
+                if (fragment->contains("ntb_module_name"))
                 {
-                    if (!ReadRequiredString(*fragment, "surface_module_include", value))
+                    if (!ReadRequiredString(*fragment, "ntb_module_name", value))
                         return false;
-                    out.surface_module_include_storage = value.c_str();
-                    out.definition.surface_module_include =
-                        out.surface_module_include_storage.c_str();
-                }
-                if (fragment->contains("ntb_module"))
-                {
-                    if (!ReadRequiredString(*fragment, "ntb_module", value))
-                        return false;
-                    out.ntb_module_storage = value.c_str();
-                    out.definition.ntb_module =
-                        out.ntb_module_storage.c_str();
+                    out.ntb_module_name_storage = value.c_str();
+                    out.definition.ntb_module_name =
+                        out.ntb_module_name_storage.c_str();
                 }
                 if (fragment->contains("ambient_module_name"))
                 {
@@ -844,7 +843,14 @@ namespace hgl::graph::mtl
             }
             if (!known)
             {
-                RecordParseFailure(key.c_str(), nullptr, "未知键（拼写错误或已删字段残留）");
+                const char *detail = "未知键（拼写错误或已删字段残留）";
+                if (key == "material_source_module")
+                    detail = "schema 4 请使用 material_source_module_name（@ulre name）";
+                else if (key == "ntb_module")
+                    detail = "schema 4 请使用 ntb_module_name（@ulre name）";
+                else if (key == "surface_module_include")
+                    detail = "schema 4 只使用 surface_module_name，路径由注册表解析";
+                RecordParseFailure(key.c_str(), nullptr, detail);
                 return false;
             }
         }
@@ -872,8 +878,8 @@ namespace hgl::graph::mtl
         {
             ParseTableScope validate_fragment_table("fragment");
             if (!ValidateKnownKeys(root.at("fragment"), {
-                    "material_source_module", "ntb_module",
-                    "surface_module_name", "surface_module_include",
+                    "material_source_module_name", "ntb_module_name",
+                    "surface_module_name",
                     "ambient_module_name", "ambient_module_include"}))
                 return false;
         }
@@ -960,9 +966,9 @@ namespace hgl::graph::mtl
 
                 if (!root.is_table() || !root.contains("schema")
                  || !root.at("schema").is_integer()
-                 || root.at("schema").as_integer() != 3)
+                 || root.at("schema").as_integer() != 4)
                 {
-                    RecordParseFailure("schema", nullptr, "必须存在且等于 3");
+                    RecordParseFailure("schema", nullptr, "必须存在且等于 4");
                     result = MaterialDefinitionFileParseResult::InvalidValue;
                 }
                 else if (!ParseDefinition(root, out_data))

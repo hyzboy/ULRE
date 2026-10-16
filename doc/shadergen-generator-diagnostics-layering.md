@@ -34,6 +34,18 @@
 
 这层做的是“决策”，不能做“文本拼接”或“缓存落盘”本身；它只产生结构化状态，供下一层消费。
 
+材质 provider 使用 schema 4 的 `material_source_module_name`、
+`ntb_module_name`、`surface_module_name`，不接受旧路径键。注册表通过
+`FindFileByName` 提供当前有效注册项的来源；`ResolveRenderTemplate` 将 name-only
+roots 补成 canonical request，后续模板哈希与 Composer 都使用这个已解析请求。
+显式路径按库根优先、`common` 次之的实际搜索顺序校验；同一来源的合法路径别名
+归一化后具有相同身份，物理绝对路径不进入 shader 或稳定哈希。
+
+来源缺失、文件不存在、名字/路径不一致分别报告 `ModuleSourceMissing`、
+`IncludePathNotFound`、`IncludePathNameMismatch`，诊断保留模块、槽位、传入路径与
+预期路径。schema/字段错误则由 TOML 解析器报告具体键及迁移提示，不做兼容回退。
+Ambient name/include 暂时沿用；将其移交动态环境策略不在本轮范围内。
+
 ### 2.2 GLSL 作者层
 
 位置：

@@ -172,15 +172,17 @@ namespace hgl::graph::mtl
             {
                 GLogError(
                    "[ShaderGen] Render template request rejected: name=%s "
-                   "template=%s validation=%s",
+                   "template=%s validation=%s role=%s module=%s include=%s expected=%s",
                    definition.definition_name.c_str(),
                    GetRenderTemplateName(
                        plan.render_template_request->template_id),
-                   GetRenderTemplateValidationErrorName(diagnostic.error));
+                   GetRenderTemplateValidationErrorName(diagnostic.error),
+                   GetShaderModuleSlotRoleName(diagnostic.role),
+                   diagnostic.module_name.c_str(),
+                   diagnostic.include_path.c_str(),
+                   diagnostic.expected_include_path.c_str());
                 return false;
             }
-            plan.resolved_template_hash =
-                plan.render_template_request->GetHash();
             if (!ResolveRenderTemplate(
                    *plan.render_template_request,
                    GetShaderCodeModuleRegistry(),
@@ -189,13 +191,21 @@ namespace hgl::graph::mtl
             {
                 GLogError(
                    "[ShaderGen] Render template resolution failed: name=%s "
-                   "template=%s validation=%s",
+                   "template=%s validation=%s role=%s module=%s include=%s expected=%s",
                    definition.definition_name.c_str(),
                    GetRenderTemplateName(
                        plan.render_template_request->template_id),
-                   GetRenderTemplateValidationErrorName(diagnostic.error));
+                   GetRenderTemplateValidationErrorName(diagnostic.error),
+                   GetShaderModuleSlotRoleName(diagnostic.role),
+                   diagnostic.module_name.c_str(),
+                   diagnostic.include_path.c_str(),
+                   diagnostic.expected_include_path.c_str());
                 return false;
             }
+            plan.render_template_request_storage =
+                plan.resolved_render_template.request;
+            plan.resolved_template_hash =
+                plan.render_template_request_storage.GetHash();
             }
             plan.depth_purpose =
                 plan.purpose == ShaderProgramPurpose::DepthOnly
@@ -631,23 +641,8 @@ namespace hgl::graph::mtl
             if (library_root.empty())
                 return OSString();
 
-            std::string relative(include_path.c_str());
-            for (char &ch : relative)
-                if (ch == '\\')
-                    ch = '/';
-
-            const OSString root_path = ToOSString(library_root.c_str());
-            const OSString direct_path =
-                root_path + OS_TEXT("/") + ToOSString(relative.c_str());
-            if (filesystem::FileExist(direct_path))
-                return direct_path;
-
-            const OSString common_path =
-                root_path + OS_TEXT("/common/") + ToOSString(relative.c_str());
-            if (filesystem::FileExist(common_path))
-                return common_path;
-
-            return OSString();
+            return mtl::ResolveShaderLibraryModulePath(
+                ToOSString(library_root.c_str()), include_path);
         }
 
         /// 递归收集文档里的 `#include "..."`，把闭包内每个模块的正文并入哈希

@@ -1,4 +1,4 @@
-schema = 3
+schema = 4
 id = "builtin/checkerboard_3d"
 name = "builtin/checkerboard_3d"
 provider_policy = "GeometryOnly"
@@ -11,7 +11,7 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-material_source_module = "material/checkerboard_3d_source.glsl"
+material_source_module_name = "checkerboard_3d_source"
 
 [vertex]
 requirements = ["Position"]

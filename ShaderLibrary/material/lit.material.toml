@@ -1,4 +1,4 @@
-schema = 3
+schema = 4
 id = "Lit"
 name = "Lit"
 provider_policy = "GeometryOnly"
@@ -11,8 +11,8 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-material_source_module = "material/pbr_surface_source.glsl"
-ntb_module = "ntb/ntb_tangent_vbo_normalmap.glsl"
+material_source_module_name = "pbr_surface_source"
+ntb_module_name = "ntb_tangent_vbo_normalmap"
 
 [vertex]
 requirements = ["Position", "UV0", "Normal"]

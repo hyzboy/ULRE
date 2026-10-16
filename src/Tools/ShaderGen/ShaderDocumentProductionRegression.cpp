@@ -11,7 +11,9 @@
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/filesystem/Path.h>
+#include "../../ShaderGen/compile/MaterialShaderEmitter.h"
 
 #include <cstring>
 
@@ -21,6 +23,57 @@ using namespace hgl::graph::mtl;
 
 namespace
 {
+    bool VerifyPayloadModuleIdentity()
+    {
+        auto &registry = GetShaderCodeModuleRegistry();
+        const char *source_names[] = { "texture_source", "pbr_surface_source" };
+        const char *material_ids[] = { "UnlitTexture", "Lit" };
+        for (int i = 0; i < 2; ++i)
+        {
+            MaterialDefinition definition;
+            const auto *source = registry.FindByName(source_names[i]);
+            if (!source || !TryGetMaterialDefinitionByID(material_ids[i], definition))
+                return false;
+            ShaderCodeModuleDefinition named = *source;
+            named.name = "payload_test_identity_not_a_filename";
+            if (!registry.Register(named))
+                return false;
+            definition.material_source_module_name = named.name;
+            MaterialCompileConfig config;
+            config.material_definition = &definition;
+            ShaderDocument input, output;
+            input.Add(ShaderDocumentBlockKind::Version, "#version 460\n");
+            ShaderDocumentDiagnostics diagnostics;
+            const bool built = BuildMaterialStageDocument(
+                input, ShaderStage::Fragment, material_ids[i], config,
+                definition.material_private_data, output, diagnostics);
+            registry.RemoveByName(named.name);
+            bool has_payload = false;
+            const char *row_name =
+                ssbo::GetGlobalSSBORowName(definition.material_private_data);
+            for (int block = 0; block < output.GetBlockCount(); ++block)
+            {
+                if (row_name && output.GetBlock(block).text.FindString(row_name) >= 0)
+                    has_payload = true;
+            }
+            if (!built || has_payload != (i == 1))
+            {
+                GLogError(u8"Payload inference must use module identity: %s", source_names[i]);
+                return false;
+            }
+            definition.material_source_module_name = "missing_payload_provider";
+            if (BuildMaterialStageDocument(
+                    input, ShaderStage::Fragment, material_ids[i], config,
+                    definition.material_private_data, output, diagnostics)
+             || diagnostics.GetCount() == 0)
+            {
+                GLogError(u8"Unknown payload provider must fail with a diagnostic");
+                return false;
+            }
+        }
+        return true;
+    }
+
     struct Fixture
     {
         const char *name;
@@ -46,10 +99,10 @@ namespace
         const bool masked = ResolveMaterialRenderState(
             definition, effective_recipe).alpha_test;
         const bool has_material_source =
-            definition.material_source_module
-         && definition.material_source_module[0];
+            definition.material_source_module_name
+         && definition.material_source_module_name[0];
         const bool has_ntb_provider =
-            definition.ntb_module && definition.ntb_module[0];
+            definition.ntb_module_name && definition.ntb_module_name[0];
         const RenderTemplateID template_id = depth_purpose
             ? (masked ? RenderTemplateID::ShadowCasterMasked
                       : RenderTemplateID::ShadowCasterOpaque)
@@ -372,12 +425,14 @@ namespace
                     fixture.vec2_position ? VF_V2F : VF_V3F,
                     0, 0))
                 return false;
-            if (std::strcmp(fixture.material_id, "Lit") == 0
+            const bool requires_ntb =
+                definition.ntb_module_name && definition.ntb_module_name[0];
+            if (requires_ntb
              && (!geometry.Add(VertexSemantic::TexCoord, VF_V2F, 0, 0)
               || !geometry.Add(VertexSemantic::Normal, VF_V3F, 0, 0)))
                 return false;
             if (fixture.include_normal
-             && std::strcmp(fixture.material_id, "Lit") != 0
+             && !requires_ntb
              && !geometry.Add(VertexSemantic::Normal, VF_V3F, 0, 0))
                 return false;
         }
@@ -415,6 +470,22 @@ namespace
         }
 
         const ShaderLinkSpec &link = context->GetProgramLink();
+        if (request.render_template_request.template_id == RenderTemplateID::Sky)
+        {
+            const char *name = definition.surface_module_name
+                ? definition.surface_module_name : "sky_minimal_surface";
+            const auto *source = GetShaderCodeModuleRegistry().FindFileByName(name);
+            ShaderDocumentDiagnostics diagnostics;
+            AnsiString fragment_text;
+            if (!source
+             || !capture.fragment_document.Serialize(fragment_text, diagnostics)
+             || CountText(fragment_text,
+                    (AnsiString("#include \"") + source->include_path + "\"").c_str()) != 1)
+            {
+                GLogError(u8"Sky document does not include the selected surface: %s", name);
+                return false;
+            }
+        }
         bool valid = VerifyStage(
             fixture.name, "mesh", capture.mesh_source_document,
             capture.mesh_final_document,
@@ -499,6 +570,8 @@ int main(const int argc, char **argv)
             ToU8String(sampler_toml.ToOSString()).c_str());
         return 4;
     }
+    if (!VerifyPayloadModuleIdentity())
+        return 5;
 
     static const Fixture smoke_fixtures[] =
     {
@@ -513,7 +586,11 @@ int main(const int argc, char **argv)
         { "checkerboard-3d-normal-forward", "builtin/checkerboard_3d",
           ShaderProgramPurpose::ForwardColor, true, false, true, false },
         { "checkerboard-3d-normal-depth", "builtin/checkerboard_3d",
-          ShaderProgramPurpose::DepthOnly, true, false, true, false }
+          ShaderProgramPurpose::DepthOnly, true, false, true, false },
+        { "sky-cube", "SkyCube", ShaderProgramPurpose::ForwardColor,
+          true, false, false, false },
+        { "sky-minimal", "SkyMinimal", ShaderProgramPurpose::ForwardColor,
+          true, false, false, false }
     };
     static const Fixture full_fixtures[] =
     {
@@ -550,6 +627,10 @@ int main(const int argc, char **argv)
         { "text-gpu-charquad", "builtin/text_gpu",
           ShaderProgramPurpose::ForwardColor, false, false, false, false },
         { "sky-minimal", "SkyMinimal", ShaderProgramPurpose::ForwardColor,
+          true, false, false, false },
+        { "sky-cube", "SkyCube", ShaderProgramPurpose::ForwardColor,
+          true, false, false, false },
+        { "lit-ibl", "LitIBL", ShaderProgramPurpose::ForwardColor,
           true, false, false, false }
     };
 

@@ -2083,14 +2083,14 @@ namespace
         };
         static const ExpectedSource expected_sources[] =
         {
-            {"VertexPaletteColor", "material/vertex_color_source.glsl"},
-            {"VertexColor", "material/vertex_color_source.glsl"},
-            {"VertexLuminance", "material/luminance_source.glsl"},
-            {"UnlitTexture", "material/texture_source.glsl"},
-            {"DebugNormalColor", "material/debug_normal_source.glsl"},
-            {"Lit", "material/pbr_surface_source.glsl"},
-            {"builtin/pure_color", "material/unlit_source.glsl"},
-            {"builtin/text_gpu", "material/text_source_gpu.glsl"}
+            {"VertexPaletteColor", "vertex_color_source"},
+            {"VertexColor", "vertex_color_source"},
+            {"VertexLuminance", "luminance_source"},
+            {"UnlitTexture", "texture_source"},
+            {"DebugNormalColor", "debug_normal_source"},
+            {"Lit", "pbr_surface_source"},
+            {"builtin/pure_color", "unlit_source"},
+            {"builtin/text_gpu", "text_source_gpu"}
         };
 
         for (const ExpectedSource &expected : expected_sources)
@@ -2098,9 +2098,9 @@ namespace
             MaterialDefinition definition{};
             if (!TryGetMaterialDefinitionByID(
                     expected.definition_id, definition)
-             || !definition.material_source_module
+             || !definition.material_source_module_name
              || std::strcmp(
-                    definition.material_source_module,
+                    definition.material_source_module_name,
                     expected.source_module) != 0)
             {
                 result.diagnostics.emplace_back(
@@ -2221,10 +2221,10 @@ namespace
             return result;
         }
 
-        if (!pure_color.material_source_module
+        if (!pure_color.material_source_module_name
          || std::strcmp(
-                pure_color.material_source_module,
-                "material/unlit_source.glsl") != 0)
+                pure_color.material_source_module_name,
+                "unlit_source") != 0)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
         OutputContract output{};
@@ -2573,6 +2573,7 @@ namespace
             "schema = 0", "schema=0",
             "schema = 1", "schema=1",
             "schema = 2", "schema=2",
+            "schema = 3", "schema=3",
             "schema \t=\t 2", "schema \t=\t 1"
         };
         for (const char *token : tokens)
@@ -2648,11 +2649,11 @@ namespace
                     "legacy schema is forbidden in material file: " + path);
             }
 
-            if (text.find("schema = 3") == std::string::npos
-             && text.find("schema=3") == std::string::npos)
+            if (text.find("schema = 4") == std::string::npos
+             && text.find("schema=4") == std::string::npos)
             {
                 result.diagnostics.emplace_back(
-                    "material file must use schema 3 only: " + path);
+                    "material file must use schema 4 only: " + path);
             }
 
             if (ContainsAnyToken(text, {
@@ -3781,7 +3782,7 @@ namespace
         result.name = "S.material-definition-file-schema";
 
         const char material_file[] =
-            "schema = 3\n"
+            "schema = 4\n"
             "id = \"LitFile\"\n"
             "name = \"LitFile\"\n"
             "provider_policy = \"AllowDerived\"\n"
@@ -3792,8 +3793,8 @@ namespace
             "scale = \"World\"\n"
             "projection = \"WorldCameraVP\"\n"
             "[fragment]\n"
-            "material_source_module = \"material/pbr_surface_source.glsl\"\n"
-            "ntb_module = \"ntb/ntb_tangent_vbo_normalmap.glsl\"\n"
+            "material_source_module_name = \"pbr_surface_source\"\n"
+            "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
             "[render_state]\n"
             "alpha_test = true\n"
             "alpha_cutoff = 0.25\n"
@@ -3846,12 +3847,12 @@ namespace
         }
 
         const char texture_layout_file[] =
-            "schema = 3\n"
+            "schema = 4\n"
             "id = \"TextureLayoutFile\"\n"
             "name = \"TextureLayoutFile\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module = \"material/texture_source.glsl\"\n"
+            "material_source_module_name = \"texture_source\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
@@ -3938,12 +3939,12 @@ namespace
         }
 
         const char invalid_texture_configuration_file[] =
-            "schema = 3\n"
+            "schema = 4\n"
             "id = \"InvalidTextureConfiguration\"\n"
             "name = \"InvalidTextureConfiguration\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module = \"material/texture_source.glsl\"\n"
+            "material_source_module_name = \"texture_source\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
@@ -3963,12 +3964,12 @@ namespace
         }
 
         const char duplicate_texture_name_file[] =
-            "schema = 3\n"
+            "schema = 4\n"
             "id = \"DuplicateTextureName\"\n"
             "name = \"DuplicateTextureName\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module = \"material/texture_source.glsl\"\n"
+            "material_source_module_name = \"texture_source\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
@@ -3991,12 +3992,12 @@ namespace
         // —— 这些 authoring 键现在是**未知键**，必须被 ValidateTextureDeclarationKeys 拒绝。
         // （原先此处测的是"swizzle 值非法"，机制换了、意图保留：畸形纹理声明不得静默通过。）
         const char retired_sampling_key_file[] =
-            "schema = 3\n"
+            "schema = 4\n"
             "id = \"RetiredSamplingKey\"\n"
             "name = \"RetiredSamplingKey\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module = \"material/texture_source.glsl\"\n"
+            "material_source_module_name = \"texture_source\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
@@ -4013,12 +4014,12 @@ namespace
         }
 
         const char unknown_table_file[] =
-            "schema = 3\n"
+            "schema = 4\n"
             "id = \"UnknownTable\"\n"
             "name = \"UnknownTable\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module = \"material/unlit_source.glsl\"\n"
+            "material_source_module_name = \"unlit_source\"\n"
             "[unknown]\n"
             "value = true\n"
             "[vertex]\n"
@@ -4035,14 +4036,14 @@ namespace
         }
 
         const char invalid_file[] =
-            "schema = 3\n"
+            "schema = 4\n"
             "id = \"Broken\"\n"
             "name = \"Broken\"\n"
             "source = \"file\"\n"
             "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module = \"material/unlit_source.glsl\"\n"
+            "material_source_module_name = \"unlit_source\"\n"
             "[vertex]\n"
             "requirements = [\"Position\"]\n";
         MaterialDefinitionFileData invalid_data;
@@ -4222,12 +4223,12 @@ namespace
 
         // ① 采样器类型名写错：必须报到 键 + 值（本次口径的原始触发场景）
         const char bad_sampler_file[] =
-            "schema = 3\n"
+            "schema = 4\n"
             "id = \"ParseDetailBadSampler\"\n"
             "name = \"ParseDetailBadSampler\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module = \"material/unlit_source.glsl\"\n"
+            "material_source_module_name = \"unlit_source\"\n"
             "[vertex]\n"
             "requirements = [\"Position\"]\n"
             "[resources]\n"
@@ -4251,13 +4252,13 @@ namespace
 
         // ② 未知键：必须报到键名（键白名单是"作者笔误 / 已删字段残留"的第一道闸）
         const char unknown_key_file[] =
-            "schema = 3\n"
+            "schema = 4\n"
             "id = \"ParseDetailUnknownKey\"\n"
             "name = \"ParseDetailUnknownKey\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "bogus_root_key = 1\n"
             "[fragment]\n"
-            "material_source_module = \"material/unlit_source.glsl\"\n"
+            "material_source_module_name = \"unlit_source\"\n"
             "[vertex]\n"
             "requirements = [\"Position\"]\n";
         MaterialDefinitionFileData unknown_key_data;
@@ -4274,7 +4275,7 @@ namespace
         }
 
         // ③ TOML 语法错误：必须报出行号（作者最常见的失效模式之一）
-        const char syntax_error_file[] = "schema = 3\nid = \"Unterminated\n";
+        const char syntax_error_file[] = "schema = 4\nid = \"Unterminated\n";
         MaterialDefinitionFileData syntax_error_data;
         if (ParseMaterialDefinitionFile(
                 syntax_error_file, static_cast<int>(std::strlen(syntax_error_file)),
