@@ -517,6 +517,25 @@ foreach(f IN LISTS ALL_LISTED_FILES)
 endforeach()
 ```
 
+### 9.4 仓库根散落 14 个脚本 + 2 个配置（**建议保留现状**）
+
+| 文件 | 大小 | 角色 |
+|---|---|---|
+| `git_repos_cli.py` | 24 KB | 多远程/多仓 git CLI（`fetch`/`pull`/`push`），被 6 个 `.bat` 调用 |
+| `format_code_files.py` | 13.5 KB | 代码格式化驱动 |
+| `cm_remote_normalize.py` | 19.9 KB | CM* 子模块 remote 归一化 |
+| `force_submodule_remote.py` | 9.5 KB | 子模块 remote 强制设置 |
+| `fetch.bat` / `fetch_from_{github,hyzgame}.bat` / `pull_from_{github,hyzgame}.bat` / `push_to_{github,hyzgame}.bat` | 各 30~50 B | 两行包装器 |
+| `format_code.bat` / `edit_last_commit_msg.bat` / `configure_no_blake3_asm.bat` / `configure_no_blake3_asm.ps1` | 20 B ~ 3 KB | 入口包装器 |
+| `remotes.ini` / `GLTFConvert.ini` | 92 B / 95 B | 配置（后者由根 `CMakeLists.txt` 的 `ULRE_GLTF_CONFIG_FILE` 消费） |
+
+**结论：不要搬进 `scripts/`。** 这不是残留，是活跃的日常工具链，而且它们内建了「我住在仓库根」的假设：
+
+- `format_code_files.py:334` 是 `root_dir = os.path.dirname(os.path.abspath(__file__))` —— 搬到 `scripts/` 后它会把 `scripts/` 当成仓库根，**只格式化自己**。
+- `git_repos_cli.py` 用 `os.path.join(root_path, "remotes.ini")` 定位配置，`root_path` 同源。
+
+⇒ 搬迁是一次带破坏风险的重构，不属于清理。若将来要收敛，正确做法是先让两个脚本改成「显式接收仓库根参数 / 向上查找 `.git`」，再搬。
+
 ---
 
 ## 附：可复现的验证命令
