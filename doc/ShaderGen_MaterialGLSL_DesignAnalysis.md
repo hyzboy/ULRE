@@ -183,12 +183,13 @@ ShaderLibrary 的每个 `.glsl` 头部有一段 `// @ulre begin/end` 注释块�
 // @ulre require Resource MaterialData
 // @ulre require ProducedSemantic UV0
 // @ulre texture_reference base_color Fragment optional fallback
+// @ulre sampler_reference Trilinear
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 ```
 
 解析器产出 `ShaderCodeModuleDefinition`（名字、GLSL 源码指针、能力需求数组、
-纹理引用、依赖和冲突）。provider 不再声明材质 payload SSBO；
+纹理引用、采样器预设引用、依赖和冲突）。provider 不再声明材质 payload SSBO；
 材质 payload 类型只来自 `MaterialDefinition.material_private_data`，
 BDA 行声明由编译器统一发射。`@ulre ssbo` 已删除并会被解析器拒绝为未知 directive。
 注册表来源收敛为两条：显式注册（`Register`）+ **目录递归扫描**
@@ -202,6 +203,16 @@ schema 4 材质的 material-source、NTB、surface 只引用 `*_module_name`。
 仍可用于纯元数据用例，但无文件来源的模块不能作为 include 型 provider root。
 **GLSL 文件本身同时是源码与清单**，改一行 shader 代码 = 改缓存 key，
 无手工同步。
+
+`@ulre sampler_reference <预设名> [required|optional]` 是模块对
+`ShaderLibrary/sampler.toml` 预设的**自证依赖**：模块正文里写了 `TrilinearSampler`
+就必须声明 `sampler_reference Trilinear`（`required` 为默认，`optional` 用于仅在
+材质 `#define` 分支里用到的预设）。这些预设名经 `ShaderCodeResourceManifest`
+向上累积，再由 `ValidateShaderCodeResourceManifestSamplerReferences`
+在编译/构建前比对材质 `[resources].samplers`——缺失即报错，而不是让 GLSL 在
+`TrilinearSampler` 未定义宏上失败。契约由
+`ShaderResourceSchemaRegressionGate` 的 `MI.sampler-reference-contract`
+双向把守（正文出现的 `<X>Sampler` 必须被声明；声明的名字必须是真实预设）。
 
 ### 原理 3：语义需求驱动的顶点模块选择（通用能力解析已退役）
 

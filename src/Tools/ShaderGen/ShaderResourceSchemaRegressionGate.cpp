@@ -5418,6 +5418,197 @@ namespace
     }
 
     // ══════════════════════════════════════════════════════════════════════
+    // MI.sampler-reference-contract
+    //
+    // 模块正文里的 <Name>Sampler 宏只由材质 TOML 的 [resources].samplers 生成
+    // （BuildSamplerMacros）。模块必须用
+    //   // @ulre sampler_reference <PresetName> [required|optional]
+    // 自证依赖，否则"换了 provider / 材质漏配 sampler"只会在 GLSL 编译期以
+    // 未定义宏的形式炸出来，且索引还可能被硬编码兜底掩盖成静默错值。
+    // 本用例锁定两侧：正文出现的 *Sampler 必须被声明；声明必须是真实预设。
+    // ══════════════════════════════════════════════════════════════════════
+    static GateResult RunSamplerReferenceContractCase()
+    {
+        GateResult result;
+        result.name = "MI.sampler-reference-contract";
+
+        ShaderCodeModuleRegistry registry;
+        int file_count = 0;
+        int error_count = 0;
+        if (!registry.LoadDirectory(
+                hgl::ToOSString(GetShaderLibraryPath()),
+                &file_count, &error_count))
+        {
+            result.diagnostics.emplace_back(
+                "module registry directory scan failed");
+            result.passed = false;
+            return result;
+        }
+        if (error_count != 0)
+        {
+            result.diagnostics.emplace_back(
+                "module registry scan reported "
+                + std::to_string(error_count) + " errors");
+        }
+
+        auto &lib = SamplerPresetLibrary::Instance();
+        if (lib.GetCount() == 0
+         && !lib.Load(hgl::ToOSString(GetShaderLibraryPath() + "/sampler.toml")))
+        {
+            result.diagnostics.emplace_back("sampler.toml load failed");
+            result.passed = false;
+            return result;
+        }
+
+        const auto declares = [](const ShaderCodeModuleDefinition &definition,
+                                 const char *preset)
+        {
+            for (uint32_t i = 0;
+                 i < definition.sampler_reference_requirement_count;
+                 ++i)
+            {
+                const auto &requirement =
+                    definition.sampler_reference_requirements[i];
+                if (requirement.sampler_name
+                 && std::strcmp(requirement.sampler_name, preset) == 0)
+                    return true;
+            }
+            return false;
+        };
+
+        const auto is_identifier_char = [](const char c)
+        {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+                || (c >= '0' && c <= '9') || c == '_';
+        };
+
+        for (int i = 0; i < registry.GetCount(); ++i)
+        {
+            const auto *definition = registry.GetModuleByIndex(i);
+            if (!definition || !definition->name || !definition->glsl_code)
+                continue;
+
+            // 1. 声明的预设必须真实存在于 sampler.toml。
+            for (uint32_t j = 0;
+                 j < definition->sampler_reference_requirement_count;
+                 ++j)
+            {
+                const char *name =
+                    definition->sampler_reference_requirements[j].sampler_name;
+                if (!name || lib.GetIndex(name) == ~0u)
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("module ") + definition->name
+                        + " declares unknown sampler preset: "
+                        + (name ? name : "<null>"));
+                }
+            }
+
+            // 2. 正文中出现的每个 <Name>Sampler 都必须自我声明（跳过注释行）。
+            const std::string text(definition->glsl_code);
+            size_t pos = 0;
+            while (pos < text.size())
+            {
+                const size_t eol = text.find('\n', pos);
+                const size_t line_end =
+                    eol == std::string::npos ? text.size() : eol;
+
+                size_t first = pos;
+                while (first < line_end
+                    && (text[first] == ' ' || text[first] == '\t'))
+                    ++first;
+
+                const bool is_comment =
+                    first + 1 < line_end
+                 && text[first] == '/' && text[first + 1] == '/';
+
+                size_t cursor = pos;
+                while (cursor < line_end)
+                {
+                    if (!is_identifier_char(text[cursor]))
+                    {
+                        ++cursor;
+                        continue;
+                    }
+
+                    size_t ident_end = cursor;
+                    while (ident_end < line_end
+                        && is_identifier_char(text[ident_end]))
+                        ++ident_end;
+
+                    constexpr size_t kSamplerSuffixLength = 7; // "Sampler"
+                    const size_t length = ident_end - cursor;
+                    if (!is_comment
+                     && length > kSamplerSuffixLength
+                     && text.compare(ident_end - kSamplerSuffixLength,
+                                     kSamplerSuffixLength, "Sampler") == 0)
+                    {
+                        const std::string preset =
+                            text.substr(cursor, length - kSamplerSuffixLength);
+                        if (!declares(*definition, preset.c_str()))
+                        {
+                            result.diagnostics.emplace_back(
+                                "module " + std::string(definition->name)
+                                + " uses " + preset + "Sampler without "
+                                  "@ulre sampler_reference " + preset);
+                        }
+                    }
+                    cursor = ident_end;
+                }
+
+                pos = line_end + 1;
+            }
+        }
+
+        // 3. 声明→材质校验器：required 缺失必须失败并报出名字，optional 放行。
+        {
+            ShaderCodeResourceManifest manifest;
+            ShaderCodeModuleSamplerReferenceRequirement required_sampler;
+            required_sampler.sampler_name = "Trilinear";
+            required_sampler.required = true;
+            if (manifest.sampler_references.Add(required_sampler) < 0)
+                result.diagnostics.emplace_back(
+                    "manifest sampler reference add failed");
+            manifest.sampler_reference_count =
+                static_cast<uint32_t>(manifest.sampler_references.GetCount());
+
+            MaterialDefinition material;
+            const char *missing = nullptr;
+            if (ValidateShaderCodeResourceManifestSamplerReferences(
+                    manifest, material, &missing))
+            {
+                result.diagnostics.emplace_back(
+                    "undeclared required sampler must fail validation");
+            }
+            else if (!missing || std::strcmp(missing, "Trilinear") != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "undeclared required sampler diagnostic name mismatch");
+            }
+
+            material.sampler_names.push_back("Trilinear");
+            if (!ValidateShaderCodeResourceManifestSamplerReferences(
+                    manifest, material))
+            {
+                result.diagnostics.emplace_back(
+                    "declared required sampler must pass validation");
+            }
+
+            manifest.sampler_references[0].required = false;
+            MaterialDefinition empty_material;
+            if (!ValidateShaderCodeResourceManifestSamplerReferences(
+                    manifest, empty_material))
+            {
+                result.diagnostics.emplace_back(
+                    "optional sampler must not require a material declaration");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     // S4 试点：结构快照 golden 比对（取代 GLSL 文本子串断言）
     //
     // 现状问题：本文件大量断言形如 contains(fs, "layout(set=2, binding=0)")，
@@ -5705,6 +5896,7 @@ int main(const int argc, char **argv)
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());
+    if (run_module_invariants) results.push_back(RunSamplerReferenceContractCase());
     if (run_pipeline) results.push_back(RunShaderStructureDumpPilotCase());
 
     bool all_passed = true;
