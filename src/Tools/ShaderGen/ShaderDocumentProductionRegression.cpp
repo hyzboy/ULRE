@@ -15,6 +15,7 @@
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/filesystem/Path.h>
+#include <hgl/io/FileOutputStream.h>
 #include "ShaderGen/compile/MaterialShaderEmitter.h"
 
 #include <cstring>
@@ -730,20 +731,108 @@ namespace
         return true;
     }
 
-    bool ParseFull(const int argc, char **argv, bool &out_full)
+    AnsiString FormatStageKey(const ShaderStageKey &key)
     {
-        if (argc == 1)
-            return true;
-        if (argc != 2)
-            return false;
-        if (std::strcmp(argv[1], "--smoke") == 0)
-            return true;
-        if (std::strcmp(argv[1], "--full") == 0)
+        return AnsiString("stage=")
+             + AnsiString::numberOf(static_cast<uint32>(key.stage))
+             + " digest=" + AnsiString::numberOf(key.GetDigest())
+             + " definition=" + AnsiString::numberOf(key.definition_hash)
+             + " module_graph=" + AnsiString::numberOf(key.glsl_module_graph_hash)
+             + " interface=" + AnsiString::numberOf(key.interface_hash)
+             + " resource=" + AnsiString::numberOf(key.resource_hash)
+             + " compiler=" + AnsiString::numberOf(key.compiler_hash);
+    }
+
+    /// 把每个 fixture 的声明键写成可 diff 的文本，用于跨进程/跨机器对照。
+    ///
+    /// 进程内「同一输入两次算键」已经覆盖了大部分不稳定来源，但覆盖不到一种：
+    /// 含 padding 的结构体整块折进 FNV1a 时，同一进程里连续两次调用往往落在
+    /// 相同的栈槽、padding 里的残留也相同，于是看起来稳定；换个进程或换台
+    /// 机器才会暴露。dump 出来的行可以直接 diff。
+    ///
+    /// 判读：`compiler=` 来自着色器编译器身份，跨机器可能不同；判断「声明是否
+    /// 换代、缓存是否全失效」只看 definition/module_graph/interface/resource。
+    bool DumpDeclarationKeys(
+        const Fixture *fixtures, const int count, const char *path)
+    {
+        AnsiString text;
+        for (int i = 0; i < count; ++i)
         {
-            out_full = true;
-            return true;
+            MaterialShaderDocumentCapture capture{};
+            AutoDelete<ShaderBuildContext> context(
+                BuildFixtureContext(fixtures[i], &capture));
+            if (!context || !context->HasProgramLink())
+            {
+                GLogError(
+                    "[ShaderDocumentProductionRegression] fixture=%s key dump could "
+                    "not build",
+                    fixtures[i].name);
+                return false;
+            }
+
+            const ShaderLinkSpec &link = context->GetProgramLink();
+            text += fixtures[i].name;
+            text += " mesh[";
+            text += FormatStageKey(link.mesh_stage);
+            text += "] fragment[";
+            text += FormatStageKey(link.fragment_stage);
+            text += "] program=";
+            text += AnsiString::numberOf(link.BuildKey().GetDigest());
+            text += "\n";
         }
-        return false;
+
+        hgl::io::FileOutputStream *stream =
+            hgl::io::CreateFileOutputStream(ToOSString(path));
+        if (!stream)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] cannot open key dump %s", path);
+            return false;
+        }
+        const bool written =
+            stream->Write(text.c_str(), int64(text.Length())) == int64(text.Length());
+        delete stream;
+
+        if (!written)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] failed to write key dump %s", path);
+            return false;
+        }
+
+        GLogInfo(
+            "[ShaderDocumentProductionRegression] wrote %d declaration keys to %s",
+            count, path);
+        return true;
+    }
+
+    struct Options
+    {
+        bool full = false;
+        const char *dump_keys_path = nullptr;
+    };
+
+    bool ParseOptions(const int argc, char **argv, Options &out)
+    {
+        for (int i = 1; i < argc; ++i)
+        {
+            if (std::strcmp(argv[i], "--smoke") == 0)
+                continue;
+            if (std::strcmp(argv[i], "--full") == 0)
+            {
+                out.full = true;
+                continue;
+            }
+            if (std::strcmp(argv[i], "--dump-keys") == 0)
+            {
+                if (i + 1 >= argc)
+                    return false;
+                out.dump_keys_path = argv[++i];
+                continue;
+            }
+            return false;
+        }
+        return true;
     }
 }
 
@@ -752,14 +841,15 @@ int main(const int argc, char **argv)
     if (!hgl::logger::InitLogger(OS_TEXT("ShaderDocumentProductionRegression")))
         return 3;
 
-    bool full = false;
-    if (!ParseFull(argc, argv, full))
+    Options options;
+    if (!ParseOptions(argc, argv, options))
     {
         GLogError(
             "[ShaderDocumentProductionRegression] usage: "
-            "ShaderDocumentProductionRegression [--smoke|--full]");
+            "ShaderDocumentProductionRegression [--smoke|--full] [--dump-keys <path>]");
         return 2;
     }
+    const bool full = options.full;
 
     const hgl::filesystem::Path sampler_toml =
         hgl::filesystem::Path(ToOSString(GetShaderLibraryPath()))
@@ -777,15 +867,19 @@ int main(const int argc, char **argv)
     // 缓存命中 + 命中后校验：其余 fixture 走 defer_finalize=true，
     // 永不进入 FinalizeShaderBuildContext 的命中分支，必须单独探针。
     // 探针会真正编译 SPV，因此需要 GLSLCompiler 插件。
-    if (!InitShaderCompiler())
+    // dump-keys 只取声明键（不编译 SPV），跳过探针以保持与编译器版本无关。
+    if (!options.dump_keys_path)
     {
-        GLogError(
-            "[ShaderDocumentProductionRegression] failed to initialize GLSL "
-            "compiler for the cache-hit probe");
-        return 6;
+        if (!InitShaderCompiler())
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] failed to initialize GLSL "
+                "compiler for the cache-hit probe");
+            return 6;
+        }
+        if (!VerifyCacheHitPostCheck())
+            return 7;
     }
-    if (!VerifyCacheHitPostCheck())
-        return 7;
 
     static const Fixture smoke_fixtures[] =
     {
@@ -856,6 +950,10 @@ int main(const int argc, char **argv)
     const int fixture_count = full
         ? int(sizeof(full_fixtures) / sizeof(full_fixtures[0]))
         : int(sizeof(smoke_fixtures) / sizeof(smoke_fixtures[0]));
+    if (options.dump_keys_path)
+        return DumpDeclarationKeys(fixtures, fixture_count, options.dump_keys_path)
+            ? 0 : 9;
+
     for (int i = 0; i < fixture_count; ++i)
     {
         if (!RunFixture(fixtures[i]))
