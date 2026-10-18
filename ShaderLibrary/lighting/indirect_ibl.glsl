@@ -7,6 +7,8 @@
 // @ulre uses lighting_interface
 // @ulre uses scene_ubo
 // @ulre uses bindless_textures
+// @ulre sampler_reference Trilinear
+// @ulre sampler_reference Linear
 // @ulre end
 // Indirect Lighting — IBL(Image Based Lighting)split-sum 近似。
 // 替换 indirect_sky_ambient(程序化天空 ambient):

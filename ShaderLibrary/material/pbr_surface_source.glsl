@@ -10,6 +10,8 @@
 // @ulre texture_reference metallic Fragment optional fallback
 // @ulre texture_reference occlusion Fragment optional fallback
 // @ulre texture_reference opacity_mask Fragment optional fallback
+// @ulre sampler_reference Trilinear
+// @ulre sampler_reference Linear
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end

@@ -5,6 +5,7 @@
 // @ulre slot surface_provider
 // @ulre require ProducedSemantic WorldPosition
 // @ulre texture_reference sky_cube Fragment required
+// @ulre sampler_reference Trilinear
 // @ulre uses surface_interface
 // @ulre uses bindless_textures
 // @ulre end

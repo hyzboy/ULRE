@@ -5,6 +5,7 @@
 // @ulre slot material_source_provider
 // @ulre require ProducedSemantic UV0
 // @ulre texture_reference base_color Fragment required
+// @ulre sampler_reference Trilinear
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end

@@ -6,6 +6,8 @@
 // @ulre require ProducedSemantic UV0
 // @ulre require ProducedSemantic Color
 // @ulre texture_reference base_color Fragment required
+// @ulre sampler_reference Linear optional
+// @ulre sampler_reference Nearest optional
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end

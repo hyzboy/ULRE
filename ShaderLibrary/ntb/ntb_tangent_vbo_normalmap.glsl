@@ -6,6 +6,7 @@
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
 // @ulre texture_reference normal Fragment optional fallback
+// @ulre sampler_reference Trilinear
 // @ulre end
 // NTB Tangent / Normal Map — 结合法线贴图与 TBN 空间转换
 #ifndef NTB_TANGENT_VBO_NORMALMAP_GLSL

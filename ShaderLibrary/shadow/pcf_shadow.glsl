@@ -7,6 +7,7 @@
 // @ulre uses surface_interface
 // @ulre uses bindless_textures
 // @ulre uses scene_ubo
+// @ulre sampler_reference ShadowPCF
 // @ulre end
 
 #ifndef PCF_SHADOW_GLSL
@@ -15,10 +16,6 @@
 #include "common/surface_interface.glsl"
 #include "common/bindless_textures.glsl"
 #include "ubo/scene_ubo.glsl"
-
-#ifndef ShadowPCFSampler
-#define ShadowPCFSampler 4u
-#endif
 
 // ── PCF 采样方式（编译期宏，由 ShaderGen 生成 GLSL 时注入）─────────────────
 // 值 = Poisson 磁盘采样数：
