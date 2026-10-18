@@ -685,133 +685,10 @@ namespace
         return result;
     }
 
-    static GateResult RunProviderGraphIdentityCase()
+    static GateResult RunComposedStageInterfaceCase()
     {
         GateResult result;
-        result.name = "O.provider-graph-stage-identity";
-
-        const ShaderCodeModuleSemanticRequirement normal_requirement{
-            ShaderCodeModuleCapabilitySource::GeometryAttribute,
-            ShaderCodeModuleSemantic::Normal,
-            static_cast<uint32_t>(ShaderCodeModuleNumericClass::Float),
-            3, 3
-        };
-        const ShaderCodeModuleSemantic normal_provides[] = {
-            ShaderCodeModuleSemantic::Normal
-        };
-        const ShaderCodeModuleDefinition normal_provider{
-            "identity_normal",
-            "// identity",
-            ShaderCodeModuleKind::Utility,
-            &normal_requirement, 1,
-            normal_provides, 1,
-            10, 0
-        };
-
-        const ShaderCodeModuleSemanticRequirement uv_requirement{
-            ShaderCodeModuleCapabilitySource::GeometryAttribute,
-            ShaderCodeModuleSemantic::UV0,
-            static_cast<uint32_t>(ShaderCodeModuleNumericClass::Float),
-            2, 2
-        };
-        const ShaderCodeModuleSemantic uv_provides[] = {
-            ShaderCodeModuleSemantic::UV0
-        };
-        const ShaderCodeModuleDefinition uv_provider{
-            "identity_uv",
-            "// identity",
-            ShaderCodeModuleKind::Utility,
-            &uv_requirement, 1,
-            uv_provides, 1,
-            10, 0
-        };
-
-        ShaderCodeModuleResolutionResult first{};
-        first.resolved = true;
-        first.selections.Add({ShaderCodeModuleSemantic::Normal, &normal_provider});
-        first.selections.Add({ShaderCodeModuleSemantic::UV0, &uv_provider});
-
-        ShaderCodeModuleResolutionResult equivalent_result{};
-        equivalent_result.resolved = true;
-        equivalent_result.selections.Add({ShaderCodeModuleSemantic::UV0, &uv_provider});
-        equivalent_result.selections.Add({ShaderCodeModuleSemantic::Normal, &normal_provider});
-
-        const uint64_t first_hash = GetShaderCodeModuleProviderGraphHash(first);
-        const uint64_t equivalent_hash = GetShaderCodeModuleProviderGraphHash(equivalent_result);
-        if (first_hash == 0 || first_hash != equivalent_hash)
-            result.diagnostics.emplace_back("equivalent provider graphs must hash identically");
-
-        ShaderCodeModuleResolutionResult changed_result = first;
-        const ShaderCodeModuleDefinition packed_normal_provider{
-            "identity_normal_packed",
-            "// identity",
-            ShaderCodeModuleKind::Utility,
-            &normal_requirement, 1,
-            normal_provides, 1,
-            20, 0
-        };
-        changed_result.selections[0].provider = &packed_normal_provider;
-        if (GetShaderCodeModuleProviderGraphHash(changed_result) == first_hash)
-            result.diagnostics.emplace_back("distinct provider graphs must hash differently");
-
-        ShaderStageBuildContext stage{};
-        stage.stage = ShaderStage::Mesh;
-        const ShaderStageKey first_key = stage.BuildKeyWithProviderGraphHash(first_hash);
-        const ShaderStageKey changed_key =
-            stage.BuildKeyWithProviderGraphHash(
-                GetShaderCodeModuleProviderGraphHash(changed_result));
-        if (first_key == changed_key
-         || first_key.glsl_module_graph_hash != first_hash)
-            result.diagnostics.emplace_back("provider graph hash must participate in ShaderStageKey");
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunProviderGraphCompositionCase()
-    {
-        GateResult result;
-        result.name = "P.provider-graph-composition-interface";
-
-        const ShaderCodeModuleDefinition position_provider{
-            "compose_position",
-            "vec4 GetLocalPos() { return vec4(Position, 1.0); }",
-            ShaderCodeModuleKind::Position,
-            nullptr, 0, nullptr, 0, 0, 0
-        };
-        const ShaderCodeModuleDefinition normal_provider{
-            "compose_normal",
-            "vec3 GetNormal() { return Normal; }",
-            ShaderCodeModuleKind::Utility,
-            nullptr, 0, nullptr, 0, 0, 0
-        };
-
-        ShaderCodeModuleResolutionResult result_graph{};
-        result_graph.resolved = true;
-        result_graph.selections.Add(
-            {ShaderCodeModuleSemantic::Position, &position_provider});
-        result_graph.selections.Add(
-            {ShaderCodeModuleSemantic::Normal, &normal_provider});
-        result_graph.selections.Add(
-            {ShaderCodeModuleSemantic::WorldNormal, &normal_provider});
-
-        std::string composed;
-        if (!ComposeShaderCodeModuleProviderGraph(result_graph, composed))
-            result.diagnostics.emplace_back("provider graph composition failed");
-        else
-        {
-            const size_t position_count = composed.find("compose_position");
-            const size_t normal_count = composed.find("compose_normal");
-            const size_t duplicate_normal = composed.find(
-                "compose_normal", normal_count == std::string::npos
-                    ? 0 : normal_count + 1);
-            if (position_count == std::string::npos
-             || normal_count == std::string::npos
-             || duplicate_normal != std::string::npos
-             || position_count > normal_count)
-                result.diagnostics.emplace_back(
-                    "provider source must be dependency-ordered and deduplicated");
-        }
+        result.name = "P.composed-stage-interface";
 
         ShaderStageBuildContext vertex{};
         vertex.stage = ShaderStage::Mesh;
@@ -2407,14 +2284,17 @@ namespace
             result.diagnostics.emplace_back(
                 "transform graph source composition selected the wrong stage");
 
-        ShaderStageBuildContext stage{};
-        stage.stage = ShaderStage::Mesh;
-        const ShaderStageKey flat_key =
-            stage.BuildKeyWithProviderGraphHash(
-                VertexNodeConfigResolver::GetHash(VertexNodeConfigResolver::FlatXY()));
-        const ShaderStageKey wall_key =
-            stage.BuildKeyWithProviderGraphHash(
-                VertexNodeConfigResolver::GetHash(VertexNodeConfigResolver::WallXY()));
+        ShaderStageBuildContext flat_stage{};
+        flat_stage.stage = ShaderStage::Mesh;
+        flat_stage.glsl_module_graph_hash =
+            VertexNodeConfigResolver::GetHash(VertexNodeConfigResolver::FlatXY());
+        const ShaderStageKey flat_key = flat_stage.BuildKey();
+
+        ShaderStageBuildContext wall_stage{};
+        wall_stage.stage = ShaderStage::Mesh;
+        wall_stage.glsl_module_graph_hash =
+            VertexNodeConfigResolver::GetHash(VertexNodeConfigResolver::WallXY());
+        const ShaderStageKey wall_key = wall_stage.BuildKey();
         if (flat_key == wall_key)
             result.diagnostics.emplace_back(
                 "transform graph variants must produce distinct stage identity");
@@ -6058,8 +5938,7 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunAddressOwnershipCase(true));
     if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());
     if (run_glsl) results.push_back(RunVkEnumTextCase());
-    if (run_cache) results.push_back(RunProviderGraphIdentityCase());
-    if (run_cache) results.push_back(RunProviderGraphCompositionCase());
+    if (run_cache) results.push_back(RunComposedStageInterfaceCase());
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());

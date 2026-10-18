@@ -77,13 +77,5 @@ namespace hgl::graph::mtl
             key.compiler_hash = compiler_hash;
             return key;
         }
-
-        ShaderStageKey BuildKeyWithProviderGraphHash(
-            const uint64 provider_graph_hash) const noexcept
-        {
-            ShaderStageKey key = BuildKey();
-            key.glsl_module_graph_hash = provider_graph_hash;
-            return key;
-        }
     };
 }
