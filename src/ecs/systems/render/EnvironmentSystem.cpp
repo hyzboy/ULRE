@@ -70,4 +70,26 @@ namespace hgl::ecs
         if (auto *manager = ResolveManager())
             manager->MarkDirty(ResolveProfileID());
     }
+
+    // ── ambient provider 模块选择（算法轴）──
+    //  与 `EditAmbientEnvInfo()`（数据轴）配对：环境决定"用哪个算法 + 喂什么数据"。
+    bool EnvironmentSystem::SetAmbientProvider(const AnsiString &module_name)
+    {
+        auto *manager = ResolveManager();
+        if (!manager)
+            return false;
+
+        return manager->SetAmbientProvider(ResolveProfileID(), module_name);
+    }
+
+    const AnsiString &EnvironmentSystem::GetAmbientProvider() const
+    {
+        static const AnsiString empty;
+
+        auto *manager = const_cast<EnvironmentSystem *>(this)->ResolveManager();
+        if (!manager)
+            return empty;
+
+        return manager->GetAmbientProvider(ResolveProfileID());
+    }
 }//namespace hgl::ecs

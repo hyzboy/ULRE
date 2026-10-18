@@ -37,6 +37,15 @@ namespace hgl::graph
      * - 绑定层：**世界表**（`WorldAddresses::addr_ambient_env`；Scene 集已随 S3 整体退场，
      *   参数段全部经 pc_root 下的表 + BDA 解引用，无 binding 可推）
      *
+     * ⚠ **2026-10-14：ambient provider 模块的选择从材质 TOML 上移到本层（Profile）**。
+     * 环境光有**两条正交的轴**，必须由同一个所有者配对，否则靠人保证一致：
+     *   · 数据轴 = `Profile::cpu.ambient_env`（IBL 句柄，物化成 UBO 走世界表）；
+     *   · 算法轴 = `Profile::ambient_module_name`（GLSL 模块名，决定 program 身份）。
+     * 旧实现把算法轴放在材质（`ambient_module_name` TOML 键）⇒ 同一套 PBR 表面被迫
+     * 复制成两份材质（`Lit` / `LitIBL`）、且"材质选 IBL 但环境没给句柄"会静默发黑。
+     * 现在：**环境（世界）决定算法 + 数据，材质只声明表面**。
+     * `ambient_module_name` 为空 = 用场景渲染模板的默认 provider（`indirect_sky_ambient`）。
+     *
      * GPU 上传统一走设备级 dirty 扫描（RenderBufferUploadSystem），
      * default Profile 在 GraphicsContext 初始化阶段即物化并标脏，
      * 保证任何 world（含离屏 RenderOnce）第一帧拿到的就是有效参数数据。
@@ -51,6 +60,11 @@ namespace hgl::graph
             AnsiString      name;
             EnvironmentInfo cpu;                                               ///< CPU 侧唯一权威数据
             StructView<AmbientEnvInfo> *ambient_env_ubo = nullptr;  ///< ambient_env 段 GPU 物化（同上）
+
+            /// `ambient_light_provider` 槽用哪个 GLSL 模块（**算法轴**，CPU 侧，不入 GPU）。
+            /// 空 = 用场景渲染模板的默认 provider。与 `cpu.ambient_env`（**数据轴**）配对，
+            /// 二者必须一起换：选 IBL 模块却没给句柄 ⇒ 采样句柄 0 ⇒ 静默发黑。
+            AnsiString      ambient_module_name;
         };
 
     private:
@@ -83,6 +97,17 @@ namespace hgl::graph
 
         /// 数据改完调用：ambient_env 立即写入它的单份 UBO（影子数据不在本模块，见类注释）。
         void MarkDirty(EnvProfileID id);
+
+        /// **算法轴**：指定该 profile 用哪个 `ambient_light_provider` 模块（注册名，
+        /// 与 `@ulre name` 一致）。空串 = 回到场景渲染模板默认 provider。
+        /// 只改选择，不动 GPU 数据 ⇒ 无需 `MarkDirty`；下次解析材质程序时
+        /// program 身份（`HashMaterialProgramBuildContext` 含本维度）自然变化。
+        /// 句柄无效（或 `kEnvProfileInvalid`）⇒ 返回 false 且不改任何东西。
+        bool SetAmbientProvider(EnvProfileID id, const AnsiString &module_name);
+
+        /// 取该 profile 的 ambient provider 模块名（**引用**，有效期到下次
+        /// `SetAmbientProvider` / `Release` 为止）。无 profile / 未设置 ⇒ 空串。
+        const AnsiString &GetAmbientProvider(EnvProfileID id) const;
 
         /// 世界表用：本 profile 的 ambient_env 段**设备地址**（懒物化）。取不到返回 0 并报错 ——
         /// 同取址纪律（0 地址会让读该段的 shader 解引用 0 基址 ⇒ 静默发黑）。

@@ -537,6 +537,18 @@ namespace hgl
             graph::EnvProfileID CreateEnvProfile(const AnsiString &name,
                                                  const graph::EnvironmentInfo &init = {});
 
+            /// 本世界生效 profile 的 **ambient provider 模块名**（`ambient_light_provider` 槽的
+            /// GLSL 模块；**空 = 用场景渲染模板默认** `indirect_sky_ambient`）。
+            ///
+            /// 这是环境光的**算法轴**，与 `GetEnvProfileID()` 指向的**数据轴**
+            ///（`ambient_env` 段 = IBL 句柄）配对：世界/环境决定两者，材质不再声明。
+            /// 写入口在 `EnvironmentSystem::SetAmbientProvider()`（转发到
+            /// `EnvironmentManager::SetAmbientProvider`）；渲染侧（`RenderPrimitiveCollectSystem`
+            /// 解析材质程序）只**读**这里。
+            ///
+            /// 返回**引用**：有效期到该 profile 被改/归还为止（一帧内稳定，逐帧现取即可）。
+            const AnsiString& GetAmbientProviderName() const;
+
             // ===== 相机（**世界级资源**：16 槽 × 帧槽，0 号槽恒为本世界默认相机）=====
             //
             // 「相机属于哪个世界 / 哪个槽」的**唯一真源 = 本世界的相机表**（`camera_info_storage`：

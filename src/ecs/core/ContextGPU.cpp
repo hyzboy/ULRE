@@ -450,6 +450,17 @@ namespace hgl::ecs
             return id;
         }
 
+        const AnsiString& ECSContext::GetAmbientProviderName() const
+        {
+            static const AnsiString empty;
+
+            auto *manager = ResolveEnvManager();
+            if (!manager)
+                return empty;
+
+            return manager->GetAmbientProvider(GetEnvProfileID());
+        }
+
         graph::EnvironmentManager* ECSContext::ResolveEnvManager() const
         {
             graph::GraphicsContext *gc = nullptr;

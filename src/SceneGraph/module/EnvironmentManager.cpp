@@ -216,6 +216,39 @@ namespace hgl::graph
         // 影子数据不在本模块（T6b/P4：随世界，见 ECSContext::CommitShadowInfo）。
     }
 
+    bool EnvironmentManager::SetAmbientProvider(EnvProfileID id, const AnsiString &module_name)
+    {
+        auto *p = FindProfile(id);
+        if (!p)
+        {
+            GLogWarning("[EnvironmentManager] SetAmbientProvider: 无效 profile 句柄 %u", id);
+            return false;
+        }
+
+        if (p->ambient_module_name == module_name)
+            return true;
+
+        GLogInfo(u8"[EnvironmentManager] ambient provider: profile=%s %s -> %s",
+                 p->name.c_str(),
+                 p->ambient_module_name.IsEmpty() ? "(template default)"
+                                                  : p->ambient_module_name.c_str(),
+                 module_name.IsEmpty() ? "(template default)" : module_name.c_str());
+
+        p->ambient_module_name = module_name;
+        return true;
+    }
+
+    const AnsiString &EnvironmentManager::GetAmbientProvider(EnvProfileID id) const
+    {
+        static const AnsiString empty;
+
+        auto *p = FindProfile(id);
+        if (!p)
+            p = FindProfile(kEnvProfileDefault);      // 无效句柄回退 default（与 Get 同语义）
+
+        return p ? p->ambient_module_name : empty;
+    }
+
     uint64_t EnvironmentManager::GetAmbientEnvAddress(EnvProfileID id)
     {
         EnsureDefault();
