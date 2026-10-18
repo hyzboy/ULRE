@@ -491,6 +491,32 @@ namespace hgl::graph::mtl
                     }
                     out_data.texture_reference_requirements.Add(requirement);
                 }
+                else if (std::strcmp(token, "sampler_reference") == 0)
+                {
+                    // <sampler-preset-name> [required|optional]
+                    ShaderCodeModuleSamplerReferenceRequirement requirement;
+                    const char *next =
+                        ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !IsValidMaterialTextureName(token))
+                        return ShaderCodeModuleParseResult::InvalidResource;
+
+                    AnsiString *sampler_name =
+                        out_data.sampler_reference_name_storage.Create();
+                    if (!sampler_name)
+                        return ShaderCodeModuleParseResult::InvalidResource;
+                    *sampler_name = token;
+                    requirement.sampler_name = sampler_name->c_str();
+
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (next && token[0])
+                    {
+                        if (std::strcmp(token, "optional") == 0)
+                            requirement.required = false;
+                        else if (std::strcmp(token, "required") != 0)
+                            return ShaderCodeModuleParseResult::InvalidResource;
+                    }
+                    out_data.sampler_reference_requirements.Add(requirement);
+                }
                 else if (std::strcmp(token, "require") == 0)
                 {
                     ShaderCodeModuleSemanticRequirement requirement;

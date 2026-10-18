@@ -268,6 +268,36 @@ namespace hgl::graph::mtl
         return h;
     }
 
+    // Name-keyed sampler preset dependency. The name resolves against
+    // sampler.toml (e.g. "Trilinear" => the module may use TrilinearSampler);
+    // it is declared by the module itself so the module does not rely on the
+    // material file happening to list the same preset. `required == false`
+    // marks a preset used only on a conditional (material #define) code path.
+    struct ShaderCodeModuleSamplerReferenceRequirement
+    {
+        const char *sampler_name = nullptr;
+        bool required = true;
+    };
+
+    inline bool operator==(
+        const ShaderCodeModuleSamplerReferenceRequirement &lhs,
+        const ShaderCodeModuleSamplerReferenceRequirement &rhs) noexcept
+    {
+        const bool same_name = lhs.sampler_name == rhs.sampler_name
+            || (lhs.sampler_name && rhs.sampler_name
+                && hgl::strcmp(lhs.sampler_name, rhs.sampler_name) == 0);
+        return same_name && lhs.required == rhs.required;
+    }
+
+    inline hgl::hash::FNV1aHasher64 &operator<<(
+        hgl::hash::FNV1aHasher64 &h,
+        const ShaderCodeModuleSamplerReferenceRequirement &v) noexcept
+    {
+        h << v.sampler_name
+          << v.required;
+        return h;
+    }
+
     struct ShaderCodeModuleDefinition
     {
         const char *name = nullptr;
@@ -300,6 +330,10 @@ namespace hgl::graph::mtl
         const ShaderCodeModuleTextureReferenceRequirement
             *texture_reference_requirements = nullptr;
         uint32 texture_reference_requirement_count = 0;
+
+        const ShaderCodeModuleSamplerReferenceRequirement
+            *sampler_reference_requirements = nullptr;
+        uint32 sampler_reference_requirement_count = 0;
     };
 
     uint64 GetShaderCodeModuleDefinitionHash(
@@ -317,7 +351,9 @@ namespace hgl::graph::mtl
          || (definition.dependency_count > 0
           && !definition.dependencies)
          || (definition.texture_reference_requirement_count > 0
-          && !definition.texture_reference_requirements))
+          && !definition.texture_reference_requirements)
+         || (definition.sampler_reference_requirement_count > 0
+          && !definition.sampler_reference_requirements))
             return false;
 
         for (uint32 i = 0; i < definition.semantic_requirement_count; ++i)
@@ -337,6 +373,16 @@ namespace hgl::graph::mtl
             const auto &requirement =
                 definition.texture_reference_requirements[i];
             if (!requirement.texture_name || !requirement.texture_name[0])
+                return false;
+        }
+
+        for (uint32 i = 0;
+             i < definition.sampler_reference_requirement_count;
+             ++i)
+        {
+            const auto &requirement =
+                definition.sampler_reference_requirements[i];
+            if (!requirement.sampler_name || !requirement.sampler_name[0])
                 return false;
         }
 

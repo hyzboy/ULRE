@@ -198,6 +198,18 @@ namespace hgl::graph::mtl
             data->definition.texture_reference_requirement_count =
                 static_cast<uint32>(
                     data->texture_reference_requirements.GetCount());
+            for (int k = 0;
+                 k < data->sampler_reference_requirements.GetCount();
+                 ++k)
+            {
+                data->sampler_reference_requirements[k].sampler_name =
+                    data->sampler_reference_name_storage[k]->c_str();
+            }
+            data->definition.sampler_reference_requirements =
+                data->sampler_reference_requirements.GetData();
+            data->definition.sampler_reference_requirement_count =
+                static_cast<uint32>(
+                    data->sampler_reference_requirements.GetCount());
             data->metadata_resolution_valid = false;
 
             if (!Register(data->definition))

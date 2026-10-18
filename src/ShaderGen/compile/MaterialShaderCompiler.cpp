@@ -302,6 +302,19 @@ ShaderBuildContext *BuildMaterialStageDocuments(
                 "Resource manifest references a texture absent from its material definition");
             return FailCompile(c);
         }
+
+        const char *missing_sampler = nullptr;
+        if (!ValidateShaderCodeResourceManifestSamplerReferences(
+                *config.resource_manifest,
+                *config.material_definition,
+                &missing_sampler))
+        {
+            c.Fail(std::string("Resource manifest requires sampler preset '")
+                   + (missing_sampler ? missing_sampler : "<null>")
+                   + "' that the material does not declare in "
+                     "[resources].samplers");
+            return FailCompile(c);
+        }
     }
 
     const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0

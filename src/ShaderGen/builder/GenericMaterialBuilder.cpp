@@ -401,6 +401,20 @@ namespace hgl::graph::mtl
                         : "<invalid>");
                 return false;
             }
+            const char *missing_sampler_reference = nullptr;
+            if (!ValidateShaderCodeResourceManifestSamplerReferences(
+                    plan.manifest,
+                    plan.manifest_definition,
+                    &missing_sampler_reference))
+            {
+                GLogError(
+                    "[ShaderGen] Provider sampler preset is not declared by material: material=%s sampler=%s",
+                    definition.definition_name.c_str(),
+                    missing_sampler_reference
+                        ? missing_sampler_reference
+                        : "<invalid>");
+                return false;
+            }
             if (!plan.manifest.IsValid())
             {
                 GLogError("[ShaderGen] Generic material resource contract failed: name=%s error=%s",

@@ -35,6 +35,13 @@ namespace hgl::graph::mtl
             texture_references;
         uint32 texture_reference_count = 0;
 
+        // Union of the sampler preset requirements declared by every
+        // contributing module. A material must declare each required preset
+        // in its own `[resources].samplers` list.
+        ValueArray<ShaderCodeModuleSamplerReferenceRequirement>
+            sampler_references;
+        uint32 sampler_reference_count = 0;
+
         uint64 stable_hash = 0;
         ShaderCodeResourceManifestError error = ShaderCodeResourceManifestError::None;
 
@@ -42,7 +49,9 @@ namespace hgl::graph::mtl
         {
             return error == ShaderCodeResourceManifestError::None
                 && texture_reference_count
-                    == static_cast<uint32>(texture_references.GetCount());
+                    == static_cast<uint32>(texture_references.GetCount())
+                && sampler_reference_count
+                    == static_cast<uint32>(sampler_references.GetCount());
         }
     };
 
@@ -57,6 +66,15 @@ namespace hgl::graph::mtl
         const ShaderCodeResourceManifest &manifest,
         const MaterialDefinition &definition,
         const char **out_invalid_texture_name = nullptr) noexcept;
+
+    // A module's required sampler preset must be declared by the material that
+    // composes it, otherwise the module's `<Name>Sampler` macro is never
+    // emitted and the GLSL fails to compile. Returns the first unsatisfied
+    // preset name through `out_missing_sampler_name` on failure.
+    bool ValidateShaderCodeResourceManifestSamplerReferences(
+        const ShaderCodeResourceManifest &manifest,
+        const MaterialDefinition &definition,
+        const char **out_missing_sampler_name = nullptr) noexcept;
 
     const char *GetShaderCodeResourceManifestErrorName(ShaderCodeResourceManifestError error) noexcept;
 }

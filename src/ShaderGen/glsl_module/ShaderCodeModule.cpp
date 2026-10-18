@@ -31,6 +31,14 @@ namespace hgl::graph::mtl
             h << definition.texture_reference_requirements[i];
         }
 
+        h << definition.sampler_reference_requirement_count;
+        for (uint32 i = 0;
+             i < definition.sampler_reference_requirement_count;
+             ++i)
+        {
+            h << definition.sampler_reference_requirements[i];
+        }
+
         h << definition.semantic_requirement_count;
         for (uint32 i = 0; i < definition.semantic_requirement_count; ++i)
             h << definition.semantic_requirements[i];

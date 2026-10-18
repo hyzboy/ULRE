@@ -63,6 +63,39 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        bool AddSamplerReference(
+            ShaderCodeResourceManifest &manifest,
+            const ShaderCodeModuleSamplerReferenceRequirement &incoming)
+        {
+            if (!incoming.sampler_name || !incoming.sampler_name[0])
+            {
+                manifest.error =
+                    ShaderCodeResourceManifestError::ResourceConflict;
+                return false;
+            }
+
+            for (uint32 i = 0; i < manifest.sampler_reference_count; ++i)
+            {
+                auto &existing = manifest.sampler_references[i];
+                if (!resource_manifest_builder::CStrEqual(
+                        existing.sampler_name,
+                        incoming.sampler_name))
+                    continue;
+
+                existing.required = existing.required || incoming.required;
+                return true;
+            }
+
+            if (manifest.sampler_references.Add(incoming) < 0)
+            {
+                manifest.error =
+                    ShaderCodeResourceManifestError::ResourceConflict;
+                return false;
+            }
+            ++manifest.sampler_reference_count;
+            return true;
+        }
+
         const ShaderCodeModuleDefinition *FindModuleByName(
             const char *name,
             const ShaderCodeModuleRegistry *registry) noexcept
@@ -146,6 +179,16 @@ namespace hgl::graph::mtl
                     return false;
             }
 
+            for (uint32 i = 0;
+                 i < definition->sampler_reference_requirement_count;
+                 ++i)
+            {
+                if (!AddSamplerReference(
+                        manifest,
+                        definition->sampler_reference_requirements[i]))
+                    return false;
+            }
+
             for (uint32 i = 0; i < manifest.code_module_count; ++i)
             {
                 const ShaderCodeModuleDefinition *existing =
@@ -188,6 +231,10 @@ namespace hgl::graph::mtl
             h << manifest.texture_reference_count;
             for (uint32 i = 0; i < manifest.texture_reference_count; ++i)
                 h << manifest.texture_references[i];
+
+            h << manifest.sampler_reference_count;
+            for (uint32 i = 0; i < manifest.sampler_reference_count; ++i)
+                h << manifest.sampler_references[i];
 
             manifest.stable_hash = h;
         }
@@ -253,6 +300,46 @@ namespace hgl::graph::mtl
             {
                 if (out_invalid_texture_name)
                     *out_invalid_texture_name = texture_name;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool ValidateShaderCodeResourceManifestSamplerReferences(
+        const ShaderCodeResourceManifest &manifest,
+        const MaterialDefinition &definition,
+        const char **out_missing_sampler_name) noexcept
+    {
+        if (out_missing_sampler_name)
+            *out_missing_sampler_name = nullptr;
+        if (!manifest.IsValid())
+            return false;
+
+        for (uint32 i = 0; i < manifest.sampler_reference_count; ++i)
+        {
+            const auto &requirement = manifest.sampler_references[i];
+            if (!requirement.required)
+                continue;
+
+            const char *sampler_name = requirement.sampler_name;
+            bool found = false;
+            if (sampler_name && sampler_name[0])
+            {
+                for (const auto &declared : definition.sampler_names)
+                {
+                    if (declared == sampler_name)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                if (out_missing_sampler_name)
+                    *out_missing_sampler_name = sampler_name;
                 return false;
             }
         }
