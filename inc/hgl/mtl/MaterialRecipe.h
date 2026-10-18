@@ -279,11 +279,10 @@ namespace hgl::graph::mtl
         // NTB provider capability. Render preparation maps it into the
         // caller-selected NTBProvider template root.
         const char *ntb_module_name = nullptr;
-        // Ambient light provider capability(ForwardLit 渲染模板专用):声明后覆盖
-        // Lit profile 默认的 indirect_sky_ambient —— 如 IBL 环境光照模块。
-        // name 须匹配 ShaderCodeModuleRegistry 注册名;include 路径由注册表来源
-        // 解析(与 surface_module_name 同一规则),TOML 不再单独写路径。
-        const char *ambient_module_name = nullptr;
+        // 注意：ambient light provider（`ambient_light_provider` 槽用哪个 GLSL 模块）
+        // **不在材质里声明** —— 它是环境光的**算法轴**，由引擎/环境层决定
+        // （`EnvironmentSystem::SetAmbientProvider` → `EnvironmentManager::Profile::ambient_module_name`），
+        // 与同属环境层的 `ambient_env` 参数块配对。材质只声明表面能力。
         MaterialVertexVaryingConfig vertex_varying;
         ResolvedMaterialRenderState default_render_state;
 

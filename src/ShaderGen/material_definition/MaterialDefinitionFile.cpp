@@ -466,14 +466,6 @@ namespace hgl::graph::mtl
                     out.definition.ntb_module_name =
                         out.ntb_module_name_storage.c_str();
                 }
-                if (fragment->contains("ambient_module_name"))
-                {
-                    if (!ReadRequiredString(*fragment, "ambient_module_name", value))
-                        return false;
-                    out.ambient_module_name_storage = value.c_str();
-                    out.definition.ambient_module_name =
-                        out.ambient_module_name_storage.c_str();
-                }
             }
             else
                return false;
@@ -842,6 +834,8 @@ namespace hgl::graph::mtl
                     detail = "schema 4 请使用 ntb_module_name（@ulre name）";
                 else if (key == "surface_module_include")
                     detail = "schema 4 只使用 surface_module_name，路径由注册表解析";
+                else if (key == "ambient_module_name")
+                    detail = "ambient provider 已上移到环境层，用 EnvironmentSystem::SetAmbientProvider()";
                 RecordParseFailure(key.c_str(), nullptr, detail);
                 return false;
             }
@@ -871,8 +865,7 @@ namespace hgl::graph::mtl
             ParseTableScope validate_fragment_table("fragment");
             if (!ValidateKnownKeys(root.at("fragment"), {
                     "material_source_module_name", "ntb_module_name",
-                    "surface_module_name",
-                    "ambient_module_name"}))
+                    "surface_module_name"}))
                 return false;
         }
 

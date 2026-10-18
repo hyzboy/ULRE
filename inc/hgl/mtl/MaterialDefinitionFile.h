@@ -26,7 +26,6 @@ namespace hgl::graph::mtl
         AnsiString material_source_module_name_storage;
         AnsiString ntb_module_name_storage;
         AnsiString surface_module_name_storage;
-        AnsiString ambient_module_name_storage;
 
         // ── 解析失败细节（2026-10-12 用户口径）────────────────────────────
         // 发售口径：全预编译 SPV、届时不再有 shader 合成器 ⇒ 材质配置写错只能靠
