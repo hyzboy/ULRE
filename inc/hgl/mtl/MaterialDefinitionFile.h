@@ -27,7 +27,6 @@ namespace hgl::graph::mtl
         AnsiString ntb_module_name_storage;
         AnsiString surface_module_name_storage;
         AnsiString ambient_module_name_storage;
-        AnsiString ambient_module_include_storage;
 
         // ── 解析失败细节（2026-10-12 用户口径）────────────────────────────
         // 发售口径：全预编译 SPV、届时不再有 shader 合成器 ⇒ 材质配置写错只能靠
@@ -73,13 +72,5 @@ namespace hgl::graph::mtl
         const MaterialDefinition *FindByID(const char *definition_id) const;
         int GetCount() const { return files.GetCount(); }
         void Clear() { files.Clear(); }
-
-        /// 按序枚举（ShaderCooker 离线 cook 用）；越界返回 nullptr
-        const MaterialDefinitionFileData *GetAt(const int index) const
-        {
-            if (index < 0 || index >= files.GetCount())
-                return nullptr;
-            return files[index];
-        }
     };
 }

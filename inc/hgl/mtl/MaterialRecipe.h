@@ -281,9 +281,9 @@ namespace hgl::graph::mtl
         const char *ntb_module_name = nullptr;
         // Ambient light provider capability(ForwardLit 渲染模板专用):声明后覆盖
         // Lit profile 默认的 indirect_sky_ambient —— 如 IBL 环境光照模块。
-        // name 须匹配 ShaderCodeModuleRegistry 注册名;include 为库内路径。
+        // name 须匹配 ShaderCodeModuleRegistry 注册名;include 路径由注册表来源
+        // 解析(与 surface_module_name 同一规则),TOML 不再单独写路径。
         const char *ambient_module_name = nullptr;
-        const char *ambient_module_include = nullptr;
         MaterialVertexVaryingConfig vertex_varying;
         ResolvedMaterialRenderState default_render_state;
 

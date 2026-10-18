@@ -353,6 +353,7 @@ namespace
             "material_source_module = \"material/unlit_source.glsl\"\n",
             "ntb_module = \"ntb/normal.glsl\"\n",
             "surface_module_name = \"sky_cube_surface\"\nsurface_module_include = \"sky/cube.glsl\"\n",
+            "ambient_module_name = \"indirect_ibl\"\nambient_module_include = \"lighting/indirect_ibl.glsl\"\n",
             "material_source_module_name = \"\"\n",
             "ntb_module_name = \"\"\n",
             "surface_module_name = \"\"\n",
@@ -387,14 +388,14 @@ namespace
         const AnsiString valid = AnsiString("schema = 4\n") + header
             + "[fragment]\nmaterial_source_module_name = \"source_identity\"\n"
             "ntb_module_name = \"ntb_identity\"\nsurface_module_name = \"surface_identity\"\n"
-            "ambient_module_name = \"indirect_ibl\"\nambient_module_include = \"ambient/indirect_ibl.glsl\"\n";
+            "ambient_module_name = \"indirect_ibl\"\n";
         return Check(ParseMaterialDefinitionFile(valid.c_str(), valid.Length(), parsed)
                 == MaterialDefinitionFileParseResult::OK
             && AnsiString(parsed.definition.material_source_module_name) == "source_identity"
             && AnsiString(parsed.definition.ntb_module_name) == "ntb_identity"
             && AnsiString(parsed.definition.surface_module_name) == "surface_identity"
             && AnsiString(parsed.definition.ambient_module_name) == "indirect_ibl",
-            "schema 4 names and unchanged ambient fields");
+            "schema 4 provider names");
     }
 
     bool RunSurfaceBindingRegression(const ShaderCodeModuleRegistry &registry)
