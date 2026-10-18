@@ -22,8 +22,7 @@ namespace
         const MaterialDefinition &definition,
         const MaterialDefinitionBuildRequest &request,
         VkFormat &out_position_format,
-        std::string &out_vertex_input_glsl,
-        ShaderCodeModuleResolutionResult &out_resolution)
+        std::string &out_vertex_input_glsl)
     {
         switch (definition.vertex_provider_policy)
         {
@@ -37,11 +36,7 @@ namespace
         if (!request.geometry_vertex_format)
             return false;
 
-        // SSBO 顶点输入：无模块能力匹配（能力解析系统已删）——顶点输入由
-        // 下方 s1_* 模块选择完成，resolved 恒为 true。
-        out_resolution = ShaderCodeModuleResolutionResult{};
-        out_resolution.resolved = true;
-
+        // SSBO 顶点输入：顶点输入由下方 s1_* 模块选择完成，无 provider 图。
         const GeometryVertexFormat &geometry = *request.geometry_vertex_format;
         out_vertex_input_glsl.clear();
         out_position_format = VK_FORMAT_UNDEFINED;
@@ -167,17 +162,12 @@ bool BuildResolvedMaterialVertexABI(
 {
     std::string vertex_input_glsl;
     VkFormat position_format = VK_FORMAT_UNDEFINED;
-    ShaderCodeModuleResolutionResult resolution;
     if (!BuildResolvedVertexABI(definition, request, position_format,
-                                vertex_input_glsl, resolution))
+                                vertex_input_glsl))
         return false;
 
     out_abi.position_format = position_format;
-    out_abi.provider_graph_hash =
-        GetShaderCodeModuleProviderGraphHash(resolution);
     out_abi.vertex_input_glsl = vertex_input_glsl.c_str();
-    if (!ComposeShaderCodeModuleProviderGraph(resolution, out_abi.provider_glsl))
-        return false;
     return true;
 }
 

@@ -1837,9 +1837,10 @@ int main(int argc, char** argv)
               "ResourceClass",
               "ResourceClass/ResourceRequirement 已于 2026-10-11 F-3 删除（0 消费者，描述符契约层退役的遗留）",
               true },
-            { "ShaderCodeModuleCapabilityResolver.h", OS_TEXT("inc/hgl/mtl/ShaderCodeModuleCapabilityResolver.h"),
-              "ShaderCodeModuleResolutionRequest",
-              "ResolutionRequest/GeometryCapability 已于 2026-10-11 F-3 删除（整类型无读写）",
+            { "MaterialDefinitionRegistry.h", OS_TEXT("inc/hgl/mtl/MaterialDefinitionRegistry.h"),
+              "ShaderCodeModuleCapabilityResolver",
+              "能力解析残留链路已于 2026-10-11 整条删除（生产路径恒空，仅测试在用）："
+              "ShaderCodeModuleCapabilityResolver.h/.cpp 已移除，任何头文件不得再 include 或引用该名字",
               true },
             { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
               "ApplyBaseMaterialInfoDefaults",

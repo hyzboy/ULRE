@@ -55,7 +55,6 @@ namespace hgl::graph::mtl
         uint32_t max_invocations,
         ShaderDocument &out_document,
         const ShaderDocument *resolved_input_document = nullptr,
-        const ShaderDocument *provider_document = nullptr,
         const ValueArray<InterStageSemanticContractEntry>
             *resolved_stage_interface = nullptr)
     {
@@ -233,8 +232,6 @@ namespace hgl::graph::mtl
                           "MeshTemplateEmitter.DefaultInput", "vertex-input", input_module);
             }
         }
-
-        append_document(provider_document);
 
         // 9. Stage 2 模块 (Mapping)
         if (stage2_module)

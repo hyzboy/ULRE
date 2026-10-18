@@ -13,7 +13,6 @@
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/mtl/ShaderCodeModule.h>
-#include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
 #include <hgl/mtl/ShaderCodeModuleFile.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeModuleMetadata.h>
@@ -125,7 +124,6 @@ namespace
         MeshShaderMode mode = MeshShaderMode::VertexPassthrough,
         uint32_t max_invocations = 64,
         const ShaderDocument *resolved_input_document = nullptr,
-        const ShaderDocument *provider_document = nullptr,
         const hgl::ValueArray<InterStageSemanticContractEntry>
             *resolved_stage_interface = nullptr)
     {
@@ -138,7 +136,6 @@ namespace
                 max_invocations,
                 document,
                 resolved_input_document,
-                provider_document,
                 resolved_stage_interface))
             return {};
 
@@ -525,7 +522,6 @@ namespace
             MeshShaderMode::VertexPassthrough,
             kMeshVertexPassthroughMaxInvocations,
             {},
-            {},
             nullptr);
         if (lit_vs.find(
                 "layout(location=0) perprimitiveEXT out uint fragDataIndexID[")
@@ -552,7 +548,6 @@ namespace
             VK_FORMAT_R32G32B32_SFLOAT,
             MeshShaderMode::VertexPassthrough,
             kMeshVertexPassthroughMaxInvocations,
-            {},
             {},
             nullptr);
         if (color_vs.find(
@@ -2268,7 +2263,7 @@ namespace
             return GenerateMeshShaderDocumentText(
                 graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
                 MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
-                {}, {}, nullptr);
+                {}, nullptr);
         };
 
         const std::string flat = build(VertexNodeConfigResolver::FlatXY());

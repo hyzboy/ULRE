@@ -267,7 +267,6 @@ ShaderCodeModule.h
 ShaderCodeModuleFile.h
 ShaderCodeModuleMetadata.h
 ShaderCodeModuleRegistry.h
-ShaderCodeModuleCapabilityResolver.h
 ShaderCodeResourceManifest.h
 ```
 

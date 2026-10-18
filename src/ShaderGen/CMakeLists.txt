@@ -80,8 +80,6 @@ set(GLSL_MODULE_FILES
     glsl_module/ShaderCodeModuleMetadata.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleFile.h
     glsl_module/ShaderCodeModuleFile.cpp
-    ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleCapabilityResolver.h
-    glsl_module/ShaderCodeModuleCapabilityResolver.cpp
     glsl_module/ShaderCodeModule.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeResourceManifest.h
     glsl_module/ShaderCodeResourceManifest.cpp

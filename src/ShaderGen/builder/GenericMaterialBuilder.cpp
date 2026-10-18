@@ -21,7 +21,6 @@
 #include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
-#include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include "compile/MaterialShaderEmitter.h"
 #include "builder/MaterialResourceManifestBuilder.h"
@@ -272,8 +271,6 @@ namespace hgl::graph::mtl
             plan.vertex_node_config =
                 ResolveMaterialVertexNodeConfig(definition, request);
             plan.resolved_vertex_input_document.Clear();
-            plan.resolved_provider_document.Clear();
-            plan.resolved_provider_graph_hash = 0;
 
             // CharQuad: mesh shader self-declares all SSBOs; no vertex ABI needed.
             if (IsCharQuadMode(definition.mesh_shader_mode))
@@ -299,24 +296,6 @@ namespace hgl::graph::mtl
                         ShaderDocumentBlockKind::Module,
                         resolved_abi.vertex_input_glsl,
                         input_source);
-                }
-                if (!resolved_abi.provider_glsl.empty())
-                {
-                    ShaderDocumentSource provider_source;
-                    provider_source.stage = "mesh";
-                    provider_source.module = "vertex-provider";
-                    provider_source.logical_name = "MeshTemplateEmitter.Provider";
-                    plan.resolved_provider_document.Add(
-                        ShaderDocumentBlockKind::Module,
-                        AnsiString(resolved_abi.provider_glsl.c_str()),
-                        provider_source);
-                }
-                plan.resolved_provider_graph_hash = resolved_abi.provider_graph_hash;
-                {
-                    hgl::hash::FNV1aHasher64 h;
-                    h << VertexNodeConfigResolver::GetHash(plan.vertex_node_config)
-                      << resolved_abi.provider_graph_hash;
-                    plan.resolved_provider_graph_hash = h;
                 }
             }
             return true;
@@ -486,7 +465,6 @@ namespace hgl::graph::mtl
                     max_invocations,
                     mesh_document,
                     &plan.resolved_vertex_input_document,
-                    &plan.resolved_provider_document,
                     &plan.stage_interface))
             {
                 s_last_build_generic_material_error = "EmitMeshTemplateDocument failed";
@@ -819,8 +797,7 @@ namespace hgl::graph::mtl
                 ComputeShaderLibraryDependencyHash(plan.fs.data(), plan.fs.size());
 
             hgl::hash::FNV1aHasher64 mesh_module_graph_hasher;
-            mesh_module_graph_hasher << plan.resolved_provider_graph_hash
-                                     << mesh_shader_library_hash;
+            mesh_module_graph_hasher << mesh_shader_library_hash;
             const uint64 mesh_module_graph_hash = mesh_module_graph_hasher;
 
             // mesh shader 材质：顶点阶段走 mesh stage

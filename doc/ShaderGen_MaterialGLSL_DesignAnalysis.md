@@ -110,9 +110,8 @@
 4. **顶点 ABI 解析**：`BuildResolvedMaterialVertexABI`（src/ShaderGen/builder/VertexABIBuilder.cpp:288）
    ——把 definition 的语义需求逐条与 `GeometryVertexFormat` 匹配
    （geometry.Find(semantic)），生成 `layout(location=N) in vec3 Position;` 声明 +
-   `SerializedVertexEntry[]`（VkFormat 列表），同时 `GetShaderCodeModuleProviderGraphHash`
-   算出 **provider 图哈希**（provider 选择快照，参与缓存 key；
-   `src/ShaderGen/glsl_module/ShaderCodeModuleCapabilityResolver.cpp:28`）。
+   `SerializedVertexEntry[]`（VkFormat 列表）。顶点输入由 `vertex/s1_*` 模块选择完成，
+   无 provider 图（能力解析残留链路已于 2026-10-11 整条删除）。
 5. **资源清单**：`BuildShaderCodeResourceManifest`
    （src/ShaderGen/builder/DefinitionDescriptorBuilder.h:41，闭包实现在
    src/ShaderGen/builder/DescriptorBuilderCommon.h:158）
@@ -252,11 +251,12 @@ UV `VK_FORMAT_R16G16_SFLOAT` → `vertex/s1_uv_rg16f.glsl`、位置按
 `out_position_format` 选 `s1_position_vec3/vec2/vec2i`），拼成顶点输入 GLSL
 （VertexABIBuilder.cpp:172-285）。
 
-`ShaderCodeModuleResolutionResult` 的 `selections` / `diagnostics`
-（inc/hgl/mtl/ShaderCodeModuleCapabilityResolver.h:76）仍被
-`ComposeShaderCodeModuleProviderGraph`（ShaderCodeModuleCapabilityResolver.cpp:85）
-消费，`GetShaderCodeModuleProviderGraphHash`（同文件 :28）产出参与顶点 stage key 的
-**provider 图哈希**——这就是"同一个材质换一个法线模块，缓存自动失效"的机制。
+`ShaderCodeModuleResolutionResult` 的 `selections` / `diagnostics` 与
+`ComposeShaderCodeModuleProviderGraph` / `GetShaderCodeModuleProviderGraphHash`
+已于 2026-10-11 **整条删除**：生产路径自能力解析退役起恒构造
+`{resolved=true, selections 空}`，provider 图哈希恒为常量、对缓存 key 无区分力，
+唯一真实使用者是测试用例。"换一个法线模块 ⇒ 缓存失效"由顶点 stage key 里
+实际拼入的顶点输入 GLSL 与模块图哈希保证。
 
 ### 原理 4：契约化 = 可序列化、可哈希、可校验
 
@@ -376,8 +376,7 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 | L2 | `inc/hgl/mtl/ShaderBuildContext.h` | 编译产物容器（全局资源契约/Stage Map/链接规格） |
 | L3 | `src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp` | @ulre 元数据解析 |
 | L3 | `src/ShaderGen/glsl_module/ShaderCodeModuleRegistry.cpp` | 模块注册表（显式注册+目录扫描，无数字 ID 轨道） |
-| L3 | `src/ShaderGen/glsl_module/ShaderCodeModuleCapabilityResolver.cpp` | provider 图哈希与组合（通用能力解析已退役） |
-| L3 | `src/ShaderGen/builder/VertexABIBuilder.cpp` | 顶点 ABI + s1_* 模块选择 / provider 图哈希 |
+| L3 | `src/ShaderGen/builder/VertexABIBuilder.cpp` | 顶点 ABI + s1_* 模块选择 |
 | L3 | `src/ShaderGen/builder/DefinitionDescriptorBuilder.h`（+ `DescriptorBuilderCommon.h`） | 模块依赖闭包 / 资源清单 / 描述符条目 |
 | L3 | `src/ShaderGen/template/FragmentTemplateComposer.cpp` | FS 模板装配（模板 slots/契约/main） |
 | L3 | `src/ShaderGen/meshgen/MeshTemplateEmitter.h` | Mesh shader 三段式组装 |

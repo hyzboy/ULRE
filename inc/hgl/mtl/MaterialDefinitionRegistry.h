@@ -6,7 +6,6 @@
 #include<hgl/mtl/MaterialCoverageContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/RenderTemplate.h>
-#include<hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
 #include<hgl/mtl/ShaderCodeModuleRegistry.h>
 #include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
@@ -89,9 +88,7 @@ bool SelectSceneRenderTemplateRequest(
 struct MaterialResolvedVertexABI
 {
     VkFormat position_format = VK_FORMAT_UNDEFINED;
-    uint64 provider_graph_hash = 0;
     AnsiString vertex_input_glsl;
-    std::string provider_glsl;
 };
 
 VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
