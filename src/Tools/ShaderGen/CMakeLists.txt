@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.28)
 
-macro(CreateProject name)
+# 注意：本宏只"修饰"已由 add_executable 建好的 target（补 include 目录 / IDE 分组 / 调试工作目录），
+# 不创建 target。此前它与 example/ 下同名宏语义完全不同，容易误用，故改名以示区别。
+macro(SetupToolTarget name)
 
     target_include_directories(${name}
         PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -26,7 +28,7 @@ target_link_libraries(VulkanPhysicalDeviceProfileCollector
             CMMath
             CMCoreType)
 
-CreateProject(VulkanPhysicalDeviceProfileCollector)
+SetupToolTarget(VulkanPhysicalDeviceProfileCollector)
 
 ####################################################################################################
 
@@ -39,7 +41,7 @@ target_link_libraries(DescriptorMacroGen
             CMCore
             CMCoreType)
 
-CreateProject(DescriptorMacroGen)
+SetupToolTarget(DescriptorMacroGen)
 
 if(BUILD_TESTING)
     add_test(
@@ -65,7 +67,7 @@ add_custom_target(descriptor_macros_verify ALL
 add_executable(VertexLoaderConsistency
     VertexLoaderConsistency.cpp)
 
-CreateProject(VertexLoaderConsistency)
+SetupToolTarget(VertexLoaderConsistency)
 
 if(BUILD_TESTING)
     add_test(
@@ -89,7 +91,7 @@ target_link_libraries(ShaderResourceSchemaRegressionGate
             CMMath
             CMCoreType)
 
-CreateProject(ShaderResourceSchemaRegressionGate)
+SetupToolTarget(ShaderResourceSchemaRegressionGate)
 add_dependencies(ShaderResourceSchemaRegressionGate descriptor_macros_verify)
 
 target_compile_definitions(ShaderResourceSchemaRegressionGate
@@ -132,7 +134,7 @@ target_link_libraries(ShaderDocumentRegression
             CMCore
             CMCoreType)
 
-CreateProject(ShaderDocumentRegression)
+SetupToolTarget(ShaderDocumentRegression)
 
 if(BUILD_TESTING)
     add_test(
@@ -153,7 +155,7 @@ target_link_libraries(SceneRenderTemplateResolverRegression
             CMCore
             CMCoreType)
 
-CreateProject(SceneRenderTemplateResolverRegression)
+SetupToolTarget(SceneRenderTemplateResolverRegression)
 
 if(BUILD_TESTING)
     add_test(
@@ -184,7 +186,7 @@ target_link_libraries(ShaderDocumentProductionRegression
             CMMath
             CMCoreType)
 
-CreateProject(ShaderDocumentProductionRegression)
+SetupToolTarget(ShaderDocumentProductionRegression)
 
 if(BUILD_TESTING)
     add_test(

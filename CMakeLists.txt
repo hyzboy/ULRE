@@ -24,6 +24,17 @@ include(math)
 include(vulkan)
 include(use_cm_module)
 
+# C++20 modules：全仓当前零使用（`export module` / `import` 各 0 处），而 compiler.cmake
+# 无条件开启了模块扫描 —— 每个 target 多一遍 "Scanning sources for module dependencies..."，
+# 并把 /interface /ifcOutput 撒进全局 CMAKE_CXX_FLAGS。这里在根处默认关掉，避免纯开销。
+# 将来真要上 modules：cmake -DULRE_ENABLE_CXX_MODULES=ON
+option(ULRE_ENABLE_CXX_MODULES "Enable C++20 modules scanning and /interface /ifcOutput flags" OFF)
+if(NOT ULRE_ENABLE_CXX_MODULES)
+    set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+    string(REPLACE " /interface /ifcOutput ${CMAKE_CXX_MODULE_OUTPUT_DIRECTORY}" ""
+        CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+
 # Qt 支持（CMQT 模块）
 # CMQT 链接 Qt6 的 Core/Gui/Widgets/Svg/Xml，Qt6 由 vcpkg 提供（find_package 自动处理）。
 # 使用前请确保 vcpkg 已安装完整 Qt6：vcpkg install qt6-base qtsvg（x64-windows）
