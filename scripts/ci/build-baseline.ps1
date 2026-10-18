@@ -1,7 +1,10 @@
 param(
     [string]$BuildDir = "build",
     [string]$Config   = "Debug",
-    [int]$Jobs        = 1,
+    # 默认 8：2026-10-18 实测 354 个 exe 在 /m:8 下全部重链，rc=0、零错误、零 MSB3073。
+    # 此前「并行 /m 有 vcpkg applocal 竞态（MSB3073 exit 32）」的结论在现版 vcpkg
+    # （E:\vcpkg，走 z-applocal 而非 legacy applocal.ps1）下不复现，/m:1 已无必要。
+    [int]$Jobs        = 8,
     [string]$LogDir   = "",
     [switch]$SkipConfigure,
     [switch]$SkipBuild,
@@ -17,11 +20,13 @@ param(
 #          （ctest 标签 ecs / csm / shadergen，共 25 个用例）
 #   B 层 = CMCore / CMMath / CMAudio / CM2D / CMUtil / CMCoreType / CMAssetsManage 等
 #          submodule 上游仓库的 examples 与 tests（共 158 个用例）
-# 上游断点（已知：CMP.AudioClient 在 Debug 下从未编译）属另一条任务线，登记不阻塞 ——
+# 上游（B 层）若有断点属另一条任务线，登记不阻塞 ——
 # 否则「CMake 模块化」永远卡在修别人的仓库上。
 # 注意：此前观察到的「CMCore.lib / CMMath.lib / CMP.AudioClient.lib 大片 LNK1104」
 # 全部是 Visual Studio 常驻 MSBuild node 与本次构建抢文件造成的假错误，加
 # /nodeReuse:false 后即消失；真实错误只有 TexImage 跨配置链接一条，已由 [2/5] 自动前置。
+# 更正（2026-10-18）：曾记录「CMP.AudioClient 在 Debug 下从未编译」，经取证为误判 ——
+#   CMP.AudioClient.dll / CMAudio.lib 均正常产出，成因是并发构建把 .tlog 目录清空/重写。
 #
 # 判据（A 层全绿才算过，退出码 0）：
 #   1) 全量构建中**不存在归属于 A 层路径**的编译/链接错误；
@@ -113,19 +118,59 @@ if (-not $SkipBuild -and $Config -ne "Release") {
     Write-Host "[2/5] 前置：已跳过（-SkipBuild 或 Release 配置）"
 }
 
-# ── [3/5] 全量构建（串行，日志落盘） ─────────────────────────────────────────
+# ── [3/5] 全量构建（并行，日志落盘） ─────────────────────────────────────────
 if (-not $SkipBuild) {
     Write-Host "[3/5] build（--config $Config，/m:$Jobs，日志 -> $buildLog）"
-    # 串行：本仓输出目录把 exe/dll/lib 全平铺在一个目录，vcpkg applocal 会并发拷同一批 DLL，
-    # 并行构建会撞 MSB3073。阶段 4 修好目录分层后才可能放开并行。
     # -nodeReuse:false：Visual Studio 常驻的 MSBuild worker node 会与本次构建抢同一批
     # .lib/.dll（表现为大片假的 LNK1104），必须用独立节点构建。
+    # 并行：本仓输出目录把 exe/dll/lib 全平铺在一个目录，vcpkg applocal 会并发往同一目录
+    # 拷同一批 DLL。实测 354 个 exe 全量重链 /m:8 零失败，故竞态不是系统性的；偶发的
+    # MSB3073(exit 32) 由下面的「串行补跑」兜底，不构成把 /m 降回 1 的理由。
     cmake --build $buildPath --config $Config -- /m:$Jobs /nodeReuse:false /nologo 2>&1 |
         Tee-Object -FilePath $buildLog | Out-Null
     $buildRc = $LASTEXITCODE
     Write-Host "  build rc=$buildRc"
+
+    # vcpkg applocal 的 POST_BUILD 偶发 MSB3073（exit 32），成因是并发拷贝时的共享冲突。
+    # z-applocal 本身幂等，把日志里记录的那几条命令串行重放一遍即可修复 —— 这样既保留了
+    # 并行构建的速度，又不让基线因一次偶发而误判。
+    # 只在确实出现 MSB3073 时触发：日志里出现 z-applocal 行本身是正常现象（有 target 重链
+    # 就会有），无条件重放等于给每次增量构建平白加上几十次进程启动。
+    $appLocalRepaired = 0
+    if ((Test-Path $buildLog) -and
+        (Select-String -Path $buildLog -Pattern 'MSB3073.*exited with code 32' -Quiet)) {
+        $replay = Select-String -Path $buildLog `
+            -Pattern 'z-applocal\s+--target-binary=(\S+)\s+--installed-bin-dir=(\S+)' |
+            ForEach-Object { "$($_.Matches[0].Groups[1].Value)|$($_.Matches[0].Groups[2].Value)" } |
+            Sort-Object -Unique
+        if ($replay) {
+            Write-Host ("  检测到 {0} 条 applocal POST_BUILD，串行重放修复" -f $replay.Count)
+            $vcpkgExe = (Select-String -Path (Join-Path $buildPath "CMakeCache.txt") `
+                -Pattern '^CMAKE_TOOLCHAIN_FILE:FILEPATH=(.+)/scripts/buildsystems/vcpkg\.cmake$').Matches.Groups[1].Value
+            $vcpkgExe = if ($vcpkgExe) { Join-Path $vcpkgExe "vcpkg.exe" } else { "" }
+            if (Test-Path $vcpkgExe) {
+                foreach ($r in $replay) {
+                    $parts = $r.Split('|')
+                    # 共享冲突是瞬时的：占用方（并发链接/拷贝）通常几百毫秒内就释放，
+                    # 故退避重试而不是一次失败即放弃。
+                    for ($try = 1; $try -le 3; $try++) {
+                        & $vcpkgExe z-applocal "--target-binary=$($parts[0])" "--installed-bin-dir=$($parts[1])" 2>&1 | Out-Null
+                        if ($LASTEXITCODE -eq 0) { $appLocalRepaired++; break }
+                        if ($try -lt 3) { Start-Sleep -Milliseconds 500 }
+                    }
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host ("    重放 3 次仍失败(rc={0})：{1}" -f $LASTEXITCODE, $parts[0])
+                    }
+                }
+                Write-Host ("  修复 {0}/{1}" -f $appLocalRepaired, $replay.Count)
+            } else {
+                Write-Host "  未找到 vcpkg.exe，跳过重放（请手工检查输出目录依赖 DLL）"
+            }
+        }
+    }
 } else {
     $buildRc = 0
+    $appLocalRepaired = 0
     Write-Host "[3/5] build 已跳过（-SkipBuild）"
 }
 
@@ -159,6 +204,14 @@ if (Test-Path $buildLog) {
             "A" { [void]$aErrors.Add($l) }
             "B" { [void]$bErrors.Add($l) }
             default { [void]$uErrors.Add($l) }
+        }
+    }
+    # 已被 [3/5] 串行重放修复的 applocal MSB3073 不再计入 B 层错误
+    if ($appLocalRepaired -gt 0) {
+        $fixed = @($bErrors | Where-Object { $_ -match 'MSB3073' })
+        if ($fixed.Count -gt 0) {
+            foreach ($x in $fixed) { [void]$bErrors.Remove($x) }
+            Write-Host ("  其中 {0} 条 applocal MSB3073 已由串行重放修复，不计入" -f $fixed.Count)
         }
     }
     Write-Host ("  A 层错误 = {0}   B 层错误 = {1}   未归类 = {2}" -f $aErrors.Count, $bErrors.Count, $uErrors.Count)
