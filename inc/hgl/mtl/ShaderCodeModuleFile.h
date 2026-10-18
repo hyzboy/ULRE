@@ -102,4 +102,19 @@ namespace hgl::graph::mtl
                                                       int content_size,
                                                       ShaderCodeModuleFileData &out_data) noexcept;
 
+    /**
+     * 收集 GLSL 正文里所有 `#include "..."` / `#include <...>` 目标。
+     *
+     * 只按书写原样收集（不做路径归一、不判存在性）；注释行与行尾注释不会被
+     * 误收，因为 `#include` 必须位于行首（前导空白除外）。
+     *
+     * @param content      GLSL 源正文。
+     * @param content_size 正文字节数（不含结尾 NUL）。
+     * @param out_paths    追加写入的目标路径列表（返回本次新增条数）。
+     * @return 本次新增的 include 目标数量。
+     */
+    int CollectShaderCodeModuleIncludePaths(const char *content,
+                                           int content_size,
+                                           AnsiStringList &out_paths) noexcept;
+
 }

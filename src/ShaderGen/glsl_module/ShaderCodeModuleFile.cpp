@@ -609,4 +609,50 @@ namespace hgl::graph::mtl
 
         return ShaderCodeModuleParseResult::OK;
     }
+
+    int CollectShaderCodeModuleIncludePaths(const char *content,
+                                           const int content_size,
+                                           AnsiStringList &out_paths) noexcept
+    {
+        if (!content || content_size <= 0)
+            return 0;
+
+        const int begin_count = out_paths.GetCount();
+        const char *end = content + content_size;
+        const char *cursor = content;
+
+        while (cursor < end)
+        {
+            const char *line_break = static_cast<const char *>(
+                std::memchr(cursor, '\n', size_t(end - cursor)));
+            const char *line_end = line_break ? line_break : end;
+
+            const char *scan = SkipSpaces(cursor, line_end);
+
+            // `#include` 必须位于行首（前导空白除外）：以 `//` 或 `/*` 开头的
+            // 注释行因此天然被排除，不会把被注释掉的 include 当成依赖。
+            if (line_end - scan > 8
+             && std::strncmp(scan, "#include", 8) == 0)
+            {
+                scan = SkipSpaces(scan + 8, line_end);
+
+                if (scan < line_end && (*scan == '"' || *scan == '<'))
+                {
+                    const char closing = *scan == '"' ? '"' : '>';
+                    const char *name_begin = scan + 1;
+                    const char *name_end = name_begin;
+                    while (name_end < line_end && *name_end != closing)
+                        ++name_end;
+
+                    if (name_end > name_begin)
+                        out_paths.Add(
+                            AnsiString(name_begin, int(name_end - name_begin)));
+                }
+            }
+
+            cursor = line_break ? line_break + 1 : end;
+        }
+
+        return out_paths.GetCount() - begin_count;
+    }
 }

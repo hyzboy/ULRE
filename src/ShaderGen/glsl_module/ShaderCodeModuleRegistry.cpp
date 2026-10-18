@@ -258,6 +258,61 @@ namespace hgl::graph::mtl
             data->definition.dependency_count =
                 static_cast<uint32>(data->dependencies.GetCount());
 
+            // `@ulre uses` 是模块依赖的**唯一真源**：manifest 模块图、能力闭包、
+            // 资源/采样器契约与模块冲突检查全部只沿 uses 边展开。正文里手写的
+            // `#include` 若没有对应声明，该依赖模块就会整条从图里消失——它的
+            // provides/require 不被计入、它声明的 texture/sampler 引用不被校验、
+            // 它与其他模块的冲突不被检测（P4：provider 用 include 隐式拉入的
+            // 模块正是这种情况）。因此这里强制两侧一致：正文 include 到的每个
+            // 已注册模块，都必须在 uses 里自证。
+            {
+                AnsiStringList include_paths;
+                CollectShaderCodeModuleIncludePaths(
+                    data->glsl_code.c_str(), data->glsl_code.Length(), include_paths);
+
+                for (int k = 0; k < include_paths.GetCount(); ++k)
+                {
+                    const ShaderCodeModuleFileData *included = nullptr;
+                    for (int m = 0; m < file_data.GetCount(); ++m)
+                    {
+                        const ShaderCodeModuleFileData *candidate = file_data[m];
+                        if (!candidate || candidate == data)
+                            continue;
+                        if (!FindByName(candidate->name.c_str()))
+                            continue;
+                        if (!(candidate->include_path == include_paths[k]))
+                            continue;
+
+                        included = candidate;
+                        break;
+                    }
+
+                    // 非 ShaderLibrary 模块（例如编译器内置注入）不参与模块图。
+                    if (!included)
+                        continue;
+
+                    bool declared = false;
+                    for (int d = 0; d < data->pending_module_requirements.GetCount(); ++d)
+                    {
+                        if (data->pending_module_requirements[d] == included->name)
+                        {
+                            declared = true;
+                            break;
+                        }
+                    }
+
+                    if (declared)
+                        continue;
+
+                    GLogError(u8"[ShaderCodeModuleRegistry] Undeclared code-module dependency: module=%s includes=%s (@ulre uses %s missing)",
+                              data->name.c_str(),
+                              include_paths[k].c_str(),
+                              included->name.c_str());
+                    ++error_count;
+                    data->metadata_resolution_valid = false;
+                }
+            }
+
             for (int k = 0;
                  k < data->pending_module_conflicts.GetCount();
                  ++k)
