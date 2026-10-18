@@ -3,7 +3,6 @@
 // @ulre kind Utility
 // @ulre priority 0
 // @ulre slot sky_provider
-// @ulre provides_capability ambient_diffuse
 // @ulre uses scene_ubo
 // @ulre uses descriptor_macros
 // @ulre end

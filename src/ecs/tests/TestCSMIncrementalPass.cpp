@@ -6365,6 +6365,11 @@ int main(int argc, char** argv)
               "T6b 禁复活：天光模块不得回读天空里的方向",
               true },
 
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+              "provides_capability",
+              "禁复活：sky 槽只提供天空外观/主光方向，不提供环境光 —— 声明 ambient_diffuse 会掩盖 ambient provider 放错的诊断",
+              true },
+
             { "sky_minimal_surface.glsl", OS_TEXT("ShaderLibrary/surface/sky_minimal_surface.glsl"),
               "float sun_rad = radians(main_light.color_angle.a);",
               "T6b：日盘角径取自光行 color_angle.a（天空不再持有角径）" },
