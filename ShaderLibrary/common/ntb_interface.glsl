@@ -2,6 +2,7 @@
 // @ulre name ntb_interface
 // @ulre kind Shared
 // @ulre priority 0
+// @ulre uses surface_interface
 // @ulre end
 // NTB Space Interface — defines the NTB provider input/output contract.
 #ifndef NTB_INTERFACE_GLSL

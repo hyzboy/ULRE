@@ -6,6 +6,7 @@
 // @ulre require ProducedSemantic WorldPosition
 // @ulre require Resource SkyLight
 // @ulre uses surface_interface
+// @ulre uses sky_atmosphere
 // @ulre end
 // === Surface Function: SkyMinimal ===
 // Procedural sky — gradient + atmosphere scatter + sun core/glow

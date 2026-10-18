@@ -4,6 +4,7 @@
 // @ulre priority 0
 // @ulre slot ntb_provider
 // @ulre uses ntb_interface
+// @ulre uses ntb_orthonormal
 // @ulre uses bindless_textures
 // @ulre texture_reference normal Fragment optional fallback
 // @ulre sampler_reference Trilinear

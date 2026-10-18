@@ -3,6 +3,7 @@
 // @ulre kind Utility
 // @ulre priority 0
 // @ulre require Resource Viewport
+// @ulre uses scene_ubo
 // @ulre end
 // Stage 3 helper: scale_fixed_pixels — fixed pixel-size billboard scale.
 // Requires: camera UBO, viewport UBO (SCENE_VIEWPORT_UBO declared before this include)

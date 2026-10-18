@@ -2,6 +2,7 @@
 // @ulre name material_source_interface
 // @ulre kind Shared
 // @ulre priority 0
+// @ulre uses surface_interface
 // @ulre end
 // Material source provider contract.
 

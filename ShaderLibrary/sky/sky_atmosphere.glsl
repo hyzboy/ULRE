@@ -5,6 +5,7 @@
 // @ulre slot sky_provider
 // @ulre provides_capability ambient_diffuse
 // @ulre uses scene_ubo
+// @ulre uses descriptor_macros
 // @ulre end
 // Sky Atmosphere — 大气天光与太阳光数据源
 #ifndef SKY_ATMOSPHERE_GLSL

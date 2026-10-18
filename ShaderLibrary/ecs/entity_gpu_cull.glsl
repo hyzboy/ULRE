@@ -7,6 +7,10 @@
 #define ULRE_ARENA_PASSES 2u
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre uses descriptor_macros
+// @ulre uses scene_ubo
+// @ulre uses entity_gpu
+// @ulre uses RenderItemResolve
 // @ulre end
 // GPU 视锥剔除着色器（T3d-1a；T3d-3a 判据修正；T3f-2 形态 B gather 输出）
 // 输入：实体行表（枚举源，Active/Visible 位）+ 实体 4-ID 表（池口径 id 唯一来源）

@@ -2,6 +2,8 @@
 // @ulre name entity_gpu
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre uses descriptor_macros
+// @ulre uses scene_ubo
 // @ulre end
 // entity_gpu.glsl — EntityGPU 实体行的 GLSL 镜像（GPU 剔除的枚举源，T3d-1）
 //

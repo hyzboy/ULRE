@@ -5,6 +5,7 @@
 // @ulre provide Camera
 // @ulre provide SkyLight
 // @ulre provide Viewport
+// @ulre uses descriptor_macros
 // @ulre end
 // 全局统一基础数据声明（**无绑定无集**）
 //

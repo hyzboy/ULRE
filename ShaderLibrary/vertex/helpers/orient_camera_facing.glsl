@@ -4,6 +4,7 @@
 // @ulre priority 0
 // @ulre require Resource Camera
 // @ulre uses orient_world
+// @ulre uses scene_ubo
 // @ulre end
 // Stage 3 helper: orient_camera_facing — camera-facing billboard orientation.
 // Requires: camera UBO (SCENE_CAMERA_UBO declared before this include)

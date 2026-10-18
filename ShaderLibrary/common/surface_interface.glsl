@@ -2,6 +2,7 @@
 // @ulre name surface_interface
 // @ulre kind Shared
 // @ulre priority 0
+// @ulre uses descriptor_macros
 // @ulre end
 // Surface Interface — SurfaceInput / SurfaceOutput / SurfaceOutputExt
 // 所有 Surface Function 和 Compositor 模板共享此接口定义

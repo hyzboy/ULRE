@@ -6,6 +6,7 @@
 // @ulre provides_capability surface_base_color|surface_normal|surface_metallic|surface_roughness|surface_opacity
 // @ulre uses surface_interface
 // @ulre uses material_source_interface
+// @ulre uses ntb_interface
 // @ulre end
 
 #ifndef MATERIAL_SURFACE_GLSL
