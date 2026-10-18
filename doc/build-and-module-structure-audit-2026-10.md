@@ -450,31 +450,90 @@ endforeach()
 
 ## 附：可复现的验证命令
 
+**首选：一条命令跑 A 层基线**（阶段 2~5 每次改动的回归判据）：
+
 ```powershell
-# 1. 输出目录规模
+pwsh scripts/ci/build-baseline.ps1              # 全量 Debug 串行构建 + A 层测试
+pwsh scripts/ci/build-baseline.ps1 -SkipBuild   # 只跑测试（用已有产物）
+```
+
+退出码：`0` = A 层绿；`1` = A 层构建错误或测试失败；`2` = configure 失败；`3` = 前置 Release TexImage 失败。
+报告落在 `build/baseline-logs/summary-<cfg>-<stamp>.md`。
+
+> ⚠️ **不要用 `msbuild ULRE.slnx /p:Configuration=Debug` 判断构建健康度。**
+> Visual Studio 常驻的 MSBuild worker node（`devenv` 打开时自动存活）会与命令行构建
+> 抢同一批 `.lib` / `.dll`，产出大片**假的** `LNK1104`（`CMCore.lib`、`CMMath.lib`、
+> `CMP.AudioClient.lib` …），而对应文件其实都在。必须 `/nodeReuse:false`。
+> 本文早期版本据此误判出「上游 B 层断点」，实际全部是并发假象 —— 见下一节。
+
+手工排查时：
+
+```powershell
+# 输出目录规模
 (Get-ChildItem build\out\Windows_64_Debug -Filter *.exe -File).Count   # 353
 (Get-ChildItem build\out\Windows_64_Debug -Filter *.dll -File).Count   # 38
 
-# 2. 并行构建竞态（跑 3 次以上，命中的 target 每次不同）
-cd build
-& $msb ULRE.slnx /p:Configuration=Debug /m /v:m /nologo 2>&1 |
-    Select-String ': error ' | Sort-Object -Unique
+# 单配置、单目标、独立节点（避开并发假错误）
+cmake --build build --config Debug --target <name> -- /m:1 /nodeReuse:false /nologo
 
-# 3. 串行构建（应只剩 TexImage.lib LNK1104 ×4）
-& $msb ULRE.slnx /p:Configuration=Debug /m:1 /v:m /nologo 2>&1 |
-    Select-String ': error ' | Sort-Object -Unique
-
-# 4. 测试基线
-ctest --test-dir build -C Debug -L shadergen          # 13/13
+# 测试基线
+ctest --test-dir build -C Debug -L "ecs|csm|shadergen"          # 25/25
 & build\out\Windows_64_Debug\TestCSMIncrementalPass.exe   # 51/51（须在仓库根运行）
 & build\out\Windows_64_Debug\TestRenderStrategyTable.exe  # 6/6
 
-# 5. 全局 include 的实际暴露面
+# 全局 include 的实际暴露面
 Select-String -Path CMCMakeModule\use_cm_module.cmake -Pattern 'include_directories'
 
-# 6. 宏无依赖参数
+# 宏无依赖参数
 Select-String -Path CMCMakeModule\cm_modules.cmake -Pattern 'macro\(add_cm_library'
 ```
+
+**规模口径**：`add_test` 在 `if/elseif/elseif/elseif/else` 五个配置分支下重复登记，
+`ctest -N` 会给出 915 —— 那是重复计数。真实用例数 **183**，其中 ULRE 自有（标签
+`ecs|csm|shadergen`）**25** 个。`.vcxproj` 总数 **738**。
+
+---
+
+## 附：阶段 1 实施记录（2026-10）
+
+| # | 位置 | 改动 |
+|---|---|---|
+| 1 | `CMakeLists.txt` | 新增 `option(ULRE_ENABLE_CXX_MODULES ... OFF)`；关 `CMAKE_CXX_SCAN_FOR_MODULES`；剥掉 `/interface /ifcOutput` |
+| 2 | `example/CMakeLists.txt` | 上提唯一一份 `macro(CreateProject)`；去掉恒空的 `${VULKAN_APP_FRAMEWORK}`；`FOLDER` 由相对路径推出；`VS_DPI_AWARE` 统一 |
+| 3 | `example/*/CMakeLists.txt` × 14 | 删各自 `CreateProject` 宏拷贝 |
+| 4 | `src/Tools/ShaderGen/CMakeLists.txt` | `macro(CreateProject)` → `macro(SetupToolTarget)`，7 处调用点同步（原名是同名异义，不建 target） |
+| 5 | `src/Tools/ShaderCompiler/` | 整目录删除（`main.cpp` 仅 3 字节 BOM；CMakeLists 括号不平衡；从未被 `add_subdirectory`） |
+| 6 | `src/CMakeLists.txt` | 删死引用 `#add_subdirectory(JoltPhysics/Build)` |
+| 7 | `src/Tools/ModelConvert/CMakeLists.txt` | 整份 CMake 逻辑注释停用（`hgl/math/Math.h` 已删、`assimp`/`IrrXML`/`zlibstatic` target 不存在），源码存档保留 |
+| 8 | `scripts/ci/build-baseline.ps1` | **新增**：A 层基线（configure → 前置 Release TexImage → 全量构建 → 错误分层 → ctest），带明确退出码 |
+
+### TexImage 跨配置链接：根因与处置
+
+ImageMagick 上游只提供 `/MT` 版 import lib，`TexImage` 一旦按 Debug 编译必然撞
+`RuntimeLibrary` / `_ITERATOR_DEBUG_LEVEL` 不匹配 —— 所以它**恒按 Release 构建**，
+Debug 宿主（`TexConvCore`）只能链 `out/..._Release/TexImage.lib` 的**字面路径**。
+干净树里这个文件不存在 ⇒ Debug 全量构建必然 `LNK1104`，这是 `EXIT=1` 的唯一真实来源。
+
+处置：
+- `scripts/ci/build-baseline.ps1` 的 `[2/5]` 步骤在 Debug 构建前自动补做
+  `cmake --build build --config Release --target TexImage`，产出后**重新 configure**
+  （`EXISTS()` 是 configure 期求值），Debug 链接项才会生效；
+- 删掉 `texconv_link_teximage()` 里的 `add_dependencies(${TARGET_NAME} TexImage)`：
+  它会在 Debug 下编出一个**没人链接**的 Debug 版 TexImage（`/MTd` 混 IM 的 `/MT`，
+  随时可能 `LNK2038`），纯浪费。非 Debug 配置由 `target_link_libraries` 里的 target
+  引用自动建立构建依赖，本就不需要这行。
+
+### 更正：不存在「上游 B 层构建断点」
+
+本文早期版本记录过「`CMP.AudioClient` 在 Debug 下从未编译」——**该结论是错的**。
+加 `/nodeReuse:false` 后，738 个工程的 Debug 全量构建 **零错误**，
+`CMP.AudioClient.dll`（4.2 MB）、`CMAudio.lib`（31 MB）均正常产出。
+
+那批错误的成因：`build\CMAudio\src\CMP.AudioClient.dir\Debug\` 下的 `.tlog` 目录
+被并发构建进程清空/重写，`CL.command.1.tlog` 缺失导致 MSBuild 判定「无编译输出」，
+于是跳过编译、直接进入链接，链接时找不到 `.lib`。同时 `devenv` 常驻的 20 个 MSBuild
+node 也在跑同一批工程。⇒ 全部是**并发假象**，不是上游缺陷。
+
 
 ---
 
