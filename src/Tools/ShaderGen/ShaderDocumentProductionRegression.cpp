@@ -10,6 +10,8 @@
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderKeyUtility.h>
+#include <hgl/mtl/ShaderArtifactStore.h>
+#include <hgl/ShaderCompilerAPI.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/filesystem/Path.h>
@@ -533,9 +535,128 @@ namespace
         return valid;
     }
 
+    /// 缓存命中 + 命中后校验的端到端验证。
+    ///
+    /// 其余 fixture 都跑 defer_finalize=true（只验文档，不碰 SPV），因此
+    /// FinalizeShaderBuildContext 的命中分支在测试进程内根本不可达，
+    /// VerifyGeneratedSourceDigest 也就从未被执行过。这里用真实
+    /// ShaderArtifactStore 连做三次构建把那条路径跑通：
+    ///   1) 首次：未命中，落盘
+    ///   2) 再次：命中（声明键与文本都没变）
+    ///   3) 篡改落盘摘要后再建：仍「命中」判定成立，但命中后校验必须
+    ///      拒绝它并重编译——这正是声明键欠近似时的兜底行为
+    bool VerifyCacheHitPostCheck()
+    {
+        MaterialDefinition definition{};
+        if (!TryGetMaterialDefinitionByID("builtin/pure_color", definition))
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] cache-hit probe cannot "
+                "resolve material=builtin/pure_color");
+            return false;
+        }
+
+        GeometryVertexFormat geometry;
+        if (!geometry.Add(VertexSemantic::Position, VF_V3F, 0, 0))
+            return false;
+
+        const hgl::filesystem::Path cache_root =
+            hgl::filesystem::Path(OS_TEXT("build"))
+            / OSString(OS_TEXT("cache-hit-post-check-probe"));
+
+        // 探针不要求空缓存：上一轮留下的产物只会让首个构建直接命中，
+        // 而「第二个构建必须命中」「篡改摘要后必须被拒」两条断言
+        // 在冷/热缓存下语义一致，因此可重复运行。
+        ShaderArtifactStore store(
+            cache_root.ToOSString(), ShaderCacheMode::BuildIfMissing);
+
+        auto build_once = [&](ShaderProgramArtifactMetadata &out_metadata)
+            -> ShaderBuildContext *
+        {
+            MaterialDefinitionBuildRequest request{};
+            request.recipe.mtl_def_id = definition.definition_id;
+            request.geometry_vertex_format = &geometry;
+            request.defer_finalize = false;
+            request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
+            request.shader_artifact_store = &store;
+            if (!ResolveFixtureTemplateRequest(
+                    definition, request.shader_program_purpose,
+                    &request.recipe, request.render_template_request, nullptr))
+                return nullptr;
+
+            ShaderBuildContext *context = CreateMaterialFromDefinition(
+                nullptr, definition, request, nullptr);
+            if (!context || !context->HasProgramLink())
+            {
+                delete context;
+                return nullptr;
+            }
+            out_metadata = context->GetProgramArtifactMetadata();
+            return context;
+        };
+
+        ShaderProgramArtifactMetadata first_metadata{};
+        AutoDelete<ShaderBuildContext> first(build_once(first_metadata));
+        if (!first)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] cache-hit probe: first "
+                "build failed");
+            return false;
+        }
+
+        ShaderProgramArtifactMetadata second_metadata{};
+        AutoDelete<ShaderBuildContext> second(build_once(second_metadata));
+        if (!second)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] cache-hit probe: second "
+                "build failed");
+            return false;
+        }
+        if (!second->UsedCachedProgram())
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] cache-hit probe: second "
+                "build must hit the artifact cache (identical declaration and "
+                "text)");
+            return false;
+        }
+
+        // 篡改落盘摘要：命中判定不看它（operator== 已排除），所以仍会「命中」，
+        // 命中后校验必须发现文本摘要对不上并拒绝。
+        ShaderProgramArtifactMetadata tampered = second_metadata;
+        tampered.generated_source_digest ^= 0x5A5A5A5Aull;
+        if (!store.SaveProgramMetadata(second->GetProgramLink(), tampered))
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] cache-hit probe: cannot "
+                "tamper stored metadata");
+            return false;
+        }
+
+        ShaderProgramArtifactMetadata third_metadata{};
+        AutoDelete<ShaderBuildContext> third(build_once(third_metadata));
+        if (!third)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] cache-hit probe: third "
+                "build failed");
+            return false;
+        }
+        if (third->UsedCachedProgram())
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] cache-hit probe: "
+                "post-hit digest verification did not reject a tampered "
+                "stored digest");
+            return false;
+        }
+        return true;
+    }
+
     bool ParseFull(const int argc, char **argv, bool &out_full)
     {
-        out_full = false;
         if (argc == 1)
             return true;
         if (argc != 2)
@@ -577,6 +698,19 @@ int main(const int argc, char **argv)
     }
     if (!VerifyPayloadModuleIdentity())
         return 5;
+
+    // 缓存命中 + 命中后校验：其余 fixture 走 defer_finalize=true，
+    // 永不进入 FinalizeShaderBuildContext 的命中分支，必须单独探针。
+    // 探针会真正编译 SPV，因此需要 GLSLCompiler 插件。
+    if (!InitShaderCompiler())
+    {
+        GLogError(
+            "[ShaderDocumentProductionRegression] failed to initialize GLSL "
+            "compiler for the cache-hit probe");
+        return 6;
+    }
+    if (!VerifyCacheHitPostCheck())
+        return 7;
 
     static const Fixture smoke_fixtures[] =
     {

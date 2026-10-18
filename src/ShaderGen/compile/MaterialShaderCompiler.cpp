@@ -15,6 +15,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/log/Log.h>
 #include "compile/MaterialShaderEmitter.h"
 #include <cstring>
 #include <cstdio>
@@ -23,6 +24,39 @@
 #include <vector>
 
 namespace hgl::graph::mtl {
+namespace
+{
+/// 命中后校验：落盘的 generated_source_digest 必须与本轮实际生成的
+/// GLSL 文本一致。
+///
+/// 不一致说明「声明键欠近似」——文本变了，但由声明源算出的 6 字段
+/// stage key 没变，缓存键因此把两份不同的 GLSL 混成了同一个。
+/// 这种情况下缓存的 SPV 不可信，必须当作未命中重编译；同时这条日志
+/// 是声明键忠实度的**运行时**证据，比构建期的对齐诊断更接近真实输入。
+bool VerifyGeneratedSourceDigest(
+    const ShaderCreateInfo &mesh,
+    const ShaderCreateInfo &fragment,
+    const uint64 stored_source_digest,
+    const ShaderLinkSpec &link)
+{
+    const std::string &mesh_glsl = mesh.GetFinalGLSL();
+    const std::string &fragment_glsl = fragment.GetFinalGLSL();
+
+    if (MatchesGeneratedSourceDigest(
+            mesh_glsl.data(), mesh_glsl.size(),
+            fragment_glsl.data(), fragment_glsl.size(),
+            stored_source_digest))
+        return true;
+
+    GLogWarning(u8"[ShaderArtifactStore] program %s 命中后校验失败："
+                u8"落盘文本摘要=%llu —— 声明键欠近似，"
+                u8"丢弃缓存重编译",
+                ToU8String(link.BuildKey().ToString()).c_str(),
+                static_cast<unsigned long long>(stored_source_digest));
+    return false;
+}
+} // namespace
+
 bool FinalizeShaderBuildContext(
     ShaderBuildContext *build_spec)
 {
@@ -42,11 +76,13 @@ bool FinalizeShaderBuildContext(
         const auto &link = build_spec->GetProgramLink();
         ValueArray<hgl::uint8> cached_vertex;
         ValueArray<hgl::uint8> cached_fragment;
+        uint64 stored_source_digest = 0;
         cache_hit = artifact_store->LoadProgramArtifacts(
             link,
             build_spec->GetProgramArtifactMetadata(),
             cached_vertex,
-            cached_fragment);
+            cached_fragment,
+            &stored_source_digest);
         if (cache_hit)
         {
             // mesh shader 材质：顶点处理 stage 是 Mesh
@@ -54,8 +90,12 @@ bool FinalizeShaderBuildContext(
                 build_spec->GetStageShader(ShaderStage::Mesh);
             ShaderCreateInfo *fragment =
                 build_spec->GetStageShader(ShaderStage::Fragment);
+            // 命中后校验必须在 SetCachedSPVData 之前：文本摘要来自本轮
+            // 生成的 GLSL，校验不过就不能让缓存 SPV 顶替掉它。
             cache_hit = vertex
                     && fragment
+                    && VerifyGeneratedSourceDigest(
+                           *vertex, *fragment, stored_source_digest, link)
                     && vertex->SetCachedSPVData(
                            cached_vertex.GetData(),
                            cached_vertex.GetCount())
@@ -63,6 +103,7 @@ bool FinalizeShaderBuildContext(
                            cached_fragment.GetData(),
                            cached_fragment.GetCount());
         }
+        build_spec->SetUsedCachedProgram(cache_hit);
     }
 
 #ifdef _DEBUG

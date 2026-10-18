@@ -10,6 +10,7 @@
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
+#include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/mtl/ShaderCodeModule.h>
@@ -855,6 +856,46 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     "metadata mismatch must reject stage artifacts");
+            }
+
+            // 第 3 步：generated_source_digest 是 emit 之后的文本产物，
+            // 不参与命中判定——否则命中之前就必须先跑完 GLSL 生成，正是
+            // 解耦要消除的耦合。它单独变化仍应命中，由命中后校验
+            // （VerifyGeneratedSourceDigest）负责发现"声明键欠近似"。
+            ShaderProgramArtifactMetadata text_only_changed = metadata;
+            text_only_changed.generated_source_digest ^= 1u;
+            if (!store.LoadProgramArtifacts(
+                    program_link,
+                    text_only_changed,
+                    cached_vertex,
+                    cached_fragment))
+            {
+                result.diagnostics.emplace_back(
+                    "generated_source_digest must not gate the cache hit");
+            }
+
+            // 命中后校验的语义：同一份文本 + 同一摘要必须通过；
+            // 摘要被改动必须被拒（这正是"声明键欠近似"的兜底）。
+            {
+                const char mesh_glsl[] = "void main(){}";
+                const char fragment_glsl[] = "void main(){}";
+                const size_t mesh_len = sizeof(mesh_glsl) - 1;
+                const size_t fragment_len = sizeof(fragment_glsl) - 1;
+                const hgl::uint64 digest = ComputeGeneratedSourceDigest(
+                    mesh_glsl, mesh_len, fragment_glsl, fragment_len);
+
+                if (digest == 0
+                 || !MatchesGeneratedSourceDigest(
+                        mesh_glsl, mesh_len, fragment_glsl, fragment_len, digest)
+                 || MatchesGeneratedSourceDigest(
+                        mesh_glsl, mesh_len, fragment_glsl, fragment_len,
+                        digest ^ 1u)
+                 || MatchesGeneratedSourceDigest(
+                        mesh_glsl, mesh_len, fragment_glsl, fragment_len, 0))
+                {
+                    result.diagnostics.emplace_back(
+                        "post-hit generated_source_digest verification is broken");
+                }
             }
 
             if (!read_only_store.LoadProgramArtifacts(

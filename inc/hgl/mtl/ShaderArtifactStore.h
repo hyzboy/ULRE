@@ -52,6 +52,7 @@ namespace hgl::graph::mtl
             const ShaderLinkSpec &link,
             const ShaderProgramArtifactMetadata &expected_metadata,
             ValueArray<uint8> &out_vertex_spv,
-            ValueArray<uint8> &out_fragment_spv) const;
+            ValueArray<uint8> &out_fragment_spv,
+            uint64 *out_stored_source_digest = nullptr) const;
     };
 }

@@ -430,10 +430,13 @@ namespace hgl::graph::mtl
         const ShaderLinkSpec &link,
         const ShaderProgramArtifactMetadata &expected_metadata,
         ValueArray<uint8> &out_vertex_spv,
-        ValueArray<uint8> &out_fragment_spv) const
+        ValueArray<uint8> &out_fragment_spv,
+        uint64 *out_stored_source_digest) const
     {
         out_vertex_spv.Clear();
         out_fragment_spv.Clear();
+        if (out_stored_source_digest)
+            *out_stored_source_digest = 0;
 
         ShaderProgramArtifactMetadata stored_metadata{};
         if (!LoadProgramMetadata(link, stored_metadata)
@@ -445,6 +448,11 @@ namespace hgl::graph::mtl
             out_fragment_spv.Clear();
             return false;
         }
+
+        // 命中判定不看文本摘要（见 ShaderArtifactContract.h 的 operator==），
+        // 但把落盘时的值交给调用方做命中后校验。
+        if (out_stored_source_digest)
+            *out_stored_source_digest = stored_metadata.generated_source_digest;
         return true;
     }
 }

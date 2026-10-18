@@ -8,6 +8,35 @@
 
 namespace hgl::graph::mtl
 {
+    uint64 ComputeGeneratedSourceDigest(
+        const char *mesh_glsl,
+        const size_t mesh_size,
+        const char *fragment_glsl,
+        const size_t fragment_size) noexcept
+    {
+        if (!mesh_glsl || !fragment_glsl
+         || mesh_size == 0 || fragment_size == 0)
+            return 0;
+
+        hgl::hash::FNV1aHasher64 source_hasher;
+        source_hasher << HashFinalShaderSource(mesh_glsl, mesh_size)
+                      << HashFinalShaderSource(fragment_glsl, fragment_size);
+        return source_hasher;
+    }
+
+    bool MatchesGeneratedSourceDigest(
+        const char *mesh_glsl,
+        const size_t mesh_size,
+        const char *fragment_glsl,
+        const size_t fragment_size,
+        const uint64 stored_source_digest) noexcept
+    {
+        const uint64 fresh_source_digest = ComputeGeneratedSourceDigest(
+            mesh_glsl, mesh_size, fragment_glsl, fragment_size);
+        return fresh_source_digest != 0
+            && fresh_source_digest == stored_source_digest;
+    }
+
     bool BuildShaderProgramArtifactMetadata(
         const contract::PhysicalDeviceProfileLite *profile,
         const ShaderBuildContext &build_spec,
@@ -33,12 +62,13 @@ namespace hgl::graph::mtl
             != contract::GetShaderCompilerProfileHash(profile))
             return false;
 
-        const uint64 vertex_source_hash = HashFinalShaderSource(
+        const uint64 source_digest = ComputeGeneratedSourceDigest(
             vertex->GetFinalGLSL().data(),
-            vertex->GetFinalGLSL().size());
-        const uint64 fragment_source_hash = HashFinalShaderSource(
+            vertex->GetFinalGLSL().size(),
             fragment->GetFinalGLSL().data(),
             fragment->GetFinalGLSL().size());
+        if (source_digest == 0)
+            return false;
 
         hgl::hash::FNV1aHasher64 module_graph_hasher;
         module_graph_hasher << link.mesh_stage.glsl_module_graph_hash
@@ -54,10 +84,6 @@ namespace hgl::graph::mtl
         const uint64 interface_hash = interface_hasher;
 
         const uint64 program_digest = link.BuildKey().GetDigest();
-        hgl::hash::FNV1aHasher64 source_hasher;
-        source_hasher << vertex_source_hash
-                      << fragment_source_hash;
-        const uint64 source_digest = source_hasher;
 
         out_metadata.program_key_digest = program_digest;
         out_metadata.resolved_module_graph_hash = module_graph_hash;

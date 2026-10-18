@@ -46,6 +46,12 @@ namespace hgl::graph::mtl
             ShaderProgramArtifactMetadata program_metadata{};
             bool has_program_metadata = false;
 
+            /// 上一次 FinalizeShaderBuildContext 是否走了缓存命中路径。
+            /// 命中后校验（generated_source_digest）失败会把它清回 false，
+            /// 因此它反映的是「最终确实采纳了缓存 SPV」，也是命中路径
+            /// 唯一可从外部观测的信号（回归测试据此断言）。
+            bool used_cached_program = false;
+
             // ── 结构快照观察字段（ShaderStructureDump 用；不参与 shader 生成语义）──
             // 求解层产出的、但原本只在 GenericMaterialBuilder plan 里存在的状态：
             // 模块列表（manifest 依赖序）与有效 varying 配置。存到 ctx 上让
@@ -120,6 +126,9 @@ namespace hgl::graph::mtl
             {
                 return has_program_metadata;
             }
+            /// 缓存命中标志（见 used_cached_program 注释）。
+            void SetUsedCachedProgram(const bool v) noexcept { used_cached_program = v; }
+            bool UsedCachedProgram() const noexcept { return used_cached_program; }
             const ShaderProgramArtifactMetadata &
                 GetProgramArtifactMetadata() const noexcept
             {

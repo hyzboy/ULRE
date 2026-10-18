@@ -82,6 +82,14 @@ namespace hgl::graph::mtl
         uint64 generated_source_digest = 0;
     };
 
+    /// 缓存命中判定：只比较"能由声明源算出"的字段。
+    ///
+    /// generated_source_digest 刻意不参与：它是 emit 之后的 GLSL 文本产物，
+    /// 一旦参与判定，命中之前就必须先跑完 GLSL 生成——那正是解耦要消除的
+    /// 耦合。它的新职责是**命中后校验**：见
+    /// ComputeGeneratedSourceDigest() / VerifyGeneratedSourceDigest()，
+    /// 命中后拿落盘时的文本摘要与本轮实际生成的文本比对，用来发现
+    /// "声明键欠近似"（文本变了但声明键没变）。
     inline bool operator==(
         const ShaderProgramArtifactMetadata &lhs,
         const ShaderProgramArtifactMetadata &rhs) noexcept
@@ -94,9 +102,7 @@ namespace hgl::graph::mtl
             && lhs.mesh_stage_digest == rhs.mesh_stage_digest
             && lhs.fragment_stage_digest == rhs.fragment_stage_digest
             && lhs.compiler_profile_hash == rhs.compiler_profile_hash
-            && lhs.device_target_hash == rhs.device_target_hash
-            && lhs.generated_source_digest
-                == rhs.generated_source_digest;
+            && lhs.device_target_hash == rhs.device_target_hash;
     }
 
     inline bool IsValidShaderProgramArtifactMetadata(

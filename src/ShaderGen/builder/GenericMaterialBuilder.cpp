@@ -871,6 +871,83 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        /// MeshTemplateEmitter 发射的硬编码基座 include（镜像
+        /// MeshShaderHeaderGen::EmitMeshShaderHeaderResources）。
+        ///
+        /// 与 fragment 侧 kShadowCasterBaseIncludes 同理：这些 include 不由
+        /// 任何模块的 dependencies 声明，manifest 覆盖不到，必须显式纳入
+        /// 声明闭包，否则改它们不会让 mesh 声明键失效。
+        /// descriptor_macros / scene_ubo 无条件发射；l2w_ssbo 仅在有朝向变换
+        /// 需求时发射（谓词与发射器一致，node_cfg 已进定义哈希）。
+        const char *const kMeshBaseIncludes[] =
+        {
+            "common/descriptor_macros.glsl",
+            "ubo/scene_ubo.glsl",
+        };
+
+        const char *const kMeshL2WInclude = "common/l2w_ssbo.glsl";
+
+        bool AccumulateMeshBaseClosure(
+            GLSLIncludeClosureSink &sink,
+            const VertexShaderNodeConfig &node_cfg)
+        {
+            for (const char *include_path : kMeshBaseIncludes)
+            {
+                CollectIncludePath(sink, AnsiString(include_path));
+
+                if (sink.hasher)
+                    HashShaderLibraryText(
+                        *sink.hasher,
+                        include_path,
+                        static_cast<size_t>(std::strlen(include_path)));
+
+                const OSString module_path =
+                    ResolveShaderLibraryModulePath(AnsiString(include_path));
+                if (module_path.IsEmpty())
+                    return false;
+
+                const auto module_bytes =
+                    hgl::LoadFileToDataArray<uint8>(module_path);
+                const char *module_text =
+                    reinterpret_cast<const char *>(module_bytes.data());
+
+                if (sink.hasher)
+                    HashShaderLibraryText(
+                        *sink.hasher, module_text, module_bytes.size());
+                AccumulateGLSLIncludeClosure(
+                    sink, module_text, module_bytes.size(), 1);
+            }
+
+            const bool needs_l2w =
+                node_cfg.orientation == OrientationMode::World
+             || node_cfg.orientation == OrientationMode::CameraFacingFree
+             || node_cfg.orientation == OrientationMode::CameraFacingAxisY;
+            if (!needs_l2w)
+                return true;
+
+            CollectIncludePath(sink, AnsiString(kMeshL2WInclude));
+
+            if (sink.hasher)
+                HashShaderLibraryText(
+                    *sink.hasher,
+                    kMeshL2WInclude,
+                    static_cast<size_t>(std::strlen(kMeshL2WInclude)));
+
+            const OSString l2w_path =
+                ResolveShaderLibraryModulePath(AnsiString(kMeshL2WInclude));
+            if (l2w_path.IsEmpty())
+                return false;
+
+            const auto l2w_bytes = hgl::LoadFileToDataArray<uint8>(l2w_path);
+            const char *l2w_text =
+                reinterpret_cast<const char *>(l2w_bytes.data());
+
+            if (sink.hasher)
+                HashShaderLibraryText(*sink.hasher, l2w_text, l2w_bytes.size());
+            AccumulateGLSLIncludeClosure(sink, l2w_text, l2w_bytes.size(), 1);
+            return true;
+        }
+
         /// 声明闭包 vs 文本闭包对齐诊断。
         ///
         /// 文本闭包是切换前 stage key 的事实覆盖；声明闭包是切换后覆盖的集合。
@@ -1243,6 +1320,31 @@ namespace hgl::graph::mtl
             if (!stage_includes.empty())
                 AccumulateGLSLIncludeClosure(
                     base_sink, stage_includes.data(), stage_includes.size(), 0);
+
+            // 发射器硬编码的基座 include：不属于任何模块依赖，必须显式纳入。
+            if (!AccumulateMeshBaseClosure(base_sink, plan.vertex_node_config))
+            {
+                GLogWarning(
+                    "[ShaderGen] mesh 声明键：基座 include 解析失败，回退文本派生: name=%s",
+                    definition.definition_name.c_str());
+                return true;
+            }
+
+            // 顶点 ABI 文档：VertexABIBuilder 按语义需求/属性格式挑 s1_* 解码
+            // 模块，正文由 MeshTemplateEmitter 原样 append。它不是模块依赖，
+            // manifest 覆盖不到，必须连正文带闭包一并折进声明键。
+            const int abi_block_count = plan.resolved_vertex_input_document.GetBlockCount();
+            for (int i = 0; i < abi_block_count; ++i)
+            {
+                const ShaderDocumentBlock &block =
+                    plan.resolved_vertex_input_document.GetBlock(i);
+                HashShaderLibraryText(
+                    base_hasher, block.text.c_str(),
+                    static_cast<size_t>(block.text.Length()));
+                AccumulateGLSLIncludeClosure(
+                    base_sink, block.text.c_str(),
+                    static_cast<size_t>(block.text.Length()), 0);
+            }
 
             SortAnsiStrings(key.include_paths);
 
