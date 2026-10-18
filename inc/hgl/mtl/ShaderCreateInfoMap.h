@@ -44,7 +44,19 @@ public:
         return true;
     }
 
-    bool Add(ShaderCreateInfo *sc);
+    bool Add(ShaderCreateInfo *sc)
+    {
+        if(!sc)
+            return false;
+
+        const ShaderStage flag=sc->GetShaderStage();
+
+        if(ContainsKey(flag))
+            return false;
+
+        map.emplace(flag,sc);
+        return true;
+    }
 
     // operator[] for accessing elements by key
     ShaderCreateInfo* operator[](const ShaderStage& key)

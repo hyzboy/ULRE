@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/mtl/ShaderCreateInfoMap.h>
+#include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/ShaderLinkSpec.h>
 #include<hgl/mtl/ShaderArtifactContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -126,9 +127,30 @@ namespace hgl::graph::mtl
             }
         public:
 
-            ShaderBuildContext(const PrimitiveType primitive_type, const uint32_t shader_stage_bits);
+            ShaderBuildContext(const PrimitiveType primitive_type_value, const uint32_t shader_stage_bits)
+                : primitive_type(primitive_type_value), shader_stage_flag_bits(shader_stage_bits)
+            {
+                if (has_mesh())
+                    shader_map.Add(new ShaderCreateInfo(ShaderStage::Mesh));
+                if (has_fragment())
+                    shader_map.Add(new ShaderCreateInfo(ShaderStage::Fragment));
+            }
             ~ShaderBuildContext() = default;        ///< `shader_map` 由 `SharedPtr` 自动归还，无需手写析构
 
-            bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
+            bool CreateShaderDirect()                ///< 直接编译各阶段的 FinalGLSL 到 SPV
+            {
+                if (shader_map.IsEmpty())
+                    return(false);
+
+                for (auto &kv : shader_map)
+                {
+                    ShaderCreateInfo *sc = kv.second.get();
+
+                    if (!sc->CompileFinalGLSLToSPV())
+                        return(false);
+                }
+
+                return(true);
+            }
         };//class ShaderBuildContext
 }//namespace hgl::graph::mtl

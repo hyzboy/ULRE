@@ -4,6 +4,7 @@ namespace hgl::graph::mtl {}
 
 #include <hgl/filesystem/Path.h>
 #include <hgl/log/Log.h>
+#include <hgl/shader/RootIncludePath.h>
 #include <hgl/utf.h>
 #include <string>
 #include <vector>
@@ -12,8 +13,22 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::mtl
 {
     /// Resolve only against root; no common/local fallback or absolute/escaping includes.
-    OSString ResolveShaderLibraryModulePath(
-        const OSString &root, const AnsiString &include_path);
+    inline OSString ResolveShaderLibraryModulePath(
+        const OSString &root, const AnsiString &include_path)
+    {
+        if (root.IsEmpty() || include_path.IsEmpty())
+            return {};
+
+        AnsiString relative = include_path;
+        if (!hgl::shader::NormalizeRootIncludePath(relative.c_str()))
+            return {};
+        relative.Resize(hgl::strlen(relative.c_str()));
+        const OSString candidate = filesystem::NormalizeFilename(
+            (filesystem::Path(root) / ToOSString(relative.c_str())).ToOSString());
+        if (filesystem::FileExist(candidate))
+            return candidate;
+        return {};
+    }
 
     /// 环境变量覆盖项：优先级高于 requested_path 与向上搜索。
     /// 指向的目录必须本身是 ShaderLibrary 根（含 material/ 子目录）。

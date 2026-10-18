@@ -13,6 +13,7 @@ set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 set(SHADERGEN_COMMON_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSource.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
+    ${ROOT_INCLUDE_PATH}/hgl/shader/RootIncludePath.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderLibraryPath.h
     ${SHADERGEN_INCLUDE_PATH}/VkEnumText.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCacheRoot.h
@@ -49,11 +50,9 @@ set(COMPILE_FILES
     compile/GLSLCompiler.cpp
     compile/TBuiltInResourceCompat.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderBuildContext.h
-    compile/ShaderBuildContext.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
     compile/ShaderCreateInfo.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h
-    compile/ShaderCreateInfoMap.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
@@ -75,7 +74,6 @@ SOURCE_GROUP("Compile" FILES ${COMPILE_FILES})
 set(GLSL_MODULE_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleRegistry.h
     glsl_module/ShaderCodeModuleRegistry.cpp
-    glsl_module/ShaderLibraryPath.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleMetadata.h
     glsl_module/ShaderCodeModuleMetadata.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleFile.h
