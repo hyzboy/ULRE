@@ -1267,10 +1267,10 @@ namespace hgl::graph::mtl
                     CollectModuleName(base_sink, AnsiString(module_name));
             }
 
-            // 已知过近似（安全方向，暂不修）：Sky 模板的
-            // AmbientLightProvider 根（forward_lighting）在 RenderTemplate.cpp
-            // 里声明，但 sky.glsl.tmpl 从不 include 它——它属于 dead module root。
-            // 去掉会改 resolved_template_hash ⇒ 失效现有 sky SPV 缓存，留给后续步骤。
+            // declaration_roots 只取 request 里的 root，profile 里没有就不进
+            // 闭包。Sky 曾把永不发射的 forward_lighting 当 OutputPolicy 根声明
+            // （dead module root），使声明闭包多出 forward_lighting 与
+            // lighting_interface；已从 MakeSkyProfile / SkySlots 移除。
             SortAnsiStrings(key.include_paths);
 
             hgl::hash::FNV1aHasher64 module_hasher;

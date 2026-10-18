@@ -474,7 +474,7 @@ int main(int argc, char **argv)
      || document.GetBlockCount() == 0)
         return 7;
     const SceneRenderTemplateProfile sky_profile = MakeSkyProfile();
-    if (sky_profile.module_count != 3
+    if (sky_profile.module_count != 2
      || sky_profile.roles[0] != ShaderModuleSlotRole::SkyProvider)
         return 9;
     const SceneRenderTemplateProfile shadow_profile =

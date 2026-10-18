@@ -39,7 +39,10 @@ namespace hgl::graph::mtl::contract
     //    旧 SPV 缓存全部作废——正是这里换代的目的。
     // 6：interface_hash 折叠 inter-stage 条目时不再吃结构体 padding（改走
     //    InterStageSemanticContractEntry 的显式逐字段 operator<<），键值随之变化。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 6;
+    // 7：Sky 模板整删纯校验用的 OutputPolicy slot（sky.glsl.tmpl 没有对应占位符，
+    //    该模块从不发射）。resolved_template_hash 随 module_root_count 变化，
+    //    sky 程序缓存自然失效；这里一并换代，避免新旧声明闭包混用。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 7;
 
     // 设备能力哈希（vendor/device/limits/features）——编译目标哈希的超集包含它；
     // 所有 key 维度统一用 GetShaderCompilerProfileHash（目标版本为常量，见上）

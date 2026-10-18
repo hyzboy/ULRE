@@ -66,12 +66,14 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::OutputPolicy }
         };
 
+        // 刻意不含 OutputPolicy：Sky 的 WriteMaterialOutput 由
+        // AppendOutputDeclarations 内联生成，不存在可 #include 的输出策略模块。
+        // 保留该 slot 会强制每个 profile 提供一个永不发射的模块，声明闭包随之
+        // 把 forward_lighting 与 lighting_interface 算进去（过近似）。
         constexpr RenderTemplateSlot SkySlots[] =
         {
             { ShaderModuleSlotRole::SkyProvider },
-            { ShaderModuleSlotRole::SurfaceProvider },
-            // 同 ShadowCaster：只校验、不发射。
-            { ShaderModuleSlotRole::OutputPolicy }
+            { ShaderModuleSlotRole::SurfaceProvider }
         };
 
         constexpr RenderTemplateDefinition Templates[] =

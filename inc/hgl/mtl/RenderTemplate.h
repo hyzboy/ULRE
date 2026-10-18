@@ -99,9 +99,10 @@ namespace hgl::graph::mtl
         /// EvalMaterialSource / EvalMaterialAlpha / GetNTB，GLSL 要求被调函数
         /// 先于调用点声明。
         ///
-        /// 若某模板声明了但并不 include 某个 slot（当前仅 Sky / ShadowCaster
-        /// 的 OutputPolicy：WriteMaterialOutput 由模板内联生成），该 slot 排在
-        /// 数组末尾并在定义处注明。
+        /// 若某模板声明了但并不 include 某个 slot（当前仅 ShadowCaster 的
+        /// OutputPolicy：WriteMaterialOutput 由模板内联生成），该 slot 排在
+        /// 数组末尾并在定义处注明。Sky 曾同样声明 OutputPolicy，已在收声明闭包
+        /// 过近似时整删——声明一个永不发射的模块只会让声明键跟着无关文件失效。
         const RenderTemplateSlot *slots = nullptr;
         uint32 slot_count = 0;
     };
