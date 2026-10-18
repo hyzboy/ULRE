@@ -22,6 +22,7 @@
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/SamplerPreset.h>
 #include "compile/MaterialShaderEmitter.h"
 #include "builder/MaterialResourceManifestBuilder.h"
 #include "meshgen/MeshTemplateEmitter.h"
@@ -1036,8 +1037,9 @@ namespace hgl::graph::mtl
         //                        （fragment: manifest.stable_hash + resolved_template_hash
         //                          + 基座闭包；mesh: 骨架正文 + 三个 stage 模块闭包）
         //   definition_hash    —— 骨架正文 + 基座闭包 + 全部声明输入
-        //                        （ComposeInput / vertex ABI / mesh 模式），语义等价于
-        //                        "生成出来的文本"
+        //                        （ComposeInput / vertex ABI / mesh 模式 /
+        //                          emitter 注入的 compile_defines 与 sampler 宏），
+        //                        语义等价于"生成出来的文本"
         //   interface_hash     —— 对外声明的形状：片元输入 varying + 输出附件 +
         //                        alpha 写输出（fragment）/ 顶点输出 ABI（mesh）
         //
@@ -1047,6 +1049,56 @@ namespace hgl::graph::mtl
         // 所有读取失败都降级为 ready=false 而**不是**让构建失败：FinalizeProgramLink
         // 见到 ready=false 会回退到原来的文本派生路径，保证行为不劣化。
         // ═══════════════════════════════════════════════════════════════════
+
+        // ═══════════════════════════════════════════════════════════════════
+        // emitter 注入型宏的声明键折叠
+        //
+        // MaterialShaderEmitter::BuildMaterialStageDocument 在**每个** stage
+        // 文档（mesh 与 fragment）里插入两块宏定义：
+        //   compile_defines → "#define <name> 1\n"  (BuildCompileDefineDocument)
+        //   sampler_names   → "#define <name>Sampler <idx>u" (BuildSamplerMacros)
+        // 它们改的是最终 GLSL 文本，却不属于任何模块依赖、也不进
+        // FragmentTemplateComposer 的 ComposeInput ⇒ plan.manifest 与
+        // GetDeclarationInputHash 都覆盖不到。不显式纳入声明键，"只改了宏"
+        // 就会命中过期 SPV。
+        //
+        // 折叠的是**发射器实际会写出的内容**，不是字段本身：
+        //   · 顺序：发射器按字段原序输出，故此处也按原序折叠、不排序。排序会把
+        //     "顺序不同但集合相同"判为同键，与真实文本不符。字段顺序的来源只有
+        //     两处——TOML 数组顺序与 HGL_MATERIAL_HAS_VERTEX_NORMAL 的追加——都是
+        //     确定的，无需归一化即可稳定。
+        //   · 空名：发射器跳过（不产生宏），这里同样跳过，但仍计入条目数，
+        //     使"多一个空条目"也能换键。
+        //   · sampler 索引：宏正文是 "<idx>u"，idx 由 sampler.toml 的条目顺序
+        //     决定。只折名字会漏掉"重排 sampler.toml"这一整类欠近似，故连 idx
+        //     一起折。GetIndex 查不到时返回 ~0u，此时发射器报错且不发宏 ⇒ 该
+        //     状态本就产不出可用 SPV，键带上 ~0u 无害。
+        // ═══════════════════════════════════════════════════════════════════
+        uint64 BuildInjectedMacroHash(const MaterialDefinition &definition)
+        {
+            hgl::hash::FNV1aHasher64 hasher;
+
+            hasher << static_cast<uint64>(definition.compile_defines.size());
+            for (const std::string &name : definition.compile_defines)
+            {
+                if (name.empty())
+                    continue;
+                hasher << name;
+            }
+
+            hasher << static_cast<uint64>(definition.sampler_names.size());
+            for (const std::string &name : definition.sampler_names)
+            {
+                if (name.empty())
+                    continue;
+                hasher << name
+                       << static_cast<uint64>(
+                              SamplerPresetLibrary::Instance().GetIndex(
+                                  name.c_str()));
+            }
+
+            return hasher;
+        }
 
         /// 构造 fragment 阶段的发射输入（Phase 3.5 与 Phase 4 共用同一份对象）。
         ///
@@ -1233,13 +1285,15 @@ namespace hgl::graph::mtl
                     plan.compose_input);
 
             // 定义正文 = 骨架正文（含其基座 include 内容）+ ComposeInput 的全部
-            // 声明字段。base_hasher 同时出现在 module_graph_hash 里属于有意为之：
-            // 两个字段语义不同，重叠只会让失效更保守，不会漏。
+            // 声明字段 + emitter 注入型宏。base_hasher 同时出现在
+            // module_graph_hash 里属于有意为之：两个字段语义不同，重叠只会让
+            // 失效更保守，不会漏。
             hgl::hash::FNV1aHasher64 definition_hasher;
             definition_hasher
                 << FragmentTemplateComposer::GetDeclarationInputHash(
                        plan.compose_input)
-                << static_cast<uint64>(base_hasher);
+                << static_cast<uint64>(base_hasher)
+                << BuildInjectedMacroHash(definition);
             key.definition_hash = definition_hasher;
 
             key.ready = true;
@@ -1353,6 +1407,8 @@ namespace hgl::graph::mtl
 
             // 顶点输出 ABI + 模式容量：决定 varying 输出声明、max_vertices /
             // max_primitives 与模式专属 #define，全部与生成的文本一一对应。
+            // emitter 注入型宏（compile_defines / sampler_names）同样进 mesh 文档，
+            // 故与 fragment 侧对称纳入。
             hgl::hash::FNV1aHasher64 definition_hasher;
             definition_hasher << static_cast<uint64>(base_hasher)
                               << plan.varying
@@ -1360,7 +1416,8 @@ namespace hgl::graph::mtl
                                      plan.vertex_node_config)
                               << static_cast<uint64>(plan.position_format)
                               << static_cast<uint64>(plan.mesh_shader_mode)
-                              << static_cast<uint64>(plan.mesh_max_invocations);
+                              << static_cast<uint64>(plan.mesh_max_invocations)
+                              << BuildInjectedMacroHash(definition);
             key.definition_hash = definition_hasher;
 
             hgl::hash::FNV1aHasher64 interface_hasher;
