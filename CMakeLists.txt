@@ -51,6 +51,11 @@ SET(ULRE    CMCoreType
             ULRE.ShaderGen
             ULRE.SceneGraph
             ULRE.InlineGeometry
+            # HGL_MATH_LIB(glm::glm) 与 RENDER_LIBRARY(xcb, 仅 UNIX) 看似"与 ULRE 无关"，
+            # 实为消费者获取 glm 头文件 / xcb 链接的唯一途径：add_cm_library 以 PRIVATE
+            # 链接它们，不会传播给消费者。删掉会在"Vulkan SDK 不含 glm"或 Linux 上断链。
+            ${HGL_MATH_LIB}
+            ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES}
 )
 
