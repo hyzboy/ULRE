@@ -7,7 +7,7 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
 #include <hgl/time/Time.h>
-#include "../../ShaderGen/document/DocumentFragmentBuilder.h"
+#include "ShaderGen/document/DocumentFragmentBuilder.h"
 
 using namespace hgl;
 using namespace hgl::graph::mtl;

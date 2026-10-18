@@ -56,3 +56,9 @@ pgdump_*
 build_debugapi_release/
 /tmp
 /Cache
+
+# 误入库的构建产物（2026-10 清理，防止再次误提交）
+# comp.spv：临时编译输出；DartConfiguration.tcl：CTest 生成
+*.spv
+DartConfiguration.tcl
+/bin/

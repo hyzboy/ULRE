@@ -636,22 +636,6 @@ namespace hgl::graph
          */
         Geometry *CreateTube(GeometryCreater *pc, const TubeCreateInfo *tci);
 
-        // 新增：链节创建信息
-        struct ChainLinkCreateInfo
-        {
-            float major_radius = 0.5f;      // 链节长轴半径
-            float minor_radius = 0.3f;      // 链节短轴半径
-            float wire_radius = 0.05f;      // 线材半径
-            uint  major_segments = 16;      // 长轴分段数
-            uint  minor_segments = 8;       // 短轴分段数
-        };
-
-        /**
-         * 创建一个链节(三角形)
-         * 用途：链条、装饰、工业元素
-         */
-        Geometry *CreateChainLink(GeometryCreater *pc, const ChainLinkCreateInfo *clci);
-
         // 新增：六角螺栓创建信息
         struct BoltCreateInfo
         {

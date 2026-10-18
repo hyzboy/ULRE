@@ -51,8 +51,6 @@ SET(ULRE    CMCoreType
             ULRE.ShaderGen
             ULRE.SceneGraph
             ULRE.InlineGeometry
-            ${HGL_MATH_LIB}
-            ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES}
 )
 

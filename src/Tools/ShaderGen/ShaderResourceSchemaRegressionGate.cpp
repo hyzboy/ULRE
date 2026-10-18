@@ -29,12 +29,12 @@
 #include <hgl/mtl/ShaderStructureDump.h>
 #include <fstream>
 #include <filesystem>
-#include "../../ShaderGen/builder/GenericMaterialBuilder.h"
+#include "ShaderGen/builder/GenericMaterialBuilder.h"
 #include <hgl/mtl/MeshShaderLimits.h>
 #include "VertexBuilderCommon.h"
 #include "StageBuildContextTest.h"
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
-#include "../../ShaderGen/meshgen/MeshTemplateEmitter.h"   // EmitMeshTemplateDocument / MeshShaderMode
+#include "ShaderGen/meshgen/MeshTemplateEmitter.h"   // EmitMeshTemplateDocument / MeshShaderMode
 
 #include <algorithm>
 #include <cctype>

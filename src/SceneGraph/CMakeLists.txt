@@ -2,7 +2,6 @@
 
 SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/data/BitmapData.h
                     ${SG_INCLUDE_PATH}/data/ImageRegion.h
-                    ${SG_INCLUDE_PATH}/camera/TransformFaceToCamera.h
                     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h)
 
 source_group("SceneGraph" FILES ${CM_SG_HEADER})
@@ -35,9 +34,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/SSBOBufferRegistry.h
                         ${SG_INCLUDE_PATH}/module/GlobalSSBOBufferRegistry.h
                         ${SG_INCLUDE_PATH}/module/MaterialTextureReferencePool.h
-                        ${SG_INCLUDE_PATH}/module/MeshDrawParamsPool.h
                         ${SG_INCLUDE_PATH}/module/EnvironmentManager.h
-                        ${SG_INCLUDE_PATH}/module/RenderModule.h
                         ${SG_INCLUDE_PATH}/module/SwapchainModule.h
                         module/GraphModule.cpp
                         module/GraphModuleManager.cpp
@@ -73,7 +70,6 @@ SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})
 # ============================================================================
 
 SET(CAMERA_FILES    ${SG_INCLUDE_PATH}/camera/Camera.h
-                    ${SG_INCLUDE_PATH}/camera/RealityCamera.h
                     ${SG_INCLUDE_PATH}/camera/ReversedZProj.h
                     camera/Camera.cpp
                     camera/ReversedZProj.cpp)
@@ -229,12 +225,7 @@ SET(FONT_ALL_FILES  ${FONT_CORE_FILES}
 # ============================================================================
 
 # --- 8.1 Geometry Management ---
-SET(VK_GEOMETRY_FILES   ${SG_INCLUDE_PATH}/geo/VKGeometry.h
-                        ${SG_INCLUDE_PATH}/geo/VKGeometryData.h
-                        VKGeometry.cpp
-                        VKGeometryData.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Geometry" FILES ${VK_GEOMETRY_FILES})
+# 几何体源文件已统一登记在 GEOMETRY_CORE_FILES，此处不再重复列出。
 
 # --- 8.2 Material System ---
 SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKShaderProgram.h
@@ -269,32 +260,21 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
                                         ${SCENE_GRAPH_FILES}
                                         ${GEOMETRY_CORE_FILES}
 
-                                        ${GLTF_SOURCE}
-
                                         ${CAMERA_FILES}
-
                                         ${GRAPH_MODULE_FILES}
                                         ${GRAPHICS_CONTEXT_FILES}
 
                                         ${TEXTURE_LOADER_FILES}
                                         ${TEXTURE_TILE_FILES}
-                                        ${GEOMETRY_VERTEX_DATA_FILES}
-
-                                        ${COMPONENT_FILES}
-                                        ${COLLISION_COMPONENT_FILES}
 
                                         ${FONT_ALL_FILES}
 
                                         ${GEOMETRY_MESH_FILES}
                                         ${ASSET_REGISTRY_FILES}
 
-                                        ${VK_GEOMETRY_FILES}
                                         ${VK_SCENEGRAPH_MATERIAL_FILES}
                                         ${VK_TEXTURE_LOADER_FILES}
 
                                         ${CM_SG_HEADER}
-                                        ${CM_SG_SOURCE}
-                                        ${CM_SG_GEO_FILES}
-                                        ${CM_CAMERA_SOURCE}
 
 )

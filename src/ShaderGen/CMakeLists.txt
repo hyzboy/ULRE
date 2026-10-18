@@ -26,6 +26,7 @@ SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
 set(DOCUMENT_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderDocument.h
     document/ShaderDocument.cpp
+    document/DocumentFragmentBuilder.h
     document/DocumentFragmentBuilder.cpp)
 SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
 

@@ -13,7 +13,7 @@
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/filesystem/Path.h>
-#include "../../ShaderGen/compile/MaterialShaderEmitter.h"
+#include "ShaderGen/compile/MaterialShaderEmitter.h"
 
 #include <cstring>
 
