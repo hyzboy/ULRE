@@ -102,7 +102,8 @@ bool SelectSceneRenderTemplateRequest(
     const MaterialDefinition &definition,
     const ShaderProgramPurpose purpose,
     const MaterialRecipe &recipe,
-    RenderTemplateRequest &out_request)
+    RenderTemplateRequest &out_request,
+    const char *ambient_module_name)
 {
     const bool depth_purpose =
         purpose == ShaderProgramPurpose::DepthOnly
@@ -126,13 +127,15 @@ bool SelectSceneRenderTemplateRequest(
            : (has_material_source ? MakeForwardUnlitProfile()
                                   : MakeSkyProfile()));
 
-    // 材质声明了 ambient module 时，覆盖 Lit profile 默认的
+    // 引擎/环境层选定的 ambient provider 模块覆盖 Lit profile 默认的
     // indirect_sky_ambient（程序化天空环境光）——如 IBL 环境光照。
+    // 该选择属于**环境**（`EnvironmentSystem::SetAmbientProvider`），不属于材质：
+    // 它与 `ambient_env` 参数块（IBL 句柄）必须由同一个所有者配对。
     // include 路径不来自配置：清空后由模板校验按注册表来源规范化
     // （RenderTemplate.cpp ResolveModuleRoot），与 surface_module_name 同规则。
     if (!depth_purpose
-     && definition.ambient_module_name
-     && definition.ambient_module_name[0])
+     && ambient_module_name
+     && ambient_module_name[0])
     {
         bool ambient_applied = false;
         for (uint32 index = 0; index < scene_profile.module_count; ++index)
@@ -140,14 +143,14 @@ bool SelectSceneRenderTemplateRequest(
             if (scene_profile.roles[index]
                 != ShaderModuleSlotRole::AmbientLightProvider)
                 continue;
-            scene_profile.module_names[index] = definition.ambient_module_name;
+            scene_profile.module_names[index] = ambient_module_name;
             scene_profile.include_paths[index].Clear();
             ambient_applied = true;
             break;
         }
         if (!ambient_applied)
             GLogWarning(
-                "[ShaderGen] ambient_module_name ignored: id=%s template=%s "
+                "[ShaderGen] ambient provider ignored: id=%s template=%s "
                 "has no ambient_light_provider slot",
                 definition.definition_id.c_str(),
                 GetRenderTemplateName(template_id));
@@ -210,7 +213,8 @@ uint64 HashMaterialProgramBuildContext(
     const PrimitiveType primitive_type,
     const GeometryVertexFormat *geometry_vertex_format,
     const contract::PhysicalDeviceProfileLite *profile,
-    const mtl::ShaderProgramPurpose purpose) noexcept
+    const mtl::ShaderProgramPurpose purpose,
+    const char *ambient_module_name) noexcept
 {
     hgl::hash::FNV1aHasher64 h;
 
@@ -221,6 +225,17 @@ uint64 HashMaterialProgramBuildContext(
       // 此前与 compiler_hash 双轨并存（L4 N5），两处口径不一致
       << contract::GetShaderCompilerProfileHash(profile)
       << static_cast<uint32>(purpose);
+
+    // ambient provider 是前向着色的 program 身份维度（不同模块 ⇒ 不同 fragment 源码）。
+    // depth/shadow 不消费该槽 ⇒ 不折入，避免阴影变体无谓分裂；
+    // 空指针与空串归一化为同一取值，且**不追加任何字节**，保证引入本维度前
+    // 已缓存的阴影 program 身份逐位不变。
+    const bool depth_purpose =
+        purpose == mtl::ShaderProgramPurpose::DepthOnly
+     || purpose == mtl::ShaderProgramPurpose::ShadowDepth;
+    if (!depth_purpose && ambient_module_name && ambient_module_name[0])
+        h << ambient_module_name;
+
     return h;
 }
 

@@ -15,9 +15,10 @@
  *
  *   · **必须入键**（两维，缺一不可）：
  *       ① `program_build_context` = `graph::mtl::HashMaterialProgramBuildContext(
- *          primitive_type, 顶点格式, 设备 profile, purpose)`（purpose 已区分
- *          ForwardColor / ShadowDepth / DepthOnly ⇒ 前向与阴影天然落在不同键上，
- *          不会互相驱逐）；
+ *          primitive_type, 顶点格式, 设备 profile, purpose, ambient provider 模块名)`
+ *          （purpose 已区分 ForwardColor / ShadowDepth / DepthOnly ⇒ 前向与阴影天然
+ *          落在不同键上，不会互相驱逐；ambient provider 只在前向 purpose 下折入
+ *          —— 它换的是 fragment 源码，属 program 身份，且 depth/shadow 模板无该槽）；
  *       ② `recipe_hash` = **材质侧**决定 program 身份的那一维（当前 = 对本次解析
  *          所用 effective recipe 求 `graph::mtl::HashMaterialRecipe`）。**同一
  *          build context 下不同材质必须落不同记录**——只按 ① 去重会让两种材质共用

@@ -479,6 +479,16 @@ namespace hgl::ecs
             return out_material_manager != nullptr;
         }
 
+        // ambient provider 模块（`ambient_light_provider` 槽）由**世界/环境层**决定：
+        // `EnvironmentSystem::SetAmbientProvider` → `EnvironmentManager::Profile::ambient_module_name`
+        // → `ECSContext::GetAmbientProviderName()`。材质不再声明它 —— 环境光的算法与
+        // 参数块（`ambient_env`）必须由同一个所有者配对。空串 = 模板默认 provider。
+        const AnsiString &ResolveAmbientProviderModule(ECSContext *world)
+        {
+            static const AnsiString empty;
+            return world ? world->GetAmbientProviderName() : empty;
+        }
+
         const graph::mtl::RecipeTextureBinding *FindRecipeTextureBinding(
             const graph::mtl::MaterialRecipe &recipe,
             const std::string &texture_name) noexcept
@@ -904,12 +914,15 @@ namespace hgl::ecs
         // （shadow_variant / shadow_cached_normalized_recipe）随行存放。
         if (runtime_table)
         {
+            // 行键取**前向** purpose，ambient provider 也必须同口径折入：
+            // 否则世界换 ambient 模块后行键不变，阴影侧会认回旧行。
             const uint64_t forward_build_context =
                 graph::mtl::HashMaterialProgramBuildContext(
                     primitive_type,
                     geometry_vertex_format,
                     graphics->GetPhysicalDeviceProfile(),
-                    GetEffectiveForwardPurpose(primitive_comp));
+                    GetEffectiveForwardPurpose(primitive_comp),
+                    ResolveAmbientProviderModule(world).c_str());
 
             AssignSlotRow(runtime_table, slot,
                           MaterialRuntimeKey{forward_build_context, recipe_hash,
@@ -1071,12 +1084,17 @@ namespace hgl::ecs
         const graph::mtl::ShaderProgramPurpose effective_purpose =
             GetEffectiveForwardPurpose(primitive_comp);
 
+        // 环境层选定的 ambient provider 是本路径 program 身份的一部分：
+        // 换 ambient 模块 ⇒ 换 fragment 源码 ⇒ 必须换 program/变体。
+        const AnsiString &ambient_provider = ResolveAmbientProviderModule(world);
+
         const uint64_t build_context_hash =
             graph::mtl::HashMaterialProgramBuildContext(
                 primitive_type,
                 geometry_vertex_format,
                 graphics->GetPhysicalDeviceProfile(),
-                effective_purpose);
+                effective_purpose,
+                ambient_provider.c_str());
 
         // A4：行键 = (program 身份, 配方身份, **自有材质数据行**)。任一维变了 ⇒ 旧共享行
         // 不再代表本实例的授权态：释放本实例对旧行的引用（行归零则回收并退休其纹理配置
@@ -1129,6 +1147,8 @@ namespace hgl::ecs
         mtl_request.primitive_type = primitive_type;
         mtl_request.geometry_vertex_format = geometry_vertex_format;
         mtl_request.shader_program_purpose = effective_purpose;
+        // 环境层（世界）决定用哪个 ambient provider；材质只声明表面。
+        mtl_request.ambient_module_name = ambient_provider.c_str();
         graph::mtl::MaterialDefinition template_definition{};
         if (!graph::mtl::TryGetMaterialDefinitionByID(
                 effective_recipe.mtl_def_id, template_definition)

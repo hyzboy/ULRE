@@ -49,6 +49,10 @@ struct MaterialDefinitionBuildRequest
     bool defer_finalize = false;  // 生成 GLSL 与契约后延迟 SPV 编译（生产主路径：先查缓存）
     mtl::ShaderProgramPurpose shader_program_purpose =
         mtl::ShaderProgramPurpose::ForwardColor;
+    // ambient provider 模块名（引擎/环境层决定，见 EnvironmentSystem::SetAmbientProvider）。
+    // nullptr / 空串 = 用场景渲染模板默认 provider。
+    // 与 recipe（材质数据）分开放：材质不再声明 ambient 算法。
+    const char *ambient_module_name = nullptr;
     // Render preparation supplies this resolved request. ShaderGen validates
     // and emits it but does not select scene lighting or quality policies.
     RenderTemplateRequest render_template_request;
@@ -63,10 +67,15 @@ bool AppendMaterialRenderTemplateRoots(
     RenderTemplateRequest &request) noexcept;
 
 // Render preparation: selects the scene render template from material data and
-// overwrites the AmbientLightProvider slot when the definition declares
+// overwrites the AmbientLightProvider slot with the engine-supplied
 // `ambient_module_name` (never for depth/shadow purposes). The include path is
 // NOT taken from configuration — the slot is left empty so that template
 // validation canonicalizes it from the module registry.
+//
+// `ambient_module_name` 是**引擎/环境层**的选择（`EnvironmentSystem::SetAmbientProvider`
+// → `EnvironmentManager::Profile::ambient_module_name`），不是材质数据：
+// 环境光的算法与它的参数块（`ambient_env`）必须由同一个所有者配对。
+// nullptr / 空串 = 保留模板默认 provider（`indirect_sky_ambient`）。
 //
 // Runtime (ShaderProgramManager) and the document/offline regression tools must
 // share this single implementation; do not duplicate the routing rules.
@@ -74,7 +83,8 @@ bool SelectSceneRenderTemplateRequest(
     const MaterialDefinition &definition,
     ShaderProgramPurpose purpose,
     const MaterialRecipe &recipe,
-    RenderTemplateRequest &out_request);
+    RenderTemplateRequest &out_request,
+    const char *ambient_module_name = nullptr);
 
 struct MaterialResolvedVertexABI
 {
@@ -98,7 +108,12 @@ uint64 HashMaterialProgramBuildContext(
     const GeometryVertexFormat *geometry_vertex_format,
     const mtl::contract::PhysicalDeviceProfileLite *profile,
     const mtl::ShaderProgramPurpose purpose =
-        mtl::ShaderProgramPurpose::ForwardColor) noexcept;
+        mtl::ShaderProgramPurpose::ForwardColor,
+    // ambient provider 模块名（引擎/环境层选择）。它是**前向着色**的 program 身份维度：
+    // 同一配方配不同 ambient 模块 ⇒ 不同 fragment 源码 ⇒ 必须落不同 program 身份。
+    // depth purpose 不消费它（模板无该槽）⇒ 直接忽略，不白白分裂阴影变体。
+    // nullptr / 空串 = 模板默认 provider，哈希取值与引入本维度之前**逐位相同**。
+    const char *ambient_module_name = nullptr) noexcept;
 
 mtl::ShaderBuildContext *CreateMaterialFromDefinition(
     const mtl::contract::PhysicalDeviceProfileLite *profile,

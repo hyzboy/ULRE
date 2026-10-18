@@ -217,9 +217,10 @@ bool SelectCurrentSceneRenderTemplateRequest(
 {
     // 路由与 ambient 覆盖只有一份实现(ShaderGen),运行时与离线回归共用,
     // 避免 SceneGraph / 工具 / 测试各自复制判定逻辑而逐渐分叉。
+    // ambient provider 由环境层给（request.ambient_module_name），不是材质数据。
     return mtl::SelectSceneRenderTemplateRequest(
         definition, request.shader_program_purpose, request.recipe,
-        out_request);
+        out_request, request.ambient_module_name);
 }
 
 GRAPH_MODULE_CONSTRUCT(ShaderProgramManager)
