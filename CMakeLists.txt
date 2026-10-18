@@ -3,6 +3,14 @@ cmake_policy(VERSION 3.28)
 
 PROJECT(ULRE)
 
+# 禁止 in-source 构建：根目录曾残留 CMakeCache.txt / CMakeFiles/（CMAKE_HOME_DIRECTORY 指向早已失效的
+# D:/ULRE），且 in-source 配置会把生成物混进源码树。请配置到独立目录，例如 build/。
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+    message(FATAL_ERROR
+        "In-source build is not allowed. Configure into a separate directory, e.g.:\n"
+        "    cmake -S . -B build -G \"Visual Studio 18 2026\" -A x64")
+endif()
+
 include(CTest)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

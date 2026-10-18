@@ -244,6 +244,20 @@ E:\vcpkg\vcpkg.exe z-applocal --target-binary=.../XXX.exe \
 
 单独重建失败目标（`msbuild .../ShaderResourceSchemaRegressionGate.vcxproj`）也直接成功，进一步排除代码问题。
 
+### 更正（2026-10-18，并行构建实测）：`/m:1` 已非必要
+
+上面「三次并行命中三组不同目标 ⇒ 竞态」的方向是对的，但**处置结论已过期**：
+
+- 现版 vcpkg（`E:\vcpkg`，走 `z-applocal` 而非 legacy `applocal.ps1`）下，354 个 exe 用 `/m:8` **全部重链**，rc=0、零错误、零 `MSB3073`（35.3s）；30 个 exe `/m:4` 同样 rc=0（12.8s）。
+- 竞态仍然**真实存在**，但降级为**低频偶发**，命中目标不固定（2026-10-18 两次观测均落在 `CMP.Audio.Timidity`）。
+- 从构建日志里捞到的唯一非 `MSB3073` 行是：`The process cannot access the file because it is being used by another process.` ⇒ 根因确认是**扁平输出目录下并行构建的瞬时文件占用**，不是某个 target 自身有问题。
+- `z-applocal` 是幂等的：产物已最新时 0 文件被改写；16 个目标并行调用（已最新状态）全部 rc=0。
+- 官方的 `X_VCPKG_APPLOCAL_DEPS_SERIALIZED` **在本仓无效**：`vcpkg.cmake` L625-627 只给 `add_executable` 加 `USES_TERMINAL`，`add_library` 分支（L684-690）完全没加，`add_custom_command` 也没传 `${EXTRA_OPTIONS}`；且 VS 生成器下 `USES_TERMINAL` 未必能跨工程串行化。
+
+**现行处置**：保留 `/m:8`，由 `scripts/ci/build-baseline.ps1` 的**自愈重放**兜底 —— 仅当日志出现 `MSB3073.*exited with code 32` 时，提取对应 `z-applocal` 命令串行重放（退避重试 3 次 × 500ms），修复成功的条数不再计入 B 层错误。实测已当场复现并修复 1/1。
+
+⇒ 本节「危害」仍成立（CI 上表现为随机红灯），但「建议」里的方案 A/B（关 applocal / 走 PATH）**不必再做**：收益已被自愈机制覆盖，而改成一次性部署会牵动 353 个目标的构建图。方案 C（分子目录）仍然只在阶段 4 里作为组织性改善保留，性能理由已消失。
+
 ### 危害
 
 - 在 CI 上表现为**随机红灯**，极易被误判成"测试不稳定"或"flaky test"，进而掩盖真实回归
@@ -387,7 +401,32 @@ set_target_properties(x PROPERTIES VS_DEBUGGER_ENVIRONMENT
 
 ### 建议
 
-统一到 `build/`，删除 `out/`、`Tools/`、`plans/`；给审计脚本固化排除清单（或写成 `scripts/audit/` 下的工具，把排除规则沉淀下来而不是每次手写）。
+统一到 `build/`；给审计脚本固化排除清单（或写成 `scripts/audit/` 下的工具，把排除规则沉淀下来而不是每次手写）。
+
+### 已执行（2026-10-18）
+
+根级残留已全部删除，**合计 196.44 MB**，全部为 git-ignored；删除后基线复跑 PASS（A/B 层错误 0/0，ctest 25/25）：
+
+| 路径 | 规模 | 性质 |
+|---|---|---|
+| `Tools/` | 210 文件 113.97 MB | TexConv 的 ImageMagick DLL 手工部署副本（30 个 `CORE_RL_*.dll` + `modules/`/`platforms/`）。`build/out/Windows_64_{Debug,Release}` 各自已有同一批 30 个 DLL ⇒ 纯冗余 |
+| `tmp/` | 98 文件 79.80 MB | 历史调试产物（`deadan`/`renderdoc`/`*_probe*.log`/`*_crash_fix.log`） |
+| `Cache/` | 309 文件 1.55 MB | 已废弃的离线 cook 线留下的 shader 编译缓存（16 位 hex 目录名 + `compiler.log`/`resolved.toml`/`entry/*.glsl`） |
+| `out/` | 8 文件 0.39 MB | VS Code CMake 工具的失败配置残留（目录名就是预设描述串 `Configure preset using toolchain file`） |
+| `CMakeFiles/` | 45 文件 0.37 MB | in-source 配置残留 |
+| `CMakeCache.txt` | 16 KB | in-source 配置残留，`CMAKE_HOME_DIRECTORY=D:/ULRE` 早已失效 |
+| `_nrvotest.obj` / `stack.log` / `values.log` / `ULRE.kdev4` | 339 KB / 3.3 KB / 10.3 KB / 76 B | 编译与调试残留、KDevelop 工程文件 |
+| `plans/` / `.kdev4/` | 空目录 | 无内容 |
+
+为防复发，根 `CMakeLists.txt` 已加 in-source 构建守卫：
+
+```cmake
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+    message(FATAL_ERROR "In-source build is not allowed. ...")
+endif()
+```
+
+**仍未处理的符号链接**：`CMAudio/Plug-Ins/Audio.FluidSynth/FluidLite/example/FluidLite` 是指向 `..` 的符号链接，在 FluidLite 子模块内**被 git 跟踪**（`git ls-files --error-unmatch` 成功、`git status` 干净）⇒ 属上游仓库内容，按约束不在 submodule 内动手。当前 `FluidLite/CMakeLists.txt` 无 `add_subdirectory(example)`，构建不触发；但任何从仓库根发起的 `Get-ChildItem -Recurse` / `file(GLOB_RECURSE)` 扫到都会无限递归，**必须显式排除 `CMAudio` 或限制 `-Depth`**。排查引用时改用 `git grep`（只扫跟踪文件，不跟符号链接）。
 
 ---
 
@@ -612,3 +651,35 @@ node 也在跑同一批工程。⇒ 全部是**并发假象**，不是上游缺�
 连带改动一处契约测试：`src/ecs/tests/TestCSMIncrementalPass.cpp` 的 T6b「新头必须进构建注册」原本 grep `CMakeLists.txt` 里的头文件名，GLOB 之后该**判据**失效但**契约意图**（新写的头/源必须真的进构建）仍有效，故把判据升级为断言含 `file(GLOB_RECURSE ECS_HEADERS CONFIGURE_DEPENDS`，而不是删测试。
 
 > 生成器时序提醒：`CONFIGURE_DEPENDS` 下**删除**源文件时，CMake 会正确从 `.vcxproj` 移除，但同一次构建仍可能报 `C1083: Cannot open source file`（MSBuild 在重新生成前已加载旧工程）。重跑一次即绿，不要误判为配置错误。
+
+---
+
+## 附：被 git 跟踪的陈旧二进制（2026-10-18 审计）
+
+清完根级 ignored 残留后，再审计**被 git 跟踪**的大文件（> 1 MB），前 7 名合计约 37 MB：
+
+| 路径 | 大小 | 判定 |
+|---|---|---|
+| `doc/screenshot/Gizmo3DMovePick.mp4` | 21.72 MB | 全仓零引用（`doc/screenshot/` 共 8 文件 24 MB，无任何 markdown 链接） |
+| `GLSLCompiler.dll`（仓库根） | 4.70 MB | **保留** —— 见下 |
+| `screenshot/*.png` × 4 | 10.24 MB | 全仓零引用 |
+| `3rdpty/VulkanMemoryAllocator-3.3.0.zip` | 1.11 MB | 仅存压缩包、无解压目录，用途待确认（可能靠手工解压取用） |
+
+引用核查用 `git grep`（只扫跟踪文件，不会踩 `CMAudio` 的符号链接递归）。
+
+### `GLSLCompiler.dll` 为什么不能直接删
+
+它是**被 CWD 解析的运行时插件**，不是死文件。`src/ShaderGen/compile/GLSLCompiler.cpp` 的 `InitShaderCompiler()`：
+
+1. 先按**当前工作目录**拼 `GLSLCompiler.dll` 加载 —— 这一条覆盖「从仓库根运行 example」的场景；
+2. 失败才回退到 **exe 所在目录**。
+
+而 `src/Tools/GLSLCompiler` **不在 ULRE 构建图内**（`src/Tools/CMakeLists.txt` 只 add MiniPack / GLTFConvert / ShaderGen / TexConv），它有自己的 `build/` 和 `output_path.cmake`，产物落在 `src/Tools/GLSLCompiler/build/out/Windows_64_Release/GLSLCompiler.dll`；`build/out/` 里**没有** `GLSLCompiler.dll`。
+
+⇒ 根级这份 4.70 MB 二进制目前是「从仓库根跑 example」时**唯一能找到的副本**，删掉会直接让运行时 shader 编译失败。`doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md:198` 也记录了这一点（「GLSLCompiler.dll 等插件在仓库根，从 exe 目录跑会……」）。
+
+**结构性缺陷与建议**（未实施，属构建图改动而非清理）：把 `src/Tools/GLSLCompiler` 纳入 ULRE 构建，并加后置步骤把 DLL 拷到 `$<TARGET_FILE_DIR:...>`，让 exe 目录成为唯一查找点；此后根级副本可删，也不再需要 CWD 兜底。**在此之前不要清理这份二进制。**
+
+### 截图资产
+
+`doc/screenshot/`（24 MB）与根 `screenshot/`（10.24 MB）全仓零引用。它们不是构建残留而是**内容资产**（引擎演示/对比图），删除属内容决策，本轮**保留**。后续二选一：接入 Git LFS；或迁到独立资产仓库 / 发布页。
