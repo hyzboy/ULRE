@@ -214,6 +214,23 @@ schema 4 材质的 material-source、NTB、surface 只引用 `*_module_name`。
 `ShaderResourceSchemaRegressionGate` 的 `MI.sampler-reference-contract`
 双向把守（正文出现的 `<X>Sampler` 必须被声明；声明的名字必须是真实预设）。
 
+`@ulre uses <模块名>` 与正文 `#include "<相对路径>"` 之间是**强制一致性契约**，
+不是可选注释：正文里每一个指向已注册模块的 `#include`，都必须在 `@ulre uses`
+里声明同名模块（`ShaderCodeModuleRegistry` 在 `LoadDirectory` 阶段扫描正文并强制校验，
+`CollectShaderCodeModuleIncludePaths` 只认行首（前导空白除外）的 `#include`，
+因此 `//` 与 `/* */` 注释里的 include 天然不计入）。违反时模块被整体剔除注册表并报
+`Undeclared code-module dependency`。
+
+为什么必须强制：`ShaderCodeResourceManifest::AddModule` 递归**只沿
+`definition.dependencies` 走**（即只沿 `@ulre uses`），所以一个"手写 include 但没声明"
+的模块在 manifest 模块图里是完全不可见的。后果三连：① 它的 `provides/require`
+不进能力闭合（`ValidateRenderTemplateRequest` 只遍历 manifest 成员）；
+② 它的 `texture_reference` / `sampler_reference` 不被校验——上面那条
+sampler 契约对它直接失效；③ 它的 `conflicts` 不被检测。
+契约由 `ShaderResourceSchemaRegressionGate` 的
+`MI.module-include-declaration-contract` 把守（全库 `LoadDirectory` 零错误 +
+关键 include 边在模块图里可见 + 从 `sky_minimal_surface` 出发能拉到 `sky_atmosphere`）。
+
 ### 原理 3：语义需求驱动的顶点模块选择（通用能力解析已退役）
 
 > 状态标注：**已退役 + 现载体**。旧的通用能力解析（四类来源匹配、

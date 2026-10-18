@@ -5609,6 +5609,177 @@ namespace
     }
 
     // ══════════════════════════════════════════════════════════════════════
+    // MI.module-include-declaration-contract
+    //
+    // `@ulre uses` 是模块依赖的唯一真源：manifest 模块图、能力闭包、
+    // 资源/采样器契约与模块冲突检查只沿 uses 边展开。而真正被编译进
+    // 程序的是正文手写的 `#include`。两侧一旦不一致，include 进来的
+    // 模块就整条从图里消失——它的 provides/require 不计入能力闭合、
+    // 它声明的 texture/sampler 引用不被校验、它与其他模块的冲突不被
+    // 检测（P4：provider 靠 include 隐式拉入依赖模块，正是这种隐形边）。
+    //
+    // 本用例锁定三件事：
+    //   1. 扫描器只认行首 `#include`（注释掉的 include 不算依赖）；
+    //   2. 全库加载零错误（Registry 已把「include 未声明」判为硬错误）；
+    //   3. 关键隐式边必须在 dependencies 里可见，且真的进入 manifest 图。
+    // ══════════════════════════════════════════════════════════════════════
+    static GateResult RunModuleIncludeDeclarationContractCase()
+    {
+        GateResult result;
+        result.name = "MI.module-include-declaration-contract";
+
+        // 1. 扫描器：行首 include 才计入，注释行/行尾不算。
+        {
+            static constexpr char kProbe[] =
+                "// #include \"common/commented_out.glsl\"\n"
+                "/* #include \"common/block_comment.glsl\" */\n"
+                "#include \"ubo/scene_ubo.glsl\"\n"
+                "  #include <common/descriptor_macros.glsl>\n"
+                "float x; // #include \"common/trailing.glsl\"\n";
+
+            hgl::AnsiStringList paths;
+            const int collected = CollectShaderCodeModuleIncludePaths(
+                kProbe, static_cast<int>(sizeof(kProbe) - 1), paths);
+
+            if (collected != 2 || paths.GetCount() != 2)
+                result.diagnostics.emplace_back(
+                    "include scanner must ignore commented includes (expected 2, got "
+                    + std::to_string(collected) + ")");
+            else if (!(paths[0] == "ubo/scene_ubo.glsl")
+                  || !(paths[1] == "common/descriptor_macros.glsl"))
+                result.diagnostics.emplace_back(
+                    "include scanner collected unexpected paths");
+        }
+
+        ShaderCodeModuleRegistry registry;
+        int file_count = 0;
+        int error_count = 0;
+        if (!registry.LoadDirectory(
+                hgl::ToOSString(GetShaderLibraryPath()),
+                &file_count, &error_count))
+        {
+            result.diagnostics.emplace_back(
+                "module registry directory scan failed");
+            result.passed = false;
+            return result;
+        }
+
+        // 2. Registry 加载期已强制 include ⊆ uses，任何违例都是硬错误。
+        if (error_count != 0)
+            result.diagnostics.emplace_back(
+                "module registry scan reported "
+                + std::to_string(error_count)
+                + " errors (undeclared #include dependency?)");
+
+        const auto depends_on = [&registry](const char *module_name,
+                                            const char *dependency_name)
+        {
+            const auto *definition = registry.FindByName(module_name);
+            if (!definition)
+                return false;
+
+            for (uint32_t i = 0; i < definition->dependency_count; ++i)
+            {
+                const char *name = definition->dependencies[i].module_name;
+                if (name && std::strcmp(name, dependency_name) == 0)
+                    return true;
+            }
+            return false;
+        };
+
+        // 3. P4 的核心隐式边：provider 正文 include 拉入的模块必须显式声明。
+        struct ExpectedEdge
+        {
+            const char *module_name;
+            const char *dependency_name;
+            const char *why;
+        };
+
+        static const ExpectedEdge kExpectedEdges[] =
+        {
+            { "indirect_sky_ambient", "sky_atmosphere",
+              "sky ambient provider pulls the atmosphere model in by #include" },
+            { "sky_minimal_surface", "sky_atmosphere",
+              "sky surface provider pulls the atmosphere model in by #include" },
+            { "sky_atmosphere", "scene_ubo",
+              "atmosphere reads main light / sky rows from the global tables" },
+            { "indirect_ibl", "bindless_textures",
+              "IBL provider samples env maps through bindless textures" },
+            { "material_surface", "ntb_interface",
+              "surface provider branches on the NTB provider contract" },
+            { "ntb_derivative_normalmap", "ntb_orthonormal",
+              "derivative NTB provider builds its frame via ntb_orthonormal" },
+            { "ntb_tangent_vbo_normalmap", "ntb_orthonormal",
+              "tangent NTB provider builds its frame via ntb_orthonormal" },
+            { "surface_interface", "descriptor_macros",
+              "surface interface depends on the standard descriptor macros" },
+            { "scene_ubo", "descriptor_macros",
+              "scene data declarations depend on the standard descriptor macros" },
+            { "entity_gpu_cull", "entity_gpu",
+              "GPU cull reads the entity row mirror" },
+            { "entity_gpu_cull", "RenderItemResolve",
+              "GPU cull resolves render items through RenderItemResolve" },
+        };
+
+        for (const ExpectedEdge &edge : kExpectedEdges)
+        {
+            if (registry.FindByName(edge.module_name) == nullptr)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("module missing from registry: ") + edge.module_name);
+                continue;
+            }
+
+            if (!depends_on(edge.module_name, edge.dependency_name))
+                result.diagnostics.emplace_back(
+                    std::string("module ") + edge.module_name
+                    + " must declare @ulre uses " + edge.dependency_name
+                    + " (" + edge.why + ")");
+        }
+
+        // 4. 声明必须真的进图：以 sky_minimal_surface 为根构建 manifest，
+        //    sky_atmosphere 必须出现在 code_module_names 里（P4 之前它是
+        //    被 include 编进去、却在图里完全不可见的模块）。
+        {
+            const char *roots[] = { "sky_minimal_surface" };
+            ShaderCodeResourceManifest manifest{};
+            if (!BuildShaderCodeResourceManifest(
+                    roots, 1, manifest, &registry))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("sky_minimal_surface manifest failed: ")
+                    + GetShaderCodeResourceManifestErrorName(manifest.error));
+            }
+            else
+            {
+                bool found_atmosphere = false;
+                bool found_scene_ubo = false;
+                for (uint32_t i = 0; i < manifest.code_module_count; ++i)
+                {
+                    const char *name = manifest.code_module_names[i];
+                    if (!name)
+                        continue;
+                    if (std::strcmp(name, "sky_atmosphere") == 0)
+                        found_atmosphere = true;
+                    else if (std::strcmp(name, "scene_ubo") == 0)
+                        found_scene_ubo = true;
+                }
+
+                if (!found_atmosphere)
+                    result.diagnostics.emplace_back(
+                        "manifest closure of sky_minimal_surface must contain "
+                        "sky_atmosphere (forced #include must be a declared edge)");
+                if (!found_scene_ubo)
+                    result.diagnostics.emplace_back(
+                        "manifest closure of sky_minimal_surface must contain scene_ubo");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     // S4 试点：结构快照 golden 比对（取代 GLSL 文本子串断言）
     //
     // 现状问题：本文件大量断言形如 contains(fs, "layout(set=2, binding=0)")，
@@ -5897,6 +6068,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());
     if (run_module_invariants) results.push_back(RunSamplerReferenceContractCase());
+    if (run_module_invariants) results.push_back(RunModuleIncludeDeclarationContractCase());
     if (run_pipeline) results.push_back(RunShaderStructureDumpPilotCase());
 
     bool all_passed = true;
