@@ -1,8 +1,8 @@
 # CSM（级联阴影贴图）工作机制 — 会话快速进入文档
 
 > 目的：让新会话在最短时间内掌握 CSM 的数据流、不变量、开关、判据与改动禁忌。
-> 相关文档：`doc/csm-readback-and-leak-followup.md`（遗留两项线索）、
-> `doc/scene-ubo-bda-migration-handoff.md`（BDA 化交接）、`doc/t3-camera-row-slotting-plan.md`（相机行槽化）。
+> 相关文档：`doc/csm-readback-and-leak-followup.md`（遗留两项线索）。
+> 相机行槽化（T3）与 Scene UBO 的 BDA 化（S1–S3）均已落地，现行口径见 `doc/world-addresses-and-camera-model-plan.md`。
 
 ## 1. 一句话结构
 

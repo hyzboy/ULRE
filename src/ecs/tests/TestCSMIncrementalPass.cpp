@@ -5903,7 +5903,7 @@ int main(int argc, char** argv)
               "aabb->center[3] >= 0.0f",
               "§9 M7 对拍同式：CPU 参考的哨兵判定必须与 GLSL 逐字同汽（丢一端 = 两端又错得不同源）" },
 
-            // ── M8/M9：离屏单帧世界（RenderOnce）缺陷族固化（doc/future/offscreen-onetime-world-stall-analysis.md）──
+            // ── M8/M9：离屏单帧世界（RenderOnce）缺陷族固化（全族见 doc/future/entity-rows-gpu-cull-plan.md §11.17）──
             // 该拓扑（独立子世界 × 只渲染一帧）没有"第 2 帧自愈"兜底，任何"晚一帧"缺陷都直接
             // 变成"永不绘制"。以下针钉住已修的四层里可源码判定的两层 + 禁两条旧护栏复活。
             { "ContextRender.cpp", OS_TEXT("src/ecs/core/ContextRender.cpp"),

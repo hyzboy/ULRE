@@ -3,9 +3,9 @@
 > **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
 > 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
 
-> 核对对象：
-> - `doc/future/ULRE_Architecture_Phase0_GLTF_TRS_Normalization.md`
-> - `doc/future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md`（含 Phase1/2/3 三篇）
+> 核对对象（2026-10-18 注：下列四档已删档，仅存于 git 历史；本档保留当时的核对结论）：
+> - `ULRE_Architecture_Phase0_GLTF_TRS_Normalization.md` / `Phase1_Transform_ID_Accessor.md` / `Phase2_Subsystems_Component_To_ID.md`
+> - `ULRE_ECS_Component_To_ID_Architecture_Roadmap.md`
 >
 > 方法：把文档里每一条主张拿去和仓库实测对齐，判定分四类 —— **已成立** / **伪命题（代码已经是对的或该结构不存在）** / **方向错（照做会坏事）** / **真缺口**。
 > 所有证据给 `path:line`；所有数字来自本次实测运行（见 §2）。

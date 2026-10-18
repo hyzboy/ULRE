@@ -1332,8 +1332,7 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
 
 ## §11 T4c：shadow pass 进 GPU 路径（→ 写行/ICB 三样才可删）（2026-10-06 侦察）
 
-> **叙事版见** `doc/future/gpu-cull-flicker-postmortem.md`（问题史 + 各方案结局 + 教训）。
-> 本节保留**原始测量记录**；两档分工：这里存数据，那里存推理链。
+> 本节保留**原始测量记录**；问题史 + 各方案结局 + 教训的叙事版（原 `future/gpu-cull-flicker-postmortem.md`）已于 2026-10-18 删档，存于 git 历史。
 
 ### 11.1 现状（量化，逐条有落点）
 
@@ -1853,7 +1852,7 @@ AsyncTextureUpload/门/CSM 全对基线逐字节不变。
 
 ### §11.17 离屏单帧世界（RenderOnce）永不绘制 —— 五层"晚一帧"缺陷族结案（2026-10-07）
 
-专项档案 = `doc/future/offscreen-onetime-world-stall-analysis.md`（症状/取证时间线/验收判据全量）。
+专项档案（症状/取证时间线/验收判据全量，原 `future/offscreen-onetime-world-stall-analysis.md`）已于 2026-10-18 删档，存于 git 历史；本节保留结论。
 拓扑独特性：**独立子世界（OffscreenWorld 自有批表 + 自有 GPUCullSystem）× 只渲染一帧（RenderOnce）**。
 每层缺陷本质都是"晚一帧"，每帧驱动的世界第 2 帧自愈 ⇒ 全部潜伏；单帧世界逐层暴露。
 

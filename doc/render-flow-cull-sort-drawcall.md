@@ -14,7 +14,7 @@
 > - 帧骨架、系统装配、RenderGraph、相位表 → `doc/ecs-layer-architecture-and-frame-flow.md`
 >   （**其 §7.4/§7.5 的行号属旧修订、且写于 T3i 之前**；"多批切片 / 批标签 / GPU 接管"的现状以本档为准）
 > - GPU 剔除线全过程（T3d→T3i、拍板记录、实测数字） → `doc/future/entity-rows-gpu-cull-plan.md` §8
-> - 两级表 / 连号直通 / 4-ID 的历史设计 → `doc/render-item-descriptor-and-indirection-pipeline.md`
+> - 两级表 / 连号直通 / 4-ID 的历史设计 → 原 `doc/render-item-descriptor-and-indirection-pipeline.md`（2026-10-18 删档，存于 git 历史）
 > - 描述符与地址契约（BDA 终态） → 帧流程档 §7.6
 > 口径：本档只讲 **「实体 → `vkCmdDrawMeshTasks*`」**这一段（当前实现），不重复材质行物化、ShaderGen、
 > 描述符/BDA 的既有内容。

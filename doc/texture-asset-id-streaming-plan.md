@@ -5,7 +5,7 @@
 > **分支基线**：`TextureStreaming`（基点 `e74514c2c`，与事项同名）。
 > **关联文档**：
 > - `doc/async-texture-upload-and-bindless.md` —— 上传队列 + Bindless 热换的机制真源。本计划**延伸它、不取代它**（队列语义不变，在其上立"资产记录"层）。
-> - `doc/future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md` —— 阶段二"材质子系统 ID 化"的纹理侧由本计划落地（注意该档顶部"时点规范"警示：其示例代码是设计示意，以本档为准）。
+> - 原 `doc/future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md`（2026-10-18 删档，存于 git 历史）—— 阶段二"材质子系统 ID 化"的纹理侧由本计划落地。
 > - `doc/texture2darray-unified-texture-binding.md` —— 数组纹理事件级绑定；本计划 T5 的逐层 API 与其口径对齐。
 > - 引用一律写 `文件:符号`，不写行号（行号属本基点提交）。
 
@@ -35,7 +35,7 @@
 | E-6 | 收集链纹理获取现按 `resource_id` 字符串匹配，缺失即 `GLogError + return false`（每帧每实体重复报错） | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:AcquireDeferredResources`（"DeferredResource" 分支） | Loading≠错误：需状态化静默 + 就绪重试通道（T3） |
 | E-7 | 材质解析跳过靠每实例 `tracked_material_data_generation` 比对 | `inc/hgl/ecs/support/MaterialRuntimeTable.h:MaterialRuntimeSlot` | 纹理就绪是**第二个 generation 源**（§3.3） |
 | E-8 | Static transform 重复 set 同值仍会触发 revision 链（教训：CSM 地面吸附加同值守卫） | `example/Shadow/CascadeShadowMap.cpp:UpdateMovableAnimation` 注释；`ECSContext::static_scene_revision` | 就绪广播必须**值变才 bump**，不得每帧全量重解析 |
-| E-9 | `Task 2.2 / MaterialAccessor(4B)` 是 Roadmap 阶段二既定目标 | `doc/future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md` §三 | 本计划即其纹理侧首批，不与之冲突 |
+| E-9 | `Task 2.2 / MaterialAccessor(4B)` 是原 Roadmap 阶段二既定目标（该档 2026-10-18 已删） | git 历史 `doc/future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md` §三 | 本计划即其纹理侧首批，不与之冲突 |
 
 ### 0.3 待拍板项（每项：选项 + **推荐** + 影响；不定也能开工的部分已标注）
 

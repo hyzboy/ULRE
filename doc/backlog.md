@@ -23,11 +23,11 @@
 | ~~**诊断表前缀：解析器路径未设表名**~~ | **✅ 2026-10-14 结案** | 校验器的 8 段已修，但 `ParseDefinition` / `ParseRenderState` / `ParseTransformGraph` 的失败点**没有表前缀** ⇒ 日志只说 `cull_mode = "Bogus"`，不说 `render_state.pipeline.`（判据 = 在材质 TOML 写 `[render_state.pipeline] cull_mode = "Bogus"` 后的日志原文）；修法 = 各段入口带表名，与校验器同形。**落地（2026-10-14）**：实测确认 `SetParseTable` 是**粘性单值**（校验器先跑会把表名残留给后面的值解析 ⇒ 会报**错误的位置**）⇒ 不做"补调用点"，而是换成 **表路径栈 + RAII 作用域**（`ParseErrorContext::PushTable/PopTable/BuildTablePath` + `ParseTableScope`，19 处：值解析 11 + 键校验 8，含数组元素索引形态 `ParseTableScope("textures", i)` ⇒ `resources.textures[2].sampler`）；粘性 `SetParseTable` **整删**。判据实测（`lit.material.toml` 临时加 `[render_state.pipeline] cull_mode = "Bogus"`，日志取自**示例**——门的 logger 未初始化）：绿版 `render_state.pipeline.cull_mode = "Bogus"`／红版（去掉那两个作用域）只报 `cull_mode = "Bogus"`。针 4 条（Test 25 组⑫：3 存在性 + 1 禁复活） |
 | **S4a 的分歧场景无生产者**（可选保险） | 未做〔评审档 §19.6 诚实边界〕 | 「表标 `required=false` + 该模块缺失 + 模板属 ForwardUnlit/Sky」目前**没有任何生产者** ⇒ 要这道保险得先造生产者，再加门 case「表中 optional 槽缺失 ⇒ 组合器不得失败」 |
 | **棋盘格标记色 + 2D/3D 分派**（功能项） | 未开工；TODO 已写进 `MaterialRecipe.h` 规则表上方〔档〕 | 两套 checkerboard 源读 `EmissiveSurface` 标记色；2D 走 NDC/UV、3D 走面空间；回退 ID 需按绘制维度分派；门/契约同步 |
-| ~~**过期声明订正（3 处）**~~ | **✅ 2026-10-14（B4）结案** | ① `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1136-1139`、② `doc/future/HANDOFF_2026-10-01.md:55` 仍写"棋盘格不在回退链上、需单独一轮"（2026-10-12 已落地）；③ `doc/future/lighting-shadow-domain-split-plan.md` 的 **`T6b` 标题缺 ✅**——实测**已落地**（`LightRow`/`addr_lights`/`LightSystem`/`MainLightShadowSystem` 均在位、`sun_direction` 在 ShaderLibrary 归零）；另有 `MaterialRecipe.h` 注释里的 `SchemaGate:3534` 行号已漂移。
-  **落地**：① `Phase0-1…:1139`、② `HANDOFF_2026-10-01:58` 两处"棋盘格不在回退链上、需单独一轮"⇒ 就地加订正块（**2026-10-12 已上回退链**：`MaterialRecipe.h` 回退规则表 + `MaterialDefinitionRegistry.h:126`；余下 = 标记色 + 2D/3D 分派）；
+| ~~**过期声明订正（3 处）**~~ | **✅ 2026-10-14（B4）结案** | ① `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1136-1139`、② `future/HANDOFF_2026-10-01.md:55`（该档 2026-10-18 已删） 仍写"棋盘格不在回退链上、需单独一轮"（2026-10-12 已落地）；③ `doc/future/lighting-shadow-domain-split-plan.md` 的 **`T6b` 标题缺 ✅**——实测**已落地**（`LightRow`/`addr_lights`/`LightSystem`/`MainLightShadowSystem` 均在位、`sun_direction` 在 ShaderLibrary 归零）；另有 `MaterialRecipe.h` 注释里的 `SchemaGate:3534` 行号已漂移。
+  **落地**：① `Phase0-1…:1139`、② `HANDOFF_2026-10-01:58`（同上，档已删） 两处"棋盘格不在回退链上、需单独一轮"⇒ 就地加订正块（**2026-10-12 已上回退链**：`MaterialRecipe.h` 回退规则表 + `MaterialDefinitionRegistry.h:126`；余下 = 标记色 + 2D/3D 分派）；
   ③ `lighting-shadow-domain-split-plan.md` 的 `T6b` 标题补 ✅（实测核对在位）；④ 行号引用口径 ⇒ **改按门 case 名引用**（如 `S.material-fallback-definitions-exist`；行号会随门源码漂移） |
 
-### 2. ECS 审计（主档 `doc/ecs-quality-audit-2026-10.md` §2.2；共识档 `doc/ecs-audit-consensus-and-task-plan-2026-10-11.md`；逐条报告 `doc/analysis/ecs-audit-2026-10/`）
+### 2. ECS 审计（主档 `doc/ecs-quality-audit-2026-10.md` §2.2；逐条报告 `doc/analysis/ecs-audit-2026-10/`）
 
 已定：**已做 2 条**（#4 `GpuMirrorBuffer.h` 抽取（⚠ 2026-10-14：该文件已随 4-ID 池表整族删除 ⇒ 本项自然结案）、#5 删 `EntitySlot::alive`）+ **复扫关闭 2 条**（非法相机槽单点化、`frame_index` 三份属不同物件状态）。**已落地 6 条（含 #1(a)、#2、#5、#6 整条）**：
 
@@ -88,7 +88,7 @@
    ② 扫描口径注：banner 本身会**提**已删符号 ⇒ 原"250 处"计数会**升**，别把计数当进度（判据应是"没有档把已删符号当现行"）。
    **2026-10-14 新量化（A5 去组件化后仍在提已删组件名的档 = 27 档 / 250 处，分三类处置）**：
    · ① **现行口径档**（须改到与代码一致）：`doc/ecs/primitive-geometry-vdm.md`(7) · `doc/ecs/transform-data-management-and-transfer.md`(5) · `doc/simple-sphere-ecs-render-chain.md`(6) · `doc/simple-sphere-material-shadergen-overview.md`(4) · `doc/texture2darray-unified-texture-binding.md`(5) · `doc/shadow-component-and-automated-pipeline-design.md`(5) · `doc/material-lit-recipe-to-shadergen-dataflow.md`(3) · `doc/ShaderGen_MaterialGLSL_DesignAnalysis.md`(1)；
-   · ② **历史记录档**（只挂 banner 指路，不改正文）：`doc/future/**`（14 档，含 `ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`(49)、`ULRE_Architecture_Technical_Review_20260930.md`(29)）· `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`(5) · `doc/csm-review-2026-09-25.md`(4) · `doc/gpu-driven-4id-draw-item-plan-2026-09.md`(11) · `doc/render-item-descriptor-and-indirection-pipeline.md`(14，已挂 banner)；
+   · ② **历史记录档**（只挂 banner 指路，不改正文）：`doc/future/**`（**2026-10-18 删 9 档后余 10 档**，含 `ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`(49)、`ULRE_Architecture_Technical_Review_20260930.md`(29)）· `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`(5) · `doc/csm-review-2026-09-25.md`(4) · `doc/gpu-driven-4id-draw-item-plan-2026-09.md`(11)；
    · ③ **故意提及，不动**：逐条审计报告 / 本账本 / `doc/visibility-authority-chain.md` / 主档里的「已删」清单。
    **主档 `doc/ecs-layer-architecture-and-frame-flow.md` 已于 2026-10-14 改到一致**（§2.1 对象模型 + §5 组件表 + 17 处同题口径）。
 7. 功能项：棋盘格标记色上色 + 2D/3D 分派
@@ -933,3 +933,21 @@ A5(比较采样) ◄──同做───────────┘            
   T6 拆分 → A6 合并。D 线与 A 线 A1/A7（提交原语/in-flight 槽）强相关：
   A6 的 4 次全槽排空问题在 A1 的 per-frame 多份化落地后可能自然消失，
   两者做前先对齐。
+
+## 📦 文档清理记录（2026-10-18）
+
+本轮只做清理，不引入新结论。判据 = 代码实测 + 本档上方"未结项索引"（已结项/已落地/自述废止的档才删）。
+
+**删除 20 档**（全部可从 git 历史取回）：
+
+| 类 | 档 | 判据 |
+|---|---|---|
+| 自述废止/被取代 | `meshlet-render-path-implementation-plan.md`、`future/niagara-meshlet-drawcull-clustercull-comparison.md`、`render-item-descriptor-and-indirection-pipeline.md`、`future/ULRE_FINAL_TARGET.md`、`gitea-https-reverse-proxy-setup.md` | 档首自述废止；描述符池 2026-10-14 整族删（本档 §2 #3）；v1 被 v2 取代；运维笔记非引擎 |
+| 已落地的一次性计划/交接 | `future/ULRE_Architecture_Phase0_GLTF_TRS_Normalization.md`、`…Phase1_Transform_ID_Accessor.md`、`…Phase2_Subsystems_Component_To_ID.md`、`future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md`、`future/HANDOFF_2026-10-01.md`、`scene_ubo_bda_migration_ready.md`、`scene-ubo-bda-migration-handoff.md`、`camera-ubo-removal-plan.md`、`t3-camera-row-slotting-plan.md` | Camera UBO 移除已实测干净（全仓只剩 3 处注释性提及）；相机行槽化见 `inc/hgl/ecs/support/CameraInfoStorage.h` 的 `CameraRow(camera_slot, frame_slot)` |
+| 已结案复盘 + 审计冗余 | `future/gpu-cull-flicker-postmortem.md`、`future/offscreen-onetime-world-stall-analysis.md`、`ecs-deep-quality-audit-and-evidence-2026-10.md`、`ecs-deep-audit-crossreview-2026-10.md`、`ecs-deep-audit-second-crossreview-2026-10-11.md`、`ecs-audit-consensus-and-task-plan-2026-10-11.md` | 结论已合流进 `ecs-quality-audit-2026-10.md` §2.2 + `analysis/ecs-audit-2026-10/` 与 `future/entity-rows-gpu-cull-plan.md` §11.9/§11.17 |
+
+**保留**（虽形似候选，但有未结项或为现行交付物）：`future/stage_B_debt_list.md`（本档 §5 有 `receive_shadow` 幅度漂移未定位）、`future/e2-gather-run-length-merge-plan.md`（🟡 已开工）、`instance-batching-and-static-bake-design.md`、`texture-asset-id-streaming-plan.md`（纯提案，`TextureAssetID` 代码零命中）、`terrain-rendering-implementation-plan.md` 与 `terrain-vulkan-standalone-experiment.md`（`ShaderLibrary/`/`example/` 下无 terrain）、`future/ULRE_Architecture_Phase3_Entity64B_Binary_Scene_BlitLoading.md`（§5 已延后）、`simple-sphere-*` 两篇、`ambient-provider-types-inventory.md`。
+
+**同步改写的引用**：本档 3 处（§1 B4 过期声明行、§2 标题、§2 ② 历史记录档清单）、`csm-mechanism.md`、`ecs-quality-audit-2026-10.md`（3 处）、`future/ULRE_FINAL_TARGET_v2_设计约束.md`、`future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`、`future/ULRE_Transform_System_Completion_Design_and_Plan.md`、`future/entity-rows-gpu-cull-plan.md`（2 处）、`future/shadergen-material-chain-review.md`、`render-flow-cull-sort-drawcall.md`、`terrain-rendering-implementation-plan.md`、`texture-asset-id-streaming-plan.md`（2 处）、`src/ecs/core/ContextRender.cpp` 与 `src/ecs/tests/TestCSMIncrementalPass.cpp` 的注释（指向 `entity-rows-gpu-cull-plan.md` §11.17）。
+
+**同时删除 3 个空目录**：`doc/material/shader-system`、`doc/material/shadergen`、`doc/refactor`。

@@ -9,7 +9,6 @@
 >
 > **关联文档**：`doc/meshlet-geometry-pipeline-implementation.md`（MeshDrawParams 112B 契约、
 > 间接绘制双轨分流）、`doc/gpu-driven-4id-draw-item-plan-2026-09.md`（4-ID 与全局池基线）、
-> `doc/render-item-descriptor-and-indirection-pipeline.md`（两级间接）、
 > `doc/ecs-layer-architecture-and-frame-flow.md`（相位与帧流）、`doc/backlog.md`（A1 在途帧资源现状）。
 
 ---

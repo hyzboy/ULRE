@@ -338,8 +338,7 @@ buffer_reference 表达式。`material/shadow_receiver_source.glsl:233` 的 `con
 
 `SM_SELFCHECK=1` 报 `FAIL（期望 fnv=0xA8A369516CB04571，实测 0x7B8593FC7D72F968）`。
 该基线被多份计划档当"逐位不变"判据引用（`doc/future/entity-rows-gpu-cull-plan.md:1389/1509/1600`、
-`gpu-cull-flicker-postmortem.md:113/403`、`lighting-shadow-domain-split-plan.md:158/200`、
-`offscreen-onetime-world-stall-analysis.md:119`、`sky-domain-and-provider-params-plan.md:271`）。
+`lighting-shadow-domain-split-plan.md:158/200`、`sky-domain-and-provider-params-plan.md:271`）。
 已证**与 S1 及宏改名无关**（旧宏/新宏摘要逐位相同）⇒ 属既存漂移；重新钉基线需用户在真机确认画面后统一改这些档。
 
 ---

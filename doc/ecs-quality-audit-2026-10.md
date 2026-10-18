@@ -9,7 +9,7 @@
 > - `S1` = systems/components 分组、`S2` = core 分组、`S3` = support 分组、`M` = 我方
 > - 数字行号以审计当时的工作树为准（工作树含 `69df4fdde` 之后的框架简化）
 
-> **交叉评审入口（2026-10-11）**：`doc/ecs-deep-audit-crossreview-2026-10.md` 对本档与 `doc/ecs-deep-quality-audit-and-evidence-2026-10.md` 做了逐条取证（@`e8ee755fd` 行号、订正后的分批判据、文档回扫清单）。**本档历史原貌保留**（处置记录不改写），只加两条事实订正：
+> **事实订正（2026-10-11 交叉评审后）**：本档历史原貌保留（处置记录不改写），只加两条事实订正：
 > · chunk 4 处置表内「非 const 版 `GetAllEntityPointers`（**const 版才是活的**：`Context::GetAllEntities` 在用）」**已被后续改动反转** —— `Context::GetAllEntities` 自己现零调用者 ⇒ const 版与其调用者都成了死接口（全仓 5 命中，全在自身声明/定义处）。
 > · §5 表「`SyncRenderTargetViewport()`」的行号已随文件搬迁失效（现 `src/ecs/core/ContextRender.cpp`，`Context.cpp` 侧不存在）。
 > · **同类判错（§4.2 硬编码约定行）**：「`RenderItemHandle 0` 作空句柄」**错** —— 0 是首个合法句柄，无效值是 `UINT32_MAX`（`inc/hgl/graph/render/RenderItemDescriptor.h:44`）。
@@ -547,9 +547,9 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 | 文档声称 | 处置 |
 |---|---|
 | `SortBatchItems` 是批排序主函数（`PrimitiveBatchPipeline.cpp:786-831`） | ✅ 已订正 4 份文档（`ecs-layer-architecture-and-frame-flow.md` 批内定型行、`simple-sphere-ecs-render-chain.md`、`render-flow-cull-sort-drawcall.md`、`future/entity-rows-gpu-cull-plan.md`）：说明该函数**全仓不存在**，批内定型现为 `FinalizeBatch → EnsureBatchIndexRows → EnsureMeshDrawParams → WriteBatchIndexRows`，批间排序是 `PrimitiveRenderSystem::RenderBatches` 的 `std::sort(ordered_batches)`（按 `MaterialBatch::key`） |
-| `RenderItem::Compare()` 是批排序主键 | ✅ 已订正：`render-flow-cull-sort-drawcall.md`（②批内行 + 机制提醒 + `item->index` 行 + 文件清单行）、`render-item-descriptor-and-indirection-pipeline.md`（4.1 条） |
+| `RenderItem::Compare()` 是批排序主键 | ✅ 已订正：`render-flow-cull-sort-drawcall.md`（②批内行 + 机制提醒 + `item->index` 行 + 文件清单行） |
 | `future/stage_B_execution_plan.md:370` / `stage_B_debt_list.md:249` 把 `Compare` 当活约束 | ✅ 两份规划档都加了**事实订正**块：该函数与 `src/ecs/core/RenderItem.cpp` 已删除 ⇒ 围绕它的设计前提失效（另一处 `:1071` 的 B3-iii 侦察前提同样订正） |
-| 3 份文档称 `PrimitiveRenderSystem` 调 `GetActiveCameraID()` | ✅ 已订正为 `GetActiveCameraRow()`（`ecs-layer-architecture-and-frame-flow.md`、`simple-sphere-ecs-render-chain.md`、`t3-camera-row-slotting-plan.md`）；并注记裸读槽号的该 API 已于 2026-10-10 删除 |
+| 3 份文档称 `PrimitiveRenderSystem` 调 `GetActiveCameraID()` | ✅ 已订正为 `GetActiveCameraRow()`（`ecs-layer-architecture-and-frame-flow.md`、`simple-sphere-ecs-render-chain.md`；第三份 `t3-camera-row-slotting-plan.md` 已于 2026-10-18 删档）；并注记裸读槽号的该 API 已于 2026-10-10 删除 |
 | 4 份文档用 `SetElementTypeSystemsEnabled(...)` | ✅ 已订正为真 API **`SetSystemGroupEnabled(SystemGroupID, bool)`**（`Context.h:1033` / `Context.cpp:685,701`）：`ecs-layer-architecture-and-frame-flow.md` 5 处、`simple-sphere-ecs-render-chain.md` 1 处、`future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md` 1 处（保留旧名的说明） |
 | `entity-rows-gpu-cull-plan.md:1253` 称该管线有两处 `std::sort` | ✅ 已订正：`PrimitiveBatchPipeline.cpp` 现**没有任何 `std::sort`**（`SortByDistance` 亦不存在）；同文件 `:1407` 的删除清单标注"已不存在" |
 | `ecs-layer-architecture-and-frame-flow.md` 里按行号跳转的 `Context.h:422-429` 等 | ◐ 部分订正：本轮改到的那几处（相机/组开关/相机读取口）已换成**符号 + 现行号**；其余零散行号引用留给后续文档统一整理（行号随代码漂移是结构性问题，符号锚点才是稳的） |

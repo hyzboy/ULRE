@@ -833,7 +833,7 @@ namespace hgl::ecs
             // ⇒ 派发恒读到**上一帧**的写入：每帧驱动的世界第 2 帧自愈（稳态滞后一帧），
             // 而 RenderOnce 的离屏世界只有一帧 ⇒ `row[Transform]=0` ⇒ cull 着色器在视锥测试前
             // return ⇒ DrawCount=0、离屏永久空白（实测 RenderToTexture/ColorDepth；
-            // 离屏单帧世界缺陷族的第五层，前四层见 doc/future/offscreen-onetime-world-stall-analysis.md）。
+            // 离屏单帧世界缺陷族的第五层（全族五层见 doc/future/entity-rows-gpu-cull-plan.md §11.17）。
             // 同帧幂等（值变才标脏 + 版本记账）⇒ 绘制录制段的第二次调用退化为 no-op。
             if (auto transform_system = GetSystem<TransformSystem>())
                 transform_system->SubmitTransformUpdates();   // M8-needle：本调用必须在 collect/派发之前（Test 42 钉住）
