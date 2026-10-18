@@ -55,3 +55,4 @@ cascade_depth_*
 pgdump_*
 build_debugapi_release/
 /tmp
+/Cache
