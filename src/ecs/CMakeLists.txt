@@ -6,271 +6,48 @@
 option(ULRE_ECS_DEBUG_API "在所有构建配置里强制打开 ECS 调试/校验面（OFF = 交给 RenderOptions.h 台帐：Debug 开 / Release 关）" OFF)
 option(ULRE_ENABLE_CPU_CULL_PARITY_TEST "注册 CPU 剔除参考台架（每 60 帧 GPU 读回对拍）；默认关，生产管线不付那笔 stall" OFF)
 
-set(ECS_CORE_FILES
-    ${ECS_INCLUDE_PATH}/core/Object.h
-    ${ECS_INCLUDE_PATH}/core/ComponentRow.h
-    ${ECS_INCLUDE_PATH}/core/Entity.h
-    ${ECS_INCLUDE_PATH}/core/EntityHandle.h
-    ${ECS_INCLUDE_PATH}/core/EntityManager.h
-    ${ECS_INCLUDE_PATH}/core/System.h
-    ${ECS_INCLUDE_PATH}/core/Context.h
-    ${ECS_INCLUDE_PATH}/core/RenderGraph.h
-    ${ECS_INCLUDE_PATH}/core/RenderPassRequest.h
-    ${ECS_INCLUDE_PATH}/core/ScenePipelineMode.h
-    ${ECS_INCLUDE_PATH}/core/SystemGroup.h
-    ${ECS_INCLUDE_PATH}/core/DefaultSystems.h
-    ${ECS_INCLUDE_PATH}/core/MaterialBatch.h
-    ${ECS_INCLUDE_PATH}/core/ShaderProgramPipelineKey.h
-    ${ECS_INCLUDE_PATH}/core/RenderItem.h
-    ${ECS_INCLUDE_PATH}/core/PrimitiveRenderItem.h
-    ${ECS_INCLUDE_PATH}/core/RenderFrameCache.h
-    core/Object.cpp
-    core/ComponentRow.cpp
-    core/Entity.cpp
-    core/EntityManager.cpp
-    core/System.cpp
-    core/Context.cpp
-    core/ContextRender.cpp
-    core/ContextGPU.cpp
-    core/ContextSystems.cpp
-    core/RenderFrameCache.cpp
-    support/RenderResource.cpp
-    support/CameraInfoStorage.cpp
-    support/CameraSlotGuard.cpp
-    support/TransformAccessor.cpp
-    core/RenderGraph.cpp
-    core/SystemGroup.cpp
-    core/DefaultSystems.cpp
-    core/MaterialBatch.cpp
-    core/PrimitiveRenderItem.cpp
+# ── 源文件清单：目录递归扫描 ──────────────────────────────────────────────────
+# 阶段 2（CMake 模块化）改造：此前是 22 份手工清单（ECS_CORE_FILES、17 份
+# ECS_SYS_*_FILES、4 份 ECS_SUPPORT*_FILES）共 260 行，增删一个 .cpp 都要手改，
+# 且已经开始漂移 —— 实测有 10 个头文件被代码 include 却没进清单，IDE 里看不到。
+# 改为按目录扫描：
+#   - components/ core/ support/ systems/ 下的 .cpp 全部进库（tests/ 除外）；
+#   - inc/hgl/ecs 下的 .h 全部列为工程文件（只为 IDE 组织，不参与编译）。
+# 已核对：本目录扫描出的 .cpp 集合与旧清单**完全一致（67 个）**，编译产物不变。
+# CONFIGURE_DEPENDS 让 cmake --build 在文件增删时自动重跑 configure，新增源文件
+# 不必再手动 configure。
+file(GLOB_RECURSE ECS_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/components/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/support/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/systems/*.cpp
+)
+file(GLOB_RECURSE ECS_HEADERS CONFIGURE_DEPENDS
+    ${ECS_INCLUDE_PATH}/*.h
 )
 
-set(ECS_SYS_00_RenderSystemCore_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
-    systems/render/RenderSystemCore.cpp
-)
-
-set(ECS_SYS_01_TickInput_InputSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/tick/InputSystem.h
-    systems/tick/InputSystem.cpp
-)
-
-set(ECS_SYS_02_TickTransform_TransformSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/tick/TransformSystem.h
-    systems/tick/TransformSystem.cpp
-)
-
-set(ECS_SYS_05_TickCamera_CameraSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/tick/CameraSystem.h
-    ${ECS_INCLUDE_PATH}/systems/tick/CameraInputMapping.h
-    systems/tick/CameraSystem.cpp
-    systems/tick/CameraInputMapping.cpp
-    ${ECS_INCLUDE_PATH}/components/CameraComponent.h
-    components/CameraComponent.cpp
-)
-
-set(ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/tick/LineBoundsUpdateSystem.h
-    systems/tick/LineBoundsUpdateSystem.cpp
-)
-
-set(ECS_SYS_07_RenderSwapchainNextImage_SwapchainNextImageSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/SwapchainNextImageSystem.h
-    systems/render/SwapchainNextImageSystem.cpp
-)
-
-set(ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderTargetSystem.h
-    systems/render/RenderTargetSystem.cpp
-)
-
-set(ECS_SYS_09A_RenderPreBeginFrame_MainLightShadowSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/MainLightShadowSystem.h
-    systems/render/MainLightShadowSystem.cpp
-)
-
-set(ECS_SYS_09C_RenderPreBeginFrame_LightSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/LightSystem.h
-    systems/render/LightSystem.cpp
-)
-
-set(ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/EnvironmentSystem.h
-    systems/render/EnvironmentSystem.cpp
-)
-
-set(ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/ColorPaletteSystem.h
-    systems/render/ColorPaletteSystem.cpp
-)
-
-set(ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderBufferUploadSystem.h
-    systems/render/RenderBufferUploadSystem.cpp
-)
-
-set(ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/ViewUBOCommitSystem.h
-    systems/render/ViewUBOCommitSystem.cpp
-)
-
-
-set(ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderSceneUBOSystem.h
-    systems/render/RenderSceneUBOSystem.cpp
-)
-
-
-set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
-    systems/render/RenderPrimitiveCollectSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/MaterialData.h
-    components/MaterialData.cpp
-    ${ECS_INCLUDE_PATH}/components/GeometryData.h
-    components/GeometryData.cpp
-    ${ECS_INCLUDE_PATH}/components/ShadowProxy.h
-    components/ShadowProxy.cpp
-)
-
-set(ECS_SYS_26B_RenderStat_LineStatsSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/LineStatsSystem.h
-    systems/render/LineStatsSystem.cpp
-)
-
-set(ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/SwapchainSubmitSystem.h
-    systems/render/SwapchainSubmitSystem.cpp
-)
-
-set(ECS_SUPPORT_FILES
-    ${ECS_INCLUDE_PATH}/support/TransformDataStorage.h
-    ${ECS_INCLUDE_PATH}/support/TransformID.h
-    ${ECS_INCLUDE_PATH}/support/ComponentPool.h
-    ${ECS_INCLUDE_PATH}/support/EntityGPUTable.h
-    ${ECS_INCLUDE_PATH}/support/EntityRenderIDTable.h
-    ${ECS_INCLUDE_PATH}/support/DirtyRowSet.h
-    ${ECS_INCLUDE_PATH}/support/LightRowTable.h
-    ${ECS_INCLUDE_PATH}/support/GPUCullSystem.h
-    ${ECS_INCLUDE_PATH}/support/CPUCullReferenceSystem.h
-    ${ECS_INCLUDE_PATH}/support/TransformAccessor.h
-    ${ECS_INCLUDE_PATH}/support/CameraInfoStorage.h
-    ${ECS_INCLUDE_PATH}/support/PerfTimer.h
-    ${ECS_INCLUDE_PATH}/support/CameraSlotGuard.h
-    ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
-    ${ECS_INCLUDE_PATH}/support/MaterialVariantTable.h
-    ${ECS_INCLUDE_PATH}/support/MaterialRuntimeTable.h
-    ${ECS_INCLUDE_PATH}/support/PrimitiveState.h
-    ${ECS_INCLUDE_PATH}/support/RenderStrategyTable.h
-    ${ECS_INCLUDE_PATH}/support/RenderStrategyParity.h
-    ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
-    ${ECS_INCLUDE_PATH}/support/BoundingBoxAccessor.h
-    ${ECS_INCLUDE_PATH}/support/PipelineMaterialRenderer.h
-    ${ECS_INCLUDE_PATH}/support/TransformAssignmentBuffer.h
-    ${ECS_INCLUDE_PATH}/support/RenderPipelineBase.h
-    ${ECS_INCLUDE_PATH}/support/RenderPipelineSystem.h
-    ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h
-    ${ECS_INCLUDE_PATH}/support/TextRenderPipeline.h
-    support/RenderPipelineSystem.cpp
-    support/VisibilityDataStorage.cpp
-    support/MaterialVariantTable.cpp
-    support/MaterialRuntimeTable.cpp
-    support/PrimitiveState.cpp
-    support/RenderStrategyParity.cpp
-    support/TransformAssignmentBuffer.cpp
-    support/PipelineMaterialRenderer.cpp
-    support/PrimitiveBatchPipeline.cpp
-    support/GPUCullSystem.cpp
-    support/CPUCullReferenceSystem.cpp
-    support/text/TextRenderPipeline.cpp
-)
-
-set(ECS_SUPPORT_PRIMITIVE_FILES
-    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderPipeline.h
-    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveCullSystem.h
-    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveSortSystem.h
-    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveBuildSystem.h
-    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderSystem.h
-    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveOverlayRenderSystem.h
-    support/primitive/PrimitiveRenderPipeline.cpp
-    support/primitive/PrimitiveCullSystem.cpp
-    support/primitive/PrimitiveSortSystem.cpp
-    support/primitive/PrimitiveBuildSystem.cpp
-    support/primitive/PrimitiveRenderSystem.cpp
-    support/primitive/PrimitiveOverlayRenderSystem.cpp
-)
-
-set(ECS_SUPPORT_TEXT_FILES
-    ${ECS_INCLUDE_PATH}/support/text/TextCollectSystem.h
-    ${ECS_INCLUDE_PATH}/support/text/TextBuildSystem.h
-    ${ECS_INCLUDE_PATH}/support/text/TextSyncSystem.h
-    ${ECS_INCLUDE_PATH}/support/text/TextRenderSystem.h
-    support/text/TextCollectSystem.cpp
-    support/text/TextBuildSystem.cpp
-    support/text/TextSyncSystem.cpp
-    support/text/TextRenderSystem.cpp
-)
-
-set(ECS_SUPPORT_LINE_FILES
-    ${ECS_INCLUDE_PATH}/support/line/LineRenderPipeline.h
-    ${ECS_INCLUDE_PATH}/support/line/LineCollectSystem.h
-    ${ECS_INCLUDE_PATH}/support/line/LineBuildSystem.h
-    ${ECS_INCLUDE_PATH}/support/line/LineRenderSystem.h
-    support/line/LineRenderPipeline.cpp
-    support/line/LineCollectSystem.cpp
-    support/line/LineBuildSystem.cpp
-    support/line/LineRenderSystem.cpp
-)
-
-set(ECS_SOURCE
-    ${ECS_CORE_FILES}
-    ${ECS_SYS_00_RenderSystemCore_FILES}
-    ${ECS_SYS_01_TickInput_InputSystem_FILES}
-    ${ECS_SYS_02_TickTransform_TransformSystem_FILES}
-    ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
-    ${ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES}
-    ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainNextImageSystem_FILES}
-    ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES}
-    ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
-    ${ECS_SYS_09A_RenderPreBeginFrame_MainLightShadowSystem_FILES}
-    ${ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES}
-    ${ECS_SYS_09C_RenderPreBeginFrame_LightSystem_FILES}
-
-    ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
-    ${ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES}
-    ${ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES}
-    ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
-    ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES}
-    ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES}
-    ${ECS_SUPPORT_FILES}
-    ${ECS_SUPPORT_PRIMITIVE_FILES}
-    ${ECS_SUPPORT_TEXT_FILES}
-    ${ECS_SUPPORT_LINE_FILES}
-)
-
-source_group("ECS\\Core" FILES ${ECS_CORE_FILES})
-source_group("ECS\\Systems\\00 RenderSystemCore" FILES ${ECS_SYS_00_RenderSystemCore_FILES})
-source_group("ECS\\Systems\\01 TickInput_InputSystem" FILES ${ECS_SYS_01_TickInput_InputSystem_FILES})
-source_group("ECS\\Systems\\02 TickTransform_TransformSystem" FILES ${ECS_SYS_02_TickTransform_TransformSystem_FILES})
-source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickCamera_CameraSystem_FILES})
-source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainNextImageSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainNextImageSystem_FILES})
-source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES})
-source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
-source_group("ECS\\Systems\\09A RenderPreBeginFrame_MainLightShadowSystem" FILES ${ECS_SYS_09A_RenderPreBeginFrame_MainLightShadowSystem_FILES})
-source_group("ECS\\Systems\\09B RenderPreBeginFrame_ColorPaletteSystem" FILES ${ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES})
-source_group("ECS\\Systems\\09C RenderPreBeginFrame_LightSystem" FILES ${ECS_SYS_09C_RenderPreBeginFrame_LightSystem_FILES})
-source_group("ECS\\Systems\\13B RenderBufferCommit_ViewUBOCommitSystem" FILES ${ECS_SYS_13B_RenderBufferCommit_ViewUBOCommitSystem_FILES})
-source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
-source_group("ECS\\Systems\\15B RenderFrameSync_RenderSceneUBOSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderSceneUBOSystem_FILES})
-source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
-source_group("ECS\\Systems\\26B RenderStat_LineStatsSystem" FILES ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES})
-source_group("ECS\\Systems\\27 RenderSubmit_SwapchainSubmitSystem" FILES ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES})
-source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
-source_group("ECS\\Support\\Primitive" FILES ${ECS_SUPPORT_PRIMITIVE_FILES})
-source_group("ECS\\Support\\Text" FILES ${ECS_SUPPORT_TEXT_FILES})
-source_group("ECS\\Support\\Line" FILES ${ECS_SUPPORT_LINE_FILES})
+# VS 解决方案分组跟随目录结构（source_group(TREE)），不再手写 22 条。
+# 代价：分组名里原先编码的**执行阶段序号**（00/01/02/05/06B/…/27）随之消失。
+# 那套顺序的唯一台帐是 `.ai/skills/SKILL_EXECUTION_PHASE_ORDERING.md`，此处留一份
+# 索引便于对照：
+#   00 RenderSystemCore → 01 TickInput_InputSystem → 02 TickTransform_TransformSystem
+#   → 05 TickCamera_CameraSystem → 06B TickTransform_LineBoundsUpdateSystem
+#   → 07 RenderSwapchainNextImage_SwapchainNextImageSystem
+#   → 08 RenderPreBeginFrame_RenderTargetSystem
+#   → 09A RenderPreBeginFrame_MainLightShadowSystem
+#   → 09B RenderPreBeginFrame_ColorPaletteSystem
+#   → 09C RenderPreBeginFrame_LightSystem
+#   → 09 RenderPreBeginFrame_EnvironmentSystem
+#   → 13B RenderBufferCommit_ViewUBOCommitSystem
+#   → 14 RenderBufferUpload_RenderBufferUploadSystem
+#   → 15B RenderFrameSync_RenderSceneUBOSystem
+#   → 16 RenderCollect_RenderPrimitiveCollectSystem
+#   → 26B RenderStat_LineStatsSystem → 27 RenderSubmit_SwapchainSubmitSystem
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "ECS" FILES ${ECS_SOURCES})
+source_group(TREE ${ECS_INCLUDE_PATH} PREFIX "ECS\\include" FILES ${ECS_HEADERS})
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
-${ECS_SOURCE})
+${ECS_SOURCES} ${ECS_HEADERS})
 
 # 只在「强制打开」时下发；不下发时由 `inc/hgl/common/RenderOptions.h` §2 按 NDEBUG 决定（Debug 1 / Release 0）。
 # ⚠ 不要在这里下发 `=0`：那会压过台帐的 Debug 默认值，让 Debug 也丢掉校验面（2026-10-13 统一时删掉的分支）。

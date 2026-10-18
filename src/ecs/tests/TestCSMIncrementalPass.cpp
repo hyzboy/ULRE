@@ -6255,9 +6255,16 @@ int main(int argc, char** argv)
               "static constexpr uint32_t kCapacity = graph::kLightRowCapacity;",
               "T6b：行表容量 = 冻结值（单一真源；两处各写一个数字 = 迟早漂移）" },
 
+            // 2026-10-18（CMake 阶段 2）：源文件清单从 22 份手工列表改为目录递归扫描，
+            // 原先「头文件名必须字面出现在 CMakeLists.txt 里」的判据随之失效。契约意图不变
+            // ——**新写的头/源必须真的进构建，不能只写文件就静默不编译**——但兑现方式从
+            // 「人记得加列表」变成「扫描机制在位」。所以这里改为钉住扫描机制本身：
+            // 一旦有人把 GLOB 改回手工列表（或把 CONFIGURE_DEPENDS 去掉导致新增文件不触发
+            // 重新 configure），本用例立刻报红。
             { "CMakeLists.txt", OS_TEXT("src/ecs/CMakeLists.txt"),
-              "support/LightRowTable.h",
-              "T6b：新头必须进构建注册（只写文件不加列表 = 静默不编译）" },
+              "file(GLOB_RECURSE ECS_HEADERS CONFIGURE_DEPENDS",
+              "T6b：新头必须进构建注册（构建注册靠目录递归扫描 + CONFIGURE_DEPENDS，"
+              "退回手工列表或去掉 CONFIGURE_DEPENDS = 新增文件静默不编译）" },
 
             { "ShaderResourceSchemaRegressionGate.cpp", OS_TEXT("src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp"),
               "W.light-row-struct-parity",
