@@ -107,13 +107,16 @@ if(BUILD_TESTING)
         PROPERTIES LABELS "shadergen;baseline"
                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+    # 每个分组单独成一个 ctest 用例，供 -L <group> 定向运行；全部检查由
+    # 上面不带参数的用例（等价于 "all"）覆盖。
     foreach(regression_group
             glsl
             interface
             descriptor
             cache
             materialization
-            pipeline)
+            pipeline
+            module-invariants)
         add_test(
             NAME shader_resource_schema_regression_gate.${regression_group}
             COMMAND ShaderResourceSchemaRegressionGate ${regression_group})
