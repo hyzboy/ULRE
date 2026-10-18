@@ -28,12 +28,19 @@ LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si, uin
     lighting.roughness = surf.roughness;
     lighting.fresnel = surf.fresnel;
     lighting.ao = surf.ao;
+    // AO 契约：ambient_occlusion_provider 槽的模块提供
+    // `float GetAmbientOcclusion(SurfaceInput)`。该槽只在 ForwardLitSlots 里，
+    // forward_lit_unshadowed_ao 没有它 ⇒ 由 HGL_USE_AMBIENT_OCCLUSION_PROVIDER 关闭调用
+    // （宏由 FragmentTemplateComposer::BuildFragmentDefines 按模板槽位发射）。
+    // 当前唯一实现 identity_ao 恒返回 1.0，故本接线不改变任何输出。
+#if defined(HGL_USE_AMBIENT_OCCLUSION_PROVIDER) && HGL_USE_AMBIENT_OCCLUSION_PROVIDER
+    lighting.ao *= GetAmbientOcclusion(si);
+#endif
     lighting.emissive = surf.emissive;
     lighting.alpha = surf.alpha;
 
     lighting.mainLightDir = GetMainLightDir();
     lighting.mainLightColor = GetMainLightColor();
-    lighting.ambientColor = GetSkyAmbientColor();
     lighting.reflectionColor = vec3(0.0);
     // D3：阴影接收开关与局部偏差倍率随 per-draw 行到达（data_index = 本 FS 的
     // 材质数据行号）。不接收阴影的图元在此恒得 1.0。

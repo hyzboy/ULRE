@@ -204,7 +204,8 @@
 >   bias 600662 px / D4 0；环境示例族 5 个 0 VUID / 0 shader 编译失败。
 >   **两条迁移保真教训**（旧代码语义陷阱，值得记住）：① `halo_color` 与主光色的同步由 `SetTime` 隐式完成，
 >   把 SetTime 拆开就会**静默改变 ambient**（`GetSkyAmbientColor` 的 Mie 项用它）——四处摘要当场不符，
->   结构上单一化（读主光色）才解决；② Cascade / ATS 的旧代码在**手写方向之后**调 `SetTime` ⇒ 手写方向
+>   结构上单一化（读主光色）才解决；〔2026-10 补注：`GetSkyAmbientColor` 与其唯一调用点
+>   `lighting.ambientColor` 已随死字段清理整删，本节属历史记录〕② Cascade / ATS 的旧代码在**手写方向之后**调 `SetTime` ⇒ 手写方向
 >   当场被模型方向覆盖、从未生效（死代码），迁移必须按**实际生效顺序**保真。
 > - ✅ **第 4 步（P4，本批落地）**：`ShadowInfo` 世界私有化 —— `EnvironmentInfo` 去 `shadow` 字段（不再挂 profile）；
 >   CPU 权威 = `ECSContext::shadow_info`（写者 = `MainLightShadowSystem`，经 `EditShadowInfo`）；

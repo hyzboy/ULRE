@@ -24,7 +24,6 @@ struct LightingInput
 
     vec3  mainLightDir;
     vec3  mainLightColor;
-    vec3  ambientColor;
     vec3  reflectionColor;
 
     float shadowFactor;

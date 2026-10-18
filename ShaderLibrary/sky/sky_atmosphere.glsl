@@ -59,9 +59,4 @@ vec3 EvalSkyAtmosphere(vec3 direction)
         vec3(0.0));
 }
 
-vec3 GetSkyAmbientColor()
-{
-    return EvalSkyAtmosphere(vec3(0.0, 0.0, 1.0));
-}
-
 #endif // SKY_ATMOSPHERE_GLSL

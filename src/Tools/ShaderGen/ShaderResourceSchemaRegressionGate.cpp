@@ -2239,6 +2239,32 @@ namespace
                     result.diagnostics.emplace_back(
                         "unified Lit/Unlit module schedule mismatch");
                 }
+                // AO 槽必须真的被消费：宏为 1、provider 的 #include 排在
+                // compositor 之前（否则 GetAmbientOcclusion 未声明即调用）。
+                // 此前该槽只 include 不调用，属死契约。
+                // 注：调用点在 compositor/forward_lighting.glsl 文件内部，
+                // 不会出现在组装后的模板正文里，故此处不查调用点文本。
+                const size_t ao_include =
+                    lit_fs.find("#include \"ao/identity.glsl\"");
+                const size_t output_include =
+                    lit_fs.find("#include \"compositor/forward_lighting.glsl\"");
+                if (lit_fs.find("#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 1")
+                        == std::string::npos
+                 || ao_include == std::string::npos
+                 || output_include == std::string::npos
+                 || ao_include > output_include)
+                {
+                    result.diagnostics.emplace_back(
+                        "ambient occlusion provider slot is not wired");
+                }
+                // LightingInput.ambientColor 已删：全树零读取点的死字段，
+                // 残留会让"天空色算两遍"复活。
+                if (lit_fs.find("ambientColor") != std::string::npos
+                 || unlit_fs.find("ambientColor") != std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "dead LightingInput.ambientColor reappeared");
+                }
             }
         }
 

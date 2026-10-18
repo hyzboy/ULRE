@@ -320,6 +320,23 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        // 模板 slots 里是否存在某角色（必需性/发射顺序的唯一真源在 template.slots）。
+        // 与 ResolvedInclude 的区别：后者只查 profile 的模块表，不看模板槽位表，
+        // 因此 profile 提供但模板不发射的模块会被它误报为"存在"。
+        bool TemplateHasSlot(
+            const RenderTemplateDefinition *definition,
+            const ShaderModuleSlotRole role)
+        {
+            if (!definition)
+                return false;
+            for (hgl::uint32 index = 0; index < definition->slot_count; ++index)
+            {
+                if (definition->slots[index].role == role)
+                    return true;
+            }
+            return false;
+        }
+
         // 解析某 slot 的 #include；缺失（必需）则失败。
         bool BuildSlotIncludeText(
             const FragmentTemplateComposer::ComposeInput &input,
@@ -375,6 +392,15 @@ namespace hgl::graph::mtl
                 defines += "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n";
                 defines += "#define HGL_USE_NTB_PROVIDER 1\n";
                 defines += "#define HGL_USE_SCENE_LIGHTING 1\n";
+                // AO 槽只在 ForwardLitSlots 里（ForwardLitUnshadowedSlots 没有），
+                // 故必须按 template.slots 判定——ResolvedInclude 只看 profile 模块表，
+                // 对 forward_lit_unshadowed_ao 会误报 ao/identity.glsl 存在。
+                // forward_lighting.glsl 据此决定是否调用 GetAmbientOcclusion()。
+                defines += TemplateHasSlot(
+                        input.resolved_template ? input.resolved_template->definition : nullptr,
+                        ShaderModuleSlotRole::AmbientOcclusionProvider)
+                    ? "#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 1\n"
+                    : "#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 0\n";
             }
             else if (id == RenderTemplateID::ForwardUnlit)
             {

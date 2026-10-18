@@ -152,7 +152,7 @@ WriteFragmentOutput(surface, direct_radiance + ambient_radiance);
 > WriteMaterialOutput(HGLComposeColor(finalColor));
 > ```
 >
-> 对应关系:`FragmentInput → SurfaceInput`(`ShaderLibrary/common/surface_interface.glsl:13-24`)、`SurfaceData → SurfaceOutput`(`:29-38`)、`DirectLightData`+`AmbientLightData` → 单一 `LightingInput`(`ShaderLibrary/common/lighting_interface.glsl:13-42`,含 `mainLightDir/mainLightColor/ambientColor/reflectionColor/shadowFactor`;`shadowFactor` 是 `float`,不再有 `ShadowFactor` 结构体)、`GetSurfaceData → EvalSurface`、`EvaluateDirectLighting → EvalDirectLighting(LightingInput)`(`ShaderLibrary/lighting/direct_cook_torrance_pbr.glsl:15`)、`EvaluateAmbientLighting` → 独立 ambient 模块的 `EvalIndirectLighting(LightingInput)`(`ShaderLibrary/lighting/indirect_sky_ambient.glsl:20`)、`WriteFragmentOutput → WriteMaterialOutput(HGLComposeColor(...))`(输出声明由 `FragmentTemplateComposer::BuildOutputDeclarationText` 内联生成,见 §4.7)。
+> 对应关系:`FragmentInput → SurfaceInput`(`ShaderLibrary/common/surface_interface.glsl:13-24`)、`SurfaceData → SurfaceOutput`(`:29-38`)、`DirectLightData`+`AmbientLightData` → 单一 `LightingInput`(`ShaderLibrary/common/lighting_interface.glsl:13-30`,含 `mainLightDir/mainLightColor/reflectionColor/shadowFactor`;`shadowFactor` 是 `float`,不再有 `ShadowFactor` 结构体。⚠ 旧文在这里列过的 `ambientColor` **已删**(2026-10):它只被写入、全树零读取,天空色由 ambient provider 模块自己 `EvalSkyAtmosphere(N)` 求)、`GetSurfaceData → EvalSurface`、`EvaluateDirectLighting → EvalDirectLighting(LightingInput)`(`ShaderLibrary/lighting/direct_cook_torrance_pbr.glsl:15`)、`EvaluateAmbientLighting` → 独立 ambient 模块的 `EvalIndirectLighting(LightingInput)`(`ShaderLibrary/lighting/indirect_sky_ambient.glsl:20`)、`WriteFragmentOutput → WriteMaterialOutput(HGLComposeColor(...))`(输出声明由 `FragmentTemplateComposer::BuildOutputDeclarationText` 内联生成,见 §4.7)。
 
 模块只可填充下列 slot：
 
@@ -162,7 +162,7 @@ WriteFragmentOutput(surface, direct_radiance + ambient_radiance);
 | `direct_provider` | `DirectLightData GetDirectLight(FragmentInput)` | Sun、forward local-light list |
 | `shadow_provider` | `ShadowFactor GetShadowFactor(FragmentInput)` | PCF ShadowMap 等 shadow 实现 |
 | `ambient_provider` | `GetAmbientLight` 和可选 `SampleAmbientSpecular` | Constant、SH、EnvMap、IBL、GI |
-| `ao_provider` | `float GetAmbientOcclusion(FragmentInput, SurfaceData)` | material AO、SSAO、GTAO |
+| `ao_provider` | `float GetAmbientOcclusion(SurfaceInput)` | material AO、SSAO、GTAO |
 | `lighting_model` | direct/ambient evaluation | PBR、FakePBR、Blinn-Phong |
 | `output_policy` | MRT/HDR/alpha policy | Forward HDR、decal、depth-only |
 
@@ -295,7 +295,7 @@ RG8/RGBA16F x2 NTB 的差异不应改变 `LightingModel`。它们是不同的
 vec3 EvalDirectLighting(LightingInput lighting)
 {
     // lighting.mainLightDir / mainLightColor / shadowFactor 已由
-    // BuildForwardLightingInput 填好(ShaderLibrary/compositor/forward_lighting.glsl:33-37)
+    // BuildForwardLightingInput 填好(ShaderLibrary/compositor/forward_lighting.glsl:42-47)
     vec3 L = lighting.mainLightDir;
     ...
 }
@@ -317,7 +317,7 @@ vec3 EvalIndirectLighting(LightingInput lighting)
 }
 ```
 
-即:`ambient.color.rgb` 的来源是 `LightingInput.ambientColor`(`ShaderLibrary/compositor/forward_lighting.glsl:35` 由 `GetSkyAmbientColor()` 填)+ 模块内自己采样天空;`diffuse_irradiance`/`gi_radiance`/`capabilities` 三个字段在当前 `LightingInput` 里不存在,模块间 capability 协商走的是 `@ulre provides_capability` / `ShaderModuleCapability`(`inc/hgl/mtl/ShaderCodeModule.h:142`、`src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp:198`)。
+即:`ambient.color.rgb` 的旧口径(`LightingInput.ambientColor` 由 `GetSkyAmbientColor()` 填)已失效——该字段与 `GetSkyAmbientColor()` 均已删(2026-10:字段全树零读取,天空色本来就在模块内自己采样)。现状是 ambient 模块**只**靠 `LightingInput.normal/baseColor/metallic/ao` 自己 `EvalSkyAtmosphere(N)`;`diffuse_irradiance`/`gi_radiance`/`capabilities` 三个字段在当前 `LightingInput` 里不存在,模块间 capability 协商走的是 `@ulre provides_capability` / `ShaderModuleCapability`(`inc/hgl/mtl/ShaderCodeModule.h:142`、`src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp:198`)。
 
 SH、IBL 或 GI 只需替换本模块。例如 IBL provider 填充 irradiance，并在其 `Resource` block
 声明 irradiance cube、prefiltered cube 和 BRDF LUT，同时实现
@@ -357,6 +357,8 @@ SSAO 可先由 fullscreen pass 写入 AO texture，再由 Forward Lit 的 AO pro
 禁止用 `return 1.0` 伪装为满足契约。
 
 > **状态注(2026-09)**:这条**已落地**——`RenderTemplateID` 里就有 `ForwardLitUnshadowedAO`(名 `forward_lit_unshadowed_ao`)与 `ForwardUnlit`,AO "恒等"也有独立模板 `ForwardLitShadowedIdentityAO` 与模块 `ShaderLibrary/ao/identity.glsl`(`float GetAmbientOcclusion(SurfaceInput)`,:12);PCF shadow 已有实现 `ShaderLibrary/shadow/pcf_shadow.glsl`(签名 `float GetShadowFactor(SurfaceInput)`)。**未落地**的是 SSAO:全树 0 命中,也没有 fullscreen AO pass 的证据。
+>
+> **状态注(2026-10,AO 接线)**:此前 `GetAmbientOcclusion()` 是**零调用者**的死契约(AO 槽 include 进 `forward_lit` 但从不被调用,`lighting.ao` 只来自 `surface.ao`)。现已接线:`forward_lighting.glsl:36-38` 执行 `lighting.ao *= GetAmbientOcclusion(si)`。该槽只在 `ForwardLitSlots` 里(`forward_lit_unshadowed_ao` 用的是 `ForwardLitUnshadowedSlots`,没有此槽),所以调用点由宏 `HGL_USE_AMBIENT_OCCLUSION_PROVIDER` 1/0 守卫,宏在 `FragmentTemplateComposer::BuildFragmentDefines` 按 **template.slots** 判定(不能用 `ResolvedInclude`:它只查 profile 模块表,会把 profile 提供但模板不发射的模块误报为存在)。`identity_ao` 恒返回 1.0 ⇒ 输出逐位不变。
 
 ### 4.7 最小输出模块：`output/forward_hdr.glsl`
 
