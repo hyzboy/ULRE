@@ -96,7 +96,6 @@ namespace hgl::graph
 
         /// 编辑 Profile 数据（返回 CPU 权威数据指针；句柄无效返回 nullptr）
         EnvironmentInfo *Edit(EnvProfileID id);
-        const EnvironmentInfo *Get(EnvProfileID id) const;
 
         /// 数据改完调用：ambient_env 立即写入它的单份 UBO（影子数据不在本模块，见类注释）。
         void MarkDirty(EnvProfileID id);

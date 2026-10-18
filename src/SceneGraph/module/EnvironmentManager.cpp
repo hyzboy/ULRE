@@ -195,12 +195,6 @@ namespace hgl::graph
         return p ? &p->cpu : nullptr;
     }
 
-    const EnvironmentInfo *EnvironmentManager::Get(EnvProfileID id) const
-    {
-        auto *p = FindProfile(id);
-        return p ? &p->cpu : nullptr;
-    }
-
     void EnvironmentManager::MarkDirty(EnvProfileID id)
     {
         auto *p = FindProfile(id);
@@ -243,7 +237,7 @@ namespace hgl::graph
 
         auto *p = FindProfile(id);
         if (!p)
-            p = FindProfile(kEnvProfileDefault);      // 无效句柄回退 default（与 Get 同语义）
+            p = FindProfile(kEnvProfileDefault);      // 无效句柄回退 default（与 Edit 同语义）
 
         return p ? p->ambient_module_name : empty;
     }
@@ -254,7 +248,7 @@ namespace hgl::graph
 
         Profile *p = FindProfile(id);
         if (!p)
-            p = FindProfile(kEnvProfileDefault);      // 无效句柄回退 default（与 Get 同语义）
+            p = FindProfile(kEnvProfileDefault);      // 无效句柄回退 default（与 Edit 同语义）
         if (!p || !MaterializeAmbientEnvUBO(p))
             return 0;
 
