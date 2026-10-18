@@ -67,6 +67,20 @@ namespace hgl::graph::mtl
         ShaderCodeResourceManifest manifest;
         MaterialDefinition manifest_definition;
 
+        // Phase 3.5: 声明键（emit 之前）
+        //
+        // 目标：把 stage key 的模块图分量从"已生成的 GLSL 文本"换到"生成前的
+        // 声明闭包"，这是运行时与 ShaderGen 解耦的前提。
+        //
+        // 当前**不参与任何 stage key**：FinalizeProgramLink 仍按文本派生，逐位
+        // 不变、SPV 缓存不失效。这里只把声明闭包算出来，并与文本闭包对齐以验证
+        // 其完备性——对齐干净之后才能把键真正换到这个源上。
+        uint64 declaration_template_base_hash = 0;
+        uint64 declaration_module_graph_hash = 0;
+        /// 声明闭包覆盖的 include 路径（"ao/identity.glsl" 口径，与文本闭包同源可比）
+        std::vector<AnsiString> declaration_include_paths;
+        bool declaration_key_ready = false;
+
         // Phase 4: stage sources
         std::string ms;   // mesh stage（唯一顶点路径——VS 已废弃）
         std::string fs;

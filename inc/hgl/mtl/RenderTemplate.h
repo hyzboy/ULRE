@@ -139,6 +139,16 @@ namespace hgl::graph::mtl
     };
 
     const char *GetRenderTemplateName(RenderTemplateID id) noexcept;
+
+    /// 渲染模板骨架源文件名（位于 ShaderLibrary/fragment/，如
+    /// "forward_lit.glsl.tmpl"）。ShadowCaster 两个模板走 C++ 手写发射、
+    /// 没有骨架文件，返回 nullptr。
+    ///
+    /// 声明键需要在 emit 之前覆盖骨架里硬编码的 `#include` 基座，因此骨架
+    /// 文件名属于模板定义的一部分：此前该映射只存在于
+    /// FragmentTemplateComposer 的匿名命名空间里，声明阶段无法复用。
+    const char *GetRenderTemplateFragmentSourceFile(RenderTemplateID id) noexcept;
+
     const char *GetShaderModuleSlotRoleName(ShaderModuleSlotRole role) noexcept;
     const char *GetRenderTemplateValidationErrorName(
         RenderTemplateValidationError error) noexcept;

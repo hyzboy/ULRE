@@ -188,21 +188,11 @@ namespace hgl::graph::mtl
             return cache.emplace(key, NormalizeEOL(raw)).first->second;
         }
 
+        /// 骨架文件名映射的唯一真源在 RenderTemplate.cpp：声明键阶段也要
+        /// 用它定位骨架、扫出硬编码的 `#include` 基座，不能各存一份。
         const char *GetFragmentTemplateFile(const RenderTemplateID id) noexcept
         {
-            switch (id)
-            {
-            case RenderTemplateID::ForwardLitShadowedAO:
-            case RenderTemplateID::ForwardLitShadowedIdentityAO:
-            case RenderTemplateID::ForwardLitUnshadowedAO:
-                return "forward_lit.glsl.tmpl";
-            case RenderTemplateID::ForwardUnlit:
-                return "forward_unlit.glsl.tmpl";
-            case RenderTemplateID::Sky:
-                return "sky.glsl.tmpl";
-            default:
-                return nullptr;
-            }
+            return GetRenderTemplateFragmentSourceFile(id);
         }
 
         bool IsForwardLitTemplate(const RenderTemplateID id) noexcept

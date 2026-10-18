@@ -499,20 +499,6 @@ namespace hgl::graph::mtl
             }
 
             FragmentTemplateComposer composer;
-            MaterialOutputContractDiagnostic output_diagnostic{};
-            if (!BuildMaterialOutputContract(
-                    plan.purpose,
-                    plan.output_contract,
-                    output_diagnostic))
-            {
-                s_last_build_generic_material_error = "BuildMaterialOutputContract failed";
-                GLogError(
-                    "[ShaderGen] Material output contract build failed: name=%s error=%s",
-                    definition.definition_name.c_str(),
-                    GetMaterialOutputContractErrorName(
-                        output_diagnostic.error));
-                return false;
-            }
             ShaderDocument &fragment_document = document_capture
                 ? document_capture->fragment_document
                 : plan.fragment_source_document;
@@ -634,9 +620,71 @@ namespace hgl::graph::mtl
                 GetShaderIncludeRoot(), include_path);
         }
 
-        /// 递归收集文档里的 `#include "..."`，把闭包内每个模块的正文并入哈希
+        /// include 闭包的两类消费者：stage key 的哈希、声明/文本闭包对齐用的
+        /// include 路径集。两者必须走同一次解析，否则"进哈希的文件"与"用来
+        /// 比对的路径集"会各自漂移。
+        ///
+        /// 比对口径用 include 路径（"ao/identity.glsl"）而不是模块名
+        /// （"identity_ao"）——两者并不总是同构，按名字归一会产生假差异。
+        struct GLSLIncludeClosureSink
+        {
+            hgl::hash::FNV1aHasher64 *hasher = nullptr;
+            std::vector<AnsiString> *include_paths = nullptr;
+        };
+
+        bool ContainsAnsiString(
+            const std::vector<AnsiString> &list, const AnsiString &value)
+        {
+            for (const AnsiString &item : list)
+                if (std::strcmp(item.c_str(), value.c_str()) == 0)
+                    return true;
+            return false;
+        }
+
+        /// 闭包集合按字典序归一，保证比对与诊断输出稳定
+        void SortAnsiStrings(std::vector<AnsiString> &list)
+        {
+            std::sort(
+                list.begin(), list.end(),
+                [](const AnsiString &lhs, const AnsiString &rhs)
+                {
+                    return std::strcmp(lhs.c_str(), rhs.c_str()) < 0;
+                });
+        }
+
+        void CollectIncludePath(
+            GLSLIncludeClosureSink &sink, const AnsiString &include_path)
+        {
+            if (!sink.include_paths || include_path.IsEmpty())
+                return;
+            if (ContainsAnsiString(*sink.include_paths, include_path))
+                return;
+            sink.include_paths->push_back(include_path);
+        }
+
+        /// manifest 里是模块名，转成注册表登记的 include_path 后再进集合；
+        /// metadata-only 模块（无文件）退回模块名，比对时会表现为"多余"——安全方向。
+        void CollectModuleName(
+            GLSLIncludeClosureSink &sink, const char *module_name)
+        {
+            if (!module_name || !module_name[0])
+                return;
+
+            const ShaderCodeModuleFileData *file =
+                GetShaderCodeModuleRegistry().FindFileByName(module_name);
+            if (file && !file->include_path.IsEmpty())
+            {
+                CollectIncludePath(sink, file->include_path);
+                return;
+            }
+
+            CollectIncludePath(sink, AnsiString(module_name));
+        }
+
+        /// 递归收集文档里的 `#include "..."`，把闭包内每个模块的正文并入哈希，
+        /// 同时（可选）把闭包覆盖到的模块名收集进 sink。
         void AccumulateGLSLIncludeClosure(
-            hgl::hash::FNV1aHasher64 &hasher,
+            GLSLIncludeClosureSink &sink,
             const char *text, const size_t length, const int depth)
         {
             if (!text || length == 0 || depth > 24)
@@ -675,17 +723,22 @@ namespace hgl::graph::mtl
                             text + name_begin,
                             static_cast<int>(cursor - name_begin));
 
-                        HashShaderLibraryText(
-                            hasher,
-                            include_path.c_str(),
-                            static_cast<size_t>(include_path.Length()));
+                        CollectIncludePath(sink, include_path);
+
+                        if (sink.hasher)
+                            HashShaderLibraryText(
+                                *sink.hasher,
+                                include_path.c_str(),
+                                static_cast<size_t>(include_path.Length()));
 
                         const OSString module_path =
                             ResolveShaderLibraryModulePath(include_path);
 
                         if (module_path.IsEmpty())
                         {
-                            HashShaderLibraryText(hasher, "<module-missing>", 16);
+                            if (sink.hasher)
+                                HashShaderLibraryText(
+                                    *sink.hasher, "<module-missing>", 16);
                         }
                         else
                         {
@@ -694,9 +747,11 @@ namespace hgl::graph::mtl
                             const char *module_text =
                                 reinterpret_cast<const char *>(module_bytes.data());
 
-                            HashShaderLibraryText(hasher, module_text, module_bytes.size());
+                            if (sink.hasher)
+                                HashShaderLibraryText(
+                                    *sink.hasher, module_text, module_bytes.size());
                             AccumulateGLSLIncludeClosure(
-                                hasher, module_text, module_bytes.size(), depth + 1);
+                                sink, module_text, module_bytes.size(), depth + 1);
                         }
                     }
                 }
@@ -731,7 +786,9 @@ namespace hgl::graph::mtl
             hgl::hash::FNV1aHasher64 hasher;
             const char policy[] = "ShaderLibraryRootOnly.v1";
             hasher.AppendBytes(policy, sizeof(policy) - 1);
-            AccumulateGLSLIncludeClosure(hasher, document, length, 0);
+            GLSLIncludeClosureSink sink;
+            sink.hasher = &hasher;
+            AccumulateGLSLIncludeClosure(sink, document, length, 0);
             const uint64 dependency_hash = hasher;
 
             {
@@ -740,6 +797,341 @@ namespace hgl::graph::mtl
             }
 
             return dependency_hash;
+        }
+
+        /// 文本闭包 → include 路径集合（与声明闭包同一口径）
+        void CollectShaderLibraryIncludePaths(
+            const char *document,
+            const size_t length,
+            std::vector<AnsiString> &out_include_paths)
+        {
+            if (!document || length == 0)
+                return;
+
+            GLSLIncludeClosureSink sink;
+            sink.include_paths = &out_include_paths;
+            AccumulateGLSLIncludeClosure(sink, document, length, 0);
+        }
+
+        /// 模板骨架里硬编码的 `#include` 基座。
+        ///
+        /// 这些 include 写在 .tmpl 里，不属于任何模块的 dependencies，因此
+        /// plan.manifest 覆盖不到（manifest 只展开模块依赖图）。声明闭包必须
+        /// 把它们连同传递闭包显式纳入，否则改 descriptor_macros /
+        /// surface_interface / alpha_compositor / scene_ubo / forward_flat 中
+        /// 任何一个都不会让声明键失效。
+        bool AccumulateTemplateBaseClosure(
+            GLSLIncludeClosureSink &sink, const char *template_source_file)
+        {
+            AnsiString relative("fragment/");
+            relative += template_source_file;
+
+            const OSString template_path =
+                ResolveShaderLibraryModulePath(relative);
+            if (template_path.IsEmpty())
+                return false;
+
+            const auto template_bytes =
+                hgl::LoadFileToDataArray<uint8>(template_path);
+            const char *template_text =
+                reinterpret_cast<const char *>(template_bytes.data());
+
+            if (sink.hasher)
+                HashShaderLibraryText(
+                    *sink.hasher, template_text, template_bytes.size());
+
+            AccumulateGLSLIncludeClosure(
+                sink, template_text, template_bytes.size(), 0);
+            return true;
+        }
+
+        /// ShadowCaster 没有 .glsl.tmpl（FragmentTemplateComposer::ComposeShadow
+        /// 走 C++ 手写发射），其硬编码基座 include 在这里镜像给出。与 ComposeShadow
+        /// 的发射列表不一致时，声明/文本闭包对齐诊断会直接报出来。
+        const char *const kShadowCasterBaseIncludes[] =
+        {
+            "common/surface_interface.glsl",
+            "ubo/scene_ubo.glsl",
+            "common/alpha_compositor.glsl",
+        };
+
+        /// 非 alpha 的深度/阴影变体只发空 main，**一个 #include 都没有**；
+        /// alpha 变体才发上面三个基座 + SurfaceProvider / MaterialSourceProvider。
+        bool AccumulateShadowCasterBaseClosure(
+            GLSLIncludeClosureSink &sink, const bool requires_alpha)
+        {
+            if (!requires_alpha)
+                return true;
+
+            for (const char *include_path : kShadowCasterBaseIncludes)
+            {
+                const AnsiString path(include_path);
+                CollectIncludePath(sink, path);
+
+                if (sink.hasher)
+                    HashShaderLibraryText(
+                        *sink.hasher,
+                        include_path,
+                        static_cast<size_t>(std::strlen(include_path)));
+
+                const OSString module_path =
+                    ResolveShaderLibraryModulePath(path);
+                if (module_path.IsEmpty())
+                    return false;
+
+                const auto module_bytes =
+                    hgl::LoadFileToDataArray<uint8>(module_path);
+                const char *module_text =
+                    reinterpret_cast<const char *>(module_bytes.data());
+
+                if (sink.hasher)
+                    HashShaderLibraryText(
+                        *sink.hasher, module_text, module_bytes.size());
+                AccumulateGLSLIncludeClosure(
+                    sink, module_text, module_bytes.size(), 1);
+            }
+            return true;
+        }
+
+        /// 声明闭包 vs 文本闭包对齐诊断。
+        ///
+        /// 文本闭包（ComputeShaderLibraryDependencyHash 扫出来的文件集）是当前
+        /// stage key 的事实覆盖；声明闭包是换成声明键之后会覆盖的集合。只有
+        /// 前者 ⊆ 后者时，声明键才可能成为权威键——缺一个模块就意味着那个模块
+        /// 的改动不会让键失效，会直接命中过期的 SPV。
+        ///
+        /// 每类差异只报一次，避免逐材质刷屏。
+        void ReportDeclarationClosureDivergence(
+            const MaterialDefinition &definition,
+            const GenericMaterialBuildPlan &plan,
+            std::vector<AnsiString> &text_include_paths)
+        {
+            if (!plan.declaration_key_ready)
+                return;
+
+            SortAnsiStrings(text_include_paths);
+
+            AnsiString missing;
+            AnsiString extra;
+
+            for (const AnsiString &text_path : text_include_paths)
+            {
+                if (ContainsAnsiString(plan.declaration_include_paths, text_path))
+                    continue;
+                if (!missing.IsEmpty())
+                    missing += " ";
+                missing += text_path.c_str();
+            }
+
+            for (const AnsiString &declaration_path
+                    : plan.declaration_include_paths)
+            {
+                if (ContainsAnsiString(text_include_paths, declaration_path))
+                    continue;
+                if (!extra.IsEmpty())
+                    extra += " ";
+                extra += declaration_path.c_str();
+            }
+
+            if (missing.IsEmpty() && extra.IsEmpty())
+                return;
+
+            hgl::hash::FNV1aHasher64 signature_hasher;
+            signature_hasher << static_cast<uint64>(missing.Length());
+            if (!missing.IsEmpty())
+                signature_hasher.AppendBytes(
+                    missing.c_str(), static_cast<size_t>(missing.Length()));
+            signature_hasher << static_cast<uint64>(extra.Length());
+            if (!extra.IsEmpty())
+                signature_hasher.AppendBytes(
+                    extra.c_str(), static_cast<size_t>(extra.Length()));
+            const uint64 signature = signature_hasher;
+
+            static hgl::ThreadMutex report_mutex;
+            static hgl::UnorderedMap<uint64, uint8> reported;
+
+            {
+                hgl::ThreadMutexLock lock(&report_mutex);
+
+                uint8 seen = 0;
+                if (reported.Get(signature, seen))
+                    return;
+
+                reported.Add(signature, 1);
+            }
+
+            GLogWarning(
+                "[ShaderGen] 声明闭包与文本闭包不一致（声明键尚不可用）: "
+                "material=%s 声明缺少=[%s] 声明多余=[%s]",
+                definition.definition_name.c_str(),
+                missing.IsEmpty() ? "" : missing.c_str(),
+                extra.IsEmpty() ? "" : extra.c_str());
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // Phase 3.5 — 声明键（emit 之前）
+        //
+        // 目的：把 stage key 的模块图分量从"已生成的 GLSL 文本"换到"生成前的
+        // 声明闭包"。这是运行时与 ShaderGen 解耦的前提——运行时不该为了拿到
+        // 缓存键而先跑一遍 GLSL 生成。
+        //
+        // 本阶段当前**不改变任何 stage key**：FinalizeProgramLink 仍按文本派生，
+        // 逐位不变 ⇒ 现有 SPV 缓存全部继续命中。这里只做两件事：
+        //   1. 把输出契约前移到 emit 之前（它只依赖 plan.purpose，纯声明）；
+        //   2. 在 emit 之前算出模块闭包，供 FinalizeProgramLink 与文本闭包对齐。
+        //
+        // 闭包来源（全部在 emit 之前就绪）：
+        //   a. plan.manifest.code_module_names
+        //      —— AddModule 的 DFS 已展开传递依赖（依赖先于依赖者入表），
+        //         且 BuildStableHash 已把每个模块的 glsl_code 哈希折进 stable_hash；
+        //   b. 渲染模板骨架里硬编码的 `#include` 基座
+        //      —— 见 AccumulateTemplateBaseClosure / AccumulateShadowCasterBaseClosure。
+        //
+        // 只有对齐干净之后，才能把 stage key 真正换到这个源上。
+        // ═══════════════════════════════════════════════════════════════════
+        bool BuildDeclarationKey(
+            const MaterialDefinition &definition,
+            GenericMaterialBuildPlan &plan)
+        {
+            plan.declaration_key_ready = false;
+            plan.declaration_include_paths.clear();
+            plan.declaration_module_graph_hash = 0;
+            plan.declaration_template_base_hash = 0;
+
+            MaterialOutputContractDiagnostic output_diagnostic{};
+            if (!BuildMaterialOutputContract(
+                    plan.purpose,
+                    plan.output_contract,
+                    output_diagnostic))
+            {
+                s_last_build_generic_material_error =
+                    "BuildMaterialOutputContract failed";
+                GLogError(
+                    "[ShaderGen] Material output contract build failed: name=%s error=%s",
+                    definition.definition_name.c_str(),
+                    GetMaterialOutputContractErrorName(
+                        output_diagnostic.error));
+                return false;
+            }
+
+            if (!plan.render_template_request)
+                return true;
+
+            const RenderTemplateID template_id =
+                plan.render_template_request->template_id;
+
+            hgl::hash::FNV1aHasher64 base_hasher;
+            GLSLIncludeClosureSink base_sink;
+            base_sink.hasher = &base_hasher;
+            base_sink.include_paths = &plan.declaration_include_paths;
+
+            const char *template_file =
+                GetRenderTemplateFragmentSourceFile(template_id);
+
+            // 以下失败一律非致命：声明键当前不参与任何 stage key，只要算不出来
+            // 就置 declaration_key_ready=false 让诊断跳过，绝不因此让整个构建失败
+            // ——第 1 步的前提是零行为变更。
+            if (template_file)
+            {
+                if (!AccumulateTemplateBaseClosure(base_sink, template_file))
+                {
+                    GLogWarning(
+                        "[ShaderGen] 声明键：模板基座闭包读取失败，跳过: name=%s file=%s",
+                        definition.definition_name.c_str(), template_file);
+                    return true;
+                }
+            }
+            else if (template_id == RenderTemplateID::ShadowCasterOpaque
+                  || template_id == RenderTemplateID::ShadowCasterMasked)
+            {
+                if (!AccumulateShadowCasterBaseClosure(
+                        base_sink, plan.coverage.requires_alpha_evaluation))
+                {
+                    GLogWarning(
+                        "[ShaderGen] 声明键：ShadowCaster 基座闭包读取失败，跳过: name=%s",
+                        definition.definition_name.c_str());
+                    return true;
+                }
+            }
+
+            // 模板模块根：composer 通过 ResolvedInclude(slot_role) 把它们逐个
+            // #include 进最终文档，而 plan.manifest 只含「材质自身要求 + 两个
+            // provider 根」，覆盖不到它们。深度用途走 ComposeShadow：非 alpha
+            // 变体一个 include 都不发，alpha 变体才补两个 provider 根。
+            const char *declaration_roots[MaxRenderTemplateModuleRoots]{};
+            uint32 declaration_root_count = 0;
+
+            if (template_file)
+            {
+                for (uint32 i = 0;
+                     i < plan.render_template_request->module_root_count;
+                     ++i)
+                {
+                    const RenderTemplateModuleRoot &root =
+                        plan.render_template_request->module_roots[i];
+                    if (root.module_name.IsEmpty())
+                        continue;
+                    declaration_roots[declaration_root_count++] =
+                        root.module_name.c_str();
+                }
+            }
+            else if (plan.coverage.requires_alpha_evaluation)
+            {
+                const ShaderModuleSlotRole shadow_roles[] =
+                {
+                    ShaderModuleSlotRole::SurfaceProvider,
+                    ShaderModuleSlotRole::MaterialSourceProvider,
+                };
+                for (const ShaderModuleSlotRole role : shadow_roles)
+                {
+                    const RenderTemplateModuleRoot *root =
+                        plan.render_template_request->FindModuleRoot(role);
+                    if (!root || root->module_name.IsEmpty())
+                        continue;
+                    declaration_roots[declaration_root_count++] =
+                        root->module_name.c_str();
+                }
+            }
+
+            ShaderCodeResourceManifest declaration_manifest{};
+            const ShaderCodeModuleRegistry &module_registry =
+                GetShaderCodeModuleRegistry();
+            if (!resource_manifest_builder::BuildMaterialShaderCodeResourceManifest(
+                    plan.manifest_definition,
+                    declaration_manifest,
+                    declaration_roots,
+                    declaration_root_count,
+                    &module_registry))
+            {
+                GLogWarning(
+                    "[ShaderGen] 声明键：闭包清单构建失败，跳过: name=%s",
+                    definition.definition_name.c_str());
+                return true;
+            }
+
+            for (uint32 i = 0; i < declaration_manifest.code_module_count; ++i)
+            {
+                const char *module_name =
+                    declaration_manifest.code_module_names[i];
+                if (module_name && module_name[0])
+                    CollectModuleName(base_sink, AnsiString(module_name));
+            }
+
+            // 已知过近似（安全方向，暂不修）：Sky 模板的
+            // AmbientLightProvider 根（forward_lighting）在 RenderTemplate.cpp
+            // 里声明，但 sky.glsl.tmpl 从不 include 它——它属于 dead module root。
+            // 去掉会改 resolved_template_hash ⇒ 失效现有 sky SPV 缓存，留给后续步骤。
+            SortAnsiStrings(plan.declaration_include_paths);
+
+            hgl::hash::FNV1aHasher64 module_hasher;
+            module_hasher << declaration_manifest.stable_hash
+                          << plan.resolved_template_hash
+                          << static_cast<uint64>(base_hasher);
+
+            plan.declaration_template_base_hash = base_hasher;
+            plan.declaration_module_graph_hash = module_hasher;
+            plan.declaration_key_ready = true;
+            return true;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -829,6 +1221,16 @@ namespace hgl::graph::mtl
             plan.program_link.render_target_hash =
                 GetOutputContractHash(plan.output_contract);
             plan.program_link.compiler_hash = compiler_hash;
+
+            if (plan.declaration_key_ready)
+            {
+                std::vector<AnsiString> text_include_paths;
+                CollectShaderLibraryIncludePaths(
+                    plan.fs.data(), plan.fs.size(), text_include_paths);
+                ReportDeclarationClosureDivergence(
+                    definition, plan, text_include_paths);
+            }
+
             config.program_link = &plan.program_link;
             config.material_private_data = definition.material_private_data;
             config.defer_finalize = request.defer_finalize;
@@ -908,6 +1310,14 @@ namespace hgl::graph::mtl
             if (s_last_build_generic_material_error.IsEmpty())
                 s_last_build_generic_material_error = "BuildResourceContract failed";
             GLogError("[BuildGenericMaterial] BuildResourceContract failed");
+            return nullptr;
+        }
+
+        if (!BuildDeclarationKey(resolved_definition, plan))
+        {
+            if (s_last_build_generic_material_error.IsEmpty())
+                s_last_build_generic_material_error = "BuildDeclarationKey failed";
+            GLogError("[BuildGenericMaterial] BuildDeclarationKey failed");
             return nullptr;
         }
 

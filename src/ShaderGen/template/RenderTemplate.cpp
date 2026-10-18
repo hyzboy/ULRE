@@ -231,6 +231,24 @@ namespace hgl::graph::mtl
         return definition ? definition->name : "unknown";
     }
 
+    const char *GetRenderTemplateFragmentSourceFile(
+        const RenderTemplateID id) noexcept
+    {
+        switch (id)
+        {
+        case RenderTemplateID::ForwardLitShadowedAO:
+        case RenderTemplateID::ForwardLitShadowedIdentityAO:
+        case RenderTemplateID::ForwardLitUnshadowedAO:
+            return "forward_lit.glsl.tmpl";
+        case RenderTemplateID::ForwardUnlit:
+            return "forward_unlit.glsl.tmpl";
+        case RenderTemplateID::Sky:
+            return "sky.glsl.tmpl";
+        default:
+            return nullptr;
+        }
+    }
+
     const char *GetShaderModuleSlotRoleName(
         const ShaderModuleSlotRole role) noexcept
     {
