@@ -4,14 +4,16 @@ namespace hgl::graph::mtl {}
 
 #include<cstdint>
 #include <hgl/common/ShaderStageDef.h>
+#include <hgl/mtl/ShaderCreateInfo.h>
+#include <hgl/type/Smart.h>
 #include<ankerl/unordered_dense.h>
 
 namespace hgl{namespace graph{namespace mtl{
-class ShaderCreateInfo;
-
 class ShaderCreateInfoMap
 {
-    using MapType=ankerl::unordered_dense::map<ShaderStage,ShaderCreateInfo *>;
+    /// 值用 `SharedPtr` 承载所有权：map 是 `ShaderCreateInfo` 的唯一持有者，
+    /// 表项销毁即归还对象 —— 上层不再需要手写 delete 循环。
+    using MapType=ankerl::unordered_dense::map<ShaderStage,hgl::SharedPtr<ShaderCreateInfo>>;
     MapType map;
 
 public:
@@ -48,13 +50,13 @@ public:
     ShaderCreateInfo* operator[](const ShaderStage& key)
     {
         auto iter=map.find(key);
-        return iter!=map.end()?iter->second:nullptr;
+        return iter!=map.end()?iter->second.get():nullptr;
     }
 
     const ShaderCreateInfo* operator[](const ShaderStage& key) const
     {
         auto iter=map.find(key);
-        return iter!=map.end()?iter->second:nullptr;
+        return iter!=map.end()?iter->second.get():nullptr;
     }
 };
 }}}//namespace hgl::graph::mtl

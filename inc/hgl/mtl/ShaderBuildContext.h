@@ -127,7 +127,7 @@ namespace hgl::graph::mtl
         public:
 
             ShaderBuildContext(const PrimitiveType primitive_type, const uint32_t shader_stage_bits);
-            ~ShaderBuildContext();  // Need explicit destructor to properly clean up shader_map
+            ~ShaderBuildContext() = default;        ///< `shader_map` 由 `SharedPtr` 自动归还，无需手写析构
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class ShaderBuildContext

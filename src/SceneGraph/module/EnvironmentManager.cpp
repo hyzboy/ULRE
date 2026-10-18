@@ -11,17 +11,17 @@ namespace hgl::graph
 {
     EnvironmentManager::Profile *EnvironmentManager::FindProfile(EnvProfileID id) const
     {
-        for (auto *p : profiles)
-            if (p && p->id == id)
-                return p;
+        for (const auto &sp : profiles)
+            if (sp.valid() && sp->id == id)
+                return sp.get();
         return nullptr;
     }
 
     EnvironmentManager::Profile *EnvironmentManager::FindProfile(const AnsiString &name) const
     {
-        for (auto *p : profiles)
-            if (p && p->name == name)
-                return p;
+        for (const auto &sp : profiles)
+            if (sp.valid() && sp->name == name)
+                return sp.get();
         return nullptr;
     }
 
@@ -125,16 +125,16 @@ namespace hgl::graph
         if (!gc || !gc->GetBufferManager())
             return;    // BufferManager 未就绪，推迟到下次访问
 
-        auto *p = new Profile();
+        auto p = hgl::SharedPtr<Profile>(new Profile());
         p->id = kEnvProfileDefault;
         p->name = "default";
         // T6b：这里不再调 `sky.SetTime(10,0,0)` —— 天空已不含光源参数（光晕色也不再是字段，
         // shader 直接读主光色）；默认 profile 的天空数据（底色 / 光晕强度 / IBL 句柄）与旧值逐字段相同，
         // 主光走世界私有光源行。
-        profiles.push_back(p);
+        profiles.Add(p);
 
         // default 立即物化并标脏：任何 world 第一帧的设备级上传扫描即可拿到有效数据。
-        MaterializeAmbientEnvUBO(p);
+        MaterializeAmbientEnvUBO(p.get());
 
         GLogInfo(u8"[EnvironmentManager] default profile ready (ambient_env UBO=%p)",
                  (void *)(p->ambient_env_ubo ? p->ambient_env_ubo->GetGPUBuffer() : nullptr));
@@ -147,9 +147,8 @@ namespace hgl::graph
 
     EnvironmentManager::~EnvironmentManager()
     {
-        for (auto *p : profiles)
-            delete p;
-        profiles.clear();
+        // 唯一强引用在本表：表项销毁即归还 profile（GPU 物化由 Release() 负责）。
+        profiles.Clear();
     }
 
     void EnvironmentManager::OnGraphicsContextChanged(GraphicsContext *)
@@ -162,12 +161,12 @@ namespace hgl::graph
         auto *gc = GetGraphicsContext();
         auto *buffer_manager = gc ? gc->GetBufferManager() : nullptr;
 
-        for (auto *p : profiles)
+        for (auto &sp : profiles)
         {
-            if (!p)
+            if (!sp.valid())
                 continue;
 
-            ReleaseProfileSegment(p->ambient_env_ubo, buffer_manager);
+            ReleaseProfileSegment(sp->ambient_env_ubo, buffer_manager);
         }
     }
 
@@ -176,11 +175,11 @@ namespace hgl::graph
         if (auto *exist = FindProfile(name))
             return exist->id;
 
-        auto *p = new Profile();
+        auto p = hgl::SharedPtr<Profile>(new Profile());
         p->id = next_id++;
         p->name = name;
         p->cpu = init_info;
-        profiles.push_back(p);
+        profiles.Add(p);
         return p->id;
     }
 
@@ -279,9 +278,9 @@ namespace hgl::graph
         if (id == kEnvProfileInvalid || id == kEnvProfileDefault)
             return;
 
-        for (auto it = profiles.begin(); it != profiles.end(); ++it)
+        for (int i = 0; i < profiles.GetCount(); ++i)
         {
-            Profile *p = *it;
+            Profile *p = profiles[i].get();
             if (!p || p->id != id)
                 continue;
 
@@ -293,8 +292,7 @@ namespace hgl::graph
             GLogInfo(u8"[EnvironmentManager] Release profile: %s (id=%u)",
                      p->name.c_str(), p->id);
 
-            delete p;
-            profiles.erase(it);
+            profiles.Delete(i);      // 唯一强引用随之释放 ⇒ Profile 析构
             return;
         }
     }

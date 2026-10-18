@@ -1,5 +1,4 @@
-﻿#include<hgl/mtl/ShaderCreateInfoMap.h>
-#include<hgl/mtl/ShaderCreateInfo.h>
+#include<hgl/mtl/ShaderCreateInfoMap.h>
 
 namespace hgl{namespace graph::mtl{
 bool ShaderCreateInfoMap::Add(ShaderCreateInfo *sc)

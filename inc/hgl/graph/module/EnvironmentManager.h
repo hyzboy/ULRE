@@ -3,8 +3,8 @@
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/type/String.h>
-
-#include<vector>
+#include<hgl/type/Smart.h>
+#include<hgl/type/PtrArray.h>
 
 namespace hgl::graph
 {
@@ -70,7 +70,10 @@ namespace hgl::graph
     private:
 
         EnvProfileID next_id = kEnvProfileDefault + 1;
-        std::vector<Profile *> profiles;
+
+        /// Profile 注册表。用 `SharedPtr` 承载所有权：`FindProfile` 交出的裸指针是**借用**，
+        /// 唯一强引用在本表 —— `Release(id)` 删表项即归还 profile（无手写 delete）。
+        hgl::PtrArray<hgl::SharedPtr<Profile>> profiles;
 
         Profile *FindProfile(EnvProfileID id) const;
         Profile *FindProfile(const AnsiString &name) const;
