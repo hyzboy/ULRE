@@ -37,7 +37,9 @@ namespace hgl::graph::mtl::contract
     // 5：stage key 的 definition_hash / interface_hash 从「已生成的 GLSL 文本」
     //    换成「emit 之前的声明源」。同一份输入算出的键值必然与旧版不同，
     //    旧 SPV 缓存全部作废——正是这里换代的目的。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 5;
+    // 6：interface_hash 折叠 inter-stage 条目时不再吃结构体 padding（改走
+    //    InterStageSemanticContractEntry 的显式逐字段 operator<<），键值随之变化。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 6;
 
     // 设备能力哈希（vendor/device/limits/features）——编译目标哈希的超集包含它；
     // 所有 key 维度统一用 GetShaderCompilerProfileHash（目标版本为常量，见上）

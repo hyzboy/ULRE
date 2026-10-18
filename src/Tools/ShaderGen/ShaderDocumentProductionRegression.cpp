@@ -3,8 +3,12 @@
 #include <hgl/type/Smart.h>
 
 #include <hgl/graph/geo/GeometryVertexFormat.h>
+#include <hgl/mtl/CanonicalShaderContract.h>
+#include <hgl/mtl/FragmentTemplateComposer.h>
+#include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
+#include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/mtl/ShaderBuildContext.h>
@@ -16,9 +20,11 @@
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/io/FileOutputStream.h>
+#include <hgl/util/hash/FNV1a.h>
 #include "ShaderGen/compile/MaterialShaderEmitter.h"
 
 #include <cstring>
+#include <vector>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -400,11 +406,14 @@ namespace
     /// defer_finalize=true：只算到 ProgramLink（含声明键），不跑 SPV。
     /// RunFixture 与 VerifyDeclarationKeyDeterminism 共用，保证两者比对的
     /// 是同一份输入。
+    /// definition_mutation：可选，在组请求之前扰动定义副本。声明键敏感性探针
+    /// 用它证明「改这一项 ⇒ 换键」。
     ShaderBuildContext *BuildFixtureContext(
         const Fixture &fixture,
         MaterialShaderDocumentCapture *capture,
         MaterialDefinition *out_definition = nullptr,
-        RenderTemplateID *out_template_id = nullptr)
+        RenderTemplateID *out_template_id = nullptr,
+        void (*definition_mutation)(MaterialDefinition &) = nullptr)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(fixture.material_id, definition))
@@ -414,6 +423,9 @@ namespace
                 fixture.name, fixture.material_id);
             return nullptr;
         }
+
+        if (definition_mutation)
+            definition_mutation(definition);
 
         GeometryVertexFormat geometry;
         if (fixture.requires_geometry)
@@ -731,6 +743,439 @@ namespace
         return true;
     }
 
+    // ── 声明键敏感性（「不同输入 ⇒ 不同键」）────────────────────────────
+    //
+    // VerifyDeclarationKeyDeterminism 证明的是「同一输入 ⇒ 同一键」。它的对偶
+    // 是「不同输入 ⇒ 不同键」。缺了这一半，一个恒返回常量的假键在确定性探针下
+    // 完美通过，却会让所有材质复用同一份 SPV——比不命中更危险，因为它安静。
+    //
+    // 覆盖两处人工同步点：
+    //   ① FragmentTemplateComposer::GetDeclarationInputHash / GetInterfaceInputHash
+    //      —— 与 Compose() 之间唯一的人工同步点，加字段忘了折叠就漏在这里；
+    //   ② MaterialDefinition 里不经 ComposeInput、由 emitter 直接写进 GLSL 的
+    //      注入项（compile_defines / sampler_names），见 BuildInjectedMacroHash。
+
+    /// 一份「所有字段都取非默认值」的 ComposeInput 基线。
+    ///
+    /// 基线必须全非默认：在默认值上「翻转」可能翻到另一个等价的默认值（等于
+    /// 没翻），那样的用例会假通过。ComposeInput 持有指向本结构体成员的裸指针，
+    /// 因此本结构体不可拷贝。
+    struct ComposeInputFixture
+    {
+        ResolvedRenderTemplate resolved_template;
+        ValueArray<InterStageSemanticContractEntry> fragment_inputs;
+        OutputContract output_contract;
+        MaterialCoverageContract coverage_contract;
+        ShaderDocument code_module_document;
+        std::vector<MaterialTextureDeclaration> texture_declarations;
+        FragmentTemplateComposer::ComposeInput input;
+
+        ComposeInputFixture() = default;
+        ComposeInputFixture(const ComposeInputFixture &) = delete;
+        ComposeInputFixture &operator=(const ComposeInputFixture &) = delete;
+    };
+
+    void BuildComposeInputFixture(ComposeInputFixture &fixture)
+    {
+        fixture.resolved_template.stable_hash = 0x1122334455667788ull;
+
+        InterStageSemanticContractEntry varying{};
+        varying.semantic = InterStageSemantic::DataIndexID;
+        varying.scalar_type = ShaderSemanticScalarType::UnsignedInteger;
+        varying.interpolation = InterStageInterpolation::Flat;
+        varying.component_count = 1;
+        varying.location_width = 1;
+        varying.location = 3;
+        fixture.fragment_inputs.Add(varying);
+
+        // 必须是一份 ValidateOutputContract 认可的契约：GetOutputContractHash
+        // 在契约非法时返回 0，那样任何扰动都「看起来」把键改了（0 → 0 除外），
+        // 用例会假通过。
+        fixture.output_contract.purpose = ShaderProgramPurpose::ForwardColor;
+        fixture.output_contract.depth_only = false;
+        ShaderOutputAttachmentContract attachment{};
+        attachment.write_semantic_id = 0x1001;
+        attachment.value_type = ShaderStageValueType::Vec4;
+        attachment.location = 0;
+        attachment.location_width = 1;
+        attachment.flags = 0;
+        fixture.output_contract.attachments.Add(attachment);
+
+        fixture.coverage_contract.mode = MaterialCoverageMode::AlphaTestDither;
+        fixture.coverage_contract.alpha_cutoff = 0.25f;
+        fixture.coverage_contract.requires_alpha_evaluation = true;
+        fixture.coverage_contract.required_semantics = 0x3;
+        fixture.coverage_contract.requires_material_data = true;
+        fixture.coverage_contract.requires_texture = true;
+
+        fixture.code_module_document.Clear();
+        fixture.code_module_document.Add(
+            ShaderDocumentBlockKind::Module,
+            "vec4 ProbeSensitivity(){ return vec4(1.0); }\n");
+
+        MaterialTextureDeclaration texture{};
+        texture.name = "base_color";
+        texture.sampler_type = SamplerType::Sampler2D;
+        texture.required = true;
+        texture.channels = 4;
+        fixture.texture_declarations.push_back(texture);
+
+        fixture.input.resolved_template = &fixture.resolved_template;
+        fixture.input.alpha_test = true;
+        fixture.input.alpha_cutoff = 0.25f;
+        fixture.input.dither = true;
+        fixture.input.alpha_to_output = true;
+        fixture.input.fragment_inputs = &fixture.fragment_inputs;
+        fixture.input.output_contract = &fixture.output_contract;
+        fixture.input.coverage_contract = &fixture.coverage_contract;
+        fixture.input.code_module_document = &fixture.code_module_document;
+        fixture.input.texture_declarations = &fixture.texture_declarations;
+        fixture.input.shadow_pcf_poisson_taps = 8;
+        fixture.input.shadow_normal_offset = 0;
+    }
+
+    struct ComposeSensitivityCase
+    {
+        const char *name;
+        bool affects_interface;   // true = 该字段属于 interface_hash 的一部分
+        void (*mutate)(ComposeInputFixture &);
+    };
+
+    // 逐字段覆盖 ComposeInput 的 12 个成员。新增字段时必须在这里补一行，
+    // 否则「加了字段但忘了折进声明键」这种事故不会被任何测试拦住。
+    const ComposeSensitivityCase compose_sensitivity_cases[] =
+    {
+        { "resolved_template.stable_hash", false,
+          [](ComposeInputFixture &f)
+          { f.resolved_template.stable_hash = 0x8877665544332211ull; } },
+        { "alpha_test", false,
+          [](ComposeInputFixture &f) { f.input.alpha_test = !f.input.alpha_test; } },
+        { "alpha_cutoff", false,
+          [](ComposeInputFixture &f) { f.input.alpha_cutoff = 0.75f; } },
+        { "dither", false,
+          [](ComposeInputFixture &f) { f.input.dither = !f.input.dither; } },
+        { "alpha_to_output", true,
+          [](ComposeInputFixture &f)
+          { f.input.alpha_to_output = !f.input.alpha_to_output; } },
+
+        { "fragment_inputs.count", true,
+          [](ComposeInputFixture &f)
+          {
+              InterStageSemanticContractEntry extra{};
+              extra.semantic = InterStageSemantic::Color;
+              extra.scalar_type = ShaderSemanticScalarType::Float;
+              extra.interpolation = InterStageInterpolation::Smooth;
+              extra.component_count = 4;
+              extra.location_width = 1;
+              extra.location = 4;
+              f.fragment_inputs.Add(extra);
+          } },
+        { "fragment_inputs[0].semantic", true,
+          [](ComposeInputFixture &f)
+          { f.fragment_inputs[0].semantic = InterStageSemantic::StyleID; } },
+        { "fragment_inputs[0].scalar_type", true,
+          [](ComposeInputFixture &f)
+          { f.fragment_inputs[0].scalar_type =
+                ShaderSemanticScalarType::SignedInteger; } },
+        { "fragment_inputs[0].interpolation", true,
+          [](ComposeInputFixture &f)
+          { f.fragment_inputs[0].interpolation =
+                InterStageInterpolation::NoPerspective; } },
+        { "fragment_inputs[0].component_count", true,
+          [](ComposeInputFixture &f)
+          { f.fragment_inputs[0].component_count = 4; } },
+        { "fragment_inputs[0].location_width", true,
+          [](ComposeInputFixture &f)
+          { f.fragment_inputs[0].location_width = 2; } },
+        { "fragment_inputs[0].location", true,
+          [](ComposeInputFixture &f) { f.fragment_inputs[0].location = 6; } },
+
+        { "output_contract.purpose", true,
+          [](ComposeInputFixture &f)
+          { f.output_contract.purpose = ShaderProgramPurpose::ShadowDepth; } },
+        { "output_contract.depth_only", true,
+          [](ComposeInputFixture &f)
+          {
+              // depth_only=true 要求附件为空才合法，否则哈希退化成 0。
+              f.output_contract.depth_only = true;
+              f.output_contract.attachments.Clear();
+          } },
+        { "output_contract.attachments[0].value_type", true,
+          [](ComposeInputFixture &f)
+          { f.output_contract.attachments[0].value_type =
+                ShaderStageValueType::Vec3; } },
+        { "output_contract.attachments[0].location_width", true,
+          [](ComposeInputFixture &f)
+          { f.output_contract.attachments[0].location_width = 2; } },
+        { "output_contract.attachments[0].flags", true,
+          [](ComposeInputFixture &f)
+          { f.output_contract.attachments[0].flags = 1; } },
+        { "output_contract.attachments.count", true,
+          [](ComposeInputFixture &f)
+          {
+              ShaderOutputAttachmentContract extra{};
+              extra.write_semantic_id = 0x1002;
+              extra.value_type = ShaderStageValueType::Float;
+              extra.location = 1;
+              extra.location_width = 1;
+              f.output_contract.attachments.Add(extra);
+          } },
+
+        { "coverage.mode", false,
+          [](ComposeInputFixture &f)
+          { f.coverage_contract.mode = MaterialCoverageMode::Dither; } },
+        { "coverage.alpha_cutoff", false,
+          [](ComposeInputFixture &f)
+          { f.coverage_contract.alpha_cutoff = 0.75f; } },
+        { "coverage.required_semantics", false,
+          [](ComposeInputFixture &f)
+          { f.coverage_contract.required_semantics = 0x7; } },
+        { "coverage.requires_alpha_evaluation", false,
+          [](ComposeInputFixture &f)
+          { f.coverage_contract.requires_alpha_evaluation = false; } },
+        { "coverage.requires_material_data", false,
+          [](ComposeInputFixture &f)
+          { f.coverage_contract.requires_material_data = false; } },
+        { "coverage.requires_texture", false,
+          [](ComposeInputFixture &f)
+          { f.coverage_contract.requires_texture = false; } },
+
+        { "texture_declarations[0].name", false,
+          [](ComposeInputFixture &f)
+          { f.texture_declarations[0].name = "base_color_probe"; } },
+        { "texture_declarations[0].sampler_type", false,
+          [](ComposeInputFixture &f)
+          { f.texture_declarations[0].sampler_type = SamplerType::Sampler3D; } },
+        { "texture_declarations[0].required", false,
+          [](ComposeInputFixture &f)
+          { f.texture_declarations[0].required = false; } },
+        { "texture_declarations[0].channels", false,
+          [](ComposeInputFixture &f)
+          { f.texture_declarations[0].channels = 2; } },
+        { "texture_declarations.count", false,
+          [](ComposeInputFixture &f)
+          {
+              MaterialTextureDeclaration extra{};
+              extra.name = "normal_map";
+              extra.sampler_type = SamplerType::Sampler2D;
+              extra.required = false;
+              extra.channels = 2;
+              f.texture_declarations.push_back(extra);
+          } },
+
+        { "shadow_pcf_poisson_taps", false,
+          [](ComposeInputFixture &f) { f.input.shadow_pcf_poisson_taps = 32; } },
+        { "shadow_normal_offset", false,
+          [](ComposeInputFixture &f) { f.input.shadow_normal_offset = 1; } },
+    };
+
+    bool VerifyComposeInputSensitivity()
+    {
+        const int case_count =
+            static_cast<int>(sizeof(compose_sensitivity_cases)
+                           / sizeof(compose_sensitivity_cases[0]));
+        for (int i = 0; i < case_count; ++i)
+        {
+            const ComposeSensitivityCase &item = compose_sensitivity_cases[i];
+
+            ComposeInputFixture baseline;
+            BuildComposeInputFixture(baseline);
+            const uint64 baseline_declaration =
+                FragmentTemplateComposer::GetDeclarationInputHash(baseline.input);
+            const uint64 baseline_interface =
+                FragmentTemplateComposer::GetInterfaceInputHash(baseline.input);
+
+            ComposeInputFixture mutated;
+            BuildComposeInputFixture(mutated);
+            item.mutate(mutated);
+            const uint64 mutated_declaration =
+                FragmentTemplateComposer::GetDeclarationInputHash(mutated.input);
+            const uint64 mutated_interface =
+                FragmentTemplateComposer::GetInterfaceInputHash(mutated.input);
+
+            if (mutated_declaration == baseline_declaration)
+            {
+                GLogError(
+                    "[ShaderDocumentProductionRegression] declaration key "
+                    "sensitivity: %s changed but the declaration hash did not "
+                    "(%llu) —— 该字段没有折进 GetDeclarationInputHash",
+                    item.name,
+                    static_cast<unsigned long long>(baseline_declaration));
+                return false;
+            }
+
+            const bool interface_changed =
+                mutated_interface != baseline_interface;
+            if (interface_changed != item.affects_interface)
+            {
+                GLogError(
+                    "[ShaderDocumentProductionRegression] declaration key "
+                    "sensitivity: %s expected interface_hash %s but it %s",
+                    item.name,
+                    item.affects_interface ? "to change" : "to stay",
+                    interface_changed ? "changed" : "stayed");
+                return false;
+            }
+        }
+
+        GLogInfo(
+            "[ShaderDocumentProductionRegression] declaration key sensitivity: "
+            "%d ComposeInput fields all move the key",
+            case_count);
+        return true;
+    }
+
+    /// padding 不进键：同一份语义、不同 padding 残留，哈希必须相同。
+    ///
+    /// 这是「interface_hash 不再吃结构体 padding」这一改动的直接回归。此前
+    /// InterStageSemanticContractEntry 走泛型 operator<<，折的是整块 sizeof
+    /// 字节，padding 里有什么就吃什么。
+    bool VerifyContractEntryPaddingIndependence()
+    {
+        InterStageSemanticContractEntry clean{};
+        clean.semantic = InterStageSemantic::WorldNormal;
+        clean.scalar_type = ShaderSemanticScalarType::Float;
+        clean.interpolation = InterStageInterpolation::Smooth;
+        clean.component_count = 3;
+        clean.location_width = 1;
+        clean.location = 7;
+
+        // 先把整块填 0xFF，再逐字段赋值：剩下的字节就是 padding。
+        InterStageSemanticContractEntry dirty;
+        std::memset(&dirty, 0xFF, sizeof(dirty));
+        dirty.semantic = clean.semantic;
+        dirty.scalar_type = clean.scalar_type;
+        dirty.interpolation = clean.interpolation;
+        dirty.component_count = clean.component_count;
+        dirty.location_width = clean.location_width;
+        dirty.location = clean.location;
+
+        hgl::hash::FNV1aHasher64 clean_hasher;
+        clean_hasher << clean;
+        hgl::hash::FNV1aHasher64 dirty_hasher;
+        dirty_hasher << dirty;
+
+        const uint64 clean_hash = clean_hasher;
+        const uint64 dirty_hash = dirty_hasher;
+        if (clean_hash != dirty_hash)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] contract entry hash "
+                "depends on padding: clean=%llu dirty=%llu",
+                static_cast<unsigned long long>(clean_hash),
+                static_cast<unsigned long long>(dirty_hash));
+            return false;
+        }
+
+        // 对照：真正改一个语义字段，哈希必须变（否则上面那条断言可能是
+        // 「怎么折都不变」的假通过）。
+        dirty.location = 9;
+        hgl::hash::FNV1aHasher64 changed_hasher;
+        changed_hasher << dirty;
+        if (static_cast<uint64>(changed_hasher) == clean_hash)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] contract entry hash "
+                "ignores the semantic fields");
+            return false;
+        }
+        return true;
+    }
+
+    struct DefinitionSensitivityCase
+    {
+        const char *name;
+        bool affects_fragment;
+        bool affects_mesh;
+        void (*mutate)(MaterialDefinition &);
+    };
+
+    // MaterialDefinition 里不经 ComposeInput、由 emitter 直接写进 GLSL 的注入项。
+    // 它们只能靠 BuildInjectedMacroHash 显式折进声明键，是声明键最脆弱的一段。
+    const DefinitionSensitivityCase definition_sensitivity_cases[] =
+    {
+        // compile_defines → `#define <name> 1`，逐条写进 Define 块。
+        { "compile_defines", true, true,
+          [](MaterialDefinition &d)
+          { d.compile_defines.push_back("HGL_PROBE_SENSITIVITY"); } },
+        // sampler_names → `#define <name>Sampler <idx>u`，idx 来自 sampler.toml
+        // 的预设顺序，本身不在任何声明源文本里。
+        { "sampler_names", true, true,
+          [](MaterialDefinition &d)
+          { d.sampler_names.push_back("Linear"); } },
+    };
+
+    bool VerifyDefinitionSensitivity(const Fixture &fixture)
+    {
+        MaterialShaderDocumentCapture baseline_capture{};
+        AutoDelete<ShaderBuildContext> baseline(
+            BuildFixtureContext(fixture, &baseline_capture));
+        if (!baseline || !baseline->HasProgramLink())
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s definition "
+                "sensitivity baseline build failed",
+                fixture.name);
+            return false;
+        }
+        const ShaderLinkSpec &baseline_link = baseline->GetProgramLink();
+
+        const int case_count =
+            static_cast<int>(sizeof(definition_sensitivity_cases)
+                           / sizeof(definition_sensitivity_cases[0]));
+        for (int i = 0; i < case_count; ++i)
+        {
+            const DefinitionSensitivityCase &item =
+                definition_sensitivity_cases[i];
+
+            MaterialShaderDocumentCapture capture{};
+            AutoDelete<ShaderBuildContext> mutated(BuildFixtureContext(
+                fixture, &capture, nullptr, nullptr, item.mutate));
+            if (!mutated || !mutated->HasProgramLink())
+            {
+                GLogError(
+                    "[ShaderDocumentProductionRegression] fixture=%s definition "
+                    "sensitivity: %s broke the build",
+                    fixture.name, item.name);
+                return false;
+            }
+
+            const ShaderLinkSpec &link = mutated->GetProgramLink();
+            const bool fragment_changed =
+                !(link.fragment_stage == baseline_link.fragment_stage);
+            const bool mesh_changed =
+                !(link.mesh_stage == baseline_link.mesh_stage);
+            if (fragment_changed != item.affects_fragment
+             || mesh_changed != item.affects_mesh)
+            {
+                GLogError(
+                    "[ShaderDocumentProductionRegression] fixture=%s definition "
+                    "sensitivity: %s expected fragment/mesh change=%d/%d but "
+                    "got %d/%d —— 该注入项没有折进声明键",
+                    fixture.name, item.name,
+                    item.affects_fragment ? 1 : 0,
+                    item.affects_mesh ? 1 : 0,
+                    fragment_changed ? 1 : 0,
+                    mesh_changed ? 1 : 0);
+                return false;
+            }
+        }
+
+        GLogInfo(
+            "[ShaderDocumentProductionRegression] definition sensitivity: "
+            "%d emitter-injected inputs all move the key",
+            case_count);
+        return true;
+    }
+
+    /// 「不同输入 ⇒ 不同键」：与 VerifyDeclarationKeyDeterminism 互为对偶。
+    bool VerifyDeclarationKeySensitivity(const Fixture &fixture)
+    {
+        return VerifyContractEntryPaddingIndependence()
+            && VerifyComposeInputSensitivity()
+            && VerifyDefinitionSensitivity(fixture);
+    }
+
     AnsiString FormatStageKey(const ShaderStageKey &key)
     {
         return AnsiString("stage=")
@@ -962,6 +1407,9 @@ int main(const int argc, char **argv)
 
     if (!VerifyDeclarationKeyDeterminism(fixtures, fixture_count))
         return 8;
+
+    if (!VerifyDeclarationKeySensitivity(fixtures[0]))
+        return 10;
 
     GLogInfo(
         "[ShaderDocumentProductionRegression] %s production fixtures passed",

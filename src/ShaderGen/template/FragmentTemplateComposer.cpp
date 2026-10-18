@@ -692,6 +692,8 @@ namespace hgl::graph::mtl
         const int fragment_input_count =
             input.fragment_inputs ? input.fragment_inputs->GetCount() : 0;
         hasher << static_cast<uint64>(fragment_input_count);
+        // 逐项折叠走 CanonicalShaderContract.h 里 InterStageSemanticContractEntry
+        // 的显式 operator<<（6 个语义字段），不吃 padding。
         for (int i = 0; i < fragment_input_count; ++i)
             hasher << (*input.fragment_inputs)[i];
 

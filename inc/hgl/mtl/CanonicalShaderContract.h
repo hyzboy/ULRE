@@ -7,6 +7,7 @@ namespace hgl::graph::mtl {}
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/mtl/ShaderStageValueType.h>
 #include <hgl/type/ValueArray.h>
+#include <hgl/util/hash/FNV1a.h>
 
 namespace hgl::graph::mtl
 {
@@ -41,6 +42,25 @@ namespace hgl::graph::mtl
             && lhs.component_count == rhs.component_count
             && lhs.location_width == rhs.location_width
             && lhs.location == rhs.location;
+    }
+
+    // 显式逐字段哈希：泛型 FNV1aHasher::operator<<(const T&) 折的是整块结构体
+    // 字节（含 padding），与内存布局耦合——本结构体 5 个 uint8 后接 uint32，
+    // 中间至少 3 字节 padding，其取值取决于栈上残留。声明键一旦吃到 padding，
+    // 「同一输入」在不同调用路径下可能算出不同的键（缓存永不命中），更糟的是
+    // 让键的语义变得不可解释。缓存键只能依赖语义字段。
+    // 同款处理见 ShaderCodeModule.h 的 ShaderCodeModuleSemanticRequirement。
+    inline hgl::hash::FNV1aHasher64 &operator<<(
+        hgl::hash::FNV1aHasher64 &h,
+        const InterStageSemanticContractEntry &v) noexcept
+    {
+        h << v.semantic
+          << v.scalar_type
+          << v.interpolation
+          << v.component_count
+          << v.location_width
+          << v.location;
+        return h;
     }
 
     // ── 校验已就地化（不再经第二套表示中转）───────────────────────────
