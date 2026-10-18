@@ -73,9 +73,9 @@ namespace
  *   * brdflut.Tex2D             BRDF LUT((NdotV,roughness) → scale/bias)
  *
  * 三张纹理以 bindless 句柄形式写入 ambient_env(ambient_light_provider 槽参数块,场景全局环境数据),
- * 由材质 "LitIBL"(ShaderLibrary/material/lit_ibl.material.toml)的
- * indirect_ibl ambient 光照模块采样。场内物体是不同金属度/粗糙度的
- * PBR 材质,便于对比 IBL 在不同表面上的表现。
+ * 并把该槽的 **ambient provider 模块**设为 `indirect_ibl`
+ * (EnvironmentSystem::SetAmbientProvider —— 环境光算法由环境层决定,不再由材质声明)。
+ * 场内物体是不同金属度/粗糙度的 PBR 材质("Lit"),便于对比 IBL 在不同表面上的表现。
  */
 class IBLEnvironmentApp : public WorkObject
 {
@@ -257,9 +257,9 @@ private:
         if (!sampler)
             return false;
 
-        // LitIBL 材质:与 Lit 相同的 PBR 表面,ambient 段换成 IBL
+        // 与默认 Lit 材质同一套 PBR 表面：环境光**算法**由环境层决定（见 InitIBLBinding）
         mesh_recipe.recipe_name = "IBLEnvironment.Lit";
-        mesh_recipe.mtl_def_id = "LitIBL";
+        mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
 
         return true;
@@ -290,6 +290,11 @@ private:
 
         ambient_env->env_tex = math::Vector4u(irr_handle, pre_handle, lut_handle, 0);
         environment_system->MarkAmbientEnvDirty();
+
+        // 环境光**算法**（ambient_light_provider 槽的 GLSL 模块）同样由环境层决定：
+        // 与上面写入的句柄配对 —— 选 IBL 模块就必须给句柄，否则采样 0 句柄静默发黑。
+        if (!environment_system->SetAmbientProvider("indirect_ibl"))
+            return false;
 
         return true;
     }

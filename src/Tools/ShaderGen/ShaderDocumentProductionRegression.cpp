@@ -83,18 +83,23 @@ namespace
         bool vec2_position;
         bool include_normal;
         bool alpha_test = false;
+        // 引擎/环境层选定的 ambient provider（`ambient_light_provider` 槽）；
+        // nullptr = 模板默认。材质不再声明它。
+        const char *ambient_module_name = nullptr;
     };
 
     bool ResolveFixtureTemplateRequest(
         const MaterialDefinition &definition,
         const ShaderProgramPurpose purpose,
         const MaterialRecipe *recipe,
-        RenderTemplateRequest &out_request)
+        RenderTemplateRequest &out_request,
+        const char *ambient_module_name)
     {
         const MaterialRecipe effective_recipe =
             recipe ? *recipe : MaterialRecipe{};
         return SelectSceneRenderTemplateRequest(
-                   definition, purpose, effective_recipe, out_request)
+                   definition, purpose, effective_recipe, out_request,
+                   ambient_module_name)
             && AppendMaterialRenderTemplateRoots(definition, out_request);
     }
 
@@ -422,9 +427,11 @@ namespace
         request.geometry_vertex_format = fixture.requires_geometry ? &geometry : nullptr;
         request.defer_finalize = true;
         request.shader_program_purpose = fixture.purpose;
+        request.ambient_module_name = fixture.ambient_module_name;
         if (!ResolveFixtureTemplateRequest(
                 definition, fixture.purpose, &request.recipe,
-                request.render_template_request))
+                request.render_template_request,
+                fixture.ambient_module_name))
         {
             GLogError(
                 "[ShaderDocumentProductionRegression] fixture=%s cannot resolve template request",
@@ -461,9 +468,9 @@ namespace
                 return false;
             }
         }
-        if (definition.ambient_module_name && definition.ambient_module_name[0])
+        if (fixture.ambient_module_name && fixture.ambient_module_name[0])
         {
-            const char *name = definition.ambient_module_name;
+            const char *name = fixture.ambient_module_name;
             const auto *source = GetShaderCodeModuleRegistry().FindFileByName(name);
             ShaderDocumentDiagnostics diagnostics;
             AnsiString fragment_text;
@@ -582,10 +589,10 @@ int main(const int argc, char **argv)
           true, false, false, false },
         { "sky-minimal", "SkyMinimal", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
-        // IBL 环境光照:验证 ambient_module_name 覆盖 Lit 默认
-        // indirect_sky_ambient 在 smoke 路径(ctest)下确实生效。
-        { "lit-ibl", "LitIBL", ShaderProgramPurpose::ForwardColor,
-          true, false, false, false }
+        // IBL 环境光照：ambient provider 由**环境层**选（不是材质），
+        // 验证它在 smoke 路径(ctest)下确实替换掉默认 indirect_sky_ambient。
+        { "lit-ibl", "Lit", ShaderProgramPurpose::ForwardColor,
+          true, false, false, false, "indirect_ibl" }
     };
     static const Fixture full_fixtures[] =
     {
@@ -625,8 +632,8 @@ int main(const int argc, char **argv)
           true, false, false, false },
         { "sky-cube", "SkyCube", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
-        { "lit-ibl", "LitIBL", ShaderProgramPurpose::ForwardColor,
-          true, false, false, false }
+        { "lit-ibl", "Lit", ShaderProgramPurpose::ForwardColor,
+          true, false, false, false, "indirect_ibl" }
     };
 
     const Fixture *fixtures = full ? full_fixtures : smoke_fixtures;

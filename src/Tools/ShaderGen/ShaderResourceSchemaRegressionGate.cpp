@@ -1464,6 +1464,44 @@ namespace
                 result.diagnostics.emplace_back(
                     "program build context must include geometry and device");
             }
+
+            // ambient provider 是**前向着色**的 program 身份维度（环境层选模块，
+            // 不同模块 ⇒ 不同 fragment 源码）；depth/shadow 不消费该槽，必须不受影响。
+            const uint64_t context_ambient =
+                HashMaterialProgramBuildContext(
+                    PrimitiveType::Triangles,
+                    &lit_geometry_a,
+                    nullptr,
+                    ShaderProgramPurpose::ForwardColor,
+                    "indirect_ibl");
+            const uint64_t context_ambient_empty =
+                HashMaterialProgramBuildContext(
+                    PrimitiveType::Triangles,
+                    &lit_geometry_a,
+                    nullptr,
+                    ShaderProgramPurpose::ForwardColor,
+                    "");
+            const uint64_t context_ambient_depth =
+                HashMaterialProgramBuildContext(
+                    PrimitiveType::Triangles,
+                    &lit_geometry_a,
+                    nullptr,
+                    ShaderProgramPurpose::DepthOnly,
+                    "indirect_ibl");
+            const uint64_t context_depth =
+                HashMaterialProgramBuildContext(
+                    PrimitiveType::Triangles,
+                    &lit_geometry_a,
+                    nullptr,
+                    ShaderProgramPurpose::DepthOnly,
+                    nullptr);
+            if (context_ambient == context_a
+             || context_ambient_empty != context_a
+             || context_ambient_depth != context_depth)
+            {
+                result.diagnostics.emplace_back(
+                    "program build context must include forward ambient provider only");
+            }
         }
 
         result.passed = result.diagnostics.empty();
@@ -4060,7 +4098,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 14
+         || file_count != 13
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -4068,7 +4106,7 @@ namespace
         else
         {
             const char *expected_file_ids[] = {
-                "Lit", "LitIBL", "SkyMinimal", "SkyCube",
+                "Lit", "SkyMinimal", "SkyCube",
                 "DebugNormalColor",
                 "VertexColor", "UnlitTexture",
                 "VertexLuminance", "VertexPaletteColor",
@@ -4085,7 +4123,7 @@ namespace
             }
 
         const char *bulk_ids[] = {
-            "Lit", "LitIBL", "SkyMinimal", "SkyCube",
+            "Lit", "SkyMinimal", "SkyCube",
             "DebugNormalColor", "VertexColor",
             "UnlitTexture",
             "VertexLuminance",

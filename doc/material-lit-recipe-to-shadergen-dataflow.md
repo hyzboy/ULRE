@@ -1,6 +1,6 @@
 # Lit 材质数据流全链路分析
 
-> **材质 provider 身份规范化**：材质只接受 schema 4；material-source、NTB、surface 只存 `@ulre name`，include 路径由注册表来源解析。Ambient 两字段本轮暂留，动态环境策略迁移另行处理。
+> **材质 provider 身份规范化**：材质只接受 schema 4；material-source、NTB、surface 只存 `@ulre name`，include 路径由注册表来源解析。Ambient 的**算法选择**（`ambient_module_name`）已上移到环境层（`EnvironmentSystem::SetAmbientProvider`），材质不再声明。
 
 > **⚠ 2026-10-14 文卫生订正（B3）**：`PrimitiveComponent` 已删（A5）⇒ 文中"经 PrimitiveComponent 挂纹理 / BuildResolvedRecipe 从 PrimitiveComponent 收集"按**历史口径**读；现行 = `MaterialData` + `MaterialRecipe` + collect 侧求值（`RenderPrimitiveCollectSystem`）。
 > 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
@@ -67,7 +67,7 @@
    - 直接光 → `lighting/direct_cook_torrance_pbr.glsl`
    - 天光（SkyProvider）→ `sky/sky_atmosphere.glsl`
    - 阴影 → `shadow/pcf_shadow.glsl`
-   - 环境光 → `lighting/indirect_sky_ambient.glsl`（toml 声明 `ambient_module_name` 时被覆盖，如 `lit_ibl.material.toml` 的 `indirect_ibl`；只写注册名，include 路径由注册表来源解析）
+   - 环境光 → `lighting/indirect_sky_ambient.glsl`（**环境层**选定 provider 时被覆盖，如 `EnvironmentSystem::SetAmbientProvider("indirect_ibl")`；只写注册名，include 路径由注册表来源解析）
    - AO → `ao/identity.glsl`
    - 光照模型 → `lighting/forward_pbr.glsl`
    - 输出策略 → `compositor/forward_lighting.glsl`
@@ -129,7 +129,7 @@ PrimitiveComponent ──每帧──▶ RenderPrimitiveCollectSystem
 SelectCurrentSceneRenderTemplateRequest
   → mtl::SelectSceneRenderTemplateRequest (唯一实现,ShaderGen)
   (有 ntb_module_name → ForwardLitShadowedAO + IdentityForwardLitProfile
-   ambient_module_name 覆盖 AmbientLightProvider 槽)
+   环境层 ambient provider 覆盖 AmbientLightProvider 槽)
       ▼
 ShaderProgramManager::AcquireShaderProgram
       │ NormalizeRecipe (Layer 2 合并 Layer 1 默认值)
