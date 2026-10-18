@@ -107,9 +107,9 @@ nm.y = -nm.y;                                   // GLSL/Vulkan Green 通道约�
 1. **产物结构**：文件头格式名字段 = `BC5`；逐级字节 `ceil(w/4)*ceil(h/4)*16` 累加后等于文件长度。
 2. **精度**：把 BC5 解回 RGBA（Compressonator `CMP_ConvertTexture`，BC5 → RGBA_8888），与源图逐像素
    算法线夹角（平均值 / P95 / 越界率）。
-3. **生成链**：跑 `ShaderCooker.exe` 后 grep `build/out/<Cfg>/shader-cache/stage/*.frag`，确认出现
-   `#define MTL_TEX_NORMAL_CHANNELS 2` 与 `sqrt(max(0.0, 1.0 - dot(nm.xy, nm.xy)))`；再跑一个用该材质的
-   示例（`PBRSpheres` 覆盖 10 张 pbr 法线，`BasicLitMeshes` 覆盖 Brickwall）。
+3. **生成链**：Debug 构建下用 `ULRE_DUMP_GLSL=1` 跑一个用该材质的示例（`PBRSpheres` 覆盖 10 张 pbr
+   法线，`BasicLitMeshes` 覆盖 Brickwall），grep `<ShaderCacheRoot>/glsldump/*.glsl`，确认出现
+   `#define MTL_TEX_NORMAL_CHANNELS 2` 与 `sqrt(max(0.0, 1.0 - dot(nm.xy, nm.xy)))`。
    回归门 `ShaderResourceSchemaRegressionGate all` 与 cooker 的 `cooked/failed/skipped` 计数应逐字等于基线
    （本次：38 PASS / 1 FAIL 既有项；cooked=28 failed=0 skipped=10）。
 

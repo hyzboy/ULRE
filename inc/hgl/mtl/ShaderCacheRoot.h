@@ -13,8 +13,7 @@ namespace hgl::graph::mtl
         L"ULRE_SHADER_CACHE_PATH";
 
     /// SPV 磁盘缓存根目录解析。
-    /// 运行时（ShaderProgramManager）与离线（ShaderCooker）必须同源——否则
-    /// cook 产物与运行时缓存互不可见。优先级：
+    /// 同一台机器上的所有消费方必须同源——否则缓存产物互不可见。优先级：
     ///   环境变量 ULRE_SHADER_CACHE_PATH > exe 所在目录 > cwd。
     /// GetCurrentProgramPath 返回的已是程序目录（内部去除文件名），直接使用。
     /// 空返回值 = 无法解析，store 读写安全失败（等价无缓存，不阻断材质创建）。

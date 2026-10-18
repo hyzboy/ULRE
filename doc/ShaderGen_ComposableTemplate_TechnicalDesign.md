@@ -23,7 +23,7 @@
 | 模块 capability/slot 元数据 | **已落地**:GLSL 源内 `@ulre slot` / `@ulre provides_capability` / `@ulre require` 注解由解析器读入 | `src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp:165`、`:482-495`;实例 `ShaderLibrary/lighting/indirect_sky_ambient.glsl:2-10` |
 | `GenericMaterialBuilder` | **已落地**,同名 | `src/ShaderGen/builder/GenericMaterialBuilder.h/.cpp` |
 | `MaterialShaderEmitter` | **已落地**,同名(生成 Material ABI / 纹理引用行 + `MTL_TEX(i)` 宏) | `src/ShaderGen/compile/MaterialShaderEmitter.h/.cpp`(`MTL_TEX` 展开见 `MaterialShaderEmitter.cpp:306-324`) |
-| `ShaderCooker` | **已落地**,同名(枚举 definition × purpose × 图元,走与生产相同管线) | `src/Tools/ShaderGen/ShaderCooker.cpp`(模板解析见 `:146-175`) |
+| ~~`ShaderCooker`~~ | **已移除**(2026-10):离线 cook 任务线废弃,`src/Tools/ShaderGen/ShaderCooker.cpp` 与 `ShaderCookSmoke` 测试一并删除 | — |
 | `AppendMaterialRenderTemplateRoots` | **已落地**,同名 | `inc/hgl/mtl/MaterialDefinitionRegistry.h:61-63` |
 | ECS/render preparation 只选 template ID + roots | **已落地**:`MaterialDefinitionRegistry` 提供 profile/roots,规则集中在 `SceneRenderTemplateResolver` 的 `Make*Profile()` | `inc/hgl/mtl/SceneRenderTemplateResolver.h:22-25` |
 
@@ -438,14 +438,15 @@ MainBody: template main
 | `MaterialShaderEmitter` | 生成已解析的 Material ABI、SSBO、binding/index-table Document fragments |
 
 > **状态注(2026-09)**:
-> - `GenericMaterialBuilder`、`MaterialShaderEmitter`、`FragmentTemplateComposer`、`MeshTemplateEmitter`、`ShaderCodeModuleRegistry`、`ShaderCooker` 均已落地(路径见 §0.1);`StageTemplateResolver` 的职责已落在 `SceneRenderTemplateResolver`(`inc/hgl/mtl/SceneRenderTemplateResolver.h:22-37`,含 `Make*Profile()` 与 `ResolveSceneRenderTemplateRequest`)。
+> - `GenericMaterialBuilder`、`MaterialShaderEmitter`、`FragmentTemplateComposer`、`MeshTemplateEmitter`、`ShaderCodeModuleRegistry` 均已落地(路径见 §0.1);`StageTemplateResolver` 的职责已落在 `SceneRenderTemplateResolver`(`inc/hgl/mtl/SceneRenderTemplateResolver.h:22-37`,含 `Make*Profile()` 与 `ResolveSceneRenderTemplateRequest`)。
+> - `ShaderCooker` 离线 cook 任务线已废弃,工具与 `ShaderCookSmoke` 测试已删除(2026-10)。
 > - `FixedPipelineVariantTable` **未落地**(0 命中),落地物是 `RenderTemplateDefinition Templates[]` 静态表。
 > - `MaterialShaderEmitter` 那行的"binding/index-table Document fragments"**已过期**:BDA 终态后没有 binding/index table,材质纹理引用改由 `pc_root.addr_texture_references` + `MTL_TEX(i)` 表达(`MaterialShaderEmitter.cpp:306-324`)。
 | `FragmentTemplateComposer` | 根据已解析的模板请求将 slots、contract 和 main 写入 Document |
 | `MeshTemplateEmitter` | 保留受控 geometry strategy、设备限制和 ABI 验证 |
 | `ShaderCodeModuleRegistry` | 校验 module capability、依赖、冲突与资源要求，不负责任意组合策略 |
 | ECS/render preparation | 选择完整 template ID 与 module roots；不解释 module 内容 |
-| `ShaderCooker` | 遍历 variant table，离线生成全部批准 SPV 和 artifact manifest |
+| ~~`ShaderCooker`~~ | (已移除)原设计为遍历 variant table,离线生成全部批准 SPV 和 artifact manifest |
 
 ## 8. 实施顺序
 

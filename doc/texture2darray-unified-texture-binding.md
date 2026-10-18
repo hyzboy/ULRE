@@ -293,7 +293,7 @@ material_output.ao =
 3. **required 语义**：`required = true` 的槽缺绑定 = 硬失败（收集阶段 `:932-942`）；改成 `false` 后 GLSL 的 fallback 会**静默兜底**，画面错误不会报错。
 4. **companion view 生命周期**：`data->array_view` 在 `~Texture` 里释放（`src/Vulkan/VKTexture.cpp:22-23`），主 view 必须保持 `TYPE_2D`（RTV/DSV/拷贝路径依赖）。
 5. **别以"性能"为由去掉可选槽的 `if`**：它是 per-draw uniform 分支且省 fetch（§5.3）；恒采样方案只在分支极敏感或全槽必绑时才划算。
-6. **GLSL 文本进内容哈希**：改动 `ShaderLibrary/**` 会全量失效着色器缓存 → 用 `ShaderCooker --store <dir>` 重烤；`build/cache-hot` 下只有 `.spv`，不要当生成物读。
+6. **GLSL 文本进内容哈希**：改动 `ShaderLibrary/**` 会全量失效着色器缓存 → 删掉缓存目录后首次运行即重新编译并回填；`build/cache-hot` 下只有 `.spv`，不要当生成物读。
 7. **结构大小头变更要删 obj / clean-first 重编所有 include 者**（本仓 MSBuild 增量对头文件依赖跟踪不可靠）。
 8. **行尾/编码**：`ShaderLibrary/*.glsl` 与 `doc/*.md` 都是**混行尾**（例：`bindless_textures.glsl` = CRLF，`pbr_surface_source.glsl` = LF-only，`texture_source.glsl` = CRLF），改动前逐文件探测；`git stash push/--pop` 会把 LF 工作区文件重新物化成 CRLF，需归一回原位。
 
@@ -304,11 +304,11 @@ material_output.ao =
 ```bash
 cd D:/ULRE
 
-# 1) 全量重烤 + 生成物检查
-STORE="$LOCALAPPDATA/Temp/ulre_cook" && rm -rf "$STORE"
-./build/out/Windows_64_Debug/ShaderCooker.exe --store "$STORE"
-grep -c "SampleOptional(" "$STORE"/shader-cache/stage/*.frag          # Lit forward 应为 7
-grep -n "_texture.x != 0u\|opacity_texture.x == 0u" "$STORE"/shader-cache/stage/*.frag   # 应为空
+# 1) 生成物检查（离线 cook 工具已移除：改用 Debug 构建 + ULRE_DUMP_GLSL=1 跑示例）
+STORE="$LOCALAPPDATA/Temp/ulre_dump" && rm -rf "$STORE"
+ULRE_DUMP_GLSL=1 ULRE_SHADER_CACHE_PATH="$STORE" ./build/out/Windows_64_Debug/PBRSpheres.exe
+grep -c "SampleOptional(" "$STORE"/glsldump/*.glsl          # Lit forward 应为 7
+grep -n "_texture.x != 0u\|opacity_texture.x == 0u" "$STORE"/glsldump/*.glsl   # 应为空
 
 # 2) 示例冒烟（cwd 必须是仓库根，res/ 在根）
 ULRE_ARENA_DEBUG=1 timeout 12 ./build/out/Windows_64_Debug/PBRSpheres.exe > "$LOCALAPPDATA/Temp/pbr.log" 2>&1
