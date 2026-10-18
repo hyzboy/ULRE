@@ -54,6 +54,22 @@ namespace hgl::graph::mtl
             hgl::uint32 shadow_normal_offset = 1;
         };
 
+        /// 接口契约子集哈希：片元输入 varying 列表 + 输出附件契约 + alpha 写输出。
+        ///
+        /// 这三样共同定义"片元阶段对外声明的形状"——mesh 侧的 varyings 与
+        /// 输出附件必须与它逐项一致才能链接。不含任何源文本。
+        static uint64 GetInterfaceInputHash(const ComposeInput &input) noexcept;
+
+        /// 声明输入哈希：折叠 Compose() 会读取的**每一个**字段（emit 之前可算）。
+        ///
+        /// **不含**模板骨架与模块文件的内容——那部分由调用方的 include 内容
+        /// 闭包承担（见 GenericMaterialBuilder 的 BuildFragmentDeclarationKey）。
+        ///
+        /// 与 Compose() 严格对应：给 ComposeInput 加字段就必须在这里折叠，否则
+        /// 改输入不会让 stage key 失效，会静默复用过期 SPV。这是本设计唯一的
+        /// 人工同步点，改 Compose() 时请顺手核对本函数。
+        static uint64 GetDeclarationInputHash(const ComposeInput &input) noexcept;
+
         bool Compose(
             const ComposeInput &input,
             ShaderDocument &out_document,

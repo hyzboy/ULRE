@@ -15,10 +15,18 @@
 
 #pragma once
 
+#include <hgl/mtl/MeshShaderMode.h>
+
 #include <string>
 
 namespace hgl::graph::mtl
 {
+    /// 模式 → ShaderLibrary/mesh/ 下的骨架文件名（单一真源）。
+    ///
+    /// 三个 MeshShaderMode*.h 的发射器与声明键（emit 之前算 stage key）都从这里
+    /// 取值，避免同一文件名在两处各自写字面量后漂移。
+    const char *GetMeshShaderModeTemplateFile(MeshShaderMode mode) noexcept;
+
     /// 加载 ShaderLibrary/mesh/<filename> 模板。
     /// - 首次加载后**进程内缓存**（生成期单线程：材质编译在主线程）
     /// - CRLF → LF 归一化（git 检出行尾策略不影响生成结果）

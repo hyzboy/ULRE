@@ -37,7 +37,8 @@ namespace hgl::graph::mtl
                 : "    const vec3 from = sbo_vertex_position.data[v0];\n"
                   "    const vec3 to   = sbo_vertex_position.data[v1];\n";
 
-        std::string body = GetMeshShaderTemplate("line_quad.glsl.tmpl");
+        std::string body = GetMeshShaderTemplate(
+            GetMeshShaderModeTemplateFile(MeshShaderMode::LineQuad));
         if (body.empty())
             ms += "#error mesh shader template missing: line_quad.glsl.tmpl\n";
         else

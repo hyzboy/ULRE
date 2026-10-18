@@ -3,6 +3,7 @@
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/util/hash/FNV1a.h>
 #include "../compile/MaterialShaderEmitter.h"
 #include <fstream>
 #include <map>
@@ -670,6 +671,78 @@ namespace hgl::graph::mtl
                 AnsiString(main_body.c_str()), "ShadowCaster.Main");
             return true;
         }
+    }
+
+    // ── 声明源哈希（emit 之前可算）──────────────────────────────────────
+    //
+    // 这两个函数是 stage key 从"生成后的文本"切到"生成前的声明"的唯一桥梁。
+    // 它们必须与 Compose() 读取的字段严格一一对应：多折一个字段只会让键更
+    // 保守（安全），漏折一个字段会让改输入后静默命中过期 SPV（危险）。
+    uint64 FragmentTemplateComposer::GetInterfaceInputHash(
+        const ComposeInput &input) noexcept
+    {
+        hgl::hash::FNV1aHasher64 hasher;
+
+        hasher << static_cast<uint64>(
+            input.output_contract
+                ? GetOutputContractHash(*input.output_contract)
+                : 0);
+        hasher << static_cast<uint64>(input.alpha_to_output ? 1 : 0);
+
+        const int fragment_input_count =
+            input.fragment_inputs ? input.fragment_inputs->GetCount() : 0;
+        hasher << static_cast<uint64>(fragment_input_count);
+        for (int i = 0; i < fragment_input_count; ++i)
+            hasher << (*input.fragment_inputs)[i];
+
+        return hasher;
+    }
+
+    uint64 FragmentTemplateComposer::GetDeclarationInputHash(
+        const ComposeInput &input) noexcept
+    {
+        hgl::hash::FNV1aHasher64 hasher;
+
+        hasher << GetInterfaceInputHash(input);
+        hasher << static_cast<uint64>(
+            input.resolved_template ? input.resolved_template->stable_hash : 0);
+
+        // alpha_test / dither 是由 coverage.mode 派生的冗余视图，仍然折叠：
+        // 一旦将来某个调用方不再从 coverage 派生，键必须跟着变。
+        hasher << static_cast<uint64>(input.alpha_test ? 1 : 0)
+               << input.alpha_cutoff
+               << static_cast<uint64>(input.dither ? 1 : 0);
+
+        const MaterialCoverageContract *coverage = input.coverage_contract;
+        hasher << static_cast<uint64>(
+            coverage ? coverage->mode : MaterialCoverageMode::None)
+               << (coverage ? coverage->alpha_cutoff : 0.5f)
+               << static_cast<uint64>(
+                      coverage ? coverage->required_semantics : 0)
+               << static_cast<uint64>(
+                      coverage && coverage->requires_alpha_evaluation ? 1 : 0)
+               << static_cast<uint64>(
+                      coverage && coverage->requires_material_data ? 1 : 0)
+               << static_cast<uint64>(
+                      coverage && coverage->requires_texture ? 1 : 0);
+
+        const size_t texture_count =
+            input.texture_declarations ? input.texture_declarations->size() : 0;
+        hasher << static_cast<uint64>(texture_count);
+        for (size_t i = 0; i < texture_count; ++i)
+        {
+            const MaterialTextureDeclaration &declaration =
+                (*input.texture_declarations)[i];
+            hasher << declaration.name.c_str()
+                   << static_cast<uint64>(declaration.sampler_type)
+                   << static_cast<uint64>(declaration.required ? 1 : 0)
+                   << static_cast<uint64>(declaration.channels);
+        }
+
+        hasher << static_cast<uint64>(input.shadow_pcf_poisson_taps)
+               << static_cast<uint64>(input.shadow_normal_offset);
+
+        return hasher;
     }
 
     bool FragmentTemplateComposer::Compose(

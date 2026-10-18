@@ -343,8 +343,15 @@ namespace
         const uint64 source_hash = HashFinalShaderSource(
             source_serialized.c_str(), source_serialized.Length());
         const auto &actual = actual_stage->GetFinalGLSL();
+
+        // stage key 的 definition_hash 现在由「emit 之前的声明源」派生，不再是
+        // 最终 GLSL 文本的哈希——这是运行时与 ShaderGen 解耦的前提。
+        // 因此这里不再断言两者相等，改为断言它非零、且**确实不等于**文本哈希：
+        // 后者是"声明键已生效"的回归守卫，一旦有人把它改回文本派生会立刻失败。
+        // 声明键与文本键的语义一致性由 ShaderGen 侧的声明/文本闭包对齐诊断盯着。
         if (source_document_hash == 0 || source_hash == 0
-         || stage_key.definition_hash != source_hash)
+         || stage_key.definition_hash == 0
+         || stage_key.definition_hash == source_hash)
         {
             GLogError(
                 "[ShaderDocumentProductionRegression] fixture=%s stage=%s source hash "

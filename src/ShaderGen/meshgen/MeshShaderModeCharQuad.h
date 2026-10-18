@@ -36,7 +36,8 @@ namespace hgl::graph::mtl
         // ── 静态主体（S3：外移至 ShaderLibrary/mesh/char_quad.glsl.tmpl）──
         // 模板内容 = 原 C++ 内嵌文本，逐字节一致；唯一槽位 {{group_size}}。
         // 条件性 varying 写入仍由下方 C++ 按 stage interface 决定后追加。
-        std::string body = GetMeshShaderTemplate("char_quad.glsl.tmpl");
+        std::string body = GetMeshShaderTemplate(
+            GetMeshShaderModeTemplateFile(MeshShaderMode::CharQuad));
         if (body.empty())
             ms += "#error mesh shader template missing: char_quad.glsl.tmpl\n";
         else

@@ -52,7 +52,8 @@ namespace hgl::graph::mtl
             ctx.emit_world_pos,
             ctx.emit_world_normal);
 
-        std::string body = GetMeshShaderTemplate("vertex_passthrough.glsl.tmpl");
+        std::string body = GetMeshShaderTemplate(
+            GetMeshShaderModeTemplateFile(MeshShaderMode::VertexPassthrough));
         if (body.empty())
             ms += "#error mesh shader template missing: vertex_passthrough.glsl.tmpl\n";
         else

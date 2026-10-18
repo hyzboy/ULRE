@@ -1,5 +1,7 @@
 #pragma once
 
+#include <hgl/CoreType.h>
+
 #include <cstdint>
 #include <cstring>
 

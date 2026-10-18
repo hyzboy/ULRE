@@ -39,6 +39,17 @@ namespace
     }
 }//namespace
 
+const char *GetMeshShaderModeTemplateFile(const MeshShaderMode mode) noexcept
+{
+    switch (mode)
+    {
+    case MeshShaderMode::VertexPassthrough: return "vertex_passthrough.glsl.tmpl";
+    case MeshShaderMode::LineQuad:          return "line_quad.glsl.tmpl";
+    case MeshShaderMode::CharQuad:          return "char_quad.glsl.tmpl";
+    default:                                return nullptr;
+    }
+}
+
 const std::string &GetMeshShaderTemplate(const char *filename)
 {
     // 进程内缓存：模板文件在运行期不变，避免每次材质编译重复读盘

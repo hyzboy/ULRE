@@ -315,6 +315,45 @@ namespace hgl::graph::mtl
         }
 
         // ═══════════════════════════════════════════════════════════════════
+        // Phase 2.5 — mesh stage 发射模式
+        //
+        // 模式与 invocation 上限只依赖 profile + definition + primitive，与
+        // 生成的 GLSL 无关。提到 Phase 3.5 之前是因为声明键必须折叠它们
+        // （它们决定 max_vertices/max_primitives 与部分 #define）。
+        // ═══════════════════════════════════════════════════════════════════
+        void ResolveMeshStageMode(
+            const contract::PhysicalDeviceProfileLite *profile,
+            const MaterialDefinition &definition,
+            GenericMaterialBuildPlan &plan)
+        {
+            // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
+            if (IsCharQuadMode(definition.mesh_shader_mode))
+            {
+                plan.mesh_shader_mode = MeshShaderMode::CharQuad;
+                // CharQuad: 每线程 4 顶点，max_vertices ≤ 256（Vulkan 规范保证下限）
+                // 64 × 4 = 256（TEXT_CHARQUAD_MAX_INVOCATIONS 与 CPU dispatch 共享）
+                const uint32_t toml_or_ideal = definition.mesh_shader_max_invocations > 0
+                    ? std::min(definition.mesh_shader_max_invocations, TEXT_CHARQUAD_MAX_INVOCATIONS)
+                    : TEXT_CHARQUAD_MAX_INVOCATIONS;
+                plan.mesh_max_invocations = ClampMeshInvocationsByDevice(
+                    profile, plan.mesh_shader_mode, toml_or_ideal);
+                // CharQuad 自声明所有 SSBO，不需要外部顶点输入/provider
+            }
+            else if (plan.primitive_type == hgl::graph::PrimitiveType::Lines)
+            {
+                plan.mesh_shader_mode = MeshShaderMode::LineQuad;
+                plan.mesh_max_invocations = ClampMeshInvocationsByDevice(
+                    profile, plan.mesh_shader_mode, kMeshLineQuadMaxInvocations);
+            }
+            else
+            {
+                plan.mesh_shader_mode = MeshShaderMode::VertexPassthrough;
+                plan.mesh_max_invocations = ClampMeshInvocationsByDevice(
+                    profile, plan.mesh_shader_mode, kMeshVertexPassthroughMaxInvocations);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
         // Phase 3 — resource manifest
         // (originally MaterialDefinitionRegistry.cpp:339-438)
         // ═══════════════════════════════════════════════════════════════════
@@ -411,7 +450,6 @@ namespace hgl::graph::mtl
         // (originally MaterialDefinitionRegistry.cpp:439-531)
         // ═══════════════════════════════════════════════════════════════════
         bool GenerateStageSources(
-            const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             MaterialShaderDocumentCapture *document_capture,
             GenericMaterialBuildPlan &plan)
@@ -419,37 +457,8 @@ namespace hgl::graph::mtl
             if (document_capture)
                 document_capture->Clear();
 
-            // Mesh shader 材质：生成 mesh stage。mesh 是唯一顶点路径。
-            // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
-            const bool is_char_quad = IsCharQuadMode(definition.mesh_shader_mode);
-            const bool is_lines = !is_char_quad
-                && (plan.primitive_type == hgl::graph::PrimitiveType::Lines);
-
-            MeshShaderMode ms_mode;
-            uint32_t max_invocations;
-            if (is_char_quad)
-            {
-                ms_mode = MeshShaderMode::CharQuad;
-                // CharQuad: 每线程 4 顶点，max_vertices ≤ 256（Vulkan 规范保证下限）
-                // 64 × 4 = 256（TEXT_CHARQUAD_MAX_INVOCATIONS 与 CPU dispatch 共享）
-                const uint32_t toml_or_ideal = definition.mesh_shader_max_invocations > 0
-                    ? std::min(definition.mesh_shader_max_invocations, TEXT_CHARQUAD_MAX_INVOCATIONS)
-                    : TEXT_CHARQUAD_MAX_INVOCATIONS;
-                max_invocations = ClampMeshInvocationsByDevice(profile, ms_mode, toml_or_ideal);
-                // CharQuad 自声明所有 SSBO，不需要外部顶点输入/provider
-            }
-            else if (is_lines)
-            {
-                ms_mode = MeshShaderMode::LineQuad;
-                max_invocations = ClampMeshInvocationsByDevice(
-                    profile, ms_mode, kMeshLineQuadMaxInvocations);
-            }
-            else
-            {
-                ms_mode = MeshShaderMode::VertexPassthrough;
-                max_invocations = ClampMeshInvocationsByDevice(
-                    profile, ms_mode, kMeshVertexPassthroughMaxInvocations);
-            }
+            const MeshShaderMode ms_mode = plan.mesh_shader_mode;
+            const uint32_t max_invocations = plan.mesh_max_invocations;
 
             ShaderDocument &mesh_document = document_capture
                 ? document_capture->mesh_source_document
@@ -503,39 +512,8 @@ namespace hgl::graph::mtl
                 ? document_capture->fragment_document
                 : plan.fragment_source_document;
             ShaderDocumentDiagnostics fragment_diagnostics;
-            ShaderDocument code_module_document;
-            if (!BuildCodeModuleDocument(
-                    plan.manifest.IsValid() ? &plan.manifest : nullptr,
-                    "fragment",
-                    definition.definition_name.c_str(),
-                    code_module_document))
-            {
-                s_last_build_generic_material_error = "BuildCodeModuleDocument failed";
-                GLogError("[ShaderGen] Generic material code module document build failed: name=%s",
-                          definition.definition_name.c_str());
-                return false;
-            }
-            FragmentTemplateComposer::ComposeInput compose_input{};
-            compose_input.resolved_template =
-                plan.resolved_render_template.IsValid()
-                    ? &plan.resolved_render_template : nullptr;
-            compose_input.alpha_test =
-                plan.coverage.mode == MaterialCoverageMode::AlphaTest
-             || plan.coverage.mode
-                    == MaterialCoverageMode::AlphaTestDither;
-            compose_input.alpha_cutoff = plan.coverage.alpha_cutoff;
-            compose_input.dither =
-                plan.coverage.mode == MaterialCoverageMode::Dither
-             || plan.coverage.mode
-                    == MaterialCoverageMode::AlphaTestDither;
-            compose_input.alpha_to_output = plan.alpha_to_output;
-            compose_input.fragment_inputs = &plan.stage_interface;
-            compose_input.output_contract = &plan.output_contract;
-            compose_input.coverage_contract = &plan.coverage;
-            compose_input.code_module_document = &code_module_document;
-            compose_input.texture_declarations = &definition.texture_declarations;
             if (!composer.Compose(
-                    compose_input, fragment_document, fragment_diagnostics))
+                    plan.compose_input, fragment_document, fragment_diagnostics))
             {
                 s_last_build_generic_material_error = "composer.Compose failed: ";
                 for (int i = 0; i < fragment_diagnostics.GetCount(); ++i)
@@ -895,18 +873,18 @@ namespace hgl::graph::mtl
 
         /// 声明闭包 vs 文本闭包对齐诊断。
         ///
-        /// 文本闭包（ComputeShaderLibraryDependencyHash 扫出来的文件集）是当前
-        /// stage key 的事实覆盖；声明闭包是换成声明键之后会覆盖的集合。只有
-        /// 前者 ⊆ 后者时，声明键才可能成为权威键——缺一个模块就意味着那个模块
-        /// 的改动不会让键失效，会直接命中过期的 SPV。
+        /// 文本闭包是切换前 stage key 的事实覆盖；声明闭包是切换后覆盖的集合。
+        /// 声明键已在 FinalizeProgramLink 里生效，但本诊断仍保留：它盯的是
+        /// 「声明闭包漏了某个实际被 include 的模块」这类会让键失效失败的错误，
+        /// 换键之后这个风险不会消失，只会更严重。
         ///
         /// 每类差异只报一次，避免逐材质刷屏。
         void ReportDeclarationClosureDivergence(
             const MaterialDefinition &definition,
-            const GenericMaterialBuildPlan &plan,
+            const GenericMaterialBuildPlan::DeclarationKey &key,
             std::vector<AnsiString> &text_include_paths)
         {
-            if (!plan.declaration_key_ready)
+            if (!key.ready)
                 return;
 
             SortAnsiStrings(text_include_paths);
@@ -916,15 +894,14 @@ namespace hgl::graph::mtl
 
             for (const AnsiString &text_path : text_include_paths)
             {
-                if (ContainsAnsiString(plan.declaration_include_paths, text_path))
+                if (ContainsAnsiString(key.include_paths, text_path))
                     continue;
                 if (!missing.IsEmpty())
                     missing += " ";
                 missing += text_path.c_str();
             }
 
-            for (const AnsiString &declaration_path
-                    : plan.declaration_include_paths)
+            for (const AnsiString &declaration_path : key.include_paths)
             {
                 if (ContainsAnsiString(text_include_paths, declaration_path))
                     continue;
@@ -961,7 +938,7 @@ namespace hgl::graph::mtl
             }
 
             GLogWarning(
-                "[ShaderGen] 声明闭包与文本闭包不一致（声明键尚不可用）: "
+                "[ShaderGen] 声明闭包与文本闭包不一致: "
                 "material=%s 声明缺少=[%s] 声明多余=[%s]",
                 definition.definition_name.c_str(),
                 missing.IsEmpty() ? "" : missing.c_str(),
@@ -971,32 +948,74 @@ namespace hgl::graph::mtl
         // ═══════════════════════════════════════════════════════════════════
         // Phase 3.5 — 声明键（emit 之前）
         //
-        // 目的：把 stage key 的模块图分量从"已生成的 GLSL 文本"换到"生成前的
-        // 声明闭包"。这是运行时与 ShaderGen 解耦的前提——运行时不该为了拿到
-        // 缓存键而先跑一遍 GLSL 生成。
+        // 目的：让 stage key 完全由"生成前的声明"决定，而不是由"已生成的 GLSL
+        // 文本"决定。运行时因此不必为了拿到缓存键先跑一遍代码生成——这是运行时
+        // 与 ShaderGen 解耦的前提。
         //
-        // 本阶段当前**不改变任何 stage key**：FinalizeProgramLink 仍按文本派生，
-        // 逐位不变 ⇒ 现有 SPV 缓存全部继续命中。这里只做两件事：
-        //   1. 把输出契约前移到 emit 之前（它只依赖 plan.purpose，纯声明）；
-        //   2. 在 emit 之前算出模块闭包，供 FinalizeProgramLink 与文本闭包对齐。
+        // 每个 stage 产出四个分量：
+        //   template_base_hash —— 骨架 .glsl.tmpl 正文 + 其硬编码 `#include` 基座的
+        //                        传递内容闭包（fragment 侧；mesh 骨架无 include）
+        //   module_graph_hash  —— 模块闭包的内容哈希
+        //                        （fragment: manifest.stable_hash + resolved_template_hash
+        //                          + 基座闭包；mesh: 骨架正文 + 三个 stage 模块闭包）
+        //   definition_hash    —— 骨架正文 + 基座闭包 + 全部声明输入
+        //                        （ComposeInput / vertex ABI / mesh 模式），语义等价于
+        //                        "生成出来的文本"
+        //   interface_hash     —— 对外声明的形状：片元输入 varying + 输出附件 +
+        //                        alpha 写输出（fragment）/ 顶点输出 ABI（mesh）
         //
-        // 闭包来源（全部在 emit 之前就绪）：
-        //   a. plan.manifest.code_module_names
-        //      —— AddModule 的 DFS 已展开传递依赖（依赖先于依赖者入表），
-        //         且 BuildStableHash 已把每个模块的 glsl_code 哈希折进 stable_hash；
-        //   b. 渲染模板骨架里硬编码的 `#include` 基座
-        //      —— 见 AccumulateTemplateBaseClosure / AccumulateShadowCasterBaseClosure。
+        // definition_hash 与 module_graph_hash 都含基座闭包，重叠是有意的：
+        // 两个字段语义不同，重叠只会让失效更保守，不会漏。
         //
-        // 只有对齐干净之后，才能把 stage key 真正换到这个源上。
+        // 所有读取失败都降级为 ready=false 而**不是**让构建失败：FinalizeProgramLink
+        // 见到 ready=false 会回退到原来的文本派生路径，保证行为不劣化。
         // ═══════════════════════════════════════════════════════════════════
+
+        /// 构造 fragment 阶段的发射输入（Phase 3.5 与 Phase 4 共用同一份对象）。
+        ///
+        /// 两处各自拼装 ComposeInput 是危险的：声明键折叠的输入与真正喂给
+        /// Compose() 的输入会悄悄分叉，改一处忘一处就静默复用过期 SPV。
+        bool BuildFragmentEmissionInput(
+            const MaterialDefinition &definition,
+            GenericMaterialBuildPlan &plan)
+        {
+            if (!BuildCodeModuleDocument(
+                    plan.manifest.IsValid() ? &plan.manifest : nullptr,
+                    "fragment",
+                    definition.definition_name.c_str(),
+                    plan.code_module_document))
+            {
+                GLogError("[ShaderGen] Generic material code module document build failed: name=%s",
+                          definition.definition_name.c_str());
+                return false;
+            }
+
+            FragmentTemplateComposer::ComposeInput &input = plan.compose_input;
+            input = FragmentTemplateComposer::ComposeInput{};
+            input.resolved_template =
+                plan.resolved_render_template.IsValid()
+                    ? &plan.resolved_render_template : nullptr;
+            input.alpha_test =
+                plan.coverage.mode == MaterialCoverageMode::AlphaTest
+             || plan.coverage.mode == MaterialCoverageMode::AlphaTestDither;
+            input.alpha_cutoff = plan.coverage.alpha_cutoff;
+            input.dither =
+                plan.coverage.mode == MaterialCoverageMode::Dither
+             || plan.coverage.mode == MaterialCoverageMode::AlphaTestDither;
+            input.alpha_to_output = plan.alpha_to_output;
+            input.fragment_inputs = &plan.stage_interface;
+            input.output_contract = &plan.output_contract;
+            input.coverage_contract = &plan.coverage;
+            input.code_module_document = &plan.code_module_document;
+            input.texture_declarations = &definition.texture_declarations;
+            return true;
+        }
+
         bool BuildDeclarationKey(
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
         {
-            plan.declaration_key_ready = false;
-            plan.declaration_include_paths.clear();
-            plan.declaration_module_graph_hash = 0;
-            plan.declaration_template_base_hash = 0;
+            plan.declaration_fragment = GenericMaterialBuildPlan::DeclarationKey{};
 
             MaterialOutputContractDiagnostic output_diagnostic{};
             if (!BuildMaterialOutputContract(
@@ -1017,20 +1036,22 @@ namespace hgl::graph::mtl
             if (!plan.render_template_request)
                 return true;
 
+            GenericMaterialBuildPlan::DeclarationKey &key =
+                plan.declaration_fragment;
+
             const RenderTemplateID template_id =
                 plan.render_template_request->template_id;
 
             hgl::hash::FNV1aHasher64 base_hasher;
             GLSLIncludeClosureSink base_sink;
             base_sink.hasher = &base_hasher;
-            base_sink.include_paths = &plan.declaration_include_paths;
+            base_sink.include_paths = &key.include_paths;
 
             const char *template_file =
                 GetRenderTemplateFragmentSourceFile(template_id);
 
-            // 以下失败一律非致命：声明键当前不参与任何 stage key，只要算不出来
-            // 就置 declaration_key_ready=false 让诊断跳过，绝不因此让整个构建失败
-            // ——第 1 步的前提是零行为变更。
+            // 以下失败一律非致命：只要算不出来就置 ready=false，让
+            // FinalizeProgramLink 回退到文本派生路径，绝不因此让构建失败。
             if (template_file)
             {
                 if (!AccumulateTemplateBaseClosure(base_sink, template_file))
@@ -1121,16 +1142,139 @@ namespace hgl::graph::mtl
             // AmbientLightProvider 根（forward_lighting）在 RenderTemplate.cpp
             // 里声明，但 sky.glsl.tmpl 从不 include 它——它属于 dead module root。
             // 去掉会改 resolved_template_hash ⇒ 失效现有 sky SPV 缓存，留给后续步骤。
-            SortAnsiStrings(plan.declaration_include_paths);
+            SortAnsiStrings(key.include_paths);
 
             hgl::hash::FNV1aHasher64 module_hasher;
             module_hasher << declaration_manifest.stable_hash
                           << plan.resolved_template_hash
                           << static_cast<uint64>(base_hasher);
 
-            plan.declaration_template_base_hash = base_hasher;
-            plan.declaration_module_graph_hash = module_hasher;
-            plan.declaration_key_ready = true;
+            key.template_base_hash = base_hasher;
+            key.module_graph_hash = module_hasher;
+            key.interface_hash =
+                FragmentTemplateComposer::GetInterfaceInputHash(
+                    plan.compose_input);
+
+            // 定义正文 = 骨架正文（含其基座 include 内容）+ ComposeInput 的全部
+            // 声明字段。base_hasher 同时出现在 module_graph_hash 里属于有意为之：
+            // 两个字段语义不同，重叠只会让失效更保守，不会漏。
+            hgl::hash::FNV1aHasher64 definition_hasher;
+            definition_hasher
+                << FragmentTemplateComposer::GetDeclarationInputHash(
+                       plan.compose_input)
+                << static_cast<uint64>(base_hasher);
+            key.definition_hash = definition_hasher;
+
+            key.ready = true;
+            return true;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // Phase 3.5b — mesh stage 声明键
+        //
+        // mesh 侧的 include 全部来自描述符的三个 resolver，它们是
+        // (node_cfg, position_format) 的纯函数 ⇒ emit 之前完全可算。
+        // 把三条路径拼成一段合成文档再走同一个闭包扫描器，避免为 mesh 另写
+        // 一套 include 解析（两套解析迟早会漂移）。
+        // ═══════════════════════════════════════════════════════════════════
+        bool BuildMeshDeclarationKey(
+            const MaterialDefinition &definition,
+            GenericMaterialBuildPlan &plan)
+        {
+            GenericMaterialBuildPlan::DeclarationKey &key =
+                plan.declaration_mesh;
+
+            const MeshModeDescriptor *desc =
+                GetMeshModeDescriptor(plan.mesh_shader_mode);
+            const char *template_file =
+                GetMeshShaderModeTemplateFile(plan.mesh_shader_mode);
+
+            if (!desc || !template_file)
+            {
+                GLogWarning(
+                    "[ShaderGen] mesh 声明键：模式无描述符，回退文本派生: name=%s",
+                    definition.definition_name.c_str());
+                return true;
+            }
+
+            hgl::hash::FNV1aHasher64 base_hasher;
+            GLSLIncludeClosureSink base_sink;
+            base_sink.hasher = &base_hasher;
+            base_sink.include_paths = &key.include_paths;
+
+            // 骨架正文：含 {{group_size}} / {{max_vertices}} / {{varying_outputs}}
+            // 等占位符，正文变化必须让键失效，故整篇折进 base 哈希。
+            const std::string &template_text = GetMeshShaderTemplate(template_file);
+            if (template_text.empty())
+            {
+                GLogWarning(
+                    "[ShaderGen] mesh 声明键：骨架缺失，回退文本派生: name=%s file=%s",
+                    definition.definition_name.c_str(), template_file);
+                return true;
+            }
+            HashShaderLibraryText(
+                base_hasher, template_text.data(), template_text.size());
+            AccumulateGLSLIncludeClosure(
+                base_sink, template_text.data(), template_text.size(), 0);
+
+            // 三个 stage 模块：与 MeshTemplateEmitter 实际发射的 #include 同源
+            std::string stage_includes;
+            const char *stage_paths[3]{};
+
+            if (desc->resolve_stage1_input)
+                stage_paths[0] = desc->resolve_stage1_input(
+                    plan.vertex_node_config, plan.position_format);
+            if (desc->resolve_stage2_mapping)
+                stage_paths[1] = desc->resolve_stage2_mapping(
+                    plan.vertex_node_config);
+            if (desc->resolve_stage3_projection)
+                stage_paths[2] = desc->resolve_stage3_projection(
+                    plan.vertex_node_config);
+
+            for (const char *stage_path : stage_paths)
+            {
+                if (!stage_path || !stage_path[0])
+                    continue;
+                stage_includes += "#include \"";
+                stage_includes += stage_path;
+                stage_includes += "\"\n";
+            }
+
+            if (!stage_includes.empty())
+                AccumulateGLSLIncludeClosure(
+                    base_sink, stage_includes.data(), stage_includes.size(), 0);
+
+            SortAnsiStrings(key.include_paths);
+
+            key.template_base_hash = base_hasher;
+            key.module_graph_hash = static_cast<uint64>(base_hasher);
+
+            // 顶点输出 ABI + 模式容量：决定 varying 输出声明、max_vertices /
+            // max_primitives 与模式专属 #define，全部与生成的文本一一对应。
+            hgl::hash::FNV1aHasher64 definition_hasher;
+            definition_hasher << static_cast<uint64>(base_hasher)
+                              << plan.varying
+                              << VertexNodeConfigResolver::GetHash(
+                                     plan.vertex_node_config)
+                              << static_cast<uint64>(plan.position_format)
+                              << static_cast<uint64>(plan.mesh_shader_mode)
+                              << static_cast<uint64>(plan.mesh_max_invocations);
+            key.definition_hash = definition_hasher;
+
+            hgl::hash::FNV1aHasher64 interface_hasher;
+            interface_hasher << plan.varying
+                             << VertexNodeConfigResolver::GetHash(
+                                    plan.vertex_node_config)
+                             << static_cast<uint64>(plan.position_format)
+                             << static_cast<uint64>(plan.mesh_shader_mode)
+                             << static_cast<uint64>(plan.mesh_max_invocations);
+            const int stage_interface_count = plan.stage_interface.GetCount();
+            interface_hasher << static_cast<uint64>(stage_interface_count);
+            for (int i = 0; i < stage_interface_count; ++i)
+                interface_hasher << plan.stage_interface[i];
+            key.interface_hash = interface_hasher;
+
+            key.ready = true;
             return true;
         }
 
@@ -1171,50 +1315,97 @@ namespace hgl::graph::mtl
                 ? request.geometry_vertex_format->GetVertexInputHash() : 0;
             const uint64 compiler_hash =
                 contract::GetShaderCompilerProfileHash(profile);
-            hgl::hash::FNV1aHasher64 mesh_interface_hasher;
-            mesh_interface_hasher << HashFinalShaderSource(
-                plan.ms.data(), plan.ms.size())
-                                  << vertex_input_hash;
+
+            // ── stage key：优先声明键，读不到时回退文本派生 ──
+            //
+            // 声明键是权威路径：它只依赖声明输入，运行时不必跑一遍代码生成就能
+            // 得到同一组键。回退路径保留是因为声明闭包读取依赖 ShaderLibrary 的
+            // 磁盘状态——读不到时宁可算贵一点，也不能让材质编译失败。
+            const GenericMaterialBuildPlan::DeclarationKey *mesh_key =
+                plan.declaration_mesh.ready ? &plan.declaration_mesh : nullptr;
+            const GenericMaterialBuildPlan::DeclarationKey *fragment_key =
+                plan.declaration_fragment.ready
+                    ? &plan.declaration_fragment : nullptr;
+
 #ifdef _DEBUG
             DumpShaderGenGLSL("mesh", plan.ms);
             DumpShaderGenGLSL("fs", plan.fs);
 #endif
-            const uint64 mesh_interface_hash = mesh_interface_hasher;
-            const uint64 fragment_interface_hash =
-                HashFinalShaderSource(plan.fs.data(), plan.fs.size());
 
-            const uint64 mesh_shader_library_hash =
-                ComputeShaderLibraryDependencyHash(plan.ms.data(), plan.ms.size());
-            const uint64 fragment_shader_library_hash =
-                ComputeShaderLibraryDependencyHash(plan.fs.data(), plan.fs.size());
+            uint64 mesh_definition_hash = 0;
+            uint64 mesh_module_graph_hash = 0;
+            uint64 mesh_interface_hash = 0;
 
-            hgl::hash::FNV1aHasher64 mesh_module_graph_hasher;
-            mesh_module_graph_hasher << mesh_shader_library_hash;
-            const uint64 mesh_module_graph_hash = mesh_module_graph_hasher;
+            if (mesh_key)
+            {
+                mesh_definition_hash = mesh_key->definition_hash;
+                mesh_module_graph_hash = mesh_key->module_graph_hash;
+                mesh_interface_hash = mesh_key->interface_hash;
+            }
+            else
+            {
+                mesh_definition_hash =
+                    HashFinalShaderSource(plan.ms.data(), plan.ms.size());
 
-            // mesh shader 材质：顶点阶段走 mesh stage
-            plan.program_link.mesh_stage = BuildFinalShaderStageKey(
+                hgl::hash::FNV1aHasher64 module_graph_hasher;
+                module_graph_hasher << ComputeShaderLibraryDependencyHash(
+                    plan.ms.data(), plan.ms.size());
+                mesh_module_graph_hash = module_graph_hasher;
+
+                hgl::hash::FNV1aHasher64 interface_hasher;
+                interface_hasher << mesh_definition_hash;
+                mesh_interface_hash = interface_hasher;
+            }
+
+            // 顶点输入格式是 program_link 的独立维度，但与 mesh stage 的
+            // varying 输出声明强耦合，仍然折进 interface_hash（两条路径一致）。
+            {
+                hgl::hash::FNV1aHasher64 interface_hasher;
+                interface_hasher << mesh_interface_hash << vertex_input_hash;
+                mesh_interface_hash = interface_hasher;
+            }
+
+            plan.program_link.mesh_stage = BuildDeclarationShaderStageKey(
                 ShaderStage::Mesh,
-                plan.ms.data(),
-                plan.ms.size(),
+                mesh_definition_hash,
                 mesh_module_graph_hash,
                 mesh_interface_hash,
                 resource_contract_hash,
                 compiler_hash);
-            hgl::hash::FNV1aHasher64 fragment_module_graph_hasher;
-            fragment_module_graph_hasher << plan.manifest.stable_hash
-                                         << plan.resolved_template_hash
-                                         << fragment_shader_library_hash;
-            const uint64 fragment_module_graph_hash =
-                fragment_module_graph_hasher;
-            plan.program_link.fragment_stage = BuildFinalShaderStageKey(
+
+            uint64 fragment_definition_hash = 0;
+            uint64 fragment_module_graph_hash = 0;
+            uint64 fragment_interface_hash = 0;
+
+            if (fragment_key)
+            {
+                fragment_definition_hash = fragment_key->definition_hash;
+                fragment_module_graph_hash = fragment_key->module_graph_hash;
+                fragment_interface_hash = fragment_key->interface_hash;
+            }
+            else
+            {
+                fragment_definition_hash =
+                    HashFinalShaderSource(plan.fs.data(), plan.fs.size());
+
+                hgl::hash::FNV1aHasher64 module_graph_hasher;
+                module_graph_hasher << plan.manifest.stable_hash
+                                    << plan.resolved_template_hash
+                                    << ComputeShaderLibraryDependencyHash(
+                                           plan.fs.data(), plan.fs.size());
+                fragment_module_graph_hash = module_graph_hasher;
+
+                fragment_interface_hash = fragment_definition_hash;
+            }
+
+            plan.program_link.fragment_stage = BuildDeclarationShaderStageKey(
                 ShaderStage::Fragment,
-                plan.fs.data(),
-                plan.fs.size(),
+                fragment_definition_hash,
                 fragment_module_graph_hash,
                 fragment_interface_hash,
                 resource_contract_hash,
                 compiler_hash);
+
             plan.program_link.resource_layout_hash =
                 resource_contract_hash;
             plan.program_link.vertex_input_hash = vertex_input_hash;
@@ -1222,13 +1413,20 @@ namespace hgl::graph::mtl
                 GetOutputContractHash(plan.output_contract);
             plan.program_link.compiler_hash = compiler_hash;
 
-            if (plan.declaration_key_ready)
             {
                 std::vector<AnsiString> text_include_paths;
                 CollectShaderLibraryIncludePaths(
                     plan.fs.data(), plan.fs.size(), text_include_paths);
                 ReportDeclarationClosureDivergence(
-                    definition, plan, text_include_paths);
+                    definition, plan.declaration_fragment, text_include_paths);
+            }
+
+            {
+                std::vector<AnsiString> text_include_paths;
+                CollectShaderLibraryIncludePaths(
+                    plan.ms.data(), plan.ms.size(), text_include_paths);
+                ReportDeclarationClosureDivergence(
+                    definition, plan.declaration_mesh, text_include_paths);
             }
 
             config.program_link = &plan.program_link;
@@ -1305,11 +1503,24 @@ namespace hgl::graph::mtl
             return nullptr;
         }
 
+        ResolveMeshStageMode(profile, resolved_definition, plan);
+
         if (!BuildResourceContract(resolved_definition, plan))
         {
             if (s_last_build_generic_material_error.IsEmpty())
                 s_last_build_generic_material_error = "BuildResourceContract failed";
             GLogError("[BuildGenericMaterial] BuildResourceContract failed");
+            return nullptr;
+        }
+
+        // fragment 发射输入必须先于 BuildDeclarationKey：声明键折叠的就是这份
+        // ComposeInput，Phase 4 也原样复用它——两处共用一份对象，避免"键覆盖
+        // 的输入"与"实际发射的输入"悄悄分叉。
+        if (!BuildFragmentEmissionInput(resolved_definition, plan))
+        {
+            if (s_last_build_generic_material_error.IsEmpty())
+                s_last_build_generic_material_error = "BuildFragmentEmissionInput failed";
+            GLogError("[BuildGenericMaterial] BuildFragmentEmissionInput failed");
             return nullptr;
         }
 
@@ -1321,8 +1532,16 @@ namespace hgl::graph::mtl
             return nullptr;
         }
 
+        if (!BuildMeshDeclarationKey(resolved_definition, plan))
+        {
+            if (s_last_build_generic_material_error.IsEmpty())
+                s_last_build_generic_material_error = "BuildMeshDeclarationKey failed";
+            GLogError("[BuildGenericMaterial] BuildMeshDeclarationKey failed");
+            return nullptr;
+        }
+
         if (!GenerateStageSources(
-                profile, resolved_definition, document_capture, plan))
+                resolved_definition, document_capture, plan))
         {
             if (s_last_build_generic_material_error.IsEmpty())
                 s_last_build_generic_material_error = "GenerateStageSources failed";
