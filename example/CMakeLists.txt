@@ -7,7 +7,7 @@
 # IDE 分组由相对 example/ 的路径推出：目录结构即分组结构，无需逐目录手写 FOLDER。
 macro(CreateProject name)
     add_executable(${name} ${ARGN})
-    target_link_libraries(${name} ${ULRE})
+    target_link_libraries(${name} ULRE::Engine)
 
     if(MSVC)
         set_target_properties(${name} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})

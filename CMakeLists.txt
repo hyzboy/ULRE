@@ -85,6 +85,17 @@ if(ULRE_ENABLE_QT)
     use_cm_module(QT)
 endif()
 
+# ── ULRE::Engine：把上面的平铺链接列表收敛成一个具名聚合目标（CMake 阶段 3）──────────
+# 消费方只写 `target_link_libraries(<t> PRIVATE ULRE::Engine)`，不必再展开 ${ULRE}。
+#
+# 这里只做「等价聚合」，不拆逐模块依赖。原因：ULRE.Vulkan / ULRE.ShaderGen /
+# ULRE.SceneGraph / ULRE.ECS 四者两两互相 include 对方头文件，构成一个强连通分量，
+# 不存在可声明的有向依赖图；要拆必须先做架构级解环，不属于构建系统改造范围。
+# 证据见 doc/build-and-module-structure-audit-2026-10.md「ULRE 模块依赖是强连通分量」。
+add_library(ULRE_Engine INTERFACE)
+target_link_libraries(ULRE_Engine INTERFACE ${ULRE})
+add_library(ULRE::Engine ALIAS ULRE_Engine)
+
 add_subdirectory(src)
 
 add_subdirectory(example)
