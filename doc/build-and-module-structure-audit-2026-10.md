@@ -163,6 +163,38 @@ target_link_libraries(ULRE.SceneGraph PUBLIC ULRE.Vulkan ULRE.ShaderGen CMMath C
 
 注意：`cm_modules.cmake` 位于 **CMCMakeModule 子模块**内，改动需要子模块提交 + gitlink 更新，会影响共用该模块的其他项目。
 
+### 更正（2026-10，阶段 3 实测）：模块依赖是强连通分量，上面的方案 A/B 不可行
+
+按 include 实测六个 ULRE 自有模块的相互引用（统计 `#include <hgl/xxx/...>` 的出现次数）：
+
+| 模块 | 扫描文件数 | →`hgl/vk/` | →`hgl/mtl/` | →`hgl/graph/` | →`hgl/ecs/` | →`hgl/framework/` |
+|---|---|---|---|---|---|---|
+| `ULRE.Vulkan` | 137 | – | 10 | 26 | 3 | 0 |
+| `ULRE.ShaderGen` | 92 | 4 | – | 17 | 0 | 0 |
+| `ULRE.SceneGraph` | 139 | 154 | 22 | – | 34 | 1 |
+| `ULRE.ECS` | 171 | 107 | 20 | 143 | – | 0 |
+| `ULRE.InlineGeometry` | 47 | 7 | 0 | 22 | 0 | 0 |
+| `ULRE.Work` | 6 | 8 | 0 | 11 | 12 | – |
+
+（`hgl/graph/` 同时包含 `ULRE.SceneGraph` 的头和 `ULRE.InlineGeometry` 的 `hgl/graph/geo/`。）
+
+结论：`{ULRE.Vulkan, ULRE.ShaderGen, ULRE.SceneGraph, ULRE.ECS}` 四者**两两互相引用**，构成一个强连通分量，不存在可声明的有向依赖图：
+
+- `ULRE.Vulkan → ULRE.SceneGraph`：`src/Vulkan/VKSwapchainRenderTarget.cpp:7` 的 `#include<hgl/graph/core/GraphicsContext.h>`
+- `ULRE.Vulkan → ULRE.ECS`：`src/Vulkan/VKRenderTarget.cpp:3` 的 `#include<hgl/ecs/core/Context.h>`
+- `ULRE.SceneGraph → ULRE.Vulkan`：154 处
+- `ULRE.ECS → ULRE.Vulkan`：107 处
+
+所以 §2 的「方案 A/B：给每个模块显式声明依赖」**在当前架构下无法落地**——同时写 `target_link_libraries(ULRE.Vulkan PUBLIC ULRE.SceneGraph)` 和反向那条会直接构成循环。这不是构建系统能修的问题，必须先做架构级解环（把 `hgl/graph/` 里 Vulkan 需要的类型下沉，或把 Vulkan 中引用 ECS/graph 的那几个文件上移）。
+
+**`${ULRE}` 平铺列表因此不是「懒」，而是循环模块图的正确表达。** 本轮范围内只做等价收敛：
+
+- 根 `CMakeLists.txt` 新增 `ULRE_Engine` INTERFACE 目标 + `ULRE::Engine` 别名，`INTERFACE` 链接 `${ULRE}`；
+- 16 处消费点（`example/CMakeLists.txt` 的 `CreateProject` 宏 1 处 + `src/ecs` 的 14 个 test/probe target）由 `${ULRE}` 改为 `ULRE::Engine`；
+- 判据：A 层基线不变（`build-baseline.ps1` PASS）；实测 `ComputeAsteroidBelt.vcxproj` 仍链上全部 13 个库，且链接行不出现裸 `ULRE::Engine`。
+
+`ULRE::Engine` 的真正价值在阶段 5：`export(ULREConfig)` 需要一个对外稳定的名字，而不是一个必须展开的变量。
+
 ---
 
 ## 3. 单一扁平输出目录 + 逐 target applocal
@@ -552,3 +584,31 @@ node 也在跑同一批工程。⇒ 全部是**并发假象**，不是上游缺�
 提交 `e6cda6a25`（修正）：恢复 `${HGL_MATH_LIB}` / `${RENDER_LIBRARY}` 并注明其为隐式传递依赖（见第 2 条的误删记录）。
 
 **均未涉及本文第 1~9 条的根因。**
+
+---
+
+## 附：阶段 2 实施记录（2026-10）——只有 `src/ecs` 适合改目录扫描
+
+阶段 2 的目标是「手工源文件清单 → `file(GLOB_RECURSE ... CONFIGURE_DEPENDS)`」，判据是 A 层基线不变。
+但逐个模块看过之后，**只有 `src/ecs` 的清单是纯目录枚举**，其余模块的清单承担了额外语义，改成扫描是净损失：
+
+| 模块 | 原行数 | 处置 | 理由 |
+|---|---|---|---|
+| `src/ecs` | 472 | ✅ 改为 `GLOB_RECURSE` + `source_group(TREE)`，249 行 | 22 份清单基本是 2 文件级的桩，分组名里的执行阶段序号另有唯一台帐 `.ai/skills/SKILL_EXECUTION_PHASE_ORDERING.md` |
+| `src/Vulkan` | 311 | ❌ 不改 | 清单按 Vulkan 对象域分组（`Core`/`Device\Instance`/`Device\PhysicalDevice`/`Buffer`/`Pipeline`/…），是架构地图而非目录镜像；且 `VK_DEVICE_PLATFORM_FILES` 是 Win32/Android/iOS/Mac/Wayland/XCB **六选一**的互斥源，裸扫描会把六份平台后端全捞进来 |
+| `src/SceneGraph` | 280 | ❌ 不改 | 分组名带数字分层前缀（`1.Core`/`4.Rendering`/`8.Font`/`9.Vulkan`），编码了架构层次；`FONT_PLATFORM_FILES` 同样是 Win32/FreeType 互斥 |
+| `src/ShaderGen` | 174 | ❌ 不改 | 分组是逻辑域（`Document`/`Template`/`Compile`/`GLSL Module`/`Contract`/`MeshGen`/`Builder`），与磁盘目录并非一一对应 |
+| `src/Tools/ShaderGen` | 201 | ❌ 不改 | 除库本身外还有 `descriptor_macros_verify` 自定义目标与 5 个 regression 测试 target，扫描容易把 tests 捞进库 |
+
+`src/ecs` 的等价性验证方法（可作为后续同类改动的模板）：
+
+1. 改之前从旧清单生成的 `build/src/ecs/ULRE.ECS.vcxproj` 抽 `ClCompile`/`ClInclude` 的 `Include` 属性；
+2. 归一化（`\`→`/`、剥掉 `E:/ULRE/` 与 `^\.\./`）后与磁盘 `Get-ChildItem -Recurse` 结果 `Compare-Object`；
+3. 判据：**.cpp 集合必须完全一致**（编译产物不变），.h 差异只允许「磁盘有、工程没有」（扫描修正的是 IDE 可见性）。
+
+实测：67 个 `.cpp` 完全一致；`.h` 由 80 增至 90，新增的 10 个正是被代码 `#include` 却从未进清单的头
+（`CameraControlMode.h`、`LinesComponent.h`、`TextComponent.h`、`EntityGPU.h`、`BoundingVolumeCull.h`、`ComponentTypeTable.h`、`MaterialAuthoringSideTable.h`、`MaterialRuntimePipelineTable.h`、`RenderPassSlot.h`、`RenderResource.h`）。
+
+连带改动一处契约测试：`src/ecs/tests/TestCSMIncrementalPass.cpp` 的 T6b「新头必须进构建注册」原本 grep `CMakeLists.txt` 里的头文件名，GLOB 之后该**判据**失效但**契约意图**（新写的头/源必须真的进构建）仍有效，故把判据升级为断言含 `file(GLOB_RECURSE ECS_HEADERS CONFIGURE_DEPENDS`，而不是删测试。
+
+> 生成器时序提醒：`CONFIGURE_DEPENDS` 下**删除**源文件时，CMake 会正确从 `.vcxproj` 移除，但同一次构建仍可能报 `C1083: Cannot open source file`（MSBuild 在重新生成前已加载旧工程）。重跑一次即绿，不要误判为配置错误。

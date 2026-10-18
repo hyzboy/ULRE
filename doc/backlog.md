@@ -128,14 +128,14 @@ B 线 7 项小项 · A6 只剩 cubemap 六面 · E1/E2 未来项（用户留置�
 | **③ 后续接入** | **#3 = 报告 03 渲染项双表已随「删」结案（2026-10-14）⇒ 无对拍器、无需挂宏**；**#6 = 报告 08 MaterialRuntimeRow key 已落地**（两个静态对拍助手挂台帐宏）。**模板已由 #2 立好**：台帐宏门住 + 源码契约针（存在性/计数/禁复活）+ 红的样子（破坏后必须点名失步）|
 | ~~**④ 可选加固**~~ | **✅ 已落地（2026-10-14）**：`GPUDrivenCull` 在 `GC_SELFCHECK=1` 而无 `GC_STATIC=1` 时**自动冻结相机** + 打提示（选定「自动冻结」而非 fail-fast：与 PBR 同口径、且不动已有入参习惯） |
 
-### 8. CMake 模块化迁移（阶段 2–5 未开工；主档 `doc/build-and-module-structure-audit-2026-10.md`）
+### 8. CMake 模块化迁移（阶段 1–3 已完成，阶段 4–5 未开工；主档 `doc/build-and-module-structure-audit-2026-10.md`）
 
 | 项 | 状态 | 判据 / 下一步 |
 |---|---|---|
 | **阶段 1** | **✅ 2026-10-18 完成** | C++ 模块扫描关闭 · `CreateProject` 宏去重（example ×14 + ShaderGen 改名 `SetupToolTarget`）· 删空壳 `ShaderCompiler` · 删 JoltPhysics 死引用 · `ModelConvert` 注释停用 · **新增 `scripts/ci/build-baseline.ps1`** |
 | **A 层基线** | **✅ 2026-10-18 PASS** | `pwsh scripts/ci/build-baseline.ps1` → 738 工程 Debug 全量构建**零错误** + `ctest -L "ecs|csm|shadergen"` **25/25**；退出码 0 |
-| **阶段 2** 源文件清单 GLOB 化 | 未开工 | 逐模块（先 `src/ecs` 472 行、`CMCore/src` 414 行）改 `file(GLOB_RECURSE ... CONFIGURE_DEPENDS)`；判据 = 基线 PASS 不变 |
-| **阶段 3** 拆解 ULRE 依赖图 | 未开工 | 先建 `ULRE::Engine` INTERFACE 聚合保持等价，再逐模块收紧（首个：`ULRE.ECS` 用 Vulkan 类型却不 link `ULRE.Vulkan`） |
+| **阶段 2** 源文件清单 GLOB 化 | **✅ 2026-10-18 完成（限 `src/ecs`）** | `src/ecs` 472 → 249 行；67 个 `.cpp` 集合与旧清单**完全一致**，`.h` 由 80 增至 90（补进 10 个被 include 却从未注册的头）。**`src/Vulkan`/`src/SceneGraph`/`src/ShaderGen`/`src/Tools/ShaderGen` 经核查不宜改**：清单承担架构分层语义 + 平台互斥源（六选一/二选一），裸扫描会捞进别平台后端。理由与等价性验证模板见主档「阶段 2 实施记录」 |
+| **阶段 3** 拆解 ULRE 依赖图 | **⚠️ 2026-10-18 部分完成：只做了等价聚合，「逐模块收紧」被证伪** | 已建 `ULRE_Engine` INTERFACE + `ULRE::Engine` 别名，16 处消费点（example `CreateProject` 宏 + `src/ecs` 14 个 test/probe）改用该名字，基线 PASS。**收紧不可能**：`{ULRE.Vulkan, ULRE.ShaderGen, ULRE.SceneGraph, ULRE.ECS}` 两两互相 `#include` 对方头文件，是强连通分量 ⇒ `${ULRE}` 平铺列表是循环模块图的正确表达，不是懒。要收紧须先做架构级解环（见主档 §2 更正） |
 | **阶段 4** 输出目录分层 | 未开工 | `out/<cfg>/bin` + `lib`；applocal 改 `add_custom_target(... ALL)` 统一拷一次；判据 = `/m` 并行构建通过（现在必须 `/m:1`） |
 | **阶段 5** install/export | 未开工 | `install()` + `export(ULREConfig)`；判据 = 外部工程能 `find_package(ULRE)` |
 | **阻塞项：`CMCMakeModule` 归属** | **待拍板** | 它是 9 个 CM* 仓库共享的 submodule，阶段 3/4 要改的 `add_cm_library`、`output_path.cmake` 都在里面。C1 ULRE 根自建 wrapper（建议）/ C2 升级并同步九仓 / C3 只在 ULRE 侧加薄 wrapper |
@@ -322,7 +322,7 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 
 ## C 线：构建与文档
 
-0. **CMake 模块化迁移（阶段 1 已完成，阶段 2–5 未开工）** — 主档
+0. **CMake 模块化迁移（阶段 1–3 已完成，阶段 4–5 未开工）** — 主档
    `doc/build-and-module-structure-audit-2026-10.md`
    - **✅ 阶段 1（2026-10）**：C++ 模块扫描关闭、`CreateProject` 宏去重（example ×14 +
      ShaderGen 改名 `SetupToolTarget`）、删空壳 `ShaderCompiler`、删 JoltPhysics 死引用、
