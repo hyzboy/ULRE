@@ -3,10 +3,216 @@
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/ShaderCodeModuleFile.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/filesystem/Path.h>
+#include <hgl/filesystem/FileSystem.h>
+#include <hgl/log/Log.h>
+#include <hgl/time/Time.h>
 #include "../../ShaderGen/document/DocumentFragmentBuilder.h"
 
+using namespace hgl;
 using namespace hgl::graph::mtl;
 using hgl::AnsiString;
+
+namespace
+{
+    struct RootModuleSpec
+    {
+        ShaderModuleSlotRole role;
+        const char *name;
+        const char *relative_path;
+    };
+
+    const RootModuleSpec root_specs[] =
+    {
+        { ShaderModuleSlotRole::SurfaceProvider, "surface/pbr_texture", "surface/pbr_texture.glsl" },
+        { ShaderModuleSlotRole::DirectLightProvider, "direct/sun", "direct/sun.glsl" },
+        { ShaderModuleSlotRole::ShadowProvider, "shadow/pcf", "shadow/pcf.glsl" },
+        { ShaderModuleSlotRole::AmbientLightProvider, "ambient/ibl", "ambient/ibl.glsl" },
+        { ShaderModuleSlotRole::AmbientOcclusionProvider, "ao/identity", "ao/identity.glsl" },
+        { ShaderModuleSlotRole::LightingModel, "lighting/pbr", "lighting/pbr.glsl" },
+        { ShaderModuleSlotRole::OutputPolicy, "output/forward_hdr", "output/forward_hdr.glsl" },
+        { ShaderModuleSlotRole::MaterialSourceProvider, "material/source", "material/source.glsl" },
+        { ShaderModuleSlotRole::NTBProvider, "ntb/provider", "ntb/provider.glsl" },
+        { ShaderModuleSlotRole::SkyProvider, "sky/atmosphere", "sky/atmosphere.glsl" }
+    };
+
+    const int root_spec_count = int(sizeof(root_specs) / sizeof(root_specs[0]));
+
+    // 模板根模块必须能解析到真实文件来源（ResolveModuleRoot 校验
+    // include_path 与 source_path 一致），故回归用例改为落盘真实模块文件。
+    enum class FixtureVariant
+    {
+        Baseline,
+        MissingDirectLightCapability,
+        SurfaceDeclaresLightingModelSlot,
+        SurfaceConflictsWithDirectSun
+    };
+
+    struct FixtureVariantSpec
+    {
+        FixtureVariant variant;
+        const char *directory;
+    };
+
+    const FixtureVariantSpec fixture_variants[] =
+    {
+        { FixtureVariant::Baseline, "baseline" },
+        { FixtureVariant::MissingDirectLightCapability, "missing_capability" },
+        { FixtureVariant::SurfaceDeclaresLightingModelSlot, "slot_mismatch" },
+        { FixtureVariant::SurfaceConflictsWithDirectSun, "conflict" }
+    };
+
+    const int fixture_variant_count =
+        int(sizeof(fixture_variants) / sizeof(fixture_variants[0]));
+
+    class FixtureDirectory
+    {
+    public:
+        hgl::OSString root;
+
+        bool Init()
+        {
+            hgl::OSString current;
+            if (!hgl::filesystem::GetCurrentPath(current))
+                return false;
+            root = (hgl::filesystem::Path(current) / hgl::ToOSString(
+                (AnsiString("shader-document-")
+                    + AnsiString::numberOf(hgl::GetTimeUs())).c_str())).ToOSString();
+            return hgl::filesystem::MakePath(root);
+        }
+
+        /// <root>/<directory>/<relative>
+        hgl::OSString Resolve(const char *directory, const char *relative) const
+        {
+            AnsiString tail(directory);
+            if (relative)
+            {
+                tail += "/";
+                tail += relative;
+            }
+            tail.Replace('/', HGL_DIRECTORY_SEPARATOR);
+            return (hgl::filesystem::Path(root) / hgl::ToOSString(tail.c_str()))
+                .ToOSString();
+        }
+
+        bool Write(const char *directory, const char *relative, const AnsiString &code)
+        {
+            const hgl::OSString file = Resolve(directory, relative);
+            const hgl::OSString parent =
+                hgl::filesystem::Path(file).GetParent().ToOSString();
+            if (!hgl::filesystem::MakePath(parent))
+                return false;
+            return hgl::filesystem::SaveMemoryToFile(
+                file, code.c_str(), code.Length()) == code.Length();
+        }
+
+        ~FixtureDirectory()
+        {
+            if (root.IsEmpty())
+                return;
+
+            // DeletePath 只删空目录，故按「文件 → 叶目录 → 变体目录 → 根」顺序清理
+            for (int variant_index = 0;
+                 variant_index < fixture_variant_count;
+                 ++variant_index)
+            {
+                const char *directory = fixture_variants[variant_index].directory;
+                for (int index = 0; index < root_spec_count; ++index)
+                {
+                    const hgl::OSString file =
+                        Resolve(directory, root_specs[index].relative_path);
+                    if (hgl::filesystem::FileExist(file)
+                     && !hgl::filesystem::FileDelete(file))
+                        GLogWarning(u8"Cannot remove shader-document fixture: %ls",
+                                    file.c_str());
+                }
+                for (int index = 0; index < root_spec_count; ++index)
+                {
+                    const hgl::OSString leaf = hgl::filesystem::Path(
+                        Resolve(directory, root_specs[index].relative_path))
+                        .GetParent().ToOSString();
+                    if (hgl::filesystem::IsDirectory(leaf)
+                     && !hgl::filesystem::DeletePath(leaf))
+                        GLogWarning(u8"Cannot remove fixture directory: %ls",
+                                    leaf.c_str());
+                }
+                const hgl::OSString variant_root = Resolve(directory, nullptr);
+                if (hgl::filesystem::IsDirectory(variant_root)
+                 && !hgl::filesystem::DeletePath(variant_root))
+                    GLogWarning(u8"Cannot remove fixture directory: %ls",
+                                variant_root.c_str());
+            }
+            if (!hgl::filesystem::DeletePath(root))
+                GLogWarning(u8"Cannot remove fixture directory: %ls", root.c_str());
+        }
+    };
+
+    AnsiString ModuleText(const RootModuleSpec &spec, const FixtureVariant variant)
+    {
+        const char *slot = GetShaderModuleSlotRoleName(spec.role);
+        const char *provides = nullptr;
+        const char *requires_capability = nullptr;
+        const char *conflicts = nullptr;
+
+        switch (spec.role)
+        {
+            case ShaderModuleSlotRole::DirectLightProvider:
+                if (variant != FixtureVariant::MissingDirectLightCapability)
+                    provides = "direct_light";
+                break;
+            case ShaderModuleSlotRole::LightingModel:
+                requires_capability = "direct_light";
+                break;
+            case ShaderModuleSlotRole::SurfaceProvider:
+                if (variant == FixtureVariant::SurfaceDeclaresLightingModelSlot)
+                    slot = "lighting_model";
+                else if (variant == FixtureVariant::SurfaceConflictsWithDirectSun)
+                    conflicts = "direct/sun";
+                break;
+            default:
+                break;
+        }
+
+        AnsiString text = AnsiString("// @ulre begin\n// @ulre name ") + spec.name
+            + "\n// @ulre kind Utility\n// @ulre slot " + slot + "\n";
+        if (provides)
+            text += AnsiString("// @ulre provides_capability ") + provides + "\n";
+        if (requires_capability)
+            text += AnsiString("// @ulre requires_capability ") + requires_capability + "\n";
+        if (conflicts)
+            text += AnsiString("// @ulre conflicts ") + conflicts + "\n";
+        text += "// @ulre end\nvoid ModuleBody() {}\n";
+        return text;
+    }
+
+    bool WriteFixtureSet(FixtureDirectory &fixtures,
+                         const char *directory,
+                         const FixtureVariant variant)
+    {
+        for (int index = 0; index < root_spec_count; ++index)
+        {
+            const RootModuleSpec &spec = root_specs[index];
+            if (!fixtures.Write(directory, spec.relative_path,
+                                ModuleText(spec, variant)))
+                return false;
+        }
+        return true;
+    }
+
+    bool LoadFixtureRegistry(FixtureDirectory &fixtures,
+                             const char *directory,
+                             ShaderCodeModuleRegistry &out_registry)
+    {
+        int file_count = 0;
+        int error_count = 0;
+        if (!out_registry.LoadDirectory(
+                fixtures.Resolve(directory, nullptr), &file_count, &error_count))
+            return false;
+        return file_count == root_spec_count
+            && error_count == 0
+            && out_registry.GetCount() == root_spec_count;
+    }
+}
 
 int main()
 {
@@ -102,38 +308,16 @@ int main()
     RenderTemplateRequest template_request{};
     template_request.template_id = RenderTemplateID::ForwardLitShadowedAO;
     template_request.template_version = 1;
-    if (!template_request.AddModuleRoot(
-            ShaderModuleSlotRole::SurfaceProvider, "surface/pbr_texture")
-     || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::DirectLightProvider, "direct/sun")
-     || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::ShadowProvider, "shadow/pcf")
-     || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::AmbientLightProvider, "ambient/ibl")
-     || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::AmbientOcclusionProvider, "ao/identity")
-     || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::LightingModel, "lighting/pbr")
-     || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::OutputPolicy, "output/forward_hdr")
-     || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::MaterialSourceProvider, "material/source")
-     || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::NTBProvider, "ntb/provider")
-     || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::SkyProvider, "sky/atmosphere"))
-        return 14;
-    const char *template_paths[] =
+    for (int index = 0; index < root_spec_count; ++index)
     {
-        "surface/pbr_texture.glsl", "direct/sun.glsl",
-        "shadow/pcf.glsl", "ambient/ibl.glsl",
-        "ao/identity.glsl", "lighting/pbr.glsl",
-        "output/forward_hdr.glsl", "material/source.glsl",
-        "ntb/provider.glsl", "sky/atmosphere.glsl"
-    };
+        if (!template_request.AddModuleRoot(
+                root_specs[index].role, root_specs[index].name))
+            return 14;
+    }
     for (hgl::uint32 index = 0;
          index < template_request.module_root_count; ++index)
-        template_request.module_roots[index].include_path = template_paths[index];
+        template_request.module_roots[index].include_path =
+            root_specs[index].relative_path;
 
     RenderTemplateValidationDiagnostic template_diagnostic{};
     if (!ValidateRenderTemplateRequest(template_request, template_diagnostic)
@@ -222,39 +406,20 @@ int main()
             != hgl::uint32(ShaderModuleCapability::SurfaceNormal))
         return 23;
 
-    const ShaderModuleSlotRole root_roles[] =
+    FixtureDirectory fixtures;
+    if (!fixtures.Init())
+        return 30;
+    for (int index = 0; index < fixture_variant_count; ++index)
     {
-        ShaderModuleSlotRole::SurfaceProvider,
-        ShaderModuleSlotRole::DirectLightProvider,
-        ShaderModuleSlotRole::ShadowProvider,
-        ShaderModuleSlotRole::AmbientLightProvider,
-        ShaderModuleSlotRole::AmbientOcclusionProvider,
-        ShaderModuleSlotRole::LightingModel,
-        ShaderModuleSlotRole::OutputPolicy,
-        ShaderModuleSlotRole::MaterialSourceProvider,
-        ShaderModuleSlotRole::NTBProvider,
-        ShaderModuleSlotRole::SkyProvider
-    };
-    const char *const root_names[] =
-    {
-        "surface/pbr_texture", "direct/sun", "shadow/pcf", "ambient/ibl",
-        "ao/identity", "lighting/pbr", "output/forward_hdr",
-        "material/source", "ntb/provider", "sky/atmosphere"
-    };
-    ShaderCodeModuleDefinition root_modules[10]{};
-    ShaderCodeModuleRegistry root_registry;
-    for (int index = 0; index < 10; ++index)
-    {
-        root_modules[index].name = root_names[index];
-        root_modules[index].glsl_code = "";
-        root_modules[index].slot_role = root_roles[index];
-        if (!root_registry.Register(root_modules[index]))
-            return 24;
+        if (!WriteFixtureSet(fixtures,
+                             fixture_variants[index].directory,
+                             fixture_variants[index].variant))
+            return 30;
     }
-    root_modules[1].provided_capabilities =
-        static_cast<hgl::uint32>(ShaderModuleCapability::DirectLight);
-    root_modules[5].required_capabilities =
-        static_cast<hgl::uint32>(ShaderModuleCapability::DirectLight);
+
+    ShaderCodeModuleRegistry root_registry;
+    if (!LoadFixtureRegistry(fixtures, fixture_variants[0].directory, root_registry))
+        return 24;
     if (!ValidateRenderTemplateRequest(
             template_request, root_registry, template_diagnostic))
         return 25;
@@ -268,26 +433,33 @@ int main()
      || resolved_template.manifest.code_module_count != 10
      || resolved_template.stable_hash == 0)
         return 29;
-    root_modules[1].provided_capabilities = 0;
+
+    ShaderCodeModuleRegistry missing_capability_registry;
+    if (!LoadFixtureRegistry(
+            fixtures, fixture_variants[1].directory, missing_capability_registry))
+        return 31;
     if (ValidateRenderTemplateRequest(
-            template_request, root_registry, template_diagnostic)
+            template_request, missing_capability_registry, template_diagnostic)
      || template_diagnostic.error
             != RenderTemplateValidationError::MissingModuleCapability)
         return 26;
-    root_modules[1].provided_capabilities =
-        static_cast<hgl::uint32>(ShaderModuleCapability::DirectLight);
-    root_modules[0].slot_role = ShaderModuleSlotRole::LightingModel;
+
+    ShaderCodeModuleRegistry slot_mismatch_registry;
+    if (!LoadFixtureRegistry(
+            fixtures, fixture_variants[2].directory, slot_mismatch_registry))
+        return 32;
     if (ValidateRenderTemplateRequest(
-            template_request, root_registry, template_diagnostic)
+            template_request, slot_mismatch_registry, template_diagnostic)
      || template_diagnostic.error
             != RenderTemplateValidationError::ModuleSlotMismatch)
         return 27;
-    root_modules[0].slot_role = root_roles[0];
-    const char *surface_conflicts[] = {"direct/sun"};
-    root_modules[0].module_conflict_names = surface_conflicts;
-    root_modules[0].module_conflict_count = 1;
+
+    ShaderCodeModuleRegistry conflict_registry;
+    if (!LoadFixtureRegistry(
+            fixtures, fixture_variants[3].directory, conflict_registry))
+        return 33;
     if (ValidateRenderTemplateRequest(
-            template_request, root_registry, template_diagnostic)
+            template_request, conflict_registry, template_diagnostic)
      || template_diagnostic.error
             != RenderTemplateValidationError::ModuleConflict)
         return 28;
