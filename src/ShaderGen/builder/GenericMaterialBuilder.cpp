@@ -1375,6 +1375,32 @@ namespace hgl::graph::mtl
                 AccumulateGLSLIncludeClosure(
                     base_sink, stage_includes.data(), stage_includes.size(), 0);
 
+            // 模式专属资源里由 C++ 硬编码发射的 #include：不经模块依赖，
+            // manifest 覆盖不到，与基座 include 同理必须显式纳入，否则改那个
+            // 模块不会让 mesh 声明键失效（命中后校验能兜底，但每次都要重编译）。
+            if (desc->resolve_declaration_includes)
+            {
+                int declaration_include_count = 0;
+                const char *const *declaration_includes =
+                    desc->resolve_declaration_includes(declaration_include_count);
+
+                std::string mode_includes;
+                for (int i = 0;
+                     declaration_includes && i < declaration_include_count;
+                     ++i)
+                {
+                    if (!declaration_includes[i] || !declaration_includes[i][0])
+                        continue;
+                    mode_includes += "#include \"";
+                    mode_includes += declaration_includes[i];
+                    mode_includes += "\"\n";
+                }
+
+                if (!mode_includes.empty())
+                    AccumulateGLSLIncludeClosure(
+                        base_sink, mode_includes.data(), mode_includes.size(), 0);
+            }
+
             // 发射器硬编码的基座 include：不属于任何模块依赖，必须显式纳入。
             if (!AccumulateMeshBaseClosure(base_sink, plan.vertex_node_config))
             {

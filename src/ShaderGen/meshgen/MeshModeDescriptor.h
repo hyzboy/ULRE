@@ -53,6 +53,15 @@ namespace hgl::graph::mtl
     using MeshStage3ProjectionResolver = const char *(*)(
         const VertexShaderNodeConfig &node_cfg) noexcept;
 
+    /// 模式专属资源里由 C++ 硬编码发射的 `#include` 清单（只给模块路径，
+    /// 不带 `#include` 语法）。声明键据此把它们连正文带传递闭包一并折进去。
+    ///
+    /// 这类 include 不经模块依赖，manifest 覆盖不到，与基座 include 同理必须
+    /// 显式登记；否则改那个模块不会让 mesh 声明键失效（命中后校验会兜底，
+    /// 但代价是每次都要重新编译 + 一条欠近似告警）。
+    /// 与 emit_custom_resources 一一对应：改发射器就必须同步改这里。
+    using MeshDeclarationIncludeResolver = const char *const *(*)(int &out_count);
+
     using MeshBodyEmitter = void (*)(
         std::string &out_glsl,
         const MeshShaderModeContext &ctx);
@@ -64,6 +73,7 @@ namespace hgl::graph::mtl
         MeshTopologyResolver resolve_topology;
         MeshDefinesEmitter emit_defines;
         MeshResourceEmitter emit_custom_resources;
+        MeshDeclarationIncludeResolver resolve_declaration_includes;
         MeshStage1Resolver resolve_stage1_input;
         MeshStage2MappingResolver resolve_stage2_mapping;
         MeshStage3ProjectionResolver resolve_stage3_projection;
@@ -119,6 +129,19 @@ namespace hgl::graph::mtl
         EmitCharQuadSSBODeclarations(out_glsl);
     }
 
+    /// EmitCharQuadSSBODeclarations 硬编码发射的模块，逐项与那个函数对齐。
+    inline const char *const *ResolveCharQuadDeclarationIncludes(int &out_count)
+    {
+        static const char *const kCharQuadIncludes[] =
+        {
+            "vertex/s1_text_char_quad.glsl",
+        };
+
+        out_count = static_cast<int>(
+            sizeof(kCharQuadIncludes) / sizeof(kCharQuadIncludes[0]));
+        return kCharQuadIncludes;
+    }
+
     // ── Stage 1 Input Resolvers ─────────────────────────────────────────
     inline const char *ResolveStandardStage1Input(
         const VertexShaderNodeConfig &node_cfg,
@@ -153,6 +176,7 @@ namespace hgl::graph::mtl
                 ResolveVertexPassthroughTopology,
                 EmitStandardMeshDefines,
                 nullptr,
+                nullptr,
                 ResolveStandardStage1Input,
                 VertexNodeConfigResolver::GetMappingModulePath,
                 VertexNodeConfigResolver::GetStage3ModulePath,
@@ -163,6 +187,7 @@ namespace hgl::graph::mtl
                 "LineQuad",
                 ResolveLineQuadTopology,
                 EmitStandardMeshDefines,
+                nullptr,
                 nullptr,
                 ResolveStandardStage1Input,
                 VertexNodeConfigResolver::GetMappingModulePath,
@@ -175,6 +200,7 @@ namespace hgl::graph::mtl
                 ResolveCharQuadTopology,
                 nullptr,
                 EmitCharQuadCustomResources,
+                ResolveCharQuadDeclarationIncludes,
                 nullptr,
                 nullptr,
                 nullptr,
