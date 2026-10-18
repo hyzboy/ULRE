@@ -167,13 +167,13 @@ namespace
 
     // 进程级单例（与 GetMaterialDefinitionFileRegistry 同一模式）。
     // 模式由环境变量 ULRE_SHADER_CACHE_MODE 控制：
-    //   readonly —— 只读（发布形态：配合 ShaderCooker 离线 cook 的产物分发，
-    //              缓存 miss 即材质构建失败，用于验证 cook 覆盖完整性）；
+    //   readonly —— 只读（发布形态：只接受缓存目录里已有的 SPV 产物，
+    //              缓存 miss 即材质构建失败，用于验证缓存覆盖完整性）；
     //   默认 BuildIfMissing（开发形态：命中免编译，未命中编译后回填）。
     // 缓存 key 含 GLSL 源码/资源契约/编译器 profile 哈希，任何输入变化自然
     // miss 并覆盖旧条目；损坏文件因 header/payload 哈希校验失败按 miss 处理。
     // ReadOnly 的 miss 硬失败（FinalizeShaderBuildContext 返回 false）是设计
-    // 行为——发布前必须用 ShaderCooker 完成全变体 cook。
+    // 行为——发布前必须先把全部变体的 SPV 写入缓存目录。
     mtl::ShaderArtifactStore *GetRuntimeShaderArtifactStore()
     {
         static const OSString cache_root = mtl::GetShaderCacheRootPath();
@@ -215,76 +215,11 @@ bool SelectCurrentSceneRenderTemplateRequest(
     const mtl::MaterialDefinitionBuildRequest &request,
     mtl::RenderTemplateRequest &out_request)
 {
-    const bool depth_purpose =
-        request.shader_program_purpose == mtl::ShaderProgramPurpose::DepthOnly
-     || request.shader_program_purpose == mtl::ShaderProgramPurpose::ShadowDepth;
-    const bool masked = mtl::ResolveMaterialRenderState(
-        definition, request.recipe).alpha_test;
-    const bool has_material_source =
-        definition.material_source_module_name
-     && definition.material_source_module_name[0];
-    const bool has_ntb_provider =
-        definition.ntb_module_name && definition.ntb_module_name[0];
-    const mtl::RenderTemplateID template_id = depth_purpose
-        ? (masked ? mtl::RenderTemplateID::ShadowCasterMasked
-                  : mtl::RenderTemplateID::ShadowCasterOpaque)
-        : (has_ntb_provider ? mtl::RenderTemplateID::ForwardLitShadowedAO
-           : (has_material_source ? mtl::RenderTemplateID::ForwardUnlit
-                                  : mtl::RenderTemplateID::Sky));
-    mtl::SceneRenderTemplateProfile scene_profile =
-        depth_purpose ? mtl::MakeShadowCasterProfile()
-        : (has_ntb_provider ? mtl::MakeIdentityForwardLitProfile()
-           : (has_material_source ? mtl::MakeForwardUnlitProfile()
-                                  : mtl::MakeSkyProfile()));
-
-    // 材质声明了 ambient module 时,覆盖 Lit profile 默认的
-    // indirect_sky_ambient(程序化天空环境光)——如 IBL 环境光照
-    if (!depth_purpose
-     && definition.ambient_module_name
-     && definition.ambient_module_name[0]
-     && definition.ambient_module_include
-     && definition.ambient_module_include[0])
-    {
-        for (uint32 i = 0; i < scene_profile.module_count; ++i)
-        {
-            if (scene_profile.roles[i] == mtl::ShaderModuleSlotRole::AmbientLightProvider)
-            {
-                scene_profile.module_names[i]   = definition.ambient_module_name;
-                scene_profile.include_paths[i] = definition.ambient_module_include;
-                break;
-            }
-        }
-    }
-
-    // [SkyRoute 诊断] 材质 → 渲染模板路由决策
-    {
-        AnsiString slots;
-        for (uint32 i = 0; i < scene_profile.module_count; ++i)
-        {
-            if (i) slots += ",";
-            slots += AnsiString(mtl::GetShaderModuleSlotRoleName(
-                          scene_profile.roles[i]))
-                   + "=" + scene_profile.module_names[i];
-        }
-        GLogInfo("[SkyRoute] id=%s depth=%d masked=%d has_mtl_src=%d has_ntb=%d -> template=%s slots(%s)",
-                 definition.definition_id.c_str(),
-                 int(depth_purpose), int(masked),
-                 int(has_material_source), int(has_ntb_provider),
-                 mtl::GetRenderTemplateName(template_id),
-                 slots.c_str());
-    }
-    mtl::RenderTemplateValidationDiagnostic diagnostic{};
-    if (scene_profile.module_count > 0
-     && mtl::ResolveSceneRenderTemplateRequest(
-            template_id, ShaderStage::Fragment, scene_profile,
-            out_request, diagnostic))
-        return true;
-
-    GLogError(
-        "[ShaderProgramManager] Scene render route selection failed: id=%s error=%s",
-        definition.definition_id.c_str(),
-        mtl::GetRenderTemplateValidationErrorName(diagnostic.error));
-    return false;
+    // 路由与 ambient 覆盖只有一份实现(ShaderGen),运行时与离线回归共用,
+    // 避免 SceneGraph / 工具 / 测试各自复制判定逻辑而逐渐分叉。
+    return mtl::SelectSceneRenderTemplateRequest(
+        definition, request.shader_program_purpose, request.recipe,
+        out_request);
 }
 
 GRAPH_MODULE_CONSTRUCT(ShaderProgramManager)

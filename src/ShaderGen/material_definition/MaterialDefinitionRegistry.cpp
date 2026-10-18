@@ -7,6 +7,7 @@
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/log/Log.h>
 #include <cstdlib>
@@ -95,6 +96,94 @@ bool AppendMaterialRenderTemplateRoots(
 
     RenderTemplateValidationDiagnostic diagnostic{};
     return appended && ValidateRenderTemplateRequest(request, diagnostic);
+}
+
+bool SelectSceneRenderTemplateRequest(
+    const MaterialDefinition &definition,
+    const ShaderProgramPurpose purpose,
+    const MaterialRecipe &recipe,
+    RenderTemplateRequest &out_request)
+{
+    const bool depth_purpose =
+        purpose == ShaderProgramPurpose::DepthOnly
+     || purpose == ShaderProgramPurpose::ShadowDepth;
+    const bool masked =
+        ResolveMaterialRenderState(definition, recipe).alpha_test;
+    const bool has_material_source =
+        definition.material_source_module_name
+     && definition.material_source_module_name[0];
+    const bool has_ntb_provider =
+        definition.ntb_module_name && definition.ntb_module_name[0];
+    const RenderTemplateID template_id = depth_purpose
+        ? (masked ? RenderTemplateID::ShadowCasterMasked
+                  : RenderTemplateID::ShadowCasterOpaque)
+        : (has_ntb_provider ? RenderTemplateID::ForwardLitShadowedAO
+           : (has_material_source ? RenderTemplateID::ForwardUnlit
+                                  : RenderTemplateID::Sky));
+    SceneRenderTemplateProfile scene_profile = depth_purpose
+        ? MakeShadowCasterProfile()
+        : (has_ntb_provider ? MakeIdentityForwardLitProfile()
+           : (has_material_source ? MakeForwardUnlitProfile()
+                                  : MakeSkyProfile()));
+
+    // 材质声明了 ambient module 时，覆盖 Lit profile 默认的
+    // indirect_sky_ambient（程序化天空环境光）——如 IBL 环境光照。
+    // include 路径不来自配置：清空后由模板校验按注册表来源规范化
+    // （RenderTemplate.cpp ResolveModuleRoot），与 surface_module_name 同规则。
+    if (!depth_purpose
+     && definition.ambient_module_name
+     && definition.ambient_module_name[0])
+    {
+        bool ambient_applied = false;
+        for (uint32 index = 0; index < scene_profile.module_count; ++index)
+        {
+            if (scene_profile.roles[index]
+                != ShaderModuleSlotRole::AmbientLightProvider)
+                continue;
+            scene_profile.module_names[index] = definition.ambient_module_name;
+            scene_profile.include_paths[index].Clear();
+            ambient_applied = true;
+            break;
+        }
+        if (!ambient_applied)
+            GLogWarning(
+                "[ShaderGen] ambient_module_name ignored: id=%s template=%s "
+                "has no ambient_light_provider slot",
+                definition.definition_id.c_str(),
+                GetRenderTemplateName(template_id));
+    }
+
+    // [SkyRoute 诊断] 材质 → 渲染模板路由决策
+    {
+        AnsiString slots;
+        for (uint32 index = 0; index < scene_profile.module_count; ++index)
+        {
+            if (index)
+                slots += ",";
+            slots += AnsiString(GetShaderModuleSlotRoleName(
+                          scene_profile.roles[index]))
+                   + "=" + scene_profile.module_names[index];
+        }
+        GLogInfo("[SkyRoute] id=%s depth=%d masked=%d has_mtl_src=%d has_ntb=%d -> template=%s slots(%s)",
+                 definition.definition_id.c_str(),
+                 int(depth_purpose), int(masked),
+                 int(has_material_source), int(has_ntb_provider),
+                 GetRenderTemplateName(template_id),
+                 slots.c_str());
+    }
+
+    RenderTemplateValidationDiagnostic diagnostic{};
+    if (scene_profile.module_count > 0
+     && ResolveSceneRenderTemplateRequest(
+            template_id, ShaderStage::Fragment, scene_profile,
+            out_request, diagnostic))
+        return true;
+
+    GLogError(
+        "[ShaderGen] Scene render route selection failed: id=%s error=%s",
+        definition.definition_id.c_str(),
+        GetRenderTemplateValidationErrorName(diagnostic.error));
+    return false;
 }
 
 VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(

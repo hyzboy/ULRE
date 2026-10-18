@@ -62,6 +62,20 @@ bool AppendMaterialRenderTemplateRoots(
     const MaterialDefinition &definition,
     RenderTemplateRequest &request) noexcept;
 
+// Render preparation: selects the scene render template from material data and
+// overwrites the AmbientLightProvider slot when the definition declares
+// `ambient_module_name` (never for depth/shadow purposes). The include path is
+// NOT taken from configuration — the slot is left empty so that template
+// validation canonicalizes it from the module registry.
+//
+// Runtime (ShaderProgramManager) and the document/offline regression tools must
+// share this single implementation; do not duplicate the routing rules.
+bool SelectSceneRenderTemplateRequest(
+    const MaterialDefinition &definition,
+    ShaderProgramPurpose purpose,
+    const MaterialRecipe &recipe,
+    RenderTemplateRequest &out_request);
+
 struct MaterialResolvedVertexABI
 {
     VkFormat position_format = VK_FORMAT_UNDEFINED;

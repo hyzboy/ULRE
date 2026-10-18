@@ -62,16 +62,16 @@
 
 1. `BuildResolvedRecipe` 从 PrimitiveComponent 收集有效 recipe；
 2. `TryGetMaterialDefinitionByID("Lit")` 拿到定义；
-3. `SelectCurrentSceneRenderTemplateRequest`（`src/SceneGraph/module/ShaderProgramManager.cpp`）做**路由决策**：Lit 有 `ntb_module_name` → 选 `ForwardLitShadowedAO` 模板，并填 `MakeIdentityForwardLitProfile()` 的场景槽位（`src/ShaderGen/template/SceneRenderTemplateResolver.cpp`）：
+3. `SelectCurrentSceneRenderTemplateRequest`（`src/SceneGraph/module/ShaderProgramManager.cpp`）做**路由决策**——判定只有一份实现：`mtl::SelectSceneRenderTemplateRequest`（`src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp`，运行时与文档生产回归工具共用），SceneGraph 侧仅转发。Lit 有 `ntb_module_name` → 选 `ForwardLitShadowedAO` 模板，并填 `MakeIdentityForwardLitProfile()` 的场景槽位（`src/ShaderGen/template/SceneRenderTemplateResolver.cpp`）：
    - Surface → `surface/material_surface.glsl`
    - 直接光 → `lighting/direct_cook_torrance_pbr.glsl`
    - 天光（SkyProvider）→ `sky/sky_atmosphere.glsl`
    - 阴影 → `shadow/pcf_shadow.glsl`
-   - 环境光 → `lighting/indirect_sky_ambient.glsl`
+   - 环境光 → `lighting/indirect_sky_ambient.glsl`（toml 声明 `ambient_module_name` 时被覆盖，如 `lit_ibl.material.toml` 的 `indirect_ibl`；只写注册名，include 路径由注册表来源解析）
    - AO → `ao/identity.glsl`
    - 光照模型 → `lighting/forward_pbr.glsl`
    - 输出策略 → `compositor/forward_lighting.glsl`
-4. `AppendMaterialRenderTemplateRoots` 把 toml 来的 `pbr_surface_source` 和 `ntb_tangent_vbo_normalmap` 作为两个 **name-only 材质能力槽位**追加进模板请求；Sky 模板的 surface 名字覆盖也集中在此，运行时、Cooker 和文档生产共用；
+4. `AppendMaterialRenderTemplateRoots` 把 toml 来的 `pbr_surface_source` 和 `ntb_tangent_vbo_normalmap` 作为两个 **name-only 材质能力槽位**追加进模板请求；Sky 模板的 surface 名字覆盖也集中在此，运行时与文档生产共用；
 5. `AcquireShaderProgram(request)`：先 `NormalizeRecipe`（把定义的默认渲染状态写回 recipe，之后 definition 退出参与），再 `BuildContextFromRequest` → `BuildGenericMaterial`。
 
 ## 四、ShaderGen 内部：BuildGenericMaterial 五阶段
@@ -127,7 +127,9 @@ PrimitiveComponent ──每帧──▶ RenderPrimitiveCollectSystem
       │ BuildResolvedRecipe → MaterialRecipe (Layer 2)
       ▼
 SelectCurrentSceneRenderTemplateRequest
-  (有 ntb_module_name → ForwardLitShadowedAO + IdentityForwardLitProfile)
+  → mtl::SelectSceneRenderTemplateRequest (唯一实现,ShaderGen)
+  (有 ntb_module_name → ForwardLitShadowedAO + IdentityForwardLitProfile
+   ambient_module_name 覆盖 AmbientLightProvider 槽)
       ▼
 ShaderProgramManager::AcquireShaderProgram
       │ NormalizeRecipe (Layer 2 合并 Layer 1 默认值)
@@ -150,6 +152,5 @@ BuildGenericMaterial (ShaderGen)
 
 ## 附：调试入口
 
-- 设 `ULRE_DUMP_GLSL=1`（Debug 构建；读取点 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:77`）可导出拼装后的最终 mesh/fs GLSL；
-- `src/Tools/ShaderGen/ShaderCooker.cpp` 可离线 cook 全变体供发布形态使用；
-- `ULRE_SHADER_CACHE_MODE=readonly` 强制只读缓存（miss 即失败），用于验证 cook 覆盖完整性。
+- `ULRE_DUMP_GLSL=1`（Debug 构建；读取点 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:77`）可导出拼装后的最终 mesh/fs GLSL；
+- `ULRE_SHADER_CACHE_MODE=readonly` 强制只读缓存（miss 即失败），用于验证缓存覆盖完整性。

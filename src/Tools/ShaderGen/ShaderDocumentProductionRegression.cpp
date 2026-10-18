@@ -93,33 +93,8 @@ namespace
     {
         const MaterialRecipe effective_recipe =
             recipe ? *recipe : MaterialRecipe{};
-        const bool depth_purpose =
-            purpose == ShaderProgramPurpose::DepthOnly
-         || purpose == ShaderProgramPurpose::ShadowDepth;
-        const bool masked = ResolveMaterialRenderState(
-            definition, effective_recipe).alpha_test;
-        const bool has_material_source =
-            definition.material_source_module_name
-         && definition.material_source_module_name[0];
-        const bool has_ntb_provider =
-            definition.ntb_module_name && definition.ntb_module_name[0];
-        const RenderTemplateID template_id = depth_purpose
-            ? (masked ? RenderTemplateID::ShadowCasterMasked
-                      : RenderTemplateID::ShadowCasterOpaque)
-            : (has_ntb_provider ? RenderTemplateID::ForwardLitShadowedAO
-               : (has_material_source ? RenderTemplateID::ForwardUnlit
-                                      : RenderTemplateID::Sky));
-        const SceneRenderTemplateProfile profile = depth_purpose
-            ? MakeShadowCasterProfile()
-            : (has_ntb_provider ? MakeIdentityForwardLitProfile()
-               : (has_material_source ? MakeForwardUnlitProfile()
-                                      : MakeSkyProfile()));
-
-        RenderTemplateValidationDiagnostic diagnostic{};
-        return profile.module_count > 0
-            && ResolveSceneRenderTemplateRequest(
-                template_id, ShaderStage::Fragment, profile,
-                out_request, diagnostic)
+        return SelectSceneRenderTemplateRequest(
+                   definition, purpose, effective_recipe, out_request)
             && AppendMaterialRenderTemplateRoots(definition, out_request);
     }
 
@@ -486,6 +461,22 @@ namespace
                 return false;
             }
         }
+        if (definition.ambient_module_name && definition.ambient_module_name[0])
+        {
+            const char *name = definition.ambient_module_name;
+            const auto *source = GetShaderCodeModuleRegistry().FindFileByName(name);
+            ShaderDocumentDiagnostics diagnostics;
+            AnsiString fragment_text;
+            if (!source
+             || !capture.fragment_document.Serialize(fragment_text, diagnostics)
+             || CountText(fragment_text,
+                    (AnsiString("#include \"") + source->include_path + "\"").c_str()) != 1)
+            {
+                GLogError(u8"Fragment document does not include the ambient provider: %s",
+                          name);
+                return false;
+            }
+        }
         bool valid = VerifyStage(
             fixture.name, "mesh", capture.mesh_source_document,
             capture.mesh_final_document,
@@ -590,6 +581,10 @@ int main(const int argc, char **argv)
         { "sky-cube", "SkyCube", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
         { "sky-minimal", "SkyMinimal", ShaderProgramPurpose::ForwardColor,
+          true, false, false, false },
+        // IBL 环境光照:验证 ambient_module_name 覆盖 Lit 默认
+        // indirect_sky_ambient 在 smoke 路径(ctest)下确实生效。
+        { "lit-ibl", "LitIBL", ShaderProgramPurpose::ForwardColor,
           true, false, false, false }
     };
     static const Fixture full_fixtures[] =
