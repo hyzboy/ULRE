@@ -395,7 +395,15 @@ namespace
             && valid;
     }
 
-    bool RunFixture(const Fixture &fixture)
+    /// 按 fixture 组装完整构建请求并执行一次编译。
+    /// defer_finalize=true：只算到 ProgramLink（含声明键），不跑 SPV。
+    /// RunFixture 与 VerifyDeclarationKeyDeterminism 共用，保证两者比对的
+    /// 是同一份输入。
+    ShaderBuildContext *BuildFixtureContext(
+        const Fixture &fixture,
+        MaterialShaderDocumentCapture *capture,
+        MaterialDefinition *out_definition = nullptr,
+        RenderTemplateID *out_template_id = nullptr)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(fixture.material_id, definition))
@@ -403,7 +411,7 @@ namespace
             GLogError(
                 "[ShaderDocumentProductionRegression] fixture=%s cannot resolve material=%s",
                 fixture.name, fixture.material_id);
-            return false;
+            return nullptr;
         }
 
         GeometryVertexFormat geometry;
@@ -413,20 +421,19 @@ namespace
                     VertexSemantic::Position,
                     fixture.vec2_position ? VF_V2F : VF_V3F,
                     0, 0))
-                return false;
+                return nullptr;
             const bool requires_ntb =
                 definition.ntb_module_name && definition.ntb_module_name[0];
             if (requires_ntb
              && (!geometry.Add(VertexSemantic::TexCoord, VF_V2F, 0, 0)
               || !geometry.Add(VertexSemantic::Normal, VF_V3F, 0, 0)))
-                return false;
+                return nullptr;
             if (fixture.include_normal
              && !requires_ntb
              && !geometry.Add(VertexSemantic::Normal, VF_V3F, 0, 0))
-                return false;
+                return nullptr;
         }
 
-        MaterialShaderDocumentCapture capture{};
         MaterialDefinitionBuildRequest request{};
         request.recipe.mtl_def_id = definition.definition_id;
         request.recipe.render_state_overrides.has_alpha_test = fixture.alpha_test;
@@ -445,11 +452,24 @@ namespace
             GLogError(
                 "[ShaderDocumentProductionRegression] fixture=%s cannot resolve template request",
                 fixture.name);
-            return false;
+            return nullptr;
         }
 
+        if (out_definition)
+            *out_definition = definition;
+        if (out_template_id)
+            *out_template_id = request.render_template_request.template_id;
+
+        return CreateMaterialFromDefinition(nullptr, definition, request, capture);
+    }
+
+    bool RunFixture(const Fixture &fixture)
+    {
+        MaterialShaderDocumentCapture capture{};
+        MaterialDefinition definition{};
+        RenderTemplateID template_id = RenderTemplateID::Unknown;
         AutoDelete<ShaderBuildContext> context(
-            CreateMaterialFromDefinition(nullptr, definition, request, &capture));
+            BuildFixtureContext(fixture, &capture, &definition, &template_id));
         if (!context || !context->HasProgramLink()
          || !context->HasProgramArtifactMetadata())
         {
@@ -461,7 +481,7 @@ namespace
         }
 
         const ShaderLinkSpec &link = context->GetProgramLink();
-        if (request.render_template_request.template_id == RenderTemplateID::Sky)
+        if (template_id == RenderTemplateID::Sky)
         {
             const char *name = definition.surface_module_name
                 ? definition.surface_module_name : "sky_minimal_surface";
@@ -655,6 +675,61 @@ namespace
         return true;
     }
 
+    /// 声明键确定性：同一份输入算两次，ProgramLink 必须逐位相同。
+    ///
+    /// 这是「命中判定只依赖 emit 之前可算的字段」的前提。键若本身不稳定
+    /// （典型来源：把含 padding 的结构体整块折进 FNV1a、或折叠顺序依赖
+    /// 容器迭代序），缓存就永远不命中，而只跑一次的文档测试看不出来。
+    bool VerifyDeclarationKeyDeterminism(
+        const Fixture *fixtures, const int count)
+    {
+        for (int i = 0; i < count; ++i)
+        {
+            const Fixture &fixture = fixtures[i];
+
+            MaterialShaderDocumentCapture capture_a{};
+            AutoDelete<ShaderBuildContext> a(
+                BuildFixtureContext(fixture, &capture_a));
+            MaterialShaderDocumentCapture capture_b{};
+            AutoDelete<ShaderBuildContext> b(
+                BuildFixtureContext(fixture, &capture_b));
+            if (!a || !a->HasProgramLink() || !b || !b->HasProgramLink())
+            {
+                GLogError(
+                    "[ShaderDocumentProductionRegression] fixture=%s determinism "
+                    "probe could not build twice",
+                    fixture.name);
+                return false;
+            }
+
+            const ShaderLinkSpec &link_a = a->GetProgramLink();
+            const ShaderLinkSpec &link_b = b->GetProgramLink();
+            if (!(link_a.mesh_stage == link_b.mesh_stage)
+             || !(link_a.fragment_stage == link_b.fragment_stage)
+             || !(link_a.BuildKey() == link_b.BuildKey()))
+            {
+                GLogError(
+                    "[ShaderDocumentProductionRegression] fixture=%s declaration key "
+                    "is not deterministic: mesh=%llu/%llu fragment=%llu/%llu "
+                    "program=%llu/%llu",
+                    fixture.name,
+                    static_cast<unsigned long long>(link_a.mesh_stage.GetDigest()),
+                    static_cast<unsigned long long>(link_b.mesh_stage.GetDigest()),
+                    static_cast<unsigned long long>(link_a.fragment_stage.GetDigest()),
+                    static_cast<unsigned long long>(link_b.fragment_stage.GetDigest()),
+                    static_cast<unsigned long long>(link_a.BuildKey().GetDigest()),
+                    static_cast<unsigned long long>(link_b.BuildKey().GetDigest()));
+                return false;
+            }
+        }
+
+        GLogInfo(
+            "[ShaderDocumentProductionRegression] declaration key determinism: "
+            "%d fixtures stable across two builds",
+            count);
+        return true;
+    }
+
     bool ParseFull(const int argc, char **argv, bool &out_full)
     {
         if (argc == 1)
@@ -786,6 +861,9 @@ int main(const int argc, char **argv)
         if (!RunFixture(fixtures[i]))
             return 1;
     }
+
+    if (!VerifyDeclarationKeyDeterminism(fixtures, fixture_count))
+        return 8;
 
     GLogInfo(
         "[ShaderDocumentProductionRegression] %s production fixtures passed",
