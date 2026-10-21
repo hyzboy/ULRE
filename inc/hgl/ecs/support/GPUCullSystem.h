@@ -36,6 +36,13 @@ namespace hgl::ecs
         GPUCullSystem();
         ~GPUCullSystem();
 
+        /// 显式释放（**必须**由 `ECSContext::Shutdown` 在 GraphicsContext 仍存活时调用）：
+        /// 那时设备与 ShaderProgramManager 都还在，`vkDestroyPipeline` / `vkDestroyBuffer`
+        /// 才合法。AppFramework 的拆除序是「ECSContext::Shutdown → GraphicsContext::Shutdown
+        /// → delete ECSContext」⇒ 拖到析构才释放会踩已销毁的模块/设备。
+        /// 幂等（成员释放后置空）；析构只做兜底调用。
+        void Shutdown() override;
+
         void Update(float delta_time) override;
 
         // 初始化：创建 compute pipeline 和输出 buffer
@@ -224,7 +231,7 @@ namespace hgl::ecs
         bool CreateOutputBuffers();
 
         /// 一次性创建派发资源（T3g）：队列（fence 环 = 帧槽数）+ 命令缓冲环。
-        /// 泄漏修复的本体：这些对象**只在这里 new 一次**，析构显式释放。
+        /// 泄漏修复的本体：这些对象**只在这里 new 一次**，`Shutdown()` 显式释放。
         bool CreateDispatchResources();
 
     private:

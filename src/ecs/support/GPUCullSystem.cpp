@@ -96,25 +96,53 @@ namespace hgl::ecs
         SetExecutionPhase(ExecutionPhase::RenderFrameSync);
     }
 
-    GPUCullSystem::~GPUCullSystem()
+    void GPUCullSystem::Shutdown()
     {
+        // 幂等：每个成员释放后置空，Shutdown 与析构可重复进入（ECSContext 的 active
+        // 路径先调 Shutdown 再销毁系统对象，析构里的调用此时全是空操作）。
+        //
+        // compute_pipeline_ 的所有权：`ShaderProgramManager::CreateComputePipeline` 走的是
+        // `device->CreateComputePipeline()` 的裸 new（owns_pipeline_layout=true，专用
+        // VkPipelineLayout 随它一起销毁）。ShaderProgramManager 只缓存 **ShaderModule**，
+        // **不缓存也不持有** ComputePipeline ⇒ 必须由这里 delete，否则 VkPipeline 与
+        // VkPipelineLayout 双双泄漏（旧注释「由 MaterialManager 管理」是错的）。
+        const bool had_pipeline = (compute_pipeline_ != nullptr);
+        SAFE_CLEAR(compute_pipeline_);
+
         // 派发资源显式释放（T3g 泄漏修复的另一半：与 CreateDispatchResources 一次
         // new 对应；fence/cmd 的最终归属由 DeviceQueue/DeviceBuffer 析构链处理）
         SAFE_CLEAR(cull_queue_);
         for (graph::ComputeCmdBuffer *&cmd : cull_cmds_)
             SAFE_CLEAR(cmd);
 
-        if (visible_indices_buffer_) delete visible_indices_buffer_;
-        if (indirect_commands_buffer_) delete indirect_commands_buffer_;
-        if (draw_count_buffer_) delete draw_count_buffer_;
-        if (l2w_out_buffer_) delete l2w_out_buffer_;
-        if (cmds_out_buffer_) delete cmds_out_buffer_;
-        if (mtl_out_buffer_) delete mtl_out_buffer_;
-        if (batch_tag_buffer_) delete batch_tag_buffer_;
-        if (batch_info_buffer_) delete batch_info_buffer_;
-        if (batch_counter_buffer_) delete batch_counter_buffer_;
-        // compute_pipeline_ 由 MaterialManager 管理，不手动删除
+        SAFE_CLEAR(visible_indices_buffer_);
+        SAFE_CLEAR(indirect_commands_buffer_);
+        SAFE_CLEAR(draw_count_buffer_);
+        SAFE_CLEAR(l2w_out_buffer_);
+        SAFE_CLEAR(cmds_out_buffer_);
+        SAFE_CLEAR(mtl_out_buffer_);
+        SAFE_CLEAR(batch_tag_buffer_);
+        SAFE_CLEAR(batch_info_buffer_);
+        SAFE_CLEAR(batch_counter_buffer_);
+
+        // 映射指针随 buffer 一起失效，必须同时复位（否则重建后仍指向旧映射）
+        batch_tag_cpu_ = nullptr;
+        batch_tag_cpu_slot_ = UINT32_MAX;
+        batch_counter_cpu_ = nullptr;
+
+        initialized_ = false;
+
+        GLogInfo(u8"[GPUCullSystem] Shutdown 完成：compute pipeline %s，派发资源与缓冲已释放",
+                 had_pipeline ? u8"已销毁" : u8"无需销毁");
     }
+
+    GPUCullSystem::~GPUCullSystem()
+    {
+        // 兜底：ECSContext 的 inactive 路径直接清系统容器、不经 System::Shutdown；
+        // 那时成员已在 Shutdown 里置空（若之前调过），重复调用不会碰设备。
+        Shutdown();
+    }
+
     bool GPUCullSystem::Initialize(ECSContext* context)
     {
         GLogInfo(u8"[GPUCullSystem] Initialize started (deferred)");
