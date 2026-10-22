@@ -111,10 +111,14 @@ public: //Shader
                                                   const uint32_t *spv_data,
                                                   const size_t spv_size);
 
-public: //Compute（直接源码路径，不走 ShaderGen 生成器）
+public: //Compute
 
-    /** 编译 compute GLSL 源码并创建 ShaderModule（按 name 缓存，与 graphics 模块同一缓存） */
-    const ShaderModule *CreateComputeShaderModule(const AnsiString &shader_module_name, const AnsiString &glsl_source);
+    /** 编译 compute GLSL 源码并创建 ShaderModule（按 name 缓存，与 graphics 模块同一缓存）。
+     *  push_constant_size 只用于把产物登记进缓存清单（发行形态靠它校验 layout 与 SPV 一致），
+     *  不参与 ShaderModule 创建。生成器不在编译（ULRE_ENABLE_SHADERGEN=0）时硬失败。 */
+    const ShaderModule *CreateComputeShaderModule(const AnsiString &shader_module_name,
+                                                  const AnsiString &glsl_source,
+                                                  const uint32_t push_constant_size = 0);
 
     /**
      * 直接源码创建 compute 管线：GLSL 源码 → 编译 → ShaderModule → ComputePipeline
@@ -123,10 +127,33 @@ public: //Compute（直接源码路径，不走 ShaderGen 生成器）
      *   layout(buffer_reference, ...) 解引用——不再有第三集用户描述符集
      *  push constant：COMPUTE stage、offset 0、大小由 push_constant_size 指定（≤128B，spec 保证值）
      * 返回的 ComputePipeline 由调用方 delete（析构时连带销毁专用 layout，不影响共享全局 layout）
+     *
+     * 仅在生成器在编时有意义：它现编 GLSL，并把结果顺手烘焙进 shader-cache，
+     * 使同一份工程代码在开发形态跑一次就留下发行形态要用的 compute 产物。
      */
     ComputePipeline *CreateComputePipeline(const AnsiString &name,
                                            const AnsiString &glsl_source,
                                            const uint32_t push_constant_size = 0);
+
+    /**
+     * 预烘焙 SPV 创建 compute 管线（发行形态主路径）：
+     *   shader-cache/compute_manifest.pmf 按 name 查表 → 读 stage SPV → ShaderModule
+     *   → ComputePipeline。
+     *
+     * 未命中一律返回 nullptr，并在日志里说清是「清单缺项」还是「SPV 缺失/损坏」。
+     * 清单记录的 push_constant_size 与本参数不一致时同样拒绝 —— 那代表 layout 与
+     * 烘焙侧约定脱节，继续建管线只会得到运行期越界访问。
+     */
+    ComputePipeline *CreateComputePipelineFromCache(const AnsiString &name,
+                                                    const uint32_t push_constant_size = 0);
+
+private:
+    /** 拿 ShaderModule 之后的公共尾段：layout → VkPipeline。两条 compute 路径（现编/查表）
+     *  只在「怎么拿到 ShaderModule」上不同，其余必须完全一致 —— 否则两条路建出来的
+     *  管线布局会分叉。 */
+    ComputePipeline *BuildComputePipeline(const AnsiString &name,
+                                          const ShaderModule *sm,
+                                          const uint32_t push_constant_size);
 
 public: //ShaderProgram
 

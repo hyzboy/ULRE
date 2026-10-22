@@ -16,6 +16,7 @@
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialShaderCompiler.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
+#include<hgl/mtl/ShaderComputeProgramManifest.h>
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/ShaderProgramBuildBackend.h>
@@ -350,10 +351,11 @@ const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const mtl::S
                                      spv_size);
 }
 
-// ── compute：直接源码路径（不走 ShaderGen 生成器）──────────────────────────────
+// ── compute：两条来源（现编 GLSL / 查表预烘焙 SPV）共用一个管线尾段 ─────────────
 
 const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiString &shader_module_name,
-                                                                    const AnsiString &glsl_source)
+                                                                    const AnsiString &glsl_source,
+                                                                    const uint32_t push_constant_size)
 {
     if(shader_module_name.IsEmpty()||glsl_source.IsEmpty())
         return(nullptr);
@@ -369,22 +371,32 @@ const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiSt
     if(!sci.CompileFinalGLSLToSPV())
         return(nullptr);
 
+    // 顺手烘焙：开发形态每跑一次就把 compute 产物写进 shader-cache，
+    // 发行形态才有 compute_manifest 可查。只读 store（ULRE_SHADER_CACHE_MODE=readonly）
+    // 下 Record 内部直接拒绝，不会污染既有缓存。
+    if(mtl::ShaderArtifactStore *store=GetRuntimeShaderArtifactStore())
+        mtl::RecordShaderComputeProgramArtifact(*store,
+                                                shader_module_name.c_str(),
+                                                sci.GetSPVData(),
+                                                static_cast<uint64>(sci.GetSPVSize()),
+                                                push_constant_size);
+
     return(CreateShaderModule(shader_module_name,&sci));
 #else
-    // 发行形态没有 GLSL→SPV 编译器：compute 也必须走预编译 SPV（后续阶段补齐
-    // compute 的 manifest 装载）。此处硬失败而不是悄悄回落。
+    // 发行形态没有 GLSL→SPV 编译器。走到这里说明调用方还在用源码接口，
+    // 应当改调 CreateComputePipelineFromCache。
     GLogError(u8"[ShaderProgramManager] 生成器已编译出构建（ULRE_ENABLE_SHADERGEN=0），"
                 u8"无法在运行时编译 compute GLSL：%s",shader_module_name.c_str());
     return(nullptr);
 #endif
 }
 
-ComputePipeline *ShaderProgramManager::CreateComputePipeline(const AnsiString &name,
-                                                             const AnsiString &glsl_source,
-                                                             const uint32_t push_constant_size)
+ComputePipeline *ShaderProgramManager::BuildComputePipeline(const AnsiString &name,
+                                                            const ShaderModule *sm,
+                                                            const uint32_t push_constant_size)
 {
     VulkanDevice *device=GetDevice();
-    if(!device)return(nullptr);
+    if(!device||!sm)return(nullptr);
 
     // 全局 Bindless 集必须已由 GraphicsContext::Init 就绪（Scene 集已退场）
     if(bindless_layout_==VK_NULL_HANDLE)
@@ -400,9 +412,6 @@ ComputePipeline *ShaderProgramManager::CreateComputePipeline(const AnsiString &n
                   push_constant_size,name.c_str());
         return(nullptr);
     }
-
-    const ShaderModule *sm=CreateComputeShaderModule(name,glsl_source);
-    if(!sm)return(nullptr);
 
     // BDA 终态：compute 管线与全材质布局同构——只剩 Bindless(0) 一个集合（Scene 集已退场），
     // 且带 DESCRIPTOR_BUFFER 位（spec 要求同一 pipeline layout 内的 set layout「全带或全不带」，
@@ -447,6 +456,60 @@ ComputePipeline *ShaderProgramManager::CreateComputePipeline(const AnsiString &n
         vkDestroyPipelineLayout(device->GetDevice(),layout,nullptr);
 
     return(cp);
+}
+
+ComputePipeline *ShaderProgramManager::CreateComputePipeline(const AnsiString &name,
+                                                             const AnsiString &glsl_source,
+                                                             const uint32_t push_constant_size)
+{
+    return BuildComputePipeline(name,
+                                CreateComputeShaderModule(name,glsl_source,push_constant_size),
+                                push_constant_size);
+}
+
+ComputePipeline *ShaderProgramManager::CreateComputePipelineFromCache(const AnsiString &name,
+                                                                      const uint32_t push_constant_size)
+{
+    VulkanDevice *device=GetDevice();
+    if(!device)return(nullptr);
+
+    if(name.IsEmpty())
+        return(nullptr);
+
+    if(ShaderModule *cached=shader_module_cache.FindName(ShaderStage::Compute,name))
+        return BuildComputePipeline(name,cached,push_constant_size);
+
+    mtl::ShaderArtifactStore *store=GetRuntimeShaderArtifactStore();
+    if(!store)
+    {
+        GLogError(u8"[ShaderProgramManager] no shader artifact store, cannot load compute program: %s",
+                  name.c_str());
+        return(nullptr);
+    }
+
+    ValueArray<uint8> spv;
+    uint32_t baked_push_constant_size=0;
+
+    if(!mtl::LoadShaderComputeProgramArtifact(*store,name.c_str(),spv,&baked_push_constant_size))
+        return(nullptr);
+
+    // 布局契约校验放在建管线之前：push constant 大小不一致意味着 SPV 里的偏移
+    // 与本进程下发的偏移脱节，建出来就是越界读。
+    if(baked_push_constant_size!=push_constant_size)
+    {
+        GLogError(u8"[ShaderProgramManager] compute program %s push constant size mismatch: baked=%u requested=%u",
+                  name.c_str(),baked_push_constant_size,push_constant_size);
+        return(nullptr);
+    }
+
+    const ShaderModule *sm=CreateShaderModuleFromSPV(name,
+                                                    VK_SHADER_STAGE_COMPUTE_BIT,
+                                                    reinterpret_cast<const uint32_t *>(spv.GetData()),
+                                                    static_cast<size_t>(spv.GetCount()));
+    if(!sm)
+        return(nullptr);
+
+    return BuildComputePipeline(name,sm,push_constant_size);
 }
 
 ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(

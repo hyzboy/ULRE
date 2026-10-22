@@ -21,6 +21,9 @@
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
 #include <hgl/log/Log.h>
+// 生成器开关（`#if ULRE_ENABLE_SHADERGEN`）的唯一定义处：ON 时头内默认 1，
+// OFF 时 CMake 全局下发 0。必须显式包含，不能靠间接包含。
+#include <hgl/common/RenderOptions.h>
 #include <hgl/time/Time.h>
 
 namespace hgl::ecs
@@ -61,6 +64,10 @@ namespace hgl::ecs
 
         // 引擎合规文件读取（先例：ShaderCodeModuleRegistry::LoadFileContent ——
         // 同一读法与缓冲口径），路径由 ShaderLibrary 单源解析（禁绝对路径）。
+        //
+        // 只在开发形态存在：发行包不带 .glsl，无从读取。整个函数一起 #if 掉，
+        // 免得 OFF 形态留下一个「永远没人调用」的内部链接函数。
+    #if ULRE_ENABLE_SHADERGEN
         AnsiString LoadShaderSource(const std::string &path)
         {
             hgl::io::OpenFileInputStream opener(hgl::ToOSString(path.c_str()));
@@ -84,6 +91,7 @@ namespace hgl::ecs
             buffer[size_t(size)] = 0;
             return AnsiString(buffer.data(), int(size));
         }
+    #endif//ULRE_ENABLE_SHADERGEN
     }
 
     GPUCullSystem::GPUCullSystem()
@@ -215,6 +223,10 @@ namespace hgl::ecs
             return false;
         }
 
+        const AnsiString kProgramName("GPUCullSystem.Pipeline");
+
+    #if ULRE_ENABLE_SHADERGEN
+        // 开发形态：GLSL 单源是唯一事实源，现编并顺手把 SPV 烘焙进 shader-cache。
         // 加载着色器源码（ShaderLibrary 单源路径，禁绝对路径）
         const std::string shader_path =
             graph::mtl::GetShaderLibraryPath() + "/ecs/entity_gpu_cull.glsl";
@@ -228,12 +240,19 @@ namespace hgl::ecs
 
         GLogInfo(u8"[GPUCullSystem] Shader source loaded, size=%d", shader_source.Length());
 
-        // 创建 compute pipeline
         compute_pipeline_ = shader_manager->CreateComputePipeline(
-            "GPUCullSystem.Pipeline",
+            kProgramName,
             shader_source,
             sizeof(CullPushConstants)
         );
+    #else
+        // 发行形态：没有生成器，也没有 GLSL 源（发行包不带 ShaderLibrary/*.glsl）。
+        // 只从烘焙好的 compute_manifest.pmf 查表取 SPV。未命中即失败——绝不回落。
+        compute_pipeline_ = shader_manager->CreateComputePipelineFromCache(
+            kProgramName,
+            sizeof(CullPushConstants)
+        );
+    #endif
 
         if (!compute_pipeline_)
         {
