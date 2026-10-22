@@ -43,6 +43,11 @@
       └─ WriteManifestExpectation         → <fixture>/shader-cache/expectation.txt
                                               （固化 8 个字段：program/lookup/stage digest、
                                                 SPV 字节数、requires_recipe_runtime_rows）
+      └─ 编 GPU cull 的 GLSL → SPV
+      └─ RecordShaderComputeProgramArtifact → <fixture>/shader-cache/compute_manifest.pmf
+      └─ 写 compute 期望                    → <fixture>/shader-cache/compute_expectation.txt
+                                              （program_name / spv_bytes / spv_digest /
+                                                push_constant_size）
 
 [发行形态树 build_probe_nosg/]
   RuntimeFormProbe build/release-cache-fixture        ← 只链 ULRE::Runtime
@@ -51,12 +56,22 @@
       ├─ 只读装清单 + 两 stage SPV                → digest / 字节数逐项对拍
       ├─ CreateBuildContext                       → 必须成功（能装配出可提交的 build context）
       ├─ 未知 ambient 名                          → 必须硬失败（证明不是「反正都能过」）
-      └─ 结束后清单文件 mtime/size 不变            → 证明只读模式没写盘
+      ├─ LoadShaderComputeProgramArtifact         → 按名字取 compute SPV，
+      │                                             字节数 / FNV1a digest / push constant 逐项对拍
+      ├─ 未知 compute 程序名                      → 必须硬失败
+      └─ 结束后两份清单文件 mtime/size 不变         → 证明只读模式没写盘
 ```
 
-`expectation.txt` 是把烘焙侧的期望值**落到磁盘**，而不是让探针自己推。
-探针不知道「正确答案是什么」，只知道「磁盘上说答案是这个」，因此它无法与烘焙侧
-一起错，也无法单方面放宽标准。
+`expectation.txt` / `compute_expectation.txt` 是把烘焙侧的期望值**落到磁盘**，而不是让
+探针自己推。探针不知道「正确答案是什么」，只知道「磁盘上说答案是这个」，因此它无法与
+烘焙侧一起错，也无法单方面放宽标准。
+
+**为什么 compute 单独一份清单**：材质清单的键是材质语义维度（definition + request +
+profile），记录形状是 mesh+fragment 两段定长 `ShaderLinkSpec`；compute 程序没有材质
+定义、也没有两段 link，身份就是一个程序名。把它硬塞进材质清单，要么复用
+`fragment_stage` 字段（语义撒谎），要么给定长记录加形态判别位（污染 `IsValid`）。
+而且一份文件损坏只该作废自己。所以 compute 走 `compute_manifest.pmf`，header / stamp /
+校验和机制与材质清单完全同构，只换 `ShaderArtifactKind`。
 
 ## 4. 一条命令跑完
 
@@ -85,17 +100,24 @@ pwsh scripts/ci/build-baseline.ps1 -VerifyReleaseForm
 | 改动 | 必须跑 |
 |---|---|
 | `ULRE::Runtime` 成员列表 | `verify-release-form.ps1` |
-| `ShaderProgramManifestBackend` / `ComputeMaterialProgramManifestKey` | `verify-release-form.ps1` + `Gate all`（50 条） |
+| `ShaderProgramManifestBackend` / `ComputeMaterialProgramManifestKey` | `verify-release-form.ps1` + `Gate all`（51 条） |
 | `ShaderArtifactStore` 磁盘布局 | `verify-release-form.ps1` + `Gate cache` |
-| 新增 stage 类型 / compute 程序 | `verify-release-form.ps1` + `Gate pipeline` |
+| `compute_manifest.pmf` 格式 / `LoadShaderComputeProgramArtifact` | `verify-release-form.ps1` + `Gate cache-compute-lookup` |
+| `GPUCullSystem` 的 push constant 布局 | `verify-release-form.ps1` + `ctest -L ecs` |
 
 `Gate all` 与 `ctest -L "ecs|csm|shadergen"` 是常规回归，与本验收互补：
 前者验证**同形态内**的数据面一致性，后者验证**跨形态**的可切分性。
 
 ## 7. 已知边界
 
-- 探针当前只覆盖 `mesh + fragment` 两个 stage 的 forward-lit 程序。
-  compute 程序（`GPUCullSystem`）仍走吃 GLSL 源码的重载，属后续阶段。
+- 探针覆盖 `mesh + fragment` 两段的 forward-lit 材质程序，以及 GPU cull 的 compute
+  程序。材质走 `program_manifest.pmf`，compute 走 `compute_manifest.pmf`。
+- 探针**不建 VkPipeline**：它没有 `VkDevice`，且只链 `ULRE::Runtime`
+  （`ShaderProgramManager` 属 `ULRE.SceneGraph`）。compute 的验证停在「数据面能取到
+  与烘焙期逐字节相同的 SPV + push constant 契约一致」这层；真正的
+  `vkCreateComputePipelines` 由引擎运行时在目标机器上完成。若要在这条链路里验到
+  `CreateShaderModuleFromSPV`，探针需改链 `ULRE.SceneGraph` —— 但那会削弱「零生成器
+  符号」这条断言的可读性，故暂不做。
 - 探针在 ON 树里也能跑通，但此时 `InitShaderCompiler()` 已抢先装好生成器后端，
   `EnsureShaderProgramManifestBackend()` 按「先到先得」不会顶替 ——
   ON 树里跑探针验证的是**夹具与清单后端逻辑**，不是纯发行行为。

@@ -17,14 +17,20 @@ param(
 # 判据不是「代码分成了两个 target」，而是这条跨进程链路能真跑通：
 #
 #   [开发形态]  ULRE.ShaderGen 在场
-#        └─ RegressionGate emit-release-cache  → 烘焙 program_manifest.pmf + stage SPV
+#        └─ RegressionGate emit-release-cache  → 烘焙 program_manifest.pmf
+#                                               + compute_manifest.pmf + stage SPV
 #   [发行形态]  ULRE.ShaderGen 不存在于链接图
 #        └─ RuntimeFormProbe（只链 ULRE::Runtime）→ 只读查表 + 装配 build context
+#                                                 + 按名字取 compute SPV
 #
 # 三步各自能独立失败，且失败原因互不相同：
 #   1) 烘焙失败      → 生成期数据面写不出来（manifest schema / 语义键 / stage 落盘）
 #   2) 探针链接失败  → 运行时反向引用了生成器符号（LNK2019）
 #   3) 探针运行失败  → 发行期算不出同一个语义键，或清单装载/校验不一致
+#
+# 覆盖面：材质程序（program_manifest.pmf，material/geometry → mesh+fragment 两段）
+#         与 compute 程序（compute_manifest.pmf，程序名 → 单段 compute）。
+#         两者是独立的磁盘契约，任一份损坏都不该牵连另一份。
 #
 # 注意：探针**不能**注册成 ctest。夹具不是构建产物，在干净树里 ctest 只会恒红。
 # 用法：
@@ -130,6 +136,8 @@ function Invoke-Verification
     }
     else
     {
+        # 一次烘焙产出两份清单：材质（program_manifest.pmf）与 compute
+        # （compute_manifest.pmf）。任一份缺失，探针在 [5/5] 会硬失败。
         Write-Step "[3/5] bake release-form fixture (dev tree, generator present)"
         if (Test-Path $fixture) { Remove-Item -Recurse -Force $fixture -ErrorAction SilentlyContinue }
 
@@ -175,7 +183,7 @@ function Invoke-Verification
     Write-Host "[ OK ] prod tree has no ULRE.ShaderGen artifacts" -ForegroundColor Green
 
     # ── [5/5] 发行形态：跑探针 ───────────────────────────────────────────────
-    Write-Step "[5/5] run runtime probe in prod tree"
+    Write-Step "[5/5] run runtime probe in prod tree (material + compute lookups)"
     Push-Location $repoRoot
     $ran = Invoke-Logged "RuntimeFormProbe $FixtureDir" {
         & $probeExe $FixtureDir }

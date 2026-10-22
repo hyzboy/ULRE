@@ -5,14 +5,15 @@
  * 编出来、这一行链接能过，本身就是「运行时不依赖生成器」的硬断言。
  *
  * 它消费由开发形态烘焙出来的 shader-cache 夹具（`program_manifest.pmf` +
- * 两 stage SPV + `expectation.txt`），用 `ShaderCacheMode::ReadOnly` 打开，
- * 验证发行形态的真实路径：
+ * `compute_manifest.pmf` + 各 stage SPV + 两份 expectation），用
+ * `ShaderCacheMode::ReadOnly` 打开，验证发行形态的真实路径：
  *
  *   1. 清单能从磁盘装载（冷启动，没有任何同进程残留状态）；
  *   2. 运行时自算的语义键与烘焙时一致；
  *   3. 命中后装配出的 build context 与原 program 身份完全一致，SPV 字节正确；
- *   4. 未命中的键**硬失败**（发行形态没有编译器可回落）；
- *   5. ReadOnly 下不回写清单。
+ *   4. compute 程序按名字查表能取到与烘焙期逐字节相同的 SPV；
+ *   5. 未命中的键**硬失败**（发行形态没有编译器可回落）；
+ *   6. ReadOnly 下不回写任何清单。
  *
  * 夹具由 `ShaderResourceSchemaRegressionGate emit-release-cache <dir>` 产出。
  */
@@ -23,6 +24,7 @@
 #include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/ShaderBuildContext.h>
+#include <hgl/mtl/ShaderComputeProgramManifest.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
 #include <hgl/mtl/ShaderProgramManifest.h>
@@ -31,6 +33,7 @@
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/log/Log.h>
 #include <hgl/utf.h>
+#include <hgl/util/hash/FNV1a.h>
 
 #include <cstdint>
 #include <cstdio>
@@ -139,6 +142,80 @@ namespace
         {
             std::fprintf(stderr,
                          "[FAIL] expectation file incomplete (%d/8 fields): %s\n",
+                         seen, path.string().c_str());
+            return false;
+        }
+
+        return true;
+    }
+
+    /// compute_expectation.txt 的字段名与回归门 WriteComputeExpectation() 严格对应。
+    struct ComputeExpectation
+    {
+        std::string program_name;
+        uint64 spv_digest = 0;
+        uint32 spv_bytes = 0;
+        uint32 push_constant_size = 0;
+        bool has_all = false;
+    };
+
+    bool LoadComputeExpectation(
+        const std::filesystem::path &path, ComputeExpectation &out)
+    {
+        std::ifstream in(path, std::ios::binary);
+        if (!in)
+        {
+            std::fprintf(stderr,
+                         "[FAIL] compute expectation file unreadable: %s\n",
+                         path.string().c_str());
+            return false;
+        }
+
+        int seen = 0;
+        std::string line;
+        while (std::getline(in, line))
+        {
+            if (!line.empty() && line.back() == '\r')
+                line.pop_back();
+
+            const size_t eq = line.find('=');
+            if (eq == std::string::npos)
+                continue;
+
+            const std::string key = line.substr(0, eq);
+            const std::string value = line.substr(eq + 1);
+            auto number = [&value]() -> unsigned long long
+            {
+                return std::strtoull(value.c_str(), nullptr, 10);
+            };
+
+            if (key == "program_name")
+            {
+                out.program_name = value;
+                ++seen;
+            }
+            else if (key == "spv_digest")
+            {
+                out.spv_digest = number();
+                ++seen;
+            }
+            else if (key == "spv_bytes")
+            {
+                out.spv_bytes = static_cast<uint32>(number());
+                ++seen;
+            }
+            else if (key == "push_constant_size")
+            {
+                out.push_constant_size = static_cast<uint32>(number());
+                ++seen;
+            }
+        }
+
+        out.has_all = seen == 4 && !out.program_name.empty();
+        if (!out.has_all)
+        {
+            std::fprintf(stderr,
+                         "[FAIL] compute expectation file incomplete (%d/4 fields): %s\n",
                          seen, path.string().c_str());
             return false;
         }
@@ -357,6 +434,81 @@ namespace
             probe.Check(std::filesystem::last_write_time(manifest_path)
                             == manifest_time_before,
                         "release form: manifest file was rewritten during a read-only run");
+        }
+
+        // ── compute 程序：按名字只读查表 ─────────────────────────────
+        // compute 在发行形态既没有材质语义键，也没有 mesh/fragment 两段 link，
+        // 所以走另一份清单（compute_manifest.pmf）。这里验的是同一件事：冷进程
+        // 能从磁盘取到与烘焙期逐字节相同的 SPV，且未知名字硬失败。
+        {
+            ComputeExpectation compute{};
+            const std::filesystem::path compute_manifest_path(
+                MakeShaderComputeProgramManifestPath(store.GetRootPath()).c_str());
+
+            if (!LoadComputeExpectation(
+                    compute_manifest_path.parent_path() / "compute_expectation.txt",
+                    compute))
+                return 1;
+
+            if (!std::filesystem::exists(compute_manifest_path))
+            {
+                std::fprintf(stderr, "[FAIL] compute manifest missing: %s\n",
+                             compute_manifest_path.string().c_str());
+                return 1;
+            }
+
+            const auto compute_size_before =
+                std::filesystem::file_size(compute_manifest_path);
+            const auto compute_time_before =
+                std::filesystem::last_write_time(compute_manifest_path);
+
+            ValueArray<uint8> spv;
+            uint32 push_constant_size = 0;
+            probe.Check(LoadShaderComputeProgramArtifact(
+                            store, compute.program_name.c_str(), spv,
+                            &push_constant_size),
+                        "release form: compute program not found in compute manifest");
+            probe.Check(spv.GetCount() == static_cast<int>(compute.spv_bytes),
+                        "release form: compute SPV size mismatch");
+
+            {
+                hgl::hash::FNV1aHasher64 hasher;
+                if (spv.GetCount() > 0)
+                    hasher.AppendBytes(spv.GetData(),
+                                       static_cast<size_t>(spv.GetCount()));
+
+                probe.Check(static_cast<uint64>(hasher) == compute.spv_digest,
+                            "release form: compute SPV bytes differ from the baked artifact");
+            }
+
+            probe.Check(push_constant_size == compute.push_constant_size,
+                        "release form: compute push constant contract changed");
+
+            // 未命中的程序名：发行形态没有编译器可回落，必须硬失败。
+            {
+                ValueArray<uint8> miss_spv;
+                probe.Check(!LoadShaderComputeProgramArtifact(
+                                store, "Probe.Missing.ComputeProgram", miss_spv,
+                                nullptr),
+                            "release form: unknown compute program must hard-fail");
+                probe.Check(miss_spv.GetCount() == 0,
+                            "release form: failed compute lookup must not return data");
+            }
+
+            // ReadOnly 下不回写：清单字节与时间戳都必须原样。
+            {
+                probe.Check(!RecordShaderComputeProgramArtifact(
+                                store, compute.program_name.c_str(),
+                                spv.GetData(), static_cast<uint64>(spv.GetCount()),
+                                compute.push_constant_size),
+                            "release form: read-only store must refuse compute manifest writes");
+                probe.Check(std::filesystem::file_size(compute_manifest_path)
+                                == compute_size_before,
+                            "release form: compute manifest changed size during a read-only run");
+                probe.Check(std::filesystem::last_write_time(compute_manifest_path)
+                                == compute_time_before,
+                            "release form: compute manifest was rewritten during a read-only run");
+            }
         }
 
         UninstallShaderProgramManifestBackend();

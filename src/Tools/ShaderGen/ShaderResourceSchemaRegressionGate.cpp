@@ -12,6 +12,7 @@
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 #include <hgl/mtl/ShaderProgramManifest.h>
+#include <hgl/mtl/ShaderComputeProgramManifest.h>
 #include <hgl/mtl/ShaderProgramManifestKey.h>
 #include <hgl/mtl/ShaderProgramManifestBackend.h>
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
@@ -6734,6 +6735,225 @@ namespace
         return result;
     }
 
+    /// compute 程序的「烘焙 → 只读查表」端到端门。
+    ///
+    /// 与上面两条门互补：那两条走材质语义键（program_manifest.pmf），这条走
+    /// compute 程序名（compute_manifest.pmf）。发行形态里 GPU cull 这一类程序
+    /// 既没有材质定义也没有 GLSL 源，唯一的来源就是这里烘焙出的 SPV ——
+    /// 门挂掉就意味着发行包起不来。
+    ///
+    /// 编译用的是**真实** `entity_gpu_cull.glsl`（跑通反而能提前发现源被改坏），
+    /// 校验的却只有「发行形态真正需要的那几块数据」：清单可装载、SPV 字节与
+    /// digest 对得上、push constant 契约带得回来。
+    static GateResult RunComputeProgramCacheCase(
+        const std::filesystem::path &store_root,
+        const bool keep_artifacts = false)
+    {
+        GateResult result;
+        result.name = keep_artifacts
+            ? "PM.emit-compute-release-cache"
+            : "PM.compute-release-cache";
+
+        const char *kProgramName = "GPUCullSystem.Pipeline";
+        // 与 GPUCullSystem.cpp 的 CullPushConstants 同值：那边 static_assert 锁死 112B，
+        // 这里用字面量是刻意的——门要独立断言这个数，而不是把被测代码的常量抄一遍。
+        const uint32_t kPushConstantSize = 112;
+
+        std::string glsl_source;
+        const std::filesystem::path glsl_path =
+            std::filesystem::path(GetShaderLibraryPath().c_str())
+            / "ecs" / "entity_gpu_cull.glsl";
+        if (!ReadGoldenFile(glsl_path.string(), glsl_source)
+         || glsl_source.empty())
+        {
+            result.diagnostics.emplace_back(
+                "cannot read compute GLSL source: " + glsl_path.string());
+            result.passed = false;
+            return result;
+        }
+
+        ShaderCreateInfo sci(ShaderStage::Compute);
+        sci.SetFinalGLSL(glsl_source.c_str());
+        if (!sci.CompileFinalGLSLToSPV()
+         || !sci.HasSPVData() || sci.GetSPVSize() == 0)
+        {
+            result.diagnostics.emplace_back(
+                "compute GLSL failed to compile (source or include graph broken)");
+            result.passed = false;
+            return result;
+        }
+
+        const uint64_t spv_size = static_cast<uint64_t>(sci.GetSPVSize());
+
+        std::error_code ec;
+        if (!keep_artifacts)
+            std::filesystem::remove_all(store_root, ec);
+
+        ShaderArtifactStore store(
+            hgl::OSString(store_root.wstring().c_str()),
+            ShaderCacheMode::BuildIfMissing);
+
+        const hgl::OSString manifest_path =
+            MakeShaderComputeProgramManifestPath(store.GetRootPath());
+
+        if (!RecordShaderComputeProgramArtifact(
+                store, kProgramName, sci.GetSPVData(), spv_size, kPushConstantSize))
+        {
+            result.diagnostics.emplace_back(
+                "failed to record the compute artifact");
+            result.passed = false;
+            return result;
+        }
+
+        // 重复烘焙同一份产物必须幂等：清单不该长出第二条，文件也不该被改坏。
+        if (!RecordShaderComputeProgramArtifact(
+                store, kProgramName, sci.GetSPVData(), spv_size, kPushConstantSize))
+        {
+            result.diagnostics.emplace_back(
+                "re-recording the same compute artifact failed");
+        }
+
+        {
+            ShaderComputeProgramManifest manifest;
+            if (!manifest.Load(manifest_path))
+                result.diagnostics.emplace_back(
+                    "compute manifest unreadable after baking");
+            else if (manifest.GetEntryCount() != 1)
+                result.diagnostics.emplace_back(
+                    "compute manifest must hold exactly one entry after re-baking");
+            else if (manifest.GetCodegenGeneration()
+                        != contract::SHADERGEN_CODEGEN_GENERATION)
+                result.diagnostics.emplace_back(
+                    "compute manifest carried a stale codegen generation");
+        }
+
+        // 关键：换一个**只读** store 冷装，证明查表不依赖烘焙时留在内存里的任何东西。
+        ShaderArtifactStore readonly_store(
+            hgl::OSString(store_root.wstring().c_str()),
+            ShaderCacheMode::ReadOnly);
+
+        if (readonly_store.GetCacheMode() != ShaderCacheMode::ReadOnly)
+            result.diagnostics.emplace_back(
+                "read-only store did not honour its cache mode");
+
+        // 只读 store 绝不能回写：哪怕烘焙入口被误调，也必须被拒。
+        if (RecordShaderComputeProgramArtifact(
+                readonly_store, kProgramName, sci.GetSPVData(),
+                spv_size, kPushConstantSize))
+            result.diagnostics.emplace_back(
+                "read-only store accepted a compute artifact write");
+
+        hgl::ValueArray<uint8_t> loaded_spv{};
+        uint32_t loaded_push_constant_size = 0;
+        if (!LoadShaderComputeProgramArtifact(
+                readonly_store, kProgramName, loaded_spv,
+                &loaded_push_constant_size))
+        {
+            result.diagnostics.emplace_back(
+                "read-only lookup of the baked compute artifact failed");
+        }
+        else
+        {
+            if (loaded_spv.GetCount() != static_cast<int>(spv_size))
+                result.diagnostics.emplace_back(
+                    "loaded compute SPV size differs from the baked size");
+            else if (std::memcmp(loaded_spv.GetData(), sci.GetSPVData(),
+                                 static_cast<size_t>(spv_size)) != 0)
+                result.diagnostics.emplace_back(
+                    "loaded compute SPV bytes differ from the baked bytes");
+
+            if (loaded_push_constant_size != kPushConstantSize)
+                result.diagnostics.emplace_back(
+                    "compute push constant contract did not survive the cache");
+        }
+
+        // 查不到必须硬失败：发行形态没有编译器可回落。
+        {
+            hgl::ValueArray<uint8_t> missing{};
+            if (LoadShaderComputeProgramArtifact(
+                    readonly_store, "NoSuch.Compute.Program", missing))
+                result.diagnostics.emplace_back(
+                    "unknown compute program must not resolve from the cache");
+        }
+
+        // 清单被改一个字节就必须整份作废（宁可缺 artifact，也不要用坏数据建管线）。
+        if (result.diagnostics.empty())
+        {
+            std::string bytes;
+            if (!ReadGoldenFile(std::filesystem::path(manifest_path.c_str()).string(),
+                                bytes))
+                result.diagnostics.emplace_back(
+                    "cannot re-read the compute manifest for corruption test");
+            else if (bytes.empty())
+                result.diagnostics.emplace_back(
+                    "compute manifest is empty");
+            else
+            {
+                bytes.back() = static_cast<char>(bytes.back() ^ 0x5A);
+                const std::filesystem::path corrupt_root =
+                    std::filesystem::path(store_root) / "compute-corrupt";
+
+                const hgl::OSString corrupt_path =
+                    MakeShaderComputeProgramManifestPath(
+                        hgl::OSString(corrupt_root.wstring().c_str()));
+
+                if (!WriteTextFile(
+                        std::filesystem::path(corrupt_path.c_str()).string(),
+                        bytes))
+                    result.diagnostics.emplace_back(
+                        "cannot write the corrupted compute manifest");
+                else
+                {
+                    ShaderComputeProgramManifest corrupt;
+                    if (corrupt.Load(corrupt_path) || !corrupt.IsEmpty())
+                        result.diagnostics.emplace_back(
+                            "corrupted compute manifest was accepted");
+                }
+
+                std::filesystem::remove_all(corrupt_root, ec);
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+
+        if (!keep_artifacts)
+        {
+            std::filesystem::remove_all(store_root, ec);
+            return result;
+        }
+
+        if (result.passed)
+        {
+            // 发行形态探针要对着「已知正确值」比对；字段名与 RuntimeFormProbe.cpp 的
+            // LoadComputeExpectation() 严格对应，改一处必须同步另一处。
+            const std::filesystem::path expect_path =
+                std::filesystem::path(manifest_path.c_str()).parent_path()
+                / "compute_expectation.txt";
+
+            hgl::hash::FNV1aHasher64 hasher;
+            hasher.AppendBytes(sci.GetSPVData(), static_cast<size_t>(spv_size));
+
+            std::ofstream out(expect_path, std::ios::binary);
+            if (!out)
+                result.diagnostics.emplace_back(
+                    "cannot write the compute expectation file");
+            else
+            {
+                out << "program_name=" << kProgramName << "\n"
+                    << "spv_bytes=" << spv_size << "\n"
+                    << "spv_digest=" << static_cast<uint64_t>(hasher) << "\n"
+                    << "push_constant_size=" << kPushConstantSize << "\n";
+
+                if (!out.good())
+                    result.diagnostics.emplace_back(
+                        "failed writing the compute expectation file");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunShaderStructureDumpPilotCase()
     {
         GateResult result;
@@ -6913,17 +7133,35 @@ int main(const int argc, char **argv)
 
         const std::filesystem::path cache_root =
             std::filesystem::absolute(std::filesystem::path(argv[2]));
-        const GateResult result = RunProgramManifestLookupCase(cache_root, true);
+        GateResult manifest_result = RunProgramManifestLookupCase(cache_root, true);
 
-        std::fprintf(result.passed ? stdout : stderr,
+        std::fprintf(manifest_result.passed ? stdout : stderr,
                      "[%s] %s\n",
-                     result.passed ? "PASS" : "FAIL",
-                     result.name.c_str());
+                     manifest_result.passed ? "PASS" : "FAIL",
+                     manifest_result.name.c_str());
 
-        for (const auto &diag : result.diagnostics)
+        for (const auto &diag : manifest_result.diagnostics)
             std::fprintf(stderr, "  - %s\n", diag.c_str());
 
-        if (result.passed)
+        // compute 夹具烘焙进同一个根：材质清单与 compute 清单是两份文件，
+        // 互不覆盖，发行形态一次打包全部带走。
+        if (manifest_result.passed)
+        {
+            GateResult compute_result = RunComputeProgramCacheCase(cache_root, true);
+
+            std::fprintf(compute_result.passed ? stdout : stderr,
+                         "[%s] %s\n",
+                         compute_result.passed ? "PASS" : "FAIL",
+                         compute_result.name.c_str());
+
+            for (const auto &diag : compute_result.diagnostics)
+                std::fprintf(stderr, "  - %s\n", diag.c_str());
+
+            if (!compute_result.passed)
+                return 1;
+        }
+
+        if (manifest_result.passed)
         {
             hgl::OSString cache_dir;
             if (ResolveEmittedCacheDir(cache_root, cache_dir))
@@ -6935,7 +7173,7 @@ int main(const int argc, char **argv)
                              cache_root.string().c_str());
         }
 
-        return result.passed ? 0 : 1;
+        return manifest_result.passed ? 0 : 1;
     }
 
     if (argc > 2)
@@ -7021,6 +7259,9 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(
         RunProgramManifestLookupCase(
             std::filesystem::path(RepoRootOSPath("build/cache-manifest-lookup").c_str())));
+    if (run_cache) results.push_back(
+        RunComputeProgramCacheCase(
+            std::filesystem::path(RepoRootOSPath("build/cache-compute-lookup").c_str())));
     if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
