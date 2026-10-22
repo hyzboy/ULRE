@@ -54,6 +54,9 @@ cascade_depth_*
 # PlaneGrid3D 台架（A6 内容线接管）的帧内回读 dump
 pgdump_*
 build_debugapi_release/
+# 无生成器形态（ULRE_ENABLE_SHADERGEN=OFF）的验证构建树。
+# 由 scripts/ci/verify-release-form.ps1 生成；烘焙夹具落在已被忽略的 /build 下。
+/build_probe_nosg
 /tmp
 /Cache
 

@@ -8,7 +8,12 @@ param(
     [string]$LogDir   = "",
     [switch]$SkipConfigure,
     [switch]$SkipBuild,
-    [switch]$SkipTest
+    [switch]$SkipTest,
+    # 发行形态验收：ULRE_ENABLE_SHADERGEN=OFF 的第二棵树能否只链 ULRE::Runtime 就跑通
+    # 烘焙好的 shader-cache。默认关闭 —— 它要额外一棵构建树，耗时不可忽略，且 cutter
+    # 回归频率低于常规基线。改动 ULRE::Runtime 边界 / ShaderMaterialData / 清单格式
+    # 时必须打开。
+    [switch]$VerifyReleaseForm
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -37,6 +42,7 @@ param(
 #   pwsh scripts/ci/build-baseline.ps1                     # 全量 Debug 串行构建 + A 层测试
 #   pwsh scripts/ci/build-baseline.ps1 -SkipBuild          # 只跑测试（用已有产物）
 #   pwsh scripts/ci/build-baseline.ps1 -Config Release -Jobs 4
+#   pwsh scripts/ci/build-baseline.ps1 -VerifyReleaseForm  # 追加「无生成器形态」验收
 # ─────────────────────────────────────────────────────────────────────────────
 
 $ErrorActionPreference = "Continue"
@@ -249,13 +255,31 @@ if (-not $SkipTest) {
     Write-Host "[5/5] ctest 已跳过（-SkipTest）"
 }
 
+# ── [extra] 发行形态验收 ─────────────────────────────────────────────────────
+# 常规基线是「同一棵树能不能构建绿 + 测试绿」。这一节回答的是另一个问题：
+# **在没有 ShaderGen 的树里，运行时还能不能靠烘焙好的 shader-cache 起得来。**
+# 编号用 [extra] 而不占用 [n/5]，因为前面 5 个阶段是每次都要跑的，这一节按需开启。
+$reasons = @()
+if ($VerifyReleaseForm) {
+    Write-Host "[extra] 发行形态验收（ULRE_ENABLE_SHADERGEN=OFF 树）"
+    $verifyScript = Join-Path $scriptDir "verify-release-form.ps1"
+    $verifyLog    = Join-Path $LogDir "verify-release-form-$Config-$stamp.log"
+    & pwsh -NoProfile -File $verifyScript -DevBuildDir $buildDirName -Config $Config -Jobs $Jobs 2>&1 |
+        Tee-Object -FilePath $verifyLog | ForEach-Object { Write-Host "  $_" }
+    $verifyRc = $LASTEXITCODE
+    Write-Host ("  rc={0}  日志 {1}" -f $verifyRc, $verifyLog)
+    if ($verifyRc -ne 0) { $reasons += "发行形态验收失败（rc=$verifyRc）" }
+} else {
+    Write-Host "[extra] 发行形态验收已跳过（-VerifyReleaseForm 未开启）"
+}
+
 # ── 汇总 ─────────────────────────────────────────────────────────────────────
 $verdict = "PASS"
-$reasons = @()
 if ($aErrors.Count -gt 0) { $verdict = "FAIL"; $reasons += ("A 层构建错误 {0} 条" -f $aErrors.Count) }
 if ($uErrors.Count -gt 0) { $verdict = "FAIL"; $reasons += ("未归类构建错误 {0} 条（保守判失败，需人工归层）" -f $uErrors.Count) }
 if ($testRc -ne 0 -or $ctestFailed -gt 0) { $verdict = "FAIL"; $reasons += ("ULRE 自有测试失败 {0} 个" -f $ctestFailed) }
 if (-not $SkipTest -and $ctestTotal -eq 0) { $verdict = "FAIL"; $reasons += "ctest 一个用例都没选中（标签正则或 -C 配置有误）" }
+if ($reasons.Count -gt 0) { $verdict = "FAIL" }
 
 $md = New-Object System.Text.StringBuilder
 [void]$md.AppendLine("# ULRE 构建基线报告")
@@ -279,6 +303,11 @@ if ($reasons.Count -gt 0) {
 [void]$md.AppendLine("| 用例总数 | $ctestTotal |")
 [void]$md.AppendLine("| 通过 | $ctestPassed |")
 [void]$md.AppendLine("| 失败 | $ctestFailed |")
+[void]$md.AppendLine("")
+[void]$md.AppendLine("| 发行形态验收（ULRE_ENABLE_SHADERGEN=OFF） | 值 |")
+[void]$md.AppendLine("|---|---|")
+[void]$md.AppendLine("| 是否执行 | $([bool]$VerifyReleaseForm) |")
+[void]$md.AppendLine("| 结果 | $(if (-not $VerifyReleaseForm) { '未执行' } elseif ($verifyRc -eq 0) { 'PASS' } else { "FAIL (rc=$verifyRc)" }) |")
 [void]$md.AppendLine("")
 
 if ($aErrors.Count -gt 0) {
