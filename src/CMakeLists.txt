@@ -1,4 +1,6 @@
 ﻿add_subdirectory(Vulkan)
+# ShaderRuntimeContract 必须先于 ShaderGen：ShaderGen 依赖它，反向不成立。
+add_subdirectory(ShaderRuntimeContract)
 add_subdirectory(ShaderGen)
 add_subdirectory(SceneGraph)
 add_subdirectory(InlineGeometry)

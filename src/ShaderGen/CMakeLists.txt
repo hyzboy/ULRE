@@ -54,11 +54,8 @@ set(COMPILE_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
     compile/ShaderCreateInfo.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramKey.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderLinkSpec.h
+    # ShaderArtifactContract / ShaderStageKey / ShaderKeyUtility / ShaderProgramKey /
+    # ShaderLinkSpec 已迁入 ULRE.ShaderRuntimeContract（运行时也要的那部分）。
     ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
     compile/ShaderArtifactStore.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
@@ -145,12 +142,13 @@ set(MATERIAL_TYPE_FILES
 SOURCE_GROUP("Material Types" FILES ${MATERIAL_TYPE_FILES})
 
 # ── 设备 profile 契约（头-only）──────────────────────────────────────────────
+# 已整体迁入 ULRE.ShaderRuntimeContract：设备能力契约运行时也要用
+# （VKDeviceCreater / VKPhysicalDevice），不能跟着 ShaderGen 走。
 set(PROFILE_FILES
-    ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/contract/ShaderGenContract.h
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/contract/ShaderGenPhysicalDeviceProfileAdapter.h
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/contract/ShaderGenPhysicalDeviceProfileJson.h
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/contract/ShaderGenProfileTargetVersion.h)
+    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContract.h
+    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileAdapter.h
+    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileJson.h
+    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenProfileTargetVersion.h)
 SOURCE_GROUP("Device Profile" FILES ${PROFILE_FILES})
 
 
@@ -172,3 +170,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${MATERIAL_TYPE_FILES}
     ${PROFILE_FILES}
 )
+
+# 契约层独立成目标，ShaderGen 只是它的消费者之一。PUBLIC：吃掉 ShaderGen 的
+# 目标必须同时拿到契约类型，否则发行版无法只保留契约。
+target_link_libraries(ULRE.ShaderGen PUBLIC ULRE.ShaderRuntimeContract)

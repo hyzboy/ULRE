@@ -67,6 +67,7 @@ SET(ULRE    CMCoreType
             ULRE.Work
             ULRE.ECS
             ULRE.Vulkan
+            ULRE.ShaderRuntimeContract
             ULRE.ShaderGen
             ULRE.SceneGraph
             ULRE.InlineGeometry
