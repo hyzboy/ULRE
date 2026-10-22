@@ -56,7 +56,7 @@
 | # | 位置 | 事实 | 判据 |
 |---|---|---|---|
 | B1 | `inc/hgl/mtl/MaterialRecipe.h:107-180` | 结构（17 字段：filter×3 / wrap×3 / swizzle×4 / compare / lod×3 / anisotropy / 2×has_*）+ `operator==` + `HashMaterialTextureSamplingOptions` ≈ **75 行** | 定义处 |
-| B2 | `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:493-710` | TOML 解析（`mag_filter`/`min_filter`/`mipmap_mode`/`u`/`v`/`w`/`r`/`g`/`b`/`a`/`compare_op`/`mip_lod_bias`/`min_lod`/`max_lod`/`max_anisotropy`/`anisotropy`/`swizzle` 等逐键 if-else）≈ **220 行** | 解析处 |
+| B2 | `src/ShaderMaterialData/MaterialDefinitionFile.cpp:493-710` | TOML 解析（`mag_filter`/`min_filter`/`mipmap_mode`/`u`/`v`/`w`/`r`/`g`/`b`/`a`/`compare_op`/`mip_lod_bias`/`min_lod`/`max_lod`/`max_anisotropy`/`anisotropy`/`swizzle` 等逐键 if-else）≈ **220 行** | 解析处 |
 | B3 | **消费者 = 0** | `git grep -nw sampling -- src inc example ShaderLibrary` = 30 处 → 门 23 + 解析 3 + 声明 1 + GLSL/文本里无关词的注释 3 | 运行时绑定链（`RenderPrimitiveCollectSystem`、`MaterialData`）、GLSL 发射（`MaterialShaderEmitter` 的纹理通道宏只读 `channels`）、`VkSampler` 创建（`SamplerPresetLibrary` 读**另一个文件** `ShaderLibrary/sampler.toml`）都不读它 |
 | B4 | **授权面 = 0** | 15 份材质 TOML 中 `sampling` / `anisotropy` / `swizzle` / `compare_op` 各 **0 个文件**（只有 `channels` 3 个文件在用，且那是另一条通路） | 逐键 `grep -l <key> ShaderLibrary/material/*.toml \| wc -l` = 0 |
 
@@ -69,7 +69,7 @@
 
 | 枚举 | 实现 A | 实现 B（同语义第二份） | 备注 |
 |---|---|---|---|
-| `VkCompareOp` | `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:112-133`（`ParseCompareOp`，8 项） | `src/ShaderGen/glsl_module/SamplerPreset.cpp:34-45`（`ParseCompareOp`，8 项） | **同名同语义两份实现** |
+| `VkCompareOp` | `src/ShaderMaterialData/MaterialDefinitionFile.cpp:112-133`（`ParseCompareOp`，8 项） | `src/ShaderMaterialData/SamplerPreset.cpp:34-45`（`ParseCompareOp`，8 项） | **同名同语义两份实现** |
 | 纹理 filter | `MaterialDefinitionFile.cpp:394-409`（`ParseTextureFilterMode` → `MaterialTextureFilterMode`，2 项） | `SamplerPreset.cpp:14-17`（`ParseFilter` → `VkFilter`，1 分支+默认） | 取值空间重叠、真源分离 |
 | 纹理 wrap | `MaterialDefinitionFile.cpp:411-435`（`ParseTextureWrapMode`，5 项） | `SamplerPreset.cpp:25-32`（`ParseAddressMode`，4 显式 + default） | 同上 |
 | 采样器类型名 | `MaterialDefinitionFile.cpp:377-392`（`ParseSampler`，6 项索引序） | `inc/hgl/mtl/MaterialRecipe.h:54-66`（`ToGLSLSamplerTypeName`，**零调用**）；另与 `inc/hgl/common/TextureSamplerTypeDef.h:105-152`（`SamplerTypeName` 数组 + `ParseSamplerType`）重叠 | **同一枚举反/正/第三方三张表** |
@@ -101,7 +101,7 @@
 | E3 | `MaterialShaderEmitter.cpp:388` 生产字面量 `"MaterialMeshIndexTables"`；`:609`/`:776`/`:788` 三处 `std::strcmp(..., "MaterialMeshIndexTables")` | 内部块名用字符串比较，无共享常量 | 1 生产 + 3 消费、字面量重复 4 次 |
 | E4 | `FragmentTemplateComposer.cpp:536-694` `ComposeShadow`（整段 shadow GLSL 在 C++ 内逐块拼写）被 `:695` 唯一调用 | 唯一**不走 `.tmpl`** 的模板族 | 与"模板外置"口径不一致；新增 shadow 变体只能改 C++ |
 | E5 | `SceneGraph/module/ShaderProgramManager.cpp:228-235` 模板路由嵌套三元（含"无 source 且无 ntb ⇒ Sky"隐含策略）；`:242`/`:263` 为 SkyCube / IBL 开的 surface/ambient 覆盖口 | 能力→模板的映射未表化 | 覆盖口的字段是通用的，但当前各只有 1 个声明者（`sky_cube.material.toml:14-15`、`lit_ibl.material.toml:17-18`） |
-| E6 | `src/ShaderGen/template/SceneRenderTemplateResolver.cpp:5-60` | ForwardLit / Sky profile 逐行 `AddModule(role, name, path)` 硬编码（8 个槽） | 字面量各对应唯一模块文件；表化后即可消 |
+| E6 | `src/ShaderMaterialData/SceneRenderTemplateResolver.cpp:5-60` | ForwardLit / Sky profile 逐行 `AddModule(role, name, path)` 硬编码（8 个槽） | 字面量各对应唯一模块文件；表化后即可消 |
 | E7 | `src/ShaderGen/contract/MaterialOutputContract.cpp:37-60 / 61-…` | `switch (pass)`→purpose、`switch (purpose)`→附件 | 领域固有（pass↔purpose），但形式是 switch 而非表 |
 | E8 | `DescriptorContract.cpp:77-83` | 为**恰好一个**语义（`LocalToWorldIndex`）硬写 `ssbo_type` 推导，紧邻又为 `MaterialPrivateData` 单列校验 | 属 A 层空转机制的一部分（随 A 一并处置） |
 
@@ -149,7 +149,7 @@
 
 | # | 协议 | 位置 | 现有守卫 |
 |---|---|---|---|
-| G1 | `sampler.toml` 的 `[[samplers]]` **出现顺序 = sampler 索引**（宏 `#define <name>Sampler <idx>u` 与运行时 `vkCreateSampler` 同源） | 生产/消费 `src/ShaderGen/glsl_module/SamplerPreset.cpp:131-214`、`MaterialShaderEmitter.cpp:112-136`；表 `ShaderLibrary/sampler.toml` | **仅注释警告**（"插在中间会让所有已编译 shader 里的宏错位"），无任何校验 |
+| G1 | `sampler.toml` 的 `[[samplers]]` **出现顺序 = sampler 索引**（宏 `#define <name>Sampler <idx>u` 与运行时 `vkCreateSampler` 同源） | 生产/消费 `src/ShaderMaterialData/SamplerPreset.cpp:131-214`、`MaterialShaderEmitter.cpp:112-136`；表 `ShaderLibrary/sampler.toml` | **仅注释警告**（"插在中间会让所有已编译 shader 里的宏错位"），无任何校验 |
 | G2 | fragment 模板的 **slot 数组顺序 = `#include` 发射顺序**，并隐含"SurfaceProvider 必须在 MaterialSourceProvider/NTBProvider 之后"（否则 GLSL 调用未声明函数） | 约定 `inc/hgl/mtl/RenderTemplate.h:92-104`（逐字写明"硬约束"）；消费 `FragmentTemplateComposer.cpp:340-364` | **仅注释 + 数组书写顺序**；无断言（重排会改生成文本 ⇒ program hash 变，但不会报错） |
 | G3 | 模板 **define 必须早于 module_includes**（`#ifndef` 取值依赖顺序） | `FragmentTemplateComposer.cpp:399-417`（`{{defines}}` 块位置）、`:508-516`（占位符回填） | **仅注释**；正确性靠 `.tmpl` 内占位符书写位置 |
 | G4 | `GenericMaterialBuilder.cpp` 的**语句顺序 = stage key / resource contract 的哈希输入序**（文件头自述"Do not reorder statements here"） | `src/ShaderGen/builder/GenericMaterialBuilder.cpp:1-8`（5 相位、Phase 3 注释同） | **仅注释**（`src/Vulkan/VKRenderPass.cpp:149-154` 的 recipe 归一化哨兵是同类做法的正例：那里是 fail-fast） |
@@ -398,7 +398,7 @@ buffer_reference 表达式。`material/shadow_receiver_source.glsl:233` 的 `con
 | 档 | 净删 | 内容 |
 |---|---|---|
 | `inc/hgl/mtl/MaterialRecipe.h` | −112 | `MaterialTextureFilterMode/WrapMode/Swizzle/CompareOp` 4 枚举 + `MaterialTextureSamplingOptions` + `operator==` + `HashMaterialTextureSamplingOptions` + `MaterialTextureDeclaration::sampling` 字段 |
-| `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp` | −334 | `ParseTextureFilterMode/WrapMode/CompareOp/Swizzle/SwizzleOptions/TextureSamplingOptions` 6 个函数 + 调用点 + `ValidateTextureDeclarationKeys` 里 9 个 authoring 键 |
+| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | −334 | `ParseTextureFilterMode/WrapMode/CompareOp/Swizzle/SwizzleOptions/TextureSamplingOptions` 6 个函数 + 调用点 + `ValidateTextureDeclarationKeys` 里 9 个 authoring 键 |
 | 门 `ShaderResourceSchemaRegressionGate.cpp` | −96/+新 1 用例 | 采样 TOML 输入、`S.material-definition-file-schema` 的采样断言、`changed_sampling` ABI 用例；2 处聚合初始化改 3 元 |
 | `doc/texture2darray-unified-texture-binding.md:216` | 标注 | dated 订正：该组 authoring 键整删，材质侧再写会被键校验拒绝 |
 
@@ -680,7 +680,7 @@ if (recipe.mtl_def_id.empty())
 | 位置 | 改动 |
 |---|---|
 | `inc/hgl/mtl/MaterialRecipe.h` | 删函数本体（8 行，含 `overwrite_existing` 形参） |
-| `src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp` | 删调用行（保留其上一行的直接赋值——那才是真正的来源） |
+| `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp` | 删调用行（保留其上一行的直接赋值——那才是真正的来源） |
 | `TestCSMIncrementalPass.cpp` | 新增 1 条禁复活针（文案写明"先证恒 no-op 再删，不是删参数了事"） |
 
 ### 15.2 验收（实测）
@@ -718,7 +718,7 @@ if (recipe.mtl_def_id.empty())
 
 ### 17.1 实测到的真实现状（与口径相反）
 
-任何一份材质 TOML 配置写错，整个进程**立即中止**：`src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp:213`
+任何一份材质 TOML 配置写错，整个进程**立即中止**：`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:213`
 把 `error_count > 0` 也当成致命条件，命中即 `GLogFatal(...) + std::abort()`。
 指纹：cdb 抓到 `code c0000409 / Subcode 0x7 FAST_FAIL_FATAL_APP_EXIT`；因为 stdout 还压在缓冲里，
 **门与 cooker 表现为"零输出 + 非零 rc"的静默早退**（此前 §14 反证时踩到过这个现象，当时误以为是工具偶发）。
@@ -973,7 +973,7 @@ if (recipe.mtl_def_id.empty())
 | `cull_mode`（管线键，粒度更细） | `inc/hgl/mtl/PipelineConfig.h:17`（`MaterialPipelineConfig`，默认 `VK_CULL_MODE_BACK_BIT`） |
 | `double_sided`（覆盖键） | `PipelineConfig.h:68-69`（overrides 的 `has_double_sided` / 值）、`:59`（`ResolvedMaterialRenderState.double_sided`） |
 | 覆盖点（两者汇合处） | `src/Vulkan/VKRenderPass.cpp:170-172`：`if (render_state.double_sided) render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;` |
-| 解析/键 | `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp`（render_state 段含 `double_sided`；pipeline 段含 `cull_mode`） |
+| 解析/键 | `src/ShaderMaterialData/MaterialDefinitionFile.cpp`（render_state 段含 `double_sided`；pipeline 段含 `cull_mode`） |
 | 哈希输入 | `inc/hgl/mtl/MaterialRecipe.h:669-671`：`h << overrides.has_double_sided << overrides.double_sided` |
 | 门用例 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp:2451-2484`（5 处） |
 | 影响面 | `double_sided` 共 **8 档**：`MaterialRecipe.h`(6) / `PipelineConfig.h`(4) / `MaterialDefinitionFile.cpp`(4) / `MaterialDefinitionRegistry.cpp`(2) / 门(5) / `VKRenderPass.cpp`(2) / `RenderPrimitiveCollectSystem.cpp`(1) |

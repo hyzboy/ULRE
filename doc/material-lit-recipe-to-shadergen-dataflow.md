@@ -38,7 +38,7 @@
 
 ## 二、反向：lit.material.toml → MaterialDefinition
 
-进程内第一次有代码碰材质注册表时（`ShaderProgramManager` 构造函数和 `GetMaterialDefinitionFileRegistry()`，`src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp:184`），会惰性扫描 `ShaderLibrary/material/` 下所有 `*.material.toml`，每个文件经 `ParseMaterialDefinitionFile`（`src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:1211`，用 tomlpp 解析）变成一个 `MaterialDefinition`。
+进程内第一次有代码碰材质注册表时（`ShaderProgramManager` 构造函数和 `GetMaterialDefinitionFileRegistry()`，`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:184`），会惰性扫描 `ShaderLibrary/material/` 下所有 `*.material.toml`，每个文件经 `ParseMaterialDefinitionFile`（`src/ShaderMaterialData/MaterialDefinitionFile.cpp:1211`，用 tomlpp 解析）变成一个 `MaterialDefinition`。
 
 `lit.material.toml` 的每个字段去向：
 
@@ -62,7 +62,7 @@
 
 1. `BuildResolvedRecipe` 从 PrimitiveComponent 收集有效 recipe；
 2. `TryGetMaterialDefinitionByID("Lit")` 拿到定义；
-3. `SelectCurrentSceneRenderTemplateRequest`（`src/SceneGraph/module/ShaderProgramManager.cpp`）做**路由决策**——判定只有一份实现：`mtl::SelectSceneRenderTemplateRequest`（`src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp`，运行时与文档生产回归工具共用），SceneGraph 侧仅转发。Lit 有 `ntb_module_name` → 选 `ForwardLitShadowedAO` 模板，并填 `MakeIdentityForwardLitProfile()` 的场景槽位（`src/ShaderGen/template/SceneRenderTemplateResolver.cpp`）：
+3. `SelectCurrentSceneRenderTemplateRequest`（`src/SceneGraph/module/ShaderProgramManager.cpp`）做**路由决策**——判定只有一份实现：`mtl::SelectSceneRenderTemplateRequest`（`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp`，运行时与文档生产回归工具共用），SceneGraph 侧仅转发。Lit 有 `ntb_module_name` → 选 `ForwardLitShadowedAO` 模板，并填 `MakeIdentityForwardLitProfile()` 的场景槽位（`src/ShaderMaterialData/SceneRenderTemplateResolver.cpp`）：
    - Surface → `surface/material_surface.glsl`
    - 直接光 → `lighting/direct_cook_torrance_pbr.glsl`
    - 天光（SkyProvider）→ `sky/sky_atmosphere.glsl`

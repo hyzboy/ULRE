@@ -355,7 +355,7 @@ world_xy  = float(texel) * terrain_texel_size                          // 最后
 | 3 | 同上 `:39-50` | `GetMeshModeVerticesPerInvocation`=4 / `PrimitivesPerInvocation`=2 |
 | 4 | `src/ShaderGen/meshgen/MeshModeDescriptor.h` | 新增 `ResolveTerrainGridTopology`（与 CharQuad 同算式，**独立命名**以便将来单线程 2 格等变体）+ 注册表第 4 项（defines 用 `EmitStandardMeshDefines`；`ubos` = ViewportInfo + CameraInfo，**不含 l2w**；custom resources = 地形 SSBO 声明；stage1/2/3 = `nullptr`） |
 | 5 | `src/ShaderGen/builder/GenericMaterialBuilder.cpp:429-456` | 模式决策链加 `TerrainGrid` 分支（含 `max_invocations` 与容量钳制，见下） |
-| 6 | `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:1080-1091`、`:1189-1191` | `[mesh_shader] mode` 已知键校验允许 `TerrainGrid` |
+| 6 | `src/ShaderMaterialData/MaterialDefinitionFile.cpp:1080-1091`、`:1189-1191` | `[mesh_shader] mode` 已知键校验允许 `TerrainGrid` |
 | 7 | `src/ShaderGen/builder/VertexABIBuilder.cpp:266` 附近 | 与 CharQuad 同类的"无外部顶点输入"分支 |
 | 8 | `inc/hgl/graph/ShaderBufferSources.h:206-216`、`:245-264` | `RootAddresses` 加 `addr_terrain_pages` / `addr_terrain_tiles` + 断言更新；`inc/hgl/graph/RootAddressPush.h:28-39` 加参（**先做 §6 风险 R1 的结构体化**） |
 

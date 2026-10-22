@@ -83,7 +83,7 @@
   对照：光源行**按帧槽切份**（正是因为它每帧被改），影子数据也按帧槽一份。
 
 - **判据覆盖面（重要，别误判）**：`base_sky_color` / `halo_intensity` **已被八台架摘要覆盖** —— 默认材质模板给
-  片元着色器挂了 `sky_provider` = `sky_atmosphere`（注册于 `src/ShaderGen/template/SceneRenderTemplateResolver.cpp`），
+  片元着色器挂了 `sky_provider` = `sky_atmosphere`（注册于 `src/ShaderMaterialData/SceneRenderTemplateResolver.cpp`），
   它提供的 `ambient_diffuse` 参与环境光，摘要因此对这两个字段敏感（实测证据：T6b 减法里删掉 `halo_color` 时
   **4 个台架摘要当场变化**）。
   **真正的盲区是 `env_tex`（IBL 句柄）**：它只被 `ShaderLibrary/lighting/indirect_ibl.glsl` 读，而 `indirect_ibl`

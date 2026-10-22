@@ -216,7 +216,7 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 ### 6.4 可选增强（不属于本次决策）
 
 - `Texture2DCollection`（N 张同规格纹理但不希望占层号的场景；同时是"每张纹理独立 `TextureID` + 名字、RenderDoc 直读"的路径）；
-- per-declaration sampler 预设（`material.toml` 的 `[resources].textures` 已解析 `filter/wrap/swizzle/anisotropy/...`，见 `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:911-917`，但尚未接线到运行期）。〔2026-10-11（S2）：该组 authoring 键**整删**——双端空转（0 材质授权 + 0 消费者），运行期采样器真源在 `ShaderLibrary/sampler.toml`；材质侧再写这些键会被键校验拒绝〕
+- per-declaration sampler 预设（`material.toml` 的 `[resources].textures` 已解析 `filter/wrap/swizzle/anisotropy/...`，见 `src/ShaderMaterialData/MaterialDefinitionFile.cpp:911-917`，但尚未接线到运行期）。〔2026-10-11（S2）：该组 authoring 键**整删**——双端空转（0 材质授权 + 0 消费者），运行期采样器真源在 `ShaderLibrary/sampler.toml`；材质侧再写这些键会被键校验拒绝〕
 
 ---
 

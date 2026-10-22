@@ -344,7 +344,7 @@ ShaderKeyUtility.h
 目录：
 
 ```text
-src/ShaderGen/material_definition/
+src/ShaderMaterialData/
 ```
 
 主要文件：

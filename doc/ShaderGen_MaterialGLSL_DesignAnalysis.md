@@ -76,7 +76,7 @@
 
 - `recipe_hash`（recipe 内容 FNV）与 `build_context_hash`
   （`HashMaterialProgramBuildContext` = primitive_type + 几何格式 + 设备 profile，
-  `src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp:113`）→ 任一变化即 `program_dirty`；
+  `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:113`）→ 任一变化即 `program_dirty`；
 - 构造 `MaterialDefinitionBuildRequest`（把 `PrimitiveVariantPurpose` 转成
   `ShaderProgramPurpose`：DepthOnly/ShadowCaster 覆盖默认 ForwardColor）；
 - 调 `ShaderProgramManager::AcquireShaderProgram(request)`。
@@ -92,11 +92,11 @@
 这是整条链的枢纽，按序执行：
 
 1. **解析 definition**：`mtl_def_id="Lit"` → `ShaderLibrary/material/lit.material.toml`
-   （文件注册表懒加载整目录，`src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp:184`）→ 得到
+   （文件注册表懒加载整目录，`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:184`）→ 得到
    `MaterialDefinition`：`[transform]` 五元组（source/mapping/orientation/scale/projection）、
    `[fragment]` provider 模块路径、`[pipeline]` family/profile 与可选 `[render_state]`、
    `[vertex]` 语义需求 + varyings、`[resources]` UBO/采样器声明
-   （`src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:343-1030` 逐字段解析）。
+   （`src/ShaderMaterialData/MaterialDefinitionFile.cpp:343-1030` 逐字段解析）。
 2. **目的派发**：`pass → ShaderProgramPurpose`；DepthOnly 会**裁剪**——把 fragment
    语义需求缩到 `IsVertexSemanticRequiredForVarying` 允许集、清掉 provider 根、
    剔除不需要的描述符（Phase 1 `ResolvePurposeAndCoverage`，src/ShaderGen/builder/GenericMaterialBuilder.cpp:117-238），
@@ -167,7 +167,7 @@
 - `MaterialDefinitionBuildRequest` = **构建期上下文**（几何格式/设备/purpose，
   inc/hgl/mtl/MaterialDefinitionRegistry.h:41-56）。
 
-`NormalizeRecipe`（src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp:244）是三层间的合流点：
+`NormalizeRecipe`（src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:244）是三层间的合流点：
 把 definition 的默认状态解析进 recipe，且**解析结果写回 `render_state_overrides`
 成为权威值**——之后所有下游（哈希、管线状态）只读 recipe，不再回看 definition。
 
@@ -370,8 +370,8 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 | 层 | 文件 | 职责 |
 |---|---|---|
 | L1 | `inc/hgl/mtl/MaterialRecipe.h` | Definition/Recipe 数据结构、渲染状态解析 |
-| L1 | `inc/hgl/mtl/MaterialDefinitionFile.h` + `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp` | .material.toml 解析 |
-| L1 | `inc/hgl/mtl/MaterialDefinitionRegistry.h` + `src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp` | 材质定义文件注册表 + NormalizeRecipe / 构建上下文哈希 |
+| L1 | `inc/hgl/mtl/MaterialDefinitionFile.h` + `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | .material.toml 解析 |
+| L1 | `inc/hgl/mtl/MaterialDefinitionRegistry.h` + `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp` | 材质定义文件注册表 + NormalizeRecipe / 构建上下文哈希 |
 | L1 | `src/ShaderGen/builder/GenericMaterialBuilder.cpp` | BuildGenericMaterial 五阶段主流程（702-806） |
 | L2 | `inc/hgl/mtl/ShaderBuildContext.h` | 编译产物容器（全局资源契约/Stage Map/链接规格） |
 | L3 | `src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp` | @ulre 元数据解析 |

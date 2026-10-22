@@ -81,7 +81,7 @@ nm.y = -nm.y;                                   // GLSL/Vulkan Green 通道约�
 | 位置 | 职责 |
 |---|---|
 | `inc/hgl/mtl/MaterialRecipe.h` | `MaterialTextureDeclaration` 增加 `channels` 字段，并纳入 layout 哈希 |
-| `src/ShaderGen/material_definition/MaterialDefinitionFile.cpp` | 解析 TOML 的 `channels`（1–4）+ 未知键白名单 |
+| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | 解析 TOML 的 `channels`（1–4）+ 未知键白名单 |
 | `inc/hgl/mtl/FragmentTemplateComposer.h` | `ComposeInput` 携带纹理声明 |
 | `src/ShaderGen/template/FragmentTemplateComposer.cpp` | `AppendTextureChannelDefines()`：声明 → `#define MTL_TEX_*_CHANNELS` |
 | `src/ShaderGen/builder/GenericMaterialBuilder.cpp` | 把材质声明传给模板编辑器 |

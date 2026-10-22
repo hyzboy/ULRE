@@ -6,7 +6,7 @@
 > 前置背景：Ambient 的**算法选择权已从材质上移到引擎/环境层**
 > （`3569db6a3`、`e406b003b`、`f76abee7f`、`c5c5291a0`），材质 TOML 写
 > `ambient_module_name` 会被显式拒绝并引导改用 `EnvironmentSystem::SetAmbientProvider()`
-> （`src/ShaderGen/material_definition/MaterialDefinitionFile.cpp:837-840`）。
+> （`src/ShaderMaterialData/MaterialDefinitionFile.cpp:837-840`）。
 
 ---
 
@@ -47,7 +47,7 @@ ShaderLibrary/lighting/indirect_sky_ambient.glsl
 | **include 闭包** | `lighting_interface`、`scene_ubo`、`sky_atmosphere`（整份大气模型） | `lighting_interface`、`scene_ubo`、`bindless_textures` |
 | **sampler 依赖** | 无 | `Trilinear`（两个 cube）+ `Linear`（BRDF LUT） |
 | **未就绪行为** | 总有颜色（天空是程序化的） | `env_tex.x==0 && env_tex.y==0` → **返回 `vec3(0)`** |
-| **是否模板默认** | ✅ 是（`src/ShaderGen/template/SceneRenderTemplateResolver.cpp:21-24`） | ❌ 需显式设置 |
+| **是否模板默认** | ✅ 是（`src/ShaderMaterialData/SceneRenderTemplateResolver.cpp:21-24`） | ❌ 需显式设置 |
 | **示例** | `example/Environment/AtmosphereSkyAmbient.cpp`（不调 API，走默认） | `example/Environment/IBLEnvironment.cpp:296`（`SetAmbientProvider("indirect_ibl")`） |
 | **GPU 参数块** | 无专属块，复用 `scene_ubo` | 专属块 `AmbientEnvInfo`（`inc/hgl/graph/ubo/AmbientEnvInfo.h`，16 字节、单份 buffer、`WorldAddresses::addr_ambient_env`） |
 

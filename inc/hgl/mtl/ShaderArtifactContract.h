@@ -44,7 +44,7 @@ namespace hgl::graph::mtl
     {
         { ShaderStage::Mesh,     ".mesh" },
         { ShaderStage::Fragment, ".frag" },
-        { ShaderStage::Compute,  ".comp" },    ///< 引擎暂无 compute shader；行先备好，加入即生效
+        { ShaderStage::Compute,  ".comp" },    ///< compute 程序（GPU cull）走 compute_manifest 预烘焙 SPV，生成源暂不落盘；行先备好
     };
 
     inline const char *GetShaderArtifactStageSourceExtension(const ShaderStage stage) noexcept

@@ -11,7 +11,7 @@
 | 本文设计名 | 代码现状 | 依据 |
 |---|---|---|
 | `ShaderDocument`(块 / 顺序 / hash) | **已落地**,同名 | `inc/hgl/mtl/ShaderDocument.h:9-19`(块种类)、`:90`(块序)、`:101-109`(序列化与 hash);块序实现 `src/ShaderGen/document/ShaderDocument.cpp:42-57` |
-| `StageTemplate` / `StageTemplateResolver` | 落地为**两件东西**:`RenderTemplate`(模板定义 + slot 表)与 `SceneRenderTemplateResolver`(从显式选定的身份构造请求) | `inc/hgl/mtl/RenderTemplate.h:14-120`、`inc/hgl/mtl/SceneRenderTemplateResolver.h:9-37`、`src/ShaderGen/template/SceneRenderTemplateResolver.cpp` |
+| `StageTemplate` / `StageTemplateResolver` | 落地为**两件东西**:`RenderTemplate`(模板定义 + slot 表)与 `SceneRenderTemplateResolver`(从显式选定的身份构造请求) | `inc/hgl/mtl/RenderTemplate.h:14-120`、`inc/hgl/mtl/SceneRenderTemplateResolver.h:9-37`、`src/ShaderMaterialData/SceneRenderTemplateResolver.cpp` |
 | "已批准组合表" / `FixedPipelineVariantTable` | 落地形态是 **`RenderTemplateID` + `RenderTemplateDefinition Templates[]` 静态表**(7 个模板:`forward_lit_shadowed_ao` / `forward_lit_shadowed_identity_ao` / `forward_lit_unshadowed_ao` / `forward_unlit` / `shadow_caster_opaque` / `shadow_caster_masked` / `sky`) | `src/ShaderGen/template/RenderTemplate.cpp:74-96` |
 | "resolver 对未登记组合返回明确诊断" | **已落地**:`RenderTemplateValidationError`(含 `UnknownTemplate`/`StageMismatch`/`VersionMismatch`/`EmptyModuleRoot`/`UnknownSlotRole`/`UnexpectedSlotRole`/`DuplicateSlotRole`/`MissingRequiredSlot`/`ModuleNotFound`) | `inc/hgl/mtl/RenderTemplate.h:109-121` |
 | slot 契约(`surface_provider`、`lighting_model`、`output_policy`…) | **已落地**为 `enum class ShaderModuleSlotRole`:`SurfaceProvider`、`DirectLightProvider`、`ShadowProvider`、`AmbientLightProvider`、`AmbientOcclusionProvider`、`LightingModel`、`OutputPolicy`、`MaterialSourceProvider`、`NTBProvider`、`SkyProvider` | `inc/hgl/mtl/RenderTemplate.h:26-47` |
