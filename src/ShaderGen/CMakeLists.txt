@@ -2,21 +2,26 @@ set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 
 # ── 物理目录 = SOURCE_GROUP = 管线角色（2026-09 目录整理，对齐模块隔离设计 §四）──
 #   compile/             编译执行：glslang 封装 + 构建上下文 + SPV 产物 + 求解/发射
+#                        （含 ShaderGenProgramBuildBackend.cpp：生成器侧的装配后端实现）
 #   glsl_module/         GLSL 代码模块体系（registry/metadata/file/manifest/preset）
-#   material_definition/ 材质定义（TOML 加载 + 注册表）
 #   contract/            契约层（结构校验/哈希/绑定解析/输出/覆盖率/接口）
 #   meshgen/             mesh shader 生成（装配器 + 模式子模块 + 模板）
 #   template/            fragment/mesh 模板发射器
 #   builder/             定义 → 构建计划编排（generic builder/顶点 ABI/描述符推导）
 # 公共头（inc/hgl/mtl 与 inc/hgl/graph）不参与物理搬移，路径保持稳定。
+#
+# 本清单只收「ShaderGen 独占」的头与源。数据面（ULRE.ShaderMaterialData）已经
+# 拥有源文件或使用者的头，其 CMake 归属已下移到那一层，本清单不再重复列出：
+#   ShaderLibraryPath / VkEnumText / ShaderCacheRoot / ShaderBuildContext /
+#   ShaderCreateInfo(+Map) / ShaderArtifactStore / MaterialDefinitionFile /
+#   MaterialDefinitionRegistry / SamplerPreset / RenderTemplate /
+#   SceneRenderTemplateResolver
+# 设备 profile 契约头与 MeshShaderLimits 归 ULRE.ShaderRuntimeContract。
 
 set(SHADERGEN_COMMON_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSource.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
     ${ROOT_INCLUDE_PATH}/hgl/shader/RootIncludePath.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderLibraryPath.h
-    ${SHADERGEN_INCLUDE_PATH}/VkEnumText.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderCacheRoot.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModule.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeResourceManifest.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h
@@ -31,9 +36,7 @@ set(DOCUMENT_FILES
 SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
 
 set(TEMPLATE_FILES
-    ${SHADERGEN_INCLUDE_PATH}/RenderTemplate.h
     ${SHADERGEN_INCLUDE_PATH}/ResolvedRenderTemplate.h
-    ${SHADERGEN_INCLUDE_PATH}/SceneRenderTemplateResolver.h
     template/RenderTemplateResolve.cpp
     ${SHADERGEN_INCLUDE_PATH}/FragmentTemplateComposer.h
     template/FragmentTemplateComposer.cpp)
@@ -46,20 +49,15 @@ SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 
 # ── compile/ ─────────────────────────────────────────────────────────────────
 # ShaderCreateInfo.cpp / ShaderArtifactStore.cpp / SamplerPreset.cpp /
-# MaterialDefinitionRegistry.cpp / SceneRenderTemplateResolver.cpp 已迁入
-# ULRE.ShaderMaterialData（数据面，运行时也要）。
+# MaterialDefinitionRegistry.cpp / SceneRenderTemplateResolver.cpp / RenderTemplate.cpp
+# 已迁入 ULRE.ShaderMaterialData（数据面，运行时也要）。
 set(COMPILE_FILES
+    ${ROOT_INCLUDE_PATH}/hgl/ShaderCompilerAPI.h
     compile/GLSLCompiler.h
     compile/GLSLCompiler.cpp
     compile/ShaderCreateInfoCompile.cpp
-    material_definition/ShaderGenProgramBuildBackend.cpp
+    compile/ShaderGenProgramBuildBackend.cpp
     compile/TBuiltInResourceCompat.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderBuildContext.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h
-    # ShaderArtifactContract / ShaderStageKey / ShaderKeyUtility / ShaderProgramKey /
-    # ShaderLinkSpec 已迁入 ULRE.ShaderRuntimeContract（运行时也要的那部分）。
-    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
     compile/ShaderProgramArtifactBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderStructureDump.h
@@ -80,17 +78,8 @@ set(GLSL_MODULE_FILES
     glsl_module/ShaderCodeModuleFile.cpp
     glsl_module/ShaderCodeModule.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeResourceManifest.h
-    glsl_module/ShaderCodeResourceManifest.cpp
-    ${SHADERGEN_INCLUDE_PATH}/SamplerPreset.h)
+    glsl_module/ShaderCodeResourceManifest.cpp)
 SOURCE_GROUP("GLSL Module" FILES ${GLSL_MODULE_FILES})
-
-# ── material_definition/ ─────────────────────────────────────────────────────
-# MaterialDefinitionFile.cpp（TOML 装载 + 定义注册表）已迁入
-# ULRE.ShaderMaterialData：发行形态照样要读 .material.toml 才能算程序键。
-set(MATERIAL_DEFINITION_FILES
-    ${SHADERGEN_INCLUDE_PATH}/MaterialDefinitionRegistry.h
-    ${SHADERGEN_INCLUDE_PATH}/MaterialDefinitionFile.h)
-SOURCE_GROUP("Material Definition" FILES ${MATERIAL_DEFINITION_FILES})
 
 # ── contract/ ────────────────────────────────────────────────────────────────
 set(CONTRACT_FILES
@@ -110,9 +99,10 @@ set(CONTRACT_FILES
 SOURCE_GROUP("Contract" FILES ${CONTRACT_FILES})
 
 # ── meshgen/ ─────────────────────────────────────────────────────────────────
+# MeshShaderLimits.h 归 ULRE.ShaderRuntimeContract（VKPhysicalDevice 侧也要用），
+# 本清单不再重复列出。
 set(MESHGEN_FILES
     ${SHADERGEN_INCLUDE_PATH}/MeshShaderMode.h
-    ${SHADERGEN_INCLUDE_PATH}/MeshShaderLimits.h
     meshgen/MeshTemplateEmitter.h
     meshgen/MeshModeDescriptor.h
     meshgen/MeshShaderHeaderGen.h
@@ -145,13 +135,8 @@ SOURCE_GROUP("Material Types" FILES ${MATERIAL_TYPE_FILES})
 # ── 设备 profile 契约（头-only）──────────────────────────────────────────────
 # 已整体迁入 ULRE.ShaderRuntimeContract：设备能力契约运行时也要用
 # （VKDeviceCreater / VKPhysicalDevice），不能跟着 ShaderGen 走。
-set(PROFILE_FILES
-    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContract.h
-    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileAdapter.h
-    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileJson.h
-    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenProfileTargetVersion.h)
-SOURCE_GROUP("Device Profile" FILES ${PROFILE_FILES})
-
+# 本清单不再重复列出 ShaderGenContract / PhysicalDeviceProfile{Adapter,Json} /
+# ProfileTargetVersion 四头，避免同一头被两个目标重复登记。
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -164,12 +149,10 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${SSBO_STRUCT_FILES}
     ${COMPILE_FILES}
     ${GLSL_MODULE_FILES}
-    ${MATERIAL_DEFINITION_FILES}
     ${CONTRACT_FILES}
     ${MESHGEN_FILES}
     ${BUILDER_FILES}
     ${MATERIAL_TYPE_FILES}
-    ${PROFILE_FILES}
 )
 
 # 契约层独立成目标，ShaderGen 只是它的消费者之一。PUBLIC：吃掉 ShaderGen 的
